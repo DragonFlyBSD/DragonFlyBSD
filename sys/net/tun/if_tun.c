@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.15 2004/06/02 14:42:59 eirikn Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.16 2005/01/26 00:37:40 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -334,19 +334,11 @@ tunoutput(ifp, m0, dst, rt)
 	if (ifp->if_bpf) {
 		/*
 		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer to it).
+		 * a four byte field.
 		 */
-		struct mbuf m;
 		uint32_t af = dst->sa_family;
 
-		m.m_next = m0;
-		m.m_len = 4;
-		m.m_data = (char *)&af;
-
-		bpf_mtap(ifp, &m);
+		bpf_ptap(ifp->if_bpf, m0, &af, sizeof(af));
 	}
 
 	/* prepend sockaddr? this may abort if the mbuf allocation fails */
@@ -645,25 +637,17 @@ tunwrite(dev, uio, flag)
 				return ENOBUFS;
 			*mtod(top, u_int32_t *) =
 			    ntohl(*mtod(top, u_int32_t *));
-			bpf_mtap(ifp, top);
+			bpf_mtap(ifp->if_bpf, top);
 			*mtod(top, u_int32_t *) =
 			    htonl(*mtod(top, u_int32_t *));
 		} else {
 			/*
 			 * We need to prepend the address family as
-			 * a four byte field.  Cons up a dummy header
-			 * to pacify bpf.  This is safe because bpf
-			 * will only read from the mbuf (i.e., it won't
-			 * try to free it or keep a pointer to it).
+			 * a four byte field.
 			 */
-			struct mbuf m;
-			uint32_t af = AF_INET;
+			static const uint32_t af = AF_INET;
 
-			m.m_next = top;
-			m.m_len = 4;
-			m.m_data = (char *)&af;
-
-			bpf_mtap(ifp, &m);
+			bpf_ptap(ifp->if_bpf, top, &af, sizeof(af));
 		}
 	}
 

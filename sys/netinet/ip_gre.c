@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.8 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.9 2005/01/26 00:37:40 joerg Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -140,6 +140,7 @@ gre_input(struct mbuf *m, ...)
 static int
 gre_input2(struct mbuf *m ,int hlen, u_char proto)
 {
+	static const uint32_t af = AF_INET;
 	struct greip *gip = mtod(m, struct greip *);
 	int isr;
 	struct gre_softc *sc;
@@ -201,16 +202,8 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 	m->m_len -= hlen;
 	m->m_pkthdr.len -= hlen;
 
-	if (sc->sc_if.if_bpf) {
-		struct mbuf m0;
-		u_int32_t af = AF_INET;
-
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-
-		bpf_mtap(&(sc->sc_if), &m0);
-	}
+	if (sc->sc_if.if_bpf)
+		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
 	netisr_dispatch(isr, m);
@@ -227,6 +220,7 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 void
 gre_mobile_input(struct mbuf *m, ...)
 {
+	static const uint32_t af = AF_INET;
 	struct ip *ip = mtod(m, struct ip *);
 	struct mobip_h *mip = mtod(m, struct mobip_h *);
 	struct gre_softc *sc;
@@ -279,16 +273,8 @@ gre_mobile_input(struct mbuf *m, ...)
 	ip->ip_sum = 0;
 	ip->ip_sum = in_cksum(m, (ip->ip_hl << 2));
 
-	if (sc->sc_if.if_bpf) {
-		struct mbuf m0;
-		u_int af = AF_INET;
-
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-
-		bpf_mtap(&(sc->sc_if), &m0);
-	}
+	if (sc->sc_if.if_bpf)
+		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
 

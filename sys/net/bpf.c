@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.21 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.22 2005/01/26 00:37:39 joerg Exp $
  */
 
 #include "use_bpf.h"
@@ -103,6 +103,8 @@ static void	catchpacket(struct bpf_d *, u_char *, u_int, u_int,
 			    void (*)(const void *, void *, size_t));
 static void	reset_d(struct bpf_d *);
 static int	bpf_setf(struct bpf_d *, struct bpf_program *);
+static int	bpf_getdltlist(struct bpf_d *, struct bpf_dltlist *);
+static int	bpf_setdlt(struct bpf_d *, u_int);
 static void	bpf_drvinit(void *unused);
 
 static d_open_t		bpfopen;
@@ -245,7 +247,7 @@ bpf_attachd(struct bpf_d *d, struct bpf_if *bp)
 	 */
 	d->bd_bif = bp;
 	SLIST_INSERT_HEAD(&bp->bif_dlist, d, bd_next);
-	bp->bif_ifp->if_bpf = bp;
+	*bp->bif_driverp = bp;
 }
 
 /*
@@ -254,24 +256,13 @@ bpf_attachd(struct bpf_d *d, struct bpf_if *bp)
 static void
 bpf_detachd(struct bpf_d *d)
 {
+	int error;
 	struct bpf_if *bp;
+	struct ifnet *ifp;
 
 	bp = d->bd_bif;
-	/*
-	 * Check if this descriptor had requested promiscuous mode.
-	 * If so, turn it off.
-	 */
-	if (d->bd_promisc) {
-		d->bd_promisc = 0;
-		if (ifpromisc(bp->bif_ifp, 0)) {
-			/*
-			 * Something is really wrong if we were able to put
-			 * the driver into promiscuous mode, but can't
-			 * take it out.
-			 */
-			panic("bpf: ifpromisc failed");
-		}
-	}
+	ifp = bp->bif_ifp;
+
 	/* Remove d from the interface's descriptor list. */
 	SLIST_REMOVE(&bp->bif_dlist, d, bpf_d, bd_next);
 
@@ -279,9 +270,27 @@ bpf_detachd(struct bpf_d *d)
 		/*
 		 * Let the driver know that there are no more listeners.
 		 */
-		d->bd_bif->bif_ifp->if_bpf = NULL;
+		*bp->bif_driverp = NULL;
 	}
 	d->bd_bif = NULL;
+	/*
+	 * Check if this descriptor had requested promiscuous mode.
+	 * If so, turn it off.
+	 */
+	if (d->bd_promisc) {
+		d->bd_promisc = 0;
+		error = ifpromisc(ifp, 0);
+		if (error != 0 && error != ENXIO) {
+			/*
+			 * ENXIO can happen if a pccard is unplugged,
+			 * Something is really wrong if we were able to put
+			 * the driver into promiscuous mode, but can't
+			 * take it out.
+			 */
+			if_printf(ifp, "bpf_detach: ifpromisc failed(%d)\n",
+				  error);
+		}
+	}
 }
 
 /*
@@ -687,6 +696,26 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		break;
 
 	/*
+	 * Get a list of supported data link types.
+	 */
+	case BIOCGDLTLIST:
+		if (d->bd_bif == NULL)
+			error = EINVAL;
+		else
+			error = bpf_getdltlist(d, (struct bpf_dltlist *)addr);
+		break;
+
+	/*
+	 * Set data link type.
+	 */
+	case BIOCSDLT:
+		if (d->bd_bif == NULL)
+			error = EINVAL;
+		else
+			error = bpf_setdlt(d, *(u_int *)addr);
+		break;
+
+	/*
 	 * Get interface name.
 	 */
 	case BIOCGETIF:
@@ -904,6 +933,9 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 
 		if (ifp == NULL || ifp != theywant)
 			continue;
+		/* skip additional entry */
+		if (bp->bif_driverp != &ifp->if_bpf)
+			continue;
 		/*
 		 * We found the requested interface.
 		 * If it's not up, return an error.
@@ -984,15 +1016,13 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 }
 
 /*
- * Incoming linkage from device drivers.  Process the packet pkt, of length
- * pktlen, which is stored in a contiguous buffer.  The packet is parsed
- * by each process' filter, and if accepted, stashed into the corresponding
- * buffer.
+ * Process the packet pkt of length pktlen.  The packet is parsed
+ * by each listener's filter, and if accepted, stashed into the
+ * corresponding buffer.
  */
 void
-bpf_tap(struct ifnet *ifp, u_char *pkt, u_int pktlen)
+bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 {
-	struct bpf_if *bp = ifp->if_bpf;
 	struct bpf_d *d;
 	u_int slen;
 
@@ -1034,15 +1064,20 @@ bpf_mcopy(const void *src_arg, void *dst_arg, size_t len)
 }
 
 /*
- * Incoming linkage from device drivers, when packet is in an mbuf chain.
+ * Process the packet in the mbuf chain m.  The packet is parsed by each
+ * listener's filter, and if accepted, stashed into the corresponding
+ * buffer.
  */
 void
-bpf_mtap(struct ifnet *ifp, struct mbuf *m)
+bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 {
-	struct bpf_if *bp = ifp->if_bpf;
 	struct bpf_d *d;
 	u_int pktlen, slen;
 	struct mbuf *m0;
+
+	/* Don't compute pktlen, if no descriptor is attached. */
+	if (SLIST_EMPTY(&bp->bif_dlist))
+		return;
 
 	pktlen = 0;
 	for (m0 = m; m0 != NULL; m0 = m0->m_next)
@@ -1056,6 +1091,28 @@ bpf_mtap(struct ifnet *ifp, struct mbuf *m)
 		if (slen != 0)
 			catchpacket(d, (u_char *)m, pktlen, slen, bpf_mcopy);
 	}
+}
+
+/*
+ * Process the packet in the mbuf chain m with the header in m prepended.
+ * The packet is parsed by each listener's filter, and if accepted,
+ * stashed into the corresponding buffer.
+ */
+void
+bpf_ptap(struct bpf_if *bp, struct mbuf *m, const void *data, u_int dlen)
+{
+	struct mbuf mb;
+
+	/*
+	 * Craft on-stack mbuf suitable for passing to bpf_mtap.
+	 * Note that we cut corners here; we only setup what's
+	 * absolutely needed--this mbuf should never go anywhere else.
+	 */
+	mb.m_next = m;
+	mb.m_data = __DECONST(void *, data); /* LINTED */
+	mb.m_len = dlen;
+
+	bpf_mtap(bp, m);
 }
 
 /*
@@ -1174,22 +1231,29 @@ bpf_freed(struct bpf_d *d)
  * Attach an interface to bpf.  ifp is a pointer to the structure
  * defining the interface to be attached, dlt is the link layer type,
  * and hdrlen is the fixed size of the link header (variable length
- * headers are not yet supporrted).
+ * headers are not yet supported).
  */
 void
 bpfattach(struct ifnet *ifp, u_int dlt, u_int hdrlen)
+{
+	bpfattach_dlt(ifp, dlt, hdrlen, &ifp->if_bpf);
+}
+
+void
+bpfattach_dlt(struct ifnet *ifp, u_int dlt, u_int hdrlen, struct bpf_if **driverp)
 {
 	struct bpf_if *bp;
 
 	bp = malloc(sizeof *bp, M_BPF, M_WAITOK | M_ZERO);
 
+	SLIST_INIT(&bp->bif_dlist);
 	bp->bif_ifp = ifp;
 	bp->bif_dlt = dlt;
+	bp->bif_driverp = driverp;
+	*bp->bif_driverp = NULL;
 
 	bp->bif_next = bpf_iflist;
 	bpf_iflist = bp;
-
-	bp->bif_ifp->if_bpf = NULL;
 
 	/*
 	 * Compute the length of the bpf header.  This is not necessarily
@@ -1200,7 +1264,7 @@ bpfattach(struct ifnet *ifp, u_int dlt, u_int hdrlen)
 	bp->bif_hdrlen = BPF_WORDALIGN(hdrlen + SIZEOF_BPF_HDR) - hdrlen;
 
 	if (bootverbose)
-		printf("bpf: %s attached\n", ifp->if_xname);
+		if_printf(ifp, "bpf attached\n");
 }
 
 /*
@@ -1248,6 +1312,73 @@ bpfdetach(struct ifnet *ifp)
 	splx(s);
 }
 
+/*
+ * Get a list of available data link type of the interface.
+ */
+static int
+bpf_getdltlist(struct bpf_d *d, struct bpf_dltlist *bfl)
+{
+	int n, error;
+	struct ifnet *ifp;
+	struct bpf_if *bp;
+
+	ifp = d->bd_bif->bif_ifp;
+	n = 0;
+	error = 0;
+	for (bp = bpf_iflist; bp != 0; bp = bp->bif_next) {
+		if (bp->bif_ifp != ifp)
+			continue;
+		if (bfl->bfl_list != NULL) {
+			if (n >= bfl->bfl_len) {
+				return (ENOMEM);
+			}
+			error = copyout(&bp->bif_dlt,
+			    bfl->bfl_list + n, sizeof(u_int));
+		}
+		n++;
+	}
+	bfl->bfl_len = n;
+	return(error);
+}
+
+/*
+ * Set the data link type of a BPF instance.
+ */
+static int
+bpf_setdlt(struct bpf_d *d, u_int dlt)
+{
+	int error, opromisc;
+	struct ifnet *ifp;
+	struct bpf_if *bp;
+	int s;
+
+	if (d->bd_bif->bif_dlt == dlt)
+		return (0);
+	ifp = d->bd_bif->bif_ifp;
+	for (bp = bpf_iflist; bp != 0; bp = bp->bif_next) {
+		if (bp->bif_ifp == ifp && bp->bif_dlt == dlt)
+			break;
+	}
+	if (bp != NULL) {
+		opromisc = d->bd_promisc;
+		s = splimp();	
+		bpf_detachd(d);
+		bpf_attachd(d, bp);
+		reset_d(d);
+		if (opromisc) {
+			error = ifpromisc(bp->bif_ifp, 1);
+			if (error)
+				if_printf(bp->bif_ifp,
+					"bpf_setdlt: ifpromisc failed (%d)\n",
+					error);
+			else
+				d->bd_promisc = 1;
+		}
+		splx(s);
+	}
+	return(bp == NULL ? EINVAL : 0);
+}
+
 static void
 bpf_drvinit(void *unused)
 {
@@ -1265,17 +1396,27 @@ SYSINIT(bpfdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvinit,NULL)
  */
 
 void
-bpf_tap(struct ifnet *ifp, u_char *pkt, u_int pktlen)
+bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 {
 }
 
 void
-bpf_mtap(struct ifnet *ifp, struct mbuf *m)
+bpf_mtap(struct bpf_if *bp, struct mbuf *m)
+{
+}
+
+void
+bpf_ptap(struct bpf_if *bp, struct mbuf *, void *data, u_int dlen)
 {
 }
 
 void
 bpfattach(struct ifnet *ifp, u_int dlt, u_int hdrlen)
+{
+}
+
+void
+bpfattach_dlt(struct ifnet *ifp, u_int dlt, u_int hdrlen, struct bpf_if **driverp)
 {
 }
 

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.22 2005/01/23 20:23:22 joerg Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.23 2005/01/26 00:37:39 joerg Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -849,11 +849,7 @@ pppoutput(ifp, m0, dst, rtp)
 #endif /* PPP_FILTER */
     }
 
-    /*
-     * See if bpf wants to look at the packet.
-     */
-    if (ifp->if_bpf)
-	bpf_mtap(ifp, m0);
+    BPF_MTAP(ifp, m0);
 
     /*
      * Put the packet on the appropriate queue.

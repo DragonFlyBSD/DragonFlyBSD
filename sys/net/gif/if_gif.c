@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.10 2004/11/30 19:21:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.11 2005/01/26 00:37:39 joerg Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -333,19 +333,11 @@ gif_output(ifp, m, dst, rt)
 	if (ifp->if_bpf) {
 		/*
 		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
+		 * a four byte field.
 		 */
-		struct mbuf m0;
-		u_int32_t af = dst->sa_family;
+		uint32_t af = dst->sa_family;
 
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-		
-		bpf_mtap(ifp, &m0);
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(4));
 	}
 	ifp->if_opackets++;	
 	ifp->if_obytes += m->m_pkthdr.len;
@@ -398,19 +390,11 @@ gif_input(m, af, ifp)
 	if (ifp->if_bpf) {
 		/*
 		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
+		 * a four byte field.
 		 */
-		struct mbuf m0;
-		u_int32_t af1 = af;
-		
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af1;
-		
-		bpf_mtap(ifp, &m0);
+		uint32_t af1 = af;
+
+		bpf_ptap(ifp->if_bpf, m, &af1, sizeof(af1));
 	}
 
 	/*

@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.11 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.12 2005/01/26 00:37:39 joerg Exp $
  */
 /*
  * derived from
@@ -216,22 +216,14 @@ faithoutput(ifp, m, dst, rt)
 		m->m_data += sizeof(int);
 	}
 
-	if (ifp->if_bpf) {
+	if (ifp->if_bpf != NULL) {
 		/*
 		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a faith header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
+		 * a four byte field.
 		 */
-		struct mbuf m0;
-		u_int32_t af = dst->sa_family;
+		uint32_t af = dst->sa_family;
 
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-
-		bpf_mtap(ifp, &m0);
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
 	}
 
 	if (rt && rt->rt_flags & (RTF_REJECT|RTF_BLACKHOLE)) {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.9 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.10 2005/01/26 00:37:39 joerg Exp $
  */
 
 /*
@@ -67,7 +67,7 @@
 
 #include "iicbus_if.h"
 
-#define ICHDRLEN	sizeof(u_int)
+#define ICHDRLEN	sizeof(uint32_t)
 #define ICMTU		1500		/* default mtu */
 
 struct ic_softc {
@@ -370,7 +370,7 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 	int s, len, sent;
 	struct mbuf *mm;
 	u_char *cp;
-	u_int hdr = dst->sa_family;
+	uint32_t hdr = dst->sa_family;
 
 	ifp->if_flags |= IFF_RUNNING;
 
@@ -401,23 +401,8 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 
 	} while ((mm = mm->m_next));
 
-	if (ifp->if_bpf) {
-		struct mbuf m0, *n = m;
-
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
-		 */
-		m0.m_next = m;
-		m0.m_len = sizeof(u_int);
-		m0.m_data = (char *)&hdr;
-		n = &m0;
-
-		bpf_mtap(ifp, n);
-	}
+	if (ifp->if_bpf)
+		bpf_ptap(ifp->if_bpf, m, &hdr, ICHDRLEN);
 
 	sc->ic_sending = 1;
 

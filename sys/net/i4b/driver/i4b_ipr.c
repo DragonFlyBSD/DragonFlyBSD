@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.13 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.14 2005/01/26 00:37:39 joerg Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -896,6 +896,7 @@ ipr_rx_data_rdy(int unit)
 #endif	
 	int len, c;
 #endif
+	static const uint32_t af = AF_INET;
 	
 	if((m = *isdn_linktab[unit]->rx_mbuf) == NULL)
 		return;
@@ -1038,23 +1039,8 @@ error:
 	}
 #endif
 
-#if NBPFILTER > 0 || NBPF > 0
-	if(sc->sc_if.if_bpf)
-	{
-		/* prepend the address family as a four byte field */		
-		struct mbuf mm;
-		u_int af = AF_INET;
-		mm.m_next = m;
-		mm.m_len = 4;
-		mm.m_data = (char *)&af;
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		bpf_mtap(&sc->sc_if, &mm);
-#else
-		bpf_mtap(sc->sc_if.if_bpf, &mm);
-#endif
-	}
-#endif /* NBPFILTER > 0  || NBPF > 0 */
+	if (sc->sc_if.if_bpf)
+		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
 
 #if defined(__DragonFly__) || defined (__FreeBSD__)
 	if (netisr_queue(NETISR_IP, m)) {
@@ -1073,6 +1059,7 @@ error:
 static void
 ipr_tx_queue_empty(int unit)
 {
+	static const uint32_t af = AF_INET;
 	struct ipr_softc *sc = &ipr_softc[unit];
 	struct mbuf *m;
 #ifdef	IPR_VJ	
@@ -1098,25 +1085,9 @@ ipr_tx_queue_empty(int unit)
 		}
 
 		microtime(&sc->sc_if.if_lastchange);
-		
-#if NBPFILTER > 0 || NBPF > 0
-		if(sc->sc_if.if_bpf)
-		{
-			/* prepend the address family as a four byte field */
-	
-			struct mbuf mm;
-			u_int af = AF_INET;
-			mm.m_next = m;
-			mm.m_len = 4;
-			mm.m_data = (char *)&af;
-	
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-			bpf_mtap(&sc->sc_if, &mm);
-#else
-			bpf_mtap(sc->sc_if.if_bpf, &mm);
-#endif
-		}
-#endif /* NBPFILTER */
+
+		if (sc->sc_if.if_bpf)
+			bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
 	
 #if I4BIPRACCT
 		sc->sc_outb += m->m_pkthdr.len;	/* size before compression */

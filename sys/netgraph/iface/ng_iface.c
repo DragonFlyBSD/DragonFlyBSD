@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.7 2004/03/23 22:19:07 hsu Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.8 2005/01/26 00:37:40 joerg Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -469,22 +469,16 @@ ng_iface_start(struct ifnet *ifp)
 
 /*
  * Flash a packet by the BPF (requires prepending 4 byte AF header)
- * Note the phoney mbuf; this is OK because BPF treats it read-only.
  */
 static void
 ng_iface_bpftap(struct ifnet *ifp, struct mbuf *m, sa_family_t family)
 {
 	int32_t family4 = (int32_t)family;
-	struct mbuf m0;
 
 	KASSERT(family != AF_UNSPEC, ("%s: family=AF_UNSPEC", __FUNCTION__));
-	if (ifp->if_bpf != NULL) {
-		bzero(&m0, sizeof(m0));
-		m0.m_next = m;
-		m0.m_len = sizeof(family4);
-		m0.m_data = (char *)&family4;
-		bpf_mtap(ifp, &m0);
-	}
+
+	if (ifp->if_bpf)
+		bpf_ptap(ifp, m, &family, sizeof(family4));
 }
 
 #ifdef DEBUG

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.15 2004/09/16 04:49:32 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.16 2005/01/26 00:37:39 joerg Exp $
  */
 
 /*
@@ -609,7 +609,7 @@ slstart(tp)
 			 */
 			bpfbuf[SLX_DIR] = SLIPDIR_OUT;
 			bcopy(mtod(m, caddr_t), &bpfbuf[SLX_CHDR], CHDR_LEN);
-			bpf_tap(&sc->sc_if, bpfbuf, len + SLIP_HDRLEN);
+			bpf_tap(sc->sc_if.if_bpf, bpfbuf, len + SLIP_HDRLEN);
 		}
 
 		/*
@@ -876,7 +876,7 @@ slinput(c, tp)
 
 			hp[SLX_DIR] = SLIPDIR_IN;
 			bcopy(chdr, &hp[SLX_CHDR], CHDR_LEN);
-			bpf_tap(&sc->sc_if, hp, len + SLIP_HDRLEN);
+			bpf_tap(sc->sc_if.if_bpf, hp, len + SLIP_HDRLEN);
 		}
 		m = sl_btom(sc, len);
 		if (m == NULL)

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.21 2004/06/13 17:29:09 mlaier Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.1 2004/07/26 16:30:17 joerg Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.2 2005/01/26 00:37:40 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -260,10 +260,9 @@ ieee80211_input(struct ifnet *ifp, struct mbuf *m, struct ieee80211_node *ni,
 			}
 		}
 		/* copy to listener after decrypt */
-#ifdef IEEE80211_RAWBPF
-		if (ic->ic_rawbpf)
+		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m);
-#endif
+
 		m = ieee80211_decap(ifp, m);
 		if (m == NULL) {
 			ic->ic_stats.is_rx_decap++;
@@ -355,10 +354,8 @@ ieee80211_input(struct ifnet *ifp, struct mbuf *m, struct ieee80211_node *ni,
 				    >> IEEE80211_FC0_SUBTYPE_SHIFT],
 				    wh->i_addr2, ":", rssi);
 		}
-#ifdef IEEE80211_RAWBPF
-		if (ic->ic_rawbpf)
+		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m);
-#endif
 		(*ic->ic_recv_mgmt)(ic, m, ni, subtype, rssi, rstamp);
 		m_freem(m);
 		return;
@@ -375,10 +372,8 @@ ieee80211_input(struct ifnet *ifp, struct mbuf *m, struct ieee80211_node *ni,
 	ifp->if_ierrors++;
   out:
 	if (m != NULL) {
-#ifdef IEEE80211_RAWBPF
-		if (ic->ic_rawbpf)
+		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m);
-#endif
 		m_freem(m);
 	}
 }

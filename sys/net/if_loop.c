@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.12 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.13 2005/01/26 00:37:39 joerg Exp $
  */
 
 /*
@@ -210,24 +210,14 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 		m->m_data += sizeof(int);
 	}
 
-	/* Let BPF see incoming packet */
 	if (ifp->if_bpf) {
-		struct mbuf m0, *n = m;
-
 		if (ifp->if_bpf->bif_dlt == DLT_NULL) {
-			/*
-			 * We need to prepend the address family as
-			 * a four byte field.  Cons up a dummy header
-			 * to pacify bpf.  This is safe because bpf
-			 * will only read from the mbuf (i.e., it won't
-			 * try to free it or keep a pointer a to it).
-			 */
-			m0.m_next = m;
-			m0.m_len = 4;
-			m0.m_data = (char *)&af;
-			n = &m0;
+			uint32_t bpf_af = (uint32_t)af;
+			bpf_ptap(ifp->if_bpf, m, &bpf_af, 4);
 		}
-		bpf_mtap(ifp, n);
+		else {
+			bpf_mtap(ifp->if_bpf, m);
+		}
 	}
 
 	/* Strip away media header */

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.25 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.26 2005/01/26 00:37:39 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -565,16 +565,8 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		/* m->m_pkthdr.len = m->m_len; */
 	}
 
-	/* Check for a BPF tap */
-	if (ifp->if_bpf != NULL) {
-		struct m_hdr mh;
-
-		/* This kludge is OK; BPF treats the "mbuf" as read-only */
-		mh.mh_next = m;
-		mh.mh_data = (char *)eh;
-		mh.mh_len = ETHER_HDR_LEN;
-		bpf_mtap(ifp, (struct mbuf *)&mh);
-	}
+	if (ifp->if_bpf)
+		bpf_ptap(ifp->if_bpf, m, eh, ETHER_HDR_LEN);
 
 	ifp->if_ibytes += m->m_pkthdr.len + (sizeof *eh);
 

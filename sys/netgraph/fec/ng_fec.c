@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.10 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.11 2005/01/26 00:37:40 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -749,16 +749,8 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0,
 	bifp->if_ipackets++;
 	bifp->if_ibytes += m->m_pkthdr.len + sizeof(struct ether_header);
 
-        /* Check for a BPF tap */
-	if (bifp->if_bpf != NULL) {
-		struct m_hdr mh;
-
-		/* This kludge is OK; BPF treats the "mbuf" as read-only */
-		mh.mh_next = m;
-		mh.mh_data = (char *)eh;
-		mh.mh_len = ETHER_HDR_LEN;
-		bpf_mtap(bifp, (struct mbuf *)&mh);
-	}
+	if (bifp->if_bpf)
+		bpf_ptap(bifp->if_bpf, m, eh, ETHER_HDR_LEN);
 }
 
 /*

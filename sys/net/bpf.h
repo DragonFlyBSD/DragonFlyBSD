@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.7 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.8 2005/01/26 00:37:39 joerg Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -117,6 +117,8 @@ struct bpf_version {
 #define BIOCSHDRCMPLT	_IOW('B',117, u_int)
 #define BIOCGSEESENT	_IOR('B',118, u_int)
 #define BIOCSSEESENT	_IOW('B',119, u_int)
+#define	BIOCSDLT	_IOW('B',120, u_int)
+#define	BIOCGDLTLIST	_IOWR('B',121, struct bpf_dltlist)
 
 /*
  * Structure prepended to each packet.
@@ -346,26 +348,37 @@ struct bpf_insn {
 #define BPF_STMT(code, k) { (u_short)(code), 0, 0, k }
 #define BPF_JUMP(code, k, jt, jf) { (u_short)(code), jt, jf, k }
 
-#ifdef _KERNEL
-int	 bpf_validate (const struct bpf_insn *, int);
-void	 bpf_tap (struct ifnet *, u_char *, u_int);
-void	 bpf_mtap (struct ifnet *, struct mbuf *);
-void	 bpfattach (struct ifnet *, u_int, u_int);
-void	 bpfdetach (struct ifnet *);
+/*
+ * Structure to retrieve available DLTs for the interface.
+ */
+struct bpf_dltlist {
+	u_int	bfl_len;	/* number of bfd_list array */
+	u_int	*bfl_list;	/* array of DLTs */
+};
 
-void	 bpfilterattach (int);
-u_int	 bpf_filter (const struct bpf_insn *, u_char *, u_int, u_int);
-#endif
+#ifdef _KERNEL
+struct bpf_if;
+
+int	 bpf_validate(const struct bpf_insn *, int);
+void	 bpf_tap(struct bpf_if *, u_char *, u_int);
+void	 bpf_mtap(struct bpf_if *, struct mbuf *);
+void	 bpf_ptap(struct bpf_if *, struct mbuf *, const void *, u_int);
+void	 bpfattach(struct ifnet *, u_int, u_int);
+void	 bpfattach_dlt(struct ifnet *, u_int, u_int, struct bpf_if **);
+void	 bpfdetach(struct ifnet *);
+
+void	 bpfilterattach(int);
+u_int	 bpf_filter(const struct bpf_insn *, u_char *, u_int, u_int);
 
 #define	BPF_TAP(_ifp,_pkt,_pktlen) do {				\
 	if ((_ifp)->if_bpf)					\
-		bpf_tap((_ifp), (_pkt), (_pktlen));		\
+		bpf_tap((_ifp)->if_bpf, (_pkt), (_pktlen));	\
 } while (0)
 #define	BPF_MTAP(_ifp,_m) do {					\
-	if ((_ifp)->if_bpf) {					\
-		bpf_mtap((_ifp), (_m));				\
-	}							\
+	if ((_ifp)->if_bpf)					\
+		bpf_mtap((_ifp)->if_bpf, (_m));			\
 } while (0)
+#endif
 
 /*
  * Number of scratch memory words (for BPF_LD|BPF_MEM and BPF_ST).

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.10 2004/06/02 14:42:58 eirikn Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.11 2005/01/26 00:37:39 joerg Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -244,15 +244,9 @@ gre_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	osrc = 0;
 
 	if (ifp->if_bpf) {
-		/* see comment of other if_foo.c files */
-		struct mbuf m0;
-		u_int32_t af = dst->sa_family;
+		uint32_t af = dst->sa_family;
 
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-
-		bpf_mtap(ifp, &m0);
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
 	}
 
 	m->m_flags &= ~(M_BCAST|M_MCAST);

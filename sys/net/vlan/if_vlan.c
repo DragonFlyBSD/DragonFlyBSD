@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.11 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.12 2005/01/26 00:37:40 joerg Exp $
  */
 
 /*
@@ -369,6 +369,7 @@ vlan_start(struct ifnet *ifp)
 static int
 vlan_input_tag( struct mbuf *m, uint16_t t)
 {
+	struct bpf_if *bif;
 	struct ifvlan *ifv;
 	struct ether_header *eh = mtod(m, struct ether_header *);
 
@@ -378,8 +379,7 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	 * Fake up a header and send the packet to the physical interface's
 	 * bpf tap if active.
 	 */
-	if (m->m_pkthdr.rcvif->if_bpf != NULL) {
-		struct m_hdr mh;
+	if ((bif = m->m_pkthdr.rcvif->if_bpf) != NULL) {
 		struct ether_vlan_header evh;
 
 		bcopy(eh, &evh, 2*ETHER_ADDR_LEN);
@@ -387,11 +387,7 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 		evh.evl_tag = htons(t);
 		evh.evl_proto = eh->ether_type;
 
-		/* This kludge is OK; BPF treats the "mbuf" as read-only */
-		mh.mh_next = m;
-		mh.mh_data = (char *)&evh;
-		mh.mh_len = ETHER_HDR_LEN + EVL_ENCAPLEN;
-		bpf_mtap(m->m_pkthdr.rcvif, (struct mbuf *)&mh);
+		bpf_ptap(bif, m, &evh, ETHER_HDR_LEN + EVL_ENCAPLEN);
 	}
 
 	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;

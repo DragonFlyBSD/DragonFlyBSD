@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.17 2005/01/14 02:35:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.18 2005/01/26 00:37:39 joerg Exp $
  */
 
 /*
@@ -465,8 +465,7 @@ wi_attach(device_t dev)
 	ic->ic_newstate = wi_newstate;
 	ieee80211_media_init(ifp, wi_media_change, wi_media_status);
 
-#ifdef WI_RAWBPF
-	bpfattach2(ifp, DLT_IEEE802_11_RADIO,
+	bpfattach_dlt(ifp, DLT_IEEE802_11_RADIO,
 		sizeof(struct ieee80211_frame) + sizeof(sc->sc_tx_th),
 		&sc->sc_drvbpf);
 	/*
@@ -485,7 +484,7 @@ wi_attach(device_t dev)
 	sc->sc_rx_th_len = roundup(sizeof(sc->sc_rx_th), sizeof(u_int32_t));
 	sc->sc_rx_th.wr_ihdr.it_len = htole16(sc->sc_rx_th_len);
 	sc->sc_rx_th.wr_ihdr.it_present = htole32(WI_RX_RADIOTAP_PRESENT);
-#endif
+
 	return (0);
 }
 
@@ -915,10 +914,10 @@ wi_start(struct ifnet *ifp)
 				wh->i_fc[1] |= IEEE80211_FC1_WEP;
 
 		}
-#ifdef IEEE80211_RAWBPF
-		if (ic->ic_rawbpf)
+
+		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m0);
-#endif
+
 		frmhdr.wi_tx_ctl = htole16(WI_ENC_TX_802_11|WI_TXCNTL_TX_EX);
 		if (ic->ic_opmode == IEEE80211_M_HOSTAP &&
 		    (wh->i_fc[1] & IEEE80211_FC1_WEP)) {
@@ -930,14 +929,14 @@ wi_start(struct ifnet *ifp)
 			}
 			frmhdr.wi_tx_ctl |= htole16(WI_TXCNTL_NOCRYPT);
 		}
-#ifdef WI_RAWBPF
+
 		if (sc->sc_drvbpf) {
 			sc->sc_tx_th.wt_rate =
 				ni->ni_rates.rs_rates[ni->ni_txrate];
-			bpf_mtap2(sc->sc_drvbpf,
-				&sc->sc_tx_th, sc->sc_tx_th_len, m0);
+			bpf_ptap(sc->sc_drvbpf, m0, &sc->sc_tx_th,
+				 sc->sc_tx_th_len);
 		}
-#endif
+
 		m_copydata(m0, 0, sizeof(struct ieee80211_frame),
 		    (caddr_t)&frmhdr.wi_whdr);
 		m_adj(m0, sizeof(struct ieee80211_frame));
@@ -1477,7 +1476,6 @@ wi_rx_intr(struct wi_softc *sc)
 
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 
-#ifdef WI_RAWBPF
 	if (sc->sc_drvbpf) {
 		/* XXX replace divide by table */
 		sc->sc_rx_th.wr_rate = frmhdr.wi_rx_rate / 5;
@@ -1486,10 +1484,9 @@ wi_rx_intr(struct wi_softc *sc)
 		sc->sc_rx_th.wr_flags = 0;
 		if (frmhdr.wi_status & WI_STAT_PCF)
 			sc->sc_rx_th.wr_flags |= IEEE80211_RADIOTAP_F_CFP;
-		bpf_mtap2(sc->sc_drvbpf,
-			&sc->sc_rx_th, sc->sc_rx_th_len, m);
+		bpf_ptap(sc->sc_drvbpf, m, &sc->sc_rx_th, sc->sc_rx_th_len);
 	}
-#endif
+
 	wh = mtod(m, struct ieee80211_frame *);
 	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
 		/*
@@ -2648,12 +2645,10 @@ wi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		wi_read_rid(sc, WI_RID_CURRENT_CHAN, &val, &buflen);
 		/* XXX validate channel */
 		ni->ni_chan = &ic->ic_channels[le16toh(val)];
-#ifdef WI_RAWBPF
 		sc->sc_tx_th.wt_chan_freq = sc->sc_rx_th.wr_chan_freq =
 			htole16(ni->ni_chan->ic_freq);
 		sc->sc_tx_th.wt_chan_flags = sc->sc_rx_th.wr_chan_flags =
 			htole16(ni->ni_chan->ic_flags);
-#endif
 
 		if (IEEE80211_ADDR_EQ(old_bssid, ni->ni_bssid))
 			sc->sc_false_syns++;

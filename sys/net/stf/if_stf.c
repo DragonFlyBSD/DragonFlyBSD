@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.13 2005/01/07 05:42:59 hsu Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.14 2005/01/26 00:37:39 joerg Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -192,11 +192,7 @@ stfmodevent(mod, type, data)
 #endif
 		sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
 		if_attach(&sc->sc_if);
-#ifdef HAVE_OLD_BPF
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
-#else
-		bpfattach(&sc->sc_if.if_bpf, &sc->sc_if, DLT_NULL, sizeof(u_int));
-#endif
 		break;
 	case MOD_UNLOAD:
 		sc = stf;
@@ -327,6 +323,7 @@ stf_output(ifp, m, dst, rt)
 	struct ip *ip;
 	struct ip6_hdr *ip6;
 	struct in6_ifaddr *ia6;
+	static const uint32_t af = AF_INET6;
 
 	sc = (struct stf_softc*)ifp;
 	dst6 = (struct sockaddr_in6 *)dst;
@@ -369,29 +366,8 @@ stf_output(ifp, m, dst, rt)
 		return ENETUNREACH;
 	}
 
-#if NBPFILTER > 0
-	if (ifp->if_bpf) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
-		 */
-		struct mbuf m0;
-		u_int32_t af = AF_INET6;
-		
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-		
-#ifdef HAVE_OLD_BPF
-		bpf_mtap(ifp, &m0);
-#else
-		bpf_mtap(ifp->if_bpf, &m0);
-#endif
-	}
-#endif /*NBPFILTER > 0*/
+	if (ifp->if_bpf)
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
 
 	M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
 	if (m && m->m_len < sizeof(struct ip))
@@ -530,6 +506,7 @@ in_stf_input(struct mbuf *m, ...)
 	u_int8_t otos, itos;
 	struct ifnet *ifp;
 	int off, proto;
+	static const uint32_t af = AF_INET6;
 	__va_list ap;
 
 	__va_start(ap, m);
@@ -592,28 +569,9 @@ in_stf_input(struct mbuf *m, ...)
 	ip6->ip6_flow |= htonl((u_int32_t)itos << 20);
 
 	m->m_pkthdr.rcvif = ifp;
-	
-	if (ifp->if_bpf) {
-		/*
-		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
-		 */
-		struct mbuf m0;
-		u_int32_t af = AF_INET6;
-		
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-		
-#ifdef HAVE_OLD_BPF
-		bpf_mtap(ifp, &m0);
-#else
-		bpf_mtap(ifp->if_bpf, &m0);
-#endif
-	}
+
+	if (ifp->if_bpf)
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
 
 	/*
 	 * Put the packet to the network layer input queue according to the

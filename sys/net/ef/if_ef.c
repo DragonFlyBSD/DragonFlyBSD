@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.12 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.13 2005/01/26 00:37:39 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -378,13 +378,9 @@ ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	eifp->if_ibytes += m->m_pkthdr.len + sizeof (*eh);
 	m->m_pkthdr.rcvif = eifp;
 
-	if (eifp->if_bpf) {
-		struct mbuf m0;
-		m0.m_next = m;
-		m0.m_len = sizeof(struct ether_header);
-		m0.m_data = (char *)eh;
-		bpf_mtap(eifp, &m0);
-	}
+	if (eifp->if_bpf)
+		bpf_ptap(eifp->if_bpf, m, eh, ETHER_HDR_LEN);
+
 	/*
 	 * Now we ready to adjust mbufs and pass them to protocol intr's
 	 */

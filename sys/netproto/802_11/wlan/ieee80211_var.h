@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.15 2004/04/05 22:10:26 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/Attic/ieee80211_var.h,v 1.1 2004/07/26 16:30:17 joerg Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/Attic/ieee80211_var.h,v 1.2 2005/01/26 00:37:40 joerg Exp $
  */
 
 #ifndef _NETPROTO_802_11_IEEE80211_VAR_H_
@@ -182,9 +182,7 @@ struct ieee80211com {
 	enum ieee80211_state	ic_state;	/* 802.11 state */
 	enum ieee80211_protmode	ic_protmode;	/* 802.11g protection mode */
 	struct ifmedia		ic_media;	/* interface media config */
-#ifdef IEEE80211_RAWBPF
 	struct bpf_if		*ic_rawbpf;	/* packet filter structure */
-#endif
 	struct ieee80211_node	*ic_bss;	/* information for this node */
 	struct ieee80211_channel *ic_ibss_chan;
 	int			ic_fixed_rate;	/* index to ic_sup_rates[] */

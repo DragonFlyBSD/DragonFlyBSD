@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.8 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.9 2005/01/26 00:37:39 joerg Exp $
  */
 
 /*
@@ -439,18 +439,12 @@ static void
 lptap(struct ifnet *ifp, struct mbuf *m)
 {
 	/*
-	 * Send a packet through bpf. We need to prepend the address family
-	 * as a four byte field. Cons up a dummy header to pacify bpf. This
-	 * is safe because bpf will only read from the mbuf (i.e., it won't
-	 * try to free it or keep a pointer to it).
+	 * We need to prepend the address family as a four byte field.
 	 */
-	u_int32_t af = AF_INET;
-	struct mbuf m0;
-	
-	m0.m_next = m;
-	m0.m_len = sizeof(u_int32_t);
-	m0.m_data = (char *)&af;
-	bpf_mtap(ifp, &m0);
+	static const uint32_t af = AF_INET;
+
+	if (ifp->if_bpf)
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
 }
 
 static void

@@ -38,7 +38,7 @@
  *      @(#)bpfdesc.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpfdesc.h,v 1.14.2.2 2001/12/17 19:32:33 jdp Exp $
- * $DragonFly: src/sys/net/bpfdesc.h,v 1.3 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/bpfdesc.h,v 1.4 2005/01/26 00:37:39 joerg Exp $
  */
 
 #ifndef _NET_BPFDESC_H_
@@ -105,6 +105,7 @@ struct bpf_d {
 struct bpf_if {
 	struct bpf_if *bif_next;	/* list of all interfaces */
 	SLIST_HEAD(, bpf_d) bif_dlist;	/* descriptor list */
+	struct bpf_if **bif_driverp;	/* pointer into softc */
 	u_int bif_dlt;			/* link layer type */
 	u_int bif_hdrlen;		/* length of header (with padding) */
 	struct ifnet *bif_ifp;		/* corresponding interface */

@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.6 2004/03/23 22:19:06 hsu Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.7 2005/01/26 00:37:39 joerg Exp $
  */
 
 /*
@@ -131,19 +131,11 @@ discoutput(ifp, m, dst, rt)
 	if (discif.if_bpf) {
 		/*
 		 * We need to prepend the address family as
-		 * a four byte field.  Cons up a dummy header
-		 * to pacify bpf.  This is safe because bpf
-		 * will only read from the mbuf (i.e., it won't
-		 * try to free it or keep a pointer a to it).
+		 * a four byte field.
 		 */
-		struct mbuf m0;
-		u_int af = dst->sa_family;
+		uint32_t af = dst->sa_family;
 
-		m0.m_next = m;
-		m0.m_len = 4;
-		m0.m_data = (char *)&af;
-
-		bpf_mtap(&discif, &m0);
+		bpf_ptap(discif.if_bpf, m, &af, sizeof(af));
 	}
 	m->m_pkthdr.rcvif = ifp;
 
