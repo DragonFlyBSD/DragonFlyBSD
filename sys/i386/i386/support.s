@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/support.s,v 1.7 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/support.s,v 1.8 2003/07/20 07:29:20 dillon Exp $
  */
 
 #include "npx.h"
@@ -708,7 +708,7 @@ ENTRY(generic_copyout)
 #if defined(I386_CPU)
 
 #if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
-	cmpl	$CPUCLASS_386,_cpu_class
+	cmpl	$CPUCLASS_386,cpu_class
 	jne	3f
 #endif
 /*
@@ -1231,7 +1231,7 @@ ENTRY(suword)
 #if defined(I386_CPU)
 
 #if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
-	cmpl	$CPUCLASS_386,_cpu_class
+	cmpl	$CPUCLASS_386,cpu_class
 	jne	2f				/* we only have to set the right segment selector */
 #endif /* I486_CPU || I586_CPU || I686_CPU */
 
@@ -1240,12 +1240,12 @@ ENTRY(suword)
 	shrl	$IDXSHIFT,%edx
 	andb	$0xfc,%dl
 
-	leal	_PTmap(%edx),%ecx
+	leal	PTmap(%edx),%ecx
 	shrl	$IDXSHIFT,%ecx
 	andb	$0xfc,%cl
-	testb	$PG_V,_PTmap(%ecx)		/* PTE page must be valid */
+	testb	$PG_V,PTmap(%ecx)		/* PTE page must be valid */
 	je	4f
-	movb	_PTmap(%edx),%dl
+	movb	PTmap(%edx),%dl
 	andb	$PG_V|PG_RW|PG_U,%dl		/* page must be valid and user writable */
 	cmpb	$PG_V|PG_RW|PG_U,%dl
 	je	1f
@@ -1253,7 +1253,7 @@ ENTRY(suword)
 4:
 	/* simulate a trap */
 	pushl	%eax
-	call	_trapwrite
+	call	trapwrite
 	popl	%edx				/* remove junk parameter from stack */
 	testl	%eax,%eax
 	jnz	fusufault
@@ -1285,7 +1285,7 @@ ENTRY(susword)
 #if defined(I386_CPU)
 
 #if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
-	cmpl	$CPUCLASS_386,_cpu_class
+	cmpl	$CPUCLASS_386,cpu_class
 	jne	2f
 #endif /* I486_CPU || I586_CPU || I686_CPU */
 
@@ -1294,12 +1294,12 @@ ENTRY(susword)
 	shrl	$IDXSHIFT,%edx
 	andb	$0xfc,%dl
 
-	leal	_PTmap(%edx),%ecx
+	leal	PTmap(%edx),%ecx
 	shrl	$IDXSHIFT,%ecx
 	andb	$0xfc,%cl
-	testb	$PG_V,_PTmap(%ecx)		/* PTE page must be valid */
+	testb	$PG_V,PTmap(%ecx)		/* PTE page must be valid */
 	je	4f
-	movb	_PTmap(%edx),%dl
+	movb	PTmap(%edx),%dl
 	andb	$PG_V|PG_RW|PG_U,%dl		/* page must be valid and user writable */
 	cmpb	$PG_V|PG_RW|PG_U,%dl
 	je	1f
@@ -1307,7 +1307,7 @@ ENTRY(susword)
 4:
 	/* simulate a trap */
 	pushl	%eax
-	call	_trapwrite
+	call	trapwrite
 	popl	%edx				/* remove junk parameter from stack */
 	testl	%eax,%eax
 	jnz	fusufault
@@ -1340,7 +1340,7 @@ ENTRY(subyte)
 #if defined(I386_CPU)
 
 #if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
-	cmpl	$CPUCLASS_386,_cpu_class
+	cmpl	$CPUCLASS_386,cpu_class
 	jne	2f
 #endif /* I486_CPU || I586_CPU || I686_CPU */
 
@@ -1348,12 +1348,12 @@ ENTRY(subyte)
 	shrl	$IDXSHIFT,%edx
 	andb	$0xfc,%dl
 
-	leal	_PTmap(%edx),%ecx
+	leal	PTmap(%edx),%ecx
 	shrl	$IDXSHIFT,%ecx
 	andb	$0xfc,%cl
-	testb	$PG_V,_PTmap(%ecx)		/* PTE page must be valid */
+	testb	$PG_V,PTmap(%ecx)		/* PTE page must be valid */
 	je	4f
-	movb	_PTmap(%edx),%dl
+	movb	PTmap(%edx),%dl
 	andb	$PG_V|PG_RW|PG_U,%dl		/* page must be valid and user writable */
 	cmpb	$PG_V|PG_RW|PG_U,%dl
 	je	1f
@@ -1361,7 +1361,7 @@ ENTRY(subyte)
 4:
 	/* simulate a trap */
 	pushl	%eax
-	call	_trapwrite
+	call	trapwrite
 	popl	%edx				/* remove junk parameter from stack */
 	testl	%eax,%eax
 	jnz	fusufault
