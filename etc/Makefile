@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.2 2003/06/17 04:24:45 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.3 2003/06/17 05:14:56 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -86,9 +86,6 @@ distribution:
 .endif
 .if !defined(NO_SENDMAIL)
 	cd ${.CURDIR}/sendmail; ${MAKE} distribution
-.endif
-.if !defined(NOUUCP)
-	cd ${.CURDIR}/../gnu/libexec/uucp/sample; ${MAKE} install
 .endif
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)

@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/periodic/weekly/Makefile,v 1.4.2.3 2002/07/18 12:36:07 ru Exp $
-# $DragonFly: src/etc/periodic/weekly/Makefile,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $DragonFly: src/etc/periodic/weekly/Makefile,v 1.3 2003/06/17 05:15:04 dillon Exp $
 
 FILES=	120.clean-kvmdb \
 	310.locate \
@@ -8,8 +8,5 @@ FILES=	120.clean-kvmdb \
 	340.noid \
 	400.status-pkg \
 	999.local
-.if !defined(NOUUCP)
-FILES+=	300.uucp
-.endif
 
 .include <bsd.prog.mk>

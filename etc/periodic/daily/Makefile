@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/periodic/daily/Makefile,v 1.4.2.4 2002/07/18 12:36:07 ru Exp $
-# $DragonFly: src/etc/periodic/daily/Makefile,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $DragonFly: src/etc/periodic/daily/Makefile,v 1.3 2003/06/17 05:15:01 dillon Exp $
 
 FILES=	100.clean-disks \
 	110.clean-tmps \
@@ -23,9 +23,5 @@ FILES=	100.clean-disks \
 	470.status-named \
 	500.queuerun \
 	999.local
-.if !defined(NOUUCP)
-FILES+=	340.uucp \
-	410.status-uucp
-.endif
 
 .include <bsd.prog.mk>
