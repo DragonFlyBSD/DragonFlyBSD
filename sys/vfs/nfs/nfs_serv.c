@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.11 2003/10/09 22:27:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.12 2004/01/30 06:18:28 dillon Exp $
  */
 
 /*
@@ -136,7 +136,7 @@ extern struct nfsstats nfsstats;
 int nfsrvw_procrastinate = NFS_GATHERDELAY * 1000;
 int nfsrvw_procrastinate_v3 = 0;
 
-static struct timeval	nfsver = { 0 };
+static struct timespec	nfsver;
 
 SYSCTL_DECL(_vfs_nfs);
 
@@ -1196,7 +1196,7 @@ nfsrv_write(nfsd, slp, td, mrq)
 		if (nfsver.tv_sec == 0)
 			nfsver = boottime;
 		*tl++ = txdr_unsigned(nfsver.tv_sec);
-		*tl = txdr_unsigned(nfsver.tv_usec);
+		*tl = txdr_unsigned(nfsver.tv_nsec / 1000);
 	} else {
 		nfsm_build(fp, struct nfs_fattr *, NFSX_V2FATTR);
 		nfsm_srvfillattr(vap, fp);
@@ -1484,7 +1484,7 @@ loop1:
 			    if (nfsver.tv_sec == 0)
 				    nfsver = boottime;
 			    *tl++ = txdr_unsigned(nfsver.tv_sec);
-			    *tl = txdr_unsigned(nfsver.tv_usec);
+			    *tl = txdr_unsigned(nfsver.tv_nsec / 1000);
 			} else {
 			    nfsm_build(fp, struct nfs_fattr *, NFSX_V2FATTR);
 			    nfsm_srvfillattr(&va, fp);
@@ -3694,7 +3694,7 @@ nfsrv_commit(nfsd, slp, td, mrq)
 		if (nfsver.tv_sec == 0)
 			nfsver = boottime;
 		*tl++ = txdr_unsigned(nfsver.tv_sec);
-		*tl = txdr_unsigned(nfsver.tv_usec);
+		*tl = txdr_unsigned(nfsver.tv_nsec / 1000);
 	} else {
 		error = 0;
 	}

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.10 2003/11/15 21:05:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.11 2004/01/30 06:18:28 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -409,8 +409,8 @@ nfs_mountroot(mp)
 	 * XXX time must be non-zero when we init the interface or else
 	 * the arp code will wedge...
 	 */
-	while (time_second == 0)
-		tsleep(&time_second, 0, "arpkludge", 10);
+	while (mycpu->gd_time_seconds == 0)
+		tsleep(mycpu, 0, "arpkludge", 10);
 
 	if (nfs_diskless_valid==1) 
 	  nfs_convert_diskless();

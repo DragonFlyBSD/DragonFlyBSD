@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.16 2004/01/23 23:00:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.17 2004/01/30 06:18:28 dillon Exp $
  */
 
 
@@ -301,7 +301,7 @@ nfs3_access_otw(struct vnode *vp, int wmode,
 		rmode = fxdr_unsigned(u_int32_t, *tl);
 		np->n_mode = rmode;
 		np->n_modeuid = cred->cr_uid;
-		np->n_modestamp = time_second;
+		np->n_modestamp = mycpu->gd_time_seconds;
 	}
 	m_freem(mrep);
 nfsmout:
@@ -382,7 +382,7 @@ nfs_access(ap)
 		 * Does our cached result allow us to give a definite yes to
 		 * this request?
 		 */
-		if ((time_second < (np->n_modestamp + nfsaccess_cache_timeout)) &&
+		if ((mycpu->gd_time_seconds < (np->n_modestamp + nfsaccess_cache_timeout)) &&
 		    (ap->a_cred->cr_uid == np->n_modeuid) &&
 		    ((np->n_mode & mode) == mode)) {
 			nfsstats.accesscache_hits++;
