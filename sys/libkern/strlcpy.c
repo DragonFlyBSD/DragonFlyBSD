@@ -26,7 +26,7 @@
  *
  * $OpenBSD: strlcpy.c,v 1.4 1999/05/01 18:56:41 millert Exp $
  * $FreeBSD: src/lib/libc/string/strlcpy.c,v 1.2.4.1 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/sys/libkern/strlcpy.c,v 1.2 2004/01/26 11:09:44 joerg Exp $
+ * $DragonFly: src/sys/libkern/strlcpy.c,v 1.3 2004/12/19 11:56:45 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -40,9 +40,9 @@
 size_t
 strlcpy(char *dst, const char *src, size_t siz)
 {
-	register char *d = dst;
-	register const char *s = src;
-	register size_t n = siz;
+	char *d = dst;
+	const char *s = src;
+	size_t n = siz;
 
 	/* Copy as many bytes as will fit */
 	if (n != 0 && --n != 0) {
