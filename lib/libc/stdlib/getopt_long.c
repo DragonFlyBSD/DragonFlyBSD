@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.5 2005/01/10 17:40:32 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.6 2005/01/10 18:30:00 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -256,10 +256,14 @@ getopt_internal_short(int nargc, char * const *nargv, const char *options,
 	if ((optchar = (int)*place++) == (int)':' ||
 	    (oli = strchr(options + (IGNORE_FIRST ? 1 : 0), optchar)) == NULL) {
 		/* option letter unknown or ':' */
-		if (!*place)
+		if (PRINT_ERROR) {
+			if (long_support == 2)
+				warnx(illoptstring, --place);
+			else
+				warnx(illoptchar, optchar);
+		}
+		if (!*place || long_support == 2)
 			++optind;
-		if (PRINT_ERROR)
-			warnx(illoptchar, optchar);
 		optopt = optchar;
 		return BADCH;
 	}
