@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.14 2005/02/04 22:28:23 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.15 2005/02/16 21:50:00 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -141,6 +141,7 @@
 #ifdef lint
 
 #define __dead2
+#define	__pure
 #define __pure2
 #define __unused
 #define __packed
@@ -164,6 +165,12 @@
 #define __packed        __attribute__((__packed__))
 #define __aligned(x)    __attribute__((__aligned__(x)))
 #define __section(x)    __attribute__((__section__(x)))
+#endif
+
+#if __GNUC_PREREQ__(3, 0)
+#define	__pure		__attribute__((__pure__))
+#else
+#define	__pure		__pure2
 #endif
 
 #if __GNUC_PREREQ__(3, 1)
