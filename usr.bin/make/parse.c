@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.1 2002/12/26 14:36:38 ru Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.4 2003/11/18 23:49:54 dillon Exp $
+ * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.5 2004/10/24 22:43:58 dillon Exp $
  */
 
 /*-
@@ -1784,6 +1784,8 @@ ParseDoInclude (file)
 	 * Pop to previous file
 	 */
 	(void) ParseEOF(0);
+    } else {
+	Var_Append(".MAKEFILE_LIST", fullname, VAR_GLOBAL);
     }
 }
 
@@ -1967,6 +1969,8 @@ ParseTraditionalInclude (file)
 	 * Pop to previous file
 	 */
 	(void) ParseEOF(1);
+    } else {
+	Var_Append(".MAKEFILE_LIST", fullname, VAR_GLOBAL);
     }
 }
 #endif
@@ -1993,6 +1997,7 @@ ParseEOF (opened)
     IFile     *ifile;	/* the state on the top of the includes stack */
 
     if (Lst_IsEmpty (includes)) {
+	Var_Append(".MAKEFILE_LIST", "..", VAR_GLOBAL);
 	return (DONE);
     }
 
@@ -2000,8 +2005,10 @@ ParseEOF (opened)
     free ((Address) fname);
     fname = ifile->fname;
     lineno = ifile->lineno;
-    if (opened && curFILE)
+    if (opened && curFILE) {
 	(void) fclose (curFILE);
+	Var_Append(".MAKEFILE_LIST", "..", VAR_GLOBAL);
+    }
     if (curPTR) {
 	free((Address) curPTR->str);
 	free((Address) curPTR);
@@ -2440,6 +2447,8 @@ Parse_File(name, stream)
     curFILE = stream;
     lineno = 0;
     fatals = 0;
+
+    Var_Append(".MAKEFILE_LIST", name, VAR_GLOBAL);
 
     do {
 	while ((line = ParseReadLine ()) != NULL) {

@@ -37,9 +37,15 @@
  *
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
- * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.9 2003/04/15 14:37:35 ru Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.6 2004/07/23 07:11:03 asmodai Exp $
+ * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.7 2004/10/24 22:43:58 dillon Exp $
  */
+
+static
+void
+catch_child(int sig)
+{
+}
 
 /*-
  * main.c --
@@ -479,6 +485,22 @@ main(argc, argv)
 	char *cp = NULL, *start;
 					/* avoid faults on read-only strings */
 	static char syspath[] = _PATH_DEFSYSPATH;
+
+	{
+	/*
+	 * Catch SIGCHLD so that we get kicked out of select() when we
+	 * need to look at a child.  This is only known to matter for the
+	 * -j case (perhaps without -P).
+	 *
+	 * XXX this is intentionally misplaced.
+	 */
+	struct sigaction sa;
+
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+	sa.sa_handler = catch_child;
+	sigaction(SIGCHLD, &sa, NULL);
+	}
 
 #ifdef RLIMIT_NOFILE
 	/*

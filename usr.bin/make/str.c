@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
- * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.1 2002/06/17 04:30:48 jmallett Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.3 2004/10/24 22:43:58 dillon Exp $
  */
 
 #include "make.h"
@@ -164,24 +164,17 @@ brk_string(str, store_argc, expand)
 		case '"':
 		case '\'':
 			if (inquote) {
-				if (inquote == ch)
-					inquote = '\0';
-				else
+				if (ch != inquote)
 					break;
-			} else {
-				inquote = (char) ch;
+				inquote = '\0';
 				/* Don't miss "" or '' */
-				if (start == NULL && p[1] == inquote) {
-					start = t + 1;
-					break;
-				}
-			}
-			if (!expand) {
 				if (!start)
 					start = t;
-				*t++ = ch;
-			}
-			continue;
+			} else
+				inquote = (char) ch;
+			if (expand)
+				continue;
+			break;
 		case ' ':
 		case '\t':
 		case '\n':

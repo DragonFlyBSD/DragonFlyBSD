@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
- * $FreeBSD: src/usr.bin/make/cond.c,v 1.12 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.4 2004/10/24 22:43:58 dillon Exp $
  */
 
 /*-
@@ -705,16 +705,13 @@ do_string_compare:
 			}
 		    } else {
 			char *c = CondCvtArg(rhs, &right);
-			if (*c != '\0' && !isspace(*c))
+			if (c == rhs)
 			    goto do_string_compare;
 			if (rhs == condExpr) {
 			    /*
 			     * Skip over the right-hand side
 			     */
-			    while(!isspace((unsigned char) *condExpr) &&
-				  (*condExpr != '\0')) {
-				condExpr++;
-			    }
+			    condExpr = c;
 			}
 		    }
 

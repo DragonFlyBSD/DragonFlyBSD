@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
- * $FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.4 2004/10/24 22:43:58 dillon Exp $
  */
 
 /*-
@@ -220,7 +220,7 @@ Dir_Init ()
      */
     Dir_AddDir (openDirectories, ".");
     dot = (Path *) Lst_DeQueue (openDirectories);
-    if (dot == (Path *) NULL)
+    if (dot == (Path *) NILLNODE)
 	err(1, "cannot open current directory");
 
     /*
