@@ -1,6 +1,6 @@
 /* $NetBSD: pcmcia_cis.c,v 1.17 2000/02/10 09:01:52 chopps Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis.c,v 1.23 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.2 2004/03/15 17:15:18 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.3 2004/06/28 02:34:44 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -60,7 +60,7 @@ extern int	pccard_cis_debug;
 #define	DEVPRINTF(arg)
 #endif
 
-#define	PCCARD_CIS_SIZE		1024
+#define	PCCARD_CIS_SIZE		4096
 
 struct cis_state {
 	int	count;
@@ -100,6 +100,9 @@ pccard_read_cis(struct pccard_softc *sc)
 	    &state) == -1)
 		state.card->error++;
 }
+
+#define EARLY_TERM	"pccard_scan_cis: early termination, " \
+			"array exceeds allocation\n"
 
 int
 pccard_scan_cis(device_t dev, int (*fct)(struct pccard_tuple *, void *),
@@ -153,6 +156,11 @@ pccard_scan_cis(device_t dev, int (*fct)(struct pccard_tuple *, void *),
 		while (1) {
 			/* get the tuple code */
 
+			if (tuple.ptr * tuple.mult >= PCCARD_CIS_SIZE) {
+				device_printf(dev, EARLY_TERM);
+				break;
+			}
+
 			tuple.code = pccard_cis_read_1(&tuple, tuple.ptr);
 
 			/* two special-case tuples */
@@ -174,7 +182,21 @@ pccard_scan_cis(device_t dev, int (*fct)(struct pccard_tuple *, void *),
 			}
 			/* now all the normal tuples */
 
+			if ((tuple.ptr + 1) * tuple.mult >= PCCARD_CIS_SIZE) {
+				device_printf(dev, EARLY_TERM);
+				break;
+			}
 			tuple.length = pccard_cis_read_1(&tuple, tuple.ptr + 1);
+
+			/*
+			 * sloppy check
+			 */
+			if ((tuple.ptr + 1 + tuple.length) * tuple.mult >= 
+			    PCCARD_CIS_SIZE) {
+				device_printf(dev, EARLY_TERM);
+				break;
+			}
+
 			switch (tuple.code) {
 			case PCCARD_CISTPL_LONGLINK_A:
 			case PCCARD_CISTPL_LONGLINK_C:
@@ -224,18 +246,19 @@ pccard_scan_cis(device_t dev, int (*fct)(struct pccard_tuple *, void *),
 					 * distant regions
 					 */
 					if ((addr >= PCCARD_CIS_SIZE) ||
-					    ((addr + length) >=
+					    ((addr + length * tuple.mult) >
 					    PCCARD_CIS_SIZE)) {
 						DPRINTF((" skipped, "
 						    "too distant\n"));
 						break;
 					}
 					sum = 0;
-					for (i = 0; i < length; i++)
+					for (i = 0; i < length; i++) {
 						sum +=
 						    bus_space_read_1(tuple.memt,
 						    tuple.memh,
 						    addr + tuple.mult * i);
+					}
 					if (cksum != (sum & 0xff)) {
 						DPRINTF((" failed sum=%x\n",
 						    sum));
