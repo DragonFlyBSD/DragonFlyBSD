@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.23 2004/10/13 19:43:07 dillon Exp $
+$DragonFly: src/test/test/README,v 1.24 2004/11/23 05:25:10 hmp Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
