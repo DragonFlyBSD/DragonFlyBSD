@@ -1,12 +1,15 @@
 # $FreeBSD: src/share/monetdef/Makefile,v 1.37.2.3 2002/08/17 19:38:08 ache Exp $
-# $DragonFly: src/share/monetdef/Makefile,v 1.4 2004/08/28 22:39:04 asmodai Exp $
+# $DragonFly: src/share/monetdef/Makefile,v 1.5 2004/09/27 20:02:21 asmodai Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
 
 LOCALES=        af_ZA.ISO8859-1 \
+		be_BY.UTF-8 \
 		bg_BG.CP1251 \
+		bg_BG.UTF-8 \
 		cs_CZ.ISO8859-2 \
+		cs_CZ.UTF-8 \
 		da_DK.ISO8859-1 \
 		de_AT.ISO8859-1 \
 		de_CH.ISO8859-1 \
@@ -15,6 +18,8 @@ LOCALES=        af_ZA.ISO8859-1 \
 		en_AU.ISO8859-1 \
 		en_CA.ISO8859-1 \
 		en_GB.ISO8859-1 \
+		en_GB.UTF-8 \
+		en_IE.UTF-8 \
 		en_NZ.ISO8859-1 \
 		en_US.ISO8859-1 \
 		es_ES.ISO8859-1 \
@@ -27,28 +32,36 @@ LOCALES=        af_ZA.ISO8859-1 \
 		hi_IN.ISCII-DEV \
 		hr_HR.ISO8859-2 \
 		hu_HU.ISO8859-2 \
+		hy_AM.UTF-8 \
 		is_IS.ISO8859-1 \
 		it_IT.ISO8859-1 \
 		ja_JP.eucJP \
+		kk_KZ.UTF-8 \
 		ko_KR.eucKR \
 		lt_LT.ISO8859-13 \
 		nl_BE.ISO8859-1 \
 		nl_NL.ISO8859-1 \
 		no_NO.ISO8859-1 \
 		pl_PL.ISO8859-2 \
+		pl_PL.UTF-8 \
 		pt_BR.ISO8859-1 \
 		pt_PT.ISO8859-1 \
 		ro_RO.ISO8859-2 \
 		ru_RU.CP866 \
 		ru_RU.ISO8859-5 \
 		ru_RU.KOI8-R \
+		ru_RU.UTF-8 \
 		sk_SK.ISO8859-2 \
 		sl_SI.ISO8859-2 \
+		sr_YU.UTF-8 \
 		sv_SE.ISO8859-1 \
 		tr_TR.ISO8859-9 \
 		uk_UA.ISO8859-5 \
 		uk_UA.KOI8-U \
+		uk_UA.UTF-8 \
 		zh_CN.eucCN \
+		zh_CN.UTF-8 \
+		zh_HK.UTF-8 \
 		zh_TW.Big5
 
 LOCALEDIR=      ${DESTDIR}/usr/share/locale
@@ -57,6 +70,15 @@ ASCIILINKS=	en_AU en_CA en_GB en_NZ en_US
 LATIN15LINKS=	af_ZA da_DK de_AT de_CH de_DE en_AU en_CA en_GB en_NZ en_US \
 		es_ES fi_FI fr_BE fr_CA fr_CH fr_FR is_IS is_IS it_IT it_CH \
 		nl_BE nl_NL no_NO pt_PT sv_SE
+
+UTF8_LATIN1LINKS=	af_ZA ca_ES da_DK de_AT de_CH de_DE en_CA en_NZ en_US \
+			es_ES fi_FI fr_BE fr_CA fr_FR is_IS it_IT nl_BE nl_NL \
+			no_NO pt_BR pt_PT sv_SE
+UTF8_LATIN2LINKS=	hr_HR hu_HU ro_RO sk_SK sl_SI sr_YU
+UTF8_LATIN7LINKS=	el_GR
+UTF8_LATIN9LINKS=	tr_TR
+UTF8_LATIN13LINKS=	lt_LT
+UTF8_LATIN15LINKS=	et_EE
 
 CH_SRC=		de_CH
 CH_LINKS=	fr_CH it_CH
@@ -87,5 +109,39 @@ afterinstall:
 .endfor
 	ln -sf ../ja_JP.eucJP/LC_MONETARY \
 		${LOCALEDIR}/ja_JP.SJIS/LC_MONETARY
+.for link in ${UTF8_LATIN1LINKS}
+	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-1/LC_MONETARY \
+                ${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+.for link in ${UTF8_LATIN2LINKS}
+	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-2/LC_MONETARY \
+		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+.for link in ${UTF8_LATIN7LINKS}
+	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-7/LC_MONETARY \
+		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+.for link in ${UTF8_LATIN9LINKS}
+	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-9/LC_MONETARY \
+		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+.for link in ${UTF8_LATIN13LINKS}
+	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-13/LC_MONETARY \
+		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+.for link in ${UTF8_LATIN15LINKS}
+	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-15/LC_MONETARY \
+		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+.for link in ${CH_LINKS}
+	ln -sf ../${CH_SRC}.UTF-8/LC_MONETARY \
+		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
+.endfor
+	ln -sf ${BASE_LOCALEDIR}/ja_JP.eucJP/LC_MONETARY \
+		${LOCALEDIR}/ja_JP.UTF-8/LC_MONETARY
+	ln -sf ${BASE_LOCALEDIR}/ko_KR.eucKR/LC_MONETARY \
+		${LOCALEDIR}/ko_KR.UTF-8/LC_MONETARY
+	ln -sf ${BASE_LOCALEDIR}/zh_TW.Big5/LC_MONETARY \
+		${LOCALEDIR}/zh_TW.UTF-8/LC_MONETARY
 
 .include <bsd.prog.mk>
