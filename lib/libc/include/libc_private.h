@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/include/libc_private.h,v 1.3 1999/08/27 23:59:47 peter Exp $
- * $DragonFly: src/lib/libc/include/libc_private.h,v 1.3 2005/01/31 22:29:29 dillon Exp $
+ * $DragonFly: src/lib/libc/include/libc_private.h,v 1.4 2005/03/08 13:09:40 davidxu Exp $
  *
  * Private definitions for libc, libc_r and libpthread.
  *
@@ -71,5 +71,15 @@ extern int	__isthreaded;
 #ifdef _STDIO_H_
 int _fseeko(FILE *, __off_t, int);
 #endif
+
+/*
+ * Initialise TLS static programs
+ */
+void _init_tls(void);
+
+/*
+ * Set the TLS thread pointer
+ */
+void _set_tp(void *p, int size);
 
 #endif /* _LIBC_PRIVATE_H_ */
