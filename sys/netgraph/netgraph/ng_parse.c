@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.3.2.8 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.5 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.6 2005/02/20 12:49:34 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -370,7 +370,7 @@ ng_int8_unparse(const struct ng_parse_type *type,
 		fval = (u_int8_t)val;
 		break;
 	default:
-		panic("%s: unknown type", __FUNCTION__);
+		panic("%s: unknown type", __func__);
 	}
 	NG_PARSE_APPEND(fmt, fval);
 	*off += sizeof(int8_t);
@@ -464,7 +464,7 @@ ng_int16_unparse(const struct ng_parse_type *type,
 		fval = (u_int16_t)val;
 		break;
 	default:
-		panic("%s: unknown type", __FUNCTION__);
+		panic("%s: unknown type", __func__);
 	}
 	NG_PARSE_APPEND(fmt, fval);
 	*off += sizeof(int16_t);
@@ -558,7 +558,7 @@ ng_int32_unparse(const struct ng_parse_type *type,
 		fval = (u_int32_t)val;
 		break;
 	default:
-		panic("%s: unknown type", __FUNCTION__);
+		panic("%s: unknown type", __func__);
 	}
 	NG_PARSE_APPEND(fmt, fval);
 	*off += sizeof(int32_t);
@@ -651,7 +651,7 @@ ng_int64_unparse(const struct ng_parse_type *type,
 		fval = (u_int64_t)val;
 		break;
 	default:
-		panic("%s: unknown type", __FUNCTION__);
+		panic("%s: unknown type", __func__);
 	}
 	NG_PARSE_APPEND(fmt, fval);
 	*off += sizeof(int64_t);
@@ -1341,7 +1341,7 @@ ng_get_composite_elem_default(const struct ng_parse_type *type,
 		break;
 	    }
 	default:
-	    panic("%s", __FUNCTION__);
+	    panic("%s", __func__);
 	}
 
 	/* Default to element type default */
@@ -1388,7 +1388,7 @@ ng_get_composite_len(const struct ng_parse_type *type,
 		return fi->length;
 	    }
 	default:
-	    panic("%s", __FUNCTION__);
+	    panic("%s", __func__);
 	}
 	return (0);
 }
@@ -1425,7 +1425,7 @@ ng_get_composite_etype(const struct ng_parse_type *type,
 		break;
 	    }
 	default:
-	    panic("%s", __FUNCTION__);
+	    panic("%s", __func__);
 	}
 	return (etype);
 }
