@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.10 2004/09/18 19:02:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.11 2004/09/19 01:37:13 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -1016,8 +1016,9 @@ retry_status:
 		callout_stop(&cd->callout);
 		if (mbx->count-- >= 0) {
 			if (inb(port+MCD_FLAGS) & MFL_STATUS_NOT_AVAIL) {
-				timeout(mcd_timeout,
-				    (caddr_t)MCD_S_WAITSTAT,hz/100); /* XXX */
+				/* XXX */
+				callout_reset(&cd->callout, hz / 100,
+					mcd_timeout, (void *)MCD_S_WAITSTAT);
 				return;
 			}
 			cd->status = inb(port+mcd_status) & 0xFF;
