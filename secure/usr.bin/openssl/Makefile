@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/openssl/Makefile,v 1.11.2.6 2003/02/14 22:38:22 nectar Exp $
-# $DragonFly: src/secure/usr.bin/openssl/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $DragonFly: src/secure/usr.bin/openssl/Makefile,v 1.3 2004/02/10 07:25:32 joerg Exp $
 
 PROG=	xopenssl
 PROGNAME=	openssl
@@ -14,7 +14,8 @@ NOLINT=		true
 .endif
 .include "../../lib/libcrypto/Makefile.inc"
 
-CFLAGS+= -DMONOLITH -I${.CURDIR}
+CFLAGS+= -D__FreeBSD__
+CFLAGS+= --DMONOLITH -I${.CURDIR}
 
 SRCS+=	app_rand.c apps.c asn1pars.c ca.c ciphers.c crl.c crl2p7.c \
 	dgst.c dh.c dhparam.c dsa.c dsaparam.c enc.c engine.c errstr.c \
