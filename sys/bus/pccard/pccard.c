@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.8 2004/02/10 07:55:45 joerg Exp $
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.9 2004/02/11 15:05:08 eirikn Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
