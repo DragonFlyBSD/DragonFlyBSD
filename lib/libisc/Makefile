@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libisc/Makefile,v 1.5 2004/09/20 15:32:59 asmodai Exp $
+# $DragonFly: src/lib/libisc/Makefile,v 1.6 2004/10/02 03:08:07 dillon Exp $
 
 BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc7
 
@@ -102,6 +102,9 @@ beforedepend: isc isccc dns dns/sec/dst isc/nls isc/unix isccfg lwres
 
 isc isccc dns dns/sec/dst isc/nls isc/unix isccfg lwres:
 		mkdir -p ${.TARGET}
+.ORDER: isc isc/nls isc/unix
+
+.ORDER: dns dns/sec/dst
 
 CLEANDIRS+=	isc isccc dns isc/nls isc/unix isccfg lwres
 
