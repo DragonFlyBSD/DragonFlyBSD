@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.20 2004/03/15 20:22:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.21 2004/05/10 10:51:31 hmp Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -790,7 +790,7 @@ free(void *ptr, struct malloc_type *type)
      */
 #ifdef INVARIANTS
     if ((uintptr_t)chunk < VM_MIN_KERNEL_ADDRESS)
-	panic("BADFREE %p\n", chunk);
+	panic("BADFREE %p", chunk);
 #endif
     chunk->c_Next = z->z_PageAry[pgno];
     z->z_PageAry[pgno] = chunk;
@@ -905,7 +905,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	if (flags & M_USE_INTERRUPT_RESERVE)
 	    vmflags |= VM_ALLOC_INTERRUPT;
 	if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
-		panic("kmem_slab_alloc: bad flags %08x (%p)\n", flags, ((int **)&size)[-1]);
+		panic("kmem_slab_alloc: bad flags %08x (%p)", flags, ((int **)&size)[-1]);
 
 	/*
 	 * Never set VM_ALLOC_NORMAL during a preemption because this allows

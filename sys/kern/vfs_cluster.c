@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.8 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.9 2004/05/10 10:51:32 hmp Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -494,7 +494,7 @@ cluster_rbuild(vp, filesize, lbn, blkno, size, run, fbp)
 		}
 	}
 	if (bp->b_bufsize > bp->b_kvasize)
-		panic("cluster_rbuild: b_bufsize(%ld) > b_kvasize(%d)\n",
+		panic("cluster_rbuild: b_bufsize(%ld) > b_kvasize(%d)",
 		    bp->b_bufsize, bp->b_kvasize);
 	bp->b_kvasize = bp->b_bufsize;
 

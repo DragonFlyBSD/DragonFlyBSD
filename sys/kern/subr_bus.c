@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.17 2004/04/15 13:31:41 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.18 2004/05/10 10:51:31 hmp Exp $
  */
 
 #include "opt_bus.h"
@@ -1578,7 +1578,7 @@ resource_cfgload(void *dummy __unused)
 				strcpy(res->u.stringval, stringval);
 				break;
 			default:
-				panic("unknown resource type %d\n", type);
+				panic("unknown resource type %d", type);
 			}
 		}
 	}

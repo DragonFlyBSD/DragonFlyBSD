@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.16 2004/03/29 14:08:09 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.17 2004/05/10 10:51:31 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -166,7 +166,7 @@ sysctl_unregister_oid_int(struct sysctl_oid *oidp)
 	struct sysctl_oid *p;
 
 	if (oidp->oid_number == OID_AUTO)
-		panic("Trying to unregister OID_AUTO entry: %p\n", oidp);
+		panic("Trying to unregister OID_AUTO entry: %p", oidp);
 
 	SLIST_FOREACH(p, oidp->oid_parent, oid_link) {
 		if (p != oidp)

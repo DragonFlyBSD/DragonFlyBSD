@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.23 2004/05/08 04:11:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.24 2004/05/10 10:51:31 hmp Exp $
  */
 
 /*
@@ -1138,7 +1138,7 @@ brelse(struct buf * bp)
 					if (mtmp == bogus_page) {
 						mtmp = vm_page_lookup(obj, poff + j);
 						if (!mtmp) {
-							panic("brelse: page missing\n");
+							panic("brelse: page missing");
 						}
 						bp->b_pages[j] = mtmp;
 					}
@@ -2149,7 +2149,7 @@ getblk(struct vnode * vp, daddr_t blkno, int size, int slpflag, int slptimeo)
 	struct bufhashhdr *bh;
 
 	if (size > MAXBSIZE)
-		panic("getblk: size(%d) > MAXBSIZE(%d)\n", size, MAXBSIZE);
+		panic("getblk: size(%d) > MAXBSIZE(%d)", size, MAXBSIZE);
 
 	s = splbio();
 loop:
@@ -2873,7 +2873,7 @@ biodone(struct buf * bp)
 					    bp->b_flags, bp->b_npages);
 				printf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
 				    m->valid, m->dirty, m->wire_count);
-				panic("biodone: page busy < 0\n");
+				panic("biodone: page busy < 0");
 			}
 			vm_page_io_finish(m);
 			vm_object_pip_subtract(obj, 1);
@@ -2924,7 +2924,7 @@ vfs_unbusy_pages(struct buf * bp)
 			if (m == bogus_page) {
 				m = vm_page_lookup(obj, OFF_TO_IDX(bp->b_offset) + i);
 				if (!m) {
-					panic("vfs_unbusy_pages: page missing\n");
+					panic("vfs_unbusy_pages: page missing");
 				}
 				bp->b_pages[i] = m;
 				pmap_qenter(trunc_page((vm_offset_t)bp->b_data), bp->b_pages, bp->b_npages);

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.59 2004/04/10 20:55:23 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.60 2004/05/10 10:51:31 hmp Exp $
  */
 
 /*
@@ -429,7 +429,7 @@ lwkt_switch(void)
      * illegal.
      */
     if (gd->gd_intr_nesting_level && panicstr == NULL) {
-	panic("lwkt_switch: cannot switch from within a fast interrupt, yet\n");
+	panic("lwkt_switch: cannot switch from within a fast interrupt, yet");
     }
 
     /*
@@ -480,7 +480,7 @@ lwkt_switch(void)
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
 #ifdef SMP
 	if (ntd->td_mpcount && mpheld == 0) {
-	    panic("MPLOCK NOT HELD ON RETURN: %p %p %d %d\n",
+	    panic("MPLOCK NOT HELD ON RETURN: %p %p %d %d",
 	       td, ntd, td->td_mpcount, ntd->td_mpcount);
 	}
 	if (ntd->td_mpcount) {

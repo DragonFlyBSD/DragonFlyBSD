@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.7 2004/03/01 20:45:57 eirikn Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.8 2004/05/10 10:51:31 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ module_register_init(const void *arg)
     mod = module_lookupbyname(data->name);
     if (mod == NULL) {
 #if 0
-	panic("module_register_init: module named %s not found\n", data->name);
+	panic("module_register_init: module named %s not found", data->name);
 #else
 	/* temporary kludge until kernel `file' attachment registers modules */
 	error = module_register(data, linker_kernel_file);
