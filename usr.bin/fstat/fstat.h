@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.4 2004/08/17 20:34:38 dillon Exp $
  */
 
 #ifndef	__FSTAT_H__
@@ -56,7 +56,7 @@ struct  filestat {
 	long	fsid;
 	long	fileid;
 	mode_t	mode;
-	u_long	size;
+	long long size;
 	dev_t	rdev;
 };
 

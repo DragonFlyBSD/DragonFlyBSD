@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.7 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.8 2004/08/17 20:34:38 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -520,7 +520,7 @@ vtrans(struct vnode *vp, int i, int flag)
 		break;
 	}
 	default:
-		printf(" %6lu", fst.size);
+		printf(" %6llu", fst.size);
 	}
 	rw[0] = '\0';
 	if (flag & FREAD)
@@ -551,7 +551,7 @@ ufs_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->fsid = dev2udev(inode.i_dev);
 	fsp->fileid = (long)inode.i_number;
 	fsp->mode = (mode_t)inode.i_mode;
-	fsp->size = (u_long)inode.i_size;
+	fsp->size = inode.i_size;
 	fsp->rdev = inode.i_rdev;
 
 	return 1;

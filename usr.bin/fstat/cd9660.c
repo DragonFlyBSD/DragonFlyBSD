@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/cd9660.c,v 1.1.2.3 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/cd9660.c,v 1.4 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/fstat/cd9660.c,v 1.5 2004/08/17 20:34:38 dillon Exp $
  */
 
 /*
@@ -73,7 +73,7 @@ isofs_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->rdev = isonode.i_dev;
 
 	fsp->fileid = (long)isonode.i_number;
-	fsp->size = (u_long)isonode.i_size;
+	fsp->size = isonode.i_size;
 	return 1;
 }
 
