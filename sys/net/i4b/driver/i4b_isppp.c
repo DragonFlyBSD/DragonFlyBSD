@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.7 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.8 2004/03/15 20:08:40 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -64,6 +64,7 @@
 #include <sys/kernel.h>
 
 #include <net/if.h>
+#include <net/if_arp.h>
 #include <net/if_types.h>
 #include <net/sppp/if_sppp.h>
 
@@ -304,22 +305,9 @@ i4bispppattach()
 
 		sppp_attach(&sc->sc_if);
 /* XXX: validate / add proper code */
-#if 0
-		/* do not call bpfattach in ether_ifattach */
-		ether_ifattach(&sc->sc_if, 0);
-#else
-		if_attach(&sc->sc_if);
-#endif
-
-#if NBPFILTER > 0 || NBPF > 0
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
+		ether_ifattach_bpf(&sc->sc_if, ((struct arpcom*)sc)->ac_enaddr,
+				   DLT_PPP, PPP_HDRLEN);
 		CALLOUT_INIT(&sc->sc_ch);
-#endif /* __FreeBSD__ */
-#ifdef __NetBSD__
-		bpfattach(&sc->sc_if.if_bpf, &sc->sc_if, DLT_PPP, sizeof(u_int));
-#endif
-#endif		
 	}
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.10 2004/03/15 08:25:50 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.11 2004/03/15 20:08:40 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -802,8 +802,15 @@ dropanyway:
 /*
  * Perform common duties while attaching to interface list
  */
+
 void
 ether_ifattach(struct ifnet *ifp, uint8_t *lla)
+{
+	ether_ifattach_bpf(ifp, lla, DLT_EN10MB, sizeof(struct ether_header));
+}
+
+void
+ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 {
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
@@ -828,7 +835,7 @@ ether_ifattach(struct ifnet *ifp, uint8_t *lla)
 	 */
 	if (lla != IFP2AC(ifp)->ac_enaddr)
 		bcopy(lla, IFP2AC(ifp)->ac_enaddr, ifp->if_addrlen);
-	bpfattach(ifp, DLT_EN10MB, sizeof(struct ether_header));
+	bpfattach(ifp, dlt, hdrlen);
 	if (ng_ether_attach_p != NULL)
 		(*ng_ether_attach_p)(ifp);
 	if (BDG_LOADED)
