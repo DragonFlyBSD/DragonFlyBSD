@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.8 2003/06/30 23:54:04 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.9 2003/07/13 05:45:12 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -46,10 +46,10 @@
 #include <sys/ucred.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
+#include <sys/lock.h>		/* XXX */
 #include <vm/vm.h>		/* XXX */
 #include <vm/vm_param.h>	/* XXX */
 #include <vm/pmap.h>		/* XXX */
-#include <sys/lock.h>		/* XXX */
 #include <vm/vm_map.h>		/* XXX */
 #endif /* !_KERNEL */
 #ifndef _SYS_RESOURCEVAR_H_

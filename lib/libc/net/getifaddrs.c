@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getifaddrs.c,v 1.1.2.4 2002/08/01 19:31:06 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getifaddrs.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getifaddrs.c,v 1.3 2003/07/13 05:45:05 dillon Exp $	*/
 /*	$KAME: getifaddrs.c,v 1.9 2001/08/20 02:31:20 itojun Exp $	*/
 
 /*
@@ -30,12 +30,12 @@
  * NOTE: SIOCGIFCONF case is not LP64 friendly.  it also does not perform
  * try-and-error for region size.
  */
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
 #ifdef	NET_RT_IFLIST
-#include <sys/param.h>
 #include <net/route.h>
 #include <sys/sysctl.h>
 #include <net/if_dl.h>

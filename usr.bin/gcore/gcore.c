@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.3 2003/07/13 05:45:16 dillon Exp $
  */
 
 /*
@@ -156,7 +156,7 @@ main(argc, argv)
 			errx(1, "%d: not found", pid);
 
 		p = &ki->kp_proc;
-		if (ki->kp_eproc.e_pcred.p_ruid != uid && uid != 0)
+		if (ki->kp_eproc.e_ucred.cr_ruid != uid && uid != 0)
 			errx(1, "%d: not owner", pid);
 
 		if (p->p_stat == SZOMB)

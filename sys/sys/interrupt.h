@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.6 2003/07/08 06:27:28 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.7 2003/07/13 05:45:12 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -32,11 +32,12 @@
 
 #define MAX_INTS	32
 
-typedef void inthand2_t __P((void *_cookie));
-typedef void ointhand2_t __P((int _device_id));
+typedef void inthand2_t (void *_cookie);
+typedef void ointhand2_t (int _device_id);
+
+#ifdef _KERNEL
 
 struct thread;
-
 struct thread *register_swi(int intr, inthand2_t *handler, void *arg,
 			    const char *name);
 struct thread *register_int(int intr, inthand2_t *handler, void *arg,
@@ -55,4 +56,6 @@ extern u_long	eintrcnt[];	/* end of intrcnt[] */
 extern char	eintrnames[];	/* end of intrnames[] */
 extern u_long	intrcnt[];	/* counts for for each device and stray */
 extern char	intrnames[];	/* string table containing device names */
+
+#endif
 #endif

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.3 2003/07/13 05:45:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -294,7 +294,7 @@ dofiles(kp)
 
 	Uname = user_from_uid(ep->e_ucred.cr_uid, 0);
 	Pid = p->p_pid;
-	Comm = p->p_comm;
+	Comm = kp->kp_thread.td_comm;
 
 	if (p->p_fd == NULL)
 		return;

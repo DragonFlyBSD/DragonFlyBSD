@@ -22,7 +22,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.4 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.5 2003/07/13 05:45:10 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -121,7 +121,9 @@
 
 #endif	/* SMP */
 
-#else	/* LOCORE */
+#else	/* !LOCORE */
+
+#ifdef _KERNEL
 
 /*
  * Spinlock functions (UP and SMP).  Under UP a spinlock still serves
@@ -198,5 +200,6 @@ cpu_rel_mplock(void)
 #define ASSERT_MP_LOCK_HELD()
 
 #endif	/* SMP */
+#endif  /* _KERNEL */
 #endif	/* LOCORE */
 #endif	/* !_MACHINE_LOCK_H_ */

@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.4 2003/07/13 05:45:12 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -40,6 +40,15 @@
 
 #include <sys/queue.h>
 #include <sys/uio.h>
+
+#ifdef _KERNEL
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
+#ifndef _SYS_PROC_H_
+#include <sys/proc.h>
+#endif
+#endif
 
 struct componentname {
 	/*

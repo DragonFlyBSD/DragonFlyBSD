@@ -37,11 +37,11 @@
  *
  *	@(#)param.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/boot/dosboot/sysparam.h,v 1.5 1999/08/28 00:43:25 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/sysparam.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/sysparam.h,v 1.3 2003/07/13 05:45:08 dillon Exp $
  */
 
-#ifndef _SYS_PARAM_H_
-#define _SYS_PARAM_H_
+#ifndef _DOSBOOT_SYS_PARAM_H_
+#define _DOSBOOT_SYS_PARAM_H_
 
 #define	BSD	199306		/* System version (year & month). */
 #define BSD4_3	1

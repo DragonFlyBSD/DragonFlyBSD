@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.3 2003/07/13 05:45:17 dillon Exp $
  */
 
 /*
@@ -323,7 +323,7 @@ main(argc, argv)
 			continue;
 		}
 		ep->args = fmt_argv(kvm_getargv(kd, ep->kp, argwidth),
-		    ep->kp->kp_proc.p_comm, MAXCOMLEN);
+		    ep->kp->kp_thread.td_comm, MAXCOMLEN);
 		if (ep->args == NULL)
 			err(1, NULL);
 	}
@@ -395,7 +395,7 @@ main(argc, argv)
 				char *ptr;
 
 				ptr = fmt_argv(kvm_getargv(kd, dkp, argwidth),
-				    dkp->kp_proc.p_comm, MAXCOMLEN);
+				    dkp->kp_thread.td_comm, MAXCOMLEN);
 				if (ptr == NULL)
 					ptr = "-";
 				(void)printf("\t\t%-9d %s\n",
