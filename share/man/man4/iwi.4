@@ -1,0 +1,136 @@
+.\"
+.\" Copyright (c) 2004, 2005
+.\"	Damien Bergamini <damien.bergamini@free.fr>. 
+.\" Copyright (c) 2004, 2005
+.\"	Andrew Atrens <atrens@nortelnetworks.com>.
+.\"
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice unmodified, this list of conditions, and the following
+.\"    disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man4/iwi.4,v 1.1 2005/03/06 05:23:01 dillon Exp $
+.\"
+.Dd March 1, 2005
+.Os
+.Dt IWI 4
+.Sh NAME
+.Nm iwi
+.Nd Intel(R) PRO/Wireless 2200BG/2915ABG IEEE 802.11 driver
+.Sh SYNOPSIS
+.Cd "device iwi"
+.Cd "device pci"
+.Cd "device wlan"
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Intel(R) PRO/Wireless 2200BG and 2915ABG MiniPCI
+network adapters.
+.Pp
+By default, the
+.Nm
+driver configures the adapter for BSS operation (aka infrastructure mode).
+This mode requires the use of an access point.
+.Pp
+In addition IBSS operation (aka adhoc mode) is also supported. This mode requires
+special ibss firmware. See
+.Xr iwicontrol 8
+for more details on how to load firmware.
+.Pp
+For more (general) information on configuring this device, see
+.Xr ifconfig 8 .
+.Sh EXAMPLES
+Join an existing BSS network (ie: connect to an access point):
+.Pp
+.Dl "ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00"
+.Pp
+Join a specific BSS network with network name
+.Dq Li my_net :
+.Pp
+.Dl "ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
+.Pp
+Join a specific BSS network with 64 bits WEP encryption:
+.Bd -literal -offset indent
+ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        wepmode on wepkey 0x1234567890
+.Ed
+.Pp
+Join a specific BSS network with 128bits WEP encryption:
+.Bd -literal -offset indent
+ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        wepmode on wepkey 0x01020304050607080910111213
+.Ed
+.Pp
+To join or create an IBSS network, use something like:
+.Bd -literal -offset indent
+ifconfig iwi0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        mediaopt adhoc
+.Ed
+.Pp
+To debug a network setup, you may wish to enable interface debugging:
+.Bd -literal -offset indent
+ifconfig iwi0 down debug up
+.Ed
+.Pp
+To disable debugging, you may simply use:
+.Bd -literal -offset indent
+ifconfig iwi0 down -debug up
+.Ed
+.Sh WORTH NOTING
+It's worth noting that in BSS mode if you haven't specified an
+ssid, the driver will auto-assign an ssid, joining the best
+network available.
+.Pp
+In IBSS mode you must specify an ssid for the driver to join a network.
+If no network exists with the ssid name you have chosen the driver will
+auto-create a standalone IBSS network that others may later join. This
+behaviour is on by default, and may be controlled by -
+.Bd -literal -offset indent
+wicontrol iwi0 -c 0     Disables network auto-create behaviour.
+.Ed
+.Bd -literal -offset indent
+wicontrol iwi0 -c 1     Enables network auto-create behaviour.
+.Ed
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "iwi%d: firmware reset"
+The driver has reset the firmware. This shouldn't but may occasionally happen.
+.It "iwi%d: device timeout"
+The driver will reset the hardware. This should not happen.
+.El
+.Sh SEE ALSO
+.Xr an 4 ,
+.Xr pci 4 ,
+.Xr wi 4 ,
+.Xr wlan 4 ,
+.Xr ifconfig 8 ,
+.Xr iwicontrol 8,
+.Xr wicontrol 8
+.Sh AUTHORS
+The
+.Nm
+driver and this man page were derived from those written by
+.An Damien Bergamini Aq damien.bergamini@free.fr .
+.Pp
+DragonFly enhancements and IBSS support were written by
+.An Andrew Atrens Aq atrens@nortel.com .
