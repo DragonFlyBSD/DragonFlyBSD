@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.28 2004/12/16 21:28:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.29 2004/12/16 21:38:04 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2407,7 +2407,7 @@ JobMatchShell(const char *name)
 	if (strcmp(sh->name, name) == 0)
 	    break;
 
-    if (sh == shells + sizeof(shells) / sizeof(shells[0]))
+    if (sh == shells + __arysize(shells))
 	return (NULL);
 
     /* make a copy */
