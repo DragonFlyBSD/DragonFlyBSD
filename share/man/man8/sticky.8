@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)sticky.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man8/sticky.8,v 1.7.2.1 2001/08/17 13:08:50 ru Exp $
-.\" $DragonFly: src/share/man/man8/sticky.8,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man8/sticky.8,v 1.3 2004/09/26 19:16:41 dillon Exp $
 .\"
 .Dd June 5, 1993
 .Dt STICKY 8
@@ -75,7 +75,11 @@ Neither
 .Xr open 2
 nor
 .Xr mkdir 2
-will create a file with the sticky bit set.
+will create a file with the sticky bit set, it must
+be chmod'd after the fact.
+However,
+.Xr mkdir 1
+will do the right thing.
 .Sh HISTORY
 A
 .Nm
