@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.33 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.34 2005/04/05 05:43:05 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -372,7 +372,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 		struct netmsg_inswildcard *msg;
 
 		if (cpu == mycpu->gd_cpuid) {
-			in_pcbinswildcardhash_oncpu(inp, &tcbinfo[cpu]);
+			in_pcbinswildcardhash(inp);
 			continue;
 		}
 
