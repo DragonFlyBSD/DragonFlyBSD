@@ -1,11 +1,11 @@
-# $DragonFly: src/sys/net/pf/Makefile,v 1.1 2004/09/19 22:32:47 joerg Exp $
+# $DragonFly: src/sys/net/pf/Makefile,v 1.2 2004/11/09 11:10:10 joerg Exp $
 
 KMOD=	pf
 SRCS=	if_pflog.c pf.c pf_if.c pf_ioctl.c pf_norm.c pf_osfp.c pf_subr.c
 SRCS+=	pf_table.c
-SRCS+=	use_pflog.h use_pfsync.h opt_inet.h opt_inet6.h use_bpf.h
+SRCS+=	use_pflog.h use_pfsync.h opt_inet.h opt_inet6.h
 SRCS+=	opt_icmp_bandlim.h
-CLEANFILES= use_pflog.h use_pfsync.h use_bpf.h
+CLEANFILES= use_pflog.h use_pfsync.h
 NOMAN=
 CFLAGS+=  -I${.CURDIR}/../../contrib/pf
 
@@ -26,8 +26,5 @@ opt_inet6.h:
 .if !exists(opt_inet6.h)
 	echo "#define INET6 1" > ${.TARGET}
 .endif
-
-use_bpf.h:
-	echo "#define NBPF 1" > ${.TARGET}
 
 .include <bsd.kmod.mk>
