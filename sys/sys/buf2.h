@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.7 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.8 2004/11/09 17:36:42 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -112,18 +112,11 @@ BUF_UNLOCK(struct buf *bp)
 }
 
 /*
- * Free a buffer lock.
- */
-#define BUF_LOCKFREE(bp) 			\
-	if (BUF_REFCNT(bp) > 0)			\
-		panic("free locked buf")
-/*
  * When initiating asynchronous I/O, change ownership of the lock to the
  * kernel. Once done, the lock may legally released by biodone. The
  * original owning process can no longer acquire it recursively, but must
  * wait until the I/O is completed and the lock has been freed by biodone.
  */
-static __inline void BUF_KERNPROC (struct buf *);
 static __inline void
 BUF_KERNPROC(struct buf *bp)
 {
@@ -135,8 +128,10 @@ BUF_KERNPROC(struct buf *bp)
 }
 /*
  * Find out the number of references to a lock.
+ *
+ * The non-blocking version should only be used for assertions in cases
+ * where the buffer is expected to be owned or otherwise data stable.
  */
-static __inline int BUF_REFCNT (struct buf *);
 static __inline int
 BUF_REFCNT(struct buf *bp)
 {
@@ -147,6 +142,19 @@ BUF_REFCNT(struct buf *bp)
 	splx(s);
 	return ret;
 }
+
+static __inline int
+BUF_REFCNTNB(struct buf *bp)
+{
+	return (lockcountnb(&(bp)->b_lock));
+}
+
+/*
+ * Free a buffer lock.
+ */
+#define BUF_LOCKFREE(bp) 			\
+	if (BUF_REFCNTNB(bp) > 0)		\
+		panic("free locked buf")
 
 static __inline void
 bufq_init(struct buf_queue_head *head)

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.31 2004/10/12 19:29:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.32 2004/11/09 17:36:41 dillon Exp $
  */
 
 /*
@@ -523,11 +523,12 @@ bremfree(struct buf * bp)
 	int old_qindex = bp->b_qindex;
 
 	if (bp->b_qindex != QUEUE_NONE) {
-		KASSERT(BUF_REFCNT(bp) == 1, ("bremfree: bp %p not locked",bp));
+		KASSERT(BUF_REFCNTNB(bp) == 1, 
+				("bremfree: bp %p not locked",bp));
 		TAILQ_REMOVE(&bufqueues[bp->b_qindex], bp, b_freelist);
 		bp->b_qindex = QUEUE_NONE;
 	} else {
-		if (BUF_REFCNT(bp) <= 1)
+		if (BUF_REFCNTNB(bp) <= 1)
 			panic("bremfree: removing a buffer not on a queue");
 	}
 
@@ -649,7 +650,7 @@ bwrite(struct buf * bp)
 
 	oldflags = bp->b_flags;
 
-	if (BUF_REFCNT(bp) == 0)
+	if (BUF_REFCNTNB(bp) == 0)
 		panic("bwrite: buffer is not busy???");
 	s = splbio();
 	/*
@@ -820,7 +821,7 @@ vfs_backgroundwritedone(struct buf *bp)
 void
 bdwrite(struct buf *bp)
 {
-	if (BUF_REFCNT(bp) == 0)
+	if (BUF_REFCNTNB(bp) == 0)
 		panic("bdwrite: buffer is not busy");
 
 	if (bp->b_flags & B_INVAL) {
@@ -1208,7 +1209,7 @@ brelse(struct buf * bp)
 			
 	if (bp->b_qindex != QUEUE_NONE)
 		panic("brelse: free buffer onto another queue???");
-	if (BUF_REFCNT(bp) > 1) {
+	if (BUF_REFCNTNB(bp) > 1) {
 		/* Temporary panic to verify exclusive locking */
 		/* This panic goes away when we allow shared refs */
 		panic("brelse: multiple refs");
@@ -1326,7 +1327,7 @@ bqrelse(struct buf * bp)
 
 	if (bp->b_qindex != QUEUE_NONE)
 		panic("bqrelse: free buffer onto another queue???");
-	if (BUF_REFCNT(bp) > 1) {
+	if (BUF_REFCNTNB(bp) > 1) {
 		/* do not release to free list */
 		panic("bqrelse: multiple refs");
 		BUF_UNLOCK(bp);
@@ -1974,9 +1975,9 @@ incore(struct vnode * vp, daddr_t blkno)
 {
 	struct buf *bp;
 
-	int s = splbio();
+	crit_enter();
 	bp = gbincore(vp, blkno);
-	splx(s);
+	crit_exit();
 	return (bp);
 }
 
@@ -2123,6 +2124,13 @@ vfs_setdirty(struct buf *bp)
  * 	ready for an I/O initiation.  B_INVAL may or may not be set on 
  *	return.  The caller should clear B_INVAL prior to initiating a
  *	READ.
+ *
+ *	IT IS IMPORTANT TO UNDERSTAND THAT IF YOU CALL GETBLK() AND B_CACHE
+ *	IS NOT SET, YOU MUST INITIALIZE THE RETURNED BUFFER, ISSUE A READ,
+ *	OR SET B_INVAL BEFORE RETIRING IT.  If you retire a getblk'd buffer
+ *	without doing any of those things the system will likely believe
+ *	the buffer to be valid (especially if it is not B_VMIO), and the
+ *	next getblk() will return the buffer with B_CACHE set.
  *
  *	For a non-VMIO buffer, B_CACHE is set to the opposite of B_INVAL for
  *	an existing buffer.
@@ -2765,7 +2773,7 @@ biodone(struct buf *bp)
 
 	s = splbio();
 
-	KASSERT(BUF_REFCNT(bp) > 0, ("biodone: bp %p not busy %d", bp, BUF_REFCNT(bp)));
+	KASSERT(BUF_REFCNTNB(bp) > 0, ("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
 	KASSERT(!(bp->b_flags & B_DONE), ("biodone: bp %p already done", bp));
 
 	bp->b_flags |= B_DONE;
