@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.5 2003/11/10 06:12:13 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.6 2004/05/25 18:46:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -182,12 +182,14 @@ dsinit(dev, lp, sspp)
 	char	*sname;
 	struct diskslice *sp;
 	struct diskslices *ssp;
+	dev_t wdev;
 
 	mbr_offset = DOSBBSECTOR;
 reread_mbr:
 	/* Read master boot record. */
+	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), RAW_PART);
 	bp = geteblk((int)lp->d_secsize);
-	bp->b_dev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), RAW_PART);
+	bp->b_dev = wdev;
 	bp->b_blkno = mbr_offset;
 	bp->b_bcount = lp->d_secsize;
 	bp->b_flags |= B_READ;
@@ -348,7 +350,7 @@ reread_mbr:
 	for (dospart = 0; dospart < NDOSPART; dospart++, sp++)
 		if (sp->ds_type == DOSPTYP_EXTENDED ||
 		    sp->ds_type == DOSPTYP_EXTENDEDX)
-			mbr_extended(bp->b_dev, lp, ssp,
+			mbr_extended(wdev, lp, ssp,
 				     sp->ds_offset, sp->ds_size, sp->ds_offset,
 				     max_nsectors, max_ntracks, mbr_offset, 1);
 
