@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -36,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.5 2004/05/03 18:54:37 cpressey Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.6 2004/08/19 17:36:42 dillon Exp $
  */
 
 #include <sys/param.h>
