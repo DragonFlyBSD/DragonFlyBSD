@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.10 2004/07/16 02:01:17 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.11 2004/07/17 01:45:37 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -139,9 +139,7 @@ struct buf {
 	daddr_t	b_pblkno;               /* physical block number */
 	void	*b_saveaddr;		/* Original b_addr for physio. */
 	void	*b_driver1;		/* for private use by the driver */
-	void	*b_driver2;		/* for private use by the driver */
 	void	*b_caller1;		/* for private use by the caller */
-	void	*b_caller2;		/* for private use by the caller */
 	union	pager_info {
 		void	*pg_spc;
 		int	pg_reqpage;

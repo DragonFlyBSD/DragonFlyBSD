@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aac/aac_compat.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
- * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.4 2004/02/13 01:33:19 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.5 2004/07/17 01:45:37 hmp Exp $
  */
 /*
  * Backwards compatibility support.
@@ -52,7 +52,6 @@
 #define bio_data				b_data
 #define bio_dev					b_dev
 #define bio_driver1				b_driver1
-#define bio_driver2				b_driver2
 #define bio_error				b_error
 #define bio_flags				b_flags
 #define bio_pblkno				b_pblkno

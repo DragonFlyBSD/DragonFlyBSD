@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_compat.h,v 1.2.2.4 2002/11/11 13:19:10 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_compat.h,v 1.5 2004/02/21 06:37:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_compat.h,v 1.6 2004/07/17 01:45:37 hmp Exp $
  */
 /*
  * Backwards compatibility support.
@@ -78,7 +78,6 @@
 # define bio_data				b_data
 # define bio_dev				b_dev
 # define bio_driver1				b_driver1
-# define bio_driver2				b_driver2
 # define bio_error				b_error
 # define bio_flags				b_flags
 # define bio_pblkno				b_pblkno
