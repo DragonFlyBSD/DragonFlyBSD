@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.30 2004/06/04 03:57:41 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.31 2004/06/24 08:15:17 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -44,7 +44,6 @@
 #include "opt_ipfilter.h"
 #include "opt_ipstealth.h"
 #include "opt_ipsec.h"
-#include "opt_pfil_hooks.h"
 #include "opt_random_ip_id.h"
 
 #include <sys/param.h>
@@ -72,9 +71,7 @@
 #include <net/if_types.h>
 #include <net/if_var.h>
 #include <net/if_dl.h>
-#ifdef PFIL_HOOKS
 #include <net/pfil.h>
-#endif
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/intrq.h>
@@ -242,9 +239,7 @@ int fw_one_pass = 1;
 /* Dummynet hooks */
 ip_dn_io_t *ip_dn_io_ptr;
 
-#ifdef PFIL_HOOKS
 struct pfil_head inet_pfil_hook;
-#endif
 
 /*
  * XXX this is ugly -- the following two global variables are
@@ -313,13 +308,12 @@ ip_init(void)
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
 			ip_protox[pr->pr_protocol] = pr - inetsw;
 
-#ifdef PFIL_HOOKS
 	inet_pfil_hook.ph_type = PFIL_TYPE_AF;
 	inet_pfil_hook.ph_af = AF_INET;
-	if ((i = pfil_head_register(&inet_pfil_hook)) != 0)
+	if ((i = pfil_head_register(&inet_pfil_hook)) != 0) {
 		printf("%s: WARNING: unable to register pfil hook, "
 			"error %d\n", __func__, i);
-#endif
+	}
 
 	for (i = 0; i < IPREASS_NHASH; i++)
 	    ipq[i].next = ipq[i].prev = &ipq[i];
@@ -432,9 +426,7 @@ ip_input(struct mbuf *m)
 	struct ip_fw_args args;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	boolean_t needredispatch = FALSE;
-#ifdef PFIL_HOOKS
 	struct in_addr odst;			/* original dst address(NAT) */
-#endif
 #ifdef FAST_IPSEC
 	struct m_tag *mtag;
 	struct tdb_ident *tdbi;
@@ -568,7 +560,6 @@ ip_input(struct mbuf *m)
 
 iphack:
 
-#ifdef PFIL_HOOKS
 	/*
 	 * Run through list of hooks for input packets.
 	 *
@@ -587,7 +578,6 @@ iphack:
 		ip = mtod(m, struct ip *);
 		using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
 	}
-#endif
 
 	if (fw_enable && IPFW_LOADED) {
 		/*

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.14 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.15 2004/06/24 08:15:17 dillon Exp $
  */
 
 #define _IP_VHL
@@ -42,7 +42,6 @@
 #include "opt_ipdivert.h"
 #include "opt_ipfilter.h"
 #include "opt_ipsec.h"
-#include "opt_pfil_hooks.h"
 #include "opt_random_ip_id.h"
 #include "opt_mbuf_stress_test.h"
 
@@ -60,9 +59,7 @@
 
 #include <net/if.h>
 #include <net/netisr.h>
-#ifdef PFIL_HOOKS
 #include <net/pfil.h>
-#endif
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -726,7 +723,7 @@ spd_done:
 	 * - Wrap: fake packet's addr/port <unimpl.>
 	 * - Encapsulate: put it in another IP and send out. <unimp.>
 	 */ 
-#ifdef PFIL_HOOKS
+
 	/*
 	 * Run through list of hooks for output packets.
 	 */
@@ -736,7 +733,6 @@ spd_done:
 			goto done;
 		ip = mtod(m, struct ip *);
 	}
-#endif /* PFIL_HOOKS */
 
 	/*
 	 * Check with the firewall...

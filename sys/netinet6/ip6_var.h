@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_var.h,v 1.2.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.7 2004/06/03 15:04:51 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.8 2004/06/24 08:15:18 dillon Exp $	*/
 /*	$KAME: ip6_var.h,v 1.62 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -286,9 +286,7 @@ extern int   ip6_lowportmax;		/* maximum reserved port */
 
 extern int	ip6_use_tempaddr; /* whether to use temporary addresses. */
 
-#ifdef PFIL_HOOKS
 extern struct pfil_head inet6_pfil_hook;
-#endif
 
 extern struct	pr_usrreqs rip6_usrreqs;
 struct sockopt;

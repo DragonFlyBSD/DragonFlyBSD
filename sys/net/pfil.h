@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.2 2004/06/01 20:49:04 dillon Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.3 2004/06/24 08:15:16 dillon Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -31,10 +31,6 @@
 
 #ifndef _NET_PFIL_H_
 #define _NET_PFIL_H_
-
-#ifdef _KERNEL_OPT
-#include "opt_pfil_hooks.h"
-#endif
 
 #include <sys/queue.h>
 
@@ -115,12 +111,5 @@ pfil_has_hooks(struct pfil_head *ph)
 #if defined(_KERNEL_OPT)
 #include "ipfilter.h"
 #endif
-
-#if NIPFILTER > 0
-#ifdef PFIL_HOOKS
-#undef PFIL_HOOKS
-#endif
-#define PFIL_HOOKS
-#endif /* NIPFILTER */
 
 #endif /* _NET_PFIL_H_ */

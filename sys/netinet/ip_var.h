@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.9 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.10 2004/06/24 08:15:17 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -219,9 +219,7 @@ void	divert_packet(struct mbuf *m, int incoming, int port, int rule);
 extern struct pr_usrreqs div_usrreqs;
 #endif
 
-#ifdef PFIL_HOOKS
 extern	struct pfil_head inet_pfil_hook;
-#endif
 
 void	in_delayed_cksum(struct mbuf *m);
 

@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.11 2004/06/02 14:42:48 eirikn Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.12 2004/06/24 08:15:14 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -18,9 +18,6 @@
 #if defined(_KERNEL) && (defined(__DragonFly__) || (defined(__FreeBSD_version) && \
     (__FreeBSD_version >= 400000))) && !defined(KLD_MODULE)
 #include "opt_inet6.h"
-#if defined(__DragonFly_version) && (__DragonFly_version >= 100000)
-#include "opt_pfil_hooks.h"
-#endif
 #endif
 #include <sys/param.h>
 #if defined(__NetBSD__) && (NetBSD >= 199905) && !defined(IPFILTER_LKM) && \

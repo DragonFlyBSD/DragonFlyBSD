@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.18 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.19 2004/06/24 08:15:18 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -70,7 +70,6 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
-#include "opt_pfil_hooks.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -94,9 +93,7 @@
 #include <net/if_dl.h>
 #include <net/route.h>
 #include <net/netisr.h>
-#ifdef PFIL_HOOKS
 #include <net/pfil.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -149,9 +146,7 @@ int ip6_sourcecheck_interval;		/* XXX */
 
 int ip6_ours_check_algorithm;
 
-#ifdef PFIL_HOOKS
 struct pfil_head inet6_pfil_hook;
-#endif
 
 /* firewall hooks */
 ip6_fw_chk_t *ip6_fw_chk_ptr;
@@ -194,13 +189,12 @@ ip6_init(void)
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
 			ip6_protox[pr->pr_protocol] = pr - inet6sw;
 
-#ifdef PFIL_HOOKS
 	inet6_pfil_hook.ph_type = PFIL_TYPE_AF;
 	inet6_pfil_hook.ph_af = AF_INET6;
-	if ((i = pfil_head_register(&inet6_pfil_hook)) != 0)
+	if ((i = pfil_head_register(&inet6_pfil_hook)) != 0) {
 		printf("%s: WARNING: unable to register pfil hook, "
 			"error %d\n", __func__, i);
-#endif /* PFIL_HOOKS */
+	}
 
 	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input);
 	nd6_init();
@@ -257,9 +251,7 @@ ip6_input(struct netmsg *msg)
 	u_int32_t rtalert = ~0;
 	int nxt, ours = 0;
 	struct ifnet *deliverifp = NULL;
-#ifdef PFIL_HOOKS
 	struct in6_addr odst;
-#endif
 	int srcrt = 0;
 
 #ifdef IPSEC
@@ -351,7 +343,6 @@ ip6_input(struct netmsg *msg)
 		goto bad;
 	}
 
-#ifdef PFIL_HOOKS
 	/*
 	 * Run through list of hooks for input packets.
 	 *
@@ -370,7 +361,6 @@ ip6_input(struct netmsg *msg)
 		ip6 = mtod(m, struct ip6_hdr *);
 		srcrt = !IN6_ARE_ADDR_EQUAL(&odst, &ip6->ip6_dst);
 	}
-#endif /* PFIL_HOOKS */
 
 	ip6stat.ip6s_nxthist[ip6->ip6_nxt]++;
 

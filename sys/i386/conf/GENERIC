@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.15 2004/06/23 06:27:28 hmp Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.16 2004/06/24 08:15:15 dillon Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -245,7 +245,6 @@ pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 # The `bpf' pseudo-device enables the Berkeley Packet Filter.
 # Be aware of the administrative consequences of enabling this!
 pseudo-device	bpf		#Berkeley packet filter
-#options		PFIL_HOOKS	#Packetfilter hooks
 
 # USB support
 device		uhci		# UHCI PCI->USB interface

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.30 2004/05/20 22:38:32 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.31 2004/06/24 08:15:15 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -527,7 +527,6 @@ pseudo-device	arcnet			#Generic Arcnet
 pseudo-device	sppp			#Generic Synchronous PPP
 pseudo-device	loop			#Network loopback device
 pseudo-device	bpf			#Berkeley packet filter
-options 	PFIL_HOOKS		#Packetfilter hooks
 pseudo-device	disc			#Discard device (ds0, ds1, etc)
 pseudo-device	tun			#Tunnel driver (ppp(8), nos-tun(8))
 pseudo-device	sl	2		#Serial Line IP

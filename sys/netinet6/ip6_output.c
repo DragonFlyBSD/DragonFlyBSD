@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.12 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.13 2004/06/24 08:15:18 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -70,7 +70,6 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
-#include "opt_pfil_hooks.h"
 
 #include <sys/param.h>
 #include <sys/malloc.h>
@@ -85,9 +84,7 @@
 
 #include <net/if.h>
 #include <net/route.h>
-#ifdef PFIL_HOOKS
 #include <net/pfil.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -918,7 +915,6 @@ skip_ipsec2:;
 		m->m_pkthdr.rcvif = NULL;
 	}
 
-#ifdef PFIL_HOOKS
 	/*
 	 * Run through list of hooks for output packets.
 	 */
@@ -928,7 +924,7 @@ skip_ipsec2:;
 			goto done;
 		ip6 = mtod(m, struct ip6_hdr *);
 	}
-#endif /* PFIL_HOOKS */
+
 	/*
 	 * Send the packet to the outgoing interface.
 	 * If necessary, do IPv6 fragmentation before sending.

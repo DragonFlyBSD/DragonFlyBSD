@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.8 2004/06/01 20:49:08 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.9 2004/06/24 08:15:18 dillon Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -35,7 +35,6 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
-#include "opt_pfil_hooks.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -51,9 +50,7 @@
 
 #include <net/if.h>
 #include <net/route.h>
-#ifdef PFIL_HOOKS
 #include <net/pfil.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -515,7 +512,6 @@ ip6_forward(struct mbuf *m, int srcrt)
 	in6_clearscope(&ip6->ip6_dst);
 #endif
 
-#ifdef PFIL_HOOKS
 	/*
 	 * Run through list of hooks for output packets.
 	 */
@@ -528,7 +524,6 @@ ip6_forward(struct mbuf *m, int srcrt)
 			goto freecopy;
 		ip6 = mtod(m, struct ip6_hdr *);
 	}
-#endif /* PFIL_HOOKS */
 
 	error = nd6_output(rt->rt_ifp, origifp, m, dst, rt);
 	if (error) {
@@ -544,9 +539,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 				goto freecopy;
 		}
 	}
-#ifdef PFIL_HOOKS
 senderr:
-#endif
 	if (mcopy == NULL)
 		return;
 	switch (error) {
