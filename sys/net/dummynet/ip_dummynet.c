@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.10 2004/09/15 20:30:09 joerg Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.11 2004/09/16 04:25:18 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -1911,7 +1911,6 @@ ip_dn_init(void)
     ip_dn_ctl_ptr = ip_dn_ctl;
     ip_dn_io_ptr = dummynet_io;
     ip_dn_ruledel_ptr = dn_rule_delete;
-    bzero(&dn_timeout, sizeof(struct callout_handle));
     callout_init(&dn_timeout);
     callout_reset(&dn_timeout, 1, dummynet, NULL);
 }
