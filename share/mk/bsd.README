@@ -1,6 +1,6 @@
 #	@(#)bsd.README	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/share/mk/bsd.README,v 1.15.2.6 2002/07/19 08:34:07 ru Exp $
-# $DragonFly: src/share/mk/bsd.README,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.README,v 1.3 2004/07/31 19:29:24 asmodai Exp $
 
 XXX This document is seriously out of date, it is currenly being revised.
 
@@ -8,21 +8,34 @@ This is the README file for the new make "include" files for the BSD
 source tree.  The files are installed in /usr/share/mk, and are, by
 convention, named with the suffix ".mk".
 
+bsd.cpu.gcc2.mk		- 
+bsd.cpu.gcc3.mk		- 
+bsd.cpu.gcc34.mk	- 
+bsd.cpu.mk		- 
 bsd.dep.mk		- handle Makefile dependencies
+bsd.dfport.post.mk	- 
+bsd.dfport.pre.mk	- 
 bsd.doc.mk		- building troff system documents
+bsd.files.mk		- 
+bsd.hostprog.mk		- 
+bsd.incs.mk		- 
 bsd.info.mk		- building GNU Info hypertext system
-bsd.kern.mk		- define warning flags for compiling the kernel
+bsd.init.mk		- 
 bsd.kmod.mk		- building loadable kernel modules
 bsd.lib.mk		- support for building libraries
 bsd.libnames.mk		- define library names
+bsd.links.mk		- 
 bsd.man.mk		- installing manual pages and their links
 bsd.obj.mk		- creating 'obj' directories and cleaning up
 bsd.own.mk		- define common variables
 bsd.port.mk		- building ports
+bsd.port.post.mk	- 
+bsd.port.pre.mk		- 
 bsd.port.subdir.mk	- targets for building subdirectories for ports
 bsd.prog.mk		- building programs from source files
-bsd.sgml.mk		- building SGML documents
 bsd.subdir.mk		- targets for building subdirectories
+bsd.sys.mk		- 
+sys.mk			- 
 
 
 Note, this file is not intended to replace reading through the .mk
