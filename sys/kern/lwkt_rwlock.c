@@ -25,7 +25,7 @@
  *
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.2 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.3 2003/06/22 20:32:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +56,10 @@ lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 	    lock->rw_owner = curthread;
 	    break;
 	}
+	++lock->rw_requests;
 	lwkt_block(&lock->rw_wait, wmesg, &gen);
 	lwkt_regettoken(&lock->rw_token);
+	--lock->rw_requests;
     }
     ++lock->rw_count;
     lwkt_reltoken(&lock->rw_token);
@@ -71,8 +73,10 @@ lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg)
     lwkt_gettoken(&lock->rw_token);
     gen = lock->rw_wait.wa_gen;
     while (lock->rw_owner != NULL) {
+	++lock->rw_requests;
 	lwkt_block(&lock->rw_wait, wmesg, &gen);
 	lwkt_regettoken(&lock->rw_token);
+	--lock->rw_requests;
     }
     ++lock->rw_count;
     lwkt_reltoken(&lock->rw_token);
@@ -86,7 +90,8 @@ lwkt_exunlock(lwkt_rwlock_t lock)
     KASSERT(lock->rw_owner == curthread, ("lwkt_exunlock: not owner"));
     if (--lock->rw_count == 0) {
 	lock->rw_owner = NULL;
-	lwkt_signal(&lock->rw_wait);
+	if (lock->rw_requests)
+	    lwkt_signal(&lock->rw_wait);
     }
     lwkt_reltoken(&lock->rw_token);
 }
@@ -96,8 +101,10 @@ lwkt_shunlock(lwkt_rwlock_t lock)
 {
     lwkt_gettoken(&lock->rw_token);
     KASSERT(lock->rw_owner == NULL, ("lwkt_shunlock: exclusive lock"));
-    if (--lock->rw_count == 0)
-	lwkt_signal(&lock->rw_wait);
+    if (--lock->rw_count == 0) {
+	if (lock->rw_requests)
+	    lwkt_signal(&lock->rw_wait);
+    }
     lwkt_reltoken(&lock->rw_token);
 }
 

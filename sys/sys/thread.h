@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.6 2003/06/22 04:30:43 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.7 2003/06/22 20:32:18 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -105,6 +105,7 @@ typedef struct lwkt_rwlock {
     lwkt_wait	rw_wait;
     thread_t	rw_owner;
     int		rw_count;
+    int		rw_requests;
 } lwkt_rwlock;
 
 #define rw_token	rw_wait.wa_token
