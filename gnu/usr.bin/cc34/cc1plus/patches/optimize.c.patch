@@ -1,0 +1,16 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc1plus/patches/optimize.c.patch,v 1.1 2004/12/21 13:10:47 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/cp/optimize.c,v
+retrieving revision 1.1
+diff -u -r1.1 optimize.c
+--- optimize.c	20 Jun 2004 02:14:51 -0000	1.1
++++ optimize.c	20 Dec 2004 20:59:07 -0000
+@@ -155,6 +155,7 @@
+       DECL_NOT_REALLY_EXTERN (clone) = DECL_NOT_REALLY_EXTERN (fn);
+       TREE_PUBLIC (clone) = TREE_PUBLIC (fn);
+       DECL_VISIBILITY (clone) = DECL_VISIBILITY (fn);
++      DECL_VISIBILITYSPECIFIED (clone) = DECL_VISIBILITYSPECIFIED (fn);
+ 
+       /* Adjust the parameter names and locations.  */
+       parm = DECL_ARGUMENTS (fn);

@@ -1,0 +1,16 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc1plus/patches/method.c.patch,v 1.1 2004/12/21 13:10:47 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/cp/method.c,v
+retrieving revision 1.1
+diff -u -r1.1 method.c
+--- method.c	20 Jun 2004 02:14:51 -0000	1.1
++++ method.c	20 Dec 2004 20:59:07 -0000
+@@ -394,6 +394,7 @@
+      rewrite.  */
+   TREE_PUBLIC (thunk_fndecl) = TREE_PUBLIC (function);
+   DECL_VISIBILITY (thunk_fndecl) = DECL_VISIBILITY (function);
++  DECL_VISIBILITYSPECIFIED (thunk_fndecl) = DECL_VISIBILITYSPECIFIED (function);
+ 
+   if (flag_syntax_only)
+     {

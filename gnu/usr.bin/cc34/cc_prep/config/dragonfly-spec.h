@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.3 2004/12/20 19:23:26 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.4 2004/12/21 13:10:48 joerg Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -65,6 +65,7 @@ Boston, MA 02111-1307, USA.  */
 	builtin_define ("__DragonFly_cc_version=100001");		\
 	builtin_define_std ("unix");					\
 	builtin_define ("__KPRINTF_ATTRIBUTE__");		       	\
+	builtin_define ("__GCC_VISIBILITY__=1");			\
 	builtin_assert ("system=unix");					\
 	builtin_assert ("system=bsd");					\
 	builtin_assert ("system=DragonFly");				\

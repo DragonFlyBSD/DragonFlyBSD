@@ -1,0 +1,22 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc1plus/patches/cp-tree.h.patch,v 1.1 2004/12/21 13:10:47 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/cp/cp-tree.h,v
+retrieving revision 1.2
+diff -u -r1.2 cp-tree.h
+--- cp-tree.h	20 Dec 2004 19:23:25 -0000	1.2
++++ cp-tree.h	20 Dec 2004 20:59:07 -0000
+@@ -1008,7 +1008,12 @@
+ #define PUBLICLY_UNIQUELY_DERIVED_P(PARENT, TYPE) \
+   (lookup_base ((TYPE), (PARENT),  ba_not_special | ba_quiet, NULL) \
+    != NULL_TREE)
+-
++
++/* Gives the visibility specification for a class type.  */
++#define CLASSTYPE_VISIBILITY(TYPE)		DECL_VISIBILITY (TYPE_NAME (TYPE))
++#define CLASSTYPE_VISIBILITYSPECIFIED(TYPE)	DECL_VISIBILITYSPECIFIED (TYPE_NAME (TYPE))
++
++
+ /* This is a few header flags for 'struct lang_type'.  Actually,
+    all but the first are used only for lang_type_class; they
+    are put in this structure to save space.  */

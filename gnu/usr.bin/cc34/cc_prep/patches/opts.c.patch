@@ -1,8 +1,11 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/opts.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/opts.c.patch,v 1.3 2004/12/21 13:10:48 joerg Exp $
 
-diff -u ../gcc.orig/opts.c opts.c
---- ../gcc.orig/opts.c	2004-06-19 22:27:13.000000000 +0200
-+++ opts.c	2004-06-20 01:16:04.000000000 +0200
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/opts.c,v
+retrieving revision 1.1
+diff -u -r1.1 opts.c
+--- opts.c	20 Jun 2004 02:14:50 -0000	1.1
++++ opts.c	20 Dec 2004 20:49:36 -0000
 @@ -125,6 +125,9 @@
  bool warn_unused_variable;
  bool warn_unused_value;
@@ -13,7 +16,20 @@ diff -u ../gcc.orig/opts.c opts.c
  /* Hack for cooperation between set_Wunused and set_Wextra.  */
  static bool maybe_warn_unused_parameter;
  
-@@ -798,6 +801,10 @@
+@@ -142,6 +145,12 @@
+    write_symbols is set to DBX_DEBUG, XCOFF_DEBUG, or DWARF_DEBUG.  */
+ bool use_gnu_debug_info_extensions;
+ 
++/* The default visibility for all symbols (unless overridden) */
++enum symbol_visibility default_visibility = VISIBILITY_DEFAULT;
++
++/* Global visibility options.  */
++struct visibility_flags visibility_options;
++
+ /* Columns of --help display.  */
+ static unsigned int columns = 80;
+ 
+@@ -798,6 +807,10 @@
        warn_unused_variable = value;
        break;
  
@@ -24,7 +40,7 @@ diff -u ../gcc.orig/opts.c opts.c
      case OPT_aux_info:
      case OPT_aux_info_:
        aux_info_file_name = arg;
-@@ -1361,6 +1368,14 @@
+@@ -1361,6 +1374,14 @@
        stack_limit_rtx = gen_rtx_SYMBOL_REF (Pmode, ggc_strdup (arg));
        break;
  
@@ -38,4 +54,26 @@ diff -u ../gcc.orig/opts.c opts.c
 +
      case OPT_fstrength_reduce:
        flag_strength_reduce = value;
+       break;
+@@ -1440,6 +1461,21 @@
+       flag_verbose_asm = value;
+       break;
+ 
++    case OPT_fvisibility_:
++      {
++        if(!strcmp(arg, "default"))
++          default_visibility=VISIBILITY_DEFAULT;
++        else if(!strcmp(arg, "internal"))
++          default_visibility=VISIBILITY_INTERNAL;
++        else if(!strcmp(arg, "hidden"))
++          default_visibility=VISIBILITY_HIDDEN;
++        else if(!strcmp(arg, "protected"))
++          default_visibility=VISIBILITY_PROTECTED;
++        else
++          error("unrecognised visibility value \"%s\"", arg);
++      }
++      break;
++
+     case OPT_fweb:
+       flag_web = value;
        break;

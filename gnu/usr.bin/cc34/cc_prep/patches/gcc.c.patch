@@ -1,7 +1,11 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.1 2004/06/19 11:13:30 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.2 2004/12/21 13:10:48 joerg Exp $
 
---- gcc.c.orig	2004-06-18 23:08:11.000000000 +0200
-+++ gcc.c	2004-06-19 12:22:05.000000000 +0200
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/gcc.c,v
+retrieving revision 1.2
+diff -u -r1.2 gcc.c
+--- gcc.c	20 Dec 2004 19:23:24 -0000	1.2
++++ gcc.c	20 Dec 2004 20:48:10 -0000
 @@ -1408,8 +1408,7 @@
  static const char *md_startfile_prefix = MD_STARTFILE_PREFIX;
  static const char *md_startfile_prefix_1 = MD_STARTFILE_PREFIX_1;
@@ -12,7 +16,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.1 2004/06/19 11
  
  static const char *const tooldir_base_prefix = TOOLDIR_BASE_PREFIX;
  static const char *tooldir_prefix;
-@@ -3211,8 +3210,6 @@
+@@ -3214,8 +3213,6 @@
        set_std_prefix (gcc_exec_prefix, len);
        add_prefix (&exec_prefixes, gcc_libexec_prefix, "GCC",
  		  PREFIX_PRIORITY_LAST, 0, NULL, 0);
@@ -21,7 +25,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.1 2004/06/19 11
      }
  
    /* COMPILER_PATH and LIBRARY_PATH have values
-@@ -3760,11 +3757,6 @@
+@@ -3763,11 +3760,6 @@
  	      PREFIX_PRIORITY_LAST, 2, warn_std_ptr, 0);
  #endif
  
@@ -33,7 +37,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.1 2004/06/19 11
    tooldir_prefix = concat (tooldir_base_prefix, spec_machine,
  			   dir_separator_str, NULL);
  
-@@ -3787,10 +3779,6 @@
+@@ -3790,10 +3782,6 @@
  		      concat (gcc_exec_tooldir_prefix, "bin",
  			      dir_separator_str, NULL),
  		      NULL, PREFIX_PRIORITY_LAST, 0, NULL, 0);
@@ -44,7 +48,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.1 2004/06/19 11
  	}
  
        tooldir_prefix = concat (standard_exec_prefix, spec_machine,
-@@ -3801,9 +3789,6 @@
+@@ -3804,9 +3792,6 @@
    add_prefix (&exec_prefixes,
  	      concat (tooldir_prefix, "bin", dir_separator_str, NULL),
  	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL, 0);
@@ -54,7 +58,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.1 2004/06/19 11
  
  #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
    /* If the normal TARGET_SYSTEM_ROOT is inside of $exec_prefix,
-@@ -6121,35 +6106,10 @@
+@@ -6124,35 +6109,10 @@
  	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix_1,
  			      "GCC", PREFIX_PRIORITY_LAST, 0, NULL, 1);
  

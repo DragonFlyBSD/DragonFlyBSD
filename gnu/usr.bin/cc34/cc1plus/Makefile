@@ -1,10 +1,13 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc1plus/Makefile,v 1.1 2004/06/14 22:27:53 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc1plus/Makefile,v 1.2 2004/12/21 13:10:47 joerg Exp $
 
 GCC_LANG_DIR=	gcc/cp
 
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
 .include "../Makefile.langs"
+
+PATCHES!=	echo ${.CURDIR}/patches/*.patch
+CONTRIBDIR=	${GCCDIR}/gcc/cp
 
 CFLAGS+=	-DTARGET_MACHINE=\"${target}\" -DHOST_MACHINE=\"${target}\"
 

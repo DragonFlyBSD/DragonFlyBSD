@@ -1,0 +1,20 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/c-pragma.h.patch,v 1.1 2004/12/21 13:10:48 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/c-pragma.h,v
+retrieving revision 1.1
+diff -u -r1.1 c-pragma.h
+--- c-pragma.h	20 Jun 2004 02:14:48 -0000	1.1
++++ c-pragma.h	20 Dec 2004 20:51:42 -0000
+@@ -44,6 +44,11 @@
+ #define HANDLE_PRAGMA_PACK 1
+ #endif /* HANDLE_PRAGMA_PACK_PUSH_POP */
+ 
++/* It's safe to always leave visibility pragma enabled as if
++   visibility is not supported on the host OS platform the
++   statements are ignored.  */
++#define HANDLE_PRAGMA_VISIBILITY 1
++
+ extern void init_pragma (void);
+ 
+ /* Front-end wrapper for pragma registration to avoid dragging

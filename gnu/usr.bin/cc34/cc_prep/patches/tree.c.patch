@@ -1,0 +1,20 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/tree.c.patch,v 1.1 2004/12/21 13:10:48 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/tree.c,v
+retrieving revision 1.2
+diff -u -r1.2 tree.c
+--- tree.c	20 Dec 2004 19:23:24 -0000	1.2
++++ tree.c	20 Dec 2004 20:51:47 -0000
+@@ -2563,6 +2563,11 @@
+     layout_decl (t, 0);
+   else if (code == FUNCTION_DECL)
+     DECL_MODE (t) = FUNCTION_MODE;
++    
++  /* Set default visibility to whatever the user supplied with
++     visibility_specified depending on #pragma GCC visibility.  */
++  DECL_VISIBILITY (t) = default_visibility;
++  DECL_VISIBILITYSPECIFIED (t) = visibility_options.inpragma;
+ 
+   return t;
+ }

@@ -1,0 +1,19 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/c.opt.patch,v 1.1 2004/12/21 13:10:48 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/c.opt,v
+retrieving revision 1.1
+diff -u -r1.1 c.opt
+--- c.opt	20 Jun 2004 02:14:48 -0000	1.1
++++ c.opt	20 Dec 2004 20:51:44 -0000
+@@ -656,6 +656,10 @@
+ C++ ObjC++
+ Use __cxa_atexit to register destructors
+ 
++fvisibility-inlines-hidden
++C++
++Marks all inlined methods as having hidden visibility
++
+ fvtable-gc
+ C++ ObjC++
+ Discard unused virtual functions

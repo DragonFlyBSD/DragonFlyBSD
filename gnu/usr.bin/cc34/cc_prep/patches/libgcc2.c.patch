@@ -1,7 +1,11 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/libgcc2.c.patch,v 1.1 2004/06/14 22:27:53 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/libgcc2.c.patch,v 1.2 2004/12/21 13:10:48 joerg Exp $
 
---- libgcc2.c.orig	2004-06-13 20:46:17.000000000 +0200
-+++ libgcc2.c	2004-06-13 20:46:33.000000000 +0200
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/libgcc2.c,v
+retrieving revision 1.2
+diff -u -r1.2 libgcc2.c
+--- libgcc2.c	20 Dec 2004 19:23:24 -0000	1.2
++++ libgcc2.c	20 Dec 2004 20:48:11 -0000
 @@ -30,10 +30,6 @@
  02111-1307, USA.  */
  

@@ -1,0 +1,19 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/c-opts.c.patch,v 1.1 2004/12/21 13:10:48 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/c-opts.c,v
+retrieving revision 1.2
+diff -u -r1.2 c-opts.c
+--- c-opts.c	20 Dec 2004 19:23:23 -0000	1.2
++++ c-opts.c	20 Dec 2004 20:51:32 -0000
+@@ -920,6 +920,10 @@
+     case OPT_fuse_cxa_atexit:
+       flag_use_cxa_atexit = value;
+       break;
++      
++    case OPT_fvisibility_inlines_hidden:
++      visibility_options.inlineshidden = value;
++      break;
+ 
+     case OPT_fweak:
+       flag_weak = value;

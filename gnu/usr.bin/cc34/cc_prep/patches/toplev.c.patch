@@ -1,8 +1,11 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/toplev.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/toplev.c.patch,v 1.3 2004/12/21 13:10:48 joerg Exp $
 
-diff -u ../gcc.orig/toplev.c toplev.c
---- ../gcc.orig/toplev.c	2004-06-19 22:27:14.000000000 +0200
-+++ toplev.c	2004-06-20 01:16:05.000000000 +0200
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/toplev.c,v
+retrieving revision 1.2
+diff -u -r1.2 toplev.c
+--- toplev.c	20 Dec 2004 19:23:24 -0000	1.2
++++ toplev.c	20 Dec 2004 20:48:13 -0000
 @@ -97,6 +97,10 @@
  				   declarations for e.g. AIX 4.x.  */
  #endif
@@ -41,7 +44,7 @@ diff -u ../gcc.orig/toplev.c toplev.c
  };
  
  /* Here is a table, controlled by the tm.h file, listing each -m switch
-@@ -2687,6 +2702,9 @@
+@@ -2686,6 +2701,9 @@
  
    insns = get_insns ();
  
@@ -51,7 +54,7 @@ diff -u ../gcc.orig/toplev.c toplev.c
    /* Dump the rtl code if we are dumping rtl.  */
  
    if (open_dump_file (DFI_rtl, decl))
-@@ -4482,6 +4500,12 @@
+@@ -4483,6 +4501,12 @@
      /* The presence of IEEE signaling NaNs, implies all math can trap.  */
      if (flag_signaling_nans)
        flag_trapping_math = 1;

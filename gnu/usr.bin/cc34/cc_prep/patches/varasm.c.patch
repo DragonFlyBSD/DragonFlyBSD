@@ -1,0 +1,29 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/varasm.c.patch,v 1.1 2004/12/21 13:10:48 joerg Exp $
+
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/varasm.c,v
+retrieving revision 1.2
+diff -u -r1.2 varasm.c
+--- varasm.c	20 Dec 2004 19:23:24 -0000	1.2
++++ varasm.c	20 Dec 2004 20:51:50 -0000
+@@ -5151,8 +5151,8 @@
+   /* Static variables are always local.  */
+   else if (! TREE_PUBLIC (exp))
+     local_p = true;
+-  /* A variable is local if the user tells us so.  */
+-  else if (DECL_VISIBILITY (exp) != VISIBILITY_DEFAULT)
++  /* A variable is local if the user explicitly tells us so.  */
++  else if (DECL_VISIBILITYSPECIFIED (exp) && DECL_VISIBILITY (exp) != VISIBILITY_DEFAULT)
+     local_p = true;
+   /* Otherwise, variables defined outside this object may not be local.  */
+   else if (DECL_EXTERNAL (exp))
+@@ -5160,6 +5160,9 @@
+   /* Linkonce and weak data are never local.  */
+   else if (DECL_ONE_ONLY (exp) || DECL_WEAK (exp))
+     local_p = false;
++  /* If none of the above and visibility is not default, make local.  */
++  else if (DECL_VISIBILITY (exp) != VISIBILITY_DEFAULT)
++    local_p = true;
+   /* If PIC, then assume that any global name can be overridden by
+      symbols resolved from other modules.  */
+   else if (shlib)

@@ -1,7 +1,11 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/system.h.patch,v 1.1 2004/06/17 18:05:17 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/system.h.patch,v 1.2 2004/12/21 13:10:48 joerg Exp $
 
---- system.h.orig	2004-06-15 12:12:57.000000000 +0200
-+++ system.h	2004-06-15 12:13:08.000000000 +0200
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/system.h,v
+retrieving revision 1.1
+diff -u -r1.1 system.h
+--- system.h	20 Jun 2004 02:14:50 -0000	1.1
++++ system.h	20 Dec 2004 20:48:13 -0000
 @@ -577,7 +577,7 @@
  #undef strdup
   #pragma GCC poison calloc strdup
