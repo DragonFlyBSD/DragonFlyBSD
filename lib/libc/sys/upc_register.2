@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.3 2003/12/04 20:35:06 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.4 2004/07/08 01:04:18 hmp Exp $
 .\"
 .Dd November 20, 2003
 .Dt UPC_REGISTER 2
@@ -40,65 +40,86 @@
 .Ft int
 .Fn upc_control "int command" "int upcall_id" "void *data"
 .Sh DESCRIPTION
-.Fn Upc_register
-registers an upcall.  Note that the specified upcall structural pointer
-is per-process, not per-upcall.  It points to a structure in user memory
+The
+.Fn upc_register
+function
+registers an upcall.
+Note that the specified upcall structural pointer
+is per-process, not per-upcall.
+It points to a structure in user memory
 that both the user and kernel manipulate to deal with upcall/critical-section
 interlocks.
 .Fa ctxfunc
-is a pointer to context save and restore code.  The native upcall interface
-does not necessarily save and restore call-used registers.  This function
+is a pointer to context save and restore code.
+The native upcall interface
+does not necessarily save and restore call-used registers.
+This function
 is typically written in assembly and supplied by
-.Lb libc .
+.Xr libc 3 .
 .Fa cfunc
 is a pointer to a C style function and
 .Fa data
-is the data passed to it as an argument.  A positive upcall identifier
-will be returned or -1 if an error occured.
+is the data passed to it as an argument.
+A positive upcall identifier
+will be returned or -1 if an error occurred.
 .Pp
 When an upcall is executed the
-kernel will add LWKT_CRITPRI to the critical section count in the upcall
+kernel will add
+.Dv LWKT_CRITPRI
+to the critical section count in the upcall
 structure, push a minimal context (not even call-used), and pass the C
 function and data pointers to
 .Fa ctxfunc
 in registers.
 .Fa ctxfunc 
 will then proceed to save appropriate state, call the C function, and 
-deal with cleanup.  Cleanup typically involves an interlocking operation
+deal with cleanup.
+Cleanup typically involves an interlocking operation
 and a call to
-.Fn Upc_control
+.Fn upc_control
 in order to undo the critical section count and process any additional
 pending upcalls atomically.
 .Fa ctxfunc
 will typically pop most of its state, set upcall->pending to 1,
-subtract LWKT_CRITPRI from upcall->crit_count, and call  
+subtract
+.Dv LWKT_CRITPRI
+from upcall->crit_count, and call  
 .Fn upc_control "UPC_CONTROL_NEXT" "-1" "stack_pointer"
 which atomically handles any further pending upcalls and/or pops the
 original stack context supplied to
 .Fn upc_control
-and resumes the originally interrupted code.  This is all very complex
-which is why
-.Lb libc
+and resumes the originally interrupted code.
+This is all very complex which is why
+.Xr libc 3
 typically supplies
 .Fa ctxfunc .
 .Pp
 Note that upcalls can only occur if the target process is not in a critical
-section.  If an upcall cannot be dispatched it will instead be made pending
+section.
+If an upcall cannot be dispatched it will instead be made pending
 and the pending field in the user-supplied upcall structure will be set to
-non-zero.  Userland critical-section-exiting code must check the pending
+non-zero.
+Userland critical-section-exiting code must check the pending
 bit and call the appropriate
 .Fn upc_control
 function to handle any pending upcalls.
 .Pp
-The upcall identifier space is shared amoungst all processes sharing the
-same VM space.  That is, all the processes created through clone() or
-rfork(RFMEM).  Through appropriate
+The upcall identifier space is shared amongst all processes sharing the
+same VM space.
+That is, all the processes created through
+.Fn clone
+or
+.Fn rfork "RFMEM" .
+Through appropriate
 .Fn upc_control
 calls any process within this domain can generate an upcall on any other
-process within this domain, including itself.  Each process typically 
+process within this domain, including itself.
+Each process typically 
 installs a different (per-process) upcall data structure.
 .Pp
-.Fn Upc_control
+The
+.Fn upc_control
+function,
 is a multi-function system call capable of dispatching upcalls, handling
 the context assembly function's interlocks, deleting upcalls, and polling
 for upcalls.
@@ -107,13 +128,21 @@ for upcalls.
 .Fn upc_control "UPC_CONTROL_DISPATCH" "upcid" "(int)priority"
 .Pp
 .Bd -offset indent
-Dispatch a particular upcall.  0 is returned on success, ENOENT if
+Dispatch a particular upcall.
+The value
+.Li 0
+is returned on success,
+.Er ENOENT
+if
 .Fa upcid
-does not exist.  You can dispatch upcalls belonging to your process or
-to another process.  You may specify a
+does not exist.
+You can dispatch upcalls belonging to your process or
+to another process.
+You may specify a
 .Fa upcid
 of -1 to re-dispatch the first upcall owned by your own process that is
-pending from a previous operation.  Note that that critical section and
+pending from a previous operation.
+Note that that critical section and
 pending rules apply, and an actual dispatch will pushdown the stack.
 .Pp
 The priority will be compared against the current crit_count to determine
@@ -127,11 +156,13 @@ a shared structure, queue, etc.
 .Fn upc_control "UPC_CONTROL_NEXT" "-1" "stack_pointer"
 .Pp
 .Bd -offset indent
-Do interlocking and stack munging to process additional upcalls.  This
+Do interlocking and stack munging to process additional upcalls.
+This
 system call should never be made directly by C code because it expects
 all registers not saved by the operating system in entering a context
 function to have been popped and a pointer to the base of the OS-supplied
-stack context on entry to the context routine to be supplied.  This routine
+stack context on entry to the context routine to be supplied.
+This routine
 does not return to the caller but instead either regenerates the stack
 context for the next pending upcall or it restores the original context,
 resuming whomever was interrupted by the original upcall that entered the
@@ -146,7 +177,8 @@ Delete the specified
 .Fa upcid
 or, if -1 is specified, delete all upcall registered by the current process.
 If -1 is specified, the upcalls registered by another process will not be
-deleted.  If a particular
+deleted.
+If a particular
 .Fa upcid
 is specified, it will be deleted regardless of which process registered it.
 The upcall structural pointer registered with this or any other process is 
@@ -160,8 +192,15 @@ not effected.
 .Fn upc_control "UPC_CONTROL_POLLANDCLEAR" "upcid" "(int)priority"
 .Pp
 .Bd -offset indent
-Poll or poll-and-clear the pending status for a particular upcall.  0 or 1
-is returned, or -1 if an error occured (e.g. ENOENT).  
+Poll or poll-and-clear the pending status for a particular upcall.
+The value
+.Li 0
+or
+.Li 1
+is returned, or
+.Li -1
+if an error occurred (e.g.
+.Er ENOENT ).  
 If a
 .Fa upcid
 of -1 is specified, locate a pending upcall for the current process and return
@@ -169,7 +208,8 @@ it's
 .Fa upcid ,
 or 0 if no upcalls for the current process are pending.
 .Pp
-The priority will be compared against the upcall's pending priority.  Only
+The priority will be compared against the upcall's pending priority.
+Only
 upcalls with greater or equal pending priorities are returned.  You must
 specify a minimum priority of 1 or this call will simply return a random
 registered upcall that may or may not be pending.
@@ -189,20 +229,24 @@ kernel via
 \.
 The
 .Fa crit_count
-field prevents new upcalls from being dispatched.  When an upcall is 
+field prevents new upcalls from being dispatched.
+When an upcall is 
 dispatched the kernel automatically adds
-.Va UPC_CRITADD
+.Dv UPC_CRITADD
 to 
 .Fa crit_count
 and sets
 .Fa pending
-to indicate whether any additional upcalls are pending.  A non-zero
+to indicate whether any additional upcalls are pending.
+A non-zero
 .Fa pending
 OR
 .Fa crit_count
-will prevent new upcalls from the being dispatched.  The context function
+will prevent new upcalls from the being dispatched.
+The context function
 code is expected to make appropriate checks to dispatch any remaining upcalls
-when the current upcall has completed.  In particular, the context function
+when the current upcall has completed.
+In particular, the context function
 must subtract
 .Va UPC_CRITADD
 from 
@@ -218,24 +262,31 @@ system calls as well as as a side effect to upcall dispatches.
 .Pp
 Userland threading code typically uses
 .Fa crit_count
-to control critical sections within a virtual cpu (aka cloned process).
-Entering a critical section is as simply as add UPC_CRITADD to
+to control critical sections within a virtual CPU (i.e., cloned process).
+Entering a critical section is as simply as add
+.Dv UPC_CRITADD
+to
 .Fa crit_count .
 No atomic or locked instructions are required as this field is accessed
 only by the current process and any upcalls or interrupts will restore it
-to the condition they found it before returning.  Exiting a critical section
-is almost as simple as subtracting UPC_CRITADD from
+to the condition they found it before returning.
+Exiting a critical section
+is almost as simple as subtracting
+.Dv UPC_CRITADD
+from
 .Fa crit_count .
 The routine which performs this function must also check the
 .Fa pending
-field once the critical section count has reached 0.  If the pending field
+field once the critical section count has reached 0.
+If the pending field
 is non-zero, the routine will generally call
 .Fn upc_control "UPC_CONTROL_DISPATCH" "-1" "NULL"
 to dispatch upcalls which were made pending while you were in the critical
 section.
 .Sh CONTEXT FUNCTION - IA32
 The context function is called with the stack pointer pointing at a 
-kernel-constructed stack frame.  Only a minimal number of registers are
+kernel-constructed stack frame.
+Only a minimal number of registers are
 saved by the kernel. 
 .Pp
 .Bd -literal -offset indent -compact
@@ -248,20 +299,23 @@ frame {
 }
 .Ed
 .Pp
-On entry,  %eax will hold the C function pointer, %ecx will hold the
+On entry, %eax will hold the C function pointer, %ecx will hold the
 C data pointer, and %edx will hold a pointer to the user-supplied upcall
-structure.  The context code does not need to push %eax, %ecx, or %edx
+structure.
+The context code does not need to push %eax, %ecx, or %edx
 because these registers have already been pushed on the stack for it, but
 it must generally push any remaining registers that it might use and be
 careful in regards to others, such as floating point registers, which
-the OS has not saved.  The operating system has already adjusted the
+the OS has not saved.
+The operating system has already adjusted the
 .Fa crit_count
 and
 .Fa pending
 fields in the user-supplied
 .Fa upcall
 structure, so the context code will generally next push the data pointer
-(%ecx) and call the C function through %eax.  Upon return the context code
+(%ecx) and call the C function through %eax.
+Upon return the context code
 is responsible for interlocking the upcall return which it does by first
 setting
 .Fa pending
@@ -273,14 +327,17 @@ then restoring its part of the context but leaving the OS context intact,
 then calling
 .Fn upc_control "UPC_CONTROL_NEXT" "-1" "stack_pointer_to_OS_context"
 \.
-The control function will not return.  It will either restart the context
+The control function will not return.
+It will either restart the context
 at the next upcall, if more are pending, or it will restore the original
 context.
 .Pp
-The context code does not have to follow this regimn.  There is nothing
+The context code does not have to follow this regime.
+There is nothing
 preventing the context code from restoring the original frame itself and
 returning directly to the originally interrupted user code without having
-to make another kernel transition.  It is possible to optimize this by
+to make another kernel transition.
+It is possible to optimize this by
 having the context code subtract down
 .Va UPC_CRITADD
 as per normal but not pre-set the
@@ -289,7 +346,9 @@ field.  If it does this and
 .Fa pending 
 is 0, it is possible for the kernel to initiate another upcall before
 the context code has had a chance to pop its stack and restore the original
-user context.  This is ok under controlled circumstances.  On the otherhand,
+user context.
+This is OK under controlled circumstances.
+On the other hand,
 if
 .Fa pending 
 is 1
@@ -324,23 +383,31 @@ callused_wrapper:
 	popfl			/* code just for show */
 	ret			/* code just for show */
 .Ed
-
 .Sh ERRORS
-.Fn Upc_register
-returns
+The
+.Fn upc_register
+function
+returns:
+.Bl -tag -width Er
 .It Bq Er EFBIG
-if the kernel has reached its upcall registration limit.  The limit is on a
-per-shared-vmspace basis and is no less then 32.  Otherwise this function
+if the kernel has reached its upcall registration limit.
+The limit is on a
+per-shared-vmspace basis and is no less then 32.
+Otherwise this function
 returns a non-zero, positive number indicating the upcall identifier that
 was registered.
 .Pp
-.Fh Upc_control
+The
+.Fn upc_control
+function
 returns
 .It Bq Er ENOENT
 if a particular requested
 .Fa upcid
 cannot be found.
+.El
 .Sh SEE ALSO
+.Xr rfork 2 ,
 .Xr clone 3
 .Sh HISTORY
 The
