@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.19 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.20 2004/10/22 18:03:50 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -261,8 +261,8 @@ namei(struct nameidata *ndp)
 }
 
 /*
- * Search a pathname.
- * This is a very central and rather complicated routine.
+ * Old API function, search a patchname.  This is an *EXTREMELY* complicated
+ * function.
  *
  * The pathname is pointed to by ni_ptr and is of length ni_pathlen.
  * The starting directory is taken from ni_startdir. The pathname is
@@ -282,21 +282,22 @@ namei(struct nameidata *ndp)
  * When creating or renaming and LOCKPARENT is specified, the target may not
  * be ".".  When deleting and LOCKPARENT is specified, the target may be ".".
  *
- * Overall outline of lookup:
+ * SPECIAL CASE: When a symbolic link is encountered the parent
+ * directory is always returned in ni_dvp regardless of WANTPARENT|LOCKPARENT
+ * and the symbolic link is returned in ni_vp.  If the symbolic link was not
+ * the last component ni_dvp will be returned UNLOCKED, regardless of
+ * LOCKPARENT.  If the symbolic link is the last component then ni_dvp will
+ * be returned locked or unlocked based on LOCKPARENT.
  *
- * dirloop:
- *	identify next component of name at ndp->ni_ptr
- *	handle degenerate case where name is null string
- *	if .. and crossing mount points and on mounted filesys, find parent
- *	call VOP_LOOKUP routine for next component name
- *	    directory vnode returned in ni_dvp, unlocked unless LOCKPARENT set
- *	    component vnode returned in ni_vp (if it exists), locked.
- *	if result vnode is mounted on and crossing mount points,
- *	    find mounted on vnode
- *	if more components of name, do next level at dirloop
- *	return the answer in ni_vp, locked if LOCKLEAF set
- *	    if LOCKPARENT set, return locked parent in ni_dvp
- *	    if WANTPARENT set, return unlocked parent in ni_dvp
+ * SPECIAL CASE: If an error occurs ni_vp and/or ni_dvp may contain garbage
+ * on return.
+ *
+ * VOP_LOOKUP EXPECTATIONS:  VOP_LOOKUP() takes a locked directory vnode
+ * and returns a locked target vnode on success.  VOP_LOOKUP() may unlock the
+ * directory vnode passed to it, in which case it will set CNP_PDIRUNLOCK.
+ * However, this only occurs under very specific circumstances.  The
+ * directory vnode will only be returned locked if (1) returned vnode ==
+ * directory vnode, or (2) CNP_LOCKPARENT *AND* CNP_LASTCN are both set.
  */
 int
 lookup(struct nameidata *ndp)

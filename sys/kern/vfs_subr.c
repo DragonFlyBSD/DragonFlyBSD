@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.43 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.44 2004/10/22 18:03:50 dillon Exp $
  */
 
 /*
@@ -953,10 +953,11 @@ vrecycle(struct vnode *vp, struct thread *td)
 /*
  * Eliminate all activity associated with a vnode in preparation for reuse.
  *
- * The vnode must be VX locked and will remain VX locked on return.  This
- * routine may be called with the vnode in any state, as long as it is
- * VX locked.  The vnode will be cleaned out and marked VRECLAIMED but will
- * not actually be reused until all existing refs and holds go away.
+ * The vnode must be VX locked and refd and will remain VX locked and refd
+ * on return.  This routine may be called with the vnode in any state, as
+ * long as it is VX locked.  The vnode will be cleaned out and marked
+ * VRECLAIMED but will not actually be reused until all existing refs and
+ * holds go away.
  *
  * NOTE: This routine may be called on a vnode which has not yet been
  * already been deactivated (VOP_INACTIVE), or on a vnode which has
