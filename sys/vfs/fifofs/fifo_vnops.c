@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.9 2003/09/03 12:58:05 hmp Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.10 2003/09/03 23:51:48 rob Exp $
  */
 
 #include <sys/param.h>
@@ -465,7 +465,7 @@ fifo_poll(ap)
 	struct file filetmp;
 	int events, revents = 0;
 
-	events = ap_events &
+	events = ap->a_events &
 		(POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND);
 	if (events) {
 		/*
@@ -485,7 +485,7 @@ fifo_poll(ap)
 		 * If POLLIN or POLLRDNORM was requested and POLLINIGNEOF was
 		 * not then convert POLLINIGNEOF back to POLLIN.
 		 */
-		events = ap_events & (POLLIN | POLLRDNORM | POLLINIGNEOF);
+		events = ap->a_events & (POLLIN | POLLRDNORM | POLLINIGNEOF);
 		if ((events & (POLLIN | POLLRDNORM)) &&
 			!(events & POLLINIGNEOF) && (revents & POLLINIGNEOF)) {
 			revents &= ~POLLINIGNEOF;
