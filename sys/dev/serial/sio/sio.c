@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.19 2004/09/18 20:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.20 2004/09/19 02:05:54 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1022,6 +1022,8 @@ sioattach(dev, xrid, rclk)
 	com->bsh = rman_get_bushandle(port);
 	com->cfcr_image = CFCR_8BITS;
 	com->dtr_wait = 3 * hz;
+	callout_init(&com->dtr_ch);
+	callout_init(&com->busy_ch);
 	com->loses_outints = COM_LOSESOUTINTS(flags) != 0;
 	com->no_irq = bus_get_resource(dev, SYS_RES_IRQ, 0, NULL, NULL) != 0;
 	com->tx_fifo_size = 1;
@@ -1504,7 +1506,8 @@ comhardclose(com)
 		    || !(tp->t_state & TS_ISOPEN)) {
 			(void)commctl(com, TIOCM_DTR, DMBIC);
 			if (com->dtr_wait != 0 && !(com->state & CS_DTR_OFF)) {
-				timeout(siodtrwakeup, com, com->dtr_wait);
+				callout_reset(&com->dtr_ch, com->dtr_wait,
+						siodtrwakeup, com);
 				com->state |= CS_DTR_OFF;
 			}
 		}
@@ -1595,8 +1598,9 @@ siobusycheck(chan)
 		com->tp->t_state &= ~TS_BUSY;
 		ttwwakeup(com->tp);
 		com->extra_state &= ~CSE_BUSYCHECK;
-	} else
-		timeout(siobusycheck, com, hz / 100);
+	} else {
+		callout_reset(&com->busy_ch, hz / 100, siobusycheck, com);
+	}
 	splx(s);
 }
 
@@ -2190,7 +2194,8 @@ repeat:
 			com_unlock();
 			if (!(com->state & CS_BUSY)
 			    && !(com->extra_state & CSE_BUSYCHECK)) {
-				timeout(siobusycheck, com, hz / 100);
+				callout_reset(&com->busy_ch, hz / 100,
+						siobusycheck, com);
 				com->extra_state |= CSE_BUSYCHECK;
 			}
 			(*linesw[tp->t_line].l_start)(tp);

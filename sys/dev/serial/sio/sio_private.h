@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_private.h,v 1.1 2004/01/11 16:45:17 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_private.h,v 1.2 2004/09/19 02:05:54 dillon Exp $
  */
 
 #ifdef COM_MULTIPORT
@@ -95,6 +95,8 @@ struct com_s {
 	bool_t	poll_output;	/* nonzero if polling for output is required */
 	int	unit;		/* unit	number */
 	int	dtr_wait;	/* time to hold DTR down on close (* 1/hz) */
+	struct callout dtr_ch;
+	struct callout busy_ch;
 	u_int	tx_fifo_size;
 	u_int	wopeners;	/* # processes waiting for DCD in open() */
 
