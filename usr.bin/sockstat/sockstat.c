@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.1 2005/01/04 18:56:58 joerg Exp $
+ * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.2 2005/03/02 05:48:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -122,7 +122,7 @@ parse_ports(const char *portspec)
 		for (q = p; *q != '\0' && isdigit(*q); ++q)
 			/* nothing */ ;
 		for (port = 0; p < q; ++p)
-			port = port * 10 + digittoint(*p);
+			port = port * 10 + (*p - '0');
 		if (port < 0 || port > 65535)
 			errx(1, "invalid port number");
 		SET_PORT(port);
@@ -140,7 +140,7 @@ parse_ports(const char *portspec)
 		for (q = p; *q != '\0' && isdigit(*q); ++q)
 			/* nothing */ ;
 		for (end = 0; p < q; ++p)
-			end = end * 10 + digittoint(*p);
+			end = end * 10 + (*p - '0');
 		if (end < port || end > 65535)
 			errx(1, "invalid port number");
 		while (port++ < end)
