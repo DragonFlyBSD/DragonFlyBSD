@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.13 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.14 2004/06/03 18:09:33 hmp Exp $
  */
 
 /*
@@ -519,7 +519,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 
 	case Pfile: {
 		char *fullpath, *freepath;
-		error = textvp_fullpath(procp, &fullpath, &freepath);
+		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			free(freepath, M_TEMP);
@@ -953,7 +953,7 @@ procfs_readlink(struct vop_readlink_args *ap)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		}
-		error = textvp_fullpath(procp, &fullpath, &freepath);
+		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
 		if (error != 0)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));

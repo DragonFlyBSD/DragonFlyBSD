@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.17 2004/06/03 15:54:14 hmp Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.18 2004/06/03 18:09:33 hmp Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -574,7 +574,6 @@ int	debug_vn_lock (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thre
 #define vn_lock(vp,vlock,flags,p) debug_vn_lock(vp,vlock,flags,p,__FILE__,__LINE__)
 #endif
 
-#define textvp_fullpath(p, r, f)	vn_fullpath(p, NULL, r, f)
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf);
 int	vn_open (struct nameidata *ndp, int fmode, int cmode);
 void	vn_pollevent (struct vnode *vp, int events);

@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.11 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.12 2004/06/03 18:09:33 hmp Exp $
  */
 
 /*
@@ -495,7 +495,7 @@ linprocfs_getattr(ap)
 
 	case Pexe: {
 		char *fullpath, *freepath;
-		error = textvp_fullpath(procp, &fullpath, &freepath);
+		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			free(freepath, M_TEMP);
@@ -980,7 +980,7 @@ linprocfs_readlink(ap)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		}
-		error = textvp_fullpath(procp, &fullpath, &freepath);
+		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
 		if (error != 0)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
