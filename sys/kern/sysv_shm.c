@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.9 2003/07/30 00:19:14 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.10 2003/08/03 17:11:36 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -576,13 +576,13 @@ shmget(struct shmget_args *uap)
 }
 
 /*
- *  shmsys_args(u_int which, int a2, ...) (VARARGS)
+ *  shmsys_args(int which, int a2, ...) (VARARGS)
  */
 int
 shmsys(struct shmsys_args *uap)
 {
 	struct proc *p = curproc;
-	int which = uap->which;
+	unsigned int which = (unsigned int)uap->which;
 	int error;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)

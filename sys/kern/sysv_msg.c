@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.10 2003/07/30 00:19:14 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.11 2003/08/03 17:11:36 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -199,13 +199,13 @@ SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL)
 /*
  * Entry point for all MSG calls
  *
- * msgsys_args(u_int which, int a2, ...) (VARARGS)
+ * msgsys_args(int which, int a2, ...) (VARARGS)
  */
 int
 msgsys(struct msgsys_args *uap)
 {
 	struct proc *p = curproc;
-	int which = uap->which;
+	unsigned int which = (unsigned int)uap->which;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.10 2003/08/01 17:14:23 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.11 2003/08/03 17:11:36 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -201,13 +201,13 @@ SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL)
 /*
  * Entry point for all SEM calls
  *
- * semsys_args(u_int which, a2, a3, ...) (VARARGS)
+ * semsys_args(int which, a2, a3, ...) (VARARGS)
  */
 int
 semsys(struct semsys_args *uap)
 {
 	struct proc *p = curproc;
-	int which = uap->which;
+	unsigned int which = (unsigned int)uap->which;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
