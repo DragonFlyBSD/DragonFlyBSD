@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.18 2004/05/01 18:16:43 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.19 2004/05/02 07:57:45 dillon Exp $
  */
 
 /*
@@ -697,10 +697,10 @@ pipe_clone_write_buffer(wpipe)
 	xio_copy_xtok(&wpipe->pipe_map, wpipe->pipe_buffer.buffer, size);
 	xio_release(&wpipe->pipe_map);
 	if (wpipe->pipe_kva) {
+		pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
 		kmem_free(kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
 		wpipe->pipe_kva = NULL;
 	}
-
 }
 
 /*
@@ -770,6 +770,7 @@ retry:
 			pipelock(wpipe, 0);
 			xio_release(&wpipe->pipe_map);
 			if (wpipe->pipe_kva) {
+				pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
 				kmem_free(kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
 				wpipe->pipe_kva = NULL;
 			}
@@ -794,6 +795,17 @@ retry:
 		pipe_clone_write_buffer(wpipe);
 		KKASSERT((wpipe->pipe_state & PIPE_DIRECTIP) == 0);
 	} else {
+		/*
+		 * note: The pipe_kva mapping is not qremove'd here.  For
+		 * legacy PIPE_KMEM mode this constitutes an improvement
+		 * over the original FreeBSD-4 algorithm.  For PIPE_SFBUF2
+		 * mode the kva mapping must not be removed to get the
+		 * caching benefit. 
+		 *
+		 * For testing purposes we will give the original algorithm
+		 * the benefit of the doubt 'what it could have been', and
+		 * keep the optimization.
+		 */
 		KKASSERT(wpipe->pipe_state & PIPE_DIRECTIP);
 		xio_release(&wpipe->pipe_map);
 		wpipe->pipe_state &= ~PIPE_DIRECTIP;
@@ -1270,6 +1282,7 @@ pipeclose(struct pipe *cpipe)
 	}
 
 	if (cpipe->pipe_kva) {
+		pmap_qremove(cpipe->pipe_kva, XIO_INTERNAL_PAGES);
 		kmem_free(kernel_map, cpipe->pipe_kva, XIO_INTERNAL_SIZE);
 		cpipe->pipe_kva = NULL;
 	}
