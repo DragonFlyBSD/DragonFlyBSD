@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.5 2004/09/16 22:26:22 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.6 2004/09/16 23:01:34 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -108,7 +108,7 @@ ncp_init(void)
 		NCPFATAL("can't register at_exit handler\n");
 		return ENOMEM;
 	}
-	callout_init(&ncp_timer);
+	callout_init(&ncp_timer_handle);
 	callout_reset(&ncp_timer_handle, NCP_TIMER_TICK, ncp_timer, NULL);
 	return 0;
 }

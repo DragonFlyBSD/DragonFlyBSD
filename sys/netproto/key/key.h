@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.h,v 1.5.2.3 2002/04/28 05:40:28 suz Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.h,v 1.3 2003/08/23 10:06:24 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.h,v 1.4 2004/09/16 23:01:34 joerg Exp $	*/
 /*	$KAME: key.h,v 1.21 2001/07/27 03:51:30 itojun Exp $	*/
 
 /*
@@ -63,7 +63,7 @@ extern struct secpolicy *key_msg2sp (struct sadb_x_policy *,
 extern struct mbuf *key_sp2msg (struct secpolicy *);
 extern int key_ismyaddr (struct sockaddr *);
 extern int key_spdacquire (struct secpolicy *);
-extern void key_timehandler (void);
+extern void key_timehandler(void *);
 extern u_long key_random (void);
 extern void key_randomfill (void *, size_t);
 extern void key_freereg (struct socket *);

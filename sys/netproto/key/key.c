@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.10 2004/09/16 22:35:30 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.11 2004/09/16 23:01:34 joerg Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -4164,7 +4164,7 @@ key_bbcmp(p1, p2, bits)
  * XXX: year 2038 problem may remain.
  */
 void
-key_timehandler(void)
+key_timehandler(void *__dummy)
 {
 	u_int dir;
 	int s;
@@ -7247,7 +7247,7 @@ key_init()
 #endif
 
 #ifndef IPSEC_DEBUG2
-	callout_reset(&key_timehandler_ch, hz, key_timehandler, hz);
+	callout_reset(&key_timehandler_ch, hz, key_timehandler, NULL);
 #endif /*IPSEC_DEBUG2*/
 
 	/* initialize key statistics */
