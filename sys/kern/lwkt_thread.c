@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.69 2004/09/21 18:09:57 joerg Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.70 2004/10/13 18:42:34 eirikn Exp $
  */
 
 /*
@@ -85,6 +85,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <machine/lock.h>
+#include <machine/atomic.h>
+#include <machine/cpu.h>
 
 #endif
 
