@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.7 2004/02/24 19:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.8 2004/08/13 02:45:37 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -2848,7 +2848,7 @@ get_palette(video_adapter_t *adp, int base, int count,
     u_char *g;
     u_char *b;
 
-    if ((base < 0) || (base >= 256) || (base + count > 256))
+    if (base < 0 || base >= 256 || count < 0 || (u_int)(base + count) > 256)
 	return EINVAL;
 
     r = malloc(count*3, M_DEVBUF, M_WAITOK);
@@ -2877,7 +2877,7 @@ set_palette(video_adapter_t *adp, int base, int count,
     u_char *b;
     int err;
 
-    if ((base < 0) || (base >= 256) || (base + count > 256))
+    if (base < 0 || base >= 256 || count < 0 || (u_int)(base + count) > 256)
 	return EINVAL;
 
     r = malloc(count*3, M_DEVBUF, M_WAITOK);
