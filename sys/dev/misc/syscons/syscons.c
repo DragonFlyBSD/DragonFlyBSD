@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.12 2004/09/04 06:15:08 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.13 2004/09/19 02:11:56 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -329,6 +329,7 @@ sc_attach_unit(int unit, int flags)
 
     sc = sc_get_softc(unit, flags & SC_KERNEL_CONSOLE);
     sc->config = flags;
+    callout_init(&sc->scrn_timer_ch);
     scp = SC_STAT(sc->dev[0]);
     if (sc_console == NULL)	/* sc_console_unit < 0 */
 	sc_console = scp;
@@ -1631,7 +1632,7 @@ scrn_timer(void *arg)
     /* don't do anything when we are performing some I/O operations */
     if (sc->font_loading_in_progress || sc->videoio_in_progress) {
 	if (again)
-	    timeout(scrn_timer, sc, hz / 10);
+	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
 	return;
     }
     s = spltty();
@@ -1680,7 +1681,7 @@ scrn_timer(void *arg)
     if (sc->blink_in_progress || sc->switch_in_progress
 	|| sc->write_in_progress) {
 	if (again)
-	    timeout(scrn_timer, sc, hz / 10);
+	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
 	splx(s);
 	return;
     }
@@ -1698,7 +1699,7 @@ scrn_timer(void *arg)
 #endif /* NSPLASH */
 
     if (again)
-	timeout(scrn_timer, sc, hz / 25);
+	callout_reset(&sc->scrn_timer_ch, hz / 25, scrn_timer, sc);
     splx(s);
 }
 
@@ -2836,6 +2837,7 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->sc = sc;
     scp->status = 0;
     scp->mode = sc->initial_mode;
+    callout_init(&scp->blink_screen_ch);
     (*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
     if (info.vi_flags & V_INFO_GRAPHICS) {
 	scp->status |= GRAPHICS_MODE;
@@ -3457,6 +3459,6 @@ blink_screen(void *arg)
 	(*scp->rndr->draw)(scp, 0, scp->xsize*scp->ysize, 
 			   scp->sc->blink_in_progress & 1);
 	scp->sc->blink_in_progress--;
-	timeout(blink_screen, scp, hz / 10);
+	callout_reset(&scp->blink_screen_ch, hz / 10, blink_screen, scp);
     }
 }

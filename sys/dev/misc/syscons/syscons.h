@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.7 2004/09/04 06:15:08 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.8 2004/09/19 02:11:56 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -209,6 +209,7 @@ typedef struct sc_softc {
 	char        	blink_in_progress;
 
 	long		scrn_time_stamp;
+	struct callout	scrn_timer_ch;
 
 	char		cursor_base;
 	char		cursor_height;
@@ -290,6 +291,8 @@ typedef struct scr_stat {
 
 	u_short		bell_duration;
 	u_short		bell_pitch;
+
+	struct callout	blink_screen_ch;
 
 	u_char		border;			/* border color */
 	int	 	mode;			/* mode */
