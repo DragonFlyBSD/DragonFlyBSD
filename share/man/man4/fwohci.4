@@ -29,8 +29,8 @@
 .\" ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/fwohci.4,v 1.1.2.4 2003/03/03 18:51:16 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/fwohci.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $FreeBSD: src/share/man/man4/fwohci.4,v 1.1.2.6 2003/12/25 22:48:49 brueffer Exp $
+.\" $DragonFly: src/share/man/man4/fwohci.4,v 1.3 2004/01/30 22:38:47 dillon Exp $
 .\"
 .\"
 .Dd April 10, 2000
@@ -44,13 +44,12 @@
 .Pp
 or
 .Pp
-.Cd "device fwohci"
 .Cd "device firewire"
 .Sh DESCRIPTION
 The
 .Nm
 driver provides support for PCI/CardBus firewire interface cards.
-The driver supports following IEEE 1394 OHCI chipsets.
+The driver supports the following IEEE 1394 OHCI chipsets.
 .Pp
 .Bl -item
 .It
@@ -86,7 +85,7 @@ and
 .Sh BUGS
 The driver allows physical access from any nodes on the bus by default.
 This means that any devices on the bus can read and modify any memory space
-which can be accessed by IEEE 1394 OHCI chip.
+which can be accessed by an IEEE 1394 OHCI chip.
 It is allowed mostly for
 .Xr sbp 4
 devices.
