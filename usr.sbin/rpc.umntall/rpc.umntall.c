@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.3.2.1 2001/12/13 01:27:20 iedowse Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.3 2003/11/09 07:11:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,15 +40,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <resolv.h>
 
 #include "mounttab.h"
 
 int verbose;
+int fastopt;
 
 static int do_umount (char *, char *);
 static int do_umntall (char *);
 static int is_mounted (char *, char *);
 static void usage (void);
+static struct hostent *gethostbyname_quick(const char *name);
+
 int	xdr_dir (XDR *, char *);
 
 int
@@ -61,7 +65,7 @@ main(int argc, char **argv) {
 	expire = 0;
 	host = path = NULL;
 	success = keep = verbose = 0;
-	while ((ch = getopt(argc, argv, "h:kp:ve:")) != -1)
+	while ((ch = getopt(argc, argv, "h:kp:vfe:")) != -1)
 		switch (ch) {
 		case 'h':
 			host = optarg;
@@ -77,6 +81,9 @@ main(int argc, char **argv) {
 			break;
 		case 'v':
 			verbose = 1;
+			break;
+		case 'f':
+			fastopt = 1;
 			break;
 		case '?':
 			usage();
@@ -173,7 +180,7 @@ do_umntall(char *hostname) {
 	int so;
 	CLIENT *clp;
 
-	if ((hp = gethostbyname(hostname)) == NULL) {
+	if ((hp = gethostbyname_quick(hostname)) == NULL) {
 		warnx("gethostbyname(%s) failed", hostname);
 		return (0);
 	}
@@ -184,6 +191,8 @@ do_umntall(char *hostname) {
 	    sizeof(saddr.sin_addr)));
 	pertry.tv_sec = 3;
 	pertry.tv_usec = 0;
+	if (fastopt)
+	    pmap_getport_timeout(NULL, &pertry);
 	so = RPC_ANYSOCK;
 	clp = clntudp_create(&saddr, RPCPROG_MNT, RPCMNT_VER1, pertry, &so);
 	if (clp == NULL) {
@@ -214,7 +223,7 @@ do_umount(char *hostname, char *dirp) {
 	CLIENT *clp;
 	int so;
 
-	if ((hp = gethostbyname(hostname)) == NULL) {
+	if ((hp = gethostbyname_quick(hostname)) == NULL) {
 		warnx("gethostbyname(%s) failed", hostname);
 		return (0);
 	}
@@ -225,6 +234,8 @@ do_umount(char *hostname, char *dirp) {
 	    sizeof(saddr.sin_addr)));
 	pertry.tv_sec = 3;
 	pertry.tv_usec = 0;
+	if (fastopt)
+	    pmap_getport_timeout(NULL, &pertry);
 	so = RPC_ANYSOCK;
 	clp = clntudp_create(&saddr, RPCPROG_MNT, RPCMNT_VER1, pertry, &so);
 	if (clp  == NULL) {
@@ -271,6 +282,32 @@ is_mounted(char *hostname, char *dirp) {
 	}
 	free(mntbuf);
 	return (0);
+}
+
+/*
+ * rpc.umntall is often called at boot.  If the network or target host has
+ * issues we want to limit resolver stalls so rpc.umntall doesn't stall
+ * the boot sequence forever.
+ */
+struct hostent *
+gethostbyname_quick(const char *name)
+{
+    struct hostent *he;
+    int save_retrans;
+    int save_retry;
+
+    save_retrans = _res.retrans;
+    save_retry = _res.retry;
+    if (fastopt) {
+	_res.retrans = 1;
+	_res.retry = 2;
+    }
+    he = gethostbyname(name);
+    if (fastopt) {
+	_res.retrans = save_retrans;
+	_res.retry = save_retry;
+    }
+    return(he);
 }
 
 /*
