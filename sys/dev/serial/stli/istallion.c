@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.13 2004/09/18 20:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.14 2004/09/19 01:33:32 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -149,6 +149,7 @@ static char const	stli_drvversion[] = "2.0.0";
 
 static int	stli_nrbrds = 0;
 static int	stli_doingtimeout = 0;
+static struct callout	stli_poll_ch;
 
 /*
  *	Define some macros to use to class define boards.
@@ -209,6 +210,7 @@ typedef struct {
 	unsigned char	reqbit;
 	unsigned char	portidx;
 	unsigned char	portbit;
+	struct callout  dtr_ch;
 } stliport_t;
 
 /*
@@ -1463,7 +1465,8 @@ static int stli_shutdownclose(stliport_t *portp)
 		splx(x);
 		if (portp->dtrwait != 0) {
 			portp->state |= ST_DTRWAIT;
-			timeout(stli_dtrwakeup, portp, portp->dtrwait);
+			callout_reset(&portp->dtr_ch, portp->dtrwait,
+					stli_dtrwakeup, portp);
 		}
 	}
 	portp->callout = 0;
@@ -2336,7 +2339,7 @@ static void stli_poll(void *arg)
 	}
 	splx(x);
 
-	timeout(stli_poll, 0, 1);
+	callout_reset(&stli_poll_ch, 1, stli_poll, NULL);
 }
 
 /*****************************************************************************/
@@ -2529,6 +2532,7 @@ static int stli_initports(stlibrd_t *brdp)
 
 	for (i = 0, panelnr = 0, panelport = 0; (i < brdp->nrports); i++) {
 		portp = malloc(sizeof(stliport_t), M_TTYS, M_WAITOK | M_ZERO);
+		callout_init(&portp->dtr_ch);
 		portp->portnr = i;
 		portp->brdnr = brdp->brdnr;
 		portp->panelnr = panelnr;
@@ -3449,8 +3453,9 @@ stli_donestartup:
 		brdp->state |= BST_STARTED;
 
 	if (stli_doingtimeout == 0) {
-		timeout(stli_poll, 0, 1);
 		stli_doingtimeout++;
+		callout_init(&stli_poll_ch);
+		callout_reset(&stli_poll_ch, 1, stli_poll, NULL);
 	}
 
 	return(rc);
