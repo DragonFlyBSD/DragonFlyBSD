@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.25 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.26 2005/03/04 23:49:42 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -116,10 +116,12 @@ str_concat(const char *s1, const char *s2, int flags)
  *	the first word is always the value of the .MAKE variable.
  */
 char **
-brk_string(char *str, int *store_argc, Boolean expand)
+brk_string(const char *str, int *store_argc, Boolean expand)
 {
 	int argc, ch;
-	char inquote, *p, *start, *t;
+	char inquote;
+	const char *p;
+	char *start, *t;
 	int len;
 
 	/* skip leading space chars. */

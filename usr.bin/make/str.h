@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.4 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.5 2005/03/04 23:49:42 okumoto Exp $
  */
 
 #ifndef str_h_44db59e6
@@ -57,7 +57,7 @@ struct Buffer;
 
 void str_init(void);
 char *str_concat(const char *, const char *, int);
-char **brk_string(char *, int *, Boolean);
+char **brk_string(const char *, int *, Boolean);
 char *MAKEFLAGS_quote(const char *);
 char **MAKEFLAGS_break(const char *, int *);
 int Str_Match(const char *, const char *);
