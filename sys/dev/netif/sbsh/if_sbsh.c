@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.8 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.9 2004/03/14 15:36:51 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -279,7 +279,7 @@ sbsh_attach(device_t dev)
 	ifp->if_baudrate = 4600000;
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 fail:
 	splx(s);
@@ -299,7 +299,7 @@ sbsh_detach(device_t dev)
 	ifp = &sc->arpcom.ac_if;
 
 	sbsh_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_teardown_intr(dev, sc->irq_res, sc->intr_hand);
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);

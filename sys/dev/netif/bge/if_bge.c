@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.14 2004/02/10 21:14:14 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.15 2004/03/14 15:36:48 joerg Exp $
  *
  */
 
@@ -1652,6 +1652,7 @@ bge_attach(dev)
 	u_int32_t hwcfg = 0;
 	u_int32_t mac_addr = 0;
 	int unit, error = 0, rid;
+	uint8_t ether_addr[ETHER_ADDR_LEN];
 
 	s = splimp();
 
@@ -1742,14 +1743,14 @@ bge_attach(dev)
 	 */
 	mac_addr = bge_readmem_ind(sc, 0x0c14);
 	if ((mac_addr >> 16) == 0x484b) {
-		sc->arpcom.ac_enaddr[0] = (u_char)(mac_addr >> 8);
-		sc->arpcom.ac_enaddr[1] = (u_char)mac_addr;
+		ether_addr[0] = (uint8_t)(mac_addr >> 8);
+		ether_addr[1] = (uint8_t)mac_addr;
 		mac_addr = bge_readmem_ind(sc, 0x0c18);
-		sc->arpcom.ac_enaddr[2] = (u_char)(mac_addr >> 24);
-		sc->arpcom.ac_enaddr[3] = (u_char)(mac_addr >> 16);
-		sc->arpcom.ac_enaddr[4] = (u_char)(mac_addr >> 8);
-		sc->arpcom.ac_enaddr[5] = (u_char)mac_addr;
-	} else if (bge_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
+		ether_addr[2] = (uint8_t)(mac_addr >> 24);
+		ether_addr[3] = (uint8_t)(mac_addr >> 16);
+		ether_addr[4] = (uint8_t)(mac_addr >> 8);
+		ether_addr[5] = (uint8_t)mac_addr;
+	} else if (bge_read_eeprom(sc, ether_addr,
 	    BGE_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
 		printf("bge%d: failed to read station address\n", unit);
 		bge_release_resources(sc);
@@ -1897,7 +1898,7 @@ bge_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, ether_addr);
 	callout_handle_init(&sc->bge_stat_ch);
 
 fail:
@@ -1919,7 +1920,7 @@ bge_detach(dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	bge_stop(sc);
 	bge_reset(sc);
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.9 2004/01/08 10:06:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.10 2004/03/14 15:36:51 joerg Exp $
  *
  */
 
@@ -503,8 +503,6 @@ ray_attach(device_t dev)
 	/*
 	 * Initialise the network interface structure
 	 */
-	bcopy((char *)&ep->e_station_addr,
-	    (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 	if_initname(ifp, "ray", device_get_unit(dev));
 	ifp->if_softc = sc;
 	ifp->if_timer = 0;
@@ -519,7 +517,7 @@ ray_attach(device_t dev)
 	ifp->if_init = ray_init;
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, ep->e_station_addr);
 
 	/*
 	 * Initialise the timers and driver
@@ -595,7 +593,7 @@ ray_detach(device_t dev)
 	sc->sc_gone = 1;
 	sc->sc_c.np_havenet = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	/*
 	 * Stop the runq and wake up anyone sleeping for us.

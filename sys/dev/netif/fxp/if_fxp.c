@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.7 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
  */
 
 /*
@@ -669,7 +669,7 @@ fxp_attach(device_t dev)
 	/*
 	 * Attach the interface.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -748,7 +748,7 @@ fxp_detach(device_t dev)
 	/*
 	 * Close down routes etc.
 	 */
-	ether_ifdetach(&sc->arpcom.ac_if, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(&sc->arpcom.ac_if);
 
 	/*
 	 * Free all media structures.

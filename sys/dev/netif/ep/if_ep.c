@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.7 2004/01/06 01:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.8 2004/03/14 15:36:49 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -159,7 +159,7 @@ get_e(sc, offset)
 void
 ep_get_macaddr(sc, addr)
 	struct ep_softc	*	sc;
-	u_char *		addr;
+	uint8_t *		addr;
 {
 	int			i;
 	u_int16_t * 		macaddr = (u_int16_t *)addr;
@@ -268,17 +268,18 @@ ep_attach(sc)
 	struct ifnet *		ifp = NULL;
 	struct ifmedia *	ifm = NULL;
 	u_short *		p;
+	uint8_t			ether_addr[ETHER_ADDR_LEN];
 	int			i;
 	int			attached;
 
 	sc->gone = 0;
 
-	ep_get_macaddr(sc, (u_char *)&sc->arpcom.ac_enaddr);
+	ep_get_macaddr(sc, ether_addr);
 
 	/*
 	 * Setup the station address
 	 */
-	p = (u_short *)&sc->arpcom.ac_enaddr;
+	p = (u_short*)ether_addr;
 	GO_WINDOW(2);
 	for (i = 0; i < 3; i++) {
 		outw(BASE + EP_W2_ADDR_0 + (i * 2), ntohs(p[i]));
@@ -321,7 +322,7 @@ ep_attach(sc)
 	}
 
 	if (!attached)
-		ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+		ether_ifattach(ifp, ether_addr);
 
 #ifdef EP_LOCAL_STATS
 	sc->rx_no_first = sc->rx_no_mbuf = sc->rx_bpf_disc =

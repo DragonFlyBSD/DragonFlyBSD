@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.7 2004/01/06 01:40:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.8 2004/03/14 15:36:53 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -920,7 +920,6 @@ static int wb_attach(dev)
 	printf("wb%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->wb_unit = unit;
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->wb_ldata = contigmalloc(sizeof(struct wb_list_data) + 8, M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -966,7 +965,7 @@ static int wb_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 
 fail:
 	if (error)
@@ -989,7 +988,7 @@ static int wb_detach(dev)
 	ifp = &sc->arpcom.ac_if;
 
 	wb_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	/* Delete any miibus and phy devices attached to this interface */
 	bus_generic_detach(dev);

@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.4 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.5 2004/03/14 15:36:54 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -360,7 +360,7 @@ ng_eiface_constructor(node_p *nodep)
 	*/
 
 	/* Attach the interface */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, priv->arpcom.ac_enaddr);
 
 	/* Done */
 	return (0);

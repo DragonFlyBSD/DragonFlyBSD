@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.8 2004/01/24 06:40:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.9 2004/03/14 15:36:53 joerg Exp $
  */
 
 /*
@@ -1480,7 +1480,6 @@ xl_attach(dev)
 
 	sc->xl_unit = unit;
 	callout_handle_init(&sc->xl_stat_ch);
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	/*
 	 * Now allocate a tag for the DMA descriptor lists and a chunk
@@ -1758,7 +1757,7 @@ done:
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 
         /*
          * Tell the upper layer(s) we support long frames.
@@ -1770,7 +1769,7 @@ done:
 	    xl_intr, sc, &sc->xl_intrhand);
 	if (error) {
 		printf("xl%d: couldn't set up irq\n", unit);
-		ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+		ether_ifdetach(ifp);
 		goto fail;
 	}
 
@@ -1814,7 +1813,7 @@ xl_detach(dev)
 
 	xl_reset(sc);
 	xl_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	
 	if (sc->xl_miibus)
 		device_delete_child(dev, sc->xl_miibus);

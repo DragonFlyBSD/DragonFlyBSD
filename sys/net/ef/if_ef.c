@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.7 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.8 2004/03/14 15:36:54 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -118,8 +118,8 @@ static int
 ef_attach(struct efnet *sc)
 {
 	struct ifnet *ifp = (struct ifnet*)&sc->ef_ac.ac_if;
-	struct ifaddr *ifa1, *ifa2;
-	struct sockaddr_dl *sdl1, *sdl2;
+	struct ifaddr *ifa;
+	struct sockaddr_dl *sdl;
 
 	ifp->if_output = ether_output;
 	ifp->if_start = ef_start;
@@ -130,20 +130,13 @@ ef_attach(struct efnet *sc)
 	/*
 	 * Attach the interface
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ifa = ifnet_addrs[sc->ef_ifp->if_index];
+	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	ether_ifattach(ifp, LLADDR(sdl));
 
 	ifp->if_resolvemulti = 0;
 	ifp->if_type = IFT_XETHER;
 	ifp->if_flags |= IFF_RUNNING;
-
-	ifa1 = ifnet_addrs[ifp->if_index - 1];
-	ifa2 = ifnet_addrs[sc->ef_ifp->if_index - 1];
-	sdl1 = (struct sockaddr_dl *)ifa1->ifa_addr;
-	sdl2 = (struct sockaddr_dl *)ifa2->ifa_addr;
-	sdl1->sdl_type = IFT_ETHER;
-	sdl1->sdl_alen = ETHER_ADDR_LEN;
-	bcopy(LLADDR(sdl2), LLADDR(sdl1), ETHER_ADDR_LEN);
-	bcopy(LLADDR(sdl2), sc->ef_ac.ac_enaddr, ETHER_ADDR_LEN);
 
 	EFDEBUG("%s: attached\n", ifp->if_xname);
 	return 1;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.7 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.8 2004/03/14 15:36:51 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -649,7 +649,7 @@ static int pcn_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 	callout_handle_init(&sc->pcn_stat_ch);
 
 fail:
@@ -671,7 +671,7 @@ static int pcn_detach(dev)
 
 	pcn_reset(sc);
 	pcn_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	if (sc->pcn_miibus != NULL) {
 		bus_generic_detach(dev);

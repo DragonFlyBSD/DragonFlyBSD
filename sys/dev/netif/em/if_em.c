@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.6 2004/02/13 02:44:47 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.7 2004/03/14 15:36:49 joerg Exp $*/
 
 #include "if_em.h"
 
@@ -469,11 +469,7 @@ em_detach(device_t dev)
 
 	em_stop(adapter);
 	em_phy_hw_reset(&adapter->hw);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-        ether_ifdetach(&adapter->interface_data.ac_if, ETHER_BPF_SUPPORTED);
-#else
         ether_ifdetach(&adapter->interface_data.ac_if);
-#endif
 	em_free_pci_resources(adapter);
 
 	size = EM_ROUNDUP(adapter->num_tx_desc *
@@ -1647,11 +1643,7 @@ em_setup_interface(device_t dev, struct adapter * adapter)
 	ifp->if_watchdog = em_watchdog;
 	ifp->if_snd.ifq_maxlen = adapter->num_tx_desc - 1;
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-        ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-#else
         ether_ifattach(ifp, adapter->interface_data.ac_enaddr);
-#endif
 
 	if (adapter->hw.mac_type >= em_82543) {
 		ifp->if_capabilities = IFCAP_HWCSUM;

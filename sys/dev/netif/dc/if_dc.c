@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.8 2004/01/06 01:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.9 2004/03/14 15:36:49 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -2042,7 +2042,6 @@ static int dc_attach(dev)
 	printf("dc%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->dc_unit = unit;
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->dc_ldata = contigmalloc(sizeof(struct dc_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -2124,7 +2123,7 @@ static int dc_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 	callout_handle_init(&sc->dc_stat_ch);
 
 	if (DC_IS_ADMTEK(sc)) {
@@ -2186,7 +2185,7 @@ static int dc_detach(dev)
 	ifp = &sc->arpcom.ac_if;
 
 	dc_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_generic_detach(dev);
 	device_delete_child(dev, sc->dc_miibus);

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_pci.c,v 1.25 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.1 2003/12/07 19:23:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.2 2004/03/14 15:36:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ lnc_pci_detach(device_t dev)
 	lnc_softc_t *sc = device_get_softc(dev);
 	int s = splimp();
 
-	ether_ifdetach(&sc->arpcom.ac_if, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(&sc->arpcom.ac_if);
 
 	lnc_stop(sc);
 	bus_teardown_intr(dev, sc->irqres, sc->intrhand);

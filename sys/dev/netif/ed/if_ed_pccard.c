@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.8 2004/02/13 22:12:33 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.9 2004/03/14 15:36:49 joerg Exp $
  */
 
 #include "opt_ed.h"
@@ -109,7 +109,7 @@ ed_pccard_detach(device_t dev)
 	}
 	ed_stop(sc);
 	ifp->if_flags &= ~IFF_RUNNING;
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	sc->gone = 1;
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	ed_release_resources(dev);

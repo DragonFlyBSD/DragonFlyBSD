@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.10 2004/01/06 03:17:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.11 2004/03/14 15:36:51 joerg Exp $
  */
 
 /*
@@ -243,7 +243,7 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 		(csr0 & 0x01 ? 500000 : 2000000) / (1 << flags.rate);
 
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 

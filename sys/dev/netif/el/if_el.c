@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.6 2004/01/06 01:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.7 2004/03/14 15:36:49 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -196,7 +196,7 @@ el_attach(struct isa_device *idev)
 
 	/* Now we can attach the interface */
 	dprintf(("Attaching interface...\n"));
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/* Print out some information for the user */
 	printf("el%d: 3c501 address %6D\n",idev->id_unit,

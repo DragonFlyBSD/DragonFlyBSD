@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.4 2003/08/27 09:38:29 rob Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.5 2004/03/14 15:36:48 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
  */
@@ -138,7 +138,7 @@ an_detach_isa(device_t dev)
 
 	an_stop(sc);
 	ifmedia_removeall(&sc->an_ifmedia);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	an_release_resources(dev);
 

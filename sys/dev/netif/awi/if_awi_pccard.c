@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.7 2004/02/24 19:23:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.8 2004/03/14 15:36:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -243,7 +243,7 @@ awi_pccard_detach(device_t dev)
 	struct awi_softc *sc = &psc->sc_awi;
 	struct ifnet *ifp = &sc->sc_ec.ac_if;
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	ifp->if_flags &= ~IFF_RUNNING; 
 	if (psc->sc_intrhand) {
 		bus_teardown_intr(dev, psc->sc_irq_res, psc->sc_intrhand);

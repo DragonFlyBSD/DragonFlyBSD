@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.5 2004/02/19 14:31:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.6 2004/03/14 15:36:49 joerg Exp $
  */
 
 /*
@@ -234,7 +234,7 @@ ep_pccard_detach(device_t dev)
 		return (0);
 	}
 	sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
-	ether_ifdetach(&sc->arpcom.ac_if, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(&sc->arpcom.ac_if);
 	sc->gone = 1;
 	bus_teardown_intr(dev, sc->irq, sc->ep_intrhand);
 	ep_free(dev);

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.8 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.9 2004/03/14 15:36:54 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -803,9 +803,7 @@ dropanyway:
  * Perform common duties while attaching to interface list
  */
 void
-ether_ifattach(ifp, bpf)
-	struct ifnet *ifp;
-	int bpf;
+ether_ifattach(struct ifnet *ifp, uint8_t *lla)
 {
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
@@ -823,9 +821,8 @@ ether_ifattach(ifp, bpf)
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 	sdl->sdl_type = IFT_ETHER;
 	sdl->sdl_alen = ifp->if_addrlen;
-	bcopy((IFP2AC(ifp))->ac_enaddr, LLADDR(sdl), ifp->if_addrlen);
-	if (bpf)
-		bpfattach(ifp, DLT_EN10MB, sizeof(struct ether_header));
+	bcopy(lla, LLADDR(sdl), ifp->if_addrlen);
+	bpfattach(ifp, DLT_EN10MB, sizeof(struct ether_header));
 	if (ng_ether_attach_p != NULL)
 		(*ng_ether_attach_p)(ifp);
 	if (BDG_LOADED)
@@ -836,14 +833,11 @@ ether_ifattach(ifp, bpf)
  * Perform common duties while detaching an Ethernet interface
  */
 void
-ether_ifdetach(ifp, bpf)
-	struct ifnet *ifp;
-	int bpf;
+ether_ifdetach(struct ifnet *ifp)
 {
 	if (ng_ether_detach_p != NULL)
 		(*ng_ether_detach_p)(ifp);
-	if (bpf)
-		bpfdetach(ifp);
+	bpfdetach(ifp);
 	if_detach(ifp);
 	if (BDG_LOADED)
 		bdgtakeifaces_ptr();

@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.7 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.8 2004/03/14 15:36:54 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -389,8 +389,8 @@ extern	struct ifnet loif[];
 extern	int if_index;
 extern	struct ifaddr **ifnet_addrs;
 
-void	ether_ifattach(struct ifnet *, int);
-void	ether_ifdetach(struct ifnet *, int);
+void	ether_ifattach(struct ifnet *, uint8_t *);
+void	ether_ifdetach(struct ifnet *);
 void	ether_input(struct ifnet *, struct ether_header *, struct mbuf *);
 void	ether_demux(struct ifnet *, struct ether_header *, struct mbuf *);
 int	ether_output(struct ifnet *,

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.4 2004/02/19 14:31:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.5 2004/03/14 15:36:48 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
  */
@@ -142,7 +142,7 @@ an_pccard_detach(device_t dev)
 	an_stop(sc);
 	ifmedia_removeall(&sc->an_ifmedia);
 	ifp->if_flags &= ~IFF_RUNNING;
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	sc->an_gone = 1;
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	an_release_resources(dev);

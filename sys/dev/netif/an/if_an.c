@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.9 2004/01/06 01:40:46 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.10 2004/03/14 15:36:48 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -742,9 +742,6 @@ an_attach(sc, unit, flags)
 	}
 #endif
 
-	bcopy((char *)&sc->an_caps.an_oemaddr,
-	   (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
-
 	printf("an%d: Ethernet address: %6D\n", sc->an_unit,
 	    sc->arpcom.ac_enaddr, ":");
 
@@ -803,7 +800,7 @@ an_attach(sc, unit, flags)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->an_caps.an_oemaddr);
 	callout_handle_init(&sc->an_stat_ch);
 
 	return(0);

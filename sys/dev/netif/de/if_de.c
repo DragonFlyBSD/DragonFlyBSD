@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.8 2004/03/12 15:42:49 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.9 2004/03/14 15:36:49 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4876,7 +4876,7 @@ tulip_attach(
 
     tulip_reset(sc);
 
-    ether_ifattach(&(sc)->tulip_if, ETHER_BPF_SUPPORTED);
+    ether_ifattach(&(sc)->tulip_if, sc->tulip_enaddr);
     ifp->if_snd.ifq_maxlen = ifqmaxlen;
 }
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.6 2004/01/06 01:40:50 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.7 2004/03/14 15:36:53 joerg Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -328,10 +328,7 @@ wx_attach(device_t dev)
 		error = ENXIO;
 		goto out;
 	}
-	device_printf(dev, "Ethernet address %02x:%02x:%02x:%02x:%02x:%02x\n",
-	    sc->w.arpcom.ac_enaddr[0], sc->w.arpcom.ac_enaddr[1],
-	    sc->w.arpcom.ac_enaddr[2], sc->w.arpcom.ac_enaddr[3],
-	    sc->w.arpcom.ac_enaddr[4], sc->w.arpcom.ac_enaddr[5]);
+	device_printf(dev, "Ethernet address %6D\n", sc->w.arpcom.ac_enaddr, ":");
 
 	ifp = &sc->w.arpcom.ac_if;
 	if_initname(ifp, "wx", device_get_unit(dev));
@@ -345,7 +342,7 @@ wx_attach(device_t dev)
 	ifp->if_start = wx_start;
 	ifp->if_watchdog = wx_txwatchdog;
 	ifp->if_snd.ifq_maxlen = WX_MAX_TDESC - 1;
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->w.arpcom.ac_enaddr);
 out:
 	WX_UNLOCK(sc);
 	return (error);
@@ -371,7 +368,7 @@ wx_detach(device_t dev)
 	WX_LOCK(sc);
 	wx_stop(sc);
 
-	ether_ifdetach(&sc->w.arpcom.ac_if, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(&sc->w.arpcom.ac_if);
 	if (sc->w.miibus) {
 		bus_generic_detach(dev);
 		device_delete_child(dev, sc->w.miibus);

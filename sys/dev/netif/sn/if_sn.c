@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.7 2004/03/14 15:36:52 joerg Exp $
  */
 
 /*
@@ -227,7 +227,7 @@ sn_attach(device_t dev)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	ifp->if_timer = 0;
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/*
 	 * Fill the hardware address into ifa_addr if we find an AF_LINK

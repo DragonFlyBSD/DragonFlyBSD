@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.54 2002/03/28 21:49:19 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.6 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.7 2004/03/14 15:36:48 joerg Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -209,7 +209,7 @@ typedef struct proc *usb_proc_ptr;
 
 typedef int usb_malloc_type;
 
-#define Ether_ifattach(ifp, eaddr) ether_ifattach(ifp)
+#define Ether_ifattach ether_ifattach
 #define if_deactivate(x)
 #define IF_INPUT(ifp, m) do {						\
 	struct ether_header *eh;					\

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.8 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.9 2004/03/14 15:36:53 joerg Exp $
  */
 
 /*
@@ -197,7 +197,7 @@ wi_generic_detach(dev)
 	/* Delete all remaining media. */
 	ifmedia_removeall(&sc->ifmedia);
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
 	wi_free(dev);
 	sc->wi_gone = 1;
@@ -454,7 +454,7 @@ wi_generic_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 	callout_handle_init(&sc->wi_stat_ch);
 	WI_UNLOCK(sc, s);
 

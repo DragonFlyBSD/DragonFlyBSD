@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.7 2004/02/11 15:05:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.8 2004/03/14 15:36:48 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -779,11 +779,7 @@ USB_ATTACH(aue)
 	/*
 	 * Call MI attach routine.
 	 */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifattach(ifp, eaddr);
-#else
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-#endif
 	callout_handle_init(&sc->aue_stat_ch);
 	usb_register_netisr();
 	sc->aue_dying = 0;
@@ -804,11 +800,7 @@ aue_detach(device_ptr_t dev)
 
 	sc->aue_dying = 1;
 	untimeout(aue_tick, sc, sc->aue_stat_ch);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifdetach(ifp);
-#else
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
-#endif
 
 	if (sc->aue_ep[AUE_ENDPT_TX] != NULL)
 		usbd_abort_pipe(sc->aue_ep[AUE_ENDPT_TX]);

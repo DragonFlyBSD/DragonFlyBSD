@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.7 2004/03/14 15:36:52 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -828,7 +828,7 @@ static int sf_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 fail:
 	splx(s);
@@ -847,7 +847,7 @@ static int sf_detach(dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	sf_stop(sc);
 
 	bus_generic_detach(dev);

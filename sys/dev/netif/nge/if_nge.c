@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.6 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.7 2004/03/14 15:36:51 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -924,7 +924,6 @@ static int nge_attach(dev)
 	printf("nge%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->nge_unit = unit;
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->nge_ldata = contigmalloc(sizeof(struct nge_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -1019,7 +1018,7 @@ static int nge_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 	callout_handle_init(&sc->nge_stat_ch);
 
 fail:
@@ -1042,7 +1041,7 @@ static int nge_detach(dev)
 
 	nge_reset(sc);
 	nge_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_generic_detach(dev);
 	if (!sc->nge_tbi) {

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.7 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
  */
 
 /*
@@ -355,7 +355,7 @@ le_attach(
     ifp->if_hdrlen = 14;
     ifp->if_init = sc->if_init;
 
-    ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+    ether_ifattach(ifp, sc->le_ac.ac_enaddr);
 
     return 1;
 }

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.8 2004/02/05 17:51:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.9 2004/03/14 15:36:50 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -219,11 +219,7 @@ fwe_attach(device_t dev)
 	ifp->if_snd.ifq_maxlen = TX_MAX_QUEUE;
 
 	s = splimp();
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	ether_ifattach(ifp, 1);
-#else
 	ether_ifattach(ifp, eaddr);
-#endif
 	splx(s);
 
         /* Tell the upper layer(s) we support long frames. */
@@ -288,11 +284,7 @@ fwe_detach(device_t dev)
 	s = splimp();
 
 	fwe_stop(fwe);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	ether_ifdetach(&fwe->fwe_if, 1);
-#else
 	ether_ifdetach(&fwe->fwe_if);
-#endif
 
 	splx(s);
 	return 0;

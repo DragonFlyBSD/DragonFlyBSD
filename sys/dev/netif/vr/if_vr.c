@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.7 2004/01/06 01:40:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.8 2004/03/14 15:36:53 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -857,7 +857,6 @@ static int vr_attach(dev)
 	printf("vr%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->vr_unit = unit;
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->vr_ldata = contigmalloc(sizeof(struct vr_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -906,7 +905,7 @@ static int vr_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 
 fail:
 	splx(s);
@@ -926,7 +925,7 @@ static int vr_detach(dev)
 	ifp = &sc->arpcom.ac_if;
 
 	vr_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_generic_detach(dev);
 	device_delete_child(dev, sc->vr_miibus);

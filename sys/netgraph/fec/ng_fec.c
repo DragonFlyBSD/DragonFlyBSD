@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.4 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.5 2004/03/14 15:36:54 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -1107,7 +1107,7 @@ ng_fec_constructor(node_p *nodep)
 		ng_ether_input_p = ng_fec_input;
 
 	/* Attach the interface */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, priv->arpcom.ac_enaddr);
 	callout_handle_init(&priv->fec_ch);
 
 	TAILQ_INIT(&b->ng_fec_ports);
@@ -1203,7 +1203,7 @@ ng_fec_rmnode(node_p node)
 	ng_unname(node);
 	if (ng_ether_input_p != NULL)
 		ng_ether_input_p = NULL;
-	ether_ifdetach(&priv->arpcom.ac_if, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(&priv->arpcom.ac_if);
 	ifmedia_removeall(&priv->ifmedia);
 	ng_fec_free_unit(priv->unit);
 	FREE(priv, M_NETGRAPH);

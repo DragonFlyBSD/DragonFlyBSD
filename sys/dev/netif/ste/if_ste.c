@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.7 2004/01/06 01:40:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1080,7 +1080,7 @@ static int ste_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
         /*
          * Tell the upper layer(s) we support long frames.
@@ -1105,7 +1105,7 @@ static int ste_detach(dev)
 	ifp = &sc->arpcom.ac_if;
 
 	ste_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_generic_detach(dev);
 	device_delete_child(dev, sc->ste_miibus);

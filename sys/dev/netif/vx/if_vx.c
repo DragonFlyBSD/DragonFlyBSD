@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.8 2004/01/06 01:40:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.9 2004/03/14 15:36:53 joerg Exp $
  *
  */
 
@@ -166,7 +166,7 @@ vxattach(sc)
     ifp->if_watchdog = vxwatchdog;
     ifp->if_softc = sc;
 
-    ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+    ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
     sc->tx_start_thresh = 20;	/* probably a good starting point. */
 

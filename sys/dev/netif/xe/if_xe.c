@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.7 2004/01/06 03:17:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.8 2004/03/14 15:36:53 joerg Exp $
  */
 
 /*
@@ -482,7 +482,7 @@ xe_detach(device_t dev) {
   struct xe_softc *sc = device_get_softc(dev);
 
   sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
-  ether_ifdetach(&sc->arpcom.ac_if, ETHER_BPF_SUPPORTED);
+  ether_ifdetach(&sc->arpcom.ac_if);
   xe_deactivate(dev);
   return 0;
 }
@@ -578,7 +578,7 @@ xe_attach (device_t dev) {
   device_printf(dev, "Ethernet address %6D\n", scp->arpcom.ac_enaddr, ":");
 
   /* Attach the interface */
-  ether_ifattach(scp->ifp, ETHER_BPF_SUPPORTED);
+  ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr);
 
   /* Done */
   return 0;

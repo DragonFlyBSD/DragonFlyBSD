@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.11 2004/01/06 01:40:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.12 2004/03/14 15:36:52 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1520,7 +1520,7 @@ static int sk_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc_if->arpcom.ac_enaddr);
 	callout_handle_init(&sc_if->sk_tick_ch);
 
 	return(0);
@@ -1741,7 +1741,7 @@ static int sk_detach(dev)
 	sc_if = device_get_softc(dev);
 	ifp = &sc_if->arpcom.ac_if;
 	sk_stop(sc_if);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	bus_generic_detach(dev);
 	if (sc_if->sk_miibus != NULL)
 		device_delete_child(dev, sc_if->sk_miibus);

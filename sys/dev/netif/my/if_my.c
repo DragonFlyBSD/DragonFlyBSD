@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.6 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.7 2004/03/14 15:36:51 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -962,7 +962,6 @@ my_attach(device_t dev)
 	printf("my%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->my_unit = unit;
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->my_ldata_ptr = malloc(sizeof(struct my_list_data) + 8,
 				  M_DEVBUF, M_NOWAIT);
@@ -1051,7 +1050,7 @@ my_attach(device_t dev)
 	my_stop(sc);
 	ifmedia_set(&sc->ifmedia, media);
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 
 #if 0
 	at_shutdown(my_shutdown, sc, SHUTDOWN_POST_SYNC);
@@ -1079,7 +1078,7 @@ my_detach(device_t dev)
 	sc = device_get_softc(dev);
 	MY_LOCK(sc);
 	ifp = &sc->arpcom.ac_if;
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	my_stop(sc);
 
 #if 0

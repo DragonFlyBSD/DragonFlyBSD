@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.7 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
  */
 
 /*
@@ -906,7 +906,7 @@ lnc_attach_common(device_t dev)
 	 * XXX -- should check return status of if_attach
 	 */
 
-	ether_ifattach(&sc->arpcom.ac_if, ETHER_BPF_SUPPORTED);
+	ether_ifattach(&sc->arpcom.ac_if, sc->arpcom.ac_enaddr);
 
 	printf("lnc%d: ", unit);
 	if (sc->nic.ic == LANCE || sc->nic.ic == C_LANCE)

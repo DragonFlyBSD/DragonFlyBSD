@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.7 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.8 2004/03/14 15:36:51 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -908,7 +908,6 @@ static int rl_attach(dev)
 	printf("rl%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->rl_unit = unit;
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	/*
 	 * Now read the exact device type from the EEPROM to find
@@ -977,7 +976,7 @@ static int rl_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 
 fail:
 	splx(s);
@@ -996,7 +995,7 @@ static int rl_detach(dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	rl_stop(sc);
 
 	bus_generic_detach(dev);

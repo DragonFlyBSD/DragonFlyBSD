@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.7 2004/01/06 03:17:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.8 2004/03/14 15:36:51 joerg Exp $
  */
 
 /*
@@ -611,7 +611,7 @@ rdp_attach(struct isa_device *isa_dev)
 	/*
 	 * Attach the interface
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/*
 	 * Print additional info when attached

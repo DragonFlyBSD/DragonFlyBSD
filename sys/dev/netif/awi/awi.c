@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.9 2004/02/13 02:44:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.10 2004/03/14 15:36:48 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -321,15 +321,7 @@ awi_attach(sc)
 	    sc->sc_tx_rate / 10, sc->sc_banner);
 	printf("%s: address %s\n",
 	    sc->sc_dev.dv_xname,  ether_sprintf(sc->sc_mib_addr.aMAC_Address));
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-#else
-	if_attach(ifp);
 	ether_ifattach(ifp, sc->sc_mib_addr.aMAC_Address);
-#if NBPFILTER > 0
-	bpfattach(&ifp->if_bpf, ifp, DLT_EN10MB, sizeof(struct ether_header));
-#endif
-#endif
 
 #ifdef IFM_IEEE80211
 	ifmedia_init(&sc->sc_media, 0, awi_media_change, awi_media_status);

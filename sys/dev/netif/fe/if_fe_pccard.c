@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.6 2004/02/19 14:31:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.7 2004/03/14 15:36:50 joerg Exp $
  */
 
 #include "opt_fe.h"
@@ -187,7 +187,7 @@ fe_pccard_detach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	fe_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	fe_release_resource(dev);
 

@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.3 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.4 2004/03/14 15:36:54 joerg Exp $
  *
  */
 
@@ -332,12 +332,6 @@ struct	ether_addr {
 #define	ETHERMIN	(ETHER_MIN_LEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 
 #ifdef _KERNEL
-
-/*
- * For device drivers to specify whether they support BPF or not
- */
-#define ETHER_BPF_UNSUPPORTED	0
-#define ETHER_BPF_SUPPORTED	1
 
 struct ifnet;
 struct mbuf;

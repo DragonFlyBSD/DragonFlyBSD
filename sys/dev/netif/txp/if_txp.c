@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.7 2004/02/14 21:12:38 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.8 2004/03/14 15:36:53 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -312,12 +312,12 @@ txp_attach(dev)
 
 	txp_set_filter(sc);
 
-	sc->sc_arpcom.ac_enaddr[0] = ((u_int8_t *)&p1)[1];
-	sc->sc_arpcom.ac_enaddr[1] = ((u_int8_t *)&p1)[0];
-	sc->sc_arpcom.ac_enaddr[2] = ((u_int8_t *)&p2)[3];
-	sc->sc_arpcom.ac_enaddr[3] = ((u_int8_t *)&p2)[2];
-	sc->sc_arpcom.ac_enaddr[4] = ((u_int8_t *)&p2)[1];
-	sc->sc_arpcom.ac_enaddr[5] = ((u_int8_t *)&p2)[0];
+	sc->sc_arpcom.ac_enaddr[0] = ((uint8_t *)&p1)[1];
+	sc->sc_arpcom.ac_enaddr[1] = ((uint8_t *)&p1)[0];
+	sc->sc_arpcom.ac_enaddr[2] = ((uint8_t *)&p2)[3];
+	sc->sc_arpcom.ac_enaddr[3] = ((uint8_t *)&p2)[2];
+	sc->sc_arpcom.ac_enaddr[4] = ((uint8_t *)&p2)[1];
+	sc->sc_arpcom.ac_enaddr[5] = ((uint8_t *)&p2)[0];
 
 	printf("txp%d: Ethernet address %6D\n", unit,
 	    sc->sc_arpcom.ac_enaddr, ":");
@@ -356,7 +356,7 @@ txp_attach(dev)
 	/*
 	 * Attach us everywhere
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->sc_arpcom.ac_enaddr);
 	callout_handle_init(&sc->sc_tick);
 	return(0);
 
@@ -380,7 +380,7 @@ txp_detach(dev)
 	txp_shutdown(dev);
 
 	ifmedia_removeall(&sc->sc_ifmedia);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	for (i = 0; i < RXBUF_ENTRIES; i++)
 		free(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);

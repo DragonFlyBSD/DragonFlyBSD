@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.5 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.6 2004/03/14 15:36:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -382,7 +382,7 @@ gx_attach(device_t dev)
 	/*
 	 * Call MI attach routines.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, gx->arpcom.ac_enaddr);
 
 	GX_UNLOCK(gx);
 	splx(s);
@@ -611,7 +611,7 @@ gx_detach(device_t dev)
 	ifp = &gx->arpcom.ac_if;
 	GX_LOCK(gx);
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	gx_reset(gx);
 	gx_stop(gx);
 	ifmedia_removeall(&gx->gx_media);

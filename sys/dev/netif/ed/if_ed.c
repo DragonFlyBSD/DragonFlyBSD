@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.10 2004/02/13 21:15:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.11 2004/03/14 15:36:49 joerg Exp $
  */
 
 /*
@@ -1757,7 +1757,7 @@ ed_attach(device_t dev)
 	/*
 	 * Attach the interface
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 

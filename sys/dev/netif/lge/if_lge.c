@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.7 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.8 2004/03/14 15:36:50 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -606,7 +606,6 @@ static int lge_attach(dev)
 
 	sc->lge_unit = unit;
 	callout_handle_init(&sc->lge_stat_ch);
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->lge_ldata = contigmalloc(sizeof(struct lge_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -673,7 +672,7 @@ static int lge_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 	callout_handle_init(&sc->lge_stat_ch);
 
 fail:
@@ -695,7 +694,7 @@ static int lge_detach(dev)
 
 	lge_reset(sc);
 	lge_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_generic_detach(dev);
 	device_delete_child(dev, sc->lge_miibus);

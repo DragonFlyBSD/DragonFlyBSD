@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.2 2004/03/07 21:35:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.3 2004/03/14 15:36:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -396,7 +396,7 @@ bfe_attach(device_t dev)
 		goto fail;
 	}
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 	callout_handle_init(&sc->bfe_stat_ch);
 
 	/*
@@ -431,7 +431,7 @@ bfe_detach(device_t dev)
 
 	if (device_is_attached(dev)) {
 		bfe_stop(sc);
-		ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+		ether_ifdetach(ifp);
 	}
 
 	bfe_chip_reset(sc);

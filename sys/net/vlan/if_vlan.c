@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.6 2004/01/06 01:40:51 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.7 2004/03/14 15:36:54 joerg Exp $
  */
 
 /*
@@ -211,8 +211,7 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	struct ifnet *ifp;
 	int s;
 
-	ifv = malloc(sizeof(struct ifvlan), M_VLAN, M_WAITOK);
-	memset(ifv, 0, sizeof(struct ifvlan));
+	ifv = malloc(sizeof(struct ifvlan), M_VLAN, M_WAITOK | M_ZERO);
 	ifp = &ifv->ifv_if;
 	SLIST_INIT(&ifv->vlan_mc_listhead);
 
@@ -232,7 +231,7 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_ioctl = vlan_ioctl;
 	ifp->if_output = ether_output;
 	ifp->if_snd.ifq_maxlen = ifqmaxlen;
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, ifv->ifv_ac.ac_enaddr);
 	/* Now undo some of the damage... */
 	ifp->if_data.ifi_type = IFT_L2VLAN;
 	ifp->if_data.ifi_hdrlen = EVL_ENCAPLEN;
@@ -251,7 +250,7 @@ vlan_clone_destroy(struct ifnet *ifp)
 	vlan_unconfig(ifp);
 	splx(s);
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	free(ifv, M_VLAN);
 }

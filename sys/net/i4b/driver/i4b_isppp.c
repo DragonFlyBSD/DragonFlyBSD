@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.6 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.7 2004/03/14 15:36:54 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -303,7 +303,8 @@ i4bispppattach()
 		sc->sc_if_un.scu_sp.pp_chg = i4bisppp_state_changed;
 
 		sppp_attach(&sc->sc_if);
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) && ((__FreeBSD_version >= 500009) || (410000 <= __FreeBSD_version && __FreeBSD_version < 500000)))
+/* XXX: validate / add proper code */
+#if 0
 		/* do not call bpfattach in ether_ifattach */
 		ether_ifattach(&sc->sc_if, 0);
 #else

@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.9 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.10 2004/03/14 15:36:54 joerg Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -173,7 +173,7 @@ tapmodevent(mod, type, data)
 					taplastunit);
 
 				s = splimp();
-				ether_ifdetach(ifp, 1);
+				ether_ifdetach(ifp);
 				splx(s);
 				destroy_dev(tp->tap_dev);
 				free(tp, M_TAP);
@@ -204,7 +204,7 @@ tapcreate(dev)
 {
 	struct ifnet		*ifp = NULL;
 	struct tap_softc	*tp = NULL;
-	unsigned short		 macaddr_hi;
+	uint8_t			ether_addr[ETHER_ADDR_LEN];
 	int			 unit, s;
 	char			*name = NULL;
 
@@ -228,10 +228,10 @@ tapcreate(dev)
 	tp->tap_dev->si_drv1 = dev->si_drv1 = tp;
 
 	/* generate fake MAC address: 00 bd xx xx xx unit_no */
-	macaddr_hi = htons(0x00bd);
-	bcopy(&macaddr_hi, &tp->arpcom.ac_enaddr[0], sizeof(short));
-	bcopy(&ticks, &tp->arpcom.ac_enaddr[2], sizeof(long));
-	tp->arpcom.ac_enaddr[5] = (u_char)unit;
+	ether_addr[0] = 0x00;
+	ether_addr[1] = 0xbd;
+	bcopy(&ticks, ether_addr, 4);
+	ether_addr[5] = (u_char)unit;
 
 	/* fill the rest and attach interface */	
 	ifp = &tp->tap_if;
@@ -250,7 +250,7 @@ tapcreate(dev)
 	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 
 	s = splimp();
-	ether_ifattach(ifp, 1);
+	ether_ifattach(ifp, ether_addr);
 	splx(s);
 
 	tp->tap_flags |= TAP_INITED;

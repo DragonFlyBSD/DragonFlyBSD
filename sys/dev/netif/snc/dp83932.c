@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.6 2004/01/06 01:40:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.7 2004/03/14 15:36:52 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -161,10 +161,10 @@ int sncdebug = 0;
 
 
 void
-sncconfig(sc, media, nmedia, defmedia, myea)
+sncconfig(sc, media, nmedia, defmedia, eaddr)
 	struct snc_softc *sc;
 	int *media, nmedia, defmedia;
-	u_int8_t *myea;
+	uint8_t *eaddr;
 {
 	struct ifnet *ifp = &sc->sc_if;
 	int i;
@@ -174,7 +174,7 @@ sncconfig(sc, media, nmedia, defmedia, myea)
 		camdump(sc);
 	}
 #endif
-	device_printf(sc->sc_dev, "address %6D\n", myea, ":");
+	device_printf(sc->sc_dev, "address %6D\n", eaddr, ":");
 
 #ifdef SNCDEBUG
 	device_printf(sc->sc_dev,
@@ -194,7 +194,6 @@ sncconfig(sc, media, nmedia, defmedia, myea)
         ifp->if_init = sncinit;
         ifp->if_mtu = ETHERMTU;
         ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-	bcopy(myea, sc->sc_ethercom.ac_enaddr, ETHER_ADDR_LEN);
 
 	/* Initialize media goo. */
 	ifmedia_init(&sc->sc_media, 0, snc_mediachange,
@@ -208,7 +207,7 @@ sncconfig(sc, media, nmedia, defmedia, myea)
 		ifmedia_set(&sc->sc_media, IFM_ETHER|IFM_MANUAL);
 	}
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 
 #if NRND > 0
 	rnd_attach_source(&sc->rnd_source, device_get_nameunit(sc->sc_dev),

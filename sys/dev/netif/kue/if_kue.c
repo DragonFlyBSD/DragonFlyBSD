@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.6 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.7 2004/03/14 15:36:50 joerg Exp $
  */
 
 /*
@@ -504,11 +504,7 @@ USB_ATTACH(kue)
 	/*
 	 * Call MI attach routine.
 	 */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifattach(ifp, sc->kue_desc.kue_macaddr);
-#else
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-#endif
 	usb_register_netisr();
 	sc->kue_dying = 0;
 
@@ -530,11 +526,7 @@ kue_detach(device_ptr_t dev)
 	sc->kue_dying = 1;
 
 	if (ifp != NULL)
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		ether_ifdetach(ifp);
-#else
-		ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
-#endif
 
 	if (sc->kue_ep[KUE_ENDPT_TX] != NULL)
 		usbd_abort_pipe(sc->kue_ep[KUE_ENDPT_TX]);

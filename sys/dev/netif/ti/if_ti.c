@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.7 2004/01/06 03:17:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -1754,7 +1754,7 @@ static int ti_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 fail:
 	splx(s);
@@ -1774,7 +1774,7 @@ static int ti_detach(dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 	ti_stop(sc);
 
 	bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);

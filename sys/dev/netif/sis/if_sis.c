@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.7 2004/01/06 01:40:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1199,7 +1199,6 @@ static int sis_attach(dev)
 
 	sc->sis_unit = unit;
 	callout_handle_init(&sc->sis_stat_ch);
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	sc->sis_ldata = contigmalloc(sizeof(struct sis_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -1245,7 +1244,7 @@ static int sis_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, eaddr);
 	
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -1273,7 +1272,7 @@ static int sis_detach(dev)
 
 	sis_reset(sc);
 	sis_stop(sc);
-	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifdetach(ifp);
 
 	bus_generic_detach(dev);
 	device_delete_child(dev, sc->sis_miibus);

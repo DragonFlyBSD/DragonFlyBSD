@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.5 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.6 2004/03/14 15:36:48 joerg Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -666,7 +666,7 @@ cs_attach(device_t dev)
 	ifmedia_set(&sc->media, media);
 	cs_mediaset(sc, media);
 
-	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 
 	if (bootverbose)
