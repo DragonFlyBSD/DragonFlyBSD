@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.21 2004/03/21 07:15:36 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.22 2004/03/22 06:38:17 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -456,12 +456,9 @@ tcp_input(m, off0, proto)
 			ip_stripoptions(m);
 			off0 = sizeof(struct ip);
 		}
-		if (m->m_len < sizeof(struct tcpiphdr)) {
-			if ((m = m_pullup(m, sizeof(struct tcpiphdr))) == 0) {
-				tcpstat.tcps_rcvshort++;
-				return;
-			}
-		}
+		/* already checked and pulled up in ip_demux() */
+		KASSERT(m->m_len >= sizeof(struct tcpiphdr),
+		    ("TCP header not in one mbuf"));
 		ip = mtod(m, struct ip *);
 		ipov = (struct ipovly *)ip;
 		th = (struct tcphdr *)((caddr_t)ip + off0);
@@ -502,10 +499,9 @@ tcp_input(m, off0, proto)
 	 * pull out TCP options and adjust length.		XXX
 	 */
 	off = th->th_off << 2;
-	if (off < sizeof(struct tcphdr) || off > tlen) {
-		tcpstat.tcps_rcvbadoff++;
-		goto drop;
-	}
+	/* already checked and pulled up in ip_demux() */
+	KASSERT(off >= sizeof(struct tcphdr) && off <= tlen,
+	    ("bad TCP data offset"));
 	tlen -= off;	/* tlen is used instead of ti->ti_len */
 	if (off > sizeof(struct tcphdr)) {
 		if (isipv6) {
@@ -513,16 +509,9 @@ tcp_input(m, off0, proto)
 			ip6 = mtod(m, struct ip6_hdr *);
 			th = (struct tcphdr *)((caddr_t)ip6 + off0);
 		} else {
-			if (m->m_len < sizeof(struct ip) + off) {
-				if ((m = m_pullup(m, sizeof(struct ip) + off))
-						== 0) {
-					tcpstat.tcps_rcvshort++;
-					return;
-				}
-				ip = mtod(m, struct ip *);
-				ipov = (struct ipovly *)ip;
-				th = (struct tcphdr *)((caddr_t)ip + off0);
-			}
+			/* already pulled up in ip_demux() */
+			KASSERT(m->m_len >= sizeof(struct ip) + off,
+			    ("TCP header and options not in one mbuf"));
 		}
 		optlen = off - sizeof(struct tcphdr);
 		optp = (u_char *)(th + 1);

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.12 2004/03/06 07:30:43 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.13 2004/03/22 06:38:17 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -365,14 +365,9 @@ ip_input(struct netmsg *msg)
 
 	ipstat.ips_total++;
 
-	if (m->m_pkthdr.len < sizeof(struct ip))
-		goto tooshort;
+	/* length checks already done in ip_demux() */
+	KASSERT(m->m_len >= sizeof(ip), ("IP header not in one mbuf"));
 
-	if (m->m_len < sizeof (struct ip) &&
-	    (m = m_pullup(m, sizeof (struct ip))) == 0) {
-		ipstat.ips_toosmall++;
-		return;
-	}
 	ip = mtod(m, struct ip *);
 
 	if (IP_VHL_V(ip->ip_vhl) != IPVERSION) {
@@ -433,7 +428,6 @@ ip_input(struct netmsg *msg)
 	 * Drop packet if shorter than we expect.
 	 */
 	if (m->m_pkthdr.len < ip->ip_len) {
-tooshort:
 		ipstat.ips_tooshort++;
 		goto bad;
 	}

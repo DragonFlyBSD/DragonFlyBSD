@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.8 2004/03/14 08:21:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.9 2004/03/22 06:38:17 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -64,22 +64,29 @@ INP_MPORT_HASH(in_addr_t src, in_addr_t dst, in_port_t sport, in_port_t dport)
 lwkt_port_t
 ip_mport(struct mbuf *m)
 {
-	struct ip *ip = mtod(m, struct ip *);
+	struct ip *ip;
 	int iphlen;
 	struct tcphdr *th;
 	struct udphdr *uh;
-	int off;
+	int thoff;				/* TCP data offset */
 	lwkt_port_t port;
 	int cpu;
 
 	if (ip_mthread_enable == 0)
 		return (&netisr_cpu[0].td_msgport);
 
+	if (m->m_pkthdr.len < sizeof(struct ip)) {
+		ipstat.ips_tooshort++;
+		return (NULL);
+	}
+
 	if (m->m_len < sizeof(struct ip) &&
 	    (m = m_pullup(m, sizeof(struct ip))) == NULL) {
 		ipstat.ips_toosmall++;
 		return (NULL);
 	}
+
+	ip = mtod(m, struct ip *);
 
 	/*
 	 * XXX generic packet handling defrag on CPU 0 for now.
@@ -97,19 +104,19 @@ ip_mport(struct mbuf *m)
 			return (NULL);
 		}
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
-		off = th->th_off << 2;
-		if (off < sizeof(struct tcphdr) || off > ip->ip_len) {
+		thoff = th->th_off << 2;
+		if (thoff < sizeof(struct tcphdr) || thoff > ip->ip_len) {
 			tcpstat.tcps_rcvbadoff++;
 			return (NULL);
 		}
-		if (m->m_len < sizeof(struct ip) + off) {
-		    m = m_pullup(m, sizeof(struct ip) + off);
-		    if (m == NULL) {
-			tcpstat.tcps_rcvshort++;
-			return (NULL);
-		    }
-		    ip = mtod(m, struct ip *);
-		    th = (struct tcphdr *)((caddr_t)ip + iphlen);
+		if (m->m_len < iphlen + thoff) {
+			m = m_pullup(m, iphlen + thoff);
+			if (m == NULL) {
+				tcpstat.tcps_rcvshort++;
+				return (NULL);
+			}
+			ip = mtod(m, struct ip *);
+			th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		}
 
 		cpu = INP_MPORT_HASH(ip->ip_src.s_addr, ip->ip_dst.s_addr,
@@ -117,10 +124,13 @@ ip_mport(struct mbuf *m)
 		port = &tcp_thread[cpu].td_msgport;
 		break;
 	case IPPROTO_UDP:
-		if (m->m_len < iphlen + sizeof(struct udphdr) &&
-		    (m = m_pullup(m, iphlen + sizeof(struct udphdr))) == NULL) {
-			udpstat.udps_hdrops++;
-			return (NULL);
+		if (m->m_len < iphlen + sizeof(struct udphdr)) {
+			m = m_pullup(m, iphlen + sizeof(struct udphdr));
+			if (m == NULL) {
+				udpstat.udps_hdrops++;
+				return (NULL);
+			}
+			ip = mtod(m, struct ip *);
 		}
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 

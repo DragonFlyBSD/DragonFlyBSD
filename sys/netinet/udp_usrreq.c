@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.16 2004/03/17 02:27:59 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.17 2004/03/22 06:38:17 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -215,16 +215,13 @@ udp_input(m, off, proto)
 	}
 
 	/*
-	 * Get IP and UDP header together in first mbuf.
+	 * IP and UDP headers are together in first mbuf.
+	 * Already checked and pulled up in ip_demux().
 	 */
+	KASSERT(m->m_len >= iphlen + sizeof(struct udphdr),
+	    ("UDP header not in one mbuf"));
+
 	ip = mtod(m, struct ip *);
-	if (m->m_len < iphlen + sizeof(struct udphdr)) {
-		if ((m = m_pullup(m, iphlen + sizeof(struct udphdr))) == 0) {
-			udpstat.udps_hdrops++;
-			return;
-		}
-		ip = mtod(m, struct ip *);
-	}
 	uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
 	/* destination port of 0 is illegal, based on RFC768. */
