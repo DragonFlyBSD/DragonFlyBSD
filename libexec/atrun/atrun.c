@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/atrun/atrun.c,v 1.14.2.1 2001/03/05 10:53:23 kris Exp $
- * $DragonFly: src/libexec/atrun/atrun.c,v 1.4 2004/02/03 23:24:50 rob Exp $
+ * $DragonFly: src/libexec/atrun/atrun.c,v 1.5 2004/09/20 19:32:19 joerg Exp $
  */
 
 /* System Headers */
@@ -47,11 +47,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <utmp.h>
-#ifdef __DragonFly__
 #include <paths.h>
-#else
-#include <getopt.h>
-#endif
 
 #if (MAXLOGNAME-1) > UT_NAMESIZE
 #define LOGNAMESIZE UT_NAMESIZE
@@ -62,7 +58,6 @@
 /* Local headers */
 
 #include "gloadavg.h"
-#define MAIN
 #include "privs.h"
 
 /* Macros */
@@ -79,12 +74,15 @@
 #define LOADAVG_MX 1.5
 #endif
 
+uid_t real_uid, effective_uid;
+gid_t real_gid, effective_gid;
+
 /* File scope variables */
 
-static debug = 0;
+static int debug = 0;
 
-void perr(const char *a);
-static void usage (void);
+void		perr(const char *a);
+static void	usage(void);
 
 /* Local functions */
 static int
@@ -96,7 +94,7 @@ write_string(int fd, const char* a)
 #undef DEBUG_FORK
 #ifdef DEBUG_FORK
 static pid_t
-myfork()
+myfork(void)
 {
 	pid_t res;
 	res = fork();
@@ -126,8 +124,8 @@ run_file(const char *filename, uid_t uid, gid_t gid)
     off_t size;
     struct passwd *pentry;
     int fflags;
-    long nuid;
-    long ngid;
+    uid_t nuid;
+    gid_t ngid;
 
 
     PRIV_START
@@ -220,12 +218,12 @@ run_file(const char *filename, uid_t uid, gid_t gid)
     }
     mailname = mailbuf;
     if (nuid != uid) {
-	syslog(LOG_ERR,"Job %s - userid %ld does not match file uid %lu",
+	syslog(LOG_ERR,"Job %s - userid %u does not match file uid %lu",
 		filename, nuid, (unsigned long)uid);
 	exit(EXIT_FAILURE);
     }
     if (ngid != gid) {
-	syslog(LOG_ERR,"Job %s - groupid %ld does not match file gid %lu",
+	syslog(LOG_ERR,"Job %s - groupid %u does not match file gid %lu",
 		filename, ngid, (unsigned long)gid);
 	exit(EXIT_FAILURE);
     }
@@ -339,13 +337,9 @@ run_file(const char *filename, uid_t uid, gid_t gid)
 	if (chdir(pentry->pw_dir))
 		chdir("/");
 
-#ifdef __DragonFly__
 	execl(_PATH_SENDMAIL, "sendmail", "-F", "Atrun Service",
 			"-odi", "-oem",
 			mailname, (char *) NULL);
-#else
-        execl(MAIL_CMD, MAIL_CMD, mailname, (char *) NULL);
-#endif
 	    perr("exec failed for mail command");
 
 	PRIV_END
