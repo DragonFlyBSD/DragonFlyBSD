@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.7 2004/01/29 01:39:41 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.8 2004/01/29 02:26:46 dillon Exp $
  */
 
 #include <err.h>
@@ -51,8 +51,8 @@ static struct command commands[] = {
 	{"c++",		COMPILER},
 	{"c++filt",	COMPILER},
 	{"cc",		COMPILER},
-	{"cpp",		BINUTILS1},
-	{"f77",		BINUTILS1},
+	{"cpp",		COMPILER},
+	{"f77",		COMPILER},
 	{"g++",		COMPILER},
 	{"gcc",		COMPILER},
 	{"gcov",	COMPILER},
