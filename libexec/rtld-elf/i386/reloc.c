@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.7 2005/03/29 23:04:36 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.8 2005/03/30 00:53:14 joerg Exp $
  */
 
 /*
@@ -66,7 +66,7 @@ do_copy_relocations(Obj_Entry *dstobj)
 
     assert(dstobj->mainprog);	/* COPY relocations are invalid elsewhere */
 
-    rellim = (const Elf_Rel *) ((caddr_t) dstobj->rel + dstobj->relsize);
+    rellim = (const Elf_Rel *) ((c_caddr_t) dstobj->rel + dstobj->relsize);
     for (rel = dstobj->rel;  rel < rellim;  rel++) {
 	if (ELF_R_TYPE(rel->r_info) == R_386_COPY) {
 	    void *dstaddr;
@@ -114,7 +114,7 @@ init_pltgot(Obj_Entry *obj)
 
 /* Process the non-PLT relocations. */
 int
-reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld)
+reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld __unused)
 {
 	const Elf_Rel *rellim;
 	const Elf_Rel *rel;
@@ -130,7 +130,7 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld)
 	if (cache == MAP_FAILED)
 	    cache = NULL;
 
-	rellim = (const Elf_Rel *) ((caddr_t) obj->rel + obj->relsize);
+	rellim = (const Elf_Rel *) ((c_caddr_t) obj->rel + obj->relsize);
 	for (rel = obj->rel;  rel < rellim;  rel++) {
 	    Elf_Addr *where = (Elf_Addr *) (obj->relocbase + rel->r_offset);
 
@@ -285,7 +285,7 @@ reloc_plt(Obj_Entry *obj)
     const Elf_Rel *rellim;
     const Elf_Rel *rel;
 
-    rellim = (const Elf_Rel *)((char *)obj->pltrel + obj->pltrelsize);
+    rellim = (const Elf_Rel *)((const char *)obj->pltrel + obj->pltrelsize);
     for (rel = obj->pltrel;  rel < rellim;  rel++) {
 	Elf_Addr *where;
 
@@ -307,7 +307,7 @@ reloc_jmpslots(Obj_Entry *obj)
 
     if (obj->jmpslots_done)
 	return 0;
-    rellim = (const Elf_Rel *)((char *)obj->pltrel + obj->pltrelsize);
+    rellim = (const Elf_Rel *)((const char *)obj->pltrel + obj->pltrelsize);
     for (rel = obj->pltrel;  rel < rellim;  rel++) {
 	Elf_Addr *where;
 	const Elf_Sym *def;
