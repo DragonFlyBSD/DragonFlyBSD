@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.29 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.30 2004/10/01 07:08:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -218,7 +218,7 @@ cache_link_parent(struct namecache *ncp, struct namecache *par)
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 		/*
 		 * Any vp associated with an ncp which has children must
-		 * be held.
+		 * be held to prevent it from being recycled.
 		 */
 		if (par->nc_vp)
 			vhold(par->nc_vp);
@@ -282,21 +282,43 @@ cache_drop(struct namecache *ncp)
  * the namespace from being created or destroyed by accessors other then
  * the lock holder.
  *
- * Note that holding a locked namecache structure does not prevent the
- * underlying vnode from being destroyed and the namecache state moving
- * to an unresolved state.  XXX MP
+ * Note that holding a locked namecache structure prevents other threads
+ * from making namespace changes (e.g. deleting or creating), prevents
+ * vnode association state changes by other threads, and prevents the
+ * namecache entry from being resolved or unresolved by other threads.
+ *
+ * The lock owner has full authority to associate/disassociate vnodes
+ * and resolve/unresolve the locked ncp.
+ *
+ * In particular, if a vnode is associated with a locked cache entry
+ * that vnode will *NOT* be recycled.  We accomplish this by vhold()ing the
+ * vnode.  XXX we should find a more efficient way to prevent the vnode
+ * from being recycled, but remember that any given vnode may have multiple
+ * namecache associations (think hardlinks).
  */
 void
 cache_lock(struct namecache *ncp)
 {
-	thread_t td = curthread;
-	int didwarn = 0;
+	thread_t td;
+	int didwarn;
 
 	KKASSERT(ncp->nc_refs != 0);
+	didwarn = 0;
+	td = curthread;
+
 	for (;;) {
 		if (ncp->nc_exlocks == 0) {
 			ncp->nc_exlocks = 1;
 			ncp->nc_locktd = td;
+			/* 
+			 * The vp associated with a locked ncp must be held
+			 * to prevent it from being recycled (which would
+			 * cause the ncp to become unresolved).
+			 *
+			 * XXX loop on race for later MPSAFE work.
+			 */
+			if (ncp->nc_vp)
+				vhold(ncp->nc_vp);
 			break;
 		}
 		if (ncp->nc_locktd == td) {
@@ -313,6 +335,7 @@ cache_lock(struct namecache *ncp)
 			}
 		}
 	}
+
 	if (didwarn == 1) {
 		printf("[diagnostic] cache_lock: unblocked %*.*s\n",
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
@@ -328,6 +351,8 @@ cache_unlock(struct namecache *ncp)
 	KKASSERT(ncp->nc_exlocks > 0);
 	KKASSERT(ncp->nc_locktd == td);
 	if (--ncp->nc_exlocks == 0) {
+		if (ncp->nc_vp)
+			vdrop(ncp->nc_vp);
 		ncp->nc_locktd = NULL;
 		if (ncp->nc_flag & NCF_LOCKREQ) {
 			ncp->nc_flag &= ~NCF_LOCKREQ;
@@ -368,11 +393,13 @@ cache_setvp(struct namecache *ncp, struct vnode *vp)
 	if (vp != NULL) {
 		/*
 		 * Any vp associated with an ncp which has children must
-		 * be held.
+		 * be held.  Any vp associated with a locked ncp must be held.
 		 */
 		if (!TAILQ_EMPTY(&ncp->nc_list))
 			vhold(vp);
 		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
+		if (ncp->nc_exlocks)
+			vhold(vp);
 
 		/*
 		 * Set auxillary flags
@@ -419,7 +446,16 @@ cache_setunresolved(struct namecache *ncp)
 			--numcache;
 			ncp->nc_vp = NULL;	/* safety */
 			TAILQ_REMOVE(&vp->v_namecache, ncp, nc_vnode);
+
+			/*
+			 * Any vp associated with an ncp with children is
+			 * held by that ncp.  Any vp associated with a locked
+			 * ncp is held by that ncp.  These conditions must be
+			 * undone when the vp is cleared out from the ncp.
+			 */
 			if (!TAILQ_EMPTY(&ncp->nc_list))
+				vdrop(vp);
+			if (ncp->nc_exlocks)
 				vdrop(vp);
 		} else {
 			TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
