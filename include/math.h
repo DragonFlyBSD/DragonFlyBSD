@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)math.h	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/include/math.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/math.h,v 1.3 2004/09/13 15:53:29 dillon Exp $
  */
 
 #ifndef	_MATH_H_
@@ -130,7 +130,7 @@ double	lgamma (double);
 double	log1p (double) __pure2;
 double	logb (double) __pure2;
 double	rint (double) __pure2;
-double	scalb (double, int);
+double	scalb (double, double);
 double	y0 (double);
 double	y1 (double);
 double	yn (int, double);
