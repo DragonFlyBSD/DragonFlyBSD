@@ -1,6 +1,6 @@
 # Makefile for libpcap
 # $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libpcap/Makefile,v 1.4 2004/05/15 12:28:33 eirikn Exp $
+# $DragonFly: src/lib/libpcap/Makefile,v 1.5 2004/07/21 16:13:42 drhodus Exp $
 
 LIB=    pcap
 SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
@@ -16,12 +16,6 @@ CFLAGS+=-D_U_="__attribute__((unused))"
 .if !defined(NOINET6)
 CFLAGS+=-DINET6
 .endif
-
-# workaround bogus libpcap 0.6.2 contrib code which tries to extern the
-# system supplied function ether_hostton().  Setting __FreeBSD__ prevents
-# it from declaring the extern.
-#
-CFLAGS+=-D__FreeBSD__
 
 SHLIB_MAJOR=2
 SHLIB_MINOR=5
