@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.3 2003/08/05 06:15:21 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -107,6 +107,7 @@ main(argc, argv)
 			fprintf(stderr,
 			    "usage: cat [-benstuv] [-] [file ...]\n");
 			exit(1);
+			/* NOTREACHED */
 		}
 	argv += optind;
 
@@ -117,6 +118,7 @@ main(argc, argv)
 	if (fclose(stdout))
 		err(1, "stdout");
 	exit(rval);
+	/* NOTREACHED */
 }
 
 void
