@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.10 2004/04/23 10:21:07 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.11 2004/06/06 05:59:44 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -66,6 +66,10 @@ so_pru_abort(struct socket *so)
 int
 so_pru_accept(struct socket *so, struct sockaddr **nam)
 {
+	/* Block (memory allocation) in process context. XXX JH */
+	return ((*so->so_proto->pr_usrreqs->pru_accept)(so, nam));
+
+#ifdef notdef
 	int error;
 	struct netmsg_pru_accept msg;
 	lwkt_port_t port;
@@ -81,6 +85,7 @@ so_pru_accept(struct socket *so, struct sockaddr **nam)
 	msg.nm_nam = nam;
 	error = lwkt_domsg(port, &msg.nm_lmsg);
 	return (error);
+#endif
 }
 
 int
@@ -468,6 +473,7 @@ netmsg_pru_abort(lwkt_msg_t msg)
 	return(EASYNC);
 }
 
+#ifdef notused
 int
 netmsg_pru_accept(lwkt_msg_t msg)
 {
@@ -476,6 +482,7 @@ netmsg_pru_accept(lwkt_msg_t msg)
 	lwkt_replymsg(msg, nm->nm_prufn(nm->nm_so, nm->nm_nam));
 	return(EASYNC);
 }
+#endif
 
 int
 netmsg_pru_attach(lwkt_msg_t msg)

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.37 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.38 2004/06/06 05:59:44 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -196,6 +196,40 @@ listen(struct listen_args *uap)
 }
 
 /*
+ * Returns the accepted socket as well.
+ */
+static boolean_t
+soaccept_predicate(struct netmsg *msg0)
+{
+	struct netmsg_so_notify *msg = (struct netmsg_so_notify *)msg0;
+	struct socket *head = msg->nm_so;
+
+	if (head->so_error != 0) {
+		msg->nm_lmsg.ms_error = head->so_error;
+		return (TRUE);
+	}
+	if (!TAILQ_EMPTY(&head->so_comp)) {
+		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
+		msg->nm_so = TAILQ_FIRST(&head->so_comp);
+		TAILQ_REMOVE(&head->so_comp, msg->nm_so, so_list);
+		head->so_qlen--;
+
+		msg->nm_lmsg.ms_error = 0;
+		return (TRUE);
+	}
+	if (head->so_state & SS_CANTRCVMORE) {
+		msg->nm_lmsg.ms_error = ECONNABORTED;
+		return (TRUE);
+	}
+	if (head->so_state & SS_NBIO) {
+		msg->nm_lmsg.ms_error = EWOULDBLOCK;
+		return (TRUE);
+	}
+
+	return (FALSE);
+}
+
+/*
  * The second argument to kern_accept() is a handle to a struct sockaddr.
  * This allows kern_accept() to return a pointer to an allocated struct
  * sockaddr which must be freed later with FREE().  The caller must
@@ -210,11 +244,12 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	struct file *lfp = NULL;
 	struct file *nfp = NULL;
 	struct sockaddr *sa;
-	int error, s1;
 	struct socket *head, *so;
+	struct netmsg_so_notify msg;
+	lwkt_port_t port;
 	int fd;
 	u_int fflag;		/* type must match fp->f_flag */
-	int tmp;
+	int error, tmp;
 
 	if (name && namelen && *namelen < 0)
 		return (EINVAL);
@@ -222,63 +257,41 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	error = holdsock(fdp, s, &lfp);
 	if (error)
 		return (error);
-	s1 = splnet();
-	head = (struct socket *)lfp->f_data;
-	if ((head->so_options & SO_ACCEPTCONN) == 0) {
-		splx(s1);
-		error = EINVAL;
-		goto done;
-	}
-	while (TAILQ_EMPTY(&head->so_comp) && head->so_error == 0) {
-		if (head->so_state & SS_CANTRCVMORE) {
-			head->so_error = ECONNABORTED;
-			break;
-		}
-		if ((head->so_state & SS_NBIO) != 0) {
-			head->so_error = EWOULDBLOCK;
-			break;
-		}
-		error = tsleep((caddr_t)&head->so_timeo, PCATCH, "accept", 0);
-		if (error) {
-			splx(s1);
-			goto done;
-		}
-	}
-	if (head->so_error) {
-		error = head->so_error;
-		head->so_error = 0;
-		splx(s1);
-		goto done;
-	}
 
-	/*
-	 * At this point we know that there is at least one connection
-	 * ready to be accepted. Remove it from the queue prior to
-	 * allocating the file descriptor for it since falloc() may
-	 * block allowing another process to accept the connection
-	 * instead.
-	 */
-	so = TAILQ_FIRST(&head->so_comp);
-	TAILQ_REMOVE(&head->so_comp, so, so_list);
-	head->so_qlen--;
-
-	fflag = lfp->f_flag;
 	error = falloc(p, &nfp, &fd);
-	if (error) {
-		/*
-		 * Probably ran out of file descriptors. Put the
-		 * unaccepted connection back onto the queue and
-		 * do another wakeup so some other process might
-		 * have a chance at it.
-		 */
-		TAILQ_INSERT_HEAD(&head->so_comp, so, so_list);
-		head->so_qlen++;
-		wakeup_one(&head->so_timeo);
-		splx(s1);
-		goto done;
+	if (error) {		/* Probably ran out of file descriptors. */
+		*res = -1;
+		fdrop(lfp, td);
+		return (error);
 	}
 	fhold(nfp);
 	*res = fd;
+
+	head = (struct socket *)lfp->f_data;
+	if ((head->so_options & SO_ACCEPTCONN) == 0) {
+		error = EINVAL;
+		goto done;
+	}
+
+	/* optimize for uniprocessor case later XXX JH */
+	port = head->so_proto->pr_mport(head, NULL, PRU_PRED);
+	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport,
+		     MSGF_PCATCH | MSGF_ABORTABLE,
+		     lwkt_cmd_func(netmsg_so_notify),
+		     lwkt_cmd_func(netmsg_so_notify_abort));
+	msg.nm_predicate = soaccept_predicate;
+	msg.nm_so = head;
+	msg.nm_etype = NM_REVENT;
+	error = lwkt_domsg(port, &msg.nm_lmsg);
+	if (error)
+		goto done;
+
+	/*
+	 * At this point we have the connection that's ready to be accepted.
+	 */
+	so = msg.nm_so;
+
+	fflag = lfp->f_flag;
 
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.sb_sel.si_note, 0);
@@ -317,6 +330,7 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 		}
 	}
 
+done:
 	/*
 	 * close the new descriptor, assuming someone hasn't ripped it
 	 * out from under us.  Note that *res is normally ignored if an
@@ -330,12 +344,10 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 			fdrop(nfp, td);
 		}
 	}
-	splx(s1);
 
 	/*
 	 * Release explicitly held references before returning.
 	 */
-done:
 	if (nfp != NULL)
 		fdrop(nfp, td);
 	fdrop(lfp, td);
