@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -49,10 +49,10 @@
 #include <sys/module.h>
 
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_conn.h>
-#include <netsmb/smb_subr.h>
-#include <netsmb/smb_dev.h>
+#include <netproto/smb/smb.h>
+#include <netproto/smb/smb_conn.h>
+#include <netproto/smb/smb_subr.h>
+#include <netproto/smb/smb_dev.h>
 
 #include "smbfs.h"
 #include "smbfs_node.h"

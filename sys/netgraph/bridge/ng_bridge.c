@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
  */
 
 /*
@@ -72,7 +72,7 @@
 #include <net/ethernet.h>
 
 #include <netinet/in.h>
-#include <netinet/ip_fw.h>
+#include <net/ipwf/ip_fw.h>
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.4 2003/06/25 05:22:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.5 2003/08/07 21:54:32 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -80,7 +80,7 @@
 #ifdef INET6
 #include <netinet6/ipsec6.h>
 #endif
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #endif /*IPSEC*/
 
 #ifdef FAST_IPSEC

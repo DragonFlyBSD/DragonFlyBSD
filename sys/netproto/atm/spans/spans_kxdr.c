@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.3 2003/07/26 20:36:58 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 /*
  * This file contains code that has been copied and/or modified from

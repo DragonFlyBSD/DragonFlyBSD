@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
- * $DragonFly: src/sys/netinet/if_atm.c,v 1.3 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 #include <netinet/if_atm.h>
 
 #ifdef NATM
-#include <netnatm/natm.h>
+#include <netproto/natm/natm.h>
 #endif
 
 

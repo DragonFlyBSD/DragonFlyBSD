@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.3 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -82,7 +82,7 @@
 #endif
 #endif
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
+#include <netproto/key/keydb.h>
 #include <sys/md5.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>

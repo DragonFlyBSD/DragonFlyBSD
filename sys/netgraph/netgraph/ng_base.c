@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.5 2003/08/07 21:17:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.6 2003/08/07 21:54:32 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -63,7 +63,7 @@
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
-#include "ng_parse.h"
+#include <netgraph/ng_parse.h>
 
 /* List of all nodes */
 static LIST_HEAD(, ng_node) nodelist;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wxvar.h,v 1.4.2.6 2001/10/20 17:44:12 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.3 2003/08/07 21:17:06 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.4 2003/08/07 21:54:29 dillon Exp $ */
 /*                  
  * Principal Author: Matthew Jacob
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -88,7 +88,7 @@ MODULE_DEPEND(wx, miibus, 1, 1, 1);
 #include "opt_bdg.h"
 #ifdef BRIDGE
 #include <net/if_types.h>
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 #endif
 
 struct wxmdvar {

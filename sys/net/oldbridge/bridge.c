@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.4 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.5 2003/08/07 21:54:30 dillon Exp $
  */
 
 /*
@@ -109,8 +109,8 @@
 #include <netinet/if_ether.h> /* for struct arpcom */
 
 #include <net/route.h>
-#include <netinet/ip_fw.h>
-#include <netinet/ip_dummynet.h>
+#include <net/ipfw/ip_fw.h>
+#include <net/dummynet/ip_dummynet.h>
 #include "bridge.h"
 
 /*--------------------*/

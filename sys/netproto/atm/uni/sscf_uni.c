@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni.c,v 1.7.2.1 2001/09/30 22:54:35 kris Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.3 2003/08/07 21:17:35 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 #include "uni.h"
 #include "sscf_uni_var.h"

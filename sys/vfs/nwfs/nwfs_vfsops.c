@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -48,11 +48,11 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_subr.h>
-#include <netncp/ncp_ncp.h>
-#include <netncp/ncp_nls.h>
+#include <netproto/ncp/ncp.h>
+#include <netproto/ncp/ncp_conn.h>
+#include <netproto/ncp/ncp_subr.h>
+#include <netproto/ncp/ncp_ncp.h>
+#include <netproto/ncp/ncp_nls.h>
 
 #include "nwfs.h"
 #include "nwfs_node.h"

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.9 2003/08/07 21:16:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.10 2003/08/07 21:54:29 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -102,7 +102,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/disklabel.h>
-#include <ufs/ffs/fs.h> 
+#include <vfs/ufs/fs.h> 
 #include <sys/devicestat.h>
 #include <sys/fcntl.h>
 #include <sys/vnode.h>

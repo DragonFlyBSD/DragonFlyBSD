@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_subr.c,v 1.4 1999/08/28 00:48:52 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.3 2003/08/07 21:17:35 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 #include "spans_xdr.h"
 #include "spans_var.h"

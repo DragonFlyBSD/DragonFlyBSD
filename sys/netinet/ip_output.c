@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.6 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.7 2003/08/07 21:54:32 dillon Exp $
  */
 
 #define _IP_VHL
@@ -72,9 +72,9 @@ static MALLOC_DEFINE(M_IPMOPTS, "ip_moptions", "internet multicast options");
 
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #ifdef IPSEC_DEBUG
-#include <netkey/key_debug.h>
+#include <netproto/key/key_debug.h>
 #else
 #define	KEYDEBUG(lev,arg)
 #endif

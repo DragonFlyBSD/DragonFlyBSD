@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.6 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.7 2003/08/07 21:54:32 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -93,7 +93,7 @@ struct tcphdr tcp_savetcp;
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
 #include <netinet6/ipsec6.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #endif /*IPSEC*/
 
 #include <machine/in_cksum.h>

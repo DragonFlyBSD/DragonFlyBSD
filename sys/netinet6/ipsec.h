@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.h,v 1.4.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.h,v 1.3 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: ipsec.h,v 1.53 2001/11/20 08:32:38 itojun Exp $	*/
 
 /*
@@ -44,7 +44,7 @@
 #endif
 
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
+#include <netproto/key/keydb.h>
 
 #ifdef _KERNEL
 

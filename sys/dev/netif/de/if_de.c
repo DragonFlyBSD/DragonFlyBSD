@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.4 2003/08/07 21:17:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.5 2003/08/07 21:54:29 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -73,13 +73,13 @@
 #endif
 
 #ifdef IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 #endif
 
 #ifdef NS
-#include <netns/ns.h>
-#include <netns/ns_if.h>
+#include <netproto/ns/ns.h>
+#include <netproto/ns/ns_if.h>
 #endif
 
 #include <vm/vm.h>

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_include.h,v 1.2 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.4 2003/08/07 21:54:29 dillon Exp $
  *
  */
 
@@ -39,7 +39,7 @@
 #ifndef _FORE_INCLUDE_H
 #define _FORE_INCLUDE_H
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 /*
  * If not specified elsewhere, guess which type of bus support we want

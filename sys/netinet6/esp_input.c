@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.3 2003/07/23 02:30:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -83,9 +83,9 @@
 #ifdef INET6
 #include <netinet6/esp6.h>
 #endif
-#include <netkey/key.h>
-#include <netkey/keydb.h>
-#include <netkey/key_debug.h>
+#include <netproto/key/key.h>
+#include <netproto/key/keydb.h>
+#include <netproto/key/key_debug.h>
 
 #include <machine/stdarg.h>
 

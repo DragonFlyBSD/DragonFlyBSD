@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_isa.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
  */
 
 #include "use_iavc.h"
@@ -48,9 +48,9 @@
 #include <vm/pmap.h>
 #include <bus/isa/isavar.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
 #include "../../include/i4b_global.h"
 #include "../../include/i4b_l3l4.h"

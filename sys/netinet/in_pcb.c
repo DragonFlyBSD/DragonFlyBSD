@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.6 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.7 2003/08/07 21:54:32 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -70,7 +70,7 @@
 
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #endif /* IPSEC */
 
 #ifdef FAST_IPSEC

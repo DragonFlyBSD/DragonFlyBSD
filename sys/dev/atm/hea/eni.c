@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 #include "eni_stats.h"
 #include "eni.h"

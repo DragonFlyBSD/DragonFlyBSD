@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_sigmgr_state.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.3 2003/08/07 21:17:36 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 #include "uni.h"
 #include "unisig.h"

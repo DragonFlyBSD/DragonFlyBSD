@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.3 2003/08/07 21:17:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.4 2003/08/07 21:54:33 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
 #include "ipatm_var.h"
 #include "ipatm_serv.h"

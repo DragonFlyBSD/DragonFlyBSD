@@ -1,6 +1,6 @@
 /*	$NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/umodem.c,v 1.17.2.9 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.6 2003/08/07 21:17:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.7 2003/08/07 21:54:29 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -81,7 +81,7 @@
 #include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 
-#include <dev/usb/usbdevs.h>
+#include <bus/usb/usbdevs.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x) if(umodemdebug) logprintf x

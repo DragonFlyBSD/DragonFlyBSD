@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -70,8 +70,8 @@
 #endif
 
 #ifdef IPX
-#include <netipx/ipx.h> 
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h> 
+#include <netproto/ipx/ipx_if.h>
 #endif
 
 #ifdef NS
@@ -84,9 +84,9 @@
 #endif
 
 #ifdef NETATALK
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/at_extern.h>
+#include <netproto/atalk/at.h>
+#include <netproto/atalk/at_var.h>
+#include <netproto/atalk/at_extern.h>
 
 #define llc_snap_org_code llc_un.type_snap.org_code
 #define llc_snap_ether_type llc_un.type_snap.ether_type

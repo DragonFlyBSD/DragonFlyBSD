@@ -25,7 +25,7 @@
  * capi/capi_msgs.c	The CAPI i4b message handlers.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.c,v 1.1.2.2 2001/12/10 10:28:25 hm Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
  */
 
 #include "use_i4bcapi.h"
@@ -38,9 +38,9 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_cause.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_cause.h>
 
 #include "../include/i4b_l3l4.h"
 #include "../include/i4b_mbuf.h"

@@ -38,7 +38,7 @@
 /*
  * $Id: vinumhdr.h,v 1.18 2001/01/04 00:14:14 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumhdr.h,v 1.16.2.1 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.5 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.6 2003/08/07 21:54:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,7 @@
 #include <sys/namei.h>
 #include <sys/stat.h>
 #include <sys/disklabel.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/fs.h>
 #include <sys/syslog.h>
 #include <sys/fcntl.h>
 #include <sys/queue.h>

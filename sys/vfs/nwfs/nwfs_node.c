@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.7 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.8 2003/08/07 21:54:35 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -47,9 +47,9 @@
 #include <vm/vm_object.h>
 #include <sys/queue.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_subr.h>
+#include <netproto/ncp/ncp.h>
+#include <netproto/ncp/ncp_conn.h>
+#include <netproto/ncp/ncp_subr.h>
 
 #include "nwfs.h"
 #include "nwfs_mount.h"

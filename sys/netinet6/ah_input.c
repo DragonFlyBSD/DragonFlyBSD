@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.3 2003/07/23 02:30:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -80,10 +80,10 @@
 #ifdef INET6
 #include <netinet6/ah6.h>
 #endif
-#include <netkey/key.h>
-#include <netkey/keydb.h>
+#include <netproto/key/key.h>
+#include <netproto/key/keydb.h>
 #ifdef IPSEC_DEBUG
-#include <netkey/key_debug.h>
+#include <netproto/key/key_debug.h>
 #else
 #define	KEYDEBUG(lev,arg)
 #endif

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.7 2003/08/07 21:54:35 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -53,9 +53,9 @@
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 
-#include <netncp/ncp.h>
-#include <netncp/ncp_conn.h>
-#include <netncp/ncp_subr.h>
+#include <netproto/ncp/ncp.h>
+#include <netproto/ncp/ncp_conn.h>
+#include <netproto/ncp/ncp_subr.h>
 
 #include "nwfs.h"
 #include "nwfs_node.h"

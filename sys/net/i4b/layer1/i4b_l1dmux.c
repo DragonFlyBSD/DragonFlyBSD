@@ -28,7 +28,7 @@
  *	--------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1dmux.c,v 1.3.2.2 2002/04/25 12:29:55 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.5 2003/08/07 21:54:31 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 16:43:24 2001]
  *
@@ -45,9 +45,9 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
 #include "i4b_l1.h"
 

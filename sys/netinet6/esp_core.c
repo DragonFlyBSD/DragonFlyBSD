@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.3 2003/07/29 12:51:30 hmp Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -70,8 +70,8 @@
 #endif
 #include <netinet6/esp_rijndael.h>
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
-#include <netkey/key.h>
+#include <netproto/key/keydb.h>
+#include <netproto/key/key.h>
 #include <crypto/des/des.h>
 #include <crypto/blowfish/blowfish.h>
 #include <crypto/cast128/cast128.h>

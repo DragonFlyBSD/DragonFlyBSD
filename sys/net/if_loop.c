@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.4 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.5 2003/08/07 21:54:30 dillon Exp $
  */
 
 /*
@@ -65,8 +65,8 @@
 #endif
 
 #ifdef IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 #endif
 
 #ifdef INET6
@@ -83,8 +83,8 @@
 #endif
 
 #ifdef NETATALK
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
+#include <netproto/atalk/at.h>
+#include <netproto/atalk/at_var.h>
 #endif NETATALK
 
 int loioctl __P((struct ifnet *, u_long, caddr_t));

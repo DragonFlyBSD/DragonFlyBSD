@@ -28,7 +28,7 @@
  *	--------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_diva.c,v 1.1.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_diva.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_diva.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 13:57:10 2001]
  *
@@ -45,7 +45,7 @@
 
 #include <net/if.h>
 
-#include <machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 
 #include "i4b_isic.h"
 #include "i4b_ipac.h"

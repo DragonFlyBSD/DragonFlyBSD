@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.4 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.5 2003/08/07 21:54:32 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -84,7 +84,7 @@
 
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #endif
 
 #ifdef FAST_IPSEC

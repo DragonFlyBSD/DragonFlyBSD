@@ -30,7 +30,7 @@
  *	$Id: i4b_ifpi_l1fsm.c,v 1.4 2000/05/29 15:41:41 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_l1fsm.c,v 1.4.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_l1fsm.c,v 1.3 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_l1fsm.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
  *
  *      last edit-date: [Mon May 29 15:23:15 2000]
  *
@@ -49,9 +49,9 @@
 
 #include <net/if.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <net/i4b/include/machine/i4b_debug.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_trace.h>
 
 #include "../isic/i4b_isic.h"
 #include "../i4b_l1.h"

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -58,8 +58,8 @@
 #endif
 
 #ifdef IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 #endif
 
 /* internal frame types */

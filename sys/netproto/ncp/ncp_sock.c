@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.6 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.7 2003/08/07 21:54:35 dillon Exp $
  *
  * Low level socket routines
  */
@@ -57,8 +57,8 @@
 #include <net/route.h>
 
 #ifdef IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_pcb.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_pcb.h>
 #endif
 
 #include "ncp.h"

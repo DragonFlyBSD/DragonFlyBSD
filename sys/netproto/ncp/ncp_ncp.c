@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.6 2003/08/07 21:54:35 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -46,8 +46,8 @@
 #include <sys/mbuf.h>
 
 #ifdef IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_var.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_var.h>
 #endif
 
 #include "ncp.h"

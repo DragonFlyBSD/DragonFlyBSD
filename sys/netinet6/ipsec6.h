@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec6.h,v 1.3.2.2 2001/07/03 11:01:54 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec6.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec6.h,v 1.3 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: ipsec.h,v 1.44 2001/03/23 08:08:47 itojun Exp $	*/
 
 /*
@@ -39,7 +39,7 @@
 #define _NETINET6_IPSEC6_H_
 
 #include <net/pfkeyv2.h>
-#include <netkey/keydb.h>
+#include <netproto/key/keydb.h>
 
 #ifdef _KERNEL
 extern struct ipsecstat ipsec6stat;

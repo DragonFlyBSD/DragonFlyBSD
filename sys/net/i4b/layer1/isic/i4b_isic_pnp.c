@@ -38,7 +38,7 @@
  *	--------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 14:01:04 2001]
  *
@@ -55,7 +55,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#include <machine/i4b_ioctl.h>
+#include <net/i4b/include/machine/i4b_ioctl.h>
 #include "i4b_isic.h"
 
 #include <bus/isa/isavar.h>

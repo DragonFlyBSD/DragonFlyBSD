@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_input.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.3 2003/07/23 02:30:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
 /*	$KAME: ipcomp_input.c,v 1.25 2001/03/01 09:12:09 itojun Exp $	*/
 
 /*
@@ -74,8 +74,8 @@
 #ifdef INET6
 #include <netinet6/ipsec6.h>
 #endif
-#include <netkey/key.h>
-#include <netkey/keydb.h>
+#include <netproto/key/key.h>
+#include <netproto/key/keydb.h>
 
 #include <machine/stdarg.h>
 

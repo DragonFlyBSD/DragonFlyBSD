@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ 
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.2 2003/07/23 02:30:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.3 2003/08/07 21:54:32 dillon Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -82,13 +82,13 @@
 #endif
 
 #ifdef NETATALK
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/at_extern.h>
+#include <netproto/atalk/at.h>
+#include <netproto/atalk/at_var.h>
+#include <netproto/atalk/at_extern.h>
 #endif
 
 /* Needs IP headers. */
-#include <net/if_gre.h>
+#include <net/gre/if_gre.h>
 
 #include <machine/stdarg.h>
 

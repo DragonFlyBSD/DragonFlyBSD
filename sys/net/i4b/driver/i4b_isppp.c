@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.3 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -65,7 +65,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
-#include <net/if_sppp.h>
+#include <net/sppp/if_sppp.h>
 
 
 #if defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008                

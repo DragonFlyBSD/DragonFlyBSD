@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.3 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 #include <net/if_llc.h>
 #ifdef BRIDGE
 #include <net/ethernet.h>
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 #endif
 
 #include <netinet/in.h>

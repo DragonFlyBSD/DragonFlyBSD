@@ -30,13 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs.h,v 1.3 1999/12/29 04:54:56 peter Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs.h,v 1.5 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs.h,v 1.6 2003/08/07 21:54:35 dillon Exp $
  */
 
 #ifndef _NWFS_H_
 #define _NWFS_H_
 
-#include <netncp/ncp.h>
+#include <netproto/ncp/ncp.h>
 #include "nwfs_mount.h"
 
 #define NR_OPEN 0

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp.c,v 1.8 2000/01/15 20:46:07 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.3 2003/08/07 21:17:35 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
  */
 
 /*
@@ -35,10 +35,10 @@
  *
  */
 
-#include <netatm/kern_include.h>
+#include <netproto/atm/kern_include.h>
 
-#include <netatm/ipatm/ipatm_var.h>
-#include <netatm/ipatm/ipatm_serv.h>
+#include <netproto/atm/ipatm/ipatm_var.h>
+#include <netproto/atm/ipatm/ipatm_serv.h>
 #include "unisig_var.h"
 #include "uniip_var.h"
 

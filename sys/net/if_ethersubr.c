@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.5 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.6 2003/08/07 21:54:30 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -73,8 +73,8 @@
 #endif
 
 #ifdef IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 int (*ef_inputp)(struct ifnet*, struct ether_header *eh, struct mbuf *m);
 int (*ef_outputp)(struct ifnet *ifp, struct mbuf **mp,
 		struct sockaddr *dst, short *tp, int *hlen);
@@ -89,9 +89,9 @@ int ether_inputdebug = 0;
 #endif
 
 #ifdef NETATALK
-#include <netatalk/at.h>
-#include <netatalk/at_var.h>
-#include <netatalk/at_extern.h>
+#include <netproto/atalk/at.h>
+#include <netproto/atalk/at_var.h>
+#include <netproto/atalk/at_extern.h>
 
 #define llc_snap_org_code llc_un.type_snap.org_code
 #define llc_snap_ether_type llc_un.type_snap.ether_type

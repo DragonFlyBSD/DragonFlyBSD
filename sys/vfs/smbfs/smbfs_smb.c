@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.5 2003/08/07 21:54:36 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,10 +46,10 @@
 #include <sys/md5.h>
 #endif
 
-#include <netsmb/smb.h>
-#include <netsmb/smb_subr.h>
-#include <netsmb/smb_rq.h>
-#include <netsmb/smb_conn.h>
+#include <netproto/smb/smb.h>
+#include <netproto/smb/smb_subr.h>
+#include <netproto/smb/smb_rq.h>
+#include <netproto/smb/smb_conn.h>
 
 #include "smbfs.h"
 #include "smbfs_node.h"

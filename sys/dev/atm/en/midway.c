@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.4 2003/08/07 21:54:27 dillon Exp $
  */
 
 /*
@@ -142,7 +142,7 @@
 #endif
 
 #ifdef NATM
-#include <netnatm/natm.h>
+#include <netproto/natm/natm.h>
 #endif
 
 #if !defined(sparc) && !defined(__FreeBSD__)

@@ -41,17 +41,17 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bsd_comp.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.3 2003/08/07 21:54:30 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <net/ppp_defs.h>
+#include <net/ppp_layer/ppp_defs.h>
 
 #define PACKETPTR	struct mbuf *
-#include <net/ppp_comp.h>
+#include <net/ppp_layer/ppp_comp.h>
 
 #if DO_BSD_COMPRESS
 /*

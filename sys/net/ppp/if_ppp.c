@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.6 2003/08/07 21:17:30 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.7 2003/08/07 21:54:31 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -109,8 +109,8 @@
 #endif
 
 #if IPX
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 #endif
 
 #ifdef VJC
