@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.4 2004/01/15 19:29:06 justin Exp $
+# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.5 2004/02/12 22:50:16 justin Exp $
 
 $TITLE(DragonFly - Activity Summary)
 
@@ -187,7 +187,7 @@ libcaps has been created.  This is a library that allows userland threading, sim
 
 <H2>NEWCARD support</H2>
 <BLOCKQUOTE>
-	Joerg Sonnenberger has been working on NEWCARD (PCMICA card support) from FreeBSD 5.
+	Joerg Sonnenberger has been working on NEWCARD (PCMCIA card support) from FreeBSD 5.
 </BLOCKQUOTE>
 
 
