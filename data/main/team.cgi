@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.8 2004/07/05 07:32:44 rob Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.9 2004/07/12 18:56:49 hmp Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -102,7 +102,7 @@ to the DragonFly project.  Here's a partial list.
 
 <tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:asmodai 'at' wxs 'dot' nl">Jeroen Ruigrok van der Werven</a> </td>
 <td bgcolor="#DDDDDD" valign="top">regression testing, algorithm testing, subsystems
-(PCI, USB, AGP, UDF, ISO9660, etc) and compiler and utilities.
+(PCI, USB, AGP, UDF, ISO9660, etc), compiler and utilities.
 (commit access)</td>
 </tr>
 
