@@ -129,6 +129,7 @@ include_defaults_array[]
 = {
     /* Pick up GNU C++ specific include files.  */
     { GPLUSPLUS_INCLUDE_DIR, "G++", 1, 1 },
+    { GPLUSPLUS_INCLUDE_DIR2, "G++", 1, 1 },
 #ifdef CROSS_COMPILE
     /* This is the dir for fixincludes.  Put it just before
        the files that we fix.  */

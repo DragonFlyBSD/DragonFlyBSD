@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.23 2003/07/11 05:33:24 kan Exp $
- * $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.5 2004/03/22 20:57:54 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.6 2004/04/07 14:02:41 joerg Exp $
  */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
@@ -17,7 +17,8 @@
 #undef LOCAL_INCLUDE_DIR		/* We don't wish to support one. */
 
 /* Look for the include files in the system-defined places.  */
-#define GPLUSPLUS_INCLUDE_DIR		PREFIX2"/include/c++/3.3"
+#define GPLUSPLUS_INCLUDE_DIR		PREFIX2"/include/c++"
+#define GPLUSPLUS_TOOL_INCLUDE_DIR	PREFIX2"/include/c++/3.3"
 #define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX2"/include/c++/3.3/backward"
 #define GCC_INCLUDE_DIR			PREFIX2"/include"
 #ifdef CROSS_COMPILE

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.5.2.9 2002/05/01 20:04:37 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/freebsd-native.h,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/freebsd-native.h,v 1.3 2004/04/07 14:02:41 joerg Exp $ */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
    source tree so it can be configured appropriately without using
@@ -14,6 +14,7 @@
 
 /* Look for the include files in the system-defined places.  */
 #define GPLUSPLUS_INCLUDE_DIR		PREFIX"/include/g++"
+#define GPLUSPLUS_INCLUDE_DIR2		PREFIX"/include/g++"
 #define GCC_INCLUDE_DIR			PREFIX"/include"
 #ifdef CROSS_COMPILE
 #define CROSS_INCLUDE_DIR		PREFIX"/include"

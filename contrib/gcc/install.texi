@@ -2442,6 +2442,10 @@ done).
 is where @code{g++} looks first for header files.  The C++ library
 installs only target independent header files in that directory.
 
+@code{GPLUSPLUS_INCLUDE_DIR2} means the same thing for native and cross.  It
+is where @code{g++} looks for version independent C++ header files.  GNU CC
+doesn't install anything there.
+
 @code{LOCAL_INCLUDE_DIR} is used only for a native compiler.  It is
 normally @file{/usr/local/include}.  GNU CC searches this directory so
 that users can install header files in @file{/usr/local/include}.

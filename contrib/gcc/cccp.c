@@ -20,7 +20,7 @@ Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA. */
 
 /* $FreeBSD: src/contrib/gcc/cccp.c,v 1.6.2.2 2002/06/20 23:12:24 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/cccp.c,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/cccp.c,v 1.3 2004/04/07 14:02:40 joerg Exp $ */
 
 
 #include "config.h"
@@ -396,6 +396,7 @@ static struct default_include {
   = {
     /* Pick up GNU C++ specific include files.  */
     { GPLUSPLUS_INCLUDE_DIR, "G++", 1, 1, 0 },
+    { GPLUSPLUS_INCLUDE_DIR2, "G++", 1, 1, 0 },
 #ifdef CROSS_COMPILE
     /* This is the dir for fixincludes.  Put it just before
        the files that we fix.  */

@@ -390,11 +390,13 @@ If you do not define this macro, no component is used.
 Define this macro if you wish to override the entire default search path
 for include files.  For a native compiler, the default search path
 usually consists of @code{GCC_INCLUDE_DIR}, @code{LOCAL_INCLUDE_DIR},
-@code{SYSTEM_INCLUDE_DIR}, @code{GPLUSPLUS_INCLUDE_DIR}, and
+@code{SYSTEM_INCLUDE_DIR}, @code{GPLUSPLUS_INCLUDE_DIR},
+@code{GPLUSPLUS_INCLUDE_DIR2}, and
 @code{STANDARD_INCLUDE_DIR}.  In addition, @code{GPLUSPLUS_INCLUDE_DIR}
 and @code{GCC_INCLUDE_DIR} are defined automatically by @file{Makefile},
-and specify private search areas for GCC.  The directory
-@code{GPLUSPLUS_INCLUDE_DIR} is used only for C++ programs.
+and specify private search areas for GCC.  The directories
+@code{GPLUSPLUS_INCLUDE_DIR} and @code{GPLUSPLUS_INCLUDE_DIR2} are used only
+for C++ programs.
 
 The definition should be an initializer for an array of structures.
 Each array element should have four elements: the directory name (a
