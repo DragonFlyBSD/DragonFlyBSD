@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.12 2004/09/18 20:02:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.13 2004/12/03 17:59:20 joerg Exp $
  */
 
 /* 
@@ -593,10 +593,11 @@ struct cdevsw rp_cdevsw = {
 static int	rp_num_ports_open = 0;
 static int	rp_ndevs = 0;
 static int	minor_to_unit[128];
+static int	rp_initialized;
+static struct callout rp_poll_ch;
 
 static int rp_num_ports[4];	/* Number of ports on each controller */
 
-#define _INLINE_ __inline
 #define POLL_INTERVAL 1
 
 #define CALLOUT_MASK		0x80
@@ -628,7 +629,8 @@ static	void	rpstop (struct tty *, int);
 static	void	rphardclose	(struct rp_port *);
 static	void	rp_disc_optim	(struct tty *tp, struct termios *t);
 
-static _INLINE_ void rp_do_receive(struct rp_port *rp, struct tty *tp,
+static void
+rp_do_receive(struct rp_port *rp, struct tty *tp,
 			CHANNEL_t *cp, unsigned int ChanStatus)
 {
 	int	spl;
@@ -720,7 +722,8 @@ static _INLINE_ void rp_do_receive(struct rp_port *rp, struct tty *tp,
 	}
 }
 
-static _INLINE_ void rp_handle_port(struct rp_port *rp)
+static void
+rp_handle_port(struct rp_port *rp)
 {
 	CHANNEL_t	*cp;
 	struct	tty	*tp;
@@ -800,7 +803,7 @@ static void rp_do_poll(void *not_used)
 	}
 	}
 	if(rp_num_ports_open)
-		timeout(rp_do_poll, (void *)NULL, POLL_INTERVAL);
+		callout_reset(&rp_poll_ch, POLL_INTERVAL, rp_do_poll, NULL);
 }
 
 int
@@ -945,6 +948,11 @@ rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 	int	oldspl, error;
 	unsigned int	IntMask, ChanStatus;
 
+	if (!rp_initialized) {
+		rp_initialized = 1;
+		callout_init(&rp_poll_ch);
+	}
+
    umynor = (((minor(dev) >> 16) -1) * 32);    /* SG */
 	port  = (minor(dev) & 0x1f);                /* SG */
 	mynor = (port + umynor);                    /* SG */
@@ -956,6 +964,7 @@ rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 	rp = rp_addr(unit) + port;
 /*	rp->rp_tty = &rp_tty[rp->rp_port];
 */
+	callout_init(&rp->wakeup_callout);
 	tp = rp->rp_tty;
 	dev->si_tty = tp;
 
@@ -1057,7 +1066,7 @@ open_top:
 		}
 
 	if(rp_num_ports_open == 1)
-		timeout(rp_do_poll, (void *)NULL, POLL_INTERVAL);
+		callout_reset(&rp_poll_ch, POLL_INTERVAL, rp_do_poll, NULL);
 
 	}
 
@@ -1077,7 +1086,7 @@ open_top:
 		rp->active_out = TRUE;
 
 /*	if(rp_num_ports_open == 1)
-		timeout(rp_do_poll, (void *)NULL, POLL_INTERVAL);
+		callout_reset(&rp_poll_ch, POLL_INTERVAL, rp_do_poll, NULL);
 */
 out:
 	splx(oldspl);
@@ -1152,7 +1161,8 @@ rphardclose(struct rp_port *rp)
 		sClrDTR(cp);
 	}
 	if(rp->dtr_wait != 0) {
-		timeout(rpdtrwakeup, rp, rp->dtr_wait);
+		callout_reset(&rp->wakeup_callout, rp->dtr_wait,
+			      rpdtrwakeup, rp);
 		rp->state |= ~SET_DTR;
 	}
 
