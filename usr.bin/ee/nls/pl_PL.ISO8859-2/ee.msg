@@ -4,7 +4,7 @@ $
 $ For ee patchlevel 3
 $ 
 $ $FreeBSD: src/usr.bin/ee/nls/pl_PL.ISO8859-2/ee.msg,v 1.5.2.1 2002/01/05 15:47:14 phantom Exp $
-$ $DragonFly: src/usr.bin/ee/nls/pl_PL.ISO8859-2/ee.msg,v 1.3 2003/10/05 16:51:39 drhodus Exp $
+$ $DragonFly: src/usr.bin/ee/nls/pl_PL.ISO8859-2/ee.msg,v 1.4 2005/03/03 19:07:29 joerg Exp $
 $ 
 $ 
 $set 1
@@ -59,8 +59,7 @@ $quote "
 48 "read    : wczytaj plik                  char    : kod ASCII znaku          "
 49 "write   : zapisz do pliku               case    : szukaj (ma³e!=du¿e)      "
 50 "exit    : zachowaj i wyjd¼              nocase  : szukaj (ma³e==du¿e)      "
-51 "quit    : wyjd¼ bez zachowania          !cmd    : wykonaj \"cmd\" w shellu
- "
+51 "quit    : wyjd¼ bez zachowania          !cmd    : wykonaj \"cmd\" w shellu"
 52 "line    : wy¶wietl numer wiersza        0-9     : id¼ do wiersza \"#\"       "
 53 "expand  : rozwiñ tabulacje na spacje    noexpand: nie rozwijaj tabulacji   "
 54 "                                                                             "
@@ -74,8 +73,7 @@ $quote "
 62 "help : pomoc          |file  : podaj nazwê pliku       |line : numer wiersza"
 63 "read : wczytaj plik   |char  : kod ASCII znaku         |0-9 : id¼ do wr \"#\""
 64 "write: zapisz plik    |case  : szukaj (ma³e!=du¿e)     |exit : zpisz i wyjd¼"
-65 "!cmd : \"cmd\" w shellu |nocase: ma³e==du¿e w szukaniu   |quit : wyjd¼, nie
-zapisuj"
+65 "!cmd : \"cmd\" w shellu |nocase: ma³e==du¿e w szukaniu   |quit : wyjd¼, nie zapisuj"
 66 "expand: rozwiñ tabulacje na spacje  |noexpand: nie rozwijaj tabulacji             "
 67 "    naci¶nij Escape (^[) do menu"
 68 "brak pliku"
