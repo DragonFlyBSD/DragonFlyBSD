@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pw_group.c,v 1.12.2.1 2000/06/28 19:19:04 ache Exp $
- * $DragonFly: src/usr.sbin/pw/pw_group.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/pw_group.c,v 1.3 2004/09/25 20:38:21 dillon Exp $
  */
 
 #include <ctype.h>
@@ -38,6 +38,18 @@
 
 static int      print_group(struct group * grp, int pretty);
 static gid_t    gr_gidpolicy(struct userconf * cnf, struct cargs * args);
+
+static
+int
+alldigits(const char *str)
+{
+	while (*str) {
+		if (*str < '0' || *str > '9')
+			return(0);
+		++str;
+	}
+	return(1);
+}
 
 int
 pw_group(struct userconf * cnf, int mode, struct cargs * args)
@@ -86,7 +98,7 @@ pw_group(struct userconf * cnf, int mode, struct cargs * args)
 		if (a_name == NULL)
 			errx(EX_DATAERR, "group name or id required");
 
-		if (mode != M_ADD && grp == NULL && isdigit((unsigned char)*a_name->val)) {
+		if (mode != M_ADD && grp == NULL && alldigits(a_name->val)) {
 			(a_gid = a_name)->ch = 'g';
 			a_name = NULL;
 		}
