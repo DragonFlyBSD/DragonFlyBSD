@@ -1,0 +1,69 @@
+# Test-Program modules
+# $Id: modules,v 1.20 2003/12/07 00:01:23 tom Exp $
+##############################################################################
+# Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.                #
+#                                                                            #
+# Permission is hereby granted, free of charge, to any person obtaining a    #
+# copy of this software and associated documentation files (the "Software"), #
+# to deal in the Software without restriction, including without limitation  #
+# the rights to use, copy, modify, merge, publish, distribute, distribute    #
+# with modifications, sublicense, and/or sell copies of the Software, and to #
+# permit persons to whom the Software is furnished to do so, subject to the  #
+# following conditions:                                                      #
+#                                                                            #
+# The above copyright notice and this permission notice shall be included in #
+# all copies or substantial portions of the Software.                        #
+#                                                                            #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR #
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   #
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    #
+# THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER      #
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    #
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        #
+# DEALINGS IN THE SOFTWARE.                                                  #
+#                                                                            #
+# Except as contained in this notice, the name(s) of the above copyright     #
+# holders shall not be used in advertising or otherwise to promote the sale, #
+# use or other dealings in this Software without prior written               #
+# authorization.                                                             #
+##############################################################################
+#
+# Author: Thomas E. Dickey 1997-2003
+#
+
+@ base
+background	progs		$(srcdir)
+blue		progs		$(srcdir)	../include/term.h
+bs		progs		$(srcdir)
+cardfile	progs		$(srcdir)	../include/panel.h ../include/form.h
+color_set	progs		$(srcdir)
+demo_defkey	progs		$(srcdir)
+demo_keyok	progs		$(srcdir)
+demo_forms	progs		$(srcdir)	../include/form.h
+demo_menus	progs		$(srcdir)	../include/menu.h
+demo_panels	progs		$(srcdir)	../include/panel.h
+ditto		progs		$(srcdir)
+dots		progs		$(srcdir)	../include/term.h
+edit_field	progs		$(srcdir)
+filter		progs		$(srcdir)	../include/form.h
+firework	progs		$(srcdir)	../include/term.h
+firstlast	progs		$(srcdir)
+gdc		progs		$(srcdir)
+hanoi		progs		$(srcdir)
+hashtest	progs		$(srcdir)
+ins_wide	progs		$(srcdir)
+inserts		progs		$(srcdir)
+keynames	progs		$(srcdir)
+knight		progs		$(srcdir)
+lrtest		progs		$(srcdir)
+ncurses		progs		$(srcdir)	../include/panel.h ../include/menu.h ../include/form.h
+newdemo		progs		$(srcdir)
+railroad	progs		$(srcdir)	../include/termcap.h
+rain		progs		$(srcdir)	../include/term.h
+tclock		progs		$(srcdir)
+testaddch	progs		$(srcdir)
+testcurs	progs		$(srcdir)
+testscanw	progs		$(srcdir)
+view		progs		$(srcdir)
+worm		progs		$(srcdir)
+xmas		progs		$(srcdir)
