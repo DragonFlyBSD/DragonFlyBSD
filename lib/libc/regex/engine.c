@@ -37,7 +37,7 @@
  *	@(#)engine.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/engine.c,v 1.5.8.1 2000/07/31 06:30:37 dcs Exp $
- * $DragonFly: src/lib/libc/regex/engine.c,v 1.5 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/regex/engine.c,v 1.6 2005/01/08 19:17:01 dillon Exp $
  */
 
 /*
@@ -239,6 +239,10 @@ matcher(struct re_guts *g, char *string, size_t nmatch, regmatch_t pmatch[],
 	for (;;) {
 		endp = fast(m, start, stop, gf, gl);
 		if (endp == NULL) {		/* a miss */
+			if (m->pmatch != NULL)
+				free((char *)m->pmatch);
+			if (m->lastpos != NULL)
+				free((char *)m->lastpos);
 			STATETEARDOWN(m);
 			return(REG_NOMATCH);
 		}
