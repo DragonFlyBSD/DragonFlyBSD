@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.20 2005/01/31 15:39:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.21 2005/02/12 04:15:52 joerg Exp $
  */
 
 /*
@@ -43,6 +43,7 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 
@@ -670,7 +671,7 @@ fxp_attach(device_t dev)
 	 * Let the system queue as many packets as we have available
 	 * TX descriptors.
 	 */
-	ifp->if_snd.ifq_maxlen = FXP_NTXCB - 1;
+	ifq_set_maxlen(&ifp->if_snd, FXP_NTXCB - 1);
 
 	splx(s);
 	return (0);
@@ -1040,14 +1041,17 @@ fxp_start(struct ifnet *ifp)
 	 * NOTE: One TxCB is reserved to guarantee that fxp_mc_setup() can add
 	 *       a NOP command when needed.
 	 */
-	while (ifp->if_snd.ifq_head != NULL && sc->tx_queued < FXP_NTXCB - 1) {
+	while (!ifq_is_empty(&ifp->if_snd) && sc->tx_queued < FXP_NTXCB - 1) {
 		struct mbuf *m, *mb_head;
 		int segment;
 
 		/*
-		 * Grab a packet to transmit.
+		 * Grab a packet to transmit. The packet is dequeued,
+		 * once we are sure that we have enough free descriptors.
 		 */
-		IF_DEQUEUE(&ifp->if_snd, mb_head);
+		mb_head = ifq_poll(&ifp->if_snd);
+		if (mb_head == NULL)
+			break;
 
 		/*
 		 * Get pointer to next available tx desc.
@@ -1079,24 +1083,26 @@ tbdinit:
 			 * new buffers.
 			 */
 			MGETHDR(mn, MB_DONTWAIT, MT_DATA);
-			if (mn == NULL) {
-				m_freem(mb_head);
+			if (mn == NULL)
 				break;
-			}
 			if (mb_head->m_pkthdr.len > MHLEN) {
 				MCLGET(mn, MB_DONTWAIT);
 				if ((mn->m_flags & M_EXT) == 0) {
 					m_freem(mn);
-					m_freem(mb_head);
 					break;
 				}
 			}
 			m_copydata(mb_head, 0, mb_head->m_pkthdr.len,
 			    mtod(mn, caddr_t));
 			mn->m_pkthdr.len = mn->m_len = mb_head->m_pkthdr.len;
+			 /* We can transmit the packet, dequeue it. */
+			mb_head = ifq_dequeue(&ifp->if_snd);
 			m_freem(mb_head);
 			mb_head = mn;
 			goto tbdinit;
+		} else {
+			/* Nothing to worry about, just dequeue. */
+			mb_head = ifq_dequeue(&ifp->if_snd);
 		}
 
 		txp->tbd_number = segment;
@@ -1288,8 +1294,8 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		/*
 		 * Try to start more packets transmitting.
 		 */
-		if (ifp->if_snd.ifq_head != NULL)
-			fxp_start(ifp);
+		if (!ifq_is_empty(&ifp->if_snd))
+			(*ifp->if_start)(ifp);
 	}
 
 	/*
