@@ -31,13 +31,14 @@
 .\"
 .\"	@(#)tip.1	8.4 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/tip/tip/tip.1,v 1.7.2.7 2002/06/21 15:29:35 charnier Exp $
-.\" $DragonFly: src/usr.bin/tip/tip/tip.1,v 1.2 2003/06/17 04:29:32 dillon Exp $
+.\" $DragonFly: src/usr.bin/tip/tip/tip.1,v 1.3 2004/11/08 16:11:05 dillon Exp $
 .\"
 .Dd April 18, 1994
 .Dt TIP 1
 .Os
 .Sh NAME
-.Nm tip
+.Nm tip ,
+.Nm cu
 .Nd connect to a remote system
 .Sh SYNOPSIS
 .Nm
@@ -48,16 +49,52 @@
 .Op Fl v
 .Fl Ns Ns Ar speed
 .Ar phone\-number
+.Nm cu
+.Op Ar telno
+.Op Fl t
+.Op Fl s Ar speed
+.Op Fl a Ar acu
+.Op Fl l Ar line
+.Op Fl Ar #
 .Sh DESCRIPTION
 The
 .Nm
-command establishes a full-duplex connection to another machine,
+and
+.Nm cu
+commands establish a full-duplex connection to another machine,
 giving the appearance of being logged in directly on the
 remote cpu.  It goes without saying that you must have a login
 on the machine (or equivalent) to which you wish to connect.
+The preferred interface is
+.Nm .
+The
+.Nm cu
+interface is included for those people attached to the
+.Dq call Ux
+command of
+.At v7 .
+This manual page
+describes only
+.Nm .
 .Pp
-Available Option:
+The options are as follows:
 .Bl -tag -width indent
+.It Fl s Ar speed
+For
+.Nm cu ,
+set the speed of the connection.
+Defaults to 9600.
+.It Fl a Ar acu
+Set the acu.
+.It Fl l Ar line
+For
+.Nm cu ,
+specify the line to use.
+Either of the forms like
+.Pa tty00
+or
+.Pa /dev/tty00
+are permitted.
 .It Fl v
 Set verbose mode.
 .El
@@ -451,7 +488,6 @@ Lock file to avoid conflicts with
 .Sh DIAGNOSTICS
 Diagnostics are, hopefully, self explanatory.
 .Sh SEE ALSO
-.Xr cu 1 ,
 .Xr phones 5 ,
 .Xr remote 5
 .Sh HISTORY
