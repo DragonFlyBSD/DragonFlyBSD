@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)startslip.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/startslip/startslip.c,v 1.31.2.1 2000/05/07 18:26:51 joe Exp $
- * $DragonFly: src/sbin/startslip/startslip.c,v 1.6 2004/12/18 21:43:46 swildner Exp $
+ * $DragonFly: src/sbin/startslip/startslip.c,v 1.7 2005/02/02 20:27:51 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -95,17 +95,19 @@ int	debug = 0;
 #endif
 #define	printd	if (debug) printf
 
-int carrier(void);
-void down(int);
-int getline(char *, int, int, time_t);
+static int carrier(void);
+static void down(int);
+static int getline(char *, int, int, time_t);
 static void usage(void);
+static void sighup(int);
+static void sigterm(int);
+static void sigurg(int);
 
 int
 main(int argc, char **argv)
 {
 	char *cp, **ap;
 	int ch, disc;
-	void sighup(), sigterm(), sigurg();
 	FILE *wfd = NULL;
 	char *dialerstring = 0, buf[BUFSIZ];
 	int unitnum, keepal = 0, outfill = 0;
@@ -117,6 +119,7 @@ main(int argc, char **argv)
 	long lpid;
 	pid_t pid;
 	struct termios t;
+	int result;
 
 	while ((ch = getopt(argc, argv, "dhlb:s:t:w:A:U:D:W:K:O:S:L")) != -1)
 		switch (ch) {
@@ -203,7 +206,10 @@ main(int argc, char **argv)
 		dvname = devicename;
 	else
 		dvname++;
-	if (snprintf(my_pidfile, sizeof(my_pidfile), PIDFILE, _PATH_VARRUN, dvname) >= sizeof(my_pidfile))
+
+	result = snprintf(my_pidfile, sizeof(my_pidfile),
+			  PIDFILE, _PATH_VARRUN, dvname);
+	if (result < 0 || (unsigned int)result >= sizeof(my_pidfile))
 		usage();
 
 	if ((pfd = fopen(my_pidfile, "r")) != NULL) {
@@ -466,40 +472,37 @@ restart:
 	return(0); /* not reached */
 }
 
-void
-sighup(void)
+static void
+sighup(int signo __unused)
 {
-
 	printd("hup\n");
 	if (hup == 0 && logged_in)
 		syslog(LOG_INFO, "%s: got hangup signal", username);
 	hup = 1;
 }
 
-void
-sigurg(void)
+static void
+sigurg(int signo __unused)
 {
-
 	printd("urg\n");
 	if (hup == 0 && logged_in)
 		syslog(LOG_INFO, "%s: got dead line signal", username);
 	hup = 1;
 }
 
-void
-sigterm(void)
+static void
+sigterm(int signo __unused)
 {
-
 	printd("terminate\n");
 	if (terminate == 0 && logged_in)
 		syslog(LOG_INFO, "%s: got terminate signal", username);
 	terminate = 1;
 }
 
-int
-getline(char *buf, int size, int fd, time_t fintimeout)
+static int
+getline(char *buf, int size, int this_fd, time_t fintimeout)
 {
-	register int i;
+	int i;
 	int ret;
 	fd_set readfds;
 	struct timeval tv;
@@ -515,7 +518,7 @@ getline(char *buf, int size, int fd, time_t fintimeout)
 		FD_SET(fd, &readfds);
 		tv.tv_sec = timeout;
 		tv.tv_usec = 0;
-		if ((ret = select(fd + 1, &readfds, NULL, NULL, &tv)) < 0) {
+		if ((ret = select(this_fd + 1, &readfds, NULL, NULL, &tv)) < 0) {
 			if (errno != EINTR)
 				syslog(LOG_ERR, "%s: getline: select: %m", username);
 		} else {
@@ -524,7 +527,7 @@ getline(char *buf, int size, int fd, time_t fintimeout)
 				printd("getline: timed out\n");
 				return (0);
 			}
-			if ((ret = read(fd, &buf[i], 1)) == 1) {
+			if ((ret = read(this_fd, &buf[i], 1)) == 1) {
 				buf[i] &= 0177;
 				if (buf[i] == '\r' || buf[i] == '\0') {
 					i--;
@@ -550,7 +553,7 @@ getline(char *buf, int size, int fd, time_t fintimeout)
 	return (0);
 }
 
-int
+static int
 carrier(void)
 {
 	int comstate;
@@ -563,7 +566,7 @@ carrier(void)
 	return !!(comstate & TIOCM_CD);
 }
 
-void
+static void
 down(int code)
 {
 	if (fd > -1)
