@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libncurses/Makefile,v 1.39.2.13 2002/08/07 16:31:48 ru Exp $
-# $DragonFly: src/lib/libncurses/Makefile,v 1.4 2004/03/22 20:58:09 dillon Exp $
+# $DragonFly: src/lib/libncurses/Makefile,v 1.5 2004/03/25 18:07:27 dillon Exp $
 
 NCURSES=${.CURDIR}/../../contrib/ncurses
 
@@ -262,7 +262,7 @@ names.c:	 namehdr ${NAMESRC} nameftr
 codes.c:	 namehdr ${CODESRC} codeftr
 	cat namehdr ${CODESRC} codeftr > $@
 
-lib_gen.c:	MKlib_gen.sh curses.h
+lib_gen.c:	MKlib_gen.sh curses.h ncurses_def.h
 	sh ${NCURSES}/ncurses/base/MKlib_gen.sh "${CC} -E ${CFLAGS}" \
 	    "${AWK}" < curses.h >$@
 
@@ -288,7 +288,7 @@ ncurses_def.h:	MKncurses_def.sh ncurses_defs
 	AWK=${AWK} sh ${NCURSES}/include/MKncurses_def.sh \
 	    ${NCURSES}/include/ncurses_defs > ncurses_def.h
 
-nomacros.h:	MKlib_gen.sh curses.h
+nomacros.h:	MKlib_gen.sh curses.h ncurses_def.h
 	sh ${NCURSES}/ncurses/base/MKlib_gen.sh "${CC} -E ${CFLAGS}" \
 	    "${AWK}" < curses.h | fgrep undef > $@
 
