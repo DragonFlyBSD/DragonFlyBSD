@@ -75,8 +75,8 @@
  *		(614)451-1883
  *
  *
- * $FreeBSD: src/usr.bin/chat/chat.c,v 1.16 2001/07/26 11:02:33 sheldonh Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.6 2004/12/31 19:32:02 cpressey Exp $
+ * $FreeBSD: src/usr.bin/chat/chat.c,v 1.19 2002/08/25 13:22:33 charnier Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.7 2004/12/31 19:53:51 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -222,8 +222,6 @@ void terminate(int status);
 void pack_array(char **array, int end);
 char *expect_strtok(char *, char *);
 int vfmtmsg(char *, int, const char *, va_list);	/* vsprintf++ */
-
-int main(int, char *[]);
 
 void *dup_mem(b, c)
 void *b;
@@ -1213,7 +1211,7 @@ void echo_stderr(int n)
     case -1:
 	if (need_lf == 0)
 	    break;
-	/* fall through */
+	/* FALLTHROUGH */
     case '\n':
 	write(STDERR_FILENO, "\n", 1);
 	need_lf = 0;
