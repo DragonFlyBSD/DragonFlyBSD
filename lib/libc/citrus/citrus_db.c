@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_db.c,v 1.3 2004/01/02 21:49:35 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_db.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_db.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
 
 
 /*-
@@ -186,8 +186,7 @@ _citrus_db_lookup_by_string(struct _citrus_db *db, const char *key,
 {
 	struct _region r;
 
-	/* LINTED: discard const */
-	_region_init(&r, (char *)key, strlen(key));
+	_region_init(&r, __DECONST(char *, key), strlen(key));
 
 	return _citrus_db_lookup(db, &r, data, dl);
 }

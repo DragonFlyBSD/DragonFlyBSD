@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_hash.c,v 1.1 2003/06/25 09:51:32 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_hash.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_hash.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
 
 
 /*-
@@ -44,8 +44,7 @@ _citrus_string_hash_func(const char *key, int hashsize)
 {
 	struct _region r;
 
-	/* LINTED: discard const */
-	_region_init(&r, (char *)key, strlen(key));
+	_region_init(&r, __DECONST(char *, key), strlen(key));
 
 	return (int)(_db_hash_std(NULL, &r) % (uint32_t)hashsize);
 }

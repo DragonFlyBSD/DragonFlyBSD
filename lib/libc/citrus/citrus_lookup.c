@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_lookup.c,v 1.3 2004/07/21 14:16:34 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_lookup.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_lookup.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -188,18 +188,16 @@ retry:
 	q = _bcs_skip_nonws_len(p, &len);
 	if (p==q)
 		goto retry;
-	if (cl->cl_key && (q-p != cl->cl_keylen ||
+	if (cl->cl_key && ((size_t)(q-p) != cl->cl_keylen ||
 			   memcmp(p, cl->cl_key, (size_t)(q-p)) != 0))
 		goto retry;
 
 	/* found a entry */
 	if (key)
-		/* LINTED: discard const */
-		_region_init(key, (char *)p, q-p);
+		_region_init(key, __DECONST(char *, p), q-p);
 	p = _bcs_skip_ws_len(q, &len);
 	if (data)
-		/* LINTED: discard const */
-		_region_init(data, len ? (char *)p : NULL, len);
+		_region_init(data, len ? __DECONST(char *, p) : NULL, len);
 
 	return 0;
 }
@@ -234,8 +232,7 @@ seq_lookup_plain(struct _citrus_lookup *cl, const char *key,
 	if (p == NULL)
 		return ENOENT;
 	if (data)
-		/* LINTED: discard const */
-		_region_init(data, (char *)p, len);
+		_region_init(data, __DECONST(char *, p), len);
 
 	return 0;
 }

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_module.c,v 1.4 2004/12/21 09:00:01 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
 
 /*-
  * Copyright (c)1999, 2000, 2001, 2002 Citrus Project,
@@ -117,7 +117,7 @@ static int _getdewey(int [], char *);
 static int _cmpndewey(int [], int, int [], int);
 static const char *_findshlib(char *, int *, int *);
 
-static char *_pathI18nModule = NULL;
+static const char *_pathI18nModule = NULL;
 
 /* from libexec/ld.aout_so/shlib.c */
 #undef major

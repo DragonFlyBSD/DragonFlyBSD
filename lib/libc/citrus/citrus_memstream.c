@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_memstream.c,v 1.2 2004/01/02 21:49:35 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_memstream.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_memstream.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -94,7 +94,7 @@ _citrus_memory_stream_matchline(struct _citrus_memory_stream * __restrict ms,
 		p = _bcs_skip_ws_len(p, &len);
 		q = _bcs_skip_nonws_len(p, &len);
 
-		if (q-p == keylen) {
+		if ((size_t)(q-p) == keylen) {
 			if (iscasesensitive) {
 				if (memcmp(key, p, keylen) == 0)
 					break; /* match */

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_none.c,v 1.12 2004/01/18 03:57:30 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -54,8 +54,8 @@ _CITRUS_CTYPE_DEF_OPS(NONE);
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_init(void ** __restrict cl, void * __restrict var,
-			size_t lenvar, size_t lenps)
+_citrus_NONE_ctype_init(void ** __restrict cl, void * __restrict var __unused,
+			size_t lenvar __unused, size_t lenps __unused)
 {
 	*cl = NULL;
 	return (0);
@@ -63,21 +63,22 @@ _citrus_NONE_ctype_init(void ** __restrict cl, void * __restrict var,
 
 static void
 /*ARGSUSED*/
-_citrus_NONE_ctype_uninit(void *cl)
+_citrus_NONE_ctype_uninit(void *cl __unused)
 {
 }
 
 static unsigned
 /*ARGSUSED*/
-_citrus_NONE_ctype_get_mb_cur_max(void *cl)
+_citrus_NONE_ctype_get_mb_cur_max(void *cl __unused)
 {
 	return (1);
 }
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_mblen(void * __restrict cl, const char * __restrict s,
-			 size_t n, int * __restrict nresult)
+_citrus_NONE_ctype_mblen(void * __restrict cl __unused,
+			 const char * __restrict s, size_t n,
+			 int * __restrict nresult)
 {
 	if (!s) {
 		*nresult = 0; /* state independent */
@@ -93,8 +94,9 @@ _citrus_NONE_ctype_mblen(void * __restrict cl, const char * __restrict s,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_mbrlen(void * __restrict cl, const char * __restrict s,
-			  size_t n, void * __restrict pspriv,
+_citrus_NONE_ctype_mbrlen(void * __restrict cl __unused,
+			  const char * __restrict s, size_t n,
+			  void * __restrict pspriv __unused,
 			  size_t * __restrict nresult)
 {
 	if (!s) {
@@ -111,9 +113,10 @@ _citrus_NONE_ctype_mbrlen(void * __restrict cl, const char * __restrict s,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_mbrtowc(void * __restrict cl, wchar_t * __restrict pwc,
+_citrus_NONE_ctype_mbrtowc(void * __restrict cl __unused,
+			   wchar_t * __restrict pwc,
 			   const char * __restrict s, size_t n,
-			   void * __restrict pspriv,
+			   void * __restrict pspriv __unused,
 			   size_t * __restrict nresult)
 {
 	if (s == NULL) {
@@ -134,8 +137,8 @@ _citrus_NONE_ctype_mbrtowc(void * __restrict cl, wchar_t * __restrict pwc,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_mbsinit(void * __restrict cl,
-			   const void * __restrict pspriv,
+_citrus_NONE_ctype_mbsinit(void * __restrict cl __unused,
+			   const void * __restrict pspriv __unused,
 			   int * __restrict nresult)
 {
 	*nresult = 1;  /* always initial state */
@@ -144,9 +147,10 @@ _citrus_NONE_ctype_mbsinit(void * __restrict cl,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_mbsrtowcs(void * __restrict cl, wchar_t * __restrict pwcs,
+_citrus_NONE_ctype_mbsrtowcs(void * __restrict cl __unused,
+			     wchar_t * __restrict pwcs,
 			     const char ** __restrict s, size_t n,
-			     void * __restrict pspriv,
+			     void * __restrict pspriv __unused,
 			     size_t * __restrict nresult)
 {
 	int cnt;
@@ -186,12 +190,13 @@ _citrus_NONE_ctype_mbstowcs(void * __restrict cl, wchar_t * __restrict wcs,
 			    const char * __restrict s, size_t n,
 			    size_t * __restrict nresult)
 {
-	return (_citrus_NONE_ctype_mbsrtowcs(cl, wcs, (const char **)&s, n, NULL, nresult));
+	return (_citrus_NONE_ctype_mbsrtowcs(cl, wcs, &s, n, NULL, nresult));
 }
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_mbtowc(void * __restrict cl, wchar_t * __restrict pwc,
+_citrus_NONE_ctype_mbtowc(void * __restrict cl __unused,
+			  wchar_t * __restrict pwc,
 			  const char * __restrict s, size_t n,
 			  int * __restrict nresult)
 {
@@ -220,8 +225,9 @@ _citrus_NONE_ctype_mbtowc(void * __restrict cl, wchar_t * __restrict pwc,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_wcrtomb(void * __restrict cl, char * __restrict s,
-			   wchar_t wc, void * __restrict pspriv,
+_citrus_NONE_ctype_wcrtomb(void * __restrict cl __unused,
+			   char * __restrict s, wchar_t wc,
+			   void * __restrict pspriv __unused,
 			   size_t * __restrict nresult)
 {
 	if ((wc&~0xFFU) != 0) {
@@ -238,9 +244,10 @@ _citrus_NONE_ctype_wcrtomb(void * __restrict cl, char * __restrict s,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_wcsrtombs(void * __restrict cl, char * __restrict s,
+_citrus_NONE_ctype_wcsrtombs(void * __restrict cl __unused,
+			     char * __restrict s,
 			     const wchar_t ** __restrict pwcs, size_t n,
-			     void * __restrict pspriv,
+			     void * __restrict pspriv __unused,
 			     size_t * __restrict nresult)
 {
 	size_t count;
@@ -281,7 +288,7 @@ _citrus_NONE_ctype_wcstombs(void * __restrict cl, char * __restrict s,
 			    const wchar_t * __restrict pwcs, size_t n,
 			    size_t * __restrict nresult)
 {
-	return (_citrus_NONE_ctype_wcsrtombs(cl, s, (const wchar_t **)&pwcs, n, NULL, nresult));
+	return (_citrus_NONE_ctype_wcsrtombs(cl, s, &pwcs, n, NULL, nresult));
 }
 
 static int
@@ -308,7 +315,7 @@ _citrus_NONE_ctype_wctomb(void * __restrict cl, char * __restrict s,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_btowc(_citrus_ctype_rec_t * __restrict cc,
+_citrus_NONE_ctype_btowc(_citrus_ctype_rec_t * __restrict cc __unused,
 			 int c, wint_t * __restrict wcresult)
 {
 	if (c == EOF || c & ~0xFF)
@@ -320,7 +327,7 @@ _citrus_NONE_ctype_btowc(_citrus_ctype_rec_t * __restrict cc,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_ctype_wctob(_citrus_ctype_rec_t * __restrict cc,
+_citrus_NONE_ctype_wctob(_citrus_ctype_rec_t * __restrict cc __unused,
 			 wint_t wc, int * __restrict cresult)
 {
 	if (wc == WEOF || wc & ~0xFF)
@@ -342,7 +349,7 @@ struct _citrus_stdenc_traits _citrus_NONE_stdenc_traits = {
 static int
 /*ARGSUSED*/
 _citrus_NONE_stdenc_init(struct _citrus_stdenc * __restrict ce,
-			 const void *var, size_t lenvar,
+			 const void *var __unused, size_t lenvar __unused,
 			 struct _citrus_stdenc_traits * __restrict et)
 {
 
@@ -356,24 +363,24 @@ _citrus_NONE_stdenc_init(struct _citrus_stdenc * __restrict ce,
 
 static void
 /*ARGSUSED*/
-_citrus_NONE_stdenc_uninit(struct _citrus_stdenc *ce)
+_citrus_NONE_stdenc_uninit(struct _citrus_stdenc *ce __unused)
 {
 }
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_init_state(struct _citrus_stdenc * __restrict ce,
-			       void * __restrict ps)
+_citrus_NONE_stdenc_init_state(struct _citrus_stdenc * __restrict ce __unused,
+			       void * __restrict ps __unused)
 {
 	return (0);
 }
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce,
+_citrus_NONE_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce __unused,
 			   _csid_t *csid, _index_t *idx,
 			   const char **s, size_t n,
-			   void *ps, size_t *nresult)
+			   void *ps __unused, size_t *nresult)
 {
 
 	_DIAGASSERT(csid != NULL && idx != NULL);
@@ -392,10 +399,10 @@ _citrus_NONE_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_cstomb(struct _citrus_stdenc * __restrict ce,
+_citrus_NONE_stdenc_cstomb(struct _citrus_stdenc * __restrict ce __unused,
 			   char *s, size_t n,
 			   _csid_t csid, _index_t idx,
-			   void *ps, size_t *nresult)
+			   void *ps __unused, size_t *nresult)
 {
 
 	if (csid == _CITRUS_CSID_INVALID) {
@@ -417,10 +424,10 @@ _citrus_NONE_stdenc_cstomb(struct _citrus_stdenc * __restrict ce,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_mbtowc(struct _citrus_stdenc * __restrict ce,
+_citrus_NONE_stdenc_mbtowc(struct _citrus_stdenc * __restrict ce __unused,
 			   _wc_t * __restrict pwc,
 			   const char ** __restrict s, size_t n,
-			   void * __restrict pspriv,
+			   void * __restrict pspriv __unused,
 			   size_t * __restrict nresult)
 {
 	if (s == NULL) {
@@ -441,9 +448,9 @@ _citrus_NONE_stdenc_mbtowc(struct _citrus_stdenc * __restrict ce,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_wctomb(struct _citrus_stdenc * __restrict ce,
-			   char * __restrict s, size_t n,
-			   _wc_t wc, void * __restrict pspriv,
+_citrus_NONE_stdenc_wctomb(struct _citrus_stdenc * __restrict ce __unused,
+			   char * __restrict s, size_t n, _wc_t wc,
+			   void * __restrict pspriv __unused,
 			   size_t * __restrict nresult)
 {
 	if ((wc&~0xFFU) != 0) {
@@ -464,9 +471,10 @@ _citrus_NONE_stdenc_wctomb(struct _citrus_stdenc * __restrict ce,
 
 static int
 /*ARGSUSED*/
-_citrus_NONE_stdenc_put_state_reset(struct _citrus_stdenc * __restrict ce,
-				    char * __restrict s, size_t n,
-				    void * __restrict pspriv,
+_citrus_NONE_stdenc_put_state_reset(struct _citrus_stdenc * __restrict ce __unused,
+				    char * __restrict s __unused,
+				    size_t n __unused,
+				    void * __restrict pspriv __unused,
 				    size_t * __restrict nresult)
 {
 
