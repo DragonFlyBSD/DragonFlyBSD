@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.3 2004/01/20 21:32:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.4 2004/01/20 21:34:19 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -58,7 +58,7 @@ main(int argc, char *argv[])
 	int	doreg = 1;
 	int	force = 0;
 
-	while ((c = getopt(argc, argv, "dfx:")) != -1) {
+	while ((c = getopt(argc, argv, "Rdfx:")) != -1) {
 		switch (c) {
 		case 'f':
 			force = 1;
@@ -68,7 +68,7 @@ main(int argc, char *argv[])
 			break;
 		case 'x':
 		case 'R':
-			if (c == 'x')
+			if (c == 'R')
 			    c = exec_sys_unregister(-2);
 			else
 			    c = exec_sys_unregister(strtol(optarg, NULL, 0));
