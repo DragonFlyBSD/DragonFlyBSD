@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.6 2004/05/19 22:52:50 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.7 2004/05/21 01:14:27 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.6 2004/05/19 22:52:50 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.7 2004/05/21 01:14:27 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -325,7 +325,7 @@ sndstat_prepare(struct sbuf *s)
 static int
 sndstat_init(void)
 {
-	cdevsw_add(&sndstat_cdevsw, 0, 0);
+	cdevsw_add(&sndstat_cdevsw, -1, SND_DEV_STATUS);
 	make_dev(&sndstat_cdevsw, SND_DEV_STATUS, 
 		UID_ROOT, GID_WHEEL, 0444, "sndstat");
 	return (0);
@@ -341,7 +341,7 @@ sndstat_uninit(void)
 		splx(s);
 		return EBUSY;
 	}
-	cdevsw_remove(&sndstat_cdevsw, 0, 0);
+	cdevsw_remove(&sndstat_cdevsw, -1, SND_DEV_STATUS);
 	splx(s);
 	return 0;
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.6 2004/05/19 22:52:50 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.7 2004/05/21 01:14:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.6 2004/05/19 22:52:50 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.7 2004/05/21 01:14:27 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -1050,7 +1050,14 @@ dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
 int
 dsp_register(int unit, int channel)
 {
-	cdevsw_add(&dsp_cdevsw, PCMMKMINOR(-1, 0, 0), PCMMKMINOR(unit, 0, 0));
+	cdevsw_add(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP, 0));
+	cdevsw_add(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP16, 0));
+	cdevsw_add(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_AUDIO, 0));
+	cdevsw_add(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_NORESET, 0));
 	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSP, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "dsp%d.%d", unit, channel);
 	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSP16, channel),
@@ -1064,6 +1071,8 @@ dsp_register(int unit, int channel)
 int
 dsp_registerrec(int unit, int channel)
 {
+	cdevsw_add(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSPREC, 0));
 	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSPREC, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "dspr%d.%d", unit, channel);
 
@@ -1073,14 +1082,22 @@ dsp_registerrec(int unit, int channel)
 int
 dsp_unregister(int unit, int channel)
 {
-	cdevsw_remove(&dsp_cdevsw,
-			PCMMKMINOR(-1, 0, 0), PCMMKMINOR(unit, 0, 0));
+	cdevsw_remove(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP, 0));
+	cdevsw_remove(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP16, 0));
+	cdevsw_remove(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_AUDIO, 0));
+	cdevsw_remove(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_NORESET, 0));
 	return 0;
 }
 
 int
 dsp_unregisterrec(int unit, int channel)
 {
+	cdevsw_remove(&dsp_cdevsw, 
+		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSPREC, 0));
 	return 0;
 }
 
