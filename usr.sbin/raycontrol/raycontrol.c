@@ -30,10 +30,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/raycontrol/raycontrol.c,v 1.7 2004/04/04 19:38:08 charnier Exp $
- * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.4 2004/07/27 12:51:03 joerg Exp $
+ * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.5 2004/07/27 13:39:46 joerg Exp $
  */
 
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -54,23 +53,23 @@
 #include <errno.h>
 #include <err.h>
 
-static char *	ray_printhex	(u_int8_t *d, char *s, int len);
-static void	ray_getval	(char *iface, struct ray_param_req *rreq);
-static void	ray_getstats	(char *iface, struct ray_stats_req *sreq);
-static int	ray_version	(char *iface);
-static void	ray_dumpstats	(char *iface);
-static void	ray_dumpinfo	(char *iface);
-static void	ray_setstr	(char *iface, u_int8_t mib, char *s);
-static void	ray_setword	(char *iface, u_int8_t mib, u_int16_t v);
-static void	ray_setval	(char *iface, struct ray_param_req *rreq);
-static void	usage		(char *p);
+static char *	ray_printhex(u_int8_t *d, const char *s, int len);
+static void	ray_getval(const char *iface, struct ray_param_req *rreq);
+static void	ray_getstats(const char *iface, struct ray_stats_req *sreq);
+static int	ray_version(const char *iface);
+static void	ray_dumpstats(const char *iface);
+static void	ray_dumpinfo(const char *iface);
+static void	ray_setstr(const char *iface, u_int8_t mib, char *s);
+static void	ray_setword(const char *iface, u_int8_t mib, u_int16_t v);
+static void	ray_setval(const char *iface, struct ray_param_req *rreq);
+static void	usage(const char *p);
 
-static char	*mib_strings[] = RAY_MIB_STRINGS;
-static char	*mib_help_strings[] = RAY_MIB_HELP_STRINGS;
+static const char *mib_strings[] = RAY_MIB_STRINGS;
+static const char *mib_help_strings[] = RAY_MIB_HELP_STRINGS;
 static int	mib_info[RAY_MIB_MAX+1][3] = RAY_MIB_INFO;
 
 static char *
-ray_printhex(u_int8_t *d, char *s, int len)
+ray_printhex(u_int8_t *d, const char *s, int len)
 {
 	static char buf[3*256];
 	char *p;
@@ -87,7 +86,7 @@ ray_printhex(u_int8_t *d, char *s, int len)
 }
 
 static void
-ray_getval(char *iface, struct ray_param_req *rreq)
+ray_getval(const char *iface, struct ray_param_req *rreq)
 {
 	struct ifreq ifr;
 	int s;
@@ -110,7 +109,7 @@ ray_getval(char *iface, struct ray_param_req *rreq)
 }
 
 static void
-ray_getsiglev(char *iface, struct ray_siglev *siglev)
+ray_getsiglev(const char *iface, struct ray_siglev *siglev)
 {
 	struct ifreq ifr;
 	int s;
@@ -132,7 +131,7 @@ ray_getsiglev(char *iface, struct ray_siglev *siglev)
 }
 
 static void
-ray_getstats(char *iface, struct ray_stats_req *sreq)
+ray_getstats(const char *iface, struct ray_stats_req *sreq)
 {
 	struct ifreq ifr;
 	int s;
@@ -154,7 +153,7 @@ ray_getstats(char *iface, struct ray_stats_req *sreq)
 }
 
 static int
-ray_version(char *iface)
+ray_version(const char *iface)
 {
 	struct ray_param_req rreq;
 
@@ -168,7 +167,7 @@ ray_version(char *iface)
 }
 
 static void
-ray_dumpinfo(char *iface)
+ray_dumpinfo(const char *iface)
 {
 	struct ray_param_req rreq;
 	u_int8_t mib, version;
@@ -218,7 +217,7 @@ ray_dumpinfo(char *iface)
 }
 
 static void
-ray_dumpsiglev(char *iface)
+ray_dumpsiglev(const char *iface)
 {
 	struct ray_siglev siglevs[RAY_NSIGLEVRECS];
 	int i;
@@ -242,7 +241,7 @@ ray_dumpsiglev(char *iface)
 }
 
 static void
-ray_dumpstats(char *iface)
+ray_dumpstats(const char *iface)
 {
 	struct ray_stats_req sreq;
 
@@ -263,7 +262,7 @@ ray_dumpstats(char *iface)
 }
 
 static void
-ray_setval(char *iface, struct ray_param_req *rreq)
+ray_setval(const char *iface, struct ray_param_req *rreq)
 {
 	struct ifreq ifr;
 	int s;
@@ -287,7 +286,7 @@ ray_setval(char *iface, struct ray_param_req *rreq)
 }
 
 static void
-ray_setword(char *iface, u_int8_t mib, u_int16_t v)
+ray_setword(const char *iface, u_int8_t mib, u_int16_t v)
 {
 	struct ray_param_req rreq;
 
@@ -317,28 +316,31 @@ ray_setword(char *iface, u_int8_t mib, u_int16_t v)
 }
 
 static void
-ray_setstr(char *iface, u_int8_t mib, char *s)
+ray_setstr(const char *iface, u_int8_t mib, char *s)
 {
 	struct ray_param_req rreq;
+	size_t len;
 
 	if (iface == NULL)
 		errx(1, "must specify interface name");
 	if (s == NULL)
 		errx(1, "must specify string");
-	if (strlen(s) > RAY_MIB_SIZE(mib_info, mib, ray_version(iface)))
+	len = strlen(s);
+	if (len > SSIZE_MAX ||
+	    (ssize_t)len > RAY_MIB_SIZE(mib_info, mib, ray_version(iface)))
 		errx(1, "string too long");
 
-        bzero((char *)&rreq, sizeof(rreq));
+        bzero(&rreq, sizeof(rreq));
 
 	rreq.r_paramid = mib;
 	rreq.r_len = RAY_MIB_SIZE(mib_info, mib, ray_version(iface));
-	bcopy(s, (char *)rreq.r_data, strlen(s));
+	bcopy(s, rreq.r_data, strlen(s));
 
 	ray_setval(iface, &rreq);
 }
 
 static void
-usage(char *p)
+usage(const char *p)
 {
 	fprintf(stderr, "usage:  %s -i iface\n", p);
 	fprintf(stderr, "\t%s -i iface -o\n", p);
@@ -359,8 +361,8 @@ usage(char *p)
 int
 main(int argc, char *argv[])
 {
-
-	char *iface, *p;
+	const char *iface;
+	char *p;
 	int ch, val;
 
 	iface = NULL;
