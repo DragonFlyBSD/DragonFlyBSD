@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.32 2004/07/27 17:57:02 drhodus Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.33 2004/08/03 00:04:13 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -206,8 +206,6 @@ static int tcp_reass_overflows = 0;
 SYSCTL_INT(_net_inet_tcp_reass, OID_AUTO, overflows, CTLFLAG_RD,
     &tcp_reass_overflows, 0,
     "Global number of TCP Segment Reassembly Queue Overflows");
-
-struct inpcbinfo tcbinfo[MAXCPU];
 
 static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t);
 static void	 tcp_pulloutofband(struct socket *,
@@ -1146,12 +1144,27 @@ after_listen:
 				sbappend(&so->so_rcv, m);
 			}
 			sorwakeup(so);
+
+			/*
+			 * This code is responsible for most of the ACKs
+			 * the TCP stack sends back after receiving a data
+			 * packet.  Note that the DELAY_ACK check fails if
+			 * the delack timer is already running, which results
+			 * in an ack being sent every other packet (which is
+			 * what we want).
+			 */
 			if (DELAY_ACK(tp)) {
 	                        callout_reset(tp->tt_delack, tcp_delacktime,
 	                            tcp_timer_delack, tp);
 			} else {
 				tp->t_flags |= TF_ACKNOW;
-				tcp_output(tp);
+				if ((tp->t_flags & TF_ONOUTPUTQ) == 0) {
+					tp->t_flags |= TF_ONOUTPUTQ;
+					tp->tt_cpu = mycpu->gd_cpuid;
+					TAILQ_INSERT_TAIL(
+					    &tcpcbackq[tp->tt_cpu],
+					    tp, t_outputq);
+				}
 			}
 			return;
 		}

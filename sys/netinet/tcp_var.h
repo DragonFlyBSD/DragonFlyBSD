@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.24 2004/07/17 20:31:31 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.25 2004/08/03 00:04:13 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -124,7 +124,7 @@ struct tcptemp {
 struct tcpcb {
 	struct	tsegqe_head t_segq;
 	int	t_dupacks;		/* consecutive dup acks recd */
-	struct	tcptemp	*unused;	/* unused */
+	int	tt_cpu;			/* sanity check the cpu */
 	struct	callout *tt_rexmt;	/* retransmit timer */
 
 	struct	callout *tt_persist;	/* retransmit persistence */
@@ -161,6 +161,7 @@ struct tcpcb {
 #define	TF_FASTREXMT	0x00800000	/* Did Fast Retransmit. */
 #define	TF_EARLYREXMT	0x01000000	/* Did Early (Fast) Retransmit. */
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
+#define TF_ONOUTPUTQ	0x04000000	/* on t_outputq list */
 	tcp_seq	snd_up;			/* send urgent pointer */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
@@ -235,6 +236,7 @@ struct tcpcb {
 	u_long	t_badrxtwin;		/* window for retransmit recovery */
 	u_long	t_rexmtTS;		/* timestamp of last retransmit */
 	u_char	snd_limited;		/* segments limited transmitted */
+	TAILQ_ENTRY(tcpcb) t_outputq;	/* tcp_output needed list */
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)
@@ -516,7 +518,11 @@ struct	xtcpcb {
 SYSCTL_DECL(_net_inet_tcp);
 #endif
 
+TAILQ_HEAD(tcpcbackqhead,tcpcb);
+
 extern	struct inpcbinfo tcbinfo[];
+extern	struct tcpcbackqhead tcpcbackq[];
+
 extern	int tcp_mssdflt;	/* XXX */
 extern	int tcp_delack_enabled;
 extern	int path_mtu_discovery;
@@ -531,6 +537,7 @@ struct lwkt_port *
 void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *
 	 tcp_close (struct tcpcb *);
+void	 tcpmsg_service_loop (void *);
 void	 tcp_ctlinput (int, struct sockaddr *, void *);
 int	 tcp_ctloutput (struct socket *, struct sockopt *);
 struct lwkt_port *

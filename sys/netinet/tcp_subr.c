@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.36 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.37 2004/08/03 00:04:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -157,6 +157,9 @@
 
 #include <machine/smp.h>
 
+struct inpcbinfo tcbinfo[MAXCPU];
+struct tcpcbackqhead tcpcbackq[MAXCPU];
+
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW, 
     &tcp_mssdflt, 0, "Default TCP Maximum Segment Size");
@@ -229,6 +232,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 
+static void tcp_willblock(void);
 static void tcp_cleartaocache (void);
 static void tcp_notify (struct inpcb *, int);
 
@@ -339,6 +343,7 @@ tcp_init()
 		tcbinfo[cpu].wildcardhashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].wildcardhashmask);
 		tcbinfo[cpu].ipi_zone = ipi_zone;
+		TAILQ_INIT(&tcpcbackq[cpu]);
 	}
 
 	tcp_reass_maxseg = nmbclusters / 16;
@@ -373,6 +378,34 @@ tcp_init()
 	syncache_init();
 	tcp_thread_init();
 }
+
+void
+tcpmsg_service_loop(void *dummy)
+{ 
+	struct netmsg *msg;
+
+	while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
+		do {
+			msg->nm_lmsg.ms_cmd.cm_func(&msg->nm_lmsg);
+		} while ((msg = lwkt_getport(&curthread->td_msgport)) != NULL);
+		tcp_willblock();
+	}
+}
+
+static void
+tcp_willblock(void)
+{
+	struct tcpcb *tp;
+	int cpu = mycpu->gd_cpuid;
+
+	while ((tp = TAILQ_FIRST(&tcpcbackq[cpu])) != NULL) {
+		KKASSERT(tp->t_flags & TF_ONOUTPUTQ);
+		tp->t_flags &= ~TF_ONOUTPUTQ;
+		TAILQ_REMOVE(&tcpcbackq[cpu], tp, t_outputq);
+		tcp_output(tp);
+	}
+}
+
 
 /*
  * Fill in the IP and TCP headers for an outgoing packet, given the tcpcb.
@@ -739,6 +772,12 @@ tcp_close(struct tcpcb *tp)
 	callout_stop(tp->tt_2msl);
 	callout_stop(tp->tt_delack);
 
+	if (tp->t_flags & TF_ONOUTPUTQ) {
+		KKASSERT(tp->tt_cpu == mycpu->gd_cpuid);
+		TAILQ_REMOVE(&tcpcbackq[tp->tt_cpu], tp, t_outputq);
+		tp->t_flags &= ~TF_ONOUTPUTQ;
+	}
+
 	/*
 	 * If we got enough samples through the srtt filter,
 	 * save the rtt and rttvar in the routing entry.
@@ -859,6 +898,7 @@ no_valid_rt:
 			msg->nm_pcbinfo = &tcbinfo[cpu];
 			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
 		}
+		/* XXX wait? */
 	}
 #endif
 
