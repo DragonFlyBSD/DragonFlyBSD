@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.5 2005/02/03 23:28:24 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.6 2005/02/05 22:54:49 joerg Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -109,6 +109,7 @@ typedef struct Struct_Obj_Entry {
 
     struct Struct_Obj_Entry *next;
     char *path;			/* Pathname of underlying file (%) */
+    char *origin_path;		/* Directory path of origin file */
     int refcount;
     int dl_refcount;		/* Number of times loaded by dlopen */
 
@@ -153,6 +154,7 @@ typedef struct Struct_Obj_Entry {
     bool rtld;			/* True if this is the dynamic linker */
     bool textrel;		/* True if there are relocations to text seg */
     bool symbolic;		/* True if generated with "-Bsymbolic" */
+    bool bind_now;		/* True if all relocations should be made first */
     bool traced;		/* Already printed in ldd trace output */
     bool jmpslots_done;		/* Already have relocated the jump slots */
     bool init_done;		/* Already have added object to init list */
