@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.5 2004/07/03 13:10:10 joerg Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.6 2004/07/04 23:15:48 joerg Exp $
  *
  */
 
@@ -23,6 +23,14 @@
  * The number of bytes in the trailing CRC field.
  */
 #define	ETHER_CRC_LEN		4
+
+/*
+ * Mbuf adjust factor to force 32-bit alignment of IP header.
+ * Drivers should do m_adj(m, ETHER_ALIGN) when setting up a
+ * receive so the upper layers get the IP header properly aligned
+ * past the 14-byte Ethernet header.
+ */
+#define	ETHER_ALIGN		2
 
 /*
  * The length of the combined header.
