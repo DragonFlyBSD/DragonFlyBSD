@@ -1,7 +1,7 @@
 /*
  * exec1.c
  *
- * $DragonFly: src/test/sysperf/exec1.c,v 1.1 2004/04/10 21:36:52 dillon Exp $
+ * $DragonFly: src/test/sysperf/exec1.c,v 1.2 2004/04/14 17:59:45 dillon Exp $
  */
 
 #include "blib.h"
@@ -59,6 +59,7 @@ main(int ac, char **av)
 	    execltest();
 	count += 100;
     }
+    count *= 5;		/* 5 second run */
     start_timing();
     for (i = 0; i < count; ++i)
 	execltest();
