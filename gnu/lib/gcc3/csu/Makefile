@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc3/csu/Attic/Makefile,v 1.2 2004/01/21 21:42:26 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/csu/Attic/Makefile,v 1.3 2004/01/21 21:59:04 joerg Exp $
 
 GCCDIR=	${.CURDIR}/../../../../contrib/gcc3
 CCTOOLS_SRC = ${.CURDIR}/../../../usr.bin/cc3/cc_tools
@@ -45,8 +45,10 @@ crtend.So:
 	${CC} ${CFLAGS} -g0 -DCRT_END ${CRTS_CFLAGS} \
 		-c -o ${.TARGET} ${UGLYHACK} ${.ALLSRC:N*.h}
 
-TCONFIG_H: ${CCTOOLS_SRC}/Makefile
+${TCONFIG_H}: ${CCTOOLS_SRC}/Makefile
 	cd ${CCTOOLS_SRC} && make tconfig.h
+
+beforedepend: ${TCONFIG_H}
 
 realinstall:
 .for file in ${OBJS} ${SOBJS}
