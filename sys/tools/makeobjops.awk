@@ -38,7 +38,7 @@
 # From src/sys/kern/makeobjops.pl,v 1.8 2001/11/16 02:02:42 joe Exp
 #
 # $FreeBSD: src/sys/tools/makeobjops.awk,v 1.3 2003/10/16 13:29:26 dfr Exp $
-# $DragonFly: src/sys/tools/makeobjops.awk,v 1.3 2004/03/07 12:48:34 eirikn Exp $
+# $DragonFly: src/sys/tools/makeobjops.awk,v 1.4 2004/04/14 18:28:29 joerg Exp $
 
 #
 #   Script to produce kobj front-end sugar.
@@ -284,7 +284,7 @@ function handle_method (static)
 	firstvar = varnames[1];
 
 	if (default == "")
-		default = "0";
+		default = "kobj_error_method";
 
 	# the method description 
 	printh("extern struct kobjop_desc " mname "_desc;");
@@ -294,8 +294,12 @@ function handle_method (static)
 	    line_width, length(prototype)));
 
 	# Print out the method desc
+	printc("struct kobj_method " mname "_method_default = {");
+	printc("\t&" mname "_desc, (kobjop_t) " default);
+	printc("};\n");
+
 	printc("struct kobjop_desc " mname "_desc = {");
-	printc("\t0, (kobjop_t) " default);
+	printc("\t0, &" mname "_method_default");
 	printc("};\n");
 
 	# Print out the method itself

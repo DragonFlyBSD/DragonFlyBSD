@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.6 2004/04/01 13:50:47 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.7 2004/04/14 18:28:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,16 @@ kobj_init_token(void *arg)
 
 SYSINIT(kobj, SI_SUB_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
 
-static int
+/*
+ * This method structure is used to initialise new caches. Since the
+ * desc pointer is NULL, it is guaranteed never to match any real
+ * descriptors.
+ */
+static struct kobj_method null_method = {
+	0, 0,
+};
+
+int
 kobj_error_method(void)
 {
 	return ENXIO;
@@ -94,6 +103,7 @@ kobj_class_compile(kobj_class_t cls)
 {
 	kobj_method_t *m;
 	kobj_ops_t ops;
+	int i;
 
 	/*
 	 * Don't do anything if we are already compiled.
@@ -104,7 +114,9 @@ kobj_class_compile(kobj_class_t cls)
 	/*
 	 * Allocate space for the compiled ops table.
 	 */
-	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT | M_ZERO);
+	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT);
+	for (i = 0; i < KOBJ_CACHE_SIZE; i++)
+		ops->cache[i] = &null_method;
 	if (cls->ops) {
 		/*
 		 * In case of preemption, another thread might have been faster,
@@ -128,23 +140,62 @@ kobj_class_compile(kobj_class_t cls)
 		kobj_register_method(m->desc);
 }
 
-void
-kobj_lookup_method(kobj_method_t *methods,
-		   kobj_method_t *ce,
-		   kobjop_desc_t desc)
+static kobj_method_t *
+kobj_lookup_method_class(kobj_class_t cls, kobjop_desc_t desc)
 {
-	ce->desc = desc;
-	for (; methods && methods->desc; methods++) {
-		if (methods->desc == desc) {
-			ce->func = methods->func;
-			return;
+	kobj_method_t *methods = cls->methods;
+	kobj_method_t *ce;
+
+	for (ce = methods; ce && ce->desc; ce++)
+		if (ce->desc == desc)
+			return(ce);
+
+	return(0);
+}
+
+static kobj_method_t *
+kobj_lookup_method_mi(kobj_class_t cls, kobjop_desc_t desc)
+{
+	kobj_method_t *ce;
+	kobj_class_t *basep;
+
+	ce = kobj_lookup_method_class(cls, desc);
+	if (ce)
+		return(ce);
+
+	basep = cls->baseclasses;
+	if (basep) {
+		for (; *basep; basep++) {
+			ce = kobj_lookup_method_mi(*basep, desc);
+			if (ce)
+				return(ce);
 		}
 	}
-	if (desc->deflt)
-		ce->func = desc->deflt;
-	else
-		ce->func = kobj_error_method;
-	return;
+
+	return(0);
+}
+
+kobj_method_t*
+kobj_lookup_method(kobj_class_t cls,
+		   kobj_method_t **cep,
+		   kobjop_desc_t desc)
+{
+	kobj_method_t *ce;
+
+#ifdef KOBJ_STATS
+	/*
+	 * Correct for the 'hit' assumption in KOBJOPLOOKUP and record
+	 * a 'miss'.
+	 */
+	kobj_lookup_hits--;
+	kobj_lookup_misses--;
+#endif
+
+	ce = kobj_lookup_method_mi(cls, desc);
+	if (!ce)
+		ce = desc->deflt;
+	*cep = ce;
+	return(ce);
 }
 
 static void
