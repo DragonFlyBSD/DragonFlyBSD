@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.4 2004/03/01 11:50:59 joerg Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.5 2004/04/07 05:18:19 dillon Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
@@ -109,13 +109,13 @@ struct device {
 	device_state_t	state;
 	uint32_t	devflags;	/* api level flags for device_get_flags() */
 	u_short		flags;
-#define DF_ENABLED	1		/* device should be probed/attached */
-#define DF_FIXEDCLASS	2		/* devclass specified at create time */
-#define DF_WILDCARD	4		/* unit was originally wildcard */
-#define DF_DESCMALLOCED	8		/* description was malloced */
-#define DF_QUIET	16		/* don't print verbose attach message */
-#define DF_DONENOMATCH	32		/* don't execute DEVICE_NOMATCH again */
-#define DF_EXTERNALSOFTC 64		/* softc not allocated by us */
+#define DF_ENABLED	0x0001		/* device should be probed/attached */
+#define DF_FIXEDCLASS	0x0002		/* devclass specified at create time */
+#define DF_WILDCARD	0x0004		/* unit was originally wildcard */
+#define DF_DESCMALLOCED	0x0008		/* description was malloced */
+#define DF_QUIET	0x0010		/* don't print verbose attach message */
+#define DF_DONENOMATCH	0x0020		/* don't execute DEVICE_NOMATCH again */
+#define DF_EXTERNALSOFTC 0x0040		/* softc not allocated by us */
 	u_char		order;		/* order from device_add_child_ordered() */
 	u_char		pad;
 #ifdef DEVICE_SYSCTLS
