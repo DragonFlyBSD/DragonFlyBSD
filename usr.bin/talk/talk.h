@@ -31,11 +31,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)talk.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/talk/talk.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/talk/talk.h,v 1.4 2004/08/19 23:32:02 joerg Exp $
  */
 
-#include <sys/cdefs.h>
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

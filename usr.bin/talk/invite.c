@@ -32,15 +32,15 @@
  *
  * @(#)invite.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/invite.c,v 1.6.2.1 2000/10/05 17:40:38 ru Exp $
- * $DragonFly: src/usr.bin/talk/invite.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/talk/invite.c,v 1.4 2004/08/19 23:32:02 joerg Exp $
  */
 
+#include <sys/param.h>
+#include <sys/socket.h>
 #include <err.h>
 #include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <protocols/talkd.h>
 #include "talk_ctl.h"
 #include "talk.h"
