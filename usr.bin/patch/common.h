@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: common.h,v 1.25 2003/10/31 20:20:45 millert Exp $
- * $DragonFly: src/usr.bin/patch/common.h,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/common.h,v 1.2 2004/10/11 21:36:48 dillon Exp $
  */
 
 /*
@@ -30,6 +30,13 @@
  */
 
 #include <stdbool.h>
+
+/*
+ * SIZE_MAX: older BSD compatibility for buildworld bootstrap mode only
+ */
+#if defined(BOOTSTRAPPING) && !defined(SIZE_MAX)
+#define SIZE_MAX	0x7fffffff
+#endif
 
 #define DEBUGGING
 
