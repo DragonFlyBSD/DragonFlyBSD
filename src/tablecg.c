@@ -4,6 +4,8 @@
  *	This is used to synthesize the table structure surrounding the site
  *	pages, to highlight Horizontal or Vertical selection features, and
  *	to track selections by modifying embedded LOCALLINK() directives.
+ *
+ * $DragonFly: site/src/tablecg.c,v 1.2 2003/07/23 21:26:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -194,6 +196,8 @@ generate_top_headers(void)
 	    if (den->d_name[0] == '.')
 		continue;
 	    if (strchr(den->d_name, '.'))
+		continue;
+	    if (strcmp(den->d_name, "CVS") == 0)
 		continue;
 	    if (den->d_type != DT_DIR)
 		continue;
