@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.22 2003/12/10 23:48:07 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.23 2003/12/20 05:53:59 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -775,11 +775,17 @@ recvfrom(struct recvfrom_args *uap)
 	    &uap->flags, &uap->sysmsg_result);
 
 	if (error == 0 && uap->from) {
-		fromlen = MIN(fromlen, sa->sa_len);
-		error = copyout(sa, uap->from, fromlen);
-		if (error == 0)
+		/* note: sa may still be NULL */
+		if (sa) {
+			fromlen = MIN(fromlen, sa->sa_len);
+			error = copyout(sa, uap->from, fromlen);
+		} else {
+			fromlen = 0;
+		}
+		if (error == 0) {
 			error = copyout(&fromlen, uap->fromlenaddr,
-			    sizeof(fromlen));
+					sizeof(fromlen));
+		}
 	}
 	if (sa)
 		FREE(sa, M_SONAME);
