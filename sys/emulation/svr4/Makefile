@@ -1,7 +1,7 @@
 # Makefile for syscall tables
 #
 # $FreeBSD: src/sys/svr4/Makefile,v 1.3 1999/09/01 00:32:18 newton Exp $
-# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.7 2003/08/22 17:36:34 dillon Exp $
+# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.8 2004/02/16 20:48:35 dillon Exp $
 
 # This builds the module
 #
@@ -42,7 +42,7 @@ svr4_locore.o:	svr4_locore.s svr4_assym.h
 		${.IMPSRC} -o ${.TARGET}
 
 svr4_genassym.o:	svr4_genassym.c svr4.h @ machine ${ARCH}
-	${CC} -c ${CFLAGS} ${.IMPSRC}
+	${CC} -c ${CFLAGS:N-fno-common} ${.IMPSRC}
 
 afterinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \

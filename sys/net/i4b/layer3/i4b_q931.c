@@ -30,7 +30,7 @@
  *	$Id: i4b_q931.c,v 1.32 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_q931.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.5 2004/02/16 20:48:33 dillon Exp $
  *
  *      last edit-date: [Mon May 29 16:56:52 2000]
  *
@@ -78,7 +78,6 @@
 
 unsigned int i4b_l3_debug = L3_DEBUG_DEFAULT;
 
-call_desc_t call_desc[N_CALL_DESC];	/* call descriptor array */
 ctrl_desc_t ctrl_desc[MAX_CONTROLLERS];	/* controller description array */
 int utoc_tab[MAX_CONTROLLERS];		/* unit to controller conversion */
 
