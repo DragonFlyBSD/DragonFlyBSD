@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.13 2004/03/12 22:19:08 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.14 2004/03/12 22:21:12 joerg Exp $
  */
 
 #include "opt_ata.h"
@@ -1705,9 +1705,7 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
 	length = 16;
 	break;
     case DVD_INVALIDATE_AGID:
-	error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length,
-				0, 10, NULL, NULL);
-	return error;
+	return(atapi_queue_cmd(cdp->device, ccb, NULL, 0, 0, 10, NULL, NULL));
     default:
 	return EINVAL;
     }
