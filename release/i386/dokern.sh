@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/i386/dokern.sh,v 1.58.2.7 2003/04/04 17:10:31 ru Exp $
-# $DragonFly: src/release/i386/Attic/dokern.sh,v 1.2 2003/06/17 04:27:20 dillon Exp $
+# $DragonFly: src/release/i386/Attic/dokern.sh,v 1.3 2003/10/30 07:14:18 asmodai Exp $
 #
 
 sed	-e '/pty/d' \
@@ -24,6 +24,9 @@ sed	-e '/pty/d' \
 	-e '/RANDOMDEV/d' \
 	-e '/AHC_REG_PRETTY_PRINT/d' \
 	-e '/AHD_REG_PRETTY_PRINT/d' \
+	-e '/DDB/d' \
+	-e '/INVARIANTS/d' \
+	-e '/INVARIANT_SUPPORT/d' \
 	-e '/	ncr/d' \
 	-e '/	awi$/d' \
 	-e '/atapist/d' \
