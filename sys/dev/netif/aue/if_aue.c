@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.13 2004/07/23 07:16:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.14 2004/09/14 21:48:53 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -670,6 +670,7 @@ USB_ATTACH(aue)
 
 	sc->aue_udev = uaa->device;
 	sc->aue_unit = device_get_unit(self);
+	callout_init(&sc->aue_stat_timer);
 
 	if (usbd_set_config_no(sc->aue_udev, AUE_CONFIG_NO, 0)) {
 		printf("aue%d: getting interface handle failed\n",
@@ -772,7 +773,6 @@ USB_ATTACH(aue)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr);
-	callout_handle_init(&sc->aue_stat_ch);
 	usb_register_netisr();
 	sc->aue_dying = 0;
 
@@ -791,7 +791,7 @@ aue_detach(device_ptr_t dev)
 	ifp = &sc->arpcom.ac_if;
 
 	sc->aue_dying = 1;
-	untimeout(aue_tick, sc, sc->aue_stat_ch);
+	callout_stop(&sc->aue_stat_timer);
 	ether_ifdetach(ifp);
 
 	if (sc->aue_ep[AUE_ENDPT_TX] != NULL)
@@ -1119,7 +1119,7 @@ aue_tick(void *xsc)
 			aue_start(ifp);
 	}
 
-	sc->aue_stat_ch = timeout(aue_tick, sc, hz);
+	callout_reset(&sc->aue_stat_timer, hz, aue_tick, sc);
 
 	AUE_UNLOCK(sc);
 
@@ -1320,7 +1320,7 @@ aue_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->aue_stat_ch = timeout(aue_tick, sc, hz);
+	callout_reset(&sc->aue_stat_timer, hz, aue_tick, sc);
 
 	AUE_UNLOCK(sc);
 
@@ -1453,7 +1453,7 @@ aue_stop(struct aue_softc *sc)
 	aue_csr_write_1(sc, AUE_CTL0, 0);
 	aue_csr_write_1(sc, AUE_CTL1, 0);
 	aue_reset(sc);
-	untimeout(aue_tick, sc, sc->aue_stat_ch);
+	callout_stop(&sc->aue_stat_timer);
 
 	/* Stop transfers. */
 	if (sc->aue_ep[AUE_ENDPT_RX] != NULL) {
