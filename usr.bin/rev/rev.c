@@ -32,27 +32,26 @@
  *
  * @(#) Copyright (c) 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rev.c	8.3 (Berkeley) 5/4/95
- * $DragonFly: src/usr.bin/rev/rev.c,v 1.5 2004/12/13 17:43:57 liamfoy Exp $
+ * $DragonFly: src/usr.bin/rev/rev.c,v 1.6 2004/12/14 18:22:09 liamfoy Exp $
  */
 
 #include <sys/types.h>
 
 #include <err.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 static void	usage(void);
+static int	dorev(FILE *, const char *);
 
 int
 main(int argc, char **argv)
 {
-	const char *p, *t;
 	FILE *fp;
-	size_t len;
-	int ch, rval;
+	int ch, i, rval;
+
+	rval = 0;
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
@@ -64,36 +63,20 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	fp = stdin;
-	rval = 0;
-	do {
-		if (*argv) {
-			if ((fp = fopen(*argv, "r")) == NULL) {
-				warn("%s", *argv);
-				rval = 1;
-				++argv;
-				continue;
-			}
-		}
+	if (argc == 0)
+		rval += dorev(stdin, "stdin");
 
-		while ((p = fgetln(fp, &len)) != NULL) {
-			if (p[len - 1] == '\n')
-				--len;
-			t = p + len - 1;
-			for (t = p + len - 1; t >= p; --t)
-				putchar(*t);
-			putchar('\n');
+	for (i = 0; i < argc; ++i) {
+		if ((fp = fopen(argv[i], "r")) != NULL) {
+			rval += dorev(fp, argv[i]);
+			fclose(fp);
+		} else {
+			warn("failed to open %s", argv[i]);
+			rval++ ;
 		}
-		if (ferror(fp)) {
-			warn("%s", *argv);
-			/* Reset error indicator */
-			clearerr(fp);
-			rval = 1;
-		}
-		++argv;
-		fclose(fp);
-	} while (*argv);
-	exit(rval);
+	}
+
+	exit(rval != 0 ? 1 : 0);
 }
 
 static void
@@ -101,4 +84,29 @@ usage()
 {
 	fprintf(stderr, "usage: rev [file ...]\n");
 	exit(1);
+}
+
+static int 
+dorev(FILE *fp, const char *filepath)
+{
+	const char *p, *t;
+	size_t len;
+	
+	while ((p = fgetln(fp, &len)) != NULL) {
+			if (p[len - 1] == '\n')
+				--len;
+			t = p + len - 1;
+			for (t = p + len - 1; t >= p; --t)
+				putchar(*t);
+			putchar('\n');
+	}
+	
+	if (ferror(fp)) {
+		warn("%s", filepath);
+		/* Reset error indicator */
+		clearerr(fp);
+		return(1);
+	}
+
+	return(0);
 }
