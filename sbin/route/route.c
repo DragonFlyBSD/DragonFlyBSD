@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.11 2005/03/16 06:08:06 cpressey Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.12 2005/03/16 06:33:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -421,8 +421,8 @@ routename(struct sockaddr *sa)
 		 * Unknown address family; just render the raw
 		 * data in sa->sa_data as hex values.
 		 */
-		u_char *sp = (u_char *)sa->sa_data;
-		u_char *splim = (u_char *)sa + sa->sa_len;
+		uint8_t *sp = (uint8_t *)sa->sa_data;
+		uint8_t *splim = (uint8_t *)sa + sa->sa_len;
 		char *cps = line + sprintf(line, "(%d)", sa->sa_family);
 		char *cpe = line + sizeof(line);
 
@@ -557,8 +557,8 @@ netname(struct sockaddr *sa)
 		 * Unknown address family; just render the raw
 		 * data in sa->sa_data as hex values.
 		 */
-		u_char *sp = (u_char *)sa->sa_data;
-		u_char *splim = (u_char *)sa + sa->sa_len;
+		uint8_t *sp = (uint8_t *)sa->sa_data;
+		uint8_t *splim = (uint8_t *)sa + sa->sa_len;
 		char *cps = line + sprintf(line, "af %d:", sa->sa_family);
 		char *cpe = line + sizeof(line);
 
