@@ -2,7 +2,7 @@
 
 # installer - start installer frontend and backend as per pfi config.
 # $Id: installer,v 1.4 2004/07/10 23:30:41 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.3 2004/07/11 06:33:27 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.4 2004/07/11 07:46:29 cpressey Exp $
 
 # auto-login on ttyv0.
 # backend (and all other logging) on ttyv0 (console.)
@@ -67,6 +67,7 @@ installer_start()
 			    -b /usr/local/share/dfuife_curses/fred.txt \
 			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
 		fi
+		rm -f /tmp/ps.txt
 		sleep 1
 		vidcontrol -s 2
 		cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
@@ -101,10 +102,10 @@ installer_start()
 ps auwwwxxx > /tmp/ps.txt
 if grep -q dfuibe_installer /tmp/ps.txt; then
 	# Installer is already running. Log in normally.
+	rm -f /tmp/ps.txt
 else
+	rm -f /tmp/ps.txt
 	installer_start
 fi
-
-rm -f /tmp/ps.txt
 
 ### END of installer ###
