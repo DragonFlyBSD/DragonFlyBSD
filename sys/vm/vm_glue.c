@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.15 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.16 2003/09/24 18:37:54 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -347,6 +347,9 @@ faultin(p)
 }
 
 /*
+ * Kernel initialization eventually falls through to this function,
+ * which is process 0.
+ *
  * This swapin algorithm attempts to swap-in processes only if there
  * is enough space for them.  Of course, if a process waits for a long
  * time, it will be swapped in anyway.
@@ -361,6 +364,7 @@ scheduler(dummy)
 	struct proc *pp;
 	int ppri;
 
+	KKASSERT(!IN_CRITICAL_SECT(curthread));
 loop:
 	if (vm_page_count_min()) {
 		VM_WAIT;

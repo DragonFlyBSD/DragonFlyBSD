@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.5 2003/09/24 18:37:51 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -121,6 +121,7 @@ enum sysinit_sub_id {
 	SI_SUB_RUN_QUEUE	= 0x2200000,	/* the run queue*/
 	SI_SUB_CREATE_INIT	= 0x2300000,	/* create the init process */
 	SI_SUB_MBUF		= 0x2380000,	/* mbuf subsystem */
+	SI_SUB_LEAVE_CRIT	= 0x23c0000,	/* allow interrupt operation */
 	SI_SUB_DRIVERS		= 0x2400000,	/* Let Drivers initialize */
 	SI_SUB_CONFIGURE	= 0x3800000,	/* Configure devices */
 	SI_SUB_VFS		= 0x4000000,	/* virtual file system*/

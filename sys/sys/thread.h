@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.31 2003/08/25 19:50:33 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.32 2003/09/24 18:37:51 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -213,6 +213,8 @@ struct thread {
 #define TDPRI_CRIT		32	/* high bits of td_pri used for crit */
 
 #define CACHE_NTHREADS		6
+
+#define IN_CRITICAL_SECT(td)	((td)->td_pri >= TDPRI_CRIT)
 
 #ifdef _KERNEL
 

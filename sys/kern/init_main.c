@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.22 2003/08/03 10:07:41 hmp Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.23 2003/09/24 18:37:48 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -63,6 +63,7 @@
 #include <sys/unistd.h>
 #include <sys/malloc.h>
 #include <sys/file2.h>
+#include <sys/thread2.h>
 
 #include <machine/cpu.h>
 
@@ -236,6 +237,19 @@ print_caddr_t(void *data __unused)
 }
 SYSINIT(announce, SI_SUB_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 
+/*
+ * Leave the critical section that protected us from spurious interrupts
+ * so device probes work.
+ */
+static void
+leavecrit(void *dummy __unused)
+{
+	crit_exit();
+	KKASSERT(!IN_CRITICAL_SECT(curthread));
+	if (bootverbose)
+		printf("Leaving critical section, allowing interrupts\n");
+}
+SYSINIT(leavecrit, SI_SUB_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
 
 /*
  ***************************************************************************
@@ -445,6 +459,7 @@ start_init(void *dummy)
 	VREF(p->p_fd->fd_cdir);
 	p->p_fd->fd_rdir = rootvnode;
 	VREF(p->p_fd->fd_rdir);
+	vfs_cache_setroot(rootvnode);
 	VOP_UNLOCK(rootvnode, 0, curthread);
 
 	/*

@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.29 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.30 2003/09/24 18:37:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,6 +189,10 @@ lwkt_alloc_thread(struct thread *td)
  *
  * NOTE!  called from low level boot code, we cannot do anything fancy!
  * Only the low level boot code will call this function with gd != mycpu.
+ *
+ * All threads start out in a critical section at a priority of
+ * TDPRI_KERN_DAEMON.  Higher level code will modify the priority as
+ * appropriate.
  */
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
@@ -197,7 +201,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_kstack = stack;
     td->td_flags |= flags;
     td->td_gd = gd;
-    td->td_pri = TDPRI_CRIT;
+    td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
     lwkt_init_port(&td->td_msgport, td);
     pmap_init_thread(td);
     crit_enter();
