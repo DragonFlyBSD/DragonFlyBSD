@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.4 2003/10/27 21:12:29 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -241,7 +241,10 @@ ata_pci_match(device_t dev)
 	return "AMD 768 ATA100 controller";
 
     case 0x01bc10de:
-	return "nVIDIA nForce ATA100 controller";
+	return "NVIDIA nForce ATA100 controller";
+
+    case 0x006510de:
+	return "NVIDIA nForce ATA133 controller";
 
     case 0x02111166:
 	return "ServerWorks ROSB4 ATA33 controller";
@@ -474,7 +477,8 @@ ata_pci_attach(device_t dev)
     case 0x74091022: /* AMD 756 default setup */
     case 0x74111022: /* AMD 766 default setup */
     case 0x74411022: /* AMD 768 default setup */
-    case 0x01bc10de: /* nVIDIA nForce default setup */
+    case 0x01bc10de: /* NVIDIA nForce default setup */
+    case 0x006510de: /* NVIDIA nForce2 default setup */
 	/* set prefetch, postwrite */
 	pci_write_config(dev, 0x41, pci_read_config(dev, 0x41, 1) | 0xf0, 1);
 
