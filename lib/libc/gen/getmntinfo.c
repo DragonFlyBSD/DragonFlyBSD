@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getmntinfo.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/getmntinfo.c,v 1.3 2005/02/02 06:14:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,13 +49,13 @@ getmntinfo(mntbufp, flags)
 {
 	static struct statfs *mntbuf;
 	static int mntsize;
-	static long bufsize;
+	static int bufsize;
 
 	if (mntsize <= 0 && (mntsize = getfsstat(0, 0, MNT_NOWAIT)) < 0)
 		return (0);
 	if (bufsize > 0 && (mntsize = getfsstat(mntbuf, bufsize, flags)) < 0)
 		return (0);
-	while (bufsize <= mntsize * sizeof(struct statfs)) {
+	while (bufsize <= mntsize * (int)sizeof(struct statfs)) {
 		if (mntbuf)
 			free(mntbuf);
 		bufsize = (mntsize + 1) * sizeof(struct statfs);
