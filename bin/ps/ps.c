@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.10 2004/07/29 09:20:39 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.11 2004/09/14 07:52:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,6 +73,7 @@ int	rawcpu;			/* -C */
 int	sumrusage;		/* -S */
 int	termwidth;		/* width of screen (0 == infinity) */
 int	totwidth;		/* calculated width of requested variables */
+int	numcpus;		/* hw.ncpu */
 
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
@@ -97,7 +98,6 @@ static void	 usage (void);
 static uid_t	*getuids(const char *, int *);
 
 struct timeval btime;
-static size_t btime_size = sizeof(struct timeval);
 
 static char dfmt[] = "pid tt state time command";
 static char jfmt[] = "user pid ppid pgid sess jobc state tt time command";
@@ -123,6 +123,8 @@ main(int argc, char **argv)
 	int prtheader, wflag, what, xflg, uid, nuids;
 	char errbuf[_POSIX2_LINE_MAX];
 	const char *cp, *nlistf, *memf;
+	size_t btime_size = sizeof(struct timeval);
+	size_t numcpus_size = sizeof(numcpus);
 
 	(void) setlocale(LC_ALL, "");
 
@@ -342,6 +344,12 @@ main(int argc, char **argv)
 		perror("sysctl: kern.boottime");
 		exit(EXIT_FAILURE);
 	}
+
+	/*
+	 * Get number of cpus
+	 */
+	if (sysctlbyname("hw.numcpu", &numcpus, &numcpus_size, NULL, 0) < 0)
+		numcpus = 1;
 
 	/*
 	 * get proc list
