@@ -40,8 +40,8 @@
  * see ``http://www.vix.com''.   To learn more about Nominum, Inc., see
  * ``http://www.nominum.com''.
  *
- * $FreeBSD: src/contrib/isc-dhcp/includes/cf/freebsd.h,v 1.3.4.2 2003/03/02 16:42:40 murray Exp $
- * $DragonFly: src/contrib/isc-dhcp/includes/cf/Attic/freebsd.h,v 1.2 2003/06/17 04:24:02 dillon Exp $
+ * $FreeBSD: src/contrib/isc-dhcp/includes/cf/freebsd.h,v 1.6 2003/06/29 18:46:17 gordon Exp $
+ * $DragonFly: src/contrib/isc-dhcp/includes/cf/Attic/freebsd.h,v 1.3 2003/10/11 21:14:21 dillon Exp $
  */
 
 #include <syslog.h>
@@ -104,6 +104,10 @@ extern int h_errno;
 #define SOCKLEN_T int
 #endif
 
+#ifdef RESCUE
+#define _PATH_DHCLIENT_SCRIPT	"/sbin/dhclient-script"
+#endif
+
 #if defined (USE_DEFAULT_NETWORK)
 #  define USE_BPF
 #endif
@@ -114,6 +118,9 @@ extern int h_errno;
  #endif /* HAVE_DEV_RANDOM */
 
 const char *cmds[] = {
+#ifndef RESCUE
+	/* rescue environment can't rely on these ... */
+	/* Actually, /sbin/dhclient shouldn't use these, either. */
 	"/bin/ps -axlw 2>&1",
 	"/usr/sbin/arp -an 2>&1",
 	"/usr/bin/netstat -an 2>&1",
@@ -124,10 +131,12 @@ const char *cmds[] = {
 	"/usr/sbin/iostat  2>&1",
 	"/usr/bin/vmstat  2>&1",
 	"/usr/bin/w  2>&1",
+#endif
 	NULL
 };
 
 const char *dirs[] = {
+#ifndef RESCUE
 	"/tmp",
 	"/usr/tmp",
 	".",
@@ -137,13 +146,16 @@ const char *dirs[] = {
 	"/var/mail",
 	"/home",
 	"/usr/home",
+#endif
 	NULL
 };
 
 const char *files[] = {
+#ifndef RESCUE
 	"/var/log/messages",
 	"/var/log/wtmp",
 	"/var/log/lastlog",
+#endif
 	NULL
 };
 #endif /* NEED_PRAND_CONF */

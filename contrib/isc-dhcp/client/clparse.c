@@ -40,14 +40,10 @@
  * see ``http://www.vix.com''.   To learn more about Nominum, Inc., see
  * ``http://www.nominum.com''.
  *
- * @(#) Copyright (c) 1996-2002 The Internet Software Consortium.  All rights reserved.
- * $Id: clparse.c,v 1.62.2.3 2002/11/17 02:25:43 dhankins Exp $
- * $FreeBSD: src/contrib/isc-dhcp/client/clparse.c,v 1.4.2.4 2003/03/02 16:42:37 murray Exp $
- * $DragonFly: src/contrib/isc-dhcp/client/Attic/clparse.c,v 1.2 2003/06/17 04:24:02 dillon Exp $
+ * $Id: clparse.c,v 1.62.2.4 2003/02/10 00:39:57 dhankins Exp $ Copyright (c) 1996-2002 The Internet Software Consortium.  All rights reserved.
+ * $FreeBSD: src/contrib/isc-dhcp/client/clparse.c,v 1.11 2003/09/02 11:13:20 mbr Exp $
+ * $DragonFly: src/contrib/isc-dhcp/client/Attic/clparse.c,v 1.3 2003/10/11 21:14:12 dillon Exp $
  */
-
-static char copyright[] =
-"$Id: clparse.c,v 1.62.2.3 2002/11/17 02:25:43 dhankins Exp $ Copyright (c) 1996-2002 The Internet Software Consortium.  All rights reserved.\n";
 
 #include "dhcpd.h"
 
@@ -55,7 +51,7 @@ static TIME parsed_time;
 
 struct client_config top_level_config;
 
-char client_script_name [] = "/sbin/dhclient-script";
+char client_script_name [] = _PATH_DHCLIENT_SCRIPT;
 
 u_int32_t default_requested_options [] = {
 	DHO_SUBNET_MASK,
@@ -622,34 +618,41 @@ void parse_option_list (cfile, list)
 	struct parse *cfile;
 	u_int32_t **list;
 {
-	int ix, i;
+	int ix;
 	int token;
 	const char *val;
 	pair p = (pair)0, q, r;
+	struct option *option;
 
 	ix = 0;
 	do {
-		token = next_token (&val, (unsigned *)0, cfile);
-		if (token == SEMI)
+		token = peek_token (&val, (unsigned *)0, cfile);
+		if (token == SEMI) {
+			token = next_token (&val, (unsigned *)0, cfile);
 			break;
+		}
 		if (!is_identifier (token)) {
 			parse_warn (cfile, "%s: expected option name.", val);
+			token = next_token (&val, (unsigned *)0, cfile);
 			skip_to_semi (cfile);
 			return;
 		}
-		for (i = 0; i < 256; i++) {
-			if (!strcasecmp (dhcp_options [i].name, val))
-				break;
-		}
-		if (i == 256) {
+		option = parse_option_name (cfile, 0, NULL);
+		if (!option) {
 			parse_warn (cfile, "%s: expected option name.", val);
+			return;
+		}
+		if (option -> universe != &dhcp_universe) {
+			parse_warn (cfile,
+				"%s.%s: Only global options allowed.",
+				option -> universe -> name, option->name );
 			skip_to_semi (cfile);
 			return;
 		}
 		r = new_pair (MDL);
 		if (!r)
 			log_fatal ("can't allocate pair for option code.");
-		r -> car = (caddr_t)(long)i;
+		r -> car = (caddr_t)(long)option -> code;
 		r -> cdr = (pair)0;
 		if (p)
 			q -> cdr = r;

@@ -20,8 +20,8 @@
 .\"
 .\" Portions copyright (c) 2000 David E. O'Brien.
 .\" All rights reserved.
-.\" $FreeBSD: src/contrib/isc-dhcp/client/dhclient.8,v 1.8.2.4 2003/03/02 16:42:37 murray Exp $
-.\" $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.8,v 1.2 2003/06/17 04:24:02 dillon Exp $
+.\" $FreeBSD: src/contrib/isc-dhcp/client/dhclient.8,v 1.14 2003/07/28 08:30:11 mbr Exp $
+.\" $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.8,v 1.3 2003/10/11 21:14:12 dillon Exp $
 .\"
 .TH dhclient 8
 .SH NAME
@@ -40,6 +40,9 @@ dhclient - Dynamic Host Configuration Protocol Client
 ]
 [
 .B -q
+]
+[
+.B -v
 ]
 [
 .B -1
@@ -70,6 +73,10 @@ server
 [
 .B -g
 relay
+]
+[
+.B -i
+interval
 ]
 [
 .B -n
@@ -188,6 +195,12 @@ sends can be set using the
 flag, followed by the IP address to send.   This is only useful for testing,
 and should not be expected to work in any consistent or useful way.
 .PP
+On FreeBSD, dhclient can be enabled to automatically handle the
+link status of the network card. Normally polling is done every
+five seconds. The polling interval can be set using the
+.B -i
+flag, followed by the numbers of seconds. Minimum is one second.
+.PP
 The DHCP client will normally run in the foreground until it has
 configured an interface, and then will revert to running in the
 background.   To run force dhclient to always run as a foreground
@@ -205,6 +218,10 @@ facility.   The
 .B -q
 flag prevents any messages other than errors from being printed to the
 standard error descriptor.
+.B -v
+flag turns on all messages.
+Opposite of
+.B -q .
 .PP
 The client normally doesn't release the current lease as it is not
 required by the DHCP protocol.  Some cable ISPs require their clients

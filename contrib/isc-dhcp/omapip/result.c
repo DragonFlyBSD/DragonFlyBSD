@@ -40,6 +40,8 @@
  * ``http://www.isc.org/''.  To learn more about Vixie Enterprises,
  * see ``http://www.vix.com''.   To learn more about Nominum, Inc., see
  * ``http://www.nominum.com''.
+ *
+ * $DragonFly: src/contrib/isc-dhcp/omapip/Attic/result.c,v 1.2 2003/10/11 21:14:25 dillon Exp $
  */
 
 #include <omapip/omapip_p.h>
@@ -119,7 +121,10 @@ static const char *text[ISC_R_NRESULTS] = {
 
 const char *isc_result_totext (isc_result_t result)
 {
+	static char ebuf[40];
+
 	if (result >= ISC_R_SUCCESS && result < ISC_R_NRESULTS)
 		return text [result];
-	return "unknown error.";
+	sprintf(ebuf, "unknown error: %d", result);
+	return ebuf;
 }

@@ -39,6 +39,9 @@
  * ``http://www.isc.org/''.  To learn more about Vixie Enterprises,
  * see ``http://www.vix.com''.   To learn more about Nominum, Inc., see
  * ``http://www.nominum.com''.
+ *
+ * $FreeBSD: src/contrib/isc-dhcp/includes/dhcpd.h,v 1.8 2003/09/02 11:13:21 mbr Exp $
+ * $DragonFly: src/contrib/isc-dhcp/includes/Attic/dhcpd.h,v 1.2 2003/10/11 21:14:19 dillon Exp $
  */
 
 #ifndef __CYGWIN32__
@@ -98,6 +101,9 @@ typedef struct hash_table class_hash_t;
 	(((x) & (OPTION_HASH_PTWO - 1)) + \
 	 (((x) >> OPTION_HASH_EXP) & \
 	  (OPTION_HASH_PTWO - 1))) % OPTION_HASH_SIZE;
+
+#define NOLINK 0
+#define HAVELINK 1
 
 enum dhcp_shutdown_state {
 	shutdown_listeners,
@@ -420,6 +426,11 @@ struct lease_state {
 #define SV_UPDATE_STATIC_LEASES		43
 #define SV_LOG_FACILITY			44
 #define SV_DO_FORWARD_UPDATES		45
+#define SV_PING_TIMEOUT         46
+
+#if !defined (DEFAULT_PING_TIMEOUT)
+# define DEFAULT_PING_TIMEOUT 1
+#endif
 
 #if !defined (DEFAULT_DEFAULT_LEASE_TIME)
 # define DEFAULT_DEFAULT_LEASE_TIME 43200
@@ -778,6 +789,11 @@ struct interface_info {
 	unsigned remote_id_len;		/* Length of Remote ID. */
 
 	char name [IFNAMSIZ];		/* Its name... */
+	int ieee80211;			/* True if media is ieee802.11 */
+	int havemedia;			/* True if we have a media table */
+	int linkstate;			/* True if we have link */
+	int polling;			/* True if polling is enabled */
+	int forcediscover;		/* True if a discover is needed */
 	int index;			/* Its index. */
 	int rfdesc;			/* Its read file descriptor. */
 	int wfdesc;			/* Its write file descriptor, if
@@ -1853,12 +1869,21 @@ void send_release PROTO ((void *));
 void send_decline PROTO ((void *));
 
 void state_reboot PROTO ((void *));
+#ifdef ENABLE_POLLING_MODE
+void state_polling PROTO (());
+void state_background PROTO ((void *));
+#endif
 void state_init PROTO ((void *));
 void state_selecting PROTO ((void *));
 void state_requesting PROTO ((void *));
 void state_bound PROTO ((void *));
 void state_stop PROTO ((void *));
 void state_panic PROTO ((void *));
+
+#ifdef __FreeBSD__
+void set_ieee80211 PROTO ((struct interface_info *));
+#endif
+int interface_active PROTO ((struct interface_info *));
 
 void bind_lease PROTO ((struct client_state *));
 

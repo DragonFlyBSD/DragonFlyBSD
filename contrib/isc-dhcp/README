@@ -1,6 +1,6 @@
 	    Internet Software Consortium DHCP Distribution
 			     Version 3.0.1
-			  Release Candidate 9
+			  Release Candidate 12
 			     April 28, 2002
 
 			      README FILE
@@ -97,7 +97,7 @@ system.
 
 			    RELEASE STATUS
 
-This is the tenth release candidate of version 3.0.1 of the ISC DHCP
+This is the twelfth release candidate of version 3.0.1 of the ISC DHCP
 Distribution.  Development of this release is approaching the point at
 which it will be frozen, and no significant new features will be
 added.
@@ -642,4 +642,5 @@ you with it.
 Please see http://www.isc.org/services/public/lists/dhcp-lists.html
 for details on how to subscribe to the ISC DHCP mailing lists.
 
+$DragonFly: src/contrib/isc-dhcp/Attic/README,v 1.2 2003/10/11 21:14:10 dillon Exp $
 
