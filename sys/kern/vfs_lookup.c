@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.17 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.18 2004/10/07 04:20:26 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -631,7 +631,6 @@ relookup(dvp, vpp, cnp)
 {
 	struct thread *td = cnp->cn_td;
 	struct vnode *dp = 0;		/* the directory we are searching */
-	int docache;			/* == 0 do not cache last component */
 	int wantparent;			/* 1 => wantparent or lockparent flag */
 	int rdonly;			/* lookup read-only flag bit */
 	int error = 0;
@@ -644,10 +643,6 @@ relookup(dvp, vpp, cnp)
 	 * Setup: break out flag bits into variables.
 	 */
 	wantparent = cnp->cn_flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
-	docache = (cnp->cn_flags & CNP_NOCACHE) ^ CNP_NOCACHE;
-	if (cnp->cn_nameiop == NAMEI_DELETE ||
-	    (wantparent && cnp->cn_nameiop != NAMEI_CREATE))
-		docache = 0;
 	rdonly = cnp->cn_flags & CNP_RDONLY;
 	cnp->cn_flags &= ~CNP_ISSYMLINK;
 	dp = dvp;

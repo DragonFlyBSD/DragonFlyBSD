@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.43 2004/10/05 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.44 2004/10/07 04:20:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1574,6 +1574,8 @@ undelete(struct undelete_args *uap)
 
 	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_WHITEOUT(nd.ni_dvp, NCPNULL, &nd.ni_cnd, NAMEI_DELETE);
+	if (error == 0)
+		cache_purge(nd.ni_vp);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_dvp);
 	ASSERT_VOP_UNLOCKED(nd.ni_dvp, "undelete");
@@ -1612,6 +1614,8 @@ kern_unlink(struct nameidata *nd)
 	if (error == 0) {
 		VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_REMOVE(nd->ni_dvp, NCPNULL, vp, &nd->ni_cnd);
+		if (error == 0)
+			cache_purge(vp);
 	}
 	NDFREE(nd, NDF_ONLY_PNBUF);
 	if (nd->ni_dvp == vp)
@@ -2565,6 +2569,8 @@ out:
 		error = VOP_RENAME(fromnd->ni_dvp, NCPNULL, fromnd->ni_vp,
 		    &fromnd->ni_cnd, tond->ni_dvp, NCPNULL, tond->ni_vp,
 		    &tond->ni_cnd);
+		if (error == 0)
+			cache_purge(fromnd->ni_vp);
 		NDFREE(fromnd, NDF_ONLY_PNBUF);
 		NDFREE(tond, NDF_ONLY_PNBUF);
 	} else {
@@ -2711,6 +2717,8 @@ kern_rmdir(struct nameidata *nd)
 		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_RMDIR(nd->ni_dvp, NCPNULL, nd->ni_vp,
 		    &nd->ni_cnd);
+		if (error == 0)
+			cache_purge(vp);
 	}
 out:
 	NDFREE(nd, NDF_ONLY_PNBUF);

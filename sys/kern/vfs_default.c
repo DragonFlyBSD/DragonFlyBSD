@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.18 2004/10/07 01:13:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.19 2004/10/07 04:20:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -269,6 +269,8 @@ vop_nonremove(struct vop_nremove_args *ap)
 	cnd.cn_nameptr = ncfile->nc_name;
 	cnd.cn_namelen = ncfile->nc_nlen;
 	error = VOP_REMOVE(vpd, NCPNULL, vp, &cnd);
+	if (error == 0)
+		cache_purge(vp);
 	vput(vp);
 	vput(vpd);
 
@@ -278,9 +280,10 @@ vop_nonremove(struct vop_nremove_args *ap)
 	 * unresolved (meaning that we have no idea what the correct state
 	 * is).
 	 */
-	cache_setunresolved(ncfile);
-	if (error == 0)
+	if (error == 0) {
+		cache_setunresolved(ncfile);
 		cache_setvp(ncfile, NULL);
+	}
         return (error);
 }
 

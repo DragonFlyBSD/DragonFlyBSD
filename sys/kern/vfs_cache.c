@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.34 2004/10/05 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.35 2004/10/07 04:20:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -238,7 +238,9 @@ cache_link_parent(struct namecache *ncp, struct namecache *par)
 }
 
 /*
- * Remove the parent association from a namecache structure.
+ * Remove the parent association from a namecache structure.  If this is
+ * the last child of the parent the cache_drop(par) will attempt to
+ * recursively zap the parent.
  */
 static void
 cache_unlink_parent(struct namecache *ncp)
@@ -526,6 +528,7 @@ void
 cache_inval(struct namecache *ncp, int flags)
 {
 	struct namecache *kid;
+	struct namecache *nextkid;
 
 	if (flags & CINV_SELF)
 		cache_setunresolved(ncp);
@@ -533,10 +536,44 @@ cache_inval(struct namecache *ncp, int flags)
 		ncp->nc_flag |= NCF_REVALPARENT;
 		cache_unlink_parent(ncp);
 	}
+
+	/*
+	 * TEMPORARY XX old-api / rename handling.  Any unresolved or
+	 * negative cache-hit children with a ref count of 0 must be
+	 * recursively destroyed or this disconnection from our parent,
+	 * or the childrens disconnection from us, may leave them dangling
+	 * forever.
+	 *
+	 * In the new API it won't be possible to unlink in the middle of
+	 * the topology and we will have a cache_rename() to physically
+	 * move a subtree from one place to another.
+	 */
+	if (flags & (CINV_PARENT|CINV_CHILDREN)) {
+		if ((kid = TAILQ_FIRST(&ncp->nc_list)) != NULL)
+			cache_hold(kid);
+		while (kid) {
+			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
+				cache_hold(nextkid);
+			if (kid->nc_refs == 0 &&
+			    ((kid->nc_flag & NCF_UNRESOLVED) || 
+			     kid->nc_vp == NULL)
+			) {
+				cache_inval(kid, CINV_PARENT);
+			}
+			cache_drop(kid);
+			kid = nextkid;
+		}
+	}
+
+	/*
+	 * TEMPORARY XXX old-api / rename handling.
+	 */
 	if (flags & CINV_CHILDREN) {
 		while ((kid = TAILQ_FIRST(&ncp->nc_list)) != NULL) {
 			kid->nc_flag |= NCF_REVALPARENT;
+			cache_hold(kid);
 			cache_unlink_parent(kid);
+			cache_drop(kid);
 		}
 	}
 }
@@ -1106,15 +1143,21 @@ restart:
 	}
 
 	/*
-	 * If we found an entry, but we don't want to have one, we zap it.
-	 * If we are deleting, we disconnect it as well.
+	 * If we found an entry, but we don't want to have one, we just
+	 * return.  The old API tried to zap the entry in the vfs_lookup()
+	 * phase but this is too early to know whether the operation
+	 * will have succeeded or not.  The new API zaps it after the
+	 * operation has succeeded, not here.
+	 *
+	 * At the same time, the old api's rename() function uses the
+	 * old api lookup to clear out any negative cache hit on the
+	 * target name.  We still have to do that.
 	 */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
-		if (cnp->cn_nameiop == NAMEI_DELETE)
-			cache_inval(ncp, CINV_PARENT|CINV_SELF|CINV_CHILDREN);
-		numposzaps++;
-		gd->gd_nchstats->ncs_badhits++;
-		cache_zap(ncp);
+		if (cnp->cn_nameiop == NAMEI_RENAME && ncp->nc_vp == NULL)
+			cache_zap(ncp);
+		else
+			cache_drop(ncp);
 		return (0);
 	}
 

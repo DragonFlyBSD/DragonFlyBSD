@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.17 2004/07/16 16:17:08 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.18 2004/10/07 04:20:27 dillon Exp $
  */
 
 /*
@@ -2087,6 +2087,8 @@ out:
 			nqsrv_getl(nd.ni_dvp, ND_WRITE);
 			nqsrv_getl(nd.ni_vp, ND_WRITE);
 			error = VOP_REMOVE(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
+			if (error == 0)
+				cache_purge(nd.ni_vp);
 			NDFREE(&nd, NDF_ONLY_PNBUF);
 		}
 	}
@@ -2271,6 +2273,8 @@ out:
 		}
 		error = VOP_RENAME(fromnd.ni_dvp, NCPNULL, fromnd.ni_vp, &fromnd.ni_cnd,
 				   tond.ni_dvp, NCPNULL, tond.ni_vp, &tond.ni_cnd);
+		if (error == 0)
+			cache_purge(fromnd.ni_vp);
 		fromnd.ni_dvp = NULL;
 		fromnd.ni_vp = NULL;
 		tond.ni_dvp = NULL;
@@ -2825,6 +2829,8 @@ out:
 		nqsrv_getl(nd.ni_dvp, ND_WRITE);
 		nqsrv_getl(vp, ND_WRITE);
 		error = VOP_RMDIR(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
+		if (error == 0)
+			cache_purge(nd.ni_vp);
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 
