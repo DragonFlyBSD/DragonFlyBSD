@@ -7,17 +7,17 @@
  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
  *
  * $FreeBSD: src/games/bs/bs.c,v 1.9 2000/02/21 03:07:31 billf Exp $
- * $DragonFly: src/games/bs/bs.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/bs/bs.c,v 1.3 2003/08/31 21:32:09 drhodus Exp $
  */
 
+#include <assert.h>
+#include <ctype.h>
 #include <ncurses.h>
 #include <signal.h>
-#include <ctype.h>
-#include <assert.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #ifndef A_UNDERLINE	/* BSD curses */
 #define	beep()	write(1,"\007",1);
