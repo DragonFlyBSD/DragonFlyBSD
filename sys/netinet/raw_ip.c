@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.11 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.12 2004/03/31 00:43:09 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -127,7 +127,8 @@ rip_init(void)
 	 */
 	ripcbinfo.hashbase = hashinit(1, M_PCB, &ripcbinfo.hashmask);
 	ripcbinfo.porthashbase = hashinit(1, M_PCB, &ripcbinfo.porthashmask);
-	ripcbinfo.bindhashbase = hashinit(1, M_PCB, &ripcbinfo.bindhashmask);
+	ripcbinfo.wildcardhashbase = hashinit(1, M_PCB,
+					      &ripcbinfo.wildcardhashmask);
 	ripcbinfo.ipi_zone = zinit("ripcb", sizeof(struct inpcb),
 				   maxsockets, ZONE_INTERRUPT, 0);
 }

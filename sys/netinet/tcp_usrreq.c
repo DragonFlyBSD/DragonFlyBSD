@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.8 2004/03/08 19:44:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.9 2004/03/31 00:43:09 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -278,6 +278,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 		error = in_pcbbind(inp, (struct sockaddr *)0, td);
 	if (error == 0)
 		tp->t_state = TCPS_LISTEN;
+	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
 }
 
@@ -746,7 +747,6 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		inp->inp_laddr = if_sin->sin_addr;
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
-	in_pcbrembindhash(inp);
 	in_pcbinsconnhash(inp);
 
 	/* Compute window scaling to request.  */
@@ -830,7 +830,6 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	inp->inp_fport = sin6->sin6_port;
 	if ((sin6->sin6_flowinfo & IPV6_FLOWINFO_MASK) != NULL)
 		inp->in6p_flowinfo = sin6->sin6_flowinfo;
-	in_pcbrembindhash(inp);
 	in_pcbinsconnhash(inp);
 
 	/* Compute window scaling to request.  */

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.10 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.11 2004/03/31 00:43:09 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -124,7 +124,8 @@ div_init(void)
 	 */
 	divcbinfo.hashbase = hashinit(1, M_PCB, &divcbinfo.hashmask);
 	divcbinfo.porthashbase = hashinit(1, M_PCB, &divcbinfo.porthashmask);
-	divcbinfo.bindhashbase = hashinit(1, M_PCB, &divcbinfo.bindhashmask);
+	divcbinfo.wildcardhashbase = hashinit(1, M_PCB,
+					      &divcbinfo.wildcardhashmask);
 	divcbinfo.ipi_zone = zinit("divcb", sizeof(struct inpcb),
 				   maxsockets, ZONE_INTERRUPT, 0);
 }

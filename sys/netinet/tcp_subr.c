@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.17 2004/03/14 08:26:31 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.18 2004/03/31 00:43:09 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -225,8 +225,8 @@ tcp_init()
 {
 	struct inpcbporthead *porthashbase;
 	u_long porthashmask;
-	struct inpcbhead *bindhashbase;
-	u_long bindhashmask;
+	struct inpcbhead *wildcardhashbase;
+	u_long wildcardhashmask;
 	struct vm_zone *ipi_zone;
 	int hashsize = TCBHASHSIZE;
 	int cpu;
@@ -250,7 +250,7 @@ tcp_init()
 	}
 	tcp_tcbhashsize = hashsize;
 	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
-	bindhashbase = hashinit(hashsize, M_PCB, &bindhashmask);
+	wildcardhashbase = hashinit(hashsize, M_PCB, &wildcardhashmask);
 	ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
 			 ZONE_INTERRUPT, 0);
 
@@ -260,8 +260,8 @@ tcp_init()
 		    &tcbinfo[cpu].hashmask);
 		tcbinfo[cpu].porthashbase = porthashbase;
 		tcbinfo[cpu].porthashmask = porthashmask;
-		tcbinfo[cpu].bindhashbase = bindhashbase;
-		tcbinfo[cpu].bindhashmask = bindhashmask;
+		tcbinfo[cpu].wildcardhashbase = wildcardhashbase;
+		tcbinfo[cpu].wildcardhashmask = wildcardhashmask;
 		tcbinfo[cpu].ipi_zone = ipi_zone;
 	}
 

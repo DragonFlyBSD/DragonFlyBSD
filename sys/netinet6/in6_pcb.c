@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.11 2004/03/04 01:02:06 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.12 2004/03/31 00:43:09 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -258,7 +258,6 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			return (EAGAIN);
 		}
 	}
-	in_pcbinsbindhash(inp);
 	return(0);
 }
 
@@ -373,7 +372,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		inp->in6p_flowinfo |=
 		    (htonl(ip6_flow_seq++) & IPV6_FLOWLABEL_MASK);
 
-	in_pcbrehash(inp, INP_CONNECTED);
+	in_pcbinsconnhash(inp);
 	return (0);
 }
 
@@ -1043,8 +1042,8 @@ in6_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 	if (wildcard) {
 		struct inpcb *local_wild = NULL;
 
-		head = &pcbinfo->hashbase[INP_PCBBINDHASH(lport,
-		    pcbinfo->hashmask)];
+		head = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
+		    pcbinfo->wildcardhashmask)];
 		LIST_FOREACH(inp, head, inp_hash) {
 			if ((inp->inp_vflag & INP_IPV6) == 0)
 				continue;

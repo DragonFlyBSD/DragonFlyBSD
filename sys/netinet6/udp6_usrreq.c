@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.11 2004/03/06 05:00:41 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.12 2004/03/31 00:43:09 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -581,6 +581,7 @@ udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 static int
 udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
+	struct sockaddr_in6 *sin6_p = (struct sockaddr_in6 *)nam;
 	struct inpcb *inp;
 	int s, error;
 
@@ -591,10 +592,6 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	inp->inp_vflag &= ~INP_IPV4;
 	inp->inp_vflag |= INP_IPV6;
 	if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0) {
-		struct sockaddr_in6 *sin6_p;
-
-		sin6_p = (struct sockaddr_in6 *)nam;
-
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
 			inp->inp_vflag |= INP_IPV4;
 		else if (IN6_IS_ADDR_V4MAPPED(&sin6_p->sin6_addr)) {
@@ -613,6 +610,9 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	s = splnet();
 	error = in6_pcbbind(inp, nam, td);
 	splx(s);
+	if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
+		inp->inp_flags |= INP_WASBOUND_NOTANY;
+	in_pcbinswildcardhash(inp);
 	return error;
 }
 
@@ -649,6 +649,8 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	}
 	if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
 		return EISCONN;
+	if (inp->inp_flags & INP_WILDCARD)
+		in_pcbremwildcardhash(inp);
 	s = splnet();
 	error = in6_pcbconnect(inp, nam, td);
 	splx(s);
@@ -658,6 +660,15 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 			inp->inp_vflag |= INP_IPV6;
 		}
 		soisconnected(so);
+	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
+		/*
+		 * Follow traditional BSD behavior and retain
+		 * the local port binding.  But, fix the old misbehavior
+		 * of overwriting any previously bound local address.
+		 */
+		if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
+			inp->in6p_laddr = in6addr_any;
+		in_pcbinswildcardhash(inp);
 	}
 	return error;
 }
@@ -699,7 +710,6 @@ udp6_disconnect(struct socket *so)
 
 	s = splnet();
 	in6_pcbdisconnect(inp);
-	inp->in6p_laddr = in6addr_any;
 	splx(s);
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
 	return 0;

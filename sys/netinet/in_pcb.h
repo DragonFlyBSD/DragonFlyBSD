@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.8 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.9 2004/03/31 00:43:09 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -239,8 +239,8 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_long	hashmask;
 	struct	inpcbporthead *porthashbase;
 	u_long	porthashmask;
-	struct	inpcbhead *bindhashbase;
-	u_long	bindhashmask;
+	struct	inpcbhead *wildcardhashbase;
+	u_long	wildcardhashmask;
 	struct	inpcbhead listhead;	/* head of queue of active pcb's */
 	u_short	lastport;
 	u_short	lastlow;
@@ -251,12 +251,12 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 };
 
 
-#define INP_PCBCONNHASH(faddr, fport, laddr, lport, mask)		\
+#define	INP_PCBCONNHASH(faddr, fport, laddr, lport, mask)		\
     (((faddr) ^ ((faddr) >> 16) ^ (laddr) ^ ntohs((lport) ^ (fport))) & (mask))
 
-#define INP_PCBPORTHASH(lport, mask)	(ntohs(lport) & (mask))
+#define	INP_PCBPORTHASH(lport, mask)		(ntohs(lport) & (mask))
 
-#define INP_PCBBINDHASH(lport, mask)	(ntohs(lport) & (mask))
+#define	INP_PCBWILDCARDHASH(lport, mask)	(ntohs(lport) & (mask))
 
 /* flags in inp_flags: */
 #define	INP_RECVOPTS		0x01	/* receive incoming IP options */
@@ -269,8 +269,9 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_RECVIF		0x80	/* receive incoming interface */
 #define	INP_MTUDISC		0x100	/* user can do MTU discovery */
 #define	INP_FAITH		0x200	/* accept FAITH'ed connections */
-#define	INP_BOUND		0x400
-#define	INP_CONNECTED		0x800
+#define	INP_WILDCARD		0x400	/* wildcard match */
+#define	INP_CONNECTED		0x800	/* exact match */
+#define	INP_WASBOUND_NOTANY	0x1000	/* was bound to non-null laddr */
 
 #define IN6P_IPV6_V6ONLY	0x008000 /* restrict AF_INET6 socket for v6 */
 
@@ -327,7 +328,7 @@ int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
 int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
 void	in_pcbdetach (struct inpcb *);
 void	in_pcbdisconnect (struct inpcb *);
-void	in_pcbinsbindhash(struct inpcb *inp);
+void	in_pcbinswildcardhash(struct inpcb *inp);
 void	in_pcbinsconnhash(struct inpcb *inp);
 int	in_pcbinsporthash (struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
@@ -341,10 +342,9 @@ struct inpcb *
 			       int, struct ifnet *);
 void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
 	    int, void (*)(struct inpcb *, int));
-void	in_pcbrehash(struct inpcb *, int);
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
 int	in_setsockaddr (struct socket *so, struct sockaddr **nam);
-void	in_pcbrembindhash(struct inpcb *inp);
+void	in_pcbremwildcardhash(struct inpcb *inp);
 void	in_pcbremconnhash(struct inpcb *inp);
 void	in_pcbremlists (struct inpcb *inp);
 int	prison_xinpcb (struct thread *p, struct inpcb *inp);

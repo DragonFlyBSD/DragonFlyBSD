@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.15 2004/03/21 07:15:36 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.16 2004/03/31 00:43:09 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -367,7 +367,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		inp->inp_lport = 0;
 		return (EAGAIN);
 	}
-	in_pcbinsbindhash(inp);
 	return (0);
 }
 
@@ -539,7 +538,7 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
-	in_pcbrehash(inp, INP_CONNECTED);
+	in_pcbinsconnhash(inp);
 	return (0);
 }
 
@@ -868,8 +867,8 @@ in_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 		struct inpcb *local_wild_mapped = NULL;
 #endif
 
-		head = &pcbinfo->bindhashbase[INP_PCBBINDHASH(lport,
-		    pcbinfo->bindhashmask)];
+		head = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
+		    pcbinfo->wildcardhashmask)];
 		LIST_FOREACH(inp, head, inp_hash) {
 #ifdef INET6
 			if (!(inp->inp_vflag & INP_IPV4))
@@ -927,6 +926,8 @@ in_pcbinsconnhash(struct inpcb *inp)
 	}
 #endif
 
+	KASSERT(!(inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)),
+	    ("already on hash list"));
 	inp->inp_flags |= INP_CONNECTED;
 
 	/*
@@ -987,48 +988,39 @@ in_pcbinsporthash(struct inpcb *inp)
 }
 
 /*
- * Insert PCB into bind hash table.
+ * Insert PCB into wildcard hash table.
  */
 void
-in_pcbinsbindhash(struct inpcb *inp)
+in_pcbinswildcardhash(struct inpcb *inp)
 {
 	struct inpcbhead *bucket;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
-	bucket = &inp->inp_pcbinfo->bindhashbase[INP_PCBBINDHASH(inp->inp_lport,
-	    inp->inp_pcbinfo->porthashmask)];
+	bucket = &pcbinfo->wildcardhashbase[
+	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
 
-	inp->inp_flags |= INP_BOUND;
+	inp->inp_flags |= INP_WILDCARD;
 	LIST_INSERT_HEAD(bucket, inp, inp_hash);
 }
 
 /*
- * Remove PCB from bind hash table.
+ * Remove PCB from wildcard hash table.
  */
 void
-in_pcbrembindhash(struct inpcb *inp)
+in_pcbremwildcardhash(struct inpcb *inp)
 {
-	KASSERT(inp->inp_flags & INP_BOUND, ("inp not bound"));
+	KASSERT(inp->inp_flags & INP_WILDCARD, ("inp not wildcard"));
 	LIST_REMOVE(inp, inp_hash);
-	inp->inp_flags &= ~INP_BOUND;
+	inp->inp_flags &= ~INP_WILDCARD;
 }
 
 static void
 in_pcbremhash(struct inpcb *inp)
 {
-	if (inp->inp_flags & (INP_BOUND | INP_CONNECTED)) {
+	if (inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) {
 		LIST_REMOVE(inp, inp_hash);
-		inp->inp_flags &= ~(INP_BOUND | INP_CONNECTED);
+		inp->inp_flags &= ~(INP_WILDCARD | INP_CONNECTED);
 	}
-}
-
-void
-in_pcbrehash(struct inpcb *inp, int state)
-{
-	in_pcbremhash(inp);
-	if (state == INP_BOUND)
-		in_pcbinsbindhash(inp);
-	else
-		in_pcbinsconnhash(inp);
 }
 
 /*

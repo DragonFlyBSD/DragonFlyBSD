@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.18 2004/03/27 11:48:48 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.19 2004/03/31 00:43:09 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -149,8 +149,8 @@ udp_init()
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
 					&udbinfo.porthashmask);
-	udbinfo.bindhashbase = hashinit(UDBHASHSIZE, M_PCB,
-					&udbinfo.bindhashmask);
+	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
+					    &udbinfo.wildcardhashmask);
 	udbinfo.ipi_zone = zinit("udpcb", sizeof(struct inpcb), maxsockets,
 				 ZONE_INTERRUPT, 0);
 	udp_thread_init();
@@ -897,6 +897,7 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 static int
 udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
+	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct inpcb *inp;
 	int s, error;
 
@@ -906,6 +907,9 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	s = splnet();
 	error = in_pcbbind(inp, nam, td);
 	splx(s);
+	if (sin->sin_addr.s_addr != INADDR_ANY)
+		inp->inp_flags |= INP_WASBOUND_NOTANY;
+	in_pcbinswildcardhash(inp);
 	return error;
 }
 
@@ -923,19 +927,30 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		return EISCONN;
 	error = 0;
 	s = splnet();
-	if (inp->inp_laddr.s_addr == INADDR_ANY && 
-	    td->td_proc &&
-	    td->td_proc->p_ucred->cr_prison != NULL) {
+	if (td->td_proc && td->td_proc->p_ucred->cr_prison != NULL &&
+	    inp->inp_laddr.s_addr == INADDR_ANY) {
 		error = in_pcbbind(inp, NULL, td);
 	}
 	if (error == 0) {
 		sin = (struct sockaddr_in *)nam;
 		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
+		if (inp->inp_flags & INP_WILDCARD)
+			in_pcbremwildcardhash(inp);
 		error = in_pcbconnect(inp, nam, td);
 	}
 	splx(s);
 	if (error == 0)
 		soisconnected(so);
+	else if (error == EAFNOSUPPORT) {	/* connection dissolved */
+		/*
+		 * Follow traditional BSD behavior and retain
+		 * the local port binding.  But, fix the old misbehavior
+		 * of overwriting any previously bound local address.
+		 */
+		if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
+			inp->inp_laddr.s_addr = INADDR_ANY;
+		in_pcbinswildcardhash(inp);
+	}
 	return error;
 }
 
@@ -968,8 +983,6 @@ udp_disconnect(struct socket *so)
 
 	s = splnet();
 	in_pcbdisconnect(inp);
-	inp->inp_laddr.s_addr = INADDR_ANY;
-	in_pcbinsbindhash(inp);
 	splx(s);
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
 	return 0;
