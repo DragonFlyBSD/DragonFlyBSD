@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.17 2004/08/23 16:03:44 joerg Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.18 2004/10/06 23:03:50 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -144,21 +144,6 @@
 #else
 #define NODEV	(dev_t)(-1)	/* non-existent device */
 #endif
-
-/*
- * Clustering of hardware pages on machines with ridiculously small
- * page sizes is done here.  The paging subsystem deals with units of
- * CLSIZE pte's describing PAGE_SIZE (from machine/machparam.h) pages each.
- */
-#if 0
-#define CLBYTES		(CLSIZE*PAGE_SIZE)
-#endif
-
-#define CBLOCK	128		/* Clist block size, must be a power of 2. */
-#define CBQSIZE	(CBLOCK/NBBY)	/* Quote bytes/cblock - can do better. */
-				/* Data chars/clist. */
-#define CBSIZE	(CBLOCK - sizeof(struct cblock *) - CBQSIZE)
-#define CROUND	(CBLOCK - 1)	/* Clist rounding. */
 
 /*
  * File system parameters and macros.

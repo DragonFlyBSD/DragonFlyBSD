@@ -32,14 +32,28 @@
  *
  *	@(#)clist.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/sys/sys/clist.h,v 1.10 1999/12/29 04:24:38 peter Exp $
- * $DragonFly: src/sys/sys/clist.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/clist.h,v 1.3 2004/10/06 23:03:50 dillon Exp $
  */
 
 #ifndef _SYS_CLIST_H_
 #define _SYS_CLIST_H_
 
+#define CBLOCK	128		/* Clist block size, must be a power of 2. */
+#define CBQSIZE	(CBLOCK/NBBY)	/* Quote bytes/cblock - can do better. */
+				/* Data chars/clist. */
+#define CBSIZE	(CBLOCK - sizeof(struct cblockhead) - CBQSIZE)
+#define CROUND	(CBLOCK - 1)	/* Clist rounding. */
+
+struct cblockhead {
+	struct cblock *ch_next;
+	int	ch_magic;
+};
+
+#define CLIST_MAGIC_FREE	0x434c0102
+#define CLIST_MAGIC_USED	0x434c8182
+
 struct cblock {
-	struct cblock *c_next;			/* next cblock in queue */
+	struct cblockhead c_head;		/* header */
 	unsigned char c_quote[CBQSIZE];		/* quoted characters */
 	unsigned char c_info[CBSIZE];		/* characters */
 };
