@@ -33,7 +33,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.19 2004/06/06 11:49:54 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.20 2004/06/07 02:18:13 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -1260,11 +1260,11 @@ m_adj(struct mbuf *mp, int req_len)
 
 /*
  * Rearange an mbuf chain so that len bytes are contiguous
- * and in the data area of an mbuf (so that mtod and dtom
- * will work for a structure of size len).  Returns the resulting
- * mbuf chain on success, frees it and returns null on failure.
- * If there is room, it will add up to max_protohdr-len extra bytes to the
- * contiguous region in an attempt to avoid being called next time.
+ * and in the data area of an mbuf (so that mtod will work for a structure
+ * of size len).  Returns the resulting mbuf chain on success, frees it and
+ * returns null on failure.  If there is room, it will add up to
+ * max_protohdr-len extra bytes to the contiguous region in an attempt to
+ * avoid being called next time.
  */
 #define MPFail (mbstat.m_mpfail)
 
