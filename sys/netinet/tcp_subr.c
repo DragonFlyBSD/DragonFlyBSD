@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.14 2004/03/08 19:44:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.15 2004/03/14 07:57:26 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -785,12 +785,46 @@ tcp_close(tp)
 	return ((struct tcpcb *)0);
 }
 
-void
-tcp_drain()
+#ifdef SMP
+struct netmsg_tcp_drain {
+	struct lwkt_msg		nm_lmsg;
+	netisr_fn_t		nm_handler;
+	struct inpcbhead	*nm_head;
+};
+
+static int		/* really should be void XXX JH */
+tcp_drain_handler(struct netmsg *msg0)
+{
+	struct netmsg_tcp_drain *nm = (struct netmsg_tcp_drain *)msg0;
+
+	tcp_drain_oncpu(nm->nm_head);
+
+	return (0);	/* dummy return value */
+}
+#endif
+
+static __inline void
+tcp_drain_oncpu(struct inpcbhead *head)
 {
 	struct inpcb *inpb;
 	struct tcpcb *tcpb;
 	struct tseg_qent *te;
+
+	LIST_FOREACH(inpb, head, inp_list) {
+		if ((tcpb = intotcpcb(inpb))) {
+			while ((te = LIST_FIRST(&tcpb->t_segq)) != NULL) {
+				LIST_REMOVE(te, tqe_q);
+				m_freem(te->tqe_m);
+				FREE(te, M_TSEGQ);
+				tcp_reass_qsize--;
+			}
+		}
+	}
+}
+
+void
+tcp_drain()
+{
 	int cpu;
 
 	if (!do_tcpdrain)
@@ -804,19 +838,27 @@ tcp_drain()
 	 * 	where we're really low on mbufs, this is potentially
 	 *  	usefull.	
 	 */
+#ifdef SMP
 	for (cpu = 0; cpu < ncpus2; cpu++) {
-		LIST_FOREACH(inpb, &tcbinfo[cpu].listhead, inp_list) {
-			if ((tcpb = intotcpcb(inpb))) {
-				while ((te = LIST_FIRST(&tcpb->t_segq))
-				    != NULL) {
-					LIST_REMOVE(te, tqe_q);
-					m_freem(te->tqe_m);
-					FREE(te, M_TSEGQ);
-					tcp_reass_qsize--;
-				}
-			}
+		struct netmsg_tcp_drain *msg;
+
+		if (cpu == mycpu->gd_cupid) {
+			tcp_drain_oncpu(&tcbinfo[cpu].listhead);
+		} else {
+			msg = malloc(sizeof(struct netmsg_tcp_drain),
+			    M_LWKTMSG, M_NOWAIT);
+			if (!msg)
+				continue;
+			lwkt_initmsg_rp(&msg->nm_lmsg, netisr_afree_rport,
+			    CMD_NETMSG_TCP_DRAIN);
+			msg->nm_handler = tcp_drain_handler;
+			msg->nm_head = &tcbinfo[cpu].listhead;
+			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
 		}
 	}
+#else
+	tcp_drain_oncpu(&tcbinfo[0].listhead);
+#endif
 }
 
 /*
