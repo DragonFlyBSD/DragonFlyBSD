@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.11 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.12 2003/11/11 01:35:36 dillon Exp $
  */
 
 /*
@@ -217,8 +217,9 @@ vm_object_init()
 }
 
 void
-vm_object_init2() {
-	zinitna(obj_zone, NULL, NULL, 0, 0, 0, 1);
+vm_object_init2() 
+{
+	zinitna(obj_zone, NULL, NULL, 0, 0, ZONE_PANICFAIL, 1);
 }
 
 /*
