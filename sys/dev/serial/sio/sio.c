@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.20 2004/09/19 02:05:54 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.21 2004/11/12 20:51:29 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -720,9 +720,9 @@ sioprobe(dev, xrid, rclk)
 	 * XXX what about the UART bug avoided by waiting in comparam()?
 	 * We don't want to to wait long enough to drain at 2 bps.
 	 */
-	if (iobase == siocniobase)
+	if (iobase == siocniobase) {
 		DELAY((16 + 1) * 1000000 / (comdefaultrate / 10));
-	else {
+	} else {
 		sio_setreg(com, com_cfcr, CFCR_DLAB | CFCR_8BITS);
 		divisor = siodivisor(rclk, SIO_TEST_SPEED);
 		sio_setreg(com, com_dlbl, divisor & 0xff);
@@ -743,6 +743,7 @@ sioprobe(dev, xrid, rclk)
 	if (fn == 256) {
 		printf("sio%d: can't drain, serial port might "
 			"not exist, disabling\n", device_get_unit(dev));
+		com_unlock();
 		return (ENXIO);
 	}
 
