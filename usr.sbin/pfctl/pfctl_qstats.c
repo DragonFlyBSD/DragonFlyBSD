@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_qstats.c,v 1.29 2004/03/15 15:25:44 dhartmei Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_qstats.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_qstats.c,v 1.2 2005/02/11 22:31:45 joerg Exp $ */
 
 /*
  * Copyright (c) Henning Brauer <henning@openbsd.org>
@@ -32,10 +32,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <altq/altq.h>
-#include <altq/altq_cbq.h>
-#include <altq/altq_priq.h>
-#include <altq/altq_hfsc.h>
+#include <net/altq/altq.h>
+#include <net/altq/altq_cbq.h>
+#include <net/altq/altq_priq.h>
+#include <net/altq/altq_hfsc.h>
 
 #include "pfctl.h"
 #include "pfctl_parser.h"
@@ -268,7 +268,7 @@ pfctl_print_altq_node(int dev, const struct pf_altq_node *node, unsigned level,
 }
 
 void
-pfctl_print_altq_nodestat(int dev, const struct pf_altq_node *a)
+pfctl_print_altq_nodestat(int dev __unused, const struct pf_altq_node *a)
 {
 	if (a->altq.qid == 0)
 		return;

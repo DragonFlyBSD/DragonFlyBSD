@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_altq.c,v 1.83 2004/03/14 21:51:44 dhartmei Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_altq.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_altq.c,v 1.2 2005/02/11 22:31:45 joerg Exp $ */
 
 /*
  * Copyright (c) 2002
@@ -19,11 +19,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_mib.h>
 #include <netinet/in.h>
 #include <net/pf/pfvar.h>
 
@@ -36,10 +38,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <altq/altq.h>
-#include <altq/altq_cbq.h>
-#include <altq/altq_priq.h>
-#include <altq/altq_hfsc.h>
+#include <net/altq/altq.h>
+#include <net/altq/altq_cbq.h>
+#include <net/altq/altq_priq.h>
+#include <net/altq/altq_hfsc.h>
 
 #include "pfctl_parser.h"
 #include "pfctl.h"
@@ -75,7 +77,7 @@ static int		 gsc_add_seg(struct gen_sc *, double, double, double,
 			     double);
 static double		 sc_x2y(struct service_curve *, double);
 
-u_int32_t	 getifspeed(char *);
+u_int32_t	 getifspeed(const char *);
 u_long		 getifmtu(char *);
 int		 eval_queue_opts(struct pf_altq *, struct node_queue_opt *,
 		     u_int32_t);
@@ -230,8 +232,8 @@ print_queue(const struct pf_altq *a, unsigned level, struct node_queue_bw *bw,
  * eval_pfaltq computes the discipline parameters.
  */
 int
-eval_pfaltq(struct pfctl *pf, struct pf_altq *pa, struct node_queue_bw *bw,
-    struct node_queue_opt *opts)
+eval_pfaltq(struct pfctl *pf __unused, struct pf_altq *pa,
+	    struct node_queue_bw *bw, struct node_queue_opt *opts)
 {
 	u_int	rate, size, errors = 0;
 
@@ -506,7 +508,7 @@ cbq_compute_idletime(struct pfctl *pf, struct pf_altq *pa)
 }
 
 static int
-check_commit_cbq(int dev, int opts, struct pf_altq *pa)
+check_commit_cbq(int dev __unused, int opts __unused, struct pf_altq *pa)
 {
 	struct pf_altq	*altq;
 	int		 root_class, default_class;
@@ -554,8 +556,6 @@ print_cbq_opts(const struct pf_altq *a)
 			printf(" rio");
 		if (opts->flags & CBQCLF_CLEARDSCP)
 			printf(" cleardscp");
-		if (opts->flags & CBQCLF_FLOWVALVE)
-			printf(" flowvalve");
 		if (opts->flags & CBQCLF_BORROW)
 			printf(" borrow");
 		if (opts->flags & CBQCLF_WRR)
@@ -577,7 +577,7 @@ print_cbq_opts(const struct pf_altq *a)
  * PRIQ support functions
  */
 static int
-eval_pfqueue_priq(struct pfctl *pf, struct pf_altq *pa)
+eval_pfqueue_priq(struct pfctl *pf __unused, struct pf_altq *pa)
 {
 	struct pf_altq	*altq;
 
@@ -599,7 +599,7 @@ eval_pfqueue_priq(struct pfctl *pf, struct pf_altq *pa)
 }
 
 static int
-check_commit_priq(int dev, int opts, struct pf_altq *pa)
+check_commit_priq(int dev __unused, int opts __unused, struct pf_altq *pa)
 {
 	struct pf_altq	*altq;
 	int		 default_class;
@@ -654,7 +654,7 @@ print_priq_opts(const struct pf_altq *a)
  * HFSC support functions
  */
 static int
-eval_pfqueue_hfsc(struct pfctl *pf, struct pf_altq *pa)
+eval_pfqueue_hfsc(struct pfctl *pf __unused, struct pf_altq *pa)
 {
 	struct pf_altq		*altq, *parent;
 	struct hfsc_opts	*opts;
@@ -779,7 +779,7 @@ err_ret:
 }
 
 static int
-check_commit_hfsc(int dev, int opts, struct pf_altq *pa)
+check_commit_hfsc(int dev __unused, int opts __unused, struct pf_altq *pa)
 {
 	struct pf_altq	*altq, *def = NULL;
 	int		 default_class;
@@ -821,14 +821,14 @@ static int
 print_hfsc_opts(const struct pf_altq *a, const struct node_queue_opt *qopts)
 {
 	const struct hfsc_opts		*opts;
-	const struct node_hfsc_sc	*rtsc, *lssc, *ulsc;
+	const struct node_hfsc_sc	*loc_rtsc, *loc_lssc, *ulsc;
 
 	opts = &a->pq_u.hfsc_opts;
 	if (qopts == NULL)
-		rtsc = lssc = ulsc = NULL;
+		loc_rtsc = loc_lssc = ulsc = NULL;
 	else {
-		rtsc = &qopts->data.hfsc_opts.realtime;
-		lssc = &qopts->data.hfsc_opts.linkshare;
+		loc_rtsc = &qopts->data.hfsc_opts.realtime;
+		loc_lssc = &qopts->data.hfsc_opts.linkshare;
 		ulsc = &qopts->data.hfsc_opts.upperlimit;
 	}
 
@@ -848,11 +848,11 @@ print_hfsc_opts(const struct pf_altq *a, const struct node_queue_opt *qopts)
 			printf(" default");
 		if (opts->rtsc_m2 != 0)
 			print_hfsc_sc("realtime", opts->rtsc_m1, opts->rtsc_d,
-			    opts->rtsc_m2, rtsc);
+			    opts->rtsc_m2, loc_rtsc);
 		if (opts->lssc_m2 != 0 && (opts->lssc_m2 != a->bandwidth ||
 		    opts->lssc_d != 0))
 			print_hfsc_sc("linkshare", opts->lssc_m1, opts->lssc_d,
-			    opts->lssc_m2, lssc);
+			    opts->lssc_m2, loc_lssc);
 		if (opts->ulsc_m2 != 0)
 			print_hfsc_sc("upperlimit", opts->ulsc_m1, opts->ulsc_d,
 			    opts->ulsc_m2, ulsc);
@@ -1068,25 +1068,29 @@ rate2str(double rate)
 }
 
 u_int32_t
-getifspeed(char *ifname)
+getifspeed(const char *ifname)
 {
-	int		s;
-	struct ifreq	ifr;
-	struct if_data	ifrdat;
+	size_t datalen;
+	int idx;
+	struct ifmibdata data;
+	int name[] = {
+		CTL_NET,
+		PF_LINK,
+		NETLINK_GENERIC,
+		IFMIB_IFDATA,
+		0,
+		IFDATA_GENERAL
+	};
 
-	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-		err(1, "socket");
-	if (strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name)) >=
-	    sizeof(ifr.ifr_name))
-		errx(1, "getifspeed: strlcpy");
-	ifr.ifr_data = (caddr_t)&ifrdat;
-	if (ioctl(s, SIOCGIFDATA, (caddr_t)&ifr) == -1)
-		err(1, "SIOCGIFDATA");
-	if (shutdown(s, SHUT_RDWR) == -1)
-		err(1, "shutdown");
-	if (close(s))
-		err(1, "close");
-	return ((u_int32_t)ifrdat.ifi_baudrate);
+	if ((idx = (int)if_nametoindex(ifname)) == 0)
+		err(1, "getifspeed: if_nametoindex");
+	name[4] = idx;
+
+	datalen = sizeof(data);
+	if (sysctl(name, 6, &data, &datalen, NULL, 0))
+		err(1, "getifspeed: sysctl");
+
+	return(data.ifmd_data.ifi_baudrate);
 }
 
 u_long

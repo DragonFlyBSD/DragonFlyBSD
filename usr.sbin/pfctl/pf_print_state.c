@@ -1,5 +1,5 @@
 /*	$OpenBSD: pf_print_state.c,v 1.39 2004/02/10 17:48:08 henning Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/pf_print_state.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pf_print_state.c,v 1.2 2005/02/11 22:31:45 joerg Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -31,7 +31,7 @@
  *
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/endian.h>
 #include <sys/socket.h>
 #include <net/if.h>
@@ -121,13 +121,13 @@ print_name(struct pf_addr *addr, sa_family_t af)
 	strlcpy(hostname, "?", sizeof(hostname));
 	switch (af) {
 	case AF_INET: {
-		struct sockaddr_in sin;
+		struct sockaddr_in loc_sin;
 
-		memset(&sin, 0, sizeof(sin));
-		sin.sin_len = sizeof(sin);
-		sin.sin_family = AF_INET;
-		sin.sin_addr = addr->v4;
-		getnameinfo((struct sockaddr *)&sin, sin.sin_len,
+		memset(&loc_sin, 0, sizeof(loc_sin));
+		loc_sin.sin_len = sizeof(loc_sin);
+		loc_sin.sin_family = AF_INET;
+		loc_sin.sin_addr = addr->v4;
+		getnameinfo((struct sockaddr *)&loc_sin, loc_sin.sin_len,
 		    hostname, sizeof(hostname), NULL, 0, NI_NOFQDN);
 		break;
 	}

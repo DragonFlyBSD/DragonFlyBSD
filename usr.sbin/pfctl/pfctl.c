@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl.c,v 1.213 2004/03/20 09:31:42 david Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl.c,v 1.2 2005/02/11 22:31:45 joerg Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -32,7 +32,7 @@
  *
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -40,9 +40,7 @@
 #include <netinet/in.h>
 #include <net/pf/pfvar.h>
 #include <arpa/inet.h>
-#ifndef __DragonFly__
-#include <altq/altq.h>
-#endif
+#include <net/altq/altq.h>
 
 #include <err.h>
 #include <errno.h>
@@ -340,7 +338,6 @@ pfctl_clear_nat(int dev, int opts, char *anchorname, char *rulesetname)
 	return (0);
 }
 
-#ifndef __DragonFly__
 int
 pfctl_clear_altq(int dev, int opts)
 {
@@ -358,7 +355,6 @@ pfctl_clear_altq(int dev, int opts)
 		fprintf(stderr, "altq cleared\n");
 	return (0);
 }
-#endif
 
 int
 pfctl_clear_src_nodes(int dev, int opts)
@@ -1006,7 +1002,6 @@ pfctl_add_rule(struct pfctl *pf, struct pf_rule *r)
 	return (0);
 }
 
-#ifndef __DragonFly__
 int
 pfctl_add_altq(struct pfctl *pf, struct pf_altq *a)
 {
@@ -1028,7 +1023,6 @@ pfctl_add_altq(struct pfctl *pf, struct pf_altq *a)
 	}
 	return (0);
 }
-#endif
 
 int
 pfctl_rules(int dev, char *filename, int opts, char *anchorname,
@@ -1126,11 +1120,9 @@ pfctl_rules(int dev, char *filename, int opts, char *anchorname,
 		else
 			goto _error;
 	}
-	#ifndef __DragonFly__
 	if ((altqsupport && (pf.loadopt & PFCTL_FLAG_ALTQ) != 0))
 		if (check_commit_altq(dev, opts) != 0)
 			ERRX("errors in altq config");
-	#endif
 	if (fin != stdin)
 		fclose(fin);
 
@@ -1293,7 +1285,7 @@ pfctl_set_hostid(struct pfctl *pf, u_int32_t hostid)
 	if ((loadopt & PFCTL_FLAG_OPTION) == 0)
 		return (0);
 
-	htonl(hostid);
+	hostid = htonl(hostid);
 
 	if ((pf->opts & PF_OPT_NOACTION) == 0) {
 		if (ioctl(dev_fd, DIOCSETHOSTID, &hostid))
@@ -1661,12 +1653,10 @@ main(int argc, char *argv[])
 			pfctl_load_fingerprints(dev_fd, opts);
 			pfctl_show_nat(dev_fd, opts, anchorname, rulesetname);
 			break;
-#ifndef __DragonFly__
 		case 'q':
 			pfctl_show_altq(dev_fd, ifaceopt, opts,
 			    opts & PF_OPT_VERBOSE2);
 			break;
-#endif
 		case 's':
 			pfctl_show_states(dev_fd, ifaceopt, opts);
 			break;
@@ -1689,9 +1679,7 @@ main(int argc, char *argv[])
 			pfctl_show_nat(dev_fd, opts, anchorname, rulesetname);
 			pfctl_show_rules(dev_fd, opts, 0, anchorname,
 			    rulesetname);
-#ifndef __DragonFly__
 			pfctl_show_altq(dev_fd, ifaceopt, opts, 0);
-#endif
 			pfctl_show_states(dev_fd, ifaceopt, opts);
 			pfctl_show_src_nodes(dev_fd, opts);
 			pfctl_show_status(dev_fd, opts);
@@ -1722,11 +1710,9 @@ main(int argc, char *argv[])
 		case 'n':
 			pfctl_clear_nat(dev_fd, opts, anchorname, rulesetname);
 			break;
-#ifndef __DragonFly__
 		case 'q':
 			pfctl_clear_altq(dev_fd, opts);
 			break;
-#endif
 		case 's':
 			pfctl_clear_states(dev_fd, ifaceopt, opts);
 			break;
@@ -1741,9 +1727,7 @@ main(int argc, char *argv[])
 			pfctl_clear_nat(dev_fd, opts, anchorname, rulesetname);
 			pfctl_clear_tables(anchorname, rulesetname, opts);
 			if (!*anchorname && !*rulesetname) {
-#ifndef __DragonFly__
 				pfctl_clear_altq(dev_fd, opts);
-#endif
 				pfctl_clear_states(dev_fd, ifaceopt, opts);
 				pfctl_clear_src_nodes(dev_fd, opts);
 				pfctl_clear_stats(dev_fd, opts);
