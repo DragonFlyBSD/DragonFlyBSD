@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.23 2004/11/28 22:29:19 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.24 2005/01/08 11:58:46 dillon Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -81,6 +81,12 @@ TARGETS+=	reinstall
 TARGETS+=	install
 TARGETS+=	tags
 
+# WARNING!  Do not use the -B option.  This appears to propogate to the
+# gmake (probably because both use the same environment variable, MAKEFLAGS,
+# to pass make options) where as of version 3.80 -B means 'always-make',
+# which forces all targets, which blows up gnu builds in the ports system
+# because it appears to cause the configure.status target to loop.
+#
 .if !defined(_DFPORTS_REDIRECT)
 _DFPORTS_REDIRECT=
 .if !make(package-depends-list) && !make(all-depends-list) && \
@@ -88,10 +94,10 @@ _DFPORTS_REDIRECT=
     !make(describe)
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
-	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
+	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} ${.TARGETS}
 .else
 .BEGIN:
-	@cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS} 
+	@cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} ${.TARGETS} 
 .endif
 .endif
 
