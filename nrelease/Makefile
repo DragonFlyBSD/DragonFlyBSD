@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.14 2004/07/16 21:33:16 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.15 2004/08/17 18:05:41 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -57,6 +57,9 @@ INSTALLER_ENV= EXTRA_PACKAGES="${INSTALLER_PKGS}" \
 installer_check:
 		@${INSTALLER_ENV} ${MAKE} check
 
+installer_fetchpkgs:
+		@${INSTALLER_ENV} ${MAKE} fetchpkgs
+
 installer_release:
 		${INSTALLER_ENV} ${MAKE} release
 
@@ -88,6 +91,15 @@ check:
 	fi
 .endfor
 	@echo "check: all preqs found"
+
+fetchpkgs:
+.for PKG in ${PACKAGES}
+	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
+		cd ${PACKAGES_LOC} && \
+		echo "fetching ${PKG}..." && \
+		fetch http://www.bsdinstaller.org/packages/${PKG}.tgz; \
+	fi
+.endfor
 
 buildworld1:
 	( cd ${.CURDIR}/..; make buildworld CCVER=${WORLD_CCVER} )
