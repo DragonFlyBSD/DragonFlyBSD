@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.7 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.8 2004/12/16 23:08:36 okumoto Exp $
  */
 
 /* dir.h --
@@ -48,11 +48,11 @@
 #define	_DIR
 
 typedef struct Path {
-    char         *name;	    	/* Name of directory */
-    int	    	  refCount; 	/* Number of paths with this directory */
-    int		  hits;	    	/* the number of times a file in this
-				 * directory has been found */
-    Hash_Table    files;    	/* Hash table of files in directory */
+	char	*name;	    	/* Name of directory */
+	int	refCount;	/* Number of paths with this directory */
+	int	hits;		/* Number of times a file in this dirextory has
+				 * been found  */
+	Hash_Table files;    	/* Hash table of files in directory */
 } Path;
 
 void Dir_Init(void);
