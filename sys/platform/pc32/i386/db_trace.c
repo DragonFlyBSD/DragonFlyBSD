@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.8 2005/01/27 20:00:00 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.9 2005/01/27 20:49:46 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -173,7 +173,7 @@ db_print_stack_entry(const char *name, int narg, char **argnp, int *argp,
  * Figure out the next frame up in the call stack.
  */
 static void
-db_nextframe(struct i386_frame **fp, db_addr_t *ip);
+db_nextframe(struct i386_frame **fp, db_addr_t *ip)
 {
 	struct trapframe *tf;
 	int frame_type;
