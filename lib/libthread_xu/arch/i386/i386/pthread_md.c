@@ -24,19 +24,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.2 2005/02/22 00:10:00 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.3 2005/02/22 14:56:22 davidxu Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/tls.h>
-#include <machine/cpufunc.h>
-#include <machine/segments.h>
-#include <machine/sysarch.h>
-
-#include <unistd.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "pthread_md.h"
 
