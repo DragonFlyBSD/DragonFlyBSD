@@ -1,6 +1,0 @@
-/*
- * $FreeBSD: src/gnu/usr.bin/binutils/as/amd64-freebsd/itbl-cpu.h,v 1.1 2003/04/26 03:28:20 obrien Exp $
- * $DragonFly: src/gnu/usr.bin/binutils214/as/amd64-dragonfly/Attic/itbl-cpu.h,v 1.1 2004/02/01 08:53:03 dillon Exp $
- */
-
-#include "itbl-i386.h"

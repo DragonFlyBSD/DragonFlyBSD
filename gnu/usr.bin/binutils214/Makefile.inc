@@ -1,6 +1,0 @@
-#
-# $FreeBSD: src/gnu/usr.bin/binutils/Makefile.inc,v 1.4.2.2 2002/09/01 23:39:12 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils214/Attic/Makefile.inc,v 1.1 2004/02/01 08:53:00 dillon Exp $
-#
-
-BINDIR?=	/usr/libexec/binutils214/elf
