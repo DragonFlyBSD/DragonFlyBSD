@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/kenv/kenv.c,v 1.1.2.2 2001/12/19 04:52:15 dd Exp $
- * $DragonFly: src/usr.bin/kenv/kenv.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/kenv/kenv.c,v 1.3 2005/02/25 14:55:51 joerg Exp $
  */
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -46,11 +46,10 @@ usage(void)
 int
 main(int argc, char **argv)
 {
-	int name2oid_oid[2];
-	int real_oid[CTL_MAXNAME+4];
+	int real_oid[CTL_MAXNAME];
 	size_t oidlen;
 	int ch, error, hflag, i, slen;
-	char *env, *eq, *name, *var, *val;
+	char *env, *eq, *var, *val;
 
 	hflag = 0;
 	env = NULL;
@@ -72,16 +71,12 @@ main(int argc, char **argv)
 	}
 	if (argc > 0)
 		usage();
-	name2oid_oid[0] = 0;	/* This is magic & undocumented! */
-	name2oid_oid[1] = 3;
-	oidlen = sizeof(real_oid);
-	name = "kern.environment";
-	error = sysctl(name2oid_oid, 2, real_oid, &oidlen, name, strlen(name));
-	if (error < 0) 
+	oidlen = __arysize(real_oid);
+	error = sysctlnametomib("kern.environment", real_oid, &oidlen);
+	if (error) 
 		err(1, "cannot find kern.environment base sysctl OID");
-	oidlen /= sizeof (int);
-	if (oidlen >= CTL_MAXNAME)
-		errx(1, "kern.environment OID is too large!");
+	if (oidlen + 1 >= __arysize(real_oid))
+		errx(1, "kern.environment base OID too large");
 	real_oid[oidlen] = 0;
 	for (i = 0; ; i++) {
 		real_oid[oidlen + 1] = i;
