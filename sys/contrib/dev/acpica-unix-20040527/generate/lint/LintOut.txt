@@ -1,0 +1,94 @@
+
+--- Module:   evevent.c 
+
+--- Module:   evgpe.c 
+
+--- Module:   evgpeblk.c 
+
+--- Module:   evmisc.c 
+
+--- Module:   evregion.c 
+
+--- Module:   evrgnini.c 
+
+--- Module:   evsci.c 
+
+--- Module:   evxface.c 
+
+--- Module:   evxfevnt.c 
+
+--- Module:   evxfregn.c 
+"64-bit lint completed" 
+
+--- Module:   evevent.c 
+
+--- Module:   evgpe.c 
+
+--- Module:   evgpeblk.c 
+
+--- Module:   evmisc.c 
+               _
+    if (Pending)
+evmisc.c(603) : Info 774: Boolean within 'if' always evaluates to False
+    [Reference: file evmisc.c: line 596]
+evmisc.c(596) : Info 831: Reference cited in prior message
+
+--- Module:   evregion.c 
+
+--- Module:   evrgnini.c 
+
+--- Module:   evsci.c 
+
+--- Module:   evxface.c 
+
+--- Module:   evxfevnt.c 
+
+--- Module:   evxfregn.c 
+"32-bit lint completed" 
+
+--- Module:   evevent.c 
+
+--- Module:   evgpe.c 
+                                                                                          _
+                                    &GpeBlock->EventInfo[(i * ACPI_GPE_REGISTER_WIDTH) + j],
+evgpe.c(559) : Warning 679: Suspicious Truncation in arithmetic expression
+    combining with pointer
+
+--- Module:   evgpeblk.c 
+                                                                               _
+                (&GpeBlock->EventInfo[((ACPI_SIZE) GpeBlock->RegisterCount) * 8] > GpeEventInfo))
+evgpeblk.c(164) : Warning 679: Suspicious Truncation in arithmetic expression
+    combining with pointer
+                                                                                 _
+            GpeEventInfo = &GpeBlock->EventInfo[(i * ACPI_GPE_REGISTER_WIDTH) + j];
+evgpeblk.c(271) : Warning 679: Suspicious Truncation in arithmetic expression
+    combining with pointer
+                                                                                 _
+            GpeEventInfo = &GpeBlock->EventInfo[(i * ACPI_GPE_REGISTER_WIDTH) + j];
+evgpeblk.c(1087) : Warning 679: Suspicious Truncation in arithmetic expression
+    combining with pointer
+
+--- Module:   evmisc.c 
+               _
+    if (Pending)
+evmisc.c(603) : Info 774: Boolean within 'if' always evaluates to False
+    [Reference: file evmisc.c: line 596]
+evmisc.c(596) : Info 831: Reference cited in prior message
+
+--- Module:   evregion.c 
+
+--- Module:   evrgnini.c 
+                                                              _
+#... /  ((UINT32)(UINT64)(PciValue))/*lint -restore */)) >> 16) & 0xFFFF))
+        PciId->Device   = ACPI_HIWORD (ACPI_LODWORD (PciValue));
+evrgnini.c(383) : Warning 572: Excessive shift value (precision 16 shifted
+    right by 16)
+
+--- Module:   evsci.c 
+
+--- Module:   evxface.c 
+
+--- Module:   evxfevnt.c 
+
+--- Module:   evxfregn.c 
+"16-bit lint completed" 
