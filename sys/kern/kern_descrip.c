@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.37 2005/01/13 23:10:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.38 2005/01/14 19:28:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -934,7 +934,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	}
 done:
 	*resultfp = fp;
-	return (0);
+	return (error);
 }
 
 /*
