@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.6 2004/07/26 14:29:11 joerg Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.7 2005/03/10 14:30:31 joerg Exp $
 
 .include <bsd.init.mk>
 
@@ -153,6 +153,7 @@ _SCRIPTSINS_${script:T}: ${script}
 .endfor
 .endif
 
+.include <bsd.nls.mk>
 .include <bsd.files.mk>
 .include <bsd.incs.mk>
 .include <bsd.links.mk>

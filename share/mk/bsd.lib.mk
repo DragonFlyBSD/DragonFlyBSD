@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.7 2004/07/26 14:29:11 joerg Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.8 2005/03/10 14:30:31 joerg Exp $
 #
 
 .include <bsd.init.mk>
@@ -267,6 +267,7 @@ _libinstall:
 .endif
 .endif !defined(INTERNALLIB)
 
+.include <bsd.nls.mk>
 .include <bsd.files.mk>
 .include <bsd.incs.mk>
 .include <bsd.links.mk>
