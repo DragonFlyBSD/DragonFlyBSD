@@ -1,0 +1,83 @@
+$DragonFly: src/contrib/top/patches/Attic/top.c.patch,v 1.1 2004/05/29 05:11:15 hmp Exp $
+Index: contrib/top/top.c
+===================================================================
+RCS file: /cvs/DragonFly/src/contrib/top/top.c,v
+retrieving revision 1.2
+diff -u -p -u -r1.2 top.c
+--- contrib/top/top.c	17 Jun 2003 04:24:07 -0000	1.2
++++ contrib/top/top.c	29 May 2004 01:02:10 -0000
+@@ -193,9 +193,9 @@ char *argv[];
+     fd_set readfds;
+ 
+ #ifdef ORDER
+-    static char command_chars[] = "\f qh?en#sdkriIuto";
++    static char command_chars[] = "\f qh?en#sdkriIutTSo";
+ #else
+-    static char command_chars[] = "\f qh?en#sdkriIut";
++    static char command_chars[] = "\f qh?en#sdkriIutTS";
+ #endif
+ /* these defines enumerate the "strchr"s of the commands in command_chars */
+ #define CMD_redraw	0
+@@ -215,8 +215,10 @@ char *argv[];
+ #define CMD_idletog2    13
+ #define CMD_user	14
+ #define CMD_selftog	15
++#define CMD_threads	16
++#define CMD_system	17
+ #ifdef ORDER
+-#define CMD_order       16
++#define CMD_order       18
+ #endif
+ 
+     /* set the buffer for stdout */
+@@ -245,6 +247,7 @@ char *argv[];
+     ps.idle    = Yes;
+     ps.self    = -1;
+     ps.system  = No;
++    ps.threads = No;
+     ps.uid     = -1;
+     ps.command = NULL;
+ 
+@@ -271,7 +274,7 @@ char *argv[];
+ 	    optind = 1;
+ 	}
+ 
+-	while ((i = getopt(ac, av, "SIbinquvs:d:U:o:t")) != EOF)
++	while ((i = getopt(ac, av, "SITNbinquvs:d:U:o:t")) != EOF)
+ 	{
+ 	    switch(i)
+ 	    {
+@@ -300,6 +303,10 @@ char *argv[];
+ 	      case 'I':                   /* show idle processes */
+ 		ps.idle = !ps.idle;
+ 		break;
++	
++	      case 'T':
++		ps.threads = !ps.threads;	/* show threads */
++	        break;
+ 
+ 	      case 'i':			/* go interactive regardless */
+ 		interactive = Yes;
+@@ -928,6 +935,22 @@ restart:
+ 				putchar('\r');
+ 				break;
+ 
++			    case CMD_threads:
++			        ps.threads = !ps.threads;
++			        new_message(MT_standout | MT_delayed,
++				   " %sisplaying threads.",
++				   ps.threads ? "D" : "Not d");
++				putchar('\r');
++				break;
++
++			    case CMD_system:
++			        ps.system = !ps.system;
++			        new_message(MT_standout | MT_delayed,
++				   " %sisplaying system processes.",
++				   ps.system ? "D" : "Not d");
++				putchar('\r');
++				break;
++
+ 			    case CMD_user:
+ 				new_message(MT_standout,
+ 				    "Username to show: ");

@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
-# $DragonFly: src/usr.bin/top/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
+# $DragonFly: src/usr.bin/top/Makefile,v 1.3 2004/05/29 05:11:15 hmp Exp $
 PROG=	top
 
 TOPDIR=	${.CURDIR}/../../contrib/top
@@ -16,7 +16,10 @@ CFLAGS+= -DHAVE_GETOPT -DHAVE_STRERROR -I${.CURDIR} -I${TOPDIR} -I. -DORDER
 CFLAGS+= -D"Table_size=${TOP_TABLE_SIZE}"
 .endif
 
-SRCS=	commands.c display.c machine.c screen.c top.c \
+CONTRIBDIR=	${TOPDIR}
+PATCHES!=       echo ${TOPDIR}/patches/*.patch
+
+SRCS=	${PATCHES} commands.c display.c machine.c screen.c top.c \
 	username.c utils.c version.c top.local.h
 
 CLEANFILES+= top.local.h top.x top.1

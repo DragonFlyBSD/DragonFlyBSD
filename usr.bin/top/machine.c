@@ -18,9 +18,10 @@
  * AUTHOR:  Christos Zoulas <christos@ee.cornell.edu>
  *          Steven Wallace  <swallace@freebsd.org>
  *          Wolfram Schneider <wosch@FreeBSD.org>
+ *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.10 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.11 2004/05/29 05:11:15 hmp Exp $
  */
 
 
@@ -62,6 +63,11 @@ static int smpmode;
 static int namelength;
 static int cmdlength;
 
+/* 
+ * needs to be a global symbol, so wrapper can be
+ * modified accordingly.
+ */
+static int show_threads = 0;
 
 /* get_process_info passes back a handle.  This is what it looks like: */
 
@@ -212,7 +218,7 @@ long percentages();
 #ifdef ORDER
 /* sorting orders. first is default */
 char *ordernames[] = {
-    "cpu", "size", "res", "time", "pri", NULL
+    "cpu", "size", "res", "time", "pri", "thr", NULL
 };
 #endif
 
@@ -308,7 +314,12 @@ char *format_header(register char *uname_field)
     snprintf(Header, sizeof(Header), smpmode ? smp_header : up_header,
 	     namelength, namelength, uname_field);
 
-    cmdlength = 80 - strlen(Header) + 6;
+    if (screen_width <= 79)
+    	cmdlength = 80;
+    else
+	cmdlength = 89;
+
+    cmdlength = cmdlength - strlen(Header) + 6;
 
     return Header;
 }
@@ -479,6 +490,7 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
     show_idle = sel->idle;
     show_self = sel->self;
     show_system = sel->system;
+    show_threads = sel->threads;
     show_uid = sel->uid != -1;
     show_command = sel->command != NULL;
 
@@ -495,14 +507,16 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	 *  status field.  Processes with P_SYSTEM set are system
 	 *  processes---these get ignored unless show_sysprocs is set.
 	 */
-	if (PP(pp, p_stat) != 0 &&
+	if ((show_threads && (TP(pp, td_proc) == NULL)) ||
+	    PP(pp, p_stat) != 0 &&
 	    (show_self != PP(pp, p_pid)) &&
 	    (show_system || ((PP(pp, p_flag) & P_SYSTEM) == 0)))
 	{
 	    total_procs++;
 	    process_states[(unsigned char) PP(pp, p_stat)]++;
-	    if ((PP(pp, p_stat) != SZOMB) &&
-		(show_idle || (PP(pp, p_pctcpu) != 0) || 
+	    if ((show_threads && (TP(pp, td_proc) == NULL)) ||
+		(PP(pp, p_stat) != SZOMB) &&
+		(show_idle || (PP(pp, p_pctcpu) != 0) ||
 		 (PP(pp, p_stat) == SRUN)) &&
 		(!show_uid || EP(pp, e_ucred.cr_ruid) == (uid_t)sel->uid))
 	    {
@@ -537,6 +551,7 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     double pct;
     struct handle *hp;
     char status[16];
+    char const *wrapper;
     int state;
     int nice;
 
@@ -545,19 +560,26 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     pp = *(hp->next_proc++);
     hp->remaining--;
     
+    /* set the wrapper for the process/thread name */
+    if ((PP(pp, p_flag) & P_INMEM) == 0)
+	 wrapper = "[]"; /* swapped process [pname] */
+    else if (((PP(pp, p_flag) & P_SYSTEM) != 0) && (TP(pp, td_proc) != NULL))
+	 wrapper = "()"; /* system process (pname) */
+    else if (show_threads && (TP(pp, td_proc) == NULL))
+	 wrapper = "<>"; /* pure kernel threads <thread> */
+    else
+	 wrapper = NULL;
+  
     /* get the process's command name */
-    if ((PP(pp, p_flag) & P_INMEM) == 0) {
-	/*
-	 * Print swapped processes as <pname>
-	 */
+    if (wrapper != NULL) {
 	char *comm = TP(pp, td_comm);
 #define COMSIZ sizeof(TP(pp, td_comm))
 	char buf[COMSIZ];
 	(void) strncpy(buf, comm, COMSIZ);
-	comm[0] = '<';
+	comm[0] = wrapper[0];
 	(void) strncpy(&comm[1], buf, COMSIZ - 2);
 	comm[COMSIZ - 2] = '\0';
-	(void) strncat(comm, ">", COMSIZ - 1);
+	(void) strncat(comm, &wrapper[1], COMSIZ - 1);
 	comm[COMSIZ - 1] = '\0';
     }
 
@@ -618,12 +640,13 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
 
 
     /* format this entry */
-    sprintf(fmt,
+    snprintf(fmt, sizeof(fmt),
 	    smpmode ? smp_Proc_format : up_Proc_format,
 	    PP(pp, p_pid),
 	    namelength, namelength,
 	    (*get_userid)(EP(pp, e_ucred.cr_ruid)),
-	    PP(pp, p_priority),
+	    (show_threads && (TP(pp, td_proc) == NULL)) ? TP(pp, td_pri) :
+	    	PP(pp, p_priority),
 	    nice,
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),
@@ -743,6 +766,12 @@ static unsigned char sorted_state[] =
 #define ORDERKEY_PRIO \
   if ((result = PP(p2, p_priority) - PP(p1, p_priority)) == 0)
 
+#define ORDERKEY_KTHREADS \
+  if ((result = (TP(p1, td_proc) == NULL) - (TP(p2, td_proc) == NULL)) == 0)
+
+#define ORDERKEY_KTHREADS_PRIO \
+  if ((result = TP(p2, td_pri) - TP(p1, td_pri)) == 0)
+
 #define ORDERKEY_RSSIZE \
   if ((result = VP(p2, vm_rssize) - VP(p1, vm_rssize)) == 0) 
 
@@ -780,7 +809,7 @@ proc_compare(struct proc **pp1, struct proc **pp2)
 
 #ifdef ORDER
 /* compare routines */
-int compare_size(), compare_res(), compare_time(), compare_prio();
+int compare_size(), compare_res(), compare_time(), compare_prio(), compare_thr();
 
 int (*proc_compares[])() = {
     compare_cpu,
@@ -788,6 +817,7 @@ int (*proc_compares[])() = {
     compare_res,
     compare_time,
     compare_prio,
+    compare_thr,
     NULL
 };
 
@@ -857,6 +887,8 @@ compare_time(struct proc **pp1, struct proc **pp2)
 
     ORDERKEY_CPTICKS
     ORDERKEY_PCTCPU
+    ORDERKEY_KTHREADS
+    ORDERKEY_KTHREADS_PRIO
     ORDERKEY_STATE
     ORDERKEY_PRIO
     ORDERKEY_RSSIZE
@@ -880,6 +912,8 @@ compare_prio(struct proc **pp1, struct proc **pp2)
     p1 = *(struct kinfo_proc **) pp1;
     p2 = *(struct kinfo_proc **) pp2;
 
+    ORDERKEY_KTHREADS
+    ORDERKEY_KTHREADS_PRIO
     ORDERKEY_PRIO
     ORDERKEY_CPTICKS
     ORDERKEY_PCTCPU
@@ -890,6 +924,32 @@ compare_prio(struct proc **pp1, struct proc **pp2)
 
     return(result);
 }
+
+int
+compare_thr(struct proc **pp1, struct proc **pp2)
+{
+    register struct kinfo_proc *p1;
+    register struct kinfo_proc *p2;
+    register int result;
+    register pctcpu lresult;
+
+    /* remove one level of indirection */
+    p1 = *(struct kinfo_proc **) pp1;
+    p2 = *(struct kinfo_proc **) pp2;
+
+    ORDERKEY_KTHREADS
+    ORDERKEY_KTHREADS_PRIO
+    ORDERKEY_CPTICKS
+    ORDERKEY_PCTCPU
+    ORDERKEY_STATE
+    ORDERKEY_RSSIZE
+    ORDERKEY_MEM
+    ;
+
+    return(result);
+}
+
+
 #endif
 
 /*

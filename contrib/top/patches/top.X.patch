@@ -1,0 +1,33 @@
+$DragonFly: src/contrib/top/patches/Attic/top.X.patch,v 1.1 2004/05/29 05:11:15 hmp Exp $
+Index: contrib/top/top.X
+===================================================================
+RCS file: /cvs/src/contrib/top/top.X,v
+retrieving revision 1.2
+diff -p -u -r1.2 top.X
+--- contrib/top/top.X	17 Jun 2003 04:24:07 -0000	1.2
++++ contrib/top/top.X	29 May 2004 04:39:35 -0000
+@@ -65,6 +65,11 @@ terminal.
+ Show system processes in the display.  Normally, system processes such as
+ the pager and the swapper are not shown.  This option makes them visible.
+ .TP
++.B \-T
++Show kernel threads in the display.  Normally, kernel threads such as
++the pagedaemon and bufdaemon are not shown.  This option makes them
++visible.
++.TP
+ .B \-b
+ Use \*(lqbatch\*(rq mode.  In this mode, all input from the terminal is
+ ignored.  Interrupt characters (such as ^C and ^\e) still have an effect.
+@@ -203,6 +208,12 @@ Redraw the screen.
+ Display a summary of the commands (help screen).  Version information
+ is included in this display.
+ .TP
++.B S
++Display system processes.
++.TP
++.B T
++Display kernel threads, such as bufdaemon and pagedaemon.
++.TP
+ .B q
+ Quit
+ .IR top.

@@ -1,0 +1,16 @@
+$DragonFly: src/contrib/top/patches/Attic/machine.h.patch,v 1.1 2004/05/29 05:11:15 hmp Exp $
+Index: contrib/top/machine.h
+===================================================================
+RCS file: /cvs/DragonFly/src/contrib/top/machine.h,v
+retrieving revision 1.2
+diff -u -p -u -r1.2 machine.h
+--- contrib/top/machine.h	17 Jun 2003 04:24:07 -0000	1.2
++++ contrib/top/machine.h	28 May 2004 00:39:30 -0000
+@@ -60,6 +60,7 @@ struct process_select
+     int idle;		/* show idle processes */
+     int self;		/* show self */
+     int system;		/* show system processes */
++    int threads;	/* show threads */
+     int uid;		/* only this uid (unless uid == -1) */
+     char *command;	/* only this command (unless == NULL) */
+ };

@@ -1,0 +1,17 @@
+$DragonFly: src/contrib/top/patches/Attic/top.h.patch,v 1.1 2004/05/29 05:11:15 hmp Exp $
+Index: contrib/top/top.h
+===================================================================
+RCS file: /cvs/src/contrib/top/top.h,v
+retrieving revision 1.1
+diff -p -u -r1.1 top.h
+--- contrib/top/top.h	17 Jun 2003 02:47:20 -0000	1.1
++++ contrib/top/top.h	29 May 2004 02:21:56 -0000
+@@ -16,6 +16,8 @@
+ /* Log base 2 of 1024 is 10 (2^10 == 1024) */
+ #define LOG1024		10
+ 
++extern int screen_width;
++
+ char *itoa();
+ char *itoa7();
+ 
