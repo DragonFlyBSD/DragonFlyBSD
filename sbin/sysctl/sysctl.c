@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.4 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.5 2004/05/31 14:59:34 hmp Exp $
  */
 
 #ifdef __i386__
@@ -581,21 +581,23 @@ show_var(int *oid, int nlen)
 
 	case 'T':
 	case 'S':
-		i = 0;
-		if (strcmp(fmt, "S,clockinfo") == 0)
-			func = S_clockinfo;
-		else if (strcmp(fmt, "S,timeval") == 0)
-			func = S_timeval;
-		else if (strcmp(fmt, "S,loadavg") == 0)
-			func = S_loadavg;
-		else if (strcmp(fmt, "T,dev_t") == 0)
-			func = T_dev_t;
-		else
-			func = NULL;
-		if (func) {
-			if (!nflag)
-				printf("%s%s", name, sep);
-			return ((*func)(len, p));
+		if (!oflag && !xflag) {
+			i = 0;
+			if (strcmp(fmt, "S,clockinfo") == 0)
+				func = S_clockinfo;
+			else if (strcmp(fmt, "S,timeval") == 0)
+				func = S_timeval;
+			else if (strcmp(fmt, "S,loadavg") == 0)
+				func = S_loadavg;
+			else if (strcmp(fmt, "T,dev_t") == 0)
+				func = T_dev_t;
+			else
+				func = NULL;
+			if (func) {
+				if (!nflag)
+					printf("%s%s", name, sep);
+				return ((*func)(len, p));
+			}
 		}
 		/* FALL THROUGH */
 	default:
