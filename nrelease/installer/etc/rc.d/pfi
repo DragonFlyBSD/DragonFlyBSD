@@ -1,10 +1,10 @@
 #!/bin/sh
 
-# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.1 2004/07/10 22:26:18 dillon Exp $
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.2 2004/07/11 18:55:20 cpressey Exp $
 #
 
 # PROVIDE: pfi
-# REQUIRE: inetd
+# REQUIRE: mountoptional
 # KEYWORD: DragonFly
 
 . /etc/rc.subr
