@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.4 2003/08/28 02:35:54 hmp Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.5 2004/01/24 09:02:28 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -116,6 +116,7 @@ main(int ac, char **av)
 	int		mflag = 0;
 	uid_t		uid = 0;
 	dev_t		tdev = 0;
+	pid_t		mypid;
 	char		thiscmd[MAXCOMLEN + 1];
 	pid_t		thispid;
 	uid_t		thisuid;
@@ -285,6 +286,7 @@ main(int ac, char **av)
 	nprocs = size / sizeof(struct kinfo_proc);
 	if (dflag)
 		printf("nprocs %d\n", nprocs);
+	mypid = getpid();
 
 	for (i = 0; i < nprocs; i++) {
 		thispid = procs[i].kp_proc.p_pid;
@@ -293,6 +295,8 @@ main(int ac, char **av)
 		thistdev = procs[i].kp_eproc.e_tdev;
 		thisuid = procs[i].kp_eproc.e_ucred.cr_ruid;	/* real uid */
 
+		if (thispid == mypid)
+			continue;
 		matched = 1;
 		if ((int)procs[i].kp_proc.p_pid < 0)
 			matched = 0;
