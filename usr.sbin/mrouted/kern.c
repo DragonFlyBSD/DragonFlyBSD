@@ -10,7 +10,7 @@
  * kern.c,v 3.8.4.10 1998/01/06 02:00:51 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/kern.c,v 1.12 1999/08/28 01:17:04 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/kern.c,v 1.3 2004/03/15 18:10:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/kern.c,v 1.4 2004/12/16 03:39:05 dillon Exp $
  */
 
 #include "defs.h"
@@ -58,12 +58,12 @@ k_set_rcvbuf(int bufsize, int minsize)
 }
 
 void
-k_hdr_include(int bool)
+k_hdr_include(int boolv)
 {
 #ifdef IP_HDRINCL
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_HDRINCL,
-		   (char *)&bool, sizeof(bool)) < 0)
-	log(LOG_ERR, errno, "setsockopt IP_HDRINCL %u", bool);
+		   (char *)&boolv, sizeof(boolv)) < 0)
+	log(LOG_ERR, errno, "setsockopt IP_HDRINCL %u", boolv);
 #endif
 }
 

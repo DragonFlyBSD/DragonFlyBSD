@@ -110,7 +110,7 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.5 2004/03/15 18:10:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.6 2004/12/16 03:39:05 dillon Exp $
  */
 
 #include <ctype.h>
@@ -145,7 +145,7 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.5 2004/03/15 18:10:28 dillon Exp $";
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.6 2004/12/16 03:39:05 dillon Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -305,7 +305,7 @@ void			send_igmp(u_int32 src, u_int32 dst, int type,
 						int datalen);
 int			inet_cksum(u_short *addr, u_int len);
 void			k_set_rcvbuf(int bufsize);
-void			k_hdr_include(int bool);
+void			k_hdr_include(int boolv);
 void			k_set_ttl(int t);
 void			k_set_loop(int l);
 void			k_set_if(u_int32 ifa);
@@ -615,12 +615,12 @@ k_set_rcvbuf(int bufsize)
 
 
 void
-k_hdr_include(int bool)
+k_hdr_include(int boolv)
 {
 #ifdef IP_HDRINCL
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_HDRINCL,
-		   (char *)&bool, sizeof(bool)) < 0)
-	log(LOG_ERR, errno, "setsockopt IP_HDRINCL %u", bool);
+		   (char *)&boolv, sizeof(boolv)) < 0)
+	log(LOG_ERR, errno, "setsockopt IP_HDRINCL %u", boolv);
 #endif
 }
 
