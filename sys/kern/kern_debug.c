@@ -1,5 +1,8 @@
 /*
- * Copyright (c) 2003 Hiten M. Pandya <hmp@nxad.com>.  All rights reserved.
+ * Copyright (c) 2003 Hiten M. Pandya <hmp@backplane.com>.
+ *
+ * All rights reserved.
+ * 
  * Copyright (c) 1986, 1988, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,7 +33,7 @@
  * Adoped from:
  *	src/sys/kern/kern_shutdown.c
  *
- * $DragonFly: src/sys/kern/kern_debug.c,v 1.1 2003/08/03 12:29:05 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_debug.c,v 1.2 2003/09/04 18:56:35 hmp Exp $
  *
  */
 
