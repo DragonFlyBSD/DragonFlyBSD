@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.12 2004/04/17 00:30:17 cpressey Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.13 2004/04/21 04:28:00 hmp Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -484,7 +484,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 #endif
 		/* XXX - We should probably check more values here */
 		if (!pmp->pm_BytesPerSec || !SecPerClust
-			|| !pmp->pm_Heads || pmp->pm_Heads > 255
+			|| !pmp->pm_Heads
 #ifdef PC98
 	    		|| !pmp->pm_SecPerTrack || pmp->pm_SecPerTrack > 255) {
 #else
