@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.8 2004/01/15 20:35:06 joerg Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.9 2004/02/10 07:26:06 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -776,6 +776,16 @@ static int pcib_probe(device_t dev)
 	return ENXIO;
 }
 
+/*
+ * Attach a pci bus device to a motherboard or pci-to-pci bridge bus.
+ * Due to probe recursion it is possible for pci-to-pci bridges (such as
+ * on the DELL2550) to attach before all the motherboard bridges have
+ * attached.  We must call device_add_child() with the secondary id
+ * rather then -1 in order to ensure that we do not accidently use
+ * a motherboard PCI id, otherwise the device probe will believe that
+ * the later motherboard bridge bus has already been probed and refuse
+ * to probe it.  The result: disappearing busses!
+ */
 static int pcib_attach(device_t dev)
 {
 	u_int8_t secondary;
@@ -785,7 +795,7 @@ static int pcib_attach(device_t dev)
 
 	secondary = pci_get_secondarybus(dev);
 	if (secondary) {
-		child = device_add_child(dev, "pci", -1);
+		child = device_add_child(dev, "pci", secondary);
 		*(int*) device_get_softc(dev) = secondary;
 		return bus_generic_attach(dev);
 	} else
