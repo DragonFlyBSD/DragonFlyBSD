@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.8 2004/01/08 18:12:59 asmodai Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.9 2004/02/11 15:13:05 joerg Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -54,7 +54,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/mutex.h>
 #endif
 #include <sys/signalvar.h>
@@ -62,7 +62,7 @@
 #include <sys/device.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/ioccom.h>
 #include <sys/filio.h>
 #include <sys/module.h>
@@ -71,7 +71,7 @@
 #endif
 #include <sys/conf.h>
 #include <sys/tty.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -136,7 +136,7 @@ struct uhid_softc {
 	int sc_refcnt;
 	u_char sc_dying;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_t dev;
 #endif
 };
@@ -147,7 +147,7 @@ struct uhid_softc {
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 cdev_decl(uhid);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t	uhidopen;
 d_close_t	uhidclose;
 d_read_t	uhidread;
@@ -279,7 +279,7 @@ USB_ATTACH(uhid)
 	sc->sc_repdesc = desc;
 	sc->sc_repdesc_size = size;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	sc->dev = make_dev(&uhid_cdevsw, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "uhid%d", device_get_unit(self));
@@ -344,7 +344,7 @@ USB_DETACH(uhid)
 	/* Nuke the vnodes for any open instances (calls close). */
 	mn = self->dv_unit;
 	vdevgone(maj, mn, mn, VCHR);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	destroy_dev(sc->dev);
 #endif
 
@@ -758,6 +758,6 @@ uhidpoll(dev_t dev, int events, usb_proc_ptr p)
 	return (revents);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(uhid, uhub, uhid_driver, uhid_devclass, usbd_driver_load, 0);
 #endif

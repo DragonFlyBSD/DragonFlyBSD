@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.7 2004/01/08 18:12:59 asmodai Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.8 2004/02/11 15:13:06 joerg Exp $
  */
 
 /*
@@ -54,7 +54,7 @@
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -72,7 +72,7 @@
 #include <bus/usb/usb_quirks.h>
 #include <bus/usb/hid.h>
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/mouse.h>
 #else
 #include <machine/mouse.h>
@@ -355,7 +355,7 @@ USB_ATTACH(ums)
 	sc->status.button = sc->status.obutton = 0;
 	sc->status.dx = sc->status.dy = sc->status.dz = 0;
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__DragonFly__)
 	sc->rsel.si_flags = 0;
 	sc->rsel.si_pid = 0;
 #endif

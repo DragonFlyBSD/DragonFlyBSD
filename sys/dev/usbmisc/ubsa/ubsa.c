@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.5 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.6 2004/02/11 15:13:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,7 @@
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -179,7 +179,7 @@ struct	ubsa_softc {
 
 	u_char			sc_lsr;		/* Local status register */
 	u_char			sc_msr;		/* ubsa status register */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	void			*sc_swicookie;
 #endif
 };
@@ -253,7 +253,7 @@ MODULE_DEPEND(ubsa, usb, 1, 1, 1);
 MODULE_DEPEND(ubsa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(ubsa, UBSA_MODVER);
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 static struct ithd *ucom_ithd;
 #endif
 
@@ -411,7 +411,7 @@ USB_ATTACH(ubsa)
 	DPRINTF(("ubsa: in = 0x%x, out = 0x%x, intr = 0x%x\n",
 	    ucom->sc_bulkin_no, ucom->sc_bulkout_no, sc->sc_intr_number));
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	swi_add(&ucom_ithd, "ucom", ubsa_notify, sc, SWI_TTY, 0,
 	    &sc->sc_swicookie);
 #endif
@@ -445,7 +445,7 @@ USB_DETACH(ubsa)
 
 	rv = ucom_detach(&sc->sc_ucom);
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ithread_remove_handler(sc->sc_swicookie);
 #endif
 
@@ -740,7 +740,7 @@ ubsa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	DPRINTF(("%s: ubsa lsr = 0x%02x, msr = 0x%02x\n",
 	    USBDEVNAME(sc->sc_ucom.sc_dev), sc->sc_lsr, sc->sc_msr));
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	swi_sched(sc->sc_swicookie, 0);
 #else
 	ubsa_notify(sc);

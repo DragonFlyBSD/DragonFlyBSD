@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.5 2003/12/30 01:01:48 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.6 2004/02/11 15:13:06 joerg Exp $
  */
 
 /*
@@ -63,7 +63,7 @@
 #include <sys/kernel.h>
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
 #endif
 #include <sys/conf.h>

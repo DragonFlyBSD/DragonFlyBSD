@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.7 2003/12/30 01:01:47 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.8 2004/02/11 15:13:06 joerg Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #if defined(__NetBSD__)
 #include <sys/device.h>
 #include <sys/ioctl.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
@@ -63,7 +63,7 @@
 #include <sys/uio.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -110,7 +110,7 @@ cdev_decl(urio);
 #define RIO_UE_GET_DIR(p) ((UE_GET_DIR(p) == UE_DIR_IN) ? RIO_IN :\
 			  ((UE_GET_DIR(p) == UE_DIR_OUT) ? RIO_OUT :\
 							   RIO_NODIR))
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  urioopen;
 d_close_t urioclose;
 d_read_t  urioread;
@@ -147,7 +147,7 @@ struct urio_softc {
 	int sc_epaddr[2];
 
 	int sc_refcnt;
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_t sc_dev_t;
 #endif	/* defined(__FreeBSD__) */
 #if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -204,7 +204,7 @@ USB_ATTACH(urio)
 
 	sc->sc_udev = udev = uaa->device;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
  	if ((!uaa->device) || (!uaa->iface)) {
 		ermsg = "device or iface";
  		goto nobulk;
@@ -261,7 +261,7 @@ USB_ATTACH(urio)
 		goto nobulk;
 	}
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX no error trapping, no storing of dev_t */
 	sc->sc_dev_t = make_dev(&urio_cdevsw, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
@@ -614,7 +614,7 @@ USB_DETACH(urio)
 	int maj, mn;
 
 	DPRINTF(("urio_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("urio_detach: sc=%p\n", sc));
 #endif
 
@@ -671,7 +671,7 @@ USB_DETACH(urio)
 }
 #endif /* defined(__NetBSD__) || defined(__OpenBSD__) */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static int
 urio_detach(device_t self)
 {

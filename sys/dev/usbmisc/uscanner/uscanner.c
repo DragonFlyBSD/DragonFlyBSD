@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.6 2003/12/30 01:01:48 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.7 2004/02/11 15:13:06 joerg Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -53,7 +53,7 @@
 #include <sys/malloc.h>
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
@@ -62,7 +62,7 @@
 #endif
 #include <sys/tty.h>
 #include <sys/file.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -227,7 +227,7 @@ struct uscanner_softc {
 	USBBASEDEVICE		sc_dev;		/* base device */
 	usbd_device_handle	sc_udev;
 	usbd_interface_handle	sc_iface;
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_t			dev;
 #endif
 
@@ -256,7 +256,7 @@ struct uscanner_softc {
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 cdev_decl(uscanner);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  uscanneropen;
 d_close_t uscannerclose;
 d_read_t  uscannerread;
@@ -369,7 +369,7 @@ USB_ATTACH(uscanner)
 	sc->sc_bulkin = ed_bulkin->bEndpointAddress;
 	sc->sc_bulkout = ed_bulkout->bEndpointAddress;
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* the main device, ctrl endpoint */
 	sc->dev = make_dev(&uscanner_cdevsw, USBDEVUNIT(sc->sc_dev),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", USBDEVNAME(sc->sc_dev));
@@ -635,7 +635,7 @@ USB_DETACH(uscanner)
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	DPRINTF(("uscanner_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("uscanner_detach: sc=%p\n", sc));
 #endif
 
@@ -664,7 +664,7 @@ USB_DETACH(uscanner)
 	/* Nuke the vnodes for any open instances (calls close). */
 	mn = self->dv_unit * USB_MAX_ENDPOINTS;
 	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	/* destroy the device for the control endpoint */
 	destroy_dev(sc->dev);
 #endif
@@ -697,6 +697,6 @@ uscannerpoll(dev_t dev, int events, usb_proc_ptr p)
 	return (revents);
 }
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(uscanner, uhub, uscanner_driver, uscanner_devclass, usbd_driver_load, 0);
 #endif

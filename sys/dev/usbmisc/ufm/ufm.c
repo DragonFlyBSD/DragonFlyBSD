@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.5 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.6 2004/02/11 15:13:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -40,7 +40,7 @@
 #if defined(__NetBSD__)
 #include <sys/device.h>
 #include <sys/ioctl.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
@@ -51,7 +51,7 @@
 #include <sys/uio.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -85,7 +85,7 @@ int ufmclose(dev_t, int, int, usb_proc_ptr);
 int ufmioctl(dev_t, u_long, caddr_t, int, usb_proc_ptr);
 
 cdev_decl(ufm);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  ufmopen;
 d_close_t ufmclose;
 d_ioctl_t ufmioctl;
@@ -167,7 +167,7 @@ USB_ATTACH(ufm)
 
 	sc->sc_udev = udev = uaa->device;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
  	if ((!uaa->device) || (!uaa->iface)) {
 		ermsg = "device or iface";
  		goto nobulk;
@@ -206,7 +206,7 @@ USB_ATTACH(ufm)
 	}
 	sc->sc_epaddr = edesc->bEndpointAddress;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX no error trapping, no storing of dev_t */
 	(void) make_dev(&ufm_cdevsw, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
@@ -432,7 +432,7 @@ USB_DETACH(ufm)
 	int maj, mn;
 
 	DPRINTF(("ufm_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("ufm_detach: sc=%p\n", sc));
 #endif
 
@@ -454,7 +454,7 @@ USB_DETACH(ufm)
 	/* Nuke the vnodes for any open instances (calls close). */
 	mn = self->dv_unit * USB_MAX_ENDPOINTS;
 	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX not implemented yet */
 #endif
 
@@ -465,7 +465,7 @@ USB_DETACH(ufm)
 }
 #endif /* defined(__NetBSD__) || defined(__OpenBSD__) */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static int
 ufm_detach(device_t self)
 {

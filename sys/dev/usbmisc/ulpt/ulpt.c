@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.7 2003/12/30 01:01:47 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.8 2004/02/11 15:13:06 joerg Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
 #include <sys/ioctl.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/ioccom.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -121,7 +121,7 @@ struct ulpt_softc {
 	int sc_refcnt;
 	u_char sc_dying;
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_t dev;
 	dev_t dev_noprime;
 #endif
@@ -139,7 +139,7 @@ const struct cdevsw ulpt_cdevsw = {
 };
 #elif defined(__OpenBSD__)
 cdev_decl(ulpt);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 Static d_open_t ulptopen;
 Static d_close_t ulptclose;
 Static d_write_t ulptwrite;
@@ -344,7 +344,7 @@ USB_ATTACH(ulpt)
 	}
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	sc->dev = make_dev(&ulpt_cdevsw, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR, 0644, "ulpt%d", device_get_unit(self));
 	sc->dev_noprime = make_dev(&ulpt_cdevsw,
@@ -386,7 +386,7 @@ USB_DETACH(ulpt)
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	DPRINTF(("ulpt_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("ulpt_detach: sc=%p\n", sc));
 #endif
 
@@ -417,7 +417,7 @@ USB_DETACH(ulpt)
 	/* Nuke the vnodes for any open instances (calls close). */
 	mn = self->dv_unit;
 	vdevgone(maj, mn, mn, VCHR);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	destroy_dev(sc->dev);
 	destroy_dev(sc->dev_noprime);
 #endif
@@ -516,7 +516,7 @@ ulptopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	sc->sc_flags = flags;
 	DPRINTF(("ulptopen: flags=0x%x\n", (unsigned)flags));
 
-#if defined(USB_DEBUG) && defined(__FreeBSD__)
+#if defined(USB_DEBUG) && (defined(__FreeBSD__) || defined(__DragonFly__))
 	/* Ignoring these flags might not be a good idea */
 	if ((flags & ~ULPT_NOPRIME) != 0)
 		printf("ulptopen: flags ignored: %b\n", flags,
@@ -758,6 +758,6 @@ ieee1284_print_id(char *str)
 }
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(ulpt, uhub, ulpt_driver, ulpt_devclass, usbd_driver_load, 0);
 #endif
