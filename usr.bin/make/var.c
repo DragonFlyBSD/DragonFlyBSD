@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.144 2005/03/12 12:01:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.145 2005/03/12 12:02:37 okumoto Exp $
  */
 
 /*-
@@ -1865,6 +1865,29 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err,
 	return (err ? var_Error : varNoError);
 }
 
+static char *
+VarParse(const char input[], GNode *ctxt, Boolean err, size_t *consumed, Boolean *freeResult)
+{
+	/* assert(input[0] == '$'); */
+
+	*consumed += 1;	/* consume '$' */
+	input += 1;
+
+	if (input[0] == '\0') {
+		/* Error, there is only a dollar sign in the input string. */
+		*freeResult = FALSE;
+		return (err ? var_Error : varNoError);
+
+	} else if (input[0] == OPEN_PAREN || input[0] == OPEN_BRACE) {
+		/* multi letter variable name */
+		return (VarParseLong(input, ctxt, err, consumed, freeResult));
+
+	} else {
+		/* single letter variable name */
+		return (VarParseShort(input, ctxt, err, consumed, freeResult));
+	}
+}
+
 /*-
  *-----------------------------------------------------------------------
  * Var_Parse --
@@ -1893,24 +1916,7 @@ char *
 Var_Parse(const char input[], GNode *ctxt, Boolean err,
 	size_t *consumed, Boolean *freeResult)
 {
-	/* assert(input[0] == '$'); */
-
-	*consumed += 1;	/* consume '$' */
-	input += 1;
-
-	if (input[0] == '\0') {
-		/* Error, there is only a dollar sign in the input string. */
-		*freeResult = FALSE;
-		return (err ? var_Error : varNoError);
-
-	} else if (input[0] == OPEN_PAREN || input[0] == OPEN_BRACE) {
-		/* multi letter variable name */
-		return (VarParseLong(input, ctxt, err, consumed, freeResult));
-
-	} else {
-		/* single letter variable name */
-		return (VarParseShort(input, ctxt, err, consumed, freeResult));
-	}
+	return VarParse(input, ctxt, err, consumed, freeResult);
 }
 
 /*-
