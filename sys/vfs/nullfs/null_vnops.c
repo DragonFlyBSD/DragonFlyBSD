@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.15 2004/08/28 21:32:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.16 2004/09/26 06:00:09 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -410,7 +410,7 @@ null_lookup(struct vop_lookup_args *ap)
 	 * call, anyway.
 	 */
 	vp = lvp = NULL;
-	error = VOP_LOOKUP(ldvp, NCPNULL, &lvp, NCPPNULL, cnp);
+	error = VOP_LOOKUP(ldvp, &lvp, cnp);
 	if (error == EJUSTRETURN && (flags & CNP_ISLASTCN) &&
 	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop == NAMEI_CREATE || 

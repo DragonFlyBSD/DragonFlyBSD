@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.14 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.15 2004/09/26 06:00:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -213,7 +213,7 @@ union_lookup1(struct vnode *udvp, struct vnode **pdvp, struct vnode **vpp,
 	 * changes will have been made to dvp, so we are set to return.
 	 */
 
-        error = VOP_LOOKUP(dvp, NCPNULL, &tdvp, NCPPNULL, cnp);
+        error = VOP_LOOKUP(dvp, &tdvp, cnp);
 	if (error) {
 		UDEBUG(("dvp %p error %d flags %lx\n", dvp, error, cnp->cn_flags));
 		*vpp = NULL;

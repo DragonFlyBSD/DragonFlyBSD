@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.4 2004/09/26 01:24:54 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.5 2004/09/26 06:00:06 dillon Exp $
  */
 
 /*
@@ -96,9 +96,7 @@ struct vop_islocked_args {
 struct vop_lookup_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode **a_vpp;
-	struct namecache **a_ncpp;
 	struct componentname *a_cnp;
 };
 
@@ -666,9 +664,8 @@ union vop_args_union {
  * in a message and dispatch it to the correct thread.
  */
 int vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_lookup(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
-		struct vnode **vpp, struct namecache **ncpp,
-		struct componentname *cnp);
+int vop_lookup(struct vop_ops *ops, struct vnode *dvp, 
+		struct vnode **vpp, struct componentname *cnp);
 int vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp);
 int vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
@@ -901,8 +898,8 @@ extern struct vnodeop_desc vop_vfsset_desc;
  */
 #define VOP_ISLOCKED(vp, td)				\
 	vop_islocked((vp)->v_ops, vp, td)
-#define VOP_LOOKUP(dvp, par, vpp, ncpp, cnp)		\
-	vop_lookup((dvp)->v_ops, dvp, par, vpp, ncpp, cnp)
+#define VOP_LOOKUP(dvp, vpp, cnp)			\
+	vop_lookup((dvp)->v_ops, dvp, vpp, cnp)
 #define VOP_CACHEDLOOKUP(dvp, vpp, cnp)	\
 	vop_cachedlookup((dvp)->v_ops, dvp, vpp, cnp)
 #define VOP_CREATE(dvp, par, vpp, cnp, vap)		\

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.15 2004/04/24 04:32:02 drhodus Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.16 2004/09/26 06:00:07 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -162,7 +162,7 @@ linux_getcwd_scandir(lvpp, uvpp, bpp, bufp, td)
 	 * At this point, lvp is locked and will be unlocked by the lookup.
 	 * On successful return, *uvpp will be locked
 	 */
-	error = VOP_LOOKUP(lvp, NCPNULL, uvpp, NCPPNULL, &cn);
+	error = VOP_LOOKUP(lvp, uvpp, &cn);
 	if (error) {
 		vput(lvp);
 		*lvpp = NULL;

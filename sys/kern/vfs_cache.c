@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.26 2004/09/26 01:24:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.27 2004/09/26 06:00:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -998,9 +998,7 @@ cache_leaf_test(struct vnode *vp)
  *
  * vop_lookup_args {
  *	struct vnode a_dvp;
- *	struct namecache *a_ncp;
  *	struct vnode **a_vpp;
- *	struct namecache **a_ncpp;
  *	struct componentname *a_cnp;
  * }
  */
