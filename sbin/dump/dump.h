@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.5 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.6 2005/04/02 22:25:32 dillon Exp $
  */
 
 #define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))
@@ -168,13 +168,13 @@ struct dumpdates {
 	time_t	dd_ddate;
 };
 int	nddates;		/* number of records (might be zero) */
-int	ddates_in;		/* we have read the increment file */
 struct	dumpdates **ddatev;	/* the arrayfied version */
 void	initdumptimes(void);
 void	getdumptime(void);
 void	putdumptime(void);
-#define	ITITERATE(i, ddp) \
-	for (ddp = ddatev[i = 0]; i < nddates; ddp = ddatev[++i])
+#define	ITITERATE(i, ddp) 	\
+	if (ddatev != NULL)	\
+		for (ddp = ddatev[i = 0]; i < nddates; ddp = ddatev[++i])
 
 void	sig(int signo);
 

@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.8 2004/12/27 22:36:37 liamfoy Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.9 2005/04/02 22:25:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -223,7 +223,7 @@ mapdirs(ino_t maxino, long *tapesize)
 		for (ret = 0, i = 0; filesize > 0 && i < NDADDR; i++) {
 			if (di.di_db[i] != 0)
 				ret |= searchdir(ino, di.di_db[i],
-					(long)dblksize(sblock, dp, i),
+					(long)dblksize(sblock, &di, i),
 					filesize, tapesize, nodump);
 			if (ret & HASDUMPEDFILE)
 				filesize = 0;
@@ -238,7 +238,7 @@ mapdirs(ino_t maxino, long *tapesize)
 		}
 		if (ret & HASDUMPEDFILE) {
 			SETINO(ino, dumpinomap);
-			*tapesize += blockest(dp);
+			*tapesize += blockest(&di);
 			change = 1;
 			continue;
 		}
@@ -328,12 +328,15 @@ searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
 			ip = getino(dp->d_ino);
 			if (TSTINO(dp->d_ino, dumpinomap)) {
 				CLRINO(dp->d_ino, dumpinomap);
-				CLRINO(dp->d_ino, usedinomap);
 				*tapesize -= blockest(ip);
 			}
-			/* Add back to dumpdirmap to propagate nodump. */
+			/*
+			 * Add back to dumpdirmap and remove from usedinomap
+			 * to propagate nodump.
+			 */
 			if ((ip->di_mode & IFMT) == IFDIR) {
 				SETINO(dp->d_ino, dumpdirmap);
+				CLRINO(dp->d_ino, usedinomap);
 				ret |= HASSUBDIRS;
 			}
 		} else {
