@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.17 2004/01/30 06:18:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.18 2004/02/08 05:27:42 hmp Exp $
  */
 
 
@@ -490,7 +490,7 @@ nfs_open(ap)
 #ifdef DIAGNOSTIC
 		printf("open eacces vtyp=%d\n",vp->v_type);
 #endif
-		return (EACCES);
+		return (EOPNOTSUPP);
 	}
 	/*
 	 * Get a valid lease. If cached data is stale, flush it.
@@ -1038,9 +1038,15 @@ nfs_read(ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_type != VREG)
-		return (EPERM);
 	return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
+	switch (vp->v_type) {
+	case VREG:
+		return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
+	case VDIR:
+		return (EISDIR);
+	default:
+		return EOPNOTSUPP;
+	}
 }
 
 /*
