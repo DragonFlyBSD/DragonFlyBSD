@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.7 2003/06/28 02:36:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -430,6 +430,9 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int doingzomb)
 	if (error)
 		return (error);
 	error = SYSCTL_OUT(req,(caddr_t)&eproc, sizeof(eproc));
+	if (error)
+		return (error);
+	error = SYSCTL_OUT(req,(caddr_t)&p->p_thread, sizeof(struct thread));
 	if (error)
 		return (error);
 	if (!doingzomb && pid && (pfind(pid) != p))

@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.5 2003/06/23 23:52:51 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.6 2003/06/28 02:36:44 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -93,6 +93,7 @@ struct kinfo_proc {
 		char	e_login[roundup(MAXLOGNAME, sizeof(long))];	/* setlogin() name */
 		long	e_spare[2];
 	} kp_eproc;
+	struct thread kp_thread;		/* thread structure */
 };
 void fill_eproc __P((struct proc *, struct eproc *));
 
