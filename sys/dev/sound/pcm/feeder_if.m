@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/sound/pcm/feeder_if.m,v 1.1.2.3 2002/04/22 15:49:36 cg Exp $
-# $DragonFly: src/sys/dev/sound/pcm/feeder_if.m,v 1.2 2003/06/17 04:28:31 dillon Exp $
+# $DragonFly: src/sys/dev/sound/pcm/feeder_if.m,v 1.3 2003/11/15 21:12:53 asmodai Exp $
 #
 
 #include <dev/sound/pcm/sound.h>
