@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.2 2003/06/17 04:28:20 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.3 2003/08/24 23:07:07 hsu Exp $
 #
 #        On the handling of kernel options
 #
@@ -260,6 +260,7 @@ ETHER_8023		opt_ef.h
 ETHER_8022		opt_ef.h
 ETHER_SNAP		opt_ef.h
 MROUTING		opt_mrouting.h
+PIM			opt_mrouting.h
 INET			opt_inet.h
 INET6			opt_inet6.h
 IPSEC			opt_ipsec.h

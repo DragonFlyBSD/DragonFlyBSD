@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
- * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.15 2003/01/24 10:52:50 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.5 2003/08/07 21:17:33 dillon Exp $
+ * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.6 2003/08/24 23:07:08 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -341,6 +341,10 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 		case MRT_DEL_MFC:
 		case MRT_VERSION:
 		case MRT_ASSERT:
+		case MRT_API_SUPPORT:
+		case MRT_API_CONFIG:
+		case MRT_ADD_BW_UPCALL:
+		case MRT_DEL_BW_UPCALL:
 			error = ip_mrouter_get ? ip_mrouter_get(so, sopt) :
 				EOPNOTSUPP;
 			break;
@@ -406,6 +410,10 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 		case MRT_DEL_MFC:
 		case MRT_VERSION:
 		case MRT_ASSERT:
+		case MRT_API_SUPPORT:
+		case MRT_API_CONFIG:
+		case MRT_ADD_BW_UPCALL:
+		case MRT_DEL_BW_UPCALL:
 			error = ip_mrouter_set ? ip_mrouter_set(so, sopt) :
 					EOPNOTSUPP;
 			break;

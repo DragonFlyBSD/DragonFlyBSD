@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
- * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.9 2002/08/14 22:23:10 dg Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.5 2003/08/24 23:07:08 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -378,7 +378,7 @@ int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);
 int	sooptcopyin (struct sockopt *sopt, void *buf, size_t len,
 			 size_t minlen);
-int	sooptcopyout (struct sockopt *sopt, void *buf, size_t len);
+int	sooptcopyout (struct sockopt *sopt, const void *buf, size_t len);
 
 /* XXX; prepare mbuf for (__FreeBSD__ < 3) routines. */
 int	soopt_getm (struct sockopt *sopt, struct mbuf **mp);

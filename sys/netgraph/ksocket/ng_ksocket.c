@@ -36,8 +36,8 @@
  *
  * Author: Archie Cobbs <archie@freebsd.org>
  *
- * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.13 2003/04/28 20:41:09 archie Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.5 2003/08/07 21:54:32 dillon Exp $
+ * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.6 2003/08/24 23:07:07 hsu Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -149,6 +149,7 @@ static const struct ng_ksocket_alias ng_ksocket_protos[] = {
 	{ "swipe",	IPPROTO_SWIPE,		PF_INET		},
 	{ "encap",	IPPROTO_ENCAP,		PF_INET		},
 	{ "divert",	IPPROTO_DIVERT,		PF_INET		},
+	{ "pim",	IPPROTO_PIM,		PF_INET		},
 	{ "ddp",	ATPROTO_DDP,		PF_APPLETALK	},
 	{ "aarp",	ATPROTO_AARP,		PF_APPLETALK	},
 	{ NULL,		-1					},
