@@ -5,7 +5,7 @@
  * Simple RCMD transparent proxy for in-kernel use.  For use with the NAT
  * code.
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_rcmd_pxy.c,v 1.8.2.3 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_rcmd_pxy.c,v 1.4 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_rcmd_pxy.c,v 1.5 2004/07/28 00:22:37 hmp Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
@@ -90,9 +90,6 @@ nat_t *nat;
 	u_short sp;
 	nat_t *ipn;
 	mb_t *m;
-#if	SOLARIS
-	mb_t *m1;
-#endif
 
 	tcp = (tcphdr_t *)fin->fin_dp;
 

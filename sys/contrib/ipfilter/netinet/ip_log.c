@@ -4,8 +4,8 @@
  * See the IPFILTER.LICENCE file for details on licencing.
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
- * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.4 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.6 2004/07/05 16:55:16 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.7 2004/07/28 00:22:37 hmp Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -248,7 +248,7 @@ mb_t *m;
 	 */
 	bzero((char *)ipfl.fl_ifname, sizeof(ipfl.fl_ifname));
 # if SOLARIS && defined(_KERNEL)
-	ipfl.fl_unit = (u_char)ifp->ill_ppa;
+	ipfl.fl_unit = (u_int)ifp->ill_ppa;
 	bcopy(ifp->ill_name, ipfl.fl_ifname,
 	      MIN(ifp->ill_name_length, sizeof(ipfl.fl_ifname)));
 	mlen = (flags & FR_LOGBODY) ? MIN(msgdsize(m) - hlen, 128) : 0;
@@ -258,7 +258,7 @@ mb_t *m;
 	(defined(__DragonFly__))
 	strncpy(ipfl.fl_ifname, ifp->if_xname, IFNAMSIZ);
 #  else
-	ipfl.fl_unit = (u_char)ifp->if_unit;
+	ipfl.fl_unit = (u_int)ifp->if_unit;
 	strncpy(ipfl.fl_ifname, ifp->if_name, MIN(sizeof(ipfl.fl_ifname),
 						  sizeof(ifp->if_name)));
 #  endif
@@ -320,7 +320,7 @@ int *types, cnt;
 	 * rather than create a new one.
 	 */
 	MUTEX_ENTER(&ipl_mutex);
-	if (fin != NULL) {
+	if ((fin != NULL) && (fin->fin_off == 0)) {
 		if ((ipll[dev] != NULL) &&
 		    bcmp((char *)fin, (char *)&iplcrc[dev], FI_LCSIZE) == 0) {
 			ipll[dev]->ipl_count++;
@@ -436,7 +436,7 @@ struct uio *uio;
 	SPL_NET(s);
 	MUTEX_ENTER(&ipl_mutex);
 
-	while (!iplused[unit] || !iplt[unit]) {
+	while (iplt[unit] == NULL) {
 # if SOLARIS && defined(_KERNEL)
 		if (!cv_wait_sig(&iplwait, &ipl_mutex)) {
 			MUTEX_EXIT(&ipl_mutex);

@@ -30,8 +30,9 @@ logtests: l1
 
 ipv6: ipv6.1 ipv6.2 ipv6.3
 
+# ipftest
 0:
-	@(cd ..; make ipftest; )
+	@(cd ${.CURDIR}/../../../usr.sbin/ipftest; make; )
 
 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f14:
 	@/bin/sh ./dotest $@
@@ -51,7 +52,7 @@ i1 i2 i3 i4 i5 i6 i7 i8 i9 i10 i11 i12:
 n1 n2 n3 n4 n5 n6 n7:
 	@/bin/sh ./nattest $@
 
-ni1 ni2 ni3 ni4 ni5:
+ni1 ni2 ni3 ni4 ni5 ni7 ni8 ni10 ni11:
 	@/bin/sh ./natipftest $@
 
 in1 in2 in3 in4:

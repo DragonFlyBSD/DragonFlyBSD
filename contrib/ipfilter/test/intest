@@ -12,7 +12,7 @@ else
 fi
 echo "$1...";
 /bin/cp /dev/null results/$1
-../ipnat -nvf regress/$1 2>/dev/null > results/$1
+ipnat -nvf regress/$1 2>/dev/null > results/$1
 cmp expected/$1 results/$1
 status=$?
 if [ $status = 0 ] ; then

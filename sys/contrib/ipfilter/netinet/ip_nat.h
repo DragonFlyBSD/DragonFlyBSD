@@ -5,8 +5,8 @@
  *
  * @(#)ip_nat.h	1.5 2/4/96
  * $Id: ip_nat.h,v 2.17.2.27 2002/08/28 12:45:51 darrenr Exp $
- * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.15.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.4 2004/02/12 22:35:47 joerg Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.15.2.6 2004/07/04 09:24:39 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.5 2004/07/28 00:22:37 hmp Exp $
  */
 
 #ifndef	__IP_NAT_H__
@@ -36,26 +36,39 @@
 			 * a setup with 1000-2000 networks to NAT.
 			 */
 #ifndef	NAT_SIZE
-# define	NAT_SIZE	127
+# ifdef	LARGE_NAT
+#  define	NAT_SIZE	2047
+# else
+#  define	NAT_SIZE	127
+# endif
 #endif
 #ifndef	RDR_SIZE
-# define	RDR_SIZE	127
+# ifdef	LARGE_NAT
+#  define	RDR_SIZE	2047
+# else
+#  define	RDR_SIZE	127
+# endif
 #endif
 #ifndef	HOSTMAP_SIZE
-# define	HOSTMAP_SIZE	127
+# ifdef	LARGE_NAT
+#  define	HOSTMAP_SIZE	8191
+# else
+#  define	HOSTMAP_SIZE	2047
+# endif
+#endif
+#ifndef NAT_TABLE_MAX
+# ifdef	LARGE_NAT
+#  define	NAT_TABLE_MAX	180000
+# else
+#  define	NAT_TABLE_MAX	30000
+# endif
 #endif
 #ifndef	NAT_TABLE_SZ
-# define	NAT_TABLE_SZ	127
-#endif
-#ifdef	LARGE_NAT
-#undef	NAT_SIZE
-#undef	RDR_SIZE
-#undef	NAT_TABLE_SZ
-#undef	HOSTMAP_SIZE	127
-#define	NAT_SIZE	2047
-#define	RDR_SIZE	2047
-#define	NAT_TABLE_SZ	16383
-#define	HOSTMAP_SIZE	8191
+# ifdef	LARGE_NAT
+#  define	NAT_TABLE_SZ	16383
+# else
+#  define	NAT_TABLE_SZ	2047
+# endif
 #endif
 #ifndef	APR_LABELLEN
 #define	APR_LABELLEN	16

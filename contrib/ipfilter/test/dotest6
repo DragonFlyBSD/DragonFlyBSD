@@ -12,14 +12,14 @@ else
 fi
 echo "$1...";
 /bin/cp /dev/null results/$1
-../ipftest -6 -r /dev/null -i /dev/null >/dev/null 2>&1
+ipftest -6 -r /dev/null -i /dev/null >/dev/null 2>&1
 if [ $? -ne 0 ] ; then
 	echo "skipping IPv6 tests"
 	$TOUCH $1
 	exit 0
 fi
 ( while read rule; do
-	echo "$rule" | ../ipftest -6Hbr - -i input/$1 >> results/$1;
+	echo "$rule" | ipftest -6Hbr - -i input/$1 >> results/$1;
 	if [ $? -ne 0 ] ; then
 		exit 1;
 	fi

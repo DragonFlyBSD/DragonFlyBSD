@@ -5,8 +5,8 @@
  *
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
- * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.6 2004/02/12 22:35:47 joerg Exp $
+ * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.8 2004/07/05 06:02:35 darrenr Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.7 2004/07/28 00:22:36 hmp Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -145,7 +145,7 @@ typedef	struct	fr_info	{
 	u_short	fin_dlen;		/* length of data portion of packet */
 	u_short	fin_id;			/* IP packet id field */
 	u_int	fin_misc;
-	void	*fin_mp;		/* pointer to pointer to mbuf */
+	mb_t	**fin_mp;		/* pointer to pointer to mbuf */
 #if SOLARIS
 	void	*fin_qfm;		/* pointer to mblk where pkt starts */
 	void	*fin_qif;
@@ -629,7 +629,7 @@ extern	void	fr_forgetifp (void *);
 extern	void	fr_getstat (struct friostat *);
 extern	int	fr_ifpaddr (int, void *, struct in_addr *);
 extern	int	fr_lock (caddr_t, int *);
-extern  void	fr_makefrip (int, ip_t *, fr_info_t *);
+extern  int	fr_makefrip (int, ip_t *, fr_info_t *);
 extern	u_short	fr_tcpsum (mb_t *, ip_t *, tcphdr_t *);
 extern	int	fr_scanlist (u_32_t, ip_t *, fr_info_t *, void *);
 extern	int	fr_tcpudpchk (frtuc_t *, fr_info_t *);
