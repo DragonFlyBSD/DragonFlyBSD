@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.6 2004/08/02 13:22:33 joerg Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -1012,9 +1012,7 @@ link_stray_ia6s(struct rr_prefix *rpp)
 {
 	struct ifaddr *ifa;
 
-	for (ifa = rpp->rp_ifp->if_addrlist.tqh_first; ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifa, &rpp->rp_ifp->if_addrlist, ifa_list) {
 		struct rp_addr *rap;
 		struct rr_prefix *orpp;
 		int error = 0;
@@ -1130,10 +1128,7 @@ in6_prefix_ioctl(struct socket *so, u_long cmd, caddr_t data,
 			free_rp_entries(&rp_tmp);
 			break;
 		}
-		for (ifa = ifp->if_addrlist.tqh_first;
-		     ifa;
-		     ifa = ifa->ifa_list.tqe_next)
-		{
+		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_list) {
 			if (ifa->ifa_addr == NULL)
 				continue;	/* just for safety */
 			if (ifa->ifa_addr->sa_family != AF_INET6)

@@ -1,6 +1,6 @@
 /*	$NecBSD: bsfunc.h,v 1.1 1997/07/18 09:19:03 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
-/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.h,v 1.3 2004/02/13 01:04:14 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.h,v 1.4 2004/08/02 13:22:32 joerg Exp $ */
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -114,7 +114,7 @@ bs_check_link(ti, cb)
 	struct bsccb *nextcb;
 
 	return ((ti->ti_flags & BSLINK) &&
-		(nextcb = cb->ccb_chain.tqe_next) &&
+		(nextcb = TAILQ_NEXT(cb, ccb_chain)) &&
 		(nextcb->bsccb_flags & BSLINK));
 }
 

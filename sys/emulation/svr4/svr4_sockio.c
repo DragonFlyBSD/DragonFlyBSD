@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sockio.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.6 2003/09/12 00:43:30 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.7 2004/08/02 13:22:32 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -104,15 +104,12 @@ svr4_sock_ioctl(fp, td, retval, fd, cmd, data)
 			 * entry per physical interface?
 			 */
 
-			for (ifp = ifnet.tqh_first;
-			     ifp != 0; ifp = ifp->if_link.tqe_next)
-				if ((ifa = ifp->if_addrhead.tqh_first) == NULL)
+			TAILQ_FOREACH(ifp, &ifnet, if_link) {
+				if (TAILQ_EMPTY(&ifp->if_addrhead))
 					ifnum++;
-				else
-					for (;ifa != NULL;
-					    ifa = ifa->ifa_link.tqe_next)
-						ifnum++;
-
+				TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
+					ifnum++;
+			}
 
 			DPRINTF(("SIOCGIFNUM %d\n", ifnum));
 			return copyout(&ifnum, data, sizeof(ifnum));

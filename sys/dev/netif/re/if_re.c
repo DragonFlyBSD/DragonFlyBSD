@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.3 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.4 2004/08/02 13:22:32 joerg Exp $
  */
 
 /*
@@ -739,8 +739,8 @@ re_probe(device_t dev)
 	 * Temporarily map the I/O space so we can read the chip ID register.
 	 */
 	sc = malloc(sizeof(*sc), M_TEMP, M_WAITOK | M_ZERO);
-	rid = RE_PCI_LOMEM;
-	sc->re_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	rid = RE_PCI_LOIO;
+	sc->re_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
 					    RF_ACTIVE);
 	if (sc->re_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
@@ -752,7 +752,7 @@ re_probe(device_t dev)
 	sc->re_bhandle = rman_get_bushandle(sc->re_res);
 
 	hwrev = CSR_READ_4(sc, RE_TXCFG) & RE_TXCFG_HWREV;
-	bus_release_resource(dev, SYS_RES_MEMORY, RE_PCI_LOMEM, sc->re_res);
+	bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO, sc->re_res);
 	free(sc, M_TEMP);
 
 	/*
@@ -1011,8 +1011,8 @@ re_attach(device_t dev)
 	 */
 	pci_enable_busmaster(dev);
 
-	rid = RE_PCI_LOMEM;
-	sc->re_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	rid = RE_PCI_LOIO;
+	sc->re_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
 					    RF_ACTIVE);
 
 	if (sc->re_res == NULL) {
@@ -1195,7 +1195,7 @@ re_detach(device_t dev)
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
 	if (sc->re_res)
-		bus_release_resource(dev, SYS_RES_MEMORY, RE_PCI_LOMEM,
+		bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOMEM,
 				     sc->re_res);
 
 	/* Unload and free the RX DMA ring memory and map */
@@ -2234,7 +2234,7 @@ re_resume(device_t dev)
 
 	/* reenable busmastering */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_MEMORY);
+	pci_enable_io(dev, SYS_RES_IOPORT);
 #endif
 
 	/* reinitialize interface if necessary */

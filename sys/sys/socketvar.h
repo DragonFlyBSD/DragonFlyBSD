@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.13 2004/06/06 19:16:10 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.14 2004/08/02 13:22:34 joerg Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -202,7 +202,7 @@ struct	xsocket {
 #define	soreadable(so) \
     ((so)->so_rcv.sb_cc >= (so)->so_rcv.sb_lowat || \
 	((so)->so_state & SS_CANTRCVMORE) || \
-	(so)->so_comp.tqh_first || (so)->so_error)
+	!TAILQ_EMPTY(&(so)->so_comp) || (so)->so_error)
 
 /* can we write something to so? */
 #define	sowriteable(so) \

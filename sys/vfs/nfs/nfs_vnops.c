@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.24 2004/06/04 05:06:40 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.25 2004/08/02 13:22:34 joerg Exp $
  */
 
 
@@ -1447,7 +1447,7 @@ again:
 			nfsm_build(tl, u_int32_t *, NFSX_V3CREATEVERF);
 #ifdef INET
 			if (!TAILQ_EMPTY(&in_ifaddrhead))
-				*tl++ = IA_SIN(in_ifaddrhead.tqh_first)->sin_addr.s_addr;
+				*tl++ = IA_SIN(TAILQ_FIRST(&in_ifaddrhead))->sin_addr.s_addr;
 			else
 #endif
 				*tl++ = create_verf;

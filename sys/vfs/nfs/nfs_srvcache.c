@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.8 2004/06/06 19:16:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.9 2004/08/02 13:22:34 joerg Exp $
  */
 
 /*
@@ -183,7 +183,7 @@ loop:
 			}
 			rp->rc_flag |= RC_LOCKED;
 			/* If not at end of LRU chain, move it there */
-			if (rp->rc_lru.tqe_next) {
+			if (TAILQ_NEXT(rp, rc_lru) != NULL) {
 				TAILQ_REMOVE(&nfsrvlruhead, rp, rc_lru);
 				TAILQ_INSERT_TAIL(&nfsrvlruhead, rp, rc_lru);
 			}
@@ -224,11 +224,11 @@ loop:
 		numnfsrvcache++;
 		rp->rc_flag = RC_LOCKED;
 	} else {
-		rp = nfsrvlruhead.tqh_first;
+		rp = TAILQ_FIRST(&nfsrvlruhead);
 		while ((rp->rc_flag & RC_LOCKED) != 0) {
 			rp->rc_flag |= RC_WANTED;
 			(void) tsleep((caddr_t)rp, 0, "nfsrc", 0);
-			rp = nfsrvlruhead.tqh_first;
+			rp = TAILQ_FIRST(&nfsrvlruhead);
 		}
 		rp->rc_flag |= RC_LOCKED;
 		LIST_REMOVE(rp, rc_hash);
@@ -333,8 +333,7 @@ nfsrv_cleancache(void)
 {
 	struct nfsrvcache *rp, *nextrp;
 
-	for (rp = nfsrvlruhead.tqh_first; rp != 0; rp = nextrp) {
-		nextrp = rp->rc_lru.tqe_next;
+	TAILQ_FOREACH_MUTABLE(rp, &nfsrvlruhead, rc_lru, nextrp) {
 		LIST_REMOVE(rp, rc_hash);
 		TAILQ_REMOVE(&nfsrvlruhead, rp, rc_lru);
 		if (rp->rc_flag & RC_REPMBUF)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.9 2004/07/23 14:14:30 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.10 2004/08/02 13:22:33 joerg Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -337,18 +337,16 @@ iface_match(struct ifnet *ifp, union ip6_fw_if *ifu, int byname)
 		}
 		return(1);
 	} else if (!IN6_IS_ADDR_UNSPECIFIED(&ifu->fu_via_ip6)) {	/* Zero == wildcard */
-		struct ifaddr *ia;
+		struct ifaddr *ifa;
 
-		for (ia = ifp->if_addrlist.tqh_first; ia; ia = ia->ifa_list.tqe_next)
-		{
-
-			if (ia->ifa_addr == NULL)
+		TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list) {
+			if (ifa->ifa_addr == NULL)
 				continue;
-			if (ia->ifa_addr->sa_family != AF_INET6)
+			if (ifa->ifa_addr->sa_family != AF_INET6)
 				continue;
 			if (!IN6_ARE_ADDR_EQUAL(&ifu->fu_via_ip6,
 			    &(((struct sockaddr_in6 *)
-			    (ia->ifa_addr))->sin6_addr)))
+			    (ifa->ifa_addr))->sin6_addr)))
 				continue;
 			return(1);
 		}

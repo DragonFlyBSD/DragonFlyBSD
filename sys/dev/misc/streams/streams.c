@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.12 2004/05/19 22:52:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.13 2004/08/02 13:22:32 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -355,7 +355,7 @@ svr4_delete_socket(struct thread *td, struct file *fp)
 		return;
 	}
 
-	for (e = svr4_head.tqh_first; e != NULL; e = e->entries.tqe_next)
+	TAILQ_FOREACH(e, &svr4_head, entries) {
 		if (e->td == td && e->cookie == cookie) {
 			TAILQ_REMOVE(&svr4_head, e, entries);
 			DPRINTF(("svr4_delete_socket: %s [%p,%d,%d]\n",
@@ -364,6 +364,7 @@ svr4_delete_socket(struct thread *td, struct file *fp)
 			free(e, M_TEMP);
 			return;
 		}
+	}
 }
 
 static int

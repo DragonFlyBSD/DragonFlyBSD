@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.18 2004/06/04 07:45:45 hmp Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.19 2004/08/02 13:22:32 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -1397,7 +1397,6 @@ ifconf(u_long cmd, caddr_t data, struct thread *td)
 		}
 
 		addrs = 0;
-		ifa = ifp->if_addrhead.tqh_first;
 		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
 			if (space <= sizeof(ifr))
 				break;

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.16 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.17 2004/08/02 13:22:34 joerg Exp $
  */
 
 
@@ -1034,13 +1034,13 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 		 * processes in nfs_reply) and there is data in the receive
 		 * queue, poke for callbacks.
 		 */
-		if (nfs_reqq.tqh_first == 0 && nmp->nm_so &&
+		if (TAILQ_EMPTY(&nfs_reqq) && nmp->nm_so &&
 		    nmp->nm_so->so_rcv.sb_cc > 0) {
-		    myrep.r_flags = R_GETONEREP;
-		    myrep.r_nmp = nmp;
-		    myrep.r_mrep = (struct mbuf *)0;
-		    myrep.r_td = NULL;
-		    (void) nfs_reply(&myrep);
+			myrep.r_flags = R_GETONEREP;
+			myrep.r_nmp = nmp;
+			myrep.r_mrep = (struct mbuf *)0;
+			myrep.r_td = NULL;
+			nfs_reply(&myrep);
 		}
 
 		/*
@@ -1121,8 +1121,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 	/*
 	 * Finally, we can free up the mount structure.
 	 */
-	for (nuidp = nmp->nm_uidlruhead.tqh_first; nuidp != 0; nuidp = nnuidp) {
-		nnuidp = nuidp->nu_lru.tqe_next;
+	TAILQ_FOREACH_MUTABLE(nuidp, &nmp->nm_uidlruhead, nu_lru, nnuidp) {
 		LIST_REMOVE(nuidp, nu_hash);
 		TAILQ_REMOVE(&nmp->nm_uidlruhead, nuidp, nu_lru);
 		free((caddr_t)nuidp, M_NFSUID);

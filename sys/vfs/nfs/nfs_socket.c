@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.17 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.18 2004/08/02 13:22:34 joerg Exp $
  */
 
 /*
@@ -402,7 +402,7 @@ nfs_reconnect(struct nfsreq *rep)
 	 * Loop through outstanding request list and fix up all requests
 	 * on old socket.
 	 */
-	for (rp = nfs_reqq.tqh_first; rp != 0; rp = rp->r_chain.tqe_next) {
+	TAILQ_FOREACH(rp, &nfs_reqq, r_chain) {
 		if (rp->r_nmp == nmp)
 			rp->r_flags |= R_MUSTRESEND;
 	}
@@ -828,8 +828,7 @@ nfsmout:
 		 * Loop through the request list to match up the reply
 		 * Iff no match, just drop the datagram
 		 */
-		for (rep = nfs_reqq.tqh_first; rep != 0;
-		    rep = rep->r_chain.tqe_next) {
+		TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
 			if (rep->r_mrep == NULL && rxid == rep->r_xid) {
 				/* Found it.. */
 				rep->r_mrep = mrep;
@@ -1383,7 +1382,7 @@ nfs_timer(void *arg /* never used */)
 	struct thread *td = &thread0; /* XXX for credentials, will break if sleep */
 
 	s = splnet();
-	for (rep = nfs_reqq.tqh_first; rep != 0; rep = rep->r_chain.tqe_next) {
+	TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
 		nmp = rep->r_nmp;
 		if (rep->r_mrep || (rep->r_flags & (R_SOFTTERM|R_MASKTIMER)))
 			continue;
@@ -1483,8 +1482,7 @@ nfs_timer(void *arg /* never used */)
 	 * completed now.
 	 */
 	cur_usec = nfs_curusec();
-	for (slp = nfssvc_sockhead.tqh_first; slp != 0;
-	    slp = slp->ns_chain.tqe_next) {
+	TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
 	    if (slp->ns_tq.lh_first && slp->ns_tq.lh_first->nd_time<=cur_usec)
 		nfsrv_wakenfsd(slp);
 	}
@@ -2342,7 +2340,7 @@ nfsrv_wakenfsd(struct nfssvc_sock *slp)
 
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;
-	for (nd = nfsd_head.tqh_first; nd != 0; nd = nd->nfsd_chain.tqe_next) {
+	TAILQ_FOREACH(nd, &nfsd_head, nfsd_chain) {
 		if (nd->nfsd_flag & NFSD_WAITING) {
 			nd->nfsd_flag &= ~NFSD_WAITING;
 			if (nd->nfsd_slp)

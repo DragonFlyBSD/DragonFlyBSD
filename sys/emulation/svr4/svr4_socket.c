@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.5 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.6 2004/08/02 13:22:32 joerg Exp $
  */
 
 /*
@@ -95,7 +95,7 @@ svr4_find_socket(td, fp, dev, ino)
 
 
 	DPRINTF(("svr4_find_socket: [%p,%d,%d]: ", td, dev, ino));
-	for (e = svr4_head.tqh_first; e != NULL; e = e->entries.tqe_next)
+	TAILQ_FOREACH(e, &svr4_head, entries)
 		if (e->td == td && e->dev == dev && e->ino == ino) {
 #ifdef DIAGNOSTIC
 			if (e->cookie != NULL && e->cookie != cookie)

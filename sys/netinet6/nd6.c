@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.7 2004/07/17 09:43:06 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.8 2004/08/02 13:22:33 joerg Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -645,9 +645,7 @@ regen_tmpaddr(struct in6_ifaddr *ia6) /* deprecated/invalidated temporary
 	struct in6_ifaddr *public_ifa6 = NULL;
 
 	ifp = ia6->ia_ifa.ifa_ifp;
-	for (ifa = ifp->if_addrlist.tqh_first; ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_list) {
 		struct in6_ifaddr *it6;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
@@ -898,10 +896,7 @@ nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 	 * If the address matches one of our addresses,
 	 * it should be a neighbor.
 	 */
-	for (ifa = ifp->if_addrlist.tqh_first;
-	     ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list) {
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			next: continue;
 

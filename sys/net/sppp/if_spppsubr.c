@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.15 2004/06/04 07:45:46 hmp Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.16 2004/08/02 13:22:33 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -4870,9 +4870,8 @@ sppp_get_ip6_addrs(struct sppp *sp, struct in6_addr *src, struct in6_addr *dst,
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
 #if defined(__DragonFly__)
-	for (ifa = ifp->if_addrhead.tqh_first, si = 0;
-	     ifa;
-	     ifa = ifa->ifa_link.tqe_next)
+	si = 0;
+	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 #elif defined(__NetBSD__) || defined (__OpenBSD__)
 	for (ifa = ifp->if_addrlist.tqh_first, si = 0;
 	     ifa;
@@ -4935,9 +4934,7 @@ sppp_set_ip6_addr(struct sppp *sp, const struct in6_addr *src)
 
 	sin6 = NULL;
 #if defined(__DragonFly__) 
-	for (ifa = ifp->if_addrhead.tqh_first;
-	     ifa;
-	     ifa = ifa->ifa_link.tqe_next)
+	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 #elif defined(__NetBSD__) || defined (__OpenBSD__)
 	for (ifa = ifp->if_addrlist.tqh_first;
 	     ifa;

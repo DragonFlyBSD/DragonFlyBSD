@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.13 2004/07/23 07:16:30 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.14 2004/08/02 13:22:32 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -672,7 +672,7 @@ wlinit(void *xsc)
 	printf("wl%d: entered wlinit()\n",sc->unit);
 #endif
 #if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version >= 300000)
-    if (ifp->if_addrhead.tqh_first == (struct ifaddr *)0) {
+    if (TAILQ_EMPTY(&ifp->if_addrhead)) {
 #else
     if (ifp->if_addrlist == (struct ifaddr *)0) {
 #endif

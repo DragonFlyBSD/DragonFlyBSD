@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ccbque.h,v 1.4 2003/08/26 21:42:19 rob Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ccbque.h,v 1.5 2004/08/02 13:22:32 joerg Exp $
  */
 /*
  * Common command control queue funcs.
@@ -79,7 +79,7 @@ DEV##_get_ccb()								\
 	if (CCBTYPE##que.count < CCBTYPE##que.maxccb)			\
 	{								\
 		CCBTYPE##que.count ++;					\
-		cb = CCBTYPE##que.CCBTYPE##tab.tqh_first;		\
+		cb = TAILQ_FIRST(&CCBTYPE##que.CCBTYPE##tab);		\
 		if (cb != NULL)						\
 		{							\
 			TAILQ_REMOVE(&CCBTYPE##que.CCBTYPE##tab, cb, CHAIN);\

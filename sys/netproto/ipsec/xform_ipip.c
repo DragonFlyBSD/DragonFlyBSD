@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.7 2004/06/02 14:43:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.8 2004/08/02 13:22:33 joerg Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -316,10 +316,8 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 	if ((m->m_pkthdr.rcvif == NULL ||
 	    !(m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK)) &&
 	    ipip_allow != 2) {
-		for (ifp = ifnet.tqh_first; ifp != 0;
-		     ifp = ifp->if_list.tqe_next) {
-			for (ifa = ifp->if_addrlist.tqh_first; ifa != 0;
-			     ifa = ifa->ifa_list.tqe_next) {
+		TAILQ_FOREACH(ifp, &ifnetif_list) {
+			TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_link) {
 #ifdef INET
 				if (ipo) {
 					if (ifa->ifa_addr->sa_family !=

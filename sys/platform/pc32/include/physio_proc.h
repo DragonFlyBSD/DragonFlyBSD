@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/platform/pc32/include/Attic/physio_proc.h,v 1.7 2004/02/16 20:11:21 dillon Exp $	*/
+/*	$DragonFly: src/sys/platform/pc32/include/Attic/physio_proc.h,v 1.8 2004/08/02 13:22:32 joerg Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -58,7 +58,7 @@ physio_proc_enter(bp)
 
 	if (bp == NULL || (bp->b_flags & B_PHYS) == 0)
 		return NULL;	
-	if ((pp = physio_proc_freet.tqh_first) == NULL)
+	if ((pp = TAILQ_FIRST(&physio_proc_freet)) == NULL)
 		return NULL;
 
 	s = splstatclock();

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.6 2004/06/07 07:02:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.7 2004/08/02 13:22:33 joerg Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -235,10 +235,7 @@ get_hw_ifid(struct ifnet *ifp,
 	static u_int8_t allone[8] =
 		{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-	for (ifa = ifp->if_addrlist.tqh_first;
-	     ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list) {
 		if (ifa->ifa_addr->sa_family != AF_LINK)
 			continue;
 		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
@@ -377,8 +374,7 @@ get_ifid(struct ifnet *ifp0,
 	}
 
 	/* next, try to get it from some other hardware interface */
-	for (ifp = ifnet.tqh_first; ifp; ifp = ifp->if_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		if (ifp == ifp0)
 			continue;
 		if (get_hw_ifid(ifp, in6) != 0)
@@ -677,8 +673,7 @@ in6_nigroup_attach(const char *name, int namelen)
 	if (in6_nigroup(NULL, name, namelen, &mltaddr.sin6_addr) != 0)
 		return;
 
-	for (ifp = ifnet.tqh_first; ifp; ifp = ifp->if_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
 		if (!in6m) {
@@ -705,8 +700,7 @@ in6_nigroup_detach(const char *name, int namelen)
 	if (in6_nigroup(NULL, name, namelen, &mltaddr.sin6_addr) != 0)
 		return;
 
-	for (ifp = ifnet.tqh_first; ifp; ifp = ifp->if_list.tqe_next)
-	{
+	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
 		if (in6m)
@@ -879,20 +873,15 @@ in6_ifdetach(struct ifnet *ifp)
 	nd6_purge(ifp);
 
 	/* nuke any of IPv6 addresses we have */
-	for (ifa = ifp->if_addrlist.tqh_first; ifa; ifa = next)
+	TAILQ_FOREACH_MUTABLE(ifa, &ifp->if_addrlist, ifa_list, next)
 	{
-		next = ifa->ifa_list.tqe_next;
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		in6_purgeaddr(ifa);
 	}
 
 	/* undo everything done by in6_ifattach(), just in case */
-	for (ifa = ifp->if_addrlist.tqh_first; ifa; ifa = next)
-	{
-		next = ifa->ifa_list.tqe_next;
-
-
+	TAILQ_FOREACH_MUTABLE(ifa, &ifp->if_addrlist, ifa_list, next) {
 		if (ifa->ifa_addr->sa_family != AF_INET6
 		 || !IN6_IS_ADDR_LINKLOCAL(&satosin6(&ifa->ifa_addr)->sin6_addr)) {
 			continue;

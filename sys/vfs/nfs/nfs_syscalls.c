@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.17 2004/06/06 19:16:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.18 2004/08/02 13:22:34 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -252,7 +252,7 @@ nfssvc(struct nfssvc_args *uap)
 				    free((caddr_t)nuidp, M_NFSUID);
 			    } else {
 				if (nuidp == (struct nfsuid *)0) {
-				    nuidp = slp->ns_uidlruhead.tqh_first;
+				    nuidp = TAILQ_FIRST(&slp->ns_uidlruhead);
 				    LIST_REMOVE(nuidp, nu_hash);
 				    TAILQ_REMOVE(&slp->ns_uidlruhead, nuidp,
 					nu_lru);
@@ -465,8 +465,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			}
 			if (nfsd->nfsd_slp == (struct nfssvc_sock *)0 &&
 			    (nfsd_head_flag & NFSD_CHECKSLP) != 0) {
-				for (slp = nfssvc_sockhead.tqh_first; slp != 0;
-				    slp = slp->ns_chain.tqe_next) {
+				TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
 				    if ((slp->ns_flag & (SLP_VALID | SLP_DOREC))
 					== (SLP_VALID | SLP_DOREC)) {
 					    slp->ns_flag &= ~SLP_DOREC;
@@ -750,9 +749,8 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 			m_freem(rec->nr_packet);
 			free(rec, M_NFSRVDESC);
 		}
-		for (nuidp = slp->ns_uidlruhead.tqh_first; nuidp != 0;
-		    nuidp = nnuidp) {
-			nnuidp = nuidp->nu_lru.tqe_next;
+		TAILQ_FOREACH_MUTABLE(nuidp, &slp->ns_uidlruhead, nu_lru,
+				      nnuidp) {
 			LIST_REMOVE(nuidp, nu_hash);
 			TAILQ_REMOVE(&slp->ns_uidlruhead, nuidp, nu_lru);
 			if (nuidp->nu_flag & NU_NAM)
@@ -832,8 +830,7 @@ nfsrv_init(int terminating)
 		panic("nfsd init");
 	nfssvc_sockhead_flag |= SLP_INIT;
 	if (terminating) {
-		for (slp = nfssvc_sockhead.tqh_first; slp != 0; slp = nslp) {
-			nslp = slp->ns_chain.tqe_next;
+		TAILQ_FOREACH_MUTABLE(slp, &nfssvc_sockhead, ns_chain, nslp) {
 			if (slp->ns_flag & SLP_VALID)
 				nfsrv_zapsock(slp);
 			TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
@@ -936,7 +933,7 @@ nfssvc_iod(struct thread *td)
 	 */
 	for (;;) {
 	    while (((nmp = nfs_iodmount[myiod]) == NULL
-		    || nmp->nm_bufq.tqh_first == NULL)
+	             || TAILQ_EMPTY(&nmp->nm_bufq))
 		   && error == 0) {
 		if (nmp)
 		    nmp->nm_bufqiods--;
@@ -954,7 +951,7 @@ nfssvc_iod(struct thread *td)
 		nfs_numasync--;
 		return (error);
 	    }
-	    while ((bp = nmp->nm_bufq.tqh_first) != NULL) {
+	    while ((bp = TAILQ_FIRST(&nmp->nm_bufq)) != NULL) {
 		/* Take one off the front of the list */
 		TAILQ_REMOVE(&nmp->nm_bufq, bp, b_freelist);
 		nmp->nm_bufqlen--;
@@ -1144,7 +1141,7 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 				   malloc(sizeof (struct nfsuid), M_NFSUID,
 					M_WAITOK);
 			} else {
-				nuidp = nmp->nm_uidlruhead.tqh_first;
+				nuidp = TAILQ_FIRST(&nmp->nm_uidlruhead);
 				LIST_REMOVE(nuidp, nu_hash);
 				TAILQ_REMOVE(&nmp->nm_uidlruhead, nuidp,
 					nu_lru);

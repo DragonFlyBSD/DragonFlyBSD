@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.7 2004/06/02 14:43:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.8 2004/08/02 13:22:33 joerg Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -3641,9 +3641,7 @@ key_ismyaddr(sa)
 #ifdef INET
 	case AF_INET:
 		sin = (struct sockaddr_in *)sa;
-		for (ia = in_ifaddrhead.tqh_first; ia;
-		     ia = ia->ia_link.tqe_next)
-		{
+		TAILQ_FOREACH(ia, &in_ifaddrhead; ia_link) {
 			if (sin->sin_family == ia->ia_addr.sin_family &&
 			    sin->sin_len == ia->ia_addr.sin_len &&
 			    sin->sin_addr.s_addr == ia->ia_addr.sin_addr.s_addr)
