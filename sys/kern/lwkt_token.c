@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.5 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.6 2004/03/08 03:03:54 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -251,7 +251,9 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 	    if (--x == 0) {
 		x = 40000000;
 		printf("CHKTOKEN loop %d\n", gd->gd_cpuid);
+#ifdef _KERNEL
 		Debugger("x");
+#endif
 	    }
 	    splz();
 	}

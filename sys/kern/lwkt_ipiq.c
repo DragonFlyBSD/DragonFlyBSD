@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.4 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.5 2004/03/08 03:03:54 dillon Exp $
  */
 
 /*
@@ -78,6 +78,8 @@
 #include <string.h>
 #include <machine/cpufunc.h>
 #include <machine/lock.h>
+#include <machine/cpu.h>
+#include <machine/atomic.h>
 
 #endif
 
