@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.36 2004/06/15 00:30:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.37 2004/06/23 16:45:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -267,7 +267,7 @@ exit1(int rv)
 			}
 			if ((vp = sp->s_ttyvp) != NULL) {
 				sp->s_ttyvp = NULL;
-				vrele(sp->s_ttyvp);
+				vrele(vp);
 			}
 			/*
 			 * s_ttyp is not zero'd; we use this to indicate
