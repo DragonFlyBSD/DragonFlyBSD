@@ -1,5 +1,5 @@
 /* $FreeBSD: ports/devel/gdb6/files/kvm-fbsd.c,v 1.2 2004/06/20 22:22:02 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd.c,v 1.4 2005/01/12 13:16:51 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd.c,v 1.5 2005/02/07 21:33:36 dillon Exp $ */
 
 /* Kernel core dump functions below target vector, for GDB.
    Copyright 1986, 1987, 1989, 1991, 1992, 1993, 1994, 1995
@@ -187,16 +187,40 @@ initial_pcb (void)
   return ((CORE_ADDR)val);
 }
 
-/* Set the current context to that of the PCB struct at the system address
-   passed.  */
-
+/*
+ * Set the current context to that of the PCB struct at the system address
+ * passed.  If a (local copy of the) thread is passed and the thread does not
+ * represent a process, we have to fake up a pcb because pure kernel threads
+ * do not use pcb's.  Note however that in the case of a crash dump the 
+ * kernel core will have a pcb structure that works whether or not it was
+ * a process or a pure thread that crashed, and thr will be NULL in that case.
+ */
 static int
-set_context (CORE_ADDR addr)
+set_context (CORE_ADDR addr, struct thread *thr)
 {
   CORE_ADDR procaddr = 0;
+  int rval;
 
-  if (kvread (addr, &cur_pcb))
-    error ("cannot read pcb at %#lx", addr);
+  if (thr && thr->td_proc == NULL) {
+     /*
+      * Pure threads do not have PCBs (unless this is the crash point in
+      * which case the kernel saves the crash point state as a pcb).
+      *
+      * on thread stack: [low_level_restore_eip][eflags][edi][esi][ebx][ebp]
+      *			 [switch_restore_eip]
+      */
+     rval = kvread(thr->td_sp + 2*4, &cur_pcb.pcb_edi);
+     rval += kvread(thr->td_sp + 3*4, &cur_pcb.pcb_esi);
+     rval += kvread(thr->td_sp + 4*4, &cur_pcb.pcb_ebx);
+     rval += kvread(thr->td_sp + 5*4, &cur_pcb.pcb_ebp);
+     rval += kvread(thr->td_sp + 6*4, &cur_pcb.pcb_eip);
+     cur_pcb.pcb_esp = (register_t)thr->td_sp + 7*4;
+     if (rval)
+	    error ("cannot figure out fake pcb for pure thread");
+  } else {
+      if (kvread (addr, &cur_pcb))
+	    error ("cannot read pcb at %#lx", addr);
+  }
 
   /* Fetch all registers from core file.  */
   target_fetch_registers (-1);
@@ -326,7 +350,7 @@ kgdb_open (char *filename /* the core file */, int from_tty)
     }
 
   /* Now, set up process context, and print the top of stack.  */
-  (void)set_context (initial_pcb());
+  (void)set_context (initial_pcb(), NULL);
   print_stack_frame (get_selected_frame (),
 		     frame_relative_level (get_selected_frame ()), 1);
 }
@@ -459,6 +483,7 @@ set_proc_cmd (char *arg, int from_tty)
 {
     CORE_ADDR paddr, val;
     struct kinfo_proc *kp;
+    struct thread thr;
     int cnt = 0;
 
     if (!arg)
@@ -469,6 +494,10 @@ set_proc_cmd (char *arg, int from_tty)
     paddr = (CORE_ADDR)parse_and_eval_address (arg);
     /* assume it's a thread pointer if it's in the kernel */
     if (INKERNEL(paddr)) {
+	if (kvread(paddr, &thr)) {
+	    error("invalid thread address");
+	    val = 0;
+	}
         paddr += offsetof (struct thread, td_pcb);
         if (kvread (paddr, &val)) {
 	    error("invalid thread address");
@@ -478,9 +507,10 @@ set_proc_cmd (char *arg, int from_tty)
 	kp = kvm_getprocs(core_kd, KERN_PROC_PID, paddr, &cnt);
 	if (!cnt)
 	    error("invalid pid");
+	thr = kp->kp_thread;
 	val = (CORE_ADDR)kp->kp_thread.td_pcb;
     }
 	
-    if (set_context(val))
+    if (set_context(val, &thr))
 	error("invalid proc address");
 }
