@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.24 2004/03/22 23:49:05 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.25 2004/03/23 17:21:09 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -263,13 +263,14 @@ WMAKEENV=	${CROSSENV} \
 WMAKE=		${WMAKEENV} ${MAKE} -f Makefile.inc1
 
 # install stage
+#
 IMAKEENV=	${CROSSENV} \
 		PATH=${STRICTTMPPATH}
 IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
 
 # kernel stage
-KMAKEENV=	${WMAKEENV} \
-		OBJFORMAT_PATH=${WORLDDEST}:${OBJFORMAT_PATH}
+#
+KMAKEENV=	${WMAKEENV}
 
 # buildworld
 #
@@ -628,7 +629,7 @@ bootstrap-tools:
 .for _tool in ${_strfile} \
     bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \
     bin/cat bin/date bin/ln bin/mv bin/csh bin/expr bin/sh bin/ls \
-    bin/hostname \
+    bin/hostname bin/kill \
     sbin/sysctl \
     usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
     usr.bin/m4 usr.bin/rpcgen usr.bin/make gnu/usr.bin/awk usr.bin/file \
@@ -636,7 +637,7 @@ bootstrap-tools:
     usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
     usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
     usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
-    usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et \
+    usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
     usr.bin/vi usr.bin/cap_mkdb usr.bin/vgrind usr.bin/true usr.bin/false \
     usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
