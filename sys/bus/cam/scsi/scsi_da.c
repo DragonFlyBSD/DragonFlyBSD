@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.8 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.9 2003/09/07 17:43:12 asmodai Exp $
  */
 
 #ifdef _KERNEL
@@ -460,7 +460,7 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: kern/47793
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "M-Sys", "DiskOnKey", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
+		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
