@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.11 2004/04/01 16:24:57 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.12 2004/04/14 18:24:34 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -685,8 +685,7 @@ sis_miibus_readreg(device_t dev, int phy, int reg)
 		}
 
 		if (i == SIS_TIMEOUT) {
-			printf("sis%d: PHY failed to come ready\n",
-			    sc->sis_unit);
+			device_printf(dev, "PHY failed to come ready\n");
 			return(0);
 		}
 
@@ -739,8 +738,7 @@ sis_miibus_writereg(device_t dev, int phy, int reg, int data)
 		}
 
 		if (i == SIS_TIMEOUT)
-			printf("sis%d: PHY failed to come ready\n",
-			    sc->sis_unit);
+			device_printf(dev, "PHY failed to come ready\n");
 	} else {
 		bzero((char *)&frame, sizeof(frame));
 
@@ -899,6 +897,7 @@ sis_setmulti_sis(struct sis_softc *sc)
 static void
 sis_reset(struct sis_softc *sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
 	SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RESET);
@@ -909,7 +908,7 @@ sis_reset(struct sis_softc *sc)
 	}
 
 	if (i == SIS_TIMEOUT)
-		printf("sis%d: reset never completed\n", sc->sis_unit);
+		if_printf(ifp, "reset never completed\n");
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -958,11 +957,10 @@ sis_attach(device_t dev)
 	uint32_t command;
 	struct sis_softc *sc;
 	struct ifnet *ifp;
-	int unit, error, rid, waittime;
+	int error, rid, waittime;
 
 	error = waittime = 0;
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	bzero(sc, sizeof(struct sis_softc));
 
 	if (pci_get_device(dev) == SIS_DEVICEID_900)
@@ -991,8 +989,8 @@ sis_attach(device_t dev)
 			irq = pci_read_config(dev, SIS_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			printf("sis%d: chip is in D%d power mode "
-			"-- setting to D0\n", unit, command & SIS_PSTATE_MASK);
+			device_printf(dev, "chip is in D%d power mode "
+			    "-- setting to D0\n", command & SIS_PSTATE_MASK);
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, SIS_PCI_PWRMGMTCTRL, command, 4);
 
@@ -1013,13 +1011,13 @@ sis_attach(device_t dev)
 
 #ifdef SIS_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("sis%d: failed to enable I/O ports!\n", unit);
+		device_printf(dev, "failed to enable I/O ports!\n");
 		error = ENXIO;;
 		goto fail;
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("sis%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;;
 		goto fail;
 	}
@@ -1030,7 +1028,7 @@ sis_attach(device_t dev)
 	    0, ~0, 1, RF_ACTIVE);
 
 	if (sc->sis_res == NULL) {
-		printf("sis%d: couldn't map ports/memory\n", unit);
+		device_printf(dev, "couldn't map ports/memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1044,7 +1042,7 @@ sis_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->sis_irq == NULL) {
-		printf("sis%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1159,9 +1157,8 @@ sis_attach(device_t dev)
 	/*
 	 * A SiS chip was detected. Inform the world.
 	 */
-	printf("sis%d: Ethernet address: %6D\n", unit, eaddr, ":");
+	device_printf(dev, "Ethernet address: %6D\n", eaddr, ":");
 
-	sc->sis_unit = unit;
 	callout_handle_init(&sc->sis_stat_ch);
 
 	/*
@@ -1280,7 +1277,7 @@ sis_attach(device_t dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "sis", unit);
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sis_ioctl;
@@ -1926,8 +1923,8 @@ sis_init(void *xsc)
 
 	/* Init circular RX list. */
 	if (sis_list_rx_init(sc) == ENOBUFS) {
-		printf("sis%d: initialization failed: no "
-			"memory for rx buffers\n", sc->sis_unit);
+		if_printf(ifp, "initialization failed: "
+			  "no memory for rx buffers\n");
 		sis_stop(sc);
 		splx(s);
 		return;
@@ -2146,7 +2143,7 @@ sis_watchdog(struct ifnet *ifp)
 	sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("sis%d: watchdog timeout\n", sc->sis_unit);
+	if_printf(ifp, "watchdog timeout\n");
 
 	sis_stop(sc);
 	sis_reset(sc);

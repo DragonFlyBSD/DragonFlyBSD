@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sisreg.h,v 1.1.4.11 2003/02/05 21:49:01 mbr Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.4 2004/04/01 16:24:57 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.5 2004/04/14 18:24:34 joerg Exp $
  */
 
 /*
@@ -448,7 +448,6 @@ struct sis_softc {
 	struct resource		*sis_irq;
 	void			*sis_intrhand;
 	device_t		sis_miibus;
-	uint8_t			sis_unit;
 	uint8_t			sis_type;
 	uint8_t			sis_rev;
 	uint8_t			sis_link;
