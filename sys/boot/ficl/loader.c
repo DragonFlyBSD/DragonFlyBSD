@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/ficl/loader.c,v 1.9 2003/06/08 03:11:16 nyan Exp $
- * $DragonFly: src/sys/boot/ficl/loader.c,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ * $DragonFly: src/sys/boot/ficl/loader.c,v 1.4 2005/02/19 23:19:51 swildner Exp $
  */
 
 /*******************************************************************
@@ -657,15 +657,9 @@ void ficlCompilePlatform(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "ccall",	    ficlCcall,	    FW_DEFAULT);
 #endif
 
-#if defined(PC98)
-    ficlSetEnv(pSys, "arch-pc98",         FICL_TRUE);
-#elif defined(__i386__)
+#if defined(__i386__)
     ficlSetEnv(pSys, "arch-i386",         FICL_TRUE);
     ficlSetEnv(pSys, "arch-alpha",        FICL_FALSE);
-    ficlSetEnv(pSys, "arch-ia64",         FICL_FALSE);
-#elif defined(__alpha__)
-    ficlSetEnv(pSys, "arch-i386",         FICL_FALSE);
-    ficlSetEnv(pSys, "arch-alpha",        FICL_TRUE);
     ficlSetEnv(pSys, "arch-ia64",         FICL_FALSE);
 #elif defined(__ia64__)
     ficlSetEnv(pSys, "arch-i386",         FICL_FALSE);

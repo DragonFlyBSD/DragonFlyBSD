@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ficl/Makefile,v 1.35 2003/06/30 19:08:49 ru Exp $
-# $DragonFly: src/sys/boot/ficl/Makefile,v 1.4 2004/03/05 21:38:44 joerg Exp $
+# $DragonFly: src/sys/boot/ficl/Makefile,v 1.5 2005/02/19 23:19:51 swildner Exp $
 #
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
@@ -16,14 +16,8 @@ stack_protector.o: ../../libkern/stack_protector.c
 
 CLEANFILES=	softcore.c testmain testmain.o
 CFLAGS+=	-ffreestanding
-.if ${MACHINE_ARCH} == "alpha"
-CFLAGS+=	-mno-fp-regs
-.endif
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2
-.endif
-.if ${MACHINE} == "pc98"
-CFLAGS+=	-DPC98
 .endif
 .if HAVE_PNP
 CFLAGS+=	-DHAVE_PNP

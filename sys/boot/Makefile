@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/Makefile,v 1.18 2003/08/16 02:48:20 obrien Exp $
-# $DragonFly: src/sys/boot/Makefile,v 1.3 2003/11/10 06:08:19 dillon Exp $
+# $DragonFly: src/sys/boot/Makefile,v 1.4 2005/02/19 23:19:51 swildner Exp $
 
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
@@ -17,12 +17,6 @@ SUBDIR+=		ofw
 
 # Pick the machine-dependant subdir based on the target architecture.
 SUBDIR+=		${MACHINE}
-
-# Build ARC / AlphaBIOS executable on the Alpha
-# (this is a WIP (work in progress))
-#.if ${MACHINE_ARCH} == "alpha"
-#SUBDIR+=		arc
-#.endif
 
 # Build EFI executable on ia64
 .if ${MACHINE_ARCH} == "ia64"

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/isapnp.h,v 1.7 2002/03/20 07:59:37 alfred Exp $
- * $DragonFly: src/sys/boot/common/isapnp.h,v 1.4 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/isapnp.h,v 1.5 2005/02/19 23:19:51 swildner Exp $
  */
 
 #ifndef _I386_ISA_PNP_H_
@@ -46,14 +46,8 @@
 
 /* Static ports to access PnP state machine */
 #ifndef _KERNEL
-#ifdef PC98
-/* pnp.h is included from pnpinfo.c. */
-#define _PNP_ADDRESS		0x259
-#define _PNP_WRITE_DATA		0xa59
-#else
 #define _PNP_ADDRESS		0x279
 #define _PNP_WRITE_DATA		0xa79
-#endif
 #endif
 
 /* PnP Registers.  Write to ADDRESS and then use WRITE/READ_DATA */
