@@ -1,0 +1,6 @@
+$DragonFly: src/test/test/README,v 1.1 2004/03/17 05:41:23 dillon Exp $
+			README FOR /usr/src/test/test
+
+    This is just a dummy directory that committers use to test the
+    repository (make silly test commits and such).
+
