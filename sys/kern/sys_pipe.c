@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.10 2003/09/03 11:47:03 hmp Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.11 2003/09/03 11:49:27 hmp Exp $
  */
 
 /*
@@ -1224,7 +1224,7 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 		cpipe = cpipe->pipe_peer;
 		if (cpipe == NULL)
 			/* other end of pipe has been closed */
-			return (EBADF);
+			return (EPIPE);
 		break;
 	default:
 		return (1);
