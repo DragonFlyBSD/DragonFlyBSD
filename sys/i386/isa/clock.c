@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.17 2004/09/17 00:18:13 joerg Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.18 2004/09/21 13:02:51 joerg Exp $
  */
 
 /*
@@ -116,8 +116,13 @@ static void i8254_restore(void);
 #define TIMER_FREQ   1193182
 #endif
 
+#ifdef TIMER_USE_1
+#define TIMER_SELX	TIMER_SEL1
+#define TIMER_CNTRX	TIMER_CNTR1
+#else
 #define TIMER_SELX	TIMER_SEL2
 #define TIMER_CNTRX	TIMER_CNTR2
+#endif
 
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
@@ -196,9 +201,10 @@ clkintr(struct intrframe frame)
 int
 acquire_timer2(int mode)
 {
+#ifndef TIMER_USE_1
 	/* Timer2 is being used for time count operation */
 	return(-1);
-#if 0
+#else
 	if (timer2_state != RELEASED)
 		return (-1);
 	timer2_state = ACQUIRED;
