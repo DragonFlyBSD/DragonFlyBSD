@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.29.6.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_thermal.c,v 1.2 2003/11/15 21:05:40 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_thermal.c,v 1.3 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 #include "opt_acpi.h"
@@ -810,7 +810,7 @@ acpi_tz_thread(void *arg)
     for (;;) {
 	tsleep(&acpi_tz_proc, 0, "nothing", hz * acpi_tz_polling_rate);
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_lock(&Giant);
 #endif
 
@@ -822,7 +822,7 @@ acpi_tz_thread(void *arg)
 	    acpi_tz_timeout(device_get_softc(devs[i]));
 	ACPI_UNLOCK;
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_unlock(&Giant);
 #endif
     }

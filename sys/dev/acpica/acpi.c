@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.95.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi.c,v 1.2 2003/11/09 02:22:34 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi.c,v 1.3 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 #include "opt_acpi.h"
@@ -99,7 +99,7 @@ static const char* sleep_state_names[] = {
 /* this has to be static, as the softc is gone when we need it */
 static int acpi_off_state = ACPI_STATE_S5;
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 struct mtx	acpi_mutex;
 #endif
 
@@ -237,7 +237,7 @@ acpi_identify(driver_t *driver, device_t parent)
     if (device_find_child(parent, "acpi", 0) != NULL)
 	return_VOID;
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
     /* initialise the ACPI mutex */
     mtx_init(&acpi_mutex, "ACPI global lock", NULL, MTX_DEF);
 #endif

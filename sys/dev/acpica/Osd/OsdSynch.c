@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.17.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.2 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 /*
@@ -38,7 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
@@ -48,7 +48,7 @@ ACPI_MODULE_NAME("SYNCH")
 
 static MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 # define AS_LOCK(as)		s = splhigh()
 # define AS_UNLOCK(as)		splx(s)
 # define AS_LOCK_DECL		int s
@@ -64,7 +64,7 @@ static MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
  * in the OSI code to implement a mutex.  Go figure.)
  */
 struct acpi_semaphore {
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
     struct mtx	as_mtx;
 #endif
     UINT32	as_units;
@@ -101,7 +101,7 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_HANDLE *OutHand
 	return_ACPI_STATUS(AE_NO_MEMORY);
 
     bzero(as, sizeof(*as));
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
     mtx_init(&as->as_mtx, "ACPI semaphore", NULL, MTX_DEF);
 #endif
     as->as_units = InitialUnits;
@@ -129,7 +129,7 @@ AcpiOsDeleteSemaphore (ACPI_HANDLE Handle)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "destroyed semaphore %p\n", as));
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
     mtx_destroy(&as->as_mtx);
 #endif
     free(Handle, M_ACPISEM);
@@ -225,7 +225,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	    break;
 	}
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ACPI_DEBUG_PRINT((ACPI_DB_MUTEX,
 	    "semaphore blocked, calling msleep(%p, %p, %d, \"acsem\", %d)\n",
 	    as, &as->as_mtx, PCATCH, tmo));

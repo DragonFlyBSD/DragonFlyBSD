@@ -26,13 +26,13 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.43.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpivar.h,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpivar.h,v 1.2 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 #include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
@@ -90,7 +90,7 @@ struct acpi_device {
 
 };
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 /*
  * In 4.x, ACPI is protected by splhigh().
  */
@@ -390,7 +390,7 @@ extern int	acpi_cmbat_get_battinfo(int, struct acpi_battinfo *);
 
 extern int	acpi_acad_get_acline(int *);
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #ifndef ACPI_MAX_THREADS
 #define ACPI_MAX_THREADS	3
 #endif

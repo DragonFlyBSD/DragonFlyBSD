@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.10.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdHardware.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdHardware.c,v 1.2 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 /*
@@ -37,7 +37,7 @@
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
 #include <machine/pci_cfgreg.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <dev/pci/pcireg.h>
 #else
 #include <bus/pci/pcireg.h>

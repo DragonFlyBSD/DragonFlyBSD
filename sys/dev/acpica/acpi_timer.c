@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.24.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_timer.c,v 1.2 2004/01/30 05:42:15 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_timer.c,v 1.3 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 #ifdef NOTDEF	/* Disabled */
@@ -35,7 +35,7 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/timetc.h>
 #else
 #include <sys/time.h>

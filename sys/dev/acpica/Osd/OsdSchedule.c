@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.23.6.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSchedule.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSchedule.c,v 1.2 2004/02/13 00:25:17 joerg Exp $ 
  */
 
 /*
@@ -73,7 +73,7 @@ struct acpi_task_queue {
     struct acpi_task		*at;
 };
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 /*
  * Private task queue definition for ACPI
  */
@@ -192,7 +192,7 @@ AcpiOsQueueForExecution(UINT32 Priority, OSD_EXECUTION_CALLBACK Function, void *
     }
     TASK_INIT(&at->at_task, pri, AcpiOsExecuteQueue, at);
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
     taskqueue_enqueue(taskqueue_swi, (struct task *)at);
 #else
     taskqueue_enqueue(taskqueue_acpi, (struct task *)at);
@@ -274,7 +274,7 @@ AcpiOsGetThreadId (void)
     /* XXX do not add FUNCTION_TRACE here, results in recursive call */
 
     p = curproc;
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
     if (p == NULL)
 	p = &proc0;
 #endif
