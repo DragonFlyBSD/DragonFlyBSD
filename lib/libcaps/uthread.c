@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/uthread.c,v 1.4 2004/04/24 09:26:25 joerg Exp $
+ * $DragonFly: src/lib/libcaps/uthread.c,v 1.5 2004/07/29 08:55:02 dillon Exp $
  */
 
 /*
@@ -105,10 +105,12 @@ lwkt_init_thread_remote(void *arg)
 }
 
 void
-lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
+lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
+		struct globaldata *gd)
 {
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
+    td->td_kstack_size = stksize;
     td->td_flags |= flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
@@ -168,7 +170,9 @@ lwkt_gdinit(struct globaldata *gd)
     TAILQ_INIT(&gd->gd_tdallq);
 
     /* Set up this cpu's idle thread */
-    lwkt_init_thread(&gd->gd_idlethread, libcaps_alloc_stack(THREAD_STACK), 0, gd);
+    lwkt_init_thread(&gd->gd_idlethread, 
+		libcaps_alloc_stack(LWKT_THREAD_STACK), LWKT_THREAD_STACK,
+		0, gd);
     cpu_set_thread_handler(&gd->gd_idlethread, lwkt_exit, lwkt_idleloop, NULL);
 }
 

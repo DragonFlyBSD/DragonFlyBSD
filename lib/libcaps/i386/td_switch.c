@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/i386/td_switch.c,v 1.1 2003/12/04 22:06:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/td_switch.c,v 1.2 2004/07/29 08:55:02 dillon Exp $
  */
 #include <sys/cdefs.h>			/* for __dead2 needed by thread.h */
 #include "libcaps/thread.h"
@@ -37,7 +37,7 @@ void cpu_exit_switch(struct thread *);
 void
 cpu_init_thread(struct thread *td)
 {
-    td->td_sp = td->td_kstack + THREAD_STACK - sizeof(void *);
+    td->td_sp = td->td_kstack + td->td_kstack_size - sizeof(void *);
     td->td_switch = cpu_lwkt_switch;
 }
 

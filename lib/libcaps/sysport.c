@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/sysport.c,v 1.3 2003/12/07 04:21:52 dillon Exp $
+ * $DragonFly: src/lib/libcaps/sysport.c,v 1.4 2004/07/29 08:55:02 dillon Exp $
  */
 #include "defs.h"
 
@@ -49,8 +49,8 @@ lwkt_port_t sysport;
 void
 sysport_init(void)
 {
-    lwkt_init_thread(&sys_td, libcaps_alloc_stack(THREAD_STACK),
-		    TDF_SYSTHREAD, mycpu);
+    lwkt_init_thread(&sys_td, libcaps_alloc_stack(LWKT_THREAD_STACK),
+		    LWKT_THREAD_STACK, TDF_SYSTHREAD, mycpu);
     sysport = &sys_td.td_msgport;
     sysport->mp_putport = sysport_putport;
     sysport->mp_flags = MSGPORTF_WAITING;	/* XXX temporary */

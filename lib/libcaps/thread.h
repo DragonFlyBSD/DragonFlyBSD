@@ -25,13 +25,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/thread.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/thread.h,v 1.3 2004/07/29 08:55:02 dillon Exp $
  */
 
 #ifndef _LIBCAPS_THREAD_H_
 #define _LIBCAPS_THREAD_H_
 
-#define THREAD_STACK	65536
+#define LWKT_THREAD_STACK	65536
 
 struct thread;
 

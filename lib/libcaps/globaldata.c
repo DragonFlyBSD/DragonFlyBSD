@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.c,v 1.6 2004/04/24 09:26:25 joerg Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.c,v 1.7 2004/07/29 08:55:02 dillon Exp $
  */
 
 #include "defs.h"
@@ -52,7 +52,7 @@ globaldata_init(thread_t td)
      */
     if (td) {
 	gdary[0].gd_curthread = td;
-	lwkt_init_thread(td, NULL, TDF_RUNNING|TDF_SYSTHREAD, mycpu);
+	lwkt_init_thread(td, NULL, 0, TDF_RUNNING|TDF_SYSTHREAD, mycpu);
     }
 }
 

@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.56 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.57 2004/07/29 08:55:02 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -221,6 +221,7 @@ struct thread {
 	struct md_intr_info *intdata;
     } td_info;
     char	*td_kstack;	/* kernel stack */
+    int		td_kstack_size;	/* size of kernel stack */
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
     void	(*td_switch)(struct thread *ntd);
     lwkt_wait_t td_wait;	/* thread sitting on wait structure */
@@ -303,6 +304,8 @@ struct thread {
 #define TDPRI_MASK		31
 #define TDPRI_CRIT		32	/* high bits of td_pri used for crit */
 
+#define LWKT_THREAD_STACK	(UPAGES * PAGE_SIZE)
+
 #define CACHE_NTHREADS		6
 
 #define IN_CRITICAL_SECT(td)	((td)->td_pri >= TDPRI_CRIT)
@@ -316,9 +319,10 @@ extern struct vm_zone	*thread_zone;
 /*
  * Applies both to the kernel and to liblwkt.
  */
-extern struct thread *lwkt_alloc_thread(struct thread *template, int cpu);
-extern void lwkt_init_thread(struct thread *td, void *stack, int flags,
-	struct globaldata *gd);
+extern struct thread *lwkt_alloc_thread(struct thread *template, int stksize,
+	int cpu);
+extern void lwkt_init_thread(struct thread *td, void *stack, int stksize,
+	int flags, struct globaldata *gd);
 extern void lwkt_set_comm(thread_t td, const char *ctl, ...);
 extern void lwkt_wait_free(struct thread *td);
 extern void lwkt_free_thread(struct thread *td);

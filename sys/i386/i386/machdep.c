@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.62 2004/07/24 20:21:33 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.63 2004/07/29 08:54:58 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1866,7 +1866,7 @@ init386(int first)
 
 	mi_gdinit(&gd->mi, 0);
 	cpu_gdinit(gd, 0);
-	lwkt_init_thread(&thread0, proc0paddr, 0, &gd->mi);
+	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, &gd->mi);
 	lwkt_set_comm(&thread0, "thread0");
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
@@ -2030,13 +2030,12 @@ init386(int first)
 void
 cpu_gdinit(struct mdglobaldata *gd, int cpu)
 {
-	char *sp;
-
 	if (cpu)
 		gd->mi.gd_curthread = &gd->mi.gd_idlethread;
 
-	sp = gd->mi.gd_prvspace->idlestack;
-	lwkt_init_thread(&gd->mi.gd_idlethread, sp, 0, &gd->mi);
+	lwkt_init_thread(&gd->mi.gd_idlethread, 
+			gd->mi.gd_prvspace->idlestack, 
+			sizeof(gd->mi.gd_prvspace->idlestack), 0, &gd->mi);
 	lwkt_set_comm(&gd->mi.gd_idlethread, "idle_%d", cpu);
 	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->mi.gd_idlethread.td_sp -= sizeof(void *);

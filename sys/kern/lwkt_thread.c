@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.66 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.67 2004/07/29 08:55:00 dillon Exp $
  */
 
 /*
@@ -69,8 +69,6 @@
 #include <machine/stdarg.h>
 #include <machine/ipl.h>
 #include <machine/smp.h>
-
-#define THREAD_STACK	(UPAGES * PAGE_SIZE)
 
 #else
 
@@ -227,7 +225,7 @@ lwkt_wait_init(lwkt_wait_t w)
  * does everything except load the startup and switcher function.
  */
 thread_t
-lwkt_alloc_thread(struct thread *td, int cpu)
+lwkt_alloc_thread(struct thread *td, int stksize, int cpu)
 {
     void *stack;
     int flags = 0;
@@ -242,7 +240,6 @@ lwkt_alloc_thread(struct thread *td, int cpu)
 		("lwkt_alloc_thread: unexpected NULL or corrupted td"));
 	    TAILQ_REMOVE(&gd->gd_tdfreeq, td, td_threadq);
 	    crit_exit_gd(gd);
-	    stack = td->td_kstack;
 	    flags = td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
 	} else {
 	    crit_exit_gd(gd);
@@ -252,21 +249,28 @@ lwkt_alloc_thread(struct thread *td, int cpu)
 	    td = malloc(sizeof(struct thread));
 #endif
 	    td->td_kstack = NULL;
+	    td->td_kstack_size = 0;
 	    flags |= TDF_ALLOCATED_THREAD;
 	}
     }
-    if ((stack = td->td_kstack) == NULL) {
+    if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
+	if (flags & TDF_ALLOCATED_STACK) {
+	    kmem_free(kernel_map, (vm_offset_t)stack, td->td_kstack_size);
+	    stack = NULL;
+	}
+    }
+    if (stack == NULL) {
 #ifdef _KERNEL
-	stack = (void *)kmem_alloc(kernel_map, THREAD_STACK);
+	stack = (void *)kmem_alloc(kernel_map, stksize);
 #else
-	stack = libcaps_alloc_stack(THREAD_STACK);
+	stack = libcaps_alloc_stack(stksize);
 #endif
 	flags |= TDF_ALLOCATED_STACK;
     }
     if (cpu < 0)
-	lwkt_init_thread(td, stack, flags, mycpu);
+	lwkt_init_thread(td, stack, stksize, flags, mycpu);
     else
-	lwkt_init_thread(td, stack, flags, globaldata_find(cpu));
+	lwkt_init_thread(td, stack, stksize, flags, globaldata_find(cpu));
     return(td);
 }
 
@@ -299,12 +303,14 @@ lwkt_init_thread_remote(void *arg)
 #endif
 
 void
-lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
+lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
+		struct globaldata *gd)
 {
     globaldata_t mygd = mycpu;
 
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
+    td->td_kstack_size = stksize;
     td->td_flags |= flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
@@ -387,12 +393,13 @@ lwkt_free_thread(thread_t td)
 	crit_exit_gd(gd);
 	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
 #ifdef _KERNEL
-	    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, THREAD_STACK);
+	    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
 #else
-	    libcaps_free_stack(td->td_kstack, THREAD_STACK);
+	    libcaps_free_stack(td->td_kstack, td->td_kstack_size);
 #endif
 	    /* gd invalid */
 	    td->td_kstack = NULL;
+	    td->td_kstack_size = 0;
 	}
 	if (td->td_flags & TDF_ALLOCATED_THREAD) {
 #ifdef _KERNEL
@@ -1220,7 +1227,7 @@ lwkt_create(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(template, cpu);
+    td = lwkt_alloc_thread(template, LWKT_THREAD_STACK, cpu);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, lwkt_exit, func, arg);
@@ -1292,7 +1299,7 @@ kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, -1);
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);

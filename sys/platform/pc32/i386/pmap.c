@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.43 2004/06/02 07:34:29 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.44 2004/07/29 08:54:58 dillon Exp $
  */
 
 /*
@@ -898,7 +898,9 @@ retry:
 void
 pmap_init_thread(thread_t td)
 {
-	td->td_pcb = (struct pcb *)(td->td_kstack + UPAGES * PAGE_SIZE) - 1;
+	/* enforce pcb placement */
+	KKASSERT(td->td_kstack_size == UPAGES * PAGE_SIZE);
+	td->td_pcb = (struct pcb *)(td->td_kstack + td->td_kstack_size) - 1;
 	td->td_savefpu = &td->td_pcb->pcb_save;
 	td->td_sp = (char *)td->td_pcb - 16;
 }
