@@ -1,6 +1,8 @@
-/*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.5 2003/11/30 12:48:52 akiyama Exp $ */
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.10 2003/12/29 14:45:36 drhodus Exp $	*/
+/*
+ * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.5 2003/11/30 12:48:52 akiyama Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.11 2003/12/29 18:07:38 dillon Exp $
+ */
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
