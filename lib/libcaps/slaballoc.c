@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/slaballoc.c,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/slaballoc.c,v 1.3 2004/03/06 19:48:22 dillon Exp $
  *
  * This module implements a thread-safe slab allocator for userland.
  *
@@ -553,6 +553,7 @@ slab_malloc(unsigned long size, struct malloc_type *type, int flags)
 	z->z_ChunkSize = size;
 	z->z_FirstFreePg = ZonePageCount;
 	z->z_Cpu = gd->gd_cpuid;
+	z->z_CpuGd = gd;
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	z->z_Next = slgd->ZoneAry[zi];
 	slgd->ZoneAry[zi] = z;
@@ -729,10 +730,10 @@ slab_free(void *ptr, struct malloc_type *type)
      * cpu that does.  The freeing code does not need the byte count
      * unless DIAGNOSTIC is set.
      */
-    if (z->z_Cpu != gd->gd_cpuid) {
+    if (z->z_CpuGd != gd) {
 	*(struct malloc_type **)ptr = type;
 #ifdef SMP
-	lwkt_send_ipiq(z->z_Cpu, slab_free_remote, ptr);
+	lwkt_send_ipiq(z->z_CpuGd, slab_free_remote, ptr);
 #else
 	panic("Corrupt SLZone");
 #endif

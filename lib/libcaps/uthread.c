@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/uthread.c,v 1.2 2003/12/07 04:21:52 dillon Exp $
+ * $DragonFly: src/lib/libcaps/uthread.c,v 1.3 2004/03/06 19:48:22 dillon Exp $
  */
 
 /*
@@ -125,7 +125,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 	    ++gd->gd_sys_threads;
 	crit_exit();
     } else {
-	lwkt_send_ipiq(gd->gd_cpuid, lwkt_init_thread_remote, td);
+	lwkt_send_ipiq(gd, lwkt_init_thread_remote, td);
     }
 }
 

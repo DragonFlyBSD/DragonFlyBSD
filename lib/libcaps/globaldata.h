@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.4 2004/01/17 17:27:54 drhodus Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.5 2004/03/06 19:48:22 dillon Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -82,6 +82,8 @@ struct globaldata {
 	int		gd_num_threads;		/* Number of threads */
 	int		gd_sys_threads;		/* Number of threads */
 	struct lwkt_ipiq *gd_ipiq;
+	lwkt_tokref_t	gd_tokreqbase;		/* requests from other cpus */
+
 };
 
 #define gd_reqflags	gd_upcall.upc_pending
