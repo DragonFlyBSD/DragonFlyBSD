@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.9 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.10 2004/02/13 13:43:21 joerg Exp $
  */
 
 /* 
@@ -1162,8 +1162,8 @@ rp_pciattach(pcici_t tag, int unit)
 				DELTA_CD | DELTA_CTS | DELTA_DSR;
 			ChanStatus = sGetChanStatus(&rp->rp_channel);
 			if(sInitChan(ctlp, &rp->rp_channel, aiop, chan) == 0) {
-				printf("RocketPort sInitChan(%d, %d, %d) failed
-					\n", unit, aiop, chan);
+				printf("RocketPort sInitChan(%d, %d, %d) failed\n",
+				       unit, aiop, chan);
 				return;
 			}
 			ChanStatus = sGetChanStatus(&rp->rp_channel);
@@ -1265,8 +1265,8 @@ struct	isa_device	*dev;
 				DELTA_CD | DELTA_CTS | DELTA_DSR;
 			ChanStatus = sGetChanStatus(&rp->rp_channel);
 			if(sInitChan(ctlp, &rp->rp_channel, aiop, chan) == 0) {
-				printf("RocketPort sInitChan(%d, %d, %d) failed
-					\n", unit, aiop, chan);
+				printf("RocketPort sInitChan(%d, %d, %d) failed\n",
+				       unit, aiop, chan);
 				return(0);
 			}
 			ChanStatus = sGetChanStatus(&rp->rp_channel);
