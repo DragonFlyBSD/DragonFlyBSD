@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.3 1997/03/26 01:19:27 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.4 2004/05/06 16:34:51 joerg Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.5 2004/05/06 20:46:37 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -378,15 +378,15 @@ struct ifmedia_description {
 	{ IFM_IEEE80211_DS5, "DS/5.5Mbps" },				\
 	{ IFM_IEEE80211_DS11, "DS/11Mbps" },				\
 	{ IFM_IEEE80211_DS22, "DS/22Mbps" },				\
-	{ IFM_IEEE80211_ODFM6, "ODFM/6Mbps" },				\
-	{ IFM_IEEE80211_ODFM9, "ODFM/9Mbps" },				\
-	{ IFM_IEEE80211_ODFM12, "ODFM/12Mbps" },			\
-	{ IFM_IEEE80211_ODFM18, "ODFM/18Mbps" },			\
-	{ IFM_IEEE80211_ODFM24, "ODFM/24Mbps" },			\
-	{ IFM_IEEE80211_ODFM36, "ODFM/36Mbps" },			\
-	{ IFM_IEEE80211_ODFM48, "ODFM/48Mbps" },			\
-	{ IFM_IEEE80211_ODFM54, "ODFM/54Mbps" },			\
-	{ IFM_IEEE80211_ODFM72, "ODFM/72Mbps" },			\
+	{ IFM_IEEE80211_OFDM6, "OFDM/6Mbps" },				\
+	{ IFM_IEEE80211_OFDM9, "OFDM/9Mbps" },				\
+	{ IFM_IEEE80211_OFDM12, "OFDM/12Mbps" },			\
+	{ IFM_IEEE80211_OFDM18, "OFDM/18Mbps" },			\
+	{ IFM_IEEE80211_OFDM24, "OFDM/24Mbps" },			\
+	{ IFM_IEEE80211_OFDM36, "OFDM/36Mbps" },			\
+	{ IFM_IEEE80211_OFDM48, "OFDM/48Mbps" },			\
+	{ IFM_IEEE80211_OFDM54, "OFDM/54Mbps" },			\
+	{ IFM_IEEE80211_OFDM72, "OFDM/72Mbps" },			\
 	{ 0, NULL },							\
 }
 
@@ -405,15 +405,15 @@ struct ifmedia_description {
 	{ IFM_IEEE80211_DS5, "DirectSequence/5.5Mbps" },		\
 	{ IFM_IEEE80211_DS11, "DirectSequence/11Mbps" },		\
 	{ IFM_IEEE80211_DS22, "DirectSequence/22Mbps" },		\
-	{ IFM_IEEE80211_ODFM6, "ODFM6" },				\
-	{ IFM_IEEE80211_ODFM9, "ODFM9" },				\
-	{ IFM_IEEE80211_ODFM12, "ODFM12" },				\
-	{ IFM_IEEE80211_ODFM18, "ODFM18" },				\
-	{ IFM_IEEE80211_ODFM24, "ODFM24" },				\
-	{ IFM_IEEE80211_ODFM36, "ODFM36" },				\
-	{ IFM_IEEE80211_ODFM48, "ODFM48" },				\
-	{ IFM_IEEE80211_ODFM54, "ODFM54" },				\
-	{ IFM_IEEE80211_ODFM72, "ODFM72" },				\
+	{ IFM_IEEE80211_OFDM6, "OFDM6" },				\
+	{ IFM_IEEE80211_OFDM9, "OFDM9" },				\
+	{ IFM_IEEE80211_OFDM12, "OFDM12" },				\
+	{ IFM_IEEE80211_OFDM18, "OFDM18" },				\
+	{ IFM_IEEE80211_OFDM24, "OFDM24" },				\
+	{ IFM_IEEE80211_OFDM36, "OFDM36" },				\
+	{ IFM_IEEE80211_OFDM48, "OFDM48" },				\
+	{ IFM_IEEE80211_OFDM54, "OFDM54" },				\
+	{ IFM_IEEE80211_OFDM72, "OFDM72" },				\
 	{ 0, NULL },							\
 }
 
