@@ -1,0 +1,6 @@
+#
+# $FreeBSD: src/gnu/usr.bin/binutils/libbinutils/Makefile.i386,v 1.2.2.2 2001/02/21 21:35:41 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/binutils214/libbinutils/Attic/Makefile.i386,v 1.1 2004/02/01 08:53:04 dillon Exp $
+#
+
+TARGET=		i386-unknown-dragonfly

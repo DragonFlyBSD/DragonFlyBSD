@@ -1,0 +1,7 @@
+# $FreeBSD: src/gnu/usr.bin/binutils/libbfd/Makefile.amd64,v 1.2 2003/07/01 17:29:48 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/binutils214/libbfd/Attic/Makefile.amd64,v 1.1 2004/02/01 08:53:04 dillon Exp $
+
+.include "${.CURDIR}/Makefile.i386"
+
+DEFAULT_VECTOR=	bfd_elf64_x86_64_vec
+

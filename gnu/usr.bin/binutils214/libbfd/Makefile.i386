@@ -1,0 +1,49 @@
+# $FreeBSD: src/gnu/usr.bin/binutils/libbfd/Makefile.i386,v 1.8.2.2 2002/09/01 23:39:15 obrien Exp $
+# $DragonFly: src/gnu/usr.bin/binutils214/libbfd/Attic/Makefile.i386,v 1.1 2004/02/01 08:53:04 dillon Exp $
+
+# see main Makefile
+SRCS+=	cpu-i386.c 
+SRCS+=  elf32-i386-fbsd.c elf32-target.h elf32.c elflink.c
+SRCS+=	elf64-amd64-fbsd.c elf64-target.h elf64-gen.c elf64.c
+VECS+=	bfd_elf32_i386_vec
+VECS+=	bfd_elf64_x86_64_vec
+.if ${TARGET_ARCH} == "i386"
+CFLAGS+= -DDEFAULT_VECTOR=bfd_elf32_i386_vec
+.endif
+CFLAGS+= -DHAVE_bfd_elf32_i386_vec
+
+.if	defined(BINUTILSDISTDIR) && exists(${BINUTILSDISTDIR})
+SRCS+=	pe-i386.c pei-i386.c
+VECS+=	i386pe_vec i386pei_vec
+CFLAGS+= -DHAVE_i386pe_vec -DHAVE_i386pei_vec
+.endif
+
+CLEANFILES+=	elf32-target.h
+
+elf32-target.h:	elfxx-target.h
+	sed -e s/NN/32/g ${.ALLSRC} > ${.TARGET}
+
+CLEANFILES+=	elf64-target.h
+
+elf64-target.h:	elfxx-target.h
+	sed -e s/NN/64/g ${.ALLSRC} > ${.TARGET}
+
+CLEANFILES+=	elf64-amd64-fbsd.c
+
+# Make sure generated binaries are properly branded.  This is kind of a
+# hack but it's more dependable to override whatever binutils thought it
+# was going to do then figure out whether binutils supports us natively.
+#
+elf32-i386-fbsd.c: ${.CURDIR}/elf-fbsd-brand.c ${SRCDIR}/bfd/elf32-i386.c
+	cat ${.ALLSRC:M*elf-fbsd-brand.c} > ${.TARGET}.new
+	echo "#define elf_backend_post_process_headers elf_fbsd_post_process_headers" \
+	    >> ${.TARGET}.new
+	cat ${.ALLSRC:M*elf32-i386.c} >> ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
+
+elf64-amd64-fbsd.c: ${.CURDIR}/elf-fbsd-brand.c ${SRCDIR}/bfd/elf64-x86-64.c
+	cat ${.ALLSRC:M*elf-fbsd-brand.c} > ${.TARGET}.new
+	echo "#define elf_backend_post_process_headers elf_fbsd_post_process_headers" \
+	    >> ${.TARGET}.new
+	cat ${.ALLSRC:M*elf64-x86-64.c} >> ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
