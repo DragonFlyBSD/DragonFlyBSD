@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.2 2004/07/29 21:07:32 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.3 2004/07/29 21:35:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -747,7 +747,7 @@ ndis_return(arg)
 	void			*arg;
 {
 	struct ndis_softc	*sc;
-	__stdcall ndis_return_handler	returnfunc;
+	ndis_return_handler	returnfunc;
 	ndis_handle		adapter;
 	ndis_packet		*p;
 	uint8_t			irql;
@@ -1113,7 +1113,7 @@ ndis_set_info(arg, oid, buf, buflen)
 	struct ndis_softc	*sc;
 	ndis_status		rval;
 	ndis_handle		adapter;
-	__stdcall ndis_setinfo_handler	setfunc;
+	ndis_setinfo_handler	setfunc;
 	uint32_t		byteswritten = 0, bytesneeded = 0;
 	int			error;
 	uint8_t			irql;
@@ -1160,7 +1160,7 @@ ndis_set_info(arg, oid, buf, buflen)
 	return(0);
 }
 
-typedef void (*ndis_senddone_func)(ndis_handle, ndis_packet *, ndis_status);
+typedef __stdcall void (*ndis_senddone_func)(ndis_handle, ndis_packet *, ndis_status);
 
 int
 ndis_send_packets(arg, packets, cnt)
@@ -1170,8 +1170,8 @@ ndis_send_packets(arg, packets, cnt)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_sendmulti_handler	sendfunc;
-	__stdcall ndis_senddone_func		senddonefunc;
+	ndis_sendmulti_handler	sendfunc;
+	ndis_senddone_func	senddonefunc;
 	int			i;
 	ndis_packet		*p;
 	uint8_t			irql;
@@ -1210,8 +1210,8 @@ ndis_send_packet(arg, packet)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	ndis_status		status;
-	__stdcall ndis_sendsingle_handler	sendfunc;
-	__stdcall ndis_senddone_func		senddonefunc;
+	ndis_sendsingle_handler	sendfunc;
+	ndis_senddone_func	senddonefunc;
 	uint8_t			irql;
 
 	sc = arg;
@@ -1295,7 +1295,7 @@ ndis_reset_nic(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_reset_handler	resetfunc;
+	ndis_reset_handler	resetfunc;
 	uint8_t			addressing_reset;
 	struct ifnet		*ifp;
 	int			rval;
@@ -1328,7 +1328,7 @@ ndis_halt_nic(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_halt_handler	haltfunc;
+	ndis_halt_handler	haltfunc;
 	struct ifnet		*ifp;
 	NDIS_LOCK_INFO;
 
@@ -1366,7 +1366,7 @@ ndis_shutdown_nic(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_shutdown_handler	shutdownfunc;
+	ndis_shutdown_handler	shutdownfunc;
 	NDIS_LOCK_INFO;
 
 	sc = arg;
@@ -1394,7 +1394,7 @@ ndis_init_nic(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
-        __stdcall ndis_init_handler	initfunc;
+        ndis_init_handler	initfunc;
 	ndis_status		status, openstatus = 0;
 	ndis_medium		mediumarray[NdisMediumMax];
 	uint32_t		chosenmedium, i;
@@ -1438,7 +1438,7 @@ ndis_enable_intr(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_enable_interrupts_handler	intrenbfunc;
+	ndis_enable_interrupts_handler	intrenbfunc;
 
 	sc = arg;
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
@@ -1456,7 +1456,7 @@ ndis_disable_intr(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_disable_interrupts_handler	intrdisfunc;
+	ndis_disable_interrupts_handler	intrdisfunc;
 	NDIS_LOCK_INFO;
 
 	sc = arg;
@@ -1479,7 +1479,7 @@ ndis_isr(arg, ourintr, callhandler)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_isr_handler	isrfunc;
+	ndis_isr_handler	isrfunc;
 	uint8_t			accepted, queue;
 
 	if (arg == NULL || ourintr == NULL || callhandler == NULL)
@@ -1504,7 +1504,7 @@ ndis_intrhand(arg)
 {
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
-	__stdcall ndis_interrupt_handler	intrfunc;
+	ndis_interrupt_handler	intrfunc;
 	NDIS_LOCK_INFO;
 
 	if (arg == NULL)
@@ -1608,7 +1608,7 @@ ndis_load_driver(img, arg)
 	vm_offset_t		img;
 	void			*arg;
 {
-	__stdcall driver_entry	entry;
+	driver_entry		entry;
 	image_optional_header	opt_hdr;
 	image_import_descriptor imp_desc;
 	ndis_unicode_string	dummystr;

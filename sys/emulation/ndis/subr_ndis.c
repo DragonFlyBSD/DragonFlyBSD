@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.2 2004/07/29 21:07:32 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.3 2004/07/29 21:35:57 dillon Exp $
  */
 
 /*
@@ -1361,7 +1361,7 @@ ndis_asyncmem_complete(arg)
 	struct ndis_allocwork	*w;
 	void			*vaddr;
 	ndis_physaddr		paddr;
-	__stdcall ndis_allocdone_handler	donefunc;
+	ndis_allocdone_handler	donefunc;
 
 	w = arg;
 	block = (ndis_miniport_block *)w->na_adapter;
@@ -2683,8 +2683,8 @@ ndis_cpu_cnt()
 	return(ncpus);
 }
 
-typedef void (*ndis_statusdone_handler)(ndis_handle);
-typedef void (*ndis_status_handler)(ndis_handle, ndis_status,
+typedef __stdcall void (*ndis_statusdone_handler)(ndis_handle);
+typedef __stdcall void (*ndis_status_handler)(ndis_handle, ndis_status,
         void *, uint32_t);
 
 __stdcall static void
@@ -2692,7 +2692,7 @@ ndis_ind_statusdone(adapter)
 	ndis_handle		adapter;
 {
 	ndis_miniport_block	*block;
-	__stdcall ndis_statusdone_handler	statusdonefunc;
+	ndis_statusdone_handler	statusdonefunc;
 
 	block = (ndis_miniport_block *)adapter;
 	statusdonefunc = block->nmb_statusdone_func;
@@ -2709,7 +2709,7 @@ ndis_ind_status(adapter, status, sbuf, slen)
 	uint32_t		slen;
 {
 	ndis_miniport_block	*block;
-	__stdcall ndis_status_handler	statusfunc;
+	ndis_status_handler	statusfunc;
 
 	block = (ndis_miniport_block *)adapter;
 	statusfunc = block->nmb_status_func;
@@ -2723,7 +2723,7 @@ ndis_workfunc(ctx)
 	void			*ctx;
 {
 	ndis_work_item		*work;
-	__stdcall ndis_proc	workfunc;
+	ndis_proc		workfunc;
 
 	work = ctx;
 	workfunc = work->nwi_func;

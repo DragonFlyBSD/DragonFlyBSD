@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.1 2004/07/29 20:51:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.2 2004/07/29 21:35:57 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -1672,7 +1672,7 @@ static void
 ntoskrnl_run_dpc(arg)
 	void			*arg;
 {
-	__stdcall kdpc_func	dpcfunc;
+	kdpc_func		dpcfunc;
 	kdpc			*dpc;
 	uint8_t			irql;
 

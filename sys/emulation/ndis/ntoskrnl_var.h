@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/ntoskrnl_var.h,v 1.15 2004/04/20 02:27:38 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/ntoskrnl_var.h,v 1.1 2004/07/29 20:51:33 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/ntoskrnl_var.h,v 1.2 2004/07/29 21:35:57 dillon Exp $
  */
 
 #ifndef _NTOSKRNL_VAR_H_
@@ -258,7 +258,7 @@ typedef struct nt_kevent nt_kevent;
 /* Kernel defered procedure call (i.e. timer callback) */
 
 struct kdpc;
-typedef void (*kdpc_func)(struct kdpc *, void *, void *, void *);
+typedef __stdcall void (*kdpc_func)(struct kdpc *, void *, void *, void *);
 
 struct kdpc {
 	uint16_t		k_type;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/ndis_var.h,v 1.27 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/ndis_var.h,v 1.1 2004/07/29 20:51:33 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/ndis_var.h,v 1.2 2004/07/29 21:35:57 dillon Exp $
  */
 
 #ifndef _NDIS_VAR_H_
@@ -944,7 +944,7 @@ typedef enum ndis_interrupt_mode ndis_interrupt_mode;
 
 struct ndis_work_item;
 
-typedef void (*ndis_proc)(struct ndis_work_item *, void *);
+typedef __stdcall void (*ndis_proc)(struct ndis_work_item *, void *);
 
 struct ndis_work_item {
 	void			*nwi_ctx;
@@ -1453,29 +1453,29 @@ struct ndis_miniport_block {
 
 TAILQ_HEAD(nd_head, ndis_miniport_block);
 
-typedef ndis_status (*ndis_init_handler)(ndis_status *, uint32_t *,
+typedef __stdcall ndis_status (*ndis_init_handler)(ndis_status *, uint32_t *,
 		ndis_medium *, uint32_t, ndis_handle, ndis_handle);
 typedef __stdcall ndis_status (*ndis_queryinfo_handler)(ndis_handle, ndis_oid,
 		void *, uint32_t, uint32_t *, uint32_t *);
-typedef ndis_status (*ndis_setinfo_handler)(ndis_handle, ndis_oid,
+typedef __stdcall ndis_status (*ndis_setinfo_handler)(ndis_handle, ndis_oid,
 		void *, uint32_t, uint32_t *, uint32_t *);
-typedef ndis_status (*ndis_sendsingle_handler)(ndis_handle,
+typedef __stdcall ndis_status (*ndis_sendsingle_handler)(ndis_handle,
 		ndis_packet *, uint32_t);
-typedef ndis_status (*ndis_sendmulti_handler)(ndis_handle,
+typedef __stdcall ndis_status (*ndis_sendmulti_handler)(ndis_handle,
 		ndis_packet **, uint32_t);
-typedef void (*ndis_isr_handler)(uint8_t *, uint8_t *, ndis_handle);
-typedef void (*ndis_interrupt_handler)(ndis_handle);
-typedef int (*ndis_reset_handler)(uint8_t *, ndis_handle);
-typedef void (*ndis_halt_handler)(ndis_handle);
-typedef void (*ndis_return_handler)(ndis_handle, ndis_packet *);
-typedef void (*ndis_enable_interrupts_handler)(ndis_handle);
-typedef void (*ndis_disable_interrupts_handler)(ndis_handle);
-typedef void (*ndis_shutdown_handler)(void *);
-typedef void (*ndis_allocdone_handler)(ndis_handle, void *,
+typedef __stdcall void (*ndis_isr_handler)(uint8_t *, uint8_t *, ndis_handle);
+typedef __stdcall void (*ndis_interrupt_handler)(ndis_handle);
+typedef __stdcall int (*ndis_reset_handler)(uint8_t *, ndis_handle);
+typedef __stdcall void (*ndis_halt_handler)(ndis_handle);
+typedef __stdcall void (*ndis_return_handler)(ndis_handle, ndis_packet *);
+typedef __stdcall void (*ndis_enable_interrupts_handler)(ndis_handle);
+typedef __stdcall void (*ndis_disable_interrupts_handler)(ndis_handle);
+typedef __stdcall void (*ndis_shutdown_handler)(void *);
+typedef __stdcall void (*ndis_allocdone_handler)(ndis_handle, void *,
 		ndis_physaddr *, uint32_t, void *);
-typedef uint8_t (*ndis_checkforhang_handler)(ndis_handle);
+typedef __stdcall uint8_t (*ndis_checkforhang_handler)(ndis_handle);
 
-typedef ndis_status (*driver_entry)(void *, ndis_unicode_string *);
+typedef __stdcall ndis_status (*driver_entry)(void *, ndis_unicode_string *);
 
 extern image_patch_table ndis_functbl[];
 
