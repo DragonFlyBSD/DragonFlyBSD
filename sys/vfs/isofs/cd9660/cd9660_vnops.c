@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.8 2004/04/12 23:18:55 cpressey Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.9 2004/07/18 18:35:20 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +54,7 @@
 #include <sys/dirent.h>
 #include <sys/unistd.h>
 #include <sys/filio.h>
+#include <sys/lockf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_zone.h>
@@ -63,12 +64,13 @@
 #include "cd9660_node.h"
 #include "iso_rrip.h"
 
-static int cd9660_setattr (struct vop_setattr_args *);
 static int cd9660_access (struct vop_access_args *);
+static int cd9660_advlock (struct vop_advlock_args *);
 static int cd9660_getattr (struct vop_getattr_args *);
 static int cd9660_ioctl (struct vop_ioctl_args *);
 static int cd9660_pathconf (struct vop_pathconf_args *);
 static int cd9660_read (struct vop_read_args *);
+static int cd9660_setattr (struct vop_setattr_args *);
 struct isoreaddir;
 static int iso_uiodir (struct isoreaddir *idp, struct dirent *dp,
 			   off_t off);
@@ -820,12 +822,31 @@ cd9660_putpages(struct vop_putpages_args *ap)
 }
 
 /*
+ * Advisory lock support
+ */
+static int
+cd9660_advlock(ap)
+	struct vop_advlock_args /* {
+		struct vnode *a_vp;
+		caddr_t a_id;
+		int	a_op;
+		struct flock *a_fl;
+		int	a_flags;
+	} */ *ap;
+{
+	struct iso_node *ip = VTOI(ap->a_vp);
+	return (lf_advlock(ap, &(ip->i_lockf), ip->i_size));
+}
+
+
+/*
  * Global vfs data structures for cd9660
  */
 vop_t **cd9660_vnodeop_p;
 static struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
 	{ &vop_default_desc,		(vop_t *) vop_defaultop },
 	{ &vop_access_desc,		(vop_t *) cd9660_access },
+	{ &vop_advlock_desc,            (vop_t *) cd9660_advlock },
 	{ &vop_bmap_desc,		(vop_t *) cd9660_bmap },
 	{ &vop_cachedlookup_desc,	(vop_t *) cd9660_lookup },
 	{ &vop_getattr_desc,		(vop_t *) cd9660_getattr },
