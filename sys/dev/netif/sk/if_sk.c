@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.18 2004/07/29 08:46:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.19 2004/09/15 00:46:00 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1382,6 +1382,7 @@ static int sk_attach(dev)
 	free(device_get_ivars(dev), M_DEVBUF);
 	device_set_ivars(dev, NULL);
 	sc_if->sk_dev = dev;
+	callout_init(&sc_if->sk_tick_timer);
 
 	bzero((char *)sc_if, sizeof(struct sk_if_softc));
 
@@ -1519,7 +1520,7 @@ static int sk_attach(dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, sc_if->arpcom.ac_enaddr);
-	callout_handle_init(&sc_if->sk_tick_ch);
+	callout_init(&sc_if->sk_tick_timer);
 
 	return(0);
 }
@@ -2037,7 +2038,7 @@ static void sk_tick(xsc_if)
 	}
 
 	if (i != 3) {
-		sc_if->sk_tick_ch = timeout(sk_tick, sc_if, hz);
+		callout_reset(&sc_if->sk_tick_timer, hz, sk_tick, sc_if);
 		return;
 	}
 
@@ -2046,7 +2047,7 @@ static void sk_tick(xsc_if)
 	SK_XM_READ_2(sc_if, XM_ISR);
 	mii_tick(mii);
 	mii_pollstat(mii);
-	untimeout(sk_tick, sc_if, sc_if->sk_tick_ch);
+	callout_stop(&sc_if->sk_tick_timer);
 
 	return;
 }
@@ -2099,7 +2100,8 @@ static void sk_intr_bcom(sc_if)
 			mii_pollstat(mii);
 		} else {
 			mii_tick(mii);
-			sc_if->sk_tick_ch = timeout(sk_tick, sc_if, hz);
+			callout_reset(&sc_if->sk_tick_timer, hz,
+				      sk_tick, sc_if);
 		}
 	}
 
@@ -2126,11 +2128,13 @@ static void sk_intr_xmac(sc_if)
 	if (sc_if->sk_phytype == SK_PHYTYPE_XMAC) {
 		if (status & XM_ISR_GP0_SET) {
 			SK_XM_SETBIT_2(sc_if, XM_IMR, XM_IMR_GP0_SET);
-			sc_if->sk_tick_ch = timeout(sk_tick, sc_if, hz);
+			callout_reset(&sc_if->sk_tick_timer, hz,
+				      sk_tick, sc_if);
 		}
 
 		if (status & XM_ISR_AUTONEG_DONE) {
-			sc_if->sk_tick_ch = timeout(sk_tick, sc_if, hz);
+			callout_reset(&sc_if->sk_tick_timer, hz,
+				      sk_tick, sc_if);
 		}
 	}
 
@@ -2641,7 +2645,7 @@ static void sk_stop(sc_if)
 	sc = sc_if->sk_softc;
 	ifp = &sc_if->arpcom.ac_if;
 
-	untimeout(sk_tick, sc_if, sc_if->sk_tick_ch);
+	callout_stop(&sc_if->sk_tick_timer);
 
 	if (sc_if->sk_phytype == SK_PHYTYPE_BCOM) {
 		u_int32_t		val;

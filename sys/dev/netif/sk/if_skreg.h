@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.4 2003/11/12 22:43:07 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.5 2004/09/15 00:46:00 joerg Exp $
  */
 
 /*
@@ -1433,7 +1433,7 @@ struct sk_if_softc {
 	device_t		sk_dev;
 	int			sk_cnt;
 	int			sk_link;
-	struct callout_handle	sk_tick_ch;
+	struct callout		sk_tick_timer;
 	struct sk_chain_data	sk_cdata;
 	struct sk_ring_data	*sk_rdata;
 	struct sk_softc		*sk_softc;	/* parent controller */
