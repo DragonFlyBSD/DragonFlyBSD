@@ -19,7 +19,7 @@
  *
  * @(#)popen.c	5.7 (Berkeley) 2/14/89
  * $FreeBSD: src/usr.sbin/cron/cron/popen.c,v 1.7.2.3 2000/12/11 01:03:31 obrien Exp $
- * $DragonFly: src/usr.sbin/cron/cron/popen.c,v 1.3 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/popen.c,v 1.4 2004/03/10 18:27:26 dillon Exp $
  */
 
 /* this came out of the ftpd sources; it's been modified to avoid the
@@ -52,7 +52,7 @@ static int fds;
 FILE *
 cron_popen(char *program, char *type, entry *e)
 {
-	register char *cp;
+	char *cp;
 	FILE *iop;
 	int argc, pdes[2];
 	PID_T pid;
@@ -211,7 +211,7 @@ pfree:
 int
 cron_pclose(FILE *iop)
 {
-	register int fdes;
+	int fdes;
 	int omask;
 	WAIT_T stat_loc;
 	PID_T pid;

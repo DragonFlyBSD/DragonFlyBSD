@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.5 2004/03/10 18:27:26 dillon Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -135,8 +135,8 @@ main(int argc, char **argv)
 static void
 run_reboot_jobs(cron_db *db)
 {
-	register user		*u;
-	register entry		*e;
+	user *u;
+	entry *e;
 
 	for (u = db->head;  u != NULL;  u = u->next) {
 		for (e = u->crontab;  e != NULL;  e = e->next) {
@@ -152,16 +152,17 @@ run_reboot_jobs(cron_db *db)
 static void
 cron_tick(cron_db *db)
 {
-	static struct tm	lasttm;
-	static time_t	diff = 0, /* time difference in seconds from the last offset change */
-		difflimit = 0; /* end point for the time zone correction */
-	struct tm	otztm; /* time in the old time zone */
-	int		otzminute, otzhour, otzdom, otzmonth, otzdow;
- 	register struct tm	*tm = localtime(&TargetTime);
-	register int		minute, hour, dom, month, dow;
-	register user		*u;
-	register entry		*e;
+	static struct tm lasttm;
+	static time_t diff; 	 /* delta time from the last offset change */
+	static time_t difflimit; /* end point for the time zone correction */
+	struct tm otztm; /* time in the old time zone */
+	int otzminute, otzhour, otzdom, otzmonth, otzdow;
+ 	struct tm *tm;
+	int minute, hour, dom, month, dow;
+	user *u;
+	entry *e;
 
+	tm = localtime(&TargetTime);
 	/* make 0-based values out of these so we can use them as indicies
 	 */
 	minute = tm->tm_min -FIRST_MINUTE;
@@ -296,7 +297,7 @@ cron_tick(cron_db *db)
 static void
 cron_sync(void)
 {
- 	register struct tm	*tm;
+ 	struct tm *tm;
 
 	TargetTime = time((time_t*)0);
 	tm = localtime(&TargetTime);

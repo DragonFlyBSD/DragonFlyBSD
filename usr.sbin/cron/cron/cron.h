@@ -18,7 +18,7 @@
 /* cron.h - header for vixie's cron
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.h,v 1.9.2.3 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.h,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.h,v 1.4 2004/03/10 18:27:26 dillon Exp $
  *
  * vix 14nov88 [rest of log is in RCS]
  * vix 14jan87 [0 or 7 can be sunday; thanks, mwm@berkeley]
@@ -90,7 +90,6 @@
 #define	DBIT		0x0080	/* bit twiddling shown (long) */
 
 #define	CRON_TAB(u)	"%s/%s", SPOOL_DIR, u
-#define	REG		register
 #define	PPC_NULL	((char **)NULL)
 
 #ifndef MAXHOSTNAMELEN

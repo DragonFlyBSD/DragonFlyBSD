@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/misc.c,v 1.8.2.2 2002/04/28 22:45:53 dwmalone Exp $
- * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.3 2003/11/16 11:51:15 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.4 2004/03/10 18:27:28 dillon Exp $
  */
 
 /* vix 26jan87 [RCS has the rest of the log]
@@ -51,7 +51,7 @@ static int		LogFD = ERR;
 int
 strcmp_until(char *left, char *right, int until)
 {
-	register int	diff;
+	int diff;
 
 	while (*left && *left != until && *left == *right) {
 		left++;
@@ -422,11 +422,11 @@ allowed(char *username)
 void
 log_it(char *username, int xpid, char *event, char *detail)
 {
-	PID_T			pid = xpid;
+	PID_T pid = xpid;
 #if defined(LOG_FILE)
-	char			*msg;
-	TIME_T			now = time((TIME_T) 0);
-	register struct tm	*t = localtime(&now);
+	char *msg;
+	TIME_T now;
+	struct tm *t;
 #endif /*LOG_FILE*/
 
 #if defined(SYSLOG)
@@ -434,6 +434,8 @@ log_it(char *username, int xpid, char *event, char *detail)
 #endif
 
 #if defined(LOG_FILE)
+	now = time((TIME_T)0);
+	t = localtime(&now);
 	/* we assume that MAX_TEMPSTR will hold the date, time, &punctuation.
 	 */
 	msg = malloc(strlen(username)
@@ -520,11 +522,11 @@ log_close(void) {
  * t	terminators, implicitly including \0
  */
 char *
-first_word(register char *s, register char *t)
+first_word(char *s, char *t)
 {
 	static char retbuf[2][MAX_TEMPSTR + 1];	/* sure wish C had GC */
 	static int retsel = 0;
-	register char *rb, *rp;
+	char *rb, *rp;
 
 	/* select a return buffer */
 	retsel = 1-retsel;
@@ -551,11 +553,11 @@ first_word(register char *s, register char *t)
  *	heavily ascii-dependent.
  */
 void
-mkprint(register char *dst, register unsigned char *src, register int len)
+mkprint(char *dst, unsigned char *src, int len)
 {
 	while (len-- > 0)
 	{
-		register unsigned char ch = *src++;
+		unsigned char ch = *src++;
 
 		if (ch < ' ') {			/* control character */
 			*dst++ = '^';
@@ -578,10 +580,11 @@ mkprint(register char *dst, register unsigned char *src, register int len)
  *	returns a pointer to malloc'd storage, you must call free yourself.
  */
 char *
-mkprints(register unsigned char *src, register unsigned int len)
+mkprints(unsigned char *src, unsigned int len)
 {
-	register char *dst = malloc(len*4 + 1);
-
+	char *dst;
+	
+	dst = malloc(len * 4 + 1);
 	if (dst != NULL)
 		mkprint(dst, src, len);
 

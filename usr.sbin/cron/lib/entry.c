@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/entry.c,v 1.9.2.5 2001/08/18 04:20:31 mikeh Exp $
- * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.4 2003/11/16 11:51:15 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.5 2004/03/10 18:27:28 dillon Exp $
  */
 
 /* vix 26jan87 [RCS'd; rest of log is in RCS file]
@@ -434,7 +434,7 @@ load_entry(FILE *file, void (*error_func)(), struct passwd *pw, char **envp)
 static char
 get_list(bitstr_t *bits, int low, int high, char **names, int ch, FILE *file)
 {
-	register int	done;
+	int done;
 
 	/* we know that we point to a non-blank character here;
 	 * must do a Skip_Blanks before we exit, so that the
@@ -479,8 +479,8 @@ get_range(bitstr_t *bits, int low, int high, char **names, int ch, FILE *file)
 	/* range = number | number "-" number [ "/" number ]
 	 */
 
-	register int	i;
-	auto int	num1, num2, num3;
+	int i;
+	int num1, num2, num3;
 
 	Debug(DPARS|DEXT, ("get_range()...entering, exit won't show\n"))
 

@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.5 2004/03/10 18:27:26 dillon Exp $
  */
 
 #include "cron.h"
@@ -70,12 +70,12 @@ do_command(entry *e, user *u)
 static void
 child_process(entry *e, user *u)
 {
-	int		stdin_pipe[2], stdout_pipe[2];
-	register char	*input_data;
-	char		*usernm, *mailto;
-	int		children = 0;
+	int stdin_pipe[2], stdout_pipe[2];
+	char *input_data;
+	char *usernm, *mailto;
+	int children = 0;
 # if defined(LOGIN_CAP)
-	struct passwd	*pwd;
+	struct passwd *pwd;
 	login_cap_t *lc;
 # endif
 
@@ -122,9 +122,9 @@ child_process(entry *e, user *u)
 	 * If there are escaped %'s, remove the escape character.
 	 */
 	/*local*/{
-		register int escaped = FALSE;
-		register int ch;
-		register char *p;
+		int escaped = FALSE;
+		int ch;
+		char *p;
 
 		for (input_data = p = e->cmd; (ch = *input_data);
 		     input_data++, p++) {
@@ -294,11 +294,12 @@ child_process(entry *e, user *u)
 	 */
 
 	if (*input_data && fork() == 0) {
-		register FILE	*out = fdopen(stdin_pipe[WRITE_PIPE], "w");
-		register int	need_newline = FALSE;
-		register int	escaped = FALSE;
-		register int	ch;
+		FILE *out;
+		int need_newline = FALSE;
+		int escaped = FALSE;
+		int ch;
 
+		out = fdopen(stdin_pipe[WRITE_PIPE], "w");
 		if (out == NULL) {
 			warn("fdopen failed in child2");
 			_exit(ERROR_EXIT);
@@ -361,18 +362,20 @@ child_process(entry *e, user *u)
 	Debug(DPROC, ("[%d] child reading output from grandchild\n", getpid()))
 
 	/*local*/{
-		register FILE	*in = fdopen(stdout_pipe[READ_PIPE], "r");
-		register int	ch = getc(in);
+		FILE *in;
+		int ch;
 
+		in = fdopen(stdout_pipe[READ_PIPE], "r");
 		if (in == NULL) {
 			warn("fdopen failed in child");
 			_exit(ERROR_EXIT);
 		}
 
+		ch = getc(in);
 		if (ch != EOF) {
-			register FILE	*mail;
-			register int	bytes = 1;
-			int		status = 0;
+			FILE *mail;
+			int bytes = 1;
+			int status = 0;
 
 			Debug(DPROC|DEXT,
 				("[%d] got data (%x:%c) from grandchild\n",
@@ -401,9 +404,9 @@ child_process(entry *e, user *u)
 			 */
 
 			if (mailto) {
-				register char	**env;
-				auto char	mailcmd[MAX_COMMAND];
-				auto char	hostname[MAXHOSTNAMELEN];
+				char **env;
+				char mailcmd[MAX_COMMAND];
+				char hostname[MAXHOSTNAMELEN];
 
 				(void) gethostname(hostname, MAXHOSTNAMELEN);
 				(void) snprintf(mailcmd, sizeof(mailcmd),
