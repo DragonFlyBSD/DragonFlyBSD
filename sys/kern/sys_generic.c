@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.11 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.12 2003/10/02 16:57:14 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -216,7 +216,7 @@ readv(struct readv_args *uap)
 	struct filedesc *fdp = p->p_fd;
 	struct uio auio;
 	struct iovec *iov;
-	struct iovec *needfree;
+	struct iovec *needfree = NULL;
 	struct iovec aiov[UIO_SMALLIOV];
 	long i, cnt, error = 0;
 	u_int iovlen;
@@ -230,14 +230,14 @@ readv(struct readv_args *uap)
 	/* note: can't use iovlen until iovcnt is validated */
 	iovlen = uap->iovcnt * sizeof (struct iovec);
 	if (uap->iovcnt > UIO_SMALLIOV) {
-		if (uap->iovcnt > UIO_MAXIOV)
-			return (EINVAL);
+		if (uap->iovcnt > UIO_MAXIOV) {
+			error = EINVAL;
+			goto done;
+		}
 		MALLOC(iov, struct iovec *, iovlen, M_IOV, M_WAITOK);
 		needfree = iov;
-	} else {
+	} else 
 		iov = aiov;
-		needfree = NULL;
-	}
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_READ;
