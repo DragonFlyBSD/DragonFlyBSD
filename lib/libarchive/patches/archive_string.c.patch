@@ -1,0 +1,28 @@
+$DragonFly: src/lib/libarchive/patches/Attic/archive_string.c.patch,v 1.1 2004/11/14 18:45:55 joerg Exp $
+
+Index: archive_string.c
+===================================================================
+RCS file: /home/ncvs/src/lib/libarchive/archive_string.c,v
+retrieving revision 1.5
+diff -u -r1.5 archive_string.c
+--- archive_string.c	14 Aug 2004 03:45:45 -0000	1.5
++++ archive_string.c	11 Nov 2004 06:54:41 -0000
+@@ -96,3 +96,18 @@
+ {
+ 	return (__archive_string_append(as, &c, 1));
+ }
++
++struct archive_string *
++__archive_strappend_int(struct archive_string *as, int d, int base)
++{
++	static const char *digits = "0123457890abcdef";
++
++	if (d < 0) {
++		__archive_strappend_char(as, '-');
++		d = -d;
++	}
++	if (d >= base)
++		__archive_strappend_int(as, d/base, base);
++	__archive_strappend_char(as, digits[d % base]);
++	return (as);
++}

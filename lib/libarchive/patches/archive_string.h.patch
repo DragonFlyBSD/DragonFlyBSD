@@ -1,0 +1,20 @@
+$DragonFly: src/lib/libarchive/patches/Attic/archive_string.h.patch,v 1.1 2004/11/14 18:45:55 joerg Exp $
+
+Index: archive_string.h
+===================================================================
+RCS file: /home/ncvs/src/lib/libarchive/archive_string.h,v
+retrieving revision 1.4
+diff -u -r1.4 archive_string.h
+--- archive_string.h	5 Nov 2004 05:32:04 -0000	1.4
++++ archive_string.h	11 Nov 2004 06:54:41 -0000
+@@ -64,6 +64,10 @@
+ __archive_strappend_char_UTF8(struct archive_string *, int);
+ #define	archive_strappend_char_UTF8 __archive_strappend_char_UTF8
+ 
++/* Append an integer in the specified base (2 <= base <= 16). */
++struct archive_string *
++__archive_strappend_int(struct archive_string *as, int d, int base);
++
+ /* Basic append operation. */
+ struct archive_string *
+ __archive_string_append(struct archive_string *as, const char *p, size_t s);

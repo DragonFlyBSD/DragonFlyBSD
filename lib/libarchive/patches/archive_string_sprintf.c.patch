@@ -1,34 +1,76 @@
-$DragonFly: src/lib/libarchive/patches/Attic/archive_string_sprintf.c.patch,v 1.1 2004/11/10 18:02:24 joerg Exp $
+$DragonFly: src/lib/libarchive/patches/Attic/archive_string_sprintf.c.patch,v 1.2 2004/11/14 18:45:55 joerg Exp $
 
---- archive_string_sprintf.c.orig	2004-11-09 23:59:26.000000000 +0100
-+++ archive_string_sprintf.c	2004-11-10 00:40:12.000000000 +0100
-@@ -47,13 +47,21 @@
+Index: archive_string_sprintf.c
+===================================================================
+RCS file: /home/ncvs/src/lib/libarchive/archive_string_sprintf.c,v
+retrieving revision 1.6
+diff -u -r1.6 archive_string_sprintf.c
+--- archive_string_sprintf.c	5 Nov 2004 05:32:04 -0000	1.6
++++ archive_string_sprintf.c	11 Nov 2004 06:54:41 -0000
+@@ -46,21 +46,56 @@
+ __archive_string_vsprintf(struct archive_string *as, const char *fmt,
      va_list ap)
  {
- 	size_t l;
-+#ifdef HAVE_VA_COPY
- 	va_list ap1;
-+#endif
+-	size_t l;
+-	va_list ap1;
++	int long_flag, d;
++	long l;
++	const char *p, *s;
++
++	__archive_string_ensure(as, 64);
  
  	if (fmt == NULL) {
  		as->s[0] = 0;
  		return;
  	}
  
-+#ifdef HAVE_VASPRINTF
-+	archive_string_free(as);
-+	l = vasprintf(&as->s, fmt, ap);
-+	as->buffer_length = l + 1;
-+	as->length = l;
-+#elif defined(HAVE_VA_COPY)
- 	va_copy(ap1, ap);
- 	l = vsnprintf(as->s, as->buffer_length, fmt, ap);
- 	/* If output is bigger than the buffer, resize and try again. */
-@@ -63,4 +71,7 @@
+-	va_copy(ap1, ap);
+-	l = vsnprintf(as->s, as->buffer_length, fmt, ap);
+-	/* If output is bigger than the buffer, resize and try again. */
+-	if (l+1 >= as->buffer_length) {
+-		__archive_string_ensure(as, l + 1);
+-		l = vsnprintf(as->s, as->buffer_length, fmt, ap1);
++	long_flag = 0;
++	for (p = fmt; *p != '\0'; p++) {
++		if (*p != '%') {
++			archive_strappend_char(as, *p);
++			continue;
++		}
++
++		p++;
++
++		switch(*p) {
++		case 'l':
++			long_flag = 1;
++			p++;
++			break;
++		}
++
++		switch (*p) {
++		case 's':
++			s = va_arg(ap, char *);
++			archive_strcat(as, s);
++			break;
++		case 'd':
++			if (long_flag) {
++				l = va_arg(ap, long);
++				__archive_strappend_int(as, l, 10);
++			} else {
++				d = va_arg(ap, int);
++				__archive_strappend_int(as, d, 10);
++			}
++			break;
++		case 'o':
++			if (long_flag) {
++				l = va_arg(ap, long);
++				__archive_strappend_int(as, l, 8);
++			} else {
++				d = va_arg(ap, int);
++				__archive_strappend_int(as, d, 8);
++			}
++			break;
++		}
  	}
- 	as->length = l;
- 	va_end(ap1);
-+#else
-+#error "Either vasprintf or va_copy are needed"
-+#endif
+-	as->length = l;
+-	va_end(ap1);
  }
