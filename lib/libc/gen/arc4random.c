@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.4 2000/01/27 23:06:13 jasone Exp $ */
-/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.2 2003/06/17 04:26:42 dillon Exp $ */
+/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.3 2004/06/06 10:58:31 hmp Exp $ */
 
 /*
  * Arc4 random number generator for OpenBSD.
@@ -76,7 +76,7 @@ static void
 arc4_stir(as)
 	struct arc4_stream *as;
 {
-	int     fd;
+	int     fd, n;
 	struct {
 		struct timeval tv;
 		pid_t pid;
@@ -94,6 +94,16 @@ arc4_stir(as)
 	 * stack... */
 
 	arc4_addrandom(as, (void *) &rdat, sizeof(rdat));
+
+	/*
+	 * Throw away the first N bytes of output, as suggested in the
+	 * paper "Weaknesses in the Key Scheduling Algorithm of RC4"
+	 * by Fluher, Mantin, and Shamir.  N=1024 is based on
+	 * suggestions in the paper "(Not So) Random Shuffles of RC4"
+	 * by Ilya Mironov.
+	 */
+	for (n = 0; n < 1024; n++)
+		arc4_getbyte(as);
 }
 
 static inline u_int8_t
