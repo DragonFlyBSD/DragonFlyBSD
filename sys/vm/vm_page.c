@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.11 2003/10/02 21:00:20 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.12 2003/10/13 07:03:40 hmp Exp $
  */
 
 /*
@@ -1858,8 +1858,8 @@ again1:
 		 * Allocate kernel VM, unfree and assign the physical pages to it and
 		 * return kernel VM pointer.
 		 */
-		vm_map_lock(map);
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+		vm_map_lock(map);
 		if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr) !=
 		    KERN_SUCCESS) {
 			/*
