@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.14 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.15 2004/03/21 07:15:36 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -382,7 +382,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
  *   a bit of a kludge, but cleaning up the internal interfaces would
  *   have forced minor changes in every protocol).
  */
-
 int
 in_pcbladdr(inp, nam, plocal_sin)
 	struct inpcb *inp;
@@ -934,8 +933,7 @@ in_pcbinsconnhash(struct inpcb *inp)
 	 * Insert into the connection hash table.
 	 */
 	bucket = &pcbinfo->hashbase[INP_PCBCONNHASH(hashkey_faddr,
-	    inp->inp_fport, hashkey_laddr,
-	    inp->inp_lport, pcbinfo->hashmask)];
+	    inp->inp_fport, hashkey_laddr, inp->inp_lport, pcbinfo->hashmask)];
 	LIST_INSERT_HEAD(bucket, inp, inp_hash);
 }
 

@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.20 2004/03/09 21:21:54 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.21 2004/03/21 07:15:36 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -108,7 +108,7 @@ SYSCTL_STRUCT(_net_inet_tcp, TCPCTL_STATS, stats, CTLFLAG_RW,
     &tcpstat , tcpstat, "TCP statistics (struct tcpstat, netinet/tcp_var.h)");
 
 static int log_in_vain = 0;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, log_in_vain, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, log_in_vain, CTLFLAG_RW,
     &log_in_vain, 0, "Log all incoming TCP connections");
 
 static int blackhole = 0;
@@ -116,8 +116,8 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, blackhole, CTLFLAG_RW,
     &blackhole, 0, "Do not send RST when dropping refused connections");
 
 int tcp_delack_enabled = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, delayed_ack, CTLFLAG_RW, 
-    &tcp_delack_enabled, 0, 
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, delayed_ack, CTLFLAG_RW,
+    &tcp_delack_enabled, 0,
     "Delay ACK to try and piggyback it onto a data packet");
 
 #ifdef TCP_DROP_SYNFIN
@@ -364,17 +364,17 @@ tcp6_input(mp, offp, proto)
 	 * better place to put this in?
 	 */
 	ia6 = ip6_getdstifaddr(m);
-	if (ia6 && (ia6->ia6_flags & IN6_IFF_ANYCAST)) {		
+	if (ia6 && (ia6->ia6_flags & IN6_IFF_ANYCAST)) {
 		struct ip6_hdr *ip6;
 
 		ip6 = mtod(m, struct ip6_hdr *);
 		icmp6_error(m, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_ADDR,
 			    (caddr_t)&ip6->ip6_dst - (caddr_t)ip6);
-		return IPPROTO_DONE;
+		return (IPPROTO_DONE);
 	}
 
 	tcp_input(m, *offp, proto);
-	return IPPROTO_DONE;
+	return (IPPROTO_DONE);
 }
 #endif
 
@@ -404,25 +404,26 @@ tcp_input(m, off0, proto)
 	int cpu;
 	struct ip6_hdr *ip6 = NULL;
 #ifdef INET6
-	int isipv6;
+	boolean_t isipv6;
 #else
-	const int isipv6 = 0;
+	const boolean_t isipv6 = FALSE;
 #endif
 #ifdef TCPDEBUG
 	short ostate = 0;
 #endif
 
-	/* Grab info from MT_TAG mbufs prepended to the chain. */
-	for (;m && m->m_type == MT_TAG; m = m->m_next) {
+	tcpstat.tcps_rcvtotal++;
+
+	/* Grab info from and strip MT_TAG mbufs prepended to the chain. */
+	while  (m->m_type == MT_TAG) {
 		if (m->_m_tag_id == PACKET_TAG_IPFORWARD)
 			next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
+		m = m->m_next;
 	}
-#ifdef INET6
-	isipv6 = (mtod(m, struct ip *)->ip_v == 6) ? 1 : 0;
-#endif
-	bzero((char *)&to, sizeof(to));
 
-	tcpstat.tcps_rcvtotal++;
+#ifdef INET6
+	isipv6 = (mtod(m, struct ip *)->ip_v == 6) ? TRUE : FALSE;
+#endif
 
 	if (isipv6) {
 		/* IP6_EXTHDR_CHECK() is already done at tcp6_input() */
@@ -549,7 +550,7 @@ tcp_input(m, off0, proto)
 	th->th_urp = ntohs(th->th_urp);
 
 	/*
-	 * Delay droping TCP, IP headers, IPv6 ext headers, and TCP options,
+	 * Delay dropping TCP, IP headers, IPv6 ext headers, and TCP options,
 	 * until after ip6_savecontrol() is called and before other functions
 	 * which don't want those proto headers.
 	 * Because ip6_savecontrol() is going to parse the mbuf to
@@ -565,10 +566,10 @@ tcp_input(m, off0, proto)
 	 */
 findpcb:
 	/* IPFIREWALL_FORWARD section */
-	if (next_hop != NULL && isipv6 == 0) {  /* IPv6 support is not yet */
+	if (next_hop != NULL && !isipv6) {  /* IPv6 support is not there yet */
 		/*
 		 * Transparently forwarded. Pretend to be the destination.
-		 * already got one like this? 
+		 * already got one like this?
 		 */
 		inp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
 					ip->ip_src, th->th_sport,
@@ -644,7 +645,7 @@ findpcb:
 #ifdef INET6
 			char dbuf[INET6_ADDRSTRLEN+2], sbuf[INET6_ADDRSTRLEN+2];
 #else
-			char dbuf[4*sizeof "123"], sbuf[4*sizeof "123"];
+			char dbuf[4 * sizeof "123"], sbuf[4 * sizeof "123"];
 #endif
 			if (isipv6) {
 				strcpy(dbuf, "[");
@@ -672,7 +673,7 @@ findpcb:
 				break;
 			}
 		}
-		if (blackhole) { 
+		if (blackhole) {
 			switch (blackhole) {
 			case 1:
 				if (thflags & TH_SYN)
@@ -714,11 +715,13 @@ findpcb:
 	}
 #endif
 
+	bzero((char *)&to, sizeof(to));
+
 	if (so->so_options & SO_ACCEPTCONN) {
 		struct in_conninfo inc;
 
 #ifdef INET6
-		inc.inc_isipv6 = isipv6;
+		inc.inc_isipv6 = (isipv6 == TRUE);
 #endif
 		if (isipv6) {
 			inc.inc6_faddr = ip6->ip6_src;
@@ -780,7 +783,7 @@ findpcb:
  *    rcv SYN (set wscale opts)	 --> send SYN/ACK, set snd_wnd = window.
  *    rcv ACK, calculate tiwin --> process SYN_RECEIVED, determine wscale,
  *        move to ESTAB, set snd_wnd to tiwin.
- */        
+ */
 				tp->snd_wnd = tiwin;	/* unscaled */
 				goto after_listen;
 			}
@@ -911,10 +914,10 @@ findpcb:
 			     (tlen != 0 &&
 			      ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
 			       (!isipv6 && in_localaddr(inp->inp_faddr)))))) {
-				callout_reset(tp->tt_delack, tcp_delacktime,  
-						tcp_timer_delack, tp);  
+				callout_reset(tp->tt_delack, tcp_delacktime,
+						tcp_timer_delack, tp);
 				tp->t_flags |= TF_NEEDSYN;
-			} else 
+			} else
 				tp->t_flags |= (TF_ACKNOW | TF_NEEDSYN);
 
 			tcpstat.tcps_connects++;
@@ -1041,7 +1044,7 @@ after_listen:
 				/*
 				 * Recalculate the retransmit timer / rtt.
 				 *
-				 * Some machines (certain windows boxes) 
+				 * Some machines (certain windows boxes)
 				 * send broken timestamp replies during the
 				 * SYN+ACK phase, ignore timestamps of 0.
 				 */
@@ -1079,7 +1082,7 @@ after_listen:
 				if (tp->snd_una == tp->snd_max)
 					callout_stop(tp->tt_rexmt);
 				else if (!callout_active(tp->tt_persist))
-					callout_reset(tp->tt_rexmt, 
+					callout_reset(tp->tt_rexmt,
 						      tp->t_rxtcur,
 						      tcp_timer_rexmt, tp);
 
@@ -1238,8 +1241,8 @@ after_listen:
 			 * ACKNOW will be turned on later.
 			 */
 			if (DELAY_ACK(tp) && tlen != 0)
-                                callout_reset(tp->tt_delack, tcp_delacktime,  
-                                    tcp_timer_delack, tp);  
+                                callout_reset(tp->tt_delack, tcp_delacktime,
+                                    tcp_timer_delack, tp);
 			else
 				tp->t_flags |= TF_ACKNOW;
 			/*
@@ -1678,7 +1681,7 @@ trimthenstep6:
 			tp->t_flags &= ~TF_NEEDFIN;
 		} else {
 			tp->t_state = TCPS_ESTABLISHED;
-			callout_reset(tp->tt_keep, tcp_keepidle, 
+			callout_reset(tp->tt_keep, tcp_keepidle,
 				      tcp_timer_keep, tp);
 		}
 		/*
@@ -1932,7 +1935,7 @@ process_ACK:
 		 * Recompute the initial retransmit timer.
 		 *
 		 * Some machines (certain windows boxes) send broken
-		 * timestamp replies during the SYN+ACK phase, ignore 
+		 * timestamp replies during the SYN+ACK phase, ignore
 		 * timestamps of 0.
 		 */
 		if ((to.to_flags & TOF_TS) != 0 &&
@@ -2232,8 +2235,8 @@ dodata:							/* XXX */
 			 * more input can be expected, send ACK now.
 			 */
 			if (DELAY_ACK(tp) && (tp->t_flags & TF_NEEDSYN))
-                                callout_reset(tp->tt_delack, tcp_delacktime,  
-                                    tcp_timer_delack, tp);  
+                                callout_reset(tp->tt_delack, tcp_delacktime,
+                                    tcp_timer_delack, tp);
 			else
 				tp->t_flags |= TF_ACKNOW;
 			tp->rcv_nxt++;
@@ -2644,12 +2647,12 @@ tcp_mss(tp, offer)
 	struct rmxp_tao *taop;
 	int origoffer = offer;
 #ifdef INET6
-	int isipv6 = ((inp->inp_vflag & INP_IPV6) != 0) ? 1 : 0;
+	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
 	size_t min_protoh = isipv6 ?
 			    sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
 			    sizeof(struct tcpiphdr);
 #else
-	const int isipv6 = 0;
+	const boolean_t isipv6 = FALSE;
 	const size_t min_protoh = sizeof(struct tcpiphdr);
 #endif
 
@@ -2659,7 +2662,7 @@ tcp_mss(tp, offer)
 		rt = tcp_rtlookup(&inp->inp_inc);
 	if (rt == NULL) {
 		tp->t_maxopd = tp->t_maxseg =
-				isipv6 ? tcp_v6mssdflt : tcp_mssdflt;
+		    (isipv6 ? tcp_v6mssdflt : tcp_mssdflt);
 		return;
 	}
 	ifp = rt->rt_ifp;
@@ -2677,7 +2680,7 @@ tcp_mss(tp, offer)
 	 * in this case we use tcp_mssdflt.
 	 */
 	if (offer == 0)
-		offer = isipv6 ? tcp_v6mssdflt : tcp_mssdflt;
+		offer = (isipv6 ? tcp_v6mssdflt : tcp_mssdflt);
 	else
 		/*
 		 * Sanity check: make sure that maxopd will be large
@@ -2831,12 +2834,13 @@ tcp_mssopt(tp)
 {
 	struct rtentry *rt;
 #ifdef INET6
-	int isipv6 = ((tp->t_inpcb->inp_vflag & INP_IPV6) != 0) ? 1 : 0;
+	boolean_t isipv6 =
+	    ((tp->t_inpcb->inp_vflag & INP_IPV6) ? TRUE : FALSE);
 	int min_protoh = isipv6 ?
 			     sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
 			     sizeof(struct tcpiphdr);
 #else
-	const int isipv6 = 0;
+	const boolean_t isipv6 = FALSE;
 	const size_t min_protoh = sizeof(struct tcpiphdr);
 #endif
 
