@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.4 2003/07/22 17:03:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/syslog.h>
+#include <sys/device.h>
 
 #include <sys/buf2.h>
 

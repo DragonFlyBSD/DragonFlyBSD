@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.6 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.7 2003/07/22 17:03:33 dillon Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
 #include <sys/malloc.h>
+#include <sys/device.h>
 
 MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
@@ -99,7 +100,7 @@ static struct cdevsw pts_cdevsw = {
 static struct cdevsw ptc_cdevsw = {
 	/* name */	"ptc",
 	/* maj */	CDEV_MAJOR_C,
-	/* flags */	D_TTY | D_KQFILTER,
+	/* flags */	D_TTY | D_KQFILTER | D_MASTER,
 	/* port */	NULL,
 	/* autoq */	0,
 
@@ -666,7 +667,7 @@ ptyioctl(dev, cmd, data, flag, td)
 	register u_char *cc = tp->t_cc;
 	int stop, error;
 
-	if (devsw(dev)->d_open == ptcopen) {
+	if (dev_dflags(dev) & D_MASTER) {
 		switch (cmd) {
 
 		case TIOCGPGRP:

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.h,v 1.2.2.8 2002/04/11 09:31:57 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.h,v 1.3 2003/07/22 17:03:27 dillon Exp $
  */
 
 /* misc defines */
@@ -36,7 +36,7 @@
 #define AR_READ		0x01
 #define AR_WRITE	0x02
 #define AR_WAIT		0x04
-#define AR_STRATEGY(x)	(x)->b_dev->si_disk->d_devsw->d_strategy((x))
+#define AR_STRATEGY(x)	dev_port_dstrategy((x)->b_dev->si_disk->d_fwdport, (x)->b_dev->si_disk->d_dev, x)
 #define AD_SOFTC(x)	((struct ad_softc *)(x.device->driver))
 #define ATA_MAGIC	"FreeBSD ATA driver RAID "
 

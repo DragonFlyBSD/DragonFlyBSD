@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.7 2003/07/22 17:03:18 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -588,8 +588,6 @@ static struct cdevsw da_cdevsw = {
 	/* dump */	dadump,
 	/* psize */	nopsize
 };
-
-static struct cdevsw dadisk_cdevsw;
 
 static SLIST_HEAD(,da_softc) softc_list;
 static struct extend_array *daperiphs;
@@ -1155,7 +1153,7 @@ dacleanup(struct cam_periph *periph)
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
 	if (softc->disk.d_dev) {
-		disk_destroy(softc->disk.d_dev);
+		disk_destroy(&softc->disk);
 	}
 	free(softc, M_DEVBUF);
 }
@@ -1307,8 +1305,7 @@ daregister(struct cam_periph *periph, void *arg)
 	/*
 	 * Register this media as a disk
 	 */
-	disk_create(periph->unit_number, &softc->disk, 0, 
-	    &da_cdevsw, &dadisk_cdevsw);
+	disk_create(periph->unit_number, &softc->disk, 0, &da_cdevsw);
 
 	/*
 	 * Add async callbacks for bus reset and

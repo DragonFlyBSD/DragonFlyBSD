@@ -3,11 +3,19 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.1 2003/07/20 01:37:22 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.2 2003/07/22 17:03:34 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
 #define _SYS_MSGPORT2_H_
+
+static __inline
+void
+lwkt_initmsg(lwkt_msg_t msg, int cmd)
+{
+    msg->ms_cmd = cmd;
+    msg->ms_flags = MSGF_DONE;
+}
 
 #ifdef _KERNEL
 

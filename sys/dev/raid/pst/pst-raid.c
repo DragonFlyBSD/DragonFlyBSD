@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.3 2003/07/21 05:50:34 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.4 2003/07/22 17:03:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,6 @@ static struct cdevsw pst_cdevsw = {
     /* dump */	nodump,
     /* psize */ nopsize
 };
-static struct cdevsw pstdisk_cdevsw;
 
 struct pst_softc {
     struct iop_softc		*iop;
@@ -168,7 +167,7 @@ pst_attach(device_t dev)
 
     bufq_init(&psc->queue);
 
-    psc->device = disk_create(lun, &psc->disk, 0, &pst_cdevsw, &pstdisk_cdevsw);
+    psc->device = disk_create(lun, &psc->disk, 0, &pst_cdevsw);
     psc->device->si_drv1 = psc;
     psc->device->si_iosize_max = 64 * 1024; /*I2O_SGL_MAX_SEGS * PAGE_SIZE;*/
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.13 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.7 2003/07/22 17:03:18 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -273,7 +273,6 @@ static struct cdevsw cd_cdevsw = {
 	/* dump */	nodump,
 	/* psize */	nopsize,
 };
-static struct cdevsw cddisk_cdevsw;
 
 static struct extend_array *cdperiphs;
 static int num_changers;
@@ -498,7 +497,7 @@ cdcleanup(struct cam_periph *periph)
 	devstat_remove_entry(&softc->device_stats);
 	cam_extend_release(cdperiphs, periph->unit_number);
 	if (softc->disk.d_dev) {
-		disk_destroy(softc->disk.d_dev);
+		disk_destroy(&softc->disk);
 	}
 	free(softc, M_DEVBUF);
 	splx(s);
@@ -638,8 +637,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_CD);
 	disk_create(periph->unit_number, &softc->disk,
-		    DSO_ONESLICE | DSO_COMPATLABEL,
-		    &cd_cdevsw, &cddisk_cdevsw);
+		    DSO_ONESLICE | DSO_COMPATLABEL, &cd_cdevsw);
 
 	/*
 	 * Add an async callback so that we get

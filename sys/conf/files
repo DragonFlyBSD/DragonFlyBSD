@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.7 2003/07/20 01:37:19 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.8 2003/07/22 17:03:26 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -602,6 +602,7 @@ kern/kern_acct.c	standard
 kern/kern_acl.c		standard
 kern/kern_clock.c	standard
 kern/kern_conf.c	standard
+kern/kern_device.c	standard
 kern/kern_descrip.c	standard
 kern/kern_environment.c	standard
 kern/kern_event.c	standard

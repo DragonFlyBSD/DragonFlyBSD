@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.3 2003/06/23 17:55:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.4 2003/07/22 17:03:31 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>
@@ -56,7 +56,6 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
     int devminor;					    /* minor devs for disk device */
     int unit;
     char *dname;
-    struct cdevsw *dsw;					    /* pointer to cdevsw entry */
 
     if (bcmp(drive->devicename, "/dev/", 5))		    /* device name doesn't start with /dev */
 	return ENOENT;					    /* give up */
@@ -140,11 +139,10 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
 	return ENODEV;
 
     drive->dev->si_iosize_max = DFLTPHYS;
-    dsw = devsw(drive->dev);
-    if (dsw == NULL)
+    if (dev_dport(drive->dev) == NULL)
 	drive->lasterror = ENOENT;
     else
-	drive->lasterror = (dsw->d_open) (drive->dev, FWRITE, 0, NULL);
+	drive->lasterror = dev_dopen(drive->dev, FWRITE, 0, NULL);
 
     if (drive->lasterror != 0) {			    /* failed */
 	drive->state = drive_down;			    /* just force it down */
@@ -222,7 +220,8 @@ init_drive(struct drive *drive, int verbose)
     if (drive->lasterror)
 	return drive->lasterror;
 
-    drive->lasterror = (*devsw(drive->dev)->d_ioctl) (drive->dev,
+    drive->lasterror = dev_dioctl(
+	drive->dev,
 	DIOCGPART,
 	(caddr_t) & drive->partinfo,
 	FREAD,
@@ -272,7 +271,7 @@ close_locked_drive(struct drive *drive)
      * the queues, which spec_close() will try to
      * do.  Get rid of them here first.
      */
-    drive->lasterror = (*devsw(drive->dev)->d_close) (drive->dev, 0, 0, NULL);
+    drive->lasterror = dev_dclose(drive->dev, 0, 0, NULL);
     drive->flags &= ~VF_OPEN;				    /* no longer open */
 }
 
@@ -666,7 +665,7 @@ daemon_save_config(void)
 		if ((drive->state != drive_unallocated)
 		    && (drive->state != drive_referenced)) { /* and it's a real drive */
 		    wlabel_on = 1;			    /* enable writing the label */
-		    error = (*devsw(drive->dev)->d_ioctl) (drive->dev, /* make the label writeable */
+		    error = dev_dioctl(drive->dev, /* make the label writeable */
 			DIOCWLABEL,
 			(caddr_t) & wlabel_on,
 			FWRITE,
@@ -679,7 +678,7 @@ daemon_save_config(void)
 			error = write_drive(drive, config, MAXCONFIG, VINUM_CONFIG_OFFSET + MAXCONFIG);	/* second copy */
 		    wlabel_on = 0;			    /* enable writing the label */
 		    if (error == 0)
-			error = (*devsw(drive->dev)->d_ioctl) (drive->dev, /* make the label non-writeable again */
+			error = dev_dioctl(drive->dev, /* make the label non-writeable again */
 			    DIOCWLABEL,
 			    (caddr_t) & wlabel_on,
 			    FWRITE,

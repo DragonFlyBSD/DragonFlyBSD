@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.6 2003/07/21 05:50:39 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.7 2003/07/22 17:03:32 dillon Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/mount.h>
 #include <sys/cons.h>
 #include <sys/thread.h>
+#include <sys/device.h>
 
 #include <machine/bootinfo.h>
 #include <machine/ipl.h>
@@ -304,7 +305,7 @@ setroot()
 	}
 	majdev = boot_translate_majdev(B_TYPE(bootdev));
 	dev = makedev(majdev, 0);
-	if (devsw(dev) == NULL)
+	if (dev_dport(dev) == NULL)
 		return;
 	unit = B_UNIT(bootdev);
 	slice = B_SLICE(bootdev);

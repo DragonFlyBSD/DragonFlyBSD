@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.4 2003/07/21 07:57:39 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.5 2003/07/22 17:03:26 dillon Exp $ 
  *
  */
 
@@ -76,7 +76,6 @@ static struct cdevsw fla_cdevsw = {
         /* dump */      nodump,
         /* psize */     nopsize
 };
-static struct cdevsw fladisk_cdevsw;
 
 void *
 doc2k_malloc(int bytes) 
@@ -334,7 +333,7 @@ flaattach (device_t dev)
 		DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 		DEVSTAT_PRIORITY_DISK);
 
-	sc->dev = disk_create(unit, &sc->disk, 0, &fla_cdevsw, &fladisk_cdevsw);
+	sc->dev = disk_create(unit, &sc->disk, 0, &fla_cdevsw);
 	sc->dev->si_drv1 = sc;
 	sc->unit = unit;
 

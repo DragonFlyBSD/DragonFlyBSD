@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/gfb/gfb_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.3 2003/07/22 17:03:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -205,7 +205,7 @@ pcigfb_attach(device_t dev)
 	       sc->adp->va_info.vi_depth, sc->gfbc->ramdac_name);
 #ifdef FB_INSTALL_CDEV
 	/* attach a virtual frame buffer device */
-	error = fb_attach(makedev(0, unit), sc->adp, sc->cdevsw);
+	error = fb_attach(sc->devt, sc->adp);
 	if(error)
 		goto fail;
 	if(bootverbose)

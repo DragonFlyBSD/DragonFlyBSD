@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.4 2003/07/21 05:50:29 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.5 2003/07/22 17:03:28 dillon Exp $
  */
 
 /*
@@ -213,12 +213,12 @@ static struct cdevsw DRM(cdevsw) = {
 	.d_port = 	NULL,
 	.d_autoq =	0,
 
-	.d_open =	DRM( open ),
-	.d_close =	DRM( close ),
-	.d_read =	DRM( read ),
-	.d_ioctl =	DRM( ioctl ),
-	.d_poll =	DRM( poll ),
-	.d_mmap =	DRM( mmap )
+	.old_open =	DRM( open ),
+	.old_close =	DRM( close ),
+	.old_read =	DRM( read ),
+	.old_ioctl =	DRM( ioctl ),
+	.old_poll =	DRM( poll ),
+	.old_mmap =	DRM( mmap )
 };
 
 static int DRM(probe)(device_t dev)

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.4 2003/07/21 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.5 2003/07/22 17:03:28 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -39,6 +39,7 @@
 #include <sys/malloc.h>
 #include <sys/uio.h>
 #include <sys/fbio.h>
+#include <sys/device.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -61,8 +62,8 @@ static video_switch_t	*vidsw_ini;
        video_switch_t	**vidsw = &vidsw_ini;
 
 #ifdef FB_INSTALL_CDEV
-static struct cdevsw	*vidcdevsw_ini;
-static struct cdevsw	**vidcdevsw = &vidcdevsw_ini;
+static struct lwkt_port	*vidcdevsw_ini;
+static struct lwkt_port	**vidcdevsw = &vidcdevsw_ini;
 #endif
 
 #define ARRAY_DELTA	4
@@ -73,7 +74,7 @@ vid_realloc_array(void)
 	video_adapter_t **new_adp;
 	video_switch_t **new_vidsw;
 #ifdef FB_INSTALL_CDEV
-	struct cdevsw **new_cdevsw;
+	struct lwkt_port **new_cdevsw;
 #endif
 	int newsize;
 	int s;
@@ -391,8 +392,11 @@ vfbattach(void *arg)
 
 PSEUDO_SET(vfbattach, fb);
 
+/*
+ *  Note: dev represents the actual video device, not the frame buffer
+ */
 int
-fb_attach(dev_t dev, video_adapter_t *adp, struct cdevsw *cdevsw)
+fb_attach(dev_t dev, video_adapter_t *adp)
 {
 	int s;
 
@@ -403,15 +407,19 @@ fb_attach(dev_t dev, video_adapter_t *adp, struct cdevsw *cdevsw)
 
 	s = spltty();
 	adp->va_minor = minor(dev);
-	vidcdevsw[adp->va_index] = cdevsw;
+	vidcdevsw[adp->va_index] = dev_dport(dev);
 	splx(s);
 
 	printf("fb%d at %s%d\n", adp->va_index, adp->va_name, adp->va_unit);
 	return 0;
 }
 
+#if 0	/* never seems to be called */
+/*
+ *  Note: dev represents the actual video device, not the frame buffer
+ */
 int
-fb_detach(dev_t dev, video_adapter_t *adp, struct cdevsw *cdevsw)
+fb_detach(dev_t dev, video_adapter_t *adp)
 {
 	int s;
 
@@ -419,7 +427,7 @@ fb_detach(dev_t dev, video_adapter_t *adp, struct cdevsw *cdevsw)
 		return EINVAL;
 	if (adapter[adp->va_index] != adp)
 		return EINVAL;
-	if (vidcdevsw[adp->va_index] != cdevsw)
+	if (vidcdevsw[adp->va_index] != port)
 		return EINVAL;
 
 	s = spltty();
@@ -427,6 +435,7 @@ fb_detach(dev_t dev, video_adapter_t *adp, struct cdevsw *cdevsw)
 	splx(s);
 	return 0;
 }
+#endif
 
 static int
 fbopen(dev_t dev, int flag, int mode, struct thread *td)
@@ -438,8 +447,9 @@ fbopen(dev_t dev, int flag, int mode, struct thread *td)
 		return ENXIO;
 	if (vidcdevsw[unit] == NULL)
 		return ENXIO;
-	return (*vidcdevsw[unit]->d_open)(makedev(0, adapter[unit]->va_minor),
-					  flag, mode, td);
+	return dev_port_dopen(vidcdevsw[unit], 
+			makedev(0, adapter[unit]->va_minor),
+			flag, mode, td);
 }
 
 static int
@@ -450,8 +460,9 @@ fbclose(dev_t dev, int flag, int mode, struct thread *td)
 	unit = FB_UNIT(dev);
 	if (vidcdevsw[unit] == NULL)
 		return ENXIO;
-	return (*vidcdevsw[unit]->d_close)(makedev(0, adapter[unit]->va_minor),
-					   flag, mode, td);
+	return dev_port_dclose(vidcdevsw[unit],
+			makedev(0, adapter[unit]->va_minor),
+			flag, mode, td);
 }
 
 static int
@@ -462,8 +473,9 @@ fbread(dev_t dev, struct uio *uio, int flag)
 	unit = FB_UNIT(dev);
 	if (vidcdevsw[unit] == NULL)
 		return ENXIO;
-	return (*vidcdevsw[unit]->d_read)(makedev(0, adapter[unit]->va_minor),
-					  uio, flag);
+	return dev_port_dread(vidcdevsw[unit],
+			makedev(0, adapter[unit]->va_minor),
+			uio, flag);
 }
 
 static int
@@ -474,8 +486,9 @@ fbwrite(dev_t dev, struct uio *uio, int flag)
 	unit = FB_UNIT(dev);
 	if (vidcdevsw[unit] == NULL)
 		return ENXIO;
-	return (*vidcdevsw[unit]->d_write)(makedev(0, adapter[unit]->va_minor),
-					   uio, flag);
+	return dev_port_dwrite(vidcdevsw[unit],
+			makedev(0, adapter[unit]->va_minor),
+			uio, flag);
 }
 
 static int
@@ -486,8 +499,9 @@ fbioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	unit = FB_UNIT(dev);
 	if (vidcdevsw[unit] == NULL)
 		return ENXIO;
-	return (*vidcdevsw[unit]->d_ioctl)(makedev(0, adapter[unit]->va_minor),
-					   cmd, arg, flag, td);
+	return dev_port_dioctl(vidcdevsw[unit],
+			makedev(0, adapter[unit]->va_minor),
+			cmd, arg, flag, td);
 }
 
 static int
@@ -498,8 +512,9 @@ fbmmap(dev_t dev, vm_offset_t offset, int nprot)
 	unit = FB_UNIT(dev);
 	if (vidcdevsw[unit] == NULL)
 		return ENXIO;
-	return (*vidcdevsw[unit]->d_mmap)(makedev(0, adapter[unit]->va_minor),
-					  offset, nprot);
+	return (dev_port_dmmap(vidcdevsw[unit],
+			makedev(0, adapter[unit]->va_minor),
+			offset, nprot));
 }
 
 #if experimental

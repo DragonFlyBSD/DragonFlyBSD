@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.6 2003/07/22 17:03:35 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -270,8 +270,7 @@ swaponvp(struct thread *td, struct vnode *vp, dev_t dev, u_long nblks)
 	if (error)
 		return (error);
 
-	if (nblks == 0 && dev != NODEV && (devsw(dev)->d_psize == 0 ||
-	    (nblks = (*devsw(dev)->d_psize) (dev)) == -1)) {
+	if (nblks == 0 && dev != NODEV && ((nblks = dev_dpsize(dev)) == -1)) {
 		(void) VOP_CLOSE(vp, FREAD | FWRITE, td);
 		return (ENXIO);
 	}

@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.3 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.5 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -26,6 +26,7 @@
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/uio.h>
+#include <sys/device.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>

@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.4 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,6 +58,7 @@
 #include <sys/stat.h>
 #include <sys/syslog.h>
 #include <sys/vnode.h>
+#include <sys/device.h>
 
 #include <ufs/ffs/fs.h>
 
@@ -625,7 +626,7 @@ dsname(dev, unit, slice, part, partname)
 	static char name[32];
 	const char *dname;
 
-	dname = devsw(dev)->d_name;
+	dname = dev_dname(dev);
 	if (strlen(dname) > 16)
 		dname = "nametoolong";
 	snprintf(name, sizeof(name), "%s%d", dname, unit);
@@ -825,9 +826,9 @@ dssize(dev, sspp)
 	ssp = *sspp;
 	if (ssp == NULL || slice >= ssp->dss_nslices
 	    || !(ssp->dss_slices[slice].ds_openmask & (1 << part))) {
-		if (devsw(dev)->d_open(dev, FREAD, S_IFCHR, NULL) != 0)
+		if (dev_dopen(dev, FREAD, S_IFCHR, NULL) != 0)
 			return (-1);
-		devsw(dev)->d_close(dev, FREAD, S_IFCHR, NULL);
+		dev_dclose(dev, FREAD, S_IFCHR, NULL);
 		ssp = *sspp;
 	}
 	lp = ssp->dss_slices[slice].ds_label;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.3 2003/07/21 05:50:26 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.4 2003/07/22 17:03:27 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -91,10 +91,6 @@ static struct cdevsw aac_disk_cdevsw = {
 };
 
 devclass_t		aac_disk_devclass;
-static struct cdevsw	aac_disk_disk_cdevsw;
-#ifdef FREEBSD_4
-static int		disks_registered = 0;
-#endif
 
 static device_method_t aac_disk_methods[] = {
 	DEVMETHOD(device_probe,	aac_disk_probe),
@@ -381,11 +377,8 @@ aac_disk_attach(device_t dev)
 
 	/* attach a generic disk device to ourselves */
 	sc->ad_dev_t = disk_create(device_get_unit(dev), &sc->ad_disk, 0,
-				   &aac_disk_cdevsw, &aac_disk_disk_cdevsw);
+				   &aac_disk_cdevsw);
 	sc->ad_dev_t->si_drv1 = sc;
-#ifdef FREEBSD_4
-	disks_registered++;
-#endif
 
 	sc->ad_dev_t->si_iosize_max = aac_iosize_max;
 	sc->unit = device_get_unit(dev);
@@ -409,11 +402,6 @@ aac_disk_detach(device_t dev)
 		return(EBUSY);
 
 	devstat_remove_entry(&sc->ad_stats);
-	disk_destroy(sc->ad_dev_t);
-#ifdef FREEBSD_4
-	if (--disks_registered == 0)
-		cdevsw_remove(&aac_disk_cdevsw);
-#endif
-
+	disk_destroy(&sc->ad_disk);
 	return(0);
 }

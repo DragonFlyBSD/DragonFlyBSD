@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.3 2003/07/21 05:50:37 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.4 2003/07/22 17:03:31 dillon Exp $
  */
 
 /*
@@ -613,11 +613,6 @@ static struct cdevsw twed_cdevsw = {
     nopsize
 };
 
-static struct cdevsw	tweddisk_cdevsw;
-#ifdef FREEBSD_4
-static int		disks_registered = 0;
-#endif
-
 /********************************************************************************
  * Handle open from generic layer.
  *
@@ -811,13 +806,10 @@ twed_attach(device_t dev)
 		      DEVSTAT_PRIORITY_ARRAY);
 
     /* attach a generic disk device to ourselves */
-    dsk = disk_create(device_get_unit(dev), &sc->twed_disk, 0, &twed_cdevsw, &tweddisk_cdevsw);
+    dsk = disk_create(device_get_unit(dev), &sc->twed_disk, 0, &twed_cdevsw);
     dsk->si_drv1 = sc;
     dsk->si_drv2 = &sc->twed_drive->td_unit;
     sc->twed_dev_t = dsk;
-#ifdef FREEBSD_4
-    disks_registered++;
-#endif
 
     /* set the maximum I/O size to the theoretical maximum allowed by the S/G list size */
     dsk->si_iosize_max = (TWE_MAX_SGL_LENGTH - 1) * PAGE_SIZE;
@@ -839,12 +831,7 @@ twed_detach(device_t dev)
 	return(EBUSY);
 
     devstat_remove_entry(&sc->twed_stats);
-#ifdef FREEBSD_4
-    if (--disks_registered == 0)
-	cdevsw_remove(&tweddisk_cdevsw);
-#else
-    disk_destroy(sc->twed_dev_t);
-#endif
+    disk_destroy(&sc->twed_disk);
 
     return(0);
 }

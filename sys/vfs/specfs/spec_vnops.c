@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.10 2003/07/19 21:14:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.11 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/buf.h>
+#include <sys/device.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/stat.h>
@@ -140,7 +141,6 @@ spec_open(ap)
 	struct vnode *vp = ap->a_vp;
 	dev_t dev = vp->v_rdev;
 	int error;
-	struct cdevsw *dsw;
 	const char *cp;
 
 	/*
@@ -149,8 +149,7 @@ spec_open(ap)
 	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_NODEV))
 		return (ENXIO);
 
-	dsw = devsw(dev);
-	if ( (dsw == NULL) || (dsw->d_open == NULL))
+	if (dev_dport(dev) == NULL)
 		return ENXIO;
 
 	/* Make this field valid before any I/O in ->d_open */
@@ -188,17 +187,17 @@ spec_open(ap)
 	}
 
 	/* XXX: Special casing of ttys for deadfs.  Probably redundant */
-	if (dsw->d_flags & D_TTY)
+	if (dev_dflags(dev) & D_TTY)
 		vp->v_flag |= VISTTY;
 
 	VOP_UNLOCK(vp, 0, ap->a_td);
-	error = (*dsw->d_open)(dev, ap->a_mode, S_IFCHR, ap->a_td);
+	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_td);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 
 	if (error)
 		return (error);
 
-	if (dsw->d_flags & D_TTY) {
+	if (dev_dflags(dev) & D_TTY) {
 		if (dev->si_tty) {
 			struct tty *tp;
 			tp = dev->si_tty;
@@ -213,12 +212,11 @@ spec_open(ap)
 		if (!dev->si_bsize_phys)
 			dev->si_bsize_phys = DEV_BSIZE;
 	}
-	if ((dsw->d_flags & D_DISK) == 0) {
+	if ((dev_dflags(dev) & D_DISK) == 0) {
 		cp = devtoname(dev);
-		if (*cp == '#' && (dsw->d_flags & D_NAGGED) == 0) {
+		if (*cp == '#') {
 			printf("WARNING: driver %s should register devices with make_dev() (dev_t = \"%s\")\n",
-			    dsw->d_name, cp);
-			dsw->d_flags |= D_NAGGED;	
+			    dev_dname(dev), cp);
 		}
 	}
 	return (error);
@@ -252,7 +250,7 @@ spec_read(ap)
 		return (0);
 
 	VOP_UNLOCK(vp, 0, td);
-	error = (*devsw(dev)->d_read) (dev, uio, ap->a_ioflag);
+	error = dev_dread(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
@@ -282,7 +280,7 @@ spec_write(ap)
 	td = uio->uio_td;
 
 	VOP_UNLOCK(vp, 0, td);
-	error = (*devsw(dev)->d_write) (dev, uio, ap->a_ioflag);
+	error = dev_dwrite(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
@@ -305,8 +303,8 @@ spec_ioctl(ap)
 	dev_t dev;
 
 	dev = ap->a_vp->v_rdev;
-	return ((*devsw(dev)->d_ioctl)(dev, ap->a_command, 
-	    ap->a_data, ap->a_fflag, ap->a_td));
+	return (dev_dioctl(dev, ap->a_command, ap->a_data,
+		    ap->a_fflag, ap->a_td));
 }
 
 /* ARGSUSED */
@@ -322,7 +320,7 @@ spec_poll(ap)
 	dev_t dev;
 
 	dev = ap->a_vp->v_rdev;
-	return (*devsw(dev)->d_poll)(dev, ap->a_events, ap->a_td);
+	return (dev_dpoll(dev, ap->a_events, ap->a_td));
 }
 
 /* ARGSUSED */
@@ -336,9 +334,7 @@ spec_kqfilter(ap)
 	dev_t dev;
 
 	dev = ap->a_vp->v_rdev;
-	if (devsw(dev)->d_flags & D_KQFILTER)
-		return (*devsw(dev)->d_kqfilter)(dev, ap->a_kn);
-	return (1);
+	return (dev_dkqfilter(dev, ap->a_kn));
 }
 
 /*
@@ -472,12 +468,14 @@ spec_strategy(ap)
 				mp->mnt_stat.f_syncreads++;
 		}
 	}
+#if 0
 	KASSERT(devsw(bp->b_dev) != NULL, 
 	   ("No devsw on dev %s responsible for buffer %p\n", 
 	   devtoname(bp->b_dev), bp));
 	KASSERT(devsw(bp->b_dev)->d_strategy != NULL, 
 	   ("No strategy on dev %s responsible for buffer %p\n", 
 	   devtoname(bp->b_dev), bp));
+#endif
 	BUF_STRATEGY(bp, 0);
 	return (0);
 }
@@ -490,15 +488,13 @@ spec_freeblks(ap)
 		daddr_t a_length;
 	} */ *ap;
 {
-	struct cdevsw *bsw;
 	struct buf *bp;
 
 	/*
 	 * XXX: This assumes that strategy does the deed right away.
 	 * XXX: this may not be TRTTD.
 	 */
-	bsw = devsw(ap->a_vp->v_rdev);
-	if ((bsw->d_flags & D_CANFREE) == 0)
+	if ((dev_dflags(ap->a_vp->v_rdev) & D_CANFREE) == 0)
 		return (0);
 	bp = geteblk(ap->a_length);
 	bp->b_flags |= B_FREEBUF;
@@ -585,12 +581,12 @@ spec_close(ap)
 	 */
 	if (vp->v_flag & VXLOCK) {
 		/* Forced close */
-	} else if (devsw(dev)->d_flags & D_TRACKCLOSE) {
+	} else if (dev_dflags(dev) & D_TRACKCLOSE) {
 		/* Keep device updated on status */
 	} else if (vcount(vp) > 1) {
 		return (0);
 	}
-	return (devsw(dev)->d_close(dev, ap->a_fflag, S_IFCHR, ap->a_td));
+	return (dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td));
 }
 
 /*

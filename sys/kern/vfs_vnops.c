@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.8 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.9 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -587,7 +587,7 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 		if (com == FIODTYPE) {
 			if (vp->v_type != VCHR && vp->v_type != VBLK)
 				return (ENOTTY);
-			*(int *)data = devsw(vp->v_rdev)->d_flags & D_TYPEMASK;
+			*(int *)data = dev_dflags(vp->v_rdev) & D_TYPEMASK;
 			return (0);
 		}
 		error = VOP_IOCTL(vp, com, data, fp->f_flag, ucred, td);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.4 2003/07/21 05:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.5 2003/07/22 17:03:30 dillon Exp $
  */
 
 /*
@@ -81,7 +81,6 @@ static struct cdevsw mlxd_cdevsw = {
 };
 
 devclass_t		mlxd_devclass;
-static struct cdevsw	mlxddisk_cdevsw;
 
 static device_method_t mlxd_methods[] = {
     DEVMETHOD(device_probe,	mlxd_probe),
@@ -262,7 +261,7 @@ mlxd_attach(device_t dev)
 		      DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER, 
 		      DEVSTAT_PRIORITY_ARRAY);
 
-    dsk = disk_create(sc->mlxd_unit, &sc->mlxd_disk, 0, &mlxd_cdevsw, &mlxddisk_cdevsw);
+    dsk = disk_create(sc->mlxd_unit, &sc->mlxd_disk, 0, &mlxd_cdevsw);
     dsk->si_drv1 = sc;
     sc->mlxd_dev_t = dsk;
 
@@ -285,7 +284,7 @@ mlxd_detach(device_t dev)
     debug_called(1);
 
     devstat_remove_entry(&sc->mlxd_stats);
-    disk_destroy(sc->mlxd_dev_t);
+    disk_destroy(&sc->mlxd_disk);
 
     return(0);
 }

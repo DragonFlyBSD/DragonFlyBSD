@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.4 2003/07/21 07:57:47 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.5 2003/07/22 17:03:32 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -164,7 +164,8 @@ isavga_attach(device_t dev)
 
 #ifdef FB_INSTALL_CDEV
 	/* attach a virtual frame buffer device */
-	error = fb_attach(makedev(0, VGA_MKMINOR(unit)), sc->adp, &isavga_cdevsw);
+	sc->devt = make_dev(&isavga_cdevsw, VGA_MKMINOR(unit), 0, 0, 02660, "vga%x", VGA_MKMINOR(unit));
+	error = fb_attach(sc->devt, sc->adp);
 	if (error)
 		return error;
 #endif /* FB_INSTALL_CDEV */

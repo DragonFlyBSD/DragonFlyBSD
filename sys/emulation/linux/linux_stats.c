@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.5 2003/07/22 17:03:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/vnode.h>
+#include <sys/device.h>
 #include <sys/file2.h>
 
 #include <machine/../linux/linux.h>
@@ -52,7 +53,6 @@ static int
 newstat_copyout(struct stat *buf, void *ubuf)
 {
 	struct l_newstat tbuf;
-	struct cdevsw *cdevsw;
 	dev_t dev;
 
 	tbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
@@ -74,8 +74,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	 */
 	if (S_ISCHR(tbuf.st_mode) &&
 	    (dev = udev2dev(buf->st_rdev, 0)) != NODEV) {
-		cdevsw = devsw(dev);
-		if (cdevsw != NULL && (cdevsw->d_flags & D_DISK)) {
+		if (dev_dport(dev) != NULL && (dev_dflags(dev) & D_DISK)) {
 			tbuf.st_mode &= ~S_IFMT;
 			tbuf.st_mode |= S_IFBLK;
 

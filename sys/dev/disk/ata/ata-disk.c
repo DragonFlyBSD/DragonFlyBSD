@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.5 2003/07/21 05:50:27 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.6 2003/07/22 17:03:27 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -79,7 +79,6 @@ static struct cdevsw ad_cdevsw = {
 	/* dump */	addump,
 	/* psize */	nopsize
 };
-static struct cdevsw addisk_cdevsw;
 
 /* prototypes */
 static void ad_invalidatequeue(struct ad_softc *, struct ad_request *);
@@ -203,7 +202,7 @@ ad_attach(struct ata_device *atadev)
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_DISK);
 
-    dev = disk_create(adp->lun, &adp->disk, 0, &ad_cdevsw, &addisk_cdevsw);
+    dev = disk_create(adp->lun, &adp->disk, 0, &ad_cdevsw);
     dev->si_drv1 = adp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     adp->dev = dev;
@@ -257,8 +256,8 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
 	biodone(bp);
     }
     disk_invalidate(&adp->disk);
-    disk_destroy(adp->dev);
     devstat_remove_entry(&adp->stats);
+    disk_destroy(&adp->disk);
     if (flush) {
 	if (ata_command(atadev, ATA_C_FLUSHCACHE, 0, 0, 0, ATA_WAIT_READY))
 	    ata_prtdev(atadev, "flushing cache on detach failed\n");

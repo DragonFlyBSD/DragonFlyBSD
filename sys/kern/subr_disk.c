@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.5 2003/07/22 17:03:33 dillon Exp $
  *
  */
 
@@ -22,6 +22,8 @@
 #include <sys/sysctl.h>
 #include <machine/md_var.h>
 #include <sys/ctype.h>
+#include <sys/msgport.h>
+#include <sys/msgport2.h>
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
 
@@ -30,6 +32,7 @@ static d_open_t diskopen;
 static d_close_t diskclose; 
 static d_ioctl_t diskioctl;
 static d_psize_t diskpsize;
+static int disk_putport(lwkt_port_t port, lwkt_msg_t msg);
 
 static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 
@@ -44,35 +47,52 @@ inherit_raw(dev_t pdev, dev_t dev)
 	dev->si_bsize_best = pdev->si_bsize_best;
 }
 
+/*
+ * Create a slice and unit managed disk.  The underlying raw disk device
+ * is specified by cdevsw.  We create the device as a managed device by
+ * first creating it normally then overriding the message port with our
+ * own frontend (which will be responsible for assigning pblkno).
+ */
 dev_t
-disk_create(int unit, struct disk *dp, int flags, struct cdevsw *cdevsw, struct cdevsw *proto)
+disk_create(int unit, struct disk *dp, int flags, struct cdevsw *cdevsw)
 {
 	dev_t dev;
 
 	bzero(dp, sizeof(*dp));
+	lwkt_init_port(&dp->d_port, NULL);	/* intercept port */
+	dp->d_port.mp_beginmsg = disk_putport;
 
-	dev = makedev(cdevsw->d_maj, 0);	
-	if (!devsw(dev)) {
-		*proto = *cdevsw;
-		proto->d_open = diskopen;
-		proto->d_close = diskclose;
-		proto->d_ioctl = diskioctl;
-		proto->d_strategy = diskstrategy;
-		proto->d_psize = diskpsize;
-		cdevsw_add(proto);
-	}
+	dev = makedev(cdevsw->d_maj, 0);	/* base device */
+	dev->si_disk = dp;
+						/* forwarding port */
+	dp->d_fwdport = cdevsw_add_override(cdevsw, &dp->d_port);
 
 	if (bootverbose)
 		printf("Creating DISK %s%d\n", cdevsw->d_name, unit);
-	dev = make_dev(proto, dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
-	    UID_ROOT, GID_OPERATOR, 0640, "%s%d", cdevsw->d_name, unit);
 
+  	/*
+	 * The whole disk placemarker holds the disk structure.
+	 */
+	dev = make_dev(cdevsw, dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
+	    UID_ROOT, GID_OPERATOR, 0640, "%s%d", cdevsw->d_name, unit);
 	dev->si_disk = dp;
 	dp->d_dev = dev;
 	dp->d_dsflags = flags;
-	dp->d_devsw = cdevsw;
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	return (dev);
+}
+
+void
+disk_destroy(struct disk *disk)
+{
+	dev_t dev = disk->d_dev;
+
+	LIST_REMOVE(disk, d_list);
+	bzero(disk, sizeof(*disk));
+	dev->si_disk = NULL;
+	destroy_dev(dev);
+	/* YYY remove cdevsw entries? */
+	return;
 }
 
 int
@@ -107,16 +127,6 @@ disk_invalidate (struct disk *disk)
 {
 	if (disk->d_slice)
 		dsgone(&disk->d_slice);
-}
-
-void
-disk_destroy(dev_t dev)
-{
-	LIST_REMOVE(dev->si_disk, d_list);
-	bzero(dev->si_disk, sizeof(*dev->si_disk));
-    	dev->si_disk = NULL;
-	destroy_dev(dev);
-	return;
 }
 
 struct disk *
@@ -157,8 +167,53 @@ SYSCTL_PROC(_kern, OID_AUTO, disks, CTLTYPE_STRING | CTLFLAG_RD, 0, NULL,
     sysctl_disks, "A", "names of available disks");
 
 /*
- * The cdevsw functions
+ * The port intercept functions
  */
+static
+int
+disk_putport(lwkt_port_t port, lwkt_msg_t lmsg)
+{
+	struct disk *disk = (struct disk *)port;
+	cdevallmsg_t msg = (cdevallmsg_t)lmsg;
+	int error;
+
+	switch(msg->am_lmsg.ms_cmd) {
+	case CDEV_CMD_OPEN:
+		error = diskopen(
+			    msg->am_open.msg.dev,
+			    msg->am_open.oflags,
+			    msg->am_open.devtype,
+			    msg->am_open.td);
+		break;
+	case CDEV_CMD_CLOSE:
+		error = diskclose(
+			    msg->am_close.msg.dev,
+			    msg->am_close.fflag,
+			    msg->am_close.devtype,
+			    msg->am_close.td);
+		break;
+	case CDEV_CMD_IOCTL:
+		error = diskioctl(
+			    msg->am_ioctl.msg.dev,
+			    msg->am_ioctl.cmd,
+			    msg->am_ioctl.data,
+			    msg->am_ioctl.fflag,
+			    msg->am_ioctl.td);
+		break;
+	case CDEV_CMD_STRATEGY:
+		diskstrategy(msg->am_strategy.bp);
+		error = 0;
+		break;
+	case CDEV_CMD_PSIZE:
+		msg->am_psize.result = diskpsize(msg->am_psize.msg.dev);
+		error = 0;      /* XXX */
+		break;
+	default:
+		error = lwkt_forwardmsg(disk->d_fwdport, &msg->am_lmsg);
+		break;
+	}
+	return(error);
+}
 
 static int
 diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
@@ -171,7 +226,7 @@ diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
 	pdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), RAW_PART);
 
 	dp = pdev->si_disk;
-	if (!dp)
+	if (dp == NULL)
 		return (ENXIO);
 
 	while (dp->d_flags & DISKFLAG_LOCK) {
@@ -185,7 +240,7 @@ diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
 	if (!dsisopen(dp->d_slice)) {
 		if (!pdev->si_iosize_max)
 			pdev->si_iosize_max = dev->si_iosize_max;
-		error = dp->d_devsw->d_open(pdev, oflags, devtype, td);
+		error = dev_port_dopen(dp->d_fwdport, pdev, oflags, devtype, td);
 	}
 
 	/* Inherit properties from the whole/raw dev_t */
@@ -197,7 +252,7 @@ diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
 	error = dsopen(dev, devtype, dp->d_dsflags, &dp->d_slice, &dp->d_label);
 
 	if (!dsisopen(dp->d_slice)) 
-		dp->d_devsw->d_close(pdev, oflags, devtype, td);
+		dev_port_dclose(dp->d_fwdport, pdev, oflags, devtype, td);
 out:	
 	dp->d_flags &= ~DISKFLAG_LOCK;
 	if (dp->d_flags & DISKFLAG_WANTED) {
@@ -222,7 +277,7 @@ diskclose(dev_t dev, int fflag, int devtype, struct thread *td)
 		return (ENXIO);
 	dsclose(dev, devtype, dp->d_slice);
 	if (!dsisopen(dp->d_slice))
-		error = dp->d_devsw->d_close(dp->d_dev, fflag, devtype, td);
+		error = dev_port_dclose(dp->d_fwdport, pdev, fflag, devtype, td);
 	return (error);
 }
 
@@ -248,12 +303,13 @@ diskstrategy(struct buf *bp)
 		biodone(bp);
 		return;
 	}
-
-	dp->d_devsw->d_strategy(bp);
-	return;
-	
+	dev_port_dstrategy(dp->d_fwdport, dp->d_dev, bp);
 }
 
+/*
+ * note: when forwarding the ioctl we use the original device rather then
+ * the whole disk slice.
+ */
 static int
 diskioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 {
@@ -267,7 +323,7 @@ diskioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 		return (ENXIO);
 	error = dsioctl(dev, cmd, data, fflag, &dp->d_slice);
 	if (error == ENOIOCTL)
-		error = dp->d_devsw->d_ioctl(dev, cmd, data, fflag, td);
+		error = dev_port_dioctl(dp->d_fwdport, dev, cmd, data, fflag, td);
 	return (error);
 }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.6 2003/07/21 05:50:27 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.7 2003/07/22 17:03:27 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -71,7 +71,6 @@ static struct cdevsw ar_cdevsw = {
 	/* dump */	nodump,
 	/* psize */	nopsize
 };  
-static struct cdevsw ardisk_cdevsw;
 
 /* prototypes */
 static void ar_attach_raid(struct ar_softc *, int);
@@ -188,7 +187,7 @@ ar_attach_raid(struct ar_softc *rdp, int update)
     int disk;
 
     ar_config_changed(rdp, update);
-    dev = disk_create(rdp->lun, &rdp->disk, 0, &ar_cdevsw, &ardisk_cdevsw);
+    dev = disk_create(rdp->lun, &rdp->disk, 0, &ar_cdevsw);
     dev->si_drv1 = rdp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     rdp->dev = dev;
@@ -410,7 +409,7 @@ ata_raid_delete(int array)
     else
 	ar_highpoint_write_conf(rdp);
     disk_invalidate(&rdp->disk);
-    disk_destroy(rdp->dev);
+    disk_destroy(&rdp->disk);
     free(rdp, M_AR);
     ar_table[array] = NULL;
     return 0;

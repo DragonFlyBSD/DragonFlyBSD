@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/tga/tga_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.3 2003/07/21 05:50:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.4 2003/07/22 17:03:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -192,8 +192,8 @@ tga_attach(device_t dev)
 		break;
 	}
 #ifdef FB_INSTALL_CDEV
-	sc->cdevsw = &tga_cdevsw;
-	sc->devt = make_dev(sc->cdevsw, unit, 0, 0, 02660, "tga%x", unit);
+	sc->devt = make_dev(&tga_cdevsw, unit, 0, 0, 02660, "tga%x", unit);
+	/* XXX fb_attach done too early in pcigfb_attach? */
 #endif /*FB_INSTALL_CDEV*/
 	goto done;
 fail:

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vgareg.h,v 1.4 1999/12/29 04:35:37 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/vgareg.h,v 1.3 2003/07/21 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vgareg.h,v 1.4 2003/07/22 17:03:28 dillon Exp $
  */
 
 #ifndef _DEV_FB_VGAREG_H_
@@ -72,6 +72,7 @@ typedef struct vga_softc {
 	struct video_adapter	*adp;
 #ifdef FB_INSTALL_CDEV
 	genfb_softc_t		gensc;
+	dev_t			devt;
 #endif
 } vga_softc_t;
 

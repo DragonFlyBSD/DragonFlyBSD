@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.3 2003/07/22 17:03:34 dillon Exp $
  *
  */
 
@@ -16,16 +16,21 @@
 
 #ifndef _SYS_DISKSLICE_H_
 #include <sys/diskslice.h>
-#endif /* _SYS_DISKSLICE_H_ */
+#endif
 
 #ifndef _SYS_DISKLABEL
 #include <sys/disklabel.h>
-#endif /* _SYS_DISKLABEL */
+#endif
+
+#ifndef _SYS_DISKLABEL
+#include <sys/msgport.h>
+#endif
 
 struct disk {
+	struct lwkt_port	d_port;		/* interception port */
+	struct lwkt_port	*d_fwdport;	/* forward to real port */
 	u_int			d_flags;
 	u_int			d_dsflags;
-	struct cdevsw		*d_devsw;
 	dev_t			d_dev;
 	struct diskslices	*d_slice;
 	struct disklabel	d_label;
@@ -35,8 +40,8 @@ struct disk {
 #define DISKFLAG_LOCK		0x1
 #define DISKFLAG_WANTED		0x2
 
-dev_t disk_create __P((int unit, struct disk *disk, int flags, struct cdevsw *cdevsw, struct cdevsw *diskdevsw));
-void disk_destroy __P((dev_t dev));
+dev_t disk_create __P((int unit, struct disk *disk, int flags, struct cdevsw *cdevsw));
+void disk_destroy __P((struct disk *disk));
 int disk_dumpcheck __P((dev_t dev, u_int *count, u_int *blkno, u_int *secsize));
 struct disk *disk_enumerate __P((struct disk *disk));
 void disk_invalidate __P((struct disk *disk));

@@ -37,13 +37,14 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.3 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.4 2003/07/22 17:03:35 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/mman.h>
+#include <sys/device.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -94,7 +95,6 @@ static vm_object_t
 dev_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t foff)
 {
 	dev_t dev;
-	d_mmap_t *mapfunc;
 	vm_object_t object;
 	unsigned int npages;
 	vm_offset_t off;
@@ -103,11 +103,6 @@ dev_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t fo
 	 * Make sure this device can be mapped.
 	 */
 	dev = handle;
-	mapfunc = devsw(dev)->d_mmap;
-	if (mapfunc == NULL || mapfunc == (d_mmap_t *)nullop) {
-		printf("obsolete map function %p\n", (void *)mapfunc);
-		return (NULL);
-	}
 
 	/*
 	 * Offset should be page aligned.
@@ -124,9 +119,10 @@ dev_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t fo
 	 * XXX assumes VM_PROT_* == PROT_*
 	 */
 	npages = OFF_TO_IDX(size);
-	for (off = foff; npages--; off += PAGE_SIZE)
-		if ((*mapfunc) (dev, off, (int) prot) == -1)
+	for (off = foff; npages--; off += PAGE_SIZE) {
+		if (dev_dmmap(dev, off, (int)prot) == -1)
 			return (NULL);
+	}
 
 	/*
 	 * Lock to prevent object creation race condition.
@@ -195,18 +191,13 @@ dev_pager_getpages(object, m, count, reqpage)
 	vm_page_t page;
 	dev_t dev;
 	int i, s;
-	d_mmap_t *mapfunc;
 	int prot;
 
 	dev = object->handle;
 	offset = m[reqpage]->pindex;
 	prot = PROT_READ;	/* XXX should pass in? */
-	mapfunc = devsw(dev)->d_mmap;
 
-	if (mapfunc == NULL || mapfunc == (d_mmap_t *)nullop)
-		panic("dev_pager_getpage: no map function");
-
-	paddr = pmap_phys_address((*mapfunc) (dev, (vm_offset_t) offset << PAGE_SHIFT, prot));
+	paddr = pmap_phys_address(dev_dmmap(dev, (vm_offset_t) offset << PAGE_SHIFT, prot));
 	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
 	/*
 	 * Replace the passed in reqpage page with our own fake page and free up the

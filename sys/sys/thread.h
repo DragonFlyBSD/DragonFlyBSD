@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.25 2003/07/20 01:37:22 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.26 2003/07/22 17:03:34 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -37,7 +37,6 @@ typedef struct lwkt_ipiq	*lwkt_ipiq_t;
 typedef struct thread 		*thread_t;
 
 typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
-typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
 
 #ifndef _MACHINE_THREAD_H_
 #include <machine/thread.h>		/* md_thread */

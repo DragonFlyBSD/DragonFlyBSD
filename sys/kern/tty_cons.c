@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.6 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -52,6 +52,9 @@
 #include <sys/sysctl.h>
 #include <sys/tty.h>
 #include <sys/uio.h>
+#include <sys/msgport.h>
+#include <sys/msgport2.h>
+#include <sys/device.h>
 
 #include <ddb/ddb.h>
 
@@ -64,6 +67,7 @@ static	d_write_t	cnwrite;
 static	d_ioctl_t	cnioctl;
 static	d_poll_t	cnpoll;
 static	d_kqfilter_t	cnkqfilter;
+static int console_putport(lwkt_port_t port, lwkt_msg_t lmsg);
 
 #define	CDEV_MAJOR	0
 static struct cdevsw cn_cdevsw = {
@@ -102,12 +106,14 @@ static u_char cn_is_open;		/* nonzero if logical console is open */
 static int openmode, openflag;		/* how /dev/console was openned */
 static dev_t cn_devfsdev;		/* represents the device private info */
 static u_char cn_phys_is_open;		/* nonzero if physical device is open */
-static d_close_t *cn_phys_close;	/* physical device close function */
-static d_open_t *cn_phys_open;		/* physical device open function */
        struct consdev *cn_tab;		/* physical console device info */
 static u_char console_pausing;		/* pause after each line during probe */
 static char *console_pausestr=
 "<pause; press any key to proceed to next line or '.' to end pause mode>";
+
+static lwkt_port_t	cn_fwd_port;
+static struct lwkt_port	cn_port;
+
 
 CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
@@ -115,6 +121,12 @@ void
 cninit()
 {
 	struct consdev *best_cp, *cp, **list;
+
+	/*
+	 * Our port intercept
+	 */
+	lwkt_init_port(&cn_port, NULL);
+	cn_port.mp_beginmsg = console_putport;
 
 	/*
 	 * Find the first console with the highest priority.
@@ -170,21 +182,14 @@ cninit()
 void
 cninit_finish()
 {
-	struct cdevsw *cdp;
-
 	if ((cn_tab == NULL) || cn_mute)
 		return;
 
 	/*
 	 * Hook the open and close functions.
 	 */
-	cdp = devsw(cn_tab->cn_dev);
-	if (cdp != NULL) {
-		cn_phys_close = cdp->d_close;
-		cdp->d_close = cnclose;
-		cn_phys_open = cdp->d_open;
-		cdp->d_open = cnopen;
-	}
+	if (dev_dport(cn_tab->cn_dev))
+		cn_fwd_port = cdevsw_dev_override(cn_tab->cn_dev, &cn_port);
 	cn_dev_t = cn_tab->cn_dev;
 	cn_udev_t = dev2udev(cn_dev_t);
 	console_pausing = 0;
@@ -193,21 +198,14 @@ cninit_finish()
 static void
 cnuninit(void)
 {
-	struct cdevsw *cdp;
-
 	if (cn_tab == NULL)
 		return;
 
 	/*
 	 * Unhook the open and close functions.
 	 */
-	cdp = devsw(cn_tab->cn_dev);
-	if (cdp != NULL) {
-		cdp->d_close = cn_phys_close;
-		cdp->d_open = cn_phys_open;
-	}
-	cn_phys_close = NULL;
-	cn_phys_open = NULL;
+	cdevsw_dev_override(cn_tab->cn_dev, NULL);
+	cn_fwd_port = NULL;
 	cn_dev_t = NODEV;
 	cn_udev_t = NOUDEV;
 }
@@ -261,6 +259,36 @@ SYSCTL_PROC(_kern, OID_AUTO, consmute, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof cn_mute, sysctl_kern_consmute, "I", "");
 
 static int
+console_putport(lwkt_port_t port, lwkt_msg_t lmsg)
+{
+	cdevallmsg_t msg = (cdevallmsg_t)lmsg;
+	int error;
+
+	switch(msg->am_lmsg.ms_cmd) {
+	case CDEV_CMD_OPEN:
+		error = cnopen(
+			    msg->am_open.msg.dev,
+			    msg->am_open.oflags,
+			    msg->am_open.devtype,
+			    msg->am_open.td
+			);
+		break;
+	case CDEV_CMD_CLOSE:
+		error = cnclose(
+			    msg->am_close.msg.dev,
+			    msg->am_close.fflag,
+			    msg->am_close.devtype,
+			    msg->am_close.td
+			);
+		break;
+	default:
+		 error = lwkt_forwardmsg(cn_fwd_port, &msg->am_lmsg);
+		 break;
+	}
+	return(error);
+}
+
+static int
 cnopen(dev, flag, mode, td)
 	dev_t dev;
 	int flag, mode;
@@ -269,7 +297,7 @@ cnopen(dev, flag, mode, td)
 	dev_t cndev, physdev;
 	int retval = 0;
 
-	if (cn_tab == NULL || cn_phys_open == NULL)
+	if (cn_tab == NULL || cn_fwd_port == NULL)
 		return (0);
 	cndev = cn_tab->cn_dev;
 	physdev = (major(dev) == major(cndev) ? dev : cndev);
@@ -279,7 +307,7 @@ cnopen(dev, flag, mode, td)
 	 * bypass this and go straight to the device.
 	 */
 	if(!cn_mute)
-		retval = (*cn_phys_open)(physdev, flag, mode, td);
+		retval = dev_port_dopen(cn_fwd_port, physdev, flag, mode, td);
 	if (retval == 0) {
 		/* 
 		 * check if we openned it via /dev/console or 
@@ -306,7 +334,7 @@ cnclose(dev, flag, mode, td)
 	dev_t cndev;
 	struct tty *cn_tp;
 
-	if (cn_tab == NULL || cn_phys_open == NULL)
+	if (cn_tab == NULL || cn_fwd_port == NULL)
 		return (0);
 	cndev = cn_tab->cn_dev;
 	cn_tp = cndev->si_tty;
@@ -335,8 +363,8 @@ cnclose(dev, flag, mode, td)
 			return (0);
 		dev = cndev;
 	}
-	if(cn_phys_close)
-		return ((*cn_phys_close)(dev, flag, mode, td));
+	if (cn_fwd_port)
+		return (dev_port_dclose(cn_fwd_port, dev, flag, mode, td));
 	return (0);
 }
 
@@ -347,10 +375,10 @@ cnread(dev, uio, flag)
 	int flag;
 {
 
-	if (cn_tab == NULL || cn_phys_open == NULL)
+	if (cn_tab == NULL || cn_fwd_port == NULL)
 		return (0);
 	dev = cn_tab->cn_dev;
-	return ((*devsw(dev)->d_read)(dev, uio, flag));
+	return (dev_port_dread(cn_fwd_port, dev, uio, flag));
 }
 
 static int
@@ -360,7 +388,7 @@ cnwrite(dev, uio, flag)
 	int flag;
 {
 
-	if (cn_tab == NULL || cn_phys_open == NULL) {
+	if (cn_tab == NULL || cn_fwd_port == NULL) {
 		uio->uio_resid = 0; /* dump the data */
 		return (0);
 	}
@@ -369,7 +397,7 @@ cnwrite(dev, uio, flag)
 	else
 		dev = cn_tab->cn_dev;
 	log_console(uio);
-	return ((*devsw(dev)->d_write)(dev, uio, flag));
+	return (dev_port_dwrite(cn_fwd_port, dev, uio, flag));
 }
 
 static int
@@ -382,7 +410,7 @@ cnioctl(dev, cmd, data, flag, td)
 {
 	int error;
 
-	if (cn_tab == NULL || cn_phys_open == NULL)
+	if (cn_tab == NULL || cn_fwd_port == NULL)
 		return (0);
 	KKASSERT(td->td_proc != NULL);
 	/*
@@ -397,7 +425,7 @@ cnioctl(dev, cmd, data, flag, td)
 		return (0);
 	}
 	dev = cn_tab->cn_dev;
-	return ((*devsw(dev)->d_ioctl)(dev, cmd, data, flag, td));
+	return (dev_port_dioctl(cn_fwd_port, dev, cmd, data, flag, td));
 }
 
 static int
@@ -406,12 +434,12 @@ cnpoll(dev, events, td)
 	int events;
 	struct thread *td;
 {
-	if ((cn_tab == NULL) || cn_mute)
+	if ((cn_tab == NULL) || cn_mute || cn_fwd_port == NULL)
 		return (1);
 
 	dev = cn_tab->cn_dev;
 
-	return ((*devsw(dev)->d_poll)(dev, events, td));
+	return (dev_port_dpoll(cn_fwd_port, dev, events, td));
 }
 
 static int
@@ -419,13 +447,11 @@ cnkqfilter(dev, kn)
 	dev_t dev;
 	struct knote *kn;
 {
-	if ((cn_tab == NULL) || cn_mute)
+	if ((cn_tab == NULL) || cn_mute || cn_fwd_port == NULL)
 		return (1);
 
 	dev = cn_tab->cn_dev;
-	if (devsw(dev)->d_flags & D_KQFILTER)
-		return ((*devsw(dev)->d_kqfilter)(dev, kn));
-	return (1);
+	return (dev_port_dkqfilter(cn_fwd_port, dev, kn));
 }
 
 int

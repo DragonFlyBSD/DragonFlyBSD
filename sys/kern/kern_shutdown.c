@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.8 2003/07/04 00:32:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.9 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -61,6 +61,7 @@
 #include <sys/sysctl.h>
 #include <sys/conf.h>
 #include <sys/sysproto.h>
+#include <sys/device.h>
 #include <sys/cons.h>
 #include <sys/buf2.h>
 
@@ -416,13 +417,9 @@ setdumpdev(dev)
 		dumpdev = dev;
 		return (0);
 	}
-	if (devsw(dev) == NULL)
-		return (ENXIO);		/* XXX is this right? */
-	if (devsw(dev)->d_psize == NULL)
-		return (ENXIO);		/* XXX should be ENODEV ? */
-	psize = devsw(dev)->d_psize(dev);
+	psize = dev_dpsize(dev);
 	if (psize == -1)
-		return (ENXIO);		/* XXX should be ENODEV ? */
+		return (ENXIO);
 	/*
 	 * XXX should clean up checking in dumpsys() to be more like this.
 	 */
@@ -492,20 +489,17 @@ dumpsys(void)
 		return;
 	if (dumpdev == NODEV)
 		return;
-	if (!(devsw(dumpdev)))
-		return;
-	if (!(devsw(dumpdev)->d_dump))
-		return;
 	dumpsize = Maxmem;
 	printf("\ndumping to dev %s, offset %ld\n", devtoname(dumpdev), dumplo);
 	printf("dump ");
-	error = (*devsw(dumpdev)->d_dump)(dumpdev);
+	error = dev_ddump(dumpdev);
 	if (error == 0) {
 		printf("succeeded\n");
 		return;
 	}
 	printf("failed, reason: ");
 	switch (error) {
+	case ENOSYS:
 	case ENODEV:
 		printf("device doesn't support a dump routine\n");
 		break;

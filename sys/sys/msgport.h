@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.1 2003/07/20 01:37:22 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.2 2003/07/22 17:03:34 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -15,9 +15,12 @@
 
 struct lwkt_msg;
 struct lwkt_port;
+struct thread;
 
 typedef struct lwkt_msg		*lwkt_msg_t;
 typedef struct lwkt_port	*lwkt_port_t;
+
+typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
 
 /*
  * The standard message and port structure for communications between
@@ -39,10 +42,15 @@ typedef struct lwkt_msg {
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_ASYNC	0x0008		/* sync/async hint */
 
+#define MSG_CMD_CDEV	0x00010000
+#define MSG_CMD_VFS	0x00020000
+#define MSG_CMD_SYSCALL	0x00030000
+#define MSG_SUBCMD_MASK	0x0000FFFF
+
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
     int			mp_flags;
-    thread_t		mp_td;
+    struct thread	*mp_td;
     int			(*mp_beginmsg)(lwkt_port_t port, lwkt_msg_t msg);
     void		(*mp_abortmsg)(lwkt_port_t port, lwkt_msg_t msg);
     void		(*mp_returnmsg)(lwkt_port_t port, lwkt_msg_t msg);
@@ -52,7 +60,7 @@ typedef struct lwkt_port {
 
 #ifdef _KERNEL
 
-extern void lwkt_init_port(lwkt_port_t port, thread_t td);
+extern void lwkt_init_port(lwkt_port_t port, struct thread *td);
 extern void lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg);
 extern int lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg);
 extern int lwkt_waitmsg(lwkt_msg_t msg);

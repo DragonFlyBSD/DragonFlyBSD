@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.3 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.4 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,11 +43,10 @@
 #include <sys/conf.h>
 #include <sys/vnode.h>
 #include <sys/queue.h>
+#include <sys/device.h>
 #include <machine/stdarg.h>
 
 #define cdevsw_ALLOCSTART	(NUMCDEVSW/2)
-
-static struct cdevsw 	*cdevsw[NUMCDEVSW];
 
 MALLOC_DEFINE(M_DEVT, "dev_t", "dev_t storage");
 
@@ -69,87 +68,6 @@ static LIST_HEAD(, specinfo) dev_free;
 
 static int free_devt;
 SYSCTL_INT(_debug, OID_AUTO, free_devt, CTLFLAG_RW, &free_devt, 0, "");
-
-struct cdevsw *
-devsw(dev_t dev)
-{
-	if (dev->si_devsw)
-		return (dev->si_devsw);
-        return(cdevsw[major(dev)]);
-}
-
-static void
-compile_devsw(struct cdevsw *devsw)
-{
-	static lwkt_port devsw_compat_port;
-
-	/* YYY init devsw_compat_port */
-	
-	if (devsw->d_open == NULL)
-		devsw->d_open = noopen;
-	if (devsw->d_close == NULL)
-		devsw->d_close = noclose;
-	if (devsw->d_read == NULL)
-		devsw->d_read = noread;
-	if (devsw->d_write == NULL)
-		devsw->d_write = nowrite;
-	if (devsw->d_ioctl == NULL)
-		devsw->d_ioctl = noioctl;
-	if (devsw->d_poll == NULL)
-		devsw->d_poll = nopoll;
-	if (devsw->d_mmap == NULL)
-		devsw->d_mmap = nommap;
-	if (devsw->d_strategy == NULL)
-		devsw->d_strategy = nostrategy;
-	if (devsw->d_dump == NULL)
-		devsw->d_dump = nodump;
-	if (devsw->d_psize == NULL)
-		devsw->d_psize = nopsize;
-	if (devsw->d_kqfilter == NULL)
-		devsw->d_kqfilter = nokqfilter;
-	if (devsw->d_port == NULL)
-		devsw->d_port = &devsw_compat_port;
-}
-
-/*
- *  Add a cdevsw entry
- */
-
-int
-cdevsw_add(struct cdevsw *newentry)
-{
-	compile_devsw(newentry);
-	if (newentry->d_maj < 0 || newentry->d_maj >= NUMCDEVSW) {
-		printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
-		    newentry->d_name, newentry->d_maj);
-		return (EINVAL);
-	}
-	if (cdevsw[newentry->d_maj]) {
-		printf("WARNING: \"%s\" is usurping \"%s\"'s cdevsw[]\n",
-		    newentry->d_name, cdevsw[newentry->d_maj]->d_name);
-	}
-
-	cdevsw[newentry->d_maj] = newentry;
-	return (0);
-}
-
-/*
- *  Remove a cdevsw entry
- */
-
-int
-cdevsw_remove(struct cdevsw *oldentry)
-{
-	if (oldentry->d_maj < 0 || oldentry->d_maj >= NUMCDEVSW) {
-		printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
-		    oldentry->d_name, oldentry->d_maj);
-		return EINVAL;
-	}
-
-	cdevsw[oldentry->d_maj] = NULL;
-
-	return 0;
-}
 
 /*
  * dev_t and u_dev_t primitives
@@ -309,21 +227,25 @@ destroy_dev(dev_t dev)
 const char *
 devtoname(dev_t dev)
 {
-	char *p;
 	int mynor;
+	int len;
+	char *p;
+	const char *dname;
 
 	if (dev->si_name[0] == '#' || dev->si_name[0] == '\0') {
 		p = dev->si_name;
-		if (devsw(dev))
-			sprintf(p, "#%s/", devsw(dev)->d_name);
+		len = sizeof(dev->si_name);
+		if ((dname = dev_dname(dev)) != NULL)
+			snprintf(p, len, "#%s/", dname);
 		else
-			sprintf(p, "#%d/", major(dev));
+			snprintf(p, len, "#%d/", major(dev));
+		len -= strlen(p);
 		p += strlen(p);
 		mynor = minor(dev);
 		if (mynor < 0 || mynor > 255)
-			sprintf(p, "%#x", (u_int)mynor);
+			snprintf(p, len, "%#x", (u_int)mynor);
 		else
-			sprintf(p, "%d", mynor);
+			snprintf(p, len, "%d", mynor);
 	}
 	return (dev->si_name);
 }

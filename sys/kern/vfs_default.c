@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.6 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.7 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -529,7 +529,7 @@ retry:
 			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
 				goto retn;
 			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
-		} else if (devsw(vp->v_rdev) != NULL) {
+		} else if (dev_dport(vp->v_rdev) != NULL) {
 			/*
 			 * This simply allocates the biggest object possible
 			 * for a disk vnode.  This should be fixed, but doesn't

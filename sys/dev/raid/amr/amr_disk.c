@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.3 2003/07/21 05:50:26 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.4 2003/07/22 17:03:27 dillon Exp $
  */
 
 /*
@@ -111,10 +111,6 @@ static struct cdevsw amrd_cdevsw = {
 };
 
 static devclass_t	amrd_devclass;
-static struct cdevsw	amrddisk_cdevsw;
-#ifdef FREEBSD_4
-static int		disks_registered = 0;
-#endif
 
 static device_method_t amrd_methods[] = {
     DEVMETHOD(device_probe,	amrd_probe),
@@ -273,11 +269,8 @@ amrd_attach(device_t dev)
 		      DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER, 
 		      DEVSTAT_PRIORITY_ARRAY);
 
-    sc->amrd_dev_t = disk_create(sc->amrd_unit, &sc->amrd_disk, 0, &amrd_cdevsw, &amrddisk_cdevsw);
+    sc->amrd_dev_t = disk_create(sc->amrd_unit, &sc->amrd_disk, 0, &amrd_cdevsw);
     sc->amrd_dev_t->si_drv1 = sc;
-#ifdef FREEBSD_4
-    disks_registered++;
-#endif
 
     /* set maximum I/O size to match the maximum s/g size */
     sc->amrd_dev_t->si_iosize_max = (AMR_NSEG - 1) * PAGE_SIZE;
@@ -296,12 +289,7 @@ amrd_detach(device_t dev)
 	return(EBUSY);
 
     devstat_remove_entry(&sc->amrd_stats);
-#ifdef FREEBSD_4
-    if (--disks_registered == 0)
-	cdevsw_remove(&amrddisk_cdevsw);
-#else
-    disk_destroy(sc->amrd_dev_t);
-#endif
+    disk_destroy(&sc->amrd_disk);
     return(0);
 }
 

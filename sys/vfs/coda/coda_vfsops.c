@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.5 2003/06/26 05:55:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.6 2003/07/22 17:03:23 dillon Exp $
  * 
  */
 
@@ -155,6 +155,7 @@ coda_mount(vfsp, path, data, ndp, td)
     vrele(dvp);
     NDFREE(ndp, NDF_ONLY_PNBUF);
 
+#if 0	/* YYY huh? what paranoia is this? */
     /*
      * See if the device table matches our expectations.
      */
@@ -163,6 +164,7 @@ coda_mount(vfsp, path, data, ndp, td)
 	MARK_INT_FAIL(CODA_MOUNT_STATS);
 	return(ENXIO);
     }
+#endif
     
     if (minor(dev) >= NVCODA || minor(dev) < 0) {
 	MARK_INT_FAIL(CODA_MOUNT_STATS);

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.1 2003/07/20 01:37:22 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.2 2003/07/22 17:03:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,6 +86,7 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
     msg->ms_flags |= MSGF_ASYNC;
     msg->ms_flags &= ~(MSGF_REPLY | MSGF_QUEUED);
     msg->ms_reply_port = &curthread->td_msgport;
+    msg->ms_abortreq = 0;
     if ((error = lwkt_beginmsg(port, msg)) != EINPROGRESS) {
 	lwkt_replymsg(msg, error);
     }
@@ -114,6 +115,7 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
 
     msg->ms_flags &= ~(MSGF_ASYNC | MSGF_REPLY | MSGF_QUEUED);
     msg->ms_reply_port = &curthread->td_msgport;
+    msg->ms_abortreq = 0;
     if ((error = lwkt_beginmsg(port, msg)) == EINPROGRESS) {
 	error = lwkt_waitmsg(msg);
     }
@@ -282,7 +284,9 @@ lwkt_putport_remote(lwkt_msg_t msg)
 int
 lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
 {
+    crit_enter();
     _lwkt_putport(port, msg);
+    crit_exit();
     return(EINPROGRESS);
 }
 
@@ -337,7 +341,9 @@ void
 lwkt_abortport(lwkt_port_t port, lwkt_msg_t msg)
 {
     msg->ms_abortreq = 1;
+    crit_enter();
     _lwkt_abortport(port);
+    crit_exit();
 }
 
 /*

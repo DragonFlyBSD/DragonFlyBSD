@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic
  *
  * $FreeBSD: src/sys/dev/fb/gfb.h,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/gfb.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.h,v 1.3 2003/07/22 17:03:28 dillon Exp $
  */
 
 #ifndef _FB_GFB_H_
@@ -166,7 +166,6 @@ typedef struct gfb_softc {
 	u_int8_t rev;                   /* GFB revision */
 	int type;
 	int model;
-	struct cdevsw *cdevsw;
 	dev_t devt;
 } *gfb_softc_t;
 

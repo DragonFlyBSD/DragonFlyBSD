@@ -37,14 +37,21 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.5 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.6 2003/07/22 17:03:34 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
 #define	_SYS_BUF_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
+#endif
+#ifndef _SYS_DEVICE_H_
+#include <sys/device.h>
+#endif
 
 struct buf;
 struct mount;

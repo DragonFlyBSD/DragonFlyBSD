@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.4 2003/07/21 05:50:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.5 2003/07/22 17:03:29 dillon Exp $
  */
 
 /*
@@ -91,8 +91,6 @@ static struct cdevsw id_cdevsw = {
 };
 
 static devclass_t	idad_devclass;
-static struct cdevsw 	idaddisk_cdevsw;
-static int		disks_registered = 0;
 
 static device_method_t idad_methods[] = {
 	DEVMETHOD(device_probe,		idad_probe),
@@ -312,12 +310,10 @@ idad_attach(device_t dev)
 	    DEVSTAT_TYPE_STORARRAY| DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_ARRAY);
 
-	dsk = disk_create(drv->unit, &drv->disk, 0,
-	    &id_cdevsw, &idaddisk_cdevsw);
+	dsk = disk_create(drv->unit, &drv->disk, 0, &id_cdevsw);
 
 	dsk->si_drv1 = drv;
 	dsk->si_iosize_max = DFLTPHYS;		/* XXX guess? */
-	disks_registered++;
 
 	return (0);
 }
@@ -329,8 +325,6 @@ idad_detach(device_t dev)
 
 	drv = (struct idad_softc *)device_get_softc(dev);
 	devstat_remove_entry(&drv->stats);
-
-	if (--disks_registered == 0)
-		cdevsw_remove(&idaddisk_cdevsw);
+	disk_destroy(&drv->disk);
 	return (0);
 }

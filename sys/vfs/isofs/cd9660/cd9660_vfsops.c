@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.6 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.7 2003/07/22 17:03:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,22 +115,16 @@ iso_get_ssector(dev_t dev, struct thread *td)
 	struct ioc_toc_header h;
 	struct ioc_read_toc_single_entry t;
 	int i;
-	struct cdevsw *bd;
-	d_ioctl_t *ioctlp;
 
-	bd = devsw(dev);
-	ioctlp = bd->d_ioctl;
-	if (ioctlp == NULL)
-		return 0;
-
-	if (ioctlp(dev, CDIOREADTOCHEADER, (caddr_t)&h, FREAD, td) != 0)
+	if (dev_dioctl(dev, CDIOREADTOCHEADER, (caddr_t)&h, FREAD, td) != 0)
 		return 0;
 
 	for (i = h.ending_track; i >= 0; i--) {
 		t.address_format = CD_LBA_FORMAT;
 		t.track = i;
-		if (ioctlp(dev, CDIOREADTOCENTRY, (caddr_t)&t, FREAD, td) != 0)
+		if (dev_dioctl(dev, CDIOREADTOCENTRY, (caddr_t)&t, FREAD, td) != 0) {
 			return 0;
+		}
 		if ((t.entry.control & 4) != 0)
 			/* found a data track */
 			break;

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.13 2003/07/22 05:04:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.14 2003/07/22 17:03:33 dillon Exp $
  */
 
 /*
@@ -3096,12 +3096,12 @@ vn_isdisk(vp, errp)
 			*errp = ENXIO;
 		return (0);
 	}
-	if (!devsw(vp->v_rdev)) {
+	if (!dev_dport(vp->v_rdev)) {
 		if (errp != NULL)
 			*errp = ENXIO;
 		return (0);
 	}
-	if (!(devsw(vp->v_rdev)->d_flags & D_DISK)) {
+	if (!(dev_dflags(vp->v_rdev) & D_DISK)) {
 		if (errp != NULL)
 			*errp = ENOTBLK;
 		return (0);

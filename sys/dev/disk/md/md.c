@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.5 2003/07/21 05:50:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.6 2003/07/22 17:03:30 dillon Exp $
  *
  */
 
@@ -83,8 +83,6 @@ static struct cdevsw md_cdevsw = {
         /* dump */      nodump,
         /* psize */     nopsize,
 };
-
-static struct cdevsw mddisk_cdevsw;
 
 struct md_s {
 	int unit;
@@ -356,7 +354,7 @@ mdcreate(void)
 		DEVSTAT_NO_ORDERED_TAGS, 
 		DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 		DEVSTAT_PRIORITY_OTHER);
-	sc->dev = disk_create(sc->unit, &sc->disk, 0, &md_cdevsw, &mddisk_cdevsw);
+	sc->dev = disk_create(sc->unit, &sc->disk, 0, &md_cdevsw);
 	sc->dev->si_drv1 = sc;
 	return (sc);
 }

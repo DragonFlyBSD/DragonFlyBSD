@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.4 2003/07/21 05:50:47 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.5 2003/07/22 17:03:34 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -123,30 +123,29 @@ struct thread;
 struct lwkt_port;
 
 typedef struct thread d_thread_t;
-typedef int d_open_t __P((dev_t dev, int oflags, int devtype, d_thread_t *td));
-typedef int d_close_t __P((dev_t dev, int fflag, int devtype, d_thread_t *td));
-typedef void d_strategy_t __P((struct buf *bp));
-typedef int d_parms_t __P((dev_t dev, struct specinfo *sinfo, int ctl));
-typedef int d_ioctl_t __P((dev_t dev, u_long cmd, caddr_t data,
-			   int fflag, d_thread_t *td));
-typedef int d_dump_t __P((dev_t dev));
-typedef int d_psize_t __P((dev_t dev));
+typedef int d_open_t (dev_t dev, int oflags, int devtype, d_thread_t *td);
+typedef int d_close_t (dev_t dev, int fflag, int devtype, d_thread_t *td);
+typedef void d_strategy_t (struct buf *bp);
+typedef int d_ioctl_t (dev_t dev, u_long cmd, caddr_t data,
+			   int fflag, d_thread_t *td);
+typedef int d_dump_t (dev_t dev);
+typedef int d_psize_t (dev_t dev);
 
-typedef int d_read_t __P((dev_t dev, struct uio *uio, int ioflag));
-typedef int d_write_t __P((dev_t dev, struct uio *uio, int ioflag));
-typedef int d_poll_t __P((dev_t dev, int events, d_thread_t *td));
-typedef int d_kqfilter_t __P((dev_t dev, struct knote *kn));
-typedef int d_mmap_t __P((dev_t dev, vm_offset_t offset, int nprot));
+typedef int d_read_t (dev_t dev, struct uio *uio, int ioflag);
+typedef int d_write_t (dev_t dev, struct uio *uio, int ioflag);
+typedef int d_poll_t (dev_t dev, int events, d_thread_t *td);
+typedef int d_kqfilter_t (dev_t dev, struct knote *kn);
+typedef int d_mmap_t (dev_t dev, vm_offset_t offset, int nprot);
 
-typedef int l_open_t __P((dev_t dev, struct tty *tp));
-typedef int l_close_t __P((struct tty *tp, int flag));
-typedef int l_read_t __P((struct tty *tp, struct uio *uio, int flag));
-typedef int l_write_t __P((struct tty *tp, struct uio *uio, int flag));
-typedef int l_ioctl_t __P((struct tty *tp, u_long cmd, caddr_t data,
-			   int flag, d_thread_t *td));
-typedef int l_rint_t __P((int c, struct tty *tp));
-typedef int l_start_t __P((struct tty *tp));
-typedef int l_modem_t __P((struct tty *tp, int flag));
+typedef int l_open_t (dev_t dev, struct tty *tp);
+typedef int l_close_t (struct tty *tp, int flag);
+typedef int l_read_t (struct tty *tp, struct uio *uio, int flag);
+typedef int l_write_t (struct tty *tp, struct uio *uio, int flag);
+typedef int l_ioctl_t (struct tty *tp, u_long cmd, caddr_t data,
+			   int flag, d_thread_t *td);
+typedef int l_rint_t (int c, struct tty *tp);
+typedef int l_start_t (struct tty *tp);
+typedef int l_modem_t (struct tty *tp, int flag);
 
 /*
  * XXX: The dummy argument can be used to do what strategy1() never
@@ -156,7 +155,7 @@ typedef int l_modem_t __P((struct tty *tp, int flag));
  * of surgery, reset the flag and restart all the stuff on the stall
  * queue.
  */
-#define BUF_STRATEGY(bp, dummy) (*devsw((bp)->b_dev)->d_strategy)(bp)
+#define BUF_STRATEGY(bp, dummy) dev_dstrategy((bp)->b_dev, bp)
 /*
  * Types for d_flags.
  */
@@ -174,6 +173,7 @@ typedef int l_modem_t __P((struct tty *tp, int flag));
 #define	D_NAGGED	0x00020000	/* nagged about missing make_dev() */
 #define	D_CANFREE	0x00040000	/* can free blocks */
 #define	D_TRACKCLOSE	0x00080000	/* track all closes */
+#define D_MASTER	0x00100000	/* used by pty/tty code */
 #define	D_KQFILTER	0x00200000	/* has kqfilter entry */
 
 /*
@@ -183,24 +183,24 @@ struct cdevsw {
 	const char	*d_name;	/* base device name, e.g. 'vn' */
 	int		d_maj;		/* major (char) device number */
 	u_int		d_flags;	/* D_ flags */
-	struct lwkt_port *d_port;
+	struct lwkt_port *d_port;	/* port (template only) */
 	u_int		d_autoq;	/* thread safe (old style) vec mask */
 
 	/*
 	 * Old style vectors are used only if d_port is NULL when the cdevsw
-	 * is added to the system.
+	 * is added to the system.   They have been renamed to prevent misuse.
 	 */
-	d_open_t	*d_open;
-	d_close_t	*d_close;
-	d_read_t	*d_read;
-	d_write_t	*d_write;
-	d_ioctl_t	*d_ioctl;
-	d_poll_t	*d_poll;
-	d_mmap_t	*d_mmap;
-	d_strategy_t	*d_strategy;
-	d_dump_t	*d_dump;
-	d_psize_t	*d_psize;
-	d_kqfilter_t	*d_kqfilter;
+	d_open_t	*old_open;
+	d_close_t	*old_close;
+	d_read_t	*old_read;
+	d_write_t	*old_write;
+	d_ioctl_t	*old_ioctl;
+	d_poll_t	*old_poll;
+	d_mmap_t	*old_mmap;
+	d_strategy_t	*old_strategy;
+	d_dump_t	*old_dump;
+	d_psize_t	*old_psize;
+	d_kqfilter_t	*old_kqfilter;
 };
 
 /*
@@ -222,8 +222,8 @@ struct linesw {
 extern struct linesw linesw[];
 extern int nlinesw;
 
-int ldisc_register __P((int , struct linesw *));
-void ldisc_deregister __P((int));
+int ldisc_register (int , struct linesw *);
+void ldisc_deregister (int);
 #define LDISC_LOAD 	-1		/* Loadable line discipline */
 #endif
 
@@ -284,18 +284,21 @@ static moduledata_t name##_mod = {					\
 };									\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
+void	compile_devsw(struct cdevsw *devsw);
+int	cdevsw_add (struct cdevsw *new);
+struct lwkt_port *cdevsw_add_override (struct cdevsw *new, struct lwkt_port *port);
+struct lwkt_port *cdevsw_dev_override(dev_t dev, struct lwkt_port *port);
 
-int	cdevsw_add __P((struct cdevsw *new));
-int	cdevsw_remove __P((struct cdevsw *old));
-int	count_dev __P((dev_t dev));
-void	destroy_dev __P((dev_t dev));
-struct cdevsw *devsw __P((dev_t dev));
-const char *devtoname __P((dev_t dev));
-void	freedev __P((dev_t dev));
-int	iszerodev __P((dev_t dev));
-dev_t	make_dev __P((struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, int perms, const char *fmt, ...)) __printflike(6, 7);
-int	lminor __P((dev_t dev));
-void	setconf __P((void));
+int	cdevsw_remove (struct cdevsw *old);
+int	count_dev (dev_t dev);
+void	destroy_dev (dev_t dev);
+struct cdevsw *devsw (dev_t dev);
+const char *devtoname (dev_t dev);
+void	freedev (dev_t dev);
+int	iszerodev (dev_t dev);
+dev_t	make_dev (struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, int perms, const char *fmt, ...) __printflike(6, 7);
+int	lminor (dev_t dev);
+void	setconf (void);
 dev_t	getdiskbyname(char *name);
 
 /*
