@@ -1,11 +1,11 @@
 # $FreeBSD: src/gnu/usr.bin/cc/protoize/Makefile,v 1.2 2002/05/10 08:54:49 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/protoize/Attic/Makefile,v 1.1 2004/01/17 22:40:16 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/protoize/Attic/Makefile,v 1.2 2004/01/24 14:43:42 joerg Exp $
 
 .include "../Makefile.inc"
 
 .PATH: ${.CURDIR}/../cc_tools ${GCCDIR}
 
-PROG=	protoize3
+PROG=	protoize
 SRCS=	protoize.c
 NOMAN=
 

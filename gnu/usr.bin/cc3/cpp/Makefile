@@ -1,12 +1,12 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cpp/Makefile,v 1.23 2003/06/06 13:46:55 kuriyama Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cpp/Attic/Makefile,v 1.3 2004/01/23 10:59:53 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cpp/Attic/Makefile,v 1.4 2004/01/24 14:43:42 joerg Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
 
 .PATH: ${GCCDIR}
 
-PROG=	cpp3
+PROG=	cpp
 SRCS=	gcc.c cppspec.c
 
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"$(version)\"
