@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.c,v 1.5 2004/03/31 20:23:42 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.c,v 1.6 2004/04/24 09:26:25 joerg Exp $
  */
 
 #include "defs.h"
@@ -66,6 +66,7 @@ mi_gdinit1(globaldata_t gd, int cpuid)
     bzero(gd, sizeof(*gd));
     TAILQ_INIT(&gd->gd_tdfreeq);
     gd->gd_cpuid = cpuid;
+    gd->gd_cpumask = (cpumask_t)1 << cpuid;
     gd->gd_self = gd;
     gd->gd_upcall.upc_magic = UPCALL_MAGIC;
     gd->gd_upcall.upc_critoff = offsetof(struct thread, td_pri);

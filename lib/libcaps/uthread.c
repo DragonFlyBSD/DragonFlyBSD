@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/uthread.c,v 1.3 2004/03/06 19:48:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/uthread.c,v 1.4 2004/04/24 09:26:25 joerg Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ lwkt_exit(void)
     if (td->td_flags & TDF_VERBOSE)
 	printf("kthread %p %s has exited\n", td, td->td_comm);
     crit_enter();
-    lwkt_deschedule_self();
+    lwkt_deschedule_self(td);
     ++gd->gd_tdfreecount;
     if (td->td_flags & TDF_SYSTHREAD)
 	--gd->gd_sys_threads;

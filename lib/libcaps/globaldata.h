@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.7 2004/03/31 20:23:42 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.8 2004/04/24 09:26:25 joerg Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -76,6 +76,7 @@ struct globaldata {
         TAILQ_HEAD(,thread) gd_tdrunq[32];      /* runnable threads */
         __uint32_t      gd_runqmask;            /* which queues? */
         __uint32_t      gd_cpuid;
+	cpumask_t	gd_cpumask;		/* mask = 1<<cpuid */
 	cpumask_t	gd_other_cpus;
 	int		gd_intr_nesting_level;
 	struct thread   gd_idlethread;
