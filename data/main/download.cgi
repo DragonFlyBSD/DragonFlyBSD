@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.33 2004/07/05 07:36:49 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.34 2004/07/07 16:42:52 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -27,6 +27,9 @@ candidate via: <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0RC2.iso.gz
 <!--<p>The <b>RC1 SNAP</b> is mirrored at:
 <a href="http://gobsd.com/dfly-1.0RC1.iso.gz">http://gobsd.com/dfly-1.0RC1.iso.gz</a></p> -->
 <p><a href="./MD5SUM">MD5 checksums</a> for the RC2 snapshot.</p>
+<p>
+RC2 Mirrors may be found here: <a href="mirrors.html">mirrors.html</a>
+</p>
 <p>
 If you are looking for the most recent version possible,
 daily snapshots are available from Simon 'corecode' Schubert via
