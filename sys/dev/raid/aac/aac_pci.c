@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.18 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.4 2004/02/21 06:37:06 dillon Exp $
+ *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.19 2003/11/01 18:44:51 scottl Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.5 2004/04/21 03:28:07 hmp Exp $
  */
 
 /*
@@ -105,8 +105,6 @@ struct aac_ident
 	{0x1028, 0x0002, 0x1028, 0x00d1, AAC_HWIF_I960RX, 0,
 	"Dell PERC 3/Di"},
 	{0x1028, 0x0002, 0x1028, 0x00d9, AAC_HWIF_I960RX, 0,
-	"Dell PERC 3/Di"},
-	{0x1028, 0x0008, 0x1028, 0x00cf, AAC_HWIF_I960RX, 0,
 	"Dell PERC 3/Di"},
 	{0x1028, 0x000a, 0x1028, 0x0106, AAC_HWIF_I960RX, 0,
 	"Dell PERC 3/Di"},
