@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.21 2004/05/19 22:52:39 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.22 2004/08/13 08:27:02 joerg Exp $
  *
  */
 
@@ -1595,7 +1595,7 @@ pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	return 0;
 }
 
-static struct resource *
+struct resource *
 pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		   u_long start, u_long end, u_long count, u_int flags)
 {
@@ -1847,3 +1847,4 @@ static driver_t pci_driver = {
 };
 
 DRIVER_MODULE(pci, pcib, pci_driver, pci_devclass, pci_modevent, 0);
+MODULE_VERSION(pci, 1);
