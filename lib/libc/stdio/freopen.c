@@ -35,7 +35,7 @@
  *
  * @(#)freopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.5.2.1 2001/03/05 10:54:53 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.4 2004/06/08 00:45:00 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@ FILE *
 freopen(const char *file, const char *mode, FILE *fp)
 {
 	int f;
-	int flags, isopen, oflags, sverrno, wantfd;
+	int dflags, flags, isopen, oflags, sverrno, wantfd;
 
 	if ((flags = __sflags(mode, &oflags)) == 0) {
 		(void) fclose(fp);
@@ -68,6 +68,61 @@ freopen(const char *file, const char *mode, FILE *fp)
 
 	if (!__sdidinit)
 		__sinit();
+
+	sverrno = 0;
+
+	/*
+	 * If the filename is a NULL pointer, the caller is asking us to
+	 * re-open the same file with a different mode. We allow this only
+	 * if the modes are compatible.
+	 */
+	if (file == NULL) {
+		/* See comment below regarding freopen() of closed files. */
+		if (fp->_flags == 0) {
+			FUNLOCKFILE(fp);
+			errno = EINVAL;
+			return (NULL);
+		}
+		if ((dflags = fcntl(fp->_file, F_GETFL)) < 0) {
+			sverrno = errno;
+			fclose(fp);
+			FUNLOCKFILE(fp);
+			errno = sverrno;
+			return (NULL);
+		}
+		if ((dflags & O_ACCMODE) != O_RDWR && (dflags & O_ACCMODE) !=
+		    (oflags & O_ACCMODE)) {
+			fclose(fp);
+			FUNLOCKFILE(fp);
+			errno = EINVAL;
+			return (NULL);
+		}
+		if ((oflags ^ dflags) & O_APPEND) {
+			dflags &= ~O_APPEND;
+			dflags |= oflags & O_APPEND;
+			if (fcntl(fp->_file, F_SETFL, dflags) < 0) {
+				sverrno = errno;
+				fclose(fp);
+				FUNLOCKFILE(fp);
+				errno = sverrno;
+				return (NULL);
+			}
+		}
+		if (oflags & O_TRUNC)
+			ftruncate(fp->_file, 0);
+		if (fseeko(fp, 0, oflags & O_APPEND ? SEEK_END : SEEK_SET) < 0 &&
+		    errno != ESPIPE) {
+			sverrno = errno;
+			fclose(fp);
+			FUNLOCKFILE(fp);
+			errno = sverrno;
+			return (NULL);
+		}
+		f = fp->_file;
+		isopen = 0;
+		wantfd = -1;
+		goto finish;
+	}
 
 	/*
 	 * There are actually programs that depend on being able to "freopen"
@@ -105,6 +160,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 	}
 	sverrno = errno;
 
+finish:
 	/*
 	 * Finish closing fp.  Even if the open succeeded above, we cannot
 	 * keep fp->_base: it may be the wrong size.  This loses the effect
