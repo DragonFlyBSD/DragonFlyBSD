@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.15 2004/03/31 02:34:37 cpressey Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.16 2004/07/26 15:59:48 joerg Exp $
  * 
  */
 
@@ -1730,7 +1730,7 @@ coda_reclaim(void *v)
     }	
     cache_purge(vp);
     coda_free(VTOC(vp));
-    VTOC(vp) = NULL;
+    vp->v_data = NULL;
     return (0);
 }
 
