@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.8 2004/06/03 15:40:22 hmp Exp $
  */
 
 #include "opt_quota.h"
@@ -98,10 +98,22 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	if (p == NULL)
 		return (EOPNOTSUPP);
 
-	if (uid == -1)
-		uid = p->p_ucred->cr_ruid;
+	type = cmds & SUBCMDMASK;
 	cmd = cmds >> SUBCMDSHIFT;
 
+	if (uid == -1) {
+		switch(type) {
+			case USRQUOTA:
+				uid = p->p_ucred->cr_ruid;
+				break;
+			case GRPQUOTA:
+				uid = p->p_ucred->cr_rgid;
+				break;
+			default:
+				return (EINVAL);
+		}
+	}
+					
 	switch (cmd) {
 	case Q_SYNC:
 		break;
