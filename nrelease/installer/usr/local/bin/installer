@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # installer - start installer frontend and backend as per pfi config.
-# $Id: installer,v 1.10 2004/07/11 16:00:01 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.5 2004/07/11 19:36:03 dillon Exp $
+# $Id: installer,v 1.5 2004/08/11 19:37:07 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.6 2004/11/11 20:30:05 cpressey Exp $
 
 ### SUBS ###
 
@@ -17,7 +17,7 @@ background_backend()
 	0)
 		;;
 	5)
-		shutdown -h now
+		$pfi_shutdown_command
 		;;
 	*)
 		;;
@@ -118,7 +118,7 @@ installer_start()
 	0)
 		;;
 	5)
-		shutdown -h now
+		$pfi_shutdown_command
 		;;
 	*)
 		;;

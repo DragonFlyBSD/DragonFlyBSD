@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.2 2004/07/11 18:55:20 cpressey Exp $
+# $Id: pfi,v 1.4 2004/08/06 23:26:05 cpressey Exp $
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.3 2004/11/11 20:30:05 cpressey Exp $
 #
 
 # PROVIDE: pfi
@@ -109,6 +110,12 @@ pfi_start()
 	YES)
 		echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
 		;;
+	without-password)
+		echo "PermitRootLogin without-password" >> /etc/ssh/sshd_config
+		;;
+	forced-commands-only)
+		echo "PermitRootLogin forced-commands-only" >> /etc/ssh/sshd_config
+		;;
 	*)
 		;;
 	esac
@@ -129,7 +136,7 @@ pfi_start()
 		    /usr/sbin/pw usermod root -h 0
 	fi
 
-	# Lastly, the most important pre-install task is to restart
+	# The most important pre-install task is to restart
 	# any RCNG scripts listed in pfi_rc_actions with any new
 	# settings that might have been set up by pfi.conf.
 
@@ -152,6 +159,22 @@ pfi_start()
 	awk '$1=="#@@@@@" || cut { cut = 1 } !cut { print $0 }' \
 	    </etc/rc.conf >/etc/rc.conf.new
 	mv /etc/rc.conf.new /etc/rc.conf
+
+	# Set up auto-login if requested.
+
+	if [ "X$pfi_autologin" != "XNONE" ]; then
+		echo 'autologin|al.9600:\' >> /etc/gettytab
+		echo "        :al=${pfi_autologin}:tc=std.9600:" >> /etc/gettytab
+		sed -i '' 's/^ttyv0=.*/ttyv0 "/usr/libexec/getty Al" cons25 on secure/' /etc/ttys
+	fi
+
+	# Finally, start thttpd if the user wants to use
+	# the cgi frontend.
+
+	if [ "X$pfi_frontend" = "Xcgi" ]; then
+		echo "Starting thttpd..."
+		/usr/local/sbin/thttpd_wrapper &
+	fi
 }
 
 load_rc_config $name
