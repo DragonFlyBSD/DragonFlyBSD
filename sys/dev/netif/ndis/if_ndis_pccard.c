@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.6 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.1 2004/07/29 20:51:36 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.2 2004/09/19 17:42:57 joerg Exp $
  */
 
 #include <sys/ctype.h>
@@ -150,12 +150,8 @@ ndis_probe_pccard(dev)
 
 	t = ndis_devs;
 
-	error = pccard_get_product_str(dev, &prodstr);
-	if (error)
-		return(error);
-	error = pccard_get_vendor_str(dev, &vendstr);
-	if (error)
-		return(error);
+	prodstr = pccard_get_product_str(dev);
+	vendstr = pccard_get_vendor_str(dev);
 
 	while(t->ndis_name != NULL) {
 		if (ndis_strcasecmp(vendstr, t->ndis_vid) == 0 &&
