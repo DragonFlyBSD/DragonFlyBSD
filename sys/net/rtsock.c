@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.21 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.22 2005/02/24 23:41:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -972,7 +972,7 @@ rt_newmaddrmsg(int cmd, struct ifmultiaddr *ifma)
 
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_ifaaddr = ifma->ifma_addr;
-	if (ifp != NULL)
+	if (ifp != NULL && TAILQ_FIRST(&ifp->if_addrhead) != NULL)
 		rtinfo.rti_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
 	else
 		rtinfo.rti_ifpaddr = NULL;
