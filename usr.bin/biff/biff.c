@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/biff/biff.c,v 1.6.2.4 2002/08/09 02:56:31 johan Exp $
- * $DragonFly: src/usr.bin/biff/biff.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/biff/biff.c,v 1.4 2005/01/11 19:36:09 liamfoy Exp $
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)biff.c	8.1 (Berkeley) 6/6/93
@@ -39,22 +39,20 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <errno.h>
-#include <unistd.h>
+
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <err.h>
+#include <unistd.h>
 
-int main(int, char *[]);
-static void usage(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
 	struct stat sb;
 	int ch;
-	char *name;
+	const char *name;
 
 
 	while ((ch = getopt(argc, argv, "")) != -1)
@@ -70,14 +68,13 @@ main(int argc, char **argv)
 		err(2, "unknown tty");
 
 	if (stat(name, &sb))
-		err(2, "stat");
+		err(2, "stat failed");
 
 	if (*argv == NULL) {
-		(void)printf("is %s\n",
+		printf("is %s\n",
 		    sb.st_mode & S_IXUSR ? "y" :
 		    sb.st_mode & S_IXGRP ? "b" : "n");
 		return(sb.st_mode & (S_IXUSR | S_IXGRP) ? 0 : 1);
-
 	}
 
 	switch(argv[0][0]) {
@@ -102,6 +99,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: biff [n | y | b]\n");
+	fprintf(stderr, "usage: biff [n | y | b]\n");
 	exit(2);
 }
