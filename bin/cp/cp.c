@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.7 2004/07/22 13:19:26 asmodai Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.8 2004/08/25 01:23:15 dillon Exp $
  */
 
 /*
@@ -80,11 +80,11 @@ static int Rflag, rflag;
 
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
-static int copy (char *[], enum op, int);
+static int copy (char **, enum op, int);
 static int mastercmp (const FTSENT **, const FTSENT **);
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	struct stat to_stat, tmp_stat;
 	enum op type;
@@ -232,15 +232,12 @@ main(int argc, char *argv[])
 }
 
 static int
-copy(argv, type, fts_options)
-	char *argv[];
-	enum op type;
-	int fts_options;
+copy(char **argv, enum op type, int fts_options)
 {
 	struct stat to_stat;
 	FTS *ftsp;
 	FTSENT *curr;
-	int base = 0, dne, badcp, nlen, rval;
+	int base, dne, badcp, nlen, rval;
 	char *p, *target_mid;
 	mode_t mask, mode;
 
@@ -250,6 +247,7 @@ copy(argv, type, fts_options)
 	 */
 	mask = ~umask(0777);
 	umask(~mask);
+	base = 0;
 
 	if ((ftsp = fts_open(argv, fts_options, mastercmp)) == NULL)
 		err(1, NULL);

@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.4 2004/07/22 11:41:56 asmodai Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.5 2004/08/25 01:23:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,8 @@
 #include <unistd.h>
 
 #include "extern.h"
+
+#define YESNO "(y/n [n]) "
 
 int
 copy_file(FTSENT *entp, int dne)
@@ -81,20 +83,19 @@ copy_file(FTSENT *entp, int dne)
 	 * modified by the umask.)
 	 */
 	if (!dne) {
-#define YESNO "(y/n [n]) "
 		if (nflag) {
 			if (vflag)
 				printf("%s not overwritten\n", to.p_path);
 			return (0);
 		} else if (iflag) {
-			(void)fprintf(stderr, "overwrite %s? %s", 
+			fprintf(stderr, "overwrite %s? %s", 
 					to.p_path, YESNO);
 			checkch = ch = getchar();
 			while (ch != '\n' && ch != EOF)
 				ch = getchar();
 			if (checkch != 'y' && checkch != 'Y') {
-				(void)close(from_fd);
-				(void)fprintf(stderr, "not overwritten\n");
+				close(from_fd);
+				fprintf(stderr, "not overwritten\n");
 				return (1);
 			}
 		}
@@ -102,7 +103,7 @@ copy_file(FTSENT *entp, int dne)
 		if (fflag) {
 		    /* remove existing destination file name, 
 		     * create a new file  */
-		    (void)unlink(to.p_path);
+		    unlink(to.p_path);
 		    to_fd = open(to.p_path, O_WRONLY | O_TRUNC | O_CREAT,
 				 fs->st_mode & ~(S_ISUID | S_ISGID));
 		} else 
@@ -114,7 +115,7 @@ copy_file(FTSENT *entp, int dne)
 
 	if (to_fd == -1) {
 		warn("%s", to.p_path);
-		(void)close(from_fd);
+		close(from_fd);
 		return (1);;
 	}
 
@@ -179,7 +180,7 @@ copy_file(FTSENT *entp, int dne)
 
 	if (pflag && setfile(fs, to_fd))
 		rval = 1;
-	(void)close(from_fd);
+	close(from_fd);
 	if (close(to_fd)) {
 		warn("%s", to.p_path);
 		rval = 1;
@@ -298,7 +299,7 @@ void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 "usage: cp [-R [-H | -L | -P]] [-f | -i | -n] [-pv] src target",
 "       cp [-R [-H | -L | -P]] [-f | -i | -n] [-pv] src1 ... srcN directory");
 	exit(EX_USAGE);

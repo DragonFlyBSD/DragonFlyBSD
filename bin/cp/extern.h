@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/extern.h,v 1.9.2.3 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/extern.h,v 1.3 2003/09/21 04:18:34 drhodus Exp $
+ * $DragonFly: src/bin/cp/extern.h,v 1.4 2004/08/25 01:23:15 dillon Exp $
  */
 
 typedef struct {
@@ -43,8 +43,6 @@ typedef struct {
 
 extern PATH_T to;
 extern int fflag, iflag, nflag, pflag, vflag;
-
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 int	copy_fifo (struct stat *, int);
