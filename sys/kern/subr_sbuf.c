@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
- *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.4 2003/11/09 02:22:36 dillon Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.5 2004/07/02 15:37:07 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ MALLOC_DEFINE(M_SBUF, "sbuf", "string buffers");
  */
 #if defined(_KERNEL) && defined(INVARIANTS)
 static void
-_assert_sbuf_integrity(char *fun, struct sbuf *s)
+_assert_sbuf_integrity(const char *fun, struct sbuf *s)
 {
 	KASSERT(s != NULL,
 	    ("%s called with a NULL sbuf pointer", fun));
@@ -95,7 +95,7 @@ _assert_sbuf_integrity(char *fun, struct sbuf *s)
 }
 
 static void
-_assert_sbuf_state(char *fun, struct sbuf *s, int state)
+_assert_sbuf_state(const char *fun, struct sbuf *s, int state)
 {
 	KASSERT((s->s_flags & SBUF_FINISHED) == state,
 	    ("%s called with %sfinished or corrupt sbuf", fun,
