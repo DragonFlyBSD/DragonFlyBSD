@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.3 2004/02/21 09:16:27 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.4 2004/07/17 10:46:37 hmp Exp $
  *
  */
 
@@ -31,7 +31,7 @@ extern devclass_t	pci_devclass;
 
 struct pci_devinfo 	*pci_read_device(device_t, int, int, int, size_t);
 struct resource_list	*pci_get_resource_list (device_t dev, device_t child);
-static struct resource *pci_alloc_resource(device_t dev, device_t child,
+struct resource *pci_alloc_resource(device_t dev, device_t child,
 				int type, int *rid, u_long start, u_long end,
 				u_long count, u_int flags);
 
