@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.16 2004/01/09 21:49:30 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.17 2004/04/05 00:06:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -677,9 +677,8 @@ linux_sendto(struct linux_sendto_args *args, int *res)
 	sopt.sopt_valsize = sizeof(optval);
 	sopt.sopt_td = NULL;
 
-	error = kern_getsockopt(linux_args.s, &sopt);
-	if (error)
-		return (error);
+	if (kern_getsockopt(linux_args.s, &sopt) != 0)
+		optval = 0;
 
 	if (optval == 0) {
 		/*
