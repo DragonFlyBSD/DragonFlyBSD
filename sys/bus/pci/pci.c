@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.11 2004/01/15 20:35:06 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.12 2004/01/15 21:18:18 joerg Exp $
  *
  */
 
@@ -62,6 +62,8 @@
 #include "pcireg.h"
 #include "pcivar.h"
 
+#include "pcib_if.h"
+
 #ifdef __alpha__
 #include <machine/rpb.h>
 #endif
@@ -72,7 +74,7 @@
 
 static devclass_t	pci_devclass;
 
-static void		pci_read_extcap(pcicfgregs *cfg);
+static void		pci_read_extcap(device_t dev, pcicfgregs *cfg);
 
 struct pci_quirk {
 	u_int32_t devid;	/* Vendor/device of the card */
@@ -219,109 +221,115 @@ pci_fixancient(pcicfgregs *cfg)
 /* read config data specific to header type 1 device (PCI to PCI bridge) */
 
 static void *
-pci_readppb(pcicfgregs *cfg)
+pci_readppb(device_t pcib, int b, int s, int f)
 {
 	pcih1cfgregs *p;
 
-	p = malloc(sizeof (pcih1cfgregs), M_DEVBUF, M_WAITOK);
+	p = malloc(sizeof (pcih1cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (p == NULL)
 		return (NULL);
 
-	bzero(p, sizeof *p);
+	p->secstat = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_SECSTAT_1, 2);
+	p->bridgectl = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_BRIDGECTL_1, 2);
 
-	p->secstat = pci_cfgread(cfg, PCIR_SECSTAT_1, 2);
-	p->bridgectl = pci_cfgread(cfg, PCIR_BRIDGECTL_1, 2);
+	p->seclat = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_SECLAT_1, 1);
 
-	p->seclat = pci_cfgread(cfg, PCIR_SECLAT_1, 1);
-
-	p->iobase = PCI_PPBIOBASE (pci_cfgread(cfg, PCIR_IOBASEH_1, 2),
-				   pci_cfgread(cfg, PCIR_IOBASEL_1, 1));
-	p->iolimit = PCI_PPBIOLIMIT (pci_cfgread(cfg, PCIR_IOLIMITH_1, 2),
-				     pci_cfgread(cfg, PCIR_IOLIMITL_1, 1));
+	p->iobase = PCI_PPBIOBASE (PCIB_READ_CONFIG(pcib, b, s, f,
+						    PCIR_IOBASEH_1, 2),
+				   PCIB_READ_CONFIG(pcib, b, s, f,
+				   		    PCIR_IOBASEL_1, 1));
+	p->iolimit = PCI_PPBIOLIMIT (PCIB_READ_CONFIG(pcib, b, s, f,
+						      PCIR_IOLIMITH_1, 2),
+				     PCIB_READ_CONFIG(pcib, b, s, f,
+				     		      PCIR_IOLIMITL_1, 1));
 
 	p->membase = PCI_PPBMEMBASE (0,
-				     pci_cfgread(cfg, PCIR_MEMBASE_1, 2));
+				     PCIB_READ_CONFIG(pcib, b, s, f,
+				     		      PCIR_MEMBASE_1, 2));
 	p->memlimit = PCI_PPBMEMLIMIT (0,
-				       pci_cfgread(cfg, PCIR_MEMLIMIT_1, 2));
+				       PCIB_READ_CONFIG(pcib, b, s, f,
+				       		        PCIR_MEMLIMIT_1, 2));
 
 	p->pmembase = PCI_PPBMEMBASE (
-		(pci_addr_t)pci_cfgread(cfg, PCIR_PMBASEH_1, 4),
-		pci_cfgread(cfg, PCIR_PMBASEL_1, 2));
+		(pci_addr_t)PCIB_READ_CONFIG(pcib, b, s, f, PCIR_PMBASEH_1, 4),
+		PCIB_READ_CONFIG(pcib, b, s, f, PCIR_PMBASEL_1, 2));
 
 	p->pmemlimit = PCI_PPBMEMLIMIT (
-		(pci_addr_t)pci_cfgread(cfg, PCIR_PMLIMITH_1, 4),
-		pci_cfgread(cfg, PCIR_PMLIMITL_1, 2));
+		(pci_addr_t)PCIB_READ_CONFIG(pcib, b, s, f,
+					     PCIR_PMLIMITH_1, 4),
+		PCIB_READ_CONFIG(pcib, b, s, f, PCIR_PMLIMITL_1, 2));
+
 	return (p);
 }
 
 /* read config data specific to header type 2 device (PCI to CardBus bridge) */
 
 static void *
-pci_readpcb(pcicfgregs *cfg)
+pci_readpcb(device_t pcib, int b, int s, int f)
 {
 	pcih2cfgregs *p;
 
-	p = malloc(sizeof (pcih2cfgregs), M_DEVBUF, M_WAITOK);
+	p = malloc(sizeof (pcih2cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (p == NULL)
 		return (NULL);
 
-	bzero(p, sizeof *p);
-
-	p->secstat = pci_cfgread(cfg, PCIR_SECSTAT_2, 2);
-	p->bridgectl = pci_cfgread(cfg, PCIR_BRIDGECTL_2, 2);
+	p->secstat = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_SECSTAT_2, 2);
+	p->bridgectl = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_BRIDGECTL_2, 2);
 	
-	p->seclat = pci_cfgread(cfg, PCIR_SECLAT_2, 1);
+	p->seclat = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_SECLAT_2, 1);
 
-	p->membase0 = pci_cfgread(cfg, PCIR_MEMBASE0_2, 4);
-	p->memlimit0 = pci_cfgread(cfg, PCIR_MEMLIMIT0_2, 4);
-	p->membase1 = pci_cfgread(cfg, PCIR_MEMBASE1_2, 4);
-	p->memlimit1 = pci_cfgread(cfg, PCIR_MEMLIMIT1_2, 4);
+	p->membase0 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_MEMBASE0_2, 4);
+	p->memlimit0 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_MEMLIMIT0_2, 4);
+	p->membase1 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_MEMBASE1_2, 4);
+	p->memlimit1 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_MEMLIMIT1_2, 4);
 
-	p->iobase0 = pci_cfgread(cfg, PCIR_IOBASE0_2, 4);
-	p->iolimit0 = pci_cfgread(cfg, PCIR_IOLIMIT0_2, 4);
-	p->iobase1 = pci_cfgread(cfg, PCIR_IOBASE1_2, 4);
-	p->iolimit1 = pci_cfgread(cfg, PCIR_IOLIMIT1_2, 4);
+	p->iobase0 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_IOBASE0_2, 4);
+	p->iolimit0 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_IOLIMIT0_2, 4);
+	p->iobase1 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_IOBASE1_2, 4);
+	p->iolimit1 = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_IOLIMIT1_2, 4);
 
-	p->pccardif = pci_cfgread(cfg, PCIR_PCCARDIF_2, 4);
+	p->pccardif = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_PCCARDIF_2, 4);
 	return p;
 }
 
 /* extract header type specific config data */
 
 static void
-pci_hdrtypedata(pcicfgregs *cfg)
+pci_hdrtypedata(device_t pcib, int b, int s, int f, pcicfgregs *cfg)
 {
+#define REG(n,w)	PCIB_READ_CONFIG(pcib, b, s, f, n, w)
 	switch (cfg->hdrtype) {
 	case 0:
-		cfg->subvendor      = pci_cfgread(cfg, PCIR_SUBVEND_0, 2);
-		cfg->subdevice      = pci_cfgread(cfg, PCIR_SUBDEV_0, 2);
+		cfg->subvendor      = REG(PCIR_SUBVEND_0, 2);
+		cfg->subdevice      = REG(PCIR_SUBDEV_0, 2);
 		cfg->nummaps	    = PCI_MAXMAPS_0;
 		break;
 	case 1:
-		cfg->subvendor      = pci_cfgread(cfg, PCIR_SUBVEND_1, 2);
-		cfg->subdevice      = pci_cfgread(cfg, PCIR_SUBDEV_1, 2);
-		cfg->secondarybus   = pci_cfgread(cfg, PCIR_SECBUS_1, 1);
-		cfg->subordinatebus = pci_cfgread(cfg, PCIR_SUBBUS_1, 1);
+		cfg->subvendor      = REG(PCIR_SUBVEND_1, 2);
+		cfg->subdevice      = REG(PCIR_SUBDEV_1, 2);
+		cfg->secondarybus   = REG(PCIR_SECBUS_1, 1);
+		cfg->subordinatebus = REG(PCIR_SUBBUS_1, 1);
 		cfg->nummaps	    = PCI_MAXMAPS_1;
-		cfg->hdrspec        = pci_readppb(cfg);
+		cfg->hdrspec        = pci_readppb(pcib, b, s, f);
 		break;
 	case 2:
-		cfg->subvendor      = pci_cfgread(cfg, PCIR_SUBVEND_2, 2);
-		cfg->subdevice      = pci_cfgread(cfg, PCIR_SUBDEV_2, 2);
-		cfg->secondarybus   = pci_cfgread(cfg, PCIR_SECBUS_2, 1);
-		cfg->subordinatebus = pci_cfgread(cfg, PCIR_SUBBUS_2, 1);
+		cfg->subvendor      = REG(PCIR_SUBVEND_2, 2);
+		cfg->subdevice      = REG(PCIR_SUBDEV_2, 2);
+		cfg->secondarybus   = REG(PCIR_SECBUS_2, 1);
+		cfg->subordinatebus = REG(PCIR_SUBBUS_2, 1);
 		cfg->nummaps	    = PCI_MAXMAPS_2;
-		cfg->hdrspec        = pci_readpcb(cfg);
+		cfg->hdrspec        = pci_readpcb(pcib, b, s, f);
 		break;
 	}
+#undef REG
 }
 
 /* read configuration header into pcicfgrect structure */
 
 static struct pci_devinfo *
-pci_readcfg(pcicfgregs *probe)
+pci_read_device(device_t pcib, int b, int s, int f)
 {
-#define REG(n, w)	pci_cfgread(probe, n, w)
+#define REG(n, w)	PCIB_READ_CONFIG(pcib, b, s, f, n, w)
 
 	pcicfgregs *cfg = NULL;
 	struct pci_devinfo *devlist_entry;
@@ -331,32 +339,31 @@ pci_readcfg(pcicfgregs *probe)
 
 	devlist_entry = NULL;
 
-	if (pci_cfgread(probe, PCIR_DEVVENDOR, 4) != -1) {
+	if (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_DEVVENDOR, 4) != -1) {
 
 		devlist_entry = malloc(sizeof(struct pci_devinfo),
-				       M_DEVBUF, M_WAITOK);
+				       M_DEVBUF, M_WAITOK | M_ZERO);
 		if (devlist_entry == NULL)
 			return (NULL);
-		bzero(devlist_entry, sizeof *devlist_entry);
 
 		cfg = &devlist_entry->cfg;
 		
-		cfg->bus		= probe->bus;
-		cfg->slot		= probe->slot;
-		cfg->func		= probe->func;
-		cfg->vendor		= pci_cfgread(cfg, PCIR_VENDOR, 2);
-		cfg->device		= pci_cfgread(cfg, PCIR_DEVICE, 2);
-		cfg->cmdreg		= pci_cfgread(cfg, PCIR_COMMAND, 2);
-		cfg->statreg		= pci_cfgread(cfg, PCIR_STATUS, 2);
-		cfg->baseclass		= pci_cfgread(cfg, PCIR_CLASS, 1);
-		cfg->subclass		= pci_cfgread(cfg, PCIR_SUBCLASS, 1);
-		cfg->progif		= pci_cfgread(cfg, PCIR_PROGIF, 1);
-		cfg->revid		= pci_cfgread(cfg, PCIR_REVID, 1);
-		cfg->hdrtype		= pci_cfgread(cfg, PCIR_HEADERTYPE, 1);
-		cfg->cachelnsz		= pci_cfgread(cfg, PCIR_CACHELNSZ, 1);
-		cfg->lattimer		= pci_cfgread(cfg, PCIR_LATTIMER, 1);
-		cfg->intpin		= pci_cfgread(cfg, PCIR_INTPIN, 1);
-		cfg->intline		= pci_cfgread(cfg, PCIR_INTLINE, 1);
+		cfg->bus		= b;
+		cfg->slot		= s;
+		cfg->func		= f;
+		cfg->vendor		= REG(PCIR_VENDOR, 2);
+		cfg->device		= REG(PCIR_DEVICE, 2);
+		cfg->cmdreg		= REG(PCIR_COMMAND, 2);
+		cfg->statreg		= REG(PCIR_STATUS, 2);
+		cfg->baseclass		= REG(PCIR_CLASS, 1);
+		cfg->subclass		= REG(PCIR_SUBCLASS, 1);
+		cfg->progif		= REG(PCIR_PROGIF, 1);
+		cfg->revid		= REG(PCIR_REVID, 1);
+		cfg->hdrtype		= REG(PCIR_HEADERTYPE, 1);
+		cfg->cachelnsz		= REG(PCIR_CACHELNSZ, 1);
+		cfg->lattimer		= REG(PCIR_LATTIMER, 1);
+		cfg->intpin		= REG(PCIR_INTPIN, 1);
+		cfg->intline		= REG(PCIR_INTLINE, 1);
 #ifdef __alpha__
 		alpha_platform_assign_pciintr(cfg);
 #endif
@@ -389,17 +396,17 @@ pci_readcfg(pcicfgregs *probe)
 		}
 #endif /* APIC_IO */
 
-		cfg->mingnt		= pci_cfgread(cfg, PCIR_MINGNT, 1);
-		cfg->maxlat		= pci_cfgread(cfg, PCIR_MAXLAT, 1);
+		cfg->mingnt		= REG(PCIR_MINGNT, 1);
+		cfg->maxlat		= REG(PCIR_MAXLAT, 1);
 
 		cfg->mfdev		= (cfg->hdrtype & PCIM_MFDEV) != 0;
 		cfg->hdrtype		&= ~PCIM_MFDEV;
 
 		pci_fixancient(cfg);
-		pci_hdrtypedata(cfg);
+		pci_hdrtypedata(pcib, b, s, f, cfg);
 
 		if (REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT)
-			pci_read_extcap(cfg);
+			pci_read_extcap(pcib, cfg);
 
 		STAILQ_INSERT_TAIL(devlist_head, devlist_entry, pci_links);
 
@@ -426,9 +433,9 @@ pci_readcfg(pcicfgregs *probe)
 }
 
 static void
-pci_read_extcap(pcicfgregs *cfg)
+pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 {
-#define REG(n, w)	pci_cfgread(cfg, n, w)
+#define REG(n, w)	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
 	int	ptr, nextptr, ptrptr;
 
 	switch (cfg->hdrtype) {
@@ -780,6 +787,7 @@ pci_devlist_get_parent(pcicfgregs *cfg)
 static int
 pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
+	device_t pci, pcib;
 	struct pci_io *io;
 	const char *name;
 	int error;
@@ -1021,16 +1029,30 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case PCIOCREAD:
 		io = (struct pci_io *)data;
 		switch(io->pi_width) {
-			pcicfgregs probe;
 		case 4:
 		case 2:
 		case 1:
-			probe.bus = io->pi_sel.pc_bus;
-			probe.slot = io->pi_sel.pc_dev;
-			probe.func = io->pi_sel.pc_func;
-			io->pi_data = pci_cfgread(&probe, 
-						  io->pi_reg, io->pi_width);
-			error = 0;
+			/*
+			 * Assume that the user-level bus number is
+			 * actually the pciN instance number. We map
+			 * from that to the real pcib+bus combination.
+			 */
+			pci = devclass_get_device(pci_devclass,
+						  io->pi_sel.pc_bus);
+			if (pci) {
+				int b = pcib_get_bus(pci);
+				pcib = device_get_parent(pci);
+				io->pi_data = 
+					PCIB_READ_CONFIG(pcib,
+							 b,
+							 io->pi_sel.pc_dev,
+							 io->pi_sel.pc_func,
+							 io->pi_reg,
+							 io->pi_width);
+				error = 0;
+			} else {
+				error = ENODEV;
+			}
 			break;
 		default:
 			error = ENODEV;
@@ -1041,16 +1063,30 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case PCIOCWRITE:
 		io = (struct pci_io *)data;
 		switch(io->pi_width) {
-			pcicfgregs probe;
 		case 4:
 		case 2:
 		case 1:
-			probe.bus = io->pi_sel.pc_bus;
-			probe.slot = io->pi_sel.pc_dev;
-			probe.func = io->pi_sel.pc_func;
-			pci_cfgwrite(&probe, 
-				    io->pi_reg, io->pi_data, io->pi_width);
-			error = 0;
+			/*
+			 * Assume that the user-level bus number is
+			 * actually the pciN instance number. We map
+			 * from that to the real pcib+bus combination.
+			 */
+			pci = devclass_get_device(pci_devclass,
+						  io->pi_sel.pc_bus);
+			if (pci) {
+				int b = pcib_get_bus(pci);
+				pcib = device_get_parent(pci);
+				PCIB_WRITE_CONFIG(pcib,
+						  b,
+						  io->pi_sel.pc_dev,
+						  io->pi_sel.pc_func,
+						  io->pi_reg,
+						  io->pi_data,
+						  io->pi_width);
+				error = 0;
+			} else {
+				error = ENODEV;
+			}
 			break;
 		default:
 			error = ENODEV;
@@ -1102,6 +1138,8 @@ pci_print_verbose(struct pci_devinfo *dinfo)
 
 		printf("found->\tvendor=0x%04x, dev=0x%04x, revid=0x%02x\n", 
 		       cfg->vendor, cfg->device, cfg->revid);
+		printf("\tbus=%d, slot=%d, func=%d\n",
+		       cfg->bus, cfg->slot, cfg->func);
 		printf("\tclass=%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
 		       cfg->baseclass, cfg->subclass, cfg->progif,
 		       cfg->hdrtype, cfg->mfdev);
@@ -1120,15 +1158,17 @@ pci_print_verbose(struct pci_devinfo *dinfo)
 }
 
 static int
-pci_porten(pcicfgregs *cfg)
+pci_porten(device_t pcib, int b, int s, int f)
 {
-	return ((cfg->cmdreg & PCIM_CMD_PORTEN) != 0);
+	return (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_COMMAND, 2)
+		& PCIM_CMD_PORTEN) != 0;
 }
 
 static int
-pci_memen(pcicfgregs *cfg)
+pci_memen(device_t pcib, int b, int s, int f)
 {
-	return ((cfg->cmdreg & PCIM_CMD_MEMEN) != 0);
+	return (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_COMMAND, 2)
+		& PCIM_CMD_MEMEN) != 0;
 }
 
 /*
@@ -1136,26 +1176,29 @@ pci_memen(pcicfgregs *cfg)
  * register is a 32bit map register or 2 if it is a 64bit register.
  */
 static int
-pci_add_map(device_t dev, pcicfgregs* cfg, int reg)
+pci_add_map(device_t pcib, int b, int s, int f, int reg,
+	    struct resource_list *rl)
 {
-	struct pci_devinfo *dinfo = device_get_ivars(dev);
-	struct resource_list *rl = &dinfo->resources;
 	u_int32_t map;
 	u_int64_t base;
 	u_int8_t ln2size;
 	u_int8_t ln2range;
 	u_int32_t testval;
-		
+
+
+#ifdef PCI_ENABLE_IO_MODES
+	u_int16_t cmd;
+#endif		
 	int type;
 
-	map = pci_cfgread(cfg, reg, 4);
+	map = PCIB_READ_CONFIG(pcib, b, s, f, reg, 4);
 
 	if (map == 0 || map == 0xffffffff)
 		return 1; /* skip invalid entry */
 
-	pci_cfgwrite(cfg, reg, 0xffffffff, 4);
-	testval = pci_cfgread(cfg, reg, 4);
-	pci_cfgwrite(cfg, reg, map, 4);
+	PCIB_WRITE_CONFIG(pcib, b, s, f, reg, 0xffffffff, 4);
+	testval = PCIB_READ_CONFIG(pcib, b, s, f, reg, 4);
+	PCIB_WRITE_CONFIG(pcib, b, s, f, reg, map, 4);
 
 	base = pci_mapbase(map);
 	if (pci_maptype(map) & PCI_MAPMEM)
@@ -1166,58 +1209,8 @@ pci_add_map(device_t dev, pcicfgregs* cfg, int reg)
 	ln2range = pci_maprange(testval);
 	if (ln2range == 64) {
 		/* Read the other half of a 64bit map register */
-		base |= (u_int64_t) pci_cfgread(cfg, reg + 4, 4) << 32;
+		base |= (u_int64_t) PCIB_READ_CONFIG(pcib, b, s, f, reg+4, 4);
 	}
-
-#ifdef __alpha__
-	/* 
-	 *  XXX: encode hose number in the base addr,
-	 *  This will go away once the bus_space functions
-	 *  can deal with multiple hoses 
-	 */
-
-	if (cfg->hose) {
-		u_int32_t mask, shift, maxh;
-
-		switch (hwrpb->rpb_type) {
-		case ST_DEC_4100:
-		case -ST_DEC_4100:
-			mask = 0xc0000000;
-			shift = 30;
-			maxh = 4;	/* not a hose. MCPCIA instance # */
-			break;
-		case ST_DEC_21000:
-			mask = 0xf8000000;
-			shift = 27;
-			maxh = 32;
-			break;
-		case ST_DEC_6600:
-			mask = 0x80000000;
-			shift = 31;
-			maxh = 2;
-			break;
-		default:
-			mask = 0;
-			shift = 0;
-			maxh = 0;
-			break;
-		}
-		if (base & mask) {
-			printf("base   addr = 0x%llx\n", (long long) base);
-			printf("mask   addr = 0x%lx\n", (long) mask);
-			printf("hacked addr = 0x%llx\n", (long long)
-			       (base | ((u_int64_t)cfg->hose << shift)));
-			panic("hose encoding hack would clobber base addr");
-			/* NOTREACHED */
-		}
-		if (cfg->hose >= maxh) {
-			panic("Hose %d - can only encode %d hose(s)",
-			    cfg->hose, maxh);
-			/* NOTREACHED */
-		}
-		base |= ((u_int64_t)cfg->hose << shift);
-	}
-#endif
 
 	/*
 	 * This code theoretically does the right thing, but has
@@ -1226,18 +1219,20 @@ pci_add_map(device_t dev, pcicfgregs* cfg, int reg)
 	 * enabled.  Leave them alone by default.
 	 */
 #ifdef PCI_ENABLE_IO_MODES
-	if (type == SYS_RES_IOPORT && !pci_porten(cfg)) {
-		cfg->cmdreg |= PCIM_CMD_PORTEN;
-		pci_cfgwrite(cfg, PCIR_COMMAND, cfg->cmdreg, 2);
+	if (type == SYS_RES_IOPORT && !pci_porten(pcib, b, s, f)) {
+		cmd = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_COMMAND, 2);
+		cmd |= PCIM_CMD_PORTEN;
+		PCIB_WRITE_CONFIG(pcib, b, s, f, PCIR_COMMAND, cmd, 2);
 	}
-	if (type == SYS_RES_MEMORY && !pci_memen(cfg)) {
-		cfg->cmdreg |= PCIM_CMD_MEMEN;
-		pci_cfgwrite(cfg, PCIR_COMMAND, cfg->cmdreg, 2);
+	if (type == SYS_RES_MEMORY && !pci_memen(pcib, b, s, f)) {
+		cmd = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_COMMAND, 2);
+		cmd |= PCIM_CMD_MEMEN;
+		PCIB_WRITE_CONFIG(pcib, b, s, f, PCIR_COMMAND, cmd, 2);
 	}
 #else
-        if (type == SYS_RES_IOPORT && !pci_porten(cfg))
+        if (type == SYS_RES_IOPORT && !pci_porten(pcib, b, s, f))
                 return 1;
-        if (type == SYS_RES_MEMORY && !pci_memen(cfg))
+        if (type == SYS_RES_MEMORY && !pci_memen(pcib, b, s, f))
 		return 1;
 #endif
 
@@ -1255,21 +1250,22 @@ pci_add_map(device_t dev, pcicfgregs* cfg, int reg)
 }
 
 static void
-pci_add_resources(device_t dev, pcicfgregs* cfg)
+pci_add_resources(device_t pcib, int b, int s, int f, device_t dev)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
+	pcicfgregs *cfg = &dinfo->cfg;
 	struct resource_list *rl = &dinfo->resources;
 	struct pci_quirk *q;
 	int i;
 
 	for (i = 0; i < cfg->nummaps;) {
-		i += pci_add_map(dev, cfg, PCIR_MAPS + i*4);
+		i += pci_add_map(pcib, b, s, f, PCIR_MAPS + i*4, rl);
 	}
 
 	for (q = &pci_quirks[0]; q->devid; q++) {
 		if (q->devid == ((cfg->device << 16) | cfg->vendor)
 		    && q->type == PCI_QUIRK_MAP_REG)
-			pci_add_map(dev, cfg, q->arg1);
+			pci_add_map(pcib, b, s, f, q->arg1, rl);
 	}
 
 	if (cfg->intpin > 0 && cfg->intline != 255)
@@ -1280,20 +1276,17 @@ pci_add_resources(device_t dev, pcicfgregs* cfg)
 static void
 pci_add_children(device_t dev, int busno)
 {
-	pcicfgregs probe;
+	device_t pcib = device_get_parent(dev);
+	int maxslots;
+	int s, f;
 
-#ifdef SIMOS
-#undef PCI_SLOTMAX
-#define PCI_SLOTMAX 0
-#endif
+	maxslots = PCIB_MAXSLOTS(pcib);
 
-	bzero(&probe, sizeof probe);
-	probe.bus = busno;
-
-	for (probe.slot = 0; probe.slot <= PCI_SLOTMAX; probe.slot++) {
+	for (s = 0; s <= max_slots; s++) {
 		int pcifunchigh = 0;
-		for (probe.func = 0; probe.func <= pcifunchigh; probe.func++) {
-			struct pci_devinfo *dinfo = pci_readcfg(&probe);
+		for (f = 0; f <= f; f++) {
+			struct pci_devinfo *dinfo = 
+				pci_read_device(pcib, busno, s, f);
 			if (dinfo != NULL) {
 				if (dinfo->cfg.mfdev)
 					pcifunchigh = 7;
@@ -1301,19 +1294,34 @@ pci_add_children(device_t dev, int busno)
 				pci_print_verbose(dinfo);
 				dinfo->cfg.dev = device_add_child(dev, NULL, -1);
 				device_set_ivars(dinfo->cfg.dev, dinfo);
-				pci_add_resources(dinfo->cfg.dev, &dinfo->cfg);
+				pci_add_resources(pcib, busno, s, f,
+						  dinfo->cfg.dev);
 			}
 		}
 	}
 }
 
 static int
-pci_new_probe(device_t dev)
+pci_probe(device_t dev)
 {
-	static int once;
+	static int once, busno;
 
 	device_set_desc(dev, "PCI bus");
-	pci_add_children(dev, device_get_unit(dev));
+
+	if (bootverbose)
+		device_printf(dev, "physical bus=%d\n", pcib_get_bus(dev));
+
+	/*
+	 * Since there can be multiple independently numbered PCI
+	 * busses on some large alpha systems, we can't use the unit
+	 * number to decide what bus we are probing. We ask the parent
+	 * pcib what our bus number is.
+	 */
+	busno = pcib_get_bus(dev);
+	if (busno < 0)
+		return ENXIO;
+	pci_add_children(dev, busno);
+
 	if (!once) {
 		make_dev(&pcicdev, 0, UID_ROOT, GID_WHEEL, 0644, "pci");
 		once++;
@@ -1415,7 +1423,7 @@ pci_probe_nomatch(device_t dev, device_t child)
 }
 
 static int
-pci_read_ivar(device_t dev, device_t child, int which, u_long *result)
+pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
 	struct pci_devinfo *dinfo;
 	pcicfgregs *cfg;
@@ -1523,7 +1531,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct resource_list *rl = &dinfo->resources;
 
-#ifdef __i386__		/* Only supported on x86 in stable */
+#ifdef __i386__
 	pcicfgregs *cfg = &dinfo->cfg;
 	/*
 	 * Perform lazy resource allocation
@@ -1538,9 +1546,9 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		if ((type == SYS_RES_IRQ) &&
 		    (cfg->intline == 255 || cfg->intline == 0) &&
 		    (cfg->intpin != 0) && (start == 0) && (end == ~0UL)) {
-			cfg->intline = pci_cfgintr(pci_get_bus(child),
-			    pci_get_slot(child), cfg->intpin,
-			    pci_get_irq(child));
+			cfg->intline = PCIB_ROUTE_INTERRUPT(
+				device_get_parent(dev), pci_get_slot(child),
+				cfg->intpin);
 			if (cfg->intline != 255) {
 				pci_write_config(child, PCIR_INTLINE,
 				    cfg->intline, 1);
@@ -1606,7 +1614,10 @@ pci_read_config_method(device_t dev, device_t child, int reg, int width)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
-	return pci_cfgread(cfg, reg, width);
+
+	return PCIB_READ_CONFIG(device_get_parent(dev),
+				 cfg->bus, cfg->slot, cfg->func,
+				 reg, width);
 }
 
 static void
@@ -1615,7 +1626,10 @@ pci_write_config_method(device_t dev, device_t child, int reg,
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
-	pci_cfgwrite(cfg, reg, val, width);
+
+	PCIB_WRITE_CONFIG(device_get_parent(dev),
+			  cfg->bus, cfg->slot, cfg->func,
+			  reg, val, width);
 }
 
 static int
@@ -1635,7 +1649,7 @@ pci_modevent(module_t mod, int what, void *arg)
 
 static device_method_t pci_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		pci_new_probe),
+	DEVMETHOD(device_probe,		pci_probe),
 	DEVMETHOD(device_attach,	bus_generic_attach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
