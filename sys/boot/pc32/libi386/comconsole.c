@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/comconsole.c,v 1.10 2003/09/16 11:24:23 bde Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/comconsole.c,v 1.8 2004/06/27 21:26:40 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/comconsole.c,v 1.9 2004/06/27 21:27:36 dillon Exp $
  */
 
 #include <stand.h>
