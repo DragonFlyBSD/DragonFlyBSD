@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.5 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.6 2004/08/07 00:59:53 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -128,6 +128,8 @@ static u_int		 cpu_cx_stats[MAX_CX_STATES];/* Cx usage history. */
 /* Values for sysctl. */
 static uint32_t		 cpu_throttle_state;
 static uint32_t		 cpu_throttle_max;
+static uint32_t		 cpu_throttle_performance;
+static uint32_t		 cpu_throttle_economy;
 static int		 cpu_cx_lowest;
 static char 		 cpu_cx_supported[64];
 
@@ -144,6 +146,7 @@ static int	acpi_pcpu_get_id(uint32_t idx, uint32_t *acpi_id,
 				 uint32_t *cpu_id);
 static int	acpi_cpu_shutdown(device_t dev);
 static int	acpi_cpu_throttle_probe(struct acpi_cpu_softc *sc);
+static void	acpi_cpu_power_profile(void *arg);
 static int	acpi_cpu_cx_probe(struct acpi_cpu_softc *sc);
 static int	acpi_cpu_cx_cst(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_startup(void *arg);
@@ -687,6 +690,44 @@ acpi_cpu_startup(void *arg)
 	acpi_cpu_startup_throttling();
     if (cpu_cx_count > 0)
 	acpi_cpu_startup_cx();
+
+    /* register performance profile change handler */
+    EVENTHANDLER_REGISTER(power_profile_change, acpi_cpu_power_profile, NULL, 0);
+}
+
+/*
+ * Power profile change hook.
+ *
+ * Uses the ACPI lock to avoid reentrancy.
+ */
+static void
+acpi_cpu_power_profile(void *arg)
+{
+    int	state;
+    int speed;
+    ACPI_LOCK_DECL;
+
+    state = power_profile_get_state();
+    if (state != POWER_PROFILE_PERFORMANCE &&
+	state != POWER_PROFILE_ECONOMY) {
+	return;
+    }
+
+    ACPI_LOCK;
+    switch(state) {
+    case POWER_PROFILE_PERFORMANCE:
+	speed = cpu_throttle_performance;
+	break;
+    case POWER_PROFILE_ECONOMY:
+	speed = cpu_throttle_economy;
+	break;
+    default:
+	speed = cpu_throttle_state;
+	break;
+    }
+    if (speed != cpu_throttle_state)
+	acpi_cpu_throttle_set(speed);
+    ACPI_UNLOCK;
 }
 
 /*
@@ -701,6 +742,8 @@ acpi_cpu_startup_throttling()
     /* Initialise throttling states */
     cpu_throttle_max = CPU_MAX_SPEED;
     cpu_throttle_state = CPU_MAX_SPEED;
+    cpu_throttle_performance = cpu_throttle_max;
+    cpu_throttle_economy = cpu_throttle_performance / 2;
 
     SYSCTL_ADD_INT(&acpi_cpu_sysctl_ctx,
 		   SYSCTL_CHILDREN(acpi_cpu_sysctl_tree),
@@ -711,6 +754,20 @@ acpi_cpu_startup_throttling()
 		    OID_AUTO, "throttle_state",
 		    CTLTYPE_INT | CTLFLAG_RW, &cpu_throttle_state,
 		    0, acpi_cpu_throttle_sysctl, "I", "current CPU speed");
+
+    /*
+     * Performance/Economy throttle settings
+     */
+    SYSCTL_ADD_PROC(&acpi_cpu_sysctl_ctx, 
+		    SYSCTL_CHILDREN(acpi_cpu_sysctl_tree),
+		    OID_AUTO, "performance_speed",
+		    CTLTYPE_INT | CTLFLAG_RW, &cpu_throttle_performance,
+		    0, acpi_cpu_throttle_sysctl, "I", "performance CPU speed");
+    SYSCTL_ADD_PROC(&acpi_cpu_sysctl_ctx,
+		    SYSCTL_CHILDREN(acpi_cpu_sysctl_tree),
+		    OID_AUTO, "economy_speed",
+		    CTLTYPE_INT | CTLFLAG_RW, &cpu_throttle_economy,
+		    0, acpi_cpu_throttle_sysctl, "I", "economy CPU speed");
 
     /* If ACPI 2.0+, signal platform that we are taking over throttling. */
     ACPI_LOCK;
@@ -735,7 +792,6 @@ acpi_cpu_startup_cx()
     struct acpi_cpu_softc *sc;
     struct sbuf		 sb;
     int i;
-    ACPI_LOCK_DECL;
 
     sc = device_get_softc(cpu_devices[0]);
     sbuf_new(&sb, cpu_cx_supported, sizeof(cpu_cx_supported), SBUF_FIXEDLEN);
