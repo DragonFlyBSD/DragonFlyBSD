@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.29 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.30 2005/01/29 20:54:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -686,68 +686,71 @@ exec_copyin_args(struct image_args *args, char *fname,
 	}
 
 	/*
-	 * extract argument strings
+	 * Extract argument strings.  argv may not be NULL.  The argv
+	 * array is terminated by a NULL entry.  We special-case the
+	 * situation where argv[0] is NULL by passing { filename, NULL }
+	 * to the new program to guarentee that the interpreter knows what
+	 * file to open in case we exec an interpreted file.   Note that
+	 * a NULL argv[0] terminates the argv[] array.
+	 *
+	 * XXX the special-casing of argv[0] is historical and needs to be
+	 * revisited.
 	 */
-
-	if (argv && error == 0) {
-		/*
-		 * The argv0 argument for execv() is allowed to be NULL,
-		 * in which case we use our filename as argv[0].
-		 * This guarantees that
-		 * the interpreter knows what file to open in the case
-		 * that we exec an interpreted file.
-		 */
-		argp = (caddr_t) (intptr_t) fuword(argv);
-		if (argp == NULL) {
-			length = strlen(args->fname) + 1;
-			KKASSERT(length <= args->space);
-			bcopy(args->fname, args->endp, length);
-			args->space -= length;
-			args->endp += length;
-			args->argc++;
-			argv++;
-		}
-		while ((argp = (caddr_t) (intptr_t) fuword(argv++))) {
-			if (argp == (caddr_t) -1) {
+	if (argv == NULL)
+		error = EFAULT;
+	if (error == 0) {
+		while ((argp = (caddr_t)(intptr_t)fuword(argv++)) != NULL) {
+			if (argp == (caddr_t)-1) {
 				error = EFAULT;
-				goto cleanup;
+				break;
 			}
 			error = copyinstr(argp, args->endp,
 					    args->space, &length);
-			if (error == ENAMETOOLONG)
-				error = E2BIG;
-			if (error)
-				goto cleanup;
+			if (error) {
+				if (error == ENAMETOOLONG)
+					error = E2BIG;
+				break;
+			}
 			args->space -= length;
 			args->endp += length;
 			args->argc++;
+		}
+		if (args->argc == 0 && error == 0) {
+			length = strlen(args->fname) + 1;
+			if (length > args->space) {
+				error = E2BIG;
+			} else {
+				bcopy(args->fname, args->endp, length);
+				args->space -= length;
+				args->endp += length;
+				args->argc++;
+			}
 		}
 	}	
 
 	args->begin_envv = args->endp;
 
 	/*
-	 * extract environment strings
+	 * extract environment strings.  envv may be NULL.
 	 */
 	if (envv && error == 0) {
 		while ((envp = (caddr_t) (intptr_t) fuword(envv++))) {
 			if (envp == (caddr_t) -1) {
 				error = EFAULT;
-				goto cleanup;
+				break;
 			}
 			error = copyinstr(envp, args->endp, args->space,
 			    &length);
-			if (error == ENAMETOOLONG)
-				error = E2BIG;
-			if (error)
-				goto cleanup;
+			if (error) {
+				if (error == ENAMETOOLONG)
+					error = E2BIG;
+				break;
+			}
 			args->space -= length;
 			args->endp += length;
 			args->envc++;
 		}
 	}
-
-cleanup:
 	return (error);
 }
 
