@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.7 2003/11/09 19:22:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.8 2003/11/12 22:43:07 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -144,6 +144,11 @@ static struct sk_type sk_devs[] = {
 		VENDORID_SK,
 		DEVICEID_SK_V2,
 		"SysKonnect Gigabit Ethernet (V2.0)"
+	},
+	{
+		VENDORID_MARVELL,
+		DEVICEID_SK_V2,
+		"Marvell Gigabit Ethernet"
 	},
 	{
 		VENDORID_3COM,

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.3 2003/11/07 05:57:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.4 2003/11/12 22:43:07 dillon Exp $
  */
 
 /*
@@ -59,6 +59,11 @@
  * SysKonnect PCI vendor ID
  */
 #define VENDORID_SK		0x1148
+
+/*
+ * Marvell PCI vendor ID
+ */
+#define VENDORID_MARVELL	0x11AB
 
 /*
  * SK-NET gigabit ethernet device IDs
