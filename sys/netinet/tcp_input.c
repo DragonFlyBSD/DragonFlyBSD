@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.35 2004/08/11 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.36 2004/08/14 06:41:33 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1182,7 +1182,6 @@ after_listen:
 	tp->rcv_wnd = imax(recvwin, (int)(tp->rcv_adv - tp->rcv_nxt));
 
 	switch (tp->t_state) {
-
 	/*
 	 * If the state is SYN_RECEIVED:
 	 *	if seg contains an ACK, but not for our SYN/ACK, send a RST.
@@ -1268,7 +1267,7 @@ after_listen:
 			soisconnected(so);
 			/* Do window scaling on this connection? */
 			if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-				(TF_RCVD_SCALE | TF_REQ_SCALE)) {
+			    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
 				tp->snd_scale = tp->requested_s_scale;
 				tp->rcv_scale = tp->request_r_scale;
 			}
@@ -1697,7 +1696,7 @@ trimthenstep6:
 		soisconnected(so);
 		/* Do window scaling? */
 		if ((tp->t_flags & (TF_RCVD_SCALE | TF_REQ_SCALE)) ==
-			(TF_RCVD_SCALE | TF_REQ_SCALE)) {
+		    (TF_RCVD_SCALE | TF_REQ_SCALE)) {
 			tp->snd_scale = tp->requested_s_scale;
 			tp->rcv_scale = tp->request_r_scale;
 		}
@@ -1931,14 +1930,7 @@ process_ACK:
 		tcpstat.tcps_rcvackpack++;
 		tcpstat.tcps_rcvackbyte += acked;
 
-		/*
-		 * If we just performed our first retransmit, and the ACK
-		 * arrives within our recovery window, then it was a mistake
-		 * to do the retransmit in the first place.  Recover our
-		 * original cwnd and ssthresh, and proceed to transmit where
-		 * we left off.
-		 */
-		if (tcp_do_eifel_detect && acked &&
+		if (tcp_do_eifel_detect && acked > 0 &&
 		    (to.to_flags & TOF_TS) && (to.to_tsecr != 0) &&
 		    (tp->t_flags & TF_FIRSTACCACK)) {
 			/* Eifel detection applicable. */
@@ -1950,6 +1942,14 @@ process_ACK:
 					++tcpstat.tcps_rttcantdetect;
 			}
 		} else if (tp->t_rxtshift == 1 && ticks < tp->t_badrxtwin) {
+			/*
+			 * If we just performed our first retransmit,
+			 * and the ACK arrives within our recovery window,
+			 * then it was a mistake to do the retransmit
+			 * in the first place.	Recover our original cwnd
+			 * and ssthresh, and proceed to transmit where we
+			 * left off.
+			 */
 			tcp_revert_congestion_state(tp);
 			++tcpstat.tcps_rttdetected;
 		}
@@ -2032,7 +2032,6 @@ process_ACK:
 			tp->snd_nxt = tp->snd_una;
 
 		switch (tp->t_state) {
-
 		/*
 		 * In FIN_WAIT_1 STATE in addition to the processing
 		 * for the ESTABLISHED state if our FIN is now acknowledged
@@ -2070,12 +2069,11 @@ process_ACK:
 				if (tp->cc_recv != 0 &&
 				    (ticks - tp->t_starttime) < tcp_msl)
 					callout_reset(tp->tt_2msl,
-						      tp->t_rxtcur *
-						      TCPTV_TWTRUNC,
-						      tcp_timer_2msl, tp);
+					    tp->t_rxtcur * TCPTV_TWTRUNC,
+					    tcp_timer_2msl, tp);
 				else
 					callout_reset(tp->tt_2msl, 2 * tcp_msl,
-						      tcp_timer_2msl, tp);
+					    tcp_timer_2msl, tp);
 				soisdisconnected(so);
 			}
 			break;
@@ -2115,8 +2113,8 @@ step6:
 	    (tp->snd_wl1 == th->th_seq && (SEQ_LT(tp->snd_wl2, th->th_ack) ||
 	     (tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd))))) {
 		/* keep track of pure window updates */
-		if (tlen == 0 &&
-		    tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd)
+		if (tlen == 0 && tp->snd_wl2 == th->th_ack &&
+		    tiwin > tp->snd_wnd)
 			tcpstat.tcps_rcvwinupd++;
 		tp->snd_wnd = tiwin;
 		tp->snd_wl1 = th->th_seq;
