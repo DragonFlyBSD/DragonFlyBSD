@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.5 2003/06/25 05:22:32 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -437,7 +437,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			return(EPERM);
 		/* fall through */
 	case SIOCGLIFADDR:
-		return in6_lifaddr_ioctl(so, cmd, data, ifp, p);
+		return in6_lifaddr_ioctl(so, cmd, data, ifp, td);
 	}
 
 	/*
@@ -1426,7 +1426,7 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		in6_len2mask(&ifra.ifra_prefixmask.sin6_addr, prefixlen);
 
 		ifra.ifra_flags = iflr->flags & ~IFLR_PREFIX;
-		return in6_control(so, SIOCAIFADDR_IN6, (caddr_t)&ifra, ifp, p);
+		return in6_control(so, SIOCAIFADDR_IN6, (caddr_t)&ifra, ifp, td);
 	    }
 	case SIOCGLIFADDR:
 	case SIOCDLIFADDR:
@@ -1554,7 +1554,7 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 
 			ifra.ifra_flags = ia->ia6_flags;
 			return in6_control(so, SIOCDIFADDR_IN6, (caddr_t)&ifra,
-				ifp, p);
+				ifp, td);
 		}
 	    }
 	}
@@ -1785,8 +1785,8 @@ ip6_sprintf(addr)
 	static char ip6buf[8][48];
 	int i;
 	char *cp;
-	u_short *a = (u_short *)addr;
-	u_char *d;
+	const u_short *a = (const u_short *)addr;
+	const u_char *d;
 	int dcolon = 0;
 
 	ip6round = (ip6round + 1) & 7;
@@ -1815,7 +1815,7 @@ ip6_sprintf(addr)
 			a++;
 			continue;
 		}
-		d = (u_char *)a;
+		d = (const u_char *)a;
 		*cp++ = digits[*d >> 4];
 		*cp++ = digits[*d++ & 0xf];
 		*cp++ = digits[*d >> 4];

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_var.h,v 1.3.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.3 2003/06/25 05:22:32 dillon Exp $	*/
 /*	$KAME: in6_var.h,v 1.56 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -573,7 +573,7 @@ extern int in6_ifindex2scopeid __P((int));
 extern int in6_mask2len __P((struct in6_addr *, u_char *));
 extern void in6_len2mask __P((struct in6_addr *, int));
 int	in6_control __P((struct socket *,
-			 u_long, caddr_t, struct ifnet *, struct proc *));
+			 u_long, caddr_t, struct ifnet *, struct thread *));
 int	in6_update_ifa __P((struct ifnet *, struct in6_aliasreq *,
 			    struct in6_ifaddr *));
 void	in6_purgeaddr __P((struct ifaddr *));

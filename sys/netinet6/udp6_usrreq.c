@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.5 2003/06/25 05:22:32 dillon Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -744,8 +744,8 @@ udp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 			if (sin6)
 				in6_sin6_2_sin_in_sock(addr);
 			pru = inetsw[ip_protox[IPPROTO_UDP]].pr_usrreqs;
-			error = ((*pru->pru_send)(so, flags, m, addr, control,
-						  p));
+			error = ((*pru->pru_send)(so, flags, m, addr,
+				    control, td));
 			/* addr will just be freed in sendit(). */
 			return error;
 		}

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/udp6_var.h,v 1.3.2.1 2000/07/15 07:14:38 kris Exp $
- * $DragonFly: src/sys/netinet6/udp6_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netinet6/udp6_var.h,v 1.3 2003/06/25 05:22:32 dillon Exp $
  */
 
 /*
@@ -77,7 +77,7 @@ void	udp6_ctlinput __P((int, struct sockaddr *, void *));
 int	udp6_input __P((struct mbuf **, int *, int));
 int	udp6_output __P((struct inpcb *inp, struct mbuf *m,
 			struct sockaddr *addr, struct mbuf *control,
-			struct proc *p));
+			struct thread *p));
 #endif
 
 #endif /*_NETINET6_UDP6_VAR_H_*/

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.4 2003/06/23 18:12:04 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.5 2003/06/25 05:22:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -259,7 +259,9 @@ bsd_to_svr4_sigaltstack(bss, sss)
 int
 svr4_sys_sigaction(struct svr4_sys_sigaction_args *uap)
 {
+#if defined(DEBUG_SVR4)
 	struct proc *p = curproc;
+#endif
 	struct svr4_sigaction *nisa, *oisa, tmpisa;
 	struct sigaction *nbsa, *obsa, tmpbsa;
 	struct sigaction_args sa;

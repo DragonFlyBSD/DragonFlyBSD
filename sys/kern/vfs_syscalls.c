@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.5 2003/06/25 05:22:32 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -640,14 +640,12 @@ int
 statfs(struct statfs_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct mount *mp;
 	struct statfs *sp;
 	int error;
 	struct nameidata nd;
 	struct statfs sb;
 
-	KKASSERT(p);
 	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
 	if ((error = namei(&nd)) != 0)
 		return (error);

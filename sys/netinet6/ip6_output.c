@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.5 2003/06/25 05:22:32 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1485,7 +1485,7 @@ do { \
 					break;
 				}
 				/* XXX */
-				MGET(m, sopt->sopt_p ? M_WAIT : M_DONTWAIT, MT_HEADER);
+				MGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT, MT_HEADER);
 				if (m == 0) {
 					error = ENOBUFS;
 					break;
@@ -1752,7 +1752,7 @@ ip6_pcbopts(pktopt, m, so, sopt)
 {
 	struct ip6_pktopts *opt = *pktopt;
 	int error = 0;
-	struct proc *p = sopt->sopt_p;
+	struct thread *td = sopt->sopt_td;
 	int priv = 0;
 
 	/* turn off any old options. */
@@ -1778,7 +1778,7 @@ ip6_pcbopts(pktopt, m, so, sopt)
 	}
 
 	/*  set options specified by user. */
-	if (p && !suser_xxx(p->p_ucred, 0))
+	if (suser(td) == 0)
 		priv = 1;
 	if ((error = ip6_setpktoptions(m, opt, priv, 1)) != 0) {
 		ip6_clearpktopts(opt, 1, -1); /* XXX: discard all options */
@@ -1940,7 +1940,7 @@ ip6_setmoptions(optname, im6op, m)
 	struct route_in6 ro;
 	struct sockaddr_in6 *dst;
 	struct in6_multi_mship *imm;
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;	/* XXX */
 
 	if (im6o == NULL) {
 		/*
@@ -2035,7 +2035,7 @@ ip6_setmoptions(optname, im6op, m)
 			 * all multicast addresses. Only super user is allowed
 			 * to do this.
 			 */
-			if (suser_xxx(p->p_ucred, 0))
+			if (suser(td))
 			{
 				error = EACCES;
 				break;
@@ -2142,7 +2142,7 @@ ip6_setmoptions(optname, im6op, m)
 		}
 		mreq = mtod(m, struct ipv6_mreq *);
 		if (IN6_IS_ADDR_UNSPECIFIED(&mreq->ipv6mr_multiaddr)) {
-			if (suser_xxx(p->p_ucred, 0)) {
+			if (suser(td)) {
 				error = EACCES;
 				break;
 			}

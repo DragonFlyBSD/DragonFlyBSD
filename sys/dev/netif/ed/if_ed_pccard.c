@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.9.2.6 2001/07/25 18:06:01 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.3 2003/06/25 05:22:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -319,7 +319,7 @@ ed_pccard_memwrite(device_t dev, off_t offset, u_char byte)
 	uios.uio_resid = sizeof(byte);
 	uios.uio_segflg = UIO_SYSSPACE;
 	uios.uio_rw = UIO_WRITE;
-	uios.uio_procp = 0;
+	uios.uio_td = NULL;
 
 	d = makedev(CARD_MAJOR, devi->slt->slotnum);
 	return devsw(d)->d_write(d, &uios, 0);
@@ -344,7 +344,7 @@ ed_pccard_memread(device_t dev, off_t offset, u_char *buf, int size)
 	uios.uio_resid = size;
 	uios.uio_segflg = UIO_SYSSPACE;
 	uios.uio_rw = UIO_READ;
-	uios.uio_procp = 0;
+	uios.uio_td = NULL;
 
 	d = makedev(CARD_MAJOR, devi->slt->slotnum);
 	return devsw(d)->d_read(d, &uios, 0);
