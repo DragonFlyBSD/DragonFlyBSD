@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)replace.c	8.3 (Berkeley) 4/2/94
+ *
+ * $DragonFly: src/usr.bin/ar/Attic/replace.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -58,8 +60,7 @@
  *	is specified, modification dates select for replacement.
  */
 int
-replace(argv)
-	char **argv;
+replace(char **argv)
 {
 	char *file;
 	int afd, curfd, errflg, exists, mods, sfd, tfd1, tfd2;

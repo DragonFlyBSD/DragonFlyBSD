@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/perm.c,v 1.9.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/perm.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/at/perm.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 /* System Headers */
@@ -79,7 +79,7 @@ static int check_for_user(FILE *fp,const char *name)
     return found;
 }
 /* Global functions */
-int check_permission()
+int check_permission(void)
 {
     FILE *fp;
     uid_t uid = geteuid();

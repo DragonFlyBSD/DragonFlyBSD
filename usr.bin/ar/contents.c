@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $
- * $DragonFly: src/usr.bin/ar/Attic/contents.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/contents.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  *
  * @(#)contents.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $
@@ -61,8 +61,7 @@
  *	skipping member contents.
  */
 int
-contents(argv)
-	char **argv;
+contents(char **argv)
 {
 	int afd, all;
 	struct tm *tp;

@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)append.c	8.3 (Berkeley) 4/2/94
+ *
+ * $DragonFly: src/usr.bin/ar/Attic/append.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -55,8 +57,7 @@
  *	a new archive if named archive does not exist.
  */
 int
-append(argv)
-	char **argv;
+append(char **argv)
 {
 	int afd, fd, eval;
 	char *file;

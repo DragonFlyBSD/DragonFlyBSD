@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/biff/biff.c,v 1.6.2.4 2002/08/09 02:56:31 johan Exp $
- * $DragonFly: src/usr.bin/biff/biff.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/biff/biff.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)biff.c	8.1 (Berkeley) 6/6/93
@@ -46,13 +46,11 @@
 #include <string.h>
 #include <err.h>
 
-int main __P((int, char *[]));
-static void usage __P((void));
+int main(int, char *[]);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct stat sb;
 	int ch;
@@ -102,7 +100,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: biff [n | y | b]\n");
 	exit(2);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chpass.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/chpass/chpass.c,v 1.16.2.4 2002/08/11 14:16:42 dwmalone Exp $
- * $DragonFly: src/usr.bin/chpass/chpass.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/chpass/chpass.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -71,9 +71,7 @@ void	baduser __P((void));
 void	usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	enum { NEWSH, LOADENTRY, EDITENTRY, NEWPW, NEWEXP } op;
 	struct passwd *pw = NULL, lpw, old_pw, *pold_pw;
@@ -277,13 +275,13 @@ main(argc, argv)
 }
 
 void
-baduser()
+baduser(void)
 {
 	errx(1, "%s", strerror(EACCES));
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr,

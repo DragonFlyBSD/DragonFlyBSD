@@ -76,7 +76,7 @@
  *
  *
  * $FreeBSD: src/usr.bin/chat/chat.c,v 1.15 1999/11/25 07:28:54 kris Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <stdio.h>
@@ -240,8 +240,7 @@ size_t c;
     return ans;
 }
 
-void *copy_of (s)
-char *s;
+void *copy_of (char *s)
 {
     return dup_mem (s, strlen (s) + 1);
 }
@@ -254,9 +253,7 @@ char *s;
  *	Perform a UUCP-dialer-like chat script on stdin and stdout.
  */
 int
-main(argc, argv)
-     int argc;
-     char **argv;
+main(int argc, char **argv)
 {
     int option;
     char *arg;
@@ -378,8 +375,7 @@ main(argc, argv)
  *  Process a chat script when read from a file.
  */
 
-void do_file (chat_file)
-char *chat_file;
+void do_file (char *chat_file)
 {
     int linect, sendflg;
     char *sp, *arg, quote;
@@ -448,7 +444,7 @@ char *chat_file;
  *	We got an error parsing the command line.
  */
 static void
-usage()
+usage(void)
 {
     fprintf(stderr, "\
 Usage: chat [-e] [-v] [-V] [-t timeout] [-r report-file] [-T phone-number]\n\
@@ -465,13 +461,7 @@ void logf __V((const char *fmt, ...))
 {
     va_list args;
 
-#ifdef __STDC__
     va_start(args, fmt);
-#else
-    char *fmt;
-    va_start(args);
-    fmt = va_arg(args, char *);
-#endif
 
     vfmtmsg(line, sizeof(line), fmt, args);
     if (to_log)
@@ -488,15 +478,7 @@ void fatal __V((int code, const char *fmt, ...))
 {
     va_list args;
 
-#ifdef __STDC__
     va_start(args, fmt);
-#else
-    int code;
-    char *fmt;
-    va_start(args);
-    code = va_arg(args, int);
-    fmt = va_arg(args, char *);
-#endif
 
     vfmtmsg(line, sizeof(line), fmt, args);
     if (to_log)
@@ -508,8 +490,7 @@ void fatal __V((int code, const char *fmt, ...))
 
 int alarmed = 0;
 
-SIGTYPE sigalrm(signo)
-int signo;
+SIGTYPE sigalrm(int signo)
 {
     int flags;
 
@@ -527,7 +508,7 @@ int signo;
 	logf("alarm");
 }
 
-void unalarm()
+void unalarm(void)
 {
     int flags;
 
@@ -538,25 +519,22 @@ void unalarm()
 	fatal(2, "Can't set file mode flags on stdin: %m");
 }
 
-SIGTYPE sigint(signo)
-int signo;
+SIGTYPE sigint(int signo)
 {
     fatal(2, "SIGINT");
 }
 
-SIGTYPE sigterm(signo)
-int signo;
+SIGTYPE sigterm(int signo)
 {
     fatal(2, "SIGTERM");
 }
 
-SIGTYPE sighup(signo)
-int signo;
+SIGTYPE sighup(int signo)
 {
     fatal(2, "SIGHUP");
 }
 
-void init()
+void init(void)
 {
     signal(SIGINT, sigint);
     signal(SIGTERM, sigterm);
@@ -568,7 +546,7 @@ void init()
     alarmed = 0;
 }
 
-void set_tty_parameters()
+void set_tty_parameters(void)
 {
 #if defined(get_term_param)
     term_parms t;
@@ -592,15 +570,14 @@ void set_tty_parameters()
 #endif
 }
 
-void break_sequence()
+void break_sequence(void)
 {
 #ifdef TERMIOS
     tcsendbreak (0, 0);
 #endif
 }
 
-void terminate(status)
-int status;
+void terminate(int status)
 {
     echo_stderr(-1);
     if (report_file != (char *) 0 && report_fp != (FILE *) NULL) {
@@ -642,9 +619,8 @@ int status;
 /*
  *	'Clean up' this string.
  */
-char *clean(s, sending)
-register char *s;
-int sending;  /* set to 1 when sending (putting) this string. */
+/* sending: set to 1 when sending (putting) this string. */
+char *clean(register char *s, int sending)
 {
     char temp[STR_LEN], cur_chr;
     register char *s1, *phchar;
@@ -794,8 +770,7 @@ int sending;  /* set to 1 when sending (putting) this string. */
  * A modified version of 'strtok'. This version skips \ sequences.
  */
 
-char *expect_strtok (s, term)
-     char *s, *term;
+char *expect_strtok (char *s, char *term)
 {
     static  char *str   = "";
     int	    escape_flag = 0;
@@ -849,8 +824,7 @@ char *expect_strtok (s, term)
  * Process the expect string
  */
 
-void chat_expect (s)
-char *s;
+void chat_expect (char *s)
 {
     char *expect;
     char *reply;
@@ -938,8 +912,7 @@ char *s;
  * the data.
  */
 
-char *character(c)
-int c;
+char *character(int c)
 {
     static char string[10];
     char *meta;
@@ -960,8 +933,7 @@ int c;
 /*
  *  process the reply string
  */
-void chat_send (s)
-register char *s;
+void chat_send (register char *s)
 {
     if (say_next) {
 	say_next = 0;
@@ -1110,7 +1082,7 @@ register char *s;
 	fatal(1, "Failed");
 }
 
-int get_char()
+int get_char(void)
 {
     int status;
     char c;
@@ -1135,8 +1107,7 @@ int get_char()
     }
 }
 
-int put_char(c)
-int c;
+int put_char(int c)
 {
     int status;
     char ch = c;
@@ -1163,8 +1134,7 @@ int c;
     }
 }
 
-int write_char (c)
-int c;
+int write_char (int c)
 {
     if (alarmed || put_char(c) < 0) {
 	alarm(0);
@@ -1181,8 +1151,7 @@ int c;
     return (1);
 }
 
-int put_string (s)
-register char *s;
+int put_string (register char *s)
 {
     quiet = 0;
     s = clean(s, 1);
@@ -1236,8 +1205,7 @@ register char *s;
  *	When called with -1, a '\n' character is generated when
  *	the cursor is not at the beginning of a line.
  */
-void echo_stderr(n)
-int n;
+void echo_stderr(int n)
 {
     static int need_lf;
     char *s;
@@ -1264,8 +1232,7 @@ int n;
 /*
  *	'Wait for' this string to appear on this file descriptor.
  */
-int get_string(string)
-register char *string;
+int get_string(register char *string)
 {
     char temp[STR_LEN];
     int c, printed = 0, len, minlen;
@@ -1433,9 +1400,9 @@ register char *string;
 
 extern int	  select();
 
+/* usec: delay in microseconds */
 int
-usleep( usec )				  /* returns 0 if ok, else -1 */
-    long		usec;		/* delay in microseconds */
+usleep( long usec )				  /* returns 0 if ok, else -1 */
 {
     static struct {		/* `timeval' */
 	long	tv_sec;		/* seconds */
@@ -1450,9 +1417,7 @@ usleep( usec )				  /* returns 0 if ok, else -1 */
 #endif
 
 void
-pack_array (array, end)
-    char **array; /* The address of the array of string pointers */
-    int    end;   /* The index of the next free entry before CLR_ */
+pack_array (char **array, int end)
 {
     int i, j;
 
@@ -1478,11 +1443,7 @@ pack_array (array, end)
 #define OUTCHAR(c)	(buflen > 0? (--buflen, *buf++ = (c)): 0)
 
 int
-vfmtmsg(buf, buflen, fmt, args)
-    char *buf;
-    int buflen;
-    const char *fmt;
-    va_list args;
+vfmtmsg(char *buf, int buflen, const char *fmt, va_list args)
 {
     int c, i, n;
     int width, prec, fillch;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/paskha.c,v 1.4.10.2 2002/05/27 12:14:46 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/paskha.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/calendar/paskha.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <stdio.h>
@@ -42,9 +42,9 @@ static int paskha (int);
 /* return year day for Orthodox Easter using Gauss formula */
 /* (old style result) */
 
+/* R: year */
 static int
-paskha (R)
-int R;  /*year*/
+paskha (int R)
 {
 	int a, b, c, d, e;
 	static int x = 15;
@@ -62,9 +62,7 @@ int R;  /*year*/
 /* return year day for Orthodox Easter depending days */
 
 int
-getpaskha(s, year)
-	char *s;
-        int year;
+getpaskha(char *s, int year)
 {
 	int offset;
 	extern struct fixs npaskha;

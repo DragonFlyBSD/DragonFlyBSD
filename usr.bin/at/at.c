@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.c,v 1.18.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #define _USE_BSD 1
@@ -438,7 +438,7 @@ writefile(time_t runtimer, char queue)
 }
 
 static void
-list_jobs()
+list_jobs(void)
 {
     /* List all a user's jobs in the queue, by looping through ATJOB_DIR, 
      * or everybody's if we are root

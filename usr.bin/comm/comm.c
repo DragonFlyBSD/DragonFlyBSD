@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)comm.c	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/comm/comm.c,v 1.11.2.3 2002/07/11 00:46:37 tjr Exp $
- * $DragonFly: src/usr.bin/comm/comm.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/comm/comm.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 #include <ctype.h>
@@ -58,9 +58,7 @@ int     stricoll(char *, char *);
 static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int comp, file1done = 0, file2done = 0, read1, read2;
 	int ch, flag1, flag2, flag3, iflag;
@@ -160,10 +158,7 @@ main(argc, argv)
 }
 
 void
-show(fp, offset, buf)
-	FILE *fp;
-	const char *offset;
-	char *buf;
+show(FILE *fp, const char *offset, char *buf)
 {
 
 	do {
@@ -172,8 +167,7 @@ show(fp, offset, buf)
 }
 
 FILE *
-file(name)
-	char *name;
+file(char *name)
 {
 	FILE *fp;
 
@@ -186,15 +180,14 @@ file(name)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: comm [-123i] file1 file2\n");
 	exit(1);
 }
 
 int
-stricoll(s1, s2)
-	char *s1, *s2;
+stricoll(char *s1, char *s2)
 {
 	char *p, line1[MAXLINELEN], line2[MAXLINELEN];
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)banner.c	8.4 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/banner/banner.c,v 1.7.2.4 2001/10/02 11:41:25 ru Exp $
- * $DragonFly: src/usr.bin/banner/banner.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/banner/banner.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 /*
@@ -1168,7 +1168,7 @@ main(int argc, char *argv[])
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: banner [-d] [-t] [-w width] message ...\n");
 	exit(1);

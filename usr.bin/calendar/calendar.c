@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/calendar.c,v 1.11.2.5 2003/04/06 20:04:56 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendar.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <err.h>
@@ -57,9 +57,7 @@ int f_dayBefore = 0; /* days before current date */
 int Friday = 5;	     /* day before weekend */
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 
@@ -133,7 +131,7 @@ main(argc, argv)
 
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n",
 	    "usage: calendar [-a] [-A days] [-B days] [-F friday] "

@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)move.c	8.3 (Berkeley) 4/2/94
+ *
+ * $DragonFly: src/usr.bin/ar/Attic/move.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -58,8 +60,7 @@
  *	are moved to end of archive.
  */
 int
-move(argv)
-	char **argv;
+move(char **argv)
 {
 	CF cf;
 	off_t size, tsize;

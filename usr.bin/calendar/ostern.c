@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/ostern.c,v 1.8.2.2 2002/05/27 12:14:46 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <stdio.h>
@@ -43,8 +43,7 @@
  * Astronomical Almanac".
  */
 
-int easter (year)
-    int year;            /* 0 ... abcd, NOT since 1900 */
+int easter (int year)
 {
     int G,	/* Golden number - 1 */
 	C,	/* Century */
@@ -73,9 +72,7 @@ int easter (year)
  */
 
 int
-geteaster(s, year)
-	char *s;
-        int year;
+geteaster(char *s, int year)
 {
 	int offset = 0;
 	extern struct fixs neaster;

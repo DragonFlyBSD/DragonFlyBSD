@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)print.c	8.3 (Berkeley) 4/2/94
+ *
+ * $DragonFly: src/usr.bin/ar/Attic/print.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -52,8 +54,7 @@
  *	print those members, otherwise print all members.
  */
 int
-print(argv)
-	char **argv;
+print(char **argv)
 {
 	CF cf;
 	int afd, all;

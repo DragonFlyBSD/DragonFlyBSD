@@ -35,7 +35,7 @@
  *
  * @(#)archive.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/archive.c,v 1.10.6.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/archive.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/archive.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -59,8 +59,7 @@ typedef struct ar_hdr HDR;
 static char hb[sizeof(HDR) + 1];	/* real header */
 
 int
-open_archive(mode)
-	int mode;
+open_archive(int mode)
 {
 	int created, fd, nr;
 	char buf[SARMAG];
@@ -108,8 +107,7 @@ opened:	if (flock(fd, LOCK_EX|LOCK_NB) && errno != EOPNOTSUPP)
 }
 
 void
-close_archive(fd)
-	int fd;
+close_archive(int fd)
 {
 
 	(void)close(fd);			/* Implicit unlock. */
@@ -127,8 +125,7 @@ close_archive(fd)
  *	read the archive header for this member
  */
 int
-get_arobj(fd)
-	int fd;
+get_arobj(int fd)
 {
 	struct ar_hdr *hdr;
 	int len, nr;
@@ -195,9 +192,7 @@ static int already_written;
  *	Write an archive member to a file.
  */
 void
-put_arobj(cfp, sb)
-	CF *cfp;
-	struct stat *sb;
+put_arobj(CF *cfp, struct stat *sb)
 {
 	int lname;
 	char *name;
@@ -274,9 +269,7 @@ put_arobj(cfp, sb)
  *	have been ripped out long ago.
  */
 void
-copy_ar(cfp, size)
-	CF *cfp;
-	off_t size;
+copy_ar(CF *cfp, off_t size)
 {
 	static char pad = '\n';
 	off_t sz;
@@ -317,8 +310,7 @@ copy_ar(cfp, size)
  *	Skip over an object -- taking care to skip the pad bytes.
  */
 void
-skip_arobj(fd)
-	int fd;
+skip_arobj(int fd)
 {
 	off_t len;
 

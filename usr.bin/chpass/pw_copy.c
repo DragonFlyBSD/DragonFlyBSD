@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/chpass/pw_copy.c,v 1.9.2.2 2002/03/24 09:00:03 cjc Exp $
- * $DragonFly: src/usr.bin/chpass/pw_copy.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/chpass/pw_copy.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  *
  * @(#)pw_copy.c	8.4 (Berkeley) 4/2/94
  */
@@ -56,9 +56,7 @@ extern char *tempname;
 
 /* for use in pw_copy(). Compare a pw entry to a pw struct. */
 static int
-pw_equal(buf, pw)
-	char *buf;
-	struct passwd *pw;
+pw_equal(char *buf, struct passwd *pw)
 {
 	struct passwd buf_pw;
 	int len;
@@ -81,9 +79,7 @@ pw_equal(buf, pw)
 
 
 void
-pw_copy(ffd, tfd, pw, old_pw)
-	int ffd, tfd;
-	struct passwd *pw, *old_pw;
+pw_copy(int ffd, int tfd, struct passwd *pw, struct passwd *old_pw)
 {
 	FILE *from, *to;
 	int done;

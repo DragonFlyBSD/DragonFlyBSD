@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cut.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/cut/cut.c,v 1.9.2.3 2001/07/30 09:59:16 dd Exp $
- * $DragonFly: src/usr.bin/cut/cut.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cut/cut.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 #include <ctype.h>
@@ -61,9 +61,7 @@ int	main (int, char **);
 static 	void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	FILE *fp;
 	void (*fcn) (FILE *, const char *) = NULL;
@@ -128,8 +126,7 @@ size_t autostart, autostop, maxval;
 char positions[_POSIX2_LINE_MAX + 1];
 
 void
-get_list(list)
-	char *list;
+get_list(char *list)
 {
 	size_t setautostart, start, stop;
 	char *pos;
@@ -186,9 +183,7 @@ get_list(list)
 
 /* ARGSUSED */
 void
-c_cut(fp, fname)
-	FILE *fp;
-	const char *fname;
+c_cut(FILE *fp, const char *fname)
 {
 	int ch, col;
 	char *pos;
@@ -217,9 +212,7 @@ c_cut(fp, fname)
 }
 
 void
-f_cut(fp, fname)
-	FILE *fp;
-	const char *fname __unused;
+f_cut(FILE *fp, const char *fname __unused)
 {
 	int ch, field, isdelim;
 	char *pos, *p, sep;
@@ -283,7 +276,7 @@ f_cut(fp, fname)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n",
 		"usage: cut -b list [-n] [file ...]",

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)compress.c	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/usr.bin/compress/compress.c,v 1.7.6.5 2002/07/16 00:56:04 tjr Exp $
- * $DragonFly: src/usr.bin/compress/compress.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/compress/compress.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -61,9 +61,7 @@ void	usage(int);
 int eval, force, verbose;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	enum {COMPRESS, DECOMPRESS} style;
 	size_t len;
@@ -188,9 +186,7 @@ main(argc, argv)
 }
 
 void
-compress(in, out, bits)
-	const char *in, *out;
-	int bits;
+compress(const char *in, const char *out, int bits)
 {
 	size_t nr;
 	struct stat isb, sb;
@@ -280,9 +276,7 @@ err:	if (ofp) {
 }
 
 void
-decompress(in, out, bits)
-	const char *in, *out;
-	int bits;
+decompress(const char *in, const char *out, int bits)
 {
 	size_t nr;
 	struct stat sb;
@@ -347,9 +341,7 @@ err:	if (ofp) {
 }
 
 void
-setfile(name, fs)
-	const char *name;
-	struct stat *fs;
+setfile(const char *name, struct stat *fs)
 {
 	static struct timeval tv[2];
 
@@ -379,8 +371,7 @@ setfile(name, fs)
 }
 
 int
-permission(fname)
-	const char *fname;
+permission(const char *fname)
 {
 	int ch, first;
 
@@ -394,8 +385,7 @@ permission(fname)
 }
 
 void
-usage(iscompress)
-	int iscompress;
+usage(int iscompress)
 {
 	if (iscompress)
 		(void)fprintf(stderr,

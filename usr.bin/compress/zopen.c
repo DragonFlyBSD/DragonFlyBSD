@@ -36,7 +36,7 @@
  *
  * @(#)zopen.c	8.1 (Berkeley) 6/27/93
  * $FreeBSD: src/usr.bin/compress/zopen.c,v 1.5.6.1 2002/07/16 00:52:08 tjr Exp $
- * $DragonFly: src/usr.bin/compress/zopen.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/compress/zopen.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 /*-
@@ -233,10 +233,7 @@ static int	zwrite(void *, const char *, int);
  * questions about this implementation to ames!jaw.
  */
 static int
-zwrite(cookie, wbp, num)
-	void *cookie;
-	const char *wbp;
-	int num;
+zwrite(void *cookie, const char *wbp, int num)
 {
 	code_int i;
 	int c, disp;
@@ -324,8 +321,7 @@ nomatch:	if (output(zs, (code_int) ent) == -1)
 }
 
 static int
-zclose(cookie)
-	void *cookie;
+zclose(void *cookie)
 {
 	struct s_zstate *zs;
 	int rval;
@@ -370,9 +366,7 @@ static char_type rmask[9] =
 	{0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff};
 
 static int
-output(zs, ocode)
-	struct s_zstate *zs;
-	code_int ocode;
+output(struct s_zstate *zs, code_int ocode)
 {
 	int r_off;
 	u_int bits;
@@ -460,10 +454,7 @@ output(zs, ocode)
  * compress() routine.  See the definitions above.
  */
 static int
-zread(cookie, rbp, num)
-	void *cookie;
-	char *rbp;
-	int num;
+zread(void *cookie, char *rbp, int num)
 {
 	u_int count;
 	struct s_zstate *zs;
@@ -571,8 +562,7 @@ eof:	return (num - count);
  * 	code or -1 is returned.
  */
 static code_int
-getcode(zs)
-	struct s_zstate *zs;
+getcode(struct s_zstate *zs)
 {
 	code_int gcode;
 	int r_off, bits;
@@ -630,8 +620,7 @@ getcode(zs)
 }
 
 static int
-cl_block(zs)			/* Table clear for block compress. */
-	struct s_zstate *zs;
+cl_block(struct s_zstate *zs)			/* Table clear for block compress. */
 {
 	long rat;
 
@@ -659,9 +648,7 @@ cl_block(zs)			/* Table clear for block compress. */
 }
 
 static void
-cl_hash(zs, cl_hsize)			/* Reset code table. */
-	struct s_zstate *zs;
-	count_int cl_hsize;
+cl_hash(struct s_zstate *zs, count_int cl_hsize)			/* Reset code table. */
 {
 	count_int *htab_p;
 	long i, m1;
@@ -693,9 +680,7 @@ cl_hash(zs, cl_hsize)			/* Reset code table. */
 }
 
 FILE *
-zopen(fname, mode, bits)
-	const char *fname, *mode;
-	int bits;
+zopen(const char *fname, const char *mode, int bits)
 {
 	struct s_zstate *zs;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/special.c,v 1.4.2.1 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/special.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cmp/special.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  *
  * @(#)special.c	8.3 (Berkeley) 4/2/94
  */
@@ -46,10 +46,8 @@
 #include "extern.h"
 
 void
-c_special(fd1, file1, skip1, fd2, file2, skip2)
-	int fd1, fd2;
-	const char *file1, *file2;
-	off_t skip1, skip2;
+c_special(int fd1, const char *file1, off_t skip1, int fd2, const char *file2,
+          off_t skip2)
 {
 	int ch1, ch2;
 	off_t byte, line;

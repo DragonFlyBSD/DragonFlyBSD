@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cap_mkdb.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.6.2.2 2001/08/02 01:15:51 obrien Exp $
- * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -64,9 +64,7 @@ char *capdb, *capname, buf[8 * 1024];
  * the correct record is stored.
  */
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int c;
 
@@ -113,7 +111,7 @@ main(argc, argv)
 }
 
 void
-dounlink()
+dounlink(void)
 {
 	if (capname != NULL)
 		(void)unlink(capname);
@@ -132,8 +130,7 @@ dounlink()
  * details above.
  */
 void
-db_build(ifiles)
-	char **ifiles;
+db_build(char **ifiles)
 {
 	DBT key, data;
 	recno_t reccnt;
@@ -239,7 +236,7 @@ db_build(ifiles)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: cap_mkdb [-v] [-f outfile] file [file ...]\n");

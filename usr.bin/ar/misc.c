@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/misc.c,v 1.6.6.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/misc.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/misc.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@
 char *tname = "temporary file";		/* temporary file "name" */
 
 int
-tmp()
+tmp(void)
 {
 	extern char *envtmp;
 	sigset_t set, oset;
@@ -90,8 +90,7 @@ tmp()
  * 	does, remove it from the argument list.
  */
 char *
-files(argv)
-	char **argv;
+files(char **argv)
 {
 	char **list, *p;
 
@@ -106,8 +105,7 @@ files(argv)
 }
 
 void
-orphans(argv)
-	char **argv;
+orphans(char **argv)
 {
 
 	for (; *argv; ++argv)
@@ -115,23 +113,21 @@ orphans(argv)
 }
 
 int
-compare(dest)
-	char *dest;
+compare(char *dest)
 {
 	int maxname = (options & AR_TR) ? OLDARMAXNAME : MAXNAMLEN;
 	return (!strncmp(chdr.name, basename(dest), maxname));
 }
 
 void
-badfmt()
+badfmt(void)
 {
 
 	errx(1, "%s: %s", archive, strerror(EFTYPE));
 }
 
 void
-error(name)
-	char *name;
+error(char *name)
 {
 
 	err(1, "%s", name);

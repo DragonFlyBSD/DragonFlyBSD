@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/day.c,v 1.13.2.5 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/day.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/calendar/day.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -136,8 +136,7 @@ void setnnames(void)
 }
 
 void
-settime(now)
-    	time_t now;
+settime(time_t now)
 {
 	char *oldl, *lbufp;
 
@@ -169,8 +168,7 @@ settime(now)
 /* convert Day[/Month][/Year] into unix time (since 1970)
  * Day: two digits, Month: two digits, Year: digits
  */
-time_t Mktime (dp)
-    char *dp;
+time_t Mktime (char *dp)
 {
     time_t t;
     int d, m, y;
@@ -218,11 +216,7 @@ time_t Mktime (dp)
  * along with the matched line.
  */
 int
-isnow(endp, monthp, dayp, varp)
-	char *endp;
-	int	*monthp;
-	int	*dayp;
-	int	*varp;
+isnow(char *endp, int *monthp, int *dayp, int *varp)
 {
 	int day, flags, month = 0, v1, v2;
 
@@ -394,8 +388,7 @@ isnow(endp, monthp, dayp, varp)
 
 
 int
-getmonth(s)
-	char *s;
+getmonth(char *s)
 {
 	const char **p;
 	struct fixs *n;
@@ -414,8 +407,7 @@ getmonth(s)
 
 
 int
-getday(s)
-	char *s;
+getday(char *s)
 {
 	const char **p;
 	struct fixs *n;
@@ -438,8 +430,7 @@ getday(s)
  * ... etc ...
  */
 int
-getdayvar(s)
-	char *s;
+getdayvar(char *s)
 {
 	int offs;
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)ctags.c	8.4 (Berkeley) 2/7/95
  * $FreeBSD: src/usr.bin/ctags/ctags.c,v 1.7.2.1 2001/09/18 04:16:53 mikeh Exp $
- * $DragonFly: src/usr.bin/ctags/ctags.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/ctags/ctags.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 #include <err.h>
@@ -75,9 +75,7 @@ void	find_entries __P((char *));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int	argc;
-	char	**argv;
+main(int argc, char **argv)
 {
 	static char	*outfile = "tags";	/* output file */
 	int	aflag;				/* -a: append to tags */
@@ -170,7 +168,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: ctags [-BFadtuwvx] [-f tagsfile] file ...\n");
 	exit(1);
@@ -187,7 +185,7 @@ usage()
  *	the string CWHITE, else NO.
  */
 void
-init()
+init(void)
 {
 	int		i;
 	unsigned char	*sp;
@@ -219,8 +217,7 @@ init()
  *	which searches the file.
  */
 void
-find_entries(file)
-	char	*file;
+find_entries(char *file)
 {
 	char	*cp;
 

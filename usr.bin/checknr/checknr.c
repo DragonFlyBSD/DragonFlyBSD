@@ -32,6 +32,8 @@
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 /*
@@ -180,9 +182,7 @@ int	ncmds;		/* size of knowncmds */
 int	slot;		/* slot in knowncmds found by binsrch */
 
 int
-main(argc, argv)
-int argc;
-char **argv;
+main(int argc, char **argv)
 {
 	FILE *f;
 	int i;
@@ -262,7 +262,7 @@ char **argv;
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 	"usage: checknr [-a.xx.yy.xx.yy...] [-c.xx.xx.xx...] [-s] [-f] file\n");
@@ -270,8 +270,7 @@ usage()
 }
 
 void
-process(f)
-FILE *f;
+process(FILE *f)
 {
 	register int i, n;
 	char mac[5];	/* The current macro or nroff command */
@@ -367,8 +366,7 @@ FILE *f;
 }
 
 void
-complain(i)
-int i;
+complain(int i)
 {
 	pe(stk[i].lno);
 	printf("Unmatched ");
@@ -377,8 +375,7 @@ int i;
 }
 
 void
-prop(i)
-int i;
+prop(int i)
 {
 	if (stk[i].pl == 0)
 		printf(".%s", br[stk[i].opno].opbr);
@@ -396,9 +393,7 @@ int i;
 }
 
 void
-chkcmd(line, mac)
-char *line;
-char *mac;
+chkcmd(char *line, char *mac)
 {
 	register int i;
 
@@ -434,8 +429,7 @@ char *mac;
 }
 
 void
-nomatch(mac)
-char *mac;
+nomatch(char *mac)
 {
 	register int i, j;
 
@@ -480,16 +474,14 @@ char *mac;
 
 /* eq: are two strings equal? */
 int
-eq(s1, s2)
-char *s1, *s2;
+eq(char *s1, char *s2)
 {
 	return (strcmp(s1, s2) == 0);
 }
 
 /* print the first part of an error message, given the line number */
 void
-pe(lineno)
-int lineno;
+pe(int lineno)
 {
 	if (nfiles > 1)
 		printf("%s: ", cfilename);
@@ -497,8 +489,7 @@ int lineno;
 }
 
 void
-checkknown(mac)
-char *mac;
+checkknown(char *mac)
 {
 
 	if (eq(mac, "."))
@@ -516,8 +507,7 @@ char *mac;
  * We have a .de xx line in "line".  Add xx to the list of known commands.
  */
 void
-addcmd(line)
-char *line;
+addcmd(char *line)
 {
 	char *mac;
 
@@ -548,8 +538,7 @@ char *line;
  * nroff programs, and the register loop below is pretty fast.
  */
 void
-addmac(mac)
-char *mac;
+addmac(char *mac)
 {
 	register char **src, **dest, **loc;
 
@@ -581,8 +570,7 @@ printf("after: %s %s %s %s %s, %d cmds\n", knowncmds[slot-2], knowncmds[slot-1],
  * If found, return the index.  If not, return -1.
  */
 int
-binsrch(mac)
-char *mac;
+binsrch(char *mac)
 {
 	register char *p;	/* pointer to current cmd in list */
 	register int d;		/* difference if any */

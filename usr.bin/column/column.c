@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/column/column.c,v 1.4.6.2 2001/08/02 01:34:19 obrien Exp $
- * $DragonFly: src/usr.bin/column/column.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/column/column.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)column.c	8.4 (Berkeley) 5/4/95
@@ -66,9 +66,7 @@ char **list;			/* array of pointers to records */
 char *separator = "\t ";	/* field separator for table option */
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct winsize win;
 	FILE *fp;
@@ -130,7 +128,7 @@ main(argc, argv)
 }
 
 void
-c_columnate()
+c_columnate(void)
 {
 	int chcnt, col, cnt, endcol, numcols;
 	char **lp;
@@ -158,7 +156,7 @@ c_columnate()
 }
 
 void
-r_columnate()
+r_columnate(void)
 {
 	int base, chcnt, cnt, col, endcol, numcols, numrows, row;
 
@@ -184,7 +182,7 @@ r_columnate()
 }
 
 void
-print()
+print(void)
 {
 	int cnt;
 	char **lp;
@@ -200,7 +198,7 @@ typedef struct _tbl {
 #define	DEFCOLS	25
 
 void
-maketbl()
+maketbl(void)
 {
 	TBL *t;
 	int coloff, cnt;
@@ -251,8 +249,7 @@ maketbl()
 #define	MAXLINELEN	(LINE_MAX + 1)
 
 void
-input(fp)
-	FILE *fp;
+input(FILE *fp)
 {
 	static int maxentry;
 	int len;
@@ -286,7 +283,7 @@ input(fp)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr,

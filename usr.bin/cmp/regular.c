@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/regular.c,v 1.7.2.3 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/regular.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cmp/regular.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  *
  * @(#)regular.c	8.3 (Berkeley) 4/2/94
  */
@@ -55,10 +55,8 @@ static u_char *remmap __P((u_char *, int, off_t));
 #define ROUNDPAGE(i) ((i) & ~pagemask)
 
 void
-c_regular(fd1, file1, skip1, len1, fd2, file2, skip2, len2)
-	int fd1, fd2;
-	const char *file1, *file2;
-	off_t skip1, len1, skip2, len2;
+c_regular(int fd1, const char *file1, off_t skip1, off_t len1, int fd2,
+          const char *file2, off_t skip2, off_t len2)
 {
 	u_char ch, *p1, *p2, *m1, *m2, *e1, *e2;
 	off_t byte, length, line;
@@ -141,10 +139,7 @@ c_regular(fd1, file1, skip1, len1, fd2, file2, skip2, len2)
 }
 
 static u_char *
-remmap(mem, fd, offset)
-	u_char  *mem;
-	int     fd;
-	off_t   offset;
+remmap(u_char *mem, int fd, off_t offset)
 {
 	if (mem != NULL)
 		munmap(mem, MMAP_CHUNK);

@@ -27,6 +27,7 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
+ * $DragonFly: src/usr.bin/chkey/chkey.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  * @(#)chkey.c 1.7 91/03/11 Copyr 1986 Sun Micro
  */
 /*
@@ -64,9 +65,7 @@ static char PKFILE[] = "/etc/publickey";
 #endif	/* YP */
 static char ROOTKEY[] = "/etc/.rootkey";
 
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char name[MAXNETNAMELEN+1];
 	char public[HEXKEYBYTES + 1];
@@ -227,8 +226,7 @@ main(argc, argv)
 	/* NOTREACHED */
 }
 
-usage(name)
-	char *name;
+usage(char *name)
 {
 	(void)fprintf(stderr, "usage: %s [-f]\n", name);
 	exit(1);
@@ -239,10 +237,7 @@ usage(name)
 /*
  * Set the entry in the public key file
  */
-setpublicmap(name, public, secret)
-	char *name;
-	char *public;
-	char *secret;
+setpublicmap(char *name, char *public, char *secret)
 {
 	char pkent[1024];
 	
@@ -258,8 +253,7 @@ setpublicmap(name, public, secret)
 
 #ifdef YPPASSWD
 struct passwd *
-ypgetpwuid(uid)
-	uid_t uid;
+ypgetpwuid(uid_t uid)
 {
 	char uidstr[10];
 	char *val;

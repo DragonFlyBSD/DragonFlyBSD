@@ -32,7 +32,7 @@
  *
  * @(#)util.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/chpass/util.c,v 1.8.2.1 2002/03/21 10:33:01 cjc Exp $
- * $DragonFly: src/usr.bin/chpass/util.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/chpass/util.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -54,8 +54,7 @@ static char *months[] =
 	  "December", NULL };
 
 char *
-ttoa(tval)
-	time_t tval;
+ttoa(time_t tval)
 {
 	struct tm *tp;
 	static char tbuf[50];
@@ -71,9 +70,7 @@ ttoa(tval)
 }
 
 int
-atot(p, store)
-	char *p;
-	time_t *store;
+atot(char *p, time_t *store)
 {
 	static struct tm *lt;
 	char *t, **mp;
@@ -132,8 +129,7 @@ bad:		return (1);
 }
 
 char *
-ok_shell(name)
-	char *name;
+ok_shell(char *name)
 {
 	char *p, *sh;
 

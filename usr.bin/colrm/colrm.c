@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colrm/colrm.c,v 1.7.2.1 2001/08/02 01:33:29 obrien Exp $
- * $DragonFly: src/usr.bin/colrm/colrm.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/colrm/colrm.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)colrm.c	8.2 (Berkeley) 5/4/95
@@ -53,9 +53,7 @@ void check __P((FILE *));
 static void usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register u_long column, start, stop;
 	register int ch;
@@ -118,8 +116,7 @@ main(argc, argv)
 }
 
 void
-check(stream)
-	FILE *stream;
+check(FILE *stream)
 {
 	if (feof(stream))
 		exit(0);
@@ -128,7 +125,7 @@ check(stream)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: colrm [start [stop]]\n");
 	exit(1);

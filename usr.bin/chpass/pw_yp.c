@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/usr.bin/chpass/pw_yp.c,v 1.16.2.1 2002/02/15 00:46:56 des Exp $
- * $DragonFly: src/usr.bin/chpass/pw_yp.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/chpass/pw_yp.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #ifdef YP
@@ -91,9 +91,7 @@ extern char *tempname;
 struct passwd local_password;
 struct passwd yp_password;
 
-void copy_yp_pass(p, x, m)
-char *p;
-int x, m;
+void copy_yp_pass(char *p, int x, int m)
 {
 	register char *t, *s = p;
 	static char *buf;
@@ -141,9 +139,7 @@ int x, m;
 	return;
 }
 
-void copy_local_pass(p,m)
-char *p;
-int m;
+void copy_local_pass(char *p, int m)
 {
 	register char *t;
 	static char *buf;
@@ -180,14 +176,8 @@ int m;
  * need our own magic version of yp_match() which we can use in any
  * environment.
  */
-static int my_yp_match(server, domain, map, key, keylen, result, resultlen)
-	char *server;
-	char *domain;
-	char *map;
-	char *key;
-	unsigned long keylen;
-	char **result;
-	unsigned long *resultlen;
+static int my_yp_match(char *server, char *domain, char *map, char *key,
+                       unsigned long keylen, char **result, unsigned long *resultlen)
 {
 	ypreq_key ypkey;
 	ypresp_val *ypval;
@@ -256,10 +246,8 @@ static int my_yp_match(server, domain, map, key, keylen, result, resultlen)
 /*
  * Check if the user we're working with is local or in NIS.
  */
-int use_yp (user, uid, which)
-	char *user;
-	uid_t uid;
-	int which; /* 0 = use username, 1 = use uid */
+/* which: 0 = use username, 1 = use uid */
+int use_yp (char *user, uid_t uid, int which)
 {
 	int user_local = 0, user_yp = 0, user_exists = 0;
 	DB *dbp;
@@ -349,8 +337,7 @@ int use_yp (user, uid, which)
  * Find the name of the NIS master server for this domain
  * and make sure it's running yppasswdd.
  */
-char *get_yp_master(getserver)
-	int getserver;
+char *get_yp_master(int getserver)
 {
 	char *mastername;
 	int rval, localport;
@@ -429,8 +416,7 @@ char *get_yp_master(getserver)
  * information without specifying a password, however this only works
  * for the superuser on the NIS master server.
  */
-void yp_submit(pw)
-	struct passwd *pw;
+void yp_submit(struct passwd *pw)
 {
 	struct yppasswd yppasswd;
 	struct master_yppasswd master_yppasswd;

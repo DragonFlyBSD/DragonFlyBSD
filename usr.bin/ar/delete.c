@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)delete.c	8.3 (Berkeley) 4/2/94
+ *
+ * $DragonFly: src/usr.bin/ar/Attic/delete.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +56,7 @@
  *	Deletes named members from the archive.
  */
 int
-delete(argv)
-	char **argv;
+delete(char **argv)
 {
 	CF cf;
 	off_t size;

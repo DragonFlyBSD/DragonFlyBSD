@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/chpass/edit.c,v 1.16.2.2 2001/08/02 01:48:22 obrien Exp $
- * $DragonFly: src/usr.bin/chpass/edit.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/chpass/edit.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  *
  * @(#)edit.c	8.3 (Berkeley) 4/2/94
  */
@@ -61,8 +61,7 @@
 extern char *tempname;
 
 void
-edit(pw)
-	struct passwd *pw;
+edit(struct passwd *pw)
 {
 	struct stat begin, end;
 	char *begin_sum, *end_sum;
@@ -94,9 +93,7 @@ edit(pw)
  *	set conditional flag if the user gets to edit the shell.
  */
 void
-display(fd, pw)
-	int fd;
-	struct passwd *pw;
+display(int fd, struct passwd *pw)
 {
 	FILE *fp;
 	char *bp, *p, *ttoa();
@@ -180,8 +177,7 @@ display(fd, pw)
 }
 
 int
-verify(pw)
-	struct passwd *pw;
+verify(struct passwd *pw)
 {
 	ENTRY *ep;
 	char *p;

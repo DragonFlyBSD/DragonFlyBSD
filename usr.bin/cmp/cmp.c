@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/cmp.c,v 1.6.6.4 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/cmp.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cmp/cmp.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  *
  * @(#) Copyright (c) 1987, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cmp.c	8.3 (Berkeley) 4/2/94
@@ -51,12 +51,10 @@
 
 int	lflag, sflag, xflag, zflag;
 
-static void usage __P((void));
+static void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct stat sb1, sb2;
 	off_t skip1, skip2;
@@ -164,7 +162,7 @@ endargs:
 }
 
 static void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr,

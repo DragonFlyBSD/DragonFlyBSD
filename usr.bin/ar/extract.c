@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)extract.c	8.3 (Berkeley) 4/2/94
+ *
+ * $DragonFly: src/usr.bin/ar/Attic/extract.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -59,8 +61,7 @@
  *	archive.
  */
 int
-extract(argv)
-	char **argv;
+extract(char **argv)
 {
 	char *file;
 	int afd, all, eval, tfd;

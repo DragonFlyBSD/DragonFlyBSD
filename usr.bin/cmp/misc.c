@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/misc.c,v 1.2.6.1 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/misc.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cmp/misc.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  */
@@ -45,8 +45,7 @@
 #include "extern.h"
 
 void
-eofmsg(file)
-	const char *file;
+eofmsg(const char *file)
 {
 	if (!sflag)
 		warnx("EOF on %s", file);
@@ -54,9 +53,7 @@ eofmsg(file)
 }
 
 void
-diffmsg(file1, file2, byte, line)
-	const char *file1, *file2;
-	off_t byte, line;
+diffmsg(const char *file1, const char *file2, off_t byte, off_t line)
 {
 	if (!sflag)
 		(void)printf("%s %s differ: char %qd, line %qd\n",

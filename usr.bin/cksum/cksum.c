@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cksum.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/cksum/cksum.c,v 1.11.2.1 2001/07/30 10:16:29 dd Exp $
- * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -50,12 +50,10 @@
 
 #include "extern.h"
 
-static void usage __P((void));
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register int ch, fd, rval;
 	u_int32_t len, val;
@@ -123,7 +121,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: cksum [-o 1 | 2 | 3] [file ...]\n");
 	(void)fprintf(stderr, "       sum [file ...]\n");

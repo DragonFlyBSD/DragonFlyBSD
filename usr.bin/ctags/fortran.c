@@ -32,7 +32,7 @@
  *
  * @(#)fortran.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ctags/fortran.c,v 1.3.6.2 2002/07/30 00:55:07 tjr Exp $
- * $DragonFly: src/usr.bin/ctags/fortran.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/ctags/fortran.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 #include <ctype.h>
@@ -47,7 +47,7 @@ static void takeprec(void);
 char *lbp;				/* line buffer pointer */
 
 int
-PF_funcs()
+PF_funcs(void)
 {
 	bool	pfcnt;			/* pascal/fortran functions found */
 	char	*cp;

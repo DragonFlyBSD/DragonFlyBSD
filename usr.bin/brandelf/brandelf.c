@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/brandelf/brandelf.c,v 1.13.2.4 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/brandelf/brandelf.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/brandelf/brandelf.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -43,7 +43,7 @@
 static int elftype(const char *);
 static const char *iselftype(int);
 static void printelftypes(void);
-static void usage __P((void));
+static void usage(void);
 
 struct ELFtypes {
 	const char *str;
@@ -162,7 +162,7 @@ fail:
 }
 
 static void
-usage()
+usage(void)
 {
 fprintf(stderr, "usage: brandelf [-f ELF ABI number] [-v] [-l] [-t string] file ...\n");
 	exit(1);
@@ -195,7 +195,7 @@ elftype(const char *elfstrtype)
 }
 
 static void
-printelftypes()
+printelftypes(void)
 {
 	size_t elfwalk;
 

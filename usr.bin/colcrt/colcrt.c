@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)colcrt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/colcrt/colcrt.c,v 1.5.2.4 2001/08/02 01:29:07 obrien Exp $
- * $DragonFly: src/usr.bin/colcrt/colcrt.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/colcrt/colcrt.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
  */
 
 #include <err.h>
@@ -72,9 +72,7 @@ static int	plus __P((char, char));
 static void	usage __P((void));
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int c;
 	char *cp, *dp;
@@ -182,15 +180,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: colcrt [-] [-2] [file ...]\n");
 	exit(1);
 }
 
 static int
-plus(c, d)
-	char c, d;
+plus(char c, char d)
 {
 
 	return ((c == '|' && d == '-') || d == '_');
@@ -199,8 +196,7 @@ plus(c, d)
 int first;
 
 static void
-pflush(ol)
-	int ol;
+pflush(int ol)
 {
 	register int i;
 	register char *cp;
@@ -234,8 +230,7 @@ pflush(ol)
 }
 
 static void
-move(l, m)
-	int l, m;
+move(int l, int m)
 {
 	register char *cp, *dp;
 
