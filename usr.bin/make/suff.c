@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.31 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.32 2005/02/04 22:35:42 okumoto Exp $
  */
 
 /*-
@@ -1618,7 +1618,8 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
     char    	*eoarch;    /* End of archive portion */
     char    	*eoname;    /* End of member portion */
     GNode   	*mem;	    /* Node for member */
-    static const char	*copy[] = { /* Variables to be copied from the member node */
+    /* Variables to be copied from the member node */
+    static const char	*copy[] = {
 	TARGET,	    	    /* Must be first */
 	PREFIX,	    	    /* Must be second */
     };
@@ -2349,9 +2350,9 @@ Suff_PrintAll(void)
 #ifdef DEBUG_SRC
 /*
  * Printaddr --
- * 	Print the address of a node, used as an interative function.
+ * 	Print the address of a node.
  */
-int
+static int
 PrintAddr(void *a, void *b __unused)
 {
     printf("%p ", a);

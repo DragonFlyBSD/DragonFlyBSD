@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.53 2005/02/03 23:41:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.54 2005/02/04 22:35:42 okumoto Exp $
  */
 
 /*-
@@ -407,7 +407,7 @@ chdir_verify_path(const char *path, char *obpath)
 	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
 		if (chdir(path) == -1 || getcwd(obpath, MAXPATHLEN) == NULL) {
 			warn("warning: %s", path);
-			return (0);
+			return (NULL);
 		}
 		return (obpath);
 	}
@@ -476,6 +476,7 @@ main(int argc, char **argv)
 	const char *machine_arch = getenv("MACHINE_ARCH");
 	const char *machine_cpu = getenv("MACHINE_CPU");
 	char *cp = NULL, *start;
+
 					/* avoid faults on read-only strings */
 	static char syspath[] = _PATH_DEFSYSPATH;
 
@@ -645,6 +646,7 @@ main(int argc, char **argv)
 
 	{
 	struct stat sa;
+
 	if (stat(curdir, &sa) == -1)
 	    err(2, "%s", curdir);
 	}
