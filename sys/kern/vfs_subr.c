@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.27 2004/03/07 12:09:04 eirikn Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.28 2004/03/28 07:54:00 dillon Exp $
  */
 
 /*
@@ -1686,7 +1686,9 @@ vget(struct vnode *vp, lwkt_tokref_t vlock, int flags, thread_t td)
 void
 vref(struct vnode *vp)
 {
-	vp->v_usecount++;	/* XXX MP */
+	crit_enter();	/* YYY use crit section for moment / BGL protected */
+	vp->v_usecount++;
+	crit_exit();
 }
 
 /*
@@ -1699,7 +1701,8 @@ vrele(struct vnode *vp)
 	struct thread *td = curthread;	/* XXX */
 	lwkt_tokref vlock;
 
-	KASSERT(vp != NULL, ("vrele: null vp"));
+	KASSERT(vp != NULL && vp->v_usecount >= 0,
+	    ("vrele: null vp or <=0 v_usecount"));
 
 	lwkt_gettoken(&vlock, vp->v_interlock);
 
