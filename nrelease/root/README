@@ -52,6 +52,8 @@
 	#	ad0s1f	8192m		This will be your /usr (min 4096m)
 	#	ad0s1g	*		All remaining space to yoru /home
 	#
+	#  An example disklabel can be found in /etc/disklabel.ad0s1
+	#
 	disklabel -e ad0s1
 
 	# Newfs (format) the various filesystems.  Softupdates is not 
@@ -97,14 +99,23 @@
 	mv /mnt/etc/fstab.example /mnt/etc/fstab
 	vi /mnt/etc/fstab
 
+	# save out your disklabel just in case.  It's a good idea to save
+	# it to /etc so you can get at it from your backups.  You do intend
+	# to backup your system, yah? :-)  (this isn't critical but it's a
+	# good idea).
+	# 
+	disklabel ad0s1 > /mnt/etc/disklabel.ad0s1
+
     Once you've duplicated the CD onto your HD you have to make some edits
     so the system boots properly from your HD.  Primarily you must remove
     or edit /mnt/boot/loader.conf
 
 	# Remove /mnt/boot/loader.conf so the kernel does not try to
-	# obtain the root filesystem from the CD.
+	# obtain the root filesystem from the CD, and remove the other
+	# cruft that was sitting on the CD that you don't need on the HD.
 	#
 	rm /mnt/boot/loader.conf
+	rm /mnt/README
 
     At this point it should be possible to reboot.  The CD may be locked
     since it is currently mounted.  Be careful of the CD drawer closing
@@ -196,5 +207,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.5 2004/01/12 06:54:09 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.6 2004/01/18 19:13:09 dillon Exp $
 

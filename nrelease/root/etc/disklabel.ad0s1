@@ -1,0 +1,31 @@
+# $DragonFly: src/nrelease/root/etc/disklabel.ad0s1,v 1.1 2004/01/18 19:13:10 dillon Exp $
+# Example disklabel for ad0s1.  Once initialized via the instructions in
+# the README you can edit the label and create partitions for your 
+# filesystems.  The top of the disklabel should already contain reasonable
+# values so you should only have to edit the bottom part.  Here is an example
+#
+
+8 partitions:
+#        size   offset    fstype   [fsize bsize bps/cpg]
+  a:   256m        0    4.2BSD     1024  8192
+  b:  1024m	   *      swap              
+  c: <leave this line untouched>
+  d:   256m	   *    4.2BSD     1024  8192
+  e:   256m	   *    4.2BSD     1024  8192
+  f:  8192m	   *    4.2BSD     2048 16384
+  g:	*	   *    4.2BSD     2048 16384
+
+# The disklabel program accepts 'm' for megabytes, and '*' to auto-fill-in
+# the offset.  A '*' in the size field means 'the rest of the disk'.
+# disklabel may get confused due to there being too many '*'s in which case
+# just remove the g: partition, generate the disklabel, then edit it again
+# and g back in.
+#
+# ad0s1a:	/
+# ad0s1b:	swap	(suggest no less then 256m and at least 1xmain-memory)
+# ad0s1c:	(represents the whole-disk, generally leave this one alone)
+# ad0s1d:	/var
+# ad0s1e:	/tmp
+# ad0s1f:	/usr	(suggest no less then 4096m but 1024m ok in a crunch)
+# ad0s1g:	/home	(all remaining disk space)
+# ad0s1h:	(unused)
