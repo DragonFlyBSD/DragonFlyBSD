@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.21 2005/02/20 04:12:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.22 2005/02/20 04:29:28 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -100,6 +100,7 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -2062,7 +2063,8 @@ static int dc_attach(dev)
 	ifp->if_watchdog = dc_watchdog;
 	ifp->if_init = dc_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = DC_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, DC_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Do MII setup. If this is a 21143, check for a PHY on the
@@ -2744,7 +2746,7 @@ static void dc_tick(xsc)
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->dc_link++;
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				dc_start(ifp);
 		}
 	}
@@ -2826,7 +2828,7 @@ dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	sc->rxcycles = count;
 	dc_rxeof(sc);
 	dc_txeof(sc);
-	if (ifp->if_snd.ifq_head != NULL && !(ifp->if_flags & IFF_OACTIVE))
+	if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
 		dc_start(ifp);
 
 	if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
@@ -2949,7 +2951,7 @@ static void dc_intr(arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, DC_IMR, DC_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		dc_start(ifp);
 
 	return;
@@ -3031,11 +3033,11 @@ static void dc_start(ifp)
 {
 	struct dc_softc		*sc;
 	struct mbuf *m_head = NULL, *m_new;
-	int			idx;
+	int did_defrag, idx;
 
 	sc = ifp->if_softc;
 
-	if (!sc->dc_link && ifp->if_snd.ifq_len < 10)
+	if (!sc->dc_link)
 		return;
 
 	if (ifp->if_flags & IFF_OACTIVE)
@@ -3044,27 +3046,53 @@ static void dc_start(ifp)
 	idx = sc->dc_cdata.dc_tx_prod;
 
 	while(sc->dc_cdata.dc_tx_chain[idx] == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		did_defrag = 0;
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		if (sc->dc_flags & DC_TX_COALESCE &&
 		    m_head->m_next != NULL) {
+			/*
+			 * Check first if coalescing allows us to queue
+			 * the packet. We don't want to loose it if
+			 * the TX queue is full.
+			 */ 
+			if ((sc->dc_flags & DC_TX_ADMTEK_WAR) &&
+			    idx != sc->dc_cdata.dc_tx_prod &&
+			    idx == (DC_TX_LIST_CNT - 1)) {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+			if ((DC_TX_LIST_CNT - sc->dc_cdata.dc_tx_cnt) < 5) {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+
 			/* only coalesce if have >1 mbufs */
-			if ((m_new = m_defrag(m_head, MB_DONTWAIT)) == NULL) {
-				IF_PREPEND(&ifp->if_snd, m_head);
+			m_new = m_defrag_nofree(m_head, MB_DONTWAIT);
+			if (m_new == NULL) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
 			m_freem(m_head);
 			m_head = m_new;
+			did_defrag = 1;
 		}
 
 		if (dc_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
+			if (did_defrag) {
+				m_freem(m_head);
+				m_new = ifq_dequeue(&ifp->if_snd);
+				m_freem(m_new);
+			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+
+		m_new = ifq_dequeue(&ifp->if_snd);
+		if (did_defrag)
+			m_freem(m_new);
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
@@ -3396,7 +3424,7 @@ static void dc_watchdog(ifp)
 	dc_reset(sc);
 	dc_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		dc_start(ifp);
 
 	return;
