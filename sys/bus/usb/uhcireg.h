@@ -1,6 +1,6 @@
 /*	$NetBSD: uhcireg.h,v 1.9 1999/11/20 00:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhcireg.h,v 1.14.2.1 2000/07/02 11:43:59 n_hibma Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhcireg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhcireg.h,v 1.3 2003/06/21 17:27:24 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -148,7 +148,7 @@ typedef struct {
 #define UHCI_TD_GET_ERRCNT(s)	(((s) >> 27) & 3)
 #define UHCI_TD_SET_ERRCNT(n)	((n) << 27)
 #define UHCI_TD_SPD		0x20000000
-	u_int32_t td_token;
+	u_int32_t td_xtoken;
 #define UHCI_TD_PID_IN		0x00000069
 #define UHCI_TD_PID_OUT		0x000000e1
 #define UHCI_TD_PID_SETUP	0x0000002d

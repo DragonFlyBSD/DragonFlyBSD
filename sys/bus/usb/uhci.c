@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.10 2003/01/12 02:13:58 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.3 2003/06/21 17:27:24 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -402,7 +402,7 @@ uhci_init(uhci_softc_t *sc)
 		std->link.sqh = sqh;
 		std->td.td_link = LE(sqh->physaddr | UHCI_PTR_Q);
 		std->td.td_status = LE(UHCI_TD_IOS);	/* iso, inactive */
-		std->td.td_token = LE(0);
+		std->td.td_xtoken = LE(0);
 		std->td.td_buffer = LE(0);
 		sqh->hlink = csqh;
 		sqh->qh.qh_hlink = LE(csqh->physaddr | UHCI_PTR_Q);
@@ -641,7 +641,7 @@ uhci_dump_td(uhci_soft_td_t *p)
 		     p, (long)p->physaddr,
 		     (long)LE(p->td.td_link),
 		     (long)LE(p->td.td_status),
-		     (long)LE(p->td.td_token),
+		     (long)LE(p->td.td_xtoken),
 		     (long)LE(p->td.td_buffer)));
 	DPRINTFN(-1,("  %b %b,errcnt=%d,actlen=%d pid=%02x,addr=%d,endpt=%d,"
 		     "D=%d,maxlen=%d\n",
@@ -652,11 +652,11 @@ uhci_dump_td(uhci_soft_td_t *p)
 		     "STALLED\30ACTIVE\31IOC\32ISO\33LS\36SPD",
 		     UHCI_TD_GET_ERRCNT(LE(p->td.td_status)),
 		     UHCI_TD_GET_ACTLEN(LE(p->td.td_status)),
-		     UHCI_TD_GET_PID(LE(p->td.td_token)),
-		     UHCI_TD_GET_DEVADDR(LE(p->td.td_token)),
-		     UHCI_TD_GET_ENDPT(LE(p->td.td_token)),
-		     UHCI_TD_GET_DT(LE(p->td.td_token)),
-		     UHCI_TD_GET_MAXLEN(LE(p->td.td_token))));
+		     UHCI_TD_GET_PID(LE(p->td.td_xtoken)),
+		     UHCI_TD_GET_DEVADDR(LE(p->td.td_xtoken)),
+		     UHCI_TD_GET_ENDPT(LE(p->td.td_xtoken)),
+		     UHCI_TD_GET_DT(LE(p->td.td_xtoken)),
+		     UHCI_TD_GET_MAXLEN(LE(p->td.td_xtoken))));
 }
 
 void
@@ -1046,7 +1046,7 @@ uhci_check_intr(uhci_softc_t *sc, uhci_intr_info_t *ii)
 			 */
 			if ((status & UHCI_TD_SPD) &&
 			    UHCI_TD_GET_ACTLEN(status) <
-			    UHCI_TD_GET_MAXLEN(LE(std->td.td_token)))
+			    UHCI_TD_GET_MAXLEN(LE(std->td.td_xtoken)))
 				goto done;
 		}
 		DPRINTFN(15, ("uhci_check_intr: ii=%p std=%p still active\n",
@@ -1134,12 +1134,12 @@ uhci_idone(uhci_intr_info_t *ii)
 			break;
 
 		status = nstatus;
-		if (UHCI_TD_GET_PID(LE(std->td.td_token)) != UHCI_TD_PID_SETUP)
+		if (UHCI_TD_GET_PID(LE(std->td.td_xtoken)) != UHCI_TD_PID_SETUP)
 			actlen += UHCI_TD_GET_ACTLEN(status);
 	}
 	/* If there are left over TDs we need to update the toggle. */
 	if (std != NULL)
-		upipe->nexttoggle = UHCI_TD_GET_DT(LE(std->td.td_token));
+		upipe->nexttoggle = UHCI_TD_GET_DT(LE(std->td.td_xtoken));
 
 	status &= UHCI_TD_ERROR;
 	DPRINTFN(10, ("uhci_check_intr: actlen=%d, status=0x%x\n", 
@@ -1325,11 +1325,11 @@ uhci_free_std(uhci_softc_t *sc, uhci_soft_td_t *std)
 {
 #ifdef DIAGNOSTIC
 #define TD_IS_FREE 0x12345678
-	if (std->td.td_token == LE(TD_IS_FREE)) {
+	if (std->td.td_xtoken == LE(TD_IS_FREE)) {
 		printf("uhci_free_std: freeing free TD %p\n", std);
 		return;
 	}
-	std->td.td_token = LE(TD_IS_FREE);
+	std->td.td_xtoken = LE(TD_IS_FREE);
 #endif
 	std->link.std = sc->sc_freetds;
 	sc->sc_freetds = std;
@@ -1458,7 +1458,7 @@ uhci_alloc_std_chain(struct uhci_pipe *upipe, uhci_softc_t *sc,
 			*ep = p;
 		} else
 			l = maxp;
-		p->td.td_token = 
+		p->td.td_xtoken = 
 		    LE(rd ? UHCI_TD_IN (l, endpt, addr, tog) :
 			    UHCI_TD_OUT(l, endpt, addr, tog));
 		p->td.td_buffer = LE(DMAADDR(dma, i * maxp));
@@ -1893,14 +1893,14 @@ uhci_device_request(usbd_xfer_handle xfer)
 	setup->link.std = next;
 	setup->td.td_link = LE(next->physaddr | UHCI_PTR_VF);
 	setup->td.td_status = LE(UHCI_TD_SET_ERRCNT(3) | ls | UHCI_TD_ACTIVE);
-	setup->td.td_token = LE(UHCI_TD_SETUP(sizeof *req, endpt, addr));
+	setup->td.td_xtoken = LE(UHCI_TD_SETUP(sizeof *req, endpt, addr));
 	setup->td.td_buffer = LE(DMAADDR(&upipe->u.ctl.reqdma, 0));
 
 	stat->link.std = 0;
 	stat->td.td_link = LE(UHCI_PTR_T);
 	stat->td.td_status = LE(UHCI_TD_SET_ERRCNT(3) | ls | 
 		UHCI_TD_ACTIVE | UHCI_TD_IOC);
-	stat->td.td_token = 
+	stat->td.td_xtoken = 
 		LE(isread ? UHCI_TD_OUT(0, endpt, addr, 1) :
 		            UHCI_TD_IN (0, endpt, addr, 1));
 	stat->td.td_buffer = LE(0);
@@ -2045,8 +2045,8 @@ uhci_device_isoc_enter(usbd_xfer_handle xfer)
 		if (i == nframes - 1)
 			status |= LE(UHCI_TD_IOC);
 		std->td.td_status = status;
-		std->td.td_token &= LE(~UHCI_TD_MAXLEN_MASK);
-		std->td.td_token |= LE(UHCI_TD_SET_MAXLEN(len));
+		std->td.td_xtoken &= LE(~UHCI_TD_MAXLEN_MASK);
+		std->td.td_xtoken |= LE(UHCI_TD_SET_MAXLEN(len));
 #ifdef USB_DEBUG
 		if (uhcidebug > 5) {
 			DPRINTFN(5,("uhci_device_isoc_enter: TD %d\n", i));
@@ -2209,7 +2209,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
 		if (std == 0)
 			goto bad;
 		std->td.td_status = LE(UHCI_TD_IOS);	/* iso, inactive */
-		std->td.td_token = token;
+		std->td.td_xtoken = token;
 		iso->stds[i] = std;
 	}
 
