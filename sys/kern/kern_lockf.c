@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.15 2004/05/11 20:37:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.16 2004/06/25 15:32:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -147,12 +147,6 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	int type, flags, error;
 	lwkt_tokref ilock;
 
-	if (lock->init_done == 0) {
-		TAILQ_INIT(&lock->lf_range);
-		TAILQ_INIT(&lock->lf_blocked);
-		lock->init_done = 1;
-	}
-
 	/*
 	 * Convert the flock structure into a start and end.
 	 */
@@ -196,6 +190,13 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	 * Do the requested operation.
 	 */
 	lwkt_gettoken(&ilock, lwkt_token_pool_get(lock));
+
+	if (lock->init_done == 0) {
+		TAILQ_INIT(&lock->lf_range);
+		TAILQ_INIT(&lock->lf_blocked);
+		lock->init_done = 1;
+	}
+
 	switch(ap->a_op) {
 	case F_SETLK:
 		error = lf_setlock(lock, owner, type, flags, start, end);
