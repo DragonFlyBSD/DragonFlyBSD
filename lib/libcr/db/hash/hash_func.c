@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_func.c	8.2 (Berkeley) 2/21/94
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash_func.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
  */
 
 #include <sys/types.h>

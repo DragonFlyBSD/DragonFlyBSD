@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)vi.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libedit/vi.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
  */
 
 /*

@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/lib/libskey/put.c,v 1.2 2003/11/12 18:07:03 eirikn Exp $
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>

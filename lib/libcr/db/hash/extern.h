@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.4 (Berkeley) 6/16/94
+ * $DragonFly: src/lib/libcr/db/hash/Attic/extern.h,v 1.2 2003/11/12 18:07:01 eirikn Exp $
  */
 
 BUFHEAD	*__add_ovflpage __P((HTAB *, BUFHEAD *));

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)btree.h	8.11 (Berkeley) 8/17/94
+ * $DragonFly: src/lib/libc/db/btree/btree.h,v 1.2 2003/11/12 18:07:00 eirikn Exp $
  */
 
 /* Macros to set/clear/test flags. */

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_split.c	8.9 (Berkeley) 7/26/94
+ * $DragonFly: src/lib/libc/db/btree/bt_split.c,v 1.3 2003/11/12 18:07:00 eirikn Exp $
  */
 
 #include <sys/types.h>

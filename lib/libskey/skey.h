@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/lib/libskey/skey.h,v 1.2 2003/11/12 18:07:03 eirikn Exp $
+ */
+
 #ifndef _SKEY_H_
 #define _SKEY_H_
 

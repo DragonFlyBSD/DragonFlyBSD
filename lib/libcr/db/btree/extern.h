@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.10 (Berkeley) 7/20/94
+ * $DragonFly: src/lib/libcr/db/btree/Attic/extern.h,v 1.2 2003/11/12 18:07:01 eirikn Exp $
  */
 
 int	 __bt_close __P((DB *));

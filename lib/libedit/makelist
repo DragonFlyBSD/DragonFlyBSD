@@ -35,6 +35,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)makelist	5.3 (Berkeley) 6/4/93
+# $DragonFly: src/lib/libedit/makelist,v 1.2 2003/11/12 18:07:02 eirikn Exp $
 
 # makelist.sh: Automatically generate header files...
 

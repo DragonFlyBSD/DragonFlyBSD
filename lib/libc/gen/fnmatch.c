@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fnmatch.c	8.2 (Berkeley) 4/16/94
+ * $DragonFly: src/lib/libc/gen/fnmatch.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
  */
 
 /*

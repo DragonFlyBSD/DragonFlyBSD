@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_delete.c	8.13 (Berkeley) 7/28/94
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_delete.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
  */
 
 #include <sys/types.h>

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_seq.c	8.7 (Berkeley) 7/20/94
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_seq.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
  */
 
 #include <sys/types.h>

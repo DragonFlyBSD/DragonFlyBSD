@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)mathimpl.h	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libm/common_source/Attic/mathimpl.h,v 1.2 2003/11/12 18:07:03 eirikn Exp $
  */
 
 #include <sys/cdefs.h>

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)j0.c	8.2 (Berkeley) 11/30/93
+ * $DragonFly: src/lib/libm/common_source/Attic/j0.c,v 1.3 2003/11/12 18:07:03 eirikn Exp $
  */
 
 /*

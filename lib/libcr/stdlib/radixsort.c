@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
+ * $DragonFly: src/lib/libcr/stdlib/Attic/radixsort.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
  */
 
 /*

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parse.h	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libedit/parse.h,v 1.2 2003/11/12 18:07:02 eirikn Exp $
  */
 
 /*

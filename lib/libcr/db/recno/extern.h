@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.3 (Berkeley) 6/4/94
+ * $DragonFly: src/lib/libcr/db/recno/Attic/extern.h,v 1.2 2003/11/12 18:07:01 eirikn Exp $
  */
 
 #include "../btree/extern.h"

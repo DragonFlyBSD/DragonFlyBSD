@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)pow.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libm/common_source/Attic/pow.c,v 1.3 2003/11/12 18:07:03 eirikn Exp $
  */
 
 /* POW(X,Y)

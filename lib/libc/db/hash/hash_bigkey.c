@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_bigkey.c	8.3 (Berkeley) 5/31/94
+ * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.3 2003/11/12 18:07:00 eirikn Exp $
  */
 
 /*
