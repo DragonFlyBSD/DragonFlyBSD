@@ -25,16 +25,18 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcs/ipcs.c,v 1.12.2.4 2003/04/08 11:01:34 tjr Exp $
- * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.6 2004/06/19 18:55:48 joerg Exp $
+ * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.7 2004/11/02 19:38:49 liamfoy Exp $
  */
 
 #define _KERNEL_STRUCTURES
 
 #include <err.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <kvm.h>
 #include <nlist.h>
 #include <paths.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +57,9 @@ struct msqid_ds	*msqids;
 struct shminfo	shminfo;
 struct shmid_ds	*shmsegs;
 
-void	usage(void);
+static void	usage(void);
+static uid_t	user2uid(const char *);
+static gid_t	grp2gid(const char *);
 
 static struct nlist symbols[] = {
 	{"_sema"},
@@ -128,10 +132,15 @@ main(int argc, char **argv)
 {
 	int     display = SHMINFO | MSGINFO | SEMINFO;
 	int     option = 0;
-	char   *core = NULL, *namelist = NULL;
+	char   *core, *namelist;
+	const char *user, *grp;
 	int     i;
+	uid_t	useruid;
+	gid_t	grpgid;
 
-	while ((i = getopt(argc, argv, "MmQqSsabC:cN:optT")) != -1)
+	core = namelist = NULL;
+
+	while ((i = getopt(argc, argv, "MmQqSsabC:cN:ou:g:ptT")) != -1)
 		switch (i) {
 		case 'M':
 			display = SHMTOTAL;
@@ -177,6 +186,16 @@ main(int argc, char **argv)
 			break;
 		case 't':
 			option |= TIME;
+			break;
+		case 'u':
+			user = optarg;
+			grp = NULL;
+			useruid = user2uid(optarg);
+			break;
+		case 'g':
+			grp = optarg;
+			user = NULL;
+			grpgid = grp2gid(optarg);
 			break;
 		default:
 			usage();
@@ -252,6 +271,11 @@ main(int argc, char **argv)
 					        ctime_buf[100];
 					struct msqid_ds *msqptr = &xmsqids[i];
 
+					if (user && useruid != msqptr->msg_perm.uid)
+							continue;
+					if (grp && grpgid != msqptr->msg_perm.gid)
+							continue;
+	
 					cvt_time(msqptr->msg_stime, stime_buf);
 					cvt_time(msqptr->msg_rtime, rtime_buf);
 					cvt_time(msqptr->msg_ctime, ctime_buf);
@@ -339,6 +363,12 @@ main(int argc, char **argv)
 					char    atime_buf[100], dtime_buf[100],
 					        ctime_buf[100];
 					struct shmid_ds *shmptr = &xshmids[i];
+
+					if (user && useruid != shmptr->shm_perm.uid)
+						continue;
+
+					if (grp && grpgid != shmptr->shm_perm.gid)
+						continue;
 
 					cvt_time(shmptr->shm_atime, atime_buf);
 					cvt_time(shmptr->shm_dtime, dtime_buf);
@@ -431,6 +461,12 @@ main(int argc, char **argv)
 					char    ctime_buf[100], otime_buf[100];
 					struct semid_ds *semaptr = &xsema[i];
 
+					if (user && useruid != semaptr->sem_perm.uid)
+						continue;
+
+					if (grp && grpgid != semaptr->sem_perm.gid)
+						continue;
+
 					cvt_time(semaptr->sem_otime, otime_buf);
 					cvt_time(semaptr->sem_ctime, ctime_buf);
 
@@ -470,11 +506,43 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static uid_t
+user2uid(const char *username)
+{
+	struct passwd *pwd;
+	uid_t uid;
+	char *r;
+
+	uid = strtoul(username, &r, 0);
+	if (!*r && r != username)
+		return (uid);
+	if ((pwd = getpwnam(username)) == NULL)
+		errx(1, "No such user");
+	endpwent();
+	return (pwd->pw_uid);
+}
+
+static gid_t
+grp2gid(const char *groupname)
+{
+	struct group *grp;
+	gid_t gid;
+	char *r;
+
+	gid = strtol(groupname, &r, 0);
+	if (!*r && r != groupname)
+		return (gid);
+	if ((grp = getgrnam(groupname)) == NULL)
+		errx(1, "No such group");
+	endgrent();
+	return (grp->gr_gid);
+}	
+
+static void
 usage(void)
 {
 
 	fprintf(stderr,
-	    "usage: ipcs [-abcmopqstMQST] [-C corefile] [-N namelist]\n");
+	    "usage: ipcs [-abcmopqstMQST] [-C corefile] [-N namelist] [-u user] [-g group]\n");
 	exit(1);
 }
