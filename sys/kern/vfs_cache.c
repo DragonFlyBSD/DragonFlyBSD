@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.18 2004/04/24 04:43:06 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.19 2004/06/03 15:54:14 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1045,26 +1045,32 @@ STATNODE(numfullpathfail4);
 STATNODE(numfullpathfound);
 
 int
-textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf) 
+vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf) 
 {
 	char *bp, *buf;
 	int i, slash_prefixed;
 	struct filedesc *fdp;
 	struct namecache *ncp;
-	struct vnode *vp, *textvp;
+	struct vnode *vp;
 
 	numfullpathcalls++;
 	if (disablefullpath)
 		return (ENODEV);
-	textvp = p->p_textvp;
-	if (textvp == NULL)
+
+	if (p == NULL)
 		return (EINVAL);
+
+	/* vn is NULL, client wants us to use p->p_textvp */
+	if (vn == NULL)
+		if ((vn = p->p_textvp) == NULL)
+			return (EINVAL);
+
 	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
 	*bp = '\0';
 	fdp = p->p_fd;
 	slash_prefixed = 0;
-	for (vp = textvp; vp != fdp->fd_rdir && vp != rootvnode;) {
+	for (vp = vn; vp != fdp->fd_rdir && vp != rootvnode;) {
 		if (vp->v_flag & VROOT) {
 			if (vp->v_mount == NULL) {	/* forced unmount */
 				free(buf, M_TEMP);
@@ -1074,7 +1080,7 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf)
 			continue;
 		}
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			if (vp == textvp)
+			if (vp == vn)
 				break;
 			if (ncp->nc_parent && ncp->nc_parent->nc_vp &&
 			    ncp->nc_nlen > 0) {
@@ -1113,7 +1119,7 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf)
 	}
 	numfullpathfound++;
 	*retbuf = bp; 
-	*retfreebuf = buf;
+	*freebuf = buf;
 	return (0);
 }
 

@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.4 2004/04/08 22:00:40 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.5 2004/06/03 15:54:14 hmp Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -103,7 +103,6 @@ void	cache_drop(struct namecache *ncp);
 struct namecache *cache_hold(struct namecache *ncp);
 int	cache_leaf_test (struct vnode *vp);
 int	vfs_cache_lookup(struct vop_lookup_args *ap);
-int	textvp_fullpath (struct proc *p, char **retbuf, char **retfreebuf);
 
 #endif
 
