@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.36 2005/01/13 23:08:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.37 2005/01/13 23:10:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -993,20 +993,26 @@ fdinit(struct proc *p)
 	struct filedesc *fdp = p->p_fd;
 
 	newfdp = malloc(sizeof(struct filedesc0), M_FILEDESC, M_WAITOK|M_ZERO);
-	newfdp->fd_fd.fd_cdir = fdp->fd_cdir;
-	if (newfdp->fd_fd.fd_cdir) {
+	if (fdp->fd_cdir) {
+		newfdp->fd_fd.fd_cdir = fdp->fd_cdir;
 		vref(newfdp->fd_fd.fd_cdir);
 		newfdp->fd_fd.fd_ncdir = cache_hold(fdp->fd_ncdir);
 	}
-	newfdp->fd_fd.fd_rdir = fdp->fd_rdir;
-	newfdp->fd_fd.fd_nrdir = cache_hold(fdp->fd_nrdir);
-	vref(newfdp->fd_fd.fd_rdir);
-	newfdp->fd_fd.fd_jdir = fdp->fd_jdir;
-	if (newfdp->fd_fd.fd_jdir) {
+
+	/*
+	 * rdir may not be set in e.g. proc0 or anything vm_fork'd off of
+	 * proc0, but should unconditionally exist in other processes.
+	 */
+	if (fdp->fd_rdir) {
+		newfdp->fd_fd.fd_rdir = fdp->fd_rdir;
+		vref(newfdp->fd_fd.fd_rdir);
+		newfdp->fd_fd.fd_nrdir = cache_hold(fdp->fd_nrdir);
+	}
+	if (fdp->fd_jdir) {
+		newfdp->fd_fd.fd_jdir = fdp->fd_jdir;
 		vref(newfdp->fd_fd.fd_jdir);
 		newfdp->fd_fd.fd_njdir = cache_hold(fdp->fd_njdir);
 	}
-
 
 	/* Create the file descriptor table. */
 	newfdp->fd_fd.fd_refcnt = 1;
@@ -1221,8 +1227,10 @@ fdfree(struct proc *p)
 		cache_drop(fdp->fd_ncdir);
 		vrele(fdp->fd_cdir);
 	}
-	cache_drop(fdp->fd_nrdir);
-	vrele(fdp->fd_rdir);
+	if (fdp->fd_rdir) {
+		cache_drop(fdp->fd_nrdir);
+		vrele(fdp->fd_rdir);
+	}
 	if (fdp->fd_jdir) {
 		cache_drop(fdp->fd_njdir);
 		vrele(fdp->fd_jdir);
