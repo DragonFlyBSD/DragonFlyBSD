@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.6 2003/09/08 18:26:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,17 +51,13 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-static int ffs_rawread_readahead(struct vnode *vp,
-				 caddr_t udata,
-				 off_t offset,
-				 size_t len,
-				 struct proc *p,
-				 struct buf *bp,
-				 caddr_t sa);
+static int ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
+				 size_t len, struct thread *td, struct buf *bp,
+				 caddr_t sa, int *baseticks);
 static int ffs_rawread_main(struct vnode *vp,
 			    struct uio *uio);
 
-static int ffs_rawread_sync(struct vnode *vp, struct proc *p);
+static int ffs_rawread_sync(struct vnode *vp, struct thread *td);
 
 int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 
@@ -93,7 +89,7 @@ ffs_rawread_setup(void)
 
 
 static int
-ffs_rawread_sync(struct vnode *vp, struct proc *p)
+ffs_rawread_sync(struct vnode *vp, struct thread *td)
 {
 	int spl;
 	int error;
@@ -106,10 +102,10 @@ ffs_rawread_sync(struct vnode *vp, struct proc *p)
 	    (vp->v_flag & VOBJDIRTY) != 0) {
 		splx(spl);
 
-		if (VOP_ISLOCKED(vp, p) != LK_EXCLUSIVE) {
+		if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
 			upgraded = 1;
 			/* Upgrade to exclusive lock, this might block */
-			VOP_LOCK(vp, LK_UPGRADE | LK_NOPAUSE, p);
+			VOP_LOCK(vp, LK_UPGRADE | LK_NOPAUSE, td);
 		} else
 			upgraded = 0;
 		
@@ -129,16 +125,16 @@ ffs_rawread_sync(struct vnode *vp, struct proc *p)
 			if (error != 0) {
 				splx(spl);
 				if (upgraded != 0)
-					VOP_LOCK(vp, LK_DOWNGRADE, p);
+					VOP_LOCK(vp, LK_DOWNGRADE, td);
 				return (error);
 			}
 		}
 		/* Flush dirty buffers */
 		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
 			splx(spl);
-			if ((error = VOP_FSYNC(vp, NOCRED, MNT_WAIT, p)) != 0) {
+			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0) {
 				if (upgraded != 0)
-					VOP_LOCK(vp, LK_DOWNGRADE, p);
+					VOP_LOCK(vp, LK_DOWNGRADE, td);
 				return (error);
 			}
 			spl = splbio();
@@ -148,7 +144,7 @@ ffs_rawread_sync(struct vnode *vp, struct proc *p)
 		}
 		splx(spl);
 		if (upgraded != 0)
-			VOP_LOCK(vp, LK_DOWNGRADE, p);
+			VOP_LOCK(vp, LK_DOWNGRADE, td);
 	} else {
 		splx(spl);
 	}
@@ -157,13 +153,9 @@ ffs_rawread_sync(struct vnode *vp, struct proc *p)
 
 
 static int
-ffs_rawread_readahead(struct vnode *vp,
-		      caddr_t udata,
-		      off_t offset,
-		      size_t len,
-		      struct proc *p,
-		      struct buf *bp,
-		      caddr_t sa)
+ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
+		      size_t len, struct thread *td, struct buf *bp,
+		      caddr_t sa, int *baseticks)
 {
 	int error;
 	u_int iolen;
@@ -211,8 +203,10 @@ ffs_rawread_readahead(struct vnode *vp,
 		if (vmapbuf(bp) < 0)
 			return EFAULT;
 		
-		if (ticks - switchticks >= hogticks)
+		if (ticks - *baseticks >= hogticks) {
+			*baseticks = ticks;
 			uio_yield();
+		}
 		bzero(bp->b_data, bp->b_bufsize);
 
 		/* Mark operation completed (similar to bufdone()) */
@@ -237,20 +231,20 @@ ffs_rawread_readahead(struct vnode *vp,
 
 
 static int
-ffs_rawread_main(struct vnode *vp,
-		 struct uio *uio)
+ffs_rawread_main(struct vnode *vp, struct uio *uio)
 {
 	int error, nerror;
 	struct buf *bp, *nbp, *tbp;
 	caddr_t sa, nsa, tsa;
 	u_int iolen;
 	int spl;
+	int baseticks = ticks;
 	caddr_t udata;
 	long resid;
 	off_t offset;
-	struct proc *p;
+	struct thread *td;
 	
-	p = uio->uio_procp ? uio->uio_procp : curproc;
+	td = uio->uio_td ? uio->uio_td : curthread;
 	udata = uio->uio_iov->iov_base;
 	resid = uio->uio_resid;
 	offset = uio->uio_offset;
@@ -258,7 +252,8 @@ ffs_rawread_main(struct vnode *vp,
 	/*
 	 * keep the process from being swapped
 	 */
-	PHOLD(p);
+	if (uio->uio_td && uio->uio_td->td_proc)
+		PHOLD(uio->uio_td->td_proc);
 	
 	error = 0;
 	nerror = 0;
@@ -275,8 +270,8 @@ ffs_rawread_main(struct vnode *vp,
 			bp = getpbuf(&ffsrawbufcnt);
 			sa = bp->b_data;
 			bp->b_vp = vp; 
-			error = ffs_rawread_readahead(vp, udata, offset,
-						     resid, p, bp, sa);
+			error = ffs_rawread_readahead(vp, udata, offset, resid,
+				    td, bp, sa, &baseticks);
 			if (error != 0)
 				break;
 			
@@ -290,16 +285,13 @@ ffs_rawread_main(struct vnode *vp,
 					nsa = nbp->b_data;
 					nbp->b_vp = vp;
 					
-					nerror = ffs_rawread_readahead(vp, 
-								       udata +
-								       bp->b_bufsize,
-								       offset +
-								       bp->b_bufsize,
-								       resid -
-								       bp->b_bufsize,
-								       p,
-								       nbp,
-								       nsa);
+					nerror = ffs_rawread_readahead(
+							vp, 
+							udata + bp->b_bufsize,
+							offset + bp->b_bufsize,
+							resid - bp->b_bufsize,
+							td, nbp, nsa,
+							&baseticks);
 					if (nerror) {
 						relpbuf(nbp, &ffsrawbufcnt);
 						nbp = NULL;
@@ -331,13 +323,10 @@ ffs_rawread_main(struct vnode *vp,
 		offset += iolen;
 		if (iolen < bp->b_bufsize) {
 			/* Incomplete read.  Try to read remaining part */
-			error = ffs_rawread_readahead(vp,
-						      udata,
-						      offset,
-						      bp->b_bufsize - iolen,
-						      p,
-						      bp,
-						      sa);
+			error = ffs_rawread_readahead(
+				    vp, udata, offset,
+				    bp->b_bufsize - iolen, td, bp,
+				    sa, &baseticks);
 			if (error != 0)
 				break;
 		} else if (nbp != NULL) { /* Complete read with readahead */
@@ -354,16 +343,11 @@ ffs_rawread_main(struct vnode *vp,
 				relpbuf(nbp, &ffsrawbufcnt);
 				nbp = NULL;
 			} else { /* Setup next readahead */
-				nerror = ffs_rawread_readahead(vp,
-							       udata +
-							       bp->b_bufsize,
-							       offset +
-							       bp->b_bufsize,
-							       resid -
-							       bp->b_bufsize,
-							       p,
-							       nbp,
-							       nsa);
+				nerror = ffs_rawread_readahead(
+						vp, udata + bp->b_bufsize,
+				   		offset + bp->b_bufsize,
+						resid - bp->b_bufsize,
+						td, nbp, nsa, &baseticks);
 				if (nerror != 0) {
 					relpbuf(nbp, &ffsrawbufcnt);
 					nbp = NULL;
@@ -373,7 +357,8 @@ ffs_rawread_main(struct vnode *vp,
 			break;		
 		}  else if (resid > 0) { /* More to read, no readahead */
 			error = ffs_rawread_readahead(vp, udata, offset,
-						      resid, p, bp, sa);
+						      resid, td, bp, sa,
+						      &baseticks);
 			if (error != 0)
 				break;
 		}
@@ -393,7 +378,8 @@ ffs_rawread_main(struct vnode *vp,
 	
 	if (error == 0)
 		error = nerror;
-	PRELE(p);
+	if (uio->uio_td && uio->uio_td->td_proc)
+		PRELE(uio->uio_td->td_proc);
 	uio->uio_iov->iov_base = udata;
 	uio->uio_resid = resid;
 	uio->uio_offset = offset;
@@ -429,8 +415,8 @@ ffs_rawread(struct vnode *vp,
 			
 			/* Sync dirty pages and buffers if needed */
 			error = ffs_rawread_sync(vp,
-						 (uio->uio_procp != NULL) ?
-						 uio->uio_procp : curproc);
+						 (uio->uio_td != NULL) ?
+						 uio->uio_td : curthread);
 			if (error != 0)
 				return error;
 			
