@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined.h,v 1.3 2005/03/15 02:25:25 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined.h,v 1.4 2005/03/15 02:32:57 dillon Exp $*
  */
 /*========================================================================*
  *				Mined.h					  *
@@ -43,6 +43,7 @@
 #define INTEL	1
 #define CHIP	INTEL
 #define ASSUME_CONS25
+#define ASSUME_XTERM
 
 #include <sys/types.h>
 #include <fcntl.h>
@@ -325,7 +326,7 @@ _PROTOTYPE(char *basename, (char *path ));
 _PROTOTYPE(void load_file, (char *file ));
 _PROTOTYPE(int get_line, (int fd, char *buffer ));
 _PROTOTYPE(LINE *install_line, (char *buffer, int length ));
-_PROTOTYPE(void main, (int argc, char *argv []));
+_PROTOTYPE(int main, (int argc, char *argv []));
 _PROTOTYPE(void RD, (void));
 _PROTOTYPE(void I, (void));
 _PROTOTYPE(void XT, (void));

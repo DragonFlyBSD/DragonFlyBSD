@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.3 2005/03/15 02:25:25 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined1.c,v 1.4 2005/03/15 02:32:57 dillon Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -1478,7 +1478,8 @@ int length;
   return new_line;
 }
 
-void main(argc, argv)
+int 
+main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -1604,7 +1605,6 @@ int c;
   if (c == '[') {
 	/* Start of ASCII escape sequence. */
 	c = getchar();
-	printf("C = %c\n", c);
 #if (CHIP == M68000)
 #ifndef COMPAT
 	if ((c >= '0') && (c <= '9')) ch = getchar();
@@ -1669,6 +1669,22 @@ int c;
 	}
 	return(I);
   }
+#ifdef ASSUME_XTERM
+  if (c == 'O') {
+	/* Start of ASCII function key escape sequence. */
+	switch (getchar()) {
+	case 'P': return(HLP);		/* F1 */
+	case 'Q': return(FS);		/* F2 */
+	case 'R': return(SF);		/* F3 */
+	case 'S': return(GR);		/* F4 */
+	case '2':
+		switch (getchar()) {
+		case 'R': return(SR);	/* shift-F3 */
+		}
+		break;
+	}
+    }
+#endif
 #if (CHIP == M68000)
 #ifdef COMPAT
   if (c == 'O') {
