@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.35 2004/07/16 05:48:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.36 2004/12/20 09:21:18 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -247,6 +247,10 @@ ENTRY(cpu_exit_switch)
  *	do is clear the TDF_RUNNING bit in the old thread and set it in the
  *	new thread.
  *
+ *	NOTE: The process may be in any state, not necessarily SRUN, because
+ *	a preemption switch may interrupt the process and then return via 
+ *	cpu_heavy_restore.
+ *
  *	YYY theoretically we do not have to restore everything here, a lot
  *	of this junk can wait until we return to usermode.  But for now
  *	we restore everything.
@@ -261,18 +265,6 @@ ENTRY(cpu_heavy_restore)
 	popfl
 	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
 	movl	TD_PROC(%eax),%ecx
-#ifdef	DIAGNOSTIC
-	/*
-	 * A heavy weight process will normally be in an SRUN state
-	 * but can also be preempted while it is entering a SZOMB
-	 * (zombie) state.
-	 */
-	cmpb	$SRUN,P_STAT(%ecx)
-	je	1f
-	cmpb	$SZOMB,P_STAT(%ecx)
-	jne	badsw2
-1:
-#endif
 
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
@@ -420,12 +412,6 @@ cpu_switch_load_gs:
 1:
 
 	ret
-
-badsw2:
-	pushl	$sw0_2
-	call	panic
-
-sw0_2:	.asciz	"cpu_switch: not SRUN"
 
 /*
  * savectx(pcb)
