@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias.c,v 1.16.2.11 2002/07/25 12:31:37 ru Exp $
- * $DragonFly: src/lib/libalias/alias.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias.c,v 1.3 2004/08/20 00:08:17 joerg Exp $
  */
 
 /*
@@ -113,7 +113,7 @@
     See HISTORY file for additional revisions.
 */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
- * $DragonFly: src/lib/libalias/alias_db.c,v 1.3 2003/08/08 04:18:33 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_db.c,v 1.4 2004/08/20 00:08:17 joerg Exp $
  */
 
 /*
@@ -146,15 +146,15 @@
 
 
 /* System include files */
+#include <sys/param.h>
+#include <sys/queue.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-
-#include <sys/queue.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
 
 /* BSD network include files */
 #include <netinet/in_systm.h>

@@ -63,7 +63,7 @@
  *                        <junichi@junichi.org>
  *
  * $FreeBSD: src/lib/libalias/alias_smedia.c,v 1.1.2.4 2001/03/05 03:48:00 kris Exp $
- * $DragonFly: src/lib/libalias/alias_smedia.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_smedia.c,v 1.3 2004/08/20 00:08:17 joerg Exp $
  */
 
 /*
@@ -98,9 +98,9 @@
    Initial version:  May, 2000 (eds)  
 */
 
+#include <sys/param.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_proxy.c,v 1.4.2.5 2001/11/03 11:34:33 brian Exp $
- * $DragonFly: src/lib/libalias/alias_proxy.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_proxy.c,v 1.3 2004/08/20 00:08:17 joerg Exp $
  */
 
 /* file: alias_proxy.c
@@ -54,14 +54,14 @@
 
 
 /* System includes */
+#include <sys/param.h>
+#include <sys/socket.h>
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
 
 /* BSD IPV4 includes */
 #include <netinet/in_systm.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_ftp.c,v 1.5.2.7 2001/12/06 09:00:26 ru Exp $
- * $DragonFly: src/lib/libalias/alias_ftp.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_ftp.c,v 1.3 2004/08/20 00:08:17 joerg Exp $
  */
 
 /*
@@ -69,10 +69,10 @@
 */
 
 /* Includes */
+#include <sys/param.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>

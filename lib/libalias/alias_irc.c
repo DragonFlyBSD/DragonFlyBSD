@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_irc.c,v 1.5.2.5 2001/11/03 11:34:33 brian Exp $
- * $DragonFly: src/lib/libalias/alias_irc.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_irc.c,v 1.3 2004/08/20 00:08:17 joerg Exp $
  */
 
 /* Alias_irc.c intercepts packages contain IRC CTCP commands, and
@@ -48,10 +48,10 @@
 */
 
 /* Includes */
+#include <sys/param.h>
 #include <ctype.h>
 #include <stdio.h> 
 #include <string.h>
-#include <sys/types.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
