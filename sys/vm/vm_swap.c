@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.10 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.11 2004/03/23 22:54:32 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -82,11 +82,10 @@ struct vnode *swapdev_vp;
  */
 
 static int
-swapdev_strategy(ap)
-	struct vop_strategy_args /* {
-		struct vnode *a_vp;
-		struct buf *a_bp;
-	} */ *ap;
+swapdev_strategy(struct vop_strategy_args /* {
+			 struct vnode *a_vp;
+			 struct buf *a_bp;
+		 } */ *ap)
 {
 	int s, sz, off, seg, index;
 	struct swdevt *sp;

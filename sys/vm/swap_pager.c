@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.10 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.11 2004/03/23 22:54:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -217,7 +217,7 @@ static daddr_t swp_pager_meta_ctl (vm_object_t, vm_pindex_t, int);
  */
 
 static __inline void
-swp_sizecheck()
+swp_sizecheck(void)
 {
 	if (vm_swap_size < nswap_lowat) {
 		if (swap_pager_almost_full == 0) {
@@ -240,7 +240,7 @@ swp_sizecheck()
  */
 
 static void
-swap_pager_init()
+swap_pager_init(void)
 {
 	/*
 	 * Initialize object lists
@@ -267,7 +267,7 @@ swap_pager_init()
  */
 
 void
-swap_pager_swap_init()
+swap_pager_swap_init(void)
 {
 	int n, n2;
 
@@ -429,8 +429,7 @@ swap_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
  */
 
 static void
-swap_pager_dealloc(object)
-	vm_object_t object;
+swap_pager_dealloc(vm_object_t object)
 {
 	int s;
 
@@ -480,8 +479,7 @@ swap_pager_dealloc(object)
  */
 
 static __inline daddr_t
-swp_pager_getswapspace(npages)
-	int npages;
+swp_pager_getswapspace(int npages)
 {
 	daddr_t blk;
 
@@ -514,9 +512,7 @@ swp_pager_getswapspace(npages)
  */
 
 static __inline void
-swp_pager_freeswapspace(blk, npages)
-	daddr_t blk;
-	int npages;
+swp_pager_freeswapspace(daddr_t blk, int npages)
 {
 	blist_free(swapblist, blk, npages);
 	vm_swap_size += npages;
@@ -540,10 +536,7 @@ swp_pager_freeswapspace(blk, npages)
  */
 
 void
-swap_pager_freespace(object, start, size)
-	vm_object_t object;
-	vm_pindex_t start;
-	vm_size_t size;
+swap_pager_freespace(vm_object_t object, vm_pindex_t start, vm_size_t size)
 {
 	int s = splvm();
 	swp_pager_meta_free(object, start, size);
@@ -619,11 +612,8 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
  */
 
 void
-swap_pager_copy(srcobject, dstobject, offset, destroysource)
-	vm_object_t srcobject;
-	vm_object_t dstobject;
-	vm_pindex_t offset;
-	int destroysource;
+swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
+    vm_pindex_t offset, int destroysource)
 {
 	vm_pindex_t i;
 	int s;
@@ -727,11 +717,8 @@ swap_pager_copy(srcobject, dstobject, offset, destroysource)
  */
 
 boolean_t
-swap_pager_haspage(object, pindex, before, after)
-	vm_object_t object;
-	vm_pindex_t pindex;
-	int *before;
-	int *after;
+swap_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
+    int *after)
 {
 	daddr_t blk0;
 	int s;
@@ -811,8 +798,7 @@ swap_pager_haspage(object, pindex, before, after)
  */
 
 static void
-swap_pager_unswapped(m)
-	vm_page_t m;
+swap_pager_unswapped(vm_page_t m)
 {
 	swp_pager_meta_ctl(m->object, m->pindex, SWM_FREE);
 }
@@ -1013,10 +999,7 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
  */
 
 static int
-swap_pager_getpages(object, m, count, reqpage)
-	vm_object_t object;
-	vm_page_t *m;
-	int count, reqpage;
+swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 {
 	struct buf *bp;
 	vm_page_t mreq;
@@ -1222,12 +1205,8 @@ swap_pager_getpages(object, m, count, reqpage)
  */
 
 void
-swap_pager_putpages(object, m, count, sync, rtvals)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	boolean_t sync;
-	int *rtvals;
+swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
+    int *rtvals)
 {
 	int i;
 	int n = 0;
@@ -1452,8 +1431,7 @@ swap_pager_putpages(object, m, count, sync, rtvals)
  */
 
 static void
-swp_pager_sync_iodone(bp)
-	struct buf *bp;
+swp_pager_sync_iodone(struct buf *bp)
 {
 	bp->b_flags |= B_DONE;
 	bp->b_flags &= ~B_ASYNC;
@@ -1480,8 +1458,7 @@ swp_pager_sync_iodone(bp)
  */
 
 static void
-swp_pager_async_iodone(bp)
-	struct buf *bp;
+swp_pager_async_iodone(struct buf *bp)
 {
 	int s;
 	int i;
@@ -1966,4 +1943,3 @@ swp_pager_meta_ctl(
 	}
 	return(r1);
 }
-

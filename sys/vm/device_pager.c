@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.6 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.7 2004/03/23 22:54:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ struct pagerops devicepagerops = {
 };
 
 static void
-dev_pager_init()
+dev_pager_init(void)
 {
 	TAILQ_INIT(&dev_pager_object_list);
 	fakepg_zone = &fakepg_zone_store;
@@ -164,8 +164,7 @@ dev_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t fo
 }
 
 static void
-dev_pager_dealloc(object)
-	vm_object_t object;
+dev_pager_dealloc(vm_object_t object)
 {
 	vm_page_t m;
 
@@ -180,11 +179,7 @@ dev_pager_dealloc(object)
 }
 
 static int
-dev_pager_getpages(object, m, count, reqpage)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	int reqpage;
+dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 {
 	vm_offset_t offset;
 	vm_paddr_t paddr;
@@ -216,22 +211,15 @@ dev_pager_getpages(object, m, count, reqpage)
 }
 
 static void
-dev_pager_putpages(object, m, count, sync, rtvals)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	boolean_t sync;
-	int *rtvals;
+dev_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
+    int *rtvals)
 {
 	panic("dev_pager_putpage called");
 }
 
 static boolean_t
-dev_pager_haspage(object, pindex, before, after)
-	vm_object_t object;
-	vm_pindex_t pindex;
-	int *before;
-	int *after;
+dev_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
+    int *after)
 {
 	if (before != NULL)
 		*before = 0;
@@ -241,8 +229,7 @@ dev_pager_haspage(object, pindex, before, after)
 }
 
 static vm_page_t
-dev_pager_getfake(paddr)
-	vm_paddr_t paddr;
+dev_pager_getfake(vm_paddr_t paddr)
 {
 	vm_page_t m;
 
@@ -263,8 +250,7 @@ dev_pager_getfake(paddr)
 }
 
 static void
-dev_pager_putfake(m)
-	vm_page_t m;
+dev_pager_putfake(vm_page_t m)
 {
 	if (!(m->flags & PG_FICTITIOUS))
 		panic("dev_pager_putfake: bad page");

@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.20 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.21 2004/03/23 22:54:32 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -113,9 +113,7 @@ SYSINIT(scheduler, SI_SUB_RUN_SCHEDULER, SI_ORDER_FIRST, scheduler, NULL)
 static void swapout (struct proc *);
 
 int
-kernacc(addr, len, rw)
-	caddr_t addr;
-	int len, rw;
+kernacc(caddr_t addr, int len, int rw)
 {
 	boolean_t rv;
 	vm_offset_t saddr, eaddr;
@@ -133,9 +131,7 @@ kernacc(addr, len, rw)
 }
 
 int
-useracc(addr, len, rw)
-	caddr_t addr;
-	int len, rw;
+useracc(caddr_t addr, int len, int rw)
 {
 	boolean_t rv;
 	vm_prot_t prot;
@@ -174,18 +170,14 @@ useracc(addr, len, rw)
 }
 
 void
-vslock(addr, len)
-	caddr_t addr;
-	u_int len;
+vslock(caddr_t addr, u_int len)
 {
 	vm_map_wire(&curproc->p_vmspace->vm_map, trunc_page((vm_offset_t)addr),
 	    round_page((vm_offset_t)addr + len), 0);
 }
 
 void
-vsunlock(addr, len)
-	caddr_t addr;
-	u_int len;
+vsunlock(caddr_t addr, u_int len)
 {
 	vm_map_wire(&curproc->p_vmspace->vm_map, trunc_page((vm_offset_t)addr),
 	    round_page((vm_offset_t)addr + len), KM_PAGEABLE);
@@ -200,9 +192,7 @@ vsunlock(addr, len)
  * to user mode to avoid stack copying and relocation problems.
  */
 void
-vm_fork(p1, p2, flags)
-	struct proc *p1, *p2;
-	int flags;
+vm_fork(struct proc *p1, struct proc *p2, int flags)
 {
 	struct user *up;
 	struct thread *td2;
@@ -297,8 +287,7 @@ vm_waitproc(struct proc *p)
  * XXX should probably act directly on proc0.
  */
 static void
-vm_init_limits(udata)
-	void *udata;
+vm_init_limits(void *udata)
 {
 	struct proc *p = udata;
 	int rss_limit;
@@ -321,8 +310,7 @@ vm_init_limits(udata)
 }
 
 void
-faultin(p)
-	struct proc *p;
+faultin(struct proc *p)
 {
 	int s;
 
@@ -356,8 +344,7 @@ faultin(p)
  */
 /* ARGSUSED*/
 static void
-scheduler(dummy)
-	void *dummy;
+scheduler(void *dummy)
 {
 	struct proc *p;
 	int pri;
@@ -442,8 +429,7 @@ SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold2,
  * if any, otherwise the longest-resident process.
  */
 void
-swapout_procs(action)
-int action;
+swapout_procs(int action)
 {
 	struct proc *p;
 	struct proc *outp, *outp2;
@@ -531,8 +517,7 @@ retry:
 }
 
 static void
-swapout(p)
-	struct proc *p;
+swapout(struct proc *p)
 {
 
 #if defined(SWAP_DEBUG)

@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.9 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.10 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -217,8 +217,7 @@ static void vm_pageout_page_stats(void);
  */
 
 static int
-vm_pageout_clean(m)
-	vm_page_t m;
+vm_pageout_clean(vm_page_t m)
 {
 	vm_object_t object;
 	vm_page_t mc[2*vm_pageout_page_count];
@@ -355,10 +354,7 @@ more:
  */
 
 int
-vm_pageout_flush(mc, count, flags)
-	vm_page_t *mc;
-	int count;
-	int flags;
+vm_pageout_flush(vm_page_t *mc, int count, int flags)
 {
 	vm_object_t object;
 	int pageout_status[count];
@@ -446,11 +442,8 @@ vm_pageout_flush(mc, count, flags)
  *	The object and map must be locked.
  */
 static void
-vm_pageout_object_deactivate_pages(map, object, desired, map_remove_only)
-	vm_map_t map;
-	vm_object_t object;
-	vm_pindex_t desired;
-	int map_remove_only;
+vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
+    vm_pindex_t desired, int map_remove_only)
 {
 	vm_page_t p, next;
 	int rcount;
@@ -538,9 +531,7 @@ vm_pageout_object_deactivate_pages(map, object, desired, map_remove_only)
  * that is really hard to do.
  */
 static void
-vm_pageout_map_deactivate_pages(map, desired)
-	vm_map_t map;
-	vm_pindex_t desired;
+vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 {
 	vm_map_entry_t tmpe;
 	vm_object_t obj, bigobj;
@@ -1177,7 +1168,7 @@ rescan0:
  * helps the situation where paging just starts to occur.
  */
 static void
-vm_pageout_page_stats()
+vm_pageout_page_stats(void)
 {
 	int s;
 	vm_page_t m,next;
@@ -1271,8 +1262,7 @@ vm_pageout_page_stats()
 }
 
 static int
-vm_pageout_free_page_calc(count)
-vm_size_t count;
+vm_pageout_free_page_calc(vm_size_t count)
 {
 	if (count < vmstats.v_page_count)
 		 return 0;
@@ -1299,7 +1289,7 @@ vm_size_t count;
  *	vm_pageout is the high level pageout daemon.
  */
 static void
-vm_pageout()
+vm_pageout(void)
 {
 	int pass;
 
@@ -1419,7 +1409,7 @@ vm_pageout()
 }
 
 void
-pagedaemon_wakeup()
+pagedaemon_wakeup(void)
 {
 	if (!vm_pages_needed && curthread != pagethread) {
 		vm_pages_needed++;
@@ -1429,7 +1419,7 @@ pagedaemon_wakeup()
 
 #if !defined(NO_SWAPPING)
 static void
-vm_req_vmdaemon()
+vm_req_vmdaemon(void)
 {
 	static int lastrun = 0;
 
@@ -1440,7 +1430,7 @@ vm_req_vmdaemon()
 }
 
 static void
-vm_daemon()
+vm_daemon(void)
 {
 	struct proc *p;
 

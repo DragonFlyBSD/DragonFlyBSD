@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.15 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.16 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -250,10 +250,8 @@ kmem_free(vm_map_t map, vm_offset_t addr, vm_size_t size)
  *	pageable	Can the region be paged
  */
 vm_map_t
-kmem_suballoc(parent, min, max, size)
-	vm_map_t parent;
-	vm_offset_t *min, *max;
-	vm_size_t size;
+kmem_suballoc(vm_map_t parent, vm_offset_t *min, vm_offset_t *max,
+    vm_size_t size)
 {
 	int ret;
 	vm_map_t result;
@@ -492,10 +490,7 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
  *	waiting for memory in that map.
  */
 void
-kmem_free_wakeup(map, addr, size)
-	vm_map_t map;
-	vm_offset_t addr;
-	vm_size_t size;
+kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 {
 	int count;
 
@@ -535,4 +530,3 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	vm_map_unlock(m);
 	vm_map_entry_release(count);
 }
-

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.23 2004/03/12 23:09:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.24 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ static void vm_map_split (vm_map_entry_t);
 static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int *count, int flags);
 
 void
-vm_map_startup()
+vm_map_startup(void)
 {
 	mapzone = &mapzone_store;
 	zbootinit(mapzone, "MAP", sizeof (struct vm_map),
@@ -168,8 +168,7 @@ vm_map_startup()
  * The remaining fields must be initialized by the caller.
  */
 struct vmspace *
-vmspace_alloc(min, max)
-	vm_offset_t min, max;
+vmspace_alloc(vm_offset_t min, vm_offset_t max)
 {
 	struct vmspace *vm;
 
@@ -547,10 +546,8 @@ vm_map_entry_unlink(vm_map_t map,
  *	actually contained in the map.
  */
 boolean_t
-vm_map_lookup_entry(map, address, entry)
-	vm_map_t map;
-	vm_offset_t address;
-	vm_map_entry_t *entry;	/* OUT */
+vm_map_lookup_entry(vm_map_t map, vm_offset_t address,
+    vm_map_entry_t *entry /* OUT */)
 {
 	vm_map_entry_t cur;
 	vm_map_entry_t last;
@@ -1681,11 +1678,8 @@ vm_map_inherit(vm_map_t map, vm_offset_t start, vm_offset_t end,
  * Implement the semantics of mlock
  */
 int
-vm_map_unwire(map, start, real_end, new_pageable)
-	vm_map_t map;
-	vm_offset_t start;
-	vm_offset_t real_end;
-	boolean_t new_pageable;
+vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
+    boolean_t new_pageable)
 {
 	vm_map_entry_t entry;
 	vm_map_entry_t start_entry;
@@ -2110,12 +2104,8 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *coun
  * Returns an error if any part of the specified range is not mapped.
  */
 int
-vm_map_clean(map, start, end, syncio, invalidate)
-	vm_map_t map;
-	vm_offset_t start;
-	vm_offset_t end;
-	boolean_t syncio;
-	boolean_t invalidate;
+vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
+    boolean_t invalidate)
 {
 	vm_map_entry_t current;
 	vm_map_entry_t entry;
@@ -3273,13 +3263,8 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
  * operations.
  */
 int
-vm_uiomove(mapa, srcobject, cp, cnta, uaddra, npages)
-	vm_map_t mapa;
-	vm_object_t srcobject;
-	off_t cp;
-	int cnta;
-	vm_offset_t uaddra;
-	int *npages;
+vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
+    vm_offset_t uaddra, int *npages)
 {
 	vm_map_t map;
 	vm_object_t first_object, oldobject, object;
@@ -3512,9 +3497,7 @@ vm_uiomove(mapa, srcobject, cp, cnta, uaddra, npages)
  * from other processes, file unlinking, and file size shrinkage.
  */
 void
-vm_freeze_copyopts(object, froma, toa)
-	vm_object_t object;
-	vm_pindex_t froma, toa;
+vm_freeze_copyopts(vm_object_t object, vm_pindex_t froma, vm_pindex_t toa)
 {
 	int rv;
 	vm_object_t robject;

@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.11 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.12 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -890,9 +890,7 @@ readrest:
  *	Wire down a range of virtual addresses in a map.
  */
 int
-vm_fault_wire(map, start, end)
-	vm_map_t map;
-	vm_offset_t start, end;
+vm_fault_wire(vm_map_t map, vm_offset_t start, vm_offset_t end)
 {
 
 	vm_offset_t va;
@@ -933,9 +931,7 @@ vm_fault_wire(map, start, end)
  *	on currently read only sections.
  */
 int
-vm_fault_user_wire(map, start, end)
-	vm_map_t map;
-	vm_offset_t start, end;
+vm_fault_user_wire(vm_map_t map, vm_offset_t start, vm_offset_t end)
 {
 
 	vm_offset_t va;
@@ -973,9 +969,7 @@ vm_fault_user_wire(map, start, end)
  *	Unwire a range of virtual addresses in a map.
  */
 void
-vm_fault_unwire(map, start, end)
-	vm_map_t map;
-	vm_offset_t start, end;
+vm_fault_unwire(vm_map_t map, vm_offset_t start, vm_offset_t end)
 {
 
 	vm_offset_t va;
@@ -1019,11 +1013,8 @@ vm_fault_unwire(map, start, end)
  */
 
 void
-vm_fault_copy_entry(dst_map, src_map, dst_entry, src_entry)
-	vm_map_t dst_map;
-	vm_map_t src_map;
-	vm_map_entry_t dst_entry;
-	vm_map_entry_t src_entry;
+vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
+    vm_map_entry_t dst_entry, vm_map_entry_t src_entry)
 {
 	vm_object_t dst_object;
 	vm_object_t src_object;
@@ -1117,12 +1108,8 @@ vm_fault_copy_entry(dst_map, src_map, dst_entry, src_entry)
  *  number of pages in marray
  */
 static int
-vm_fault_additional_pages(m, rbehind, rahead, marray, reqpage)
-	vm_page_t m;
-	int rbehind;
-	int rahead;
-	vm_page_t *marray;
-	int *reqpage;
+vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
+    vm_page_t *marray, int *reqpage)
 {
 	int i,j;
 	vm_object_t object;

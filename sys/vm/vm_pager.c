@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.8 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.9 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -106,32 +106,21 @@ static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t, int *, int *);
 static void dead_pager_dealloc (vm_object_t);
 
 static int
-dead_pager_getpages(obj, ma, count, req)
-	vm_object_t obj;
-	vm_page_t *ma;
-	int count;
-	int req;
+dead_pager_getpages(vm_object_t obj, vm_page_t *ma, int count, int req)
 {
 	return VM_PAGER_FAIL;
 }
 
 static vm_object_t
-dead_pager_alloc(handle, size, prot, off)
-	void *handle;
-	vm_ooffset_t size;
-	vm_prot_t prot;
-	vm_ooffset_t off;
+dead_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
+    vm_ooffset_t off)
 {
 	return NULL;
 }
 
 static void
-dead_pager_putpages(object, m, count, flags, rtvals)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	int flags;
-	int *rtvals;
+dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
+    int *rtvals)
 {
 	int i;
 
@@ -141,11 +130,7 @@ dead_pager_putpages(object, m, count, flags, rtvals)
 }
 
 static int
-dead_pager_haspage(object, pindex, prev, next)
-	vm_object_t object;
-	vm_pindex_t pindex;
-	int *prev;
-	int *next;
+dead_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *prev, int *next)
 {
 	if (prev)
 		*prev = 0;
@@ -155,8 +140,7 @@ dead_pager_haspage(object, pindex, prev, next)
 }
 
 static void
-dead_pager_dealloc(object)
-	vm_object_t object;
+dead_pager_dealloc(vm_object_t object)
 {
 	return;
 }
@@ -198,7 +182,7 @@ static int bswneeded;
 static vm_offset_t swapbkva;		/* swap buffers kva */
 
 void
-vm_pager_init()
+vm_pager_init(void)
 {
 	struct pagerops **pgops;
 
@@ -211,7 +195,7 @@ vm_pager_init()
 }
 
 void
-vm_pager_bufferinit()
+vm_pager_bufferinit(void)
 {
 	struct buf *bp;
 	int i;
@@ -252,8 +236,7 @@ vm_pager_allocate(objtype_t type, void *handle, vm_ooffset_t size, vm_prot_t pro
 }
 
 void
-vm_pager_deallocate(object)
-	vm_object_t object;
+vm_pager_deallocate(vm_object_t object)
 {
 	(*pagertab[object->type]->pgo_dealloc) (object);
 }
@@ -294,7 +277,7 @@ vm_pager_strategy(vm_object_t object, struct buf *bp)
  *	operations.
  */
 void
-vm_pager_sync()
+vm_pager_sync(void)
 {
 	struct pagerops **pgops;
 
@@ -306,8 +289,7 @@ vm_pager_sync()
 #endif
 
 vm_offset_t
-vm_pager_map_page(m)
-	vm_page_t m;
+vm_pager_map_page(vm_page_t m)
 {
 	vm_offset_t kva;
 
@@ -317,17 +299,14 @@ vm_pager_map_page(m)
 }
 
 void
-vm_pager_unmap_page(kva)
-	vm_offset_t kva;
+vm_pager_unmap_page(vm_offset_t kva)
 {
 	pmap_kremove(kva);
 	kmem_free_wakeup(pager_map, kva, PAGE_SIZE);
 }
 
 vm_object_t
-vm_pager_object_lookup(pg_list, handle)
-	struct pagerlst *pg_list;
-	void *handle;
+vm_pager_object_lookup(struct pagerlst *pg_list, void *handle)
 {
 	vm_object_t object;
 
@@ -370,8 +349,7 @@ initpbuf(struct buf *bp)
  *	relatively soon when the rest of the subsystems get smart about it. XXX
  */
 struct buf *
-getpbuf(pfreecnt)
-	int *pfreecnt;
+getpbuf(int *pfreecnt)
 {
 	int s;
 	struct buf *bp;
@@ -409,8 +387,7 @@ getpbuf(pfreecnt)
  *	call understand how to use pfreecnt.
  */
 struct buf *
-trypbuf(pfreecnt)
-	int *pfreecnt;
+trypbuf(int *pfreecnt)
 {
 	int s;
 	struct buf *bp;
@@ -438,9 +415,7 @@ trypbuf(pfreecnt)
  *	relatively soon when the rest of the subsystems get smart about it. XXX
  */
 void
-relpbuf(bp, pfreecnt)
-	struct buf *bp;
-	int *pfreecnt;
+relpbuf(struct buf *bp, int *pfreecnt)
 {
 	int s;
 
@@ -593,4 +568,3 @@ autochaindone(struct buf *bp)
 		bp->b_xflags |= BX_AUTOCHAINDONE;
 	splx(s);
 }
-

@@ -37,7 +37,7 @@
  * is maintained whenever a resident page also has swap backing store.
  *
  * $FreeBSD: src/sys/vm/default_pager.c,v 1.23 1999/11/07 20:03:53 alc Exp $
- * $DragonFly: src/sys/vm/default_pager.c,v 1.3 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/default_pager.c,v 1.4 2004/03/23 22:54:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,8 +92,7 @@ default_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
  */
 
 static void
-default_pager_dealloc(object)
-	vm_object_t object;
+default_pager_dealloc(vm_object_t object)
 {
 	/*
 	 * OBJT_DEFAULT objects have no special resources allocated to them.
@@ -107,11 +106,7 @@ default_pager_dealloc(object)
  */
 
 static int
-default_pager_getpages(object, m, count, reqpage)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	int reqpage;
+default_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 {
 	return VM_PAGER_FAIL;
 }
@@ -124,12 +119,8 @@ default_pager_getpages(object, m, count, reqpage)
  */
 
 static void
-default_pager_putpages(object, m, c, sync, rtvals)
-	vm_object_t object;
-	vm_page_t *m;
-	int c;
-	boolean_t sync;
-	int *rtvals;
+default_pager_putpages(vm_object_t object, vm_page_t *m, int c, boolean_t sync,
+    int *rtvals)
 {
 	swap_pager_putpages(object, m, c, sync, rtvals);
 }
@@ -148,12 +139,8 @@ default_pager_putpages(object, m, c, sync, rtvals)
  */
 
 static boolean_t
-default_pager_haspage(object, pindex, before, after)
-	vm_object_t object;
-	vm_pindex_t pindex;
-	int *before;
-	int *after;
+default_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
+    int *after)
 {
 	return FALSE;
 }
-

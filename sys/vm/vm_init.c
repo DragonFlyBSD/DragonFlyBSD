@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_init.c,v 1.20 1999/10/29 18:09:29 phk Exp $
- * $DragonFly: src/sys/vm/vm_init.c,v 1.5 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_init.c,v 1.6 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -97,8 +97,7 @@ SYSINIT(vm_mem, SI_SUB_VM, SI_ORDER_FIRST, vm_mem_init, NULL)
 
 /* ARGSUSED*/
 static void
-vm_mem_init(dummy)
-	void *dummy;
+vm_mem_init(void *dummy)
 {
 	/*
 	 * Initializes resident memory structures. From here on, all physical

@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.18 2004/02/23 11:54:03 eirikn Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.19 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -95,8 +95,7 @@ static void vmmapentry_rsrc_init (void *);
 SYSINIT(vmmersrc, SI_SUB_KVM_RSRC, SI_ORDER_FIRST, vmmapentry_rsrc_init, NULL)
 
 static void
-vmmapentry_rsrc_init(dummy)
-        void *dummy;
+vmmapentry_rsrc_init(void *dummy)
 {
     max_proc_mmap = (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) /
 			sizeof(struct vm_map_entry);

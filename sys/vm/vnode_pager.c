@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.11 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.12 2004/03/23 22:54:32 dillon Exp $
  */
 
 /*
@@ -165,8 +165,7 @@ vnode_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
 }
 
 static void
-vnode_pager_dealloc(object)
-	vm_object_t object;
+vnode_pager_dealloc(vm_object_t object)
 {
 	struct vnode *vp = object->handle;
 
@@ -182,11 +181,8 @@ vnode_pager_dealloc(object)
 }
 
 static boolean_t
-vnode_pager_haspage(object, pindex, before, after)
-	vm_object_t object;
-	vm_pindex_t pindex;
-	int *before;
-	int *after;
+vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
+    int *after)
 {
 	struct vnode *vp = object->handle;
 	daddr_t bn;
@@ -262,9 +258,7 @@ vnode_pager_haspage(object, pindex, before, after)
  * operation (possibly at object termination time), so we must be careful.
  */
 void
-vnode_pager_setsize(vp, nsize)
-	struct vnode *vp;
-	vm_ooffset_t nsize;
+vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 {
 	vm_pindex_t nobjsize;
 	vm_object_t object = vp->v_object;
@@ -352,8 +346,7 @@ vnode_pager_setsize(vp, nsize)
 }
 
 void
-vnode_pager_freepage(m)
-	vm_page_t m;
+vnode_pager_freepage(vm_page_t m)
 {
 	vm_page_free(m);
 }
@@ -363,10 +356,7 @@ vnode_pager_freepage(m)
  * file address
  */
 static vm_offset_t
-vnode_pager_addr(vp, address, run)
-	struct vnode *vp;
-	vm_ooffset_t address;
-	int *run;
+vnode_pager_addr(struct vnode *vp, vm_ooffset_t address, int *run)
 {
 	int rtaddress;
 	int bsize;
@@ -406,8 +396,7 @@ vnode_pager_addr(vp, address, run)
  * interrupt routine for I/O completion
  */
 static void
-vnode_pager_iodone(bp)
-	struct buf *bp;
+vnode_pager_iodone(struct buf *bp)
 {
 	bp->b_flags |= B_DONE;
 	wakeup(bp);
@@ -417,9 +406,7 @@ vnode_pager_iodone(bp)
  * small block file system vnode pager input
  */
 static int
-vnode_pager_input_smlfs(object, m)
-	vm_object_t object;
-	vm_page_t m;
+vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 {
 	int i;
 	int s;
@@ -508,9 +495,7 @@ vnode_pager_input_smlfs(object, m)
  * old style vnode pager output routine
  */
 static int
-vnode_pager_input_old(object, m)
-	vm_object_t object;
-	vm_page_t m;
+vnode_pager_input_old(vm_object_t object, vm_page_t m)
 {
 	struct uio auio;
 	struct iovec aiov;
@@ -578,11 +563,7 @@ vnode_pager_input_old(object, m)
  * backing vp's VOP_GETPAGES.
  */
 static int
-vnode_pager_getpages(object, m, count, reqpage)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	int reqpage;
+vnode_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 {
 	int rtval;
 	struct vnode *vp;
@@ -607,11 +588,8 @@ vnode_pager_getpages(object, m, count, reqpage)
  * own vnodes if they fail to implement VOP_GETPAGES.
  */
 int
-vnode_pager_generic_getpages(vp, m, bytecount, reqpage)
-	struct vnode *vp;
-	vm_page_t *m;
-	int bytecount;
-	int reqpage;
+vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
+    int reqpage)
 {
 	vm_object_t object;
 	vm_offset_t kva;
@@ -880,12 +858,8 @@ vnode_pager_generic_getpages(vp, m, bytecount, reqpage)
  * backing vp's VOP_PUTPAGES.
  */
 static void
-vnode_pager_putpages(object, m, count, sync, rtvals)
-	vm_object_t object;
-	vm_page_t *m;
-	int count;
-	boolean_t sync;
-	int *rtvals;
+vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
+    boolean_t sync, int *rtvals)
 {
 	int rtval;
 	struct vnode *vp;
@@ -929,12 +903,8 @@ vnode_pager_putpages(object, m, count, sync, rtvals)
  * then delayed.
  */
 int
-vnode_pager_generic_putpages(vp, m, bytecount, flags, rtvals)
-	struct vnode *vp;
-	vm_page_t *m;
-	int bytecount;
-	int flags;
-	int *rtvals;
+vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
+    int flags, int *rtvals)
 {
 	int i;
 	vm_object_t object;
