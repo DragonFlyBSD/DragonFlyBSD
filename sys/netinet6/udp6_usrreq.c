@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.14 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.15 2004/06/03 16:21:22 joerg Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -695,7 +695,7 @@ udp6_disconnect(struct socket *so)
 		return EINVAL;
 
 	if (inp->inp_vflag & INP_IPV4) {
-		struct pr_usrreqs *pru;
+		const struct pr_usrreqs *pru;
 
 		pru = inetsw[ip_protox[IPPROTO_UDP]].pr_usrreqs;
 		return ((*pru->pru_disconnect)(so));
@@ -747,7 +747,7 @@ udp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 				? 1 : 0;
 		}
 		if (hasv4addr) {
-			struct pr_usrreqs *pru;
+			const struct pr_usrreqs *pru;
 
 			if (sin6)
 				in6_sin6_2_sin_in_sock(addr);

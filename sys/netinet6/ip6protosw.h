@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.5 2004/06/03 15:04:51 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.6 2004/06/03 16:21:22 joerg Exp $	*/
 /*	$KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $	*/
 
 /*
@@ -121,7 +121,7 @@ struct lwkt_port;
 
 struct ip6protosw {
 	short	pr_type;		/* socket type used for */
-	struct	domain *pr_domain;	/* domain protocol a member of */
+	const struct	domain *pr_domain; /* domain protocol a member of */
 	short	pr_protocol;		/* protocol number */
 	short	pr_flags;		/* see below */
 
@@ -149,7 +149,7 @@ struct ip6protosw {
 			(void);
 	void	(*pr_drain)		/* flush any excess space possible */
 			(void);
-	struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
+	const struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
 };
 
 #endif /* !_NETINET6_IP6PROTOSW_H_ */

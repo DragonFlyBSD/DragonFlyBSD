@@ -61,7 +61,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/netinet/ipprotosw.h,v 1.1 1999/12/22 19:13:23 shin Exp $
- * $DragonFly: src/sys/netinet/Attic/ipprotosw.h,v 1.4 2004/06/03 15:04:51 joerg Exp $
+ * $DragonFly: src/sys/netinet/Attic/ipprotosw.h,v 1.5 2004/06/03 16:21:22 joerg Exp $
  */
 
 #ifndef _NETINET_IPPROTOSW_H_
@@ -76,7 +76,7 @@ struct sockopt;
 
 struct ipprotosw {
 	short	pr_type;		/* socket type used for */
-	struct	domain *pr_domain;	/* domain protocol a member of */
+	const struct	domain *pr_domain; /* domain protocol a member of */
 	short	pr_protocol;		/* protocol number */
 	short	pr_flags;		/* see below */
 /* protocol-protocol hooks */
@@ -98,7 +98,7 @@ struct ipprotosw {
 					/* slow timeout (500ms) */
 	void	(*pr_drain) (void);
 					/* flush any excess space possible */
-	struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
+	const struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
 };
 
 #endif /* !_NETINET_IPPROTOSW_H_ */
