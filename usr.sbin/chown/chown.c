@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chown.c	8.8 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/chown/chown.c,v 1.15.2.3 2002/08/07 21:24:33 schweikh Exp $
- * $DragonFly: src/usr.sbin/chown/chown.c,v 1.6 2004/11/25 19:45:30 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/chown/chown.c,v 1.7 2004/11/28 16:51:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -186,7 +186,7 @@ main(int argc, char **argv)
 				chownerr(p->fts_path);
 				rval = 1;
 			} else {
-			    	if (vflag)
+			    	if (vflag) {
 					(void)printf("%s", p->fts_accpath);
 					 if (vflag > 1) {
 						if (ischown) {
@@ -208,6 +208,7 @@ main(int argc, char **argv)
   	                                         }
   	                                 }
   	                                 printf("\n");
+				}
 			}
 		}
 	}
