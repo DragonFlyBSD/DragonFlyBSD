@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.21 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.22 2004/12/24 03:22:28 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -635,10 +635,9 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	 * happen when the interface is in promiscuous mode.
 	 */
 	if (!BDG_ACTIVE(ifp) &&
-	    (ifp->if_flags & IFF_PROMISC) &&
+	    (ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC) == IFF_PROMISC) &&
 	    (eh->ether_dhost[0] & 1) == 0 &&
-	    !bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN) &&
-	    !(ifp->if_flags & IFF_PPROMISC)) {
+	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
 		m_freem(m);
 		return;
 	}
