@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.6 2003/11/30 17:04:35 drhodus Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.7 2004/03/04 00:06:58 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -404,9 +404,10 @@ parse()
 	    }
 	    if (opts & 1 << RBX_PROBEKBD) {
 		i = *(uint8_t *)PTOV(0x496) & 0x10;
-		printf("Keyboard: %s\n", i ? "yes" : "no");
-		if (!i)
+		if (!i) {
+		    printf("NO KB\n");
 		    opts |= 1 << RBX_DUAL | 1 << RBX_SERIAL;
+		}
 		opts &= ~(1 << RBX_PROBEKBD);
 	    }
 	    ioctrl = opts & 1 << RBX_DUAL ? (IO_SERIAL|IO_KEYBOARD) :

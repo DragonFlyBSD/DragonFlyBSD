@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.4 2003/11/10 06:08:35 dillon Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.5 2004/03/04 00:06:58 dillon Exp $
 
 PROG=		boot2
 NOMAN=
@@ -87,7 +87,7 @@ boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
 	dd if=boot2.ld of=${.TARGET} obs=7680 conv=osync 2>/dev/null
 
 boot2.ldr:
-	dd if=/dev/zero of=${.TARGET} bs=276 count=1 2>/dev/null
+	dd if=/dev/zero of=${.TARGET} bs=512 count=1 2>/dev/null
 
 boot2.bin: boot2.out
 	objcopy -S -O binary boot2.out ${.TARGET}
