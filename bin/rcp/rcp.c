@@ -39,8 +39,8 @@
  *
  * @(#) Copyright (c) 1983, 1990, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rcp.c	8.2 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.5 2002/08/16 20:06:34 ume Exp $
- * $DragonFly: src/bin/rcp/rcp.c,v 1.5 2004/11/19 19:01:52 eirikn Exp $
+ * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.6 2004/09/16 12:16:10 delphij Exp $
+ * $DragonFly: src/bin/rcp/rcp.c,v 1.6 2005/01/07 20:30:21 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -584,7 +584,7 @@ sink(int argc, char *argv[])
 	size_t amt, count;
 	int exists, first, mask, mode, ofd, omode;
 	int setimes, targisdir, wrerrno = 0;
-	char ch, *cp, *np, *targ, *why, *vect[1], buf[BUFSIZ];
+	char ch, *cp, *np, *targ, *why, *vect[1], buf[BUFSIZ], path[PATH_MAX];
 
 #define	atime	tv[0]
 #define	mtime	tv[1]
@@ -681,21 +681,15 @@ sink(int argc, char *argv[])
 		if (*cp++ != ' ')
 			SCREWUP("size not delimited");
 		if (targisdir) {
-			static char *namebuf = NULL;
-			static size_t cursize;
-			size_t need;
-
-			need = strlen(targ) + strlen(cp) + 250;
-			if (need > cursize) {
-				if (namebuf != NULL)
-					free(namebuf);
-				if (!(namebuf = malloc(need)))
-					run_err("%s", strerror(errno));
-				cursize = need;
+			if (strlen(targ) + (*targ ? 1 : 0) + strlen(cp)
+				    >= sizeof(path)) {
+				run_err("%s%s%s: name too long", targ,
+					*targ ? "/" : "", cp);
+				exit(1);
 			}
-			snprintf(namebuf, need, "%s%s%s", targ,
-			    *targ ? "/" : "", cp);
-			np = namebuf;
+			snprintf(path, sizeof(path), "%s%s%s", targ,
+				*targ ? "/" : "", cp);
+			np = path;
 		} else
 			np = targ;
 		exists = stat(np, &stb) == 0;
