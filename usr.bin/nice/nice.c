@@ -33,10 +33,9 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nice.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/nice/nice.c,v 1.4.2.1 2002/06/18 08:40:28 tjr Exp $
- * $DragonFly: src/usr.bin/nice/nice.c,v 1.4 2004/12/01 18:27:06 liamfoy Exp $
+ * $DragonFly: src/usr.bin/nice/nice.c,v 1.5 2005/02/07 18:00:46 liamfoy Exp $
  */
 
-#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -47,7 +46,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 
 #define	DEFNICE	10
 
@@ -99,6 +97,6 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "usage: nice [-n incr] utility [arguments]\n");
+	fprintf(stderr, "usage: nice [-n incr] utility [arguments]\n");
 	exit(1);
 }
