@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.22 2004/11/22 00:46:14 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.23 2004/12/24 01:27:08 dillon Exp $*/
 
 #include "if_em.h"
 
@@ -934,12 +934,14 @@ em_intr(void *arg)
 		callout_reset(&adapter->timer, 2*hz, em_local_timer, adapter);
 	}
 
-	while (loop_cnt > 0) {
-		if (ifp->if_flags & IFF_RUNNING) {
-			em_process_receive_interrupts(adapter, -1);
-			em_clean_transmit_interrupts(adapter);
-		}
-		loop_cnt--;
+	/*
+	 * note: do not attempt to improve efficiency by looping.  This 
+	 * only results in unnecessary piecemeal collection of received
+	 * packets and unnecessary piecemeal cleanups of the transmit ring.
+	 */
+	if (ifp->if_flags & IFF_RUNNING) {
+		em_process_receive_interrupts(adapter, -1);
+		em_clean_transmit_interrupts(adapter);
 	}
 
 	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
@@ -2090,6 +2092,7 @@ em_transmit_checksum_setup(struct adapter * adapter,
  *  tx_buffer is put back on the free queue.
  *
  **********************************************************************/
+
 static void
 em_clean_transmit_interrupts(struct adapter *adapter)
 {
@@ -2126,7 +2129,7 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 			m_freem(tx_buffer->m_head);
 			tx_buffer->m_head = NULL;
 		}
-               
+
 		if (++i == adapter->num_tx_desc)
 			i = 0;
 
@@ -2899,6 +2902,8 @@ static void
 em_print_hw_stats(struct adapter *adapter)
 {
 	device_t dev= adapter->dev;
+
+	device_printf(dev, "Adapter: %p\n", adapter);
 
 	device_printf(dev, "Excessive collisions = %lld\n",
 		      (long long)adapter->stats.ecol);
