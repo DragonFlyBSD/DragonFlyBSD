@@ -39,10 +39,14 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.6 2005/03/01 04:24:28 hmp Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.7 2005/03/01 06:18:18 hmp Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
