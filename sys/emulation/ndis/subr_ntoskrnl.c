@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.3 2004/09/19 02:44:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.4 2004/09/20 06:32:41 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -846,7 +846,7 @@ ntoskrnl_allocfunc(pooltype, size, tag)
 	size_t			size;
 	uint32_t		tag;
 {
-	return(malloc(size, M_DEVBUF, M_NOWAIT));
+	return(malloc(size, M_DEVBUF, M_WAITOK));
 }
 
 __stdcall static void
@@ -1465,7 +1465,7 @@ ntoskrnl_objref(handle, reqaccess, otype, accessmode, object, handleinfo)
 {
 	nt_objref		*nr;
 
-	nr = malloc(sizeof(nt_objref), M_DEVBUF, M_NOWAIT|M_ZERO);
+	nr = malloc(sizeof(nt_objref), M_DEVBUF, M_WAITOK|M_ZERO);
 	if (nr == NULL)
 		return(NDIS_STATUS_FAILURE);
 
@@ -1537,7 +1537,7 @@ ntoskrnl_create_thread(handle, reqaccess, objattrs, phandle,
 	thread_context		*tc;
 	thread_t		td;
 
-	tc = malloc(sizeof(thread_context), M_TEMP, M_NOWAIT);
+	tc = malloc(sizeof(thread_context), M_TEMP, M_WAITOK);
 	if (tc == NULL)
 		return(NDIS_STATUS_FAILURE);
 

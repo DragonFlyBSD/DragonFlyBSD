@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.3 2004/07/29 21:35:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.4 2004/09/20 06:32:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -691,11 +691,7 @@ ndis_add_sysctl(arg, key, desc, val, flag)
 
 	sc = arg;
 
-	cfg = malloc(sizeof(struct ndis_cfglist), M_DEVBUF, M_NOWAIT|M_ZERO);
-
-	if (cfg == NULL)
-		return(ENOMEM);
-
+	cfg = malloc(sizeof(struct ndis_cfglist), M_DEVBUF, M_WAITOK|M_ZERO);
 	cfg->ndis_cfg.nc_cfgkey = strdup(key, M_DEVBUF);
 	if (desc == NULL) {
 		snprintf(descstr, sizeof(descstr), "%s (dynamic)", key);
@@ -854,7 +850,7 @@ ndis_convert_res(arg)
 
 	rl = malloc(sizeof(ndis_resource_list) +
 	    (sizeof(cm_partial_resource_desc) * (sc->ndis_rescnt - 1)),
-	    M_DEVBUF, M_NOWAIT|M_ZERO);
+	    M_DEVBUF, M_WAITOK|M_NULLOK|M_ZERO);
 
 	if (rl == NULL)
 		return(ENOMEM);
@@ -883,7 +879,7 @@ ndis_convert_res(arg)
 		 */
 		SLIST_FOREACH(brle, brl, link) {
 			n = malloc(sizeof(struct resource_list_entry),
-			    M_TEMP, M_NOWAIT);
+			    M_TEMP, M_WAITOK|M_NULLOK);
 			if (n == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -1086,7 +1082,7 @@ ndis_get_supported_oids(arg, oids, oidcnt)
 	len = 0;
 	ndis_get_info(arg, OID_GEN_SUPPORTED_LIST, NULL, &len);
 
-	o = malloc(len, M_DEVBUF, M_NOWAIT);
+	o = malloc(len, M_DEVBUF, M_WAITOK);
 	if (o == NULL)
 		return(ENOMEM);
 
@@ -1243,7 +1239,7 @@ ndis_init_dma(arg)
 	sc = arg;
 
 	sc->ndis_tmaps = malloc(sizeof(bus_dmamap_t) * sc->ndis_maxpkts,
-	    M_DEVBUF, M_NOWAIT|M_ZERO);
+	    M_DEVBUF, M_WAITOK|M_ZERO);
 
 	if (sc->ndis_tmaps == NULL)
 		return(ENOMEM);
@@ -1281,9 +1277,8 @@ ndis_destroy_dma(arg)
 		}
 		bus_dmamap_destroy(sc->ndis_ttag, sc->ndis_tmaps[i]);
 	}
-
-	free(sc->ndis_tmaps, M_DEVBUF);
-
+	if (sc->ndis_tmaps)
+		free(sc->ndis_tmaps, M_DEVBUF);
 	bus_dma_tag_destroy(sc->ndis_ttag);
 
 	return(0);

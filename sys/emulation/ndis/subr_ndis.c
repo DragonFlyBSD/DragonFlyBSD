@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.3 2004/07/29 21:35:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.4 2004/09/20 06:32:41 dillon Exp $
  */
 
 /*
@@ -410,7 +410,7 @@ ndis_malloc_withtag(vaddr, len, tag)
 {
 	void			*mem;
 
-	mem = malloc(len, M_DEVBUF, M_NOWAIT);
+	mem = malloc(len, M_DEVBUF, M_INTWAIT|M_NULLOK);
 	if (mem == NULL)
 		return(NDIS_STATUS_RESOURCES);
 	*vaddr = mem;
@@ -427,7 +427,7 @@ ndis_malloc(vaddr, len, flags, highaddr)
 {
 	void			*mem;
 
-	mem = malloc(len, M_DEVBUF, M_NOWAIT);
+	mem = malloc(len, M_DEVBUF, M_INTWAIT|M_NULLOK);
 	if (mem == NULL)
 		return(NDIS_STATUS_RESOURCES);
 	*vaddr = mem;
@@ -1206,7 +1206,7 @@ ndis_alloc_mapreg(adapter, dmachannel, dmasize, physmapneeded, maxmap)
 	sc = (struct ndis_softc *)block->nmb_ifp;
 
 	sc->ndis_mmaps = malloc(sizeof(bus_dmamap_t) * physmapneeded,
-	    M_DEVBUF, M_NOWAIT|M_ZERO);
+	    M_DEVBUF, M_INTWAIT|M_ZERO);
 
 	if (sc->ndis_mmaps == NULL)
 		return(NDIS_STATUS_RESOURCES);
@@ -1291,7 +1291,7 @@ ndis_alloc_sharedmem(adapter, len, cached, vaddr, paddr)
 	block = (ndis_miniport_block *)adapter;
 	sc = (struct ndis_softc *)(block->nmb_ifp);
 
-	sh = malloc(sizeof(struct ndis_shmem), M_DEVBUF, M_NOWAIT|M_ZERO);
+	sh = malloc(sizeof(struct ndis_shmem), M_DEVBUF, M_INTWAIT|M_ZERO);
 	if (sh == NULL)
 		return;
 
@@ -1392,7 +1392,7 @@ ndis_alloc_sharedmem_async(adapter, len, cached, ctx)
 	if (adapter == NULL)
 		return(NDIS_STATUS_FAILURE);
 
-	w = malloc(sizeof(struct ndis_allocwork), M_TEMP, M_NOWAIT);
+	w = malloc(sizeof(struct ndis_allocwork), M_TEMP, M_INTWAIT);
 
 	if (w == NULL)
 		return(NDIS_STATUS_FAILURE);
@@ -1559,7 +1559,7 @@ ndis_alloc_packetpool(status, pool, descnum, protrsvdlen)
 
 	*pool = malloc(sizeof(ndis_packet) *
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
-	    M_DEVBUF, M_NOWAIT|M_ZERO);
+	    M_DEVBUF, M_WAITOK|M_ZERO);
 
 	if (pool == NULL) {
 		*status = NDIS_STATUS_RESOURCES;
@@ -1782,7 +1782,7 @@ ndis_alloc_bufpool(status, pool, descnum)
 
 	*pool = malloc(sizeof(ndis_buffer) *
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
-	    M_DEVBUF, M_NOWAIT|M_ZERO);
+	    M_DEVBUF, M_WAITOK|M_ZERO);
 
 	if (pool == NULL) {
 		*status = NDIS_STATUS_RESOURCES;
@@ -2065,7 +2065,7 @@ ndis_ansi2unicode(dstr, sstr)
 	char			*str;
 	if (dstr == NULL || sstr == NULL)
 		return(NDIS_STATUS_FAILURE);
-	str = malloc(sstr->nas_len + 1, M_DEVBUF, M_NOWAIT);
+	str = malloc(sstr->nas_len + 1, M_DEVBUF, M_WAITOK);
 	if (str == NULL)
 		return(NDIS_STATUS_FAILURE);
 	strncpy(str, sstr->nas_buf, sstr->nas_len);
@@ -2556,7 +2556,7 @@ ndis_open_file(status, filehandle, filelength, filename, highestaddr)
 	sprintf(path, "%s/%s", ndis_filepath, afilename);
 	free(afilename, M_DEVBUF);
 
-	fh = malloc(sizeof(ndis_fh), M_TEMP, M_NOWAIT);
+	fh = malloc(sizeof(ndis_fh), M_TEMP, M_WAITOK);
 	if (fh == NULL) {
 		*status = NDIS_STATUS_RESOURCES;
 		return;
@@ -2615,7 +2615,7 @@ ndis_map_file(status, mappedbuffer, filehandle)
 		return;
 	}
 
-	fh->nf_map = malloc(fh->nf_maplen, M_DEVBUF, M_NOWAIT);
+	fh->nf_map = malloc(fh->nf_maplen, M_DEVBUF, M_WAITOK);
 
 	if (fh->nf_map == NULL) {
 		*status = NDIS_STATUS_RESOURCES;
