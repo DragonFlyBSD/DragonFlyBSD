@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.11 2003/09/04 19:42:12 hmp Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.12 2003/09/04 23:46:59 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -475,8 +475,8 @@ fifo_poll(ap)
 		 * block if there is no writer (and no data).  Callers can
 		 * set POLLINIGNEOF to get non-blocking behavior.
 		 */
-		if (events & (POLLIN | POLLRDNORM)) &&
-			!(events & POLLINIGNEOF) {
+		if (events & (POLLIN | POLLRDNORM) &&
+			!(events & POLLINIGNEOF)) {
 			events &= ~(POLLIN | POLLRDNORM);
 			events |= POLLINIGNEOF;
 		}
