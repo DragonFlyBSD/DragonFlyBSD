@@ -18,7 +18,7 @@
  * This is the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.29.2.20 2002/10/08 05:35:46 bmah Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.5 2004/05/20 15:53:16 drhodus Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.6 2004/05/28 20:30:18 drhodus Exp $
  */
 
 #include <err.h>
@@ -265,7 +265,7 @@ getpackagesite(void)
     }
 */
 
-    if (strlcat(sitepath, "/All/", sizeof(sitepath)) >= sizeof(sitepath))
+    if (strlcat(sitepath, "/Latest/", sizeof(sitepath)) >= sizeof(sitepath))
 	return NULL;
 
     return sitepath;
