@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.1 2003/12/01 02:20:14 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.2 2003/12/01 06:07:16 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -61,7 +61,7 @@ fatal(const char *ctl, ...)
 	     "                copy if md5 check fails\n"
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.05 by Matt Dillon and Dima Ruban\n"
+	     " Version 1.06 by Matt Dillon and Dima Ruban\n"
 	);
 	exit(0);
     } else {

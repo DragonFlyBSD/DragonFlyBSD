@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.1 2003/12/01 02:20:14 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.2 2003/12/01 06:07:16 dillon Exp $
  */
 
 /*-
@@ -855,7 +855,7 @@ RemoveRecur(const char *dpath, int devNo)
 		    }
 		    closedir(dir);
 		}
-		if (AskConfirmation) {
+		if (AskConfirmation && NoRemoveOpt == 0) {
 		    if (YesNo(dpath)) {
 			if (rmdir(dpath) < 0) {
 			    logerr("%-32s rmdir failed: %s\n",
@@ -879,7 +879,7 @@ RemoveRecur(const char *dpath, int devNo)
 		    }
 		}
 	    } else {
-		if (AskConfirmation) {
+		if (AskConfirmation && NoRemoveOpt == 0) {
 		    if (YesNo(dpath)) {
 			if (remove(dpath) < 0) {
 			    logerr("%-32s remove failed: %s\n",
