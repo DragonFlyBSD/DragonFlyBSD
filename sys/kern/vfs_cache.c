@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.13 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.14 2004/04/02 05:46:02 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #include <sys/namei.h>
 #include <sys/filedesc.h>
 #include <sys/fnv_hash.h>
+#include <sys/globaldata.h>
 
 /*
  * Random lookups in the cache are accomplished with a hash table using
@@ -72,6 +73,8 @@
  */
 #define NCHHASH(hash)	(&nchashtbl[(hash) & nchash])
 #define MINNEG		1024
+
+MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
 static LIST_HEAD(nchashhead, namecache) *nchashtbl;	/* Hash Table */
 static struct namecache_list	ncneglist;		/* instead of vnode */
@@ -95,8 +98,6 @@ SYSCTL_ULONG(_debug, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0, "");
 static u_long	numunres;		/* number of unresolved entries */
 SYSCTL_ULONG(_debug, OID_AUTO, numunres, CTLFLAG_RD, &numunres, 0, "");
 
-struct	nchstats nchstats;		/* cache effectiveness statistics */
-
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
@@ -119,10 +120,34 @@ static u_long numposhits; STATNODE(CTLFLAG_RD, numposhits, &numposhits);
 static u_long numnegzaps; STATNODE(CTLFLAG_RD, numnegzaps, &numnegzaps);
 static u_long numneghits; STATNODE(CTLFLAG_RD, numneghits, &numneghits);
 
+struct nchstats nchstats[SMP_MAXCPU];
+/*
+ * Export VFS cache effectiveness statistics to user-land.
+ *
+ * The statistics are left for aggregation to user-land so
+ * neat things can be achieved, like observing per-CPU cache
+ * distribution.
+ */
+static int
+nchstats_agg(SYSCTL_HANDLER_ARGS)
+{
+	struct globaldata *gd;
+	int i, error;
+
+	error = 0;
+	for (i = 0; i < ncpus; ++i) {
+		gd = globaldata_find(i);
+		if ((error = SYSCTL_OUT(req, (void *)&(*gd->gd_nchstats),
+			sizeof(struct nchstats))))
+			break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_vfs_cache, OID_AUTO, nchstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
+  0, 0, nchstats_agg, "S,nchstats", "VFS cache effectiveness statistics");
 
 static void cache_zap(struct namecache *ncp);
-
-MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
 /*
  * cache_hold() and cache_drop() prevent the premature deletion of a
@@ -284,6 +309,7 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 {
 	struct namecache *ncp;
 	u_int32_t hash;
+	globaldata_t gd = mycpu;
 
 	numcalls++;
 
@@ -330,14 +356,14 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 		} else {
 			nummiss++;
 		}
-		nchstats.ncs_miss++;
+		gd->gd_nchstats->ncs_miss++;
 		return (0);
 	}
 
 	/* We don't want to have an entry, so dump it */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
 		numposzaps++;
-		nchstats.ncs_badhits++;
+		gd->gd_nchstats->ncs_badhits++;
 		cache_zap(ncp);
 		return (0);
 	}
@@ -345,7 +371,7 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 	/* We found a "positive" match, return the vnode */
 	if (ncp->nc_vp) {
 		numposhits++;
-		nchstats.ncs_goodhits++;
+		gd->gd_nchstats->ncs_goodhits++;
 		*vpp = ncp->nc_vp;
 		cache_drop(ncp);
 		return (-1);
@@ -354,7 +380,7 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 	/* We found a negative match, and want to create it, so purge */
 	if (cnp->cn_nameiop == NAMEI_CREATE) {
 		numnegzaps++;
-		nchstats.ncs_badhits++;
+		gd->gd_nchstats->ncs_badhits++;
 		cache_zap(ncp);
 		return (0);
 	}
@@ -368,7 +394,7 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 	 */
 	TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
 	TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
-	nchstats.ncs_neghits++;
+	gd->gd_nchstats->ncs_neghits++;
 	if (ncp->nc_flag & NCF_WHITEOUT)
 		cnp->cn_flags |= CNP_ISWHITEOUT;
 	cache_drop(ncp);
@@ -578,13 +604,22 @@ again:
 }
 
 /*
- * Name cache initialization, from vfs_init() when we are booting
+ * Name cache initialization, from vfsinit() when we are booting
  *
  * rootnamecache is initialized such that it cannot be recursively deleted.
  */
 void
 nchinit(void)
 {
+	int i;
+	globaldata_t gd;
+
+	/* initialise per-cpu namecache effectiveness statistics. */
+	for (i = 0; i < ncpus; ++i) {
+		gd = globaldata_find(i);
+		gd->gd_nchstats = &nchstats[i];
+	}
+	
 	TAILQ_INIT(&ncneglist);
 	nchashtbl = hashinit(desiredvnodes*2, M_VFSCACHE, &nchash);
 	TAILQ_INIT(&rootnamecache.nc_list);

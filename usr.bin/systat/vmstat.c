@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.6 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.7 2004/04/02 05:46:03 hmp Exp $
  */
 
 /*
@@ -213,7 +213,7 @@ initkre(void)
 		}
 	}
 
-	if (num_devices = getnumdevs() < 0) {
+	if ((num_devices = getnumdevs()) < 0) {
 		warnx("%s", devstat_errbuf);
 		return(0);
 	}
@@ -723,10 +723,11 @@ static void
 getinfo(struct Info *s, enum state st)
 {
 	struct devinfo *tmp_dinfo;
+	struct nchstats *nch_tmp;
 	size_t size;
-	int mib[2];
 	int vms_size = sizeof(s->Vms);
 	int vmm_size = sizeof(s->Vmm);
+	size_t nch_size = sizeof(s->nchstats) * SMP_MAXCPU;
 
         if (sysctlbyname("vm.vmstats", &s->Vms, &vms_size, NULL, 0)) {
                 perror("sysctlbyname: vm.vmstats");
@@ -743,7 +744,6 @@ getinfo(struct Info *s, enum state st)
 	NREAD(X_DESIREDVNODES, &s->desiredvnodes, sizeof(s->desiredvnodes));
 	NREAD(X_NUMVNODES, &s->numvnodes, LONG);
 	NREAD(X_FREEVNODES, &s->freevnodes, LONG);
-	NREAD(X_NCHSTATS, &s->nchstats, sizeof s->nchstats);
 	NREAD(X_INTRCNT, s->intrcnt, nintr * LONG);
 	NREAD(X_NUMDIRTYBUFFERS, &s->numdirtybuffers, sizeof(s->numdirtybuffers));
 	size = sizeof(s->Total);
@@ -751,9 +751,30 @@ getinfo(struct Info *s, enum state st)
 		error("Can't get kernel info: %s\n", strerror(errno));
 		bzero(&s->Total, sizeof(s->Total));
 	}
-	size = sizeof(ncpu);
-	if (sysctlbyname("hw.ncpu", &ncpu, &size, NULL, 0) < 0)
-		ncpu = 1;
+	
+	if ((nch_tmp = malloc(nch_size)) == NULL) {
+		perror("malloc");
+		exit(1);
+	} else {
+		if (sysctlbyname("vfs.cache.nchstats", nch_tmp, &nch_size, NULL, 0)) {
+			perror("sysctlbyname vfs.cache.nchstats");
+			free(nch_tmp);
+			exit(1);
+		} else {
+			if ((nch_tmp = realloc(nch_tmp, nch_size)) == NULL) {
+				perror("realloc");
+				exit(1);
+			}
+		}
+	}
+
+	/* 
+	 * Since the nchstats is a per-cpu array, we can just divide
+	 * and get the number of cpus, saving us a sysctl(2) call.
+	 */
+	ncpu = nch_size / sizeof(struct nchstats);
+	kvm_nch_cpuagg(nch_tmp, &s->nchstats, ncpu);
+	free(nch_tmp);
 
 	tmp_dinfo = last.dinfo;
 	last.dinfo = cur.dinfo;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.3 2004/03/29 16:38:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.4 2004/04/02 05:46:03 hmp Exp $
  */
 
 /* udf_vnops.c */
@@ -913,6 +913,7 @@ udf_lookup(struct vop_cachedlookup_args *a)
 	struct fileid_desc *fid = NULL;
 	struct udf_dirstream *ds;
 	struct thread *td;
+	globaldata_t gd = mycpu;
 	u_long nameiop;
 	u_long flags;
 	char *nameptr;
@@ -944,7 +945,7 @@ udf_lookup(struct vop_cachedlookup_args *a)
 	} else {
 		offset = node->diroff;
 		numdirpasses = 2;
-		nchstats.ncs_2passes++;
+		gd->gd_nchstats->ncs_2passes++;
 	}
 
 lookloop:
@@ -996,7 +997,7 @@ lookloop:
 			if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
 				node->diroff = ds->offset + ds->off;
 			if (numdirpasses == 2)
-				nchstats.ncs_pass2++;
+				gd->gd_nchstats->ncs_pass2++;
 			if (!(flags & CNP_LOCKPARENT) || !(flags & CNP_ISLASTCN)) {
 				a->a_cnp->cn_flags |= CNP_PDIRUNLOCK;
 				VOP_UNLOCK(dvp, NULL, 0, td);

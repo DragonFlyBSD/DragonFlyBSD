@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.10 2004/03/16 17:53:51 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.11 2004/04/02 05:46:02 hmp Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -47,6 +47,12 @@
 #endif
 #ifndef _SYS_PROC_H_
 #include <sys/proc.h>
+#endif
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS_NCHSTATS_H_
+#include <sys/nchstats.h>
 #endif
 #endif
 
@@ -155,6 +161,7 @@ struct nameidata {
 	/* (WANTDNCP)	    0x00400000 */
 	/* (WANTNCP)	    0x00800000 */
 #define CNP_PARAMASK	    0x001fff00 /* mask of parameter descriptors */
+
 /*
  * Initialization of an nameidata structure.
  */
@@ -211,21 +218,5 @@ int	lookup (struct nameidata *ndp);
 int	relookup (struct vnode *dvp, struct vnode **vpp,
 	    struct componentname *cnp);
 #endif
-
-/*
- * Stats on usefulness of namei caches.
- */
-struct	nchstats {
-	long	ncs_goodhits;		/* hits that we can really use */
-	long	ncs_neghits;		/* negative hits that we can use */
-	long	ncs_badhits;		/* hits we must drop */
-	long	ncs_falsehits;		/* hits with id mismatch */
-	long	ncs_miss;		/* misses */
-	long	ncs_long;		/* long names that ignore cache */
-	long	ncs_pass2;		/* names found with passes == 2 */
-	long	ncs_2passes;		/* number of times we attempt it */
-};
-
-extern struct nchstats nchstats;
 
 #endif /* !_SYS_NAMEI_H_ */

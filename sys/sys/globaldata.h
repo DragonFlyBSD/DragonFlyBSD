@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.30 2004/04/01 17:40:59 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.31 2004/04/02 05:46:02 hmp Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -49,6 +49,9 @@
 #endif
 #ifndef _SYS_SYSTIMER_H_
 #include <sys/systimer.h> /* fine-grained system timers */
+#endif
+#ifndef _SYS_NCHSTATS_H_
+#include <sys/nchstats.h>
 #endif
 
 /*
@@ -122,6 +125,7 @@ struct globaldata {
 	volatile sysclock_t gd_cpuclock_base;	/* cpuclock relative base */
 
 	struct pipe	*gd_pipeq;		/* cache pipe structures */
+	struct nchstats	*gd_nchstats;		/* namecache effectiveness */
 	int		gd_pipeqcount;		/* number of structures */
 	lwkt_tokref_t 	gd_tokreqbase;		/* requests from other cpus */
 	struct proc	*gd_uschedcp;		/* userland scheduler */

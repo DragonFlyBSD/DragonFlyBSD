@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.9 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.10 2004/04/02 05:46:03 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -95,6 +95,7 @@ cd9660_lookup(ap)
 	} */ *ap;
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
+	globaldata_t gd = mycpu;
 	struct iso_node *dp;	/* inode for directory being searched */
 	struct iso_mnt *imp;	/* file system that directory is in */
 	struct buf *bp;			/* a buffer of directory entries */
@@ -170,7 +171,7 @@ cd9660_lookup(ap)
 		    (error = cd9660_blkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)))
 				return (error);
 		numdirpasses = 2;
-		nchstats.ncs_2passes++;
+		gd->gd_nchstats->ncs_2passes++;
 	}
 	endsearch = dp->i_size;
 	
@@ -317,7 +318,7 @@ notfound:
 
 found:
 	if (numdirpasses == 2)
-		nchstats.ncs_pass2++;
+		gd->gd_nchstats->ncs_pass2++;
 	
 	/*
 	 * Found component in pathname.

@@ -32,7 +32,7 @@
  *
  *	@(#)kvm.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libkvm/kvm.h,v 1.11 1999/08/27 23:44:50 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm.h,v 1.4 2003/11/12 20:21:30 eirikn Exp $
+ * $DragonFly: src/lib/libkvm/kvm.h,v 1.5 2004/04/02 05:46:02 hmp Exp $
  */
 
 #ifndef _KVM_H_
@@ -50,6 +50,7 @@ typedef struct __kvm kvm_t;
 
 struct kinfo_proc;
 struct proc;
+struct nchstats;
 
 struct kvm_swap {
 	char	ksw_devname[32];
@@ -64,6 +65,7 @@ struct kvm_swap {
 #define SWIF_DEV_PREFIX	0x0002
 
 __BEGIN_DECLS
+void kvm_nch_cpuagg(struct nchstats *, struct nchstats *, int);
 int	  kvm_close (kvm_t *);
 char	**kvm_getargv (kvm_t *, const struct kinfo_proc *, int);
 char	**kvm_getenvv (kvm_t *, const struct kinfo_proc *, int);

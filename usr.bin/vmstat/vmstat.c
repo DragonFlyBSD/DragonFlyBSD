@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.9 2003/11/21 22:46:15 dillon Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.10 2004/04/02 05:46:03 hmp Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -390,8 +390,6 @@ dovmstat(u_int interval, int reps)
 	time_t uptime, halfuptime;
 	struct devinfo *tmp_dinfo;
 	void needhdr();
-	int mib[2];
-	size_t size;
 	int vmm_size = sizeof(vmm);
 	int vms_size = sizeof(vms);
 	int vmt_size = sizeof(total);
@@ -559,10 +557,12 @@ pct(long top, long bot)
 void
 dosum(void)
 {
-	struct nchstats nchstats;
-	long nchtotal;
+	struct nchstats *nch_tmp, nchstats;
 	int vms_size = sizeof(vms);
 	int vmm_size = sizeof(vmm);
+	int cpucnt;
+	u_long nchtotal;
+	size_t nch_size = sizeof(struct nchstats) * SMP_MAXCPU;
 
 	if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0)) {
 		perror("sysctlbyname: vm.vmstats");
@@ -571,7 +571,7 @@ dosum(void)
 	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
 		perror("sysctlbyname: vm.vmstats");
 		exit(1);
-	} 
+	}
 	(void)printf("%9u cpu context switches\n", vmm.v_swtch);
 	(void)printf("%9u device interrupts\n", vmm.v_intr);
 	(void)printf("%9u software interrupts\n", vmm.v_soft);
@@ -611,7 +611,26 @@ dosum(void)
 	(void)printf("%9u pages wired down\n", vms.v_wire_count);
 	(void)printf("%9u pages free\n", vms.v_free_count);
 	(void)printf("%9u bytes per page\n", vms.v_page_size);
-	kread(X_NCHSTATS, &nchstats, sizeof(nchstats));
+	
+	if ((nch_tmp = malloc(nch_size)) == NULL) {
+		perror("malloc");
+		exit(1);
+	} else {
+		if (sysctlbyname("vfs.cache.nchstats", nch_tmp, &nch_size, NULL, 0)) {
+			perror("sysctlbyname vfs.cache.nchstats");
+			free(nch_tmp);
+			exit(1);
+		} else {
+			if ((nch_tmp = realloc(nch_tmp, nch_size)) == NULL) {
+				perror("realloc");
+				exit(1);
+			}
+		}
+	}
+	
+	cpucnt = nch_size / sizeof(struct nchstats);
+	kvm_nch_cpuagg(nch_tmp, &nchstats, cpucnt);
+
 	nchtotal = nchstats.ncs_goodhits + nchstats.ncs_neghits +
 	    nchstats.ncs_badhits + nchstats.ncs_falsehits +
 	    nchstats.ncs_miss + nchstats.ncs_long;
@@ -625,6 +644,7 @@ dosum(void)
 	    PCT(nchstats.ncs_badhits, nchtotal),
 	    PCT(nchstats.ncs_falsehits, nchtotal),
 	    PCT(nchstats.ncs_long, nchtotal));
+	free(nch_tmp);
 }
 
 #ifdef notyet
@@ -748,9 +768,8 @@ domem(void)
 {
 	register struct malloc_type *ks;
 	register int i, j;
-	int len, size, first, nkms;
+	int first, nkms;
 	long totuse = 0, totfree = 0, totreq = 0;
-	const char *name;
 	struct malloc_type kmemstats[MAX_KMSTATS], *kmsp;
 	char buf[1024];
 
