@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.11 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.12 2004/02/16 19:48:51 dillon Exp $
  */
 
 /*
@@ -203,7 +203,7 @@ static	int softdep_process_worklist (struct mount *);
 static	void softdep_move_dependencies (struct buf *, struct buf *);
 static	int softdep_count_dependencies (struct buf *bp, int);
 
-struct bio_ops bioops = {
+static struct bio_ops softdep_bioops = {
 	softdep_disk_io_initiation,		/* io_start */
 	softdep_disk_write_complete,		/* io_complete */
 	softdep_deallocate_dependencies,	/* io_deallocate */
@@ -1076,6 +1076,7 @@ top:
 void 
 softdep_initialize()
 {
+	bioops = softdep_bioops;	/* XXX hack */
 
 	LIST_INIT(&mkdirlisthd);
 	LIST_INIT(&softdep_workitem_pending);
