@@ -19,7 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/flags.h,v 1.4.2.1 2002/06/21 22:38:04 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/flags.h,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/flags.h,v 1.3 2003/12/10 22:25:04 dillon Exp $ */
 
 /* Name of the input .c file being compiled.  */
 extern char *main_input_filename;
@@ -557,3 +557,11 @@ extern enum graph_dump_types graph_dump_format;
    string identifying the compiler.  */
 
 extern int flag_no_ident;
+
+/* Nonzero means use propolice as a stack protection method */
+
+extern int flag_propolice_protection;
+
+/* Warn when not issuing stack smashing protection for some reason */
+
+extern int warn_stack_protector;

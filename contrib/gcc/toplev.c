@@ -20,7 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/toplev.c,v 1.6.2.8 2002/07/03 17:56:20 ambrisko Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/toplev.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/toplev.c,v 1.3 2003/12/10 22:25:05 dillon Exp $ */
 
 /* This is the top level of cc1/c++.
    It parses command args, opens files, invokes the various passes
@@ -776,6 +776,13 @@ int flag_instrument_function_entry_exit = 0;
 
 int flag_no_ident = 0;
 
+#if defined(STACK_PROTECTOR) && defined(STACK_GROWS_DOWNWARD)
+/* Nonzero means use propolice as a stack protection method */
+int flag_propolice_protection = 0;	/* require -fstack-protector */
+#else
+int flag_propolice_protection = 0;
+#endif
+
 /* Table of supported debugging formats.  */
 static struct
 {
@@ -985,7 +992,11 @@ lang_independent_options f_options[] =
   {"leading-underscore", &flag_leading_underscore, 1,
    "External symbols have a leading underscore" },
   {"ident", &flag_no_ident, 0,
-   "Process #ident directives"}
+   "Process #ident directives"},
+  {"stack-protector", &flag_propolice_protection, 1,
+   "Enables stack protection" },
+  {"no-stack-protector", &flag_propolice_protection, 0,
+   "Disables stack protection" },
 };
 
 #define NUM_ELEM(a)  (sizeof (a) / sizeof ((a)[0]))
@@ -1282,7 +1293,9 @@ lang_independent_options W_options[] =
   {"uninitialized", &warn_uninitialized, 1,
    "Warn about unitialized automatic variables"},
   {"inline", &warn_inline, 1,
-   "Warn when an inlined function cannot be inlined"}
+   "Warn when an inlined function cannot be inlined"},
+  {"stack-protector", &warn_stack_protector, 1,
+   "Warn when disabling stack protector for some reason"}
 };
 
 /* Output files for assembler code (real compiler output)
@@ -3632,6 +3645,10 @@ rest_of_compilation (decl)
   int failure = 0;
   int rebuild_label_notes_after_reload;
 
+  /* When processing delayed functions, init_function_start() won't
+     have been run to re-initialize it.  */
+  cse_not_expected = ! optimize;
+
   /* If we are reconsidering an inline function
      at the end of compilation, skip the stuff for making it inline.  */
 
@@ -3669,6 +3686,8 @@ rest_of_compilation (decl)
 
       insns = get_insns ();
 
+      if (flag_propolice_protection) prepare_stack_protection (inlinable);
+  
       /* Dump the rtl code if we are dumping rtl.  */
 
       if (rtl_dump)

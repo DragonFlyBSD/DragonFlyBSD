@@ -20,7 +20,7 @@
 #Boston MA 02111-1307, USA.
 
 # $FreeBSD: src/contrib/gcc/Makefile.in,v 1.4.2.1 2001/04/10 19:22:57 obrien Exp $
-# $DragonFly: src/contrib/gcc/Attic/Makefile.in,v 1.2 2003/06/17 04:23:59 dillon Exp $
+# $DragonFly: src/contrib/gcc/Attic/Makefile.in,v 1.3 2003/12/10 22:25:04 dillon Exp $
 
 # The targets for external use include:
 # all, doc, proto, install, install-cross, install-cross-rest,
@@ -686,7 +686,7 @@ OBJS = toplev.o version.o tree.o print-tree.o stor-layout.o fold-const.o \
  insn-peep.o reorg.o $(SCHED_PREFIX)sched.o final.o recog.o reg-stack.o \
  insn-opinit.o insn-recog.o insn-extract.o insn-output.o insn-emit.o lcm.o \
  profile.o insn-attrtab.o $(out_object_file) getpwd.o $(EXTRA_OBJS) convert.o \
- mbchar.o dyn-string.o splay-tree.o graph.o sbitmap.o resource.o hash.o
+ mbchar.o dyn-string.o splay-tree.o graph.o sbitmap.o resource.o hash.o protector.o
 
 # GEN files are listed separately, so they can be built before doing parallel
 #  makes for cc1 or cc1plus.  Otherwise sequent parallel make attempts to load
@@ -737,7 +737,7 @@ LIB2FUNCS = _muldi3 _divdi3 _moddi3 _udivdi3 _umoddi3 _negdi2 \
     _fixtfdi _fixunstfdi _floatditf \
     __gcc_bcmp _varargs __dummy _eprintf \
     _bb _shtab _clear_cache _trampoline __main _exit \
-    _ctors _pure
+    _ctors _pure _stack_smash_handler
 
 LIB2FUNCS_EH = _eh
 
@@ -1139,7 +1139,7 @@ libgcc2.a: libgcc2.c libgcc2.ready $(CONFIG_H) $(FPBIT) $(DPBIT) $(LIB2ADD) \
 	    if [ $${name}.asm = $${file} ]; then \
 	      cp $${file} $${name}.s || exit 1; file=$${name}.s; \
 	    else true; fi; \
-	    $(GCC_FOR_TARGET) $(LIBGCC2_CFLAGS) $(INCLUDES) -c $${file}; \
+	    $(GCC_FOR_TARGET) -fno-stack-protector $(LIBGCC2_CFLAGS) $(INCLUDES) -c $${file}; \
 	    if [ $$? -eq 0 ] ; then true; else exit 1; fi; \
 	    $(AR_FOR_TARGET) $(AR_FLAGS_FOR_TARGET) tmplibgcc2.a $${oname}$(objext); \
 	    rm -f $${name}.s $${oname}$(objext); \
@@ -1466,7 +1466,7 @@ toplev.o : toplev.c $(CONFIG_H) system.h $(TREE_H) $(RTL_H) \
    dwarf2out.h sdbout.h dbxout.h $(EXPR_H) $(BASIC_BLOCK_H) \
    $(lang_options_files)
 	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(MAYBE_USE_COLLECT2) \
-	  -DTARGET_NAME=\"$(target_alias)\" \
+	  -DSTACK_PROTECTOR -DTARGET_NAME=\"$(target_alias)\" \
 	  -c `echo $(srcdir)/toplev.c | sed 's,^\./,,'`
 
 rtl.o : rtl.c $(CONFIG_H) system.h $(RTL_H) bitmap.h

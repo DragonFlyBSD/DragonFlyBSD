@@ -20,7 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/function.c,v 1.6.2.3 2002/06/20 23:12:27 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/function.c,v 1.2 2003/06/17 04:23:59 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/function.c,v 1.3 2003/12/10 22:25:04 dillon Exp $ */
 
 
 /* This file handles the generation of rtl code from tree structure
@@ -61,6 +61,7 @@ Boston, MA 02111-1307, USA.  */
 #include "obstack.h"
 #include "toplev.h"
 #include "hash.h"
+#include "protector.h"
 
 #ifndef TRAMPOLINE_ALIGNMENT
 #define TRAMPOLINE_ALIGNMENT FUNCTION_BOUNDARY
@@ -433,6 +434,8 @@ struct temp_slot
   /* The size of the slot, including extra space for alignment.  This
      info is for combine_temp_slots.  */
   HOST_WIDE_INT full_size;
+  /* Boundary mark of a character array and the others. This info is for propolice */
+  int boundary_mark;
 };
 
 /* List of all temporaries allocated, both available and in use.  */
@@ -452,6 +455,11 @@ int var_temp_slot_level;
    until no longer needed.  CLEANUP_POINT_EXPRs define the lifetime
    of TARGET_EXPRs.  */
 int target_temp_slot_level;
+
+/* Current boundary mark for character arrays.  */
+
+int temp_boundary_mark;
+
 
 /* This structure is used to record MEMs or pseudos used to replace VAR, any
    SUBREGs of VAR, and any MEMs containing VAR as an address.  We need to
@@ -921,7 +929,8 @@ assign_outer_stack_local (mode, size, align, function)
    with this flag.  KEEP is 2 if we allocate a longer term temporary,
    whose lifetime is controlled by CLEANUP_POINT_EXPRs.  KEEP is 3
    if we are to allocate something at an inner level to be treated as
-   a variable in the block (e.g., a SAVE_EXPR).  
+   a variable in the block (e.g., a SAVE_EXPR).
+   KEEP is 5 if we allocate a place to return structure.
 
    TYPE is the type that will be used for the stack slot.  */
 
@@ -935,6 +944,8 @@ assign_stack_temp_for_type (mode, size, keep, type)
   int align;
   int alias_set;
   struct temp_slot *p, *best_p = 0;
+  int char_array = (flag_propolice_protection
+		    && keep == 1 && search_string_def (type));
 
   /* If SIZE is -1 it means that somebody tried to allocate a temporary
      of a variable size.  */
@@ -967,7 +978,8 @@ assign_stack_temp_for_type (mode, size, keep, type)
 	&& (!flag_strict_aliasing
 	    || (alias_set && p->alias_set == alias_set))
 	&& (best_p == 0 || best_p->size > p->size
-	    || (best_p->size == p->size && best_p->align > p->align)))
+	    || (best_p->size == p->size && best_p->align > p->align))
+	&& (! char_array || p->boundary_mark != 0))
       {
 	if (p->align == align && p->size == size)
 	  {
@@ -1005,6 +1017,7 @@ assign_stack_temp_for_type (mode, size, keep, type)
 	      p->align = best_p->align;
 	      p->address = 0;
 	      p->rtl_expr = 0;
+	      p->boundary_mark = best_p->boundary_mark;
 	      p->next = temp_slots;
 	      temp_slots = p;
 
@@ -1066,6 +1079,7 @@ assign_stack_temp_for_type (mode, size, keep, type)
       p->full_size = frame_offset - frame_offset_old;
 #endif
       p->address = 0;
+      p->boundary_mark = char_array?++temp_boundary_mark:0;
       p->next = temp_slots;
       temp_slots = p;
     }
@@ -1190,14 +1204,16 @@ combine_temp_slots ()
 	    int delete_q = 0;
 	    if (! q->in_use && GET_MODE (q->slot) == BLKmode)
 	      {
-		if (p->base_offset + p->full_size == q->base_offset)
+		if (p->base_offset + p->full_size == q->base_offset &&
+		    p->boundary_mark == q->boundary_mark)
 		  {
 		    /* Q comes after P; combine Q into P.  */
 		    p->size += q->size;
 		    p->full_size += q->full_size;
 		    delete_q = 1;
 		  }
-		else if (q->base_offset + q->full_size == p->base_offset)
+		else if (q->base_offset + q->full_size == p->base_offset &&
+			 p->boundary_mark == q->boundary_mark)
 		  {
 		    /* P comes after Q; combine P into Q.  */
 		    q->size += p->size;
@@ -1706,7 +1722,7 @@ put_reg_into_stack (function, reg, type, promoted_mode, decl_mode, volatile_p,
       if (regno < max_parm_reg)
 	new = parm_reg_stack_loc[regno];
       if (new == 0)
-	new = assign_stack_local (decl_mode, GET_MODE_SIZE (decl_mode), 0);
+	new = assign_stack_local_for_pseudo_reg (decl_mode, GET_MODE_SIZE (decl_mode), 0);
     }
 
   PUT_MODE (reg, decl_mode);
@@ -3905,7 +3921,8 @@ instantiate_virtual_regs_1 (loc, object, extra_insns)
 		 constant with that register.  */
 	      temp = gen_reg_rtx (Pmode);
 	      XEXP (x, 0) = new;
-	      if (validate_change (object, &XEXP (x, 1), temp, 0))
+	      if (validate_change (object, &XEXP (x, 1), temp, 0)
+		  && ! flag_propolice_protection)
 		emit_insn_before (gen_move_insn (temp, new_offset), object);
 	      else
 		{

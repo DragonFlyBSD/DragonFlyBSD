@@ -20,7 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/integrate.c,v 1.1.1.3.2.1 2002/05/01 19:57:46 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/integrate.c,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/integrate.c,v 1.3 2003/12/10 22:25:04 dillon Exp $ */
 
 
 #include "config.h"
@@ -2287,6 +2287,8 @@ integrate_decl_tree (let, level, map)
 	}
       /* These args would always appear unused, if not for this.  */
       TREE_USED (d) = 1;
+      if (flag_propolice_protection && TREE_CODE (d) == VAR_DECL)
+	DECL_INLINE (d) = 1;
 
       if (DECL_LANG_SPECIFIC (d))
 	copy_lang_decl (d);
@@ -2410,6 +2412,10 @@ copy_rtx_and_substitute (orig, map)
 
 	      seq = gen_sequence ();
 	      end_sequence ();
+#ifdef FRAME_GROWS_DOWNWARD
+	      if (flag_propolice_protection && GET_CODE (seq) == SET)
+		RTX_INTEGRATED_P (SET_SRC (seq)) = 1;
+#endif
 	      emit_insn_after (seq, map->insns_at_start);
 	      return temp;
 	    }

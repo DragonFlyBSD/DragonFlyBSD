@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_int/Makefile,v 1.25.2.5 2002/07/19 18:46:23 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc_int/Attic/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc_int/Attic/Makefile,v 1.3 2003/12/10 22:25:08 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -20,7 +20,7 @@ SRCS=	c-aux-info.c c-common.c c-convert.c c-iterate.c \
 	sbitmap.c sdbout.c stmt.c stor-layout.c stupid.c \
 	toplev.c tree.c unroll.c varasm.c version.c xcoffout.c \
 	alias.c bitmap.c dwarf2out.c dyn-string.c except.c \
-	gcse.c genrtl.c profile.c regmove.c varray.c \
+	gcse.c genrtl.c profile.c regmove.c varray.c protector.c \
 	${TARGET_ARCH}.c
 .if defined(USE_EGCS_HAIFA) && ${USE_EGCS_HAIFA} == 1
 SRCS+=	haifa-sched.c
@@ -43,6 +43,6 @@ SRCS+=	multilib.h choose-temp.c obstack.c prefix.c pexecute.c version.c
 #	stuff that makes libiberty now required (2.95) and shouldn't be...
 SRCS+=	obstack.c splay-tree.c
 
-CFLAGS+=	-DTARGET_NAME=\"${target}\" -DIN_GCC
+CFLAGS+=	-DSTACK_PROTECTOR -DTARGET_NAME=\"${target}\" -DIN_GCC
 
 .include <bsd.lib.mk>
