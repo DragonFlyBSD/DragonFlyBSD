@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.21 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.22 2005/04/07 00:35:33 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -53,6 +53,21 @@
 /* buildworld needs this on FreeBSD */
 #ifndef __arysize
 #define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
+#endif
+
+/* Needed for cross compile on FreeBSD 4.X */
+#ifndef INT64_MIN
+#include <stdlib.h>
+#define	INT64_MIN	(-0x7fffffffffffffffLL-1)
+
+typedef	__int64_t	intmax_t;
+typedef	__uint64_t	uintmax_t;
+
+static inline uintmax_t
+strtoumax(const char *nptr, char **endptr, int base)
+{
+	return strtoull(nptr, endptr, base);
+}
 #endif
 
 struct GNode;
