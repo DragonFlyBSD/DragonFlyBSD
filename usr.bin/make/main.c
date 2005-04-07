@@ -38,19 +38,20 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.67 2005/04/07 00:37:31 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.68 2005/04/07 00:44:18 okumoto Exp $
  */
 
-/*-
- * main.c --
+/*
+ * main.c
  *	The main file for this entire program. Exit routines etc
  *	reside here.
  *
  * Utility functions defined in this file:
- *	Main_ParseArgLine	Takes a line of arguments, breaks them and
- *				treats them as if they were given when first
- *				invoked. Used by the parse module to implement
- *				the .MFLAGS target.
+ *	Main_ParseArgLine
+ *			Takes a line of arguments, breaks them and
+ *			treats them as if they were given when first
+ *			invoked. Used by the parse module to implement
+ *			the .MFLAGS target.
  */
 
 #ifndef MACHINE
@@ -95,50 +96,51 @@
 /* Targets to be made */
 Lst create = Lst_Initializer(create);
 
-time_t			now;		/* Time at start of make */
-struct GNode		*DEFAULT;	/* .DEFAULT node */
-Boolean			allPrecious;	/* .PRECIOUS given on line by itself */
+time_t		now;		/* Time at start of make */
+struct GNode	*DEFAULT;	/* .DEFAULT node */
+Boolean		allPrecious;	/* .PRECIOUS given on line by itself */
 
-static Boolean		noBuiltins;	/* -r flag */
+static Boolean	noBuiltins;	/* -r flag */
 
 /* ordered list of makefiles to read */
 static Lst makefiles = Lst_Initializer(makefiles);
 
-static Boolean		expandVars;	/* fully expand printed variables */
+static Boolean	expandVars;	/* fully expand printed variables */
 
 /* list of variables to print */
 static Lst variables = Lst_Initializer(variables);
 
-int			maxJobs;	/* -j argument */
-static Boolean          forceJobs;      /* -j argument given */
-Boolean			compatMake;	/* -B argument */
-Boolean			debug;		/* -d flag */
-Boolean			noExecute;	/* -n flag */
-Boolean			keepgoing;	/* -k flag */
-Boolean			queryFlag;	/* -q flag */
-Boolean			touchFlag;	/* -t flag */
-Boolean			usePipes;	/* !-P flag */
-Boolean			ignoreErrors;	/* -i flag */
-Boolean			beSilent;	/* -s flag */
-Boolean			beVerbose;	/* -v flag */
-Boolean			oldVars;	/* variable substitution style */
-Boolean			checkEnvFirst;	/* -e flag */
+int		maxJobs;	/* -j argument */
+static Boolean	forceJobs;      /* -j argument given */
+Boolean		compatMake;	/* -B argument */
+Boolean		debug;		/* -d flag */
+Boolean		noExecute;	/* -n flag */
+Boolean		keepgoing;	/* -k flag */
+Boolean		queryFlag;	/* -q flag */
+Boolean		touchFlag;	/* -t flag */
+Boolean		usePipes;	/* !-P flag */
+Boolean		ignoreErrors;	/* -i flag */
+Boolean		beSilent;	/* -s flag */
+Boolean		beVerbose;	/* -v flag */
+Boolean		oldVars;	/* variable substitution style */
+Boolean		checkEnvFirst;	/* -e flag */
 
 /* (-E) vars to override from env */
 Lst envFirstVars = Lst_Initializer(envFirstVars);
 
-Boolean			jobsRunning;	/* TRUE if the jobs might be running */
+Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 
-static void		MainParseArgs(int, char **);
-char			*chdir_verify_path(const char *, char *);
-static int		ReadMakefile(const char *);
-static void		usage(void);
+static void	MainParseArgs(int, char **);
+char		*chdir_verify_path(const char *, char *);
+static int	ReadMakefile(const char *);
+static void	usage(void);
 
-static char *curdir;			/* startup directory */
-static char *objdir;			/* where we chdir'ed to */
+static char	*curdir;	/* startup directory */
+static char	*objdir;	/* where we chdir'ed to */
 
-/*
- * Append a flag with an optional argument to MAKEFLAGS and MFLAGS
+/**
+ * MFLAGS_append
+ *	Append a flag with an optional argument to MAKEFLAGS and MFLAGS
  */
 static void
 MFLAGS_append(const char *flag, char *arg)
@@ -160,15 +162,12 @@ MFLAGS_append(const char *flag, char *arg)
 	}
 }
 
-/*-
- * MainParseArgs --
+/**
+ * MainParseArgs
  *	Parse a given argument vector. Called from main() and from
  *	Main_ParseArgLine() when the .MAKEFLAGS target is used.
  *
  *	XXX: Deal with command line overriding .MAKEFLAGS in makefile
- *
- * Results:
- *	None
  *
  * Side Effects:
  *	Various global and local flags will be set depending on the flags
@@ -270,7 +269,8 @@ rearg:
 					debug |= DEBUG_VAR;
 					break;
 				default:
-					warnx("illegal argument to d option -- %c", *modules);
+					warnx("illegal argument to d option "
+					    "-- %c", *modules);
 					usage();
 				}
 			MFLAGS_append("-d", optarg);
@@ -372,17 +372,14 @@ rearg:
 		}
 }
 
-/*-
- * Main_ParseArgLine --
+/**
+ * Main_ParseArgLine
  *  	Used by the parse module when a .MFLAGS or .MAKEFLAGS target
  *	is encountered and by main() when reading the .MAKEFLAGS envariable.
  *	Takes a line of arguments and breaks it into its
  * 	component words and passes those words and the number of them to the
  *	MainParseArgs function.
  *	The line should have all its leading whitespace removed.
- *
- * Results:
- *	None
  *
  * Side Effects:
  *	Only those that come from the various arguments.
@@ -443,9 +440,11 @@ check_make_level(void)
 	int	level = (value == NULL) ? 0 : atoi(value);
 
 	if (level < 0) {
-		errc(2, EAGAIN, "Invalid value for recursion level (%d).", level);
+		errc(2, EAGAIN, "Invalid value for recursion level (%d).",
+		    level);
 	} else if (level > MKLVL_MAXVAL) {
-		errc(2, EAGAIN, "Max recursion level (%d) exceeded.", MKLVL_MAXVAL);
+		errc(2, EAGAIN, "Max recursion level (%d) exceeded.",
+		    MKLVL_MAXVAL);
 	} else {
 		char new_value[32];
 		sprintf(new_value, "%d", level + 1);
@@ -454,8 +453,8 @@ check_make_level(void)
 #endif /* WANT_ENV_MKLVL */
 }
 
-/*-
- * main --
+/**
+ * main
  *	The main function, for obvious reasons. Initializes variables
  *	and a few modules, then parses the arguments give it in the
  *	environment and on the command line. Reads the system makefile
@@ -486,7 +485,7 @@ main(int argc, char **argv)
 	const char *machine_cpu = getenv("MACHINE_CPU");
 	char *cp = NULL, *start;
 
-					/* avoid faults on read-only strings */
+	/* avoid faults on read-only strings */
 	static char syspath[] = PATH_DEFSYSPATH;
 
 	{
@@ -537,13 +536,13 @@ main(int argc, char **argv)
 	 */
 	if (!machine) {
 #ifndef MACHINE
-	    static struct utsname utsname;
+		static struct utsname utsname;
 
-	    if (uname(&utsname) == -1)
-		    err(2, "uname");
-	    machine = utsname.machine;
+		if (uname(&utsname) == -1)
+			err(2, "uname");
+		machine = utsname.machine;
 #else
-	    machine = MACHINE;
+		machine = MACHINE;
 #endif
 	}
 
@@ -923,8 +922,8 @@ main(int argc, char **argv)
 		return (0);
 }
 
-/*-
- * ReadMakefile  --
+/**
+ * ReadMakefile
  *	Open and parse the given makefile.
  *
  * Results:
@@ -1015,8 +1014,8 @@ found:
 	return (TRUE);
 }
 
-/*-
- * Cmd_Exec --
+/**
+ * Cmd_Exec
  *	Execute the command in cmd, and return the output of that command
  *	in a string.
  *
@@ -1030,97 +1029,98 @@ found:
 Buffer *
 Cmd_Exec(const char *cmd, const char **error)
 {
-    int 	fds[2];	    	/* Pipe streams */
-    int 	cpid;	    	/* Child PID */
-    int 	pid;	    	/* PID from wait() */
-    int		status;		/* command exit status */
-    Buffer	*buf;		/* buffer to store the result */
-    ssize_t	rcnt;
+	int	fds[2];	/* Pipe streams */
+	int	cpid;	/* Child PID */
+	int	pid;	/* PID from wait() */
+	int	status;	/* command exit status */
+	Buffer	*buf;	/* buffer to store the result */
+	ssize_t	rcnt;
 
-    *error = NULL;
-    buf = Buf_Init(0);
+	*error = NULL;
+	buf = Buf_Init(0);
 
-    if (shellPath == NULL)
-	Shell_Init();
-    /*
-     * Open a pipe for fetching its output
-     */
-    if (pipe(fds) == -1) {
-	*error = "Couldn't create pipe for \"%s\"";
-	return (buf);
-    }
-
-    /*
-     * Fork
-     */
-    switch (cpid = vfork()) {
-    case 0:
+	if (shellPath == NULL)
+		Shell_Init();
 	/*
-	 * Close input side of pipe
+	 * Open a pipe for fetching its output
 	 */
-	close(fds[0]);
-
-	/*
-	 * Duplicate the output stream to the shell's output, then
-	 * shut the extra thing down. Note we don't fetch the error
-	 * stream...why not? Why?
-	 */
-	dup2(fds[1], 1);
-	close(fds[1]);
-
-	{
-	    char	*args[4];
-
-	    /* Set up arguments for shell */
-	    args[0] = shellName;
-	    args[1] = "-c";
-	    args[2] = cmd;
-	    args[3] = NULL;
-
-	    execv(shellPath, args);
-	    _exit(1);
-	    /*NOTREACHED*/
+	if (pipe(fds) == -1) {
+		*error = "Couldn't create pipe for \"%s\"";
+		return (buf);
 	}
 
-    case -1:
-	*error = "Couldn't exec \"%s\"";
+	/*
+	 * Fork
+	 */
+	switch (cpid = vfork()) {
+	  case 0:
+		/*
+		 * Close input side of pipe
+		 */
+		close(fds[0]);
+
+		/*
+		 * Duplicate the output stream to the shell's output, then
+		 * shut the extra thing down. Note we don't fetch the error
+		 * stream...why not? Why?
+		 */
+		dup2(fds[1], 1);
+		close(fds[1]);
+
+		{
+			char	*args[4];
+
+			/* Set up arguments for shell */
+			args[0] = shellName;
+			args[1] = "-c";
+			args[2] = cmd;
+			args[3] = NULL;
+
+			execv(shellPath, args);
+			_exit(1);
+			/*NOTREACHED*/
+		}
+
+	  case -1:
+		*error = "Couldn't exec \"%s\"";
+		return (buf);
+
+	  default:
+		/*
+		 * No need for the writing half
+		 */
+		close(fds[1]);
+
+		do {
+			char	result[BUFSIZ];
+
+			rcnt = read(fds[0], result, sizeof(result));
+			if (rcnt != -1)
+				Buf_AddBytes(buf, (size_t)rcnt, (Byte *)result);
+		} while (rcnt > 0 || (rcnt == -1 && errno == EINTR));
+
+		if (rcnt == -1)
+			*error = "Error reading shell's output for \"%s\"";
+
+		/*
+		 * Close the input side of the pipe.
+		 */
+		close(fds[0]);
+
+		/*
+		 * Wait for the process to exit.
+		 */
+		while (((pid = wait(&status)) != cpid) && (pid >= 0))
+			continue;
+
+		if (status)
+			*error = "\"%s\" returned non-zero status";
+
+		Buf_StripNewlines(buf);
+
+		break;
+	}
 	return (buf);
-
-    default:
-	/*
-	 * No need for the writing half
-	 */
-	close(fds[1]);
-
-	do {
-	    char   result[BUFSIZ];
-	    rcnt = read(fds[0], result, sizeof(result));
-	    if (rcnt != -1)
-		Buf_AddBytes(buf, (size_t)rcnt, (Byte *)result);
-	} while (rcnt > 0 || (rcnt == -1 && errno == EINTR));
-
-	if (rcnt == -1)
-	    *error = "Error reading shell's output for \"%s\"";
-
-	/*
-	 * Close the input side of the pipe.
-	 */
-	close(fds[0]);
-
-	/*
-	 * Wait for the process to exit.
-	 */
-	while (((pid = wait(&status)) != cpid) && (pid >= 0))
-	    continue;
-
-	if (status)
-	    *error = "\"%s\" returned non-zero status";
-
-	Buf_StripNewlines(buf);
-
-	break;
-    }
-    return (buf);
 }
 
 /*
