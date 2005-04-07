@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.66 2005/04/05 07:55:02 joerg Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.67 2005/04/07 00:37:31 okumoto Exp $
  */
 
 /*-
@@ -181,9 +181,14 @@ MainParseArgs(int argc, char **argv)
 
 rearg:
 	optind = 1;	/* since we're called more than once */
-#define OPTFLAGS "BC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
+#define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
 	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		switch(c) {
+
+		case 'A':
+			arch_fatal = FALSE;
+			MFLAGS_append("-A", NULL);
+			break;
 		case 'C':
 			if (chdir(optarg) == -1)
 				err(1, "chdir %s", optarg);
@@ -692,10 +697,9 @@ main(int argc, char **argv)
 		compatMake = TRUE;
 
 	/*
-	 * Initialize archive, target and suffix modules in preparation for
+	 * Initialize target and suffix modules in preparation for
 	 * parsing the makefile(s)
 	 */
-	Arch_Init();
 	Targ_Init();
 	Suff_Init();
 

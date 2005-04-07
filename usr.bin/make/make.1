@@ -31,9 +31,9 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.22 2005/02/14 11:12:03 okumoto Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.23 2005/04/07 00:37:31 okumoto Exp $
 .\"
-.Dd January 26, 2005
+.Dd March 30, 2005
 .Dt MAKE 1
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@
 .Nd maintain program dependencies
 .Sh SYNOPSIS
 .Nm
-.Op Fl BPSXeiknqrstv
+.Op Fl ABPSXeiknqrstv
 .Op Fl C Ar directory
 .Op Fl D Ar variable
 .Op Fl d Ar flags
@@ -84,6 +84,9 @@ and makefiles, please refer to
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl A
+Make archive errors non-fatal, causing make just to skip the remainder
+or all of the archive and continue after printing a message.
 .It Fl B
 Try to be backwards compatible by executing a single shell per command and
 by executing the commands to make the sources of a dependency line in sequence.
