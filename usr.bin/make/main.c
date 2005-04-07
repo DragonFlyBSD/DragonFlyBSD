@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.68 2005/04/07 00:44:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.69 2005/04/07 07:52:32 okumoto Exp $
  */
 
 /*
@@ -130,7 +130,6 @@ Lst envFirstVars = Lst_Initializer(envFirstVars);
 
 Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 
-static void	MainParseArgs(int, char **);
 char		*chdir_verify_path(const char *, char *);
 static int	ReadMakefile(const char *);
 static void	usage(void);
@@ -180,6 +179,7 @@ MainParseArgs(int argc, char **argv)
 
 rearg:
 	optind = 1;	/* since we're called more than once */
+	optreset = 1;
 #define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
 	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		switch(c) {
@@ -342,34 +342,54 @@ rearg:
 			usage();
 		}
 	}
+	argv += optind;
+	argc -= optind;
 
 	oldVars = TRUE;
 
 	/*
-	 * See if the rest of the arguments are variable assignments and
-	 * perform them if so. Else take them to be targets and stuff them
-	 * on the end of the "create" list.
+	 * Parse the rest of the arguments.
+	 *	o Check for variable assignments and perform them if so.
+	 *	o Check for more flags and restart getopt if so.
+	 *      o Anything else is taken to be a target and added
+	 *	  to the end of the "create" list.
 	 */
-	for (argv += optind, argc -= optind; *argv; ++argv, --argc)
+	for (; *argv != NULL; ++argv, --argc) {
 		if (Parse_IsVar(*argv)) {
 			char *ptr = MAKEFLAGS_quote(*argv);
 
 			Var_Append(MAKEFLAGS, ptr, VAR_GLOBAL);
+			Parse_DoVar(*argv, VAR_CMD);
 			free(ptr);
 
-			Parse_DoVar(*argv, VAR_CMD);
-		} else {
-			if (!**argv)
-				Punt("illegal (null) argument.");
-			if (**argv == '-') {
-				if ((*argv)[1]) {
-					argc++;
-					argv--;
-				}
+		} else if ((*argv)[0] == '-') {
+			if ((*argv)[1] == '\0') {
+				/*
+				 * (*argv) is a single dash, so we
+				 * just ignore it.
+				 */
+			} else {
+				/*
+				 * (*argv) is a -flag, so backup argv
+				 *  and argc, since getopt() expects
+				 * options to start in the 2nd position.
+				 */
+				argc++;
+				argv--;
 				goto rearg;
 			}
+
+		} else if ((*argv)[0] == '\0') {
+			/*
+			 * XXX Is this check nessisary, who could pass
+			 * XXX an empty string as an argument?
+			 */
+			Punt("illegal (null) argument.");
+
+		} else {
 			Lst_AtEnd(&create, estrdup(*argv));
 		}
+	}
 }
 
 /**
@@ -614,9 +634,8 @@ main(int argc, char **argv)
 #endif
 
 	/*
-	 * First snag any flags out of the MAKE environment variable.
-	 * (Note this is *not* MAKEFLAGS since /bin/make uses that and it's
-	 * in a different format).
+	 * First snag things out of the MAKEFLAGS environment
+	 * variable.  Then parse the command line arguments.
 	 */
 	Main_ParseArgLine(getenv("MAKEFLAGS"), 1);
 
@@ -624,8 +643,6 @@ main(int argc, char **argv)
 
 	/*
 	 * Find where we are...
-	 * All this code is so that we know where we are when we start up
-	 * on a different machine with pmake.
 	 */
 	curdir = cdpath;
 	if (getcwd(curdir, MAXPATHLEN) == NULL)
