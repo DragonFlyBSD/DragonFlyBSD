@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.25 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.25.2.1 2005/04/08 03:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,7 +190,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct iso_mnt *imp = 0;
 	struct nlookupdata nd;
 
-	if ((mp->mnt_flag & MNT_ROOTFS) != 0) {
+	if ((mp->mnt_flag & (MNT_ROOTFS|MNT_UPDATE)) == MNT_ROOTFS) {
 		return (iso_mountroot(mp, td));
 	}
 	if ((error = copyin(data, (caddr_t)&args, sizeof (struct iso_args))))
