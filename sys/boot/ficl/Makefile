@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ficl/Makefile,v 1.35 2003/06/30 19:08:49 ru Exp $
-# $DragonFly: src/sys/boot/ficl/Makefile,v 1.6 2005/04/05 22:36:29 dillon Exp $
+# $DragonFly: src/sys/boot/ficl/Makefile,v 1.6.2.1 2005/04/08 00:45:22 dillon Exp $
 #
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
@@ -15,7 +15,9 @@ SRCS=		${BASE_SRCS} sysdep.c softcore.c
 stack_protector.o: ../../libkern/stack_protector.c
 
 CLEANFILES=	softcore.c testmain testmain.o
+.if ${CCVER} == "gcc34"
 CFLAGS+=	-fno-stack-protector
+.endif
 CFLAGS+=	-ffreestanding
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2
