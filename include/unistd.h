@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.11 2005/01/14 04:21:16 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.12 2005/04/08 08:32:53 joerg Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -120,6 +120,7 @@ int	 acct(const char *);
 int	 async_daemon (void);
 int	 brk(const void *);
 int	 chroot(const char *);
+int	 closefrom(int);
 size_t	 confstr(int, char *, size_t);
 char	*crypt(const char *, const char *);
 const char *crypt_get_format(void);
