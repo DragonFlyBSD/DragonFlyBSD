@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.32 2005/03/11 00:28:23 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.33 2005/04/08 09:39:52 liamfoy Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -62,7 +62,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:liamfoy 'at' kerneled 'dot' org">Liam J. Foy</a></td>
+<tr><td valign="top"><a href="mailto:liamfoy 'at' dragonflybsd 'dot' org">Liam J. Foy</a></td>
 <td valign="top">Code cleanness and userland utilities (commit access)</td>
 </tr>
 
