@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.20 2005/01/14 02:20:24 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.20.2.1 2005/04/08 06:40:01 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -55,7 +55,7 @@
  *	doc/en_US.ISO8859-1/books/porters-handbook/book.sgml
  */
 #undef __DragonFly_version
-#define __DragonFly_version 110000	/* Master, propagated to newvers */
+#define __DragonFly_version 120000	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
