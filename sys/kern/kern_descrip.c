@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.40 2005/04/08 08:31:06 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.41 2005/04/08 17:39:31 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -625,19 +625,18 @@ kern_closefrom(int fd)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
-	int currfd;
 
 	KKASSERT(p);
 	fdp = p->p_fd;
 
 	if (fd < 0 || fd > fdp->fd_lastfile)
 		return (0);
-	while ((currfd = fdp->fd_lastfile) >= fd) {
-		if (kern_close(currfd) == EINTR)
+
+	do {
+		if (kern_close(fdp->fd_lastfile) == EINTR)
 			return (EINTR);
-		if (currfd == 0)
-			break;
-	}
+	} while (fdp->fd_lastfile > fd);
+
 	return (0);
 }
 
