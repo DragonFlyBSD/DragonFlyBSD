@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.21 2005/03/21 16:45:08 joerg Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.22 2005/04/08 08:31:06 joerg Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -638,4 +638,5 @@
 471	STD	BSD	{ int jail_attach(int jid); }
 472	STD	BSD	{ int sys_set_tls_area(int which, struct tls_info *info, size_t infosize); }
 473	STD	BSD	{ int sys_get_tls_area(int which, struct tls_info *info, size_t infosize); }
+474	STD	BSD	{ int closefrom(int fd); }
 
