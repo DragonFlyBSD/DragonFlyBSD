@@ -33,9 +33,9 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.11 2005/04/05 21:41:19 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.11.2.1 2005/04/08 06:38:44 dillon Exp $
 
-tag="\$Name:  $"
+tag="\$Name: DragonFly_RELEASE_1_2 $"
 
 # Extract the tag name, if any.
 #
@@ -59,7 +59,7 @@ if [ "X${BRANCH}" = "XHEAD" ]; then
     BRANCH="DEVELOPMENT"
 fi
 
-# This case occurs if the $Name:  $ field has not been expanded.
+# This case occurs if the $Name: DragonFly_RELEASE_1_2 $ field has not been expanded.
 #
 if [ "X${BRANCH}" = "X" ]; then
     BRANCH="UNKNOWN"
@@ -87,7 +87,9 @@ if [ "${REVISION}" != "${BRANCH}" ]; then
     REVISION=$(echo $REVISION | sed -e 's/_/./g')
     for chkdir in machine/../../.. .. ../.. ../../.. /usr/src; do
 	if [ -f ${chkdir}/sys/conf/subvers-${SHORTTAG} ]; then
-	    SUBVER=$(tail -1 ${chkdir}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
+	    # quick hack for this release, tail isn't in the bootstrap
+	    # tools set.
+	    SUBVER=$(/usr/bin/tail -1 ${chkdir}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
 	    if [ "X${SUBVER}" != "X" ]; then
 		REVISION="${REVISION}.${SUBVER}"
 		break
