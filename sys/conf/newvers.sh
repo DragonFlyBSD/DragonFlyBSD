@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.11 2005/04/05 21:41:19 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.12 2005/04/08 06:12:11 dillon Exp $
 
 tag="\$Name:  $"
 
@@ -98,7 +98,7 @@ else
     # Applies to HEAD branch or tags on the HEAD branch only, ignored when
     # run on a branch.
     #
-    REVISION="1.1"
+    REVISION="1.3"
 fi
 
 RELEASE="${REVISION}-${BRANCH}"
