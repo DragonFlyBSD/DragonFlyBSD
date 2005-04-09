@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.25 2005/04/09 20:30:16 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.26 2005/04/09 23:11:52 hmp Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -30,7 +30,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    SMP replication work (Jeff)
 	<li>ALTQ Integration (Joerg)
 	<li>Fix MTU discovery which appears to have been broken
-	    forever (Jeff0.
+	    forever (Jeff).
 	<li>Miscellanious driver updates. (Various)
 	<li>Miscellanious ACPI updates.
 	<li>Fix a security issue with sendfile() (Various)
