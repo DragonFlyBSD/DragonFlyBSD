@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.1 2005/04/08 23:08:44 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.2 2005/04/09 20:30:15 dillon Exp $
 
 $TITLE(DragonFly - April 2005 Release 1.2.0 Download)
 <h1>Obtaining DragonFly 1.2.0 for your system</h1>
@@ -72,6 +72,38 @@ See the 'Download Site' list below for a list of download locations.
 <TD>
     <A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A>
     <A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>BGP4.net (USA)</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://www.bgp4.net/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.bgp4.net/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>TheShell.com</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>FictionPress.com (USA)</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://mirror.fictionpress.com/df/dfly-1.2.0_REL.iso.gz">HTTP</A>
+</TD></TR>
+
+<TR><TD>DragonFlyBSD.sf.net</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://dragonflybsd.sf.net/dfly-1.2.0_REL.iso.gz">HTTP</A>
+</TD></TR>
+
+<TR><TD>Hup.hu (Hungary)</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://www.hup.hu/~trey/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A>
 </TD></TR>
 
 <TR><TD>Dragonflybsd.org (USA)</TD>

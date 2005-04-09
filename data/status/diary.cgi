@@ -1,8 +1,73 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.24 2004/12/22 10:25:42 joerg Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.25 2005/04/09 20:30:16 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Thu 7 April 2005</h2>
+<ul>
+	<li>Fix numerous issues in the new namecache code.  The new code is
+	    now considered to be solid (Matt).
+	<li>Fix numerous issues in the NFS code related to cache timeouts
+	    not working properly, truncate operations not working properly
+	    in certain circumstances, and TCP disconnections due to 
+	    races in accessing the streamed data.  NFS was also not properly
+	    setting TCP_NODELAY which resulted in poor performance over
+	    TCP connections (Matt).
+	<li>Split out kernel information access abstraction into libkcore
+	    and libkinfo (joerg).
+	<li>Optimize the interrupt processing code a bit (Matt).
+	<li>Significant progress in the journaling layer has been made,
+	    but it isn't ready for production use yet.  The journaling
+	    layer is now capable of encoding a forward journaling stream
+	    (the undo data is not yet being encoded).  Still TODO:  undo
+	    data, two-way transaction acknowledgement protocol, and
+	    emergency swap backing to allow system operation to proceed
+	    in the event of a long-term journaling stream stall. (Matt)
+	<li>Fix numerous issues related to SMP-distributed wildcard 
+	    listen sockets for TCP. (Jeff, Matt)
+	<li>Major cleanup of the route table code in preparation for
+	    SMP replication work (Jeff)
+	<li>ALTQ Integration (Joerg)
+	<li>Fix MTU discovery which appears to have been broken
+	    forever (Jeff0.
+	<li>Miscellanious driver updates. (Various)
+	<li>Miscellanious ACPI updates.
+	<li>Fix a security issue with sendfile() (Various)
+	<li>Lots of work on the make program (Max)
+	<li>Add TLS support calls to the kernel to create segments suitable
+	    for loading into %gs. (Matt, David Xu)
+	<li>Add TLS support to the dynamic linker (David Xu, Joerg)
+	<li>Add kernel support for mmap-based userland mutexes
+	<li>Continuing work on a new threading library (David Xu)
+	<li>Add jail support for varsyms (Joerg)
+	<li>Incorporate the Minix MINED editor into the /bin build for use
+	    as an emergency editor while in single-user.
+	<li>Fix an issue with PCMCIA card removal.
+	<li>Replace the VM map lookup data structures with a red-black tree.
+	<li>Fix a potentially serious issue with inodes being reused before
+	    their associated vnodes have been entirely recycled.  This also
+	    prevents unnecessary stalls on recycle flushing against new
+	    file creation that would otherwise have to block waiting for
+	    the inode it chose to finish cycling.
+	<li>Fix some minor issues with /dev/tty operations.
+	<li>Fix an issue with the vnode recycler.  Certain types of file
+	    extractions could cause it to stop oprating due to not being
+	    able to clean out the namecache topology.  This most often
+	    occured when extracting archives with a large number of 
+	    hard links.
+	<li>Fix two issues that caused the system's time of day tracking to
+	    either stop operating or operate incorrectly.
+	<li>Enhance the checkpointing code to save and restore the 
+	    signal mask.
+	<li>Major work on the XIO and MSFBUF infrastructures as we begin to
+	    use them in the kernel more. (Hiten, Matt)
+	<li>Implement CLOCK_MONOTONIC for the clock_*() system calls.
+	<li>Fix a bug in the TCP limited transmit code.
+	<li>Fix a crash that sometimes occurs when using the firewire
+	    console.
+	
+</ul>
 
 <h2>Mon 20 December 2004</h2>
 <ul>

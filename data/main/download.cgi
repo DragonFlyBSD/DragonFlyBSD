@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.81 2005/04/06 22:32:03 swildner Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.82 2005/04/09 20:30:15 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -112,13 +112,14 @@ been renamed to PREVIEW and CURRENT has been renamed to DEVELOPMENT.</i>
 <h2>DragonFly Releases</h2>
 
 <p>
-Releases occur approximately twice a year.  We are currently in the final
-stages of putting together the <b>DragonFly 1.2-RELEASE</b>.  This will be the
-first release that we maintain a separate CVS branch for.  DragonFly
-release branches <b>only contain bug and security fixes</b> and are
-designed for people running production systems who don't want any surprises.
-Brand-new features often discussed on the mailing lists are typically not
+Releases occur approximately twice a year.  DragonFly release branches
+<b>only contain bug and security fixes</b> and are designed for people
+running production systems who don't want any surprises.  Brand-new 
+features often discussed on the mailing lists are typically not
 in release branches.
+</p>
+<p>
+The current release is <a href="release1_2.cgi">DragonFly 1.2.X-RELEASE</a>.
 </p>
 
 <p>
