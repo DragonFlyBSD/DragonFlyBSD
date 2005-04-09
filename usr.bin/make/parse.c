@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.65 2005/04/09 05:51:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.66 2005/04/09 06:23:20 okumoto Exp $
  */
 
 /*-
@@ -298,7 +298,9 @@ Parse_Error(int type, const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	fprintf(stderr, "\"%s\", line %d: ", CURFILE->fname, CURFILE->lineno);
+	if (CURFILE != NULL)
+		fprintf(stderr, "\"%s\", line %d: ",
+		    CURFILE->fname, CURFILE->lineno);
 	if (type == PARSE_WARNING)
 		fprintf(stderr, "warning: ");
 	vfprintf(stderr, fmt, ap);
@@ -2246,8 +2248,10 @@ ParseReadLine(void)
 				line = ParseSkipLine(1, 0);
 			} while (line &&
 			    Cond_Eval(line, CURFILE->lineno) != COND_PARSE);
-			if (line == NULL)
-				break;
+			if (line == NULL) {
+				/* try to pop input stack */
+				goto again;
+			}
 			/*FALLTHRU*/
 
 		  case COND_PARSE:
