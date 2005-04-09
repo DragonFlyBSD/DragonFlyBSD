@@ -13,7 +13,7 @@
 #    notice, this list of conditions and the following disclaimer in the
 #    documentation and/or other materials provided with the distribution.
 # 3. The name of the author may not be used to endorse or promote products
-#    derived from this software withough specific prior written permission
+#    derived from this software without specific prior written permission
 #
 # THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -26,8 +26,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $FreeBSD: src/tools/install.sh,v 1.3.2.1 2001/08/08 07:42:21 ru Exp $
-# $DragonFly: src/tools/install.sh,v 1.2 2003/06/17 04:29:08 dillon Exp $
+# $FreeBSD: src/tools/install.sh,v 1.5 2002/06/02 20:05:56 schweikh Exp $
+# $DragonFly: src/tools/install.sh,v 1.3 2005/04/09 10:39:12 y0netan1 Exp $
 
 # parse install's options and ignore them completely.
 # XXX - not all options are recognised.
