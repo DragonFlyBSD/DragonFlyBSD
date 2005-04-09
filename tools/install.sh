@@ -26,15 +26,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $FreeBSD: src/tools/install.sh,v 1.5 2002/06/02 20:05:56 schweikh Exp $
-# $DragonFly: src/tools/install.sh,v 1.3 2005/04/09 10:39:12 y0netan1 Exp $
+# $FreeBSD: src/tools/install.sh,v 1.7 2004/07/07 09:38:14 ru Exp $
+# $DragonFly: src/tools/install.sh,v 1.4 2005/04/09 11:02:35 y0netan1 Exp $
 
 # parse install's options and ignore them completely.
-# XXX - not all options are recognised.
-while [ ! -z $1 ]; do
+while [ $# -gt 0 ]; do
     case $1 in
-    -b | -C | -c | -M | -p | -S | -s) shift;;
-    -B | -f | -g | -m | -o) shift; shift;;
+    -[bCcMpSs]) shift;;
+    -[Bfgmo]) shift; shift;;
+    -[Bfgmo]*) shift;;
     *) break;
     esac
 done
