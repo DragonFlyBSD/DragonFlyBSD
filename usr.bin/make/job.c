@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.52 2005/04/07 07:23:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.53 2005/04/09 05:50:51 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -274,7 +274,6 @@ struct TAG {								\
 	 * was executed to turn off echoing				\
 	 */								\
 	CONST char	*noPrint;					\
-	int		noPLen;		/* length of noPrint command */	\
 									\
 	/* set if can control error checking for individual commands */	\
 	Boolean		hasErrCtl;					\
@@ -339,7 +338,7 @@ static const struct CShell shells[] = {
 	 */
 	{
 		"csh",
-		TRUE, "unset verbose", "set verbose", "unset verbose", 13,
+		TRUE, "unset verbose", "set verbose", "unset verbose",
 		FALSE, "echo \"%s\"\n", "csh -c \"%s || exit 0\"",
 		"v", "e",
 	},
@@ -349,7 +348,7 @@ static const struct CShell shells[] = {
 	 */
 	{
 		"sh",
-		TRUE, "set -", "set -v", "set -", 5,
+		TRUE, "set -", "set -v", "set -",
 		TRUE, "set -e", "set +e",
 #ifdef OLDBOURNESHELL
 		FALSE, "echo \"%s\"\n", "sh -c '%s || exit 0'\n",
@@ -362,7 +361,7 @@ static const struct CShell shells[] = {
 	 */
 	{
 		"ksh",
-		TRUE, "set -", "set -v", "set -", 5,
+		TRUE, "set -", "set -v", "set -",
 		TRUE, "set -e", "set +e",
 		"v", "e",
 	},
@@ -469,25 +468,6 @@ JobCatchSig(int signo)
 }
 
 /**
- * JobCondPassSig --
- *	Pass a signal to all jobs
- *
- * Side Effects:
- *	None, except the job may bite it.
- */
-static void
-JobCondPassSig(int signo)
-{
-	Job	*job;
-
-	TAILQ_FOREACH(job, &jobs, link) {
-		DEBUGF(JOB, ("JobCondPassSig passing signal %d to child %jd.\n",
-		    signo, (intmax_t)job->pid));
-		KILL(job->pid, signo);
-	}
-}
-
-/**
  * JobPassSig --
  *	Pass a signal on to all local jobs if
  *	USE_PGRP is defined, then die ourselves.
@@ -498,6 +478,7 @@ JobCondPassSig(int signo)
 static void
 JobPassSig(int signo)
 {
+	Job	*job;
 	sigset_t nmask, omask;
 	struct sigaction act;
 
@@ -506,7 +487,11 @@ JobPassSig(int signo)
 	sigprocmask(SIG_SETMASK, &nmask, &omask);
 
 	DEBUGF(JOB, ("JobPassSig(%d) called.\n", signo));
-	JobCondPassSig(signo);
+	TAILQ_FOREACH(job, &jobs, link) {
+		DEBUGF(JOB, ("JobPassSig passing signal %d to child %jd.\n",
+		    signo, (intmax_t)job->pid));
+		KILL(job->pid, signo);
+	}
 
 	/*
 	 * Deal with proper cleanup based on the signal received. We only run
@@ -546,7 +531,11 @@ JobPassSig(int signo)
 	KILL(getpid(), signo);
 
 	signo = SIGCONT;
-	JobCondPassSig(signo);
+	TAILQ_FOREACH(job, &jobs, link) {
+		DEBUGF(JOB, ("JobPassSig passing signal %d to child %jd.\n",
+		    signo, (intmax_t)job->pid));
+		KILL(job->pid, signo);
+	}
 
 	sigprocmask(SIG_SETMASK, &omask, NULL);
 	sigprocmask(SIG_SETMASK, &omask, NULL);
@@ -580,7 +569,7 @@ JobPassSig(int signo)
  *	numCommands is incremented if the command is actually printed.
  */
 static int
-JobPrintCommand(void *cmdp, void *jobp)
+JobPrintCommand(char *cmd, Job *job)
 {
 	Boolean	noSpecials;	/* true if we shouldn't worry about
 				 * inserting special commands into
@@ -593,8 +582,6 @@ JobPrintCommand(void *cmdp, void *jobp)
 	const char *cmdTemplate;/* Template to use when printing the command */
 	char	*cmdStart;	/* Start of expanded command */
 	LstNode	*cmdNode;	/* Node for replacing the command */
-	char	*cmd = cmdp;
-	Job	*job = jobp;
 
 	noSpecials = (noExecute && !(job->node->type & OP_MAKE));
 
@@ -650,7 +637,7 @@ JobPrintCommand(void *cmdp, void *jobp)
 				 * but this one needs to be - use compat mode
 				 * just for it.
 				 */
-				Compat_RunCommand(cmdp, job->node);
+				Compat_RunCommand(cmd, job->node);
 				return (0);
 			}
 			break;
@@ -1765,7 +1752,7 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
 				fprintf(stdout, "%s", cp);
 				fflush(stdout);
 			}
-			cp = ecp + commandShell->noPLen;
+			cp = ecp + strlen(commandShell->noPrint);
 			if (cp != endp) {
 				/*
 				 * Still more to print, look again after
@@ -2209,7 +2196,6 @@ JobCopyShell(const struct Shell *osh)
 		nsh->noPrint = estrdup(osh->noPrint);
 	else
 		nsh->noPrint = NULL;
-	nsh->noPLen = osh->noPLen;
 
 	nsh->hasErrCtl = osh->hasErrCtl;
 	if (osh->errCheck == NULL)
@@ -2508,7 +2494,6 @@ JobMatchShell(const char *name)
 	nsh->echoOn = estrdup(sh->echoOn);
 	nsh->hasEchoCtl = sh->hasEchoCtl;
 	nsh->noPrint = estrdup(sh->noPrint);
-	nsh->noPLen = sh->noPLen;
 	nsh->hasErrCtl = sh->hasErrCtl;
 	nsh->errCheck = estrdup(sh->errCheck);
 	nsh->ignErr = estrdup(sh->ignErr);
@@ -2566,6 +2551,7 @@ Job_ParseShell(char *line)
 	char	**argv;
 	int	argc;
 	char	*path;
+	char	*eq;
 	Boolean	fullSpec = FALSE;
 	struct Shell	newShell;
 	struct Shell	*sh;
@@ -2576,42 +2562,59 @@ Job_ParseShell(char *line)
 	words = brk_string(line, &wordCount, TRUE);
 
 	memset(&newShell, 0, sizeof(newShell));
+	path = NULL;
 
 	/*
-	 * Parse the specification by keyword
+	 * Parse the specification by keyword but skip the first word - it
+	 * is not set by brk_string.
 	 */
-	for (path = NULL, argc = wordCount - 1, argv = words + 1; argc != 0;
-	    argc--, argv++) {
-		if (strncmp(*argv, "path=", 5) == 0) {
-			path = &argv[0][5];
-		} else if (strncmp(*argv, "name=", 5) == 0) {
-			newShell.name = &argv[0][5];
-		} else {
-			if (strncmp(*argv, "quiet=", 6) == 0) {
-				newShell.echoOff = &argv[0][6];
-			} else if (strncmp(*argv, "echo=", 5) == 0) {
-				newShell.echoOn = &argv[0][5];
-			} else if (strncmp(*argv, "filter=", 7) == 0) {
-				newShell.noPrint = &argv[0][7];
-				newShell.noPLen = strlen(newShell.noPrint);
-			} else if (strncmp(*argv, "echoFlag=", 9) == 0) {
-				newShell.echo = &argv[0][9];
-			} else if (strncmp(*argv, "errFlag=", 8) == 0) {
-				newShell.exit = &argv[0][8];
-			} else if (strncmp(*argv, "hasErrCtl=", 10) == 0) {
-				char c = argv[0][10];
-				newShell.hasErrCtl = !((c != 'Y') &&
-				    (c != 'y') && (c != 'T') && (c != 't'));
-			} else if (strncmp(*argv, "check=", 6) == 0) {
-				newShell.errCheck = &argv[0][6];
-			} else if (strncmp(*argv, "ignore=", 7) == 0) {
-				newShell.ignErr = &argv[0][7];
-			} else {
-				Parse_Error(PARSE_FATAL,
-				    "Unknown keyword \"%s\"", *argv);
-				return (FAILURE);
-			}
+	wordCount--;
+	words++;
+
+	for (argc = wordCount, argv = words; argc != 0; argc--, argv++) {
+		/*
+		 * Split keyword and value
+		 */
+		if ((eq = strchr(*argv, '=')) == NULL) {
+			Parse_Error(PARSE_FATAL, "missing '=' in shell "
+			    "specification keyword '%s'", *argv);
+			return (FAILURE);
+		}
+		*eq++ = '\0';
+
+		if (strcmp(*argv, "path") == 0) {
+			path = eq;
+		} else if (strcmp(*argv, "name") == 0) {
+			newShell.name = eq;
+		} else if (strcmp(*argv, "quiet") == 0) {
+			newShell.echoOff = eq;
 			fullSpec = TRUE;
+		} else if (strcmp(*argv, "echo") == 0) {
+			newShell.echoOn = eq;
+			fullSpec = TRUE;
+		} else if (strcmp(*argv, "filter") == 0) {
+			newShell.noPrint = eq;
+			fullSpec = TRUE;
+		} else if (strcmp(*argv, "echoFlag") == 0) {
+			newShell.echo = eq;
+			fullSpec = TRUE;
+		} else if (strcmp(*argv, "errFlag") == 0) {
+			newShell.exit = eq;
+			fullSpec = TRUE;
+		} else if (strcmp(*argv, "hasErrCtl") == 0) {
+			newShell.hasErrCtl = (*eq == 'Y' || *eq == 'y' ||
+			    *eq == 'T' || *eq == 't');
+			fullSpec = TRUE;
+		} else if (strcmp(*argv, "check") == 0) {
+			newShell.errCheck = eq;
+			fullSpec = TRUE;
+		} else if (strcmp(*argv, "ignore") == 0) {
+			newShell.ignErr = eq;
+			fullSpec = TRUE;
+		} else {
+			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
+			    "specification '%s'", *argv);
+			return (FAILURE);
 		}
 	}
 
