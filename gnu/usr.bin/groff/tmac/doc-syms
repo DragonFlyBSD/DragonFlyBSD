@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)doc-syms	8.1 (Berkeley) 06/08/93
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-syms,v 1.3 2004/10/31 10:31:21 asmodai Exp $ 
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-syms,v 1.4 2005/04/10 00:09:32 hmp Exp $ 
 .\"
 .\"     %beginstrip%
 .
@@ -742,12 +742,15 @@
 .
 .ds doc-str-Lb-libarm32    ARM32 Architecture Library (libarm32, \-larm32)
 .ds doc-str-Lb-libc        Standard C\~Library (libc, \-lc)
+.ds doc-str-Lb-libcaps     CAPS IPC Library (libcaps, \-lcaps)
 .ds doc-str-Lb-libcompat   Compatibility Library (libcompat, \-lcompat)
 .ds doc-str-Lb-libcrypt    Crypt Library (libcrypt, \-lcrypt)
 .ds doc-str-Lb-libcurses   Curses Library (libcurses, \-lcurses)
 .ds doc-str-Lb-libedit     Command Line Editor Library (libedit, \-ledit)
 .ds doc-str-Lb-libi386     i386 Architecture Library (libi386, \-li386)
 .ds doc-str-Lb-libipsec    IPsec Policy Control Library (libipsec, \-lipsec)
+.ds doc-str-Lb-libkcore    Kernel Memory Core Access Library (libkcore, \-lkcore)
+.ds doc-str-Lb-libkinfo    Kernel Information Access Library (libkinfo, \-lkinfo)
 .ds doc-str-Lb-libkvm      Kernel Data Access Library (libkvm, \-lkvm)
 .ds doc-str-Lb-libm        Math Library (libm, \-lm)
 .ds doc-str-Lb-libmenu     Curses Menu Library (libmenu, \-lmenu)
