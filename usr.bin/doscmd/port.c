@@ -30,7 +30,7 @@
  *	BSDI port.c,v 2.2 1996/04/08 19:33:03 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/port.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/port.c,v 1.5 2004/01/22 03:22:52 rob Exp $
+ * $DragonFly: src/usr.bin/doscmd/port.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/ioctl.h>
@@ -44,7 +44,7 @@
 
 #define in(port) \
 ({ \
-        register int _inb_result; \
+        int _inb_result; \
 \
         asm volatile ("xorl %%eax,%%eax; inb %%dx,%%al" : \
             "=a" (_inb_result) : "d" (port)); \

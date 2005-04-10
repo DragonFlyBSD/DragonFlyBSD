@@ -32,7 +32,7 @@
  *
  * @(#)printgprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/printgprof.c,v 1.6 1999/08/28 01:01:56 peter Exp $
- * $DragonFly: src/usr.bin/gprof/printgprof.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gprof/printgprof.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <err.h>
@@ -41,7 +41,7 @@
 
 printprof(void)
 {
-    register nltype	*np;
+    nltype	*np;
     nltype		**sortednlp;
     int			index, timecmp();
 
@@ -115,7 +115,7 @@ flatprofheader(void)
 	    "name" );
 }
 
-flatprofline(register nltype *np)
+flatprofline(nltype *np)
 {
 
     if ( zflag == 0 && np -> ncall == 0 && np -> time == 0 ) {
@@ -176,7 +176,7 @@ gprofheader(void)
     printf( "\n" );
 }
 
-gprofline(register nltype *np)
+gprofline(nltype *np)
 {
     char	kirkbuffer[ BUFSIZ ];
 
@@ -250,8 +250,8 @@ printgprof(nltype **timesortnlp)
 int
 totalcmp(nltype **npp1, nltype **npp2 )
 {
-    register nltype	*np1 = *npp1;
-    register nltype	*np2 = *npp2;
+    nltype	*np1 = *npp1;
+    nltype	*np2 = *npp2;
     double		diff;
 
     diff =    ( np1 -> propself + np1 -> propchild )
@@ -669,7 +669,7 @@ namecmp(nltype **npp1, nltype **npp2)
 printindex(void)
 {
     nltype		**namesortnlp;
-    register nltype	*nlp;
+    nltype	*nlp;
     int			index, nnames, todo, i, j;
     char		peterbuffer[ BUFSIZ ];
 

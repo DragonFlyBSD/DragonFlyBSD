@@ -34,7 +34,7 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/parse.c,v 1.3.2.3 2001/12/06 19:28:47 schweikh Exp $
- * $DragonFly: src/usr.bin/indent/parse.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/indent/parse.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 #if 0
 #endif
@@ -250,7 +250,7 @@ parse(int tk) /* tk: the code for the construct scanned */
 static void
 reduce(void)
 {
-    register int i;
+    int i;
 
     for (;;) {			/* keep looping until there is nothing left to
 				 * reduce */

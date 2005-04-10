@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/expand/expand.c,v 1.5.2.6 2002/07/09 10:47:59 tjr Exp $
- * $DragonFly: src/usr.bin/expand/expand.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/expand/expand.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <ctype.h>
@@ -55,8 +55,8 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	register int c, column;
-	register int n;
+	int c, column;
+	int n;
 	int rval;
 
 	setlocale(LC_CTYPE, "");
@@ -148,9 +148,9 @@ main(int argc, char **argv)
 }
 
 static void
-getstops(register char *cp)
+getstops(char *cp)
 {
-	register int i;
+	int i;
 
 	nstops = 0;
 	for (;;) {

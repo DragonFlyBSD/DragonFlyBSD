@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/gprof.c,v 1.11 1999/08/28 01:01:55 peter Exp $
- * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <err.h>
@@ -336,8 +336,8 @@ tally(struct rawarc *rawp)
  */
 dumpsum(char *sumfile)
 {
-    register nltype *nlp;
-    register arctype *arcp;
+    nltype *nlp;
+    arctype *arcp;
     struct rawarc arc;
     FILE *sfile;
 
@@ -455,11 +455,11 @@ readsamples(FILE *pfile)
  */
 asgnsamples(void)
 {
-    register int	j;
+    int	j;
     UNIT		ccnt;
     double		time;
     unsigned long	pcl, pch;
-    register int	i;
+    int	i;
     unsigned long	overlap;
     unsigned long	svalue0, svalue1;
 
@@ -542,7 +542,7 @@ max(unsigned long a, unsigned long b)
      */
 alignentries(void)
 {
-    register struct nl	*nlp;
+    struct nl	*nlp;
     unsigned long	bucket_of_entry;
     unsigned long	bucket_of_code;
 

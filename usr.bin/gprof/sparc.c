@@ -36,7 +36,7 @@
  *
  * @(#)sparc.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/gprof/sparc.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gprof/sparc.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include	"gprof.h"
@@ -70,11 +70,11 @@ nltype	indirectchild = {
 
 findcall(nltype *parentp, unsigned long p_lowpc, unsigned long p_highpc)
 {
-	register u_long pc;
+	u_long pc;
 	nltype *childp;
 	unsigned long destpc;
-	register long op;
-	register int off;
+	long op;
+	int off;
 
 	if (textspace == 0)
 		return;

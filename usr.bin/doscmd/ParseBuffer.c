@@ -30,7 +30,7 @@
  *	BSDI ParseBuffer.c,v 2.2 1996/04/08 19:32:15 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/ParseBuffer.c,v 1.2.2.2 2002/04/25 11:04:50 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/ParseBuffer.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
+ * $DragonFly: src/usr.bin/doscmd/ParseBuffer.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <stdlib.h>
@@ -45,10 +45,10 @@ ParseBuffer(char *obuf, char **av, int mac)
 	static int buflen = 0;
 	int len;
 
-        register char *b = buf;
-        register char *p;
-        register char **a;
-	register char **e;
+        char *b = buf;
+        char *p;
+        char **a;
+	char **e;
 
 	len = strlen(obuf) + 1;
 	if (len > buflen) {

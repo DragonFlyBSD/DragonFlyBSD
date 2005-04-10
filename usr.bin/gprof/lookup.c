@@ -32,7 +32,7 @@
  *
  * @(#)lookup.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/gprof/lookup.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gprof/lookup.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include "gprof.h"
@@ -45,11 +45,11 @@
 nltype *
 nllookup(unsigned long address)
 {
-    register long	low;
-    register long	middle;
-    register long	high;
+    long	low;
+    long	middle;
+    long	high;
 #   ifdef DEBUG
-	register int	probes;
+	int	probes;
 
 	probes = 0;
 #   endif DEBUG

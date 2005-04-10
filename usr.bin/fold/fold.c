@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fold.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/fold/fold.c,v 1.4.2.3 2002/07/11 01:01:44 tjr Exp $
- * $DragonFly: src/usr.bin/fold/fold.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/fold/fold.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <ctype.h>
@@ -60,7 +60,7 @@ int sflag;			/* Split on word boundaries */
 int
 main(int argc, char **argv)
 {
-	register int ch;
+	int ch;
 	int rval, width;
 	char *p;
 
@@ -129,7 +129,7 @@ usage(void)
  * returns embedded in the input stream.
  */
 void
-fold(register int width)
+fold(int width)
 {
 	static char *buf;
 	static int buf_max;

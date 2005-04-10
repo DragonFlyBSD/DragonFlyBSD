@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cksum.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/cksum/cksum.c,v 1.11.2.1 2001/07/30 10:16:29 dd Exp $
- * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.5 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	register int ch, fd, rval;
+	int ch, fd, rval;
 	u_int32_t len, val;
 	char *fn, *p;
 	int (*cfncn)(int, u_int32_t *, u_int32_t *);

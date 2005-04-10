@@ -35,7 +35,7 @@
  * @(#) Copyright (c) 1985 Sun Microsystems, Inc. @(#) Copyright (c) 1976 Board of Trustees of the University of Illinois. @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)indent.c	5.17 (Berkeley) 6/7/93
  * $FreeBSD: src/usr.bin/indent/indent.c,v 1.5.2.6 2001/12/06 19:28:47 schweikh Exp $
- * $DragonFly: src/usr.bin/indent/indent.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/indent/indent.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ main(int argc, char **argv)
     int         force_nl;	/* when true, code must be broken */
     int         hd_type = 0;	/* used to store type of stmt for if (...),
 				 * for (...), etc */
-    register int i;		/* local loop counter */
+    int i;			/* local loop counter */
     int         scase;		/* set to true when we see a case, so we will
 				 * know what to do with the following colon */
     int         sp_sw;		/* when true, we are in the expressin of
@@ -78,7 +78,7 @@ main(int argc, char **argv)
     int         squest;		/* when this is positive, we have seen a ?
 				 * without the matching : in a <c>?<s>:<s>
 				 * construct */
-    register char *t_ptr;	/* used for copying tokens */
+    char *t_ptr;	/* used for copying tokens */
     int         type_code;	/* the type of token, returned by lexi */
 
     int         last_else = 0;	/* true iff last keyword was an else */
@@ -240,8 +240,8 @@ main(int argc, char **argv)
 
     parse(semicolon);
     {
-	register char *p = buf_ptr;
-	register int col = 1;
+	char *p = buf_ptr;
+	int col = 1;
 
 	while (1) {
 	    if (*p == ' ')
@@ -256,7 +256,7 @@ main(int argc, char **argv)
 	    ps.ind_level = ps.i_l_follow = col / ps.ind_size;
     }
     if (troff) {
-	register char *p = in_name,
+	char *p = in_name,
 	           *beg = in_name;
 
 	while (*p)
@@ -1061,7 +1061,7 @@ check_type:
 
 	    if (strncmp(s_lab, "#if", 3) == 0) {
 		if (blanklines_around_conditional_compilation) {
-		    register int c;
+		    int c;
 		    prefix_blankline_requested++;
 		    while ((c = getc(input)) == '\n');
 		    ungetc(c, input);
@@ -1132,7 +1132,7 @@ bakcopy(void)
     int         n,
                 bakchn;
     char        buff[8 * 1024];
-    register char *p;
+    char *p;
 
     /* construct file name .Bfile */
     for (p = in_name; *p; p++);	/* skip to end of string */

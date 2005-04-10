@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.12 2005/04/04 17:42:51 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.13 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -150,7 +150,7 @@ void usage(void);
 int
 main(int argc, char **argv)
 {
-	register struct passwd *passwd;
+	struct passwd *passwd;
 	struct kinfo_proc *p, *plast;
 	int arg, ch, what;
 	char *memf, *nlistf;
@@ -499,7 +499,7 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 	}
 	if (checkfile) {
 		int fsmatch = 0;
-		register DEVS *d;
+		DEVS *d;
 
 		if (badtype)
 			return;
@@ -582,7 +582,7 @@ int
 nfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct nfsnode nfsnode;
-	register mode_t mode;
+	mode_t mode;
 
 	if (!KVM_READ(VTONFS(vp), &nfsnode, sizeof (nfsnode))) {
 		dprintf(stderr, "can't read nfsnode at %p for pid %d\n",
@@ -875,7 +875,7 @@ void
 getinetproto(int number)
 {
 	static int isopen;
-	register struct protoent *pe;
+	struct protoent *pe;
 
 	if (!isopen)
 		setprotoent(++isopen);

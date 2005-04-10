@@ -11,7 +11,7 @@
  *			Spencer Garrett <srg@quick.com>
  *
  * $FreeBSD: src/usr.bin/cksum/crc32.c,v 1.5 1999/12/05 20:03:21 charnier Exp $
- * $DragonFly: src/usr.bin/cksum/crc32.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/cksum/crc32.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -96,7 +96,7 @@ static const u_int32_t crctab[256] = {
 u_int32_t crc32_total = 0 ;
 
 int
-crc32(register int fd, u_int32_t *cval, u_int32_t *clen)
+crc32(int fd, u_int32_t *cval, u_int32_t *clen)
 {
     u_int32_t crc = ~0;
     char buf[BUFSIZ], *p ;

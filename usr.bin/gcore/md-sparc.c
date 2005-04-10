@@ -36,7 +36,7 @@
  *
  * @(#)md-sparc.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/gcore/md-sparc.c,v 1.4 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/gcore/md-sparc.c,v 1.5 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,7 @@
 #endif
 
 static void
-shift_page(register int fd, register off_t off, register int ssize)
+shift_page(int fd, off_t off, int ssize)
 {
 	char buffer[NBPG];
 
@@ -80,10 +80,10 @@ shift_page(register int fd, register off_t off, register int ssize)
 void
 md_core(kvm_t *kd, int fd, struct kinfo_proc *ki)
 {
-	register struct rwindow *rw;
-	register int nsaved, cc, ssize;
-	register off_t off, s;
-	register u_long sp;
+	struct rwindow *rw;
+	int nsaved, cc, ssize;
+	off_t off, s;
+	u_long sp;
 	struct pcb pcb;
 	struct trapframe tf;
 

@@ -34,7 +34,7 @@
  *
  * @(#)lexi.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/lexi.c,v 1.3.6.3 2001/12/06 19:28:47 schweikh Exp $
- * $DragonFly: src/usr.bin/indent/lexi.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/indent/lexi.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #if 0
@@ -148,10 +148,10 @@ lexi(void)
 	/*
 	 * we have a character or number
 	 */
-	register char *j;	/* used for searching thru list of
+	char *j;	/* used for searching thru list of
 				 *
 				 * reserved words */
-	register struct templ *p;
+	struct templ *p;
 
 	if (isdigit(*buf_ptr) || (buf_ptr[0] == '.' && isdigit(buf_ptr[1]))) {
 	    int         seendot = 0,
@@ -248,7 +248,7 @@ lexi(void)
 	 * This loop will check if the token is a keyword.
 	 */
 	for (p = specials; (j = p->rwd) != 0; p++) {
-	    register char *p = s_token;	/* point at scanned token */
+	    char *p = s_token;	/* point at scanned token */
 	    if (*j++ != *p++ || *j++ != *p++)
 		continue;	/* This test depends on the fact that
 				 * identifiers are always at least 1 character
@@ -313,7 +313,7 @@ lexi(void)
 	    }			/* end of switch */
 	}			/* end of if (found_it) */
 	if (*buf_ptr == '(' && ps.tos <= 1 && ps.ind_level == 0) {
-	    register char *tp = buf_ptr;
+	    char *tp = buf_ptr;
 	    while (tp < buf_end)
 		if (*tp++ == ')' && (*tp == ';' || *tp == ','))
 		    goto not_proc;
@@ -586,7 +586,7 @@ stop_lit:
 void
 addkey(char *key, int val)
 {
-    register struct templ *p = specials;
+    struct templ *p = specials;
     while (p->rwd)
 	if (p->rwd[0] == key[0] && strcmp(p->rwd, key) == 0)
 	    return;

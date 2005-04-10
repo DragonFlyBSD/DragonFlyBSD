@@ -32,7 +32,7 @@
  *
  * @(#)display.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/display.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/display.c,v 1.5 2005/02/05 01:05:12 cpressey Exp $
+ * $DragonFly: src/usr.bin/hexdump/display.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -155,10 +155,10 @@ display(void)
 {
 	
 	FS *fs;
-	register FU *fu;
-	register PR *pr;
-	register int cnt;
-	register u_char *bp;
+	FU *fu;
+	PR *pr;
+	int cnt;
+	u_char *bp;
 	off_t saveaddress;
 	u_char savech = '\0', *savebp;
 
@@ -209,7 +209,7 @@ void
 bpad(PR *pr)
 {
 	static char const *spec = " -0+#";
-	register char *p1, *p2;
+	char *p1, *p2;
 
 	/*
 	 * Remove all conversion flags; '-' is the only one valid
@@ -230,7 +230,7 @@ get(void)
 {
 	static int ateof = 1;
 	static u_char *curp, *savp;
-	register int n;
+	int n;
 	int need, nread;
 	int valid_save = 0;
 	u_char *tmpp;
@@ -337,7 +337,7 @@ next(char **argv)
 void
 doskip(const char *fname, int statok)
 {
-	register int cnt;
+	int cnt;
 	struct stat sb;
 
 	if (statok) {

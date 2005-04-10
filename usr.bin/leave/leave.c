@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)leave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/leave/leave.c,v 1.5.2.2 2001/07/30 09:43:30 dd Exp $
- * $DragonFly: src/usr.bin/leave/leave.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
+ * $DragonFly: src/usr.bin/leave/leave.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <err.h>
@@ -57,9 +57,9 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	register u_int secs;
-	register int hours, minutes;
-	register char c, *cp = NULL;
+	u_int secs;
+	int hours, minutes;
+	char c, *cp = NULL;
 	struct tm *t;
 	time_t now;
 	int plusnow, t_12_hour;
@@ -130,7 +130,7 @@ main(int argc, char **argv)
 void
 doalarm(u_int secs)
 {
-	register int bother;
+	int bother;
 	time_t daytime;
 	char tb[80];
 	int pid;

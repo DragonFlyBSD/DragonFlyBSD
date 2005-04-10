@@ -34,7 +34,7 @@
  *
  * @(#)args.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/args.c,v 1.3.2.3 2001/12/06 19:28:47 schweikh Exp $
- * $DragonFly: src/usr.bin/indent/args.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/indent/args.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 
 /*
@@ -160,7 +160,7 @@ struct pro {
 void
 set_profile(void)
 {
-    register FILE *f;
+    FILE *f;
     char        fname[BUFSIZ];
     static char prof[] = ".indent.pro";
 
@@ -177,10 +177,10 @@ set_profile(void)
 }
 
 static void
-scan_profile(register FILE *f)
+scan_profile(FILE *f)
 {
-    register int i;
-    register char *p;
+    int i;
+    char *p;
     char        buf[BUFSIZ];
 
     while (1) {
@@ -215,7 +215,7 @@ eqin(char *s1, char *s2)
 void
 set_defaults(void)
 {
-    register struct pro *p;
+    struct pro *p;
 
     /*
      * Because ps.case_indent is a float, we can't initialize it from the
@@ -230,7 +230,7 @@ set_defaults(void)
 void
 set_option(char *arg)
 {
-    register struct pro *p;
+    struct pro *p;
 
     arg++;			/* ignore leading "-" */
     for (p = pro; p->p_name; p++)
@@ -263,7 +263,7 @@ found:
 	    if (*param_start == 0)
 		goto need_param;
 	    {
-		register char *str = (char *) malloc(strlen(param_start) + 1);
+		char *str = (char *) malloc(strlen(param_start) + 1);
 		strcpy(str, param_start);
 		addkey(str, 4);
 	    }

@@ -32,18 +32,18 @@
  *
  * @(#)sum2.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/cksum/sum2.c,v 1.4 1999/12/05 20:03:22 charnier Exp $
- * $DragonFly: src/usr.bin/cksum/sum2.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/cksum/sum2.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
 #include <unistd.h>
 
 int
-csum2(register int fd, u_int32_t *cval, u_int32_t *clen)
+csum2(int fd, u_int32_t *cval, u_int32_t *clen)
 {
-	register u_int32_t crc, total;
-	register int nr;
-	register u_char *p;
+	u_int32_t crc, total;
+	int nr;
+	u_char *p;
 	u_char buf[8192];
 
 	/*

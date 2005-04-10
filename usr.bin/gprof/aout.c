@@ -1,3 +1,4 @@
+/* $DragonFly: src/usr.bin/gprof/aout.c,v 1.2 2005/04/10 20:55:38 drhodus Exp $								*/
 #include <a.out.h>
 
 #include "gprof.h"
@@ -43,7 +44,7 @@ aout_getnfile(const char *filename, char ***defaultEs)
     fclose(nfile);
 #   ifdef DEBUG
 	if ( debug & AOUTDEBUG ) {
-	    register int j;
+	    int j;
 
 	    for (j = 0; j < nname; j++){
 		printf("[getnfile] 0X%08x\t%s\n", nl[j].value, nl[j].name);
@@ -80,7 +81,7 @@ getstrtab(FILE *nfile, const char *filename)
 static void
 getsymtab(FILE *nfile, const char *filename)
 {
-    register long	i;
+    long	i;
     int			askfor;
     struct nlist	nbuf;
 

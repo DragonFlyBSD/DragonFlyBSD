@@ -32,7 +32,7 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/parse.c,v 1.4.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.5 2005/02/05 01:05:12 cpressey Exp $
+ * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -50,7 +50,7 @@ FU *endfu;					/* format at end-of-data */
 void
 addfile(char *name)
 {
-	register unsigned char *p;
+	unsigned char *p;
 	FILE *fp;
 	int ch;
 	char buf[2048 + 1];
@@ -150,9 +150,9 @@ static const char *spec = ".#-+ 0123456789";
 int
 size(FS *fs)
 {
-	register FU *fu;
-	register int bcnt, cursize;
-	register unsigned char *fmt;
+	FU *fu;
+	int bcnt, cursize;
+	unsigned char *fmt;
 	int prec;
 
 	/* figure out the data block size needed for each format unit */
@@ -204,8 +204,8 @@ void
 rewrite(FS *fs)
 {
 	enum { NOTOKAY, USEBCNT, USEPREC } sokay;
-	register PR *pr, **nextpr = NULL;
-	register FU *fu;
+	PR *pr, **nextpr = NULL;
+	FU *fu;
 	unsigned char *p1, *p2, *fmtp;
 	char savech, cs[3];
 	int nconv, prec = 0;
@@ -441,9 +441,9 @@ isint2:					switch(fu->bcnt) {
 }
 
 void
-escape(register char *p1)
+escape(char *p1)
 {
-	register char *p2;
+	char *p2;
 
 	/* alphabetic escape sequences have to be done in place */
 	for (p2 = p1;; ++p1, ++p2) {

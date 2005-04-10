@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.6 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.7 2005/04/10 20:55:38 drhodus Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ static pid_t pid;
 int
 main(int argc, char **argv)
 {
-	register struct proc *p;
+	struct proc *p;
 	struct kinfo_proc *ki = NULL;
 	struct exec exec;
 	int ch, cnt, efd, fd, sflag, uid;
@@ -248,10 +248,10 @@ core(int efd, int fd, struct kinfo_proc *ki)
 }
 
 void
-datadump(register int efd, register int fd, struct proc *p,
-         register u_long addr, register int npage)
+datadump(int efd, int fd, struct proc *p,
+         u_long addr, int npage)
 {
-	register int cc, delta;
+	int cc, delta;
 	char buffer[PAGE_SIZE];
 
 	delta = data_offset - addr;
@@ -292,10 +292,10 @@ restart_target(void)
 }
 
 void
-userdump(register int fd, struct proc *p, register u_long addr,
-         register int npage)
+userdump(int fd, struct proc *p, u_long addr,
+         int npage)
 {
-	register int cc;
+	int cc;
 	char buffer[PAGE_SIZE];
 
 	while (--npage >= 0) {

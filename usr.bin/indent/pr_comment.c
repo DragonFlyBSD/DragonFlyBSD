@@ -34,7 +34,7 @@
  *
  * @(#)pr_comment.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/pr_comment.c,v 1.1.1.1.14.3 2001/12/06 19:28:47 schweikh Exp $
- * $DragonFly: src/usr.bin/indent/pr_comment.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/indent/pr_comment.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 #if 0
 #endif
@@ -135,7 +135,7 @@ pr_comment(void)
 		ps.com_col = 1 + !format_col1_comments;
 	}
 	else {
-	    register int target_col;
+	    int target_col;
 	    break_delim = 0;
 	    if (s_code != e_code)
 		target_col = count_spaces(compute_code_target(), s_code);

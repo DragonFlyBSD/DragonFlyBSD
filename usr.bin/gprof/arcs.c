@@ -32,7 +32,7 @@
  *
  * @(#)arcs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/arcs.c,v 1.6 1999/08/28 01:01:54 peter Exp $
- * $DragonFly: src/usr.bin/gprof/arcs.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gprof/arcs.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <err.h>
@@ -345,8 +345,8 @@ timepropagate(nltype *parentp)
 
 cyclelink(void)
 {
-    register nltype	*nlp;
-    register nltype	*cyclenlp;
+    nltype	*nlp;
+    nltype	*cyclenlp;
     int			cycle;
     nltype		*memberp;
     arctype		*arcp;

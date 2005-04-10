@@ -35,7 +35,7 @@
  *
  * @(#)crc.c	8.1 (Berkeley) 6/17/93
  * $FreeBSD: src/usr.bin/cksum/crc.c,v 1.4 1999/12/05 20:03:21 charnier Exp $
- * $DragonFly: src/usr.bin/cksum/crc.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/cksum/crc.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -105,11 +105,11 @@ static const u_int32_t crctab[] = {
 u_int32_t crc_total = ~0;			/* The crc over a number of files. */
 
 int
-crc(register int fd, u_int32_t *cval, u_int32_t *clen)
+crc(int fd, u_int32_t *cval, u_int32_t *clen)
 {
-	register u_char *p;
-	register int nr;
-	register u_int32_t crc, len;
+	u_char *p;
+	int nr;
+	u_int32_t crc, len;
 	u_char buf[16 * 1024];
 
 #define	COMPUTE(var, ch)	(var) = (var) << 8 ^ crctab[(var) >> 24 ^ (ch)]
