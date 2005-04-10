@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.22 2005/04/07 00:35:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.23 2005/04/10 10:18:45 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -55,14 +55,25 @@
 #define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
 #endif
 
-/* Needed for cross compile on FreeBSD 4.X */
+/*
+ * Needed for cross compile on FreeBSD 4.X.  In addition, people
+ * upgrading DFly via source, from before March 17, 2005 might need
+ * to manually define NEED_STRTOUMAX in CFLAGS, because strtoumax()
+ * did not exist before then.
+ *
+ * This code should be removed if when cross compiling from FreeBSD
+ * 4.X is no longer required, and no one is upgrading from before
+ * March 17.	 Max Okumoto.
+ */
 #ifndef INT64_MIN
-#include <stdlib.h>
 #define	INT64_MIN	(-0x7fffffffffffffffLL-1)
+#define NEED_STRTOUMAX
+#include <stdlib.h>
 
 typedef	__int64_t	intmax_t;
 typedef	__uint64_t	uintmax_t;
-
+#endif
+#ifdef NEED_STRTOUMAX
 static inline uintmax_t
 strtoumax(const char *nptr, char **endptr, int base)
 {
