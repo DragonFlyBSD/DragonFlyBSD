@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.29 2005/03/13 20:20:22 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.29.2.1 2005/04/10 18:57:37 dillon Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -28,10 +28,51 @@ PERL_VER?=	5.8.6
 # handle both native and override ports
 .undef USE_GETOPT_LONG
 
-.if defined(USE_RC_SUBR)
-.undef USE_RC_SUBR
-RC_SUBR=	/etc/rc.subr
+.if defined(USE_RCORDER)
+_DF_USE_RCORDER:=	${USE_RCORDER}
 .endif
+.if defined(USE_RC_SUBR)
+_DF_USE_RC_SUBR:=	${USE_RC_SUBR}
+.endif
+
+.if !target(install-rc-script)
+install-rc-script:
+.if defined(USE_RCORDER) || defined(USE_RC_SUBR) && ${USE_RC_SUBR:U} != "YES"
+.if defined(USE_RCORDER)
+	@${ECHO_CMD} "===> Installing early rcNG startup script(s)"
+	@${ECHO_CMD} "@cwd /" >> ${TMPPLIST}
+	@for i in ${_DF_USE_RCORDER}; do \
+		${INSTALL_SCRIPT} ${WRKDIR}/$${i} /etc/rc.d/$${i%.sh}; \
+		${ECHO_CMD} "etc/rc.d/$${i%.sh}" >> ${TMPPLIST}; \
+	done
+	@${ECHO_CMD} "@cwd ${PREFIX}" >> ${TMPPLIST}
+.endif
+.if defined(USE_RC_SUBR) && ${USE_RC_SUBR:U} != "YES"
+	@${ECHO_CMD} "===> Installing rcNG startup script(s)"
+	@${ECHO_CMD} "@cwd ${PREFIX}" >> ${TMPPLIST}
+	@for i in ${_DF_USE_RC_SUBR}; do \
+		${INSTALL_SCRIPT} ${WRKDIR}/$${i} ${PREFIX}/etc/rc.d/$${i%.sh}.sh; \
+		${ECHO_CMD} "etc/rc.d/$${i%.sh}.sh" >> ${TMPPLIST}; \
+	done
+.endif
+.else
+	@${DO_NADA}
+.endif
+.endif
+
+.if defined(USE_RC_SUBR) || defined(USE_RCORDER)
+RC_SUBR=	/etc/rc.subr
+SUB_LIST+=	RC_SUBR=${RC_SUBR}
+.if defined(USE_RC_SUBR) && ${USE_RC_SUBR:U} != "YES"
+SUB_FILES+=	${_DF_USE_RC_SUBR}
+.endif
+.if defined(USE_RCORDER)
+SUB_FILES+=	${_DF_USE_RCORDER}
+.endif
+.endif
+
+.undef USE_RC_SUBR
+.undef USE_RCORDER
 
 .if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile)
 
