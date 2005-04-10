@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.30 2005/04/08 04:22:28 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.31 2005/04/10 20:27:32 drhodus Exp $
 #
 
 ISODIR ?= /usr/release
@@ -47,6 +47,8 @@ quickrel:	check clean buildworld2 buildkernel2 \
 realquickrel:	check clean \
 		buildiso customizeiso pkgaddiso mklocatedb mkiso
 
+livecd:		check_mkisofs clean buildiso mkiso
+
 #########################################################################
 #			ISO TARGETS WITH INSTALLER			#
 #########################################################################
@@ -78,12 +80,16 @@ installer_realquickrel:
 #				HELPER TARGETS				#
 #########################################################################
 
-check:
+check:	check_mkisofs check_installer
+
+check_mkisofs:
 	@if [ ! -f /usr/local/bin/mkisofs ]; then \
 		echo "You need to install the sysutils/cdrtools port for"; \
 		echo "this target"; \
 		exit 1; \
 	fi
+
+check_installer:
 .for PKG in ${REL_PACKAGES}
 	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
 		echo "Unable to find ${PACKAGES_LOC}/${PKG}.tgz.  This is"; \
