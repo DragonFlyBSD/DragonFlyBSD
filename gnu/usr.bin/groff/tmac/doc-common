@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)doc-common	8.1 (Berkeley) 06/08/93
-.\"	$DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-common,v 1.5 2005/02/26 11:15:15 asmodai Exp $ 
+.\"	$DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-common,v 1.6 2005/04/10 00:02:01 hmp Exp $ 
 .\"
 .\"     %beginstrip%
 .
@@ -435,13 +435,17 @@
 .ds doc-operating-system-FreeBSD-4.8     4.8
 .ds doc-operating-system-FreeBSD-4.9     4.9
 .ds doc-operating-system-FreeBSD-4.10    4.10
+.ds doc-operating-system-FreeBSD-4.11    4.11
 .ds doc-operating-system-FreeBSD-5.0     5.0
 .ds doc-operating-system-FreeBSD-5.1     5.1
 .ds doc-operating-system-FreeBSD-5.2     5.2
 .ds doc-operating-system-FreeBSD-5.2.1   5.2.1
 .ds doc-operating-system-FreeBSD-5.3     5.3
+.ds doc-operating-system-FreeBSD-5.4     5.4
+.ds doc-operating-system-FreeBSD-6.0     6.0
 .ds doc-operating-system-DragonFly-1.0   1.0
 .ds doc-operating-system-DragonFly-1.1   1.1
+.ds doc-operating-system-DragonFly-1.2   1.2
 .
 .de Os
 .  if "\$1"" \
