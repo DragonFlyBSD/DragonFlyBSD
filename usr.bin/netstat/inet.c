@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.17 2004/12/24 02:23:50 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.18 2005/04/11 14:51:38 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -507,21 +507,21 @@ tcp_stats(u_long off __unused, char *name, int af __unused)
 	p(tcps_predack, "\t%lu correct ACK header prediction%s\n");
 	p(tcps_preddat, "\t%lu correct data packet header prediction%s\n");
 
-	p(tcps_sc_added, "\t%lu syncache entries added\n"); 
-	p(tcps_sc_retransmitted, "\t\t%lu retransmitted\n"); 
-	p(tcps_sc_dupsyn, "\t\t%lu dupsyn\n"); 
-	p(tcps_sc_dropped, "\t\t%lu dropped\n"); 
-	p(tcps_sc_completed, "\t\t%lu completed\n"); 
-	p(tcps_sc_bucketoverflow, "\t\t%lu bucket overflow\n"); 
-	p(tcps_sc_cacheoverflow, "\t\t%lu cache overflow\n"); 
-	p(tcps_sc_reset, "\t\t%lu reset\n"); 
-	p(tcps_sc_stale, "\t\t%lu stale\n"); 
-	p(tcps_sc_aborted, "\t\t%lu aborted\n"); 
-	p(tcps_sc_badack, "\t\t%lu badack\n"); 
-	p(tcps_sc_unreach, "\t\t%lu unreach\n"); 
-	p(tcps_sc_zonefail, "\t\t%lu zone failures\n"); 
-	p(tcps_sc_sendcookie, "\t%lu cookies sent\n"); 
-	p(tcps_sc_recvcookie, "\t%lu cookies received\n"); 
+	p1a(tcps_sc_added, "\t%lu syncache entries added\n"); 
+	p1a(tcps_sc_retransmitted, "\t\t%lu retransmitted\n"); 
+	p1a(tcps_sc_dupsyn, "\t\t%lu dupsyn\n"); 
+	p1a(tcps_sc_dropped, "\t\t%lu dropped\n"); 
+	p1a(tcps_sc_completed, "\t\t%lu completed\n"); 
+	p1a(tcps_sc_bucketoverflow, "\t\t%lu bucket overflow\n"); 
+	p1a(tcps_sc_cacheoverflow, "\t\t%lu cache overflow\n"); 
+	p1a(tcps_sc_reset, "\t\t%lu reset\n"); 
+	p1a(tcps_sc_stale, "\t\t%lu stale\n"); 
+	p1a(tcps_sc_aborted, "\t\t%lu aborted\n"); 
+	p1a(tcps_sc_badack, "\t\t%lu badack\n"); 
+	p1a(tcps_sc_unreach, "\t\t%lu unreach\n"); 
+	p1a(tcps_sc_zonefail, "\t\t%lu zone failures\n"); 
+	p1a(tcps_sc_sendcookie, "\t%lu cookies sent\n"); 
+	p1a(tcps_sc_recvcookie, "\t%lu cookies received\n"); 
 	free(stattmp);
 #undef p
 #undef p1a
