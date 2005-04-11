@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.45 2005/03/06 05:09:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.46 2005/04/11 09:43:50 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -240,7 +240,7 @@ static void tcp_willblock(void);
 static void tcp_cleartaocache (void);
 static void tcp_notify (struct inpcb *, int);
 
-struct tcp_stats tcpstats_ary[MAXCPU];
+struct tcp_stats tcpstats_percpu[MAXCPU];
 #ifdef SMP
 static int
 sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
@@ -248,10 +248,10 @@ sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 	int cpu, error = 0;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if ((error = SYSCTL_OUT(req, &tcpstats_ary[cpu],
+		if ((error = SYSCTL_OUT(req, &tcpstats_percpu[cpu],
 					sizeof(struct tcp_stats))))
 			break;
-		if ((error = SYSCTL_IN(req, &tcpstats_ary[cpu],
+		if ((error = SYSCTL_IN(req, &tcpstats_percpu[cpu],
 				       sizeof(struct tcp_stats))))
 			break;
 	}
@@ -366,15 +366,11 @@ tcp_init()
 #undef TCP_MINPROTOHDR
 
 	/*
-	 * Initialize TCP statistics.
-	 *
-	 * It is layed out as an array which is has one element for UP,
-	 * and SMP_MAXCPU elements for SMP.  This allows us to retain
-	 * the access mechanism from userland for both UP and SMP.
+	 * Initialize TCP statistics counters for each CPU.
 	 */
 #ifdef SMP
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		bzero(&tcpstats_ary[cpu], sizeof(struct tcp_stats));
+		bzero(&tcpstats_percpu[cpu], sizeof(struct tcp_stats));
 	}
 #else
 	bzero(&tcpstat, sizeof(struct tcp_stats));

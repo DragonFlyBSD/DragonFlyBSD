@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.31 2005/03/10 08:19:27 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.32 2005/04/11 09:43:50 hmp Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -277,13 +277,13 @@ struct tcpcb {
 
 #if defined(SMP)
 #define _GD	mycpu
-#define tcpstat	tcpstats_ary[_GD->gd_cpuid]
+#define tcpstat	tcpstats_percpu[mycpuid]
 #else
-#define tcpstat	tcpstats_ary[0]
+#define tcpstat	tcpstats_percpu[0]
 #endif
 
 struct tcp_stats;
-extern struct tcp_stats		tcpstats_ary[MAXCPU];
+extern struct tcp_stats		tcpstats_percpu[MAXCPU];
 
 static const int tcprexmtthresh = 3;
 #endif
