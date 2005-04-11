@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *      $DragonFly: src/sys/platform/pc32/acpica/Attic/acpi_machdep.c,v 1.4 2004/05/26 19:10:00 dillon Exp $ 
+ *      $DragonFly: src/sys/platform/pc32/acpica/Attic/acpi_machdep.c,v 1.5 2005/04/11 06:05:53 dillon Exp $ 
  */
 
 #include <sys/cdefs.h>
@@ -327,6 +327,8 @@ acpi_capm_init(struct acpi_softc *sc)
 {
 	cdevsw_add(&apm_cdevsw, 0, 0);
         make_dev(&apm_cdevsw, 0, 0, 5, 0664, "apm");
+        make_dev(&apm_cdevsw, 8, 0, 5, 0664, "apm");
+	printf("Warning: ACPI is disabling APM's device.  You can't run both\n");
 }
 
 int
