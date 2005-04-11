@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.47 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.48 2005/04/11 10:24:45 hmp Exp $
  */
 
 #define	_IP_VHL
@@ -232,7 +232,7 @@ SYSCTL_INT(_net_inet_ip, IPCTL_INTRQMAXLEN, intr_queue_maxlen, CTLFLAG_RW,
 SYSCTL_INT(_net_inet_ip, IPCTL_INTRQDROPS, intr_queue_drops, CTLFLAG_RD,
     &ipintrq.ifq_drops, 0, "Number of packets dropped from the IP input queue");
 
-struct ip_stats ipstats_ary[MAXCPU];
+struct ip_stats ipstats_percpu[MAXCPU];
 #ifdef SMP
 static int
 sysctl_ipstats(SYSCTL_HANDLER_ARGS)
@@ -240,10 +240,10 @@ sysctl_ipstats(SYSCTL_HANDLER_ARGS)
 	int cpu, error = 0;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if ((error = SYSCTL_OUT(req, &ipstats_ary[cpu],
+		if ((error = SYSCTL_OUT(req, &ipstats_percpu[cpu],
 					sizeof(struct ip_stats))))
 			break;
-		if ((error = SYSCTL_IN(req, &ipstats_ary[cpu],
+		if ((error = SYSCTL_IN(req, &ipstats_percpu[cpu],
 				       sizeof(struct ip_stats))))
 			break;
 	}
@@ -376,15 +376,12 @@ ip_init(void)
 	ipintrq.ifq_maxlen = ipqmaxlen;
 
 	/*
-	 * Initialize IP statistics.
+	 * Initialize IP statistics counters for each CPU.
 	 *
-	 * It is layed out as an array which is has one element for UP,
-	 * and SMP_MAXCPU elements for SMP.  This allows us to retain
-	 * the access mechanism from userland for both UP and SMP.
 	 */
 #ifdef SMP
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		bzero(&ipstats_ary[cpu], sizeof(struct ip_stats));
+		bzero(&ipstats_percpu[cpu], sizeof(struct ip_stats));
 	}
 #else
 	bzero(&ipstat, sizeof(struct ip_stats));
