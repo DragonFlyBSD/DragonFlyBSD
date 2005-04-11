@@ -33,7 +33,7 @@
  * 
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.10 2005/04/11 09:33:31 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.11 2005/04/11 09:58:38 hmp Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
