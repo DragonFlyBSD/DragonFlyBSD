@@ -33,7 +33,7 @@
  * 
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/i386/include/Attic/thread.h,v 1.9 2005/03/06 02:06:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/thread.h,v 1.10 2005/04/11 09:33:31 hmp Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
@@ -83,7 +83,8 @@ _get_mycpu(void)
     return(gd);
 }
 
-#define mycpu	_get_mycpu()
+#define mycpu  	_get_mycpu()
+#define mycpuid	_get_mycpy()->gd_cpuid
 
 /*
  * note: curthread is never NULL, but curproc can be.  Also note that
