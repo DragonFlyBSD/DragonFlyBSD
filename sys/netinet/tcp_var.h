@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.32 2005/04/11 09:43:50 hmp Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.33 2005/04/11 09:54:22 hmp Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -276,7 +276,6 @@ struct tcpcb {
 #ifdef _KERNEL
 
 #if defined(SMP)
-#define _GD	mycpu
 #define tcpstat	tcpstats_percpu[mycpuid]
 #else
 #define tcpstat	tcpstats_percpu[0]
