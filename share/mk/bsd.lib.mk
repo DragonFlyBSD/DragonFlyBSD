@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.9 2005/03/28 03:25:36 dillon Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.10 2005/04/12 23:35:37 okumoto Exp $
 #
 
 .include <bsd.init.mk>
@@ -265,7 +265,7 @@ _libinstall:
 	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
 	    ${_INSTALLFLAGS} lib${LIB}_pic.a ${DESTDIR}${USELIBDIR}
 .endif
-.endif !defined(INTERNALLIB)
+.endif # !defined(INTERNALLIB)
 
 .include <bsd.nls.mk>
 .include <bsd.files.mk>
@@ -319,7 +319,7 @@ clean:
 	rm -f lib${LIB}.so.* lib${LIB}.so
 .endif
 .endif
-.endif !defined(INTERNALLIB)
+.endif # !defined(INTERNALLIB)
 .if defined(_LIBS) && !empty(_LIBS)
 	rm -f ${_LIBS}
 .endif

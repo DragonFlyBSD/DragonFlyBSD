@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.incs.mk,v 1.3.2.1 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.incs.mk,v 1.4 2004/04/05 05:30:13 dillon Exp $
+# $DragonFly: src/share/mk/bsd.incs.mk,v 1.5 2005/04/12 23:35:37 okumoto Exp $
 
 .if !target(__<bsd.init.mk>__)
 .error bsd.incs.mk cannot be included directly.
@@ -60,7 +60,7 @@ _${group}INS: ${_${group}INCS}
 .endif
 .endif
 
-.endif defined(${group}) && !empty(${group})
+.endif # defined(${group}) && !empty(${group})
 .endfor
 
 .if defined(INCSLINKS) && !empty(INCSLINKS)
@@ -75,7 +75,7 @@ installincludes:
 		ln -fhs $$l $$t; \
 	done; true
 .endif
-.endif !target(installincludes)
+.endif # !target(installincludes)
 
 # include files are not installed when building bootstrap programs
 #

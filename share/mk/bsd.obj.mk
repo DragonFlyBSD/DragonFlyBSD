@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.obj.mk,v 1.30.2.10 2003/02/15 05:36:25 kris Exp $
-# $DragonFly: src/share/mk/bsd.obj.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.obj.mk,v 1.3 2005/04/12 23:35:37 okumoto Exp $
 #
 # The include file <bsd.obj.mk> handles creating the 'obj' directory
 # and cleaning up object files, etc.
@@ -99,7 +99,7 @@ objlink:
 		echo "No ${CANONICALOBJDIR} to link to - do a make obj."; \
 	fi
 .endif
-.endif !defined(NOOBJ)
+.endif # !defined(NOOBJ)
 
 #
 # where would that obj directory be?
@@ -131,4 +131,4 @@ cleandir: cleanobj
 
 .include <bsd.subdir.mk>
 
-.endif !target(__<bsd.obj.mk>__)
+.endif # !target(__<bsd.obj.mk>__)

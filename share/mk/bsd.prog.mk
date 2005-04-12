@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.7 2005/03/10 14:30:31 joerg Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.8 2005/04/12 23:35:37 okumoto Exp $
 
 .include <bsd.init.mk>
 
@@ -43,7 +43,7 @@ ${PROG}: ${OBJS}
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
 .endif
 
-.else !defined(SRCS)
+.else # !defined(SRCS)
 
 .if !target(${PROG})
 .if defined(PROG_CXX)
@@ -123,7 +123,7 @@ _proginstall:
 	(cd ${DESTDIR}${ORIGBINDIR}; ln -fs dm ${PROG}; \
 	    chown -h ${BINOWN}:${ORIGBINGRP} ${PROG})
 .endif
-.endif !target(realinstall)
+.endif # !target(realinstall)
 
 .if defined(SCRIPTS) && !empty(SCRIPTS)
 realinstall: _scriptsinstall

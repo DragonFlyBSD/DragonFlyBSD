@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.init.mk,v 1.1.2.1 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/bsd.init.mk,v 1.6 2004/03/22 20:58:15 dillon Exp $
+# $DragonFly: src/share/mk/bsd.init.mk,v 1.7 2005/04/12 23:35:37 okumoto Exp $
 
 # The include file <bsd.init.mk> includes ../Makefile.inc and
 # <bsd.own.mk>; this is used at the top of all <bsd.*.mk> files
@@ -16,4 +16,4 @@ __<bsd.init.mk>__:
 .include <bsd.own.mk>
 .MAIN: all
 
-.endif !target(__<bsd.init.mk>__)
+.endif # !target(__<bsd.init.mk>__)

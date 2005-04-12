@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.13 2005/03/10 14:27:39 joerg Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.14 2005/04/12 23:35:37 okumoto Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -210,4 +210,4 @@ STRIP?=		-s
 COMPRESS_CMD?=	gzip -cn
 COMPRESS_EXT?=	.gz
 
-.endif !target(__<bsd.own.mk>__)
+.endif # !target(__<bsd.own.mk>__)

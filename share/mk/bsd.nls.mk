@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.nls.mk,v 1.11 2005/02/27 16:36:54 phantom Exp $
-# $DragonFly: src/share/mk/bsd.nls.mk,v 1.1 2005/03/10 14:30:31 joerg Exp $
+# $DragonFly: src/share/mk/bsd.nls.mk,v 1.2 2005/04/12 23:35:37 okumoto Exp $
 #
 # This include file <bsd.nls.mk> handles building and installing Native
 # Language Support (NLS) catalogs
@@ -73,4 +73,4 @@ SYMLINKS+=	../${file:R}/${NLSNAME}.cat ${NLSDIR}/${dst}/${NLSNAME}.cat
 .endfor
 .endfor
 
-.endif defined(NLS) && !empty(NLS) && !defined(NO_NLS)
+.endif # defined(NLS) && !empty(NLS) && !defined(NO_NLS)
