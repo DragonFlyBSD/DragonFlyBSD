@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.32 2005/04/10 21:45:11 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.33 2005/04/12 18:07:36 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -86,13 +86,17 @@ check:
 	fi
 .for PKG in ${REL_PACKAGES}
 	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
-		echo "Unable to find ${PACKAGES_LOC}/${PKG}.tgz.  This is"; \
-		echo "typically accomplished by cd'ing into the appropriate"; \
-		echo "port and typing 'make installer_fetchpkgs'"; \
+		echo "Unable to find ${PACKAGES_LOC}/${PKG}.tgz."; \
+		echo "(Perhaps you need to download or build it first?)"; \
 		echo ""; \
 		echo "If you are trying to build the installer, the"; \
 		echo "required packages can be obtained from:"; \
-		echo "http://www.bsdinstaller.org/packages/"; \
+		echo ""; \
+		echo "    http://www.bsdinstaller.org/packages/"; \
+		echo ""; \
+		echo "They can be automatically downloaded by issuing"; \
+		echo "'make installer_fetchpkgs' from this directory."; \
+		echo ""; \
 		exit 1; \
 	fi
 .endfor
