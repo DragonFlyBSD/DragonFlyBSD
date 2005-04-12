@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.2 2005/04/09 20:30:15 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.3 2005/04/12 14:22:41 hmp Exp $
 
 $TITLE(DragonFly - April 2005 Release 1.2.0 Download)
 <h1>Obtaining DragonFly 1.2.0 for your system</h1>
@@ -66,6 +66,14 @@ See the 'Download Site' list below for a list of download locations.
 <TR><TD>PFSense.com</TD>
 <TD>1.2.0_REL image</TD>
 <TD><A HREF="http://www.pfsense.com/dfly/dfly-1.2.0_REL.iso.gz">HTTP</A></TD></TR>
+
+<TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">FTP</A>
+</TD>
+</TR>
 
 <TR><TD>Starkast.net (Sweden)</TD>
 <TD>1.2.0_REL image</TD>
