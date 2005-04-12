@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.69 2005/04/07 07:52:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.70 2005/04/12 08:26:17 okumoto Exp $
  */
 
 /*
@@ -380,10 +380,6 @@ rearg:
 			}
 
 		} else if ((*argv)[0] == '\0') {
-			/*
-			 * XXX Is this check nessisary, who could pass
-			 * XXX an empty string as an argument?
-			 */
 			Punt("illegal (null) argument.");
 
 		} else {
