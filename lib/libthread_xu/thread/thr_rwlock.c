@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlock.c,v 1.14 2004/01/08 15:37:09 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.3 2005/04/05 23:04:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.4 2005/04/12 14:01:31 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -164,12 +164,12 @@ rwlock_rdlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 	}
 
 	/* grab the monitor lock */
-	if ((ret = _thr_mutex_lock(&prwlock->lock)) != 0)
+	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
 		return (ret);
 
 	/* check lock count */
 	if (prwlock->state == MAX_READ_LOCKS) {
-		_thr_mutex_unlock(&prwlock->lock);
+		_pthread_mutex_unlock(&prwlock->lock);
 		return (EAGAIN);
 	}
 
@@ -196,11 +196,11 @@ rwlock_rdlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 				    (&prwlock->read_signal,
 				    &prwlock->lock, abstime);
 			else
-				ret = _thr_cond_wait(&prwlock->read_signal,
+				ret = _pthread_cond_wait(&prwlock->read_signal,
 			    &prwlock->lock);
 			if (ret != 0) {
 				/* can't do a whole lot if this fails */
-				_thr_mutex_unlock(&prwlock->lock);
+				_pthread_mutex_unlock(&prwlock->lock);
 				return (ret);
 			}
 		}
@@ -215,7 +215,7 @@ rwlock_rdlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 	 * lock.  Decrementing 'state' is no good because we probably
 	 * don't have the monitor lock.
 	 */
-	_thr_mutex_unlock(&prwlock->lock);
+	_pthread_mutex_unlock(&prwlock->lock);
 
 	return (ret);
 }
@@ -331,7 +331,7 @@ _pthread_rwlock_unlock (pthread_rwlock_t *rwlock)
 		return (EINVAL);
 
 	/* grab the monitor lock */
-	if ((ret = _thr_mutex_lock(&prwlock->lock)) != 0)
+	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
 		return (ret);
 
 	curthread = tls_get_curthread();
@@ -339,19 +339,19 @@ _pthread_rwlock_unlock (pthread_rwlock_t *rwlock)
 		curthread->rdlock_count--;
 		prwlock->state--;
 		if (prwlock->state == 0 && prwlock->blocked_writers)
-			ret = _thr_cond_signal(&prwlock->write_signal);
+			ret = _pthread_cond_signal(&prwlock->write_signal);
 	} else if (prwlock->state < 0) {
 		prwlock->state = 0;
 
 		if (prwlock->blocked_writers)
-			ret = _thr_cond_signal(&prwlock->write_signal);
+			ret = _pthread_cond_signal(&prwlock->write_signal);
 		else
-			ret = _thr_cond_broadcast(&prwlock->read_signal);
+			ret = _pthread_cond_broadcast(&prwlock->read_signal);
 	} else
 		ret = EINVAL;
 
 	/* see the comment on this in pthread_rwlock_rdlock */
-	_thr_mutex_unlock(&prwlock->lock);
+	_pthread_mutex_unlock(&prwlock->lock);
 
 	return (ret);
 }
@@ -377,7 +377,7 @@ rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 	}
 
 	/* grab the monitor lock */
-	if ((ret = _thr_mutex_lock(&prwlock->lock)) != 0)
+	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
 		return (ret);
 
 	while (prwlock->state != 0) {
@@ -387,11 +387,11 @@ rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 			ret = _pthread_cond_timedwait(&prwlock->write_signal,
 			    &prwlock->lock, abstime);
 		else
-			ret = _thr_cond_wait(&prwlock->write_signal,
+			ret = _pthread_cond_wait(&prwlock->write_signal,
 			    &prwlock->lock);
 		if (ret != 0) {
 			prwlock->blocked_writers--;
-			_thr_mutex_unlock(&prwlock->lock);
+			_pthread_mutex_unlock(&prwlock->lock);
 			return (ret);
 		}
 
@@ -402,7 +402,7 @@ rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 	prwlock->state = -1;
 
 	/* see the comment on this in pthread_rwlock_rdlock */
-	_thr_mutex_unlock(&prwlock->lock);
+	_pthread_mutex_unlock(&prwlock->lock);
 
 	return (ret);
 }
