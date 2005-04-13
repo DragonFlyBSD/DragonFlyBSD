@@ -36,31 +36,33 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)write.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/write/write.c,v 1.12 1999/08/28 01:07:48 peter Exp $
- * $DragonFly: src/usr.bin/write/write.c,v 1.5 2004/12/31 08:05:37 cpressey Exp $
+ * $DragonFly: src/usr.bin/write/write.c,v 1.6 2005/04/13 15:44:03 liamfoy Exp $
  */
 
 #include <sys/param.h>
-#include <sys/signal.h>
 #include <sys/stat.h>
 #include <sys/file.h>
-#include <sys/time.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <locale.h>
 #include <paths.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#include <time.h>
 #include <unistd.h>
 #include <utmp.h>
 
-void done(int);
-void do_write(char *, char *, uid_t);
-static void usage(void);
-int term_chk(char *, int *, time_t *, int);
-void wr_fputs(unsigned char *s);
-void search_utmp(char *, char *, char *, uid_t);
-int utmp_chk(char *, char *);
+static void	done(int);
+static void	do_write(const char *, const char *, uid_t, int *);
+static void	usage(void);
+static int	term_chk(const char *, int *, time_t *, int);
+static void	wr_fputs(unsigned char *s);
+static void	search_utmp(const char *, char *, size_t, const char *, uid_t);
+static int	utmp_chk(const char *, const char *);
 
 int
 main(int argc, char **argv)
@@ -68,7 +70,7 @@ main(int argc, char **argv)
 	char *cp;
 	time_t atime;
 	uid_t myuid;
-	int msgsok, myttyfd;
+	int msgsok, mymsgok, myttyfd;
 	char tty[MAXPATHLEN], *mytty;
 
 	setlocale(LC_CTYPE, "");
@@ -86,18 +88,18 @@ main(int argc, char **argv)
 		errx(1, "can't find your tty's name");
 	if ((cp = strrchr(mytty, '/')))
 		mytty = cp + 1;
-	if (term_chk(mytty, &msgsok, &atime, 1))
+	if (term_chk(mytty, &mymsgok, &atime, 1))
 		exit(1);
-	if (!msgsok)
-		errx(1, "you have write permission turned off");
+	if (!mymsgok)
+		warnx("you have write permission turned off (man mesg)");
 
 	myuid = getuid();
 
 	/* check args */
 	switch (argc) {
 	case 2:
-		search_utmp(argv[1], tty, mytty, myuid);
-		do_write(tty, mytty, myuid);
+		search_utmp(argv[1], tty, sizeof tty, mytty, myuid);
+		do_write(tty, mytty, myuid, &mymsgok);
 		break;
 	case 3:
 		if (!strncmp(argv[2], _PATH_DEV, strlen(_PATH_DEV)))
@@ -108,7 +110,7 @@ main(int argc, char **argv)
 			exit(1);
 		if (myuid && !msgsok)
 			errx(1, "%s has messages disabled on %s", argv[1], argv[2]);
-		do_write(argv[2], mytty, myuid);
+		do_write(argv[2], mytty, myuid, &mymsgok);
 		break;
 	default:
 		usage();
@@ -128,14 +130,14 @@ usage(void)
  * utmp_chk - checks that the given user is actually logged in on
  *     the given tty
  */
-int
-utmp_chk(char *user, char *tty)
+static int
+utmp_chk(const char *user, const char *tty)
 {
 	struct utmp u;
 	int ufd;
 
 	if ((ufd = open(_PATH_UTMP, O_RDONLY)) < 0)
-		return(0);	/* ignore error, shouldn't happen anyway */
+		err(1, "open failed: %s\n", _PATH_UTMP);
 
 	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u)) {
 		if (strncmp(user, u.ut_name, sizeof(u.ut_name)) == 0 &&
@@ -160,8 +162,8 @@ utmp_chk(char *user, char *tty)
  * Special case for writing to yourself - ignore the terminal you're
  * writing from, unless that's the only terminal with messages enabled.
  */
-void
-search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
+static void
+search_utmp(const char *user, char *tty, size_t ttyl, const char *mytty, uid_t myuid)
 {
 	struct utmp u;
 	time_t bestatime, atime;
@@ -169,7 +171,7 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 	char atty[UT_LINESIZE + 1];
 
 	if ((ufd = open(_PATH_UTMP, O_RDONLY)) < 0)
-		err(1, "utmp");
+		err(1, "open failed: %s", _PATH_UTMP);
 
 	nloggedttys = nttys = 0;
 	bestatime = 0;
@@ -177,8 +179,7 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u))
 		if (strncmp(user, u.ut_name, sizeof(u.ut_name)) == 0) {
 			++nloggedttys;
-			strncpy(atty, u.ut_line, UT_LINESIZE);
-			atty[UT_LINESIZE] = '\0';
+			strlcpy(atty, u.ut_line, ttyl);
 			if (term_chk(atty, &msgsok, &atime, 0))
 				continue;	/* bad term? skip */
 			if (myuid && !msgsok)
@@ -190,7 +191,7 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 			++nttys;
 			if (atime > bestatime) {
 				bestatime = atime;
-				strcpy(tty, atty);
+				strlcpy(tty, atty, ttyl);
 			}
 		}
 
@@ -199,7 +200,7 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 		errx(1, "%s is not logged in", user);
 	if (nttys == 0) {
 		if (user_is_me) {		/* ok, so write to yourself! */
-			strcpy(tty, mytty);
+			strlcpy(tty, mytty, ttyl);
 			return;
 		}
 		errx(1, "%s has messages disabled", user);
@@ -212,8 +213,8 @@ search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
  * term_chk - check that a terminal exists, and get the message bit
  *     and the access time
  */
-int
-term_chk(char *tty, int *msgsokP, time_t *atimeP, int showerror)
+static int
+term_chk(const char *tty, int *msgsokP, time_t *atimeP, int showerror)
 {
 	struct stat s;
 	char path[MAXPATHLEN];
@@ -224,7 +225,7 @@ term_chk(char *tty, int *msgsokP, time_t *atimeP, int showerror)
 			warn("%s", path);
 		return(1);
 	}
-	*msgsokP = (s.st_mode & (S_IWRITE >> 3)) != 0;	/* group write bit */
+	*msgsokP = (s.st_mode & S_IWGRP) != 0;	/* group write bit */
 	*atimeP = s.st_atime;
 	return(0);
 }
@@ -232,8 +233,8 @@ term_chk(char *tty, int *msgsokP, time_t *atimeP, int showerror)
 /*
  * do_write - actually make the connection
  */
-void
-do_write(char *tty, char *mytty, uid_t myuid)
+static void
+do_write(const char *tty, const char *mytty, uid_t myuid, int *mymsgok)
 {
 	const char *login;
 	char *nows;
@@ -258,12 +259,12 @@ do_write(char *tty, char *mytty, uid_t myuid)
 
 	/* print greeting */
 	if (gethostname(host, sizeof(host)) < 0)
-		strcpy(host, "???");
+		strlcpy(host, "???", sizeof host);
 	now = time((time_t *)NULL);
 	nows = ctime(&now);
 	nows[16] = '\0';
-	printf("\r\n\007\007\007Message from %s@%s on %s at %s ...\r\n",
-	    login, host, mytty, nows + 11);
+	printf("\r\n\007\007\007Message from %s@%s on %s at %s (%s %s replies)...\r\n",
+	    login, host, mytty, nows + 11, login, *mymsgok == 0 ? "does not accept" : "accepts");
 
 	while (fgets(line, sizeof(line), stdin) != NULL)
 		wr_fputs(line);
@@ -272,7 +273,7 @@ do_write(char *tty, char *mytty, uid_t myuid)
 /*
  * done - cleanup and exit
  */
-void
+static void
 done(__unused int n)
 {
 	printf("EOF\r\n");
@@ -283,7 +284,7 @@ done(__unused int n)
  * wr_fputs - like fputs(), but makes control characters visible and
  *     turns \n into \r\n
  */
-void
+static void
 wr_fputs(unsigned char *s)
 {
 
