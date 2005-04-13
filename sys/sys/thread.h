@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.60 2005/01/14 02:20:24 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.61 2005/04/13 04:00:56 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -144,7 +144,7 @@ typedef struct lwkt_ipiq {
     int		ip_windex;      /* only written by source cpu */
     ipifunc2_t	ip_func[MAXCPUFIFO];
     void	*ip_arg[MAXCPUFIFO];
-    int		ip_npoll;
+    u_int	ip_npoll;	/* synchronization to avoid excess IPIs */
 } lwkt_ipiq;
 
 /*
@@ -374,6 +374,7 @@ extern int  lwkt_checkpri_self(void);
 extern void lwkt_setcpu_self(struct globaldata *rgd);
 extern int  lwkt_send_ipiq(struct globaldata *targ, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_passive(struct globaldata *targ, ipifunc_t func, void *arg);
+extern int  lwkt_send_ipiq_nowait(struct globaldata *targ, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_mask(cpumask_t mask, ipifunc_t func, void *arg);
 extern void lwkt_wait_ipiq(struct globaldata *targ, int seq);

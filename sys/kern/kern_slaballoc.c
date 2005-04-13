@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.28 2005/04/02 15:53:56 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.29 2005/04/13 04:00:50 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -754,12 +754,13 @@ free(void *ptr, struct malloc_type *type)
 
     /*
      * If we do not own the zone then forward the request to the
-     * cpu that does.
+     * cpu that does.  Since the timing is non-critical, a passive
+     * message is sent.
      */
     if (z->z_CpuGd != gd) {
 	*(struct malloc_type **)ptr = type;
 #ifdef SMP
-	lwkt_send_ipiq(z->z_CpuGd, free_remote, ptr);
+	lwkt_send_ipiq_passive(z->z_CpuGd, free_remote, ptr);
 #else
 	panic("Corrupt SLZone");
 #endif

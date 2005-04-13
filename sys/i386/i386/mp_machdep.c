@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.32 2005/02/27 10:57:24 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.33 2005/04/13 04:00:45 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2398,16 +2398,23 @@ ap_init(void)
 	mem_range_AP_init();
 
 	/*
+	 * Once we go active we must process any IPIQ messages that may
+	 * have been queued, because no actual IPI will occur until we
+	 * set our bit in the smp_active_mask.  If we don't the IPI
+	 * message interlock could be left set which would also prevent
+	 * further IPIs.
+	 *
 	 * The idle loop doesn't expect the BGL to be held and while
 	 * lwkt_switch() normally cleans things up this is a special case
 	 * because we returning almost directly into the idle loop.
 	 *
 	 * The idle thread is never placed on the runq, make sure
-	 * nothing we've done put it thre.
+	 * nothing we've done put it there.
 	 */
 	KKASSERT(curthread->td_mpcount == 1);
 	smp_active_mask |= 1 << mycpu->gd_cpuid;
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
+	lwkt_process_ipiq();
 	rel_mplock();
 	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
 }

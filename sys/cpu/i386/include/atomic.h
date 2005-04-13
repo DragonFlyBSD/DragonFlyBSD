@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.8 2004/07/29 20:31:13 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.9 2005/04/13 04:00:48 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -127,10 +127,13 @@ ATOMIC_ASM(add,	     long,  "addl %1,%0",  v)
 ATOMIC_ASM(subtract, long,  "subl %1,%0",  v)
 
 /*
- * atomic_poll_acquire_int(P)	Returns non-zero on success, 0 on failure
+ * atomic_poll_acquire_int(P)	Returns non-zero on success, 0 if the lock
+ *				has already been acquired.
  * atomic_poll_release_int(P)
  *
- * Currently these are hacks just to support the NDIS driver.
+ * These support the NDIS driver and are also used for IPIQ interlocks
+ * between cpus.  Both the acquisition and release must be 
+ * cache-synchronizing instructions.
  */
 
 #if defined(KLD_MODULE)
@@ -154,7 +157,7 @@ static __inline
 void
 atomic_poll_release_int(volatile u_int *p)
 {
-	__asm __volatile("movl $0,%0" : "+m" (*p));
+	__asm __volatile(MPLOCKED "btrl $0,%0" : "+m" (*p));
 }
 
 #endif

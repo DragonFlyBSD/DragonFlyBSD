@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.11 2005/02/01 22:36:26 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.12 2005/04/13 04:00:50 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -142,7 +142,7 @@ lwkt_chktokens(thread_t td)
 		refs->tr_magic = LWKT_TOKREF_MAGIC2;	/* MP synched slowreq*/
 		refs->tr_reqgd = gd;
 		tok->t_reqcpu = gd;	/* MP unsynchronized 'fast' req */
-		if (lwkt_send_ipiq_passive(dgd, lwkt_reqtoken_remote, refs)) {
+		if (lwkt_send_ipiq_nowait(dgd, lwkt_reqtoken_remote, refs)) {
 		    /* failed */
 		    refs->tr_magic = LWKT_TOKREF_MAGIC1;
 		    break;
@@ -253,15 +253,17 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 	 */
 #if defined(MAKE_TOKENS_SPIN)
 	int x = 40000000;
+	int y = 10;
 	crit_enter();
 	while (lwkt_chktokens(td) == 0) {
 	    lwkt_process_ipiq();
 	    lwkt_drain_token_requests();
 	    if (--x == 0) {
 		x = 40000000;
-		printf("CHKTOKEN loop %d\n", gd->gd_cpuid);
+		printf("CHKTOKEN looping on cpu %d\n", gd->gd_cpuid);
 #ifdef _KERNEL
-		Debugger("x");
+		if (--y == 0)
+			panic("CHKTOKEN looping on cpu %d", gd->gd_cpuid);
 #endif
 	    }
 	    splz();
