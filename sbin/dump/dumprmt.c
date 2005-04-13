@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.11 2005/04/13 15:21:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.12 2005/04/13 16:07:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,7 @@
 #include <protocols/dumprestore.h>
 
 #include <ctype.h>
+#include <err.h>
 #include <netdb.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -87,14 +88,12 @@ int	krcmd(char **, int /*u_short*/, char *, char *, int *, char *);
 #endif
 
 static	int errfd = -1;
-extern	int dokerberos;
-extern	int ntrec;		/* blocking factor on tape */
 
 int
-rmthost(const char *host)
+rmthost(const char *hostname)
 {
 
-	if (rmtpeer = strdup(host))
+	if ((rmtpeer = strdup(hostname)) == NULL)
 		err(1, "strdup failed");
 	signal(SIGPIPE, rmtconnaborted);
 	rmtgetconn();

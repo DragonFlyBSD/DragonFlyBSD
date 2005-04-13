@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.12 2005/04/13 15:21:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.13 2005/04/13 16:07:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -67,15 +67,12 @@ int	write(), read();
 
 #include "dump.h"
 
-int	writesize;		/* size of malloc()ed buffer for tape */
-long	lastspclrec = -1;	/* tape block number of last written header */
-int	trecno = 0;		/* next record to write in current block */
-extern	long blocksperfile;	/* number of blocks per output file */
-long	blocksthisvol;		/* number of blocks on current output file */
-extern	int ntrec;		/* blocking factor on tape */
-extern	int cartridge;
-extern	char *host;
-char	*nexttape;
+static int writesize;		/* size of malloc()ed buffer for tape */
+static long lastspclrec = -1;	/* tape block number of last written header */
+static int trecno = 0;		/* next record to write in current block */
+static long blocksthisvol;		/* number of blocks on current output file */
+static const char	*nexttape;
+static int tapeno = 0;	/* current tape number */
 
 static int	atomic_read(int, void *, int);
 static int	atomic_write(int, const void *, int);
@@ -204,7 +201,7 @@ dumpblock(daddr_t blkno, int size)
 
 int	nogripe = 0;
 
-void
+static void
 tperror(int signo __unused)
 {
 
@@ -225,7 +222,7 @@ tperror(int signo __unused)
 	Exit(X_REWRITE);
 }
 
-void
+static void
 sigpipe(int signo __unused)
 {
 
@@ -671,7 +668,7 @@ Exit(int status)
 /*
  * proceed - handler for SIGUSR2, used to synchronize IO between the slaves.
  */
-void
+static void
 proceed(int signo __unused)
 {
 
@@ -876,6 +873,6 @@ atomic_write(int fd, const void *buf, int count)
 	int got, need = count;
 
 	while ((got = write(fd, buf, need)) > 0 && (need -= got) > 0)
-		buf = (uint8_t *)buf + got;
+		buf = (const uint8_t *)buf + got;
 	return (got < 0 ? got : count - need);
 }

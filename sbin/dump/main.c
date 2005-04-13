@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.11 2005/04/13 15:43:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.12 2005/04/13 16:07:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,9 @@ int	dokerberos = 0;	/* Use Kerberos authentication */
 int	cachesize = 0;	/* block cache size (in bytes) */
 long	dev_bsize = 1;	/* recalculated below */
 long	blocksperfile;	/* output blocks per file */
-char	*host = NULL;	/* remote host (if any) */
+const char *host;	/* remote host (if any) */
+const char *dumpdates;	/* name of the file containing dump date information*/
+const char *temp;	/* name of the file for doing rewrite of dumpdates */
 
 static long	numarg(const char *, long, long);
 static void	obsolete(int *, char **[]);
@@ -253,10 +255,12 @@ main(int argc, char **argv)
 	}
 
 	if (strchr(tape, ':')) {
+		char *ehost;
 		if ((host = strdup(tape)) == NULL)
 			err(1, "strdup failed");
-		tape = strchr(host, ':');
-		*tape++ = '\0';
+		ehost = strchr(host, ':');
+		*ehost++ = '\0';
+		tape = ehost;
 #ifdef RDUMP
 		if (strchr(tape, '\n')) {
 		    fprintf(stderr, "invalid characters in tape\n");

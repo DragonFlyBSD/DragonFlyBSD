@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.8 2005/04/02 22:25:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.9 2005/04/13 16:07:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,7 @@ struct dumptime {
 	SLIST_ENTRY(dumptime) dt_list;
 };
 SLIST_HEAD(dthead, dumptime) dthead = SLIST_HEAD_INITIALIZER(dthead);
-struct	dumpdates **ddatev = 0;
+struct	dumpdates **ddatev = NULL;
 int	nddates = 0;
 
 static	void dumprecout(FILE *, struct dumpdates *);

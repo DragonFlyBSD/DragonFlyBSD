@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.8 2005/04/13 15:21:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.9 2005/04/13 16:07:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +62,9 @@ char	*dumpinomap;	/* map of files to be dumped */
  *	All calculations done in 0.1" units!
  */
 char	*disk;		/* name of the disk file */
-char	*tape;		/* name of the tape file */
-char	*dumpdates;	/* name of the file containing dump date information*/
-char	*temp;		/* name of the file for doing rewrite of dumpdates */
+const char	*tape;		/* name of the tape file */
+extern const char *dumpdates;	/* name of the file containing dump date information*/
+extern const char *temp;		/* name of the file for doing rewrite of dumpdates */
 char	lastlevel;	/* dump level of previous dump */
 char	level;		/* dump level of this dump */
 int	uflag;		/* update flag */
@@ -73,24 +73,29 @@ int	tapefd;		/* tape file descriptor */
 int	pipeout;	/* true => output to standard output */
 ino_t	curino;		/* current inumber; used globally */
 int	newtape;	/* new tape flag */
-int	density;	/* density in 0.1" units */
 long	tapesize;	/* estimated tape size, blocks */
 long	tsize;		/* tape size in 0.1" units */
 long	asize;		/* number of 0.1" units written on current tape */
 int	etapes;		/* estimated number of tapes */
 int	nonodump;	/* if set, do not honor UF_NODUMP user flags */
 int	unlimited;	/* if set, write to end of medium */
-int	cachesize;	/* size of block cache */
 
-int	notify;		/* notify operator flag */
-int	blockswritten;	/* number of blocks written on current tape */
-int	tapeno;		/* current tape number */
+extern int	cachesize;	/* size of block cache */
+extern int	density;	/* density in 0.1" units */
+extern int	dokerberos;
+extern int	ntrec;		/* blocking factor on tape */
+extern int	cartridge;
+extern const char *host;
+extern long	blocksperfile;	/* number of blocks per output file */
+extern int	notify;		/* notify operator flag */
+extern int	blockswritten;	/* number of blocks written on current tape */
+extern long	dev_bsize;	/* block size of underlying disk device */
+
 time_t	tstart_writing;	/* when started writing the first tape block */
 time_t	tend_writing;	/* after writing the last tape block */
 int	passno;		/* current dump pass number */
 struct	fs *sblock;	/* the file system super block */
 char	sblock_buf[MAXBSIZE];
-long	dev_bsize;	/* block size of underlying disk device */
 int	dev_bshift;	/* log2(dev_bsize) */
 int	tp_bshift;	/* log2(TP_BSIZE) */
 
@@ -169,8 +174,8 @@ struct dumpdates {
 	char	dd_level;
 	time_t	dd_ddate;
 };
-int	nddates;		/* number of records (might be zero) */
-struct	dumpdates **ddatev;	/* the arrayfied version */
+extern int	nddates;		/* number of records (might be zero) */
+extern struct	dumpdates **ddatev;	/* the arrayfied version */
 void	initdumptimes(void);
 void	getdumptime(void);
 void	putdumptime(void);
