@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.70 2004/10/13 18:42:34 eirikn Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.71 2005/04/13 04:02:08 dillon Exp $
  */
 
 /*
@@ -472,7 +472,6 @@ lwkt_switch(void)
 	    td->td_release(td);
 
     crit_enter_gd(gd);
-    ++switch_count;
 
 #ifdef SMP
     /*
@@ -630,8 +629,10 @@ again:
 	ASSERT_MP_LOCK_HELD();
     }
 #endif
-    if (td != ntd)
+    if (td != ntd) {
+	++switch_count;
 	td->td_switch(ntd);
+    }
     /* NOTE: current cpu may have changed after switch */
     crit_exit_quick(td);
 }
