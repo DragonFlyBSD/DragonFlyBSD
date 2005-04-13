@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.9 2005/04/13 14:21:06 joerg Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.10 2005/04/13 14:29:20 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -79,11 +79,15 @@ char	*nexttape;
 
 static int	atomic_read(int, void *, int);
 static int	atomic_write(int, const void *, int);
-static	void doslave(int, int);
-static	void enslave(void);
-static	void flushtape(void);
-static	void killall(void);
-static	void rollforward(void);
+#ifdef WRITEDEBUG
+static void	doslave(int, int);
+#else
+static void	doslave(int);
+#endif
+static void	enslave(void);
+static void	flushtape(void);
+static void	killall(void);
+static void	rollforward(void);
 
 /*
  * Concurrent dump mods (Caltech) - disk block reading and tape writing
@@ -205,7 +209,7 @@ dumpblock(daddr_t blkno, int size)
 int	nogripe = 0;
 
 void
-tperror(int signo)
+tperror(int signo __unused)
 {
 
 	if (pipeout) {
@@ -226,7 +230,7 @@ tperror(int signo)
 }
 
 void
-sigpipe(int signo)
+sigpipe(int signo __unused)
 {
 
 	quit("Broken pipe\n");
@@ -511,7 +515,7 @@ startnewtape(int top)
 	int	parentpid;
 	int	childpid;
 	int	status;
-	int	waitpid;
+	int	wait_pid;
 	char	*p;
 #ifdef sunos
 	void	(*interrupt_save)();
@@ -545,9 +549,9 @@ restore_check_point:
 		msg("Tape: %d; parent process: %d child process %d\n",
 			tapeno+1, parentpid, childpid);
 #endif /* TDEBUG */
-		while ((waitpid = wait(&status)) != childpid)
+		while ((wait_pid = wait(&status)) != childpid)
 			msg("Parent %d waiting for child %d has another child %d return\n",
-				parentpid, childpid, waitpid);
+				parentpid, childpid, wait_pid);
 		if (status & 0xFF) {
 			msg("Child %d returns LOB status %o\n",
 				childpid, status&0xFF);
@@ -642,7 +646,7 @@ restore_check_point:
 }
 
 void
-dumpabort(int signo)
+dumpabort(int signo __unused)
 {
 
 	if (master != 0 && master != getpid())
@@ -672,7 +676,7 @@ Exit(int status)
  * proceed - handler for SIGUSR2, used to synchronize IO between the slaves.
  */
 void
-proceed(int signo)
+proceed(int signo __unused)
 {
 
 	if (ready)
@@ -680,7 +684,7 @@ proceed(int signo)
 	caught++;
 }
 
-void
+static void
 enslave(void)
 {
 	int cmd[2];
@@ -711,7 +715,11 @@ enslave(void)
 			for (j = 0; j <= i; j++)
 			        close(slaves[j].fd);
 			signal(SIGINT, SIG_IGN);    /* Master handles this */
+#ifdef WRITEDEBUG
 			doslave(cmd[0], i);
+#else
+			doslave(cmd[0]);
+#endif
 			Exit(X_FINOK);
 		}
 	}
@@ -743,7 +751,11 @@ killall(void)
  * get the lock back for the next cycle by swapping descriptors.
  */
 static void
+#ifdef WRITEDEBUG
 doslave(int cmd, int slave_number)
+#else
+doslave(int cmd)
+#endif
 {
 	int nread;
 	int nextslave, size, wrote = 0, eot_count;
