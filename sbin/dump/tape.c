@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.10 2005/04/13 14:29:20 joerg Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.11 2005/04/13 14:32:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -758,7 +758,7 @@ doslave(int cmd)
 #endif
 {
 	int nread;
-	int nextslave, size, wrote = 0, eot_count;
+	int nextslave, size, wrote, eot_count;
 
 	/*
 	 * Need our own seek pointer.
@@ -804,6 +804,7 @@ doslave(int cmd)
 		/* Try to write the data... */
 		eot_count = 0;
 		size = 0;
+		wrote = 0;
 
 		while (eot_count < 10 && size < writesize) {
 #ifdef RDUMP
