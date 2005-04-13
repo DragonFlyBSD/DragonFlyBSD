@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.8 2005/04/13 14:05:35 joerg Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.9 2005/04/13 14:10:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -237,25 +237,6 @@ rmtclose(void)
 }
 
 int
-rmtread(char *buf, int count)
-{
-	char line[30];
-	int n, i, cc;
-
-	snprintf(line, sizeof (line), "R%d\n", count);
-	n = rmtcall("read", line);
-	if (n < 0)
-		/* rmtcall() properly sets errno for us on errors. */
-		return (n);
-	for (i = 0; i < n; i += cc) {
-		cc = read(rmtape, buf+i, n - i);
-		if (cc <= 0)
-			rmtconnaborted(0);
-	}
-	return (n);
-}
-
-int
 rmtwrite(char *buf, int count)
 {
 	char line[30];
@@ -264,65 +245,6 @@ rmtwrite(char *buf, int count)
 	write(rmtape, line, strlen(line));
 	write(rmtape, buf, count);
 	return (rmtreply("write"));
-}
-
-void
-rmtwrite0(int count)
-{
-	char line[30];
-
-	snprintf(line, sizeof (line), "W%d\n", count);
-	write(rmtape, line, strlen(line));
-}
-
-void
-rmtwrite1(char *buf, int count)
-{
-
-	write(rmtape, buf, count);
-}
-
-int
-rmtwrite2(void)
-{
-
-	return (rmtreply("write"));
-}
-
-int
-rmtseek(int offset, int pos)
-{
-	char line[80];
-
-	snprintf(line, sizeof (line), "L%d\n%d\n", offset, pos);
-	return (rmtcall("seek", line));
-}
-
-struct	mtget mts;
-
-struct mtget *
-rmtstatus(void)
-{
-	int i;
-	char *cp;
-
-	if (rmtstate != TS_OPEN)
-		return (NULL);
-	rmtcall("status", "S\n");
-	for (i = 0, cp = (char *)&mts; i < sizeof(mts); i++)
-		*cp++ = rmtgetb();
-	return (&mts);
-}
-
-int
-rmtioctl(int cmd, int count)
-{
-	char buf[256];
-
-	if (count < 0)
-		return (-1);
-	snprintf(buf, sizeof (buf), "I%d\n%d\n", cmd, count);
-	return (rmtcall("ioctl", buf));
 }
 
 static int
