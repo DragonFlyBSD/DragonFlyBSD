@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.8 2005/04/13 15:21:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.9 2005/04/13 15:45:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -364,7 +364,7 @@ lastdump(int arg)
 	time(&tnow);
 	getfstab();		/* /etc/fstab input */
 	initdumptimes();	/* /etc/dumpdates input */
-	qsort((char *) ddatev, nddates, sizeof(struct dumpdates *), datesort);
+	qsort(ddatev, nddates, sizeof(struct dumpdates *), datesort);
 
 	if (arg == 'w')
 		printf("Dump these file systems:\n");
@@ -400,8 +400,8 @@ lastdump(int arg)
 static int
 datesort(const void *a1, const void *a2)
 {
-	const struct dumpdates *d1 = *(const struct dumpdates **)a1;
-	const struct dumpdates *d2 = *(const struct dumpdates **)a2;
+	const struct dumpdates *d1 = *(const struct dumpdates * const *)a1;
+	const struct dumpdates *d2 = *(const struct dumpdates * const *)a2;
 	int diff;
 
 	diff = strncmp(d1->dd_name, d2->dd_name, sizeof(d1->dd_name));
