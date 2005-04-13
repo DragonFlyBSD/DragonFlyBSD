@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.9 2005/04/13 14:10:18 joerg Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.10 2005/04/13 14:12:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -250,8 +250,9 @@ rmtwrite(char *buf, int count)
 static int
 rmtcall(const char *cmd, const char *buf)
 {
+	ssize_t len = (ssize_t)strlen(buf);
 
-	if (write(rmtape, buf, strlen(buf)) != strlen(buf))
+	if (write(rmtape, buf, len) != len)
 		rmtconnaborted(0);
 	return (rmtreply(cmd));
 }
