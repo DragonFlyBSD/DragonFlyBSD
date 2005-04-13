@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.10 2005/04/13 15:21:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.11 2005/04/13 15:43:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -253,7 +253,8 @@ main(int argc, char **argv)
 	}
 
 	if (strchr(tape, ':')) {
-		host = tape;
+		if ((host = strdup(tape)) == NULL)
+			err(1, "strdup failed");
 		tape = strchr(host, ':');
 		*tape++ = '\0';
 #ifdef RDUMP
