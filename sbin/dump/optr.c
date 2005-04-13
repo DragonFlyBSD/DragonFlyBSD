@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.6 2004/12/27 22:36:37 liamfoy Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.7 2005/04/13 14:05:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,8 @@
 #include "dump.h"
 #include "pathnames.h"
 
-void	alarmcatch(/* int, int */);
-int	datesort(const void *, const void *);
+static void	alarmcatch(int);
+static int	datesort(const void *, const void *);
 
 /*
  *	Query the operator; This previously-fascist piece of code
@@ -68,8 +68,8 @@ int	datesort(const void *, const void *);
  *	Every 2 minutes we reprint the message, alerting others
  *	that dump needs attention.
  */
-static	int timeout;
-static	char *attnmessage;		/* attention message */
+static int timeout;
+static const char *attnmessage;		/* attention message */
 
 int
 query(char *question)
@@ -82,7 +82,7 @@ query(char *question)
 		quit("fopen on %s fails: %s\n", _PATH_TTY, strerror(errno));
 	attnmessage = question;
 	timeout = 0;
-	alarmcatch();
+	alarmcatch(0);
 	back = -1;
 	errcount = 0;
 	do {
@@ -117,8 +117,8 @@ char lastmsg[BUFSIZ];
  *	Alert the console operator, and enable the alarm clock to
  *	sleep for 2 minutes in case nobody comes to satisfy dump
  */
-void
-alarmcatch()
+static void
+alarmcatch(int signo __unused)
 {
 	if (notify == 0) {
 		if (timeout == 0)
@@ -142,7 +142,7 @@ alarmcatch()
  *	Here if an inquisitive operator interrupts the dump program
  */
 void
-interrupt(int signo)
+interrupt(int signo __unused)
 {
 	msg("Interrupt received.\n");
 	if (query("Do you want to abort dump?"))
@@ -153,7 +153,7 @@ interrupt(int signo)
  *	We now use wall(1) to do the actual broadcasting.
  */
 void
-broadcast(char *message)
+broadcast(const char *message)
 {
 	FILE *fp;
 	char buf[sizeof(_PATH_WALL) + sizeof(OPGRENT) + 3];
@@ -209,7 +209,7 @@ timeest(void)
  * Schedule a printout of the estimate in the next call to timeest().
  */
 void
-infosch(int signal)
+infosch(int signo __unused)
 {
 	tschedule = 0;
 }
@@ -263,7 +263,7 @@ quit(const char *fmt, ...)
  *	we don't actually do it
  */
 
-struct fstab *
+static struct fstab *
 allocfsent(struct fstab *fs)
 {
 	struct fstab *new;
@@ -355,7 +355,8 @@ lastdump(int arg)
 	int i;
 	struct fstab *dt;
 	struct dumpdates *dtwalk;
-	char *lastname, *date;
+	const char *lastname;
+	char *date;
 	int dumpme;
 	time_t tnow;
 	struct tm *tlast;
@@ -396,11 +397,11 @@ lastdump(int arg)
 	}
 }
 
-int
+static int
 datesort(const void *a1, const void *a2)
 {
-	struct dumpdates *d1 = *(struct dumpdates **)a1;
-	struct dumpdates *d2 = *(struct dumpdates **)a2;
+	const struct dumpdates *d1 = *(const struct dumpdates **)a1;
+	const struct dumpdates *d2 = *(const struct dumpdates **)a2;
 	int diff;
 
 	diff = strncmp(d1->dd_name, d2->dd_name, sizeof(d1->dd_name));

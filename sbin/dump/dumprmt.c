@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.7 2004/12/27 22:36:37 liamfoy Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.8 2005/04/13 14:05:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -76,12 +76,12 @@ static	int rmtape;
 static	char *rmtpeer;
 
 static	int okname(char *);
-static	int rmtcall(char *, char *);
-static	void rmtconnaborted(/* int, int */);
+static	int rmtcall(const char *, const char *);
+static	void rmtconnaborted(int);
 static	int rmtgetb(void);
 static	void rmtgetconn(void);
 static	void rmtgets(char *, int);
-static	int rmtreply(char *);
+static	int rmtreply(const char *);
 #ifdef KERBEROS
 int	krcmd(char **, int /*u_short*/, char *, char *, int *, char *);
 #endif
@@ -107,7 +107,7 @@ rmthost(char *host)
 }
 
 static void
-rmtconnaborted(void)
+rmtconnaborted(int signo __unused)
 {
 	msg("Lost connection to remote host.\n");
 	if (errfd != -1) {
@@ -168,7 +168,7 @@ rmtgetconn(void)
 		tuser = pwd->pw_name;
 	if ((rmt = getenv("RMT")) == NULL)
 		rmt = _PATH_RMT;
-	msg("");
+	msg("%s", "");
 #ifdef KERBEROS
 	if (dokerberos)
 		rmtape = krcmd(&rmtpeer, sp->s_port, tuser, rmt, &errfd,
@@ -217,13 +217,13 @@ okname(char *cp0)
 }
 
 int
-rmtopen(char *tape, int mode)
+rmtopen(const char *rtape, int mode)
 {
 	char buf[256];
 
-	snprintf(buf, sizeof (buf), "O%.226s\n%d\n", tape, mode);
+	snprintf(buf, sizeof (buf), "O%.226s\n%d\n", rtape, mode);
 	rmtstate = TS_OPEN;
-	return (rmtcall(tape, buf));
+	return (rmtcall(rtape, buf));
 }
 
 void
@@ -250,7 +250,7 @@ rmtread(char *buf, int count)
 	for (i = 0; i < n; i += cc) {
 		cc = read(rmtape, buf+i, n - i);
 		if (cc <= 0)
-			rmtconnaborted();
+			rmtconnaborted(0);
 	}
 	return (n);
 }
@@ -326,16 +326,16 @@ rmtioctl(int cmd, int count)
 }
 
 static int
-rmtcall(char *cmd, char *buf)
+rmtcall(const char *cmd, const char *buf)
 {
 
 	if (write(rmtape, buf, strlen(buf)) != strlen(buf))
-		rmtconnaborted();
+		rmtconnaborted(0);
 	return (rmtreply(cmd));
 }
 
 static int
-rmtreply(char *cmd)
+rmtreply(const char *cmd)
 {
 	char *cp;
 	char code[30], emsg[BUFSIZ];
@@ -357,7 +357,7 @@ rmtreply(char *cmd)
 
 		msg("Protocol to remote tape server botched (code \"%s\").\n",
 		    code);
-		rmtconnaborted();
+		rmtconnaborted(0);
 	}
 	return (atoi(code + 1));
 }
@@ -368,7 +368,7 @@ rmtgetb(void)
 	char c;
 
 	if (read(rmtape, &c, 1) != 1)
-		rmtconnaborted();
+		rmtconnaborted(0);
 	return (c);
 }
 
@@ -390,5 +390,5 @@ rmtgets(char *line, int len)
 	*cp = '\0';
 	msg("Protocol to remote tape server botched.\n");
 	msg("(rmtgets got \"%s\").\n", line);
-	rmtconnaborted();
+	rmtconnaborted(0);
 }

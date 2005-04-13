@@ -33,8 +33,10 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.6 2005/04/02 22:25:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.7 2005/04/13 14:05:35 joerg Exp $
  */
+
+#include <sys/param.h>
 
 #define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))
 #define MAXNINDIR	(MAXBSIZE / sizeof(daddr_t))
@@ -93,7 +95,7 @@ int	dev_bshift;	/* log2(dev_bsize) */
 int	tp_bshift;	/* log2(TP_BSIZE) */
 
 /* operator interface functions */
-void	broadcast(char *message);
+void	broadcast(const char *message);
 void	infosch(int);
 void	lastdump(int arg);	/* int should be char */
 void	msg(const char *fmt, ...) __printflike(1, 2);
@@ -136,7 +138,7 @@ struct	dinode *getino(ino_t inum);
 #ifdef RDUMP
 void	rmtclose(void);
 int	rmthost(char *host);
-int	rmtopen(char *tape, int mode);
+int	rmtopen(const char *tape, int mode);
 int	rmtwrite(char *buf, int count);
 #endif /* RDUMP */
 

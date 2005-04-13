@@ -32,10 +32,12 @@
  *
  * @(#)unctime.c	8.2 (Berkeley) 6/14/94
  * $FreeBSD: src/sbin/dump/unctime.c,v 1.3.2.1 2001/09/19 09:29:39 ru Exp $
- * $DragonFly: src/sbin/dump/unctime.c,v 1.3 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/dump/unctime.c,v 1.4 2005/04/13 14:05:35 joerg Exp $
  */
 
 #include <time.h>
+
+#include "dump.h"
 
 /*
  * Convert a ctime(3) format string into a system format date.

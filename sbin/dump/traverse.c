@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.9 2005/04/02 22:25:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.10 2005/04/13 14:05:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -70,11 +70,9 @@ typedef	quad_t fsizeT;
 typedef	long fsizeT;
 #endif
 
-static	int dirindir(ino_t ino, daddr_t blkno, int level, long *size,
-    long *tapesize, int nodump);
-static	void dmpindir(ino_t ino, daddr_t blk, int level, fsizeT *size);
-static	int searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
-    long *tapesize, int nodump);
+static int	dirindir(ino_t, daddr_t, int, long *, long *, int);
+static void	dmpindir(ino_t, daddr_t, int level, fsizeT *);
+static	int searchdir(ino_t, daddr_t, long, long, long *, int);
 
 /*
  * This is an estimation of the number of TP_BSIZE blocks in the file.
@@ -136,7 +134,7 @@ blockest(struct dinode *dp)
  * the directories in the filesystem.
  */
 int
-mapfiles(ino_t maxino, long *tapesize)
+mapfiles(ino_t maxino, long *tape_size)
 {
 	int mode;
 	ino_t ino;
@@ -159,9 +157,9 @@ mapfiles(ino_t maxino, long *tapesize)
 		if (WANTTODUMP(dp)) {
 			SETINO(ino, dumpinomap);
 			if (mode != IFREG && mode != IFDIR && mode != IFLNK)
-				*tapesize += 1;
+				*tape_size += 1;
 			else
-				*tapesize += blockest(dp);
+				*tape_size += blockest(dp);
 			continue;
 		}
 		if (mode == IFDIR) {
@@ -191,7 +189,7 @@ mapfiles(ino_t maxino, long *tapesize)
  * pass using this algorithm.
  */
 int
-mapdirs(ino_t maxino, long *tapesize)
+mapdirs(ino_t maxino, long *tape_size)
 {
 	struct	dinode *dp;
 	int i, isdir, nodump;
@@ -221,10 +219,11 @@ mapdirs(ino_t maxino, long *tapesize)
 		di = *dp;	/* inode buf may change in searchdir(). */
 		filesize = di.di_size;
 		for (ret = 0, i = 0; filesize > 0 && i < NDADDR; i++) {
-			if (di.di_db[i] != 0)
+			if (di.di_db[i] != 0) {
 				ret |= searchdir(ino, di.di_db[i],
 					(long)dblksize(sblock, &di, i),
-					filesize, tapesize, nodump);
+					filesize, tape_size, nodump);
+			}
 			if (ret & HASDUMPEDFILE)
 				filesize = 0;
 			else
@@ -234,11 +233,11 @@ mapdirs(ino_t maxino, long *tapesize)
 			if (di.di_ib[i] == 0)
 				continue;
 			ret |= dirindir(ino, di.di_ib[i], i, &filesize,
-			    tapesize, nodump);
+			    tape_size, nodump);
 		}
 		if (ret & HASDUMPEDFILE) {
 			SETINO(ino, dumpinomap);
-			*tapesize += blockest(&di);
+			*tape_size += blockest(&di);
 			change = 1;
 			continue;
 		}
@@ -262,7 +261,7 @@ mapdirs(ino_t maxino, long *tapesize)
  */
 static int
 dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
-         long *tapesize, int nodump)
+         long *tape_size, int nodump)
 {
 	int ret = 0;
 	int i;
@@ -272,9 +271,10 @@ dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
 	if (ind_level <= 0) {
 		for (i = 0; *filesize > 0 && i < NINDIR(sblock); i++) {
 			blkno = idblk[i];
-			if (blkno != 0)
+			if (blkno != 0) {
 				ret |= searchdir(ino, blkno, sblock->fs_bsize,
-					*filesize, tapesize, nodump);
+					*filesize, tape_size, nodump);
+			}
 			if (ret & HASDUMPEDFILE)
 				*filesize = 0;
 			else
@@ -285,9 +285,10 @@ dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
 	ind_level--;
 	for (i = 0; *filesize > 0 && i < NINDIR(sblock); i++) {
 		blkno = idblk[i];
-		if (blkno != 0)
+		if (blkno != 0) {
 			ret |= dirindir(ino, blkno, ind_level, filesize,
-			    tapesize, nodump);
+			    tape_size, nodump);
+		}
 	}
 	return (ret);
 }
@@ -299,7 +300,7 @@ dirindir(ino_t ino, daddr_t blkno, int ind_level, long *filesize,
  */
 static int
 searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
-          long *tapesize, int nodump)
+          long *tape_size, int nodump)
 {
 	struct direct *dp;
 	struct dinode *ip;
@@ -328,7 +329,7 @@ searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
 			ip = getino(dp->d_ino);
 			if (TSTINO(dp->d_ino, dumpinomap)) {
 				CLRINO(dp->d_ino, dumpinomap);
-				*tapesize -= blockest(ip);
+				*tape_size -= blockest(ip);
 			}
 			/*
 			 * Add back to dumpdirmap and remove from usedinomap
