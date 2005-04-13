@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.9 2004/12/27 22:36:37 liamfoy Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.10 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -80,9 +80,9 @@ long	dev_bsize = 1;	/* recalculated below */
 long	blocksperfile;	/* output blocks per file */
 char	*host = NULL;	/* remote host (if any) */
 
-static long numarg(char *, long, long);
-static void obsolete(int *, char **[]);
-static void usage(void);
+static long	numarg(const char *, long, long);
+static void	obsolete(int *, char **[]);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -518,7 +518,7 @@ usage(void)
  * range (except that a vmax of 0 means unlimited).
  */
 static long
-numarg(char *meaning, long vmin, long vmax)
+numarg(const char *meaning, long vmin, long vmax)
 {
 	char *p;
 	long val;

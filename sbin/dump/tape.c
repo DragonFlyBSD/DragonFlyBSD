@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.11 2005/04/13 14:32:01 joerg Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.12 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -169,16 +169,12 @@ alloctape(void)
 }
 
 void
-writerec(char *dp, int isspcl)
+writerec(const void *dp, int isspcl)
 {
 
 	slp->req[trecno].dblk = (daddr_t)0;
 	slp->req[trecno].count = 1;
-#ifndef	__alpha__
-	*(union u_spcl *)(*(nextblock)++) = *(union u_spcl *)dp;
-#else
 	bcopy(dp, *(nextblock)++, sizeof (union u_spcl));
-#endif
 	if (isspcl)
 		lastspclrec = spcl.c_tapea;
 	trecno++;

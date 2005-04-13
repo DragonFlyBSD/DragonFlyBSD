@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.7 2005/04/13 14:05:35 joerg Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.8 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -95,54 +95,54 @@ int	dev_bshift;	/* log2(dev_bsize) */
 int	tp_bshift;	/* log2(TP_BSIZE) */
 
 /* operator interface functions */
-void	broadcast(const char *message);
+void	broadcast(const char *);
 void	infosch(int);
-void	lastdump(int arg);	/* int should be char */
-void	msg(const char *fmt, ...) __printflike(1, 2);
-void	msgtail(const char *fmt, ...) __printflike(1, 2);
-int	query(char *question);
-void	quit(const char *fmt, ...) __printflike(1, 2);
+void	lastdump(int);		/* int should be char */
+void	msg(const char *, ...) __printflike(1, 2);
+void	msgtail(const char *, ...) __printflike(1, 2);
+int	query(const char *);
+void	quit(const char *, ...) __printflike(1, 2);
 void	timeest(void);
-time_t	unctime(char *str);
+time_t	unctime(const char *);
 
 /* mapping rouintes */
 struct	dinode;
-long	blockest(struct dinode *dp);
-int	mapfiles(ino_t maxino, long *tapesize);
-int	mapdirs(ino_t maxino, long *tapesize);
+long	blockest(struct dinode *);
+int	mapfiles(ino_t maxino, long *);
+int	mapdirs(ino_t maxino, long *);
 
 /* file dumping routines */
-void	blksout(daddr_t *blkp, int frags, ino_t ino);
-void	bread(daddr_t blkno, char *buf, int size);
-ssize_t cread(int fd, void *buf, size_t nbytes, off_t offset);
-void	dumpino(struct dinode *dp, ino_t ino);
-void	dumpmap(char *map, int type, ino_t ino);
-void	writeheader(ino_t ino);
+void	blksout(daddr_t *, int, ino_t);
+void	bread(daddr_t, char *, int);
+ssize_t cread(int, void *, size_t, off_t);
+void	dumpino(struct dinode *, ino_t);
+void	dumpmap(const char *, int, ino_t);
+void	writeheader(ino_t);
 
 /* tape writing routines */
 int	alloctape(void);
 void	close_rewind(void);
-void	dumpblock(daddr_t blkno, int size);
-void	startnewtape(int top);
+void	dumpblock(daddr_t, int);
+void	startnewtape(int);
 void	trewind(void);
-void	writerec(char *dp, int isspcl);
+void	writerec(const void *, int);
 
-void	Exit(int status) __dead2;
-void	dumpabort(int signo);
+void	Exit(int) __dead2;
+void	dumpabort(int);
 void	getfstab(void);
 
-char	*rawname(char *cp);
-struct	dinode *getino(ino_t inum);
+char	*rawname(char *);
+struct	dinode *getino(ino_t);
 
 /* rdump routines */
 #ifdef RDUMP
 void	rmtclose(void);
-int	rmthost(char *host);
-int	rmtopen(const char *tape, int mode);
-int	rmtwrite(char *buf, int count);
+int	rmthost(const char *);
+int	rmtopen(const char *, int);
+int	rmtwrite(const void *, int);
 #endif /* RDUMP */
 
-void	interrupt(int signo);	/* in case operator bangs on console */
+void	interrupt(int);		/* in case operator bangs on console */
 
 /*
  *	Exit status codes
@@ -154,7 +154,7 @@ void	interrupt(int signo);	/* in case operator bangs on console */
 
 #define	OPGRENT	"operator"		/* group entry to notify */
 
-struct	fstab *fstabsearch(char *key);	/* search fs_file and fs_spec */
+struct	fstab *fstabsearch(const char *);	/* search fs_file and fs_spec */
 
 #ifndef NAME_MAX
 #define NAME_MAX 255
@@ -178,7 +178,7 @@ void	putdumptime(void);
 	if (ddatev != NULL)	\
 		for (ddp = ddatev[i = 0]; i < nddates; ddp = ddatev[++i])
 
-void	sig(int signo);
+void	sig(int);
 
 /*
  * Compatibility with old systems.

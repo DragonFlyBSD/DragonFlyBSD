@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.10 2005/04/13 14:12:35 joerg Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.11 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -91,14 +91,11 @@ extern	int dokerberos;
 extern	int ntrec;		/* blocking factor on tape */
 
 int
-rmthost(char *host)
+rmthost(const char *host)
 {
 
-	rmtpeer = malloc(strlen(host) + 1);
-	if (rmtpeer)
-		strcpy(rmtpeer, host);
-	else
-		rmtpeer = host;
+	if (rmtpeer = strdup(host))
+		err(1, "strdup failed");
 	signal(SIGPIPE, rmtconnaborted);
 	rmtgetconn();
 	if (rmtape < 0)
@@ -237,7 +234,7 @@ rmtclose(void)
 }
 
 int
-rmtwrite(char *buf, int count)
+rmtwrite(const void *buf, int count)
 {
 	char line[30];
 

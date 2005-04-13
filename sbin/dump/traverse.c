@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.10 2005/04/13 14:05:35 joerg Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.11 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -502,10 +502,10 @@ blksout(daddr_t *blkp, int frags, ino_t ino)
  * Dump a map to the tape.
  */
 void
-dumpmap(char *map, int type, ino_t ino)
+dumpmap(const char *map, int type, ino_t ino)
 {
 	int i;
-	char *cp;
+	const char *cp;
 
 	spcl.c_type = type;
 	spcl.c_count = howmany(mapsize * sizeof(char), TP_BSIZE);
@@ -535,7 +535,7 @@ writeheader(ino_t ino)
 		sum += *lp++;
 	}
 	spcl.c_checksum = CHECKSUM - sum;
-	writerec((char *)&spcl, 1);
+	writerec(&spcl, 1);
 }
 
 struct dinode *

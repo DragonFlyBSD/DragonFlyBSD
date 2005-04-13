@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.7 2005/04/13 14:05:35 joerg Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.8 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,7 @@ static int timeout;
 static const char *attnmessage;		/* attention message */
 
 int
-query(char *question)
+query(const char *question)
 {
 	char	replybuffer[64];
 	int	back, errcount;
@@ -318,7 +318,7 @@ getfstab(void)
  * The file name can omit the leading '/'.
  */
 struct fstab *
-fstabsearch(char *key)
+fstabsearch(const char *key)
 {
 	struct pfstab *pf;
 	struct fstab *fs;

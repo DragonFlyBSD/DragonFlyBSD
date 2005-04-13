@@ -32,7 +32,7 @@
  *
  * @(#)unctime.c	8.2 (Berkeley) 6/14/94
  * $FreeBSD: src/sbin/dump/unctime.c,v 1.3.2.1 2001/09/19 09:29:39 ru Exp $
- * $DragonFly: src/sbin/dump/unctime.c,v 1.4 2005/04/13 14:05:35 joerg Exp $
+ * $DragonFly: src/sbin/dump/unctime.c,v 1.5 2005/04/13 15:21:36 joerg Exp $
  */
 
 #include <time.h>
@@ -48,7 +48,7 @@
 
 
 time_t
-unctime(char *str)
+unctime(const char *str)
 {
 	struct tm then;
 
