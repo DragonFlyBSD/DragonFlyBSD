@@ -1,4 +1,4 @@
-/*	$OpenBSD: ntp_msg.c,v 1.13 2004/12/08 17:35:16 mickey Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/ntp_msg.c,v 1.14 2004/12/14 06:27:13 dtucker Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>

@@ -1,4 +1,4 @@
-/*	$OpenBSD: parse.y,v 1.23 2004/11/10 11:27:54 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/parse.y,v 1.24 2004/11/25 06:27:41 henning Exp $ */
 
 /*
  * Copyright (c) 2002, 2003, 2004 Henning Brauer <henning@openbsd.org>
