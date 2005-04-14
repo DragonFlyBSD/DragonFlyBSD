@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.9 2005/04/13 16:07:15 joerg Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.10 2005/04/14 10:17:23 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -140,12 +140,19 @@ char	*rawname(char *);
 struct	dinode *getino(ino_t);
 
 /* rdump routines */
-#ifdef RDUMP
+#if defined(RDUMP) || defined(RRESTORE)
 void	rmtclose(void);
 int	rmthost(const char *);
 int	rmtopen(const char *, int);
 int	rmtwrite(const void *, int);
-#endif /* RDUMP */
+#endif /* RDUMP || RRESTORE */
+
+/* rrestore routines */
+#ifdef RRESTORE
+int	rmtread(char *, int);
+int	rmtseek(int, int);
+int	rmtioctl(int, int);
+#endif /* RRESTORE */
 
 void	interrupt(int);		/* in case operator bangs on console */
 

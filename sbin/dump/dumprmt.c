@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.12 2005/04/13 16:07:15 joerg Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.13 2005/04/14 10:17:23 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -231,6 +231,47 @@ rmtclose(void)
 	rmtcall("close", "C\n");
 	rmtstate = TS_CLOSED;
 }
+
+#ifdef RRESTORE
+int
+rmtread(char *buf, int count)
+{
+	char line[30];
+	int n, i, cc;
+
+	snprintf(line, sizeof (line), "R%d\n", count);
+	n = rmtcall("read", line);
+	if (n < 0)
+		/* rmtcall() properly sets errno for us on errors. */
+		return (n);
+	for (i = 0; i < n; i += cc) {
+		cc = read(rmtape, buf+i, n - i);
+		if (cc <= 0)
+			rmtconnaborted(0);
+	}
+	return (n);
+}
+
+int
+rmtseek(int offset, int pos)
+{
+	char line[80];
+
+	snprintf(line, sizeof (line), "L%d\n%d\n", offset, pos);
+	return (rmtcall("seek", line));
+}
+
+int
+rmtioctl(int cmd, int count)
+{
+	char buf[256];
+
+	if (count < 0)
+		return (-1);
+	snprintf(buf, sizeof (buf), "I%d\n%d\n", cmd, count);
+	return (rmtcall("ioctl", buf));
+}
+#endif	/* RRESTORE */
 
 int
 rmtwrite(const void *buf, int count)
