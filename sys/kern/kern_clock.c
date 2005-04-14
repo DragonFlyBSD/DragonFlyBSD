@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.33 2005/04/14 08:14:31 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.34 2005/04/14 11:15:52 joerg Exp $
  */
 
 #include "opt_ntp.h"
@@ -159,8 +159,8 @@ int64_t	ntp_delta;		/* one-time correction in nsec */
 int64_t ntp_big_delta = 1000000000;
 int32_t	ntp_tick_delta;		/* current adjustment rate */
 int32_t	ntp_default_tick_delta;	/* adjustment rate for ntp_delta */
-time_t	ntp_leaf_second;	/* time of next leaf second */
-int	ntp_leaf_insert;	/* whether to insert or remove a second */
+time_t	ntp_leap_second;	/* time of next leap second */
+int	ntp_leap_insert;	/* whether to insert or remove a second */
 
 /*
  * Finish initializing clock frequencies and start all clocks running.
@@ -340,16 +340,16 @@ hardclock(systimer_t info, struct intrframe *frame)
 		    basetime.tv_nsec += 1000000000;
 	    }
 
-	    if (ntp_leaf_second) {
+	    if (ntp_leap_second) {
 		struct timespec tsp;
 		nanotime(&tsp);
 
-		if (ntp_leaf_second == tsp.tv_sec) {
-			if (ntp_leaf_insert)
+		if (ntp_leap_second == tsp.tv_sec) {
+			if (ntp_leap_insert)
 				basetime.tv_sec++;
 			else
 				basetime.tv_sec--;
-			ntp_leaf_second--;
+			ntp_leap_second--;
 		}
 	    }
 

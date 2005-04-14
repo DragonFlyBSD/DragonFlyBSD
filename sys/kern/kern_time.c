@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.20 2005/04/14 07:55:36 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.21 2005/04/14 11:15:52 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -561,11 +561,11 @@ SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, tick_delta, CTLFLAG_RD,
 SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, default_tick_delta, CTLFLAG_RD,
     &ntp_default_tick_delta, sizeof(ntp_default_tick_delta), "LU",
     "default per-tick adjustment");
-SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, next_leaf_second, CTLFLAG_RW,
-    &ntp_leaf_second, sizeof(ntp_leaf_second), "LU",
-    "next leaf second");
-SYSCTL_INT(_kern_ntp, OID_AUTO, insert_leaf_second, CTLFLAG_RW,
-    &ntp_leaf_insert, 0, "insert or remove leaf second");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, next_leap_second, CTLFLAG_RW,
+    &ntp_leap_second, sizeof(ntp_leap_second), "LU",
+    "next leap second");
+SYSCTL_INT(_kern_ntp, OID_AUTO, insert_leap_second, CTLFLAG_RW,
+    &ntp_leap_insert, 0, "insert or remove leap second");
 SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
     CTLTYPE_OPAQUE|CTLFLAG_RW, 0, 0,
     sysctl_adjtime, "", "relative adjust for delta");
