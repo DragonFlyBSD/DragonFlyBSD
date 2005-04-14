@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.19 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.20 2005/04/14 07:55:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -429,9 +429,64 @@ settimeofday(struct settimeofday_args *uap)
 	return (0);
 }
 
-int	tickdelta;			/* current clock skew, us. per tick */
-long	timedelta;			/* unapplied time correction, us. */
-static long	bigadj = 1000000;	/* use 10x skew above bigadj us. */
+static void
+kern_adjtime_common(void)
+{
+	if ((ntp_delta >= 0 && ntp_delta < ntp_default_tick_delta) ||
+	    (ntp_delta < 0 && ntp_delta > ntp_default_tick_delta))
+		ntp_tick_delta = ntp_delta;
+	else if (ntp_delta > ntp_big_delta)
+		ntp_tick_delta = 10 * ntp_default_tick_delta;
+	else if (ntp_delta < -ntp_big_delta)
+		ntp_tick_delta = -10 * ntp_default_tick_delta;
+	else if (ntp_delta > 0)
+		ntp_tick_delta = ntp_default_tick_delta;
+	else
+		ntp_tick_delta = -ntp_default_tick_delta;
+}
+
+void
+kern_adjtime(int64_t delta, int64_t *odelta)
+{
+	int origcpu;
+
+	if ((origcpu = mycpu->gd_cpuid) != 0) {
+		lwkt_setcpu_self(globaldata_find(0));
+		cpu_mb1();
+	}
+
+	crit_enter();
+	*odelta = ntp_delta;
+	ntp_delta += delta;
+	kern_adjtime_common();
+	crit_exit();
+
+	if (origcpu != 0) {
+		lwkt_setcpu_self(globaldata_find(origcpu));
+		cpu_mb1();
+	}
+}
+
+void
+kern_reladjtime(int64_t delta)
+{
+	int origcpu;
+
+	if ((origcpu = mycpu->gd_cpuid) != 0) {
+		lwkt_setcpu_self(globaldata_find(0));
+		cpu_mb1();
+	}
+
+	crit_enter();
+	ntp_delta += delta;
+	kern_adjtime_common();
+	crit_exit();
+
+	if (origcpu != 0) {
+		lwkt_setcpu_self(globaldata_find(origcpu));
+		cpu_mb1();
+	}
+}
 
 /* ARGSUSED */
 int
@@ -439,7 +494,7 @@ adjtime(struct adjtime_args *uap)
 {
 	struct thread *td = curthread;
 	struct timeval atv;
-	long ndelta, ntickdelta, odelta;
+	int64_t ndelta, odelta;
 	int error;
 
 	if ((error = suser(td)))
@@ -455,38 +510,65 @@ adjtime(struct adjtime_args *uap)
 	 * hardclock(), tickdelta will become zero, lest the correction
 	 * overshoot and start taking us away from the desired final time.
 	 */
-	ndelta = atv.tv_sec * 1000000 + atv.tv_usec;
-	if (ndelta > bigadj || ndelta < -bigadj)
-		ntickdelta = 10 * tickadj;
-	else
-		ntickdelta = tickadj;
-	if (ndelta % ntickdelta)
-		ndelta = ndelta / ntickdelta * ntickdelta;
-
-	/*
-	 * To make hardclock()'s job easier, make the per-tick delta negative
-	 * if we want time to run slower; then hardclock can simply compute
-	 * tick + tickdelta, and subtract tickdelta from timedelta.
-	 */
-	if (ndelta < 0)
-		ntickdelta = -ntickdelta;
-	/* 
-	 * XXX not MP safe , but will probably work anyway.
-	 */
-	crit_enter();
-	odelta = timedelta;
-	timedelta = ndelta;
-	tickdelta = ntickdelta;
-	crit_exit();
+	ndelta = atv.tv_sec * 1000000000 + atv.tv_usec * 1000;
+	kern_adjtime(ndelta, &odelta);
 
 	if (uap->olddelta) {
-		atv.tv_sec = odelta / 1000000;
-		atv.tv_usec = odelta % 1000000;
+		atv.tv_sec = odelta / 1000000000;
+		atv.tv_usec = odelta % 1000000 / 1000;
 		(void) copyout((caddr_t)&atv, (caddr_t)uap->olddelta,
 		    sizeof(struct timeval));
 	}
 	return (0);
 }
+
+static int
+sysctl_adjtime(SYSCTL_HANDLER_ARGS)
+{
+	int64_t delta;
+	int error;
+
+	if (req->oldptr != NULL) {
+		delta = 0;
+		error = SYSCTL_OUT(req, &delta, sizeof(delta));
+		if (error)
+			return (error);
+	}
+	if (req->newptr != NULL) {
+		if (suser(curthread))
+			return (EPERM);
+		error = SYSCTL_IN(req, &delta, sizeof(delta));
+		if (error)
+			return (error);
+		kern_reladjtime(delta);
+	}
+	return (0);
+}
+
+SYSCTL_NODE(_kern, OID_AUTO, ntp, CTLFLAG_RW, 0, "NTP related controls");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, permanent, CTLFLAG_RW,
+    &ntp_tick_permanent, sizeof(ntp_tick_permanent),
+    "LU", "permanent per-tick correct");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, delta, CTLFLAG_RD,
+    &ntp_delta, sizeof(ntp_delta), "LU",
+    "one-time delta");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, big_delta, CTLFLAG_RD,
+    &ntp_big_delta, sizeof(ntp_big_delta), "LU",
+    "threshold for fast adjustment");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, tick_delta, CTLFLAG_RD,
+    &ntp_tick_delta, sizeof(ntp_tick_delta), "LU",
+    "per-tick adjustment");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, default_tick_delta, CTLFLAG_RD,
+    &ntp_default_tick_delta, sizeof(ntp_default_tick_delta), "LU",
+    "default per-tick adjustment");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, next_leaf_second, CTLFLAG_RW,
+    &ntp_leaf_second, sizeof(ntp_leaf_second), "LU",
+    "next leaf second");
+SYSCTL_INT(_kern_ntp, OID_AUTO, insert_leaf_second, CTLFLAG_RW,
+    &ntp_leaf_insert, 0, "insert or remove leaf second");
+SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
+    CTLTYPE_OPAQUE|CTLFLAG_RW, 0, 0,
+    sysctl_adjtime, "", "relative adjust for delta");
 
 /*
  * Get value of an interval timer.  The process virtual and

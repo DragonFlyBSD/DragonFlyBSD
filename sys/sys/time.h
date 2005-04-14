@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.13 2005/03/15 01:12:21 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.14 2005/04/14 07:55:36 joerg Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -193,6 +193,14 @@ struct clockinfo {
 
 #ifdef _KERNEL
 extern time_t	time_second;
+extern int64_t	ntp_tick_permanent;
+extern int64_t	ntp_tick_acc;
+extern int64_t	ntp_delta;
+extern int64_t	ntp_big_delta;
+extern int32_t	ntp_tick_delta;
+extern int32_t	ntp_default_tick_delta;
+extern time_t	ntp_leaf_second;
+extern int	ntp_leaf_insert;
 
 void	initclocks_pcpu(void);
 void	getmicrouptime (struct timeval *tv);
@@ -209,6 +217,8 @@ void	nanouptime (struct timespec *ts);
 void	nanotime (struct timespec *ts);
 time_t	get_approximate_time_t(void);
 void	set_timeofday(struct timespec *ts);
+void	kern_adjtime(int64_t, int64_t *);
+void	kern_reladjtime(int64_t);
 void	timevaladd (struct timeval *, struct timeval *);
 void	timevalsub (struct timeval *, struct timeval *);
 int	tvtohz_high (struct timeval *);

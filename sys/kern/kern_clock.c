@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.31 2005/03/13 21:33:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.32 2005/04/14 07:55:36 joerg Exp $
  */
 
 #include "opt_ntp.h"
@@ -151,6 +151,16 @@ int	ticks;			/* system master ticks at hz */
 int	clocks_running;		/* tsleep/timeout clocks operational */
 int64_t	nsec_adj;		/* ntpd per-tick adjustment in nsec << 32 */
 int64_t	nsec_acc;		/* accumulator */
+
+/* NTPD time correction fields */
+int64_t	ntp_tick_permanent;	/* per-tick adjustment in nsec << 32 */
+int64_t	ntp_tick_acc;		/* accumulator for per-tick adjustment */
+int64_t	ntp_delta;		/* one-time correction in nsec */
+int64_t ntp_big_delta = 1000000000;
+int32_t	ntp_tick_delta;		/* current adjustment rate */
+int32_t	ntp_default_tick_delta;	/* adjustment rate for ntp_delta */
+time_t	ntp_leaf_second;	/* time of next leaf second */
+int	ntp_leaf_insert;	/* wether to insert or remove a second */
 
 /*
  * Finish initializing clock frequencies and start all clocks running.
@@ -237,7 +247,7 @@ set_timeofday(struct timespec *ts)
 	 * into account in the basetime calculation above.
 	 */
 	boottime.tv_sec = basetime.tv_sec;
-	timedelta = 0;
+	ntp_delta = 0;
 	crit_exit();
 }
 	
@@ -302,17 +312,45 @@ hardclock(systimer_t info, struct intrframe *frame)
 	     * of these variables.  Note that basetime adjustments are not
 	     * MP safe either XXX.
 	     */
-	    if (timedelta != 0 && try_mplock()) {
-		basetime.tv_nsec += tickdelta * 1000;
-		if (basetime.tv_nsec >= 1000000000) {
-		    basetime.tv_nsec -= 1000000000;
-		    ++basetime.tv_sec;
-		} else if (basetime.tv_nsec < 0) {
-		    basetime.tv_nsec += 1000000000;
-		    --basetime.tv_sec;
+	    if (ntp_delta != 0) {
+		basetime.tv_nsec += ntp_tick_delta;
+		ntp_delta -= ntp_tick_delta;
+		if ((ntp_delta > 0 && ntp_delta < ntp_tick_delta) ||
+		    (ntp_delta < 0 && ntp_delta > ntp_tick_delta)) {
+				ntp_tick_delta = ntp_delta;
+ 		}
+ 	    }
+
+	    if (ntp_tick_permanent != 0) {
+		ntp_tick_acc += ntp_tick_permanent;
+		if (ntp_tick_acc >= (1LL << 32)) {
+		    basetime.tv_nsec += (-ntp_tick_acc) >> 32;
+		    ntp_tick_acc &= (1LL << 32) - 1;
+		} else if (ntp_tick_acc <= -(1LL << 32)) {
+		    basetime.tv_nsec -= (-ntp_tick_acc) >> 32;
+		    ntp_tick_acc = -((-ntp_tick_acc) & ((1LL << 32) - 1));
 		}
-		timedelta -= tickdelta;
-		rel_mplock();
+ 	    }
+
+	    if (basetime.tv_nsec >= 1000000000) {
+		    basetime.tv_sec++;
+		    basetime.tv_nsec -= 1000000000;
+	    } else if (basetime.tv_nsec < 0) {
+		    basetime.tv_sec--;
+		    basetime.tv_nsec += 1000000000;
+	    }
+
+	    if (ntp_leaf_second) {
+		struct timespec tsp;
+		nanotime(&tsp);
+
+		if (ntp_leaf_second == tsp.tv_sec) {
+			if (ntp_leaf_insert)
+				basetime.tv_sec++;
+			else
+				basetime.tv_sec--;
+			ntp_leaf_second--;
+		}
 	    }
 
 	    /*
@@ -644,7 +682,7 @@ sysctl_kern_clockrate(SYSCTL_HANDLER_ARGS)
 	 */
 	clkinfo.ci_hz = hz;
 	clkinfo.ci_tick = tick;
-	clkinfo.ci_tickadj = tickadj;
+	clkinfo.ci_tickadj = ntp_default_tick_delta / 1000;
 	clkinfo.ci_profhz = profhz;
 	clkinfo.ci_stathz = stathz ? stathz : hz;
 	return (sysctl_handle_opaque(oidp, &clkinfo, sizeof clkinfo, req));

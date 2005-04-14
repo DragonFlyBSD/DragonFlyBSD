@@ -37,7 +37,7 @@
  *
  *	@(#)param.c	8.3 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/kern/subr_param.c,v 1.42.2.10 2002/03/09 21:05:47 silby Exp $
- * $DragonFly: src/sys/kern/subr_param.c,v 1.5 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_param.c,v 1.6 2005/04/14 07:55:36 joerg Exp $
  */
 
 #include "opt_param.h"
@@ -74,7 +74,6 @@ int	hz;
 int	stathz;
 int	profhz;
 int	tick;
-int	tickadj;			 /* can adjust 30ms in 60s */
 int	maxusers;			/* base tunable */
 int	maxproc;			/* maximum # of processes */
 int	maxprocperuid;			/* max # of procs per user */
@@ -116,7 +115,8 @@ init_param1(void)
 	stathz = hz * 128 / 100;
 	profhz = stathz;
 	tick = 1000000 / hz;
-	tickadj = howmany(30000, 60 * hz);	/* can adjust 30ms in 60s */
+	/* can adjust 30ms in 60s */
+	ntp_default_tick_delta = howmany(30000000, 60 * hz);
 
 #ifdef VM_SWZONE_SIZE_MAX
 	maxswzone = VM_SWZONE_SIZE_MAX;
