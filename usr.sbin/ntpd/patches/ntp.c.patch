@@ -1,0 +1,23 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.3 2005/04/14 10:31:27 joerg Exp $
+
+--- ntp.c	25 Feb 2005 16:43:19 -0000	1.6
++++ ntp.c	12 Apr 2005 20:13:45 -0000
+@@ -422,12 +422,15 @@
+ 		if (peers[offset_cnt / 2]->addr->ss.ss_family == AF_INET)
+ 			conf->status.refid = ((struct sockaddr_in *)
+ 			    &peers[offset_cnt / 2]->addr->ss)->sin_addr.s_addr;
++
++		TAILQ_FOREACH(p, &conf->ntp_peers, entry) {
++			for (i = 0; i < OFFSET_ARRAY_SIZE; i++)
++				p->reply[i].offset -= offset_median;
++			p->update.good = 0;
++		}
+ 	}
+ 
+ 	free(peers);
+-
+-	TAILQ_FOREACH(p, &conf->ntp_peers, entry)
+-		p->update.good = 0;
+ }
+ 
+ int

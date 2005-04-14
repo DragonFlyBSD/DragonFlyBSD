@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.4 2005/02/28 21:40:49 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.5 2005/04/14 10:31:27 joerg Exp $
 
 Index: ntpd.h
 ===================================================================
@@ -16,3 +16,23 @@ diff -u -r1.6 ntpd.h
  #define	NTPD_USER	"_ntp"
  #define	CONFFILE	"/etc/ntpd.conf"
  
+@@ -49,8 +51,8 @@
+ 
+ #define	MAX_SERVERS_DNS			8
+ 
+-#define	QSCALE_OFF_MIN			0.05
+-#define	QSCALE_OFF_MAX			0.50
++#define	QSCALE_OFF_MIN			0.005
++#define	QSCALE_OFF_MAX			0.010
+ 
+ #define	QUERYTIME_MAX		15	/* single query might take n secs max */
+ #define	OFFSET_ARRAY_SIZE	8
+@@ -247,6 +249,8 @@
+ 
+ /* util.c */
+ double			gettime(void);
++double			gettime_corrected(void);
++double			getoffset(void);
+ void			d_to_tv(double, struct timeval *);
+ double			lfp_to_d(struct l_fixedpt);
+ struct l_fixedpt	d_to_lfp(double);

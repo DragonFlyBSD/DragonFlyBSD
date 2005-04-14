@@ -1,8 +1,16 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.5 2005/02/25 16:43:20 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.6 2005/04/14 10:31:27 joerg Exp $
 
 --- ntpd.c.orig	2004-11-09 20:39:54.000000000 +0100
 +++ ntpd.c	2004-11-09 20:40:48.000000000 +0100
-@@ -34,7 +34,7 @@
+@@ -18,6 +18,7 @@
+ 
+ #include <sys/types.h>
+ #include <sys/socket.h>
++#include <sys/sysctl.h>
+ #include <sys/wait.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+@@ -34,7 +35,7 @@
  #include "ntpd.h"
  
  void		sighdlr(int);
@@ -11,7 +19,7 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.5 2005/02/25 16:43:
  int		main(int, char *[]);
  int		check_child(pid_t, const char *);
  int		dispatch_imsg(struct ntpd_conf *);
-@@ -63,12 +63,10 @@
+@@ -63,12 +64,10 @@
  	}
  }
  
@@ -26,3 +34,26 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.5 2005/02/25 16:43:
  	exit(1);
  }
  
+@@ -307,16 +306,18 @@
+ void
+ ntpd_adjtime(double d)
+ {
+-	struct timeval	tv;
++	int64_t adjust;
+ 
+ 	if (d >= (double)LOG_NEGLIGEE / 1000 ||
+ 	    d <= -1 * (double)LOG_NEGLIGEE / 1000)
+ 		log_info("adjusting local clock by %fs", d);
+ 	else
+ 		log_debug("adjusting local clock by %fs", d);
+-	d_to_tv(d, &tv);
+-	if (adjtime(&tv, NULL) == -1)
+-		log_warn("adjtime failed");
++	adjust = d * 1e9;
++
++	if (sysctlbyname("kern.ntp.adjust", NULL, NULL, &adjust,
++			 sizeof(adjust)))
++		log_info("adjtime failed");
+ }
+ 
+ void
