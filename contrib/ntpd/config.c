@@ -1,4 +1,4 @@
-/*	$OpenBSD: config.c,v 1.14 2004/08/30 12:02:59 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/config.c,v 1.17 2005/03/09 20:31:11 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -121,16 +121,13 @@ host_dns(const char *s, struct ntp_addr **hn)
 	bzero(&hints, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM; /* DUMMY */
-	res_init();	/* XXX */
 	error = getaddrinfo(s, NULL, &hints, &res0);
+	if (error == EAI_AGAIN || error == EAI_NODATA || error == EAI_NONAME)
+			return (0);
 	if (error) {
 		log_warnx("could not parse \"%s\": %s", s,
 		    gai_strerror(error));
-		if (error == EAI_AGAIN || error == EAI_NODATA ||
-		    error == EAI_NONAME)
-			return (0);
-		else
-			return (-1);
+		return (-1);
 	}
 
 	for (res = res0; res && cnt < MAX_SERVERS_DNS; res = res->ai_next) {

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ntp.c,v 1.50 2005/02/02 19:03:52 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/ntp.c,v 1.55 2005/03/24 14:50:07 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -64,7 +64,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 {
 	int			 a, b, nfds, i, j, idx_peers, timeout, nullfd;
 	u_int			 pfd_elms = 0, idx2peer_elms = 0;
-	u_int			 listener_cnt, new_cnt, sent_cnt;
+	u_int			 listener_cnt, new_cnt, sent_cnt, trial_cnt;
 	pid_t			 pid;
 	struct pollfd		*pfd = NULL;
 	struct passwd		*pw;
@@ -80,6 +80,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 	switch (pid = fork()) {
 	case -1:
 		fatal("cannot fork");
+		break;
 	case 0:
 		break;
 	default:
@@ -141,7 +142,8 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 	conf->status.leap = LI_ALARM;
 	clock_getres(CLOCK_REALTIME, &tp);
 	b = 1000000000 / tp.tv_nsec;	/* convert to Hz */
-	for (a = 0; b > 1; a--, b >>= 1);
+	for (a = 0; b > 1; a--, b >>= 1)
+		;
 	conf->status.precision = a;
 	conf->scale = 1;
 
@@ -191,13 +193,15 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 		}
 
 		idx_peers = i;
-		sent_cnt = 0;
+		sent_cnt = trial_cnt = 0;
 		TAILQ_FOREACH(p, &conf->ntp_peers, entry) {
 			if (p->next > 0 && p->next < nextaction)
 				nextaction = p->next;
-			if (p->next > 0 && p->next <= time(NULL))
+			if (p->next > 0 && p->next <= time(NULL)) {
+				trial_cnt++;
 				if (client_query(p) == 0)
 					sent_cnt++;
+			}
 
 			if (p->deadline > 0 && p->deadline < nextaction)
 				nextaction = p->deadline;
@@ -223,7 +227,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 			}
 		}
 
-		if (sent_cnt == 0 && conf->settime)
+		if (trial_cnt > 0 && sent_cnt == 0 && conf->settime)
 			priv_settime(0);	/* no good peers, don't wait */
 
 		if (ibuf_main->w.queued > 0)
@@ -336,7 +340,7 @@ ntp_dispatch_imsg(void)
 				}
 			}
 			if (dlen != 0)
-				fatal("IMSG_HOST_DNS: dlen != 0");
+				fatalx("IMSG_HOST_DNS: dlen != 0");
 			if (peer->addr_head.pool)
 				peer_remove(peer);
 			else
