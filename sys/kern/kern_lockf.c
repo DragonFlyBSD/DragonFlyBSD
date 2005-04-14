@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.23 2005/03/03 06:56:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.24 2005/04/14 08:14:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -278,7 +278,7 @@ restart:
 		/*
 		 * We are blocked. For POSIX locks we have to check
 		 * for deadlocks and return with EDEADLK. This is done
-		 * by checking wether range->lf_owner is already
+		 * by checking whether range->lf_owner is already
 		 * blocked.
 		 *
 		 * Since flock-style locks cover the whole file, a
@@ -655,7 +655,7 @@ lf_getlock(struct flock *fl, struct lockf *lock, struct proc *owner,
 }
 
 /*
- * Check wether range and [start, end] overlap.
+ * Check whether range and [start, end] overlap.
  */
 static int
 lf_overlap(const struct lockf_range *range, off_t start, off_t end)
