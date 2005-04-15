@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.67 2005/04/09 06:24:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.68 2005/04/15 20:50:43 okumoto Exp $
  */
 
 /*-
@@ -625,20 +625,6 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
 			Lst_AtEnd(&gn->preds, p);
 		}
 	}
-}
-
-static char *
-stripvarname(char *cp)
-{
-	char   *cp2;
-
-	while (isspace((unsigned char)*cp))
-		++cp;
-	cp2 = cp;
-	while (*cp2 && !isspace((unsigned char)*cp2))
-		++cp2;
-	*cp2 = 0;
-	return (cp);
 }
 
 
@@ -2310,7 +2296,19 @@ Parse_File(const char *name, FILE *stream)
 				ParseDoWarning(cp + 7);
 				goto nextLine;
 			} else if (strncmp(cp, "undef", 5) == 0) {
-				cp = stripvarname(cp + 5);
+				char *cp2;
+				for (cp += 5; isspace((unsigned char)*cp);
+				    cp++) {
+					continue;
+				}
+
+				for (cp2 = cp; !isspace((unsigned char)*cp2) &&
+				   *cp2 != '\0'; cp2++) {
+					continue;
+				}
+
+				*cp2 = '\0';
+
 				buf = Var_Subst(NULL, cp, VAR_CMD, FALSE);
 				cp = Buf_Peel(buf);
 
