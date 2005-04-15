@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.70 2005/04/12 08:26:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.71 2005/04/15 21:01:27 okumoto Exp $
  */
 
 /*
@@ -607,8 +607,6 @@ main(int argc, char **argv)
 	 */
 	Dir_Init();		/* Initialize directory structures so -I flags
 				 * can be processed correctly */
-	Parse_Init();		/* Need to initialize the paths of #include
-				 * directories */
 	Var_Init();		/* As well as the lists of variables for
 				 * parsing arguments */
         str_init();

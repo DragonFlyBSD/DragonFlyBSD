@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.5 2005/04/01 01:12:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.6 2005/04/15 21:01:27 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -54,7 +54,6 @@ Boolean Parse_IsVar(char *);
 void Parse_DoVar(char *, struct GNode *);
 void Parse_AddIncludeDir(char *);
 void Parse_File(const char *, FILE *);
-void Parse_Init(void);
 void Parse_FromString(char *, int);
 void Parse_MainName(struct Lst *);
 
