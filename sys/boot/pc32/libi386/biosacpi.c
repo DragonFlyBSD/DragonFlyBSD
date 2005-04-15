@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosacpi.c,v 1.7 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosacpi.c,v 1.2 2004/10/24 18:36:05 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biosacpi.c,v 1.3 2005/04/15 17:55:49 joerg Exp $
  */
 
 #include <stand.h>
@@ -51,7 +51,7 @@ void
 biosacpi_detect(void)
 {
     RSDP_DESCRIPTOR	*rsdp;
-    char		buf[16];
+    char		buf[160];
     int			revision;
 
     /* XXX check the BIOS datestamp */
