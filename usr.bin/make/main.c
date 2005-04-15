@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.72 2005/04/15 21:05:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.73 2005/04/15 21:06:34 okumoto Exp $
  */
 
 /*
@@ -92,6 +92,8 @@
 #define	MKLVL_ENVVAR	"__MKLVL__"
 
 #define	MAKEFLAGS	".MAKEFLAGS"
+
+extern char **environ;	/* XXX what header declares this variable? */
 
 /* Targets to be made */
 Lst create = Lst_Initializer(create);
@@ -607,7 +609,7 @@ main(int argc, char **argv)
 	 */
 	Dir_Init();		/* Initialize directory structures so -I flags
 				 * can be processed correctly */
-	Var_Init();		/* As well as the lists of variables for
+	Var_Init(environ);	/* As well as the lists of variables for
 				 * parsing arguments */
         str_init();
 
