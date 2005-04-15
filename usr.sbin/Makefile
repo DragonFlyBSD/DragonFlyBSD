@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.23 2005/03/06 18:25:10 dillon Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.24 2005/04/15 18:26:58 joerg Exp $
 
 # XXX MISSING:		mkproto
 SUBDIR=	IPXrouted \
@@ -68,7 +68,6 @@ SUBDIR=	IPXrouted \
 	ngctl \
 	nghook \
 	ntpd \
-	pccard \
 	pciconf \
 	periodic \
 	pfctl \
