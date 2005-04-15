@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.183 2005/03/31 20:39:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.184 2005/04/15 20:45:48 okumoto Exp $
  */
 
 /*-
@@ -143,10 +143,6 @@ static char	varNoError[] = "";
 GNode	*VAR_GLOBAL;	/* variables from the makefile */
 GNode	*VAR_CMD;	/* variables defined on the command-line */
 
-#define	FIND_CMD	0x1   /* look in VAR_CMD when searching */
-#define	FIND_GLOBAL	0x2   /* look in VAR_GLOBAL as well */
-#define	FIND_ENV	0x4   /* look in the environment also */
-
 #define	OPEN_PAREN		'('
 #define	CLOSE_PAREN		')'
 #define	OPEN_BRACE		'{'
@@ -227,71 +223,100 @@ VarPossiblyExpand(const char *name, GNode *ctxt)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * VarFind --
- *	Find the given variable in the given context and any other contexts
- *	indicated.
- *
- *	Flags:
- *		FIND_GLOBAL	set means look in the VAR_GLOBAL context too
- *		FIND_CMD	set means to look in the VAR_CMD context too
- *		FIND_ENV	set means to look in the environment
+/**
+ * If the variable name begins with a '.', it could very well be
+ * one of the local ones.  We check the name against all the local
+ * variables and substitute the short version in for 'name' if it
+ * matches one of them.
+ */
+static const char * 
+VarLocal(const char name[])
+{
+	if (name[0] == '.') {
+		switch (name[1]) {
+		case 'A':
+			if (!strcmp(name, ".ALLSRC"))
+				return (ALLSRC);
+			if (!strcmp(name, ".ARCHIVE"))
+				return (ARCHIVE);
+			break;
+		case 'I':
+			if (!strcmp(name, ".IMPSRC"))
+				return (IMPSRC);
+			break;
+		case 'M':
+			if (!strcmp(name, ".MEMBER"))
+				return (MEMBER);
+			break;
+		case 'O':
+			if (!strcmp(name, ".OODATE"))
+				return (OODATE);
+			break;
+		case 'P':
+			if (!strcmp(name, ".PREFIX"))
+				return (PREFIX);
+			break;
+		case 'T':
+			if (!strcmp(name, ".TARGET"))
+				return (TARGET);
+			break;
+		default:
+			break;
+		}
+	}
+	return (name);
+}
+
+/**
+ * Find the given variable in the given context and the enviornment.
  *
  * Results:
  *	A pointer to the structure describing the desired variable or
  *	NULL if the variable does not exist.
- *
- * Side Effects:
- *	None
- *-----------------------------------------------------------------------
  */
 static Var *
-VarFind(const char *name, GNode *ctxt, int flags)
+VarFindEnv(const char name[], GNode *ctxt)
+{
+	Var	*var;
+	char	*env;
+
+	name = VarLocal(name);
+
+	/* First look for the variable in the given context. */
+	if ((var = VarLookup(&ctxt->context, name)) != NULL)
+		return (var);
+
+	/* Look for the variable in the environment. */
+	if ((env = getenv(name)) != NULL) {
+		/* craft this variable from the environment value */
+		return (VarCreate(name, env, VAR_FROM_ENV));
+	}
+
+	return (NULL);
+}
+
+/**
+ * Look for the variable in the given context.
+ */
+static Var *
+VarFindOnly(const char name[], GNode *ctxt)
+{
+
+	return VarLookup(&ctxt->context, VarLocal(name));
+}
+
+/**
+ * Look for the variable in all contexts.
+ */
+static Var *
+VarFindAny(const char name[], GNode *ctxt)
 {
 	Boolean	localCheckEnvFirst;
 	LstNode	*ln;
 	Var	*var;
 	char	*env;
 
-	/*
-	 * If the variable name begins with a '.', it could very well be one of
-	 * the local ones.  We check the name against all the local variables
-	 * and substitute the short version in for 'name' if it matches one of
-	 * them.
-	 */
-	if (name[0] == '.') {
-		switch (name[1]) {
-		case 'A':
-			if (!strcmp(name, ".ALLSRC"))
-				name = ALLSRC;
-			if (!strcmp(name, ".ARCHIVE"))
-				name = ARCHIVE;
-			break;
-		case 'I':
-			if (!strcmp(name, ".IMPSRC"))
-				name = IMPSRC;
-			break;
-		case 'M':
-			if (!strcmp(name, ".MEMBER"))
-				name = MEMBER;
-			break;
-		case 'O':
-			if (!strcmp(name, ".OODATE"))
-				name = OODATE;
-			break;
-		case 'P':
-			if (!strcmp(name, ".PREFIX"))
-				name = PREFIX;
-			break;
-		case 'T':
-			if (!strcmp(name, ".TARGET"))
-				name = TARGET;
-			break;
-		default:
-			break;
-		}
-	}
+	name = VarLocal(name);
 
 	/*
 	 * Note whether this is one of the specific variables we were told
@@ -310,30 +335,20 @@ VarFind(const char *name, GNode *ctxt, int flags)
 	 * look for it in VAR_CMD, VAR_GLOBAL and the environment,
 	 * in that order, depending on the FIND_* flags in 'flags'
 	 */
-	var = VarLookup(&ctxt->context, name);
-	if (var != NULL) {
-		/* got it */
+	if ((var = VarLookup(&ctxt->context, name)) != NULL)
 		return (var);
-	}
 
 	/* not there - try command line context */
-	if ((flags & FIND_CMD) && (ctxt != VAR_CMD)) {
-		var = VarLookup(&VAR_CMD->context, name);
-		if (var != NULL)
+	if (ctxt != VAR_CMD) {
+		if ((var = VarLookup(&VAR_CMD->context, name)) != NULL)
 			return (var);
 	}
 
 	/* not there - try global context, but only if not -e/-E */
-	if ((flags & FIND_GLOBAL) && (ctxt != VAR_GLOBAL) &&
-	    !checkEnvFirst && !localCheckEnvFirst) {
-		var = VarLookup(&VAR_GLOBAL->context, name);
-		if (var != NULL)
+	if (ctxt != VAR_GLOBAL && (!checkEnvFirst && !localCheckEnvFirst)) {
+		if ((var = VarLookup(&VAR_GLOBAL->context, name)) != NULL)
 			return (var);
 	}
-
-	if (!(flags & FIND_ENV))
-		/* we were not told to look into the environment */
-		return (NULL);
 
 	/* look in the environment */
 	if ((env = getenv(name)) != NULL) {
@@ -342,12 +357,11 @@ VarFind(const char *name, GNode *ctxt, int flags)
 	}
 
 	/* deferred check for the environment (in case of -e/-E) */
-	if ((checkEnvFirst || localCheckEnvFirst) &&
-	    (flags & FIND_GLOBAL) && (ctxt != VAR_GLOBAL)) {
-		var = VarLookup(&VAR_GLOBAL->context, name);
-		if (var != NULL)
+	if ((ctxt != VAR_GLOBAL) && (checkEnvFirst || localCheckEnvFirst)) {
+		if ((var = VarLookup(&VAR_GLOBAL->context, name)) != NULL)
 			return (var);
 	}
+
 	return (NULL);
 }
 
@@ -434,7 +448,7 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 	 * much point in searching them all just to save a bit of memory...
 	 */
 	n = VarPossiblyExpand(name, ctxt);
-	v = VarFind(n, ctxt, 0);
+	v = VarFindOnly(n, ctxt);
 	if (v == NULL) {
 		VarAdd(n, val, ctxt);
 	} else {
@@ -462,7 +476,7 @@ Var_SetEnv(const char *name, GNode *ctxt)
 {
 	Var    *v;
 
-	v = VarFind(name, ctxt, FIND_CMD | FIND_GLOBAL | FIND_ENV);
+	v = VarFindAny(name, ctxt);
 	if (v == NULL) {
 		Error("Cannot set environment flag on non-existant variable %s", name);
 	} else {
@@ -502,7 +516,11 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
 	char	*n;
 
 	n = VarPossiblyExpand(name, ctxt);
-	v = VarFind(n, ctxt, (ctxt == VAR_GLOBAL) ? FIND_ENV : 0);
+	if (ctxt == VAR_GLOBAL) {
+		v = VarFindEnv(n, ctxt);
+	} else {
+		v = VarFindOnly(n, ctxt);
+	}
 	if (v == NULL) {
 		VarAdd(n, val, ctxt);
 
@@ -548,7 +566,7 @@ Var_Exists(const char *name, GNode *ctxt)
 	char	*n;
 
 	n = VarPossiblyExpand(name, ctxt);
-	v = VarFind(n, ctxt, FIND_CMD | FIND_GLOBAL | FIND_ENV);
+	v = VarFindAny(n, ctxt);
 	if (v == NULL) {
 		free(n);
 		return (FALSE);
@@ -582,7 +600,7 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
 	char	*p;
 
 	n = VarPossiblyExpand(name, ctxt);
-	v = VarFind(n, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	v = VarFindAny(n, ctxt);
 	if (v == NULL) {
 		p = NULL;
 		*frp = NULL;
@@ -1308,7 +1326,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 
 	vname = Buf_GetAll(buf, &vlen);
 
-	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {
 		value = ParseModifier(vp, startc, v, freeResult);
 
@@ -1384,7 +1402,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 			name[0] = vname[0];
 			name[1] = '\0';
 
-			v = VarFind(name, vp->ctxt, 0);
+			v = VarFindOnly(name, vp->ctxt);
 			if (v != NULL) {
 				value = ParseModifier(vp, startc, v, freeResult);
 				return (value);
@@ -1418,7 +1436,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 
 	vname = Buf_GetAll(buf, &vlen);
 
-	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {
 		value = VarExpand(v, vp);
 
@@ -1481,7 +1499,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 			name[0] = vname[0];
 			name[1] = '\0';
 
-			v = VarFind(name, vp->ctxt, 0);
+			v = VarFindOnly(name, vp->ctxt);
 			if (v != NULL) {
 				char	*val;
 				/*
@@ -1588,7 +1606,7 @@ VarParseShort(VarParser *vp, Boolean *freeResult)
 
 	vp->ptr++;	/* consume single letter */
 
-	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {
 		value = VarExpand(v, vp);
 
