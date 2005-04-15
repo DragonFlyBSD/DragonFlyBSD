@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.49 2005/03/28 23:06:47 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.50 2005/04/15 18:40:52 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -45,7 +45,7 @@ SSL=	${.CURDIR}/../crypto/openssl-0.9.7e/apps/openssl.cnf
 #
 BIN2=	pccard_ether rc.suspend rc.resume
 
-DEFAULTS= rc.conf make.conf pccard.conf periodic.conf
+DEFAULTS= rc.conf make.conf periodic.conf
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist BSD.x11.dist BSD.x11-4.dist
@@ -138,6 +138,8 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/net/if_ieee80211.h
 .endif
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
+	rm -f ${DESTDIR}/usr/sbin/pccardc ${DESTDIR}/usr/sbin/pccardd
+	rm -f ${DESTDIR}/etc/defaults/pccard ${DESTDIR}/etc/rc.d/pccard
 .if exists(${DESTDIR}/usr/libexec/gcc34) && exists(${DESTDIR}/usr/libexec/binutils215)
 	rm -rf ${DESTDIR}/usr/lib/gcc3
 	rm -rf ${DESTDIR}/usr/libexec/gcc3
