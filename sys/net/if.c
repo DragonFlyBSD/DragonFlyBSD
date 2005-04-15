@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.32 2005/04/15 07:08:27 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.33 2005/04/15 18:39:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1426,9 +1426,10 @@ ifconf(u_long cmd, caddr_t data, struct thread *td)
 			break;
 
 		/*
-		 * Zero the buffer first to prevent memory disclosure.
+		 * Zero the stack declared structure first to prevent
+		 * memory disclosure.
 		 */
-		bzero(ifr.ifr_name, sizeof(ifr.ifr_name));
+		bzero(&ifr, sizeof(ifr));
 		if (strlcpy(ifr.ifr_name, ifp->if_xname, sizeof(ifr.ifr_name))
 		    >= sizeof(ifr.ifr_name)) {
 			error = ENAMETOOLONG;
