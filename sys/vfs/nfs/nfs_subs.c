@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.27 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.28 2005/04/15 19:08:21 dillon Exp $
  */
 
 /*
@@ -2062,11 +2062,13 @@ nfs_invaldir(struct vnode *vp)
  * B_CLUSTEROK must be cleared along with B_NEEDCOMMIT because stage 1 data 
  * writes are not clusterable.
  */
+
+static int nfs_clearcommit_bp(struct buf *bp, void *data __unused);
+
 void
 nfs_clearcommit(struct mount *mp)
 {
 	struct vnode *vp, *nvp;
-	struct buf *bp, *nbp;
 	lwkt_tokref ilock;
 	int s;
 
@@ -2076,17 +2078,22 @@ nfs_clearcommit(struct mount *mp)
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
 		if (vp->v_flag & VPLACEMARKER)
 			continue;
-		for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-			nbp = TAILQ_NEXT(bp, b_vnbufs);
-			if (BUF_REFCNT(bp) == 0 &&
-			    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT))
-			     == (B_DELWRI | B_NEEDCOMMIT)) {
-				bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
-			}
-		}
+		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
+			nfs_clearcommit_bp, NULL);
 	}
 	splx(s);
 	lwkt_reltoken(&ilock);
+}
+
+static int
+nfs_clearcommit_bp(struct buf *bp, void *data __unused)
+{
+	if (BUF_REFCNT(bp) == 0 &&
+	    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT))
+	     == (B_DELWRI | B_NEEDCOMMIT)) {
+		bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
+	}
+	return(0);
 }
 
 #ifndef NFS_NOSERVER

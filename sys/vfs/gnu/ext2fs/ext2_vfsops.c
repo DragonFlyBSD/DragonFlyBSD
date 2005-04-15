@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.26 2005/02/02 21:34:18 joerg Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.27 2005/04/15 19:08:16 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -919,7 +919,7 @@ ext2_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 	if (vp->v_type == VNON ||
 	    ((ip->i_flag &
 	    (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-	    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || info->waitfor == MNT_LAZY))) {
+	    (RB_EMPTY(&vp->v_rbdirty_tree) || info->waitfor == MNT_LAZY))) {
 		return(0);
 	}
 	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.18 2005/02/12 01:32:49 joerg Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.19 2005/04/15 19:08:26 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -439,7 +439,7 @@ loop:
 		 */
 		if (vp->v_mount != mp)
 			goto loop;
-		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
+		if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree) ||
 		    waitfor == MNT_LAZY)
 			continue;
 		if (vget(vp, LK_EXCLUSIVE, td))

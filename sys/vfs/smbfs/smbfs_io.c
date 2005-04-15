@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.15 2005/01/08 18:57:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.16 2005/04/15 19:08:26 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -343,9 +343,7 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 		uiop->uio_offset = ((off_t)bp->b_blkno) * DEV_BSIZE + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
-		bp->b_flags |= B_WRITEINPROG;
 		error = smb_write(smp->sm_share, np->n_fid, uiop, &scred);
-		bp->b_flags &= ~B_WRITEINPROG;
 
 		/*
 		 * For an interrupted write, the buffer is still valid

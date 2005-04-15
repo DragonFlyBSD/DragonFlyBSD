@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.23 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.24 2005/04/15 19:08:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -409,72 +409,16 @@ static int
 spec_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct buf *bp;
-	struct buf *nbp;
-	int s;
-	int maxretry = 10000;	/* large, arbitrarily chosen */
+	int error;
 
 	if (!vn_isdisk(vp, NULL))
 		return (0);
 
-loop1:
-	/*
-	 * MARK/SCAN initialization to avoid infinite loops
-	 */
-	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp;
-	     bp = TAILQ_NEXT(bp, b_vnbufs)) {
-		bp->b_flags &= ~B_SCANNED;
-	}
-	splx(s);
-
 	/*
 	 * Flush all dirty buffers associated with a block device.
 	 */
-loop2:
-	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		if ((bp->b_flags & B_SCANNED) != 0)
-			continue;
-		bp->b_flags |= B_SCANNED;
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-			continue;
-		if ((bp->b_flags & B_DELWRI) == 0)
-			panic("spec_fsync: not dirty");
-		if ((vp->v_flag & VOBJBUF) && (bp->b_flags & B_CLUSTEROK)) {
-			BUF_UNLOCK(bp);
-			vfs_bio_awrite(bp);
-			splx(s);
-		} else {
-			bremfree(bp);
-			splx(s);
-			bawrite(bp);
-		}
-		goto loop2;
-	}
-
-	/*
-	 * If synchronous the caller expects us to completely resolve all
-	 * dirty buffers in the system.  Wait for in-progress I/O to
-	 * complete (which could include background bitmap writes), then
-	 * retry if dirty blocks still exist.
-	 */
-	if (ap->a_waitfor == MNT_WAIT) {
-		while (vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			(void) tsleep((caddr_t)&vp->v_numoutput, 0, "spfsyn", 0);
-		}
-		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
-			if (--maxretry != 0) {
-				splx(s);
-				goto loop1;
-			}
-			vprint("spec_fsync: giving up on dirty", vp);
-		}
-	}
-	splx(s);
-	return (0);
+	error = vfsync(vp, ap->a_waitfor, 10000, (daddr_t)-1, NULL, NULL);
+	return (error);
 }
 
 /*

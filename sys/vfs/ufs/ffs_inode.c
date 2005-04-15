@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.13 2005/03/08 17:47:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.14 2005/04/15 19:08:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -391,8 +391,8 @@ done:
 		if (newblks[i] != oip->i_db[i])
 			panic("ffs_truncate2");
 	if (length == 0 &&
-	    (!TAILQ_EMPTY(&ovp->v_dirtyblkhd) ||
-	     !TAILQ_EMPTY(&ovp->v_cleanblkhd)))
+	    (!RB_EMPTY(&ovp->v_rbdirty_tree) ||
+	     !RB_EMPTY(&ovp->v_rbclean_tree)))
 		panic("ffs_truncate3");
 #endif /* DIAGNOSTIC */
 	/*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.9 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.10 2005/04/15 19:08:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +98,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 	/* Check for dirty mmap, pending writes and dirty buffers */
 	spl = splbio();
 	if (vp->v_numoutput > 0 ||
-	    !TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
+	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
 		splx(spl);
 
@@ -130,7 +130,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 			}
 		}
 		/* Flush dirty buffers */
-		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
+		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			splx(spl);
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0) {
 				if (upgraded != 0)
@@ -139,7 +139,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 			}
 			spl = splbio();
 			if (vp->v_numoutput > 0 ||
-			    !TAILQ_EMPTY(&vp->v_dirtyblkhd))
+			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("ffs_rawread_sync: dirty bufs");
 		}
 		splx(spl);

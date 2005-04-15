@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.7 2004/04/08 20:57:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.8 2005/04/15 19:08:16 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -341,8 +341,8 @@ done:
 	for (i = 0; i < NDADDR; i++)
 		if (newblks[i] != oip->i_db[i])
 			panic("itrunc2");
-	if (length == 0 && (!TAILQ_EMPTY(&ovp->v_dirtyblkhd) ||
-			    !TAILQ_EMPTY(&ovp->v_cleanblkhd)))
+	if (length == 0 && (!RB_EMPTY(&ovp->v_rbdirty_tree) ||
+			    !RB_EMPTY(&ovp->v_rbclean_tree)))
 		panic("itrunc3");
 #endif /* DIAGNOSTIC */
 	/*

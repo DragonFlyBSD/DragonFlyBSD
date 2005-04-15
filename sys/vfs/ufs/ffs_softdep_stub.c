@@ -33,7 +33,7 @@
  *
  *	from: @(#)ffs_softdep_stub.c	9.1 (McKusick) 7/10/97
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep_stub.c,v 1.7.2.1 2000/12/28 11:01:45 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.6 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.7 2005/04/15 19:08:32 dillon Exp $
  */
 
 /* 
@@ -175,11 +175,10 @@ softdep_fsync_mountdev(struct vnode *vp)
 }
 
 /*
- * softdep_sync_metadata(struct vnode *a_vp, struct ucred *a_cred,
- *			 int a_waitfor, struct proc *a_p)
+ * softdep_sync_metadata(struct vnode *vp, struct thread *td)
  */
 int
-softdep_sync_metadata(struct vop_fsync_args *ap)
+softdep_sync_metadata(struct vnode *vp, struct thread *td)
 {
 	return (0);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.31 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.32 2005/04/15 19:08:13 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -49,6 +49,7 @@
 #endif
 #include <sys/vfsops.h>
 #include <sys/vfscache.h>
+#include <sys/tree.h>
 
 #include <machine/lock.h>
 
@@ -152,6 +153,8 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  *	 pointer because mnt_vn_use_ops may change dynamically when e.g.
  *	 journaling is turned on or off.
  */
+RB_HEAD(buf_rb_tree, buf);
+
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
 	int	v_usecount;			/* reference count of users */
@@ -163,8 +166,8 @@ struct vnode {
 	struct  vop_ops **v_ops;		/* vnode operations vector */
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
-	struct	buflists v_cleanblkhd;		/* clean blocklist head */
-	struct	buflists v_dirtyblkhd;		/* dirty blocklist head */
+	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
+	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of clean bufs */
 	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
 	long	v_numoutput;			/* num of writes in progress */
 	enum	vtype v_type;			/* vnode type */
@@ -179,6 +182,7 @@ struct vnode {
 		struct fifoinfo	*vu_fifoinfo;	/* fifo (VFIFO) */
 	} v_un;
 	struct	nqlease *v_lease;		/* Soft reference to lease */
+	daddr_t v_lazyw;			/* lazy write iterator */
 	daddr_t	v_lastw;			/* last write (write cluster) */
 	daddr_t	v_cstart;			/* start block of cluster */
 	daddr_t	v_lasta;			/* last allocation */
@@ -619,6 +623,9 @@ int	vinvalbuf (struct vnode *vp, int save,
 	    struct thread *td, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, struct thread *td,
 		off_t length, int blksize);
+int	vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
+		int (*checkdef)(struct buf *),
+		int (*waitoutput)(struct vnode *, struct thread *));
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp, struct thread *td);
 int	vn_close (struct vnode *vp, int flags, struct thread *td);

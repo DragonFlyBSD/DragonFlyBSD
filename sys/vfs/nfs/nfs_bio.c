@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.21 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.22 2005/04/15 19:08:21 dillon Exp $
  */
 
 
@@ -1290,10 +1290,6 @@ again:
 				goto again;
 			}
 		}
-
-		if ((bp->b_flags & B_READ) == 0)
-			bp->b_flags |= B_WRITEINPROG;
-
 		BUF_KERNPROC(bp);
 		TAILQ_INSERT_TAIL(&nmp->nm_bufq, bp, b_freelist);
 		nmp->nm_bufqlen++;
@@ -1449,10 +1445,8 @@ nfs_doio(struct buf *bp, struct thread *td)
 		    off_t off;
 
 		    off = ((u_quad_t)bp->b_blkno) * DEV_BSIZE + bp->b_dirtyoff;
-		    bp->b_flags |= B_WRITEINPROG;
 		    retv = nfs_commit(bp->b_vp, off, 
 				bp->b_dirtyend - bp->b_dirtyoff, td);
-		    bp->b_flags &= ~B_WRITEINPROG;
 		    if (retv == 0) {
 			    bp->b_dirtyoff = bp->b_dirtyend = 0;
 			    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
@@ -1486,7 +1480,6 @@ nfs_doio(struct buf *bp, struct thread *td)
 		else
 		    iomode = NFSV3WRITE_FILESYNC;
 
-		bp->b_flags |= B_WRITEINPROG;
 		error = nfs_writerpc(vp, uiop, &iomode, &must_commit);
 
 		/*
@@ -1510,7 +1503,6 @@ nfs_doio(struct buf *bp, struct thread *td)
 		} else {
 		    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 		}
-		bp->b_flags &= ~B_WRITEINPROG;
 
 		/*
 		 * For an interrupted write, the buffer is still valid

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.8 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.9 2005/04/15 19:08:32 dillon Exp $
  */
 
 #ifndef _UFS_FFS_EXTERN_H
@@ -121,6 +121,6 @@ void	softdep_setup_allocindir_meta(struct buf *, struct inode *,
 void	softdep_setup_allocindir_page(struct inode *, ufs_lbn_t,
 	    struct buf *, int, ufs_daddr_t, ufs_daddr_t, struct buf *);
 void	softdep_fsync_mountdev(struct vnode *);
-int	softdep_sync_metadata(struct vop_fsync_args *);
+int	softdep_sync_metadata(struct vnode *, struct thread *);
 
 #endif /* !_UFS_FFS_EXTERN_H */

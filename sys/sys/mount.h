@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.17 2005/03/22 22:13:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.18 2005/04/15 19:08:13 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -273,7 +273,7 @@ struct mount {
  */
 #define MNT_WAIT	1	/* synchronously wait for I/O to complete */
 #define MNT_NOWAIT	2	/* start all I/O, but do not wait for it */
-#define MNT_LAZY	3	/* push data not written by filesystem syncer */
+#define MNT_LAZY	4	/* be lazy and do not necessarily push it all */
 
 /*
  * Generic file handle

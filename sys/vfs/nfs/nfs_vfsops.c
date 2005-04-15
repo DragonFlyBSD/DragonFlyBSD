@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.25 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.26 2005/04/15 19:08:21 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1144,7 +1144,7 @@ nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
     struct scaninfo *info = data;
 
-    if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd))
+    if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree))
 	return(-1);
     if (info->waitfor == MNT_LAZY)
 	return(-1);

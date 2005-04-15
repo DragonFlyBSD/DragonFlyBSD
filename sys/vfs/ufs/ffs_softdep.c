@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.21 2005/02/02 21:34:19 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.22 2005/04/15 19:08:32 dillon Exp $
  */
 
 /*
@@ -1734,11 +1734,19 @@ setup_allocindir_phase2(bp, ip, aip)
  * later release and zero the inode so that the calling routine
  * can release it.
  */
+struct softdep_setup_freeblocks_info {
+	struct fs *fs;
+	struct inode *ip;
+};
+
+static int softdep_setup_freeblocks_bp(struct buf *bp, void *data);
+
 void
 softdep_setup_freeblocks(ip, length)
 	struct inode *ip;	/* The inode whose length is to be reduced */
 	off_t length;		/* The new length for the file */
 {
+	struct softdep_setup_freeblocks_info info;
 	struct freeblks *freeblks;
 	struct inodedep *inodedep;
 	struct allocdirect *adp;
@@ -1746,6 +1754,7 @@ softdep_setup_freeblocks(ip, length)
 	struct buf *bp;
 	struct fs *fs;
 	int i, error, delay;
+	int count;
 
 	fs = ip->i_fs;
 	if (length != 0)
@@ -1822,15 +1831,13 @@ softdep_setup_freeblocks(ip, length)
 	vp = ITOV(ip);
 	ACQUIRE_LOCK(&lk);
 	drain_output(vp, 1);
-	while (getdirtybuf(&TAILQ_FIRST(&vp->v_dirtyblkhd), MNT_WAIT)) {
-		bp = TAILQ_FIRST(&vp->v_dirtyblkhd);
-		(void) inodedep_lookup(fs, ip->i_number, 0, &inodedep);
-		deallocate_dependencies(bp, inodedep);
-		bp->b_flags |= B_INVAL | B_NOCACHE;
-		FREE_LOCK(&lk);
-		brelse(bp);
-		ACQUIRE_LOCK(&lk);
-	}
+
+	info.fs = fs;
+	info.ip = ip;
+	do {
+		count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
+				softdep_setup_freeblocks_bp, &info);
+	} while (count > 0);
 	if (inodedep_lookup(fs, ip->i_number, 0, &inodedep) != 0)
 		(void)free_inodedep(inodedep);
 	FREE_LOCK(&lk);
@@ -1841,6 +1848,23 @@ softdep_setup_freeblocks(ip, length)
 	 */
 	if (!delay)
 		handle_workitem_freeblocks(freeblks);
+}
+
+static int
+softdep_setup_freeblocks_bp(struct buf *bp, void *data)
+{
+	struct softdep_setup_freeblocks_info *info = data;
+	struct inodedep *inodedep;
+
+	if (getdirtybuf(&bp, MNT_WAIT) == 0)
+		return(-1);
+	(void) inodedep_lookup(info->fs, info->ip->i_number, 0, &inodedep);
+	deallocate_dependencies(bp, inodedep);
+	bp->b_flags |= B_INVAL | B_NOCACHE;
+	FREE_LOCK(&lk);
+	brelse(bp);
+	ACQUIRE_LOCK(&lk);
+	return(1);
 }
 
 /*
@@ -4016,49 +4040,50 @@ softdep_fsync(vp)
  * before flushing the rest of the dirty blocks so as to reduce
  * the number of dependencies that will have to be rolled back.
  */
+static int softdep_fsync_mountdev_bp(struct buf *bp, void *data);
+
 void
 softdep_fsync_mountdev(vp)
 	struct vnode *vp;
 {
-	struct buf *bp, *nbp;
-	struct worklist *wk;
-
 	if (!vn_isdisk(vp, NULL))
 		panic("softdep_fsync_mountdev: vnode not a disk");
 	ACQUIRE_LOCK(&lk);
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		/* 
-		 * If it is already scheduled, skip to the next buffer.
-		 */
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-			continue;
-		if ((bp->b_flags & B_DELWRI) == 0) {
-			FREE_LOCK(&lk);
-			panic("softdep_fsync_mountdev: not dirty");
-		}
-		/*
-		 * We are only interested in bitmaps with outstanding
-		 * dependencies.
-		 */
-		if ((wk = LIST_FIRST(&bp->b_dep)) == NULL ||
-		    wk->wk_type != D_BMSAFEMAP ||
-		    (bp->b_xflags & BX_BKGRDINPROG)) {
-			BUF_UNLOCK(bp);
-			continue;
-		}
-		bremfree(bp);
-		FREE_LOCK(&lk);
-		(void) bawrite(bp);
-		ACQUIRE_LOCK(&lk);
-		/*
-		 * Since we may have slept during the I/O, we need 
-		 * to start from a known point.
-		 */
-		nbp = TAILQ_FIRST(&vp->v_dirtyblkhd);
-	}
+	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
+		softdep_fsync_mountdev_bp, NULL);
 	drain_output(vp, 1);
 	FREE_LOCK(&lk);
+}
+
+static int
+softdep_fsync_mountdev_bp(struct buf *bp, void *data)
+{
+	struct worklist *wk;
+
+	/* 
+	 * If it is already scheduled, skip to the next buffer.
+	 */
+	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
+		return(0);
+	if ((bp->b_flags & B_DELWRI) == 0) {
+		FREE_LOCK(&lk);
+		panic("softdep_fsync_mountdev: not dirty");
+	}
+	/*
+	 * We are only interested in bitmaps with outstanding
+	 * dependencies.
+	 */
+	if ((wk = LIST_FIRST(&bp->b_dep)) == NULL ||
+	    wk->wk_type != D_BMSAFEMAP ||
+	    (bp->b_xflags & BX_BKGRDINPROG)) {
+		BUF_UNLOCK(bp);
+		return(0);
+	}
+	bremfree(bp);
+	FREE_LOCK(&lk);
+	(void) bawrite(bp);
+	ACQUIRE_LOCK(&lk);
+	return(0);
 }
 
 /*
@@ -4067,22 +4092,18 @@ softdep_fsync_mountdev(vp)
  * so that the syncing routine can succeed by pushing the dirty blocks
  * associated with the file. If any I/O errors occur, they are returned.
  */
+struct softdep_sync_metadata_info {
+	struct vnode *vp;
+	int waitfor;
+};
+
+static int softdep_sync_metadata_bp(struct buf *bp, void *data);
+
 int
-softdep_sync_metadata(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int a_waitfor;
-		struct proc *a_p;
-	} */ *ap;
+softdep_sync_metadata(struct vnode *vp, struct thread *td)
 {
-	struct vnode *vp = ap->a_vp;
-	struct pagedep *pagedep;
-	struct allocdirect *adp;
-	struct allocindir *aip;
-	struct buf *bp, *nbp;
-	struct worklist *wk;
-	int i, error, waitfor;
+	struct softdep_sync_metadata_info info;
+	int error, waitfor;
 
 	/*
 	 * Check whether this vnode is involved in a filesystem
@@ -4127,161 +4148,15 @@ top:
 	 * all potential buffers on the dirty list will be visible.
 	 */
 	drain_output(vp, 1);
-	if (getdirtybuf(&TAILQ_FIRST(&vp->v_dirtyblkhd), MNT_WAIT) == 0) {
+	info.vp = vp;
+	info.waitfor = waitfor;
+	error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
+			softdep_sync_metadata_bp, &info);
+	if (error < 0) {
 		FREE_LOCK(&lk);
-		return (0);
+		return(-error);	/* error code */
 	}
-	bp = TAILQ_FIRST(&vp->v_dirtyblkhd);
-loop:
-	/*
-	 * As we hold the buffer locked, none of its dependencies
-	 * will disappear.
-	 */
-	LIST_FOREACH(wk, &bp->b_dep, wk_list) {
-		switch (wk->wk_type) {
 
-		case D_ALLOCDIRECT:
-			adp = WK_ALLOCDIRECT(wk);
-			if (adp->ad_state & DEPCOMPLETE)
-				break;
-			nbp = adp->ad_buf;
-			if (getdirtybuf(&nbp, waitfor) == 0)
-				break;
-			FREE_LOCK(&lk);
-			if (waitfor == MNT_NOWAIT) {
-				bawrite(nbp);
-			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
-				bawrite(bp);
-				return (error);
-			}
-			ACQUIRE_LOCK(&lk);
-			break;
-
-		case D_ALLOCINDIR:
-			aip = WK_ALLOCINDIR(wk);
-			if (aip->ai_state & DEPCOMPLETE)
-				break;
-			nbp = aip->ai_buf;
-			if (getdirtybuf(&nbp, waitfor) == 0)
-				break;
-			FREE_LOCK(&lk);
-			if (waitfor == MNT_NOWAIT) {
-				bawrite(nbp);
-			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
-				bawrite(bp);
-				return (error);
-			}
-			ACQUIRE_LOCK(&lk);
-			break;
-
-		case D_INDIRDEP:
-		restart:
-
-			LIST_FOREACH(aip, &WK_INDIRDEP(wk)->ir_deplisthd, ai_next) {
-				if (aip->ai_state & DEPCOMPLETE)
-					continue;
-				nbp = aip->ai_buf;
-				if (getdirtybuf(&nbp, MNT_WAIT) == 0)
-					goto restart;
-				FREE_LOCK(&lk);
-				if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
-					bawrite(bp);
-					return (error);
-				}
-				ACQUIRE_LOCK(&lk);
-				goto restart;
-			}
-			break;
-
-		case D_INODEDEP:
-			if ((error = flush_inodedep_deps(WK_INODEDEP(wk)->id_fs,
-			    WK_INODEDEP(wk)->id_ino)) != 0) {
-				FREE_LOCK(&lk);
-				bawrite(bp);
-				return (error);
-			}
-			break;
-
-		case D_PAGEDEP:
-			/*
-			 * We are trying to sync a directory that may
-			 * have dependencies on both its own metadata
-			 * and/or dependencies on the inodes of any
-			 * recently allocated files. We walk its diradd
-			 * lists pushing out the associated inode.
-			 */
-			pagedep = WK_PAGEDEP(wk);
-			for (i = 0; i < DAHASHSZ; i++) {
-				if (LIST_FIRST(&pagedep->pd_diraddhd[i]) == 0)
-					continue;
-				if ((error =
-				    flush_pagedep_deps(vp, pagedep->pd_mnt,
-						&pagedep->pd_diraddhd[i]))) {
-					FREE_LOCK(&lk);
-					bawrite(bp);
-					return (error);
-				}
-			}
-			break;
-
-		case D_MKDIR:
-			/*
-			 * This case should never happen if the vnode has
-			 * been properly sync'ed. However, if this function
-			 * is used at a place where the vnode has not yet
-			 * been sync'ed, this dependency can show up. So,
-			 * rather than panic, just flush it.
-			 */
-			nbp = WK_MKDIR(wk)->md_buf;
-			if (getdirtybuf(&nbp, waitfor) == 0)
-				break;
-			FREE_LOCK(&lk);
-			if (waitfor == MNT_NOWAIT) {
-				bawrite(nbp);
-			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
-				bawrite(bp);
-				return (error);
-			}
-			ACQUIRE_LOCK(&lk);
-			break;
-
-		case D_BMSAFEMAP:
-			/*
-			 * This case should never happen if the vnode has
-			 * been properly sync'ed. However, if this function
-			 * is used at a place where the vnode has not yet
-			 * been sync'ed, this dependency can show up. So,
-			 * rather than panic, just flush it.
-			 */
-			nbp = WK_BMSAFEMAP(wk)->sm_buf;
-			if (getdirtybuf(&nbp, waitfor) == 0)
-				break;
-			FREE_LOCK(&lk);
-			if (waitfor == MNT_NOWAIT) {
-				bawrite(nbp);
-			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
-				bawrite(bp);
-				return (error);
-			}
-			ACQUIRE_LOCK(&lk);
-			break;
-
-		default:
-			FREE_LOCK(&lk);
-			panic("softdep_sync_metadata: Unknown type %s",
-			    TYPENAME(wk->wk_type));
-			/* NOTREACHED */
-		}
-	}
-	(void) getdirtybuf(&TAILQ_NEXT(bp, b_vnbufs), MNT_WAIT);
-	nbp = TAILQ_NEXT(bp, b_vnbufs);
-	FREE_LOCK(&lk);
-	bawrite(bp);
-	ACQUIRE_LOCK(&lk);
-	if (nbp != NULL) {
-		bp = nbp;
-		goto loop;
-	}
 	/*
 	 * The brief unlock is to allow any pent up dependency
 	 * processing to be done.  Then proceed with the second pass.
@@ -4302,7 +4177,7 @@ loop:
 	 * all potential buffers on the dirty list will be visible.
 	 */
 	drain_output(vp, 1);
-	if (TAILQ_FIRST(&vp->v_dirtyblkhd) == NULL) {
+	if (RB_EMPTY(&vp->v_rbdirty_tree)) {
 		FREE_LOCK(&lk);
 		return (0);
 	}
@@ -4318,9 +4193,178 @@ loop:
 	if (vn_isdisk(vp, NULL) && 
 	    vp->v_rdev &&
 	    vp->v_rdev->si_mountpoint && !VOP_ISLOCKED(vp, NULL) &&
-	    (error = VFS_SYNC(vp->v_rdev->si_mountpoint, MNT_WAIT, ap->a_td)) != 0)
+	    (error = VFS_SYNC(vp->v_rdev->si_mountpoint, MNT_WAIT, td)) != 0)
 		return (error);
 	return (0);
+}
+
+static int
+softdep_sync_metadata_bp(struct buf *bp, void *data)
+{
+	struct softdep_sync_metadata_info *info = data;
+	struct pagedep *pagedep;
+	struct allocdirect *adp;
+	struct allocindir *aip;
+	struct worklist *wk;
+	struct buf *nbp;
+	int error;
+	int i;
+
+	if (getdirtybuf(&bp, MNT_WAIT) == 0)
+		return (0);
+
+	/*
+	 * As we hold the buffer locked, none of its dependencies
+	 * will disappear.
+	 */
+	LIST_FOREACH(wk, &bp->b_dep, wk_list) {
+		switch (wk->wk_type) {
+
+		case D_ALLOCDIRECT:
+			adp = WK_ALLOCDIRECT(wk);
+			if (adp->ad_state & DEPCOMPLETE)
+				break;
+			nbp = adp->ad_buf;
+			if (getdirtybuf(&nbp, info->waitfor) == 0)
+				break;
+			FREE_LOCK(&lk);
+			if (info->waitfor == MNT_NOWAIT) {
+				bawrite(nbp);
+			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
+				bawrite(bp);
+				ACQUIRE_LOCK(&lk);
+				return (-error);
+			}
+			ACQUIRE_LOCK(&lk);
+			break;
+
+		case D_ALLOCINDIR:
+			aip = WK_ALLOCINDIR(wk);
+			if (aip->ai_state & DEPCOMPLETE)
+				break;
+			nbp = aip->ai_buf;
+			if (getdirtybuf(&nbp, info->waitfor) == 0)
+				break;
+			FREE_LOCK(&lk);
+			if (info->waitfor == MNT_NOWAIT) {
+				bawrite(nbp);
+			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
+				bawrite(bp);
+				ACQUIRE_LOCK(&lk);
+				return (-error);
+			}
+			ACQUIRE_LOCK(&lk);
+			break;
+
+		case D_INDIRDEP:
+		restart:
+
+			LIST_FOREACH(aip, &WK_INDIRDEP(wk)->ir_deplisthd, ai_next) {
+				if (aip->ai_state & DEPCOMPLETE)
+					continue;
+				nbp = aip->ai_buf;
+				if (getdirtybuf(&nbp, MNT_WAIT) == 0)
+					goto restart;
+				FREE_LOCK(&lk);
+				if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
+					bawrite(bp);
+					ACQUIRE_LOCK(&lk);
+					return (-error);
+				}
+				ACQUIRE_LOCK(&lk);
+				goto restart;
+			}
+			break;
+
+		case D_INODEDEP:
+			if ((error = flush_inodedep_deps(WK_INODEDEP(wk)->id_fs,
+			    WK_INODEDEP(wk)->id_ino)) != 0) {
+				FREE_LOCK(&lk);
+				bawrite(bp);
+				ACQUIRE_LOCK(&lk);
+				return (-error);
+			}
+			break;
+
+		case D_PAGEDEP:
+			/*
+			 * We are trying to sync a directory that may
+			 * have dependencies on both its own metadata
+			 * and/or dependencies on the inodes of any
+			 * recently allocated files. We walk its diradd
+			 * lists pushing out the associated inode.
+			 */
+			pagedep = WK_PAGEDEP(wk);
+			for (i = 0; i < DAHASHSZ; i++) {
+				if (LIST_FIRST(&pagedep->pd_diraddhd[i]) == 0)
+					continue;
+				if ((error =
+				    flush_pagedep_deps(info->vp,
+						pagedep->pd_mnt,
+						&pagedep->pd_diraddhd[i]))) {
+					FREE_LOCK(&lk);
+					bawrite(bp);
+					ACQUIRE_LOCK(&lk);
+					return (-error);
+				}
+			}
+			break;
+
+		case D_MKDIR:
+			/*
+			 * This case should never happen if the vnode has
+			 * been properly sync'ed. However, if this function
+			 * is used at a place where the vnode has not yet
+			 * been sync'ed, this dependency can show up. So,
+			 * rather than panic, just flush it.
+			 */
+			nbp = WK_MKDIR(wk)->md_buf;
+			if (getdirtybuf(&nbp, info->waitfor) == 0)
+				break;
+			FREE_LOCK(&lk);
+			if (info->waitfor == MNT_NOWAIT) {
+				bawrite(nbp);
+			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
+				bawrite(bp);
+				ACQUIRE_LOCK(&lk);
+				return (-error);
+			}
+			ACQUIRE_LOCK(&lk);
+			break;
+
+		case D_BMSAFEMAP:
+			/*
+			 * This case should never happen if the vnode has
+			 * been properly sync'ed. However, if this function
+			 * is used at a place where the vnode has not yet
+			 * been sync'ed, this dependency can show up. So,
+			 * rather than panic, just flush it.
+			 */
+			nbp = WK_BMSAFEMAP(wk)->sm_buf;
+			if (getdirtybuf(&nbp, info->waitfor) == 0)
+				break;
+			FREE_LOCK(&lk);
+			if (info->waitfor == MNT_NOWAIT) {
+				bawrite(nbp);
+			} else if ((error = VOP_BWRITE(nbp->b_vp, nbp)) != 0) {
+				bawrite(bp);
+				ACQUIRE_LOCK(&lk);
+				return (-error);
+			}
+			ACQUIRE_LOCK(&lk);
+			break;
+
+		default:
+			FREE_LOCK(&lk);
+			panic("softdep_sync_metadata: Unknown type %s",
+			    TYPENAME(wk->wk_type));
+			/* NOTREACHED */
+		}
+	}
+	FREE_LOCK(&lk);
+	bawrite(bp);
+	ACQUIRE_LOCK(&lk);
+	return(0);
 }
 
 /*

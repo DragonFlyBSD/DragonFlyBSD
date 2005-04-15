@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.1 2004/08/19 20:38:33 joerg Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.2 2005/04/15 19:08:13 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -290,16 +290,25 @@ void name##_SPLAY_MINMAX(struct name *head, int __comp) \
 	     (x) = SPLAY_NEXT(name, head, x))
 
 /* Macros that define a red-black tree */
+
+#define RB_SCAN_INFO(name, type)					\
+struct name##_scan_info {						\
+	struct name##_scan_info *link;					\
+	struct type	*node;						\
+}
+
 #define RB_HEAD(name, type)						\
 struct name {								\
-	struct type *rbh_root; /* root of the tree */			\
+	struct type *rbh_root; 		     /* root of the tree */	\
+	struct name##_scan_info *rbh_inprog; /* scans in progress */	\
 }
 
 #define RB_INITIALIZER(root)						\
-	{ NULL }
+	{ NULL, NULL }
 
 #define RB_INIT(root) do {						\
 	(root)->rbh_root = NULL;					\
+	(root)->rbh_inprog = NULL;					\
 } while (/*CONSTCOND*/ 0)
 
 #define RB_BLACK	0
@@ -317,6 +326,7 @@ struct {								\
 #define RB_PARENT(elm, field)		(elm)->field.rbe_parent
 #define RB_COLOR(elm, field)		(elm)->field.rbe_color
 #define RB_ROOT(head)			(head)->rbh_root
+#define RB_INPROG(head)			(head)->rbh_inprog
 #define RB_EMPTY(head)			(RB_ROOT(head) == NULL)
 
 #define RB_SET(elm, parent, field) do {					\
@@ -376,20 +386,20 @@ struct {								\
 
 /* Generates prototypes and inline functions */
 #define RB_PROTOTYPE(name, type, field, cmp)				\
-void name##_RB_INSERT_COLOR(struct name *, struct type *);	\
-void name##_RB_REMOVE_COLOR(struct name *, struct type *, struct type *);\
 struct type *name##_RB_REMOVE(struct name *, struct type *);		\
 struct type *name##_RB_INSERT(struct name *, struct type *);		\
 struct type *name##_RB_FIND(struct name *, struct type *);		\
+int name##_RB_SCAN(struct name *, int (*)(struct type *, void *),	\
+			int (*)(struct type *, void *), void *);	\
 struct type *name##_RB_NEXT(struct type *);				\
 struct type *name##_RB_MINMAX(struct name *, int);			\
-									\
+RB_SCAN_INFO(name, type)						\
 
 /* Main rb operation.
  * Moves node close to the key of elm to top
  */
 #define RB_GENERATE(name, type, field, cmp)				\
-void									\
+static void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
 	struct type *parent, *gparent, *tmp;				\
@@ -433,8 +443,9 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 	RB_COLOR(head->rbh_root, field) = RB_BLACK;			\
 }									\
 									\
-void									\
-name##_RB_REMOVE_COLOR(struct name *head, struct type *parent, struct type *elm) \
+static void								\
+name##_RB_REMOVE_COLOR(struct name *head, struct type *parent,		\
+			struct type *elm) 				\
 {									\
 	struct type *tmp;						\
 	while ((elm == NULL || RB_COLOR(elm, field) == RB_BLACK) &&	\
@@ -514,8 +525,16 @@ name##_RB_REMOVE_COLOR(struct name *head, struct type *parent, struct type *elm)
 struct type *								\
 name##_RB_REMOVE(struct name *head, struct type *elm)			\
 {									\
-	struct type *child, *parent, *old = elm;			\
+	struct type *child, *parent, *old;				\
+	struct name##_scan_info *inprog;				\
 	int color;							\
+									\
+	for (inprog = RB_INPROG(head); inprog; inprog = inprog->link) { \
+		if (inprog->node == elm) 				\
+			inprog->node = RB_NEXT(name, head, elm);	\
+	}								\
+									\
+	old = elm;							\
 	if (RB_LEFT(elm, field) == NULL)				\
 		child = RB_RIGHT(elm, field);				\
 	else if (RB_RIGHT(elm, field) == NULL)				\
@@ -594,7 +613,7 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 		else if (comp > 0)					\
 			tmp = RB_RIGHT(tmp, field);			\
 		else							\
-			return (tmp);					\
+			return(tmp);					\
 	}								\
 	RB_SET(elm, parent, field);					\
 	if (parent != NULL) {						\
@@ -625,6 +644,74 @@ name##_RB_FIND(struct name *head, struct type *elm)			\
 			return (tmp);					\
 	}								\
 	return (NULL);							\
+}									\
+									\
+/*									\
+ * Issue a callback for all matching items.  The scan function must	\
+ * return < 0 for items below the desired range, 0 for items within	\
+ * the range, and > 0 for items beyond the range.   Any item may be	\
+ * deleted while the scan is in progress.				\
+ */									\
+static int								\
+name##_SCANCMP_ALL(struct type *type, void *data)			\
+{									\
+	return(0);							\
+}									\
+									\
+int									\
+name##_RB_SCAN(struct name *head,					\
+		int (*scancmp)(struct type *, void *),			\
+		int (*callback)(struct type *, void *),			\
+		void *data)						\
+{									\
+	struct name##_scan_info info;					\
+	struct name##_scan_info **infopp;				\
+	struct type *best;						\
+	struct type *tmp;						\
+	int count;							\
+	int comp;							\
+									\
+	if (scancmp == NULL)						\
+		scancmp = name##_SCANCMP_ALL;				\
+									\
+	/*								\
+	 * Locate the first element.					\
+	 */								\
+	tmp = RB_ROOT(head);						\
+	best = NULL;							\
+	while (tmp) {							\
+		comp = scancmp(tmp, data);				\
+		if (comp < 0) {						\
+			tmp = RB_RIGHT(tmp, field);			\
+		} else if (comp > 0) {					\
+			tmp = RB_LEFT(tmp, field);			\
+		} else {						\
+			best = tmp;					\
+			if (RB_LEFT(tmp, field) == NULL)		\
+				break;					\
+			tmp = RB_LEFT(tmp, field);			\
+		}							\
+	}								\
+	count = 0;							\
+	if (best) {							\
+		info.node = RB_NEXT(name, head, best);			\
+		info.link = RB_INPROG(head);				\
+		RB_INPROG(head) = &info;				\
+		while ((comp = callback(best, data)) >= 0) {		\
+			count += comp;					\
+			best = info.node;				\
+			if (best == NULL || scancmp(best, data) != 0)	\
+				break;					\
+			info.node = RB_NEXT(name, head, best);		\
+		}							\
+		if (comp < 0)	/* error or termination */		\
+			count = comp;					\
+		infopp = &RB_INPROG(head);				\
+		while (*infopp != &info) 				\
+			infopp = &(*infopp)->link;			\
+		*infopp = info.link;					\
+	}								\
+	return(count);							\
 }									\
 									\
 /* ARGSUSED */								\
@@ -670,6 +757,8 @@ name##_RB_MINMAX(struct name *head, int val)				\
 #define RB_INSERT(name, x, y)	name##_RB_INSERT(x, y)
 #define RB_REMOVE(name, x, y)	name##_RB_REMOVE(x, y)
 #define RB_FIND(name, x, y)	name##_RB_FIND(x, y)
+#define RB_SCAN(name, root, cmp, callback, data) 		\
+				name##_RB_SCAN(root, cmp, callback, data)
 #define RB_NEXT(name, x, y)	name##_RB_NEXT(y)
 #define RB_MIN(name, x)		name##_RB_MINMAX(x, RB_NEGINF)
 #define RB_MAX(name, x)		name##_RB_MINMAX(x, RB_INF)

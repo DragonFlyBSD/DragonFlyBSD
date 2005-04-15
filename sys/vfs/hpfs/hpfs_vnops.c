@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.23 2005/04/15 19:08:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,36 +117,20 @@ static int
 hpfs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	int s;
-	struct buf *bp, *nbp;
 
 	/*
 	 * Flush all dirty buffers associated with a vnode.
 	 */
-loop:
-	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-			continue;
-		if ((bp->b_flags & B_DELWRI) == 0)
-			panic("hpfs_fsync: not dirty");
-		bremfree(bp);
-		splx(s);
-		(void) bwrite(bp);
-		goto loop;
-	}
-	while (vp->v_numoutput) {
-		vp->v_flag |= VBWAIT;
-		(void) tsleep((caddr_t)&vp->v_numoutput, 0, "hpfsn", 0);
-	}
 #ifdef DIAGNOSTIC
-	if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
+loop:
+#endif
+	vfsync(vp, ap->a_waitfor, 0, (daddr_t)-1, NULL, NULL);
+#ifdef DIAGNOSTIC
+	if (ap->a_waitfor == MNT_WAIT && !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vprint("hpfs_fsync: dirty", vp);
 		goto loop;
 	}
 #endif
-	splx(s);
 
 	/*
 	 * Write out the on-disc version of the vnode.

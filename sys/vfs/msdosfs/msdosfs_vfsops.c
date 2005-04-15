@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.24 2005/02/02 21:34:18 joerg Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.25 2005/04/15 19:08:19 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -713,8 +713,8 @@ msdosfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 		    TAILQ_NEXT(vp, v_freelist), TAILQ_PREV(vp, v_freelist),
 		    vp->v_mount);
 		printf("cleanblkhd %p, dirtyblkhd %p, numoutput %ld, type %d\n",
-		    TAILQ_FIRST(&vp->v_cleanblkhd),
-		    TAILQ_FIRST(&vp->v_dirtyblkhd),
+		    RB_EMPTY(&vp->v_rbclean_tree),
+		    RB_EMPTY(&vp->v_rbdirty_tree),
 		    vp->v_numoutput, vp->v_type);
 		printf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
 		    vp->v_socket, vp->v_tag,
@@ -832,7 +832,7 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 	if (vp->v_type == VNON ||
 	    ((dep->de_flag &
 	    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
-	    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || info->waitfor == MNT_LAZY))) {
+	    (RB_EMPTY(&vp->v_rbdirty_tree) || info->waitfor == MNT_LAZY))) {
 		return(0);
 	}
 	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)

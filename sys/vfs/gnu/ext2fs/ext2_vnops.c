@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.19 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.20 2005/04/15 19:08:16 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -176,13 +176,21 @@ ext2_create(struct vop_create_args *ap)
  *	      struct proc *a_p)
  */
 /* ARGSUSED */
+
+static int ext2_fsync_bp(struct buf *bp, void *data);
+
+struct ext2_fsync_bp_info {
+	struct vnode *vp;
+	int waitfor;
+	int s;
+};
+
 static int
 ext2_fsync(struct vop_fsync_args *ap)
 {
+	struct ext2_fsync_bp_info info;
 	struct vnode *vp = ap->a_vp;
-	struct buf *bp;
-	struct buf *nbp;
-	int s;
+	int count;
 
 	/* 
 	 * XXX why is all this fs specific?
@@ -193,40 +201,53 @@ ext2_fsync(struct vop_fsync_args *ap)
 	 */
 	ext2_discard_prealloc(VTOI(vp));
 
+	info.s = splbio();
+	info.vp = vp;
 loop:
-	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-			continue;
-		if ((bp->b_flags & B_DELWRI) == 0)
-			panic("ext2_fsync: not dirty");
-		bremfree(bp);
-		splx(s);
-		/*
-		 * Wait for I/O associated with indirect blocks to complete,
-		 * since there is no way to quickly wait for them below.
-		 */
-		if (bp->b_vp == vp || ap->a_waitfor == MNT_NOWAIT)
-			(void) bawrite(bp);
-		else
-			(void) bwrite(bp);
+	info.waitfor = ap->a_waitfor;
+	count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
+			ext2_fsync_bp, &info);
+	if (count)
 		goto loop;
-	}
+
 	if (ap->a_waitfor == MNT_WAIT) {
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
 			tsleep(&vp->v_numoutput, 0, "e2fsyn", 0);
 		}
 #if DIAGNOSTIC
-		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
+		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			vprint("ext2_fsync: dirty", vp);
 			goto loop;
 		}
 #endif
 	}
-	splx(s);
+	splx(info.s);
 	return (UFS_UPDATE(ap->a_vp, ap->a_waitfor == MNT_WAIT));
+}
+
+static int
+ext2_fsync_bp(struct buf *bp, void *data)
+{
+	struct ext2_fsync_bp_info *info = data;
+
+	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
+		return(0);
+	if ((bp->b_flags & B_DELWRI) == 0)
+		panic("ext2_fsync: not dirty");
+	bremfree(bp);
+	splx(info->s);
+
+	/*
+	 * Wait for I/O associated with indirect blocks to complete,
+	 * since there is no way to quickly wait for them below.
+	 */
+	if (bp->b_vp == info->vp || info->waitfor == MNT_NOWAIT)
+		(void) bawrite(bp);
+	else
+		(void) bwrite(bp);
+	info->s = splbio();
+	return(1);
 }
 
 /*

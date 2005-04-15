@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.34 2005/03/23 20:37:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.35 2005/04/15 19:08:11 dillon Exp $
  */
 
 /*
@@ -74,7 +74,9 @@ static void vfs_page_set_valid(struct buf *bp, vm_ooffset_t off,
 static void vfs_clean_pages(struct buf * bp);
 static void vfs_setdirty(struct buf *bp);
 static void vfs_vmio_release(struct buf *bp);
+#if 0
 static void vfs_backgroundwritedone(struct buf *bp);
+#endif
 static int flushbufqueues(void);
 
 static int bd_request;
@@ -147,15 +149,20 @@ SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RW,
 SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RW,
 	&bufreusecnt, 0, "");
 
+#if 0
 /*
  * Disable background writes for now.  There appear to be races in the 
  * flags tests and locking operations as well as races in the completion
  * code modifying the original bp (origbp) without holding a lock, assuming
  * splbio protection when there might not be splbio protection.
+ *
+ * XXX disable also because the RB tree can't handle multiple blocks with
+ * the same lblkno.
  */
 static int dobkgrdwrite = 0;
 SYSCTL_INT(_debug, OID_AUTO, dobkgrdwrite, CTLFLAG_RW, &dobkgrdwrite, 0,
 	"Do background writes (honoring the BV_BKGRDWRITE flag)?");
+#endif
 
 static int bufhashmask;
 static int bufhashshift;
@@ -641,7 +648,9 @@ int
 bwrite(struct buf * bp)
 {
 	int oldflags, s;
+#if 0
 	struct buf *newbp;
+#endif
 
 	if (bp->b_flags & B_INVAL) {
 		brelse(bp);
@@ -673,6 +682,7 @@ bwrite(struct buf * bp)
 	/* Mark the buffer clean */
 	bundirty(bp);
 
+#if 0
 	/*
 	 * If this buffer is marked for background writing and we
 	 * do not have to wait for it, make a copy and write the
@@ -680,6 +690,10 @@ bwrite(struct buf * bp)
 	 *
 	 * This optimization eats a lot of memory.  If we have a page
 	 * or buffer shortfull we can't do it.
+	 *
+	 * XXX DISABLED!  This had to be removed to support the RB_TREE
+	 * work and, really, this isn't the best place to do this sort
+	 * of thing anyway.  We really need a device copy-on-write feature.
 	 */
 	if (dobkgrdwrite &&
 	    (bp->b_xflags & BX_BKGRDWRITE) &&
@@ -694,13 +708,13 @@ bwrite(struct buf * bp)
 
 		/* set it to be identical to the old block */
 		memcpy(newbp->b_data, bp->b_data, bp->b_bufsize);
-		bgetvp(bp->b_vp, newbp);
 		newbp->b_lblkno = bp->b_lblkno;
 		newbp->b_blkno = bp->b_blkno;
 		newbp->b_offset = bp->b_offset;
 		newbp->b_iodone = vfs_backgroundwritedone;
 		newbp->b_flags |= B_ASYNC | B_CALL;
 		newbp->b_flags &= ~B_INVAL;
+		bgetvp(bp->b_vp, newbp);
 
 		/* move over the dependencies */
 		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_movedeps)
@@ -719,9 +733,10 @@ bwrite(struct buf * bp)
 		bqrelse(bp);
 		bp = newbp;
 	}
+#endif
 
 	bp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
-	bp->b_flags |= B_WRITEINPROG | B_CACHE;
+	bp->b_flags |= B_CACHE;
 
 	bp->b_vp->v_numoutput++;
 	vfs_busy_pages(bp, 1);
@@ -757,6 +772,7 @@ bwrite(struct buf * bp)
 	return (0);
 }
 
+#if 0
 /*
  * Complete a background write started from bwrite.
  */
@@ -808,6 +824,7 @@ vfs_backgroundwritedone(struct buf *bp)
 	bp->b_iodone = 0;
 	biodone(bp);
 }
+#endif
 
 /*
  * Delayed write. (Buffer is marked dirty).  Do not bother writing

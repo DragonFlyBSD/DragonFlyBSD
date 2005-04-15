@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.12 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.13 2005/04/15 19:08:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,17 +103,17 @@ struct vnodeopv_entry_desc ffs_fifoop_entries[] = {
  * ffs_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
  *	     struct proc *a_p)
  */
+
+static int ffs_checkdeferred(struct buf *bp);
+
 /* ARGSUSED */
 static int
 ffs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct buf *bp;
-	struct buf *nbp;
-	int s, error, wait, passes, skipmeta;
 	daddr_t lbn;
+	int error;
 
-	wait = (ap->a_waitfor == MNT_WAIT);
 	if (vn_isdisk(vp, NULL)) {
 		lbn = INT_MAX;
 		if (vp->v_rdev && vp->v_rdev->si_mountpoint != NULL &&
@@ -128,133 +128,21 @@ ffs_fsync(struct vop_fsync_args *ap)
 	/*
 	 * Flush all dirty buffers associated with a vnode.
 	 */
-	passes = NIADDR + 1;
-	skipmeta = 0;
-	if (wait)
-		skipmeta = 1;
-	s = splbio();
-loop:
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp;
-	     bp = TAILQ_NEXT(bp, b_vnbufs))
-		bp->b_flags &= ~B_SCANNED;
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		/* 
-		 * Reasons to skip this buffer: it has already been considered
-		 * on this pass, this pass is the first time through on a
-		 * synchronous flush request and the buffer being considered
-		 * is metadata, the buffer has dependencies that will cause
-		 * it to be redirtied and it has not already been deferred,
-		 * or it is already being written.
-		 */
-		if ((bp->b_flags & B_SCANNED) != 0)
-			continue;
-		bp->b_flags |= B_SCANNED;
-		if ((skipmeta == 1 && bp->b_lblkno < 0))
-			continue;
-		if (!wait && LIST_FIRST(&bp->b_dep) != NULL &&
-		    (bp->b_flags & B_DEFERRED) == 0 &&
-		    bioops.io_countdeps && (*bioops.io_countdeps)(bp, 0)) {
-			bp->b_flags |= B_DEFERRED;
-			continue;
-		}
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-			continue;
-		if ((bp->b_flags & B_DELWRI) == 0)
-			panic("ffs_fsync: not dirty");
-		if (vp != bp->b_vp)
-			panic("ffs_fsync: vp != vp->b_vp");
-		/*
-		 * If this is a synchronous flush request, or it is not a
-		 * file or device, start the write on this buffer immediatly.
-		 */
-		if (wait || (vp->v_type != VREG && vp->v_type != VBLK)) {
-
-			/*
-			 * On our final pass through, do all I/O synchronously
-			 * so that we can find out if our flush is failing
-			 * because of write errors.
-			 */
-			if (passes > 0 || !wait) {
-				if ((bp->b_flags & B_CLUSTEROK) && !wait) {
-					BUF_UNLOCK(bp);
-					(void) vfs_bio_awrite(bp);
-				} else {
-					bremfree(bp);
-					splx(s);
-					(void) bawrite(bp);
-					s = splbio();
-				}
-			} else {
-				bremfree(bp);
-				splx(s);
-				if ((error = bwrite(bp)) != 0)
-					return (error);
-				s = splbio();
-			}
-		} else if ((vp->v_type == VREG) && (bp->b_lblkno >= lbn)) {
-			/* 
-			 * If the buffer is for data that has been truncated
-			 * off the file, then throw it away.
-			 */
-			bremfree(bp);
-			bp->b_flags |= B_INVAL | B_NOCACHE;
-			splx(s);
-			brelse(bp);
-			s = splbio();
-		} else {
-			BUF_UNLOCK(bp);
-			vfs_bio_awrite(bp);
-		}
-		/*
-		 * Since we may have slept during the I/O, we need 
-		 * to start from a known point.
-		 */
-		nbp = TAILQ_FIRST(&vp->v_dirtyblkhd);
-	}
-	/*
-	 * If we were asked to do this synchronously, then go back for
-	 * another pass, this time doing the metadata.
-	 */
-	if (skipmeta) {
-		skipmeta = 0;
-		goto loop;
-	}
-
-	if (wait) {
-		while (vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			(void)tsleep((caddr_t)&vp->v_numoutput, 0, "ffsfsn", 0);
-  		}
-
-		/* 
-		 * Ensure that any filesystem metatdata associated
-		 * with the vnode has been written.
-		 */
-		splx(s);
-		if ((error = softdep_sync_metadata(ap)) != 0)
-			return (error);
-		s = splbio();
-
-		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
-			/*
-			 * Block devices associated with filesystems may
-			 * have new I/O requests posted for them even if
-			 * the vnode is locked, so no amount of trying will
-			 * get them clean. Thus we give block devices a
-			 * good effort, then just give up. For all other file
-			 * types, go around and try again until it is clean.
-			 */
-			if (passes > 0) {
-				passes -= 1;
-				goto loop;
-			}
-#ifdef DIAGNOSTIC
-			if (!vn_isdisk(vp, NULL))
-				vprint("ffs_fsync: dirty", vp);
-#endif
-		}
-	}
-	splx(s);
-	return (UFS_UPDATE(vp, wait));
+	error = vfsync(vp, ap->a_waitfor, NIADDR + 1, lbn, ffs_checkdeferred, softdep_sync_metadata);
+	if (error == 0)
+		error = UFS_UPDATE(vp, (ap->a_waitfor == MNT_WAIT));
+	return (error);
 }
+
+static int
+ffs_checkdeferred(struct buf *bp)
+{
+	if (LIST_FIRST(&bp->b_dep) != NULL &&
+	    (bp->b_flags & B_DEFERRED) == 0 &&
+	    bioops.io_countdeps && (*bioops.io_countdeps)(bp, 0)) {
+		bp->b_flags |= B_DEFERRED;
+		return(1);
+	}
+	return(0);
+}
+

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.23 2005/02/15 08:32:18 joerg Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.24 2005/04/15 19:08:19 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -830,36 +830,20 @@ static int
 msdosfs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	int s;
-	struct buf *bp, *nbp;
 
 	/*
 	 * Flush all dirty buffers associated with a vnode.
 	 */
-loop:
-	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-			continue;
-		if ((bp->b_flags & B_DELWRI) == 0)
-			panic("msdosfs_fsync: not dirty");
-		bremfree(bp);
-		splx(s);
-		(void) bwrite(bp);
-		goto loop;
-	}
-	while (vp->v_numoutput) {
-		vp->v_flag |= VBWAIT;
-		(void) tsleep((caddr_t)&vp->v_numoutput, 0, "msdosfsn", 0);
-	}
 #ifdef DIAGNOSTIC
-	if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
+loop:
+#endif
+	vfsync(vp, ap->a_waitfor, 0, (daddr_t)-1, NULL, NULL);
+#ifdef DIAGNOSTIC
+	if (ap->a_waitfor == MNT_WAIT && !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vprint("msdosfs_fsync: dirty", vp);
 		goto loop;
 	}
 #endif
-	splx(s);
 	return (deupdat(VTODE(vp), ap->a_waitfor == MNT_WAIT));
 }
 

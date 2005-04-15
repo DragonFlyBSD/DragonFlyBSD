@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.3 2005/01/20 17:52:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.4 2005/04/15 19:08:11 dillon Exp $
  */
 
 /*
@@ -216,22 +216,23 @@ sched_sync(void)
 				vput(vp);
 			}
 			s = splbio();
+
+			/*
+			 * If the vnode is still at the head of the list
+			 * we were not able to completely flush it.  To
+			 * give other vnodes a fair shake we move it to
+			 * a later slot.
+			 *
+			 * Note that v_tag VT_VFS vnodes can remain on the
+			 * worklist with no dirty blocks, but sync_fsync()
+			 * moves it to a later slot so we will never see it
+			 * here.
+			 */
 			if (LIST_FIRST(slp) == vp) {
-				/*
-				 * Note: v_tag VT_VFS vps can remain on the
-				 * worklist too with no dirty blocks, but 
-				 * since sync_fsync() moves it to a different 
-				 * slot we are safe.
-				 */
-				if (TAILQ_EMPTY(&vp->v_dirtyblkhd) &&
-				    !vn_isdisk(vp, NULL))
+				if (RB_EMPTY(&vp->v_rbdirty_tree) &&
+				    !vn_isdisk(vp, NULL)) {
 					panic("sched_sync: fsync failed vp %p tag %d", vp, vp->v_tag);
-				/*
-				 * Put us back on the worklist.  The worklist
-				 * routine will remove us from our current
-				 * position and then add us back in at a later
-				 * position.
-				 */
+				}
 				vn_syncer_add_to_worklist(vp, syncdelay);
 			}
 			splx(s);

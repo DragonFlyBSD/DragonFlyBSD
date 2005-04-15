@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.11 2004/07/17 01:45:37 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.12 2005/04/15 19:08:13 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -56,11 +56,17 @@
 #ifndef _SYS_XIO_H_
 #include <sys/xio.h>
 #endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
+#endif
 
 struct buf;
 struct mount;
 struct vnode;
 struct xio;
+
+struct buf_rb_tree;
+RB_PROTOTYPE(buf_rb_tree, buf, b_rbnode, rb_buf_compare);
 
 /*
  * To avoid including <ufs/ffs/softdep.h> 
@@ -110,7 +116,7 @@ struct iodone_chain {
  */
 struct buf {
 	LIST_ENTRY(buf) b_hash;		/* Hash chain. */
-	TAILQ_ENTRY(buf) b_vnbufs;	/* Buffer's associated vnode. */
+	RB_ENTRY(buf) b_rbnode;		/* Red-Black node in vnode RB tree */
 	TAILQ_ENTRY(buf) b_freelist;	/* Free list position if not active. */
 	TAILQ_ENTRY(buf) b_act;		/* Device driver queue when active. *new* */
 	long	b_flags;		/* B_* flags. */
@@ -222,7 +228,7 @@ struct buf {
 #define	B_DONE		0x00000200	/* I/O completed. */
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */
-#define	B_SCANNED	0x00001000	/* VOP_FSYNC funcs mark written bufs */
+#define	B_UNUSED1000	0x00001000
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
 #define	B_NOCACHE	0x00008000	/* Do not cache block after use. */
@@ -235,7 +241,7 @@ struct buf {
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
 #define	B_WANT		0x00800000	/* Used by vm_pager.c */
 #define	B_WRITE		0x00000000	/* Write buffer (pseudo flag). */
-#define	B_WRITEINPROG	0x01000000	/* Write in progress. */
+#define	B_UNUSED1000000	0x01000000
 #define	B_XXX		0x02000000	/* Debugging flag. */
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */
 #define	B_ORDERED	0x08000000	/* Must guarantee I/O ordering */

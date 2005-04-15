@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.16 2005/02/12 01:31:38 joerg Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.17 2005/04/15 19:08:24 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -490,7 +490,7 @@ loop:
 		 */
 		if (vp->v_mount != mp)
 			goto loop;
-		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
+		if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree) ||
 		    waitfor == MNT_LAZY)
 			continue;
 		if (vget(vp, LK_EXCLUSIVE, td))

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.23 2005/03/27 23:51:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.24 2005/04/15 19:08:21 dillon Exp $
  */
 
 
@@ -1078,7 +1078,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 			} else if ((np->n_expiry - NQ_RENEWAL) < time_second) {
 			    if ((np->n_flag & (NQNFSWRITE | NQNFSNONCACHE))
 				 == NQNFSWRITE &&
-				 !TAILQ_EMPTY(&vp->v_dirtyblkhd) &&
+				 !RB_EMPTY(&vp->v_rbdirty_tree) &&
 				 vget(vp, LK_EXCLUSIVE, td) == 0) {
 				 nmp->nm_inprog = vp;
 				 if (vpid == vp->v_id &&

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.39 2005/04/06 18:39:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.40 2005/04/15 19:08:21 dillon Exp $
  */
 
 
@@ -2875,140 +2875,266 @@ nfs_fsync(struct vop_fsync_args *ap)
 }
 
 /*
- * Flush all the blocks associated with a vnode.
- * 	Walk through the buffer pool and push any dirty pages
- *	associated with the vnode.
+ * Flush all the blocks associated with a vnode.   Dirty NFS buffers may be
+ * in one of two states:  If B_NEEDCOMMIT is clear then the buffer contains
+ * new NFS data which needs to be written to the server.  If B_NEEDCOMMIT is
+ * set the buffer contains data that has already been written to the server
+ * and which now needs a commit RPC.
+ *
+ * If commit is 0 we only take one pass and only flush buffers containing new
+ * dirty data.
+ *
+ * If commit is 1 we take two passes, issuing a commit RPC in the second
+ * pass.
+ *
+ * If waitfor is MNT_WAIT and commit is 1, we loop as many times as required
+ * to completely flush all pending data.
+ *
+ * Note that the RB_SCAN code properly handles the case where the
+ * callback might block and directly or indirectly (another thread) cause
+ * the RB tree to change.
  */
+
+#ifndef NFS_COMMITBVECSIZ
+#define NFS_COMMITBVECSIZ	16
+#endif
+
+struct nfs_flush_info {
+	enum { NFI_FLUSHNEW, NFI_COMMIT } mode;
+	struct thread *td;
+	struct vnode *vp;
+	int waitfor;
+	int slpflag;
+	int slptimeo;
+	int loops;
+	struct buf *bvary[NFS_COMMITBVECSIZ];
+	int bvsize;
+	off_t beg_off;
+	off_t end_off;
+};
+
+static int nfs_flush_bp(struct buf *bp, void *data);
+static int nfs_flush_docommit(struct nfs_flush_info *info, int error);
+
 int
 nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 {
 	struct nfsnode *np = VTONFS(vp);
-	struct buf *bp;
-	int i;
-	struct buf *nbp;
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
-	int s, error = 0, slptimeo = 0, slpflag = 0, retv, bvecpos;
-	int passone = 1;
-	u_quad_t off, endoff, toff;
-	struct buf **bvec = NULL;
-#ifndef NFS_COMMITBVECSIZ
-#define NFS_COMMITBVECSIZ	20
-#endif
-	struct buf *bvec_on_stack[NFS_COMMITBVECSIZ];
-	int bvecsize = 0, bveccount;
+	struct nfs_flush_info info;
+	int error;
 
-	if (nmp->nm_flag & NFSMNT_INT)
-		slpflag = PCATCH;
-	if (!commit)
-		passone = 0;
+	bzero(&info, sizeof(info));
+	info.td = td;
+	info.vp = vp;
+	info.waitfor = waitfor;
+	info.slpflag = (nmp->nm_flag & NFSMNT_INT) ? PCATCH : 0;
+	info.loops = 0;
+
+	do {
+		/*
+		 * Flush mode
+		 */
+		info.mode = NFI_FLUSHNEW;
+		error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
+				nfs_flush_bp, &info);
+
+		/*
+		 * Take a second pass if committing and no error occured.  
+		 * Clean up any left over collection (whether an error 
+		 * occurs or not).
+		 */
+		if (commit && error == 0) {
+			info.mode = NFI_COMMIT;
+			error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
+					nfs_flush_bp, &info);
+			if (info.bvsize)
+				error = nfs_flush_docommit(&info, error);
+		}
+
+		/*
+		 * Wait for pending I/O to complete before checking whether
+		 * any further dirty buffers exist.
+		 */
+		while (waitfor == MNT_WAIT && vp->v_numoutput) {
+			vp->v_flag |= VBWAIT;
+			error = tsleep((caddr_t)&vp->v_numoutput,
+				info.slpflag, "nfsfsync", info.slptimeo);
+			if (error) {
+				/*
+				 * We have to be able to break out if this 
+				 * is an 'intr' mount.
+				 */
+				if (nfs_sigintr(nmp, (struct nfsreq *)0, td)) {
+					error = -EINTR;
+					break;
+				}
+
+				/*
+				 * Since we do not process pending signals,
+				 * once we get a PCATCH our tsleep() will no
+				 * longer sleep, switch to a fixed timeout
+				 * instead.
+				 */
+				if (info.slpflag == PCATCH) {
+					info.slpflag = 0;
+					info.slptimeo = 2 * hz;
+				}
+				error = 0;
+			}
+		}
+		++info.loops;
+		/*
+		 * Loop if we are flushing synchronous as well as committing,
+		 * and dirty buffers are still present.  Otherwise we might livelock.
+		 */
+	} while (waitfor == MNT_WAIT && commit && 
+		 error == 0 && !RB_EMPTY(&vp->v_rbdirty_tree));
+
 	/*
-	 * A b_flags == (B_DELWRI | B_NEEDCOMMIT) block has been written to the
-	 * server, but nas not been committed to stable storage on the server
-	 * yet. On the first pass, the byte range is worked out and the commit
-	 * rpc is done. On the second pass, nfs_writebp() is called to do the
-	 * job.
+	 * The callbacks have to return a negative error to terminate the
+	 * RB scan.
 	 */
-again:
-	off = (u_quad_t)-1;
-	endoff = 0;
-	bvecpos = 0;
-	if (NFS_ISV3(vp) && commit) {
+	if (error < 0)
+		error = -error;
+
+	/*
+	 * Deal with any error collection
+	 */
+	if (np->n_flag & NWRITEERR) {
+		error = np->n_error;
+		np->n_flag &= ~NWRITEERR;
+	}
+	return (error);
+}
+
+
+static
+int
+nfs_flush_bp(struct buf *bp, void *data)
+{
+	struct nfs_flush_info *info = data;
+	off_t toff;
+	int error;
+	int s;
+
+	error = 0;
+	switch(info->mode) {
+	case NFI_FLUSHNEW:
 		s = splbio();
-		/*
-		 * Count up how many buffers waiting for a commit.
-		 */
-		bveccount = 0;
-		for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-			nbp = TAILQ_NEXT(bp, b_vnbufs);
-			if (BUF_REFCNT(bp) == 0 &&
-			    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT))
-				== (B_DELWRI | B_NEEDCOMMIT))
-				bveccount++;
-		}
-		/*
-		 * Allocate space to remember the list of bufs to commit.  It is
-		 * important to use M_NOWAIT here to avoid a race with nfs_write.
-		 * If we can't get memory (for whatever reason), we will end up
-		 * committing the buffers one-by-one in the loop below.
-		 */
-		if (bvec != NULL && bvec != bvec_on_stack)
-			free(bvec, M_TEMP);
-		if (bveccount > NFS_COMMITBVECSIZ) {
-			bvec = (struct buf **)
-				malloc(bveccount * sizeof(struct buf *),
-				       M_TEMP, M_NOWAIT);
-			if (bvec == NULL) {
-				bvec = bvec_on_stack;
-				bvecsize = NFS_COMMITBVECSIZ;
-			} else
-				bvecsize = bveccount;
+		if (info->loops && info->waitfor == MNT_WAIT) {
+			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
+			if (error) {
+				error = BUF_TIMELOCK(bp,
+						LK_EXCLUSIVE | LK_SLEEPFAIL,
+						"nfsfsync",
+						info->slpflag, info->slptimeo);
+			}
 		} else {
-			bvec = bvec_on_stack;
-			bvecsize = NFS_COMMITBVECSIZ;
+			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 		}
-		for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-			nbp = TAILQ_NEXT(bp, b_vnbufs);
-			if (bvecpos >= bvecsize)
+		if (error == 0) {
+			if ((bp->b_flags & B_DELWRI) == 0)
+				panic("nfs_fsync: not dirty");
+			if (bp->b_flags & B_NEEDCOMMIT) {
+				BUF_UNLOCK(bp);
+				splx(s);
 				break;
-			if ((bp->b_flags & (B_DELWRI | B_NEEDCOMMIT)) !=
-			    (B_DELWRI | B_NEEDCOMMIT) ||
-			    BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
-				continue;
+			}
 			bremfree(bp);
-			/*
-			 * NOTE: we are not clearing B_DONE here, so we have
-			 * to do it later on in this routine if we intend to 
-			 * initiate I/O on the bp.
-			 *
-			 * Note: to avoid loopback deadlocks, we do not
-			 * assign b_runningbufspace.
-			 */
-			bp->b_flags |= B_WRITEINPROG;
-			vfs_busy_pages(bp, 1);
 
-			/*
-			 * bp is protected by being locked, but nbp is not
-			 * and vfs_busy_pages() may sleep.  We have to
-			 * recalculate nbp.
-			 */
-			nbp = TAILQ_NEXT(bp, b_vnbufs);
+			bp->b_flags |= B_ASYNC;
+			splx(s);
+			VOP_BWRITE(bp->b_vp, bp);
+		} else {
+			splx(s);
+			error = 0;
+		}
+		break;
+	case NFI_COMMIT:
+		/*
+		 * Only process buffers in need of a commit which we can
+		 * immediately lock.  This may prevent a buffer from being
+		 * committed, but the normal flush loop will block on the
+		 * same buffer so we shouldn't get into an endless loop.
+		 */
+		s = splbio();
+		if ((bp->b_flags & (B_DELWRI | B_NEEDCOMMIT)) != 
+		    (B_DELWRI | B_NEEDCOMMIT) ||
+		    BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+			splx(s);
+			break;
+		}
 
-			/*
-			 * A list of these buffers is kept so that the
-			 * second loop knows which buffers have actually
-			 * been committed. This is necessary, since there
-			 * may be a race between the commit rpc and new
-			 * uncommitted writes on the file.
-			 */
-			bvec[bvecpos++] = bp;
-			toff = ((u_quad_t)bp->b_blkno) * DEV_BSIZE +
-				bp->b_dirtyoff;
-			if (toff < off)
-				off = toff;
-			toff += (u_quad_t)(bp->b_dirtyend - bp->b_dirtyoff);
-			if (toff > endoff)
-				endoff = toff;
+		bremfree(bp);
+
+		/*
+		 * NOTE: we are not clearing B_DONE here, so we have
+		 * to do it later on in this routine if we intend to 
+		 * initiate I/O on the bp.
+		 *
+		 * Note: to avoid loopback deadlocks, we do not
+		 * assign b_runningbufspace.
+		 */
+		vfs_busy_pages(bp, 1);
+
+		info->bvary[info->bvsize] = bp;
+		toff = ((u_quad_t)bp->b_blkno) * DEV_BSIZE +
+			bp->b_dirtyoff;
+		if (info->bvsize == 0 || toff < info->beg_off)
+			info->beg_off = toff;
+		toff += (u_quad_t)(bp->b_dirtyend - bp->b_dirtyoff);
+		if (info->bvsize == 0 || toff > info->end_off)
+			info->end_off = toff;
+		++info->bvsize;
+		if (info->bvsize == NFS_COMMITBVECSIZ) {
+			error = nfs_flush_docommit(info, 0);
+			KKASSERT(info->bvsize == 0);
 		}
 		splx(s);
 	}
-	if (bvecpos > 0) {
+	return (error);
+}
+
+static
+int
+nfs_flush_docommit(struct nfs_flush_info *info, int error)
+{
+	struct vnode *vp;
+	struct buf *bp;
+	off_t bytes;
+	int retv;
+	int i;
+	int s;
+
+	vp = info->vp;
+
+	if (info->bvsize > 0) {
 		/*
 		 * Commit data on the server, as required.  Note that
 		 * nfs_commit will use the vnode's cred for the commit.
+		 * The NFSv3 commit RPC is limited to a 32 bit byte count.
 		 */
-		retv = nfs_commit(vp, off, (int)(endoff - off), td);
-
-		if (retv == NFSERR_STALEWRITEVERF)
-			nfs_clearcommit(vp->v_mount);
+		bytes = info->end_off - info->beg_off;
+		if (bytes > 0x40000000)
+			bytes = 0x40000000;
+		if (error) {
+			retv = -error;
+		} else {
+			retv = nfs_commit(vp, info->beg_off, 
+					    (int)bytes, info->td);
+			if (retv == NFSERR_STALEWRITEVERF)
+				nfs_clearcommit(vp->v_mount);
+		}
 
 		/*
 		 * Now, either mark the blocks I/O done or mark the
 		 * blocks dirty, depending on whether the commit
 		 * succeeded.
 		 */
-		for (i = 0; i < bvecpos; i++) {
-			bp = bvec[i];
-			bp->b_flags &= ~(B_NEEDCOMMIT | B_WRITEINPROG | B_CLUSTEROK);
+		for (i = 0; i < info->bvsize; ++i) {
+			bp = info->bvary[i];
+			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			if (retv) {
 				/*
 				 * Error, leave B_DELWRI intact
@@ -3033,82 +3159,8 @@ again:
 				biodone(bp);
 			}
 		}
+		info->bvsize = 0;
 	}
-
-	/*
-	 * Start/do any write(s) that are required.
-	 */
-loop:
-	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-			if (waitfor != MNT_WAIT || passone)
-				continue;
-			error = BUF_TIMELOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL,
-			    "nfsfsync", slpflag, slptimeo);
-			splx(s);
-			if (error == 0)
-				panic("nfs_fsync: inconsistent lock");
-			if (error == ENOLCK)
-				goto loop;
-			if (nfs_sigintr(nmp, (struct nfsreq *)0, td)) {
-				error = EINTR;
-				goto done;
-			}
-			if (slpflag == PCATCH) {
-				slpflag = 0;
-				slptimeo = 2 * hz;
-			}
-			goto loop;
-		}
-		if ((bp->b_flags & B_DELWRI) == 0)
-			panic("nfs_fsync: not dirty");
-		if ((passone || !commit) && (bp->b_flags & B_NEEDCOMMIT)) {
-			BUF_UNLOCK(bp);
-			continue;
-		}
-		bremfree(bp);
-		if (passone || !commit)
-		    bp->b_flags |= B_ASYNC;
-		else
-		    bp->b_flags |= B_ASYNC | B_WRITEINPROG;
-		splx(s);
-		VOP_BWRITE(bp->b_vp, bp);
-		goto loop;
-	}
-	splx(s);
-	if (passone) {
-		passone = 0;
-		goto again;
-	}
-	if (waitfor == MNT_WAIT) {
-		while (vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			error = tsleep((caddr_t)&vp->v_numoutput,
-				slpflag, "nfsfsync", slptimeo);
-			if (error) {
-			    if (nfs_sigintr(nmp, (struct nfsreq *)0, td)) {
-				error = EINTR;
-				goto done;
-			    }
-			    if (slpflag == PCATCH) {
-				slpflag = 0;
-				slptimeo = 2 * hz;
-			    }
-			}
-		}
-		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd) && commit) {
-			goto loop;
-		}
-	}
-	if (np->n_flag & NWRITEERR) {
-		error = np->n_error;
-		np->n_flag &= ~NWRITEERR;
-	}
-done:
-	if (bvec != NULL && bvec != bvec_on_stack)
-		free(bvec, M_TEMP);
 	return (error);
 }
 
@@ -3165,9 +3217,8 @@ nfs_bwrite(struct vop_bwrite_args *ap)
 }
 
 /*
- * This is a clone of vn_bwrite(), except that B_WRITEINPROG isn't set unless
- * the force flag is one and it also handles the B_NEEDCOMMIT flag.  We set
- * B_CACHE if this is a VMIO buffer.
+ * This is a clone of vn_bwrite(), except that it also handles the
+ * B_NEEDCOMMIT flag.  We set B_CACHE if this is a VMIO buffer.
  */
 int
 nfs_writebp(struct buf *bp, int force, struct thread *td)
@@ -3206,8 +3257,6 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	 */
 	vfs_busy_pages(bp, 1);
 
-	if (force)
-		bp->b_flags |= B_WRITEINPROG;
 	BUF_KERNPROC(bp);
 	VOP_STRATEGY(bp->b_vp, bp);
 

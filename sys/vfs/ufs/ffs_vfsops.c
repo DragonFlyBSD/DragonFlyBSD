@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.31 2005/02/12 01:30:57 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.32 2005/04/15 19:08:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1008,7 +1008,7 @@ ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	if (vp->v_type == VNON || ((ip->i_flag &
 	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-	     TAILQ_EMPTY(&vp->v_dirtyblkhd))) {
+	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
 	}
 	return(0);
@@ -1028,7 +1028,7 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || ((ip->i_flag &
 	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-	     TAILQ_EMPTY(&vp->v_dirtyblkhd))) {
+	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
 	if (vp->v_type != VCHR) {
