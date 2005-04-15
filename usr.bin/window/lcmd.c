@@ -35,7 +35,7 @@
  *
  * @(#)lcmd.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/lcmd.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/lcmd.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/lcmd.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -121,7 +121,7 @@ struct lcmd_tab *
 lcmd_lookup(name)
 char *name;
 {
-	register struct lcmd_tab *p;
+	struct lcmd_tab *p;
 
 	for (p = lcmd_tab; p->lc_name != 0; p++)
 		if (str_match(name, p->lc_name, p->lc_minlen))

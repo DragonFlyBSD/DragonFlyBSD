@@ -35,14 +35,14 @@
  *
  * @(#)cmd3.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd3.c,v 1.1.1.1.14.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd3.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd3.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
 #include "mystring.h"
 
 setescape(esc)
-register char *esc;
+char *esc;
 {
 	if (*esc == '^') {
 		if (esc[1] != 0)
@@ -54,7 +54,7 @@ register char *esc;
 }
 
 setlabel(w, label)
-register struct ww *w;
+struct ww *w;
 char *label;
 {
 	if (w->ww_label != 0)

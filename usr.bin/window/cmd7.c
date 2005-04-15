@@ -35,7 +35,7 @@
  *
  * @(#)cmd7.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd7.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd7.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd7.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include <stdlib.h>
@@ -47,7 +47,7 @@
  */
 
 c_size(w)
-register struct ww *w;
+struct ww *w;
 {
 	int col, row;
 

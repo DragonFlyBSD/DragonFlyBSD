@@ -35,7 +35,7 @@
  *
  * @(#)lcmd1.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/lcmd1.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/lcmd1.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/window/lcmd1.c,v 1.4 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -63,7 +63,7 @@ struct lcmd_arg arg_window[] = {
 
 l_window(v, a)
 struct value *v;
-register struct value *a;
+struct value *a;
 {
 	struct ww *w;
 	int col, row, ncol, nrow, id, nline;
@@ -71,7 +71,7 @@ register struct value *a;
 	char haspty, hasframe, mapnl, keepopen, smooth;
 	char *shf, **sh;
 	char *argv[sizeof default_shell / sizeof *default_shell];
-	register char **pp;
+	char **pp;
 
 	if ((id = findid()) < 0)
 		return;
@@ -126,7 +126,7 @@ struct lcmd_arg arg_def_nline[] = {
 };
 
 l_def_nline(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	v->v_num = default_nline;
 	v->v_type = V_NUM;
@@ -141,7 +141,7 @@ struct lcmd_arg arg_smooth[] = {
 };
 
 l_smooth(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	struct ww *w;
 
@@ -159,7 +159,7 @@ struct lcmd_arg arg_def_smooth[] = {
 };
 
 l_def_smooth(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	v->v_type = V_NUM;
 	v->v_num = default_smooth;
@@ -172,7 +172,7 @@ struct lcmd_arg arg_select[] = {
 };
 
 l_select(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	struct ww *w;
 
@@ -191,7 +191,7 @@ struct lcmd_arg arg_debug[] = {
 };
 
 l_debug(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	v->v_type = V_NUM;
 	v->v_num = debug;
@@ -204,7 +204,7 @@ struct lcmd_arg arg_escape[] = {
 };
 
 l_escape(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	char buf[2];
 
@@ -228,7 +228,7 @@ struct lcmd_arg arg_label[] = {
 /*ARGSUSED*/
 l_label(v, a)
 struct value *v;
-register struct value *a;
+struct value *a;
 {
 	struct ww *w;
 
@@ -246,7 +246,7 @@ struct lcmd_arg arg_foreground[] = {
 };
 
 l_foreground(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	struct ww *w;
 	char flag;
@@ -269,7 +269,7 @@ struct lcmd_arg arg_terse[] = {
 };
 
 l_terse(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	v->v_type = V_NUM;
 	v->v_num = terse;
@@ -282,7 +282,7 @@ struct lcmd_arg arg_source[] = {
 };
 
 l_source(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	v->v_type = V_NUM;
 	if (a->v_type != V_ERR && dosource(a->v_str) < 0) {
@@ -301,7 +301,7 @@ struct lcmd_arg arg_write[] = {
 /*ARGSUSED*/
 l_write(v, a)
 struct value *v;
-register struct value *a;
+struct value *a;
 {
 	char buf[20];
 	struct ww *w;
@@ -327,7 +327,7 @@ struct lcmd_arg arg_close[] = {
 /*ARGSUSED*/
 l_close(v, a)
 struct value *v;
-register struct value *a;
+struct value *a;
 {
 	struct ww *w;
 
@@ -345,7 +345,7 @@ struct lcmd_arg arg_cursormodes[] = {
 };
 
 l_cursormodes(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 
 	v->v_type = V_NUM;
@@ -360,7 +360,7 @@ struct lcmd_arg arg_unset[] = {
 };
 
 l_unset(v, a)
-register struct value *v, *a;
+struct value *v, *a;
 {
 	v->v_type = V_NUM;
 	switch (a->v_type) {
@@ -381,7 +381,7 @@ register struct value *v, *a;
 
 struct ww *
 vtowin(v, w)
-register struct value *v;
+struct value *v;
 struct ww *w;
 {
 	switch (v->v_type) {
@@ -403,7 +403,7 @@ struct ww *w;
 }
 
 vtobool(v, def, err)
-register struct value *v;
+struct value *v;
 char def, err;
 {
 	switch (v->v_type) {

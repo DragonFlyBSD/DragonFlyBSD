@@ -35,7 +35,7 @@
  *
  * @(#)cmd5.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd5.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd5.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd5.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -45,7 +45,7 @@
  */
 
 c_move(w)
-register struct ww *w;
+struct ww *w;
 {
 	int col, row;
 	int mincol, minrow;
@@ -89,7 +89,7 @@ register struct ww *w;
 }
 
 movewin(w, row, col)
-register struct ww *w;
+struct ww *w;
 {
 	struct ww *back = w->ww_back;
 

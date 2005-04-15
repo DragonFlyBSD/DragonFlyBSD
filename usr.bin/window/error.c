@@ -35,7 +35,7 @@
  *
  * @(#)error.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/error.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/error.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/error.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -49,8 +49,8 @@
 error(fmt, a, b, c, d, e, f, g, h)
 char *fmt;
 {
-	register struct context *x;
-	register struct ww *w;
+	struct context *x;
+	struct ww *w;
 
 	for (x = &cx; x != 0 && x->x_type != X_FILE; x = x->x_link)
 		;

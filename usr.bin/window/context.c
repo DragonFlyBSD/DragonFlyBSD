@@ -35,7 +35,7 @@
  *
  * @(#)context.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/context.c,v 1.1.1.1.14.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/context.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
+ * $DragonFly: src/usr.bin/window/context.c,v 1.4 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "value.h"
@@ -49,7 +49,7 @@
 
 cx_alloc()
 {
-	register struct context *xp;
+	struct context *xp;
 
 	if (cx.x_type != 0) {
 		xp = (struct context *)

@@ -35,7 +35,7 @@
  *
  * @(#)cmd2.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd2.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd2.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd2.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -102,7 +102,7 @@ char *help_longcmd[] = {
 
 c_help()
 {
-	register struct ww *w;
+	struct ww *w;
 
 	if ((w = openiwin(wwnrow - 3, "Help")) == 0) {
 		error("Can't open help window: %s.", wwerror());
@@ -116,9 +116,9 @@ c_help()
 }
 
 help_print(w, name, list)
-register struct ww *w;
+struct ww *w;
 char *name;
-register char **list;
+char **list;
 {
 	wwprintf(w, "%s:\n\n", name);
 	while (*list)

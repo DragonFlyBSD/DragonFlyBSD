@@ -35,7 +35,7 @@
  *
  * @(#)cmd.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd.c,v 1.2.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -44,7 +44,7 @@
 docmd()
 {
 	register c;
-	register struct ww *w;
+	struct ww *w;
 	char out = 0;
 
 	while (!out && !quit) {
@@ -215,7 +215,7 @@ docmd()
 struct ww *
 getwin()
 {
-	register int c;
+	int c;
 	struct ww *w = 0;
 
 	if (!terse)

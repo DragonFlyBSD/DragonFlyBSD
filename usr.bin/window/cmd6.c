@@ -35,7 +35,7 @@
  *
  * @(#)cmd6.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd6.c,v 1.1.1.1.14.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd6.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd6.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -48,7 +48,7 @@
 
 c_debug()
 {
-	register struct ww *w;
+	struct ww *w;
 
 	if (!terse)
 		wwputs("[m(smap) n(ns) o(os) s(string) v(nvis) w(win)]? ", cmdwin);
@@ -86,7 +86,7 @@ c_debug()
 #ifdef STR_DEBUG
 debug_str()
 {
-	register struct ww *w;
+	struct ww *w;
 	struct mystring *s;
 
 	if ((w = openiwin(wwnrow - 3, "Allocated Strings")) == 0) {

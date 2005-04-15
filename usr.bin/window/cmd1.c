@@ -35,7 +35,7 @@
  *
  * @(#)cmd1.c     8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/cmd1.c,v 1.2.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd1.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/window/cmd1.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
 #include "defs.h"
@@ -109,7 +109,7 @@ c_window()
 }
 
 getpos(row, col, minrow, mincol, maxrow, maxcol)
-register int *row, *col;
+int *row, *col;
 int minrow, mincol;
 int maxrow, maxcol;
 {
