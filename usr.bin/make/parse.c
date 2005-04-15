@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.69 2005/04/15 21:01:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.70 2005/04/15 21:05:52 okumoto Exp $
  */
 
 /*-
@@ -151,13 +151,13 @@ typedef enum {
 	Begin,		/* .BEGIN */
 	Default,	/* .DEFAULT */
 	End,		/* .END */
+	Export,		/* .EXPORT */
 	Ignore,		/* .IGNORE */
 	Includes,	/* .INCLUDES */
 	Interrupt,	/* .INTERRUPT */
 	Libs,		/* .LIBS */
 	MFlags,		/* .MFLAGS or .MAKEFLAGS */
 	Main,		/* .MAIN and we don't have anyth. user-spec. to make */
-	NoExport,	/* .NOEXPORT */
 	Not,		/* Not special */
 	NotParallel,	/* .NOTPARALELL */
 	Null,		/* .NULL */
@@ -200,6 +200,7 @@ static struct {
 	{ ".DEFAULT",		Default,	0 },
 	{ ".END",		End,		0 },
 	{ ".EXEC",		Attribute,	OP_EXEC },
+	{ ".EXPORT",		Export,		0 },
 	{ ".IGNORE",		Ignore,		OP_IGNORE },
 	{ ".INCLUDES",		Includes,	0 },
 	{ ".INTERRUPT",		Interrupt,	0 },
@@ -1200,6 +1201,9 @@ ParseDoDependency(char *line)
 			line = cp;
 		}
 		Lst_Destroy(&paths, NOFREE);
+
+	} else if (specType == Export) {
+		Var_SetEnv(line, VAR_GLOBAL);
 
 	} else {
 		/* list of sources in order */

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.71 2005/04/15 21:01:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.72 2005/04/15 21:05:52 okumoto Exp $
  */
 
 /*
@@ -694,6 +694,7 @@ main(int argc, char **argv)
 	if (objdir != curdir)
 		Path_AddDir(&dirSearchPath, curdir);
 	Var_Set(".DIRECTIVE_MAKEENV", "YES", VAR_GLOBAL);
+	Var_Set(".ST_EXPORT", "YES", VAR_GLOBAL);
 	Var_Set(".CURDIR", curdir, VAR_GLOBAL);
 	Var_Set(".OBJDIR", objdir, VAR_GLOBAL);
 
