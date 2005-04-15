@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.70 2005/04/15 21:05:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.71 2005/04/15 21:09:15 okumoto Exp $
  */
 
 /*-
@@ -81,6 +81,7 @@
 #include "cond.h"
 #include "config.h"
 #include "dir.h"
+#include "directive_hash.h"
 #include "for.h"
 #include "globals.h"
 #include "GNode.h"
@@ -231,51 +232,12 @@ static struct {
 	{ ".WAIT",		Wait,		0 },
 };
 
-/*
- * Directive table. We use a hash table. This hash table has been generated
- * with mph which can be found on the usual GNU mirrors. If you change the
- * directives (adding, deleting, reordering) you need to create a new table
- * and hash function (directive_hash). The command line to generate the
- * table is:
- *
- * mph -d2 -m1 <tab | emitc -l -s
- *
- * Where tab is a file containing just the directive strings, one per line.
- *
- * While inporting the result of this the following changes have been made
- * to the generated code:
- *
- *	prefix the names of the g, T0 and T1 arrays with 'directive_'.
- *
- *	make the type of the tables 'const [un]signed char'.
- *
- *	make the hash function use the length for termination,
- *	not the trailing '\0'.
- */
 static void parse_include(char *, int, int);
 static void parse_message(char *, int, int);
+static void parse_makeenv(char *, int, int);
 static void parse_undef(char *, int, int);
 static void parse_for(char *, int, int);
 static void parse_endfor(char *, int, int);
-
-static const signed char directive_g[] = {
-	16, 0, -1, 14, 5, 2, 2, -1, 0, 0,
-	-1, -1, 16, 11, -1, 15, -1, 14, 7, -1,
-	8, 6, 1, -1, -1, 0, 4, 6, -1, 0,
-	0, 2, 0, 13, -1, 14, -1, 0, 
-};
-
-static const unsigned char directive_T0[] = {
-	11, 25, 14, 30, 14, 26, 23, 15, 9, 37,
-	27, 32, 27, 1, 17, 27, 35, 13, 8, 22,
-	8, 28, 7, 
-};
-
-static const unsigned char directive_T1[] = {
-	19, 20, 31, 17, 29, 2, 7, 12, 1, 31,
-	11, 18, 11, 20, 10, 2, 15, 19, 4, 10,
-	13, 36, 3, 
-};
 
 static const struct directive {
 	const char	*name;
@@ -283,6 +245,7 @@ static const struct directive {
 	Boolean		skip_flag;	/* execute even when skipped */
 	void		(*func)(char *, int, int);
 } directives[] = {
+	/* DIRECTIVES-START-TAG */
 	{ "elif",	COND_ELIF,	TRUE,	Cond_If },
 	{ "elifdef",	COND_ELIFDEF,	TRUE,	Cond_If },
 	{ "elifmake",	COND_ELIFMAKE,	TRUE,	Cond_If },
@@ -299,8 +262,10 @@ static const struct directive {
 	{ "ifndef",	COND_IFNDEF,	TRUE,	Cond_If },
 	{ "ifnmake",	COND_IFNMAKE,	TRUE,	Cond_If },
 	{ "include",	0,		FALSE,	parse_include },
+	{ "makeenv",	0,		FALSE,	parse_makeenv },
 	{ "undef",	0,		FALSE,	parse_undef },
 	{ "warning",	0,		FALSE,	parse_message },
+	/* DIRECTIVES-END-TAG */
 };
 #define	NDIRECTS	(sizeof(directives) / sizeof(directives[0]))
 
@@ -2291,6 +2256,28 @@ parse_undef(char *line, int code __unused, int lineno __unused)
 }
 
 /**
+ * parse_makeenv
+ *	Parse an .makeenv directive.
+ */
+static void
+parse_makeenv(char *line, int code __unused, int lineno __unused)
+{
+	char *cp;
+
+	while (isspace((u_char)*line))
+		line++;
+
+	for (cp = line; !isspace((u_char)*cp) && *cp != '\0'; cp++) {
+		;
+	}
+	*cp = '\0';
+
+	cp = Buf_Peel(Var_Subst(NULL, line, VAR_CMD, FALSE));
+	Var_SetEnv(cp, VAR_GLOBAL);
+	free(cp);
+}
+
+/**
  * parse_for
  *	Parse a .for directive.
  */
@@ -2331,31 +2318,6 @@ parse_endfor(char *line __unused, int code __unused, int lineno __unused)
 {
 
 	Parse_Error(PARSE_FATAL, "for-less endfor");
-}
-
-/**
- * directive_hash
- */
-static int
-directive_hash(const u_char *key, size_t len)
-{
-	unsigned f0, f1;
-	const u_char *kp = key;
-
-	if (len < 2 || len > 9)
-		return (-1);
-
-	for (f0 = f1 = 0; kp < key + len; ++kp) {
-		if (*kp < 97 || *kp > 119)
-			return (-1);
-		f0 += directive_T0[-97 + *kp];
-		f1 += directive_T1[-97 + *kp];
-	}
-
-	f0 %= 38;
-	f1 %= 38;
-
-	return (directive_g[f0] + directive_g[f1]) % 18;
 }
 
 /**
