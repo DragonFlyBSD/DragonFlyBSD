@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.9 2004/09/15 16:46:19 joerg Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.10 2005/04/16 08:17:02 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -441,6 +441,8 @@ acpi_attach(device_t dev)
      * object init pass.
      *
      * For these devices, we set ACPI_NO_DEVICE_INIT and ACPI_NO_OBJECT_INIT).
+     * For avoiding portions of the namespace without totally disabling _INI
+     * and _STA, use "debug.acpi.avoid.paths".
      *
      * XXX We should arrange for the object init pass after we have attached
      *     all our child devices, but on many systems it works here.
@@ -1105,8 +1107,11 @@ acpi_probe_child(ACPI_HANDLE handle, UINT32 level, void *context, void **status)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     /* Skip this device if we think we'll have trouble with it. */
-    if (acpi_avoid(handle))
+    if (acpi_avoid(handle)) {
+	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "not scanning '%s'\n",
+			 acpi_name(handle)));
 	return_ACPI_STATUS (AE_OK);
+    }
 
     if (ACPI_SUCCESS(AcpiGetType(handle, &type))) {
 	switch(type) {
@@ -2265,7 +2270,8 @@ acpi_avoid(ACPI_HANDLE handle)
     np = acpi_name(handle);
     if (*np == '\\')
 	np++;
-    if ((env = getenv("debug.acpi.avoid")) == NULL)
+    if ((env = getenv("debug.acpi.avoid.paths")) == NULL &&
+	(env = getenv("debug.acpi.avoid")) == NULL)
 	return (0);
 
     /* Scan the avoid list checking for a match */

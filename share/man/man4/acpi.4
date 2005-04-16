@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.50 2005/02/23 07:23:35 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/acpi.4,v 1.1 2005/04/06 03:25:46 y0netan1 Exp $
+.\" $DragonFly: src/share/man/man4/acpi.4,v 1.2 2005/04/16 08:17:02 y0netan1 Exp $
 .\"
 .Dd February 13, 2005
 .Dt ACPI 4
@@ -239,7 +239,11 @@ Supports acpi_video which may conflict with agp device.
 It is also possible to avoid portions of the ACPI namespace which
 may be causing problems, by listing the full path of the root of
 the region to be avoided in the kernel environment variable
+.Va debug.acpi.avoid.paths ,
+or
 .Va debug.acpi.avoid .
+The latter also disables initialization of ACPI namespace as a
+workaround for systems where not doing so crashes interpreter.
 The object and all of its children will be ignored during the
 bus/children scan of the namespace.
 The ACPI CA code will still know about the avoided region.
