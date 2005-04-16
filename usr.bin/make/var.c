@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.187 2005/04/16 10:35:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.188 2005/04/16 10:35:29 okumoto Exp $
  */
 
 /*-
@@ -1860,24 +1860,25 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 					if (*p == '$') {
 						Buf_AppendRange(buf, str, p);
 						str = p;
-						continue;
-					}
-					ln = p - (str + 2);
-					if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
-						expand = TRUE;
 					} else {
-						/*
-						 * Not the variable
-						 * we want to expand,
-						 * scan until the
-						 * next variable
-						 */
-						while (*p != '$' && *p != '\0')
-							p++;
+						ln = p - (str + 2);
+						if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
+							expand = TRUE;
+						} else {
+							/*
+							 * Not the variable
+							 * we want to expand,
+							 * scan until the
+							 * next variable
+							 */
+							while (*p != '$' && *p != '\0')
+								p++;
 
-						Buf_AppendRange(buf, str, p);
-						str = p;
-						expand = FALSE;
+							Buf_AppendRange(buf, str, p);
+							str = p;
+							expand = FALSE;
+						}
+						break;
 					}
 				} else {
 					/*
@@ -1891,75 +1892,74 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 						str += 2;
 						expand = FALSE;
 					}
+					break;
 				}
-				break;
 			}
-			if (!expand)
-				continue;
-		    {
-			VarParser	subvp = {
-				str,
-				str,
-				ctxt,
-				err
-			};
-			char	*rval;
-			Boolean	rfree;
 
-			rval = VarParse(&subvp, &rfree);
+			if (expand) {
+				VarParser	subvp = {
+					str,
+					str,
+					ctxt,
+					err
+				};
+				char	*rval;
+				Boolean	rfree;
 
-			/*
-			 * When we come down here, val should either point to
-			 * the value of this variable, suitably modified, or
-			 * be NULL. Length should be the total length of the
-			 * potential variable invocation (from $ to end
-			 * character...)
-			 */
-			if (rval == var_Error || rval == varNoError) {
+				rval = VarParse(&subvp, &rfree);
+
 				/*
-				 * If performing old-time variable
-				 * substitution, skip over the variable and
-				 * continue with the substitution. Otherwise,
-				 * store the dollar sign and advance str so
-				 * we continue with the string...
+				 * When we come down here, val should either point to
+				 * the value of this variable, suitably modified, or
+				 * be NULL. Length should be the total length of the
+				 * potential variable invocation (from $ to end
+				 * character...)
 				 */
-				if (oldVars) {
-					str = subvp.ptr;
-				} else if (err) {
+				if (rval == var_Error || rval == varNoError) {
 					/*
-					 * If variable is undefined, complain
-					 * and skip the variable. The
-					 * complaint will stop us from doing
-					 * anything when the file is parsed.
+					 * If performing old-time variable
+					 * substitution, skip over the variable and
+					 * continue with the substitution. Otherwise,
+					 * store the dollar sign and advance str so
+					 * we continue with the string...
 					 */
-					if (!errorReported) {
-						Parse_Error(PARSE_FATAL,
-							    "Undefined variable \"%.*s\"", subvp.ptr - subvp.input, str);
+					if (oldVars) {
+						str = subvp.ptr;
+					} else if (err) {
+						/*
+						 * If variable is undefined, complain
+						 * and skip the variable. The
+						 * complaint will stop us from doing
+						 * anything when the file is parsed.
+						 */
+						if (!errorReported) {
+							Parse_Error(PARSE_FATAL,
+								    "Undefined variable \"%.*s\"", subvp.ptr - subvp.input, str);
+						}
+						str = subvp.ptr;
+						errorReported = TRUE;
+					} else {
+						Buf_AddByte(buf, (Byte)*str);
+						str += 1;
 					}
-					str = subvp.ptr;
-					errorReported = TRUE;
 				} else {
-					Buf_AddByte(buf, (Byte)*str);
-					str += 1;
-				}
-			} else {
-				/*
-				 * We've now got a variable structure to
-				 * store in. But first, advance the string
-				 * pointer.
-				 */
-				str = subvp.ptr;
+					/*
+					 * We've now got a variable structure to
+					 * store in. But first, advance the string
+					 * pointer.
+					 */
+					str = subvp.ptr;
 
-				/*
-				 * Copy all the characters from the variable
-				 * value straight into the new string.
-				 */
-				Buf_Append(buf, rval);
-				if (rfree) {
-					free(rval);
+					/*
+					 * Copy all the characters from the variable
+					 * value straight into the new string.
+					 */
+					Buf_Append(buf, rval);
+					if (rfree) {
+						free(rval);
+					}
 				}
 			}
-		    }
 		} else {
 			/*
 			 * Skip as many characters as possible -- either to
