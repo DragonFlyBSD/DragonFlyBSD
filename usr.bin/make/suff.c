@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.51 2005/03/31 22:16:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.52 2005/04/16 10:34:26 okumoto Exp $
  */
 
 /*-
@@ -1154,7 +1154,7 @@ SuffExpandVariables(GNode *parent, GNode *child, Lst *members)
 	Lst_Init(members);
 
 	DEBUGF(SUFF, ("Expanding \"%s\"...", child->name));
-	buf = Var_Subst(NULL, child->name, parent, TRUE);
+	buf = Var_Subst(child->name, parent, TRUE);
 	cp = Buf_Data(buf);
 
 	if (child->type & OP_ARCHV) {

@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.50 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.35 2005/03/16 20:03:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.36 2005/04/16 10:34:26 okumoto Exp $
  */
 
 /*-
@@ -252,7 +252,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	doit = FALSE;
 
 	cmdNode = Lst_Member(&gn->commands, cmd);
-	cmdStart = Buf_Peel(Var_Subst(NULL, cmd, gn, FALSE));
+	cmdStart = Buf_Peel(Var_Subst(cmd, gn, FALSE));
 
 	/*
 	 * brk_string will return an argv with a NULL in av[0], thus causing

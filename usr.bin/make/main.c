@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.73 2005/04/15 21:06:34 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.74 2005/04/16 10:34:26 okumoto Exp $
  */
 
 /*
@@ -814,7 +814,7 @@ main(int argc, char **argv)
 		char	*ptr;
 		char	savec;
 
-		buf = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
+		buf = Var_Subst(VPATH, VAR_CMD, FALSE);
 
 		vpath = Buf_Data(buf);
 		do {
@@ -905,7 +905,7 @@ main(int argc, char **argv)
 				v = emalloc(strlen(name) + 1 + 3);
 				sprintf(v, "${%s}", name);
 
-				value = Buf_Peel(Var_Subst(NULL, v,
+				value = Buf_Peel(Var_Subst(v,
 				    VAR_GLOBAL, FALSE));
 				printf("%s\n", value);
 

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.53 2005/04/09 05:50:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.54 2005/04/16 10:34:26 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -608,7 +608,7 @@ JobPrintCommand(char *cmd, Job *job)
 	 */
 	cmdNode = Lst_Member(&job->node->commands, cmd);
 
-	cmd = Buf_Peel(Var_Subst(NULL, cmd, job->node, FALSE));
+	cmd = Buf_Peel(Var_Subst(cmd, job->node, FALSE));
 	cmdStart = cmd;
 
 	Lst_Replace(cmdNode, cmdStart);
@@ -971,8 +971,8 @@ JobFinish(Job *job, int *status)
 		 */
 		for (ln = job->tailCmds; ln != NULL; ln = LST_NEXT(ln)) {
 			Lst_AtEnd(&postCommands->commands,
-			    Buf_Peel(Var_Subst(NULL, Lst_Datum(ln),
-			    job->node, FALSE)));
+			    Buf_Peel(
+				Var_Subst(Lst_Datum(ln), job->node, FALSE)));
 		}
 
 		job->node->made = MADE;
@@ -1654,8 +1654,8 @@ JobStart(GNode *gn, int flags, Job *previous)
 				for (ln = job->tailCmds; ln != NULL;
 				    ln = LST_NEXT(ln)) {
 					Lst_AtEnd(&postCommands->commands,
-					    Buf_Peel(Var_Subst(NULL,
-					    Lst_Datum(ln), job->node, FALSE)));
+					    Buf_Peel(Var_Subst(Lst_Datum(ln),
+					    job->node, FALSE)));
 				}
 				job->node->made = MADE;
 				Make_Update(job->node);
