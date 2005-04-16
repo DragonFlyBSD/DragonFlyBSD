@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.186 2005/04/16 10:34:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.187 2005/04/16 10:35:02 okumoto Exp $
  */
 
 /*-
@@ -1706,7 +1706,6 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 Buffer *
 Var_Subst(const char *str, GNode *ctxt, Boolean err)
 {
-	const char *var = NULL;
 	Boolean errorReported;
 	Buffer *buf;		/* Buffer for forming things */
 
@@ -1719,7 +1718,7 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 
 	buf = Buf_Init(0);
 	while (*str) {
-		if (var == NULL && (str[0] == '$') && (str[1] == '$')) {
+		if ((str[0] == '$') && (str[1] == '$')) {
 			/*
 			 * A dollar sign may be escaped either with another
 			 * dollar sign. In such a case, we skip over the
@@ -1733,73 +1732,6 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 			/*
 			 * Variable invocation.
 			 */
-			if (var != NULL) {
-				int     expand;
-				for (;;) {
-					if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
-						size_t  ln;
-						const char *p = str + 2;
-
-						/*
-						 * Scan up to the end of the
-						 * variable name.
-						 */
-						while (*p != '\0' &&
-						       *p != ':' &&
-						       *p != CLOSE_PAREN &&
-						       *p != CLOSE_BRACE &&
-						       *p != '$') {
-							++p;
-						}
-
-						/*
-						 * A variable inside the
-						 * variable. We cannot expand
-						 * the external variable yet,
-						 * so we try again with the
-						 * nested one
-						 */
-						if (*p == '$') {
-							Buf_AppendRange(buf, str, p);
-							str = p;
-							continue;
-						}
-						ln = p - (str + 2);
-						if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
-							expand = TRUE;
-						} else {
-							/*
-							 * Not the variable
-							 * we want to expand,
-							 * scan until the
-							 * next variable
-							 */
-							while (*p != '$' && *p != '\0')
-								p++;
-
-							Buf_AppendRange(buf, str, p);
-							str = p;
-							expand = FALSE;
-						}
-					} else {
-						/*
-						 * Single letter variable
-						 * name
-						 */
-						if (var[1] == '\0' && var[0] == str[1]) {
-							expand = TRUE;
-						} else {
-							Buf_AddBytes(buf, 2, (const Byte *) str);
-							str += 2;
-							expand = FALSE;
-						}
-					}
-					break;
-				}
-				if (!expand)
-					continue;
-			}
-		    {
 			VarParser	subvp = {
 				str,
 				str,
@@ -1862,7 +1794,6 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 					free(rval);
 				}
 			}
-		    }
 		} else {
 			/*
 			 * Skip as many characters as possible -- either to
@@ -1897,86 +1828,74 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 
 	buf = Buf_Init(0);
 	while (*str) {
-		if (var == NULL && (str[0] == '$') && (str[1] == '$')) {
-			/*
-			 * A dollar sign may be escaped either with another
-			 * dollar sign. In such a case, we skip over the
-			 * escape character and store the dollar sign into
-			 * the buffer directly.
-			 */
-			Buf_AddByte(buf, (Byte)str[0]);
-			str += 2;
-
-		} else if (str[0] == '$') {
+		if (str[0] == '$') {
 			/*
 			 * Variable invocation.
 			 */
-			if (var != NULL) {
-				int     expand;
-				for (;;) {
-					if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
-						size_t  ln;
-						const char *p = str + 2;
+			int     expand;
+			for (;;) {
+				if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
+					size_t  ln;
+					const char *p = str + 2;
 
-						/*
-						 * Scan up to the end of the
-						 * variable name.
-						 */
-						while (*p != '\0' &&
-						       *p != ':' &&
-						       *p != CLOSE_PAREN &&
-						       *p != CLOSE_BRACE &&
-						       *p != '$') {
-							++p;
-						}
+					/*
+					 * Scan up to the end of the
+					 * variable name.
+					 */
+					while (*p != '\0' &&
+					       *p != ':' &&
+					       *p != CLOSE_PAREN &&
+					       *p != CLOSE_BRACE &&
+					       *p != '$') {
+						++p;
+					}
 
-						/*
-						 * A variable inside the
-						 * variable. We cannot expand
-						 * the external variable yet,
-						 * so we try again with the
-						 * nested one
-						 */
-						if (*p == '$') {
-							Buf_AppendRange(buf, str, p);
-							str = p;
-							continue;
-						}
-						ln = p - (str + 2);
-						if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
-							expand = TRUE;
-						} else {
-							/*
-							 * Not the variable
-							 * we want to expand,
-							 * scan until the
-							 * next variable
-							 */
-							while (*p != '$' && *p != '\0')
-								p++;
-
-							Buf_AppendRange(buf, str, p);
-							str = p;
-							expand = FALSE;
-						}
+					/*
+					 * A variable inside the
+					 * variable. We cannot expand
+					 * the external variable yet,
+					 * so we try again with the
+					 * nested one
+					 */
+					if (*p == '$') {
+						Buf_AppendRange(buf, str, p);
+						str = p;
+						continue;
+					}
+					ln = p - (str + 2);
+					if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
+						expand = TRUE;
 					} else {
 						/*
-						 * Single letter variable
-						 * name
+						 * Not the variable
+						 * we want to expand,
+						 * scan until the
+						 * next variable
 						 */
-						if (var[1] == '\0' && var[0] == str[1]) {
-							expand = TRUE;
-						} else {
-							Buf_AddBytes(buf, 2, (const Byte *) str);
-							str += 2;
-							expand = FALSE;
-						}
+						while (*p != '$' && *p != '\0')
+							p++;
+
+						Buf_AppendRange(buf, str, p);
+						str = p;
+						expand = FALSE;
 					}
-					break;
+				} else {
+					/*
+					 * Single letter variable
+					 * name
+					 */
+					if (var[1] == '\0' && var[0] == str[1]) {
+						expand = TRUE;
+					} else {
+						Buf_AddBytes(buf, 2, (const Byte *) str);
+						str += 2;
+						expand = FALSE;
+					}
 				}
-				if (!expand)
-					continue;
+				break;
 			}
+			if (!expand)
+				continue;
 		    {
 			VarParser	subvp = {
 				str,
@@ -2059,6 +1978,7 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 
 	return (buf);
 }
+
 /*-
  *-----------------------------------------------------------------------
  * Var_GetTail --
