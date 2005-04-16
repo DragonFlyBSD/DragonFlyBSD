@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.189 2005/04/16 10:35:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.190 2005/04/16 10:36:19 okumoto Exp $
  */
 
 /*-
@@ -1706,7 +1706,7 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 Buffer *
 Var_Subst(const char *str, GNode *ctxt, Boolean err)
 {
-	Boolean errorReported;
+	Boolean	errorReported;
 	Buffer *buf;		/* Buffer for forming things */
 
 	/*
@@ -1720,20 +1720,18 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 	while (str[0] != '\0') {
 		if ((str[0] == '$') && (str[1] == '$')) {
 			/*
-			 * A dollar sign may be escaped with another
-			 * dollar sign.  In such a case, we skip over the
-			 * escape character and store the dollar sign into
-			 * the buffer directly.
+			 * A dollar sign may be escaped with another dollar
+			 * sign.  In such a case, we skip over the escape
+			 * character and store the dollar sign into the
+			 * buffer directly.
 			 */
 			str++;
 			Buf_AddByte(buf, (Byte)str[0]);
 			str++;
 
 		} else if (str[0] == '$') {
-			/*
-			 * Variable invocation.
-			 */
-			VarParser	subvp = {
+			/* Variable invocation. */
+			VarParser subvp = {
 				str,
 				str,
 				ctxt,
@@ -1798,6 +1796,54 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 	return (buf);
 }
 
+static int
+match_var(const char str[], const char var[])
+{
+	const char	*start = str;
+	size_t		len;
+
+	str++;			/* consume '$' */
+
+	if (str[0] == OPEN_PAREN || str[0] == OPEN_BRACE) {
+		str++;		/* consume opening paren or brace */
+
+		while (str[0] != '\0') {
+			if (str[0] == '$') {
+				/*
+				 * A variable inside the variable. We cannot
+				 * expand the external variable yet.
+				 */
+				return (str - start);
+			} else if (str[0] == ':' ||
+				   str[0] == CLOSE_PAREN ||
+				   str[0] == CLOSE_BRACE) {
+				len = str - (start + 2);
+
+				if (var[len] == '\0' && strncmp(var, start + 2, len) == 0) {
+					return (0);	/* match */
+				} else {
+					/*
+					 * Not the variable we want to
+					 * expand.
+					 */
+					return (str - start);
+				}
+			} else {
+				++str;
+			}
+		}
+		return (str - start);
+	} else {
+		/* Single letter variable name */
+		if (var[1] == '\0' && var[0] == str[0]) {
+			return (0);	/* match */
+		} else {
+			str++;	/* consume variable name */
+			return (str - start);
+		}
+	}
+}
+
 Buffer *
 Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 {
@@ -1814,72 +1860,14 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 	buf = Buf_Init(0);
 	while (str[0] != '\0') {
 		if (str[0] == '$') {
-			/*
-			 * Variable invocation.
-			 */
-			int	expand;
-			for (;;) {
-				if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
-					const char *p = str + 2;
+			int	skip;
 
-					/*
-					 * Scan up to the end of the variable
-					 * name.
-					 */
-					while (*p != '\0' &&
-					       *p != ':' &&
-					       *p != CLOSE_PAREN &&
-					       *p != CLOSE_BRACE &&
-					       *p != '$') {
-						++p;
-					}
-
-					/*
-					 * A variable inside the variable. We
-					 * cannot expand the external
-					 * variable yet, so we try again with
-					 * the nested one
-					 */
-					if (*p == '$') {
-						Buf_AppendRange(buf, str, p);
-						str = p;
-					} else {
-						size_t	ln = p - (str + 2);
-
-						if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
-							expand = TRUE;
-						} else {
-							/*
-							 * Not the variable
-							 * we want to expand,
-							 * scan until the
-							 * next variable
-							 */
-							while (*p != '$' && *p != '\0')
-								p++;
-
-							Buf_AppendRange(buf, str, p);
-							str = p;
-							expand = FALSE;
-						}
-						break;
-					}
-				} else {
-					/*
-					 * Single letter variable name
-					 */
-					if (var[1] == '\0' && var[0] == str[1]) {
-						expand = TRUE;
-					} else {
-						Buf_AddBytes(buf, 2, (const Byte *)str);
-						str += 2;
-						expand = FALSE;
-					}
-					break;
-				}
-			}
-
-			if (expand) {
+			skip = match_var(str, var);
+			if (skip > 0) {
+				Buf_AddBytes(buf, skip, str);
+				str += skip;
+			} else {
+				/* Variable invocation. */
 				VarParser	subvp = {
 					str,
 					str,
