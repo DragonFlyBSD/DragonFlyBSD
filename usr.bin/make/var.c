@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.190 2005/04/16 10:36:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.191 2005/04/16 10:38:37 okumoto Exp $
  */
 
 /*-
@@ -1934,49 +1934,6 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 	}
 
 	return (buf);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Var_GetTail --
- *	Return the tail from each of a list of words. Used to set the
- *	System V local variables.
- *
- * Results:
- *	The resulting string.
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
- */
-char *
-Var_GetTail(char *file)
-{
-
-	return (VarModify(file, VarTail, (void *)NULL));
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Var_GetHead --
- *	Find the leading components of a (list of) filename(s).
- *	XXX: VarHead does not replace foo by ., as (sun) System V make
- *	does.
- *
- * Results:
- *	The leading components.
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
- */
-char *
-Var_GetHead(char *file)
-{
-
-	return (VarModify(file, VarHead, (void *)NULL));
 }
 
 /*-
