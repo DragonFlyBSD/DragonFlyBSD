@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.6 2005/03/13 15:10:03 swildner Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.7 2005/04/18 07:55:09 joerg Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -250,6 +250,8 @@ extern int	printf(const char *fmt, ...);
 extern void	vprintf(const char *fmt, __va_list va);
 extern int	sprintf(char *buf, const char *cfmt, ...);
 extern void	vsprintf(char *buf, const char *cfmt, __va_list va);
+int	snprintf(char *, size_t, const char *, ...);
+int	vsnprintf(char *, size_t, const char *, __va_list);
 
 extern void	twiddle(void);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/lib/libstand/printf.c,v 1.4 1999/12/27 08:45:14 peter Exp $
- * $DragonFly: src/lib/libstand/printf.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/printf.c,v 1.5 2005/04/18 07:55:09 joerg Exp $
  */
 
 /*
@@ -54,8 +54,22 @@
  */
 #include <stdarg.h>
 
-static char	*ksprintn (u_long num, int base, int *len);
-static int	kvprintf(char const *fmt, void (*func)(int), void *arg, int radix, va_list ap);
+struct snprintf_arg {
+	char	*buf;
+	size_t	remain;
+};
+
+static char	*ksprintn(u_long, int, int *);
+static int	kvprintf(const char *, void (*)(int, void *), void *, int,
+			 va_list);
+static void	putchar_wrapper(int, void *);
+static void	snprintf_func(int, void *);
+
+static void
+putchar_wrapper(int ch, void *arg __unused)
+{
+	putchar(ch);
+}
 
 int
 printf(const char *fmt, ...)
@@ -64,7 +78,7 @@ printf(const char *fmt, ...)
 	int retval;
 
 	va_start(ap, fmt);
-	retval = kvprintf(fmt, putchar, NULL, 10, ap);
+	retval = kvprintf(fmt, putchar_wrapper, NULL, 10, ap);
 	va_end(ap);
 	return retval;
 }
@@ -73,7 +87,7 @@ void
 vprintf(const char *fmt, va_list ap)
 {
 
-	kvprintf(fmt, putchar, NULL, 10, ap);
+	kvprintf(fmt, putchar_wrapper, NULL, 10, ap);
 }
 
 int
@@ -96,6 +110,43 @@ vsprintf(char *buf, const char *cfmt, va_list ap)
 	
 	retval = kvprintf(cfmt, NULL, (void *)buf, 10, ap);
 	buf[retval] = '\0';
+}
+
+int
+snprintf(char *buf, size_t size, const char *cfmt, ...)
+{
+	int retval;
+	va_list ap;
+
+	va_start(ap, cfmt);
+	retval = vsnprintf(buf, size, cfmt, ap);
+	__va_end(ap);
+	return(retval);
+}
+
+int
+vsnprintf(char *buf, size_t size, const char *cfmt, va_list ap)
+{
+	struct snprintf_arg info;
+	int retval;
+
+	info.buf = buf;
+	info.remain = size;
+	retval = kvprintf(cfmt, snprintf_func, &info, 10, ap);
+	if (info.remain >= 1)
+		*info.buf++ = '\0';
+	return(retval);
+}
+
+static void
+snprintf_func(int ch, void *arg)
+{
+	struct snprintf_arg * const info = arg;
+
+	if (info->remain >= 2) {
+		*info->buf++ = ch;
+		info->remain--;
+	}
 }
 
 /*
@@ -147,9 +198,10 @@ ksprintn(ul, base, lenp)
  *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
 static int
-kvprintf(char const *fmt, void (*func)(int), void *arg, int radix, va_list ap)
+kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
+	 va_list ap)
 {
-#define PCHAR(c) {int cc=(c); if (func) (*func)(cc); else *d++ = cc; retval++; }
+#define PCHAR(c) {int cc=(c); if (func) (*func)(cc, arg); else *d++ = cc; retval++; }
 	char *p, *q, *d;
 	u_char *up;
 	int ch, n;
