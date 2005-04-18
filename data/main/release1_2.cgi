@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.3 2005/04/12 14:22:41 hmp Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.4 2005/04/18 19:58:00 dillon Exp $
 
 $TITLE(DragonFly - April 2005 Release 1.2.0 Download)
 <h1>Obtaining DragonFly 1.2.0 for your system</h1>
@@ -102,7 +102,7 @@ See the 'Download Site' list below for a list of download locations.
     <A HREF="http://mirror.fictionpress.com/df/dfly-1.2.0_REL.iso.gz">HTTP</A>
 </TD></TR>
 
-<TR><TD>DragonFlyBSD.sf.net</TD>
+<TR><TD>SourceForge (USA)</TD>
 <TD>1.2.0_REL image</TD>
 <TD>
     <A HREF="http://dragonflybsd.sf.net/dfly-1.2.0_REL.iso.gz">HTTP</A>
@@ -112,6 +112,12 @@ See the 'Download Site' list below for a list of download locations.
 <TD>1.2.0_REL image</TD>
 <TD>
     <A HREF="http://www.hup.hu/~trey/DragonFly/iso-images/dfly-1.2.0_REL.iso.gz">HTTP</A>
+</TD></TR>
+
+<TR><TD>Bit Torrent</TD>
+<TD>1.2.0_REL image</TD>
+<TD>
+    <A HREF="http://torrent.bitslush.org/dfly-1.2.0_REL.iso.gz.torrent">TORRENT</A>
 </TD></TR>
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
