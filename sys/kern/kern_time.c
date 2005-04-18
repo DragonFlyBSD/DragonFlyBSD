@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.21 2005/04/14 11:15:52 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.22 2005/04/18 13:27:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -488,6 +488,26 @@ kern_reladjtime(int64_t delta)
 	}
 }
 
+static void
+kern_adjfreq(int64_t rate)
+{
+	int origcpu;
+
+	if ((origcpu = mycpu->gd_cpuid) != 0) {
+		lwkt_setcpu_self(globaldata_find(0));
+		cpu_mb1();
+	}
+
+	crit_enter();
+	ntp_tick_permanent = rate;
+	crit_exit();
+
+	if (origcpu != 0) {
+		lwkt_setcpu_self(globaldata_find(origcpu));
+		cpu_mb1();
+	}
+}
+
 /* ARGSUSED */
 int
 adjtime(struct adjtime_args *uap)
@@ -545,10 +565,35 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 	return (0);
 }
 
+static int
+sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
+{
+	int64_t freqdelta;
+	int error;
+
+	if (req->oldptr != NULL) {
+		freqdelta = ntp_tick_permanent * hz;
+		error = SYSCTL_OUT(req, &freqdelta, sizeof(freqdelta));
+		if (error)
+			return (error);
+	}
+	if (req->newptr != NULL) {
+		if (suser(curthread))
+			return (EPERM);
+		error = SYSCTL_IN(req, &freqdelta, sizeof(freqdelta));
+		if (error)
+			return (error);
+		
+		freqdelta /= hz;
+		kern_adjfreq(freqdelta);
+	}
+	return (0);
+}
+
 SYSCTL_NODE(_kern, OID_AUTO, ntp, CTLFLAG_RW, 0, "NTP related controls");
-SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, permanent, CTLFLAG_RW,
-    &ntp_tick_permanent, sizeof(ntp_tick_permanent),
-    "LU", "permanent per-tick correct");
+SYSCTL_PROC(_kern_ntp, OID_AUTO, permanent,
+    CTLTYPE_OPAQUE|CTLFLAG_RW, 0, 0,
+    sysctl_adjfreq, "LU", "permanent correction per second");
 SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, delta, CTLFLAG_RD,
     &ntp_delta, sizeof(ntp_delta), "LU",
     "one-time delta");
