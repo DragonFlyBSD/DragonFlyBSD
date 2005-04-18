@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.24 2005/03/04 03:37:43 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.25 2005/04/18 23:50:30 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -975,10 +975,8 @@ rt_newmaddrmsg(int cmd, struct ifmultiaddr *ifma)
 
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_ifaaddr = ifma->ifma_addr;
-	if (ifp != NULL && TAILQ_FIRST(&ifp->if_addrhead) != NULL)
+	if (ifp != NULL && !TAILQ_EMPTY(&ifp->if_addrhead))
 		rtinfo.rti_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
-	else
-		rtinfo.rti_ifpaddr = NULL;
 	/*
 	 * If a link-layer address is present, present it as a ``gateway''
 	 * (similarly to how ARP entries, e.g., are presented).
