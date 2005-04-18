@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $
- * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.5 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.6 2005/04/18 20:17:58 joerg Exp $
  */
 
 /*
@@ -83,33 +83,35 @@ int tun;                          /* tunnel descriptor */
 
 static void usage(void);
 
-int Set_address(char *addr, struct sockaddr_in *sin)
+static int
+Set_address(char *addr, struct sockaddr_in *my_sin)
 {
   struct hostent *hp;
 
-  bzero((char *)sin, sizeof(struct sockaddr));
-  sin->sin_family = AF_INET;
-  if((sin->sin_addr.s_addr = inet_addr(addr)) == (u_long)-1) {
+  bzero(my_sin, sizeof(struct sockaddr));
+  my_sin->sin_family = AF_INET;
+  if((my_sin->sin_addr.s_addr = inet_addr(addr)) == (in_addr_t)-1) {
     hp = gethostbyname(addr);
     if (!hp) {
       syslog(LOG_ERR,"unknown host %s", addr);
       return 1;
     }
-    sin->sin_family = hp->h_addrtype;
-    bcopy(hp->h_addr, (caddr_t)&sin->sin_addr, hp->h_length);
+    my_sin->sin_family = hp->h_addrtype;
+    bcopy(hp->h_addr, (caddr_t)&my_sin->sin_addr, hp->h_length);
   }
   return 0;
 }
 
-int tun_open(char *devname, struct sockaddr *ouraddr, char *theiraddr)
+static int
+tun_open(char *dev_name, struct sockaddr *ouraddr, char *theiraddr)
 {
   int s;
-  struct sockaddr_in *sin;
+  struct sockaddr_in *my_sin;
 
   /* Open tun device */
-  tun = open (devname, O_RDWR);
+  tun = open (dev_name, O_RDWR);
   if (tun < 0) {
-    syslog(LOG_ERR,"can't open %s - %m",devname);
+    syslog(LOG_ERR,"can't open %s - %m",dev_name);
     return(1);
   }
 
@@ -119,8 +121,8 @@ int tun_open(char *devname, struct sockaddr *ouraddr, char *theiraddr)
   bzero((char *)&ifra, sizeof(ifra));
   bzero((char *)&ifrq, sizeof(ifrq));
 
-  strncpy(ifrq.ifr_name, devname+5, IFNAMSIZ);
-  strncpy(ifra.ifra_name, devname+5, IFNAMSIZ);
+  strncpy(ifrq.ifr_name, dev_name + 5, IFNAMSIZ);
+  strncpy(ifra.ifra_name, dev_name + 5, IFNAMSIZ);
 
   s = socket(AF_INET, SOCK_DGRAM, 0);
   if (s < 0) {
@@ -143,19 +145,19 @@ int tun_open(char *devname, struct sockaddr *ouraddr, char *theiraddr)
   /*
    *  Set interface address
    */
-  sin = (struct sockaddr_in *)&(ifra.ifra_addr);
-  bcopy(ouraddr, sin, sizeof(struct sockaddr_in));
-  sin->sin_len = sizeof(*sin);
+  my_sin = (struct sockaddr_in *)&(ifra.ifra_addr);
+  bcopy(ouraddr, my_sin, sizeof(struct sockaddr_in));
+  my_sin->sin_len = sizeof(*my_sin);
 
   /*
    *  Set destination address
    */
-  sin = (struct sockaddr_in *)&(ifra.ifra_broadaddr);
-  if(Set_address(theiraddr,sin)) {
+  my_sin = (struct sockaddr_in *)&(ifra.ifra_broadaddr);
+  if (Set_address(theiraddr, my_sin)) {
     syslog(LOG_ERR,"bad destination address: %s",theiraddr);
     goto stunc_return;
   }
-  sin->sin_len = sizeof(*sin);
+  my_sin->sin_len = sizeof(*my_sin);
 
   if (ioctl(s, SIOCAIFADDR, &ifra) < 0) {
     syslog(LOG_ERR,"can't set interface address - %m");
@@ -183,7 +185,8 @@ tunc_return:
   return(1);
 }
 
-void Finish(int signum)
+static void
+Finish(int signum)
 {
   int s;
 
@@ -232,7 +235,7 @@ int main (int argc, char **argv)
 {
   int  c, len, ipoff;
 
-  char *devname = NULL;
+  char *dev_name = NULL;
   char *point_to = NULL;
   char *to_point = NULL;
   char *target;
@@ -259,7 +262,7 @@ int main (int argc, char **argv)
       point_to = optarg;
       break;
     case 't':
-      devname = optarg;
+      dev_name = optarg;
       break;
     case 'p':
       protocol = optarg;
@@ -269,7 +272,7 @@ int main (int argc, char **argv)
   argc -= optind;
   argv += optind;
 
-  if (argc != 1 || (devname == NULL) ||
+  if (argc != 1 || (dev_name == NULL) ||
       (point_to == NULL) || (to_point == NULL)) {
     usage();
   }
@@ -289,7 +292,7 @@ int main (int argc, char **argv)
     exit(2);
   }
 
-  if(tun_open(devname, &t_laddr, to_point)) {
+  if(tun_open(dev_name, &t_laddr, to_point)) {
     closelog();
     exit(3);
   }
