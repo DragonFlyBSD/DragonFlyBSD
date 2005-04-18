@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.4 2005/04/14 11:22:16 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.5 2005/04/18 18:17:20 joerg Exp $
 
 --- ntp.c	25 Feb 2005 16:43:19 -0000	1.6
 +++ ntp.c	12 Apr 2005 20:13:45 -0000
@@ -21,19 +21,3 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.4 2005/04/14 11:22:1
  }
  
  int
-@@ -454,8 +454,15 @@
- void
- priv_settime(double offset)
- {
-+	struct ntp_peer *p;
-+
- 	imsg_compose(ibuf_main, IMSG_SETTIME, 0, 0, &offset, sizeof(offset));
- 	conf->settime = 0;
-+
-+	TAILQ_FOREACH(p, &conf->ntp_peers, entry) {
-+		p->next -= (time_t)offset;
-+		p->deadline -= (time_t) offset;
-+	}
- }
- 
- void

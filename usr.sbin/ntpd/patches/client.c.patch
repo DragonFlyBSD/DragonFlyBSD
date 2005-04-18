@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/client.c.patch,v 1.4 2005/04/14 11:22:16 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/client.c.patch,v 1.5 2005/04/18 18:17:20 joerg Exp $
 
 --- client.c	25 Feb 2005 16:43:19 -0000	1.6
 +++ client.c	12 Apr 2005 20:13:45 -0000
@@ -20,18 +20,3 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/client.c.patch,v 1.4 2005/04/14 11:2
  
  	ntp_getmsg(buf, size, &msg);
  
-@@ -228,6 +228,14 @@
- 
- 	p->reply[p->shift].offset = ((T2 - T1) + (T3 - T4)) / 2;
- 	p->reply[p->shift].delay = (T4 - T1) - (T3 - T2);
-+	if (p->reply[p->shift].delay < 0) {
-+		interval = error_interval();
-+		set_next(p, interval);
-+		log_info("reply from %s: negative delay %f",
-+		    log_sockaddr((struct sockaddr *)&p->addr->ss),
-+		    p->reply[p->shift].delay);
-+		return (0);
-+	}
- 	p->reply[p->shift].error = (T2 - T1) - (T3 - T4);
- 	p->reply[p->shift].rcvd = time(NULL);
- 	p->reply[p->shift].good = 1;
