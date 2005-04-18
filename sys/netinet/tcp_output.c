@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.26 2005/04/05 22:37:37 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.27 2005/04/18 22:41:23 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -178,14 +178,23 @@ tcp_output(tp)
 	 * If there is some data or critical controls (SYN, RST)
 	 * to send, then transmit; otherwise, investigate further.
 	 */
-	if ((tp->snd_max == tp->snd_una) &&
+
+	/*
+	 * If we have been idle for a while, the send congestion window
+	 * could be no longer representative of the current state of the link.
+	 * So unless we are expecting more acks to come in, slow-start from
+	 * scratch to re-determine the send congestion window.
+	 */
+	if (tp->snd_max == tp->snd_una &&
 	    (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
-		/*
-		 * We have been idle for "a while" and no acks are
-		 * expected to clock out any data we send --
-		 * slow start to get ack "clock" running again.
-		 */
-		tp->snd_cwnd = tp->t_maxseg;
+		if (tcp_do_rfc3390) {
+			int initial_cwnd =
+			    min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
+
+			tp->snd_cwnd = min(tp->snd_cwnd, initial_cwnd);
+		} else {
+			tp->snd_cwnd = tp->t_maxseg;
+		}
 	}
 
 	/*
