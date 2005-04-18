@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.61 2005/04/13 04:00:56 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.62 2005/04/18 01:03:33 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -352,7 +352,6 @@ extern int lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok);
 extern void lwkt_gettokref(lwkt_tokref_t ref);
 extern int  lwkt_trytokref(lwkt_tokref_t ref);
 extern void lwkt_reltoken(lwkt_tokref_t ref);
-extern void lwkt_reqtoken_remote(void *data);
 extern int  lwkt_chktokens(thread_t td);
 extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t tok);

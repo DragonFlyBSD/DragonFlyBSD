@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.12 2005/04/13 04:00:50 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.13 2005/04/18 01:03:28 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -96,6 +96,8 @@
 static int token_debug = 0;
 #endif
 
+static void lwkt_reqtoken_remote(void *data);
+
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
 #ifdef _KERNEL
@@ -137,6 +139,8 @@ lwkt_chktokens(thread_t td)
 	     * Queue a request to the target cpu, exit the loop early if
 	     * we are unable to queue the IPI message.  The magic number
 	     * flags whether we have a pending ipi request queued or not.
+	     * It can be set from MAGIC2 to MAGIC1 by a remote cpu but can
+	     * only be set from MAGIC1 to MAGIC2 by our cpu.
 	     */
 	    if (refs->tr_magic == LWKT_TOKREF_MAGIC1) {
 		refs->tr_magic = LWKT_TOKREF_MAGIC2;	/* MP synched slowreq*/
@@ -469,7 +473,7 @@ lwkt_token_pool_get(void *ptraddr)
  * NOTE!  we 'own' the ref structure, but we only 'own' the token if
  * t_cpu == mycpu.
  */
-void
+static void
 lwkt_reqtoken_remote(void *data)
 {
     lwkt_tokref_t ref = data;
