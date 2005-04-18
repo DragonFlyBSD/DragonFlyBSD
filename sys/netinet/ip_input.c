@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.50 2005/04/18 22:57:52 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.51 2005/04/18 23:43:04 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1868,7 +1868,7 @@ static void
 ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 {
 	struct ip *ip = mtod(m, struct ip *);
-	struct sockaddr_in *sin;
+	struct sockaddr_in *ipforward_rtaddr;
 	struct rtentry *rt;
 	int error, type = 0, code = 0;
 	struct mbuf *mcopy;
@@ -1903,25 +1903,24 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		return;
 	}
 
-	sin = (struct sockaddr_in *)&ipforward_rt.ro_dst;
-	if ((rt = ipforward_rt.ro_rt) == NULL ||
-	    pkt_dst.s_addr != sin->sin_addr.s_addr) {
+	ipforward_rtaddr = (struct sockaddr_in *) &ipforward_rt.ro_dst;
+	if (ipforward_rt.ro_rt == NULL ||
+	    ipforward_rtaddr->sin_addr.s_addr != pkt_dst.s_addr) {
 		if (ipforward_rt.ro_rt != NULL) {
 			RTFREE(ipforward_rt.ro_rt);
 			ipforward_rt.ro_rt = NULL;
 		}
-		sin->sin_family = AF_INET;
-		sin->sin_len = sizeof(*sin);
-		sin->sin_addr = pkt_dst;
-
+		ipforward_rtaddr->sin_family = AF_INET;
+		ipforward_rtaddr->sin_len = sizeof(struct sockaddr_in);
+		ipforward_rtaddr->sin_addr = pkt_dst;
 		rtalloc_ign(&ipforward_rt, RTF_PRCLONING);
 		if (ipforward_rt.ro_rt == NULL) {
 			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest,
 				   NULL);
 			return;
 		}
-		rt = ipforward_rt.ro_rt;
 	}
+	rt = ipforward_rt.ro_rt;
 
 	/*
 	 * Save the IP header and at most 8 bytes of the payload,
