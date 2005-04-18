@@ -34,7 +34,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)ldef.h	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/mklocale/ldef.h,v 1.2 2005/04/18 07:43:45 joerg Exp $
  */
+
+#include "runetype.h"
 
 /*
  * This should look a LOT like a _RuneEntry

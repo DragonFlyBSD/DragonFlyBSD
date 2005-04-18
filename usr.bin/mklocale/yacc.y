@@ -36,14 +36,14 @@
  *
  * @(#)yacc.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mklocale/yacc.y,v 1.6.2.3 2003/06/03 21:15:48 ache Exp $
- * $DragonFly: src/usr.bin/mklocale/yacc.y,v 1.4 2004/10/29 06:03:21 asmodai Exp $
+ * $DragonFly: src/usr.bin/mklocale/yacc.y,v 1.5 2005/04/18 07:43:45 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <ctype.h>
+#include "ctype.h"
 #include <err.h>
 #include <runetype.h>
 #include <stddef.h>
