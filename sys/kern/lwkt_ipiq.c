@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.9 2005/04/13 04:00:50 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.10 2005/04/18 01:02:58 dillon Exp $
  */
 
 /*
@@ -287,7 +287,7 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
     ++ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
-    if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 3 / 2)
+    if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 2 / 3)
 	return(ENOENT);
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = (ipifunc2_t)func;
@@ -709,6 +709,7 @@ lwkt_cpusync_remote2(lwkt_cpusync_t poll)
 	wi = ip->ip_windex & MAXCPUFIFO_MASK;
 	ip->ip_func[wi] = (ipifunc2_t)lwkt_cpusync_remote2;
 	ip->ip_arg[wi] = poll;
+	cpu_mb1();
 	++ip->ip_windex;
     }
 }
