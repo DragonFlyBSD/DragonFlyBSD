@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.49 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.50 2005/04/18 22:57:52 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -318,7 +318,7 @@ static struct malloc_pipe ipq_mpipe;
 static void		save_rte (u_char *, struct in_addr);
 static int		ip_dooptions (struct mbuf *m, int,
 					struct sockaddr_in *next_hop);
-static void		ip_forward (struct mbuf *m, int srcrt,
+static void		ip_forward (struct mbuf *m, boolean_t using_srcrt,
 					struct sockaddr_in *next_hop);
 static void		ip_freef (struct ipq *);
 static int		ip_input_handler (struct netmsg *);
@@ -1692,7 +1692,7 @@ dropit:
 		}
 	}
 	if (forward && ipforwarding) {
-		ip_forward(m, 1, next_hop);
+		ip_forward(m, TRUE, next_hop);
 		return (1);
 	}
 	return (0);
@@ -1707,27 +1707,27 @@ bad:
  * return internet address info of interface to be used to get there.
  */
 struct in_ifaddr *
-ip_rtaddr(struct in_addr dst, struct route *rt)
+ip_rtaddr(struct in_addr dst, struct route *ro)
 {
 	struct sockaddr_in *sin;
 
-	sin = (struct sockaddr_in *)&rt->ro_dst;
+	sin = (struct sockaddr_in *)&ro->ro_dst;
 
-	if (rt->ro_rt == NULL || dst.s_addr != sin->sin_addr.s_addr) {
-		if (rt->ro_rt != NULL) {
-			RTFREE(rt->ro_rt);
-			rt->ro_rt = NULL;
+	if (ro->ro_rt == NULL || dst.s_addr != sin->sin_addr.s_addr) {
+		if (ro->ro_rt != NULL) {
+			RTFREE(ro->ro_rt);
+			ro->ro_rt = NULL;
 		}
 		sin->sin_family = AF_INET;
 		sin->sin_len = sizeof *sin;
 		sin->sin_addr = dst;
-		rtalloc_ign(rt, RTF_PRCLONING);
+		rtalloc_ign(ro, RTF_PRCLONING);
 	}
 
-	if (rt->ro_rt == NULL)
+	if (ro->ro_rt == NULL)
 		return (NULL);
 
-	return (ifatoia(rt->ro_rt->rt_ifa));
+	return (ifatoia(ro->ro_rt->rt_ifa));
 }
 
 /*
@@ -1865,7 +1865,7 @@ u_char inetctlerrmap[PRC_NCMDS] = {
  * via a source route.
  */
 static void
-ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
+ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct sockaddr_in *sin;
@@ -1973,10 +1973,10 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	    satosin(rt_key(rt))->sin_addr.s_addr != INADDR_ANY &&
 	    ipsendredirects && !using_srcrt && next_hop == NULL) {
 		u_long src = ntohl(ip->ip_src.s_addr);
+		struct in_ifaddr *rt_ifa = (struct in_ifaddr *)rt->rt_ifa;
 
-#define	RTA(rt) ((struct in_ifaddr *)(rt->rt_ifa))
-		if (RTA(rt) != NULL &&
-		    (src & RTA(rt)->ia_subnetmask) == RTA(rt)->ia_subnet) {
+		if (rt_ifa != NULL &&
+		    (src & rt_ifa->ia_subnetmask) == rt_ifa->ia_subnet) {
 			if (rt->rt_flags & RTF_GATEWAY)
 				dest = satosin(rt->rt_gateway)->sin_addr.s_addr;
 			else
@@ -2004,23 +2004,27 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	}
 
 	error = ip_output(m, NULL, &ipforward_rt, IP_FORWARDING, NULL, NULL);
-
-	if (error)
-		ipstat.ips_cantforward++;
-	else {
+	if (error == 0) {
 		ipstat.ips_forward++;
-		if (type)
-			ipstat.ips_redirectsent++;
-		else {
+		if (type == 0) {
 			if (mcopy) {
 				ipflow_create(&ipforward_rt, mcopy);
 				m_freem(mcopy);
 			}
-			return;
+			return;		/* most common case */
+		} else {
+			ipstat.ips_redirectsent++;
 		}
+	} else {
+		ipstat.ips_cantforward++;
 	}
+
 	if (mcopy == NULL)
 		return;
+
+	/*
+	 * Send ICMP message.
+	 */
 	destifp = NULL;
 
 	switch (error) {
