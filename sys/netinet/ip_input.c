@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.48 2005/04/11 10:24:45 hmp Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.49 2005/04/18 14:26:57 joerg Exp $
  */
 
 #define	_IP_VHL
@@ -323,7 +323,7 @@ static void		ip_forward (struct mbuf *m, int srcrt,
 static void		ip_freef (struct ipq *);
 static int		ip_input_handler (struct netmsg *);
 static struct mbuf	*ip_reass (struct mbuf *, struct ipq *,
-					struct ipq *, u_int32_t *, u_int16_t *);
+					struct ipq *, u_int32_t *);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -472,8 +472,10 @@ ip_input(struct mbuf *m)
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	boolean_t needredispatch = FALSE;
 	struct in_addr odst;			/* original dst address(NAT) */
-#ifdef FAST_IPSEC
+#if defined(FAST_IPSEC) || defined(IPDIVERT)
 	struct m_tag *mtag;
+#endif
+#ifdef FAST_IPSEC
 	struct tdb_ident *tdbi;
 	struct secpolicy *sp;
 	int s, error;
@@ -482,7 +484,6 @@ ip_input(struct mbuf *m)
 	args.eh = NULL;
 	args.oif = NULL;
 	args.rule = NULL;
-	args.divert_rule = 0;			/* divert cookie */
 	args.next_hop = NULL;
 
 	/* Grab info from MT_TAG mbufs prepended to the chain. */
@@ -490,9 +491,6 @@ ip_input(struct mbuf *m)
 		switch(m->_m_tag_id) {
 		case PACKET_TAG_DUMMYNET:
 			args.rule = ((struct dn_pkt *)m)->rule;
-			break;
-		case PACKET_TAG_DIVERT:
-			args.divert_rule = (int)m->m_hdr.mh_data & 0xffff;
 			break;
 		case PACKET_TAG_IPFORWARD:
 			args.next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
@@ -961,11 +959,11 @@ found:
 		/*
 		 * Attempt reassembly; if it succeeds, proceed.
 		 * ip_reass() will return a different mbuf, and update
-		 * the divert info in divert_info and args.divert_rule.
+		 * the divert info in divert_info.
 		 */
 		ipstat.ips_fragments++;
 		m->m_pkthdr.header = ip;
-		m = ip_reass(m, fp, &ipq[sum], &divert_info, &args.divert_rule);
+		m = ip_reass(m, fp, &ipq[sum], &divert_info);
 		if (m == NULL)
 			return;
 		ipstat.ips_reassembled++;
@@ -1010,7 +1008,7 @@ found:
 		ip->ip_off = htons(ip->ip_off);
 
 		/* Deliver packet to divert input routine */
-		divert_packet(m, 1, divert_info & 0xffff, args.divert_rule);
+		divert_packet(m, 1, divert_info & 0xffff);
 		ipstat.ips_delivered++;
 
 		/* If 'tee', continue with original packet */
@@ -1025,7 +1023,13 @@ found:
 		 * entering this block again.
 		 * We do not need to clear args.divert_rule
 		 * or args.next_hop as they will not be used.
+		 *
+		 * XXX Better safe than sorry, remove the DIVERT tag.
 		 */
+		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+		if (mtag != NULL)
+			m_tag_delete(m, mtag);
+		
 		divert_info = 0;
 		goto pass;
 	}
@@ -1127,19 +1131,21 @@ bad:
  *
  * When IPDIVERT enabled, keep additional state with each packet that
  * tells us if we need to divert or tee the packet we're building.
- * In particular, *divinfo includes the port and TEE flag,
- * *divert_rule is the number of the matching rule.
+ * In particular, *divinfo includes the port and TEE flag.
  */
 
 static struct mbuf *
 ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
-	 u_int32_t *divinfo, u_int16_t *divert_rule)
+	 u_int32_t *divinfo)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct mbuf *p = NULL, *q, *nq;
 	struct mbuf *n;
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
+#ifdef IPDIVERT
+	struct m_tag *mtag;
+#endif
 
 	/*
 	 * Presence of header sizes in mbufs
@@ -1166,7 +1172,6 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 		m->m_nextpkt = NULL;
 #ifdef IPDIVERT
 		fp->ipq_div_info = 0;
-		fp->ipq_div_cookie = 0;
 #endif
 		goto inserted;
 	} else {
@@ -1238,10 +1243,12 @@ inserted:
 	 */
 	if (ip->ip_off == 0) {
 		fp->ipq_div_info = *divinfo;
-		fp->ipq_div_cookie = *divert_rule;
+	} else {
+		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+		if (mtag != NULL)
+			m_tag_delete(m, mtag);
 	}
 	*divinfo = 0;
-	*divert_rule = 0;
 #endif
 
 	/*
@@ -1308,7 +1315,6 @@ inserted:
 	 * Extract firewall instructions from the fragment structure.
 	 */
 	*divinfo = fp->ipq_div_info;
-	*divert_rule = fp->ipq_div_cookie;
 #endif
 
 	/*
@@ -1338,7 +1344,6 @@ inserted:
 dropfrag:
 #ifdef IPDIVERT
 	*divinfo = 0;
-	*divert_rule = 0;
 #endif
 	ipstat.ips_fragdropped++;
 	if (fp != NULL)

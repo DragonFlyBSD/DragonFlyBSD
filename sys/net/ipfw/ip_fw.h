@@ -12,7 +12,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.h,v 1.47.2.11 2002/07/09 09:11:42 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.5 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.6 2005/04/18 14:26:57 joerg Exp $
  */
 
 #ifndef _IP_FW_H
@@ -348,7 +348,6 @@ struct ip_fw_args {
 	int flags;			/* for dummynet			*/
 
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
-	u_int16_t	divert_rule;	/* divert cookie		*/
 	u_int32_t	retval;
 };
 

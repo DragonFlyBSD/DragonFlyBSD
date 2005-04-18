@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.15 2005/04/11 10:24:45 hmp Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.16 2005/04/18 14:26:57 joerg Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -67,7 +67,6 @@ struct ipq {
 	u_char	ipq_nfrags;		/* # frags in this packet */
 #ifdef IPDIVERT
 	u_int32_t ipq_div_info;		/* ipfw divert port & flags */
-	u_int16_t ipq_div_cookie;	/* ipfw divert cookie */
 #endif
 };
 
@@ -216,7 +215,7 @@ extern void	(*rsvp_input_p)(struct mbuf *m, ...);
 #ifdef IPDIVERT
 void	div_init(void);
 void	div_input(struct mbuf *, ...);
-void	divert_packet(struct mbuf *m, int incoming, int port, int rule);
+void	divert_packet(struct mbuf *m, int incoming, int port);
 extern struct pr_usrreqs div_usrreqs;
 #endif
 

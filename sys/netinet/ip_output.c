@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.27 2005/03/04 04:38:47 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.28 2005/04/18 14:26:57 joerg Exp $
  */
 
 #define _IP_VHL
@@ -151,7 +151,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	args.eh = NULL;
 	args.rule = NULL;
 	args.next_hop = NULL;
-	args.divert_rule = 0;			/* divert cookie */
 
 	/* Grab info from MT_TAG mbufs prepended to the chain. */
 	while (m0 != NULL && m0->m_type == MT_TAG) {
@@ -169,9 +168,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 			dst = ((struct dn_pkt *)m0)->dn_dst ;
 			ifp = ((struct dn_pkt *)m0)->ifp ;
 			flags = ((struct dn_pkt *)m0)->flags ;
-			break;
-		case PACKET_TAG_DIVERT:
-			args.divert_rule = (int)m0->m_data & 0xffff;
 			break;
 		case PACKET_TAG_IPFORWARD:
 			args.next_hop = (struct sockaddr_in *)m0->m_data;
@@ -795,7 +791,7 @@ spd_done:
 			ip->ip_off = htons(ip->ip_off);
 
 			/* Deliver packet to divert input routine */
-			divert_packet(m, 0, off & 0xffff, args.divert_rule);
+			divert_packet(m, 0, off & 0xffff);
 
 			/* If 'tee', continue with original packet */
 			if (clone != NULL) {

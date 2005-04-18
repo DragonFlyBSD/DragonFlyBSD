@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.3 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.4 2005/04/18 14:26:57 joerg Exp $
  */
 
 #ifndef _IPFW2_H
@@ -379,7 +379,6 @@ struct ip_fw_args {
 	int flags;			/* for dummynet			*/
 
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
-	u_int16_t	divert_rule;	/* divert cookie		*/
 	u_int32_t	retval;
 };
 

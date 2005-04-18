@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.11 2005/02/15 18:08:52 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.12 2005/04/18 14:26:57 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1077,7 +1077,7 @@ ip_fw_chk(struct ip_fw_args *args)
 	 */
 	struct mbuf **m = &(args->m);
 	struct ifnet *oif = args->oif;
-	u_int16_t *cookie = &(args->divert_rule);
+	struct m_tag *mtag;
 	struct ip_fw **flow_id = &(args->rule);
 	struct sockaddr_in **next_hop = &(args->next_hop);
 
@@ -1111,8 +1111,13 @@ ip_fw_chk(struct ip_fw_args *args)
 		hlen = ip->ip_hl << 2;
 
 	/* Grab and reset cookie */
-	skipto = *cookie;
-	*cookie = 0;
+	if ((mtag = m_tag_find(*m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL) {
+		skipto = *(u_int16_t *)(mtag + 1);
+		m_tag_delete(*m, mtag);
+		mtag = NULL;
+	} else {
+		skipto = 0;
+	}
 
 #define PULLUP_TO(len)	do {						\
 			    if ((*m)->m_len < (len)) {			\
@@ -1486,10 +1491,20 @@ got_match:
 			continue;
 #ifdef IPDIVERT
 		case IP_FW_F_DIVERT:
-			*cookie = f->fw_number;
+			mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
+			    sizeof(u_int16_t), M_NOWAIT);
+			if (mtag == NULL)
+				goto dropit;
+			*(u_int16_t *)mtag = f->fw_number;
+			m_tag_prepend(*m, mtag);
 			return(f->fw_divert_port);
 		case IP_FW_F_TEE:
-			*cookie = f->fw_number;
+			mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
+			    sizeof(u_int16_t), M_NOWAIT);
+			if (mtag == NULL)
+				goto dropit;
+			*(u_int16_t *)mtag = f->fw_number;
+			m_tag_prepend(*m, mtag);
 			return(f->fw_divert_port | IP_FW_PORT_TEE_FLAG);
 #endif
 		case IP_FW_F_SKIPTO: /* XXX check */

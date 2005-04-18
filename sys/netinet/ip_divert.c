@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.21 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.22 2005/04/18 14:26:57 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -144,18 +144,22 @@ div_input(struct mbuf *m, ...)
  * then pass them along with mbuf chain.
  */
 void
-divert_packet(struct mbuf *m, int incoming, int port, int rule)
+divert_packet(struct mbuf *m, int incoming, int port)
 {
 	struct sockaddr_in divsrc = { sizeof divsrc, AF_INET };
 	struct ip *ip;
 	struct inpcb *inp;
 	struct socket *sa;
+	struct m_tag *mtag;
 	u_int16_t nport;
 
 	/* Sanity check */
 	KASSERT(port != 0, ("%s: port=0", __func__));
 
-	divsrc.sin_port = rule;		/* record matching rule */
+	if ((mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
+		divsrc.sin_port = *(u_int16_t *)(mtag + 1);
+	else
+		divsrc.sin_port = 0;
 
 	/* Assure header */
 	if (m->m_len < sizeof(struct ip) &&
@@ -246,16 +250,19 @@ div_output(struct socket *so, struct mbuf *m,
 {
 	int error = 0;
 	struct m_hdr divert_tag;
+	struct m_tag *mtag;
 
 	/*
 	 * Prepare the tag for divert info. Note that a packet
 	 * with a 0 tag in mh_data is effectively untagged,
 	 * so we could optimize that case.
 	 */
-	divert_tag.mh_type = MT_TAG;
-	divert_tag.mh_flags = PACKET_TAG_DIVERT;
-	divert_tag.mh_next = m;
-	divert_tag.mh_data = 0;		/* the matching rule # */
+	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(u_int16_t), M_NOWAIT);
+	if (mtag == NULL) {
+		error = ENOBUFS;
+		goto cantsend;
+	}
+	m_tag_prepend(m, mtag);
 	m->m_pkthdr.rcvif = NULL;	/* XXX is it necessary ? */
 
 	if (control)
@@ -265,7 +272,7 @@ div_output(struct socket *so, struct mbuf *m,
 	if (sin) {
 		int i;
 
-		divert_tag.mh_data = (caddr_t)(int)sin->sin_port;
+		*(u_int16_t *)mtag = sin->sin_port;
 		/*
 		 * Find receive interface with the given name, stuffed
 		 * (if it exists) in the sin_zero[] field.
@@ -322,7 +329,7 @@ div_output(struct socket *so, struct mbuf *m,
 			}
 			m->m_pkthdr.rcvif = ifa->ifa_ifp;
 		}
-		ip_input((struct mbuf *)&divert_tag);
+		ip_input(m);
 	}
 
 	return error;

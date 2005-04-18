@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.29 2005/03/12 02:42:28 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.30 2005/04/18 14:26:57 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -447,6 +447,7 @@ ether_ipfw_chk(
 {
 	struct ether_header save_eh = *eh;	/* might be a ptr in m */
 	struct ip_fw_args args;
+	struct m_tag *mtag;
 	int i;
 
 	if (*rule != NULL && fw_one_pass)
@@ -465,7 +466,8 @@ ether_ipfw_chk(
 
 	args.m = *m0;		/* the packet we are looking at		*/
 	args.oif = dst;		/* destination, if any			*/
-	args.divert_rule = 0;	/* we do not support divert yet		*/
+	if ((mtag = m_tag_find(*m0, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
+		m_tag_delete(*m0, mtag);
 	args.rule = *rule;	/* matching rule to restart		*/
 	args.next_hop = NULL;	/* we do not support forward yet	*/
 	args.eh = &save_eh;	/* MAC header for bridged/MAC packets	*/

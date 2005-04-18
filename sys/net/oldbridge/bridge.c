@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.13 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.14 2005/04/18 14:26:57 joerg Exp $
  */
 
 /*
@@ -782,6 +782,7 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
     int error, once = 0;      /* loop only once */
     struct ifnet *real_dst = dst ; /* real dst from ether_output */
     struct ip_fw_args args;
+    struct m_tag *mtag;
 
     /*
      * XXX eh is usually a pointer within the mbuf (some ethernet drivers
@@ -901,7 +902,11 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
 
 	args.m = m0;		/* the packet we are looking at		*/
 	args.oif = NULL;	/* this is an input packet		*/
-	args.divert_rule = 0;	/* we do not support divert yet		*/
+
+	/* no divert support */
+	if ((mtag = m_tag_find(m0, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
+		m_tag_delete(m0, mtag);
+
 	args.next_hop = NULL;	/* we do not support forward yet	*/
 	args.eh = &save_eh;	/* MAC header for bridged/MAC packets	*/
 	i = ip_fw_chk_ptr(&args);

@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.22 2005/03/12 03:24:19 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.23 2005/04/18 14:26:57 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -542,6 +542,8 @@ void		m_chtype(struct mbuf *m, int type);
 /* struct ipsec_history */
 #define	PACKET_TAG_IPV6_INPUT			8 /* IPV6 input processing */
 /* struct ip6aux */
+#define	PACKET_TAG_IPFW_DIVERT			9 /* divert info */
+/* uint16_t */
 
 /*
  * As a temporary and low impact solution to replace the even uglier
@@ -560,8 +562,6 @@ void		m_chtype(struct mbuf *m, int type);
 /* Packet tags used in the FreeBSD network stack */
 #define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
 /* struct dn_pkt as fake mbuf */
-#define	PACKET_TAG_DIVERT			17 /* divert info */
-/* uint16_t, encoded in m_data */
 #define	PACKET_TAG_IPFORWARD			18 /* ipforward info */
 /* struct sockaddr_in * as m_data */
 

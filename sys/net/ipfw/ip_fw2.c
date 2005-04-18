@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.14 2004/09/17 08:25:30 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.15 2005/04/18 14:26:57 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1201,9 +1201,6 @@ lookup_next_rule(struct ip_fw *me)
  *	args->eh (in)	Mac header if present, or NULL for layer3 packet.
  *	args->oif	Outgoing interface, or NULL if packet is incoming.
  *		The incoming interface is in the mbuf. (in)
- *	args->divert_rule (in/out)
- *		Skip up to the first rule past this rule number;
- *		upon return, non-zero port number for divert or tee.
  *
  *	args->rule	Pointer to the last matching rule (in/out)
  *	args->next_hop	Socket we are forwarding to (out).
@@ -1261,6 +1258,7 @@ ipfw_chk(struct ip_fw_args *args)
 
 	struct ip_fw *f = NULL;		/* matching rule */
 	int retval = 0;
+	struct m_tag *mtag;
 
 	/*
 	 * hlen	The length of the IPv4 header.
@@ -1401,7 +1399,13 @@ after_ip_checks:
 		 * Find the starting rule. It can be either the first
 		 * one, or the one after divert_rule if asked so.
 		 */
-		int skipto = args->divert_rule;
+		int skipto;
+
+		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+		if (mtag != NULL)
+			skipto = *(u_int16_t *)(mtag + 1);
+		else
+			skipto = 0;
 
 		f = layer3_chain;
 		if (args->eh == NULL && skipto != 0) {
@@ -1413,7 +1417,8 @@ after_ip_checks:
 				return(IP_FW_PORT_DENY_FLAG);
 		}
 	}
-	args->divert_rule = 0;	/* reset to avoid confusion later */
+	if ((mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
+		m_tag_delete(m, mtag);
 
 	/*
 	 * Now scan the rules, and parse microinstructions for each rule.
@@ -1851,7 +1856,15 @@ check_body:
 			case O_TEE:
 				if (args->eh) /* not on layer 2 */
 					break;
-				args->divert_rule = f->rulenum;
+
+				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
+				    sizeof(u_int16_t), M_NOWAIT);
+				if (mtag == NULL) {
+					retval = IP_FW_PORT_DENY_FLAG;
+					goto done;
+				}
+				*(u_int16_t *)mtag = f->rulenum;
+				m_tag_prepend(m, mtag);
 				retval = (cmd->opcode == O_DIVERT) ?
 				    cmd->arg1 :
 				    cmd->arg1 | IP_FW_PORT_TEE_FLAG;
