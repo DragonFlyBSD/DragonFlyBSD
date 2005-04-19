@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.30 2005/04/08 16:38:31 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.31 2005/04/19 17:17:03 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -183,6 +183,7 @@ PKGCATEGORY?=   ${_CATEGORY}
 _PORTDIRNAME=   ${.CURDIR:T}
 PORTDIRNAME?=   ${_PORTDIRNAME}
 PKGORIGIN?=             ${PKGCATEGORY}/${PORTDIRNAME}
+PLIST_SUB!=		cd ${DFPORTSDIR}/${PORTPATH}; ${MAKE} -V PLIST_SUB
 
 PKGREPOSITORYSUBDIR?=   All
 PKGREPOSITORY?=         ${PACKAGES}/${PKGREPOSITORYSUBDIR}
