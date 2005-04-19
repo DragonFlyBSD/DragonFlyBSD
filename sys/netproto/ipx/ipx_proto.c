@@ -34,7 +34,7 @@
  *	@(#)ipx_proto.c
  *
  * $FreeBSD: src/sys/netipx/ipx_proto.c,v 1.15 1999/08/28 00:49:41 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.4 2004/03/06 01:58:56 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.5 2005/04/19 18:51:57 swildner Exp $
  */
 
 #include "opt_ipx.h"
@@ -105,7 +105,7 @@ static struct protosw ipxsw[] = {
 
 static struct	domain ipxdomain =
     { AF_IPX, "network systems", 0, 0, 0, 
-      ipxsw, &ipxsw[sizeof(ipxsw)/sizeof(ipxsw[0])], 0,
+      ipxsw, &ipxsw[sizeof(ipxsw)/sizeof(ipxsw[0])], SLIST_ENTRY_INITIALIZER,
       rn_inithead, 16, sizeof(struct sockaddr_ipx)};
 
 DOMAIN_SET(ipx);
