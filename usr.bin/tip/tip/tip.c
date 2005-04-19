@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.5 2004/09/03 20:48:16 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.6 2005/04/19 05:32:02 cpressey Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ int
 main(argc, argv)
 	char *argv[];
 {
-	char *system = NOSTR;
+	char *system = NULL;
 	register int i;
 	register char *p;
 	char sbuf[12];
@@ -137,7 +137,7 @@ main(argc, argv)
 		}
 	}
 
-	if (system == NOSTR)
+	if (system == NULL)
 		goto notnumber;
 	if (isalpha(*system))
 		goto notnumber;
@@ -178,7 +178,7 @@ notnumber:
 	 * Kludge, their's no easy way to get the initialization
 	 *   in the right order, so force it here
 	 */
-	if ((PH = getenv("PHONES")) == NOSTR)
+	if ((PH = getenv("PHONES")) == NULL)
 		PH = _PATH_PHONES;
 	vinit();				/* init variables */
 	setparity("even");			/* set the parity table */
@@ -259,7 +259,7 @@ cucommon:
 	 */
 	printf(cumode ? "Connected\r\n" : "\07connected\r\n");
 
-	if (LI != NOSTR && tiplink (LI, 0) != 0) {
+	if (LI != NULL && tiplink (LI, 0) != 0) {
 		tipabort ("login failed");
 	}
 
@@ -697,7 +697,7 @@ setparity(defparity)
 	char *parity;
 	extern char evenpartab[];
 
-	if (value(PARITY) == NOSTR)
+	if (value(PARITY) == NULL)
 		value(PARITY) = defparity;
 	parity = value(PARITY);
 	if (equal(parity, "none")) {

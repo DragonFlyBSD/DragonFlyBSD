@@ -32,7 +32,7 @@
  *
  * @(#)log.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/log.c,v 1.4 1999/08/28 01:06:34 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/log.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/log.c,v 1.3 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -60,8 +60,8 @@ logent(group, num, acu, message)
 		warn("flock");
 		return;
 	}
-	if ((user = getlogin()) == NOSTR)
-		if ((pwd = getpwuid(getuid())) == NOPWD)
+	if ((user = getlogin()) == NULL)
+		if ((pwd = getpwuid(getuid())) == NULL)
 			user = "???";
 		else
 			user = pwd->pw_name;

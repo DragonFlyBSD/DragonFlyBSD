@@ -32,7 +32,7 @@
  *
  * @(#)acu.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/acu.c,v 1.5 1999/08/28 01:06:31 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/acu.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/acu.c,v 1.3 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -42,7 +42,7 @@
 acu_t* unidialer_getmodem (const char *modem_name);
 #endif
 
-static acu_t *acu = NOACU;
+static acu_t *acu = NULL;
 static int conflag;
 static void acuabort();
 static acu_t *acutype();
@@ -72,10 +72,10 @@ connect()
 	int tried = 0;
 
 	if (!DU) {		/* regular connect message */
-		if (CM != NOSTR)
+		if (CM != NULL)
 			xpwrite(FD, CM, size(CM));
 		logent(value(HOST), "", DV, "call completed");
-		return (NOSTR);
+		return (NULL);
 	}
 	/*
 	 * @ =>'s use data base in PHONES environment variable
@@ -88,16 +88,16 @@ connect()
 		signal(SIGQUIT, SIG_IGN);
 		printf("\ncall aborted\n");
 		logent(value(HOST), "", "", "call aborted");
-		if (acu != NOACU) {
+		if (acu != NULL) {
 			boolean(value(VERBOSE)) = FALSE;
 			if (conflag)
-				disconnect(NOSTR);
+				disconnect(NULL);
 			else
 				(*acu->acu_abort)();
 		}
 		return ("interrupt");
 	}
-	if ((acu = acutype(AT)) == NOACU)
+	if ((acu = acutype(AT)) == NULL)
 		return ("unknown ACU type");
 	if (*cp != '@') {
 		while (*cp) {
@@ -107,22 +107,22 @@ connect()
 				*cp++ = '\0';
 
 			if ((conflag = (*acu->acu_dialer)(phnum, CU))) {
-				if (CM != NOSTR)
+				if (CM != NULL)
 					xpwrite(FD, CM, size(CM));
 				logent(value(HOST), phnum, acu->acu_name,
 					"call completed");
-				return (NOSTR);
+				return (NULL);
 			} else
 				logent(value(HOST), phnum, acu->acu_name,
 					"call failed");
 			tried++;
 		}
 	} else {
-		if ((fd = fopen(PH, "r")) == NOFILE) {
+		if ((fd = fopen(PH, "r")) == NULL) {
 			printf("%s: ", PH);
 			return ("can't open phone number file");
 		}
-		while (fgets(string, sizeof(string), fd) != NOSTR) {
+		while (fgets(string, sizeof(string), fd) != NULL) {
 			for (cp = string; !any(*cp, " \t\n"); cp++)
 				;
 			if (*cp == '\n') {
@@ -145,11 +145,11 @@ connect()
 
 			if ((conflag = (*acu->acu_dialer)(phnum, CU))) {
 				fclose(fd);
-				if (CM != NOSTR)
+				if (CM != NULL)
 					xpwrite(FD, CM, size(CM));
 				logent(value(HOST), phnum, acu->acu_name,
 					"call completed");
-				return (NOSTR);
+				return (NULL);
 			} else
 				logent(value(HOST), phnum, acu->acu_name,
 					"call failed");
@@ -172,7 +172,7 @@ disconnect(reason)
 		logent(value(HOST), "", DV, "call terminated");
 		return;
 	}
-	if (reason == NOSTR) {
+	if (reason == NULL) {
 		logent(value(HOST), "", acu->acu_name, "call terminated");
 		if (boolean(value(VERBOSE)))
 			printf("\r\ndisconnecting...");
@@ -202,6 +202,6 @@ acutype(s)
 	#if UNIDIALER
 	return unidialer_getmodem (s);
 	#else
-	return (NOACU);
+	return (NULL);
 	#endif
 }

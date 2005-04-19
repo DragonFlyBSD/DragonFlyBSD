@@ -32,7 +32,7 @@
  *
  * @(#)cu.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/cu.c,v 1.4 1999/08/28 01:06:33 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/cu.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/cu.c,v 1.3 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -55,7 +55,7 @@ cumain(argc, argv)
 		printf("usage: cu telno [-t] [-s speed] [-a acu] [-l line] [-#]\n");
 		exit(8);
 	}
-	CU = DV = NOSTR;
+	CU = DV = NULL;
 	BR = DEFBR;
 	for (; argc > 1; argv++, argc--) {
 		if (argv[1][0] != '-')

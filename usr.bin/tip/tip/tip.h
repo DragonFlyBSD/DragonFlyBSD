@@ -34,7 +34,7 @@
  *      @(#)tip.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tip/tip/tip.h,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.4 2004/08/19 23:21:12 joerg Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.5 2005/04/19 05:32:02 cpressey Exp $
  */
 
 /*
@@ -255,14 +255,6 @@ void  loginit(void);
 #define HALFDUPLEX 32
 #define LECHO 33
 #define PARITY 34
-#define NOVAL	((value_t *)NULL)
-#define NOACU	((acu_t *)NULL)
-#define NOSTR	((char *)NULL)
-#ifdef NOFILE
-#undef NOFILE
-#endif
-#define NOFILE	((FILE *)NULL)
-#define NOPWD	((struct passwd *)0)
 
 #if HAVE_TERMIOS
 struct termios otermios;

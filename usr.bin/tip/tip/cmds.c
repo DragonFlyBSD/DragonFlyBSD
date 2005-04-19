@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/cmds.c,v 1.11.2.2 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/cmds.c,v 1.4 2004/08/19 23:26:12 joerg Exp $
+ * $DragonFly: src/usr.bin/tip/tip/cmds.c,v 1.5 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -806,7 +806,7 @@ tipabort(char *msg)
 
 	kill(pid, SIGTERM);
 	disconnect(msg);
-	if (msg != NOSTR)
+	if (msg != NULL)
 		printf("\r\n%s", msg);
 	printf("\r\n[EOT]\r\n");
 	daemon_uid();
@@ -818,13 +818,13 @@ tipabort(char *msg)
 void
 finish(void)
 {
-	char *abortmsg = NOSTR, *dismsg;
+	char *abortmsg = NULL, *dismsg;
 
-	if (LO != NOSTR && tiplink (LO, TL_SIGNAL_TIPOUT) != 0) {
+	if (LO != NULL && tiplink (LO, TL_SIGNAL_TIPOUT) != 0) {
 		abortmsg = "logout failed";
 	}
 
-	if ((dismsg = value(DISCONNECT)) != NOSTR) {
+	if ((dismsg = value(DISCONNECT)) != NULL) {
 		write(FD, dismsg, strlen(dismsg));
 		sleep (2);
 	}
@@ -1020,7 +1020,7 @@ expand(char *name)
 	snprintf(cmdbuf, sizeof(cmdbuf), "echo %s", name);
 	if ((pid = vfork()) == 0) {
 		Shell = value(SHELL);
-		if (Shell == NOSTR)
+		if (Shell == NULL)
 			Shell = _PATH_BSHELL;
 		close(pivec[0]);
 		close(1);
@@ -1035,7 +1035,7 @@ expand(char *name)
 		warn("fork");
 		close(pivec[0]);
 		close(pivec[1]);
-		return(NOSTR);
+		return(NULL);
 	}
 	close(pivec[1]);
 	l = read(pivec[0], xname, BUFSIZ);
@@ -1045,19 +1045,19 @@ expand(char *name)
 	s &= 0377;
 	if (s != 0 && s != SIGPIPE) {
 		fprintf(stderr, "\"Echo\" failed\n");
-		return(NOSTR);
+		return(NULL);
 	}
 	if (l < 0) {
 		warn("read");
-		return(NOSTR);
+		return(NULL);
 	}
 	if (l == 0) {
 		fprintf(stderr, "\"%s\": No match\n", name);
-		return(NOSTR);
+		return(NULL);
 	}
 	if (l == BUFSIZ) {
 		fprintf(stderr, "Buffer overflow expanding \"%s\"\n", name);
-		return(NOSTR);
+		return(NULL);
 	}
 	xname[l] = 0;
 	for (cp = &xname[l-1]; *cp == '\n' && cp > xname; cp--)

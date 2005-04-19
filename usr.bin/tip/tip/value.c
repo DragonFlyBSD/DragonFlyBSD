@@ -32,7 +32,7 @@
  *
  * @(#)value.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/value.c,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/value.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/tip/tip/value.c,v 1.4 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tip.h"
@@ -111,7 +111,7 @@ vassign(p, v)
 			return;
 		if (!(p->v_type&(ENVIRON|INIT)))
 			free(p->v_value);
-		if ((p->v_value = malloc(size(v)+1)) == NOSTR) {
+		if ((p->v_value = malloc(size(v)+1)) == NULL) {
 			printf("out of core\r\n");
 			return;
 		}
@@ -200,7 +200,7 @@ vtoken(s)
 			p = vlookup(s);
 		else
 			p = vlookup(s+1);
-		if (p != NOVAL) {
+		if (p != NULL) {
 			vassign(p, s);
 			return;
 		}

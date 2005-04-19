@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)remote.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/remote.c,v 1.4 1999/08/28 01:06:35 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/remote.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/tip/tip/remote.c,v 1.4 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include <sys/syslimits.h>
@@ -156,13 +156,13 @@ getremcap(host)
 		DU = 0;
 	else
 		DU = cgetflag("du");
-	if (DV == NOSTR) {
+	if (DV == NULL) {
 		fprintf(stderr, "%s: missing device spec\n", host);
 		exit(3);
 	}
-	if (DU && CU == NOSTR)
+	if (DU && CU == NULL)
 		CU = DV;
-	if (DU && PN == NOSTR) {
+	if (DU && PN == NULL) {
 		fprintf(stderr, "%s: missing phone number\n", host);
 		exit(3);
 	}
@@ -174,30 +174,30 @@ getremcap(host)
 	 *   from the description file
 	 */
 	if (!HW)
-		HW = (CU == NOSTR) || (DU && equal(DV, CU));
+		HW = (CU == NULL) || (DU && equal(DV, CU));
 	HO = host;
 
 	/*
 		If login script, verify access
 	*/
-	if (LI != NOSTR) {
+	if (LI != NULL) {
 		if (*LI == '~')
 			(void) expand_tilde (&LI, NULL);
 		if (access (LI, F_OK | X_OK) != 0) {
 			printf("tip (warning): can't open login script \"%s\"\n", LI);
-			LI = NOSTR;
+			LI = NULL;
 		}
 	}
 
 	/*
 		If logout script, verify access
 	*/
-	if (LO != NOSTR) {
+	if (LO != NULL) {
 		if (*LO == '~')
 			(void) expand_tilde (&LO, NULL);
 		if (access (LO, F_OK | X_OK) != 0) {
 			printf("tip (warning): can't open logout script \"%s\"\n", LO);
-			LO = NOSTR;
+			LO = NULL;
 		}
 	}
 
@@ -228,17 +228,17 @@ getremcap(host)
 		boolean(value(RAWFTP)) = 1;
 	if (cgetflag("hd"))
 		boolean(value(HALFDUPLEX)) = 1;
-	if (RE == NOSTR)
+	if (RE == NULL)
 		RE = (char *)"tip.record";
-	if (EX == NOSTR)
+	if (EX == NULL)
 		EX = (char *)"\t\n\b\f";
-	if (ES != NOSTR)
+	if (ES != NULL)
 		vstring("es", ES);
-	if (FO != NOSTR)
+	if (FO != NULL)
 		vstring("fo", FO);
-	if (PR != NOSTR)
+	if (PR != NULL)
 		vstring("pr", PR);
-	if (RC != NOSTR)
+	if (RC != NULL)
 		vstring("rc", RC);
 	if (cgetnum(bp, "dl", &DL) == -1)
 		DL = 0;
@@ -257,7 +257,7 @@ getremote(host)
 	static int lookedup = 0;
 
 	if (!lookedup) {
-		if (host == NOSTR && (host = getenv("HOST")) == NOSTR)
+		if (host == NULL && (host = getenv("HOST")) == NULL)
 			errx(3, "no host specified");
 		getremcap(host);
 		next = DV;
@@ -267,11 +267,11 @@ getremote(host)
 	 * We return a new device each time we're called (to allow
 	 *   a rotary action to be simulated)
 	 */
-	if (next == NOSTR)
-		return (NOSTR);
+	if (next == NULL)
+		return (NULL);
 	if ((cp = index(next, ',')) == NULL) {
 		DV = next;
-		next = NOSTR;
+		next = NULL;
 	} else {
 		*cp++ = '\0';
 		DV = next;
