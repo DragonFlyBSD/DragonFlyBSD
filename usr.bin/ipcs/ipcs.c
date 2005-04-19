@@ -25,7 +25,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcs/ipcs.c,v 1.12.2.4 2003/04/08 11:01:34 tjr Exp $
- * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.7 2004/11/02 19:38:49 liamfoy Exp $
+ * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.8 2005/04/19 20:38:57 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -133,12 +133,13 @@ main(int argc, char **argv)
 	int     display = SHMINFO | MSGINFO | SEMINFO;
 	int     option = 0;
 	char   *core, *namelist;
-	const char *user, *grp;
+	char	*user, *grp;
 	int     i;
 	uid_t	useruid;
 	gid_t	grpgid;
 
 	core = namelist = NULL;
+	user = grp = NULL;
 
 	while ((i = getopt(argc, argv, "MmQqSsabC:cN:ou:g:ptT")) != -1)
 		switch (i) {
