@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.33 2005/04/12 18:07:36 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.34 2005/04/19 04:20:27 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -163,10 +163,16 @@ pkgaddiso:
 	rm -f ${ISOROOT}/tmp/chrootscript
 	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
 .for PKG in ${REL_PACKAGES}
-	cp ${PACKAGES_LOC}/${PKG}.tgz ${ISOROOT}/tmp/${PKG}.tgz
-	echo "echo 'Installing package ${PKG}...'" >> ${ISOROOT}/tmp/chrootscript
-	echo "pkg_add /tmp/${PKG}.tgz" >> ${ISOROOT}/tmp/chrootscript
+	if [ ! -d ${ISOROOT}/var/db/pkg/${PKG} ]; then \
+		cp ${PACKAGES_LOC}/${PKG}.tgz ${ISOROOT}/tmp/${PKG}.tgz; \
+		echo "echo 'Installing package ${PKG}...' && \\" >> \
+		    ${ISOROOT}/tmp/chrootscript; \
+		echo "pkg_add /tmp/${PKG}.tgz && \\" >> \
+		    ${ISOROOT}/tmp/chrootscript; \
+	fi
 .endfor
+	echo "echo 'All packages added successfully!'" >> \
+	    ${ISOROOT}/tmp/chrootscript
 	chmod a+x ${ISOROOT}/tmp/chrootscript
 	chroot ${ISOROOT}/ /tmp/chrootscript
 	rm ${ISOROOT}/tmp/chrootscript
