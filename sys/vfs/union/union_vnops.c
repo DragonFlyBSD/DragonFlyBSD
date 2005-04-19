@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.19 2005/02/15 08:32:19 joerg Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.20 2005/04/19 17:54:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -252,7 +252,7 @@ union_lookup1(struct vnode *udvp, struct vnode **pdvp, struct vnode **vpp,
 	) {
 		int relock_pdvp = 0;
 
-		if (vfs_busy(mp, 0, NULL, td))
+		if (vfs_busy(mp, 0, td))
 			continue;
 
 		if (dvp == *pdvp)

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.24 2005/04/15 19:08:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.25 2005/04/19 17:54:48 dillon Exp $
  */
 
 
@@ -1138,15 +1138,12 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
  * Adjust all timer queue expiry times when the time of day clock is changed.
  * Called from the settimeofday() syscall.
  */
+static int nqnfs_lease_updatetime_callback(struct mount *mp, void *data);
+
 void
 nqnfs_lease_updatetime(int deltat)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct nqlease *lp;
-	struct nfsnode *np;
-	struct mount *mp, *nxtmp;
-	struct nfsmount *nmp;
-	lwkt_tokref ilock;
 	int s;
 
 	if (nqnfsstarttime != 0)
@@ -1161,27 +1158,29 @@ nqnfs_lease_updatetime(int deltat)
 	 * Search the mount list for all nqnfs mounts and do their timer
 	 * queues.
 	 */
-	lwkt_gettoken(&ilock, &mountlist_token);
-	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nxtmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
-			nxtmp = TAILQ_NEXT(mp, mnt_list);
-			continue;
-		}
-		if (mp->mnt_stat.f_type == nfs_mount_type) {
-			nmp = VFSTONFS(mp);
-			if (nmp->nm_flag & NFSMNT_NQNFS) {
-				for (np = nmp->nm_timerhead.cqh_first;
-				    np != (void *)&nmp->nm_timerhead;
-				    np = np->n_timer.cqe_next) {
-					np->n_expiry += deltat;
-				}
+	mountlist_scan(nqnfs_lease_updatetime_callback, 
+			&deltat, MNTSCAN_FORWARD);
+}
+
+static
+int
+nqnfs_lease_updatetime_callback(struct mount *mp, void *data)
+{
+	int deltat = *(int *)data;
+	struct nfsmount *nmp;
+	struct nfsnode *np;
+
+	if (mp->mnt_stat.f_type == nfs_mount_type) {
+		nmp = VFSTONFS(mp);
+		if (nmp->nm_flag & NFSMNT_NQNFS) {
+			for (np = nmp->nm_timerhead.cqh_first;
+			    np != (void *)&nmp->nm_timerhead;
+			    np = np->n_timer.cqe_next) {
+				np->n_expiry += deltat;
 			}
 		}
-		lwkt_gettokref(&ilock);
-		nxtmp = TAILQ_NEXT(mp, mnt_list);
-		vfs_unbusy(mp, td);
 	}
-	lwkt_reltoken(&ilock);
+	return(0);
 }
 
 #ifndef NFS_NOSERVER 

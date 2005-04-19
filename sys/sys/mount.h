@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.18 2005/04/15 19:08:13 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.19 2005/04/19 17:54:43 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -247,6 +247,16 @@ struct mount {
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
 #define MNTK_WANTRDWR	0x04000000	/* upgrade to read/write requested */
+
+/*
+ * mountlist_*() defines
+ */
+#define MNTSCAN_FORWARD		0x0001
+#define MNTSCAN_REVERSE		0x0002
+#define MNTSCAN_NOBUSY		0x0004
+
+#define MNTINS_FIRST		0x0001
+#define MNTINS_LAST		0x0002
 
 /*
  * Sysctl CTL_VFS definitions.
@@ -473,7 +483,7 @@ int	vfs_setpublicfs			    /* set publicly exported fs */
 int	vfs_lock (struct mount *);         /* lock a vfs */
 void	vfs_msync (struct mount *, int);
 void	vfs_unlock (struct mount *);       /* unlock a vfs */
-int	vfs_busy (struct mount *, int, struct lwkt_tokref *, struct thread *);
+int	vfs_busy (struct mount *, int, struct thread *);
 void	vfs_bufstats(void);
 int	vfs_export			    /* process mount export info */
 	  (struct mount *, struct netexport *, struct export_args *);
@@ -490,8 +500,6 @@ void	vfs_unbusy (struct mount *, struct thread *);
 void	vfs_unmountall (void);
 int	vfs_register (struct vfsconf *);
 int	vfs_unregister (struct vfsconf *);
-extern	struct mntlist mountlist;	    /* mounted filesystem list */
-extern	struct lwkt_token mountlist_token;
 extern	struct nfs_public nfs_pub;
 
 /* 
@@ -520,6 +528,11 @@ int	vfs_stdextattrctl (struct mount *mp, int cmd, const char *attrname,
 int     journal_mountctl(struct vop_mountctl_args *ap);
 void	journal_remove_all_journals(struct mount *mp, int flags);
 
+void	mountlist_insert(struct mount *, int);
+int	mountlist_interlock(int (*callback)(struct mount *), struct mount *);
+struct mount *mountlist_boot_getfirst(void);
+void	mountlist_remove(struct mount *mp);
+int	mountlist_scan(int (*callback)(struct mount *, void *), void *, int);
 
 #else /* !_KERNEL */
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.18 2004/08/09 02:59:31 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.19 2005/04/19 17:54:42 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -294,8 +294,7 @@ boot(int howto)
 			if (((bp->b_flags&B_INVAL) == 0 && BUF_REFCNT(bp)) ||
 			    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
 				if (bp->b_dev == NODEV) {
-					TAILQ_REMOVE(&mountlist,
-					    bp->b_vp->v_mount, mnt_list);
+					mountlist_remove(bp->b_vp->v_mount);
 					continue;
 				}
 				nbusy++;

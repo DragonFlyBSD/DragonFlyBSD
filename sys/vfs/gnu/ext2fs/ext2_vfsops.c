@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.27 2005/04/15 19:08:16 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.28 2005/04/19 17:54:46 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -154,7 +154,7 @@ ext2_mount(struct mount *mp, char *path,
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
-			if (vfs_busy(mp, LK_NOWAIT, NULL, td))
+			if (vfs_busy(mp, LK_NOWAIT, td))
 				return (EBUSY);
 			error = ext2_flushfiles(mp, flags, td);
 			vfs_unbusy(mp, td);

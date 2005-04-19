@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.20 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.21 2005/04/19 17:54:44 dillon Exp $
  * 
  */
 
@@ -483,21 +483,40 @@ getNewVnode(struct vnode **vpp)
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/ufsmount.h>
-/* get the mount structure corresponding to a given device.  Assume 
+
+/*
+ * get the mount structure corresponding to a given device.  Assume 
  * device corresponds to a UFS. Return NULL if no device is found.
  */ 
-struct mount *devtomp(dev_t dev)
+struct devtomp_info {
+	struct mount *ret_mp;
+	dev_t dev;
+};
+
+static int devtomp_callback(struct mount *mp, void *data);
+
+struct mount *
+devtomp(dev_t dev)
 {
-    struct mount *mp;
-   
-    TAILQ_FOREACH(mp, &mountlist, mnt_list) {
-	if (((VFSTOUFS(mp))->um_dev == dev)) {
-	    /* mount corresponds to UFS and the device matches one we want */
-	    return(mp); 
+    struct devtomp_info info;
+
+    info.ret_mp = NULL;
+    info.dev = dev;
+
+    mountlist_scan(devtomp_callback, &info, MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+    return(info.ret_mp);
+}
+
+static int
+devtomp_callback(struct mount *mp, void *data)
+{
+	struct devtomp_info *info = data;
+
+	if ((VFSTOUFS(mp))->um_dev == info->dev) {
+		info->ret_mp = mp;
+		return(-1);
 	}
-    }
-    /* mount structure wasn't found */ 
-    return(NULL); 
+	return(0);
 }
 
 struct vfsops coda_vfsops = {

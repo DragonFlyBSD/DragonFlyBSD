@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.8 2005/04/02 19:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.9 2005/04/19 17:54:42 dillon Exp $
  */
 
 /*
@@ -95,6 +95,12 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 
+struct mountscan_info {
+	TAILQ_ENTRY(mountscan_info) msi_entry;
+	int msi_how;
+	struct mount *msi_node;
+};
+
 static int vnlru_nowhere = 0;
 SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 	    &vnlru_nowhere, 0,
@@ -103,10 +109,10 @@ SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 
 static struct lwkt_token mntid_token;
 
-struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist); /* mounted fs */
-struct lwkt_token mountlist_token;
+static struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
+static TAILQ_HEAD(,mountscan_info) mountscan_list;
+static struct lwkt_token mountlist_token;
 struct lwkt_token mntvnode_token;
-
 
 /*
  * Called from vfsinit()
@@ -117,6 +123,7 @@ vfs_mount_init(void)
 	lwkt_token_init(&mountlist_token);
 	lwkt_token_init(&mntvnode_token);
 	lwkt_token_init(&mntid_token);
+	TAILQ_INIT(&mountscan_list);
 }
 
 /*
@@ -192,35 +199,36 @@ getspecialvnode(enum vtagtype tag, struct mount *mp,
 }
 
 /*
- * Mark a mount point as busy. Used to synchronize access and to delay
- * unmounting. Interlock is not released on failure.
+ * Interlock against an unmount, return 0 on success, non-zero on failure.
+ *
+ * The passed flag may be 0 or LK_NOWAIT and is only used if an unmount
+ * is in-progress.  
+ *
+ * If no unmount is in-progress LK_NOWAIT is ignored.  No other flag bits
+ * are used.  A shared locked will be obtained and the filesystem will not
+ * be unmountable until the lock is released.
  */
 int
-vfs_busy(struct mount *mp, int flags,
-	lwkt_tokref_t interlkp, struct thread *td)
+vfs_busy(struct mount *mp, int flags, struct thread *td)
 {
 	int lkflags;
 
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
 		if (flags & LK_NOWAIT)
 			return (ENOENT);
+		/* XXX not MP safe */
 		mp->mnt_kern_flag |= MNTK_MWAIT;
 		/*
 		 * Since all busy locks are shared except the exclusive
 		 * lock granted when unmounting, the only place that a
 		 * wakeup needs to be done is at the release of the
 		 * exclusive lock at the end of dounmount.
-		 *
-		 * note: interlkp is a serializer and thus can be safely
-		 * held through any sleep
 		 */
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
 		return (ENOENT);
 	}
 	lkflags = LK_SHARED | LK_NOPAUSE;
-	if (interlkp)
-		lkflags |= LK_INTERLOCK;
-	if (lockmgr(&mp->mnt_lock, lkflags, interlkp, td))
+	if (lockmgr(&mp->mnt_lock, lkflags, NULL, td))
 		panic("vfs_busy: unexpected lock failure");
 	return (0);
 }
@@ -258,7 +266,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp = malloc(sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
 	lockinit(&mp->mnt_lock, 0, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
-	vfs_busy(mp, LK_NOWAIT, NULL, td);
+	vfs_busy(mp, LK_NOWAIT, td);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	TAILQ_INIT(&mp->mnt_jlist);
@@ -435,10 +443,13 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
 /*
  * Reclaim up to 1/10 of the vnodes associated with a mount point.  Try
  * to avoid vnodes which have lots of resident pages (we are trying to free
- * vnodes, not memory).
+ * vnodes, not memory).  
+ *
+ * This routine is a callback from the mountlist scan.  The mount point
+ * in question will be busied.
  */
 static int
-vlrureclaim(struct mount *mp, int trigger_mult)
+vlrureclaim(struct mount *mp, void *data)
 {
 	struct vnode *vp;
 	lwkt_tokref ilock;
@@ -446,6 +457,7 @@ vlrureclaim(struct mount *mp, int trigger_mult)
 	int trigger;
 	int usevnodes;
 	int count;
+	int trigger_mult = vnlru_nowhere;
 
 	/*
 	 * Calculate the trigger point for the resident pages check.  The
@@ -566,11 +578,9 @@ vnlru_proc_wait(void)
 static void 
 vnlru_proc(void)
 {
-	struct mount *mp, *nmp;
-	lwkt_tokref ilock;
-	int s;
-	int done;
 	struct thread *td = curthread;
+	int done;
+	int s;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_FIRST);   
@@ -584,20 +594,8 @@ vnlru_proc(void)
 			tsleep(td, 0, "vlruwt", hz);
 			continue;
 		}
-		done = 0;
 		cache_cleanneg(0);
-		lwkt_gettoken(&ilock, &mountlist_token);
-		for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-			if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
-				nmp = TAILQ_NEXT(mp, mnt_list);
-				continue;
-			}
-			done += vlrureclaim(mp, vnlru_nowhere);
-			lwkt_gettokref(&ilock);
-			nmp = TAILQ_NEXT(mp, mnt_list);
-			vfs_unbusy(mp, td);
-		}
-		lwkt_reltoken(&ilock);
+		done = mountlist_scan(vlrureclaim, NULL, MNTSCAN_FORWARD);
 
 		/*
 		 * The vlrureclaim() call only processes 1/10 of the vnodes
@@ -620,6 +618,172 @@ vnlru_proc(void)
 	}
 	splx(s);
 }
+
+/*
+ * MOUNTLIST FUNCTIONS
+ */
+
+/*
+ * mountlist_insert (MP SAFE)
+ *
+ * Add a new mount point to the mount list.
+ */
+void
+mountlist_insert(struct mount *mp, int how)
+{
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &mountlist_token);
+	if (how == MNTINS_FIRST)
+	    TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
+	else
+	    TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
+	lwkt_reltoken(&ilock);
+}
+
+/*
+ * mountlist_interlock (MP SAFE)
+ *
+ * Execute the specified interlock function with the mountlist token
+ * held.  The function will be called in a serialized fashion verses
+ * other functions called through this mechanism.
+ */
+int
+mountlist_interlock(int (*callback)(struct mount *), struct mount *mp)
+{
+	lwkt_tokref ilock;
+	int error;
+
+	lwkt_gettoken(&ilock, &mountlist_token);
+	error = callback(mp);
+	lwkt_reltoken(&ilock);
+	return (error);
+}
+
+/*
+ * mountlist_boot_getfirst (DURING BOOT ONLY)
+ *
+ * This function returns the first mount on the mountlist, which is
+ * expected to be the root mount.  Since no interlocks are obtained
+ * this function is only safe to use during booting.
+ */
+
+struct mount *
+mountlist_boot_getfirst(void)
+{
+	return(TAILQ_FIRST(&mountlist));
+}
+
+/*
+ * mountlist_remove (MP SAFE)
+ *
+ * Remove a node from the mountlist.  If this node is the next scan node
+ * for any active mountlist scans, the active mountlist scan will be 
+ * adjusted to skip the node, thus allowing removals during mountlist
+ * scans.
+ */
+void
+mountlist_remove(struct mount *mp)
+{
+	struct mountscan_info *msi;
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &mountlist_token);
+	TAILQ_FOREACH(msi, &mountscan_list, msi_entry) {
+		if (msi->msi_node == mp) {
+			if (msi->msi_how & MNTSCAN_FORWARD)
+				msi->msi_node = TAILQ_NEXT(mp, mnt_list);
+			else
+				msi->msi_node = TAILQ_PREV(mp, mntlist, mnt_list);
+		}
+	}
+	TAILQ_REMOVE(&mountlist, mp, mnt_list);
+	lwkt_reltoken(&ilock);
+}
+
+/*
+ * mountlist_scan (MP SAFE)
+ *
+ * Safely scan the mount points on the mount list.  Unless otherwise 
+ * specified each mount point will be busied prior to the callback and
+ * unbusied afterwords.  The callback may safely remove any mount point
+ * without interfering with the scan.  If the current callback
+ * mount is removed the scanner will not attempt to unbusy it.
+ *
+ * If a mount node cannot be busied it is silently skipped.
+ *
+ * The callback return value is aggregated and a total is returned.  A return
+ * value of < 0 is not aggregated and will terminate the scan.
+ *
+ * MNTSCAN_FORWARD	- the mountlist is scanned in the forward direction
+ * MNTSCAN_REVERSE	- the mountlist is scanned in reverse
+ * MNTSCAN_NOBUSY	- the scanner will make the callback without busying
+ *			  the mount node.
+ */
+int
+mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
+{
+	struct mountscan_info info;
+	lwkt_tokref ilock;
+	struct mount *mp;
+	thread_t td;
+	int count;
+	int res;
+
+	lwkt_gettoken(&ilock, &mountlist_token);
+
+	info.msi_how = how;
+	info.msi_node = NULL;	/* paranoia */
+	TAILQ_INSERT_TAIL(&mountscan_list, &info, msi_entry);
+
+	res = 0;
+	td = curthread;
+
+	if (how & MNTSCAN_FORWARD) {
+		info.msi_node = TAILQ_FIRST(&mountlist);
+		while ((mp = info.msi_node) != NULL) {
+			if (how & MNTSCAN_NOBUSY) {
+				count = callback(mp, data);
+			} else if (vfs_busy(mp, LK_NOWAIT, td) == 0) {
+				count = callback(mp, data);
+				if (mp == info.msi_node)
+					vfs_unbusy(mp, td);
+			} else {
+				count = 0;
+			}
+			if (count < 0)
+				break;
+			res += count;
+			if (mp == info.msi_node)
+				info.msi_node = TAILQ_NEXT(mp, mnt_list);
+		}
+	} else if (how & MNTSCAN_REVERSE) {
+		info.msi_node = TAILQ_LAST(&mountlist, mntlist);
+		while ((mp = info.msi_node) != NULL) {
+			if (how & MNTSCAN_NOBUSY) {
+				count = callback(mp, data);
+			} else if (vfs_busy(mp, LK_NOWAIT, td) == 0) {
+				count = callback(mp, data);
+				if (mp == info.msi_node)
+					vfs_unbusy(mp, td);
+			} else {
+				count = 0;
+			}
+			if (count < 0)
+				break;
+			res += count;
+			if (mp == info.msi_node)
+				info.msi_node = TAILQ_PREV(mp, mntlist, mnt_list);
+		}
+	}
+	TAILQ_REMOVE(&mountscan_list, &info, msi_entry);
+	lwkt_reltoken(&ilock);
+	return(res);
+}
+
+/*
+ * MOUNT RELATED VNODE FUNCTIONS
+ */
 
 static struct kproc_desc vnlru_kp = {
 	"vnlru",

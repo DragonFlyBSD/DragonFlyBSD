@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.60 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.61 2005/04/19 17:54:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,6 @@ mount(struct mount_args *uap)
 	struct vattr va;
 	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
-	lwkt_tokref ilock;
 	struct nlcomponent nlc;
 
 	KKASSERT(p);
@@ -199,7 +198,7 @@ mount(struct mount_args *uap)
 			vput(vp);
 			return (error);
 		}
-		if (vfs_busy(mp, LK_NOWAIT, NULL, td)) {
+		if (vfs_busy(mp, LK_NOWAIT, td)) {
 			cache_drop(ncp);
 			vput(vp);
 			return (EBUSY);
@@ -295,7 +294,7 @@ mount(struct mount_args *uap)
 	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
 	lockinit(&mp->mnt_lock, 0, "vfslock", 0, LK_NOPAUSE);
-	vfs_busy(mp, LK_NOWAIT, NULL, td);
+	vfs_busy(mp, LK_NOWAIT, td);
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;
 	vfsp->vfc_refcount++;
@@ -366,9 +365,7 @@ update:
 		/* XXX get the root of the fs and cache_setvp(mnt_ncp...) */
 		vp->v_flag &= ~VMOUNT;
 		vp->v_mountedhere = mp;
-		lwkt_gettoken(&ilock, &mountlist_token);
-		TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
-		lwkt_reltoken(&ilock);
+		mountlist_insert(mp, MNTINS_LAST);
 		checkdirs(vp, mp->mnt_ncp);
 		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
 		VOP_UNLOCK(vp, 0, td);
@@ -511,25 +508,35 @@ unmount(struct unmount_args *uap)
 /*
  * Do the actual file system unmount.
  */
+static int
+dounmount_interlock(struct mount *mp)
+{
+	if (mp->mnt_kern_flag & MNTK_UNMOUNT)
+		return (EBUSY);
+	mp->mnt_kern_flag |= MNTK_UNMOUNT;
+	return(0);
+}
+
 int
 dounmount(struct mount *mp, int flags, struct thread *td)
 {
 	struct vnode *coveredvp;
 	int error;
 	int async_flag;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &mountlist_token);
-	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
-		lwkt_reltoken(&ilock);
-		return (EBUSY);
-	}
-	mp->mnt_kern_flag |= MNTK_UNMOUNT;
-	/* Allow filesystems to detect that a forced unmount is in progress. */
+	/*
+	 * Exclusive access for unmounting purposes
+	 */
+	if ((error = mountlist_interlock(dounmount_interlock, mp)) != 0)
+		return (error);
+
+	/*
+	 * Allow filesystems to detect that a forced unmount is in progress.
+	 */
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
-	error = lockmgr(&mp->mnt_lock, LK_DRAIN | LK_INTERLOCK |
-	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), &ilock, td);
+	error = lockmgr(&mp->mnt_lock, LK_DRAIN | 
+	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), NULL, td);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
@@ -550,14 +557,12 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	     (error = VFS_SYNC(mp, MNT_WAIT, td)) == 0) ||
 	    (flags & MNT_FORCE))
 		error = VFS_UNMOUNT(mp, flags, td);
-	lwkt_gettokref(&ilock);
 	if (error) {
 		if (mp->mnt_syncer == NULL)
 			vfs_allocate_syncvnode(mp);
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
-		lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK | LK_REENABLE,
-		    &ilock, td);
+		lockmgr(&mp->mnt_lock, LK_RELEASE | LK_REENABLE, NULL, td);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
 		return (error);
@@ -569,7 +574,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	journal_remove_all_journals(mp, 
 	    ((flags & MNT_FORCE) ? MC_JOURNAL_STOP_IMM : 0));
 
-	TAILQ_REMOVE(&mountlist, mp, mnt_list);
+	mountlist_remove(mp);
 
 	/*
 	 * Remove any installed vnode ops here so the individual VFSs don't
@@ -590,7 +595,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
-	lockmgr(&mp->mnt_lock, LK_RELEASE | LK_INTERLOCK, &ilock, td);
+	lockmgr(&mp->mnt_lock, LK_RELEASE, NULL, td);
 	if (mp->mnt_kern_flag & MNTK_MWAIT)
 		wakeup(mp);
 	free(mp, M_MOUNT);
@@ -606,41 +611,37 @@ static int syncprt = 0;
 SYSCTL_INT(_debug, OID_AUTO, syncprt, CTLFLAG_RW, &syncprt, 0, "");
 #endif /* DEBUG */
 
+static int sync_callback(struct mount *mp, void *data);
+
 /* ARGSUSED */
 int
 sync(struct sync_args *uap)
 {
-	struct thread *td = curthread;
-	struct mount *mp, *nmp;
-	lwkt_tokref ilock;
-	int asyncflag;
-
-	lwkt_gettoken(&ilock, &mountlist_token);
-	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
-			nmp = TAILQ_NEXT(mp, mnt_list);
-			continue;
-		}
-		if ((mp->mnt_flag & MNT_RDONLY) == 0) {
-			asyncflag = mp->mnt_flag & MNT_ASYNC;
-			mp->mnt_flag &= ~MNT_ASYNC;
-			vfs_msync(mp, MNT_NOWAIT);
-			VFS_SYNC(mp, MNT_NOWAIT, td);
-			mp->mnt_flag |= asyncflag;
-		}
-		lwkt_gettokref(&ilock);
-		nmp = TAILQ_NEXT(mp, mnt_list);
-		vfs_unbusy(mp, td);
-	}
-	lwkt_reltoken(&ilock);
-/*
- * print out buffer pool stat information on each sync() call.
- */
+	mountlist_scan(sync_callback, NULL, MNTSCAN_FORWARD);
 #ifdef DEBUG
+	/*
+	 * print out buffer pool stat information on each sync() call.
+	 */
 	if (syncprt)
 		vfs_bufstats();
 #endif /* DEBUG */
 	return (0);
+}
+
+static
+int
+sync_callback(struct mount *mp, void *data __unused)
+{
+	int asyncflag;
+
+	if ((mp->mnt_flag & MNT_RDONLY) == 0) {
+		asyncflag = mp->mnt_flag & MNT_ASYNC;
+		mp->mnt_flag &= ~MNT_ASYNC;
+		vfs_msync(mp, MNT_NOWAIT);
+		VFS_SYNC(mp, MNT_NOWAIT, curthread);
+		mp->mnt_flag |= asyncflag;
+	}
+	return(0);
 }
 
 /* XXX PRISON: could be per prison flag */
@@ -926,82 +927,94 @@ fstatfs(struct fstatfs_args *uap)
  *
  * Get statistics on all filesystems.
  */
+
+struct getfsstat_info {
+	struct statfs *sfsp;
+	long count;
+	long maxcount;
+	int error;
+	int flags;
+	int is_chrooted;
+	struct thread *td;
+	struct proc *p;
+};
+
+static int getfsstat_callback(struct mount *, void *);
+
 /* ARGSUSED */
 int
 getfsstat(struct getfsstat_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct mount *mp, *nmp;
-	struct statfs *sp, *sfsp;
-	lwkt_tokref ilock;
-	long count, maxcount, error;
-	int is_chrooted;
-	char *freepath, *fullpath;
+	struct getfsstat_info info;
 
+	bzero(&info, sizeof(info));
 	if (p != NULL && (p->p_fd->fd_nrdir->nc_flag & NCF_ROOT) == 0)
-		is_chrooted = 1;
+		info.is_chrooted = 1;
 	else
-		is_chrooted = 0;
+		info.is_chrooted = 0;
 
-	maxcount = uap->bufsize / sizeof(struct statfs);
-	sfsp = uap->buf;
-	count = 0;
-	lwkt_gettoken(&ilock, &mountlist_token);
-	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
-			nmp = TAILQ_NEXT(mp, mnt_list);
-			continue;
+	info.maxcount = uap->bufsize / sizeof(struct statfs);
+	info.sfsp = uap->buf;
+	info.count = 0;
+	info.flags = uap->flags;
+	info.td = td;
+	info.p = p;
+
+	mountlist_scan(getfsstat_callback, &info, MNTSCAN_FORWARD);
+	if (info.sfsp && info.count > info.maxcount)
+		uap->sysmsg_result = info.maxcount;
+	else
+		uap->sysmsg_result = info.count;
+	return (info.error);
+}
+
+static int
+getfsstat_callback(struct mount *mp, void *data)
+{
+	struct getfsstat_info *info = data;
+	struct statfs *sp;
+	char *freepath;
+	char *fullpath;
+	int error;
+
+	if (info->sfsp && info->count < info->maxcount) {
+		if (info->is_chrooted && !chroot_visible_mnt(mp, info->p))
+			return(0);
+		sp = &mp->mnt_stat;
+
+		/*
+		 * If MNT_NOWAIT or MNT_LAZY is specified, do not
+		 * refresh the fsstat cache. MNT_NOWAIT or MNT_LAZY
+		 * overrides MNT_WAIT.
+		 */
+		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
+		    (info->flags & MNT_WAIT)) &&
+		    (error = VFS_STATFS(mp, sp, info->td))) {
+			return(0);
 		}
-		if (sfsp && count < maxcount) {
-			if (is_chrooted && !chroot_visible_mnt(mp, p)) {
-				lwkt_gettokref(&ilock);
-				nmp = TAILQ_NEXT(mp, mnt_list);
-				vfs_unbusy(mp, td);
-				continue;
-			}
-			sp = &mp->mnt_stat;
-			/*
-			 * If MNT_NOWAIT or MNT_LAZY is specified, do not
-			 * refresh the fsstat cache. MNT_NOWAIT or MNT_LAZY
-			 * overrides MNT_WAIT.
-			 */
-			if (((uap->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
-			    (uap->flags & MNT_WAIT)) &&
-			    (error = VFS_STATFS(mp, sp, td))) {
-				lwkt_gettokref(&ilock);
-				nmp = TAILQ_NEXT(mp, mnt_list);
-				vfs_unbusy(mp, td);
-				continue;
-			}
-			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
+		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 
-			error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
-			if (error)
-				return(error);
-			bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
-			strlcpy(sp->f_mntonname, fullpath,
-				sizeof(sp->f_mntonname));
-			free(freepath, M_TEMP);
-
-			error = copyout(sp, sfsp, sizeof(*sp));
-			if (error) {
-				vfs_unbusy(mp, td);
-				return (error);
-			}
-			++sfsp;
+		error = cache_fullpath(info->p, mp->mnt_ncp,
+					&fullpath, &freepath);
+		if (error) {
+			info->error = error;
+			return(-1);
 		}
-		count++;
-		lwkt_gettokref(&ilock);
-		nmp = TAILQ_NEXT(mp, mnt_list);
-		vfs_unbusy(mp, td);
+		bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
+		strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
+		free(freepath, M_TEMP);
+
+		error = copyout(sp, info->sfsp, sizeof(*sp));
+		if (error) {
+			info->error = error;
+			return (-1);
+		}
+		++info->sfsp;
 	}
-	lwkt_reltoken(&ilock);
-	if (sfsp && count > maxcount)
-		uap->sysmsg_result = maxcount;
-	else
-		uap->sysmsg_result = count;
-	return (0);
+	info->count++;
+	return(0);
 }
 
 /*

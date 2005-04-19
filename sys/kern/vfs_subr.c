@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.54 2005/04/15 19:08:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.55 2005/04/19 17:54:42 dillon Exp $
  */
 
 /*
@@ -1355,33 +1355,30 @@ vprint(char *label, struct vnode *vp)
 
 #ifdef DDB
 #include <ddb/ddb.h>
+
+static int db_show_locked_vnodes(struct mount *mp, void *data);
+
 /*
  * List all of the locked vnodes in the system.
  * Called when debugging the kernel.
  */
 DB_SHOW_COMMAND(lockedvnodes, lockedvnodes)
 {
-	struct thread *td = curthread;	/* XXX */
-	lwkt_tokref ilock;
-	struct mount *mp, *nmp;
+	printf("Locked vnodes\n");
+	mountlist_scan(db_show_locked_vnodes, NULL, 
+			MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+}
+
+static int
+db_show_locked_vnodes(struct mount *mp, void *data __unused)
+{
 	struct vnode *vp;
 
-	printf("Locked vnodes\n");
-	lwkt_gettoken(&ilock, &mountlist_token);
-	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
-			nmp = TAILQ_NEXT(mp, mnt_list);
-			continue;
-		}
-		TAILQ_FOREACH(vp, &mp->mnt_nvnodelist, v_nmntvnodes) {
-			if (VOP_ISLOCKED(vp, NULL))
-				vprint((char *)0, vp);
-		}
-		lwkt_gettokref(&ilock);
-		nmp = TAILQ_NEXT(mp, mnt_list);
-		vfs_unbusy(mp, td);
+	TAILQ_FOREACH(vp, &mp->mnt_nvnodelist, v_nmntvnodes) {
+		if (VOP_ISLOCKED(vp, NULL))
+			vprint((char *)0, vp);
 	}
-	lwkt_reltoken(&ilock);
+	return(0);
 }
 #endif
 
@@ -1462,77 +1459,6 @@ sysctl_ovfs_conf(SYSCTL_HANDLER_ARGS)
 
 #endif /* 1 || COMPAT_PRELITE2 */
 
-#if 0
-#define KINFO_VNODESLOP	10
-/*
- * Dump vnode list (via sysctl).
- * Copyout address of vnode followed by vnode.
- */
-/* ARGSUSED */
-static int
-sysctl_vnode(SYSCTL_HANDLER_ARGS)
-{
-	struct proc *p = curproc;	/* XXX */
-	struct mount *mp, *nmp;
-	struct vnode *nvp, *vp;
-	lwkt_tokref ilock;
-	lwkt_tokref jlock;
-	int error;
-
-#define VPTRSZ	sizeof (struct vnode *)
-#define VNODESZ	sizeof (struct vnode)
-
-	req->lock = 0;
-	if (!req->oldptr) /* Make an estimate */
-		return (SYSCTL_OUT(req, 0,
-			(numvnodes + KINFO_VNODESLOP) * (VPTRSZ + VNODESZ)));
-
-	lwkt_gettoken(&ilock, &mountlist_token);
-	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &ilock, p)) {
-			nmp = TAILQ_NEXT(mp, mnt_list);
-			continue;
-		}
-		lwkt_gettoken(&jlock, &mntvnode_token);
-again:
-		for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
-		     vp != NULL;
-		     vp = nvp) {
-			/*
-			 * Check that the vp is still associated with
-			 * this filesystem.  RACE: could have been
-			 * recycled onto the same filesystem.
-			 */
-			if (vp->v_mount != mp)
-				goto again;
-			nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-			if ((error = SYSCTL_OUT(req, &vp, VPTRSZ)) ||
-			    (error = SYSCTL_OUT(req, vp, VNODESZ))) {
-				lwkt_reltoken(&jlock);
-				return (error);
-			}
-		}
-		lwkt_reltoken(&jlock);
-		lwkt_gettokref(&ilock);
-		nmp = TAILQ_NEXT(mp, mnt_list);	/* ZZZ */
-		vfs_unbusy(mp, p);
-	}
-	lwkt_reltoken(&ilock);
-
-	return (0);
-}
-#endif
-
-/*
- * XXX
- * Exporting the vnode list on large systems causes them to crash.
- * Exporting the vnode list on medium systems causes sysctl to coredump.
- */
-#if 0
-SYSCTL_PROC(_kern, KERN_VNODE, vnode, CTLTYPE_OPAQUE|CTLFLAG_RD,
-	0, 0, sysctl_vnode, "S,vnode", "");
-#endif
-
 /*
  * Check to see if a filesystem is mounted on a block device.
  */
@@ -1552,33 +1478,42 @@ vfs_mountedon(struct vnode *vp)
  * Unmount all filesystems. The list is traversed in reverse order
  * of mounting to avoid dependencies.
  */
+
+static int vfs_umountall_callback(struct mount *mp, void *data);
+
 void
 vfs_unmountall(void)
 {
-	struct mount *mp;
 	struct thread *td = curthread;
-	int error;
+	int count;
 
 	if (td->td_proc == NULL)
 		td = initproc->p_thread;	/* XXX XXX use proc0 instead? */
 
-	/*
-	 * Since this only runs when rebooting, it is not interlocked.
-	 */
-	while(!TAILQ_EMPTY(&mountlist)) {
-		mp = TAILQ_LAST(&mountlist, mntlist);
-		error = dounmount(mp, MNT_FORCE, td);
-		if (error) {
-			TAILQ_REMOVE(&mountlist, mp, mnt_list);
-			printf("unmount of filesystem mounted from %s failed (", mp->mnt_stat.f_mntfromname);
-			if (error == EBUSY)
-				printf("BUSY)\n");
-			else
-				printf("%d)\n", error);
-		} else {
-			/* The unmount has removed mp from the mountlist */
-		}
+	do {
+		count = mountlist_scan(vfs_umountall_callback, 
+					&td, MNTSCAN_REVERSE|MNTSCAN_NOBUSY);
+	} while (count);
+}
+
+static
+int
+vfs_umountall_callback(struct mount *mp, void *data)
+{
+	struct thread *td = *(struct thread **)data;
+	int error;
+
+	error = dounmount(mp, MNT_FORCE, td);
+	if (error) {
+		mountlist_remove(mp);
+		printf("unmount of filesystem mounted from %s failed (", 
+			mp->mnt_stat.f_mntfromname);
+		if (error == EBUSY)
+			printf("BUSY)\n");
+		else
+			printf("%d)\n", error);
 	}
+	return(1);
 }
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.10 2005/03/09 06:11:21 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.11 2005/04/19 17:54:42 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -520,7 +520,7 @@ nlookup(struct nlookupdata *nd)
 	    ncp = cache_get(mp->mnt_ncp);
 
 	    if (ncp->nc_flag & NCF_UNRESOLVED) {
-		while (vfs_busy(mp, 0, NULL, nd->nl_td))
+		while (vfs_busy(mp, 0, nd->nl_td))
 		    ;
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp, nd->nl_td);
@@ -620,7 +620,7 @@ nlookup_mp(struct mount *mp, struct namecache **ncpp)
     ncp = mp->mnt_ncp;
     cache_get(ncp);
     if (ncp->nc_flag & NCF_UNRESOLVED) {
-	while (vfs_busy(mp, 0, NULL, curthread))
+	while (vfs_busy(mp, 0, curthread))
 	    ;
 	error = VFS_ROOT(mp, &vp);
 	vfs_unbusy(mp, curthread);

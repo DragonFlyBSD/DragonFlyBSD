@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.26 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.27 2005/04/19 17:54:49 dillon Exp $
  */
 
 
@@ -187,10 +187,7 @@ ntfs_mountroot(void)
 		vrele(rootvp);
 		return (error);
 	}
-
-	lwkt_gettoken(&ilock, &mountlist_token);
-	CIRCLEQ_INSERT_TAIL(&mountlist, mp, mnt_list);
-	lwkt_reltoken(&ilock);
+	mountlist_insert(mp, MNTINS_LAST);
 	(void)ntfs_statfs(mp, &mp->mnt_stat, td);
 	vfs_unbusy(mp);
 	return (0);

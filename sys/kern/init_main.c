@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.40 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.41 2005/04/19 17:54:42 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -460,7 +460,7 @@ start_init(void *dummy)
 	p = curproc;
 
 	/* Get the vnode for '/'.  Set p->p_fd->fd_cdir to reference it. */
-	mp = TAILQ_FIRST(&mountlist);
+	mp = mountlist_boot_getfirst();
 	if (VFS_ROOT(mp, &vp))
 		panic("cannot find root vnode");
 	if (mp->mnt_ncp == NULL) {

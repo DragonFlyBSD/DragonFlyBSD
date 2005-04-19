@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.22 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.23 2005/04/19 17:54:50 dillon Exp $
  */
 
 /*
@@ -4752,13 +4752,30 @@ clear_remove(struct thread *td)
  * Clear out a block of dirty inodes in an effort to reduce
  * the number of inodedep dependency structures.
  */
+struct clear_inodedeps_info {
+	struct fs *fs;
+	struct mount *mp;
+};
+
+static int
+clear_inodedeps_mountlist_callback(struct mount *mp, void *data)
+{
+	struct clear_inodedeps_info *info = data;
+
+	if ((mp->mnt_flag & MNT_SOFTDEP) && info->fs == VFSTOUFS(mp)->um_fs) {
+		info->mp = mp;
+		return(-1);
+	}
+	return(0);
+}
+
 static void
 clear_inodedeps(struct thread *td)
 {
+	struct clear_inodedeps_info info;
 	struct inodedep_hashhead *inodedephd;
 	struct inodedep *inodedep;
 	static int next = 0;
-	struct mount *mp;
 	struct vnode *vp;
 	struct fs *fs;
 	int error, cnt;
@@ -4783,9 +4800,10 @@ clear_inodedeps(struct thread *td)
 	 * Ugly code to find mount point given pointer to superblock.
 	 */
 	fs = inodedep->id_fs;
-	TAILQ_FOREACH(mp, &mountlist, mnt_list)
-		if ((mp->mnt_flag & MNT_SOFTDEP) && fs == VFSTOUFS(mp)->um_fs)
-			break;
+	info.mp = NULL;
+	info.fs = fs;
+	mountlist_scan(clear_inodedeps_mountlist_callback, 
+			&info, MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 	/*
 	 * Find the last inode in the block with dependencies.
 	 */
@@ -4802,7 +4820,7 @@ clear_inodedeps(struct thread *td)
 		if (inodedep_lookup(fs, ino, 0, &inodedep) == 0)
 			continue;
 		FREE_LOCK(&lk);
-		if ((error = VFS_VGET(mp, ino, &vp)) != 0) {
+		if ((error = VFS_VGET(info.mp, ino, &vp)) != 0) {
 			softdep_error("clear_inodedeps: vget", error);
 			return;
 		}

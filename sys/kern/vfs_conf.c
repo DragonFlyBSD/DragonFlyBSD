@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.12 2004/09/30 18:59:48 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.13 2005/04/19 17:54:42 dillon Exp $
  */
 
 /*
@@ -192,7 +192,6 @@ vfs_mountroot_try(const char *mountfrom)
 	char		*vfsname, *devname;
 	int		error;
 	char		patt[32];
-	lwkt_tokref	ilock;
 	int		s;
 
 	vfsname = NULL;
@@ -249,11 +248,8 @@ done:
 		}
 		printf("Root mount failed: %d\n", error);
 	} else {
-
 		/* register with list of mounted filesystems */
-		lwkt_gettoken(&ilock, &mountlist_token);
-		TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
-		lwkt_reltoken(&ilock);
+		mountlist_insert(mp, MNTINS_FIRST);
 
 		/* sanity check system clock against root fs timestamp */
 		inittodr(mp->mnt_time);
