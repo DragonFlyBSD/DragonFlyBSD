@@ -32,7 +32,7 @@
  *
  * @(#)unidialer.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/libacu/unidialer.c,v 1.7 1999/08/28 01:06:30 peter Exp $
- * $DragonFly: src/usr.bin/tip/libacu/unidialer.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/libacu/unidialer.c,v 1.3 2005/04/19 18:55:24 swildner Exp $
  */
 
 /*
@@ -229,7 +229,7 @@ static int getmodemparms (const char *modem)
 */
 acu_t* unidialer_getmodem (const char *modem_name)
 {
-	acu_t* rc = NOACU;
+	acu_t* rc = NULL;
 	if (getmodemparms (modem_name))
 		rc = &unidialer;
 	return rc;
