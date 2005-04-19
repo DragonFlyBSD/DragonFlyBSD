@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.7 2004/11/07 20:54:52 eirikn Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.8 2005/04/19 05:18:19 cpressey Exp $
  */
 
 #include <unistd.h>
@@ -72,7 +72,7 @@
 struct varinit {
 	struct var *var;
 	int flags;
-	const char *text;
+	char *text;
 	void (*func)(const char *);
 };
 

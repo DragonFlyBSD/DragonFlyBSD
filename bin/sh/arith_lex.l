@@ -36,8 +36,10 @@
  *
  * @(#)arith_lex.l	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/arith_lex.l,v 1.14.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/arith_lex.l,v 1.3 2004/03/19 18:39:40 cpressey Exp $
+ * $DragonFly: src/bin/sh/arith_lex.l,v 1.4 2005/04/19 05:18:19 cpressey Exp $
  */
+
+#include <unistd.h>
 
 #include "y.tab.h"
 #include "error.h"

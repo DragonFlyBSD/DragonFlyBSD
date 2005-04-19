@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkinit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/mkinit.c,v 1.14.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mkinit.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/mkinit.c,v 1.4 2005/04/19 05:18:19 cpressey Exp $
  */
 
 /*
@@ -128,10 +128,10 @@ char shellproc[] = "\
 
 
 struct event event[] = {
-	{"INIT", "init", init},
-	{"RESET", "reset", reset},
-	{"SHELLPROC", "initshellproc", shellproc},
-	{NULL, NULL}
+	{"INIT", "init", init, {NULL, 0, NULL, NULL}},
+	{"RESET", "reset", reset, {NULL, 0, NULL, NULL}},
+	{"SHELLPROC", "initshellproc", shellproc, {NULL, 0, NULL, NULL}},
+	{NULL, NULL, NULL, {NULL, 0, NULL, NULL}}
 };
 
 
