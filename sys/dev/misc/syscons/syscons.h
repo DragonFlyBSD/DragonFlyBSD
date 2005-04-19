@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.12 2005/03/28 21:30:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.13 2005/04/19 18:05:02 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -642,6 +642,6 @@ sc_softc_t	*sc_get_softc(int unit, int flags);
 sc_softc_t	*sc_find_softc(struct video_adapter *adp, struct keyboard *kbd);
 int		sc_get_cons_priority(int *unit, int *flags);
 void		sc_get_bios_values(bios_values_t *values);
-int		sc_tone(int herz);
+int		sc_tone(int hertz);
 
 #endif /* !_DEV_SYSCONS_SYSCONS_H_ */

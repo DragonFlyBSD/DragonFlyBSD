@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.9 2004/09/18 19:08:06 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.10 2005/04/19 18:05:02 swildner Exp $
  *
  */
 
@@ -70,8 +70,8 @@
 #define LABPC_MIN_TMO (hz)
 #endif
 
-#ifndef LABPC_DEFAULT_HERZ
-#define LABPC_DEFAULT_HERZ 500
+#ifndef LABPC_DEFAULT_HERTZ
+#define LABPC_DEFAULT_HERTZ 500
 #endif
 
 /* Minor number:
@@ -127,8 +127,8 @@ struct ctlr
 	struct buf *last;	/* End of start queue */
 	u_char *data;
 	u_char *data_end;
-	long tmo;			/* Timeout in Herz */
-	long min_tmo;		/* Timeout in Herz */
+	long tmo;			/* Timeout in Hertz */
+	long min_tmo;		/* Timeout in Hertz */
 	int cleared_intr;
 
 	int gains[8];
@@ -481,7 +481,7 @@ labpcattach(struct isa_device *dev)
 
 	dev->id_ointr = labpcintr;
 	callout_init(&ctlr->ch);
-	ctlr->sample_us = (1000000.0 / (double)LABPC_DEFAULT_HERZ) + .50;
+	ctlr->sample_us = (1000000.0 / (double)LABPC_DEFAULT_HERTZ) + .50;
 	reset(ctlr);
 
 	ctlr->min_tmo = LABPC_MIN_TMO;

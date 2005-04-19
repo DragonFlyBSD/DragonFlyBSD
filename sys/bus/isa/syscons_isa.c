@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.5 2004/08/02 23:20:28 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.6 2005/04/19 18:05:02 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -210,7 +210,7 @@ sc_get_bios_values(bios_values_t *values)
 }
 
 int
-sc_tone(int herz)
+sc_tone(int hertz)
 {
 	return EBUSY;
 #if 0
@@ -218,12 +218,12 @@ sc_tone(int herz)
 #ifdef __i386__
 	int pitch;
 
-	if (herz) {
+	if (hertz) {
 		/* set command for counter 2, 2 byte write */
 		if (acquire_timer2(TIMER_16BIT | TIMER_SQWAVE))
 			return EBUSY;
 		/* set pitch */
-		pitch = cputimer_freq/herz;
+		pitch = cputimer_freq/hertz;
 		outb(TIMER_CNTR2, pitch);
 		outb(TIMER_CNTR2, pitch >> 8);
 		/* enable counter 2 output to speaker */
