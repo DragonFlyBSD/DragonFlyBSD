@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/lib/libz/Makefile,v 1.11.2.4 2003/02/01 13:33:12 sobomax Exp $
-# $DragonFly: src/lib/libz/Makefile,v 1.6 2004/12/06 11:29:51 joerg Exp $
+# $DragonFly: src/lib/libz/Makefile,v 1.7 2005/04/20 20:01:09 joerg Exp $
 #
 
 LIB=		z
@@ -11,11 +11,6 @@ PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2.2
 
 .PATH: ${CONTRIBDIR}
-
-#CFLAGS+=	-DMAX_WBITS=14 -DMAX_MEM_LEVEL=7
-#CFLAGS+=	-g -DDEBUG
-#CFLAGS+=	-Wall -Wwrite-strings -Wpointer-arith -Wconversion \
-#		-Wstrict-prototypes -Wmissing-prototypes
 
 CLEANFILES+=	example.o example foo.gz minigzip.o minigzip
 
