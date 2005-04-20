@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.35 2005/04/20 08:04:32 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.36 2005/04/20 17:57:16 joerg Exp $
  */
 
 #include "opt_ntp.h"
@@ -135,7 +135,7 @@ SYSCTL_OPAQUE(_kern, OID_AUTO, cp_time, CTLFLAG_RD, &cp_time, sizeof(cp_time),
  * the real time.
  */
 struct timespec boottime;	/* boot time (realtime) for reference only */
-struct timespec basetime;	/* base time adjusts uptime -> realtime */
+static struct timespec basetime;	/* base time adjusts uptime -> realtime */
 time_t time_second;		/* read-only 'passive' uptime in seconds */
 
 SYSCTL_STRUCT(_kern, KERN_BOOTTIME, boottime, CTLFLAG_RD,

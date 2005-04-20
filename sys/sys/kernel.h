@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.15 2005/04/14 07:55:36 joerg Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.16 2005/04/20 17:57:16 joerg Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -65,7 +65,6 @@ extern char kernelname[MAXPATHLEN];
 
 /* 1.2 */
 extern struct timespec boottime;
-extern struct timespec basetime;
 
 extern struct timezone tz;			/* XXX */
 
