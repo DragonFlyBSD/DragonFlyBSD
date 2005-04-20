@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.23 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.24 2005/04/20 21:37:06 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -454,6 +454,7 @@ struct uio;
 
 void		 m_adj(struct mbuf *, int);
 void		 m_cat(struct mbuf *, struct mbuf *);
+u_int		 m_countm(struct mbuf *m, struct mbuf **lastm, u_int *mbcnt);
 void		 m_copyback(struct mbuf *, int, int, caddr_t);
 void		 m_copydata(const struct mbuf *, int, int, caddr_t);
 struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
@@ -471,6 +472,7 @@ struct  mbuf	*m_getcl(int how, short type, int flags);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
+u_int		 m_lengthm(struct mbuf *m, struct mbuf **lastm);
 void		 m_move_pkthdr(struct mbuf *, struct mbuf *);
 struct	mbuf	*m_prepend(struct mbuf *, int, int);
 void		 m_print(const struct mbuf *m);

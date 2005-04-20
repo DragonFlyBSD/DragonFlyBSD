@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2005 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.17 2005/04/20 09:28:29 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.18 2005/04/20 21:37:06 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -474,14 +475,11 @@ sbrelease(sb, so)
  * discarded and mbufs are compacted where possible.
  */
 void
-sbappend(sb, m)
-	struct sockbuf *sb;
-	struct mbuf *m;
+sbappend(struct sockbuf *sb, struct mbuf *m)
 {
 	struct mbuf *n;
-	boolean_t wasempty = (sb->sb_mb == NULL);
 
-	if (m == 0)
+	if (m == NULL)
 		return;
 	n = sb->sb_mb;
 	if (n) {
@@ -495,7 +493,7 @@ sbappend(sb, m)
 		} while (n->m_next && (n = n->m_next));
 	}
 	sbcompress(sb, m, n);
-	if (wasempty)
+	if (n == NULL)
 		sb->sb_lastrecord = sb->sb_mb;
 }
 
@@ -539,48 +537,56 @@ sbcheck(sb)
 #endif
 
 /*
- * As above, except the mbuf chain
- * begins a new record.
+ * Same as sbappend(), except the mbuf chain begins a new record.
  */
 void
-sbappendrecord(sb, m0)
-	struct sockbuf *sb;
-	struct mbuf *m0;
+sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
 {
-	struct mbuf *m;
+	struct mbuf *firstmbuf;
+	struct mbuf *secondmbuf;
 
-	if (m0 == 0)
+	if (m0 == NULL)
 		return;
 
-	sballoc(sb, m0);
 	/*
-	 * Put the first mbuf on the queue.
-	 * Note this permits zero length records.
+	 * Break the first mbuf off from the rest of the mbuf chain.
 	 */
-	if (sb->sb_mb)
-		sb->sb_lastrecord->m_nextpkt = m0;
-	else
-		sb->sb_mb = m0;
-	sb->sb_lastrecord = m0;
+	firstmbuf = m0;
+	secondmbuf = m0->m_next;
+	m0->m_next = NULL;
 
-	m = m0->m_next;
-	m0->m_next = 0;
-	if (m && (m0->m_flags & M_EOR)) {
-		m0->m_flags &= ~M_EOR;
-		m->m_flags |= M_EOR;
+	/*
+	 * Insert the first mbuf of the m0 mbuf chain as the last record of
+	 * the sockbuf.  Note this permits zero length records!
+	 */
+	if (sb->sb_mb == NULL)
+		sb->sb_mb = firstmbuf;
+	else
+		sb->sb_lastrecord->m_nextpkt = firstmbuf;
+	sb->sb_lastrecord = firstmbuf;	/* update hint for new last record */
+
+	if ((firstmbuf->m_flags & M_EOR) && (secondmbuf != NULL)) {
+		/* propagate the EOR flag */
+		firstmbuf->m_flags &= ~M_EOR;
+		secondmbuf->m_flags |= M_EOR;
 	}
-	sbcompress(sb, m, m0);
+
+	/*
+	 * The succeeding call to sbcompress() omits accounting for
+	 * the first mbuf, so do it here.
+	 */
+	sballoc(sb, firstmbuf);
+
+	/* Compact the rest of the mbuf chain in after the first mbuf. */
+	sbcompress(sb, secondmbuf, firstmbuf);
 }
 
 /*
- * As above except that OOB data
- * is inserted at the beginning of the sockbuf,
+ * As above except that OOB data is inserted at the beginning of the sockbuf,
  * but after any other OOB data.
  */
 void
-sbinsertoob(sb, m0)
-	struct sockbuf *sb;
-	struct mbuf *m0;
+sbinsertoob(struct sockbuf *sb, struct mbuf *m0)
 {
 	struct mbuf *m;
 	struct mbuf **mp;
@@ -663,96 +669,110 @@ sbappendaddr(sb, asa, m0, control)
 	for (n = m; n; n = n->m_next)
 		sballoc(sb, n);
 
-	if (sb->sb_mb)
-		sb->sb_lastrecord->m_nextpkt = m;
-	else
+	if (sb->sb_mb == NULL)
 		sb->sb_mb = m;
+	else
+		sb->sb_lastrecord->m_nextpkt = m;
 	sb->sb_lastrecord = m;
 
 	return (1);
 }
 
+/*
+ * Append control information followed by data.
+ * control must be non-null.
+ */
 int
-sbappendcontrol(sb, m0, control)
-	struct sockbuf *sb;
-	struct mbuf *control, *m0;
+sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
 {
-	struct mbuf *m, *n;
-	int space = 0;
+	struct mbuf *n;
+	u_int length, cmbcnt, m0mbcnt;
 
-	if (control == 0)
-		panic("sbappendcontrol");
-	for (m = control; ; m = m->m_next) {
-		space += m->m_len;
-		if (m->m_next == 0)
-			break;
-	}
-	n = m;			/* save pointer to last control buffer */
-	for (m = m0; m; m = m->m_next)
-		space += m->m_len;
-	if (space > sbspace(sb))
+	KASSERT(control != NULL, ("sbappendcontrol"));
+
+	length = m_countm(control, &n, &cmbcnt) + m_countm(m0, NULL, &m0mbcnt);
+	if (length > sbspace(sb))
 		return (0);
-	n->m_next = m0;			/* concatenate data to control */
-	for (m = control; m; m = m->m_next)
-		sballoc(sb, m);
 
-	if (sb->sb_mb)
-		sb->sb_lastrecord->m_nextpkt = control;
-	else
+	n->m_next = m0;			/* concatenate data to control */
+
+	if (sb->sb_mb == NULL)
 		sb->sb_mb = control;
+	else
+		sb->sb_lastrecord->m_nextpkt = control;
 	sb->sb_lastrecord = control;
+
+	sb->sb_cc += length;
+	sb->sb_mbcnt += cmbcnt + m0mbcnt;
 
 	return (1);
 }
 
 /*
- * Compress mbuf chain m into the socket
- * buffer sb following mbuf n.  If n
- * is null, the buffer is presumed empty.
+ * Compress mbuf chain m into the socket buffer sb following mbuf tailm.
+ * If tailm is null, the buffer is presumed empty.  Also, as a side-effect,
+ * increment the sockbuf counts for each mbuf in the chain.
  */
 void
-sbcompress(sb, m, n)
-	struct sockbuf *sb;
-	struct mbuf *m, *n;
+sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 {
 	int eor = 0;
-	struct mbuf *o;
 
 	while (m) {
+		struct mbuf *o;
+
 		eor |= m->m_flags & M_EOR;
+		/*
+		 * Disregard empty mbufs as long as we don't encounter
+		 * an end-of-record or there is a trailing mbuf of
+		 * the same type to propagate the EOR flag to.
+		 */
 		if (m->m_len == 0 &&
 		    (eor == 0 ||
-		     (((o = m->m_next) || (o = n)) &&
+		     (((o = m->m_next) || (o = tailm)) &&
 		      o->m_type == m->m_type))) {
 			m = m_free(m);
 			continue;
 		}
-		if (n && (n->m_flags & M_EOR) == 0 &&
-		    M_WRITABLE(n) &&
+
+		/* See if we can coalesce with preceding mbuf. */
+		if (tailm && !(tailm->m_flags & M_EOR) && M_WRITABLE(tailm) &&
 		    m->m_len <= MCLBYTES / 4 && /* XXX: Don't copy too much */
-		    m->m_len <= M_TRAILINGSPACE(n) &&
-		    n->m_type == m->m_type) {
-			bcopy(mtod(m, caddr_t), mtod(n, caddr_t) + n->m_len,
-			    (unsigned)m->m_len);
-			n->m_len += m->m_len;
-			sb->sb_cc += m->m_len;
+		    m->m_len <= M_TRAILINGSPACE(tailm) &&
+		    tailm->m_type == m->m_type) {
+			bcopy(mtod(m, caddr_t),
+			      mtod(tailm, caddr_t) + tailm->m_len,
+			      (unsigned)m->m_len);
+			tailm->m_len += m->m_len;
+			sb->sb_cc += m->m_len;		/* update sb counter */
 			m = m_free(m);
 			continue;
 		}
-		if (n)
-			n->m_next = m;
-		else
-			sb->sb_mb = m;
-		sb->sb_lastmbuf = m;
-		sballoc(sb, m);
-		n = m;
-		m->m_flags &= ~M_EOR;
-		m = m->m_next;
-		n->m_next = 0;
+
+		/* Insert whole mbuf. */
+		if (tailm == NULL) {
+			KASSERT(sb->sb_mb == NULL,
+				("sbcompress: sb_mb not NULL"));
+			sb->sb_mb = m;		/* put at front of sockbuf */
+		} else {
+			tailm->m_next = m;	/* tack m on following tailm */
+		}
+		sb->sb_lastmbuf = m;	/* update last mbuf hint */
+
+		tailm = m;	/* just inserted mbuf becomes the new tail */
+		m = m->m_next;		/* advance to next mbuf */
+		tailm->m_next = NULL;	/* split inserted mbuf off from chain */
+
+		/* update sb counters for just added mbuf */
+		sballoc(sb, tailm);
+
+		/* clear EOR on intermediate mbufs */
+		tailm->m_flags &= ~M_EOR;
 	}
+
 	if (eor) {
-		if (n)
-			n->m_flags |= eor;
+		if (tailm)
+			tailm->m_flags |= eor;	/* propagate EOR to last mbuf */
 		else
 			printf("semi-panic: sbcompress");
 	}

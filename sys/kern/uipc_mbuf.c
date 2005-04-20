@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.35 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.36 2005/04/20 21:37:06 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -1077,7 +1077,7 @@ m_freem(struct mbuf *m)
 }
 
 /*
- * Mbuffer utility routines.
+ * mbuf utility routines
  */
 
 /*
@@ -1884,4 +1884,47 @@ failed:
 	if (head)
 		m_freem(head);
 	return (NULL);
+}
+
+/*
+ * Return the number of bytes in an mbuf chain.
+ * If lastm is not NULL, also return the last mbuf.
+ */
+u_int
+m_lengthm(struct mbuf *m, struct mbuf **lastm)
+{
+	u_int len = 0;
+	struct mbuf *prev = m;
+
+	while (m) {
+		len += m->m_len;
+		prev = m;
+		m = m->m_next;
+	}
+	if (lastm != NULL)
+		*lastm = prev;
+	return (len);
+}
+
+/*
+ * Like m_lengthm(), except also keep track of mbuf usage.
+ */
+u_int
+m_countm(struct mbuf *m, struct mbuf **lastm, u_int *pmbcnt)
+{
+	u_int len = 0, mbcnt = 0;
+	struct mbuf *prev = m;
+
+	while (m) {
+		len += m->m_len;
+		mbcnt += MSIZE;
+		if (m->m_flags & M_EXT)
+			mbcnt += m->m_ext.ext_size;
+		prev = m;
+		m = m->m_next;
+	}
+	if (lastm != NULL)
+		*lastm = prev;
+	*pmbcnt = mbcnt;
+	return (len);
 }
