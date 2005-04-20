@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.24 2005/03/31 12:31:31 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.25 2005/04/20 10:22:44 hmp Exp $
  */
 
 #include "use_bpf.h"
@@ -1091,6 +1091,17 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 		if (slen != 0)
 			catchpacket(d, (u_char *)m, pktlen, slen, bpf_mcopy);
 	}
+}
+
+void
+bpf_mtap_family(struct bpf_if *bp, struct mbuf *m, sa_family_t family)
+{
+	u_int family4;
+
+	KKASSERT(family != AF_UNSPEC);
+	
+	family4 = (u_int)family;
+	bpf_ptap(bp, m, &family4, sizeof(family4));
 }
 
 /*
