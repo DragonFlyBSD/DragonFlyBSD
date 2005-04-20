@@ -1,4 +1,6 @@
 /*
+ * LWKT_RWLOCK.C (MP SAFE)
+ *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
@@ -33,7 +35,7 @@
  * 
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.6 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.7 2005/04/20 17:03:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +46,8 @@
 #include <sys/queue.h>
 
 /*
+ * lwkt_rwlock_init() (MP SAFE)
+ *
  * NOTE! called from low level boot, we cannot do anything fancy.
  */
 void
@@ -55,12 +59,18 @@ lwkt_rwlock_init(lwkt_rwlock_t lock)
     lock->rw_requests = 0;
 }
 
+/*
+ * lwkt_rwlock_uninit() (MP SAFE)
+ */
 void
 lwkt_rwlock_uninit(lwkt_rwlock_t lock)
 {
     /* empty */
 }
 
+/*
+ * lwkt_exlock() (MP SAFE)
+ */
 void
 lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 {
@@ -82,6 +92,9 @@ lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
     lwkt_reltoken(&ilock);
 }
 
+/*
+ * lwkt_shlock() (MP SAFE)
+ */
 void
 lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg)
 {
@@ -99,6 +112,9 @@ lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg)
     lwkt_reltoken(&ilock);
 }
 
+/*
+ * lwkt_exunlock() (MP SAFE)
+ */
 void
 lwkt_exunlock(lwkt_rwlock_t lock)
 {
@@ -115,6 +131,9 @@ lwkt_exunlock(lwkt_rwlock_t lock)
     lwkt_reltoken(&ilock);
 }
 
+/*
+ * lwkt_shunlock() (MP SAFE)
+ */
 void
 lwkt_shunlock(lwkt_rwlock_t lock)
 {
