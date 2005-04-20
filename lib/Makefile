@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.17 2005/03/13 15:10:02 swildner Exp $
+# $DragonFly: src/lib/Makefile,v 1.18 2005/04/20 21:06:05 joerg Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -21,7 +21,7 @@
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
 SUBDIR=	${_csu} csu/common libarchive libcom_err libcrypt msun libmd \
-	libncurses libradius libskey libtacplus libutil libsbuf ${_compat} \
+	libncurses libradius libskey libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} libbz2 libc ${_libc_r} libcalendar \
 	libcam libcompat libdevstat libdisk libedit libfetch libftpio \
 	libipsec libipx libisc libkcore libkinfo libkvm libmagic \
@@ -50,7 +50,6 @@ _libsmutil=	libsmutil
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
-_compat=	compat
 _libncp=	libncp
 _libsmb=	libsmb
 _libvgl=	libvgl
