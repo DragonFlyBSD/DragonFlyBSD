@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)doc-common	8.1 (Berkeley) 06/08/93
-.\"	$DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-common,v 1.6 2005/04/10 00:02:01 hmp Exp $ 
+.\"	$DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-common,v 1.7 2005/04/20 18:21:16 swildner Exp $ 
 .\"
 .\"     %beginstrip%
 .
@@ -398,6 +398,7 @@
 .ds doc-operating-system-NetBSD-1.5  1.5
 .ds doc-operating-system-NetBSD-1.6  1.6
 .ds doc-operating-system-NetBSD-2.0  2.0
+.ds doc-operating-system-NetBSD-3.0  3.0
 .
 .ds doc-operating-system-FreeBSD-1.0     1.0
 .ds doc-operating-system-FreeBSD-1.1     1.1
