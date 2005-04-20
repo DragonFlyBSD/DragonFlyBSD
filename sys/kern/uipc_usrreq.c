@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.20 2005/04/20 19:38:22 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.21 2005/04/20 19:43:53 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +98,7 @@ uipc_abort(struct socket *so)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	unp_drop(unp, ECONNABORTED);
 	unp_detach(unp);
@@ -111,7 +111,7 @@ uipc_accept(struct socket *so, struct sockaddr **nam)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 
 	/*
@@ -132,7 +132,7 @@ uipc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp != 0)
+	if (unp != NULL)
 		return EISCONN;
 	return unp_attach(so, ai);
 }
@@ -142,7 +142,7 @@ uipc_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	return unp_bind(unp, nam, td);
 }
@@ -152,7 +152,7 @@ uipc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	return unp_connect(so, nam, td);
 }
@@ -162,7 +162,7 @@ uipc_connect2(struct socket *so1, struct socket *so2)
 {
 	struct unpcb *unp = so1->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 
 	return unp_connect2(so1, so2);
@@ -175,7 +175,7 @@ uipc_detach(struct socket *so)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 
 	unp_detach(unp);
@@ -187,7 +187,7 @@ uipc_disconnect(struct socket *so)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	unp_disconnect(unp);
 	return 0;
@@ -198,7 +198,7 @@ uipc_listen(struct socket *so, struct thread *td)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0 || unp->unp_vnode == 0)
+	if (unp == NULL || unp->unp_vnode == NULL)
 		return EINVAL;
 	return unp_listen(unp, td);
 }
@@ -208,7 +208,7 @@ uipc_peeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	if (unp->unp_conn && unp->unp_conn->unp_addr)
 		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr);
@@ -230,7 +230,7 @@ uipc_rcvd(struct socket *so, int flags)
 	struct socket *so2;
 	u_long newhiwat;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	switch (so->so_type) {
 	case SOCK_DGRAM:
@@ -238,7 +238,7 @@ uipc_rcvd(struct socket *so, int flags)
 		/*NOTREACHED*/
 
 	case SOCK_STREAM:
-		if (unp->unp_conn == 0)
+		if (unp->unp_conn == NULL)
 			break;
 		so2 = unp->unp_conn->unp_socket;
 		/*
@@ -247,8 +247,8 @@ uipc_rcvd(struct socket *so, int flags)
 		 */
 		so2->so_snd.sb_mbmax += unp->unp_mbcnt - so->so_rcv.sb_mbcnt;
 		unp->unp_mbcnt = so->so_rcv.sb_mbcnt;
-		newhiwat = so2->so_snd.sb_hiwat + unp->unp_cc -
-		    so->so_rcv.sb_cc;
+		newhiwat =
+		    so2->so_snd.sb_hiwat + unp->unp_cc - so->so_rcv.sb_cc;
 		chgsbsize(so2->so_cred->cr_uidinfo, &so2->so_snd.sb_hiwat,
 		    newhiwat, RLIM_INFINITY);
 		unp->unp_cc = so->so_rcv.sb_cc;
@@ -272,7 +272,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	struct socket *so2;
 	u_long newhiwat;
 
-	if (unp == 0) {
+	if (unp == NULL) {
 		error = EINVAL;
 		goto release;
 	}
@@ -298,7 +298,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 			if (error)
 				break;
 		} else {
-			if (unp->unp_conn == 0) {
+			if (unp->unp_conn == NULL) {
 				error = ENOTCONN;
 				break;
 			}
@@ -310,8 +310,8 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 			from = &sun_noname;
 		if (sbappendaddr(&so2->so_rcv, from, m, control)) {
 			sorwakeup(so2);
-			m = 0;
-			control = 0;
+			m = NULL;
+			control = NULL;
 		} else
 			error = ENOBUFS;
 		if (nam)
@@ -325,7 +325,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		 * Note: A better implementation would complain
 		 * if not equal to the peer's address.
 		 */
-		if ((so->so_state & SS_ISCONNECTED) == 0) {
+		if (!(so->so_state & SS_ISCONNECTED)) {
 			if (nam) {
 				error = unp_connect(so, nam, td);
 				if (error)
@@ -340,7 +340,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 			error = EPIPE;
 			break;
 		}
-		if (unp->unp_conn == 0)
+		if (unp->unp_conn == NULL)
 			panic("uipc_send connected but no connection?");
 		so2 = unp->unp_conn->unp_socket;
 		/*
@@ -350,7 +350,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		 */
 		if (control) {
 			if (sbappendcontrol(&so2->so_rcv, m, control))
-				control = 0;
+				control = NULL;
 		} else
 			sbappend(&so2->so_rcv, m);
 		so->so_snd.sb_mbmax -=
@@ -362,7 +362,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		    newhiwat, RLIM_INFINITY);
 		unp->unp_conn->unp_cc = so2->so_rcv.sb_cc;
 		sorwakeup(so2);
-		m = 0;
+		m = NULL;
 		break;
 
 	default:
@@ -370,8 +370,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	}
 
 	/*
-	 * SEND_EOF is equivalent to a SEND followed by
-	 * a SHUTDOWN.
+	 * SEND_EOF is equivalent to a SEND followed by a SHUTDOWN.
 	 */
 	if (flags & PRUS_EOF) {
 		socantsendmore(so);
@@ -395,10 +394,10 @@ uipc_sense(struct socket *so, struct stat *sb)
 	struct unpcb *unp = so->so_pcb;
 	struct socket *so2;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	sb->st_blksize = so->so_snd.sb_hiwat;
-	if (so->so_type == SOCK_STREAM && unp->unp_conn != 0) {
+	if (so->so_type == SOCK_STREAM && unp->unp_conn != NULL) {
 		so2 = unp->unp_conn->unp_socket;
 		sb->st_blksize += so2->so_rcv.sb_cc;
 	}
@@ -414,7 +413,7 @@ uipc_shutdown(struct socket *so)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	socantsendmore(so);
 	unp_shutdown(unp);
@@ -426,7 +425,7 @@ uipc_sockaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct unpcb *unp = so->so_pcb;
 
-	if (unp == 0)
+	if (unp == NULL)
 		return EINVAL;
 	if (unp->unp_addr)
 		*nam = dup_sockaddr((struct sockaddr *)unp->unp_addr);
@@ -442,9 +441,7 @@ struct pr_usrreqs uipc_usrreqs = {
 };
 
 int
-uipc_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+uipc_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	struct unpcb *unp = so->so_pcb;
 	int error;
@@ -499,11 +496,13 @@ SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW,
 	   &unpst_sendspace, 0, "");
 SYSCTL_INT(_net_local_stream, OID_AUTO, recvspace, CTLFLAG_RW,
 	   &unpst_recvspace, 0, "");
+
 SYSCTL_DECL(_net_local_dgram);
 SYSCTL_INT(_net_local_dgram, OID_AUTO, maxdgram, CTLFLAG_RW,
 	   &unpdg_sendspace, 0, "");
 SYSCTL_INT(_net_local_dgram, OID_AUTO, recvspace, CTLFLAG_RW,
 	   &unpdg_recvspace, 0, "");
+
 SYSCTL_DECL(_net_local);
 SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0, "");
 
@@ -548,23 +547,22 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 }
 
 static void
-unp_detach(unp)
-	struct unpcb *unp;
+unp_detach(struct unpcb *unp)
 {
 	LIST_REMOVE(unp, unp_link);
 	unp->unp_gencnt = ++unp_gencnt;
 	--unp_count;
 	if (unp->unp_vnode) {
-		unp->unp_vnode->v_socket = 0;
+		unp->unp_vnode->v_socket = NULL;
 		vrele(unp->unp_vnode);
-		unp->unp_vnode = 0;
+		unp->unp_vnode = NULL;
 	}
 	if (unp->unp_conn)
 		unp_disconnect(unp);
 	while (!LIST_EMPTY(&unp->unp_refs))
 		unp_drop(LIST_FIRST(&unp->unp_refs), ECONNRESET);
 	soisdisconnected(unp->unp_socket);
-	unp->unp_socket->so_pcb = 0;
+	unp->unp_socket->so_pcb = NULL;
 	if (unp_rights) {
 		/*
 		 * Normally the receive buffer is flushed later,
@@ -577,7 +575,7 @@ unp_detach(unp)
 		unp_gc();
 	}
 	if (unp->unp_addr)
-		FREE(unp->unp_addr, M_SONAME);
+		free(unp->unp_addr, M_SONAME);
 	zfree(unp_zone, unp);
 }
 
@@ -660,7 +658,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (error)
 		goto bad;
 	so2 = vp->v_socket;
-	if (so2 == 0) {
+	if (so2 == NULL) {
 		error = ECONNREFUSED;
 		goto bad;
 	}
@@ -669,8 +667,8 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		goto bad;
 	}
 	if (so->so_proto->pr_flags & PR_CONNREQUIRED) {
-		if ((so2->so_options & SO_ACCEPTCONN) == 0 ||
-		    (so3 = sonewconn(so2, 0)) == 0) {
+		if (!(so2->so_options & SO_ACCEPTCONN) ||
+		    (so3 = sonewconn(so2, 0)) == NULL) {
 			error = ECONNREFUSED;
 			goto bad;
 		}
@@ -712,9 +710,7 @@ bad:
 }
 
 int
-unp_connect2(so, so2)
-	struct socket *so;
-	struct socket *so2;
+unp_connect2(struct socket *so, struct socket *so2)
 {
 	struct unpcb *unp = so->so_pcb;
 	struct unpcb *unp2;
@@ -743,24 +739,23 @@ unp_connect2(so, so2)
 }
 
 static void
-unp_disconnect(unp)
-	struct unpcb *unp;
+unp_disconnect(struct unpcb *unp)
 {
 	struct unpcb *unp2 = unp->unp_conn;
 
-	if (unp2 == 0)
+	if (unp2 == NULL)
 		return;
-	unp->unp_conn = 0;
-	switch (unp->unp_socket->so_type) {
 
+	unp->unp_conn = NULL;
+
+	switch (unp->unp_socket->so_type) {
 	case SOCK_DGRAM:
 		LIST_REMOVE(unp, unp_reflink);
 		unp->unp_socket->so_state &= ~SS_ISCONNECTED;
 		break;
-
 	case SOCK_STREAM:
 		soisdisconnected(unp->unp_socket);
-		unp2->unp_conn = 0;
+		unp2->unp_conn = NULL;
 		soisdisconnected(unp2->unp_socket);
 		break;
 	}
@@ -768,8 +763,7 @@ unp_disconnect(unp)
 
 #ifdef notdef
 void
-unp_abort(unp)
-	struct unpcb *unp;
+unp_abort(struct unpcb *unp)
 {
 
 	unp_detach(unp);
@@ -808,13 +802,13 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * The process of preparing the PCB list is too time-consuming and
 	 * resource-intensive to repeat twice on every request.
 	 */
-	if (req->oldptr == 0) {
+	if (req->oldptr == NULL) {
 		n = unp_count;
 		req->oldidx = (n + n/8) * sizeof(struct xunpcb);
 		return 0;
 	}
 
-	if (req->newptr != 0)
+	if (req->newptr != NULL)
 		return EPERM;
 
 	/*
@@ -824,7 +818,7 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	n = unp_count;
 
 	unp_list = malloc(n * sizeof *unp_list, M_TEMP, M_WAITOK);
-	if (unp_list == 0)
+	if (unp_list == NULL)
 		return ENOMEM;
 	
 	for (unp = LIST_FIRST(head), i = 0; unp && i < n;
@@ -869,20 +863,17 @@ SYSCTL_PROC(_net_local_stream, OID_AUTO, pcblist, CTLFLAG_RD,
 	    "List of active local stream sockets");
 
 static void
-unp_shutdown(unp)
-	struct unpcb *unp;
+unp_shutdown(struct unpcb *unp)
 {
 	struct socket *so;
 
-	if (unp->unp_socket->so_type == SOCK_STREAM && unp->unp_conn &&
+	if (unp->unp_socket->so_type == SOCK_STREAM && unp->unp_conn != NULL &&
 	    (so = unp->unp_conn->unp_socket))
 		socantrcvmore(so);
 }
 
 static void
-unp_drop(unp, errno)
-	struct unpcb *unp;
-	int errno;
+unp_drop(struct unpcb *unp, int errno)
 {
 	struct socket *so = unp->unp_socket;
 
@@ -977,7 +968,7 @@ void
 unp_init(void)
 {
 	unp_zone = zinit("unpcb", sizeof(struct unpcb), nmbclusters, 0, 0);
-	if (unp_zone == 0)
+	if (unp_zone == NULL)
 		panic("unp_init");
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
@@ -1045,7 +1036,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		if (control->m_flags & M_EXT)
 			return (E2BIG);
 		MCLGET(control, MB_WAIT);
-		if ((control->m_flags & M_EXT) == 0)
+		if (!(control->m_flags & M_EXT))
 			return (ENOBUFS);
 
 		/* copy the data to the cluster */
@@ -1091,11 +1082,13 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	return (0);
 }
 
-static int	unp_defer, unp_gcing;
+static int unp_defer;
 
 static void
 unp_gc()
 {
+	static boolean_t unp_gcing;
+
 	struct file *fp, *nextfp;
 	struct socket *so;
 	struct file **extra_ref, **fpp;
@@ -1103,7 +1096,7 @@ unp_gc()
 
 	if (unp_gcing)
 		return;
-	unp_gcing = 1;
+	unp_gcing = TRUE;
 	unp_defer = 0;
 	/* 
 	 * before going through all this, set all FDs to 
@@ -1152,10 +1145,10 @@ unp_gc()
 			 * Now check if it is possibly one of OUR sockets.
 			 */ 
 			if (fp->f_type != DTYPE_SOCKET ||
-			    (so = (struct socket *)fp->f_data) == 0)
+			    (so = (struct socket *)fp->f_data) == NULL)
 				continue;
 			if (so->so_proto->pr_domain != &localdomain ||
-			    (so->so_proto->pr_flags&PR_RIGHTS) == 0)
+			    !(so->so_proto->pr_flags & PR_RIGHTS))
 				continue;
 #ifdef notdef
 			if (so->so_rcv.sb_flags & SB_LOCK) {
@@ -1223,8 +1216,8 @@ unp_gc()
 	 * 91/09/19, bsy@cs.cmu.edu
 	 */
 	extra_ref = malloc(nfiles * sizeof(struct file *), M_FILE, M_WAITOK);
-	for (nunref = 0, fp = LIST_FIRST(&filehead), fpp = extra_ref; fp != 0;
-	    fp = nextfp) {
+	for (nunref = 0, fp = LIST_FIRST(&filehead), fpp = extra_ref;
+	     fp != NULL; fp = nextfp) {
 		nextfp = LIST_NEXT(fp, f_list);
 		/* 
 		 * If it's not open, skip it
@@ -1254,7 +1247,7 @@ unp_gc()
 	for (i = nunref, fpp = extra_ref; --i >= 0; ++fpp)
 		closef(*fpp, NULL);
 	free((caddr_t)extra_ref, M_FILE);
-	unp_gcing = 0;
+	unp_gcing = FALSE;
 }
 
 void
@@ -1276,9 +1269,7 @@ unp_listen(struct unpcb *unp, struct thread *td)
 }
 
 static void
-unp_scan(m0, op)
-	struct mbuf *m0;
-	void (*op) (struct file *);
+unp_scan(struct mbuf *m0, void (*op)(struct file *))
 {
 	struct mbuf *m;
 	struct file **rp;
@@ -1307,8 +1298,7 @@ unp_scan(m0, op)
 }
 
 static void
-unp_mark(fp)
-	struct file *fp;
+unp_mark(struct file *fp)
 {
 
 	if (fp->f_flag & FMARK)
@@ -1318,8 +1308,7 @@ unp_mark(fp)
 }
 
 static void
-unp_discard(fp)
-	struct file *fp;
+unp_discard(struct file *fp)
 {
 
 	fp->f_msgcount--;
