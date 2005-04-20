@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.23 2005/02/04 02:52:15 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.24 2005/04/20 10:51:24 joerg Exp $
  *
  */
 
@@ -91,6 +91,8 @@ struct pci_quirk pci_quirks[] = {
 	 */
 	{ 0x71138086, PCI_QUIRK_MAP_REG,	0x90,	 0 },
 	{ 0x719b8086, PCI_QUIRK_MAP_REG,	0x90,	 0 },
+	/* As does the Serverworks OSB4 (the SMBus mapping register) */
+	{ 0x02001166, PCI_QUIRK_MAP_REG,	0x90,	 0 },
 
 	{ 0 }
 };

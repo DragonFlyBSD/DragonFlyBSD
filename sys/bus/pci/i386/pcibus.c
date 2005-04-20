@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.11 2004/03/25 01:39:27 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.12 2005/04/20 10:51:24 joerg Exp $
  *
  */
 
@@ -238,6 +238,11 @@ nexus_pcib_is_host_bridge(int bus, int slot, int func,
 	case 0x00061166:
 		/* FALLTHROUGH */
 	case 0x00081166:
+		/* FALLTHROUGH */
+	case 0x02011166:
+		/* FALLTHROUGH */
+	case 0x010f1014: /* IBM re-badged ServerWorks chipset */
+		/* FALLTHROUGH */
 		s = "ServerWorks host to PCI bridge";
 		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
@@ -249,6 +254,13 @@ nexus_pcib_is_host_bridge(int bus, int slot, int func,
 
 	case 0x00101166:
 		s = "ServerWorks CIOB30 host to PCI bridge";
+		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
+		break;
+
+	case 0x00111166:
+		/* FALLTHROUGH */
+	case 0x03021014: /* IBM re-badged ServerWorks chipset */
+		s = "ServerWorks CMIC-HE host to PCI-X bridge";
 		*busnum = nexus_pcib_read_config(0, bus, slot, func, 0x44, 1);
 		break;
 
