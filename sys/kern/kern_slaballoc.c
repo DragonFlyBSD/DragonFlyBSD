@@ -1,5 +1,5 @@
 /*
- * KERN_SLABALLOC.C	- Kernel SLAB memory allocator
+ * KERN_SLABALLOC.C	- Kernel SLAB memory allocator (MP SAFE)
  * 
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.29 2005/04/13 04:00:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.30 2005/04/20 17:03:08 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -331,7 +331,7 @@ zoneindex(unsigned long *bytes)
 }
 
 /*
- * malloc()	(SLAB ALLOCATOR)
+ * malloc()	(SLAB ALLOCATOR) (MP SAFE)
  *
  *	Allocate memory via the slab allocator.  If the request is too large,
  *	or if it page-aligned beyond a certain size, we fall back to the
@@ -368,9 +368,13 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
     ++type->ks_calls;
 
     /*
-     * Handle the case where the limit is reached.  Panic if can't return
-     * NULL.  XXX the original malloc code looped, but this tended to
+     * Handle the case where the limit is reached.  Panic if we can't return
+     * NULL.  The original malloc code looped, but this tended to
      * simply deadlock the computer.
+     *
+     * ks_loosememuse is an up-only limit that is NOT MP-synchronized, used
+     * to determine if a more complete limit check should be done.  The
+     * actual memory use is tracked via ks_memuse[cpu].
      */
     while (type->ks_loosememuse >= type->ks_limit) {
 	int i;
@@ -378,7 +382,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 
 	for (i = ttl = 0; i < ncpus; ++i)
 	    ttl += type->ks_memuse[i];
-	type->ks_loosememuse = ttl;
+	type->ks_loosememuse = ttl;	/* not MP synchronized */
 	if (ttl >= type->ks_limit) {
 	    if (flags & M_NULLOK)
 		return(NULL);
@@ -577,7 +581,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 done:
     ++type->ks_inuse[gd->gd_cpuid];
     type->ks_memuse[gd->gd_cpuid] += size;
-    type->ks_loosememuse += size;
+    type->ks_loosememuse += size;	/* not MP synchronized */
     crit_exit();
     if (flags & M_ZERO)
 	bzero(chunk, size);
@@ -591,6 +595,13 @@ fail:
     return(NULL);
 }
 
+/*
+ * kernel realloc.  (SLAB ALLOCATOR) (MP SAFE)
+ *
+ * Generally speaking this routine is not called very often and we do
+ * not attempt to optimize it beyond reusing the same pointer if the
+ * new size fits within the chunking of the old pointer's zone.
+ */
 void *
 realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 {
@@ -650,6 +661,11 @@ realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     return(nptr);
 }
 
+/*
+ * Allocate a copy of the specified string.
+ *
+ * (MP SAFE) (MAY BLOCK)
+ */
 char *
 strdup(const char *str, struct malloc_type *type)
 {
@@ -679,6 +695,13 @@ free_remote(void *ptr)
 
 #endif
 
+/*
+ * free (SLAB ALLOCATOR) (MP SAFE)
+ *
+ * Free a memory block previously allocated by malloc.  Note that we do not
+ * attempt to uplodate ks_loosememuse as MP races could prevent us from
+ * checking memory limits in malloc.
+ */
 void
 free(void *ptr, struct malloc_type *type)
 {
@@ -852,7 +875,7 @@ free(void *ptr, struct malloc_type *type)
 }
 
 /*
- * kmem_slab_alloc()
+ * kmem_slab_alloc()	(MP SAFE) (GETS BGL)
  *
  *	Directly allocate and wire kernel memory in PAGE_SIZE chunks with the
  *	specified alignment.  M_* flags are expected in the flags field.
@@ -868,6 +891,8 @@ free(void *ptr, struct malloc_type *type)
  *	use PQ_CACHE pages.  However, if an interrupt thread is run
  *	non-preemptively or blocks and then runs non-preemptively, then
  *	it is free to use PQ_CACHE pages.
+ *
+ *	This routine will currently obtain the BGL.
  */
 static void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
@@ -885,6 +910,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     /*
      * Reserve properly aligned space from kernel_map
      */
+    get_mplock();
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
     vm_map_lock(map);
@@ -894,6 +920,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
 	vm_map_entry_release(count);
+	rel_mplock();
 	return(NULL);
     }
     offset = addr - VM_MIN_KERNEL_ADDRESS;
@@ -976,6 +1003,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    vm_map_unlock(map);
 	    crit_exit();
 	    vm_map_entry_release(count);
+	    rel_mplock();
 	    return(NULL);
 	}
     }
@@ -1007,14 +1035,20 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
     vm_map_unlock(map);
     vm_map_entry_release(count);
+    rel_mplock();
     return((void *)addr);
 }
 
+/*
+ * kmem_slab_free()	(MP SAFE) (GETS BGL)
+ */
 static void
 kmem_slab_free(void *ptr, vm_size_t size)
 {
+    get_mplock();
     crit_enter();
     vm_map_remove(kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
     crit_exit();
+    rel_mplock();
 }
 
