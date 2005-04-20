@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.9 2004/06/21 03:48:07 dillon Exp $
+# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.10 2005/04/20 21:39:00 joerg Exp $
 
 # include compiler-specific bsd.cpu.mk.  Note that CCVER may or may not
 # be passed as an environment variable.  If not set we make it consistent
@@ -12,7 +12,7 @@
 # It is not subject to local CCVER overrides in Makefiles and it is inherited
 # by all sub-makes.
 
-CCVER ?= gcc2
+CCVER ?= gcc34
 _CCVER := ${CCVER}
 HOST_CCVER?= ${_CCVER}
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.16 2005/01/04 19:14:18 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.17 2005/04/20 21:39:00 joerg Exp $
  */
 
 #include <err.h>
@@ -35,17 +35,8 @@
 #include <string.h>
 #include <unistd.h>
 
-/*
- * The system default compiler for IA32 is gcc2.  When generating 
- * cross-building tools (TARGET_ARCH is set), or if the architecture
- * is not IA32, the system default compiler is gcc3.
- */
 #ifndef CCVER_DEFAULT
-#if defined(__i386__) && !defined(TARGET_ARCH)
-#define CCVER_DEFAULT "gcc2"
-#else
 #define CCVER_DEFAULT "gcc34"
-#endif
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
