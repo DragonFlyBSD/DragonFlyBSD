@@ -32,7 +32,7 @@
  *
  *	@(#)unpcb.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/unpcb.h,v 1.9.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/unpcb.h,v 1.3 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/sys/sys/unpcb.h,v 1.4 2005/04/20 19:38:22 hsu Exp $
  */
 
 #ifndef _SYS_UNPCB_H_
@@ -101,8 +101,6 @@ struct	unpcb {
  */
 #define UNP_HAVEPC			0x001
 #define UNP_HAVEPCCACHED		0x002
-
-#define	sotounpcb(so)	((struct unpcb *)((so)->so_pcb))
 
 /* Hack alert -- this structure depends on <sys/socketvar.h>. */
 #ifdef	_SYS_SOCKETVAR_H_

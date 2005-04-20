@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.19 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.20 2005/04/20 19:38:22 hsu Exp $
  */
 
 /*
@@ -187,8 +187,8 @@ portal_connect(struct socket *so, struct socket *so2)
 	if ((so3 = sonewconn(so2, 0)) == 0)
 		return (ECONNREFUSED);
 
-	unp2 = sotounpcb(so2);
-	unp3 = sotounpcb(so3);
+	unp2 = so2->so_pcb;
+	unp3 = so3->so_pcb;
 	if (unp2->unp_addr)
 		unp3->unp_addr = (struct sockaddr_un *)
 			dup_sockaddr((struct sockaddr *)unp2->unp_addr);

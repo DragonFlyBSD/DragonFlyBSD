@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.19 2005/03/04 03:05:59 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.20 2005/04/20 19:38:22 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ static int     unp_listen (struct unpcb *, struct thread *);
 static int
 uipc_abort(struct socket *so)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -109,7 +109,7 @@ uipc_abort(struct socket *so)
 static int
 uipc_accept(struct socket *so, struct sockaddr **nam)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -130,7 +130,7 @@ uipc_accept(struct socket *so, struct sockaddr **nam)
 static int
 uipc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp != 0)
 		return EISCONN;
@@ -140,7 +140,7 @@ uipc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 static int
 uipc_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -150,7 +150,7 @@ uipc_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 uipc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -160,7 +160,7 @@ uipc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 uipc_connect2(struct socket *so1, struct socket *so2)
 {
-	struct unpcb *unp = sotounpcb(so1);
+	struct unpcb *unp = so1->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -173,7 +173,7 @@ uipc_connect2(struct socket *so1, struct socket *so2)
 static int
 uipc_detach(struct socket *so)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -185,7 +185,7 @@ uipc_detach(struct socket *so)
 static int
 uipc_disconnect(struct socket *so)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -196,7 +196,7 @@ uipc_disconnect(struct socket *so)
 static int
 uipc_listen(struct socket *so, struct thread *td)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0 || unp->unp_vnode == 0)
 		return EINVAL;
@@ -206,7 +206,7 @@ uipc_listen(struct socket *so, struct thread *td)
 static int
 uipc_peeraddr(struct socket *so, struct sockaddr **nam)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -226,7 +226,7 @@ uipc_peeraddr(struct socket *so, struct sockaddr **nam)
 static int
 uipc_rcvd(struct socket *so, int flags)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 	struct socket *so2;
 	u_long newhiwat;
 
@@ -268,7 +268,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	  struct mbuf *control, struct thread *td)
 {
 	int error = 0;
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 	struct socket *so2;
 	u_long newhiwat;
 
@@ -392,7 +392,7 @@ release:
 static int
 uipc_sense(struct socket *so, struct stat *sb)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 	struct socket *so2;
 
 	if (unp == 0)
@@ -412,7 +412,7 @@ uipc_sense(struct socket *so, struct stat *sb)
 static int
 uipc_shutdown(struct socket *so)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -424,7 +424,7 @@ uipc_shutdown(struct socket *so)
 static int
 uipc_sockaddr(struct socket *so, struct sockaddr **nam)
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 
 	if (unp == 0)
 		return EINVAL;
@@ -446,7 +446,7 @@ uipc_ctloutput(so, sopt)
 	struct socket *so;
 	struct sockopt *sopt;
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 	int error;
 
 	switch (sopt->sopt_dir) {
@@ -674,9 +674,9 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 			error = ECONNREFUSED;
 			goto bad;
 		}
-		unp = sotounpcb(so);
-		unp2 = sotounpcb(so2);
-		unp3 = sotounpcb(so3);
+		unp = so->so_pcb;
+		unp2 = so2->so_pcb;
+		unp3 = so3->so_pcb;
 		if (unp2->unp_addr)
 			unp3->unp_addr = (struct sockaddr_un *)
 				dup_sockaddr((struct sockaddr *)unp2->unp_addr);
@@ -716,12 +716,12 @@ unp_connect2(so, so2)
 	struct socket *so;
 	struct socket *so2;
 {
-	struct unpcb *unp = sotounpcb(so);
+	struct unpcb *unp = so->so_pcb;
 	struct unpcb *unp2;
 
 	if (so2->so_type != so->so_type)
 		return (EPROTOTYPE);
-	unp2 = sotounpcb(so2);
+	unp2 = so2->so_pcb;
 	unp->unp_conn = unp2;
 	switch (so->so_type) {
 
