@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004,2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Hiten Pandya <hmp@backplane.com> and Matthew Dillon
@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.12 2005/03/04 06:10:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.13 2005/04/20 10:24:48 hmp Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
