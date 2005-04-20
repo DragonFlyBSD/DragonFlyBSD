@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.34 2005/04/14 11:15:52 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.35 2005/04/20 08:04:32 joerg Exp $
  */
 
 #include "opt_ntp.h"
@@ -324,11 +324,12 @@ hardclock(systimer_t info, struct intrframe *frame)
 	    if (ntp_tick_permanent != 0) {
 		ntp_tick_acc += ntp_tick_permanent;
 		if (ntp_tick_acc >= (1LL << 32)) {
-		    basetime.tv_nsec += (-ntp_tick_acc) >> 32;
-		    ntp_tick_acc &= (1LL << 32) - 1;
+		    basetime.tv_nsec += ntp_tick_acc >> 32;
+		    ntp_tick_acc -= (ntp_tick_acc >> 32) << 32;
 		} else if (ntp_tick_acc <= -(1LL << 32)) {
+		    /* Negate ntp_tick_acc to avoid shifting the sign bit. */
 		    basetime.tv_nsec -= (-ntp_tick_acc) >> 32;
-		    ntp_tick_acc = -((-ntp_tick_acc) & ((1LL << 32) - 1));
+		    ntp_tick_acc += ((-ntp_tick_acc) >> 32) << 32;
 		}
  	    }
 
