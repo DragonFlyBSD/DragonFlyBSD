@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.16 2005/03/28 19:53:30 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.17 2005/04/20 09:28:29 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -485,7 +485,8 @@ sbappend(sb, m)
 		return;
 	n = sb->sb_mb;
 	if (n) {
-		n = sb->sb_lastrecord;
+		while (n->m_nextpkt)
+			n = n->m_nextpkt;
 		do {
 			if (n->m_flags & M_EOR) {
 				sbappendrecord(sb, m); /* XXXXXX!!!! */
