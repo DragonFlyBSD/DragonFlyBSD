@@ -38,7 +38,7 @@
  *      @(#)bpf_filter.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpf_filter.c,v 1.17 1999/12/29 04:38:31 peter Exp $
- * $DragonFly: src/sys/net/bpf_filter.c,v 1.6 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/bpf_filter.c,v 1.7 2005/04/20 16:05:51 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -498,8 +498,8 @@ bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 #ifdef _KERNEL
 /*
  * Return true if the 'fcode' is a valid filter program.
- * The constraints are that each jump be forward and to a valid
- * code.  The code must terminate with either an accept or reject.
+ * The constraints are that jump and memory accesses are within valid
+ * ranges, and that the code terminates with either an accept or reject.
  *
  * The kernel needs to be able to verify an application's filter code.
  * Otherwise, a bogus program could easily crash the system.
@@ -512,8 +512,7 @@ bpf_validate(const struct bpf_insn *f, int len)
 
 	for (i = 0; i < len; ++i) {
 		/*
-		 * Check that that jumps are forward, and within
-		 * the code block.
+		 * Check that that jumps are within the code block.
 		 */
 		p = &f[i];
 		if (BPF_CLASS(p->code) == BPF_JMP) {
