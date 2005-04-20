@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libradius/radlib.c,v 1.4.2.3 2002/06/17 02:24:57 brian Exp $
- *	$DragonFly: src/lib/libradius/radlib.c,v 1.3 2004/08/19 21:25:58 joerg Exp $
+ *	$DragonFly: src/lib/libradius/radlib.c,v 1.4 2005/04/20 20:45:57 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@ static int	 put_password_attr(struct rad_handle *, int,
 		    const void *, size_t);
 static int	 put_raw_attr(struct rad_handle *, int,
 		    const void *, size_t);
-static int	 split(char *, char *[], int, char *, size_t);
+static int	 split(char *, const char *[], int, char *, size_t);
 
 static void
 clear_password(struct rad_handle *h)
@@ -302,17 +302,15 @@ rad_config(struct rad_handle *h, const char *path)
 	linenum = 0;
 	while (fgets(buf, sizeof buf, fp) != NULL) {
 		int len;
-		char *fields[5];
+		const char *fields[5];
 		int nfields;
 		char msg[ERRSIZE];
-		char *type;
-		char *host, *res;
+		const char *ohost, *secret, *timeout_str, *maxtries_str;
+		const char *type, *wanttype;
+		char *host;
+		char *res;
 		char *port_str;
-		char *secret;
-		char *timeout_str;
-		char *maxtries_str;
 		char *end;
-		char *wanttype;
 		unsigned long timeout;
 		unsigned long maxtries;
 		int port;
@@ -368,7 +366,7 @@ rad_config(struct rad_handle *h, const char *path)
 			break;
 		}
 		type = fields[0];
-		host = fields[1];
+		ohost = fields[1];
 		secret = fields[2];
 		timeout_str = fields[3];
 		maxtries_str = fields[4];
@@ -379,12 +377,17 @@ rad_config(struct rad_handle *h, const char *path)
 			continue;
 
 		/* Parse and validate the fields. */
-		res = host;
+		if ((res = strdup(ohost)) == NULL) {
+			generr(h, "%s:%d: malloc failed", path, linenum);
+			retval = -1;
+			break;
+		}
 		host = strsep(&res, ":");
 		port_str = strsep(&res, ":");
 		if (port_str != NULL) {
 			port = strtoul(port_str, &end, 10);
 			if (*end != '\0') {
+				free(host);
 				generr(h, "%s:%d: invalid port", path,
 				    linenum);
 				retval = -1;
@@ -395,6 +398,7 @@ rad_config(struct rad_handle *h, const char *path)
 		if (timeout_str != NULL) {
 			timeout = strtoul(timeout_str, &end, 10);
 			if (*end != '\0') {
+				free(host);
 				generr(h, "%s:%d: invalid timeout", path,
 				    linenum);
 				retval = -1;
@@ -405,6 +409,7 @@ rad_config(struct rad_handle *h, const char *path)
 		if (maxtries_str != NULL) {
 			maxtries = strtoul(maxtries_str, &end, 10);
 			if (*end != '\0') {
+				free(host);
 				generr(h, "%s:%d: invalid maxtries", path,
 				    linenum);
 				retval = -1;
@@ -415,11 +420,13 @@ rad_config(struct rad_handle *h, const char *path)
 
 		if (rad_add_server(h, host, port, secret, timeout, maxtries) ==
 		    -1) {
+			free(host);
 			strcpy(msg, h->errmsg);
 			generr(h, "%s:%d: %s", path, linenum, msg);
 			retval = -1;
 			break;
 		}
+		free(host);
 	}
 	/* Clear out the buffer to wipe a possible copy of a shared secret */
 	memset(buf, 0, sizeof buf);
@@ -570,7 +577,7 @@ rad_get_attr(struct rad_handle *h, const void **value, size_t *len)
 	}
 	type = h->response[h->resp_pos++];
 	*len = h->response[h->resp_pos++] - 2;
-	if (h->resp_pos + *len > h->resp_len) {
+	if (h->resp_pos + (int)*len > h->resp_len) {
 		generr(h, "Malformed attribute in response");
 		return -1;
 	}
@@ -802,7 +809,7 @@ rad_strerror(struct rad_handle *h)
  * On a syntax error, places a message in the msg string, and returns -1.
  */
 static int
-split(char *str, char *fields[], int maxfields, char *msg, size_t msglen)
+split(char *str, const char *fields[], int maxfields, char *msg, size_t msglen)
 {
 	char *p;
 	int i;
@@ -868,9 +875,9 @@ split(char *str, char *fields[], int maxfields, char *msg, size_t msglen)
 int
 rad_get_vendor_attr(u_int32_t *vendor, const void **data, size_t *len)
 {
-	struct vendor_attribute *attr;
+	const struct vendor_attribute *attr;
 
-	attr = (struct vendor_attribute *)*data;
+	attr = (const struct vendor_attribute *)*data;
 	*vendor = ntohl(attr->vendor_value);
 	*data = attr->attrib_data;
 	*len = attr->attrib_len - 2;
