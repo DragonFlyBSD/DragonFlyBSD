@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.17 2005/04/15 19:08:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.18 2005/04/20 17:01:55 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -482,8 +482,6 @@ loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	     vp != NULL;
 	     vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
-		if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
-			continue;
 		/*
 		 * If the vnode that we are about to sync is no longer
 		 * associated with this mount point, start over.

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.19 2005/04/15 19:08:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.20 2005/04/20 17:01:56 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -431,8 +431,6 @@ loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	     vp != NULL;
 	     vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
-		if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
-			continue;
 		/*
 		 * If the vnode that we are about to sync is no longer
 		 * associated with this mount point, start over.

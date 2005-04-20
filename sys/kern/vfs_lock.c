@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.6 2005/04/15 19:08:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.7 2005/04/20 17:01:50 dillon Exp $
  */
 
 /*
@@ -500,23 +500,5 @@ allocvnode(int lktimeout, int lkflags)
 	vp->v_data = NULL;
 	KKASSERT(vp->v_mount == NULL);
 	return (vp);
-}
-
-struct vnode *
-allocvnode_placemarker(void)
-{
- 	struct vnode *pvp;
-
-	pvp = malloc(sizeof(struct vnode), 
-			M_VNODE, M_WAITOK|M_USE_RESERVE|M_ZERO);
-	pvp->v_flag |= VPLACEMARKER;
-	return(pvp);
-}
-
-void
-freevnode_placemarker(struct vnode *pvp)
-{
-	KKASSERT(pvp->v_flag & VPLACEMARKER);
-	free(pvp, M_VNODE);
 }
 

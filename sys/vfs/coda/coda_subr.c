@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_subr.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_subr.c,v 1.11.2.1 2001/10/25 19:18:51 dillon Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_subr.c,v 1.8 2004/03/31 02:34:37 cpressey Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_subr.c,v 1.9 2005/04/20 17:01:52 dillon Exp $
  * 
   */
 
@@ -309,8 +309,6 @@ coda_checkunmounting(struct mount *mp)
 	lwkt_gettoken(&ilock, &mntvnode_token);
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-		if (vp->v_flag & VPLACEMARKER)
-			continue;
 		cp = VTOC(vp);
 		count++;
 		if (!(cp->c_flags & C_UNMOUNTING)) {

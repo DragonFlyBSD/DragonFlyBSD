@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.19 2005/04/19 17:54:43 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.20 2005/04/20 17:01:51 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -121,9 +121,6 @@ struct statfs {
  * is done in the mount code rather then on vfs initialization.  This
  * structure is responsible for per-mount management, including vfs threading,
  * journaling, and so forth.
- *
- * NOTE: Any vnode marked VPLACEMARKER is a placemarker and should ALWAYS BE
- * SKIPPED.  NO OTHER FIELDS IN SUCH VNODES ARE VALID.
  *
  * NOTE: All VFSs must at least populate mnt_vn_ops or those VOP ops that
  * only take namecache pointers will not be able to find their operations

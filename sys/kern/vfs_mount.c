@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.9 2005/04/19 17:54:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.10 2005/04/20 17:01:50 dillon Exp $
  */
 
 /*
@@ -101,6 +101,11 @@ struct mountscan_info {
 	struct mount *msi_node;
 };
 
+struct vmntvnodescan_info {
+	TAILQ_ENTRY(vmntvnodescan_info) entry;
+	struct vnode *vp;
+};
+
 static int vnlru_nowhere = 0;
 SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 	    &vnlru_nowhere, 0,
@@ -112,6 +117,7 @@ static struct lwkt_token mntid_token;
 static struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
 static TAILQ_HEAD(,mountscan_info) mountscan_list;
 static struct lwkt_token mountlist_token;
+static TAILQ_HEAD(,vmntvnodescan_info) mntvnodescan_list;
 struct lwkt_token mntvnode_token;
 
 /*
@@ -124,7 +130,36 @@ vfs_mount_init(void)
 	lwkt_token_init(&mntvnode_token);
 	lwkt_token_init(&mntid_token);
 	TAILQ_INIT(&mountscan_list);
+	TAILQ_INIT(&mntvnodescan_list);
 }
+
+/*
+ * Support function called with mntvnode_token held to remove a vnode
+ * from the mountlist.  We must update any list scans which are in progress.
+ */
+static void
+vremovevnodemnt(struct vnode *vp)
+{
+        struct vmntvnodescan_info *info;
+
+	TAILQ_FOREACH(info, &mntvnodescan_list, entry) {
+		if (info->vp == vp)
+			info->vp = TAILQ_NEXT(vp, v_nmntvnodes);
+	}
+	TAILQ_REMOVE(&vp->v_mount->mnt_nvnodelist, vp, v_nmntvnodes);
+}
+
+/*
+ * Support function called with mntvnode_token held to move a vnode to
+ * the end of the list.
+ */
+static void
+vmovevnodetoend(struct mount *mp, struct vnode *vp)
+{
+	vremovevnodemnt(vp);
+	TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
+}
+
 
 /*
  * Allocate a new vnode and associate it with a tag, mount point, and
@@ -492,8 +527,7 @@ vlrureclaim(struct mount *mp, void *data)
 		    vp->v_type == VBAD ||	/* XXX */
 		    !vmightfree(vp, trigger)	/* critical path opt */
 		) {
-			TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-			TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,vp, v_nmntvnodes);
+			vmovevnodetoend(mp, vp);
 			--count;
 			continue;
 		}
@@ -505,12 +539,8 @@ vlrureclaim(struct mount *mp, void *data)
 		 * mountlist.
 		 */
 		if (vx_get_nonblock(vp) != 0) {
-			if (vp->v_mount == mp) {
-				TAILQ_REMOVE(&mp->mnt_nvnodelist, 
-						vp, v_nmntvnodes);
-				TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,
-						vp, v_nmntvnodes);
-			}
+			if (vp->v_mount == mp)
+				vmovevnodetoend(mp, vp);
 			--count;
 			continue;
 		}
@@ -527,12 +557,8 @@ vlrureclaim(struct mount *mp, void *data)
 		    vp->v_mount != mp ||
 		    !vtrytomakegoneable(vp, trigger)	/* critical path opt */
 		) {
-			if (vp->v_mount == mp) {
-				TAILQ_REMOVE(&mp->mnt_nvnodelist, 
-						vp, v_nmntvnodes);
-				TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,
-						vp, v_nmntvnodes);
-			}
+			if (vp->v_mount == mp)
+				vmovevnodetoend(mp, vp);
 			--count;
 			vx_put(vp);
 			continue;
@@ -546,8 +572,7 @@ vlrureclaim(struct mount *mp, void *data)
 		 * vnode to the free list if the vgone() was successful.
 		 */
 		KKASSERT(vp->v_mount == mp);
-		TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,vp, v_nmntvnodes);
+		vmovevnodetoend(mp, vp);
 		vgone(vp);
 		vx_put(vp);
 		++done;
@@ -807,7 +832,7 @@ insmntque(struct vnode *vp, struct mount *mp)
 	if (vp->v_mount != NULL) {
 		KASSERT(vp->v_mount->mnt_nvnodelistsize > 0,
 			("bad mount point vnode list size"));
-		TAILQ_REMOVE(&vp->v_mount->mnt_nvnodelist, vp, v_nmntvnodes);
+		vremovevnodemnt(vp);
 		vp->v_mount->mnt_nvnodelistsize--;
 	}
 	/*
@@ -824,9 +849,22 @@ insmntque(struct vnode *vp, struct mount *mp)
 
 
 /*
- * Scan the vnodes under a mount point.  The first function is called
- * with just the mountlist token held (no vnode lock).  The second
- * function is called with the vnode VX locked.
+ * Scan the vnodes under a mount point and issue appropriate callbacks.
+ *
+ * The fastfunc() callback is called with just the mountlist token held
+ * (no vnode lock).  It may not block and the vnode may be undergoing
+ * modifications while the caller is processing it.  The vnode will
+ * not be entirely destroyed, however, due to the fact that the mountlist
+ * token is held.  A return value < 0 skips to the next vnode without calling
+ * the slowfunc(), a return value > 0 terminates the loop.
+ *
+ * The slowfunc() callback is called after the vnode has been successfully
+ * locked based on passed flags.  The vnode is skipped if it gets rearranged
+ * or destroyed while blocking on the lock.  A non-zero return value from
+ * the slow function terminates the loop.  The slow function is allowed to
+ * arbitrarily block.  The scanning code guarentees consistency of operation
+ * even if the slow function deletes or moves the node, or blocks and some
+ * other thread deletes or moves the node.
  */
 int
 vmntvnodescan(
@@ -836,31 +874,22 @@ vmntvnodescan(
     int (*slowfunc)(struct mount *mp, struct vnode *vp, void *data),
     void *data
 ) {
+	struct vmntvnodescan_info info;
 	lwkt_tokref ilock;
-	struct vnode *pvp;
 	struct vnode *vp;
 	int r = 0;
-
-	/*
-	 * Scan the vnodes on the mount's vnode list.  Use a placemarker
-	 */
-	pvp = allocvnode_placemarker();
+	int maxcount = 1000000;
 
 	lwkt_gettoken(&ilock, &mntvnode_token);
-	TAILQ_INSERT_HEAD(&mp->mnt_nvnodelist, pvp, v_nmntvnodes);
 
-	while ((vp = TAILQ_NEXT(pvp, v_nmntvnodes)) != NULL) {
-		/*
-		 * Move the placemarker and skip other placemarkers we
-		 * encounter.  The nothing can get in our way so the
-		 * mount point on the vp must be valid.
-		 */
-		TAILQ_REMOVE(&mp->mnt_nvnodelist, pvp, v_nmntvnodes);
-		TAILQ_INSERT_AFTER(&mp->mnt_nvnodelist, vp, pvp, v_nmntvnodes);
-		if (vp->v_flag & VPLACEMARKER)	/* another procs placemarker */
-			continue;
+	info.vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
+	TAILQ_INSERT_TAIL(&mntvnodescan_list, &info, entry);
+	while ((vp = info.vp) != NULL) {
+		if (--maxcount == 0)
+			panic("maxcount reached during vmntvnodescan");
+
 		if (vp->v_type == VNON)		/* visible but not ready */
-			continue;
+			goto next;
 		KKASSERT(vp->v_mount == mp);
 
 		/*
@@ -870,7 +899,7 @@ vmntvnodescan(
 		 */
 		if (fastfunc) {
 			if ((r = fastfunc(mp, vp, data)) < 0)
-				continue;
+				goto next;
 			if (r)
 				break;
 		}
@@ -901,13 +930,18 @@ vmntvnodescan(
 				break;
 			}
 			if (error)
-				continue;
-			if (TAILQ_PREV(pvp, vnodelst, v_nmntvnodes) != vp)
-				goto skip;
-			if (vp->v_type == VNON)
-				goto skip;
-			r = slowfunc(mp, vp, data);
-skip:
+				goto next;
+			/*
+			 * Do not call the slow function if the vnode is
+			 * invalid or if it was ripped out from under us
+			 * while we (potentially) blocked.
+			 */
+			if (info.vp == vp && vp->v_type != VNON)
+				r = slowfunc(mp, vp, data);
+
+			/*
+			 * Cleanup
+			 */
 			switch(flags) {
 			case VMSC_GETVP:
 			case VMSC_GETVP|VMSC_NOWAIT:
@@ -925,9 +959,17 @@ skip:
 			if (r != 0)
 				break;
 		}
+
+		/*
+		 * Iterate.  If the vnode was ripped out from under us
+		 * info.vp will already point to the next vnode, otherwise
+		 * we have to obtain the next valid vnode ourselves.
+		 */
+next:
+		if (info.vp == vp)
+			info.vp = TAILQ_NEXT(vp, v_nmntvnodes);
 	}
-	TAILQ_REMOVE(&mp->mnt_nvnodelist, pvp, v_nmntvnodes);
-	freevnode_placemarker(pvp);
+	TAILQ_REMOVE(&mntvnodescan_list, &info, entry);
 	lwkt_reltoken(&ilock);
 	return(r);
 }

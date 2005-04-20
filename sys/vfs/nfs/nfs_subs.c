@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.28 2005/04/15 19:08:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.29 2005/04/20 17:01:54 dillon Exp $
  */
 
 /*
@@ -2076,8 +2076,6 @@ nfs_clearcommit(struct mount *mp)
 	s = splbio();
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
-		if (vp->v_flag & VPLACEMARKER)
-			continue;
 		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 			nfs_clearcommit_bp, NULL);
 	}

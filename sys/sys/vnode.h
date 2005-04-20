@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.32 2005/04/15 19:08:13 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.33 2005/04/20 17:01:51 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -246,7 +246,6 @@ struct vnode {
 #define	VONWORKLST	0x200000 /* On syncer work-list */
 #define	VMOUNT		0x400000 /* Mount in progress */
 #define	VOBJDIRTY	0x800000 /* object might be dirty */
-#define	VPLACEMARKER	0x1000000 /* dummy vnode placemarker */
 
 /*
  * vmntvnodescan() flags
@@ -592,8 +591,6 @@ int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);
 struct vnode *allocvnode(int lktimeout, int lkflags);
-struct vnode *allocvnode_placemarker(void);
-void freevnode_placemarker(struct vnode *);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);
 int	getspecialvnode (enum vtagtype tag, struct mount *mp, 
