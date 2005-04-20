@@ -36,7 +36,7 @@
 
 /*
  * $FreeBSD: src/sys/kern/kern_ktr.c,v 1.43 2003/09/10 01:09:32 jhb Exp $
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.3 2005/03/09 03:25:44 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.4 2005/04/20 14:27:29 joerg Exp $
  */
 
 #include "opt_ddb.h"
@@ -140,10 +140,9 @@ ktr_nextindex(int cpu)
 static __inline uint64_t
 ktr_getts(void)
 {
-	struct globaldata *gd = curthread->td_gd;
 	if (cpu_feature & CPUID_TSC)
 		return(rdtsc());
-	return(gd->gd_time_seconds + basetime.tv_sec);
+	return(get_approximate_time_t());
 }
 
 void
