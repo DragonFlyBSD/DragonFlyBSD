@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.10 2004/07/29 09:02:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.11 2005/04/20 16:37:09 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -125,8 +125,7 @@ kthread_exit(void)
  * to be called from SYSINIT().
  */
 void
-kproc_start(udata)
-	const void *udata;
+kproc_start(const void *udata)
 {
 	const struct kproc_desc	*kp = udata;
 	int error;

@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.9 2004/01/30 06:20:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.10 2005/04/20 16:37:09 cpressey Exp $
  */
 
 #include "opt_ntp.h"
@@ -544,7 +544,7 @@ ntp_update_second(time_t newsec, int64_t *nsec_adj)
  * probably be integrated with the code that does that.
  */
 static void
-ntp_init()
+ntp_init(void)
 {
 
 	/*
@@ -594,8 +594,7 @@ SYSINIT(ntpclocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, ntp_init, NULL)
  * is selected by the STA_MODE status bit.
  */
 static void
-hardupdate(offset)
-	long offset;		/* clock offset (ns) */
+hardupdate(long offset)
 {
 	long mtemp;
 	l_fp ftemp;
@@ -677,9 +676,7 @@ hardupdate(offset)
  * are determined by this routine and updated atomically.
  */
 void
-hardpps(tsp, nsec)
-	struct timespec *tsp;	/* time at PPS */
-	long nsec;		/* hardware counter at PPS */
+hardpps(struct timespec *tsp, long nsec)
 {
 	long u_sec, u_nsec, v_nsec; /* temps */
 	l_fp ftemp;

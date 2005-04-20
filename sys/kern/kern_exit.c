@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.39 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.40 2005/04/20 16:37:09 cpressey Exp $
  */
 
 #include "opt_compat.h"
@@ -586,9 +586,7 @@ loop:
  * make process 'parent' the new parent of process 'child'.
  */
 void
-proc_reparent(child, parent)
-	struct proc *child;
-	struct proc *parent;
+proc_reparent(struct proc *child, struct proc *parent)
 {
 
 	if (child->p_pptr == parent)
@@ -610,8 +608,7 @@ proc_reparent(child, parent)
  */
 
 int
-at_exit(function)
-	exitlist_fn function;
+at_exit(exitlist_fn function)
 {
 	struct exitlist *ep;
 
@@ -634,8 +631,7 @@ at_exit(function)
  * Returns the number of items removed (0 or 1)
  */
 int
-rm_at_exit(function)
-	exitlist_fn function;
+rm_at_exit(exitlist_fn function)
 {
 	struct exitlist *ep;
 
@@ -649,7 +645,8 @@ rm_at_exit(function)
 	return (0);
 }
 
-void check_sigacts (void)
+void
+check_sigacts(void)
 {
 	struct proc *p = curproc;
 	struct sigacts *pss;

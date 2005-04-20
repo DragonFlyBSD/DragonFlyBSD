@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.17 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.18 2005/04/20 16:37:09 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -115,12 +115,11 @@ SYSINIT(acct, SI_SUB_DRIVERS, SI_ORDER_ANY, acct_init, NULL);
 /*
  * Accounting system call.  Written based on the specification and
  * previous implementation done by Mark Tinguely.
+ *
+ * acct(char *path)
  */
 int
-acct(uap)
-	struct acct_args /* {
-		syscallarg(char *) path;
-	} */ *uap;
+acct(struct acct_args *uap)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;
@@ -279,8 +278,7 @@ acct_process(struct proc *p)
 #define	MAXFRACT	((1 << MANTSIZE) - 1)	/* Maximum fractional value. */
 
 static comp_t
-encode_comp_t(s, us)
-	u_long s, us;
+encode_comp_t(u_long s, u_long us)
 {
 	int exp, rnd;
 
@@ -315,8 +313,7 @@ encode_comp_t(s, us)
  */
 /* ARGSUSED */
 static void
-acctwatch(a)
-	void *a;
+acctwatch(void *a)
 {
 	struct statfs sb;
 

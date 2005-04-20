@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.20 2005/01/31 22:29:59 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.21 2005/04/20 16:37:09 cpressey Exp $
  */
 
 /*
@@ -871,7 +871,7 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
  * Allocate a zeroed cred structure.
  */
 struct ucred *
-crget()
+crget(void)
 {
 	struct ucred *cr;
 
@@ -992,8 +992,7 @@ crcopy(struct ucred *cr)
  * Dup cred struct to a new held one.
  */
 struct ucred *
-crdup(cr)
-	struct ucred *cr;
+crdup(struct ucred *cr)
 {
 	struct ucred *newcr;
 
@@ -1013,9 +1012,7 @@ crdup(cr)
  * Fill in a struct xucred based on a struct ucred.
  */
 void
-cru2x(cr, xcr)
-	struct ucred *cr;
-	struct xucred *xcr;
+cru2x(struct ucred *cr, struct xucred *xcr)
 {
 
 	bzero(xcr, sizeof(*xcr));
@@ -1065,7 +1062,7 @@ setlogin(struct setlogin_args *uap)
 }
 
 void
-setsugid()
+setsugid(void)
 {
 	struct proc *p = curproc;
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.31 2005/03/02 18:42:08 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.32 2005/04/20 16:37:09 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -575,8 +575,7 @@ exec_map_first_page(struct image_params *imgp)
 }
 
 void
-exec_unmap_first_page(imgp)
-	struct image_params *imgp;
+exec_unmap_first_page(struct image_params *imgp)
 {
 	vm_page_t m;
 
@@ -873,8 +872,7 @@ exec_copyout_strings(struct image_params *imgp)
  *	Return 0 for success or error code on failure.
  */
 int
-exec_check_permissions(imgp)
-	struct image_params *imgp;
+exec_check_permissions(struct image_params *imgp)
 {
 	struct proc *p = imgp->proc;
 	struct vnode *vp = imgp->vp;
@@ -936,8 +934,7 @@ exec_check_permissions(imgp)
  * Exec handler registration
  */
 int
-exec_register(execsw_arg)
-	const struct execsw *execsw_arg;
+exec_register(const struct execsw *execsw_arg)
 {
 	const struct execsw **es, **xs, **newexecsw;
 	int count = 2;	/* New slot and trailing NULL */
@@ -961,8 +958,7 @@ exec_register(execsw_arg)
 }
 
 int
-exec_unregister(execsw_arg)
-	const struct execsw *execsw_arg;
+exec_unregister(const struct execsw *execsw_arg)
 {
 	const struct execsw **es, **xs, **newexecsw;
 	int count = 1;

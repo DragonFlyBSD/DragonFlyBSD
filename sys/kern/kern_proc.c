@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.18 2005/02/01 02:25:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.19 2005/04/20 16:37:09 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ vm_zone_t thread_zone;
  * Initialize global process hashing structures.
  */
 void
-procinit()
+procinit(void)
 {
 
 	LIST_INIT(&allproc);
@@ -101,8 +101,7 @@ procinit()
  * Is p an inferior of the current process?
  */
 int
-inferior(p)
-	struct proc *p;
+inferior(struct proc *p)
 {
 
 	for (; p != curproc; p = p->p_pptr)
@@ -115,8 +114,7 @@ inferior(p)
  * Locate a process by number
  */
 struct proc *
-pfind(pid)
-	pid_t pid;
+pfind(pid_t pid)
 {
 	struct proc *p;
 
@@ -130,8 +128,7 @@ pfind(pid)
  * Locate a process group by number
  */
 struct pgrp *
-pgfind(pgid)
-	pid_t pgid;
+pgfind(pid_t pgid)
 {
 	struct pgrp *pgrp;
 
@@ -145,10 +142,7 @@ pgfind(pgid)
  * Move p to a new or existing process group (and session)
  */
 int
-enterpgrp(p, pgid, mksess)
-	struct proc *p;
-	pid_t pgid;
-	int mksess;
+enterpgrp(struct proc *p, pid_t pgid, int mksess)
 {
 	struct pgrp *pgrp = pgfind(pgid);
 
@@ -220,8 +214,7 @@ enterpgrp(p, pgid, mksess)
  * remove process from process group
  */
 int
-leavepgrp(p)
-	struct proc *p;
+leavepgrp(struct proc *p)
 {
 
 	LIST_REMOVE(p, p_pglist);
@@ -235,8 +228,7 @@ leavepgrp(p)
  * delete a process group
  */
 static void
-pgdelete(pgrp)
-	struct pgrp *pgrp;
+pgdelete(struct pgrp *pgrp)
 {
 
 	/*
@@ -295,10 +287,7 @@ sess_rele(struct session *sp)
  * entering == 1 => p is entering specified group.
  */
 void
-fixjobc(p, pgrp, entering)
-	struct proc *p;
-	struct pgrp *pgrp;
-	int entering;
+fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 {
 	struct pgrp *hispgrp;
 	struct session *mysession = pgrp->pg_session;
@@ -337,8 +326,7 @@ fixjobc(p, pgrp, entering)
  * hang-up all process in that group.
  */
 static void
-orphanpg(pg)
-	struct pgrp *pg;
+orphanpg(struct pgrp *pg)
 {
 	struct proc *p;
 
