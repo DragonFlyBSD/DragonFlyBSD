@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.22 2005/04/21 23:11:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.23 2005/04/21 23:13:19 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -53,8 +53,9 @@
 
 #include "sprite.h"
 
-struct GNode;
 struct Buffer;
+struct GNode;
+struct Lst;
 
 #define	TMPPAT	"/tmp/makeXXXXXXXXXX"
 
@@ -87,5 +88,8 @@ void Job_Wait(void);
 void Job_AbortAll(void);
 
 struct Buffer *Cmd_Exec(const char *, const char **);
+
+void Compat_Run(struct Lst *);
+int Compat_RunCommand(char *, struct GNode *);
 
 #endif /* job_h_4678dfd1 */

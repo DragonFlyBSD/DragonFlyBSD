@@ -1,11 +1,11 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.20 2005/04/21 23:03:13 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.21 2005/04/21 23:13:19 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
-SRCS=	arch.c buf.c compat.c cond.c dir.c directive_hash.c for.c hash.c \
-	job.c lst.c main.c make.c parse.c str.c suff.c targ.c util.c var.c
+SRCS=	arch.c buf.c cond.c dir.c directive_hash.c for.c hash.c job.c lst.c \
+	main.c make.c parse.c str.c suff.c targ.c util.c var.c
 
 WARNS?=	6
 NOSHARED?=	YES
@@ -40,7 +40,7 @@ EMITC	?= ${LOCALBASE}/bin/emitc
 hash:
 	echo '/*'				> directive_hash.c
 	echo ' * DO NOT EDIT'			>> directive_hash.c
-	echo ' * $$DragonFly: src/usr.bin/make/Makefile,v 1.20 2005/04/21 23:03:13 okumoto Exp $$'			>> directive_hash.c
+	echo ' * $$DragonFly: src/usr.bin/make/Makefile,v 1.21 2005/04/21 23:13:19 okumoto Exp $$'			>> directive_hash.c
 	echo -n ' * auto-generated from '	>> directive_hash.c
 	sed -nEe '/\$$(DragonFly)|(FreeBSD)/s/^.*\$$(.*)\$$.*$$/\1/p' \
 		${.CURDIR}/parse.c >>directive_hash.c
