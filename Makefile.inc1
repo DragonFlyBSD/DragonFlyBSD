@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.59 2005/03/13 19:05:23 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.60 2005/04/21 07:55:47 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -941,10 +941,6 @@ _generic_libs+=	secure/lib
 .endif
 
 _generic_libs+=	usr.bin/lex/lib
-
-.if ${MACHINE_ARCH} == "i386"
-_generic_libs+=	usr.sbin/pcvt/keycap
-.endif
 
 .for _lib in ${_startup_libs2} ${_startup_libs3} ${_startup_libs34} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
