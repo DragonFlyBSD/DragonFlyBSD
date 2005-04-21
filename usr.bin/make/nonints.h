@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.29 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.30 2005/04/21 23:11:40 okumoto Exp $
  */
 
 #ifndef nonints_h_33c5dafb
@@ -46,7 +46,5 @@
 struct Buffer;
 
 void Main_ParseArgLine(char *, int);
-Buffer *Cmd_Exec(const char *, const char **);
-
 
 #endif /* nonints_h_33c5dafb */

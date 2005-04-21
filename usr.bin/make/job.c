@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.54 2005/04/16 10:34:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.55 2005/04/21 23:11:40 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2850,3 +2850,113 @@ JobRestartJobs(void)
 		JobRestart(job);
 	}
 }
+
+/**
+ * Cmd_Exec
+ *	Execute the command in cmd, and return the output of that command
+ *	in a string.
+ *
+ * Results:
+ *	A string containing the output of the command, or the empty string
+ *	If error is not NULL, it contains the reason for the command failure
+ *
+ * Side Effects:
+ *	The string must be freed by the caller.
+ */
+Buffer *
+Cmd_Exec(const char *cmd, const char **error)
+{
+	int	fds[2];	/* Pipe streams */
+	int	cpid;	/* Child PID */
+	int	pid;	/* PID from wait() */
+	int	status;	/* command exit status */
+	Buffer	*buf;	/* buffer to store the result */
+	ssize_t	rcnt;
+
+	*error = NULL;
+	buf = Buf_Init(0);
+
+	if (shellPath == NULL)
+		Shell_Init();
+	/*
+	 * Open a pipe for fetching its output
+	 */
+	if (pipe(fds) == -1) {
+		*error = "Couldn't create pipe for \"%s\"";
+		return (buf);
+	}
+
+	/*
+	 * Fork
+	 */
+	switch (cpid = vfork()) {
+	  case 0:
+		/*
+		 * Close input side of pipe
+		 */
+		close(fds[0]);
+
+		/*
+		 * Duplicate the output stream to the shell's output, then
+		 * shut the extra thing down. Note we don't fetch the error
+		 * stream...why not? Why?
+		 */
+		dup2(fds[1], 1);
+		close(fds[1]);
+
+		{
+			char	*args[4];
+
+			/* Set up arguments for shell */
+			args[0] = shellName;
+			args[1] = "-c";
+			args[2] = cmd;
+			args[3] = NULL;
+
+			execv(shellPath, args);
+			_exit(1);
+			/*NOTREACHED*/
+		}
+
+	  case -1:
+		*error = "Couldn't exec \"%s\"";
+		return (buf);
+
+	  default:
+		/*
+		 * No need for the writing half
+		 */
+		close(fds[1]);
+
+		do {
+			char	result[BUFSIZ];
+
+			rcnt = read(fds[0], result, sizeof(result));
+			if (rcnt != -1)
+				Buf_AddBytes(buf, (size_t)rcnt, (Byte *)result);
+		} while (rcnt > 0 || (rcnt == -1 && errno == EINTR));
+
+		if (rcnt == -1)
+			*error = "Error reading shell's output for \"%s\"";
+
+		/*
+		 * Close the input side of the pipe.
+		 */
+		close(fds[0]);
+
+		/*
+		 * Wait for the process to exit.
+		 */
+		while (((pid = wait(&status)) != cpid) && (pid >= 0))
+			continue;
+
+		if (status)
+			*error = "\"%s\" returned non-zero status";
+
+		Buf_StripNewlines(buf);
+
+		break;
+	}
+	return (buf);
+}
+
