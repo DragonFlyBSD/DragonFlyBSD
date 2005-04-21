@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/nl_langinfo.c,v 1.13.2.3 2002/03/12 17:23:24 phantom Exp $
- * $DragonFly: src/lib/libc/locale/nl_langinfo.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/nl_langinfo.c,v 1.3 2005/04/21 07:28:59 joerg Exp $
  */
 
 #include <locale.h>
@@ -193,6 +193,9 @@ nl_langinfo(nl_item item) {
 		break;
 	case D_MD_ORDER:        /* local extension */
 		ret = (char *) __get_current_time_locale()->md_order;
+		break;
+	case _DATE_FMT:        /* local extension */
+		ret = (char *) __get_current_time_locale()->date_fmt;
 		break;
 	default:
 		ret = "";

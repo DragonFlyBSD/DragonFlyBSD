@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/langinfo.h,v 1.4.2.1 2002/03/12 17:12:24 phantom Exp $
- * $DragonFly: src/include/langinfo.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/langinfo.h,v 1.4 2005/04/21 07:28:59 joerg Exp $
  */
 
 #ifndef _LANGINFO_H_
@@ -104,6 +104,7 @@
 #define	CRNCYSTR	56	/* currency symbol */
 
 #define	D_MD_ORDER	57	/* month/day order (local extension) */
+#define	_DATE_FMT	58	/* date(1) format string (local extension) */
 
 __BEGIN_DECLS
 char	*nl_langinfo (nl_item);
