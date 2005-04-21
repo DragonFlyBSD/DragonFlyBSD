@@ -37,59 +37,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.29 2005/04/21 23:03:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.30 2005/04/21 23:04:27 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
 #define	var_h_9cccafce
 
-#include <regex.h>
-
-#include "config.h"
-
 struct GNode;
 struct Buffer;
 
-typedef struct Var {
-	char		*name;	/* the variable's name */
-	struct Buffer	*val;	/* its value */
-	int		flags;	/* miscellaneous status flags */
-
-#define	VAR_IN_USE	1	/* Variable's value currently being used.
-				 * Used to avoid recursion */
-
-#define	VAR_JUNK	4	/* Variable is a junk variable that
-				 * should be destroyed when done with
-				 * it. Used by Var_Parse for undefined,
-				 * modified variables */
-
-#define	VAR_TO_ENV	8	/* Place variable in environment */
-} Var;
-
-/* Var*Pattern flags */
-#define	VAR_SUB_GLOBAL	0x01	/* Apply substitution globally */
-#define	VAR_SUB_ONE	0x02	/* Apply substitution to one word */
-#define	VAR_SUB_MATCHED	0x04	/* There was a match */
-#define	VAR_MATCH_START	0x08	/* Match at start of word */
-#define	VAR_MATCH_END	0x10	/* Match at end of word */
-
-typedef struct {
-	struct Buffer	*lhs;	/* String to match */
-	struct Buffer	*rhs;	/* Replacement string (w/ &'s removed) */
-
-	regex_t			re;
-	int			nsub;
-	regmatch_t		*matches;
-
-	int	flags;
-} VarPattern;
-
-typedef Boolean VarModifyProc(const char *, Boolean, struct Buffer *, void *);
-
-/*
- * var.c
- */
-void VarREError(int, regex_t *, const char *);
 void Var_Append(const char *, const char *, struct GNode *);
 void Var_Delete(const char *, struct GNode *);
 void Var_Dump(void);
@@ -97,7 +53,6 @@ Boolean Var_Exists(const char *, struct GNode *);
 void Var_Init(char **);
 size_t Var_Match(const char [], struct GNode *);
 char *Var_Parse(const char *, struct GNode *, Boolean, size_t *, Boolean *);
-char *Var_Quote(const char *);
 void Var_Set(const char *, const char *, struct GNode *);
 void Var_SetEnv(const char *, struct GNode *);
 struct Buffer *Var_Subst(const char *, struct GNode *, Boolean);

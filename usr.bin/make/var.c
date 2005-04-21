@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.194 2005/04/21 23:03:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.195 2005/04/21 23:04:27 okumoto Exp $
  */
 
 /*-
@@ -86,6 +86,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "buf.h"
 #include "config.h"
@@ -109,6 +111,41 @@ typedef struct VarParser {
 	Boolean		err;
 	Boolean		execute;
 } VarParser;
+
+typedef struct Var {
+	char		*name;	/* the variable's name */
+	struct Buffer	*val;	/* its value */
+	int		flags;	/* miscellaneous status flags */
+
+#define	VAR_IN_USE	1	/* Variable's value currently being used.
+				 * Used to avoid recursion */
+
+#define	VAR_JUNK	4	/* Variable is a junk variable that
+				 * should be destroyed when done with
+				 * it. Used by Var_Parse for undefined,
+				 * modified variables */
+
+#define	VAR_TO_ENV	8	/* Place variable in environment */
+} Var;
+
+typedef struct {
+	struct Buffer	*lhs;	/* String to match */
+	struct Buffer	*rhs;	/* Replacement string (w/ &'s removed) */
+
+	regex_t			re;
+	int			nsub;
+	regmatch_t		*matches;
+
+	int	flags;
+#define	VAR_SUB_GLOBAL	0x01	/* Apply substitution globally */
+#define	VAR_SUB_ONE	0x02	/* Apply substitution to one word */
+#define	VAR_SUB_MATCHED	0x04	/* There was a match */
+#define	VAR_MATCH_START	0x08	/* Match at start of word */
+#define	VAR_MATCH_END	0x10	/* Match at end of word */
+} VarPattern;
+
+typedef Boolean VarModifyProc(const char *, Boolean, struct Buffer *, void *);
+
 static char *VarParse(VarParser *, Boolean *);
 
 /*
@@ -577,6 +614,26 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 	Buf_AddBytes(buf, wordLen, (const Byte *)word);
 	return (TRUE);
 }
+
+/**
+ * Print the error caused by a regcomp or regexec call.
+ *
+ * Side Effects:
+ *	An error gets printed.
+ */
+static void
+VarREError(int err, regex_t *pat, const char *str)
+{
+	char   *errbuf;
+	int     errlen;
+
+	errlen = regerror(err, pat, 0, 0);
+	errbuf = emalloc(errlen);
+	regerror(err, pat, errbuf, errlen);
+	Error("%s: %s", str, errbuf);
+	free(errbuf);
+}
+
 
 /**
  * VarRESubstitute
@@ -1304,62 +1361,6 @@ VarGetPattern(VarParser *vp, int delim, int *flags, VarPattern *patt)
 	return (NULL);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Quote --
- *	Quote shell meta-characters in the string
- *
- * Results:
- *	The quoted string
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
- */
-char *
-Var_Quote(const char *str)
-{
-	Buffer *buf;
-	/* This should cover most shells :-( */
-	static char meta[] = "\n \t'`\";&<>()|*?{}[]\\$!#^~";
-
-	buf = Buf_Init(MAKE_BSIZE);
-	for (; *str; str++) {
-		if (strchr(meta, *str) != NULL)
-			Buf_AddByte(buf, (Byte)'\\');
-		Buf_AddByte(buf, (Byte)*str);
-	}
-
-	return (Buf_Peel(buf));
-}
-
-/*-
- *-----------------------------------------------------------------------
- * VarREError --
- *	Print the error caused by a regcomp or regexec call.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	An error gets printed.
- *
- *-----------------------------------------------------------------------
- */
-void
-VarREError(int err, regex_t *pat, const char *str)
-{
-	char   *errbuf;
-	int     errlen;
-
-	errlen = regerror(err, pat, 0, 0);
-	errbuf = emalloc(errlen);
-	regerror(err, pat, errbuf, errlen);
-	Error("%s: %s", str, errbuf);
-	free(errbuf);
-}
-
 /**
  * Make sure this variable is fully expanded.
  */
@@ -1674,6 +1675,30 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 
 	return (newStr);
 }
+
+/**
+ * Quote shell meta-characters in the string
+ *
+ * Results:
+ *	The quoted string
+ */
+static char *
+Var_Quote(const char *str)
+{
+	Buffer *buf;
+	/* This should cover most shells :-( */
+	static char meta[] = "\n \t'`\";&<>()|*?{}[]\\$!#^~";
+
+	buf = Buf_Init(MAKE_BSIZE);
+	for (; *str; str++) {
+		if (strchr(meta, *str) != NULL)
+			Buf_AddByte(buf, (Byte)'\\');
+		Buf_AddByte(buf, (Byte)*str);
+	}
+
+	return (Buf_Peel(buf));
+}
+
 
 /*
  * Now we need to apply any modifiers the user wants applied.
