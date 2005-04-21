@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.60 2005/04/21 07:55:47 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.61 2005/04/21 08:00:37 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -792,9 +792,7 @@ bootstrap-tools:
 .endfor
 	touch ${BTOOLSDEST}/.bootstrap_done
 
-# build-tools: Build special purpose build tools.  gcc2 related tools are
-# only built under the i386 architecture.  Other architectures are
-# gcc3-only.
+# build-tools: Build special purpose build tools.
 #
 # XXX we may be able to remove or consolidate this into bootstrap-tools
 # now that we have the native helper (.nx/.no) infrastructure.
@@ -809,20 +807,10 @@ _share=	share/syscons/scrnmaps
 
 _gcc34_cross= gnu/usr.bin/cc34
 _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
-.if ${MACHINE_ARCH} == "i386" && ${TARGET_ARCH} == "i386"
-_gcc2_cross= gnu/usr.bin/cc
-_gcc2_tools= gnu/usr.bin/cc/cc_tools
-_binutils= gnu/usr.bin/binutils gnu/usr.bin/binutils215
-.else
 _binutils= gnu/usr.bin/binutils215
-.endif
 
 .if !defined(NO_FORTRAN)
-.if ${TARGET_ARCH} == "i386"
-_fortran= gnu/usr.bin/cc/f771
-.else
 _fortran= gnu/usr.bin/cc34/f771
-.endif
 .endif
 
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
@@ -836,9 +824,7 @@ _sysinstall= release/sysinstall
 .endif
 
 build-tools:
-.for _tool in ${_gcc2_tools} ${_gcc34_tools} \
-	      ${_fortran} ${_libkrb5} \
-	      ${_share} ${_sysinstall}
+.for _tool in ${_gcc34_tools} ${_fortran} ${_libkrb5} ${_share} ${_sysinstall}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -858,7 +844,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_binutils} \
 	      usr.bin/objformat usr.sbin/crunch/crunchide \
-	      ${_gcc2_cross} ${_gcc34_cross}
+	      ${_gcc34_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -886,8 +872,6 @@ hierarchy:
 #
 libraries:
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc2 \
-		${MAKE} -f Makefile.inc1 _startup_libs2; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
 		${MAKE} -f Makefile.inc1 _startup_libs34; \
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
@@ -897,11 +881,10 @@ libraries:
 
 # These dependencies are not automatically generated:
 #
-# gnu/lib/libgcc and lib/csu must be built before all
-# shared libraries for ELF.  The targets for _startup_libs{2,3} are
-# specifically built using gcc{2,3}.
+# gnu/lib/${CCVER}/libgcc and lib/csu must be built before all
+# shared libraries for ELF.  The target for _startup_libs34 is
+# specifically built using gcc34.
 #
-_startup_libs2=	gnu/lib/gcc2/libgcc
 _startup_libs34=	gnu/lib/gcc34/libgcc
 _startup_libs=	lib/csu/${MACHINE_ARCH}
 _startup_libs+=	lib/csu/common lib/libc
@@ -954,15 +937,7 @@ ${_lib}__L: .PHONY
 .endif
 .endfor
 
-# only mess with gcc2 for i386 architectures.
-#
 _startup_libs: ${_startup_libs:S/$/__L/}
-.if ${TARGET_ARCH} == "i386"
-_startup_libs2: ${_startup_libs2:S/$/__L/}
-.else
-_startup_libs2:
-.endif
-_startup_libs3: ${_startup_libs3:S/$/__L/}
 _startup_libs34: ${_startup_libs34:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
@@ -970,8 +945,6 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 # library targets must be ordered because there are inter-library
 # races (e.g. generation of tconfig.h)
 #
-.ORDER: ${_startup_libs2:S/$/__L/}
-.ORDER: ${_startup_libs3:S/$/__L/}
 .ORDER: ${_startup_libs34:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
