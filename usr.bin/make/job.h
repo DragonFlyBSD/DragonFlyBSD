@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.23 2005/04/21 23:13:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.24 2005/04/21 23:13:47 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -56,18 +56,6 @@
 struct Buffer;
 struct GNode;
 struct Lst;
-
-#define	TMPPAT	"/tmp/makeXXXXXXXXXX"
-
-#ifndef USE_KQUEUE
-/*
- * The SEL_ constants determine the maximum amount of time spent in select
- * before coming out to see if a child has finished. SEL_SEC is the number of
- * seconds and SEL_USEC is the number of micro-seconds
- */
-#define	SEL_SEC		2
-#define	SEL_USEC	0
-#endif /* !USE_KQUEUE */
 
 extern char *shellPath;
 extern char *shellName;

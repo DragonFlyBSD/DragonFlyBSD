@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.56 2005/04/21 23:13:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.57 2005/04/21 23:13:47 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -130,6 +130,18 @@
 #include "targ.h"
 #include "util.h"
 #include "var.h"
+
+#define	TMPPAT	"/tmp/makeXXXXXXXXXX"
+
+#ifndef USE_KQUEUE
+/*
+ * The SEL_ constants determine the maximum amount of time spent in select
+ * before coming out to see if a child has finished. SEL_SEC is the number of
+ * seconds and SEL_USEC is the number of micro-seconds
+ */
+#define	SEL_SEC		2
+#define	SEL_USEC	0
+#endif /* !USE_KQUEUE */
 
 /*
  * Job Table definitions.
