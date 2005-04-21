@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collate.c,v 1.21.2.4 2002/10/11 10:36:47 ache Exp $
- * $DragonFly: src/lib/libc/locale/collate.c,v 1.5 2005/03/09 18:52:21 joerg Exp $
+ * $DragonFly: src/lib/libc/locale/collate.c,v 1.6 2005/04/21 16:36:34 joerg Exp $
  */
 
 #include "namespace.h"
@@ -40,8 +40,11 @@
 #include "un-namespace.h"
 
 #include "collate.h"
-#include "setlocale.h"
-#include "ldpart.h"
+
+#define	ENCODING_LEN	31
+#define _LDP_LOADED 0
+#define _LDP_ERROR  (-1)
+#define _LDP_CACHE  1
 
 int __collate_load_error = 1;
 int __collate_substitute_nontrivial;

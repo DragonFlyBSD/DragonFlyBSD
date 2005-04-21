@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdtime/timelocal.c,v 1.8.2.4 2002/08/12 11:20:24 ache Exp $
- * $DragonFly: src/lib/libc/stdtime/timelocal.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
+ * $DragonFly: src/lib/libc/stdtime/timelocal.c,v 1.4 2005/04/21 16:36:35 joerg Exp $
  */
 
 #include "namespace.h"
@@ -33,7 +33,6 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
-#include "ldpart.h"
 #include "timelocal.h"
 
 static struct lc_time_T _time_locale;

@@ -1,3 +1,6 @@
+/*	$NetBSD: src/include/wctype.h,v 1.5 2003/03/02 22:18:11 tshiozak Exp $	*/
+/*	$DragonFly: src/include/wctype.h,v 1.6 2005/04/21 16:36:34 joerg Exp $ */
+
 /*-
  * Copyright (c)1999 Citrus Project,
  * All rights reserved.
@@ -24,24 +27,26 @@
  * SUCH DAMAGE.
  *
  *	citrus Id: wctype.h,v 1.4 2000/12/21 01:50:21 itojun Exp
- *	$NetBSD: wctype.h,v 1.3 2000/12/22 14:16:16 itojun Exp $
- * $FreeBSD: src/include/wctype.h,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/include/wctype.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
-#if 0
-/* XXX: not implemented */
 #ifndef _WCTYPE_H_
 #define	_WCTYPE_H_
 
-#include <sys/cdefs.h>
-#ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
-#endif
 
 #ifndef _WINT_T_DECLARED
-#define _WINT_T_DECLARED
-typedef __wint_t	wint_t;
+#define	_WINT_T_DECLARED
+typedef	__wint_t	wint_t;
+#endif
+
+#ifndef _WCTRANS_T_DECLARED
+#define	_WCTRANS_T_DECLARED
+typedef	__wctrans_t	wctrans_t;
+#endif
+
+#ifndef _WCTYPE_T_DECLARED
+#define	_WCTYPE_T_DECLARED
+typedef __wctype_t	wctype_t;
 #endif
 
 #ifndef WEOF
@@ -49,21 +54,24 @@ typedef __wint_t	wint_t;
 #endif
 
 __BEGIN_DECLS
-int	iswalnum (wint_t);
-int	iswalpha (wint_t);
-int	iswblank (wint_t);
-int	iswcntrl (wint_t);
-int	iswdigit (wint_t);
-int	iswgraph (wint_t);
-int	iswlower (wint_t);
-int	iswprint (wint_t);
-int	iswpunct (wint_t);
-int	iswspace (wint_t);
-int	iswupper (wint_t);
-int	iswxdigit (wint_t);
-wint_t	towlower (wint_t);
-wint_t	towupper (wint_t);
+int	iswalnum(wint_t);
+int	iswalpha(wint_t);
+int	iswblank(wint_t);
+int	iswcntrl(wint_t);
+int	iswdigit(wint_t);
+int	iswgraph(wint_t);
+int	iswlower(wint_t);
+int	iswprint(wint_t);
+int	iswpunct(wint_t);
+int	iswspace(wint_t);
+int	iswupper(wint_t);
+int	iswxdigit(wint_t);
+int	iswctype(wint_t, wctype_t);
+wint_t	towctrans(wint_t, wctrans_t);
+wint_t	towlower(wint_t);
+wint_t	towupper(wint_t);
+wctrans_t wctrans(const char *);
+wctype_t wctype(const char *);
 __END_DECLS
 
 #endif		/* _WCTYPE_H_ */
-#endif

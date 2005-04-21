@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.7 2005/02/14 23:15:51 cpressey Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.8 2005/04/21 16:36:35 joerg Exp $
  */
 
 /*
@@ -403,7 +403,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	char thousands_sep;	/* locale specific thousands separator */
 	const char *grouping;	/* locale specific numeric grouping rules */
  #ifdef FLOATING_POINT
-	char *decimal_point;	/* locale specific decimal point */
+	const char *decimal_point;	/* locale specific decimal point */
 	char softsign;		/* temporary negative sign for floats */
 	double _double;		/* double precision arguments %[eEfgG] */
 	int expt;		/* integer value of exponent */
@@ -445,7 +445,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	 * BEWARE, these `goto error' on error, and PAD uses `n'.
 	 */
 #define	PRINT(ptr, len) { \
-	iovp->iov_base = (ptr); \
+	iovp->iov_base = __DECONST(void *, ptr); \
 	iovp->iov_len = (len); \
 	uio.uio_resid += (len); \
 	iovp++; \

@@ -1,31 +1,11 @@
-/*
- * Powerdog Industries kindly requests feedback from anyone modifying
- * this function:
+/*	$NetBSD: src/lib/libc/time/strptime.c,v 1.22 2000/12/20 20:56:34 christos Exp $	*/
+/*	$DragonFly: src/lib/libc/stdtime/strptime.c,v 1.4 2005/04/21 16:36:35 joerg Exp $ */
+
+/*-
+ * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
+ * All rights reserved.
  *
- * Date: Thu, 05 Jun 1997 23:17:17 -0400  
- * From: Kevin Ruddy <kevin.ruddy@powerdog.com>
- * To: James FitzGibbon <james@nexis.net>
- * Subject: Re: Use of your strptime(3) code (fwd)
- * 
- * The reason for the "no mod" clause was so that modifications would
- * come back and we could integrate them and reissue so that a wider 
- * audience could use it (thereby spreading the wealth).  This has   
- * made it possible to get strptime to work on many operating systems.
- * I'm not sure why that's "plain unacceptable" to the FreeBSD team.
- * 
- * Anyway, you can change it to "with or without modification" as
- * you see fit.  Enjoy.                                          
- * 
- * Kevin Ruddy
- * Powerdog Industries, Inc.
- *
- * @(#) Copyright (c) 1994 Powerdog Industries.  All rights reserved.
- * @(#)strptime.c	0.1 (Powerdog) 94/03/27
- * $FreeBSD: src/lib/libc/stdtime/strptime.c,v 1.17.2.3 2002/03/12 17:24:54 phantom Exp $
- * $DragonFly: src/lib/libc/stdtime/strptime.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
- */
-/*
- * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
+ * This code was contributed to The NetBSD Foundation by Klaus Klein.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,501 +13,380 @@
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in the documentation and/or other materials provided with the
- *    distribution.
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgement:
- *      This product includes software developed by Powerdog Industries.
- * 4. The name of Powerdog Industries may not be used to endorse or
- *    promote products derived from this software without specific prior
- *    written permission.
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *        This product includes software developed by the NetBSD
+ *        Foundation, Inc. and its contributors.
+ * 4. Neither the name of The NetBSD Foundation nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY POWERDOG INDUSTRIES ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE POWERDOG INDUSTRIES BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "namespace.h"
-#include <time.h>
+#include <sys/localedef.h>
 #include <ctype.h>
-#include <limits.h>
-#include <stdlib.h>
+#include <locale.h>
 #include <string.h>
-#include <pthread.h>
-#include "un-namespace.h"
-#include "libc_private.h"
-#include "timelocal.h"
+#include <time.h>
+#include "private.h"
+#include "tzfile.h"
 
-static char * _strptime(const char *, const char *, struct tm *);
+#define	_ctloc(x)		(_CurrentTimeLocale->x)
 
-static pthread_mutex_t	gotgmt_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int got_GMT;
+/*
+ * We do not implement alternate representations. However, we always
+ * check whether a given modifier is allowed for a certain conversion.
+ */
+#define	ALT_E			0x01
+#define	ALT_O			0x02
+#define	LEGAL_ALT(x)		{ if (alt_format & ~(x)) return (0); }
 
-#define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
+static	int conv_num __P((const unsigned char **, int *, int, int));
 
-static char *
-_strptime(const char *buf, const char *fmt, struct tm *tm)
+char *
+strptime(const char *buf, const char *fmt, struct tm *tm)
 {
-	char	c;
-	const char *ptr;
-	int	i,
-		len;
-	int Ealternative, Oalternative;
-	struct lc_time_T *tptr = __get_current_time_locale();
+	unsigned char c;
+	const unsigned char *bp;
+	size_t len = 0;
+	int alt_format, i, split_year = 0;
 
-	ptr = fmt;
-	while (*ptr != 0) {
-		if (*buf == 0)
-			break;
+	bp = (const u_char *)buf;
 
-		c = *ptr++;
+	while ((c = *fmt) != '\0') {
+		/* Clear `alternate' modifier prior to new conversion. */
+		alt_format = 0;
 
-		if (c != '%') {
-			if (isspace((unsigned char)c))
-				while (*buf != 0 && isspace((unsigned char)*buf))
-					buf++;
-			else if (c != *buf++)
-				return 0;
+		/* Eat up white-space. */
+		if (isspace(c)) {
+			while (isspace(*bp))
+				bp++;
+
+			fmt++;
 			continue;
 		}
+				
+		if ((c = *fmt++) != '%')
+			goto literal;
 
-		Ealternative = 0;
-		Oalternative = 0;
-label:
-		c = *ptr++;
-		switch (c) {
-		case 0:
-		case '%':
-			if (*buf++ != '%')
-				return 0;
+
+again:		switch (c = *fmt++) {
+		case '%':	/* "%%" is converted to "%". */
+literal:
+			if (c != *bp++)
+				return (0);
 			break;
 
-		case '+':
-			buf = _strptime(buf, tptr->date_fmt, tm);
-			if (buf == 0)
-				return 0;
+		/*
+		 * "Alternative" modifiers. Just set the appropriate flag
+		 * and start over again.
+		 */
+		case 'E':	/* "%E?" alternative conversion modifier. */
+			LEGAL_ALT(0);
+			alt_format |= ALT_E;
+			goto again;
+
+		case 'O':	/* "%O?" alternative conversion modifier. */
+			LEGAL_ALT(0);
+			alt_format |= ALT_O;
+			goto again;
+			
+		/*
+		 * "Complex" conversion rules, implemented through recursion.
+		 */
+		case 'c':	/* Date and time, using the locale's format. */
+			LEGAL_ALT(ALT_E);
+			if (!(bp = (const u_char *)strptime((const char *)bp,
+			    _ctloc(d_t_fmt), tm)))
+				return (0);
 			break;
 
-		case 'C':
-			if (!isdigit((unsigned char)*buf))
-				return 0;
+		case 'D':	/* The date as "%m/%d/%y". */
+			LEGAL_ALT(0);
+			if (!(bp = (const u_char *) strptime((const char *)bp,
+			    "%m/%d/%y", tm)))
+				return (0);
+			break;
 
-			/* XXX This will break for 3-digit centuries. */
-			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
+		case 'R':	/* The time as "%H:%M". */
+			LEGAL_ALT(0);
+			if (!(bp = (const u_char *)strptime((const char *)bp,
+			    "%H:%M", tm)))
+				return (0);
+			break;
+
+		case 'r':	/* The time in 12-hour clock representation. */
+			LEGAL_ALT(0);
+			if (!(bp = (const u_char *)strptime((const char *)bp,
+			    _ctloc(t_fmt_ampm), tm)))
+				return (0);
+			break;
+
+		case 'T':	/* The time as "%H:%M:%S". */
+			LEGAL_ALT(0);
+			if (!(bp = (const u_char *)strptime((const char *)bp,
+			    "%H:%M:%S", tm)))
+				return (0);
+			break;
+
+		case 'X':	/* The time, using the locale's format. */
+			LEGAL_ALT(ALT_E);
+			if (!(bp = (const u_char *)strptime((const char *)bp,
+			    _ctloc(t_fmt), tm)))
+				return (0);
+			break;
+
+		case 'x':	/* The date, using the locale's format. */
+			LEGAL_ALT(ALT_E);
+			if (!(bp = (const u_char *)strptime((const char *)bp,
+			    _ctloc(d_fmt), tm)))
+				return (0);
+			break;
+
+		/*
+		 * "Elementary" conversion rules.
+		 */
+		case 'A':	/* The day of week, using the locale's form. */
+		case 'a':
+			LEGAL_ALT(0);
+			for (i = 0; i < 7; i++) {
+				/* Full name. */
+				len = strlen(_ctloc(day[i]));
+				if (strncasecmp(_ctloc(day[i]),
+				    (const char *)bp, len) == 0)
+					break;
+
+				/* Abbreviated name. */
+				len = strlen(_ctloc(abday[i]));
+				if (strncasecmp(_ctloc(abday[i]),
+				    (const char *)bp, len) == 0)
+					break;
 			}
-			if (i < 19)
-				return 0;
 
-			tm->tm_year = i * 100 - 1900;
+			/* Nothing matched. */
+			if (i == 7)
+				return (0);
+
+			tm->tm_wday = i;
+			bp += len;
 			break;
 
-		case 'c':
-			buf = _strptime(buf, tptr->c_fmt, tm);
-			if (buf == 0)
-				return 0;
-			break;
+		case 'B':	/* The month, using the locale's form. */
+		case 'b':
+		case 'h':
+			LEGAL_ALT(0);
+			for (i = 0; i < 12; i++) {
+				/* Full name. */
+				len = strlen(_ctloc(mon[i]));
+				if (strncasecmp(_ctloc(mon[i]),
+				    (const char *)bp, len) == 0)
+					break;
 
-		case 'D':
-			buf = _strptime(buf, "%m/%d/%y", tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'E':
-			if (Ealternative || Oalternative)
-				break;
-			Ealternative++;
-			goto label;
-
-		case 'O':
-			if (Ealternative || Oalternative)
-				break;
-			Oalternative++;
-			goto label;
-
-		case 'F':
-			buf = _strptime(buf, "%Y-%m-%d", tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'R':
-			buf = _strptime(buf, "%H:%M", tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'r':
-			buf = _strptime(buf, tptr->ampm_fmt, tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'T':
-			buf = _strptime(buf, "%H:%M:%S", tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'X':
-			buf = _strptime(buf, tptr->X_fmt, tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'x':
-			buf = _strptime(buf, tptr->x_fmt, tm);
-			if (buf == 0)
-				return 0;
-			break;
-
-		case 'j':
-			if (!isdigit((unsigned char)*buf))
-				return 0;
-
-			len = 3;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
+				/* Abbreviated name. */
+				len = strlen(_ctloc(abmon[i]));
+				if (strncasecmp(_ctloc(abmon[i]),
+				    (const char *)bp, len) == 0)
+					break;
 			}
-			if (i < 1 || i > 366)
-				return 0;
 
+			/* Nothing matched. */
+			if (i == 12)
+				return (0);
+
+			tm->tm_mon = i;
+			bp += len;
+			break;
+
+		case 'C':	/* The century number. */
+			LEGAL_ALT(ALT_E);
+			if (!(conv_num(&bp, &i, 0, 99)))
+				return (0);
+
+			if (split_year) {
+				tm->tm_year = (tm->tm_year % 100) + (i * 100);
+			} else {
+				tm->tm_year = i * 100;
+				split_year = 1;
+			}
+			break;
+
+		case 'd':	/* The day of month. */
+		case 'e':
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &tm->tm_mday, 1, 31)))
+				return (0);
+			break;
+
+		case 'k':	/* The hour (24-hour clock representation). */
+			LEGAL_ALT(0);
+			/* FALLTHROUGH */
+		case 'H':
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &tm->tm_hour, 0, 23)))
+				return (0);
+			break;
+
+		case 'l':	/* The hour (12-hour clock representation). */
+			LEGAL_ALT(0);
+			/* FALLTHROUGH */
+		case 'I':
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &tm->tm_hour, 1, 12)))
+				return (0);
+			if (tm->tm_hour == 12)
+				tm->tm_hour = 0;
+			break;
+
+		case 'j':	/* The day of year. */
+			LEGAL_ALT(0);
+			if (!(conv_num(&bp, &i, 1, 366)))
+				return (0);
 			tm->tm_yday = i - 1;
 			break;
 
-		case 'M':
-		case 'S':
-			if (*buf == 0 || isspace((unsigned char)*buf))
+		case 'M':	/* The minute. */
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &tm->tm_min, 0, 59)))
+				return (0);
+			break;
+
+		case 'm':	/* The month. */
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &i, 1, 12)))
+				return (0);
+			tm->tm_mon = i - 1;
+			break;
+
+		case 'p':	/* The locale's equivalent of AM/PM. */
+			LEGAL_ALT(0);
+			/* AM? */
+			if (strcasecmp(_ctloc(am_pm[0]),
+			    (const char *)bp) == 0) {
+				if (tm->tm_hour > 11)
+					return (0);
+
+				bp += strlen(_ctloc(am_pm[0]));
 				break;
-
-			if (!isdigit((unsigned char)*buf))
-				return 0;
-
-			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
 			}
+			/* PM? */
+			else if (strcasecmp(_ctloc(am_pm[1]),
+			    (const char *)bp) == 0) {
+				if (tm->tm_hour > 11)
+					return (0);
 
-			if (c == 'M') {
-				if (i > 59)
-					return 0;
-				tm->tm_min = i;
-			} else {
-				if (i > 60)
-					return 0;
-				tm->tm_sec = i;
-			}
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
-			break;
-
-		case 'H':
-		case 'I':
-		case 'k':
-		case 'l':
-			/*
-			 * Of these, %l is the only specifier explicitly
-			 * documented as not being zero-padded.  However,
-			 * there is no harm in allowing zero-padding.
-			 *
-			 * XXX The %l specifier may gobble one too many
-			 * digits if used incorrectly.
-			 */
-			if (!isdigit((unsigned char)*buf))
-				return 0;
-
-			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
-			}
-			if (c == 'H' || c == 'k') {
-				if (i > 23)
-					return 0;
-			} else if (i > 12)
-				return 0;
-
-			tm->tm_hour = i;
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
-			break;
-
-		case 'p':
-			/*
-			 * XXX This is bogus if parsed before hour-related
-			 * specifiers.
-			 */
-			len = strlen(tptr->am);
-			if (strncasecmp(buf, tptr->am, len) == 0) {
-				if (tm->tm_hour > 12)
-					return 0;
-				if (tm->tm_hour == 12)
-					tm->tm_hour = 0;
-				buf += len;
+				tm->tm_hour += 12;
+				bp += strlen(_ctloc(am_pm[1]));
 				break;
 			}
 
-			len = strlen(tptr->pm);
-			if (strncasecmp(buf, tptr->pm, len) == 0) {
-				if (tm->tm_hour > 12)
-					return 0;
-				if (tm->tm_hour != 12)
-					tm->tm_hour += 12;
-				buf += len;
-				break;
-			}
+			/* Nothing matched. */
+			return (0);
 
-			return 0;
-
-		case 'A':
-		case 'a':
-			for (i = 0; i < asizeof(tptr->weekday); i++) {
-				len = strlen(tptr->weekday[i]);
-				if (strncasecmp(buf, tptr->weekday[i],
-						len) == 0)
-					break;
-				len = strlen(tptr->wday[i]);
-				if (strncasecmp(buf, tptr->wday[i],
-						len) == 0)
-					break;
-			}
-			if (i == asizeof(tptr->weekday))
-				return 0;
-
-			tm->tm_wday = i;
-			buf += len;
+		case 'S':	/* The seconds. */
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &tm->tm_sec, 0, 61)))
+				return (0);
 			break;
 
-		case 'U':
-		case 'W':
+		case 'U':	/* The week of year, beginning on sunday. */
+		case 'W':	/* The week of year, beginning on monday. */
+			LEGAL_ALT(ALT_O);
 			/*
 			 * XXX This is bogus, as we can not assume any valid
 			 * information present in the tm structure at this
 			 * point to calculate a real value, so just check the
 			 * range for now.
 			 */
-			if (!isdigit((unsigned char)*buf))
-				return 0;
+			 if (!(conv_num(&bp, &i, 0, 53)))
+				return (0);
+			 break;
 
-			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
-			}
-			if (i > 53)
-				return 0;
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
+		case 'w':	/* The day of week, beginning on sunday. */
+			LEGAL_ALT(ALT_O);
+			if (!(conv_num(&bp, &tm->tm_wday, 0, 6)))
+				return (0);
 			break;
 
-		case 'w':
-			if (!isdigit((unsigned char)*buf))
-				return 0;
+		case 'Y':	/* The year. */
+			LEGAL_ALT(ALT_E);
+			if (!(conv_num(&bp, &i, 0, 9999)))
+				return (0);
 
-			i = *buf - '0';
-			if (i > 6)
-				return 0;
-
-			tm->tm_wday = i;
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
+			tm->tm_year = i - TM_YEAR_BASE;
 			break;
 
-		case 'd':
-		case 'e':
-			/*
-			 * The %e specifier is explicitly documented as not
-			 * being zero-padded but there is no harm in allowing
-			 * such padding.
-			 *
-			 * XXX The %e specifier may gobble one too many
-			 * digits if used incorrectly.
-			 */
-			if (!isdigit((unsigned char)*buf))
-				return 0;
+		case 'y':	/* The year within 100 years of the epoch. */
+			LEGAL_ALT(ALT_E | ALT_O);
+			if (!(conv_num(&bp, &i, 0, 99)))
+				return (0);
 
-			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
-			}
-			if (i > 31)
-				return 0;
-
-			tm->tm_mday = i;
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
-			break;
-
-		case 'B':
-		case 'b':
-		case 'h':
-			for (i = 0; i < asizeof(tptr->month); i++) {
-				if (Oalternative) {
-					if (c == 'B') {
-						len = strlen(tptr->alt_month[i]);
-						if (strncasecmp(buf,
-								tptr->alt_month[i],
-								len) == 0)
-							break;
-					}
-				} else {
-					len = strlen(tptr->month[i]);
-					if (strncasecmp(buf, tptr->month[i],
-							len) == 0)
-						break;
-					len = strlen(tptr->mon[i]);
-					if (strncasecmp(buf, tptr->mon[i],
-							len) == 0)
-						break;
-				}
-			}
-			if (i == asizeof(tptr->month))
-				return 0;
-
-			tm->tm_mon = i;
-			buf += len;
-			break;
-
-		case 'm':
-			if (!isdigit((unsigned char)*buf))
-				return 0;
-
-			len = 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
-			}
-			if (i < 1 || i > 12)
-				return 0;
-
-			tm->tm_mon = i - 1;
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
-			break;
-
-		case 's':
-			{
-			char *cp;
-			time_t t;
-
-			t = strtol(buf, &cp, 10);
-			if (t == LONG_MAX)
-				return 0;
-			buf = cp;
-			gmtime_r(&t, tm);
-			got_GMT = 1;
-			}
-			break;
-
-		case 'Y':
-		case 'y':
-			if (*buf == 0 || isspace((unsigned char)*buf))
+			if (split_year) {
+				tm->tm_year = ((tm->tm_year / 100) * 100) + i;
 				break;
-
-			if (!isdigit((unsigned char)*buf))
-				return 0;
-
-			len = (c == 'Y') ? 4 : 2;
-			for (i = 0; len && *buf != 0 && isdigit((unsigned char)*buf); buf++) {
-				i *= 10;
-				i += *buf - '0';
-				len--;
 			}
-			if (c == 'Y')
-				i -= 1900;
-			if (c == 'y' && i < 69)
-				i += 100;
-			if (i < 0)
-				return 0;
-
-			tm->tm_year = i;
-
-			if (*buf != 0 && isspace((unsigned char)*buf))
-				while (*ptr != 0 && !isspace((unsigned char)*ptr))
-					ptr++;
+			split_year = 1;
+			if (i <= 68)
+				tm->tm_year = i + 2000 - TM_YEAR_BASE;
+			else
+				tm->tm_year = i + 1900 - TM_YEAR_BASE;
 			break;
 
-		case 'Z':
-			{
-			const char *cp;
-			char *zonestr;
-
-			for (cp = buf; *cp && isupper((unsigned char)*cp); ++cp) {/*empty*/}
-			if (cp - buf) {
-				zonestr = alloca(cp - buf + 1);
-				strncpy(zonestr, buf, cp - buf);
-				zonestr[cp - buf] = '\0';
-				tzset();
-				if (0 == strcmp(zonestr, "GMT")) {
-				    got_GMT = 1;
-				} else if (0 == strcmp(zonestr, tzname[0])) {
-				    tm->tm_isdst = 0;
-				} else if (0 == strcmp(zonestr, tzname[1])) {
-				    tm->tm_isdst = 1;
-				} else {
-				    return 0;
-				}
-				buf += cp - buf;
-			}
-			}
+		/*
+		 * Miscellaneous conversions.
+		 */
+		case 'n':	/* Any kind of white-space. */
+		case 't':
+			LEGAL_ALT(0);
+			while (isspace(*bp))
+				bp++;
 			break;
+
+
+		default:	/* Unknown/unsupported conversion. */
+			return (0);
 		}
+
+
 	}
-	return (char *)buf;
+
+	/* LINTED functional specification */
+	return ((char *)bp);
 }
 
 
-char *
-strptime(const char *buf, const char *fmt, struct tm *tm)
+static int
+conv_num(const unsigned char **buf, int *dest, int llim, int ulim)
 {
-	char *ret;
+	int result = 0;
 
+	/* The limit also determines the number of valid digits. */
+	int rulim = ulim;
 
-	if (__isthreaded)
-		_pthread_mutex_lock(&gotgmt_mutex);
-	got_GMT = 0;
-	ret = _strptime(buf, fmt, tm);
-	if (ret && got_GMT) {
-		time_t t = timegm(tm);
-	    	localtime_r(&t, tm);
-		got_GMT = 0;
-	}
+	if (**buf < '0' || **buf > '9')
+		return (0);
 
-	if (__isthreaded)
-		_pthread_mutex_unlock(&gotgmt_mutex);
-	return ret;
+	do {
+		result *= 10;
+		result += *(*buf)++ - '0';
+		rulim /= 10;
+	} while ((result * 10 <= ulim) && rulim && **buf >= '0' && **buf <= '9');
+
+	if (result < llim || result > ulim)
+		return (0);
+
+	*dest = result;
+	return (1);
 }

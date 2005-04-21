@@ -1,51 +1,20 @@
+/*	$NetBSD: src/lib/libc/locale/localeconv.c,v 1.12 2004/01/02 21:53:49 itojun Exp $	*/
+/*	$DragonFly: src/lib/libc/locale/localeconv.c,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
+
 /*
- * Copyright (c) 2001 Alexey Zelkin <phantom@FreeBSD.org>
- * Copyright (c) 1991, 1993
- *	The Regents of the University of California.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * @(#)localeconv.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/locale/localeconv.c,v 1.1.1.1.14.2 2002/03/12 17:17:48 phantom Exp $
- * $DragonFly: src/lib/libc/locale/localeconv.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * Written by J.T. Conklin <jtc@NetBSD.org>.
+ * Public domain.
  */
 
+#include <sys/localedef.h>
 #include <locale.h>
-#include "lmonetary.h"
-#include "lnumeric.h"
- 
+
 /* 
  * The localeconv() function constructs a struct lconv from the current
  * monetary and numeric locales.
  *
  * Because localeconv() may be called many times (especially by library
- * routines like printf() & strtod()), the approprate members of the 
+ * routines like printf() & strtod()), the appropriate members of the 
  * lconv structure are computed only when the monetary or numeric 
  * locale has been changed.
  */
@@ -56,48 +25,54 @@ int __nlocale_changed = 1;
  * Return the current locale conversion.
  */
 struct lconv *
-localeconv()
+localeconv(void)
 {
-    static struct lconv ret;
+	static struct lconv ret;
 
-    if (__mlocale_changed) {
-	/* LC_MONETARY part */
-        struct lc_monetary_T * mptr; 
+	if (__mlocale_changed) {
+		/* LC_MONETARY */
+		ret.int_curr_symbol = _CurrentMonetaryLocale->int_curr_symbol;
+		ret.currency_symbol = _CurrentMonetaryLocale->currency_symbol;
+		ret.mon_decimal_point =
+		    _CurrentMonetaryLocale->mon_decimal_point;
+		ret.mon_thousands_sep =
+		    _CurrentMonetaryLocale->mon_thousands_sep;
+		ret.mon_grouping = _CurrentMonetaryLocale->mon_grouping;
+		ret.positive_sign = _CurrentMonetaryLocale->positive_sign;
+		ret.negative_sign = _CurrentMonetaryLocale->negative_sign;
+		ret.int_frac_digits = _CurrentMonetaryLocale->int_frac_digits;
+		ret.frac_digits = _CurrentMonetaryLocale->frac_digits;
+		ret.p_cs_precedes = _CurrentMonetaryLocale->p_cs_precedes;
+		ret.p_sep_by_space = _CurrentMonetaryLocale->p_sep_by_space;
+		ret.n_cs_precedes = _CurrentMonetaryLocale->n_cs_precedes;
+		ret.n_sep_by_space = _CurrentMonetaryLocale->n_sep_by_space;
+		ret.p_sign_posn = _CurrentMonetaryLocale->p_sign_posn;
+		ret.n_sign_posn = _CurrentMonetaryLocale->n_sign_posn;
+		ret.int_p_cs_precedes =
+		    _CurrentMonetaryLocale->int_p_cs_precedes;
+		ret.int_n_cs_precedes =
+		    _CurrentMonetaryLocale->int_n_cs_precedes;
+		ret.int_p_sep_by_space =
+		    _CurrentMonetaryLocale->int_p_sep_by_space;
+		ret.int_n_sep_by_space =
+		    _CurrentMonetaryLocale->int_n_sep_by_space;
+		ret.int_p_sign_posn = _CurrentMonetaryLocale->int_p_sign_posn;
+		ret.int_n_sign_posn = _CurrentMonetaryLocale->int_n_sign_posn;
+		__mlocale_changed = 0;
+	}
 
-#define M_ASSIGN_STR(NAME) (ret.NAME = (char*)mptr->NAME)
-#define M_ASSIGN_CHAR(NAME) (ret.NAME = mptr->NAME[0])
+	if (__nlocale_changed) {
+		/* LC_NUMERIC */
+		/* LINTED const castaway */
+		ret.decimal_point =
+		    (char *)_CurrentNumericLocale->decimal_point;
+		/* LINTED const castaway */
+		ret.thousands_sep =
+		    (char *)_CurrentNumericLocale->thousands_sep;
+		/* LINTED const castaway */
+		ret.grouping = (char *) _CurrentNumericLocale->grouping;
+		__nlocale_changed = 0;
+	}
 
-	mptr = __get_current_monetary_locale();
-	M_ASSIGN_STR(int_curr_symbol);
-	M_ASSIGN_STR(currency_symbol);
-	M_ASSIGN_STR(mon_decimal_point);
-	M_ASSIGN_STR(mon_thousands_sep);
-	M_ASSIGN_STR(mon_grouping);
-	M_ASSIGN_STR(positive_sign);
-	M_ASSIGN_STR(negative_sign);
-	M_ASSIGN_CHAR(int_frac_digits);
-	M_ASSIGN_CHAR(frac_digits);
-	M_ASSIGN_CHAR(p_cs_precedes);
-	M_ASSIGN_CHAR(p_sep_by_space);
-	M_ASSIGN_CHAR(n_cs_precedes);
-	M_ASSIGN_CHAR(n_sep_by_space);
-	M_ASSIGN_CHAR(p_sign_posn);
-	M_ASSIGN_CHAR(n_sign_posn);
-	__mlocale_changed = 0;
-    }
-
-    if (__nlocale_changed) {
-	/* LC_NUMERIC part */
-        struct lc_numeric_T * nptr; 
-
-#define N_ASSIGN_STR(NAME) (ret.NAME = (char*)nptr->NAME)
-
-	nptr = __get_current_numeric_locale();
-	N_ASSIGN_STR(decimal_point);
-	N_ASSIGN_STR(thousands_sep);
-	N_ASSIGN_STR(grouping);
-	__nlocale_changed = 0;
-    }
-
-    return (&ret);
+	return(&ret);
 }

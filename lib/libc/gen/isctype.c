@@ -1,14 +1,14 @@
+/*	$NetBSD: src/lib/libc/gen/isctype.c,v 1.16 2003/08/07 16:42:52 agc Exp $	*/
+/*	$DragonFly: src/lib/libc/gen/isctype.c,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
+
 /*
- * Copyright (c) 1989, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 The Regents of the University of California.
+ * All rights reserved.
  * (c) UNIX System Laboratories, Inc.
  * All or some portions of this file are derived from material licensed
  * to the University of California by American Telephone and Telegraph
  * Co. or Unix System Laboratories, Inc. and are reproduced herein with
  * the permission of UNIX System Laboratories, Inc.
- *
- * This code is derived from software contributed to Berkeley by
- * Paul Borman at Krystal Technologies.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,11 +18,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,196 +33,105 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/lib/libc/locale/isctype.c,v 1.7 2000/02/08 07:43:24 obrien Exp $
- * $DragonFly: src/lib/libc/gen/isctype.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
- *
- * @(#)isctype.c	8.3 (Berkeley) 2/24/94
  */
 
+#define _ANSI_LIBRARY
 #include <ctype.h>
-
-#undef digittoint
-int
-digittoint(c)
-	int c;
-{
-	return (__maskrune((c), 0xFF));
-}
 
 #undef isalnum
 int
-isalnum(c)
-	int c;
+isalnum(int c)
 {
-	return (__istype((c), _CTYPE_A|_CTYPE_D));
+	return((__libc_ctype_ + 1)[c] & (_U|_L|_N));
 }
 
 #undef isalpha
 int
-isalpha(c)
-	int c;
+isalpha(int c)
 {
-	return (__istype((c), _CTYPE_A));
-}
-
-#undef isascii
-int
-isascii(c)
-	int c;
-{
-	return (((c) & ~0x7F) == 0);
+	return((__libc_ctype_ + 1)[c] & (_U|_L));
 }
 
 #undef isblank
 int
-isblank(c)
-	int c;
+isblank(int c)
 {
-	return (__istype((c), _CTYPE_B));
+	return((__libc_ctype_ + 1)[c] & _B);
 }
 
 #undef iscntrl
 int
-iscntrl(c)
-	int c;
+iscntrl(int c)
 {
-	return (__istype((c), _CTYPE_C));
+	return((__libc_ctype_ + 1)[c] & _C);
 }
 
 #undef isdigit
 int
-isdigit(c)
-	int c;
+isdigit(int c)
 {
-	return (__isctype((c), _CTYPE_D));
+	return((__libc_ctype_ + 1)[c] & _N);
 }
 
 #undef isgraph
 int
-isgraph(c)
-	int c;
+isgraph(int c)
 {
-	return (__istype((c), _CTYPE_G));
-}
-
-#undef ishexnumber 
-int
-ishexnumber(c)
-	int c;
-{
-	return (__istype((c), _CTYPE_X));
-}
-
-#undef isideogram
-int
-isideogram(c)
-	int c;
-{
-	return (__istype((c), _CTYPE_I));
+	return((__libc_ctype_ + 1)[c] & (_P|_U|_L|_N));
 }
 
 #undef islower
 int
-islower(c)
-	int c;
+islower(int c)
 {
-	return (__istype((c), _CTYPE_L));
-}
-
-#undef isnumber
-int
-isnumber(c)
-	int c;
-{
-	return (__istype((c), _CTYPE_D));
-}
-
-#undef isphonogram	
-int
-isphonogram(c)
-	int c;
-{
-	return (__istype((c), _CTYPE_Q));
+	return((__libc_ctype_ + 1)[c] & _L);
 }
 
 #undef isprint
 int
-isprint(c)
-	int c;
+isprint(int c)
 {
-	return (__istype((c), _CTYPE_R));
+	return((__libc_ctype_ + 1)[c] & (_P|_U|_L|_N|_B));
 }
 
 #undef ispunct
 int
-ispunct(c)
-	int c;
+ispunct(int c)
 {
-	return (__istype((c), _CTYPE_P));
-}
-
-#undef isrune
-int
-isrune(c)
-	int c;
-{
-	return (__istype((c), 0xFFFFFF00L));
+	return((__libc_ctype_ + 1)[c] & _P);
 }
 
 #undef isspace
 int
-isspace(c)
-	int c;
+isspace(int c)
 {
-	return (__istype((c), _CTYPE_S));
-}
-
-#undef isspecial
-int
-isspecial(c)
-	int c;
-{
-	return (__istype((c), _CTYPE_T));
+	return((__libc_ctype_ + 1)[c] & _S);
 }
 
 #undef isupper
 int
-isupper(c)
-	int c;
+isupper(int c)
 {
-	return (__istype((c), _CTYPE_U));
+	return((__libc_ctype_ + 1)[c] & _U);
 }
 
 #undef isxdigit
 int
-isxdigit(c)
-	int c;
+isxdigit(int c)
 {
-	return (__isctype((c), _CTYPE_X));
+	return((__libc_ctype_ + 1)[c] & (_N|_X));
 }
 
-#undef toascii
+#undef _toupper
 int
-toascii(c)
-	int c;
+_toupper(int c)
 {
-	return ((c) & 0x7F);
+	return(c - 'a' + 'A');
 }
 
-#undef tolower
+#undef _tolower
 int
-tolower(c)
-	int c;
+_tolower(int c)
 {
-        return (__tolower(c));
+	return(c - 'A' + 'a');
 }
-
-#undef toupper
-int
-toupper(c)
-	int c;
-{
-        return (__toupper(c));
-}
-

@@ -1,51 +1,108 @@
+/*	$NetBSD: src/lib/libc/time/strftime.c,v 1.16 2004/05/12 23:03:11 kleink Exp $	*/
+/*	$DragonFly: src/lib/libc/stdtime/strftime.c,v 1.5 2005/04/21 16:36:35 joerg Exp $ */
+
 /*
- * Copyright (c) 1989 The Regents of the University of California.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms are permitted
- * provided that the above copyright notice and this paragraph are
- * duplicated in all such forms and that any documentation,
- * advertising materials, and other materials related to such
- * distribution and use acknowledge that the software was developed
- * by the University of California, Berkeley.  The name of the
- * University may not be used to endorse or promote products derived
- * from this software without specific prior written permission.
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
- *
- * @(#)strftime.c	7.38
- * $FreeBSD: src/lib/libc/stdtime/strftime.c,v 1.25.2.4 2002/03/12 17:24:54 phantom Exp $
- * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.4 2005/03/16 07:22:07 joerg Exp $
- */
+** Based on the UCB version with the ID appearing below.
+** This is ANSIish only when "multibyte character == plain character".
+*/
 
-#include "namespace.h"
-#include "private.h"
+/*
+** We don't use these extensions in strftime operation even when
+** supported by the local tzcode configuration.  A strictly
+** conforming C application may leave them in undefined state.
+*/
 
-#ifndef LIBC_SCCS
-#ifndef lint
-static const char	sccsid[] = "@(#)strftime.c	5.4 (Berkeley) 3/14/89";
-#endif /* !defined lint */
-#endif /* !defined LIBC_SCCS */
+#ifdef _LIBC
+#undef TM_ZONE
+#undef TM_GMTOFF
+#endif
 
-#include "tzfile.h"
+/*
+** Copyright (c) 1989, 1993
+**	The Regents of the University of California.  All rights reserved.
+**
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions
+** are met:
+** 1. Redistributions of source code must retain the above copyright
+**    notice, this list of conditions and the following disclaimer.
+** 2. Redistributions in binary form must reproduce the above copyright
+**    notice, this list of conditions and the following disclaimer in the
+**    documentation and/or other materials provided with the distribution.
+** 3. All advertising materials mentioning features or use of this software
+**    must display the following acknowledgement:
+**	This product includes software developed by the University of
+**	California, Berkeley and its contributors.
+** 4. Neither the name of the University nor the names of its contributors
+**    may be used to endorse or promote products derived from this software
+**    without specific prior written permission.
+**
+** THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+** ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+** ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+** FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+** DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+** OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+** HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+** LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+** OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+** SUCH DAMAGE.
+*/
+
+#include <sys/localedef.h>
 #include <fcntl.h>
-#include <sys/stat.h>
-#include "un-namespace.h"
-#include "timelocal.h"
+#include <locale.h>
+#include <time.h>
+
+#include "private.h"
+#include "tzfile.h"
+
+#define Locale	_CurrentTimeLocale
 
 static char *	_add(const char *, char *, const char *);
 static char *	_conv(int, const char *, char *, const char *);
-static char *	_fmt(const char *, const struct tm *, char *, const char *);
+static char *	_fmt(const char *, const struct tm *, char *,
+		     const char *, int *);
+
+#define NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
+
+#ifndef YEAR_2000_NAME
+#define YEAR_2000_NAME	"CHECK_STRFTIME_FORMATS_FOR_TWO_DIGIT_YEARS"
+#endif /* !defined YEAR_2000_NAME */
+
+
+#define IN_NONE	0
+#define IN_SOME	1
+#define IN_THIS	2
+#define IN_ALL	3
 
 size_t
-strftime(char *const s, const size_t maxsize, const char * const format,
+strftime(char * const s, const size_t maxsize, const char * const format,
 	 const struct tm * const t)
 {
-	char *p;
+	char *	p;
+	int	warn;
 
 	tzset();
-	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize);
+	warn = IN_NONE;
+	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn);
+#ifndef NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
+	if (warn != IN_NONE && getenv(YEAR_2000_NAME) != NULL) {
+		(void) fprintf(stderr, "\n");
+		if (format == NULL)
+			(void) fprintf(stderr, "NULL strftime format ");
+		else	(void) fprintf(stderr, "strftime format \"%s\" ",
+				format);
+		(void) fprintf(stderr, "yields only two digits of years in ");
+		if (warn == IN_SOME)
+			(void) fprintf(stderr, "some locales");
+		else if (warn == IN_THIS)
+			(void) fprintf(stderr, "the current locale");
+		else	(void) fprintf(stderr, "all locales");
+		(void) fprintf(stderr, "\n");
+	}
+#endif /* !defined NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU */
 	if (p == s + maxsize)
 		return 0;
 	*p = '\0';
@@ -54,40 +111,38 @@ strftime(char *const s, const size_t maxsize, const char * const format,
 
 static char *
 _fmt(const char *format, const struct tm * const t, char *pt,
-     const char * const ptlim)
+     const char * const ptlim, int * warnp)
 {
-	int Ealternative, Oalternative;
-	struct lc_time_T *tptr = __get_current_time_locale();
-
 	for ( ; *format; ++format) {
 		if (*format == '%') {
-			Ealternative = 0;
-			Oalternative = 0;
 label:
 			switch (*++format) {
 			case '\0':
 				--format;
 				break;
 			case 'A':
-				pt = _add((t->tm_wday < 0 || t->tm_wday > 6) ?
-					"?" : tptr->weekday[t->tm_wday],
+				pt = _add((t->tm_wday < 0 ||
+					t->tm_wday >= DAYSPERWEEK) ?
+					"?" : Locale->day[t->tm_wday],
 					pt, ptlim);
 				continue;
 			case 'a':
-				pt = _add((t->tm_wday < 0 || t->tm_wday > 6) ?
-					"?" : tptr->wday[t->tm_wday],
+				pt = _add((t->tm_wday < 0 ||
+					t->tm_wday >= DAYSPERWEEK) ?
+					"?" : Locale->abday[t->tm_wday],
 					pt, ptlim);
 				continue;
 			case 'B':
-				pt = _add((t->tm_mon < 0 || t->tm_mon > 11) ? 
-					"?" : (Oalternative ? tptr->alt_month :
-					tptr->month)[t->tm_mon],
+				pt = _add((t->tm_mon < 0 ||
+					t->tm_mon >= MONSPERYEAR) ?
+					"?" : Locale->mon[t->tm_mon],
 					pt, ptlim);
 				continue;
 			case 'b':
 			case 'h':
-				pt = _add((t->tm_mon < 0 || t->tm_mon > 11) ?
-					"?" : tptr->mon[t->tm_mon],
+				pt = _add((t->tm_mon < 0 ||
+					t->tm_mon >= MONSPERYEAR) ?
+					"?" : Locale->abmon[t->tm_mon],
 					pt, ptlim);
 				continue;
 			case 'C':
@@ -102,43 +157,39 @@ label:
 					"%02d", pt, ptlim);
 				continue;
 			case 'c':
-				pt = _fmt(tptr->c_fmt, t, pt, ptlim);
+				{
+				int warn2 = IN_SOME;
+
+				pt = _fmt(Locale->d_t_fmt, t, pt, ptlim, warnp);
+				if (warn2 == IN_ALL)
+					warn2 = IN_THIS;
+				if (warn2 > *warnp)
+					*warnp = warn2;
+				}
 				continue;
 			case 'D':
-				pt = _fmt("%m/%d/%y", t, pt, ptlim);
+				pt = _fmt("%m/%d/%y", t, pt, ptlim, warnp);
 				continue;
 			case 'd':
 				pt = _conv(t->tm_mday, "%02d", pt, ptlim);
 				continue;
 			case 'E':
-				if (Ealternative || Oalternative)
-					break;
-				Ealternative++;
-				goto label;
 			case 'O':
 				/*
-				** POSIX locale extensions, a la
-				** Arnold Robbins' strftime version 3.0.
+				** C99 locale modifiers.
 				** The sequences
-				**      %Ec %EC %Ex %EX %Ey %EY
+				**	%Ec %EC %Ex %EX %Ey %EY
 				**	%Od %oe %OH %OI %Om %OM
 				**	%OS %Ou %OU %OV %Ow %OW %Oy
 				** are supposed to provide alternate
 				** representations.
-				** (ado, 1993-05-24)
-				**
-				** FreeBSD extensions
-				**      %OB %Ef %EF
 				*/
-				if (Ealternative || Oalternative)
-					break;
-				Oalternative++;
 				goto label;
 			case 'e':
 				pt = _conv(t->tm_mday, "%2d", pt, ptlim);
 				continue;
 			case 'F':
-				pt = _fmt("%Y-%m-%d", t, pt, ptlim);
+				pt = _fmt("%Y-%m-%d", t, pt, ptlim, warnp);
 				continue;
 			case 'H':
 				pt = _conv(t->tm_hour, "%02d", pt, ptlim);
@@ -196,16 +247,16 @@ label:
 				pt = _add("\n", pt, ptlim);
 				continue;
 			case 'p':
-				pt = _add((t->tm_hour >= 12) ?
-					tptr->pm :
-					tptr->am,
+				pt = _add((t->tm_hour >= (HOURSPERDAY / 2)) ?
+					Locale->am_pm[1] :
+					Locale->am_pm[0],
 					pt, ptlim);
 				continue;
 			case 'R':
-				pt = _fmt("%H:%M", t, pt, ptlim);
+				pt = _fmt("%H:%M", t, pt, ptlim, warnp);
 				continue;
 			case 'r':
-				pt = _fmt(tptr->ampm_fmt, t, pt, ptlim);
+				pt = _fmt("%I:%M:%S %p", t, pt, ptlim, warnp);
 				continue;
 			case 'S':
 				pt = _conv(t->tm_sec, "%02d", pt, ptlim);
@@ -219,6 +270,7 @@ label:
 
 					tm = *t;
 					mkt = mktime(&tm);
+					/* CONSTCOND */
 					if (TYPE_SIGNED(time_t))
 						(void) sprintf(buf, "%ld",
 							(long) mkt);
@@ -228,13 +280,14 @@ label:
 				}
 				continue;
 			case 'T':
-				pt = _fmt("%H:%M:%S", t, pt, ptlim);
+				pt = _fmt("%H:%M:%S", t, pt, ptlim, warnp);
 				continue;
 			case 't':
 				pt = _add("\t", pt, ptlim);
 				continue;
 			case 'U':
-				pt = _conv((t->tm_yday + 7 - t->tm_wday) / 7,
+				pt = _conv((t->tm_yday + DAYSPERWEEK -
+					t->tm_wday) / DAYSPERWEEK,
 					"%02d", pt, ptlim);
 				continue;
 			case 'u':
@@ -244,7 +297,8 @@ label:
 				** [1 (Monday) - 7]"
 				** (ado, 1993-05-24)
 				*/
-				pt = _conv((t->tm_wday == 0) ? 7 : t->tm_wday,
+				pt = _conv((t->tm_wday == 0) ?
+					DAYSPERWEEK : t->tm_wday,
 					"%d", pt, ptlim);
 				continue;
 			case 'V':	/* ISO 8601 week number */
@@ -326,6 +380,7 @@ label:
 						pt = _conv(w, "%02d",
 							pt, ptlim);
 					else if (*format == 'g') {
+						*warnp = IN_ALL;
 						pt = _conv(year % 100, "%02d",
 							pt, ptlim);
 					} else	pt = _conv(year, "%04d",
@@ -338,24 +393,34 @@ label:
 				** "date as dd-bbb-YYYY"
 				** (ado, 1993-05-24)
 				*/
-				pt = _fmt("%e-%b-%Y", t, pt, ptlim);
+				pt = _fmt("%e-%b-%Y", t, pt, ptlim, warnp);
 				continue;
 			case 'W':
-				pt = _conv((t->tm_yday + 7 -
+				pt = _conv((t->tm_yday + DAYSPERWEEK -
 					(t->tm_wday ?
-					(t->tm_wday - 1) : 6)) / 7,
+					(t->tm_wday - 1) :
+					(DAYSPERWEEK - 1))) / DAYSPERWEEK,
 					"%02d", pt, ptlim);
 				continue;
 			case 'w':
 				pt = _conv(t->tm_wday, "%d", pt, ptlim);
 				continue;
 			case 'X':
-				pt = _fmt(tptr->X_fmt, t, pt, ptlim);
+				pt = _fmt(Locale->t_fmt, t, pt, ptlim, warnp);
 				continue;
 			case 'x':
-				pt = _fmt(tptr->x_fmt, t, pt, ptlim);
+				{
+				int	warn2 = IN_SOME;
+
+				pt = _fmt(Locale->d_fmt, t, pt, ptlim, &warn2);
+				if (warn2 == IN_ALL)
+					warn2 = IN_THIS;
+				if (warn2 > *warnp)
+					*warnp = warn2;
+				}
 				continue;
 			case 'y':
+				*warnp = IN_ALL;
 				pt = _conv((t->tm_year + TM_YEAR_BASE) % 100,
 					"%02d", pt, ptlim);
 				continue;
@@ -364,39 +429,112 @@ label:
 					pt, ptlim);
 				continue;
 			case 'Z':
-				if (t->tm_zone != NULL)
-					pt = _add(t->tm_zone, pt, ptlim);
+#ifdef TM_ZONE
+				if (t->TM_ZONE != NULL)
+					pt = _add(t->TM_ZONE, pt, ptlim);
 				else
-				if (t->tm_isdst == 0 || t->tm_isdst == 1) {
-					pt = _add(tzname[t->tm_isdst],
+#endif /* defined TM_ZONE */
+				if (t->tm_isdst >= 0)
+					pt = _add(tzname[t->tm_isdst != 0],
 						pt, ptlim);
-				} else  pt = _add("?", pt, ptlim);
+				/*
+				** C99 says that %Z must be replaced by the
+				** empty string if the time zone is not
+				** determinable.
+				*/
 				continue;
 			case 'z':
 				{
-					long absoff;
-					if (t->tm_gmtoff >= 0) {
-						absoff = t->tm_gmtoff;
-						pt = _add("+", pt, ptlim);
-					} else {
-						absoff = -t->tm_gmtoff;
-						pt = _add("-", pt, ptlim);
-					}
-					pt = _conv(absoff / 3600, "%02d",
-						pt, ptlim);
-					pt = _conv((absoff % 3600) / 60, "%02d",
-						pt, ptlim);
-				};
+				int		diff;
+				char const *	sign;
+
+				if (t->tm_isdst < 0)
+					continue;
+#ifdef TM_GMTOFF
+				diff = (int)t->TM_GMTOFF;
+#else /* !defined TM_GMTOFF */
+				/*
+				** C99 says that the UTC offset must
+				** be computed by looking only at
+				** tm_isdst.  This requirement is
+				** incorrect, since it means the code
+				** must rely on magic (in this case
+				** altzone and timezone), and the
+				** magic might not have the correct
+				** offset.  Doing things correctly is
+				** tricky and requires disobeying C99;
+				** see GNU C strftime for details.
+				** For now, punt and conform to the
+				** standard, even though it's incorrect.
+				**
+				** C99 says that %z must be replaced by the
+				** empty string if the time zone is not
+				** determinable, so output nothing if the
+				** appropriate variables are not available.
+				*/
+#ifndef STD_INSPIRED
+				if (t->tm_isdst == 0)
+#ifdef USG_COMPAT
+					diff = -timezone;
+#else /* !defined USG_COMPAT */
+					continue;
+#endif /* !defined USG_COMPAT */
+				else
+#ifdef ALTZONE
+					diff = -altzone;
+#else /* !defined ALTZONE */
+					continue;
+#endif /* !defined ALTZONE */
+#else /* defined STD_INSPIRED */
+				{
+					struct tm tmp;
+					time_t lct, gct;
+
+					/*
+					** Get calendar time from t
+					** being treated as local.
+					*/
+					tmp = *t; /* mktime discards const */
+					lct = mktime(&tmp);
+
+					if (lct == (time_t)-1)
+						continue;
+
+					/*
+					** Get calendar time from t
+					** being treated as GMT.
+					**/
+					tmp = *t; /* mktime discards const */
+					gct = timegm(&tmp);
+
+					if (gct == (time_t)-1)
+						continue;
+
+					/* LINTED difference will fit int */
+					diff = (intmax_t)gct - (intmax_t)lct;
+				}
+#endif /* defined STD_INSPIRED */
+#endif /* !defined TM_GMTOFF */
+				if (diff < 0) {
+					sign = "-";
+					diff = -diff;
+				} else	sign = "+";
+				pt = _add(sign, pt, ptlim);
+				diff /= 60;
+				pt = _conv((diff/60)*100 + diff%60,
+					"%04d", pt, ptlim);
+				}
 				continue;
 			case '+':
-				pt = _fmt(tptr->date_fmt, t, pt, ptlim);
+				pt = _fmt(Locale->d_t_fmt, t, pt, ptlim,
+					warnp);
 				continue;
 			case '%':
 			/*
-			 * X311J/88-090 (4.12.3.5): if conversion char is
-			 * undefined, behavior is undefined.  Print out the
-			 * character itself as printf(3) also does.
-			 */
+			** X311J/88-090 (4.12.3.5): if conversion char is
+			** undefined, behavior is undefined.  Print out the
+			** character itself as printf(3) also does.
+			*/
 			default:
 				break;
 			}

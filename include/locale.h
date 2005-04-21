@@ -1,3 +1,6 @@
+/*	$NetBSD: src/include/locale.h,v 1.13 2003/08/07 09:44:10 agc Exp $	*/
+/*	$DragonFly: src/include/locale.h,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
+
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -10,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -31,23 +30,22 @@
  * SUCH DAMAGE.
  *
  *	@(#)locale.h	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/include/locale.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _LOCALE_H_
 #define _LOCALE_H_
 
 struct lconv {
-	char	*decimal_point;
-	char	*thousands_sep;
-	char	*grouping;
-	char	*int_curr_symbol;
-	char	*currency_symbol;
-	char	*mon_decimal_point;
-	char	*mon_thousands_sep;
-	char	*mon_grouping;
-	char	*positive_sign;
-	char	*negative_sign;
+	const char	*decimal_point;
+	const char	*thousands_sep;
+	const char	*grouping;
+	const char	*int_curr_symbol;
+	const char	*currency_symbol;
+	const char	*mon_decimal_point;
+	const char	*mon_thousands_sep;
+	const char	*mon_grouping;
+	const char	*positive_sign;
+	const char	*negative_sign;
 	char	int_frac_digits;
 	char	frac_digits;
 	char	p_cs_precedes;
@@ -56,6 +54,12 @@ struct lconv {
 	char	n_sep_by_space;
 	char	p_sign_posn;
 	char	n_sign_posn;
+	char	int_p_cs_precedes;
+	char	int_n_cs_precedes;
+	char	int_p_sep_by_space;
+	char	int_n_sep_by_space;
+	char	int_p_sign_posn;
+	char	int_n_sign_posn;
 };
 
 #ifndef NULL
@@ -75,8 +79,8 @@ struct lconv {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-struct lconv	*localeconv (void);
-char		*setlocale (int, const char *);
+struct lconv	*localeconv(void);
+char		*setlocale(int, const char *);
 __END_DECLS
 
 #endif /* _LOCALE_H_ */

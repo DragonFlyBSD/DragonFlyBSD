@@ -1,10 +1,10 @@
 #	Makefile.inc,v 1.2 1994/09/13 21:26:01 wollman Exp
 # $FreeBSD: src/lib/libc/stdtime/Makefile.inc,v 1.9.2.3 2003/05/23 23:44:27 keramida Exp $
-# $DragonFly: src/lib/libc/stdtime/Makefile.inc,v 1.2 2003/06/17 04:26:46 dillon Exp $
+# $DragonFly: src/lib/libc/stdtime/Makefile.inc,v 1.3 2005/04/21 16:36:35 joerg Exp $
 
 .PATH:	${.CURDIR}/../libc/stdtime ${.CURDIR}/../locale
 
-SRCS+=	asctime.c difftime.c localtime.c strftime.c strptime.c timelocal.c
+SRCS+=	asctime.c difftime.c localtime.c strftime.c strptime.c
 
 .if ${LIB} == "c"
 MAN+=	ctime.3 strftime.3 strptime.3 time2posix.3

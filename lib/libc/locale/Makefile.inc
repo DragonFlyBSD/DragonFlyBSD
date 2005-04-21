@@ -1,25 +1,27 @@
-#	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
-# $FreeBSD: src/lib/libc/locale/Makefile.inc,v 1.16.2.5 2002/10/24 11:00:52 tjr Exp $
-# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.6 2005/03/13 19:18:29 joerg Exp $
+# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.7 2005/04/21 16:36:34 joerg Exp $
 
-# locale sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/locale ${.CURDIR}/../libc/locale
+.PATH: ${.CURDIR}/../libc/locale
 
-SRCS+=	ansi.c big5.c collate.c collcmp.c euc.c fix_grouping.c frune.c \
-	gbk.c gb18030.c isctype.c \
-	ldpart.c lmessages.c lmonetary.c lnumeric.c localeconv.c mbrune.c \
-        mskanji.c nl_langinfo.c nomacros.c none.c rune.c \
-	runetype.c setinvalidrune.c setlocale.c setrunelocale.c table.c \
-	tolower.c toupper.c utf2.c utf8.c
+SRCS+=	collate.c collcmp.c
+SRCS+=	_def_messages.c _def_monetary.c _def_numeric.c _def_time.c
+SRCS+=	ctypeio.c localeconv.c nl_langinfo.c setlocale.c __mb_cur_max.c
+SRCS+=	wcscoll.c wcstod.c wcstol.c wcstoll.c wcstoimax.c wcstoul.c
+SRCS+=	wcstoumax.c wcsxfrm.c aliasname.c
+SRCS+=	___runetype_mb.c _wctrans.c iswctype.c multibyte_c90.c
+SRCS+=	multibyte_amd1.c rune.c runeglue.c runetable.c setrunelocale.c
+
+CFLAGS+=	-I${.CURDIR}/../libc/locale
 
 .if ${LIB} == "c"
-MAN+=	mbrune.3 multibyte.3 nl_langinfo.3 rune.3 setlocale.3
+MAN+=	nl_langinfo.3 setlocale.3
+MAN+=	btowc.3 iswalnum.3 iswctype.3 towlower.3 towctrans.3 mblen.3 mbrlen.3
+MAN+=	mbrtowc.3 mbsinit.3 mbsrtowcs.3 mbstowcs.3 mbtowc.3 wcrtomb.3
+MAN+=	wcsrtombs.3 wcstombs.3 wctob.3 wctomb.3 wctrans.3 wctype.3
 
-MLINKS+=mbrune.3 mbmb.3 mbrune.3 mbrrune.3
-MLINKS+=multibyte.3 mblen.3 multibyte.3 mbstowcs.3 multibyte.3 mbtowc.3 \
-	multibyte.3 wcstombs.3 multibyte.3 wctomb.3
-MLINKS+=rune.3 fgetrune.3 rune.3 fputrune.3 rune.3 fungetrune.3 \
-	rune.3 setinvalidrune.3 rune.3 setrunelocale.3 rune.3 sgetrune.3 \
-	rune.3 sputrune.3
-MLINKS+=setlocale.3 localeconv.3
+MLINKS+=iswalnum.3 iswalpha.3 iswalnum.3 iswblank.3
+MLINKS+=iswalnum.3 iswcntrl.3 iswalnum.3 iswdigit.3
+MLINKS+=iswalnum.3 iswgraph.3 iswalnum.3 iswlower.3
+MLINKS+=iswalnum.3 iswprint.3 iswalnum.3 iswpunct.3
+MLINKS+=iswalnum.3 iswspace.3 iswalnum.3 iswupper.3
+MLINKS+=iswalnum.3 iswxdigit.3 towlower.3 towupper.3
 .endif

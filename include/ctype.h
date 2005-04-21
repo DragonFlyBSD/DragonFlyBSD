@@ -1,14 +1,14 @@
+/*	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $	*/
+/*	$DragonFly: src/include/ctype.h,v 1.6 2005/04/21 16:36:34 joerg Exp $ */
+
 /*
- * Copyright (c) 1989, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 The Regents of the University of California.
+ * All rights reserved.
  * (c) UNIX System Laboratories, Inc.
  * All or some portions of this file are derived from material licensed
  * to the University of California by American Telephone and Telegraph
  * Co. or Unix System Laboratories, Inc. and are reproduced herein with
  * the permission of UNIX System Laboratories, Inc.
- *
- * This code is derived from software contributed to Berkeley by
- * Paul Borman at Krystal Technologies.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,11 +18,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -38,160 +34,93 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
- *      $FreeBSD: src/include/ctype.h,v 1.16 2000/02/08 07:43:23 obrien Exp $
- *      $DragonFly: src/include/ctype.h,v 1.5 2004/10/29 05:44:40 asmodai Exp $
+ *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
  */
 
 #ifndef _CTYPE_H_
-#define	_CTYPE_H_
+#define _CTYPE_H_
 
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>	/* __ct_rune_t and friends */
-#endif
+#include <sys/cdefs.h>
+#include <machine/stdint.h>
 
-/*
- * XXX <runetype.h> brings massive namespace pollution (rune_t and struct
- * member names).
- */
-#include <runetype.h>
+#define	_U	0x01
+#define	_L	0x02
+#define	_N	0x04
+#define	_S	0x08
+#define	_P	0x10
+#define	_C	0x20
+#define	_X	0x40
+#define	_B	0x80
 
-#define	_CTYPE_A	0x00000100L		/* Alpha */
-#define	_CTYPE_C	0x00000200L		/* Control */
-#define	_CTYPE_D	0x00000400L		/* Digit */
-#define	_CTYPE_G	0x00000800L		/* Graph */
-#define	_CTYPE_L	0x00001000L		/* Lower */
-#define	_CTYPE_P	0x00002000L		/* Punct */
-#define	_CTYPE_S	0x00004000L		/* Space */
-#define	_CTYPE_U	0x00008000L		/* Upper */
-#define	_CTYPE_X	0x00010000L		/* X digit */
-#define	_CTYPE_B	0x00020000L		/* Blank */
-#define	_CTYPE_R	0x00040000L		/* Print */
-#define	_CTYPE_I	0x00080000L		/* Ideogram */
-#define	_CTYPE_T	0x00100000L		/* Special */
-#define	_CTYPE_Q	0x00200000L		/* Phonogram */
-#define	_CTYPE_SW0	0x20000000L		/* 0 width character */
-#define	_CTYPE_SW1	0x40000000L		/* 1 width character */
-#define	_CTYPE_SW2	0x80000000L		/* 2 width character */
-#define	_CTYPE_SW3	0xc0000000L		/* 3 width character */
-#define	_CTYPE_SWM	0xe0000000L		/* Mask for screen width data */
-#define	_CTYPE_SWS	30			/* Bits to shift to get width */
+extern const __uint16_t	*__libc_ctype_;
+extern const __int16_t	*__libc_tolower_tab_;
+extern const __int16_t	*__libc_toupper_tab_;
 
 __BEGIN_DECLS
-int	isalnum (int);
-int	isalpha (int);
-int	iscntrl (int);
-int	isdigit (int);
-int	isgraph (int);
-int	islower (int);
-int	isprint (int);
-int	ispunct (int);
-int	isspace (int);
-int	isupper (int);
-int	isxdigit (int);
-int	tolower (int);
-int	toupper (int);
+int	isalnum(int);
+int	isalpha(int);
+int	iscntrl(int);
+int	isdigit(int);
+int	isgraph(int);
+int	islower(int);
+int	isprint(int);
+int	ispunct(int);
+int	isspace(int);
+int	isupper(int);
+int	isxdigit(int);
+int	tolower(int);
+int	toupper(int);
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-int	digittoint (int);
-int	isascii (int);
-int	isblank (int);
-int	ishexnumber (int);
-int	isideogram (int);
-int	isnumber (int);
-int	isphonogram (int);
-int	isrune (int);
-int	isspecial (int);
-int	toascii (int);
+#if defined(__XSI_VISIBLE)
+int	isascii(int);
+int	toascii(int);
+int	_tolower(int);
+int	_toupper(int);
+#endif
+
+#if _ISO_C_VISIBLE >= 1999 || _POSIX_VISIBLE >= 200112L || \
+    __XSI_VISIBLE >= 600
+int	isblank(int);
 #endif
 __END_DECLS
 
-#define	__istype(c,f)	(!!__maskrune((c),(f)))
+#define	isdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _N))
+#define	islower(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _L))
+#define	isspace(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _S))
+#define	ispunct(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _P))
+#define	isupper(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _U))
+#define	isalpha(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_U|_L)))
+#define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_N|_X)))
+#define	isalnum(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_U|_L|_N)))
+#define	isprint(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N|_B)))
+#define	isgraph(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N)))
+#define	iscntrl(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _C))
+#define	tolower(c)	((int)((__libc_tolower_tab_ + 1)[(int)(c)]))
+#define	toupper(c)	((int)((__libc_toupper_tab_ + 1)[(int)(c)]))
 
-#define	isalnum(c)	__istype((c), _CTYPE_A|_CTYPE_D)
-#define	isalpha(c)	__istype((c), _CTYPE_A)
-#define	iscntrl(c)	__istype((c), _CTYPE_C)
-#define	isdigit(c)	__isctype((c), _CTYPE_D) /* ANSI -- locale independent */
-#define	isgraph(c)	__istype((c), _CTYPE_G)
-#define	islower(c)	__istype((c), _CTYPE_L)
-#define	isprint(c)	__istype((c), _CTYPE_R)
-#define	ispunct(c)	__istype((c), _CTYPE_P)
-#define	isspace(c)	__istype((c), _CTYPE_S)
-#define	isupper(c)	__istype((c), _CTYPE_U)
-#define	isxdigit(c)	__isctype((c), _CTYPE_X) /* ANSI -- locale independent */
-#define	tolower(c)	__tolower(c)
-#define	toupper(c)	__toupper(c)
-
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-#define	digittoint(c)	__maskrune((c), 0xFF)
-#define	isascii(c)	(((c) & ~0x7F) == 0)
-#define	isblank(c)	__istype((c), _CTYPE_B)
-#define	ishexnumber(c)	__istype((c), _CTYPE_X)
-#define	isideogram(c)	__istype((c), _CTYPE_I)
-#define	isnumber(c)	__istype((c), _CTYPE_D)
-#define	isphonogram(c)	__istype((c), _CTYPE_Q)
-#define	isrune(c)	__istype((c), 0xFFFFFF00L)
-#define	isspecial(c)	__istype((c), _CTYPE_T)
-#define	toascii(c)	((c) & 0x7F)
+#if defined(__XSI_VISIBLE)
+#define	isascii(c)	((unsigned)(c) <= 0177)
+#define	toascii(c)	((c) & 0177)
+#define _tolower(c)	((c) - 'A' + 'a')
+#define _toupper(c)	((c) - 'a' + 'A')
 #endif
 
-__BEGIN_DECLS
-unsigned long	___runetype (__ct_rune_t);
-__ct_rune_t	___tolower (__ct_rune_t);
-__ct_rune_t	___toupper (__ct_rune_t);
-__END_DECLS
-
-/*
- * _EXTERNALIZE_CTYPE_INLINES_ is defined in locale/nomacros.c to tell us
- * to generate code for extern versions of all our inline functions.
- */
-#ifdef _EXTERNALIZE_CTYPE_INLINES_
-#define	_USE_CTYPE_INLINE_
-#define	static
-#define	__inline
+#if __ISO_C_VISIBLE >= 1999 || __POSIX_VISIBLE >= 200112L || \
+    __XSI_VISIBLE >= 600
+#define isblank(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _B))
 #endif
 
-/*
- * Use inline functions if we are allowed to and the compiler supports them.
- */
-#if !defined(_DONT_USE_CTYPE_INLINE_) && \
-    (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
-static __inline int
-__maskrune(__ct_rune_t _c, unsigned long _f)
-{
-	return ((_c < 0 || _c >= _CACHED_RUNES) ? ___runetype(_c) :
-		_CurrentRuneLocale->runetype[_c]) & _f;
-}
+#ifdef _CTYPE_PRIVATE
+#include <machine/limits.h>	/* for CHAR_BIT */
 
-static __inline int
-__isctype(__ct_rune_t _c, unsigned long _f)
-{
-	return (_c < 0 || _c >= _CACHED_RUNES) ? 0 :
-	       !!(_DefaultRuneLocale.runetype[_c] & _f);
-}
+#define _CTYPE_NUM_CHARS	(1 << CHAR_BIT)
 
-static __inline __ct_rune_t
-__toupper(__ct_rune_t _c)
-{
-	return (_c < 0 || _c >= _CACHED_RUNES) ? ___toupper(_c) :
-	       _CurrentRuneLocale->mapupper[_c];
-}
+#define _CTYPE_ID	 	"DFCTYPE"
+#define _CTYPE_REV		3
 
-static __inline __ct_rune_t
-__tolower(__ct_rune_t _c)
-{
-	return (_c < 0 || _c >= _CACHED_RUNES) ? ___tolower(_c) :
-	       _CurrentRuneLocale->maplower[_c];
-}
-
-#else /* not using inlines */
-
-__BEGIN_DECLS
-int		__maskrune (__ct_rune_t, unsigned long);
-int		__isctype (__ct_rune_t, unsigned long);
-__ct_rune_t	__toupper (__ct_rune_t);
-__ct_rune_t	__tolower (__ct_rune_t);
-__END_DECLS
-#endif /* using inlines */
+extern const __uint16_t	__libc_C_ctype_[];
+extern const __int16_t	__libc_C_toupper_[];
+extern const __int16_t	__libc_C_tolower_[];
+#endif
 
 #endif /* !_CTYPE_H_ */

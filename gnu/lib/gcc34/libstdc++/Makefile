@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.2 2005/04/21 13:42:33 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.3 2005/04/21 16:36:34 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -47,6 +47,8 @@ SRCS+=	basic_file_stdio.cc c_locale.cc
 SRCS+=	codecvt_members.cc collate_members.cc ctype_members.cc
 SRCS+=	messages_members.cc monetary_members.cc numeric_members.cc
 SRCS+=	time_members.cc
+
+SRCS+=	ctype_noninline.h ctype_base.h os_defines.h
 
 atomicity.cc:
 	echo '#include "atomicity.h"' > ${.TARGET}
@@ -157,12 +159,13 @@ STDHDRSDIR=	${INCLUDEDIR}/c++/3.4
 # c++locale <- c_locale.h
 TARGETHDRS=	io/basic_file_stdio.h io/c_io_stdio.h
 TARGETHDRS+=	allocator/new_allocator_base.h
-TARGETHDRS+=	os/bsd/freebsd/ctype_inline.h os/bsd/freebsd/ctype_noninline.h
-TARGETHDRS+=	os/bsd/freebsd/os_defines.h os/bsd/freebsd/ctype_base.h
+TARGETHDRS+=	os/bsd/netbsd/ctype_inline.h
+TARGETHDRS+=	os/bsd/netbsd/os_defines.h
 TARGETHDRS+=	locale/generic/messages_members.h locale/generic/time_members.h
 TARGETHDRS+=	locale/generic/codecvt_specializations.h
 TARGETHDRS+=	locale/generic/c_locale.h
-TARGETHDRS:=	${TARGETHDRS:S;^;${SRCDIR}/config/;}
+TARGETHDRS:=	${TARGETHDRS:S;^;${SRCDIR}/config/;} ctype_noninline.h \
+		ctype_base.h os_defines.h
 
 TARGETHDRSNAME_c_io_stdio.h=		c++io.h
 TARGETHDRSNAME_new_allocator_base.h=	c++allocator.h
@@ -207,6 +210,15 @@ gthr-default.h: ${GCCDIR}/gcc/gthr-posix.h
 	    -e 's,^#include "\(.*\)",#include <bits/\1>,g' \
 	    < ${GCCDIR}/gcc/gthr-posix.h > gthr-default.h
 
-CLEANFILES+=	${THRHDRS}
+ctype_base.h: ${SRCDIR}/config/os/bsd/netbsd/ctype_base.h ctype_base.h.patch
+	patch -o ${.TARGET} -i ${.CURDIR}/ctype_base.h.patch ${SRCDIR}/config/os/bsd/netbsd/ctype_base.h
+
+ctype_noninline.h: ${SRCDIR}/config/os/bsd/netbsd/ctype_noninline.h ctype_noninline.h.patch
+	patch -o ${.TARGET} -i ${.CURDIR}/ctype_noninline.h.patch ${SRCDIR}/config/os/bsd/netbsd/ctype_noninline.h
+
+os_defines.h: ${SRCDIR}/config/os/bsd/netbsd/os_defines.h os_defines.h.patch
+	patch -o ${.TARGET} -i ${.CURDIR}/os_defines.h.patch ${SRCDIR}/config/os/bsd/netbsd/os_defines.h
+
+CLEANFILES+=	${THRHDRS} ctype_nonline.h ctype_base.h os_defines.h
 
 .include <bsd.lib.mk>

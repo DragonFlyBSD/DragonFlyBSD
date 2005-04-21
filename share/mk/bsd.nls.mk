@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.nls.mk,v 1.11 2005/02/27 16:36:54 phantom Exp $
-# $DragonFly: src/share/mk/bsd.nls.mk,v 1.2 2005/04/12 23:35:37 okumoto Exp $
+# $DragonFly: src/share/mk/bsd.nls.mk,v 1.3 2005/04/21 16:36:35 joerg Exp $
 #
 # This include file <bsd.nls.mk> handles building and installing Native
 # Language Support (NLS) catalogs
@@ -26,7 +26,7 @@
 .error bsd.nls.mk cannot be included directly.
 .endif
 
-GENCAT?=	gencat -new
+GENCAT?=	gencat
 
 .SUFFIXES: .cat .msg
 

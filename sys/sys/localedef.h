@@ -1,5 +1,5 @@
 /*	$NetBSD: src/sys/sys/localedef.h,v 1.6 2002/11/19 09:53:16 junyoung Exp $	*/
-/*	$DragonFly: src/sys/sys/localedef.h,v 1.1 2005/03/16 06:42:34 joerg Exp $ */
+/*	$DragonFly: src/sys/sys/localedef.h,v 1.2 2005/04/21 16:36:35 joerg Exp $ */
 
 /*
  * Copyright (c) 1994 Winning Strategies, Inc.
@@ -94,6 +94,7 @@ typedef struct {
 	const char *d_fmt;
 	const char *t_fmt;
 	const char *t_fmt_ampm;
+	const char *date_fmt;
 } _TimeLocale;
 
 extern const _TimeLocale *_CurrentTimeLocale;

@@ -1,3 +1,5 @@
+/*	$NetBSD: src/usr.bin/mklocale/ldef.h,v 1.4 2003/08/07 11:15:14 agc Exp $	*/
+
 /*-
  * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,23 +32,23 @@
  * SUCH DAMAGE.
  *
  *	@(#)ldef.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/mklocale/ldef.h,v 1.2 2005/04/18 07:43:45 joerg Exp $
+ * $DragonFly: src/usr.bin/mklocale/ldef.h,v 1.3 2005/04/21 16:36:35 joerg Exp $
  */
 
-#include "runetype.h"
+#include "locale/runetype.h"
 
 /*
  * This should look a LOT like a _RuneEntry
  */
 typedef struct rune_list {
-    rune_t		min;
-    rune_t 		max;
-    rune_t 		map;
-    unsigned long	*types;
+    __nbrune_t		min;
+    __nbrune_t 		max;
+    __nbrune_t 		map;
+    u_int32_t		*types;
     struct rune_list	*next;
 } rune_list;
 
 typedef struct rune_map {
-    unsigned long	map[_CACHED_RUNES];
+    u_int32_t		map[_NB_CACHED_RUNES];
     rune_list		*root;
 } rune_map;

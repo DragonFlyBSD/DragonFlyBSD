@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/_def_time.c,v 1.7 2003/07/26 19:24:46 salo Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/_def_time.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/locale/_def_time.c,v 1.2 2005/04/21 16:36:34 joerg Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@NetBSD.org>.
@@ -21,7 +21,8 @@ const _TimeLocale _DefaultTimeLocale =  {
 	"%a %b %e %H:%M:%S %Y",
 	"%m/%d/%y",
 	"%H:%M:%S",
-	"%I:%M:%S %p"
+	"%I:%M:%S %p",
+	"%a %b %e %H:%M:%S %Z %Y"
 };
 
 const _TimeLocale *_CurrentTimeLocale = &_DefaultTimeLocale;

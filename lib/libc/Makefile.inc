@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc/Makefile.inc,v 1.5 1999/08/27 23:58:06 peter Exp $
-# $DragonFly: src/lib/libc/Makefile.inc,v 1.3 2005/01/31 22:29:01 dillon Exp $
+# $DragonFly: src/lib/libc/Makefile.inc,v 1.4 2005/04/21 16:36:34 joerg Exp $
 #
 # This file contains make rules that are shared by libc and libc_r.
 #
@@ -20,10 +20,12 @@ WARNS=6
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
 .endif
 
+.include "${.CURDIR}/../libc/citrus/Makefile.inc"
 .include "${.CURDIR}/../libc/db/Makefile.inc"
 .include "${.CURDIR}/../libc/compat-43/Makefile.inc"
 .include "${.CURDIR}/../libc/gen/Makefile.inc"
 .include "${.CURDIR}/../libc/gmon/Makefile.inc"
+.include "${.CURDIR}/../libc/iconv/Makefile.inc"
 .include "${.CURDIR}/../libc/locale/Makefile.inc"
 .include "${.CURDIR}/../libc/net/Makefile.inc"
 .include "${.CURDIR}/../libc/nls/Makefile.inc"

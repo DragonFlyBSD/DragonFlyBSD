@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.12 2005/03/14 14:26:16 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.13 2005/04/21 16:36:35 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -193,9 +193,10 @@ start:
 			return -1;
 		}
 		place = nargv[optind];
-		if ((*place == '-') && (place[1] == '\0'))
+		if ((*place == '-') && (place[1] == '\0') && long_support == 0)
 			return -1;
-		if ((*place != '-')) {
+		if ((*place != '-') ||
+		    ((*place == '-') && (place[1] == '\0') && long_support != 0)) {
 		        /* found non-option */
 			place = EMSG;
 			if (IN_ORDER) {

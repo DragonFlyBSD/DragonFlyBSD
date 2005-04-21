@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.9 2005/03/13 19:18:29 joerg Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.10 2005/04/21 16:36:34 joerg Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -8,7 +8,7 @@
 SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	alarm.c arc4random.c assert.c basename.c \
 	clock.c closedir.c confstr.c \
-	crypt.c ctermid.c daemon.c devname.c dirname.c disklabel.c \
+	crypt.c ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c \
 	dlfcn.c drand48.c erand48.c err.c errlst.c \
 	exec.c fmtcheck.c fnmatch.c fstab.c ftok.c fts.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
@@ -16,7 +16,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
-	initgroups.c isatty.c jrand48.c lcong48.c \
+	initgroups.c isascii.c isatty.c isctype.c jrand48.c lcong48.c \
 	lockf.c lrand48.c mrand48.c msgctl.c \
 	msgget.c msgrcv.c msgsnd.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
@@ -28,9 +28,9 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	shmat.c shmctl.c shmdt.c shmget.c siginterrupt.c siglist.c signal.c \
 	sigsetops.c sigwait.c sleep.c srand48.c stringlist.c strtofflags.c \
 	sysconf.c sysctl.c sysctlbyname.c sysctlnametomib.c \
-	syslog.c telldir.c termios.c time.c times.c timezone.c tls.c ttyname.c \
-	ttyslot.c ualarm.c ulimit.c uname.c unvis.c usleep.c utime.c \
-	valloc.c vis.c \
+	syslog.c telldir.c termios.c time.c times.c timezone.c tls.c \
+	tolower.c toupper.c ttyname.c ttyslot.c ualarm.c ulimit.c \
+	uname.c unvis.c usleep.c utime.c valloc.c vis.c \
 	wait.c wait3.c waitpid.c
 
 # machine-dependent gen sources

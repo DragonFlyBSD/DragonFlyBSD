@@ -1,3 +1,6 @@
+/*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
+/*	$DragonFly: src/include/wchar.h,v 1.6 2005/04/21 16:36:34 joerg Exp $ */
+
 /*-
  * Copyright (c)1999 Citrus Project,
  * All rights reserved.
@@ -22,9 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/include/wchar.h,v 1.3.2.2 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/wchar.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 /*-
@@ -61,84 +61,133 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
- *	$NetBSD: wchar.h,v 1.8 2000/12/22 05:31:42 itojun Exp $
  */
 
 #ifndef _WCHAR_H_
 #define _WCHAR_H_
 
-#include <sys/cdefs.h>
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>	/* __wchar_t and friends */
-#endif
+#include <sys/stdint.h>
+/* XXX namespace pollution */
+#include <machine/limits.h>
 
-#ifndef NULL
-#define NULL	0
+#include <stdio.h> /* for FILE* */
+
+#ifndef	NULL
+#define	NULL	0
 #endif
 
 #ifndef __cplusplus
 #ifndef _WCHAR_T_DECLARED
-#define _WCHAR_T_DECLARED
-typedef __wchar_t	wchar_t;
+#define	_WCHAR_T_DECLARED
+typedef	__wchar_t	wchar_t;
 #endif
+
+#ifndef WCHAR_MIN
+#define	WCHAR_MIN	INT_MIN
+#endif
+
+#ifndef WCHAR_MAX
+#define	WCHAR_MAX	INT_MAX
+#endif
+#endif /* !__cplusplus */
+
+#ifndef _WINT_T_DECLARED
+#define	_WINT_T_DECLARED
+typedef __wint_t	wint_t;
+#endif
+
+#ifndef WINT_MIN
+#define	WINT_MIN	INT_MIN
+#endif
+
+#ifndef WINT_MAX
+#define	WINT_MAX	INT_MAX
 #endif
 
 #ifndef _MBSTATE_T_DECLARED
-#define _MBSTATE_T_DECLARED
-typedef	__mbstate_t	mbstate_t;
-#endif
-
-#ifndef _WINT_T_DECLARED
-#define _WINT_T_DECLARED
-typedef	__wint_t	wint_t;
+#define	_MBSTATE_T_DECLARED
+typedef __mbstate_t	mbstate_t;
 #endif
 
 #ifndef _SIZE_T_DECLARED
 #define _SIZE_T_DECLARED
-typedef __size_t        size_t;		/* open group */
+typedef __size_t	size_t;
 #endif
 
 #ifndef WEOF
-#define	WEOF 	((wint_t)-1)
+#define	WEOF 	((wint_t)(-1))
 #endif
 
 __BEGIN_DECLS
-
-wchar_t	*wcscat (wchar_t * __restrict, const wchar_t * __restrict);
-wchar_t	*wcschr (const wchar_t *, wchar_t);
-int	wcscmp (const wchar_t *, const wchar_t *);
-wchar_t	*wcscpy (wchar_t * __restrict, const wchar_t * __restrict);
-size_t	wcscspn (const wchar_t *, const wchar_t *);
-size_t	wcslen (const wchar_t *);
-wchar_t	*wcsncat (wchar_t * __restrict, const wchar_t * __restrict,
-	    size_t);
-int	wcsncmp (const wchar_t *, const wchar_t *, size_t);
-wchar_t	*wcsncpy (wchar_t * __restrict , const wchar_t * __restrict,
-	    size_t);
-wchar_t	*wcspbrk (const wchar_t *, const wchar_t *);
-wchar_t	*wcsrchr (const wchar_t *, wchar_t);
-#if 0
-/* XXX: not implemented */
-size_t	wcsrtombs (char * __restrict, const wchar_t ** __restrict, size_t,
+wint_t	btowc(int);
+size_t	mbrlen(const char * __restrict, size_t, mbstate_t * __restrict);
+size_t	mbrtowc(wchar_t * __restrict, const char * __restrict, size_t,
 	    mbstate_t * __restrict);
-#endif
-size_t	wcsspn (const wchar_t *, const wchar_t *);
-wchar_t	*wcsstr (const wchar_t *, const wchar_t *);
-wchar_t	*wmemchr (const wchar_t *, wchar_t, size_t);
-int	wmemcmp (const wchar_t *, const wchar_t *, size_t);
-wchar_t	*wmemcpy (wchar_t * __restrict, const wchar_t * __restrict,
-	    size_t);
-wchar_t	*wmemmove (wchar_t *, const wchar_t *, size_t);
-wchar_t	*wmemset (wchar_t *, wchar_t, size_t);
+int	mbsinit(const mbstate_t *);
+size_t	mbsrtowcs(wchar_t * __restrict, const char ** __restrict, size_t,
+	    mbstate_t * __restrict);
+size_t	wcrtomb(char * __restrict, wchar_t, mbstate_t * __restrict);
+wchar_t	*wcscat(wchar_t * __restrict, const wchar_t * __restrict);
+wchar_t	*wcschr(const wchar_t *, wchar_t);
+int	wcscmp(const wchar_t *, const wchar_t *);
+int	wcscoll(const wchar_t *, const wchar_t *);
+wchar_t	*wcscpy(wchar_t * __restrict, const wchar_t * __restrict);
+size_t	wcscspn(const wchar_t *, const wchar_t *);
+size_t	wcslen(const wchar_t *);
+wchar_t	*wcsncat(wchar_t * __restrict, const wchar_t * __restrict, size_t);
+int	wcsncmp(const wchar_t *, const wchar_t *, size_t);
+wchar_t	*wcsncpy(wchar_t * __restrict , const wchar_t * __restrict, size_t);
+wchar_t	*wcspbrk(const wchar_t *, const wchar_t *);
+wchar_t	*wcsrchr(const wchar_t *, wchar_t);
+size_t	wcsrtombs(char * __restrict, const wchar_t ** __restrict, size_t,
+		  mbstate_t * __restrict);
+size_t	wcsspn(const wchar_t *, const wchar_t *);
+wchar_t	*wcsstr(const wchar_t *, const wchar_t *);
+wchar_t *wcstok(wchar_t * __restrict, const wchar_t * __restrict,
+		wchar_t ** __restrict);
+size_t	wcsxfrm(wchar_t *, const wchar_t *, size_t);
+wchar_t	*wcswcs(const wchar_t *, const wchar_t *);
+wchar_t	*wmemchr(const wchar_t *, wchar_t, size_t);
+int	wmemcmp(const wchar_t *, const wchar_t *, size_t);
+wchar_t	*wmemcpy(wchar_t * __restrict, const wchar_t * __restrict, size_t);
+wchar_t	*wmemmove(wchar_t *, const wchar_t *, size_t);
+wchar_t	*wmemset(wchar_t *, wchar_t, size_t);
 
-size_t	wcslcat (wchar_t *, const wchar_t *, size_t);
-size_t	wcslcpy (wchar_t *, const wchar_t *, size_t);
-#if 0
-/* XXX: not implemented */
-int	wcswidth (const wchar_t *, size_t);
-int	wcwidth (wchar_t);
+size_t	wcslcat(wchar_t *, const wchar_t *, size_t);
+size_t	wcslcpy(wchar_t *, const wchar_t *, size_t);
+int	wcswidth(const wchar_t *, size_t);
+int	wctob(wint_t);
+int	wcwidth(wchar_t);
+
+unsigned long wcstoul(const wchar_t * __restrict, wchar_t ** __restrict, int);
+long 	wcstol(const wchar_t * __restrict, wchar_t ** __restrict, int);
+double	wcstod(const wchar_t * __restrict, wchar_t ** __restrict);
+
+#if defined(_ISOC99_SOURCE) || (__STDC_VERSION__ - 0) > 199901L || \
+    defined(_NETBSD_SOURCE)
+/* LONGLONG */
+long long wcstoll(const wchar_t * __restrict, wchar_t ** __restrict, int);
+/* LONGLONG */
+unsigned long long wcstoull(const wchar_t * __restrict,
+			    wchar_t ** __restrict, int);
 #endif
+
+wint_t	ungetwc(wint_t, FILE *);
+wint_t	fgetwc(FILE *);
+wchar_t	*fgetws(wchar_t * __restrict, int, FILE * __restrict);
+wint_t	getwc(FILE *);
+wint_t	getwchar(void);
+wint_t	fputwc(wchar_t, FILE *);
+int	fputws(const wchar_t * __restrict, FILE * __restrict);
+wint_t	putwc(wchar_t, FILE *);
+wint_t	putwchar(wchar_t);
+
+int	fwide(FILE *, int);
 __END_DECLS
+
+#define getwc(f) fgetwc(f)
+#define getwchar() getwc(stdin)
+#define putwc(wc, f) fputwc((wc), (f))
+#define putwchar(wc) putwc((wc), stdout)
 
 #endif /* !_WCHAR_H_ */

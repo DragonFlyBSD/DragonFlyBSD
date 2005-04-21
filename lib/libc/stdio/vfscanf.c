@@ -35,10 +35,11 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/stdio/vfscanf.c,v 1.35 2004/01/31 23:16:09 das Exp $
- * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.7 2005/04/21 16:36:35 joerg Exp $
  */
 
 #include "namespace.h"
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
