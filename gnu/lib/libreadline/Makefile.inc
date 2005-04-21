@@ -1,7 +1,7 @@
 # $FreeBSD: src/gnu/lib/libreadline/Makefile.inc,v 1.4.2.1 2000/07/06 23:11:07 ache Exp $
-# $DragonFly: src/gnu/lib/libreadline/Attic/Makefile.inc,v 1.3 2004/10/23 16:58:53 joerg Exp $
+# $DragonFly: src/gnu/lib/libreadline/Attic/Makefile.inc,v 1.4 2005/04/21 13:42:33 joerg Exp $
 
-SHLIB_MAJOR=	5
+SHLIB_MAJOR=	6
 RL_LIBRARY_VERSION=	5.0
 
 RLDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/readline-5.0

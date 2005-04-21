@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libarchive/Makefile,v 1.1 2004/11/10 18:02:24 joerg Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.2 2005/04/21 13:42:33 joerg Exp $
 
 LIB=	archive
 
@@ -9,7 +9,7 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive
 VERSION=	1.01.015
 ARCHIVE_API_FEATURE=	2
 ARCHIVE_API_VERSION=	1
-SHLIB_MAJOR=	1
+SHLIB_MAJOR=	2
 CFLAGS+=	-DPACKAGE_NAME=\"lib${LIB}\"
 CFLAGS+=	-DPACKAGE_VERSION=\"${VERSION}\"
 CFLAGS+=	-DHAVE_CONFIG_H

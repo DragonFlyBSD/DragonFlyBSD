@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libisc/Makefile,v 1.6 2004/10/02 03:08:07 dillon Exp $
+# $DragonFly: src/lib/libisc/Makefile,v 1.7 2005/04/21 13:42:33 joerg Exp $
 
 BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc7
 
@@ -7,8 +7,7 @@ BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc7
 .include "${BIND_DIR}/lib/isc/api"
 
 LIB=		isc
-SHLIB_MAJOR=	1
-SHLIB_MINOR=	0
+SHLIB_MAJOR=	2
 
 .PATH:		${BIND_DIR}/lib
 SRCS+=		isc/nls/msgcat.c

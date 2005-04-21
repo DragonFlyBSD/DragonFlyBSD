@@ -1,10 +1,9 @@
 # $FreeBSD: src/lib/libsmb/Makefile,v 1.1.2.2 2001/12/20 09:21:31 sheldonh Exp $
-# $DragonFly: src/lib/libsmb/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
+# $DragonFly: src/lib/libsmb/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 
 LIB=		smb
 
-SHLIB_MAJOR=	1
-SHLIB_MINOR=	0
+SHLIB_MAJOR=	2
 
 NOMAN=
 

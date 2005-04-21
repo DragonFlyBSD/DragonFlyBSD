@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libtacplus/Makefile,v 1.2.2.2 2002/10/09 08:50:42 pst Exp $
-#	$DragonFly: src/lib/libtacplus/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
+#	$DragonFly: src/lib/libtacplus/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 
 LIB=		tacplus
 SRCS=		taclib.c
@@ -31,8 +31,7 @@ INCS=		taclib.h
 CFLAGS+=	-Wall
 DPADD+=		${LIBMD}
 LDADD+=		-lmd
-SHLIB_MAJOR=	1
-SHLIB_MINOR=	0
+SHLIB_MAJOR=	2
 MAN=		libtacplus.3 tacplus.conf.5
 
 .include <bsd.lib.mk>

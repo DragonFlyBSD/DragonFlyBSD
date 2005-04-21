@@ -1,8 +1,7 @@
-# $DragonFly: src/lib/libcaps/Makefile,v 1.5 2004/03/07 23:36:43 dillon Exp $
+# $DragonFly: src/lib/libcaps/Makefile,v 1.6 2005/04/21 13:42:33 joerg Exp $
 #
 LIB=caps
-SHLIB_MAJOR= 1
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 2
 AINC= -I${.CURDIR}/${MACHINE_ARCH} -I${.OBJDIR}
 CFLAGS+= -I${.CURDIR}/.. -I${.CURDIR}/${MACHINE_ARCH}
 CFLAGS+= -DSMP -D_UTHREAD

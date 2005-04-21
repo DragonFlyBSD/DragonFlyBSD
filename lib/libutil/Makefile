@@ -1,10 +1,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 #	$FreeBSD: src/lib/libutil/Makefile,v 1.33.2.4 2001/04/25 10:04:42 ru Exp $
-#	$DragonFly: src/lib/libutil/Makefile,v 1.4 2004/11/05 17:05:26 dillon Exp $
+#	$DragonFly: src/lib/libutil/Makefile,v 1.5 2005/04/21 13:42:34 joerg Exp $
 
 LIB=	util
-SHLIB_MAJOR= 3
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 4
 CFLAGS+=-Wall -DLIBC_SCCS -I${.CURDIR} -I${.CURDIR}/../../sys
 CFLAGS+=-DINET6
 SRCS=	login.c login_tty.c logout.c logwtmp.c pty.c \

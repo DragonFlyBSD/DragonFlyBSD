@@ -1,12 +1,11 @@
 #	$NetBSD: Makefile,v 1.5 1999/07/23 09:44:38 mrg Exp $
 #	$FreeBSD: src/lib/libusbhid/Makefile,v 1.6 2002/03/28 18:44:24 joe Exp $
-#	$DragonFly: src/lib/libusbhid/Makefile,v 1.3 2004/01/31 06:56:39 dillon Exp $
+#	$DragonFly: src/lib/libusbhid/Makefile,v 1.4 2005/04/21 13:42:34 joerg Exp $
 
 LIB=	usbhid
 MAN=	usbhid.3
 
-SHLIB_MAJOR= 0
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 1
 
 MLINKS=	usbhid.3 libusbhid.3 usbhid.3 hid_get_report_desc.3 \
 	usbhid.3 hid_dispose_report_desc.3 \

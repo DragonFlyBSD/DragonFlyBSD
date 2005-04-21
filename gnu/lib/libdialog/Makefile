@@ -1,13 +1,12 @@
 # Makefile for libdialog
 # $FreeBSD: src/gnu/lib/libdialog/Makefile,v 1.31.2.5 2002/08/07 16:31:43 ru Exp $
-# $DragonFly: src/gnu/lib/libdialog/Makefile,v 1.2 2003/06/17 04:25:43 dillon Exp $
+# $DragonFly: src/gnu/lib/libdialog/Makefile,v 1.3 2005/04/21 13:42:33 joerg Exp $
 
 LIB=    dialog
 INCS=	dialog.h
 MAN=	dialog.3
 
-SHLIB_MAJOR= 4
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 5
 SRCS=   kernel.c rc.c checklist.c inputbox.c menubox.c msgbox.c \
 	lineedit.c radiolist.c textbox.c yesno.c prgbox.c raw_popen.c \
 	fselect.c ui_objects.c dir.c notify.c help.c gauge.c tree.c

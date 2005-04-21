@@ -1,8 +1,8 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.4 2004/03/23 07:47:14 dillon Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.5 2005/04/21 13:42:34 joerg Exp $
 
 LIB=		crypto
-SHLIB_MAJOR=	3
+SHLIB_MAJOR=	4
 
 NOLINT=		true
 

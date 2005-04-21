@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/Makefile,v 1.53 2004/10/24 15:32:32 ru Exp $
-# $DragonFly: src/lib/libthread_xu/Makefile,v 1.2 2005/03/29 19:26:20 joerg Exp $
+# $DragonFly: src/lib/libthread_xu/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 #
 # All library objects contain FreeBSD revision strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -9,8 +9,7 @@
 # (for system call stubs) to CFLAGS below.  -DSYSLIBC_SCCS affects just the
 # system call stubs.
 LIB=thread_xu
-SHLIB_MAJOR= 1
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 2
 CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE
 CFLAGS+=-I${.CURDIR}/../libc/include -I${.CURDIR}/thread \
 	-I${.CURDIR}/../../include

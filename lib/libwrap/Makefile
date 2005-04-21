@@ -1,11 +1,10 @@
 #
 # $FreeBSD: src/lib/libwrap/Makefile,v 1.5.2.3 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libwrap/Makefile,v 1.3 2004/01/31 06:56:39 dillon Exp $
+# $DragonFly: src/lib/libwrap/Makefile,v 1.4 2005/04/21 13:42:34 joerg Exp $
 #
 
 LIB=	wrap
-SHLIB_MAJOR= 3
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 4
 INCS=	tcpd.h
 MAN=	hosts_access.3
 MAN+=	hosts_access.5 hosts_options.5

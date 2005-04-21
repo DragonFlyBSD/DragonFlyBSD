@@ -1,9 +1,8 @@
 # $FreeBSD: src/lib/liby/Makefile,v 1.7 1999/08/28 00:05:59 peter Exp $
-# $DragonFly: src/lib/liby/Makefile,v 1.3 2004/03/20 16:27:40 drhodus Exp $
+# $DragonFly: src/lib/liby/Makefile,v 1.4 2005/04/21 13:42:34 joerg Exp $
 
 LIB=		y
-SHLIB_MAJOR=	2
-SHLIB_MINOR=	0
+SHLIB_MAJOR=	3
 
 SRCS=	main.c yyerror.c
 

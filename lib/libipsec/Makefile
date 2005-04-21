@@ -25,11 +25,10 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/lib/libipsec/Makefile,v 1.2.2.3 2001/04/25 10:04:30 ru Exp $
-# $DragonFly: src/lib/libipsec/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
+# $DragonFly: src/lib/libipsec/Makefile,v 1.3 2005/04/21 13:42:33 joerg Exp $
 
 LIB=	ipsec
-SHLIB_MAJOR= 1
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 2
 CFLAGS+=-I. -I${.CURDIR}
 CFLAGS+=-DIPSEC_DEBUG -DIPSEC
 .if !defined(NOINET6)

@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.1 2004/06/14 22:27:52 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.2 2005/04/21 13:42:33 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -20,7 +20,7 @@ SUPDIR=	${SRCDIR}/libsupc++
 #SUBDIR=	doc
 
 LIB=		stdc++
-SHLIB_MAJOR=	6
+SHLIB_MAJOR=	7
 
 CFLAGS+=	-DIN_GLIBCPP_V3 -DHAVE_CONFIG_H
 CFLAGS+=	-I${.CURDIR} -I${SUPDIR} -I${GCCDIR}/gcc -I${GCCDIR}/include

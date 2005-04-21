@@ -1,10 +1,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libedit/Makefile,v 1.18.2.2 2002/07/23 10:20:19 ru Exp $
-# $DragonFly: src/lib/libedit/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
+# $DragonFly: src/lib/libedit/Makefile,v 1.3 2005/04/21 13:42:33 joerg Exp $
 
 LIB=	edit
-SHLIB_MAJOR=	3
-SHLIB_MINOR=	0
+SHLIB_MAJOR=	4
 
 OSRCS=	chared.c common.c el.c emacs.c fcns.c help.c hist.c key.c map.c \
 	parse.c prompt.c read.c refresh.c search.c sig.c term.c tty.c vi.c

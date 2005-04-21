@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.6 2005/03/02 03:13:01 joerg Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.7 2005/04/21 13:42:34 joerg Exp $
 
 FILEVER= 4.12
 MAGICDIR= ${.CURDIR}/../../contrib/file-${FILEVER}/magic
@@ -8,7 +8,7 @@ SRCDIR=	${.CURDIR}/../../contrib/file-${FILEVER}/src
 MAGIC=	/usr/share/misc/magic
 
 LIB=	magic
-SHLIB_MAJOR=	1
+SHLIB_MAJOR=	2
 
 SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
 	is_tar.c magic.c print.c readelf.c softmagic.c

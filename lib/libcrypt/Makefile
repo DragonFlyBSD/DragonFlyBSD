@@ -1,9 +1,9 @@
 #
 # $FreeBSD: src/lib/libcrypt/Makefile,v 1.24.2.4 2001/07/16 03:28:26 peter Exp $
-# $DragonFly: src/lib/libcrypt/Makefile,v 1.3 2003/08/03 16:45:15 dillon Exp $
+# $DragonFly: src/lib/libcrypt/Makefile,v 1.4 2005/04/21 13:42:33 joerg Exp $
 #
 
-SHLIB_MAJOR=	2
+SHLIB_MAJOR=	3
 LIB=		crypt
 
 .PATH:		${.CURDIR}/../libmd

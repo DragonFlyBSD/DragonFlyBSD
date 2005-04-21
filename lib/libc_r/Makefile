@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc_r/Makefile,v 1.24.2.7 2002/10/22 14:44:02 fjoe Exp $
-# $DragonFly: src/lib/libc_r/Makefile,v 1.4 2005/03/20 17:46:31 joerg Exp $
+# $DragonFly: src/lib/libc_r/Makefile,v 1.5 2005/04/21 13:42:33 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -7,8 +7,7 @@
 # from CFLAGS below.  To remove these strings from just the system call
 # stubs, remove just -DSYSLIBC_RCS from CFLAGS.
 LIB=c_r
-SHLIB_MAJOR= 4
-SHLIB_MINOR= 0
+SHLIB_MAJOR= 5
 CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/../libc/include
 CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE -I${.CURDIR}/uthread
 CFLAGS+=-I${.CURDIR}/../../include

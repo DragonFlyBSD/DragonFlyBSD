@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libfetch/Makefile,v 1.14.2.5 2003/01/09 11:50:32 des Exp $
-# $DragonFly: src/lib/libfetch/Makefile,v 1.6 2005/02/28 13:09:24 joerg Exp $
+# $DragonFly: src/lib/libfetch/Makefile,v 1.7 2005/04/21 13:42:33 joerg Exp $
 
 LIB=		fetch
 WARNS?=		6
@@ -17,8 +17,7 @@ DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lssl -lcrypto
 .endif
 
-SHLIB_MAJOR=    3
-SHLIB_MINOR=	0
+SHLIB_MAJOR=    4
 
 ftperr.h: ftp.errors
 	@echo "static struct fetcherr _ftp_errlist[] = {" > ${.TARGET}

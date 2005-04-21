@@ -1,10 +1,8 @@
 # $FreeBSD: src/lib/libxpg4/Makefile,v 1.6.6.2 2000/06/13 00:42:40 ache Exp $
-# $DragonFly: src/lib/libxpg4/Makefile,v 1.2 2003/06/17 04:26:52 dillon Exp $
+# $DragonFly: src/lib/libxpg4/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 
 LIB=    xpg4
-SHLIB_MAJOR=    3
-SHLIB_MINOR=	0
-
+SHLIB_MAJOR=    4
 SRCS=	fakelib.c
 
 NOMAN= YES

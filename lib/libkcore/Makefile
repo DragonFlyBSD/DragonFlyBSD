@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libkcore/Makefile,v 1.2 2004/12/22 11:01:49 joerg Exp $
+# $DragonFly: src/lib/libkcore/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 
 .PATH: ${.CURDIR}/../../sys/kern
 
@@ -12,6 +12,6 @@ NOMAN=
 CFLAGS+=	-I${.CURDIR} -g
 WARNS?=	6
 
-SHLIB_MAJOR?= 1
+SHLIB_MAJOR?= 2
 
 .include <bsd.lib.mk>

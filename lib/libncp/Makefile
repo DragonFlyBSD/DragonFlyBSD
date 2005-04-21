@@ -1,12 +1,11 @@
 # $FreeBSD: src/lib/libncp/Makefile,v 1.3 1999/11/12 15:09:56 peter Exp $
-# $DragonFly: src/lib/libncp/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
+# $DragonFly: src/lib/libncp/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 
 NCPLIB=${.CURDIR}
 
 LIB=		ncp
 
-SHLIB_MAJOR=	1
-SHLIB_MINOR=	0
+SHLIB_MAJOR=	2
 
 NOMAN=
 
