@@ -1,7 +1,20 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.5 2005/04/18 18:17:20 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.6 2005/04/21 13:32:22 joerg Exp $
 
 --- ntp.c	25 Feb 2005 16:43:19 -0000	1.6
 +++ ntp.c	12 Apr 2005 20:13:45 -0000
+@@ -206,7 +211,11 @@
+ 			if (p->deadline > 0 && p->deadline < nextaction)
+ 				nextaction = p->deadline;
+ 			if (p->deadline > 0 && p->deadline <= time(NULL)) {
+-				timeout = error_interval();
++				if (p->trustlevel > TRUSTLEVEL_BADPEER)
++					timeout = scale_interval(
++					    INTERVAL_QUERY_AGRESSIVE);
++				else
++					timeout = error_interval();
+ 				log_debug("no reply from %s received in time, "
+ 				    "next query %ds", log_sockaddr(
+ 				    (struct sockaddr *)&p->addr->ss), timeout);
 @@ -422,12 +422,15 @@
  		if (peers[offset_cnt / 2]->addr->ss.ss_family == AF_INET)
  			conf->status.refid = ((struct sockaddr_in *)
