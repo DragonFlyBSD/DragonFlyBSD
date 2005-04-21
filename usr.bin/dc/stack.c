@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: stack.c,v 1.6 2003/11/26 19:30:52 otto Exp $
- * $DragonFly: src/usr.bin/dc/stack.c,v 1.1 2004/09/20 04:20:39 dillon Exp $
+ * $OpenBSD: stack.c,v 1.7 2005/03/28 17:39:20 deraadt Exp $
+ * $DragonFly: src/usr.bin/dc/stack.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
  */
 
 /*
@@ -43,7 +43,7 @@ stack_init(struct stack *stack)
 }
 
 static __inline bool
-stack_empty(const struct stack * stack)
+stack_empty(const struct stack *stack)
 {
 	bool empty = stack->sp == -1;
 	if (empty)
@@ -96,7 +96,7 @@ stack_dup_value(const struct value *a, struct value *copy)
 }
 
 int
-stack_size(const struct stack * stack)
+stack_size(const struct stack *stack)
 {
 	return stack->sp + 1;
 }
@@ -196,7 +196,7 @@ stack_set_tos(struct stack *stack, struct value *v)
 		stack_free_value(&stack->stack[stack->sp]);
 		stack->stack[stack->sp] = *v;
 		stack->stack[stack->sp].array = v->array == NULL ?
-			NULL : array_dup(v->array);
+		    NULL : array_dup(v->array);
 	}
 }
 

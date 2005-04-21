@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: inout.c,v 1.8 2003/11/14 20:18:47 otto Exp $
- * $DragonFly: src/usr.bin/dc/inout.c,v 1.1 2004/09/20 04:20:39 dillon Exp $
+ * $OpenBSD: inout.c,v 1.12 2005/03/29 10:53:54 otto Exp $
+ * $DragonFly: src/usr.bin/dc/inout.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
  */
 
 /*
@@ -28,8 +28,8 @@
 
 #define MAX_CHARS_PER_LINE 68
 
-static int	charCount;
-
+static int	lastchar;
+static int	charcount;
 
 static int	src_getcharstream(struct source *);
 static int	src_ungetcharstream(struct source *);
@@ -39,6 +39,7 @@ static int	src_getcharstring(struct source *);
 static int	src_ungetcharstring(struct source *);
 static char	*src_getlinestring(struct source *);
 static void	src_freestring(struct source *);
+static void	flushwrap(FILE *);
 static void	putcharwrap(FILE *, int);
 static void	printwrap(FILE *, const char *);
 static char	*get_digit(u_long, int, u_int);
@@ -151,13 +152,24 @@ src_freestring(struct source *src)
 }
 
 static void
+flushwrap(FILE *f)
+{
+	if (lastchar != -1)
+		putc(lastchar, f);
+}
+
+static void
 putcharwrap(FILE *f, int ch)
 {
-	putc(ch, f);
-	if (++charCount > MAX_CHARS_PER_LINE) {
-		charCount = 0;
+	if (charcount >= MAX_CHARS_PER_LINE) {
+		charcount = 0;
 		fputs("\\\n", f);
 	}
+	if (lastchar != -1) {
+		charcount++;
+		putc(lastchar, f);
+	}
+	lastchar = ch;
 }
 
 static void
@@ -166,7 +178,7 @@ printwrap(FILE *f, const char *p)
 	char	buf[12];
 	char	*q = buf;
 
-	snprintf(buf, sizeof(buf), "%s", p);
+	strlcpy(buf, p, sizeof(buf));
 	while (*q)
 		putcharwrap(f, *q++);
 }
@@ -282,6 +294,8 @@ printnumber(FILE *f, const struct number *b, u_int base)
 	struct stack	stack;
 	char		*p;
 
+	charcount = 0;
+	lastchar = -1;
 	if (BN_is_zero(b->number))
 		putcharwrap(f, '0');
 
@@ -304,7 +318,6 @@ printnumber(FILE *f, const struct number *b, u_int base)
 		i++;
 	}
 	sz = i;
-	charCount = 0;
 	if (BN_cmp(b->number, &zero) < 0)
 		putcharwrap(f, '-');
 	for (i = 0; i < sz; i++) {
@@ -352,6 +365,7 @@ printnumber(FILE *f, const struct number *b, u_int base)
 		BN_free(&mult);
 		BN_free(&stop);
 	}
+	flushwrap(f);
 	free_number(int_part);
 	free_number(fract_part);
 }

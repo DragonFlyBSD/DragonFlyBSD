@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: bcode.c,v 1.22 2004/02/11 20:44:31 otto Exp $
- * $DragonFly: src/usr.bin/dc/bcode.c,v 1.1 2004/09/20 04:20:39 dillon Exp $
+ * $OpenBSD: bcode.c,v 1.29 2005/04/02 18:05:04 otto Exp $
+ * $DragonFly: src/usr.bin/dc/bcode.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
  */
 
 /*
@@ -34,7 +34,7 @@ BIGNUM		zero;
 /* #define	DEBUGGING */
 
 #define MAX_ARRAY_INDEX		2048
-#define RECURSION_STACK_SIZE	100
+#define READSTACK_SIZE		8
 
 #define NO_ELSE			-2	/* -1 is EOF */
 #define REG_ARRAY_SIZE_SMALL	(UCHAR_MAX + 1)
@@ -45,12 +45,13 @@ struct bmachine {
 	u_int			scale;
 	u_int			obase;
 	u_int			ibase;
-	int			readsp;
+	size_t			readsp;
 	bool			extended_regs;
 	size_t			reg_array_size;
 	struct stack		*reg;
-	volatile bool		interrupted;
-	struct source		readstack[RECURSION_STACK_SIZE];
+	volatile sig_atomic_t	interrupted;
+	struct source		*readstack;
+	size_t			readstack_sz;
 };
 
 static struct bmachine	bmachine;
@@ -100,7 +101,7 @@ static void		bdiv(void);
 static void		bmod(void);
 static void		bdivmod(void);
 static void		bexp(void);
-static bool		bsqrt_stop(const BIGNUM *, const BIGNUM *);
+static bool		bsqrt_stop(const BIGNUM *, const BIGNUM *, u_int *);
 static void		bsqrt(void);
 static void		not(void);
 static void		equal_numbers(void);
@@ -222,7 +223,7 @@ static const struct jump_entry jump_table_data[] = {
 	(sizeof(jump_table_data)/sizeof(jump_table_data[0]))
 
 static void
-sighandler(int ignored)
+sighandler(int ignored __unused)
 {
 	bmachine.interrupted = true;
 }
@@ -251,6 +252,11 @@ init_bmachine(bool extended_registers)
 	for (i = 0; i < bmachine.reg_array_size; i++)
 		stack_init(&bmachine.reg[i]);
 
+	bmachine.readstack_sz = READSTACK_SIZE;
+	bmachine.readstack = malloc(sizeof(struct source) *
+	    bmachine.readstack_sz);
+	if (bmachine.readstack == NULL)
+		err(1, NULL);
 	bmachine.obase = bmachine.ibase = 10;
 	BN_init(&zero);
 	bn_check(BN_zero(&zero));
@@ -299,7 +305,7 @@ src_free(void)
 
 #ifdef DEBUGGING
 void
-pn(const char * str, const struct number *n)
+pn(const char *str, const struct number *n)
 {
 	char *p = BN_bn2dec(n->number);
 	if (p == NULL)
@@ -310,7 +316,7 @@ pn(const char * str, const struct number *n)
 }
 
 void
-pbn(const char * str, const BIGNUM *n)
+pbn(const char *str, const BIGNUM *n)
 {
 	char *p = BN_bn2dec(n);
 	if (p == NULL)
@@ -1223,12 +1229,13 @@ bexp(void)
 			BN_one(one);
 			ctx = BN_CTX_new();
 			bn_checkp(ctx);
-			r->scale = scale;
-			scale_number(one, r->scale);
+			scale_number(one, r->scale + scale);
+			normalize(r, scale);
 			bn_check(BN_div(r->number, NULL, one, r->number, ctx));
 			BN_free(one);
 			BN_CTX_free(ctx);
-		}
+		} else
+			normalize(r, scale);
 	}
 	push_number(r);
 	free_number(a);
@@ -1236,7 +1243,7 @@ bexp(void)
 }
 
 static bool
-bsqrt_stop(const BIGNUM *x, const BIGNUM *y)
+bsqrt_stop(const BIGNUM *x, const BIGNUM *y, u_int *onecount)
 {
 	BIGNUM *r;
 	bool ret;
@@ -1244,9 +1251,11 @@ bsqrt_stop(const BIGNUM *x, const BIGNUM *y)
 	r = BN_new();
 	bn_checkp(r);
 	bn_check(BN_sub(r, x, y));
-	ret = BN_is_one(r) || BN_is_zero(r);
+	if (BN_is_one(r))
+		(*onecount)++;
+	ret = BN_is_zero(r);
 	BN_free(r);
-	return ret;
+	return ret || *onecount > 1;
 }
 
 static void
@@ -1255,9 +1264,10 @@ bsqrt(void)
 	struct number	*n;
 	struct number	*r;
 	BIGNUM		*x, *y;
-	u_int		scale;
+	u_int		scale, onecount;
 	BN_CTX		*ctx;
 
+	onecount = 0;
 	n = pop_number();
 	if (n == NULL) {
 		return;
@@ -1282,7 +1292,7 @@ bsqrt(void)
 			bn_check(BN_div(x, NULL, n->number, x, ctx));
 			bn_check(BN_add(x, x, y));
 			bn_check(BN_rshift1(x, x));
-			if (bsqrt_stop(x, y))
+			if (bsqrt_stop(x, y, &onecount))
 				break;
 		}
 		r = bmalloc(sizeof(*r));
@@ -1656,8 +1666,16 @@ eval_string(char *p)
 		} else
 			unreadch();
 	}
-	if (bmachine.readsp == RECURSION_STACK_SIZE-1)
-		errx(1, "recursion too deep");
+	if (bmachine.readsp == bmachine.readstack_sz - 1) {
+		size_t newsz = bmachine.readstack_sz * 2;
+		struct source *stack;
+		stack = realloc(bmachine.readstack, newsz *
+		    sizeof(struct source));
+		if (stack == NULL)
+			err(1, "recursion too deep");
+		bmachine.readstack_sz = newsz;
+		bmachine.readstack = stack;
+	}
 	src_setstring(&bmachine.readstack[++bmachine.readsp], p);
 }
 
@@ -1693,7 +1711,7 @@ eval(void)
 		ch = readch();
 		if (ch == EOF) {
 			if (bmachine.readsp == 0)
-				exit(0);
+				return;
 			src_free();
 			bmachine.readsp--;
 			continue;

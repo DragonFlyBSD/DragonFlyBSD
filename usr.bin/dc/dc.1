@@ -1,5 +1,5 @@
-.\"	$OpenBSD: dc.1,v 1.18 2003/12/01 09:13:55 otto Exp $
-.\"	$DragonFly: src/usr.bin/dc/dc.1,v 1.1 2004/09/20 04:20:39 dillon Exp $
+.\"	$OpenBSD: dc.1,v 1.19 2004/10/18 07:49:00 otto Exp $
+.\"	$DragonFly: src/usr.bin/dc/dc.1,v 1.2 2005/04/21 18:50:50 swildner Exp $
 .\"
 .\" Copyright (C) Caldera International Inc.  2001-2002.
 .\" All rights reserved.
@@ -35,7 +35,7 @@
 .\"
 .\"	@(#)dc.1	8.1 (Berkeley) 6/6/93
 .\"
-.Dd June 6, 1993
+.Dd October 10, 2004
 .Dt DC 1
 .Sh NAME
 .Nm dc
@@ -43,6 +43,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl x
+.Op Fl e Ar expression
 .Op Ar file
 .Sh DESCRIPTION
 .Nm
@@ -64,6 +65,18 @@ which implements functions and reasonable control
 structures for programs.
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl e Ar expression
+Evaluate
+.Ar expression .
+If multiple
+.Fl e
+options are specified, they will be processed in the order given.
+If no
+.Ar file
+argument is given, execution will stop after processing the expressions
+given on the command line,
+otherwise processing will continue with the contents of
+.Ar file .
 .It Fl x
 Enable extended register mode.
 This mode is used by
