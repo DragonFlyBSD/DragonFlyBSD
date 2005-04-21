@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.4 2005/04/01 01:12:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.5 2005/04/21 23:08:42 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -101,12 +101,6 @@ extern Boolean	checkEnvFirst;
 extern Lst envFirstVars;
 
 extern struct GNode	*DEFAULT;	/* .DEFAULT rule */
-
-/* Variables defined in a global context, e.g in the Makefile itself */
-extern struct GNode	*VAR_GLOBAL;
-
-/* Variables defined on the command line */
-extern struct GNode	*VAR_CMD;
 
 /* Value returned by Var_Parse when an error is encountered.  It actually
  * points to an empty string, so naive callers needn't worry about it. */
