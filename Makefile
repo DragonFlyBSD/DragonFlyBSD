@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.9 2004/11/12 09:09:56 dillon Exp $
+# $DragonFly: src/Makefile,v 1.10 2005/04/21 13:23:07 joerg Exp $
 #
 # The user-driven targets are:
 #
@@ -180,3 +180,9 @@ upgrade:	upgrade_etc
 #
 upgrade_etc:
 	@cd ${.CURDIR}/etc; make upgrade_etc
+
+.ifdef ${CCVER}
+.if ${CCVER} == "gcc2"
+CCVER=	gcc34
+.endif
+.endif
