@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: extern.h,v 1.4 2003/12/02 09:00:07 otto Exp $
- * $DragonFly: src/usr.bin/bc/extern.h,v 1.1 2004/09/20 04:20:34 dillon Exp $
+ * $OpenBSD: extern.h,v 1.5 2004/10/19 07:36:51 otto Exp $
+ * $DragonFly: src/usr.bin/bc/extern.h,v 1.2 2005/04/21 18:50:22 swildner Exp $
  */
 
 /*
@@ -36,3 +36,8 @@ void		abort_line(int);
 extern int	lineno;
 extern char	*yytext;
 extern FILE	*yyin;
+extern int	fileindex;
+extern int	sargc;
+extern char	**sargv;
+extern char	*filename;
+extern char	*cmdexpr;

@@ -1,7 +1,7 @@
 %{
 /*
- * $OpenBSD: bc.y,v 1.23 2004/02/18 07:43:58 otto Exp $
- * $DragonFly: src/usr.bin/bc/bc.y,v 1.1 2004/09/20 04:20:34 dillon Exp $
+ * $OpenBSD: bc.y,v 1.25 2005/03/17 16:59:31 otto Exp $
+ * $DragonFly: src/usr.bin/bc/bc.y,v 1.2 2005/04/21 18:50:22 swildner Exp $
  */
 
 /*
@@ -61,6 +61,12 @@ struct tree {
 int			yyparse(void);
 int			yywrap(void);
 
+int			fileindex;
+int			sargc;
+char			**sargv;
+char			*filename;
+char			*cmdexpr;
+
 static void		grow(void);
 static ssize_t		cs(const char *);
 static ssize_t		as(const char *);
@@ -78,7 +84,7 @@ static void		add_par(ssize_t);
 static void		add_local(ssize_t);
 static void		warning(const char *);
 static void		init(void);
-static void		usage(void);
+static __dead2 void    	usage(void);
 static char		*escape(const char *);
 
 static size_t		instr_sz = 0;
@@ -93,10 +99,6 @@ static ssize_t		prologue;
 static ssize_t		epilogue;
 static bool		st_has_continue;
 static char		str_table[UCHAR_MAX][2];
-static int		fileindex;
-static int		sargc;
-static char		**sargv;
-static char		*filename;
 static bool		do_fork = true;
 static u_short		var_count;
 
@@ -184,6 +186,10 @@ input_item	: semicolon_list NEWLINE
 				st_has_continue = false;
 			}
 		| error NEWLINE
+			{
+				yyerrok;
+			}
+		| error QUIT
 			{
 				yyerrok;
 			}
@@ -920,33 +926,16 @@ add_local(ssize_t n)
 	epilogue = node(epilogue, cs("L"), n, cs("s."), END_NODE);
 }
 
-int
-yywrap(void)
-{
-	if (fileindex < sargc) {
-		filename = sargv[fileindex++];
-		yyin = fopen(filename, "r");
-		lineno = 1;
-		if (yyin == NULL)
-			err(1, "cannot open %s", filename);
-		return 0;
-	} else if (fileindex == sargc) {
-		fileindex++;
-		yyin = stdin;
-		lineno = 1;
-		filename = "stdin";
-		return 0;
-	}
-	return 1;
-}
-
 void
 yyerror(char *s)
 {
 	char	*str, *p;
 
-	if (isspace(yytext[0]) || !isprint(yytext[0]))
-		asprintf(&str, "%s: %s:%d: %s: ascii char 0x%x unexpected",
+	if (feof(yyin))
+		asprintf(&str, "%s: %s:%d: %s: unexpected EOF",
+		    __progname, filename, lineno, s);
+	else if (isspace(yytext[0]) || !isprint(yytext[0]))
+		asprintf(&str, "%s: %s:%d: %s: ascii char 0x%02x unexpected",
 		    __progname, filename, lineno, s, yytext[0]);
 	else
 		asprintf(&str, "%s: %s:%d: %s: %s unexpected",
@@ -990,10 +979,11 @@ init(void)
 }
 
 
-static void
+static __dead2 void
 usage(void)
 {
-	fprintf(stderr, "%s: usage: [-cl] [file ...]\n", __progname);
+	fprintf(stderr, "%s: usage: [-cl] [-e expression] [file ...]\n",
+	    __progname);
 	exit(1);
 }
 
@@ -1057,6 +1047,7 @@ main(int argc, char *argv[])
 {
 	int	i, ch, ret;
 	int	p[2];
+	char	*q;
 
 	init();
 	setlinebuf(stdout);
@@ -1065,12 +1056,20 @@ main(int argc, char *argv[])
 	if (sargv == NULL)
 		err(1, NULL);
 
-	/* The d debug option is 4.4 BSD dc(1) compatible */
-	while ((ch = getopt(argc, argv, "cdl")) != -1) {
+	if ((cmdexpr = strdup("")) == NULL)
+		err(1, NULL);
+	/* The d debug option is 4.4 BSD bc(1) compatible */
+	while ((ch = getopt(argc, argv, "cde:l")) != -1) {
 		switch (ch) {
 		case 'c':
 		case 'd':
 			do_fork = false;
+			break;
+		case 'e':
+			q = cmdexpr;
+			if (asprintf(&cmdexpr, "%s%s\n", cmdexpr, optarg) == -1)
+				err(1, NULL);
+			free(q);
 			break;
 		case 'l':
 			sargv[sargc++] = _PATH_LIBB;
