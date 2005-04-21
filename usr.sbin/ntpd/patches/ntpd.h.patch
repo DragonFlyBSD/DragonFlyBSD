@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.5 2005/04/14 10:31:27 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.6 2005/04/21 13:34:59 joerg Exp $
 
 Index: ntpd.h
 ===================================================================
@@ -27,6 +27,15 @@ diff -u -r1.6 ntpd.h
  
  #define	QUERYTIME_MAX		15	/* single query might take n secs max */
  #define	OFFSET_ARRAY_SIZE	8
+@@ -55,7 +55,7 @@
+ #define	QUERYTIME_MAX		15	/* single query might take n secs max */
+ #define	OFFSET_ARRAY_SIZE	8
+ #define	SETTIME_MIN_OFFSET	180	/* min offset for settime at start */
+-#define	LOG_NEGLIGEE		128	/* negligible drift to not log (ms) */
++#define	LOG_NEGLIGEE		32	/* negligible drift to not log (ms) */
+ 
+ enum client_state {
+ 	STATE_NONE,
 @@ -247,6 +249,8 @@
  
  /* util.c */
