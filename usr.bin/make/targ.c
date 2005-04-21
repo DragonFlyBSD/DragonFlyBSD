@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.37 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.27 2005/04/07 00:44:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.28 2005/04/21 23:01:53 okumoto Exp $
  */
 
 /*
@@ -479,11 +479,7 @@ Targ_PrintGraph(int pass)
 			printf("#\t%s [%s]\n", gn->name,
 			    gn->path ? gn->path : gn->name);
 	}
-
-	printf("#*** Global Variables:\n");
-	Var_Dump(VAR_GLOBAL);
-	printf("#*** Command-line Variables:\n");
-	Var_Dump(VAR_CMD);
+	Var_Dump();
 	printf("\n");
 	Dir_PrintDirectories();
 	printf("\n");
