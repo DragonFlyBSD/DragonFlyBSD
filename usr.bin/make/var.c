@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.196 2005/04/21 23:08:16 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.197 2005/04/21 23:09:42 okumoto Exp $
  */
 
 /**
@@ -2368,8 +2368,9 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
  *	None. The old string must be freed by the caller
  */
 Buffer *
-Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
+Var_SubstOnly(const char *var, const char *str, Boolean err)
 {
+	GNode *ctxt = VAR_GLOBAL;
 	Boolean	errorReported;
 	Buffer	*buf;		/* Buffer for forming things */
 
