@@ -1,0 +1,24 @@
+$DragonFly: src/contrib/gperf-3.0.1/Attic/README.DELETED,v 1.1.1.1 2005/04/21 18:16:32 asmodai Exp $
+*/*.dvi
+*/*.html
+*/*.info
+*/*.ps
+*/texinfo.tex
+Makefile.in
+Makefile.msvc
+Makefile.vms
+README.vms
+README.woe32
+aclocal.m4
+configure
+configure.in
+doc/Makefile.in
+doc/configure
+doc/configure.in
+doc/help2man
+lib/Makefile.in
+lib/configure
+lib/configure.in
+mkinstalldirs
+src/Makefile.in
+tests/
