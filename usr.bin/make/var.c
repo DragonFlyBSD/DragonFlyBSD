@@ -37,10 +37,10 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.195 2005/04/21 23:04:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.196 2005/04/21 23:08:16 okumoto Exp $
  */
 
-/*-
+/**
  * var.c --
  *	Variable-handling functions
  *
@@ -187,7 +187,7 @@ GNode	*VAR_CMD;	/* variables defined on the command-line */
 #define	OPEN_BRACE		'{'
 #define	CLOSE_BRACE		'}'
 
-/*
+/**
  * Create a Var object.
  *
  * @param name		Name of variable.
@@ -210,7 +210,7 @@ VarCreate(const char name[], const char value[], int flags)
 	return (v);
 }
 
-/*
+/**
  * Destroy a Var object.
  *
  * @param v	Object to destroy.
@@ -227,9 +227,8 @@ VarDestroy(Var *v, Boolean f)
 }
 
 /**
- * VarHead
- *	Remove the tail of the given word and place the result in the given
- *	buffer.
+ * Remove the tail of the given word and place the result in the given
+ * buffer.
  *
  * Results:
  *	TRUE if characters were added to the buffer (a space needs to be
@@ -263,9 +262,8 @@ VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 }
 
 /**
- * VarTail
- *	Remove the head of the given word and place the result in the given
- *	buffer.
+ * Remove the head of the given word and place the result in the given
+ * buffer.
  *
  * Results:
  *	TRUE if characters were added to the buffer (a space needs to be
@@ -294,8 +292,7 @@ VarTail(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 }
 
 /**
- * VarSuffix
- *	Place the suffix of the given word in the given buffer.
+ * Place the suffix of the given word in the given buffer.
  *
  * Results:
  *	TRUE if characters were added to the buffer (a space needs to be
@@ -322,9 +319,8 @@ VarSuffix(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 }
 
 /**
- * VarRoot
- *	Remove the suffix of the given word and place the result in the
- *	buffer.
+ * Remove the suffix of the given word and place the result in the
+ * buffer.
  *
  * Results:
  *	TRUE if characters were added to the buffer (a space needs to be
@@ -352,11 +348,10 @@ VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 }
 
 /**
- * VarMatch
- *	Place the word in the buffer if it matches the given pattern.
- *	Callback function for VarModify to implement the :M modifier.
- *	A space will be added if requested.  A pattern is supplied
- *	which the word must match.
+ * Place the word in the buffer if it matches the given pattern.
+ * Callback function for VarModify to implement the :M modifier.
+ * A space will be added if requested.  A pattern is supplied
+ * which the word must match.
  *
  * Results:
  *	TRUE if a space should be placed in the buffer before the next
@@ -381,10 +376,9 @@ VarMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
 
 #ifdef SYSVVARSUB
 /**
- * VarSYSVMatch
- *	Place the word in the buffer if it matches the given pattern.
- *	Callback function for VarModify to implement the System V %
- *	modifiers.  A space is added if requested.
+ * Place the word in the buffer if it matches the given pattern.
+ * Callback function for VarModify to implement the System V %
+ * modifiers.  A space is added if requested.
  *
  * Results:
  *	TRUE if a space should be placed in the buffer before the next
@@ -415,10 +409,9 @@ VarSYSVMatch(const char *word, Boolean addSpace, Buffer *buf, void *patp)
 #endif
 
 /**
- * VarNoMatch
- *	Place the word in the buffer if it doesn't match the given pattern.
- *	Callback function for VarModify to implement the :N modifier.  A
- *	space is added if requested.
+ * Place the word in the buffer if it doesn't match the given pattern.
+ * Callback function for VarModify to implement the :N modifier.  A
+ * space is added if requested.
  *
  * Results:
  *	TRUE if a space should be placed in the buffer before the next
@@ -442,9 +435,8 @@ VarNoMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
 }
 
 /**
- * VarSubstitute
- *	Perform a string-substitution on the given word, placing the
- *	result in the passed buffer.  A space is added if requested.
+ * Perform a string-substitution on the given word, placing the
+ * result in the passed buffer.  A space is added if requested.
  *
  * Results:
  *	TRUE if a space is needed before more characters are added.
@@ -636,9 +628,8 @@ VarREError(int err, regex_t *pat, const char *str)
 
 
 /**
- * VarRESubstitute
- *	Perform a regex substitution on the given word, placing the
- *	result in the passed buffer.  A space is added if requested.
+ * Perform a regex substitution on the given word, placing the
+ * result in the passed buffer.  A space is added if requested.
  *
  * Results:
  *	TRUE if a space is needed before more characters are added.
@@ -765,7 +756,7 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 	return (addSpace || added);
 }
 
-/*
+/**
  * Find a variable in a variable list.
  */
 static Var *
@@ -779,14 +770,11 @@ VarLookup(Lst *vlist, const char *name)
 	return (NULL);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * VarPossiblyExpand --
- *	Expand a variable name's embedded variables in the given context.
+/**
+ * Expand a variable name's embedded variables in the given context.
  *
  * Results:
  *	The contents of name, possibly expanded.
- *-----------------------------------------------------------------------
  */
 static char *
 VarPossiblyExpand(const char *name, GNode *ctxt)
@@ -807,7 +795,7 @@ VarPossiblyExpand(const char *name, GNode *ctxt)
  * variables and substitute the short version in for 'name' if it
  * matches one of them.
  */
-static const char * 
+static const char *
 VarLocal(const char name[])
 {
 	if (name[0] == '.') {
@@ -937,9 +925,6 @@ VarFindAny(const char name[], GNode *ctxt)
 /**
  * Add a new variable of name name and value val to the given context.
  *
- * Results:
- *	None
- *
  * Side Effects:
  *	The new variable is placed at the front of the given context
  *	The name and val arguments are duplicated so they may
@@ -953,18 +938,11 @@ VarAdd(const char *name, const char *val, GNode *ctxt)
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Delete --
- *	Remove a variable from a context.
- *
- * Results:
- *	None.
+/**
+ * Remove a variable from a context.
  *
  * Side Effects:
  *	The Var structure is removed and freed.
- *
- *-----------------------------------------------------------------------
  */
 void
 Var_Delete(const char *name, GNode *ctxt)
@@ -981,13 +959,8 @@ Var_Delete(const char *name, GNode *ctxt)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Set --
- *	Set the variable name to the value val in the given context.
- *
- * Results:
- *	None.
+/**
+ * Set the variable name to the value val in the given context.
  *
  * Side Effects:
  *	If the variable doesn't yet exist, a new record is created for it.
@@ -1000,7 +973,6 @@ Var_Delete(const char *name, GNode *ctxt)
  *	VAR_CMD->context is searched. This is done to avoid the literally
  *	thousands of unnecessary strcmp's that used to be done to
  *	set, say, $(@) or $(<).
- *-----------------------------------------------------------------------
  */
 void
 Var_Set(const char *name, const char *val, GNode *ctxt)
@@ -1044,9 +1016,8 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 	free(n);
 }
 
-/*
- * Var_SetEnv --
- *	Set the VAR_TO_ENV flag on a variable
+/**
+ * Set the VAR_TO_ENV flag on a variable
  */
 void
 Var_SetEnv(const char *name, GNode *ctxt)
@@ -1079,14 +1050,9 @@ Var_SetEnv(const char *name, GNode *ctxt)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Append --
- *	The variable of the given name has the given value appended to it in
- *	the given context.
- *
- * Results:
- *	None
+/**
+ * The variable of the given name has the given value appended to it in
+ * the given context.
  *
  * Side Effects:
  *	If the variable doesn't exist, it is created. Else the strings
@@ -1099,7 +1065,6 @@ Var_SetEnv(const char *name, GNode *ctxt)
  *	an actual target, it will only search that context since only
  *	a local variable could be being appended to. This is actually
  *	a big win and must be tolerated.
- *-----------------------------------------------------------------------
  */
 void
 Var_Append(const char *name, const char *val, GNode *ctxt)
@@ -1123,18 +1088,11 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
 	free(n);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Exists --
- *	See if the given variable exists.
+/**
+ * See if the given variable exists.
  *
  * Results:
  *	TRUE if it does, FALSE if it doesn't
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
  */
 Boolean
 Var_Exists(const char *name, GNode *ctxt)
@@ -1153,17 +1111,11 @@ Var_Exists(const char *name, GNode *ctxt)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Value --
- *	Return the value of the named variable in the given context
+/**
+ * Return the value of the named variable in the given context
  *
  * Results:
  *	The value if the variable exists, NULL if it doesn't
- *
- * Side Effects:
- *	None
- *-----------------------------------------------------------------------
  */
 char *
 Var_Value(const char *name, GNode *ctxt, char **frp)
@@ -1185,11 +1137,9 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
 	return (p);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * VarModify --
- *	Modify each of the words of the passed string using the given
- *	function. Used to implement all modifiers.
+/**
+ * Modify each of the words of the passed string using the given
+ * function. Used to implement all modifiers.
  *
  * Results:
  *	A string of all the words modified appropriately.
@@ -1197,8 +1147,6 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
  * Side Effects:
  *	Uses brk_string() so it invalidates any previous call to
  *	brk_string().
- *
- *-----------------------------------------------------------------------
  */
 static char *
 VarModify(const char *str, VarModifyProc *modProc, void *datum)
@@ -1221,10 +1169,8 @@ VarModify(const char *str, VarModifyProc *modProc, void *datum)
 	return (Buf_Peel(buf));
 }
 
-/*-
- *-----------------------------------------------------------------------
- * VarSortWords --
- *	Sort the words in the string.
+/**
+ * Sort the words in the string.
  *
  * Input:
  *	str		String whose words should be sorted
@@ -1236,8 +1182,6 @@ VarModify(const char *str, VarModifyProc *modProc, void *datum)
  * Side Effects:
  *	Uses brk_string() so it invalidates any previous call to
  *	brk_string().
- *
- *-----------------------------------------------------------------------
  */
 static char *
 VarSortWords(const char *str, int (*cmp)(const void *, const void *))
@@ -1266,26 +1210,20 @@ SortIncreasing(const void *l, const void *r)
 	return (strcmp(*(const char* const*)l, *(const char* const*)r));
 }
 
-/*-
- *-----------------------------------------------------------------------
- * VarGetPattern --
- *	Pass through the tstr looking for 1) escaped delimiters,
- *	'$'s and backslashes (place the escaped character in
- *	uninterpreted) and 2) unescaped $'s that aren't before
- *	the delimiter (expand the variable substitution).
- *	Return the expanded string or NULL if the delimiter was missing
- *	If pattern is specified, handle escaped ampersands, and replace
- *	unescaped ampersands with the lhs of the pattern.
+/**
+ * Pass through the tstr looking for 1) escaped delimiters,
+ * '$'s and backslashes (place the escaped character in
+ * uninterpreted) and 2) unescaped $'s that aren't before
+ * the delimiter (expand the variable substitution).
+ * Return the expanded string or NULL if the delimiter was missing
+ * If pattern is specified, handle escaped ampersands, and replace
+ * unescaped ampersands with the lhs of the pattern.
  *
  * Results:
  *	A string of all the words modified appropriately.
  *	If length is specified, return the string length of the buffer
  *	If flags is specified and the last character of the pattern is a
  *	$ set the VAR_MATCH_END bit of flags.
- *
- * Side Effects:
- *	None.
- *-----------------------------------------------------------------------
  */
 static Buffer *
 VarGetPattern(VarParser *vp, int delim, int *flags, VarPattern *patt)
@@ -2202,12 +2140,10 @@ VarParse(VarParser *vp, Boolean *freeResult)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Parse --
- *	Given the start of a variable invocation, extract the variable
- *	name and find its value, then modify it according to the
- *	specification.
+/**
+ * Given the start of a variable invocation, extract the variable
+ * name and find its value, then modify it according to the
+ * specification.
  *
  * Results:
  *	The value of the variable or var_Error if the specification
@@ -2217,10 +2153,6 @@ VarParse(VarParser *vp, Boolean *freeResult)
  *	the following letter, or 1 if '$' was the last character
  *	in the string).  A Boolean in *freeResult telling whether the
  *	returned string should be freed by the caller.
- *
- * Side Effects:
- *	None.
- *-----------------------------------------------------------------------
  */
 char *
 Var_Parse(const char input[], GNode *ctxt, Boolean err,
@@ -2241,6 +2173,8 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 }
 
 /*
+ * Given the start of a variable invocation, determine the length
+ * of the specification.
  *
  * Results:
  *	The number of characters in the specification.  For invalid
@@ -2268,19 +2202,64 @@ Var_Match(const char input[], GNode *ctxt)
 	return (vp.ptr - vp.input);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Subst  --
- *	Substitute for all variables in the given string in the given context
- *	If err is TRUE, Parse_Error will be called when an undefined
- *	variable is encountered.
+static int
+match_var(const char str[], const char var[])
+{
+	const char	*start = str;
+	size_t		len;
+
+	str++;			/* consume '$' */
+
+	if (str[0] == OPEN_PAREN || str[0] == OPEN_BRACE) {
+		str++;		/* consume opening paren or brace */
+
+		while (str[0] != '\0') {
+			if (str[0] == '$') {
+				/*
+				 * A variable inside the variable. We cannot
+				 * expand the external variable yet.
+				 */
+				return (str - start);
+			} else if (str[0] == ':' ||
+				   str[0] == CLOSE_PAREN ||
+				   str[0] == CLOSE_BRACE) {
+				len = str - (start + 2);
+
+				if (var[len] == '\0' && strncmp(var, start + 2, len) == 0) {
+					return (0);	/* match */
+				} else {
+					/*
+					 * Not the variable we want to
+					 * expand.
+					 */
+					return (str - start);
+				}
+			} else {
+				++str;
+			}
+		}
+		return (str - start);
+	} else {
+		/* Single letter variable name */
+		if (var[1] == '\0' && var[0] == str[0]) {
+			return (0);	/* match */
+		} else {
+			str++;	/* consume variable name */
+			return (str - start);
+		}
+	}
+}
+
+/**
+ * Substitute for all variables in the given string in the given
+ * context If err is TRUE, Parse_Error will be called when an
+ * undefined variable is encountered.
  *
  * Results:
  *	The resulting string.
  *
  * Side Effects:
  *	None. The old string must be freed by the caller
- *-----------------------------------------------------------------------
  */
 Buffer *
 Var_Subst(const char *str, GNode *ctxt, Boolean err)
@@ -2376,54 +2355,18 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 	return (buf);
 }
 
-static int
-match_var(const char str[], const char var[])
-{
-	const char	*start = str;
-	size_t		len;
-
-	str++;			/* consume '$' */
-
-	if (str[0] == OPEN_PAREN || str[0] == OPEN_BRACE) {
-		str++;		/* consume opening paren or brace */
-
-		while (str[0] != '\0') {
-			if (str[0] == '$') {
-				/*
-				 * A variable inside the variable. We cannot
-				 * expand the external variable yet.
-				 */
-				return (str - start);
-			} else if (str[0] == ':' ||
-				   str[0] == CLOSE_PAREN ||
-				   str[0] == CLOSE_BRACE) {
-				len = str - (start + 2);
-
-				if (var[len] == '\0' && strncmp(var, start + 2, len) == 0) {
-					return (0);	/* match */
-				} else {
-					/*
-					 * Not the variable we want to
-					 * expand.
-					 */
-					return (str - start);
-				}
-			} else {
-				++str;
-			}
-		}
-		return (str - start);
-	} else {
-		/* Single letter variable name */
-		if (var[1] == '\0' && var[0] == str[0]) {
-			return (0);	/* match */
-		} else {
-			str++;	/* consume variable name */
-			return (str - start);
-		}
-	}
-}
-
+/**
+ * Substitute for all variables except if it is the same as 'var',
+ * in the given string in the given context.  If err is TRUE,
+ * Parse_Error will be called when an undefined variable is
+ * encountered.
+ *
+ * Results:
+ *	The resulting string.
+ *
+ * Side Effects:
+ *	None. The old string must be freed by the caller
+ */
 Buffer *
 Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 {
@@ -2517,17 +2460,11 @@ Var_SubstOnly(const char *var, const char *str, GNode *ctxt, Boolean err)
 	return (buf);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Init --
- *	Initialize the module
- *
- * Results:
- *	None
+/**
+ * Initialize the module
  *
  * Side Effects:
  *	The VAR_CMD and VAR_GLOBAL contexts are created
- *-----------------------------------------------------------------------
  */
 void
 Var_Init(char **env)
@@ -2555,11 +2492,8 @@ Var_Init(char **env)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Var_Dump --
- *	print all variables in a context
- *-----------------------------------------------------------------------
+/**
+ * Print all variables in global and command line contexts.
  */
 void
 Var_Dump(void)
