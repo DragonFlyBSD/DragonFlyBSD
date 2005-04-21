@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.74 2005/04/16 10:34:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.75 2005/04/21 22:57:29 okumoto Exp $
  */
 
 /*
@@ -178,12 +178,19 @@ static void
 MainParseArgs(int argc, char **argv)
 {
 	int c;
+	Boolean	found_dd = FALSE;
 
 rearg:
 	optind = 1;	/* since we're called more than once */
 	optreset = 1;
 #define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
-	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
+	for (;;) {
+		if ((optind < argc) && strcmp(argv[optind], "--") == 0) {
+			found_dd = TRUE;
+		}
+		if ((c = getopt(argc, argv, OPTFLAGS)) == -1) {
+			break;
+		}
 		switch(c) {
 
 		case 'A':
@@ -370,11 +377,18 @@ rearg:
 				 * (*argv) is a single dash, so we
 				 * just ignore it.
 				 */
+			} else if (found_dd) {
+				/*
+				 * Double dash has been found, ignore
+				 * any more options.  But what do we do
+				 * with it?  For now treat it like a target.
+				 */
+				Lst_AtEnd(&create, estrdup(*argv));
 			} else {
 				/*
-				 * (*argv) is a -flag, so backup argv
-				 *  and argc, since getopt() expects
-				 * options to start in the 2nd position.
+				 * (*argv) is a -flag, so backup argv and
+				 * argc.  getopt() expects options to start
+				 * in the 2nd position.
 				 */
 				argc++;
 				argv--;
