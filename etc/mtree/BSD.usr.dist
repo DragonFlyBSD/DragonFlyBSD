@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.31 2005/03/13 18:42:39 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.32 2005/04/21 13:48:56 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -15,8 +15,6 @@
     include
     ..
     lib
-	gcc2
-	..
 	gcc34
 	..
 	i18n
@@ -43,14 +41,6 @@
         ..
     ..
     libexec
-        binutils212
-	    ldscripts
-	    ..
-	    aout
-	    ..
-	    elf
-	    ..
-	..
 	binutils215
 	    ldscripts
 	    ..
@@ -58,8 +48,6 @@
 	    ..
 	    elf
 	    ..
-	..
-	gcc2
 	..
 	gcc34
 	..
