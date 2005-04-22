@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.7 2004/12/18 22:48:05 swildner Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.8 2005/04/22 16:59:46 liamfoy Exp $
  */
 
 #include <sys/cdefs.h>
@@ -150,10 +150,13 @@ main(int argc, char *argv[])
 	}
 
 	/* ld-elf.so magic */
-	if (doreg)
-	    setenv("LD_RESIDENT_REGISTER_NOW", "yes", 1);
-	else
-	    setenv("LD_RESIDENT_UNREGISTER_NOW", "yes", 1);
+	if (doreg) {
+	    if (setenv("LD_RESIDENT_REGISTER_NOW", "yes", 1) == -1)
+			err(1, "setenv failed");
+	} else {
+	    if (setenv("LD_RESIDENT_UNREGISTER_NOW", "yes", 1) == -1)
+			err(1, "setenv failed");
+	}
 
 	rval = 0;
 	for ( ;  argc > 0;  argc--, argv++) {
