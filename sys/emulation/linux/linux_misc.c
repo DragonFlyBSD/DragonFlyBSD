@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.22 2004/11/12 00:09:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.23 2005/04/22 02:09:15 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -80,20 +80,14 @@
 #include "linux_mib.h"
 #include "linux_util.h"
 
-#ifdef __alpha__
-#define BSD_TO_LINUX_SIGNAL(sig)       (sig)
-#else
 #define BSD_TO_LINUX_SIGNAL(sig)	\
 	(((sig) <= LINUX_SIGTBLSZ) ? bsd_to_linux_signal[_SIG_IDX(sig)] : sig)
-#endif
 
-#ifndef __alpha__
 static unsigned int linux_to_bsd_resource[LINUX_RLIM_NLIMITS] = {
 	RLIMIT_CPU, RLIMIT_FSIZE, RLIMIT_DATA, RLIMIT_STACK,
 	RLIMIT_CORE, RLIMIT_RSS, RLIMIT_NPROC, RLIMIT_NOFILE,
 	RLIMIT_MEMLOCK, -1
 };
-#endif /*!__alpha__*/
 
 struct l_sysinfo {
 	l_long		uptime;		/* Seconds since boot */
@@ -107,7 +101,7 @@ struct l_sysinfo {
 	l_ushort	procs;		/* Number of current processes */
 	char		_f[22];		/* Pads structure to 64 bytes */
 };
-#ifndef __alpha__
+
 int
 linux_sysinfo(struct linux_sysinfo_args *args)
 {
@@ -161,9 +155,7 @@ linux_sysinfo(struct linux_sysinfo_args *args)
 
 	return copyout(&sysinfo, (caddr_t)args->info, sizeof(sysinfo));
 }
-#endif /*!__alpha__*/
 
-#ifndef __alpha__
 int
 linux_alarm(struct linux_alarm_args *args)
 {
@@ -207,7 +199,6 @@ linux_alarm(struct linux_alarm_args *args)
 	}
 	return 0;
 }
-#endif /*!__alpha__*/
 
 int
 linux_brk(struct linux_brk_args *args)
@@ -629,7 +620,6 @@ linux_msync(struct linux_msync_args *args)
 	return(error);
 }
 
-#ifndef __alpha__
 int
 linux_time(struct linux_time_args *args)
 {
@@ -649,7 +639,6 @@ linux_time(struct linux_time_args *args)
 	args->sysmsg_lresult = tm;
 	return 0;
 }
-#endif	/*!__alpha__*/
 
 struct l_times_argv {
 	l_long		tms_utime;
@@ -658,11 +647,7 @@ struct l_times_argv {
 	l_long		tms_cstime;
 };
 
-#ifdef __alpha__
-#define CLK_TCK 1024	/* Linux uses 1024 on alpha */
-#else
 #define CLK_TCK 100	/* Linux uses 100 */
-#endif
 
 #define CONVTCK(r)	(r.tv_sec * CLK_TCK + r.tv_usec / (1000000 / CLK_TCK))
 
@@ -768,7 +753,6 @@ cleanup:
 
 #define __WCLONE 0x80000000
 
-#ifndef __alpha__
 int
 linux_waitpid(struct linux_waitpid_args *args)
 {
@@ -800,7 +784,6 @@ linux_waitpid(struct linux_waitpid_args *args)
 
 	return (error);
 }
-#endif	/*!__alpha__*/
 
 int
 linux_wait4(struct linux_wait4_args *args)
@@ -884,10 +867,8 @@ linux_personality(struct linux_personality_args *args)
 	if (ldebug(personality))
 		printf(ARGS(personality, "%d"), args->per);
 #endif
-#ifndef __alpha__
 	if (args->per != 0)
 		return EINVAL;
-#endif
 
 	/* Yes Jim, it's still a Linux... */
 	args->sysmsg_result = 0;
@@ -947,7 +928,6 @@ linux_getitimer(struct linux_getitimer_args *args)
 	return(error);
 }
 
-#ifndef __alpha__
 int
 linux_nice(struct linux_nice_args *args)
 {
@@ -962,7 +942,6 @@ linux_nice(struct linux_nice_args *args)
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
-#endif	/*!__alpha__*/
 
 int
 linux_setgroups(struct linux_setgroups_args *args)
@@ -1060,7 +1039,6 @@ linux_getgroups(struct linux_getgroups_args *args)
 	return (0);
 }
 
-#ifndef __alpha__
 int
 linux_setrlimit(struct linux_setrlimit_args *args)
 {
@@ -1152,7 +1130,6 @@ linux_getrlimit(struct linux_getrlimit_args *args)
 	}
 	return (error);
 }
-#endif /*!__alpha__*/
 
 int
 linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
@@ -1305,8 +1282,6 @@ linux_reboot(struct linux_reboot_args *args)
 	return(error);
 }
 
-#ifndef __alpha__
-
 /*
  * The FreeBSD native getpid(2), getgid(2) and getuid(2) also modify
  * p->p_retval[1] when COMPAT_43 or COMPAT_SUNOS is defined. This
@@ -1354,8 +1329,6 @@ linux_getuid(struct linux_getuid_args *args)
 	args->sysmsg_result = p->p_ucred->cr_ruid;
 	return (0);
 }
-
-#endif /*!__alpha__*/
 
 int
 linux_getsid(struct linux_getsid_args *args)

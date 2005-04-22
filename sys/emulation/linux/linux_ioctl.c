@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.17 2005/03/01 00:43:02 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.18 2005/04/22 02:09:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -98,15 +98,8 @@ struct linux_termios {
 	unsigned int c_oflag;
 	unsigned int c_cflag;
 	unsigned int c_lflag;
-#ifdef __alpha__
-	unsigned char c_cc[LINUX_NCCS];
-	unsigned char c_line;
-	unsigned int  c_ispeed;
-	unsigned int  c_ospeed;
-#else
 	unsigned char c_line;
 	unsigned char c_cc[LINUX_NCCS];
-#endif
 };
 
 struct linux_winsize {
@@ -456,20 +449,7 @@ bsd_to_linux_termio(struct termios *bios, struct linux_termio *lio)
 	lio->c_cflag = lios.c_cflag;
 	lio->c_lflag = lios.c_lflag;
 	lio->c_line  = lios.c_line;
-#ifdef __alpha__
-	lio->c_cc[LINUX__VINTR] = lios.c_cc[LINUX_VINTR];
-	lio->c_cc[LINUX__VQUIT] = lios.c_cc[LINUX_VQUIT];
-	lio->c_cc[LINUX__VERASE] = lios.c_cc[LINUX_VERASE];
-	lio->c_cc[LINUX__VKILL] = lios.c_cc[LINUX_VKILL];
-	lio->c_cc[LINUX__VEOF] =
-	    lios.c_cc[(lios.c_lflag & ICANON) ? LINUX_VEOF : LINUX_VMIN];
-	lio->c_cc[LINUX__VEOL] =
-	    lios.c_cc[(lios.c_lflag & ICANON) ? LINUX_VEOL : LINUX_VTIME];
-	lio->c_cc[LINUX__VEOL2] = lios.c_cc[LINUX_VEOL2];
-	lio->c_cc[LINUX__VSWTC] = lios.c_cc[LINUX_VSWTC];
-#else
 	memcpy(lio->c_cc, lios.c_cc, LINUX_NCC);
-#endif
 }
 
 static void
@@ -482,24 +462,9 @@ linux_to_bsd_termio(struct linux_termio *lio, struct termios *bios)
 	lios.c_oflag = lio->c_oflag;
 	lios.c_cflag = lio->c_cflag;
 	lios.c_lflag = lio->c_lflag;
-#ifdef __alpha__
-	for (i=0; i<LINUX_NCCS; i++)
-		lios.c_cc[i] = LINUX_POSIX_VDISABLE;
-	lios.c_cc[LINUX_VINTR] = lio->c_cc[LINUX__VINTR];
-	lios.c_cc[LINUX_VQUIT] = lio->c_cc[LINUX__VQUIT];
-	lios.c_cc[LINUX_VERASE] = lio->c_cc[LINUX__VERASE];
-	lios.c_cc[LINUX_VKILL] = lio->c_cc[LINUX__VKILL];
-	lios.c_cc[LINUX_VEOL2] = lio->c_cc[LINUX__VEOL2];
-	lios.c_cc[LINUX_VSWTC] = lio->c_cc[LINUX__VSWTC];
-	lios.c_cc[(lio->c_lflag & ICANON) ? LINUX_VEOF : LINUX_VMIN] =
-	    lio->c_cc[LINUX__VEOF];
-	lios.c_cc[(lio->c_lflag & ICANON) ? LINUX_VEOL : LINUX_VTIME] =
-	    lio->c_cc[LINUX__VEOL];
-#else
 	for (i=LINUX_NCC; i<LINUX_NCCS; i++)
 		lios.c_cc[i] = LINUX_POSIX_VDISABLE;
 	memcpy(lios.c_cc, lio->c_cc, LINUX_NCC);
-#endif
 	linux_to_bsd_termios(&lios, bios);
 }
 

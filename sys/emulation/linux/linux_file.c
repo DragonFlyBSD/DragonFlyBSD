@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.19 2004/11/12 00:09:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.20 2005/04/22 02:09:15 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -58,7 +58,6 @@
 #include <arch_linux/linux_proto.h>
 #include "linux_util.h"
 
-#ifndef __alpha__
 int
 linux_creat(struct linux_creat_args *args)
 {
@@ -81,7 +80,6 @@ linux_creat(struct linux_creat_args *args)
 	linux_free_path(&path);
 	return(error);
 }
-#endif /*!__alpha__*/
 
 int
 linux_open(struct linux_open_args *args)
@@ -172,7 +170,6 @@ linux_lseek(struct linux_lseek_args *args)
 	return error;
 }
 
-#ifndef __alpha__
 int
 linux_llseek(struct linux_llseek_args *args)
 {
@@ -192,9 +189,7 @@ linux_llseek(struct linux_llseek_args *args)
 		error = copyout(&res, args->res, sizeof(res));
 	return (error);
 }
-#endif /*!__alpha__*/
 
-#ifndef __alpha__
 int
 linux_readdir(struct linux_readdir_args *args)
 {
@@ -209,7 +204,6 @@ linux_readdir(struct linux_readdir_args *args)
 	args->sysmsg_result = lda.sysmsg_result;
 	return(error);
 }
-#endif /*!__alpha__*/
 
 /*
  * Note that linux_getdents(2) and linux_getdents64(2) have the same
@@ -791,7 +785,6 @@ linux_link(struct linux_link_args *args)
 	return(error);
 }
 
-#ifndef __alpha__
 int
 linux_fdatasync(struct linux_fdatasync_args *uap)
 {
@@ -805,7 +798,6 @@ linux_fdatasync(struct linux_fdatasync_args *uap)
 	uap->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
-#endif /*!__alpha__*/
 
 int
 linux_pread(struct linux_pread_args *uap)
@@ -989,10 +981,6 @@ bsd_to_linux_flock64(struct flock *bsd_flock, struct l_flock64 *linux_flock)
 	linux_flock->l_pid = (l_pid_t)bsd_flock->l_pid;
 }
 #endif /* __i386__ */
-
-#if defined(__alpha__)
-#define	linux_fcntl64_args	linux_fcntl_args
-#endif
 
 static int
 linux_fcntl_common(struct linux_fcntl64_args *args)

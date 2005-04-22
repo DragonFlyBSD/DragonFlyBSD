@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.18 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.19 2005/04/22 02:09:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,6 @@ linux_copyout_sockaddr(struct sockaddr *sa, struct sockaddr *uaddr, int sa_len)
 	return (error);
 }
  
-#ifndef __alpha__
 static int
 linux_to_bsd_domain(int domain)
 {
@@ -341,8 +340,6 @@ struct linux_connect_args {
 	struct sockaddr * name;
 	int namelen;
 };
-int linux_connect(struct linux_connect_args *, int *res);
-#endif /* !__alpha__*/
 
 int
 linux_connect(struct linux_connect_args *args, int *res)
@@ -388,8 +385,6 @@ linux_connect(struct linux_connect_args *args, int *res)
 	fdrop(fp, td);
 	return (error);
 }
-
-#ifndef __alpha__
 
 struct linux_listen_args {
 	int s;
@@ -1199,4 +1194,3 @@ linux_socketcall(struct linux_socketcall_args *args)
 	uprintf("LINUX: 'socket' typ=%d not implemented\n", args->what);
 	return (ENOSYS);
 }
-#endif	/*!__alpha__*/

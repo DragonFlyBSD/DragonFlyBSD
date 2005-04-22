@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.9 2003/11/16 01:50:54 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.10 2005/04/22 02:09:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -52,11 +52,7 @@ linux_to_bsd_sigset(l_sigset_t *lss, sigset_t *bss)
 	bss->__bits[1] = lss->__bits[1];
 	for (l = 1; l <= LINUX_SIGTBLSZ; l++) {
 		if (LINUX_SIGISMEMBER(*lss, l)) {
-#ifdef __alpha__
-			b = _SIG_IDX(l);
-#else
 			b = linux_to_bsd_signal[_SIG_IDX(l)];
-#endif
 			if (b)
 				SIGADDSET(*bss, b);
 		}
@@ -73,11 +69,7 @@ bsd_to_linux_sigset(sigset_t *bss, l_sigset_t *lss)
 	lss->__bits[1] = bss->__bits[1];
 	for (b = 1; b <= LINUX_SIGTBLSZ; b++) {
 		if (SIGISMEMBER(*bss, b)) {
-#if __alpha__
-			l = _SIG_IDX(b);
-#else
 			l = bsd_to_linux_signal[_SIG_IDX(b)];
-#endif
 			if (l)
 				LINUX_SIGADDSET(*lss, l);
 		}
@@ -131,7 +123,6 @@ bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 		lsa->lsa_flags |= LINUX_SA_NOMASK;
 }
 
-#ifndef __alpha__
 int
 linux_signal(struct linux_signal_args *args)
 {
@@ -160,7 +151,6 @@ linux_signal(struct linux_signal_args *args)
 	args->sysmsg_result = (int) linux_osa.lsa_handler;
 	return (error);
 }
-#endif	/*!__alpha__*/
 
 int
 linux_rt_sigaction(struct linux_rt_sigaction_args *args)
@@ -216,7 +206,6 @@ linux_to_bsd_sigprocmask(int how)
 	}
 }
 
-#ifndef __alpha__
 int
 linux_sigprocmask(struct linux_sigprocmask_args *args)
 {
@@ -250,7 +239,6 @@ linux_sigprocmask(struct linux_sigprocmask_args *args)
 	}
 	return (error);
 }
-#endif	/*!__alpha__*/
 
 int
 linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
@@ -288,7 +276,6 @@ linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 	return (error);
 }
 
-#ifndef __alpha__
 int
 linux_sgetmask(struct linux_sgetmask_args *args)
 {
@@ -352,7 +339,6 @@ linux_sigpending(struct linux_sigpending_args *args)
 	}
 	return (error);
 }
-#endif	/*!__alpha__*/
 
 int
 linux_kill(struct linux_kill_args *args)
@@ -370,11 +356,9 @@ linux_kill(struct linux_kill_args *args)
 	if (args->signum < 0 || args->signum > LINUX_NSIG)
 		return EINVAL;
 
-#ifndef __alpha__
 	if (args->signum > 0 && args->signum <= LINUX_SIGTBLSZ)
 		sig = linux_to_bsd_signal[_SIG_IDX(args->signum)];
 	else
-#endif
 		sig = args->signum;
 
 	error = kern_kill(sig, args->pid);
