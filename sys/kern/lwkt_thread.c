@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.71 2005/04/13 04:02:08 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.72 2005/04/22 17:41:15 joerg Exp $
  */
 
 /*
@@ -1110,6 +1110,7 @@ lwkt_setcpu_self(globaldata_t rgd)
 	lwkt_switch();
 	/* we are now on the target cpu */
 	crit_exit_quick(td);
+	cpu_mb1();
     }
 #endif
 }

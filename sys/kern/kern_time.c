@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.23 2005/04/22 10:12:26 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.24 2005/04/22 17:41:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -92,10 +92,8 @@ settime(tv)
 	struct timespec ts;
 	int origcpu;
 
-	if ((origcpu = mycpu->gd_cpuid) != 0) {
+	if ((origcpu = mycpu->gd_cpuid) != 0)
 		lwkt_setcpu_self(globaldata_find(0));
-		cpu_mb1();
-	}
 
 	crit_enter();
 	microtime(&tv1);
@@ -145,10 +143,8 @@ settime(tv)
 	lease_updatetime(delta.tv_sec);
 	crit_exit();
 
-	if (origcpu != 0) {
+	if (origcpu != 0)
 		lwkt_setcpu_self(globaldata_find(origcpu));
-		cpu_mb1();
-	}
 
 	resettodr();
 	return (0);
@@ -462,10 +458,8 @@ kern_adjtime(int64_t delta, int64_t *odelta)
 {
 	int origcpu;
 
-	if ((origcpu = mycpu->gd_cpuid) != 0) {
+	if ((origcpu = mycpu->gd_cpuid) != 0)
 		lwkt_setcpu_self(globaldata_find(0));
-		cpu_mb1();
-	}
 
 	crit_enter();
 	*odelta = ntp_delta;
@@ -473,10 +467,8 @@ kern_adjtime(int64_t delta, int64_t *odelta)
 	kern_adjtime_common();
 	crit_exit();
 
-	if (origcpu != 0) {
+	if (origcpu != 0)
 		lwkt_setcpu_self(globaldata_find(origcpu));
-		cpu_mb1();
-	}
 }
 
 void
@@ -484,20 +476,16 @@ kern_reladjtime(int64_t delta)
 {
 	int origcpu;
 
-	if ((origcpu = mycpu->gd_cpuid) != 0) {
+	if ((origcpu = mycpu->gd_cpuid) != 0)
 		lwkt_setcpu_self(globaldata_find(0));
-		cpu_mb1();
-	}
 
 	crit_enter();
 	ntp_delta += delta;
 	kern_adjtime_common();
 	crit_exit();
 
-	if (origcpu != 0) {
+	if (origcpu != 0)
 		lwkt_setcpu_self(globaldata_find(origcpu));
-		cpu_mb1();
-	}
 }
 
 static void
@@ -505,19 +493,15 @@ kern_adjfreq(int64_t rate)
 {
 	int origcpu;
 
-	if ((origcpu = mycpu->gd_cpuid) != 0) {
+	if ((origcpu = mycpu->gd_cpuid) != 0)
 		lwkt_setcpu_self(globaldata_find(0));
-		cpu_mb1();
-	}
 
 	crit_enter();
 	ntp_tick_permanent = rate;
 	crit_exit();
 
-	if (origcpu != 0) {
+	if (origcpu != 0)
 		lwkt_setcpu_self(globaldata_find(origcpu));
-		cpu_mb1();
-	}
 }
 
 /* ARGSUSED */

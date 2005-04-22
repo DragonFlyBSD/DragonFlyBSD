@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.19 2005/04/20 16:37:09 cpressey Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.20 2005/04/22 17:41:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -628,7 +628,6 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			continue;
 		rgd = globaldata_find(nid);
 		lwkt_setcpu_self(rgd);
-		cpu_mb1();	/* CURRENT CPU HAS CHANGED */
 
 		TAILQ_FOREACH(td, &mycpu->gd_tdallq, td_allq) {
 			if (td->td_proc)

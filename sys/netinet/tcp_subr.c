@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.46 2005/04/11 09:43:50 hmp Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.47 2005/04/22 17:41:15 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -1139,9 +1139,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 			continue;
 		rgd = globaldata_find(cpu_id);
 		lwkt_setcpu_self(rgd);
-
-		/* indicate change of CPU */
-		cpu_mb1();
 
 		gencnt = tcbinfo[cpu_id].ipi_gencnt;
 		n = tcbinfo[cpu_id].ipi_count;
