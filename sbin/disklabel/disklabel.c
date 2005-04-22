@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.9 2005/03/17 07:11:15 y0netan1 Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.10 2005/04/22 01:47:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -81,15 +81,7 @@
 #define BIG_NEWFS_FRAG   2048U
 #define BIG_NEWFS_CPG    64U
 
-#ifdef tahoe
-#define	NUMBOOT	0
-#else
-#if defined(__alpha__) || defined(hp300) || defined(hp800)
-#define	NUMBOOT	1
-#else
 #define	NUMBOOT	2
-#endif
-#endif
 
 void	makelabel(const char *, const char *, struct disklabel *);
 int	writelabel(int, const char *, struct disklabel *);
@@ -395,13 +387,6 @@ int
 writelabel(int f, const char *boot, struct disklabel *lp)
 {
 	int flag;
-#ifdef __alpha__
-	u_long *p, sum;
-	int i;
-#endif
-#ifdef vax
-	register int i;
-#endif
 
 	if (disable_write) {
 		Warning("write to disk label supressed - label was as follows:");
@@ -432,15 +417,6 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			}
 			lseek(f, (off_t)0, SEEK_SET);
 			
-#ifdef __alpha__
-			/*
-			 * Generate the bootblock checksum for the SRM console.
-			 */
-			for (p = (u_long *)boot, i = 0, sum = 0; i < 63; i++)
-				sum += p[i];
-			p[63] = sum;
-#endif
-			
 			/*
 			 * write enable label sector before write (if necessary),
 			 * disable after writing.
@@ -467,19 +443,6 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			l_perror("ioctl DIOCWDINFO");
 			return (1);
 		}
-#ifdef vax
-		if (lp->d_type == DTYPE_SMD && lp->d_flags & D_BADSECT) {
-			daddr_t alt;
-			
-			alt = lp->d_ncylinders * lp->d_secpercyl - lp->d_nsectors;
-			for (i = 1; i < 11 && i < lp->d_nsectors; i += 2) {
-				lseek(f, (off_t)((alt + i) * lp->d_secsize),
-				      SEEK_SET);
-				if (write(f, boot, lp->d_secsize) < lp->d_secsize)
-					warn("alternate label %d write", i/2);
-			}
-		}
-#endif
 	}
 	return (0);
 }
@@ -558,10 +521,6 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 #if NUMBOOT > 0
 	char *dkbasename;
 	struct stat sb;
-#endif
-#ifdef __alpha__
-	u_long *bootinfo;
-	int n;
 #endif
 #ifdef __i386__
 	char *tmpbuf;
@@ -672,24 +631,8 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 		 (int)(dp->d_bbsize-dp->d_secsize)) < 0)
 		err(4, "%s", bootxx);
 #else /* !(NUMBOOT > 1) */
-#ifdef __alpha__
-	/*
-	 * On the alpha, the primary bootstrap starts at the
-	 * second sector of the boot area.  The first sector
-	 * contains the label and must be edited to contain the
-	 * size and location of the primary bootstrap.
-	 */
-	n = read(b, boot + dp->d_secsize, (int)dp->d_bbsize);
-	if (n < 0)
-		err(4, "%s", xxboot);
-	bootinfo = (u_long *)(boot + 480);
-	bootinfo[0] = (n + dp->d_secsize - 1) / dp->d_secsize;
-	bootinfo[1] = 1;	/* start at sector 1 */
-	bootinfo[2] = 0;	/* flags (must be zero) */
-#else /* !__alpha__ */
 	if (read(b, boot, (int)dp->d_bbsize) < 0)
 		err(4, "%s", xxboot);
-#endif /* __alpha__ */
 	if (fstat(b, &sb) != 0)
 		err(4, "%s", xxboot);
 	bootsize = (int)sb.st_size - dp->d_bbsize;
