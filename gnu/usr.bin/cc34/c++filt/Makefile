@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/c++filt/Makefile,v 1.2 2004/06/20 20:59:21 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/c++filt/Makefile,v 1.3 2005/04/22 06:52:42 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -10,10 +10,6 @@ SRCS+=  dyn-string.c safe-ctype.c xexit.c xmalloc.c xstrdup.c
 NOMAN=	1
 
 CFLAGS+= -DSTANDALONE_DEMANGLER -DIN_GCC -DVERSION=\"$(version)\"
-
-.if defined(BOOTSTRAPPING)
-SRCS+=	getopt_long.c
-.endif
 
 DPADD+=	${LIBCC_INT}
 LDADD+=	${LIBCC_INT}

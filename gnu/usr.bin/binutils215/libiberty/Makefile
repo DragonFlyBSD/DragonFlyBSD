@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/libiberty/Attic/Makefile,v 1.1 2004/12/20 13:14:45 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/libiberty/Attic/Makefile,v 1.2 2005/04/22 06:52:42 joerg Exp $
 
 .include "../Makefile.inc0"
 
@@ -11,9 +11,6 @@ SRCS=	argv.c choose-temp.c concat.c cp-demangle.c cp-demint.c cplus-dem.c \
 	make-temp-file.c make-relative-prefix.c \
 	objalloc.c obstack.c safe-ctype.c xatexit.c xexit.c xmalloc.c \
 	xstrdup.c xstrerror.c
-.if defined(BOOTSTRAPPING)
-SRCS+=	basename.c
-.endif
 WARNS=	1
 CFLAGS+=	-DHAVE_CONFIG_H
 INTERNALLIB=	true

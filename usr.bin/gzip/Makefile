@@ -1,5 +1,5 @@
 #	$NetBSD: Makefile,v 1.8 2004/01/01 02:44:09 mrg Exp $
-# $DragonFly: src/usr.bin/gzip/Makefile,v 1.3 2004/11/16 16:54:57 y0netan1 Exp $
+# $DragonFly: src/usr.bin/gzip/Makefile,v 1.4 2005/04/22 06:52:42 joerg Exp $
 
 PROG=		gzip
 SRCS=		gzip.c
@@ -32,16 +32,5 @@ LINKS+=		${BINDIR}/gzip ${BINDIR}/gunzip \
 		${BINDIR}/gzip ${BINDIR}/gzcat \
 		${BINDIR}/gzip ${BINDIR}/zcat \
 		${BINDIR}/zdiff ${BINDIR}/zcmp
-
-.if defined(BOOTSTRAPPING)
-
-.PATH:	${.CURDIR}/../../lib/libc/stdlib
-SRCS+=	getopt.h getopt_long.c
-CFLAGS+= -I${.OBJDIR} -DBOOTSTRAPPING
-
-getopt.h : ${.CURDIR}/../../include/getopt.h
-	cp ${.ALLSRC} ${.TARGET}
-
-.endif
 
 .include <bsd.prog.mk>

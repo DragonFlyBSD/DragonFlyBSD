@@ -1,21 +1,9 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_prep/Makefile,v 1.6 2004/12/21 13:10:47 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_prep/Makefile,v 1.7 2005/04/22 06:52:42 joerg Exp $
 
 .include "../Makefile.inc"
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${GCCDIR}/gcc
-
-.if defined(BOOTSTRAPPING)
-getopt_long.c: ${.CURDIR}/../../../../lib/libc/stdlib/getopt_long.c
-	cp ${.ALLSRC} ${.TARGET}
-
-getopt.h: ${.CURDIR}/../../../../include/getopt.h
-	cp ${.ALLSRC} ${.TARGET}
-
-CLEANFILES+=	getopt_long.c getopt.h
-
-depend: getopt_long.c getopt.h
-.endif
 
 version_local.c: version.c Makefile
 	sed -e 's/\(const char version.*\)";/\1 [DragonFly] (propolice, visibility)";/' < ${.ALLSRC:M*c} > ${.TARGET}
