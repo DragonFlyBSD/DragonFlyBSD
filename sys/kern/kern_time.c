@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.22 2005/04/18 13:27:44 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.23 2005/04/22 10:12:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -90,6 +90,12 @@ settime(tv)
 	struct timeval delta, tv1, tv2;
 	static struct timeval maxtime, laststep;
 	struct timespec ts;
+	int origcpu;
+
+	if ((origcpu = mycpu->gd_cpuid) != 0) {
+		lwkt_setcpu_self(globaldata_find(0));
+		cpu_mb1();
+	}
 
 	crit_enter();
 	microtime(&tv1);
@@ -138,6 +144,12 @@ settime(tv)
 	set_timeofday(&ts);
 	lease_updatetime(delta.tv_sec);
 	crit_exit();
+
+	if (origcpu != 0) {
+		lwkt_setcpu_self(globaldata_find(origcpu));
+		cpu_mb1();
+	}
+
 	resettodr();
 	return (0);
 }
