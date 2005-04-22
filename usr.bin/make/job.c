@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.59 2005/04/22 15:59:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.60 2005/04/22 16:01:56 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2907,7 +2907,6 @@ Cmd_Exec(const char *cmd, const char **error)
 		return (buf);
 
 	} else if (cpid == 0) {
-		char	*args[4];
 		/*
 		 * Close input side of pipe
 		 */
@@ -2921,14 +2920,7 @@ Cmd_Exec(const char *cmd, const char **error)
 		dup2(fds[1], 1);
 		close(fds[1]);
 
-
-		/* Set up arguments for shell */
-		args[0] = shellName;
-		args[1] = "-c";
-		args[2] = cmd;
-		args[3] = NULL;
-
-		execv(shellPath, args);
+		execl(shellPath, shellName, "-c", cmd, NULL);
 		_exit(1);
 		/* NOTREACHED */
 
