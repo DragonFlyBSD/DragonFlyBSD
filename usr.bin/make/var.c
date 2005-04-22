@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2002 Juli Mallett.
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -37,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.198 2005/04/21 23:11:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.199 2005/04/22 00:38:12 okumoto Exp $
  */
 
 /**
