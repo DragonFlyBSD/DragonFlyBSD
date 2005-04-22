@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.24 2005/04/10 10:28:21 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.25 2005/04/22 15:59:54 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -133,14 +133,6 @@ struct Lst;
  * object of a dependency operator
  */
 #define	OP_NOP(t)	(((t) & OP_OPMASK) == 0x00000000)
-
-/*
- * Error levels for parsing. PARSE_FATAL means the process cannot continue
- * once the makefile has been parsed. PARSE_WARNING means it can. Passed
- * as the first argument to Parse_Error.
- */
-#define	PARSE_WARNING	2
-#define	PARSE_FATAL	1
 
 /*
  * Definitions for the "local" variables. Used only for clarity.
