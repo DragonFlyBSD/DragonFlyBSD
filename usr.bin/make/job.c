@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.57 2005/04/21 23:13:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.58 2005/04/22 15:59:07 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1194,10 +1194,10 @@ JobExec(Job *job, char **argv)
 		lastNode = job->node;
 	}
 
-	if ((cpid = vfork()) == -1)
+	if ((cpid = vfork()) == -1) {
 		Punt("Cannot fork");
 
-	if (cpid == 0) {
+	} else if (cpid == 0) {
 		/*
 		 * Child
 		 */
@@ -1259,53 +1259,53 @@ JobExec(Job *job, char **argv)
 		write(STDERR_FILENO, "Could not execute shell\n",
 		    sizeof("Could not execute shell"));
 		_exit(1);
-	}
-
-	/*
-	 * Parent
-	 */
-	job->pid = cpid;
-
-	if (usePipes && (job->flags & JOB_FIRST)) {
+	} else {
 		/*
-		 * The first time a job is run for a node, we set the
-		 * current position in the buffer to the beginning and
-		 * mark another stream to watch in the outputs mask.
+		 * Parent
 		 */
+		job->pid = cpid;
+
+		if (usePipes && (job->flags & JOB_FIRST)) {
+			/*
+			 * The first time a job is run for a node, we set the
+			 * current position in the buffer to the beginning and
+			 * mark another stream to watch in the outputs mask.
+			 */
 #ifdef USE_KQUEUE
-		struct kevent	kev[2];
+			struct kevent	kev[2];
 #endif
-		job->curPos = 0;
+			job->curPos = 0;
 
 #if defined(USE_KQUEUE)
-		EV_SET(&kev[0], job->inPipe, EVFILT_READ, EV_ADD, 0, 0, job);
-		EV_SET(&kev[1], job->pid, EVFILT_PROC,
-		    EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
-		if (kevent(kqfd, kev, 2, NULL, 0, NULL) != 0) {
-			/*
-			 * kevent() will fail if the job is already
-			 * finished
-			 */
-			if (errno != EINTR && errno != EBADF && errno != ESRCH)
-				Punt("kevent: %s", strerror(errno));
-		}
+			EV_SET(&kev[0], job->inPipe, EVFILT_READ, EV_ADD, 0, 0, job);
+			EV_SET(&kev[1], job->pid, EVFILT_PROC,
+			    EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
+			if (kevent(kqfd, kev, 2, NULL, 0, NULL) != 0) {
+				/*
+				 * kevent() will fail if the job is already
+				 * finished
+				 */
+				if (errno != EINTR && errno != EBADF && errno != ESRCH)
+					Punt("kevent: %s", strerror(errno));
+			}
 #else
-		FD_SET(job->inPipe, &outputs);
+			FD_SET(job->inPipe, &outputs);
 #endif /* USE_KQUEUE */
-	}
+		}
 
-	if (job->cmdFILE != NULL && job->cmdFILE != stdout) {
-		fclose(job->cmdFILE);
-		job->cmdFILE = NULL;
-	}
+		if (job->cmdFILE != NULL && job->cmdFILE != stdout) {
+			fclose(job->cmdFILE);
+			job->cmdFILE = NULL;
+		}
 
-	/*
-	 * Now the job is actually running, add it to the table.
-	 */
-	nJobs += 1;
-	TAILQ_INSERT_TAIL(&jobs, job, link);
-	if (nJobs == maxJobs) {
-		jobFull = TRUE;
+		/*
+		 * Now the job is actually running, add it to the table.
+		 */
+		nJobs += 1;
+		TAILQ_INSERT_TAIL(&jobs, job, link);
+		if (nJobs == maxJobs) {
+			jobFull = TRUE;
+		}
 	}
 }
 
@@ -2902,8 +2902,12 @@ Cmd_Exec(const char *cmd, const char **error)
 	/*
 	 * Fork
 	 */
-	switch (cpid = vfork()) {
-	  case 0:
+	if ((cpid = vfork()) == -1) {
+		*error = "Couldn't exec \"%s\"";
+		return (buf);
+
+	} else if (cpid == 0) {
+		char	*args[4];
 		/*
 		 * Close input side of pipe
 		 */
@@ -2917,25 +2921,18 @@ Cmd_Exec(const char *cmd, const char **error)
 		dup2(fds[1], 1);
 		close(fds[1]);
 
-		{
-			char	*args[4];
 
-			/* Set up arguments for shell */
-			args[0] = shellName;
-			args[1] = "-c";
-			args[2] = cmd;
-			args[3] = NULL;
+		/* Set up arguments for shell */
+		args[0] = shellName;
+		args[1] = "-c";
+		args[2] = cmd;
+		args[3] = NULL;
 
-			execv(shellPath, args);
-			_exit(1);
-			/*NOTREACHED*/
-		}
+		execv(shellPath, args);
+		_exit(1);
+		/* NOTREACHED */
 
-	  case -1:
-		*error = "Couldn't exec \"%s\"";
-		return (buf);
-
-	  default:
+	} else {
 		/*
 		 * No need for the writing half
 		 */
@@ -2968,9 +2965,8 @@ Cmd_Exec(const char *cmd, const char **error)
 
 		Buf_StripNewlines(buf);
 
-		break;
+		return (buf);
 	}
-	return (buf);
 }
 
 
@@ -3277,83 +3273,87 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	/*
 	 * Fork and execute the single command. If the fork fails, we abort.
 	 */
-	cpid = vfork();
-	if (cpid < 0) {
+	if ((cpid = vfork()) == -1) {
 		Fatal("Could not fork");
-	}
-	if (cpid == 0) {
+
+	} else if (cpid == 0) {
 		execvp(av[0], av);
 		write(STDERR_FILENO, av[0], strlen(av[0]));
 		write(STDERR_FILENO, ":", 1);
 		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 		write(STDERR_FILENO, "\n", 1);
 		_exit(1);
-	}
-
-	/*
-	 * we need to print out the command associated with this Gnode in
-	 * Targ_PrintCmd from Targ_PrintGraph when debugging at level g2,
-	 * in main(), Fatal() and DieHorribly(), therefore do not free it
-	 * when debugging.
-	 */
-	if (!DEBUG(GRAPH2)) {
-		free(cmdStart);
-		Lst_Replace(cmdNode, cmd_save);
-	}
-
-	/*
-	 * The child is off and running. Now all we can do is wait...
-	 */
-	while (1) {
-		while ((rstat = wait(&reason)) != cpid) {
-			if (interrupted || (rstat == -1 && errno != EINTR)) {
-				break;
-			}
+	} else {
+		/*
+		 * we need to print out the command associated with this
+		 * Gnode in Targ_PrintCmd from Targ_PrintGraph when debugging
+		 * at level g2, in main(), Fatal() and DieHorribly(),
+		 * therefore do not free it when debugging.
+		 */
+		if (!DEBUG(GRAPH2)) {
+			free(cmdStart);
+			Lst_Replace(cmdNode, cmd_save);
 		}
-		if (interrupted)
-			CompatInterrupt(interrupted);
-
-		if (rstat > -1) {
-			if (WIFSTOPPED(reason)) {
-				status = WSTOPSIG(reason);	/* stopped */
-			} else if (WIFEXITED(reason)) {
-				status = WEXITSTATUS(reason);	/* exited */
-				if (status != 0) {
-					printf("*** Error code %d", status);
+		/*
+		 * The child is off and running. Now all we can do is wait...
+		 */
+		while (1) {
+			while ((rstat = wait(&reason)) != cpid) {
+				if (interrupted || (rstat == -1 && errno != EINTR)) {
+					break;
 				}
-			} else {
-				status = WTERMSIG(reason);	/* signaled */
-				printf("*** Signal %d", status);
 			}
+			if (interrupted)
+				CompatInterrupt(interrupted);
 
-			if (!WIFEXITED(reason) || status != 0) {
-				if (errCheck) {
-					gn->made = ERROR;
-					if (keepgoing) {
-						/*
-						 * Abort the current target,
-						 * but let others continue.
-						 */
-						printf(" (continuing)\n");
+			if (rstat > -1) {
+				if (WIFSTOPPED(reason)) {
+					/* stopped */
+					status = WSTOPSIG(reason);
+				} else if (WIFEXITED(reason)) {
+					/* exited */
+					status = WEXITSTATUS(reason);
+					if (status != 0) {
+						printf("*** Error code %d",
+						    status);
 					}
 				} else {
-					/*
-					 * Continue executing commands for this
-					 * target. If we return 0, this will
-					 * happen...
-					 */
-					printf(" (ignored)\n");
-					status = 0;
+					/* signaled */
+					status = WTERMSIG(reason);
+					printf("*** Signal %d", status);
 				}
-			}
-			break;
-		} else {
-			Fatal("error in wait: %d", rstat);
-			/*NOTREACHED*/
-		}
-	}
 
-	return (status);
+				if (!WIFEXITED(reason) || status != 0) {
+					if (errCheck) {
+						gn->made = ERROR;
+						if (keepgoing) {
+							/*
+							 * Abort the current
+							 * target, but let
+							 * others continue.
+							 */
+							printf(" (continuing)\n");
+						}
+					} else {
+						/*
+						 * Continue executing
+						 * commands for this target.
+						 * If we return 0, this will
+						 * happen...
+						 */
+						printf(" (ignored)\n");
+						status = 0;
+					}
+				}
+				break;
+			} else {
+				Fatal("error in wait: %d", rstat);
+				/* NOTREACHED */
+			}
+		}
+
+		return (status);
+	}
 }
 
 /*-
