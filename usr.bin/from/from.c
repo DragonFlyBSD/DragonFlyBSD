@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/from/from.c,v 1.8.2.1 2000/10/06 08:19:19 ru Exp $
- * $DragonFly: src/usr.bin/from/from.c,v 1.4 2005/02/16 20:35:09 liamfoy Exp $
+ * $DragonFly: src/usr.bin/from/from.c,v 1.5 2005/04/22 15:36:39 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -84,16 +84,16 @@ main(int argc, char **argv)
 		}
 	argv += optind;
 
-	if (!file) {
+	if (file == NULL) {
 		if (*argv) {
-			(void)snprintf(buf, sizeof(buf), "%s/%s", _PATH_MAILDIR, *argv);
+			snprintf(buf, sizeof(buf), "%s/%s", _PATH_MAILDIR, *argv);
 			file  = buf;
 		} else {
-			if (!(file = getenv("MAIL"))) {
+			if ((file = getenv("MAIL")) == NULL) {
 				if (!(pwd = getpwuid(getuid())))
 					errx(1, "no password file entry for you");
 				file = pwd->pw_name;
-				(void)snprintf(buf, sizeof(buf),
+				snprintf(buf, sizeof(buf),
 				    "%s/%s", _PATH_MAILDIR, file);
 				file = buf;
 			}
@@ -103,8 +103,8 @@ main(int argc, char **argv)
 	/* read from stdin */
 	if (strcmp(file, "-") == 0) {
 	} 
-	else if (!freopen(file, "r", stdin)) {
-		errx(1, "can't read %s", file);
+	else if (freopen(file, "r", stdin) == NULL) {
+		err(1, "can't read %s", file);
 	}
 	for (newline = 1; fgets(buf, sizeof(buf), stdin);) {
 		if (*buf == '\n') {
