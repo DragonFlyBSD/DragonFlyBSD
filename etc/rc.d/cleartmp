@@ -2,11 +2,11 @@
 #
 # $NetBSD: cleartmp,v 1.4 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/cleartmp,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/cleartmp,v 1.3 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/cleartmp,v 1.4 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: cleartmp
-# REQUIRE: mountall
+# REQUIRE: mountcritremote
 # BEFORE: DAEMON
 # KEYWORD: DragonFly
 

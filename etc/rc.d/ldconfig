@@ -2,11 +2,11 @@
 #
 # $NetBSD: ldconfig,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ldconfig,v 1.7 2003/06/30 15:02:05 trhodes Exp $
-# $DragonFly: src/etc/rc.d/ldconfig,v 1.5 2004/03/20 16:27:39 drhodus Exp $
+# $DragonFly: src/etc/rc.d/ldconfig,v 1.6 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: ldconfig
-# REQUIRE: mountall mountcritremote
+# REQUIRE: mountcritremote
 # BEFORE:  DAEMON
 # KEYWORD: DragonFly
 

@@ -2,12 +2,13 @@
 #
 # $NetBSD: rtsold,v 1.5 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/rtsold,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/rtsold,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/rtsold,v 1.2 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: rtsold
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

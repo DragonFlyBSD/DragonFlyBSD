@@ -1,11 +1,11 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/pflog,v 1.2 2004/08/31 14:23:51 mlaier Exp $
-# $DragonFly: src/etc/rc.d/pflog,v 1.2 2005/02/16 19:42:35 corecode Exp $
+# $DragonFly: src/etc/rc.d/pflog,v 1.3 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: pflog
-# REQUIRE: root beforenetlkm mountcritlocal netif
+# REQUIRE: root mountcritlocal netif
 # BEFORE:  DAEMON LOGIN
 # KEYWORD: DragonFly nojail
 

@@ -2,12 +2,13 @@
 #
 # $NetBSD: newsyslog,v 1.5 2002/03/24 15:51:26 lukem Exp $
 # $FreeBSD: src/etc/rc.d/newsyslog,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/newsyslog,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/newsyslog,v 1.2 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: newsyslog
 # REQUIRE: mountcritremote sysdb
 # BEFORE:  syslogd SERVERS
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

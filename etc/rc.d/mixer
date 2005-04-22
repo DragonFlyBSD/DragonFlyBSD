@@ -1,10 +1,12 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/mixer,v 1.5 2004/11/08 18:33:17 joerg Exp $
+# $DragonFly: src/etc/rc.d/mixer,v 1.6 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: mixer
-# REQUIRE: aftermountlkm
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

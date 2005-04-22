@@ -2,11 +2,11 @@
 #
 # $NetBSD: amd,v 1.10 2002/04/29 12:08:17 lukem Exp $
 # $FreeBSD: src/etc/rc.d/amd,v 1.9 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/amd,v 1.3 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/amd,v 1.4 2005/04/22 08:30:25 joerg Exp $
 #
 
 # PROVIDE: amd
-# REQUIRE: rpcbind mountall ypbind nfsclient
+# REQUIRE: rpcbind mountcritremote ypbind nfsclient
 # BEFORE: DAEMON
 # KEYWORD: DragonFly 
 
