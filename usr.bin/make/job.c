@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.58 2005/04/22 15:59:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.59 2005/04/22 15:59:32 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -385,8 +385,8 @@ static const struct CShell shells[] = {
  * It is set by the Job_ParseShell function.
  */
 static struct Shell *commandShell = NULL;
-char		*shellPath = NULL;	/* full pathname of executable image */
-char		*shellName = NULL;	/* last component of shell */
+static char	*shellPath = NULL;	/* full pathname of executable image */
+static char	*shellName = NULL;	/* last component of shell */
 
 int		maxJobs;	/* The most children we can run at once */
 static int	nJobs;		/* The number of children currently running */

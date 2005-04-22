@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.24 2005/04/21 23:13:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.25 2005/04/22 15:59:32 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -57,8 +57,6 @@ struct Buffer;
 struct GNode;
 struct Lst;
 
-extern char *shellPath;
-extern char *shellName;
 extern int	maxJobs;	/* Number of jobs that may run */
 
 void Shell_Init(void);
