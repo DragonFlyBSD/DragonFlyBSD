@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.50 2005/04/15 18:40:52 joerg Exp $
+# $DragonFly: src/etc/Makefile,v 1.51 2005/04/22 09:14:08 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -217,6 +217,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man4,cat4}/{euc,utf2}.4.gz"
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.iso.kbd
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.kbd
+	csh -c "rm -f ${DESTDIR}/etc/rc.d/{bootconf.sh,lkm1,lkm2,lkm3,mountall,pcvt,wscons}"
 	ldconfig -R
 
 distribution:
