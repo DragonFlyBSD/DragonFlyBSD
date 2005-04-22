@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.9 2004/11/12 09:09:56 dillon Exp $
+# $DragonFly: src/Makefile,v 1.9.2.1 2005/04/22 20:52:32 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -180,3 +180,16 @@ upgrade:	upgrade_etc
 #
 upgrade_etc:
 	@cd ${.CURDIR}/etc; make upgrade_etc
+
+#
+# Convenient targets for use by the CVS repository meister.  These should
+# not be run normally.
+#
+
+update_release1_2_slip_tag:	iamoncrater
+	cvs rtag -a -F -rDragonFly_RELEASE_1_2 DragonFly_RELEASE_1_2_Slip src
+
+iamoncrater:
+	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
+		(echo "You are not on the master cvs host"; exit 1)
+
