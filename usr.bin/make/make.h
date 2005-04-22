@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.25 2005/04/22 15:59:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.26 2005/04/22 16:01:03 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -77,6 +77,7 @@ strtoumax(const char *nptr, char **endptr, int base)
 
 struct GNode;
 struct Lst;
+struct Buffer;
 
 /*
  * The OP_ constants are used when parsing a dependency line as a way of
@@ -158,5 +159,6 @@ int Make_HandleUse(struct GNode *, struct GNode *);
 void Make_Update(struct GNode *);
 void Make_DoAllVar(struct GNode *);
 Boolean Make_Run(struct Lst *);
+void Main_ParseArgLine(char *, int);
 
 #endif /* make_h_a91074b9 */

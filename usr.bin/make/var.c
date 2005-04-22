@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.200 2005/04/22 10:38:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.201 2005/04/22 16:01:03 okumoto Exp $
  */
 
 /**
@@ -96,7 +96,6 @@
 #include "GNode.h"
 #include "job.h"
 #include "make.h"
-#include "nonints.h"
 #include "parse.h"
 #include "str.h"
 #include "targ.h"
