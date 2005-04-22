@@ -1,7 +1,19 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.6 2005/04/21 13:32:22 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.7 2005/04/22 08:35:04 joerg Exp $
 
 --- ntp.c	25 Feb 2005 16:43:19 -0000	1.6
 +++ ntp.c	12 Apr 2005 20:13:45 -0000
+@@ -139,6 +139,11 @@
+ 		client_peer_init(p);
+ 
+ 	bzero(&conf->status, sizeof(conf->status));
++	conf->freq_samples = -1;
++	conf->freq_x = 0.0;
++	conf->freq_xx = 0.0;
++	conf->freq_xy = 0.0;
++	conf->freq_y = 0.0;
+ 	conf->status.leap = LI_ALARM;
+ 	clock_getres(CLOCK_REALTIME, &tp);
+ 	b = 1000000000 / tp.tv_nsec;	/* convert to Hz */
 @@ -206,7 +211,11 @@
  			if (p->deadline > 0 && p->deadline < nextaction)
  				nextaction = p->deadline;
@@ -15,7 +27,61 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.6 2005/04/21 13:32:2
  				log_debug("no reply from %s received in time, "
  				    "next query %ds", log_sockaddr(
  				    (struct sockaddr *)&p->addr->ss), timeout);
-@@ -422,12 +422,15 @@
+@@ -369,6 +378,43 @@
+ 	peer_cnt--;
+ }
+ 
++static void
++priv_adjfreq(double offset)
++{
++	double curtime, freq;
++
++	offset += conf->overall_offset;	
++	curtime = gettime_corrected();
++	conf->freq_xy += offset * curtime;
++	conf->freq_x += curtime;
++	conf->freq_y += offset;
++	conf->freq_xx += curtime * curtime;
++	conf->freq_samples++;
++
++	if (conf->freq_samples <= 0)
++		return;
++	if (conf->freq_samples % FREQUENCY_SAMPLES != 0)
++		return;
++
++	freq =
++	    (conf->freq_xy - conf->freq_x * conf->freq_y / conf->freq_samples)
++	    /
++	    (conf->freq_xx - conf->freq_x * conf->freq_x / conf->freq_samples);
++
++	if (freq > MAX_FREQUENCY_ADJUST)
++		freq = MAX_FREQUENCY_ADJUST;
++	else if (freq < -MAX_FREQUENCY_ADJUST)
++		freq = -MAX_FREQUENCY_ADJUST;
++
++	imsg_compose(ibuf_main, IMSG_ADJFREQ, 0, 0, &freq, sizeof(freq));
++	log_info("adjusting freqency by %f ppm", freq * 1e6);
++	conf->freq_xy = 0.0;
++	conf->freq_x = 0.0;
++	conf->freq_y = 0.0;
++	conf->freq_xx = 0.0;
++	conf->freq_samples = 0;
++}
++
+ void
+ priv_adjtime(void)
+ {
+@@ -418,6 +464,9 @@
+ 		imsg_compose(ibuf_main, IMSG_ADJTIME, 0, 0,
+ 		    &offset_median, sizeof(offset_median));
+ 
++		conf->overall_offset += offset_median;
++		priv_adjfreq(offset_median);
++
+ 		conf->status.reftime = gettime();
+ 		conf->status.leap = LI_NOWARNING;
+ 		conf->status.stratum++;	/* one more than selected peer */
+@@ -426,12 +475,15 @@
  		if (peers[offset_cnt / 2]->addr->ss.ss_family == AF_INET)
  			conf->status.refid = ((struct sockaddr_in *)
  			    &peers[offset_cnt / 2]->addr->ss)->sin_addr.s_addr;

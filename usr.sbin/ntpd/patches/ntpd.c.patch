@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.6 2005/04/14 10:31:27 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.7 2005/04/22 08:35:04 joerg Exp $
 
 --- ntpd.c.orig	2004-11-09 20:39:54.000000000 +0100
 +++ ntpd.c	2004-11-09 20:40:48.000000000 +0100
@@ -9,8 +9,8 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.6 2005/04/14 10:31:
 +#include <sys/sysctl.h>
  #include <sys/wait.h>
  #include <netinet/in.h>
- #include <arpa/inet.h>
-@@ -34,7 +35,7 @@
+ #include <errno.h>
+@@ -33,11 +34,12 @@
  #include "ntpd.h"
  
  void		sighdlr(int);
@@ -19,7 +19,12 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.6 2005/04/14 10:31:
  int		main(int, char *[]);
  int		check_child(pid_t, const char *);
  int		dispatch_imsg(struct ntpd_conf *);
-@@ -63,12 +64,10 @@
+ void		ntpd_adjtime(double);
++void		ntpd_adjfreq(double);
+ void		ntpd_settime(double);
+ 
+ volatile sig_atomic_t	 quit = 0;
+@@ -62,12 +64,10 @@
  	}
  }
  
@@ -34,7 +39,20 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.6 2005/04/14 10:31:
  	exit(1);
  }
  
-@@ -307,16 +306,18 @@
+@@ -266,6 +266,12 @@
+ 			memcpy(&d, imsg.data, sizeof(d));
+ 			ntpd_adjtime(d);
+ 			break;
++		case IMSG_ADJFREQ:
++			if (imsg.hdr.len != IMSG_HEADER_SIZE + sizeof(d))
++				fatalx("invalid IMSG_ADJFREQ received");
++			memcpy(&d, imsg.data, sizeof(d));
++			ntpd_adjfreq(d);
++			break;
+ 		case IMSG_SETTIME:
+ 			if (imsg.hdr.len != IMSG_HEADER_SIZE + sizeof(d))
+ 				fatalx("invalid IMSG_SETTIME received");
+@@ -311,16 +317,37 @@
  void
  ntpd_adjtime(double d)
  {
@@ -54,6 +72,25 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.6 2005/04/14 10:31:
 +	if (sysctlbyname("kern.ntp.adjust", NULL, NULL, &adjust,
 +			 sizeof(adjust)))
 +		log_info("adjtime failed");
++}
++
++void
++ntpd_adjfreq(double relfreq)
++{
++	int64_t curfreq;
++	size_t len = sizeof(curfreq);
++ 
++	if (sysctlbyname("kern.ntp.permanent", &curfreq, &len, NULL, 0) ||
++	    len != sizeof(curfreq)) {
++		log_warn("adjfreq failed");
++		return;
++	}
++
++	curfreq += relfreq * 1e9 * (1ll << 32);
++
++	if (sysctlbyname("kern.ntp.permanent", NULL, NULL, &curfreq,
++			 sizeof(curfreq)))
++		log_warn("adjfreq failed");
  }
  
  void

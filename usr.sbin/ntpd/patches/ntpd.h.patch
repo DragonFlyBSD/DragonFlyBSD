@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.6 2005/04/21 13:34:59 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.7 2005/04/22 08:35:04 joerg Exp $
 
 Index: ntpd.h
 ===================================================================
@@ -16,7 +16,7 @@ diff -u -r1.6 ntpd.h
  #define	NTPD_USER	"_ntp"
  #define	CONFFILE	"/etc/ntpd.conf"
  
-@@ -49,8 +51,8 @@
+@@ -49,13 +51,16 @@
  
  #define	MAX_SERVERS_DNS			8
  
@@ -27,16 +27,34 @@ diff -u -r1.6 ntpd.h
  
  #define	QUERYTIME_MAX		15	/* single query might take n secs max */
  #define	OFFSET_ARRAY_SIZE	8
-@@ -55,7 +55,7 @@
- #define	QUERYTIME_MAX		15	/* single query might take n secs max */
- #define	OFFSET_ARRAY_SIZE	8
  #define	SETTIME_MIN_OFFSET	180	/* min offset for settime at start */
 -#define	LOG_NEGLIGEE		128	/* negligible drift to not log (ms) */
 +#define	LOG_NEGLIGEE		32	/* negligible drift to not log (ms) */
++
++#define	FREQUENCY_SAMPLES	8	/* samples for est. of permanent drift */
++#define	MAX_FREQUENCY_ADJUST	128e-6	/* max correction per iteration */
  
  enum client_state {
  	STATE_NONE,
-@@ -247,6 +249,8 @@
+@@ -124,6 +129,9 @@
+ 	u_int8_t				settime;
+ 	u_int8_t				debug;
+ 	u_int32_t				scale;
++	double					overall_offset;
++	double					freq_x, freq_y, freq_xx, freq_xy;
++	int					freq_samples;
+ };
+ 
+ struct buf {
+@@ -161,6 +169,7 @@
+ enum imsg_type {
+ 	IMSG_NONE,
+ 	IMSG_ADJTIME,
++	IMSG_ADJFREQ,
+ 	IMSG_SETTIME,
+ 	IMSG_HOST_DNS
+ };
+@@ -247,6 +256,8 @@
  
  /* util.c */
  double			gettime(void);
