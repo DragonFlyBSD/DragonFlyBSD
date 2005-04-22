@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.19 2005/04/12 23:37:27 okumoto Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.20 2005/04/22 22:02:58 swildner Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -235,8 +235,7 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m bus/usb/usb_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
-    libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/crypto_if.m \
-    bus/canbus/canbus_if.m
+    libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/crypto_if.m
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h

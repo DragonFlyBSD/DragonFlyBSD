@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/bus/Makefile,v 1.3 2004/03/15 17:16:21 dillon Exp $
+# $DragonFly: src/sys/bus/Makefile,v 1.4 2005/04/22 22:02:58 swildner Exp $
 #
 
-SUBDIR=cam canbus firewire usb pccard
+SUBDIR=cam firewire usb pccard
 
 .include <bsd.subdir.mk>
