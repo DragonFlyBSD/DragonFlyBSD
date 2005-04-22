@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.199 2005/04/22 00:38:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.200 2005/04/22 10:38:30 okumoto Exp $
  */
 
 /**
@@ -1033,7 +1033,7 @@ Var_SetEnv(const char *name, GNode *ctxt)
 		 * from the comand line or MAKEFLAGS.
 		 */
 		Error(
-		    "Warning: Did not set .EXPORT: on %s because it "
+		    "Warning: Did not set .EXPORTVAR: on %s because it "
 		    "is from the comand line or MAKEFLAGS", name);
 		return;
 	}
@@ -1043,7 +1043,7 @@ Var_SetEnv(const char *name, GNode *ctxt)
 		Lst_AtFront(&VAR_ENV->context,
 		    VarCreate(name, NULL, VAR_TO_ENV));
 		setenv(name, "", 1);
-		Error("Warning: .EXPORT: set on undefined variable %s", name);
+		Error("Warning: .EXPORTVAR: set on undefined variable %s", name);
 	} else {
 		if ((v->flags & VAR_TO_ENV) == 0) {
 			v->flags |= VAR_TO_ENV;
