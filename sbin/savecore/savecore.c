@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.9 2005/02/02 07:00:47 cpressey Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.10 2005/04/22 02:23:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -56,10 +56,6 @@
 #include <unistd.h>
 
 extern FILE *zopen(const char *fname, const char *mode);
-
-#ifdef __alpha__
-#define ok(number) ALPHA_K0SEG_TO_PHYS(number)
-#endif
 
 #ifdef __i386__
 #define ok(number) ((number) - kernbase)

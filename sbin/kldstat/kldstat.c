@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldstat/kldstat.c,v 1.7.2.2 2000/07/01 07:56:00 ps Exp $
- * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.3 2005/03/07 18:30:39 liamfoy Exp $
+ * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.4 2005/04/22 02:23:23 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -37,11 +37,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#if defined(__alpha__)
-#define	POINTER_WIDTH	18
-#else
 #define	POINTER_WIDTH	10
-#endif
 
 static void
 printmod(int modid)
