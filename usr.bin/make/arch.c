@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.45 2005/04/16 10:34:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.46 2005/04/22 18:01:32 okumoto Exp $
  */
 
 /*-
@@ -596,7 +596,7 @@ ArchArchiveNext(struct arfile *ar)
 	buf[sizeof(ar->hdr.ar_size)] = '\0';
 
 	errno = 0;
-	ar->size = strtoull(buf, &end, 10);
+	ar->size = strtoumax(buf, &end, 10);
 	if (errno != 0 || strspn(end, " ") != strlen(end)) {
 		ArchError(("%s: bad size format in archive '%s'",
 		    ar->fname, buf));
