@@ -2,11 +2,10 @@
 #
 # $NetBSD: network,v 1.29 2001/01/11 17:56:16 itojun Exp $
 # $FreeBSD: src/etc/rc.d/network,v 1.3 2002/08/12 10:04:32 schweikh Exp $
-# $DragonFly: src/etc/rc.d/Attic/network,v 1.2 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/Attic/network,v 1.3 2005/04/22 11:00:36 joerg Exp $
 
 # PROVIDE: network
 # REQUIRE: ipfilter ipsec mountcritlocal root tty sysctl
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
