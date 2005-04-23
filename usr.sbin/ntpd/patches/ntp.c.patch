@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.7 2005/04/22 08:35:04 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.8 2005/04/23 20:43:34 joerg Exp $
 
 --- ntp.c	25 Feb 2005 16:43:19 -0000	1.6
 +++ ntp.c	12 Apr 2005 20:13:45 -0000
@@ -27,7 +27,7 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.7 2005/04/22 08:35:0
  				log_debug("no reply from %s received in time, "
  				    "next query %ds", log_sockaddr(
  				    (struct sockaddr *)&p->addr->ss), timeout);
-@@ -369,6 +378,43 @@
+@@ -369,6 +378,45 @@
  	peer_cnt--;
  }
  
@@ -36,16 +36,18 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp.c.patch,v 1.7 2005/04/22 08:35:0
 +{
 +	double curtime, freq;
 +
++	conf->freq_samples++;
++
++	if (conf->freq_samples <= 0)
++		return;
++
 +	offset += conf->overall_offset;	
 +	curtime = gettime_corrected();
 +	conf->freq_xy += offset * curtime;
 +	conf->freq_x += curtime;
 +	conf->freq_y += offset;
 +	conf->freq_xx += curtime * curtime;
-+	conf->freq_samples++;
 +
-+	if (conf->freq_samples <= 0)
-+		return;
 +	if (conf->freq_samples % FREQUENCY_SAMPLES != 0)
 +		return;
 +
