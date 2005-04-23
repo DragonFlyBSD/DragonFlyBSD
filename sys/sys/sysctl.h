@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.13 2005/02/05 23:04:28 joerg Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.14 2005/04/23 19:46:42 joerg Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -77,6 +77,7 @@ struct ctlname {
 #define	CTLTYPE_UINT	6	/* name describes an unsigned integer */
 #define	CTLTYPE_LONG	7	/* name describes a long */
 #define	CTLTYPE_ULONG	8	/* name describes an unsigned long */
+#define	CTLTYPE_UQUAD	9	/* name describes an unsigned 64-bit number */
 
 #define CTLFLAG_RD	0x80000000	/* Allow reads of variable */
 #define CTLFLAG_WR	0x40000000	/* Allow writes to the variable */
@@ -211,14 +212,27 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	SYSCTL_OID(parent, nbr, name, CTLTYPE_INT|access, \
 		ptr, val, sysctl_handle_int, "I", descr)
 
-/* Oid for an int.  If ptr is NULL, val is returned. */
+#define SYSCTL_ADD_INT(ctx, parent, nbr, name, access, ptr, val, descr)	    \
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_INT|access,	    \
+	ptr, val, sysctl_handle_int, "I", descr);
+
+/* Oid for a quad.  If ptr is NULL, val is returned. */
 #define SYSCTL_QUAD(parent, nbr, name, access, ptr, val, descr) \
 	SYSCTL_OID(parent, nbr, name, CTLTYPE_QUAD|access, \
 		ptr, val, sysctl_handle_quad, "Q", descr)
 
-#define SYSCTL_ADD_INT(ctx, parent, nbr, name, access, ptr, val, descr)	    \
-	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_INT|access,	    \
-	ptr, val, sysctl_handle_int, "I", descr);
+#define SYSCTL_ADD_QUAD(ctx, parent, nbr, name, access, ptr, val, descr)    \
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_QUAD|access,	    \
+	ptr, val, sysctl_handle_quad, "Q", descr);
+
+/* Oid for an unsigned quad.  If ptr is NULL, val is returned. */
+#define SYSCTL_UQUAD(parent, nbr, name, access, ptr, val, descr)	    \
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_UQUAD|access,		    \
+		ptr, val, sysctl_handle_quad, "QU", descr)
+
+#define SYSCTL_ADD_UQUAD(ctx, parent, nbr, name, access, ptr, val, descr)   \
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_UQUAD|access,	    \
+	ptr, val, sysctl_handle_quad, "QU", descr);
 
 /* Oid for an unsigned int.  If ptr is NULL, val is returned. */
 #define SYSCTL_UINT(parent, nbr, name, access, ptr, val, descr) \
