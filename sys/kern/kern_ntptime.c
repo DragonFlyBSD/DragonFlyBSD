@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.10 2005/04/20 16:37:09 cpressey Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.11 2005/04/23 20:34:32 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -423,6 +423,8 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
  * This routine is ordinarily called from hardclock() whenever the seconds
  * hand rolls over.  It returns leap seconds to add or drop, and sets nsec_adj
  * to the total adjustment to make over the next second in (ns << 32).
+ *
+ * This routine is only called by cpu #0.
  */
 int
 ntp_update_second(time_t newsec, int64_t *nsec_adj)

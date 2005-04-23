@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.36 2005/04/20 17:57:16 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.37 2005/04/23 20:34:32 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -127,25 +127,53 @@ SYSCTL_OPAQUE(_kern, OID_AUTO, cp_time, CTLFLAG_RD, &cp_time, sizeof(cp_time),
  * whenever the real time is set based on the compensated elapsed time
  * in seconds (gd->gd_time_seconds).
  *
- * basetime is used to calculate the compensated real time of day.  Chunky
- * changes to the time, aka settimeofday(), are made by modifying basetime.
- *
  * The gd_time_seconds and gd_cpuclock_base fields remain fairly monotonic.
  * Slight adjustments to gd_cpuclock_base are made to phase-lock it to
  * the real time.
  */
 struct timespec boottime;	/* boot time (realtime) for reference only */
-static struct timespec basetime;	/* base time adjusts uptime -> realtime */
 time_t time_second;		/* read-only 'passive' uptime in seconds */
+
+/*
+ * basetime is used to calculate the compensated real time of day.  The
+ * basetime can be modified on a per-tick basis by the adjtime(), 
+ * ntp_adjtime(), and sysctl-based time correction APIs.
+ *
+ * Note that frequency corrections can also be made by adjusting
+ * gd_cpuclock_base.
+ *
+ * basetime is a tail-chasing FIFO, updated only by cpu #0.  The FIFO is
+ * used on both SMP and UP systems to avoid MP races between cpu's and
+ * interrupt races on UP systems.
+ */
+#define BASETIME_ARYSIZE	16
+#define BASETIME_ARYMASK	(BASETIME_ARYSIZE - 1)
+static struct timespec basetime[BASETIME_ARYSIZE];
+static volatile int basetime_index;
+
+static int
+sysctl_get_basetime(SYSCTL_HANDLER_ARGS)
+{
+	struct timespec *bt;
+	int error;
+
+	bt = &basetime[basetime_index];
+	if (req->oldptr != NULL)
+		error = SYSCTL_OUT(req, bt, sizeof(*bt));
+	else
+		error = 0;
+	return (error);
+}
 
 SYSCTL_STRUCT(_kern, KERN_BOOTTIME, boottime, CTLFLAG_RD,
     &boottime, timeval, "System boottime");
-SYSCTL_STRUCT(_kern, OID_AUTO, basetime, CTLFLAG_RD,
-    &basetime, timeval, "System basetime");
+SYSCTL_PROC(_kern, OID_AUTO, basetime, CTLTYPE_STRUCT|CTLFLAG_RD, 0, 0,
+    sysctl_get_basetime, "S,timeval", "System basetime");
 
 static void hardclock(systimer_t info, struct intrframe *frame);
 static void statclock(systimer_t info, struct intrframe *frame);
 static void schedclock(systimer_t info, struct intrframe *frame);
+static void getnanotime_nbt(struct timespec *nbt, struct timespec *tsp);
 
 int	ticks;			/* system master ticks at hz */
 int	clocks_running;		/* tsleep/timeout clocks operational */
@@ -216,22 +244,28 @@ initclocks_pcpu(void)
  * instead we adjust basetime so basetime + gd_* results in the current
  * time of day.  This way the gd_* fields are guarenteed to represent
  * a monotonically increasing 'uptime' value.
+ *
+ * When set_timeofday() is called from userland, the system call forces it
+ * onto cpu #0 since only cpu #0 can update basetime_index.
  */
 void
 set_timeofday(struct timespec *ts)
 {
-	struct timespec ts2;
+	struct timespec *nbt;
+	int ni;
 
 	/*
 	 * XXX SMP / non-atomic basetime updates
 	 */
 	crit_enter();
-	nanouptime(&ts2);
-	basetime.tv_sec = ts->tv_sec - ts2.tv_sec;
-	basetime.tv_nsec = ts->tv_nsec - ts2.tv_nsec;
-	if (basetime.tv_nsec < 0) {
-	    basetime.tv_nsec += 1000000000;
-	    --basetime.tv_sec;
+	ni = (basetime_index + 1) & BASETIME_ARYMASK;
+	nbt = &basetime[ni];
+	nanouptime(nbt);
+	nbt->tv_sec = ts->tv_sec - nbt->tv_sec;
+	nbt->tv_nsec = ts->tv_nsec - nbt->tv_nsec;
+	if (nbt->tv_nsec < 0) {
+	    nbt->tv_nsec += 1000000000;
+	    --nbt->tv_sec;
 	}
 
 	/*
@@ -246,8 +280,15 @@ set_timeofday(struct timespec *ts)
 	 * suitable for use in the boottime calculation.  It is already taken
 	 * into account in the basetime calculation above.
 	 */
-	boottime.tv_sec = basetime.tv_sec;
+	boottime.tv_sec = nbt->tv_sec;
 	ntp_delta = 0;
+
+	/*
+	 * We now have a new basetime, update the index.
+	 */
+	cpu_mb1();
+	basetime_index = ni;
+
 	crit_exit();
 }
 	
@@ -293,8 +334,10 @@ hardclock(systimer_t info, struct intrframe *frame)
 	 * by updating basetime.
 	 */
 	if (gd->gd_cpuid == 0) {
+	    struct timespec *nbt;
 	    struct timespec nts;
 	    int leap;
+	    int ni;
 
 	    ++ticks;
 
@@ -306,90 +349,113 @@ hardclock(systimer_t info, struct intrframe *frame)
 	    if (tco->tc_poll_pps) 
 		tco->tc_poll_pps(tco);
 #endif
+
 	    /*
-	     * Apply adjtime corrections.  At the moment only do this if 
-	     * we can get the MP lock to interlock with adjtime's modification
-	     * of these variables.  Note that basetime adjustments are not
-	     * MP safe either XXX.
+	     * Calculate the new basetime index.  We are in a critical section
+	     * on cpu #0 and can safely play with basetime_index.  Start
+	     * with the current basetime and then make adjustments.
+	     */
+	    ni = (basetime_index + 1) & BASETIME_ARYMASK;
+	    nbt = &basetime[ni];
+	    *nbt = basetime[basetime_index];
+
+	    /*
+	     * Apply adjtime corrections.  (adjtime() API)
+	     *
+	     * adjtime() only runs on cpu #0 so our critical section is
+	     * sufficient to access these variables.
 	     */
 	    if (ntp_delta != 0) {
-		basetime.tv_nsec += ntp_tick_delta;
+		nbt->tv_nsec += ntp_tick_delta;
 		ntp_delta -= ntp_tick_delta;
 		if ((ntp_delta > 0 && ntp_delta < ntp_tick_delta) ||
 		    (ntp_delta < 0 && ntp_delta > ntp_tick_delta)) {
-				ntp_tick_delta = ntp_delta;
+			ntp_tick_delta = ntp_delta;
  		}
  	    }
 
+	    /*
+	     * Apply permanent frequency corrections.  (sysctl API)
+	     */
 	    if (ntp_tick_permanent != 0) {
 		ntp_tick_acc += ntp_tick_permanent;
 		if (ntp_tick_acc >= (1LL << 32)) {
-		    basetime.tv_nsec += ntp_tick_acc >> 32;
+		    nbt->tv_nsec += ntp_tick_acc >> 32;
 		    ntp_tick_acc -= (ntp_tick_acc >> 32) << 32;
 		} else if (ntp_tick_acc <= -(1LL << 32)) {
 		    /* Negate ntp_tick_acc to avoid shifting the sign bit. */
-		    basetime.tv_nsec -= (-ntp_tick_acc) >> 32;
+		    nbt->tv_nsec -= (-ntp_tick_acc) >> 32;
 		    ntp_tick_acc += ((-ntp_tick_acc) >> 32) << 32;
 		}
  	    }
 
-	    if (basetime.tv_nsec >= 1000000000) {
-		    basetime.tv_sec++;
-		    basetime.tv_nsec -= 1000000000;
-	    } else if (basetime.tv_nsec < 0) {
-		    basetime.tv_sec--;
-		    basetime.tv_nsec += 1000000000;
+	    if (nbt->tv_nsec >= 1000000000) {
+		    nbt->tv_sec++;
+		    nbt->tv_nsec -= 1000000000;
+	    } else if (nbt->tv_nsec < 0) {
+		    nbt->tv_sec--;
+		    nbt->tv_nsec += 1000000000;
 	    }
 
-	    if (ntp_leap_second) {
-		struct timespec tsp;
-		nanotime(&tsp);
+	    /*
+	     * Another per-tick compensation.  (for ntp_adjtime() API)
+	     */
+	    if (nsec_adj != 0) {
+		nsec_acc += nsec_adj;
+		if (nsec_acc >= 0x100000000LL) {
+		    nbt->tv_nsec += nsec_acc >> 32;
+		    nsec_acc = (nsec_acc & 0xFFFFFFFFLL);
+		} else if (nsec_acc <= -0x100000000LL) {
+		    nbt->tv_nsec -= -nsec_acc >> 32;
+		    nsec_acc = -(-nsec_acc & 0xFFFFFFFFLL);
+		}
+		if (nbt->tv_nsec >= 1000000000) {
+		    nbt->tv_nsec -= 1000000000;
+		    ++nbt->tv_sec;
+		} else if (nbt->tv_nsec < 0) {
+		    nbt->tv_nsec += 1000000000;
+		    --nbt->tv_sec;
+		}
+	    }
 
-		if (ntp_leap_second == tsp.tv_sec) {
+	    /************************************************************
+	     *			LEAP SECOND CORRECTION			*
+	     ************************************************************
+	     *
+	     * Taking into account all the corrections made above, figure
+	     * out the new real time.  If the seconds field has changed
+	     * then apply any pending leap-second corrections.
+	     */
+	    getnanotime_nbt(nbt, &nts);
+
+	    /*
+	     * Apply leap second (sysctl API)
+	     */
+	    if (ntp_leap_second) {
+		if (ntp_leap_second == nts.tv_sec) {
 			if (ntp_leap_insert)
-				basetime.tv_sec++;
+				nbt->tv_sec++;
 			else
-				basetime.tv_sec--;
+				nbt->tv_sec--;
 			ntp_leap_second--;
 		}
 	    }
 
 	    /*
-	     * Apply per-tick compensation.  ticks_adj adjusts for both
-	     * offset and frequency, and could be negative.
+	     * Apply leap second (ntp_adjtime() API)
 	     */
-	    if (nsec_adj != 0 && try_mplock()) {
-		nsec_acc += nsec_adj;
-		if (nsec_acc >= 0x100000000LL) {
-		    basetime.tv_nsec += nsec_acc >> 32;
-		    nsec_acc = (nsec_acc & 0xFFFFFFFFLL);
-		} else if (nsec_acc <= -0x100000000LL) {
-		    basetime.tv_nsec -= -nsec_acc >> 32;
-		    nsec_acc = -(-nsec_acc & 0xFFFFFFFFLL);
-		}
-		if (basetime.tv_nsec >= 1000000000) {
-		    basetime.tv_nsec -= 1000000000;
-		    ++basetime.tv_sec;
-		} else if (basetime.tv_nsec < 0) {
-		    basetime.tv_nsec += 1000000000;
-		    --basetime.tv_sec;
-		}
-		rel_mplock();
+	    if (time_second != nts.tv_sec) {
+		leap = ntp_update_second(time_second, &nsec_adj);
+		nbt->tv_sec += leap;
+		time_second = nbt->tv_sec;
+		nsec_adj /= hz;
 	    }
 
 	    /*
-	     * If the realtime-adjusted seconds hand rolls over then tell
-	     * ntp_update_second() what we did in the last second so it can
-	     * calculate what to do in the next second.  It may also add
-	     * or subtract a leap second.
+	     * Finally, our new basetime is ready to go live!
 	     */
-	    getnanotime(&nts);
-	    if (time_second != nts.tv_sec) {
-		leap = ntp_update_second(time_second, &nsec_adj);
-		basetime.tv_sec += leap;
-		time_second = nts.tv_sec + leap;
-		nsec_adj /= hz;
-	    }
+	    cpu_mb1();
+	    basetime_index = ni;
 	}
 
 	/*
@@ -796,6 +862,7 @@ void
 getmicrotime(struct timeval *tvp)
 {
 	struct globaldata *gd = mycpu;
+	struct timespec *bt;
 	sysclock_t delta;
 
 	do {
@@ -809,8 +876,9 @@ getmicrotime(struct timeval *tvp)
 	}
 	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
 
-	tvp->tv_sec += basetime.tv_sec;
-	tvp->tv_usec += basetime.tv_nsec / 1000;
+	bt = &basetime[basetime_index];
+	tvp->tv_sec += bt->tv_sec;
+	tvp->tv_usec += bt->tv_nsec / 1000;
 	while (tvp->tv_usec >= 1000000) {
 		tvp->tv_usec -= 1000000;
 		++tvp->tv_sec;
@@ -821,6 +889,7 @@ void
 getnanotime(struct timespec *tsp)
 {
 	struct globaldata *gd = mycpu;
+	struct timespec *bt;
 	sysclock_t delta;
 
 	do {
@@ -834,18 +903,46 @@ getnanotime(struct timespec *tsp)
 	}
 	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
 
-	tsp->tv_sec += basetime.tv_sec;
-	tsp->tv_nsec += basetime.tv_nsec;
+	bt = &basetime[basetime_index];
+	tsp->tv_sec += bt->tv_sec;
+	tsp->tv_nsec += bt->tv_nsec;
 	while (tsp->tv_nsec >= 1000000000) {
 		tsp->tv_nsec -= 1000000000;
 		++tsp->tv_sec;
 	}
 }
 
+static void
+getnanotime_nbt(struct timespec *nbt, struct timespec *tsp)
+{
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
+
+	do {
+		tsp->tv_sec = gd->gd_time_seconds;
+		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
+	} while (tsp->tv_sec != gd->gd_time_seconds);
+
+	if (delta >= cputimer_freq) {
+		tsp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
+	}
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
+
+	tsp->tv_sec += nbt->tv_sec;
+	tsp->tv_nsec += nbt->tv_nsec;
+	while (tsp->tv_nsec >= 1000000000) {
+		tsp->tv_nsec -= 1000000000;
+		++tsp->tv_sec;
+	}
+}
+
+
 void
 microtime(struct timeval *tvp)
 {
 	struct globaldata *gd = mycpu;
+	struct timespec *bt;
 	sysclock_t delta;
 
 	do {
@@ -859,8 +956,9 @@ microtime(struct timeval *tvp)
 	}
 	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
 
-	tvp->tv_sec += basetime.tv_sec;
-	tvp->tv_usec += basetime.tv_nsec / 1000;
+	bt = &basetime[basetime_index];
+	tvp->tv_sec += bt->tv_sec;
+	tvp->tv_usec += bt->tv_nsec / 1000;
 	while (tvp->tv_usec >= 1000000) {
 		tvp->tv_usec -= 1000000;
 		++tvp->tv_sec;
@@ -871,6 +969,7 @@ void
 nanotime(struct timespec *tsp)
 {
 	struct globaldata *gd = mycpu;
+	struct timespec *bt;
 	sysclock_t delta;
 
 	do {
@@ -884,8 +983,9 @@ nanotime(struct timespec *tsp)
 	}
 	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
 
-	tsp->tv_sec += basetime.tv_sec;
-	tsp->tv_nsec += basetime.tv_nsec;
+	bt = &basetime[basetime_index];
+	tsp->tv_sec += bt->tv_sec;
+	tsp->tv_nsec += bt->tv_nsec;
 	while (tsp->tv_nsec >= 1000000000) {
 		tsp->tv_nsec -= 1000000000;
 		++tsp->tv_sec;
@@ -900,7 +1000,10 @@ time_t
 get_approximate_time_t(void)
 {
 	struct globaldata *gd = mycpu;
-	return(gd->gd_time_seconds + basetime.tv_sec);
+	struct timespec *bt;
+
+	bt = &basetime[basetime_index];
+	return(gd->gd_time_seconds + bt->tv_sec);
 }
 
 int
@@ -976,6 +1079,7 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 	struct globaldata *gd;
 	struct timespec *tsp;
 	struct timespec *osp;
+	struct timespec *bt;
 	struct timespec ts;
 	sysclock_t *pcount;
 #ifdef PPS_SYNC
@@ -1021,8 +1125,9 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		delta %= cputimer_freq;
 	}
 	ts.tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
-	ts.tv_sec += basetime.tv_sec;
-	ts.tv_nsec += basetime.tv_nsec;
+	bt = &basetime[basetime_index];
+	ts.tv_sec += bt->tv_sec;
+	ts.tv_nsec += bt->tv_nsec;
 	while (ts.tv_nsec >= 1000000000) {
 		ts.tv_nsec -= 1000000000;
 		++ts.tv_sec;

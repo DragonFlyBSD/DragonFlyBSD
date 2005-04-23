@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.26 2005/04/23 19:59:05 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.27 2005/04/23 20:34:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -560,10 +560,6 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 	int64_t delta;
 	int error;
 
-	delta = 0;
-	error = SYSCTL_OUT(req, &delta, sizeof(delta));
-	if (error)
-		return (error);
 	if (req->newptr != NULL) {
 		if (suser(curthread))
 			return (EPERM);
@@ -572,7 +568,11 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 			return (error);
 		kern_reladjtime(delta);
 	}
-	return (0);
+
+	if (req->oldptr)
+		kern_get_ntp_delta(&delta);
+	error = SYSCTL_OUT(req, &delta, sizeof(delta));
+	return (error);
 }
 
 static int
@@ -588,16 +588,12 @@ sysctl_delta(SYSCTL_HANDLER_ARGS)
 		if (error)
 			return (error);
 		kern_adjtime(delta, &old_delta);
-		/* Fall through for writing old_delta */
-	} else if (req->oldptr != NULL) {
-		kern_get_ntp_delta(&old_delta);
 	}
 
+	if (req->oldptr != NULL)
+		kern_get_ntp_delta(&old_delta);
 	error = SYSCTL_OUT(req, &old_delta, sizeof(old_delta));
-	if (error)
-		return (error);
-
-	return (0);
+	return (error);
 }
 
 static int
@@ -606,10 +602,6 @@ sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 	int64_t freqdelta;
 	int error;
 
-	freqdelta = ntp_tick_permanent * hz;
-	error = SYSCTL_OUT(req, &freqdelta, sizeof(freqdelta));
-	if (error)
-		return (error);
 	if (req->newptr != NULL) {
 		if (suser(curthread))
 			return (EPERM);
@@ -620,23 +612,35 @@ sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 		freqdelta /= hz;
 		kern_adjfreq(freqdelta);
 	}
+
+	if (req->oldptr != NULL)
+		freqdelta = ntp_tick_permanent * hz;
+	error = SYSCTL_OUT(req, &freqdelta, sizeof(freqdelta));
+	if (error)
+		return (error);
+
 	return (0);
 }
 
 SYSCTL_NODE(_kern, OID_AUTO, ntp, CTLFLAG_RW, 0, "NTP related controls");
-SYSCTL_PROC(_kern_ntp, OID_AUTO, permanent, CTLTYPE_QUAD|CTLFLAG_RW, 0, 0,
+SYSCTL_PROC(_kern_ntp, OID_AUTO, permanent,
+    CTLTYPE_QUAD|CTLFLAG_RW, 0, 0,
     sysctl_adjfreq, "Q", "permanent correction per second");
 SYSCTL_PROC(_kern_ntp, OID_AUTO, delta,
-    CTLTYPE_QUAD | CTLFLAG_RW, 0, 0,
+    CTLTYPE_QUAD|CTLFLAG_RW, 0, 0,
     sysctl_delta, "Q", "one-time delta");
-SYSCTL_QUAD(_kern_ntp, OID_AUTO, big_delta, CTLFLAG_RD,
-    &ntp_big_delta, 0, "threshold for fast adjustment");
-SYSCTL_QUAD(_kern_ntp, OID_AUTO, tick_delta, CTLFLAG_RD,
-    &ntp_tick_delta, 0, "per-tick adjustment");
-SYSCTL_QUAD(_kern_ntp, OID_AUTO, default_tick_delta, CTLFLAG_RD,
-    &ntp_default_tick_delta, 0, "default per-tick adjustment");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, big_delta, CTLFLAG_RD,
+    &ntp_big_delta, sizeof(ntp_big_delta), "Q",
+    "threshold for fast adjustment");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, tick_delta, CTLFLAG_RD,
+    &ntp_tick_delta, sizeof(ntp_tick_delta), "LU",
+    "per-tick adjustment");
+SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, default_tick_delta, CTLFLAG_RD,
+    &ntp_default_tick_delta, sizeof(ntp_default_tick_delta), "LU",
+    "default per-tick adjustment");
 SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, next_leap_second, CTLFLAG_RW,
-    &ntp_leap_second, sizeof(time_t), "T,time_t", "next leap second");
+    &ntp_leap_second, sizeof(ntp_leap_second), "LU",
+    "next leap second");
 SYSCTL_INT(_kern_ntp, OID_AUTO, insert_leap_second, CTLFLAG_RW,
     &ntp_leap_insert, 0, "insert or remove leap second");
 SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
