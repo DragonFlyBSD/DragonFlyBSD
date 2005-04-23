@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.24 2005/04/22 17:41:15 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.25 2005/04/23 18:46:54 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -471,6 +471,22 @@ kern_adjtime(int64_t delta, int64_t *odelta)
 		lwkt_setcpu_self(globaldata_find(origcpu));
 }
 
+static void
+kern_get_ntp_delta(int64_t *delta)
+{
+	int origcpu;
+
+	if ((origcpu = mycpu->gd_cpuid) != 0)
+		lwkt_setcpu_self(globaldata_find(0));
+
+	crit_enter();
+	*delta = ntp_delta;
+	crit_exit();
+
+	if (origcpu != 0)
+		lwkt_setcpu_self(globaldata_find(origcpu));
+}
+
 void
 kern_reladjtime(int64_t delta)
 {
@@ -562,6 +578,33 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 }
 
 static int
+sysctl_delta(SYSCTL_HANDLER_ARGS)
+{
+	int64_t delta, old_delta;
+	int error;
+
+	if (req->newptr != NULL) {
+		if (suser(curthread))
+			return (EPERM);
+		error = SYSCTL_IN(req, &delta, sizeof(delta));
+		if (error)
+			return (error);
+		kern_adjtime(delta, &old_delta);
+		/* Fall through for writing old_delta */
+	} else if (req->oldptr != NULL) {
+		kern_get_ntp_delta(&old_delta);
+	}
+
+	if (req->oldptr != NULL) {
+		error = SYSCTL_OUT(req, &old_delta, sizeof(old_delta));
+		if (error)
+			return (error);
+	}
+
+	return (0);
+}
+
+static int
 sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 {
 	int64_t freqdelta;
@@ -588,11 +631,11 @@ sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_NODE(_kern, OID_AUTO, ntp, CTLFLAG_RW, 0, "NTP related controls");
 SYSCTL_PROC(_kern_ntp, OID_AUTO, permanent,
-    CTLTYPE_OPAQUE|CTLFLAG_RW, 0, 0,
+    CTLFLAG_RW, 0, 0,
     sysctl_adjfreq, "LU", "permanent correction per second");
-SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, delta, CTLFLAG_RD,
-    &ntp_delta, sizeof(ntp_delta), "LU",
-    "one-time delta");
+SYSCTL_PROC(_kern_ntp, OID_AUTO, delta,
+    CTLFLAG_RW, 0, 0,
+    sysctl_delta, "LU", "one-time delta");
 SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, big_delta, CTLFLAG_RD,
     &ntp_big_delta, sizeof(ntp_big_delta), "LU",
     "threshold for fast adjustment");
@@ -608,7 +651,7 @@ SYSCTL_OPAQUE(_kern_ntp, OID_AUTO, next_leap_second, CTLFLAG_RW,
 SYSCTL_INT(_kern_ntp, OID_AUTO, insert_leap_second, CTLFLAG_RW,
     &ntp_leap_insert, 0, "insert or remove leap second");
 SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
-    CTLTYPE_OPAQUE|CTLFLAG_RW, 0, 0,
+    CTLFLAG_RW, 0, 0,
     sysctl_adjtime, "", "relative adjust for delta");
 
 /*
