@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.11 2005/01/23 19:41:23 cpressey Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.12 2005/04/23 19:57:35 joerg Exp $
  */
 
 #ifdef __i386__
@@ -154,6 +154,7 @@ parse(const char *string)
 	unsigned long ulongval;
 	size_t newsize = 0;
 	quad_t quadval;
+	u_quad_t uquadval;
 	int mib[CTL_MAXNAME];
 	char *cp, fmt[BUFSIZ];
 	const char *name;
@@ -226,7 +227,12 @@ parse(const char *string)
 			case CTLTYPE_STRING:
 				break;
 			case CTLTYPE_QUAD:
-				sscanf(newval, "%qd", &quadval);
+				quadval = strtoq(newval, NULL, 0);
+				newval = &quadval;
+				newsize = sizeof(quadval);
+				break;
+			case CTLTYPE_UQUAD:
+				uquadval = strtouq(newval, NULL, 0);
 				newval = &quadval;
 				newsize = sizeof(quadval);
 				break;
@@ -567,11 +573,11 @@ show_var(int *oid, size_t nlen)
 			printf("%s%s", name, sep);
 		fmt++;
 		spacer = "";
-		while (len >= sizeof(int64_t)) {
+		while (len >= sizeof(quad_t)) {
 			if(*fmt == 'U')
-				printf("%s%"PRIu64, spacer, *(uint64_t *)p);
+				printf("%s%qu", spacer, *(u_quad_t *)p);
 			else
-				printf("%s%"PRId64, spacer, *(int64_t *)p);
+				printf("%s%qd", spacer, *(quad_t *)p);
 			spacer = " ";
 			len -= sizeof(int64_t);
 			p += sizeof(int64_t);
