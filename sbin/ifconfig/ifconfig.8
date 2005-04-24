@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.85 2004/07/27 09:51:49 yar Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.5 2005/03/06 05:01:59 dillon Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.6 2005/04/24 20:20:57 swildner Exp $
 .\"
 .Dd July 26, 2004
 .Dt IFCONFIG 8
@@ -265,10 +265,10 @@ automatically.
 .\" IP encapsulation of
 .\" .Tn CLNP
 .\" packets is done differently.
- .It Cm maclabel Ar label
- If Mandatory Access Control support is enabled in the kernel,
- set the MAC label to
- .Ar label .
+.\" .It Cm maclabel Ar label
+.\" If Mandatory Access Control support is enabled in the kernel,
+.\" set the MAC label to
+.\" .Ar label .
 .\" (see
 .\" .Xr maclabel 7 ) .
 .It Cm media Ar type
