@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.37 2005/04/23 20:34:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.38 2005/04/24 02:01:08 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -158,17 +158,14 @@ sysctl_get_basetime(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	bt = &basetime[basetime_index];
-	if (req->oldptr != NULL)
-		error = SYSCTL_OUT(req, bt, sizeof(*bt));
-	else
-		error = 0;
+	error = SYSCTL_OUT(req, bt, sizeof(*bt));
 	return (error);
 }
 
 SYSCTL_STRUCT(_kern, KERN_BOOTTIME, boottime, CTLFLAG_RD,
-    &boottime, timeval, "System boottime");
+    &boottime, timespec, "System boottime");
 SYSCTL_PROC(_kern, OID_AUTO, basetime, CTLTYPE_STRUCT|CTLFLAG_RD, 0, 0,
-    sysctl_get_basetime, "S,timeval", "System basetime");
+    sysctl_get_basetime, "S,timespec", "System basetime");
 
 static void hardclock(systimer_t info, struct intrframe *frame);
 static void statclock(systimer_t info, struct intrframe *frame);

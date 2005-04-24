@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.27 2005/04/23 20:34:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.28 2005/04/24 02:01:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -463,7 +463,7 @@ kern_adjtime(int64_t delta, int64_t *odelta)
 
 	crit_enter();
 	*odelta = ntp_delta;
-	ntp_delta += delta;
+	ntp_delta = delta;
 	kern_adjtime_common();
 	crit_exit();
 
@@ -542,7 +542,7 @@ adjtime(struct adjtime_args *uap)
 	 * hardclock(), tickdelta will become zero, lest the correction
 	 * overshoot and start taking us away from the desired final time.
 	 */
-	ndelta = atv.tv_sec * 1000000000 + atv.tv_usec * 1000;
+	ndelta = (int64_t)atv.tv_sec * 1000000000 + atv.tv_usec * 1000;
 	kern_adjtime(ndelta, &odelta);
 
 	if (uap->olddelta) {
@@ -575,6 +575,9 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
+/*
+ * delta is in nanoseconds.
+ */
 static int
 sysctl_delta(SYSCTL_HANDLER_ARGS)
 {
@@ -596,6 +599,10 @@ sysctl_delta(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
+/*
+ * frequency is in nanoseconds per second shifted left 32.
+ * kern_adjfreq() needs it in nanoseconds per tick shifted left 32.
+ */
 static int
 sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 {
