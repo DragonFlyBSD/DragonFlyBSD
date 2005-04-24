@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.32 2005/04/21 23:09:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.33 2005/04/24 12:39:17 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -51,6 +51,15 @@ extern struct GNode	*VAR_GLOBAL;
 
 /* Variables defined on the command line */
 extern struct GNode	*VAR_CMD;
+
+/*
+ * Value returned by Var_Parse when an error is encountered.  It actually
+ * points to an empty string, so naive callers needn't worry about it.
+ */
+extern char		var_Error[];
+
+/* Do old-style variable substitution */
+extern Boolean		oldVars;
 
 void Var_Append(const char *, const char *, struct GNode *);
 void Var_Delete(const char *, struct GNode *);

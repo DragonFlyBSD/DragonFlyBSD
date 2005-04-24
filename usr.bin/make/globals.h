@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.5 2005/04/21 23:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.6 2005/04/24 12:39:17 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -102,14 +102,8 @@ extern Lst envFirstVars;
 
 extern struct GNode	*DEFAULT;	/* .DEFAULT rule */
 
-/* Value returned by Var_Parse when an error is encountered.  It actually
- * points to an empty string, so naive callers needn't worry about it. */
-extern char	var_Error[];
-
 /* The time at the start of this whole process */
 extern time_t	now;
-
-extern Boolean	oldVars;	/* Do old-style variable substitution */
 
 extern int debug;
 
