@@ -31,15 +31,20 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.3 2005/04/24 09:39:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.4 2005/04/24 23:09:32 dillon Exp $
  */
 
 struct server_info {
-	int fd;
-	char *target;
+	int fd;			/* udp descriptor */
+	int poll_sleep;		/* countdown for poll (in seconds) */
+	int poll_mode;		/* mode of operation */
+	int poll_count;		/* number of polls in current mode */
+	int poll_failed;	/* count of NTP failures */
+	char *target;		/* target hostname or IP (string) */
 
 	/*
-	 * A second linear regression playing hopskip with the first.
+	 * A second linear regression playing hopskip with the first.  This
+	 * is maintained by the check function.
 	 */
 	struct server_info *altinfo;
 
@@ -85,6 +90,23 @@ struct server_info {
 };
 
 /*
+ * Polling modes and max polls for specific modes.  Note that the polling
+ * mode basically just effects the polling rate.  It does not effect the
+ * linear regression.
+ */
+#define POLL_FIXED	0	/* fixed internal (nom_sleep_opt seconds) */
+#define POLL_STARTUP	1	/* startup fastpoll for offset adjust (min) */
+#define POLL_ACQUIRE	2	/* acquisition for frequency adjust (nom) */
+#define POLL_MAINTAIN	3	/* maintainance mode (max) */
+#define POLL_FAILED_1	4	/* recent failure state (nom) */
+#define POLL_FAILED_2	5	/* aged failure state (nom) */
+
+#define POLL_STARTUP_MAX	6	/* max polls in this mode */
+#define POLL_ACQUIRE_MAX	16	/* max polls in this mode */
+#define POLL_FAIL_RESET		3	/* reset the regression after 3 fails */
+#define POLL_RECOVERY_RESTART	10	/* ->ACQ vs ->STARTUP after recovery */
+
+/*
  * We start a second linear regression a LIN_RESTART / 2 and it
  * replaces the first one (and we start a third) at LIN_RESTART.
  */
@@ -94,15 +116,15 @@ typedef struct server_info *server_info_t;
 
 void client_init(void);
 int client_main(struct server_info **info_ary, int count);
-void client_poll(server_info_t info);
+void client_poll(server_info_t info, int poll_interval);
 void client_check(struct server_info **check, 
 		  struct server_info **best_off,
 		  struct server_info **best_freq);
+void client_manage_polling_mode(struct server_info *info);
+
 void lin_regress(server_info_t info, 
 		 struct timeval *ltv, struct timeval *lbtv, double offset);
 void lin_reset(server_info_t info);
 void lin_resetalloffsets(struct server_info **info_ary, int count);
 void lin_resetoffsets(server_info_t info);
-
-
 

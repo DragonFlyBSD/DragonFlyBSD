@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.4 2005/04/24 09:39:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.5 2005/04/24 23:09:32 dillon Exp $
  */
 
 #include "defs.h"
@@ -52,10 +52,11 @@ client_main(struct server_info **info_ary, int count)
 
     for (;;) {
 	/*
-	 * Poll clients and accumulate data
+	 * Subtract the interval from poll_sleep and poll the client
+	 * if it reaches 0.
 	 */
 	for (i = 0; i < count; ++i)
-	    client_poll(info_ary[i]);
+	    client_poll(info_ary[i], min_sleep_opt);
 
 	/*
 	 * Find the best client (or synthesize one).  A different client
@@ -101,30 +102,63 @@ client_main(struct server_info **info_ary, int count)
 	    sysntp_correct_freq(best_freq->lin_cache_freq + freq);
 	}
 
-	if (debug_sleep)
-	    usleep(debug_sleep * 1000000 + random() % 100000);
-	else
-	    usleep(60 * 1000000 + random() % 100000);
+	/*
+	 * This function is responsible for managing the polling mode and
+	 * figures out how long we should sleep.
+	 */
+	for (i = 0; i < count; ++i)
+	    client_manage_polling_mode(info_ary[i]);
+
+	/*
+	 * Polling loop sleep.
+	 */
+	usleep(min_sleep_opt * 1000000 + random() % 500000);
     }
 }
 
 void
-client_poll(server_info_t info)
+client_poll(server_info_t info, int poll_interval)
 {
     struct timeval rtv;
     struct timeval ltv;
     struct timeval lbtv;
     double offset;
 
+    /*
+     * By default we always poll.  If the polling interval comes under
+     * active management the poll_sleep will be non-zero.
+     */
+    if (info->poll_sleep > poll_interval) {
+	info->poll_sleep -= poll_interval;
+	return;
+    }
+    info->poll_sleep = 0;
+
     if (debug_opt) {
 	fprintf(stderr, "%s: poll, ", info->target);
 	fflush(stderr);
     }
     if (udp_ntptimereq(info->fd, &rtv, &ltv, &lbtv) < 0) {
-	if (debug_opt)
-	    fprintf(stderr, "no response\n");
+	++info->poll_failed;
+	if (debug_opt) {
+	    fprintf(stderr, "no response (%d failures in a row)\n", 
+		    info->poll_failed);
+	}
+	if (info->poll_failed == POLL_FAIL_RESET) {
+	    if (debug_opt && info->lin_count != 0) {
+		fprintf(stderr, "%s: resetting regression due to failures\n", 
+			info->target);
+	    }
+	    lin_reset(info);
+	}
 	return;
     }
+
+    /*
+     * Successful query.  Update polling info for the polling mode manager.
+     */
+    ++info->poll_count;
+    info->poll_failed = 0;
 
     /*
      * Figure out the offset (the difference between the reported
@@ -178,6 +212,7 @@ client_check(struct server_info **checkp,
     if (check->lin_count >= LIN_RESTART / 2 && check->altinfo == NULL) {
 	info = malloc(sizeof(*info));
 	assert(info != NULL);
+	/* note: check->altinfo is NULL as of the bcopy */
 	bcopy(check, info, sizeof(*info));
 	check->altinfo = info;
 	lin_reset(info);
@@ -241,6 +276,143 @@ client_check(struct server_info **checkp,
 	    info = check;
 	    *best_off = info;
 	}
+    }
+}
+
+/*
+ * Actively manage the polling interval.  Note that the poll_* fields are
+ * always transfered to the alternate regression when the check code replaces
+ * the current regression with a new one.
+ *
+ * This routine is called from the main loop for each base info structure.
+ * The polling mode applies to all alternates so we do not have to iterate
+ * through the alt's.
+ */
+void
+client_manage_polling_mode(struct server_info *info)
+{
+    /*
+     * If too many query failures occured go into a failure-recovery state.
+     * If we were in startup when we failed, go into the second failure
+     * state so a recovery returns us back to startup mode.
+     */
+    if (info->poll_failed >= POLL_FAIL_RESET && 
+	info->poll_mode != POLL_FAILED_1 &&
+	info->poll_mode != POLL_FAILED_2
+    ) {
+	if (debug_opt)
+	    fprintf(stderr, "%s: polling mode moving to a FAILED state.\n",
+		    info->target);
+	if (info->poll_mode != POLL_STARTUP)
+	    info->poll_mode = POLL_FAILED_1;
+	else
+	    info->poll_mode = POLL_FAILED_2;
+	info->poll_count = 0;
+    }
+
+    /*
+     * Standard polling mode progression
+     */
+    switch(info->poll_mode) {
+    case POLL_FIXED:
+	info->poll_mode = POLL_STARTUP;
+	info->poll_count = 0;
+	if (debug_opt)
+	    fprintf(stderr, "%s: polling mode INIT->STARTUP.\n", info->target);
+	/* fall through */
+    case POLL_STARTUP:
+	if (info->poll_count < POLL_STARTUP_MAX) {
+	    if (info->poll_sleep == 0)
+		info->poll_sleep = min_sleep_opt;
+	    break;
+	}
+	info->poll_mode = POLL_ACQUIRE;
+	info->poll_count = 0;
+	if (debug_opt) {
+	    fprintf(stderr, "%s: polling mode STARTUP->ACQUIRE.\n",
+		    info->target);
+	}
+	/* fall through */
+    case POLL_ACQUIRE:
+	/*
+	 * Acquisition mode using the nominal timeout.  We do not shift
+	 * to maintainance mode unless the correllation is at least 0.90
+	 */
+	if (info->poll_count < POLL_ACQUIRE_MAX ||
+	    info->lin_count < 8 ||
+	    fabs(info->lin_cache_corr) < 0.85
+	) {
+	    if (debug_opt && 
+		info->poll_count >= POLL_ACQUIRE_MAX && 
+		info->lin_count == LIN_RESTART - 2
+	    ) {
+		fprintf(stderr, 
+		    "%s: WARNING: Unable to shift this source to maintainance\n"
+		    "mode.  Target correllation is aweful.\n", info->target);
+	    }
+	    if (info->poll_sleep == 0)
+		info->poll_sleep = nom_sleep_opt;
+	    break;
+	}
+	info->poll_mode = POLL_MAINTAIN;
+	info->poll_count = 0;
+	if (debug_opt) {
+	    fprintf(stderr, "%s: polling mode ACQUIRE->MAINTAIN.\n",
+		    info->target);
+	}
+	/* fall through */
+    case POLL_MAINTAIN:
+	if (info->lin_count >= LIN_RESTART / 2 && 
+	    fabs(info->lin_cache_corr) < 0.70
+	) {
+	    if (debug_opt) {
+		fprintf(stderr, 
+		    "%s: polling mode MAINTAIN->ACQUIRE.  Unable to maintain\n"
+		    "the maintainance mode because the correllation went"
+		    " bad!\n", info->target);
+	    }
+	    info->poll_mode = POLL_ACQUIRE;
+	    info->poll_count = 0;
+	    break;
+	}
+	if (info->poll_sleep == 0)
+	    info->poll_sleep = max_sleep_opt;
+	/* do nothing */
+	break;
+    case POLL_FAILED_1:
+	/*
+	 * We have failed recently. If we recover return to the acquisition
+	 * state.
+	 *
+	 * poll_count does not increment while we are failed.  poll_failed
+	 * does increment (but gets zero'd once we recover).
+	 */
+	if (info->poll_count != 0) {
+	    fprintf(stderr, "%s: polling mode FAILED1->ACQUIRE.\n",
+		    info->target);
+	    info->poll_mode = POLL_ACQUIRE;
+	    /* do not reset poll_count */
+	    break;
+	}
+	if (info->poll_failed >= POLL_RECOVERY_RESTART)
+	    info->poll_mode = POLL_FAILED_2;
+	if (info->poll_sleep == 0)
+	    info->poll_sleep = nom_sleep_opt;
+	break;
+    case POLL_FAILED_2:
+	/*
+	 * We have been failed for a very long time, or we failed while
+	 * in startup.  If we recover we have to go back into startup.
+	 */
+	if (info->poll_count != 0) {
+	    fprintf(stderr, "%s: polling mode FAILED2->STARTUP.\n",
+		    info->target);
+	    info->poll_mode = POLL_STARTUP;
+	    break;
+	}
+	if (info->poll_sleep == 0)
+	    info->poll_sleep = nom_sleep_opt;
+	break;
     }
 }
 
@@ -371,6 +543,8 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
 void
 lin_reset(server_info_t info)
 {
+    server_info_t scan;
+
     info->lin_count = 0;
     info->lin_sumx = 0;
     info->lin_sumy = 0;
@@ -387,6 +561,14 @@ lin_reset(server_info_t info)
     info->lin_cache_corr = 0;
     info->lin_cache_offset = 0;
     info->lin_cache_freq = 0;
+
+    /*
+     * Destroy any additional alternative regressions.
+     */
+    while ((scan = info->altinfo) != NULL) {
+	info->altinfo = scan->altinfo;
+	free(scan);
+    }
 }
 
 /*

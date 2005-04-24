@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.2 2005/04/24 05:04:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.3 2005/04/24 23:09:32 dillon Exp $
  */
 
 #include "defs.h"
@@ -45,7 +45,9 @@ static int nservers;
 static int maxservers;
 
 int debug_opt;
-int debug_sleep;
+int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
+int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
+int max_sleep_opt = 1800;	/* 30 minutes maximum poll interval */
 
 int
 main(int ac, char **av)
@@ -64,10 +66,27 @@ main(int ac, char **av)
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "dtT:")) != -1) {
+    while ((ch = getopt(ac, av, "dtT:L:")) != -1) {
 	switch(ch) {
 	case 'T':
-	    debug_sleep = strtol(optarg, NULL, 0);
+	    nom_sleep_opt = strtol(optarg, NULL, 0);
+	    if (nom_sleep_opt < 1) {
+		fprintf(stderr, "Warning: nominal poll interval too small, "
+				"limiting to 1 second\n");
+		nom_sleep_opt = 1;
+	    }
+	    if (nom_sleep_opt > 24 * 60 * 60) {
+		fprintf(stderr, "Warning: nominal poll interval too large, "
+				"limiting to 24 hours\n");
+		nom_sleep_opt = 24 * 60 * 60;
+	    }
+	    if (min_sleep_opt > nom_sleep_opt)
+		min_sleep_opt = nom_sleep_opt;
+	    if (max_sleep_opt < nom_sleep_opt * 5)
+		max_sleep_opt = nom_sleep_opt * 5;
+	    break;
+	case 'L':
+	    max_sleep_opt = strtol(optarg, NULL, 0);
 	    break;
 	case 'd':
 	    debug_opt = 1;
@@ -123,7 +142,6 @@ void
 dotest(const char *target)
 {
     struct server_info info;
-    int i;
 
     bzero(&info, sizeof(info));
     info.fd = udp_socket(target, 123);
@@ -136,29 +154,12 @@ dotest(const char *target)
 
     debug_opt = 1;
 
-    if (debug_sleep == 0) {
-	fprintf(stderr, 
-	    "Will run 5 5-second polls then reset the regression and run\n"
-	    "60-second polls until interrupted.  Use -T to set a specific\n"
-	    "time interval.  Note that 'off' represents the offset err\n"
-	    "relative to the system's real time, while 'uoff' represents\n"
-	    "the offset error with any current ongoing corrections removed.\n"
-	);
-    } else {
-	fprintf(stderr, 
-	    "Will run %d-second polls until interrupted.\n", debug_sleep);
-    }
+    fprintf(stderr, 
+	    "Will run %d-second polls until interrupted.\n", nom_sleep_opt);
 
-    if (debug_sleep == 0) {
-	for (i = 0; i < 5; ++i) {
-	    client_poll(&info);
-	    sleep(5);
-	}
-	lin_reset(&info);
-    }
     for (;;) {
-	client_poll(&info);
-	sleep(debug_sleep ? debug_sleep : 60);
+	client_poll(&info, nom_sleep_opt);
+	sleep(nom_sleep_opt);
     }
     /* not reached */
 }
