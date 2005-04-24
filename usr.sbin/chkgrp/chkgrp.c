@@ -26,114 +26,139 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/chkgrp/chkgrp.c,v 1.3.2.2 2001/07/12 22:57:35 mjacob Exp $
- * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.3 2005/04/24 14:36:55 liamfoy Exp $
  */
+#include <sys/types.h>
 
-#include <err.h>
 #include <ctype.h>
+#include <err.h>
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
 
-void
+#define DEFAULTGFILE "/etc/group"
+
+static void     usage(void);
+
+static void
 usage(void)
 {
-    fprintf(stderr, "usage: chkgrp [groupfile]\n");
-    exit(EX_USAGE);
+	fprintf(stderr, "usage: chkgrp [groupfile]\n");
+	exit(EX_USAGE);
 }
 
 int
 main(int argc, char *argv[])
 {
-    size_t len;
-    int n = 0, i, k, e = 0;
-    char *gfn, *line, *f[4], *p;
-    FILE *gf;
+	size_t len;
+	int n = 0, i, k, e = 0;
+	char *line, *f[4], *p;
+	const char *cp, *gfn;
+	FILE *gf;
 
-    /* check arguments */
-    switch (argc) {
-    case 1:
-	gfn = "/etc/group";
-	break;
-    case 2:
-	gfn = argv[1];
-	break;
-    default:
-	gfn = NULL; /* silence compiler */
-	usage();
-    }
-
-    /* open group file */
-    if ((gf = fopen(gfn, "r")) == NULL)
-	err(EX_IOERR, "%s", gfn); /* XXX - is IO_ERR the correct exit code? */
-
-    /* check line by line */
-    while (++n) {
-	if ((line = fgetln(gf, &len)) == NULL)
-	    break;
-	while (len && isspace(line[len-1]))
-	    len--;
-
-	/* ignore blank lines and comments */
-	for (p = line; p < (line + len); p++)
-	    if (!isspace(*p)) break;
-	if (!len || (*p == '#')) {
-#if 0
-	    /* entry is correct, so print it */
-	    printf("%*.*s\n", len, len, line);
-#endif
-	    continue;
-	}
-	
-	/*
-	 * A correct group entry has four colon-separated fields, the third
-	 * of which must be entirely numeric and the fourth of which may
-	 * be empty.
-	 */
-	for (i = k = 0; k < 4; k++) {
-	    for (f[k] = line+i; (i < len) && (line[i] != ':'); i++)
-		/* nothing */ ;
-	    if ((k < 3) && (line[i] != ':'))
+	/* check arguments */
+	switch (argc) {
+	case 1:
+		gfn = DEFAULTGFILE;
 		break;
-	    line[i++] = 0;
-	}
-	if (k < 4) {
-	    warnx("%s: line %d: missing field(s)", gfn, n);
-	    e++;
-	    continue;
+	case 2:
+		gfn = argv[1];
+		break;
+	default:
+		gfn = NULL;	/* silence compiler */
+		usage();
 	}
 
-	/* check if fourth field ended with a colon */
-	if (i < len) {
-	    warnx("%s: line %d: too many fields", gfn, n);
-	    e++;
-	    continue;
-	}
-	
-	/* check that none of the fields contain whitespace */
-	for (k = 0; k < 4; k++)
-	    if (strcspn(f[k], " \t") != strlen(f[k]))
-		warnx("%s: line %d: field %d contains whitespace",
-		      gfn, n, k+1);
+	/* open group file */
+	if ((gf = fopen(gfn, "r")) == NULL)
+		err(EX_IOERR, "%s", gfn);
 
-	/* check that the GID is numeric */
-	if (strspn(f[2], "0123456789") != strlen(f[2])) {
-	    warnx("%s: line %d: GID is not numeric", gfn, n);
-	    e++;
-	    continue;
-	}
-	
+	/* check line by line */
+	while (++n) {
+		if ((line = fgetln(gf, &len)) == NULL)
+			break;
+		if (len > 0 && line[len - 1] != '\n') {
+			warnx("%s: line %d: no newline character", gfn, n);
+			e++;
+		}
+		while (len && isspace(line[len - 1]))
+			len--;
+
+		/* ignore blank lines and comments */
+		for (p = line; p < (line + len); p++)
+			if (!isspace(*p))
+				break;
+		if (!len || (*p == '#')) {
 #if 0
-	/* entry is correct, so print it */
-	printf("%s:%s:%s:%s\n", f[0], f[1], f[2], f[3]);
-#endif	
-    }
+			/* entry is correct, so print it */
+			printf("%*.*s\n", len, len, line);
+#endif
+			continue;
+		}
+		/*
+		 * A correct group entry has four colon-separated fields, the
+		 * third of which must be entirely numeric and the fourth of
+		 * which may be empty. We also check for any incorrect characters.
+		 */
+		for (i = k = 0; k < 4; k++) {
+			for (f[k] = line + i; (i < (int)len) && (line[i] != ':'); i++)
+				 /* nothing */ ;
+			if ((k < 3) && (line[i] != ':'))
+				break;
+			line[i++] = 0;
+		}
 
-    /* check what broke the loop */
-    if (ferror(gf))
-	err(EX_IOERR, "%s: line %d", gfn, n);
+		for (cp = f[0] ; *cp ; cp++) {
+			if (!isalnum(*cp) && *cp != '.' && *cp != '_' && *cp != '-') {
+				warnx("%s: line %d: '%c' invalid character", gfn, n, *cp);
+				e++;
+			}
+		}
 
-    /* done */
-    fclose(gf);
-    exit(e ? EX_DATAERR : EX_OK);
+		for (cp = f[3] ; *cp ; cp++) {
+			if (!isalnum(*cp) && *cp != ',' && *cp != '.' && *cp != '_' && *cp != '-') {
+				warnx("%s: line %d: '%c' invalid character", gfn, n, *cp);
+				e++;
+			}
+		}
+
+		if (k < 4) {
+			warnx("%s: line %d: missing field(s)", gfn, n);
+			e++;
+		}
+
+		/* check if fourth field ended with a colon */
+		if (i < (int)len) {
+			warnx("%s: line %d: too many fields", gfn, n);
+			e++;
+		}
+		/* check that none of the fields contain whitespace */
+		for (k = 0; k < 4; k++) {
+			if (strcspn(f[k], " \t") != strlen(f[k])) {
+				warnx("%s: line %d: field %d contains whitespace",
+				      gfn, n, k + 1);
+				e++;
+			}
+		}
+
+		/* check that the GID is numeric */
+		if (strspn(f[2], "0123456789") != strlen(f[2])) {
+			warnx("%s: line %d: GID is not numeric", gfn, n);
+			e++;
+		}
+#if 0
+		/* entry is correct, so print it */
+		printf("%s:%s:%s:%s\n", f[0], f[1], f[2], f[3]);
+#endif
+	}
+
+	/* check what broke the loop */
+	if (ferror(gf))
+		err(EX_IOERR, "%s: line %d", gfn, n);
+
+	/* done */
+	fclose(gf);
+	if (e == 0)
+		printf("%s is fine\n", gfn);
+	exit(e ? EX_DATAERR : EX_OK);
 }
