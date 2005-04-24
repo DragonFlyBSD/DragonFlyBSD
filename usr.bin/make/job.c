@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.62 2005/04/24 12:38:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.63 2005/04/24 12:41:08 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -461,12 +461,51 @@ static sig_atomic_t interrupted;
 #define	W_SETTERMSIG(st, val) W_SETMASKED(st, val, WTERMSIG)
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
+typedef struct ProcStuff {
+	int	pgroup;
+} ProcStuff;
+
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
 static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
+
+/**
+ * Replace the current process.
+ */
+static void
+ProcExec(ProcStuff *ps, char *argv[])
+{
+	if (ps->pgroup) {
+#ifdef USE_PGRP
+		/*
+		 * We want to switch the child into a different process
+		 * family so we can kill it and all its descendants in one
+		 * fell swoop, by killing its process family, but not commit
+		 * suicide.
+		 */
+#if defined(SYSV)
+		setsid();
+#else
+		setpgid(0, getpid());
+#endif
+#endif /* USE_PGRP */
+	}
+
+	execv(shellPath, argv);
+
+	write(STDERR_FILENO,
+	      "Could not execute shell\n",
+	      sizeof("Could not execute shell"));
+
+	/*
+	 * Since we are the child process, exit without flushing buffers.
+	 */
+	_exit(1);
+	/* NOTREACHED */
+}
 
 /**
  * JobCatchSignal
@@ -1198,6 +1237,7 @@ JobExec(Job *job, char **argv)
 		Punt("Cannot fork");
 
 	} else if (cpid == 0) {
+		ProcStuff	ps;
 		/*
 		 * Child
 		 */
@@ -1241,24 +1281,9 @@ JobExec(Job *job, char **argv)
 		if (dup2(1, 2) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
 
-#ifdef USE_PGRP
-		/*
-		 * We want to switch the child into a different process family
-		 * so we can kill it and all its descendants in one fell swoop,
-		 * by killing its process family, but not commit suicide.
-		 */
-# if defined(SYSV)
-		setsid();
-# else
-		setpgid(0, getpid());
-# endif
-#endif /* USE_PGRP */
+		ps.pgroup = 1;
+		ProcExec(&ps, argv);
 
-		execv(shellPath, argv);
-
-		write(STDERR_FILENO, "Could not execute shell\n",
-		    sizeof("Could not execute shell"));
-		_exit(1);
 	} else {
 		/*
 		 * Parent
@@ -2904,10 +2929,17 @@ Cmd_Exec(const char *cmd, const char **error)
 	 */
 	if ((cpid = vfork()) == -1) {
 		*error = "Couldn't exec \"%s\"";
-		return (buf);
 
 	} else if (cpid == 0) {
-		char	*args[4];
+		ProcStuff	ps;
+		char		*argv[4];
+
+		/* Set up arguments for shell */
+		argv[0] = shellName;
+		argv[1] = "-c";
+		argv[2] = cmd;
+		argv[3] = NULL;
+
 		/*
 		 * Close input side of pipe
 		 */
@@ -2921,16 +2953,8 @@ Cmd_Exec(const char *cmd, const char **error)
 		dup2(fds[1], 1);
 		close(fds[1]);
 
-
-		/* Set up arguments for shell */
-		args[0] = shellName;
-		args[1] = "-c";
-		args[2] = cmd;
-		args[3] = NULL;
-
-		execv(shellPath, args);
-		_exit(1);
-		/* NOTREACHED */
+		ps.pgroup = 0;
+		ProcExec(&ps, argv);
 
 	} else {
 		/*
@@ -2965,8 +2989,8 @@ Cmd_Exec(const char *cmd, const char **error)
 
 		Buf_StripNewlines(buf);
 
-		return (buf);
 	}
+	return (buf);
 }
 
 
@@ -3088,7 +3112,7 @@ CompatInterrupt(int signo)
  *
  * Results:
  *	Returns 1 if a specified line must be executed by the shell,
- *	and 0 if it can be run via execve.
+ *	and 0 if it can be run via execvp().
  *
  * Side Effects:
  *	Uses brk_string so destroys the contents of argv.
@@ -3162,9 +3186,9 @@ Compat_RunCommand(char *cmd, GNode *gn)
 
 	/*
 	 * brk_string will return an argv with a NULL in av[0], thus causing
-	 * execvp to choke and die horribly. Besides, how can we execute a null
-	 * command? In any case, we warn the user that the command expanded to
-	 * nothing (is this the right thing to do?).
+	 * execvp() to choke and die horribly. Besides, how can we execute a
+	 * null command? In any case, we warn the user that the command
+	 * expanded to nothing (is this the right thing to do?).
 	 */
 	if (*cmdStart == '\0') {
 		free(cmdStart);
@@ -3283,6 +3307,8 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 		write(STDERR_FILENO, "\n", 1);
 		_exit(1);
+		/* NOTREACHED */
+
 	} else {
 		/*
 		 * we need to print out the command associated with this
