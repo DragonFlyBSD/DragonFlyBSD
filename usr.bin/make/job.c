@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.69 2005/04/24 12:44:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.70 2005/04/24 12:44:50 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -484,9 +484,19 @@ static void ProcExec(ProcStuff *, char *[]) __dead2;
 static void
 ProcExec(ProcStuff *ps, char *argv[])
 {
+	if (ps->in != STDIN_FILENO) {
+		/*
+		 * Redirect the child's stdin to the input fd
+		 * and reset it to the beginning (again).
+		 */
+		if (dup2(ps->in, STDIN_FILENO) == -1)
+			Punt("Cannot dup2: %s", strerror(errno));
+		lseek(STDIN_FILENO, (off_t)0, SEEK_SET);
+	}
+
 	if (ps->out != STDOUT_FILENO) {
 		/*
-		 * Redirect the shell's stdout to the output fd.
+		 * Redirect the child's stdout to the output fd.
 		 */
 		if (dup2(ps->out, STDOUT_FILENO) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
@@ -1286,14 +1296,7 @@ JobExec(Job *job, char **argv)
 		if (fifoFd >= 0)
 			close(fifoFd);
 
-		/*
-		 * Must duplicate the input stream down to the child's input
-		 * and reset it to the beginning (again).
-		 */
-		if (dup2(FILENO(job->cmdFILE), 0) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-		lseek(0, (off_t)0, SEEK_SET);
-
+		ps.in = FILENO(job->cmdFILE);
 		if (usePipes) {
 			/*
 			 * Set up the child's output to be routed through the
@@ -2976,6 +2979,7 @@ Cmd_Exec(const char *cmd, const char **error)
 		 */
 		close(fds[0]);
 
+		ps.in = STDIN_FILENO;
 		ps.out = fds[1];
 
 		/* Note we don't fetch the error stream...why not? Why?  */
@@ -3332,6 +3336,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	} else if (cpid == 0) {
 		ProcStuff	ps;
 
+		ps.in = STDIN_FILENO;
 		ps.out = STDOUT_FILENO;
 
 		ps.merge_errors = 0;
