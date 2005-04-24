@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.68 2005/04/24 12:43:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.69 2005/04/24 12:44:08 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -484,6 +484,15 @@ static void ProcExec(ProcStuff *, char *[]) __dead2;
 static void
 ProcExec(ProcStuff *ps, char *argv[])
 {
+	if (ps->out != STDOUT_FILENO) {
+		/*
+		 * Redirect the shell's stdout to the output fd.
+		 */
+		if (dup2(ps->out, STDOUT_FILENO) == -1)
+			Punt("Cannot dup2: %s", strerror(errno));
+		close(ps->out);
+	}
+
 	if (ps->merge_errors) {
 		/*
 		 * Send stderr to parent process too. 
@@ -1299,10 +1308,6 @@ JobExec(Job *job, char **argv)
 			 */
 			ps.out = job->outFd;
 		}
-
-		if (dup2(ps.out, 1) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-		close(ps.out);
 
 		ps.merge_errors = 1;
 		ps.pgroup = 1;
@@ -2973,14 +2978,6 @@ Cmd_Exec(const char *cmd, const char **error)
 
 		ps.out = fds[1];
 
-		/*
-		 * Duplicate the output stream to the shell's output, then
-		 * shut the extra thing down.
-		 */
-		if (dup2(ps.out, 1) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-		close(ps.out);
-
 		/* Note we don't fetch the error stream...why not? Why?  */
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
@@ -3334,6 +3331,8 @@ Compat_RunCommand(char *cmd, GNode *gn)
 
 	} else if (cpid == 0) {
 		ProcStuff	ps;
+
+		ps.out = STDOUT_FILENO;
 
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
