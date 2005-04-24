@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.65 2005/04/24 12:42:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.66 2005/04/24 12:42:38 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1263,14 +1263,11 @@ JobExec(Job *job, char **argv)
 			close(fifoFd);
 
 		/*
-		 * Must duplicate the input stream down to the child's input and
-		 * reset it to the beginning (again). Since the stream was
-		 * marked close-on-exec, we must clear that bit in the new
-		 * input.
+		 * Must duplicate the input stream down to the child's input
+		 * and reset it to the beginning (again).
 		 */
 		if (dup2(FILENO(job->cmdFILE), 0) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
-		fcntl(0, F_SETFD, 0);
 		lseek(0, (off_t)0, SEEK_SET);
 
 		if (usePipes) {
@@ -1290,10 +1287,16 @@ JobExec(Job *job, char **argv)
 				Punt("Cannot dup2: %s", strerror(errno));
 		}
 		/*
+		 * The input stream was marked close-on-exec, we must clear
+		 * that bit in the new input.
+		 */
+		fcntl(0, F_SETFD, 0);
+
+		/*
 		 * The output channels are marked close on exec. This bit was
-		 * duplicated by the dup2 (on some systems), so we have to clear
-		 * it before routing the shell's error output to the same place
-		 * as its standard output.
+		 * duplicated by the dup2 (on some systems), so we have to
+		 * clear it before routing the shell's error output to the
+		 * same place as its standard output.
 		 */
 		fcntl(1, F_SETFD, 0);
 
