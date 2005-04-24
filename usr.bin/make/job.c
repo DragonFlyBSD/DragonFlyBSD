@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.67 2005/04/24 12:43:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.68 2005/04/24 12:43:43 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -491,6 +491,18 @@ ProcExec(ProcStuff *ps, char *argv[])
 		if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
 	}
+
+	/*
+	 * The file descriptors for stdin, stdout, or stderr might
+	 * have been marked close-on-exec.  Clear the flag on all
+	 * of them.
+	 */
+	fcntl(STDIN_FILENO, F_SETFD,
+	    fcntl(STDIN_FILENO, F_GETFD) & (~FD_CLOEXEC));
+	fcntl(STDOUT_FILENO, F_SETFD,
+	    fcntl(STDOUT_FILENO, F_GETFD) & (~FD_CLOEXEC));
+	fcntl(STDERR_FILENO, F_SETFD,
+	    fcntl(STDERR_FILENO, F_GETFD) & (~FD_CLOEXEC));
 
 	if (ps->pgroup) {
 #ifdef USE_PGRP
@@ -1291,20 +1303,6 @@ JobExec(Job *job, char **argv)
 		if (dup2(ps.out, 1) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
 		close(ps.out);
-
-		/*
-		 * The input stream was marked close-on-exec, we must clear
-		 * that bit in the new input.
-		 */
-		fcntl(0, F_SETFD, 0);
-
-		/*
-		 * The output channels are marked close on exec. This bit was
-		 * duplicated by the dup2 (on some systems), so we have to
-		 * clear it before routing the shell's error output to the
-		 * same place as its standard output.
-		 */
-		fcntl(1, F_SETFD, 0);
 
 		ps.merge_errors = 1;
 		ps.pgroup = 1;
