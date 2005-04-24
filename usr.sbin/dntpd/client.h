@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.2 2005/04/24 05:04:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.3 2005/04/24 09:39:27 dillon Exp $
  */
 
 struct server_info {
@@ -60,16 +60,27 @@ struct server_info {
 	double lin_sumxy;	/* sum(x*y)	*/
 	double lin_sumx2;	/* sum(x^2) 	*/
 	double lin_sumy2;	/* sum(y^2) 	*/
-	double lin_sumoffset;	/* sum of uncompensated offsets */
+
+	/*
+	 * Offsets are accumulated for a straight average.  When a
+	 * correction is made we have to reset the averaging code
+	 * or follow-up corrections will oscillate wildly because
+	 * the new offsets simply cannot compete with the dozens
+	 * of previously polls in the sum.
+	 */
+	double lin_sumoffset;	/* sum of compensated offsets */
+	double lin_sumoffset2;	/* sum of compensated offsets^2 */
+	double lin_countoffset;	/* count is reset after a correction is made */
 
 	/*
 	 * Cached results
 	 */
-	double lin_cache_slope;
-	double lin_cache_yint;
-	double lin_cache_corr;
+	double lin_cache_slope;	/* (freq calculations) */
+	double lin_cache_yint;	/* (freq calculations) */
+	double lin_cache_corr;	/* (freq calculations) */
+	double lin_cache_stddev; /* (offset calculations) */
 
-	double lin_cache_offset; /* last offset correction (s) */
+	double lin_cache_offset; /* last sampled offset (NOT an average) */
 	double lin_cache_freq;	/* last frequency correction (s/s) */
 };
 
@@ -84,10 +95,14 @@ typedef struct server_info *server_info_t;
 void client_init(void);
 int client_main(struct server_info **info_ary, int count);
 void client_poll(server_info_t info);
-struct server_info *client_check(struct server_info **check, 
-				struct server_info *best);
+void client_check(struct server_info **check, 
+		  struct server_info **best_off,
+		  struct server_info **best_freq);
 void lin_regress(server_info_t info, 
 		 struct timeval *ltv, struct timeval *lbtv, double offset);
 void lin_reset(server_info_t info);
+void lin_resetalloffsets(struct server_info **info_ary, int count);
+void lin_resetoffsets(server_info_t info);
+
 
 

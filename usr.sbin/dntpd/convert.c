@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/convert.c,v 1.2 2005/04/24 06:23:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/convert.c,v 1.3 2005/04/24 09:39:27 dillon Exp $
  */
 
 #include "defs.h"
@@ -81,12 +81,12 @@ tv_add_micro(struct timeval *tvp, long usec)
  * Return the time differential in microseconds.
  */
 double
-tv_delta_micro(struct timeval *tv1, struct timeval *tv2)
+tv_delta_double(struct timeval *tv1, struct timeval *tv2)
 {
     double usec;
 
-    usec = (double)(tv2->tv_sec - tv1->tv_sec) * 1000000.0 +
-		(double)(tv2->tv_usec - tv1->tv_usec);
+    usec = (double)(tv2->tv_sec - tv1->tv_sec) +
+		(double)(tv2->tv_usec - tv1->tv_usec) / 1000000.0;
     return(usec);
 }
 

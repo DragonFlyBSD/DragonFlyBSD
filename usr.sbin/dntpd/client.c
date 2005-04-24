@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.3 2005/04/24 06:24:42 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.4 2005/04/24 09:39:27 dillon Exp $
  */
 
 #include "defs.h"
@@ -44,7 +44,8 @@ client_init(void)
 int
 client_main(struct server_info **info_ary, int count)
 {
-    struct server_info *best;
+    struct server_info *best_off;
+    struct server_info *best_freq;
     double freq;
     double offset;
     int i;
@@ -57,20 +58,49 @@ client_main(struct server_info **info_ary, int count)
 	    client_poll(info_ary[i]);
 
 	/*
-	 * Find the best client (or synthesize one).  If we find one
-	 * then program the frequency correction and offset.
+	 * Find the best client (or synthesize one).  A different client
+	 * can be chosen for frequency and offset.  Note in particular 
+	 * that offset counters and averaging code gets reset when an
+	 * offset correction is made (otherwise the averaging history will
+	 * cause later corrections to overshoot).  
+	 * 
+	 * The regression used to calculate the frequency is a much 
+	 * longer-term entity and is NOT reset, so it is still possible
+	 * for the offset correction code to make minor adjustments to
+	 * the frequency if it so desires.
 	 *
 	 * client_check may replace the server_info pointer with a new
 	 * one.
 	 */
-	best = NULL;
+	best_off = NULL;
+	best_freq = NULL;
 	for (i = 0; i < count; ++i)
-	    best = client_check(&info_ary[i], best);
-	if (best) {
-	    offset = best->lin_sumoffset / best->lin_count;
+	    client_check(&info_ary[i], &best_off, &best_freq);
+
+	/*
+	 * Offset correction.
+	 *
+	 * XXX it might not be a good idea to issue an offset correction if
+	 * a prior offset correction is still in progress as this will skew
+	 * the offset calculation.  XXX either figure out how to correct the
+	 * skew or do not issue a correction.
+	 */
+	if (best_off) {
+	    offset = best_off->lin_sumoffset / best_off->lin_countoffset;
+	    lin_resetalloffsets(info_ary, count);
 	    freq = sysntp_correct_offset(offset);
-	    sysntp_correct_freq(best->lin_cache_freq + freq);
+	} else {
+	    freq = 0.0;
 	}
+
+	/*
+	 * Frequency correction (throw away minor freq adjusts from the
+	 * offset code if we can't do a frequency correction here).
+	 */
+	if (best_freq) {
+	    sysntp_correct_freq(best_freq->lin_cache_freq + freq);
+	}
+
 	if (debug_sleep)
 	    usleep(debug_sleep * 1000000 + random() % 100000);
 	else
@@ -100,7 +130,7 @@ client_poll(server_info_t info)
      * Figure out the offset (the difference between the reported
      * time and our current time) for linear regression purposes.
      */
-    offset = tv_delta_micro(&rtv, &ltv) / 1000000.0;
+    offset = tv_delta_double(&rtv, &ltv);
 
     while (info) {
 	/*
@@ -130,10 +160,13 @@ client_poll(server_info_t info)
 }
 
 /*
- * Find the best client (or synthesize a fake info structure to return)
+ * Find the best client (or synthesize a fake info structure to return).
+ * We can find separate best clients for offset and frequency.
  */
-struct server_info *
-client_check(struct server_info **checkp, struct server_info *best)
+void
+client_check(struct server_info **checkp, 
+	     struct server_info **best_off,
+	     struct server_info **best_freq)
 {
     struct server_info *check = *checkp;
     struct server_info *info;
@@ -174,21 +207,41 @@ client_check(struct server_info **checkp, struct server_info *best)
     }
 
     /*
-     * Required for selection:
+     * BEST CLIENT FOR FREQUENCY CORRECTION:
      *
      *	8 samples and a correllation > 0.99, or
      * 16 samples and a correllation > 0.96
      */
+    info = *best_freq;
     if ((check->lin_count >= 8 && fabs(check->lin_cache_corr) >= 0.99) ||
 	(check->lin_count >= 16 && fabs(check->lin_cache_corr) >= 0.96)
     ) {
-	if (best == NULL || 
-	    fabs(check->lin_cache_corr) > fabs(best->lin_cache_corr)) {
-		best = check;
+	if (info == NULL || 
+	    fabs(check->lin_cache_corr) > fabs(info->lin_cache_corr)
+	) {
+	    info = check;
+	    *best_freq = info;
 	}
 
     }
-    return(best);
+
+    /*
+     * BEST CLIENT FOR OFFSET CORRECTION:
+     *
+     * Use the standard-deviation and require at least 4 samples.  An
+     * offset correction is valid if the standard deviation is less then
+     * the average offset divided by 4.
+     */
+    info = *best_off;
+    if (check->lin_countoffset >= 4 && 
+	check->lin_cache_stddev < fabs(check->lin_sumoffset / check->lin_countoffset / 4)) {
+	if (info == NULL || 
+	    fabs(check->lin_cache_stddev) < fabs(info->lin_cache_stddev)
+	) {
+	    info = check;
+	    *best_off = info;
+	}
+    }
 }
 
 /*
@@ -212,28 +265,45 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     double time_axis;
     double uncorrected_offset;
 
+    /*
+     * De-correcting the offset:
+     *
+     *	The passed offset is (our_real_time - remote_real_time).  To remove
+     *  corrections from our_real_time we take the difference in the basetime
+     *  (new_base_time - old_base_time) and subtract that from the offset.
+     *  That is, if the basetime goesup, the uncorrected offset goes down.
+     */
     if (info->lin_count == 0) {
 	info->lin_tv = *ltv;
 	info->lin_btv = *lbtv;
 	time_axis = 0;
 	uncorrected_offset = offset;
     } else {
-	time_axis = tv_delta_micro(&info->lin_tv, ltv) / 1000000.0;
-	uncorrected_offset = offset - 
-			tv_delta_micro(&info->lin_btv, lbtv) / 1000000.0;
+	time_axis = tv_delta_double(&info->lin_tv, ltv);
+	uncorrected_offset = offset - tv_delta_double(&info->lin_btv, lbtv);
     }
+
+    /*
+     * We have to use the uncorrected offset for frequency calculations.
+     */
     ++info->lin_count;
     info->lin_sumx += time_axis;
     info->lin_sumx2 += time_axis * time_axis;
     info->lin_sumy += uncorrected_offset;
     info->lin_sumy2 += uncorrected_offset * uncorrected_offset;
     info->lin_sumxy += time_axis * uncorrected_offset;
-    info->lin_sumoffset += uncorrected_offset;
 
     /*
-     * Calculate various derived values (from statistics).
+     * We have to use the corrected offset for offset calculations.
      */
+    ++info->lin_countoffset;
+    info->lin_sumoffset += offset;
+    info->lin_sumoffset2 += offset * offset;
 
+    /*
+     * Calculate various derived values.   This gets us slope, y-intercept,
+     * and correllation from the linear regression.
+     */
     if (info->lin_count > 1) {
 	info->lin_cache_slope = 
 	 (info->lin_count * info->lin_sumxy - info->lin_sumx * info->lin_sumy) /
@@ -253,7 +323,23 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     }
 
     /*
-     * Calculate the offset and frequency correction
+     * Calculate more derived values.  This gets us the standard-deviation
+     * of offsets.  The standard deviation approximately means that 68%
+     * of the samples fall within the calculated stddev of the mean.
+     */
+    if (info->lin_countoffset > 1) {
+	 info->lin_cache_stddev = 
+	     sqrt((info->lin_sumoffset2 - 
+		 ((info->lin_sumoffset * info->lin_sumoffset / 
+		   info->lin_countoffset))) /
+	         (info->lin_countoffset - 1.0));
+    }
+
+    /*
+     * Save the most recent offset, we might use it in the future.
+     * Save the frequency correction (we might scale the slope later so
+     * we have a separate field for the actual frequency correction in
+     * seconds per second).
      */
     info->lin_cache_offset = offset;
     info->lin_cache_freq = info->lin_cache_slope;
@@ -270,10 +356,18 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
 		info->lin_cache_corr,
 		info->lin_cache_freq * 1000000.0);
 	}
+	if (info->lin_countoffset > 1) {
+	    fprintf(stderr, " stddev %7.6f", info->lin_cache_stddev);
+	}
 	fprintf(stderr, "\n");
     }
 }
 
+/*
+ * Reset the linear regression data.  The info structure will not again be
+ * a candidate for frequency or offset correction until sufficient data
+ * has been accumulated to make a decision.
+ */
 void
 lin_reset(server_info_t info)
 {
@@ -283,12 +377,42 @@ lin_reset(server_info_t info)
     info->lin_sumxy = 0;
     info->lin_sumx2 = 0;
     info->lin_sumy2 = 0;
+
+    info->lin_countoffset = 0;
     info->lin_sumoffset = 0;
+    info->lin_sumoffset2 = 0;
 
     info->lin_cache_slope = 0;
     info->lin_cache_yint = 0;
     info->lin_cache_corr = 0;
     info->lin_cache_offset = 0;
     info->lin_cache_freq = 0;
+}
+
+/*
+ * Sometimes we want to clean out the offset calculations without
+ * destroying the linear regression used to figure out the frequency
+ * correction.  This usually occurs whenever we issue an offset
+ * adjustment to the system, which invalidates any offset data accumulated
+ * up to that point.
+ */
+void
+lin_resetalloffsets(struct server_info **info_ary, int count)
+{
+    server_info_t info;
+    int i;
+
+    for (i = 0; i < count; ++i) {
+	for (info = info_ary[i]; info; info = info->altinfo)
+	    lin_resetoffsets(info);
+    }
+}
+
+void
+lin_resetoffsets(server_info_t info)
+{
+    info->lin_countoffset = 0;
+    info->lin_sumoffset = 0;
+    info->lin_sumoffset2 = 0;
 }
 

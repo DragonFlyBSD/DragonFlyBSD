@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/ntpreq.c,v 1.2 2005/04/24 03:10:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/ntpreq.c,v 1.3 2005/04/24 09:39:27 dillon Exp $
  */
 
 #include "defs.h"
@@ -160,7 +160,7 @@ udp_ntptimereq(int fd, struct timeval *rtvp, struct timeval *ltvp,
 	sysntp_getbasetime(lbtvp);
 
 	l_fixedpt_to_tv(&rmsg.xmttime, rtvp);
-	tv_add_micro(rtvp, (long)tv_delta_micro(&tv1, ltvp) / 2);
+	tv_add_micro(rtvp, (long)(tv_delta_double(&tv1, ltvp) * 1000000.0) / 2);
 
 	error = 0;
 	break;

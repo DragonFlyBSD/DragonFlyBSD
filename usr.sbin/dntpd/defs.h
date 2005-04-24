@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.2 2005/04/24 05:04:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.3 2005/04/24 09:39:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -66,7 +66,7 @@ int udp_ntptimereq(int fd, struct timeval *rtvp,
 void l_fixedpt_to_tv(struct l_fixedpt *fixed, struct timeval *tvp);
 void tv_subtract_micro(struct timeval *tvp, long usec);
 void tv_add_micro(struct timeval *tvp, long usec);
-double tv_delta_micro(struct timeval *tv1, struct timeval *tv2);
+double tv_delta_double(struct timeval *tv1, struct timeval *tv2);
 void tv_to_ts(struct timeval *tv, struct timespec *ts);
 void ts_to_tv(struct timespec *ts, struct timeval *tv);
 
