@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.64 2005/04/24 12:41:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.65 2005/04/24 12:42:22 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -464,6 +464,7 @@ static sig_atomic_t interrupted;
 typedef struct ProcStuff {
 	int	merge_errors;
 	int	pgroup;
+	int	searchpath;
 } ProcStuff;
 
 static void JobRestart(Job *);
@@ -472,6 +473,7 @@ static void JobDoOutput(Job *, Boolean);
 static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
+static void ProcExec(ProcStuff *, char *[]) __dead2;
 
 /**
  * Replace the current process.
@@ -502,17 +504,25 @@ ProcExec(ProcStuff *ps, char *argv[])
 #endif /* USE_PGRP */
 	}
 
-	execv(shellPath, argv);
+	if (ps->searchpath) {
+		execvp(argv[0], argv);
 
-	write(STDERR_FILENO,
-	      "Could not execute shell\n",
-	      sizeof("Could not execute shell"));
+		write(STDERR_FILENO, argv[0], strlen(argv[0]));
+		write(STDERR_FILENO, ":", 1);
+		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
+		write(STDERR_FILENO, "\n", 1);
+	} else {
+		execv(shellPath, argv);
+
+		write(STDERR_FILENO,
+		      "Could not execute shell\n",
+		      sizeof("Could not execute shell"));
+	}
 
 	/*
 	 * Since we are the child process, exit without flushing buffers.
 	 */
 	_exit(1);
-	/* NOTREACHED */
 }
 
 /**
@@ -1289,7 +1299,9 @@ JobExec(Job *job, char **argv)
 
 		ps.merge_errors = 1;
 		ps.pgroup = 1;
+		ps.searchpath = 0;
 		ProcExec(&ps, argv);
+		/* NOTREACHED */
 
 	} else {
 		/*
@@ -2962,7 +2974,9 @@ Cmd_Exec(const char *cmd, const char **error)
 		/* Note we don't fetch the error stream...why not? Why?  */
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
+		ps.searchpath = 0;
 		ProcExec(&ps, argv);
+		/* NOTREACHED */
 
 	} else {
 		/*
@@ -3309,12 +3323,12 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		Fatal("Could not fork");
 
 	} else if (cpid == 0) {
-		execvp(av[0], av);
-		write(STDERR_FILENO, av[0], strlen(av[0]));
-		write(STDERR_FILENO, ":", 1);
-		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-		write(STDERR_FILENO, "\n", 1);
-		_exit(1);
+		ProcStuff	ps;
+
+		ps.merge_errors = 0;
+		ps.pgroup = 0;
+		ps.searchpath = 1;
+		ProcExec(&ps, av);
 		/* NOTREACHED */
 
 	} else {
