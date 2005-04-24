@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.66 2005/04/24 12:42:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.67 2005/04/24 12:43:09 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -462,6 +462,9 @@ static sig_atomic_t interrupted;
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
 typedef struct ProcStuff {
+	int	in;
+	int	out;
+	int	err;
 	int	merge_errors;
 	int	pgroup;
 	int	searchpath;
@@ -1275,17 +1278,20 @@ JobExec(Job *job, char **argv)
 			 * Set up the child's output to be routed through the
 			 * pipe we've created for it.
 			 */
-			if (dup2(job->outPipe, 1) == -1)
-				Punt("Cannot dup2: %s", strerror(errno));
+			ps.out = job->outPipe;
 		} else {
 			/*
-			 * We're capturing output in a file, so we duplicate the
-			 * descriptor to the temporary file into the standard
-			 * output.
+			 * We're capturing output in a file, so we duplicate
+			 * the descriptor to the temporary file into the
+			 * standard output.
 			 */
-			if (dup2(job->outFd, 1) == -1)
-				Punt("Cannot dup2: %s", strerror(errno));
+			ps.out = job->outFd;
 		}
+
+		if (dup2(ps.out, 1) == -1)
+			Punt("Cannot dup2: %s", strerror(errno));
+		close(ps.out);
+
 		/*
 		 * The input stream was marked close-on-exec, we must clear
 		 * that bit in the new input.
@@ -2967,12 +2973,15 @@ Cmd_Exec(const char *cmd, const char **error)
 		 */
 		close(fds[0]);
 
+		ps.out = fds[1];
+
 		/*
 		 * Duplicate the output stream to the shell's output, then
 		 * shut the extra thing down.
 		 */
-		dup2(fds[1], 1);
-		close(fds[1]);
+		if (dup2(ps.out, 1) == -1)
+			Punt("Cannot dup2: %s", strerror(errno));
+		close(ps.out);
 
 		/* Note we don't fetch the error stream...why not? Why?  */
 		ps.merge_errors = 0;
