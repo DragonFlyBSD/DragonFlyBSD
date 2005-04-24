@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.63 2005/04/24 12:41:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.64 2005/04/24 12:41:54 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -462,6 +462,7 @@ static sig_atomic_t interrupted;
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
 typedef struct ProcStuff {
+	int	merge_errors;
 	int	pgroup;
 } ProcStuff;
 
@@ -478,13 +479,20 @@ static void JobRestartJobs(void);
 static void
 ProcExec(ProcStuff *ps, char *argv[])
 {
+	if (ps->merge_errors) {
+		/*
+		 * Send stderr to parent process too. 
+		 */
+		if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
+			Punt("Cannot dup2: %s", strerror(errno));
+	}
+
 	if (ps->pgroup) {
 #ifdef USE_PGRP
 		/*
-		 * We want to switch the child into a different process
-		 * family so we can kill it and all its descendants in one
-		 * fell swoop, by killing its process family, but not commit
-		 * suicide.
+		 * Become a process group leader, so we can kill it and all
+		 * its descendants in one fell swoop, by killing its process
+		 * family, but not commit suicide.
 		 */
 #if defined(SYSV)
 		setsid();
@@ -1278,9 +1286,8 @@ JobExec(Job *job, char **argv)
 		 * as its standard output.
 		 */
 		fcntl(1, F_SETFD, 0);
-		if (dup2(1, 2) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
 
+		ps.merge_errors = 1;
 		ps.pgroup = 1;
 		ProcExec(&ps, argv);
 
@@ -2947,12 +2954,13 @@ Cmd_Exec(const char *cmd, const char **error)
 
 		/*
 		 * Duplicate the output stream to the shell's output, then
-		 * shut the extra thing down. Note we don't fetch the error
-		 * stream...why not? Why?
+		 * shut the extra thing down.
 		 */
 		dup2(fds[1], 1);
 		close(fds[1]);
 
+		/* Note we don't fetch the error stream...why not? Why?  */
+		ps.merge_errors = 0;
 		ps.pgroup = 0;
 		ProcExec(&ps, argv);
 
