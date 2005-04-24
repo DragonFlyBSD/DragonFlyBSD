@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.23 2005/04/07 00:44:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.24 2005/04/24 12:40:23 okumoto Exp $
  */
 
 /*
@@ -80,6 +80,7 @@
 #include "GNode.h"
 #include "job.h"
 #include "make.h"
+#include "parse.h"
 #include "suff.h"
 #include "targ.h"
 #include "util.h"

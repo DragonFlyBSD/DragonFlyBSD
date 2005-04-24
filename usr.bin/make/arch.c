@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.46 2005/04/22 18:01:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.47 2005/04/24 12:40:23 okumoto Exp $
  */
 
 /*-
@@ -107,6 +107,7 @@
 #include "GNode.h"
 #include "hash.h"
 #include "make.h"
+#include "parse.h"
 #include "targ.h"
 #include "util.h"
 #include "var.h"
