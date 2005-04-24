@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.2 2005/04/24 05:04:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.3 2005/04/24 06:24:42 dillon Exp $
  */
 
 #include "defs.h"
@@ -174,10 +174,14 @@ client_check(struct server_info **checkp, struct server_info *best)
     }
 
     /*
-     * At least 8 samples and a correllation > 0.99 is required for 
-     * a frequency correction.
+     * Required for selection:
+     *
+     *	8 samples and a correllation > 0.99, or
+     * 16 samples and a correllation > 0.96
      */
-    if (check->lin_count >= 8 && fabs(check->lin_cache_corr) > 0.99) {
+    if ((check->lin_count >= 8 && fabs(check->lin_cache_corr) >= 0.99) ||
+	(check->lin_count >= 16 && fabs(check->lin_cache_corr) >= 0.96)
+    ) {
 	if (best == NULL || 
 	    fabs(check->lin_cache_corr) > fabs(best->lin_cache_corr)) {
 		best = check;
