@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.15 2005/02/16 21:50:00 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.16 2005/04/24 09:41:27 asmodai Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -52,12 +52,11 @@
 /*
  * Macro to test if we are using a specific version of gcc or later.
  */
-#ifdef __GNUC__
-#define __GNUC_PREREQ__(ma, mi)		\
+#if defined(__GNUC__) && !defined(__INTEL_COMPILER)
+#define __GNUC_PREREQ__(ma, mi)	\
         (__GNUC__ > (ma) || __GNUC__ == (ma) && __GNUC_MINOR__ >= (mi))
 #else
-#define __GNUC_PREREQ__(ma, mi) 	\
-	0
+#define __GNUC_PREREQ__(ma, mi) 0
 #endif
 
 /*
