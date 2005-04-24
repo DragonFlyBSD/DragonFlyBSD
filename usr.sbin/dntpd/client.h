@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.2 2005/04/24 05:04:28 dillon Exp $
  */
 
 struct server_info {
@@ -87,8 +87,7 @@ void client_poll(server_info_t info);
 struct server_info *client_check(struct server_info **check, 
 				struct server_info *best);
 void lin_regress(server_info_t info, 
-		 struct timeval *ltv, struct timeval *lbtv, 
-		 double offset, int isalt);
+		 struct timeval *ltv, struct timeval *lbtv, double offset);
 void lin_reset(server_info_t info);
 
 

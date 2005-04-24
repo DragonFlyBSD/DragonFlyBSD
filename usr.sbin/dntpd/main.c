@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.2 2005/04/24 05:04:28 dillon Exp $
  */
 
 #include "defs.h"
@@ -45,11 +45,13 @@ static int nservers;
 static int maxservers;
 
 int debug_opt;
+int debug_sleep;
 
 int
 main(int ac, char **av)
 {
-    int rc = 0;
+    int test_opt = 0;
+    int rc;
     int ch;
     int i;
 
@@ -57,24 +59,34 @@ main(int ac, char **av)
      * Really randomize
      */
     srandomdev();
+    rc = 0;
 
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "t:d")) != -1) {
+    while ((ch = getopt(ac, av, "dtT:")) != -1) {
 	switch(ch) {
+	case 'T':
+	    debug_sleep = strtol(optarg, NULL, 0);
+	    break;
 	case 'd':
 	    debug_opt = 1;
 	    break;
 	case 't':
-	    dotest(optarg);
-	    exit(0);
-	    /* not reached */
+	    test_opt = 1;
+	    break;
 	case 'h':
 	default:
 	    usage(av[0]);
 	    /* not reached */
 	}
+    }
+
+    if (test_opt) {
+	if (optind != ac - 1)
+	    usage(av[0]);
+	dotest(av[optind]);
+	/* not reached */
     }
 
     /*
@@ -100,7 +112,9 @@ static
 void
 usage(const char *av0)
 {
-    fprintf(stderr, "%s [-d] [-t target] [additional_targets]\n", av0);
+    fprintf(stderr, "%s [-dt] [-T poll_interval] [additional_targets]\n", av0);
+    fprintf(stderr, "\t-d\tforeground operation, debugging turned on\n");
+    fprintf(stderr, "\t-t\ttest mode (specify one target on command line)\n");
     exit(1);
 }
 
@@ -109,6 +123,7 @@ void
 dotest(const char *target)
 {
     struct server_info info;
+    int i;
 
     bzero(&info, sizeof(info));
     info.fd = udp_socket(target, 123);
@@ -121,10 +136,31 @@ dotest(const char *target)
 
     debug_opt = 1;
 
+    if (debug_sleep == 0) {
+	fprintf(stderr, 
+	    "Will run 5 5-second polls then reset the regression and run\n"
+	    "60-second polls until interrupted.  Use -T to set a specific\n"
+	    "time interval.  Note that 'off' represents the offset err\n"
+	    "relative to the system's real time, while 'uoff' represents\n"
+	    "the offset error with any current ongoing corrections removed.\n"
+	);
+    } else {
+	fprintf(stderr, 
+	    "Will run %d-second polls until interrupted.\n", debug_sleep);
+    }
+
+    if (debug_sleep == 0) {
+	for (i = 0; i < 5; ++i) {
+	    client_poll(&info);
+	    sleep(5);
+	}
+	lin_reset(&info);
+    }
     for (;;) {
 	client_poll(&info);
-	usleep(5 * 1000000 + random() % 100000);
+	sleep(debug_sleep ? debug_sleep : 60);
     }
+    /* not reached */
 }
 
 static void

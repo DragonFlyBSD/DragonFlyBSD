@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.2 2005/04/24 05:04:28 dillon Exp $
  */
 
 #include "defs.h"
@@ -71,7 +71,10 @@ client_main(struct server_info **info_ary, int count)
 	    freq = sysntp_correct_offset(offset);
 	    sysntp_correct_freq(best->lin_cache_freq + freq);
 	}
-	sleep(5);
+	if (debug_sleep)
+	    usleep(debug_sleep * 1000000 + random() % 100000);
+	else
+	    usleep(60 * 1000000 + random() % 100000);
     }
 }
 
@@ -82,7 +85,6 @@ client_poll(server_info_t info)
     struct timeval ltv;
     struct timeval lbtv;
     double offset;
-    int isalt = 0;
 
     if (debug_opt) {
 	fprintf(stderr, "%s: poll, ", info->target);
@@ -115,9 +117,15 @@ client_poll(server_info_t info)
 	    fprintf(stderr, "%s.%03ld ", 
 		    buf, rtv.tv_usec / 1000);
 	}
-	lin_regress(info, &ltv, &lbtv, offset, isalt);
+	lin_regress(info, &ltv, &lbtv, offset);
 	info = info->altinfo;
-	++isalt;
+	if (info && debug_opt) {
+	    fprintf(stderr, "%*.*s: poll, ", 
+		(int)strlen(info->target), 
+		(int)strlen(info->target),
+		"(alt)");
+	    fflush(stderr);
+	}
     }
 }
 
@@ -195,7 +203,7 @@ client_check(struct server_info **checkp, struct server_info *best)
  */
 void
 lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
-	    double offset, int isalt)
+	    double offset)
 {
     double time_axis;
     double uncorrected_offset;
@@ -222,21 +230,23 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
      * Calculate various derived values (from statistics).
      */
 
-    info->lin_cache_slope = 
-	(info->lin_count * info->lin_sumxy - info->lin_sumx * info->lin_sumy) /
-	(info->lin_count * info->lin_sumx2 - info->lin_sumx * info->lin_sumx);
+    if (info->lin_count > 1) {
+	info->lin_cache_slope = 
+	 (info->lin_count * info->lin_sumxy - info->lin_sumx * info->lin_sumy) /
+	 (info->lin_count * info->lin_sumx2 - info->lin_sumx * info->lin_sumx);
 
-    info->lin_cache_yint = 
-	(info->lin_sumy - info->lin_cache_slope * info->lin_sumx) /
-	(info->lin_count);
+	info->lin_cache_yint = 
+	 (info->lin_sumy - info->lin_cache_slope * info->lin_sumx) /
+	 (info->lin_count);
 
-    info->lin_cache_corr =
-	(info->lin_count * info->lin_sumxy - info->lin_sumx * info->lin_sumy) /
-	sqrt((info->lin_count * info->lin_sumx2 - 
+	info->lin_cache_corr =
+	 (info->lin_count * info->lin_sumxy - info->lin_sumx * info->lin_sumy) /
+	 sqrt((info->lin_count * info->lin_sumx2 - 
 		      info->lin_sumx * info->lin_sumx) *
 	     (info->lin_count * info->lin_sumy2 - 
 		      info->lin_sumy * info->lin_sumy)
-	);
+	 );
+    }
 
     /*
      * Calculate the offset and frequency correction
@@ -245,13 +255,18 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     info->lin_cache_freq = info->lin_cache_slope;
 
     if (debug_opt) {
-	fprintf(stderr, "time=%7.3f off=%.6f uoff=%.6f slope %7.6f"
-			" yint %3.2f corr %7.6f freq_ppm %4.2f\n", 
-	    time_axis, offset, uncorrected_offset,
-	    info->lin_cache_slope,
-	    info->lin_cache_yint,
-	    info->lin_cache_corr,
-	    info->lin_cache_freq * 1000000.0);
+	fprintf(stderr, "iter=%2d time=%7.3f off=%.6f uoff=%.6f",
+	    (int)info->lin_count,
+	    time_axis, offset, uncorrected_offset);
+	if (info->lin_count > 1) {
+	    fprintf(stderr, " slope %7.6f"
+			    " yint %3.2f corr %7.6f freq_ppm %4.2f", 
+		info->lin_cache_slope,
+		info->lin_cache_yint,
+		info->lin_cache_corr,
+		info->lin_cache_freq * 1000000.0);
+	}
+	fprintf(stderr, "\n");
     }
 }
 

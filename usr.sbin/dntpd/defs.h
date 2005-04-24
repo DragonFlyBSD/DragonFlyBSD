@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.2 2005/04/24 05:04:28 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,6 +57,7 @@
 #include "client.h"
 
 extern int debug_opt;
+extern int debug_sleep;
 
 int udp_socket(const char *target, int port);
 int udp_ntptimereq(int fd, struct timeval *rtvp, 
