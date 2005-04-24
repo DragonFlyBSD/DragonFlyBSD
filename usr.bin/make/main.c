@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.79 2005/04/22 16:01:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.80 2005/04/24 12:39:45 okumoto Exp $
  */
 
 /*
@@ -775,8 +775,9 @@ main(int argc, char **argv)
 		/* Path of sys.mk */
 		Lst sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode *ln;
+		char	defsysmk[] = PATH_DEFSYSMK;
 
-		Path_Expand(PATH_DEFSYSMK, &sysIncPath, &sysMkPath);
+		Path_Expand(defsysmk, &sysIncPath, &sysMkPath);
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 		LST_FOREACH(ln, &sysMkPath) {
