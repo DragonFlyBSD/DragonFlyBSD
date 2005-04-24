@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/ntpreq.c,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/ntpreq.c,v 1.2 2005/04/24 03:10:53 dillon Exp $
  */
 
 #include "defs.h"
@@ -69,6 +69,8 @@ static void
 ntp_ntoh(struct ntp_msg *msg)
 {
     msg->refid = ntohl(msg->refid);
+    s_fixedpt_ntoh(&msg->rootdelay);
+    s_fixedpt_ntoh(&msg->dispersion);
     l_fixedpt_ntoh(&msg->reftime);
     l_fixedpt_ntoh(&msg->orgtime);
     l_fixedpt_ntoh(&msg->rectime);
@@ -80,6 +82,8 @@ static void
 ntp_hton(struct ntp_msg *msg)
 {
     msg->refid = htonl(msg->refid);
+    s_fixedpt_hton(&msg->rootdelay);
+    s_fixedpt_hton(&msg->dispersion);
     l_fixedpt_hton(&msg->reftime);
     l_fixedpt_hton(&msg->orgtime);
     l_fixedpt_hton(&msg->rectime);
@@ -103,9 +107,13 @@ udp_ntptimereq(int fd, struct timeval *rtvp, struct timeval *ltvp,
      * Setup the message
      */
     bzero(&wmsg, sizeof(wmsg));
-    wmsg.status = MODE_CLIENT | (NTP_VERSION << 3);
-    wmsg.refid = random();
-    wmsg.xmttime.int_partl = random();
+    wmsg.status = LI_ALARM | MODE_CLIENT | (NTP_VERSION << 3);
+    wmsg.ppoll = 4;
+    wmsg.precision = -6;
+    wmsg.rootdelay.int_parts = 1;
+    wmsg.dispersion.int_parts = 1;
+    wmsg.refid = 0;
+    wmsg.xmttime.int_partl = time(NULL) + JAN_1970;
     wmsg.xmttime.fractionl = random();
 
     /*

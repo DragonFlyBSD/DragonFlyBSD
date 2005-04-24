@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: src/usr.sbin/ntpd/ntp.h,v 1.11 2004/12/13 12:22:52 dtucker Exp $
- * $DragonFly: src/usr.sbin/dntpd/ntp.h,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/ntp.h,v 1.2 2005/04/24 03:10:53 dillon Exp $
  */
 
 /*
@@ -54,10 +54,13 @@ struct s_fixedpt {
 
 /* RFC Section 4
  *
+ * NOTE: bit order is kinda nasty, you can't read the bits as a byte
+ * XXX (RFC's tend to be broken that way).
+ *
  *    0			  1		      2			  3
  *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |LI | VN  | Mode|	  Stratum    |	    Poll     |	 Precision   |
+ *   | Mode| VN  |LI |	  Stratum    |	    Poll     |	 Precision   |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *   |			   Synchronizing Distance		     |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

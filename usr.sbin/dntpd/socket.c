@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/socket.c,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/socket.c,v 1.2 2005/04/24 03:10:53 dillon Exp $
  */
 
 #include "defs.h"
@@ -41,16 +41,17 @@ udp_socket(const char *target, int port)
 {
     struct sockaddr_in sam;
     struct hostent *hp;
+    int rc;
     int fd;
     int tos;
 
-    if (inet_aton(target, &sam.sin_addr) == 0) {
+    if ((rc = inet_aton(target, &sam.sin_addr)) == 0) {
 	if ((hp = gethostbyname2(target, AF_INET)) == NULL) {
 	    fprintf(stderr, "Unable to resolve %s\n", target);
 	    return(-1);
 	}
 	bcopy(hp->h_addr_list[0], &sam.sin_addr, hp->h_length);
-    } else {
+    } else if (rc != 1) {
 	logerrstr("unable to resolve ip/host: %s", target);
 	return(-1);
     }
@@ -73,7 +74,13 @@ udp_socket(const char *target, int port)
     }
 #ifdef IPTOS_LOWDELAY
     tos = IPTOS_LOWDELAY;
-    setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));  /* ignore error */
+    setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)); 
+#endif
+#if 0
+#ifdef IP_PORTRANGE
+    tos = IP_PORTRANGE_HIGH;
+    setsockopt(fd, IPPROTO_IP, IP_PORTRANGE, &tos, sizeof(tos)); 
+#endif
 #endif
     return(fd);
 }
