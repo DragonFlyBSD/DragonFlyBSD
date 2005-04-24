@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.16 2005/04/24 09:41:27 asmodai Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.17 2005/04/24 09:56:31 asmodai Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -166,7 +166,7 @@
 #define __section(x)    __attribute__((__section__(x)))
 #endif
 
-#if __GNUC_PREREQ__(3, 0)
+#if __GNUC_PREREQ__(2, 96)
 #define	__pure		__attribute__((__pure__))
 #else
 #define	__pure		__pure2
