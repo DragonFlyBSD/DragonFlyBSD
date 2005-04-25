@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.11 2004/09/03 08:50:47 eirikn Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.12 2005/04/25 20:05:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -112,6 +112,10 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 		    gd->gd_uschedcp,
 		    (gd->gd_uschedcp ? gd->gd_uschedcp->p_pid : -1),
 		    gd->gd_upri);
+	    if (gd->gd_curthread && gd->gd_curthread->td_preempted) {
+		    db_printf("       PREEMPTING THREAD %p\n",
+				gd->gd_curthread->td_preempted);
+	    }
 
 	    if (gd->gd_tokreqbase) {
 		lwkt_tokref_t ref;
@@ -152,6 +156,8 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 			td->td_sp,
 			td->td_wmesg ? td->td_wmesg : "-",
 			td->td_proc ? td->td_proc->p_comm : td->td_comm);
+		    if (td->td_preempted)
+			db_printf("  PREEMPTING THREAD %p\n", td->td_preempted);
 		    db_dump_td_tokens(td);
 		}
 	    }
