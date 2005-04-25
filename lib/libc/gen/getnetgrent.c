@@ -34,14 +34,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getnetgrent.c,v 1.26 1999/11/04 04:16:27 ache Exp $
- * $DragonFly: src/lib/libc/gen/getnetgrent.c,v 1.4 2004/08/25 01:53:38 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getnetgrent.c,v 1.5 2005/04/25 19:03:46 joerg Exp $
  *
  * @(#)getnetgrent.c	8.2 (Berkeley) 4/27/95
  */
 
+#include <ctype.h>
+#include <netdb.h>
 #include <stdio.h>
-#include <strings.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <unistd.h>
 
 #ifdef YP
@@ -124,20 +126,18 @@ struct netgrp {
 #define NG_USER		1	/* User name */
 #define NG_DOM		2	/* and Domain name */
 
-static struct linelist	*linehead = (struct linelist *)0;
-static struct netgrp	*nextgrp = (struct netgrp *)0;
+static struct linelist	*linehead = NULL;
+static struct netgrp	*nextgrp = NULL;
 static struct {
 	struct netgrp	*gr;
 	char		*grname;
 } grouphead = {
-	(struct netgrp *)0,
-	(char *)0,
+	NULL,
+	NULL,
 };
 static FILE *netf = (FILE *)0;
-static int parse_netgrp();
-static struct linelist *read_for_group();
-void setnetgrent(), endnetgrent();
-int getnetgrent(), innetgr();
+static int parse_netgrp(const char *);
+static struct linelist *read_for_group(const char *);
 
 #define	LINSIZ	1024	/* Length of netgroup file line */
 
@@ -148,8 +148,7 @@ int getnetgrent(), innetgr();
  * most of the work.
  */
 void
-setnetgrent(group)
-	char *group;
+setnetgrent(const char *group)
 {
 #ifdef YP
 	struct stat _yp_statp;
@@ -218,8 +217,7 @@ setnetgrent(group)
  * Get the next netgroup off the list.
  */
 int
-getnetgrent(hostp, userp, domp)
-	char **hostp, **userp, **domp;
+getnetgrent(char **hostp, char **userp, char **domp)
 {
 #ifdef YP
 	_yp_innetgr = 0;
@@ -239,7 +237,7 @@ getnetgrent(hostp, userp, domp)
  * endnetgrent() - cleanup
  */
 void
-endnetgrent()
+endnetgrent(void)
 {
 	struct linelist *lp, *olp;
 	struct netgrp *gp, *ogp;
@@ -276,11 +274,10 @@ endnetgrent()
 }
 
 #ifdef YP
-static int _listmatch(list, group, len)
-	char *list, *group;
-	int len;
+static int
+_listmatch(const char *list, const char *group, int len)
 {
-	char *ptr = list, *cptr;
+	const char *ptr = list, *cptr;
 	int glen = strlen(group);
 
 	/* skip possible leading whitespace */
@@ -300,23 +297,27 @@ static int _listmatch(list, group, len)
 	return(0);
 }
 
-static int _buildkey(key, str, dom, rotation)
-char *key, *str, *dom;
-int *rotation;
+static int
+_buildkey(char **key, const char *str, const char *dom, int *rotation)
 {
+	if (key != NULL)
+		free(key);
+	key = NULL;
 	(*rotation)++;
 	if (*rotation > 4)
 		return(0);
 	switch(*rotation) {
-		case(1): sprintf((char *)key, "%s.%s", str, dom ? dom : "*");
+		case(1): asprintf(key, "%s.%s", str, dom ? dom : "*");
 			 break;
-		case(2): sprintf((char *)key, "%s.*", str);
+		case(2): asprintf(key, "%s.*", str);
 			 break;
-		case(3): sprintf((char *)key, "*.%s", dom ? dom : "*");
+		case(3): asprintf(key, "*.%s", dom ? dom : "*");
 			 break;
-		case(4): sprintf((char *)key, "*.*");
+		case(4): asprintf(key, "*.*");
 			 break;
 	}
+	if (key == NULL)
+		return(0);
 	return(1);
 }
 #endif
@@ -325,8 +326,7 @@ int *rotation;
  * Search for a match in a netgroup.
  */
 int
-innetgr(group, host, user, dom)
-	const char *group, *host, *user, *dom;
+innetgr(const char *group, const char *host, const char *user, const char *dom)
 {
 	char *hst, *usr, *dm;
 #ifdef YP
@@ -350,12 +350,12 @@ innetgr(group, host, user, dom)
 	 * NIS 'reverse netgroup' lookups.
 	 */
 	if (_use_only_yp) {
-		char _key[MAXHOSTNAMELEN];
+		char *_key = NULL;
 		int rot = 0, y = 0;
 
 		if(yp_get_default_domain(&_netgr_yp_domain))
 			return(0);
-		while(_buildkey(_key, user ? user : host, dom, &rot)) {
+		while(_buildkey(&_key, user ? user : host, dom, &rot)) {
 			y = yp_match(_netgr_yp_domain, user? "netgroup.byuser":
 			    "netgroup.byhost", _key, strlen(_key), &result,
 			    	&resultlen);
@@ -370,6 +370,8 @@ innetgr(group, host, user, dom)
 			} else {
 				rv = _listmatch(result, group, resultlen);
 				free(result);
+				if (_key != NULL)
+					free(_key);
 				if (rv)
 					return(1);
 				else
@@ -385,6 +387,8 @@ innetgr(group, host, user, dom)
 		 * the 'old-fashioned' way by grovelling through the netgroup
 		 * map and resolving memberships on the fly.
 		 */
+		if (_key != NULL)
+			free(_key);
 		if (y != YPERR_MAP)
 			return(0);
 	}
@@ -407,8 +411,7 @@ innetgr(group, host, user, dom)
  * Parse the netgroup file setting up the linked lists.
  */
 static int
-parse_netgrp(group)
-	char *group;
+parse_netgrp(const char *group)
 {
 	char *spos, *epos;
 	int len, strpos;
@@ -518,10 +521,9 @@ parse_netgrp(group)
  * is found. Return 1 if eof is encountered.
  */
 static struct linelist *
-read_for_group(group)
-	char *group;
+read_for_group(const char *group)
 {
-	char *pos, *spos, *linep, *olinep;
+	char *pos, *spos, *linep = NULL, *olinep = NULL;
 	int len, olen;
 	int cont;
 	struct linelist *lp;
@@ -629,5 +631,5 @@ read_for_group(group)
 	 */
 	rewind(netf);
 #endif
-	return ((struct linelist *)0);
+	return (NULL);
 }
