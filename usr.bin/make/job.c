@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.70 2005/04/24 12:44:50 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.71 2005/04/25 05:52:18 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3050,7 +3050,6 @@ static char	    meta[256];
 
 static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
-static sig_atomic_t interrupted;
 
 static void
 CompatInit(void)
