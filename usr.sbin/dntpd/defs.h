@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.4 2005/04/24 23:09:32 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.5 2005/04/25 17:42:49 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -52,11 +52,16 @@
 #include <errno.h>
 #include <assert.h>
 #include <math.h>
+#include <syslog.h>
 
 #include "ntp.h"
 #include "client.h"
 
+#define logdebug(level, ctl, varargs...)	\
+	if (level <= debug_level) _logdebug(level, ctl, ##varargs);
+
 extern int debug_opt;
+extern int debug_level;
 extern int min_sleep_opt;
 extern int nom_sleep_opt;
 extern int max_sleep_opt;
@@ -68,15 +73,18 @@ int udp_ntptimereq(int fd, struct timeval *rtvp,
 void l_fixedpt_to_tv(struct l_fixedpt *fixed, struct timeval *tvp);
 void tv_subtract_micro(struct timeval *tvp, long usec);
 void tv_add_micro(struct timeval *tvp, long usec);
+void tv_add_offset(struct timeval *tvp, double offset);
 double tv_delta_double(struct timeval *tv1, struct timeval *tv2);
 void tv_to_ts(struct timeval *tv, struct timespec *ts);
 void ts_to_tv(struct timespec *ts, struct timeval *tv);
 
 void logerr(const char *ctl, ...);
 void logerrstr(const char *ctl, ...);
+void _logdebug(int level, const char *ctl, ...);
 
 void sysntp_getbasetime(struct timeval *tvp);
 double sysntp_correct_offset(double offset);
+double sysntp_correct_course_offset(double offset);
 void sysntp_correct_freq(double freq);
 
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/socket.c,v 1.2 2005/04/24 03:10:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/socket.c,v 1.3 2005/04/25 17:42:49 dillon Exp $
  */
 
 #include "defs.h"
@@ -47,7 +47,7 @@ udp_socket(const char *target, int port)
 
     if ((rc = inet_aton(target, &sam.sin_addr)) == 0) {
 	if ((hp = gethostbyname2(target, AF_INET)) == NULL) {
-	    fprintf(stderr, "Unable to resolve %s\n", target);
+	    logerr("Unable to resolve %s", target);
 	    return(-1);
 	}
 	bcopy(hp->h_addr_list[0], &sam.sin_addr, hp->h_length);

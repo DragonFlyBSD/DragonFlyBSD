@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/convert.c,v 1.3 2005/04/24 09:39:27 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/convert.c,v 1.4 2005/04/25 17:42:49 dillon Exp $
  */
 
 #include "defs.h"
@@ -75,6 +75,17 @@ tv_add_micro(struct timeval *tvp, long usec)
 	    tvp->tv_usec = tvp->tv_usec % 1000000;
 	}
     }
+}
+
+/*
+ * Add the fp offset to tvp.
+ */
+void
+tv_add_offset(struct timeval *tvp, double offset)
+{
+    tvp->tv_sec += (long)offset;
+    offset -= (double)(long)offset; /* e.g. -1.3 - (-1) = -0.3 */
+    tv_add_micro(tvp, (int)(offset * 1000000.0));
 }
 
 /*

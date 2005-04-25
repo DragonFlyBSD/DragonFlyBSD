@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.3 2005/04/24 23:09:32 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.4 2005/04/25 17:42:49 dillon Exp $
  */
 
 #include "defs.h"
@@ -45,6 +45,7 @@ static int nservers;
 static int maxservers;
 
 int debug_opt;
+int debug_level = -1;		/* (set to default later) */
 int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
 int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
 int max_sleep_opt = 1800;	/* 30 minutes maximum poll interval */
@@ -66,7 +67,7 @@ main(int ac, char **av)
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "dtT:L:")) != -1) {
+    while ((ch = getopt(ac, av, "dl:qtT:L:")) != -1) {
 	switch(ch) {
 	case 'T':
 	    nom_sleep_opt = strtol(optarg, NULL, 0);
@@ -88,11 +89,22 @@ main(int ac, char **av)
 	case 'L':
 	    max_sleep_opt = strtol(optarg, NULL, 0);
 	    break;
+	case 'l':
+	    debug_level = strtol(optarg, NULL, 0);
+	    break;
+	case 'q':
+	    debug_level = 0;
+	    break;
 	case 'd':
 	    debug_opt = 1;
+	    if (debug_level < 0)
+		debug_level = 99;
 	    break;
 	case 't':
 	    test_opt = 1;
+	    debug_opt = 1;
+	    if (debug_level < 0)
+		debug_level = 99;
 	    break;
 	case 'h':
 	default:
@@ -100,6 +112,12 @@ main(int ac, char **av)
 	    /* not reached */
 	}
     }
+
+    if (debug_level < 0)
+	debug_level = 1;
+
+    if (debug_opt == 0)
+	openlog("dntpd", LOG_CONS|LOG_PID, LOG_DAEMON);
 
     if (test_opt) {
 	if (optind != ac - 1)
@@ -131,9 +149,13 @@ static
 void
 usage(const char *av0)
 {
-    fprintf(stderr, "%s [-dt] [-T poll_interval] [additional_targets]\n", av0);
+    fprintf(stderr, "%s [-dqt] [-l log_level] [-T poll_interval] [-L poll_limit] [additional_targets]\n", av0);
     fprintf(stderr, "\t-d\tforeground operation, debugging turned on\n");
+    fprintf(stderr, "\t-q\tquiet-mode, same as -L 0\n");
     fprintf(stderr, "\t-t\ttest mode (specify one target on command line)\n");
+    fprintf(stderr, "\t-T\tnominal polling interval\n");
+    fprintf(stderr, "\t-L\tmaximum polling interval\n");
+    fprintf(stderr, "\t-l\tset log level (0-4), default 1\n");
     exit(1);
 }
 
@@ -151,8 +173,6 @@ dotest(const char *target)
     }
     info.target = strdup(target);
     client_init();
-
-    debug_opt = 1;
 
     fprintf(stderr, 
 	    "Will run %d-second polls until interrupted.\n", nom_sleep_opt);

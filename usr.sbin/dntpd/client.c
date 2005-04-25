@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.6 2005/04/25 02:28:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.7 2005/04/25 17:42:49 dillon Exp $
  */
 
 #include "defs.h"
@@ -92,7 +92,13 @@ client_main(struct server_info **info_ary, int count)
 	if (best_off) {
 	    offset = best_off->lin_sumoffset / best_off->lin_countoffset;
 	    lin_resetalloffsets(info_ary, count);
-	    freq = sysntp_correct_offset(offset);
+	    if (offset < -COURSE_OFFSET_CORRECTION_LIMIT ||
+		offset > COURSE_OFFSET_CORRECTION_LIMIT
+	    ) {
+		freq = sysntp_correct_course_offset(offset);
+	    } else {
+		freq = sysntp_correct_offset(offset);
+	    }
 	} else {
 	    freq = 0.0;
 	}
@@ -142,19 +148,14 @@ client_poll(server_info_t info, int poll_interval)
     }
     info->poll_sleep = 0;
 
-    if (debug_opt) {
-	fprintf(stderr, "%s: poll, ", info->target);
-	fflush(stderr);
-    }
+    logdebug(4, "%s: poll, ", info->target);
     if (udp_ntptimereq(info->fd, &rtv, &ltv, &lbtv) < 0) {
 	++info->poll_failed;
-	if (debug_opt) {
-	    fprintf(stderr, "no response (%d failures in a row)\n", 
-		    info->poll_failed);
-	}
+	logdebug(4, "no response (%d failures in a row)\n", 
+		info->poll_failed);
 	if (info->poll_failed == POLL_FAIL_RESET) {
-	    if (debug_opt && info->lin_count != 0) {
-		fprintf(stderr, "%s: resetting regression due to failures\n", 
+	    if (info->lin_count != 0) {
+		logdebug(4, "%s: resetting regression due to failures\n", 
 			info->target);
 	    }
 	    lin_reset(info);
@@ -178,7 +179,7 @@ client_poll(server_info_t info, int poll_interval)
 	/*
 	 * Linear regression
 	 */
-	if (debug_opt) {
+	if (debug_level >= 4) {
 	    struct tm *tp;
 	    char buf[64];
 	    time_t t;
@@ -186,17 +187,14 @@ client_poll(server_info_t info, int poll_interval)
 	    t = rtv.tv_sec;
 	    tp = localtime(&t);
 	    strftime(buf, sizeof(buf), "%d-%b-%Y %H:%M:%S", tp);
-	    fprintf(stderr, "%s.%03ld ", 
-		    buf, rtv.tv_usec / 1000);
+	    logdebug(4, "%s.%03ld ", buf, rtv.tv_usec / 1000);
 	}
 	lin_regress(info, &ltv, &lbtv, offset);
 	info = info->altinfo;
-	if (info && debug_opt) {
-	    fprintf(stderr, "%*.*s: poll, ", 
+	if (info && debug_level >= 4) {
+	    logdebug(4, "%*.*s: poll, ", 
 		(int)strlen(info->target), 
-		(int)strlen(info->target),
-		"(alt)");
-	    fflush(stderr);
+		(int)strlen(info->target), "(alt)");
 	}
     }
 }
@@ -238,11 +236,10 @@ client_check(struct server_info **checkp,
 	if ((info = check->altinfo) && info->lin_count >= LIN_RESTART / 2) {
 	    double freq_diff;
 
-	    if (debug_opt) {
-		freq_diff = info->lin_cache_freq - check->lin_cache_freq;
-		printf("%s: Switching to alternate, Frequence difference is %6.3f ppm\n",
-			info->target, freq_diff * 1.0E+6);
-	    }
+	    freq_diff = info->lin_cache_freq - check->lin_cache_freq;
+	    logdebug(4, "%s: Switching to alternate, Frequence "
+		    "difference is %6.3f ppm\n",
+		    info->target, freq_diff * 1.0E+6);
 	    *checkp = info;
 	    free(check);
 	    check = info;
@@ -308,9 +305,8 @@ client_manage_polling_mode(struct server_info *info)
 	info->poll_mode != POLL_FAILED_1 &&
 	info->poll_mode != POLL_FAILED_2
     ) {
-	if (debug_opt)
-	    fprintf(stderr, "%s: polling mode moving to a FAILED state.\n",
-		    info->target);
+	logdebug(2, "%s: polling mode moving to a FAILED state.\n",
+		info->target);
 	if (info->poll_mode != POLL_STARTUP)
 	    info->poll_mode = POLL_FAILED_1;
 	else
@@ -325,8 +321,7 @@ client_manage_polling_mode(struct server_info *info)
     case POLL_FIXED:
 	info->poll_mode = POLL_STARTUP;
 	info->poll_count = 0;
-	if (debug_opt)
-	    fprintf(stderr, "%s: polling mode INIT->STARTUP.\n", info->target);
+	logdebug(2, "%s: polling mode INIT->STARTUP.\n", info->target);
 	/* fall through */
     case POLL_STARTUP:
 	if (info->poll_count < POLL_STARTUP_MAX) {
@@ -336,10 +331,7 @@ client_manage_polling_mode(struct server_info *info)
 	}
 	info->poll_mode = POLL_ACQUIRE;
 	info->poll_count = 0;
-	if (debug_opt) {
-	    fprintf(stderr, "%s: polling mode STARTUP->ACQUIRE.\n",
-		    info->target);
-	}
+	logdebug(2, "%s: polling mode STARTUP->ACQUIRE.\n", info->target);
 	/* fall through */
     case POLL_ACQUIRE:
 	/*
@@ -350,13 +342,13 @@ client_manage_polling_mode(struct server_info *info)
 	    info->lin_count < 8 ||
 	    fabs(info->lin_cache_corr) < 0.85
 	) {
-	    if (debug_opt && 
-		info->poll_count >= POLL_ACQUIRE_MAX && 
+	    if (info->poll_count >= POLL_ACQUIRE_MAX && 
 		info->lin_count == LIN_RESTART - 2
 	    ) {
-		fprintf(stderr, 
-		    "%s: WARNING: Unable to shift this source to maintainance\n"
-		    "mode.  Target correllation is aweful.\n", info->target);
+		logdebug(2, 
+		    "%s: WARNING: Unable to shift this source to "
+		    "maintainance mode.  Target correllation is aweful.\n",
+		    info->target);
 	    }
 	    if (info->poll_sleep == 0)
 		info->poll_sleep = nom_sleep_opt;
@@ -364,21 +356,16 @@ client_manage_polling_mode(struct server_info *info)
 	}
 	info->poll_mode = POLL_MAINTAIN;
 	info->poll_count = 0;
-	if (debug_opt) {
-	    fprintf(stderr, "%s: polling mode ACQUIRE->MAINTAIN.\n",
-		    info->target);
-	}
+	logdebug(2, "%s: polling mode ACQUIRE->MAINTAIN.\n", info->target);
 	/* fall through */
     case POLL_MAINTAIN:
 	if (info->lin_count >= LIN_RESTART / 2 && 
 	    fabs(info->lin_cache_corr) < 0.70
 	) {
-	    if (debug_opt) {
-		fprintf(stderr, 
-		    "%s: polling mode MAINTAIN->ACQUIRE.  Unable to maintain\n"
-		    "the maintainance mode because the correllation went"
-		    " bad!\n", info->target);
-	    }
+	    logdebug(2, 
+		"%s: polling mode MAINTAIN->ACQUIRE.  Unable to maintain\n"
+		"the maintainance mode because the correllation went"
+		" bad!\n", info->target);
 	    info->poll_mode = POLL_ACQUIRE;
 	    info->poll_count = 0;
 	    break;
@@ -396,8 +383,7 @@ client_manage_polling_mode(struct server_info *info)
 	 * does increment (but gets zero'd once we recover).
 	 */
 	if (info->poll_count != 0) {
-	    fprintf(stderr, "%s: polling mode FAILED1->ACQUIRE.\n",
-		    info->target);
+	    logdebug(2, "%s: polling mode FAILED1->ACQUIRE.\n", info->target);
 	    info->poll_mode = POLL_ACQUIRE;
 	    /* do not reset poll_count */
 	    break;
@@ -413,8 +399,7 @@ client_manage_polling_mode(struct server_info *info)
 	 * in startup.  If we recover we have to go back into startup.
 	 */
 	if (info->poll_count != 0) {
-	    fprintf(stderr, "%s: polling mode FAILED2->STARTUP.\n",
-		    info->target);
+	    logdebug(2, "%s: polling mode FAILED2->STARTUP.\n", info->target);
 	    info->poll_mode = POLL_STARTUP;
 	    break;
 	}
@@ -524,12 +509,12 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     info->lin_cache_offset = offset;
     info->lin_cache_freq = info->lin_cache_slope;
 
-    if (debug_opt) {
-	fprintf(stderr, "iter=%2d time=%7.3f off=%.6f uoff=%.6f",
+    if (debug_level >= 4) {
+	logdebug(4, "iter=%2d time=%7.3f off=%.6f uoff=%.6f",
 	    (int)info->lin_count,
 	    time_axis, offset, uncorrected_offset);
 	if (info->lin_count > 1) {
-	    fprintf(stderr, " slope %7.6f"
+	    logdebug(4, " slope %7.6f"
 			    " yint %3.2f corr %7.6f freq_ppm %4.2f", 
 		info->lin_cache_slope,
 		info->lin_cache_yint,
@@ -537,9 +522,9 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
 		info->lin_cache_freq * 1000000.0);
 	}
 	if (info->lin_countoffset > 1) {
-	    fprintf(stderr, " stddev %7.6f", info->lin_cache_stddev);
+	    logdebug(4, " stddev %7.6f", info->lin_cache_stddev);
 	}
-	fprintf(stderr, "\n");
+	logdebug(4, "\n");
     }
 }
 

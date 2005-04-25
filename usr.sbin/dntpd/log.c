@@ -31,10 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/log.c,v 1.1 2005/04/24 02:36:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/log.c,v 1.2 2005/04/25 17:42:49 dillon Exp $
  */
 
 #include "defs.h"
+
+static void vlogline(int level, int newline, const char *ctl, va_list va);
 
 void
 logerr(const char *ctl, ...)
@@ -44,8 +46,8 @@ logerr(const char *ctl, ...)
 
     saved_errno = errno;
     va_start(va, ctl);
-    vfprintf(stderr, ctl, va);
-    fprintf(stderr, ": %s\n", strerror(saved_errno));
+    vlogline(0, 0, ctl, va);
+    vlogline(0, 1, ": %s", strerror(saved_errno));
     va_end(va);
 
 }
@@ -56,8 +58,67 @@ logerrstr(const char *ctl, ...)
     va_list va;
 
     va_start(va, ctl);
-    vfprintf(stderr, ctl, va);
-    fprintf(stderr, "\n");
+    vlogline(0, 1, ctl, va);
     va_end(va);
+}
+
+/*
+ * logdebug() does not add the '\n', allowing multiple calls to generate
+ * a debugging log line.  The buffer is accumulated until a newline is
+ * detected, then syslogged.
+ */
+void
+_logdebug(int level, const char *ctl, ...)
+{
+    va_list va;
+
+    if (level <= debug_level) {
+	va_start(va, ctl);
+	vlogline(level, 0, ctl, va);
+	va_end(va);
+    }
+}
+
+static void
+vlogline(int level, int newline, const char *ctl, va_list va)
+{
+    static char line_build[1024];
+    static int line_index;
+    int priority;
+
+    /*
+     * Output to stderr directly but build the log line for syslog.
+     */
+    if (level <= debug_level) {
+	if (debug_opt) {
+	    vfprintf(stderr, ctl, va);
+	    fflush(stderr);
+	} else {
+	    vsnprintf(line_build + line_index, sizeof(line_build) - line_index, 
+		    ctl, va);
+	    line_index += strlen(line_build + line_index);
+	    if (line_index && line_build[line_index-1] == '\n') {
+		newline = 1;
+		--line_index;
+	    }
+	    if (newline) {
+		switch(level) {
+		case 0:
+		case 1:
+		case 2:
+		    priority = LOG_NOTICE;
+		    break;
+		case 3:
+		    priority = LOG_INFO;
+		    break;
+		default:
+		    priority = LOG_DEBUG;
+		    break;
+		}
+		syslog(priority, "%*.*s", line_index, line_index, line_build);
+		line_index = 0;
+	    }
+	}
+    }
 }
 

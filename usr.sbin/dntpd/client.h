@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.4 2005/04/24 23:09:32 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.5 2005/04/25 17:42:49 dillon Exp $
  */
 
 struct server_info {
@@ -111,6 +111,12 @@ struct server_info {
  * replaces the first one (and we start a third) at LIN_RESTART.
  */
 #define LIN_RESTART	30
+
+/*
+ * A course correction is made if the time gets more then 10 minutes
+ * off.
+ */
+#define COURSE_OFFSET_CORRECTION_LIMIT	600.0
 
 typedef struct server_info *server_info_t;
 
