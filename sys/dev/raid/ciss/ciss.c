@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.12 2005/02/01 02:16:58 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.13 2005/04/25 07:05:55 joerg Exp $
  */
 
 /*
@@ -760,6 +760,7 @@ ciss_init_requests(struct ciss_softc *sc)
 	ciss_printf(sc, "can't allocate command memory\n");
 	return(ENOMEM);
     }
+    bus_dmamap_create(sc->ciss_command_dmat, 0, &sc->ciss_command_map);
     bus_dmamap_load(sc->ciss_command_dmat, sc->ciss_command_map, sc->ciss_command, 
 		    sizeof(struct ciss_command) * sc->ciss_max_requests,
 		    ciss_command_map_helper, sc, 0);
@@ -1378,6 +1379,7 @@ ciss_free(struct ciss_softc *sc)
     if (sc->ciss_command != NULL) {
 	bus_dmamap_unload(sc->ciss_command_dmat, sc->ciss_command_map);
 	bus_dmamem_free(sc->ciss_command_dmat, sc->ciss_command, sc->ciss_command_map);
+	bus_dmamap_destroy(sc->ciss_command_dmat, sc->ciss_command_map);
     }
     if (sc->ciss_buffer_dmat)
 	bus_dma_tag_destroy(sc->ciss_command_dmat);
@@ -1992,6 +1994,7 @@ ciss_map_request(struct ciss_request *cr)
     if ((cr->cr_flags & CISS_REQ_MAPPED) || (cr->cr_data == NULL))
 	return(0);
     
+    bus_dmamap_create(sc->ciss_buffer_dmat, 0, &cr->cr_datamap);
     bus_dmamap_load(sc->ciss_buffer_dmat, cr->cr_datamap, cr->cr_data, cr->cr_length,
 		    ciss_request_map_helper, CISS_FIND_COMMAND(cr), 0);
 	
@@ -2045,6 +2048,7 @@ ciss_unmap_request(struct ciss_request *cr)
 	bus_dmamap_sync(sc->ciss_buffer_dmat, cr->cr_datamap, BUS_DMASYNC_POSTWRITE);
 
     bus_dmamap_unload(sc->ciss_buffer_dmat, cr->cr_datamap);
+    bus_dmamap_destroy(sc->ciss_buffer_dmat, cr->cr_datamap);
     cr->cr_flags &= ~CISS_REQ_MAPPED;
 }
 
