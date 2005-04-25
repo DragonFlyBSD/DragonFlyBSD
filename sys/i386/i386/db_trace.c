@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.9 2005/01/27 20:49:46 joerg Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.10 2005/04/25 20:22:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -268,6 +268,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	struct pcb *pcb;
 	struct proc *p;
 	pid_t pid;
+	int i;
 
 	if (count == -1)
 		count = 1024;
@@ -315,7 +316,28 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 			callpc = (db_addr_t)pcb->pcb_eip;
 		}
 	} else {
+		/*
+		 * Look for something that might be a frame pointer, just as
+		 * a convenience.
+		 */
 		frame = (struct i386_frame *)addr;
+		for (i = 0; i < 4096; i += 4) {
+			struct i386_frame *check;
+
+			check = (struct i386_frame *)db_get_value((int)((char *)&frame->f_frame + i), 4, FALSE);
+			if ((char *)check - (char *)frame >= 0 &&
+			    (char *)check - (char *)frame < 4096
+			) {
+				break;
+			}
+			db_printf("%p does not look like a stack frame, skipping\n", (char *)&frame->f_frame + i);
+		}
+		if (i == 4096) {
+			db_printf("Unable to find anything that looks like a stack frame\n");
+			return;
+		}
+		frame = (void *)((char *)frame + i);
+		db_printf("Trace beginning at frame %p\n", frame);
 		callpc = (db_addr_t)db_get_value((int)&frame->f_retaddr, 4, FALSE);
 	}
 
