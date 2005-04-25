@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.21 2004/12/30 07:01:51 cpressey Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.22 2005/04/25 15:14:54 joerg Exp $
  */
 
 #ifdef _KERNEL
@@ -267,6 +267,13 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: kern/50226
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MITSUMI", "USB FDD", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * The CISS RAID controllers do not support SYNC_CACHE
+		 */
+		{T_DIRECT, SIP_MEDIA_FIXED, "COMPAQ", "RAID*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 #ifdef DA_OLD_QUIRKS
