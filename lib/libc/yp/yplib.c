@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.4 2005/01/31 22:29:47 dillon Exp $
+ * $DragonFly: src/lib/libc/yp/yplib.c,v 1.5 2005/04/25 18:52:28 joerg Exp $
  */
 
 #include "namespace.h"
@@ -46,6 +46,9 @@
 #include <rpc/xdr.h>
 #include <rpcsvc/yp.h>
 #include "un-namespace.h"
+
+bool_t	xdr_ypresp_all_seq(XDR *, u_long *);
+int	_yp_check(char **);
 
 /*
  * We have to define these here due to clashes between yp_prot.h and
@@ -81,6 +84,7 @@ struct dom_binding {
 #endif
 };
 
+#include <rpcsvc/yp.h>
 #include <rpcsvc/ypclnt.h>
 
 #ifndef BINDINGDIR
@@ -88,13 +92,6 @@ struct dom_binding {
 #endif
 #define MAX_RETRIES 20
 
-extern bool_t xdr_domainname(), xdr_ypbind_resp();
-extern bool_t xdr_ypreq_key(), xdr_ypresp_val();
-extern bool_t xdr_ypreq_nokey(), xdr_ypresp_key_val();
-extern bool_t xdr_ypresp_all(), xdr_ypresp_all_seq();
-extern bool_t xdr_ypresp_master();
-
-int (*ypresp_allfn)();
 void *ypresp_data;
 
 static void _yp_unbind(struct dom_binding *);
@@ -261,23 +258,34 @@ ypmatch_cache_lookup(struct dom_binding *ypdb, char *map, keydat *key,
 char *
 ypbinderr_string(int incode)
 {
+	const char *errstr;
 	static char err[80];
 	switch (incode) {
 	case 0:
-		return ("Success");
+		errstr = "Success";
+		break;
 	case YPBIND_ERR_ERR:
-		return ("Internal ypbind error");
+		errstr = "Internal ypbind error";
+		break;
 	case YPBIND_ERR_NOSERV:
-		return ("Domain not bound");
+		errstr = "Domain not bound";
+		break;
 	case YPBIND_ERR_RESC:
-		return ("System resource allocation failure");
+		errstr = "System resource allocation failure";
+		break;
+	default:
+		errstr = NULL;
+		break;
 	}
-	sprintf(err, "Unknown ypbind error: #%d\n", incode);
+	if (errstr != NULL)
+		strlcpy(err, errstr, sizeof(err));
+	else
+		snprintf(err, sizeof(err), "Unknown ypbind error: #%d\n", incode);
 	return (err);
 }
 
 int
-_yp_dobind(char *dom, struct dom_binding **ypdb)
+_yp_dobind(const char *dom, struct dom_binding **ypdb)
 {
 	static pid_t pid = -1;
 	char path[MAXPATHLEN];
@@ -288,7 +296,8 @@ _yp_dobind(char *dom, struct dom_binding **ypdb)
 	int clnt_sock, fd;
 	pid_t gpid;
 	CLIENT *client;
-	int new = 0, r;
+	int new = 0;
+	ssize_t r;
 	int retries = 0;
 	struct sockaddr_in check;
 	int checklen = sizeof(struct sockaddr_in);
@@ -383,7 +392,7 @@ again:
 			iov[1].iov_len = sizeof ybr;
 
 			r = _readv(fd, iov, 2);
-			if (r != iov[0].iov_len + iov[1].iov_len) {
+			if (r != (ssize_t)(iov[0].iov_len + iov[1].iov_len)) {
 				_close(fd);
 				ysd->dom_vers = -1;
 				goto again;
@@ -606,7 +615,7 @@ yp_unbind(char *dom)
 }
 
 int
-yp_match(char *indomain, char *inmap, const char *inkey, int inkeylen,
+yp_match(const char *indomain, const char *inmap, const char *inkey, int inkeylen,
     char **outval, int *outvallen)
 {
 	struct dom_binding *ysd;
@@ -834,7 +843,6 @@ again:
 
 	yprnk.domain = indomain;
 	yprnk.map = inmap;
-	ypresp_allfn = incallback->foreach;
 	ypresp_data = (void *)incallback->data;
 
 	if (clnt_call(clnt, YPPROC_ALL,
@@ -948,6 +956,7 @@ again:
 	return (r);
 }
 
+#if 0
 int
 yp_maplist(char *indomain, struct ypmaplist **outmaplist)
 {
@@ -984,49 +993,74 @@ again:
 	/* NO: xdr_free(xdr_ypresp_maplist, &ypml);*/
 	return (r);
 }
+#endif
 
 char *
 yperr_string(int incode)
 {
+	const char *errstr;
 	static char err[80];
 
 	switch (incode) {
 	case 0:
-		return ("Success");
+		errstr = "Success";;
+		break;
 	case YPERR_BADARGS:
-		return ("Request arguments bad");
+		errstr = "Request arguments bad";
+		break;
 	case YPERR_RPC:
-		return ("RPC failure");
+		errstr = "RPC failure";
+		break;
 	case YPERR_DOMAIN:
-		return ("Can't bind to server which serves this domain");
+		errstr = "Can't bind to server which serves this domain";
+		break;
 	case YPERR_MAP:
-		return ("No such map in server's domain");
+		errstr = "No such map in server's domain";
+		break;
 	case YPERR_KEY:
-		return ("No such key in map");
+		errstr = "No such key in map";
+		break;
 	case YPERR_YPERR:
-		return ("YP server error");
+		errstr = "YP server error";
+		break;
 	case YPERR_RESRC:
-		return ("Local resource allocation failure");
+		errstr = "Local resource allocation failure";
+		break;
 	case YPERR_NOMORE:
-		return ("No more records in map database");
+		errstr = "No more records in map database";
+		break;
 	case YPERR_PMAP:
-		return ("Can't communicate with portmapper");
+		errstr = "Can't communicate with portmapper";
+		break;
 	case YPERR_YPBIND:
-		return ("Can't communicate with ypbind");
+		errstr = "Can't communicate with ypbind";
+		break;
 	case YPERR_YPSERV:
-		return ("Can't communicate with ypserv");
+		errstr = "Can't communicate with ypserv";
+		break;
 	case YPERR_NODOM:
-		return ("Local domain name not set");
+		errstr = "Local domain name not set";
+		break;
 	case YPERR_BADDB:
-		return ("Server data base is bad");
+		errstr = "Server data base is bad";
+		break;
 	case YPERR_VERS:
-		return ("YP server version mismatch - server can't supply service.");
+		errstr = "YP server version mismatch - server can't supply service.";
+		break;
 	case YPERR_ACCESS:
-		return ("Access violation");
+		errstr = "Access violation";
+		break;
 	case YPERR_BUSY:
-		return ("Database is busy");
+		errstr = "Database is busy";
+		break;
+	default:
+		errstr = NULL;
+		break;
 	}
-	sprintf(err, "YP unknown error %d\n", incode);
+	if (errstr != NULL)
+		strlcpy(err, errstr, sizeof(err));
+	else
+		snprintf(err, sizeof(err), "YP unknown error %d\n", incode);
 	return (err);
 }
 
