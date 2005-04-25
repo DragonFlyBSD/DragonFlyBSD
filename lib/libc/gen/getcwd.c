@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcwd.c,v 1.18 1999/09/28 13:24:13 marcel Exp $
- * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.5 2005/04/25 18:19:48 joerg Exp $
  *
  * @(#)getcwd.c	8.5 (Berkeley) 2/7/95
  */
@@ -50,6 +50,8 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
+int	__getcwd(char *pt, size_t size);
+
 #define	ISDOT(dp) \
 	(dp->d_name[0] == '.' && (dp->d_name[1] == '\0' || \
 	    (dp->d_name[1] == '.' && dp->d_name[2] == '\0')))
@@ -57,9 +59,7 @@
 static int have__getcwd = 1;	/* 0 = no, 1 = perhaps, 2 = yes */
 
 char *
-getcwd(pt, size)
-	char *pt;
-	size_t size;
+getcwd(char *pt, size_t size)
 {
 	struct dirent *dp;
 	DIR *dir = NULL;
