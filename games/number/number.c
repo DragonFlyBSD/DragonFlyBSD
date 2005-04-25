@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)number.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/number/number.c,v 1.12 1999/12/12 03:22:35 billf Exp $
- * $DragonFly: src/games/number/number.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/number/number.c,v 1.4 2005/04/25 16:10:24 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -79,9 +79,7 @@ void	usage (void);
 int lflag;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, first;
 	char line[256];
@@ -118,8 +116,7 @@ main(argc, argv)
 }
 
 void
-convert(line)
-	char *line;
+convert(char *line)
 {
 	int flen, len, rval;
 	char *p, *fraction;
@@ -187,9 +184,7 @@ badnum:			errx(1, "illegal number: %s", line);
 }
 
 int
-unit(len, p)
-	int len;
-	char *p;
+unit(int len, char *p)
 {
 	int off, rval;
 
@@ -223,9 +218,7 @@ unit(len, p)
 }
 
 int
-number(p, len)
-	char *p;
-	int len;
+number(char *p, int len)
 {
 	int val, rval;
 
@@ -263,10 +256,9 @@ number(p, len)
 }
 
 void
-pfract(len)
-	int len;
+pfract(int len)
 {
-	static char *pref[] = { "", "ten-", "hundred-" };
+	static const char *pref[] = { "", "ten-", "hundred-" };
 
 	switch(len) {
 	case 1:
@@ -282,7 +274,7 @@ pfract(len)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: number [# ...]\n");
 	exit(1);

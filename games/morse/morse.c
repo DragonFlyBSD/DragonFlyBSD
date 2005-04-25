@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/morse/morse.c,v 1.3 2005/04/25 16:10:24 liamfoy Exp $
  */
 
 /*
@@ -60,7 +60,7 @@
 
 struct morsetab {
 	char            inchar;
-	char           *morse;
+	const char      *morse;
 };
 
 static const struct morsetab mtab[] = {

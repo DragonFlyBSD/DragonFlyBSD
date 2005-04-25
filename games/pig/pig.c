@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pig.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/games/pig/pig.c,v 1.7 1999/11/30 03:49:08 billf Exp $
- * $DragonFly: src/games/pig/pig.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/pig/pig.c,v 1.4 2005/04/25 16:10:24 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -48,9 +48,7 @@ void pigout (char *, int);
 void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int len;
 	int ch;
@@ -67,7 +65,7 @@ main(argc, argv)
 
 	for (len = 0; (ch = getchar()) != EOF;) {
 		if (isalpha(ch)) {
-			if (len >= sizeof(buf)) {
+			if (len >= (int)sizeof(buf)) {
 				(void)fprintf(stderr, "pig: ate too much!\n");
 				exit(1);
 			}
@@ -84,9 +82,7 @@ main(argc, argv)
 }
 
 void
-pigout(buf, len)
-	char *buf;
-	int len;
+pigout(char *buf, int len)
 {
 	int ch, start;
 	int olen;
@@ -115,7 +111,7 @@ pigout(buf, len)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: pig\n");
 	exit(1);

@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quiz.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/quiz/quiz.c,v 1.12 1999/12/12 02:29:54 billf Exp $
- * $DragonFly: src/games/quiz/quiz.c,v 1.4 2004/07/27 07:37:39 asmodai Exp $
+ * $DragonFly: src/games/quiz/quiz.c,v 1.5 2005/04/25 16:10:24 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -61,7 +61,7 @@ char	*appdstr (char *, char *, size_t);
 void	 downcase (char *);
 void	 err (const char *, ...);
 void	 get_cats (char *, char *);
-void	 get_file (char *);
+void	 get_file (const char *);
 char	*next_cat (char *);
 void	 quiz (void);
 void	 score (u_int, u_int, u_int);
@@ -69,12 +69,10 @@ void	 show_index (void);
 void	 usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
-	char *indexfile;
+	const char *indexfile;
 
 	/* revoke */
 	setgid(getgid());
@@ -112,8 +110,7 @@ main(argc, argv)
 }
 
 void
-get_file(file)
-	char *file;
+get_file(const char *file)
 {
 	FILE *fp;
 	QE *qp;
@@ -149,7 +146,7 @@ get_file(file)
 }
 
 void
-show_index()
+show_index(void)
 {
 	QE *qp;
 	char *p, *s;
@@ -175,8 +172,7 @@ show_index()
 }
 
 void
-get_cats(cat1, cat2)
-	char *cat1, *cat2;
+get_cats(char *cat1, char *cat2)
 {
 	QE *qp;
 	int i;
@@ -208,7 +204,7 @@ get_cats(cat1, cat2)
 }
 
 void
-quiz()
+quiz(void)
 {
 	QE *qp;
 	int i;
@@ -289,8 +285,7 @@ quiz()
 }
 
 char *
-next_cat(s)
-	char *	s;
+next_cat(char *s)
 {
 	for (;;)
 		switch (*s++) {
@@ -306,10 +301,7 @@ next_cat(s)
 }
 
 char *
-appdstr(s, tp, len)
-	char *s;
-	char *tp;
-	size_t len;
+appdstr(char *s, char *tp, size_t len)
 {
 	char *mp, *sp;
 	char *m;
@@ -333,8 +325,7 @@ appdstr(s, tp, len)
 }
 
 void
-score(r, w, g)
-	u_int r, w, g;
+score(u_int r, u_int w, u_int g)
 {
 	(void)printf("Rights %d, wrongs %d,", r, w);
 	if (g)
@@ -343,8 +334,7 @@ score(r, w, g)
 }
 
 void
-downcase(p)
-	char *p;
+downcase(char *p)
 {
 	int ch;
 
@@ -354,7 +344,7 @@ downcase(p)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "quiz [-t] [-i file] category1 category2\n");
 	exit(1);
