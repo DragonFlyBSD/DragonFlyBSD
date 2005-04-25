@@ -32,7 +32,7 @@
  * so there!
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.12 2004/03/30 22:59:22 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.4 2005/03/06 05:01:59 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.5 2005/04/25 17:33:26 swildner Exp $
  */
 
 extern struct ifreq ifr;
@@ -69,5 +69,3 @@ extern void set80211rtsthreshold(const char *, int, int, const struct afswtch *r
 extern void set80211protmode(const char *, int, int, const struct afswtch *rafp);
 extern void set80211txpower(const char *, int, int, const struct afswtch *rafp);
 extern void ieee80211_status(int s, struct rt_addrinfo *);
-extern void maclabel_status(int s, struct rt_addrinfo *);
-extern void setifmaclabel(const char *, int, int, const struct afswtch *rafp);

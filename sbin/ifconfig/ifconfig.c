@@ -29,7 +29,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.20 2005/03/06 05:01:59 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.21 2005/04/25 17:33:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -282,9 +282,6 @@ struct	cmd {
 	{ "rtsthreshold",NEXTARG,	set80211rtsthreshold,	NULL },
 	{ "protmode",	NEXTARG,	set80211protmode,	NULL },
 	{ "txpower",	NEXTARG,	set80211txpower,	NULL },
-#endif
-#ifdef USE_MAC
-	{ "maclabel",	NEXTARG,	setifmaclabel,	NULL },
 #endif
 	{ "rxcsum",	IFCAP_RXCSUM,	setifcap,	NULL },
 	{ "-rxcsum",	-IFCAP_RXCSUM,	setifcap,	NULL },
@@ -1207,10 +1204,6 @@ status(const struct afswtch *afp, int addrcount, struct sockaddr_dl *sdl,
 #ifdef USE_IEEE80211
 	if (allfamilies || afp->af_status == ieee80211_status)
 		ieee80211_status(s, NULL);
-#endif
-#ifdef USE_MAC
-	if (allfamilies || afp->af_status == maclabel_status)
-		maclabel_status(s, NULL);
 #endif
 	strncpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
 	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0) 
