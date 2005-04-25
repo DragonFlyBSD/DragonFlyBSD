@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)db.c	8.4 (Berkeley) 2/21/94
+ * $DragonFly: src/lib/libc/db/db/db.c,v 1.3 2005/04/25 08:25:23 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -43,11 +44,7 @@
 #include <db.h>
 
 DB *
-dbopen(fname, flags, mode, type, openinfo)
-	const char *fname;
-	int flags, mode;
-	DBTYPE type;
-	const void *openinfo;
+dbopen(const char *fname, int flags, int mode, DBTYPE type, const void *openinfo)
 {
 
 #define	DB_FLAGS	(DB_LOCK | DB_SHMEM | DB_TXN)
@@ -72,7 +69,7 @@ dbopen(fname, flags, mode, type, openinfo)
 }
 
 static int
-__dberr()
+__dberr(void)
 {
 	return (RET_ERROR);
 }
@@ -84,14 +81,13 @@ __dberr()
  *	dbp:	pointer to the DB structure.
  */
 void
-__dbpanic(dbp)
-	DB *dbp;
+__dbpanic(DB *dbp)
 {
 	/* The only thing that can succeed is a close. */
-	dbp->del = (int (*)())__dberr;
-	dbp->fd = (int (*)())__dberr;
-	dbp->get = (int (*)())__dberr;
-	dbp->put = (int (*)())__dberr;
-	dbp->seq = (int (*)())__dberr;
-	dbp->sync = (int (*)())__dberr;
+	dbp->del = (int (*)(const DB *, const DBT *, u_int))__dberr;
+	dbp->fd = (int (*)(const DB *))__dberr;
+	dbp->get = (int (*)(const DB *, const DBT *, DBT *, u_int))__dberr;
+	dbp->put = (int (*)(const DB *, DBT *, const DBT *, u_int))__dberr;
+	dbp->seq = (int (*)(const DB *, DBT *, DBT *, u_int))__dberr;
+	dbp->sync = (int (*)(const DB *, u_int))__dberr;
 }
