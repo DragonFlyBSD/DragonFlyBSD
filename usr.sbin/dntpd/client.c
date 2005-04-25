@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.5 2005/04/24 23:09:32 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.6 2005/04/25 02:28:47 dillon Exp $
  */
 
 #include "defs.h"
@@ -46,9 +46,12 @@ client_main(struct server_info **info_ary, int count)
 {
     struct server_info *best_off;
     struct server_info *best_freq;
+    double last_freq;
     double freq;
     double offset;
     int i;
+
+    last_freq = 0.0;
 
     for (;;) {
 	/*
@@ -96,10 +99,15 @@ client_main(struct server_info **info_ary, int count)
 
 	/*
 	 * Frequency correction (throw away minor freq adjusts from the
-	 * offset code if we can't do a frequency correction here).
+	 * offset code if we can't do a frequency correction here).  Do
+	 * not reissue if it hasn't changed from the last issued correction.
 	 */
 	if (best_freq) {
-	    sysntp_correct_freq(best_freq->lin_cache_freq + freq);
+	    freq += best_freq->lin_cache_freq;
+	    if (last_freq != freq) {
+		sysntp_correct_freq(freq);
+		last_freq = freq;
+	    }
 	}
 
 	/*
