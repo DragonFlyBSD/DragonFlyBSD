@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.12 2005/04/25 20:05:09 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.13 2005/04/25 22:26:22 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -143,16 +143,22 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 
 	    if (db_more(&nl) < 0)
 		return;
-	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
+	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg comm\n");
 	    for (np = 0; np < 32; ++np) {
 		TAILQ_FOREACH(td, &gd->gd_tdrunq[np], td_threadq) {
 		    if (db_more(&nl) < 0)
 			return;
-		    db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
+		    db_printf("  %3d %p %3d %08x %2d/%02d/%02d %p %8.8s %s\n",
 			np, td, 
 			(td->td_proc ? td->td_proc->p_pid : -1),
-			td->td_flags, td->td_pri,
+			td->td_flags, 
 			td->td_pri & TDPRI_MASK,
+			td->td_pri / TDPRI_CRIT,
+#ifdef SMP
+			td->td_mpcount,
+#else
+			0,
+#endif
 			td->td_sp,
 			td->td_wmesg ? td->td_wmesg : "-",
 			td->td_proc ? td->td_proc->p_comm : td->td_comm);
@@ -166,15 +172,21 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	    db_printf("\n");
 	    if (db_more(&nl) < 0)
 		return;
-	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
+	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg comm\n");
 	    TAILQ_FOREACH(td, &gd->gd_tdallq, td_allq) {
 		if (db_more(&nl) < 0)
 		    return;
-		db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
+		db_printf("  %3d %p %3d %08x %2d/%02d/%02d %p %8.8s %s\n",
 		    np, td, 
 		    (td->td_proc ? td->td_proc->p_pid : -1),
-		    td->td_flags, td->td_pri,
+		    td->td_flags,
 		    td->td_pri & TDPRI_MASK,
+		    td->td_pri / TDPRI_CRIT,
+#ifdef SMP
+		    td->td_mpcount,
+#else
+		    0,
+#endif
 		    td->td_sp,
 		    td->td_wmesg ? td->td_wmesg : "-",
 		    td->td_proc ? td->td_proc->p_comm : td->td_comm);
