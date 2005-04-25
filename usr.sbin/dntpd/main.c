@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.4 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.5 2005/04/25 20:50:59 dillon Exp $
  */
 
 #include "defs.h"
@@ -39,21 +39,30 @@
 static void usage(const char *av0);
 static void dotest(const char *target);
 static void add_server(const char *target);
+static void process_config_file(const char *path);
+static pid_t check_pid(void);
+static void set_pid(const char *av0);
+static void sigint_handler(int signo);
 
 static struct server_info **servers;
 static int nservers;
 static int maxservers;
 
+int daemon_opt = 1;
 int debug_opt;
 int debug_level = -1;		/* (set to default later) */
+int quickset_opt = 0;		/* immediate set time of day on startup */
 int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
 int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
 int max_sleep_opt = 1800;	/* 30 minutes maximum poll interval */
+const char *config_opt;		/* config file */
+const char *pid_opt = "/var/run/dntpd.pid";
 
 int
 main(int ac, char **av)
 {
     int test_opt = 0;
+    pid_t pid;
     int rc;
     int ch;
     int i;
@@ -67,8 +76,51 @@ main(int ac, char **av)
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "dl:qtT:L:")) != -1) {
+    while ((ch = getopt(ac, av, "df:l:L:p:qstFQST:")) != -1) {
 	switch(ch) {
+	case 'd':
+	    debug_opt = 1;
+	    daemon_opt = 0;
+	    if (debug_level < 0)
+		debug_level = 99;
+	    if (config_opt == NULL)
+		config_opt = "/dev/null";
+	    break;
+	case 'p':
+	    pid_opt = optarg;
+	    break;
+	case 'f':
+	    config_opt = optarg;
+	    break;
+	case 'l':
+	    debug_level = strtol(optarg, NULL, 0);
+	    break;
+	case 'q':
+	    debug_level = 0;
+	    break;
+	case 's':
+	    quickset_opt = 1;
+	    fprintf(stderr, "%s: warning, -s not currently implemented\n", 
+		    av[0]);
+	    break;
+	case 'S':
+	    quickset_opt = 0;
+	    break;
+	case 't':
+	    test_opt = 1;
+	    debug_opt = 1;
+	    daemon_opt = 0;
+	    if (debug_level < 0)
+		debug_level = 99;
+	    if (config_opt == NULL)
+		config_opt = "/dev/null";
+	    break;
+	case 'F':
+	    daemon_opt = 0;
+	    break;
+	case 'L':
+	    max_sleep_opt = strtol(optarg, NULL, 0);
+	    break;
 	case 'T':
 	    nom_sleep_opt = strtol(optarg, NULL, 0);
 	    if (nom_sleep_opt < 1) {
@@ -86,25 +138,24 @@ main(int ac, char **av)
 	    if (max_sleep_opt < nom_sleep_opt * 5)
 		max_sleep_opt = nom_sleep_opt * 5;
 	    break;
-	case 'L':
-	    max_sleep_opt = strtol(optarg, NULL, 0);
-	    break;
-	case 'l':
-	    debug_level = strtol(optarg, NULL, 0);
-	    break;
-	case 'q':
-	    debug_level = 0;
-	    break;
-	case 'd':
-	    debug_opt = 1;
-	    if (debug_level < 0)
-		debug_level = 99;
-	    break;
-	case 't':
-	    test_opt = 1;
-	    debug_opt = 1;
-	    if (debug_level < 0)
-		debug_level = 99;
+	case 'Q':
+	    if ((pid = check_pid()) != 0) {
+		fprintf(stderr, "%s: killing old daemon\n", av[0]);
+		kill(pid, SIGINT);
+		usleep(100000);
+		if (check_pid())
+		    sleep(1);
+		if (check_pid())
+		    sleep(9);
+		if (check_pid()) {
+		    fprintf(stderr, "%s: Unable to kill running daemon\n", av[0]);
+		} else {
+		    fprintf(stderr, "%s: Running daemon has been terminated\n", av[0]);
+		}
+	    } else {
+		fprintf(stderr, "%s: There is no daemon running to kill\n", av[0]);
+	    }
+	    exit(0);
 	    break;
 	case 'h':
 	default:
@@ -112,9 +163,17 @@ main(int ac, char **av)
 	    /* not reached */
 	}
     }
+    if (config_opt == NULL) {
+	if (optind != ac)
+	    config_opt = "/dev/null";
+	else
+	    config_opt = "/etc/dntpd.conf";
+    }
 
     if (debug_level < 0)
 	debug_level = 1;
+
+    process_config_file(config_opt);
 
     if (debug_opt == 0)
 	openlog("dntpd", LOG_CONS|LOG_PID, LOG_DAEMON);
@@ -138,6 +197,43 @@ main(int ac, char **av)
     }
 
     /*
+     * Do an initial course time setting if requested using the first
+     * host successfully polled.
+     */
+    /* XXX */
+
+    /*
+     * Daemonize, stop logging to stderr.
+     */
+    if (daemon_opt) {
+	if ((pid = check_pid()) != 0) {
+	    logerrstr("%s: NOTE: killing old daemon and starting a new one", 
+			av[0]);
+	    kill(pid, SIGINT);
+	    usleep(100000);
+	    if (check_pid())
+		sleep(1);
+	    if (check_pid())
+		sleep(9);
+	    if (check_pid()) {
+		logerrstr("%s: Unable to kill running daemon, exiting", av[0]);
+		exit(1);
+	    }
+	}
+	daemon(0, 0);
+    } else if (check_pid() != 0) {
+	logerrstr("%s: A background dntpd is running, you must kill it first",
+		av[0]);
+	exit(1);
+    }
+    if (debug_opt == 0) {
+	log_stderr = 0;
+	set_pid(av[0]);
+	signal(SIGINT, sigint_handler);
+	logdebug(0, "dntpd version %s started\n", DNTPD_VERSION);
+    }
+
+    /*
      * And go.
      */
     client_init();
@@ -149,13 +245,23 @@ static
 void
 usage(const char *av0)
 {
-    fprintf(stderr, "%s [-dqt] [-l log_level] [-T poll_interval] [-L poll_limit] [additional_targets]\n", av0);
-    fprintf(stderr, "\t-d\tforeground operation, debugging turned on\n");
-    fprintf(stderr, "\t-q\tquiet-mode, same as -L 0\n");
-    fprintf(stderr, "\t-t\ttest mode (specify one target on command line)\n");
-    fprintf(stderr, "\t-T\tnominal polling interval\n");
-    fprintf(stderr, "\t-L\tmaximum polling interval\n");
-    fprintf(stderr, "\t-l\tset log level (0-4), default 1\n");
+    fprintf(stderr, "%s [-dqstFS] [-l log_level] [-T poll_interval] [-L poll_limit] [additional_targets]\n", av0);
+    fprintf(stderr, 
+	"\t-d\tDebugging mode, implies -F, -l 99, and logs to stderr\n"
+	"\t-f file\tSpecify the config file (/etc/dntpd.conf)\n"
+	"\t-l int\tSet log level (0-4), default 1\n"
+	"\t-q\tQuiet-mode, same as -L 0\n"
+	"\t-s\tSet the time immediately on startup\n"
+	"\t-t\tTest mode, implies -F, -l 99, logs to stderr,\n"
+	"\t\tand makes no actual corrections.\n"
+	"\t-F\tRun in foreground\n"
+	"\t-L int\tMaximum polling interval\n"
+	"\t-S\tDo not set the time immediately on startup\n"
+	"\t-T int\tNominal polling interval\n"
+	"\t-Q\tTerminate any running background daemon\n"
+	"\t\tNOTE: in debug mode -f must be specified if you want to use\n"
+	"\t\ta config file\n"
+    );
     exit(1);
 }
 
@@ -204,5 +310,88 @@ add_server(const char *target)
 	info->target = strdup(target);
 	++nservers;
     }
+}
+
+static void
+process_config_file(const char *path)
+{
+    const char *ws = " \t\r\n";
+    char buf[1024];
+    char *keyword;
+    char *data;
+    int line;
+    FILE *fi;
+
+    if ((fi = fopen(path, "r")) != NULL) {
+	line = 1;
+	while (fgets(buf, sizeof(buf), fi) != NULL) {
+	    if (strchr(buf, '#'))
+		*strchr(buf, '#') = 0;
+	    if ((keyword = strtok(buf, ws)) != NULL) {
+		data = strtok(NULL, ws);
+		if (strcmp(keyword, "server") == 0) {
+		    if (data == NULL) {
+			logerr("%s:%d server missing host specification",
+				path, line);
+		    } else {
+			add_server(data);
+		    }
+		} else {
+		    logerr("%s:%d unknown keyword %s", path, line, keyword);
+		}
+	    }
+	    ++line;
+	}
+	fclose(fi);
+    } else {
+	logerr("Unable to open %s", path);
+	exit(1);
+    }
+}
+
+static 
+pid_t
+check_pid(void)
+{
+    char buf[32];
+    pid_t pid;
+    FILE *fi;
+
+    pid = 0;
+    if ((fi = fopen(pid_opt, "r")) != NULL) {
+	if (fgets(buf, sizeof(buf), fi) != NULL) {
+	    pid = strtol(buf, NULL, 0);
+	    if (kill(pid, 0) != 0)
+		pid = 0;
+	}
+	fclose(fi);
+    }
+    return(pid);
+}
+
+static 
+void
+set_pid(const char *av0)
+{
+    pid_t pid;
+    FILE *fo;
+
+    pid = getpid();
+    if ((fo = fopen(pid_opt, "w")) != NULL) {
+	fprintf(fo, "%d\n", (int)pid);
+	fclose(fo);
+    } else {
+	logerr("%s: Unable to create %s, continuing anyway.", av0, pid_opt);
+    }
+}
+
+static
+void
+sigint_handler(int signo)
+{
+    remove(pid_opt);
+    /* dangerous, but we are exiting anyway so pray... */
+    logdebug(0, "dntpd version %s stopped\n", DNTPD_VERSION);
+    exit(0);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.5 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.6 2005/04/25 20:50:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -46,6 +46,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -57,6 +58,8 @@
 #include "ntp.h"
 #include "client.h"
 
+#define DNTPD_VERSION	"1.0"
+
 #define logdebug(level, ctl, varargs...)	\
 	if (level <= debug_level) _logdebug(level, ctl, ##varargs);
 
@@ -65,6 +68,7 @@ extern int debug_level;
 extern int min_sleep_opt;
 extern int nom_sleep_opt;
 extern int max_sleep_opt;
+extern int log_stderr;
 
 int udp_socket(const char *target, int port);
 int udp_ntptimereq(int fd, struct timeval *rtvp, 

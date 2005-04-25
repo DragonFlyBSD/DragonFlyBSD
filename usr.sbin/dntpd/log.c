@@ -31,12 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/log.c,v 1.2 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/log.c,v 1.3 2005/04/25 20:50:59 dillon Exp $
  */
 
 #include "defs.h"
 
 static void vlogline(int level, int newline, const char *ctl, va_list va);
+
+int log_stderr = 1;
 
 void
 logerr(const char *ctl, ...)
@@ -47,7 +49,7 @@ logerr(const char *ctl, ...)
     saved_errno = errno;
     va_start(va, ctl);
     vlogline(0, 0, ctl, va);
-    vlogline(0, 1, ": %s", strerror(saved_errno));
+    logerrstr(": %s", strerror(saved_errno));
     va_end(va);
 
 }
@@ -90,10 +92,13 @@ vlogline(int level, int newline, const char *ctl, va_list va)
      * Output to stderr directly but build the log line for syslog.
      */
     if (level <= debug_level) {
-	if (debug_opt) {
+	if (log_stderr) {
 	    vfprintf(stderr, ctl, va);
+	    if (newline)
+		fprintf(stderr, "\n");
 	    fflush(stderr);
-	} else {
+	}
+	if (debug_opt == 0) {
 	    vsnprintf(line_build + line_index, sizeof(line_build) - line_index, 
 		    ctl, va);
 	    line_index += strlen(line_build + line_index);

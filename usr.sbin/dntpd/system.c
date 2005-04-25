@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.2 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.3 2005/04/25 20:50:59 dillon Exp $
  */
 
 #include "defs.h"
@@ -86,8 +86,7 @@ sysntp_correct_offset(double offset)
      * Course correction
      */
     if (offset < -0.001 || offset > 0.001) {
-	if (debug_opt)
-	    logdebug(1, "issuing offset adjustment: %7.6f\n", -offset);
+	logdebug(1, "issuing offset adjustment: %7.6f\n", -offset);
 	delta = -(int64_t)(offset * 1.0E+9);
 	sysctlbyname("kern.ntp.delta", NULL, 0, &delta, sizeof(delta));
 	return(0.0);
