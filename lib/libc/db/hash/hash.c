@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash.c,v 1.8 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libc/db/hash/hash.c,v 1.6 2005/04/25 08:33:25 joerg Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash.c,v 1.7 2005/04/25 19:36:57 joerg Exp $
  *
  * @(#)hash.c	8.9 (Berkeley) 6/16/94
  */
@@ -61,7 +61,7 @@
 
 static int   alloc_segs(HTAB *, int);
 static int   flush_meta(HTAB *);
-static int   hash_access(HTAB *, ACTION, DBT *, DBT *);
+static int   hash_access(HTAB *, ACTION, const DBT *, DBT *);
 static int   hash_close(DB *);
 static int   hash_delete(const DB *, const DBT *, u_int32_t);
 static int   hash_fd(const DB *);
@@ -71,7 +71,7 @@ static void *hash_realloc(SEGMENT **, int, int);
 static int   hash_seq(const DB *, DBT *, DBT *, u_int32_t);
 static int   hash_sync(const DB *, u_int32_t);
 static int   hdestroy(HTAB *);
-static HTAB *init_hash(HTAB *, const char *, HASHINFO *);
+static HTAB *init_hash(HTAB *, const char *, const HASHINFO *);
 static int   init_htab(HTAB *, int);
 #if BYTE_ORDER == LITTLE_ENDIAN
 static void  swap_header(HTAB *);
@@ -97,7 +97,7 @@ int hash_accesses, hash_collisions, hash_expansions, hash_overflows;
 
 extern DB *
 __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
-	    int dflags)
+	    int dflags __unused)
 {
 	HTAB *hashp;
 	struct stat statbuf;
@@ -141,7 +141,7 @@ __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
 		(void)_fcntl(hashp->fp, F_SETFD, 1);
 	}
 	if (new_table) {
-		if (!(hashp = init_hash(hashp, file, (HASHINFO *)info)))
+		if (!(hashp = init_hash(hashp, file, info)))
 			RETURN_ERROR(errno, error1);
 	} else {
 		/* Table already exists */
@@ -282,7 +282,7 @@ hash_fd(const DB *dbp)
 
 /************************** LOCAL CREATION ROUTINES **********************/
 static HTAB *
-init_hash(HTAB *hashp, const char *file, HASHINFO *info)
+init_hash(HTAB *hashp, const char *file, const HASHINFO *info)
 {
 	struct stat statbuf;
 	int nelem;
@@ -533,7 +533,7 @@ hash_get(const DB *dbp, const DBT *key, DBT *data, u_int32_t flag)
 		errno = EINVAL;
 		return (ERROR);
 	}
-	return (hash_access(hashp, HASH_GET, (DBT *)key, data));
+	return (hash_access(hashp, HASH_GET, key, data));
 }
 
 static int
@@ -551,7 +551,7 @@ hash_put(const DB *dbp, DBT *key, const DBT *data, u_int32_t flag)
 		return (ERROR);
 	}
 	return (hash_access(hashp, flag == R_NOOVERWRITE ?
-	    HASH_PUTNEW : HASH_PUT, (DBT *)key, (DBT *)data));
+	    HASH_PUTNEW : HASH_PUT, key, __DECONST(DBT *, data)));
 }
 
 static int
@@ -568,20 +568,20 @@ hash_delete(const DB *dbp, const DBT *key, u_int32_t flag)
 		hashp->error = errno = EPERM;
 		return (ERROR);
 	}
-	return (hash_access(hashp, HASH_DELETE, (DBT *)key, NULL));
+	return (hash_access(hashp, HASH_DELETE, key, NULL));
 }
 
 /*
  * Assume that hashp has been set in wrapper routine.
  */
 static int
-hash_access(HTAB *hashp, ACTION action, DBT *key, DBT *val)
+hash_access(HTAB *hashp, ACTION action, const DBT *key, DBT *val)
 {
 	BUFHEAD *rbufp;
 	BUFHEAD *bufp, *save_bufp;
 	u_int16_t *bp;
 	int n, ndx, off, size;
-	char *kp;
+	const char *kp;
 	u_int16_t pageno;
 
 #ifdef HASH_STATISTICS
@@ -856,7 +856,7 @@ hash_realloc(SEGMENT **p_ptr, int oldsize, int newsize)
 }
 
 extern u_int32_t
-__call_hash(HTAB *hashp, char *k, int len)
+__call_hash(HTAB *hashp, const char *k, int len)
 {
 	int n, bucket;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.4 (Berkeley) 6/16/94
- * $DragonFly: src/lib/libc/db/hash/extern.h,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/hash/extern.h,v 1.4 2005/04/25 19:36:57 joerg Exp $
  */
 
 BUFHEAD	*__add_ovflpage (HTAB *, BUFHEAD *);
@@ -44,10 +44,10 @@ int	 __big_split (HTAB *, BUFHEAD *, BUFHEAD *, BUFHEAD *,
 		int, u_int32_t, SPLIT_RETURN *);
 int	 __buf_free (HTAB *, int, int);
 void	 __buf_init (HTAB *, int);
-u_int32_t	 __call_hash (HTAB *, char *, int);
+u_int32_t	 __call_hash (HTAB *, const char *, int);
 int	 __delpair (HTAB *, BUFHEAD *, int);
 int	 __expand_table (HTAB *);
-int	 __find_bigpair (HTAB *, BUFHEAD *, int, char *, int);
+int	 __find_bigpair (HTAB *, BUFHEAD *, int, const char *, int);
 u_int16_t	 __find_last_page (HTAB *, BUFHEAD **);
 void	 __free_ovflpage (HTAB *, BUFHEAD *);
 BUFHEAD	*__get_buf (HTAB *, u_int32_t, BUFHEAD *, int);

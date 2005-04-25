@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_bigkey.c	8.3 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.5 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.6 2005/04/25 19:36:57 joerg Exp $
  */
 
 /*
@@ -266,14 +266,14 @@ __find_bigpair(hashp, bufp, ndx, key, size)
 	HTAB *hashp;
 	BUFHEAD *bufp;
 	int ndx;
-	char *key;
+	const char *key;
 	int size;
 {
 	u_int16_t *bp;
 	char *p;
 	int ksize;
 	u_int16_t bytes;
-	char *kkey;
+	const char *kkey;
 
 	bp = (u_int16_t *)bufp->page;
 	p = bufp->page;
