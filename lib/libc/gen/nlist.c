@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/nlist.c,v 1.12.2.1 2001/07/11 23:59:09 obrien Exp $
- *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.6 2005/04/26 08:21:34 joerg Exp $
  *
  * @(#)nlist.c	8.1 (Berkeley) 6/4/93
  */
@@ -57,14 +57,12 @@
 #include <elf-hints.h>
 #endif
 
-int __fdnlist		(int, struct nlist *);
-int __aout_fdnlist	(int, struct nlist *);
-int __elf_fdnlist	(int, struct nlist *);
+int	__fdnlist(int, struct nlist *);
+int	__aout_fdnlist(int, struct nlist *);
+int	__elf_fdnlist(int, struct nlist *);
 
 int
-nlist(name, list)
-	const char *name;
-	struct nlist *list;
+nlist(const char *name, struct nlist *list)
 {
 	int fd, n;
 
@@ -72,12 +70,12 @@ nlist(name, list)
 	if (fd < 0)
 		return (-1);
 	n = __fdnlist(fd, list);
-	(void)_close(fd);
+	_close(fd);
 	return (n);
 }
 
 static struct nlist_handlers {
-	int	(*fn) (int fd, struct nlist *list);
+	int	(*fn)(int fd, struct nlist *list);
 } nlist_fn[] = {
 #ifdef _NLIST_DO_AOUT
 	{ __aout_fdnlist },
@@ -88,11 +86,10 @@ static struct nlist_handlers {
 };
 
 int
-__fdnlist(fd, list)
-	int fd;
-	struct nlist *list;
+__fdnlist(int fd, struct nlist *list)
 {
-	int n = -1, i;
+	int n = -1;
+	size_t i;
 
 	for (i = 0; i < sizeof(nlist_fn) / sizeof(nlist_fn[0]); i++) {
 		n = (nlist_fn[i].fn)(fd, list);
@@ -106,9 +103,7 @@ __fdnlist(fd, list)
 
 #ifdef _NLIST_DO_AOUT
 int
-__aout_fdnlist(fd, list)
-	int fd;
-	struct nlist *list;
+__aout_fdnlist(int fd, struct nlist *list)
 {
 	struct nlist *p, *symtab;
 	caddr_t strtab, a_out_mmap;
@@ -201,7 +196,7 @@ __aout_fdnlist(fd, list)
 #endif
 
 #ifdef _NLIST_DO_ELF
-static void elf_sym_to_nlist (struct nlist *, Elf_Sym *, Elf_Shdr *, int);
+static void	elf_sym_to_nlist(struct nlist *, Elf_Sym *, Elf_Shdr *, int);
 
 /*
  * __elf_is_okay__ - Determine if ehdr really
@@ -210,9 +205,8 @@ static void elf_sym_to_nlist (struct nlist *, Elf_Sym *, Elf_Shdr *, int);
  * WARNING:  This is NOT a ELF ABI function and
  * as such it's use should be restricted.
  */
-int
-__elf_is_okay__(ehdr)
-	Elf_Ehdr *ehdr;
+static int
+__elf_is_okay__(Elf_Ehdr *ehdr)
 {
 	int retval = 0;
 	/*
@@ -235,9 +229,7 @@ __elf_is_okay__(ehdr)
 }
 
 int
-__elf_fdnlist(fd, list)
-	int fd;
-	struct nlist *list;
+__elf_fdnlist(int fd, struct nlist *list)
 {
 	struct nlist *p;
 	Elf_Off symoff = 0, symstroff = 0;
@@ -250,7 +242,6 @@ __elf_fdnlist(fd, list)
 	Elf_Ehdr ehdr;
 	char *strtab = NULL;
 	Elf_Shdr *shdr = NULL;
-	Elf_Shdr *sh;
 	Elf_Word shdr_size;
 	void *base;
 	struct stat st;
@@ -346,16 +337,16 @@ __elf_fdnlist(fd, list)
 		symsize -= cc;
 		for (s = sbuf; cc > 0 && nent > 0; ++s, cc -= sizeof(*s)) {
 			char *name;
-			struct nlist *p;
+			struct nlist *p_local;
 
 			name = strtab + s->st_name;
 			if (name[0] == '\0')
 				continue;
-			for (p = list; !ISLAST(p); p++) {
-				if ((p->n_un.n_name[0] == '_' &&
-				    strcmp(name, p->n_un.n_name+1) == 0)
-				    || strcmp(name, p->n_un.n_name) == 0) {
-					elf_sym_to_nlist(p, s, shdr,
+			for (p_local = list; !ISLAST(p_local); p_local++) {
+				if ((p_local->n_un.n_name[0] == '_' &&
+				    strcmp(name, p_local->n_un.n_name+1) == 0)
+				    || strcmp(name, p_local->n_un.n_name) == 0) {
+					elf_sym_to_nlist(p_local, s, shdr,
 					    ehdr.e_shnum);
 					if (--nent <= 0)
 						break;
@@ -363,7 +354,7 @@ __elf_fdnlist(fd, list)
 			}
 		}
 	}
-  done:
+done:
 	errsave = errno;
 	if (strtab != NULL)
 		munmap(strtab, symstrsize);
@@ -378,11 +369,7 @@ __elf_fdnlist(fd, list)
  * n_value and n_type members.
  */
 static void
-elf_sym_to_nlist(nl, s, shdr, shnum)
-	struct nlist *nl;
-	Elf_Sym *s;
-	Elf_Shdr *shdr;
-	int shnum;
+elf_sym_to_nlist(struct nlist *nl, Elf_Sym *s, Elf_Shdr *shdr, int shnum)
 {
 	nl->n_value = s->st_value;
 
