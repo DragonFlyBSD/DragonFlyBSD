@@ -31,9 +31,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.10 (Berkeley) 7/20/94
- * $DragonFly: src/lib/libc/db/btree/extern.h,v 1.3 2003/11/12 20:21:22 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/btree/extern.h,v 1.4 2005/04/26 09:26:07 joerg Exp $
  */
 
+#ifndef LIBC_DB_BTREE_EXTERN_H
+#define LIBC_DB_BTREE_EXTERN_H
 int	 __bt_close (DB *);
 int	 __bt_cmp (BTREE *, const DBT *, EPG *);
 int	 __bt_crsrdel (BTREE *, EPGNO *);
@@ -68,4 +70,6 @@ void	 __bt_dump (DB *);
 #endif
 #ifdef STATISTICS
 void	 __bt_stat (DB *);
+#endif
+
 #endif
