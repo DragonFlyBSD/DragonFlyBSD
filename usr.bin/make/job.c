@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.71 2005/04/25 05:52:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.72 2005/04/26 10:19:07 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -501,6 +501,15 @@ ProcExec(ProcStuff *ps, char *argv[])
 		if (dup2(ps->out, STDOUT_FILENO) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
 		close(ps->out);
+	}
+
+	if (ps->err != STDERR_FILENO) {
+		/*
+		 * Redirect the child's stderr to the err fd.
+		 */
+		if (dup2(ps->err, STDERR_FILENO) == -1)
+			Punt("Cannot dup2: %s", strerror(errno));
+		close(ps->err);
 	}
 
 	if (ps->merge_errors) {
@@ -1311,6 +1320,7 @@ JobExec(Job *job, char **argv)
 			 */
 			ps.out = job->outFd;
 		}
+		ps.err = STDERR_FILENO;
 
 		ps.merge_errors = 1;
 		ps.pgroup = 1;
@@ -2931,6 +2941,8 @@ JobRestartJobs(void)
  * Results:
  *	A string containing the output of the command, or the empty string
  *	If error is not NULL, it contains the reason for the command failure
+ *	Any output sent to stderr in the child process is passed to stderr,
+ *	and not captured in the string.
  *
  * Side Effects:
  *	The string must be freed by the caller.
@@ -2981,8 +2993,8 @@ Cmd_Exec(const char *cmd, const char **error)
 
 		ps.in = STDIN_FILENO;
 		ps.out = fds[1];
+		ps.err = STDERR_FILENO;
 
-		/* Note we don't fetch the error stream...why not? Why?  */
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
 		ps.searchpath = 0;
@@ -3337,6 +3349,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 
 		ps.in = STDIN_FILENO;
 		ps.out = STDOUT_FILENO;
+		ps.err = STDERR_FILENO;
 
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
