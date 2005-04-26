@@ -26,7 +26,7 @@
  *
  * $OpenBSD: basename.c,v 1.4 1999/05/30 17:10:30 espie Exp $
  * $FreeBSD: src/lib/libc/gen/basename.c,v 1.1.2.2 2001/07/23 10:13:04 dd Exp $
- * $DragonFly: src/lib/libc/gen/basename.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/basename.c,v 1.4 2005/04/26 14:27:13 joerg Exp $
  */
 
 #include <errno.h>
@@ -35,15 +35,14 @@
 #include <sys/param.h>
 
 char *
-basename(path)
-	const char *path;
+basename(const char *path)
 {
 	static char bname[MAXPATHLEN];
 	const char *endp, *startp;
 
 	/* Empty or NULL string gets treated as "." */
 	if (path == NULL || *path == '\0') {
-		(void)strcpy(bname, ".");
+		strlcpy(bname, ".", sizeof(bname));
 		return(bname);
 	}
 
@@ -54,7 +53,7 @@ basename(path)
 
 	/* All slashes becomes "/" */
 	if (endp == path && *endp == '/') {
-		(void)strcpy(bname, "/");
+		strlcpy(bname, "/", sizeof(bname));
 		return(bname);
 	}
 
@@ -63,11 +62,9 @@ basename(path)
 	while (startp > path && *(startp - 1) != '/')
 		startp--;
 
-	if (endp - startp + 2 > sizeof(bname)) {
+	if (strlcpy(bname, startp, sizeof(bname)) >= sizeof(bname)) {
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
-	(void)strncpy(bname, startp, endp - startp + 1);
-	bname[endp - startp + 1] = '\0';
 	return(bname);
 }
