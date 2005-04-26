@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.33 2005/04/13 04:00:45 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.34 2005/04/26 00:30:00 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2432,7 +2432,7 @@ ap_finish(void)
 	rel_mplock();
 	while (smp_active_mask != smp_startup_mask)
 		cpu_mb1();
-	while (cpu_try_mplock() == 0)
+	while (try_mplock() == 0)
 		;
 	if (bootverbose)
 		printf("Active CPU Mask: %08x\n", smp_active_mask);
