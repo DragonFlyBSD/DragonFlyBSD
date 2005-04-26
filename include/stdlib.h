@@ -32,13 +32,14 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.11 2005/04/26 08:45:19 joerg Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.12 2005/04/26 09:08:38 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
 #define	_STDLIB_H_
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
 
 #ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
