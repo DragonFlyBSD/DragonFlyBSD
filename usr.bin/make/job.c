@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.75 2005/04/26 10:20:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.76 2005/04/26 10:21:24 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1325,7 +1325,8 @@ JobExec(Job *job, char **argv)
 	ps.argv = argv;
 
 	/*
-	 * Fork
+	 * Fork.  Warning since we are doing vfork() instead of fork(),
+	 * do not allocate memory in the child process!
 	 */
 	if ((cpid = vfork()) == -1) {
 		Punt("Cannot fork");
@@ -2969,7 +2970,6 @@ Cmd_Exec(const char *cmd, const char **error)
 	Buffer	*buf;	/* buffer to store the result */
 	ssize_t	rcnt;
 	ProcStuff	ps;
-	char		*argv[4];
 
 	*error = NULL;
 	buf = Buf_Init(0);
@@ -2993,15 +2993,15 @@ Cmd_Exec(const char *cmd, const char **error)
 	ps.searchpath = 0;
 
 	/* Set up arguments for shell */
-	argv[0] = shellName;
-	argv[1] = "-c";
-	argv[2] = cmd;
-	argv[3] = NULL;
-
-	ps.argv = argv;
+	ps.argv = emalloc(4 * sizeof(char *));
+	ps.argv[0] = strdup(shellName);
+	ps.argv[1] = strdup("-c");
+	ps.argv[2] = strdup(cmd);
+	ps.argv[3] = NULL;
 
 	/*
-	 * Fork
+	 * Fork.  Warning since we are doing vfork() instead of fork(),
+	 * do not allocate memory in the child process!
 	 */
 	if ((cpid = vfork()) == -1) {
 		*error = "Couldn't exec \"%s\"";
@@ -3016,6 +3016,11 @@ Cmd_Exec(const char *cmd, const char **error)
 		/* NOTREACHED */
 
 	} else {
+		free(ps.argv[2]);
+		free(ps.argv[1]);
+		free(ps.argv[0]);
+		free(ps.argv);
+
 		/*
 		 * No need for the writing half
 		 */
@@ -3321,26 +3326,14 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		 * shell the -e flag as well as -c if it's supposed to exit
 		 * when it hits an error.
 		 */
-		static char	*shargv[4];
-
-		shargv[0] = shellPath;
-		shargv[1] = (errCheck ? "-ec" : "-c");
-		shargv[2] = cmd;
-		shargv[3] = NULL;
-		av = shargv;
+		av = NULL;
 
 	} else if (shellneed(cmd)) {
 		/*
 		 * This command must be passed by the shell for other reasons..
 		 * or.. possibly not at all.
 		 */
-		static char	*shargv[4];
-
-		shargv[0] = shellPath;
-		shargv[1] = (errCheck ? "-ec" : "-c");
-		shargv[2] = cmd;
-		shargv[3] = NULL;
-		av = shargv;
+		av = NULL;
 
 	} else {
 		/*
@@ -3361,10 +3354,20 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	ps.pgroup = 0;
 	ps.searchpath = 1;
 
-	ps.argv = av;
+	if (av == NULL) {
+		ps.argv = emalloc(4 * sizeof(char *));
+		ps.argv[0] = strdup(shellName);
+		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
+		ps.argv[2] = strdup(cmd);
+		ps.argv[3] = NULL;
+	} else {
+		ps.argv = av;
+	}
 
 	/*
 	 * Fork and execute the single command. If the fork fails, we abort.
+	 * Warning since we are doing vfork() instead of fork(),
+	 * do not allocate memory in the child process!
 	 */
 	if ((cpid = vfork()) == -1) {
 		Fatal("Could not fork");
@@ -3377,6 +3380,14 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		/* NOTREACHED */
 
 	} else {
+		if (av == NULL) {
+			free(ps.argv[2]);
+			free(ps.argv[1]);
+			free(ps.argv[0]);
+			free(ps.argv);
+		}
+
+
 		/*
 		 * we need to print out the command associated with this
 		 * Gnode in Targ_PrintCmd from Targ_PrintGraph when debugging
