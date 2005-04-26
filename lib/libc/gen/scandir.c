@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/scandir.c,v 1.5.6.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/scandir.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/scandir.c,v 1.6 2005/04/26 08:54:59 joerg Exp $
  *
  * @(#)scandir.c	8.3 (Berkeley) 1/2/94
  */
@@ -47,6 +47,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include "un-namespace.h"
@@ -63,16 +64,12 @@
 	    (((dp)->d_namlen + 1 + 3) &~ 3))
 
 int
-scandir(dirname, namelist, select, dcomp)
-	const char *dirname;
-	struct dirent ***namelist;
-	int (*select) (struct dirent *);
-	int (*dcomp) (const void *, const void *);
+scandir(const char *dirname, struct dirent ***namelist,
+	int (*select)(struct dirent *), int (*dcomp)(const void *, const void *))
 {
 	struct dirent *d, *p, **names = NULL;
-	size_t nitems = 0;
+	size_t arraysz, nitems = 0;
 	struct stat stb;
-	long arraysz;
 	DIR *dirp;
 
 	if ((dirp = opendir(dirname)) == NULL)
@@ -81,10 +78,13 @@ scandir(dirname, namelist, select, dcomp)
 		goto fail;
 
 	/*
-	 * estimate the array size by taking the size of the directory file
+	 * Estimate the array size by taking the size of the directory file
 	 * and dividing it by a multiple of the minimum size entry.
+	 * Ensure that the size does fit into memory without overflooding.
 	 */
-	arraysz = (stb.st_size / 24);
+	if (stb.st_size / 24 > SIZE_T_MAX)
+		goto fail;
+	arraysz = stb.st_size / 24;
 	names = (struct dirent **)malloc(arraysz * sizeof(struct dirent *));
 	if (names == NULL)
 		goto fail;
@@ -140,10 +140,8 @@ fail:
  * Alphabetic order comparison routine for those who want it.
  */
 int
-alphasort(d1, d2)
-	const void *d1;
-	const void *d2;
+alphasort(const void *d1, const void *d2)
 {
-	return(strcmp((*(struct dirent **)d1)->d_name,
-	    (*(struct dirent **)d2)->d_name));
+	return(strcmp((*(const struct dirent * const *)d1)->d_name,
+	    (*(const struct dirent * const *)d2)->d_name));
 }
