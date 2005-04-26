@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.11 2005/02/18 16:38:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.12 2005/04/26 21:23:50 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -49,7 +49,6 @@
 #define	SC_RENDER_DEBUG		0
 #endif
 
-static vr_clear_t		vga_txtclear;
 static vr_draw_border_t		vga_txtborder;
 static vr_draw_t		vga_txtdraw;
 static vr_set_cursor_t		vga_txtcursor_shape;
@@ -63,8 +62,6 @@ static vr_draw_mouse_t		vga_txtmouse;
 
 #ifdef SC_PIXEL_MODE
 static vr_init_t		vga_rndrinit;
-static vr_clear_t		vga_pxlclear_direct;
-static vr_clear_t		vga_pxlclear_planar;
 static vr_draw_border_t		vga_pxlborder_direct;
 static vr_draw_border_t		vga_pxlborder_planar;
 static vr_draw_t		vga_egadraw;
@@ -92,7 +89,6 @@ static void			vga_nop(scr_stat *scp, ...);
 
 static sc_rndr_sw_t txtrndrsw = {
 	(vr_init_t *)vga_nop,
-	vga_txtclear,
 	vga_txtborder,
 	vga_txtdraw,	
 	vga_txtcursor_shape,
@@ -109,7 +105,6 @@ RENDERER(vga, 0, txtrndrsw, vga_set);
 #ifdef SC_PIXEL_MODE
 static sc_rndr_sw_t egarndrsw = {
 	(vr_init_t *)vga_nop,
-	vga_pxlclear_planar,
 	vga_pxlborder_planar,
 	vga_egadraw,
 	vga_pxlcursor_shape,
@@ -122,7 +117,6 @@ RENDERER(ega, PIXEL_MODE, egarndrsw, vga_set);
 
 static sc_rndr_sw_t vgarndrsw = {
 	vga_rndrinit,
-	(vr_clear_t *)vga_nop,
 	(vr_draw_border_t *)vga_nop,
 	(vr_draw_t *)vga_nop,
 	vga_pxlcursor_shape,
@@ -137,7 +131,6 @@ RENDERER(vga, PIXEL_MODE, vgarndrsw, vga_set);
 #ifndef SC_NO_MODE_CHANGE
 static sc_rndr_sw_t grrndrsw = {
 	(vr_init_t *)vga_nop,
-	(vr_clear_t *)vga_nop,
 	vga_grborder,
 	(vr_draw_t *)vga_nop,
 	(vr_set_cursor_t *)vga_nop,
@@ -170,12 +163,6 @@ vga_nop(scr_stat *scp, ...)
 }
 
 /* text mode renderer */
-
-static void
-vga_txtclear(scr_stat *scp, int c, int attr)
-{
-	sc_vtb_clear(&scp->scr, c, attr);
-}
 
 static void
 vga_txtborder(scr_stat *scp, int color)
@@ -445,68 +432,18 @@ static void
 vga_rndrinit(scr_stat *scp)
 {
 	if (scp->sc->adp->va_info.vi_mem_model == V_INFO_MM_PLANAR) {
-		scp->rndr->clear = vga_pxlclear_planar;
 		scp->rndr->draw_border = vga_pxlborder_planar;
 		scp->rndr->draw = vga_vgadraw_planar;
 		scp->rndr->draw_cursor = vga_pxlcursor_planar;
 		scp->rndr->blink_cursor = vga_pxlblink_planar;
 		scp->rndr->draw_mouse = vga_pxlmouse_planar;
 	} else if (scp->sc->adp->va_info.vi_mem_model == V_INFO_MM_DIRECT) {
-		scp->rndr->clear = vga_pxlclear_direct;
 		scp->rndr->draw_border = vga_pxlborder_direct;
 		scp->rndr->draw = vga_vgadraw_direct;
 		scp->rndr->draw_cursor = vga_pxlcursor_direct;
 		scp->rndr->blink_cursor = vga_pxlblink_direct;
 		scp->rndr->draw_mouse = vga_pxlmouse_direct;
 	}
-}
-
-static void
-vga_pxlclear_direct(scr_stat *scp, int c, int attr)
-{
-	vm_offset_t p;
-	int line_width;
-	int pixel_size;
-	int lines;
-	int i;
-
-	line_width = scp->sc->adp->va_line_width;
-	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
-	lines = scp->ysize * scp->font_size; 
-	p = scp->sc->adp->va_window +
-	    line_width * scp->yoff * scp->font_size +
-	    scp->xoff * 8 * pixel_size;
-
-	for (i = 0; i < lines; ++i) {
-		bzero_io((void *)p, scp->xsize * 8 * pixel_size);
-		p += line_width;
-	}
-}
-
-static void
-vga_pxlclear_planar(scr_stat *scp, int c, int attr)
-{
-	vm_offset_t p;
-	int line_width;
-	int lines;
-	int i;
-
-	/* XXX: we are just filling the screen with the background color... */
-	outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
-	outw(GDCIDX, 0x0003);		/* data rotate/function select */
-	outw(GDCIDX, 0x0f01);		/* set/reset enable */
-	outw(GDCIDX, 0xff08);		/* bit mask */
-	outw(GDCIDX, ((attr & 0xf000) >> 4) | 0x00); /* set/reset */
-	line_width = scp->sc->adp->va_line_width;
-	lines = scp->ysize*scp->font_size; 
-	p = scp->sc->adp->va_window + line_width*scp->yoff*scp->font_size
-		+ scp->xoff;
-	for (i = 0; i < lines; ++i) {
-		bzero_io((void *)p, scp->xsize);
-		p += line_width;
-	}
-	outw(GDCIDX, 0x0000);		/* set/reset */
-	outw(GDCIDX, 0x0001);		/* set/reset enable */
 }
 
 static void

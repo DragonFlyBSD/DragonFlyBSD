@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.13 2005/04/19 18:05:02 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.14 2005/04/26 21:23:50 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -399,7 +399,6 @@ extern struct linker_set scterm_set;
 
 /* renderer function table */
 typedef void	vr_init_t(scr_stat *scp);
-typedef void	vr_clear_t(scr_stat *scp, int c, int attr);
 typedef void	vr_draw_border_t(scr_stat *scp, int color);
 typedef void	vr_draw_t(scr_stat *scp, int from, int count, int flip);
 typedef void	vr_set_cursor_t(scr_stat *scp, int base, int height, int blink);
@@ -411,7 +410,6 @@ typedef void	vr_draw_mouse_t(scr_stat *scp, int x, int y, int on);
 
 typedef struct sc_rndr_sw {
 	vr_init_t		*init;
-	vr_clear_t		*clear;
 	vr_draw_border_t	*draw_border;
 	vr_draw_t		*draw;
 	vr_set_cursor_t		*set_cursor;
