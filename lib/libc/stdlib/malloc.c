@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.8 2005/03/13 15:10:03 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.9 2005/04/26 05:51:00 joerg Exp $
  *
  */
 
@@ -48,9 +48,6 @@
 #   if defined(__i386__)
 #       define malloc_pageshift		12U
 #       define malloc_minsize		16U
-#   endif
-#   if !defined(__NETBSD_SYSCALLS)
-#       define HAS_UTRACE
 #   endif
     /*
      * Make malloc/free/realloc thread-safe in libc for use with
@@ -228,8 +225,6 @@ static int malloc_zero;
 /* junk fill ?  */
 static int malloc_junk;
 
-#ifdef HAS_UTRACE
-
 /* utrace ?  */
 static int malloc_utrace;
 
@@ -240,9 +235,6 @@ void utrace (struct ut *, int);
 #define UTRACE(a, b, c) \
 	if (malloc_utrace) \
 		{struct ut u; u.p=a; u.s = b; u.r=c; utrace(&u, sizeof u);}
-#else /* !HAS_UTRACE */
-#define UTRACE(a,b,c)
-#endif /* HAS_UTRACE */
 
 /* my last break. */
 static void *malloc_brk;
@@ -419,10 +411,8 @@ malloc_init ()
 		case 'R': malloc_realloc = 1; break;
 		case 'j': malloc_junk    = 0; break;
 		case 'J': malloc_junk    = 1; break;
-#ifdef HAS_UTRACE
 		case 'u': malloc_utrace  = 0; break;
 		case 'U': malloc_utrace  = 1; break;
-#endif
 		case 'v': malloc_sysv    = 0; break;
 		case 'V': malloc_sysv    = 1; break;
 		case 'x': malloc_xmalloc = 0; break;
