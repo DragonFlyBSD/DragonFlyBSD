@@ -28,9 +28,10 @@
  *
  * $OpenBSD: readpassphrase.c,v 1.12 2001/12/15 05:41:00 millert Exp $
  * $FreeBSD: src/lib/libc/gen/readpassphrase.c,v 1.6.2.2 2002/06/30 13:54:26 des Exp $
- * $DragonFly: src/lib/libc/gen/readpassphrase.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/readpassphrase.c,v 1.3 2005/04/26 08:46:54 joerg Exp $
  */
 
+#include "namespace.h"
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -41,6 +42,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <readpassphrase.h>
+#include "un-namespace.h"
 
 static volatile sig_atomic_t signo;
 
