@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.77 2005/04/26 10:21:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.78 2005/04/26 10:22:09 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2984,6 +2984,9 @@ Cmd_Exec(const char *cmd, const char **error)
 		return (buf);
 	}
 
+	/* Set close-on-exec on read side of pipe. */
+	fcntl(fds[0], F_SETFD, fcntl(fds[0], F_GETFD) | FD_CLOEXEC);
+
 	ps.in = STDIN_FILENO;
 	ps.out = fds[1];
 	ps.err = STDERR_FILENO;
@@ -3010,8 +3013,6 @@ Cmd_Exec(const char *cmd, const char **error)
 		/*
 		 * Child
 		 */
-		close(fds[0]); /* Close input side of pipe */
-
 		ProcExec(&ps);
 		/* NOTREACHED */
 
@@ -3021,10 +3022,7 @@ Cmd_Exec(const char *cmd, const char **error)
 		free(ps.argv[0]);
 		free(ps.argv);
 
-		/*
-		 * No need for the writing half
-		 */
-		close(fds[1]);
+		close(fds[1]); /* No need for the writing half of the pipe. */
 
 		do {
 			char	result[BUFSIZ];
@@ -3369,7 +3367,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 			free(ps.argv);
 		}
 
-
 		/*
 		 * we need to print out the command associated with this
 		 * Gnode in Targ_PrintCmd from Targ_PrintGraph when debugging
@@ -3380,6 +3377,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 			free(cmdStart);
 			Lst_Replace(cmdNode, cmd_save);
 		}
+
 		/*
 		 * The child is off and running. Now all we can do is wait...
 		 */
