@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.12 2005/04/26 09:08:38 joerg Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.13 2005/04/26 10:16:16 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -133,7 +133,7 @@ void	 srand48(long);
 void	*alloca(size_t);		/* built-in for gcc */
 					/* getcap(3) functions */
 __uint32_t arc4random(void);
-void	 arc4random_addrandom(unsigned char *, int);
+void	 arc4random_addrandom(__uint8_t *, size_t);
 void	 arc4random_stir(void);
 char	*getbsize(int *, long *);
 char	*cgetcap(char *, char *, int);

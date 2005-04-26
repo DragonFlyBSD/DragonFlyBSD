@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.4 2000/01/27 23:06:13 jasone Exp $ */
-/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.5 2005/01/31 22:29:15 dillon Exp $ */
+/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.6 2005/04/26 10:16:16 joerg Exp $ */
 
 /*
  * Arc4 random number generator for OpenBSD.
@@ -43,11 +43,10 @@ struct arc4_stream {
 static int rs_initialized;
 static struct arc4_stream rs;
 
-static inline u_int8_t	arc4_getbyte(struct arc4_stream *);
+static u_int8_t	arc4_getbyte(struct arc4_stream *);
 
-static inline void
-arc4_init(as)
-	struct arc4_stream *as;
+static void
+arc4_init(struct arc4_stream *as)
 {
 	int     n;
 
@@ -57,13 +56,10 @@ arc4_init(as)
 	as->j = 0;
 }
 
-static inline void
-arc4_addrandom(as, dat, datlen)
-	struct arc4_stream *as;
-	u_char *dat;
-	int     datlen;
+static void
+arc4_addrandom(struct arc4_stream *as, u_char *dat, size_t datlen)
 {
-	int     n;
+	size_t n;
 	u_int8_t si;
 
 	as->i--;
@@ -77,8 +73,7 @@ arc4_addrandom(as, dat, datlen)
 }
 
 static void
-arc4_stir(as)
-	struct arc4_stream *as;
+arc4_stir(struct arc4_stream *as)
 {
 	int     fd, n;
 	struct {
@@ -110,7 +105,7 @@ arc4_stir(as)
 		arc4_getbyte(as);
 }
 
-static inline u_int8_t
+static u_int8_t
 arc4_getbyte(struct arc4_stream *as)
 {
 	u_int8_t si, sj;
@@ -124,9 +119,8 @@ arc4_getbyte(struct arc4_stream *as)
 	return (as->s[(si + sj) & 0xff]);
 }
 
-static inline u_int32_t
-arc4_getword(as)
-	struct arc4_stream *as;
+static u_int32_t
+arc4_getword(struct arc4_stream *as)
 {
 	u_int32_t val;
 	val = arc4_getbyte(as) << 24;
@@ -137,7 +131,7 @@ arc4_getword(as)
 }
 
 void
-arc4random_stir()
+arc4random_stir(void)
 {
 	if (!rs_initialized) {
 		arc4_init(&rs);
@@ -147,9 +141,7 @@ arc4random_stir()
 }
 
 void
-arc4random_addrandom(dat, datlen)
-	u_char *dat;
-	int     datlen;
+arc4random_addrandom(uint8_t *dat, size_t datlen)
 {
 	if (!rs_initialized)
 		arc4random_stir();
@@ -157,7 +149,7 @@ arc4random_addrandom(dat, datlen)
 }
 
 u_int32_t
-arc4random()
+arc4random(void)
 {
 	if (!rs_initialized)
 		arc4random_stir();
