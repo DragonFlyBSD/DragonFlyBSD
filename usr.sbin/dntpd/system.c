@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.4 2005/04/26 00:56:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.5 2005/04/26 07:01:43 dillon Exp $
  */
 
 #include "defs.h"
@@ -98,6 +98,23 @@ sysntp_getbasetime(struct timeval *tvp)
 	exit(1);
     }
     ts_to_tv(&ts, tvp);
+}
+
+/*
+ * Return 1 if an offset correction is still running, 0 if it isn't.
+ */
+int
+sysntp_offset_correction_is_running(void)
+{
+    int64_t delta;
+    int delta_len;
+
+    delta_len = sizeof(delta);
+    if (sysctlbyname("kern.ntp.delta", &delta, &delta_len, NULL, 0) == 0) {
+	if (delta != 0)
+	    return(1);
+    }
+    return(0);
 }
 
 /*

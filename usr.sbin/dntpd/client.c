@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.7 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.8 2005/04/26 07:01:43 dillon Exp $
  */
 
 #include "defs.h"
@@ -50,6 +50,7 @@ client_main(struct server_info **info_ary, int count)
     double freq;
     double offset;
     int i;
+    int calc_offset_correction;
 
     last_freq = 0.0;
 
@@ -57,9 +58,15 @@ client_main(struct server_info **info_ary, int count)
 	/*
 	 * Subtract the interval from poll_sleep and poll the client
 	 * if it reaches 0.
+	 *
+	 * Because we do not compensate for offset corrections which are
+	 * in progress, we cannot accumulate data for an offset correction
+	 * while a prior correction is still being worked through by the
+	 * system.
 	 */
+	calc_offset_correction = !sysntp_offset_correction_is_running();
 	for (i = 0; i < count; ++i)
-	    client_poll(info_ary[i], min_sleep_opt);
+	    client_poll(info_ary[i], min_sleep_opt, calc_offset_correction);
 
 	/*
 	 * Find the best client (or synthesize one).  A different client
@@ -83,11 +90,6 @@ client_main(struct server_info **info_ary, int count)
 
 	/*
 	 * Offset correction.
-	 *
-	 * XXX it might not be a good idea to issue an offset correction if
-	 * a prior offset correction is still in progress as this will skew
-	 * the offset calculation.  XXX either figure out how to correct the
-	 * skew or do not issue a correction.
 	 */
 	if (best_off) {
 	    offset = best_off->lin_sumoffset / best_off->lin_countoffset;
@@ -131,7 +133,7 @@ client_main(struct server_info **info_ary, int count)
 }
 
 void
-client_poll(server_info_t info, int poll_interval)
+client_poll(server_info_t info, int poll_interval, int calc_offset_correction)
 {
     struct timeval rtv;
     struct timeval ltv;
@@ -189,7 +191,7 @@ client_poll(server_info_t info, int poll_interval)
 	    strftime(buf, sizeof(buf), "%d-%b-%Y %H:%M:%S", tp);
 	    logdebug(4, "%s.%03ld ", buf, rtv.tv_usec / 1000);
 	}
-	lin_regress(info, &ltv, &lbtv, offset);
+	lin_regress(info, &ltv, &lbtv, offset, calc_offset_correction);
 	info = info->altinfo;
 	if (info && debug_level >= 4) {
 	    logdebug(4, "%*.*s: poll, ", 
@@ -425,7 +427,7 @@ client_manage_polling_mode(struct server_info *info)
  */
 void
 lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
-	    double offset)
+	    double offset, int calc_offset_correction)
 {
     double time_axis;
     double uncorrected_offset;
@@ -461,9 +463,11 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     /*
      * We have to use the corrected offset for offset calculations.
      */
-    ++info->lin_countoffset;
-    info->lin_sumoffset += offset;
-    info->lin_sumoffset2 += offset * offset;
+    if (calc_offset_correction) {
+	++info->lin_countoffset;
+	info->lin_sumoffset += offset;
+	info->lin_sumoffset2 += offset * offset;
+    }
 
     /*
      * Calculate various derived values.   This gets us slope, y-intercept,
@@ -523,6 +527,9 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
 	}
 	if (info->lin_countoffset > 1) {
 	    logdebug(4, " stddev %7.6f", info->lin_cache_stddev);
+	} else if (calc_offset_correction == 0) {
+	    /* cannot calculate offset correction due to prior correction */
+	    logdebug(4, " offset_ignored");
 	}
 	logdebug(4, "\n");
     }

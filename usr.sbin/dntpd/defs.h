@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.7 2005/04/26 00:56:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.8 2005/04/26 07:01:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -88,6 +88,7 @@ void logerrstr(const char *ctl, ...);
 void _logdebug(int level, const char *ctl, ...);
 
 void sysntp_getbasetime(struct timeval *tvp);
+int sysntp_offset_correction_is_running(void);
 double sysntp_correct_offset(double offset);
 double sysntp_correct_course_offset(double offset);
 void sysntp_correct_freq(double freq);

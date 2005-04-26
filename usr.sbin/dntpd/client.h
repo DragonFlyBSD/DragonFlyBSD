@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.5 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.6 2005/04/26 07:01:43 dillon Exp $
  */
 
 struct server_info {
@@ -113,23 +113,25 @@ struct server_info {
 #define LIN_RESTART	30
 
 /*
- * A course correction is made if the time gets more then 10 minutes
+ * A course correction is made if the time gets more then 2 minutes
  * off.
  */
-#define COURSE_OFFSET_CORRECTION_LIMIT	600.0
+#define COURSE_OFFSET_CORRECTION_LIMIT	120.0
 
 typedef struct server_info *server_info_t;
 
 void client_init(void);
 int client_main(struct server_info **info_ary, int count);
-void client_poll(server_info_t info, int poll_interval);
+void client_poll(server_info_t info, int poll_interval, 
+		  int calc_offset_correction);
 void client_check(struct server_info **check, 
 		  struct server_info **best_off,
 		  struct server_info **best_freq);
 void client_manage_polling_mode(struct server_info *info);
 
 void lin_regress(server_info_t info, 
-		 struct timeval *ltv, struct timeval *lbtv, double offset);
+		 struct timeval *ltv, struct timeval *lbtv,
+		 double offset, int calc_offset_correction);
 void lin_reset(server_info_t info);
 void lin_resetalloffsets(struct server_info **info_ary, int count);
 void lin_resetoffsets(server_info_t info);

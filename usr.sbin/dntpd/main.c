@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.6 2005/04/26 00:56:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.7 2005/04/26 07:01:43 dillon Exp $
  */
 
 #include "defs.h"
@@ -42,7 +42,7 @@ static void add_server(const char *target);
 static void process_config_file(const char *path);
 static pid_t check_pid(void);
 static void set_pid(const char *av0);
-static void sigint_handler(int signo);
+static void sigint_handler(int signo __unused);
 
 static struct server_info **servers;
 static int nservers;
@@ -290,7 +290,7 @@ dotest(const char *target)
 	    "Will run %d-second polls until interrupted.\n", nom_sleep_opt);
 
     for (;;) {
-	client_poll(&info, nom_sleep_opt);
+	client_poll(&info, nom_sleep_opt, 1);
 	sleep(nom_sleep_opt);
     }
     /* not reached */
@@ -393,7 +393,7 @@ set_pid(const char *av0)
 
 static
 void
-sigint_handler(int signo)
+sigint_handler(int signo __unused)
 {
     remove(pid_opt);
     /* dangerous, but we are exiting anyway so pray... */
