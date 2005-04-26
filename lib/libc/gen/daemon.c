@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/daemon.c,v 1.3 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libc/gen/daemon.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/daemon.c,v 1.4 2005/04/26 15:57:39 joerg Exp $
  *
  * @(#)daemon.c	8.1 (Berkeley) 6/4/93
  */
@@ -39,12 +39,12 @@
 #include "namespace.h"
 #include <fcntl.h>
 #include <paths.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "un-namespace.h"
 
 int
-daemon(nochdir, noclose)
-	int nochdir, noclose;
+daemon(int nochdir, int noclose)
 {
 	int fd;
 
@@ -61,14 +61,14 @@ daemon(nochdir, noclose)
 		return (-1);
 
 	if (!nochdir)
-		(void)chdir("/");
+		chdir("/");
 
 	if (!noclose && (fd = _open(_PATH_DEVNULL, O_RDWR, 0)) != -1) {
-		(void)_dup2(fd, STDIN_FILENO);
-		(void)_dup2(fd, STDOUT_FILENO);
-		(void)_dup2(fd, STDERR_FILENO);
+		_dup2(fd, STDIN_FILENO);
+		_dup2(fd, STDOUT_FILENO);
+		_dup2(fd, STDERR_FILENO);
 		if (fd > 2)
-			(void)_close(fd);
+			_close(fd);
 	}
 	return (0);
 }
