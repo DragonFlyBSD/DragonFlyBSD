@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.10 2005/04/21 16:36:34 joerg Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.11 2005/04/26 08:45:19 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -152,7 +152,7 @@ char	*devname_r(int, int, char *, size_t);
 int	 getloadavg(double [], int);
 const char *getprogname(void);
 
-char	*group_from_gid(unsigned long, int);
+char	*group_from_gid(gid_t, int);
 int	 heapsort(void *, size_t, size_t, int (*)(const void *, const void *));
 char	*initstate(unsigned long, char *, long);
 int	 mergesort(void *, size_t, size_t, int (*)(const void *, const void *));
@@ -168,7 +168,7 @@ void	 setprogname(const char *);
 char	*setstate(char *);
 void	 srandom(unsigned long);
 void	 srandomdev(void);
-char	*user_from_uid(unsigned long, int);
+char	*user_from_uid(uid_t, int);
 #ifndef __STRICT_ANSI__
 __int64_t	strtoq(const char *, char **, int);
 __uint64_t	strtouq(const char *, char **, int);

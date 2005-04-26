@@ -31,24 +31,21 @@
  * SUCH DAMAGE.
  *
  * @(#)pwcache.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/pwcache.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/pwcache.c,v 1.4 2005/04/26 08:45:19 joerg Exp $
  */
 
-#include <sys/types.h>
-
 #include <grp.h>
-#include <string.h>
 #include <pwd.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <utmp.h>
 
 #define	NCACHE	64			/* power of 2 */
 #define	MASK	(NCACHE - 1)		/* bits to store with */
 
 char *
-user_from_uid(uid, nouser)
-	uid_t uid;
-	int nouser;
+user_from_uid(uid_t uid, int nouser)
 {
 	static struct ncache {
 		uid_t	uid;
@@ -82,9 +79,7 @@ user_from_uid(uid, nouser)
 }
 
 char *
-group_from_gid(gid, nogroup)
-	gid_t gid;
-	int nogroup;
+group_from_gid(gid_t gid, int nogroup)
 {
 	static struct ncache {
 		gid_t	gid;
