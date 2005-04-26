@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.74 2005/04/26 10:20:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.75 2005/04/26 10:20:39 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1301,6 +1301,32 @@ JobExec(Job *job, char **argv)
 		lastNode = job->node;
 	}
 
+	ps.in = FILENO(job->cmdFILE);
+	if (usePipes) {
+		/*
+		 * Set up the child's output to be routed through the
+		 * pipe we've created for it.
+		 */
+		ps.out = job->outPipe;
+	} else {
+		/*
+		 * We're capturing output in a file, so we duplicate
+		 * the descriptor to the temporary file into the
+		 * standard output.
+		 */
+		ps.out = job->outFd;
+	}
+	ps.err = STDERR_FILENO;
+
+	ps.merge_errors = 1;
+	ps.pgroup = 1;
+	ps.searchpath = 0;
+
+	ps.argv = argv;
+
+	/*
+	 * Fork
+	 */
 	if ((cpid = vfork()) == -1) {
 		Punt("Cannot fork");
 
@@ -1310,28 +1336,6 @@ JobExec(Job *job, char **argv)
 		 */
 		if (fifoFd >= 0)
 			close(fifoFd);
-
-		ps.in = FILENO(job->cmdFILE);
-		if (usePipes) {
-			/*
-			 * Set up the child's output to be routed through the
-			 * pipe we've created for it.
-			 */
-			ps.out = job->outPipe;
-		} else {
-			/*
-			 * We're capturing output in a file, so we duplicate
-			 * the descriptor to the temporary file into the
-			 * standard output.
-			 */
-			ps.out = job->outFd;
-		}
-		ps.err = STDERR_FILENO;
-
-		ps.merge_errors = 1;
-		ps.pgroup = 1;
-		ps.searchpath = 0;
-		ps.argv = argv;
 
 		ProcExec(&ps);
 		/* NOTREACHED */
@@ -2980,6 +2984,22 @@ Cmd_Exec(const char *cmd, const char **error)
 		return (buf);
 	}
 
+	ps.in = STDIN_FILENO;
+	ps.out = fds[1];
+	ps.err = STDERR_FILENO;
+
+	ps.merge_errors = 0;
+	ps.pgroup = 0;
+	ps.searchpath = 0;
+
+	/* Set up arguments for shell */
+	argv[0] = shellName;
+	argv[1] = "-c";
+	argv[2] = cmd;
+	argv[3] = NULL;
+
+	ps.argv = argv;
+
 	/*
 	 * Fork
 	 */
@@ -2987,25 +3007,10 @@ Cmd_Exec(const char *cmd, const char **error)
 		*error = "Couldn't exec \"%s\"";
 
 	} else if (cpid == 0) {
-		/* Set up arguments for shell */
-		argv[0] = shellName;
-		argv[1] = "-c";
-		argv[2] = cmd;
-		argv[3] = NULL;
-
 		/*
-		 * Close input side of pipe
+		 * Child
 		 */
-		close(fds[0]);
-
-		ps.in = STDIN_FILENO;
-		ps.out = fds[1];
-		ps.err = STDERR_FILENO;
-
-		ps.merge_errors = 0;
-		ps.pgroup = 0;
-		ps.searchpath = 0;
-		ps.argv = argv;
+		close(fds[0]); /* Close input side of pipe */
 
 		ProcExec(&ps);
 		/* NOTREACHED */
@@ -3285,14 +3290,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		cmd++;
 
 	/*
-	 * Search for meta characters in the command. If there are no meta
-	 * characters, there's no need to execute a shell to execute the
-	 * command.
-	 */
-	for (cp = cmd; !meta[(unsigned char)*cp]; cp++)
-		continue;
-
-	/*
 	 * Print the command before echoing if we're not supposed to be quiet
 	 * for this one. We also print the command if -n given, but not if '+'.
 	 */
@@ -3308,6 +3305,14 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	if (!doit && noExecute) {
 		return (0);
 	}
+
+	/*
+	 * Search for meta characters in the command. If there are no meta
+	 * characters, there's no need to execute a shell to execute the
+	 * command.
+	 */
+	for (cp = cmd; !meta[(unsigned char)*cp]; cp++)
+		continue;
 
 	if (*cp != '\0') {
 		/*
@@ -3348,6 +3353,16 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		av += 1;
 	}
 
+	ps.in = STDIN_FILENO;
+	ps.out = STDOUT_FILENO;
+	ps.err = STDERR_FILENO;
+
+	ps.merge_errors = 0;
+	ps.pgroup = 0;
+	ps.searchpath = 1;
+
+	ps.argv = av;
+
 	/*
 	 * Fork and execute the single command. If the fork fails, we abort.
 	 */
@@ -3355,15 +3370,9 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		Fatal("Could not fork");
 
 	} else if (cpid == 0) {
-		ps.in = STDIN_FILENO;
-		ps.out = STDOUT_FILENO;
-		ps.err = STDERR_FILENO;
-
-		ps.merge_errors = 0;
-		ps.pgroup = 0;
-		ps.searchpath = 1;
-		ps.argv = av;
-
+		/*
+		 * Child
+		 */
 		ProcExec(&ps);
 		/* NOTREACHED */
 
