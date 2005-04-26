@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.8 2005/04/26 07:01:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.9 2005/04/26 23:50:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -65,6 +65,7 @@
 
 extern int debug_opt;
 extern int debug_level;
+extern int quickset_opt;
 extern int no_update_opt;
 extern int min_sleep_opt;
 extern int nom_sleep_opt;

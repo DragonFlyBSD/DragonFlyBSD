@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.5 2005/04/26 07:01:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.6 2005/04/26 23:50:23 dillon Exp $
  */
 
 #include "defs.h"
@@ -184,6 +184,8 @@ sysntp_correct_course_offset(double offset)
 	    logdebug(1, "%s.%03ld", buf, tv.tv_usec / 1000);
 	    if (no_update_opt)
 		logdebug(1, " (UPDATES DISABLED)");
+	    if (quickset_opt)
+		logdebug(1, " (ONE-TIME QUICKSET)");
 	    logdebug(1, "\n");
 	}
     } else {

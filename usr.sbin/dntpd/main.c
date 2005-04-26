@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.7 2005/04/26 07:01:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.8 2005/04/26 23:50:23 dillon Exp $
  */
 
 #include "defs.h"
@@ -51,7 +51,7 @@ static int maxservers;
 int daemon_opt = 1;
 int debug_opt = 0;
 int debug_level = -1;		/* (set to default later) */
-int quickset_opt = 0;		/* immediate set time of day on startup */
+int quickset_opt = 0;		/* immediately set time of day on startup */
 int no_update_opt = 0;		/* do not make any actual updates */
 int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
 int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
@@ -104,8 +104,6 @@ main(int ac, char **av)
 	    break;
 	case 's':
 	    quickset_opt = 1;
-	    fprintf(stderr, "%s: warning, -s not currently implemented\n", 
-		    av[0]);
 	    break;
 	case 'S':
 	    quickset_opt = 0;

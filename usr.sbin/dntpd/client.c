@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.8 2005/04/26 07:01:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.9 2005/04/26 23:50:23 dillon Exp $
  */
 
 #include "defs.h"
@@ -95,9 +95,11 @@ client_main(struct server_info **info_ary, int count)
 	    offset = best_off->lin_sumoffset / best_off->lin_countoffset;
 	    lin_resetalloffsets(info_ary, count);
 	    if (offset < -COURSE_OFFSET_CORRECTION_LIMIT ||
-		offset > COURSE_OFFSET_CORRECTION_LIMIT
+		offset > COURSE_OFFSET_CORRECTION_LIMIT ||
+		quickset_opt
 	    ) {
 		freq = sysntp_correct_course_offset(offset);
+		quickset_opt = 0;
 	    } else {
 		freq = sysntp_correct_offset(offset);
 	    }
