@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.34 2005/04/26 00:30:00 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.35 2005/04/26 00:31:05 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2364,9 +2364,9 @@ ap_init(void)
 	 * Note: cpu_mb1() is memory volatile and prevents mp_finish from
 	 * 	 being cached.
 	 */
-	++curthread->td_mpcount;
 	while (mp_finish == 0)
 	    cpu_mb1();
+	++curthread->td_mpcount;
 	while (cpu_try_mplock() == 0)
 	    ;
 
