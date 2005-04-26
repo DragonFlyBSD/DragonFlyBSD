@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.73 2005/04/26 10:19:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.74 2005/04/26 10:20:20 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -472,6 +472,8 @@ typedef struct ProcStuff {
 	int	merge_errors;	/* true if stderr is redirected to stdin */
 	int	pgroup;		/* true if new process a process leader */
 	int	searchpath;	/* true if binary should be found via $PATH */
+
+	char	**argv;
 } ProcStuff;
 
 static void JobRestart(Job *);
@@ -480,13 +482,13 @@ static void JobDoOutput(Job *, Boolean);
 static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
-static void ProcExec(ProcStuff *, char *[]) __dead2;
+static void ProcExec(ProcStuff *) __dead2;
 
 /**
  * Replace the current process.
  */
 static void
-ProcExec(ProcStuff *ps, char *argv[])
+ProcExec(ProcStuff *ps)
 {
 	if (ps->in != STDIN_FILENO) {
 		/*
@@ -552,14 +554,14 @@ ProcExec(ProcStuff *ps, char *argv[])
 	}
 
 	if (ps->searchpath) {
-		execvp(argv[0], argv);
+		execvp(ps->argv[0], ps->argv);
 
-		write(STDERR_FILENO, argv[0], strlen(argv[0]));
+		write(STDERR_FILENO, ps->argv[0], strlen(ps->argv[0]));
 		write(STDERR_FILENO, ":", 1);
 		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 		write(STDERR_FILENO, "\n", 1);
 	} else {
-		execv(shellPath, argv);
+		execv(shellPath, ps->argv);
 
 		write(STDERR_FILENO,
 		      "Could not execute shell\n",
@@ -1273,7 +1275,8 @@ Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 static void
 JobExec(Job *job, char **argv)
 {
-	pid_t		  cpid;		/* ID of new child */
+	ProcStuff	ps;
+	pid_t		cpid;	/* ID of new child */
 
 	if (DEBUG(JOB)) {
 		int	  i;
@@ -1302,7 +1305,6 @@ JobExec(Job *job, char **argv)
 		Punt("Cannot fork");
 
 	} else if (cpid == 0) {
-		ProcStuff	ps;
 		/*
 		 * Child
 		 */
@@ -1329,7 +1331,9 @@ JobExec(Job *job, char **argv)
 		ps.merge_errors = 1;
 		ps.pgroup = 1;
 		ps.searchpath = 0;
-		ProcExec(&ps, argv);
+		ps.argv = argv;
+
+		ProcExec(&ps);
 		/* NOTREACHED */
 
 	} else {
@@ -2960,6 +2964,8 @@ Cmd_Exec(const char *cmd, const char **error)
 	int	status;	/* command exit status */
 	Buffer	*buf;	/* buffer to store the result */
 	ssize_t	rcnt;
+	ProcStuff	ps;
+	char		*argv[4];
 
 	*error = NULL;
 	buf = Buf_Init(0);
@@ -2981,9 +2987,6 @@ Cmd_Exec(const char *cmd, const char **error)
 		*error = "Couldn't exec \"%s\"";
 
 	} else if (cpid == 0) {
-		ProcStuff	ps;
-		char		*argv[4];
-
 		/* Set up arguments for shell */
 		argv[0] = shellName;
 		argv[1] = "-c";
@@ -3002,7 +3005,9 @@ Cmd_Exec(const char *cmd, const char **error)
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
 		ps.searchpath = 0;
-		ProcExec(&ps, argv);
+		ps.argv = argv;
+
+		ProcExec(&ps);
 		/* NOTREACHED */
 
 	} else {
@@ -3216,6 +3221,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	LstNode	*cmdNode;	/* Node where current command is located */
 	char	**av;		/* Argument vector for thing to exec */
 	char	*cmd_save;	/* saved cmd */
+	ProcStuff	ps;
 
 	/*
 	 * Avoid clobbered variable warnings by forcing the compiler
@@ -3349,8 +3355,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		Fatal("Could not fork");
 
 	} else if (cpid == 0) {
-		ProcStuff	ps;
-
 		ps.in = STDIN_FILENO;
 		ps.out = STDOUT_FILENO;
 		ps.err = STDERR_FILENO;
@@ -3358,7 +3362,9 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		ps.merge_errors = 0;
 		ps.pgroup = 0;
 		ps.searchpath = 1;
-		ProcExec(&ps, av);
+		ps.argv = av;
+
+		ProcExec(&ps);
 		/* NOTREACHED */
 
 	} else {
