@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/gen/pthread_fake.c,v 1.1 2004/12/16 22:55:29 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/pthread_fake.c,v 1.2 2005/04/26 08:41:44 joerg Exp $
  */
 
 #ifndef _THREAD_SAFE
@@ -49,6 +49,9 @@
 
 #include <errno.h>
 #include <stddef.h>
+
+int	 _pthread_fake_inval(void);
+void	*_pthread_fake_null(void);
 
 __weak_reference(_pthread_fake_inval, pthread_attr_destroy);
 __weak_reference(_pthread_fake_inval, pthread_attr_get_np);
