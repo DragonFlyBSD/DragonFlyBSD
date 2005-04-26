@@ -31,21 +31,21 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/devname.c,v 1.2.2.2 2001/07/31 20:10:19 tmm Exp $
- * $DragonFly: src/lib/libc/gen/devname.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/devname.c,v 1.6 2005/04/26 16:59:56 joerg Exp $
  *
  * @(#)devname.c	8.2 (Berkeley) 4/29/95
  */
 
 #include <sys/types.h>
-#include <sys/sysctl.h>
+#include <sys/stat.h>
 
 #include <db.h>
 #include <err.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 static char *
 xdevname(dev_t dev, mode_t type)
@@ -82,8 +82,6 @@ xdevname(dev_t dev, mode_t type)
 char *
 devname_r(dev_t dev, mode_t type, char *buf, size_t len)
 {
-	int i;
-	size_t j;
 	char *r;
 
 	/* First check the DB file. */
@@ -92,17 +90,6 @@ devname_r(dev_t dev, mode_t type, char *buf, size_t len)
 		strlcpy(buf, r, len);
 		return (buf);
 	}
-
-#if 0
-	/* The kern.devname sysctl does not exist */
-	/* Then ask the kernel. */
-	if ((type & S_IFMT) == S_IFCHR) {
-		j = sizeof(buf);
-		i = sysctlbyname("kern.devname", buf, &j, &dev, sizeof (dev));
-		if (i == 0)
-		    return (buf);
-	}
-#endif
 
 	/* Finally just format it */
 	if (minor(dev) > 255) {
@@ -122,7 +109,7 @@ devname(dev_t dev, mode_t type)
 {
 	static char buf[30];	 /* XXX: pick up from <sys/conf.h> */
 
-	strncpy(buf, devname_r(dev, type, buf, sizeof(buf)), sizeof(buf));
+	strlcpy(buf, devname_r(dev, type, buf, sizeof(buf)), sizeof(buf));
 
 	return (buf);
 }
