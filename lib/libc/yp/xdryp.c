@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/xdryp.c,v 1.9.2.1 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/xdryp.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/yp/xdryp.c,v 1.3 2005/04/26 05:30:12 joerg Exp $
  */
 
 #include <rpc/rpc.h>
@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern int (*ypresp_allfn)();
+extern int (*ypresp_allfn)(unsigned long, char *, int, char *, int, void *);
 extern void *ypresp_data;
 
 /*

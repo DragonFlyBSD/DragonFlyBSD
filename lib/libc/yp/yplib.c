@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.5 2005/04/25 18:52:28 joerg Exp $
+ * $DragonFly: src/lib/libc/yp/yplib.c,v 1.6 2005/04/26 05:30:12 joerg Exp $
  */
 
 #include "namespace.h"
@@ -49,6 +49,8 @@
 
 bool_t	xdr_ypresp_all_seq(XDR *, u_long *);
 int	_yp_check(char **);
+
+int (*ypresp_allfn)(unsigned long, char *, int, char *, int, void *);
 
 /*
  * We have to define these here due to clashes between yp_prot.h and
@@ -843,6 +845,7 @@ again:
 
 	yprnk.domain = indomain;
 	yprnk.map = inmap;
+	ypresp_allfn = incallback->foreach;
 	ypresp_data = (void *)incallback->data;
 
 	if (clnt_call(clnt, YPPROC_ALL,
