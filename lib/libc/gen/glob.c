@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
- * $DragonFly: src/lib/libc/gen/glob.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/glob.c,v 1.3 2005/04/26 06:08:42 joerg Exp $
  *
  * @(#)glob.c	8.3 (Berkeley) 10/13/93
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
@@ -375,10 +375,7 @@ globtilde(pattern, patbuf, patbuf_len, pglob)
 		 * we're not running setuid or setgid) and then trying
 		 * the password file
 		 */
-		if (
-#ifndef	__NETBSD_SYSCALLS
-		    issetugid() != 0 ||
-#endif
+		if (issetugid() != 0 ||
 		    (h = getenv("HOME")) == NULL) {
 			if (((h = getlogin()) != NULL &&
 			     (pwd = getpwnam(h)) != NULL) ||

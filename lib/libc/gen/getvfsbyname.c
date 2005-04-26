@@ -32,7 +32,7 @@
  *
  * @(#)kvm_getvfsbyname.c	8.1 (Berkeley) 4/3/95
  * $FreeBSD: src/lib/libc/gen/getvfsbyname.c,v 1.5 1999/08/27 23:58:45 peter Exp $
- * $DragonFly: src/lib/libc/gen/getvfsbyname.c,v 1.3 2005/04/26 05:48:21 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/getvfsbyname.c,v 1.4 2005/04/26 06:08:42 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -48,9 +48,6 @@
 int
 getvfsbyname(const char *fsname, struct vfsconf *vfcp)
 {
-#ifdef	__NETBSD_SYSCALLS
-	errno = ENOSYS;
-#else
 	int name[4], maxtypenum, cnt;
 	size_t buflen;
 
@@ -73,6 +70,5 @@ getvfsbyname(const char *fsname, struct vfsconf *vfcp)
 			return (0);
 	}
 	errno = ENOENT;
-#endif
 	return (-1);
 }

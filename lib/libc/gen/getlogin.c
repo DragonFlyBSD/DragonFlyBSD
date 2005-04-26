@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getlogin.c,v 1.4.2.1 2001/03/05 09:06:50 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getlogin.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getlogin.c,v 1.4 2005/04/26 06:08:42 joerg Exp $
  *
  * @(#)getlogin.c	8.1 (Berkeley) 6/4/93
  */
@@ -63,11 +63,7 @@ getlogin_basic(int *status)
 	static char logname[MAXLOGNAME];
 
 	if (_logname_valid == 0) {
-#ifdef __NETBSD_SYSCALLS
-		if (_getlogin(logname, sizeof(logname) - 1) < 0) {
-#else
 		if (_getlogin(logname, sizeof(logname)) < 0) {
-#endif
 			*status = errno;
 			return (NULL);
 		}

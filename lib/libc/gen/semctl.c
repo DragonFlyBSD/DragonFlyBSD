@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libc/gen/semctl.c,v 1.2 2004/07/27 07:59:10 asmodai Exp $ */
+/* $DragonFly: src/lib/libc/gen/semctl.c,v 1.3 2005/04/26 06:08:42 joerg Exp $ */
 
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -6,7 +6,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-int semctl(int semid, int semnum, int cmd, ...)
+int
+semctl(int semid, int semnum, int cmd, ...)
 {
 	va_list ap;
 	union semun semun;
@@ -21,9 +22,5 @@ int semctl(int semid, int semnum, int cmd, ...)
 	}
 	va_end(ap);
 
-#ifdef	__NETBSD_SYSCALLS
-	return (__semctl(semid, semnum, cmd, semun_ptr));
-#else
 	return (semsys(0, semid, semnum, cmd, semun_ptr));
-#endif
 }
