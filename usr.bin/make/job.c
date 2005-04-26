@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.72 2005/04/26 10:19:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.73 2005/04/26 10:19:55 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -461,13 +461,17 @@ static sig_atomic_t interrupted;
 #define	W_SETTERMSIG(st, val) W_SETMASKED(st, val, WTERMSIG)
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
+/**
+ * Information used to create a new process.
+ */
 typedef struct ProcStuff {
-	int	in;
-	int	out;
-	int	err;
-	int	merge_errors;
-	int	pgroup;
-	int	searchpath;
+	int	in;	/* stdin for new process */
+	int	out;	/* stdout for new process */
+	int	err;	/* stderr for new process */
+
+	int	merge_errors;	/* true if stderr is redirected to stdin */
+	int	pgroup;		/* true if new process a process leader */
+	int	searchpath;	/* true if binary should be found via $PATH */
 } ProcStuff;
 
 static void JobRestart(Job *);
