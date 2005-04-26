@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/popen.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/popen.c,v 1.5 2005/04/26 08:37:24 joerg Exp $
  *
  * @(#)popen.c	8.3 (Berkeley) 5/3/95
  */
@@ -61,13 +61,12 @@ static struct pid {
 } *pidlist;
 
 FILE *
-popen(command, type)
-	const char *command, *type;
+popen(const char *command, const char *type)
 {
 	struct pid *cur;
 	FILE *iop;
 	int pdes[2], pid, twoway;
-	char *argv[4];
+	const char *argv[4];
 	struct pid *p;
 
 	/*
@@ -93,10 +92,10 @@ popen(command, type)
 
 	argv[0] = "sh";
 	argv[1] = "-c";
-	argv[2] = (char *)command;
+	argv[2] = command;
 	argv[3] = NULL;
 
-	switch (pid = vfork()) {
+	switch (pid = fork()) {
 	case -1:			/* Error. */
 		(void)_close(pdes[0]);
 		(void)_close(pdes[1]);
@@ -131,7 +130,7 @@ popen(command, type)
 		for (p = pidlist; p; p = p->next) {
 			(void)_close(fileno(p->fp));
 		}
-		_execve(_PATH_BSHELL, argv, environ);
+		_execve(_PATH_BSHELL, __DECONST(char * const *, argv), environ);
 		_exit(127);
 		/* NOTREACHED */
 	}
@@ -160,11 +159,9 @@ popen(command, type)
  *	if already `pclosed', or waitpid returns an error.
  */
 int
-pclose(iop)
-	FILE *iop;
+pclose(FILE *iop)
 {
 	struct pid *cur, *last;
-	int omask;
 	int pstat;
 	pid_t pid;
 
