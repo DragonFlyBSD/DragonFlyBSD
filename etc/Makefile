@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.52 2005/04/22 22:02:58 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.53 2005/04/26 16:59:59 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -11,7 +11,7 @@ SUBDIR=	sendmail
 BINUPDATE= apmd.conf fbtab gettytab network.subr \
 	pf.os \
 	protocols \
-	rc rc.firewall rc.firewall6 \
+	rc rc.firewall6 \
 	rc.sendmail rc.shutdown \
 	rc.subr rpc services \
 	etc.${MACHINE_ARCH}/disktab \
@@ -43,7 +43,7 @@ SSL=	${.CURDIR}/../crypto/openssl-0.9.7e/apps/openssl.cnf
 
 # Files that should be installed read-only-executable (555) root:wheel
 #
-BIN2=	pccard_ether rc.suspend rc.resume
+BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
 DEFAULTS= rc.conf make.conf periodic.conf
 
