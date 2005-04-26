@@ -31,25 +31,15 @@
  * SUCH DAMAGE.
  *
  * @(#)sethostid.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/sethostid.c,v 1.3 2005/04/26 09:40:58 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <unistd.h>
 
-#if __STDC__
-long
+void
 sethostid(long hostid)
-#else
-long
-sethostid(hostid)
-	long hostid;
-#endif
 {
-	int mib[2];
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_HOSTID;
-	if (sysctl(mib, 2, NULL, NULL, &hostid, sizeof hostid) == -1)
-		return (-1);
-	return (0);
+	sysctlbyname("kern.hostid", NULL, NULL, &hostid, sizeof(hostid));
 }
