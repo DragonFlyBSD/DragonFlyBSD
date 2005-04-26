@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.6 2005/04/26 05:30:12 joerg Exp $
+ * $DragonFly: src/lib/libc/yp/yplib.c,v 1.7 2005/04/26 06:30:52 y0netan1 Exp $
  */
 
 #include "namespace.h"
@@ -959,7 +959,6 @@ again:
 	return (r);
 }
 
-#if 0
 int
 yp_maplist(char *indomain, struct ypmaplist **outmaplist)
 {
@@ -996,7 +995,6 @@ again:
 	/* NO: xdr_free(xdr_ypresp_maplist, &ypml);*/
 	return (r);
 }
-#endif
 
 char *
 yperr_string(int incode)
