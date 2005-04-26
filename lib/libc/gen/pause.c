@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/pause.c,v 1.3.2.1 2000/03/18 23:13:23 jasone Exp $
- * $DragonFly: src/lib/libc/gen/pause.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/pause.c,v 1.4 2005/04/26 08:29:52 joerg Exp $
  *
  * @(#)pause.c	8.1 (Berkeley) 6/4/93
  */
@@ -39,11 +39,13 @@
 #include <signal.h>
 #include <unistd.h>
 
+int	__pause(void);
+
 /*
  * Backwards compatible pause.
  */
 int
-__pause()
+__pause(void)
 {
 	return sigpause(sigblock(0L));
 }
