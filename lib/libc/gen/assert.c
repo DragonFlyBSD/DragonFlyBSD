@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)assert.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/assert.c,v 1.4 2005/01/06 17:34:25 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/assert.c,v 1.5 2005/04/26 10:41:57 joerg Exp $
  */
 
 #include <sys/syslog.h>
@@ -57,8 +57,8 @@ enum {
 static int	diagassert_flags = -1;
 
 void
-__diagassert(const char *file, const char *line, const char *function,
-	     int failedexpr)
+__diagassert(const char *file, int line, const char *function,
+	     const char *failedexpr)
 {
 	char buf[1024];
 
@@ -92,7 +92,8 @@ __diagassert(const char *file, const char *line, const char *function,
 	}
 
 	snprintf(buf, sizeof(buf),
-		 "assertion \"%s\" failed: file \"%s\", line %d");
+		 "assertion \"%s\" failed: file \"%s\", line %d, function \"%s\"",
+		 failedexpr, file, line, function);
 	if (diagassert_flags & DIAGASSERT_STDERR)
 		fprintf(stderr, "%s: %s\n", getprogname(), buf);
 	if (diagassert_flags & DIAGASSERT_SYSLOG)
