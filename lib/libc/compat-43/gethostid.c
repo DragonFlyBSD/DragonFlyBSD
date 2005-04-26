@@ -31,27 +31,21 @@
  * SUCH DAMAGE.
  *
  * @(#)gethostid.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/gethostid.c,v 1.3 2005/04/26 10:26:41 joerg Exp $
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/sysctl.h>
+#include <unistd.h>
 
-#if __STDC__
 long
 gethostid(void)
-#else
-long
-gethostid()
-#endif
 {
-	int mib[2];
-	size_t size;
 	long value;
+	size_t size;
 
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_HOSTID;
 	size = sizeof value;
-	if (sysctl(mib, 2, &value, &size, NULL, 0) == -1)
+	if (sysctlbyname("kern.hostid", &value, &size, NULL, 0) == -1)
 		return (-1);
 	return (value);
 }
