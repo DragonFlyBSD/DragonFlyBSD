@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.38 2005/04/24 02:01:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.39 2005/04/26 22:35:32 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -425,27 +425,38 @@ hardclock(systimer_t info, struct intrframe *frame)
 	     */
 	    getnanotime_nbt(nbt, &nts);
 
-	    /*
-	     * Apply leap second (sysctl API)
-	     */
-	    if (ntp_leap_second) {
-		if (ntp_leap_second == nts.tv_sec) {
-			if (ntp_leap_insert)
-				nbt->tv_sec++;
-			else
-				nbt->tv_sec--;
-			ntp_leap_second--;
-		}
-	    }
-
-	    /*
-	     * Apply leap second (ntp_adjtime() API)
-	     */
 	    if (time_second != nts.tv_sec) {
+		/*
+		 * Apply leap second (sysctl API).  Adjust nts for changes
+		 * so we do not have to call getnanotime_nbt again.
+		 */
+		if (ntp_leap_second) {
+		    if (ntp_leap_second == nts.tv_sec) {
+			if (ntp_leap_insert) {
+			    nbt->tv_sec++;
+			    nts.tv_sec++;
+			} else {
+			    nbt->tv_sec--;
+			    nts.tv_sec--;
+			}
+			ntp_leap_second--;
+		    }
+		}
+
+		/*
+		 * Apply leap second (ntp_adjtime() API), calculate a new
+		 * nsec_adj field.  ntp_update_second() returns nsec_adj
+		 * as a per-second value but we need it as a per-tick value.
+		 */
 		leap = ntp_update_second(time_second, &nsec_adj);
-		nbt->tv_sec += leap;
-		time_second = nbt->tv_sec;
 		nsec_adj /= hz;
+		nbt->tv_sec += leap;
+		nts.tv_sec += leap;
+
+		/*
+		 * Update the time_second 'approximate time' global.
+		 */
+		time_second = nts.tv_sec;
 	    }
 
 	    /*
