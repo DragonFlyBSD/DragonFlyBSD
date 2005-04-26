@@ -31,11 +31,49 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.3 2005/04/25 20:50:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.4 2005/04/26 00:56:54 dillon Exp $
  */
 
 #include "defs.h"
 #include <sys/sysctl.h>
+#include <sys/timex.h>
+
+/*
+ * If a system has multiple independant time-correcting mechanisms, this
+ * function should clear out any corrections on those mechanisms that we
+ * will NOT be using.  We can leave a prior correction intact on the
+ * mechanism that we ARE using.
+ *
+ * However, it is usually a good idea to clean out any offset correction
+ * that is still in progress anyway.  We leave the frequency correction 
+ * intact.
+ */
+void
+sysntp_clear_alternative_corrections()
+{
+    struct timex ntp;
+    int64_t offset;
+
+    if (no_update_opt)
+	return;
+
+    /*
+     * Clear the ntp interface.  We will use the sysctl interface
+     * (XXX)
+     */
+    bzero(&ntp, sizeof(ntp));
+    ntp.modes = MOD_OFFSET | MOD_FREQUENCY;
+    ntp.offset = 0;
+    ntp.freq = 0;
+    ntp_adjtime(&ntp);
+
+    /*
+     * Clean out any offset still being applied to real time.  Leave
+     * any prior frequency correction intact.
+     */
+    offset = 0;
+    sysctlbyname("kern.ntp.delta", NULL, 0, &offset, sizeof(offset));
+}
 
 /*
  * Obtain a timestamp that contains ONLY corrections made by the system
@@ -86,9 +124,13 @@ sysntp_correct_offset(double offset)
      * Course correction
      */
     if (offset < -0.001 || offset > 0.001) {
-	logdebug(1, "issuing offset adjustment: %7.6f\n", -offset);
+	logdebug(1, "issuing offset adjustment: %7.6f", -offset);
+	if (no_update_opt)
+	    logdebug(1, " (UPDATES DISABLED)");
+	logdebug(1, "\n");
 	delta = -(int64_t)(offset * 1.0E+9);
-	sysctlbyname("kern.ntp.delta", NULL, 0, &delta, sizeof(delta));
+	if (no_update_opt == 0)
+	    sysctlbyname("kern.ntp.delta", NULL, 0, &delta, sizeof(delta));
 	return(0.0);
     }
 
@@ -114,7 +156,7 @@ sysntp_correct_course_offset(double offset)
     offset = -offset;	/* if we are ahead, correct backwards, and vise versa*/
     if (gettimeofday(&tv, NULL) == 0) {
 	tv_add_offset(&tv, offset);
-	if (settimeofday(&tv, NULL) < 0) {
+	if (no_update_opt == 0 && settimeofday(&tv, NULL) < 0) {
 	    logerr("settimeofday");
 	} else {
 	    logdebug(1, "issuing COURSE offset adjustment: %7.6f, ",
@@ -122,7 +164,10 @@ sysntp_correct_course_offset(double offset)
 	    t = tv.tv_sec;
 	    tp = localtime(&t);
 	    strftime(buf, sizeof(buf), "%d-%b-%Y %H:%M:%S", tp);
-	    logdebug(1, "%s.%03ld\n", buf, tv.tv_usec / 1000);
+	    logdebug(1, "%s.%03ld", buf, tv.tv_usec / 1000);
+	    if (no_update_opt)
+		logdebug(1, " (UPDATES DISABLED)");
+	    logdebug(1, "\n");
 	}
     } else {
 	logerr("gettimeofday");
@@ -155,10 +200,14 @@ sysntp_correct_freq(double freq)
     last_freq = freq;
 
     if (freq >= -1.0 && freq < 1.0) {
-	logdebug(loglevel, "issuing frequency adjustment: %6.3fppm\n", 
+	logdebug(loglevel, "issuing frequency adjustment: %6.3fppm", 
 		-freq * 1000000.0);
+	if (no_update_opt)
+		logdebug(loglevel, " (UPDATES DISABLED)");
+	logdebug(loglevel, "\n");
 	delta = -((int64_t)(freq * 1.0E+9) << 32);
-	sysctlbyname("kern.ntp.permanent", NULL, 0, &delta, sizeof(delta));
+	if (no_update_opt == 0)
+	    sysctlbyname("kern.ntp.permanent", NULL, 0, &delta, sizeof(delta));
     }
 }
 

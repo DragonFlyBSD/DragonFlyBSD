@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.6 2005/04/25 20:50:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.7 2005/04/26 00:56:54 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -65,6 +65,7 @@
 
 extern int debug_opt;
 extern int debug_level;
+extern int no_update_opt;
 extern int min_sleep_opt;
 extern int nom_sleep_opt;
 extern int max_sleep_opt;
@@ -90,5 +91,5 @@ void sysntp_getbasetime(struct timeval *tvp);
 double sysntp_correct_offset(double offset);
 double sysntp_correct_course_offset(double offset);
 void sysntp_correct_freq(double freq);
-
+void sysntp_clear_alternative_corrections(void);
 

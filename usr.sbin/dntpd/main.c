@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.5 2005/04/25 20:50:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.6 2005/04/26 00:56:54 dillon Exp $
  */
 
 #include "defs.h"
@@ -49,9 +49,10 @@ static int nservers;
 static int maxservers;
 
 int daemon_opt = 1;
-int debug_opt;
+int debug_opt = 0;
 int debug_level = -1;		/* (set to default later) */
 int quickset_opt = 0;		/* immediate set time of day on startup */
+int no_update_opt = 0;		/* do not make any actual updates */
 int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
 int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
 int max_sleep_opt = 1800;	/* 30 minutes maximum poll interval */
@@ -76,7 +77,7 @@ main(int ac, char **av)
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "df:l:L:p:qstFQST:")) != -1) {
+    while ((ch = getopt(ac, av, "df:l:np:qstFL:QST:")) != -1) {
 	switch(ch) {
 	case 'd':
 	    debug_opt = 1;
@@ -94,6 +95,9 @@ main(int ac, char **av)
 	    break;
 	case 'l':
 	    debug_level = strtol(optarg, NULL, 0);
+	    break;
+	case 'n':
+	    no_update_opt = 1;
 	    break;
 	case 'q':
 	    debug_level = 0;
@@ -148,12 +152,12 @@ main(int ac, char **av)
 		if (check_pid())
 		    sleep(9);
 		if (check_pid()) {
-		    fprintf(stderr, "%s: Unable to kill running daemon\n", av[0]);
+		    fprintf(stderr, "%s: Unable to kill running daemon.\n", av[0]);
 		} else {
-		    fprintf(stderr, "%s: Running daemon has been terminated\n", av[0]);
+		    fprintf(stderr, "%s: Running daemon has been terminated.\n", av[0]);
 		}
 	    } else {
-		fprintf(stderr, "%s: There is no daemon running to kill\n", av[0]);
+		fprintf(stderr, "%s: There is no daemon running to kill.\n", av[0]);
 	    }
 	    exit(0);
 	    break;
@@ -236,6 +240,7 @@ main(int ac, char **av)
     /*
      * And go.
      */
+    sysntp_clear_alternative_corrections();
     client_init();
     rc = client_main(servers, nservers);
     return(rc);
@@ -250,17 +255,18 @@ usage(const char *av0)
 	"\t-d\tDebugging mode, implies -F, -l 99, and logs to stderr\n"
 	"\t-f file\tSpecify the config file (/etc/dntpd.conf)\n"
 	"\t-l int\tSet log level (0-4), default 1\n"
+	"\t-n\tNo-update mode.  No offset or frequency corrections are made\n"
 	"\t-q\tQuiet-mode, same as -L 0\n"
 	"\t-s\tSet the time immediately on startup\n"
-	"\t-t\tTest mode, implies -F, -l 99, logs to stderr,\n"
-	"\t\tand makes no actual corrections.\n"
-	"\t-F\tRun in foreground\n"
+	"\t-t\tTest mode, implies -F, -l 99, -n, logs to stderr\n"
+	"\t-F\tRun in foreground (log still goes to syslog)\n"
 	"\t-L int\tMaximum polling interval\n"
 	"\t-S\tDo not set the time immediately on startup\n"
 	"\t-T int\tNominal polling interval\n"
 	"\t-Q\tTerminate any running background daemon\n"
-	"\t\tNOTE: in debug mode -f must be specified if you want to use\n"
-	"\t\ta config file\n"
+	"\n"
+	"\t\tNOTE: in debug and test modes -f must be specified if\n"
+	"\t\tyou want to use a config file.\n"
     );
     exit(1);
 }
