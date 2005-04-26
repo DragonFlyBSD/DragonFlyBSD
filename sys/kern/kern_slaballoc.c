@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.30 2005/04/20 17:03:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.31 2005/04/26 00:47:59 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -908,9 +908,15 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     addr = vm_map_min(map);
 
     /*
-     * Reserve properly aligned space from kernel_map
+     * Reserve properly aligned space from kernel_map.  RNOWAIT allocations
+     * cannot block.
      */
-    get_mplock();
+    if (flags & M_RNOWAIT) {
+	if (try_mplock() == 0)
+	    return(NULL);
+    } else {
+	get_mplock();
+    }
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
     vm_map_lock(map);
