@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/opendir.c,v 1.10.2.1 2001/06/04 20:59:48 joerg Exp $
- * $DragonFly: src/lib/libc/gen/opendir.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/opendir.c,v 1.4 2005/04/26 08:27:44 joerg Exp $
  *
  * @(#)opendir.c	8.8 (Berkeley) 5/1/95
  */
@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "un-namespace.h"
 
@@ -52,16 +53,13 @@
  * Open a directory.
  */
 DIR *
-opendir(name)
-	const char *name;
+opendir(const char *name)
 {
 	return (__opendir2(name, DTF_HIDEW|DTF_NODUP));
 }
 
 DIR *
-__opendir2(name, flags)
-	const char *name;
-	int flags;
+__opendir2(const char *name, int flags)
 {
 	DIR *dirp;
 	int fd;
@@ -146,7 +144,7 @@ __opendir2(name, flags)
 				ddptr = buf + (len - space);
 			}
 
-			n = getdirentries(fd, ddptr, space, &dirp->dd_seek);
+			n = _getdirentries(fd, ddptr, space, &dirp->dd_seek);
 			if (n > 0) {
 				ddptr += n;
 				space -= n;
