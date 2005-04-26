@@ -24,10 +24,25 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/gen/_pthread_stubs.c,v 1.1 2001/01/24 12:59:20 deischen Exp $
- * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.2 2005/02/01 22:35:19 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.3 2005/04/26 10:05:08 joerg Exp $
  */
 
 #include <pthread.h>
+
+void	*_pthread_getspecific_stub(pthread_key_t);
+int	_pthread_key_create_stub(pthread_key_t *, void (*)(void *));
+int	_pthread_key_delete_stub(pthread_key_t);
+int	_pthread_mutex_destroy_stub(pthread_mutex_t *);
+int	_pthread_mutex_init_stub(pthread_mutex_t *,
+				 const pthread_mutexattr_t *);
+int	_pthread_mutex_lock_stub(pthread_mutex_t *);
+int	_pthread_mutex_trylock_stub(pthread_mutex_t *);
+int	_pthread_mutex_unlock_stub(pthread_mutex_t *);
+int	_pthread_mutexattr_init_stub(pthread_mutexattr_t *);
+int	_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *);
+int	_pthread_mutexattr_settype_stub(pthread_mutexattr_t *, int);
+int	_pthread_once_stub(pthread_once_t *, void (*)(void));
+int	_pthread_setspecific_stub(pthread_key_t, const void *);
 
 /*
  * Weak symbols: All libc internal usage of these functions should
@@ -53,79 +68,84 @@ __weak_reference(_pthread_once_stub,_pthread_once);
 __weak_reference(_pthread_setspecific_stub,_pthread_setspecific);
 
 void *
-_pthread_getspecific_stub(pthread_key_t key)
+_pthread_getspecific_stub(pthread_key_t key __unused)
 {
 	return (NULL);
 }
 
 int
-_pthread_key_create_stub(pthread_key_t *key, void (*destructor) (void *))
+_pthread_key_create_stub(pthread_key_t *key __unused,
+			 void (*destructor) (void *) __unused)
 {
 	return (0);
 }
 
 int
-_pthread_key_delete_stub(pthread_key_t key)
+_pthread_key_delete_stub(pthread_key_t key __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutex_destroy_stub(pthread_mutex_t *mattr)
+_pthread_mutex_destroy_stub(pthread_mutex_t *mattr __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutex_init_stub(pthread_mutex_t *mutex, const pthread_mutexattr_t *mattr)
+_pthread_mutex_init_stub(pthread_mutex_t *mutex __unused,
+			 const pthread_mutexattr_t *mattr __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutex_lock_stub(pthread_mutex_t *mutex)
+_pthread_mutex_lock_stub(pthread_mutex_t *mutex __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutex_trylock_stub(pthread_mutex_t *mutex)
+_pthread_mutex_trylock_stub(pthread_mutex_t *mutex __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutex_unlock_stub(pthread_mutex_t *mutex)
+_pthread_mutex_unlock_stub(pthread_mutex_t *mutex __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutexattr_init_stub(pthread_mutexattr_t *mattr)
+_pthread_mutexattr_init_stub(pthread_mutexattr_t *mattr __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *mattr)
+_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *mattr __unused)
 {
 	return (0);
 }
 
 int
-_pthread_mutexattr_settype_stub(pthread_mutexattr_t *mattr, int type)
+_pthread_mutexattr_settype_stub(pthread_mutexattr_t *mattr __unused,
+				int type __unused)
 {
 	return (0);
 }
 
 int
-_pthread_once_stub(pthread_once_t *once_control, void (*init_routine) (void))
+_pthread_once_stub(pthread_once_t *once_control __unused,
+		   void (*init_routine) (void) __unused)
 {
 	return (0);
 }
 
 int
-_pthread_setspecific_stub(pthread_key_t key, const void *value)
+_pthread_setspecific_stub(pthread_key_t key __unused,
+			  const void *value __unused)
 {
 	return (0);
 }
