@@ -31,13 +31,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/closedir.c,v 1.6.2.1 2001/03/05 08:29:56 obrien Exp $
- * $DragonFly: src/lib/libc/gen/closedir.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/closedir.c,v 1.5 2005/04/26 15:04:59 joerg Exp $
  *
  * @(#)closedir.c	8.1 (Berkeley) 6/10/93
  */
 
 #include "namespace.h"
-#include <sys/types.h>
 #include <dirent.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -45,8 +44,6 @@
 #include "un-namespace.h"
 
 #include "libc_private.h"
-
-extern void _reclaim_telldir (DIR *);
 
 /*
  * close a directory.
@@ -62,12 +59,12 @@ closedir(DIR *dirp)
 	fd = dirp->dd_fd;
 	dirp->dd_fd = -1;
 	dirp->dd_loc = 0;
-	free((void *)dirp->dd_buf);
+	free(dirp->dd_buf);
 	_reclaim_telldir(dirp);
 	if (__isthreaded) {
 		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
 		_pthread_mutex_destroy((pthread_mutex_t *)&dirp->dd_lock);
 	}
-	free((void *)dirp);
+	free(dirp);
 	return(_close(fd));
 }
