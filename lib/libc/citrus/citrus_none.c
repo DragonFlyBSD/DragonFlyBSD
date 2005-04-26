@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_none.c,v 1.12 2004/01/18 03:57:30 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.3 2005/04/26 14:03:57 joerg Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -190,7 +190,9 @@ _citrus_NONE_ctype_mbstowcs(void * __restrict cl, wchar_t * __restrict wcs,
 			    const char * __restrict s, size_t n,
 			    size_t * __restrict nresult)
 {
-	return (_citrus_NONE_ctype_mbsrtowcs(cl, wcs, &s, n, NULL, nresult));
+	const char *tmp_s = __DEQUALIFY(const char *, s);
+
+	return (_citrus_NONE_ctype_mbsrtowcs(cl, wcs, &tmp_s, n, NULL, nresult));
 }
 
 static int
@@ -288,7 +290,9 @@ _citrus_NONE_ctype_wcstombs(void * __restrict cl, char * __restrict s,
 			    const wchar_t * __restrict pwcs, size_t n,
 			    size_t * __restrict nresult)
 {
-	return (_citrus_NONE_ctype_wcsrtombs(cl, s, &pwcs, n, NULL, nresult));
+	const wchar_t *tmp_pwcs = __DEQUALIFY(const wchar_t *, pwcs);
+
+	return (_citrus_NONE_ctype_wcsrtombs(cl, s, &tmp_pwcs, n, NULL, nresult));
 }
 
 static int
