@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_put.c	8.8 (Berkeley) 7/26/94
- * $DragonFly: src/lib/libc/db/btree/bt_put.c,v 1.5 2005/03/16 06:24:36 joerg Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_put.c,v 1.6 2005/04/26 14:13:50 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -71,7 +71,7 @@ __bt_put(dbp, key, data, flags)
 {
 	BTREE *t;
 	DBT tkey, tdata;
-	EPG *e;
+	EPG *e = NULL;
 	PAGE *h;
 	indx_t idx, nxtindex;
 	pgno_t pg;
