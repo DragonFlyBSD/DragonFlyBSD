@@ -32,21 +32,21 @@
  *
  * @(#)kvm_getvfsbyname.c	8.1 (Berkeley) 4/3/95
  * $FreeBSD: src/lib/libc/gen/getvfsbyname.c,v 1.5 1999/08/27 23:58:45 peter Exp $
- * $DragonFly: src/lib/libc/gen/getvfsbyname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getvfsbyname.c,v 1.3 2005/04/26 05:48:21 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/sysctl.h>
 #include <errno.h>
+#include <string.h>
 
 /*
  * Given a filesystem name, determine if it is resident in the kernel,
  * and if it is resident, return its vfsconf structure.
  */
-getvfsbyname(fsname, vfcp)
-	const char *fsname;
-	struct vfsconf *vfcp;
+int
+getvfsbyname(const char *fsname, struct vfsconf *vfcp)
 {
 #ifdef	__NETBSD_SYSCALLS
 	errno = ENOSYS;
