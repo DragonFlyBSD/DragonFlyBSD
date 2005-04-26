@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fnmatch.c	8.2 (Berkeley) 4/16/94
- * $DragonFly: src/lib/libc/gen/fnmatch.c,v 1.4 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/fnmatch.c,v 1.5 2005/04/26 18:53:17 joerg Exp $
  */
 
 /*
@@ -225,6 +225,6 @@ rangematch(pattern, test, flags, newp)
 			ok = 1;
 	} while ((c = *pattern++) != ']');
 
-	*newp = (char *)pattern;
+	*newp = __DECONST(char *, pattern);
 	return (ok == negate ? RANGE_NOMATCH : RANGE_MATCH);
 }
