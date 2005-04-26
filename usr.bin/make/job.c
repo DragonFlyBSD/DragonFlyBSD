@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.76 2005/04/26 10:21:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.77 2005/04/26 10:21:48 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3171,38 +3171,6 @@ CompatInterrupt(int signo)
 
 /*-
  *-----------------------------------------------------------------------
- * shellneed --
- *
- * Results:
- *	Returns 1 if a specified line must be executed by the shell,
- *	and 0 if it can be run via execvp().
- *
- * Side Effects:
- *	Uses brk_string so destroys the contents of argv.
- *
- *-----------------------------------------------------------------------
- */
-static int
-shellneed(char *cmd)
-{
-	static const char *sh_builtin[] = {
-		"alias", "cd", "eval", "exec",
-		"exit", "read", "set", "ulimit",
-		"unalias", "umask", "unset", "wait",
-		":", NULL
-	};
-	char		**av;
-	const char	**p;
-
-	av = brk_string(cmd, NULL, TRUE);
-	for (p = sh_builtin; *p != 0; p++)
-		if (strcmp(av[1], *p) == 0)
-			return (1);
-	return (0);
-}
-
-/*-
- *-----------------------------------------------------------------------
  * Compat_RunCommand --
  *	Execute the next command for a target. If the command returns an
  *	error, the node's made field is set to ERROR and creation stops.
@@ -3322,28 +3290,38 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	if (*cp != '\0') {
 		/*
 		 * If *cp isn't the null character, we hit a "meta" character
-		 * and need to pass the command off to the shell. We give the
-		 * shell the -e flag as well as -c if it's supposed to exit
-		 * when it hits an error.
-		 */
-		av = NULL;
-
-	} else if (shellneed(cmd)) {
-		/*
-		 * This command must be passed by the shell for other reasons..
-		 * or.. possibly not at all.
+		 * and need to pass the command off to the shell.
 		 */
 		av = NULL;
 
 	} else {
+		const char **p;
+		const char *sh_builtin[] = {
+			"alias", "cd", "eval", "exec",
+			"exit", "read", "set", "ulimit",
+			"unalias", "umask", "unset", "wait",
+			":", NULL
+		};
+
 		/*
-		 * No meta-characters, so no need to exec a shell. Break the
-		 * command into words to form an argument vector we can execute.
-		 * brk_string sticks our name in av[0], so we have to
-		 * skip over it...
+		 * Break the command into words to form an argument
+		 * vector we can execute. brk_string sticks our name
+		 * in av[0], so we have to skip over it...
 		 */
 		av = brk_string(cmd, NULL, TRUE);
 		av += 1;
+
+		for (p = sh_builtin; *p != 0; p++) {
+			if (strcmp(av[0], *p) == 0) {
+				/*
+				 * This command must be passed by the shell
+				 * for other reasons.. or.. possibly not at
+				 * all.
+				 */
+				av = NULL;
+				break;
+			}
+		}
 	}
 
 	ps.in = STDIN_FILENO;
@@ -3355,6 +3333,10 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	ps.searchpath = 1;
 
 	if (av == NULL) {
+		/*
+		 * We give the shell the -e flag as well as -c if it's
+		 * supposed to exit when it hits an error.
+		 */
 		ps.argv = emalloc(4 * sizeof(char *));
 		ps.argv[0] = strdup(shellName);
 		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
