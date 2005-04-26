@@ -4,20 +4,16 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/lib/libc/gen/getvfsent.c,v 1.14.2.1 2001/03/05 09:19:38 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getvfsent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getvfsent.c,v 1.3 2005/04/26 06:16:29 joerg Exp $
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
+#include <sys/linker.h>
 #include <sys/mount.h>
 #include <sys/sysctl.h>
-#include <unistd.h>
-#include <sys/file.h>
-#include <sys/wait.h>
-#include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <paths.h>
+#include <string.h>
+#include <unistd.h>
 
 /* XXX hide some compatibility problems. */
 #undef getvfsbyname
@@ -27,7 +23,7 @@ static struct vfsconf *_vfslist = 0;
 static struct vfsconf _vfsconf;
 static size_t _vfslistlen = 0;
 static int _vfs_keeplist = 0;
-static int _vfs_index = 0;
+static size_t _vfs_index = 0;
 
 static int
 initvfs(void)
@@ -60,14 +56,12 @@ initvfs(void)
 struct vfsconf *
 getvfsent(void)
 {
-	if(!_vfslist && !initvfs()) {
+	if(!_vfslist && !initvfs())
 		return 0;
-	}
 
 	do {
-		if(_vfs_index >= _vfslistlen) {
+		if(_vfs_index >= _vfslistlen)
 			return 0;
-		}
 
 		_vfsconf = _vfslist[_vfs_index++];
 	} while(!_vfsconf.vfc_vfsops);
@@ -82,61 +76,55 @@ getvfsent(void)
 struct vfsconf *
 getvfsbyname(const char *name)
 {
-	int i;
+	size_t i;
 
-	if(!_vfslist && !initvfs()) {
+	if(!_vfslist && !initvfs())
 		return 0;
-	}
 
 	for(i = 0; i < _vfslistlen; i++) {
 		if( ! strcmp(_vfslist[i].vfc_name, name) )
 			break;
 	}
 
-	if(i < _vfslistlen) {
+	if(i < _vfslistlen)
 		_vfsconf = _vfslist[i];
-	}
 
 	if(!_vfs_keeplist) {
 		free(_vfslist);
 		_vfslist = 0;
 	}
 
-	if(i < _vfslistlen) {
+	if(i < _vfslistlen)
 		return &_vfsconf;
-	} else {
+	else
 		return 0;
-	}
 }
 
 struct vfsconf *
 getvfsbytype(int type)
 {
-	int i;
+	size_t i;
 
-	if(!_vfslist && !initvfs()) {
+	if(!_vfslist && !initvfs())
 		return 0;
-	}
 
 	for(i = 0; i < _vfslistlen; i++) {
 		if(_vfslist[i].vfc_index == type)
 			break;
 	}
 
-	if(i < _vfslistlen) {
+	if(i < _vfslistlen)
 		_vfsconf = _vfslist[i];
-	}
 
 	if(!_vfs_keeplist) {
 		free(_vfslist);
 		_vfslist = 0;
 	}
 
-	if(i < _vfslistlen) {
+	if(i < _vfslistlen)
 		return &_vfsconf;
-	} else {
+	else
 		return 0;
-	}
 }
 
 void
@@ -163,7 +151,7 @@ endvfsent(void)
 }
 
 int
-vfsisloadable(const char *name)
+vfsisloadable(const char *name __unused)
 {
 	return 1;
 }
@@ -176,4 +164,3 @@ vfsload(const char *name)
 	status = kldload(name);
 	return status == -1 ? status : 0;
 }
-
