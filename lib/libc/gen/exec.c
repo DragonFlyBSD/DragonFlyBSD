@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libc/gen/exec.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/exec.c,v 1.6 2005/04/26 18:51:44 joerg Exp $
  *
  * @(#)exec.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
@@ -57,7 +57,7 @@ int
 execl(const char *name, const char *arg, ...)
 {
 	va_list ap;
-	char **argv;
+	const char **argv;
 	int n;
 
 	va_start(ap, arg);
@@ -72,18 +72,19 @@ execl(const char *name, const char *arg, ...)
 	}
 	va_start(ap, arg);
 	n = 1;
-	argv[0] = (char *)arg;
-	while ((argv[n] = va_arg(ap, char *)) != NULL)
+	argv[0] = arg;
+	while ((argv[n] = va_arg(ap, const char *)) != NULL)
 		n++;
 	va_end(ap);
-	return (_execve(name, argv, environ));
+	return (_execve(name, __DECONST(char **, argv),
+			__DECONST(char **, environ)));
 }
 
 int
 execle(const char *name, const char *arg, ...)
 {
 	va_list ap;
-	char **argv, **envp;
+	const char **argv, **envp;
 	int n;
 
 	va_start(ap, arg);
@@ -98,20 +99,20 @@ execle(const char *name, const char *arg, ...)
 	}
 	va_start(ap, arg);
 	n = 1;
-	argv[0] = (char *)arg;
-	while ((argv[n] = va_arg(ap, char *)) != NULL)
+	argv[0] = arg;
+	while ((argv[n] = va_arg(ap, const char *)) != NULL)
 		n++;
-	envp = va_arg(ap, char **);
+	envp = va_arg(ap, const char **);
 	va_end(ap);
-	return (_execve(name, argv, envp));
+	return (_execve(name, __DECONST(char **, argv),
+			__DECONST(char **, envp)));
 }
 
 int
 execlp(const char *name, const char *arg, ...)
 {
 	va_list ap;
-	int sverrno;
-	char **argv;
+	const char **argv;
 	int n;
 
 	va_start(ap, arg);
@@ -126,11 +127,11 @@ execlp(const char *name, const char *arg, ...)
 	}
 	va_start(ap, arg);
 	n = 1;
-	argv[0] = (char *)arg;
-	while ((argv[n] = va_arg(ap, char *)) != NULL)
+	argv[0] = arg;
+	while ((argv[n] = va_arg(ap, const char *)) != NULL)
 		n++;
 	va_end(ap);
-	return (execvp(name, argv));
+	return (execvp(name, __DECONST(char **, argv)));
 }
 
 int
@@ -147,19 +148,21 @@ execvp(name, argv)
 	const char *name;
 	char * const *argv;
 {
-	char **memp;
-	int cnt, lp, ln;
-	char *p;
+	const char **memp;
+	int cnt;
+	size_t lp, ln;
 	int eacces, save_errno;
-	char *bp, *cur, *path, buf[MAXPATHLEN];
+	const char *bp, *p, *path;
+	char *cur, buf[MAXPATHLEN];
 	struct stat sb;
 
 	eacces = 0;
 
 	/* If it's an absolute or relative path name, it's easy. */
 	if (index(name, '/')) {
-		bp = (char *)name;
-		cur = path = NULL;
+		bp = name;
+		cur = NULL;
+		path = NULL;
 		goto retry;
 	}
 	bp = buf;
@@ -228,7 +231,7 @@ retry:		(void)_execve(bp, argv, environ);
 			memp[0] = "sh";
 			memp[1] = bp;
 			bcopy(argv + 1, memp + 2, cnt * sizeof(char *));
-			(void)_execve(_PATH_BSHELL, memp, environ);
+			_execve(_PATH_BSHELL, __DECONST(char **, memp), environ);
 			goto done;
 		case ENOMEM:
 			goto done;
