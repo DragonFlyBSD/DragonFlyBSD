@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/rpcsvc/ypclnt.h,v 1.11.2.1 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/include/rpcsvc/ypclnt.h,v 1.6 2005/04/26 06:30:52 y0netan1 Exp $
+ * $DragonFly: src/include/rpcsvc/ypclnt.h,v 1.7 2005/04/27 12:26:59 joerg Exp $
  */
 
 #ifndef _RPCSVC_YPCLNT_H_
@@ -74,8 +74,9 @@ int	 _yp_dobind(const char *, struct dom_binding **);
 void	 yp_unbind(char *);
 int	 yp_get_default_domain(char **);
 int	 yp_match(const char *, const char *, const char *, int, char **, int *);
-int	 yp_first(char *, char *, char **, int *, char **, int *);
-int	 yp_next(char *, char *, char *, int, char **, int *, char **, int *);
+int	 yp_first(char *, char *, char **, size_t *, char **, size_t *);
+int	 yp_next(char *, char *, char *, size_t, char **, size_t *,
+		 char **, size_t *);
 int	 yp_maplist(char *, struct ypmaplist **);
 int	 yp_master(char *, char *, char **);
 int	 yp_order(char *, char *, int *);

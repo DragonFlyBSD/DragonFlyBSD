@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.7 2005/04/26 06:30:52 y0netan1 Exp $
+ * $DragonFly: src/lib/libc/yp/yplib.c,v 1.8 2005/04/27 12:26:59 joerg Exp $
  */
 
 #include "namespace.h"
@@ -701,8 +701,8 @@ yp_get_default_domain(char **domp)
 }
 
 int
-yp_first(char *indomain, char *inmap, char **outkey, int *outkeylen,
-    char **outval, int *outvallen)
+yp_first(char *indomain, char *inmap, char **outkey, size_t *outkeylen,
+    char **outval, size_t *outvallen)
 {
 	struct ypresp_key_val yprkv;
 	struct ypreq_nokey yprnk;
@@ -753,8 +753,8 @@ again:
 }
 
 int
-yp_next(char *indomain, char *inmap, char *inkey, int inkeylen,
-    char **outkey, int *outkeylen, char **outval, int *outvallen)
+yp_next(char *indomain, char *inmap, char *inkey, size_t inkeylen,
+    char **outkey, size_t *outkeylen, char **outval, size_t *outvallen)
 {
 	struct ypresp_key_val yprkv;
 	struct ypreq_key yprk;
