@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
- * by Joerg Sonnenberger <joerg@bec.de>.
+ * by Hiten Pandya <hmp@dragonflybsd.org>.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,40 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.5 2005/04/27 15:13:35 hmp Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_pcpu.c,v 1.1 2005/04/27 15:13:35 hmp Exp $
  */
 
-#ifndef	_KINFO_H_
-#define	_KINFO_H_
+#include <kinfo.h>
 
-#ifndef _SYS_PARAM_H_
-#include <sys/param.h>
-#endif
+/*
+ * Type-specific accumulation functions for per-cpu statistics.
+ */
 
-#ifndef _SYS_CDEFS_H_
-#include <sys/cdefs.h>
-#endif
-
-#include <sys/kinfo.h>
-
-#include <kinfo_pcpu.h>
-
-__BEGIN_DECLS;
-int	kinfo_get_cpus(int *);
-int	kinfo_get_files(struct kinfo_file **, size_t *);
-int	kinfo_get_maxfiles(int *);
-int	kinfo_get_openfiles(int *);
-int	kinfo_get_sched_ccpu(int *);
-int	kinfo_get_sched_cputime(struct kinfo_cputime *);
-int	kinfo_get_sched_hz(int *);
-int	kinfo_get_sched_profhz(int *);
-int	kinfo_get_sched_stathz(int *);
-int	kinfo_get_tty_tk_nin(uint64_t *);
-int	kinfo_get_tty_tk_nout(uint64_t *);
-int	kinfo_get_vfs_bufspace(int *);
-
-/* prototypes for per-cpu accumulation functions */
-PCPU_STATISTICS_PROT(cputime, struct kinfo_cputime);
-__END_DECLS;
-
-#endif
+PCPU_STATISTICS_FUNC(cputime, struct kinfo_cputime, uint64_t);

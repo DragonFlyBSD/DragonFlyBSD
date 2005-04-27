@@ -31,12 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.1 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.2 2005/04/27 15:13:35 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
+#include <stdlib.h>
+#include <errno.h>
 #include <kinfo.h>
 
 int
@@ -58,9 +60,40 @@ kinfo_get_sched_ccpu(int *ccpu)
 int
 kinfo_get_sched_cputime(struct kinfo_cputime *cputime)
 {
-	size_t len = sizeof(*cputime);
+	struct kinfo_cputime *percpu = NULL;
+	size_t len = sizeof(struct kinfo_cputime) * SMP_MAXCPU;
+	int cpucount, error = 0;
 
-	return(sysctlbyname("kern.cp_time", cputime, &len, NULL, 0));
+	if (cputime == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+
+	if ((percpu = malloc(len)) == NULL) {
+		error = ENOMEM;
+		goto done;
+	}
+
+	/* retrieve verbatim per-cpu statistics from kernel */
+	if (sysctlbyname("kern.cputime", percpu, &len, NULL, 0) < 0) {
+		error = errno;
+		goto done;
+	} else {
+		percpu = realloc(percpu, len);
+		if (percpu == NULL) {
+			error = ENOMEM;
+			goto done;
+		}
+	}
+
+	/* aggregate per-cpu statistics retrieved from kernel */
+	cpucount = len / sizeof(struct kinfo_cputime);
+	cputime_pcpu_statistics(percpu, cputime, cpucount);
+
+done:
+	if (percpu != NULL)
+		free(percpu);
+	return (error);
 }
 
 int

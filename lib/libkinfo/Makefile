@@ -1,8 +1,8 @@
-# $DragonFly: src/lib/libkinfo/Makefile,v 1.4 2005/04/21 13:42:34 joerg Exp $
+# $DragonFly: src/lib/libkinfo/Makefile,v 1.5 2005/04/27 15:13:35 hmp Exp $
 
 LIB=	kinfo
-SRCS=	kinfo_file.c kinfo_sched.c kinfo_tty.c kinfo_vfs.c
-INCS=	kinfo.h
+SRCS=	kinfo_file.c kinfo_sched.c kinfo_tty.c kinfo_vfs.c kinfo_pcpu.c
+INCS=	kinfo.h kinfo_pcpu.h
 NOMAN=
 
 CFLAGS+=	-I${.CURDIR}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.1 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.2 2005/04/27 15:13:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ int
 kcore_get_sched_cputime(struct kcore_data *kc, struct kinfo_cputime *cputime)
 {
 	static struct nlist nl[] = {
-		{ "_cp_time", 0, 0, 0, 0},
+		{ "cputime_percpu", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 
