@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.21 2005/03/29 23:04:36 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.22 2005/04/27 11:59:11 joerg Exp $
  */
 
 /*
@@ -183,7 +183,6 @@ static func_ptr_type exports[] = {
     (func_ptr_type) &dlopen,
     (func_ptr_type) &dlsym,
     (func_ptr_type) &dladdr,
-    (func_ptr_type) &dllockinit,
     (func_ptr_type) &dlinfo,
 #ifdef __i386__
     (func_ptr_type) &___tls_get_addr,
@@ -1721,28 +1720,6 @@ dlerror(void)
     char *msg = error_message;
     error_message = NULL;
     return msg;
-}
-
-/*
- * This function is deprecated and has no effect.
- */
-void
-dllockinit(void *context,
-	   void *(*lock_create)(void *context),
-           void (*rlock_acquire)(void *lock),
-           void (*wlock_acquire)(void *lock),
-           void (*lock_release)(void *lock),
-           void (*lock_destroy)(void *lock),
-	   void (*context_destroy)(void *context))
-{
-    static void *cur_context;
-    static void (*cur_context_destroy)(void *);
-
-    /* Just destroy the context from the previous call, if necessary. */
-    if (cur_context_destroy != NULL)
-	cur_context_destroy(cur_context);
-    cur_context = context;
-    cur_context_destroy = context_destroy;
 }
 
 void *
