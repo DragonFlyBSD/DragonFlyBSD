@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.14 2005/04/26 16:58:23 joerg Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.15 2005/04/27 12:42:12 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -150,7 +150,7 @@ int	 cgetustr(char *, char *, char **);
 int	 daemon(int, int);
 char	*devname(dev_t, mode_t);
 char	*devname_r(dev_t, mode_t, char *, size_t);
-int	 getloadavg(double [], int);
+int	 getloadavg(double [], size_t);
 const char *getprogname(void);
 
 char	*group_from_gid(gid_t, int);
