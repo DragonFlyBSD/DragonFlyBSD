@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/name6.c,v 1.5 2005/01/31 22:29:33 dillon Exp $	*/
+/*	$DragonFly: src/lib/libc/net/name6.c,v 1.6 2005/04/27 16:46:12 joerg Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*
@@ -174,16 +174,12 @@ static int	 _mapped_addr_enabled(void);
 static FILE	*_files_open(int *errp);
 static struct	 hostent *_files_ghbyname(const char *name, int af, int *errp);
 static struct	 hostent *_files_ghbyaddr(const void *addr, int addrlen, int af, int *errp);
-static void	 _files_shent(int stayopen);
-static void	 _files_ehent(void);
 #ifdef YP
 static struct	 hostent *_nis_ghbyname(const char *name, int af, int *errp);
 static struct	 hostent *_nis_ghbyaddr(const void *addr, int addrlen, int af, int *errp);
 #endif
 static struct	 hostent *_dns_ghbyname(const char *name, int af, int *errp);
 static struct	 hostent *_dns_ghbyaddr(const void *addr, int addrlen, int af, int *errp);
-static void	 _dns_shent(int stayopen);
-static void	 _dns_ehent(void);
 #ifdef ICMPNL
 static struct	 hostent *_icmp_ghbyaddr(const void *addr, int addrlen, int af, int *errp);
 #endif /* ICMPNL */
@@ -238,7 +234,8 @@ _hostconf_init(void)
 {
 	FILE *fp;
 	int n;
-	char *p, *line;
+	const char *p;
+	char *line;
 	char buf[BUFSIZ];
 
 	_hostconf_init_done = 1;
@@ -374,7 +371,7 @@ _ghbyname(const char *name, int af, int flags, int *errp)
 }
 
 /* getipnodebyname() internal routine for multiple query(PF_UNSPEC) support. */
-struct hostent *
+static struct hostent *
 _getipnodebyname_multi(const char *name, int af, int flags, int *errp)
 {
 	struct hostent *hp;
@@ -477,7 +474,7 @@ getipnodebyaddr(const void *src, size_t len, int af, int *errp)
 			memcpy(&addrbuf, src, len);
 			src = &addrbuf;
 		}
-		if (((struct in_addr *)src)->s_addr == 0)
+		if (((const struct in_addr *)src)->s_addr == 0)
 			return NULL;
 		break;
 #ifdef INET6
@@ -490,11 +487,11 @@ getipnodebyaddr(const void *src, size_t len, int af, int *errp)
 			memcpy(&addrbuf, src, len);
 			src = &addrbuf;
 		}
-		if (IN6_IS_ADDR_UNSPECIFIED((struct in6_addr *)src))
+		if (IN6_IS_ADDR_UNSPECIFIED((const struct in6_addr *)src))
 			return NULL;
-		if (IN6_IS_ADDR_V4MAPPED((struct in6_addr *)src)
-		||  IN6_IS_ADDR_V4COMPAT((struct in6_addr *)src)) {
-			src = (char *)src +
+		if (IN6_IS_ADDR_V4MAPPED((const struct in6_addr *)src)
+		||  IN6_IS_ADDR_V4COMPAT((const struct in6_addr *)src)) {
+			src = (const char *)src +
 			    (sizeof(struct in6_addr) - sizeof(struct in_addr));
 			af = AF_INET;
 			len = sizeof(struct in_addr);
@@ -649,12 +646,12 @@ _hpaddr(int af, const char *name, void *addr, int *errp)
 	char *addrs[2];
 
 	hp = &hpbuf;
-	hp->h_name = (char *)name;
+	hp->h_name = name;
 	hp->h_aliases = NULL;
 	hp->h_addrtype = af;
 	hp->h_length = ADDRLEN(af);
 	hp->h_addr_list = addrs;
-	addrs[0] = (char *)addr;
+	addrs[0] = addr;
 	addrs[1] = NULL;
 	return _hpcopy(hp, errp);
 }
@@ -1155,11 +1152,11 @@ getanswer(answer, anslen, qname, qtype, template, errp)
 		DNS_FATAL((*name_ok)(bp));
 		cp += n;			/* name */
 		BOUNDS_CHECK(cp, 3 * INT16SZ + INT32SZ);
-		type = _getshort(cp);
+		NS_GET16(type, cp);
  		cp += INT16SZ;			/* type */
-		class = _getshort(cp);
+		NS_GET16(class, cp);
  		cp += INT16SZ + INT32SZ;	/* class, TTL */
-		n = _getshort(cp);
+		NS_GET16(n, cp);
 		cp += INT16SZ;			/* len */
 		BOUNDS_CHECK(cp, n);
 		erdata = cp + n;
@@ -1315,10 +1312,7 @@ getanswer(answer, anslen, qname, qtype, template, errp)
 
 /* res_search() variant with multiple query support. */
 static struct hostent *
-_res_search_multi(name, rtl, errp)
-	const char *name;	/* domain name */
-	struct	__res_type_list *rtl; /* list of query types */
-	int *errp;
+_res_search_multi(const char *name, struct __res_type_list *rtl, int *errp)
 {
 	const char *cp, * const *domain;
 	struct hostent *hp0 = NULL, *hp;
@@ -1352,7 +1346,7 @@ _res_search_multi(name, rtl, errp)
 		    rtl = SLIST_NEXT(rtl, rtl_entry)) {
 			ret = res_query(cp, C_IN, rtl->rtl_type, buf->buf,
 					     sizeof(buf->buf));
-			if (ret > 0 && ret < sizeof(buf->buf)) {
+			if (ret > 0 && (size_t)ret < sizeof(buf->buf)) {
 				hpbuf.h_addrtype = (rtl->rtl_type == T_AAAA)
 				    ? AF_INET6 : AF_INET;
 				hpbuf.h_length = ADDRLEN(hpbuf.h_addrtype);
@@ -1378,7 +1372,7 @@ _res_search_multi(name, rtl, errp)
 		    rtl = SLIST_NEXT(rtl, rtl_entry)) {
 			ret = res_querydomain(name, NULL, C_IN, rtl->rtl_type,
 					      buf->buf, sizeof(buf->buf));
-			if (ret > 0 && ret < sizeof(buf->buf)) {
+			if (ret > 0 && (size_t)ret < sizeof(buf->buf)) {
 				hpbuf.h_addrtype = (rtl->rtl_type == T_AAAA)
 				    ? AF_INET6 : AF_INET;
 				hpbuf.h_length = ADDRLEN(hpbuf.h_addrtype);
@@ -1417,7 +1411,7 @@ _res_search_multi(name, rtl, errp)
 				ret = res_querydomain(name, *domain, C_IN,
 						      rtl->rtl_type,
 						      buf->buf, sizeof(buf->buf));
-				if (ret > 0 && ret < sizeof(buf->buf)) {
+				if (ret > 0 && (size_t)ret < sizeof(buf->buf)) {
 					hpbuf.h_addrtype = (rtl->rtl_type == T_AAAA)
 					    ? AF_INET6 : AF_INET;
 					hpbuf.h_length = ADDRLEN(hpbuf.h_addrtype);
@@ -1490,7 +1484,7 @@ _res_search_multi(name, rtl, errp)
 		    rtl = SLIST_NEXT(rtl, rtl_entry)) {
 			ret = res_querydomain(name, NULL, C_IN, rtl->rtl_type,
 					      buf->buf, sizeof(buf->buf));
-			if (ret > 0 && ret < sizeof(buf->buf)) {
+			if (ret > 0 && (size_t)ret < sizeof(buf->buf)) {
 				hpbuf.h_addrtype = (rtl->rtl_type == T_AAAA)
 				    ? AF_INET6 : AF_INET;
 				hpbuf.h_length = ADDRLEN(hpbuf.h_addrtype);
@@ -1549,6 +1543,8 @@ _dns_ghbyname(const char *name, int af, int *errp)
 		SLIST_NEXT(&rtl4, rtl_entry) = NULL; rtl4.rtl_type = T_A;
 		rtl = &rtl4;
 		break;
+	default:
+		return(NULL);
 	}
 #else
 	SLIST_NEXT(&rtl4, rtl_entry) = NULL; rtl4.rtl_type = T_A;
@@ -1562,7 +1558,8 @@ _dns_ghbyaddr(const void *addr, int addrlen, int af, int *errp)
 {
 	int n;
 	struct hostent *hp;
-	u_char c, *cp;
+	u_char c;
+	const u_char *cp;
 	char *bp;
 	struct hostent hbuf;
 	int na;
@@ -1572,13 +1569,13 @@ _dns_ghbyaddr(const void *addr, int addrlen, int af, int *errp)
 	querybuf *buf;
 	char qbuf[MAXDNAME+1];
 	char *hlist[2];
-	char *tld6[] = { "ip6.arpa", "ip6.int", NULL };
-	char *tld4[] = { "in-addr.arpa", NULL };
-	char **tld;
+	const char *tld6[] = { "ip6.arpa", "ip6.int", NULL };
+	const char *tld4[] = { "in-addr.arpa", NULL };
+	const char **tld;
 
 #ifdef INET6
 	/* XXX */
-	if (af == AF_INET6 && IN6_IS_ADDR_LINKLOCAL((struct in6_addr *)addr))
+	if (af == AF_INET6 && IN6_IS_ADDR_LINKLOCAL((const struct in6_addr *)addr))
 		return NULL;
 #endif
 
@@ -1619,7 +1616,7 @@ _dns_ghbyaddr(const void *addr, int addrlen, int af, int *errp)
 		 */
 		n = 0;
 		bp = qbuf;
-		cp = (u_char *)addr+addrlen-1;
+		cp = (const uint8_t *)addr+addrlen-1;
 		switch (af) {
 #ifdef INET6
 		case AF_INET6:
@@ -1651,7 +1648,7 @@ _dns_ghbyaddr(const void *addr, int addrlen, int af, int *errp)
 		if (n < 0) {
 			*errp = h_errno;
 			continue;
-		} else if (n > sizeof(buf->buf)) {
+		} else if ((size_t)n > sizeof(buf->buf)) {
 			*errp = NETDB_INTERNAL;
 #if 0
 			errno = ERANGE; /* XXX is it OK to set errno here? */
@@ -1665,30 +1662,12 @@ _dns_ghbyaddr(const void *addr, int addrlen, int af, int *errp)
 		hbuf.h_addrtype = af;
 		hbuf.h_length = addrlen;
 		hbuf.h_addr_list = hlist;
-		hlist[0] = (char *)addr;
+		hlist[0] = addr;
 		hlist[1] = NULL;
 		return _hpcopy(&hbuf, errp);
 	}
 	free(buf);
 	return NULL;
-}
-
-static void
-_dns_shent(int stayopen)
-{
-	if ((_res.options & RES_INIT) == 0) {
-		if (res_init() < 0)
-			return;
-	}
-	if (stayopen)
-		_res.options |= RES_STAYOPEN | RES_USEVC;
-}
-
-static void
-_dns_ehent(void)
-{
-	_res.options &= ~(RES_STAYOPEN | RES_USEVC);
-	res_close();
 }
 
 #ifdef ICMPNL
