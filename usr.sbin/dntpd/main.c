@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.8 2005/04/26 23:50:23 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.9 2005/04/27 00:42:13 dillon Exp $
  */
 
 #include "defs.h"
@@ -248,7 +248,7 @@ static
 void
 usage(const char *av0)
 {
-    fprintf(stderr, "%s [-dqstFS] [-l log_level] [-T poll_interval] [-L poll_limit] [additional_targets]\n", av0);
+    fprintf(stderr, "%s [-dnqstFSQ] [-f config_file] [-l log_level] [-T poll_interval] [-L poll_limit] [additional_targets]\n", av0);
     fprintf(stderr, 
 	"\t-d\tDebugging mode, implies -F, -l 99, and logs to stderr\n"
 	"\t-f file\tSpecify the config file (/etc/dntpd.conf)\n"
