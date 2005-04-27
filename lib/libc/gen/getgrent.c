@@ -34,7 +34,7 @@
  *
  * @(#)getgrent.c	8.2 (Berkeley) 3/21/94
  * $FreeBSD: src/lib/libc/gen/getgrent.c,v 1.17.6.1 2001/03/05 08:56:02 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.4 2005/04/27 12:36:31 joerg Exp $
  */
 
 #include <errno.h>
@@ -49,14 +49,17 @@
 static FILE *_gr_fp;
 static struct group _gr_group;
 static int _gr_stayopen;
-static int grscan(), start_gr();
+
+static int	grscan(int, gid_t, const char *);
+static int	start_gr(void);
+
 #ifdef YP
 #include <rpc/rpc.h>
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
 static int _gr_stepping_yp;
 static int _gr_yp_enabled;
-static int _getypgroup(struct group *, const char *, char *);
+static int _getypgroup(struct group *, const char *, const char *);
 static int _nextypgroup(struct group *);
 #endif
 
@@ -78,7 +81,7 @@ static int maxlinelength;       /* current length of *line */
 #define GROUP_IGNORE_COMMENTS	1	/* allow comments in /etc/group */
 
 struct group *
-getgrent()
+getgrent(void)
 {
 	if (!_gr_fp && !start_gr()) {
 		return NULL;
@@ -109,8 +112,7 @@ tryagain:
 }
 
 struct group *
-getgrnam(name)
-	const char *name;
+getgrnam(const char *name)
 {
 	int rval;
 
@@ -133,8 +135,7 @@ getgrnam(name)
 }
 
 struct group *
-getgrgid(gid)
-	gid_t gid;
+getgrgid(gid_t gid)
 {
 	int rval;
 
@@ -158,7 +159,7 @@ getgrgid(gid)
 }
 
 static int
-start_gr()
+start_gr(void)
 {
 	if (_gr_fp) {
 		rewind(_gr_fp);
@@ -173,12 +174,12 @@ start_gr()
 	 * the password database.
 	 */
 	{
-		char *line;
+		char *my_line;
 		size_t linelen;
 		_gr_yp_enabled = 0;
-		while((line = fgetln(_gr_fp, &linelen)) != NULL) {
-			if(line[0] == '+') {
-				if(line[1] && line[1] != ':' && !_gr_yp_enabled) {
+		while((my_line = fgetln(_gr_fp, &linelen)) != NULL) {
+			if(my_line[0] == '+') {
+				if(my_line[1] && my_line[1] != ':' && !_gr_yp_enabled) {
 					_gr_yp_enabled = 1;
 				} else {
 					_gr_yp_enabled = -1;
@@ -213,8 +214,7 @@ setgrent(void)
 }
 
 int
-setgroupent(stayopen)
-	int stayopen;
+setgroupent(int stayopen)
 {
 	if (!start_gr())
 		return 0;
@@ -226,7 +226,7 @@ setgroupent(stayopen)
 }
 
 void
-endgrent()
+endgrent(void)
 {
 #ifdef YP
 	_gr_stepping_yp = 0;
@@ -238,9 +238,7 @@ endgrent()
 }
 
 static int
-grscan(search, gid, name)
-	int search, gid;
-	char *name;
+grscan(int search, gid_t gid, const char *name)
 {
 	char *cp, **m;
 	char *bp;
@@ -266,8 +264,7 @@ grscan(search, gid, name)
 				    maxlinelength >= MAXLINELENGTHLIMIT)
 					return(0);
 
-				if ((line = (char *)reallocf(line, 
-				     sizeof(char) * 
+				if ((line = reallocf(line, 
 				     (maxlinelength + MAXLINELENGTH))) == NULL)
 					return(0);
 			
@@ -336,24 +333,26 @@ grscan(search, gid, name)
 			}
 		}
 #ifdef YP
-		if ((cp = strsep(&bp, ":\n")) == NULL)
+		if ((cp = strsep(&bp, ":\n")) == NULL) {
 			if (_ypfound)
 				return(1);
 			else
 				break;
+		}
 		if (strlen(cp) || !_ypfound)
 			_gr_group.gr_passwd = cp;
 #else
 		if ((_gr_group.gr_passwd = strsep(&bp, ":\n")) == NULL)
 			break;
 #endif
-		if (!(cp = strsep(&bp, ":\n")))
+		if (!(cp = strsep(&bp, ":\n"))) {
 #ifdef YP
 			if (_ypfound)
 				return(1);
 			else
 #endif
 				continue;
+		}
 #ifdef YP
 		/*
 		 * Hurm. Should we be doing this? We allow UIDs to
@@ -470,7 +469,7 @@ _gr_breakout_yp(struct group *gr, char *result)
 static char *_gr_yp_domain;
 
 static int
-_getypgroup(struct group *gr, const char *name, char *map)
+_getypgroup(struct group *gr, const char *name, const char *map)
 {
 	char *result, *s;
 	static char resultbuf[YPMAXRECORD + 2];
@@ -488,9 +487,8 @@ _getypgroup(struct group *gr, const char *name, char *map)
 	s = strchr(result, '\n');
 	if(s) *s = '\0';
 
-	if(resultlen >= sizeof resultbuf) return 0;
-	strncpy(resultbuf, result, resultlen);
-	resultbuf[resultlen] = '\0';
+	if (strlcpy(resultbuf, result, sizeof(resultbuf)) >= sizeof(resultbuf))
+		return(0);
 	free(result);
 	return(_gr_breakout_yp(gr, resultbuf));
 
@@ -504,7 +502,7 @@ _nextypgroup(struct group *gr)
 	static int keylen;
 	char *lastkey, *result;
 	static char resultbuf[YPMAXRECORD + 2];
-	int resultlen;
+	size_t resultlen;
 	int rv;
 
 	if(!_gr_yp_domain) {
