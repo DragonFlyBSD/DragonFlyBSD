@@ -24,11 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/dlfcn.c,v 1.6.2.1 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/lib/libc/gen/dlfcn.c,v 1.3 2004/03/20 16:27:39 drhodus Exp $
+ * $DragonFly: src/lib/libc/gen/dlfcn.c,v 1.4 2005/04/27 11:57:57 joerg Exp $
  */
 
 #include <dlfcn.h>
 #include <stddef.h>
+
+void	_rtld_error(const char *, ...);
 
 static const char sorry[] = "Service unavailable";
 
@@ -44,13 +46,13 @@ static const char sorry[] = "Service unavailable";
 
 #pragma weak _rtld_error
 void
-_rtld_error(const char *fmt, ...)
+_rtld_error(const char *fmt __unused, ...)
 {
 }
 
 #pragma weak dladdr
 int
-dladdr(const void *addr, Dl_info *dlip)
+dladdr(const void *addr __unused, Dl_info *dlip __unused)
 {
 	_rtld_error(sorry);
 	return 0;
@@ -58,7 +60,7 @@ dladdr(const void *addr, Dl_info *dlip)
 
 #pragma weak dlclose
 int
-dlclose(void *handle)
+dlclose(void *handle __unused)
 {
 	_rtld_error(sorry);
 	return -1;
@@ -71,23 +73,9 @@ dlerror(void)
 	return sorry;
 }
 
-#pragma weak dllockinit
-void
-dllockinit(void *context,
-	   void *(*lock_create)(void *context),
-	   void (*rlock_acquire)(void *lock),
-	   void (*wlock_acquire)(void *lock),
-	   void (*lock_release)(void *lock),
-	   void (*lock_destroy)(void *lock),
-	   void (*context_destroy)(void *context))
-{
-	if (context_destroy != NULL)
-		context_destroy(context);
-}
-
 #pragma weak dlopen
 void *
-dlopen(const char *name, int mode)
+dlopen(const char *name __unused, int mode __unused)
 {
 	_rtld_error(sorry);
 	return NULL;
@@ -95,7 +83,7 @@ dlopen(const char *name, int mode)
 
 #pragma weak dlsym
 void *
-dlsym(void *handle, const char *name)
+dlsym(void *handle __unused, const char *name __unused)
 {
 	_rtld_error(sorry);
 	return NULL;
@@ -103,7 +91,7 @@ dlsym(void *handle, const char *name)
 
 #pragma weak dlinfo
 int
-dlinfo(void *handle, int request, void *p)
+dlinfo(void *handle __unused, int request __unused, void *p __unused)
 {
 	_rtld_error(sorry);
 	return NULL;
