@@ -35,11 +35,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)cname.h	8.3 (Berkeley) 3/20/94
+ * $DragonFly: src/lib/libc/regex/cname.h,v 1.2 2005/04/27 11:26:18 joerg Exp $
  */
 
 /* character-name table */
 static struct cname {
-	char *name;
+	const char *name;
 	char code;
 } cnames[] = {
 	{"NUL",			'\0'},
