@@ -37,28 +37,15 @@
  *
  *	@(#)dkstat.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/dkstat.h,v 1.12.2.1 2000/09/22 08:01:00 des Exp $
- * $DragonFly: src/sys/sys/dkstat.h,v 1.3 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/sys/sys/dkstat.h,v 1.4 2005/04/27 14:31:19 hmp Exp $
  */
 
 #ifndef _SYS_DKSTAT_H_
-#define _SYS_DKSTAT_H_ 1
+#define _SYS_DKSTAT_H_
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."
 #endif
-
-/*
- * This definition is identical to kinfo_cputime.
- * If this is changed, the sysctl export in kern_clock.c and kcore
- * must be changed, too.
- */
-extern struct cp_time {
-	uint64_t	cp_user;
-	uint64_t	cp_nice;
-	uint64_t	cp_sys;
-	uint64_t	cp_intr;
-	uint64_t	cp_idle;
-} cp_time;
 
 extern uint64_t tk_nin;
 extern uint64_t tk_nout;

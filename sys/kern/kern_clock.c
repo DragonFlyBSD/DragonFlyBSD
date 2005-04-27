@@ -70,14 +70,13 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.39 2005/04/26 22:35:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.40 2005/04/27 14:31:19 hmp Exp $
  */
 
 #include "opt_ntp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/dkstat.h>
 #include <sys/callout.h>
 #include <sys/kernel.h>
 #include <sys/kinfo.h>
@@ -112,13 +111,30 @@ SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
 
 /*
  * Some of these don't belong here, but it's easiest to concentrate them.
- * Note that cp_time counts in microseconds, but most userland programs
+ * Note that cpu_time counts in microseconds, but most userland programs
  * just compare relative times against the total by delta.
  */
-struct cp_time cp_time;
+struct kinfo_cputime cputime_percpu[MAXCPU];
+#ifdef SMP
+static int
+sysctl_cputime(SYSCTL_HANDLER_ARGS)
+{
+	int cpu, error = 0;
+	size_t size = sizeof(struct kinfo_cputime);
 
-SYSCTL_OPAQUE(_kern, OID_AUTO, cp_time, CTLFLAG_RD, &cp_time, sizeof(cp_time),
-    "LU", "CPU time statistics");
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		if ((error = SYSCTL_OUT(req, &cputime_percpu[cpu], size)))
+			break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_kern, OID_AUTO, cputime, (CTLTYPE_OPAQUE|CTLFLAG_RD), 0, 0,
+	sysctl_cputime, "S,kinfo_cputime", "CPU time statistics");
+#else
+SYSCTL_STRUCT(_kern, OID_AUTO, cputime, CTLFLAG_RD, &cpu_time, kinfo_cputime,
+    "CPU time statistics");
+#endif
 
 /*
  * boottime is used to calculate the 'real' uptime.  Do not confuse this with
@@ -551,9 +567,9 @@ statclock(systimer_t info, struct intrframe *frame)
 		 * Charge the time as appropriate
 		 */
 		if (p && p->p_nice > NZERO)
-			cp_time.cp_nice += bump;
+			cpu_time.cp_nice += bump;
 		else
-			cp_time.cp_user += bump;
+			cpu_time.cp_user += bump;
 	} else {
 #ifdef GPROF
 		/*
@@ -589,12 +605,12 @@ statclock(systimer_t info, struct intrframe *frame)
 			td->td_sticks += bump;
 
 		if (frame && CLKF_INTR(frame)) {
-			cp_time.cp_intr += bump;
+			cpu_time.cp_intr += bump;
 		} else {
 			if (td == &mycpu->gd_idlethread)
-				cp_time.cp_idle += bump;
+				cpu_time.cp_idle += bump;
 			else
-				cp_time.cp_sys += bump;
+				cpu_time.cp_sys += bump;
 		}
 	}
 }

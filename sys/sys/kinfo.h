@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.4 2005/04/25 14:27:03 hmp Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.5 2005/04/27 14:31:19 hmp Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -51,6 +51,9 @@ struct kinfo_file {
 	u_int	 f_flag;	/* flags (see fcntl.h) */
 };
 
+/*
+ * CPU time statistics
+ */
 struct kinfo_cputime {
 	uint64_t	cp_user;
 	uint64_t	cp_nice;
@@ -75,5 +78,17 @@ struct kinfo_prison {
 	uint32_t	 pr_ip;
 };
 #define	KINFO_PRISON_VERSION	1
+
+#if defined(_KERNEL)
+#ifdef SMP
+#define cpu_time	cputime_percpu[mycpuid]
+#else
+#define cpu_time	cputime_percpu[0]
+#endif
+#endif
+
+#if defined(_KERNEL)
+extern struct kinfo_cputime cputime_percpu[MAXCPU];
+#endif
 
 #endif /* !_SYS_KINFO_H_ */

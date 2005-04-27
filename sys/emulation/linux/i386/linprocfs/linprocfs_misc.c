@@ -39,13 +39,13 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.10 2005/01/31 22:03:48 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.11 2005/04/27 14:31:19 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/blist.h>
-#include <sys/dkstat.h>
 #include <sys/kernel.h>
+#include <sys/kinfo.h>
 #include <sys/proc.h>
 #include <sys/jail.h>
 #include <sys/resourcevar.h>
@@ -280,10 +280,10 @@ linprocfs_dostat(curp, p, pfs, uio)
 		      "intr %u\n"
 		      "ctxt %u\n"
 		      "btime %ld\n",
-		      T2J(cp_time.cp_user),
-		      T2J(cp_time.cp_nice),
-		      T2J(cp_time.cp_sys /*+ cp_time[CP_INTR]*/),
-		      T2J(cp_time.cp_idle),
+		      T2J(cpu_time.cp_user),
+		      T2J(cpu_time.cp_nice),
+		      T2J(cpu_time.cp_sys /*+ cpu_time[CP_INTR]*/),
+		      T2J(cpu_time.cp_idle),
 		      cpucnt(offsetof(struct vmmeter, v_vnodepgsin)),
 		      cpucnt(offsetof(struct vmmeter, v_vnodepgsout)),
 		      cpucnt(offsetof(struct vmmeter, v_swappgsin)),
@@ -309,7 +309,7 @@ linprocfs_douptime(curp, p, pfs, uio)
 	ps = psbuf;
 	ps += sprintf(ps, "%ld.%02ld %"PRIu64".%02"PRIu64"\n",
 		      tv.tv_sec, tv.tv_usec / 10000,
-		      T2S(cp_time.cp_idle), T2J(cp_time.cp_idle) % 100);
+		      T2S(cpu_time.cp_idle), T2J(cpu_time.cp_idle) % 100);
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
