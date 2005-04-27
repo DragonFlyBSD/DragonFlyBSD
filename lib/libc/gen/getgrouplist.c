@@ -31,15 +31,15 @@
  * SUCH DAMAGE.
  *
  * @(#)getgrouplist.c	8.2 (Berkeley) 12/8/94
- * $DragonFly: src/lib/libc/gen/getgrouplist.c,v 1.5 2004/09/19 17:25:42 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/getgrouplist.c,v 1.6 2005/04/27 12:37:43 joerg Exp $
  */
 
 /*
  * get credential
  */
-#include <sys/types.h>
-#include <string.h>
 #include <grp.h>
+#include <string.h>
+#include <unistd.h>
 
 int
 getgrouplist(const char *uname, gid_t agroup, gid_t *groups, int *grpcnt)
@@ -63,7 +63,7 @@ getgrouplist(const char *uname, gid_t agroup, gid_t *groups, int *grpcnt)
 	 * Scan the group file to find additional groups.
 	 */
 	setgrent();
-	while (grp = getgrent()) {
+	while ((grp = getgrent()) != NULL) {
 		for (i = 0; i < ngroups; i++) {
 			if (grp->gr_gid == groups[i])
 				goto skip;
