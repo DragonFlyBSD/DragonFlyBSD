@@ -31,8 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_pcpu.c,v 1.1 2005/04/27 15:13:35 hmp Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_pcpu.c,v 1.2 2005/04/27 16:16:30 hmp Exp $
  */
+
+#include <sys/param.h>
 
 #include <kinfo.h>
 

@@ -31,16 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_pcpu.h,v 1.1 2005/04/27 15:13:35 hmp Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_pcpu.h,v 1.2 2005/04/27 16:16:30 hmp Exp $
  */
 
 /*
  * Common code for managing per-cpu statistics counters.
  */
-
-#ifndef _SYS_PARAM_H_
-#include <sys/param.h>
-#endif
 
 #ifndef _STRING_H_
 #include <string.h>

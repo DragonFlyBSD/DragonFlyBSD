@@ -31,12 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.2 2005/04/27 15:13:35 hmp Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.3 2005/04/27 16:16:30 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
+#include <assert.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <kinfo.h>
@@ -64,10 +65,7 @@ kinfo_get_sched_cputime(struct kinfo_cputime *cputime)
 	size_t len = sizeof(struct kinfo_cputime) * SMP_MAXCPU;
 	int cpucount, error = 0;
 
-	if (cputime == NULL) {
-		error = EINVAL;
-		goto done;
-	}
+	_DIAGASSERT(cputime != NULL);
 
 	if ((percpu = malloc(len)) == NULL) {
 		error = ENOMEM;
@@ -79,7 +77,7 @@ kinfo_get_sched_cputime(struct kinfo_cputime *cputime)
 		error = errno;
 		goto done;
 	} else {
-		percpu = realloc(percpu, len);
+		percpu = reallocf(percpu, len);
 		if (percpu == NULL) {
 			error = ENOMEM;
 			goto done;
