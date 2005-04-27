@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getbsize.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/getbsize.c,v 1.3 2005/04/27 12:10:24 joerg Exp $
  */
 
 #include <err.h>
@@ -45,7 +46,8 @@ getbsize(headerlenp, blocksizep)
 {
 	static char header[20];
 	long n, max, mul, blocksize;
-	char *ep, *p, *form;
+	char *ep, *p;
+	const char *form;
 
 #define	KB	(1024L)
 #define	MB	(1024L * 1024L)
@@ -81,7 +83,7 @@ getbsize(headerlenp, blocksizep)
 			break;
 		default:
 fmterr:			warnx("%s: unknown blocksize", p);
-			n = 512;
+			max = n = 512;
 			mul = 1;
 			break;
 		}
