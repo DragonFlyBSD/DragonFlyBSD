@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)inet_ntoa.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/net/inet_ntoa.c,v 1.3 2005/04/27 15:24:43 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -38,19 +39,19 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <string.h>
 
 /*
  * Convert network-format internet address
  * to base 256 d.d.d.d representation.
  */
 char *
-inet_ntoa(in)
-	struct in_addr in;
+inet_ntoa(struct in_addr in)
 {
 	static char ret[18];
 
-	strcpy(ret, "[inet_ntoa error]");
-	(void) inet_ntop(AF_INET, &in, ret, sizeof ret);
+	strlcpy(ret, "[inet_ntoa error]", sizeof(ret));
+	inet_ntop(AF_INET, &in, ret, sizeof ret);
 	return (ret);
 }
 
