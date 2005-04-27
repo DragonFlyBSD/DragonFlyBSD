@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.1 2005/04/27 00:42:13 dillon Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.2 2005/04/27 00:59:51 dillon Exp $
 .\" 
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\" 
@@ -52,7 +52,7 @@
 The
 .Nm
 daemon will synchronize the system clock to one or more external NTP time
-sources.  By default an initial course offset correction will be made if
+sources.  By default an initial corse offset correction will be made if
 time is off by greater then 2 minutes.  Additional sliding offset 
 corrections will be made if necessary.  Once sufficient information is
 obtained,
@@ -90,10 +90,10 @@ otherwise normally update the system frequency or offset.
 .It Fl q
 Quiet mode.  Implies a logging level of 0.
 .It Fl s
-Issue a course offset correction on startup.  Normally a course offset
+Issue a corse offset correction on startup.  Normally a corse offset
 correction is only made when the time differential is greater then 2
 minutes.  This option will cause the initial offset correction to be
-a course correction regardless.  Note that the system will still not make
+a corse correction regardless.  Note that the system will still not make
 a correction unless the offset error is greater then 4 times the standard
 deviation of the queries.
 .It Fl t
@@ -144,42 +144,53 @@ if you want to disable it otherwise.
 runs two linear regressions for each target against the uncorrected system
 time.  The two linear regressions are staggered so the second one is stable
 and can replace the first one once the first's sampling limit has been
-replaced.
+reached.
 The second linear regression is also capable of overriding the first if
 the target changes sufficiently to invalidate the first's correlation. 
 .Pp
-The linear regression is a line-fitting algorithm and allows us to 
+The linear regression is a line-fitting algorithm which allows us to 
 calculate a running Y-intercept, slope, and correlation factor.  The 
 Y-intercept is currently not used but can be an indication of a shift in
 the time source.  The slope basically gives us the drift rate which in
 turn allows us to correct the frequency.  The correlation gives us a
 quality indication, with 0 being the worst and +/- 1.0 being the best.
-A minimum of 8 samples and a correlation of >= 0.99, or 16 samples and a
-correlation of 0.96 is required to make a frequency correction.
 .Pp
 A standard deviation is calculated for offset corrections.  A standard
 deviation gives us measure of the deviation from the mean of a set of 
 samples.
 .Nm
 uses the sum(offset_error) and sum(offset_error^2) method to calculate
-a running standard deviation.   The offset error relative to the corrected
-real time (not the uncorrected real time as with the linear regression) is
-calculated for each sample.
+a running standard deviation.   The offset error relative to the
+frequency-corrected real time is calculated for each sample.  Note that
+this differs from the uncorrected offset error that the linear regression
+uses to calculate the frequency correction.
 .Pp
-In order to make an offset correction a
-minimum of 4 samples is required and the standard deviation must be less
-then 1/4 the current calculated offset error.  The system typically applies
-offset corrections slowly over time.
+In order to make a frequency correction a minimum of 8 samples and a
+correlation >= 0.99, or 16 samples and a correlation >= 0.96 is required.
+Once these requirements are met a frequency correction will typically be
+made each sampling period.  Frequency corrections do not 'jump' the system
+time or otherwise cause fine-time computations to be inaccurate and thus
+can pretty much be made at will.
+.Pp
+In order to make an offset correction a minimum of 4 samples is required
+and the standard deviation must be less then 1/4 the current calculated
+offset error.  The system typically applies offset corrections slowly over
+time.  The algorithm will make an offset correction whenever these standards
+are met but the fact that the offset error must be greater then 4 times the
+standard deviation generally results in very few offset corrections being
+made once time has been frequency-corrected.
 .Nm
 will not attempt to make a followup offset correction until the system
 has completed applying the previous offset correction, as doing so would
-cause a serious overshoot or undershoot.
+cause a serious overshoot or undershoot.  It is possible to use a more
+sophisticated algorithm to take running offset corrections into account
+but we do not do that (yet).
 .Pp
 .Nm
 maintains an operations mode for each target.  An initial 6 samples are taken
 at 5 second intervals, after which samples are taken at 5 minute intervals.
-If the time source is deemed in good enough shape (using fairly relaxed
-corellation and standard deviation comparisons)the polling interval is
+If the time source is deemed to be good enough (using fairly relaxed
+correlation and standard deviation comparisons) the polling interval is
 increased to 30 minutes.  Note that long intervals are required to get good
 correlations from internet time sources.
 .Pp
@@ -200,9 +211,9 @@ can typically keep the time synchronized to within 1-20 milliseconds depending
 on the source and both the number of offset corrections and the size of the
 offset corrections should be significantly reduced.
 .Pp
-It will take a few seconds for
+It will take up to 30 seconds for
 .Nm
-to make the initial course offset correction.  It can take anywhere from
+to make the initial corse offset correction.  It can take anywhere from
 5 minutes to 3 hours for
 .Nm
 to make the initial frequency correction, depending on the time source. 
@@ -211,7 +222,8 @@ quality correlation in order to issue a frequency correction.
 .Pp
 It is difficult to calculate the packet latency for an internet time source
 and in some cases this can result in time sources which disagree as much as
-20ms with each other.  This if you specify multiple targets
+20ms with each other.  If you specify multiple targets and run in
+debug or a high-logging mode you may observe this issue.
 .Pp
 .Sh CONFIGURATION FILE
 The
@@ -220,6 +232,19 @@ file contains a list of servers in the 'server <servername>' format, one
 per line.  Any information after a '#' is assumed to be a comment.  Any
 number of servers may be specified but it is usually wasteful to have more
 then four.
+.Pp
+.Sh BUGS
+.Pp
+An algorithm is needed to deal with time sources with packet-latency-based
+offset errors.
+.Pp
+The offset correction needs to be able to operate while a prior offset 
+correction is still in-progress.
+.Pp
+We need to record the frequency correction in a file which is then read on
+startup, to avoid having to recorrect the frequency from scratch every
+time the system is rebooted.
+.Pp
 .Sh FILES
 .Bl -tag -compact
 .It Pa /var/run/dntpd.pid
