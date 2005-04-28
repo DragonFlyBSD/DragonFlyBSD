@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.21 2005/04/21 23:13:19 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.22 2005/04/28 21:11:51 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -36,37 +36,37 @@ LOCALBASE ?= /usr/local
 MPH	?= ${LOCALBASE}/bin/mph
 EMITC	?= ${LOCALBASE}/bin/emitc
 
-.PRECIOUS:
+.PRECIOUS: hash
 hash:
-	echo '/*'				> directive_hash.c
-	echo ' * DO NOT EDIT'			>> directive_hash.c
-	echo ' * $$DragonFly: src/usr.bin/make/Makefile,v 1.21 2005/04/21 23:13:19 okumoto Exp $$'			>> directive_hash.c
-	echo -n ' * auto-generated from '	>> directive_hash.c
-	sed -nEe '/\$$(DragonFly)|(FreeBSD)/s/^.*\$$(.*)\$$.*$$/\1/p' \
-		${.CURDIR}/parse.c >>directive_hash.c
-	echo ' * DO NOT EDIT'			>> directive_hash.c
-	echo ' */'				>> directive_hash.c
-	echo '#include <sys/types.h>'		>> directive_hash.c
-	echo ''					>> directive_hash.c
-	echo '#include "directive_hash.h"'	>> directive_hash.c
-	echo ''					>> directive_hash.c
-	cat ${.CURDIR}/parse.c | sed \
-	    -e '1,/DIRECTIVES-START-TAG/d' -e '/DIRECTIVES-END-TAG/,$$d' \
-	    -e 's/^[^"]*"\([^"]*\)".*$$/\1/' |\
-	    ${MPH} -d2 -m1 | ${EMITC} -l -s |\
-	    sed \
+	( echo '/*' ;							\
+	  echo ' * DO NOT EDIT' ;					\
+	  echo ' * $$''DragonFly$$' ;					\
+	  echo -n ' * auto-generated from ' ;				\
+	  echo ${.CURDIR}/parse.c ;					\
+	  echo ' * DO NOT EDIT' ;					\
+	  echo ' */' ;							\
+	  echo '#include <sys/types.h>' ;				\
+	  echo ;							\
+	  echo '#include "directive_hash.h"' ;				\
+	  echo ;							\
+	  cat ${.CURDIR}/parse.c | sed					\
+	    -e '1,/DIRECTIVES-START-TAG/d'				\
+	    -e '/DIRECTIVES-END-TAG/,$$d'				\
+	    -e 's/^[^"]*"\([^"]*\)".*$$/\1/' |				\
+	    ${MPH} -d2 -m1 | ${EMITC} -l -s |				\
+	    sed								\
 	    -e 's/^static int g\[\]/static const signed char directive_g[]/' \
 	    -e 's/^static int T0\[\]/static const u_char directive_T0[]/' \
 	    -e 's/^static int T1\[\]/static const u_char directive_T1[]/' \
-	    -e '/^#define uchar unsigned char/d' \
-	    -e 's/uchar/u_char/g' \
-	    -e 's/^hash(/directive_hash(/' \
-	    -e 's/; \*kp;/; kp < key + len;/' \
-	    -e 's/int len)/size_t len)/' \
-	    -e 's/= T0\[/= directive_T0\[/' \
-	    -e 's/= T1\[/= directive_T1\[/' \
-	    -e 's/g\[f/directive_g[f/g' \
-	    >> directive_hash.c
+	    -e '/^#define uchar unsigned char/d'			\
+	    -e 's/uchar/u_char/g'					\
+	    -e 's/^hash(/directive_hash(/'				\
+	    -e 's/; \*kp;/; kp < key + len;/'				\
+	    -e 's/int len)/size_t len)/'				\
+	    -e 's/= T0\[/= directive_T0\[/'				\
+	    -e 's/= T1\[/= directive_T1\[/'				\
+	    -e 's/g\[f/directive_g[f/g'					\
+	) > ${.CURDIR}/directive_hash.c
 
 # Set the shell which make(1) uses.  Bourne is the default, but a decent
 # Korn shell works fine, and much faster.  Using the C shell for this
