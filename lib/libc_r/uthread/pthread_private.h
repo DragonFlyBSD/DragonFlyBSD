@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.5 2005/03/13 15:10:03 swildner Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.6 2005/04/28 18:16:47 joerg Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -60,6 +60,8 @@
 #include <sched.h>
 #include <spinlock.h>
 #include <pthread_np.h>
+
+#include <machine/tls.h>
 
 /*
  * Define machine dependent macros to get and set the stack pointer
@@ -613,6 +615,7 @@ struct pthread {
 	u_int32_t		magic;
 	char			*name;
 	u_int64_t		uniqueid; /* for gdb */
+	struct tls_tcb		*tcb;
 
 	/*
 	 * Lock for accesses to this thread structure.

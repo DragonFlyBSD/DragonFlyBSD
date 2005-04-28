@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_create.c,v 1.24.2.6 2003/01/08 05:04:26 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -166,6 +166,7 @@ _pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 		} else {
 			/* Initialise the thread structure: */
 			memset(new_thread, 0, sizeof(struct pthread));
+			new_thread->tcb = _rtld_allocate_tls(NULL);
 			new_thread->slice_usec = -1;
 			new_thread->stack = stack;
 			new_thread->start_routine = start_routine;

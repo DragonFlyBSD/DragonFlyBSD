@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_gc.c,v 1.11.2.5 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_gc.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_gc.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
  *
  * Garbage collector thread. Frees memory allocated for dead threads.
  *
@@ -248,6 +248,7 @@ _thread_gc(pthread_addr_t arg)
 				/* Free the thread name string. */
 				free(pthread_cln->name);
 			}
+			_rtld_free_tls(pthread_cln->tcb);
 			/*
 			 * Free the memory allocated for the thread
 			 * structure.

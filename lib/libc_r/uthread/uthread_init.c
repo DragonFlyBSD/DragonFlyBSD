@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.4 2005/03/13 15:10:03 swildner Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.5 2005/04/28 18:16:47 joerg Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -263,6 +263,7 @@ _thread_init(void)
 		    -1, 0) == MAP_FAILED)
 			PANIC("Cannot allocate red zone for initial thread");
 
+		_thread_initial->tcb = tls_get_tcb();
 		/* Set the main thread stack pointer. */
 		_thread_initial->stack = _usrstack - PTHREAD_STACK_INITIAL;
 

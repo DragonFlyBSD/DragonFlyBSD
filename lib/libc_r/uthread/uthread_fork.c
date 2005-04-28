@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fork.c,v 1.19.2.7 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
  */
 #include <errno.h>
 #include <string.h>
@@ -161,6 +161,7 @@ _fork(void)
 					if (pthread_save->poll_data.fds != NULL)
 						free(pthread_save->poll_data.fds);
 
+					_rtld_free_tls(pthread_save->tcb);
 					free(pthread_save);
 				}
 			}

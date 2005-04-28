@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kern.c,v 1.28.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
  *
  */
 #include <errno.h>
@@ -1141,4 +1141,5 @@ void
 _set_curthread(struct pthread *newthread)
 {
 	_thread_run = newthread;
+	tls_set_tcb(newthread->tcb);
 }
