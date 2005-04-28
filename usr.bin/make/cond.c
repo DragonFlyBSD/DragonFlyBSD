@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.38 2005/04/28 18:51:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.39 2005/04/28 18:52:00 okumoto Exp $
  */
 
 /*
@@ -521,6 +521,7 @@ CondToken(Boolean doEval)
 
 				doFree = TRUE;
 			}
+
 			/*
 			 * Skip whitespace to get to the operator
 			 */
@@ -543,23 +544,22 @@ CondToken(Boolean doEval)
 				} else {
 					condExpr += 1;
 				}
+				while (isspace((unsigned char)*condExpr)) {
+					condExpr++;
+				}
+				if (*condExpr == '\0') {
+					Parse_Error(PARSE_WARNING,
+					     "Missing right-hand-side of operator");
+					goto error;
+				}
+				rhs = condExpr;
 				break;
 			default:
 				op = "!=";
 				rhs = "0";
+				break;
+			}
 
-				goto do_compare;
-			}
-			while (isspace((unsigned char)*condExpr)) {
-				condExpr++;
-			}
-			if (*condExpr == '\0') {
-				Parse_Error(PARSE_WARNING,
-				     "Missing right-hand-side of operator");
-				goto error;
-			}
-			rhs = condExpr;
-	do_compare:
 			if (*rhs == '"') {
 				/*
 				 * Doing a string comparison. Only allow ==
