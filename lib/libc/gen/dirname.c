@@ -1,6 +1,6 @@
 /*	$OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $	*/
 /*	$FreeBSD: src/lib/libc/gen/dirname.c,v 1.1.2.2 2001/07/23 10:13:04 dd Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.5 2005/04/28 01:43:53 y0netan1 Exp $	*/
+/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.6 2005/04/28 13:45:42 joerg Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -67,11 +67,11 @@ dirname(const char *path)
 		endp--;
 	} while (endp > path && *endp == '/');
 
-	if (endp - path + 2 > sizeof(bname)) {
+	if (endp + 2 > path + sizeof(bname)) {
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
-	strncpy(bname, path, endp - path + 1);
+	memcpy(bname, path, endp - path + 1);
 	bname[endp - path + 1] = '\0';
 	return(bname);
 }
