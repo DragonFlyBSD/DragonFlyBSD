@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.39 2005/04/28 18:52:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.40 2005/04/28 18:52:15 okumoto Exp $
  */
 
 /*
@@ -476,11 +476,12 @@ CondToken(Boolean doEval)
 		t = EndOfFile;
 		break;
 	case '$':{
-			char   *lhs;
-			char   *rhs;
-			const char *op;
-			size_t	varSpecLen = 0;
-			Boolean	doFree;
+			char		*lhs;
+			const char	*op;
+			char		*rhs;
+			char		zero[] = "0";
+			size_t		varSpecLen = 0;
+			Boolean		doFree;
 
 			/*
 			 * Parse the variable spec and skip over it, saving
@@ -556,7 +557,7 @@ CondToken(Boolean doEval)
 				break;
 			default:
 				op = "!=";
-				rhs = "0";
+				rhs = zero;
 				break;
 			}
 
