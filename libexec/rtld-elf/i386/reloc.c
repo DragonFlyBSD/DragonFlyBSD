@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.8 2005/03/30 00:53:14 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.9 2005/04/28 18:09:03 joerg Exp $
  */
 
 /*
@@ -340,16 +340,13 @@ allocate_initial_tls(Obj_Entry *objs)
      *
      * We may have to replace an 'initial' TLS previously created by libc.
      */
-    tls_static_space = tls_last_offset /*+ RTLD_STATIC_TLS_EXTRA*/;
-    if (tls_static_space) {
-	if (sys_get_tls_area(0, &ti, sizeof(ti)) == 0) {
-		old_tcb = ti.base;
-	} else {
-		old_tcb = NULL;
-	}
-	tls = allocate_tls(objs, old_tcb);
-	tls_set_tcb(tls);
-    }
+    if (sys_get_tls_area(0, &ti, sizeof(ti)) == 0)
+	old_tcb = ti.base;
+    else
+	old_tcb = NULL;
+
+    tls = allocate_tls(objs, old_tcb);
+    tls_set_tcb(tls);
 }
 
 /* GNU ABI */
