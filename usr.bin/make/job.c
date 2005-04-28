@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.83 2005/04/28 18:47:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.84 2005/04/28 18:48:31 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -496,6 +496,8 @@ static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static void ProcExec(ProcStuff *) __dead2;
+static int Compat_RunCommand(char *, struct GNode *);
+
 
 /*
  * The following array is used to make a fast determination of which
@@ -3270,7 +3272,7 @@ CompatInterrupt(int signo)
  *
  *-----------------------------------------------------------------------
  */
-int
+static int
 Compat_RunCommand(char *cmd, GNode *gn)
 {
 	char	*cmdStart;	/* Start of expanded command */
