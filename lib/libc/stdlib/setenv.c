@@ -32,14 +32,16 @@
  *
  * @(#)setenv.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/setenv.c,v 1.5.2.1 2000/09/20 19:46:03 brian Exp $
- * $DragonFly: src/lib/libc/stdlib/setenv.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/setenv.c,v 1.5 2005/04/28 13:51:55 joerg Exp $
  */
 
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
-char *__findenv (const char *, int *);
+extern char **environ;
+
+char *__findenv (const char *, size_t *);
 
 /*
  * setenv --
@@ -47,15 +49,11 @@ char *__findenv (const char *, int *);
  *	"value".  If rewrite is set, replace any current value.
  */
 int
-setenv(name, value, rewrite)
-	const char *name;
-	const char *value;
-	int rewrite;
+setenv(const char *name, const char *value, int rewrite)
 {
-	extern char **environ;
 	static char **alloced;			/* if allocated space before */
 	char *c;
-	int l_value, offset;
+	size_t l_value, offset;
 
 	if (*value == '=')			/* no `=' in value */
 		++value;
@@ -72,17 +70,17 @@ setenv(name, value, rewrite)
 		char **p;
 
 		for (p = environ, cnt = 0; *p; ++p, ++cnt);
-		if (alloced == environ) {			/* just increase size */
-			p = (char **)realloc((char *)environ,
-			    (size_t)(sizeof(char *) * (cnt + 2)));
-			if (!p)
+		if (alloced == environ) {
+			/* just increase size */
+			p = realloc(environ, sizeof(char *) * (cnt + 2));
+			if (p == NULL)
 				return (-1);
 			alloced = environ = p;
 		}
 		else {				/* get new space */
 						/* copy old entries into it */
-			p = malloc((size_t)(sizeof(char *) * (cnt + 2)));
-			if (!p)
+			p = malloc(sizeof(char *) * (cnt + 2));
+			if (p == NULL)
 				return (-1);
 			bcopy(environ, p, cnt * sizeof(char *));
 			alloced = environ = p;
@@ -104,12 +102,10 @@ setenv(name, value, rewrite)
  *	Delete environmental variable "name".
  */
 void
-unsetenv(name)
-	const char *name;
+unsetenv(const char *name)
 {
-	extern char **environ;
 	char **p;
-	int offset;
+	size_t offset;
 
 	while (__findenv(name, &offset))	/* if set multiple times */
 		for (p = &environ[offset];; ++p)

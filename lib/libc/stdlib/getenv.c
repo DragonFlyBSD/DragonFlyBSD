@@ -31,14 +31,16 @@
  * SUCH DAMAGE.
  *
  * @(#)getenv.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.5 2005/04/28 13:51:55 joerg Exp $
  */
 
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 
-inline char *__findenv (const char *, int *);
+char *__findenv(const char *, size_t *);
+
+extern char **environ;
 
 /*
  * __findenv --
@@ -49,13 +51,10 @@ inline char *__findenv (const char *, int *);
  *
  *	This routine *should* be a static; don't use it.
  */
-inline char *
-__findenv(name, offset)
-	const char *name;
-	int *offset;
+char *
+__findenv(const char *name, size_t *offset)
 {
-	extern char **environ;
-	int len, i;
+	size_t len, i;
 	const char *np;
 	char **p, *cp;
 
@@ -81,10 +80,9 @@ __findenv(name, offset)
  *	Returns ptr to value associated with name, if any, else NULL.
  */
 char *
-getenv(name)
-	const char *name;
+getenv(const char *name)
 {
-	int offset;
+	size_t offset;
 
 	return (__findenv(name, &offset));
 }
