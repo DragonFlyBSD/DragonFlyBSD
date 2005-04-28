@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.84 2005/04/28 18:48:31 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.85 2005/04/28 18:49:18 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -509,6 +509,38 @@ static char	    meta[256];
 
 static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
+
+static void
+catch_child(int sig __unused)
+{
+}
+
+/**
+ */
+void
+Proc_Init()
+{
+	/*
+	 * Catch SIGCHLD so that we get kicked out of select() when we
+	 * need to look at a child.  This is only known to matter for the
+	 * -j case (perhaps without -P).
+	 *
+	 * XXX this is intentionally misplaced.
+	 */
+	struct sigaction sa;
+
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+	sa.sa_handler = catch_child;
+	sigaction(SIGCHLD, &sa, NULL);
+
+#if DEFSHELL == 2
+	/*
+	 * Turn off ENV to make ksh happier.
+	 */
+	unsetenv("ENV");
+#endif
+}
 
 /**
  * Replace the current process.

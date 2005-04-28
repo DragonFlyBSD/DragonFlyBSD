@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.83 2005/04/28 18:48:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.84 2005/04/28 18:49:18 okumoto Exp $
  */
 
 /*
@@ -65,7 +65,6 @@
 #include <sys/wait.h>
 #include <err.h>
 #include <errno.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -548,16 +547,13 @@ chdir_verify_path(const char *path, char *obpath)
 	return (NULL);
 }
 
-static void
-catch_child(int sig __unused)
-{
-}
-
-/*
- * In lieu of a good way to prevent every possible looping in
- * make(1), stop there from being more than MKLVL_MAXVAL processes forked
- * by make(1), to prevent a forkbomb from happening, in a dumb and
- * mechanical way.
+/**
+ * In lieu of a good way to prevent every possible looping in make(1), stop
+ * there from being more than MKLVL_MAXVAL processes forked by make(1), to
+ * prevent a forkbomb from happening, in a dumb and mechanical way.
+ *
+ * Side Effects:
+ *	Creates or modifies enviornment variable MKLVL_ENVVAR via setenv().
  */
 static void
 check_make_level(void)
@@ -600,6 +596,9 @@ check_make_level(void)
 int
 main(int argc, char **argv)
 {
+    	const char *machine;
+	const char *machine_arch;
+	const char *machine_cpu;
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
 	char *p, *p1;
 	const char *pathp;
@@ -607,38 +606,9 @@ main(int argc, char **argv)
 	char mdpath[MAXPATHLEN];
 	char obpath[MAXPATHLEN];
 	char cdpath[MAXPATHLEN];
-    	const char *machine = getenv("MACHINE");
-	const char *machine_arch = getenv("MACHINE_ARCH");
-	const char *machine_cpu = getenv("MACHINE_CPU");
 	char *cp = NULL, *start;
 
-	/* avoid faults on read-only strings */
-	static char syspath[] = PATH_DEFSYSPATH;
-
-	{
-	/*
-	 * Catch SIGCHLD so that we get kicked out of select() when we
-	 * need to look at a child.  This is only known to matter for the
-	 * -j case (perhaps without -P).
-	 *
-	 * XXX this is intentionally misplaced.
-	 */
-	struct sigaction sa;
-
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-	sa.sa_handler = catch_child;
-	sigaction(SIGCHLD, &sa, NULL);
-	}
-
 	check_make_level();
-
-#if DEFSHELL == 2
-	/*
-	 * Turn off ENV to make ksh happier.
-	 */
-	unsetenv("ENV");
-#endif
 
 #ifdef RLIMIT_NOFILE
 	/*
@@ -646,10 +616,12 @@ main(int argc, char **argv)
 	 */
 	{
 		struct rlimit rl;
-		if (getrlimit(RLIMIT_NOFILE, &rl) != -1 &&
-		    rl.rlim_cur != rl.rlim_max) {
-			rl.rlim_cur = rl.rlim_max;
-			setrlimit(RLIMIT_NOFILE, &rl);
+		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "getrlimit");
+		}
+		rl.rlim_cur = rl.rlim_max;
+		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "setrlimit");
 		}
 	}
 #endif
@@ -661,23 +633,23 @@ main(int argc, char **argv)
 	 * Note that while MACHINE is decided at run-time,
 	 * MACHINE_ARCH is always known at compile time.
 	 */
-	if (!machine) {
-#ifndef MACHINE
+	if ((machine = getenv("MACHINE")) == NULL) {
+#ifdef MACHINE
+		machine = MACHINE;
+#else
 		static struct utsname utsname;
 
 		if (uname(&utsname) == -1)
 			err(2, "uname");
 		machine = utsname.machine;
-#else
-		machine = MACHINE;
 #endif
 	}
 
-	if (!machine_arch) {
-#ifndef MACHINE_ARCH
-		machine_arch = "unknown";
-#else
+	if ((machine_arch = getenv("MACHINE_ARCH")) == NULL) {
+#ifdef MACHINE_ARCH
 		machine_arch = MACHINE_ARCH;
+#else
+		machine_arch = "unknown";
 #endif
 	}
 
@@ -685,7 +657,7 @@ main(int argc, char **argv)
 	 * Set machine_cpu to the minumum supported CPU revision based
 	 * on the target architecture, if not already set.
 	 */
-	if (!machine_cpu) {
+	if ((machine_cpu = getenv("MACHINE_CPU")) == NULL) {
 		if (!strcmp(machine_arch, "i386"))
 			machine_cpu = "i386";
 		else if (!strcmp(machine_arch, "alpha"))
@@ -716,6 +688,8 @@ main(int argc, char **argv)
 	 * for the reading of inclusion paths and variable settings on the
 	 * command line
 	 */
+	Proc_Init();
+
 	Dir_Init();		/* Initialize directory structures so -I flags
 				 * can be processed correctly */
 	Var_Init(environ);	/* As well as the lists of variables for
@@ -851,6 +825,8 @@ main(int argc, char **argv)
 	 * as dir1:...:dirn) to the system include path.
 	 */
 	if (TAILQ_EMPTY(&sysIncPath)) {
+		char syspath[] = PATH_DEFSYSPATH;
+
 		for (start = syspath; *start != '\0'; start = cp) {
 			for (cp = start; *cp != '\0' && *cp != ':'; cp++)
 				continue;
