@@ -10,7 +10,7 @@
  *
  * $NetBSD: tsearch.c,v 1.3 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tsearch.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.3 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.4 2005/04/28 13:41:46 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -48,7 +48,7 @@ tsearch(vkey, vrootp, compar)
 	if (q != 0) {				/* make new node */
 		*rootp = q;			/* link new node to old */
 		/* LINTED const castaway ok */
-		q->key = (void *)vkey;		/* initialize new node */
+		q->key = __DECONST(void *, vkey); /* initialize new node */
 		q->llink = q->rlink = NULL;
 	}
 	return q;
