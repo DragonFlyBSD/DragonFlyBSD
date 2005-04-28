@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.81 2005/04/28 18:47:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.82 2005/04/28 18:48:15 okumoto Exp $
  */
 
 /*
@@ -900,36 +900,7 @@ main(int argc, char **argv)
 		Lst_Destroy(&targs, NOFREE);
 
 	} else {
-		/*
-		 * Print the values of any variables requested by
-		 * the user.
-		 */
-		LstNode *n;
-
-		LST_FOREACH(n, &variables) {
-			const char	*name = Lst_Datum(n);
-			if (expandVars) {
-				char		*v;
-				char		*value;
-
-				v = emalloc(strlen(name) + 1 + 3);
-				sprintf(v, "${%s}", name);
-
-				value = Buf_Peel(Var_Subst(v,
-				    VAR_GLOBAL, FALSE));
-				printf("%s\n", value);
-
-				free(v);
-				free(value);
-			} else {
-				char	*value;
-				char	*v;
-				value = Var_Value(name, VAR_GLOBAL, &v);
-				printf("%s\n", value != NULL ? value : "");
-				if (v != NULL)
-					free(v);
-			}
-		}
+		Var_Print(&variables, expandVars);
 	}
 
 	Lst_Destroy(&variables, free);

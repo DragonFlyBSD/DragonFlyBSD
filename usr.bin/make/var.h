@@ -37,14 +37,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.34 2005/04/28 18:47:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.35 2005/04/28 18:48:15 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
 #define	var_h_9cccafce
 
-struct GNode;
 struct Buffer;
+struct GNode;
+struct List;
 
 /* Variables defined in a global context, e.g in the Makefile itself */
 extern struct GNode	*VAR_GLOBAL;
@@ -74,6 +75,7 @@ Boolean Var_Exists(const char *, struct GNode *);
 void Var_Init(char **);
 size_t Var_Match(const char [], struct GNode *);
 char *Var_Parse(const char *, struct GNode *, Boolean, size_t *, Boolean *);
+void Var_Print(struct Lst *, Boolean);
 void Var_Set(const char *, const char *, struct GNode *);
 void Var_SetEnv(const char *, struct GNode *);
 struct Buffer *Var_Subst(const char *, struct GNode *, Boolean);
