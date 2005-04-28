@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.6 2005/03/29 23:04:36 joerg Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.7 2005/04/28 18:29:54 joerg Exp $
  */
 
 /*
@@ -218,9 +218,7 @@ _init_tls()
 		}
 	}
 
-	if (tls_static_space) {
-		tcb = _rtld_allocate_tls(NULL);
-		tls_set_tcb(tcb);
-	}
+	tcb = _rtld_allocate_tls(NULL);
+	tls_set_tcb(tcb);
 #endif
 }
