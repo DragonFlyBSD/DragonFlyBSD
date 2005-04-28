@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.33 2005/04/24 12:39:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.34 2005/04/28 18:47:52 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -57,6 +57,12 @@ extern struct GNode	*VAR_CMD;
  * points to an empty string, so naive callers needn't worry about it.
  */
 extern char		var_Error[];
+
+/*
+ * TRUE if environment should be searched for all variables before
+ * the global context
+ */
+extern Boolean		checkEnvFirst;
 
 /* Do old-style variable substitution */
 extern Boolean		oldVars;

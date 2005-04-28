@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.6 2005/04/24 12:39:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.7 2005/04/28 18:47:51 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -91,10 +91,6 @@ extern Boolean	usePipes;
 /* TRUE if we aren't supposed to really make anything, just see if the
  * targets are out-of-date */
 extern Boolean	queryFlag;
-
-/* TRUE if environment should be searched for all variables before
- * the global context */
-extern Boolean	checkEnvFirst;
 
 /* List of specific variables for which the environment should be
  * searched before the global context */

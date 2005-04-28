@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.201 2005/04/22 16:01:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.202 2005/04/28 18:47:51 okumoto Exp $
  */
 
 /**
@@ -179,9 +179,12 @@ static char	varNoError[] = "";
  * The four contexts are searched in the reverse order from which they are
  * listed.
  */
-GNode	*VAR_ENV;	/* variables from the environment */
-GNode	*VAR_GLOBAL;	/* variables from the makefile */
-GNode	*VAR_CMD;	/* variables defined on the command-line */
+static GNode	*VAR_ENV;	/* variables from the environment */
+GNode		*VAR_GLOBAL;	/* variables from the makefile */
+GNode		*VAR_CMD;	/* variables defined on the command-line */
+
+Boolean		oldVars;	/* variable substitution style */
+Boolean		checkEnvFirst;	/* -e flag */
 
 #define	OPEN_PAREN		'('
 #define	CLOSE_PAREN		')'
