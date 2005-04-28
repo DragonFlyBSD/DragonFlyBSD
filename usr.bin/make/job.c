@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.86 2005/04/28 18:50:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.87 2005/04/28 18:52:32 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -509,6 +509,94 @@ static char	    meta[256];
 
 static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
+
+/**
+ * Create a fifo file with a uniq filename, and returns a file
+ * descriptor to that fifo.
+ */
+static int
+mkfifotemp(char *template)
+{
+	char *start;
+	char *pathend;
+	char *ptr;
+	const unsigned char padchar[] =
+	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+	if (template[0] == '\0') {
+		errno = EINVAL;	/* bad input string */
+		return (-1);
+	}
+
+	/* Find end of template string. */
+	pathend = strchr(template, '\0');
+	ptr = pathend - 1;
+
+	/*
+	 * Starting from the end of the template replace spaces with 'X' in
+	 * them with random characters until there are no more 'X'.
+	 */
+	while (ptr >= template && *ptr == 'X') {
+		uint32_t rand_num = arc4random() % (sizeof(padchar) - 1);
+		*ptr-- = padchar[rand_num];
+	}
+	start = ptr + 1;
+
+	/* Check the target directory. */
+	for (; ptr > template; --ptr) {
+		if (*ptr == '/') {
+			struct stat sbuf;
+
+			*ptr = '\0';
+			if (stat(template, &sbuf) != 0)
+				return (-1);
+
+			if (!S_ISDIR(sbuf.st_mode)) {
+				errno = ENOTDIR;
+				return (-1);
+			}
+			*ptr = '/';
+			break;
+		}
+	}
+
+	for (;;) {
+		if (mkfifo(template, 0600) == 0) {
+			int fd;
+
+			if ((fd = open(template, O_RDWR, 0600)) < 0) {
+				unlink(template);
+				return (-1);
+			} else {
+				return (fd);
+			}
+		} else {
+			if (errno != EEXIST) {
+				return (-1);
+			}
+		}
+
+		/*
+		 * If we have a collision, cycle through the space of
+		 * filenames.
+		 */
+		for (ptr = start;;) {
+			char *pad;
+
+			if (*ptr == '\0' || ptr == pathend)
+				return (-1);
+
+			pad = strchr(padchar, *ptr);
+			if (pad == NULL || *++pad == '\0') {
+				*ptr++ = padchar[0];
+			} else {
+				*ptr++ = *pad;
+				break;
+			}
+		}
+	}
+	/*NOTREACHED*/
+}
 
 static void
 catch_child(int sig __unused)
@@ -2535,24 +2623,20 @@ Job_Init(int maxproc)
 		 * leader. Create the fifo, open it, write one char per
 		 * allowed job into the pipe.
 		 */
-		mktemp(fifoName);
-		if (!mkfifo(fifoName, 0600)) {
-			fifoFd = open(fifoName, O_RDWR | O_NONBLOCK, 0);
-			if (fifoFd >= 0) {
-				fifoMaster = 1;
-				fcntl(fifoFd, F_SETFL, O_NONBLOCK);
-				env = fifoName;
-				setenv("MAKE_JOBS_FIFO", env, 1);
-				while (maxproc-- > 0) {
-					write(fifoFd, "+", 1);
-				}
-				/* The master make does not get a magic token */
-				jobFull = TRUE;
-				maxJobs = 0;
-			} else {
-				unlink(fifoName);
-				env = NULL;
+		fifoFd = mkfifotemp(fifoName);
+		if (fifoFd < 0) {
+			env = NULL;
+		} else {
+			fifoMaster = 1;
+			fcntl(fifoFd, F_SETFL, O_NONBLOCK);
+			env = fifoName;
+			setenv("MAKE_JOBS_FIFO", env, 1);
+			while (maxproc-- > 0) {
+				write(fifoFd, "+", 1);
 			}
+			/* The master make does not get a magic token */
+			jobFull = TRUE;
+			maxJobs = 0;
 		}
 
 	} else if (env != NULL) {
@@ -3857,3 +3941,4 @@ Compat_Run(Lst *targs)
 		}
 	}
 }
+
