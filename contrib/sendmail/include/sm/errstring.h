@@ -17,7 +17,6 @@
 # define SM_ERRSTRING_H
 
 #include <errno.h>
-extern int errno;
 
 /*
 **  These are used in a few cases where we need some special
