@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.80 2005/04/28 18:45:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.81 2005/04/28 18:46:26 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -95,6 +95,17 @@
  *	Job_Touch	Update a target without really updating it.
  *
  *	Job_Wait	Wait for all currently-running jobs to finish.
+ *
+ * compat.c --
+ *	The routines in this file implement the full-compatibility
+ *	mode of PMake. Most of the special functionality of PMake
+ *	is available in this mode. Things not supported:
+ *	    - different shells.
+ *	    - friendly variable substitution.
+ *
+ * Interface:
+ *	Compat_Run	    Initialize things for this module and recreate
+ *			    thems as need creatin'
  */
 
 #include <sys/queue.h>
@@ -485,6 +496,17 @@ static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static void ProcExec(ProcStuff *) __dead2;
+
+/*
+ * The following array is used to make a fast determination of which
+ * characters are interpreted specially by the shell.  If a command
+ * contains any of these characters, it is executed by the shell, not
+ * directly by us.
+ */
+static char	    meta[256];
+
+static GNode	    *curTarg = NULL;
+static GNode	    *ENDNode;
 
 /**
  * Replace the current process.
@@ -3078,31 +3100,6 @@ Cmd_Exec(const char *cmd, const char **error)
 	return (buf);
 }
 
-
-/*-
- * compat.c --
- *	The routines in this file implement the full-compatibility
- *	mode of PMake. Most of the special functionality of PMake
- *	is available in this mode. Things not supported:
- *	    - different shells.
- *	    - friendly variable substitution.
- *
- * Interface:
- *	Compat_Run	    Initialize things for this module and recreate
- *			    thems as need creatin'
- */
-
-/*
- * The following array is used to make a fast determination of which
- * characters are interpreted specially by the shell.  If a command
- * contains any of these characters, it is executed by the shell, not
- * directly by us.
- */
-static char	    meta[256];
-
-static GNode	    *curTarg = NULL;
-static GNode	    *ENDNode;
-
 static void
 CompatInit(void)
 {
@@ -3220,14 +3217,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	char	*cmd_save;	/* saved cmd */
 	ProcStuff	ps;
 
-	/*
-	 * Avoid clobbered variable warnings by forcing the compiler
-	 * to ``unregister'' variables
-	 */
-#if __GNUC__
-	(void)&av;
-	(void)&errCheck;
-#endif
 	silent = gn->type & OP_SILENT;
 	errCheck = !(gn->type & OP_IGNORE);
 	doit = FALSE;
@@ -3403,11 +3392,15 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		 * The child is off and running. Now all we can do is wait...
 		 */
 		reason = ProcWait(&ps);
+
 		if (interrupted)
 			CompatInterrupt(interrupted);
 
+		/*
+		 * Deocde and report the reason child exited, then
+		 * indicate how we handled it.
+		 */
 		if (WIFEXITED(reason)) {
-			/* exited */
 			status = WEXITSTATUS(reason);
 			if (status == 0) {
 				return (0);

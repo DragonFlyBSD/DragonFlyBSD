@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.74 2005/04/22 16:01:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.75 2005/04/28 18:46:26 okumoto Exp $
  */
 
 /*-
@@ -1379,15 +1379,6 @@ Parse_DoVar(char *line, GNode *ctxt)
 	}	type;	/* Type of assignment */
 	char	*opc;	/* ptr to operator character to
 			 * null-terminate the variable name */
-
-	/*
-	 * Avoid clobbered variable warnings by forcing the compiler
-	 * to ``unregister'' variables
-	 */
-#if __GNUC__
-	(void)&cp;
-	(void)&line;
-#endif
 
 	/*
 	 * Skip to variable name
