@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.27 2005/04/07 00:44:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.28 2005/04/28 18:50:35 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -48,10 +48,11 @@
 #include "globals.h"
 #include "str.h"
 #include "util.h"
-#include "var.h"
 
-static char **argv, *buffer;
-static int argmax, curlen;
+static char **argv;
+static char *buffer;
+static int argmax;
+static int curlen;
 
 /*
  * str_init --
@@ -61,10 +62,10 @@ static int argmax, curlen;
 void
 str_init(void)
 {
-    char *p1;
 
-    argv = emalloc(((argmax = 50) + 1) * sizeof(char *));
-    argv[0] = Var_Value(".MAKE", VAR_GLOBAL, &p1);
+	argmax = 50;
+	argv = emalloc((argmax + 1) * sizeof(char *));
+	argv[0] = NULL;
 }
 
 /*-
@@ -112,8 +113,7 @@ str_concat(const char *s1, const char *s2, int flags)
  *	are ignored.
  *
  * returns --
- *	Pointer to the array of pointers to the words.  To make life easier,
- *	the first word is always the value of the .MAKE variable.
+ *	Pointer to the array of pointers to the words.
  */
 char **
 brk_string(const char *str, int *store_argc, Boolean expand)

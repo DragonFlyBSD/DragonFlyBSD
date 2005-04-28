@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.85 2005/04/28 18:49:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.86 2005/04/28 18:50:35 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2808,7 +2808,6 @@ Job_ParseShell(char *line)
 	while (isspace((unsigned char)*line)) {
 		line++;
 	}
-	words = brk_string(line, &wordCount, TRUE);
 
 	memset(&newShell, 0, sizeof(newShell));
 	path = NULL;
@@ -2817,8 +2816,9 @@ Job_ParseShell(char *line)
 	 * Parse the specification by keyword but skip the first word - it
 	 * is not set by brk_string.
 	 */
-	wordCount--;
+	words = brk_string(line, &wordCount, TRUE);
 	words++;
+	wordCount--;
 
 	for (argc = wordCount, argv = words; argc != 0; argc--, argv++) {
 		/*
@@ -3415,7 +3415,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 
 		/*
 		 * Break the command into words to form an argument
-		 * vector we can execute. brk_string sticks our name
+		 * vector we can execute. brk_string sticks NULL
 		 * in av[0], so we have to skip over it...
 		 */
 		av = brk_string(cmd, NULL, TRUE);
