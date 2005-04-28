@@ -26,16 +26,14 @@
  * citrus Id: wcsrchr.c,v 1.2 2000/12/21 05:07:25 itojun Exp
  * $NetBSD: wcsrchr.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wcsrchr.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/lib/libc/string/wcsrchr.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wcsrchr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
-#include <assert.h>
+#include <sys/types.h>
 #include <wchar.h>
 
 wchar_t *
-wcsrchr(s, c)
-	const wchar_t *s;
-	wchar_t c;
+wcsrchr(const wchar_t *s, wchar_t c)
 {
 	const wchar_t *p;
 
@@ -45,7 +43,7 @@ wcsrchr(s, c)
 	while (s <= p) {
 		if (*p == c) {
 			/* LINTED interface specification */
-			return (wchar_t *)p;
+			return(__DECONST(wchar_t *, p));
 		}
 		p--;
 	}

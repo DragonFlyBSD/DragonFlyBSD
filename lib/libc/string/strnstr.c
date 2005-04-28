@@ -36,9 +36,10 @@
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strnstr.c,v 1.2.2.1 2001/12/09 06:50:03 mike Exp $
- * $DragonFly: src/lib/libc/string/strnstr.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strnstr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
+#include <sys/types.h>
 #include <string.h>
 
 /*
@@ -46,10 +47,7 @@
  * first slen characters of s.
  */
 char *
-strnstr(s, find, slen)
-	const char *s;
-	const char *find;
-	size_t slen;
+strnstr(const char *s, const char *find, size_t slen)
 {
 	char c, sc;
 	size_t len;
@@ -66,5 +64,5 @@ strnstr(s, find, slen)
 		} while (strncmp(s, find, len) != 0);
 		s--;
 	}
-	return ((char *)s);
+	return (__DECONST(char *, s));
 }

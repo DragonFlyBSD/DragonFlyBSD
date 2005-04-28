@@ -26,24 +26,21 @@
  * citrus Id: wmemchr.c,v 1.2 2000/12/20 14:08:31 itojun Exp
  * $NetBSD: wmemchr.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wmemchr.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/lib/libc/string/wmemchr.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wmemchr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
-#include <assert.h>
+#include <sys/types.h>
 #include <wchar.h>
 
 wchar_t	*
-wmemchr(s, c, n)
-	const wchar_t *s;
-	wchar_t c;
-	size_t n;
+wmemchr(const wchar_t *s, wchar_t c, size_t n)
 {
 	size_t i;
 
 	for (i = 0; i < n; i++) {
 		if (*s == c) {
 			/* LINTED const castaway */
-			return (wchar_t *)s;
+			return(__DECONST(wchar_t *, s));
 		}
 		s++;
 	}

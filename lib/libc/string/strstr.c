@@ -35,18 +35,17 @@
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strstr.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strstr.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/strstr.c,v 1.4 2005/04/28 13:25:12 joerg Exp $
  */
 
-#include <sys/cdefs.h>
+#include <sys/types.h>
 #include <string.h>
 
 /*
  * Find the first occurrence of find in s.
  */
 char *
-strstr(s, find)
-	const char *s, *find;
+strstr(const char *s, const char *find)
 {
 	char c, sc;
 	size_t len;
@@ -61,5 +60,5 @@ strstr(s, find)
 		} while (strncmp(s, find, len) != 0);
 		s--;
 	}
-	return ((char *)s);
+	return (__DECONST(char *, s));
 }

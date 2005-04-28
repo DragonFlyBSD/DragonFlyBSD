@@ -35,9 +35,10 @@
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/wcsstr.c,v 1.3.2.2 2002/11/12 11:20:20 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcsstr.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wcsstr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
+#include <sys/types.h>
 #include <wchar.h>
 
 /*
@@ -59,5 +60,5 @@ wcsstr(const wchar_t *s, const wchar_t *find)
 		} while (wcsncmp(s, find, len) != 0);
 		s--;
 	}
-	return ((wchar_t *)s);
+	return (__DECONST(wchar_t *, s));
 }
