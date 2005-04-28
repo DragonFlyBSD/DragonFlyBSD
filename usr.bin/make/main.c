@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.82 2005/04/28 18:48:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.83 2005/04/28 18:48:52 okumoto Exp $
  */
 
 /*
@@ -128,11 +128,23 @@ Lst envFirstVars = Lst_Initializer(envFirstVars);
 Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 
 char		*chdir_verify_path(const char *, char *);
-static int	ReadMakefile(const char *);
-static void	usage(void);
 
 static char	*curdir;	/* startup directory */
 static char	*objdir;	/* where we chdir'ed to */
+
+/**
+ * Exit with usage message.
+ */
+static void
+usage(void)
+{
+	fprintf(stderr,
+	    "usage: make [-BPSXeiknqrstv] [-C directory] [-D variable]\n"
+	    "\t[-d flags] [-E variable] [-f makefile] [-I directory]\n"
+	    "\t[-j max_jobs] [-m directory] [-V variable]\n"
+	    "\t[variable=value] [target ...]\n");
+	exit(2);
+}
 
 /**
  * MFLAGS_append
@@ -156,6 +168,94 @@ MFLAGS_append(const char *flag, char *arg)
 		Var_Append("MFLAGS", str, VAR_GLOBAL);
 		free(str);
 	}
+}
+
+/**
+ * Open and parse the given makefile.
+ *
+ * Results:
+ *	TRUE if ok. FALSE if couldn't open file.
+ */
+static Boolean
+ReadMakefile(const char p[])
+{
+	char *fname;			/* makefile to read */
+	FILE *stream;
+	char *name, path[MAXPATHLEN];
+	char *MAKEFILE;
+	int setMAKEFILE;
+
+	/* XXX - remove this once constification is done */
+	fname = estrdup(p);
+
+	if (!strcmp(fname, "-")) {
+		Parse_File("(stdin)", stdin);
+		Var_Set("MAKEFILE", "", VAR_GLOBAL);
+	} else {
+		setMAKEFILE = strcmp(fname, ".depend");
+
+		/* if we've chdir'd, rebuild the path name */
+		if (curdir != objdir && *fname != '/') {
+			snprintf(path, MAXPATHLEN, "%s/%s", curdir, fname);
+			/*
+			 * XXX The realpath stuff breaks relative includes
+			 * XXX in some cases.   The problem likely is in
+			 * XXX parse.c where it does special things in
+			 * XXX ParseDoInclude if the file is relateive
+			 * XXX or absolute and not a system file.  There
+			 * XXX it assumes that if the current file that's
+			 * XXX being included is absolute, that any files
+			 * XXX that it includes shouldn't do the -I path
+			 * XXX stuff, which is inconsistant with historical
+			 * XXX behavior.  However, I can't pentrate the mists
+			 * XXX further, so I'm putting this workaround in
+			 * XXX here until such time as the underlying bug
+			 * XXX can be fixed.
+			 */
+#if THIS_BREAKS_THINGS
+			if (realpath(path, path) != NULL &&
+			    (stream = fopen(path, "r")) != NULL) {
+				MAKEFILE = fname;
+				fname = path;
+				goto found;
+			}
+		} else if (realpath(fname, path) != NULL) {
+			MAKEFILE = fname;
+			fname = path;
+			if ((stream = fopen(fname, "r")) != NULL)
+				goto found;
+		}
+#else
+			if ((stream = fopen(path, "r")) != NULL) {
+				MAKEFILE = fname;
+				fname = path;
+				goto found;
+			}
+		} else {
+			MAKEFILE = fname;
+			if ((stream = fopen(fname, "r")) != NULL)
+				goto found;
+		}
+#endif
+		/* look in -I and system include directories. */
+		name = Path_FindFile(fname, &parseIncPath);
+		if (!name)
+			name = Path_FindFile(fname, &sysIncPath);
+		if (!name || !(stream = fopen(name, "r")))
+			return (FALSE);
+		MAKEFILE = fname = name;
+		/*
+		 * set the MAKEFILE variable desired by System V fans -- the
+		 * placement of the setting here means it gets set to the last
+		 * makefile specified, as it is set by SysV make.
+		 */
+found:
+		if (setMAKEFILE)
+			Var_Set("MAKEFILE", MAKEFILE, VAR_GLOBAL);
+		Parse_File(fname, stream);
+		fclose(stream);
+	}
+	return (TRUE);
 }
 
 /**
@@ -917,108 +1017,3 @@ main(int argc, char **argv)
 		return (0);
 }
 
-/**
- * ReadMakefile
- *	Open and parse the given makefile.
- *
- * Results:
- *	TRUE if ok. FALSE if couldn't open file.
- *
- * Side Effects:
- *	lots
- */
-static Boolean
-ReadMakefile(const char *p)
-{
-	char *fname;			/* makefile to read */
-	FILE *stream;
-	char *name, path[MAXPATHLEN];
-	char *MAKEFILE;
-	int setMAKEFILE;
-
-	/* XXX - remove this once constification is done */
-	fname = estrdup(p);
-
-	if (!strcmp(fname, "-")) {
-		Parse_File("(stdin)", stdin);
-		Var_Set("MAKEFILE", "", VAR_GLOBAL);
-	} else {
-		setMAKEFILE = strcmp(fname, ".depend");
-
-		/* if we've chdir'd, rebuild the path name */
-		if (curdir != objdir && *fname != '/') {
-			snprintf(path, MAXPATHLEN, "%s/%s", curdir, fname);
-			/*
-			 * XXX The realpath stuff breaks relative includes
-			 * XXX in some cases.   The problem likely is in
-			 * XXX parse.c where it does special things in
-			 * XXX ParseDoInclude if the file is relateive
-			 * XXX or absolute and not a system file.  There
-			 * XXX it assumes that if the current file that's
-			 * XXX being included is absolute, that any files
-			 * XXX that it includes shouldn't do the -I path
-			 * XXX stuff, which is inconsistant with historical
-			 * XXX behavior.  However, I can't pentrate the mists
-			 * XXX further, so I'm putting this workaround in
-			 * XXX here until such time as the underlying bug
-			 * XXX can be fixed.
-			 */
-#if THIS_BREAKS_THINGS
-			if (realpath(path, path) != NULL &&
-			    (stream = fopen(path, "r")) != NULL) {
-				MAKEFILE = fname;
-				fname = path;
-				goto found;
-			}
-		} else if (realpath(fname, path) != NULL) {
-			MAKEFILE = fname;
-			fname = path;
-			if ((stream = fopen(fname, "r")) != NULL)
-				goto found;
-		}
-#else
-			if ((stream = fopen(path, "r")) != NULL) {
-				MAKEFILE = fname;
-				fname = path;
-				goto found;
-			}
-		} else {
-			MAKEFILE = fname;
-			if ((stream = fopen(fname, "r")) != NULL)
-				goto found;
-		}
-#endif
-		/* look in -I and system include directories. */
-		name = Path_FindFile(fname, &parseIncPath);
-		if (!name)
-			name = Path_FindFile(fname, &sysIncPath);
-		if (!name || !(stream = fopen(name, "r")))
-			return (FALSE);
-		MAKEFILE = fname = name;
-		/*
-		 * set the MAKEFILE variable desired by System V fans -- the
-		 * placement of the setting here means it gets set to the last
-		 * makefile specified, as it is set by SysV make.
-		 */
-found:
-		if (setMAKEFILE)
-			Var_Set("MAKEFILE", MAKEFILE, VAR_GLOBAL);
-		Parse_File(fname, stream);
-		fclose(stream);
-	}
-	return (TRUE);
-}
-
-/*
- * usage --
- *	exit with usage message
- */
-static void
-usage(void)
-{
-	fprintf(stderr, "%s\n%s\n%s\n",
-"usage: make [-BPSXeiknqrstv] [-C directory] [-D variable] [-d flags]",
-"            [-E variable] [-f makefile] [-I directory] [-j max_jobs]",
-"            [-m directory] [-V variable] [variable=value] [target ...]");
-	exit(2);
-}
