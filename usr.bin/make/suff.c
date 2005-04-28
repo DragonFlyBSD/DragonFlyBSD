@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.52 2005/04/16 10:34:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.53 2005/04/28 18:50:57 okumoto Exp $
  */
 
 /*-
@@ -1502,15 +1502,9 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 {
 	char	*eoarch;	/* End of archive portion */
 	char	*eoname;	/* End of member portion */
-	GNode	*mem;		/* Node for member */
-	/* Variables to be copied from the member node */
-	static char *const copy[] = {
-		TARGET,		/* Must be first */
-		PREFIX,		/* Must be second */
-	};
-	int	i;		/* Index into copy and vals */
-	Suff	*ms;		/* Suffix descriptor for member */
 	char	*name;		/* Start of member's name */
+	GNode	*mem;		/* Node for member */
+	Suff	*ms;		/* Suffix descriptor for member */
 
 	/*
 	 * The node is an archive(member) pair. so we must find a
@@ -1546,9 +1540,16 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 	/*
 	 * Copy in the variables from the member node to this one.
 	 */
-	for (i = (sizeof(copy) / sizeof(copy[0]))-1; i >= 0; i--) {
+	{
+		const char *copy[] = {
+			TARGET,		/* Must be first */
+			PREFIX,		/* Must be second */
+		};
+
 		char *p1;
-		Var_Set(copy[i], Var_Value(copy[i], mem, &p1), gn);
+		Var_Set(copy[1], Var_Value(copy[1], mem, &p1), gn);
+		free(p1);
+		Var_Set(copy[0], Var_Value(copy[0], mem, &p1), gn);
 		free(p1);
 	}
 
