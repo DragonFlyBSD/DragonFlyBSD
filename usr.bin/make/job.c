@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.81 2005/04/28 18:46:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.82 2005/04/28 18:47:09 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -954,38 +954,63 @@ JobFinish(Job *job, int *status)
 	Boolean	done;
 	LstNode	*ln;
 
-	if ((WIFEXITED(*status) && WEXITSTATUS(*status) != 0 &&
-	    !(job->flags & JOB_IGNERR)) ||
-	    (WIFSIGNALED(*status) && WTERMSIG(*status) != SIGCONT)) {
-		/*
-		 * If it exited non-zero and either we're doing things our
-		 * way or we're not ignoring errors, the job is finished.
-		 * Similarly, if the shell died because of a signal
-		 * the job is also finished. In these cases, finish out the
-		 * job's output before printing the exit status...
-		 */
+	if (WIFEXITED(*status)) {
+		int	job_status = WEXITSTATUS(*status);
+
 		JobClose(job);
-		if (job->cmdFILE != NULL && job->cmdFILE != stdout) {
-			fclose(job->cmdFILE);
+		/*
+		 * Deal with ignored errors in -B mode. We need to
+		 * print a message telling of the ignored error as
+		 * well as setting status.w_status to 0 so the next
+		 * command gets run. To do this, we set done to be
+		 * TRUE if in -B mode and the job exited non-zero.
+		 */
+		if (job_status == 0) {
+			done = FALSE;
+		} else {
+			if (job->flags & JOB_IGNERR) {
+				done = TRUE;
+			} else {
+				/*
+				 * If it exited non-zero and either we're
+				 * doing things our way or we're not ignoring
+				 * errors, the job is finished. Similarly, if
+				 * the shell died because of a signal the job
+				 * is also finished. In these cases, finish
+				 * out the job's output before printing the
+				 * exit status...
+				 */
+				done = TRUE;
+				if (job->cmdFILE != NULL &&
+				    job->cmdFILE != stdout) {
+					fclose(job->cmdFILE);
+				}
+
+			}
 		}
-		done = TRUE;
-
-	} else if (WIFEXITED(*status)) {
-		/*
-		 * Deal with ignored errors in -B mode. We need to print a
-		 * message telling of the ignored error as well as setting
-		 * status.w_status to 0 so the next command gets run. To do
-		 * this, we set done to be TRUE if in -B mode and the job
-		 * exited non-zero.
-		 */
-		done = WEXITSTATUS(*status) != 0;
-
-		/*
-		 * Old comment said: "Note we don't want to close down any of
-		 * the streams until we know we're at the end." But we do.
-		 * Otherwise when are we going to print the rest of the stuff?
-		 */
-		JobClose(job);
+	} else if (WIFSIGNALED(*status)) {
+		if (WTERMSIG(*status) == SIGCONT) {
+			/*
+			 * No need to close things down or anything.
+			 */
+			done = FALSE;
+		} else {
+			/*
+			 * If it exited non-zero and either we're
+			 * doing things our way or we're not ignoring
+			 * errors, the job is finished. Similarly, if
+			 * the shell died because of a signal the job
+			 * is also finished. In these cases, finish
+			 * out the job's output before printing the
+			 * exit status...
+			 */
+			JobClose(job);
+			if (job->cmdFILE != NULL &&
+			    job->cmdFILE != stdout) {
+				fclose(job->cmdFILE);
+			}
+			done = TRUE;
+		}
 	} else {
 		/*
 		 * No need to close things down or anything.
