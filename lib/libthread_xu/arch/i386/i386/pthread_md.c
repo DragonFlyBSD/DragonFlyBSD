@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.7 2005/03/29 23:04:36 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.8 2005/04/28 18:22:13 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -45,19 +45,12 @@ _tcb_ctor(struct pthread *thread, int initial)
 	old_tcb = 0;
 	flags = 0;
 
-	if (initial) {
-		/*
-		 * We may have to replace a TLS already created by the low 
-		 * level libc startup code
-		 */
-		struct tls_info info;
-		if (sys_get_tls_area(0, &info, sizeof(info)) == 0)
-			old_tcb = info.base;
-	}
-	tcb = _rtld_allocate_tls(old_tcb);
+	if (initial)
+		tcb = tls_get_tcb();
+	else
+		tcb = _rtld_allocate_tls(old_tcb);
 
-	if (tcb)
-		tcb->tcb_pthread = thread;
+	tcb->tcb_pthread = thread;
 
 	return (tcb);
 }
