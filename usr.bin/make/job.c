@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.87 2005/04/28 18:52:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.88 2005/04/28 18:52:52 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -485,6 +485,8 @@ typedef struct ProcStuff {
 	int	searchpath;	/* true if binary should be found via $PATH */
 
 	char	**argv;
+	int	argv_free;	/* release argv after use */
+	int	errCheck;
 
 	pid_t	child_pid;
 } ProcStuff;
@@ -1565,6 +1567,7 @@ JobExec(Job *job, char **argv)
 	ps.searchpath = 0;
 
 	ps.argv = argv;
+	ps.argv_free = 0;
 
 	/*
 	 * Fork.  Warning since we are doing vfork() instead of fork(),
@@ -3237,6 +3240,7 @@ Cmd_Exec(const char *cmd, const char **error)
 	ps.argv[1] = strdup("-c");
 	ps.argv[2] = strdup(cmd);
 	ps.argv[3] = NULL;
+	ps.argv_free = 1;
 
 	/*
 	 * Fork.  Warning since we are doing vfork() instead of fork(),
@@ -3400,7 +3404,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	int	status;		/* Description of child's death */
 	LstNode	*cmdNode;	/* Node where current command is located */
 	char	**av;		/* Argument vector for thing to exec */
-	char	*cmd_save;	/* saved cmd */
 	ProcStuff	ps;
 
 	silent = gn->type & OP_SILENT;
@@ -3481,6 +3484,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	for (cp = cmd; !meta[(unsigned char)*cp]; cp++)
 		continue;
 
+	av = NULL;
 	if (*cp != '\0') {
 		/*
 		 * If *cp isn't the null character, we hit a "meta" character
@@ -3536,9 +3540,12 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
 		ps.argv[2] = strdup(cmd);
 		ps.argv[3] = NULL;
+		ps.argv_free = 1;
 	} else {
 		ps.argv = av;
+		ps.argv_free = 0;
 	}
+	ps.errCheck = errCheck;
 
 	/*
 	 * Fork and execute the single command. If the fork fails, we abort.
@@ -3556,7 +3563,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		/* NOTREACHED */
 
 	} else {
-		if (av == NULL) {
+		if (ps.argv_free) {
 			free(ps.argv[2]);
 			free(ps.argv[1]);
 			free(ps.argv[0]);
@@ -3571,7 +3578,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		 */
 		if (!DEBUG(GRAPH2)) {
 			free(cmdStart);
-			Lst_Replace(cmdNode, cmd_save);
 		}
 
 		/*
@@ -3600,7 +3606,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 			printf("*** Signal %d", status);
 		}
 
-		if (errCheck) {
+		if (ps.errCheck) {
 			gn->made = ERROR;
 			if (keepgoing) {
 				/*
