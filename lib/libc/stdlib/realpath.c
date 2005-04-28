@@ -27,7 +27,7 @@
  *
  * @(#)realpath.c	8.1 (Berkeley) 2/16/94
  * $FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.9.2.2 2003/06/02 13:31:16 fjoe Exp $
- * $DragonFly: src/lib/libc/stdlib/realpath.c,v 1.3 2005/01/31 22:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/realpath.c,v 1.4 2005/04/28 13:47:15 joerg Exp $
  */
 
 #include "namespace.h"
@@ -55,7 +55,7 @@ realpath(const char *path, char resolved[PATH_MAX])
 	size_t left_len, resolved_len;
 	unsigned symlinks;
 	int serrno, slen;
-	char left[PATH_MAX], next_token[PATH_MAX], symlink[PATH_MAX];
+	char left[PATH_MAX], next_token[PATH_MAX], my_symlink[PATH_MAX];
 
 	serrno = errno;
 	symlinks = 0;
@@ -89,7 +89,7 @@ realpath(const char *path, char resolved[PATH_MAX])
 		 */
 		p = strchr(left, '/');
 		s = p ? p : left + left_len;
-		if (s - left >= sizeof(next_token)) {
+		if (s >= left + sizeof(next_token)) {
 			errno = ENAMETOOLONG;
 			return (NULL);
 		}
@@ -146,11 +146,11 @@ realpath(const char *path, char resolved[PATH_MAX])
 				errno = ELOOP;
 				return (NULL);
 			}
-			slen = readlink(resolved, symlink, sizeof(symlink) - 1);
+			slen = readlink(resolved, my_symlink, sizeof(my_symlink) - 1);
 			if (slen < 0)
 				return (NULL);
-			symlink[slen] = '\0';
-			if (symlink[0] == '/') {
+			my_symlink[slen] = '\0';
+			if (my_symlink[0] == '/') {
 				resolved[1] = 0;
 				resolved_len = 1;
 			} else if (resolved_len > 1) {
@@ -167,21 +167,21 @@ realpath(const char *path, char resolved[PATH_MAX])
 			 * in `left'.
 			 */
 			if (p != NULL) {
-				if (symlink[slen - 1] != '/') {
-					if (slen + 1 >= sizeof(symlink)) {
+				if (my_symlink[slen - 1] != '/') {
+					if (slen + 1 >= (int)sizeof(my_symlink)) {
 						errno = ENAMETOOLONG;
 						return (NULL);
 					}
-					symlink[slen] = '/';
-					symlink[slen + 1] = 0;
+					my_symlink[slen] = '/';
+					my_symlink[slen + 1] = 0;
 				}
-				left_len = strlcat(symlink, left, sizeof(left));
+				left_len = strlcat(my_symlink, left, sizeof(left));
 				if (left_len >= sizeof(left)) {
 					errno = ENAMETOOLONG;
 					return (NULL);
 				}
 			}
-			left_len = strlcpy(left, symlink, sizeof(left));
+			left_len = strlcpy(left, my_symlink, sizeof(left));
 		}
 	}
 
