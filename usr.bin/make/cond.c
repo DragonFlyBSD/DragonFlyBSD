@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.36 2005/04/15 21:01:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.37 2005/04/28 18:51:31 okumoto Exp $
  */
 
 /*
@@ -434,7 +434,11 @@ CondToken(Boolean doEval)
 {
 	Token	t;
 
-	if (condPushBack == None) {
+	if (condPushBack != None) {
+		t = condPushBack;
+		condPushBack = None;
+		return (t);
+	} else {
 		while (*condExpr == ' ' || *condExpr == '\t') {
 			condExpr++;
 		}
@@ -863,11 +867,8 @@ CondToken(Boolean doEval)
 			break;
 			}
 		}
-	} else {
-		t = condPushBack;
-		condPushBack = None;
+		return (t);
 	}
-	return (t);
 }
 
 /**
