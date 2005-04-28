@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/amd64/pthread_md.c,v 1.4 2004/11/06 03:33:19 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.5 2005/04/28 18:22:13 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.6 2005/04/28 18:24:10 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -48,6 +48,9 @@ _tcb_ctor(struct pthread *thread, int initial)
 		tcb = tls_get_tcb();
 	else
 		tcb = _rtld_allocate_tls(old_tcb);
+	if (tcb == NULL)
+		return (NULL);
+
 	tcb->tcb_pthread = thread;
 
 	return (tcb);

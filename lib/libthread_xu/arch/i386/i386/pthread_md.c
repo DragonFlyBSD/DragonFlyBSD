@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.8 2005/04/28 18:22:13 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.9 2005/04/28 18:24:10 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -49,6 +49,8 @@ _tcb_ctor(struct pthread *thread, int initial)
 		tcb = tls_get_tcb();
 	else
 		tcb = _rtld_allocate_tls(old_tcb);
+	if (tcb == NULL)
+		return (NULL);
 
 	tcb->tcb_pthread = thread;
 
