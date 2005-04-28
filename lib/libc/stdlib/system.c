@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/system.c,v 1.5.2.2 2001/10/10 12:50:22 alfred Exp $
- * $DragonFly: src/lib/libc/stdlib/system.c,v 1.3 2005/01/31 22:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/system.c,v 1.4 2005/04/28 13:38:06 joerg Exp $
  *
  * @(#)system.c	8.1 (Berkeley) 6/4/93
  */
@@ -48,9 +48,10 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 
+int	__system(const char *);
+
 int
-__system(command)
-	const char *command;
+__system(const char *command)
 {
 	pid_t pid, savedpid;
 	int pstat;
