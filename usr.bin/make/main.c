@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.84 2005/04/28 18:49:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.85 2005/04/28 18:49:40 okumoto Exp $
  */
 
 /*
@@ -189,7 +189,7 @@ ReadMakefile(const char p[])
 
 	if (!strcmp(fname, "-")) {
 		Parse_File("(stdin)", stdin);
-		Var_Set("MAKEFILE", "", VAR_GLOBAL);
+		Var_SetGlobal("MAKEFILE", "");
 	} else {
 		setMAKEFILE = strcmp(fname, ".depend");
 
@@ -250,7 +250,7 @@ ReadMakefile(const char p[])
 		 */
 found:
 		if (setMAKEFILE)
-			Var_Set("MAKEFILE", MAKEFILE, VAR_GLOBAL);
+			Var_SetGlobal("MAKEFILE", MAKEFILE);
 		Parse_File(fname, stream);
 		fclose(stream);
 	}
@@ -296,7 +296,7 @@ rearg:
 				err(1, "chdir %s", optarg);
 			break;
 		case 'D':
-			Var_Set(optarg, "1", VAR_GLOBAL);
+			Var_SetGlobal(optarg, "1");
 			MFLAGS_append("-D", optarg);
 			break;
 		case 'I':
@@ -702,14 +702,14 @@ main(int argc, char **argv)
 	 *	.MAKEFLAGS gets set to the empty string just in case.
 	 *	MFLAGS also gets initialized empty, for compatibility.
 	 */
-	Var_Set("MAKE", argv[0], VAR_GLOBAL);
-	Var_Set(MAKEFLAGS, "", VAR_GLOBAL);
-	Var_Set("MFLAGS", "", VAR_GLOBAL);
-	Var_Set("MACHINE", machine, VAR_GLOBAL);
-	Var_Set("MACHINE_ARCH", machine_arch, VAR_GLOBAL);
-	Var_Set("MACHINE_CPU", machine_cpu, VAR_GLOBAL);
+	Var_SetGlobal("MAKE", argv[0]);
+	Var_SetGlobal(MAKEFLAGS, "");
+	Var_SetGlobal("MFLAGS", "");
+	Var_SetGlobal("MACHINE", machine);
+	Var_SetGlobal("MACHINE_ARCH", machine_arch);
+	Var_SetGlobal("MACHINE_CPU", machine_cpu);
 #ifdef MAKE_VERSION
-	Var_Set("MAKE_VERSION", MAKE_VERSION, VAR_GLOBAL);
+	Var_SetGlobal("MAKE_VERSION", MAKE_VERSION);
 #endif
 
 	/*
@@ -756,8 +756,7 @@ main(int argc, char **argv)
 		if (!(path = getenv("MAKEOBJDIR"))) {
 			path = PATH_OBJDIR;
 			pathp = PATH_OBJDIRPREFIX;
-			snprintf(mdpath, MAXPATHLEN, "%s.%s",
-					path, machine);
+			snprintf(mdpath, MAXPATHLEN, "%s.%s", path, machine);
 			if (!(objdir = chdir_verify_path(mdpath, obpath)))
 				if (!(objdir=chdir_verify_path(path, obpath))) {
 					snprintf(mdpath, MAXPATHLEN,
@@ -778,10 +777,10 @@ main(int argc, char **argv)
 	Dir_InitDot();		/* Initialize the "." directory */
 	if (objdir != curdir)
 		Path_AddDir(&dirSearchPath, curdir);
-	Var_Set(".DIRECTIVE_MAKEENV", "YES", VAR_GLOBAL);
-	Var_Set(".ST_EXPORTVAR", "YES", VAR_GLOBAL);
-	Var_Set(".CURDIR", curdir, VAR_GLOBAL);
-	Var_Set(".OBJDIR", objdir, VAR_GLOBAL);
+	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
+	Var_SetGlobal(".ST_EXPORTVAR", "YES");
+	Var_SetGlobal(".CURDIR", curdir);
+	Var_SetGlobal(".OBJDIR", objdir);
 
 	if (getenv("MAKE_JOBS_FIFO") != NULL)
 		forceJobs = TRUE;
@@ -807,7 +806,9 @@ main(int argc, char **argv)
 	 * created. If none specified, make the variable empty -- the parser
 	 * will fill the thing in with the default or .MAIN target.
 	 */
-	if (!Lst_IsEmpty(&create)) {
+	if (Lst_IsEmpty(&create)) {
+		Var_SetGlobal(".TARGETS", "");
+	} else {
 		LstNode *ln;
 
 		for (ln = Lst_First(&create); ln != NULL; ln = Lst_Succ(ln)) {
@@ -815,8 +816,7 @@ main(int argc, char **argv)
 
 			Var_Append(".TARGETS", name, VAR_GLOBAL);
 		}
-	} else
-		Var_Set(".TARGETS", "", VAR_GLOBAL);
+	}
 
 
 	/*

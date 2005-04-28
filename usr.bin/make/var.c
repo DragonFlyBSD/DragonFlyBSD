@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.203 2005/04/28 18:48:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.204 2005/04/28 18:49:40 okumoto Exp $
  */
 
 /**
@@ -1020,6 +1020,16 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n, val));
 	free(n);
 }
+
+/**
+ * Set the a global name variable to the value.
+ */
+void
+Var_SetGlobal(const char name[], const char value[])
+{
+	Var_Set(name, value, VAR_GLOBAL);
+}
+
 
 /**
  * Set the VAR_TO_ENV flag on a variable
