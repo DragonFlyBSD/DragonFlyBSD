@@ -72,9 +72,6 @@ char *memchr ();
 #endif
 
 #include <errno.h>
-#ifndef errno
-extern int errno;
-#endif
 #ifdef VMS
 #include <perror.h>
 #endif

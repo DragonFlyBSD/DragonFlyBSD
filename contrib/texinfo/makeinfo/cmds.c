@@ -1283,8 +1283,6 @@ handle_include (verbatim_include)
 
   if (!find_and_load (filename))
     {
-      extern int errno;
-
       popfile ();
       line_number--;
 
