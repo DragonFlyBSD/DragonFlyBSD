@@ -1,11 +1,11 @@
 # $FreeBSD: src/libexec/rtld-elf/Makefile,v 1.10.2.6 2002/06/22 17:03:13 jdp Exp $
-# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.6 2005/02/04 00:33:49 joerg Exp $
+# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.7 2005/04/29 21:46:41 joerg Exp $
 
 PROG=		ld-elf.so.1
 SRCS=		rtld_start.S rtld.c lockdflt.c map_object.c malloc.c \
 		xmalloc.c debug.c reloc.c
 MAN=		rtld.1
-CFLAGS+=	-Wall -I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR}
+CFLAGS+=	-Wall -I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR} -D__thread=
 LDFLAGS+=	-nostdlib -e .rtld_start
 INSTALLFLAGS=	-fschg -C -b
 MLINKS=		rtld.1 ld-elf.so.1.1
@@ -17,13 +17,13 @@ MLINKS=		rtld.1 ld-elf.so.1.1
 .ifdef LDSCRIPT
 OBJS+=		dyn_hack.so
 LDFLAGS+=	-Wl,-T,${LDSCRIPT} -Wl,-E -Wl,-Bstatic
-DPADD=		${LIBC}
-LDADD=		-lc
+DPADD=		${.OBJDIR}/../../lib/libc_rtld/libc_rtld.a
+LDADD=		-L${.OBJDIR}/../../lib/libc_rtld -lc_rtld
 .else
 CFLAGS+=	-fpic -DPIC
 LDFLAGS+=	-shared -Wl,-Bsymbolic
-DPADD=		${LIBC_PIC}
-LDADD=		-lc_pic
+DPADD=		${.OBJDIR}/../../lib/libc_rtld/libc_rtld_pic.a
+LDADD=		-L${.OBJDIR}/../../lib/libc_rtld -lc_rtld_pic
 .endif
 
 dyn_hack.so:

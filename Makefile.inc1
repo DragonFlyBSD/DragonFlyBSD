@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.65 2005/04/22 07:38:58 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.66 2005/04/29 21:46:41 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -887,7 +887,7 @@ libraries:
 #
 _startup_libs34=	gnu/lib/gcc34/libgcc
 _startup_libs=	lib/csu/${MACHINE_ARCH}
-_startup_libs+=	lib/csu/common lib/libc
+_startup_libs+=	lib/csu/common lib/libc lib/libc_rtld
 
 _prebuild_libs=	lib/libarchive
 _prebuild_libs+=	lib/libutil
