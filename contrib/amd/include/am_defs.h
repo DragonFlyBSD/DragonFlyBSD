@@ -40,7 +40,7 @@
  *
  * $Id: am_defs.h,v 1.11 1999/09/18 08:38:05 ezk Exp $
  * $FreeBSD: src/contrib/amd/include/am_defs.h,v 1.8 1999/11/05 11:58:03 obrien Exp $
- * $DragonFly: src/contrib/amd/include/am_defs.h,v 1.3 2003/08/08 04:18:29 dillon Exp $
+ * $DragonFly: src/contrib/amd/include/am_defs.h,v 1.4 2005/04/29 09:51:32 joerg Exp $
  *
  */
 
@@ -298,7 +298,6 @@ typedef bool_t (*xdrproc_t) __P ((XDR *, __ptr_t, ...));
  */
 #ifdef HAVE_SYS_ERRNO_H
 # include <sys/errno.h>
-extern int errno;
 #endif /* HAVE_SYS_ERRNO_H */
 
 /*
