@@ -17,7 +17,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/hosts_access.c,v 1.3.2.1 2000/07/18 08:34:54 ume Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/hosts_access.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/hosts_access.c,v 1.3 2005/04/29 00:37:08 joerg Exp $
   */
 
 #ifndef lint
@@ -47,7 +47,6 @@ static char sccsid[] = "@(#) hosts_access.c 1.21 97/02/12 02:13:22";
 #endif
 
 extern char *fgets();
-extern int errno;
 
 #ifndef	INADDR_NONE
 #define	INADDR_NONE	(-1)		/* XXX should be 0xffffffff */
