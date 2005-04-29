@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.23 2005/04/29 03:45:36 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.24 2005/04/29 03:54:52 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -8,6 +8,7 @@ SRCS=	arch.c buf.c cond.c dir.c directive_hash.c for.c hash.c job.c lst.c \
 	main.c make.c parse.c str.c suff.c targ.c util.c var.c
 
 WARNS?=	6
+WARNS_WERROR=	YES
 NOSHARED?=	YES
 
 CFLAGS+=-DMAKE_VERSION=\"5200408120\"
