@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.204 2005/04/28 18:49:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.205 2005/04/29 19:40:49 okumoto Exp $
  */
 
 /**
@@ -868,7 +868,7 @@ static Var *
 VarFindOnly(const char name[], GNode *ctxt)
 {
 
-	return VarLookup(&ctxt->context, VarLocal(name));
+	return (VarLookup(&ctxt->context, VarLocal(name)));
 }
 
 /**
