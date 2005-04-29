@@ -32,7 +32,7 @@
  *
  * @(#)strcasecmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strcasecmp.c,v 1.2.8.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.7 2005/04/28 19:40:51 joerg Exp $
+ * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.8 2005/04/29 16:12:52 dillon Exp $
  */
 
 #include <sys/types.h>
