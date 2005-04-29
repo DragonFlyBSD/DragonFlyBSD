@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.76 2005/04/29 03:45:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.77 2005/04/29 22:44:38 okumoto Exp $
  */
 
 /*-
@@ -172,6 +172,7 @@ typedef enum {
 	SingleShell,	/* .SINGLESHELL */
 	Suffixes,	/* .SUFFIXES */
 	Wait,		/* .WAIT */
+	Warn,		/* .WARN */
 	Attribute	/* Generic attribute */
 } ParseSpecial;
 
@@ -230,6 +231,7 @@ static const struct keyword {
 	{ ".SUFFIXES",		Suffixes,	0 },
 	{ ".USE",		Attribute,	OP_USE },
 	{ ".WAIT",		Wait,		0 },
+	{ ".WARN",		Warn,		0 },
 	/* KEYWORD-END-TAG */
 };
 #define	NKEYWORDS	(sizeof(parseKeywords) / sizeof(parseKeywords[0]))
@@ -395,6 +397,23 @@ ParsePopInput(void)
 	free(ifile);
 
 	return (TAILQ_EMPTY(&includes) ? DONE : CONTINUE);
+}
+
+/**
+ * parse_warn
+ *	Parse the .WARN pseudo-target.
+ */
+static void
+parse_warn(char *line)
+{
+	char **argv;
+	int argc;
+	int i;
+
+	argv = brk_string(line, &argc, TRUE);
+
+	for (i = 1; i < argc; i++)
+		Main_ParseWarn(argv[i], 0);
 }
 
 /*-
@@ -1064,6 +1083,10 @@ ParseDoDependency(char *line)
 		 * get sources won't get anything
 		 */
 		Main_ParseArgLine(line, 0);
+		*line = '\0';
+
+	} else if (specType == Warn) {
+		parse_warn(line);
 		*line = '\0';
 
 	} else if (specType == ExShell) {

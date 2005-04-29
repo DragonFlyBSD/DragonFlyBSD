@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.8 2005/04/29 03:46:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.9 2005/04/29 22:44:38 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -105,6 +105,8 @@ extern time_t	now;
 extern int debug;
 
 /* warning flags */
-extern uint32_t warnflags;
+extern uint32_t warn_cmd;	/* positive warning flags on command line */
+extern uint32_t warn_nocmd;	/* negative warning flags on command line */
+extern uint32_t warn_flags;	/* current warning flags */
 
 #endif /* globals_h_1c1edb96 */

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.87 2005/04/29 03:46:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.88 2005/04/29 22:44:38 okumoto Exp $
  */
 
 /*
@@ -120,7 +120,9 @@ Boolean		noExecute;	/* -n flag */
 Boolean		queryFlag;	/* -q flag */
 Boolean		touchFlag;	/* -t flag */
 Boolean		usePipes;	/* !-P flag */
-uint32_t		warnflags;
+uint32_t	warn_flags;	/* actual warning flags */
+uint32_t	warn_cmd;	/* command line warning flags */
+uint32_t	warn_nocmd;	/* command line no-warning flags */
 
 time_t		now;		/* Time at start of make */
 struct GNode	*DEFAULT;	/* .DEFAULT node */
@@ -249,6 +251,58 @@ found:
 		fclose(stream);
 	}
 	return (TRUE);
+}
+
+/**
+ * Main_ParseWarn
+ *
+ *	Handle argument to warning option.
+ */
+int
+Main_ParseWarn(const char *arg, int iscmd)
+{
+	int i, neg;
+
+	static const struct {
+		const char	*option;
+		uint32_t	flag;
+	} options[] = {
+		{ "dirsyntax",	WARN_DIRSYNTAX },
+		{ NULL,		0 }
+	};
+
+	neg = 0;
+	if (arg[0] == 'n' && arg[1] == 'o') {
+		neg = 1;
+		arg += 2;
+	}
+
+	for (i = 0; options[i].option != NULL; i++)
+		if (strcmp(arg, options[i].option) == 0)
+			break;
+
+	if (options[i].option == NULL)
+		/* unknown option */
+		return (-1);
+
+	if (iscmd) {
+		if (!neg) {
+			warn_cmd |= options[i].flag;
+			warn_nocmd &= ~options[i].flag;
+			warn_flags |= options[i].flag;
+		} else {
+			warn_nocmd |= options[i].flag;
+			warn_cmd &= ~options[i].flag;
+			warn_flags &= ~options[i].flag;
+		}
+	} else {
+		if (!neg) {
+			warn_flags |= (options[i].flag & ~warn_nocmd);
+		} else {
+			warn_flags &= ~(options[i].flag | warn_cmd);
+		}
+	}
+	return (0);
 }
 
 /**
@@ -435,10 +489,8 @@ rearg:
 			MFLAGS_append("-v", NULL);
 			break;
 		case 'x':
-			if (strncmp(optarg, "dirsyntax", strlen(optarg)) == 0) {
+			if (Main_ParseWarn(optarg, 1) != -1)
 				MFLAGS_append("-x", optarg);
-				warnflags |= WARN_DIRSYNTAX;
-			}
 			break;
 				
 		default:

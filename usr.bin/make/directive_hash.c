@@ -1,7 +1,8 @@
 /*
  * DO NOT EDIT
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.2 2005/04/29 03:46:32 okumoto Exp $
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.2 2005/04/29 03:46:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.3 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.3 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.3 2005/04/29 22:44:38 okumoto Exp $
  * auto-generated from /usr/home/okumoto/Work/make/dfly-src/make/parse.c
  * DO NOT EDIT
  */
@@ -67,8 +68,8 @@ directive_hash(const u_char *key, size_t len)
 }
 /*
  * d=2
- * n=69
- * m=33
+ * n=72
+ * m=34
  * c=2.09
  * maxlen=1
  * minklen=4
@@ -76,34 +77,35 @@ directive_hash(const u_char *key, size_t len)
  * minchar=46
  * maxchar=95
  * loop=0
- * numiter=8
+ * numiter=4
  * seed=
  */
 
 static const signed char keyword_g[] = {
-	-1, 18, 17, 0, -1, -1, -1, -1, 24, 19,
-	2, -1, -1, 26, 29, 1, 0, 15, 18, -1,
-	-1, 14, 19, 3, -1, 14, -1, 0, 1, -1,
-	12, 15, 0, 9, 15, 19, 0, -1, -1, 23,
-	-1, 28, -1, 0, -1, 9, -1, -1, -1, 22,
-	3, 26, 0, 0, 0, -1, -1, 7, 1, 20,
-	-1, 20, -1, 24, -1, 15, -1, 0, 0, 
+	8, 15, -1, 25, 22, 20, -1, 33, 16, -1,
+	21, 31, 0, 0, 0, 29, 30, 8, -1, 0,
+	-1, 21, -1, 0, -1, -1, -1, -1, -1, 4,
+	-1, -1, 25, 28, -1, 27, 11, 23, 0, 0,
+	24, -1, -1, 0, 3, 0, -1, 24, 0, 0,
+	-1, 28, 12, -1, 20, 13, -1, 5, -1, 1,
+	0, 0, -1, 0, 10, 19, 13, 9, -1, 2,
+	-1, -1, 
 };
 
 static const u_char keyword_T0[] = {
-	8, 30, 55, 61, 14, 13, 48, 1, 18, 12,
-	0, 52, 1, 40, 44, 52, 33, 58, 29, 29,
-	3, 30, 26, 42, 1, 49, 10, 26, 5, 45,
-	65, 13, 6, 22, 45, 61, 7, 25, 62, 65,
-	8, 34, 48, 50, 5, 63, 33, 38, 52, 33,
+	32, 10, 54, 61, 2, 35, 62, 50, 52, 53,
+	70, 7, 62, 18, 24, 30, 31, 66, 10, 61,
+	52, 71, 56, 56, 28, 6, 33, 67, 12, 41,
+	39, 45, 51, 21, 34, 53, 56, 40, 47, 52,
+	21, 61, 60, 12, 7, 28, 42, 38, 38, 52,
 };
 
 static const u_char keyword_T1[] = {
-	44, 18, 49, 61, 56, 13, 1, 54, 1, 47,
-	46, 17, 22, 36, 25, 66, 14, 36, 58, 51,
-	60, 22, 61, 19, 43, 37, 5, 18, 50, 58,
-	32, 65, 47, 12, 28, 34, 65, 29, 59, 67,
-	48, 36, 15, 41, 44, 11, 39, 29, 18, 68,
+	0, 39, 65, 48, 13, 62, 46, 42, 5, 50,
+	69, 69, 69, 43, 2, 46, 12, 6, 11, 9,
+	24, 10, 25, 64, 68, 13, 57, 55, 17, 33,
+	1, 18, 0, 67, 10, 14, 57, 56, 0, 6,
+	50, 13, 3, 47, 56, 22, 37, 13, 28, 48,
 };
 
 
@@ -123,8 +125,8 @@ keyword_hash(const u_char *key, size_t len)
 		f1 += keyword_T1[-46 + *kp];
 	}
 
-	f0 %= 69;
-	f1 %= 69;
+	f0 %= 72;
+	f1 %= 72;
 
-	return (keyword_g[f0] + keyword_g[f1]) % 33;
+	return (keyword_g[f0] + keyword_g[f1]) % 34;
 }
