@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.h,v 1.1 2005/04/15 21:13:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/directive_hash.h,v 1.2 2005/04/29 03:45:36 okumoto Exp $
  * $FreeBSD$
  */
 #ifndef directive_hash_h_
@@ -32,5 +32,6 @@
 #include <sys/types.h>
 
 int directive_hash(const u_char *, size_t);
+int keyword_hash(const u_char *, size_t);
 
 #endif

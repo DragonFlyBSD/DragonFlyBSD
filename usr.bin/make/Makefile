@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.22 2005/04/28 21:11:51 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.23 2005/04/29 03:45:36 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -17,26 +17,29 @@ CFLAGS+=-DMAKE_VERSION=\"5200408120\"
 
 main.o: ${MAKEFILE}
 
-# Directive table. We use a hash table. This hash table has been
+# Directive and keyword tables. We use hash tables. These hash tables have been
 # generated with mph which can be found on the usual GNU mirrors.
-# If you change the directives (adding, deleting, reordering) you
-# need to create a new table and hash function (directive_hash).
+# If you change the directives or keywords (adding, deleting, reordering) you
+# need to create new tables and hash functions (directive_hash, keyword_hash).
 #
 # The following changes have been made to the generated code:
 #
-#	o prefix the names of the g, T0 and T1 arrays with 'directive_'.
+#	o prefix the names of the g, T0 and T1 arrays with 'directive_'
+#	  resp. 'keyword_'.
 #
 #	o make the type of the tables 'const [un]signed char' (if you change
 #	  anything make sure that the numbers fit into a char).
 #
 #	o make the hash function use the length for termination,
-#	  not the trailing '\0', via the -l flag in emitc and some editing.
+#	  not the trailing '\0', via the -l flag in emitc and some editing
+#	  (only for directive_hash).
 
 LOCALBASE ?= /usr/local
 MPH	?= ${LOCALBASE}/bin/mph
 EMITC	?= ${LOCALBASE}/bin/emitc
 
 .PRECIOUS: hash
+
 hash:
 	( echo '/*' ;							\
 	  echo ' * DO NOT EDIT' ;					\
@@ -65,7 +68,23 @@ hash:
 	    -e 's/int len)/size_t len)/'				\
 	    -e 's/= T0\[/= directive_T0\[/'				\
 	    -e 's/= T1\[/= directive_T1\[/'				\
-	    -e 's/g\[f/directive_g[f/g'					\
+	    -e 's/g\[f/directive_g[f/g' ;				\
+	  cat ${.CURDIR}/parse.c | sed					\
+	    -e '1,/KEYWORD-START-TAG/d'					\
+	    -e '/KEYWORD-END-TAG/,$$d'					\
+	    -e 's/^[^"]*"\([^"]*\)".*$$/\1/' |				\
+	    ${MPH} -d2 -m1 | ${EMITC} -l -s |				\
+	    sed								\
+	    -e 's/^static int g\[\]/static const signed char keyword_g[]/' \
+	    -e 's/^static int T0\[\]/static const u_char keyword_T0[]/' \
+	    -e 's/^static int T1\[\]/static const u_char keyword_T1[]/' \
+	    -e '/^#define uchar unsigned char/d'			\
+	    -e 's/uchar/u_char/g'					\
+	    -e 's/^hash(/keyword_hash(/'				\
+	    -e 's/int len)/size_t len)/'				\
+	    -e 's/= T0\[/= keyword_T0\[/'				\
+	    -e 's/= T1\[/= keyword_T1\[/'				\
+	    -e 's/g\[f/keyword_g[f/g'					\
 	) > ${.CURDIR}/directive_hash.c
 
 # Set the shell which make(1) uses.  Bourne is the default, but a decent
