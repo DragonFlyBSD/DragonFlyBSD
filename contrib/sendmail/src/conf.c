@@ -11,7 +11,7 @@
  *
  * $FreeBSD: src/contrib/sendmail/src/conf.c,v 1.5.2.15 2003/10/30 22:31:43 gshapiro Exp $
  *
- * $DragonFly: src/contrib/sendmail/src/Attic/conf.c,v 1.3 2003/12/22 04:04:23 drhodus Exp $
+ * $DragonFly: src/contrib/sendmail/src/Attic/conf.c,v 1.4 2005/04/29 10:04:45 joerg Exp $
  */
 
 #include <sendmail.h>
@@ -25,6 +25,7 @@ SM_RCSID("@(#)$Id: conf.c,v 8.972.2.50 2003/09/03 21:37:03 ca Exp $")
 
 # include <sys/ioctl.h>
 # include <sys/param.h>
+#include <errno.h>
 
 #include <limits.h>
 #if NETINET || NETINET6
@@ -1495,7 +1496,6 @@ getla()
 	double avenrun[3];
 #  endif /* LA_TYPE == LA_SHORT */
 # endif /* LA_TYPE == LA_INT */
-	extern int errno;
 	extern off_t lseek();
 
 	if (kmem < 0)
@@ -1603,7 +1603,6 @@ getla()
 	int j;
 	static int kmem = -1;
 	long avenrun[3];
-	extern int errno;
 	struct mioc_rksym mirk;
 
 	if (kmem < 0)

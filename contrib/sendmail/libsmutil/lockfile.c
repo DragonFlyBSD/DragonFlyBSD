@@ -11,6 +11,7 @@
  *
  */
 
+#include <errno.h>
 #include <sendmail.h>
 
 SM_RCSID("@(#)$Id: lockfile.c,v 8.19 2001/09/11 04:04:55 gshapiro Exp $")
@@ -43,7 +44,6 @@ lockfile(fd, filename, ext, type)
 #if !HASFLOCK
 	int action;
 	struct flock lfd;
-	extern int errno;
 
 	memset(&lfd, '\0', sizeof lfd);
 	if (bitset(LOCK_UN, type))

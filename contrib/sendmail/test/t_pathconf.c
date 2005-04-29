@@ -37,7 +37,6 @@ main(argc, argv)
 	int fd;
 	int i;
 	char tbuf[100];
-	extern int errno;
 
 	if (geteuid() == 0)
 	{

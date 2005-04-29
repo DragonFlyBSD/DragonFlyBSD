@@ -11,6 +11,7 @@
  *
  */
 
+#include <errno.h>
 #include <sendmail.h>
 
 SM_RCSID("@(#)$Id: parseaddr.c,v 8.359.2.9 2003/09/16 18:07:50 ca Exp $")
@@ -633,7 +634,6 @@ prescan(addr, delim, pvpbuf, pvpbsize, delimptr, toktab)
 	char *saveto = CurEnv->e_to;
 	static char *av[MAXATOM + 1];
 	static bool firsttime = true;
-	extern int errno;
 
 	if (firsttime)
 	{

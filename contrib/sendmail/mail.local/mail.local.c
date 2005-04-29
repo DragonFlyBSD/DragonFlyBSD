@@ -9,7 +9,7 @@
  * the sendmail distribution.
  *
  * $FreeBSD: src/contrib/sendmail/mail.local/mail.local.c,v 1.6.6.14 2003/03/29 19:33:16 gshapiro Exp $
- * $DragonFly: src/contrib/sendmail/mail.local/Attic/mail.local.c,v 1.3 2003/12/22 04:04:23 drhodus Exp $
+ * $DragonFly: src/contrib/sendmail/mail.local/Attic/mail.local.c,v 1.4 2005/04/29 10:04:45 joerg Exp $
  *
  */
 
@@ -1674,7 +1674,6 @@ _gettemp(path, doopen)
 	char *path;
 	register int *doopen;
 {
-	extern int errno;
 	register char *start, *trv;
 	struct stat sbuf;
 	unsigned int pid;
