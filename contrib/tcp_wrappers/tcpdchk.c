@@ -14,7 +14,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpdchk.c,v 1.3.2.1 2000/07/18 08:34:55 ume Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpdchk.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/tcpdchk.c,v 1.3 2005/04/29 01:00:27 joerg Exp $
   */
 
 #ifndef lint
@@ -37,7 +37,6 @@ static char sccsid[] = "@(#) tcpdchk.c 1.8 97/02/12 02:13:25";
 #include <netdb.h>
 #include <string.h>
 
-extern int errno;
 extern void exit();
 extern int optind;
 extern char *optarg;

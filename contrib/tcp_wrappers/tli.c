@@ -14,7 +14,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tli.c,v 1.2 2000/02/03 10:27:00 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tli.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/tli.c,v 1.3 2005/04/29 01:00:27 joerg Exp $
   */
 
 #ifndef lint
@@ -42,7 +42,6 @@ static char sccsid[] = "@(#) tli.c 1.15 97/03/21 19:27:25";
 #include <string.h>
 
 extern char *nc_sperror();
-extern int errno;
 extern char *sys_errlist[];
 extern int sys_nerr;
 extern int t_errno;

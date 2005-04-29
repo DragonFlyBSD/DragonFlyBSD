@@ -7,7 +7,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/workarounds.c,v 1.2 2000/02/03 10:27:01 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/workarounds.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/workarounds.c,v 1.3 2005/04/29 01:00:27 joerg Exp $
   */
 
 #ifndef lint
@@ -24,8 +24,6 @@ char    sccsid[] = "@(#) workarounds.c 1.6 96/03/19 16:22:25";
 #include <stdio.h>
 #include <syslog.h>
 #include <string.h>
-
-extern int errno;
 
 #include "tcpd.h"
 
