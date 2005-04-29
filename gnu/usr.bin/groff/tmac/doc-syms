@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)doc-syms	8.1 (Berkeley) 06/08/93
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-syms,v 1.4 2005/04/10 00:09:32 hmp Exp $ 
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/Attic/doc-syms,v 1.5 2005/04/29 02:54:51 swildner Exp $ 
 .\"
 .\"     %beginstrip%
 .
@@ -606,6 +606,8 @@
 .ds doc-str-St--isoC           \*[doc-Tn-font-size]ISO/IEC\*[doc-str-St] 9899:1990
 .as doc-str-St--isoC           " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^89\*[doc-str-St]\*[Rq])
 .als doc-str-St--isoC-90 doc-str-St--isoC
+.ds doc-str-St--isoC-amd1      \*[doc-Tn-font-size]ISO/IEC\*[doc-str-St] 9899/AMD1:1995
+.as doc-str-St--isoC-amd1      " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^90\*[doc-str-St], Amendment 1\*[Rq])
 .ds doc-str-St--isoC-99        \*[doc-Tn-font-size]ISO/IEC\*[doc-str-St] 9899:1999
 .as doc-str-St--isoC-99        " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^99\*[doc-str-St]\*[Rq])
 .
