@@ -32,12 +32,13 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/save.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/save.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/save.c,v 1.3 2005/04/29 09:22:57 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <termios.h>
@@ -64,7 +65,6 @@ typedef	struct stat	STAT;
 bool
 save() {
 
-	extern int	errno;
 	char		*sp;
 	int		outf;
 	time_t		*tp;

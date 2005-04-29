@@ -32,7 +32,7 @@
  *
  * @(#)sync.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/sync.c,v 1.9 1999/11/30 03:49:38 billf Exp $
- * $DragonFly: src/games/sail/sync.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/sync.c,v 1.3 2005/04/29 09:22:57 joerg Exp $
  */
 
 #include "externs.h"
@@ -143,8 +143,6 @@ Sync()
 	int type, shipnum, isstr, a, b, c, d;
 	char buf[80];
 	char erred = 0;
-	extern errno;
-
 	sighup = signal(SIGHUP, SIG_IGN);
 	sigint = signal(SIGINT, SIG_IGN);
 	for (n = TIMEOUT; --n >= 0;) {

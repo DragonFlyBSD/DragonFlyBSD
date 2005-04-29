@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.unix.c,v 1.8 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.unix.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.unix.c,v 1.4 2005/04/29 09:22:57 joerg Exp $ */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -149,7 +149,6 @@ veryold(fd) {
 	if(buf.st_size != sizeof(int)) return(0);	/* not an xlock file */
 	(void) time(&date);
 	if(date - buf.st_mtime < 3L*24L*60L*60L) {	/* recent */
-		extern int errno;
 		int lockedpid;	/* should be the same size as hackpid */
 
 		if(read(fd, (char *)&lockedpid, sizeof(lockedpid)) !=
@@ -175,7 +174,7 @@ veryold(fd) {
 
 getlock()
 {
-	extern int errno, hackpid, locknum;
+	extern int hackpid, locknum;
 	int i = 0, fd;
 
 	(void) fflush(stdout);
