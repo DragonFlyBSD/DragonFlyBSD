@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.7 2005/04/28 18:29:54 joerg Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.8 2005/04/29 22:00:20 joerg Exp $
  */
 
 /*
@@ -111,19 +111,32 @@ __libc_free_tls(struct tls_tcb *tcb)
 
 /*
  * Allocate Static TLS.
+ *
+ * !!!WARNING!!! The first run for a static binary is done without valid
+ * TLS storage.  It must not call any system calls which want to change
+ * errno.
  */
 struct tls_tcb *
 __libc_allocate_tls(struct tls_tcb *old_tcb)
 {
+	static int first_run = 0;
 	size_t data_size;
 	struct tls_tcb *tcb;
 	Elf_Addr *dtv;
 
+retry:
 	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
-	tcb = malloc(data_size + sizeof(*tcb));
+
+	if (first_run)
+		tcb = malloc(data_size + sizeof(*tcb));
+	else
+		tcb = alloca(data_size + sizeof(*tcb));
 	tcb = (struct tls_tcb *)((char *)tcb + data_size);
-	dtv = malloc(3 * sizeof(Elf_Addr));
+	if (first_run)
+		dtv = malloc(3 * sizeof(Elf_Addr));
+	else
+		dtv = alloca(3 * sizeof(Elf_Addr));
 
 #ifdef RTLD_TCB_HAS_SELF_POINTER
 	tcb->tcb_self = tcb;
@@ -154,7 +167,13 @@ __libc_allocate_tls(struct tls_tcb *old_tcb)
 		memset((char *)tcb - tls_static_space + tls_init_size,
 			0, tls_static_space - tls_init_size);
 	}
-	return (tcb);
+	
+	if (first_run)
+		return (tcb);
+
+	tls_set_tcb(tcb);
+	first_run = 1;
+	goto retry;
 }
 
 #else

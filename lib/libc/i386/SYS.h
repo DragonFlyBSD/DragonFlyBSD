@@ -36,11 +36,16 @@
  *	from: @(#)SYS.h	5.5 (Berkeley) 5/7/91
  *
  * $FreeBSD: src/lib/libc/i386/SYS.h,v 1.17.2.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/i386/SYS.h,v 1.4 2005/01/31 22:29:20 dillon Exp $
+ * $DragonFly: src/lib/libc/i386/SYS.h,v 1.5 2005/04/29 22:00:20 joerg Exp $
  */
 
 #include <sys/syscall.h>
 #include "DEFS.h"
+
+#define PURESYSCALL(x)	ENTRY(__CONCAT(_,x));				\
+			.weak CNAME(x);					\
+			.set CNAME(x),CNAME(__CONCAT(_,x));		\
+			lea __CONCAT(SYS_,x),%eax; KERNCALL; ret
 
 #define	SYSCALL(x)	2: PIC_PROLOGUE; jmp PIC_PLT(HIDENAME(cerror));	\
 			ENTRY(__CONCAT(_,x));				\
