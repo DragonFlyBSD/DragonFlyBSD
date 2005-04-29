@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.10 2005/04/12 23:35:37 okumoto Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.11 2005/04/29 21:25:09 joerg Exp $
 #
 
 .include <bsd.init.mk>
@@ -165,9 +165,7 @@ lib${LIB}.a: ${OBJS} ${STATICOBJS}
 	${RANLIB} ${.TARGET}
 .endif
 
-.if !defined(INTERNALLIB)
-
-.if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
+.if !defined(INTERNALLIB) && !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
 _LIBS+=		lib${LIB}_p.a
 POBJS+=		${OBJS:.o=.po} ${STATICOBJS:.o=.po}
 
@@ -178,12 +176,12 @@ lib${LIB}_p.a: ${POBJS}
 	${RANLIB} ${.TARGET}
 .endif
 
-.if defined(SHLIB_NAME) || \
+.if !defined(INTERNALLIB) && defined(SHLIB_NAME) || \
     defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)
 SOBJS+=		${OBJS:.o=.So}
 .endif
 
-.if defined(SHLIB_NAME)
+.if !defined(INTERNALLIB) && defined(SHLIB_NAME)
 _LIBS+=		${SHLIB_NAME}
 
 ${SHLIB_NAME}: ${SOBJS}
@@ -206,8 +204,6 @@ lib${LIB}_pic.a: ${SOBJS}
 	${AR} cq ${.TARGET} ${SOBJS} ${ARADD}
 	${RANLIB} ${.TARGET}
 .endif
-
-.endif # !defined(INTERNALLIB)
 
 all: ${_LIBS}
 
