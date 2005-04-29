@@ -1,14 +1,12 @@
 /*
  * DO NOT EDIT
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.3 2005/04/29 22:44:38 okumoto Exp $
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.3 2005/04/29 22:44:38 okumoto Exp $
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.c,v 1.3 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash_tables.c,v 1.1 2005/04/29 23:11:49 okumoto Exp $
  * auto-generated from /usr/home/okumoto/Work/make/dfly-src/make/parse.c
  * DO NOT EDIT
  */
 #include <sys/types.h>
 
-#include "directive_hash.h"
+#include "hash_tables.h"
 
 /*
  * d=2

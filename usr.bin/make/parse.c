@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.77 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.78 2005/04/29 23:11:49 okumoto Exp $
  */
 
 /*-
@@ -81,10 +81,10 @@
 #include "cond.h"
 #include "config.h"
 #include "dir.h"
-#include "directive_hash.h"
 #include "for.h"
 #include "globals.h"
 #include "GNode.h"
+#include "hash_tables.h"
 #include "job.h"
 #include "make.h"
 #include "parse.h"

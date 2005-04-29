@@ -1,10 +1,10 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.24 2005/04/29 03:54:52 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.25 2005/04/29 23:11:49 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
-SRCS=	arch.c buf.c cond.c dir.c directive_hash.c for.c hash.c job.c lst.c \
+SRCS=	arch.c buf.c cond.c dir.c for.c hash.c hash_tables.c job.c lst.c \
 	main.c make.c parse.c str.c suff.c targ.c util.c var.c
 
 WARNS?=	6
@@ -51,7 +51,7 @@ hash:
 	  echo ' */' ;							\
 	  echo '#include <sys/types.h>' ;				\
 	  echo ;							\
-	  echo '#include "directive_hash.h"' ;				\
+	  echo '#include "hash_tables.h"' ;				\
 	  echo ;							\
 	  cat ${.CURDIR}/parse.c | sed					\
 	    -e '1,/DIRECTIVES-START-TAG/d'				\
@@ -86,7 +86,7 @@ hash:
 	    -e 's/= T0\[/= keyword_T0\[/'				\
 	    -e 's/= T1\[/= keyword_T1\[/'				\
 	    -e 's/g\[f/keyword_g[f/g'					\
-	) > ${.CURDIR}/directive_hash.c
+	) > ${.CURDIR}/hash_tables.c
 
 # Set the shell which make(1) uses.  Bourne is the default, but a decent
 # Korn shell works fine, and much faster.  Using the C shell for this

@@ -23,11 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/Attic/directive_hash.h,v 1.2 2005/04/29 03:45:36 okumoto Exp $
- * $FreeBSD$
+ * $DragonFly: src/usr.bin/make/hash_tables.h,v 1.1 2005/04/29 23:11:49 okumoto Exp $
  */
-#ifndef directive_hash_h_
-#define directive_hash_h_
+#ifndef hash_tables_h_
+#define hash_tables_h_
 
 #include <sys/types.h>
 
