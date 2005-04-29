@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.5 2005/03/17 21:41:16 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined1.c,v 1.6 2005/04/29 09:14:50 joerg Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -460,7 +460,6 @@
 #include <varargs.h>
 #endif
 
-extern int errno;
 int ymax = YMAX;
 int screenmax = SCREENMAX;
 
