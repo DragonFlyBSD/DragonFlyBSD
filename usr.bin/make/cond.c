@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.40 2005/04/28 18:52:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.41 2005/04/29 03:46:01 okumoto Exp $
  */
 
 /*
@@ -1124,8 +1124,9 @@ Cond_Else(char *line __unused, int code __unused, int lineno __unused)
 	while (isspace((u_char)*line))
 		line++;
 
-	if (*line != '\0') {
-		Parse_Error(PARSE_WARNING, "junk after .else ignored '%s'", line);
+	if (*line != '\0' && (warnflags & WARN_DIRSYNTAX)) {
+		Parse_Error(PARSE_WARNING, "junk after .else ignored '%s'",
+		    line);
 	}
 
 	if (condTop == MAXIF) {
@@ -1164,9 +1165,11 @@ Cond_Endif(char *line __unused, int code __unused, int lineno __unused)
 	while (isspace((u_char)*line))
 		line++;
 
-	if (*line != '\0') {
-		Parse_Error(PARSE_WARNING, "junk after .endif ignored '%s'", line);
+	if (*line != '\0' && (warnflags & WARN_DIRSYNTAX)) {
+		Parse_Error(PARSE_WARNING, "junk after .endif ignored '%s'",
+		    line);
 	}
+
 	/*
 	 * End of a conditional section. If skipIfLevel is non-zero,
 	 * that conditional was skipped, so lines following it should

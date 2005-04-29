@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.86 2005/04/28 18:50:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.87 2005/04/29 03:46:01 okumoto Exp $
  */
 
 /*
@@ -120,6 +120,7 @@ Boolean		noExecute;	/* -n flag */
 Boolean		queryFlag;	/* -q flag */
 Boolean		touchFlag;	/* -t flag */
 Boolean		usePipes;	/* !-P flag */
+uint32_t		warnflags;
 
 time_t		now;		/* Time at start of make */
 struct GNode	*DEFAULT;	/* .DEFAULT node */
@@ -270,7 +271,7 @@ MainParseArgs(int argc, char **argv)
 rearg:
 	optind = 1;	/* since we're called more than once */
 	optreset = 1;
-#define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
+#define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstvx:"
 	for (;;) {
 		if ((optind < argc) && strcmp(argv[optind], "--") == 0) {
 			found_dd = TRUE;
@@ -433,6 +434,13 @@ rearg:
 			beVerbose = TRUE;
 			MFLAGS_append("-v", NULL);
 			break;
+		case 'x':
+			if (strncmp(optarg, "dirsyntax", strlen(optarg)) == 0) {
+				MFLAGS_append("-x", optarg);
+				warnflags |= WARN_DIRSYNTAX;
+			}
+			break;
+				
 		default:
 		case '?':
 			usage();

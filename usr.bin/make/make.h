@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.29 2005/04/24 12:40:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.30 2005/04/29 03:46:01 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -58,6 +58,13 @@
 struct GNode;
 struct Lst;
 struct Buffer;
+
+/*
+ * Warning flags
+ */
+enum {
+	WARN_DIRSYNTAX	= 0x0001,	/* syntax errors in directives */
+};
 
 int Make_TimeStamp(struct GNode *, struct GNode *);
 Boolean Make_OODate(struct GNode *);

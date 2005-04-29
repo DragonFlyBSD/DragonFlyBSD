@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.7 2005/04/28 18:47:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.8 2005/04/29 03:46:01 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -46,6 +46,7 @@
  */
 
 #include <time.h>
+#include <stdint.h>
 
 #include "lst.h"
 #include "sprite.h"
@@ -102,5 +103,8 @@ extern struct GNode	*DEFAULT;	/* .DEFAULT rule */
 extern time_t	now;
 
 extern int debug;
+
+/* warning flags */
+extern uint32_t warnflags;
 
 #endif /* globals_h_1c1edb96 */
