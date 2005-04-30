@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.28 2005/02/17 14:00:09 joerg Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.29 2005/04/30 23:04:21 swildner Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -290,10 +290,6 @@ void		splx (intrmask_t);
 intrmask_t	splq (intrmask_t);
 void		splz (void);
 #endif /* __i386__ */
-
-#ifdef __alpha__
-#include <machine/ipl.h>
-#endif
 
 #ifdef INVARIANT_SUPPORT
 void	splbioassert (const char *msg);

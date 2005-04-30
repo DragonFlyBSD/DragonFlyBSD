@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.10 2005/03/17 07:11:15 y0netan1 Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.11 2005/04/30 23:04:21 swildner Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -61,11 +61,6 @@
 #ifdef __i386__
 #define LABELSECTOR	1			/* sector containing label */
 #define LABELOFFSET	0			/* offset of label in sector */
-#endif
-
-#ifdef __alpha__
-#define LABELSECTOR	0
-#define LABELOFFSET	64
 #endif
 
 #ifndef	LABELSECTOR
@@ -440,9 +435,6 @@ void	bufqdisksort (struct buf_queue_head *ap, struct buf *bp);
 int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
 			  u_long openmask);
 int	writedisklabel (dev_t dev, struct disklabel *lp);
-#ifdef __alpha__
-void	alpha_fix_srm_checksum (struct buf *bp);
-#endif
 
 #endif /* _KERNEL */
 

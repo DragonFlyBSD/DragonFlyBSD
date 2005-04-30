@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.10 2005/02/14 23:05:30 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.11 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -160,11 +160,6 @@ vga_mmap(dev_t dev, vga_softc_t *sc, vm_offset_t offset, int prot)
 #undef SLOW_VGA
 #undef VGA_SLOW_IOACCESS
 #define VGA_SLOW_IOACCESS	1
-#endif
-
-/* architecture dependent option */
-#ifdef __alpha__
-#define VGA_NO_BIOS		1
 #endif
 
 /* this should really be in `rtc.h' */
@@ -2473,9 +2468,6 @@ vga_mmap_buf(video_adapter_t *adp, vm_offset_t offset, int prot)
 
 #ifdef __i386__
     return i386_btop(adp->va_info.vi_window + offset);
-#endif
-#ifdef __alpha__
-    return alpha_btop(adp->va_info.vi_window + offset);
 #endif
 }
 

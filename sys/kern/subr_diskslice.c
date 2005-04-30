@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.8 2004/06/02 17:18:43 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.9 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -519,10 +519,8 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 		return (error);
 
 	case DIOCWLABEL:
-#ifndef __alpha__
 		if (slice == WHOLE_DISK_SLICE)
 			return (ENODEV);
-#endif
 		if (!(flags & FWRITE))
 			return (EBADF);
 		set_ds_wlabel(ssp, slice, *(int *)data != 0);
@@ -714,11 +712,7 @@ dsopen(dev_t dev, int mode, u_int flags,
 	 */
 	for (slice = 0; slice < ssp->dss_nslices; slice++) {
 		sp = &ssp->dss_slices[slice];
-		if (sp->ds_label != NULL
-#ifdef __alpha__
-		    && slice != WHOLE_DISK_SLICE
-#endif
-		    )
+		if (sp->ds_label != NULL)
 			continue;
 		dev1 = dkmodslice(dkmodpart(dev, RAW_PART), slice);
 		sname = dsname(dev, unit, slice, RAW_PART, partname);

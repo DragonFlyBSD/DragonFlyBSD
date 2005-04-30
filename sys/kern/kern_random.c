@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.6 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.7 2005/04/30 23:04:21 swildner Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -51,19 +51,6 @@
 
 #ifdef __i386__
 #include <i386/isa/icu.h>
-#endif
-#ifdef __alpha__
-/*
-	XXX  the below should be used.  However there is too much "16"
-	hardcodeing in kern_random.c right now. -- obrien
-#include <machine/ipl.h>
-#if NHWI > 0
-#define	ICU_LEN (NHWI)
-#else
-#define	ICU_LEN (NSWI)
-#endif
-*/
-#define	ICU_LEN 16
 #endif
 
 #define MAX_BLKDEV 4

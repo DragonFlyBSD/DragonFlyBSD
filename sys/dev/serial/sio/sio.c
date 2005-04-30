@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.22 2005/02/01 22:41:23 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.23 2005/04/30 23:04:21 swildner Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -275,9 +275,6 @@ int	comconsole = -1;
 static	volatile speed_t	comdefaultrate = CONSPEED;
 static	u_long			comdefaultrclk = DEFAULT_RCLK;
 SYSCTL_ULONG(_machdep, OID_AUTO, conrclk, CTLFLAG_RW, &comdefaultrclk, 0, "");
-#ifdef __alpha__
-static	volatile speed_t	gdbdefaultrate = CONSPEED;
-#endif
 static	u_int	com_events;	/* input chars + weighted output completions */
 static	Port_t	siocniobase;
 static	int	siocnunit;
@@ -3033,90 +3030,6 @@ siocnprobe(cp)
 #endif
 }
 
-#ifdef __alpha__
-
-CONS_DRIVER(sio, NULL, NULL, NULL, siocngetc, siocncheckc, siocnputc, NULL);
-
-int
-siocnattach(port, speed)
-	int port;
-	int speed;
-{
-	int			s;
-	u_char			cfcr;
-	u_int			divisor;
-	struct siocnstate	sp;
-
-	siocniobase = port;
-	comdefaultrate = speed;
-	sio_consdev.cn_pri = CN_NORMAL;
-	sio_consdev.cn_dev = make_dev(&sio_cdevsw, 0, UID_ROOT, GID_WHEEL, 
-					0600, "ttyd%r", 0);
-
-	s = spltty();
-
-	/*
-	 * Initialize the divisor latch.  We can't rely on
-	 * siocnopen() to do this the first time, since it 
-	 * avoids writing to the latch if the latch appears
-	 * to have the correct value.  Also, if we didn't
-	 * just read the speed from the hardware, then we
-	 * need to set the speed in hardware so that
-	 * switching it later is null.
-	 */
-	cfcr = inb(siocniobase + com_cfcr);
-	outb(siocniobase + com_cfcr, CFCR_DLAB | cfcr);
-	divisor = siodivisor(comdefaultrclk, comdefaultrate);
-	outb(siocniobase + com_dlbl, divisor & 0xff);
-	outb(siocniobase + com_dlbh, divisor >> 8);
-	outb(siocniobase + com_cfcr, cfcr);
-
-	siocnopen(&sp, siocniobase, comdefaultrate);
-	splx(s);
-
-	cn_tab = &sio_consdev;
-	return (0);
-}
-
-int
-siogdbattach(port, speed)
-	int port;
-	int speed;
-{
-	int			s;
-	u_char			cfcr;
-	u_int			divisor;
-	struct siocnstate	sp;
-
-	siogdbiobase = port;
-	gdbdefaultrate = speed;
-
-	s = spltty();
-
-	/*
-	 * Initialize the divisor latch.  We can't rely on
-	 * siocnopen() to do this the first time, since it 
-	 * avoids writing to the latch if the latch appears
-	 * to have the correct value.  Also, if we didn't
-	 * just read the speed from the hardware, then we
-	 * need to set the speed in hardware so that
-	 * switching it later is null.
-	 */
-	cfcr = inb(siogdbiobase + com_cfcr);
-	outb(siogdbiobase + com_cfcr, CFCR_DLAB | cfcr);
-	divisor = siodivisor(comdefaultrclk, gdbdefaultrate);
-	outb(siogdbiobase + com_dlbl, divisor & 0xff);
-	outb(siogdbiobase + com_dlbh, divisor >> 8);
-	outb(siogdbiobase + com_cfcr, cfcr);
-
-	siocnopen(&sp, siogdbiobase, gdbdefaultrate);
-	splx(s);
-
-	return (0);
-}
-
-#endif
-
 static void
 siocninit(cp)
 	struct consdev	*cp;
@@ -3192,42 +3105,6 @@ siocnputc(dev, c)
 	siocnclose(&sp, iobase);
 	splx(s);
 }
-
-#ifdef __alpha__
-int
-siogdbgetc()
-{
-	int	c;
-	Port_t	iobase;
-	int	s;
-	struct siocnstate	sp;
-
-	iobase = siogdbiobase;
-	s = spltty();
-	siocnopen(&sp, iobase, gdbdefaultrate);
-	while (!(inb(iobase + com_lsr) & LSR_RXRDY))
-		;
-	c = inb(iobase + com_data);
-	siocnclose(&sp, iobase);
-	splx(s);
-	return (c);
-}
-
-void
-siogdbputc(c)
-	int	c;
-{
-	int	s;
-	struct siocnstate	sp;
-
-	s = spltty();
-	siocnopen(&sp, siogdbiobase, gdbdefaultrate);
-	siocntxwait(siogdbiobase);
-	outb(siogdbiobase + com_data, c);
-	siocnclose(&sp, siogdbiobase);
-	splx(s);
-}
-#endif
 
 DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, 0, 0);
 #if NPCI > 0

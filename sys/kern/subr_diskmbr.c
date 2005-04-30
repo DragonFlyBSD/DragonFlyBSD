@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.9 2005/02/27 12:38:58 asmodai Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.10 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -493,19 +493,3 @@ mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
 #endif
 	return (0);
 }
-
-#ifdef __alpha__
-void
-alpha_fix_srm_checksum(struct buf *bp)
-{
-	u_int64_t *p;
-	u_int64_t sum;
-	int i;
-
-	p = (u_int64_t *) bp->b_data;
-	sum = 0;
-	for (i = 0; i < 63; i++)
-		sum += p[i];
-	p[63] = sum;
-}
-#endif

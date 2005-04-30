@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.7 2004/02/16 18:51:01 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.8 2005/04/30 23:04:21 swildner Exp $
  *
  */
 
@@ -161,10 +161,6 @@ const char *pci_chip_match(struct device *dev);
 
 int pci_cfgread (pcicfgregs *cfg, int reg, int bytes);
 void pci_cfgwrite (pcicfgregs *cfg, int reg, int data, int bytes);
-#ifdef __alpha__
-vm_offset_t pci_cvt_to_dense (vm_offset_t);
-vm_offset_t pci_cvt_to_bwx (vm_offset_t);
-#endif /* __alpha__ */
 
 /* low level devlist operations for the 2.2 compatibility code in pci.c */
 pcicfgregs * pci_devlist_get_parent(pcicfgregs *cfg);

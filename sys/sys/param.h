@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.21 2005/04/08 06:40:33 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.22 2005/04/30 23:04:21 swildner Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -221,11 +221,7 @@
  * Constraints: PAGE_SIZE <= MAXALLOCSAVE <= 2 ** (MINBUCKET + 14), and
  * MAXALLOCSIZE must be a power of two.
  */
-#if defined(__alpha__)
-#define MINBUCKET	5		/* 5 => min allocation of 32 bytes */
-#else
 #define MINBUCKET	4		/* 4 => min allocation of 16 bytes */
-#endif
 #define MAXALLOCSAVE	(2 * PAGE_SIZE)
 
 /*

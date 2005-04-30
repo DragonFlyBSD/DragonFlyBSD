@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.6 2004/09/19 02:15:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.7 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include "opt_kbd.h"
@@ -1253,15 +1253,6 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			return EIO;
 		}
 	}
-
-#ifdef __alpha__
-	if (send_kbd_command_and_data(
-		kbdc, KBDC_SET_SCANCODE_SET, 2) != KBD_ACK) {
-		printf("atkbd: can't set translation.\n");
-		
-	}
-	c |= KBD_TRANSLATION;
-#endif
 
 	/* enable the keyboard port and intr. */
 	if (!set_controller_command_byte(kbdc, 

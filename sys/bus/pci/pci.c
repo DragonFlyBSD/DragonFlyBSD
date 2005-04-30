@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.24 2005/04/20 10:51:24 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.25 2005/04/30 23:04:21 swildner Exp $
  *
  */
 
@@ -64,10 +64,6 @@
 #include "pci_private.h"
 
 #include "pcib_if.h"
-
-#ifdef __alpha__
-#include <machine/rpb.h>
-#endif
 
 #ifdef APIC_IO
 #include <machine/smp.h>
@@ -366,9 +362,6 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 		cfg->lattimer		= REG(PCIR_LATTIMER, 1);
 		cfg->intpin		= REG(PCIR_INTPIN, 1);
 		cfg->intline		= REG(PCIR_INTLINE, 1);
-#ifdef __alpha__
-		alpha_platform_assign_pciintr(cfg);
-#endif
 
 #ifdef APIC_IO
 		if (cfg->intpin != 0) {

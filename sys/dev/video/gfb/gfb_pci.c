@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/gfb/gfb_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.5 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.6 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -61,22 +61,9 @@
 #include <dev/fb/gfb.h>
 #include "gfb_pci.h"
 
-#ifdef __alpha__
-
-#include <machine/rpb.h>
-#include <machine/cpu.h>
-
-#endif /* __alpha__ */
-
 #include "opt_fb.h"
 
 static devclass_t gfb_devclass;
-
-#ifdef __alpha__
-
-extern void sccnattach(void);
-
-#endif /* __alpha__ */
 
 extern struct gfb_font bold8x16;
 extern struct gfb_softc *gfb_device_softcs[2][16];
@@ -88,9 +75,6 @@ pcigfb_attach(device_t dev)
 	gfb_softc_t sc;
 	video_adapter_t *adp;
 	int unit, flags, error, rid, va_index;
-#ifdef __alpha__
-	struct ctb *ctb;
-#endif /* __alpha__ */
 
 	s = splimp();
 	error = 0;
@@ -193,11 +177,6 @@ pcigfb_attach(device_t dev)
 	   the first call to sccnattach(). There must be a second chance for PCI
 	   adapters to be recognized as the console, and this is it...
 	*/
-#ifdef __alpha__
-	ctb = (struct ctb *)(((caddr_t)hwrpb) + hwrpb->rpb_ctb_off);
-	if (ctb->ctb_term_type == 3) /* Display adapter */
-		sccnattach();
-#endif /* __alpha__ */
 
 	device_printf(dev, "Board type %s\n", sc->gfbc->name);
 	device_printf(dev, "%d x %d, %dbpp, %s RAMDAC\n",

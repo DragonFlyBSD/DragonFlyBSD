@@ -24,10 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.13 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.14 2005/04/30 23:04:21 swildner Exp $
  */
-
-#ifndef __alpha__
 
 #define FREEBSD_AOUT	1
 
@@ -657,6 +655,3 @@ link_aout_lookup_set(linker_file_t lf, const char *name,
 	       *countp = count;
 	return 0;
 }
-
-#endif /* !__alpha__ */
-

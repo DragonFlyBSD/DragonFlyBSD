@@ -23,7 +23,7 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/sys/kern/md5c.c,v 1.17 1999/12/29 04:54:39 peter Exp $
- * $DragonFly: src/sys/kern/md5c.c,v 1.3 2004/05/26 20:04:07 dillon Exp $
+ * $DragonFly: src/sys/kern/md5c.c,v 1.4 2005/04/30 23:04:21 swildner Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.
@@ -45,7 +45,7 @@
 #define memcpy(x,y,z)	bcopy(y, x, z)
 #endif
 
-#if defined(__i386__) || defined(__alpha__)
+#if defined(__i386__)
 #define Encode memcpy
 #define Decode memcpy
 #else /* __i386__ */

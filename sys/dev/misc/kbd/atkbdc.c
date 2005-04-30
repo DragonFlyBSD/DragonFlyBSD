@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.4 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.5 2005/04/30 23:04:21 swildner Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -157,8 +157,6 @@ atkbdc_configure(void)
 	/* XXX: tag should be passed from the caller */
 #if defined(__i386__)
 	tag = I386_BUS_SPACE_IO;
-#elif defined(__alpha__)
-	tag = ALPHA_BUS_SPACE_IO;
 #endif
 
 #if notyet

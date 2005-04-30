@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.6 2005/02/01 16:30:02 joerg Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.7 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -1304,9 +1304,6 @@ vesa_mmap(video_adapter_t *adp, vm_offset_t offset, int prot)
 			return -1;
 #ifdef __i386__
 		return i386_btop(adp->va_info.vi_buffer + offset);
-#endif
-#ifdef __alpha__ /* XXX */
-		return alpha_btop(adp->va_info.vi_buffer + offset);
 #endif
 	} else {
 		return (*prevvidsw->mmap)(adp, offset, prot);

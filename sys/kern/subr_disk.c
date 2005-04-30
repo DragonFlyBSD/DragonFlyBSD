@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.14 2004/09/15 02:56:35 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.15 2005/04/30 23:04:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -766,9 +766,6 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 			bp->b_flags &= ~(B_DONE | B_READ);
 			bp->b_flags |= B_WRITE;
 			bp->b_dev = dkmodpart(dev, RAW_PART);
-#ifdef __alpha__
-			alpha_fix_srm_checksum(bp);
-#endif
 			BUF_STRATEGY(bp, 1);
 			error = biowait(bp);
 			goto done;

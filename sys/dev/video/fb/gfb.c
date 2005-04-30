@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/gfb.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.5 2005/02/01 16:30:02 joerg Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.6 2005/04/30 23:04:21 swildner Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -459,8 +459,6 @@ gfb_mmap(video_adapter_t *adp, vm_offset_t offset, int prot)
 		error = ENXIO;
 #ifdef __i386__
 	error = i386_btop(adp->va_info.vi_window + offset);
-#elsif defined(__alpha__)
-	error = alpha_btop(adp->va_info.vi_window + offset);
 #else
 	error = ENXIO;
 #endif
