@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.10 2005/03/21 19:20:57 joerg Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.11 2005/04/30 16:17:06 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -164,12 +164,12 @@ main(int argc, char *argv[])
 {
 	struct sockaddr_in from;
 	struct stat st;
-	char path[64];
+	char path[64], *ep, *cp;
 	int on = 1;
-	char *cp;
 	struct sockaddr_in m_sin;
 	uid_t unpriv_uid;
 	gid_t unpriv_gid;
+	long tmp;
 
 	if (getuid())
 		errx(1, "not super user");
@@ -179,10 +179,14 @@ main(int argc, char *argv[])
 	argv++; argc--;
 	while (argc > 0 && *argv[0] == '-') {
 		if (strcmp(*argv, "-m") == 0) {
-			if (argc > 1 && isdigit(*(argv + 1)[0])) {
+			if (argc > 1 && *(argv + 1)[0] != '-') {
+				/* Argument has been given */
 				argv++, argc--;
-				multicast_mode  = SCOPED_MULTICAST;
-				multicast_scope = atoi(*argv);
+				multicast_mode = SCOPED_MULTICAST;
+				tmp = strtol(*argv, &ep, 10);
+				if (*ep != '\0' || tmp < INT_MIN || tmp > INT_MAX)
+					errx(1, "invalid ttl: %s", *argv);
+				multicast_scope = (int)tmp;
 				if (multicast_scope > MAX_MULTICAST_SCOPE)
 					errx(1, "ttl must not exceed %u",
 					MAX_MULTICAST_SCOPE);
