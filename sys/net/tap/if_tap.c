@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.16 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.17 2005/04/30 04:27:51 y0netan1 Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -271,8 +271,6 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 {
 	struct tap_softc	*tp = NULL;
 	int			 error;
-
-	KKASSERT(p != NULL);
 
 	if ((error = suser(td)) != 0)
 		return (error);
