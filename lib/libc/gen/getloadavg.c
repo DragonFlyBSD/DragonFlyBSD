@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getloadavg.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/getloadavg.c,v 1.3 2005/04/27 12:42:12 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/getloadavg.c,v 1.4 2005/04/30 23:28:57 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
  * Return number of samples retrieved, or -1 on error.
  */
 int
-getloadavg(double loadavg[], size_t nelem)
+getloadavg(double loadavg[], int nelem)
 {
 	struct loadavg loadinfo;
 	size_t i, size;
