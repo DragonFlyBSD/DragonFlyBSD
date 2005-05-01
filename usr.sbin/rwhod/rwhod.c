@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.11 2005/04/30 16:17:06 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.12 2005/05/01 12:11:36 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -738,17 +738,17 @@ interval(int time, char *updown)
 	int days, hours, minutes;
 
 	if (time < 0 || time > 3*30*24*60*60) {
-		sprintf(resbuf, "   %s ??:??", updown);
+		snprintf(resbuf, sizeof(resbuf), "   %s ??:??", updown);
 		return (resbuf);
 	}
 	minutes = (time + 59) / 60;		/* round to minutes */
 	hours = minutes / 60; minutes %= 60;
 	days = hours / 24; hours %= 24;
 	if (days)
-		sprintf(resbuf, "%s %2d+%02d:%02d",
+		snprintf(resbuf, sizeof(resbuf), "%s %2d+%02d:%02d",
 		    updown, days, hours, minutes);
 	else
-		sprintf(resbuf, "%s    %2d:%02d",
+		snprintf(resbuf, sizeof(resbuf), "%s    %2d:%02d",
 		    updown, hours, minutes);
 	return (resbuf);
 }
