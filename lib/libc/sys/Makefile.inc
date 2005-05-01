@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.11 2005/04/09 23:41:26 hmp Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.12 2005/05/01 18:38:11 joerg Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -20,7 +20,7 @@
 SRCS+=	ftruncate.c lseek.c mmap.c pread.c pwrite.c truncate.c
 
 # Build __error() into libc, but not libc_r which has its own:
-.if ${LIB} == "c"
+.if ${LIB} == "c" || ${LIB} == "c_rtld"
 SRCS+=	__error.c
 .endif
 
