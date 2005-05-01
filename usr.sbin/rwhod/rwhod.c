@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.12 2005/05/01 12:11:36 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.13 2005/05/01 14:52:08 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -262,7 +262,8 @@ main(int argc, char *argv[])
 	}
 	for (;;) {
 		struct whod wd;
-		int cc, whod, len = sizeof(from);
+		int cc, whod; 
+		socklen_t len = sizeof(from);
 
 		if (got_sigalrm == 1) {
 			onalrm();
