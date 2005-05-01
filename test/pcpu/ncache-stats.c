@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.5 2005/03/07 04:34:11 hmp Exp $
+ * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.6 2005/05/01 03:01:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@ int main(void)
 	u_long nchtotal;
 
 	nch = malloc(nch_len);
-	if (!nch)
+	if (nch == NULL)
 		exit(-1);
 
 	/* retrieve the statistics */
@@ -69,8 +69,8 @@ int main(void)
 		warn("sysctl");
 		exit(-1);
 	} else {
-		nch = realloc(nch, nch_len);
-		if (!nch)
+		nch = reallocf(nch, nch_len);
+		if (nch == NULL)
 			exit(-1);
 	}
 
