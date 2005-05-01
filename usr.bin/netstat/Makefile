@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/netstat/Makefile,v 1.14.2.3 2001/08/10 09:07:08 ru Exp $
-# $DragonFly: src/usr.bin/netstat/Makefile,v 1.2 2003/06/17 04:29:30 dillon Exp $
+# $DragonFly: src/usr.bin/netstat/Makefile,v 1.3 2005/05/01 04:05:35 hmp Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/12/93
 
 PROG=	netstat
@@ -13,7 +13,7 @@ CFLAGS+=-DINET6
 #.PATH:	${.CURDIR}/../../sys/netiso
 BINGRP=	kmem
 BINMODE=2555
-DPADD=	${LIBKVM} ${LIBIPX} ${LIBNETGRAPH} ${LIBUTIL}
-LDADD=	-lkvm -lipx -lnetgraph -lutil
+DPADD=	${LIBKVM} ${LIBKINFO} ${LIBIPX} ${LIBNETGRAPH} ${LIBUTIL}
+LDADD=	-lkvm -lkinfo -lipx -lnetgraph -lutil
 
 .include <bsd.prog.mk>

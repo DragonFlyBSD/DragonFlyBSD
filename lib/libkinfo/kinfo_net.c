@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Hiten Pandya <hmp@dragonflybsd.org>.
@@ -31,19 +31,52 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_pcpu.c,v 1.3 2005/05/01 04:05:35 hmp Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_net.c,v 1.1 2005/05/01 04:05:35 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 
 #include <net/route.h>
 
+#include <assert.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <kinfo.h>
 
-/*
- * Type-specific accumulation functions for per-cpu statistics.
- */
+int
+kinfo_get_net_rtstatistics(struct rtstatistics *rts)
+{
+	struct rtstatistics *percpu = NULL;
+	size_t len = sizeof(struct rtstatistics) * SMP_MAXCPU;
+	int cpucount, error = 0;
 
-PCPU_STATISTICS_FUNC(cputime, struct kinfo_cputime, uint64_t);
-PCPU_STATISTICS_FUNC(route, struct rtstatistics, u_long);
+	_DIAGASSERT(rts != NULL);
+
+	if ((percpu = malloc(len)) == NULL) {
+		error = ENOMEM;
+		goto done;
+	}
+
+	/* retrieve verbatim per-cpu statistics from kernel */
+	if (sysctlbyname("net.route.stats", percpu, &len, NULL, 0) < 0) {
+		error = errno;
+		goto done;
+	} else {
+		percpu = reallocf(percpu, len);
+		if (percpu == NULL) {
+			error = ENOMEM;
+			goto done;
+		}
+	}
+
+	/* aggregate per-cpu statistics retrieved from kernel */
+	cpucount = len / sizeof(struct rtstatistics);
+	route_pcpu_statistics(percpu, rts, cpucount);
+
+done:
+	if (percpu != NULL)
+		free(percpu);
+	return (error);
+}

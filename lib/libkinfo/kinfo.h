@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.7 2005/05/01 03:26:07 hmp Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.8 2005/05/01 04:05:35 hmp Exp $
  */
 
 #ifndef	_KINFO_H_
@@ -42,11 +42,17 @@
 
 #include <kinfo_pcpu.h>
 
+/* Forward references */
+struct rtstatistics;
+
 __BEGIN_DECLS;
 /* File */
 int	kinfo_get_files(struct kinfo_file **, size_t *);
 int	kinfo_get_maxfiles(int *);
 int	kinfo_get_openfiles(int *);
+
+/* Networking */
+int kinfo_get_net_rtstatistics(struct rtstatistics *);
 
 /* Scheduling / Time */
 int	kinfo_get_cpus(int *);
@@ -65,6 +71,7 @@ int	kinfo_get_vfs_bufspace(int *);
 
 /* Per-CPU accumulators */
 PCPU_STATISTICS_PROT(cputime, struct kinfo_cputime);
+PCPU_STATISTICS_PROT(route, struct rtstatistics);
 __END_DECLS;
 
 #endif

@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.8 2005/03/05 13:37:58 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.9 2005/05/01 04:05:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -67,6 +67,7 @@
 #include <unistd.h>
 #include <err.h>
 #include <time.h>
+#include <kinfo.h>
 #include "netstat.h"
 
 #define kget(p, d) (kread((u_long)(p), (char *)&(d), sizeof (d)))
@@ -996,25 +997,26 @@ routename6(struct sockaddr_in6 *sa6)
  * Print routing statistics
  */
 void
-rt_stats(u_long rtsaddr)
+rt_stats(void)
 {
-	struct rtstat rtstat;
+	struct rtstatistics rts;
+	int error = 0;
 
-	if (rtsaddr == 0) {
-		printf("rtstat: symbol not in namelist\n");
+	error = kinfo_get_net_rtstatistics(&rts);
+	if (error) {
+		printf("routing: could not retrieve statistics\n");
 		return;
 	}
-	kread(rtsaddr, (char *)&rtstat, sizeof (rtstat));
 	printf("routing:\n");
 
-#define	p(f, m) if (rtstat.f || sflag <= 1) \
-	printf(m, rtstat.f, plural(rtstat.f))
+#define	p(f, m) if (rts.f || sflag <= 1) \
+	printf(m, rts.f, plural(rts.f))
 
-	p(rts_badredirect, "\t%u bad routing redirect%s\n");
-	p(rts_dynamic, "\t%u dynamically created route%s\n");
-	p(rts_newgateway, "\t%u new gateway%s due to redirects\n");
-	p(rts_unreach, "\t%u destination%s found unreachable\n");
-	p(rts_wildcard, "\t%u use%s of a wildcard route\n");
+	p(rts_badredirect, "\t%lu bad routing redirect%s\n");
+	p(rts_dynamic, "\t%lu dynamically created route%s\n");
+	p(rts_newgateway, "\t%lu new gateway%s due to redirects\n");
+	p(rts_unreach, "\t%lu destination%s found unreachable\n");
+	p(rts_wildcard, "\t%lu use%s of a wildcard route\n");
 #undef p
 }
 

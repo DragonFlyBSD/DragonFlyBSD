@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.13 2005/03/04 02:54:31 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.14 2005/05/01 04:05:35 hmp Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -215,12 +215,12 @@ struct ortentry {
 /*
  * Routing statistics.
  */
-struct	rtstat {
-	short	rts_badredirect;	/* bogus redirect calls */
-	short	rts_dynamic;		/* routes created by redirects */
-	short	rts_newgateway;		/* routes modified by redirects */
-	short	rts_unreach;		/* lookups which failed */
-	short	rts_wildcard;		/* lookups satisfied by a wildcard */
+struct	rtstatistics {
+	u_long	rts_badredirect;	/* bogus redirect calls */
+	u_long	rts_dynamic;		/* routes created by redirects */
+	u_long	rts_newgateway;		/* routes modified by redirects */
+	u_long	rts_unreach;		/* lookups which failed */
+	u_long	rts_wildcard;		/* lookups satisfied by a wildcard */
 };
 /*
  * Structures for routing messages.

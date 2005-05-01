@@ -32,7 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.6 2005/03/05 13:37:58 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.7 2005/05/01 04:05:35 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -108,7 +108,7 @@ void	intpr (int, u_long, void (*)(char *));
 
 void	pr_rthdr (int);
 void	pr_family (int);
-void	rt_stats (u_long);
+void	rt_stats (void);
 char	*ipx_pnet (struct sockaddr *);
 char	*ipx_phost (struct sockaddr *);
 char	*ns_phost (struct sockaddr *);

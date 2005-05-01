@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.19 2005/03/04 03:34:47 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.20 2005/05/01 04:05:35 hmp Exp $
  */
 
 #include "opt_inet.h"
@@ -94,6 +94,9 @@
 #include <sys/socket.h>
 #include <sys/domain.h>
 #include <sys/kernel.h>
+#include <sys/sysctl.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -101,12 +104,20 @@
 #include <netinet/in.h>
 #include <net/ip_mroute/ip_mroute.h>
 
-static struct rtstat rtstat;
+static struct rtstatistics rtstatistics_percpu[MAXCPU];
+#ifdef SMP
+#define rtstat	rtstatistics_percpu[mycpuid]
+#else
+#define rtstat	rtstatistics_percpu[0]
+#endif
+
 struct radix_node_head *rt_tables[AF_MAX+1];
 
 static void	rt_maskedcopy (struct sockaddr *, struct sockaddr *,
 			       struct sockaddr *);
 static void	rtable_init (void **);
+
+SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
 
 static void
 rtable_init(void **table)
@@ -122,9 +133,45 @@ rtable_init(void **table)
 void
 route_init()
 {
+#ifdef SMP
+	int ccpu;
+
+	for (ccpu = 0; ccpu < ncpus; ++ccpu)
+		bzero(&rtstatistics_percpu[cpu], sizeof(struct rtstatistics));
+#else
+	bzero(&rtstat, sizeof(struct rtstatistics));
+#endif
+
 	rn_init();	/* initialize all zeroes, all ones, mask table */
 	rtable_init((void **)rt_tables);
 }
+
+/*
+ * Routing statistics.
+ */
+#ifdef SMP
+static int
+sysctl_rtstatistics(SYSCTL_HANDLER_ARGS)
+{
+	int cpu, error = 0;
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		if ((error = SYSCTL_OUT(req, &rtstatistics_percpu[cpu],
+					sizeof(struct rtstatistics))))
+				break;
+		if ((error = SYSCTL_IN(req, &rtstatistics_percpu[cpu],
+					sizeof(struct rtstatistics))))
+				break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_net_route, OID_AUTO, stats, (CTLTYPE_OPAQUE|CTLFLAG_RW),
+	0, 0, sysctl_rtstatistics, "S,rtstatistics", "Routing statistics");
+#else
+SYSCTL_STRUCT(_net_route, OID_AUTO, stats, CTLFLAG_RW, &rtstat, rtstatistics,
+"Routing statistics");
+#endif
 
 /*
  * Packet routing routines.
@@ -260,7 +307,7 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 	struct rtentry *rt = NULL;
 	struct rt_addrinfo rtinfo;
 	struct ifaddr *ifa;
-	short *stat = NULL;
+	u_long *stat = NULL;
 	int error;
 
 	/* verify the gateway is directly reachable */

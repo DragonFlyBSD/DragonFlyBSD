@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.8 2005/03/05 13:37:58 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.9 2005/05/01 04:05:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -517,7 +517,7 @@ main(int argc, char **argv)
 	if (rflag) {
 		kread(0, 0, 0);
 		if (sflag)
-			rt_stats(nl[N_RTSTAT].n_value);
+			rt_stats();
 		else
 			routepr(nl[N_RTREE].n_value);
 		exit(0);
