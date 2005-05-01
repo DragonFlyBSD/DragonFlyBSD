@@ -31,16 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.2 2005/04/27 15:13:35 hmp Exp $
+ * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.3 2005/05/01 02:30:50 hmp Exp $
  */
 
 #include <sys/param.h>
 
+#include <assert.h>
 #include <err.h>
 #include <errno.h>
 #include <kcore.h>
 #include <kvm.h>
 #include <nlist.h>
+#include <stdlib.h>
 
 #include "kcore_private.h"
 
@@ -72,12 +74,40 @@ kcore_get_sched_ccpu(struct kcore_data *kc, int *ccpu)
 int
 kcore_get_sched_cputime(struct kcore_data *kc, struct kinfo_cputime *cputime)
 {
+	struct kinfo_cputime *percpu = NULL;
 	static struct nlist nl[] = {
 		{ "cputime_percpu", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
+	int len, cpucount, error = 0;
 
-	return(kcore_get_generic(kc, nl, cputime, sizeof(*cputime)));
+	_DIAGASSERT(cputime != NULL);
+
+	error = kcore_get_cpus(kc, &cpucount);
+	if (error)
+		goto done;
+
+	len = sizeof(*percpu) * cpucount;
+
+	if ((percpu = malloc(len)) == NULL) {
+		error = ENOMEM;
+		goto done;
+	}
+
+	/* retrieve verbatim per-cpu statistics from kernel core */
+	error = kcore_get_generic(kc, nl, percpu, len);
+	if (error)
+		goto done;
+
+	/* aggregate per-cpu statistics retrieved from kernel core */
+	cputime_pcpu_statistics(percpu, cputime, cpucount);
+
+done:
+	if (percpu != NULL) {
+		free(percpu);
+		percpu = NULL;
+	}
+	return (error);
 }
 
 int
