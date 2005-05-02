@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.49 2005/03/28 23:06:47 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.49.2.1 2005/05/02 23:57:14 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -63,6 +63,11 @@ ETCMAIL=Makefile README mailer.conf access.sample virtusertable.sample \
 
 # Special top level files for FreeBSD
 FREEBSD=COPYRIGHT
+
+# List of libraries in /usr/lib that might have to be removed
+# from /usr/lib/compat if downgrading from HEAD back to RELEASE.
+#
+COMPAT_LIBS != cd ${DESTDIR}/usr/lib/; ls
 
 distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
@@ -215,6 +220,11 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man4,cat4}/{euc,utf2}.4.gz"
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.iso.kbd
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.kbd
+.for lib in ${COMPAT_LIBS:M*.so.*}
+.if exists(${DESTDIR}/usr/lib/compat/${lib})
+	rm -f ${DESTDIR}/usr/lib/compat/${lib}
+.endif
+.endfor
 	ldconfig -R
 
 distribution:
