@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.20 2005/05/01 04:05:35 hmp Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.21 2005/05/02 00:56:48 y0netan1 Exp $
  */
 
 #include "opt_inet.h"
@@ -137,7 +137,7 @@ route_init()
 	int ccpu;
 
 	for (ccpu = 0; ccpu < ncpus; ++ccpu)
-		bzero(&rtstatistics_percpu[cpu], sizeof(struct rtstatistics));
+		bzero(&rtstatistics_percpu[ccpu], sizeof(struct rtstatistics));
 #else
 	bzero(&rtstat, sizeof(struct rtstatistics));
 #endif
