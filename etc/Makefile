@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.53 2005/04/26 16:59:59 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.54 2005/05/02 23:53:47 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -63,6 +63,10 @@ ETCMAIL=Makefile README mailer.conf access.sample virtusertable.sample \
 
 # Special top level files for FreeBSD
 FREEBSD=COPYRIGHT
+
+# List of libraries in /usr/lib/compat that might have to be removed
+# from /usr/lib.
+COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat; ls
 
 distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
@@ -219,6 +223,11 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.kbd
 	csh -c "rm -f ${DESTDIR}/etc/rc.d/{bootconf.sh,lkm1,lkm2,lkm3,mountall,pcvt,wscons}"
 	rm -f ${DESTDIR}/modules/canbus.ko
+.for lib in ${COMPAT_LIBS:M*.so.*}
+.if exists(${DESTDIR}/usr/lib/${lib})
+	rm -f ${DESTDIR}/usr/lib/${lib}
+.endif
+.endfor
 	ldconfig -R
 
 distribution:
