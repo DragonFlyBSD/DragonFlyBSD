@@ -31,9 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc_r/uthread/uthread_closefrom.c,v 1.1 2005/05/02 19:52:58 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_closefrom.c,v 1.2 2005/05/02 20:40:50 joerg Exp $
  */
 
+#include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
 #include "pthread_private.h"
@@ -41,7 +42,14 @@
 int
 _closefrom(int fd)
 {
-	int error;
+	int i, error, my_errno;
+
+	my_errno = errno;
+
+	for (i = fd; i < _thread_dtablesize; i++)
+		_close(i);
+
+	errno = my_errno;
 
 	/* Check if we have to do anything. */
 	if (_thread_kern_pipe[0] < fd && _thread_kern_pipe[1] < fd)
@@ -53,8 +61,8 @@ _closefrom(int fd)
 	__sys_close(_thread_kern_pipe[0]);
 	__sys_close(_thread_kern_pipe[1]);
 	error = __sys_closefrom(fd);
-	if (__sys_pipe(_thread_kern_pipe) != 0)
-		PANIC("Cannot recreate pthread kernel pipe after clsoefrom");
+
+	_thread_mksigpipe();
 
 	/* Pipe is working again, handle signals. */
 	_thread_kern_sig_undefer();

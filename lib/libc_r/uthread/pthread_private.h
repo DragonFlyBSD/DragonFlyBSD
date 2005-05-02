@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.6 2005/04/28 18:16:47 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.7 2005/05/02 20:40:50 joerg Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -1215,6 +1215,7 @@ void	_thread_kern_sched_state_unlock(enum pthread_state state,
 void    _thread_kern_set_timeout(const struct timespec *);
 void    _thread_kern_sig_defer(void);
 void    _thread_kern_sig_undefer(void);
+void	_thread_mksigpipe(void);
 void    _thread_sig_handler(int, siginfo_t *, ucontext_t *);
 void    _thread_sig_check_pending(struct pthread *pthread);
 void    _thread_sig_handle_pending(void);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.5 2005/04/28 18:16:47 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.6 2005/05/02 20:40:50 joerg Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -170,45 +170,10 @@ _thread_init(void)
 	 * Create a pipe that is written to by the signal handler to prevent
 	 * signals being missed in calls to _select:
 	 */
-	if (__sys_pipe(_thread_kern_pipe) != 0) {
-		/* Cannot create pipe, so abort: */
-		PANIC("Cannot create kernel pipe");
-	}
+	_thread_mksigpipe();
 
-	/*
-	 * Make sure the pipe does not get in the way of stdio:
-	 */
-	for (i = 0; i < 2; i++) {
-		if (_thread_kern_pipe[i] < 3) {
-			fd = __sys_fcntl(_thread_kern_pipe[i], F_DUPFD, 3);
-			if (fd == -1)
-			    PANIC("Cannot create kernel pipe");
-			__sys_close(_thread_kern_pipe[i]);
-			_thread_kern_pipe[i] = fd;
-		}
-	}
-	/* Get the flags for the read pipe: */
-	if ((flags = __sys_fcntl(_thread_kern_pipe[0], F_GETFL, NULL)) == -1) {
-		/* Abort this application: */
-		PANIC("Cannot get kernel read pipe flags");
-	}
-	/* Make the read pipe non-blocking: */
-	else if (__sys_fcntl(_thread_kern_pipe[0], F_SETFL, flags | O_NONBLOCK) == -1) {
-		/* Abort this application: */
-		PANIC("Cannot make kernel read pipe non-blocking");
-	}
-	/* Get the flags for the write pipe: */
-	else if ((flags = __sys_fcntl(_thread_kern_pipe[1], F_GETFL, NULL)) == -1) {
-		/* Abort this application: */
-		PANIC("Cannot get kernel write pipe flags");
-	}
-	/* Make the write pipe non-blocking: */
-	else if (__sys_fcntl(_thread_kern_pipe[1], F_SETFL, flags | O_NONBLOCK) == -1) {
-		/* Abort this application: */
-		PANIC("Cannot get kernel write pipe flags");
-	}
 	/* Allocate and initialize the ready queue: */
-	else if (_pq_alloc(&_readyq, PTHREAD_MIN_PRIORITY, PTHREAD_LAST_PRIORITY) != 0) {
+	if (_pq_alloc(&_readyq, PTHREAD_MIN_PRIORITY, PTHREAD_LAST_PRIORITY) != 0) {
 		/* Abort this application: */
 		PANIC("Cannot allocate priority ready queue.");
 	}
@@ -449,3 +414,44 @@ _thread_init(void)
 }
 
 int _thread_autoinit_dummy_decl = 0;
+
+
+void
+_thread_mksigpipe(void)
+{
+	int fd, flags, i;
+
+	/*
+	 * Create a pipe that is written to by the signal handler to
+	 * prevent signals being missed in calls to
+	 * __sys_select: 
+	 */
+	if (__sys_pipe(_thread_kern_pipe) != 0) {
+		/* Cannot create pipe, so abort: */
+		PANIC("Cannot create pthread kernel pipe.");
+	}
+	/*
+	 * Make sure the pipe does not get in the way of stdio:
+	 */
+	for (i = 0; i < 2; i++) {
+		if (_thread_kern_pipe[i] < 3) {
+			fd = __sys_fcntl(_thread_kern_pipe[i], F_DUPFD, 3);
+			if (fd == -1)
+			    PANIC("Cannot create kernel pipe");
+			__sys_close(_thread_kern_pipe[i]);
+			_thread_kern_pipe[i] = fd;
+		}
+	}
+	/* Get the flags for the read pipe: */
+	if ((flags = __sys_fcntl(_thread_kern_pipe[0], F_GETFL, NULL)) == -1)
+		abort();
+	/* Make the read pipe non-blocking: */
+	if (__sys_fcntl(_thread_kern_pipe[0], F_SETFL, flags | O_NONBLOCK) == -1)
+		abort();
+	/* Get the flags for the write pipe: */
+	if ((flags = __sys_fcntl(_thread_kern_pipe[1], F_GETFL, NULL)) == -1)
+		abort();
+	/* Make the write pipe non-blocking: */
+	if (__sys_fcntl(_thread_kern_pipe[1], F_SETFL, flags | O_NONBLOCK) == -1)
+		abort();
+}

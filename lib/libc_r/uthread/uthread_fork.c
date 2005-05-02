@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fork.c,v 1.19.2.7 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.4 2005/05/02 20:40:50 joerg Exp $
  */
 #include <errno.h>
 #include <string.h>
@@ -66,37 +66,10 @@ _fork(void)
 		/* Reset signals pending for the running thread: */
 		sigemptyset(&curthread->sigpend);
 
-		/*
-		 * Create a pipe that is written to by the signal handler to
-		 * prevent signals being missed in calls to
-		 * __sys_select: 
-		 */
-		if (__sys_pipe(_thread_kern_pipe) != 0) {
-			/* Cannot create pipe, so abort: */
-			PANIC("Cannot create pthread kernel pipe for forked process");
-		}
-		/* Get the flags for the read pipe: */
-		else if ((flags = __sys_fcntl(_thread_kern_pipe[0], F_GETFL, NULL)) == -1) {
-			/* Abort this application: */
-			abort();
-		}
-		/* Make the read pipe non-blocking: */
-		else if (__sys_fcntl(_thread_kern_pipe[0], F_SETFL, flags | O_NONBLOCK) == -1) {
-			/* Abort this application: */
-			abort();
-		}
-		/* Get the flags for the write pipe: */
-		else if ((flags = __sys_fcntl(_thread_kern_pipe[1], F_GETFL, NULL)) == -1) {
-			/* Abort this application: */
-			abort();
-		}
-		/* Make the write pipe non-blocking: */
-		else if (__sys_fcntl(_thread_kern_pipe[1], F_SETFL, flags | O_NONBLOCK) == -1) {
-			/* Abort this application: */
-			abort();
-		}
+		_thread_mksigpipe();
+
 		/* Reinitialize the GC mutex: */
-		else if (_mutex_reinit(&_gc_mutex) != 0) {
+		if (_mutex_reinit(&_gc_mutex) != 0) {
 			/* Abort this application: */
 			PANIC("Cannot initialize GC mutex for forked process");
 		}
