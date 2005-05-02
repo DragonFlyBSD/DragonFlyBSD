@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.34 2005/02/27 10:57:24 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.35 2005/05/02 23:20:38 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -124,8 +124,13 @@ cpu_fork(p1, p2, flags)
 	if (mdcpu->gd_npxthread == p1->p_thread)
 		npxsave(p1->p_thread->td_savefpu);
 #endif
-
-	/* Copy p1's pcb. */
+	
+	/*
+	 * Copy p1's PCB.  This really only applies to the
+	 * debug registers and FP state, but its faster to just copy the
+	 * whole thing.  Because we only save the PCB at switchout time,
+	 * the register state (including pcb_gs) may not be current.
+	 */
 	pcb2 = p2->p_thread->td_pcb;
 	*pcb2 = *p1->p_thread->td_pcb;
 
@@ -166,6 +171,12 @@ cpu_fork(p1, p2, flags)
 	*(u_int32_t *)p2->p_thread->td_sp = PSL_USER;
 	p2->p_thread->td_sp -= sizeof(void *);
 	*(void **)p2->p_thread->td_sp = (void *)cpu_heavy_restore;
+
+	/*
+	 * Segment registers.
+	 */
+	pcb2->pcb_gs = rgs();
+
 	/*
 	 * pcb2->pcb_ldt:	duplicated below, if necessary.
 	 * pcb2->pcb_savefpu:	cloned above.
