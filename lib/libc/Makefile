@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 2/3/94
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
-# $DragonFly: src/lib/libc/Makefile,v 1.9 2005/04/29 21:46:41 joerg Exp $
+# $DragonFly: src/lib/libc/Makefile,v 1.10 2005/05/02 19:52:58 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -17,8 +17,8 @@ PRECIOUSLIB=	yes
 #
 # Don't bother hiding any syscalls (like libc_r does).
 #
-HIDDEN_SYSCALLS= _exit.o accept.o aio_suspend.o bind.o close.o connect.o \
-	dup.o dup2.o execve.o fchflags.o fchmod.o fchown.o fcntl.o \
+HIDDEN_SYSCALLS= _exit.o accept.o aio_suspend.o bind.o close.o closefrom.o \
+	connect.o dup.o dup2.o execve.o fchflags.o fchmod.o fchown.o fcntl.o \
 	flock.o fpathconf.o fstat.o fstatfs.o fsync.o getdirentries.o \
 	getpeername.o getsockname.o getsockopt.o ioctl.o \
 	kevent.o kqueue.o listen.o \

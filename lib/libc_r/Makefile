@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc_r/Makefile,v 1.24.2.7 2002/10/22 14:44:02 fjoe Exp $
-# $DragonFly: src/lib/libc_r/Makefile,v 1.5 2005/04/21 13:42:33 joerg Exp $
+# $DragonFly: src/lib/libc_r/Makefile,v 1.6 2005/05/02 19:52:58 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -26,7 +26,8 @@ PRECIOUSLIB=	yes
 # This is a list of syscalls that are renamed as __sys_{syscall}
 # so that libc_r can provide replacement functions.
 #
-HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
+HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o closefrom.o \
+	connect.o dup.o dup2.o \
 	execve.o fchflags.o fchmod.o fchown.o fcntl.o \
 	flock.o fpathconf.o fstat.o fstatfs.o fsync.o getdirentries.o \
 	getlogin.o getpeername.o getsockname.o getsockopt.o ioctl.o \
