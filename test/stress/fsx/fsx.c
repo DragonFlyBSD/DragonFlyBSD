@@ -35,7 +35,7 @@
  *	Checks for mmap last-page zero fill.
  *
  * $FreeBSD: src/tools/regression/fsx/fsx.c,v 1.2 2003/04/23 23:42:23 jkh Exp $
- * $DragonFly: src/test/stress/fsx/fsx.c,v 1.1 2003/10/11 13:37:14 drhodus Exp $
+ * $DragonFly: src/test/stress/fsx/fsx.c,v 1.2 2005/05/02 19:31:56 dillon Exp $
  *
  */
 
@@ -60,6 +60,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <setjmp.h>
 
 #define NUMPRINTCOLUMNS 32	/* # columns of data to print on each line */
 
@@ -77,6 +78,8 @@ struct log_entry {
 struct log_entry	oplog[LOGSIZE];	/* the log */
 int			logptr = 0;	/* current position in log */
 int			logcount = 0;	/* total ops */
+int			jmpbuf_good;
+jmp_buf			jmpbuf;
 
 /*
  *	Define operations
@@ -541,9 +544,14 @@ domapread(unsigned offset, unsigned size)
 		prterr("domapread: mmap");
 		report_failure(190);
 	}
-	memcpy(temp_buf, p + pg_offset, size);
-
-	check_eofpage("Read", offset, p, size);
+	if (setjmp(jmpbuf) == 0) {
+	    jmpbuf_good = 1;
+	    memcpy(temp_buf, p + pg_offset, size);
+	    check_eofpage("Read", offset, p, size);
+	    jmpbuf_good = 0;
+	} else {
+	    report_failure(1901);
+	}
 
 	if (munmap(p, map_size) != 0) {
 		prterr("domapread: munmap");
@@ -678,13 +686,18 @@ domapwrite(unsigned offset, unsigned size)
 		prterr("domapwrite: mmap");
 		report_failure(202);
 	}
-	memcpy(p + pg_offset, good_buf + offset, size);
-	if (msync(p, map_size, 0) != 0) {
-		prterr("domapwrite: msync");
-		report_failure(203);
+	if (setjmp(jmpbuf) == 0) {
+	    jmpbuf_good = 1;
+	    memcpy(p + pg_offset, good_buf + offset, size);
+	    if (msync(p, map_size, 0) != 0) {
+		    prterr("domapwrite: msync");
+		    report_failure(203);
+	    }
+	    check_eofpage("Write", offset, p, size);
+	    jmpbuf_good = 0;
+	} else {
+	    report_failure(2021);
 	}
-
-	check_eofpage("Write", offset, p, size);
 
 	if (munmap(p, map_size) != 0) {
 		prterr("domapwrite: munmap");
@@ -843,6 +856,15 @@ test(void)
 		docloseopen();
 }
 
+void
+segv(int sig)
+{
+	if (jmpbuf_good) {
+	    jmpbuf_good = 0;
+	    longjmp(jmpbuf, 1);
+	}
+	report_failure(9999);
+}
 
 void
 cleanup(sig)
@@ -1073,6 +1095,7 @@ main(int argc, char **argv)
 	signal(SIGVTALRM,	cleanup);
 	signal(SIGUSR1,	cleanup);
 	signal(SIGUSR2,	cleanup);
+	signal(SIGSEGV, segv);
 
 	initstate(seed, state, 256);
 	setstate(state);
