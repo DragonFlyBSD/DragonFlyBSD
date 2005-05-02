@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.20 2005/04/29 21:46:41 joerg Exp $
+# $DragonFly: src/lib/Makefile,v 1.21 2005/05/02 20:19:12 dillon Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -29,6 +29,10 @@ SUBDIR=	${_csu} csu/common libarchive libcom_err libcrypt msun libmd \
 	libpcap libposix1e librpcsvc ${_libsm} ${_libsmb} ${_libsmdb} \
 	${_libsmutil} libstand libtelnet libthread_xu libusbhid ${_libvgl} \
 	libwrap libxpg4 liby libz i18n_module libc_rtld
+
+.if exists(${.CURDIR}/compat/${MACHINE_ARCH}/Makefile)
+SUBDIR+= compat/${MACHINE_ARCH}
+.endif
 
 _csu=csu/${MACHINE_ARCH}
 
