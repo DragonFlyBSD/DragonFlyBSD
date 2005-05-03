@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_platform.h,v 1.12 2004/08/07 03:09:28 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_platform.h,v 1.14 2005/04/23 17:56:34 kientzle Exp $
  */
 
 /*
@@ -43,6 +43,11 @@
 
 /* A default configuration for FreeBSD, used if there is no config.h. */
 #ifdef __FreeBSD__
+#if __FreeBSD__ > 4
+#define	HAVE_ACL_CREATE_ENTRY 1
+#define	HAVE_ACL_INIT 1
+#define	HAVE_ACL_SET_FILE 1
+#endif
 #define	HAVE_BZLIB_H 1
 #define	HAVE_CHFLAGS 1
 #define	HAVE_DECL_STRERROR_R 1
@@ -74,9 +79,7 @@
 #define	HAVE_STRRCHR 1
 #define	HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC 1
 #define	HAVE_STRUCT_STAT_ST_RDEV 1
-#if __FreeBSD__ > 4
 #define	HAVE_SYS_ACL_H 1
-#endif
 #define	HAVE_SYS_IOCTL_H 1
 #define	HAVE_SYS_STAT_H 1
 #define	HAVE_SYS_TIME_H 1
@@ -105,9 +108,19 @@
 #include <inttypes.h>
 #endif
 
-/* TODO: Test for the functions we use as well... */
-#if HAVE_SYS_ACL_H
-#define	HAVE_POSIX_ACLS	1
+/* FreeBSD 4 and earlier lack intmax_t/uintmax_t */
+#if defined(__FreeBSD__) && __FreeBSD__ < 5
+#define	intmax_t int64_t
+#define	uintmax_t uint64_t
+#endif
+
+/*
+ * If this platform has <sys/acl.h>, acl_create(), acl_init(), and
+ * acl_set_file(), we assume it has the rest of the POSIX.1e draft
+ * functions used in archive_read_extract.c.
+ */
+#if HAVE_SYS_ACL_H && HAVE_ACL_CREATE_ENTRY && HAVE_ACL_INIT && HAVE_ACL_SET_FILE
+#define	HAVE_POSIX_ACL	1
 #endif
 
 /* Set up defaults for internal error codes. */

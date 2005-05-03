@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_entry.h,v 1.12 2004/08/08 07:39:19 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_entry.h,v 1.13 2005/03/13 02:53:42 kientzle Exp $
  */
 
 #ifndef ARCHIVE_ENTRY_H_INCLUDED
@@ -112,6 +112,7 @@ void	archive_entry_set_link(struct archive_entry *, const char *);
 void	archive_entry_set_mode(struct archive_entry *, mode_t);
 void	archive_entry_set_mtime(struct archive_entry *, time_t, long);
 void	archive_entry_set_pathname(struct archive_entry *, const char *);
+void	archive_entry_copy_pathname(struct archive_entry *, const char *);
 void	archive_entry_copy_pathname_w(struct archive_entry *, const wchar_t *);
 void	archive_entry_set_rdevmajor(struct archive_entry *, dev_t);
 void	archive_entry_set_rdevminor(struct archive_entry *, dev_t);

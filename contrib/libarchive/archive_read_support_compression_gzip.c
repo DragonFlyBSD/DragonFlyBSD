@@ -26,7 +26,7 @@
 
 #include "archive_platform.h"
 
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_gzip.c,v 1.7 2004/08/14 03:45:45 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_gzip.c,v 1.9 2005/03/13 01:48:33 kientzle Exp $");
 
 
 #include <errno.h>
@@ -426,7 +426,7 @@ drive_decompressor(struct archive *a, struct private_data *state)
 				 */
 			case 11: /* Optional Extra: Second byte of Length. */
 				if ((flags & 4)) {
-					count = (count << 8) | (255 & (int)b);
+					count = (0xff00 & ((int)b << 8)) | count;
 					header_state = 12;
 					break;
 				}
@@ -512,6 +512,9 @@ drive_decompressor(struct archive *a, struct private_data *state)
 				return (ARCHIVE_OK);
 			default:
 				/* Any other return value is an error. */
+				archive_set_error(a, ARCHIVE_ERRNO_MISC,
+				    "gzip decompression failed (%s)",
+				    state->stream.msg);
 				goto fatal;
 			}
 		}

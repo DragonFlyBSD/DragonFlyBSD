@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_cpio.c,v 1.11 2004/08/14 03:45:45 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_cpio.c,v 1.13 2005/04/06 04:19:30 kientzle Exp $");
 
 #include <sys/stat.h>
 
@@ -142,6 +142,7 @@ archive_read_support_format_cpio(struct archive *a)
 	    archive_read_format_cpio_bid,
 	    archive_read_format_cpio_read_header,
 	    archive_read_format_cpio_read_data,
+	    NULL,
 	    archive_read_format_cpio_cleanup);
 
 	if (r != ARCHIVE_OK)
@@ -161,8 +162,11 @@ archive_read_format_cpio_bid(struct archive *a)
 	cpio = *(a->pformat_data);
 	bid = 0;
 	bytes_read = (a->compression_read_ahead)(a, &h, 6);
+	/* Convert error code into error return. */
+	if (bytes_read < 0)
+		return ((int)bytes_read);
 	if (bytes_read < 6)
-	    return (-1);
+		return (-1);
 
 	p = h;
 	if (memcmp(p, "070707", 6) == 0) {
