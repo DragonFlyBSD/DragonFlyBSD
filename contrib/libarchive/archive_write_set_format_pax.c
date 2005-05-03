@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_pax.c,v 1.19 2004/11/05 05:26:30 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_pax.c,v 1.26 2005/04/23 17:46:51 kientzle Exp $");
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -60,9 +60,8 @@ static int		 archive_write_pax_finish(struct archive *);
 static int		 archive_write_pax_finish_entry(struct archive *);
 static int		 archive_write_pax_header(struct archive *,
 			     struct archive_entry *);
-static char		*build_pax_attribute_name(const char *abbreviated,
-			     struct archive_string *work);
-static char		*build_ustar_entry_name(char *dest, const char *src);
+static char		*build_pax_attribute_name(char *dest, const char *src);
+static char		*build_ustar_entry_name(char *dest, const char *src, const char *insert);
 static char		*format_int(char *dest, int64_t);
 static int		 write_nulls(struct archive *, size_t);
 
@@ -314,17 +313,17 @@ archive_write_pax_header(struct archive *a,
 	struct archive_entry *entry_main;
 	const char *linkname, *p;
 	const char *hardlink;
-	const wchar_t *wp, *wp2, *wname_start;
-	int need_extension, oldstate, r, ret;
+	const wchar_t *wp, *wp2;
+	const char *suffix_start;
+	int need_extension, r, ret;
 	struct pax *pax;
 	const struct stat *st_main, *st_original;
 
-	struct archive_string pax_entry_name;
 	char paxbuff[512];
 	char ustarbuff[512];
 	char ustar_entry_name[256];
+	char pax_entry_name[256];
 
-	archive_string_init(&pax_entry_name);
 	need_extension = 0;
 	pax = a->format_data;
 	pax->written = 1;
@@ -368,11 +367,11 @@ archive_write_pax_header(struct archive *a,
 	 */
 	wp = archive_entry_pathname_w(entry_main);
 	p = archive_entry_pathname(entry_main);
-	if (wcslen(wp) <= 100)	/* Short enough for just 'name' field */
-		wname_start = wp;	/* Record a zero-length prefix */
+	if (strlen(p) <= 100)	/* Short enough for just 'name' field */
+		suffix_start = p;	/* Record a zero-length prefix */
 	else
 		/* Find the largest suffix that fits in 'name' field. */
-		wname_start = wcschr(wp + wcslen(wp) - 100 - 1, '/');
+		suffix_start = strchr(p + strlen(p) - 100 - 1, '/');
 
 	/* Find non-ASCII character, if any. */
 	wp2 = wp;
@@ -383,11 +382,10 @@ archive_write_pax_header(struct archive *a,
 	 * If name is too long, or has non-ASCII characters, add
 	 * 'path' to pax extended attrs.
 	 */
-	if (wname_start == NULL || wname_start - wp > 155 ||
-	    *wp2 != L'\0') {
+	if (suffix_start == NULL || suffix_start - p > 155 || *wp2 != L'\0') {
 		add_pax_attr_w(&(pax->pax_header), "path", wp);
 		archive_entry_set_pathname(entry_main,
-		    build_ustar_entry_name(ustar_entry_name, p));
+		    build_ustar_entry_name(ustar_entry_name, p, NULL));
 		need_extension = 1;
 	}
 
@@ -466,7 +464,17 @@ archive_write_pax_header(struct archive *a,
 		if (rdevmajor >= (1 << 18)) {
 			add_pax_attr_int(&(pax->pax_header), "SCHILY.devmajor",
 			    rdevmajor);
-			archive_entry_set_rdevmajor(entry_main, (1 << 18) - 1);
+			/*
+			 * Non-strict formatting below means we don't
+			 * have to truncate here.  Not truncating improves
+			 * the chance that some more modern tar archivers
+			 * (such as GNU tar 1.13) can restore the full
+			 * value even if they don't understand the pax
+			 * extended attributes.  See my rant below about
+			 * file size fields for additional details.
+			 */
+			/* archive_entry_set_rdevmajor(entry_main,
+			   rdevmajor & ((1 << 18) - 1)); */
 			need_extension = 1;
 		}
 
@@ -477,7 +485,9 @@ archive_write_pax_header(struct archive *a,
 		if (rdevminor >= (1 << 18)) {
 			add_pax_attr_int(&(pax->pax_header), "SCHILY.devminor",
 			    rdevminor);
-			archive_entry_set_rdevminor(entry_main, (1 << 18) - 1);
+			/* Truncation is not necessary here, either. */
+			/* archive_entry_set_rdevminor(entry_main,
+			   rdevminor & ((1 << 18) - 1)); */
 			need_extension = 1;
 		}
 	}
@@ -513,7 +523,7 @@ archive_write_pax_header(struct archive *a,
 	 * The following items are handled differently in "pax
 	 * restricted" format.  In particular, in "pax restricted"
 	 * format they won't be added unless need_extension is
-	 * already set (we're already generated an extended header, so
+	 * already set (we're already generating an extended header, so
 	 * may as well include these).
 	 */
 	if (a->archive_format != ARCHIVE_FORMAT_TAR_PAX_RESTRICTED ||
@@ -626,14 +636,12 @@ archive_write_pax_header(struct archive *a,
 	if (archive_strlen(&(pax->pax_header)) > 0) {
 		struct stat st;
 		struct archive_entry *pax_attr_entry;
-		const char *pax_attr_name;
 
 		memset(&st, 0, sizeof(st));
 		pax_attr_entry = archive_entry_new();
 		p = archive_entry_pathname(entry_main);
-		pax_attr_name = build_pax_attribute_name(p, &pax_entry_name);
-
-		archive_entry_set_pathname(pax_attr_entry, pax_attr_name);
+		archive_entry_set_pathname(pax_attr_entry,
+		    build_pax_attribute_name(pax_entry_name, p));
 		st.st_size = archive_strlen(&(pax->pax_header));
 		st.st_uid = st_main->st_uid;
 		if (st.st_uid >= 1 << 18)
@@ -653,11 +661,10 @@ archive_write_pax_header(struct archive *a,
 		    pax_attr_entry, 'x', 1);
 
 		archive_entry_free(pax_attr_entry);
-		archive_string_free(&pax_entry_name);
 
 		/* Note that the 'x' header shouldn't ever fail to format */
 		if (ret != 0) {
-			const char *msg = "archive_write_header_pax: "
+			const char *msg = "archive_write_pax_header: "
 			    "'x' header failed?!  This can't happen.\n";
 			write(2, msg, strlen(msg));
 			exit(1);
@@ -672,17 +679,19 @@ archive_write_pax_header(struct archive *a,
 		pax->entry_bytes_remaining = archive_strlen(&(pax->pax_header));
 		pax->entry_padding = 0x1ff & (- pax->entry_bytes_remaining);
 
-		oldstate = a->state;
-		a->state = ARCHIVE_STATE_DATA;
-		r = archive_write_data(a, pax->pax_header.s,
+		r = (a->compression_write)(a, pax->pax_header.s,
 		    archive_strlen(&(pax->pax_header)));
-		a->state = oldstate;
 		if (r != ARCHIVE_OK) {
 			/* If a write fails, we're pretty much toast. */
 			return (ARCHIVE_FATAL);
 		}
-
-		archive_write_pax_finish_entry(a);
+		/* Pad out the end of the entry. */
+		r = write_nulls(a, pax->entry_padding);
+		if (r != ARCHIVE_OK) {
+			/* If a write fails, we're pretty much toast. */
+			return (ARCHIVE_FATAL);
+		}
+		pax->entry_bytes_remaining = pax->entry_padding = 0;
 	}
 
 	/* Write the header for main entry. */
@@ -706,100 +715,198 @@ archive_write_pax_header(struct archive *a,
 /*
  * We need a valid name for the regular 'ustar' entry.  This routine
  * tries to hack something more-or-less reasonable.
+ *
+ * The approach here tries to preserve leading dir names.  We do so by
+ * working with four sections:
+ *   1) "prefix" directory names,
+ *   2) "suffix" directory names,
+ *   3) inserted dir name (optional),
+ *   4) filename.
+ *
+ * These sections must satisfy the following requirements:
+ *   * Parts 1 & 2 together form an initial portion of the dir name.
+ *   * Part 3 is specified by the caller.  (It should not contain a leading
+ *     or trailing '/'.)
+ *   * Part 4 forms an initial portion of the base filename.
+ *   * The filename must be <= 99 chars to fit the ustar 'name' field.
+ *   * Parts 2, 3, 4 together must be <= 99 chars to fit the ustar 'name' fld.
+ *   * Part 1 must be <= 155 chars to fit the ustar 'prefix' field.
+ *   * If the original name ends in a '/', the new name must also end in a '/'
+ *   * Trailing '/.' sequences may be stripped.
+ *
+ * Note: Recall that the ustar format does not store the '/' separating
+ * parts 1 & 2, but does store the '/' separating parts 2 & 3.
  */
 static char *
-build_ustar_entry_name(char *dest, const char *src)
+build_ustar_entry_name(char *dest, const char *src, const char *insert)
 {
-	const char *basename, *break_point, *prefix;
-	int basename_length, dirname_length, prefix_length;
+	const char *prefix, *prefix_end;
+	const char *suffix, *suffix_end;
+	const char *filename, *filename_end;
+	char *p;
+	size_t s;
+	int need_slash = 0; /* Was there a trailing slash? */
+	size_t suffix_length = 99;
+	int insert_length;
 
-	prefix = src;
-	basename = strrchr(src, '/');
-	if (basename == NULL) {
-		basename = src;
-		prefix_length = 0;
-		basename_length = strlen(basename);
-		if (basename_length > 100)
-			basename_length = 100;
-	} else {
-		basename_length = strlen(basename);
-		if (basename_length > 100)
-			basename_length = 100;
-		dirname_length = basename - src;
+	/* Length of additional dir element to be added. */
+	if (insert == NULL)
+		insert_length = 0;
+	else
+		/* +2 here allows for '/' before and after the insert. */
+		insert_length = strlen(insert) + 2;
 
-		break_point =
-		    strchr(src + dirname_length + basename_length - 101, '/');
-		prefix_length = break_point - prefix - 1;
-		while (prefix_length > 155) {
-			prefix = strchr(prefix, '/') + 1; /* Drop 1st dir. */
-			prefix_length = break_point - prefix - 1;
-		}
+	/* Step 0: Quick bailout in a common case. */
+	s = strlen(src);
+	if (s < 100 && insert == NULL) {
+		strcpy(dest, src);
+		return (dest);
 	}
 
+	/* Step 1: Locate filename and enforce the length restriction. */
+	filename_end = src + s;
+	/* Remove trailing '/' chars and '/.' pairs. */
+	for (;;) {
+		if (filename_end > src && filename_end[-1] == '/') {
+			filename_end --;
+			need_slash = 1; /* Remember to restore trailing '/'. */
+			continue;
+		}
+		if (filename_end > src + 1 && filename_end[-1] == '.'
+		    && filename_end[-2] == '/') {
+			filename_end -= 2;
+			need_slash = 1; /* "foo/." will become "foo/" */
+			continue;
+		}
+		break;
+	}
+	if (need_slash)
+		suffix_length--;
+	/* Find start of filename. */
+	filename = filename_end - 1;
+	while ((filename > src) && (*filename != '/'))
+		filename --;
+	if ((*filename == '/') && (filename < filename_end - 1))
+		filename ++;
+	/* Adjust filename_end so that filename + insert fits in 99 chars. */
+	suffix_length -= insert_length;
+	if (filename_end > filename + suffix_length)
+		filename_end = filename + suffix_length;
+	/* Calculate max size for "suffix" section (#3 above). */
+	suffix_length -= filename_end - filename;
+
+	/* Step 2: Locate the "prefix" section of the dirname, including
+	 * trailing '/'. */
+	prefix = src;
+	prefix_end = prefix + 155;
+	if (prefix_end > filename)
+		prefix_end = filename;
+	while (prefix_end > prefix && *prefix_end != '/')
+		prefix_end--;
+	if ((prefix_end < filename) && (*prefix_end == '/'))
+		prefix_end++;
+
+	/* Step 3: Locate the "suffix" section of the dirname,
+	 * including trailing '/'. */
+	suffix = prefix_end;
+	suffix_end = suffix + suffix_length; /* Enforce limit. */
+	if (suffix_end > filename)
+		suffix_end = filename;
+	if (suffix_end < suffix)
+		suffix_end = suffix;
+	while (suffix_end > suffix && *suffix_end != '/')
+		suffix_end--;
+	if ((suffix_end < filename) && (*suffix_end == '/'))
+		suffix_end++;
+
+	/* Step 4: Build the new name. */
 	/* The OpenBSD strlcpy function is safer, but less portable. */
 	/* Rather than maintain two versions, just use the strncpy version. */
-	strncpy(dest, prefix, basename - prefix + basename_length);
-	dest[basename - prefix + basename_length] = '\0';
+	p = dest;
+	if (prefix_end > prefix) {
+		strncpy(p, prefix, prefix_end - prefix);
+		p += prefix_end - prefix;
+	}
+	if (suffix_end > suffix) {
+		strncpy(p, suffix, suffix_end - suffix);
+		p += suffix_end - suffix;
+	}
+	if (insert != NULL) {
+		if (prefix_end > prefix || suffix_end > suffix)
+			*p++ = '/';
+		strcpy(p, insert);
+		p += strlen(insert);
+		*p++ = '/';
+	}
+	strncpy(p, filename, filename_end - filename);
+	p += filename_end - filename;
+	if (need_slash)
+		*p++ = '/';
+	*p++ = '\0';
 
 	return (dest);
 }
 
 /*
  * The ustar header for the pax extended attributes must have a
- * reasonable name:  SUSv3 suggests 'dirname'/PaxHeaders/'basename'
+ * reasonable name:  SUSv3 suggests 'dirname'/PaxHeader/'filename'
  *
  * Joerg Schiling has argued that this is unnecessary because, in practice,
  * if the pax extended attributes get extracted as regular files, noone is
  * going to bother reading those attributes to manually restore them.
- * This is a tempting argument, but I'm not entirely convinced.
+ * Based on this, 'star' uses /tmp/PaxHeader/'basename' as the ustar header
+ * name.  This is a tempting argument, but I'm not entirely convinced.
+ * I'm also uncomfortable with the fact that "/tmp" is a Unix-ism.
  *
- * Of course, adding "PaxHeaders/" might force the name to be too big.
- * Here, I start from the (possibly already-trimmed) name used in the
- * main ustar header and delete some additional early path elements to
- * fit in the extra "PaxHeader/" part.
+ * The following routine implements the SUSv3 recommendation, and is
+ * much simpler because build_ustar_entry_name() above already does
+ * most of the work (we just need to give it an extra path element to
+ * insert and handle a few pathological cases).
  */
 static char *
-build_pax_attribute_name(const char *abbreviated, /* ustar-compat name */
-    struct archive_string *work)
+build_pax_attribute_name(char *dest, const char *src)
 {
-	const char *basename, *break_point, *prefix;
-	int prefix_length, suffix_length;
+	char *p;
 
-	/*
-	 * This is much simpler because I know that "abbreviated" is
-	 * already small enough; I just need to determine if it needs
-	 * any further trimming to fit the "PaxHeader/" portion.
-	 */
+	/* Handle the null filename case. */
+	if (src == NULL || *src == '\0') {
+		strcpy(dest, "PaxHeader/blank");
+		return (dest);
+	}
 
-	/* Identify the final prefix and suffix portions. */
-	prefix = abbreviated;	/* First guess: prefix starts at beginning */
-	if (strlen(abbreviated) > 100) {
-		break_point = strchr(prefix + strlen(prefix) - 101, '/');
-		prefix_length = break_point - prefix - 1;
-		suffix_length = strlen(break_point + 1);
-		/*
-		 * The next loop keeps trimming until "/PaxHeader/" can
-		 * be added to either the prefix or the suffix.
-		 */
-		while (prefix_length > 144 && suffix_length > 89) {
-			prefix = strchr(prefix, '/') + 1; /* Drop 1st dir. */
-			prefix_length = break_point - prefix - 1;
+	/* Prune final '/' and other unwanted final elements. */
+	p = dest + strlen(dest);
+	for (;;) {
+		/* Ends in "/", remove the '/' */
+		if (p > dest && p[-1] == '/') {
+			*--p = '\0';
+			continue;
 		}
+		/* Ends in "/.", remove the '.' */
+		if (p > dest + 1 && p[-1] == '.'
+		    && p[-2] == '/') {
+			*--p = '\0';
+			continue;
+		}
+		break;
 	}
 
-	archive_string_empty(work);
-	basename = strrchr(prefix, '/');
-	if (basename == NULL) {
-		archive_strcpy(work, "PaxHeader/");
-		archive_strcat(work, prefix);
-	} else {
-		basename++;
-		archive_strncpy(work, prefix, basename - prefix);
-		archive_strcat(work, "PaxHeader/");
-		archive_strcat(work, basename);
+	/* Pathological case: After above, there was nothing left. */
+	if (p == dest) {
+		strcpy(dest, "/PaxHeader/rootdir");
+		return (dest);
 	}
 
-	return (work->s);
+	/* Convert unadorned "." into "dot" */
+	if (*src == '.' && src[1] == '\0') {
+		strcpy(dest, "PaxHeader/currentdir");
+		return (dest);
+	}
+
+	/* General case: build a ustar-compatible name adding "/PaxHeader/". */
+	build_ustar_entry_name(dest, src, "PaxHeader");
+
+	return (dest);
 }
 
 /* Write two null blocks for the end of archive */

@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_private.h,v 1.16 2004/11/06 05:25:53 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_private.h,v 1.17 2005/04/06 04:19:30 kientzle Exp $
  */
 
 #ifndef ARCHIVE_PRIVATE_H_INCLUDED
@@ -156,6 +156,7 @@ struct archive {
 		int	(*bid)(struct archive *);
 		int	(*read_header)(struct archive *, struct archive_entry *);
 		int	(*read_data)(struct archive *, const void **, size_t *, off_t *);
+		int	(*read_data_skip)(struct archive *);
 		int	(*cleanup)(struct archive *);
 		void	 *format_data;	/* Format-specific data for readers. */
 	}	formats[4];
@@ -229,6 +230,7 @@ int	__archive_read_register_format(struct archive *a,
 	    int (*bid)(struct archive *),
 	    int (*read_header)(struct archive *, struct archive_entry *),
 	    int (*read_data)(struct archive *, const void **, size_t *, off_t *),
+	    int (*read_data_skip)(struct archive *),
 	    int (*cleanup)(struct archive *));
 
 int	__archive_read_register_compression(struct archive *a,

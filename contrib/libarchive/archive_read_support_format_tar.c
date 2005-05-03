@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.28 2004/10/27 05:15:23 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.32 2005/04/06 04:19:30 kientzle Exp $");
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -33,6 +33,7 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.28 
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
 #include "archive.h"
 #include "archive_entry.h"
@@ -215,6 +216,7 @@ archive_read_support_format_tar(struct archive *a)
 	    archive_read_format_tar_bid,
 	    archive_read_format_tar_read_header,
 	    archive_read_format_tar_read_data,
+	    NULL,
 	    archive_read_format_tar_cleanup);
 
 	if (r != ARCHIVE_OK)
@@ -295,8 +297,14 @@ archive_read_format_tar_bid(struct archive *a)
 	}
 
 	/* If it's an end-of-archive mark, we can handle it. */
-	if ((*(const char *)h) == 0 && archive_block_is_null(h))
-		return (bid + 1);
+	if ((*(const char *)h) == 0 && archive_block_is_null(h)) {
+		/* If it's a known tar file, end-of-archive is definite. */
+		if ((a->archive_format & ARCHIVE_FORMAT_BASE_MASK) ==
+		    ARCHIVE_FORMAT_TAR)
+			return (512);
+		/* Empty archive? */
+		return (1);
+	}
 
 	/* If it's not an end-of-archive mark, it must have a valid checksum.*/
 	if (!checksum(a, h))
@@ -321,6 +329,7 @@ archive_read_format_tar_bid(struct archive *a)
 	    !( header->typeflag[0] >= 'A' && header->typeflag[0] <= 'Z') &&
 	    !( header->typeflag[0] >= 'a' && header->typeflag[0] <= 'z') )
 		return (0);
+	bid += 2;  /* 6 bits of variation in an 8-bit field leaves 2 bits. */
 
 	/* Sanity check: Look at first byte of mode field. */
 	switch (255 & (unsigned)header->mode[0]) {
@@ -1012,8 +1021,11 @@ pax_header(struct archive *a, struct tar *tar, struct archive_entry *entry,
 				return (-1);
 			line_length *= 10;
 			line_length += *p - '0';
-			if (line_length > 999999)
-				return (-1);
+			if (line_length > 999999) {
+				archive_set_error(a, ARCHIVE_ERRNO_MISC,
+				    "Rejecting pax extended attribute > 1MB");
+				return (ARCHIVE_WARN);
+			}
 			p++;
 			l--;
 		}

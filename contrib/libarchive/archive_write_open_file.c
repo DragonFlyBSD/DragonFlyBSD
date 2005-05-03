@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_open_file.c,v 1.8 2004/10/17 23:47:30 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_open_file.c,v 1.11 2005/03/13 01:47:31 kientzle Exp $");
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -51,13 +51,13 @@ archive_write_open_file(struct archive *a, const char *filename)
 {
 	struct write_file_data *mine;
 
-	if (filename == NULL) {
+	if (filename == NULL || filename[0] == '\0') {
 		mine = malloc(sizeof(*mine));
 		if (mine == NULL) {
 			archive_set_error(a, ENOMEM, "No memory");
 			return (ARCHIVE_FATAL);
 		}
-		mine->filename[0] = 0;
+		mine->filename[0] = '\0'; /* Record that we're using stdout. */
 	} else {
 		mine = malloc(sizeof(*mine) + strlen(filename));
 		if (mine == NULL) {
@@ -82,7 +82,7 @@ file_open(struct archive *a, void *client_data)
 	mine = client_data;
 	flags = O_WRONLY | O_CREAT | O_TRUNC;
 
-	if (*mine->filename != 0) {
+	if (mine->filename[0] != '\0') {
 		mine->fd = open(mine->filename, flags, 0666);
 
 		/*
@@ -125,8 +125,15 @@ file_open(struct archive *a, void *client_data)
 		return (ARCHIVE_FATAL);
 	}
 
-	a->skip_file_dev = pst->st_dev;
-	a->skip_file_ino = pst->st_ino;
+	/*
+	 * If the output file is a regular file, don't add it to
+	 * itself.  If it's a device file, it's okay to add the device
+	 * entry to the output archive.
+	 */
+	if (S_ISREG(pst->st_mode)) {
+		a->skip_file_dev = pst->st_dev;
+		a->skip_file_ino = pst->st_ino;
+	}
 
 	return (ARCHIVE_OK);
 }
@@ -152,7 +159,7 @@ file_close(struct archive *a, void *client_data)
 	struct write_file_data	*mine = client_data;
 
 	(void)a; /* UNUSED */
-	if (mine->fd >= 0)
+	if (mine->filename[0] != '\0')
 		close(mine->fd);
 	free(mine);
 	return (ARCHIVE_OK);

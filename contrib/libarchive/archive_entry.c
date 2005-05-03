@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.23 2004/08/08 07:39:19 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.25 2005/03/13 02:53:42 kientzle Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -598,6 +598,12 @@ archive_entry_set_pathname(struct archive_entry *entry, const char *name)
 }
 
 void
+archive_entry_copy_pathname(struct archive_entry *entry, const char *name)
+{
+	aes_copy_mbs(&entry->ae_pathname, name);
+}
+
+void
 archive_entry_copy_pathname_w(struct archive_entry *entry, const wchar_t *name)
 {
 	aes_copy_wcs(&entry->ae_pathname, name);
@@ -609,7 +615,7 @@ archive_entry_set_rdevmajor(struct archive_entry *entry, dev_t m)
 	dev_t d;
 
 	d = entry->ae_stat.st_rdev;
-	entry->ae_stat.st_rdev = makedev(m, minor(d));
+	entry->ae_stat.st_rdev = makedev(major(m), minor(d));
 }
 
 void
@@ -618,7 +624,7 @@ archive_entry_set_rdevminor(struct archive_entry *entry, dev_t m)
 	dev_t d;
 
 	d = entry->ae_stat.st_rdev;
-	entry->ae_stat.st_rdev = makedev( major(d), m);
+	entry->ae_stat.st_rdev = makedev(major(d), minor(m));
 }
 
 void
