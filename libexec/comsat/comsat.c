@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)comsat.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/comsat/comsat.c,v 1.13.2.1 2002/08/09 02:56:30 johan Exp $
- * $DragonFly: src/libexec/comsat/comsat.c,v 1.4 2005/05/03 17:22:01 liamfoy Exp $
+ * $DragonFly: src/libexec/comsat/comsat.c,v 1.5 2005/05/03 17:32:23 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -145,7 +145,7 @@ onalrm(int signo __unused)
 		if (statbf.st_size > utmpsize) {
 			utmpsize = statbf.st_size + 10 * sizeof(struct utmp);
 			if ((utmp = realloc(utmp, utmpsize)) == NULL) {
-				syslog(LOG_ERR, "%s", strerror(errno));
+				syslog(LOG_ERR, "realloc: %m");
 				exit(1);
 			}
 		}
