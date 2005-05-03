@@ -1,10 +1,10 @@
 # $FreeBSD: src/gnu/lib/libregex/Makefile,v 1.22.2.1 2002/07/22 14:21:45 ru Exp $
-# $DragonFly: src/gnu/lib/libregex/Makefile,v 1.3 2005/04/21 13:42:33 joerg Exp $
+# $DragonFly: src/gnu/lib/libregex/Makefile,v 1.4 2005/05/03 07:19:03 joerg Exp $
 
 SUBDIR+= doc
 
 LIB=		gnuregex
-SHLIB_MAJOR=	2
+SHLIB_MAJOR=	3
 
 SRCS=	regex.c
 INCS=	regex.h
