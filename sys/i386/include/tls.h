@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.2 2005/03/29 23:04:36 joerg Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.3 2005/05/03 18:25:13 joerg Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_
@@ -52,6 +52,7 @@ struct tls_dtv {
 #define	RTLD_TCB_HAS_SELF_POINTER
 #define	RTLD_STATIC_TLS_ALIGN           16
 #define	RTLD_STATIC_TLS_ALIGN_MASK      (RTLD_STATIC_TLS_ALIGN - 1)
+#define	RTLD_STATIC_TLS_EXTRA		256
 #define RTLD_STATIC_TLS_VARIANT_II
 
 /* Get the current TCB. */
