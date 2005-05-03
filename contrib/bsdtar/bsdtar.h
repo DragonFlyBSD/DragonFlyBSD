@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/tar/bsdtar.h,v 1.20 2004/08/08 05:50:10 kientzle Exp $
+ * $FreeBSD: src/usr.bin/tar/bsdtar.h,v 1.23 2005/04/17 17:20:54 kientzle Exp $
  */
 
 #include <archive.h>
@@ -48,9 +48,14 @@ struct bsdtar {
 	const char	 *create_format; /* -F format */
 	char		 *pending_chdir; /* -C dir */
 	const char	 *names_from_file; /* -T file */
+	time_t		  newer_ctime_sec; /* --newer/--newer-than */
+	long		  newer_ctime_nsec; /* --newer/--newer-than */
+	time_t		  newer_mtime_sec; /* --newer-mtime */
+	long		  newer_mtime_nsec; /* --newer-mtime-than */
 	int		  bytes_per_block; /* -b block_size */
 	int		  verbose;   /* -v */
 	int		  extract_flags; /* Flags for extract operation */
+	int		  strip_components; /* Remove this many leading dirs */
 	char		  mode; /* Program mode: 'c', 't', 'r', 'u', 'x' */
 	char		  symlink_mode; /* H or L, per BSD conventions */
 	char		  create_compression; /* j, y, or z */
@@ -101,6 +106,7 @@ void	bsdtar_strmode(struct archive_entry *entry, char *bp);
 void	bsdtar_warnc(struct bsdtar *, int _code, const char *fmt, ...);
 void	cleanup_exclusions(struct bsdtar *);
 void	do_chdir(struct bsdtar *);
+int	edit_pathname(struct bsdtar *, struct archive_entry *);
 int	exclude(struct bsdtar *, const char *pattern);
 int	exclude_from_file(struct bsdtar *, const char *pathname);
 int	excluded(struct bsdtar *, const char *pathname);

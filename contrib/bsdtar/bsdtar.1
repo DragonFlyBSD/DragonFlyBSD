@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/tar/bsdtar.1,v 1.21 2004/08/27 04:19:28 kientzle Exp $
+.\" $FreeBSD: src/usr.bin/tar/bsdtar.1,v 1.28 2005/04/19 16:06:04 murray Exp $
 .\"
 .Dd April 13, 2004
 .Dt BSDTAR 1
@@ -104,7 +104,8 @@ is read and parsed before the archive is opened.
 The pathnames or patterns on the command line indicate
 which items in the archive should be processed.
 Patterns are shell-style globbing patterns as
-documented in XXXX.
+documented in
+.Xr tcsh 1 .
 .Sh OPTIONS
 Unless specifically stated otherwise, options are applicable in
 all operating modes.
@@ -185,6 +186,9 @@ target of the link will be archived, not the link itself.
 (c and r mode only)
 Synonym for
 .Fl L .
+.It Fl I
+Synonym for
+.Fl T .
 .It Fl -include Ar pattern ( Fl W Cm include Ns = Ns Ar pattern )
 Process only files or directories that match the specified pattern.
 Note that exclusions specified with
@@ -240,9 +244,39 @@ By default, the modification time is set to the time stored in the archive.
 .It Fl n
 (c, r, u modes only)
 Do not recursively archive the contents of directories.
+.It Fl -newer Ar date ( Fl W Cm newer Ns = Ns Ar date )
+(c, r, u modes only)
+Only include files and directories newer than the specified date.
+This compares ctime entries.
+.It Fl -newer-mtime Ar date ( Fl W Cm newer-mtime Ns = Ns Ar date )
+(c, r, u modes only)
+Like
+.Fl -newer ,
+except it compares mtime entries instead of ctime entries.
+.It Fl -newer-than Pa file ( Fl W Cm newer-than Ns = Ns Pa file )
+(c, r, u modes only)
+Only include files and directories newer than the specified file.
+This compares ctime entries.
+.It Fl -newer-mtime-than Pa file ( Fl W Cm newer-mtime-than Ns = Ns Pa file )
+(c, r, u modes only)
+Like
+.Fl -newer-than ,
+except it compares mtime entries instead of ctime entries.
 .It Fl -nodump ( Fl W Cm nodump )
 (c and r modes only)
 Honor the nodump file flag by skipping this file.
+.It Fl -null ( Fl W Cm null )
+(use with
+.Fl I ,
+.Fl T ,
+or
+.Fl X )
+Filenames or patterns are separated by null characters,
+not by newlines.
+This is often used to read filenames output by the
+.Fl print0
+option to
+.Xr find 1 .
 .It Fl O
 (x, t modes only)
 In extract (-x) mode, files will be written to standard out rather than
@@ -259,6 +293,9 @@ is specified, and the program is being run by the root user.
 In this case, the file modes and flags from
 the archive will be restored, but ACLs or owner information in
 the archive will be discarded.
+.It Fl -one-file-system ( Fl W Cm one-file-system )
+(c, r, and u modes)
+Do not cross mount points.
 .It Fl P
 Preserve pathnames.
 By default, absolute pathnames (those that begin with a /
@@ -284,15 +321,32 @@ If
 is being run by root, the default is to restore the owner unless the
 .Fl o
 option is also specified.
+.It Fl -strip-components Ar count ( Fl W Cm strip-components Ns = Ns Ar count )
+(x and t mode only)
+Remove the specified number of leading path elements.
+Pathnames with fewer elements will be silently skipped.
+Note that the pathname is edited after checking inclusion/exclusion patterns
+but before security checks.
 .It Fl T Ar filename
-(c mode only)
-Read names to be archived from
+In x or t mode,
+.Nm
+will read the list of names to be extracted from
 .Pa filename .
-Names are terminated by newlines.
+In c mode,
+.Nm
+will read names to be archived from
+.Pa filename .
 The special name
 .Dq -C
-will cause the current directory to be changed to the directory
-specified on the following line.
+on a line by itself will cause the current directory to be changed to
+the directory specified on the following line.
+Names are terminated by newlines unless
+.Fl -null
+is specified.
+Note that
+.Fl -null
+also disables the special handling of lines containing
+.Dq -C .
 .It Fl U
 (x mode only)
 Unlink files before creating them.
@@ -350,47 +404,6 @@ Note that, unlike other
 implementations, this implementation recognizes gzip compression
 automatically when reading archives.
 .El
-.Sh EXAMPLES
-The following creates a new archive
-called
-.Ar file.tar
-that contains two files
-.Ar source.c
-and
-.Ar source.h :
-.Dl Nm Fl czf Pa file.tar Pa source.c Pa source.h
-.Pp
-To view a detailed table of contents for this
-archive:
-.Dl Nm Fl tvf Pa file.tar
-.Pp
-To extract all entries from the archive on
-the default tape drive:
-.Dl Nm Fl x
-.Pp
-In create mode, the list of files and directories to be archived
-can also include directory change instructions of the form
-.Cm -C Ns Pa foo/baz
-and archive inclusions of the form
-.Cm @ Ns Pa archive-file .
-For example, the command line
-.Dl Nm Fl c Fl f Pa new.tar Pa foo1 Cm @ Ns Pa old.tgz Cm -C Ns Pa /tmp Pa foo2
-will create a new archive
-.Pa new.tar .
-.Nm
-will read the file
-.Pa foo1
-from the current directory and add it to the output archive.
-It will then read each entry from
-.Pa old.tgz
-and add those entries to the output archive.
-Finally, it will switch to the
-.Pa /tmp
-directory and add
-.Pa foo2
-to the output archive.
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
@@ -425,6 +438,65 @@ environment variable or the
 .Fl f
 option.
 .El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+The following creates a new archive
+called
+.Ar file.tar
+that contains two files
+.Ar source.c
+and
+.Ar source.h :
+.Dl Nm Fl czf Pa file.tar Pa source.c Pa source.h
+.Pp
+To view a detailed table of contents for this
+archive:
+.Dl Nm Fl tvf Pa file.tar
+.Pp
+To extract all entries from the archive on
+the default tape drive:
+.Dl Nm Fl x
+.Pp
+To move file hierarchies, invoke
+.Nm
+as
+.Dl Nm Fl cf Pa - Fl C Pa srcdir\ . | Nm Fl xpBf Pa - Fl C Pa destdir
+or more traditionally
+.Dl cd srcdir \; Nm Fl cf Pa -\ . | ( cd destdir \; Nm Fl xpBf Pa - )
+.Pp
+In create mode, the list of files and directories to be archived
+can also include directory change instructions of the form
+.Cm -C Ns Pa foo/baz
+and archive inclusions of the form
+.Cm @ Ns Pa archive-file .
+For example, the command line
+.Dl Nm Fl c Fl f Pa new.tar Pa foo1 Cm @ Ns Pa old.tgz Cm -C Ns Pa /tmp Pa foo2
+will create a new archive
+.Pa new.tar .
+.Nm
+will read the file
+.Pa foo1
+from the current directory and add it to the output archive.
+It will then read each entry from
+.Pa old.tgz
+and add those entries to the output archive.
+Finally, it will switch to the
+.Pa /tmp
+directory and add
+.Pa foo2
+to the output archive.
+.Pp
+The
+.Fl -newer
+and
+.Fl -newer-mtime
+switches accept a variety of common date and time specifications, including
+.Dq 12 Mar 2005 7:14:29pm ,
+.Dq 2005-03-12 19:14 ,
+.Dq 5 minutes ago ,
+and
+.Dq 19:14 PST May 1 .
 .Sh COMPATIBILITY
 The bundled-arguments format is supported for compatibility
 with historic implementations.
@@ -577,6 +649,22 @@ for tar and the current POSIX specification for pax.
 The ustar and pax interchange file formats are defined by
 .St -p1003.1-2001
 for the pax command.
+.Sh HISTORY
+A
+.Nm tar
+command appeared in Seventh Edition Unix.
+There have been numerous other implementations,
+many of which extended the file format.
+John Gilmore's
+.Nm pdtar
+public-domain implementation (circa November, 1987)
+was quite influential, and formed the basis of GNU tar.
+GNU tar was included as the standard system tar
+in FreeBSD beginning with FreeBSD 1.0.
+.Pp
+This is a complete re-implementation based on the
+.Xr libarchive 3
+library.
 .Sh BUGS
 POSIX and GNU violently disagree about the meaning of the
 .Fl l
@@ -664,19 +752,3 @@ formats store hardlink information.)
 .Pp
 There are alternative long options for many of the short options that
 are deliberately not documented.
-.Sh HISTORY
-A
-.Nm tar
-command appeared in Seventh Edition Unix.
-There have been numerous other implementations,
-many of which extended the file format.
-John Gilmore's
-.Nm pdtar
-public-domain implementation (circa November, 1987)
-was quite influential, and formed the basis of GNU tar.
-GNU tar was included as the standard system tar
-in FreeBSD beginning with FreeBSD 1.0.
-.Pp
-This is a complete re-implementation based on the
-.Xr libarchive 3
-library.

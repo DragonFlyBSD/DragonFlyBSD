@@ -25,7 +25,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.35 2004/11/05 05:39:37 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.40 2005/04/24 05:53:37 kientzle Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -37,7 +37,6 @@ __FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.35 2004/11/05 05:39:37 kientzle 
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
-#include <fts.h>
 #include <grp.h>
 #include <limits.h>
 #include <pwd.h>
@@ -45,12 +44,13 @@ __FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.35 2004/11/05 05:39:37 kientzle 
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef linux
+#ifdef __linux
 #include <ext2fs/ext2_fs.h>
 #include <sys/ioctl.h>
 #endif
 
 #include "bsdtar.h"
+#include "tree.h"
 
 /* Fixed size of uname/gname caches. */
 #define	name_cache_size 101
@@ -116,17 +116,17 @@ static const char *	 lookup_uname(struct bsdtar *bsdtar, uid_t uid);
 static int		 lookup_uname_helper(struct bsdtar *bsdtar,
 			     const char **name, id_t uid);
 static int		 new_enough(struct bsdtar *, const char *path,
-			     time_t mtime_sec, int mtime_nsec);
+			     const struct stat *);
 static void		 setup_acls(struct bsdtar *, struct archive_entry *,
 			     const char *path);
 static void		 test_for_append(struct bsdtar *);
 static void		 write_archive(struct archive *, struct bsdtar *);
 static void		 write_entry(struct bsdtar *, struct archive *,
-			     struct stat *, const char *pathname,
+			     const struct stat *, const char *pathname,
 			     unsigned pathlen, const char *accpath);
 static int		 write_file_data(struct bsdtar *, struct archive *,
 			     int fd);
-static void		 write_heirarchy(struct bsdtar *, struct archive *,
+static void		 write_hierarchy(struct bsdtar *, struct archive *,
 			     const char *);
 
 void
@@ -393,7 +393,7 @@ write_archive(struct archive *a, struct bsdtar *bsdtar)
 				if (append_archive(bsdtar, a, arg + 1) != 0)
 					break;
 			} else
-				write_heirarchy(bsdtar, a, arg);
+				write_hierarchy(bsdtar, a, arg);
 		}
 		bsdtar->argv++;
 	}
@@ -434,7 +434,7 @@ archive_names_from_file_helper(struct bsdtar *bsdtar, const char *line)
 	else {
 		if (*line != '/')
 			do_chdir(bsdtar); /* Handle a deferred -C */
-		write_heirarchy(bsdtar, bsdtar->archive, line);
+		write_hierarchy(bsdtar, bsdtar->archive, line);
 	}
 	return (0);
 }
@@ -466,8 +466,7 @@ append_archive(struct bsdtar *bsdtar, struct archive *a, const char *filename)
 	}
 	while (0 == archive_read_next_header(ina, &in_entry)) {
 		if (!new_enough(bsdtar, archive_entry_pathname(in_entry),
-			archive_entry_mtime(in_entry),
-			archive_entry_mtime_nsec(in_entry)))
+			archive_entry_stat(in_entry)))
 			continue;
 		if (excluded(bsdtar, archive_entry_pathname(in_entry)))
 			continue;
@@ -510,224 +509,164 @@ append_archive(struct bsdtar *bsdtar, struct archive *a, const char *filename)
 }
 
 /*
- * Add the file or dir heirarchy named by 'path' to the archive
+ * Add the file or dir hierarchy named by 'path' to the archive
  */
 static void
-write_heirarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
+write_hierarchy(struct bsdtar *bsdtar, struct archive *a, const char *path)
 {
-	FTS	*fts;
-	FTSENT	*ftsent;
-	int	 ftsoptions;
-	char	*fts_argv[2];
-#ifdef linux
+	struct tree *tree;
+	char symlink_mode = bsdtar->symlink_mode;
+	dev_t first_dev = 0;
+	int dev_recorded = 0;
+	int tree_ret;
+#ifdef __linux
 	int	 fd, r;
 	unsigned long fflags;
 #endif
 
-	/*
-	 * Sigh: fts_open modifies it's first parameter, so we have to
-	 * copy 'path' to mutable storage.
-	 */
-	fts_argv[0] = strdup(path);
-	if (fts_argv[0] == NULL)
-		bsdtar_errc(bsdtar, 1, ENOMEM, "Can't open %s", path);
-	fts_argv[1] = NULL;
-	ftsoptions = FTS_PHYSICAL;
-	switch (bsdtar->symlink_mode) {
-	case 'H':
-		ftsoptions |= FTS_COMFOLLOW;
-		break;
-	case 'L':
-		ftsoptions = FTS_COMFOLLOW | FTS_LOGICAL;
-		break;
-	}
-	if (bsdtar->option_dont_traverse_mounts)
-		ftsoptions |= FTS_XDEV;
+	tree = tree_open(path);
 
-	fts = fts_open(fts_argv, ftsoptions, NULL);
-
-
-	if (!fts) {
+	if (!tree) {
 		bsdtar_warnc(bsdtar, errno, "%s: Cannot open", path);
 		bsdtar->return_value = 1;
 		return;
 	}
 
-	while ((ftsent = fts_read(fts))) {
-		switch (ftsent->fts_info) {
-		case FTS_NS:
-			bsdtar_warnc(bsdtar, ftsent->fts_errno,
-			    "%s: Could not stat", ftsent->fts_path);
+	while ((tree_ret = tree_next(tree))) {
+		const char *name = tree_current_path(tree);
+		const struct stat *st = NULL, *lst = NULL;
+		int descend;
+
+		if (tree_ret == TREE_ERROR)
+			bsdtar_warnc(bsdtar, errno, "%s", name);
+		if (tree_ret != TREE_REGULAR)
+			continue;
+		lst = tree_current_lstat(tree);
+		if (lst == NULL) {
+			/* Couldn't lstat(); must not exist. */
+			bsdtar_warnc(bsdtar, errno, "%s: Cannot open", path);
 			bsdtar->return_value = 1;
-			break;
-		case FTS_ERR:
-			bsdtar_warnc(bsdtar, ftsent->fts_errno, "%s",
-			    ftsent->fts_path);
-			bsdtar->return_value = 1;
-			break;
-		case FTS_DNR:
-			bsdtar_warnc(bsdtar, ftsent->fts_errno,
-			    "%s: Cannot read directory contents",
-			    ftsent->fts_path);
-			bsdtar->return_value = 1;
-			break;
-		case FTS_W:  /* Skip Whiteout entries */
-			break;
-		case FTS_DC: /* Directory that causes cycle */
-			/* XXX Does this need special handling ? */
-			break;
-		case FTS_D:
-			/*
-			 * If this dir is flagged "nodump" and we're
-			 * honoring such flags, tell FTS to skip the
-			 * entire tree and don't write the entry for the
-			 * directory itself.
-			 */
+			continue;
+		}
+		if (S_ISLNK(lst->st_mode))
+			st = tree_current_stat(tree);
+		/* Default: descend into any dir or symlink to dir. */
+		/* We'll adjust this later on. */
+		descend = 0;
+		if ((st != NULL) && S_ISDIR(st->st_mode))
+			descend = 1;
+		if ((lst != NULL) && S_ISDIR(lst->st_mode))
+			descend = 1;
+
+		/*
+		 * If user has asked us not to cross mount points,
+		 * then don't descend into into a dir on a different
+		 * device.
+		 */
+		if (!dev_recorded) {
+			first_dev = lst->st_dev;
+			dev_recorded = 1;
+		}
+		if (bsdtar->option_dont_traverse_mounts) {
+			if (lst != NULL && lst->st_dev != first_dev)
+				descend = 0;
+		}
+
+		/*
+		 * If this file/dir is flagged "nodump" and we're
+		 * honoring such flags, skip this file/dir.
+		 */
 #ifdef HAVE_CHFLAGS
-			if (bsdtar->option_honor_nodump &&
-			    (ftsent->fts_statp->st_flags & UF_NODUMP)) {
-				fts_set(fts, ftsent, FTS_SKIP);
-				break;
-			}
+		if (bsdtar->option_honor_nodump &&
+		    (lst->st_flags & UF_NODUMP))
+			continue;
 #endif
 
-#ifdef linux
-			/*
-			 * Linux has a nodump flag too but to read it
-			 * we have to open() the dir and do an ioctl on it...
-			 */
-			if (bsdtar->option_honor_nodump &&
-			    ((fd = open(ftsent->fts_name, O_RDONLY|O_NONBLOCK)) >= 0) &&
-			    ((r = ioctl(fd, EXT2_IOC_GETFLAGS, &fflags)),
-			    close(fd), r) >= 0 &&
-			    (fflags & EXT2_NODUMP_FL)) {
-				fts_set(fts, ftsent, FTS_SKIP);
-				break;
-			}
+#ifdef __linux
+		/*
+		 * Linux has a nodump flag too but to read it
+		 * we have to open() the file/dir and do an ioctl on it...
+		 */
+		if (bsdtar->option_honor_nodump &&
+		    ((fd = open(name, O_RDONLY|O_NONBLOCK)) >= 0) &&
+		    ((r = ioctl(fd, EXT2_IOC_GETFLAGS, &fflags)),
+			close(fd), r) >= 0 &&
+		    (fflags & EXT2_NODUMP_FL))
+			continue;
 #endif
 
-			/*
-			 * In -u mode, we need to check whether this
-			 * is newer than what's already in the archive.
-			 */
-			if (!new_enough(bsdtar, ftsent->fts_path,
-				ftsent->fts_statp->st_mtime,
-				ARCHIVE_STAT_MTIME_NANOS(ftsent->fts_statp)))
-				break;
-			/*
-			 * If this dir is excluded by a filename
-			 * pattern, tell FTS to skip the entire tree
-			 * and don't write the entry for the directory
-			 * itself.
-			 */
-			if (excluded(bsdtar, ftsent->fts_path)) {
-				fts_set(fts, ftsent, FTS_SKIP);
-				break;
-			}
+		/*
+		 * If this file/dir is excluded by a filename
+		 * pattern, skip it.
+		 */
+		if (excluded(bsdtar, name))
+			continue;
 
-			/*
-			 * If the user vetoes the directory, skip
-			 * the whole thing.
-			 */
-			if (bsdtar->option_interactive &&
-			    !yes("add '%s'", ftsent->fts_path)) {
-				fts_set(fts, ftsent, FTS_SKIP);
-				break;
-			}
+		/*
+		 * If the user vetoes this file/directory, skip it.
+		 */
+		if (bsdtar->option_interactive &&
+		    !yes("add '%s'", name))
+			continue;
 
-			/*
-			 * If we're not recursing, tell FTS to skip the
-			 * tree but do fall through and write the entry
-			 * for the dir itself.
-			 */
-			if (bsdtar->option_no_subdirs)
-				fts_set(fts, ftsent, FTS_SKIP);
-			write_entry(bsdtar, a, ftsent->fts_statp,
-			    ftsent->fts_path, ftsent->fts_pathlen,
-			    ftsent->fts_accpath);
+		/*
+		 * If this is a dir, decide whether or not to recurse.
+		 */
+		if (bsdtar->option_no_subdirs)
+			descend = 0;
+
+		/*
+		 * Distinguish 'L'/'P'/'H' symlink following.
+		 */
+		switch(symlink_mode) {
+		case 'H':
+			/* 'H': First item (from command line) like 'L'. */
+			lst = tree_current_stat(tree);
+			/* 'H': After the first item, rest like 'P'. */
+			symlink_mode = 'P';
 			break;
-		case FTS_F:
-		case FTS_SL:
-		case FTS_SLNONE:
-		case FTS_DEFAULT:
-			/*
-			 * Skip this file if it's flagged "nodump" and we're
-			 * honoring that flag.
-			 */
-#if defined(HAVE_CHFLAGS) && defined(UF_NODUMP)
-			if (bsdtar->option_honor_nodump &&
-			    (ftsent->fts_statp->st_flags & UF_NODUMP))
-				break;
-#endif
-
-#ifdef linux
-			/*
-			 * Linux has a nodump flag too but to read it
-			 * we have to open() the file and do an ioctl on it...
-			 */
-			if (bsdtar->option_honor_nodump &&
-			    S_ISREG(ftsent->fts_statp->st_mode) &&
-			    ((fd = open(ftsent->fts_name, O_RDONLY|O_NONBLOCK)) >= 0) &&
-			    ((r = ioctl(fd, EXT2_IOC_GETFLAGS, &fflags)),
-			    close(fd), r) >= 0 &&
-			    (fflags & EXT2_NODUMP_FL))
-				break;
-#endif
-
-			/*
-			 * Skip this file if it's excluded by a
-			 * filename pattern.
-			 */
-			if (excluded(bsdtar, ftsent->fts_path))
-				break;
-
-			/*
-			 * In -u mode, we need to check whether this
-			 * is newer than what's already in the archive.
-			 */
-			if (!new_enough(bsdtar, ftsent->fts_path,
-				ftsent->fts_statp->st_mtime,
-				ARCHIVE_STAT_MTIME_NANOS(ftsent->fts_statp)))
-				break;
-
-			if (bsdtar->option_interactive &&
-			    !yes("add '%s'", ftsent->fts_path)) {
-				break;
-			}
-
-			write_entry(bsdtar, a, ftsent->fts_statp,
-			    ftsent->fts_path, ftsent->fts_pathlen,
-			    ftsent->fts_accpath);
-			break;
-		case FTS_DP:
+		case 'L':
+			/* 'L': Do descend through a symlink to dir. */
+			/* 'L': Archive symlink to file as file. */
+			lst = tree_current_stat(tree);
 			break;
 		default:
-			bsdtar_warnc(bsdtar, 0,
-			    "%s: Heirarchy traversal error %d\n",
-			    ftsent->fts_path,
-			    ftsent->fts_info);
+			/* 'P': Don't descend through a symlink to dir. */
+			if (!S_ISDIR(lst->st_mode))
+				descend = 0;
+			/* 'P': Archive symlink to file as symlink. */
+			/* lst = tree_current_lstat(tree); */
 			break;
 		}
 
+		if (descend)
+			tree_descend(tree);
+
+		/*
+		 * In -u mode, we need to check whether this
+		 * is newer than what's already in the archive.
+		 * In all modes, we need to obey --newerXXX flags.
+		 */
+		if (new_enough(bsdtar, name, lst)) {
+			write_entry(bsdtar, a, lst, name,
+			    tree_current_pathlen(tree),
+			    tree_current_access_path(tree));
+		}
 	}
-	if (errno)
-		bsdtar_warnc(bsdtar, errno, "%s", path);
-	if (fts_close(fts))
-		bsdtar_warnc(bsdtar, errno, "fts_close failed");
-	free(fts_argv[0]);
+	tree_close(tree);
 }
 
 /*
  * Add a single filesystem object to the archive.
  */
 static void
-write_entry(struct bsdtar *bsdtar, struct archive *a, struct stat *st,
+write_entry(struct bsdtar *bsdtar, struct archive *a, const struct stat *st,
     const char *pathname, unsigned pathlen, const char *accpath)
 {
 	struct archive_entry	*entry;
 	int			 e;
 	int			 fd;
-#ifdef linux
+#ifdef __linux
 	int			 r;
 	unsigned long		 stflags;
 #endif
@@ -738,36 +677,21 @@ write_entry(struct bsdtar *bsdtar, struct archive *a, struct stat *st,
 	fd = -1;
 	entry = archive_entry_new();
 
-	/* Non-regular files get archived with zero size. */
-	if (!S_ISREG(st->st_mode))
-		st->st_size = 0;
-
-	/* Strip redundant "./" from start of filename. */
-	if (pathname != NULL && pathname[0] == '.' && pathname[1] == '/') {
-		pathname += 2;
-		if (*pathname == '\0')	/* This is the "./" directory. */
-			goto cleanup;	/* Don't archive it ever. */
-	}
-
-	/* Strip leading '/' unless user has asked us not to. */
-	if (pathname && pathname[0] == '/' && !bsdtar->option_absolute_paths) {
-		/* Generate a warning the first time this happens. */
-		if (!bsdtar->warned_lead_slash) {
-			bsdtar_warnc(bsdtar, 0,
-			    "Removing leading '/' from member names");
-			bsdtar->warned_lead_slash = 1;
-		}
-		pathname++;
-	}
-
 	archive_entry_set_pathname(entry, pathname);
+
+	/*
+	 * Rewrite the pathname to be archived.  If rewrite
+	 * fails, skip the entry.
+	 */
+	if (edit_pathname(bsdtar, entry))
+		goto abort;
 
 	if (!S_ISDIR(st->st_mode) && (st->st_nlink > 1))
 		lookup_hardlink(bsdtar, entry, st);
 
 	/* Display entry as we process it. This format is required by SUSv2. */
 	if (bsdtar->verbose)
-		safe_fprintf(stderr, "a %s", pathname);
+		safe_fprintf(stderr, "a %s", archive_entry_pathname(entry));
 
 	/* Read symbolic link information. */
 	if ((st->st_mode & S_IFMT) == S_IFLNK) {
@@ -798,10 +722,10 @@ write_entry(struct bsdtar *bsdtar, struct archive *a, struct stat *st,
 		archive_entry_set_fflags(entry, st->st_flags, 0);
 #endif
 
-#ifdef linux
+#ifdef __linux
 	if ((S_ISREG(st->st_mode) || S_ISDIR(st->st_mode)) &&
 	    ((fd = open(accpath, O_RDONLY|O_NONBLOCK)) >= 0) &&
-	    ((r = ioctl(fd, EXT2_IOC_GETFLAGS, &stflags)), close(fd), r) >= 0 &&
+	    ((r = ioctl(fd, EXT2_IOC_GETFLAGS, &stflags)), close(fd), (fd = -1), r) >= 0 &&
 	    stflags) {
 		archive_entry_set_fflags(entry, stflags, 0);
 	}
@@ -827,6 +751,10 @@ write_entry(struct bsdtar *bsdtar, struct archive *a, struct stat *st,
 		}
 	}
 
+	/* Non-regular files get archived with zero size. */
+	if (!S_ISREG(st->st_mode))
+		archive_entry_set_size(entry, 0);
+
 	e = archive_write_header(a, entry);
 	if (e != ARCHIVE_OK) {
 		if (!bsdtar->verbose)
@@ -849,14 +777,15 @@ write_entry(struct bsdtar *bsdtar, struct archive *a, struct stat *st,
 		write_file_data(bsdtar, a, fd);
 
 cleanup:
+	if (bsdtar->verbose)
+		fprintf(stderr, "\n");
+
+abort:
 	if (fd >= 0)
 		close(fd);
 
 	if (entry != NULL)
 		archive_entry_free(entry);
-
-	if (bsdtar->verbose)
-		fprintf(stderr, "\n");
 }
 
 
@@ -1115,11 +1044,15 @@ setup_acl(struct bsdtar *bsdtar, struct archive_entry *entry,
 
 			acl_get_permset(acl_entry, &acl_permset);
 			ae_perm = 0;
-			if (acl_get_perm_np(acl_permset, ACL_EXECUTE))
+			/*
+			 * acl_get_perm() is spelled differently on different
+			 * platforms; see bsdtar_platform.h for details.
+			 */
+			if (ACL_GET_PERM(acl_permset, ACL_EXECUTE))
 				ae_perm |= ARCHIVE_ENTRY_ACL_EXECUTE;
-			if (acl_get_perm_np(acl_permset, ACL_READ))
+			if (ACL_GET_PERM(acl_permset, ACL_READ))
 				ae_perm |= ARCHIVE_ENTRY_ACL_READ;
-			if (acl_get_perm_np(acl_permset, ACL_WRITE))
+			if (ACL_GET_PERM(acl_permset, ACL_WRITE))
 				ae_perm |= ARCHIVE_ENTRY_ACL_WRITE;
 
 			archive_entry_acl_add_entry(entry,
@@ -1269,28 +1202,53 @@ lookup_gname_helper(struct bsdtar *bsdtar, const char **name, id_t id)
 }
 
 /*
- * Test if the specified file is newer than what's already
- * in the archive.
+ * Test if the specified file is new enough to include in the archive.
  */
 int
-new_enough(struct bsdtar *bsdtar, const char *path,
-    time_t mtime_sec, int mtime_nsec)
+new_enough(struct bsdtar *bsdtar, const char *path, const struct stat *st)
 {
 	struct archive_dir_entry *p;
 
-	if (path[0] == '.' && path[1] == '/' && path[2] != '\0')
-		path += 2;
-
-	if (bsdtar->archive_dir == NULL ||
-	    bsdtar->archive_dir->head == NULL)
-		return (1);
-
-	for (p = bsdtar->archive_dir->head; p != NULL; p = p->next) {
-		if (strcmp(path, p->name)==0)
-			return (p->mtime_sec < mtime_sec ||
-				(p->mtime_sec == mtime_sec &&
-				 p->mtime_nsec < mtime_nsec));
+	/*
+	 * If this file/dir is excluded by a time comparison, skip it.
+	 */
+	if (bsdtar->newer_ctime_sec > 0) {
+		if (st->st_ctime < bsdtar->newer_ctime_sec)
+			return (0); /* Too old, skip it. */
+		if (st->st_ctime == bsdtar->newer_ctime_sec
+		    && ARCHIVE_STAT_CTIME_NANOS(st)
+		    <= bsdtar->newer_ctime_nsec)
+			return (0); /* Too old, skip it. */
 	}
+	if (bsdtar->newer_mtime_sec > 0) {
+		if (st->st_mtime < bsdtar->newer_mtime_sec)
+			return (0); /* Too old, skip it. */
+		if (st->st_mtime == bsdtar->newer_mtime_sec
+		    && ARCHIVE_STAT_MTIME_NANOS(st)
+		    <= bsdtar->newer_mtime_nsec)
+			return (0); /* Too old, skip it. */
+	}
+
+	/*
+	 * In -u mode, we only write an entry if it's newer than
+	 * what was already in the archive.
+	 */
+	if (bsdtar->archive_dir != NULL &&
+	    bsdtar->archive_dir->head != NULL) {
+		/* Ignore leading './' when comparing names. */
+		if (path[0] == '.' && path[1] == '/' && path[2] != '\0')
+			path += 2;
+
+		for (p = bsdtar->archive_dir->head; p != NULL; p = p->next) {
+			if (strcmp(path, p->name)==0)
+				return (p->mtime_sec < st->st_mtime ||
+				    (p->mtime_sec == st->st_mtime &&
+					p->mtime_nsec
+					< ARCHIVE_STAT_MTIME_NANOS(st)));
+		}
+	}
+
+	/* If the file wasn't rejected, include it. */
 	return (1);
 }
 
