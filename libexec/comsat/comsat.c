@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)comsat.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/comsat/comsat.c,v 1.13.2.1 2002/08/09 02:56:30 johan Exp $
- * $DragonFly: src/libexec/comsat/comsat.c,v 1.5 2005/05/03 17:32:23 liamfoy Exp $
+ * $DragonFly: src/libexec/comsat/comsat.c,v 1.6 2005/05/03 17:39:03 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -80,8 +80,8 @@ int
 main(int argc __unused, char **argv __unused)
 {
 	struct sockaddr_in from;
+	socklen_t fromlen;
 	int cc;
-	int fromlen;
 	char msgbuf[256];
 
 	/* verify proper invocation */
