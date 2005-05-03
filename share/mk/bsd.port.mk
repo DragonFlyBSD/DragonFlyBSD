@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.32 2005/04/20 21:58:13 okumoto Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.33 2005/05/03 14:16:04 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -34,7 +34,7 @@ _DF_USE_RCORDER:=	${USE_RCORDER}
 _DF_USE_RC_SUBR:=	${USE_RC_SUBR}
 .endif
 
-.if !target(install-rc-script)
+.if !target(install-rc-script) && !defined(BEFOREPORTMK)
 install-rc-script:
 .if defined(USE_RCORDER) || defined(USE_RC_SUBR) && ${USE_RC_SUBR:U} != "YES"
 .if defined(USE_RCORDER)
