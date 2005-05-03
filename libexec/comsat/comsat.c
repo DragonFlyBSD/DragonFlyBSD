@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)comsat.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/comsat/comsat.c,v 1.13.2.1 2002/08/09 02:56:30 johan Exp $
- * $DragonFly: src/libexec/comsat/comsat.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
+ * $DragonFly: src/libexec/comsat/comsat.c,v 1.4 2005/05/03 17:22:01 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <utmp.h>
@@ -69,19 +70,17 @@ struct	utmp *utmp = NULL;
 time_t	lastmsgtime;
 int	nutmp, uf;
 
-void jkfprintf (FILE *, char[], char[], off_t);
+void jkfprintf (FILE *, const char *, const char *, off_t);
 void mailfor (char *);
-void notify (struct utmp *, char[], off_t, int);
+void notify (struct utmp *, char *, off_t, int);
 void onalrm (int);
 void reapchildren (int);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc __unused, char **argv __unused)
 {
 	struct sockaddr_in from;
-	register int cc;
+	int cc;
 	int fromlen;
 	char msgbuf[256];
 
@@ -92,20 +91,20 @@ main(argc, argv)
 	openlog("comsat", LOG_PID, LOG_DAEMON);
 	if (chdir(_PATH_MAILDIR)) {
 		syslog(LOG_ERR, "chdir: %s: %m", _PATH_MAILDIR);
-		(void) recv(0, msgbuf, sizeof(msgbuf) - 1, 0);
+		recv(0, msgbuf, sizeof(msgbuf) - 1, 0);
 		exit(1);
 	}
 	if ((uf = open(_PATH_UTMP, O_RDONLY, 0)) < 0) {
 		syslog(LOG_ERR, "open: %s: %m", _PATH_UTMP);
-		(void) recv(0, msgbuf, sizeof(msgbuf) - 1, 0);
+		recv(0, msgbuf, sizeof(msgbuf) - 1, 0);
 		exit(1);
 	}
-	(void)time(&lastmsgtime);
-	(void)gethostname(hostname, sizeof(hostname));
+	time(&lastmsgtime);
+	gethostname(hostname, sizeof(hostname));
 	onalrm(0);
-	(void)signal(SIGALRM, onalrm);
-	(void)signal(SIGTTOU, SIG_IGN);
-	(void)signal(SIGCHLD, reapchildren);
+	signal(SIGALRM, onalrm);
+	signal(SIGTTOU, SIG_IGN);
+	signal(SIGCHLD, reapchildren);
 	for (;;) {
 		cc = recv(0, msgbuf, sizeof(msgbuf) - 1, 0);
 		if (cc <= 0) {
@@ -118,31 +117,29 @@ main(argc, argv)
 			continue;
 		sigblock(sigmask(SIGALRM));
 		msgbuf[cc] = '\0';
-		(void)time(&lastmsgtime);
+		time(&lastmsgtime);
 		mailfor(msgbuf);
 		sigsetmask(0L);
 	}
 }
 
 void
-reapchildren(signo)
-	int signo;
+reapchildren(int signo __unused)
 {
 	while (wait3(NULL, WNOHANG, NULL) > 0);
 }
 
 void
-onalrm(signo)
-	int signo;
+onalrm(int signo __unused)
 {
 	static u_int utmpsize;		/* last malloced size for utmp */
-	static u_int utmpmtime;		/* last modification time for utmp */
+	static time_t utmpmtime;	/* last modification time for utmp */
 	struct stat statbf;
 
 	if (time(NULL) - lastmsgtime >= MAXIDLE)
-		exit(0);
-	(void)alarm((u_int)15);
-	(void)fstat(uf, &statbf);
+		exit(EX_OK);
+	alarm((u_int)15);
+	fstat(uf, &statbf);
 	if (statbf.st_mtime > utmpmtime) {
 		utmpmtime = statbf.st_mtime;
 		if (statbf.st_size > utmpsize) {
@@ -152,17 +149,16 @@ onalrm(signo)
 				exit(1);
 			}
 		}
-		(void)lseek(uf, (off_t)0, L_SET);
+		lseek(uf, (off_t)0, L_SET);
 		nutmp = read(uf, utmp, (int)statbf.st_size)/sizeof(struct utmp);
 	}
 }
 
 void
-mailfor(name)
-	char *name;
+mailfor(char *name)
 {
-	register struct utmp *utp = &utmp[nutmp];
-	register char *cp;
+	struct utmp *utp = &utmp[nutmp];
+	char *cp;
 	char *file;
 	off_t offset;
 	int folder;
@@ -190,21 +186,17 @@ mailfor(name)
 			notify(utp, file, offset, folder);
 }
 
-static char *cr;
+static const char *cr;
 
 void
-notify(utp, file, offset, folder)
-	register struct utmp *utp;
-	char file[];
-	off_t offset;
-	int folder;
+notify(struct utmp *utp, char *file, off_t offset, int folder)
 {
 	FILE *tp;
 	struct stat stb;
 	struct termios tio;
 	char tty[20], name[sizeof(utmp[0].ut_name) + 1];
 
-	(void)snprintf(tty, sizeof(tty), "%s%.*s",
+	snprintf(tty, sizeof(tty), "%s%.*s",
 	    _PATH_DEV, (int)sizeof(utp->ut_line), utp->ut_line);
 	if (strchr(tty + sizeof(_PATH_DEV) - 1, '/')) {
 		/* A slash is an attempt to break security... */
@@ -218,20 +210,20 @@ notify(utp, file, offset, folder)
 	dsyslog(LOG_DEBUG, "notify %s on %s\n", utp->ut_name, tty);
 	if (fork())
 		return;
-	(void)signal(SIGALRM, SIG_DFL);
-	(void)alarm((u_int)30);
+	signal(SIGALRM, SIG_DFL);
+	alarm((u_int)30);
 	if ((tp = fopen(tty, "w")) == NULL) {
 		dsyslog(LOG_ERR, "%s: %s", tty, strerror(errno));
 		_exit(1);
 	}
-	(void)tcgetattr(fileno(tp), &tio);
+	tcgetattr(fileno(tp), &tio);
 	cr = ((tio.c_oflag & (OPOST|ONLCR)) == (OPOST|ONLCR)) ?  "\n" : "\n\r";
-	(void)strncpy(name, utp->ut_name, sizeof(utp->ut_name));
+	strncpy(name, utp->ut_name, sizeof(utp->ut_name));
 	name[sizeof(name) - 1] = '\0';
 	switch (stb.st_mode & (S_IXUSR | S_IXGRP)) {
 	case S_IXUSR:
 	case (S_IXUSR | S_IXGRP):
-		(void)fprintf(tp, 
+		fprintf(tp, 
 		    "%s\007New mail for %s@%.*s\007 has arrived%s%s%s:%s----%s",
 		    cr, name, (int)sizeof(hostname), hostname,
 		    folder ? cr : "", folder ? "to " : "", folder ? file : "",
@@ -239,39 +231,35 @@ notify(utp, file, offset, folder)
 		jkfprintf(tp, name, file, offset);
 		break;
 	case S_IXGRP:
-		(void)fprintf(tp, "\007");
-		(void)fflush(tp);      
-		(void)sleep(1);
-		(void)fprintf(tp, "\007");
+		fprintf(tp, "\007");
+		fflush(tp);      
+		sleep(1);
+		fprintf(tp, "\007");
 		break;
 	default:
 		break;
 	}	
-	(void)fclose(tp);
-	_exit(0);
+	fclose(tp);
+	_exit(EX_OK);
 }
 
 void
-jkfprintf(tp, user, file, offset)
-	register FILE *tp;
-	char user[];
-	char file[];
-	off_t offset;
+jkfprintf(FILE *tp, const char *user, const char *file, off_t offset)
 {
-	register unsigned char *cp, ch;
-	register FILE *fi;
-	register int linecnt, charcnt, inheader;
-	register struct passwd *p;
+	unsigned char *cp, ch;
+	FILE *fi;
+	int linecnt, charcnt, inheader;
+	struct passwd *p;
 	unsigned char line[BUFSIZ];
 
 	/* Set effective uid to user in case mail drop is on nfs */
 	if ((p = getpwnam(user)) != NULL)
-		(void) setuid(p->pw_uid);
+		setuid(p->pw_uid);
 
 	if ((fi = fopen(file, "r")) == NULL)
 		return;
 
-	(void)fseek(fi, offset, L_SET);
+	fseek(fi, offset, L_SET);
 	/*
 	 * Print the first 7 lines or 560 characters of the new mail
 	 * (whichever comes first).  Skip header crap other than
@@ -292,8 +280,8 @@ jkfprintf(tp, user, file, offset)
 				continue;
 		}
 		if (linecnt <= 0 || charcnt <= 0) {
-			(void)fprintf(tp, "...more...%s", cr);
-			(void)fclose(fi);
+			fprintf(tp, "...more...%s", cr);
+			fclose(fi);
 			return;
 		}
 		/* strip weird stuff so can't trojan horse stupid terminals */
@@ -307,18 +295,18 @@ jkfprintf(tp, user, file, offset)
 			   ) {
 				if (ch & 0x80) {
 					ch &= ~0x80;
-					(void)fputs("M-", tp);
+					fputs("M-", tp);
 				}
 				if (iscntrl(ch)) {
 					ch ^= 0x40;
-					(void)fputc('^', tp);
+					fputc('^', tp);
 				}
 			}
-			(void)fputc(ch, tp);
+			fputc(ch, tp);
 		}
-		(void)fputs(cr, tp);
+		fputs(cr, tp);
 		--linecnt;
 	}
-	(void)fprintf(tp, "----%s\n", cr);
-	(void)fclose(fi);
+	fprintf(tp, "----%s\n", cr);
+	fclose(fi);
 }
