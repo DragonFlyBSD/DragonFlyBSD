@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2003-2004 Tim Kientzle
+ * Copyright (c) 2003-2005 Tim Kientzle
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,16 +25,14 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.56 2004/10/17 23:58:17 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.63 2005/04/17 19:43:37 kientzle Exp $");
 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <archive.h>
 #include <archive_entry.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <fnmatch.h>
 #ifdef HAVE_GETOPT_LONG
 #include <getopt.h>
 #else
@@ -65,13 +63,16 @@ struct option {
 
 #include "bsdtar.h"
 
-#ifdef linux
+#ifdef __linux
 #define	_PATH_DEFTAPE "/dev/st0"
 #endif
 
 #ifndef _PATH_DEFTAPE
 #define	_PATH_DEFTAPE "/dev/tape"
 #endif
+
+/* External function to parse a date/time string (from getdate.y) */
+time_t get_date(const char *);
 
 static int		 bsdtar_getopt(struct bsdtar *, const char *optstring,
     const struct option **poption);
@@ -107,19 +108,30 @@ static const char *tar_opts = "+Bb:C:cF:f:HhI:jkLlmnOoPprtT:UuvW:wX:xyZz";
  */
 
 /* Fake short equivalents for long options that otherwise lack them. */
-#define	OPTION_CHECK_LINKS 3
-#define	OPTION_EXCLUDE 6
-#define	OPTION_FAST_READ 9
-#define	OPTION_FORMAT 10
-#define	OPTION_HELP 12
-#define	OPTION_INCLUDE 15
-#define	OPTION_NODUMP 18
-#define	OPTION_NO_SAME_PERMISSIONS 21
-#define	OPTION_NULL 24
-#define	OPTION_ONE_FILE_SYSTEM 27
-#define	OPTION_TOTALS 28
-#define	OPTION_VERSION 30
+enum {
+	OPTION_CHECK_LINKS=1,
+	OPTION_EXCLUDE,
+	OPTION_FAST_READ,
+	OPTION_FORMAT,
+	OPTION_HELP,
+	OPTION_INCLUDE,
+	OPTION_NEWER_CTIME,
+	OPTION_NEWER_CTIME_THAN,
+	OPTION_NEWER_MTIME,
+	OPTION_NEWER_MTIME_THAN,
+	OPTION_NODUMP,
+	OPTION_NO_SAME_PERMISSIONS,
+	OPTION_NULL,
+	OPTION_ONE_FILE_SYSTEM,
+	OPTION_STRIP_COMPONENTS,
+	OPTION_TOTALS,
+	OPTION_VERSION
+};
 
+/*
+ * If you add anything, be very careful to keep this list properly
+ * sorted, as the -W logic relies on it.
+ */
 static const struct option tar_longopts[] = {
 	{ "absolute-paths",     no_argument,       NULL, 'P' },
 	{ "append",             no_argument,       NULL, 'r' },
@@ -148,6 +160,12 @@ static const struct option tar_longopts[] = {
 	{ "keep-old-files",     no_argument,       NULL, 'k' },
 	{ "list",               no_argument,       NULL, 't' },
 	{ "modification-time",  no_argument,       NULL, 'm' },
+	{ "newer",		required_argument, NULL, OPTION_NEWER_CTIME },
+	{ "newer-ctime",	required_argument, NULL, OPTION_NEWER_CTIME },
+	{ "newer-ctime-than",	required_argument, NULL, OPTION_NEWER_CTIME_THAN },
+	{ "newer-mtime",	required_argument, NULL, OPTION_NEWER_MTIME },
+	{ "newer-mtime-than",	required_argument, NULL, OPTION_NEWER_MTIME_THAN },
+	{ "newer-than",		required_argument, NULL, OPTION_NEWER_CTIME_THAN },
 	{ "nodump",             no_argument,       NULL, OPTION_NODUMP },
 	{ "norecurse",          no_argument,       NULL, 'n' },
 	{ "no-recursion",       no_argument,       NULL, 'n' },
@@ -158,6 +176,7 @@ static const struct option tar_longopts[] = {
 	{ "preserve-permissions", no_argument,     NULL, 'p' },
 	{ "read-full-blocks",	no_argument,	   NULL, 'B' },
 	{ "same-permissions",   no_argument,       NULL, 'p' },
+	{ "strip-components",	required_argument, NULL, OPTION_STRIP_COMPONENTS },
 	{ "to-stdout",          no_argument,       NULL, 'O' },
 	{ "totals",		no_argument,       NULL, OPTION_TOTALS },
 	{ "unlink",		no_argument,       NULL, 'U' },
@@ -321,6 +340,34 @@ main(int argc, char **argv)
 		case 'n': /* GNU tar */
 			bsdtar->option_no_subdirs = 1;
 			break;
+		case OPTION_NEWER_CTIME: /* GNU tar */
+			bsdtar->newer_ctime_sec = get_date(optarg);
+			break;
+		case OPTION_NEWER_CTIME_THAN:
+			{
+				struct stat st;
+				if (stat(optarg, &st) != 0)
+					bsdtar_errc(bsdtar, 1, 0,
+					    "Can't open file %s", optarg);
+				bsdtar->newer_ctime_sec = st.st_ctime;
+				bsdtar->newer_ctime_nsec =
+				    ARCHIVE_STAT_CTIME_NANOS(&st);
+			}
+			break;
+		case OPTION_NEWER_MTIME: /* GNU tar */
+			bsdtar->newer_mtime_sec = get_date(optarg);
+			break;
+		case OPTION_NEWER_MTIME_THAN:
+			{
+				struct stat st;
+				if (stat(optarg, &st) != 0)
+					bsdtar_errc(bsdtar, 1, 0,
+					    "Can't open file %s", optarg);
+				bsdtar->newer_mtime_sec = st.st_mtime;
+				bsdtar->newer_mtime_nsec =
+				    ARCHIVE_STAT_MTIME_NANOS(&st);
+			}
+			break;
 		case OPTION_NODUMP: /* star */
 			bsdtar->option_honor_nodump = 1;
 			break;
@@ -365,6 +412,9 @@ main(int argc, char **argv)
 			break;
 		case 'r': /* SUSv2 */
 			set_mode(bsdtar, opt);
+			break;
+		case OPTION_STRIP_COMPONENTS: /* GNU tar 1.15 */
+			bsdtar->strip_components = atoi(optarg);
 			break;
 		case 'T': /* GNU tar */
 			bsdtar->names_from_file = optarg;
@@ -639,7 +689,7 @@ version(void)
 {
 	printf("bsdtar %s, ", PACKAGE_VERSION);
 	printf("%s\n", archive_version());
-	printf("Copyright (C) 2003-2004 Tim Kientzle\n");
+	printf("Copyright (C) 2003-2005 Tim Kientzle\n");
 	exit(1);
 }
 
@@ -753,12 +803,18 @@ bsdtar_getopt(struct bsdtar *bsdtar, const char *optstring,
 			*poption = option;
 			opt = option->val;
 
-			/* Check if there's another match. */
-			option++;
-			while (option->name != NULL &&
-			    (strlen(option->name) < option_length ||
-			    strncmp(p, option->name, option_length) != 0)) {
+			/* If the first match was exact, we're done. */
+			if (strncmp(p, option->name, strlen(option->name)) == 0) {
+				while (option->name != NULL)
+					option++;
+			} else {
+				/* Check if there's another match. */
 				option++;
+				while (option->name != NULL &&
+				    (strlen(option->name) < option_length ||
+				    strncmp(p, option->name, option_length) != 0)) {
+					option++;
+				}
 			}
 			if (option->name != NULL)
 				bsdtar_errc(bsdtar, 1, 0,

@@ -25,7 +25,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/util.c,v 1.11 2004/08/08 05:50:10 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/util.c,v 1.13 2005/04/17 19:46:50 kientzle Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>  /* Linux doesn't define mode_t, etc. in sys/stat.h. */
@@ -379,4 +379,62 @@ do_chdir(struct bsdtar *bsdtar)
 	}
 	free(bsdtar->pending_chdir);
 	bsdtar->pending_chdir = NULL;
+}
+
+/*
+ * Handle --strip-components and any future path-rewriting options.
+ * Returns non-zero if the pathname should not be extracted.
+ */
+int
+edit_pathname(struct bsdtar *bsdtar, struct archive_entry *entry)
+{
+	const char *name = archive_entry_pathname(entry);
+
+	/* Strip leading dir names as per --strip-components option. */
+	if (bsdtar->strip_components > 0) {
+		int r = bsdtar->strip_components;
+		const char *p = name;
+
+		while (r > 0) {
+			switch (*p++) {
+			case '/':
+				r--;
+				name = p;
+				break;
+			case '\0':
+				/* Path is too short, skip it. */
+				return (1);
+			}
+		}
+	}
+
+	/* Strip redundant "./" from start of filename. */
+	if (name[0] == '.' && name[1] == '/' && name[2] != '\0')
+		name += 2;
+
+	/* Strip redundant leading '/' characters. */
+	while (name[0] == '/' && name[1] == '/')
+		name++;
+
+	/* Strip leading '/' unless user has asked us not to. */
+	if (name[0] == '/' && !bsdtar->option_absolute_paths) {
+		/* Generate a warning the first time this happens. */
+		if (!bsdtar->warned_lead_slash) {
+			bsdtar_warnc(bsdtar, 0,
+			    "Removing leading '/' from member names");
+			bsdtar->warned_lead_slash = 1;
+		}
+		name++;
+		/* Special case: Stripping leading '/' from "/" yields ".". */
+		if (*name == '\0')
+			name = ".";
+	}
+
+	/* Safely replace name in archive_entry. */
+	if (name != archive_entry_pathname(entry)) {
+		char *q = strdup(name);
+		archive_entry_copy_pathname(entry, q);
+		free(q);
+	}
+	return (0);
 }
