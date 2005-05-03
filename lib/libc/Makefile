@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 2/3/94
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
-# $DragonFly: src/lib/libc/Makefile,v 1.10 2005/05/02 19:52:58 joerg Exp $
+# $DragonFly: src/lib/libc/Makefile,v 1.11 2005/05/03 15:49:17 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -13,21 +13,6 @@ CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/include
 AINC=	-I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes
-
-#
-# Don't bother hiding any syscalls (like libc_r does).
-#
-HIDDEN_SYSCALLS= _exit.o accept.o aio_suspend.o bind.o close.o closefrom.o \
-	connect.o dup.o dup2.o execve.o fchflags.o fchmod.o fchown.o fcntl.o \
-	flock.o fpathconf.o fstat.o fstatfs.o fsync.o getdirentries.o \
-	getpeername.o getsockname.o getsockopt.o ioctl.o \
-	kevent.o kqueue.o listen.o \
-	msync.o nanosleep.o nfssvc.o open.o poll.o read.o readv.o recvfrom.o \
-	recvmsg.o sched_yield.o select.o sendfile.o sendmsg.o sendto.o \
-	setsockopt.o shutdown.o sigaction.o sigaltstack.o \
-	sigpending.o sigprocmask.o sigreturn.o \
-	sigsuspend.o sigtimedwait.o sigwaitinfo.o socket.o \
-	socketpair.o wait4.o write.o writev.o
 
 #
 # Include make rules that are shared with libc_r.

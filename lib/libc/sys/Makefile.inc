@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.13 2005/05/03 07:29:04 joerg Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.14 2005/05/03 15:49:17 joerg Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -33,11 +33,7 @@ SRCS+=		stack_protector.c
 .for _asm in ${MIASM}
 .if (${MDASM:R:M${_asm:R}} == "")
 .if (${NOASM:R:M${_asm:R}} == "")
-.if (${HIDDEN_SYSCALLS:R:M${_asm:R}} == "")
-ASM+=$(_asm)
-.else
 ASMR+=$(_asm)
-.endif
 .endif
 .endif
 .endfor
