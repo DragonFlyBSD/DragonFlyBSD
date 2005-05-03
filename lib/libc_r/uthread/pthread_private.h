@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.7 2005/05/02 20:40:50 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.8 2005/05/03 07:29:04 joerg Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -694,12 +694,6 @@ struct pthread {
 	int	timeout;
 
 	/*
-	 * Error variable used instead of errno. The function __error()
-	 * returns a pointer to this. 
-	 */
-	int	error;
-
-	/*
 	 * The joiner is the thread that is joining to this thread.  The
 	 * join status keeps track of a join operation to another thread.
 	 */
@@ -1224,7 +1218,6 @@ void	_thread_sig_wrapper(void);
 void	_thread_sigframe_restore(struct pthread *thread,
 	    struct pthread_signal_frame *psf);
 void    _thread_start(void);
-void	_thread_seterrno(pthread_t, int);
 pthread_addr_t _thread_gc(pthread_addr_t);
 void	_thread_enter_cancellation_point(void);
 void	_thread_leave_cancellation_point(void);
@@ -1322,6 +1315,7 @@ int	__sys_sigreturn(ucontext_t *);
 #ifdef _UNISTD_H_
 void	__sys__exit(int);
 int	__sys_close(int);
+int	__sys_closefrom(int);
 int	__sys_dup(int);
 int	__sys_dup2(int, int);
 int	__sys_execve(const char *, char * const *, char * const *);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.7 2005/05/03 07:21:45 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.8 2005/05/03 07:29:04 joerg Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -289,7 +289,6 @@ _thread_init(void)
 		_thread_initial->specific_data = NULL;
 		_thread_initial->cleanup = NULL;
 		_thread_initial->flags = 0;
-		_thread_initial->error = 0;
 		TAILQ_INIT(&_thread_list);
 		TAILQ_INSERT_HEAD(&_thread_list, _thread_initial, tle);
 		_set_curthread(_thread_initial);

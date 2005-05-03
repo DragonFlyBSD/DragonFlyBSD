@@ -37,18 +37,19 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
- * $DragonFly: src/sys/sys/errno.h,v 1.5 2003/08/27 02:03:22 dillon Exp $
+ * $DragonFly: src/sys/sys/errno.h,v 1.6 2005/05/03 07:29:04 joerg Exp $
  */
 
 #ifndef _SYS_ERRNO_H_
 #define _SYS_ERRNO_H_
 
 #ifndef _KERNEL
-#include <sys/cdefs.h>
-__BEGIN_DECLS
-int *	__error (void);
-__END_DECLS
-#define	errno		(* __error())
+extern __thread int	errno;
+/*
+ * A lot of programs want to define errno as normal int, if
+ * it isn't a macro. Work around this to prevent even more breakage.
+ */
+#define	errno	errno
 #endif
 
 #define	EPERM		1		/* Operation not permitted */

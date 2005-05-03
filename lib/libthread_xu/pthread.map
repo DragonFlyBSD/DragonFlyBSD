@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2004/09/26 06:50:14 deischen Exp $
-# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.2 2005/03/29 19:26:20 joerg Exp $
+# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.3 2005/05/03 07:29:04 joerg Exp $
 
 LIBTHREAD_1_0 {
 global:
@@ -7,7 +7,6 @@ global:
 	__accept;
 	__close;
 	__connect;
-	__error;
 	__fcntl;
 	__fsync;
 	__msync;

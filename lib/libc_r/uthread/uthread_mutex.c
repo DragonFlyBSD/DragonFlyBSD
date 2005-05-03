@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_mutex.c,v 1.20.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_mutex.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_mutex.c,v 1.3 2005/05/03 07:29:04 joerg Exp $
  */
 #include <stdlib.h>
 #include <errno.h>
@@ -600,7 +600,7 @@ _pthread_mutex_lock(pthread_mutex_t * mutex)
 				curthread->data.mutex = *mutex;
 
 				/* Clear any previous error: */
-				curthread->error = 0;
+				errno = 0;
 
 				/*
 				 * Unlock the mutex structure and schedule the
@@ -617,8 +617,8 @@ _pthread_mutex_lock(pthread_mutex_t * mutex)
 				 * waiting for the mutex causing a ceiling
 				 * violation.
 				 */
-				ret = curthread->error;
-				curthread->error = 0;
+				ret = errno;
+				errno = 0;
 			}
 			break;
 
@@ -990,7 +990,9 @@ mutex_unlock_common(pthread_mutex_t * mutex, int add_reference)
 					 * to this thread being queued on the
 					 * waiting list.
 					 */
-					(*mutex)->m_owner->error = EINVAL;
+					tls_set_tcb((*mutex)->m_owner->tcb);
+					errno = EINVAL;
+					tls_set_tcb(curthread->tcb);
 					PTHREAD_NEW_STATE((*mutex)->m_owner,
 					    PS_RUNNING);
 					/*

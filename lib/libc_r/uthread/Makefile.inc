@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc_r/uthread/Makefile.inc,v 1.23.2.8 2003/05/27 18:18:01 jdp Exp $
-# $DragonFly: src/lib/libc_r/uthread/Makefile.inc,v 1.5 2005/05/02 19:52:58 joerg Exp $
+# $DragonFly: src/lib/libc_r/uthread/Makefile.inc,v 1.6 2005/05/03 07:29:04 joerg Exp $
 
 # uthread sources
 .PATH: ${.CURDIR}/uthread
@@ -104,7 +104,6 @@ SRCS+= \
 	uthread_sendfile.c \
 	uthread_sendmsg.c \
 	uthread_sendto.c \
-	uthread_seterrno.c \
 	uthread_setprio.c \
 	uthread_setschedparam.c \
 	uthread_setsockopt.c \

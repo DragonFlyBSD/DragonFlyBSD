@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.2 2005/02/26 02:26:32 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.3 2005/05/03 07:29:04 joerg Exp $
 
 # thr sources
 .PATH: ${.CURDIR}/thread
@@ -37,7 +37,6 @@ SRCS+= \
 	thr_rwlockattr.c \
 	thr_self.c \
 	thr_sem.c \
-	thr_seterrno.c \
 	thr_setprio.c \
 	thr_setschedparam.c \
 	thr_sig.c \

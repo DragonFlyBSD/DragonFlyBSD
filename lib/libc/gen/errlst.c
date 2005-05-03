@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)errlst.c	8.2 (Berkeley) 11/16/93
+ * $DragonFly: src/lib/libc/gen/errlst.c,v 1.3 2005/05/03 07:29:04 joerg Exp $
  */
 
 #include <stdio.h>
@@ -142,5 +143,5 @@ const char *const sys_errlist[] = {
 	"Operation canceled",			/* 85 - ECANCELED */
 	"Illegal byte sequence",		/* 86 - EILSEQ */
 };
-int errno;
+__thread int errno;
 const int sys_nerr = sizeof(sys_errlist) / sizeof(sys_errlist[0]);

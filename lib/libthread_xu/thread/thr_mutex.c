@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex.c,v 1.46 2004/10/31 05:03:50 green Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.4 2005/04/05 23:04:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.5 2005/05/03 07:29:04 joerg Exp $
  */
 
 #include <machine/tls.h>
@@ -696,7 +696,7 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *m,
 				curthread->data.mutex = *m;
 
 				/* Clear any previous error: */
-				curthread->error = 0;
+				errno = 0;
 
 				THR_LOCK(curthread);
 				cycle = curthread->cycle;
@@ -729,8 +729,8 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *m,
 				 * waiting for the mutex causing a ceiling
 				 * violation.
 				 */
-				ret = curthread->error;
-				curthread->error = 0;
+				ret = errno;
+				errno = 0;
 			}
 			break;
 
@@ -1566,7 +1566,9 @@ mutex_handoff(struct pthread *curthread, struct pthread_mutex *mutex)
 			 	 * has been raised subsequent to the thread
 				 * being queued on the waiting list.
 				 */
-				pthread->error = EINVAL;
+				tls_set_tcb(pthread->tcb);
+				errno = EINVAL;
+				tls_set_tcb(curthread->tcb);
 			}
 			else {
 				/*
