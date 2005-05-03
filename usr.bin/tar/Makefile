@@ -1,7 +1,7 @@
-# $DragonFly: src/usr.bin/tar/Makefile,v 1.1 2004/11/10 18:02:24 joerg Exp $
+# $DragonFly: src/usr.bin/tar/Makefile,v 1.2 2005/05/03 14:46:12 joerg Exp $
 
 PROG=	bsdtar
-SRCS=	bsdtar.c matching.c read.c util.c write.c
+SRCS=	bsdtar.c getdate.y matching.c read.c tree.c util.c write.c
 WARNS?=	6
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ}
 LDADD=	-larchive -lbz2 -lz
