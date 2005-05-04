@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.54 2005/05/02 23:53:47 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.55 2005/05/04 06:17:41 y0netan1 Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -225,6 +225,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/modules/canbus.ko
 .for lib in ${COMPAT_LIBS:M*.so.*}
 .if exists(${DESTDIR}/usr/lib/${lib})
+	chflags noschg ${DESTDIR}/usr/lib/${lib}
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
