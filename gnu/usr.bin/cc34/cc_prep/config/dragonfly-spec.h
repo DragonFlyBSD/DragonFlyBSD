@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.5 2005/05/03 19:56:37 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.6 2005/05/04 11:28:44 joerg Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -132,7 +132,7 @@ is built with the --enable-threads configure-time option.}		\
     %{!pg:								\
       %{pthread:-lc_r} -lc}						\
     %{pg:								\
-      %{pthread:-lc_r_p}} -lc_p						\
+      %{pthread:-lc_r_p} -lc_p}						\
   }"
 #endif
 
