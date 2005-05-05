@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.16 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.20 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.21 2005/05/05 09:07:28 okumoto Exp $
  */
 
 /*-
@@ -58,8 +58,6 @@
 #include "job.h"
 #include "targ.h"
 #include "util.h"
-
-static void enomem(void) __dead2;
 
 /*-
  * Debug --
@@ -225,12 +223,12 @@ Finish(int errors)
  *	malloc, but die on error.
  */
 void *
-emalloc(size_t len)
+emalloc(size_t size)
 {
 	void *p;
 
-	if ((p = malloc(len)) == NULL)
-		enomem();
+	if ((p = malloc(size)) == NULL)
+		err(2, "malloc(%d)", size);
 	return (p);
 }
 
@@ -244,7 +242,7 @@ estrdup(const char *str)
 	char *p;
 
 	if ((p = strdup(str)) == NULL)
-		enomem();
+		err(2, "strdup(%s)", str);
 	return (p);
 }
 
@@ -255,20 +253,11 @@ estrdup(const char *str)
 void *
 erealloc(void *ptr, size_t size)
 {
+	char *p;
 
-	if ((ptr = realloc(ptr, size)) == NULL)
-		enomem();
-	return (ptr);
-}
-
-/*
- * enomem --
- *	die when out of memory.
- */
-static void
-enomem(void)
-{
-	err(2, NULL);
+	if ((p = realloc(ptr, size)) == NULL)
+		err(2, "realloc(%d)", size);
+	return (p);
 }
 
 /*
