@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.88 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.89 2005/05/05 09:04:35 okumoto Exp $
  */
 
 /*
@@ -89,6 +89,13 @@ extern char **environ;	/* XXX what header declares this variable? */
 #define WANT_ENV_MKLVL	1
 #define	MKLVL_MAXVAL	500
 #define	MKLVL_ENVVAR	"__MKLVL__"
+
+/*
+ * DEFMAXJOBS
+ *	This control the default concurrency. On no occasion will more
+ *	than DEFMAXJOBS targets be created at once.
+ */
+#define	DEFMAXJOBS	1
 
 /* ordered list of makefiles to read */
 static Lst makefiles = Lst_Initializer(makefiles);
