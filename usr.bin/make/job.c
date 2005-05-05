@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.88 2005/04/28 18:52:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.89 2005/05/05 09:05:03 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2880,7 +2880,7 @@ JobMatchShell(const char *name)
  *			    hasErrCtl is FALSE.
  */
 ReturnStatus
-Job_ParseShell(char *line)
+Job_ParseShell(const char line[])
 {
 	char	**words;
 	int	wordCount;
@@ -2891,10 +2891,6 @@ Job_ParseShell(char *line)
 	Boolean	fullSpec = FALSE;
 	struct Shell	newShell;
 	struct Shell	*sh;
-
-	while (isspace((unsigned char)*line)) {
-		line++;
-	}
 
 	memset(&newShell, 0, sizeof(newShell));
 	path = NULL;

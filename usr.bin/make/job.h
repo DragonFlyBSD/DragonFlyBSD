@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.27 2005/04/28 18:49:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.28 2005/05/05 09:05:03 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -68,7 +68,7 @@ void Job_Make(struct GNode *);
 void Job_Init(int);
 Boolean Job_Full(void);
 Boolean Job_Empty(void);
-ReturnStatus Job_ParseShell(char *);
+ReturnStatus Job_ParseShell(const char []);
 int Job_Finish(void);
 void Job_Wait(void);
 void Job_AbortAll(void);
