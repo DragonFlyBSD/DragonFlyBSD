@@ -35,13 +35,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/GNode.h,v 1.4 2005/04/24 12:40:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/GNode.h,v 1.5 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef GNode_h_39503bf2
 #define	GNode_h_39503bf2
 
-#include "sprite.h"
 #include "lst.h"
 
 struct Suff;

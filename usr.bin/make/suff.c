@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.53 2005/04/28 18:50:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.54 2005/05/05 09:06:23 okumoto Exp $
  */
 
 /*-
@@ -157,6 +157,11 @@ typedef struct Src {
 	Lst	cp;		/* Debug; children list */
 #endif
 } Src;
+
+struct flag2str {
+	u_int		flag;
+	const char	*str;
+};
 
 /* The NULL suffix for this run */
 static Suff	*suffNull;
@@ -2156,6 +2161,27 @@ Suff_Init(void)
 }
 
 /********************* DEBUGGING FUNCTIONS **********************/
+
+/*
+ * Convert a flag word to a printable thing and print it
+ */
+static void
+print_flags(FILE *fp, const struct flag2str *tab, u_int flags)
+{
+	int first = 1;
+
+	fprintf(fp, "(");
+	while (tab->str != NULL) {
+		if (flags & tab->flag) {
+			if (!first)
+				fprintf(fp, "|");
+			first = 0;
+			fprintf(fp, "%s", tab->str);
+		}
+		tab++;
+	}
+	fprintf(fp, ")");
+}
 
 void
 Suff_PrintAll(void)

@@ -35,13 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/arch.h,v 1.4 2005/04/07 00:37:31 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.h,v 1.5 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef arch_h_488adf7a
 #define	arch_h_488adf7a
 
-#include "sprite.h"
+#include "util.h"
 
 struct GNode;
 struct Lst;

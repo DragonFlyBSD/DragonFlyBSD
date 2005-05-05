@@ -35,13 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/for.h,v 1.3 2005/04/15 21:01:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.h,v 1.4 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef for_h_9d770f33
 #define	for_h_9d770f33
 
-#include "sprite.h"
+#include "util.h"
 
 Boolean For_For(char *);
 Boolean For_Eval(char *);

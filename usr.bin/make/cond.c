@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.42 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.43 2005/05/05 09:06:23 okumoto Exp $
  */
 
 /*
@@ -59,7 +59,6 @@
 #include "GNode.h"
 #include "make.h"
 #include "parse.h"
-#include "sprite.h"
 #include "str.h"
 #include "targ.h"
 #include "util.h"

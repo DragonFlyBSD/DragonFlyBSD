@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.9 2005/04/29 22:44:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.10 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -49,7 +49,7 @@
 #include <stdint.h>
 
 #include "lst.h"
-#include "sprite.h"
+#include "util.h"
 
 struct GNode;
 struct Path;

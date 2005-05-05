@@ -38,7 +38,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.19 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.15 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.16 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef hash_h_f6312f46
@@ -50,7 +50,7 @@
  * 	which maintains hash tables.
  */
 
-#include "sprite.h"
+#include "util.h"
 
 /*
  * The following defines one entry in the hash table.

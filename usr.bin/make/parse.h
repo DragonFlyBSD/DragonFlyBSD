@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.8 2005/04/24 12:40:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.9 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -43,7 +43,7 @@
 
 #include <stdio.h>
 
-#include "sprite.h"
+#include "util.h"
 
 struct GNode;
 struct Lst;

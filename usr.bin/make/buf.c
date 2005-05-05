@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.37 2005/04/01 01:15:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.38 2005/05/05 09:06:23 okumoto Exp $
  */
 
 /*
@@ -51,7 +51,6 @@
 #include <stdlib.h>
 
 #include "buf.h"
-#include "sprite.h"
 #include "util.h"
 
 /**

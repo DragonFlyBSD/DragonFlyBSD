@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.28 2005/05/05 09:05:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.29 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -51,7 +51,7 @@
 
 #include <stdio.h>
 
-#include "sprite.h"
+#include "util.h"
 
 struct Buffer;
 struct GNode;

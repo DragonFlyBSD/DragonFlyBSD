@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.8 2005/04/01 01:15:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.9 2005/05/05 09:06:23 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -44,12 +44,23 @@
 #include <sys/types.h>
 #include <stdio.h>
 
-#define	CONCAT(a,b)	a##b
+/*
+ * A boolean type is defined as an integer, not an enum. This allows a
+ * boolean argument to be an expression that isn't strictly 0 or 1 valued.
+ */
 
-struct flag2str {
-	u_int		flag;
-	const char	*str;
-};
+typedef int Boolean;
+#ifndef TRUE
+#define	TRUE	1
+#define	FALSE	0
+#endif /* TRUE */
+
+typedef int  ReturnStatus;
+
+#define	SUCCESS		0
+#define	FAILURE		1
+
+#define	CONCAT(a,b)	a##b
 
 /*
  * debug control:
@@ -100,6 +111,5 @@ char *estrdup(const char *);
 void *emalloc(size_t);
 void *erealloc(void *, size_t);
 int eunlink(const char *);
-void print_flags(FILE *, const struct flag2str *, u_int);
 
 #endif /* util_h_b7020fdb */
