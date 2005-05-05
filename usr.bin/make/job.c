@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.89 2005/05/05 09:05:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.90 2005/05/05 09:06:59 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -735,7 +735,7 @@ ProcWait(ProcStuff *ps)
 	 * Wait for the process to exit.
 	 */
 	for (;;) {
-		pid = wait(&status);
+		pid = waitpid(ps->child_pid, &status, 0);
 		if (pid == -1 && errno != EINTR) {
 			Fatal("error in wait: %d", pid);
 			/* NOTREACHED */
