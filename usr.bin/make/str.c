@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.29 2005/05/05 09:07:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.30 2005/05/05 09:08:09 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -301,20 +301,22 @@ MAKEFLAGS_quote(const char *str)
 char **
 MAKEFLAGS_break(const char *str, int *pargc)
 {
-	char *q, *start;
-	int len;
+	char	*arg;
+	char	*start;
+	int	len;
 
 	/* allocate room for a copy of the string */
 	if ((len = strlen(str) + 1) > curlen)
 		buffer = erealloc(buffer, curlen = len);
 
-	start = NULL;
 	*pargc = 1;
+	arg = buffer;
+	start = NULL;
 
-	for (q = buffer;;) {
-		switch (*str) {
-		  case ' ':
-		  case '\t':
+	for (;;) {
+		switch (str[0]) {
+		case ' ':
+		case '\t':
 			/* word separator */
 			if (start == NULL) {
 				/* not in a word */
@@ -322,41 +324,41 @@ MAKEFLAGS_break(const char *str, int *pargc)
 				continue;
 			}
 			/* FALLTHRU */
-		  case '\0':
-			if (start == NULL)
-				goto done;
-
-			/* finish word */
-			*q++ = '\0';
+		case '\0':
 			if (argmax == *pargc) {
 				argmax *= 2;
 				argv = erealloc(argv,
 				    sizeof(*argv) * (argmax + 1));
 			}
-			argv[(*pargc)++] = start;
-			start = NULL;
 
-			if (*str++ == '\0')
-				goto done;
-			continue;
+			*arg++ = '\0';
+			if (start == NULL) {
+				argv[(*pargc)] = start;
+				return (argv);
+			}
+			if (str[0] == '\0') {
+				argv[(*pargc)++] = start;
+				argv[(*pargc)] = NULL;
+				return (argv);
+			} else {
+				argv[(*pargc)++] = start;
+				start = NULL;
+				str++;
+				continue;
+			}
 
-		  case '\\':
+		case '\\':
 			if (str[1] == ' ' || str[1] == '\t')
-				/* was a quote */
 				str++;
 			break;
 
-		  default:
+		default:
 			break;
 		}
 		if (start == NULL)
-			/* start of new word */
-			start = q;
-		*q++ = *str++;
+			start = arg;
+		*arg++ = *str++;
 	}
-  done:
-	argv[(*pargc)] = NULL;
-	return (argv);
 }
 
 /*
