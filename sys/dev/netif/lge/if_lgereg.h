@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.3 2004/09/14 23:08:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
  */
 
 
@@ -611,8 +611,3 @@ struct lge_softc {
 #define LGE_PSTATE_D3		0x0003
 #define LGE_PME_EN		0x0010
 #define LGE_PME_STATUS		0x8000
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

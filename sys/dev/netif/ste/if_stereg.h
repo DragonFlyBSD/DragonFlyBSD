@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_stereg.h,v 1.5.2.3 2002/08/21 15:26:01 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.3 2004/09/15 00:53:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.4 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -544,8 +544,3 @@ struct ste_mii_frame {
 #define STE_MII_READOP		0x02
 #define STE_MII_WRITEOP		0x01
 #define STE_MII_TURNAROUND	0x02
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sfreg.h,v 1.6.2.1 2001/08/16 20:35:04 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.3 2004/09/15 00:41:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -1049,8 +1049,3 @@ struct sf_softc {
 };
 
 #define SF_TIMEOUT	1000
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

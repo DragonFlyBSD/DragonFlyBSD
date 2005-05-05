@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.6 2004/09/23 23:18:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.7 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -1466,8 +1466,3 @@ struct sk_if_softc {
 #define SK_MAXUNIT	256
 #define SK_TIMEOUT	1000
 #define ETHER_ALIGN	2
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

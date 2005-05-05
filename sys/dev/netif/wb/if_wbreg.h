@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wbreg.h,v 1.7 1999/08/30 23:08:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.3 2004/09/15 01:12:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.4 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -458,8 +458,3 @@ struct wb_softc {
 #define WB_PSTATE_D3		0x0003
 #define WB_PME_EN		0x0010
 #define WB_PME_STATUS		0x8000
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.8 2005/02/20 04:41:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.9 2005/05/05 22:57:44 swildner Exp $
  *
  */
 
@@ -85,13 +85,7 @@ enum _pdq_type_t {
 #endif
 #define	PDQ_OS_USEC_DELAY(n)		DELAY(n)
 #define	PDQ_OS_MEMZERO(p, n)		bzero((caddr_t)(p), (n))
-#if defined(__NetBSD__) && defined(__alpha__)
-#define	PDQ_OS_VA_TO_PA(pdq, p)		(vtophys((vm_offset_t)p) | (pdq->pdq_type == PDQ_DEFTA ? 0 : 0x40000000))
-#elif (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(__alpha__)
-#define	PDQ_OS_VA_TO_PA(pdq, p)		(vtophys((vm_offset_t)p) | (pdq->pdq_type == PDQ_DEFTA ? 0 : alpha_XXX_dmamap_or))
-#else
 #define	PDQ_OS_VA_TO_PA(pdq, p)		vtophys(p)
-#endif
 #define	PDQ_OS_MEMALLOC(n)		malloc(n, M_DEVBUF, M_WAITOK)
 #define	PDQ_OS_MEMFREE(p, n)		free((void *) p, M_DEVBUF)
 #if defined(__DragonFly__) || defined(__FreeBSD__)
@@ -197,7 +191,7 @@ typedef struct {
     struct arpcom sc_ac;
 #define	sc_if		sc_ac.ac_if
     pdq_t *sc_pdq;
-#if defined(__alpha__) || defined(__i386__)
+#if defined(__i386__)
     pdq_bus_ioport_t sc_iobase;
 #endif
 #ifdef PDQ_IOMAPPED

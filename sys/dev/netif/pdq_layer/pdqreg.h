@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqreg.h,v 1.2 1999/08/28 00:42:20 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqreg.h,v 1.3 2004/11/30 19:17:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
  *
  */
 
@@ -345,11 +345,7 @@ typedef struct {
      * The maximum command size is 512 so as long as thes
      * command is at least that long all will be fine.
      */
-#if defined(__alpha) || defined(__alpha__)
-    pdq_uint32_t pdqdb_command_pool[144];
-#else
     pdq_uint32_t pdqdb_command_pool[464];
-#endif
 } pdq_descriptor_block_t;
 
 typedef struct {

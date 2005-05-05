@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.23 2005/02/19 19:39:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.24 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -1130,18 +1130,7 @@ tbdinit:
 		 * Advance the end of list forward.
 		 */
 
-#ifdef __alpha__
-		/*
-		 * On platforms which can't access memory in 16-bit
-		 * granularities, we must prevent the card from DMA'ing
-		 * up the status while we update the command field.
-		 * This could cause us to overwrite the completion status.
-		 */
-		atomic_clear_short(&sc->cbl_last->cb_command,
-		    FXP_CB_COMMAND_S);
-#else
 		sc->cbl_last->cb_command &= ~FXP_CB_COMMAND_S;
-#endif /*__alpha__*/
 		sc->cbl_last = txp;
 
 		/*

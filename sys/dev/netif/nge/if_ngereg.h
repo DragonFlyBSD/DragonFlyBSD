@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.3 2004/09/15 00:06:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
  */
 
 #define NGE_CSR			0x00
@@ -466,10 +466,7 @@
  * functions. We use the checksum feature so we enable the use of this
  * field. Descriptors must be 64-bit aligned.
  * After this, we include some additional structure members for
- * use by the driver. Note that for this structure will be a different
- * size on the alpha, but that's okay as long as it's a multiple of 4
- * bytes in size. 
- *
+ * use by the driver.
  */
 struct nge_desc_64 {
 	/* Hardware descriptor section */
@@ -721,8 +718,3 @@ struct nge_softc {
 #define NGE_PSTATE_D3		0x0003
 #define NGE_PME_EN		0x0010
 #define NGE_PME_STATUS		0x8000
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

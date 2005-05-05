@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.14 2004/07/29 00:48:41 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.15 2005/05/05 22:57:44 swildner Exp $
  */
 
 #include "opt_bus.h"
@@ -505,10 +505,6 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	/*
 	 * Bind the individual pages and flush the chipset's
 	 * TLB.
-	 *
-	 * XXX Presumably, this needs to be the pci address on alpha
-	 * (i.e. use alpha_XXX_dmamap()). I don't have access to any
-	 * alpha AGP hardware to check.
 	 */
 	for (i = 0; i < mem->am_size; i += PAGE_SIZE) {
 		/*

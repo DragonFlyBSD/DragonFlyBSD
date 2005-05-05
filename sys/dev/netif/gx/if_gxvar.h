@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gxvar.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxvar.h,v 1.4 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxvar.h,v 1.5 2005/05/05 22:57:44 swildner Exp $
  */
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
@@ -39,11 +39,6 @@ struct mtx { int filler; };
 #else
 #define GX_LOCK(gx)		mtx_lock(&(gx)->gx_mtx)
 #define GX_UNLOCK(gx)		mtx_unlock(&(gx)->gx_mtx)
-#endif
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
 #endif
 
 #ifndef PCIM_CMD_MWIEN

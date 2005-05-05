@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.5 2004/09/14 22:31:01 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.6 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -2210,8 +2210,3 @@ struct bge_softc {
 	char			*bge_vpd_prodname;
 	char			*bge_vpd_readonly;
 };
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

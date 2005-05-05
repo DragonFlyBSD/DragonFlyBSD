@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcnreg.h,v 1.3.2.3 2001/02/21 22:13:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcnreg.h,v 1.3 2004/09/15 00:24:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcnreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -509,8 +509,3 @@ struct pcn_softc {
 #define PCN_PSTATE_D3		0x0003
 #define PCN_PME_EN		0x0010
 #define PCN_PME_STATUS		0x8000
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

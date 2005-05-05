@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.15 2005/02/12 01:24:34 joerg Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.16 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -229,21 +229,8 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 	}
 
 	/* Strip away media header */
-	if (hlen > 0) {
+	if (hlen > 0)
 		m_adj(m, hlen);
-#ifdef __alpha__
-		/* The alpha doesn't like unaligned data.
-		 * We move data down in the first mbuf */
-		if (mtod(m, vm_offset_t) & 3) {
-			KASSERT(hlen >= 3, ("if_simloop: hlen too small"));
-			bcopy(m->m_data, 
-			    (char *)(mtod(m, vm_offset_t) 
-				- (mtod(m, vm_offset_t) & 3)),
-			    m->m_len);
-			mtod(m,vm_offset_t) -= (mtod(m, vm_offset_t) & 3);
-		}
-#endif
-	}
  
 #ifdef ALTQ
 	/*

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.18 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.19 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -1285,18 +1285,7 @@ static int ti_chipinit(sc)
 		}
 	}
 
-#ifdef __brokenalpha__
-	/*
-	 * From the Alteon sample driver:
-	 * Must insure that we do not cross an 8K (bytes) boundary
-	 * for DMA reads.  Our highest limit is 1K bytes.  This is a 
-	 * restriction on some ALPHA platforms with early revision 
-	 * 21174 PCI chipsets, such as the AlphaPC 164lx 
-	 */
-	TI_SETBIT(sc, TI_PCI_STATE, pci_writemax|TI_PCI_READMAX_1024);
-#else
 	TI_SETBIT(sc, TI_PCI_STATE, pci_writemax);
-#endif
 
 	/* This sets the min dma param all the way up (0xff). */
 	TI_SETBIT(sc, TI_PCI_STATE, TI_PCISTATE_MINDMA);
@@ -1567,22 +1556,6 @@ static int ti_attach(dev)
 	sc->ti_btag = rman_get_bustag(sc->ti_res);
 	sc->ti_bhandle = rman_get_bushandle(sc->ti_res);
 	sc->ti_vhandle = (vm_offset_t)rman_get_virtual(sc->ti_res);
-
-	/*
-	 * XXX FIXME: rman_get_virtual() on the alpha is currently
-	 * broken and returns a physical address instead of a kernel
-	 * virtual address. Consequently, we need to do a little
-	 * extra mangling of the vhandle on the alpha. This should
-	 * eventually be fixed! The whole idea here is to get rid
-	 * of platform dependencies.
-	 */
-#ifdef __alpha__
-	if (pci_cvt_to_bwx(sc->ti_vhandle))
-		sc->ti_vhandle = pci_cvt_to_bwx(sc->ti_vhandle);
-	else
-		sc->ti_vhandle = pci_cvt_to_dense(sc->ti_vhandle);
-	sc->ti_vhandle = ALPHA_PHYS_TO_K0SEG(sc->ti_vhandle);
-#endif
 
 	/* Allocate interrupt */
 	rid = 0;

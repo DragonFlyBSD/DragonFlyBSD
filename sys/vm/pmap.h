@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.14 2004/05/31 17:06:41 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.15 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -92,9 +92,6 @@ typedef struct pmap_statistics *pmap_statistics_t;
 struct proc;
 struct thread;
 
-#ifdef __alpha__
-void		 pmap_page_is_free (vm_page_t m);
-#endif
 void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t);
 void		 pmap_clear_modify (vm_page_t m);
 void		 pmap_clear_reference (vm_page_t m);

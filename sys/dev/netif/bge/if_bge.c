@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.27 2005/02/14 17:45:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.28 2005/05/05 22:57:44 swildner Exp $
  *
  */
 
@@ -1196,17 +1196,6 @@ bge_chipinit(sc)
 	 */
 	PCI_CLRBIT(sc->bge_dev, BGE_PCI_CMD, PCIM_CMD_MWIEN, 4);
 
-#ifdef __brokenalpha__
-	/*
-	 * Must insure that we do not cross an 8K (bytes) boundary
-	 * for DMA reads.  Our highest limit is 1K bytes.  This is a 
-	 * restriction on some ALPHA platforms with early revision 
-	 * 21174 PCI chipsets, such as the AlphaPC 164lx 
-	 */
-	PCI_SETBIT(sc->bge_dev, BGE_PCI_DMA_RW_CTL,
-	    BGE_PCI_READ_BNDRY_1024BYTES, 4);
-#endif
-
 	/* Set the timer prescaler (always 66Mhz) */
 	CSR_WRITE_4(sc, BGE_MISC_CFG, 65 << 1/*BGE_32BITTIME_66MHZ*/);
 
@@ -1688,22 +1677,6 @@ bge_attach(dev)
 	sc->bge_btag = rman_get_bustag(sc->bge_res);
 	sc->bge_bhandle = rman_get_bushandle(sc->bge_res);
 	sc->bge_vhandle = (vm_offset_t)rman_get_virtual(sc->bge_res);
-
-	/*
-	 * XXX FIXME: rman_get_virtual() on the alpha is currently
-	 * broken and returns a physical address instead of a kernel
-	 * virtual address. Consequently, we need to do a little
-	 * extra mangling of the vhandle on the alpha. This should
-	 * eventually be fixed! The whole idea here is to get rid
-	 * of platform dependencies.
-	 */
-#ifdef __alpha__
-	if (pci_cvt_to_bwx(sc->bge_vhandle))
-		sc->bge_vhandle = pci_cvt_to_bwx(sc->bge_vhandle);
-	else
-		sc->bge_vhandle = pci_cvt_to_dense(sc->bge_vhandle);
-	sc->bge_vhandle = ALPHA_PHYS_TO_K0SEG(sc->bge_vhandle);
-#endif
 
 	/* Allocate interrupt */
 	rid = 0;

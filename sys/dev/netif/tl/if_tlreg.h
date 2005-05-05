@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tlreg.h,v 1.15 1999/09/19 22:39:24 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tlreg.h,v 1.3 2004/09/15 00:55:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tlreg.h,v 1.4 2005/05/05 22:57:45 swildner Exp $
  */
 
 
@@ -586,8 +586,3 @@ struct tl_stats {
  */
 #define EEPROM_CTL_READ			0xA1	/* 0101 0001 */
 #define EEPROM_CTL_WRITE		0xA0	/* 0101 0000 */
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

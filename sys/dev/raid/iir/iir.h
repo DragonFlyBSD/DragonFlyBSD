@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.h,v 1.3.2.2 2002/05/04 08:49:50 msmith Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.3 2004/09/15 15:32:00 joerg Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.4 2005/05/05 22:57:45 swildner Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -689,12 +689,6 @@ gdt_dec32(addr)
 {
         return letoh32(*(u_int32_t *)addr);
 }
-#endif
-
-#if defined(__alpha__)
-/* XXX XXX NEED REAL DMA MAPPING SUPPORT XXX XXX */
-#undef vtophys
-#define vtophys(va)     alpha_XXX_dmamap((vm_offset_t)(va))
 #endif
 
 extern TAILQ_HEAD(gdt_softc_list, gdt_softc) gdt_softcs;

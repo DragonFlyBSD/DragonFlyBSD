@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.3 2004/09/14 22:44:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -701,9 +701,6 @@ struct dc_softc {
 	struct dc_list_data	*dc_ldata;
 	struct dc_chain_data	dc_cdata;
 	struct callout		dc_stat_timer;
-#ifdef __alpha__
-	int			dc_srm_media;
-#endif
 #ifdef	DEVICE_POLLING
 	int			rxcycles;	/* ... when polling */
 #endif
@@ -1108,8 +1105,3 @@ struct dc_eblock_reset {
 	u_int8_t		dc_reset_len;
 /*	u_int16_t		dc_reset_dat[n]; */
 };
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

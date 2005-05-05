@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.5 2005/02/12 02:23:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.6 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -583,9 +583,3 @@ struct vr_softc {
 #define VR_PSTATE_D3		0x0003
 #define VR_PME_EN		0x0010
 #define VR_PME_STATUS		0x8000
-
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

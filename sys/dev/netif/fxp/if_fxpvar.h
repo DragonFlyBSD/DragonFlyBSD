@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.6 2005/01/31 15:39:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.7 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -88,11 +88,6 @@
  * entry in rcvbundl.h.
  */
 #define TUNABLE_BUNDLE_MAX 6
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)	alpha_XXX_dmamap((vm_offset_t)(va))
-#endif /* __alpha__ */
 
 /*
  * NOTE: Elements are ordered for optimal cacheline behavior, and NOT

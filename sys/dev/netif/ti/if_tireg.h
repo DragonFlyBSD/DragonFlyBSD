@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tireg.h,v 1.13.2.4 2001/04/26 16:41:15 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.3 2005/05/05 22:57:45 swildner Exp $
  */
 
 /*
@@ -1185,9 +1185,3 @@ struct ti_softc {
 	TI_SETBIT(sc, TI_MISC_LOCAL_CTL, TI_MLC_EE_DOUT); /* Toggle DATA to 1 */	\
 	TI_CLRBIT(sc, TI_MISC_LOCAL_CTL, TI_MLC_EE_TXEN); /* Disable xmit. */	\
 	TI_CLRBIT(sc, TI_MISC_LOCAL_CTL, TI_MLC_EE_CLK); /* Pull clock low again */
-
-
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)		alpha_XXX_dmamap((vm_offset_t)va)
-#endif

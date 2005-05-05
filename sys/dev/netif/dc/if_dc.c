@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.23 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.24 2005/05/05 22:57:44 swildner Exp $
  */
 
 /*
@@ -125,9 +125,6 @@
 #include <bus/pci/pcivar.h>
 
 #define DC_USEIOSPACE
-#ifdef __alpha__
-#define SRM_MEDIA
-#endif
 
 #include "if_dcreg.h"
 
@@ -2129,33 +2126,6 @@ static int dc_attach(dev)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-#ifdef SRM_MEDIA
-        sc->dc_srm_media = 0;
-
-	/* Remember the SRM console media setting */
-	if (DC_IS_INTEL(sc)) {
-		command = pci_read_config(dev, DC_PCI_CFDD, 4);
-		command &= ~(DC_CFDD_SNOOZE_MODE|DC_CFDD_SLEEP_MODE);
-		switch ((command >> 8) & 0xff) {
-		case 3: 
-			sc->dc_srm_media = IFM_10_T;
-			break;
-		case 4: 
-			sc->dc_srm_media = IFM_10_T | IFM_FDX;
-			break;
-		case 5: 
-			sc->dc_srm_media = IFM_100_TX;
-			break;
-		case 6: 
-			sc->dc_srm_media = IFM_100_TX | IFM_FDX;
-			break;
-		}
-		if (sc->dc_srm_media)
-			sc->dc_srm_media |= IFM_ACTIVE | IFM_ETHER;
-	}
-#endif
-
-
 fail:
 	splx(s);
 
@@ -3283,15 +3253,6 @@ static void dc_init(xsc)
 			callout_reset(&sc->dc_stat_timer, hz, dc_tick, sc);
 	}
 
-#ifdef SRM_MEDIA
-        if(sc->dc_srm_media) {
-		struct ifreq ifr;
-
-		ifr.ifr_media = sc->dc_srm_media;
-		ifmedia_ioctl(ifp, &ifr, &mii->mii_media, SIOCSIFMEDIA);		
-		sc->dc_srm_media = 0;
-	}
-#endif
 	return;
 }
 
@@ -3393,10 +3354,6 @@ static int dc_ioctl(ifp, command, data, cr)
 	case SIOCSIFMEDIA:
 		mii = device_get_softc(sc->dc_miibus);
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
-#ifdef SRM_MEDIA
-		if (sc->dc_srm_media)
-			sc->dc_srm_media = 0;
-#endif
 		break;
 	default:
 		error = EINVAL;
