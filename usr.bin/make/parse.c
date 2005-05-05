@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.78 2005/04/29 23:11:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.79 2005/05/05 09:08:42 okumoto Exp $
  */
 
 /*-
@@ -404,16 +404,15 @@ ParsePopInput(void)
  *	Parse the .WARN pseudo-target.
  */
 static void
-parse_warn(char *line)
+parse_warn(const char line[])
 {
-	char **argv;
-	int argc;
-	int i;
+	ArgArray	aa;
+	int		i;
 
-	argv = brk_string(line, &argc, TRUE);
+	brk_string(&aa, line, TRUE);
 
-	for (i = 1; i < argc; i++)
-		Main_ParseWarn(argv[i], 0);
+	for (i = 1; i < aa.argc; i++)
+		Main_ParseWarn(aa.argv[i], 0);
 }
 
 /*-

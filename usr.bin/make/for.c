@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.40 2005/04/21 23:09:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.41 2005/05/05 09:08:42 okumoto Exp $
  */
 
 /*-
@@ -147,7 +147,6 @@ For_For(char *line)
 
 	/*
 	 * Make a list with the remaining words
-	 * XXX should use brk_string here.
 	 */
 	sub = Buf_Peel(Var_Subst(ptr, VAR_CMD, FALSE));
 	for (ptr = sub; *ptr != '\0' && isspace((u_char)*ptr); ptr++)

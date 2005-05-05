@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.54 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.55 2005/05/05 09:08:42 okumoto Exp $
  */
 
 /*-
@@ -1175,9 +1175,7 @@ SuffExpandVariables(GNode *parent, GNode *child, Lst *members)
 	}
 	/*
 	 * Break the result into a vector of strings whose nodes we can find,
-	 * then add those nodes to the members list. Unfortunately, we can't use
-	 * brk_string b/c it doesn't understand about variable specifications
-	 * with spaces in them... XXX
+	 * then add those nodes to the members list.
 	 */
 	for (start = cp; *start == ' ' || *start == '\t'; start++)
 		;

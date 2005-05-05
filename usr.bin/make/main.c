@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.89 2005/05/05 09:04:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.90 2005/05/05 09:08:42 okumoto Exp $
  */
 
 /*
@@ -573,8 +573,7 @@ rearg:
 void
 Main_ParseArgLine(char *line, int mflags)
 {
-	char **argv;			/* Manufactured argument vector */
-	int argc;			/* Number of arguments in argv */
+	ArgArray	aa;
 
 	if (line == NULL)
 		return;
@@ -583,12 +582,13 @@ Main_ParseArgLine(char *line, int mflags)
 	if (!*line)
 		return;
 
-	if (mflags)
-		argv = MAKEFLAGS_break(line, &argc);
-	else
-		argv = brk_string(line, &argc, TRUE);
-
-	MainParseArgs(argc, argv);
+	if (mflags) {
+		MAKEFLAGS_break(&aa, line);
+	} else {
+		brk_string(&aa, line, TRUE);
+	}
+	MainParseArgs(aa.argc, aa.argv);
+	ArgArray_Done(&aa);
 }
 
 static char *
@@ -762,7 +762,6 @@ main(int argc, char **argv)
 				 * can be processed correctly */
 	Var_Init(environ);	/* As well as the lists of variables for
 				 * parsing arguments */
-        str_init();
 
 	/*
 	 * Initialize various variables.

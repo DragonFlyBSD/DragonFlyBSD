@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.6 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.7 2005/05/05 09:08:42 okumoto Exp $
  */
 
 #ifndef str_h_44db59e6
@@ -44,6 +44,18 @@
 #include "util.h"
 
 struct Buffer;
+
+/**
+ * An array of c-strings.  The pointers stored in argv, point to
+ * strings stored in buffer.
+ */
+typedef struct ArgArray {
+	int	size;		/* size of argv array */
+	int	argc;		/* strings referenced in argv */
+	char	**argv;		/* array of string pointers */
+	size_t	len;		/* size of buffer */
+	char	*buffer;	/* data buffer */
+} ArgArray;
 
 /*
  * These constants are all used by the Str_Concat function to decide how the
@@ -55,11 +67,12 @@ struct Buffer;
 #define	STR_ADDSPACE	0x01	/* add a space when Str_Concat'ing */
 #define	STR_ADDSLASH	0x04	/* add a slash when Str_Concat'ing */
 
-void str_init(void);
+void ArgArray_Done(ArgArray *);
+
 char *str_concat(const char *, const char *, int);
-char **brk_string(const char *, int *, Boolean);
+void brk_string(ArgArray *, const char [], Boolean);
 char *MAKEFLAGS_quote(const char *);
-char **MAKEFLAGS_break(const char *, int *);
+void MAKEFLAGS_break(ArgArray *, const char []);
 int Str_Match(const char *, const char *);
 const char *Str_SYSVMatch(const char *, const char *, int *);
 void Str_SYSVSubst(struct Buffer *, const char *, const char *, int);

@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.30 2005/05/05 09:08:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.31 2005/05/05 09:08:42 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -49,23 +49,48 @@
 #include "str.h"
 #include "util.h"
 
-static char **argv;
-static char *buffer;
-static int argmax;
-static int curlen;
+/**
+ * Initialize the argument array object.  The array is initially
+ * eight positions, and will be expaned as nessisary.  The first
+ * position is set to NULL since everything ignores it.  We allocate
+ * (size + 1) since we need space for the terminating NULL.  The
+ * buffer is set to NULL, since no common buffer is alloated yet.
+ */
+static void
+ArgArray_Init(ArgArray *aa)
+{
+	aa->size = 8;
+	aa->argv = emalloc((aa->size + 1) * sizeof(char *));
+	aa->argc = 0;
+	aa->argv[aa->argc++] = NULL;
+	aa->len = 0;
+	aa->buffer = NULL;
+}
 
-/*
- * str_init --
- *	Initialize the strings package
- *
+/**
+ * Cleanup the memory allocated for in the argument array object. 
  */
 void
-str_init(void)
+ArgArray_Done(ArgArray *aa)
 {
-
-	argmax = 50;
-	argv = emalloc((argmax + 1) * sizeof(char *));
-	argv[0] = NULL;
+	if (aa->buffer == NULL) {
+		int	i;
+		/* args are individually allocated */
+		for (i = 0; i < aa->argc; ++i) {
+			if (aa->argv[i]) {
+				free(aa->argv[i]);
+				aa->argv[i] = NULL;
+			}
+		}
+	} else {
+		/* args are part of a single allocation */
+		free(aa->buffer);
+		aa->buffer = NULL;
+	}
+	free(aa->argv);
+	aa->argv = NULL;
+	aa->argc = 0;
+	aa->size = 0;
 }
 
 /*-
@@ -106,37 +131,27 @@ str_concat(const char *s1, const char *s2, int flags)
 	return (result);
 }
 
-/*-
- * brk_string --
- *	Fracture a string into an array of words (as delineated by tabs or
- *	spaces) taking quotation marks into account.  Leading tabs/spaces
- *	are ignored.
- *
- * returns --
- *	Pointer to the array of pointers to the words.
+/**
+ * Fracture a string into an array of words (as delineated by tabs or
+ * spaces) taking quotation marks into account.  Leading tabs/spaces
+ * are ignored.
  */
-char **
-brk_string(const char *str, int *store_argc, Boolean expand)
+void
+brk_string(ArgArray *aa, const char str[], Boolean expand)
 {
-	int		argc;
-	char		inquote;
-	char		*start;
-	char		*arg;
-	int		len;
+	char	inquote;
+	char	*start;
+	char	*arg;
 
 	/* skip leading space chars. */
 	for (; *str == ' ' || *str == '\t'; ++str)
 		continue;
 
-	/* allocate room for a copy of the string */
-	if ((len = strlen(str) + 1) > curlen) {
-		if (buffer)
-			free(buffer);
-		buffer = emalloc(curlen = len);
-	}
+	ArgArray_Init(aa);
 
-	argc = 1;
-	arg = buffer;
+	aa->buffer = estrdup(str);;
+
+	arg = aa->buffer;
 	start = arg;
 	inquote = '\0';
 
@@ -185,27 +200,23 @@ brk_string(const char *str, int *store_argc, Boolean expand)
 			 * end of a token -- make sure there's enough argv
 			 * space and save off a pointer.
 			 */
-			if (argc == argmax) {
-				argmax *= 2;		/* ramp up fast */
-				argv = erealloc(argv,
-				    (argmax + 1) * sizeof(char *));
+			if (aa->argc == aa->size) {
+				aa->size *= 2;		/* ramp up fast */
+				aa->argv = erealloc(aa->argv,
+				    (aa->size + 1) * sizeof(char *));
 			}
 
 			*arg++ = '\0';
 			if (start == NULL) {
-				argv[argc] = start;
-				if (store_argc != NULL)
-					*store_argc = argc;
-				return (argv);
+				aa->argv[aa->argc] = start;
+				return;
 			}
 			if (str[0] == '\n' || str[0] == '\0') {
-				argv[argc++] = start;
-				argv[argc] = NULL;
-				if (store_argc != NULL)
-					*store_argc = argc;
-				return (argv);
+				aa->argv[aa->argc++] = start;
+				aa->argv[aa->argc] = NULL;
+				return;
 			} else {
-				argv[argc++] = start;
+				aa->argv[aa->argc++] = start;
 				start = NULL;
 				break;
 			}
@@ -298,19 +309,17 @@ MAKEFLAGS_quote(const char *str)
 	return (ret);
 }
 
-char **
-MAKEFLAGS_break(const char *str, int *pargc)
+void
+MAKEFLAGS_break(ArgArray *aa, const char str[])
 {
 	char	*arg;
 	char	*start;
-	int	len;
 
-	/* allocate room for a copy of the string */
-	if ((len = strlen(str) + 1) > curlen)
-		buffer = erealloc(buffer, curlen = len);
+	ArgArray_Init(aa);
 
-	*pargc = 1;
-	arg = buffer;
+	aa->buffer = strdup(str);
+
+	arg = aa->buffer;
 	start = NULL;
 
 	for (;;) {
@@ -325,23 +334,23 @@ MAKEFLAGS_break(const char *str, int *pargc)
 			}
 			/* FALLTHRU */
 		case '\0':
-			if (argmax == *pargc) {
-				argmax *= 2;
-				argv = erealloc(argv,
-				    sizeof(*argv) * (argmax + 1));
+			if (aa->argc == aa->size) {
+				aa->size *= 2;
+				aa->argv = erealloc(aa->argv,
+ 				    (aa->size + 1) * sizeof(char *));
 			}
 
 			*arg++ = '\0';
 			if (start == NULL) {
-				argv[(*pargc)] = start;
-				return (argv);
+				aa->argv[aa->argc] = start;
+				return;
 			}
 			if (str[0] == '\0') {
-				argv[(*pargc)++] = start;
-				argv[(*pargc)] = NULL;
-				return (argv);
+				aa->argv[aa->argc++] = start;
+				aa->argv[aa->argc] = NULL;
+				return;
 			} else {
-				argv[(*pargc)++] = start;
+				aa->argv[aa->argc++] = start;
 				start = NULL;
 				str++;
 				continue;
@@ -545,3 +554,4 @@ Str_SYSVSubst(Buffer *buf, const char *pat, const char *src, int len)
 	/* append the rest */
 	Buf_Append(buf, pat);
 }
+

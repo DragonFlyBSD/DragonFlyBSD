@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.90 2005/05/05 09:06:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.91 2005/05/05 09:08:42 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2882,13 +2882,12 @@ JobMatchShell(const char *name)
 ReturnStatus
 Job_ParseShell(const char line[])
 {
-	char	**words;
-	int	wordCount;
-	char	**argv;
-	int	argc;
-	char	*path;
-	char	*eq;
-	Boolean	fullSpec = FALSE;
+	ArgArray	aa;
+	char		**argv;
+	int		argc;
+	char		*path;
+	char		*eq;
+	Boolean		fullSpec = FALSE;
 	struct Shell	newShell;
 	struct Shell	*sh;
 
@@ -2896,20 +2895,19 @@ Job_ParseShell(const char line[])
 	path = NULL;
 
 	/*
-	 * Parse the specification by keyword but skip the first word - it
-	 * is not set by brk_string.
+	 * Parse the specification by keyword but skip the first word
 	 */
-	words = brk_string(line, &wordCount, TRUE);
-	words++;
-	wordCount--;
+	brk_string(&aa, line, TRUE);
 
-	for (argc = wordCount, argv = words; argc != 0; argc--, argv++) {
+	for (argc = aa.argc - 1, argv = aa.argv + 1; argc != 0; argc--, argv++)
+	{
 		/*
 		 * Split keyword and value
 		 */
 		if ((eq = strchr(*argv, '=')) == NULL) {
 			Parse_Error(PARSE_FATAL, "missing '=' in shell "
 			    "specification keyword '%s'", *argv);
+			ArgArray_Done(&aa);
 			return (FAILURE);
 		}
 		*eq++ = '\0';
@@ -2946,6 +2944,7 @@ Job_ParseShell(const char line[])
 		} else {
 			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
 			    "specification '%s'", *argv);
+			ArgArray_Done(&aa);
 			return (FAILURE);
 		}
 	}
@@ -2972,11 +2971,13 @@ Job_ParseShell(const char line[])
 		if (newShell.name == NULL) {
 			Parse_Error(PARSE_FATAL,
 			    "Neither path nor name specified");
+			ArgArray_Done(&aa);
 			return (FAILURE);
 		}
 		if ((sh = JobMatchShell(newShell.name)) == NULL) {
 			Parse_Error(PARSE_FATAL, "%s: no matching shell",
 			    newShell.name);
+			ArgArray_Done(&aa);
 			return (FAILURE);
 		}
 
@@ -3005,6 +3006,7 @@ Job_ParseShell(const char line[])
 			if ((sh = JobMatchShell(newShell.name)) == NULL) {
 				Parse_Error(PARSE_FATAL,
 				    "%s: no matching shell", newShell.name);
+				ArgArray_Done(&aa);
 				return (FAILURE);
 			}
 		} else {
@@ -3018,6 +3020,7 @@ Job_ParseShell(const char line[])
 
 	shellName = commandShell->name;
 
+	ArgArray_Done(&aa);
 	return (SUCCESS);
 }
 
@@ -3391,15 +3394,16 @@ CompatInterrupt(int signo)
 static int
 Compat_RunCommand(char *cmd, GNode *gn)
 {
-	char	*cmdStart;	/* Start of expanded command */
-	char	*cp;
-	Boolean	silent;		/* Don't print command */
-	Boolean	doit;		/* Execute even in -n */
-	Boolean	errCheck;	/* Check errors */
-	int	reason;		/* Reason for child's death */
-	int	status;		/* Description of child's death */
-	LstNode	*cmdNode;	/* Node where current command is located */
-	char	**av;		/* Argument vector for thing to exec */
+	ArgArray	aa;
+	char		*cmdStart;	/* Start of expanded command */
+	char		*cp;
+	Boolean		silent;		/* Don't print command */
+	Boolean		doit;		/* Execute even in -n */
+	Boolean		errCheck;	/* Check errors */
+	int		reason;		/* Reason for child's death */
+	int		status;		/* Description of child's death */
+	LstNode		*cmdNode;	/* Node where current cmd is located */
+	char		**av;		/* Argument vector for thing to exec */
 	ProcStuff	ps;
 
 	silent = gn->type & OP_SILENT;
@@ -3409,12 +3413,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	cmdNode = Lst_Member(&gn->commands, cmd);
 	cmdStart = Buf_Peel(Var_Subst(cmd, gn, FALSE));
 
-	/*
-	 * brk_string will return an argv with a NULL in av[0], thus causing
-	 * execvp() to choke and die horribly. Besides, how can we execute a
-	 * null command? In any case, we warn the user that the command
-	 * expanded to nothing (is this the right thing to do?).
-	 */
 	if (*cmdStart == '\0') {
 		free(cmdStart);
 		Error("%s expands to empty string", cmd);
@@ -3499,11 +3497,10 @@ Compat_RunCommand(char *cmd, GNode *gn)
 
 		/*
 		 * Break the command into words to form an argument
-		 * vector we can execute. brk_string sticks NULL
-		 * in av[0], so we have to skip over it...
+		 * vector we can execute.
 		 */
-		av = brk_string(cmd, NULL, TRUE);
-		av += 1;
+		brk_string(&aa, cmd, TRUE);
+		av = aa.argv + 1;
 
 		for (p = sh_builtin; *p != 0; p++) {
 			if (strcmp(av[0], *p) == 0) {
@@ -3564,6 +3561,8 @@ Compat_RunCommand(char *cmd, GNode *gn)
 			free(ps.argv[1]);
 			free(ps.argv[0]);
 			free(ps.argv);
+		} else {
+			ArgArray_Done(&aa);
 		}
 
 		/*
