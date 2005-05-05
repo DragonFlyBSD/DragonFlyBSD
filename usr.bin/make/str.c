@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.28 2005/04/28 18:50:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.29 2005/05/05 09:07:51 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -118,11 +118,11 @@ str_concat(const char *s1, const char *s2, int flags)
 char **
 brk_string(const char *str, int *store_argc, Boolean expand)
 {
-	int argc, ch;
-	char inquote;
-	const char *p;
-	char *start, *t;
-	int len;
+	int		argc;
+	char		inquote;
+	char		*start;
+	char		*arg;
+	int		len;
 
 	/* skip leading space chars. */
 	for (; *str == ' ' || *str == '\t'; ++str)
@@ -131,105 +131,133 @@ brk_string(const char *str, int *store_argc, Boolean expand)
 	/* allocate room for a copy of the string */
 	if ((len = strlen(str) + 1) > curlen) {
 		if (buffer)
-		    free(buffer);
+			free(buffer);
 		buffer = emalloc(curlen = len);
 	}
+
+	argc = 1;
+	arg = buffer;
+	start = arg;
+	inquote = '\0';
 
 	/*
 	 * copy the string; at the same time, parse backslashes,
 	 * quotes and build the argument list.
 	 */
-	argc = 1;
-	inquote = '\0';
-	for (p = str, start = t = buffer;; ++p) {
-		switch(ch = *p) {
+	for (;;) {
+		switch (str[0]) {
 		case '"':
 		case '\'':
-			if (inquote) {
-				if (ch != inquote)
+			if (inquote == '\0') {
+				inquote = str[0];
+				if (expand)
 					break;
+				if (start == NULL)
+					start = arg;
+			} else if (inquote == str[0]) {
 				inquote = '\0';
 				/* Don't miss "" or '' */
-				if (!start)
-					start = t;
-			} else
-				inquote = (char)ch;
-			if (expand)
-				continue;
+				if (start == NULL)
+					start = arg;
+				if (expand)
+					break;
+			} else {
+				/* other type of quote found */
+				if (start == NULL)
+					start = arg;
+			}
+			*arg++ = str[0];
 			break;
 		case ' ':
 		case '\t':
 		case '\n':
-			if (inquote)
+			if (inquote) {
+				if (start == NULL)
+					start = arg;
+				*arg++ = str[0];
 				break;
-			if (!start)
-				continue;
+			}
+			if (start == NULL)
+				break;
 			/* FALLTHROUGH */
 		case '\0':
 			/*
 			 * end of a token -- make sure there's enough argv
 			 * space and save off a pointer.
 			 */
-			if (!start)
-			    goto done;
-
-			*t++ = '\0';
 			if (argc == argmax) {
 				argmax *= 2;		/* ramp up fast */
 				argv = erealloc(argv,
 				    (argmax + 1) * sizeof(char *));
 			}
-			argv[argc++] = start;
-			start = NULL;
-			if (ch == '\n' || ch == '\0')
-				goto done;
-			continue;
-		case '\\':
-			if (!expand) {
-				if (!start)
-					start = t;
-				*t++ = '\\';
-				ch = *++p;
+
+			*arg++ = '\0';
+			if (start == NULL) {
+				argv[argc] = start;
+				if (store_argc != NULL)
+					*store_argc = argc;
+				return (argv);
+			}
+			if (str[0] == '\n' || str[0] == '\0') {
+				argv[argc++] = start;
+				argv[argc] = NULL;
+				if (store_argc != NULL)
+					*store_argc = argc;
+				return (argv);
+			} else {
+				argv[argc++] = start;
+				start = NULL;
 				break;
 			}
-
-			switch (ch = *++p) {
-			case '\0':
-			case '\n':
-				/* hmmm; fix it up as best we can */
-				ch = '\\';
-				--p;
-				break;
-			case 'b':
-				ch = '\b';
-				break;
-			case 'f':
-				ch = '\f';
-				break;
-			case 'n':
-				ch = '\n';
-				break;
-			case 'r':
-				ch = '\r';
-				break;
-			case 't':
-				ch = '\t';
-				break;
-			default:
-				break;
+		case '\\':
+			if (start == NULL)
+				start = arg;
+			if (expand) {
+				switch (str[1]) {
+				case '\0':
+				case '\n':
+					/* hmmm; fix it up as best we can */
+					*arg++ = '\\';
+					break;
+				case 'b':
+					*arg++ = '\b';
+					++str;
+					break;
+				case 'f':
+					*arg++ = '\f';
+					++str;
+					break;
+				case 'n':
+					*arg++ = '\n';
+					++str;
+					break;
+				case 'r':
+					*arg++ = '\r';
+					++str;
+					break;
+				case 't':
+					*arg++ = '\t';
+					++str;
+					break;
+				default:
+					*arg++ = str[1];
+					++str;
+					break;
+				}
+			} else {
+				*arg++ = str[0];
+				++str;
+				*arg++ = str[0];
 			}
 			break;
 		default:
+			if (start == NULL)
+				start = arg;
+			*arg++ = str[0];
 			break;
 		}
-		if (!start)
-			start = t;
-		*t++ = (char)ch;
+		++str;
 	}
-done:	argv[argc] = NULL;
-	if (store_argc != NULL)
-		*store_argc = argc;
-	return (argv);
 }
 
 /*
