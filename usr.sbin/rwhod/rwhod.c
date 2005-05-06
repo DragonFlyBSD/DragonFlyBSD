@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.13 2005/05/01 14:52:08 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.14 2005/05/06 17:16:18 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -98,6 +98,9 @@
 #define	UNPRIV_USER		"daemon"
 #define	UNPRIV_GROUP		"daemon"
 
+#define WITH_ERRNO		1	/* Write to syslog with errno (%m) */
+#define WITHOUT_ERRNO		2	/* Write to syslog without errno */
+
 #define NO_MULTICAST		0	  /* multicast modes */
 #define PER_INTERFACE_MULTICAST	1
 #define SCOPED_MULTICAST	2
@@ -148,7 +151,7 @@ int	 configure(int);
 void	 getboottime(void);
 void	 onalrm(void);
 void	 onsignal(int);
-void	 quit(const char *);
+void	 quit(const char *, int);
 void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 int	 verify(char *, int);
 static void usage(void);
@@ -211,46 +214,39 @@ main(int argc, char *argv[])
 	signal(SIGHUP, onsignal);
 	openlog("rwhod", LOG_PID, LOG_DAEMON);
 	sp = getservbyname("who", "udp");
-	if (sp == NULL) {
-		syslog(LOG_ERR, "udp/who: unknown service");
-		exit(1);
-	}
-	if (chdir(_PATH_RWHODIR) < 0) {
-		syslog(LOG_ERR, "%s: %m", _PATH_RWHODIR);
-		exit(1);
-	}
+	if (sp == NULL)
+		quit("udp/who: unknown service", WITHOUT_ERRNO);
+
+	if (chdir(_PATH_RWHODIR) < 0)
+		quit(_PATH_RWHODIR, WITH_ERRNO);
+
 	/*
 	 * Establish host name as returned by system.
 	 */
-	if (gethostname(myname, sizeof(myname)) < 0) {
-		syslog(LOG_ERR, "gethostname: %m");
-		exit(1);
-	}
+	if (gethostname(myname, sizeof(myname)) < 0)
+		quit("gethostname", WITH_ERRNO);
+
 	if ((cp = strchr(myname, '.')) != NULL)
 		*cp = '\0';
 	strlcpy(mywd.wd_hostname, myname, sizeof(mywd.wd_hostname));
 	utmpf = open(_PATH_UTMP, O_RDONLY|O_CREAT, 0644);
-	if (utmpf < 0) {
-		syslog(LOG_ERR, "%s: %m", _PATH_UTMP);
-		exit(1);
-	}
+	if (utmpf < 0)
+		quit(_PATH_UTMP, WITH_ERRNO);
+
 	getboottime();
-	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		syslog(LOG_ERR, "socket: %m");
-		exit(1);
-	}
-	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-		syslog(LOG_ERR, "setsockopt SO_BROADCAST: %m");
-		exit(1);
-	}
+	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+		quit("socket", WITH_ERRNO);
+
+	if (setsockopt(s, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0)
+		quit("setsockopt SO_BROADCAST", WITH_ERRNO);
+
 	memset(&m_sin, 0, sizeof(m_sin));
 	m_sin.sin_len = sizeof(m_sin);
 	m_sin.sin_family = AF_INET;
 	m_sin.sin_port = sp->s_port;
-	if (bind(s, (struct sockaddr *)&m_sin, sizeof(m_sin)) < 0) {
-		syslog(LOG_ERR, "bind: %m");
-		exit(1);
-	}
+	if (bind(s, (struct sockaddr *)&m_sin, sizeof(m_sin)) < 0)
+		quit("bind", WITH_ERRNO);
+
 	setgid(unpriv_gid);
 	setgroups(1, &unpriv_gid);	/* XXX BOGUS groups[0] = egid */
 	setuid(unpriv_uid);
@@ -363,17 +359,15 @@ run_as(uid_t *uid, gid_t *gid)
 	struct group *gr;
 
 	pw = getpwnam(UNPRIV_USER);
-	if (!pw) {
-		syslog(LOG_ERR, "getpwnam(%s): %m", UNPRIV_USER);
-		exit(1);
-	}
+	if (!pw)
+		quit("getpwnam(daemon)", WITH_ERRNO);
+
 	*uid = pw->pw_uid;
 
 	gr = getgrnam(UNPRIV_GROUP);
-	if (!gr) {
-		syslog(LOG_ERR, "getgrnam(%s): %m", UNPRIV_GROUP);
-		exit(1);
-	}
+	if (!gr)
+		quit("getgrnam(daemon)", WITH_ERRNO);
+
 	*gid = gr->gr_gid;
 }
 
@@ -436,7 +430,7 @@ onalrm(void)
 			else
 				utmp = (struct utmp *)malloc(utmpsize);
 			if (! utmp) {
-				syslog(LOG_WARNING, "malloc failed");
+				syslog(LOG_WARNING, "malloc failed: %m");
 				utmpsize = 0;
 				goto done;
 			}
@@ -472,6 +466,7 @@ onalrm(void)
 		syslog(LOG_ERR, "chdir(%s): %m", _PATH_DEV);
 		exit(1);
 	}
+
 	we = mywd.wd_we;
 	for (i = 0; i < utmpent; i++) {
 		if (stat(we->we_utmp.out_line, &stb) >= 0)
@@ -499,9 +494,7 @@ onalrm(void)
 			if (setsockopt(s, IPPROTO_IP, IP_MULTICAST_IF,
 			    &(((struct sockaddr_in *)np->n_addr)->sin_addr),
 			    sizeof(struct in_addr)) < 0) {
-				syslog(LOG_ERR,
-					"setsockopt IP_MULTICAST_IF: %m");
-				exit(1);
+				quit("setsockopt IP_MULTICAST_IF", WITH_ERRNO);
 			}
 			sendto(s, (char *)&mywd, cc, 0,
 				(struct sockaddr *)&multicast_addr,
@@ -527,18 +520,23 @@ getboottime(void)
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_BOOTTIME;
 	size = sizeof(tm);
-	if (sysctl(mib, 2, &tm, &size, NULL, 0) == -1) {
-		syslog(LOG_ERR, "cannot get boottime: %m");
-		exit(1);
-	}
+	if (sysctl(mib, 2, &tm, &size, NULL, 0) == -1)
+		quit("cannot get boottime", WITH_ERRNO);
+
 	mywd.wd_boottime = htonl(tm.tv_sec);
 }
 
+/*
+ * If wrterrno == WITH_ERRNO, we will print
+ * errno. If not, we leave errno out.
+ */
 void
-quit(const char *msg)
+quit(const char *msg, int wrterrno)
 {
-
-	syslog(LOG_ERR, "%s", msg);
+	if (wrterrno)
+		syslog(LOG_ERR, "%s: %m", msg);
+	else
+		syslog(LOG_ERR, "%s", msg);
 	exit(1);
 }
 
@@ -613,11 +611,11 @@ configure(int c_sock)
 	mib[4] = NET_RT_IFLIST;
 	mib[5] = 0;
 	if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0)
-		quit("route-sysctl-estimate");
+		quit("route-sysctl-estimate", WITH_ERRNO);
 	if ((buf = malloc(needed)) == NULL)
-		quit("malloc");
+		quit("malloc", WITH_ERRNO);
 	if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
-		quit("actual retrieval of interface table");
+		quit("actual retrieval of interface table", WITH_ERRNO);
 	lim = buf + needed;
 
 	sdl = NULL;		/* XXX just to keep gcc -Wall happy */
@@ -634,7 +632,7 @@ configure(int c_sock)
 				IFF_BROADCAST|iff_flag)) == 0)
 			continue;
 		if (ifm->ifm_type != RTM_NEWADDR)
-			quit("out of sync parsing NET_RT_IFLIST");
+			quit("out of sync parsing NET_RT_IFLIST", WITHOUT_ERRNO);
 		ifam = (struct ifa_msghdr *)ifm;
 		info.rti_addrs = ifam->ifam_addrs;
 		rt_xaddrs((char *)(ifam + 1), ifam->ifam_msglen + (char *)ifam,
@@ -657,7 +655,7 @@ configure(int c_sock)
 		len = sizeof(*np) + dstaddr->sa_len + sdl->sdl_nlen + 1;
 		np = (struct neighbor *)malloc(len);
 		if (np == NULL)
-			quit("malloc of neighbor structure");
+			quit("malloc of neighbor structure", WITH_ERRNO);
 		memset(np, 0, len);
 		np->n_flags = flags;
 		np->n_addr = (struct sockaddr *)(np + 1);
