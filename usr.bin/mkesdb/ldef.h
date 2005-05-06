@@ -1,5 +1,5 @@
 /*	$NetBSD: src/usr.bin/mkesdb/ldef.h,v 1.1 2003/06/26 06:30:17 tshiozak Exp $	*/
-/*	$DragonFly: src/usr.bin/mkesdb/ldef.h,v 1.1 2005/03/11 20:17:11 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/mkesdb/ldef.h,v 1.2 2005/05/06 13:16:08 corecode Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -28,7 +28,6 @@
  */
 
 extern int	line_number;
-extern int	debug;
 
 int	yyparse(void);
 int	yylex(void);
