@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $	*/
-/*	$DragonFly: src/include/ctype.h,v 1.7 2005/05/02 17:41:05 joerg Exp $ */
+/*	$DragonFly: src/include/ctype.h,v 1.8 2005/05/06 14:25:17 y0netan1 Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -92,7 +92,7 @@ __END_DECLS
 #define	isalpha(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_U|_L)))
 #define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_N|_X)))
 #define	isalnum(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_U|_L|_N)))
-#define	isprint(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N|_S)))
+#define	isprint(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N|_B)))
 #define	isgraph(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N)))
 #define	iscntrl(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _C))
 #define	tolower(c)	((int)((__libc_tolower_tab_ + 1)[(int)(c)]))
