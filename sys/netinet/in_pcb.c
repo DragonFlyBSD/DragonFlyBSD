@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.34 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.35 2005/05/06 11:52:02 corecode Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1202,6 +1202,7 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 			continue;
 		if (prison_xinpcb(req->td, inp))
 			continue;
+		bzero(&xi, sizeof xi);
 		xi.xi_len = sizeof xi;
 		bcopy(inp, &xi.xi_inp, sizeof *inp);
 		if (inp->inp_socket)
