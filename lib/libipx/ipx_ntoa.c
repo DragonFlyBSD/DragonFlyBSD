@@ -31,12 +31,15 @@
  * SUCH DAMAGE.
  *
  * @(#)ipx_ntoa.c
- * $DragonFly: src/lib/libipx/ipx_ntoa.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libipx/ipx_ntoa.c,v 1.4 2005/05/07 15:01:36 corecode Exp $
  */
 
 #include <sys/param.h>
 #include <netipx/ipx.h>
 #include <stdio.h>
+
+
+static char *spectHex(char *);
 
 char *
 ipx_ntoa(addr)
@@ -49,7 +52,6 @@ ipx_ntoa(addr)
 	char *cp2;
 	u_char *up = addr.x_host.c_host;
 	u_char *uplim = up + 6;
-	static char *spectHex();
 
 	net.net_e = addr.x_net;
 	sprintf(obuf, "%lx", (u_long)ntohl(net.long_e));
