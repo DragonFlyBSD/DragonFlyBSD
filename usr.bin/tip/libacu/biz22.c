@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)biz22.c	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/tip/libacu/biz22.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 #include "tipconf.h"
@@ -39,6 +40,8 @@
 #define DISCONNECT_CMD	"\20\04"	/* disconnection string */
 
 static	void sigALRM();
+static	int cmd(char *s);
+static	int detect(char *s);
 static	int timeout = 0;
 static	jmp_buf timeoutbuf;
 
@@ -53,7 +56,6 @@ biz_dialer(num, mod)
 {
 	register int connected = 0;
 	char cbuf[40];
-	static int cmd(), detect();
 
 	if (boolean(value(VERBOSE)))
 		printf("\nstarting call...");

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)courier.c	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/tip/libacu/courier.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -45,6 +46,8 @@
 #define	MAXRETRY	5
 
 static	void sigALRM();
+static	int cour_connect(void);
+static	int cour_swallow(char *);
 static	int timeout = 0;
 static	int connected = 0;
 static	jmp_buf timeoutbuf, intbuf;
@@ -58,7 +61,6 @@ cour_dialer(num, acu)
 #if ACULOG
 	char line[80];
 #endif
-	static int cour_connect(), cour_swallow();
 
 	if (boolean(value(VERBOSE)))
 		printf("Using \"%s\"\n", acu);

@@ -32,7 +32,7 @@
  *
  * @(#)ventel.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/libacu/ventel.c,v 1.3 1999/08/28 01:06:31 peter Exp $
- * $DragonFly: src/usr.bin/tip/libacu/ventel.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/libacu/ventel.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -46,6 +46,9 @@
 #define	MAXRETRY	5
 
 static	void sigALRM();
+static int gobble(char, char[]);
+static int vensync(int);
+static void echo(char *);
 static	int timeout = 0;
 static	jmp_buf timeoutbuf;
 
@@ -66,8 +69,6 @@ ven_dialer(num, acu)
 	register char *cp;
 	register int connected = 0;
 	char *msg, *index(), line[80];
-	static int gobble(), vensync();
-	static void echo();
 
 	/*
 	 * Get in synch with a couple of carriage returns

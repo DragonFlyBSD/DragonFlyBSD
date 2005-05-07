@@ -35,11 +35,13 @@
  *
  * @(#)wwgets.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/wwgets.c,v 1.3.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwgets.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/wwgets.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 #include "ww.h"
 #include "char.h"
+
+static void rub(int, struct ww *);
 
 wwgets(buf, n, w)
 char *buf;
@@ -49,7 +51,6 @@ register struct ww *w;
 	register char *p = buf;
 	register int c;
 	char uc = w->ww_unctrl;
-	static void rub();
 
 	w->ww_unctrl = 0;
 	for (;;) {

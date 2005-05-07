@@ -32,7 +32,7 @@
  *
  * @(#)value.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/value.c,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/value.c,v 1.4 2005/04/19 05:32:02 cpressey Exp $
+ * $DragonFly: src/usr.bin/tip/tip/value.c,v 1.5 2005/05/07 23:20:43 corecode Exp $
  */
 
 #include "tip.h"
@@ -140,13 +140,13 @@ vassign(p, v)
 }
 
 static void vprint();
+static void vtoken(char *);
 
 void
 vlex(s)
 	register char *s;
 {
 	register value_t *p;
-	static void vtoken();
 
 	if (equal(s, "all")) {
 		for (p = vtable; p->v_name; p++)

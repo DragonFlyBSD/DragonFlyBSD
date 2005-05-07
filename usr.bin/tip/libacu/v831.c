@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tip/libacu/v831.c,v 1.1.12.1 2000/07/01 12:24:22 ps Exp $
- * $DragonFly: src/usr.bin/tip/libacu/v831.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/libacu/v831.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  *
  * @(#)v831.c	8.1 (Berkeley) 6/6/93
  */
@@ -45,6 +45,8 @@
 
 int	v831_abort();
 static	void alarmtr();
+static int dialit(char *, char *);
+static char *sanitize(char *);
 
 static jmp_buf jmpbuf;
 static int child = -1;
@@ -54,7 +56,6 @@ v831_dialer(num, acu)
 {
         int status, pid, connected = 1;
         register int timelim;
-	static int dialit();
 
         if (boolean(value(VERBOSE)))
                 printf("\nstarting call...");
@@ -185,7 +186,6 @@ dialit(phonenum, acu)
         register struct vaconfig *vp;
         char c;
         int i, two = 2;
-	static char *sanitize();
 
         phonenum = sanitize(phonenum);
 #ifdef DEBUG

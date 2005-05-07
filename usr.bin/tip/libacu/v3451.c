@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)v3451.c	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/tip/libacu/v3451.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -38,6 +39,12 @@
  */
 #include "tipconf.h"
 #include "tip.h"
+
+static int expect(char *);
+static void vawrite(char *, int);
+static int notin(char *, char *);
+static void alarmtr(void);
+static int prefix(char *, char *);
 
 static	jmp_buf Sjbuf;
 
@@ -52,8 +59,6 @@ v3451_dialer(num, acu)
 #if ACULOG
 	char line[80];
 #endif
-	static int expect();
-	static void vawrite();
 
 	/*
 	 * Get in synch
@@ -148,8 +153,6 @@ expect(cp)
 	char buf[300];
 	register char *rp = buf;
 	int timeout = 30, online = 0;
-	static int notin();
-	static void alarmtr();
 
 	if (strcmp(cp, "\"\"") == 0)
 		return (1);
@@ -192,8 +195,6 @@ static int
 notin(sh, lg)
 	char *sh, *lg;
 {
-	static int prefix();
-
 	for (; *lg; lg++)
 		if (prefix(sh, lg))
 			return (0);

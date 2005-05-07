@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)t3000.c	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/tip/libacu/t3000.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -49,6 +50,8 @@ static	int timeout = 0;
 static	int connected = 0;
 static	jmp_buf timeoutbuf, intbuf;
 static	int t3000_sync();
+static	int t3000_connect(void);
+static	int t3000_swallow(char *);
 
 t3000_dialer(num, acu)
 	register char *num;
@@ -58,7 +61,6 @@ t3000_dialer(num, acu)
 #if ACULOG
 	char line[80];
 #endif
-	static int t3000_connect(), t3000_swallow();
 
 	if (boolean(value(VERBOSE)))
 		printf("Using \"%s\"\n", acu);

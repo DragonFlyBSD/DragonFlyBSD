@@ -32,7 +32,7 @@
  *
  * @(#)unidialer.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/libacu/unidialer.c,v 1.7 1999/08/28 01:06:30 peter Exp $
- * $DragonFly: src/usr.bin/tip/libacu/unidialer.c,v 1.3 2005/04/19 18:55:24 swildner Exp $
+ * $DragonFly: src/usr.bin/tip/libacu/unidialer.c,v 1.4 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -94,6 +94,8 @@ static unsigned int reset_delay;
 static int unidialer_dialer (register char *num, char *acu);
 static void unidialer_disconnect ();
 static void unidialer_abort ();
+static int unidialer_connect(void);
+static int unidialer_swallow(char *);
 
 static acu_t unidialer =
 {
@@ -409,7 +411,6 @@ static int unidialer_dialer (register char *num, char *acu)
 #if ACULOG
 	char line [80];
 #endif
-	static int unidialer_connect(), unidialer_swallow();
 
 	#ifdef DEBUG
 	dumpmodemparms (modem_name);
