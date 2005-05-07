@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/usr.bin/chpass/pw_yp.c,v 1.16.2.1 2002/02/15 00:46:56 des Exp $
- * $DragonFly: src/usr.bin/chpass/pw_yp.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/chpass/pw_yp.c,v 1.5 2005/05/07 22:29:39 corecode Exp $
  */
 
 #ifdef YP
@@ -69,7 +69,7 @@ struct dom_binding {};
 #include "yppasswd_private.h"
 
 #define PERM_SECURE (S_IRUSR|S_IWUSR)
-static HASHINFO openinfo = {
+HASHINFO openinfo = {
         4096,           /* bsize */
         32,             /* ffactor */
         256,            /* nelem */
