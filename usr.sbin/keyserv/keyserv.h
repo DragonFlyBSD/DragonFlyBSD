@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/usr.sbin/keyserv/keyserv.h,v 1.4 2004/05/20 19:24:42 cpressey Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv.h,v 1.5 2005/05/07 23:35:13 corecode Exp $
  */
 
 extern void setmodulus(char *modx);
@@ -17,6 +17,4 @@ extern void crypt_prog_1( struct svc_req *, SVCXPRT * );
 extern void load_des( int, char * );
 
 extern int (*_my_crypt)( char *, int, struct desparams * );
-
-extern char ROOTKEY[];
 
