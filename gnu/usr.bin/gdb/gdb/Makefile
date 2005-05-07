@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.6 2005/01/12 11:24:24 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.7 2005/05/07 19:55:31 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -83,6 +83,8 @@ init.c: ${SRCS:Ninit.c} Makefile
 	echo '{' >> ${.TARGET}
 	sed -n -e 's/^_initialize_\([a-z_0-9A-Z]*\).*/  _initialize_\1 ();/p' ${.ALLSRC:M*.c} >> ${.TARGET}
 	echo '}' >> ${.TARGET}
+
+CLEANFILES+=	init.c
 
 # observer.inc can't be included in SRCS, it would duplicate the entry in OBJS
 observer.h: observer.sh observer.inc doc/observer.texi
