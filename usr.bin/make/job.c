@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.91 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.92 2005/05/07 23:24:44 corecode Exp $
  */
 
 #ifndef OLD_JOKE
@@ -522,7 +522,7 @@ mkfifotemp(char *template)
 	char *start;
 	char *pathend;
 	char *ptr;
-	const unsigned char padchar[] =
+	const char padchar[] =
 	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 	if (template[0] == '\0') {
