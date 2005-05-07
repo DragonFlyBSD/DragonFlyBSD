@@ -23,7 +23,7 @@
  * For semi-intelligent modem handling.
  *
  * $FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $
- * $DragonFly: src/libexec/getty/chat.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
+ * $DragonFly: src/libexec/getty/chat.c,v 1.5 2005/05/07 20:00:20 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
+#include "gettytab.h"
 #include "extern.h"
 
 #define	PAUSE_CH		(unsigned char)'\xff'   /* pause kludge */

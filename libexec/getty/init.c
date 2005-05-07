@@ -32,7 +32,7 @@
  *
  * @(#)from: init.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/getty/init.c,v 1.11.2.3 2003/02/06 11:45:31 sobomax Exp $
- * $DragonFly: src/libexec/getty/init.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/getty/init.c,v 1.3 2005/05/07 20:00:20 corecode Exp $
  */
 
 /*
@@ -41,8 +41,8 @@
  * Melbourne getty.
  */
 #include <termios.h>
-#include "extern.h"
 #include "gettytab.h"
+#include "extern.h"
 #include "pathnames.h"
 
 static char loginmsg[] = "login: ";
