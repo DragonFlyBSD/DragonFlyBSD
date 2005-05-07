@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.4 2005/04/05 23:04:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.5 2005/05/07 07:50:51 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -416,8 +416,7 @@ struct pthread {
 	umtx_t			state;
 
 	/*
-	 * Error variable used instead of errno. The function __error()
-	 * returns a pointer to this. 
+	 * Error variable used instead of errno, used for internal.
 	 */
 	int			error;
 
