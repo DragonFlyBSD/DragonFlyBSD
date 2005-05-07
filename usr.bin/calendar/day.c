@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/day.c,v 1.13.2.5 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/day.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/calendar/day.c,v 1.4 2005/05/07 22:05:41 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -46,6 +46,8 @@
 
 #include "pathnames.h"
 #include "calendar.h"
+
+extern struct iovec header[];
 
 struct tm *tp;
 int *cumdays, offset, yrdays;

@@ -31,13 +31,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/calendar.h,v 1.5.2.3 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.3 2005/05/07 22:05:41 corecode Exp $
  */
 
 
 extern struct passwd *pw;
 extern int doall;
-extern struct iovec header[];
 extern struct tm *tp;
 extern const char *calendarFile;
 extern char *optarg;
