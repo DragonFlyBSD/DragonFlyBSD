@@ -71,7 +71,7 @@ smb_write(struct smb_ctx *ctx, smbfh fh, off_t offset, size_t count,
 	struct smbioc_rw rwrq;
 
 	rwrq.ioc_fh = fh;
-	(const char*)rwrq.ioc_base = src;
+	rwrq.ioc_base = src;
 	rwrq.ioc_cnt = count;
 	rwrq.ioc_offset = offset;
 	if (ioctl(ctx->ct_fd, SMBIOC_WRITE, &rwrq) == -1)

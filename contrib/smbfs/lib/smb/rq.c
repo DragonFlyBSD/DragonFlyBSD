@@ -162,7 +162,7 @@ smb_t2_request(struct smb_ctx *ctx, int setup, int setupcount,
 	bzero(&krq, sizeof(krq));
 	krq.ioc_setup[0] = setup;
 	krq.ioc_setupcnt = setupcount;
-	(const char*)krq.ioc_name = name;
+	krq.ioc_name = name;
 	krq.ioc_tparamcnt = tparamcnt;
 	krq.ioc_tparam = tparam;
 	krq.ioc_tdatacnt = tdatacnt;
