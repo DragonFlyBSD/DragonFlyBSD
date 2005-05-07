@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.9 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.10 2005/05/07 22:50:05 corecode Exp $
  */
 
 /*
@@ -52,8 +52,8 @@
 #include <pwd.h>
 #include <stdlib.h>
 
-#include "extern.h"
 #include "systat.h"
+#include "extern.h"
 
 int compar(const void *, const void *);
 
