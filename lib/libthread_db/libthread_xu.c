@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_db/libthread_xu.c,v 1.2 2005/05/07 09:59:58 davidxu Exp $
+ * $DragonFly: src/lib/libthread_db/libthread_xu.c,v 1.3 2005/05/07 10:08:08 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -144,28 +144,28 @@ pt_ta_new(struct ps_prochandle *ph, td_thragent_t **pta)
 
 	ta->ph = ph;
 
-	LOOKUP_SYM(ph, "_libthr_debug",		&ta->libthread_xu_debug_addr);
-	LOOKUP_SYM(ph, "_thread_list",		&ta->thread_list_addr);
+	LOOKUP_SYM(ph, "_libthread_xu_debug",	&ta->libthread_xu_debug_addr);
 	LOOKUP_SYM(ph, "_thread_active_threads",&ta->thread_active_threads_addr);
-	LOOKUP_SYM(ph, "_thread_keytable",	&ta->thread_keytable_addr);
-	LOOKUP_SYM(ph, "_thread_last_event",	&ta->thread_last_event_addr);
-	LOOKUP_SYM(ph, "_thread_event_mask",	&ta->thread_event_mask_addr);
 	LOOKUP_SYM(ph, "_thread_bp_create",	&ta->thread_bp_create_addr);
 	LOOKUP_SYM(ph, "_thread_bp_death",	&ta->thread_bp_death_addr);
-	LOOKUP_VAL(ph, "_thread_off_attr_flags",	&ta->thread_off_attr_flags);
-	LOOKUP_VAL(ph, "_thread_size_key",	&ta->thread_size_key);
-	LOOKUP_VAL(ph, "_thread_off_tcb",	&ta->thread_off_tcb);
-	LOOKUP_VAL(ph, "_thread_off_tid",	&ta->thread_off_tid);
-	LOOKUP_VAL(ph, "_thread_off_next",	&ta->thread_off_next);
-	LOOKUP_VAL(ph, "_thread_off_state",	&ta->thread_off_state);
+	LOOKUP_SYM(ph, "_thread_event_mask",	&ta->thread_event_mask_addr);
+	LOOKUP_SYM(ph, "_thread_keytable",	&ta->thread_keytable_addr);
+	LOOKUP_SYM(ph, "_thread_last_event",	&ta->thread_last_event_addr);
+	LOOKUP_SYM(ph, "_thread_list",		&ta->thread_list_addr);
 	LOOKUP_VAL(ph, "_thread_max_keys",	&ta->thread_max_keys);
+	LOOKUP_VAL(ph, "_thread_off_attr_flags",	&ta->thread_off_attr_flags);
+	LOOKUP_VAL(ph, "_thread_off_event_buf", &ta->thread_off_event_buf);
+	LOOKUP_VAL(ph, "_thread_off_event_mask", &ta->thread_off_event_mask);
 	LOOKUP_VAL(ph, "_thread_off_key_allocated", &ta->thread_off_key_allocated);
 	LOOKUP_VAL(ph, "_thread_off_key_destructor", &ta->thread_off_key_destructor);
+	LOOKUP_VAL(ph, "_thread_off_next",	&ta->thread_off_next);
+	LOOKUP_VAL(ph, "_thread_off_report_events", &ta->thread_off_report_events);
+	LOOKUP_VAL(ph, "_thread_off_state",	&ta->thread_off_state);
+	LOOKUP_VAL(ph, "_thread_off_tcb",	&ta->thread_off_tcb);
+	LOOKUP_VAL(ph, "_thread_off_tid",	&ta->thread_off_tid);
+	LOOKUP_VAL(ph, "_thread_size_key",	&ta->thread_size_key);
 	LOOKUP_VAL(ph, "_thread_state_running", &ta->thread_state_running);
 	LOOKUP_VAL(ph, "_thread_state_zoombie", &ta->thread_state_zoombie);
-	LOOKUP_VAL(ph, "_thread_off_report_events", &ta->thread_off_report_events);
-	LOOKUP_VAL(ph, "_thread_off_event_mask", &ta->thread_off_event_mask);
-	LOOKUP_VAL(ph, "_thread_off_event_buf", &ta->thread_off_event_buf);
 
 	ta->thread_off_linkmap = offsetof(Obj_Entry, linkmap);
 	ta->thread_off_tlsindex = offsetof(Obj_Entry, tlsindex);
