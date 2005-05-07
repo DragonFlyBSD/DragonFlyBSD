@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.12 2004/09/12 18:37:15 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.13 2005/05/07 21:22:32 corecode Exp $
 
 PROG=		boot2
 NOMAN=
@@ -51,7 +51,7 @@ BOOT2_UFS?=	UFS1_ONLY
 # gcc3.x
 #	-fno-guess-branch-probability
 #	-mno-align-long-strings
-CFLAGS=	-elf -ffreestanding -Os -fno-builtin -fno-stack-protector \
+CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-fomit-frame-pointer \
 	-D${BOOT2_UFS} \
 	-I${.CURDIR}/../../common \
@@ -81,6 +81,11 @@ MRTDFLAGS=
 #
 .if ${CCVER} != "gcc2"
 CFLAGS+= -fno-unit-at-a-time
+.endif
+
+# Disable propolice on gcc that support it
+.if ${CCVER} == "gcc2" || ${CCVER} == "gcc34"
+CFLAGS+= -fno-stack-protector
 .endif
 
 LDFLAGS=-nostdlib -static -N --gc-sections
