@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.termcap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.termcap.c,v 1.10 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.termcap.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.termcap.c,v 1.3 2005/05/07 18:05:14 corecode Exp $ */
 
 #include <stdio.h>
 #include <termcap.h>
@@ -12,10 +12,10 @@
 extern long *alloc();
 
 static char tbuf[512];
-static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
+static char *HO, *CL, *CE, *tcUP, *CM, *ND, *XD, *tcBC, *SO, *SE, *TI, *TE;
 static char *VS, *VE;
 static int SG;
-static char PC = '\0';
+static char tcPC = '\0';
 char *CD;		/* tested in pri.c: docorner() */
 int CO, LI;		/* used in pri.c and whatis.c */
 
@@ -35,13 +35,13 @@ startup()
 	if(tgetflag("NP") || tgetflag("nx"))
 		flags.nonull = 1;
 	if(pc = tgetstr("pc", &tbufptr))
-		PC = *pc;
-	if(!(BC = tgetstr("bc", &tbufptr))) {
+		tcPC = *pc;
+	if(!(tcBC = tgetstr("bc", &tbufptr))) {
 		if(!tgetflag("bs"))
 			error("Terminal must backspace.");
-		BC = tbufptr;
+		tcBC = tbufptr;
 		tbufptr += 2;
-		*BC = '\b';
+		*tcBC = '\b';
 	}
 	HO = tgetstr("ho", &tbufptr);
 	CO = tgetnum("co");
@@ -54,7 +54,7 @@ startup()
 	if(tgetflag("os"))
 		error("Hack can't have OS.");
 	CE = tgetstr("ce", &tbufptr);
-	UP = tgetstr("up", &tbufptr);
+	tcUP = tgetstr("up", &tbufptr);
 	/* It seems that xd is no longer supported, and we should use
 	   a linefeed instead; unfortunately this requires resetting
 	   CRMOD, and many output routines will have to be modified
@@ -62,7 +62,7 @@ startup()
 	XD = tgetstr("xd", &tbufptr);
 /* not: 		XD = tgetstr("do", &tbufptr); */
 	if(!(CM = tgetstr("cm", &tbufptr))) {
-		if(!UP && !HO)
+		if(!tcUP && !HO)
 			error("Hack needs CM or UP or HO.");
 		printf("Playing hack on terminals without cm is suspect...\n");
 		getret();
@@ -118,9 +118,9 @@ int x, y;	/* not xchar: perhaps xchar is unsigned and
 nocmov(x, y)
 {
 	if (cury > y) {
-		if(UP) {
+		if(tcUP) {
 			while (cury > y) {	/* Go up. */
-				xputs(UP);
+				xputs(tcUP);
 				cury--;
 			}
 		} else if(CM) {
@@ -154,7 +154,7 @@ nocmov(x, y)
 		}
 	} else if (curx > x) {
 		while (curx > x) {	/* Go to the left. */
-			xputs(BC);
+			xputs(tcBC);
 			curx--;
 		}
 	}
@@ -204,7 +204,7 @@ home()
 	else if(CM)
 		xputs(tgoto(CM, 0, 0));
 	else
-		curs(1, 1);	/* using UP ... */
+		curs(1, 1);	/* using tcUP ... */
 	curx = cury = 1;
 }
 
@@ -220,7 +220,7 @@ standoutend()
 
 backsp()
 {
-	xputs(BC);
+	xputs(tcBC);
 	curx--;
 }
 
