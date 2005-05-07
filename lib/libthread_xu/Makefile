@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/Makefile,v 1.53 2004/10/24 15:32:32 ru Exp $
-# $DragonFly: src/lib/libthread_xu/Makefile,v 1.4 2005/05/03 07:29:04 joerg Exp $
+# $DragonFly: src/lib/libthread_xu/Makefile,v 1.5 2005/05/07 09:29:46 davidxu Exp $
 #
 # All library objects contain FreeBSD revision strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -14,6 +14,7 @@ CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE
 CFLAGS+=-I${.CURDIR}/../libc/include -I${.CURDIR}/thread \
 	-I${.CURDIR}/../../include
 CFLAGS+=-I${.CURDIR}/arch/${MACHINE_ARCH}/include
+CFLAGS+=-I${.CURDIR}/../libthread_db
 CFLAGS+=-Winline
 
 CFLAGS+= -g

@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.3 2005/05/03 07:29:04 joerg Exp $
+# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.4 2005/05/07 09:29:46 davidxu Exp $
 
 # thr sources
 .PATH: ${.CURDIR}/thread
@@ -15,6 +15,7 @@ SRCS+= \
 	thr_create.c \
 	thr_detach.c \
 	thr_equal.c \
+	thr_event.c \
 	thr_exit.c \
 	thr_fork.c \
 	thr_getprio.c \

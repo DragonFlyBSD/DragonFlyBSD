@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_init.c,v 1.66 2004/08/21 11:49:19 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.4 2005/05/07 09:29:46 davidxu Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -300,6 +300,8 @@ _libpthread_init(struct pthread *curthread)
 		_thr_initial = curthread;
 		SIGDELSET(oldset, SIGCANCEL);
 		__sys_sigprocmask(SIG_SETMASK, &oldset, NULL);
+		if (td_eventismember(&_thread_event_mask, TD_CREATE))
+			_thr_report_creation(curthread, curthread);
 	}
 }
 
@@ -376,6 +378,7 @@ init_private(void)
 	_thr_umtx_init(&_rwlock_static_lock);
 	_thr_umtx_init(&_keytable_lock);
 	_thr_umtx_init(&_thr_atfork_lock);
+	_thr_umtx_init(&_thr_event_lock);
 	_thr_spinlock_init();
 	_thr_list_init();
 

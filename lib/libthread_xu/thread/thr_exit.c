@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.3 2005/05/07 09:29:46 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -143,6 +143,8 @@ _pthread_exit(void *status)
 	 * by userland GC code.
 	 */
 	curthread->terminated = 1;
+	if (SHOULD_REPORT_EVENT(curthread, TD_DEATH))
+		_thr_report_death(curthread);
 	_exit(0);
 	PANIC("thr_exit() returned");
 	/* Never reach! */

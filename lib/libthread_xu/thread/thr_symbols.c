@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_symbols.c,v 1.1 2004/08/16 03:25:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.3 2005/05/07 09:29:46 davidxu Exp $
  */
 
 #include <stddef.h>
@@ -43,20 +43,17 @@
 
 /* A collection of symbols needed by debugger */
 
-int _thread_off_tcb = offsetof(struct pthread, tcb);
-int _thread_off_tid = offsetof(struct pthread, tid);
-int _thread_off_next = offsetof(struct pthread, tle.tqe_next);
+int _thread_max_keys = PTHREAD_KEYS_MAX;
 int _thread_off_attr_flags = offsetof(struct pthread, attr.flags);
-int _thread_off_thr_locklevel = offsetof(struct pthread, locklevel);
-int _thread_off_isdead = offsetof(struct pthread, terminated);
-int _thread_size_key = sizeof(struct pthread_key);
+int _thread_off_event_buf = offsetof(struct pthread, event_buf);
+int _thread_off_event_mask = offsetof(struct pthread, event_mask);
 int _thread_off_key_allocated = offsetof(struct pthread_key, allocated);
 int _thread_off_key_destructor = offsetof(struct pthread_key, destructor);
-int _thread_max_keys = PTHREAD_KEYS_MAX;
+int _thread_off_next = offsetof(struct pthread, tle.tqe_next);
+int _thread_off_report_events = offsetof(struct pthread, report_events);
 int _thread_off_state = offsetof(struct pthread, state);
+int _thread_off_tcb = offsetof(struct pthread, tcb);
+int _thread_off_tid = offsetof(struct pthread, tid);
+int _thread_size_key = sizeof(struct pthread_key);
 int _thread_state_running = PS_RUNNING;
 int _thread_state_zoombie = PS_DEAD;
-#ifndef __DragonFly__
-int _thread_off_linkmap = offsetof(Obj_Entry, linkmap);
-int _thread_off_tlsindex = offsetof(Obj_Entry, tlsindex);
-#endif

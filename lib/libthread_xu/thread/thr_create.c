@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.4 2005/05/07 09:29:46 davidxu Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -70,7 +70,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	void *stack;
 	sigset_t sigmask, oldsigmask;
 	struct pthread *curthread, *new_thread;
-	int ret = 0;
+	int ret = 0, locked;
 
 	_thr_check_init();
 
@@ -165,6 +165,11 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	_thr_link(curthread, new_thread);
 	/* Return thread pointer eariler so that new thread can use it. */
 	(*thread) = new_thread;
+	if (SHOULD_REPORT_EVENT(curthread, TD_CREATE)) {
+		THR_THREAD_LOCK(curthread, new_thread);
+		locked = 1;
+	} else
+		locked = 0;
 	/* Schedule the new thread. */
 	stack = (char *)new_thread->attr.stackaddr_attr +
 		        new_thread->attr.stacksize_attr;
@@ -185,10 +190,15 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		ret = EAGAIN;
 	}
 	if (ret != 0) {
+		if (locked)
+			THR_THREAD_UNLOCK(curthread, new_thread);
 		_thr_unlink(curthread, new_thread);
 		free_thread(curthread, new_thread);
 		(*thread) = 0;
 		ret = EAGAIN;
+	} else if (locked) {
+		_thr_report_creation(curthread, new_thread);
+		THR_THREAD_UNLOCK(curthread, new_thread);
 	}
 	return (ret);
 }
@@ -239,6 +249,9 @@ thread_start(void *arg)
 	tls_set_tcb(curthread->tcb);
 	start_arg->started = 1;
 	_thr_umtx_wake(&start_arg->started, 1);
+
+	THR_LOCK(curthread);
+	THR_UNLOCK(curthread);
 
 	/* Thread was created with all signals blocked, unblock them. */
 	__sys_sigprocmask(SIG_SETMASK, &curthread->sigmask, NULL);
