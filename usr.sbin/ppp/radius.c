@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/radius.c,v 1.11.2.5 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/radius.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/radius.c,v 1.3 2005/05/07 23:39:51 corecode Exp $
  *
  */
 
@@ -426,7 +426,7 @@ radius_Process(struct radius *r, int got)
                      * Only point at the String field if we don't think the
                      * peer has misformatted the response.
                      */
-                    ((const char *)data)++;
+                    data = (const char *)data + 1;
                     len--;
                   } else
                     log_Printf(LogWARN, "Warning: The MS-CHAP-Error "
@@ -453,7 +453,7 @@ radius_Process(struct radius *r, int got)
                      * Only point at the String field if we don't think the
                      * peer has misformatted the response.
                      */
-                    ((const char *)data)++;
+                    data = (const char *)data + 1;
                     len--;
                   } else
                     log_Printf(LogWARN, "Warning: The MS-CHAP2-Success "
