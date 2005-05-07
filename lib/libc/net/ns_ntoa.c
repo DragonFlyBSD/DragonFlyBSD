@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ns_ntoa.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/ns_ntoa.c,v 1.5 2005/05/07 13:32:24 corecode Exp $
+ * $DragonFly: src/lib/libc/net/ns_ntoa.c,v 1.6 2005/05/07 13:53:47 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,9 @@ ns_ntoa(struct ns_addr addr)
 	sprintf(obuf, "%lx", (u_long)ntohl(net.long_e));
 	cp = spectHex(obuf);
 	cp2 = cp + 1;
-	while (*up==0 && up < uplim) up++;
+
+	while (*up == 0 && up < uplim)
+		up++;
 	if (up == uplim) {
 		if (port) {
 			sprintf(cp, ".0");
@@ -83,17 +85,24 @@ spectHex(char *p0)
 	int ok = 0;
 	int nonzero = 0;
 	char *p = p0;
-	for (; *p; p++) switch (*p) {
 
-	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
-		*p += ('A' - 'a');
-		/* fall into . . . */
-	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-		ok = 1;
-	case '1': case '2': case '3': case '4': case '5':
-	case '6': case '7': case '8': case '9':
-		nonzero = 1;
+	for (; *p; p++) {
+		switch (*p) {
+		case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+			*p += ('A' - 'a');
+			/* FALLTHROUGH */
+		case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+			ok = 1;
+			/* FALLTHROUGH */
+		case '1': case '2': case '3': case '4': case '5':
+		case '6': case '7': case '8': case '9':
+			nonzero = 1;
+		}
 	}
-	if (nonzero && !ok) { *p++ = 'H'; *p = 0; }
+	/* If we hit only digits in [1-9], add `H' to signal hex base */
+	if (nonzero && !ok) {
+		*p++ = 'H';
+		*p = 0;
+	}
 	return (p);
 }
