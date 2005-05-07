@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.6 2003/11/15 19:28:42 asmodai Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.7 2005/05/07 08:23:51 davidxu Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -83,6 +83,7 @@ typedef	__uint16_t	mode_t;		/* permissions */
 typedef	__uint16_t	nlink_t;	/* link count */
 typedef	__off_t		off_t;		/* file offset */
 typedef	__pid_t		pid_t;		/* process id */
+typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__int32_t	segsz_t;	/* segment size */
 typedef	__int32_t	swblk_t;	/* swap offset */
