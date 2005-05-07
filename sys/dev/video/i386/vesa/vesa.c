@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.8 2005/05/07 02:11:25 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.9 2005/05/07 13:06:44 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -153,7 +153,7 @@ static video_info_t *vesa_vmode = &vesa_vmode_empty;
 static int vesa_init_done = FALSE;
 static int has_vesa_bios = FALSE;
 static struct vesa_info *vesa_adp_info = NULL;
-static u_int16_t *vesa_vmodetab = NULL;
+static uint16_t *vesa_vmodetab = NULL;
 static char *vesa_oemstr = NULL;
 static char *vesa_vendorstr = NULL;
 static char *vesa_prodstr = NULL;
@@ -195,9 +195,9 @@ static int vesa_bios_get_start(int *x, int *y);
 #endif
 static int vesa_bios_set_start(int x, int y);
 static int vesa_map_gen_mode_num(int type, int color, int mode);
-static int vesa_translate_flags(u_int16_t vflags);
-static int vesa_translate_mmodel(u_int8_t vmodel);
-static void *vesa_fix_ptr(u_int32_t p, u_int16_t seg, u_int16_t off, 
+static int vesa_translate_flags(uint16_t vflags);
+static int vesa_translate_mmodel(uint8_t vmodel);
+static void *vesa_fix_ptr(uint32_t p, uint16_t seg, uint16_t off, 
 			  u_char *buf);
 static int vesa_bios_init(void);
 static void vesa_clear_modes(video_info_t *info, int color);
@@ -211,13 +211,13 @@ static int vesa_get_origin(video_adapter_t *adp, off_t *offset);
 static void
 dump_buffer(u_char *buf, size_t len)
 {
-    int i;
+	int i;
 
-    for(i = 0; i < len;) {
-	printf("%02x ", buf[i]);
-	if ((++i % 16) == 0)
-	    printf("\n");
-    }
+	for (i = 0; i < len;) {
+		printf("%02x ", buf[i]);
+		if ((++i % 16) == 0)
+			printf("\n");
+	}
 }
 
 /* INT 10 BIOS calls */
@@ -525,29 +525,29 @@ vesa_bios_set_start(int x, int y)
 static int
 vesa_map_gen_mode_num(int type, int color, int mode)
 {
-    static struct {
-	int from;
-	int to;
-    } mode_map[] = {
-	{ M_TEXT_132x25, M_VESA_C132x25 },
-	{ M_TEXT_132x43, M_VESA_C132x43 },
-	{ M_TEXT_132x50, M_VESA_C132x50 },
-	{ M_TEXT_132x60, M_VESA_C132x60 },
-    };
-    int i;
+	static struct {
+		int from;
+		int to;
+	} mode_map[] = {
+		{ M_TEXT_132x25, M_VESA_C132x25 },
+		{ M_TEXT_132x43, M_VESA_C132x43 },
+		{ M_TEXT_132x50, M_VESA_C132x50 },
+		{ M_TEXT_132x60, M_VESA_C132x60 },
+	};
+	int i;
 
-    for (i = 0; i < sizeof(mode_map)/sizeof(mode_map[0]); ++i) {
-        if (mode_map[i].from == mode)
-            return mode_map[i].to;
-    }
-    return mode;
+	for (i = 0; i < sizeof(mode_map)/sizeof(mode_map[0]); ++i) {
+		if (mode_map[i].from == mode)
+			return mode_map[i].to;
+	}
+	return mode;
 }
 
 static int
-vesa_translate_flags(u_int16_t vflags)
+vesa_translate_flags(uint16_t vflags)
 {
 	static struct {
-		u_int16_t mask;
+		uint16_t mask;
 		int set;
 		int reset;
 	} ftable[] = {
@@ -566,10 +566,10 @@ vesa_translate_flags(u_int16_t vflags)
 }
 
 static int
-vesa_translate_mmodel(u_int8_t vmodel)
+vesa_translate_mmodel(uint8_t vmodel)
 {
 	static struct {
-		u_int8_t vmodel;
+		uint8_t vmodel;
 		int mmodel;
 	} mtable[] = {
 		{ V_MMTEXT,	V_INFO_MM_TEXT },
@@ -588,8 +588,8 @@ vesa_translate_mmodel(u_int8_t vmodel)
 	return V_INFO_MM_OTHER;
 }
 
-static void
-*vesa_fix_ptr(u_int32_t p, u_int16_t seg, u_int16_t off, u_char *buf)
+static void *
+vesa_fix_ptr(uint32_t p, uint16_t seg, uint16_t off, u_char *buf)
 {
 	if (p == 0)
 		return NULL;
@@ -667,7 +667,7 @@ vesa_bios_init(void)
 	}
 
 	/* obtain video mode information */
-	vesa_vmodetab = (u_int16_t *)vesa_fix_ptr(vesa_adp_info->v_modetable,
+	vesa_vmodetab = (uint16_t *)vesa_fix_ptr(vesa_adp_info->v_modetable,
 						  vmf.vmf_es, vmf.vmf_di, buf);
 	if (vesa_vmodetab == NULL)
 		return 1;
@@ -717,10 +717,10 @@ vesa_bios_init(void)
 		       vmode.v_width, vmode.v_height, vmode.v_bpp);
 #endif
 		if (is_via_cle266) {
-		    if ((vmode.v_width & 0xff00) >> 8 == vmode.v_height - 1) {
-			vmode.v_width &= 0xff;
-			vmode.v_waseg = 0xb8000 >> 4;
-		    }
+			if ((vmode.v_width & 0xff00) >> 8 == vmode.v_height - 1) {
+				vmode.v_width &= 0xff;
+				vmode.v_waseg = 0xb8000 >> 4;
+			}
 		}
 
 		/* copy some fields */
