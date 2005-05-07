@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_db/libthread_xu.c,v 1.1 2005/05/07 09:25:44 davidxu Exp $
+ * $DragonFly: src/lib/libthread_db/libthread_xu.c,v 1.2 2005/05/07 09:59:58 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -661,14 +661,6 @@ pt_thr_event_getmsg(const td_thrhandle_t *th, td_event_msg_t *msg)
 	handle.th_thread = pt;
 	msg->th_p = &handle;
 	return (0);
-}
-
-static td_err_e
-pt_thr_sstep(const td_thrhandle_t *th, int step)
-{
-	TDBG_FUNC();
-
-	return pt_validate(th);
 }
 
 static int
