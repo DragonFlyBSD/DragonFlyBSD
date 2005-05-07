@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.79 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.80 2005/05/07 23:26:12 corecode Exp $
  */
 
 /*-
@@ -285,7 +285,7 @@ ParseFindKeyword(const char *str)
 {
 	int kw;
 
-	kw = keyword_hash(str, strlen(str));
+	kw = keyword_hash((const unsigned char *)str, strlen(str));
 	if (kw < 0 || kw >= (int)NKEYWORDS ||
 	    strcmp(str, parseKeywords[kw].name) != 0)
 		return (NULL);
@@ -2347,7 +2347,7 @@ parse_directive(char *line)
 		cp++;
 	}
 
-	dir = directive_hash(start, cp - start);
+	dir = directive_hash((const unsigned char *)start, cp - start);
 	if (dir < 0 || dir >= (int)NDIRECTS ||
 	    (size_t)(cp - start) != strlen(directives[dir].name) ||
 	    strncmp(start, directives[dir].name, cp - start) != 0) {
