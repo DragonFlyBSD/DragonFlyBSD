@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/tools/make_libdeps.sh,v 1.2.2.1 2002/07/23 12:12:30 ru Exp $
-# $DragonFly: src/tools/make_libdeps.sh,v 1.3 2003/08/05 07:45:43 asmodai Exp $
+# $DragonFly: src/tools/make_libdeps.sh,v 1.4 2005/05/07 17:38:34 swildner Exp $
 
 export PATH=/usr/bin
 
@@ -39,7 +39,6 @@ LIBS="
 	kerberos5/lib
 	secure/lib
 	usr.bin/lex/lib
-	usr.sbin/pcvt/keycap
 "				# where to scan for libraries
 
 # This sed(1) filter is used to convert -lfoo to path/to/libfoo.

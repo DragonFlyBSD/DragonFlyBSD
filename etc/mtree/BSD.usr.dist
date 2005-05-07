@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.32 2005/04/21 13:48:56 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.33 2005/05/07 17:38:33 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -750,10 +750,6 @@
         me
         ..
         misc
-            fonts
-            ..
-            pcvtfonts
-            ..
         ..
         mk
         ..
@@ -1095,12 +1091,6 @@
                 ..
                 man3
                 ..
-            ..
-        ..
-        pcvt
-            Doc
-            ..
-            Etc
             ..
         ..
         sendmail

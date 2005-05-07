@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.11 2005/04/04 17:49:09 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.12 2005/05/07 17:38:33 swildner Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -124,21 +124,6 @@ INTRO_USERCONFIG	opt_userconfig.h
 EISA_SLOTS		opt_eisa.h
 
 FE_8BIT_SUPPORT		opt_fe.h
-
-# pcvt(4) has a bunch of options
-FAT_CURSOR		opt_pcvt.h
-XSERVER			opt_pcvt.h
-PCVT_24LINESDEF		opt_pcvt.h
-PCVT_CTRL_ALT_DEL	opt_pcvt.h
-PCVT_EMU_MOUSE		opt_pcvt.h
-PCVT_FREEBSD		opt_pcvt.h
-PCVT_META_ESC		opt_pcvt.h
-PCVT_NSCREENS		opt_pcvt.h
-PCVT_PRETTYSCRNS	opt_pcvt.h
-PCVT_SCANSET		opt_pcvt.h
-PCVT_SCREENSAVER	opt_pcvt.h
-PCVT_USEKBDSEC		opt_pcvt.h
-PCVT_VT220KEYB		opt_pcvt.h
 
 # Video spigot
 SPIGOT_UNSECURE		opt_spigot.h

@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.20 2005/04/06 03:25:46 y0netan1 Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.21 2005/05/07 17:38:33 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -146,7 +146,6 @@ MAN=	aac.4 \
 	pcic.4 \
 	pcm.4 \
 	pcn.4 \
-	pcvt.4 \
 	pf.4 \
 	pflog.4 \
 	pfsync.4 \
@@ -251,7 +250,6 @@ MLINKS+=lp.4 plip.4
 MLINKS+=mem.4 kmem.4
 MLINKS+=netintro.4 networking.4
 MLINKS+=pcm.4 snd.4
-MLINKS+=pcvt.4 vt.4
 MLINKS+=scsi.4 CAM.4
 MLINKS+=scsi.4 SCSI.4
 MLINKS+=scsi.4 cam.4

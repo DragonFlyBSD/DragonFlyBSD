@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/i386/i386/Attic/userconfig.c,v 1.4 2005/01/31 23:44:35 joerg Exp $
+ ** $DragonFly: src/sys/i386/i386/Attic/userconfig.c,v 1.5 2005/05/07 17:38:34 swildner Exp $
  **/
 
 /**
@@ -381,7 +381,6 @@ static DEV_INFO device_info[] = {
 {"mse",         "Microsoft Bus Mouse",			0,		CLS_INPUT},
 {"psm",         "PS/2 Mouse",				FLG_FIXED,	CLS_INPUT},
 {"joy",         "Joystick",				FLG_FIXED,	CLS_INPUT},
-{"vt",          "PCVT console driver",			FLG_IMMUTABLE,	CLS_INPUT},
 {"sc",          "Syscons console driver",		FLG_IMMUTABLE,	CLS_INPUT},
 
 {"sbc",         "PCM Creative SoundBlaster/ESS/Avance sounce cards",	0,CLS_MMEDIA},

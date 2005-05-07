@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.55 2005/05/04 06:17:41 y0netan1 Exp $
+# $DragonFly: src/etc/Makefile,v 1.56 2005/05/07 17:38:33 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -229,6 +229,25 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
+	rm -f ${DESTDIR}/usr/lib/libkeycap.a
+	rm -f ${DESTDIR}/usr/lib/libkeycap_p.a
+.for cmd in cursor fontedit ispcvt kcon loadfont mcon scon vt220keys vttest
+	rm -f ${DESTDIR}/usr/sbin/${cmd}
+.endfor
+.for man in cursor fontedit kcon loadfont mcon scon vt220keys vttest
+	rm -f ${DESTDIR}/usr/share/man/man1/${man}.1.gz
+.endfor
+.for man in keycap kgetent kgetflag kgetnum kgetstr
+	rm -f ${DESTDIR}/usr/share/man/man3/${man}.3.gz
+.endfor
+	rm -f ${DESTDIR}/usr/share/man/man4/pcvt.4.gz
+	rm -f ${DESTDIR}/usr/share/man/man4/vt.4.gz
+	rm -f ${DESTDIR}/usr/share/man/man5/keycap.5.gz
+	rm -f ${DESTDIR}/usr/share/man/man8/ispcvt.8.gz
+	rm -f ${DESTDIR}/usr/share/misc/keycap.pcvt
+	rm -rf ${DESTDIR}/usr/share/misc/fonts
+	rm -rf ${DESTDIR}/usr/share/misc/pcvtfonts
+	rm -rf ${DESTDIR}/usr/share/pcvt
 	ldconfig -R
 
 distribution:

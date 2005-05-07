@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.19 2005/03/22 18:36:50 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.20 2005/05/07 17:38:33 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -59,7 +59,7 @@
 #	vn*	vnode disks
 #
 # Console ports:
-#	vty*	virtual console devices for syscons/pcvt/codrv
+#	vty*	virtual console devices for syscons
 #
 # Pointing devices:
 #	mse*	Logitech and ATI Inport bus mouse
@@ -89,7 +89,7 @@
 #
 # Pseudo terminals:
 #	pty*	set of 32 master and slave pseudo terminals
-#	vty*	virtual terminals using syscons/pcvt/codrv console
+#	vty*	virtual terminals using syscons console
 #
 # Parallel port:
 #	lpt*	Printer

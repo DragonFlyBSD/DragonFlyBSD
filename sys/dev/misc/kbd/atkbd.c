@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.7 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.8 2005/05/07 17:38:33 swildner Exp $
  */
 
 #include "opt_kbd.h"
@@ -175,9 +175,6 @@ atkbd_timeout(void *arg)
 
 typedef struct atkbd_state {
 	KBDC		kbdc;		/* keyboard controller */
-					/* XXX: don't move this field; pcvt
-					 * expects `kbdc' to be the first
-					 * field in this structure. */
 	int		ks_mode;	/* input mode (K_XLATE,K_RAW,K_CODE) */
 	int		ks_flags;	/* flags */
 #define COMPOSE		(1 << 0)

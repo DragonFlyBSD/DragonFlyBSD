@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/splash.4,v 1.9.2.7 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/splash.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/splash.4,v 1.3 2005/05/07 17:38:33 swildner Exp $
 .\"
 .Dd February 9, 1999
 .Dt SPLASH 4
@@ -214,12 +214,6 @@ necessary to load the VESA module.
 Just load the bitmap file and the splash decoder module as in the
 first example above.
 .\".Sh DIAGNOSTICS
-.Sh CAVEATS
-Both the splash screen and the screen saver work with
-.Xr syscons 4
-only.
-They are not available for the alternative console driver
-.Xr pcvt 4 .
 .Sh BUGS
 If you load a screen saver while another screen saver has already
 been loaded, the first screen saver will not be automatically unloaded
