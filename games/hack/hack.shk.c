@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.shk.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.shk.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.shk.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.shk.c,v 1.4 2005/05/07 18:03:39 corecode Exp $ */
 
 #include "hack.h"
 #ifdef QUEST
@@ -132,10 +132,10 @@ struct bill_x *bp = bill;
 	}
 }
 
+static void findshk(int);
+
 inshop(){
 int roomno = inroom(u.ux,u.uy);
-
-	static void findshk();
 
 	/* Did we just leave a shop? */
 	if(u.uinshop &&
@@ -309,13 +309,13 @@ struct monst *shkp;
 	}
 }
 
+static int dopayobj(struct bill_x *);
+
 dopay(){
 long ltmp;
 struct bill_x *bp;
 struct monst *shkp;
 int pass, tmp;
-
-	static int dopayobj();
 
 	multi = 0;
 	(void) inshop();
@@ -693,11 +693,11 @@ quit:
 	return(0);
 }
 
+static int realhunger(void);
+
 static
 getprice(obj) struct obj *obj; {
 int tmp, ac;
-	static int realhunger();
-
 	switch(obj->olet){
 	case AMULET_SYM:
 		tmp = 10*rnd(500);
