@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.7 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.8 2005/05/07 02:11:25 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -155,7 +155,7 @@ static int has_vesa_bios = FALSE;
 static struct vesa_info *vesa_adp_info = NULL;
 static u_int16_t *vesa_vmodetab = NULL;
 static char *vesa_oemstr = NULL;
-static char *vesa_venderstr = NULL;
+static char *vesa_vendorstr = NULL;
 static char *vesa_prodstr = NULL;
 static char *vesa_revstr = NULL;
 
@@ -655,8 +655,8 @@ vesa_bios_init(void)
 	is_via_cle266 = strcmp(vesa_oemstr, VESA_VIA_CLE266) == 0;
 
 	if (vesa_adp_info->v_version >= 0x0200) {
-		vesa_venderstr = 
-		    (char *)vesa_fix_ptr(vesa_adp_info->v_venderstr,
+		vesa_vendorstr = 
+		    (char *)vesa_fix_ptr(vesa_adp_info->v_vendorstr,
 					 vmf.vmf_es, vmf.vmf_di, buf);
 		vesa_prodstr = 
 		    (char *)vesa_fix_ptr(vesa_adp_info->v_prodstr,
@@ -1530,9 +1530,9 @@ vesa_bios_info(int level)
 		return 0;
 
 	if (vesa_adp_info->v_version >= 0x0200 && bootverbose) {
-		/* vender name, product name, product revision */
+		/* vendor name, product name, product revision */
 		printf("VESA: %s %s %s\n",
-			(vesa_venderstr != NULL) ? vesa_venderstr : "unknown",
+			(vesa_vendorstr != NULL) ? vesa_vendorstr : "unknown",
 			(vesa_prodstr != NULL) ? vesa_prodstr : "unknown",
 			(vesa_revstr != NULL) ? vesa_revstr : "?");
 	}

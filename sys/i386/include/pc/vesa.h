@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/vesa.h,v 1.7 1999/12/29 04:33:12 peter Exp $
- * $DragonFly: src/sys/i386/include/pc/Attic/vesa.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/pc/Attic/vesa.h,v 1.3 2005/05/07 02:11:25 swildner Exp $
  */
 
 #ifndef _MACHINE_PC_VESA_H
@@ -44,7 +44,7 @@ struct vesa_info
     u_int16_t		v_memsize __attribute__ ((packed));	/* in 64K */
     /* 2.0 */
     u_int16_t		v_revision __attribute__ ((packed));	/* software rev */
-    u_int32_t		v_venderstr __attribute__ ((packed));	/* vender */
+    u_int32_t		v_vendorstr __attribute__ ((packed));	/* vendor */
     u_int32_t		v_prodstr __attribute__ ((packed));	/* product name */
     u_int32_t		v_revstr __attribute__ ((packed));	/* product rev */
 };

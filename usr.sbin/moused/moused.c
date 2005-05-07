@@ -46,7 +46,7 @@
 
 /*
  * $FreeBSD: src/usr.sbin/moused/moused.c,v 1.37.2.11 2002/04/15 00:52:08 will Exp $
- * $DragonFly: src/usr.sbin/moused/moused.c,v 1.3 2004/03/24 18:23:46 cpressey Exp $
+ * $DragonFly: src/usr.sbin/moused/moused.c,v 1.4 2005/05/07 02:11:25 swildner Exp $
  */
 #include <ctype.h>
 #include <err.h>
@@ -2661,7 +2661,7 @@ pnpparse(pnpid_t *id, char *buf, int len)
     id->revision = ((buf[1] & 0x3f) << 6) | (buf[2] & 0x3f);
     debug("PnP rev %d.%02d", id->revision / 100, id->revision % 100);
 
-    /* EISA vender and product ID */
+    /* EISA vendor and product ID */
     id->eisaid = &buf[3];
     id->neisaid = 7;
 
