@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ns_ntoa.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/ns_ntoa.c,v 1.4 2005/05/07 13:29:35 corecode Exp $
+ * $DragonFly: src/lib/libc/net/ns_ntoa.c,v 1.5 2005/05/07 13:32:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -42,8 +42,7 @@
 static char *spectHex(char *);
 
 char *
-ns_ntoa(addr)
-	struct ns_addr addr;
+ns_ntoa(struct ns_addr addr)
 {
 	static char obuf[40];
 	union { union ns_net net_e; u_long long_e; } net;
@@ -79,8 +78,7 @@ ns_ntoa(addr)
 }
 
 static char *
-spectHex(p0)
-	char *p0;
+spectHex(char *p0)
 {
 	int ok = 0;
 	int nonzero = 0;
