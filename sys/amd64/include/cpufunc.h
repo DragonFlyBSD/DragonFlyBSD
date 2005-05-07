@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/cpufunc.h,v 1.139 2004/01/28 23:53:04 peter Exp $
- * $DragonFly: src/sys/amd64/include/Attic/cpufunc.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/cpufunc.h,v 1.2 2005/05/07 16:22:42 corecode Exp $
  */
 
 /*
@@ -125,6 +125,8 @@ enable_intr(void)
 	__asm __volatile("sti");
 }
 
+#ifdef _KERNEL
+
 #define	HAVE_INLINE_FFS
 
 static __inline int
@@ -167,6 +169,8 @@ flsl(long mask)
 {
 	return (mask == 0 ? mask : (int)bsrq((u_long)mask) + 1);
 }
+
+#endif /* _KERNEL */
 
 static __inline void
 halt(void)

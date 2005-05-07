@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.10 2005/03/06 05:05:52 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.11 2005/05/07 16:22:42 corecode Exp $
  */
 
 /*
@@ -154,6 +154,8 @@ cpu_mb2(void)
 	__asm __volatile("cpuid" : : : "ax", "bx", "cx", "dx", "memory");
 }
 
+#ifdef _KERNEL
+
 #define	HAVE_INLINE_FFS
 
 static __inline int
@@ -175,6 +177,8 @@ fls(int mask)
 {
 	return (mask == 0 ? mask : (int) bsrl((u_int)mask) + 1);
 }
+
+#endif /* _KERNEL */
 
 /*
  * The following complications are to get around gcc not having a
