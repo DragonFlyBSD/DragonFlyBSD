@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pw.h,v 1.10.2.2 2001/07/19 01:46:55 kris Exp $
- * $DragonFly: src/usr.sbin/pw/pw.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/pw.h,v 1.3 2005/05/07 23:42:39 corecode Exp $
  */
 
 #include <stdio.h>
@@ -70,7 +70,7 @@ struct carg
 	LIST_ENTRY(carg)  list;
 };
 
-extern LIST_HEAD(cargs, carg) arglist;
+LIST_HEAD(cargs, carg);
 
 struct userconf
 {
