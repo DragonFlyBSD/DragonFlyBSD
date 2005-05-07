@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.6 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.7 2005/05/07 23:32:57 corecode Exp $
  */
 
 /*
@@ -477,7 +477,7 @@ search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 	for (next = buf; next < lim; next += rtm->rtm_msglen) {
 		rtm = (struct rt_msghdr *)next;
 		sin2 = (struct sockaddr_inarp *)(rtm + 1);
-		(char *)sdl = (char *)sin2 + ROUNDUP(sin2->sin_len);
+		sdl = (struct sockaddr_dl *)((char *)sin2 + ROUNDUP(sin2->sin_len));
 		if (addr) {
 			if (addr != sin2->sin_addr.s_addr)
 				continue;
