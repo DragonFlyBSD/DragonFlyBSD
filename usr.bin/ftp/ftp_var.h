@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp_var.h,v 1.11.2.2 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.4 2005/05/07 22:34:51 corecode Exp $	*/
 /*	$NetBSD: ftp_var.h,v 1.20.2.1 1997/11/18 01:01:37 mellon Exp $	*/
 
 /*
@@ -51,6 +51,27 @@
 #ifndef SMALL
 #include <histedit.h>
 #endif /* !SMALL */
+
+/*
+ * Format of command table.
+ */
+struct cmd {
+	char	*c_name;	/* name of command */
+	char	*c_help;	/* help string */
+	char	 c_bell;	/* give bell when command completes */
+	char	 c_conn;	/* must be connected to use command */
+	char	 c_proxy;	/* proxy server may execute */
+#ifndef SMALL
+	char	*c_complete;	/* context sensitive completion list */
+#endif /* !SMALL */
+	void	(*c_handler)(int, char **); /* function to call */
+};
+
+struct macel {
+	char mac_name[9];	/* macro name */
+	char *mac_start;	/* start of macro in macbuf */
+	char *mac_end;		/* end of macro in macbuf */
+};
 
 #include "extern.h"
 
@@ -163,27 +184,6 @@ int     cpend;                  /* flag: if != 0, then pending server reply */
 int	mflag;			/* flag: if != 0, then active multi command */
 
 int	options;		/* used during socket creation */
-
-/*
- * Format of command table.
- */
-struct cmd {
-	char	*c_name;	/* name of command */
-	char	*c_help;	/* help string */
-	char	 c_bell;	/* give bell when command completes */
-	char	 c_conn;	/* must be connected to use command */
-	char	 c_proxy;	/* proxy server may execute */
-#ifndef SMALL
-	char	*c_complete;	/* context sensitive completion list */
-#endif /* !SMALL */
-	void	(*c_handler)(int, char **); /* function to call */
-};
-
-struct macel {
-	char mac_name[9];	/* macro name */
-	char *mac_start;	/* start of macro in macbuf */
-	char *mac_end;		/* end of macro in macbuf */
-};
 
 int macnum;			/* number of defined macros */
 struct macel macros[16];
