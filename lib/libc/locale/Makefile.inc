@@ -1,10 +1,10 @@
-# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.7 2005/04/21 16:36:34 joerg Exp $
+# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.8 2005/05/08 15:55:15 joerg Exp $
 
 .PATH: ${.CURDIR}/../libc/locale
 
 SRCS+=	collate.c collcmp.c
 SRCS+=	_def_messages.c _def_monetary.c _def_numeric.c _def_time.c
-SRCS+=	ctypeio.c localeconv.c nl_langinfo.c setlocale.c __mb_cur_max.c
+SRCS+=	localeconv.c nl_langinfo.c setlocale.c __mb_cur_max.c
 SRCS+=	wcscoll.c wcstod.c wcstol.c wcstoll.c wcstoimax.c wcstoul.c
 SRCS+=	wcstoumax.c wcsxfrm.c aliasname.c
 SRCS+=	___runetype_mb.c _wctrans.c iswctype.c multibyte_c90.c

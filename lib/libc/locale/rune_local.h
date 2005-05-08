@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/rune_local.h,v 1.7 2003/03/02 22:18:15 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/rune_local.h,v 1.1 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/locale/rune_local.h,v 1.2 2005/05/08 15:55:15 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 Citrus Project,
@@ -32,7 +32,6 @@
 
 /* rune.c */
 _RuneLocale *_Read_RuneMagi(FILE *fp);
-_RuneLocale *_Read_CTypeAsRune(FILE *fp);
 void	_NukeRune(_RuneLocale *);
 
 /* setrunelocale.c */

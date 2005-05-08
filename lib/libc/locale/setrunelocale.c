@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/setrunelocale.c,v 1.14 2003/08/07 16:43:07 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/setrunelocale.c,v 1.5 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/locale/setrunelocale.c,v 1.6 2005/05/08 15:55:15 joerg Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -155,9 +155,6 @@ _newrunelocale(char *path)
 		return(ENOENT);
 
 	if ((rl = _Read_RuneMagi(fp)) != NULL)
-		goto found;
-	/* necessary for backward compatibility */
-	if ((rl = _Read_CTypeAsRune(fp)) != NULL)
 		goto found;
 
 	fclose(fp);

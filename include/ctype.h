@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $	*/
-/*	$DragonFly: src/include/ctype.h,v 1.9 2005/05/08 15:52:05 joerg Exp $ */
+/*	$DragonFly: src/include/ctype.h,v 1.10 2005/05/08 15:55:15 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -117,9 +117,6 @@ __END_DECLS
 #include <machine/limits.h>	/* for CHAR_BIT */
 
 #define _CTYPE_NUM_CHARS	(1 << CHAR_BIT)
-
-#define _CTYPE_ID	 	"DFCTYPE"
-#define _CTYPE_REV		3
 
 extern const __uint16_t	__libc_C_ctype_[];
 extern const __int16_t	__libc_C_toupper_[];
