@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.35 2005/04/15 19:08:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.36 2005/05/08 00:12:22 dillon Exp $
  */
 
 /*
@@ -1458,10 +1458,8 @@ gbincore(struct vnode * vp, daddr_t blkno)
 	/* Search hash chain */
 	LIST_FOREACH(bp, bh, b_hash) {
 		/* hit */
-		if (bp->b_vp == vp && bp->b_lblkno == blkno &&
-		    (bp->b_flags & B_INVAL) == 0) {
+		if (bp->b_vp == vp && bp->b_lblkno == blkno)
 			break;
-		}
 	}
 	return (bp);
 }
