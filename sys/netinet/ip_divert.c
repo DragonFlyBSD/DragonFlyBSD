@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.22 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.23 2005/05/08 11:01:26 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -249,7 +249,6 @@ div_output(struct socket *so, struct mbuf *m,
 	struct sockaddr_in *sin, struct mbuf *control)
 {
 	int error = 0;
-	struct m_hdr divert_tag;
 	struct m_tag *mtag;
 
 	/*
@@ -306,7 +305,7 @@ div_output(struct socket *so, struct mbuf *m,
 
 		/* Send packet to output processing */
 		ipstat.ips_rawout++;			/* XXX */
-		error = ip_output((struct mbuf *)&divert_tag,
+		error = ip_output(m,
 			    inp->inp_options, &inp->inp_route,
 			    (so->so_options & SO_DONTROUTE) |
 			    IP_ALLOWBROADCAST | IP_RAWOUTPUT,
