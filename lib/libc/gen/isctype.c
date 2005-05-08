@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/gen/isctype.c,v 1.16 2003/08/07 16:42:52 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/isctype.c,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/gen/isctype.c,v 1.4 2005/05/08 15:52:05 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -42,14 +42,14 @@
 int
 isalnum(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_U|_L|_N));
+	return((__libc_ctype_ + 1)[c] & (_A|_D));
 }
 
 #undef isalpha
 int
 isalpha(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_U|_L));
+	return((__libc_ctype_ + 1)[c] & (_A));
 }
 
 #undef isblank
@@ -70,14 +70,14 @@ iscntrl(int c)
 int
 isdigit(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _N);
+	return((__libc_ctype_ + 1)[c] & _D);
 }
 
 #undef isgraph
 int
 isgraph(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_P|_U|_L|_N));
+	return((__libc_ctype_ + 1)[c] & (_G));
 }
 
 #undef islower
@@ -91,7 +91,7 @@ islower(int c)
 int
 isprint(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_P|_U|_L|_N|_B));
+	return((__libc_ctype_ + 1)[c] & (_R));
 }
 
 #undef ispunct
@@ -119,7 +119,7 @@ isupper(int c)
 int
 isxdigit(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_N|_X));
+	return((__libc_ctype_ + 1)[c] & (_X));
 }
 
 #undef _toupper

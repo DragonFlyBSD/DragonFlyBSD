@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/runeglue.c,v 1.10 2003/03/10 21:18:49 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/runeglue.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/locale/runeglue.c,v 1.2 2005/05/08 15:52:05 joerg Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -112,7 +112,7 @@ __runetable_to_netbsd_ctype(const char *locale)
 		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_L)
 			new_ctype[i + 1] |= _L;
 		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_D)
-			new_ctype[i + 1] |= _N;
+			new_ctype[i + 1] |= _D;
 		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_S)
 			new_ctype[i + 1] |= _S;
 		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_P)
@@ -123,6 +123,12 @@ __runetable_to_netbsd_ctype(const char *locale)
 			new_ctype[i + 1] |= _X;
 		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_B)
 			new_ctype[i + 1] |= _B;
+		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_A)
+			new_ctype[i + 1] |= _A;
+		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_G)
+			new_ctype[i + 1] |= _G;
+		if (_CurrentRuneLocale->rl_runetype[i] & _CTYPE_R)
+			new_ctype[i + 1] |= _R;
 
 		new_toupper[i + 1] = (int16_t)_CurrentRuneLocale->rl_mapupper[i];
 		new_tolower[i + 1] = (int16_t)_CurrentRuneLocale->rl_maplower[i];

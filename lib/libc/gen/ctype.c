@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/gen/ctype_.c,v 1.16 2003/08/07 16:42:46 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/ctype.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/gen/ctype.c,v 1.2 2005/05/08 15:52:05 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -43,22 +43,38 @@
 
 const uint16_t __libc_C_ctype_[1 + _CTYPE_NUM_CHARS] = {
 	0,
-	_C,	_C,	_C,	_C,	_C,	_C,	_C,	_C,
-	_C,	_C|_S|_B,	_C|_S,	_C|_S,	_C|_S,	_C|_S,	_C,	_C,
-	_C,	_C,	_C,	_C,	_C,	_C,	_C,	_C,
-	_C,	_C,	_C,	_C,	_C,	_C,	_C,	_C,
-	_S|_B,	_P,	_P,	_P,	_P,	_P,	_P,	_P,
-	_P,	_P,	_P,	_P,	_P,	_P,	_P,	_P,
-	_N,	_N,	_N,	_N,	_N,	_N,	_N,	_N,
-	_N,	_N,	_P,	_P,	_P,	_P,	_P,	_P,
-	_P,	_U|_X,	_U|_X,	_U|_X,	_U|_X,	_U|_X,	_U|_X,	_U,
-	_U,	_U,	_U,	_U,	_U,	_U,	_U,	_U,
-	_U,	_U,	_U,	_U,	_U,	_U,	_U,	_U,
-	_U,	_U,	_U,	_P,	_P,	_P,	_P,	_P,
-	_P,	_L|_X,	_L|_X,	_L|_X,	_L|_X,	_L|_X,	_L|_X,	_L,
-	_L,	_L,	_L,	_L,	_L,	_L,	_L,	_L,
-	_L,	_L,	_L,	_L,	_L,	_L,	_L,	_L,
-	_L,	_L,	_L,	_P,	_P,	_P,	_P,	_C
+/*00*/	_C,		_C,		_C,		_C,
+	_C,		_C,		_C,		_C,
+	_C,		_C|_S|_B,	_C|_S,		_C|_S,
+	_C|_S,		_C|_S,		_C,		_C,
+/*10*/	_C,		_C,		_C,		_C,
+	_C,		_C,		_C,		_C,
+	_C,		_C,		_C,		_C,
+	_C,		_C,		_C,		_C,
+/*20*/	_S|_B|_R,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+	_S|_B|_R,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+/*30*/	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,
+	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,
+	_D|_R|_G|_X,	_D|_R|_G|_X,	_P|_R|_G,	_P|_R|_G,
+	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+/*40*/	_P|_R|_G,	_U|_X|_R|_G|_A,	_U|_X|_R|_G|_A,	_U|_X|_R|_G|_A,
+	_U|_X|_R|_G|_A,	_U|_X|_R|_G|_A,	_U|_X|_R|_G|_A,	_U|_R|_G|_A,
+	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,
+	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,
+/*50*/	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,
+	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,
+	_U|_R|_G|_A,	_U|_R|_G|_A,	_U|_R|_G|_A,	_P|_R|_G,
+	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+/*60*/	_P|_R|_G,	_L|_X|_R|_G|_A,	_L|_X|_R|_G|_A,	_L|_X|_R|_G|_A,
+	_L|_X|_R|_G|_A,	_L|_X|_R|_G|_A,	_L|_X|_R|_G|_A,	_L|_R|_G|_A,
+	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,
+	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,
+/*70*/	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,
+	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,
+	_L|_R|_G|_A,	_L|_R|_G|_A,	_L|_R|_G|_A,	_P|_R|_G,
+	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_C|_R|_G
 };
 
 const uint16_t *__libc_ctype_ = __libc_C_ctype_;

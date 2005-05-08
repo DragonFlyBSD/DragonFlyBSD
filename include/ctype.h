@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $	*/
-/*	$DragonFly: src/include/ctype.h,v 1.8 2005/05/06 14:25:17 y0netan1 Exp $ */
+/*	$DragonFly: src/include/ctype.h,v 1.9 2005/05/08 15:52:05 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -43,14 +43,17 @@
 #include <sys/cdefs.h>
 #include <machine/stdint.h>
 
-#define	_U	0x01
-#define	_L	0x02
-#define	_N	0x04
-#define	_S	0x08
-#define	_P	0x10
-#define	_C	0x20
-#define	_X	0x40
-#define	_B	0x80
+#define	_U	0x0001
+#define	_L	0x0002
+#define	_D	0x0004
+#define	_S	0x0008
+#define	_P	0x0010
+#define	_C	0x0020
+#define	_X	0x0040
+#define	_B	0x0080
+#define	_A	0x0100
+#define	_G	0x0100
+#define	_R	0x0200
 
 extern const __uint16_t	*__libc_ctype_;
 extern const __int16_t	*__libc_tolower_tab_;
@@ -84,16 +87,16 @@ int	isblank(int);
 #endif
 __END_DECLS
 
-#define	isdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _N))
+#define	isdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _D))
 #define	islower(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _L))
 #define	isspace(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _S))
 #define	ispunct(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _P))
 #define	isupper(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _U))
-#define	isalpha(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_U|_L)))
-#define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_N|_X)))
-#define	isalnum(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_U|_L|_N)))
-#define	isprint(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N|_B)))
-#define	isgraph(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_P|_U|_L|_N)))
+#define	isalpha(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _A))
+#define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _X))
+#define	isalnum(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_A|_D)))
+#define	isprint(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _R))
+#define	isgraph(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _G))
 #define	iscntrl(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _C))
 #define	tolower(c)	((int)((__libc_tolower_tab_ + 1)[(int)(c)]))
 #define	toupper(c)	((int)((__libc_toupper_tab_ + 1)[(int)(c)]))
