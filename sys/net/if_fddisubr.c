@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.16 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.17 2005/05/08 18:11:02 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -136,7 +136,7 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	u_char esrc[6], edst[6];
 	struct fddi_header *fh;
 	boolean_t hdrcmplt = FALSE;
-	int s, loop_copy = 0, error;
+	int loop_copy = 0, error;
 	struct altq_pktattr pktattr;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
@@ -339,24 +339,10 @@ queue_it:
 		}
 	}
 
-	s = splimp();
 	/*
-	 * Queue message on interface, and start output if interface
-	 * not yet active.
+	 * Dispatch the message to the interface.
 	 */
-	error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
-	if (error) {
-		splx(s);
-		return(ENOBUFS);
-	}
-	ifp->if_obytes += m->m_pkthdr.len;
-	if (m->m_flags & M_MCAST)
-		ifp->if_omcasts++;
-	if ((ifp->if_flags & IFF_OACTIVE) == 0)
-		(*ifp->if_start)(ifp);
-	splx(s);
-
-	return (0);
+	return (ifq_handoff(ifp, m, &pktattr));
 
 bad:
 	m_freem(m);
