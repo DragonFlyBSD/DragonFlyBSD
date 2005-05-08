@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile,v 1.2 2005/01/10 05:00:37 y0netan1 Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile,v 1.3 2005/05/08 00:44:59 corecode Exp $
 
 .include "../Makefile.inc0"
 
@@ -13,6 +13,7 @@ SRCS+=	ldcref.c ldctor.c ldemul.c ldemul-list.h ldexp.c ldfile.c \
 
 CONTRIBDIR=	${SRCDIR}/ld
 CLEANFILES+=	emultempl/elf32.em genscripts.sh
+CLEANDIRS+=	emultempl tmpdir
 
 emultempl/elf32.em: ${CONTRIBDIR}/emultempl/elf32.em patches/elf32.em.patch
 	mkdir -p emultempl
