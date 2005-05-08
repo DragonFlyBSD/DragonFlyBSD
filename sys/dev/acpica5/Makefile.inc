@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/acpica5/Makefile.inc,v 1.5 2005/03/19 19:38:31 y0netan1 Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile.inc,v 1.6 2005/05/08 00:06:46 corecode Exp $
 
 SYSACPICA_VERSION=	20050309
 SYSACPICA_DIR?=		${SYSDIR}/contrib/dev/acpica-unix-${SYSACPICA_VERSION}
@@ -44,3 +44,6 @@ ${.OBJDIR}/platform/acenv.h: ${SYSACPICA_DIR}/include/platform/acenv.h
 	mv -f ${.TARGET}.new ${.TARGET}
 
 SRCS+= ${.OBJDIR}/acpi.h ${.OBJDIR}/platform/acenv.h
+
+CLEANFILES+=	${.OBJDIR}/acpi.h
+CLEANDIRS+=	${.OBJDIR}/platform
