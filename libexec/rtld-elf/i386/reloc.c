@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.11 2005/05/03 18:25:13 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.12 2005/05/08 13:11:06 joerg Exp $
  */
 
 /*
@@ -233,6 +233,36 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld __unused)
 		    }
 
 		    *where += (Elf_Addr) (def->st_value - defobj->tlsoffset);
+		}
+		break;
+
+	    case R_386_TLS_TPOFF32:
+		{
+		    const Elf_Sym *def;
+		    const Obj_Entry *defobj;
+
+		    def = find_symdef(ELF_R_SYM(rel->r_info), obj, &defobj,
+		      false, cache);
+		    if (def == NULL)
+			goto done;
+
+		    /*
+		     * We lazily allocate offsets for static TLS as we
+		     * see the first relocation that references the
+		     * TLS block. This allows us to support (small
+		     * amounts of) static TLS in dynamically loaded
+		     * modules. If we run out of space, we generate an
+		     * error.
+		     */
+		    if (!defobj->tls_done) {
+			if (!allocate_tls_offset((Obj_Entry*) defobj)) {
+			    _rtld_error("%s: No space available for static "
+					"Thread Local Storage", obj->path);
+			    goto done;
+			}
+		    }
+
+		    *where += (Elf_Addr) (defobj->tlsoffset - def->st_value);
 		}
 		break;
 
