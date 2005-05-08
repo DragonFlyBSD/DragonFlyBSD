@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.13 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.14 2005/05/08 17:42:35 joerg Exp $
  */
 
 /*
@@ -359,17 +359,11 @@ vlan_start(struct ifnet *ifp)
 		 * Send it, precisely as ether_output() would have.
 		 * We are already running at splimp.
 		 */
-		error = ifq_enqueue(&p->if_snd, m, &pktattr);
-		if (error) {
+		error = ifq_handoff(p, m, &pktattr);
+		if (error)
 			ifp->if_oerrors++;
-			continue;
-		}
-		ifp->if_opackets++;
-		p->if_obytes += m->m_pkthdr.len;
-		if (m->m_flags & M_MCAST)
-			p->if_omcasts++;
-		if ((p->if_flags & IFF_OACTIVE) == 0)
-			p->if_start(p);
+		else
+			ifp->if_opackets++;
 	}
 	ifp->if_flags &= ~IFF_OACTIVE;
 
