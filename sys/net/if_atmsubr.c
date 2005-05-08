@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.12 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.13 2005/05/08 17:52:06 joerg Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	   struct rtentry *rt0)
 {
 	u_int16_t etype = 0;			/* if using LLC/SNAP */
-	int s, error = 0, sz;
+	int error = 0, sz;
 	struct atm_pseudohdr atmdst, *ad;
 	struct mbuf *m = m0;
 	struct rtentry *rt;
@@ -209,20 +209,9 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	}
 
 	/*
-	 * Queue message on interface, and start output if interface
-	 * not yet active.
+	 * Dispatch message to the interface.
 	 */
-	s = splimp();
-	error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
-	if (error) {
-		splx(s);
-		return (ENOBUFS);
-	}
-	ifp->if_obytes += m->m_pkthdr.len;
-	if (!(ifp->if_flags & IFF_OACTIVE))
-		(*ifp->if_start)(ifp);
-	splx(s);
-	return (error);
+	return (ifq_handoff(ifp, m, &pktattr));
 
 bad:
 	if (m != NULL)
