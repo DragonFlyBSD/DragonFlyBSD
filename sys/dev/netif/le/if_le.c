@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.22 2005/02/21 03:38:55 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.23 2005/05/08 11:45:32 joerg Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
 
@@ -294,6 +295,9 @@ le_attach(struct isa_device *dvp)
     ifp->if_addrlen = 6;
     ifp->if_hdrlen = 14;
     ifp->if_init = sc->if_init;
+    ifp->if_baudrate = 10000000;
+    ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+    ifq_set_ready(&ifp->if_snd);
 
     ether_ifattach(ifp, sc->le_ac.ac_enaddr);
 
@@ -877,7 +881,7 @@ lemac_start(struct ifnet *ifp)
 
     LEMAC_INTR_DISABLE(sc);
 
-    while (!IF_QEMPTY(&ifp->if_snd)) {
+    while (!ifq_is_empty(&ifp->if_snd)) {
 	struct mbuf  *m;
 	int tx_pg;
 	u_int txhdr, txoff;
@@ -897,7 +901,7 @@ lemac_start(struct ifnet *ifp)
 	    break;
 	}
 
-	IF_DEQUEUE(&ifp->if_snd, m);
+	m = ifq_dequeue(&ifp->if_snd);
 	LE_OUTB(sc, LEMAC_REG_MPN, tx_pg);	/* Shift 2K window. */
 
 	/*
@@ -1473,7 +1477,7 @@ lance_init(void *xsc)
         sc->if_reset(sc);
 	lance_tx_intr(sc);
 	/*
-	 * If we were running, requeue any pending transmits.
+	 * If we were running, abort any pending transmits.
 	 */
 	ri = &sc->lance_txinfo;
 	di = ri->ri_nextout;
@@ -1482,7 +1486,7 @@ lance_init(void *xsc)
 		di = ri->ri_nextout - 1;
 	    if (di->di_mbuf == NULL)
 		break;
-	    IF_PREPEND(&sc->le_if.if_snd, di->di_mbuf);
+	    m_free(di->di_mbuf);
 	    di->di_mbuf = NULL;
 	    ri->ri_free++;
 	}
@@ -1685,7 +1689,7 @@ lance_start(struct ifnet *ifp)
 	return;
 
     for (;;) {
-	IF_DEQUEUE(&ifp->if_snd, m);
+	m = ifq_poll(&ifp->if_snd);
 	if (m == NULL)
 	    break;
 
@@ -1711,7 +1715,6 @@ lance_start(struct ifnet *ifp)
 	     */
 	    if (lance_tx_intr(sc) > 0) {
 		LN_STAT(tx_drains[0]++);
-		IF_PREPEND(&ifp->if_snd, m);
 		continue;
 	    }
 	    LN_STAT(tx_nospc[0]++);
@@ -1757,6 +1760,8 @@ lance_start(struct ifnet *ifp)
 	if (m->m_pkthdr.len < len)
 	    LN_ZERO(sc, bp, len - m->m_pkthdr.len);
 
+	m = ifq_dequeue(&ifp->if_snd);
+
 	/*
 	 * Finally, copy out the descriptor and tell the
 	 * LANCE to transmit!.
@@ -1785,10 +1790,8 @@ lance_start(struct ifnet *ifp)
 	    ri->ri_nextout = ri->ri_first;
 	LN_MINSTAT(low_txfree, ri->ri_free);
     }
-    if (m != NULL) {
+    if (m != NULL)
 	ifp->if_flags |= IFF_OACTIVE;
-	IF_PREPEND(&ifp->if_snd, m);
-    }
 }
 
 static int
