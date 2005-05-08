@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/trace.c,v 1.6.2.1 2000/07/20 10:35:22 kris Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.5 2005/05/08 00:07:39 corecode Exp $
  *
  * @(#)trace.c	8.1 (Berkeley) 6/5/93
  */
@@ -64,11 +64,11 @@ int	tracing = 0;
 void dumpif(FILE *fd, struct interface *ifp);
 void dumptrace(FILE *fd, char *dir, struct ifdebug *ifd);
 
+static int iftraceinit(struct interface *, struct ifdebug *);
+
 void
 traceinit(struct interface *ifp)
 {
-	static int iftraceinit();
-
 	if (iftraceinit(ifp, &ifp->int_input) &&
 	    iftraceinit(ifp, &ifp->int_output))
 		return;
