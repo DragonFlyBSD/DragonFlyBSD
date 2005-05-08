@@ -1,9 +1,13 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/as/Attic/Makefile.inc0,v 1.1 2004/12/20 13:14:44 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/as/Attic/Makefile.inc0,v 1.2 2005/05/08 00:35:48 corecode Exp $
+
+# hack hack so that ${SRCDIR}/*.c:#include "as.h" will take our patched one
+# in ${.OBJDIR} (see below)
+CFLAGS+= -I${.OBJDIR}/.. -I-
 
 .include "${.CURDIR}/../../Makefile.inc0"
 
 RELTOP:= ../${RELTOP}
-.PATH: ${SRCDIR}/gas ${SRCDIR}/gas/config
+.PATH: ${SRCDIR}/gas ${SRCDIR}/gas/config ${.CURDIR}/..
 
 TARGET_VENDOR	?=	dillon
 TARGET_OS	?=	dragonfly1.1
@@ -18,6 +22,11 @@ SRCS+=	app.c as.c atof-generic.c atof-ieee.c bignum-copy.c \
 	subsegs.c symbols.c write.c depend.c ehopt.c
 # DEO: why not used?
 #SRCS+=	itbl-ops.c
+
+# let gcc40 compile this cleanly
+CONTRIBDIR= ${SRCDIR}/gas
+SRCS+=	tc.h.patch as.h.patch
+
 .if (${TARGET_ARCH} == "alpha")
 WARNS=	0
 .else

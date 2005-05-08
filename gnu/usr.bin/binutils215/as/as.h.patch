@@ -1,0 +1,32 @@
+$DragonFly: src/gnu/usr.bin/binutils215/as/Attic/as.h.patch,v 1.1 2005/05/08 00:35:48 corecode Exp $
+Index: as.h
+===================================================================
+RCS file: /space/cvs/dragonfly/src/contrib/binutils-2.15/gas/as.h,v
+retrieving revision 1.1
+diff -u -r1.1 as.h
+--- as.h	18 Dec 2004 20:21:20 -0000	1.1
++++ as.h	6 May 2005 20:01:28 -0000
+@@ -397,6 +397,23 @@
+ /* Enough bits for address, but still an integer type.
+    Could be a problem, cross-assembling for 64-bit machines.  */
+ typedef addressT relax_addressT;
++
++struct relax_type
++{
++  /* Forward reach. Signed number. > 0.  */
++  long rlx_forward;
++  /* Backward reach. Signed number. < 0.  */
++  long rlx_backward;
++
++  /* Bytes length of this address.  */
++  unsigned char rlx_length;
++
++  /* Next longer relax-state.  0 means there is no 'next' relax-state.  */
++  relax_substateT rlx_more;
++};
++
++typedef struct relax_type relax_typeS;
++
+ 
+ /* main program "as.c" (command arguments etc) */
+ 
