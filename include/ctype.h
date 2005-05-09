@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $	*/
-/*	$DragonFly: src/include/ctype.h,v 1.10 2005/05/08 15:55:15 joerg Exp $ */
+/*	$DragonFly: src/include/ctype.h,v 1.11 2005/05/09 09:53:07 y0netan1 Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -52,8 +52,8 @@
 #define	_X	0x0040
 #define	_B	0x0080
 #define	_A	0x0100
-#define	_G	0x0100
-#define	_R	0x0200
+#define	_G	0x0200
+#define	_R	0x0400
 
 extern const __uint16_t	*__libc_ctype_;
 extern const __int16_t	*__libc_tolower_tab_;
