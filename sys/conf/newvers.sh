@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.12 2005/04/08 06:12:11 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.13 2005/05/09 17:24:14 dillon Exp $
 
 tag="\$Name:  $"
 
@@ -53,10 +53,10 @@ BRANCH=${BRANCH%_Slip}
 # implicitly or explicitly.
 #
 if [ "X${BRANCH}" = "X$" ]; then
-    BRANCH="DEVELOPMENT"
+    BRANCH="DEVELOPMENT_1_3"
 fi
 if [ "X${BRANCH}" = "XHEAD" ]; then
-    BRANCH="DEVELOPMENT"
+    BRANCH="DEVELOPMENT_1_3"
 fi
 
 # This case occurs if the $Name:  $ field has not been expanded.
@@ -85,21 +85,17 @@ BRANCH=${BRANCH%%_*}
 
 if [ "${REVISION}" != "${BRANCH}" ]; then
     REVISION=$(echo $REVISION | sed -e 's/_/./g')
-    for chkdir in machine/../../.. .. ../.. ../../.. /usr/src; do
-	if [ -f ${chkdir}/sys/conf/subvers-${SHORTTAG} ]; then
-	    SUBVER=$(tail -1 ${chkdir}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
-	    if [ "X${SUBVER}" != "X" ]; then
-		REVISION="${REVISION}.${SUBVER}"
-		break
-	    fi
-	fi
-    done
-else
-    # Applies to HEAD branch or tags on the HEAD branch only, ignored when
-    # run on a branch.
-    #
-    REVISION="1.3"
 fi
+
+for chkdir in machine/../../.. .. ../.. ../../.. /usr/src; do
+    if [ -f ${chkdir}/sys/conf/subvers-${SHORTTAG} ]; then
+	SUBVER=$(tail -1 ${chkdir}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
+	if [ "X${SUBVER}" != "X" ]; then
+	    REVISION="${REVISION}.${SUBVER}"
+	    break
+	fi
+    fi
+done
 
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
