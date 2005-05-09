@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/gen/ctype_.c,v 1.16 2003/08/07 16:42:46 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/ctype.c,v 1.3 2005/05/09 13:37:27 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/gen/ctype.c,v 1.4 2005/05/09 16:05:54 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -53,7 +53,7 @@ const uint16_t __libc_C_ctype_[1 + _CTYPE_NUM_CHARS] = {
 	_C,		_C,		_C,		_C,
 /*20*/	_S|_B|_R,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
 	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
-	_S|_B|_R,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
+	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
 	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,	_P|_R|_G,
 /*30*/	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,
 	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,	_D|_R|_G|_X,
