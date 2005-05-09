@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.6 2005/01/31 22:28:58 dillon Exp $
+ * $DragonFly: src/include/stdio.h,v 1.7 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -73,6 +73,8 @@ struct __sbuf {
 	unsigned char *_base;
 	int	_size;
 };
+
+struct __sFILEX;
 
 /*
  * stdio state variables.
@@ -118,7 +120,7 @@ typedef	struct __sFILE {
 
 	/* separate buffer for long sequences of ungetc() */
 	struct	__sbuf _ub;	/* ungetc buffer */
-	unsigned char *_up;	/* saved _p when _p is doing ungetc data */
+	struct  __sFILEX *_extra;
 	int	_ur;		/* saved _r when _r is counting ungetc data */
 
 	/* tricks to meet minimum requirements even when malloc() fails */

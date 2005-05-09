@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/gen/_pthread_stubs.c,v 1.1 2001/01/24 12:59:20 deischen Exp $
- * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.3 2005/04/26 10:05:08 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.4 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <pthread.h>
@@ -43,6 +43,12 @@ int	_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *);
 int	_pthread_mutexattr_settype_stub(pthread_mutexattr_t *, int);
 int	_pthread_once_stub(pthread_once_t *, void (*)(void));
 int	_pthread_setspecific_stub(pthread_key_t, const void *);
+
+/* define a null pthread structure just to satisfy _pthread_self */
+struct pthread {
+};
+
+static struct pthread main_thread;
 
 /*
  * Weak symbols: All libc internal usage of these functions should
@@ -66,6 +72,7 @@ __weak_reference(_pthread_mutexattr_destroy_stub,_pthread_mutexattr_destroy);
 __weak_reference(_pthread_mutexattr_settype_stub,_pthread_mutexattr_settype);
 __weak_reference(_pthread_once_stub,_pthread_once);
 __weak_reference(_pthread_setspecific_stub,_pthread_setspecific);
+__weak_reference(_pthread_self_stub,_pthread_self);
 
 void *
 _pthread_getspecific_stub(pthread_key_t key __unused)
@@ -143,6 +150,11 @@ _pthread_once_stub(pthread_once_t *once_control __unused,
 	return (0);
 }
 
+struct pthread *
+_pthread_self_stub(void)
+{
+	return (&main_thread);
+}
 int
 _pthread_setspecific_stub(pthread_key_t key __unused,
 			  const void *value __unused)

@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.7 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -56,12 +56,17 @@ int	__sdidinit;
 #define	NDYNAMIC 10		/* add ten more whenever necessary */
 
 #define	std(flags, file) \
-	{0,0,0,flags,file,{0},0,__sF+file,__sclose,__sread,__sseek,__swrite}
+	{0,0,0,flags,file,{0},0,__sF+file,__sclose,__sread,__sseek,__swrite, \
+	 {0}, __sFX + file}
 /*	 p r w flags file _bf z  cookie      close    read    seek    write */
+/*	_ub _extra */
 
 				/* the usual - (stdin + stdout + stderr) */
 static FILE usual[FOPEN_MAX - 3];
+static struct __sFILEX usual_extra[FOPEN_MAX - 3];
 static struct glue uglue = { NULL, FOPEN_MAX - 3, usual };
+
+static struct __sFILEX __sFX[3];
 
 FILE __sF[3] = {
 	std(__SRD, STDIN_FILENO),		/* stdin */
@@ -103,18 +108,26 @@ struct glue *
 moreglue(int n)
 {
 	struct glue *g;
-	FILE *p;
 	static FILE empty;
+	static struct __sFILEX emptyx;
+	FILE *p;
+	struct __sFILEX *fx;
 
-	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE));
+	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE) +
+	    n * sizeof(struct __sFILEX));
 	if (g == NULL)
 		return (NULL);
 	p = (FILE *)ALIGN(g + 1);
+	fx = (struct __sFILEX *)&p[n];
 	g->next = NULL;
 	g->niobs = n;
 	g->iobs = p;
-	while (--n >= 0)
-		*p++ = empty;
+	while (--n >= 0) {
+		*p = empty;
+		p->_extra = fx;
+		*p->_extra = emptyx;
+		p++, fx++;
+	}
 	return (g);
 }
 
@@ -214,7 +227,17 @@ _cleanup(void)
 void
 __sinit(void)
 {
-	/* make sure we clean up on exit */
-	__cleanup = _cleanup;		/* conservative */
-	__sdidinit = 1;
+	int	i;
+
+	THREAD_LOCK();
+	if (__sdidinit == 0) {
+		/* Set _extra for the usual suspects. */
+		for (i = 0; i < FOPEN_MAX - 3; i++)
+			usual[i]._extra = &usual_extra[i];
+
+		/* Make sure we clean up on exit. */
+		__cleanup = _cleanup;		/* conservative */
+		__sdidinit = 1;
+	}
+	THREAD_UNLOCK();
 }

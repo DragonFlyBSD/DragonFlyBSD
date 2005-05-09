@@ -36,10 +36,11 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/local.h,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/local.h,v 1.6 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <sys/types.h> /* for off_t */
+#include <pthread.h>
 
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>	/* __size_t */
@@ -65,8 +66,17 @@ extern int	__swhatbuf (FILE *, __size_t *, int *);
 extern int	_fwalk (int (*)(FILE *));
 extern int	__swsetup (FILE *);
 extern int	__sflags (const char *, int *);
+extern int	__vfprintf(FILE *, const char *, __va_list);
 
 extern int	__sdidinit;
+
+/* hold a buncha junk that would grow the ABI */
+struct __sFILEX {
+	unsigned char	*_up;	/* saved _p when _p is doing ungetc data */
+	pthread_mutex_t	fl_mutex;	/* used for MT-safety */
+	pthread_t	fl_owner;	/* current owner */
+	int		fl_count;	/* recursive lock count */
+};
 
 /*
  * Return true iff the given FILE cannot be written now.
@@ -94,3 +104,11 @@ extern int	__sdidinit;
 	free((char *)(fp)->_lb._base); \
 	(fp)->_lb._base = NULL; \
 }
+
+#define	INITEXTRA(fp) { \
+	(fp)->_extra->_up = NULL; \
+	(fp)->_extra->fl_mutex = PTHREAD_MUTEX_INITIALIZER; \
+	(fp)->_extra->fl_owner = NULL; \
+	(fp)->_extra->fl_count = 0; \
+}
+

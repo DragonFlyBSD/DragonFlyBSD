@@ -27,7 +27,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.5 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <stdio.h>
@@ -41,6 +41,7 @@ vasprintf(char **str, const char *fmt, va_list ap)
 {
 	int ret;
 	FILE f;
+	struct __sFILEX ext;
 
 	f._file = -1;
 	f._flags = __SWR | __SSTR | __SALC;
@@ -51,6 +52,8 @@ vasprintf(char **str, const char *fmt, va_list ap)
 		return (-1);
 	}
 	f._bf._size = f._w = 127;		/* Leave room for the NULL */
+	f._extra = &ext;
+	INITEXTRA(&f);
 	ret = __vfprintf(&f, fmt, ap);
 	*f._p = '\0';
 	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);

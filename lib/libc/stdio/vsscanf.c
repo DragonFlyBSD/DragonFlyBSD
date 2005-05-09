@@ -35,12 +35,13 @@
  *
  * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsscanf.c,v 1.7 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.6 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include "local.h"
 
 static int
 eofread (void *, char *, int);
@@ -57,6 +58,7 @@ int
 vsscanf(const char *str, const char *fmt, va_list ap)
 {
 	FILE f;
+	struct __sFILEX ext;
 
 	f._file = -1;
 	f._flags = __SRD;
@@ -65,5 +67,7 @@ vsscanf(const char *str, const char *fmt, va_list ap)
 	f._read = eofread;
 	f._ub._base = NULL;
 	f._lb._base = NULL;
+	f._extra = &ext;
+	INITEXTRA(&f);
 	return (__svfscanf(&f, fmt, ap));
 }

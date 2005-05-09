@@ -27,7 +27,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/asprintf.c,v 1.6 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.4 2004/06/07 17:59:42 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.5 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <stdio.h>
@@ -35,12 +35,15 @@
 #include <errno.h>
 #include <stdarg.h>
 
+#include "local.h"
+
 int
 asprintf(char **str, char const *fmt, ...)
 {
 	int ret;
 	va_list ap;
 	FILE f;
+	struct __sFILEX ext;
 
 	f._file = -1;
 	f._flags = __SWR | __SSTR | __SALC;
@@ -51,8 +54,10 @@ asprintf(char **str, char const *fmt, ...)
 		return (-1);
 	}
 	f._bf._size = f._w = 127;		/* Leave room for the NUL */
+	f._extra = &ext;
+	INITEXTRA(&f);
 	va_start(ap, fmt);
-	ret = vfprintf(&f, fmt, ap);
+	ret = __vfprintf(&f, fmt, ap);		/* Use unlocked __vfprintf */
 	va_end(ap);
 	if (ret < 0) {
 		free(f._bf._base);

@@ -35,12 +35,14 @@
  *
  * @(#)snprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/snprintf.c,v 1.12 1999/08/28 00:01:16 peter Exp $
- * $DragonFly: src/lib/libc/stdio/snprintf.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/snprintf.c,v 1.4 2005/05/09 12:43:40 davidxu Exp $
  */
 
 #include <limits.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#include "local.h"
 
 int
 snprintf(char *str, size_t n, char const *fmt, ...)
@@ -49,6 +51,7 @@ snprintf(char *str, size_t n, char const *fmt, ...)
 	int ret;
 	va_list ap;
 	FILE f;
+	struct __sFILEX ext;
 
 	on = n;
 	if (n != 0)
@@ -60,7 +63,9 @@ snprintf(char *str, size_t n, char const *fmt, ...)
 	f._flags = __SWR | __SSTR;
 	f._bf._base = f._p = (unsigned char *)str;
 	f._bf._size = f._w = n;
-	ret = vfprintf(&f, fmt, ap);
+	f._extra = &ext;
+	INITEXTRA(&f);
+	ret = __vfprintf(&f, fmt, ap);		/* Use unlocked __vfprintf */
 	if (on > 0)
 		*f._p = '\0';
 	va_end(ap);
