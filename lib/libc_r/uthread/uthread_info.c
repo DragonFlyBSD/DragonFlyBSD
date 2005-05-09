@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_info.c,v 1.14.2.9 2003/02/15 05:35:31 kris Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -65,7 +65,6 @@ static const struct s_thread_info thread_info[] = {
 	{PS_FDLW_WAIT	, "Waiting for a file write lock"},
 	{PS_FDR_WAIT	, "Waiting for read"},
 	{PS_FDW_WAIT	, "Waiting for write"},
-	{PS_FILE_WAIT	, "Waiting for FILE lock"},
 	{PS_POLL_WAIT	, "Waiting on poll"},
 	{PS_SELECT_WAIT	, "Waiting on select"},
 	{PS_SLEEP_WAIT	, "Sleeping"},

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sig.c,v 1.25.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_sig.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_sig.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -727,7 +727,6 @@ thread_sig_add(struct pthread *pthread, int sig, int has_args)
 	 */
 	case PS_FDLR_WAIT:
 	case PS_FDLW_WAIT:
-	case PS_FILE_WAIT:
 		if (restart == 0)
 			pthread->interrupted = 1;
 		/*
@@ -879,7 +878,6 @@ thread_sig_check_state(struct pthread *pthread, int sig)
 	 */
 	case PS_FDR_WAIT:
 	case PS_FDW_WAIT:
-	case PS_FILE_WAIT:
 	case PS_POLL_WAIT:
 	case PS_SELECT_WAIT:
 		/*
@@ -986,11 +984,6 @@ _thread_sig_wrapper(void)
 		case PS_FDLR_WAIT:
 		case PS_FDLW_WAIT:
 			_fd_lock_backout(thread);
-			psf->saved_state.psd_state = PS_RUNNING;
-			break;
-
-		case PS_FILE_WAIT:
-			_flockfile_backout(thread);
 			psf->saved_state.psd_state = PS_RUNNING;
 			break;
 

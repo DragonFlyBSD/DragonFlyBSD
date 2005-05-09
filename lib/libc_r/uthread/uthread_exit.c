@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_exit.c,v 1.16.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
  */
 #include <errno.h>
 #include <unistd.h>
@@ -129,9 +129,6 @@ _thread_exit_cleanup(void)
 	 */
 	/* Unlock all owned fd locks: */
 	_thread_fd_unlock_owned(curthread);
-
-	/* Unlock all owned file locks: */
-	_funlock_owned(curthread);
 
 	/* Unlock all private mutexes: */
 	_mutex_unlock_private(curthread);

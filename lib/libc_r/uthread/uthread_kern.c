@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kern.c,v 1.28.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.4 2005/05/09 13:28:40 davidxu Exp $
  *
  */
 #include <errno.h>
@@ -281,7 +281,6 @@ _thread_kern_scheduler(void)
 			case PS_DEADLOCK:
 			case PS_FDLR_WAIT:
 			case PS_FDLW_WAIT:
-			case PS_FILE_WAIT:
 			case PS_JOIN:
 			case PS_MUTEX_WAIT:
 			case PS_SIGSUSPEND:

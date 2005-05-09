@@ -1,7 +1,7 @@
 /*
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  * $FreeBSD: src/lib/libc_r/uthread/uthread_cancel.c,v 1.3.2.9 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_cancel.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_cancel.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
  */
 #include <sys/errno.h>
 #include <pthread.h>
@@ -83,7 +83,6 @@ _pthread_cancel(pthread_t pthread)
 			case PS_COND_WAIT:
 			case PS_FDLR_WAIT:
 			case PS_FDLW_WAIT:
-			case PS_FILE_WAIT:
 				/*
 				 * Threads in these states may be in queues.
 				 * In order to preserve queue integrity, the

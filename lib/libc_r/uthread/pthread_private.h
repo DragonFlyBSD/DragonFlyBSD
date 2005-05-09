@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.8 2005/05/03 07:29:04 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.9 2005/05/09 13:28:40 davidxu Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -484,7 +484,6 @@ enum pthread_state {
 	PS_FDLW_WAIT,
 	PS_FDR_WAIT,
 	PS_FDW_WAIT,
-	PS_FILE_WAIT,
 	PS_POLL_WAIT,
 	PS_SELECT_WAIT,
 	PS_SLEEP_WAIT,
