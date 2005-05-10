@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.47 2005/04/22 17:41:15 joerg Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.48 2005/05/10 15:48:10 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -1522,8 +1522,10 @@ tcp_quench(struct inpcb *inp, int errno)
 {
 	struct tcpcb *tp = intotcpcb(inp);
 
-	if (tp != NULL)
+	if (tp != NULL) {
 		tp->snd_cwnd = tp->t_maxseg;
+		tp->snd_wacked = 0;
+	}
 }
 
 /*

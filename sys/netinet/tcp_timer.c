@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.13 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.14 2005/05/10 15:48:10 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -168,7 +168,8 @@ SYSCTL_PROC(_net_inet_tcp, OID_AUTO, rexmit_min, CTLTYPE_INT|CTLFLAG_RW,
 
 int	tcp_rexmit_slop;
 SYSCTL_PROC(_net_inet_tcp, OID_AUTO, rexmit_slop, CTLTYPE_INT|CTLFLAG_RW,
-    &tcp_rexmit_slop, 0, sysctl_msec_to_ticks, "I", "Retransmission Timer Slop");
+    &tcp_rexmit_slop, 0, sysctl_msec_to_ticks, "I",
+    "Retransmission Timer Slop");
 
 static int	always_keepalive = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, always_keepalive, CTLFLAG_RW,
@@ -398,12 +399,13 @@ void
 tcp_save_congestion_state(struct tcpcb *tp)
 {
 	tp->snd_cwnd_prev = tp->snd_cwnd;
+	tp->snd_wacked_prev = tp->snd_wacked;
 	tp->snd_ssthresh_prev = tp->snd_ssthresh;
 	tp->snd_recover_prev = tp->snd_recover;
 	if (IN_FASTRECOVERY(tp))
-	  tp->t_flags |= TF_WASFRECOVERY;
+		tp->t_flags |= TF_WASFRECOVERY;
 	else
-	  tp->t_flags &= ~TF_WASFRECOVERY;
+		tp->t_flags &= ~TF_WASFRECOVERY;
 	if (tp->t_flags & TF_RCVD_TSTMP) {
 		tp->t_rexmtTS = ticks;
 		tp->t_flags |= TF_FIRSTACCACK;
@@ -417,10 +419,11 @@ void
 tcp_revert_congestion_state(struct tcpcb *tp)
 {
 	tp->snd_cwnd = tp->snd_cwnd_prev;
+	tp->snd_wacked = tp->snd_wacked_prev;
 	tp->snd_ssthresh = tp->snd_ssthresh_prev;
 	tp->snd_recover = tp->snd_recover_prev;
 	if (tp->t_flags & TF_WASFRECOVERY)
-	    ENTER_FASTRECOVERY(tp);
+		ENTER_FASTRECOVERY(tp);
 	if (tp->t_flags & TF_FASTREXMT) {
 		++tcpstat.tcps_sndfastrexmitbad;
 		if (tp->t_flags & TF_EARLYREXMT)
@@ -551,9 +554,11 @@ tcp_timer_rexmt(void *xtp)
 	 */
 	{
 		u_int win = min(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg;
+
 		if (win < 2)
 			win = 2;
 		tp->snd_cwnd = tp->t_maxseg;
+		tp->snd_wacked = 0;
 		tp->snd_ssthresh = win * tp->t_maxseg;
 		tp->t_dupacks = 0;
 	}

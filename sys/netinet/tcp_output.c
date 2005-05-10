@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.27 2005/04/18 22:41:23 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.28 2005/05/10 15:48:10 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -195,6 +195,7 @@ tcp_output(tp)
 		} else {
 			tp->snd_cwnd = tp->t_maxseg;
 		}
+		tp->snd_wacked = 0;
 	}
 
 	/*

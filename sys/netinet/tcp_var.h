@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.34 2005/04/18 22:41:23 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.35 2005/05/10 15:48:10 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -93,11 +93,12 @@
 /*
  * Kernel variables for tcp.
  */
-extern int	tcp_do_rfc1323;
-extern int	tcp_do_rfc1644;
-extern int	tcp_do_rfc3390;
-extern int	tcp_do_sack;
-extern int	tcp_do_smartsack;
+extern int tcp_do_rfc1323;
+extern int tcp_do_rfc1644;
+extern int tcp_do_rfc3390;
+extern int tcp_do_sack;
+extern int tcp_do_smartsack;
+extern int tcp_aggregate_acks;
 
 /* TCP segment queue entry */
 struct tseg_qent {
@@ -190,8 +191,7 @@ struct tcpcb {
 	tcp_seq	snd_una;		/* send unacknowledged */
 	tcp_seq	snd_recover;		/* for use with NewReno Fast Recovery */
 	tcp_seq	snd_max;		/* highest sequence number sent;
-					 * used to recognize retransmits
-					 */
+					 * used to recognize retransmits */
 	tcp_seq	snd_nxt;		/* send next */
 
 	tcp_seq	snd_wl1;		/* window update seg seq number */
@@ -206,12 +206,15 @@ struct tcpcb {
 
 	u_long	snd_wnd;		/* send window */
 	u_long	snd_cwnd;		/* congestion-controlled window */
-	u_long	snd_bwnd;		/* bandwidth-controlled window */
+	u_long	snd_wacked;		/* bytes acked in one send window */
 	u_long	snd_ssthresh;		/* snd_cwnd size threshold for
 					 * for slow start exponential to
-					 * linear switch
-					 */
-	u_long	snd_bandwidth;		/* calculated bandwidth or 0 */
+					 * linear switch */
+
+	int	t_rxtcur;		/* current retransmit value (ticks) */
+	u_int	t_maxseg;		/* maximum segment size */
+	int	t_srtt;			/* smoothed round-trip time */
+	int	t_rttvar;		/* variance in round-trip time */
 
 	u_int	t_maxopd;		/* mss plus options */
 
@@ -219,14 +222,6 @@ struct tcpcb {
 	u_long	t_starttime;		/* time connection was established */
 	int	t_rtttime;		/* round trip time */
 	tcp_seq	t_rtseq;		/* sequence number being timed */
-
-	int	t_bw_rtttime;		/* used for bandwidth calculation */
-	tcp_seq	t_bw_rtseq;		/* used for bandwidth calculation */
-
-	int	t_rxtcur;		/* current retransmit value (ticks) */
-	u_int	t_maxseg;		/* maximum segment size */
-	int	t_srtt;			/* smoothed round-trip time */
-	int	t_rttvar;		/* variance in round-trip time */
 
 	int	t_rxtshift;		/* log(2) of rexmt exp. backoff */
 	u_int	t_rttmin;		/* minimum rtt allowed */
@@ -240,6 +235,7 @@ struct tcpcb {
 	char	t_iobc;			/* input character */
 #define	TCPOOB_HAVEDATA	0x01
 #define	TCPOOB_HADDATA	0x02
+
 /* RFC 1323 variables */
 	u_char	snd_scale;		/* window scaling for send window */
 	u_char	rcv_scale;		/* window scaling for recv window */
@@ -249,11 +245,14 @@ struct tcpcb {
 
 	u_long	ts_recent_age;		/* when last updated */
 	tcp_seq	last_ack_sent;
+
 /* RFC 1644 variables */
 	tcp_cc	cc_send;		/* send connection count */
 	tcp_cc	cc_recv;		/* receive connection count */
+
 /* experimental */
 	u_long	snd_cwnd_prev;		/* cwnd prior to retransmit */
+	u_long	snd_wacked_prev;	/* prior bytes acked in send window */
 	u_long	snd_ssthresh_prev;	/* ssthresh prior to retransmit */
 	tcp_seq snd_recover_prev;	/* snd_recover prior to retransmit */
 	u_long	t_badrxtwin;		/* window for retransmit recovery */
@@ -268,6 +267,12 @@ struct tcpcb {
 	int	nsackhistory;
 	struct raw_sackblock sackhistory[MAX_SACK_REPORT_BLOCKS]; /* reported */
 	TAILQ_ENTRY(tcpcb) t_outputq;	/* tcp_output needed list */
+
+	/* bandwith limitation */
+	u_long	snd_bandwidth;		/* calculated bandwidth or 0 */
+	u_long	snd_bwnd;		/* bandwidth-controlled window */
+	int	t_bw_rtttime;		/* used for bandwidth calculation */
+	tcp_seq	t_bw_rtseq;		/* used for bandwidth calculation */
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)

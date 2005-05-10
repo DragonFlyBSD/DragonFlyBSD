@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.59 2005/04/18 22:41:23 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.60 2005/05/10 15:48:10 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -179,7 +179,7 @@ static int tcp_do_early_retransmit = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, earlyretransmit, CTLFLAG_RW,
     &tcp_do_early_retransmit, 0, "Early retransmit");
 
-static int tcp_aggregate_acks = 1;
+int tcp_aggregate_acks = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, aggregate_acks, CTLFLAG_RW,
     &tcp_aggregate_acks, 0, "Aggregate built-up acks into one ack");
 
@@ -191,6 +191,11 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
 static int tcp_do_eifel_detect = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel, CTLFLAG_RW,
     &tcp_do_eifel_detect, 0, "Eifel detection algorithm (RFC 3522)");
+
+static int tcp_do_abc = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, abc, CTLFLAG_RW,
+    &tcp_do_abc, 0,
+    "TCP Appropriate Byte Counting (RFC 3465)");
 
 /*
  * Define as tunable for easy testing with SACK on and off.
@@ -2037,6 +2042,7 @@ fastretransmit:
 			 * Force slow-start to de-synchronize attack.
 			 */
 			tp->snd_cwnd = tp->t_maxseg;
+			tp->snd_wacked = 0;
 
 			tcpstat.tcps_rcvacktoomuch++;
 			goto dropafterack;
@@ -2164,21 +2170,24 @@ process_ACK:
 				 * If the congestion window was inflated
 				 * to account for the other side's
 				 * cached packets, retract it.
-				 *
+				 */
+				if (!TCP_DO_SACK(tp))
+					tp->snd_cwnd = tp->snd_ssthresh;
+
+				/*
 				 * Window inflation should have left us
 				 * with approximately snd_ssthresh outstanding
 				 * data.  But, in case we would be inclined
 				 * to send a burst, better do it using
 				 * slow start.
 				 */
-				if (!TCP_DO_SACK(tp))
-					tp->snd_cwnd = tp->snd_ssthresh;
-
 				if (SEQ_GT(th->th_ack + tp->snd_cwnd,
 					   tp->snd_max + 2 * tp->t_maxseg))
 					tp->snd_cwnd =
 					    (tp->snd_max - tp->snd_una) +
 					    2 * tp->t_maxseg;
+
+				tp->snd_wacked = 0;
 			} else {
 				if (TCP_DO_SACK(tp)) {
 					tp->snd_max_rexmt = tp->snd_max;
@@ -2190,20 +2199,29 @@ process_ACK:
 			}
 		} else {
 			/*
-			 * When new data is acked, open the congestion window.
-			 * If the window gives us less than ssthresh packets
-			 * in flight, open exponentially (maxseg per packet).
-			 * Otherwise open linearly: maxseg per window
-			 * (maxseg^2 / cwnd per packet).
+			 * Open the congestion window.  When in slow-start,
+			 * open exponentially: maxseg per packet.  Otherwise,
+			 * open linearly: maxseg per window.
 			 */
-			u_int cw = tp->snd_cwnd;
-			u_int incr;
+			if (tp->snd_cwnd <= tp->snd_ssthresh) {
+				u_int abc_sslimit =
+				    (SEQ_LT(tp->snd_nxt, tp->snd_max) ?
+				     tp->t_maxseg : 2 * tp->t_maxseg);
 
-			if (cw > tp->snd_ssthresh)
-				incr = tp->t_maxseg * tp->t_maxseg / cw;
-			else
-				incr = tp->t_maxseg;
-			tp->snd_cwnd = min(cw+incr, TCP_MAXWIN<<tp->snd_scale);
+				/* slow-start */
+				tp->snd_cwnd += tcp_do_abc ?
+				    min(acked, abc_sslimit) : tp->t_maxseg;
+			} else {
+				/* linear increase */
+				tp->snd_wacked += tcp_do_abc ? acked :
+				    tp->t_maxseg;
+				if (tp->snd_wacked >= tp->snd_cwnd) {
+					tp->snd_wacked -= tp->snd_cwnd;
+					tp->snd_cwnd += tp->t_maxseg;
+				}
+			}
+			tp->snd_cwnd = min(tp->snd_cwnd,
+					   TCP_MAXWIN << tp->snd_scale);
 			tp->snd_recover = th->th_ack - 1;
 		}
 		if (SEQ_LT(tp->snd_nxt, tp->snd_una))
