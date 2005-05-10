@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.3 2005/05/03 18:25:13 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.4 2005/05/10 15:29:53 joerg Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_
@@ -61,13 +61,9 @@ tls_get_tcb(void)
 {
 	void *self;
 
-#if 0
 	__asm __volatile ("movl %%gs:%1, %0"
 	    : "=r" (self)
-	    : "i" (__offsetof(struct tls_tcb, tcb_self)));
-#else
-	__asm __volatile ("movl %%gs:0, %0" : "=r" (self));
-#endif
+	    : "m" (((struct tls_tcb *)0)->tcb_self));
 
 	return(self);
 }
@@ -78,13 +74,9 @@ tls_get_curthread(void)
 {
 	void *self;
 
-#if 0
 	__asm __volatile ("movl %%gs:%1, %0"
 	    : "=r" (self)
-	    : "i" (__offsetof(struct tls_tcb, tcb_pthread)));
-#else
-	__asm __volatile ("movl %%gs:8, %0" : "=r" (self));
-#endif
+	    : "m" (((struct tls_tcb *)0)->tcb_tcb, tcb_pthread));
 
 	return(self);
 }
