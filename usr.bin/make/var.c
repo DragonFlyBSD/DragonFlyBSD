@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.206 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.207 2005/05/10 23:26:17 okumoto Exp $
  */
 
 /**
@@ -2511,13 +2511,13 @@ Var_Dump(void)
 	const LstNode	*ln;
 	const Var	*v;
 
-        printf("#*** Global Variables:\n");
+	printf("#*** Global Variables:\n");
 	LST_FOREACH(ln, &VAR_GLOBAL->context) {
 		v = Lst_Datum(ln);
 		printf("%-16s = %s\n", v->name, Buf_Data(v->val));
 	}
 
-        printf("#*** Command-line Variables:\n");
+	printf("#*** Command-line Variables:\n");
 	LST_FOREACH(ln, &VAR_CMD->context) {
 		v = Lst_Datum(ln);
 		printf("%-16s = %s\n", v->name, Buf_Data(v->val));
