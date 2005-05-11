@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.18 2005/05/11 12:07:21 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.19 2005/05/11 12:10:43 joerg Exp $
  */
 
 /*
@@ -97,9 +97,6 @@
  * Since using bus master DMA is a big win, we use this driver to
  * support the PCI "boomerang" chips even though they work with the
  * "vortex" driver in order to obtain better performance.
- *
- * This driver is in the /sys/pci directory because it only supports
- * PCI-based NICs.
  */
 
 #include <sys/param.h>
