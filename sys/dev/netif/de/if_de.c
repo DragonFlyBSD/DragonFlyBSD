@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.30 2005/05/11 19:40:00 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.31 2005/05/11 20:05:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3478,62 +3478,6 @@ tulip_intr_normal(void *arg)
 }
 
 static struct mbuf *
-tulip_mbuf_compress(struct mbuf *m)
-{
-    struct mbuf *m0;
-#if MCLBYTES >= ETHERMTU + 18 && !defined(BIG_PACKET)
-    MGETHDR(m0, MB_DONTWAIT, MT_DATA);
-    if (m0 != NULL) {
-	if (m->m_pkthdr.len > MHLEN) {
-	    MCLGET(m0, MB_DONTWAIT);
-	    if ((m0->m_flags & M_EXT) == 0) {
-		m_freem(m);
-		m_freem(m0);
-		return NULL;
-	    }
-	}
-	m_copydata(m, 0, m->m_pkthdr.len, mtod(m0, caddr_t));
-	m0->m_pkthdr.len = m0->m_len = m->m_pkthdr.len;
-    }
-#else
-    int mlen = MHLEN;
-    int len = m->m_pkthdr.len;
-    struct mbuf **mp = &m0;
-
-    while (len > 0) {
-	if (mlen == MHLEN) {
-	    MGETHDR(*mp, MB_DONTWAIT, MT_DATA);
-	} else {
-	    MGET(*mp, MB_DONTWAIT, MT_DATA);
-	}
-	if (*mp == NULL) {
-	    m_freem(m0);
-	    m0 = NULL;
-	    break;
-	}
-	if (len > MLEN) {
-	    MCLGET(*mp, MB_DONTWAIT);
-	    if (((*mp)->m_flags & M_EXT) == 0) {
-		m_freem(m0);
-		m0 = NULL;
-		break;
-	    }
-	    (*mp)->m_len = len <= MCLBYTES ? len : MCLBYTES;
-	} else {
-	    (*mp)->m_len = len <= mlen ? len : mlen;
-	}
-	m_copydata(m, m->m_pkthdr.len - len,
-		   (*mp)->m_len, mtod((*mp), caddr_t));
-	len -= (*mp)->m_len;
-	mp = &(*mp)->m_next;
-	mlen = MLEN;
-    }
-#endif
-    m_freem(m);
-    return m0;
-}
-
-static struct mbuf *
 tulip_txput(tulip_softc_t *sc, struct mbuf *m)
 {
     tulip_ringinfo_t *ri = &sc->tulip_txinfo;
@@ -3585,9 +3529,10 @@ tulip_txput(tulip_softc_t *sc, struct mbuf *m)
 		 * entries that we can use for one packet, so we have
 		 * recopy it into one mbuf and then try again.
 		 */
-		m = tulip_mbuf_compress(m);
-		if (m == NULL)
+		m0 = m_defrag(m, MB_DONTWAIT);
+		if (m0 == NULL)
 		    goto finish;
+		m = m0;
 		goto again;
 	    }
 	    if (segcnt & 1) {
