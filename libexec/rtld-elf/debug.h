@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/debug.h,v 1.4 1999/12/27 04:44:01 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/debug.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/debug.h,v 1.3 2005/05/11 19:47:06 dillon Exp $
  */
 
 /*
@@ -52,9 +52,9 @@ extern int debug;
 #endif
 
 #define assert(cond)	((cond) ? (void) 0 :		\
-    (msg("ld-elf.so.1: assert failed: " __FILE__ ":"	\
+    (msg("ld-elf.so.2: assert failed: " __FILE__ ":"	\
       __XSTRING(__LINE__) "\n"), abort()))
 #define msg(s)		write(1, s, strlen(s))
-#define trace()		msg("ld-elf.so.1: " __XSTRING(__LINE__) "\n")
+#define trace()		msg("ld-elf.so.2: " __XSTRING(__LINE__) "\n")
 
 #endif /* DEBUG_H */

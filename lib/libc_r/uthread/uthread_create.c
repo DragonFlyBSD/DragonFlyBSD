@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_create.c,v 1.24.2.6 2003/01/08 05:04:26 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.4 2005/04/28 22:10:48 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.5 2005/05/11 19:47:00 dillon Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -166,7 +166,7 @@ _pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 		} else {
 			/* Initialise the thread structure: */
 			memset(new_thread, 0, sizeof(struct pthread));
-			new_thread->tcb = _rtld_allocate_tls(NULL);
+			new_thread->tcb = _libc_allocate_tls();
 			if (new_thread->tcb == NULL)
 				PANIC("Cannot allocate TLS and TCB");
 			new_thread->slice_usec = -1;

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.22 2005/04/27 11:59:11 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.23 2005/05/11 19:47:06 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 #include "debug.h"
 #include "rtld.h"
 
-#define PATH_RTLD	"/usr/libexec/ld-elf.so.1"
+#define PATH_RTLD	"/usr/libexec/ld-elf.so.2"
 #define LD_ARY_CACHE	16
 
 /* Types. */
@@ -154,6 +154,7 @@ static unsigned int obj_count;	/* Number of objects in obj_list */
 static int	ld_resident;	/* Non-zero if resident */
 static const char *ld_ary[LD_ARY_CACHE];
 static int	ld_index;
+static Objlist initlist;
 
 static Objlist list_global =	/* Objects dlopened with RTLD_GLOBAL */
   STAILQ_HEAD_INITIALIZER(list_global);
@@ -188,8 +189,10 @@ static func_ptr_type exports[] = {
     (func_ptr_type) &___tls_get_addr,
 #endif
     (func_ptr_type) &__tls_get_addr,
+    (func_ptr_type) &__tls_get_addr_tcb,
     (func_ptr_type) &_rtld_allocate_tls,
     (func_ptr_type) &_rtld_free_tls,
+    (func_ptr_type) &_rtld_call_init,
     NULL
 };
 
@@ -266,6 +269,7 @@ wlock_release(void)
  *
  * The return value is the main program's entry point.
  */
+
 func_ptr_type
 _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 {
@@ -279,7 +283,6 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     const char *argv0;
     Objlist_Entry *entry;
     Obj_Entry *obj;
-    Objlist initlist;
 
     ld_index = 0;	/* don't use old env cache in case we are resident */
 
@@ -447,7 +450,13 @@ resident_skip1:
 	 */
 	allocate_tls_offset(entry->obj);
     }
-    allocate_initial_tls(obj_list);
+
+    tls_static_space = tls_last_offset + RTLD_STATIC_TLS_EXTRA;
+
+    /*
+     * Do not try to allocate the TLS here, let libc do it itself.
+     * (crt1 for the program will call _init_tls())
+     */
 
     if (relocate_objects(obj_main,
 	ld_bind_now != NULL && *ld_bind_now != '\0') == -1)
@@ -498,12 +507,10 @@ resident_skip2:
 
     r_debug_state(NULL, &obj_main->linkmap); /* say hello to gdb! */
 
-    objlist_call_init(&initlist);
-    wlock_acquire();
-    objlist_clear(&initlist);
-    wlock_release();
-
-
+    /*
+     * Do NOT call the initlist here, give libc a chance to set up
+     * the initial TLS segment.  crt1 will then call _rtld_call_init().
+     */
 
     dbg("transferring control to program entry point = %p", obj_main->entry);
 
@@ -511,6 +518,19 @@ resident_skip2:
     *exit_proc = rtld_exit;
     *objp = obj_main;
     return (func_ptr_type) obj_main->entry;
+}
+
+/*
+ * Call the initialization list for dynamically loaded libraries.
+ * (called from crt1.c).
+ */
+void
+_rtld_call_init(void)
+{
+    objlist_call_init(&initlist);
+    wlock_acquire();
+    objlist_clear(&initlist);
+    wlock_release();
 }
 
 Elf_Addr
@@ -2590,17 +2610,25 @@ tls_get_addr_common(void **dtvp, int index, size_t offset)
 /*
  * Allocate the static TLS area.  Return a pointer to the TCB.  The 
  * static area is based on negative offsets relative to the tcb.
+ *
+ * The TCB contains an errno pointer for the system call layer, but because
+ * we are the RTLD we really have no idea how the caller was compiled so
+ * the information has to be passed in.  errno can either be:
+ *
+ *	type 0	errno is a simple non-TLS global pointer.
+ *		(special case for e.g. libc_rtld)
+ *	type 1	errno accessed by GOT entry	(dynamically linked programs)
+ *	type 2	errno accessed by %gs:OFFSET	(statically linked programs)
  */
 struct tls_tcb *
-allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb)
+allocate_tls(Obj_Entry *objs)
 {
     Obj_Entry *obj;
     size_t data_size;
     size_t dtv_size;
     struct tls_tcb *tcb;
-    Elf_Addr *dtv, *old_dtv;
+    Elf_Addr *dtv;
     Elf_Addr addr;
-    int i;
 
     /*
      * Allocate the new TCB.  static TLS storage is placed just before the
@@ -2624,40 +2652,14 @@ allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb)
     dtv[0] = tls_dtv_generation;
     dtv[1] = tls_max_index;
 
-    /*
-     * If a template tcb is supplied, copy the TLS storage from the template
-     * to the new tcb, otherwise create a pristine data set.
-     */
-    if (old_tcb) {
-	/*
-	 * Copy the static TLS block over whole.
-	 */
-	memcpy((char *)tcb - data_size, (char *)old_tcb - data_size, data_size);
-
-	/*
-	 * If any dynamic TLS blocks have been created tls_get_addr(),
-	 * move them over.
-	 */
-	old_dtv = old_tcb->tcb_dtv;
-	for (i = 0; i < old_dtv[1]; i++) {
-	    if (old_dtv[i+2] < (Elf_Addr)((char *)old_tcb - data_size) ||
-		old_dtv[i+2] >= (Elf_Addr)((char *)old_tcb)
-	    ) {
-		dtv[i + 2] = old_dtv[i + 2];
-		old_dtv[i + 2] = 0;
-	    }
-	}
-	free_tls(old_tcb);
-    } else {
-	for (obj = objs; obj; obj = obj->next) {
-	    if (obj->tlsoffset) {
-		addr = (Elf_Addr)tcb - obj->tlsoffset;
-		memset((void *)(addr + obj->tlsinitsize),
-		       0, obj->tlssize - obj->tlsinitsize);
-		if (obj->tlsinit)
-		    memcpy((void*) addr, obj->tlsinit, obj->tlsinitsize);
-		dtv[obj->tlsindex + 1] = addr;
-	    }
+    for (obj = objs; obj; obj = obj->next) {
+	if (obj->tlsoffset) {
+	    addr = (Elf_Addr)tcb - obj->tlsoffset;
+	    memset((void *)(addr + obj->tlsinitsize),
+		   0, obj->tlssize - obj->tlsinitsize);
+	    if (obj->tlsinit)
+		memcpy((void*) addr, obj->tlsinit, obj->tlsinitsize);
+	    dtv[obj->tlsindex + 1] = addr;
 	}
     }
     return(tcb);
@@ -2771,12 +2773,12 @@ free_tls_offset(Obj_Entry *obj)
 }
 
 struct tls_tcb *
-_rtld_allocate_tls(struct tls_tcb *old_tcb)
+_rtld_allocate_tls(void)
 {
     struct tls_tcb *new_tcb;
 
     wlock_acquire();
-    new_tcb = allocate_tls(obj_list, old_tcb);
+    new_tcb = allocate_tls(obj_list);
     wlock_release();
 
     return (new_tcb);

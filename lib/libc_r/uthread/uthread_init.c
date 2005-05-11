@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.8 2005/05/03 07:29:04 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.9 2005/05/11 19:47:00 dillon Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -192,7 +192,7 @@ _thread_init(void)
 		/* Zero the global kernel thread structure: */
 		memset(&_thread_kern_thread, 0, sizeof(struct pthread));
 		_thread_kern_thread.flags = PTHREAD_FLAGS_PRIVATE;
-		_thread_kern_thread.tcb = _rtld_allocate_tls(NULL);
+		_thread_kern_thread.tcb = _libc_allocate_tls();
 		memset(_thread_initial, 0, sizeof(struct pthread));
 
 		/* Initialize the waiting and work queues: */

@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.6 2005/05/04 11:28:44 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.7 2005/05/11 19:46:49 dillon Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -145,7 +145,7 @@ is built with the --enable-threads configure-time option.}		\
     %{!nostdlib:%{!nodefaultlibs:%(link_gcc_c_sequence)}}\
     %{!A:%{!nostdlib:%{!nostartfiles:%E}}} %{T*} }}}}}}"
 
-#define	DFBSD_DYNAMIC_LINKER		"/usr/libexec/ld-elf.so.1"
+#define	DFBSD_DYNAMIC_LINKER		"/usr/libexec/ld-elf.so.2"
 #define	STANDARD_STARTFILE_PREFIX_1	PREFIX2"/lib/gcc34/"
 #define	STANDARD_EXEC_PREFIX		PREFIX2"/libexec/gcc34/"
 #define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"

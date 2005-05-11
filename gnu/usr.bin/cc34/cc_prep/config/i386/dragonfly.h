@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/i386/dragonfly.h,v 1.1 2004/06/14 22:27:53 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/i386/dragonfly.h,v 1.2 2005/05/11 19:46:50 dillon Exp $ */
 
 /* Definitions for Intel 386 running DragonFly with ELF format
    
@@ -112,7 +112,7 @@ Boston, MA 02111-1307, USA.  */
     %{!shared: \
       %{!static: \
         %{rdynamic:-export-dynamic} \
-        %{!dynamic-linker:-dynamic-linker /usr/libexec/ld-elf.so.1}} \
+        %{!dynamic-linker:-dynamic-linker /usr/libexec/ld-elf.so.2}} \
     %{static:-Bstatic}} \
   %{symbolic:-Bsymbolic}"
 

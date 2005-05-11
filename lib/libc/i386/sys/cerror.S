@@ -34,35 +34,86 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/cerror.S,v 1.10 1999/08/27 23:59:38 peter Exp $
- * $DragonFly: src/lib/libc/i386/sys/cerror.S,v 1.4 2005/05/03 07:29:04 joerg Exp $
+ * $DragonFly: src/lib/libc/i386/sys/cerror.S,v 1.5 2005/05/11 19:46:54 dillon Exp $
  */
 
 #include "SYS.h"
 
 	.globl HIDENAME(cerror)
 
+#if 0	/* POSSIBLE FUTURE */
+
 HIDENAME(cerror):
 #ifdef PIC
 	/* The caller must execute the PIC prologue before jumping to cerror. */
-#  ifdef __thread
+#ifdef __thread
 	movl	%eax, PIC_GOT(CNAME(errno))
-#  else
-	pushl	%eax
-	leal	errno@TLSGD(,%ebx,1), %eax
-	call	___tls_get_addr@PLT
-	popl	%ecx
-	movl	%ecx, (%eax)
-#  endif
+#else
+	movl	%gs:12,%edx
+	movl	%eax,(%edx)
+#endif
 	PIC_EPILOGUE
 #else
-#  ifdef __thread
+
+#ifdef __thread
 	movl	%eax, errno
-#  else
-	movl	%gs:0, %ecx
-	movl	%eax, errno@NTPOFF(%ecx)
-#  endif
+#else
+	movl	%gs:12, %edx
+	movl	%eax,(%edx)
+#endif
+
 #endif
 	movl	$-1,%eax
 	movl	$-1,%edx
 	ret
 
+#endif	/* #if 0 */
+
+HIDENAME(cerror):
+#ifdef PIC
+	/* The caller must execute the PIC prologue before jumping to cerror. */
+#ifdef __thread
+	movl    %eax, PIC_GOT(CNAME(errno))
+#else
+	pushl   %eax
+	leal    errno@TLSGD(,%ebx,1), %eax
+	call    ___tls_get_addr@PLT
+	popl    %ecx
+	movl    %ecx, (%eax)
+#endif
+	PIC_EPILOGUE
+#else
+#ifdef __thread
+	movl    %eax, errno
+#else
+	movl	%gs:0,%ecx
+	movl	%eax,errno@NTPOFF(%ecx)
+#endif
+#endif
+	movl    $-1,%eax
+	movl    $-1,%edx
+	ret
+
+#if !defined(PIC) && !defined(__thread)
+	/*
+	 * Return the direct TLS offset for errno.  TLS non-PIC version
+	 * of libc only (i.e. statically linked programs).
+	 */
+	.globl __get_errno_GS_offset
+__get_errno_GS_offset:
+	movl	errno@INDNTPOFF,%eax
+	ret
+#endif
+
+#if defined(PIC) && !defined(__thread)
+	/*
+	 * Return a pointer to the GOT table entry for errno.  TLS PIC version
+	 * of libc only (i.e. the dynamic libc).
+	 */
+	.globl __get_errno_GOT_ptr
+__get_errno_GOT_ptr:
+	PIC_PROLOGUE
+	leal	errno@TLSGD(,%ebx,1),%eax
+	PIC_EPILOGUE
+	ret
+#endif

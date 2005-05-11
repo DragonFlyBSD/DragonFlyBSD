@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.10 2005/03/30 00:49:06 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.11 2005/05/11 19:47:06 dillon Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -227,7 +227,7 @@ const Elf_Sym	*symlook_obj(const char *, unsigned long, const Obj_Entry *,
 			     bool);
 
 void		*tls_get_addr_common(void **, int, size_t);
-struct tls_tcb	*allocate_tls(Obj_Entry *, struct tls_tcb *);
+struct tls_tcb	*allocate_tls(Obj_Entry *);
 void		 free_tls(struct tls_tcb *);
 void		 *allocate_module_tls(int);
 bool		 allocate_tls_offset(Obj_Entry *);

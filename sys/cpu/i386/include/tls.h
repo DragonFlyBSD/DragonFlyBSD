@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.5 2005/05/11 15:50:14 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.6 2005/05/11 19:46:47 dillon Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_
@@ -37,10 +37,20 @@
 #include <sys/types.h>
 #include <sys/tls.h>
 
+/*
+ * NOTE: the tcb_{self,dtv,pthread,errno) fields must be declared
+ * in the structure in the specified order as assembly will access the
+ * fields with a hardwired offset.
+ *
+ * Outside of this file, the system call layer generation will hardwire
+ * the offset for tcb_errno.
+ */
 struct tls_tcb {
 	struct tls_tcb *tcb_self;	/* pointer to self*/
 	void *tcb_dtv;			/* Dynamic Thread Vector */
 	void *tcb_pthread;		/* thread library's data*/
+	int *tcb_errno_p;		/* pointer to per-thread errno */
+	void *tcb_unused[4];
 };
 
 struct tls_dtv {
@@ -93,7 +103,12 @@ tls_set_tcb(struct tls_tcb *tcb)
 	__asm __volatile("movl %0, %%gs" : : "r" (seg));
 }
 
-struct tls_tcb	*_rtld_allocate_tls(struct tls_tcb *);
+struct tls_tcb	*_rtld_allocate_tls(void);
+struct tls_tcb	*_libc_allocate_tls(void);
 void		 _rtld_free_tls(struct tls_tcb *);
+void		 _libc_free_tls(struct tls_tcb *);
+void		 _rtld_call_init(void);
+struct tls_tcb	*_libc_init_tls(void);
+struct tls_tcb	*_init_tls(void);
 
 #endif	/* !_MACHINE_TLS_H_ */

@@ -23,13 +23,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/i386-elf/crt1.c,v 1.4.2.2 2002/11/18 04:57:13 bde Exp $
- * $DragonFly: src/lib/csu/i386/crt1.c,v 1.2 2005/03/10 11:42:27 davidxu Exp $
+ * $DragonFly: src/lib/csu/i386/crt1.c,v 1.3 2005/05/11 19:46:51 dillon Exp $
  */
 
 #ifndef __GNUC__
 #error "GCC is needed to compile this file"
 #endif
 
+#include <machine/tls.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include "crtbrand.c"
@@ -39,7 +40,6 @@ typedef void (*fptr)(void);
 extern void _fini(void);
 extern void _init(void);
 extern int main(int, char **, char **);
-extern void _init_tls(void);
 
 #ifdef GCRT
 extern void _mcleanup(void);
@@ -84,10 +84,17 @@ _start(char *arguments, ...)
 		__progname = s + 1;
     }
 
+    /*
+     * Setup the initial TLS space.  The RTLD does not set up our TLS
+     * (it can't, it doesn't know how our errno is declared).  It simply
+     * does all the groundwork required so that we can call
+     * _rtld_allocate_tls().  
+     */
+    _init_tls();
+    _rtld_call_init();
+
     if(&_DYNAMIC != NULL)
 	atexit(rtld_cleanup);
-    else
-	_init_tls();
 
 #ifdef GCRT
     atexit(_mcleanup);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/amd64/pthread_md.c,v 1.4 2004/11/06 03:33:19 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.6 2005/04/28 18:24:10 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.7 2005/05/11 19:47:02 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -38,16 +38,16 @@
 struct tls_tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
-	struct tls_tcb *old_tcb, *tcb;
+	struct tls_tcb *tcb;
 	int flags;
 
-	old_tcb = NULL;
 	flags = 0;
 
 	if (initial)
 		tcb = tls_get_tcb();
 	else
-		tcb = _rtld_allocate_tls(old_tcb);
+                tcb = _libc_allocate_tls();
+
 	if (tcb == NULL)
 		return (NULL);
 

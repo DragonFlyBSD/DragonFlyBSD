@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.6 2005/03/22 22:56:36 davidxu Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.7 2005/05/11 19:47:09 dillon Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -76,7 +76,10 @@ typedef struct {
     unsigned long ti_offset;
 } tls_index;
 
+struct tls_tcb;
+
 extern void *___tls_get_addr(tls_index *ti) __attribute__((__regparm__(1)));
 extern void *__tls_get_addr(tls_index *ti);
+extern void *__tls_get_addr_tcb(struct tls_tcb *tcb, tls_index *ti);
 
 #endif

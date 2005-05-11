@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.8 2005/04/29 22:00:20 joerg Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.9 2005/05/11 19:46:52 dillon Exp $
  */
 
 /*
@@ -42,17 +42,22 @@
 #include <string.h>
 #include <elf.h>
 #include <assert.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include "libc_private.h"
 
 __weak_reference(__libc_allocate_tls, _rtld_allocate_tls);
 __weak_reference(__libc_free_tls, _rtld_free_tls);
+__weak_reference(__libc_call_init, _rtld_call_init);
 #ifdef __i386__
 __weak_reference(___libc_tls_get_addr, ___tls_get_addr);
 #endif
 __weak_reference(__libc_tls_get_addr, __tls_get_addr);
+__weak_reference(__libc_tls_get_addr_tcb, __tls_get_addr_tcb);
+__weak_reference(_libc_init_tls, _init_tls);
 
-struct tls_tcb *__libc_allocate_tls(struct tls_tcb *old_tcb);
+struct tls_tcb *__libc_allocate_tls(void);
 void __libc_free_tls(struct tls_tcb *tcb);
 
 #if !defined(RTLD_STATIC_TLS_VARIANT_II)
@@ -67,6 +72,7 @@ void __libc_free_tls(struct tls_tcb *tcb);
 static size_t tls_static_space;
 static size_t tls_init_size;
 static void *tls_init;
+static struct tls_tcb *initial_tcb;
 #endif
 
 #ifdef __i386__
@@ -85,103 +91,106 @@ ___libc_tls_get_addr(void *ti __unused)
 #endif
 
 void *__libc_tls_get_addr(void *ti);
+void *__libc_tls_get_addr_tcb(struct tls_tcb *, void *);
 
 void *
 __libc_tls_get_addr(void *ti __unused)
 {
-	return (0);
+	return (NULL);
+}
+
+void *
+__libc_tls_get_addr_tcb(struct tls_tcb *tcb __unused, void *got_ptr __unused)
+{
+	return (NULL);
 }
 
 #ifndef PIC
 
 /*
- * Free Static TLS
+ * Free Static TLS, weakly bound to _rtld_free_tls()
  */
 void
 __libc_free_tls(struct tls_tcb *tcb)
 {
 	size_t data_size;
 
-	if (tcb->tcb_dtv)
-		free(tcb->tcb_dtv);
 	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
-	free((char *)tcb - data_size);
+
+	if (tcb == initial_tcb) {
+		/* initial_tcb was allocated with sbrk(), cannot call free() */
+	} else {
+		free((char *)tcb - data_size);
+	}
 }
 
 /*
- * Allocate Static TLS.
+ * Allocate Static TLS, weakly bound to _rtld_allocate_tls()
  *
- * !!!WARNING!!! The first run for a static binary is done without valid
- * TLS storage.  It must not call any system calls which want to change
- * errno.
+ * NOTE!  There is a chicken-and-egg problem here because no TLS exists
+ * on the first call into this function. 
  */
 struct tls_tcb *
-__libc_allocate_tls(struct tls_tcb *old_tcb)
+__libc_allocate_tls(void)
 {
-	static int first_run = 0;
 	size_t data_size;
 	struct tls_tcb *tcb;
 	Elf_Addr *dtv;
 
-retry:
 	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
 
-	if (first_run)
+	/*
+	 * Allocate space.  malloc() may require a working TLS segment
+	 * so we use sbrk() for main's TLS.
+	 */
+	if (initial_tcb == NULL)
+		tcb = sbrk(data_size + sizeof(*tcb) + 3 * sizeof(Elf_Addr));
+	else
 		tcb = malloc(data_size + sizeof(*tcb));
-	else
-		tcb = alloca(data_size + sizeof(*tcb));
-	tcb = (struct tls_tcb *)((char *)tcb + data_size);
-	if (first_run)
-		dtv = malloc(3 * sizeof(Elf_Addr));
-	else
-		dtv = alloca(3 * sizeof(Elf_Addr));
 
+	tcb = (struct tls_tcb *)((char *)tcb + data_size);
+	dtv = (Elf_Addr *)(tcb + 1);
+
+	memset(tcb, 0, sizeof(*tcb));
 #ifdef RTLD_TCB_HAS_SELF_POINTER
 	tcb->tcb_self = tcb;
 #endif
 	tcb->tcb_dtv = dtv;
-	tcb->tcb_pthread = NULL;
 
+	/*
+	 * Dummy-up the module array.  A static binary has only one.  This
+	 * allows us to support the generic __tls_get_addr compiler ABI
+	 * function.  However, if there is no RTLD linked in, nothing in
+	 * the program should ever call __tls_get_addr (and our version
+	 * of it doesn't do anything).
+	 */
 	dtv[0] = 1;
 	dtv[1] = 1;
 	dtv[2] = (Elf_Addr)((char *)tcb - tls_static_space);
 
-	if (old_tcb) {
-		/*
-		 * Copy the static TLS block over whole.
-		 */
-		memcpy((char *)tcb - tls_static_space,
-			(char *)old_tcb - tls_static_space,
-			tls_static_space);
+	memcpy((char *)tcb - tls_static_space,
+		tls_init, tls_init_size);
+	memset((char *)tcb - tls_static_space + tls_init_size,
+		0, tls_static_space - tls_init_size);
 
-		/*
-		 * We assume that this block was the one we created with
-		 * allocate_initial_tls().
-		 */
-		_rtld_free_tls(old_tcb);
-	} else {
-		memcpy((char *)tcb - tls_static_space,
-			tls_init, tls_init_size);
-		memset((char *)tcb - tls_static_space + tls_init_size,
-			0, tls_static_space - tls_init_size);
+	/*
+	 * Activate the initial TCB
+	 */
+	if (initial_tcb == NULL) {
+		initial_tcb = tcb;
+		tls_set_tcb(tcb);
 	}
-	
-	if (first_run)
-		return (tcb);
-
-	tls_set_tcb(tcb);
-	first_run = 1;
-	goto retry;
+	return (tcb);
 }
 
 #else
 
 struct tls_tcb *
-__libc_allocate_tls(struct tls_tcb *old_tls __unused)
+__libc_allocate_tls(void)
 {
-	return (0);
+	return (NULL);
 }
 
 void
@@ -191,18 +200,28 @@ __libc_free_tls(struct tls_tcb *tcb __unused)
 
 #endif /* PIC */
 
+void
+__libc_call_init(void)
+{
+}
+
 extern char **environ;
 
-void
-_init_tls()
+struct tls_tcb *
+_libc_init_tls(void)
 {
+	struct tls_tcb *tcb;
+
 #ifndef PIC
+	/*
+	 * If this is a static binary there is no RTLD and so we have not
+	 * yet calculated the static space requirement.  Do so now.
+	 */
 	Elf_Addr *sp;
 	Elf_Auxinfo *aux, *auxp;
 	Elf_Phdr *phdr;
 	size_t phent, phnum;
 	int i;
-	struct tls_tcb *tcb;
 
 	sp = (Elf_Addr *) environ;
 	while (*sp++ != 0)
@@ -236,8 +255,47 @@ _init_tls()
 			tls_init = (void*) phdr[i].p_vaddr;
 		}
 	}
-
-	tcb = _rtld_allocate_tls(NULL);
-	tls_set_tcb(tcb);
 #endif
+
+	/*
+	 * Allocate the initial TLS segment.  The TLS has not been set up
+	 * yet for either the static or dynamic linked case (RTLD no longer
+	 * sets up an initial TLS segment for us).
+	 */
+	tcb = _libc_allocate_tls();
+	tls_set_tcb(tcb);
+	return(tcb);
 }
+
+/*
+ * Allocate a standard TLS.  This function is called by libc and by 
+ * thread libraries to create a new TCB with libc-related fields properly
+ * initialized (whereas _rtld_allocate_tls() is unable to completely set
+ * up the TCB).
+ *
+ * Note that this is different from __libc_allocate_tls which is the
+ * weakly bound symbol that handles the case where _rtld_allocate_tls
+ * does not exist.
+ */
+struct tls_tcb *
+_libc_allocate_tls(void)
+{
+	struct tls_tcb *tcb;
+
+	tcb = _rtld_allocate_tls();
+
+#if 0
+#if defined(__thread)
+	/* non-TLS libc */
+	tcb->tcb_errno_p = &errno;
+#elif defined(PIC)
+	/* TLS libc dynamically linked */
+	tcb->tcb_errno_p = __tls_get_addr_tcb(tcb, __get_errno_GOT_ptr());
+#else
+	/* TLS libc (threaded or unthreaded) */
+	tcb->tcb_errno_p = (void *)((char *)tcb + __get_errno_GS_offset());
+#endif
+#endif
+	return(tcb);
+}
+

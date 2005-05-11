@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.12 2005/05/08 13:11:06 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.13 2005/05/11 19:47:09 dillon Exp $
  */
 
 /*
@@ -354,33 +354,6 @@ reloc_jmpslots(Obj_Entry *obj)
     return 0;
 }
 
-void
-allocate_initial_tls(Obj_Entry *objs)
-{
-    struct tls_tcb *old_tcb;
-    struct tls_info ti;
-    void *tls;
-
-    /*
-     * Fix the size of the static TLS block by using the maximum
-     * offset allocated so far.
-     *
-     * The tls returned by allocate_tls is offset to point at the TCB,
-     * the static space is allocated through negative offsets.
-     *
-     * We may have to replace an 'initial' TLS previously created by libc.
-     */
-    tls_static_space = tls_last_offset + RTLD_STATIC_TLS_EXTRA;
-
-    if (sys_get_tls_area(0, &ti, sizeof(ti)) == 0)
-	old_tcb = ti.base;
-    else
-	old_tcb = NULL;
-
-    tls = allocate_tls(objs, old_tcb);
-    tls_set_tcb(tls);
-}
-
 /* GNU ABI */
 __attribute__((__regparm__(1)))
 void *
@@ -399,6 +372,13 @@ __tls_get_addr(tls_index *ti)
     struct tls_tcb *tcb;
 
     tcb = tls_get_tcb();
+    return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
+}
+
+/* Sun ABI */
+void *
+__tls_get_addr_tcb(struct tls_tcb *tcb, tls_index *ti)
+{
     return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
 }
 
