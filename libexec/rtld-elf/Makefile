@@ -1,5 +1,5 @@
 # $FreeBSD: src/libexec/rtld-elf/Makefile,v 1.10.2.6 2002/06/22 17:03:13 jdp Exp $
-# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.9 2005/05/11 19:47:06 dillon Exp $
+# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.10 2005/05/11 19:58:19 dillon Exp $
 
 PROG=		ld-elf.so.2
 SRCS=		rtld_start.S rtld.c lockdflt.c map_object.c malloc.c \
