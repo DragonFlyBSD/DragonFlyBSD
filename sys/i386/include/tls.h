@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.4 2005/05/10 15:29:53 joerg Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.5 2005/05/11 15:50:14 joerg Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_
@@ -76,7 +76,7 @@ tls_get_curthread(void)
 
 	__asm __volatile ("movl %%gs:%1, %0"
 	    : "=r" (self)
-	    : "m" (((struct tls_tcb *)0)->tcb_tcb, tcb_pthread));
+	    : "m" (((struct tls_tcb *)0)->tcb_pthread));
 
 	return(self);
 }
