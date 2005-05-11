@@ -2,7 +2,6 @@
 ./ABOUT-NLS
 ./ChangeLog
 ./INSTALL
-./INSTALL/README
 ./MD5SUMS
 ./Makefile.def
 ./Makefile.in
@@ -18,7 +17,6 @@
 ./configure.in
 ./contrib
 ./faq.html
-./gcc.patch
 ./gcc/.cvsignore
 ./gcc/ABOUT-GCC-NLS
 ./gcc/ChangeLog
