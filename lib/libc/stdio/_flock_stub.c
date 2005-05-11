@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.7 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.8 2005/05/11 12:45:57 davidxu Exp $
  *
  */
 
@@ -41,31 +41,26 @@
 
 #include "local.h"
 
-/* Don't build this in libc_r, just libc: */
-/*
- * Declare weak references in case the application is not linked
- * with libpthread.
- */
-__weak_reference(_flockfile_stub,flockfile);
-__weak_reference(_flockfile_stub,_flockfile);
-__weak_reference(_flockfile_debug_stub,_flockfile_debug);
-__weak_reference(_ftrylockfile_stub,ftrylockfile);
-__weak_reference(_ftrylockfile_stub,_ftrylockfile);
-__weak_reference(_funlockfile_stub,funlockfile);
-__weak_reference(_funlockfile_stub,_funlockfile);
+void __flockfile(FILE *fp);
+void __flockfile_debug(FILE *fp, char *fname, int lineno);
+int  __ftrylockfile(FILE *fp);
+void __funlockfile(FILE *fp);
 
-void	flockfile(FILE *);
-void	_flockfile_debug(FILE *, char *, int);
-int 	ftrylockfile(FILE *);
-void	funlockfile(FILE *);
+/*
+ * Externally visible weak symbols.
+ */
+__weak_reference(__flockfile, flockfile);
+__weak_reference(__flockfile, _flockfile);
+__weak_reference(__flockfile_debug, _flockfile_debug);
+__weak_reference(__ftrylockfile, ftrylockfile);
+__weak_reference(__ftrylockfile, _ftrylockfile);
+__weak_reference(__funlockfile, funlockfile);
+__weak_reference(__funlockfile, _funlockfile);
 
 #define _lock _extra
 
-/*
- * This function is a stub for the _flockfile function in libpthread.
- */
 void
-_flockfile_stub(FILE *fp)
+__flockfile(FILE *fp)
 {
 	pthread_t curthread = _pthread_self();
 
@@ -82,20 +77,14 @@ _flockfile_stub(FILE *fp)
 	}
 }
 
-/*
- * This function is a stub for the _flockfile_debug function in libpthread.
- */
 void
-_flockfile_debug_stub(FILE *fp, char *fname, int lineno)
+__flockfile_debug(FILE *fp, char *fname __unused, int lineno __unused)
 {
 	_flockfile(fp);
 }
 
-/*
- * This function is a stub for the _ftrylockfile function in libpthread.
- */
 int
-_ftrylockfile_stub(FILE *fp)
+__ftrylockfile(FILE *fp)
 {
 	pthread_t curthread = _pthread_self();
 	int	ret = 0;
@@ -115,11 +104,8 @@ _ftrylockfile_stub(FILE *fp)
 	return (ret);
 }
 
-/*
- * This function is a stub for the _funlockfile function in libpthread.
- */
 void
-_funlockfile_stub(FILE *fp)
+__funlockfile(FILE *fp)
 {
 	pthread_t	curthread = _pthread_self();
 
