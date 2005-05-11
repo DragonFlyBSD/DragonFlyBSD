@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.31 2005/05/11 20:05:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.32 2005/05/11 20:36:06 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3366,12 +3366,11 @@ tulip_print_abnormal_interrupt(tulip_softc_t *sc, uint32_t csr)
 }
 
 static void
-tulip_intr_handler(tulip_softc_t *sc, int *progress_p)
+tulip_intr_handler(tulip_softc_t *sc)
 {
     uint32_t csr;
 
     while ((csr = TULIP_CSR_READ(sc, csr_status)) & sc->tulip_intrmask) {
-	*progress_p = 1;
 	TULIP_CSR_WRITE(sc, csr_status, csr);
 
 	if (csr & TULIP_STS_SYSERROR) {
@@ -3460,21 +3459,18 @@ tulip_intr_handler(tulip_softc_t *sc, int *progress_p)
 static void
 tulip_intr_shared(void *arg)
 {
-    tulip_softc_t *sc = arg;
-    int progress = 0;
+    tulip_softc_t *sc;
 
-    for (; sc != NULL; sc = sc->tulip_slaves) {
-	tulip_intr_handler(sc, &progress);
-    }
+    for (sc = arg; sc != NULL; sc = sc->tulip_slaves)
+	tulip_intr_handler(sc);
 }
 
 static void
 tulip_intr_normal(void *arg)
 {
     tulip_softc_t *sc = (tulip_softc_t *)arg;
-    int progress = 0;
 
-    tulip_intr_handler(sc, &progress);
+    tulip_intr_handler(sc);
 }
 
 static struct mbuf *
