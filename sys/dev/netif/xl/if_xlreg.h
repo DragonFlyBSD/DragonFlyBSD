@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xlreg.h,v 1.25.2.8 2003/08/10 21:55:57 silby Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.5 2004/09/15 01:24:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.6 2005/05/11 12:07:21 joerg Exp $
  */
 
 #define XL_EE_READ	0x0080	/* read, 5 bit address */
@@ -592,7 +592,6 @@ struct xl_softc {
 	struct xl_type		*xl_info;	/* 3Com adapter info */
 	bus_dma_tag_t		xl_mtag;
 	bus_dmamap_t		xl_tmpmap;      /* spare DMA map */
-	u_int8_t		xl_unit;	/* interface number */
 	u_int8_t		xl_type;
 	u_int32_t		xl_xcvr;
 	u_int16_t		xl_media;
