@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.29 2005/02/21 20:48:13 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.30 2005/05/11 19:40:00 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -2936,13 +2936,7 @@ tulip_reset(tulip_softc_t *sc)
     /*
      * Free all the mbufs that were on the transmit ring.
      */
-    for (;;) {
-	struct mbuf *m;
-	IF_DEQUEUE(&sc->tulip_txq, m);
-	if (m == NULL)
-	    break;
-	m_freem(m);
-    }
+    IF_DRAIN(&sc->tulip_txq);
 
     ri = &sc->tulip_txinfo;
     ri->ri_nextin = ri->ri_nextout = ri->ri_first;
@@ -2964,13 +2958,7 @@ tulip_reset(tulip_softc_t *sc)
 	di->d_length1 = 0; di->d_addr1 = 0;
 	di->d_length2 = 0; di->d_addr2 = 0;
     }
-    for (;;) {
-	struct mbuf *m;
-	IF_DEQUEUE(&sc->tulip_rxq, m);
-	if (m == NULL)
-	    break;
-	m_freem(m);
-    }
+    IF_DRAIN(&sc->tulip_rxq);
 
     /*
      * If tulip_reset is being called recurisvely, exit quickly knowing
