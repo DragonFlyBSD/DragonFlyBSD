@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.32 2005/05/11 20:36:06 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.33 2005/05/11 20:58:35 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -337,12 +337,11 @@ tulip_media_print(tulip_softc_t *sc)
     if ((sc->tulip_flags & TULIP_LINKUP) == 0)
 	return;
     if (sc->tulip_flags & TULIP_PRINTMEDIA) {
-	printf("%s%d: enabling %s port\n",
-	       sc->tulip_name, sc->tulip_unit,
-	       tulip_mediums[sc->tulip_media]);
+	if_printf(&sc->tulip_if, "enabling %s port\n",
+		  tulip_mediums[sc->tulip_media]);
 	sc->tulip_flags &= ~(TULIP_PRINTMEDIA|TULIP_PRINTLINKUP);
     } else if (sc->tulip_flags & TULIP_PRINTLINKUP) {
-	printf("%s%d: link up\n", sc->tulip_name, sc->tulip_unit);
+	if_printf(&sc->tulip_if, "link up\n");
 	sc->tulip_flags &= ~TULIP_PRINTLINKUP;
     }
 }
@@ -493,7 +492,7 @@ tulip_media_link_monitor(tulip_softc_t *sc)
 	    return TULIP_LINK_UP;
 
 	sc->tulip_flags &= ~TULIP_LINKUP;
-	printf("%s%d: link down: cable problem?\n", sc->tulip_name, sc->tulip_unit);
+	if_printf(&sc->tulip_if, "link down: cable problem?\n");
     }
     return TULIP_LINK_DOWN;
 }
@@ -689,8 +688,7 @@ tulip_media_poll(tulip_softc_t *sc, tulip_mediapoll_event_t event)
 	    sc->tulip_probe_media -= 1;
 	    if (sc->tulip_probe_media == TULIP_MEDIA_UNKNOWN) {
 		if (++sc->tulip_probe_passes == 3) {
-		    printf("%s%d: autosense failed: cable problem?\n",
-			   sc->tulip_name, sc->tulip_unit);
+		    if_printf(&sc->tulip_if, "autosense failed: cable problem?\n");
 		    if ((sc->tulip_if.if_flags & IFF_UP) == 0) {
 			sc->tulip_if.if_flags &= ~IFF_RUNNING;
 			sc->tulip_probe_state = TULIP_PROBE_INACTIVE;
@@ -1010,8 +1008,7 @@ tulip_21041_media_poll(tulip_softc_t *sc, tulip_mediapoll_event_t event)
 		sc->tulip_flags &= ~TULIP_WANTRXACT;
 		sc->tulip_probe_timeout = TULIP_21041_PROBE_AUIBNC_TIMEOUT;
 	    } else {
-		printf("%s%d: autosense failed: cable problem?\n",
-		       sc->tulip_name, sc->tulip_unit);
+		if_printf(&sc->tulip_if, "autosense failed: cable problem?\n");
 		if ((sc->tulip_if.if_flags & IFF_UP) == 0) {
 		    sc->tulip_if.if_flags &= ~IFF_RUNNING;
 		    sc->tulip_probe_state = TULIP_PROBE_INACTIVE;
@@ -1203,8 +1200,8 @@ tulip_mii_autonegotiate(tulip_softc_t *sc, u_int phyaddr)
 		    tulip_timeout(sc);
 		    return;
 		}
-		printf("%s%d(phy%d): error: reset of PHY never completed!\n",
-			   sc->tulip_name, sc->tulip_unit, phyaddr);
+		if_printf(&sc->tulip_if,
+		    "(phy%d): error: reset of PHY never completed!\n", phyaddr);
 		sc->tulip_flags &= ~TULIP_TXPROBE_ACTIVE;
 		sc->tulip_probe_state = TULIP_PROBE_FAILED;
 		sc->tulip_if.if_flags &= ~(IFF_UP|IFF_RUNNING);
@@ -1322,8 +1319,7 @@ static void
 tulip_null_media_poll(tulip_softc_t *sc, tulip_mediapoll_event_t event)
 {
 #if defined(DIAGNOSTIC)
-    printf("%s%d: botch(media_poll) at line %d\n",
-	   sc->tulip_name, sc->tulip_unit, __LINE__);
+    if_printf(&sc->tulip_if, "botch(media_poll) at line %d\n", __LINE__);
 #endif
 }
 
@@ -2041,7 +2037,7 @@ tulip_identify_asante_nic(tulip_softc_t * const sc)
 	    mi->mi_phyaddr = tulip_mii_get_phyaddr(sc, 0);
 	}
 	if (mi->mi_phyaddr == TULIP_MII_NOPHY) {
-	    printf("%s%d: can't find phy 0\n", sc->tulip_name, sc->tulip_unit);
+	    if_printf(&sc->tulip_if, "can't find phy 0\n");
 	    return;
 	}
 
@@ -2076,7 +2072,7 @@ tulip_identify_compex_nic(tulip_softc_t *sc)
 	 * copied from tulip_read_macaddr.
 	 */
 	sc->tulip_features |= TULIP_HAVE_SHAREDINTR;
-	for (root_unit = sc->tulip_unit - 1; root_unit >= 0; root_unit--) {
+	for (root_unit = device_get_unit(sc->tulip_dev) - 1; root_unit >= 0; root_unit--) {
 	    root_sc = tulips[root_unit];
 	    if (root_sc == NULL
 		|| !(root_sc->tulip_features & TULIP_HAVE_SLAVEDINTR))
@@ -2090,8 +2086,7 @@ tulip_identify_compex_nic(tulip_softc_t *sc)
 	    sc->tulip_slaves = root_sc->tulip_slaves;
 	    root_sc->tulip_slaves = sc;
 	} else if(sc->tulip_features & TULIP_HAVE_SLAVEDINTR) {
-	    printf("\nCannot find master device for de%d interrupts",
-		   sc->tulip_unit);
+	    if_printf(&sc->tulip_if, "can't find master device for interrupts");
 	}
     } else {
 	strcat(sc->tulip_boardid, "unknown ");
@@ -2589,7 +2584,7 @@ tulip_read_macaddr(tulip_softc_t *sc)
 	if (idx == sizeof(sc->tulip_rombuf)) {
 	    int root_unit;
 	    tulip_softc_t *root_sc = NULL;
-	    for (root_unit = sc->tulip_unit - 1; root_unit >= 0; root_unit--) {
+	    for (root_unit = device_get_unit(sc->tulip_dev) - 1; root_unit >= 0; root_unit--) {
 		root_sc = tulips[root_unit];
 		if (root_sc == NULL || (root_sc->tulip_features & (TULIP_HAVE_OKROM|TULIP_HAVE_SLAVEDROM)) == TULIP_HAVE_OKROM)
 		    break;
@@ -2608,7 +2603,7 @@ tulip_read_macaddr(tulip_softc_t *sc)
 			return -5;
 		} else {
 		    bcopy(root_sc->tulip_enaddr, sc->tulip_enaddr, 6);
-		    sc->tulip_enaddr[5] += sc->tulip_unit - root_sc->tulip_unit;
+		    sc->tulip_enaddr[5] += device_get_unit(sc->tulip_dev) - device_get_unit(root_sc->tulip_dev);
 		}
 		/*
 		 * Now for a truly disgusting kludge: all 4 21040s on
@@ -3346,7 +3341,7 @@ tulip_print_abnormal_interrupt(tulip_softc_t *sc, uint32_t csr)
     const char thrsh[] = "72|128\0\0\0" "96|256\0\0\0" "128|512\0\0" "160|1024";
 
     csr &= (1 << (sizeof(tulip_status_bits)/sizeof(tulip_status_bits[0]))) - 1;
-    printf("%s%d: abnormal interrupt:", sc->tulip_name, sc->tulip_unit);
+    if_printf(&sc->tulip_if, "abnormal interrupt:");
     for (sep = " ", mask = 1; mask <= csr; mask <<= 1, msgp++) {
 	if ((csr & mask) && *msgp != NULL) {
 	    printf("%s%s", sep, *msgp);
@@ -3378,8 +3373,7 @@ tulip_intr_handler(tulip_softc_t *sc)
 	    if (sc->tulip_flags & TULIP_NOMESSAGES) {
 		sc->tulip_flags |= TULIP_SYSTEMERROR;
 	    } else {
-		printf("%s%d: system error: %s\n",
-		       sc->tulip_name, sc->tulip_unit,
+		if_printf(&sc->tulip_if, "system error: %s\n",
 		       tulip_system_errors[sc->tulip_last_system_error]);
 	    }
 	    sc->tulip_flags |= TULIP_NEEDRESET;
@@ -3906,9 +3900,9 @@ tulip_ifwatchdog(struct ifnet *ifp)
 	    tulip_rx_intr(sc);
 
 	if (sc->tulip_flags & TULIP_SYSTEMERROR) {
-	    printf("%s%d: %d system errors: last was %s\n",
-		   sc->tulip_name, sc->tulip_unit, sc->tulip_system_errors,
-		   tulip_system_errors[sc->tulip_last_system_error]);
+	    if_printf(ifp, "%d system errors: last was %s\n",
+		sc->tulip_system_errors,
+		tulip_system_errors[sc->tulip_last_system_error]);
 	}
 	if (sc->tulip_statusbits) {
 	    tulip_print_abnormal_interrupt(sc, sc->tulip_statusbits);
@@ -3921,7 +3915,7 @@ tulip_ifwatchdog(struct ifnet *ifp)
     if (sc->tulip_txtimer)
 	tulip_tx_intr(sc);
     if (sc->tulip_txtimer && --sc->tulip_txtimer == 0) {
-	printf("%s%d: transmission timeout\n", sc->tulip_name, sc->tulip_unit);
+	if_printf(ifp, "transmission timeout\n");
 	if (TULIP_DO_AUTOSENSE(sc)) {
 	    sc->tulip_media = TULIP_MEDIA_UNKNOWN;
 	    sc->tulip_probe_state = TULIP_PROBE_INACTIVE;
@@ -3940,15 +3934,13 @@ tulip_attach(tulip_softc_t *sc)
     callout_init(&sc->tulip_timer);
     callout_init(&sc->tulip_fast_timer);
 
-    if_initname(ifp, sc->tulip_name, sc->tulip_unit);
     ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
     ifp->if_ioctl = tulip_ifioctl;
     ifp->if_start = tulip_ifstart;
     ifp->if_watchdog = tulip_ifwatchdog;
     ifp->if_timer = 1;
   
-    printf("%s%d: %s%s pass %d.%d%s\n",
-	   sc->tulip_name, sc->tulip_unit,
+    if_printf(ifp, "%s%s pass %d.%d%s\n",
 	   sc->tulip_boardid,
 	   tulip_chipdescs[sc->tulip_chipid],
 	   (sc->tulip_revinfo & 0xF0) >> 4,
@@ -4073,13 +4065,10 @@ tulip_pci_attach(device_t dev)
     tulip_csrptr_t csr_base;
     tulip_chipid_t chipid = TULIP_CHIPID_UNKNOWN;
     struct resource *res;
-    int rid, unit;
+    int rid;
 
-    unit = device_get_unit(dev);
-
-    if (unit >= TULIP_MAX_DEVICES) {
-	printf("de%d", unit);
-	printf(": not configured; limit of %d reached or exceeded\n",
+    if (device_get_unit(dev) >= TULIP_MAX_DEVICES) {
+	device_printf(dev, "not configured; limit of %d reached or exceeded\n",
 	       TULIP_MAX_DEVICES);
 	return ENXIO;
     }
@@ -4105,17 +4094,17 @@ tulip_pci_attach(device_t dev)
 	return ENXIO;
 
     if (chipid == TULIP_21040 && revinfo < 0x20) {
-	printf("de%d", unit);
-	printf(": not configured; 21040 pass 2.0 required (%d.%d found)\n",
+	device_printf(dev, "not configured; 21040 pass 2.0 required (%d.%d found)\n",
 	       revinfo >> 4, revinfo & 0x0f);
 	return ENXIO;
     } else if (chipid == TULIP_21140 && revinfo < 0x11) {
-	printf("de%d: not configured; 21140 pass 1.1 required (%d.%d found)\n",
-	       unit, revinfo >> 4, revinfo & 0x0f);
+	device_printf(dev, "not configured; 21140 pass 1.1 required (%d.%d found)\n",
+	       revinfo >> 4, revinfo & 0x0f);
 	return ENXIO;
     }
 
     sc = device_get_softc(dev);
+    sc->tulip_dev = dev;
     sc->tulip_pci_busno = pci_get_bus(dev);
     sc->tulip_pci_devno = pci_get_slot(dev);
     sc->tulip_chipid = chipid;
@@ -4144,8 +4133,7 @@ tulip_pci_attach(device_t dev)
 	pci_write_config(dev, PCI_CFDA, cfdainfo, 4);
 	DELAY(11*1000);
     }
-    sc->tulip_unit = unit;
-    sc->tulip_name = "de";
+    if_initname(&sc->tulip_if, device_get_name(dev), device_get_unit(dev));
     sc->tulip_revinfo = revinfo;
     sc->tulip_if.if_softc = sc;
 #if defined(TULIP_IOMAPPED)
@@ -4163,7 +4151,7 @@ tulip_pci_attach(device_t dev)
     sc->tulip_csrs_bsh = rman_get_bushandle(res);
     csr_base = 0;
 
-    tulips[unit] = sc;
+    tulips[device_get_unit(dev)] = sc;
 
     tulip_initcsrs(sc, csr_base + csroffset, csrsize);
 
@@ -4184,16 +4172,14 @@ tulip_pci_attach(device_t dev)
 		   bit longer anyways) */
 
     if ((retval = tulip_read_macaddr(sc)) < 0) {
-	printf("%s%d", sc->tulip_name, sc->tulip_unit);
-	printf(": can't read ENET ROM (why=%d) (", retval);
+	device_printf(dev, "can't read ENET ROM (why=%d) (", retval);
 	for (idx = 0; idx < 32; idx++)
 	    printf("%02x", sc->tulip_rombuf[idx]);
 	printf("\n");
-	printf("%s%d: %s%s pass %d.%d\n",
-	       sc->tulip_name, sc->tulip_unit,
+	device_printf(dev, "%s%s pass %d.%d\n",
 	       sc->tulip_boardid, tulip_chipdescs[sc->tulip_chipid],
 	       (sc->tulip_revinfo & 0xF0) >> 4, sc->tulip_revinfo & 0x0F);
-	printf("%s%d: address unknown\n", sc->tulip_name, sc->tulip_unit);
+	device_printf("address unknown\n");
     } else {
 	int s;
 	void (*intr_rtn)(void *) = tulip_intr_normal;
@@ -4209,8 +4195,7 @@ tulip_pci_attach(device_t dev)
 				     0, ~0, 1, RF_SHAREABLE | RF_ACTIVE);
 	    if (res == 0 || bus_setup_intr(dev, res, INTR_TYPE_NET,
 					   intr_rtn, sc, &ih)) {
-		printf("%s%d: couldn't map interrupt\n",
-		       sc->tulip_name, sc->tulip_unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		free((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
 		free((caddr_t) sc->tulip_txdescs, M_DEVBUF);
 		return ENXIO;
