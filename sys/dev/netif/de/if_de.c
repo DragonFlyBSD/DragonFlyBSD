@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.33 2005/05/11 20:58:35 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.34 2005/05/12 01:41:07 drhodus Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4179,7 +4179,7 @@ tulip_pci_attach(device_t dev)
 	device_printf(dev, "%s%s pass %d.%d\n",
 	       sc->tulip_boardid, tulip_chipdescs[sc->tulip_chipid],
 	       (sc->tulip_revinfo & 0xF0) >> 4, sc->tulip_revinfo & 0x0F);
-	device_printf("address unknown\n");
+	device_printf(dev, "address unknown\n");
     } else {
 	int s;
 	void (*intr_rtn)(void *) = tulip_intr_normal;
