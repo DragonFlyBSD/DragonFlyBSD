@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.2 2005/03/02 05:48:48 joerg Exp $
+ * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.3 2005/05/13 22:28:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -231,12 +231,12 @@ gather_inet(int proto)
 	}
 
 	so_begin = buf;
-	so_end = buf + len;
+	so_end = (uint8_t *)buf + len;
 
-	for (so_begin = buf, so_end = so_begin + len;
-	     so_begin + sizeof(size_t) < so_end &&
-	     so_begin + *(size_t *)so_begin <= so_end;
-	     so_begin += *(size_t *)so_begin) {
+	for (so_begin = buf, so_end = (uint8_t *)so_begin + len;
+	     (uint8_t *)so_begin + sizeof(size_t) < (uint8_t *)so_end &&
+	     (uint8_t *)so_begin + *(size_t *)so_begin <= (uint8_t *)so_end;
+	     so_begin = (uint8_t *)so_begin + *(size_t *)so_begin) {
 		switch (proto) {
 		case IPPROTO_TCP:
 			xtp = (struct xtcpcb *)so_begin;
@@ -338,10 +338,10 @@ gather_unix(int proto)
 	if (sysctlbyname(varname, buf, &len, NULL, 0))
 		err(1, "fetching %s", varname);
 
-	for (so_begin = buf, so_end = buf + len;
-	     so_begin + sizeof(size_t) < so_end &&
-	     so_begin + *(size_t *)so_begin <= so_end;
-	     so_begin += *(size_t *)so_begin) {
+	for (so_begin = buf, so_end = (uint8_t *)buf + len;
+	     (uint8_t *)so_begin + sizeof(size_t) < (uint8_t *)so_end &&
+	     (uint8_t *)so_begin + *(size_t *)so_begin <= (uint8_t *)so_end;
+	     so_begin = (uint8_t *)so_begin + *(size_t *)so_begin) {
 		xup = so_begin;
 		if (xup->xu_len != sizeof *xup) {
 			warnx("struct xunpcb size mismatch");
