@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.56 2005/05/07 17:38:33 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.57 2005/05/13 15:51:10 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -194,6 +194,7 @@ upgrade_etc:	preupgrade
 	    xstut 
 	rm -f ${DESTDIR}/usr/share/man/man1/perl${man}.1.gz
 .endfor
+	rm -f ${DESTDIR}/usr/share/man/man7/style.perl.7.gz
 	rm -rf ${DESTDIR}/usr/share/perl
 	rm -rf ${DESTDIR}/usr/share/examples/bc
 .if exists(${DESTDIR}/usr/share/info/dc.info.gz)
