@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.3 2005/05/13 22:28:24 joerg Exp $
+ * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.4 2005/05/13 22:30:11 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -402,6 +402,8 @@ printaddr(int af, struct sockaddr_storage *ss)
 		sun = (struct sockaddr_un *)ss;
 		off = (int)((char *)&sun->sun_path - (char *)sun);
 		return (xprintf("%.*s", sun->sun_len - off, sun->sun_path));
+	default:
+		abort();
 	}
 	if (addrstr[0] == '\0')
 		inet_ntop(af, addr, addrstr, sizeof addrstr);
