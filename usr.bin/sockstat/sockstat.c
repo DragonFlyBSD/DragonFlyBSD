@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.4 2005/05/13 22:30:11 joerg Exp $
+ * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.5 2005/05/14 09:29:22 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -273,7 +273,6 @@ gather_inet(int proto)
 		} else {
 			if (opt_v)
 				warnx("invalid vflag 0x%x", inp->inp_vflag);
-			free(sock);
 			continue;
 		}
 		if ((sock = calloc(1, sizeof *sock)) == NULL)
