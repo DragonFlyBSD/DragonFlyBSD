@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.92 2005/05/07 23:24:44 corecode Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.93 2005/05/14 04:51:22 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -497,7 +497,7 @@ static void JobDoOutput(Job *, Boolean);
 static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
-static void ProcExec(ProcStuff *) __dead2;
+static void ProcExec(const ProcStuff *) __dead2;
 static int Compat_RunCommand(char *, struct GNode *);
 
 
@@ -636,7 +636,7 @@ Proc_Init()
  * Replace the current process.
  */
 static void
-ProcExec(ProcStuff *ps)
+ProcExec(const ProcStuff *ps)
 {
 	if (ps->in != STDIN_FILENO) {
 		/*
