@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.97 2005/05/14 22:52:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.98 2005/05/14 22:53:17 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -117,6 +117,7 @@
 #endif
 #include <sys/wait.h>
 #include <ctype.h>
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
