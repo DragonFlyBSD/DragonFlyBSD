@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.96 2005/05/14 22:49:16 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.97 2005/05/14 22:52:18 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -399,7 +399,12 @@ static struct Shell *commandShell = NULL;
 static char	*shellPath = NULL;	/* full pathname of executable image */
 static char	*shellName = NULL;	/* last component of shell */
 
-int		maxJobs;	/* The most children we can run at once */
+/*
+ * The maximum number of jobs that may run. This is initialize from the
+ * -j argument for the leading make and from the FIFO for sub-makes.
+ */
+static int	maxJobs;
+
 static int	nJobs;		/* The number of children currently running */
 
 /* The structures that describe them */

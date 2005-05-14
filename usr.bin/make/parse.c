@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.80 2005/05/07 23:26:12 corecode Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.81 2005/05/14 22:52:18 okumoto Exp $
  */
 
 /*-
@@ -882,7 +882,7 @@ ParseDoDependency(char *line)
 					DEFAULT = gn;
 					break;
 				  case NotParallel:
-					maxJobs = 1;
+					jobLimit = 1;
 					break;
 				  case SingleShell:
 					compatMake = 1;

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.90 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.91 2005/05/14 22:52:18 okumoto Exp $
  */
 
 /*
@@ -121,14 +121,15 @@ Boolean		beVerbose;	/* -v flag */
 Boolean		compatMake;	/* -B argument */
 Boolean		debug;		/* -d flag */
 Boolean		ignoreErrors;	/* -i flag */
+int		jobLimit;	/* -j argument */
 Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 Boolean		keepgoing;	/* -k flag */
 Boolean		noExecute;	/* -n flag */
 Boolean		queryFlag;	/* -q flag */
 Boolean		touchFlag;	/* -t flag */
 Boolean		usePipes;	/* !-P flag */
-uint32_t	warn_flags;	/* actual warning flags */
 uint32_t	warn_cmd;	/* command line warning flags */
+uint32_t	warn_flags;	/* actual warning flags */
 uint32_t	warn_nocmd;	/* command line no-warning flags */
 
 time_t		now;		/* Time at start of make */
@@ -453,8 +454,8 @@ rearg:
 			char *endptr;
 
 			forceJobs = TRUE;
-			maxJobs = strtol(optarg, &endptr, 10);
-			if (maxJobs <= 0 || *endptr != '\0') {
+			jobLimit = strtol(optarg, &endptr, 10);
+			if (jobLimit <= 0 || *endptr != '\0') {
 				warnx("illegal number, -j argument -- %s",
 				    optarg);
 				usage();
@@ -690,7 +691,7 @@ main(int argc, char **argv)
 	debug = 0;			/* No debug verbosity, please. */
 	jobsRunning = FALSE;
 
-	maxJobs = DEFMAXJOBS;
+	jobLimit = DEFMAXJOBS;
 	compatMake = FALSE;		/* No compat mode */
 
 	check_make_level();
@@ -1032,7 +1033,7 @@ main(int argc, char **argv)
 			 * should it exist).
 			 */
 			if (!queryFlag) {
-				Job_Init(maxJobs);
+				Job_Init(jobLimit);
 				jobsRunning = TRUE;
 			}
 
