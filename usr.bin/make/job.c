@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.95 2005/05/14 06:26:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.96 2005/05/14 22:49:16 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -499,14 +499,6 @@ static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static void ProcExec(const ProcStuff *) __dead2;
 static int Compat_RunCommand(char *, struct GNode *);
-
-/*
- * The following array is used to make a fast determination of which
- * characters are interpreted specially by the shell.  If a command
- * contains any of these characters, it is executed by the shell, not
- * directly by us.
- */
-static char	    meta[256];
 
 static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
@@ -3288,20 +3280,6 @@ Cmd_Exec(const char *cmd, const char **error)
 	return (buf);
 }
 
-static void
-CompatInit(void)
-{
-	const char	*cp;	/* Pointer to string of shell meta-characters */
-
-	for (cp = "#=|^(){};&<>*?[]:$`\\\n"; *cp != '\0'; cp++) {
-		meta[(unsigned char)*cp] = 1;
-	}
-	/*
-	 * The null character serves as a sentinel in the string.
-	 */
-	meta[0] = 1;
-}
-
 /*
  * Interrupt handler - set flag and defer handling to the main code
  */
@@ -3395,7 +3373,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 {
 	ArgArray	aa;
 	char		*cmdStart;	/* Start of expanded command */
-	char		*cp;
 	Boolean		silent;		/* Don't print command */
 	Boolean		doit;		/* Execute even in -n */
 	Boolean		errCheck;	/* Check errors */
@@ -3442,8 +3419,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 
 		case '+':
 			doit = TRUE;
-			if (!meta[0])		/* we came here from jobs */
-				CompatInit();
 			break;
 		}
 		cmd++;
@@ -3469,19 +3444,10 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		return (0);
 	}
 
-	/*
-	 * Search for meta characters in the command. If there are no meta
-	 * characters, there's no need to execute a shell to execute the
-	 * command.
-	 */
-	for (cp = cmd; !meta[(unsigned char)*cp]; cp++)
-		continue;
-
-	av = NULL;
-	if (*cp != '\0') {
+	if (strpbrk(cmd, "#=|^(){};&<>*?[]:$`\\\n")) {
 		/*
-		 * If *cp isn't the null character, we hit a "meta" character
-		 * and need to pass the command off to the shell.
+		 * We found a "meta" character and need to pass the command
+		 * off to the shell.
 		 */
 		av = NULL;
 
@@ -3872,7 +3838,6 @@ Compat_Run(Lst *targs)
 	int	error_cnt;		/* Number of targets not remade due to errors */
 	LstNode	*ln;
 
-	CompatInit();
 	Shell_Init();		/* Set up shell. */
 
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
