@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.20 2005/03/07 17:16:01 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.21 2005/05/14 08:21:54 joerg Exp $
  */
 
 /*
@@ -692,12 +692,11 @@ vr_attach(device_t dev)
 	uint32_t command;
 	struct vr_softc *sc;
 	struct ifnet *ifp;
-	int unit, error = 0, rid;
+	int error = 0, rid;
 
 	s = splimp();
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	callout_init(&sc->vr_stat_timer);
 
 	/*
@@ -802,6 +801,9 @@ vr_attach(device_t dev)
 	    pci_read_config(dev, VR_PCI_MODE, 4) | (VR_MODE3_MIION << 24), 4);
 	VR_CLRBIT(sc, VR_MIICMD, VR_MIICMD_AUTOPOLL);
 
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/*
 	 * Get station address. The way the Rhine chips work,
 	 * you're not allowed to directly access the EEPROM once
@@ -828,9 +830,7 @@ vr_attach(device_t dev)
 
 	bzero(sc->vr_ldata, sizeof(struct vr_list_data));
 
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = vr_ioctl;
