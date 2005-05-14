@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.19 2005/05/11 12:10:43 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.20 2005/05/14 01:33:35 joerg Exp $
  */
 
 /*
@@ -1458,6 +1458,9 @@ xl_attach(dev)
 
 	sc->xl_flags |= XL_FLAG_ATTACH_MAPPED;
 
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/* Reset the adapter. */
 	xl_reset(sc);
 
@@ -1580,9 +1583,7 @@ xl_attach(dev)
 	else
 		sc->xl_type = XL_TYPE_90X;
 
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = xl_ioctl;
