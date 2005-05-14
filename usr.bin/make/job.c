@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.94 2005/05/14 05:52:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.95 2005/05/14 06:26:22 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -499,7 +499,6 @@ static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static void ProcExec(const ProcStuff *) __dead2;
 static int Compat_RunCommand(char *, struct GNode *);
-
 
 /*
  * The following array is used to make a fast determination of which
