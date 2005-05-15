@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.56 2005/05/15 17:49:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.57 2005/05/15 17:50:09 okumoto Exp $
  */
 
 /*-
@@ -2177,7 +2177,7 @@ Suff_PrintAll(void)
 
 		if (s->flags != 0) {
 			printf(" ");
-			print_flags(stdout, suff_flags, s->flags);
+			print_flags(stdout, suff_flags, s->flags, 1);
 		}
 
 		printf("\n#\tTo: ");
