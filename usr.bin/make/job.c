@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.98 2005/05/14 22:53:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.99 2005/05/15 17:48:03 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2578,7 +2578,7 @@ JobFreeShell(struct Shell *sh)
 	}
 }
 
-void
+static void
 Shell_Init(void)
 {
 
@@ -2986,29 +2986,29 @@ Job_ParseShell(const char line[])
 		 * word and copy it to a new location. In either case, we need
 		 * to record the path the user gave for the shell.
 		 */
-		free(shellPath);
-		shellPath = estrdup(path);
+		path = estrdup(path);
 		if (newShell.name == NULL) {
 			/* get the base name as the name */
-			path = strrchr(path, '/');
-			if (path == NULL) {
-				path = shellPath;
+			if ((newShell.name = strrchr(path, '/')) == NULL) {
+				newShell.name = path;
 			} else {
-				path += 1;
+				newShell.name += 1;
 			}
-			newShell.name = path;
 		}
 
 		if (!fullSpec) {
 			if ((sh = JobMatchShell(newShell.name)) == NULL) {
 				Parse_Error(PARSE_FATAL,
 				    "%s: no matching shell", newShell.name);
+				free(path);
 				ArgArray_Done(&aa);
 				return (FAILURE);
 			}
 		} else {
 			sh = JobCopyShell(&newShell);
 		}
+		free(shellPath);
+		shellPath = path;
 	}
 
 	/* set the new shell */
@@ -3500,7 +3500,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		 * supposed to exit when it hits an error.
 		 */
 		ps.argv = emalloc(4 * sizeof(char *));
-		ps.argv[0] = strdup(shellName);
+		ps.argv[0] = strdup(shellPath);
 		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
 		ps.argv[2] = strdup(cmd);
 		ps.argv[3] = NULL;
