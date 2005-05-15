@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.11 2005/01/01 15:56:56 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.12 2005/05/15 20:10:28 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -208,14 +208,14 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 {
 	struct apm_bios_arg args;
 	int apmerr;
-	const char *line_msg[] = { "off-line", "on-line" };
+	const char *line_msg[] = { "off-line", "on-line" , "backup power"};
 
 	printf("APM version: %d.%d\n", aip->ai_major, aip->ai_minor);
 	printf("APM Management: %s\n", (aip->ai_status ? "Enabled" : "Disabled"));
 	printf("AC Line status: ");
 	if (aip->ai_acline == 255)
 		printf("unknown\n");
-	else if (aip->ai_acline > 1)
+	else if (aip->ai_acline > 2)
 		printf("invalid value (0x%x)\n", aip->ai_acline);
 	else
 		printf("%s\n", line_msg[aip->ai_acline]);
