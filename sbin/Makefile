@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.5 (Berkeley) 3/31/94
 # $FreeBSD: src/sbin/Makefile,v 1.77.2.9 2002/08/08 09:03:46 ru Exp $
-# $DragonFly: src/sbin/Makefile,v 1.8 2005/03/07 02:38:27 dillon Exp $
+# $DragonFly: src/sbin/Makefile,v 1.9 2005/05/16 20:59:28 rob Exp $
 #
 # XXX MISSING:		icheck ncheck
 
@@ -51,6 +51,7 @@ SUBDIR=	adjkerntz \
 	mount_union \
 	mountd \
 	natd \
+	newbtconf \
 	newfs \
 	newfs_msdos \
 	nfsd \
