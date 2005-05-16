@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.93 2005/05/16 17:30:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.94 2005/05/16 17:32:15 okumoto Exp $
  */
 
 /*
@@ -592,20 +592,39 @@ Main_ParseArgLine(char *line, int mflags)
 	ArgArray_Done(&aa);
 }
 
+/**
+ * Try to change the current working directory into path.
+ */
 static char *
-chdir_verify_path(const char *path, char *obpath)
+chdir_verify_path(const char path[], char newpath[])
 {
 	struct stat sb;
 
-	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
-		if (chdir(path) == -1 || getcwd(obpath, MAXPATHLEN) == NULL) {
-			warn("warning: %s", path);
-			return (NULL);
-		}
-		return (obpath);
+	/*
+	 * Check if the path is a directory.  If not fail without reporting
+	 * an error.
+	 */
+	if (stat(path, &sb) < 0) {
+		return (NULL);	/* fail but no report */
+	}
+	if (S_ISDIR(sb.st_mode) == 0) {
+		return (NULL);
 	}
 
-	return (NULL);
+	/*
+	 * The path refers to a directory, so we try to change into it. If we
+	 * fail, or we fail to obtain the path from root to the directory,
+	 * then report an error and fail.
+	 */
+	if (chdir(path) < 0) {
+		warn("warning: %s", path);
+		return (NULL);
+	}
+	if (getcwd(newpath, MAXPATHLEN) == NULL) {
+		warn("warning: %s", path);
+		return (NULL);
+	}
+	return (newpath);
 }
 
 /**
