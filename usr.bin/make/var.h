@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.36 2005/04/28 18:49:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.37 2005/05/16 17:29:42 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -81,6 +81,6 @@ void Var_SetGlobal(const char *, const char *);
 void Var_SetEnv(const char *, struct GNode *);
 struct Buffer *Var_Subst(const char *, struct GNode *, Boolean);
 struct Buffer *Var_SubstOnly(const char *, const char *, Boolean);
-char *Var_Value(const char *, struct GNode *, char **);
+char *Var_Value(const char [], struct GNode *);
 
 #endif /* var_h_9cccafce */

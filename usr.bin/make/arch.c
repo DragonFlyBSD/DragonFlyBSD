@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.47 2005/04/24 12:40:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.48 2005/05/16 17:29:42 okumoto Exp $
  */
 
 /*-
@@ -991,12 +991,9 @@ void
 Arch_Touch(GNode *gn)
 {
 	struct arfile	*ar;
-	char		*p1, *p2;
 
-	ar = ArchFindMember(Var_Value(ARCHIVE, gn, &p1),
-	    Var_Value(TARGET, gn, &p2), "r+");
-	free(p1);
-	free(p2);
+	ar = ArchFindMember(
+	    Var_Value(ARCHIVE, gn), Var_Value(TARGET, gn), "r+");
 
 	if (ar != NULL) {
 		ArchArchiveTouch(ar, (int64_t)now);
@@ -1055,12 +1052,9 @@ int
 Arch_MTime(GNode *gn)
 {
 	int64_t	mtime;
-	char	*p1, *p2;
 
-	mtime = ArchStatMember(Var_Value(ARCHIVE, gn, &p1),
-	    Var_Value(TARGET, gn, &p2), TRUE);
-	free(p1);
-	free(p2);
+	mtime = ArchStatMember(
+	    Var_Value(ARCHIVE, gn), Var_Value(TARGET, gn), TRUE);
 
 	if (mtime == INT_MIN) {
 		mtime = 0;

@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.43 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.44 2005/05/16 17:29:42 okumoto Exp $
  */
 
 /*
@@ -282,16 +282,14 @@ static Boolean
 CondDoDefined(int argLen, char *arg)
 {
 	char	savec = arg[argLen];
-	char	*p1;
 	Boolean	result;
 
 	arg[argLen] = '\0';
-	if (Var_Value(arg, VAR_CMD, &p1) != NULL) {
+	if (Var_Value(arg, VAR_CMD) != NULL) {
 		result = TRUE;
 	} else {
 		result = FALSE;
 	}
-	free(p1);
 	arg[argLen] = savec;
 	return (result);
 }

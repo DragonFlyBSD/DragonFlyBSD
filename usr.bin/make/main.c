@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.91 2005/05/14 22:52:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.92 2005/05/16 17:29:42 okumoto Exp $
  */
 
 /*
@@ -661,7 +661,7 @@ main(int argc, char **argv)
 	const char *machine_arch;
 	const char *machine_cpu;
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	char *p, *p1;
+	char *p;
 	const char *pathp;
 	const char *path;
 	char mdpath[MAXPATHLEN];
@@ -945,9 +945,8 @@ main(int argc, char **argv)
 	ReadMakefile(".depend");
 
 	/* Install all the flags into the MAKE envariable. */
-	if (((p = Var_Value(".MAKEFLAGS", VAR_GLOBAL, &p1)) != NULL) && *p)
+	if (((p = Var_Value(".MAKEFLAGS", VAR_GLOBAL)) != NULL) && *p)
 		setenv("MAKEFLAGS", p, 1);
-	free(p1);
 
 	/*
 	 * For compatibility, look at the directories in the VPATH variable

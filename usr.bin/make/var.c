@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.207 2005/05/10 23:26:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.208 2005/05/16 17:29:42 okumoto Exp $
  */
 
 /**
@@ -1133,7 +1133,7 @@ Var_Exists(const char *name, GNode *ctxt)
  *	The value if the variable exists, NULL if it doesn't
  */
 char *
-Var_Value(const char *name, GNode *ctxt, char **frp)
+Var_Value(const char name[], GNode *ctxt)
 {
 	Var	*v;
 	char	*n;
@@ -1143,10 +1143,8 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
 	v = VarFindAny(n, ctxt);
 	if (v == NULL) {
 		p = NULL;
-		*frp = NULL;
 	} else {
 		p = Buf_Data(v->val);
-		*frp = NULL;
 	}
 	free(n);
 	return (p);
@@ -2532,10 +2530,10 @@ void
 Var_Print(Lst *vlist, Boolean expandVars)
 {
 	LstNode		*n;
-	const char	*name;
 
 	LST_FOREACH(n, vlist) {
-		name = Lst_Datum(n);
+		const char *name = Lst_Datum(n);
+
 		if (expandVars) {
 			char		*v;
 			char		*value;
@@ -2543,19 +2541,15 @@ Var_Print(Lst *vlist, Boolean expandVars)
 			v = emalloc(strlen(name) + 1 + 3);
 			sprintf(v, "${%s}", name);
 
-			value = Buf_Peel(Var_Subst(v,
-			    VAR_GLOBAL, FALSE));
+			value = Buf_Peel(Var_Subst(v, VAR_GLOBAL, FALSE));
 			printf("%s\n", value);
 
 			free(v);
 			free(value);
 		} else {
 			char	*value;
-			char	*v;
-			value = Var_Value(name, VAR_GLOBAL, &v);
+			value = Var_Value(name, VAR_GLOBAL);
 			printf("%s\n", value != NULL ? value : "");
-			if (v != NULL)
-				free(v);
 		}
 	}
 }

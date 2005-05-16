@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.57 2005/05/15 17:50:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.58 2005/05/16 17:29:42 okumoto Exp $
  */
 
 /*-
@@ -1544,11 +1544,8 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 			PREFIX,		/* Must be second */
 		};
 
-		char *p1;
-		Var_Set(copy[1], Var_Value(copy[1], mem, &p1), gn);
-		free(p1);
-		Var_Set(copy[0], Var_Value(copy[0], mem, &p1), gn);
-		free(p1);
+		Var_Set(copy[1], Var_Value(copy[1], mem), gn);
+		Var_Set(copy[0], Var_Value(copy[0], mem), gn);
 	}
 
 	ms = mem->suffix;
