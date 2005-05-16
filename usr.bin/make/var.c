@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.208 2005/05/16 17:29:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.209 2005/05/16 17:30:24 okumoto Exp $
  */
 
 /**
@@ -1132,22 +1132,21 @@ Var_Exists(const char *name, GNode *ctxt)
  * Results:
  *	The value if the variable exists, NULL if it doesn't
  */
-char *
+const char *
 Var_Value(const char name[], GNode *ctxt)
 {
 	Var	*v;
 	char	*n;
-	char	*p;
 
 	n = VarPossiblyExpand(name, ctxt);
 	v = VarFindAny(n, ctxt);
 	if (v == NULL) {
-		p = NULL;
+		free(n);
+		return (NULL);
 	} else {
-		p = Buf_Data(v->val);
+		free(n);
+		return (Buf_Data(v->val));
 	}
-	free(n);
-	return (p);
 }
 
 /**
@@ -2547,7 +2546,7 @@ Var_Print(Lst *vlist, Boolean expandVars)
 			free(v);
 			free(value);
 		} else {
-			char	*value;
+			const char	*value;
 			value = Var_Value(name, VAR_GLOBAL);
 			printf("%s\n", value != NULL ? value : "");
 		}

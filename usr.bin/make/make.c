@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.25 2005/05/16 17:29:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.26 2005/05/16 17:30:24 okumoto Exp $
  */
 
 /*
@@ -337,10 +337,10 @@ Make_HandleUse(GNode *cgn, GNode *pgn)
 void
 Make_Update(GNode *cgn)
 {
-	GNode	*pgn;	/* the parent node */
-	char	*cname;	/* the child's name */
-	LstNode	*ln;	/* Element in parents and iParents lists */
-	char	*cpref;
+	GNode		*pgn;	/* the parent node */
+	const char	*cname;	/* the child's name */
+	LstNode		*ln;	/* Element in parents and iParents lists */
+	const char	*cpref;
 
 	cname = Var_Value(TARGET, cgn);
 
@@ -491,8 +491,6 @@ void
 Make_DoAllVar(GNode *gn)
 {
 	LstNode	*ln;
-	GNode	*cgn;
-	char	*child;
 
 	LST_FOREACH(ln, &gn->children) {
 		/*
@@ -508,17 +506,21 @@ Make_DoAllVar(GNode *gn)
 		 * (since .JOIN nodes don't have modification times, the
 		 * comparison is rather unfair...).
 		 */
-		cgn = Lst_Datum(ln);
+		GNode	*cgn = Lst_Datum(ln);
 
 		if ((cgn->type & (OP_EXEC | OP_USE | OP_INVISIBLE)) == 0) {
+			const char	*child;
+
 			if (OP_NOP(cgn->type)) {
 				/*
 				 * this node is only source; use the specific
 				 * pathname for it
 				 */
 				child = cgn->path ? cgn->path : cgn->name;
-			} else
+			} else {
 				child = Var_Value(TARGET, cgn);
+			}
+
 			Var_Append(ALLSRC, child, gn);
 			if (gn->type & OP_JOIN) {
 				if (cgn->made == MADE) {

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.100 2005/05/16 17:29:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.101 2005/05/16 17:30:24 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3327,7 +3327,7 @@ CompatInterrupt(int signo)
 	interrupted = 0;
 
 	if (curTarg != NULL && !Targ_Precious(curTarg)) {
-		char	  *file = Var_Value(TARGET, curTarg);
+		const char *file = Var_Value(TARGET, curTarg);
 
 		if (!noExecute && eunlink(file) != -1) {
 			printf("*** %s removed\n", file);
