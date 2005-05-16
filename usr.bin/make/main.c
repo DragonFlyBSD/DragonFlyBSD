@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.95 2005/05/16 17:35:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.96 2005/05/16 17:36:08 okumoto Exp $
  */
 
 /*
@@ -106,8 +106,6 @@ static Lst variables = Lst_Initializer(variables);
 static Boolean	expandVars;	/* fully expand printed variables */
 static Boolean	noBuiltins;	/* -r flag */
 static Boolean	forceJobs;      /* -j argument given */
-static char	*curdir;	/* startup directory */
-static char	*objdir;	/* where we chdir'ed to */
 
 /* (-E) vars to override from env */
 Lst envFirstVars = Lst_Initializer(envFirstVars);
@@ -180,85 +178,85 @@ MFLAGS_append(const char *flag, char *arg)
  *	TRUE if ok. FALSE if couldn't open file.
  */
 static Boolean
-ReadMakefile(const char p[])
+ReadMakefile(const char file[], const char curdir[], const char objdir[])
 {
-	char *fname;			/* makefile to read */
-	FILE *stream;
-	char *name, path[MAXPATHLEN];
-	char *MAKEFILE;
-	int setMAKEFILE;
+	char	path[MAXPATHLEN];
+	FILE	*stream;
+	char	*fname;
+	char	*name;
 
-	/* XXX - remove this once constification is done */
-	fname = estrdup(p);
-
-	if (!strcmp(fname, "-")) {
+	if (!strcmp(file, "-")) {
 		Parse_File("(stdin)", stdin);
 		Var_SetGlobal("MAKEFILE", "");
-	} else {
-		setMAKEFILE = strcmp(fname, ".depend");
-
-		/* if we've chdir'd, rebuild the path name */
-		if (curdir != objdir && *fname != '/') {
-			snprintf(path, MAXPATHLEN, "%s/%s", curdir, fname);
-			/*
-			 * XXX The realpath stuff breaks relative includes
-			 * XXX in some cases.   The problem likely is in
-			 * XXX parse.c where it does special things in
-			 * XXX ParseDoInclude if the file is relateive
-			 * XXX or absolute and not a system file.  There
-			 * XXX it assumes that if the current file that's
-			 * XXX being included is absolute, that any files
-			 * XXX that it includes shouldn't do the -I path
-			 * XXX stuff, which is inconsistant with historical
-			 * XXX behavior.  However, I can't pentrate the mists
-			 * XXX further, so I'm putting this workaround in
-			 * XXX here until such time as the underlying bug
-			 * XXX can be fixed.
-			 */
-#if THIS_BREAKS_THINGS
-			if (realpath(path, path) != NULL &&
-			    (stream = fopen(path, "r")) != NULL) {
-				MAKEFILE = fname;
-				fname = path;
-				goto found;
-			}
-		} else if (realpath(fname, path) != NULL) {
-			MAKEFILE = fname;
-			fname = path;
-			if ((stream = fopen(fname, "r")) != NULL)
-				goto found;
-		}
-#else
-			if ((stream = fopen(path, "r")) != NULL) {
-				MAKEFILE = fname;
-				fname = path;
-				goto found;
-			}
-		} else {
-			MAKEFILE = fname;
-			if ((stream = fopen(fname, "r")) != NULL)
-				goto found;
-		}
-#endif
-		/* look in -I and system include directories. */
-		name = Path_FindFile(fname, &parseIncPath);
-		if (!name)
-			name = Path_FindFile(fname, &sysIncPath);
-		if (!name || !(stream = fopen(name, "r")))
-			return (FALSE);
-		MAKEFILE = fname = name;
-		/*
-		 * set the MAKEFILE variable desired by System V fans -- the
-		 * placement of the setting here means it gets set to the last
-		 * makefile specified, as it is set by SysV make.
-		 */
-found:
-		if (setMAKEFILE)
-			Var_SetGlobal("MAKEFILE", MAKEFILE);
-		Parse_File(fname, stream);
-		fclose(stream);
+		return (TRUE);
 	}
-	return (TRUE);
+
+	if (strcmp(curdir, objdir) == 0 || file[0] == '/') {
+		strcpy(path, file);
+	} else {
+		/*
+		 * we've chdir'd, rebuild the path name
+		 */
+		snprintf(path, MAXPATHLEN, "%s/%s", curdir, file);
+	}
+#if THIS_BREAKS_THINGS
+	/*
+	 * XXX The realpath stuff breaks relative includes
+	 * XXX in some cases.   The problem likely is in
+	 * XXX parse.c where it does special things in
+	 * XXX ParseDoInclude if the file is relateive
+	 * XXX or absolute and not a system file.  There
+	 * XXX it assumes that if the current file that's
+	 * XXX being included is absolute, that any files
+	 * XXX that it includes shouldn't do the -I path
+	 * XXX stuff, which is inconsistant with historical
+	 * XXX behavior.  However, I can't pentrate the mists
+	 * XXX further, so I'm putting this workaround in
+	 * XXX here until such time as the underlying bug
+	 * XXX can be fixed.
+	 */
+	if (realpath(path, path) == NULL) {
+		stream = NULL;
+	} else {
+		stream = fopen(path, "r");
+	}
+#else
+	stream = fopen(path, "r");
+#endif
+	if (stream != NULL) {
+		if (strcmp(file, ".depend") != 0)
+			Var_SetGlobal("MAKEFILE", file);
+		Parse_File(path, stream);
+		fclose(stream);
+		return (TRUE);
+	}
+
+	/* look in -I and system include directories. */
+	fname = estrdup(file);
+	name = NULL;
+	if (name == NULL)
+		name = Path_FindFile(fname, &parseIncPath);
+	if (name == NULL)
+		name = Path_FindFile(fname, &sysIncPath);
+
+	if (name != NULL) {
+		stream = fopen(name, "r");
+		if (stream != NULL) {
+			/*
+			 * set the MAKEFILE variable desired by System V fans
+			 * -- the placement of the setting here means it gets
+			 * set to the last makefile specified, as it is set
+			 * by SysV make.
+			 */
+			if (strcmp(file, ".depend") != 0)
+				Var_SetGlobal("MAKEFILE", name);
+			Parse_File(name, stream);
+			fclose(stream);
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);	/* no makefile found */
 }
 
 /**
@@ -627,6 +625,76 @@ chdir_verify_path(const char path[], char newdir[])
 	return (1);
 }
 
+static void
+determine_objdir(const char machine[], char curdir[], char objdir[])
+{
+	struct stat	sa;
+	char		newdir[MAXPATHLEN];
+	char		mdpath[MAXPATHLEN];
+	const char	*env;
+
+	/*
+	 * Find a path to where we are... [-C directory] might have changed
+	 * our current directory.
+	 */
+	if (getcwd(curdir, MAXPATHLEN) == NULL)
+		err(2, NULL);
+
+	if (stat(curdir, &sa) == -1)
+		err(2, "%s", curdir);
+
+	/*
+	 * The object directory location is determined using the
+	 * following order of preference:
+	 *
+	 *	1. MAKEOBJDIRPREFIX`cwd`
+	 *	2. MAKEOBJDIR
+	 *	3. PATH_OBJDIR.${MACHINE}
+	 *	4. PATH_OBJDIR
+	 *	5. PATH_OBJDIRPREFIX`cwd`
+	 *
+	 * If one of the first two fails, use the current directory.
+	 * If the remaining three all fail, use the current directory.
+	 */
+	if ((env = getenv("MAKEOBJDIRPREFIX")) != NULL) {
+		snprintf(mdpath, MAXPATHLEN, "%s%s", env, curdir);
+		if (chdir_verify_path(mdpath, newdir)) {
+			strcpy(objdir, newdir);
+			return;
+		}
+		strcpy(objdir, curdir);
+		return;
+	}
+
+	if ((env = getenv("MAKEOBJDIR")) != NULL) {
+		if (chdir_verify_path(env, newdir)) {
+			strcpy(objdir, newdir);
+			return;
+		}
+		strcpy(objdir, curdir);
+		return;
+	}
+
+	snprintf(mdpath, MAXPATHLEN, "%s.%s", PATH_OBJDIR, machine);
+	if (chdir_verify_path(mdpath, newdir)) {
+		strcpy(objdir, newdir);
+		return;
+	}
+
+	if (chdir_verify_path(PATH_OBJDIR, newdir)) {
+		strcpy(objdir, newdir);
+		return;
+	}
+
+	snprintf(mdpath, MAXPATHLEN, "%s%s", PATH_OBJDIRPREFIX, curdir);
+	if (chdir_verify_path(mdpath, newdir)) {
+		strcpy(objdir, newdir);
+		return;
+	}
+
+	strcpy(objdir, curdir);
+}
+
 /**
  * In lieu of a good way to prevent every possible looping in make(1), stop
  * there from being more than MKLVL_MAXVAL processes forked by make(1), to
@@ -680,9 +748,10 @@ main(int argc, char **argv)
 	const char *machine_arch;
 	const char *machine_cpu;
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	char mdpath[MAXPATHLEN];
-	char cdpath[MAXPATHLEN];
 	char *cp = NULL, *start;
+
+	char	curdir[MAXPATHLEN];	/* startup directory */
+	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
 
 	/*
 	 * Initialize file global variables.
@@ -690,7 +759,6 @@ main(int argc, char **argv)
 	expandVars = TRUE;
 	noBuiltins = FALSE;		/* Read the built-in rules */
 	forceJobs = FALSE;              /* No -j flag */
-	curdir = cdpath;
 
 	/*
 	 * Initialize program global variables.
@@ -803,76 +871,23 @@ main(int argc, char **argv)
 
 	MainParseArgs(argc, argv);
 
-    {
-	struct stat sa;
-	char newdir[MAXPATHLEN];
-	const char *env;
+	determine_objdir(machine, curdir, objdir);
 
 	/*
-	 * Find a path to where we are... [-C directory] might have changed
-	 * our current directory.
+	 * Once things are initialized, add the original directory to the
+	 * search path. The current directory is also placed as a variable
+	 * for make scripts.
 	 */
-	if (getcwd(curdir, MAXPATHLEN) == NULL)
-		err(2, NULL);
-
-	if (stat(curdir, &sa) == -1)
-		err(2, "%s", curdir);
-
-	/*
-	 * The object directory location is determined using the
-	 * following order of preference:
-	 *
-	 *	1. MAKEOBJDIRPREFIX`cwd`
-	 *	2. MAKEOBJDIR
-	 *	3. PATH_OBJDIR.${MACHINE}
-	 *	4. PATH_OBJDIR
-	 *	5. PATH_OBJDIRPREFIX`cwd`
-	 *
-	 * If one of the first two fails, use the current directory.
-	 * If the remaining three all fail, use the current directory.
-	 *
-	 * Once things are initted,
-	 * have to add the original directory to the search path,
-	 * and modify the paths for the Makefiles apropriately.  The
-	 * current directory is also placed as a variable for make scripts.
-	 */
-	if ((env = getenv("MAKEOBJDIRPREFIX")) != NULL) {
-		snprintf(mdpath, MAXPATHLEN, "%s%s", env, curdir);
-		if (chdir_verify_path(mdpath, newdir)) {
-			objdir = newdir;
-		} else {
-			objdir = curdir;
-		}
-	} else if ((env = getenv("MAKEOBJDIR")) != NULL) {
-		if (chdir_verify_path(env, newdir)) {
-			objdir = newdir;
-		} else {
-			objdir = curdir;
-		}
-	} else {
-		snprintf(mdpath, MAXPATHLEN, "%s.%s", PATH_OBJDIR, machine);
-		if (chdir_verify_path(mdpath, newdir)) {
-			objdir = newdir;
-		} else if (chdir_verify_path(PATH_OBJDIR, newdir)) {
-			objdir = newdir;
-		} else {
-			snprintf(mdpath, MAXPATHLEN, "%s%s", PATH_OBJDIRPREFIX, curdir);
-			if (chdir_verify_path(mdpath, newdir)) {
-				objdir = newdir;
-			} else {
-				objdir = curdir;
-			}
-		}
-	}
-    }
 
 	Dir_InitDot();		/* Initialize the "." directory */
-	if (objdir != curdir)
+	if (strcmp(objdir, curdir) != 0)
 		Path_AddDir(&dirSearchPath, curdir);
-	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
-	Var_SetGlobal(".ST_EXPORTVAR", "YES");
+
 	Var_SetGlobal(".CURDIR", curdir);
 	Var_SetGlobal(".OBJDIR", objdir);
+
+	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
+	Var_SetGlobal(".ST_EXPORTVAR", "YES");
 
 	if (getenv("MAKE_JOBS_FIFO") != NULL)
 		forceJobs = TRUE;
@@ -946,7 +961,7 @@ main(int argc, char **argv)
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 		LST_FOREACH(ln, &sysMkPath) {
-			if (!ReadMakefile(Lst_Datum(ln)))
+			if (!ReadMakefile(Lst_Datum(ln), curdir, objdir))
 				break;
 		}
 		if (ln != NULL)
@@ -958,16 +973,16 @@ main(int argc, char **argv)
 		LstNode *ln;
 
 		LST_FOREACH(ln, &makefiles) {
-			if (!ReadMakefile(Lst_Datum(ln)))
+			if (!ReadMakefile(Lst_Datum(ln), curdir, objdir))
 				break;
 		}
 		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
-	} else if (!ReadMakefile("BSDmakefile"))
-	    if (!ReadMakefile("makefile"))
-		ReadMakefile("Makefile");
+	} else if (!ReadMakefile("BSDmakefile", curdir, objdir))
+	    if (!ReadMakefile("makefile", curdir, objdir))
+		ReadMakefile("Makefile", curdir, objdir);
 
-	ReadMakefile(".depend");
+	ReadMakefile(".depend", curdir, objdir);
 
 	/* Install all the flags into the MAKE envariable. */
 	{
