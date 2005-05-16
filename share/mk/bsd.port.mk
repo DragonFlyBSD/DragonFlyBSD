@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.34 2005/05/16 07:34:46 y0netan1 Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.35 2005/05/16 09:20:56 y0netan1 Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -77,7 +77,7 @@ SUB_FILES+=	${_DF_USE_RCORDER}
 
 .if defined(USE_GCC)
 _USE_GCC:=	${USE_GCC:S/+//}
-_OR_LATER:=
+_OR_LATER:=	999
 .  if ${_USE_GCC} != ${USE_GCC}
 _OR_LATER:= ${_USE_GCC}
 .  endif
