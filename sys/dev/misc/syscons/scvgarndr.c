@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.12 2005/04/26 21:23:50 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.13 2005/05/16 11:26:03 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -64,7 +64,6 @@ static vr_draw_mouse_t		vga_txtmouse;
 static vr_init_t		vga_rndrinit;
 static vr_draw_border_t		vga_pxlborder_direct;
 static vr_draw_border_t		vga_pxlborder_planar;
-static vr_draw_t		vga_egadraw;
 static vr_draw_t		vga_vgadraw_direct;
 static vr_draw_t		vga_vgadraw_planar;
 static vr_set_cursor_t		vga_pxlcursor_shape;
@@ -97,24 +96,9 @@ static sc_rndr_sw_t txtrndrsw = {
 	(vr_set_mouse_t *)vga_nop,
 	vga_txtmouse,
 };
-RENDERER(mda, 0, txtrndrsw, vga_set);
-RENDERER(cga, 0, txtrndrsw, vga_set);
-RENDERER(ega, 0, txtrndrsw, vga_set);
 RENDERER(vga, 0, txtrndrsw, vga_set);
 
 #ifdef SC_PIXEL_MODE
-static sc_rndr_sw_t egarndrsw = {
-	(vr_init_t *)vga_nop,
-	vga_pxlborder_planar,
-	vga_egadraw,
-	vga_pxlcursor_shape,
-	vga_pxlcursor_planar,
-	vga_pxlblink_planar,
-	(vr_set_mouse_t *)vga_nop,
-	vga_pxlmouse_planar,
-};
-RENDERER(ega, PIXEL_MODE, egarndrsw, vga_set);
-
 static sc_rndr_sw_t vgarndrsw = {
 	vga_rndrinit,
 	(vr_draw_border_t *)vga_nop,
@@ -139,8 +123,6 @@ static sc_rndr_sw_t grrndrsw = {
 	(vr_set_mouse_t *)vga_nop,
 	(vr_draw_mouse_t *)vga_nop,
 };
-RENDERER(cga, GRAPHICS_MODE, grrndrsw, vga_set);
-RENDERER(ega, GRAPHICS_MODE, grrndrsw, vga_set);
 RENDERER(vga, GRAPHICS_MODE, grrndrsw, vga_set);
 #endif /* SC_NO_MODE_CHANGE */
 
@@ -539,65 +521,6 @@ vga_pxlborder_planar(scr_stat *scp, int color)
 	}
 	outw(GDCIDX, 0x0000);		/* set/reset */
 	outw(GDCIDX, 0x0001);		/* set/reset enable */
-}
-
-static void 
-vga_egadraw(scr_stat *scp, int from, int count, int flip)
-{
-	vm_offset_t d;
-	vm_offset_t e;
-	u_char *f;
-	u_short bg;
-	u_short col1, col2;
-	int line_width;
-	int i, j;
-	int a;
-	u_char c;
-
-	line_width = scp->sc->adp->va_line_width;
-
-	d = VIDEO_MEMORY_POS(scp, from, 1);
-
-	outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
-	outw(GDCIDX, 0x0003);		/* data rotate/function select */
-	outw(GDCIDX, 0x0f01);		/* set/reset enable */
-	bg = -1;
-	if (from + count > scp->xsize*scp->ysize)
-		count = scp->xsize*scp->ysize - from;
-	for (i = from; count-- > 0; ++i) {
-		a = sc_vtb_geta(&scp->vtb, i);
-		if (flip) {
-			col1 = ((a & 0x7000) >> 4) | (a & 0x0800);
-			col2 = ((a & 0x8000) >> 4) | (a & 0x0700);
-		} else {
-			col1 = (a & 0x0f00);
-			col2 = (a & 0xf000) >> 4;
-		}
-		/* set background color in EGA/VGA latch */
-		if (bg != col2) {
-			bg = col2;
-			outw(GDCIDX, bg | 0x00);	/* set/reset */
-			outw(GDCIDX, 0xff08);		/* bit mask */
-			writeb(d, 0);
-			c = readb(d);	/* set bg color in the latch */
-		}
-		/* foreground color */
-		outw(GDCIDX, col1 | 0x00);		/* set/reset */
-		e = d;
-		f = &(scp->font[sc_vtb_getc(&scp->vtb, i)*scp->font_size]);
-		for (j = 0; j < scp->font_size; ++j, ++f) {
-			outw(GDCIDX, (*f << 8) | 0x08);	/* bit mask */
-	        	writeb(e, 0);
-			e += line_width;
-		}
-		++d;
-		if ((i % scp->xsize) == scp->xsize - 1)
-			d += scp->xoff*2 
-				 + (scp->font_size - 1)*line_width;
-	}
-	outw(GDCIDX, 0x0000);		/* set/reset */
-	outw(GDCIDX, 0x0001);		/* set/reset enable */
-	outw(GDCIDX, 0xff08);		/* bit mask */
 }
 
 static void
