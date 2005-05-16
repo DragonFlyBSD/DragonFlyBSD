@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.33 2005/05/03 14:16:04 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.34 2005/05/16 07:34:46 y0netan1 Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -76,7 +76,12 @@ SUB_FILES+=	${_DF_USE_RCORDER}
 .if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile)
 
 .if defined(USE_GCC)
-.  if ${USE_GCC} == 3.4
+_USE_GCC:=	${USE_GCC:S/+//}
+_OR_LATER:=
+.  if ${_USE_GCC} != ${USE_GCC}
+_OR_LATER:= ${_USE_GCC}
+.  endif
+.  if ${USE_GCC} == 3.4 || ${_OR_LATER} <= 3.4
 .undef USE_GCC
 CCVER=	gcc34
 .makeenv CCVER
