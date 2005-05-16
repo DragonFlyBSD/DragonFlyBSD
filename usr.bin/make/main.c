@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.94 2005/05/16 17:32:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.95 2005/05/16 17:35:39 okumoto Exp $
  */
 
 /*
@@ -595,8 +595,8 @@ Main_ParseArgLine(char *line, int mflags)
 /**
  * Try to change the current working directory into path.
  */
-static char *
-chdir_verify_path(const char path[], char newpath[])
+static int
+chdir_verify_path(const char path[], char newdir[])
 {
 	struct stat sb;
 
@@ -605,10 +605,10 @@ chdir_verify_path(const char path[], char newpath[])
 	 * an error.
 	 */
 	if (stat(path, &sb) < 0) {
-		return (NULL);	/* fail but no report */
+		return (0);	/* fail but no report */
 	}
 	if (S_ISDIR(sb.st_mode) == 0) {
-		return (NULL);
+		return (0);
 	}
 
 	/*
@@ -618,13 +618,13 @@ chdir_verify_path(const char path[], char newpath[])
 	 */
 	if (chdir(path) < 0) {
 		warn("warning: %s", path);
-		return (NULL);
+		return (0);
 	}
-	if (getcwd(newpath, MAXPATHLEN) == NULL) {
+	if (getcwd(newdir, MAXPATHLEN) == NULL) {
 		warn("warning: %s", path);
-		return (NULL);
+		return (0);
 	}
-	return (newpath);
+	return (1);
 }
 
 /**
@@ -680,10 +680,7 @@ main(int argc, char **argv)
 	const char *machine_arch;
 	const char *machine_cpu;
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	const char *pathp;
-	const char *path;
 	char mdpath[MAXPATHLEN];
-	char obpath[MAXPATHLEN];
 	char cdpath[MAXPATHLEN];
 	char *cp = NULL, *start;
 
@@ -806,18 +803,20 @@ main(int argc, char **argv)
 
 	MainParseArgs(argc, argv);
 
+    {
+	struct stat sa;
+	char newdir[MAXPATHLEN];
+	const char *env;
+
 	/*
-	 * Find where we are...
+	 * Find a path to where we are... [-C directory] might have changed
+	 * our current directory.
 	 */
 	if (getcwd(curdir, MAXPATHLEN) == NULL)
 		err(2, NULL);
 
-	{
-	struct stat sa;
-
 	if (stat(curdir, &sa) == -1)
-	    err(2, "%s", curdir);
-	}
+		err(2, "%s", curdir);
 
 	/*
 	 * The object directory location is determined using the
@@ -837,28 +836,36 @@ main(int argc, char **argv)
 	 * and modify the paths for the Makefiles apropriately.  The
 	 * current directory is also placed as a variable for make scripts.
 	 */
-	if (!(pathp = getenv("MAKEOBJDIRPREFIX"))) {
-		if (!(path = getenv("MAKEOBJDIR"))) {
-			path = PATH_OBJDIR;
-			pathp = PATH_OBJDIRPREFIX;
-			snprintf(mdpath, MAXPATHLEN, "%s.%s", path, machine);
-			if (!(objdir = chdir_verify_path(mdpath, obpath)))
-				if (!(objdir=chdir_verify_path(path, obpath))) {
-					snprintf(mdpath, MAXPATHLEN,
-							"%s%s", pathp, curdir);
-					if (!(objdir=chdir_verify_path(mdpath,
-								       obpath)))
-						objdir = curdir;
-				}
+	if ((env = getenv("MAKEOBJDIRPREFIX")) != NULL) {
+		snprintf(mdpath, MAXPATHLEN, "%s%s", env, curdir);
+		if (chdir_verify_path(mdpath, newdir)) {
+			objdir = newdir;
+		} else {
+			objdir = curdir;
 		}
-		else if (!(objdir = chdir_verify_path(path, obpath)))
+	} else if ((env = getenv("MAKEOBJDIR")) != NULL) {
+		if (chdir_verify_path(env, newdir)) {
+			objdir = newdir;
+		} else {
 			objdir = curdir;
+		}
+	} else {
+		snprintf(mdpath, MAXPATHLEN, "%s.%s", PATH_OBJDIR, machine);
+		if (chdir_verify_path(mdpath, newdir)) {
+			objdir = newdir;
+		} else if (chdir_verify_path(PATH_OBJDIR, newdir)) {
+			objdir = newdir;
+		} else {
+			snprintf(mdpath, MAXPATHLEN, "%s%s", PATH_OBJDIRPREFIX, curdir);
+			if (chdir_verify_path(mdpath, newdir)) {
+				objdir = newdir;
+			} else {
+				objdir = curdir;
+			}
+		}
 	}
-	else {
-		snprintf(mdpath, MAXPATHLEN, "%s%s", pathp, curdir);
-		if (!(objdir = chdir_verify_path(mdpath, obpath)))
-			objdir = curdir;
-	}
+    }
+
 	Dir_InitDot();		/* Initialize the "." directory */
 	if (objdir != curdir)
 		Path_AddDir(&dirSearchPath, curdir);
