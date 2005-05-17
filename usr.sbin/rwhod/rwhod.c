@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.14 2005/05/06 17:16:18 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.15 2005/05/17 18:09:44 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -156,8 +156,8 @@ void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 int	 verify(char *, int);
 static void usage(void);
 #ifdef DEBUG
-char	*interval(int, char *);
-void	 Sendto(int, const void *, size_t, int,
+char	*interval(int, const char *);
+ssize_t	Sendto(int, const void *, size_t, int,
 		     const struct sockaddr *, int);
 #define	 sendto Sendto
 #endif
@@ -694,16 +694,20 @@ configure(int c_sock)
 }
 
 #ifdef DEBUG
-void
-Sendto(int s, const void *buf, size_t cc, int flags,
+ssize_t
+Sendto(int s_debug, const void *buf, size_t cc, int flags,
        const struct sockaddr *to, int tolen)
 {
-	struct whod *w = (struct whod *)buf;
-	struct whoent *we;
-	struct sockaddr_in *sin = (struct sockaddr_in *)to;
+	const struct whod *w = (const struct whod *)buf;
+	const struct whoent *we;
+	const struct sockaddr_in *sock_in = (const struct sockaddr_in *)to;
+	ssize_t ret;
+	int idle_time;
 
-	printf("sendto %x.%d\n", ntohl(sin->sin_addr.s_addr),
-				 ntohs(sin->sin_port));
+	ret = sendto(s_debug, buf, cc, flags, to, tolen);
+
+	printf("sendto %x.%d\n", ntohl(sock_in->sin_addr.s_addr),
+				 ntohs(sock_in->sin_port));
 	printf("hostname %s %s\n", w->wd_hostname,
 	   interval(ntohl(w->wd_sendtime) - ntohl(w->wd_boottime), "  up"));
 	printf("load %4.2f, %4.2f, %4.2f\n",
@@ -712,35 +716,37 @@ Sendto(int s, const void *buf, size_t cc, int flags,
 	cc -= WHDRSIZE;
 	for (we = w->wd_we, cc /= sizeof(struct whoent); cc > 0; cc--, we++) {
 		time_t t = ntohl(we->we_utmp.out_time);
+		idle_time = we->we_idle;
 		printf("%-8.8s %s:%s %.12s",
 			we->we_utmp.out_name,
 			w->wd_hostname, we->we_utmp.out_line,
 			ctime(&t)+4);
-		we->we_idle = ntohl(we->we_idle) / 60;
-		if (we->we_idle) {
-			if (we->we_idle >= 100*60)
-				we->we_idle = 100*60 - 1;
-			if (we->we_idle >= 60)
-				printf(" %2d", we->we_idle / 60);
+		idle_time = ntohl(we->we_idle) / 60;
+		if (idle_time) {
+			if (idle_time >= 100*60)
+				idle_time = 100*60 - 1;
+			if (idle_time >= 60)
+				printf(" %2d", idle_time / 60);
 			else
 				printf("   ");
-			printf(":%02d", we->we_idle % 60);
+			printf(":%02d", idle_time % 60);
 		}
 		printf("\n");
 	}
+	return(ret);
 }
 
 char *
-interval(int time, char *updown)
+interval(int inter_time, const char *updown)
 {
 	static char resbuf[32];
 	int days, hours, minutes;
 
-	if (time < 0 || time > 3*30*24*60*60) {
+	if (inter_time < 0 || inter_time > 3*30*24*60*60) {
 		snprintf(resbuf, sizeof(resbuf), "   %s ??:??", updown);
 		return (resbuf);
 	}
-	minutes = (time + 59) / 60;		/* round to minutes */
+	minutes = (inter_time + 59) / 60;		/* round to minutes */
 	hours = minutes / 60; minutes %= 60;
 	days = hours / 24; hours %= 24;
 	if (days)
