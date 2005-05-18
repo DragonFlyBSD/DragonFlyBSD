@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.31 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.32 2005/05/18 21:35:17 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -51,7 +51,7 @@
 
 /**
  * Initialize the argument array object.  The array is initially
- * eight positions, and will be expaned as nessisary.  The first
+ * eight positions, and will be expaned as necessary.  The first
  * position is set to NULL since everything ignores it.  We allocate
  * (size + 1) since we need space for the terminating NULL.  The
  * buffer is set to NULL, since no common buffer is alloated yet.
