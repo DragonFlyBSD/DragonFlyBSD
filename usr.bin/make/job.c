@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.104 2005/05/19 17:04:45 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.105 2005/05/19 17:07:17 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -74,10 +74,6 @@
  *	Job_Full	Return TRUE if the job table is filled.
  *
  *	Job_Empty	Return TRUE if the job table is completely empty.
- *
- *	Job_ParseShell	Given the line following a .SHELL target, parse the
- *			line as a shell specification. Returns FAILURE if the
- *			spec was incorrect.
  *
  *	Job_Finish	Perform any final processing which needs doing. This
  *			includes the execution of any commands which have
@@ -137,6 +133,7 @@
 #include "make.h"
 #include "parse.h"
 #include "pathnames.h"
+#include "shell.h"
 #include "str.h"
 #include "suff.h"
 #include "targ.h"
@@ -269,56 +266,6 @@ typedef struct Job {
 TAILQ_HEAD(JobList, Job);
 
 /*
- * Shell Specifications:
- *
- * Some special stuff goes on if a shell doesn't have error control. In such
- * a case, errCheck becomes a printf template for echoing the command,
- * should echoing be on and ignErr becomes another printf template for
- * executing the command while ignoring the return status. If either of these
- * strings is empty when hasErrCtl is FALSE, the command will be executed
- * anyway as is and if it causes an error, so be it.
- */
-#define	DEF_SHELL_STRUCT(TAG, CONST)					\
-struct TAG {								\
-	/*								\
-	 * the name of the shell. For Bourne and C shells, this is used	\
-	 * only to find the shell description when used as the single	\
-	 * source of a .SHELL target. For user-defined shells, this is	\
-	 * the full path of the shell.					\
-	 */								\
-	CONST char	*name;						\
-									\
-	/* True if both echoOff and echoOn defined */			\
-	Boolean		hasEchoCtl;					\
-									\
-	CONST char	*echoOff;	/* command to turn off echo */	\
-	CONST char	*echoOn;	/* command to turn it back on */\
-									\
-	/*								\
-	 * What the shell prints, and its length, when given the	\
-	 * echo-off command. This line will not be printed when		\
-	 * received from the shell. This is usually the command which	\
-	 * was executed to turn off echoing				\
-	 */								\
-	CONST char	*noPrint;					\
-									\
-	/* set if can control error checking for individual commands */	\
-	Boolean		hasErrCtl;					\
-									\
-	/* string to turn error checking on */				\
-	CONST char	*errCheck;					\
-									\
-	/* string to turn off error checking */				\
-	CONST char	*ignErr;					\
-									\
-	CONST char	*echo;	/* command line flag: echo commands */	\
-	CONST char	*exit;	/* command line flag: exit on error */	\
-}
-
-DEF_SHELL_STRUCT(Shell,);
-DEF_SHELL_STRUCT(CShell, const);
-
-/*
  * error handling variables
  */
 static int	errors = 0;	/* number of errors reported */
@@ -355,59 +302,10 @@ static int	numCommands;
 #define	JOB_STOPPED	3	/* The job is stopped */
 
 /*
- * Descriptions for various shells.
- */
-static const struct CShell shells[] = {
-	/*
-	 * CSH description. The csh can do echo control by playing
-	 * with the setting of the 'echo' shell variable. Sadly,
-	 * however, it is unable to do error control nicely.
-	 */
-	{
-		"csh",
-		TRUE, "unset verbose", "set verbose", "unset verbose",
-		FALSE, "echo \"%s\"\n", "csh -c \"%s || exit 0\"",
-		"v", "e",
-	},
-	/*
-	 * SH description. Echo control is also possible and, under
-	 * sun UNIX anyway, one can even control error checking.
-	 */
-	{
-		"sh",
-		TRUE, "set -", "set -v", "set -",
-		TRUE, "set -e", "set +e",
-#ifdef OLDBOURNESHELL
-		FALSE, "echo \"%s\"\n", "sh -c '%s || exit 0'\n",
-#endif
-		"v", "e",
-	},
-	/*
-	 * KSH description. The Korn shell has a superset of
-	 * the Bourne shell's functionality.
-	 */
-	{
-		"ksh",
-		TRUE, "set -", "set -v", "set -",
-		TRUE, "set -e", "set +e",
-		"v", "e",
-	},
-};
-
-/*
- * This is the shell to which we pass all commands in the Makefile.
- * It is set by the Job_ParseShell function.
- */
-static struct Shell *commandShell = NULL;
-static char	*shellPath = NULL;	/* full pathname of executable image */
-static char	*shellName = NULL;	/* last component of shell */
-
-/*
  * The maximum number of jobs that may run. This is initialize from the
  * -j argument for the leading make and from the FIFO for sub-makes.
  */
 static int	maxJobs;
-
 static int	nJobs;		/* The number of children currently running */
 
 /* The structures that describe them */
@@ -502,7 +400,6 @@ typedef struct ProcStuff {
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
-static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static void ProcExec(const ProcStuff *) __dead2;
@@ -1688,7 +1585,7 @@ JobMakeArgv(Job *job, char **argv)
 	int		argc;
 	static char	args[10];	/* For merged arguments */
 
-	argv[0] = shellName;
+	argv[0] = commandShell->name;
 	argc = 1;
 
 	if ((commandShell->exit && *commandShell->exit != '-') ||
@@ -2549,103 +2446,6 @@ Job_Make(GNode *gn)
 }
 
 /**
- * JobCopyShell
- *	Make a new copy of the shell structure including a copy of the strings
- *	in it. This also defaults some fields in case they are NULL.
- *
- * Returns:
- *	The function returns a pointer to the new shell structure.
- */
-static struct Shell *
-JobCopyShell(const struct Shell *osh)
-{
-	struct Shell *nsh;
-
-	nsh = emalloc(sizeof(*nsh));
-	nsh->name = estrdup(osh->name);
-
-	if (osh->echoOff != NULL)
-		nsh->echoOff = estrdup(osh->echoOff);
-	else
-		nsh->echoOff = NULL;
-	if (osh->echoOn != NULL)
-		nsh->echoOn = estrdup(osh->echoOn);
-	else
-		nsh->echoOn = NULL;
-	nsh->hasEchoCtl = osh->hasEchoCtl;
-
-	if (osh->noPrint != NULL)
-		nsh->noPrint = estrdup(osh->noPrint);
-	else
-		nsh->noPrint = NULL;
-
-	nsh->hasErrCtl = osh->hasErrCtl;
-	if (osh->errCheck == NULL)
-		nsh->errCheck = estrdup("");
-	else
-		nsh->errCheck = estrdup(osh->errCheck);
-	if (osh->ignErr == NULL)
-		nsh->ignErr = estrdup("%s");
-	else
-		nsh->ignErr = estrdup(osh->ignErr);
-
-	if (osh->echo == NULL)
-		nsh->echo = estrdup("");
-	else
-		nsh->echo = estrdup(osh->echo);
-
-	if (osh->exit == NULL)
-		nsh->exit = estrdup("");
-	else
-		nsh->exit = estrdup(osh->exit);
-
-	return (nsh);
-}
-
-/**
- * JobFreeShell
- *	Free a shell structure and all associated strings.
- */
-static void
-JobFreeShell(struct Shell *sh)
-{
-
-	if (sh != NULL) {
-		free(sh->name);
-		free(sh->echoOff);
-		free(sh->echoOn);
-		free(sh->noPrint);
-		free(sh->errCheck);
-		free(sh->ignErr);
-		free(sh->echo);
-		free(sh->exit);
-		free(sh);
-	}
-}
-
-static void
-Shell_Init(void)
-{
-
-	if (commandShell == NULL)
-		commandShell = JobMatchShell(shells[DEFSHELL].name);
-
-	if (shellPath == NULL) {
-		/*
-		 * The user didn't specify a shell to use, so we are using the
-		 * default one... Both the absolute path and the last component
-		 * must be set. The last component is taken from the 'name'
-		 * field of the default shell description pointed-to by
-		 * commandShell. All default shells are located in
-		 * PATH_DEFSHELLDIR.
-		 */
-		shellName = commandShell->name;
-		shellPath = str_concat(PATH_DEFSHELLDIR, shellName,
-		    STR_ADDSLASH);
-	}
-}
-
-/**
  * Job_Init
  *	Initialize the process module, given a maximum number of jobs.
  *
@@ -2721,8 +2521,6 @@ Job_Init(int maxproc)
 	} else {
 		targFmt = TARG_FMT;
 	}
-
-	Shell_Init();
 
 	/*
 	 * Catch the four signals that POSIX specifies if they aren't ignored.
@@ -2840,230 +2638,6 @@ Job_Empty(void)
 	} else {
 		return (FALSE);
 	}
-}
-
-/**
- * JobMatchShell
- *	Find a matching shell in 'shells' given its final component.
- *
- * Results:
- *	A pointer to a freshly allocated Shell structure with a copy
- *	of the static structure or NULL if no shell with the given name
- *	is found.
- */
-static struct Shell *
-JobMatchShell(const char *name)
-{
-	const struct CShell	*sh;	      /* Pointer into shells table */
-	struct Shell		*nsh;
-
-	for (sh = shells; sh < shells + __arysize(shells); sh++)
-		if (strcmp(sh->name, name) == 0)
-			break;
-
-	if (sh == shells + __arysize(shells))
-		return (NULL);
-
-	/* make a copy */
-	nsh = emalloc(sizeof(*nsh));
-
-	nsh->name = estrdup(sh->name);
-	nsh->echoOff = estrdup(sh->echoOff);
-	nsh->echoOn = estrdup(sh->echoOn);
-	nsh->hasEchoCtl = sh->hasEchoCtl;
-	nsh->noPrint = estrdup(sh->noPrint);
-	nsh->hasErrCtl = sh->hasErrCtl;
-	nsh->errCheck = estrdup(sh->errCheck);
-	nsh->ignErr = estrdup(sh->ignErr);
-	nsh->echo = estrdup(sh->echo);
-	nsh->exit = estrdup(sh->exit);
-
-	return (nsh);
-}
-
-/**
- * Job_ParseShell
- *	Parse a shell specification and set up commandShell, shellPath
- *	and shellName appropriately.
- *
- * Results:
- *	FAILURE if the specification was incorrect.
- *
- * Side Effects:
- *	commandShell points to a Shell structure (either predefined or
- *	created from the shell spec), shellPath is the full path of the
- *	shell described by commandShell, while shellName is just the
- *	final component of shellPath.
- *
- * Notes:
- *	A shell specification consists of a .SHELL target, with dependency
- *	operator, followed by a series of blank-separated words. Double
- *	quotes can be used to use blanks in words. A backslash escapes
- *	anything (most notably a double-quote and a space) and
- *	provides the functionality it does in C. Each word consists of
- *	keyword and value separated by an equal sign. There should be no
- *	unnecessary spaces in the word. The keywords are as follows:
- *	    name	    Name of shell.
- *	    path	    Location of shell. Overrides "name" if given
- *	    quiet	    Command to turn off echoing.
- *	    echo	    Command to turn echoing on
- *	    filter	    Result of turning off echoing that shouldn't be
- *			    printed.
- *	    echoFlag	    Flag to turn echoing on at the start
- *	    errFlag	    Flag to turn error checking on at the start
- *	    hasErrCtl	    True if shell has error checking control
- *	    check	    Command to turn on error checking if hasErrCtl
- *			    is TRUE or template of command to echo a command
- *			    for which error checking is off if hasErrCtl is
- *			    FALSE.
- *	    ignore	    Command to turn off error checking if hasErrCtl
- *			    is TRUE or template of command to execute a
- *			    command so as to ignore any errors it returns if
- *			    hasErrCtl is FALSE.
- */
-ReturnStatus
-Job_ParseShell(const char line[])
-{
-	ArgArray	aa;
-	char		**argv;
-	int		argc;
-	char		*path;
-	char		*eq;
-	Boolean		fullSpec = FALSE;
-	struct Shell	newShell;
-	struct Shell	*sh;
-
-	memset(&newShell, 0, sizeof(newShell));
-	path = NULL;
-
-	/*
-	 * Parse the specification by keyword but skip the first word
-	 */
-	brk_string(&aa, line, TRUE);
-
-	for (argc = aa.argc - 1, argv = aa.argv + 1; argc != 0; argc--, argv++)
-	{
-		/*
-		 * Split keyword and value
-		 */
-		if ((eq = strchr(*argv, '=')) == NULL) {
-			Parse_Error(PARSE_FATAL, "missing '=' in shell "
-			    "specification keyword '%s'", *argv);
-			ArgArray_Done(&aa);
-			return (FAILURE);
-		}
-		*eq++ = '\0';
-
-		if (strcmp(*argv, "path") == 0) {
-			path = eq;
-		} else if (strcmp(*argv, "name") == 0) {
-			newShell.name = eq;
-		} else if (strcmp(*argv, "quiet") == 0) {
-			newShell.echoOff = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "echo") == 0) {
-			newShell.echoOn = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "filter") == 0) {
-			newShell.noPrint = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "echoFlag") == 0) {
-			newShell.echo = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "errFlag") == 0) {
-			newShell.exit = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "hasErrCtl") == 0) {
-			newShell.hasErrCtl = (*eq == 'Y' || *eq == 'y' ||
-			    *eq == 'T' || *eq == 't');
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "check") == 0) {
-			newShell.errCheck = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "ignore") == 0) {
-			newShell.ignErr = eq;
-			fullSpec = TRUE;
-		} else {
-			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
-			    "specification '%s'", *argv);
-			ArgArray_Done(&aa);
-			return (FAILURE);
-		}
-	}
-
-	/*
-	 * Some checks (could be more)
-	 */
-	if (fullSpec) {
-		if ((newShell.echoOn != NULL) ^ (newShell.echoOff != NULL))
-			Parse_Error(PARSE_FATAL, "Shell must have either both "
-			    "echoOff and echoOn or none of them");
-
-		if (newShell.echoOn != NULL && newShell.echoOff)
-			newShell.hasEchoCtl = TRUE;
-	}
-
-	if (path == NULL) {
-		/*
-		 * If no path was given, the user wants one of the pre-defined
-		 * shells, yes? So we find the one s/he wants with the help of
-		 * JobMatchShell and set things up the right way. shellPath
-		 * will be set up by Job_Init.
-		 */
-		if (newShell.name == NULL) {
-			Parse_Error(PARSE_FATAL,
-			    "Neither path nor name specified");
-			ArgArray_Done(&aa);
-			return (FAILURE);
-		}
-		if ((sh = JobMatchShell(newShell.name)) == NULL) {
-			Parse_Error(PARSE_FATAL, "%s: no matching shell",
-			    newShell.name);
-			ArgArray_Done(&aa);
-			return (FAILURE);
-		}
-
-	} else {
-		/*
-		 * The user provided a path. If s/he gave nothing else
-		 * (fullSpec is FALSE), try and find a matching shell in the
-		 * ones we know of. Else we just take the specification at its
-		 * word and copy it to a new location. In either case, we need
-		 * to record the path the user gave for the shell.
-		 */
-		path = estrdup(path);
-		if (newShell.name == NULL) {
-			/* get the base name as the name */
-			if ((newShell.name = strrchr(path, '/')) == NULL) {
-				newShell.name = path;
-			} else {
-				newShell.name += 1;
-			}
-		}
-
-		if (!fullSpec) {
-			if ((sh = JobMatchShell(newShell.name)) == NULL) {
-				Parse_Error(PARSE_FATAL,
-				    "%s: no matching shell", newShell.name);
-				free(path);
-				ArgArray_Done(&aa);
-				return (FAILURE);
-			}
-		} else {
-			sh = JobCopyShell(&newShell);
-		}
-		free(shellPath);
-		shellPath = path;
-	}
-
-	/* set the new shell */
-	JobFreeShell(commandShell);
-	commandShell = sh;
-
-	shellName = commandShell->name;
-
-	ArgArray_Done(&aa);
-	return (SUCCESS);
 }
 
 /**
@@ -3254,8 +2828,6 @@ Cmd_Exec(const char *cmd, const char **error)
 	*error = NULL;
 	buf = Buf_Init(0);
 
-	if (shellPath == NULL)
-		Shell_Init();
 	/*
 	 * Open a pipe for fetching its output
 	 */
@@ -3277,7 +2849,7 @@ Cmd_Exec(const char *cmd, const char **error)
 
 	/* Set up arguments for shell */
 	ps.argv = emalloc(4 * sizeof(char *));
-	ps.argv[0] = strdup(shellName);
+	ps.argv[0] = strdup(commandShell->name);
 	ps.argv[1] = strdup("-c");
 	ps.argv[2] = strdup(cmd);
 	ps.argv[3] = NULL;
@@ -3878,8 +3450,6 @@ Compat_Run(Lst *targs)
 	GNode	*gn = NULL;	/* Current root target */
 	int	error_cnt;		/* Number of targets not remade due to errors */
 	LstNode	*ln;
-
-	Shell_Init();		/* Set up shell. */
 
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
 		signal(SIGINT, CompatCatchSig);
