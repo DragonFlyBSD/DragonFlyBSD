@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.102 2005/05/19 16:51:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.103 2005/05/19 16:51:45 okumoto Exp $
  */
 
 /*
@@ -85,10 +85,6 @@
 #include "var.h"
 
 extern char **environ;	/* XXX what header declares this variable? */
-
-#define WANT_ENV_MKLVL	1
-#define	MKLVL_MAXVAL	500
-#define	MKLVL_ENVVAR	"__MKLVL__"
 
 /*
  * DEFMAXJOBS
@@ -745,35 +741,6 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
 }
 
 /**
- * In lieu of a good way to prevent every possible looping in make(1), stop
- * there from being more than MKLVL_MAXVAL processes forked by make(1), to
- * prevent a forkbomb from happening, in a dumb and mechanical way.
- *
- * Side Effects:
- *	Creates or modifies enviornment variable MKLVL_ENVVAR via setenv().
- */
-static void
-check_make_level(void)
-{
-#ifdef WANT_ENV_MKLVL
-	char	*value = getenv(MKLVL_ENVVAR);
-	int	level = (value == NULL) ? 0 : atoi(value);
-
-	if (level < 0) {
-		errc(2, EAGAIN, "Invalid value for recursion level (%d).",
-		    level);
-	} else if (level > MKLVL_MAXVAL) {
-		errc(2, EAGAIN, "Max recursion level (%d) exceeded.",
-		    MKLVL_MAXVAL);
-	} else {
-		char new_value[32];
-		sprintf(new_value, "%d", level + 1);
-		setenv(MKLVL_ENVVAR, new_value, 1);
-	}
-#endif /* WANT_ENV_MKLVL */
-}
-
-/**
  * Initialize various make variables.
  *	MAKE also gets this name, for compatibility
  *	.MAKEFLAGS gets set to the empty string just in case.
@@ -930,23 +897,6 @@ main(int argc, char **argv)
 	else
 		mf.forceJobs = TRUE;
 
-	check_make_level();
-
-#ifdef RLIMIT_NOFILE
-	/*
-	 * get rid of resource limit on file descriptors
-	 */
-	{
-		struct rlimit rl;
-		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
-			err(2, "getrlimit");
-		}
-		rl.rlim_cur = rl.rlim_max;
-		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
-			err(2, "setrlimit");
-		}
-	}
-#endif
 	/*
 	 * Initialize the parsing, directory and variable modules to prepare
 	 * for the reading of inclusion paths and variable settings on the

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.101 2005/05/16 17:30:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.102 2005/05/19 16:51:45 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -144,6 +144,8 @@
 #include "var.h"
 
 #define	TMPPAT	"/tmp/makeXXXXXXXXXX"
+#define	MKLVL_MAXVAL	500
+#define	MKLVL_ENVVAR	"__MKLVL__"
 
 #ifndef USE_KQUEUE
 /*
@@ -603,6 +605,33 @@ catch_child(int sig __unused)
 }
 
 /**
+ * In lieu of a good way to prevent every possible looping in make(1), stop
+ * there from being more than MKLVL_MAXVAL processes forked by make(1), to
+ * prevent a forkbomb from happening, in a dumb and mechanical way.
+ *
+ * Side Effects:
+ *	Creates or modifies enviornment variable MKLVL_ENVVAR via setenv().
+ */
+static void
+check_make_level(void)
+{
+	char	*value = getenv(MKLVL_ENVVAR);
+	int	level = (value == NULL) ? 0 : atoi(value);
+
+	if (level < 0) {
+		errc(2, EAGAIN, "Invalid value for recursion level (%d).",
+		    level);
+	} else if (level > MKLVL_MAXVAL) {
+		errc(2, EAGAIN, "Max recursion level (%d) exceeded.",
+		    MKLVL_MAXVAL);
+	} else {
+		char new_value[32];
+		sprintf(new_value, "%d", level + 1);
+		setenv(MKLVL_ENVVAR, new_value, 1);
+	}
+}
+
+/**
  */
 void
 Proc_Init()
@@ -620,6 +649,24 @@ Proc_Init()
 	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
 	sa.sa_handler = catch_child;
 	sigaction(SIGCHLD, &sa, NULL);
+
+	check_make_level();
+
+#ifdef RLIMIT_NOFILE
+	/*
+	 * get rid of resource limit on file descriptors
+	 */
+	{
+		struct rlimit rl;
+		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "getrlimit");
+		}
+		rl.rlim_cur = rl.rlim_max;
+		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "setrlimit");
+		}
+	}
+#endif
 
 #if DEFSHELL == 2
 	/*
