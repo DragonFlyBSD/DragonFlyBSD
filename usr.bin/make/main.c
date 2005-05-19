@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.101 2005/05/19 16:51:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.102 2005/05/19 16:51:19 okumoto Exp $
  */
 
 /*
@@ -261,14 +261,14 @@ ReadMakefile(MakeFlags *mf, const char file[], const char curdir[], const char o
 	return (FALSE);	/* no makefile found */
 }
 
+/**
+ * Read in the built-in rules first, followed by the specified
+ * makefiles or the one of the default makefiles.  Finally .depend
+ * makefile.
+ */
 static void
 ReadInputFiles(MakeFlags *mf, const char curdir[], const char objdir[])
 {
-	/*
-	 * Read in the built-in rules first, followed by the specified
-	 * makefile, if it was (makefile != (char *) NULL), or the default
-	 * Makefile and makefile, in that order, if it wasn't.
-	 */
 	if (!mf->noBuiltins) {
 		/* Path of sys.mk */
 		Lst	sysMkPath = Lst_Initializer(sysMkPath);
@@ -895,7 +895,6 @@ main(int argc, char **argv)
 {
 	MakeFlags	mf;
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	char *start;
 
 	char	curdir[MAXPATHLEN];	/* startup directory */
 	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
@@ -994,6 +993,7 @@ main(int argc, char **argv)
 	if (TAILQ_EMPTY(&sysIncPath)) {
 		char syspath[] = PATH_DEFSYSPATH;
 		char *cp = NULL;
+		char *start;
 
 		for (start = syspath; *start != '\0'; start = cp) {
 			for (cp = start; *cp != '\0' && *cp != ':'; cp++)
@@ -1025,21 +1025,14 @@ main(int argc, char **argv)
 	 * <directory>:<directory>:<directory>...
 	 */
 	if (Var_Exists("VPATH", VAR_CMD)) {
-		/*
-		 * GCC stores string constants in read-only memory, but
-		 * Var_Subst will want to write this thing, so store it
-		 * in an array
-		 */
-		static char VPATH[] = "${VPATH}";
 		Buffer	*buf;
 		char	*vpath;
-		char	*ptr;
 		char	savec;
 
-		buf = Var_Subst(VPATH, VAR_CMD, FALSE);
-
+		buf = Var_Subst("${VPATH}", VAR_CMD, FALSE);
 		vpath = Buf_Data(buf);
 		do {
+			char	*ptr;
 			/* skip to end of directory */
 			for (ptr = vpath; *ptr != ':' && *ptr != '\0'; ptr++)
 				;
