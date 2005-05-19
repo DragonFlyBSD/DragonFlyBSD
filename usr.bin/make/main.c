@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.96 2005/05/16 17:36:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.97 2005/05/19 16:47:57 okumoto Exp $
  */
 
 /*
@@ -978,9 +978,15 @@ main(int argc, char **argv)
 		}
 		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
-	} else if (!ReadMakefile("BSDmakefile", curdir, objdir))
-	    if (!ReadMakefile("makefile", curdir, objdir))
-		ReadMakefile("Makefile", curdir, objdir);
+	} else if (ReadMakefile("BSDmakefile", curdir, objdir)) {
+		/* read BSDmakefile */
+	} else if (ReadMakefile("makefile", curdir, objdir)) {
+		/* read makefile */
+	} else if (ReadMakefile("Makefile", curdir, objdir)) {
+		/* read Makefile */
+	} else {
+		/* No Makefile found */
+	}
 
 	ReadMakefile(".depend", curdir, objdir);
 
