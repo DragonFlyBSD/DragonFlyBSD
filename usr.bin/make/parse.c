@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.81 2005/05/14 22:52:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.82 2005/05/19 16:49:32 okumoto Exp $
  */
 
 /*-
@@ -692,7 +692,7 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoDependency(char *line)
+ParseDoDependency(struct MakeFlags *mf, char line[])
 {
 	char	*cp;	/* our current position */
 	GNode	*gn;	/* a general purpose temporary node */
@@ -1081,7 +1081,7 @@ ParseDoDependency(char *line)
 		 * set the initial character to a null-character so the loop to
 		 * get sources won't get anything
 		 */
-		Main_ParseArgLine(line, 0);
+		Main_ParseArgLine(mf, line, 0);
 		*line = '\0';
 
 	} else if (specType == Warn) {
@@ -2377,7 +2377,7 @@ parse_directive(char *line)
  *---------------------------------------------------------------------
  */
 void
-Parse_File(const char *name, FILE *stream)
+Parse_File(struct MakeFlags *mf, const char name[], FILE *stream)
 {
 	char	*cp;	/* pointer into the line */
 	char	*line;	/* the line we're working on */
@@ -2491,7 +2491,7 @@ Parse_File(const char *name, FILE *stream)
 			Lst_Destroy(&targets, NOFREE);
 			inLine = TRUE;
 
-			ParseDoDependency(line);
+			ParseDoDependency(mf, line);
 		}
 
   nextLine:

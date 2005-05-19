@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.9 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.10 2005/05/19 16:49:32 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -47,6 +47,7 @@
 
 struct GNode;
 struct Lst;
+struct MakeFlags;
 
 /*
  * Error levels for parsing. PARSE_FATAL means the process cannot continue
@@ -79,7 +80,7 @@ Boolean Parse_AnyExport(void);
 Boolean Parse_IsVar(char *);
 void Parse_DoVar(char *, struct GNode *);
 void Parse_AddIncludeDir(char *);
-void Parse_File(const char *, FILE *);
+void Parse_File(struct MakeFlags *, const char [], FILE *);
 void Parse_FromString(char *, int);
 void Parse_MainName(struct Lst *);
 

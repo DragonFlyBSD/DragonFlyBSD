@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.97 2005/05/19 16:47:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.98 2005/05/19 16:49:32 okumoto Exp $
  */
 
 /*
@@ -97,15 +97,17 @@ extern char **environ;	/* XXX what header declares this variable? */
  */
 #define	DEFMAXJOBS	1
 
-/* ordered list of makefiles to read */
-static Lst makefiles = Lst_Initializer(makefiles);
+typedef struct MakeFlags {
+	/* ordered list of makefiles to read */
+	Lst makefiles;
 
-/* list of variables to print */
-static Lst variables = Lst_Initializer(variables);
+	/* list of variables to print */
+	Lst variables;
 
-static Boolean	expandVars;	/* fully expand printed variables */
-static Boolean	noBuiltins;	/* -r flag */
-static Boolean	forceJobs;      /* -j argument given */
+	Boolean	expandVars;	/* fully expand printed variables */
+	Boolean	noBuiltins;	/* -r flag */
+	Boolean	forceJobs;      /* -j argument given */
+} MakeFlags;
 
 /* (-E) vars to override from env */
 Lst envFirstVars = Lst_Initializer(envFirstVars);
@@ -178,7 +180,7 @@ MFLAGS_append(const char *flag, char *arg)
  *	TRUE if ok. FALSE if couldn't open file.
  */
 static Boolean
-ReadMakefile(const char file[], const char curdir[], const char objdir[])
+ReadMakefile(MakeFlags *mf, const char file[], const char curdir[], const char objdir[])
 {
 	char	path[MAXPATHLEN];
 	FILE	*stream;
@@ -186,7 +188,7 @@ ReadMakefile(const char file[], const char curdir[], const char objdir[])
 	char	*name;
 
 	if (!strcmp(file, "-")) {
-		Parse_File("(stdin)", stdin);
+		Parse_File(mf, "(stdin)", stdin);
 		Var_SetGlobal("MAKEFILE", "");
 		return (TRUE);
 	}
@@ -226,7 +228,7 @@ ReadMakefile(const char file[], const char curdir[], const char objdir[])
 	if (stream != NULL) {
 		if (strcmp(file, ".depend") != 0)
 			Var_SetGlobal("MAKEFILE", file);
-		Parse_File(path, stream);
+		Parse_File(mf, path, stream);
 		fclose(stream);
 		return (TRUE);
 	}
@@ -250,7 +252,7 @@ ReadMakefile(const char file[], const char curdir[], const char objdir[])
 			 */
 			if (strcmp(file, ".depend") != 0)
 				Var_SetGlobal("MAKEFILE", name);
-			Parse_File(name, stream);
+			Parse_File(mf, name, stream);
 			fclose(stream);
 			return (TRUE);
 		}
@@ -323,7 +325,7 @@ Main_ParseWarn(const char *arg, int iscmd)
  *	given
  */
 static void
-MainParseArgs(int argc, char **argv)
+MainParseArgs(MakeFlags *mf, int argc, char **argv)
 {
 	int c;
 	Boolean	found_dd = FALSE;
@@ -358,11 +360,11 @@ rearg:
 			MFLAGS_append("-I", optarg);
 			break;
 		case 'V':
-			Lst_AtEnd(&variables, estrdup(optarg));
+			Lst_AtEnd(&mf->variables, estrdup(optarg));
 			MFLAGS_append("-V", optarg);
 			break;
 		case 'X':
-			expandVars = FALSE;
+			mf->expandVars = FALSE;
 			break;
 		case 'B':
 			compatMake = TRUE;
@@ -442,7 +444,7 @@ rearg:
 			MFLAGS_append("-e", NULL);
 			break;
 		case 'f':
-			Lst_AtEnd(&makefiles, estrdup(optarg));
+			Lst_AtEnd(&mf->makefiles, estrdup(optarg));
 			break;
 		case 'i':
 			ignoreErrors = TRUE;
@@ -451,7 +453,7 @@ rearg:
 		case 'j': {
 			char *endptr;
 
-			forceJobs = TRUE;
+			mf->forceJobs = TRUE;
 			jobLimit = strtol(optarg, &endptr, 10);
 			if (jobLimit <= 0 || *endptr != '\0') {
 				warnx("illegal number, -j argument -- %s",
@@ -479,7 +481,7 @@ rearg:
 			MFLAGS_append("-q", NULL);
 			break;
 		case 'r':
-			noBuiltins = TRUE;
+			mf->noBuiltins = TRUE;
 			MFLAGS_append("-r", NULL);
 			break;
 		case 's':
@@ -570,7 +572,7 @@ rearg:
  *	Only those that come from the various arguments.
  */
 void
-Main_ParseArgLine(char *line, int mflags)
+Main_ParseArgLine(MakeFlags *mf, char line[], int mflags)
 {
 	ArgArray	aa;
 
@@ -586,7 +588,7 @@ Main_ParseArgLine(char *line, int mflags)
 	} else {
 		brk_string(&aa, line, TRUE);
 	}
-	MainParseArgs(aa.argc, aa.argv);
+	MainParseArgs(mf, aa.argc, aa.argv);
 	ArgArray_Done(&aa);
 }
 
@@ -744,11 +746,12 @@ check_make_level(void)
 int
 main(int argc, char **argv)
 {
+	MakeFlags	mf;
     	const char *machine;
 	const char *machine_arch;
 	const char *machine_cpu;
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	char *cp = NULL, *start;
+	char *start;
 
 	char	curdir[MAXPATHLEN];	/* startup directory */
 	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
@@ -756,9 +759,12 @@ main(int argc, char **argv)
 	/*
 	 * Initialize file global variables.
 	 */
-	expandVars = TRUE;
-	noBuiltins = FALSE;		/* Read the built-in rules */
-	forceJobs = FALSE;              /* No -j flag */
+	Lst_Init(&mf.makefiles);
+	Lst_Init(&mf.variables);
+
+	mf.expandVars = TRUE;
+	mf.noBuiltins = FALSE;		/* Read the built-in rules */
+	mf.forceJobs = FALSE;              /* No -j flag */
 
 	/*
 	 * Initialize program global variables.
@@ -867,9 +873,9 @@ main(int argc, char **argv)
 	 * First snag things out of the MAKEFLAGS environment
 	 * variable.  Then parse the command line arguments.
 	 */
-	Main_ParseArgLine(getenv("MAKEFLAGS"), 1);
+	Main_ParseArgLine(&mf, getenv("MAKEFLAGS"), 1);
 
-	MainParseArgs(argc, argv);
+	MainParseArgs(&mf, argc, argv);
 
 	determine_objdir(machine, curdir, objdir);
 
@@ -890,12 +896,12 @@ main(int argc, char **argv)
 	Var_SetGlobal(".ST_EXPORTVAR", "YES");
 
 	if (getenv("MAKE_JOBS_FIFO") != NULL)
-		forceJobs = TRUE;
+		mf.forceJobs = TRUE;
 	/*
 	 * Be compatible if user did not specify -j and did not explicitly
 	 * turned compatibility on
 	 */
-	if (!compatMake && !forceJobs)
+	if (!compatMake && !mf.forceJobs)
 		compatMake = TRUE;
 
 	/*
@@ -933,6 +939,7 @@ main(int argc, char **argv)
 	 */
 	if (TAILQ_EMPTY(&sysIncPath)) {
 		char syspath[] = PATH_DEFSYSPATH;
+		char *cp = NULL;
 
 		for (start = syspath; *start != '\0'; start = cp) {
 			for (cp = start; *cp != '\0' && *cp != ':'; cp++)
@@ -951,7 +958,7 @@ main(int argc, char **argv)
 	 * makefile, if it was (makefile != (char *) NULL), or the default
 	 * Makefile and makefile, in that order, if it wasn't.
 	 */
-	if (!noBuiltins) {
+	if (!mf.noBuiltins) {
 		/* Path of sys.mk */
 		Lst sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode *ln;
@@ -961,7 +968,7 @@ main(int argc, char **argv)
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 		LST_FOREACH(ln, &sysMkPath) {
-			if (!ReadMakefile(Lst_Datum(ln), curdir, objdir))
+			if (!ReadMakefile(&mf, Lst_Datum(ln), curdir, objdir))
 				break;
 		}
 		if (ln != NULL)
@@ -969,26 +976,26 @@ main(int argc, char **argv)
 		Lst_Destroy(&sysMkPath, free);
 	}
 
-	if (!Lst_IsEmpty(&makefiles)) {
+	if (!Lst_IsEmpty(&mf.makefiles)) {
 		LstNode *ln;
 
-		LST_FOREACH(ln, &makefiles) {
-			if (!ReadMakefile(Lst_Datum(ln), curdir, objdir))
+		LST_FOREACH(ln, &mf.makefiles) {
+			if (!ReadMakefile(&mf, Lst_Datum(ln), curdir, objdir))
 				break;
 		}
 		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
-	} else if (ReadMakefile("BSDmakefile", curdir, objdir)) {
+	} else if (ReadMakefile(&mf, "BSDmakefile", curdir, objdir)) {
 		/* read BSDmakefile */
-	} else if (ReadMakefile("makefile", curdir, objdir)) {
+	} else if (ReadMakefile(&mf, "makefile", curdir, objdir)) {
 		/* read makefile */
-	} else if (ReadMakefile("Makefile", curdir, objdir)) {
+	} else if (ReadMakefile(&mf, "Makefile", curdir, objdir)) {
 		/* read Makefile */
 	} else {
 		/* No Makefile found */
 	}
 
-	ReadMakefile(".depend", curdir, objdir);
+	ReadMakefile(&mf, ".depend", curdir, objdir);
 
 	/* Install all the flags into the MAKE envariable. */
 	{
@@ -1048,7 +1055,7 @@ main(int argc, char **argv)
 		Targ_PrintGraph(1);
 
 	/* print the values of any variables requested by the user */
-	if (Lst_IsEmpty(&variables)) {
+	if (Lst_IsEmpty(&mf.variables)) {
 		/*
 		 * Since the user has not requested that any variables
 		 * be printed, we can build targets.
@@ -1092,11 +1099,11 @@ main(int argc, char **argv)
 		Lst_Destroy(&targs, NOFREE);
 
 	} else {
-		Var_Print(&variables, expandVars);
+		Var_Print(&mf.variables, mf.expandVars);
 	}
 
-	Lst_Destroy(&variables, free);
-	Lst_Destroy(&makefiles, free);
+	Lst_Destroy(&mf.variables, free);
+	Lst_Destroy(&mf.makefiles, free);
 	Lst_Destroy(&create, free);
 
 	/* print the graph now it's been processed if the user requested it */
