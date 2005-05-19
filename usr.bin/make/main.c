@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.98 2005/05/19 16:49:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.99 2005/05/19 16:49:56 okumoto Exp $
  */
 
 /*
@@ -259,6 +259,54 @@ ReadMakefile(MakeFlags *mf, const char file[], const char curdir[], const char o
 	}
 
 	return (FALSE);	/* no makefile found */
+}
+
+static void
+ReadInputFiles(MakeFlags *mf, const char curdir[], const char objdir[])
+{
+	/*
+	 * Read in the built-in rules first, followed by the specified
+	 * makefile, if it was (makefile != (char *) NULL), or the default
+	 * Makefile and makefile, in that order, if it wasn't.
+	 */
+	if (!mf->noBuiltins) {
+		/* Path of sys.mk */
+		Lst	sysMkPath = Lst_Initializer(sysMkPath);
+		LstNode	*ln;
+		char	defsysmk[] = PATH_DEFSYSMK;
+
+		Path_Expand(defsysmk, &sysIncPath, &sysMkPath);
+		if (Lst_IsEmpty(&sysMkPath))
+			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
+		LST_FOREACH(ln, &sysMkPath) {
+			if (!ReadMakefile(mf, Lst_Datum(ln), curdir, objdir))
+				break;
+		}
+		if (ln != NULL)
+			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
+		Lst_Destroy(&sysMkPath, free);
+	}
+
+	if (!Lst_IsEmpty(&mf->makefiles)) {
+		LstNode *ln;
+
+		LST_FOREACH(ln, &mf->makefiles) {
+			if (!ReadMakefile(mf, Lst_Datum(ln), curdir, objdir))
+				break;
+		}
+		if (ln != NULL)
+			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
+	} else if (ReadMakefile(mf, "BSDmakefile", curdir, objdir)) {
+		/* read BSDmakefile */
+	} else if (ReadMakefile(mf, "makefile", curdir, objdir)) {
+		/* read makefile */
+	} else if (ReadMakefile(mf, "Makefile", curdir, objdir)) {
+		/* read Makefile */
+	} else {
+		/* No Makefile found */
+	}
+
+	ReadMakefile(mf, ".depend", curdir, objdir);
 }
 
 /**
@@ -953,49 +1001,8 @@ main(int argc, char **argv)
 		}
 	}
 
-	/*
-	 * Read in the built-in rules first, followed by the specified
-	 * makefile, if it was (makefile != (char *) NULL), or the default
-	 * Makefile and makefile, in that order, if it wasn't.
-	 */
-	if (!mf.noBuiltins) {
-		/* Path of sys.mk */
-		Lst sysMkPath = Lst_Initializer(sysMkPath);
-		LstNode *ln;
-		char	defsysmk[] = PATH_DEFSYSMK;
 
-		Path_Expand(defsysmk, &sysIncPath, &sysMkPath);
-		if (Lst_IsEmpty(&sysMkPath))
-			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
-		LST_FOREACH(ln, &sysMkPath) {
-			if (!ReadMakefile(&mf, Lst_Datum(ln), curdir, objdir))
-				break;
-		}
-		if (ln != NULL)
-			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
-		Lst_Destroy(&sysMkPath, free);
-	}
-
-	if (!Lst_IsEmpty(&mf.makefiles)) {
-		LstNode *ln;
-
-		LST_FOREACH(ln, &mf.makefiles) {
-			if (!ReadMakefile(&mf, Lst_Datum(ln), curdir, objdir))
-				break;
-		}
-		if (ln != NULL)
-			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
-	} else if (ReadMakefile(&mf, "BSDmakefile", curdir, objdir)) {
-		/* read BSDmakefile */
-	} else if (ReadMakefile(&mf, "makefile", curdir, objdir)) {
-		/* read makefile */
-	} else if (ReadMakefile(&mf, "Makefile", curdir, objdir)) {
-		/* read Makefile */
-	} else {
-		/* No Makefile found */
-	}
-
-	ReadMakefile(&mf, ".depend", curdir, objdir);
+	ReadInputFiles(&mf, curdir, objdir);
 
 	/* Install all the flags into the MAKE envariable. */
 	{
