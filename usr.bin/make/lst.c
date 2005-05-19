@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/lst.c,v 1.5 2005/04/07 00:44:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.c,v 1.6 2005/05/19 17:10:37 okumoto Exp $
  */
 
 /*-
@@ -91,9 +91,6 @@ Lst_Append(Lst *list, LstNode *ln, void *d)
  *	elements, if specified, but the elements themselves are not copied.
  *	If the elements should be duplicated to avoid confusion with another
  *	list, the Lst_Duplicate function should be called first.
- *
- * Results:
- *	SUCCESS if all went well. FAILURE otherwise.
  *
  * Arguments:
  *	list1	The list to which list2 is to be appended
@@ -314,9 +311,6 @@ Lst_Member(Lst *list, void *d)
 /**
  * Lst_Remove
  *	Remove the given node from the given list.
- *
- * Results:
- *	SUCCESS or FAILURE.
  *
  * Side Effects:
  *	The list's firstPtr will be set to NULL if ln is the last

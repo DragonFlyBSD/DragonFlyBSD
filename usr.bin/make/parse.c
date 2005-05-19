@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.85 2005/05/19 17:07:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.86 2005/05/19 17:10:37 okumoto Exp $
  */
 
 /*-
@@ -775,13 +775,12 @@ ParseDoDependency(struct MakeFlags *mf, char line[])
 			 * file2.o file3.o)" are permissible. Arch_ParseArchive
 			 * will set 'line' to be the first non-blank after the
 			 * archive-spec. It creates/finds nodes for the members
-			 * and places them on the given list, returning SUCCESS
-			 * if all went well and FAILURE if there was an error in
+			 * and places them on the given list, returning TRUE
+			 * if all went well and FALSE if there was an error in
 			 * the specification. On error, line should remain
 			 * untouched.
 			 */
-			if (Arch_ParseArchive(&line, &targets, VAR_CMD) !=
-			    SUCCESS) {
+			if (!Arch_ParseArchive(&line, &targets, VAR_CMD)) {
 				Parse_Error(PARSE_FATAL,
 				    "Error in archive specification: \"%s\"",
 				    line);
@@ -1090,7 +1089,7 @@ ParseDoDependency(struct MakeFlags *mf, char line[])
 		*line = '\0';
 
 	} else if (specType == ExShell) {
-		if (Job_ParseShell(line) != SUCCESS) {
+		if (!Job_ParseShell(line)) {
 			Parse_Error(PARSE_FATAL,
 			    "improper shell specification");
 			return;
@@ -1205,8 +1204,8 @@ ParseDoDependency(struct MakeFlags *mf, char line[])
 				/* list of archive source names after exp. */
 				Lst sources = Lst_Initializer(sources);
 
-				if (Arch_ParseArchive(&line, &sources,
-				    VAR_CMD) != SUCCESS) {
+				if (!Arch_ParseArchive(&line, &sources,
+				    VAR_CMD)) {
 					Parse_Error(PARSE_FATAL, "Error in "
 					    "source archive spec \"%s\"", line);
 					return;

@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.5 2005/05/19 17:09:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.6 2005/05/19 17:10:37 okumoto Exp $
  */
 
 #include <string.h>
@@ -211,7 +211,7 @@ JobFreeShell(struct Shell *sh)
  * Parse a shell specification and set up commandShell, shellPath appropriately.
  *
  * Results:
- *	FAILURE if the specification was incorrect.
+ *	TRUE if the specification was correct. FALSE otherwise.
  *
  * Side Effects:
  *	commandShell points to a Shell structure (either predefined or
@@ -245,7 +245,7 @@ JobFreeShell(struct Shell *sh)
  *			    command so as to ignore any errors it returns if
  *			    hasErrCtl is FALSE.
  */
-ReturnStatus
+Boolean
 Job_ParseShell(const char line[])
 {
 	ArgArray	aa;
@@ -275,7 +275,7 @@ Job_ParseShell(const char line[])
 			Parse_Error(PARSE_FATAL, "missing '=' in shell "
 			    "specification keyword '%s'", *argv);
 			ArgArray_Done(&aa);
-			return (FAILURE);
+			return (FALSE);
 		}
 		*eq++ = '\0';
 
@@ -312,7 +312,7 @@ Job_ParseShell(const char line[])
 			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
 			    "specification '%s'", *argv);
 			ArgArray_Done(&aa);
-			return (FAILURE);
+			return (FALSE);
 		}
 	}
 
@@ -339,13 +339,13 @@ Job_ParseShell(const char line[])
 			Parse_Error(PARSE_FATAL,
 			    "Neither path nor name specified");
 			ArgArray_Done(&aa);
-			return (FAILURE);
+			return (FALSE);
 		}
 		if ((sh = JobMatchShell(newShell.name)) == NULL) {
 			Parse_Error(PARSE_FATAL, "%s: no matching shell",
 			    newShell.name);
 			ArgArray_Done(&aa);
-			return (FAILURE);
+			return (FALSE);
 		}
 
 	} else {
@@ -372,7 +372,7 @@ Job_ParseShell(const char line[])
 				    "%s: no matching shell", newShell.name);
 				free(path);
 				ArgArray_Done(&aa);
-				return (FAILURE);
+				return (FALSE);
 			}
 		} else {
 			sh = JobCopyShell(&newShell);
@@ -388,7 +388,7 @@ Job_ParseShell(const char line[])
 	shellName = commandShell->name;
 
 	ArgArray_Done(&aa);
-	return (SUCCESS);
+	return (TRUE);
 }
 
 void
