@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.83 2005/05/19 16:53:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.84 2005/05/19 17:04:45 okumoto Exp $
  */
 
 /*-
@@ -89,7 +89,6 @@
 #include "make.h"
 #include "parse.h"
 #include "pathnames.h"
-#include "shell.h"
 #include "str.h"
 #include "suff.h"
 #include "targ.h"

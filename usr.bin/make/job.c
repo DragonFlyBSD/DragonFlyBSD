@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.103 2005/05/19 16:53:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.104 2005/05/19 17:04:45 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -137,7 +137,6 @@
 #include "make.h"
 #include "parse.h"
 #include "pathnames.h"
-#include "shell.h"
 #include "str.h"
 #include "suff.h"
 #include "targ.h"
@@ -270,6 +269,56 @@ typedef struct Job {
 TAILQ_HEAD(JobList, Job);
 
 /*
+ * Shell Specifications:
+ *
+ * Some special stuff goes on if a shell doesn't have error control. In such
+ * a case, errCheck becomes a printf template for echoing the command,
+ * should echoing be on and ignErr becomes another printf template for
+ * executing the command while ignoring the return status. If either of these
+ * strings is empty when hasErrCtl is FALSE, the command will be executed
+ * anyway as is and if it causes an error, so be it.
+ */
+#define	DEF_SHELL_STRUCT(TAG, CONST)					\
+struct TAG {								\
+	/*								\
+	 * the name of the shell. For Bourne and C shells, this is used	\
+	 * only to find the shell description when used as the single	\
+	 * source of a .SHELL target. For user-defined shells, this is	\
+	 * the full path of the shell.					\
+	 */								\
+	CONST char	*name;						\
+									\
+	/* True if both echoOff and echoOn defined */			\
+	Boolean		hasEchoCtl;					\
+									\
+	CONST char	*echoOff;	/* command to turn off echo */	\
+	CONST char	*echoOn;	/* command to turn it back on */\
+									\
+	/*								\
+	 * What the shell prints, and its length, when given the	\
+	 * echo-off command. This line will not be printed when		\
+	 * received from the shell. This is usually the command which	\
+	 * was executed to turn off echoing				\
+	 */								\
+	CONST char	*noPrint;					\
+									\
+	/* set if can control error checking for individual commands */	\
+	Boolean		hasErrCtl;					\
+									\
+	/* string to turn error checking on */				\
+	CONST char	*errCheck;					\
+									\
+	/* string to turn off error checking */				\
+	CONST char	*ignErr;					\
+									\
+	CONST char	*echo;	/* command line flag: echo commands */	\
+	CONST char	*exit;	/* command line flag: exit on error */	\
+}
+
+DEF_SHELL_STRUCT(Shell,);
+DEF_SHELL_STRUCT(CShell, const);
+
+/*
  * error handling variables
  */
 static int	errors = 0;	/* number of errors reported */
@@ -306,10 +355,59 @@ static int	numCommands;
 #define	JOB_STOPPED	3	/* The job is stopped */
 
 /*
+ * Descriptions for various shells.
+ */
+static const struct CShell shells[] = {
+	/*
+	 * CSH description. The csh can do echo control by playing
+	 * with the setting of the 'echo' shell variable. Sadly,
+	 * however, it is unable to do error control nicely.
+	 */
+	{
+		"csh",
+		TRUE, "unset verbose", "set verbose", "unset verbose",
+		FALSE, "echo \"%s\"\n", "csh -c \"%s || exit 0\"",
+		"v", "e",
+	},
+	/*
+	 * SH description. Echo control is also possible and, under
+	 * sun UNIX anyway, one can even control error checking.
+	 */
+	{
+		"sh",
+		TRUE, "set -", "set -v", "set -",
+		TRUE, "set -e", "set +e",
+#ifdef OLDBOURNESHELL
+		FALSE, "echo \"%s\"\n", "sh -c '%s || exit 0'\n",
+#endif
+		"v", "e",
+	},
+	/*
+	 * KSH description. The Korn shell has a superset of
+	 * the Bourne shell's functionality.
+	 */
+	{
+		"ksh",
+		TRUE, "set -", "set -v", "set -",
+		TRUE, "set -e", "set +e",
+		"v", "e",
+	},
+};
+
+/*
+ * This is the shell to which we pass all commands in the Makefile.
+ * It is set by the Job_ParseShell function.
+ */
+static struct Shell *commandShell = NULL;
+static char	*shellPath = NULL;	/* full pathname of executable image */
+static char	*shellName = NULL;	/* last component of shell */
+
+/*
  * The maximum number of jobs that may run. This is initialize from the
  * -j argument for the leading make and from the FIFO for sub-makes.
  */
 static int	maxJobs;
+
 static int	nJobs;		/* The number of children currently running */
 
 /* The structures that describe them */
@@ -404,6 +502,7 @@ typedef struct ProcStuff {
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
+static struct Shell *JobMatchShell(const char *);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static void ProcExec(const ProcStuff *) __dead2;
@@ -1589,7 +1688,7 @@ JobMakeArgv(Job *job, char **argv)
 	int		argc;
 	static char	args[10];	/* For merged arguments */
 
-	argv[0] = commandShell->name;
+	argv[0] = shellName;
 	argc = 1;
 
 	if ((commandShell->exit && *commandShell->exit != '-') ||
@@ -2450,6 +2549,103 @@ Job_Make(GNode *gn)
 }
 
 /**
+ * JobCopyShell
+ *	Make a new copy of the shell structure including a copy of the strings
+ *	in it. This also defaults some fields in case they are NULL.
+ *
+ * Returns:
+ *	The function returns a pointer to the new shell structure.
+ */
+static struct Shell *
+JobCopyShell(const struct Shell *osh)
+{
+	struct Shell *nsh;
+
+	nsh = emalloc(sizeof(*nsh));
+	nsh->name = estrdup(osh->name);
+
+	if (osh->echoOff != NULL)
+		nsh->echoOff = estrdup(osh->echoOff);
+	else
+		nsh->echoOff = NULL;
+	if (osh->echoOn != NULL)
+		nsh->echoOn = estrdup(osh->echoOn);
+	else
+		nsh->echoOn = NULL;
+	nsh->hasEchoCtl = osh->hasEchoCtl;
+
+	if (osh->noPrint != NULL)
+		nsh->noPrint = estrdup(osh->noPrint);
+	else
+		nsh->noPrint = NULL;
+
+	nsh->hasErrCtl = osh->hasErrCtl;
+	if (osh->errCheck == NULL)
+		nsh->errCheck = estrdup("");
+	else
+		nsh->errCheck = estrdup(osh->errCheck);
+	if (osh->ignErr == NULL)
+		nsh->ignErr = estrdup("%s");
+	else
+		nsh->ignErr = estrdup(osh->ignErr);
+
+	if (osh->echo == NULL)
+		nsh->echo = estrdup("");
+	else
+		nsh->echo = estrdup(osh->echo);
+
+	if (osh->exit == NULL)
+		nsh->exit = estrdup("");
+	else
+		nsh->exit = estrdup(osh->exit);
+
+	return (nsh);
+}
+
+/**
+ * JobFreeShell
+ *	Free a shell structure and all associated strings.
+ */
+static void
+JobFreeShell(struct Shell *sh)
+{
+
+	if (sh != NULL) {
+		free(sh->name);
+		free(sh->echoOff);
+		free(sh->echoOn);
+		free(sh->noPrint);
+		free(sh->errCheck);
+		free(sh->ignErr);
+		free(sh->echo);
+		free(sh->exit);
+		free(sh);
+	}
+}
+
+static void
+Shell_Init(void)
+{
+
+	if (commandShell == NULL)
+		commandShell = JobMatchShell(shells[DEFSHELL].name);
+
+	if (shellPath == NULL) {
+		/*
+		 * The user didn't specify a shell to use, so we are using the
+		 * default one... Both the absolute path and the last component
+		 * must be set. The last component is taken from the 'name'
+		 * field of the default shell description pointed-to by
+		 * commandShell. All default shells are located in
+		 * PATH_DEFSHELLDIR.
+		 */
+		shellName = commandShell->name;
+		shellPath = str_concat(PATH_DEFSHELLDIR, shellName,
+		    STR_ADDSLASH);
+	}
+}
+
+/**
  * Job_Init
  *	Initialize the process module, given a maximum number of jobs.
  *
@@ -2525,6 +2721,8 @@ Job_Init(int maxproc)
 	} else {
 		targFmt = TARG_FMT;
 	}
+
+	Shell_Init();
 
 	/*
 	 * Catch the four signals that POSIX specifies if they aren't ignored.
@@ -3056,6 +3254,8 @@ Cmd_Exec(const char *cmd, const char **error)
 	*error = NULL;
 	buf = Buf_Init(0);
 
+	if (shellPath == NULL)
+		Shell_Init();
 	/*
 	 * Open a pipe for fetching its output
 	 */
@@ -3077,7 +3277,7 @@ Cmd_Exec(const char *cmd, const char **error)
 
 	/* Set up arguments for shell */
 	ps.argv = emalloc(4 * sizeof(char *));
-	ps.argv[0] = strdup(commandShell->name);
+	ps.argv[0] = strdup(shellName);
 	ps.argv[1] = strdup("-c");
 	ps.argv[2] = strdup(cmd);
 	ps.argv[3] = NULL;
@@ -3678,6 +3878,8 @@ Compat_Run(Lst *targs)
 	GNode	*gn = NULL;	/* Current root target */
 	int	error_cnt;		/* Number of targets not remade due to errors */
 	LstNode	*ln;
+
+	Shell_Init();		/* Set up shell. */
 
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
 		signal(SIGINT, CompatCatchSig);
