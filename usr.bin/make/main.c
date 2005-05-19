@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.99 2005/05/19 16:49:56 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.100 2005/05/19 16:50:35 okumoto Exp $
  */
 
 /*
@@ -913,6 +913,8 @@ main(int argc, char **argv)
 	Var_SetGlobal("MACHINE", machine);
 	Var_SetGlobal("MACHINE_ARCH", machine_arch);
 	Var_SetGlobal("MACHINE_CPU", machine_cpu);
+	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
+	Var_SetGlobal(".ST_EXPORTVAR", "YES");
 #ifdef MAKE_VERSION
 	Var_SetGlobal("MAKE_VERSION", MAKE_VERSION);
 #endif
@@ -926,6 +928,25 @@ main(int argc, char **argv)
 	MainParseArgs(&mf, argc, argv);
 
 	determine_objdir(machine, curdir, objdir);
+	Var_SetGlobal(".CURDIR", curdir);
+	Var_SetGlobal(".OBJDIR", objdir);
+
+	/*
+	 * Set up the .TARGETS variable to contain the list of targets to be
+	 * created. If none specified, make the variable empty -- the parser
+	 * will fill the thing in with the default or .MAIN target.
+	 */
+	if (Lst_IsEmpty(&create)) {
+		Var_SetGlobal(".TARGETS", "");
+	} else {
+		LstNode *ln;
+
+		for (ln = Lst_First(&create); ln != NULL; ln = Lst_Succ(ln)) {
+			char *name = Lst_Datum(ln);
+
+			Var_Append(".TARGETS", name, VAR_GLOBAL);
+		}
+	}
 
 	/*
 	 * Once things are initialized, add the original directory to the
@@ -936,12 +957,6 @@ main(int argc, char **argv)
 	Dir_InitDot();		/* Initialize the "." directory */
 	if (strcmp(objdir, curdir) != 0)
 		Path_AddDir(&dirSearchPath, curdir);
-
-	Var_SetGlobal(".CURDIR", curdir);
-	Var_SetGlobal(".OBJDIR", objdir);
-
-	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
-	Var_SetGlobal(".ST_EXPORTVAR", "YES");
 
 	if (getenv("MAKE_JOBS_FIFO") != NULL)
 		mf.forceJobs = TRUE;
@@ -961,24 +976,6 @@ main(int argc, char **argv)
 
 	DEFAULT = NULL;
 	time(&now);
-
-	/*
-	 * Set up the .TARGETS variable to contain the list of targets to be
-	 * created. If none specified, make the variable empty -- the parser
-	 * will fill the thing in with the default or .MAIN target.
-	 */
-	if (Lst_IsEmpty(&create)) {
-		Var_SetGlobal(".TARGETS", "");
-	} else {
-		LstNode *ln;
-
-		for (ln = Lst_First(&create); ln != NULL; ln = Lst_Succ(ln)) {
-			char *name = Lst_Datum(ln);
-
-			Var_Append(".TARGETS", name, VAR_GLOBAL);
-		}
-	}
-
 
 	/*
 	 * If no user-supplied system path was given (through the -m option)
