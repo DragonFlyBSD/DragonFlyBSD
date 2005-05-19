@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.1 2005/05/19 16:53:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.2 2005/05/19 16:54:15 okumoto Exp $
  */
 
 #include <string.h>
@@ -58,33 +58,54 @@ static const struct CShell shells[] = {
 	 * however, it is unable to do error control nicely.
 	 */
 	{
-		"csh",
-		TRUE, "unset verbose", "set verbose", "unset verbose",
-		FALSE, "echo \"%s\"\n", "csh -c \"%s || exit 0\"",
-		"v", "e",
+		"csh",				/* name */
+		TRUE,				/* hasEchoCtl */
+		"unset verbose",		/* echoOff */
+		"set verbose",			/* echoOn */
+		"unset verbose",		/* noPrint */
+		FALSE,				/* hasErrCtl */
+		"echo \"%s\"\n",		/* errCheck */
+		"csh -c \"%s || exit 0\"",	/* ignErr */
+		"v",				/* echo */
+		"e",				/* exit */
 	},
 	/*
 	 * SH description. Echo control is also possible and, under
 	 * sun UNIX anyway, one can even control error checking.
 	 */
 	{
-		"sh",
-		TRUE, "set -", "set -v", "set -",
-		TRUE, "set -e", "set +e",
+		"sh",				/* name */
+		TRUE,				/* hasEchoCtl */
+		"set -",			/* echoOff */
+		"set -v",			/* echoOn */
+		"set -",			/* noPrint */
 #ifdef OLDBOURNESHELL
-		FALSE, "echo \"%s\"\n", "sh -c '%s || exit 0'\n",
+		FALSE,				/* hasErrCtl */
+		"echo \"%s\"\n",		/* errCheck */
+		"sh -c '%s || exit 0'\n",	/* ignErr */
+#else
+		TRUE,				/* hasErrCtl */
+		"set -e",			/* errCheck */
+		"set +e",			/* ignErr */
 #endif
-		"v", "e",
+		"v",				/* echo */
+		"e",				/* exit */
 	},
 	/*
 	 * KSH description. The Korn shell has a superset of
 	 * the Bourne shell's functionality.
 	 */
 	{
-		"ksh",
-		TRUE, "set -", "set -v", "set -",
-		TRUE, "set -e", "set +e",
-		"v", "e",
+		"ksh",				/* name */
+		TRUE,				/* hasEchoCtl */
+		"set -",			/* echoOff */
+		"set -v",			/* echoOn */
+		"set -",			/* noPrint */
+		TRUE,				/* hasErrCtl */
+		"set -e",			/* errCheck */
+		"set +e",			/* ignErr */
+		"v",				/* echo */
+		"e",				/* exit */
 	},
 };
 
