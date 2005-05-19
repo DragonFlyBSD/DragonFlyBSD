@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.100 2005/05/19 16:50:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.101 2005/05/19 16:51:06 okumoto Exp $
  */
 
 /*
@@ -548,7 +548,6 @@ rearg:
 			if (Main_ParseWarn(optarg, 1) != -1)
 				MFLAGS_append("-x", optarg);
 			break;
-				
 		default:
 		case '?':
 			usage();
@@ -775,79 +774,31 @@ check_make_level(void)
 }
 
 /**
- * main
- *	The main function, for obvious reasons. Initializes variables
- *	and a few modules, then parses the arguments give it in the
- *	environment and on the command line. Reads the system makefile
- *	followed by either Makefile, makefile or the file given by the
- *	-f argument. Sets the .MAKEFLAGS PMake variable based on all the
- *	flags it has received by then uses either the Make or the Compat
- *	module to create the initial list of targets.
- *
- * Results:
- *	If -q was given, exits -1 if anything was out-of-date. Else it exits
- *	0.
- *
- * Side Effects:
- *	The program exits when done. Targets are created. etc. etc. etc.
+ * Initialize various make variables.
+ *	MAKE also gets this name, for compatibility
+ *	.MAKEFLAGS gets set to the empty string just in case.
+ *	MFLAGS also gets initialized empty, for compatibility.
  */
-int
-main(int argc, char **argv)
+static void
+InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[])
 {
-	MakeFlags	mf;
-    	const char *machine;
-	const char *machine_arch;
-	const char *machine_cpu;
-	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	char *start;
+    	const char	*machine;
+	const char	*machine_arch;
+	const char	*machine_cpu;
 
-	char	curdir[MAXPATHLEN];	/* startup directory */
-	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
 
-	/*
-	 * Initialize file global variables.
-	 */
-	Lst_Init(&mf.makefiles);
-	Lst_Init(&mf.variables);
+	Var_Init(environ);
 
-	mf.expandVars = TRUE;
-	mf.noBuiltins = FALSE;		/* Read the built-in rules */
-	mf.forceJobs = FALSE;              /* No -j flag */
+	Var_SetGlobal("MAKE", argv[0]);
+	Var_SetGlobal(".MAKEFLAGS", "");
+	Var_SetGlobal("MFLAGS", "");
 
-	/*
-	 * Initialize program global variables.
-	 */
-	beSilent = FALSE;		/* Print commands as executed */
-	ignoreErrors = FALSE;		/* Pay attention to non-zero returns */
-	noExecute = FALSE;		/* Execute all commands */
-	keepgoing = FALSE;		/* Stop on error */
-	allPrecious = FALSE;		/* Remove targets when interrupted */
-	queryFlag = FALSE;		/* This is not just a check-run */
-	touchFlag = FALSE;		/* Actually update targets */
-	usePipes = TRUE;		/* Catch child output in pipes */
-	debug = 0;			/* No debug verbosity, please. */
-	jobsRunning = FALSE;
-
-	jobLimit = DEFMAXJOBS;
-	compatMake = FALSE;		/* No compat mode */
-
-	check_make_level();
-
-#ifdef RLIMIT_NOFILE
-	/*
-	 * get rid of resource limit on file descriptors
-	 */
-	{
-		struct rlimit rl;
-		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
-			err(2, "getrlimit");
-		}
-		rl.rlim_cur = rl.rlim_max;
-		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
-			err(2, "setrlimit");
-		}
-	}
+	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
+	Var_SetGlobal(".ST_EXPORTVAR", "YES");
+#ifdef MAKE_VERSION
+	Var_SetGlobal("MAKE_VERSION", MAKE_VERSION);
 #endif
+
 	/*
 	 * Get the name of this type of MACHINE from utsname
 	 * so we can share an executable for similar machines.
@@ -860,8 +811,7 @@ main(int argc, char **argv)
 #ifdef MACHINE
 		machine = MACHINE;
 #else
-		static struct utsname utsname;
-
+		static struct utsname	utsname;
 		if (uname(&utsname) == -1)
 			err(2, "uname");
 		machine = utsname.machine;
@@ -889,43 +839,17 @@ main(int argc, char **argv)
 			machine_cpu = "unknown";
 	}
 
-	/*
-	 * Initialize the parsing, directory and variable modules to prepare
-	 * for the reading of inclusion paths and variable settings on the
-	 * command line
-	 */
-	Proc_Init();
-
-	Dir_Init();		/* Initialize directory structures so -I flags
-				 * can be processed correctly */
-	Var_Init(environ);	/* As well as the lists of variables for
-				 * parsing arguments */
-
-	/*
-	 * Initialize various variables.
-	 *	MAKE also gets this name, for compatibility
-	 *	.MAKEFLAGS gets set to the empty string just in case.
-	 *	MFLAGS also gets initialized empty, for compatibility.
-	 */
-	Var_SetGlobal("MAKE", argv[0]);
-	Var_SetGlobal(".MAKEFLAGS", "");
-	Var_SetGlobal("MFLAGS", "");
 	Var_SetGlobal("MACHINE", machine);
 	Var_SetGlobal("MACHINE_ARCH", machine_arch);
 	Var_SetGlobal("MACHINE_CPU", machine_cpu);
-	Var_SetGlobal(".DIRECTIVE_MAKEENV", "YES");
-	Var_SetGlobal(".ST_EXPORTVAR", "YES");
-#ifdef MAKE_VERSION
-	Var_SetGlobal("MAKE_VERSION", MAKE_VERSION);
-#endif
 
 	/*
 	 * First snag things out of the MAKEFLAGS environment
 	 * variable.  Then parse the command line arguments.
 	 */
-	Main_ParseArgLine(&mf, getenv("MAKEFLAGS"), 1);
+	Main_ParseArgLine(mf, getenv("MAKEFLAGS"), 1);
 
-	MainParseArgs(&mf, argc, argv);
+	MainParseArgs(mf, argc, argv);
 
 	determine_objdir(machine, curdir, objdir);
 	Var_SetGlobal(".CURDIR", curdir);
@@ -947,6 +871,91 @@ main(int argc, char **argv)
 			Var_Append(".TARGETS", name, VAR_GLOBAL);
 		}
 	}
+}
+
+/**
+ * main
+ *	The main function, for obvious reasons. Initializes variables
+ *	and a few modules, then parses the arguments give it in the
+ *	environment and on the command line. Reads the system makefile
+ *	followed by either Makefile, makefile or the file given by the
+ *	-f argument. Sets the .MAKEFLAGS PMake variable based on all the
+ *	flags it has received by then uses either the Make or the Compat
+ *	module to create the initial list of targets.
+ *
+ * Results:
+ *	If -q was given, exits -1 if anything was out-of-date. Else it exits
+ *	0.
+ *
+ * Side Effects:
+ *	The program exits when done. Targets are created. etc. etc. etc.
+ */
+int
+main(int argc, char **argv)
+{
+	MakeFlags	mf;
+	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
+	char *start;
+
+	char	curdir[MAXPATHLEN];	/* startup directory */
+	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
+
+	/*
+	 * Initialize program global variables.
+	 */
+	beSilent = FALSE;		/* Print commands as executed */
+	ignoreErrors = FALSE;		/* Pay attention to non-zero returns */
+	noExecute = FALSE;		/* Execute all commands */
+	keepgoing = FALSE;		/* Stop on error */
+	allPrecious = FALSE;		/* Remove targets when interrupted */
+	queryFlag = FALSE;		/* This is not just a check-run */
+	touchFlag = FALSE;		/* Actually update targets */
+	usePipes = TRUE;		/* Catch child output in pipes */
+	debug = 0;			/* No debug verbosity, please. */
+	jobsRunning = FALSE;
+
+	jobLimit = DEFMAXJOBS;
+	compatMake = FALSE;		/* No compat mode */
+
+	/*
+	 * Initialize make flags variable.
+	 */
+	Lst_Init(&mf.makefiles);
+	Lst_Init(&mf.variables);
+
+	mf.expandVars = TRUE;
+	mf.noBuiltins = FALSE;		/* Read the built-in rules */
+
+	if (getenv("MAKE_JOBS_FIFO") == NULL)
+		mf.forceJobs = FALSE;
+	else
+		mf.forceJobs = TRUE;
+
+	check_make_level();
+
+#ifdef RLIMIT_NOFILE
+	/*
+	 * get rid of resource limit on file descriptors
+	 */
+	{
+		struct rlimit rl;
+		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "getrlimit");
+		}
+		rl.rlim_cur = rl.rlim_max;
+		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "setrlimit");
+		}
+	}
+#endif
+	/*
+	 * Initialize the parsing, directory and variable modules to prepare
+	 * for the reading of inclusion paths and variable settings on the
+	 * command line
+	 */
+	Proc_Init();
+
+	InitVariables(&mf, argc, argv, curdir, objdir);
 
 	/*
 	 * Once things are initialized, add the original directory to the
@@ -954,12 +963,12 @@ main(int argc, char **argv)
 	 * for make scripts.
 	 */
 
+	Dir_Init();
 	Dir_InitDot();		/* Initialize the "." directory */
+
 	if (strcmp(objdir, curdir) != 0)
 		Path_AddDir(&dirSearchPath, curdir);
 
-	if (getenv("MAKE_JOBS_FIFO") != NULL)
-		mf.forceJobs = TRUE;
 	/*
 	 * Be compatible if user did not specify -j and did not explicitly
 	 * turned compatibility on
