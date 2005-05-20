@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.36 2005/03/31 22:16:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.37 2005/05/20 11:48:55 okumoto Exp $
  */
 
 /*-
@@ -348,7 +348,7 @@ DirMatchFiles(const char *pattern, const Dir *p, Lst *expansions)
 		    ((entry->name[0] != '.') ||
 		    (pattern[0] == '.'))) {
 			Lst_AtEnd(expansions, (isDot ? estrdup(entry->name) :
-			    str_concat(p->name, entry->name, STR_ADDSLASH)));
+			    str_concat(p->name, '/', entry->name)));
 		}
 	}
 	return (0);
@@ -699,7 +699,7 @@ Path_FindFile(char *name, struct Path *path)
 					continue;
 				}
 			}
-			file = str_concat(pe->dir->name, cp, STR_ADDSLASH);
+			file = str_concat(pe->dir->name, '/', cp);
 			DEBUGF(DIR, ("returning %s\n", file));
 			pe->dir->hits += 1;
 			hits += 1;
@@ -751,8 +751,7 @@ Path_FindFile(char *name, struct Path *path)
 		DEBUGF(DIR, ("failed. Trying subdirectories..."));
 		TAILQ_FOREACH(pe, path, link) {
 			if (pe->dir != dot) {
-				file = str_concat(pe->dir->name,
-				    name, STR_ADDSLASH);
+				file = str_concat(pe->dir->name, '/', name);
 			} else {
 				/*
 				 * Checking in dot -- DON'T put a leading ./
@@ -1064,8 +1063,8 @@ Path_MakeFlags(const char *flag, const struct Path *path)
 	str = estrdup("");
 
 	TAILQ_FOREACH(pe, path, link) {
-		tstr = str_concat(flag, pe->dir->name, 0);
-		nstr = str_concat(str, tstr, STR_ADDSPACE);
+		tstr = str_concat(flag, '\0', pe->dir->name);
+		nstr = str_concat(str, '/', tstr);
 		free(str);
 		free(tstr);
 		str = nstr;

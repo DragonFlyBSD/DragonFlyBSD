@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.32 2005/05/18 21:35:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.33 2005/05/20 11:48:55 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -93,15 +93,14 @@ ArgArray_Done(ArgArray *aa)
 	aa->size = 0;
 }
 
-/*-
- * str_concat --
- *	concatenate the two strings, inserting a space or slash between them.
+/**
+ * Concatenate the two strings, possibily inserting a character between them.
  *
- * returns --
+ * @returns
  *	the resulting string in allocated space.
  */
 char *
-str_concat(const char *s1, const char *s2, int flags)
+str_concat(const char s1[], char c, const char s2[])
 {
 	int len1, len2;
 	char *result;
@@ -117,11 +116,8 @@ str_concat(const char *s1, const char *s2, int flags)
 	memcpy(result, s1, len1);
 
 	/* add separator character */
-	if (flags & STR_ADDSPACE) {
-		result[len1] = ' ';
-		++len1;
-	} else if (flags & STR_ADDSLASH) {
-		result[len1] = '/';
+	if (c != '\0') {
+		result[len1] = c;
 		++len1;
 	}
 

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.7 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.8 2005/05/20 11:48:55 okumoto Exp $
  */
 
 #ifndef str_h_44db59e6
@@ -57,19 +57,9 @@ typedef struct ArgArray {
 	char	*buffer;	/* data buffer */
 } ArgArray;
 
-/*
- * These constants are all used by the Str_Concat function to decide how the
- * final string should look. If STR_ADDSPACE is given, a space will be
- * placed between the two strings. If STR_ADDSLASH is given, a '/' will
- * be used instead of a space. If neither is given, no intervening characters
- * will be placed between the two strings in the final output.
- */
-#define	STR_ADDSPACE	0x01	/* add a space when Str_Concat'ing */
-#define	STR_ADDSLASH	0x04	/* add a slash when Str_Concat'ing */
-
 void ArgArray_Done(ArgArray *);
 
-char *str_concat(const char *, const char *, int);
+char *str_concat(const char *, char, const char *);
 void brk_string(ArgArray *, const char [], Boolean);
 char *MAKEFLAGS_quote(const char *);
 void MAKEFLAGS_break(ArgArray *, const char []);

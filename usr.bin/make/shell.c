@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.10 2005/05/20 11:48:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.11 2005/05/20 11:48:55 okumoto Exp $
  */
 
 #include <string.h>
@@ -47,6 +47,7 @@
 #include "pathnames.h"
 #include "shell.h"
 #include "str.h"
+#include "util.h"
 
 struct Shell	*commandShell = NULL;
 
@@ -61,6 +62,7 @@ static struct Shell *
 ShellMatch(const char name[])
 {
 	struct Shell	*shell;
+	const char	*shellDir = PATH_DEFSHELLDIR;
 	shell = emalloc(sizeof(struct Shell));
 
 	if (strcmp(name, "csh") == 0) {
@@ -70,7 +72,7 @@ ShellMatch(const char name[])
 		 * however, it is unable to do error control nicely.
 		 */
 		shell->name		= strdup(name);
-		shell->path		= str_concat(PATH_DEFSHELLDIR, name, STR_ADDSLASH);
+		shell->path		= str_concat(shellDir, '/', name);
 		shell->hasEchoCtl	= TRUE;
 		shell->echoOff		= strdup("unset verbose");
 		shell->echoOn		= strdup("set verbose");
@@ -88,7 +90,7 @@ ShellMatch(const char name[])
 		 */
 
 		shell->name		= strdup(name);
-		shell->path		= str_concat(PATH_DEFSHELLDIR, name, STR_ADDSLASH);
+		shell->path		= str_concat(shellDir, '/', name);
 		shell->hasEchoCtl	= TRUE;
 		shell->echoOff		= strdup("set -");
 		shell->echoOn		= strdup("set -v");
@@ -110,7 +112,7 @@ ShellMatch(const char name[])
 		 * the Bourne shell's functionality.
 		 */
 		shell->name		= strdup(name);
-		shell->path		= str_concat(PATH_DEFSHELLDIR, name, STR_ADDSLASH);
+		shell->path		= str_concat(shellDir, '/', name);
 		shell->hasEchoCtl	= TRUE;
 		shell->echoOff		= strdup("set -");
 		shell->echoOn		= strdup("set -v");
@@ -279,8 +281,9 @@ Shell_Parse(const char line[])
 			newShell.ignErr = eq;
 			fullSpec = TRUE;
 		} else {
-			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
-			    "specification '%s'", *argv);
+			Parse_Error(PARSE_FATAL,
+			    "unknown keyword in shell specification '%s'",
+			    *argv);
 			ArgArray_Done(&aa);
 			return (FALSE);
 		}
@@ -291,7 +294,8 @@ Shell_Parse(const char line[])
 	 */
 	if (fullSpec) {
 		if ((newShell.echoOn != NULL) ^ (newShell.echoOff != NULL))
-			Parse_Error(PARSE_FATAL, "Shell must have either both "
+			Parse_Error(PARSE_FATAL,
+			    "Shell must have either both "
 			    "echoOff and echoOn or none of them");
 
 		if (newShell.echoOn != NULL && newShell.echoOff)
@@ -327,7 +331,8 @@ Shell_Parse(const char line[])
 		 */
 		if (newShell.name == NULL) {
 			/* get the base name as the name */
-			if ((newShell.name = strrchr(newShell.path, '/')) == NULL) {
+			newShell.name = strrchr(newShell.path, '/');
+			if (newShell.name == NULL) {
 				newShell.name = newShell.path;
 			} else {
 				newShell.name += 1;

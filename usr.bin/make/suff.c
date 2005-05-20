@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.59 2005/05/20 11:46:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.60 2005/05/20 11:48:55 okumoto Exp $
  */
 
 /*-
@@ -916,7 +916,8 @@ SuffAddLevel(Lst *l, Src *targ)
 			printf("\n");
 #endif
 		}
-		s2 = SuffSrcCreate(str_concat(targ->pref, suff->name, 0),
+		s2 = SuffSrcCreate(
+		    str_concat(targ->pref, '\0', suff->name),
 		    targ->pref, suff, targ, NULL);
 		suff->refCount++;
 		targ->children += 1;
@@ -1438,7 +1439,7 @@ SuffApplyTransform(GNode *tGn, GNode *sGn, Suff *t, Suff *s)
 	/*
 	 * Locate the transformation rule itself
 	 */
-	tname = str_concat(s->name, t->name, 0);
+	tname = str_concat(s->name, '\0', t->name);
 	gn = SuffTransFind(tname);
 	free(tname);
 
