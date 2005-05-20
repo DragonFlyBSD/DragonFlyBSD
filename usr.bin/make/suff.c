@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.58 2005/05/16 17:29:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.59 2005/05/20 11:46:27 okumoto Exp $
  */
 
 /*-
@@ -1538,15 +1538,8 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 	/*
 	 * Copy in the variables from the member node to this one.
 	 */
-	{
-		const char *copy[] = {
-			TARGET,		/* Must be first */
-			PREFIX,		/* Must be second */
-		};
-
-		Var_Set(copy[1], Var_Value(copy[1], mem), gn);
-		Var_Set(copy[0], Var_Value(copy[0], mem), gn);
-	}
+	Var_Set(PREFIX, Var_Value(PREFIX, mem), gn);
+	Var_Set(TARGET, Var_Value(TARGET, mem), gn);
 
 	ms = mem->suffix;
 	if (ms == NULL) {
