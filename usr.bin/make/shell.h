@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.4 2005/05/19 17:10:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.5 2005/05/20 11:47:22 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
@@ -44,7 +44,7 @@
 
 #include "util.h"
 
-/*
+/**
  * Shell Specifications:
  *
  * Some special stuff goes on if a shell doesn't have error control. In such
@@ -54,45 +54,41 @@
  * strings is empty when hasErrCtl is FALSE, the command will be executed
  * anyway as is and if it causes an error, so be it.
  */
-#define	DEF_SHELL_STRUCT(TAG, CONST)					\
-struct TAG {								\
-	/*								\
-	 * the name of the shell. For Bourne and C shells, this is used	\
-	 * only to find the shell description when used as the single	\
-	 * source of a .SHELL target. For user-defined shells, this is	\
-	 * the full path of the shell.					\
-	 */								\
-	CONST char	*name;						\
-									\
-	/* True if both echoOff and echoOn defined */			\
-	Boolean		hasEchoCtl;					\
-									\
-	CONST char	*echoOff;	/* command to turn off echo */	\
-	CONST char	*echoOn;	/* command to turn it back on */\
-									\
-	/*								\
-	 * What the shell prints, and its length, when given the	\
-	 * echo-off command. This line will not be printed when		\
-	 * received from the shell. This is usually the command which	\
-	 * was executed to turn off echoing				\
-	 */								\
-	CONST char	*noPrint;					\
-									\
-	/* set if can control error checking for individual commands */	\
-	Boolean		hasErrCtl;					\
-									\
-	/* string to turn error checking on */				\
-	CONST char	*errCheck;					\
-									\
-	/* string to turn off error checking */				\
-	CONST char	*ignErr;					\
-									\
-	CONST char	*echo;	/* command line flag: echo commands */	\
-	CONST char	*exit;	/* command line flag: exit on error */	\
-}
+struct Shell {
+	/*
+	 * the name of the shell. For Bourne and C shells, this is used
+	 * only to find the shell description when used as the single
+	 * source of a .SHELL target. For user-defined shells, this is
+	 * the full path of the shell.
+	 */
+	char	*name;
 
-DEF_SHELL_STRUCT(Shell,);
-DEF_SHELL_STRUCT(CShell, const);
+	/* True if both echoOff and echoOn defined */
+	Boolean	hasEchoCtl;
+
+	char	*echoOff;	/* command to turn off echo */
+	char	*echoOn;	/* command to turn it back on */
+
+	/*
+	 * What the shell prints, and its length, when given the
+	 * echo-off command. This line will not be printed when
+	 * received from the shell. This is usually the command which
+	 * was executed to turn off echoing
+	 */
+	char	*noPrint;
+
+	/* set if can control error checking for individual commands */
+	Boolean	hasErrCtl;
+
+	/* string to turn error checking on */
+	char	*errCheck;
+
+	/* string to turn off error checking */
+	char	*ignErr;
+
+	char	*echo;	/* command line flag: echo commands */
+	char	*exit;	/* command line flag: exit on error */
+};
 
 extern char			*shellPath;
 extern struct Shell		*commandShell;

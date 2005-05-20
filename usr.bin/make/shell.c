@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.7 2005/05/19 17:11:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.8 2005/05/20 11:47:22 okumoto Exp $
  */
 
 #include <string.h>
@@ -48,67 +48,6 @@
 #include "shell.h"
 #include "str.h"
 
-/**
- * Descriptions for various shells.
- */
-static const struct CShell shells[] = {
-	/*
-	 * CSH description. The csh can do echo control by playing
-	 * with the setting of the 'echo' shell variable. Sadly,
-	 * however, it is unable to do error control nicely.
-	 */
-	{
-		"csh",				/* name */
-		TRUE,				/* hasEchoCtl */
-		"unset verbose",		/* echoOff */
-		"set verbose",			/* echoOn */
-		"unset verbose",		/* noPrint */
-		FALSE,				/* hasErrCtl */
-		"echo \"%s\"\n",		/* errCheck */
-		"csh -c \"%s || exit 0\"",	/* ignErr */
-		"v",				/* echo */
-		"e",				/* exit */
-	},
-	/*
-	 * SH description. Echo control is also possible and, under
-	 * sun UNIX anyway, one can even control error checking.
-	 */
-	{
-		"sh",				/* name */
-		TRUE,				/* hasEchoCtl */
-		"set -",			/* echoOff */
-		"set -v",			/* echoOn */
-		"set -",			/* noPrint */
-#ifdef OLDBOURNESHELL
-		FALSE,				/* hasErrCtl */
-		"echo \"%s\"\n",		/* errCheck */
-		"sh -c '%s || exit 0'\n",	/* ignErr */
-#else
-		TRUE,				/* hasErrCtl */
-		"set -e",			/* errCheck */
-		"set +e",			/* ignErr */
-#endif
-		"v",				/* echo */
-		"e",				/* exit */
-	},
-	/*
-	 * KSH description. The Korn shell has a superset of
-	 * the Bourne shell's functionality.
-	 */
-	{
-		"ksh",				/* name */
-		TRUE,				/* hasEchoCtl */
-		"set -",			/* echoOff */
-		"set -v",			/* echoOn */
-		"set -",			/* noPrint */
-		TRUE,				/* hasErrCtl */
-		"set -e",			/* errCheck */
-		"set +e",			/* ignErr */
-		"v",				/* echo */
-		"e",				/* exit */
-	},
-};
-
 static char	*shellName = NULL;	/* last component of shell */
 char		*shellPath = NULL;	/* full pathname of executable image */
 struct Shell	*commandShell = NULL;
@@ -116,39 +55,76 @@ struct Shell	*commandShell = NULL;
 /**
  * Find a matching shell in 'shells' given its final component.
  *
- * Results:
- *	A pointer to a freshly allocated Shell structure with a copy
- *	of the static structure or NULL if no shell with the given name
- *	is found.
+ * @result
+ *	A pointer to a Shell structure, or NULL if no shell with
+ *	the given name is found.
  */
 static struct Shell *
-JobMatchShell(const char name[])
+ShellMatch(const char name[])
 {
-	const struct CShell	*sh;	      /* Pointer into shells table */
-	struct Shell		*nsh;
+	struct Shell	*shell;
+	shell = emalloc(sizeof(struct Shell));
 
-	for (sh = shells; sh < shells + __arysize(shells); sh++)
-		if (strcmp(sh->name, name) == 0)
-			break;
+	if (strcmp(name, "csh") == 0) {
+		/*
+		 * CSH description. The csh can do echo control by playing
+		 * with the setting of the 'echo' shell variable. Sadly,
+		 * however, it is unable to do error control nicely.
+		 */
+		shell->name		= strdup("csh");
+		shell->hasEchoCtl	= TRUE;
+		shell->echoOff		= strdup("unset verbose");
+		shell->echoOn		= strdup("set verbose");
+		shell->noPrint		= strdup("unset verbose");
+		shell->hasErrCtl	= FALSE;
+		shell->errCheck		= strdup("echo \"%s\"\n");
+		shell->ignErr		= strdup("csh -c \"%s || exit 0\"");
+		shell->echo		= strdup("v");
+		shell->exit		= strdup("e");
 
-	if (sh == shells + __arysize(shells))
-		return (NULL);
+	} else if (strcmp(name, "sh") == 0) {
+		/*
+		 * SH description. Echo control is also possible and, under
+		 * sun UNIX anyway, one can even control error checking.
+		 */
 
-	/* make a copy */
-	nsh = emalloc(sizeof(*nsh));
+		shell->name		= strdup("sh");
+		shell->hasEchoCtl	= TRUE;
+		shell->echoOff		= strdup("set -");
+		shell->echoOn		= strdup("set -v");
+		shell->noPrint		= strdup("set -");
+#ifdef OLDBOURNESHELL
+		shell->hasErrCtl	= FALSE;
+		shell->errCheck		= strdup("echo \"%s\"\n");
+		shell->ignErr		= strdup("sh -c '%s || exit 0'\n");
+#else
+		shell->hasErrCtl	= TRUE;
+		shell->errCheck		= strdup("set -e");
+		shell->ignErr		= strdup("set +e");
+#endif
+		shell->echo		= strdup("v");
+		shell->exit		= strdup("e");
+	} else if (strcmp(name, "ksh") == 0) {
+		/*
+		 * KSH description. The Korn shell has a superset of
+		 * the Bourne shell's functionality.
+		 */
+		shell->name		= strdup("ksh");
+		shell->hasEchoCtl	= TRUE;
+		shell->echoOff		= strdup("set -");
+		shell->echoOn		= strdup("set -v");
+		shell->noPrint		= strdup("set -");
+		shell->hasErrCtl	= TRUE;
+		shell->errCheck		= strdup("set -e");
+		shell->ignErr		= strdup("set +e");
+		shell->echo		= strdup("v");
+		shell->exit		= strdup("e");
+	} else {
+		free(shell);
+		shell = NULL;
+	}
 
-	nsh->name	= estrdup(sh->name);
-	nsh->echoOff	= estrdup(sh->echoOff);
-	nsh->echoOn	= estrdup(sh->echoOn);
-	nsh->hasEchoCtl	= sh->hasEchoCtl;
-	nsh->noPrint	= estrdup(sh->noPrint);
-	nsh->hasErrCtl	= sh->hasErrCtl;
-	nsh->errCheck	= estrdup(sh->errCheck);
-	nsh->ignErr	= estrdup(sh->ignErr);
-	nsh->echo	= estrdup(sh->echo);
-	nsh->exit	= estrdup(sh->exit);
-
-	return (nsh);
+	return (shell);
 }
 
 /**
@@ -353,7 +329,7 @@ Job_ParseShell(const char line[])
 		/*
 		 * If no path was given, the user wants one of the pre-defined
 		 * shells, yes? So we find the one s/he wants with the help of
-		 * JobMatchShell and set things up the right way. shellPath
+		 * ShellMatch and set things up the right way. shellPath
 		 * will be set up by Job_Init.
 		 */
 		if (newShell.name == NULL) {
@@ -362,7 +338,7 @@ Job_ParseShell(const char line[])
 			ArgArray_Done(&aa);
 			return (FALSE);
 		}
-		if ((sh = JobMatchShell(newShell.name)) == NULL) {
+		if ((sh = ShellMatch(newShell.name)) == NULL) {
 			Parse_Error(PARSE_FATAL, "%s: no matching shell",
 			    newShell.name);
 			ArgArray_Done(&aa);
@@ -388,7 +364,7 @@ Job_ParseShell(const char line[])
 		}
 
 		if (!fullSpec) {
-			if ((sh = JobMatchShell(newShell.name)) == NULL) {
+			if ((sh = ShellMatch(newShell.name)) == NULL) {
 				Parse_Error(PARSE_FATAL,
 				    "%s: no matching shell", newShell.name);
 				free(path);
@@ -415,7 +391,7 @@ Job_ParseShell(const char line[])
 void
 Shell_Init(void)
 {
-	commandShell = JobMatchShell(DEFSHELLNAME);
+	commandShell = ShellMatch(DEFSHELLNAME);
 
 	/*
 	 * Both the absolute path and the last component
@@ -424,7 +400,7 @@ Shell_Init(void)
 	 * commandShell. All default shells are located in
 	 * PATH_DEFSHELLDIR.
 	 */
- 	shellName = commandShell->name;
+	shellName = commandShell->name;
 	shellPath = str_concat(
 			PATH_DEFSHELLDIR,
 			commandShell->name,
