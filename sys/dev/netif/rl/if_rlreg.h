@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.14.2.5 2003/03/02 20:58:54 dan Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rlreg.h,v 1.4 2004/11/10 18:30:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rlreg.h,v 1.5 2005/05/20 14:30:33 joerg Exp $
  */
 
 /*
@@ -303,6 +303,7 @@
 #define RL_MIN_FRAMELEN		60
 #define RL_TXTHRESH(x)		((x) << 11)
 #define RL_TX_THRESH_INIT	96
+#define RL_TX_THRESH_MAX	2016
 #define RL_RX_FIFOTHRESH	RL_RXFIFO_256BYTES
 #define RL_RX_MAXDMA		RL_RXDMA_1024BYTES
 #define RL_TX_MAXDMA		RL_TXDMA_2048BYTES

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.18 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.19 2005/05/20 14:30:33 joerg Exp $
  */
 
 /*
@@ -1196,28 +1196,21 @@ rl_txeof(struct rl_softc *sc)
 		bus_dmamap_destroy(sc->rl_tag, RL_LAST_DMAMAP(sc));
 		m_freem(RL_LAST_TXMBUF(sc));
 		RL_LAST_TXMBUF(sc) = NULL;
-
-		if ((txstat & RL_TXSTAT_TX_OK) == 0) {
-			int oldthresh;
-
-			ifp->if_oerrors++;
-			if ((txstat & RL_TXSTAT_TXABRT) ||
-			    (txstat & RL_TXSTAT_OUTOFWIN))
-				CSR_WRITE_4(sc, RL_TXCFG, RL_TXCFG_CONFIG);
-			oldthresh = sc->rl_txthresh;
-			/* error recovery */
-			rl_reset(sc);
-			rl_init(sc);
-			/*
-			 * If there was a transmit underrun,
-			 * bump the TX threshold.
-			 */
-			if (txstat & RL_TXSTAT_TX_UNDERRUN)
-				sc->rl_txthresh = oldthresh + 32;
-			return;
-		}
-		ifp->if_opackets++;
 		RL_INC(sc->rl_cdata.last_tx);
+
+		if (txstat & RL_TXSTAT_TX_UNDERRUN) {
+			sc->rl_txthresh += 32;
+			if (sc->rl_txthresh > RL_TX_THRESH_MAX)
+				sc->rl_txthresh = RL_TX_THRESH_MAX;
+		}
+
+		if (txstat & RL_TXSTAT_TX_OK) {
+			ifp->if_opackets++;
+		} else {
+			ifp->if_oerrors++;
+			if (txstat & (RL_TXSTAT_TXABRT | RL_TXSTAT_OUTOFWIN))
+				CSR_WRITE_4(sc, RL_TXCFG, RL_TXCFG_CONFIG);
+		}
 		ifp->if_flags &= ~IFF_OACTIVE;
 	} while (sc->rl_cdata.last_tx != sc->rl_cdata.cur_tx);
 
