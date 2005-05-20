@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.8 2005/05/20 11:47:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.9 2005/05/20 11:47:43 okumoto Exp $
  */
 
 #include <string.h>
@@ -135,56 +135,31 @@ ShellMatch(const char name[])
  *	The function returns a pointer to the new shell structure.
  */
 static struct Shell *
-JobCopyShell(const struct Shell *osh)
+ShellCopy(const struct Shell *o)
 {
-	struct Shell *nsh;
+	struct Shell *n;
 
-	nsh = emalloc(sizeof(*nsh));
-	nsh->name = estrdup(osh->name);
+	n = emalloc(sizeof(struct Shell));
+	n->name = estrdup(o->name);
 
-	if (osh->echoOff != NULL)
-		nsh->echoOff = estrdup(osh->echoOff);
-	else
-		nsh->echoOff = NULL;
-	if (osh->echoOn != NULL)
-		nsh->echoOn = estrdup(osh->echoOn);
-	else
-		nsh->echoOn = NULL;
-	nsh->hasEchoCtl = osh->hasEchoCtl;
+	n->hasEchoCtl	= o->hasEchoCtl;
+	n->echoOff	= o->echoOff ? estrdup(o->echoOff) : NULL;
+	n->echoOn	= o->echoOn ? estrdup(o->echoOn) : NULL;
+	n->noPrint	= o->noPrint ? estrdup(o->noPrint) : NULL;
+	n->hasErrCtl	= o->hasErrCtl;
+	n->errCheck	= o->errCheck ? estrdup(o->errCheck) : estrdup("");
+	n->ignErr	= o->ignErr ? estrdup(o->ignErr) : estrdup("%s");
+	n->echo		= o->echo ? estrdup(o->echo) : estrdup("");
+	n->exit		= o->exit ? estrdup(o->exit) : estrdup("");
 
-	if (osh->noPrint != NULL)
-		nsh->noPrint = estrdup(osh->noPrint);
-	else
-		nsh->noPrint = NULL;
-
-	nsh->hasErrCtl = osh->hasErrCtl;
-	if (osh->errCheck == NULL)
-		nsh->errCheck = estrdup("");
-	else
-		nsh->errCheck = estrdup(osh->errCheck);
-	if (osh->ignErr == NULL)
-		nsh->ignErr = estrdup("%s");
-	else
-		nsh->ignErr = estrdup(osh->ignErr);
-
-	if (osh->echo == NULL)
-		nsh->echo = estrdup("");
-	else
-		nsh->echo = estrdup(osh->echo);
-
-	if (osh->exit == NULL)
-		nsh->exit = estrdup("");
-	else
-		nsh->exit = estrdup(osh->exit);
-
-	return (nsh);
+	return (n);
 }
 
 /**
  * Free a shell structure and all associated strings.
  */
 static void
-JobFreeShell(struct Shell *sh)
+ShellFree(struct Shell *sh)
 {
 
 	if (sh != NULL) {
@@ -243,7 +218,7 @@ JobFreeShell(struct Shell *sh)
  *			    hasErrCtl is FALSE.
  */
 Boolean
-Job_ParseShell(const char line[])
+Shell_Parse(const char line[])
 {
 	ArgArray	aa;
 	char		**argv;
@@ -269,8 +244,9 @@ Job_ParseShell(const char line[])
 		 * Split keyword and value
 		 */
 		if ((eq = strchr(*argv, '=')) == NULL) {
-			Parse_Error(PARSE_FATAL, "missing '=' in shell "
-			    "specification keyword '%s'", *argv);
+			Parse_Error(PARSE_FATAL,
+			    "missing '=' in shell specification keyword '%s'",
+			    *argv);
 			ArgArray_Done(&aa);
 			return (FALSE);
 		}
@@ -372,14 +348,14 @@ Job_ParseShell(const char line[])
 				return (FALSE);
 			}
 		} else {
-			sh = JobCopyShell(&newShell);
+			sh = ShellCopy(&newShell);
 		}
 		free(shellPath);
 		shellPath = path;
 	}
 
 	/* set the new shell */
-	JobFreeShell(commandShell);
+	ShellFree(commandShell);
 	commandShell = sh;
 
 	shellName = commandShell->name;
