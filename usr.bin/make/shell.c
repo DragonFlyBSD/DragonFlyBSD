@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.9 2005/05/20 11:47:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.10 2005/05/20 11:48:18 okumoto Exp $
  */
 
 #include <string.h>
@@ -48,8 +48,6 @@
 #include "shell.h"
 #include "str.h"
 
-static char	*shellName = NULL;	/* last component of shell */
-char		*shellPath = NULL;	/* full pathname of executable image */
 struct Shell	*commandShell = NULL;
 
 /**
@@ -71,7 +69,8 @@ ShellMatch(const char name[])
 		 * with the setting of the 'echo' shell variable. Sadly,
 		 * however, it is unable to do error control nicely.
 		 */
-		shell->name		= strdup("csh");
+		shell->name		= strdup(name);
+		shell->path		= str_concat(PATH_DEFSHELLDIR, name, STR_ADDSLASH);
 		shell->hasEchoCtl	= TRUE;
 		shell->echoOff		= strdup("unset verbose");
 		shell->echoOn		= strdup("set verbose");
@@ -88,7 +87,8 @@ ShellMatch(const char name[])
 		 * sun UNIX anyway, one can even control error checking.
 		 */
 
-		shell->name		= strdup("sh");
+		shell->name		= strdup(name);
+		shell->path		= str_concat(PATH_DEFSHELLDIR, name, STR_ADDSLASH);
 		shell->hasEchoCtl	= TRUE;
 		shell->echoOff		= strdup("set -");
 		shell->echoOn		= strdup("set -v");
@@ -109,7 +109,8 @@ ShellMatch(const char name[])
 		 * KSH description. The Korn shell has a superset of
 		 * the Bourne shell's functionality.
 		 */
-		shell->name		= strdup("ksh");
+		shell->name		= strdup(name);
+		shell->path		= str_concat(PATH_DEFSHELLDIR, name, STR_ADDSLASH);
 		shell->hasEchoCtl	= TRUE;
 		shell->echoOff		= strdup("set -");
 		shell->echoOn		= strdup("set -v");
@@ -140,8 +141,8 @@ ShellCopy(const struct Shell *o)
 	struct Shell *n;
 
 	n = emalloc(sizeof(struct Shell));
-	n->name = estrdup(o->name);
-
+	n->name		= estrdup(o->name);
+	n->path		= estrdup(o->path);
 	n->hasEchoCtl	= o->hasEchoCtl;
 	n->echoOff	= o->echoOff ? estrdup(o->echoOff) : NULL;
 	n->echoOn	= o->echoOn ? estrdup(o->echoOn) : NULL;
@@ -180,16 +181,14 @@ ShellFree(struct Shell *sh)
  * line as a shell specification. Returns FALSE if the
  * spec was incorrect.
  *
- * Parse a shell specification and set up commandShell, shellPath appropriately.
+ * Parse a shell specification and set up commandShell.
  *
  * Results:
  *	TRUE if the specification was correct. FALSE otherwise.
  *
  * Side Effects:
  *	commandShell points to a Shell structure (either predefined or
- *	created from the shell spec), shellPath is the full path of the
- *	shell described by commandShell, while shellName is just the
- *	final component of shellPath.
+ *	created from the shell spec)
  *
  * Notes:
  *	A shell specification consists of a .SHELL target, with dependency
@@ -223,13 +222,11 @@ Shell_Parse(const char line[])
 	ArgArray	aa;
 	char		**argv;
 	int		argc;
-	char		*path;
 	Boolean		fullSpec = FALSE;
 	struct Shell	newShell;
 	struct Shell	*sh;
 
 	memset(&newShell, 0, sizeof(newShell));
-	path = NULL;
 
 	/*
 	 * Parse the specification by keyword but skip the first word
@@ -253,7 +250,7 @@ Shell_Parse(const char line[])
 		*eq++ = '\0';
 
 		if (strcmp(*argv, "path") == 0) {
-			path = eq;
+			newShell.path = eq;
 		} else if (strcmp(*argv, "name") == 0) {
 			newShell.name = eq;
 		} else if (strcmp(*argv, "quiet") == 0) {
@@ -301,12 +298,11 @@ Shell_Parse(const char line[])
 			newShell.hasEchoCtl = TRUE;
 	}
 
-	if (path == NULL) {
+	if (newShell.path == NULL) {
 		/*
 		 * If no path was given, the user wants one of the pre-defined
 		 * shells, yes? So we find the one s/he wants with the help of
-		 * ShellMatch and set things up the right way. shellPath
-		 * will be set up by Job_Init.
+		 * ShellMatch and set things up the right way.
 		 */
 		if (newShell.name == NULL) {
 			Parse_Error(PARSE_FATAL,
@@ -329,11 +325,10 @@ Shell_Parse(const char line[])
 		 * word and copy it to a new location. In either case, we need
 		 * to record the path the user gave for the shell.
 		 */
-		path = estrdup(path);
 		if (newShell.name == NULL) {
 			/* get the base name as the name */
-			if ((newShell.name = strrchr(path, '/')) == NULL) {
-				newShell.name = path;
+			if ((newShell.name = strrchr(newShell.path, '/')) == NULL) {
+				newShell.name = newShell.path;
 			} else {
 				newShell.name += 1;
 			}
@@ -343,22 +338,17 @@ Shell_Parse(const char line[])
 			if ((sh = ShellMatch(newShell.name)) == NULL) {
 				Parse_Error(PARSE_FATAL,
 				    "%s: no matching shell", newShell.name);
-				free(path);
 				ArgArray_Done(&aa);
 				return (FALSE);
 			}
 		} else {
 			sh = ShellCopy(&newShell);
 		}
-		free(shellPath);
-		shellPath = path;
 	}
 
-	/* set the new shell */
+	/* Release the old shell and set the new shell */
 	ShellFree(commandShell);
 	commandShell = sh;
-
-	shellName = commandShell->name;
 
 	ArgArray_Done(&aa);
 	return (TRUE);
@@ -368,18 +358,5 @@ void
 Shell_Init(void)
 {
 	commandShell = ShellMatch(DEFSHELLNAME);
-
-	/*
-	 * Both the absolute path and the last component
-	 * must be set. The last component is taken from the 'name'
-	 * field of the default shell description pointed-to by
-	 * commandShell. All default shells are located in
-	 * PATH_DEFSHELLDIR.
-	 */
-	shellName = commandShell->name;
-	shellPath = str_concat(
-			PATH_DEFSHELLDIR,
-			commandShell->name,
-			STR_ADDSLASH);
 }
 

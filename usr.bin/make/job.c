@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.105 2005/05/19 17:07:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.106 2005/05/20 11:48:18 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -650,7 +650,7 @@ ProcExec(const ProcStuff *ps)
 		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 		write(STDERR_FILENO, "\n", 1);
 	} else {
-		execv(shellPath, ps->argv);
+		execv(commandShell->path, ps->argv);
 
 		write(STDERR_FILENO,
 		      "Could not execute shell\n",
@@ -3115,7 +3115,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		 * supposed to exit when it hits an error.
 		 */
 		ps.argv = emalloc(4 * sizeof(char *));
-		ps.argv[0] = strdup(shellPath);
+		ps.argv[0] = strdup(commandShell->path);
 		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
 		ps.argv[2] = strdup(cmd);
 		ps.argv[3] = NULL;
