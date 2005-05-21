@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.7 2005/05/21 07:28:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.8 2005/05/21 09:05:05 joerg Exp $
  */
 
 /*
@@ -1699,20 +1699,20 @@
 #define BGE_MAGIC_NUMBER                0x4B657654
 
 typedef struct {
-	u_int32_t		bge_addr_hi;
-	u_int32_t		bge_addr_lo;
+	uint32_t		bge_addr_hi;
+	uint32_t		bge_addr_lo;
 } bge_hostaddr;
 #define BGE_HOSTADDR(x, y)						\
 	do {								\
-		(x).bge_addr_lo = ((u_int64_t) (y) & 0xffffffff);	\
-		(x).bge_addr_hi = ((u_int64_t) (y) >> 32);		\
+		(x).bge_addr_lo = ((uint64_t) (y) & 0xffffffff);	\
+		(x).bge_addr_hi = ((uint64_t) (y) >> 32);		\
 	} while(0)
 
 /* Ring control block structure */
 struct bge_rcb {
 	bge_hostaddr		bge_hostaddr;
-	u_int32_t		bge_maxlen_flags;
-	u_int32_t		bge_nicaddr;
+	uint32_t		bge_maxlen_flags;
+	uint32_t		bge_nicaddr;
 };
 #define BGE_RCB_MAXLEN_FLAGS(maxlen, flags)	((maxlen) << 16 | (flags))
 
@@ -1721,10 +1721,10 @@ struct bge_rcb {
 
 struct bge_tx_bd {
 	bge_hostaddr		bge_addr;
-	u_int16_t		bge_flags;
-	u_int16_t		bge_len;
-	u_int16_t		bge_vlan_tag;
-	u_int16_t		bge_rsvd;
+	uint16_t		bge_flags;
+	uint16_t		bge_len;
+	uint16_t		bge_vlan_tag;
+	uint16_t		bge_rsvd;
 };
 
 #define BGE_TXBDFLAG_TCP_UDP_CSUM	0x0001
@@ -1746,16 +1746,16 @@ struct bge_tx_bd {
 
 struct bge_rx_bd {
 	bge_hostaddr		bge_addr;
-	u_int16_t		bge_len;
-	u_int16_t		bge_idx;
-	u_int16_t		bge_flags;
-	u_int16_t		bge_type;
-	u_int16_t		bge_tcp_udp_csum;
-	u_int16_t		bge_ip_csum;
-	u_int16_t		bge_vlan_tag;
-	u_int16_t		bge_error_flag;
-	u_int32_t		bge_rsvd;
-	u_int32_t		bge_opaque;
+	uint16_t		bge_len;
+	uint16_t		bge_idx;
+	uint16_t		bge_flags;
+	uint16_t		bge_type;
+	uint16_t		bge_tcp_udp_csum;
+	uint16_t		bge_ip_csum;
+	uint16_t		bge_vlan_tag;
+	uint16_t		bge_error_flag;
+	uint32_t		bge_rsvd;
+	uint32_t		bge_opaque;
 };
 
 #define BGE_RXBDFLAG_END		0x0004
@@ -1777,17 +1777,17 @@ struct bge_rx_bd {
 #define BGE_RXERRFLAG_GIANT		0x0080
 
 struct bge_sts_idx {
-	u_int16_t		bge_rx_prod_idx;
-	u_int16_t		bge_tx_cons_idx;
+	uint16_t		bge_rx_prod_idx;
+	uint16_t		bge_tx_cons_idx;
 };
 
 struct bge_status_block {
-	u_int32_t		bge_status;
-	u_int32_t		bge_rsvd0;
-	u_int16_t		bge_rx_jumbo_cons_idx;
-	u_int16_t		bge_rx_std_cons_idx;
-	u_int16_t		bge_rx_mini_cons_idx;
-	u_int16_t		bge_rsvd1;
+	uint32_t		bge_status;
+	uint32_t		bge_rsvd0;
+	uint16_t		bge_rx_jumbo_cons_idx;
+	uint16_t		bge_rx_std_cons_idx;
+	uint16_t		bge_rx_mini_cons_idx;
+	uint16_t		bge_rsvd1;
 	struct bge_sts_idx	bge_idx[16];
 };
 
@@ -1935,43 +1935,43 @@ struct bge_tx_mac_stats {
 
 /* Stats counters access through registers */
 struct bge_mac_stats_regs {
-	u_int32_t		ifHCOutOctets;
-	u_int32_t		Reserved0;
-	u_int32_t		etherStatsCollisions;
-	u_int32_t		outXonSent;
-	u_int32_t		outXoffSent;
-	u_int32_t		Reserved1;
-	u_int32_t		dot3StatsInternalMacTransmitErrors;
-	u_int32_t		dot3StatsSingleCollisionFrames;
-	u_int32_t		dot3StatsMultipleCollisionFrames;
-	u_int32_t		dot3StatsDeferredTransmissions;
-	u_int32_t		Reserved2;
-	u_int32_t		dot3StatsExcessiveCollisions;
-	u_int32_t		dot3StatsLateCollisions;
-	u_int32_t		Reserved3[14];
-	u_int32_t		ifHCOutUcastPkts;
-	u_int32_t		ifHCOutMulticastPkts;
-	u_int32_t		ifHCOutBroadcastPkts;
-	u_int32_t		Reserved4[2];
-	u_int32_t		ifHCInOctets;
-	u_int32_t		Reserved5;
-	u_int32_t		etherStatsFragments;
-	u_int32_t		ifHCInUcastPkts;
-	u_int32_t		ifHCInMulticastPkts;
-	u_int32_t		ifHCInBroadcastPkts;
-	u_int32_t		dot3StatsFCSErrors;
-	u_int32_t		dot3StatsAlignmentErrors;
-	u_int32_t		xonPauseFramesReceived;
-	u_int32_t		xoffPauseFramesReceived;
-	u_int32_t		macControlFramesReceived;
-	u_int32_t		xoffStateEntered;
-	u_int32_t		dot3StatsFramesTooLong;
-	u_int32_t		etherStatsJabbers;
-	u_int32_t		etherStatsUndersizePkts;
+	uint32_t		ifHCOutOctets;
+	uint32_t		Reserved0;
+	uint32_t		etherStatsCollisions;
+	uint32_t		outXonSent;
+	uint32_t		outXoffSent;
+	uint32_t		Reserved1;
+	uint32_t		dot3StatsInternalMacTransmitErrors;
+	uint32_t		dot3StatsSingleCollisionFrames;
+	uint32_t		dot3StatsMultipleCollisionFrames;
+	uint32_t		dot3StatsDeferredTransmissions;
+	uint32_t		Reserved2;
+	uint32_t		dot3StatsExcessiveCollisions;
+	uint32_t		dot3StatsLateCollisions;
+	uint32_t		Reserved3[14];
+	uint32_t		ifHCOutUcastPkts;
+	uint32_t		ifHCOutMulticastPkts;
+	uint32_t		ifHCOutBroadcastPkts;
+	uint32_t		Reserved4[2];
+	uint32_t		ifHCInOctets;
+	uint32_t		Reserved5;
+	uint32_t		etherStatsFragments;
+	uint32_t		ifHCInUcastPkts;
+	uint32_t		ifHCInMulticastPkts;
+	uint32_t		ifHCInBroadcastPkts;
+	uint32_t		dot3StatsFCSErrors;
+	uint32_t		dot3StatsAlignmentErrors;
+	uint32_t		xonPauseFramesReceived;
+	uint32_t		xoffPauseFramesReceived;
+	uint32_t		macControlFramesReceived;
+	uint32_t		xoffStateEntered;
+	uint32_t		dot3StatsFramesTooLong;
+	uint32_t		etherStatsJabbers;
+	uint32_t		etherStatsUndersizePkts;
 };
 
 struct bge_stats {
-	u_int8_t		Reserved0[256];
+	uint8_t			Reserved0[256];
 
 	/* Statistics maintained by Receive MAC. */
 	struct bge_rx_mac_stats rxstats;
@@ -2008,7 +2008,7 @@ struct bge_stats {
 	bge_hostaddr		nicAvoidedInterrupts;
 	bge_hostaddr		nicSendThresholdHit;
 
-	u_int8_t		Reserved4[320];
+	uint8_t			Reserved4[320];
 };
 
 /*
@@ -2056,14 +2056,14 @@ struct bge_gib {
  
 /* VPD structures */
 struct vpd_res {
-	u_int8_t		vr_id;
-	u_int8_t		vr_len;
-	u_int8_t		vr_pad;
+	uint8_t			vr_id;
+	uint8_t			vr_len;
+	uint8_t			vr_pad;
 };
  
 struct vpd_key {
 	char			vk_key[2];
-	u_int8_t		vk_len;
+	uint8_t			vk_len;
 };
  
 #define VPD_RES_ID	0x82	/* ID string */
@@ -2103,9 +2103,9 @@ struct vpd_key {
 #define BGE_MSLOTS	256
 #define BGE_JSLOTS	384
 
-#define BGE_JRAWLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(u_int64_t))
-#define BGE_JLEN (BGE_JRAWLEN + (sizeof(u_int64_t) - \
-	(BGE_JRAWLEN % sizeof(u_int64_t))))
+#define BGE_JRAWLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
+#define BGE_JLEN (BGE_JRAWLEN + (sizeof(uint64_t) - \
+	(BGE_JRAWLEN % sizeof(uint64_t))))
 #define BGE_JPAGESZ PAGE_SIZE
 #define BGE_RESID (BGE_JPAGESZ - (BGE_JLEN * BGE_JSLOTS) % BGE_JPAGESZ)
 #define BGE_JMEM ((BGE_JLEN * BGE_JSLOTS) + BGE_RESID)
@@ -2148,8 +2148,8 @@ struct bge_chain_data {
 };
 
 struct bge_type {
-	u_int16_t		bge_vid;
-	u_int16_t		bge_did;
+	uint16_t		bge_vid;
+	uint16_t		bge_did;
 	char			*bge_name;
 };
 
@@ -2179,29 +2179,29 @@ struct bge_softc {
 	struct resource		*bge_irq;
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
-	u_int8_t		bge_extram;	/* has external SSRAM */
-	u_int8_t		bge_tbi;
-	u_int8_t		bge_rx_alignment_bug;
-	u_int32_t		bge_chipid;
-	u_int8_t		bge_asicrev;
-	u_int8_t		bge_chiprev;
-	u_int8_t		bge_no_3_led;
+	uint8_t			bge_extram;	/* has external SSRAM */
+	uint8_t			bge_tbi;
+	uint8_t			bge_rx_alignment_bug;
+	uint32_t		bge_chipid;
+	uint8_t			bge_asicrev;
+	uint8_t			bge_chiprev;
+	uint8_t			bge_no_3_led;
 	struct bge_ring_data	*bge_rdata;	/* rings */
 	struct bge_chain_data	bge_cdata;	/* mbufs */
-	u_int16_t		bge_tx_saved_considx;
-	u_int16_t		bge_rx_saved_considx;
-	u_int16_t		bge_ev_saved_considx;
-	u_int16_t		bge_return_ring_cnt;
-	u_int16_t		bge_std;	/* current std ring head */
-	u_int16_t		bge_jumbo;	/* current jumo ring head */
+	uint16_t		bge_tx_saved_considx;
+	uint16_t		bge_rx_saved_considx;
+	uint16_t		bge_ev_saved_considx;
+	uint16_t		bge_return_ring_cnt;
+	uint16_t		bge_std;	/* current std ring head */
+	uint16_t		bge_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__bge_jfreehead, bge_jpool_entry)	bge_jfree_listhead;
 	SLIST_HEAD(__bge_jinusehead, bge_jpool_entry)	bge_jinuse_listhead;
-	u_int32_t		bge_stat_ticks;
-	u_int32_t		bge_rx_coal_ticks;
-	u_int32_t		bge_tx_coal_ticks;
-	u_int32_t		bge_rx_max_coal_bds;
-	u_int32_t		bge_tx_max_coal_bds;
-	u_int32_t		bge_tx_buf_ratio;
+	uint32_t		bge_stat_ticks;
+	uint32_t		bge_rx_coal_ticks;
+	uint32_t		bge_tx_coal_ticks;
+	uint32_t		bge_rx_max_coal_bds;
+	uint32_t		bge_tx_max_coal_bds;
+	uint32_t		bge_tx_buf_ratio;
 	int			bge_if_flags;
 	int			bge_txcnt;
 	int			bge_link;
