@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.31 2005/05/21 09:05:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.32 2005/05/21 09:07:52 joerg Exp $
  *
  */
 
@@ -198,7 +198,6 @@ static void	bge_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static uint8_t	bge_eeprom_getbyte(struct bge_softc *, uint32_t, uint8_t *);
 static int	bge_read_eeprom(struct bge_softc *, caddr_t, uint32_t, size_t);
 
-static uint32_t	bge_crc(caddr_t);
 static void	bge_setmulti(struct bge_softc *);
 
 static void	bge_handle_events(struct bge_softc *);
@@ -946,25 +945,6 @@ bge_init_tx_ring(struct bge_softc *sc)
 	return(0);
 }
 
-#define BGE_POLY	0xEDB88320
-
-static uint32_t
-bge_crc(addr)
-	caddr_t addr;
-{
-	uint32_t idx, bit, data, crc;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (idx = 0; idx < 6; idx++) {
-		for (data = *addr++, bit = 0; bit < 8; bit++, data >>= 1)
-			crc = (crc >> 1) ^ (((crc ^ data) & 1) ? BGE_POLY : 0);
-	}
-
-	return(crc & 0x7F);
-}
-
 static void
 bge_setmulti(struct bge_softc *sc)
 {
@@ -989,7 +969,9 @@ bge_setmulti(struct bge_softc *sc)
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = bge_crc(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_le(
+		    LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+		    ETHER_ADDR_LEN) & 0x7f;
 		hashes[(h & 0x60) >> 5] |= 1 << (h & 0x1F);
 	}
 
