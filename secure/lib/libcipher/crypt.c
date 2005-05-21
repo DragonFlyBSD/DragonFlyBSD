@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcipher/crypt.c,v 1.6 1999/08/28 01:30:21 peter Exp $
- * $DragonFly: src/secure/lib/libcipher/crypt.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
+ * $DragonFly: src/secure/lib/libcipher/crypt.c,v 1.3 2005/05/21 10:31:08 corecode Exp $
  *
  * This is an original implementation of the DES and the crypt(3) interfaces
  * by David Burren <davidb@werj.com.au>.
@@ -567,13 +567,13 @@ des_cipher(const char *in, char *out, long salt, int count)
 
 	setup_salt(salt);
 
-	rawl = ntohl(*((u_long *) in)++);
-	rawr = ntohl(*((u_long *) in));
+	rawl = ntohl(*((u_long *) in));
+	rawr = ntohl(*(((u_long *) in) + 1));
 
 	retval = do_des(rawl, rawr, &l_out, &r_out, count);
 
-	*((u_long *) out)++ = htonl(l_out);
-	*((u_long *) out) = htonl(r_out);
+	*((u_long *) out) = htonl(l_out);
+	*(((u_long *) out) + 1) = htonl(r_out);
 	return(retval);
 }
 
