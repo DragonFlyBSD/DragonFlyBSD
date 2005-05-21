@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.6 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.7 2005/05/21 07:28:04 joerg Exp $
  */
 
 /*
@@ -2179,7 +2179,6 @@ struct bge_softc {
 	struct resource		*bge_irq;
 	struct resource		*bge_res;
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
-	u_int8_t		bge_unit;	/* interface number */
 	u_int8_t		bge_extram;	/* has external SSRAM */
 	u_int8_t		bge_tbi;
 	u_int8_t		bge_rx_alignment_bug;

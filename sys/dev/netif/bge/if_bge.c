@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.28 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.29 2005/05/21 07:28:04 joerg Exp $
  *
  */
 
@@ -357,7 +357,7 @@ bge_vpd_readbyte(sc, addr)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: VPD read timed out\n", sc->bge_unit);
+		device_printf(sc->bge_dev, "VPD read timed out\n");
 		return(0);
 	}
 
@@ -399,8 +399,9 @@ bge_vpd_read(sc)
 	bge_vpd_read_res(sc, &res, pos);
 
 	if (res.vr_id != VPD_RES_ID) {
-		printf("bge%d: bad VPD resource id: expected %x got %x\n",
-			sc->bge_unit, VPD_RES_ID, res.vr_id);
+		device_printf(sc->bge_dev,
+			      "bad VPD resource id: expected %x got %x\n",
+			      VPD_RES_ID, res.vr_id);
                 return;
         }
 
@@ -414,8 +415,9 @@ bge_vpd_read(sc)
 	bge_vpd_read_res(sc, &res, pos);
 
 	if (res.vr_id != VPD_RES_READ) {
-		printf("bge%d: bad VPD resource id: expected %x got %x\n",
-		    sc->bge_unit, VPD_RES_READ, res.vr_id);
+		device_printf(sc->bge_dev,
+			      "bad VPD resource id: expected %x got %x\n",
+			      VPD_RES_READ, res.vr_id);
 		return;
 	}
 
@@ -465,7 +467,7 @@ bge_eeprom_getbyte(sc, addr, dest)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: eeprom read timed out\n", sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if, "eeprom read timed out\n");
 		return(0);
 	}
 
@@ -542,7 +544,7 @@ bge_miibus_readreg(dev, phy, reg)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: PHY read timed out\n", sc->bge_unit);
+		if_printf(ifp, "PHY read timed out\n");
 		val = 0;
 		goto done;
 	}
@@ -593,7 +595,7 @@ bge_miibus_writereg(dev, phy, reg, val)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: PHY read timed out\n", sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if, "PHY read timed out\n");
 		return(0);
 	}
 
@@ -654,7 +656,7 @@ bge_alloc_jumbo_mem(sc)
 		M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->bge_cdata.bge_jumbo_buf == NULL) {
-		printf("bge%d: no memory for jumbo buffers!\n", sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if, "no memory for jumbo buffers!\n");
 		return(ENOBUFS);
 	}
 
@@ -718,7 +720,7 @@ bge_jalloc(sc)
 	entry = SLIST_FIRST(&sc->bge_jfree_listhead);
 	
 	if (entry == NULL) {
-		printf("bge%d: no free jumbo buffers\n", sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if, "no free jumbo buffers\n");
 		return(NULL);
 	}
 
@@ -884,8 +886,8 @@ bge_newbuf_jumbo(sc, i, m)
 		buf = bge_jalloc(sc);
 		if (buf == NULL) {
 			m_freem(m_new);
-			printf("bge%d: jumbo allocation failed "
-			    "-- packet dropped!\n", sc->bge_unit);
+			if_printf(&sc->arpcom.ac_if, "jumbo allocation failed "
+			    "-- packet dropped!\n");
 			return(ENOBUFS);
 		}
 
@@ -1118,8 +1120,8 @@ bge_chipinit(sc)
 	 * self-tests passed.
 	 */
 	if (CSR_READ_4(sc, BGE_RXCPU_MODE) & BGE_RXCPUMODE_ROMFAIL) {
-		printf("bge%d: RX CPU self-diagnostics failed!\n",
-		    sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "RX CPU self-diagnostics failed!\n");
 		return(ENODEV);
 	}
 
@@ -1271,8 +1273,8 @@ bge_blockinit(sc)
 		}
 
 		if (i == BGE_TIMEOUT) {
-			printf("bge%d: buffer manager failed to start\n",
-			    sc->bge_unit);
+			if_printf(&sc->arpcom.ac_if,
+				  "buffer manager failed to start\n");
 			return(ENXIO);
 		}
 	}
@@ -1289,8 +1291,8 @@ bge_blockinit(sc)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: flow-through queue init failed\n",
-		    sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "flow-through queue init failed\n");
 		return(ENXIO);
 	}
 
@@ -1450,8 +1452,8 @@ bge_blockinit(sc)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: host coalescing engine failed to idle\n",
-		    sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "host coalescing engine failed to idle\n");
 		return(ENXIO);
 	}
 
@@ -1603,7 +1605,6 @@ bge_probe(dev)
 
 	sc = device_get_softc(dev);
 	bzero(sc, sizeof(struct bge_softc));
-	sc->bge_unit = device_get_unit(dev);
 	sc->bge_dev = dev;
 
 	while(t->bge_name != NULL) {
@@ -1639,15 +1640,13 @@ bge_attach(dev)
 	struct bge_softc *sc;
 	u_int32_t hwcfg = 0;
 	u_int32_t mac_addr = 0;
-	int unit, error = 0, rid;
+	int error = 0, rid;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
 
 	s = splimp();
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	sc->bge_dev = dev;
-	sc->bge_unit = unit;
 	callout_init(&sc->bge_stat_timer);
 
 	/*
@@ -1659,7 +1658,7 @@ bge_attach(dev)
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("bge%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1669,7 +1668,7 @@ bge_attach(dev)
 	    0, ~0, 1, RF_ACTIVE);
 
 	if (sc->bge_res == NULL) {
-		printf ("bge%d: couldn't map memory\n", unit);
+		device_printf(dev, "couldn't map memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1685,7 +1684,7 @@ bge_attach(dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->bge_irq == NULL) {
-		printf("bge%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1695,17 +1694,18 @@ bge_attach(dev)
 
 	if (error) {
 		bge_release_resources(sc);
-		printf("bge%d: couldn't set up irq\n", unit);
+		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
-	sc->bge_unit = unit;
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	/* Try to reset the chip. */
 	bge_reset(sc);
 
 	if (bge_chipinit(sc)) {
-		printf("bge%d: chip initialization failed\n", sc->bge_unit);
+		device_printf(dev, "chip initialization failed\n");
 		bge_release_resources(sc);
 		error = ENXIO;
 		goto fail;
@@ -1725,7 +1725,7 @@ bge_attach(dev)
 		ether_addr[5] = (uint8_t)mac_addr;
 	} else if (bge_read_eeprom(sc, ether_addr,
 	    BGE_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
-		printf("bge%d: failed to read station address\n", unit);
+		device_printf(dev, "failed to read station address\n");
 		bge_release_resources(sc);
 		error = ENXIO;
 		goto fail;
@@ -1738,7 +1738,7 @@ bge_attach(dev)
 	if (sc->bge_rdata == NULL) {
 		bge_release_resources(sc);
 		error = ENXIO;
-		printf("bge%d: no memory for list buffers!\n", sc->bge_unit);
+		device_printf(dev, "no memory for list buffers!\n");
 		goto fail;
 	}
 
@@ -1758,8 +1758,7 @@ bge_attach(dev)
 	 */
 	if (sc->bge_asicrev != BGE_ASICREV_BCM5705) {
 		if (bge_alloc_jumbo_mem(sc)) {
-			printf("bge%d: jumbo buffer allocation "
-			    "failed\n", sc->bge_unit);
+			device_printf(dev, "jumbo buffer allocation failed\n");
 			bge_release_resources(sc);
 			error = ENXIO;
 			goto fail;
@@ -1780,9 +1779,7 @@ bge_attach(dev)
 		sc->bge_return_ring_cnt = BGE_RETURN_RING_CNT;
 
 	/* Set up ifnet structure */
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "bge", sc->bge_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bge_ioctl;
 	ifp->if_start = bge_start;
@@ -1834,7 +1831,7 @@ bge_attach(dev)
 		 */
 		if (mii_phy_probe(dev, &sc->bge_miibus,
 		    bge_ifmedia_upd, bge_ifmedia_sts)) {
-			printf("bge%d: MII without any PHY!\n", sc->bge_unit);
+			device_printf(dev, "MII without any PHY!\n");
 			bge_release_resources(sc);
 			bge_free_jumbo_mem(sc);
 			error = ENXIO;
@@ -1990,7 +1987,7 @@ bge_reset(sc)
 	}
 	
 	if (i == BGE_TIMEOUT) {
-		printf("bge%d: firmware handshake timed out\n", sc->bge_unit);
+		if_printf(&sc->arpcom.ac_if, "firmware handshake timed out\n");
 		return;
 	}
 
@@ -2315,7 +2312,7 @@ bge_tick(xsc)
 		    BGE_MACSTAT_TBI_PCS_SYNCHED) {
 			sc->bge_link++;
 			CSR_WRITE_4(sc, BGE_MAC_STS, 0xFFFFFFFF);
-			printf("bge%d: gigabit link up\n", sc->bge_unit);
+			if_printf(ifp, "gigabit link up\n");
 			if (!ifq_is_empty(&ifp->if_snd))
 				bge_start(ifp);
 		}
@@ -2333,8 +2330,7 @@ bge_tick(xsc)
 			sc->bge_link++;
 			if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
 			    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX)
-				printf("bge%d: gigabit link up\n",
-				   sc->bge_unit);
+				if_printf(ifp, "gigabit link up\n");
 			if (!ifq_is_empty(&ifp->if_snd))
 				bge_start(ifp);
 		}
@@ -2581,7 +2577,7 @@ bge_init(xsc)
 	 * control blocks and firmware.
 	 */
 	if (bge_blockinit(sc)) {
-		printf("bge%d: initialization failure\n", sc->bge_unit);
+		if_printf(ifp, "initialization failure\n");
 		splx(s);
 		return;
 	}
@@ -2624,8 +2620,7 @@ bge_init(xsc)
 				break;
 		}
 		if (i == 10)
-			printf ("bge%d: 5705 A0 chip failed to load RX ring\n",
-			    sc->bge_unit);
+			if_printf(ifp, "5705 A0 chip failed to load RX ring\n");
 	}
 
 	/* Init jumbo RX ring. */
@@ -2852,7 +2847,7 @@ bge_watchdog(ifp)
 
 	sc = ifp->if_softc;
 
-	printf("bge%d: watchdog timeout -- resetting\n", sc->bge_unit);
+	if_printf(ifp, "watchdog timeout -- resetting\n");
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	bge_init(sc);
