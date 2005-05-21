@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.29 2005/05/21 07:28:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.30 2005/05/21 07:38:41 joerg Exp $
  *
  */
 
@@ -1652,9 +1652,8 @@ bge_attach(dev)
 	/*
 	 * Map control/status registers.
 	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 	if (!(command & PCIM_CMD_MEMEN)) {
@@ -1664,8 +1663,8 @@ bge_attach(dev)
 	}
 
 	rid = BGE_PCI_BAR0;
-	sc->bge_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->bge_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 
 	if (sc->bge_res == NULL) {
 		device_printf(dev, "couldn't map memory\n");
@@ -1680,7 +1679,7 @@ bge_attach(dev)
 	/* Allocate interrupt */
 	rid = 0;
 	
-	sc->bge_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->bge_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->bge_irq == NULL) {
@@ -1813,8 +1812,7 @@ bge_attach(dev)
 		sc->bge_tbi = 1;
 
 	/* The SysKonnect SK-9D41 is a 1000baseSX card. */
-	if ((pci_read_config(dev, BGE_PCI_SUBSYS, 4) >> 16) ==
-	     PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41)
+	if (pci_get_subvendor(dev) == PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41)
 		sc->bge_tbi = 1;
 
 	if (sc->bge_tbi) {
