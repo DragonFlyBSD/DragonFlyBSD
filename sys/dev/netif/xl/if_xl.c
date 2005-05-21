@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.20 2005/05/14 01:33:35 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.21 2005/05/21 08:57:29 joerg Exp $
  */
 
 /*
@@ -1406,8 +1406,7 @@ xl_attach(dev)
 	res = SYS_RES_MEMORY;
 
 #if 0
-	sc->xl_res = bus_alloc_resource(dev, res, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->xl_res = bus_alloc_resource_any(dev, res, &rid, RF_ACTIVE);
 #endif
 
 	if (sc->xl_res != NULL) {
@@ -1417,8 +1416,7 @@ xl_attach(dev)
 	} else {
 		rid = XL_PCI_LOIO;
 		res = SYS_RES_IOPORT;
-		sc->xl_res = bus_alloc_resource(dev, res, &rid,
-		    0, ~0, 1, RF_ACTIVE);
+		sc->xl_res = bus_alloc_resource_any(dev, res, &rid, RF_ACTIVE);
 		if (sc->xl_res == NULL) {
 			device_printf(dev, "couldn't map ports/memory\n");
 			error = ENXIO;
@@ -1433,8 +1431,8 @@ xl_attach(dev)
 
 	if (sc->xl_flags & XL_FLAG_FUNCREG) {
 		rid = XL_PCI_FUNCMEM;
-		sc->xl_fres = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-		    0, ~0, 1, RF_ACTIVE);
+		sc->xl_fres = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+		    RF_ACTIVE);
 
 		if (sc->xl_fres == NULL) {
 			device_printf(dev, "couldn't map ports/memory\n");
@@ -1448,7 +1446,7 @@ xl_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->xl_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->xl_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 	if (sc->xl_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
