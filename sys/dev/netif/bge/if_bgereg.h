@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.8 2005/05/21 09:05:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.9 2005/05/22 16:14:04 joerg Exp $
  */
 
 /*
@@ -2103,16 +2103,19 @@ struct vpd_key {
 #define BGE_MSLOTS	256
 #define BGE_JSLOTS	384
 
-#define BGE_JRAWLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
-#define BGE_JLEN (BGE_JRAWLEN + (sizeof(uint64_t) - \
-	(BGE_JRAWLEN % sizeof(uint64_t))))
+#define BGE_JLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN)
 #define BGE_JPAGESZ PAGE_SIZE
 #define BGE_RESID (BGE_JPAGESZ - (BGE_JLEN * BGE_JSLOTS) % BGE_JPAGESZ)
 #define BGE_JMEM ((BGE_JLEN * BGE_JSLOTS) + BGE_RESID)
 
+struct bge_softc;
+
 struct bge_jslot {
-	caddr_t			bge_buf;
-        int			bge_inuse;
+	struct bge_softc	*bge_sc;
+	void			*bge_buf;
+	int			bge_inuse;
+	int			bge_slot;
+	SLIST_ENTRY(bge_jslot)	jslot_link;
 };
 
 /*
@@ -2158,11 +2161,6 @@ struct bge_type {
 #define BGE_TIMEOUT		100000
 #define BGE_TXCONS_UNSET		0xFFFF	/* impossible value */
 
-struct bge_jpool_entry {
-	int                             slot;
-	SLIST_ENTRY(bge_jpool_entry)	jpool_entries;
-};
-
 struct bge_bcom_hack {
 	int			reg;
 	int			val;
@@ -2194,8 +2192,7 @@ struct bge_softc {
 	uint16_t		bge_return_ring_cnt;
 	uint16_t		bge_std;	/* current std ring head */
 	uint16_t		bge_jumbo;	/* current jumo ring head */
-	SLIST_HEAD(__bge_jfreehead, bge_jpool_entry)	bge_jfree_listhead;
-	SLIST_HEAD(__bge_jinusehead, bge_jpool_entry)	bge_jinuse_listhead;
+	SLIST_HEAD(__bge_jfreehead, bge_jslot)	bge_jfree_listhead;
 	uint32_t		bge_stat_ticks;
 	uint32_t		bge_rx_coal_ticks;
 	uint32_t		bge_tx_coal_ticks;

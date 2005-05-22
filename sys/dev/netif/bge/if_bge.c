@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.32 2005/05/21 09:07:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.33 2005/05/22 16:14:04 joerg Exp $
  *
  */
 
@@ -203,9 +203,10 @@ static void	bge_setmulti(struct bge_softc *);
 static void	bge_handle_events(struct bge_softc *);
 static int	bge_alloc_jumbo_mem(struct bge_softc *);
 static void	bge_free_jumbo_mem(struct bge_softc *);
-static void	*bge_jalloc(struct bge_softc *);
-static void	bge_jfree(caddr_t, u_int);
-static void	bge_jref(caddr_t, u_int);
+static struct bge_jslot
+		*bge_jalloc(struct bge_softc *);
+static void	bge_jfree(void *);
+static void	bge_jref(void *);
 static int	bge_newbuf_std(struct bge_softc *, int, struct mbuf *);
 static int	bge_newbuf_jumbo(struct bge_softc *, int, struct mbuf *);
 static int	bge_init_rx_ring_std(struct bge_softc *);
@@ -583,7 +584,7 @@ bge_handle_events(struct bge_softc *sc)
 static int
 bge_alloc_jumbo_mem(struct bge_softc *sc)
 {
-	struct bge_jpool_entry *entry;
+	struct bge_jslot *entry;
 	caddr_t ptr;
 	int i;
 
@@ -597,7 +598,6 @@ bge_alloc_jumbo_mem(struct bge_softc *sc)
 	}
 
 	SLIST_INIT(&sc->bge_jfree_listhead);
-	SLIST_INIT(&sc->bge_jinuse_listhead);
 
 	/*
 	 * Now divide it up into 9K pieces and save the addresses
@@ -609,19 +609,13 @@ bge_alloc_jumbo_mem(struct bge_softc *sc)
 	 */
 	ptr = sc->bge_cdata.bge_jumbo_buf;
 	for (i = 0; i < BGE_JSLOTS; i++) {
-		uint64_t **aptr;
-
-		aptr = (uint64_t **)ptr;
-		aptr[0] = (uint64_t *)sc;
-		ptr += sizeof(uint64_t);
-		sc->bge_cdata.bge_jslots[i].bge_buf = ptr;
-		sc->bge_cdata.bge_jslots[i].bge_inuse = 0;
-		ptr += (BGE_JLEN - sizeof(uint64_t));
-		entry = malloc(sizeof(struct bge_jpool_entry), 
-			       M_DEVBUF, M_INTWAIT);
-		entry->slot = i;
-		SLIST_INSERT_HEAD(&sc->bge_jfree_listhead,
-		    entry, jpool_entries);
+		entry = &sc->bge_cdata.bge_jslots[i];
+		entry->bge_sc = sc;
+		entry->bge_buf = ptr;
+		entry->bge_inuse = 0;
+		entry->bge_slot = i;
+		SLIST_INSERT_HEAD(&sc->bge_jfree_listhead, entry, jslot_link);
+		ptr += BGE_JLEN;
 	}
 
 	return(0);
@@ -630,25 +624,16 @@ bge_alloc_jumbo_mem(struct bge_softc *sc)
 static void
 bge_free_jumbo_mem(struct bge_softc *sc)
 {
-        struct bge_jpool_entry *entry;
-        int i;
- 
-	for (i = 0; i < BGE_JSLOTS; i++) {
-		entry = SLIST_FIRST(&sc->bge_jfree_listhead);
-		SLIST_REMOVE_HEAD(&sc->bge_jfree_listhead, jpool_entries);
-		free(entry, M_DEVBUF);
-	}
-
 	contigfree(sc->bge_cdata.bge_jumbo_buf, BGE_JMEM, M_DEVBUF);
 }
 
 /*
  * Allocate a jumbo buffer.
  */
-static void *
+static struct bge_jslot *
 bge_jalloc(struct bge_softc *sc)
 {
-	struct bge_jpool_entry   *entry;
+	struct bge_jslot *entry;
 
 	entry = SLIST_FIRST(&sc->bge_jfree_listhead);
 
@@ -657,89 +642,50 @@ bge_jalloc(struct bge_softc *sc)
 		return(NULL);
 	}
 
-	SLIST_REMOVE_HEAD(&sc->bge_jfree_listhead, jpool_entries);
-	SLIST_INSERT_HEAD(&sc->bge_jinuse_listhead, entry, jpool_entries);
-	sc->bge_cdata.bge_jslots[entry->slot].bge_inuse = 1;
-	return(sc->bge_cdata.bge_jslots[entry->slot].bge_buf);
+	SLIST_REMOVE_HEAD(&sc->bge_jfree_listhead, jslot_link);
+	entry->bge_inuse = 1;
+	return(entry);
 }
 
 /*
  * Adjust usage count on a jumbo buffer.
  */
 static void
-bge_jref(caddr_t buf, u_int size)
+bge_jref(void *arg)
 {
-	struct bge_softc *sc;
-	uint64_t **aptr;
-	int i;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct bge_softc *)(aptr[0]);
+	struct bge_jslot *entry = (struct bge_jslot *)arg;
+	struct bge_softc *sc = entry->bge_sc;
 
 	if (sc == NULL)
 		panic("bge_jref: can't find softc pointer!");
 
-	if (size != BGE_JUMBO_FRAMELEN)
-		panic("bge_jref: adjusting refcount of buf of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->bge_cdata.bge_jumbo_buf) / BGE_JLEN;
-
-	if ((i < 0) || (i >= BGE_JSLOTS))
+	if (&sc->bge_cdata.bge_jslots[entry->bge_slot] != entry)
 		panic("bge_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (sc->bge_cdata.bge_jslots[i].bge_inuse == 0)
+	else if (entry->bge_inuse == 0)
 		panic("bge_jref: buffer already free!");
 	else
-		sc->bge_cdata.bge_jslots[i].bge_inuse++;
+		entry->bge_inuse++;
 }
 
 /*
  * Release a jumbo buffer.
  */
 static void
-bge_jfree(caddr_t buf, u_int size)
+bge_jfree(void *arg)
 {
-	struct bge_softc *sc;
-	uint64_t **aptr;
-	struct bge_jpool_entry   *entry;
-	int i;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct bge_softc *)(aptr[0]);
+	struct bge_jslot *entry = (struct bge_jslot *)arg;
+	struct bge_softc *sc = entry->bge_sc;
 
 	if (sc == NULL)
 		panic("bge_jfree: can't find softc pointer!");
 
-	if (size != BGE_JUMBO_FRAMELEN)
-		panic("bge_jfree: freeing buffer of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->bge_cdata.bge_jumbo_buf) / BGE_JLEN;
-
-	if ((i < 0) || (i >= BGE_JSLOTS))
+	if (&sc->bge_cdata.bge_jslots[entry->bge_slot] != entry)
 		panic("bge_jfree: asked to free buffer that we don't manage!");
-	else if (sc->bge_cdata.bge_jslots[i].bge_inuse == 0)
+	else if (entry->bge_inuse == 0)
 		panic("bge_jfree: buffer already free!");
-	else {
-		sc->bge_cdata.bge_jslots[i].bge_inuse--;
-		if(sc->bge_cdata.bge_jslots[i].bge_inuse == 0) {
-			entry = SLIST_FIRST(&sc->bge_jinuse_listhead);
-			if (entry == NULL)
-				panic("bge_jfree: buffer not in use!");
-			entry->slot = i;
-			SLIST_REMOVE_HEAD(&sc->bge_jinuse_listhead, 
-					  jpool_entries);
-			SLIST_INSERT_HEAD(&sc->bge_jfree_listhead, 
-					  entry, jpool_entries);
-		}
-	}
+	else if (--entry->bge_inuse == 0)
+		SLIST_INSERT_HEAD(&sc->bge_jfree_listhead, entry, jslot_link);
 }
 
 
@@ -792,7 +738,7 @@ bge_newbuf_jumbo(struct bge_softc *sc, int i, struct mbuf *m)
 	struct bge_rx_bd *r;
 
 	if (m == NULL) {
-		caddr_t *buf = NULL;
+		struct bge_jslot *buf;
 
 		/* Allocate the mbuf. */
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
@@ -809,12 +755,15 @@ bge_newbuf_jumbo(struct bge_softc *sc, int i, struct mbuf *m)
 		}
 
 		/* Attach the buffer to the mbuf. */
-		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT | M_EXT_OLD;
-		m_new->m_len = m_new->m_pkthdr.len =
-		    m_new->m_ext.ext_size = BGE_JUMBO_FRAMELEN;
-		m_new->m_ext.ext_nfree.old = bge_jfree;
-		m_new->m_ext.ext_nref.old = bge_jref;
+		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_buf = buf->bge_buf;
+		m_new->m_ext.ext_nfree.new = bge_jfree;
+		m_new->m_ext.ext_nref.new = bge_jref;
+		m_new->m_ext.ext_size = BGE_JUMBO_FRAMELEN;
+
+		m_new->m_data = m_new->m_ext.ext_buf;
+		m_new->m_flags |= M_EXT;
+		m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 	} else {
 		m_new = m;
 		m_new->m_data = m_new->m_ext.ext_buf;
