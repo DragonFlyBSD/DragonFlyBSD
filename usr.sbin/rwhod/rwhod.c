@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.16 2005/05/22 11:53:05 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.17 2005/05/22 17:09:53 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -155,11 +155,13 @@ void	 quit(const char *, int);
 void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 int	 verify(char *, int);
 static void usage(void);
+
 #ifdef DEBUG
 char	*interval(int, const char *);
 ssize_t	Sendto(int, const void *, size_t, int,
 		     const struct sockaddr *, int);
-#define	 sendto Sendto
+#else
+#define Sendto sendto
 #endif
 
 int
@@ -481,7 +483,7 @@ onalrm(void)
 	mywd.wd_vers = WHODVERSION;
 	mywd.wd_type = WHODTYPE_STATUS;
 	if (multicast_mode == SCOPED_MULTICAST) {
-		sendto(s, (char *)&mywd, cc, 0,
+		Sendto(s, (char *)&mywd, cc, 0,
 				(struct sockaddr *)&multicast_addr,
 				sizeof(multicast_addr));
 	}
@@ -496,10 +498,10 @@ onalrm(void)
 			    sizeof(struct in_addr)) < 0) {
 				quit("setsockopt IP_MULTICAST_IF", WITH_ERRNO);
 			}
-			sendto(s, (char *)&mywd, cc, 0,
+			Sendto(s, (char *)&mywd, cc, 0,
 				(struct sockaddr *)&multicast_addr,
 				sizeof(multicast_addr));
-		} else sendto(s, (char *)&mywd, cc, 0,
+		} else Sendto(s, (char *)&mywd, cc, 0,
 				np->n_addr, np->n_addrlen);
 	}
 	if (utmpent && chdir(_PATH_RWHODIR)) {
