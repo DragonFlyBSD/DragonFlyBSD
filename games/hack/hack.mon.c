@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mon.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mon.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mon.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.mon.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 #include "hack.mfndpos.h"
@@ -16,7 +16,7 @@ extern struct obj *mkobj_at();
 int warnlevel;		/* used by movemon and dochugw */
 long lastwarntime;
 int lastwarnlev;
-char *warnings[] = {
+static const char *warnings[] = {
 	"white", "pink", "red", "ruby", "purple", "black"
 };
 
@@ -81,7 +81,7 @@ movemon()
 		warnlevel = SIZE(warnings)-1;
 	if(warnlevel >= 0)
 	if(warnlevel > lastwarnlev || moves > lastwarntime + 5){
-	    char *rr;
+	    const char *rr;
 	    switch(Warning & (LEFT_RING | RIGHT_RING)){
 	    case LEFT_RING:
 		rr = "Your left ring glows";

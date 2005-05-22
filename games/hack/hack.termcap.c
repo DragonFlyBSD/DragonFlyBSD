@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.termcap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.termcap.c,v 1.10 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.termcap.c,v 1.3 2005/05/07 18:05:14 corecode Exp $ */
+/* $DragonFly: src/games/hack/hack.termcap.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include <stdio.h>
 #include <termcap.h>
@@ -32,46 +32,47 @@ startup()
 		error("Can't get TERM.");
 	if(tgetent(tptr, term) < 1)
 		error("Unknown terminal type: %s.", term);
-	if(tgetflag("NP") || tgetflag("nx"))
+	if (tgetflag(__DECONST(char *, "NP")) ||
+	    tgetflag(__DECONST(char *, "nx")))
 		flags.nonull = 1;
-	if(pc = tgetstr("pc", &tbufptr))
+	if(pc = tgetstr(__DECONST(char *, "pc"), &tbufptr))
 		tcPC = *pc;
-	if(!(tcBC = tgetstr("bc", &tbufptr))) {
-		if(!tgetflag("bs"))
+	if(!(tcBC = tgetstr(__DECONST(char *, "bc"), &tbufptr))) {
+		if(!tgetflag(__DECONST(char *, "bs")))
 			error("Terminal must backspace.");
 		tcBC = tbufptr;
 		tbufptr += 2;
 		*tcBC = '\b';
 	}
-	HO = tgetstr("ho", &tbufptr);
-	CO = tgetnum("co");
-	LI = tgetnum("li");
+	HO = tgetstr(__DECONST(char *, "ho"), &tbufptr);
+	CO = tgetnum(__DECONST(char *, "co"));
+	LI = tgetnum(__DECONST(char *, "li"));
 	if(CO < COLNO || LI < ROWNO+2)
 		setclipped();
-	if(!(CL = tgetstr("cl", &tbufptr)))
+	if(!(CL = tgetstr(__DECONST(char *, "cl"), &tbufptr)))
 		error("Hack needs CL.");
-	ND = tgetstr("nd", &tbufptr);
-	if(tgetflag("os"))
+	ND = tgetstr(__DECONST(char *, "nd"), &tbufptr);
+	if(tgetflag(__DECONST(char *, "os")))
 		error("Hack can't have OS.");
-	CE = tgetstr("ce", &tbufptr);
-	tcUP = tgetstr("up", &tbufptr);
+	CE = tgetstr(__DECONST(char *, "ce"), &tbufptr);
+	tcUP = tgetstr(__DECONST(char *, "up"), &tbufptr);
 	/* It seems that xd is no longer supported, and we should use
 	   a linefeed instead; unfortunately this requires resetting
 	   CRMOD, and many output routines will have to be modified
 	   slightly. Let's leave that till the next release. */
-	XD = tgetstr("xd", &tbufptr);
+	XD = tgetstr(__DECONST(char *, "xd"), &tbufptr);
 /* not: 		XD = tgetstr("do", &tbufptr); */
-	if(!(CM = tgetstr("cm", &tbufptr))) {
+	if(!(CM = tgetstr(__DECONST(char *, "cm"), &tbufptr))) {
 		if(!tcUP && !HO)
 			error("Hack needs CM or UP or HO.");
 		printf("Playing hack on terminals without cm is suspect...\n");
 		getret();
 	}
-	SO = tgetstr("so", &tbufptr);
-	SE = tgetstr("se", &tbufptr);
-	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
+	SO = tgetstr(__DECONST(char *, "so"), &tbufptr);
+	SE = tgetstr(__DECONST(char *, "se"), &tbufptr);
+	SG = tgetnum(__DECONST(char *, "sg"));
 	if(!SO || !SE || (SG > 0)) SO = SE = 0;
-	CD = tgetstr("cd", &tbufptr);
+	CD = tgetstr(__DECONST(char *, "cd"), &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free(tptr);

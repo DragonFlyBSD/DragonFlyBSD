@@ -1,11 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.potion.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.potion.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.potion.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.potion.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 extern int float_down();
-extern char *nomovemsg;
 extern struct monst youmonst;
 extern struct monst *makemon();
 
@@ -220,7 +219,7 @@ char *txt;
 	useup(obj);
 }
 
-char *bottlenames[] = {
+static const char *bottlenames[] = {
 	"bottle", "phial", "flagon", "carafe", "flask", "jar", "vial"
 };
 
@@ -229,7 +228,7 @@ struct monst *mon;
 struct obj *obj;
 {
 	extern char *xname();
-	char *botlnam = bottlenames[rn2(SIZE(bottlenames))];
+	const char *botlnam = bottlenames[rn2(SIZE(bottlenames))];
 	boolean uclose, isyou = (mon == &youmonst);
 
 	if(isyou) {

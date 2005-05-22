@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.timeout.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.timeout.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.timeout.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.timeout.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 
@@ -43,7 +43,7 @@ struct prop *upp;
 }
 
 /* He is being petrified - dialogue by inmet!tower */
-char *stoned_texts[] = {
+static const char *stoned_texts[] = {
 	"You are slowing down.",		/* 5 */
 	"Your limbs are stiffening.",		/* 4 */
 	"Your limbs have turned to stone.",	/* 3 */

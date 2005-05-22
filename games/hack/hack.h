@@ -1,6 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.h - version 1.0.3 */
-/* $DragonFly: src/games/hack/hack.h,v 1.2 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.h,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "config.h"
 #include <string.h>
@@ -111,7 +111,7 @@ struct you {
 #define Stoned		u.uprops[STONED].p_flgs
 #define PROP(x) (x-RIN_ADORNMENT)       /* convert ring to index in uprops */
 	unsigned umconf:1;
-	char *usick_cause;
+	const char *usick_cause;
 	struct prop uprops[LAST_RING+10];
 
 	unsigned uswallow:1;		/* set if swallowed by a monster */
@@ -130,7 +130,7 @@ struct you {
 
 extern struct you u;
 
-extern char *traps[];
+extern const char *traps[];
 extern char *monnam(), *Monnam(), *amonnam(), *Amonnam(),
 	*doname(), *aobjnam();
 extern char readchar();
@@ -141,7 +141,7 @@ extern xchar curx,cury;	/* cursor location on screen */
 extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 
 extern xchar seehx,seelx,seehy,seely; /* where to see*/
-extern char *save_cm,*killer;
+extern const char *save_cm, *killer, *nomovemsg;
 
 extern xchar dlevel, maxdlevel; /* dungeon level */
 
@@ -152,6 +152,12 @@ extern int multi;
 
 extern char lock[];
 
+extern const char *occtxt;
+extern const char *hu_stat[];
+
+const char *exclam(int);
+void gethdate(const char *);
+void done(const char *);
 
 #define DIST(x1,y1,x2,y2)       (((x1)-(x2))*((x1)-(x2)) + ((y1)-(y2))*((y1)-(y2)))
 

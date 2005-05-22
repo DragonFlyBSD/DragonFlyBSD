@@ -1,11 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.objclass.h - version 1.0.3 */
+/* $DragonFly: src/games/hack/def.objclass.h,v 1.2 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 /* definition of a class of objects */
 
 struct objclass {
-	char *oc_name;		/* actual name */
-	char *oc_descr;		/* description when name unknown */
+	const char *oc_name;	/* actual name */
+	const char *oc_descr;	/* description when name unknown */
 	char *oc_uname;		/* called by user */
 	Bitfield(oc_name_known,1);
 	Bitfield(oc_merge,1);	/* merge otherwise equal objects */

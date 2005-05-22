@@ -1,14 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 #include <stdio.h>
 
 extern char news0();
-extern char *nomovemsg;
-extern char *exclam();
 extern struct obj *addinv();
 extern boolean hmon();
 

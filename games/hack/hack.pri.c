@@ -1,18 +1,17 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.pri.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.pri.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.pri.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.pri.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 #include <stdio.h>
 xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
 
-extern char *hu_stat[];	/* in eat.c */
 extern char *CD;
 
 swallowed()
 {
-	char *ulook = "|@|";
+	char ulook[] = {"|@|"};
 	ulook[1] = u.usym;
 
 	cls();

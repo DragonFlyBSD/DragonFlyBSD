@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.trap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.trap.c,v 1.5 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.trap.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.trap.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 
@@ -9,7 +9,7 @@ extern struct monst *makemon();
 
 char vowels[] = "aeiou";
 
-char *traps[] = {
+const char *traps[] = {
 	" bear trap",
 	"n arrow trap",
 	" dart trap",

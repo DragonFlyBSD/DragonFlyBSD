@@ -1,16 +1,15 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.zap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.zap.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.zap.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.zap.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 
 extern struct obj *mkobj_at();
 extern struct monst *makemon(), *mkmon_at(), youmonst;
 struct monst *bhit();
-char *exclam();
 
-char *fl[]= {
+static	const char *fl[]= {
 	"magic missile",
 	"bolt of fire",
 	"sleep ray",
@@ -260,9 +259,8 @@ dozap()
 	return(1);
 }
 
-char *
-exclam(force)
-int force;
+const char *
+exclam(int force)
 {
 	/* force == 0 occurs e.g. with sleep ray */
 	/* note that large force is usual with wands so that !! would
@@ -401,7 +399,7 @@ xchar sx,sy;
 int dx,dy;
 {
 	int abstype = abs(type);
-	char *fltxt = (type == -1) ? "blaze of fire" : fl[abstype];
+	const char *fltxt = (type == -1) ? "blaze of fire" : fl[abstype];
 	struct rm *lev;
 	xchar range;
 	struct monst *mon;

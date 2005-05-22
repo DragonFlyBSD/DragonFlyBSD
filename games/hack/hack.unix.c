@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.unix.c,v 1.8 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.unix.c,v 1.4 2005/04/29 09:22:57 joerg Exp $ */
+/* $DragonFly: src/games/hack/hack.unix.c,v 1.5 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -83,7 +83,9 @@ midnight()
 
 struct stat buf, hbuf;
 
-gethdate(name) char *name; {
+void
+gethdate(const char *name)
+{
 /* old version - for people short of space */
 char *np;
 

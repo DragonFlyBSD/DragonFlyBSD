@@ -1,11 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.shknam.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.shknam.c,v 1.3 1999/11/16 02:57:11 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.shknam.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.shknam.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 
-char *shkliquors[] = {
+static	const char *shkliquors[] = {
 	/* Ukraine */
 	"Njezjin", "Tsjernigof", "Gomel", "Ossipewsk", "Gorlowka",
 	/* N. Russia */
@@ -20,7 +20,7 @@ char *shkliquors[] = {
 	0
 };
 
-char *shkbooks[] = {
+static	const char *shkbooks[] = {
 	/* Eire */
 	"Skibbereen", "Kanturk", "Rath Luirc", "Ennistymon", "Lahinch",
 	"Loughrea", "Croagh", "Maumakeogh", "Ballyjamesduff",
@@ -32,7 +32,7 @@ char *shkbooks[] = {
 	0
 };
 
-char *shkarmors[] = {
+static	const char *shkarmors[] = {
 	/* Turquie */
 	"Demirci", "Kalecik", "Boyabai", "Yildizeli", "Gaziantep",
 	"Siirt", "Akhalataki", "Tirebolu", "Aksaray", "Ermenak",
@@ -43,7 +43,7 @@ char *shkarmors[] = {
 	0
 };
 
-char *shkwands[] = {
+static	const char *shkwands[] = {
 	/* Wales */
 	"Yr Wyddgrug", "Trallwng", "Mallwyd", "Pontarfynach",
 	"Rhaeader", "Llandrindod", "Llanfair-ym-muallt",
@@ -57,7 +57,7 @@ char *shkwands[] = {
 	0
 };
 
-char *shkrings[] = {
+static	const char *shkrings[] = {
 	/* Hollandse familienamen */
 	"Feyfer", "Flugi", "Gheel", "Havic", "Haynin", "Hoboken",
 	"Imbyze", "Juyn", "Kinsky", "Massis", "Matray", "Moy",
@@ -70,7 +70,7 @@ char *shkrings[] = {
 	0
 };
 
-char *shkfoods[] = {
+static	const char *shkfoods[] = {
 	/* Indonesia */
 	"Djasinga", "Tjibarusa", "Tjiwidej", "Pengalengan",
 	"Bandjar", "Parbalingga", "Bojolali", "Sarangan",
@@ -82,7 +82,7 @@ char *shkfoods[] = {
 	0
 };
 
-char *shkweapons[] = {
+static	const char *shkweapons[] = {
 	/* Perigord */
 	"Voulgezac", "Rouffiac", "Lerignac", "Touverac", "Guizengeard",
 	"Melac", "Neuvicq", "Vanzac", "Picq", "Urignac", "Corignac",
@@ -93,7 +93,7 @@ char *shkweapons[] = {
 	0
 };
 
-char *shkgeneral[] = {
+static	const char *shkgeneral[] = {
 	/* Suriname */
 	"Hebiwerie", "Possogroenoe", "Asidonhopo", "Manlobbi",
 	"Adjama", "Pakka Pakka", "Kabalebo", "Wonotobo",
@@ -113,7 +113,7 @@ char *shkgeneral[] = {
 
 struct shk_nx {
 	char x;
-	char **xn;
+	const char **xn;
 } shk_nx[] = {
 	{ POTION_SYM,	shkliquors },
 	{ SCROLL_SYM,	shkbooks },
@@ -127,7 +127,7 @@ struct shk_nx {
 
 findname(nampt, let) char *nampt; char let; {
 struct shk_nx *p = shk_nx;
-char **q;
+const char **q;
 int i;
 	while(p->x && p->x != let) p++;
 	q = p->xn;

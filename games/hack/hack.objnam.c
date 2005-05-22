@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.objnam.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.objnam.c,v 1.3 1999/11/16 02:57:08 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.objnam.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.objnam.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 #define Sprintf (void) sprintf
@@ -36,8 +36,8 @@ int otyp;
 {
 static char buf[BUFSZ];
 struct objclass *ocl = &objects[otyp];
-char *an = ocl->oc_name;
-char *dn = ocl->oc_descr;
+const char *an = ocl->oc_name;
+const char *dn = ocl->oc_descr;
 char *un = ocl->oc_uname;
 int nn = ocl->oc_name_known;
 	switch(ocl->oc_olet) {
@@ -88,8 +88,8 @@ struct obj *obj;
 static char bufr[BUFSZ];
 char *buf = &(bufr[PREFIX]);	/* leave room for "17 -3 " */
 int nn = objects[obj->otyp].oc_name_known;
-char *an = objects[obj->otyp].oc_name;
-char *dn = objects[obj->otyp].oc_descr;
+const char *an = objects[obj->otyp].oc_name;
+const char *dn = objects[obj->otyp].oc_descr;
 char *un = objects[obj->otyp].oc_uname;
 int pl = (obj->quan != 1);
 	if(!obj->dknown && !Blind) obj->dknown = 1; /* %% doesnt belong here */
@@ -333,7 +333,7 @@ struct obj *obj;
 	return(s);
 }
 
-char *wrp[] = { "wand", "ring", "potion", "scroll", "gem" };
+static	const char *wrp[] = { "wand", "ring", "potion", "scroll", "gem" };
 char wrpsym[] = { WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM };
 
 struct obj *
@@ -497,7 +497,7 @@ srch:
 	i = 1;
 	if(let) i = bases[letindex(let)];
 	while(i <= NROFOBJECTS && (!let || objects[i].oc_olet == let)){
-		char *zn = objects[i].oc_name;
+		const char *zn = objects[i].oc_name;
 
 		if(!zn) goto nxti;
 		if(an && strcmp(an, zn))

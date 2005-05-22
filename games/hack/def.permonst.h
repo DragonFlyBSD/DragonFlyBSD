@@ -1,8 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.permonst.h - version 1.0.2 */
+/* $DragonFly: src/games/hack/def.permonst.h,v 1.2 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 struct permonst {
-	char *mname,mlet;
+	const char *mname;
+	char mlet;
 	schar mlevel,mmove,ac,damn,damd;
 	unsigned pxlth;
 };

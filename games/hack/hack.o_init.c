@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.o_init.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.o_init.c,v 1.6 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.o_init.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.o_init.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include <string.h>
 #include	"config.h"		/* for typedefs */
@@ -19,8 +19,10 @@ char ch;
 }
 
 init_objects(){
-int i, j, first, last, sum, end;
-char let, *tmp;
+	int i, j, first, last, sum, end;
+	char let;
+	const char *tmp;
+
 	/* init base; if probs given check that they add up to 100,
 	   otherwise compute probs; shuffle descriptions */
 	end = SIZE(objects);

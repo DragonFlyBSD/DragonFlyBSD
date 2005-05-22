@@ -1,14 +1,15 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.rip.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.rip.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.rip.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.rip.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include <stdio.h>
 #include "hack.h"
 
+static	void center(int , const char *);
 extern char plname[];
 
-static char *rip[] = {
+static char rip[][60] = {
 "                       ----------",
 "                      /          \\",
 "                     /    REST    \\",
@@ -23,14 +24,13 @@ static char *rip[] = {
 "                  |       1001       |",
 "                 *|     *  *  *      | *",
 "        _________)/\\\\_//(\\/(/\\)/\\//\\/|_)_______\n",
-0
 };
+static const int n_rips = sizeof(rip) / sizeof(rip[0]);
 
 outrip(){
-	char **dp = rip;
 	char *dpx;
 	char buf[BUFSZ];
-	int x,y;
+	int i, x, y;
 
 	cls();
 	(void) strcpy(buf, plname);
@@ -57,9 +57,9 @@ outrip(){
 	center(9, buf);
 	(void) sprintf(buf, "%4d", getyear());
 	center(11, buf);
-	for(y=8; *dp; y++,dp++){
+	for(y = 8, i = 0; i < n_rips; y++, i++){
 		x = 0;
-		dpx = *dp;
+		dpx = rip[i];
 		while(dpx[x]) {
 			while(dpx[x] == ' ') x++;
 			curs(x,y);
@@ -75,9 +75,12 @@ outrip(){
 	getret();
 }
 
-center(line, text) int line; char *text; {
-char *ip,*op;
-	ip = text;
+static void
+center(int line, const char *text)
+{
+	const char *ip = text;
+	char *op;
+
 	op = &rip[line][28 - ((strlen(text)+1)/2)];
 	while(*ip) *op++ = *ip++;
 }

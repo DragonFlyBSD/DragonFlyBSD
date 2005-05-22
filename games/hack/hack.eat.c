@@ -1,14 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.eat.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.eat.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.eat.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.eat.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 char POISONOUS[] = "ADKSVabhks";
-extern char *nomovemsg;
 extern int (*afternmv)();
 extern int (*occupation)();
-extern char *occtxt;
 extern struct obj *splitobj(), *addinv();
 
 /* hunger texts used on bottom line (each 8 chars long) */
@@ -20,7 +18,7 @@ extern struct obj *splitobj(), *addinv();
 #define FAINTED		5
 #define STARVED		6
 
-char *hu_stat[] = {
+const char *hu_stat[] = {
 	"Satiated",
 	"        ",
 	"Hungry  ",
@@ -36,7 +34,7 @@ init_uhunger(){
 }
 
 #define	TTSZ	SIZE(tintxts)
-struct { char *txt; int nut; } tintxts[] = {
+struct { const char *txt; int nut; } tintxts[] = {
 	"It contains first quality peaches - what a surprise!",	40,
 	"It contains salmon - not bad!",	60,
 	"It contains apple juice - perhaps not what you hoped for.", 20,

@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.main.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.main.c,v 1.9 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.main.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include <stdio.h>
 #include <signal.h>
@@ -21,7 +21,7 @@ extern char genocided[60], fut_geno[];
 
 int (*afternmv)();
 int (*occupation)();
-char *occtxt;			/* defined when occupation != NULL */
+const char *occtxt;
 
 void done1();
 void hangup();
@@ -35,11 +35,10 @@ char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
 char *hname;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 
-extern char *nomovemsg;
 extern long wailmsg;
 
 #ifdef CHDIR
-static void chdirx();
+static	void chdirx(const char *, boolean);
 #endif
 
 main(argc,argv)
@@ -451,9 +450,7 @@ char *s;
 
 #ifdef CHDIR
 static void
-chdirx(dir, wr)
-char *dir;
-boolean wr;
+chdirx(const char *dir, boolean wr)
 {
 
 #ifdef SECURE

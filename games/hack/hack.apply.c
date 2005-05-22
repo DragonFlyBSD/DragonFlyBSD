@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.apply.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.apply.c,v 1.4.2.1 2001/02/18 02:20:07 kris Exp $ */
-/* $DragonFly: src/games/hack/hack.apply.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.apply.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 #include	"def.edog.h"
@@ -10,7 +10,6 @@ static struct monst *bchit();
 extern struct obj *addinv();
 extern struct trap *maketrap();
 extern int (*occupation)();
-extern char *occtxt;
 extern char quitchars[];
 extern char pl_character[];
 
@@ -277,7 +276,7 @@ dig() {
 		}
 	} else
 	if(dig_effort > 100) {
-		char *digtxt;
+		const char *digtxt;
 		struct obj *obj;
 
 		lev = &levl[dpx][dpy];

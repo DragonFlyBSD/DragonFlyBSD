@@ -1,11 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.engrave.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.engrave.c,v 1.4 1999/11/16 02:57:04 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.engrave.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.engrave.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 
-extern char *nomovemsg;
 extern char nul[];
 extern struct obj zeroobj;
 struct engr {

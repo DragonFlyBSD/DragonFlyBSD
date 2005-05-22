@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.invent.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.invent.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.invent.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.invent.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 #include	<stdio.h>
@@ -705,7 +705,7 @@ dotypeinv ()				/* free after Robert Viduya */
 dolook() {
     struct obj *otmp, *otmp0;
     struct gold *gold;
-    char *verb = Blind ? "feel" : "see";
+    const char *verb = Blind ? "feel" : "see";
     int	ct = 0;
 
     if(!u.uswallow) {
@@ -791,7 +791,6 @@ merged(otmp,obj,lose) struct obj *otmp, *obj; {
  * [Bug: d$ and pickup still tell you how much it was.]
  */
 extern int (*occupation)();
-extern char *occtxt;
 static long goldcounted;
 
 countgold(){

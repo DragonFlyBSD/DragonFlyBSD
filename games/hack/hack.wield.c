@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.wield.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.wield.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.wield.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.wield.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 extern struct obj zeroobj;
@@ -60,8 +60,9 @@ chwepon(otmp,amount)
 struct obj *otmp;
 int amount;
 {
-char *color = (amount < 0) ? "black" : "green";
-char *time;
+	const char *color = (amount < 0) ? "black" : "green";
+	const char *time;
+
 	if(!uwep || uwep->olet != WEAPON_SYM) {
 		strange_feeling(otmp,
 			(amount > 0) ? "Your hands twitch."

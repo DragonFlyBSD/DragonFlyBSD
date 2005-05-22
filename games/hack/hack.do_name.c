@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.do_name.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.do_name.c,v 1.5 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.do_name.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.do_name.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 #include <stdio.h>
@@ -179,7 +179,8 @@ struct obj *obj;
 	*str1 = str;
 }
 
-char *ghostnames[] = {		/* these names should have length < PL_NSIZ */
+/* these names should have length < PL_NSIZ */
+const char *ghostnames[] = {
 	"adri", "andries", "andreas", "bert", "david", "dirk", "emile",
 	"frans", "fred", "greg", "hether", "jay", "john", "jon", "kay",
 	"kenny", "maud", "michiel", "mike", "peter", "robert", "ron",
@@ -196,7 +197,7 @@ extern char *shkname();
 	}
 	switch(mtmp->data->mlet) {
 	case ' ':
-		{ char *gn = (char *) mtmp->mextra;
+		{ const char *gn = (const char *)mtmp->mextra;
 		  if(!*gn) {		/* might also look in scorefile */
 		    gn = ghostnames[rn2(SIZE(ghostnames))];
 		    if(!rn2(2)) (void)

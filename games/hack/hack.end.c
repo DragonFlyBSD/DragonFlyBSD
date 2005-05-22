@@ -1,14 +1,15 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.end.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.end.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.end.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.end.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 #include <stdio.h>
 #include <signal.h>
 #define	Sprintf	(void) sprintf
 extern char plname[], pl_character[];
-extern char *itoa(), *ordin(), *eos();
+extern char *itoa(), *eos();
+static	const char *ordin(int);
 
 xchar maxdlevel = 1;
 
@@ -65,8 +66,8 @@ static char buf[BUFSZ];
 /* called with arg "died", "drowned", "escaped", "quit", "choked", "panicked",
    "burned", "starved" or "tricked" */
 /* Be careful not to call panic from here! */
-done(st1)
-char *st1;
+void
+done(const char *st1)
 {
 
 #ifdef WIZARD
@@ -221,8 +222,8 @@ topten(){
 	int rank, rank0 = -1, rank1 = 0;
 	int occ_cnt = PERSMAX;
 	struct toptenentry *t0, *t1, *tprev;
-	char *recfile = RECORD;
-	char *reclock = "record_lock";
+	const char *recfile = RECORD;
+	const char *reclock = "record_lock";
 	int sleepct = 300;
 	FILE *rfile;
 	int flg = 0;
@@ -459,9 +460,10 @@ static char buf[12];
 	return(buf);
 }
 
-char *
-ordin(n) int n; {
-int d = n%10;
+static const char *
+ordin(int n)
+{
+	int d = n % 10;
 	return((d==0 || d>3 || n/10==1) ? "th" : (d==1) ? "st" :
 		(d==2) ? "nd" : "rd");
 }
@@ -510,7 +512,7 @@ prscore(argc,argv) int argc; char **argv; {
 	int playerct;
 	int rank;
 	struct toptenentry *t1, *t2;
-	char *recfile = RECORD;
+	const char *recfile = RECORD;
 	FILE *rfile;
 	int flg = 0;
 	int i;

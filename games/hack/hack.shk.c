@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.shk.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.shk.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.shk.c,v 1.4 2005/05/07 18:03:39 corecode Exp $ */
+/* $DragonFly: src/games/hack/hack.shk.c,v 1.5 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 #ifdef QUEST
@@ -58,7 +58,7 @@ char shtypes[] = {	/* 8 shoptypes: 7 specialized, 1 mixed */
 	POTION_SYM, ARMOR_SYM, 0
 };
 
-static char *shopnam[] = {
+static const char *shopnam[] = {
 	"engagement ring", "walking cane", "antique weapon",
 	"delicatessen", "second hand book", "liquor",
 	"used armor", "assorted antiques"

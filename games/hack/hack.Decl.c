@@ -1,6 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.Decl.c - version 1.0.3 */
-/* $DragonFly: src/games/hack/hack.Decl.c,v 1.2 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.Decl.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include	"hack.h"
 char nul[40];			/* contains zeros */
@@ -27,7 +27,7 @@ struct monst youmonst;	/* dummy; used as return value for boomhit */
 
 xchar dlevel = 1;
 xchar xupstair, yupstair, xdnstair, ydnstair;
-char *save_cm = 0, *killer, *nomovemsg;
+const char *save_cm, *killer, *nomovemsg;
 
 long moves = 1;
 long wailmsg = 0;

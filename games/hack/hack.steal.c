@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.steal.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.steal.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.steal.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.steal.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
 
 #include "hack.h"
 
@@ -113,7 +113,6 @@ struct monst *mtmp;
 			(void) armoroff(otmp);
 			otmp->cursed = curssv;
 			if(multi < 0){
-				extern char *nomovemsg;
 				extern int (*afternmv)();
 				/*
 				multi = 0;
