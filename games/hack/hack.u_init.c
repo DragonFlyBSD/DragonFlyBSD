@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.u_init.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.u_init.c,v 1.4 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.u_init.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.u_init.c,v 1.4 2005/05/22 01:28:15 y0netan1 Exp $ */
 
 #include "hack.h"
 #include <stdio.h>
@@ -17,8 +17,11 @@ extern char plname[];
 
 struct you zerou;
 char pl_character[PL_CSIZ];
-char *(roles[]) = {	/* must all have distinct first letter */
-			/* roles[4] may be changed to -man */
+/*
+ * must all have distinct first letter
+ * roles[4] may be changed to -man
+ */
+char roles[][12 + 1] = {
 	"Tourist", "Speleologist", "Fighter", "Knight",
 	"Cave-man", "Wizard"
 };
@@ -100,7 +103,7 @@ int i;
 char exper = 'y', pc;
 extern char readchar();
 	if(flags.female)	/* should have been set in HACKOPTIONS */
-		roles[4] = "Cave-woman";
+		strlcpy(roles[4], "Cave-woman", sizeof(roles[4]));
 	for(i = 0; i < NR_OF_ROLES; i++)
 		rolesyms[i] = roles[i][0];
 	rolesyms[i] = 0;
