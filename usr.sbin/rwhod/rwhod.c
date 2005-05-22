@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.15 2005/05/17 18:09:44 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.16 2005/05/22 11:53:05 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@
 #define	UNPRIV_GROUP		"daemon"
 
 #define WITH_ERRNO		1	/* Write to syslog with errno (%m) */
-#define WITHOUT_ERRNO		2	/* Write to syslog without errno */
+#define WITHOUT_ERRNO		0	/* Write to syslog without errno */
 
 #define NO_MULTICAST		0	  /* multicast modes */
 #define PER_INTERFACE_MULTICAST	1
