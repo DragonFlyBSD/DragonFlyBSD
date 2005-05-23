@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.89 2005/05/23 20:04:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.90 2005/05/23 20:05:05 okumoto Exp $
  */
 
 /*-
@@ -135,12 +135,6 @@ static TAILQ_HEAD(, IFile) includes = TAILQ_HEAD_INITIALIZER(includes);
 
 /* access current file */
 #define	CURFILE	(TAILQ_FIRST(&includes))
-
-/* list of directories for "..." includes */
-struct Path parseIncPath = TAILQ_HEAD_INITIALIZER(parseIncPath);
-
-/* list of directories for <...> includes */
-struct Path sysIncPath = TAILQ_HEAD_INITIALIZER(sysIncPath);
 
 /*
  * specType contains the SPECial TYPE of the current target. It is
@@ -1555,27 +1549,6 @@ ParseHasCommands(void *gnp)
 }
 
 /*-
- *-----------------------------------------------------------------------
- * Parse_AddIncludeDir --
- *	Add a directory to the path searched for included makefiles
- *	bracketed by double-quotes. Used by functions in main.c
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The directory is appended to the list.
- *
- *-----------------------------------------------------------------------
- */
-void
-Parse_AddIncludeDir(char *dir)
-{
-
-	Path_AddDir(&parseIncPath, dir);
-}
-
-/*-
  *---------------------------------------------------------------------
  * Parse_FromString  --
  *	Start Parsing from the given string
@@ -1615,7 +1588,7 @@ Parse_FromString(char *str, int lineno)
  *---------------------------------------------------------------------
  */
 static void
-ParseTraditionalInclude(char *file)
+ParseTraditionalInclude(Parser *parser, char *file)
 {
 	char	*fullname;	/* full pathname of file */
 	char	*cp;		/* current position in file spec */
@@ -1652,7 +1625,7 @@ ParseTraditionalInclude(char *file)
 	 * Search for it first on the -I search path, then on the .PATH
 	 * search path, if not found in a -I directory.
 	 */
-	fullname = Path_FindFile(file, &parseIncPath);
+	fullname = Path_FindFile(file, parser->parseIncPath);
 	if (fullname == NULL) {
 		fullname = Path_FindFile(file, &dirSearchPath);
 	}
@@ -1662,7 +1635,7 @@ ParseTraditionalInclude(char *file)
 		 * Still haven't found the makefile. Look for it on the system
 		 * path as a last resort.
 		 */
-		fullname = Path_FindFile(file, &sysIncPath);
+		fullname = Path_FindFile(file, parser->sysIncPath);
 	}
 
 	if (fullname == NULL) {
@@ -2143,7 +2116,7 @@ parse_include(Parser *parser __unused, char *file, int code __unused, int lineno
 				newName = estrdup(file);
 			else
 				newName = str_concat(Fname, '/', file);
-			fullname = Path_FindFile(newName, &parseIncPath);
+			fullname = Path_FindFile(newName, parser->parseIncPath);
 			if (fullname == NULL) {
 				fullname = Path_FindFile(newName,
 				    &dirSearchPath);
@@ -2166,7 +2139,7 @@ parse_include(Parser *parser __unused, char *file, int code __unused, int lineno
 		 * directory.
 		 * XXX: Suffix specific?
 		 */
-		fullname = Path_FindFile(file, &parseIncPath);
+		fullname = Path_FindFile(file, parser->parseIncPath);
 		if (fullname == NULL) {
 			fullname = Path_FindFile(file, &dirSearchPath);
 		}
@@ -2177,7 +2150,7 @@ parse_include(Parser *parser __unused, char *file, int code __unused, int lineno
 		 * Still haven't found the makefile. Look for it on the system
 		 * path as a last resort.
 		 */
-		fullname = Path_FindFile(file, &sysIncPath);
+		fullname = Path_FindFile(file, parser->sysIncPath);
 	}
 
 	if (fullname == NULL) {
@@ -2443,7 +2416,7 @@ Parse_File(Parser *parser, struct MakeFlags *mf, const char name[], FILE *stream
 			/*
 			 * It's an S3/S5-style "include".
 			 */
-			ParseTraditionalInclude(line + 7);
+			ParseTraditionalInclude(parser, line + 7);
 			goto nextLine;
 #endif
 		} else if (Parse_IsVar(line)) {

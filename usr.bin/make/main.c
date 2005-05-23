@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.109 2005/05/23 20:04:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.110 2005/05/23 20:05:05 okumoto Exp $
  */
 
 /*
@@ -103,6 +103,12 @@ typedef struct MakeFlags {
 
 	/** Targets to be made */
 	Lst create;
+
+	/** directories to search when looking for includes */
+	struct Path	parseIncPath;
+
+	/** directories to search when looking for system includes */
+	struct Path	sysIncPath;
 
 	Boolean	expandVars;	/* fully expand printed variables */
 	Boolean	noBuiltins;	/* -r flag */
@@ -241,9 +247,9 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
 	fname = estrdup(file);
 	name = NULL;
 	if (name == NULL)
-		name = Path_FindFile(fname, &parseIncPath);
+		name = Path_FindFile(fname, &mf->parseIncPath);
 	if (name == NULL)
-		name = Path_FindFile(fname, &sysIncPath);
+		name = Path_FindFile(fname, &mf->sysIncPath);
 
 	if (name != NULL) {
 		stream = fopen(name, "r");
@@ -279,7 +285,7 @@ ReadInputFiles(Parser *parser, MakeFlags *mf, const char curdir[], const char ob
 		LstNode	*ln;
 		char	defsysmk[] = PATH_DEFSYSMK;
 
-		Path_Expand(defsysmk, &sysIncPath, &sysMkPath);
+		Path_Expand(defsysmk, &mf->sysIncPath, &sysMkPath);
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 		LST_FOREACH(ln, &sysMkPath) {
@@ -408,7 +414,7 @@ rearg:
 			MFLAGS_append("-D", optarg);
 			break;
 		case 'I':
-			Parse_AddIncludeDir(optarg);
+			Path_AddDir(&mf->parseIncPath, optarg);
 			MFLAGS_append("-I", optarg);
 			break;
 		case 'V':
@@ -520,7 +526,7 @@ rearg:
 			MFLAGS_append("-k", NULL);
 			break;
 		case 'm':
-			Path_AddDir(&sysIncPath, optarg);
+			Path_AddDir(&mf->sysIncPath, optarg);
 			MFLAGS_append("-m", optarg);
 			break;
 		case 'n':
@@ -897,6 +903,8 @@ main(int argc, char **argv)
 	Lst_Init(&mf.makefiles);
 	Lst_Init(&mf.variables);
 	Lst_Init(&mf.create);
+	TAILQ_INIT(&mf.parseIncPath);
+	TAILQ_INIT(&mf.sysIncPath);
 
 	mf.expandVars = TRUE;
 	mf.noBuiltins = FALSE;		/* Read the built-in rules */
@@ -908,6 +916,8 @@ main(int argc, char **argv)
 		mf.forceJobs = TRUE;
 
 	parser.create = &mf.create;
+	parser.parseIncPath = &mf.parseIncPath;
+	parser.sysIncPath = &mf.sysIncPath;
 
 	/*
 	 * Initialize the parsing, directory and variable modules to prepare
@@ -953,7 +963,7 @@ main(int argc, char **argv)
 	 * add the directories from the DEFSYSPATH (more than one may be given
 	 * as dir1:...:dirn) to the system include path.
 	 */
-	if (TAILQ_EMPTY(&sysIncPath)) {
+	if (TAILQ_EMPTY(&mf.sysIncPath)) {
 		char syspath[] = PATH_DEFSYSPATH;
 		char *cp = NULL;
 		char *start;
@@ -962,10 +972,10 @@ main(int argc, char **argv)
 			for (cp = start; *cp != '\0' && *cp != ':'; cp++)
 				continue;
 			if (*cp == '\0') {
-				Path_AddDir(&sysIncPath, start);
+				Path_AddDir(&mf.sysIncPath, start);
 			} else {
 				*cp++ = '\0';
-				Path_AddDir(&sysIncPath, start);
+				Path_AddDir(&mf.sysIncPath, start);
 			}
 		}
 	}
@@ -1051,9 +1061,13 @@ main(int argc, char **argv)
 		Var_Print(&mf.variables, mf.expandVars);
 	}
 
-	Lst_Destroy(&mf.variables, free);
-	Lst_Destroy(&mf.makefiles, free);
+#if 0
+	TAILQ_DESTROY(&mf.sysIncPath);
+	TAILQ_DESTROY(&mf.parseIncPath);
+#endif
 	Lst_Destroy(&mf.create, free);
+	Lst_Destroy(&mf.makefiles, free);
+	Lst_Destroy(&mf.variables, free);
 
 	/* print the graph now it's been processed if the user requested it */
 	if (DEBUG(GRAPH2))

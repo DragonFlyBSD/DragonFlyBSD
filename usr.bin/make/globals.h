@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.13 2005/05/23 20:04:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.14 2005/05/23 20:05:05 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -56,12 +56,6 @@ struct Path;
 
 /* The list of directories to search when looking for targets */
 extern struct Path dirSearchPath;
-
-/* The list of directories to search when looking for includes */
-extern struct Path parseIncPath;
-
-/* The system include path. */
-extern struct Path sysIncPath;
 
 extern int	jobLimit;	/* -j argument: maximum number of jobs */
 extern Boolean	jobsRunning;	/* True if jobs are running */

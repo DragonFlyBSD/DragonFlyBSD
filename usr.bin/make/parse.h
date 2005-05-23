@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.11 2005/05/23 20:04:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.12 2005/05/23 20:05:05 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -55,6 +55,12 @@ typedef struct Parser {
 	 * Used to resolve #if make(...) statements
 	 */
 	struct Lst	*create;
+
+	/** The list of dirs to search when looking for includes. (readonly) */
+	struct Path	*parseIncPath;
+
+	/** The system include path. (readonly) */
+	struct Path	*sysIncPath;
 } Parser;
 
 typedef void DirectiveHandler(Parser *, char *, int, int);
