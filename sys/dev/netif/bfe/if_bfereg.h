@@ -1,6 +1,6 @@
 /* Copyright (c) 2003 Stuart Walsh */
 /* $FreeBSD: src/sys/dev/bfe/if_bfereg.h,v 1.1.4.3 2004/02/13 21:36:34 julian Exp $ */
-/* $DragonFly: src/sys/dev/netif/bfe/if_bfereg.h,v 1.3 2004/09/14 22:21:43 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/bfe/if_bfereg.h,v 1.4 2005/05/23 18:05:58 joerg Exp $ */
 
 #ifndef _BFE_H
 #define _BFE_H
@@ -490,7 +490,6 @@ struct bfe_softc
 	uint32_t		bfe_link;
 	uint8_t			bfe_phyaddr;	/* Address of the card's PHY */
 	uint8_t			bfe_mdc_port;
-	uint8_t			bfe_unit;	/* interface number */
 	uint8_t			bfe_core_unit;
 	uint8_t			bfe_up;
 	int			bfe_if_flags;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.11 2005/05/23 17:54:11 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.12 2005/05/23 18:05:58 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -298,13 +298,11 @@ bfe_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	struct bfe_softc *sc;
-	int unit, error = 0, rid;
+	int error = 0, rid;
 
 	sc = device_get_softc(dev);
 
-	unit = device_get_unit(dev);
 	sc->bfe_dev = dev;
-	sc->bfe_unit = unit;
 	callout_init(&sc->bfe_stat_timer);
 
 	/*
@@ -318,8 +316,8 @@ bfe_attach(device_t dev)
 		irq = pci_read_config(dev, BFE_PCI_INTLINE, 4);
 
 		/* Reset the power state. */
-		printf("bfe%d: chip is is in D%d power mode -- setting to D0\n",
-		       sc->bfe_unit, pci_get_powerstate(dev));
+		device_printf(dev, "chip is is in D%d power mode"
+			      " -- setting to D0\n", pci_get_powerstate(dev));
 
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
@@ -337,7 +335,7 @@ bfe_attach(device_t dev)
 	sc->bfe_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid, 0, ~0, 1,
 					 RF_ACTIVE);
 	if (sc->bfe_res == NULL) {
-		printf ("bfe%d: couldn't map memory\n", unit);
+		device_printf(dev, "couldn't map memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -351,13 +349,13 @@ bfe_attach(device_t dev)
 	sc->bfe_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
 					 RF_SHAREABLE | RF_ACTIVE);
 	if (sc->bfe_irq == NULL) {
-		printf("bfe%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
 
 	if (bfe_dma_alloc(dev)) {
-		printf("bfe%d: failed to allocate DMA resources\n", sc->bfe_unit);
+		device_printf(dev, "failed to allocate DMA resources\n");
 		bfe_release_resources(sc);
 		error = ENXIO;
 		goto fail;
@@ -384,7 +382,7 @@ bfe_attach(device_t dev)
 
 	if (mii_phy_probe(dev, &sc->bfe_miibus,
 				bfe_ifmedia_upd, bfe_ifmedia_sts)) {
-		printf("bfe%d: MII without any PHY!\n", sc->bfe_unit);
+		device_printf(dev, "MII without any PHY!\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -399,7 +397,7 @@ bfe_attach(device_t dev)
 
 	if (error) {
 		bfe_release_resources(sc);
-		printf("bfe%d: couldn't set up irq\n", unit);
+		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 fail:
@@ -656,7 +654,8 @@ bfe_resetphy(struct bfe_softc *sc)
 	DELAY(100);
 	bfe_readphy(sc, 0, &val);
 	if (val & BMCR_RESET) {
-		printf("bfe%d: PHY Reset would not complete.\n", sc->bfe_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "PHY Reset would not complete.\n");
 		splx(s);
 		return(ENXIO);
 	}
@@ -953,9 +952,10 @@ bfe_wait_bit(struct bfe_softc *sc, uint32_t reg, uint32_t bit,
 		DELAY(10);
 	}
 	if (i == timeout) {
-		printf("bfe%d: BUG!  Timeout waiting for bit %08x of register "
-		       "%x to %s.\n", sc->bfe_unit, bit, reg, 
-		       (clear ? "clear" : "set"));
+		if_printf(&sc->arpcom.ac_if,
+			  "BUG!  Timeout waiting for bit %08x of register "
+			  "%x to %s.\n", bit, reg, 
+			  (clear ? "clear" : "set"));
 		return -1;
 	}
 	return 0;
@@ -1348,8 +1348,8 @@ bfe_init(void *xsc)
 	bfe_chip_reset(sc);
 
 	if (bfe_list_rx_init(sc) == ENOBUFS) {
-		printf("bfe%d: bfe_init failed. Not enough memory for list buffers\n",
-				sc->bfe_unit);
+		if_printf(ifp, "bfe_init failed. "
+			  " Not enough memory for list buffers\n");
 		bfe_stop(sc);
 		return;
 	}
@@ -1474,7 +1474,7 @@ bfe_watchdog(struct ifnet *ifp)
 
 	s = splimp();
 
-	printf("bfe%d: watchdog timeout -- resetting\n", sc->bfe_unit);
+	if_printf(ifp, "watchdog timeout -- resetting\n");
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	bfe_init(sc);
