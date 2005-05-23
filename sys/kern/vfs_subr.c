@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.53 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.53.2.1 2005/05/23 18:32:52 dillon Exp $
  */
 
 /*
@@ -1201,6 +1201,7 @@ sysctl_ovfs_conf(SYSCTL_HANDLER_ARGS)
 	struct ovfsconf ovfs;
 
 	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
+		bzero(&ovfs, sizeof(ovfs));
 		ovfs.vfc_vfsops = vfsp->vfc_vfsops;	/* XXX used as flag */
 		strcpy(ovfs.vfc_name, vfsp->vfc_name);
 		ovfs.vfc_index = vfsp->vfc_typenum;
