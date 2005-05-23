@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.88 2005/05/20 11:48:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.89 2005/05/23 20:04:43 okumoto Exp $
  */
 
 /*-
@@ -237,18 +237,18 @@ static const struct keyword {
 };
 #define	NKEYWORDS	(sizeof(parseKeywords) / sizeof(parseKeywords[0]))
 
-static void parse_include(char *, int, int);
-static void parse_message(char *, int, int);
-static void parse_makeenv(char *, int, int);
-static void parse_undef(char *, int, int);
-static void parse_for(char *, int, int);
-static void parse_endfor(char *, int, int);
+static DirectiveHandler parse_include;
+static DirectiveHandler parse_message;
+static DirectiveHandler parse_makeenv;
+static DirectiveHandler parse_undef;
+static DirectiveHandler parse_for;
+static DirectiveHandler parse_endfor;
 
 static const struct directive {
-	const char	*name;
-	int		code;
-	Boolean		skip_flag;	/* execute even when skipped */
-	void		(*func)(char *, int, int);
+	const char		*name;
+	int			code;
+	Boolean			skip_flag;	/* execute even when skipped */
+	DirectiveHandler	*func;
 } directives[] = {
 	/* DIRECTIVES-START-TAG */
 	{ "elif",	COND_ELIF,	TRUE,	Cond_If },
@@ -542,7 +542,7 @@ ParseDoOp(int op)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoSrc(int tOp, char *src, Lst *allsrc)
+ParseDoSrc(Parser *parser, int tOp, char *src, Lst *allsrc)
 {
 	GNode	*gn = NULL;
 	const struct keyword *kw;
@@ -570,7 +570,7 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
 		 * invoked if the user didn't specify a target on the command
 		 * line. This is to allow #ifmake's to succeed, or something...
 		 */
-		Lst_AtEnd(&create, estrdup(src));
+		Lst_AtEnd(parser->create, estrdup(src));
 		/*
 		 * Add the name to the .TARGETS variable as well, so the user
 		 * can employ that, if desired.
@@ -693,7 +693,7 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoDependency(struct MakeFlags *mf, char line[])
+ParseDoDependency(Parser *parser, struct MakeFlags *mf, char line[])
 {
 	char	*cp;	/* our current position */
 	GNode	*gn;	/* a general purpose temporary node */
@@ -864,7 +864,7 @@ ParseDoDependency(struct MakeFlags *mf, char line[])
 					Lst_AtEnd(&paths, &dirSearchPath);
 					break;
 				  case Main:
-					if (!Lst_IsEmpty(&create)) {
+					if (!Lst_IsEmpty(parser->create)) {
 						specType = Not;
 					}
 					break;
@@ -1213,7 +1213,7 @@ ParseDoDependency(struct MakeFlags *mf, char line[])
 
 				while (!Lst_IsEmpty(&sources)) {
 					gnp = Lst_DeQueue(&sources);
-					ParseDoSrc(tOp, gnp->name, &curSrcs);
+					ParseDoSrc(parser, tOp, gnp->name, &curSrcs);
 				}
 				cp = line;
 			} else {
@@ -1222,7 +1222,7 @@ ParseDoDependency(struct MakeFlags *mf, char line[])
 					cp += 1;
 				}
 
-				ParseDoSrc(tOp, line, &curSrcs);
+				ParseDoSrc(parser, tOp, line, &curSrcs);
 			}
 			while (*cp && isspace((unsigned char)*cp)) {
 				cp++;
@@ -2066,7 +2066,7 @@ ParseFinishLine(void)
  *	options
  */
 static void
-parse_include(char *file, int code __unused, int lineno __unused)
+parse_include(Parser *parser __unused, char *file, int code __unused, int lineno __unused)
 {
 	char	*fullname;	/* full pathname of file */
 	char	endc;		/* the character which ends the file spec */
@@ -2205,7 +2205,7 @@ parse_include(char *file, int code __unused, int lineno __unused)
  *	a warning if the directive is malformed.
  */
 static void
-parse_message(char *line, int iserror, int lineno __unused)
+parse_message(Parser *parser __unused, char *line, int iserror, int lineno __unused)
 {
 
 	if (!isspace((u_char)*line)) {
@@ -2232,7 +2232,7 @@ parse_message(char *line, int iserror, int lineno __unused)
  *	Parse an .undef directive.
  */
 static void
-parse_undef(char *line, int code __unused, int lineno __unused)
+parse_undef(Parser *parser __unused, char *line, int code __unused, int lineno __unused)
 {
 	char *cp;
 
@@ -2254,7 +2254,7 @@ parse_undef(char *line, int code __unused, int lineno __unused)
  *	Parse an .makeenv directive.
  */
 static void
-parse_makeenv(char *line, int code __unused, int lineno __unused)
+parse_makeenv(Parser *parser __unused, char *line, int code __unused, int lineno __unused)
 {
 	char *cp;
 
@@ -2276,7 +2276,7 @@ parse_makeenv(char *line, int code __unused, int lineno __unused)
  *	Parse a .for directive.
  */
 static void
-parse_for(char *line, int code __unused, int lineno)
+parse_for(Parser *parser __unused, char *line, int code __unused, int lineno)
 {
 
 	if (!For_For(line)) {
@@ -2308,7 +2308,7 @@ parse_for(char *line, int code __unused, int lineno)
  *	Parse endfor. This may only happen if there was no matching .for.
  */
 static void
-parse_endfor(char *line __unused, int code __unused, int lineno __unused)
+parse_endfor(Parser *parser __unused, char *line __unused, int code __unused, int lineno __unused)
 {
 
 	Parse_Error(PARSE_FATAL, "for-less endfor");
@@ -2323,7 +2323,7 @@ parse_endfor(char *line __unused, int code __unused, int lineno __unused)
  *	TRUE if line was a directive, FALSE otherwise.
  */
 static Boolean
-parse_directive(char *line)
+parse_directive(Parser *parser, char *line)
 {
 	char	*start;
 	char	*cp;
@@ -2356,17 +2356,15 @@ parse_directive(char *line)
 	}
 
 	if (!skipLine || directives[dir].skip_flag)
-		(*directives[dir].func)(cp, directives[dir].code,
+		(*directives[dir].func)(parser, cp, directives[dir].code,
 		    CURFILE->lineno);
 	return (TRUE);
 }
 
-/*-
- *---------------------------------------------------------------------
- * Parse_File --
- *	Parse a file into its component parts, incorporating it into the
- *	current dependency graph. This is the main function and controls
- *	almost every other function in this module
+/**
+ * Parse a file into its component parts, incorporating it into the
+ * current dependency graph. This is the main function and controls
+ * almost every other function in this module
  *
  * Results:
  *	None
@@ -2374,10 +2372,9 @@ parse_directive(char *line)
  * Side Effects:
  *	Loads. Nodes are added to the list of all targets, nodes and links
  *	are added to the dependency graph. etc. etc. etc.
- *---------------------------------------------------------------------
  */
 void
-Parse_File(struct MakeFlags *mf, const char name[], FILE *stream)
+Parse_File(Parser *parser, struct MakeFlags *mf, const char name[], FILE *stream)
 {
 	char	*cp;	/* pointer into the line */
 	char	*line;	/* the line we're working on */
@@ -2388,7 +2385,7 @@ Parse_File(struct MakeFlags *mf, const char name[], FILE *stream)
 	ParsePushInput(estrdup(name), stream, NULL, 0);
 
 	while ((line = ParseReadLine()) != NULL) {
-		if (*line == '.' && parse_directive(line + 1)) {
+		if (*line == '.' && parse_directive(parser, line + 1)) {
 			/* directive consumed */
 			goto nextLine;
 		}
@@ -2491,7 +2488,7 @@ Parse_File(struct MakeFlags *mf, const char name[], FILE *stream)
 			Lst_Destroy(&targets, NOFREE);
 			inLine = TRUE;
 
-			ParseDoDependency(mf, line);
+			ParseDoDependency(parser, mf, line);
 		}
 
   nextLine:
@@ -2503,7 +2500,7 @@ Parse_File(struct MakeFlags *mf, const char name[], FILE *stream)
 	/*
 	 * Make sure conditionals are clean
 	 */
-	Cond_End();
+	Cond_End(parser, NULL, 0, 0);
 
 	if (fatals)
 		errx(1, "fatal errors encountered -- cannot continue");

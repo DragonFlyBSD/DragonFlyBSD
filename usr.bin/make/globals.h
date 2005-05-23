@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.12 2005/05/23 18:26:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.13 2005/05/23 20:04:43 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -53,12 +53,6 @@
 
 struct GNode;
 struct Path;
-
-/*
- * The list of target names specified on the command line.
- * Used to resolve #if make(...) statements
- */
-extern Lst create;
 
 /* The list of directories to search when looking for targets */
 extern struct Path dirSearchPath;

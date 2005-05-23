@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.44 2005/05/16 17:29:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.45 2005/05/23 20:04:43 okumoto Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ typedef enum {
 	Err
 } Token;
 
-typedef Boolean CondProc(int, char *);
+typedef Boolean CondProc(Parser *, int, char *);
 
 /*-
  * Structures to handle elegantly the different forms of #if's. The
@@ -120,10 +120,10 @@ static CondProc	CondDoMake;
 static CondProc	CondDoExists;
 static CondProc	CondDoTarget;
 static char *CondCvtArg(char *, double *);
-static Token CondToken(Boolean);
-static Token CondT(Boolean);
-static Token CondF(Boolean);
-static Token CondE(Boolean);
+static Token CondToken(Parser *, Boolean);
+static Token CondT(Parser *, Boolean);
+static Token CondF(Parser *, Boolean);
+static Token CondE(Parser *, Boolean);
 
 static const struct If {
 	Boolean	doNot;		/* TRUE if default function should be negated */
@@ -279,7 +279,7 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
  *	TRUE if the given variable is defined.
  */
 static Boolean
-CondDoDefined(int argLen, char *arg)
+CondDoDefined(Parser *parser __unused, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
 	Boolean	result;
@@ -302,7 +302,7 @@ CondDoDefined(int argLen, char *arg)
  *	TRUE if the given target is being made.
  */
 static Boolean
-CondDoMake(int argLen, char *arg)
+CondDoMake(Parser *parser, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
 	Boolean	result;
@@ -310,7 +310,7 @@ CondDoMake(int argLen, char *arg)
 
 	arg[argLen] = '\0';
 	result = FALSE;
-	LST_FOREACH(ln, &create) {
+	LST_FOREACH(ln, parser->create) {
 		if (Str_Match(Lst_Datum(ln), arg)) {
 			result = TRUE;
 			break;
@@ -328,7 +328,7 @@ CondDoMake(int argLen, char *arg)
  *	TRUE if the file exists and FALSE if it does not.
  */
 static Boolean
-CondDoExists(int argLen, char *arg)
+CondDoExists(Parser *parser __unused, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
 	Boolean	result;
@@ -354,7 +354,7 @@ CondDoExists(int argLen, char *arg)
  *	TRUE if the node exists as a target and FALSE if it does not.
  */
 static Boolean
-CondDoTarget(int argLen, char *arg)
+CondDoTarget(Parser *parser __unused, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
 	Boolean	result;
@@ -427,7 +427,7 @@ CondCvtArg(char *str, double *value)
  *	condPushback will be set back to None if it is used.
  */
 static Token
-CondToken(Boolean doEval)
+CondToken(Parser *parser, Boolean doEval)
 {
 	Token	t;
 
@@ -859,7 +859,7 @@ CondToken(Boolean doEval)
 			 * invert is TRUE, we invert the sense of the
 			 * function.
 			 */
-			t = (!doEval || (*evalProc) (arglen, arg) ?
+			t = (!doEval || evalProc(parser, arglen, arg) ?
 			     (invert ? False : True) :
 			     (invert ? True : False));
 			free(arg);
@@ -884,11 +884,11 @@ CondToken(Boolean doEval)
  *	Tokens are consumed.
  */
 static Token
-CondT(Boolean doEval)
+CondT(Parser *parser, Boolean doEval)
 {
 	Token	t;
 
-	t = CondToken(doEval);
+	t = CondToken(parser, doEval);
 	if (t == EndOfFile) {
 		/*
 		 * If we reached the end of the expression, the expression
@@ -899,14 +899,14 @@ CondT(Boolean doEval)
 		/*
 		 * T -> ( E )
 		 */
-		t = CondE(doEval);
+		t = CondE(parser, doEval);
 		if (t != Err) {
-			if (CondToken(doEval) != RParen) {
+			if (CondToken(parser, doEval) != RParen) {
 				t = Err;
 			}
 		}
 	} else if (t == Not) {
-		t = CondT(doEval);
+		t = CondT(parser, doEval);
 		if (t == True) {
 			t = False;
 		} else if (t == False) {
@@ -928,13 +928,13 @@ CondT(Boolean doEval)
  *	Tokens are consumed.
  */
 static Token
-CondF(Boolean doEval)
+CondF(Parser *parser, Boolean doEval)
 {
 	Token	l, o;
 
-	l = CondT(doEval);
+	l = CondT(parser, doEval);
 	if (l != Err) {
-		o = CondToken(doEval);
+		o = CondToken(parser, doEval);
 
 		if (o == And) {
 			/*
@@ -946,9 +946,9 @@ CondF(Boolean doEval)
 			 * be it an Err or no.
 			 */
 			if (l == True) {
-				l = CondF(doEval);
+				l = CondF(parser, doEval);
 			} else {
-				CondF(FALSE);
+				CondF(parser, FALSE);
 			}
 		} else {
 			/*
@@ -972,13 +972,13 @@ CondF(Boolean doEval)
  *	Tokens are, of course, consumed.
  */
 static Token
-CondE(Boolean doEval)
+CondE(Parser *parser, Boolean doEval)
 {
 	Token   l, o;
 
-	l = CondF(doEval);
+	l = CondF(parser, doEval);
 	if (l != Err) {
-		o = CondToken(doEval);
+		o = CondToken(parser, doEval);
 
 		if (o == Or) {
 			/*
@@ -991,9 +991,9 @@ CondE(Boolean doEval)
 			 * we parse the r.h.s. to throw it away.
 			 */
 			if (l == False) {
-				l = CondE(doEval);
+				l = CondE(parser, doEval);
 			} else {
-				CondE(FALSE);
+				CondE(parser, FALSE);
 			}
 		} else {
 			/*
@@ -1011,7 +1011,7 @@ CondE(Boolean doEval)
  *	This function is called even when we're skipping.
  */
 void
-Cond_If(char *line, int code, int lineno)
+Cond_If(Parser *parser, char *line, int code, int lineno)
 {
 	const struct If	*ifp;
 	Boolean value;
@@ -1058,15 +1058,15 @@ Cond_If(char *line, int code, int lineno)
 	condExpr = line;
 	condPushBack = None;
 
-	switch (CondE(TRUE)) {
+	switch (CondE(parser, TRUE)) {
 	  case True:
-		if (CondToken(TRUE) != EndOfFile)
+		if (CondToken(parser, TRUE) != EndOfFile)
 			goto err;
 		value = TRUE;
 		break;
 
 	  case False:
-		if (CondToken(TRUE) != EndOfFile)
+		if (CondToken(parser, TRUE) != EndOfFile)
 			goto err;
 		value = FALSE;
 		break;
@@ -1115,7 +1115,7 @@ Cond_If(char *line, int code, int lineno)
  *	Handle .else statement.
  */
 void
-Cond_Else(char *line __unused, int code __unused, int lineno __unused)
+Cond_Else(Parser *parser __unused, char *line __unused, int code __unused, int lineno __unused)
 {
 
 	while (isspace((u_char)*line))
@@ -1156,7 +1156,7 @@ Cond_Else(char *line __unused, int code __unused, int lineno __unused)
  *	Handle .endif statement.
  */
 void
-Cond_Endif(char *line __unused, int code __unused, int lineno __unused)
+Cond_Endif(Parser *parser __unused, char *line __unused, int code __unused, int lineno __unused)
 {
 
 	while (isspace((u_char)*line))
@@ -1198,7 +1198,7 @@ Cond_Endif(char *line __unused, int code __unused, int lineno __unused)
  *	Parse_Error will be called if open conditionals are around.
  */
 void
-Cond_End(void)
+Cond_End(Parser *parser __unused, char *line __unused, int code __unused, int lineno __unused)
 {
 	int level;
 
