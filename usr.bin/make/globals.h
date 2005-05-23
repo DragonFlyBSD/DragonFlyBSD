@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.11 2005/05/14 22:52:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.12 2005/05/23 18:26:25 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -89,10 +89,6 @@ extern Boolean	touchFlag;
  * Otherwise it is routed to temporary files from which it is retrieved
  * when the shell exits */
 extern Boolean	usePipes;
-
-/* TRUE if we aren't supposed to really make anything, just see if the
- * targets are out-of-date */
-extern Boolean	queryFlag;
 
 /* List of specific variables for which the environment should be
  * searched before the global context */

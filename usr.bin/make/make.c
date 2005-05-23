@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.26 2005/05/16 17:30:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.27 2005/05/23 18:26:25 okumoto Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ static Lst toBeMade = Lst_Initializer(toBeMade);
  */
 static int numNodes;
 
-static Boolean MakeStartJobs(void);
+static Boolean MakeStartJobs(Boolean);
 
 /**
  * Make_TimeStamp
@@ -578,7 +578,7 @@ Make_DoAllVar(GNode *gn)
  *	are filled.
  */
 static Boolean
-MakeStartJobs(void)
+MakeStartJobs(Boolean queryFlag)
 {
 	GNode	*gn;
 
@@ -712,7 +712,7 @@ MakePrintStatus(GNode *gn, Boolean cycle)
  *	'leaves' of these subgraphs.
  */
 Boolean
-Make_Run(Lst *targs)
+Make_Run(Lst *targs, Boolean queryFlag)
 {
 	GNode	*gn;		/* a temporary pointer */
 	GNode	*cgn;
@@ -768,7 +768,7 @@ Make_Run(Lst *targs)
 		 * the next loop... (we won't actually start any, of course,
 		 * this is just to see if any of the targets was out of date)
 		 */
-		return (MakeStartJobs());
+		return (MakeStartJobs(queryFlag));
 
 	} else {
 		/*
@@ -778,7 +778,7 @@ Make_Run(Lst *targs)
 		 * routines in job.c upon the finishing of a job. So we fill
 		 * the Job table as much as we can before going into our loop.
 		 */
-		MakeStartJobs();
+		MakeStartJobs(queryFlag);
 	}
 
 	/*
@@ -794,7 +794,7 @@ Make_Run(Lst *targs)
 	while (!Job_Empty()) {
 		Job_CatchOutput(!Lst_IsEmpty(&toBeMade));
 		Job_CatchChildren(!usePipes);
-		MakeStartJobs();
+		MakeStartJobs(queryFlag);
 	}
 
 	errors = Job_Finish();

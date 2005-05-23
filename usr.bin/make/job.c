@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.110 2005/05/23 18:25:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.111 2005/05/23 18:26:25 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3100,7 +3100,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
  *	If an error is detected and not being ignored, the process exits.
  */
 static int
-CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode)
+CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 {
 	LstNode	*ln;
 
@@ -3120,7 +3120,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode)
 		gn->made = BEINGMADE;
 		Suff_FindDeps(gn);
 		LST_FOREACH(ln, &gn->children)
-			CompatMake(Lst_Datum(ln), gn, ENDNode);
+			CompatMake(Lst_Datum(ln), gn, ENDNode, queryFlag);
 		if (!gn->make) {
 			gn->made = ABORTED;
 			pgn->make = FALSE;
@@ -3319,7 +3319,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode)
  *	Guess what?
  */
 void
-Compat_Run(Lst *targs)
+Compat_Run(Lst *targs, Boolean queryFlag)
 {
 	GNode	*gn = NULL;	/* Current root target */
 	int	error_cnt;	/* Number of targets not remade due to errors */
@@ -3360,7 +3360,7 @@ Compat_Run(Lst *targs)
 	error_cnt = 0;
 	while (!Lst_IsEmpty(targs)) {
 		gn = Lst_DeQueue(targs);
-		CompatMake(gn, gn, ENDNode);
+		CompatMake(gn, gn, ENDNode, queryFlag);
 
 		if (gn->made == UPTODATE) {
 			printf("`%s' is up to date.\n", gn->name);

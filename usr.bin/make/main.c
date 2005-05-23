@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.106 2005/05/19 17:07:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.107 2005/05/23 18:26:25 okumoto Exp $
  */
 
 /*
@@ -104,6 +104,13 @@ typedef struct MakeFlags {
 	Boolean	expandVars;	/* fully expand printed variables */
 	Boolean	noBuiltins;	/* -r flag */
 	Boolean	forceJobs;      /* -j argument given */
+
+	/**
+	 * -q flag:
+	 * TRUE if we aren't supposed to really make anything, just
+	 * see if the targets are out-of-date
+	 */
+	Boolean		queryFlag;
 } MakeFlags;
 
 /* (-E) vars to override from env */
@@ -122,7 +129,6 @@ int		jobLimit;	/* -j argument */
 Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 Boolean		keepgoing;	/* -k flag */
 Boolean		noExecute;	/* -n flag */
-Boolean		queryFlag;	/* -q flag */
 Boolean		touchFlag;	/* -t flag */
 Boolean		usePipes;	/* !-P flag */
 uint32_t	warn_cmd;	/* command line warning flags */
@@ -131,6 +137,7 @@ uint32_t	warn_nocmd;	/* command line no-warning flags */
 
 time_t		now;		/* Time at start of make */
 struct GNode	*DEFAULT;	/* .DEFAULT node */
+
 
 /**
  * Exit with usage message.
@@ -521,7 +528,7 @@ rearg:
 			MFLAGS_append("-n", NULL);
 			break;
 		case 'q':
-			queryFlag = TRUE;
+			mf->queryFlag = TRUE;
 			/* Kind of nonsensical, wot? */
 			MFLAGS_append("-q", NULL);
 			break;
@@ -875,7 +882,6 @@ main(int argc, char **argv)
 	noExecute = FALSE;		/* Execute all commands */
 	keepgoing = FALSE;		/* Stop on error */
 	allPrecious = FALSE;		/* Remove targets when interrupted */
-	queryFlag = FALSE;		/* This is not just a check-run */
 	touchFlag = FALSE;		/* Actually update targets */
 	usePipes = TRUE;		/* Catch child output in pipes */
 	debug = 0;			/* No debug verbosity, please. */
@@ -892,6 +898,7 @@ main(int argc, char **argv)
 
 	mf.expandVars = TRUE;
 	mf.noBuiltins = FALSE;		/* Read the built-in rules */
+	mf.queryFlag = FALSE;
 
 	if (getenv("MAKE_JOBS_FIFO") == NULL)
 		mf.forceJobs = FALSE;
@@ -1035,7 +1042,7 @@ main(int argc, char **argv)
 			 * all the targets as well as initializing
 			 * the module.
 			 */
-			Compat_Run(&targs);
+			Compat_Run(&targs, mf.queryFlag);
 			outOfDate = 0;
 		} else {
 			/*
@@ -1046,13 +1053,13 @@ main(int argc, char **argv)
 			 * prevent the .BEGIN from being executed
 			 * should it exist).
 			 */
-			if (!queryFlag) {
+			if (!mf.queryFlag) {
 				Job_Init(jobLimit);
 				jobsRunning = TRUE;
 			}
 
 			/* Traverse the graph, checking on all the targets */
-			outOfDate = Make_Run(&targs);
+			outOfDate = Make_Run(&targs, mf.queryFlag);
 		}
 		Lst_Destroy(&targs, NOFREE);
 
@@ -1068,7 +1075,7 @@ main(int argc, char **argv)
 	if (DEBUG(GRAPH2))
 		Targ_PrintGraph(2);
 
-	if (queryFlag && outOfDate)
+	if (mf.queryFlag && outOfDate)
 		return (1);
 	else
 		return (0);

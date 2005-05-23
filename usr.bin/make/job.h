@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.32 2005/05/19 17:07:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.33 2005/05/23 18:26:25 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -73,6 +73,6 @@ void Proc_Init(void);
 
 struct Buffer *Cmd_Exec(const char *, const char **);
 
-void Compat_Run(struct Lst *);
+void Compat_Run(struct Lst *, Boolean);
 
 #endif /* job_h_4678dfd1 */
