@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.29 2005/02/14 17:11:12 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.30 2005/05/23 18:20:47 dillon Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -2607,9 +2607,16 @@ em_enable_vlans(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, CTRL, ctrl);
 }
 
+/*
+ * note: we must call bus_enable_intr() prior to enabling the hardware
+ * interrupt and bus_disable_intr() after disabling the hardware interrupt
+ * in order to avoid handler execution races from scheduled interrupt
+ * threads.
+ */
 static void
 em_enable_intr(struct adapter *adapter)
 {
+	bus_enable_intr(adapter->dev, adapter->int_handler_tag);
 	E1000_WRITE_REG(&adapter->hw, IMS, (IMS_ENABLE_MASK));
 }
 
@@ -2618,6 +2625,7 @@ em_disable_intr(struct adapter *adapter)
 {
 	E1000_WRITE_REG(&adapter->hw, IMC, 
 			(0xffffffff & ~E1000_IMC_RXSEQ));
+	bus_disable_intr(adapter->dev, adapter->int_handler_tag);
 }
 
 static int
