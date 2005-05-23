@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_mib.c,v 1.8.2.1 2000/08/03 00:09:34 ps Exp $
- * $DragonFly: src/sys/net/if_mib.c,v 1.4 2005/01/03 23:25:25 joerg Exp $
+ * $DragonFly: src/sys/net/if_mib.c,v 1.4.2.1 2005/05/23 18:33:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,6 +95,7 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 		return ENOENT;
 
 	case IFDATA_GENERAL:
+		bzero(&ifmd, sizeof(ifmd));
 		strlcpy(ifmd.ifmd_name, ifp->if_xname, sizeof(ifmd.ifmd_name));
 
 #define COPY(fld) ifmd.ifmd_##fld = ifp->if_##fld
