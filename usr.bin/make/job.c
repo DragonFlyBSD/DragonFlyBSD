@@ -38,15 +38,15 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.106 2005/05/20 11:48:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.107 2005/05/23 18:19:05 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
 #define	OLD_JOKE 0
 #endif /* OLD_JOKE */
 
-/*-
- * job.c --
+/**
+ * job.c
  *	handle the creation etc. of our child processes.
  *
  * Interface:
@@ -92,7 +92,7 @@
  *
  *	Job_Wait	Wait for all currently-running jobs to finish.
  *
- * compat.c --
+ * compat.c
  *	The routines in this file implement the full-compatibility
  *	mode of PMake. Most of the special functionality of PMake
  *	is available in this mode. Things not supported:
@@ -251,7 +251,7 @@ typedef struct Job {
 			int	of_outFd;
 		}	o_file;
 
-	}       output;	    /* Data for tracking a shell's output */
+	} output;	/* Data for tracking a shell's output */
 
 	TAILQ_ENTRY(Job) link;	/* list link */
 } Job;
@@ -609,7 +609,7 @@ ProcExec(const ProcStuff *ps)
 
 	if (ps->merge_errors) {
 		/*
-		 * Send stderr to parent process too. 
+		 * Send stderr to parent process too.
 		 */
 		if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
@@ -705,7 +705,7 @@ JobCatchSig(int signo)
 }
 
 /**
- * JobPassSig --
+ * JobPassSig
  *	Pass a signal on to all local jobs if
  *	USE_PGRP is defined, then die ourselves.
  *
@@ -781,7 +781,7 @@ JobPassSig(int signo)
 }
 
 /**
- * JobPrintCommand  --
+ * JobPrintCommand
  *	Put out another command for the given job. If the command starts
  *	with an @ or a - we process it specially. In the former case,
  *	so long as the -s and -n flags weren't given to make, we stick
@@ -970,7 +970,7 @@ JobPrintCommand(char *cmd, Job *job)
 }
 
 /**
- * JobClose --
+ * JobClose
  *	Called to close both input and output pipes when a job is finished.
  *
  * Side Effects:
@@ -996,7 +996,7 @@ JobClose(Job *job)
 }
 
 /**
- * JobFinish  --
+ * JobFinish
  *	Do final processing for the given job including updating
  *	parents and starting new jobs as available/necessary. Note
  *	that we pay no attention to the JOB_IGNERR flag here.
@@ -2351,7 +2351,6 @@ Job_CatchChildren(Boolean block)
  *
  * Side Effects:
  *	Output is read from pipes if we're piping.
- * -----------------------------------------------------------------------
  */
 void
 #ifdef USE_KQUEUE
@@ -2758,7 +2757,7 @@ void
 Job_AbortAll(void)
 {
 	Job	*job;	/* the job descriptor in that element */
-	int	foo;
+	int	status;
 
 	aborting = ABORT_ERROR;
 
@@ -2776,7 +2775,7 @@ Job_AbortAll(void)
 	/*
 	 * Catch as many children as want to report in at first, then give up
 	 */
-	while (waitpid((pid_t)-1, &foo, WNOHANG) > 0)
+	while (waitpid((pid_t)-1, &status, WNOHANG) > 0)
 		;
 }
 
@@ -2913,9 +2912,8 @@ CompatCatchSig(int signo)
 	interrupted = signo;
 }
 
-/*-
- *-----------------------------------------------------------------------
- * CompatInterrupt --
+/**
+ * CompatInterrupt
  *	Interrupt the creation of the current target and remove it if
  *	it ain't precious.
  *
@@ -2925,8 +2923,6 @@ CompatCatchSig(int signo)
  * Side Effects:
  *	The target is removed and the process exits. If .INTERRUPT exists,
  *	its commands are run first WITH INTERRUPTS IGNORED..
- *
- *-----------------------------------------------------------------------
  */
 static void
 CompatInterrupt(int signo)
@@ -2974,9 +2970,8 @@ CompatInterrupt(int signo)
 	kill(getpid(), signo);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Compat_RunCommand --
+/**
+ * Compat_RunCommand
  *	Execute the next command for a target. If the command returns an
  *	error, the node's made field is set to ERROR and creation stops.
  *	The node from which the command came is also given.
@@ -2986,8 +2981,6 @@ CompatInterrupt(int signo)
  *
  * Side Effects:
  *	The node's 'made' field may be set to ERROR.
- *
- *-----------------------------------------------------------------------
  */
 static int
 Compat_RunCommand(char *cmd, GNode *gn)
@@ -3211,15 +3204,12 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * CompatMake --
+/**
+ * CompatMake
  *	Make a target, given the parent, to abort if necessary.
  *
  * Side Effects:
  *	If an error is detected and not being ignored, the process exits.
- *
- *-----------------------------------------------------------------------
  */
 static int
 CompatMake(GNode *gn, GNode *pgn)
@@ -3431,9 +3421,8 @@ CompatMake(GNode *gn, GNode *pgn)
 	return (0);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Compat_Run --
+/**
+ * Compat_Run
  *	Start making again, given a list of target nodes.
  *
  * Results:
@@ -3441,14 +3430,12 @@ CompatMake(GNode *gn, GNode *pgn)
  *
  * Side Effects:
  *	Guess what?
- *
- *-----------------------------------------------------------------------
  */
 void
 Compat_Run(Lst *targs)
 {
 	GNode	*gn = NULL;	/* Current root target */
-	int	error_cnt;		/* Number of targets not remade due to errors */
+	int	error_cnt;	/* Number of targets not remade due to errors */
 	LstNode	*ln;
 
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {

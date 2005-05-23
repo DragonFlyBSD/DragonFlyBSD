@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.11 2005/05/20 11:48:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.12 2005/05/23 18:19:05 okumoto Exp $
  */
 
 #include <string.h>
@@ -63,6 +63,7 @@ ShellMatch(const char name[])
 {
 	struct Shell	*shell;
 	const char	*shellDir = PATH_DEFSHELLDIR;
+
 	shell = emalloc(sizeof(struct Shell));
 
 	if (strcmp(name, "csh") == 0) {
@@ -222,8 +223,8 @@ Boolean
 Shell_Parse(const char line[])
 {
 	ArgArray	aa;
-	char		**argv;
 	int		argc;
+	char		**argv;
 	Boolean		fullSpec = FALSE;
 	struct Shell	newShell;
 	struct Shell	*sh;
