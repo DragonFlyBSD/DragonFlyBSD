@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.7 2004/05/19 22:52:47 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.7.2.1 2005/05/23 18:31:43 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -107,12 +107,12 @@ gdt_make_dev(int unit)
 
 #ifdef SDEV_PER_HBA
     dev = make_dev(&iir_cdevsw, hba2minor(unit), UID_ROOT, GID_OPERATOR,
-                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, "iir%d", unit);
+                   S_IRUSR | S_IWUSR, "iir%d", unit);
 #else
     if (sdev_made)
         return (0);
     dev = make_dev(&iir_cdevsw, 0, UID_ROOT, GID_OPERATOR,
-                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, "iir");
+                   S_IRUSR | S_IWUSR, "iir");
     sdev_made = 1;
 #endif
     reference_dev(dev);
