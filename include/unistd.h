@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.12 2005/04/08 08:32:53 joerg Exp $
+ * $DragonFly: src/include/unistd.h,v 1.13 2005/05/23 19:41:59 joerg Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -125,9 +125,6 @@ size_t	 confstr(int, char *, size_t);
 char	*crypt(const char *, const char *);
 const char *crypt_get_format(void);
 int	 crypt_set_format(const char *);
-int	 des_cipher(const char *, char *, long, int);
-int	 des_setkey(const char *);
-int	 encrypt(char *, int);
 void	 endusershell(void);
 int	 exect(const char *, char * const *, char * const *);
 int	 fchdir(int);
@@ -193,7 +190,6 @@ int	 seteuid(uid_t);
 int	 setgroups(int, const gid_t *);
 void	 sethostid(long);
 int	 sethostname(const char *, int);
-int	 setkey(const char *);
 int	 setlogin(const char *);
 void	*setmode(const char *);
 int	 setpgrp(pid_t _pid, pid_t _pgrp); /* obsoleted by setpgid() */
