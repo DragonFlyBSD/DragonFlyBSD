@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.5 2005/05/23 16:00:44 joerg Exp $
  */
 
 
@@ -378,36 +378,36 @@
 
 struct lge_rx_desc {
 	/* Hardware descriptor section */
-	u_int32_t		lge_ctl;
-	u_int32_t		lge_sts;
-	u_int32_t		lge_fragptr_lo;
-	u_int32_t		lge_fragptr_hi;
-	u_int16_t		lge_fraglen;
-	u_int16_t		lge_rsvd0;
-	u_int32_t		lge_rsvd1;
+	uint32_t		lge_ctl;
+	uint32_t		lge_sts;
+	uint32_t		lge_fragptr_lo;
+	uint32_t		lge_fragptr_hi;
+	uint16_t		lge_fraglen;
+	uint16_t		lge_rsvd0;
+	uint32_t		lge_rsvd1;
 	/* Driver software section */
 	union {
 		struct mbuf		*lge_mbuf;
-		u_int64_t		lge_dummy;
+		uint64_t		lge_dummy;
 	} lge_u;
 };
 
 struct lge_frag {
-	u_int32_t		lge_rsvd0;
-	u_int32_t		lge_fragptr_lo;
-	u_int32_t		lge_fragptr_hi;
-	u_int16_t		lge_fraglen;
-	u_int16_t		lge_rsvd1;
+	uint32_t		lge_rsvd0;
+	uint32_t		lge_fragptr_lo;
+	uint32_t		lge_fragptr_hi;
+	uint16_t		lge_fraglen;
+	uint16_t		lge_rsvd1;
 };
 
 struct lge_tx_desc {
 	/* Hardware descriptor section */
-	u_int32_t		lge_ctl;
+	uint32_t		lge_ctl;
 	struct lge_frag		lge_frags[10];
-	u_int32_t		lge_rsvd0;
+	uint32_t		lge_rsvd0;
 	union {
 		struct mbuf		*lge_mbuf;
-		u_int64_t		lge_dummy;
+		uint64_t		lge_dummy;
 	} lge_u;
 };
 
@@ -474,18 +474,18 @@ struct lge_list_data {
 #define LGE_DEVICEID		0x0001
 
 struct lge_type {
-	u_int16_t		lge_vid;
-	u_int16_t		lge_did;
+	uint16_t		lge_vid;
+	uint16_t		lge_did;
 	char			*lge_name;
 };
 
 struct lge_mii_frame {
-	u_int8_t		mii_stdelim;
-	u_int8_t		mii_opcode;
-	u_int8_t		mii_phyaddr;
-	u_int8_t		mii_regaddr;
-	u_int8_t		mii_turnaround;
-	u_int16_t		mii_data;
+	uint8_t			mii_stdelim;
+	uint8_t			mii_opcode;
+	uint8_t			mii_phyaddr;
+	uint8_t			mii_regaddr;
+	uint8_t			mii_turnaround;
+	uint16_t		mii_data;
 };
 
 /*
@@ -500,10 +500,10 @@ struct lge_mii_frame {
 #define LGE_JUMBO_MTU		(LGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define LGE_JSLOTS		384
 
-#define LGE_JRAWLEN (LGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(u_int64_t))
-#define LGE_JLEN (LGE_JRAWLEN + (sizeof(u_int64_t) - \
-	(LGE_JRAWLEN % sizeof(u_int64_t))))
-#define LGE_MCLBYTES (LGE_JLEN - sizeof(u_int64_t))
+#define LGE_JRAWLEN (LGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
+#define LGE_JLEN (LGE_JRAWLEN + (sizeof(uint64_t) - \
+	(LGE_JRAWLEN % sizeof(uint64_t))))
+#define LGE_MCLBYTES (LGE_JLEN - sizeof(uint64_t))
 #define LGE_JPAGESZ PAGE_SIZE
 #define LGE_RESID (LGE_JPAGESZ - (LGE_JLEN * LGE_JSLOTS) % LGE_JPAGESZ)
 #define LGE_JMEM ((LGE_JLEN * LGE_JSLOTS) + LGE_RESID)
@@ -536,10 +536,10 @@ struct lge_softc {
 	struct resource		*lge_irq;
 	void			*lge_intrhand;
 	device_t		lge_miibus;
-	u_int8_t		lge_unit;
-	u_int8_t		lge_type;
-	u_int8_t		lge_link;
-	u_int8_t		lge_pcs;
+	uint8_t			lge_unit;
+	uint8_t			lge_type;
+	uint8_t			lge_link;
+	uint8_t			lge_pcs;
 	int			lge_if_flags;
 	struct lge_list_data	*lge_ldata;
 	struct lge_ring_data	lge_cdata;
