@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.20 2005/05/23 16:00:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.21 2005/05/23 19:45:19 joerg Exp $
  */
 
 /*
@@ -305,7 +305,7 @@ lge_miibus_writereg(device_t dev, int phy, int reg, int data)
 static void
 lge_miibus_statchg(device_t dev)
 {
-	struct lge_softc *sc = device_get_softc(dev);;
+	struct lge_softc *sc = device_get_softc(dev);
 	struct mii_data *mii = device_get_softc(sc->lge_miibus);
 
 	LGE_CLRBIT(sc, LGE_GMIIMODE, LGE_GMIIMODE_SPEED);
@@ -500,13 +500,13 @@ lge_attach(device_t dev)
 #ifdef LGE_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
 		printf("lge%d: failed to enable I/O ports!\n", unit);
-		error = ENXIO;;
+		error = ENXIO;
 		goto fail;
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
 		printf("lge%d: failed to enable memory mapping!\n", unit);
-		error = ENXIO;;
+		error = ENXIO;
 		goto fail;
 	}
 #endif
@@ -1412,7 +1412,7 @@ lge_ifmedia_upd(struct ifnet *ifp)
 static void
 lge_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
-	struct lge_softc *sc = ifp->if_softc;;
+	struct lge_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
 	mii = device_get_softc(sc->lge_miibus);
