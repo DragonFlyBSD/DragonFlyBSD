@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.111 2005/05/23 18:26:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.112 2005/05/23 20:04:04 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3318,7 +3318,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
  * Side Effects:
  *	Guess what?
  */
-void
+Boolean
 Compat_Run(Lst *targs, Boolean queryFlag)
 {
 	GNode	*gn = NULL;	/* Current root target */
@@ -3342,7 +3342,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 			}
 			if (gn->made == ERROR) {
 				printf("\n\nStop.\n");
-				exit(1);
+				return (TRUE);
 			}
 		}
 	}
@@ -3380,5 +3380,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 				break;
 		}
 	}
+
+	return (FALSE);
 }
 

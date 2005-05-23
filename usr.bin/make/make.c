@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.27 2005/05/23 18:26:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.28 2005/05/23 20:04:04 okumoto Exp $
  */
 
 /*
@@ -719,6 +719,19 @@ Make_Run(Lst *targs, Boolean queryFlag)
 	Lst	examine;	/* List of targets to examine */
 	int	errors;		/* Number of errors the Job module reports */
 	LstNode	*ln;
+
+	/*
+	 * Initialize job module before traversing
+	 * the graph, now that any .BEGIN and .END
+	 * targets have been read.  This is done
+	 * only if the -q flag wasn't given (to
+	 * prevent the .BEGIN from being executed
+	 * should it exist).
+	 */
+	if (!queryFlag) {
+		Job_Init(jobLimit);
+		jobsRunning = TRUE;
+	}
 
 	Lst_Init(&examine);
 	Lst_Duplicate(&examine, targs, NOCOPY);

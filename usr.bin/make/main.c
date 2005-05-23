@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.107 2005/05/23 18:26:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.108 2005/05/23 20:04:04 okumoto Exp $
  */
 
 /*
@@ -1036,29 +1036,10 @@ main(int argc, char **argv)
 		else
 			Targ_FindList(&targs, &create, TARG_CREATE);
 
+		/* Traverse the graph, checking on all the targets */
 		if (compatMake) {
-			/*
-			 * Compat_Init will take care of creating
-			 * all the targets as well as initializing
-			 * the module.
-			 */
-			Compat_Run(&targs, mf.queryFlag);
-			outOfDate = 0;
+			outOfDate = Compat_Run(&targs, mf.queryFlag);
 		} else {
-			/*
-			 * Initialize job module before traversing
-			 * the graph, now that any .BEGIN and .END
-			 * targets have been read.  This is done
-			 * only if the -q flag wasn't given (to
-			 * prevent the .BEGIN from being executed
-			 * should it exist).
-			 */
-			if (!mf.queryFlag) {
-				Job_Init(jobLimit);
-				jobsRunning = TRUE;
-			}
-
-			/* Traverse the graph, checking on all the targets */
 			outOfDate = Make_Run(&targs, mf.queryFlag);
 		}
 		Lst_Destroy(&targs, NOFREE);
