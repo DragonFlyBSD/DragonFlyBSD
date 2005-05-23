@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.108 2005/05/23 18:24:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.109 2005/05/23 18:25:34 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -555,6 +555,67 @@ Proc_Init()
 }
 
 /**
+ * Signal handler - set a variable and defer handling to the main code.
+ */
+static void
+catchsignal(int signo)
+{
+	interrupted = signo;
+}
+
+/**
+ * Catch the four signals that POSIX specifies if they aren't ignored.
+ */
+static void
+Proc_Setupsignals(Boolean compat)
+{
+	struct sigaction sa;
+
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sa.sa_handler = catchsignal;
+
+	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGHUP, &sa, NULL);
+	}
+	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGINT, &sa, NULL);
+	}
+	if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGQUIT, &sa, NULL);
+	}
+	if (signal(SIGTERM, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGTERM, &sa, NULL);
+	}
+
+	if (compat) {
+		return;
+	}
+
+	/*
+	 * There are additional signals that need to be caught and
+	 * passed if either the export system wants to be told
+	 * directly of signals or if we're giving each job its own
+	 * process group (since then it won't get signals from the
+	 * terminal driver as we own the terminal)
+	 */
+#ifdef USE_PGRP
+	if (signal(SIGTSTP, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGTSTP, &sa, NULL);
+	}
+	if (signal(SIGTTOU, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGTTOU, &sa, NULL);
+	}
+	if (signal(SIGTTIN, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGTTIN, &sa, NULL);
+	}
+	if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGWINCH, &sa, NULL);
+	}
+#endif
+}
+
+/**
  * Wait for child process to terminate.
  */
 static int
@@ -581,18 +642,6 @@ ProcWait(ProcStuff *ps)
 	}
 
 	return (status);
-}
-
-/**
- * JobCatchSignal
- *	Got a signal. Set global variables and hope that someone will
- *	handle it.
- */
-static void
-JobCatchSig(int signo)
-{
-
-	interrupted = signo;
 }
 
 /**
@@ -654,8 +703,8 @@ JobPassSig(int signo)
 
 	DEBUGF(JOB, ("JobPassSig passing signal to self, mask = %x.\n",
 	    ~0 & ~(1 << (signo - 1))));
-	signal(signo, SIG_DFL);
 
+	signal(signo, SIG_DFL);
 	KILL(getpid(), signo);
 
 	signo = SIGCONT;
@@ -2347,7 +2396,6 @@ Job_Init(int maxproc)
 {
 	GNode		*begin;	/* node for commands to do at the very start */
 	const char	*env;
-	struct sigaction sa;
 
 	fifoFd = -1;
 	env = getenv("MAKE_JOBS_FIFO");
@@ -2412,47 +2460,7 @@ Job_Init(int maxproc)
 		targFmt = TARG_FMT;
 	}
 
-	/*
-	 * Catch the four signals that POSIX specifies if they aren't ignored.
-	 * JobCatchSignal will just set global variables and hope someone
-	 * else is going to handle the interrupt.
-	 */
-	sa.sa_handler = JobCatchSig;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-
-	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGINT, &sa, NULL);
-	}
-	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGHUP, &sa, NULL);
-	}
-	if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGQUIT, &sa, NULL);
-	}
-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTERM, &sa, NULL);
-	}
-	/*
-	 * There are additional signals that need to be caught and passed if
-	 * either the export system wants to be told directly of signals or if
-	 * we're giving each job its own process group (since then it won't get
-	 * signals from the terminal driver as we own the terminal)
-	 */
-#if defined(USE_PGRP)
-	if (signal(SIGTSTP, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTSTP, &sa, NULL);
-	}
-	if (signal(SIGTTOU, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTTOU, &sa, NULL);
-	}
-	if (signal(SIGTTIN, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTTIN, &sa, NULL);
-	}
-	if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGWINCH, &sa, NULL);
-	}
-#endif
+	Proc_Setupsignals(FALSE);
 
 #ifdef USE_KQUEUE
 	if ((kqfd = kqueue()) == -1) {
@@ -2791,16 +2799,6 @@ Cmd_Exec(const char *cmd, const char **error)
 
 	}
 	return (buf);
-}
-
-/*
- * Interrupt handler - set flag and defer handling to the main code
- */
-static void
-CompatCatchSig(int signo)
-{
-
-	interrupted = signo;
 }
 
 /**
@@ -3329,18 +3327,7 @@ Compat_Run(Lst *targs)
 	int	error_cnt;	/* Number of targets not remade due to errors */
 	LstNode	*ln;
 
-	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
-		signal(SIGINT, CompatCatchSig);
-	}
-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN) {
-		signal(SIGTERM, CompatCatchSig);
-	}
-	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
-		signal(SIGHUP, CompatCatchSig);
-	}
-	if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
-		signal(SIGQUIT, CompatCatchSig);
-	}
+	Proc_Setupsignals(TRUE);
 
 	ENDNode = Targ_FindNode(".END", TARG_CREATE);
 	/*
