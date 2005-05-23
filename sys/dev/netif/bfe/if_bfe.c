@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.10 2005/02/15 19:39:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.11 2005/05/23 17:54:11 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -167,22 +167,16 @@ static int
 bfe_probe(device_t dev)
 {
 	struct bfe_type *t;
-	struct bfe_softc *sc;
+	uint16_t vendor, product;
 
-	t = bfe_devs;
+	vendor = pci_get_vendor(dev);
+	product = pci_get_device(dev);
 
-	sc = device_get_softc(dev);
-	bzero(sc, sizeof(struct bfe_softc));
-	sc->bfe_unit = device_get_unit(dev);
-	sc->bfe_dev = dev;
-
-	while (t->bfe_name != NULL) {
-		if ((pci_get_vendor(dev) == t->bfe_vid) &&
-		    (pci_get_device(dev) == t->bfe_did)) {
+	for (t = bfe_devs; t->bfe_name != NULL; t++) {
+		if (vendor == t->bfe_vid && product == t->bfe_did) {
 			device_set_desc_copy(dev, t->bfe_name);
 			return(0);
 		}
-		t++;
 	}
 
 	return(ENXIO);
