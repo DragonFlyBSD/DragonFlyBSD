@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.16 2005/02/21 21:40:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.16.2.1 2005/05/23 18:40:20 dillon Exp $
  *
  */
 
@@ -342,7 +342,7 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 	int error = 0;
 	struct pcb *pcb = p->p_thread->td_pcb;
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
-	int nldt, num;
+	unsigned int nldt, num;
 	union descriptor *lp;
 	int s;
 	struct i386_ldt_args ua, *uap = &ua;
@@ -358,15 +358,20 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 	s = splhigh();
 
 	if (pcb_ldt) {
-		nldt = pcb_ldt->ldt_len;
+		nldt = (unsigned int)pcb_ldt->ldt_len;
 		num = min(uap->num, nldt);
 		lp = &((union descriptor *)(pcb_ldt->ldt_base))[uap->start];
 	} else {
-		nldt = sizeof(ldt)/sizeof(ldt[0]);
+		nldt = (unsigned int)(sizeof(ldt) / sizeof(ldt[0]));
 		num = min(uap->num, nldt);
 		lp = &ldt[uap->start];
 	}
-	if (uap->start + num > nldt) {
+
+	/*
+	 * note: uap->(args), num, and nldt are unsigned.  nldt and num
+	 * are limited in scope, but uap->start can be anything.
+	 */
+	if (uap->start > nldt || uap->start + num > nldt) {
 		splx(s);
 		return(EINVAL);
 	}
