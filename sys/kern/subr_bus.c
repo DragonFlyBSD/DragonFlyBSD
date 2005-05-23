@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.24 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.25 2005/05/23 18:19:54 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -1962,6 +1962,20 @@ bus_generic_teardown_intr(device_t dev, device_t child, struct resource *irq,
 		return(EINVAL);
 }
 
+void
+bus_generic_disable_intr(device_t dev, device_t child, void *cookie)
+{
+	if (dev->parent)
+		BUS_DISABLE_INTR(dev->parent, child, cookie);
+}
+
+void
+bus_generic_enable_intr(device_t dev, device_t child, void *cookie)
+{
+	if (dev->parent)
+		BUS_ENABLE_INTR(dev->parent, child, cookie);
+}
+
 struct resource *
 bus_generic_alloc_resource(device_t dev, device_t child, int type, int *rid,
 			   u_long start, u_long end, u_long count, u_int flags)
@@ -2160,6 +2174,20 @@ bus_teardown_intr(device_t dev, struct resource *r, void *cookie)
 	if (dev->parent == 0)
 		return(EINVAL);
 	return(BUS_TEARDOWN_INTR(dev->parent, dev, r, cookie));
+}
+
+void
+bus_enable_intr(device_t dev, void *cookie)
+{
+	if (dev->parent)
+		BUS_ENABLE_INTR(dev->parent, dev, cookie);
+}
+
+void
+bus_disable_intr(device_t dev, void *cookie)
+{
+	if (dev->parent)
+		BUS_DISABLE_INTR(dev->parent, dev, cookie);
 }
 
 int

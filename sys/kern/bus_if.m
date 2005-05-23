@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.5 2004/02/21 06:37:08 dillon Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.6 2005/05/23 18:19:54 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -201,6 +201,24 @@ METHOD int teardown_intr {
 	struct resource	*irq;
 	void		*cookie;
 };
+
+# Enable or disable an interrupt.  The device is generally expected to do
+# the physical enablement and disablement.  The bus code must flag the
+# condition so it does not call the handler from a scheduled interrupt thread,
+# since the hard interrupt might be disabled after the interrupt thread
+# has been scheduled but before it runs.
+#
+METHOD void enable_intr {
+	device_t	dev;
+	device_t	child;
+	void		*cookie;
+} DEFAULT bus_generic_enable_intr;
+
+METHOD void disable_intr {
+	device_t	dev;
+	device_t	child;
+	void		*cookie;
+} DEFAULT bus_generic_disable_intr;
 
 #
 # Set the range used for a particular resource. Return EINVAL if

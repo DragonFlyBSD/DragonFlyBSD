@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.25 2005/02/27 12:44:43 asmodai Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.26 2005/05/23 18:19:53 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -619,6 +619,7 @@ typedef struct intrec {
 	int             intr;
 	intrmask_t      *maskptr;
 	int             flags;
+	int		enabled;
 } intrec;
 
 static intrec *intreclist_head[ICU_LEN];
@@ -640,7 +641,8 @@ intr_mux(void *arg)
 
 	for (pp = arg; (p = *pp) != NULL; pp = &p->next) {
 		oldspl = splq(p->mask);
-		p->handler(p->argument);
+		if (p->enabled)
+			p->handler(p->argument);
 		splx(oldspl);
 	}
 }
@@ -654,21 +656,6 @@ find_idesc(unsigned *maskptr, int irq)
 		p = p->next;
 
 	return (p);
-}
-
-static intrec**
-find_pred(intrec *idesc, int irq)
-{
-	intrec **pp = &intreclist_head[irq];
-	intrec *p = *pp;
-
-	while (p != idesc) {
-		if (p == NULL)
-			return (NULL);
-		pp = &p->next;
-		p = *pp;
-	}
-	return (pp);
 }
 
 /*
@@ -725,17 +712,14 @@ update_masks(intrmask_t *maskptr, int irq)
 
 /*
  * Add an interrupt handler to the linked list hung off of intreclist_head[irq]
- * and install a shared interrupt multiplex handler, if necessary.  Install
- * an interrupt thread for each interrupt (though FAST interrupts will not
- * use it).  The preemption procedure checks the CPL.  lwkt_preempt() will
- * check relative thread priorities for us as long as we properly pass through
+ * and install a shared interrupt multiplex handler.  Install an interrupt
+ * thread for each interrupt (though FAST interrupts will not use it).
+ * The preemption procedure checks the CPL.  lwkt_preempt() will check
+ * relative thread priorities for us as long as we properly pass through
  * critpri.
  *
  * The interrupt thread has already been put on the run queue, so if we cannot
  * preempt we should force a reschedule.
- *
- * YYY needs work.  At the moment the handler is run inside a critical
- * section so only the preemption cpl check is used.
  */
 static void
 cpu_intr_preempt(struct thread *td, int critpri)
@@ -753,15 +737,15 @@ add_intrdesc(intrec *idesc)
 {
 	int irq = idesc->intr;
 	intrec *head;
+	intrec **headp;
 
 	/*
-	 * YYY This is a hack.   The MI interrupt code in kern/kern_intr.c
-	 * handles interrupt thread scheduling for NORMAL interrupts.  It 
-	 * will never get called for fast interrupts.  On the otherhand,
-	 * the handler this code installs in intr_handler[] for a NORMAL
-	 * interrupt is not used by the *vector.s code, so we need this
-	 * temporary hack to run normal interrupts as interrupt threads.
-	 * YYY FIXME!
+	 * There are two ways to enter intr_mux().  (1) via the scheduled
+	 * interrupt thread or (2) directly.   The thread mechanism is the
+	 * normal mechanism used by SLOW interrupts, while the direct method
+	 * is used by FAST interrupts.
+	 *
+	 * We need to create an interrupt thread if none exists.
 	 */
 	if (intr_info[irq].mihandler_installed == 0) {
 		struct thread *td;
@@ -774,46 +758,41 @@ add_intrdesc(intrec *idesc)
 		printf("installed MI handler for int %d\n", irq);
 	}
 
-	head = intreclist_head[irq];
+	headp = &intreclist_head[irq];
+	head = *headp;
 
-	if (head == NULL) {
-		/* first handler for this irq, just install it */
-		if (icu_setup(irq, idesc->handler, idesc->argument, 
-			      idesc->maskptr, idesc->flags) != 0)
-			return (-1);
-
-		update_intrname(irq, idesc->name);
-		/* keep reference */
-		intreclist_head[irq] = idesc;
-	} else {
-		if ((idesc->flags & INTR_EXCL) != 0
-		    || (head->flags & INTR_EXCL) != 0) {
-			/*
-			 * can't append new handler, if either list head or
-			 * new handler do not allow interrupts to be shared
-			 */
-			if (bootverbose)
-				printf("\tdevice combination doesn't support "
-				       "shared irq%d\n", irq);
+	/*
+	 * Check exclusion
+	 */
+	if (head) {
+		if ((idesc->flags & INTR_EXCL) || (head->flags & INTR_EXCL)) {
+			printf("\tdevice combination doesn't support "
+			       "shared irq%d\n", irq);
 			return (-1);
 		}
-		if (head->next == NULL) {
-			/*
-			 * second handler for this irq, replace device driver's
-			 * handler by shared interrupt multiplexer function
-			 */
-			icu_unset(irq, head->handler);
-			if (icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0) != 0)
-				return (-1);
-			if (bootverbose)
-				printf("\tusing shared irq%d.\n", irq);
-			update_intrname(irq, "mux");
-		}
-		/* just append to the end of the chain */
-		while (head->next != NULL)
-			head = head->next;
-		head->next = idesc;
 	}
+
+	/*
+	 * Always install intr_mux as the hard handler so it can deal with
+	 * individual enablement on handlers.
+	 */
+	if (head == NULL) {
+		if (icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0) != 0)
+			return (-1);
+		update_intrname(irq, idesc->name);
+	} else {
+		if (bootverbose && head->next == NULL)
+			printf("\tusing shared irq%d.\n", irq);
+		update_intrname(irq, "mux");
+	}
+
+	/*
+	 * Append to the end of the chain and update our SPL masks.
+	 */
+	while (*headp != NULL)
+		headp = &(*headp)->next;
+	*headp = idesc;
+
 	update_masks(idesc->maskptr, irq);
 	return (0);
 }
@@ -856,10 +835,9 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 		return (NULL);
 	}
 
-	idesc = malloc(sizeof *idesc, M_DEVBUF, M_WAITOK);
+	idesc = malloc(sizeof *idesc, M_DEVBUF, M_WAITOK | M_ZERO);
 	if (idesc == NULL)
 		return NULL;
-	bzero(idesc, sizeof *idesc);
 
 	if (name == NULL)
 		name = "???";
@@ -875,6 +853,7 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 	idesc->maskptr  = maskptr;
 	idesc->intr     = irq;
 	idesc->flags    = flags;
+	idesc->enabled  = 1;
 
 	/* block this irq */
 	oldspl = splq(1 << irq);
@@ -903,62 +882,78 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
  * Return the memory held by the interrupt handler descriptor data structure
  * to the system. Make sure, the handler is not actively used anymore, before.
  */
-
 int
 inthand_remove(intrec *idesc)
 {
 	intrec **hook, *head;
-	int irq;
-	int errcode = 0;
 	intrmask_t oldspl;
+	int irq;
 
 	if (idesc == NULL)
 		return (-1);
 
 	irq = idesc->intr;
+	oldspl = splq(1 << irq);
 
-	/* find pointer that keeps the reference to this interrupt descriptor */
-	hook = find_pred(idesc, irq);
-	if (hook == NULL)
-		return (-1);
-
-	/* make copy of original list head, the line after may overwrite it */
-	head = intreclist_head[irq];
-
-	/* unlink: make predecessor point to idesc->next instead of to idesc */
+	/*
+	 * Find and remove the interrupt descriptor.
+	 */
+	hook = &intreclist_head[irq];
+	while (*hook != idesc) {
+		if (*hook == NULL) {
+			splx(oldspl);
+			return(-1);
+		}
+		hook = &(*hook)->next;
+	}
 	*hook = idesc->next;
 
-	/* now check whether the element we removed was the list head */
-	if (idesc == head) {
-
-		oldspl = splq(1 << irq);
-
-		/* check whether the new list head is the only element on list */
-		head = intreclist_head[irq];
-		if (head != NULL) {
-			icu_unset(irq, intr_mux);
-			if (head->next != NULL) {
-				/* install the multiplex handler with new list head as argument */
-				errcode = icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0);
-				if (errcode == 0)
-					update_intrname(irq, NULL);
-			} else {
-				/* install the one remaining handler for this irq */
-				errcode = icu_setup(irq, head->handler,
-						    head->argument,
-						    head->maskptr, head->flags);
-				if (errcode == 0)
-					update_intrname(irq, head->name);
-			}
-		} else {
-			/* revert to old handler, eg: strayintr */
-			icu_unset(irq, idesc->handler);
-		}
-		splx(oldspl);
+	/*
+	 * If the list is now empty, revert the hard vector to the spurious
+	 * interrupt.
+	 */
+	head = intreclist_head[irq];
+	if (head == NULL) {
+		/*
+		 * No more interrupts on this irq
+		 */
+		icu_unset(irq, intr_mux);
+		update_intrname(irq, NULL);
+	} else if (head->next) {
+		/*
+		 * This irq is still shared (has at least two handlers)
+		 * (the name should already be set to "mux").
+		 */
+	} else {
+		/*
+		 * This irq is no longer shared
+		 */
+		update_intrname(irq, head->name);
 	}
 	update_masks(idesc->maskptr, irq);
+	splx(oldspl);
 	free(idesc, M_DEVBUF);
+
 	return (0);
+}
+
+/*
+ * These functions are used in tandem with the device disabling its
+ * interrupt in the device hardware to prevent the handler from being
+ * run.  Otherwise it is possible for a device interrupt to occur,
+ * schedule the handler, for the device to disable the hard interrupt,
+ * and for the handler to then run because it has already been scheduled.
+ */
+void
+inthand_disabled(intrec *idesc)
+{
+	idesc->enabled = 0;
+}
+
+void
+inthand_enabled(intrec *idesc)
+{
+	idesc->enabled = 1;
 }
 
 /*

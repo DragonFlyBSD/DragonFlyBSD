@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.12 2004/05/05 16:57:11 hmp Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.13 2005/05/23 18:19:55 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -198,7 +198,9 @@ int	bus_generic_child_present(device_t dev, device_t child);
 int	bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 					int rid, struct resource *r);
 int	bus_generic_detach(device_t dev);
+void	bus_generic_disable_intr(device_t dev, device_t child, void *cookie);
 void	bus_generic_driver_added(device_t dev, driver_t *driver);
+void	bus_generic_enable_intr(device_t dev, device_t child, void *cookie);
 int	bus_print_child_header(device_t dev, device_t child);
 int	bus_print_child_footer(device_t dev, device_t child);
 int	bus_generic_print_child(device_t dev, device_t child);
@@ -240,6 +242,8 @@ int	bus_activate_resource(device_t dev, int type, int rid,
 			      struct resource *r);
 int	bus_deactivate_resource(device_t dev, int type, int rid,
 				struct resource *r);
+void	bus_disable_intr(device_t dev, void *cookie);
+void	bus_enable_intr(device_t dev, void *cookie);
 int	bus_release_resource(device_t dev, int type, int rid, 
 			     struct resource *r);
 int	bus_setup_intr(device_t dev, struct resource *r, int flags,
