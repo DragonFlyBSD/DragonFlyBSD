@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.12 2005/05/23 18:05:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.13 2005/05/23 18:22:41 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -316,7 +316,7 @@ bfe_attach(device_t dev)
 		irq = pci_read_config(dev, BFE_PCI_INTLINE, 4);
 
 		/* Reset the power state. */
-		device_printf(dev, "chip is is in D%d power mode"
+		device_printf(dev, "chip is in D%d power mode"
 			      " -- setting to D0\n", pci_get_powerstate(dev));
 
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
