@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.33 2005/05/22 16:14:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.34 2005/05/23 07:00:36 joerg Exp $
  *
  */
 
@@ -1998,7 +1998,7 @@ bge_txeof(struct bge_softc *sc)
 static void
 bge_intr(void *xsc)
 {
-	struct bge_softc *sc = xsc;;
+	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t status;
 
