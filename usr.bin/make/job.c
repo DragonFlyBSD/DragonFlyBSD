@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.109 2005/05/23 18:25:34 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.110 2005/05/23 18:25:58 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -384,10 +384,9 @@ static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
-static int Compat_RunCommand(char *, struct GNode *);
+static int Compat_RunCommand(char *, GNode *, GNode *);
 
 static GNode	    *curTarg = NULL;
-static GNode	    *ENDNode;
 
 /**
  * Create a fifo file with a uniq filename, and returns a file
@@ -814,7 +813,7 @@ JobPrintCommand(char *cmd, Job *job)
 				 * but this one needs to be - use compat mode
 				 * just for it.
 				 */
-				Compat_RunCommand(cmd, job->node);
+				Compat_RunCommand(cmd, job->node, NULL);
 				return (0);
 			}
 			break;
@@ -2814,7 +2813,7 @@ Cmd_Exec(const char *cmd, const char **error)
  *	its commands are run first WITH INTERRUPTS IGNORED..
  */
 static void
-CompatInterrupt(int signo)
+CompatInterrupt(int signo, GNode *ENDNode)
 {
 	GNode		*gn;
 	sigset_t	nmask, omask;
@@ -2845,7 +2844,7 @@ CompatInterrupt(int signo)
 		gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
 		if (gn != NULL) {
 			LST_FOREACH(ln, &gn->commands) {
-				if (Compat_RunCommand(Lst_Datum(ln), gn))
+				if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
 					break;
 			}
 		}
@@ -2872,7 +2871,7 @@ CompatInterrupt(int signo)
  *	The node's 'made' field may be set to ERROR.
  */
 static int
-Compat_RunCommand(char *cmd, GNode *gn)
+Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 {
 	ArgArray	aa;
 	char		*cmdStart;	/* Start of expanded command */
@@ -3049,7 +3048,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 		reason = ProcWait(&ps);
 
 		if (interrupted)
-			CompatInterrupt(interrupted);
+			CompatInterrupt(interrupted, ENDNode);
 
 		/*
 		 * Decode and report the reason child exited, then
@@ -3101,7 +3100,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
  *	If an error is detected and not being ignored, the process exits.
  */
 static int
-CompatMake(GNode *gn, GNode *pgn)
+CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode)
 {
 	LstNode	*ln;
 
@@ -3121,7 +3120,7 @@ CompatMake(GNode *gn, GNode *pgn)
 		gn->made = BEINGMADE;
 		Suff_FindDeps(gn);
 		LST_FOREACH(ln, &gn->children)
-			CompatMake(Lst_Datum(ln), gn);
+			CompatMake(Lst_Datum(ln), gn, ENDNode);
 		if (!gn->make) {
 			gn->made = ABORTED;
 			pgn->make = FALSE;
@@ -3181,8 +3180,7 @@ CompatMake(GNode *gn, GNode *pgn)
 			if (!touchFlag) {
 				curTarg = gn;
 				LST_FOREACH(ln, &gn->commands) {
-					if (Compat_RunCommand(Lst_Datum(ln),
-					    gn))
+					if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
 						break;
 				}
 				curTarg = NULL;
@@ -3326,6 +3324,7 @@ Compat_Run(Lst *targs)
 	GNode	*gn = NULL;	/* Current root target */
 	int	error_cnt;	/* Number of targets not remade due to errors */
 	LstNode	*ln;
+	GNode	*ENDNode;
 
 	Proc_Setupsignals(TRUE);
 
@@ -3338,7 +3337,7 @@ Compat_Run(Lst *targs)
 		gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
 			LST_FOREACH(ln, &gn->commands) {
-				if (Compat_RunCommand(Lst_Datum(ln), gn))
+				if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
 					break;
 			}
 			if (gn->made == ERROR) {
@@ -3361,7 +3360,7 @@ Compat_Run(Lst *targs)
 	error_cnt = 0;
 	while (!Lst_IsEmpty(targs)) {
 		gn = Lst_DeQueue(targs);
-		CompatMake(gn, gn);
+		CompatMake(gn, gn, ENDNode);
 
 		if (gn->made == UPTODATE) {
 			printf("`%s' is up to date.\n", gn->name);
@@ -3377,7 +3376,7 @@ Compat_Run(Lst *targs)
 	 */
 	if (error_cnt == 0) {
 		LST_FOREACH(ln, &ENDNode->commands) {
-			if (Compat_RunCommand(Lst_Datum(ln), gn))
+			if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
 				break;
 		}
 	}
