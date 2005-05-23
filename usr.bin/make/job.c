@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.107 2005/05/23 18:19:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.108 2005/05/23 18:24:59 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -133,6 +133,7 @@
 #include "make.h"
 #include "parse.h"
 #include "pathnames.h"
+#include "proc.h"
 #include "shell.h"
 #include "str.h"
 #include "suff.h"
@@ -378,31 +379,11 @@ static sig_atomic_t interrupted;
 #define	W_SETTERMSIG(st, val) W_SETMASKED(st, val, WTERMSIG)
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
-/**
- * Information used to create a new process.
- */
-typedef struct ProcStuff {
-	int	in;	/* stdin for new process */
-	int	out;	/* stdout for new process */
-	int	err;	/* stderr for new process */
-
-	int	merge_errors;	/* true if stderr is redirected to stdin */
-	int	pgroup;		/* true if new process a process leader */
-	int	searchpath;	/* true if binary should be found via $PATH */
-
-	char	**argv;
-	int	argv_free;	/* release argv after use */
-	int	errCheck;
-
-	pid_t	child_pid;
-} ProcStuff;
-
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
-static void ProcExec(const ProcStuff *) __dead2;
 static int Compat_RunCommand(char *, struct GNode *);
 
 static GNode	    *curTarg = NULL;
@@ -571,96 +552,6 @@ Proc_Init()
 	 */
 	unsetenv("ENV");
 #endif
-}
-
-/**
- * Replace the current process.
- */
-static void
-ProcExec(const ProcStuff *ps)
-{
-	if (ps->in != STDIN_FILENO) {
-		/*
-		 * Redirect the child's stdin to the input fd
-		 * and reset it to the beginning (again).
-		 */
-		if (dup2(ps->in, STDIN_FILENO) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-		lseek(STDIN_FILENO, (off_t)0, SEEK_SET);
-	}
-
-	if (ps->out != STDOUT_FILENO) {
-		/*
-		 * Redirect the child's stdout to the output fd.
-		 */
-		if (dup2(ps->out, STDOUT_FILENO) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-		close(ps->out);
-	}
-
-	if (ps->err != STDERR_FILENO) {
-		/*
-		 * Redirect the child's stderr to the err fd.
-		 */
-		if (dup2(ps->err, STDERR_FILENO) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-		close(ps->err);
-	}
-
-	if (ps->merge_errors) {
-		/*
-		 * Send stderr to parent process too.
-		 */
-		if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
-			Punt("Cannot dup2: %s", strerror(errno));
-	}
-
-	/*
-	 * The file descriptors for stdin, stdout, or stderr might
-	 * have been marked close-on-exec.  Clear the flag on all
-	 * of them.
-	 */
-	fcntl(STDIN_FILENO, F_SETFD,
-	    fcntl(STDIN_FILENO, F_GETFD) & (~FD_CLOEXEC));
-	fcntl(STDOUT_FILENO, F_SETFD,
-	    fcntl(STDOUT_FILENO, F_GETFD) & (~FD_CLOEXEC));
-	fcntl(STDERR_FILENO, F_SETFD,
-	    fcntl(STDERR_FILENO, F_GETFD) & (~FD_CLOEXEC));
-
-	if (ps->pgroup) {
-#ifdef USE_PGRP
-		/*
-		 * Become a process group leader, so we can kill it and all
-		 * its descendants in one fell swoop, by killing its process
-		 * family, but not commit suicide.
-		 */
-#if defined(SYSV)
-		setsid();
-#else
-		setpgid(0, getpid());
-#endif
-#endif /* USE_PGRP */
-	}
-
-	if (ps->searchpath) {
-		execvp(ps->argv[0], ps->argv);
-
-		write(STDERR_FILENO, ps->argv[0], strlen(ps->argv[0]));
-		write(STDERR_FILENO, ":", 1);
-		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-		write(STDERR_FILENO, "\n", 1);
-	} else {
-		execv(commandShell->path, ps->argv);
-
-		write(STDERR_FILENO,
-		      "Could not execute shell\n",
-		      sizeof("Could not execute shell"));
-	}
-
-	/*
-	 * Since we are the child process, exit without flushing buffers.
-	 */
-	_exit(1);
 }
 
 /**
