@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.23 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.24 2005/05/24 11:42:07 joerg Exp $
  */
 
 /*
@@ -125,9 +125,10 @@ static int	lge_detach(device_t);
 
 static int	lge_alloc_jumbo_mem(struct lge_softc *);
 static void	lge_free_jumbo_mem(struct lge_softc *);
-static void	*lge_jalloc(struct lge_softc *);
-static void	lge_jfree(caddr_t, u_int);
-static void	lge_jref(caddr_t, u_int);
+static struct lge_jslot
+		*lge_jalloc(struct lge_softc *);
+static void	lge_jfree(void *);
+static void	lge_jref(void *);
 
 static int	lge_newbuf(struct lge_softc *, struct lge_rx_desc *,
 			   struct mbuf *);
@@ -692,7 +693,7 @@ static int
 lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 {
 	struct mbuf *m_new = NULL;
-	caddr_t *buf = NULL;
+	struct lge_jslot *buf;
 
 	if (m == NULL) {
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
@@ -713,15 +714,18 @@ lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 			return(ENOBUFS);
 		}
 		/* Attach the buffer to the mbuf */
-		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT | M_EXT_OLD;
-		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
-		    m_new->m_len = LGE_MCLBYTES;
-		m_new->m_ext.ext_nfree.old = lge_jfree;
-		m_new->m_ext.ext_nref.old = lge_jref;
+		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_buf = buf->lge_buf;
+		m_new->m_ext.ext_nfree.new = lge_jfree;
+		m_new->m_ext.ext_nref.new = lge_jref;
+		m_new->m_ext.ext_size = LGE_JUMBO_FRAMELEN;
+
+		m_new->m_data = m_new->m_ext.ext_buf;
+		m_new->m_flags |= M_EXT;
+		m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 	} else {
 		m_new = m;
-		m_new->m_len = m_new->m_pkthdr.len = LGE_MCLBYTES;
+		m_new->m_len = m_new->m_pkthdr.len = LGE_JLEN;
 		m_new->m_data = m_new->m_ext.ext_buf;
 	}
 
@@ -759,7 +763,7 @@ lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 static int
 lge_alloc_jumbo_mem(struct lge_softc *sc)
 {
-	struct lge_jpool_entry *entry;
+	struct lge_jslot *entry;
 	caddr_t ptr;
 	int i;
 
@@ -773,7 +777,6 @@ lge_alloc_jumbo_mem(struct lge_softc *sc)
 	}
 
 	SLIST_INIT(&sc->lge_jfree_listhead);
-	SLIST_INIT(&sc->lge_jinuse_listhead);
 
 	/*
 	 * Now divide it up into 9K pieces and save the addresses
@@ -781,18 +784,13 @@ lge_alloc_jumbo_mem(struct lge_softc *sc)
 	 */
 	ptr = sc->lge_cdata.lge_jumbo_buf;
 	for (i = 0; i < LGE_JSLOTS; i++) {
-		uint64_t		**aptr;
-		aptr = (uint64_t **)ptr;
-		aptr[0] = (uint64_t *)sc;
-		ptr += sizeof(uint64_t);
-		sc->lge_cdata.lge_jslots[i].lge_buf = ptr;
-		sc->lge_cdata.lge_jslots[i].lge_inuse = 0;
-		ptr += LGE_MCLBYTES;
-		entry = malloc(sizeof(struct lge_jpool_entry), 
-		    M_DEVBUF, M_WAITOK);
-		entry->slot = i;
-		SLIST_INSERT_HEAD(&sc->lge_jfree_listhead,
-		    entry, jpool_entries);
+		entry = &sc->lge_cdata.lge_jslots[i];
+		entry->lge_sc = sc;
+		entry->lge_buf = ptr;
+		entry->lge_inuse = 0;
+		entry->lge_slot = i;
+		SLIST_INSERT_HEAD(&sc->lge_jfree_listhead, entry, jslot_link);
+		ptr += LGE_JLEN;
 	}
 
 	return(0);
@@ -801,25 +799,16 @@ lge_alloc_jumbo_mem(struct lge_softc *sc)
 static void
 lge_free_jumbo_mem(struct lge_softc *sc)
 {
-	struct lge_jpool_entry *entry;
-	int i;
-
-	for (i = 0; i < LGE_JSLOTS; i++) {
-		entry = SLIST_FIRST(&sc->lge_jfree_listhead);
-		SLIST_REMOVE_HEAD(&sc->lge_jfree_listhead, jpool_entries);
-		free(entry, M_DEVBUF);
-	}
-
 	contigfree(sc->lge_cdata.lge_jumbo_buf, LGE_JMEM, M_DEVBUF);
 }
 
 /*
  * Allocate a jumbo buffer.
  */
-static void *
+static struct lge_jslot *
 lge_jalloc(struct lge_softc *sc)
 {
-	struct lge_jpool_entry *entry;
+	struct lge_jslot *entry;
 
 	entry = SLIST_FIRST(&sc->lge_jfree_listhead);
 
@@ -830,11 +819,10 @@ lge_jalloc(struct lge_softc *sc)
 		return(NULL);
 	}
 
-	SLIST_REMOVE_HEAD(&sc->lge_jfree_listhead, jpool_entries);
-	SLIST_INSERT_HEAD(&sc->lge_jinuse_listhead, entry, jpool_entries);
-	sc->lge_cdata.lge_jslots[entry->slot].lge_inuse = 1;
+	SLIST_REMOVE_HEAD(&sc->lge_jfree_listhead, jslot_link);
+	entry->lge_inuse = 1;
 
-	return(sc->lge_cdata.lge_jslots[entry->slot].lge_buf);
+	return(entry);
 }
 
 /*
@@ -843,78 +831,38 @@ lge_jalloc(struct lge_softc *sc)
  * a lot, but it's implemented for correctness.
  */
 static void
-lge_jref(caddr_t buf, u_int size)
+lge_jref(void *arg)
 {
-	struct lge_softc *sc;
-	uint64_t **aptr;
-	int i;
+	struct lge_jslot *entry = (struct lge_jslot *)arg;
+	struct lge_softc *sc = entry->lge_sc;
 
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct lge_softc *)(aptr[0]);
-
-	if (sc == NULL)
-		panic("lge_jref: can't find softc pointer!");
-
-	if (size != LGE_MCLBYTES)
-		panic("lge_jref: adjusting refcount of buf of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->lge_cdata.lge_jumbo_buf) / LGE_JLEN;
-
-	if ((i < 0) || (i >= LGE_JSLOTS))
+	if (&sc->lge_cdata.lge_jslots[entry->lge_slot] != entry)
 		panic("lge_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (sc->lge_cdata.lge_jslots[i].lge_inuse == 0)
+	else if (entry->lge_inuse == 0)
 		panic("lge_jref: buffer already free!");
 	else
-		sc->lge_cdata.lge_jslots[i].lge_inuse++;
+		entry->lge_inuse++;
 }
 
 /*
  * Release a jumbo buffer.
  */
 static void
-lge_jfree(caddr_t buf, u_int size)
+lge_jfree(void *arg)
 {
-	struct lge_softc *sc;
-	uint64_t **aptr;
-	int i;
-	struct lge_jpool_entry *entry;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct lge_softc *)(aptr[0]);
+	struct lge_jslot *entry = (struct lge_jslot *)arg;
+	struct lge_softc *sc = entry->lge_sc;
 
 	if (sc == NULL)
 		panic("lge_jfree: can't find softc pointer!");
 
-	if (size != LGE_MCLBYTES)
-		panic("lge_jfree: freeing buffer of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-	i = ((vm_offset_t)aptr
-	     - (vm_offset_t)sc->lge_cdata.lge_jumbo_buf) / LGE_JLEN;
-
-	if ((i < 0) || (i >= LGE_JSLOTS))
+	if (&sc->lge_cdata.lge_jslots[entry->lge_slot] != entry)
 		panic("lge_jfree: asked to free buffer that we don't manage!");
-	else if (sc->lge_cdata.lge_jslots[i].lge_inuse == 0)
+	else if (entry->lge_inuse == 0)
 		panic("lge_jfree: buffer already free!");
-	else {
-		sc->lge_cdata.lge_jslots[i].lge_inuse--;
-		if(sc->lge_cdata.lge_jslots[i].lge_inuse == 0) {
-			entry = SLIST_FIRST(&sc->lge_jinuse_listhead);
-			if (entry == NULL)
-				panic("lge_jfree: buffer not in use!");
-			entry->slot = i;
-			SLIST_REMOVE_HEAD(&sc->lge_jinuse_listhead,
-			    jpool_entries);
-			SLIST_INSERT_HEAD(&sc->lge_jfree_listhead,
-			    entry, jpool_entries);
-		}
-	}
+	else if (--entry->lge_inuse == 0)
+		SLIST_INSERT_HEAD(&sc->lge_jfree_listhead, entry, jslot_link);
 }
 
 /*

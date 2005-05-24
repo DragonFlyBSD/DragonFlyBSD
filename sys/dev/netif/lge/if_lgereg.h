@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.5 2005/05/23 16:00:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.6 2005/05/24 11:42:07 joerg Exp $
  */
 
 
@@ -500,22 +500,19 @@ struct lge_mii_frame {
 #define LGE_JUMBO_MTU		(LGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define LGE_JSLOTS		384
 
-#define LGE_JRAWLEN (LGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
-#define LGE_JLEN (LGE_JRAWLEN + (sizeof(uint64_t) - \
-	(LGE_JRAWLEN % sizeof(uint64_t))))
-#define LGE_MCLBYTES (LGE_JLEN - sizeof(uint64_t))
+#define LGE_JLEN (LGE_JUMBO_FRAMELEN + ETHER_ALIGN )
 #define LGE_JPAGESZ PAGE_SIZE
 #define LGE_RESID (LGE_JPAGESZ - (LGE_JLEN * LGE_JSLOTS) % LGE_JPAGESZ)
 #define LGE_JMEM ((LGE_JLEN * LGE_JSLOTS) + LGE_RESID)
 
-struct lge_jslot {
-	caddr_t			lge_buf;
-	int			lge_inuse;
-};
+struct lge_softc;
 
-struct lge_jpool_entry {
-	int				slot;
-	SLIST_ENTRY(lge_jpool_entry)	jpool_entries;
+struct lge_jslot {
+	struct lge_softc	*lge_sc;
+	void			*lge_buf;
+	int			lge_inuse;
+	int			lge_slot;
+	SLIST_ENTRY(lge_jslot)	jslot_link;
 };
 
 struct lge_ring_data {
@@ -544,8 +541,7 @@ struct lge_softc {
 	struct lge_list_data	*lge_ldata;
 	struct lge_ring_data	lge_cdata;
 	struct callout		lge_stat_timer;
-	SLIST_HEAD(__lge_jfreehead, lge_jpool_entry)	lge_jfree_listhead;
-	SLIST_HEAD(__lge_jinusehead, lge_jpool_entry)	lge_jinuse_listhead;
+	SLIST_HEAD(__lge_jfreehead, lge_jslot)	lge_jfree_listhead;
 };
 
 /*
