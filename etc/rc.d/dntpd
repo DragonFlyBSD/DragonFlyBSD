@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+#$DragonFly: src/etc/rc.d/dntpd,v 1.1 2005/05/24 02:51:49 rob Exp $
+
+# PROVIDE: dntpd
+# REQUIRE: NETWORKING
+# BEFORE:  LOGIN
+# KEYWORD: DragonFly
+
+. /etc/rc.subr
+
+name=dntpd
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+required_files=""
+load_rc_config $name
+run_rc_command "$1"
