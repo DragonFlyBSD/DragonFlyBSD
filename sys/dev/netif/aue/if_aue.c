@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.21 2005/05/24 07:54:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.22 2005/05/24 07:54:49 joerg Exp $
  */
 
 /*
@@ -81,7 +81,6 @@
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#include <machine/clock.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
