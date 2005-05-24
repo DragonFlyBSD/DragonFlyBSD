@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.21 2005/05/23 19:45:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.22 2005/05/24 07:26:41 joerg Exp $
  */
 
 /*
@@ -154,7 +154,6 @@ static int	lge_miibus_writereg(device_t, int, int, int);
 static void	lge_miibus_statchg(device_t);
 
 static void	lge_setmulti(struct lge_softc *);
-static uint32_t	lge_crc(struct lge_softc *, caddr_t);
 static void	lge_reset(struct lge_softc *);
 static int	lge_list_rx_init(struct lge_softc *);
 static int	lge_list_tx_init(struct lge_softc *);
@@ -336,33 +335,6 @@ lge_miibus_statchg(device_t dev)
 		LGE_CLRBIT(sc, LGE_GMIIMODE, LGE_GMIIMODE_FDX);
 }
 
-static uint32_t
-lge_crc(struct lge_softc *sc, caddr_t addr)
-{
-	uint32_t crc, carry;
-	int i, j;
-	uint8_t c;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (i = 0; i < 6; i++) {
-		c = *(addr + i);
-		for (j = 0; j < 8; j++) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (c & 0x01);
-			crc <<= 1;
-			c >>= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	/*
-	 * return the filter bit position
-	 */
-	return((crc >> 26) & 0x0000003F);
-}
-
 static void
 lge_setmulti(struct lge_softc *sc)
 {
@@ -387,7 +359,8 @@ lge_setmulti(struct lge_softc *sc)
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = lge_crc(sc, LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_be(LLADDR((struct sockaddr_dl *)
+		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 26;
 		if (h < 32)
 			hashes[0] |= (1 << h);
 		else
