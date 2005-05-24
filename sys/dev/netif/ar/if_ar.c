@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.12 2005/02/08 14:31:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.13 2005/05/24 07:25:06 joerg Exp $
  */
 
 /*
@@ -295,8 +295,7 @@ ar_attach(device_t device)
 		ifp = &sc->ifsppp.pp_if;
 
 		ifp->if_softc = sc;
-		if_initname(ifp, device_get_name(device),
-		    device_get_unit(device));
+		if_initname(ifp, device_get_name(device), sc->unit);
 		ifp->if_mtu = PP_MTU;
 		ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 		ifp->if_ioctl = arioctl;
