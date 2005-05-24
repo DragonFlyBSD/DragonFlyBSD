@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.55 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.56 2005/05/24 21:18:26 dillon Exp $
  */
 
 /*
@@ -326,11 +326,6 @@ again:
 	}
 }
 
-#ifdef DEVICE_POLLING
-extern u_int32_t poll_in_trap;
-extern int ether_poll (int count);
-#endif /* DEVICE_POLLING */
-
 /*
  * Exception, fault, and trap interface to the kernel.
  * This common code is called from assembly language IDT gate entry
@@ -409,12 +404,6 @@ trap(frame)
 		}
 		cpu_enable_intr();
 	}
-
-
-#ifdef DEVICE_POLLING
-	if (poll_in_trap)
-		ether_poll(poll_in_trap);
-#endif /* DEVICE_POLLING */
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 restart:

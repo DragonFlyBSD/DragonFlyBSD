@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.13 2004/06/27 19:40:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.14 2005/05/24 21:18:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,6 @@ static int netisr_pollmore(struct netmsg *);
 
 void init_device_poll(void);		/* init routine			*/
 void hardclock_device_poll(void);	/* hook from hardclock		*/
-void ether_poll(int);			/* polling while in trap	*/
 
 /*
  * Polling support for [network] device drivers.
@@ -92,7 +91,6 @@ void ether_poll(int);			/* polling while in trap	*/
  * The following constraints hold
  *
  *	1 <= poll_each_burst <= poll_burst <= poll_burst_max
- *	0 <= poll_in_trap <= poll_each_burst
  *	MIN_POLL_BURST_MAX <= poll_burst_max <= MAX_POLL_BURST_MAX
  */
 
@@ -113,10 +111,6 @@ SYSCTL_UINT(_kern_polling, OID_AUTO, each_burst, CTLFLAG_RW,
 static u_int32_t poll_burst_max = 150;	/* good for 100Mbit net and HZ=1000 */
 SYSCTL_UINT(_kern_polling, OID_AUTO, burst_max, CTLFLAG_RW,
 	&poll_burst_max, 0, "Max Polling burst size");
-
-u_int32_t poll_in_trap;			/* used in trap.c */
-SYSCTL_UINT(_kern_polling, OID_AUTO, poll_in_trap, CTLFLAG_RW,
-	&poll_in_trap, 0, "Poll burst size during a trap");
 
 static u_int32_t user_frac = 50;
 SYSCTL_UINT(_kern_polling, OID_AUTO, user_frac, CTLFLAG_RW,
@@ -232,24 +226,6 @@ hardclock_device_poll(void)
 	}
 	if (pending_polls++ > 0)
 		lost_polls++;
-}
-
-/*
- * ether_poll is called from the idle loop or from the trap handler.
- */
-void
-ether_poll(int count)
-{
-	int i;
-	int s = splimp();
-
-	if (count > poll_each_burst)
-		count = poll_each_burst;
-	for (i = 0 ; i < poll_handlers ; i++)
-		if (pr[i].handler && (IFF_UP|IFF_RUNNING) ==
-		    (pr[i].ifp->if_flags & (IFF_UP|IFF_RUNNING)) )
-			pr[i].handler(pr[i].ifp, 0, count); /* quick check */
-	splx(s);
 }
 
 /*
