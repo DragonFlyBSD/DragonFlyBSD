@@ -4,7 +4,7 @@
    and during the instantiation of template functions. 
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002,
-   2003, 2004 Free Software Foundation, Inc.
+   2003, 2004, 2005 Free Software Foundation, Inc.
    Written by Mark Mitchell (mmitchell@usa.net) based on code found
    formerly in parse.y and pt.c.  
 
@@ -1443,6 +1443,9 @@ finish_stmt_expr_expr (tree expr)
   tree result = NULL_TREE;
   tree type = void_type_node;
 
+  if (error_operand_p (expr))
+    return error_mark_node;
+  
   if (expr)
     {
       type = TREE_TYPE (expr);
@@ -2558,6 +2561,20 @@ finish_id_expression (tree id_expression,
 	  if (TREE_CODE (decl) == VAR_DECL
 	      || TREE_CODE (decl) == PARM_DECL)
 	    return decl;
+	  /* The same is true for FIELD_DECL, but we also need to
+	     make sure that the syntax is correct.  */
+	  else if (TREE_CODE (decl) == FIELD_DECL)
+	    {
+	      /* Since SCOPE is NULL here, this is an unqualified name.
+		 Access checking has been performed during name lookup
+		 already.  Turn off checking to avoid duplicate errors.  */
+	      push_deferring_access_checks (dk_no_check);
+	      decl = finish_non_static_data_member
+		       (decl, current_class_ref,
+			/*qualifying_scope=*/NULL_TREE);
+	      pop_deferring_access_checks ();
+	      return decl;
+	    }
 	  return id_expression;
 	}
 
@@ -2617,8 +2634,15 @@ finish_id_expression (tree id_expression,
 	    decl = build (SCOPE_REF, TREE_TYPE (decl), scope, decl);
 	}
       else if (TREE_CODE (decl) == FIELD_DECL)
-	decl = finish_non_static_data_member (decl, current_class_ref,
-					      /*qualifying_scope=*/NULL_TREE);
+	{
+	  /* Since SCOPE is NULL here, this is an unqualified name.
+	     Access checking has been performed during name lookup
+	     already.  Turn off checking to avoid duplicate errors.  */
+	  push_deferring_access_checks (dk_no_check);
+	  decl = finish_non_static_data_member (decl, current_class_ref,
+						/*qualifying_scope=*/NULL_TREE);
+	  pop_deferring_access_checks ();
+	}
       else if (is_overloaded_fn (decl))
 	{
 	  tree first_fn = OVL_CURRENT (decl);

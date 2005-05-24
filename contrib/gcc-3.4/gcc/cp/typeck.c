@@ -1,6 +1,6 @@
 /* Build expressions with type checking for C++ compiler.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
    Hacked by Michael Tiemann (tiemann@cygnus.com)
 
 This file is part of GCC.
@@ -1216,7 +1216,7 @@ cxx_sizeof_or_alignof_type (tree type, enum tree_code op, bool complain)
   if (type == error_mark_node)
     return error_mark_node;
   
-  if (processing_template_decl)
+  if (dependent_type_p (type))
     {
       value = build_min (op, size_type_node, type);
       TREE_READONLY (value) = 1;
@@ -3458,7 +3458,7 @@ build_binary_op (enum tree_code code, tree orig_op0, tree orig_op1,
     tree result = build (resultcode, build_type, op0, op1);
     tree folded;
 
-    folded = fold (result);
+    folded = fold_if_not_in_template (result);
     if (folded == result)
       TREE_CONSTANT (folded) = TREE_CONSTANT (op0) & TREE_CONSTANT (op1);
     if (final_type != 0)
@@ -3549,23 +3549,6 @@ build_x_unary_op (enum tree_code code, tree xarg)
       if (type_dependent_expression_p (xarg))
 	return build_min_nt (code, xarg, NULL_TREE);
 
-      /* For non-dependent pointer-to-member, the SCOPE_REF will be
-	 processed during template substitution.  Just compute the
-	 right type here and build an ADDR_EXPR around it for
-	 diagnostics.  */
-      if (code == ADDR_EXPR && TREE_CODE (xarg) == SCOPE_REF)
-	{
-	  tree type;
-	  if (TREE_TYPE (xarg) == unknown_type_node)
-	    type = unknown_type_node;
-	  else if (TREE_CODE (TREE_TYPE (xarg)) == FUNCTION_TYPE)
-	    type = build_pointer_type (TREE_TYPE (xarg));
-	  else
-	    type = build_ptrmem_type (TREE_OPERAND (xarg, 0),
-				      TREE_TYPE (xarg));
-	  return build_min (code, type, xarg, NULL_TREE);
-	}
-
       xarg = build_non_dependent_expr (xarg);
     }
 
@@ -3627,13 +3610,13 @@ build_x_unary_op (enum tree_code code, tree xarg)
       else if (TREE_CODE (xarg) == TARGET_EXPR)
 	warning ("taking address of temporary");
       exp = build_unary_op (ADDR_EXPR, xarg, 0);
-      if (TREE_CODE (exp) == ADDR_EXPR)
-	PTRMEM_OK_P (exp) = ptrmem;
     }
 
   if (processing_template_decl && exp != error_mark_node)
-    return build_min_non_dep (code, exp, orig_expr,
-			      /*For {PRE,POST}{INC,DEC}REMENT_EXPR*/NULL_TREE);
+    exp = build_min_non_dep (code, exp, orig_expr,
+			     /*For {PRE,POST}{INC,DEC}REMENT_EXPR*/NULL_TREE);
+  if (TREE_CODE (exp) == ADDR_EXPR)
+    PTRMEM_OK_P (exp) = ptrmem;
   return exp;
 }
 
@@ -4095,6 +4078,7 @@ build_unary_op (enum tree_code code, tree xarg, int noconvert)
 	 is an error.  */
       else if (TREE_CODE (argtype) != FUNCTION_TYPE
 	       && TREE_CODE (argtype) != METHOD_TYPE
+	       && TREE_CODE (arg) != OFFSET_REF
 	       && !lvalue_or_else (arg, "unary `&'"))
 	return error_mark_node;
 
@@ -4109,7 +4093,11 @@ build_unary_op (enum tree_code code, tree xarg, int noconvert)
 	       expression so we can just form an ADDR_EXPR with the
 	       correct type.  */
 	    || processing_template_decl)
-	  addr = build_address (arg);
+	  {
+	    addr = build_address (arg);
+	    if (TREE_CODE (arg) == OFFSET_REF)
+	      PTRMEM_OK_P (addr) = PTRMEM_OK_P (arg);
+	  }
 	else if (TREE_CODE (TREE_OPERAND (arg, 1)) == BASELINK)
 	  {
 	    tree fn = BASELINK_FUNCTIONS (TREE_OPERAND (arg, 1));
@@ -4178,7 +4166,8 @@ build_unary_op (enum tree_code code, tree xarg, int noconvert)
    for certain kinds of expressions which are not really lvalues
    but which we can accept as lvalues.
 
-   If ARG is not a kind of expression we can handle, return zero.  */
+   If ARG is not a kind of expression we can handle, return
+   NULL_TREE.  */
    
 tree
 unary_complex_lvalue (enum tree_code code, tree arg)

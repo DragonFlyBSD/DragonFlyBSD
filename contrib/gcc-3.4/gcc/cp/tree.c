@@ -1,6 +1,6 @@
 /* Language-dependent node constructors for parse phase of GNU compiler.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
    Hacked by Michael Tiemann (tiemann@cygnus.com)
 
 This file is part of GCC.
@@ -1604,6 +1604,11 @@ cp_tree_equal (tree t1, tree t2)
 
       return same_type_p (PTRMEM_CST_CLASS (t1), PTRMEM_CST_CLASS (t2));
 
+    case OVERLOAD:
+      if (OVL_FUNCTION (t1) != OVL_FUNCTION (t2))
+	return false;
+      return cp_tree_equal (OVL_CHAIN (t1), OVL_CHAIN (t2));
+
     default:
       break;
     }
@@ -2517,10 +2522,26 @@ stabilize_init (tree init, tree *initp)
       if (TREE_CODE (t) == COND_EXPR)
 	return false;
 
-      stabilize_call (t, initp);
+      /* The TARGET_EXPR might be initializing via bitwise copy from
+	 another variable; leave that alone.  */
+      if (TREE_SIDE_EFFECTS (t))
+	stabilize_call (t, initp);
     }
 
   return true;
+}
+
+/* Like "fold", but should be used whenever we might be processing the
+   body of a template.  */
+
+tree
+fold_if_not_in_template (tree expr)
+{
+  /* In the body of a template, there is never any need to call
+     "fold".  We will call fold later when actually instantiating the
+     template.  Integral constant expressions in templates will be
+     evaluated via fold_non_dependent_expr, as necessary.  */
+  return (processing_template_decl ? expr : fold (expr));
 }
 
 

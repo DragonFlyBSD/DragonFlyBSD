@@ -217,7 +217,6 @@ build_zero_init (tree type, tree nelts, bool static_storage_p)
     }
   else if (TREE_CODE (type) == ARRAY_TYPE)
     {
-      tree index;
       tree max_index;
       tree inits;
 
@@ -231,14 +230,16 @@ build_zero_init (tree type, tree nelts, bool static_storage_p)
       /* A zero-sized array, which is accepted as an extension, will
 	 have an upper bound of -1.  */
       if (!tree_int_cst_equal (max_index, integer_minus_one_node))
-	for (index = size_zero_node;
-	     !tree_int_cst_lt (max_index, index);
-	     index = size_binop (PLUS_EXPR, index, size_one_node))
-	  inits = tree_cons (index,
-			     build_zero_init (TREE_TYPE (type),
-					      /*nelts=*/NULL_TREE,
-					      static_storage_p),
-			     inits);
+	{
+	  tree elt_init = build_zero_init (TREE_TYPE (type),
+					   /*nelts=*/NULL_TREE,
+					   static_storage_p);
+	  tree range = build (RANGE_EXPR,
+			      sizetype, size_zero_node, max_index);
+	  
+	  inits = tree_cons (range, elt_init, inits);
+	}
+      
       CONSTRUCTOR_ELTS (init) = nreverse (inits);
     }
   else if (TREE_CODE (type) == REFERENCE_TYPE)
@@ -1461,14 +1462,6 @@ build_offset_ref (tree type, tree name, bool address_p)
       return error_mark_node;
     }
 
-  if (processing_template_decl)
-    {
-      if (TREE_CODE (orig_name) == TEMPLATE_ID_EXPR)
-	return build_min (SCOPE_REF, TREE_TYPE (member), type, orig_name);
-      else
-	return build_min (SCOPE_REF, TREE_TYPE (member), type, name);
-    }
-
   if (TREE_CODE (member) == TYPE_DECL)
     {
       TREE_USED (member) = 1;
@@ -1630,21 +1623,23 @@ decl_constant_value (tree decl)
 		      TREE_OPERAND (decl, 0), d1, d2);
     }
 
-  if (DECL_P (decl)
-      && (/* Enumeration constants are constant.  */
-	  TREE_CODE (decl) == CONST_DECL
-	  /* And so are variables with a 'const' type -- unless they
-	     are also 'volatile'.  */
-	  || CP_TYPE_CONST_NON_VOLATILE_P (TREE_TYPE (decl)))
-      && DECL_INITIAL (decl)
-      && DECL_INITIAL (decl) != error_mark_node
-      /* This is invalid if initial value is not constant.
-	 If it has either a function call, a memory reference,
-	 or a variable, then re-evaluating it could give different results.  */
-      && TREE_CONSTANT (DECL_INITIAL (decl))
-      /* Check for cases where this is sub-optimal, even though valid.  */
-      && TREE_CODE (DECL_INITIAL (decl)) != CONSTRUCTOR)
-    return DECL_INITIAL (decl);
+  while (DECL_P (decl)
+	 && (/* Enumeration constants are constant.  */
+	     TREE_CODE (decl) == CONST_DECL
+	     /* And so are variables with a 'const' type -- unless they
+		are also 'volatile'.  */
+	     || CP_TYPE_CONST_NON_VOLATILE_P (TREE_TYPE (decl)))
+	 && DECL_INITIAL (decl)
+	 && DECL_INITIAL (decl) != error_mark_node
+	 /* This is invalid if initial value is not constant.  If it
+	    has either a function call, a memory reference, or a
+	    variable, then re-evaluating it could give different
+	    results.  */
+	 && TREE_CONSTANT (DECL_INITIAL (decl))
+	 /* Check for cases where this is sub-optimal, even though
+	    valid.  */
+	 && TREE_CODE (DECL_INITIAL (decl)) != CONSTRUCTOR)
+    decl = DECL_INITIAL (decl);
   return decl;
 }
 
@@ -2549,6 +2544,9 @@ build_vec_init (tree base, tree maxindex, tree init, int from_array)
   tree atype = TREE_TYPE (base);
   /* The type of an element in the array.  */
   tree type = TREE_TYPE (atype);
+  /* The element type reached after removing all outer array 
+     types.  */
+  tree inner_elt_type;
   /* The type of a pointer to an element in the array.  */
   tree ptype;
   tree stmt_expr;
@@ -2565,15 +2563,17 @@ build_vec_init (tree base, tree maxindex, tree init, int from_array)
   if (maxindex == NULL_TREE || maxindex == error_mark_node)
     return error_mark_node;
 
+  inner_elt_type = strip_array_types (atype);
   if (init
       && (from_array == 2
-	  ? (!CLASS_TYPE_P (type) || !TYPE_HAS_COMPLEX_ASSIGN_REF (type))
+	  ? (!CLASS_TYPE_P (inner_elt_type) 
+	     || !TYPE_HAS_COMPLEX_ASSIGN_REF (inner_elt_type))
 	  : !TYPE_NEEDS_CONSTRUCTING (type))
       && ((TREE_CODE (init) == CONSTRUCTOR
 	   /* Don't do this if the CONSTRUCTOR might contain something
 	      that might throw and require us to clean up.  */
 	   && (CONSTRUCTOR_ELTS (init) == NULL_TREE
-	       || ! TYPE_HAS_NONTRIVIAL_DESTRUCTOR (target_type (type))))
+	       || ! TYPE_HAS_NONTRIVIAL_DESTRUCTOR (inner_elt_type)))
 	  || from_array))
     {
       /* Do non-default initialization of POD arrays resulting from

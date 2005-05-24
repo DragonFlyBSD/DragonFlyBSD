@@ -31,12 +31,12 @@ Table of Contents
 
    The  main  purpose of a bug report is to enable us to fix the bug. The
    most  important  prerequisite  for  this  is  that  the report must be
-   complete and self-contained, which we explain in detail below.
+   complete and self-contained.
 
    Before  you report a bug, please check the [19]list of well-known bugs
-   and,  if  possible  in any way, try a current development snapshot. If
-   you  want  to report a bug with versions of GCC before 3.1 we strongly
-   recommend upgrading to the current release first.
+   and,  if  possible, try a current development snapshot. If you want to
+   report  a  bug  with  versions of GCC before 3.4 we strongly recommend
+   upgrading to the current release first.
 
    Before  reporting  that  GCC  compiles  your  code incorrectly, please
    compile  it  with  gcc -Wall and see whether this shows anything wrong
@@ -81,9 +81,6 @@ Summarized bug reporting instructions
        compiled,  such that retrying a sufficient number of times results
        in  a  successful  compilation;  this  is  a symptom of a hardware
        problem, not of a compiler bug (sorry)
-     * E-mail  messages that complement previous, incomplete bug reports.
-       Post  a  new, self-contained, full bug report instead, if possible
-       as a follow-up to the original bug report
      * Assembly  files  (*.s)  produced  by  the  compiler, or any binary
        files,   such   as  object  files,  executables,  core  files,  or
        precompiled header files
@@ -119,15 +116,6 @@ Detailed bug reporting instructions
 
      gcc -v -save-temps all-your-options source-file
 
-   Typically  the  preprocessed  file (extension .i for C or .ii for C++,
-   and .f if the preprocessor is used on Fortran files) will be large, so
-   please compress the resulting file with one of the popular compression
-   programs  such as bzip2, gzip, zip or compress (in decreasing order of
-   preference). Use maximum compression (-9) if available. Please include
-   the  compressed  preprocessor  output  in your bug report, even if the
-   source  code  is  freely  available elsewhere; it makes the job of our
-   volunteer testers much easier.
-
    The  only  excuses  to not send us the preprocessed sources are (i) if
    you've  found  a  bug  in the preprocessor, (ii) if you've reduced the
    testcase  to a small file that doesn't include any other file or (iii)
@@ -140,12 +128,6 @@ Detailed bug reporting instructions
    although  you  may want to post parts of it to point out assembly code
    you consider to be wrong.
 
-   Whether to use MIME attachments or uuencode is up to you. In any case,
-   make  sure  the compiler command line, version and error output are in
-   plain text, so that we don't have to decode the bug report in order to
-   tell  who  should  take  care  of  it. A meaningful subject indicating
-   language and platform also helps.
-
    Please  avoid  posting  an archive (.tar, .shar or .zip); we generally
    need   just  a  single  file  to  reproduce  the  bug  (the  .i/.ii/.f
    preprocessed  file),  and,  by  storing  it in an archive, you're just
@@ -157,16 +139,6 @@ Detailed bug reporting instructions
    In  any  case, make sure the compiler version, error message, etc, are
    included  in  the  body  of  your  bug  report  as plain text, even if
    needlessly duplicated as part of an archive.
-
-   If  you  fail  to  supply  enough  information  for a bug report to be
-   reproduced,   someone   will  probably  ask  you  to  post  additional
-   information  (or just ignore your bug report, if they're in a bad day,
-   so  try to get it right on the first posting :-). In this case, please
-   post the additional information to the bug reporting mailing list, not
-   just  to  the  person  who requested it, unless explicitly told so. If
-   possible, please include in this follow-up all the information you had
-   supplied  in  the  incomplete  bug  report (including the preprocessor
-   output), so that the new bug report is self-contained.
 
 Detailed bug reporting instructions for GNAT
 
@@ -837,4 +809,4 @@ References
   36. http://www.ncits.org/cplusplus.htm
   37. http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
   38. http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-defects.html
-  39. http://gcc.gnu.org/onlinedocs/gcc/C---Misunderstandings.html
+  39. http://gcc.gnu.org/onlinedocs/gcc/C_002b_002b-Misunderstandings.html

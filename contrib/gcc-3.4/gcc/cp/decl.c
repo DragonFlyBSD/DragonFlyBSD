@@ -1,6 +1,6 @@
 /* Process declarations and variables for C++ compiler.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003, 2004  Free Software Foundation, Inc.
+   2001, 2002, 2003, 2004, 2005  Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com)
 
 This file is part of GCC.
@@ -1068,6 +1068,12 @@ decls_match (tree newdecl, tree olddecl)
     }
   else
     {
+      /* Need to check scope for variable declaration (VAR_DECL).
+	 For typedef (TYPE_DECL), scope is ignored.  */
+      if (TREE_CODE (newdecl) == VAR_DECL
+	  && CP_DECL_CONTEXT (newdecl) != CP_DECL_CONTEXT (olddecl))
+	return 0;
+
       if (TREE_TYPE (newdecl) == error_mark_node)
 	types_match = TREE_TYPE (olddecl) == error_mark_node;
       else if (TREE_TYPE (olddecl) == NULL_TREE)
@@ -2023,7 +2029,8 @@ redeclaration_error_message (tree newdecl, tree olddecl)
       /* If both functions come from different namespaces, this is not
 	 a redeclaration - this is a conflict with a used function.  */
       if (DECL_NAMESPACE_SCOPE_P (olddecl)
-	  && DECL_CONTEXT (olddecl) != DECL_CONTEXT (newdecl))
+	  && DECL_CONTEXT (olddecl) != DECL_CONTEXT (newdecl)
+	  && ! decls_match (olddecl, newdecl))
 	return "`%D' conflicts with used function";
 
       /* We'll complain about linkage mismatches in
@@ -3704,12 +3711,12 @@ start_decl (tree declarator,
   deprecated_state = DEPRECATED_NORMAL;
 
   if (decl == NULL_TREE || TREE_CODE (decl) == VOID_TYPE)
-    return NULL_TREE;
+    return error_mark_node;
 
   type = TREE_TYPE (decl);
 
   if (type == error_mark_node)
-    return NULL_TREE;
+    return error_mark_node;
 
   context = DECL_CONTEXT (decl);
 
@@ -4210,13 +4217,17 @@ reshape_init_array (tree elt_type, tree max_index,
 		    tree *initp, tree new_init)
 {
   bool sized_array_p = (max_index != NULL_TREE);
-  HOST_WIDE_INT max_index_cst = 0;
-  HOST_WIDE_INT index;
+  unsigned HOST_WIDE_INT max_index_cst = 0;
+  unsigned HOST_WIDE_INT index;
 
   if (sized_array_p)
-    /* HWI is either 32bit or 64bit, so it must be enough to represent the
-	array size.  */
-    max_index_cst = tree_low_cst (max_index, 1);
+    {
+      if (host_integerp (max_index, 1))
+	max_index_cst = tree_low_cst (max_index, 1);
+      /* sizetype is sign extended, not zero extended.  */
+      else
+	max_index_cst = tree_low_cst (convert (size_type_node, max_index), 1);
+    }
 
   /* Loop until there are no more initializers.  */
   for (index = 0;
@@ -4242,19 +4253,7 @@ reshape_init_array (tree elt_type, tree max_index,
 	      TREE_PURPOSE (element_init) = NULL_TREE;
 	    }
 	  else
-	    {
-	      if (TREE_CODE (designated_index) != INTEGER_CST)
-		abort ();
-	      if (sized_array_p
-		  && tree_int_cst_lt (max_index, designated_index))
-		{
-		  error ("Designated initializer `%E' larger than array "
-			 "size", designated_index);
-		  TREE_PURPOSE (element_init) = NULL_TREE;
-		}
-	      else
-		index = tree_low_cst (designated_index, 1);
-	    }
+	    abort ();
 	}
     }
 
@@ -4284,6 +4283,7 @@ reshape_init (tree type, tree *initp)
   tree old_init_value;
   tree new_init;
   bool brace_enclosed_p;
+  bool string_init_p;
 
   old_init = *initp;
   old_init_value = (TREE_CODE (*initp) == TREE_LIST
@@ -4348,6 +4348,7 @@ reshape_init (tree type, tree *initp)
       return old_init;
     }
 
+  string_init_p = false;
   if (TREE_CODE (old_init_value) == STRING_CST
       && TREE_CODE (type) == ARRAY_TYPE
       && char_type_p (TYPE_MAIN_VARIANT (TREE_TYPE (type))))
@@ -4362,6 +4363,7 @@ reshape_init (tree type, tree *initp)
       /* Move past the initializer.  */
       *initp = TREE_CHAIN (old_init);
       TREE_CHAIN (old_init) = NULL_TREE;
+      string_init_p = true;
     }
   else
     {
@@ -4450,10 +4452,15 @@ reshape_init (tree type, tree *initp)
 	new_init = build_tree_list (TREE_PURPOSE (old_init), new_init);
     }
 
-  /* If this was a brace-enclosed initializer and all of the
-     initializers were not used up, there is a problem.  */
-  if (brace_enclosed_p && *initp)
-    error ("too many initializers for `%T'", type);
+  /* If there are more initializers than necessary, issue a
+     diagnostic.  */  
+  if (*initp)
+    {
+      if (brace_enclosed_p)
+	error ("too many initializers for `%T'", type);
+      else if (warn_missing_braces && !string_init_p)
+	warning ("missing braces around initializer");
+    }
 
   return new_init;
 }
