@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.15 2005/02/18 22:59:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.16 2005/05/24 09:52:13 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -168,16 +168,16 @@ ex_alloc_resources (device_t dev)
 	struct ex_softc *	sc = device_get_softc(dev);
 	int			error = 0;
 
-	sc->ioport = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->ioport_rid,
-					0, ~0, 1, RF_ACTIVE);
+	sc->ioport = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &sc->ioport_rid,
+	    RF_ACTIVE);
 	if (!sc->ioport) {
 		device_printf(dev, "No I/O space?!\n");
 		error = ENOMEM;
 		goto bad;
 	}
 
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irq_rid,
-					0, ~0, 1, RF_ACTIVE);
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
+	    RF_ACTIVE);
 
 	if (!sc->irq) {
 		device_printf(dev, "No IRQ?!\n");

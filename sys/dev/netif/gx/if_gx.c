@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.13 2005/02/18 23:15:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.14 2005/05/24 09:52:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -272,13 +272,13 @@ gx_attach(device_t dev)
 	}
 
 	rid = GX_PCI_LOMEM;
-	gx->gx_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	gx->gx_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 #if 0
 /* support PIO mode */
 	rid = PCI_LOIO;
-	gx->gx_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	gx->gx_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+	    RF_ACTIVE);
 #endif
 
 	if (gx->gx_res == NULL) {
@@ -292,7 +292,7 @@ gx_attach(device_t dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	gx->gx_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	gx->gx_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (gx->gx_irq == NULL) {

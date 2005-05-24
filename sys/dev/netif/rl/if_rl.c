@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.19 2005/05/20 14:30:33 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.20 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -791,8 +791,7 @@ rl_attach(device_t dev)
 	pci_enable_io(dev, RL_RES);
 
 	rid = RL_RID; 
-	sc->rl_res = bus_alloc_resource(dev, RL_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->rl_res = bus_alloc_resource_any(dev, RL_RES, &rid, RF_ACTIVE);
 
 	if (sc->rl_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");

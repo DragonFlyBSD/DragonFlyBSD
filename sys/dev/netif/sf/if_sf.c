@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.16 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.17 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -732,8 +732,7 @@ static int sf_attach(dev)
 #endif
 
 	rid = SF_RID;
-	sc->sf_res = bus_alloc_resource(dev, SF_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->sf_res = bus_alloc_resource_any(dev, SF_RES, &rid, RF_ACTIVE);
 
 	if (sc->sf_res == NULL) {
 		printf ("sf%d: couldn't map ports\n", unit);
@@ -746,7 +745,7 @@ static int sf_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->sf_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->sf_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->sf_irq == NULL) {

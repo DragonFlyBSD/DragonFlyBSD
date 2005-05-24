@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.13 2005/05/23 18:22:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.14 2005/05/24 09:52:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -332,8 +332,8 @@ bfe_attach(device_t dev)
 	pci_enable_busmaster(dev);
 
 	rid = BFE_PCI_MEMLO;
-	sc->bfe_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid, 0, ~0, 1,
-					 RF_ACTIVE);
+	sc->bfe_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 	if (sc->bfe_res == NULL) {
 		device_printf(dev, "couldn't map memory\n");
 		error = ENXIO;
@@ -346,8 +346,8 @@ bfe_attach(device_t dev)
 	/* Allocate interrupt */
 	rid = 0;
 
-	sc->bfe_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-					 RF_SHAREABLE | RF_ACTIVE);
+	sc->bfe_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    RF_SHAREABLE | RF_ACTIVE);
 	if (sc->bfe_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc.c,v 1.2.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc.c,v 1.5 2005/02/19 15:47:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc.c,v 1.6 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -139,8 +139,8 @@ snc_alloc_irq(dev, rid, flags)
 	struct snc_softc *sc = device_get_softc(dev);
 	struct resource *res;
 
-	res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-				 0ul, ~0ul, 1, (RF_ACTIVE | flags));
+	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    (RF_ACTIVE | flags));
 	if (res) {
 		sc->irq = res;
 		sc->irq_rid = rid;

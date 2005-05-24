@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.20 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.21 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -1023,8 +1023,7 @@ sis_attach(device_t dev)
 #endif
 
 	rid = SIS_RID;
-	sc->sis_res = bus_alloc_resource(dev, SIS_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->sis_res = bus_alloc_resource_any(dev, SIS_RES, &rid, RF_ACTIVE);
 
 	if (sc->sis_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
@@ -1037,7 +1036,7 @@ sis_attach(device_t dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->sis_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->sis_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->sis_irq == NULL) {

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.4 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.5 2005/05/24 09:52:14 joerg Exp $
  */
 
  
@@ -132,8 +132,8 @@ sbni_pci_attach(device_t dev)
 	printf("sbni%d: <Granch SBNI12/PCI%sadapter> port 0x%lx",
 	       next_sbni_unit, sc->slave_sc ? " Dual " : " ",
 	       rman_get_start(sc->io_res));
-	sc->irq_res = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irq_rid,
-					 0ul, ~0ul, 1, RF_SHAREABLE);
+	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
+	    RF_SHAREABLE);
 
 	if (sc->irq_res) {
 		printf(" irq %ld\n", rman_get_start(sc->irq_res));

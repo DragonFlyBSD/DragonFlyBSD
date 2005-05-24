@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.13 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -515,8 +515,8 @@ sr_allocate_irq(device_t device, int rid, u_long size)
 	struct sr_hardc *hc = device_get_softc(device);
 
 	hc->rid_irq = rid;
-	hc->res_irq = bus_alloc_resource(device, SYS_RES_IRQ,
-			&hc->rid_irq, 0ul, ~0ul, 1, RF_SHAREABLE|RF_ACTIVE);
+	hc->res_irq = bus_alloc_resource_any(device, SYS_RES_IRQ,
+	    &hc->rid_irq, RF_SHAREABLE|RF_ACTIVE);
 	if (hc->res_irq == NULL) {
 		goto errexit;
 	}

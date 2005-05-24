@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.7 2004/08/12 06:42:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.8 2005/05/24 09:52:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -124,16 +124,14 @@ vx_eisa_attach(device_t dev)
      * driver comes first.
      */
     rid = 0;
-    io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-			    0, ~0, 1, RF_ACTIVE);
+    io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
     if (!io) {
 	device_printf(dev, "No I/O space?!\n");
 	goto bad;
     }
 
     rid = 1;
-    eisa_io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-				 0, ~0, 1, RF_ACTIVE);
+    eisa_io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
     if (!eisa_io) {
 	device_printf(dev, "No I/O space?!\n");
 	goto bad;
@@ -146,8 +144,7 @@ vx_eisa_attach(device_t dev)
     sc->vx_btag = rman_get_bustag(io);
 
     rid = 0;
-    irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-			     0, ~0, 1, RF_ACTIVE);
+    irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
     if (!irq) {
 	device_printf(dev, "No irq?!\n");
 	goto bad;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.22 2005/05/24 07:26:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.23 2005/05/24 09:52:13 joerg Exp $
  */
 
 /*
@@ -485,8 +485,7 @@ lge_attach(device_t dev)
 #endif
 
 	rid = LGE_RID;
-	sc->lge_res = bus_alloc_resource(dev, LGE_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->lge_res = bus_alloc_resource_any(dev, LGE_RES, &rid, RF_ACTIVE);
 
 	if (sc->lge_res == NULL) {
 		printf("lge%d: couldn't map ports/memory\n", unit);
@@ -499,7 +498,7 @@ lge_attach(device_t dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->lge_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->lge_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->lge_irq == NULL) {

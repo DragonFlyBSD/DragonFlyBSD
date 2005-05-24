@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.16 2005/02/19 00:40:45 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.17 2005/05/24 09:52:13 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -914,8 +914,7 @@ my_attach(device_t dev)
 	}
 
 	rid = MY_RID;
-	sc->my_res = bus_alloc_resource(dev, MY_RES, &rid,
-					0, ~0, 1, RF_ACTIVE);
+	sc->my_res = bus_alloc_resource_any(dev, MY_RES, &rid, RF_ACTIVE);
 
 	if (sc->my_res == NULL) {
 		printf("my%d: couldn't map ports/memory\n", unit);
@@ -926,8 +925,8 @@ my_attach(device_t dev)
 	sc->my_bhandle = rman_get_bushandle(sc->my_res);
 
 	rid = 0;
-	sc->my_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-					RF_SHAREABLE | RF_ACTIVE);
+	sc->my_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->my_irq == NULL) {
 		printf("my%d: couldn't map interrupt\n", unit);

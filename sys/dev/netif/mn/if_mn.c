@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.7 2004/09/14 23:49:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.8 2005/05/24 09:52:13 joerg Exp $
  */
 
 /*
@@ -1321,8 +1321,7 @@ mn_attach (device_t self)
 	sprintf(sc->name, "mn%d", sc->unit);
 
         rid = PCIR_MAPS;
-        res = bus_alloc_resource(self, SYS_RES_MEMORY, &rid,
-            0, ~0, 1, RF_ACTIVE);
+        res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid, RF_ACTIVE);
         if (res == NULL) {
                 device_printf(self, "Could not map memory\n");
                 return ENXIO;
@@ -1331,8 +1330,7 @@ mn_attach (device_t self)
         sc->m0p = rman_get_start(res);
 
         rid = PCIR_MAPS + 4;
-        res = bus_alloc_resource(self, SYS_RES_MEMORY, &rid,
-            0, ~0, 1, RF_ACTIVE);
+        res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid, RF_ACTIVE);
         if (res == NULL) {
                 device_printf(self, "Could not map memory\n");
                 return ENXIO;
@@ -1342,8 +1340,8 @@ mn_attach (device_t self)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->irq = bus_alloc_resource(self, SYS_RES_IRQ, &rid, 0, ~0,
-	    1, RF_SHAREABLE | RF_ACTIVE);
+	sc->irq = bus_alloc_resource_any(self, SYS_RES_IRQ, &rid,
+	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->irq == NULL) {
 		printf("couldn't map interrupt\n");

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.16 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.17 2005/05/24 09:52:14 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -971,8 +971,7 @@ static int ste_attach(dev)
 #endif
 
 	rid = STE_RID;
-	sc->ste_res = bus_alloc_resource(dev, STE_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->ste_res = bus_alloc_resource_any(dev, STE_RES, &rid, RF_ACTIVE);
 
 	if (sc->ste_res == NULL) {
 		printf ("ste%d: couldn't map ports/memory\n", unit);
@@ -984,7 +983,7 @@ static int ste_attach(dev)
 	sc->ste_bhandle = rman_get_bushandle(sc->ste_res);
 
 	rid = 0;
-	sc->ste_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->ste_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->ste_irq == NULL) {

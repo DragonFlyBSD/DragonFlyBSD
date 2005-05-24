@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.17 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.18 2005/05/24 09:52:15 joerg Exp $
  */
 
 /*
@@ -1146,8 +1146,8 @@ static int tl_attach(dev)
 	}
 
 	rid = TL_PCI_LOIO;
-	sc->tl_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-		0, ~0, 1, RF_ACTIVE);
+	sc->tl_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+		RF_ACTIVE);
 
 	/*
 	 * Some cards have the I/O and memory mapped address registers
@@ -1155,8 +1155,8 @@ static int tl_attach(dev)
 	 */
 	if (sc->tl_res == NULL) {
 		rid = TL_PCI_LOMEM;
-		sc->tl_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-		    0, ~0, 1, RF_ACTIVE);
+		sc->tl_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+		    RF_ACTIVE);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
@@ -1166,12 +1166,12 @@ static int tl_attach(dev)
 	}
 
 	rid = TL_PCI_LOMEM;
-	sc->tl_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->tl_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 	if (sc->tl_res == NULL) {
 		rid = TL_PCI_LOIO;
-		sc->tl_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-		    0, ~0, 1, RF_ACTIVE);
+		sc->tl_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+		    RF_ACTIVE);
 	}
 #endif
 
@@ -1198,7 +1198,7 @@ static int tl_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->tl_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->tl_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->tl_irq == NULL) {

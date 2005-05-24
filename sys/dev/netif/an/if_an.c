@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.19 2005/05/24 08:16:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.20 2005/05/24 09:52:12 joerg Exp $
  */
 
 /*
@@ -435,8 +435,8 @@ an_alloc_irq(dev, rid, flags)
 	struct an_softc *sc = device_get_softc(dev);
 	struct resource *res;
 
-	res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-				 0ul, ~0ul, 1, (RF_ACTIVE | flags));
+	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    (RF_ACTIVE | flags));
 	if (res) {
 		sc->irq_rid = rid;
 		sc->irq_res = res;

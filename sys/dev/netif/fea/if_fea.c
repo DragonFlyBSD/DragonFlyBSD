@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.7 2005/05/24 09:52:13 joerg Exp $
  */
 
 /*
@@ -178,8 +178,7 @@ pdq_eisa_attach (dev)
 	u_int32_t		m_addr, m_size;
 
 	rid = 0;
-	io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-				0, ~0, 1, RF_ACTIVE);
+	io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
 
 	if (!io) {
 		device_printf(dev, "No I/O space?!\n");
@@ -187,8 +186,7 @@ pdq_eisa_attach (dev)
 	}
 
 	rid = 0;
-	mspace = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-				    0, ~0, 1, RF_ACTIVE);
+	mspace = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
 
 	if (!mspace) {
 		device_printf(dev, "No memory space?!\n");
@@ -196,8 +194,7 @@ pdq_eisa_attach (dev)
 	}
 
 	rid = 0;
-	irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-				 0, ~0, 1, RF_ACTIVE);
+	irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
 
 	if (!irq) {
 		device_printf(dev, "No, irq?!\n");

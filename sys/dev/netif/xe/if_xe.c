@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.16 2005/02/20 04:02:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.17 2005/05/24 09:52:15 joerg Exp $
  */
 
 /*
@@ -2194,8 +2194,8 @@ xe_activate(device_t dev)
 	}
 
 	sc->irq_rid = 0;
-	sc->irq_res = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irq_rid, 
-	    0, ~0, 1, RF_ACTIVE);
+	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid, 
+	    RF_ACTIVE);
 	if (!sc->irq_res) {
 #if XE_DEBUG > 0
 		device_printf(dev, "Cannot allocate irq\n");

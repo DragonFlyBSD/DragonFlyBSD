@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.19 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.20 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -1544,8 +1544,8 @@ static int ti_attach(dev)
 	}
 
 	rid = TI_PCI_LOMEM;
-	sc->ti_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->ti_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
 
 	if (sc->ti_res == NULL) {
 		printf ("ti%d: couldn't map memory\n", unit);
@@ -1560,7 +1560,7 @@ static int ti_attach(dev)
 	/* Allocate interrupt */
 	rid = 0;
 	
-	sc->ti_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->ti_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->ti_irq == NULL) {

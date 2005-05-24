@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.10 2005/04/04 18:45:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.11 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -302,8 +302,7 @@ nv_attach(device_t dev)
 
 	/* Allocate memory mapped address space */
 	rid = NV_RID;
-	sc->res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-				     0, ~0, 1, RF_ACTIVE);
+	sc->res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
 
 	if (sc->res == NULL) {
 		device_printf(dev, "couldn't map memory\n");
@@ -315,8 +314,8 @@ nv_attach(device_t dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-				     RF_SHAREABLE | RF_ACTIVE);
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");

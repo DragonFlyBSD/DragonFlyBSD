@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.6 2005/05/24 09:52:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -189,8 +189,7 @@ ep_eisa_attach(device_t dev)
 	int			rid;
 
 	rid = 1;
-	eisa_io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-				     0, ~0, 1, RF_ACTIVE);
+	eisa_io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
 	if (!eisa_io) {
 		device_printf(dev, "No I/O space?!\n");
 		error = ENXIO;

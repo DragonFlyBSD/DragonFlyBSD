@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.5 2003/12/07 19:23:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.6 2005/05/24 09:52:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -128,8 +128,8 @@ vx_pci_attach(
     sc = device_get_softc(dev);
 
     rid = PCIR_MAPS;
-    sc->vx_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-	0, ~0, 1, RF_ACTIVE);
+    sc->vx_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+	RF_ACTIVE);
 
     if (sc->vx_res == NULL)
 	goto bad;
@@ -138,7 +138,7 @@ vx_pci_attach(
     sc->vx_bhandle = rman_get_bushandle(sc->vx_res);
 
     rid = 0;
-    sc->vx_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+    sc->vx_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	RF_SHAREABLE | RF_ACTIVE);
 
     if (sc->vx_irq == NULL)

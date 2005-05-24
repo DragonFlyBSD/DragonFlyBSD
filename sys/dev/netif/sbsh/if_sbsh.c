@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.15 2005/02/19 23:05:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.16 2005/05/24 09:52:14 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -239,8 +239,8 @@ sbsh_attach(device_t dev)
 	}
 
 	rid = 0;
-	sc->irq_res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-						RF_SHAREABLE | RF_ACTIVE);
+	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->irq_res == NULL) {
 		printf("sbsh%d: couldn't map interrupt\n", unit);

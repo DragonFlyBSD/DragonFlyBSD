@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.19 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.20 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -875,8 +875,7 @@ static int nge_attach(dev)
 #endif
 
 	rid = NGE_RID;
-	sc->nge_res = bus_alloc_resource(dev, NGE_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->nge_res = bus_alloc_resource_any(dev, NGE_RES, &rid, RF_ACTIVE);
 
 	if (sc->nge_res == NULL) {
 		printf("nge%d: couldn't map ports/memory\n", unit);
@@ -889,7 +888,7 @@ static int nge_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->nge_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->nge_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->nge_irq == NULL) {

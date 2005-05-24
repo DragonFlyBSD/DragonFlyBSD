@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.16 2005/02/20 03:08:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.17 2005/05/24 09:52:15 joerg Exp $
  */
 
 /*
@@ -263,8 +263,7 @@ epic_attach(dev)
 #endif
 
 	rid = EPIC_RID;
-	sc->res = bus_alloc_resource(dev, EPIC_RES, &rid, 0, ~0, 1,
-	    RF_ACTIVE);
+	sc->res = bus_alloc_resource_any(dev, EPIC_RES, &rid, RF_ACTIVE);
 
 	if (sc->res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
@@ -277,7 +276,7 @@ epic_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->irq == NULL) {

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.17 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.18 2005/05/24 09:52:15 joerg Exp $
  */
 
 /*
@@ -870,8 +870,7 @@ static int wb_attach(dev)
 #endif
 
 	rid = WB_RID;
-	sc->wb_res = bus_alloc_resource(dev, WB_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->wb_res = bus_alloc_resource_any(dev, WB_RES, &rid, RF_ACTIVE);
 
 	if (sc->wb_res == NULL) {
 		printf("wb%d: couldn't map ports/memory\n", unit);
@@ -884,7 +883,7 @@ static int wb_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->wb_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->wb_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->wb_irq == NULL) {

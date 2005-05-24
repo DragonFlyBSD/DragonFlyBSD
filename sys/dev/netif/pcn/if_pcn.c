@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.17 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.18 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -405,8 +405,8 @@ static int pcn_probe(dev)
 			 * so we can read the chip ID register.
 			 */
 			rid = PCN_RID;
-			sc->pcn_res = bus_alloc_resource(dev, PCN_RES, &rid,
-			    0, ~0, 1, RF_ACTIVE);
+			sc->pcn_res = bus_alloc_resource_any(dev, PCN_RES,
+			    &rid, RF_ACTIVE);
 			if (sc->pcn_res == NULL) {
 				device_printf(dev,
 				    "couldn't map ports/memory\n");
@@ -552,8 +552,7 @@ static int pcn_attach(dev)
 #endif
 
 	rid = PCN_RID;
-	sc->pcn_res = bus_alloc_resource(dev, PCN_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->pcn_res = bus_alloc_resource_any(dev, PCN_RES, &rid, RF_ACTIVE);
 
 	if (sc->pcn_res == NULL) {
 		printf("pcn%d: couldn't map ports/memory\n", unit);
@@ -566,7 +565,7 @@ static int pcn_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->pcn_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->pcn_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->pcn_irq == NULL) {

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.34 2005/05/12 01:41:07 drhodus Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.35 2005/05/24 09:52:13 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4138,12 +4138,10 @@ tulip_pci_attach(device_t dev)
     sc->tulip_if.if_softc = sc;
 #if defined(TULIP_IOMAPPED)
     rid = PCI_CBIO;
-    res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-			     0, ~0, 1, RF_ACTIVE);
+    res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
 #else
     rid = PCI_CBMA;
-    res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-			     0, ~0, 1, RF_ACTIVE);
+    res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
 #endif
     if (!res)
 	return ENXIO;
@@ -4191,8 +4189,8 @@ tulip_pci_attach(device_t dev)
 	    void *ih;
 
 	    rid = 0;
-	    res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-				     0, ~0, 1, RF_SHAREABLE | RF_ACTIVE);
+	    res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+				         RF_SHAREABLE | RF_ACTIVE);
 	    if (res == 0 || bus_setup_intr(dev, res, INTR_TYPE_NET,
 					   intr_rtn, sc, &ih)) {
 		device_printf(dev, "couldn't map interrupt\n");

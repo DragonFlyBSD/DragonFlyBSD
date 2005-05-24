@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.13 2005/02/18 23:06:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.14 2005/05/24 09:52:13 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -894,8 +894,7 @@ fe_alloc_irq(device_t dev, int flags)
 	int rid;
 
 	rid = 0;
-	res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-				 0ul, ~0ul, 1, RF_ACTIVE | flags);
+	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE | flags);
 	if (res) {
 		sc->irq_res = res;
 		return (0);

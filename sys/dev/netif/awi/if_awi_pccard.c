@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.10 2004/07/27 14:25:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.11 2005/05/24 09:52:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -161,8 +161,8 @@ awi_pccard_attach(device_t dev)
 	sc->sc_chip.sc_ioh = rman_get_bushandle(psc->sc_port_res);
 
 	psc->sc_irq_rid = 0;
-	psc->sc_irq_res = bus_alloc_resource(dev, SYS_RES_IRQ,
-	    &psc->sc_irq_rid, 0, ~0, 1, RF_ACTIVE);
+	psc->sc_irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &psc->sc_irq_rid, RF_ACTIVE);
 	if (!psc->sc_irq_res) {
 		device_printf(dev, "awi_pccard_attach: irq alloc failed\n");
 		goto fail;

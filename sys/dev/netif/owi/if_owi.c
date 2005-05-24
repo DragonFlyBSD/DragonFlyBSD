@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.4 2005/02/19 01:13:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.5 2005/05/24 09:52:14 joerg Exp $
  */
 
 /*
@@ -2493,8 +2493,8 @@ owi_alloc(dev, rid)
 		sc->wi_bhandle = rman_get_bushandle(sc->iobase);
 	} else {
 		sc->mem_rid = rid;
-		sc->mem = bus_alloc_resource(dev, SYS_RES_MEMORY,
-		    &sc->mem_rid, 0, ~0, 1, RF_ACTIVE);
+		sc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+		    &sc->mem_rid, RF_ACTIVE);
 
 		if (!sc->mem) {
 			device_printf(dev, "No Mem space on prism2.5?\n");
@@ -2507,8 +2507,8 @@ owi_alloc(dev, rid)
 
 
 	sc->irq_rid = 0;
-	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irq_rid,
-	    0, ~0, 1, RF_ACTIVE |
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
+	    RF_ACTIVE |
 	    ((sc->wi_bus_type == WI_BUS_PCCARD) ? 0 : RF_SHAREABLE));
 
 	if (!sc->irq) {

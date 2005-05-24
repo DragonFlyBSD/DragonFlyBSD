@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.17 2005/02/21 18:40:37 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.18 2005/05/24 09:52:15 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -240,8 +240,7 @@ txp_attach(dev)
 #endif
 
 	rid = TXP_RID;
-	sc->sc_res = bus_alloc_resource(dev, TXP_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->sc_res = bus_alloc_resource_any(dev, TXP_RES, &rid, RF_ACTIVE);
 
 	if (sc->sc_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
@@ -254,7 +253,7 @@ txp_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->sc_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->sc_irq == NULL) {

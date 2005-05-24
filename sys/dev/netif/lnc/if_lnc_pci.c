@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_pci.c,v 1.25 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.3 2004/08/23 09:39:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.4 2005/05/24 09:52:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -103,15 +103,15 @@ lnc_pci_attach(device_t dev)
 	pci_write_config(dev, PCIR_COMMAND, command, 4);
 
 	rid = PCIR_MAPS;
-	sc->portres = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1,
-	                                 RF_ACTIVE);
+	sc->portres = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+	    RF_ACTIVE);
 
 	if (! sc->portres)
 		device_printf(dev, "Cannot allocate I/O ports\n");
 
 	rid = 0;
-	sc->irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-	                                RF_ACTIVE|RF_SHAREABLE);
+	sc->irqres = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+	    RF_ACTIVE | RF_SHAREABLE);
 
 	if (! sc->irqres)
 		device_printf(dev, "Cannot allocate irq\n");

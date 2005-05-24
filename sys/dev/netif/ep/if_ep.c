@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.14 2005/02/18 15:48:11 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.15 2005/05/24 09:52:13 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -181,8 +181,8 @@ ep_alloc(device_t dev)
 	int			error = 0;
 
         rid = 0;
-        sc->iobase = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-                                        0, ~0, 1, RF_ACTIVE);
+        sc->iobase = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
+	    RF_ACTIVE);
         if (!sc->iobase) {
                 device_printf(dev, "No I/O space?!\n");
 		error = ENXIO;
@@ -190,8 +190,7 @@ ep_alloc(device_t dev)
         }
 
         rid = 0;
-        sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-                                     0, ~0, 1, RF_ACTIVE);
+        sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
         if (!sc->irq) {
                 device_printf(dev, "No irq?!\n");
 		error = ENXIO;

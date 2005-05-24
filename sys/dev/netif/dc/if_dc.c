@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.24 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.25 2005/05/24 09:52:13 joerg Exp $
  */
 
 /*
@@ -1817,8 +1817,7 @@ static int dc_attach(dev)
 #endif
 
 	rid = DC_RID;
-	sc->dc_res = bus_alloc_resource(dev, DC_RES, &rid,
-	    0, ~0, 1, RF_ACTIVE);
+	sc->dc_res = bus_alloc_resource_any(dev, DC_RES, &rid, RF_ACTIVE);
 
 	if (sc->dc_res == NULL) {
 		printf("dc%d: couldn't map ports/memory\n", unit);
@@ -1831,7 +1830,7 @@ static int dc_attach(dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	sc->dc_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
+	sc->dc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->dc_irq == NULL) {
