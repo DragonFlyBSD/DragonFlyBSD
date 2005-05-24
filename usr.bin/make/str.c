@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.33 2005/05/20 11:48:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.34 2005/05/24 09:27:33 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -54,9 +54,9 @@
  * eight positions, and will be expaned as necessary.  The first
  * position is set to NULL since everything ignores it.  We allocate
  * (size + 1) since we need space for the terminating NULL.  The
- * buffer is set to NULL, since no common buffer is alloated yet.
+ * buffer is set to NULL, since no common buffer is allocated yet.
  */
-static void
+void
 ArgArray_Init(ArgArray *aa)
 {
 	aa->size = 8;
