@@ -1,11 +1,11 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/function.c.patch,v 1.3 2004/12/21 13:10:48 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/function.c.patch,v 1.4 2005/05/24 06:29:33 joerg Exp $
 
 ===================================================================
 RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/function.c,v
 retrieving revision 1.2
 diff -u -r1.2 function.c
 --- function.c	20 Dec 2004 19:23:24 -0000	1.2
-+++ function.c	20 Dec 2004 20:48:10 -0000
++++ function.c	11 May 2005 16:36:11 -0000
 @@ -63,6 +63,7 @@
  #include "integrate.h"
  #include "langhooks.h"
@@ -34,7 +34,7 @@ diff -u -r1.2 function.c
  };
  
  /* This structure is used to record MEMs or pseudos used to replace VAR, any
-@@ -638,6 +645,7 @@
+@@ -641,6 +648,7 @@
     whose lifetime is controlled by CLEANUP_POINT_EXPRs.  KEEP is 3
     if we are to allocate something at an inner level to be treated as
     a variable in the block (e.g., a SAVE_EXPR).
@@ -42,7 +42,7 @@ diff -u -r1.2 function.c
  
     TYPE is the type that will be used for the stack slot.  */
  
-@@ -648,6 +656,8 @@
+@@ -651,6 +659,8 @@
    unsigned int align;
    struct temp_slot *p, *best_p = 0;
    rtx slot;
@@ -51,7 +51,7 @@ diff -u -r1.2 function.c
  
    /* If SIZE is -1 it means that somebody tried to allocate a temporary
       of a variable size.  */
-@@ -673,7 +683,8 @@
+@@ -676,7 +686,8 @@
  	&& ! p->in_use
  	&& objects_must_conflict_p (p->type, type)
  	&& (best_p == 0 || best_p->size > p->size
@@ -61,7 +61,7 @@ diff -u -r1.2 function.c
        {
  	if (p->align == align && p->size == size)
  	  {
-@@ -708,6 +719,7 @@
+@@ -711,6 +722,7 @@
  	      p->address = 0;
  	      p->rtl_expr = 0;
  	      p->type = best_p->type;
@@ -69,7 +69,7 @@ diff -u -r1.2 function.c
  	      p->next = temp_slots;
  	      temp_slots = p;
  
-@@ -768,6 +780,7 @@
+@@ -771,6 +783,7 @@
        p->full_size = frame_offset - frame_offset_old;
  #endif
        p->address = 0;
@@ -77,7 +77,7 @@ diff -u -r1.2 function.c
        p->next = temp_slots;
        temp_slots = p;
      }
-@@ -932,14 +945,16 @@
+@@ -935,14 +948,16 @@
  	    int delete_q = 0;
  	    if (! q->in_use && GET_MODE (q->slot) == BLKmode)
  	      {
@@ -96,18 +96,7 @@ diff -u -r1.2 function.c
  		  {
  		    /* P comes after Q; combine P into Q.  */
  		    q->size += p->size;
-@@ -1449,7 +1464,9 @@
-     }
- 
-   if (new == 0)
--    new = assign_stack_local_1 (decl_mode, GET_MODE_SIZE (decl_mode), 0, func);
-+    new = function ?
-+      assign_stack_local_1 (decl_mode, GET_MODE_SIZE (decl_mode), 0, func)
-+      :	assign_stack_local_for_pseudo_reg (decl_mode, GET_MODE_SIZE (decl_mode), 0);
- 
-   PUT_CODE (reg, MEM);
-   PUT_MODE (reg, decl_mode);
-@@ -3940,7 +3957,8 @@
+@@ -3955,7 +3973,8 @@
  		 constant with that register.  */
  	      temp = gen_reg_rtx (Pmode);
  	      XEXP (x, 0) = new;

@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile.tools,v 1.4 2004/06/21 21:49:13 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile.tools,v 1.5 2005/05/24 06:29:33 joerg Exp $
 
 .ORDER: options.c options.h
 
@@ -83,7 +83,7 @@ CLEANFILES+=	gt-c-pragma.h gt-cfglayout.h gt-cgraph.h gt-coverage.h
 CLEANFILES+=	gt-cp-call.h gt-cp-decl.h gt-cp-decl2.h gt-cp-mangle.h
 CLEANFILES+=	gt-cp-method.h gt-cp-name-lookup.h gt-cp-parser.h gt-cp-pt.h
 CLEANFILES+=	gt-cp-repo.h gt-cp-semantics.h gt-cp-tree.h gt-cselib.h
-CLEANFILES+=	gt-dbxout.h gt-dwarf2asm.h gt-dwarf2out.h gt-emit-rtl.h
+CLEANFILES+=	gt-dbxout.h gt-dojump.h gt-dwarf2asm.h gt-dwarf2out.h gt-emit-rtl.h
 CLEANFILES+=	gt-except.h gt-explow.h gt-expr.h gt-fold-const.h gt-function.h
 CLEANFILES+=	gt-gcse.h gt-i386.h gt-integrate.h gt-langhooks.h gt-lists.h
 CLEANFILES+=	gt-optabs.h gt-ra-build.h gt-reg-stack.h gt-regclass.h

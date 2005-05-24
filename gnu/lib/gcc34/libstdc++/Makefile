@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.3 2005/04/21 16:36:34 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.4 2005/05/24 06:29:33 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -118,7 +118,7 @@ DEBUGHDRS+=	safe_iterator.tcc safe_sequence.h set set.h string vector
 DEBUGHDRS:=	${DEBUGHDRS:S;^;${SRCDIR}/include/debug/;}
 DEBUGHDRSDIR=	${INCLUDEDIR}/c++/3.4/debug
 
-EXTHDRS=	algorithm bitmap_allocator.h debug_allocator.h demangle.h
+EXTHDRS=	algorithm bitmap_allocator.h debug_allocator.h
 EXTHDRS+=	enc_filebuf.h functional hash_fun.h hash_map hash_set
 EXTHDRS+=	hashtable.h iterator malloc_allocator.h memory mt_allocator.h
 EXTHDRS+=	new_allocator.h numeric pod_char_traits.h pool_allocator.h
