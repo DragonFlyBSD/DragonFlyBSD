@@ -1,8 +1,8 @@
 
-			GCC-3.4.3 AS USED BY DRAGONFLY
+			GCC-3.4.4 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the gnu 
-    gcc-3.4.3 distribution.  The entire distribution is 188MB but
+    gcc-3.4.4 distribution.  The entire distribution is 102MB but
     we really only need around 31MB of it.  No files have been moved
     or modified from their extracted position.
 
@@ -14,11 +14,14 @@
     on the distribution.  The only additional files added to this directory
     are README.DRAGONFLY and README.DELETED. 
 
-	MD5 (gcc-3.4.3.tar.bz2) = e744b30c834360fccac41eb7269a3011
+	MD5 (gcc-core-3.4.4.tar.bz2) = 9dd911fd9bc136ca42b73c68735d853b
+	MD5 (gcc-g++-3.4.4.tar.bz2) = a828b7024f07cebc3bc1e55dbfd4706a
+	MD5 (gcc-g77-3.4.4.tar.bz2) = 4a6ea7bab58383d06e992398fa04ea77
+	MD5 (gcc-objc-3.4.4.tar.bz2) = d03e274fa0fcf2c6532ee80628b32964
 
     UPGRADE PROCDURE:
 
-	* download a new gcc-3.4.X dist greater then 3.4.3.
+	* download a new gcc-3.4.X dist greater then 3.4.4.
 
 	* extract the archive into this directory, overlaying the
 	  existing files.
