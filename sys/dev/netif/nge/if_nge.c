@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.21 2005/05/24 16:44:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.22 2005/05/24 16:46:26 joerg Exp $
  */
 
 /*
@@ -183,7 +183,6 @@ static int	nge_miibus_writereg(device_t, int, int, int);
 static void	nge_miibus_statchg(device_t);
 
 static void	nge_setmulti(struct nge_softc *);
-static uint32_t	nge_crc(struct nge_softc *, caddr_t);
 static void	nge_reset(struct nge_softc *);
 static int	nge_list_rx_init(struct nge_softc *);
 static int	nge_list_tx_init(struct nge_softc *);
@@ -613,34 +612,6 @@ nge_miibus_statchg(device_t dev)
 	}
 }
 
-static uint32_t
-nge_crc(struct nge_softc *sc, caddr_t addr)
-{
-	uint32_t crc, carry; 
-	int i, j;
-	uint8_t c;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (i = 0; i < 6; i++) {
-		c = *(addr + i);
-		for (j = 0; j < 8; j++) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (c & 0x01);
-			crc <<= 1;
-			c >>= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	/*
-	 * return the filter bit position
-	 */
-
-	return((crc >> 21) & 0x00000FFF);
-}
-
 static void
 nge_setmulti(struct nge_softc *sc)
 {
@@ -683,7 +654,8 @@ nge_setmulti(struct nge_softc *sc)
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = nge_crc(sc, LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_be(LLADDR((struct sockaddr_dl *)
+		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 21;
 		index = (h >> 4) & 0x7F;
 		bit = h & 0xF;
 		CSR_WRITE_4(sc, NGE_RXFILT_CTL,
