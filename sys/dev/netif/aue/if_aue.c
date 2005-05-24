@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.20 2005/05/24 07:36:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.21 2005/05/24 07:54:18 joerg Exp $
  */
 
 /*
@@ -550,11 +550,7 @@ aue_setmulti(struct aue_softc *sc)
 		aue_csr_write_1(sc, AUE_MAR0 + i, 0);
 
 	/* now program new ones */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-#else
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-#endif
 	{
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
@@ -703,10 +699,6 @@ USB_ATTACH(aue)
 		}
 	}
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	mtx_init(&sc->aue_mtx, device_get_nameunit(self), MTX_NETWORK_LOCK,
-	    MTX_DEF | MTX_RECURSE);
-#endif
 	AUE_LOCK(sc);
 
 	ifp = &sc->arpcom.ac_if;
@@ -748,9 +740,6 @@ USB_ATTACH(aue)
 	    aue_ifmedia_upd, aue_ifmedia_sts)) {
 		device_printf(self, "MII without any PHY!\n");
 		AUE_UNLOCK(sc);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-		mtx_destroy(&sc->aue_mtx);
-#endif
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -789,9 +778,6 @@ aue_detach(device_ptr_t dev)
 #endif
 
 	AUE_UNLOCK(sc);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	mtx_destroy(&sc->aue_mtx);
-#endif
 
 	return (0);
 }
