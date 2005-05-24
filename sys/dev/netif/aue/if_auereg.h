@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_auereg.h,v 1.17 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.5 2004/09/14 21:48:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.6 2005/05/24 07:36:29 joerg Exp $
  */
 
 /*
@@ -238,7 +238,6 @@ struct aue_softc {
 	u_int16_t		aue_product;
 	int			aue_ed[AUE_ENDPT_MAX];
 	usbd_pipe_handle	aue_ep[AUE_ENDPT_MAX];
-	int			aue_unit;
 	u_int8_t		aue_link;
 	int			aue_if_flags;
 	struct aue_cdata	aue_cdata;
