@@ -1,6 +1,6 @@
 /* Functions related to invoking methods and overloaded functions.
    Copyright (C) 1987, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 
-   1999, 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com) and
    modified by Brendan Kehoe (brendan@cygnus.com).
 
@@ -86,7 +86,7 @@ static struct z_candidate *add_conv_candidate
 static struct z_candidate *add_function_candidate 
 	(struct z_candidate **, tree, tree, tree, tree, tree, int);
 static tree implicit_conversion (tree, tree, tree, int);
-static tree standard_conversion (tree, tree, tree);
+static tree standard_conversion (tree, tree, tree, int);
 static tree reference_binding (tree, tree, tree, int);
 static tree build_conv (enum tree_code, tree, tree);
 static bool is_subseq (tree, tree);
@@ -454,7 +454,7 @@ strip_top_quals (tree t)
    also pass the expression EXPR to convert from.  */
 
 static tree
-standard_conversion (tree to, tree from, tree expr)
+standard_conversion (tree to, tree from, tree expr, int flags)
 {
   enum tree_code fcode, tcode;
   tree conv;
@@ -505,7 +505,7 @@ standard_conversion (tree to, tree from, tree expr)
          the standard conversion sequence to perform componentwise
          conversion.  */
       tree part_conv = standard_conversion
-        (TREE_TYPE (to), TREE_TYPE (from), NULL_TREE);
+        (TREE_TYPE (to), TREE_TYPE (from), NULL_TREE, flags);
       
       if (part_conv)
         {
@@ -692,7 +692,8 @@ standard_conversion (tree to, tree from, tree expr)
       && ((*targetm.vector_opaque_p) (from)
 	  || (*targetm.vector_opaque_p) (to)))
     return build_conv (STD_CONV, to, conv);
-  else if (IS_AGGR_TYPE (to) && IS_AGGR_TYPE (from)
+  else if (!(flags & LOOKUP_CONSTRUCTOR_CALLABLE)
+	   && IS_AGGR_TYPE (to) && IS_AGGR_TYPE (from)
 	   && is_properly_derived_from (from, to))
     {
       if (TREE_CODE (conv) == RVALUE_CONV)
@@ -1105,7 +1106,7 @@ implicit_conversion (tree to, tree from, tree expr, int flags)
   if (TREE_CODE (to) == REFERENCE_TYPE)
     conv = reference_binding (to, from, expr, flags);
   else
-    conv = standard_conversion (to, from, expr);
+    conv = standard_conversion (to, from, expr, flags);
 
   if (conv)
     return conv;
@@ -2202,10 +2203,18 @@ any_strictly_viable (struct z_candidate *cands)
   return false;
 }
 
+/* OBJ is being used in an expression like "OBJ.f (...)".  In other
+   words, it is about to become the "this" pointer for a member
+   function call.  Take the address of the object.  */
+
 static tree
 build_this (tree obj)
 {
-  /* Fix this to work on non-lvalues.  */
+  /* In a template, we are only concerned about the type of the
+     expression, so we can take a shortcut.  */
+  if (processing_template_decl)
+    return build_address (obj);
+
   return build_unary_op (ADDR_EXPR, obj, 0);
 }
 
@@ -3277,7 +3286,8 @@ build_conditional_expr (tree arg1, tree arg2, tree arg3)
     }
 
  valid_operands:
-  result = fold (build (COND_EXPR, result_type, arg1, arg2, arg3));
+  result = fold_if_not_in_template (build (COND_EXPR, result_type,
+					   arg1, arg2, arg3));
   /* We can't use result_type below, as fold might have returned a
      throw_expr.  */
 
@@ -3560,20 +3570,6 @@ build_new_op (enum tree_code code, int flags, tree arg1, tree arg2, tree arg3,
     {
       if (overloaded_p)
 	*overloaded_p = true;
-
-      if (warn_synth
-	  && fnname == ansi_assopname (NOP_EXPR)
-	  && DECL_ARTIFICIAL (cand->fn)
-	  && candidates->next
-	  && ! candidates->next->next)
-	{
-	  warning ("using synthesized `%#D' for copy assignment",
-		      cand->fn);
-	  cp_warning_at ("  where cfront would use `%#D'",
-			 cand == candidates
-			 ? candidates->next->fn
-			 : candidates->fn);
-	}
 
       return build_over_call (cand, LOOKUP_NORMAL);
     }
@@ -3878,6 +3874,7 @@ check_constructor_callable (tree type, tree expr)
 			     build_tree_list (NULL_TREE, expr), 
 			     TYPE_BINFO (type),
 			     LOOKUP_NORMAL | LOOKUP_ONLYCONVERTING
+			     | LOOKUP_NO_CONVERSION
 			     | LOOKUP_CONSTRUCTOR_CALLABLE);
 }
 
@@ -6188,6 +6185,8 @@ initialize_reference (tree type, tree expr, tree decl, tree *cleanup)
 				/*fn=*/NULL_TREE, /*argnum=*/0,
 				/*inner=*/-1,
 				/*issue_conversion_warnings=*/true);
+      if (error_operand_p (expr))
+	return error_mark_node;
       if (!real_lvalue_p (expr))
 	{
 	  tree init;
