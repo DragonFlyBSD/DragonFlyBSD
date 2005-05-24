@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.5 2005/05/24 16:44:41 joerg Exp $
  */
 
 #define NGE_CSR			0x00
@@ -470,43 +470,43 @@
  */
 struct nge_desc_64 {
 	/* Hardware descriptor section */
-	u_int32_t		nge_next_lo;
-	u_int32_t		nge_next_hi;
-	u_int32_t		nge_ptr_lo;
-	u_int32_t		nge_ptr_hi;
-	u_int32_t		nge_cmdsts;
+	uint32_t		nge_next_lo;
+	uint32_t		nge_next_hi;
+	uint32_t		nge_ptr_lo;
+	uint32_t		nge_ptr_hi;
+	uint32_t		nge_cmdsts;
 #define nge_rxstat		nge_cmdsts
 #define nge_txstat		nge_cmdsts
 #define nge_ctl			nge_cmdsts
-	u_int32_t		nge_extsts;
+	uint32_t		nge_extsts;
 	/* Driver software section */
 	union {
 		struct mbuf		*nge_mbuf;
-		u_int64_t		nge_dummy;
+		uint64_t		nge_dummy;
 	} nge_mb_u;
 	union {
 		struct nge_desc_64	*nge_nextdesc;
-		u_int64_t		nge_dummy;
+		uint64_t		nge_dummy;
 	} nge_nd_u;
 };
 
 struct nge_desc_32 {
 	/* Hardware descriptor section */
-	u_int32_t		nge_next;
-	u_int32_t		nge_ptr;
-	u_int32_t		nge_cmdsts;
+	uint32_t		nge_next;
+	uint32_t		nge_ptr;
+	uint32_t		nge_cmdsts;
 #define nge_rxstat		nge_cmdsts
 #define nge_txstat		nge_cmdsts
 #define nge_ctl			nge_cmdsts
-	u_int32_t		nge_extsts;
+	uint32_t		nge_extsts;
 	/* Driver software section */
 	union {
 		struct mbuf		*nge_mbuf;
-		u_int64_t		nge_dummy;
+		uint64_t		nge_dummy;
 	} nge_mb_u;
 	union {
 		struct nge_desc_32	*nge_nextdesc;
-		u_int64_t		nge_dummy;
+		uint64_t		nge_dummy;
 	} nge_nd_u;
 };
 
@@ -586,18 +586,18 @@ struct nge_list_data {
 #define NGE_DEVICEID		0x0022
 
 struct nge_type {
-	u_int16_t		nge_vid;
-	u_int16_t		nge_did;
+	uint16_t		nge_vid;
+	uint16_t		nge_did;
 	char			*nge_name;
 };
 
 struct nge_mii_frame {
-	u_int8_t		mii_stdelim;
-	u_int8_t		mii_opcode;
-	u_int8_t		mii_phyaddr;
-	u_int8_t		mii_regaddr;
-	u_int8_t		mii_turnaround;
-	u_int16_t		mii_data;
+	uint8_t			mii_stdelim;
+	uint8_t			mii_opcode;
+	uint8_t			mii_phyaddr;
+	uint8_t			mii_regaddr;
+	uint8_t			mii_turnaround;
+	uint16_t		mii_data;
 };
 
 /*
@@ -612,10 +612,10 @@ struct nge_mii_frame {
 #define NGE_JUMBO_MTU		(NGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define NGE_JSLOTS		384
 
-#define NGE_JRAWLEN (NGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(u_int64_t))
-#define NGE_JLEN (NGE_JRAWLEN + (sizeof(u_int64_t) - \
-	(NGE_JRAWLEN % sizeof(u_int64_t))))
-#define NGE_MCLBYTES (NGE_JLEN - sizeof(u_int64_t))
+#define NGE_JRAWLEN (NGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
+#define NGE_JLEN (NGE_JRAWLEN + (sizeof(uint64_t) - \
+	(NGE_JRAWLEN % sizeof(uint64_t))))
+#define NGE_MCLBYTES (NGE_JLEN - sizeof(uint64_t))
 #define NGE_JPAGESZ PAGE_SIZE
 #define NGE_RESID (NGE_JPAGESZ - (NGE_JLEN * NGE_JSLOTS) % NGE_JPAGESZ)
 #define NGE_JMEM ((NGE_JLEN * NGE_JSLOTS) + NGE_RESID)
@@ -649,10 +649,10 @@ struct nge_softc {
 	void			*nge_intrhand;
 	device_t		nge_miibus;
 	int			nge_if_flags;
-	u_int8_t		nge_unit;
-	u_int8_t		nge_type;
-	u_int8_t		nge_link;
-	u_int8_t		nge_width;
+	uint8_t			nge_unit;
+	uint8_t			nge_type;
+	uint8_t			nge_link;
+	uint8_t			nge_width;
 #define NGE_WIDTH_32BITS	0
 #define NGE_WIDTH_64BITS	1
 	struct nge_list_data	*nge_ldata;
@@ -660,7 +660,7 @@ struct nge_softc {
 	struct callout		nge_stat_timer;
 	SLIST_HEAD(__nge_jfreehead, nge_jpool_entry)	nge_jfree_listhead;
 	SLIST_HEAD(__nge_jinusehead, nge_jpool_entry)	nge_jinuse_listhead;
-	u_int8_t		nge_tbi;
+	uint8_t			nge_tbi;
 	struct ifmedia		nge_ifmedia;
 #ifdef DEVICE_POLLING
 	int			rxcycles;
