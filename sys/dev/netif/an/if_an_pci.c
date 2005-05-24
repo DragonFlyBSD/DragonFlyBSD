@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.6 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.7 2005/05/24 08:10:33 joerg Exp $
  */
 
 /*
@@ -105,6 +105,7 @@ static struct an_type an_devs[] = {
 	{ AIRONET_VENDORID, AIRONET_DEVICEID_4500, "Aironet PCI4500" },
 	{ AIRONET_VENDORID, AIRONET_DEVICEID_4800, "Aironet PCI4800" },
 	{ AIRONET_VENDORID, AIRONET_DEVICEID_4xxx, "Aironet PCI4500/PCI4800" },
+	{ AIRONET_VENDORID, AIRONET_DEVICEID_MPI350, "Cisco Aironet MPI350" },
 	{ 0, 0, NULL }
 };
 
