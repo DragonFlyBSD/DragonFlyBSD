@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.5 2004/06/02 14:42:49 eirikn Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.6 2005/05/24 20:59:00 dillon Exp $
  *
  *
  *
@@ -1484,7 +1484,8 @@ musycc_attach(device_t self)
 	}
 
 	error = bus_setup_intr(self, csc->irq[f], INTR_TYPE_NET,
-	    f == 0 ? musycc_intr0 : musycc_intr1, csc, &csc->intrhand[f]);
+			       (f == 0 ? musycc_intr0 : musycc_intr1), csc,
+			       &csc->intrhand[f], NULL);
 
 	if (error) {
 		printf("couldn't set up irq\n");

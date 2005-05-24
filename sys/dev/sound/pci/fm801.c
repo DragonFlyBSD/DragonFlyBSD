@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.5 2004/08/09 19:49:28 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.5 2004/08/09 19:49:28 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.6 2005/05/24 20:59:04 dillon Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -625,7 +625,7 @@ fm801_pci_attach(device_t dev)
 	fm801->irqid = 0;
 	fm801->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &fm801->irqid,
 				0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!fm801->irq || snd_setup_intr(dev, fm801->irq, 0, fm801_intr, fm801, &fm801->ih)) {
+	if (!fm801->irq || snd_setup_intr(dev, fm801->irq, 0, fm801_intr, fm801, &fm801->ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto oops;
 	}

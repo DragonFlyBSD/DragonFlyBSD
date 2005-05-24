@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.18 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.19 2005/05/24 20:59:02 dillon Exp $
  *
  */
 
@@ -3741,8 +3741,9 @@ ray_res_alloc_irq(struct ray_softc *sc)
 		RAY_PRINTF(sc, "Cannot allocate irq");
 		return (ENOMEM);
 	}
-	if ((error = bus_setup_intr(sc->dev, sc->irq_res, INTR_TYPE_NET,
-	    ray_intr, sc, &sc->irq_handle)) != 0) {
+	error = bus_setup_intr(sc->dev, sc->irq_res, INTR_TYPE_NET,
+			       ray_intr, sc, &sc->irq_handle, NULL);
+	if (error) {
 		RAY_PRINTF(sc, "Failed to setup irq");
 		return (error);
 	}

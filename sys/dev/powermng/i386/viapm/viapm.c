@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.5 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.6 2005/05/24 20:59:03 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -319,6 +319,7 @@ viapm_pro_attach(device_t dev)
 {
 	struct viapm_softc *viapm = (struct viapm_softc *)device_get_softc(dev);
 	u_int32_t l;
+	int error;
 
 	if (!(viapm->iores = bus_alloc_resource(dev, SYS_RES_IOPORT,
 		&viapm->iorid, 0l, ~0l, 1, RF_ACTIVE))) {
@@ -341,8 +342,10 @@ viapm_pro_attach(device_t dev)
 		goto error;
 	}
 
-	if (bus_setup_intr(dev, viapm->irqres, INTR_TYPE_MISC,
-			(driver_intr_t *) viasmb_intr, viapm, &viapm->irqih)) {
+	error = bus_setup_intr(dev, viapm->irqres, INTR_TYPE_MISC,
+			       (driver_intr_t *) viasmb_intr, viapm, 
+			       &viapm->irqih, NULL);
+	if (error) {
 		device_printf(dev, "could not setup irq\n");
 		goto error;
 	}

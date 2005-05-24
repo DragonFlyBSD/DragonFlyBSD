@@ -1,5 +1,5 @@
 /*	$KAME: altq_cbq.c,v 1.20 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.2 2005/05/24 20:59:05 dillon Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1993-1998 All rights reserved.
@@ -46,6 +46,7 @@
 #include <sys/callout.h>
 #include <sys/errno.h>
 #include <sys/time.h>
+#include <sys/thread.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -54,6 +55,8 @@
 #include <net/pf/pfvar.h>
 #include <net/altq/altq.h>
 #include <net/altq/altq_cbq.h>
+
+#include <sys/thread2.h>
 
 /*
  * Forward Declarations.
@@ -154,11 +157,13 @@ cbq_request(struct ifaltq *ifq, int req, void *arg)
 {
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 
+	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
 		cbq_purge(cbqp);
 		break;
 	}
+	crit_exit();
 	return (0);
 }
 
@@ -199,14 +204,14 @@ int
 cbq_pfattach(struct pf_altq *a)
 {
 	struct ifnet	*ifp;
-	int		 s, error;
+	int error;
 
 	if ((ifp = ifunit(a->ifname)) == NULL || a->altq_disc == NULL)
 		return (EINVAL);
-	s = splimp();
+	crit_enter();
 	error = altq_attach(&ifp->if_snd, ALTQT_CBQ, a->altq_disc,
 	    cbq_enqueue, cbq_dequeue, cbq_request, NULL, NULL);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -435,7 +440,6 @@ cbq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
  *	layer (e.g. ether_output).  cbq_enqueue queues the given packet
  *	to the cbq, then invokes the driver's start routine.
  *
- *	Assumptions:	called in splimp
  *	Returns:	0 if the queueing is successful.
  *			ENOBUFS if a packet dropping occurred as a result of
  *			the queueing.
@@ -446,7 +450,7 @@ cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 	struct rm_class	*cl;
-	int		 len;
+	int len;
 
 	/* grab class set by classifier */
 	if ((m->m_flags & M_PKTHDR) == 0) {
@@ -466,17 +470,20 @@ cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 			return (ENOBUFS);
 		}
 	}
+	crit_enter();
 	cl->pktattr_ = NULL;
 	len = m_pktlen(m);
 	if (rmc_queue_packet(cl, m) != 0) {
 		/* drop occurred.  some mbuf was freed in rmc_queue_packet. */
 		PKTCNTR_ADD(&cl->stats_.drop_cnt, len);
+		crit_exit();
 		return (ENOBUFS);
 	}
 
 	/* successfully queued. */
 	++cbqp->cbq_qlen;
 	++ifq->ifq_len;
+	crit_exit();
 	return (0);
 }
 
@@ -486,6 +493,7 @@ cbq_dequeue(struct ifaltq *ifq, int op)
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 	struct mbuf	*m;
 
+	crit_enter();
 	m = rmc_dequeue_next(&cbqp->ifnp, op);
 
 	if (m && op == ALTDQ_REMOVE) {
@@ -495,13 +503,14 @@ cbq_dequeue(struct ifaltq *ifq, int op)
 		/* Update the class. */
 		rmc_update_class_util(&cbqp->ifnp);
 	}
+	crit_exit();
 	return (m);
 }
 
 /*
  * void
  * cbqrestart(queue_t *) - Restart sending of data.
- * called from rmc_restart in splimp via timeout after waking up
+ * called from rmc_restart in a critical section via timeout after waking up
  * a suspended class.
  *	Returns:	NONE
  */
@@ -530,11 +539,11 @@ static void
 cbq_purge(cbq_state_t *cbqp)
 {
 	struct rm_class	*cl;
-	int		 i;
-
-	for (i = 0; i < CBQ_MAX_CLASSES; i++)
+	int i;
+	for (i = 0; i < CBQ_MAX_CLASSES; i++) {
 		if ((cl = cbqp->cbq_class_tbl[i]) != NULL)
 			rmc_dropall(cl);
+	}
 	if (ifq_is_enabled(cbqp->ifnp.ifq_))
 		cbqp->ifnp.ifq_->ifq_len = 0;
 }

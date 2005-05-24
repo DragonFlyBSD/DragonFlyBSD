@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.6 2004/06/02 14:00:12 joerg Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.7 2005/05/24 20:59:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -707,7 +707,9 @@ intpm_attach(device_t dev)
 		  device_printf(dev,"could not allocate irq");
 		  return ENOMEM;
 		}
-		error=bus_setup_intr(dev,res,INTR_TYPE_MISC, (driver_intr_t *) intpm_intr,sciic,&ih);
+		error = bus_setup_intr(dev, res, INTR_TYPE_MISC,
+				       (driver_intr_t *)intpm_intr, sciic,
+				       &ih, NULL);
                 if(error){
                         device_printf(dev,"Failed to map intr\n");
 			return error;

@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.12 2004/07/10 16:25:58 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.13 2005/05/24 20:58:51 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -122,7 +122,7 @@ static void	pccard_child_detached(device_t parent, device_t dev);
 static void	pccard_intr(void *arg);
 static int	pccard_setup_intr(device_t dev, device_t child,
 		    struct resource *irq, int flags, driver_intr_t *intr,
-		    void *arg, void **cookiep);
+		    void *arg, void **cookiep, lwkt_serialize_t serializer);
 static int	pccard_teardown_intr(device_t dev, device_t child,
 		    struct resource *r, void *cookie);
 
@@ -1211,7 +1211,8 @@ pccard_intr(void *arg)
 
 static int
 pccard_setup_intr(device_t dev, device_t child, struct resource *irq,
-    int flags, driver_intr_t *intr, void *arg, void **cookiep)
+    int flags, driver_intr_t *intr, void *arg,
+    void **cookiep, lwkt_serialize_t serializer)
 {
 	struct pccard_softc *sc = PCCARD_SOFTC(dev);
 	struct pccard_ivar *ivar = PCCARD_IVAR(child);
@@ -1221,7 +1222,7 @@ pccard_setup_intr(device_t dev, device_t child, struct resource *irq,
 	if (func->intr_handler != NULL)
 		panic("Only one interrupt handler per function allowed");
 	err = bus_generic_setup_intr(dev, child, irq, flags, pccard_intr,
-	    func, cookiep);
+				     func, cookiep, NULL);
 	if (err != 0)
 		return (err);
 	func->intr_handler = intr;

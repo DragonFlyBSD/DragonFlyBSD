@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.8.2.12 2002/10/05 19:53:18 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 
 #include "gnu/csaimg.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 /* This is the pci device id. */
 #define CS4610_PCI_ID 0x60011013
@@ -85,7 +85,8 @@ static int csa_release_resource(device_t bus, device_t child, int type, int rid,
 				   struct resource *r);
 static int csa_setup_intr(device_t bus, device_t child,
 			  struct resource *irq, int flags,
-			  driver_intr_t *intr, void *arg, void **cookiep);
+			  driver_intr_t *intr, void *arg,
+			  void **cookiep, lwkt_serialize_t serializer);
 static int csa_teardown_intr(device_t bus, device_t child,
 			     struct resource *irq, void *cookie);
 static driver_intr_t csa_intr;
@@ -275,7 +276,7 @@ csa_attach(device_t dev)
 		goto err_mem;
 
 	/* Enable interrupt. */
-	if (snd_setup_intr(dev, resp->irq, INTR_MPSAFE, csa_intr, scp, &scp->ih))
+	if (snd_setup_intr(dev, resp->irq, INTR_MPSAFE, csa_intr, scp, &scp->ih, NULL))
 		goto err_intr;
 #if 0
 	if ((csa_readio(resp, BA0_HISR) & HISR_INTENA) == 0)
@@ -417,7 +418,8 @@ csa_release_resource(device_t bus, device_t child, int type, int rid,
 static int
 csa_setup_intr(device_t bus, device_t child,
 	       struct resource *irq, int flags,
-	       driver_intr_t *intr, void *arg, void **cookiep)
+	       driver_intr_t *intr, void *arg, 
+	       void **cookiep, lwkt_serialize_t serializer)
 {
 	sc_p scp;
 	csa_res *resp;
@@ -425,6 +427,8 @@ csa_setup_intr(device_t bus, device_t child,
 
 	scp = device_get_softc(bus);
 	resp = &scp->res;
+
+	KKASSERT(serializer == NULL);	/* not yet supported */
 
 	/*
 	 * Look at the function code of the child to determine

@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#27 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.3.2.4 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.6 2004/09/17 03:39:39 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.7 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -100,7 +100,7 @@ ahd_map_int(struct ahd_softc *ahd)
 	/* Hook up our interrupt handler */
 	error = bus_setup_intr(ahd->dev_softc, ahd->platform_data->irq,
 			       INTR_TYPE_CAM, ahd_platform_intr, ahd,
-			       &ahd->platform_data->ih);
+			       &ahd->platform_data->ih, NULL);
 	if (error != 0)
 		device_printf(ahd->dev_softc, "bus_setup_intr() failed: %d\n",
 			      error);

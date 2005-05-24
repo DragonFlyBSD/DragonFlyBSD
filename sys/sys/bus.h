@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.13 2005/05/23 18:19:55 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.14 2005/05/24 20:58:44 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -34,6 +34,7 @@
 
 #include <sys/queue.h>
 #include <sys/kobj.h>
+#include <sys/serialize.h>
 
 /*
  * Forward declarations
@@ -198,7 +199,7 @@ int	bus_generic_child_present(device_t dev, device_t child);
 int	bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 					int rid, struct resource *r);
 int	bus_generic_detach(device_t dev);
-void	bus_generic_disable_intr(device_t dev, device_t child, void *cookie);
+int	bus_generic_disable_intr(device_t dev, device_t child, void *cookie);
 void	bus_generic_driver_added(device_t dev, driver_t *driver);
 void	bus_generic_enable_intr(device_t dev, device_t child, void *cookie);
 int	bus_print_child_header(device_t dev, device_t child);
@@ -212,7 +213,8 @@ int	bus_generic_release_resource(device_t bus, device_t child,
 int	bus_generic_resume(device_t dev);
 int	bus_generic_setup_intr(device_t dev, device_t child,
 			       struct resource *irq, int flags,
-			       driver_intr_t *intr, void *arg, void **cookiep);
+			       driver_intr_t *intr, void *arg,
+			       void **cookiep, lwkt_serialize_t serializer);
 int	bus_generic_shutdown(device_t dev);
 int	bus_generic_suspend(device_t dev);
 int	bus_generic_teardown_intr(device_t dev, device_t child,
@@ -242,12 +244,13 @@ int	bus_activate_resource(device_t dev, int type, int rid,
 			      struct resource *r);
 int	bus_deactivate_resource(device_t dev, int type, int rid,
 				struct resource *r);
-void	bus_disable_intr(device_t dev, void *cookie);
+int	bus_disable_intr(device_t dev, void *cookie);
 void	bus_enable_intr(device_t dev, void *cookie);
 int	bus_release_resource(device_t dev, int type, int rid, 
 			     struct resource *r);
 int	bus_setup_intr(device_t dev, struct resource *r, int flags,
-		       driver_intr_t handler, void *arg, void **cookiep);
+		       driver_intr_t handler, void *arg,
+		       void **cookiep, lwkt_serialize_t serializer);
 int	bus_teardown_intr(device_t dev, struct resource *r, void *cookie);
 int	bus_set_resource(device_t dev, int type, int rid,
 			 u_long start, u_long count);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.5 2004/02/19 15:48:26 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.6 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +163,7 @@ aic_pccard_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_CAM, aic_intr,
-	    aic, &sc->sc_ih);
+			       aic, &sc->sc_ih, NULL);
 	if (error) {
 		device_printf(dev, "failed to register interrupt handler\n");
 		aic_pccard_release_resources(dev);

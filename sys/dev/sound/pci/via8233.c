@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via8233.c,v 1.2.2.2 2003/02/06 17:35:56 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 /* Some Credits:
@@ -46,7 +46,7 @@
 
 #include <dev/sound/pci/via8233.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via8233.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 #define VIA8233_PCI_ID 0x30591106
 
@@ -547,7 +547,7 @@ via_attach(device_t dev)
 	via->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &via->irqid, 0, ~0, 1,
 				      RF_ACTIVE | RF_SHAREABLE);
 	if (!via->irq || 
-	    snd_setup_intr(dev, via->irq, 0, via_intr, via, &via->ih)) {
+	    snd_setup_intr(dev, via->irq, 0, via_intr, via, &via->ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}

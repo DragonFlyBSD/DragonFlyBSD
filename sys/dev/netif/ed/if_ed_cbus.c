@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_cbus.c,v 1.12 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.8 2004/10/14 18:31:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.9 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -272,7 +272,7 @@ ed_isa_attach(dev)
 	ed_alloc_irq(dev, sc->irq_rid, 0);
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-			       edintr, sc, &sc->irq_handle);
+			       edintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		ed_release_resources(dev);
 		return (error);

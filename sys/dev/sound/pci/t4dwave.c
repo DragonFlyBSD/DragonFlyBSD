@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.9.2.11 2002/10/22 08:27:13 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.4 2004/11/05 17:47:48 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.4 2004/11/05 17:47:48 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
 /* -------------------------------------------------------------------- */
 
 #define TDX_PCI_ID 	0x20001023
@@ -856,7 +856,7 @@ tr_pci_attach(device_t dev)
 	tr->irqid = 0;
 	tr->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &tr->irqid,
 				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!tr->irq || snd_setup_intr(dev, tr->irq, INTR_MPSAFE, tr_intr, tr, &tr->ih)) {
+	if (!tr->irq || snd_setup_intr(dev, tr->irq, INTR_MPSAFE, tr_intr, tr, &tr->ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}

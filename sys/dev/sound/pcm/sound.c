@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.17.2.14 2002/11/07 23:17:18 cognet Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.3 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.3 2003/11/15 21:05:42 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 struct snddev_channel {
 	SLIST_ENTRY(snddev_channel) link;
@@ -149,15 +149,21 @@ snd_mtxunlock(void *m)
 }
 
 int
-snd_setup_intr(device_t dev, struct resource *res, int flags, driver_intr_t hand, void *param, void **cookiep)
+snd_setup_intr(device_t dev, struct resource *res, int flags, 
+	       driver_intr_t hand, void *param, void **cookiep, 
+	       lwkt_serialize_t serializer)
 {
+	int error;
+
 #ifdef USING_MUTEX
 	flags &= INTR_MPSAFE;
 	flags |= INTR_TYPE_AV;
 #else
 	flags = INTR_TYPE_AV;
 #endif
-	return bus_setup_intr(dev, res, flags, hand, param, cookiep);
+	error = bus_setup_intr(dev, res, flags, hand, param, 
+			       cookiep, serializer);
+	return (error);
 }
 
 void

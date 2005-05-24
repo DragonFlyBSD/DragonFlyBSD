@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi_pci.c,v 1.9 2003/08/24 17:46:03 obrien Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.1 2004/12/22 08:42:47 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.2 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,7 +189,8 @@ digi_pci_attach(device_t dev)
 		return (ENXIO);
 	}
 	retVal = bus_setup_intr(dev, sc->res.irq, INTR_TYPE_TTY,
-	    digiintr, sc, &sc->res.irqHandler);
+				digiintr, sc,
+				&sc->res.irqHandler, NULL);
 #else
 	DLOG(DIGIDB_IRQ, (sc->dev, "Interrupt support compiled out\n"));
 #endif

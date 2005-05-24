@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.7 2004/02/19 14:31:13 joerg Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.8 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +163,7 @@ ex_pccard_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-				ex_intr, (void *)sc, &sc->ih);
+				ex_intr, (void *)sc, &sc->ih, NULL);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed!\n");
 		goto bad;

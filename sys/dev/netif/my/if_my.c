@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.17 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.18 2005/05/24 20:59:01 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -935,7 +935,7 @@ my_attach(device_t dev)
 		goto fail;
 	}
 	error = bus_setup_intr(dev, sc->my_irq, INTR_TYPE_NET,
-			       my_intr, sc, &sc->my_intrhand);
+			       my_intr, sc, &sc->my_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->my_irq);

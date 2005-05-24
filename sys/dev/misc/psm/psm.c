@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.13 2004/09/18 19:08:08 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.14 2005/05/24 20:59:00 dillon Exp $
  */
 
 /*
@@ -1244,7 +1244,7 @@ psmattach(device_t dev)
     if (sc->intr == NULL)
 	return (ENXIO);
     error = BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr,
-			   INTR_TYPE_TTY, psmintr, sc, &sc->ih);
+			   INTR_TYPE_TTY, psmintr, sc, &sc->ih, NULL);
     if (error) {
 	bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
 	return (error);

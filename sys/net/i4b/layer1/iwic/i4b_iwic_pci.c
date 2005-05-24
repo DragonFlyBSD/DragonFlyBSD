@@ -28,7 +28,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.6.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.3 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.4 2005/05/24 20:59:05 dillon Exp $
  *
  *      last edit-date: [Tue Jan 16 10:53:03 2001]
  *
@@ -235,9 +235,9 @@ iwic_pci_attach(device_t dev)
 	sc->sc_I430state = ST_F3N;	/* Deactivated */
 	sc->enabled = FALSE;
 	
-	if(bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+	if (bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
 				(void(*)(void*))iwic_pci_intr,
-				sc, &ih))
+				sc, &ih, NULL))
 	{
 		printf("iwic%d: Couldn't set up irq!\n", unit);
 		return(ENXIO);

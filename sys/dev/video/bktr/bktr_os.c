@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.10 2004/05/19 22:52:52 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.11 2005/05/24 20:59:04 dillon Exp $
  */
 
 /*
@@ -301,7 +301,7 @@ bktr_attach( device_t dev )
 	}
 
 	error = bus_setup_intr(dev, bktr->res_irq, INTR_TYPE_TTY,
-                               bktr_intr, bktr, &bktr->res_ih);
+                               bktr_intr, bktr, &bktr->res_ih, NULL);
 	if (error) {
 		device_printf(dev, "could not setup irq\n");
 		goto fail;

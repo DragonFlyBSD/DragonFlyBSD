@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.4 2005/02/19 00:55:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -382,7 +382,8 @@ ndis_attach(dev)
 	 */
 
 	error = bus_setup_intr(dev, sc->ndis_irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    ndis_intr, sc, &sc->ndis_intrhand);
+			       ndis_intr, sc,
+			       &sc->ndis_intrhand, NULL);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

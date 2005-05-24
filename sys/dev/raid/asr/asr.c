@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.18 2004/09/17 03:39:39 joerg Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.19 2005/05/24 20:59:03 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -2531,15 +2531,18 @@ asr_pci_map_int (
         IN device_t      tag,
         IN Asr_softc_t * sc)
 {
-        int              rid = 0;
+        int rid = 0;
+	int error;
 
         sc->ha_irq_res = bus_alloc_resource(tag, SYS_RES_IRQ, &rid,
           0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
         if (sc->ha_irq_res == (struct resource *)NULL) {
                 return (0);
         }
-        if (bus_setup_intr(tag, sc->ha_irq_res, INTR_TYPE_CAM,
-          (driver_intr_t *)asr_intr, (void *)sc, &(sc->ha_intr))) {
+	error = bus_setup_intr(tag, sc->ha_irq_res, INTR_TYPE_CAM,
+			      (driver_intr_t *)asr_intr, (void *)sc, 
+			      &(sc->ha_intr), NULL);
+	if (error) {
                 return (0);
         }
         sc->ha_irq = pci_read_config(tag, PCIR_INTLINE, sizeof(char));

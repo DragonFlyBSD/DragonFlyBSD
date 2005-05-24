@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.14 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.15 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -302,7 +302,7 @@ gx_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, gx->gx_irq, INTR_TYPE_NET,
-	   gx_intr, gx, &gx->gx_intrhand);
+			       gx_intr, gx, &gx->gx_intrhand, NULL);
 	if (error) {
 		device_printf(dev, "couldn't setup irq\n");
 		goto fail;

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.25 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.26 2005/05/24 20:59:01 dillon Exp $
  */
 
 /*
@@ -464,7 +464,7 @@ fxp_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-			       fxp_intr, sc, &sc->ih);
+			       fxp_intr, sc, &sc->ih, NULL);
 	if (error) {
 		device_printf(dev, "could not setup irq\n");
 		goto fail;

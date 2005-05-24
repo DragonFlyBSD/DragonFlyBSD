@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.6 2004/02/19 15:48:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.7 2005/05/24 20:59:00 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -218,7 +218,8 @@ stg_pccard_attach(DEVPORT_PDEVICE dev)
 	}
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_CAM,
-			       stg_pccard_intr, (void *)sc, &sc->stg_intrhand);
+			       stg_pccard_intr, (void *)sc,
+			       &sc->stg_intrhand, NULL);
 	if (error) {
 		stg_release_resource(dev);
 		return(error);

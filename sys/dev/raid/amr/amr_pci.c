@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.3 2003/08/07 21:17:08 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.4 2005/05/24 20:59:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,7 +230,10 @@ amr_pci_attach(device_t dev)
         device_printf(sc->amr_dev, "can't allocate interrupt\n");
 	goto out;
     }
-    if (bus_setup_intr(sc->amr_dev, sc->amr_irq, INTR_TYPE_BIO | INTR_ENTROPY, amr_pci_intr, sc, &sc->amr_intr)) {
+    error = bus_setup_intr(sc->amr_dev, sc->amr_irq, 
+			   INTR_TYPE_BIO | INTR_ENTROPY, amr_pci_intr, sc,
+			   &sc->amr_intr, NULL);
+    if (error) {
         device_printf(sc->amr_dev, "can't set up interrupt\n");
 	goto out;
     }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.6 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.7 2005/05/24 20:59:00 dillon Exp $
  *
  */
 
@@ -79,7 +79,7 @@ static int ppc_write(device_t, char *, int, int);
 static u_char ppc_io(device_t, int, u_char *, int, u_char);
 
 static int ppc_setup_intr(device_t, device_t, struct resource *, int,
-		void (*)(void *), void *, void **);
+		void (*)(void *), void *, void **, lwkt_serialize_t);
 static int ppc_teardown_intr(device_t, device_t, struct resource *, void *);
 
 static device_method_t ppc_methods[] = {
@@ -2001,8 +2001,8 @@ ppc_attach(device_t dev)
 	if (ppc->res_irq) {
 		/* default to the tty mask for registration */	/* XXX */
 		if (BUS_SETUP_INTR(parent, dev, ppc->res_irq, INTR_TYPE_TTY,
-					    ppcintr, dev, &ppc->intr_cookie) == 0) {
-
+				   ppcintr, dev,
+				   &ppc->intr_cookie, NULL) == 0) {
 			/* remember the ppcintr is registered */
 			ppc->ppc_registered = 1;
 		}
@@ -2109,7 +2109,8 @@ ppc_read_ivar(device_t bus, device_t dev, int index, uintptr_t *val)
  */
 static int
 ppc_setup_intr(device_t bus, device_t child, struct resource *r, int flags,
-			void (*ihand)(void *), void *arg, void **cookiep)
+			void (*ihand)(void *), void *arg, 
+			void **cookiep, lwkt_serialize_t serializer)
 {
 	int error;
 	struct ppc_data *ppc = DEVTOSOFTC(bus);
@@ -2131,7 +2132,7 @@ ppc_setup_intr(device_t bus, device_t child, struct resource *r, int flags,
 
 	/* pass registration to the upper layer, ignore the incoming resource */
 	return (BUS_SETUP_INTR(device_get_parent(bus), child,
-			       r, flags, ihand, arg, cookiep));
+			       r, flags, ihand, arg, cookiep, serializer));
 }
 
 /*
@@ -2152,8 +2153,9 @@ ppc_teardown_intr(device_t bus, device_t child, struct resource *r, void *ih)
 	/* default to the tty mask for registration */		/* XXX */
 	if (ppc->ppc_irq &&
 		!(error = BUS_SETUP_INTR(parent, bus, ppc->res_irq,
-			INTR_TYPE_TTY, ppcintr, bus, &ppc->intr_cookie))) {
-
+					 INTR_TYPE_TTY, ppcintr, bus,
+					 &ppc->intr_cookie, NULL))
+	) {
 		/* remember the ppcintr is registered */
 		ppc->ppc_registered = 1;
 	}

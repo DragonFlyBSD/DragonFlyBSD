@@ -36,7 +36,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.7 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.8 2005/05/24 20:59:05 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -504,7 +504,8 @@ avma1pp2_attach_avma1pp(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET, avma1pp2_intr, sc, &ih);
+	error = bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+			       avma1pp2_intr, sc, &ih, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_resources.irq);

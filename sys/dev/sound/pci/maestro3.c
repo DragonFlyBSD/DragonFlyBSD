@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.4 2003/08/15 08:32:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include "gnu/maestro3_reg.h"
 #include "gnu/maestro3_dsp.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.4 2003/08/15 08:32:31 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1136,7 +1136,7 @@ m3_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	if (snd_setup_intr(dev, sc->irq, 0, m3_intr, sc, &sc->ih)) {
+	if (snd_setup_intr(dev, sc->irq, 0, m3_intr, sc, &sc->ih, NULL)) {
 		device_printf(dev, "unable to setup interrupt\n");
 		goto bad;
 	}

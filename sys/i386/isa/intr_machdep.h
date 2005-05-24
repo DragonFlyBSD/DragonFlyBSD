@@ -31,15 +31,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.13 2005/05/23 18:19:53 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.14 2005/05/24 20:59:05 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
 #define	_I386_ISA_INTR_MACHDEP_H_
 
-#ifndef _SYS_INTERRUPT_H_
 #ifndef LOCORE
+#ifndef _SYS_INTERRUPT_H_
 #include <sys/interrupt.h>
+#endif
+#ifndef _SYS_SERIALIZE_H_
+#include <sys/serialize.h>
 #endif
 #endif
 
@@ -220,11 +223,10 @@ int	update_intr_masks (void);
  * They are subject to change without notice. 
  */
 struct intrec *inthand_add(const char *name, int irq, inthand2_t handler,
-			   void *arg, intrmask_t *maskptr, int flags);
+			   void *arg, intrmask_t *maskptr, int flags,
+			   lwkt_serialize_t serializer);
 
 int inthand_remove(struct intrec *idesc);
-void inthand_enabled(struct intrec *idesc);
-void inthand_disabled(struct intrec *idesc);
 void forward_fastint_remote(void *arg);
 
 #endif /* LOCORE */

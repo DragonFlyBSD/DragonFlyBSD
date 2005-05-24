@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.5 2004/04/07 05:54:41 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.6 2005/05/24 20:58:53 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -405,7 +405,8 @@ ppbus_attach(device_t dev)
 
 static int
 ppbus_setup_intr(device_t bus, device_t child, struct resource *r, int flags,
-			void (*ihand)(void *), void *arg, void **cookiep)
+			void (*ihand)(void *), void *arg, 
+			void **cookiep, lwkt_serialize_t serializer)
 {
 	int error;
 	struct ppb_data *ppb = DEVTOSOFTC(bus);
@@ -416,7 +417,7 @@ ppbus_setup_intr(device_t bus, device_t child, struct resource *r, int flags,
 		return (EINVAL);
 
 	if ((error = BUS_SETUP_INTR(device_get_parent(bus), child, r, flags,
-					ihand, arg, cookiep)))
+					ihand, arg, cookiep, serializer)))
 		return (error);
 
 	/* store the resource and the cookie for eventually forcing

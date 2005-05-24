@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.8 2004/04/01 07:33:18 joerg Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.9 2005/05/24 20:58:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -260,7 +260,7 @@ isa_compat_attach(device_t dev)
 				       res.irq, op->type,
 				       dvp->id_intr,
 				       (void *)(uintptr_t)dvp->id_unit,
-				       &ih);
+				       &ih, NULL);
 		if (error)
 			printf("isa_compat_attach: failed to setup intr: %d\n",
 			       error);

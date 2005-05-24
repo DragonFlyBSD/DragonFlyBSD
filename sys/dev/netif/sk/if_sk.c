@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.27 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.28 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -1639,7 +1639,8 @@ static int skc_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->sk_irq, INTR_TYPE_NET,
-	    sk_intr, sc, &sc->sk_intrhand);
+			       sk_intr, sc,
+			       &sc->sk_intrhand, NULL);
 
 	if (error) {
 		printf("skc%d: couldn't set up irq\n", unit);

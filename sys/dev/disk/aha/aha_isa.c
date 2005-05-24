@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_isa.c,v 1.17.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -279,7 +279,7 @@ aha_isa_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, aha->irq, INTR_TYPE_CAM, aha_intr, aha,
-	    &ih);
+			       &ih, NULL);
 	if (error) {
 		device_printf(dev, "Unable to register interrupt handler\n");
                 aha_free(aha);

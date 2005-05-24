@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.10 2005/02/20 00:36:23 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.11 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -1166,7 +1166,7 @@ re_attach(device_t dev)
 
 	/* Hook interrupt last to avoid having to lock softc */
 	error = bus_setup_intr(dev, sc->re_irq, INTR_TYPE_NET, re_intr, sc,
-			       &sc->re_intrhand);
+			       &sc->re_intrhand, NULL);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.4 2005/02/08 15:51:24 joerg Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.5 2005/05/24 20:59:03 dillon Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ static int	cardbus_set_resource_method(device_t cbdev, device_t child,
 		    int type, int rid, u_long start, u_long count);
 static int	cardbus_setup_intr(device_t cbdev, device_t child,
 		    struct resource *irq, int flags, driver_intr_t *intr,
-		    void *arg, void **cookiep);
+		    void *arg, void **cookiep, lwkt_serialize_t);
 static int	cardbus_teardown_intr(device_t cbdev, device_t child,
 		    struct resource *irq, void *cookie);
 static void	cardbus_write_config_method(device_t cbdev, device_t child,
@@ -791,14 +791,15 @@ cardbus_release_resource(device_t cbdev, device_t child, int type, int rid,
 
 static int
 cardbus_setup_intr(device_t cbdev, device_t child, struct resource *irq,
-    int flags, driver_intr_t *intr, void *arg, void **cookiep)
+    int flags, driver_intr_t *intr, void *arg, 
+    void **cookiep, lwkt_serialize_t serializer)
 {
 	int ret;
 	device_t cdev;
 	struct cardbus_devinfo *dinfo;
 
 	ret = bus_generic_setup_intr(cbdev, child, irq, flags, intr, arg,
-	    cookiep);
+				     cookiep, serializer);
 	if (ret != 0)
 		return ret;
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.7 2004/04/01 07:33:18 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.8 2005/05/24 20:58:52 dillon Exp $
  *
  */
 
@@ -153,7 +153,7 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
 			flags |= INTR_TYPE_CAM;
 
 		error = BUS_SETUP_INTR(device_get_parent(cfg->dev), cfg->dev,
-				       res, flags, handler, arg, &ih);
+				       res, flags, handler, arg, &ih, NULL);
 		if (error != 0)
 			return 0;
 
@@ -204,7 +204,7 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
 			}
 			error = BUS_SETUP_INTR(device_get_parent(cfg->dev),
 					       cfg->dev, res, flags,
-					       handler, arg, &ih);
+					       handler, arg, &ih, NULL);
 			if (error != 0) {
 				printf("pci_map_int: BUS_SETUP_INTR failed\n");
 				return 0;

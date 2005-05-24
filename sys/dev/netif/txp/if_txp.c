@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.18 2005/05/24 09:52:15 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.19 2005/05/24 20:59:03 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -264,7 +264,7 @@ txp_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET,
-	    txp_intr, sc, &sc->sc_intrhand);
+			       txp_intr, sc, &sc->sc_intrhand, NULL);
 
 	if (error) {
 		txp_release_resources(sc);

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.5 2004/01/06 03:17:22 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.6 2005/05/24 20:59:01 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -89,7 +89,7 @@ cm_isa_attach(dev)
 	cm_alloc_irq(dev, sc->irq_rid);
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-			       cmintr, sc, &sc->irq_handle);
+			       cmintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		cm_release_resources(dev);
 		return (error);

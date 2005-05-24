@@ -40,7 +40,7 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.4 2003/11/20 22:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.4 2003/11/20 22:14:27 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -866,7 +866,7 @@ cmi_attach(device_t dev)
 	sc->irq   = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
 					0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
 	if (!sc->irq ||
-	    snd_setup_intr(dev, sc->irq, INTR_MPSAFE, cmi_intr, sc, &sc->ih)) {
+	    snd_setup_intr(dev, sc->irq, INTR_MPSAFE, cmi_intr, sc, &sc->ih, NULL)) {
 		device_printf(dev, "cmi_attach: Unable to map interrupt\n");
 		goto bad;
 	}

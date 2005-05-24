@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.2 2005/05/24 20:59:05 dillon Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -55,6 +55,7 @@
 #include <sys/systm.h>
 #include <sys/errno.h>
 #include <sys/queue.h>
+#include <sys/thread.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -63,6 +64,8 @@
 #include <net/pf/pfvar.h>
 #include <net/altq/altq.h>
 #include <net/altq/altq_hfsc.h>
+
+#include <sys/thread2.h>
 
 /*
  * function prototypes
@@ -308,11 +311,13 @@ hfsc_request(struct ifaltq *ifq, int req, void *arg)
 {
 	struct hfsc_if *hif = (struct hfsc_if *)ifq->altq_disc;
 
+	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
 		hfsc_purge(hif);
 		break;
 	}
+	crit_exit();
 	return (0);
 }
 
@@ -615,6 +620,7 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		m_freem(m);
 		return (ENOBUFS);
 	}
+	crit_enter();
 	if (m->m_pkthdr.fw_flags & ALTQ_MBUF_TAGGED)
 		cl = clh_to_clp(hif, m->m_pkthdr.altq_qid);
 	else
@@ -623,6 +629,7 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		cl = hif->hif_defaultclass;
 		if (cl == NULL) {
 			m_freem(m);
+			crit_exit();
 			return (ENOBUFS);
 		}
 	}
@@ -631,6 +638,7 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 	if (hfsc_addq(cl, m) != 0) {
 		/* drop occurred.  mbuf was freed in hfsc_addq. */
 		PKTCNTR_ADD(&cl->cl_stats.drop_cnt, len);
+		crit_exit();
 		return (ENOBUFS);
 	}
 	ifq->ifq_len++;
@@ -639,7 +647,7 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 	/* successfully queued. */
 	if (qlen(cl->cl_q) == 1)
 		set_active(cl, m_pktlen(m));
-
+	crit_exit();
 	return (0);
 }
 
@@ -667,6 +675,7 @@ hfsc_dequeue(struct ifaltq *ifq, int op)
 		return (NULL);
 	}
 
+	crit_enter();
 	cur_time = read_machclk();
 
 	if (op == ALTDQ_REMOVE && hif->hif_pollcache != NULL) {
@@ -700,7 +709,8 @@ hfsc_dequeue(struct ifaltq *ifq, int op)
 					if (fits > 0)
 						printf("%d fit but none found\n",fits);
 #endif
-					return (NULL);
+					m = NULL;
+					goto done;
 				}
 				/*
 				 * update parent's cl_cvtmin.
@@ -717,7 +727,7 @@ hfsc_dequeue(struct ifaltq *ifq, int op)
 		if (op == ALTDQ_POLL) {
 			hif->hif_pollcache = cl;
 			m = hfsc_pollq(cl);
-			return (m);
+			goto done;
 		}
 	}
 
@@ -747,7 +757,8 @@ hfsc_dequeue(struct ifaltq *ifq, int op)
 		/* the class becomes passive */
 		set_passive(cl);
 	}
-
+done:
+	crit_exit();
 	return (m);
 }
 

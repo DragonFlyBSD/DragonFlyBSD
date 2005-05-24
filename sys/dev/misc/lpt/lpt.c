@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.10 2004/09/19 00:23:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.11 2005/05/24 20:59:00 dillon Exp $
  */
 
 /*
@@ -765,7 +765,7 @@ lptwrite(dev_t dev, struct uio *uio, int ioflag)
 		/* register our interrupt handler */
 		err = BUS_SETUP_INTR(ppbus, lptdev, sc->intr_resource,
 			       INTR_TYPE_TTY, lpt_intr, lptdev,
-			       &sc->intr_cookie);
+			       &sc->intr_cookie, NULL);
 		if (err) {
 			device_printf(lptdev, "handler registration failed, polled mode.\n");
 			sc->sc_irq &= ~LP_USE_IRQ;

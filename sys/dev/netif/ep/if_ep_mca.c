@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_mca.c,v 1.2 1999/10/27 06:25:15 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.4 2003/11/20 22:07:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ ep_mca_attach (device_t dev)
 	}
 
 	if ((error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET, ep_intr,
-				   sc, &sc->ep_intrhand))) {
+				   sc, &sc->ep_intrhand, NULL))) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		goto bad;
 	}

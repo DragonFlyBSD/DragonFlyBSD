@@ -18,7 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_isa.c,v 1.1 2000/01/24 07:24:01 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_isa.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_isa.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include "opt_debug_si.h"
@@ -283,7 +283,8 @@ si_isa_attach(device_t dev)
 	}
 	sc->sc_irq = rman_get_start(sc->sc_irq_res);
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_TYPE_TTY,
-			       si_intr, sc,&ih);
+			       si_intr, sc,
+			       &ih, NULL);
 	if (error) {
 		device_printf(dev, "couldn't activate interrupt\n");
 		goto fail;

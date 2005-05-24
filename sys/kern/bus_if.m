@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.6 2005/05/23 18:19:54 dillon Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.7 2005/05/24 20:58:41 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -193,6 +193,7 @@ METHOD int setup_intr {
 	driver_intr_t	*intr;
 	void		*arg;
 	void		**cookiep;
+	lwkt_serialize_t serializer;
 };
 
 METHOD int teardown_intr {
@@ -208,13 +209,20 @@ METHOD int teardown_intr {
 # since the hard interrupt might be disabled after the interrupt thread
 # has been scheduled but before it runs.
 #
+# The disable function returns an indication as to whether the handler
+# is currently running (i.e. the disablement is racing the execution of
+# the interrupt handler).  0 is returned if it isn't, non-zero if it is.
+#
+# The disablement function does NOT interlock against a running handler, it
+# simply prevents future handler calls from being made.
+#
 METHOD void enable_intr {
 	device_t	dev;
 	device_t	child;
 	void		*cookie;
 } DEFAULT bus_generic_enable_intr;
 
-METHOD void disable_intr {
+METHOD int disable_intr {
 	device_t	dev;
 	device_t	child;
 	void		*cookie;

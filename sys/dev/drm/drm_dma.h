@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_dma.h,v 1.5.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.5 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.6 2005/05/24 20:59:00 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -208,10 +208,10 @@ int DRM(irq_install)( drm_device_t *dev, int irq )
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 	retcode = bus_setup_intr(dev->device, dev->irqr, INTR_TYPE_TTY,
-				 DRM(dma_service), dev, &dev->irqh);
+				 DRM(dma_service), dev, &dev->irqh, NULL);
 #else
 	retcode = bus_setup_intr(dev->device, dev->irqr, INTR_TYPE_TTY | INTR_MPSAFE,
-				 DRM(dma_service), dev, &dev->irqh);
+				 DRM(dma_service), dev, &dev->irqh, NULL);
 #endif
 	if ( retcode ) {
 #elif defined(__NetBSD__)

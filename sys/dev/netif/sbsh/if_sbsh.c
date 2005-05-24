@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.16 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.17 2005/05/24 20:59:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -254,7 +254,7 @@ sbsh_attach(device_t dev)
 	init_card(sc);
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-				sbsh_intr, sc, &sc->intr_hand);
+				sbsh_intr, sc, &sc->intr_hand, NULL);
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);
 		bus_release_resource(dev, SYS_RES_MEMORY,

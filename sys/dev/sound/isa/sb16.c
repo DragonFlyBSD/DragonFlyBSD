@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.64.2.7 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.3 2004/02/13 01:45:14 joerg Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.3 2004/02/13 01:45:14 joerg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 #define SB16_BUFFSIZE	4096
 #define PLAIN_SB16(x) ((((x)->bd_flags) & (BD_F_SB16|BD_F_SB16X)) == BD_F_SB16)
@@ -800,7 +800,7 @@ sb16_attach(device_t dev)
 		goto no;
 	if (mixer_init(dev, &sb16mix_mixer_class, sb))
 		goto no;
-	if (snd_setup_intr(dev, sb->irq, INTR_MPSAFE, sb_intr, sb, &sb->ih))
+	if (snd_setup_intr(dev, sb->irq, INTR_MPSAFE, sb_intr, sb, &sb->ih, NULL))
 		goto no;
 
 	if (sb->bd_flags & BD_F_SB16X)

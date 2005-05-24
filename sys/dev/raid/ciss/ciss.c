@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.13 2005/04/25 07:05:55 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.14 2005/05/24 20:59:03 dillon Exp $
  */
 
 /*
@@ -585,8 +585,10 @@ ciss_init_pci(struct ciss_softc *sc)
 	ciss_printf(sc, "can't allocate interrupt\n");
 	return(ENXIO);
     }
-    if (bus_setup_intr(sc->ciss_dev, sc->ciss_irq_resource, INTR_TYPE_CAM, ciss_intr, sc,
-		       &sc->ciss_intr)) {
+    error = bus_setup_intr(sc->ciss_dev, sc->ciss_irq_resource, 
+			   INTR_TYPE_CAM, ciss_intr, sc,
+			   &sc->ciss_intr, NULL);
+    if (error) {
 	ciss_printf(sc, "can't set up interrupt\n");
 	return(ENXIO);
     }

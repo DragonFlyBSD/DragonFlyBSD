@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.21 2005/05/21 08:57:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.22 2005/05/24 20:59:03 dillon Exp $
  */
 
 /*
@@ -1754,7 +1754,7 @@ done:
 
 	/* Hook interrupt last to avoid having to lock softc */
 	error = bus_setup_intr(dev, sc->xl_irq, INTR_TYPE_NET,
-	    xl_intr, sc, &sc->xl_intrhand);
+			       xl_intr, sc, &sc->xl_intrhand, NULL);
 	if (error) {
 		if_printf(ifp, "couldn't set up irq\n");
 		ether_ifdetach(ifp);

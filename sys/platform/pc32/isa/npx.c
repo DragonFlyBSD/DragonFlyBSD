@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.22 2005/01/31 23:44:35 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.23 2005/05/24 20:59:05 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -404,7 +404,7 @@ npx_probe1(device_t dev)
 					panic("npx: can't get IRQ");
 				BUS_SETUP_INTR(device_get_parent(dev),
 					       dev, r, INTR_TYPE_MISC,
-					       npx_intr, 0, &intr);
+					       npx_intr, 0, &intr, NULL);
 				if (intr == 0)
 					panic("npx: can't create intr");
 

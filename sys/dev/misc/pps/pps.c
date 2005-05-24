@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.10 2004/05/20 21:44:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.11 2005/05/24 20:59:00 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -145,7 +145,7 @@ ppsopen(dev_t dev, int flags, int fmt, struct thread *td)
 		/* attach the interrupt handler */
 		if ((error = BUS_SETUP_INTR(ppbus, ppsdev, sc->intr_resource,
 			       INTR_TYPE_TTY, ppsintr, ppsdev,
-			       &sc->intr_cookie))) {
+			       &sc->intr_cookie, NULL))) {
 			ppb_release_bus(ppbus, ppsdev);
 			return (error);
 		}

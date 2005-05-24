@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.17 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.18 2005/05/24 20:59:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -994,7 +994,7 @@ static int ste_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->ste_irq, INTR_TYPE_NET,
-	    ste_intr, sc, &sc->ste_intrhand);
+			       ste_intr, sc, &sc->ste_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);

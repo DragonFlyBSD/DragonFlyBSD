@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_pccard.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.5 2004/02/19 14:31:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.6 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ cs_pccard_attach(device_t dev)
 		goto bad;
                 
         error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-	    csintr, sc, &sc->irq_handle);
+			       csintr, sc, &sc->irq_handle, NULL);
         if (error != 0)
 		goto bad;
 

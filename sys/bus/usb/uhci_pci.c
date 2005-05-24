@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uhci_pci.c,v 1.51 2003/11/28 05:28:29 imp Exp $
- * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.4 2004/07/16 13:41:55 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.5 2005/05/24 20:58:54 dillon Exp $
  */
 
 /* Universal Host Controller Interface
@@ -327,7 +327,7 @@ uhci_pci_attach(device_t self)
 	}
 
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
-	    (driver_intr_t *) uhci_intr, sc, &sc->ih);
+	    (driver_intr_t *) uhci_intr, sc, &sc->ih, NULL);
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
 		sc->ih = NULL;

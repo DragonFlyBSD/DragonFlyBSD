@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.20 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.21 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -937,7 +937,7 @@ rl_attach(device_t dev)
 	ether_ifattach(ifp, eaddr);
 
 	error = bus_setup_intr(dev, sc->rl_irq, INTR_TYPE_NET, rl_intr,
-			       sc, &sc->rl_intrhand);
+			       sc, &sc->rl_intrhand, NULL);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.3 2003/11/10 19:29:42 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.3 2003/11/10 19:29:42 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -1711,10 +1711,10 @@ mss_doattach(device_t dev, struct mss_info *mss)
     	mixer_init(dev, (mss->bd_id == MD_YM0020)? &ymmix_mixer_class : &mssmix_mixer_class, mss);
     	switch (mss->bd_id) {
     	case MD_OPTI931:
-		snd_setup_intr(dev, mss->irq, INTR_MPSAFE, opti931_intr, mss, &mss->ih);
+		snd_setup_intr(dev, mss->irq, INTR_MPSAFE, opti931_intr, mss, &mss->ih, NULL);
 		break;
     	default:
-		snd_setup_intr(dev, mss->irq, INTR_MPSAFE, mss_intr, mss, &mss->ih);
+		snd_setup_intr(dev, mss->irq, INTR_MPSAFE, mss_intr, mss, &mss->ih, NULL);
     	}
     	if (pdma == rdma)
 		pcm_setflags(dev, pcm_getflags(dev) | SD_F_SIMPLEX);

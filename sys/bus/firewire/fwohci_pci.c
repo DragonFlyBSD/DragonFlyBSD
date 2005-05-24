@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.16 2004/11/08 16:50:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.17 2005/05/24 20:58:45 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -326,14 +326,16 @@ fwohci_pci_attach(device_t self)
 #else
 			INTR_TYPE_NET,
 #endif
-		     (driver_intr_t *) fwohci_intr, sc, &sc->ih);
+		     (driver_intr_t *) fwohci_intr, sc, &sc->ih, NULL);
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 	/* XXX splcam() should mask this irq for sbp.c*/
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_CAM,
-		     (driver_intr_t *) fwohci_dummy_intr, sc, &sc->ih_cam);
+		     (driver_intr_t *) fwohci_dummy_intr, sc,
+		     &sc->ih_cam, NULL);
 	/* XXX splbio() should mask this irq for physio()/fwmem_strategy() */
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
-		     (driver_intr_t *) fwohci_dummy_intr, sc, &sc->ih_bio);
+		     (driver_intr_t *) fwohci_dummy_intr, sc,
+		     &sc->ih_bio, NULL);
 #endif
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);

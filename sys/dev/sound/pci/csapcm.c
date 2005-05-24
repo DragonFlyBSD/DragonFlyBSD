@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csapcm.c,v 1.8.2.7 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <sys/soundcard.h>
@@ -41,7 +41,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 /* Buffer size on dma transfer. Fixed for CS416x. */
 #define CS461x_BUFFSIZE   (4 * 1024)
@@ -793,7 +793,7 @@ pcmcsa_attach(device_t dev)
 	snprintf(status, SND_STATUSLEN, "at irq %ld", rman_get_start(resp->irq));
 
 	/* Enable interrupt. */
-	if (snd_setup_intr(dev, resp->irq, INTR_MPSAFE, csa_intr, csa, &csa->ih)) {
+	if (snd_setup_intr(dev, resp->irq, INTR_MPSAFE, csa_intr, csa, &csa->ih, NULL)) {
 		ac97_destroy(codec);
 		csa_releaseres(csa, dev);
 		return (ENXIO);

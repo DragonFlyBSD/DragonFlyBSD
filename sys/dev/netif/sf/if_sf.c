@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.17 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.18 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -756,7 +756,7 @@ static int sf_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->sf_irq, INTR_TYPE_NET,
-	    sf_intr, sc, &sc->sf_intrhand);
+			       sf_intr, sc, &sc->sf_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_res);

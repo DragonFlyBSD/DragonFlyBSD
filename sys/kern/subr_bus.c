@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.25 2005/05/23 18:19:54 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.26 2005/05/24 20:58:41 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -1941,12 +1941,12 @@ bus_generic_driver_added(device_t dev, driver_t *driver)
 int
 bus_generic_setup_intr(device_t dev, device_t child, struct resource *irq, 
 		       int flags, driver_intr_t *intr, void *arg,
-		       void **cookiep)
+		       void **cookiep, lwkt_serialize_t serializer)
 {
 	/* Propagate up the bus hierarchy until someone handles it. */
 	if (dev->parent)
 		return(BUS_SETUP_INTR(dev->parent, child, irq, flags,
-				      intr, arg, cookiep));
+				      intr, arg, cookiep, serializer));
 	else
 		return(EINVAL);
 }
@@ -1962,11 +1962,13 @@ bus_generic_teardown_intr(device_t dev, device_t child, struct resource *irq,
 		return(EINVAL);
 }
 
-void
+int
 bus_generic_disable_intr(device_t dev, device_t child, void *cookie)
 {
 	if (dev->parent)
-		BUS_DISABLE_INTR(dev->parent, child, cookie);
+		return(BUS_DISABLE_INTR(dev->parent, child, cookie));
+	else
+		return(0);
 }
 
 void
@@ -2160,12 +2162,13 @@ bus_release_resource(device_t dev, int type, int rid, struct resource *r)
 
 int
 bus_setup_intr(device_t dev, struct resource *r, int flags,
-	       driver_intr_t handler, void *arg, void **cookiep)
+	       driver_intr_t handler, void *arg,
+	       void **cookiep, lwkt_serialize_t serializer)
 {
 	if (dev->parent == 0)
 		return(EINVAL);
 	return(BUS_SETUP_INTR(dev->parent, dev, r, flags, handler, arg,
-	       cookiep));
+			      cookiep, serializer));
 }
 
 int
@@ -2183,11 +2186,13 @@ bus_enable_intr(device_t dev, void *cookie)
 		BUS_ENABLE_INTR(dev->parent, dev, cookie);
 }
 
-void
+int
 bus_disable_intr(device_t dev, void *cookie)
 {
 	if (dev->parent)
-		BUS_DISABLE_INTR(dev->parent, dev, cookie);
+		return(BUS_DISABLE_INTR(dev->parent, dev, cookie));
+	else
+		return(0);
 }
 
 int
@@ -2278,7 +2283,7 @@ root_print_child(device_t dev, device_t child)
 
 static int
 root_setup_intr(device_t dev, device_t child, driver_intr_t *intr, void *arg,
-		void **cookiep)
+		void **cookiep, lwkt_serialize_t serializer)
 {
 	/*
 	 * If an interrupt mapping gets to here something bad has happened.

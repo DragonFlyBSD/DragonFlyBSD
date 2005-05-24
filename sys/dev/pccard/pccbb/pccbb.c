@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.5 2005/03/31 05:43:34 hsu Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.6 2005/05/24 20:59:03 dillon Exp $
  */
 
 /*
@@ -652,7 +652,7 @@ cbb_attach(device_t brdev)
 	}
 
 	if (bus_setup_intr(brdev, sc->irq_res, INTR_TYPE_NET, cbb_intr, sc,
-	    &sc->intrhand)) {
+			   &sc->intrhand, NULL)) {
 		device_printf(brdev, "couldn't establish interrupt");
 		goto err;
 	}
@@ -785,7 +785,8 @@ cbb_shutdown(device_t brdev)
 
 static int
 cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
-  int flags, driver_intr_t *intr, void *arg, void **cookiep)
+	       int flags, driver_intr_t *intr, void *arg,
+	       void **cookiep, lwkt_serialize_t serializer)
 {
 	struct cbb_intrhand *ih;
 	struct cbb_softc *sc = device_get_softc(dev);
@@ -796,12 +797,13 @@ cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	 * the PCI interrupt for the status change interrupts, it can't be
 	 * free for use by the driver.  Fast interrupts must not be shared.
 	 */
-	ih = malloc(sizeof(struct cbb_intrhand), M_DEVBUF, M_NOWAIT);
+	ih = malloc(sizeof(struct cbb_intrhand), M_DEVBUF, M_WAITOK|M_ZERO);
 	if (ih == NULL)
 		return (ENOMEM);
 	*cookiep = ih;
 	ih->intr = intr;
 	ih->arg = arg;
+	KKASSERT(serializer == NULL);	/* not yet supported */
 	STAILQ_INSERT_TAIL(&sc->intr_handlers, ih, entries);
 	/*
 	 * XXX we should do what old card does to ensure that we don't
@@ -1912,7 +1914,7 @@ cbb_resume(device_t self)
 
 	/* re-establish the interrupt. */
 	if (bus_setup_intr(self, sc->irq_res, INTR_TYPE_NET, cbb_intr, sc,
-	    &sc->intrhand)) {
+	    &sc->intrhand, NULL)) {
 		device_printf(self, "couldn't re-establish interrupt");
 		bus_release_resource(self, SYS_RES_IRQ, 0, sc->irq_res);
 		bus_release_resource(self, SYS_RES_MEMORY, CBBR_SOCKBASE,

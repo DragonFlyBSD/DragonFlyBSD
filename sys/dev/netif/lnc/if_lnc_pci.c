@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_pci.c,v 1.25 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.4 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,7 @@ lnc_pci_attach(device_t dev)
 		device_printf(dev, "Cannot allocate irq\n");
 
 	err = bus_setup_intr(dev, sc->irqres, INTR_TYPE_NET, lncintr,
-	                     sc, &sc->intrhand);
+	                     sc, &sc->intrhand, NULL);
 	if (err)
 		device_printf(dev, "Cannot setup irq handler\n");
 

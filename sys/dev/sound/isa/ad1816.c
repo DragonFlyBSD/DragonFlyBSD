@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.7.2.9 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.3 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.3 2005/05/24 20:59:04 dillon Exp $");
 
 struct ad1816_info;
 
@@ -602,7 +602,8 @@ ad1816_attach(device_t dev)
     	ad1816_init(ad1816, dev);
     	if (mixer_init(dev, &ad1816mixer_class, ad1816)) goto no;
 
-	snd_setup_intr(dev, ad1816->irq, INTR_MPSAFE, ad1816_intr, ad1816, &ad1816->ih);
+	snd_setup_intr(dev, ad1816->irq, INTR_MPSAFE, ad1816_intr, ad1816,
+			&ad1816->ih, NULL);
     	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
 			/*lowaddr*/BUS_SPACE_MAXADDR_24BIT,
 			/*highaddr*/BUS_SPACE_MAXADDR,

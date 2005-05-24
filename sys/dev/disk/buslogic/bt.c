@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.7 2004/09/17 03:39:39 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.8 2005/05/24 20:58:59 dillon Exp $
  */
 
  /*
@@ -866,7 +866,7 @@ bt_attach(device_t dev)
 	 * Setup interrupt.
 	 */
 	error = bus_setup_intr(dev, bt->irq, INTR_TYPE_CAM,
-			       bt_intr, bt, &bt->ih);
+			       bt_intr, bt, &bt->ih, NULL);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed: %d\n", error);
 		return (error);

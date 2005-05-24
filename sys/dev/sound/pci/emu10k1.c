@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.7 2004/02/25 16:30:21 joerg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.8 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.7 2004/02/25 16:30:21 joerg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.8 2005/05/24 20:59:04 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1886,7 +1886,7 @@ emu_pci_attach(device_t dev)
 
 	i = 0;
 	sc->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &i, 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!sc->irq || snd_setup_intr(dev, sc->irq, INTR_MPSAFE, emu_intr, sc, &sc->ih)) {
+	if (!sc->irq || snd_setup_intr(dev, sc->irq, INTR_MPSAFE, emu_intr, sc, &sc->ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}

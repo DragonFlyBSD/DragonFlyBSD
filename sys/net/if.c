@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.33 2005/04/15 18:39:13 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.34 2005/05/24 20:58:43 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -54,6 +54,7 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/domain.h>
+#include <sys/thread.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -64,6 +65,8 @@
 #include <net/radix.h>
 #include <net/route.h>
 #include <machine/stdarg.h>
+
+#include <sys/thread2.h>
 
 #if defined(INET) || defined(INET6)
 /*XXX*/
@@ -1812,11 +1815,14 @@ static int
 ifq_classic_enqueue(struct ifaltq *ifq, struct mbuf *m,
 		    struct altq_pktattr *pa __unused)
 {
+	crit_enter();
 	if (IF_QFULL(ifq)) {
 		m_freem(m);
+		crit_exit();
 		return(ENOBUFS);
 	} else {
 		IF_ENQUEUE(ifq, m);
+		crit_exit();
 		return(0);
 	}	
 }
@@ -1826,6 +1832,7 @@ ifq_classic_dequeue(struct ifaltq *ifq, int op)
 {
 	struct mbuf *m;
 
+	crit_enter();
 	switch (op) {
 	case ALTDQ_POLL:
 		IF_POLL(ifq, m);
@@ -1836,13 +1843,14 @@ ifq_classic_dequeue(struct ifaltq *ifq, int op)
 	default:
 		panic("unsupported ALTQ dequeue op: %d", op);
 	}
-
+	crit_exit();
 	return(m);
 }
 
 static int
 ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 {
+	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
 		IF_DRAIN(ifq);
@@ -1850,6 +1858,7 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 	default:
 		panic("unspported ALTQ request: %d", req);
 	}
-
+	crit_exit();
 	return(0);
 }
+

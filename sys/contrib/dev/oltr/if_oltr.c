@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.16 2005/01/23 20:21:30 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.17 2005/05/24 20:58:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -369,7 +369,8 @@ oltr_pci_attach(device_t dev)
 		device_printf(dev, "couldn't map interrupt\n");
 		goto config_failed;
 	}
-	if (bus_setup_intr(dev, sc->oltr_irq, INTR_TYPE_NET, oltr_intr, sc, &sc->oltr_intrhand)) {
+	if (bus_setup_intr(dev, sc->oltr_irq, INTR_TYPE_NET, oltr_intr, sc,
+	    &sc->oltr_intrhand, NULL)) {
 		device_printf(dev, "couldn't setup interrupt\n");
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->oltr_irq);
 		goto config_failed;

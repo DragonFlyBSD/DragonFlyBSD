@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.5 2005/05/24 20:58:47 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -194,8 +194,9 @@ pcf_attach(device_t pcfdev)
 
 	if (pcf->res_irq) {
 		/* default to the tty mask for registration */	/* XXX */
-		error = BUS_SETUP_INTR(parent, pcfdev, pcf->res_irq, INTR_TYPE_NET,
-					    pcfintr, pcfdev, &pcf->intr_cookie);
+		error = BUS_SETUP_INTR(parent, pcfdev, pcf->res_irq, 
+					INTR_TYPE_NET, pcfintr, pcfdev,
+					&pcf->intr_cookie, NULL);
 		if (error)
 			return (error);
 	}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.5 2004/02/12 00:00:18 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.6 2005/05/24 20:59:00 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -191,7 +191,8 @@ stg_isa_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_CAM,
-			       stg_isa_intr, (void *)sc, &sc->stg_intrhand);
+			       stg_isa_intr, (void *)sc,
+			       &sc->stg_intrhand, NULL);
 	if (error) {
 		stg_release_resource(dev);
 		return(error);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdInterrupt.c,v 1.12.6.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdInterrupt.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdInterrupt.c,v 1.2 2005/05/24 20:58:59 dillon Exp $ 
  */
 
 /*
@@ -88,8 +88,9 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber, OSD_HANDLER ServiceRoutine
 	device_printf(sc->acpi_dev, "could not allocate SCI interrupt\n");
 	return_ACPI_STATUS(AE_ALREADY_EXISTS);
     }
-    if (bus_setup_intr(sc->acpi_dev, sc->acpi_irq, INTR_TYPE_MISC, (driver_intr_t *)InterruptWrapper,
-		       Context, &sc->acpi_irq_handle)) {
+    if (bus_setup_intr(sc->acpi_dev, sc->acpi_irq, INTR_TYPE_MISC, 
+		       (driver_intr_t *)InterruptWrapper,
+		       Context, &sc->acpi_irq_handle, NULL)) {
 	device_printf(sc->acpi_dev, "could not set up SCI interrupt\n");
 	return_ACPI_STATUS(AE_ALREADY_EXISTS);
     }

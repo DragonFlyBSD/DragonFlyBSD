@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.38 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.1 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.2 2005/05/24 20:58:54 dillon Exp $
  */
 
 /*
@@ -282,7 +282,7 @@ ohci_pci_attach(device_t self)
 	}
 
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
-	    (driver_intr_t *) ohci_intr, sc, &sc->ih);
+	    (driver_intr_t *) ohci_intr, sc, &sc->ih, NULL);
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
 		sc->ih = NULL;

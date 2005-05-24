@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.8.2.7 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.5 2005/01/24 15:38:30 drhodus Exp $
+ * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.5 2005/01/24 15:38:30 drhodus Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.6 2005/05/24 20:59:04 dillon Exp $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
@@ -623,7 +623,7 @@ au_pci_attach(device_t dev)
 	irqid = 0;
 	irq = bus_alloc_resource(dev, SYS_RES_IRQ, &irqid,
 				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!irq || snd_setup_intr(dev, irq, 0, au_intr, au, &ih)) {
+	if (!irq || snd_setup_intr(dev, irq, 0, au_intr, au, &ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}

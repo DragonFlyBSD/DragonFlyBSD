@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.5 2004/04/16 15:40:21 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.6 2005/05/24 20:59:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -125,6 +125,7 @@ iavc_pci_attach(device_t dev)
     void *ih = 0;
     u_int16_t did = pci_get_device(dev);
     int unit = device_get_unit(dev), ret;
+    int error;
 	
     /* check max unit range */
 	
@@ -252,9 +253,10 @@ iavc_pci_attach(device_t dev)
 
     /* setup the interrupt */
 
-    if(bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
-		      (void(*)(void*))iavc_pci_intr,
-		      sc, &ih)) {
+    error = bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+			  (void(*)(void*))iavc_pci_intr,
+			  sc, &ih, NULL);
+    if (error) {
 	printf("iavc%d: irq setup failed\n", unit);
 	return(ENXIO);
     }

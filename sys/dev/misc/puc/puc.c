@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.6 2004/05/13 19:44:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.7 2005/05/24 20:59:00 dillon Exp $
  */
 
 /*-
@@ -139,7 +139,7 @@ static int puc_release_resource(device_t, device_t, int, int,
     struct resource *);
 static int puc_get_resource(device_t, device_t, int, int, u_long *, u_long *);
 static int puc_setup_intr(device_t, device_t, struct resource *, int,
-    void (*)(void *), void *, void **);
+    void (*)(void *), void *, void **, lwkt_serialize_t);
 static int puc_teardown_intr(device_t, device_t, struct resource *,
     void *);
 static int puc_read_ivar(device_t, device_t, int, uintptr_t *);
@@ -241,13 +241,15 @@ puc_pci_attach(device_t dev)
 	sc->irqrid = rid;
 #ifdef PUC_FASTINTR
 	irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-	    INTR_TYPE_TTY | INTR_FAST, puc_intr, sc, &sc->intr_cookie);
+				   INTR_TYPE_TTY | INTR_FAST, puc_intr, sc,
+				   &sc->intr_cookie, NULL);
 #else
 	irq_setup = ENXIO;
 #endif
 	if (irq_setup != 0)
 		irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-		    INTR_TYPE_TTY, puc_intr, sc, &sc->intr_cookie);
+					   INTR_TYPE_TTY, puc_intr, sc,
+					   &sc->intr_cookie, NULL);
 	if (irq_setup != 0)
 		return (ENXIO);
 
@@ -692,7 +694,8 @@ puc_get_resource(device_t dev, device_t child, int type, int rid,
 
 static int
 puc_setup_intr(device_t dev, device_t child, struct resource *r, int flags,
-	       void (*ihand)(void *), void *arg, void **cookiep)
+	       void (*ihand)(void *), void *arg,
+	       void **cookiep, lwkt_serialize_t serializer)
 {
 	int i;
 	struct puc_softc *sc;
@@ -704,6 +707,7 @@ puc_setup_intr(device_t dev, device_t child, struct resource *r, int flags,
 				return (ENXIO);
 			sc->sc_ports[i].ihand = ihand;
 			sc->sc_ports[i].ihandarg = arg;
+			KKASSERT(serializer == NULL); /* not handled yet XXX */
 			*cookiep = arg;
 			return (0);
 		}

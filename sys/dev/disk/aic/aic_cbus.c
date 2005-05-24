@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_cbus.c,v 1.1.2.2 2000/06/21 09:37:09 nyan Exp $
- * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.5 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -234,7 +234,7 @@ aic_isa_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_CAM, aic_intr,
-				aic, &sc->sc_ih);
+				aic, &sc->sc_ih, NULL);
 	if (error) {
 		device_printf(dev, "failed to register interrupt handler\n");
 		aic_isa_release_resources(dev);

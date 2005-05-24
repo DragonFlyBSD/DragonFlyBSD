@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.35 2005/05/24 09:52:13 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.36 2005/05/24 20:59:01 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4192,7 +4192,7 @@ tulip_pci_attach(device_t dev)
 	    res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 				         RF_SHAREABLE | RF_ACTIVE);
 	    if (res == 0 || bus_setup_intr(dev, res, INTR_TYPE_NET,
-					   intr_rtn, sc, &ih)) {
+					   intr_rtn, sc, &ih, NULL)) {
 		device_printf(dev, "couldn't map interrupt\n");
 		free((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
 		free((caddr_t) sc->tulip_txdescs, M_DEVBUF);

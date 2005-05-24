@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbd_isa.c,v 1.7.2.3 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbd/atkbd_isa.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/atkbd/atkbd_isa.c,v 1.4 2005/05/24 20:59:00 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -115,7 +115,7 @@ atkbdattach(device_t dev)
 	sc->intr = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, irq, irq, 1,
 				      RF_SHAREABLE | RF_ACTIVE);
 	BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr, INTR_TYPE_TTY,
-		       atkbd_isa_intr, kbd, &sc->ih);
+		       atkbd_isa_intr, kbd, &sc->ih, NULL);
 
 	return 0;
 }

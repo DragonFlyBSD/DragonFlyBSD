@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.22 2005/05/24 16:46:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.23 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -809,7 +809,7 @@ nge_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->nge_irq, INTR_TYPE_NET,
-	    nge_intr, sc, &sc->nge_intrhand);
+			       nge_intr, sc, &sc->nge_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);

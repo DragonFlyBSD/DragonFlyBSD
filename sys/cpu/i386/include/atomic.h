@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.9 2005/04/13 04:00:48 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.10 2005/05/24 20:58:38 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -158,6 +158,132 @@ void
 atomic_poll_release_int(volatile u_int *p)
 {
 	__asm __volatile(MPLOCKED "btrl $0,%0" : "+m" (*p));
+}
+
+#endif
+
+/*
+ * These functions operate on a 32 bit interrupt interlock which is defined
+ * as follows:
+ *
+ *	bit 0-30	interrupt handler disabled bits (counter)
+ *	bit 31		interrupt handler currently running bit (1 = run)
+ *
+ *
+ * atomic_intr_cond_enter(P, func, arg)
+ *				Increment the request counter and attempt to
+ *				set bit 31 to acquire the interlock.  If
+ *				we are unable to set bit 31 func(arg) is
+ *				called in a loop until we are able to set
+ *				bit 31.
+ *
+ * atomic_intr_cond_exit(P, func, arg)
+ *				Decrement the request counter and clear bit
+ *				31.  If the request counter is still non-zero
+ *				call func(arg) once.
+ *
+ * atomic_intr_handler_disable(P)
+ *				Set bit 30, indicating that the interrupt
+ *				handler has been disabled.  Must be called
+ *				after the hardware is disabled.
+ *
+ *				Returns bit 31 indicating whether a serialized
+ *				accessor is active (typically the interrupt
+ *				handler is running).  0 == not active,
+ *				non-zero == active.
+ *
+ * atomic_intr_handler_enable(P)
+ *				Clear bit 30, indicating that the interrupt
+ *				handler has been enabled.  Must be called
+ *				before the hardware is actually enabled.
+ *
+ * atomic_intr_handler_is_enabled(P)
+ *				Returns bit 30, 0 indicates that the handler
+ *				is enabled, non-zero indicates that it is
+ *				disabled.  The request counter portion of
+ *				the field is ignored.
+ */
+
+#ifndef __ATOMIC_INTR_T
+#define __ATOMIC_INTR_T
+typedef volatile int atomic_intr_t;
+#endif
+
+#if defined(KLD_MODULE)
+
+void atomic_intr_init(atomic_intr_t *p);
+int atomic_intr_handler_disable(atomic_intr_t *p);
+void atomic_intr_handler_enable(atomic_intr_t *p);
+int atomic_intr_handler_is_enabled(atomic_intr_t *p);
+void atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg);
+void atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg);
+
+#else
+
+static __inline
+void
+atomic_intr_init(atomic_intr_t *p)
+{
+	*p = 0;
+}
+
+static __inline
+int
+atomic_intr_handler_disable(atomic_intr_t *p)
+{
+	int data;
+
+	__asm __volatile(MPLOCKED "orl $0x40000000,%1; movl %1,%%eax; " \
+				  "andl $0x80000000,%%eax" \
+				  : "=&a"(data) : "m"(*p));
+	return(data);
+}
+
+static __inline
+void
+atomic_intr_handler_enable(atomic_intr_t *p)
+{
+	__asm __volatile(MPLOCKED "andl $0xB0000000,%0" : "+m" (*p));
+}
+
+static __inline
+int
+atomic_intr_handler_is_enabled(atomic_intr_t *p)
+{
+	int data;
+
+	__asm __volatile("movl %1,%%eax; andl $0x40000000,%%eax" \
+			 : "=a"(data) : "m"(*p));
+	return(data);
+}
+
+static __inline
+void
+atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
+{
+	__asm __volatile(MPLOCKED "incl %0; " \
+			 "1: ;" \
+			 MPLOCKED "btsl $31,%0; jnc 2f; " \
+			 "pushl %2; call *%1; addl $4,%%esp; " \
+			 "jmp 1b; " \
+			 "2: ;" \
+			 : "+m" (*p) \
+			 : "r"(func), "m"(arg) \
+			 : "ax", "cx", "dx");
+}
+
+static __inline
+void
+atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg)
+{
+	__asm __volatile(MPLOCKED "decl %0; " \
+			MPLOCKED "btrl $31,%0; " \
+			"testl $0x3FFFFFFF,%0; jz 1f; " \
+			 "pushl %2; call *%1; addl $4,%%esp; " \
+			 "1: ;" \
+			 : "+m" (*p) \
+			 : "r"(func), "m"(arg) \
+			 : "ax", "cx", "dx");
 }
 
 #endif

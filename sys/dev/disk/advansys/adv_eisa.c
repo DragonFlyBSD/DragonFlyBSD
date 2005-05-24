@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_eisa.c,v 1.9.2.1 2000/04/14 13:32:44 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_eisa.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_eisa.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -310,7 +310,7 @@ adv_eisa_attach(device_t dev)
 	/*
 	 * Enable our interrupt handler.
 	 */
-	bus_setup_intr(dev, irq, INTR_TYPE_CAM, adv_intr, adv, &ih);
+	bus_setup_intr(dev, irq, INTR_TYPE_CAM, adv_intr, adv, &ih, NULL);
 
 	/* Attach sub-devices - always succeeds */
 	adv_attach(adv);

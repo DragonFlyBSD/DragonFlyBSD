@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_pci.c,v 1.7.2.7 2001/07/30 20:29:58 jlemon Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_pci.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_pci.c,v 1.4 2005/05/24 20:59:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,7 +284,7 @@ ida_pci_attach(device_t dev)
                 return (ENOMEM);
         }
 	error = bus_setup_intr(dev, ida->irq, INTR_TYPE_BIO,
-	    ida_intr, ida, &ida->ih);
+			       ida_intr, ida, &ida->ih, NULL);
 	if (error) {
 		device_printf(dev, "can't setup interrupt\n");
 		ida_free(ida);

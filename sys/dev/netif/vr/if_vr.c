@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.21 2005/05/14 08:21:54 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.22 2005/05/24 20:59:03 dillon Exp $
  */
 
 /*
@@ -774,7 +774,7 @@ vr_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->vr_irq, INTR_TYPE_NET,
-	    vr_intr, sc, &sc->vr_intrhand);
+			       vr_intr, sc, &sc->vr_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);

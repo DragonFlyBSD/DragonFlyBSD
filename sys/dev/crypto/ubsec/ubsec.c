@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.6 2004/06/02 14:42:49 eirikn Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.7 2005/05/24 20:58:59 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -348,7 +348,8 @@ ubsec_attach(device_t dev)
 	 *     so make sure the IRQ is mapped appropriately.
 	 */
 	if (bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET,
-			   ubsec_intr, sc, &sc->sc_ih)) {
+			   ubsec_intr, sc, 
+			   &sc->sc_ih, NULL)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}

@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.2 2005/03/07 10:13:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.3 2005/05/24 20:59:01 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -437,7 +437,7 @@ iwi_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    iwi_intr, sc, &sc->sc_ih);
+			       iwi_intr, sc, &sc->sc_ih, NULL);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;

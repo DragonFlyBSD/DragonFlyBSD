@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.34 2005/05/23 07:00:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.35 2005/05/24 20:59:00 dillon Exp $
  *
  */
 
@@ -1518,7 +1518,7 @@ bge_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->bge_irq, INTR_TYPE_NET,
-	   bge_intr, sc, &sc->bge_intrhand);
+			       bge_intr, sc, &sc->bge_intrhand, NULL);
 
 	if (error) {
 		bge_release_resources(sc);

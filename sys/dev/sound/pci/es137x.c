@@ -39,7 +39,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");
@@ -895,7 +895,7 @@ es_pci_attach(device_t dev)
 	es->irqid = 0;
 	es->irq = bus_alloc_resource(dev, SYS_RES_IRQ, &es->irqid,
 				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-	if (!es->irq || snd_setup_intr(dev, es->irq, 0, es_intr, es, &es->ih)) {
+	if (!es->irq || snd_setup_intr(dev, es->irq, 0, es_intr, es, &es->ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}

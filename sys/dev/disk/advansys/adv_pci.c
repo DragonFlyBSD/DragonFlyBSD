@@ -58,7 +58,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_pci.c,v 1.11.2.3 2001/06/02 04:38:10 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -294,7 +294,7 @@ adv_pci_attach(device_t dev)
 	irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &irqrid, 0, ~0, 1,
 				    RF_SHAREABLE | RF_ACTIVE);
 	if (irqres == NULL ||
-	    bus_setup_intr(dev, irqres, INTR_TYPE_CAM, adv_intr, adv, &ih)) {
+	    bus_setup_intr(dev, irqres, INTR_TYPE_CAM, adv_intr, adv, &ih, NULL)) {
 		adv_free(adv);
 		bus_release_resource(dev, SYS_RES_IOPORT, rid, iores);
 		return ENXIO;

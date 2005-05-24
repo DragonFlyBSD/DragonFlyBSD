@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 #include <alpha/isa/isavar.h>
 #endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.3 2003/08/07 21:17:11 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e
@@ -321,8 +321,10 @@ gusc_attach(device_t dev)
 		return (ENXIO);
 	}
 
-	if (scp->irq != NULL)
-		bus_setup_intr(dev, scp->irq, INTR_TYPE_AV, gusc_intr, scp, &ih);
+	if (scp->irq != NULL) {
+		bus_setup_intr(dev, scp->irq, INTR_TYPE_AV, gusc_intr, scp,
+			       &ih, NULL);
+	}
 	bus_generic_attach(dev);
 
 	return (0);
@@ -425,7 +427,8 @@ gusc_release_resource(device_t bus, device_t child, int type, int rid,
 
 static int
 gusc_setup_intr(device_t dev, device_t child, struct resource *irq,
-		int flags, driver_intr_t *intr, void *arg, void **cookiep)
+		int flags, driver_intr_t *intr, void *arg, 
+		void **cookiep, lwkt_serialize_t serializer)
 {
 	sc_p scp = (sc_p)device_get_softc(dev);
 	devclass_t devclass;
@@ -441,7 +444,7 @@ gusc_setup_intr(device_t dev, device_t child, struct resource *irq,
 		return 0;
 	}
 	return bus_generic_setup_intr(dev, child, irq, flags, intr,
-				      arg, cookiep);
+				      arg, cookiep, serializer);
 }
 
 static device_t

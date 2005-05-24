@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.4 2004/03/15 01:10:43 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.5 2005/05/24 20:58:59 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -642,7 +642,7 @@ isp_pci_attach(device_t dev)
 	isp_debug = 0;
 	(void) getenv_int("isp_debug", &isp_debug);
 	if (bus_setup_intr(dev, irq, INTR_TYPE_CAM, isp_pci_intr,
-	    isp, &pcs->ih)) {
+	    isp, &pcs->ih, NULL)) {
 		device_printf(dev, "could not setup interrupt\n");
 		goto bad;
 	}

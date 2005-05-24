@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.5 2005/02/04 02:55:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
  */
 
 /*
@@ -283,7 +283,7 @@ twa_attach(device_t dev)
 		return(ENXIO);
 	}
 	if (bus_setup_intr(sc->twa_bus_dev, sc->twa_irq_res, INTR_TYPE_CAM,
-				twa_pci_intr, sc, &sc->twa_intr_handle)) {
+			   twa_pci_intr, sc, &sc->twa_intr_handle, NULL)) {
 		twa_printf(sc, "Can't set up interrupt.\n");
 		twa_free(sc);
 		return(ENXIO);

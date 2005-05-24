@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/tga/tga_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.7 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.8 2005/05/24 20:59:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -166,7 +166,7 @@ tga_attach(device_t dev)
 	}
 	sc->regs = sc->bhandle + TGA_MEM_CREGS;
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_TTY, tga_intr, sc,
-		    &sc->intrhand);
+			       &sc->intrhand, NULL);
 	if(error) {
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;

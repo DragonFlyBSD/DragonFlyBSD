@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.2.2.5 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.4 2004/02/13 01:45:14 joerg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.4 2004/02/13 01:45:14 joerg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -734,7 +734,7 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 	}
 
 	if (bus_setup_intr(dev, sc->irq, INTR_TYPE_AV, als_intr,
-			   sc, &sc->ih)) {
+			   sc, &sc->ih, NULL)) {
 		device_printf(dev, "unable to setup interrupt\n");
 		goto bad;
 	}

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.13 2005/05/23 18:19:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.14 2005/05/24 20:59:05 dillon Exp $
  */
 
 /*
@@ -96,11 +96,10 @@ static	int nexus_deactivate_resource(device_t, device_t, int, int,
 static	int nexus_release_resource(device_t, device_t, int, int,
 				   struct resource *);
 static	int nexus_setup_intr(device_t, device_t, struct resource *, int flags,
-			     void (*)(void *), void *, void **);
+			     void (*)(void *), void *, 
+			     void **, lwkt_serialize_t);
 static	int nexus_teardown_intr(device_t, device_t, struct resource *,
 				void *);
-static	void nexus_enable_intr(device_t, device_t, void *);
-static	void nexus_disable_intr(device_t, device_t, void *);
 static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long);
 static	int nexus_get_resource(device_t, device_t, int, int, u_long *, u_long *);
 static void nexus_delete_resource(device_t, device_t, int, int);
@@ -125,8 +124,6 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(bus_activate_resource, nexus_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, nexus_deactivate_resource),
 	DEVMETHOD(bus_setup_intr,	nexus_setup_intr),
-	DEVMETHOD(bus_disable_intr,	nexus_disable_intr),
-	DEVMETHOD(bus_enable_intr,	nexus_enable_intr),
 	DEVMETHOD(bus_teardown_intr,	nexus_teardown_intr),
 	DEVMETHOD(bus_set_resource,	nexus_set_resource),
 	DEVMETHOD(bus_get_resource,	nexus_get_resource),
@@ -508,7 +505,8 @@ nexus_release_resource(device_t bus, device_t child, int type, int rid,
  */
 static int
 nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
-		 int flags, void (*ihand)(void *), void *arg, void **cookiep)
+		 int flags, void (*ihand)(void *), void *arg,
+		 void **cookiep, lwkt_serialize_t serializer)
 {
 	intrmask_t	*mask;
 	driver_t	*driver;
@@ -560,7 +558,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		return (error);
 
 	*cookiep = inthand_add(device_get_nameunit(child), irq->r_start,
-	    ihand, arg, mask, icflags);
+	    ihand, arg, mask, icflags, serializer);
 	if (*cookiep == NULL)
 		error = EINVAL;	/* XXX ??? */
 
@@ -571,18 +569,6 @@ static int
 nexus_teardown_intr(device_t dev, device_t child, struct resource *r, void *ih)
 {
 	return (inthand_remove(ih));
-}
-
-static void
-nexus_disable_intr(device_t dev, device_t child, void *ih)
-{
-	inthand_disabled(ih);
-}
-
-static void
-nexus_enable_intr(device_t dev, device_t child, void *ih)
-{
-	inthand_enabled(ih);
 }
 
 static int

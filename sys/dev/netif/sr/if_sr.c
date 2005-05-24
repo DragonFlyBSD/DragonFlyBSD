@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.13 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.14 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -399,7 +399,8 @@ sr_attach(device_t device)
 	sr_init_sca(hc);
 
 	if (BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
-	    INTR_TYPE_NET, srintr, hc, &hc->intr_cookie) != 0)
+			   INTR_TYPE_NET, srintr, hc,
+			   &hc->intr_cookie, NULL) != 0)
 		goto errexit;
 
 	/*

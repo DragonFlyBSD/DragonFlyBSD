@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.25 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.26 2005/05/24 20:59:01 dillon Exp $
  */
 
 /*
@@ -1841,7 +1841,7 @@ static int dc_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->dc_irq, INTR_TYPE_NET,
-	    dc_intr, sc, &sc->dc_intrhand);
+			       dc_intr, sc, &sc->dc_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);

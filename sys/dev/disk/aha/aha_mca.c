@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_mca.c,v 1.2 2000/01/24 07:08:40 imp Exp $
- * $DragonFly: src/sys/dev/disk/aha/Attic/aha_mca.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/Attic/aha_mca.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
  *
  * Based on aha_isa.c
  */
@@ -202,7 +202,8 @@ aha_mca_attach (device_t dev)
 		goto bad;
 	}
 
-	error = bus_setup_intr(dev, irq, INTR_TYPE_CAM, aha_intr, sc, &ih);
+	error = bus_setup_intr(dev, irq, INTR_TYPE_CAM, aha_intr, sc, 
+			       &ih, NULL);
 	if (error) {
 		device_printf(dev, "Unable to register interrupt handler\n");
 		goto bad;

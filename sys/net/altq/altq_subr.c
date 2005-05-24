@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.2 2005/04/04 17:08:16 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.3 2005/05/24 20:59:05 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -196,7 +196,9 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 	struct mbuf *m;
 	int64_t interval;
 	uint64_t now;
+	int s;
 
+	s = splimp();
 	tbr = ifq->altq_tbr;
 	if (op == ALTDQ_REMOVE && tbr->tbr_lastop == ALTDQ_POLL) {
 		/* if this is a remove after poll, bypass tbr check */
@@ -215,8 +217,10 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 			tbr->tbr_last = now;
 		}
 		/* if token is still negative, don't allow dequeue */
-		if (tbr->tbr_token <= 0)
+		if (tbr->tbr_token <= 0) {
+			splx(s);
 			return (NULL);
+		}
 	}
 
 	if (ifq_is_enabled(ifq))
@@ -229,6 +233,7 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 	if (m != NULL && op == ALTDQ_REMOVE)
 		tbr->tbr_token -= TBR_SCALE(m_pktlen(m));
 	tbr->tbr_lastop = op;
+	splx(s);
 	return (m);
 }
 

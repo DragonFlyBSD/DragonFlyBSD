@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.2 2005/05/24 20:59:05 dillon Exp $ */
 
 /*
  * Copyright (C) 2000-2003
@@ -46,6 +46,7 @@
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/queue.h>
+#include <sys/thread.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -54,6 +55,8 @@
 #include <net/pf/pfvar.h>
 #include <net/altq/altq.h>
 #include <net/altq/altq_priq.h>
+
+#include <sys/thread2.h>
 
 /*
  * function prototypes
@@ -217,11 +220,13 @@ priq_request(struct ifaltq *ifq, int req, void *arg)
 {
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 
+	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
 		priq_purge(pif);
 		break;
 	}
+	crit_exit();
 	return (0);
 }
 
@@ -375,15 +380,20 @@ priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 	struct priq_class *cl;
+	int error;
 	int len;
+
+	crit_enter();
 
 	/* grab class set by classifier */
 	if ((m->m_flags & M_PKTHDR) == 0) {
 		/* should not happen */
 		if_printf(ifq->altq_ifp, "altq: packet does not have pkthdr\n");
 		m_freem(m);
-		return (ENOBUFS);
+		error = ENOBUFS;
+		goto done;
 	}
+
 	if (m->m_pkthdr.fw_flags & ALTQ_MBUF_TAGGED)
 		cl = clh_to_clp(pif, m->m_pkthdr.altq_qid);
 	else
@@ -392,7 +402,8 @@ priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		cl = pif->pif_default;
 		if (cl == NULL) {
 			m_freem(m);
-			return (ENOBUFS);
+			error = ENOBUFS;
+			goto done;
 		}
 	}
 	cl->cl_pktattr = NULL;
@@ -400,12 +411,14 @@ priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 	if (priq_addq(cl, m) != 0) {
 		/* drop occurred.  mbuf was freed in priq_addq. */
 		PKTCNTR_ADD(&cl->cl_dropcnt, len);
-		return (ENOBUFS);
+		error = ENOBUFS;
+		goto done;
 	}
 	ifq->ifq_len++;
-
-	/* successfully queued. */
-	return (0);
+	error = 0;
+done:
+	crit_exit();
+	return (error);
 }
 
 /*
@@ -430,10 +443,14 @@ priq_dequeue(struct ifaltq *ifq, int op)
 		return (NULL);
 	}
 
+	crit_enter();
+	m = NULL;
 	for (pri = pif->pif_maxpri;  pri >= 0; pri--) {
 		if ((cl = pif->pif_classes[pri]) != NULL && !qempty(cl->cl_q)) {
-			if (op == ALTDQ_POLL)
-				return (priq_pollq(cl));
+			if (op == ALTDQ_POLL) {
+				m = priq_pollq(cl);
+				break;
+			}
 
 			m = priq_getq(cl);
 			if (m != NULL) {
@@ -442,10 +459,11 @@ priq_dequeue(struct ifaltq *ifq, int op)
 					cl->cl_period++;
 				PKTCNTR_ADD(&cl->cl_xmitcnt, m_pktlen(m));
 			}
-			return (m);
+			break;
 		}
 	}
-	return (NULL);
+	crit_exit();
+	return (m);
 }
 
 static int

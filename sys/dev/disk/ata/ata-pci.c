@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.19 2005/04/05 22:37:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.20 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -887,19 +887,19 @@ ata_pci_release_resource(device_t dev, device_t child, int type, int rid,
 static int
 ata_pci_setup_intr(device_t dev, device_t child, struct resource *irq, 
 		   int flags, driver_intr_t *intr, void *arg,
-		   void **cookiep)
+		   void **cookiep, lwkt_serialize_t serializer)
 {
     if (ATA_MASTERDEV(dev)) {
 #ifdef __alpha__
 	return alpha_platform_setup_ide_intr(irq, intr, arg, cookiep);
 #else
 	return BUS_SETUP_INTR(device_get_parent(dev), child, irq,
-			      flags, intr, arg, cookiep);
+			      flags, intr, arg, cookiep, serializer);
 #endif
     }
     else
 	return BUS_SETUP_INTR(device_get_parent(dev), dev, irq,
-			      flags, intr, arg, cookiep);
+			      flags, intr, arg, cookiep, serializer);
 }
 
 static int

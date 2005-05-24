@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.8 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.9 2005/05/24 20:59:01 dillon Exp $
  */
 
 /*
@@ -1348,7 +1348,8 @@ mn_attach (device_t self)
 		return(ENXIO);
 	}
 
-	error = bus_setup_intr(self, sc->irq, INTR_TYPE_NET, mn_intr, sc, &sc->intrhand);
+	error = bus_setup_intr(self, sc->irq, INTR_TYPE_NET, mn_intr, sc, 
+			       &sc->intrhand, NULL);
 
 	if (error) {
 		printf("couldn't set up irq\n");

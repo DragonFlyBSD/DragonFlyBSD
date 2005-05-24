@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.3 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.3 2005/05/24 20:59:04 dillon Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -82,7 +82,7 @@ static int sbc_release_resource(device_t bus, device_t child, int type, int rid,
 				struct resource *r);
 static int sbc_setup_intr(device_t dev, device_t child, struct resource *irq,
    	       int flags, driver_intr_t *intr, void *arg,
-   	       void **cookiep);
+   	       void **cookiep, lwkt_serialize_t serializer);
 static int sbc_teardown_intr(device_t dev, device_t child, struct resource *irq,
   		  void *cookie);
 
@@ -431,7 +431,7 @@ sbc_attach(device_t dev)
 	err = "setup_intr";
 	for (i = 0; i < IRQ_MAX; i++) {
 		scp->ihl[i].parent = scp;
-		if (snd_setup_intr(dev, scp->irq[i], INTR_MPSAFE, sbc_intr, &scp->ihl[i], &scp->ih[i]))
+		if (snd_setup_intr(dev, scp->irq[i], INTR_MPSAFE, sbc_intr, &scp->ihl[i], &scp->ih[i], NULL))
 			goto bad;
 	}
 
@@ -498,11 +498,13 @@ sbc_intr(void *p)
 static int
 sbc_setup_intr(device_t dev, device_t child, struct resource *irq,
    	       int flags, driver_intr_t *intr, void *arg,
-   	       void **cookiep)
+   	       void **cookiep, lwkt_serialize_t serializer)
 {
 	struct sbc_softc *scp = device_get_softc(dev);
 	struct sbc_ihl *ihl = NULL;
 	int i, ret;
+
+	KKASSERT(serializer == NULL);	/* not yet supported */
 
 	sbc_lock(scp);
 	i = 0;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.4 2005/05/24 20:58:59 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -328,7 +328,7 @@ mpt_attach(device_t dev)
 
 	/* Register the interrupt handler */
 	if (bus_setup_intr(dev, mpt->pci_irq, MPT_IFLAGS, mpt_pci_intr,
-	    mpt, &mpt->ih)) {
+			   mpt, &mpt->ih, NULL)) {
 		device_printf(dev, "could not setup interrupt\n");
 		goto bad;
 	}

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc_cbus.c,v 1.1.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_cbus.c,v 1.4 2003/08/27 09:38:32 rob Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_cbus.c,v 1.5 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -194,7 +194,7 @@ snc_isa_attach(dev)
 	snc_alloc_irq(dev, 0, 0);
 		
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-			       sncintr, sc, &sc->irq_handle);
+			       sncintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		printf("snc_isa_attach: bus_setup_intr() failed\n");
 		snc_release_resources(dev);

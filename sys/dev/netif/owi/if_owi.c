@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.5 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.6 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -229,7 +229,7 @@ owi_generic_attach(device_t dev)
 	callout_init(&sc->wi_stat_timer);
 
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-	    wi_intr, sc, &sc->wi_intrhand);
+			       wi_intr, sc, &sc->wi_intrhand, NULL);
 
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);

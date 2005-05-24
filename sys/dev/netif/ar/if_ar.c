@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.13 2005/05/24 07:25:06 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.14 2005/05/24 20:59:00 dillon Exp $
  */
 
 /*
@@ -256,6 +256,7 @@ ar_attach(device_t device)
 	char *iface;
 #endif	/* NETGRAPH */
 	int unit;
+	int error;
 
 	hc = (struct ar_hardc *)device_get_softc(device);
 
@@ -267,8 +268,10 @@ ar_attach(device_t device)
 	
 	arc_init(hc);
 
-	if(BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
-	    INTR_TYPE_NET, arintr, hc, &hc->intr_cookie) != 0)
+	error = BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
+			       INTR_TYPE_NET, arintr, hc,
+			       &hc->intr_cookie, NULL);
+	if (error)
 		return (1);
 
 	sc = hc->sc;

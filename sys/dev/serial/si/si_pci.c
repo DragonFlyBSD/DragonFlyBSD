@@ -18,7 +18,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_pci.c,v 1.2 2000/01/24 08:11:10 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_pci.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si_pci.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ si_pci_attach(device_t dev)
 	}
 	sc->sc_irq = rman_get_start(sc->sc_irq_res);
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_TYPE_TTY,
-			       si_intr, sc, &ih);
+			       si_intr, sc, &ih, NULL);
 	if (error) {
 		device_printf(dev, "could not activate interrupt\n");
 		goto fail;

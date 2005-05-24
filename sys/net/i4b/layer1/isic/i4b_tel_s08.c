@@ -38,7 +38,7 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s08.c,v 1.5.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s08.c,v 1.4 2004/05/04 12:03:49 hmp Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s08.c,v 1.5 2005/05/24 20:59:05 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:58 2001]
  *
@@ -272,7 +272,7 @@ isic_probe_s08(device_t dev)
 	bus_setup_intr(dev, sc->sc_resources.irq,
 			INTR_TYPE_NET,
 			(void(*)(void *))(isicintr),
-			sc, &ih);
+			sc, &ih, NULL);
 
 	return (0);
 }

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.24 2005/05/24 11:42:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.25 2005/05/24 20:59:01 dillon Exp $
  */
 
 /*
@@ -510,7 +510,7 @@ lge_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->lge_irq, INTR_TYPE_NET,
-	    lge_intr, sc, &sc->lge_intrhand);
+			       lge_intr, sc, &sc->lge_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.26 2005/05/23 18:19:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.27 2005/05/24 20:59:05 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -619,18 +619,21 @@ typedef struct intrec {
 	int             intr;
 	intrmask_t      *maskptr;
 	int             flags;
-	int		enabled;
+	lwkt_serialize_t serializer;
+	volatile int	in_handler;
 } intrec;
 
 static intrec *intreclist_head[ICU_LEN];
 
 /*
- * The interrupt multiplexer calls each of the handlers in turn.  The
- * ipl is initially quite low.  It is raised as necessary for each call
- * and lowered after the call.  Thus out of order handling is possible
- * even for interrupts of the same type.  This is probably no more
- * harmful than out of order handling in general (not harmful except
- * for real time response which we don't support anyway).
+ * The interrupt multiplexer calls each of the handlers in turn.  A handler
+ * is called only if we can successfully obtain the interlock, meaning
+ * (1) we aren't recursed and (2) the handler has not been disabled via
+ * inthand_disabled().
+ *
+ * XXX the IPL is currently raised as necessary for the handler.  However,
+ * IPLs are not MP safe so the IPL code will be removed when the device
+ * drivers, BIO, and VM no longer depend on it.
  */
 static void
 intr_mux(void *arg)
@@ -640,10 +643,18 @@ intr_mux(void *arg)
 	intrmask_t oldspl;
 
 	for (pp = arg; (p = *pp) != NULL; pp = &p->next) {
-		oldspl = splq(p->mask);
-		if (p->enabled)
+		if (p->serializer) {
+			/*
+			 * New handler dispatch method.  Note that this
+			 * API includes a handler disablement feature.
+			 */
+			lwkt_serialize_handler_call(p->serializer,
+						    p->handler, p->argument);
+		} else {
+			oldspl = splq(p->mask);
 			p->handler(p->argument);
-		splx(oldspl);
+			splx(oldspl);
+		}
 	}
 }
 
@@ -818,7 +829,7 @@ add_intrdesc(intrec *idesc)
 
 intrec *
 inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
-	     intrmask_t *maskptr, int flags)
+	     intrmask_t *maskptr, int flags, lwkt_serialize_t serializer)
 {
 	intrec *idesc;
 	int errcode = -1;
@@ -841,7 +852,7 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 
 	if (name == NULL)
 		name = "???";
-	idesc->name     = malloc(strlen(name) + 1, M_DEVBUF, M_WAITOK);
+	idesc->name = malloc(strlen(name) + 1, M_DEVBUF, M_WAITOK);
 	if (idesc->name == NULL) {
 		free(idesc, M_DEVBUF);
 		return NULL;
@@ -853,7 +864,7 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 	idesc->maskptr  = maskptr;
 	idesc->intr     = irq;
 	idesc->flags    = flags;
-	idesc->enabled  = 1;
+	idesc->serializer = serializer;
 
 	/* block this irq */
 	oldspl = splq(1 << irq);
@@ -935,25 +946,6 @@ inthand_remove(intrec *idesc)
 	free(idesc, M_DEVBUF);
 
 	return (0);
-}
-
-/*
- * These functions are used in tandem with the device disabling its
- * interrupt in the device hardware to prevent the handler from being
- * run.  Otherwise it is possible for a device interrupt to occur,
- * schedule the handler, for the device to disable the hard interrupt,
- * and for the handler to then run because it has already been scheduled.
- */
-void
-inthand_disabled(intrec *idesc)
-{
-	idesc->enabled = 0;
-}
-
-void
-inthand_enabled(intrec *idesc)
-{
-	idesc->enabled = 1;
 }
 
 /*

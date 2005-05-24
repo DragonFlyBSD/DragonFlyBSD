@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.23 2005/03/09 02:29:45 drhodus Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.24 2005/05/24 20:58:59 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -203,7 +203,7 @@ ata_attach(device_t dev)
 	return ENXIO;
     }
     if ((error = bus_setup_intr(dev, ch->r_irq, INTR_TYPE_BIO,
-				ata_intr, ch, &ch->ih))) {
+				ata_intr, ch, &ch->ih, NULL))) {
 	ata_printf(ch, -1, "unable to setup interrupt\n");
 	return error;
     }

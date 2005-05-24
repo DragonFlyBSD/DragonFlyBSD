@@ -34,7 +34,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.5 2004/07/16 17:24:48 drhodus Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.6 2005/05/24 20:58:54 dillon Exp $
  */
 
 /*
@@ -229,7 +229,7 @@ ehci_pci_attach(device_t self)
 	}
 
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
-	    (driver_intr_t *) ehci_intr, sc, &sc->ih);
+	    (driver_intr_t *) ehci_intr, sc, &sc->ih, NULL);
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
 		sc->ih = NULL;

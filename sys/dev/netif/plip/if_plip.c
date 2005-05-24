@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.10 2005/02/19 17:59:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.11 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -346,8 +346,9 @@ lpioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	    }
 
 	    /* attach our interrupt handler, later detached when the bus is released */
-	    if ((error = BUS_SETUP_INTR(ppbus, dev, sc->res_irq,
-					INTR_TYPE_NET, lp_intr, dev, &ih))) {
+	    error = BUS_SETUP_INTR(ppbus, dev, sc->res_irq, INTR_TYPE_NET,
+				   lp_intr, dev, &ih, NULL);
+	    if (error) {
 		ppb_release_bus(ppbus, dev);
 		return (error);
 	    }

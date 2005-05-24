@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.7 2005/05/24 08:16:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.8 2005/05/24 20:59:00 dillon Exp $
  */
 
 /*
@@ -185,7 +185,7 @@ an_pccard_attach(device_t dev)
 	 * Must setup the interrupt after the an_attach to prevent racing.
 	 */
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-			       an_intr, sc, &sc->irq_handle);
+			       an_intr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		goto fail;
 	}

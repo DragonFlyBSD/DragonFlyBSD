@@ -38,7 +38,7 @@
  *	========================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s0163.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s0163.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s0163.c,v 1.4 2005/05/24 20:59:05 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:40 2001]
  *
@@ -343,9 +343,9 @@ isic_probe_s0163(device_t dev)
 
 	/* register interupt routine */
 	bus_setup_intr(dev, sc->sc_resources.irq,
-			INTR_TYPE_NET,
-			(void(*)(void *))(isicintr),
-			sc, &ih);
+		       INTR_TYPE_NET,
+		       (void(*)(void *))(isicintr),
+		       sc, &ih, NULL);
 
 	return (0);
 }

@@ -29,7 +29,7 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.5 2004/02/13 01:45:14 joerg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -40,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.5 2004/02/13 01:45:14 joerg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.6 2005/05/24 20:59:04 dillon Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -820,7 +820,7 @@ cs4281_pci_attach(device_t dev)
 	goto bad;
     }
 
-    if (snd_setup_intr(dev, sc->irq, 0, cs4281_intr, sc, &sc->ih)) {
+    if (snd_setup_intr(dev, sc->irq, 0, cs4281_intr, sc, &sc->ih, NULL)) {
 	device_printf(dev, "unable to setup interrupt\n");
 	goto bad;
     }

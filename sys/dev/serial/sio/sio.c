@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.23 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.24 2005/05/24 20:59:04 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1225,11 +1225,11 @@ determined_type: ;
 	if (com->irqres) {
 		ret = BUS_SETUP_INTR(device_get_parent(dev), dev, com->irqres,
 				     INTR_TYPE_TTY | INTR_FAST,
-				     siointr, com, &com->cookie);
+				     siointr, com, &com->cookie, NULL);
 		if (ret) {
 			ret = BUS_SETUP_INTR(device_get_parent(dev), dev,
 					     com->irqres, INTR_TYPE_TTY,
-					     siointr, com, &com->cookie);
+					     siointr, com, &com->cookie, NULL);
 			if (ret == 0)
 				device_printf(dev, "unable to activate interrupt in fast mode - using normal mode\n");
 		}

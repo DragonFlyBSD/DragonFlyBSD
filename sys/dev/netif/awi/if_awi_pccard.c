@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.11 2005/05/24 09:52:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.12 2005/05/24 20:59:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,8 @@ awi_pccard_attach(device_t dev)
 		am79c930_chip_init(&sc->sc_chip, 0);
 
 	error = bus_setup_intr(dev, psc->sc_irq_res, INTR_TYPE_NET,
-	    (void (*)(void *))awi_intr, sc, &psc->sc_intrhand);
+			       (void (*)(void *))awi_intr, sc,
+			       &psc->sc_intrhand, NULL);
 	if (error) {
 		device_printf(dev, "awi_pccard_attach: intr setup failed\n");
 		goto fail;

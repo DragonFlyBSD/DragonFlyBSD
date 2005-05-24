@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.20 2005/02/11 22:25:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.21 2005/05/24 20:59:03 dillon Exp $
  */
 
 /*
@@ -248,7 +248,7 @@ wi_attach(device_t dev)
 	 *     unless you can prove it!
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    wi_intr, sc, &sc->wi_intrhand);
+			       wi_intr, sc, &sc->wi_intrhand, NULL);
 
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);

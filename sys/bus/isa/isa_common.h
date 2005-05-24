@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.h,v 1.5 1999/09/07 08:42:47 dfr Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.h,v 1.3 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.h,v 1.4 2005/05/24 20:58:48 dillon Exp $
  */
 
 /*
@@ -75,6 +75,7 @@ extern int isa_release_resource(device_t bus, device_t child,
 				struct resource *r);
 extern int isa_setup_intr(device_t bus, device_t child,
 			  struct resource *r, int flags,
-			  void (*ihand)(void *), void *arg, void **cookiep);
+			  void (*ihand)(void *), void *arg,
+			  void **cookiep, lwkt_serialize_t serializer);
 extern int isa_teardown_intr(device_t bus, device_t child,
 			     struct resource *r, void *cookie);

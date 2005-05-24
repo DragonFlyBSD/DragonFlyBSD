@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.20 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.21 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -1570,7 +1570,7 @@ static int ti_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->ti_irq, INTR_TYPE_NET,
-	   ti_intr, sc, &sc->ti_intrhand);
+			       ti_intr, sc, &sc->ti_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);

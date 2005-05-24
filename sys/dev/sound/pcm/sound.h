@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.4 2004/02/13 01:45:14 joerg Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.5 2005/05/24 20:59:04 dillon Exp $
  */
 
 /*
@@ -243,7 +243,8 @@ void pcm_setflags(device_t dev, u_int32_t val);
 void *pcm_getdevinfo(device_t dev);
 
 int snd_setup_intr(device_t dev, struct resource *res, int flags,
-		   driver_intr_t hand, void *param, void **cookiep);
+		   driver_intr_t hand, void *param, 
+		   void **cookiep, lwkt_serialize_t serializer);
 
 void *snd_mtxcreate(const char *desc, const char *type);
 void snd_mtxfree(void *m);

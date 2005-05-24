@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.17 2005/05/24 09:52:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.18 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -287,7 +287,7 @@ epic_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-	    epic_intr, sc, &sc->sc_ih);
+			       epic_intr, sc, &sc->sc_ih, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);

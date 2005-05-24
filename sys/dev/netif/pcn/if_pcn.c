@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.18 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.19 2005/05/24 20:59:02 dillon Exp $
  */
 
 /*
@@ -576,7 +576,7 @@ static int pcn_attach(dev)
 	}
 
 	error = bus_setup_intr(dev, sc->pcn_irq, INTR_TYPE_NET,
-	    pcn_intr, sc, &sc->pcn_intrhand);
+			       pcn_intr, sc, &sc->pcn_intrhand, NULL);
 
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_res);
