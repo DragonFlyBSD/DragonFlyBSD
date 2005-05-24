@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.18 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.19 2005/05/24 08:16:07 joerg Exp $
  */
 
 /*
@@ -92,7 +92,6 @@
 #include <sys/systm.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
-#include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/ucred.h>
@@ -137,7 +136,7 @@
 
 /* These are global because we need them in sys/pci/if_an_p.c. */
 static void an_reset		(struct an_softc *);
-static int			an_init_mpi350_desc	(struct an_softc *);
+static int an_init_mpi350_desc	(struct an_softc *);
 static int an_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 static void an_init		(void *);
@@ -335,7 +334,6 @@ an_probe(dev)
 	 */
 	sc->an_bhandle = rman_get_bushandle(sc->port_res);
 	sc->an_btag = rman_get_bustag(sc->port_res);
-	sc->an_unit = device_get_unit(dev);
 
 	ssid.an_len = sizeof(ssid);
 	ssid.an_type = AN_RID_SSIDLIST;
@@ -344,6 +342,8 @@ an_probe(dev)
         CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
         CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), 0xFFFF);
 
+	if_initname(&sc->arpcom.ac_if, device_get_name(dev),
+		    device_get_unit(dev));
 	an_reset(sc);
 	/* No need for an_init_mpi350_desc since it will be done in attach */
 
@@ -588,8 +588,8 @@ an_init_mpi350_desc(sc)
 	cmd_struct.an_parm1 = AN_RX_DESC_OFFSET;
 	cmd_struct.an_parm2 = AN_MAX_RX_DESC;
 	if (an_cmd_struct(sc, &cmd_struct, &reply)) {
-		printf("an%d: failed to allocate RX descriptor\n", 
-		       sc->an_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "failed to allocate RX descriptor\n");
 		return(EIO);
 	}
 
@@ -617,8 +617,8 @@ an_init_mpi350_desc(sc)
 	cmd_struct.an_parm1 = AN_TX_DESC_OFFSET;
 	cmd_struct.an_parm2 = AN_MAX_TX_DESC;
 	if (an_cmd_struct(sc, &cmd_struct, &reply)) {
-		printf("an%d: failed to allocate TX descriptor\n", 
-		       sc->an_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "failed to allocate TX descriptor\n");
 		return(EIO);
 	}
 
@@ -647,8 +647,8 @@ an_init_mpi350_desc(sc)
 	cmd_struct.an_parm1 = AN_HOST_DESC_OFFSET;
 	cmd_struct.an_parm2 = 1;
 	if (an_cmd_struct(sc, &cmd_struct, &reply)) {
-		printf("an%d: failed to allocate host descriptor\n", 
-		       sc->an_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "failed to allocate host descriptor\n");
 		return(EIO);
 	}
 
@@ -666,9 +666,9 @@ an_init_mpi350_desc(sc)
 }
 
 int
-an_attach(sc, unit, flags)
+an_attach(sc, dev, flags)
 	struct an_softc *sc;
-	int unit;
+	device_t dev;
 	int flags;
 {
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
@@ -681,6 +681,9 @@ an_attach(sc, unit, flags)
 	sc->an_was_monitor = 0;
 	sc->an_flash_buffer = NULL;
 
+	ifp->if_softc = sc;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/* Reset the NIC. */
 	an_reset(sc);
 	if (sc->mpi350) {
@@ -691,7 +694,7 @@ an_attach(sc, unit, flags)
 
 	/* Load factory config */
 	if (an_cmd(sc, AN_CMD_READCFG, 0)) {
-		printf("an%d: failed to load config data\n", sc->an_unit);
+		device_printf(dev, "failed to load config data\n");
 		return(EIO);
 	}
 
@@ -699,7 +702,7 @@ an_attach(sc, unit, flags)
 	sc->an_config.an_type = AN_RID_GENCONFIG;
 	sc->an_config.an_len = sizeof(struct an_ltv_genconfig);
 	if (an_read_record(sc, (struct an_ltv_gen *)&sc->an_config)) {
-		printf("an%d: read record failed\n", sc->an_unit);
+		device_printf(dev, "read record failed\n");
 		return(EIO);
 	}
 
@@ -707,7 +710,7 @@ an_attach(sc, unit, flags)
 	sc->an_caps.an_type = AN_RID_CAPABILITIES;
 	sc->an_caps.an_len = sizeof(struct an_ltv_caps);
 	if (an_read_record(sc, (struct an_ltv_gen *)&sc->an_caps)) {
-		printf("an%d: read record failed\n", sc->an_unit);
+		device_printf(dev, "read record failed\n");
 		return(EIO);
 	}
 
@@ -715,7 +718,7 @@ an_attach(sc, unit, flags)
 	sc->an_ssidlist.an_type = AN_RID_SSIDLIST;
 	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist);
 	if (an_read_record(sc, (struct an_ltv_gen *)&sc->an_ssidlist)) {
-		printf("an%d: read record failed\n", sc->an_unit);
+		device_printf(dev, "read record failed\n");
 		return(EIO);
 	}
 
@@ -723,7 +726,7 @@ an_attach(sc, unit, flags)
 	sc->an_aplist.an_type = AN_RID_APLIST;
 	sc->an_aplist.an_len = sizeof(struct an_ltv_aplist);
 	if (an_read_record(sc, (struct an_ltv_gen *)&sc->an_aplist)) {
-		printf("an%d: read record failed\n", sc->an_unit);
+		device_printf(dev, "read record failed\n");
 		return(EIO);
 	}
 
@@ -734,18 +737,16 @@ an_attach(sc, unit, flags)
 		sc->an_rssimap.an_type = AN_RID_RSSI_MAP;
 		sc->an_rssimap.an_len = sizeof(struct an_ltv_rssi_map);
 		if (an_read_record(sc, (struct an_ltv_gen *)&sc->an_rssimap)) {
-			printf("an%d: unable to get RSSI <-> dBM map\n", sc->an_unit);
+			device_printf(dev, "unable to get RSSI <-> dBM map\n");
 		} else {
-			printf("an%d: got RSSI <-> dBM map\n", sc->an_unit);
+			device_printf(dev, "got RSSI <-> dBM map\n");
 			sc->an_have_rssimap = 1;
 		}
 	} else {
-		printf("an%d: no RSSI <-> dBM map\n", sc->an_unit);
+		device_printf(dev, "no RSSI <-> dBM map\n");
 	}
 #endif
 
-	ifp->if_softc = sc;
-	if_initname(ifp, "an", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = an_ioctl;
@@ -853,9 +854,9 @@ an_rxeof(sc)
 					+ sizeof(rx_frame);
 				/* Check for insane frame length */
 				if (len > sizeof(sc->buf_802_11)) {
-					printf("an%d: oversized packet "
-					       "received (%d, %d)\n",
-					       sc->an_unit, len, MCLBYTES);
+					if_printf(ifp,
+						  "oversized packet received "
+						  "(%d, %d)\n", len, MCLBYTES);
 					ifp->if_ierrors++;
 					return;
 				}
@@ -879,9 +880,9 @@ an_rxeof(sc)
 					+ ieee80211_header_len;
 				/* Check for insane frame length */
 				if (len > sizeof(sc->buf_802_11)) {
-					printf("an%d: oversized packet "
-					       "received (%d, %d)\n",
-					       sc->an_unit, len, MCLBYTES);
+					if_printf(ifp,
+						  "oversized packet received "
+						  "(%d, %d)\n", len, MCLBYTES);
 					ifp->if_ierrors++;
 					return;
 				}
@@ -934,9 +935,9 @@ an_rxeof(sc)
 			/* Check for insane frame length */
 			len = rx_frame_802_3.an_rx_802_3_payload_len;
 			if (len > sizeof(sc->buf_802_11)) {
-				printf("an%d: oversized packet "
-				       "received (%d, %d)\n",
-				       sc->an_unit, len, MCLBYTES);
+				if_printf(ifp,
+				    "oversized packet received (%d, %d)\n",
+				    len, MCLBYTES);
 				ifp->if_ierrors++;
 				return;
 			}
@@ -1010,9 +1011,9 @@ an_rxeof(sc)
 				/* Check for insane frame length */
 				len = an_rx_desc.an_len + 12;
 				if (len > MCLBYTES) {
-					printf("an%d: oversized packet "
-					       "received (%d, %d)\n",
-					       sc->an_unit, len, MCLBYTES);
+					if_printf(ifp,
+						  "oversized packet received "
+						  "(%d, %d)\n", len, MCLBYTES);
 					ifp->if_ierrors++;
 					return;
 				}
@@ -1050,11 +1051,11 @@ an_rxeof(sc)
 						((u_int32_t*)&an_rx_desc)[i]);
 				
 			} else {
-				printf("an%d: Didn't get valid RX packet "
-				       "%x %x %d\n",
-				       sc->an_unit,
-				       an_rx_desc.an_done,
-				       an_rx_desc.an_valid, an_rx_desc.an_len);
+				if_printf(ifp, "Didn't get valid RX packet "
+					  "%x %x %d\n",
+					  an_rx_desc.an_done,
+					  an_rx_desc.an_valid,
+					  an_rx_desc.an_len);
 			}
 		}
 	}
@@ -1312,7 +1313,7 @@ an_reset(sc)
 	an_cmd(sc, AN_CMD_NOOP2, 0);
 
 	if (an_cmd(sc, AN_CMD_FORCE_SYNCLOSS, 0) == ETIMEDOUT)
-		printf("an%d: reset failed\n", sc->an_unit);
+		if_printf(&sc->arpcom.ac_if, "reset failed\n");
 
 	an_cmd(sc, AN_CMD_DISABLE, 0);
 
@@ -1341,13 +1342,13 @@ an_read_record(sc, ltv)
 	if (!sc->mpi350){
 		/* Tell the NIC to enter record read mode. */
 		if (an_cmd(sc, AN_CMD_ACCESS|AN_ACCESS_READ, ltv->an_type)) {
-			printf("an%d: RID access failed\n", sc->an_unit);
+			if_printf(&sc->arpcom.ac_if, "RID access failed\n");
 			return(EIO);
 		}
 
 		/* Seek to the record. */
 		if (an_seek(sc, ltv->an_type, 0, AN_BAP1)) {
-			printf("an%d: seek to record failed\n", sc->an_unit);
+			if_printf(&sc->arpcom.ac_if, "seek to record failed\n");
 			return(EIO);
 		}
 
@@ -1359,9 +1360,10 @@ an_read_record(sc, ltv)
 		 */
 		len = CSR_READ_2(sc, AN_DATA1);
 		if (len > (ltv->an_len - 2)) {
-			printf("an%d: record length mismatch -- expected %d, "
-			       "got %d for Rid %x\n", sc->an_unit,
-			       ltv->an_len - 2, len, ltv->an_type);
+			if_printf(&sc->arpcom.ac_if,
+				  "record length mismatch -- expected %d, "
+				  "got %d for Rid %x\n",
+				  ltv->an_len - 2, len, ltv->an_type);
 			len = ltv->an_len - 2;
 		} else {
 			ltv->an_len = len + 2;
@@ -1394,13 +1396,14 @@ an_read_record(sc, ltv)
 
 		if (an_cmd_struct(sc, &cmd, &reply)
 		    || reply.an_status & AN_CMD_QUAL_MASK) {
-			printf("an%d: failed to read RID %x %x %x %x %x, %d\n", 
-			       sc->an_unit, ltv->an_type, 
-			       reply.an_status,
-			       reply.an_resp0,
-			       reply.an_resp1,
-			       reply.an_resp2,
-			       i);
+			if_printf(&sc->arpcom.ac_if,
+				  "failed to read RID %x %x %x %x %x, %d\n", 
+				  ltv->an_type,
+				  reply.an_status,
+				  reply.an_resp0,
+				  reply.an_resp1,
+				  reply.an_resp2,
+				  i);
 			return(EIO);
 		}
 
@@ -1497,8 +1500,9 @@ an_write_record(sc, ltv)
 					    ((u_int32_t*)&an_rid_desc)[i]);
 
 		if ((i = an_cmd_struct(sc, &cmd, &reply))) {
-			printf("an%d: failed to write RID 1 %x %x %x %x %x, %d\n", 
-			    sc->an_unit, ltv->an_type, 
+			if_printf(&sc->arpcom.ac_if,
+			    "failed to write RID 1 %x %x %x %x %x, %d\n", 
+			    ltv->an_type, 
 			    reply.an_status,
 			    reply.an_resp0,
 			    reply.an_resp1,
@@ -1510,8 +1514,9 @@ an_write_record(sc, ltv)
 		ptr = (u_int16_t *)buf;
 
 		if (reply.an_status & AN_CMD_QUAL_MASK) {
-			printf("an%d: failed to write RID 2 %x %x %x %x %x, %d\n", 
-			    sc->an_unit, ltv->an_type, 
+			if_printf(&sc->arpcom.ac_if,
+			    "failed to write RID 2 %x %x %x %x %x, %d\n", 
+			    ltv->an_type, 
 			    reply.an_status,
 			    reply.an_resp0,
 			    reply.an_resp1,
@@ -1537,11 +1542,11 @@ an_dump_record(sc, ltv, string)
 	char			buf[17], temp;
 
 	len = ltv->an_len - 4;
-	printf("an%d: RID %4x, Length %4d, Mode %s\n",
-		sc->an_unit, ltv->an_type, ltv->an_len - 4, string);
+	if_printf(&sc->arpcom.ac_if, "RID %4x, Length %4d, Mode %s\n",
+		  ltv->an_type, ltv->an_len - 4, string);
 
 	if (an_dump == 1 || (an_dump == ltv->an_type)) {
-		printf("an%d:\t", sc->an_unit);
+		if_printf(&sc->arpcom.ac_if, "\t");
 		bzero(buf,sizeof(buf));
 
 		ptr2 = (u_int8_t *)&ltv->an_val;
@@ -1558,7 +1563,7 @@ an_dump_record(sc, ltv, string)
 			if (++count == 16) {
 				count = 0;
 				printf("%s\n",buf);
-				printf("an%d:\t", sc->an_unit);
+				if_printf(&sc->arpcom.ac_if, "\t");
 				bzero(buf,sizeof(buf));
 			}
 		}
@@ -1587,7 +1592,7 @@ an_seek(sc, id, off, chan)
 		offreg = AN_OFF1;
 		break;
 	default:
-		printf("an%d: invalid data path: %x\n", sc->an_unit, chan);
+		if_printf(&sc->arpcom.ac_if, "invalid data path: %x\n", chan);
 		return(EIO);
 	}
 
@@ -1672,8 +1677,8 @@ an_alloc_nicmem(sc, len, id)
 	int			i;
 
 	if (an_cmd(sc, AN_CMD_ALLOC_MEM, len)) {
-		printf("an%d: failed to allocate %d bytes on NIC\n",
-		    sc->an_unit, len);
+		if_printf(&sc->arpcom.ac_if,
+			  "failed to allocate %d bytes on NIC\n", len);
 		return(ENOMEM);
 	}
 
@@ -1794,7 +1799,7 @@ an_setdef(sc, areq)
 		}
 		break;
 	default:
-		printf("an%d: unknown RID: %x\n", sc->an_unit, areq->an_type);
+		if_printf(ifp, "unknown RID: %x\n", areq->an_type);
 		return;
 		break;
 	}
@@ -1818,8 +1823,8 @@ an_promisc(sc, promisc)
 {
 	if (sc->an_was_monitor)
 		an_reset(sc);
-		if (sc->mpi350)
-			an_init_mpi350_desc(sc);	
+	if (sc->mpi350)
+		an_init_mpi350_desc(sc);	
 	if (sc->an_monitor || sc->an_was_monitor)
 		an_init(sc);
 
@@ -2458,8 +2463,7 @@ an_init(xsc)
 		if (sc->mpi350)
 			an_init_mpi350_desc(sc);	
 		if (an_init_tx_ring(sc)) {
-			printf("an%d: tx buffer allocation "
-			    "failed\n", sc->an_unit);
+			if_printf(ifp, "tx buffer allocation failed\n");
 			splx(s);
 			return;
 		}
@@ -2498,7 +2502,7 @@ an_init(xsc)
 	sc->an_ssidlist.an_type = AN_RID_SSIDLIST;
 	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_ssidlist)) {
-		printf("an%d: failed to set ssid list\n", sc->an_unit);
+		if_printf(ifp, "failed to set ssid list\n");
 		splx(s);
 		return;
 	}
@@ -2507,7 +2511,7 @@ an_init(xsc)
 	sc->an_aplist.an_type = AN_RID_APLIST;
 	sc->an_aplist.an_len = sizeof(struct an_ltv_aplist);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_aplist)) {
-		printf("an%d: failed to set AP list\n", sc->an_unit);
+		if_printf(ifp, "failed to set AP list\n");
 		splx(s);
 		return;
 	}
@@ -2516,14 +2520,14 @@ an_init(xsc)
 	sc->an_config.an_len = sizeof(struct an_ltv_genconfig);
 	sc->an_config.an_type = AN_RID_GENCONFIG;
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_config)) {
-		printf("an%d: failed to set configuration\n", sc->an_unit);
+		if_printf(ifp, "failed to set configuration\n");
 		splx(s);
 		return;
 	}
 
 	/* Enable the MAC */
 	if (an_cmd(sc, AN_CMD_ENABLE, 0)) {
-		printf("an%d: failed to enable MAC\n", sc->an_unit);
+		if_printf(ifp, "failed to enable MAC\n");
 		splx(s);
 		return;
 	}
@@ -2622,7 +2626,7 @@ an_start(ifp)
 
 			sc->an_rdata.an_tx_ring[idx] = id;
 			if (an_cmd(sc, AN_CMD_TX, id))
-				printf("an%d: xmit failed\n", sc->an_unit);
+				if_printf(ifp, "xmit failed\n");
 
 			AN_INC(idx, AN_TX_RING_CNT);
 		}
@@ -2758,7 +2762,7 @@ an_watchdog(ifp)
 		return;
 	}
 
-	printf("an%d: device timeout\n", sc->an_unit);
+	if_printf(ifp, "device timeout\n");
 
 	an_reset(sc);
 	if (sc->mpi350)
@@ -2905,8 +2909,8 @@ an_cache_store (sc, m, rx_rssi, rx_quality)
 	}
 
 #ifdef SIGDEBUG
-	printf("an: q value %x (MSB=0x%x, LSB=0x%x) \n",
-		rx_rssi & 0xffff, rx_rssi >> 8, rx_rssi & 0xff);
+	if_printf(&sc->arpcom.ac_if, "q value %x (MSB=0x%x, LSB=0x%x)\n",
+		  rx_rssi & 0xffff, rx_rssi >> 8, rx_rssi & 0xff);
 #endif
 
 	/* do a linear search for a matching MAC address
@@ -3352,8 +3356,7 @@ cmdreset(ifp)
 	an_cmd(sc, AN_CMD_DISABLE, 0);
 
 	if (!(status = WaitBusy(ifp, AN_TIMEOUT))) {
-		printf("an%d: Waitbusy hang b4 RESET =%d\n",
-		       sc->an_unit, status);
+		if_printf(ifp, "Waitbusy hang b4 RESET =%d\n", status);
 		return -EBUSY;
 	}
 	CSR_WRITE_2(sc, AN_COMMAND(sc->mpi350), AN_CMD_FW_RESTART);
@@ -3362,8 +3365,7 @@ cmdreset(ifp)
 
 
 	if (!(status = WaitBusy(ifp, 100))) {
-		printf("an%d: Waitbusy hang AFTER RESET =%d\n",
-		       sc->an_unit, status);
+		if_printf(ifp, "Waitbusy hang AFTER RESET =%d\n", status);
 		return -EBUSY;
 	}
 	return 0;
@@ -3476,8 +3478,7 @@ flashpchar(ifp, byte, dwelltime)
 	/* timeout for busy clear wait */
 
 	if (waittime <= 0) {
-		printf("an%d: flash putchar busywait timeout! \n",
-		       sc->an_unit);
+		if_printf(ifp, "flash putchar busywait timeout!\n");
 		return -1;
 	}
 	/*
@@ -3565,8 +3566,7 @@ flashcard(ifp, l_ioctl)
 
 	sc = ifp->if_softc;
 	if (sc->mpi350) {
-		printf("an%d: flashing not supported on MPI 350 yet\n", 
-		       sc->an_unit);
+		if_printf(ifp, "flashing not supported on MPI 350 yet\n");
 		return(-1);
 	}
 	status = l_ioctl->command;
@@ -3604,8 +3604,8 @@ flashcard(ifp, l_ioctl)
 		break;
 	case AIROFLPUTBUF:	/* Send 32k to card */
 		if (l_ioctl->len > FLASH_SIZE) {
-			printf("an%d: Buffer to big, %x %x\n", sc->an_unit,
-			       l_ioctl->len, FLASH_SIZE);
+			if_printf(ifp, "Buffer to big, %x %x\n",
+				  l_ioctl->len, FLASH_SIZE);
 			return -EINVAL;
 		}
 		copyin(l_ioctl->data, sc->an_flash_buffer, l_ioctl->len);
@@ -3617,8 +3617,7 @@ flashcard(ifp, l_ioctl)
 		break;
 	case AIRORESTART:
 		if ((status = flashrestart(ifp)) != 0) {
-			printf("an%d: FLASHRESTART returned %d\n",
-			       sc->an_unit, status);
+			if_printf(ifp, "FLASHRESTART returned %d\n", status);
 			return -EIO;
 		} else
 			return 0;

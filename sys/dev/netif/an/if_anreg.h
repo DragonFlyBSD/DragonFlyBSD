@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_anreg.h,v 1.1.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.4 2004/09/14 21:29:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.5 2005/05/24 08:16:07 joerg Exp $
  */
 
 #define AN_TIMEOUT	65536
@@ -435,8 +435,6 @@ struct an_tx_ring_data {
 struct an_softc	{
 	struct arpcom		arpcom;
 
-        int                     an_unit;
-
 	int	port_rid;	/* resource id for port range */
 	struct resource* port_res; /* resource for port range */
 	int     mem_rid;	/* resource id for memory range */
@@ -479,7 +477,6 @@ struct an_softc	{
 	struct an_ltv_rssi_map	an_rssimap;
 #endif
 	struct callout		an_stat_timer;
-	device_t		an_dev;
 	struct ifmedia		an_ifmedia;
 	int		        an_monitor;
 	int		        an_was_monitor;
@@ -500,7 +497,7 @@ int	an_alloc_irq		(device_t, int, int);
 int	an_probe		(device_t);
 void	an_shutdown		(device_t);
 void	an_resume		(device_t);
-int	an_attach		(struct an_softc *, int, int);
+int	an_attach		(struct an_softc *, device_t, int);
 void    an_stop		        (struct an_softc *);
 
 driver_intr_t	an_intr;

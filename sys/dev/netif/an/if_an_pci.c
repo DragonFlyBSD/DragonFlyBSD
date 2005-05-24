@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.7 2005/05/24 08:10:33 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.8 2005/05/24 08:16:07 joerg Exp $
  */
 
 /*
@@ -130,13 +130,6 @@ an_probe_pci(device_t dev)
 		}
 		t++;
 	}
-
-	if (pci_get_vendor(dev) == AIRONET_VENDORID &&
-	    pci_get_device(dev) == AIRONET_DEVICEID_MPI350) {
-		device_set_desc(dev, "Cisco Aironet MPI350");
-		return(0);
-	}
-
 	return(ENXIO);
 }
 
@@ -147,12 +140,11 @@ an_attach_pci(dev)
 	int			s;
 	u_int32_t		command;
 	struct an_softc		*sc;
-	int 			unit, flags, error = 0;
+	int 			flags, error = 0;
 
 	s = splimp();
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	flags = device_get_flags(dev);
 	bzero(sc, sizeof(struct an_softc));
 
@@ -170,7 +162,7 @@ an_attach_pci(dev)
 		command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 		if (!(command & PCIM_CMD_PORTEN)) {
-			printf("an%d: failed to enable I/O ports!\n", unit);
+			device_printf(dev, "failed to enable I/O ports!\n");
 			error = ENXIO;
 			goto fail;
 		}
@@ -179,7 +171,7 @@ an_attach_pci(dev)
 	error = an_alloc_port(dev, sc->port_rid, 1);
 
 	if (error) {
-		printf("an%d: couldn't map ports\n", unit);
+		device_printf(dev, "couldn't map ports\n");
 		goto fail;
 	}
 
@@ -192,7 +184,7 @@ an_attach_pci(dev)
 		sc->mem_rid = PCIR_MAPS + 4;
 		error = an_alloc_memory(dev, sc->mem_rid, 1);
 		if (error) {
-			printf("an%d: couldn't map memory\n", unit);
+			device_printf(dev, "couldn't map memory\n");
 			goto fail;
 		}
 		sc->an_mem_btag = rman_get_bustag(sc->mem_res);
@@ -203,7 +195,7 @@ an_attach_pci(dev)
 		error = an_alloc_aux_memory(dev, sc->mem_aux_rid, 
 		    AN_AUXMEMSIZE);
 		if (error) {
-			printf("an%d: couldn't map aux memory\n", unit);
+			device_printf(dev, "couldn't map aux memory\n");
 			goto fail;
 		}
 		sc->an_mem_aux_btag = rman_get_bustag(sc->mem_aux_res);
@@ -221,7 +213,7 @@ an_attach_pci(dev)
 			       BUS_DMA_ALLOCNOW,	/* flags */
 			       &sc->an_dtag);
 		if (error) {
-			printf("an%d: couldn't get DMA region\n", unit);
+			device_printf(dev, "couldn't get DMA region\n");
 			goto fail;
 		}
 	}
@@ -238,8 +230,7 @@ an_attach_pci(dev)
 		goto fail;
 	}
 
-	sc->an_dev = dev;
-	error = an_attach(sc, device_get_unit(dev), flags);
+	error = an_attach(sc, dev, flags);
 
 fail:
 	if (error)

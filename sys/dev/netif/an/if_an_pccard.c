@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.6 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.7 2005/05/24 08:16:07 joerg Exp $
  */
 
 /*
@@ -175,9 +175,8 @@ an_pccard_attach(device_t dev)
 
 	sc->an_bhandle = rman_get_bushandle(sc->port_res);
 	sc->an_btag = rman_get_bustag(sc->port_res);
-	sc->an_dev = dev;
 
-	error = an_attach(sc, device_get_unit(dev), flags);
+	error = an_attach(sc, dev, flags);
 	if (error) {
 		goto fail;
 	}
