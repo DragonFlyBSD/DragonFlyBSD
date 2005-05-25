@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.24 2005/05/25 01:44:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.25 2005/05/25 12:37:29 joerg Exp $
  */
 
 /*
@@ -145,21 +145,20 @@ static int	nge_detach(device_t);
 
 static int	nge_alloc_jumbo_mem(struct nge_softc *);
 static void	nge_free_jumbo_mem(struct nge_softc *);
-static void	*nge_jalloc(struct nge_softc *);
-static void	nge_jfree(caddr_t, u_int);
-static void	nge_jref(caddr_t, u_int);
+static struct nge_jslot
+		*nge_jalloc(struct nge_softc *);
+static void	nge_jfree(void *);
+static void	nge_jref(void *);
 
-static int	nge_newbuf(struct nge_softc *,
-					struct nge_desc *, struct mbuf *);
-static int	nge_encap(struct nge_softc *,
-					struct mbuf *, uint32_t *);
+static int	nge_newbuf(struct nge_softc *, struct nge_desc *,
+			   struct mbuf *);
+static int	nge_encap(struct nge_softc *, struct mbuf *, uint32_t *);
 static void	nge_rxeof(struct nge_softc *);
 static void	nge_txeof(struct nge_softc *);
 static void	nge_intr(void *);
 static void	nge_tick(void *);
 static void	nge_start(struct ifnet *);
-static int	nge_ioctl(struct ifnet *, u_long, caddr_t,
-					struct ucred *);
+static int	nge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	nge_init(void *);
 static void	nge_stop(struct nge_softc *);
 static void	nge_watchdog(struct ifnet *);
@@ -1048,7 +1047,7 @@ static int
 nge_newbuf(struct nge_softc *sc, struct nge_desc *c, struct mbuf *m)
 {
 	struct mbuf *m_new = NULL;
-	caddr_t *buf = NULL;
+	struct nge_jslot *buf;
 
 	if (m == NULL) {
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
@@ -1069,15 +1068,18 @@ nge_newbuf(struct nge_softc *sc, struct nge_desc *c, struct mbuf *m)
 			return(ENOBUFS);
 		}
 		/* Attach the buffer to the mbuf */
-		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT | M_EXT_OLD;
-		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
-		    m_new->m_len = NGE_MCLBYTES;
-		m_new->m_ext.ext_nfree.old = nge_jfree;
-		m_new->m_ext.ext_nref.old = nge_jref;
+		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_buf = buf->nge_buf;
+		m_new->m_ext.ext_nfree.new = nge_jfree;
+		m_new->m_ext.ext_nref.new = nge_jref;
+		m_new->m_ext.ext_size = NGE_JUMBO_FRAMELEN;
+
+		m_new->m_data = m_new->m_ext.ext_buf;
+		m_new->m_flags |= M_EXT;
+		m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 	} else {
 		m_new = m;
-		m_new->m_len = m_new->m_pkthdr.len = NGE_MCLBYTES;
+		m_new->m_len = m_new->m_pkthdr.len = NGE_JLEN;
 		m_new->m_data = m_new->m_ext.ext_buf;
 	}
 
@@ -1096,7 +1098,7 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 {
 	caddr_t ptr;
 	int i;
-	struct nge_jpool_entry *entry;
+	struct nge_jslot *entry;
 
 	/* Grab a big chunk o' storage. */
 	sc->nge_cdata.nge_jumbo_buf = contigmalloc(NGE_JMEM, M_DEVBUF,
@@ -1108,7 +1110,6 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 	}
 
 	SLIST_INIT(&sc->nge_jfree_listhead);
-	SLIST_INIT(&sc->nge_jinuse_listhead);
 
 	/*
 	 * Now divide it up into 9K pieces and save the addresses
@@ -1116,23 +1117,13 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 	 */
 	ptr = sc->nge_cdata.nge_jumbo_buf;
 	for (i = 0; i < NGE_JSLOTS; i++) {
-		uint64_t **aptr;
-		aptr = (uint64_t **)ptr;
-		aptr[0] = (uint64_t *)sc;
-		ptr += sizeof(uint64_t);
-		sc->nge_cdata.nge_jslots[i].nge_buf = ptr;
-		sc->nge_cdata.nge_jslots[i].nge_inuse = 0;
-		ptr += NGE_MCLBYTES;
-		entry = malloc(sizeof(struct nge_jpool_entry), 
-		    M_DEVBUF, M_WAITOK);
-		if (entry == NULL) {
-			printf("nge%d: no memory for jumbo "
-			    "buffer queue!\n", sc->nge_unit);
-			return(ENOBUFS);
-		}
-		entry->slot = i;
-		SLIST_INSERT_HEAD(&sc->nge_jfree_listhead,
-		    entry, jpool_entries);
+		entry = &sc->nge_cdata.nge_jslots[i];
+		entry->nge_sc = sc;
+		entry->nge_buf = ptr;
+		entry->nge_inuse = 0;
+		entry->nge_slot = i;
+		SLIST_INSERT_HEAD(&sc->nge_jfree_listhead, entry, jslot_link);
+		ptr += NGE_JLEN;
 	}
 
 	return(0);
@@ -1141,25 +1132,16 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 static void
 nge_free_jumbo_mem(struct nge_softc *sc)
 {
-	int i;
-	struct nge_jpool_entry *entry;
-
-	for (i = 0; i < NGE_JSLOTS; i++) {
-		entry = SLIST_FIRST(&sc->nge_jfree_listhead);
-		SLIST_REMOVE_HEAD(&sc->nge_jfree_listhead, jpool_entries);
-		free(entry, M_DEVBUF);
-	}
-
 	contigfree(sc->nge_cdata.nge_jumbo_buf, NGE_JMEM, M_DEVBUF);
 }
 
 /*
  * Allocate a jumbo buffer.
  */
-static void *
+static struct nge_jslot *
 nge_jalloc(struct nge_softc *sc)
 {
-	struct nge_jpool_entry *entry;
+	struct nge_jslot *entry;
 
 	entry = SLIST_FIRST(&sc->nge_jfree_listhead);
 
@@ -1170,10 +1152,10 @@ nge_jalloc(struct nge_softc *sc)
 		return(NULL);
 	}
 
-	SLIST_REMOVE_HEAD(&sc->nge_jfree_listhead, jpool_entries);
-	SLIST_INSERT_HEAD(&sc->nge_jinuse_listhead, entry, jpool_entries);
-	sc->nge_cdata.nge_jslots[entry->slot].nge_inuse = 1;
-	return(sc->nge_cdata.nge_jslots[entry->slot].nge_buf);
+	SLIST_REMOVE_HEAD(&sc->nge_jfree_listhead, jslot_link);
+	entry->nge_inuse = 1;
+
+	return(entry);
 }
 
 /*
@@ -1182,79 +1164,42 @@ nge_jalloc(struct nge_softc *sc)
  * a lot, but it's implemented for correctness.
  */
 static void
-nge_jref(caddr_t buf, u_int size)
+nge_jref(void *arg)
 {
-	struct nge_softc *sc;
-	uint64_t **aptr;
-	int i;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct nge_softc *)(aptr[0]);
+	struct nge_jslot *entry = (struct nge_jslot *)arg;
+	struct nge_softc *sc = entry->nge_sc;
 
 	if (sc == NULL)
 		panic("nge_jref: can't find softc pointer!");
 
-	if (size != NGE_MCLBYTES)
-		panic("nge_jref: adjusting refcount of buf of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->nge_cdata.nge_jumbo_buf) / NGE_JLEN;
-
-	if ((i < 0) || (i >= NGE_JSLOTS))
+	if (&sc->nge_cdata.nge_jslots[entry->nge_slot] != entry)
 		panic("nge_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (sc->nge_cdata.nge_jslots[i].nge_inuse == 0)
+	else if (entry->nge_inuse == 0)
 		panic("nge_jref: buffer already free!");
 	else
-		sc->nge_cdata.nge_jslots[i].nge_inuse++;
+		entry->nge_inuse++;
 }
 
 /*
  * Release a jumbo buffer.
  */
 static void
-nge_jfree(caddr_t buf, u_int size)
+nge_jfree(void *arg)
 {
-	struct nge_softc *sc;
-	uint64_t **aptr;
-	int i;
-	struct nge_jpool_entry *entry;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct nge_softc *)(aptr[0]);
+	struct nge_jslot *entry = (struct nge_jslot *)arg;
+	struct nge_softc *sc = entry->nge_sc;
 
 	if (sc == NULL)
-		panic("nge_jfree: can't find softc pointer!");
+		panic("nge_jref: can't find softc pointer!");
 
-	if (size != NGE_MCLBYTES)
-		panic("nge_jfree: freeing buffer of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->nge_cdata.nge_jumbo_buf) / NGE_JLEN;
-
-	if ((i < 0) || (i >= NGE_JSLOTS))
-		panic("nge_jfree: asked to free buffer that we don't manage!");
-	else if (sc->nge_cdata.nge_jslots[i].nge_inuse == 0)
-		panic("nge_jfree: buffer already free!");
-	else {
-		sc->nge_cdata.nge_jslots[i].nge_inuse--;
-		if(sc->nge_cdata.nge_jslots[i].nge_inuse == 0) {
-			entry = SLIST_FIRST(&sc->nge_jinuse_listhead);
-			if (entry == NULL)
-				panic("nge_jfree: buffer not in use!");
-			entry->slot = i;
-			SLIST_REMOVE_HEAD(&sc->nge_jinuse_listhead, 
-					  jpool_entries);
-			SLIST_INSERT_HEAD(&sc->nge_jfree_listhead, 
-					  entry, jpool_entries);
-		}
-	}
+	if (&sc->nge_cdata.nge_jslots[entry->nge_slot] != entry)
+		panic("nge_jref: asked to reference buffer "
+		    "that we don't manage!");
+	else if (entry->nge_inuse == 0)
+		panic("nge_jref: buffer already free!");
+	else if (--entry->nge_inuse == 0)
+		SLIST_INSERT_HEAD(&sc->nge_jfree_listhead, entry, jslot_link);
 }
 /*
  * A frame has been uploaded: pass the resulting mbuf chain up to

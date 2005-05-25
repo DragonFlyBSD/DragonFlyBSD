@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.5 2005/05/24 16:44:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.6 2005/05/25 12:37:29 joerg Exp $
  */
 
 #define NGE_CSR			0x00
@@ -612,17 +612,21 @@ struct nge_mii_frame {
 #define NGE_JUMBO_MTU		(NGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define NGE_JSLOTS		384
 
-#define NGE_JRAWLEN (NGE_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
-#define NGE_JLEN (NGE_JRAWLEN + (sizeof(uint64_t) - \
-	(NGE_JRAWLEN % sizeof(uint64_t))))
-#define NGE_MCLBYTES (NGE_JLEN - sizeof(uint64_t))
+#define NGE_JRAWLEN (NGE_JUMBO_FRAMELEN + ETHER_ALIGN)
+#define NGE_JLEN (NGE_JRAWLEN + \
+	(sizeof(uint64_t) - NGE_JRAWLEN % sizeof(uint64_t)))
 #define NGE_JPAGESZ PAGE_SIZE
 #define NGE_RESID (NGE_JPAGESZ - (NGE_JLEN * NGE_JSLOTS) % NGE_JPAGESZ)
 #define NGE_JMEM ((NGE_JLEN * NGE_JSLOTS) + NGE_RESID)
 
+struct nge_softc;
+
 struct nge_jslot {
-	caddr_t			nge_buf;
+	struct nge_softc	*nge_sc;
+	void			*nge_buf;
 	int			nge_inuse;
+	int			nge_slot;
+	SLIST_ENTRY(nge_jslot)	jslot_link;
 };
 
 struct nge_jpool_entry {
@@ -658,8 +662,7 @@ struct nge_softc {
 	struct nge_list_data	*nge_ldata;
 	struct nge_ring_data	nge_cdata;
 	struct callout		nge_stat_timer;
-	SLIST_HEAD(__nge_jfreehead, nge_jpool_entry)	nge_jfree_listhead;
-	SLIST_HEAD(__nge_jinusehead, nge_jpool_entry)	nge_jinuse_listhead;
+	SLIST_HEAD(__nge_jfreehead, nge_jslot)	nge_jfree_listhead;
 	uint8_t			nge_tbi;
 	struct ifmedia		nge_ifmedia;
 #ifdef DEVICE_POLLING
