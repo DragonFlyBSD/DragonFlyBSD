@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.35 2005/05/25 01:44:16 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.36 2005/05/25 21:26:52 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -318,8 +318,10 @@ if_detach(struct ifnet *ifp)
 	 * Remove routes and flush queues.
 	 */
 	s = splnet();
+#ifdef DEVICE_POLLING
 	if (ifp->if_flags & IFF_POLLING)
 		ether_poll_deregister(ifp);
+#endif
 	if_down(ifp);
 
 	if (ifq_is_enabled(&ifp->if_snd))
