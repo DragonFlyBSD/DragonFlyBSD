@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.9 2005/05/22 16:14:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.10 2005/05/25 12:18:31 joerg Exp $
  */
 
 /*
@@ -2103,7 +2103,9 @@ struct vpd_key {
 #define BGE_MSLOTS	256
 #define BGE_JSLOTS	384
 
-#define BGE_JLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN)
+#define BGE_JRAWLEN (BGE_JUMBO_FRAMELEN + ETHER_ALIGN)
+#define BGE_JLEN (BGE_JRAWLEN + \
+	(sizeof(uint64_t) - BGE_JRAWLEN % sizeof(uint64_t)))
 #define BGE_JPAGESZ PAGE_SIZE
 #define BGE_RESID (BGE_JPAGESZ - (BGE_JLEN * BGE_JSLOTS) % BGE_JPAGESZ)
 #define BGE_JMEM ((BGE_JLEN * BGE_JSLOTS) + BGE_RESID)
