@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc1plus/Makefile,v 1.2 2004/12/21 13:10:47 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc1plus/Makefile,v 1.2.2.1 2005/05/25 09:14:06 joerg Exp $
 
 GCC_LANG_DIR=	gcc/cp
 
@@ -33,8 +33,10 @@ SRCS+=	concat.c dyn-string.c fibheap.c getpwd.c getruntime.c hashtab.c hex.c
 SRCS+=	lbasename.c lrealpath.c md5.c obstack.c physmem.c safe-ctype.c
 SRCS+=	splay-tree.c xexit.c xmalloc.c xmemdup.c xstrdup.c xstrerror.c
 
+SRCS+=	${PATCHES}
+
 LDADD=	-L../libbackend -lbackend -L../libcpp -lcpp
 
-CFLAGS+= -I.
+CFLAGS+= -I. -I${CONTRIBDIR}
 
 .include <bsd.prog.mk>
