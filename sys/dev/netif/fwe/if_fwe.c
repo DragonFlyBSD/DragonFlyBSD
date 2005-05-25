@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.15 2005/05/25 01:44:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.16 2005/05/25 13:12:22 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -197,15 +197,11 @@ fwe_attach(device_t dev)
 	ifp = &fwe->fwe_if;
 	ifp->if_softc = &fwe->eth_softc;
 
-#if __FreeBSD_version >= 501113 || defined(__DragonFly__)
 	if_initname(ifp, device_get_name(dev), unit);
-#else
-	ifp->if_unit = unit;
-	ifp->if_name = "fwe";
-#endif
 	ifp->if_init = fwe_init;
 	ifp->if_start = fwe_start;
 	ifp->if_ioctl = fwe_ioctl;
+	ifp->if_capabilities = IFCAP_VLAN_MTU;
 #ifdef DEVICE_POLLING
 	ifp->if_poll = fwe_poll;
 #endif
@@ -220,9 +216,6 @@ fwe_attach(device_t dev)
 
         /* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	ifp->if_capabilities |= IFCAP_VLAN_MTU;
-#endif
 
 
 	FWEDEBUG(ifp, "interface created\n");
@@ -339,14 +332,7 @@ found:
 		STAILQ_INIT(&xferq->stdma);
 		xferq->stproc = NULL;
 		for (i = 0; i < xferq->bnchunk; i ++) {
-			m =
-#if defined(__DragonFly__)
-				m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
-#elif __FreeBSD_version < 500000
-				m_getcl(M_WAIT, MT_DATA, M_PKTHDR);
-#else
-				m_getcl(M_TRYWAIT, MT_DATA, M_PKTHDR);
-#endif
+			m = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
 			xferq->bulkxfer[i].mbuf = m;
 			if (m != NULL) {
 				m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
@@ -388,49 +374,39 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	int s, error, len;
 
 	switch (cmd) {
-		case SIOCSIFFLAGS:
-			s = splimp();
-			if (ifp->if_flags & IFF_UP) {
-				if (!(ifp->if_flags & IFF_RUNNING))
-					fwe_init(&fwe->eth_softc);
-			} else {
-				if (ifp->if_flags & IFF_RUNNING)
-					fwe_stop(fwe);
-			}
-			/* XXX keep promiscoud mode */
-			ifp->if_flags |= IFF_PROMISC;
-			splx(s);
-			break;
-		case SIOCADDMULTI:
-		case SIOCDELMULTI:
-			break;
+	case SIOCSIFFLAGS:
+		s = splimp();
+		if (ifp->if_flags & IFF_UP) {
+			if (!(ifp->if_flags & IFF_RUNNING))
+				fwe_init(&fwe->eth_softc);
+		} else {
+			if (ifp->if_flags & IFF_RUNNING)
+				fwe_stop(fwe);
+		}
+		/* XXX keep promiscoud mode */
+		ifp->if_flags |= IFF_PROMISC;
+		splx(s);
+		break;
+	case SIOCADDMULTI:
+	case SIOCDELMULTI:
+		break;
 
-		case SIOCGIFSTATUS:
-			s = splimp();
-			ifs = (struct ifstat *)data;
-			len = strlen(ifs->ascii);
-			if (len < sizeof(ifs->ascii))
-				snprintf(ifs->ascii + len,
-					sizeof(ifs->ascii) - len,
-					"\tch %d dma %d\n",
-						fwe->stream_ch, fwe->dma_ch);
-			splx(s);
-			break;
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-		default:
-#else
-		case SIOCSIFADDR:
-		case SIOCGIFADDR:
-		case SIOCSIFMTU:
-#endif
-			s = splimp();
-			error = ether_ioctl(ifp, cmd, data);
-			splx(s);
-			return (error);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		default:
-			return (EINVAL);
-#endif
+	case SIOCGIFSTATUS:
+		s = splimp();
+		ifs = (struct ifstat *)data;
+		len = strlen(ifs->ascii);
+		if (len < sizeof(ifs->ascii))
+			snprintf(ifs->ascii + len,
+				sizeof(ifs->ascii) - len,
+				"\tch %d dma %d\n",
+					fwe->stream_ch, fwe->dma_ch);
+		splx(s);
+		break;
+	default:
+		s = splimp();
+		error = ether_ioctl(ifp, cmd, data);
+		splx(s);
+		return (error);
 	}
 
 	return (0);
