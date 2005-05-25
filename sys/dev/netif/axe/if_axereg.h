@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axereg.h,v 1.2 2003/06/15 21:45:43 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.3 2004/09/14 22:09:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.4 2005/05/25 11:38:59 joerg Exp $
  */
 
 /*
@@ -148,12 +148,10 @@ struct axe_softc {
 #define GET_MII(sc) (device_get_softc((sc)->axe_miibus))
 	struct arpcom		arpcom;
 	device_t		axe_miibus;
-	device_t		axe_dev;
 	usbd_device_handle	axe_udev;
 	usbd_interface_handle	axe_iface;
 	int			axe_ed[AXE_ENDPT_MAX];
 	usbd_pipe_handle	axe_ep[AXE_ENDPT_MAX];
-	int			axe_unit;
 	int			axe_if_flags;
 	struct axe_cdata	axe_cdata;
 	struct callout		axe_stat_timer;

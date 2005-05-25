@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.9 2005/02/16 22:50:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.10 2005/05/25 11:38:59 joerg Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -231,7 +231,7 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	splx(s);
 
 	if (err) {
-		printf("axe%d: read PHY failed\n", sc->axe_unit);
+		if_printf(&sc->arpcom.ac_if, "read PHY failed\n");
 		return(-1);
 	}
 
@@ -258,7 +258,7 @@ axe_miibus_writereg(device_ptr_t dev, int phy, int reg, int val)
 	splx(s);
 
 	if (err) {
-		printf("axe%d: write PHY failed\n", sc->axe_unit);
+		if_printf(&sc->arpcom.ac_if, "write PHY failed\n");
 		return(-1);
 	}
 
@@ -381,8 +381,8 @@ axe_reset(struct axe_softc *sc)
 	if (usbd_set_config_no(sc->axe_udev, AXE_CONFIG_NO, 1) ||
 	    usbd_device2interface_handle(sc->axe_udev, AXE_IFACE_IDX,
 	    &sc->axe_iface)) {
-		printf("axe%d: getting interface handle failed\n",
-		    sc->axe_unit);
+		if_printf(&sc->arpcom.ac_if,
+			  "getting interface handle failed\n");
 	}
 
 	/* Wait a little while for the chip to get its brains in order. */
@@ -429,20 +429,17 @@ USB_ATTACH(axe)
 
 	bzero(sc, sizeof(struct axe_softc));
 	sc->axe_udev = uaa->device;
-	sc->axe_dev = self;
-	sc->axe_unit = device_get_unit(self);
 	callout_init(&sc->axe_stat_timer);
 
 	if (usbd_set_config_no(sc->axe_udev, AXE_CONFIG_NO, 1)) {
-		printf("axe%d: getting interface handle failed\n",
-		    sc->axe_unit);
+		device_printf(self, "setting config no %d failed\n",
+		    AXE_CONFIG_NO);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
 	if (usbd_device2interface_handle(uaa->device,
 	    AXE_IFACE_IDX, &sc->axe_iface)) {
-		printf("axe%d: getting interface handle failed\n",
-		    sc->axe_unit);
+		device_printf(self, "getting interface handle failed\n");
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -450,14 +447,13 @@ USB_ATTACH(axe)
 
 	usbd_devinfo(uaa->device, 0, devinfo);
 	device_set_desc_copy(self, devinfo);
-	printf("%s: %s\n", USBDEVNAME(self), devinfo);
+	device_printf(self, "%s\n", devinfo);
 
 	/* Find endpoints. */
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->axe_iface, i);
 		if (!ed) {
-			printf("axe%d: couldn't get ep %d\n",
-			    sc->axe_unit, i);
+			device_printf(self, "couldn't get ep %d\n", i);
 			USB_ATTACH_ERROR_RETURN;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
@@ -491,7 +487,7 @@ USB_ATTACH(axe)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "axe", sc->axe_unit);
+	if_initname(ifp, device_get_name(self), device_get_unit(self));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = axe_ioctl;
@@ -504,7 +500,7 @@ USB_ATTACH(axe)
 
 	if (mii_phy_probe(self, &sc->axe_miibus,
 	    axe_ifmedia_upd, axe_ifmedia_sts)) {
-		printf("axe%d: MII without any PHY!\n", sc->axe_unit);
+		device_printf(self, "MII without any PHY!\n");
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -559,8 +555,8 @@ axe_newbuf(struct axe_softc *sc, struct axe_chain *c, struct mbuf *m)
 	if (m == NULL) {
 		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL) {
-			printf("axe%d: no memory for rx list "
-			    "-- packet dropped!\n", sc->axe_unit);
+			if_printf(&sc->arpcom.ac_if, "no memory for rx list "
+			    "-- packet dropped!\n");
 			return(ENOBUFS);
 		}
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
@@ -681,9 +677,10 @@ axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 			splx(s);
 			return;
 		}
-		if (usbd_ratecheck(&sc->axe_rx_notice))
-			printf("axe%d: usb error on rx: %s\n", sc->axe_unit,
+		if (usbd_ratecheck(&sc->axe_rx_notice)) {
+			if_printf(ifp, "usb error on rx: %s\n",
 			    usbd_errstr(status));
+		}
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->axe_ep[AXE_ENDPT_RX]);
 		goto done;
@@ -744,8 +741,7 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 			splx(s);
 			return;
 		}
-		printf("axe%d: usb error on tx: %s\n", sc->axe_unit,
-		    usbd_errstr(status));
+		if_printf(ifp, "usb error on tx: %s\n", usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->axe_ep[AXE_ENDPT_TX]);
 		splx(s);
@@ -912,14 +908,14 @@ axe_init(void *xsc)
 
 	/* Init TX ring. */
 	if (axe_tx_list_init(sc) == ENOBUFS) {
-		printf("axe%d: tx list init failed\n", sc->axe_unit);
+		if_printf(ifp, "tx list init failed\n");
 		splx(s);
 		return;
 	}
 
 	/* Init RX ring. */
 	if (axe_rx_list_init(sc) == ENOBUFS) {
-		printf("axe%d: rx list init failed\n", sc->axe_unit);
+		if_printf(ifp, "rx list init failed\n");
 		splx(s);
 		return;
 	}
@@ -948,8 +944,7 @@ axe_init(void *xsc)
 	err = usbd_open_pipe(sc->axe_iface, sc->axe_ed[AXE_ENDPT_RX],
 	    USBD_EXCLUSIVE_USE, &sc->axe_ep[AXE_ENDPT_RX]);
 	if (err) {
-		printf("axe%d: open rx pipe failed: %s\n",
-		    sc->axe_unit, usbd_errstr(err));
+		if_printf(ifp, "open rx pipe failed: %s\n", usbd_errstr(err));
 		splx(s);
 		return;
 	}
@@ -957,8 +952,7 @@ axe_init(void *xsc)
 	err = usbd_open_pipe(sc->axe_iface, sc->axe_ed[AXE_ENDPT_TX],
 	    USBD_EXCLUSIVE_USE, &sc->axe_ep[AXE_ENDPT_TX]);
 	if (err) {
-		printf("axe%d: open tx pipe failed: %s\n",
-		    sc->axe_unit, usbd_errstr(err));
+		if_printf(ifp, "open tx pipe failed: %s\n", usbd_errstr(err));
 		splx(s);
 		return;
 	}
@@ -1056,7 +1050,7 @@ axe_watchdog(struct ifnet *ifp)
 	s = splimp();
 
 	ifp->if_oerrors++;
-	printf("axe%d: watchdog timeout\n", sc->axe_unit);
+	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->axe_cdata.axe_tx_chain[0];
 	usbd_get_xfer_status(c->axe_xfer, NULL, NULL, NULL, &stat);
@@ -1092,13 +1086,13 @@ axe_stop(struct axe_softc *sc)
 	if (sc->axe_ep[AXE_ENDPT_RX] != NULL) {
 		err = usbd_abort_pipe(sc->axe_ep[AXE_ENDPT_RX]);
 		if (err) {
-			printf("axe%d: abort rx pipe failed: %s\n",
-		    	sc->axe_unit, usbd_errstr(err));
+			if_printf(ifp, "abort rx pipe failed: %s\n",
+		    	    usbd_errstr(err));
 		}
 		err = usbd_close_pipe(sc->axe_ep[AXE_ENDPT_RX]);
 		if (err) {
-			printf("axe%d: close rx pipe failed: %s\n",
-		    	sc->axe_unit, usbd_errstr(err));
+			if_printf(ifp, "close rx pipe failed: %s\n",
+		    	    usbd_errstr(err));
 		}
 		sc->axe_ep[AXE_ENDPT_RX] = NULL;
 	}
@@ -1106,13 +1100,13 @@ axe_stop(struct axe_softc *sc)
 	if (sc->axe_ep[AXE_ENDPT_TX] != NULL) {
 		err = usbd_abort_pipe(sc->axe_ep[AXE_ENDPT_TX]);
 		if (err) {
-			printf("axe%d: abort tx pipe failed: %s\n",
-		    	sc->axe_unit, usbd_errstr(err));
+			if_printf(ifp, "abort tx pipe failed: %s\n",
+		    	    usbd_errstr(err));
 		}
 		err = usbd_close_pipe(sc->axe_ep[AXE_ENDPT_TX]);
 		if (err) {
-			printf("axe%d: close tx pipe failed: %s\n",
-			    sc->axe_unit, usbd_errstr(err));
+			if_printf(ifp, "close tx pipe failed: %s\n",
+			    usbd_errstr(err));
 		}
 		sc->axe_ep[AXE_ENDPT_TX] = NULL;
 	}
@@ -1120,13 +1114,13 @@ axe_stop(struct axe_softc *sc)
 	if (sc->axe_ep[AXE_ENDPT_INTR] != NULL) {
 		err = usbd_abort_pipe(sc->axe_ep[AXE_ENDPT_INTR]);
 		if (err) {
-			printf("axe%d: abort intr pipe failed: %s\n",
-		    	sc->axe_unit, usbd_errstr(err));
+			if_printf(ifp, "abort intr pipe failed: %s\n",
+		    	    usbd_errstr(err));
 		}
 		err = usbd_close_pipe(sc->axe_ep[AXE_ENDPT_INTR]);
 		if (err) {
-			printf("axe%d: close intr pipe failed: %s\n",
-			    sc->axe_unit, usbd_errstr(err));
+			if_printf(ifp, "close intr pipe failed: %s\n",
+			    usbd_errstr(err));
 		}
 		sc->axe_ep[AXE_ENDPT_INTR] = NULL;
 	}
