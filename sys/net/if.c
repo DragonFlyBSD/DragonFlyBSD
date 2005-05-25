@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.34 2005/05/24 20:58:43 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.35 2005/05/25 01:44:16 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -318,6 +318,8 @@ if_detach(struct ifnet *ifp)
 	 * Remove routes and flush queues.
 	 */
 	s = splnet();
+	if (ifp->if_flags & IFF_POLLING)
+		ether_poll_deregister(ifp);
 	if_down(ifp);
 
 	if (ifq_is_enabled(&ifp->if_snd))
@@ -938,7 +940,6 @@ if_route(struct ifnet *ifp, int flag, int fam)
 void
 if_down(struct ifnet *ifp)
 {
-
 	if_unroute(ifp, IFF_UP, AF_UNSPEC);
 	netmsg_service_sync();
 }
@@ -1108,6 +1109,17 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			if_up(ifp);
 			splx(s);
 		}
+
+#ifdef DEVICE_POLLING
+		if ((new_flags ^ ifp->if_flags) & IFF_POLLING) {
+			if (new_flags & IFF_POLLING) {
+				ether_poll_register(ifp);
+			} else {
+				ether_poll_deregister(ifp);
+			}
+		}
+#endif
+
 		ifp->if_flags = (ifp->if_flags & IFF_CANTCHANGE) |
 			(new_flags &~ IFF_CANTCHANGE);
 		if (new_flags & IFF_PPROMISC) {

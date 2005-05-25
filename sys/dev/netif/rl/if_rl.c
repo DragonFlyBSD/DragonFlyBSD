@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.21 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.22 2005/05/25 01:44:28 dillon Exp $
  */
 
 /*
@@ -207,6 +207,9 @@ static void	rl_list_tx_init(struct rl_softc *);
 
 static void	rl_dma_map_rxbuf(void *, bus_dma_segment_t *, int, int);
 static void	rl_dma_map_txbuf(void *, bus_dma_segment_t *, int, int);
+#ifdef DEVICE_POLLING
+static poll_handler_t rl_poll;
+#endif
 
 #ifdef RL_USEIOSPACE
 #define	RL_RES			SYS_RES_IOPORT
@@ -926,7 +929,7 @@ rl_attach(device_t dev)
 	ifp->if_baudrate = 10000000;
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
 #ifdef DEVICE_POLLING
-	ifp->if_capabilities |= IFCAP_POLLING;
+	ifp->if_poll = rl_poll;
 #endif
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
@@ -1237,45 +1240,47 @@ rl_tick(void *xsc)
 }
 
 #ifdef DEVICE_POLLING
-static poll_handler_t rl_poll;
 
 static void
 rl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct rl_softc *sc = ifp->if_softc;
 
-	if ((ifp->if_capenable & IFCAP_POLLING) == 0) {
-		ether_poll_deregister(ifp);
-		cmd = POLL_DEREGISTER;
-	}
-	if (cmd == POLL_DEREGISTER) { /* final call, enable interrupts */
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* disable interrupts */
+                CSR_WRITE_2(sc, RL_IMR, 0x0000);
+		break;
+	case POLL_DEREGISTER:
+		/* enable interrupts */
 		CSR_WRITE_2(sc, RL_IMR, RL_INTRS);
-		return;
-	}
+		break;
+	default:
+		sc->rxcycles = count;
+		rl_rxeof(sc);
+		rl_txeof(sc);
+		if (!ifq_is_empty(&ifp->if_snd))
+			rl_start(ifp);
 
-	sc->rxcycles = count;
-	rl_rxeof(sc);
-	rl_txeof(sc);
-	if (!ifq_is_empty(&ifp->if_snd))
-		rl_start(ifp);
+		if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
+			uint16_t status;
+	 
+			status = CSR_READ_2(sc, RL_ISR);
+			if (status == 0xffff)
+				return;
+			if (status)
+				CSR_WRITE_2(sc, RL_ISR, status);
+			 
+			/*
+			 * XXX check behaviour on receiver stalls.
+			 */
 
-	if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
-		uint16_t status;
- 
-		status = CSR_READ_2(sc, RL_ISR);
-		if (status == 0xffff)
-			return;
-		if (status)
-			CSR_WRITE_2(sc, RL_ISR, status);
-                 
-		/*
-		 * XXX check behaviour on receiver stalls.
-		 */
-
-		if (status & RL_ISR_SYSTEM_ERR) {
-			rl_reset(sc);
-			rl_init(sc);
+			if (status & RL_ISR_SYSTEM_ERR) {
+				rl_reset(sc);
+				rl_init(sc);
+			}
 		}
+		break;
 	}
 }
 #endif /* DEVICE_POLLING */
@@ -1293,16 +1298,6 @@ rl_intr(void *arg)
 		return;
 
 	ifp = &sc->arpcom.ac_if;
-#ifdef DEVICE_POLLING
-        if  (ifp->if_flags & IFF_POLLING)
-                return;
-        if ((ifp->if_capenable & IFCAP_POLLING) &&
-	    ether_poll_register(rl_poll, ifp)) { /* ok, disable interrupts */
-                CSR_WRITE_2(sc, RL_IMR, 0x0000);
-                rl_poll(ifp, 0, 1);
-                return;
-        }
-#endif /* DEVICE_POLLING */
 
 	for (;;) {
 		status = CSR_READ_2(sc, RL_ISR);
@@ -1610,8 +1605,6 @@ rl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	case SIOCSIFCAP:
-		ifp->if_capenable &= ~IFCAP_POLLING;
-		ifp->if_capenable |= ifr->ifr_reqcap & IFCAP_POLLING;
 		break;
 	default:
 		error = ether_ioctl(ifp, command, data);
@@ -1655,9 +1648,6 @@ rl_stop(struct rl_softc *sc)
 
 	callout_stop(&sc->rl_stat_timer);
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-#ifdef DEVICE_POLLING
-	ether_poll_deregister(ifp);
-#endif /* DEVICE_POLLING */
 
 	CSR_WRITE_1(sc, RL_COMMAND, 0x00);
 	CSR_WRITE_2(sc, RL_IMR, 0x0000);

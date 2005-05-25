@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.22 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.23 2005/05/25 01:44:29 dillon Exp $
  */
 
 /*
@@ -159,6 +159,9 @@ static int	sis_list_tx_init(struct sis_softc *);
 static void	sis_dma_map_desc_ptr(void *, bus_dma_segment_t *, int, int);
 static void	sis_dma_map_desc_next(void *, bus_dma_segment_t *, int, int);
 static void	sis_dma_map_ring(void *, bus_dma_segment_t *, int, int);
+#ifdef DEVICE_POLLING
+static poll_handler_t sis_poll;
+#endif
 #ifdef SIS_USEIOSPACE
 #define SIS_RES			SYS_RES_IOPORT
 #define SIS_RID			SIS_PCI_LOIO
@@ -1281,7 +1284,7 @@ sis_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, SIS_TX_LIST_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 #ifdef DEVICE_POLLING
-	ifp->if_capabilities |= IFCAP_POLLING;
+	ifp->if_poll = sis_poll;
 #endif
 	ifp->if_capenable = ifp->if_capabilities;
 
@@ -1658,51 +1661,53 @@ sis_tick(void *xsc)
 }
 
 #ifdef DEVICE_POLLING
-static poll_handler_t sis_poll;
 
 static void
 sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct  sis_softc *sc = ifp->if_softc;
 
-	if ((ifp->if_capenable & IFCAP_POLLING) == 0) {
-		ether_poll_deregister(ifp);
-		cmd = POLL_DEREGISTER;
-	}
-	if (cmd == POLL_DEREGISTER) {	/* final call, enable interrupts */
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* disable interrupts */
+		CSR_WRITE_4(sc, SIS_IER, 0);
+		break;
+	case POLL_DEREGISTER:
+		/* enable interrupts */
 		CSR_WRITE_4(sc, SIS_IER, 1);
-		return;
-	}
+		break;
+	default:
+		/*
+		 * On the sis, reading the status register also clears it.
+		 * So before returning to intr mode we must make sure that all
+		 * possible pending sources of interrupts have been served.
+		 * In practice this means run to completion the *eof routines,
+		 * and then call the interrupt routine
+		 */
+		sc->rxcycles = count;
+		sis_rxeof(sc);
+		sis_txeof(sc);
+		if (!ifq_is_empty(&ifp->if_snd))
+			sis_start(ifp);
 
-	/*
-	 * On the sis, reading the status register also clears it.
-	 * So before returning to intr mode we must make sure that all
-	 * possible pending sources of interrupts have been served.
-	 * In practice this means run to completion the *eof routines,
-	 * and then call the interrupt routine
-	 */
-	sc->rxcycles = count;
-	sis_rxeof(sc);
-	sis_txeof(sc);
-	if (!ifq_is_empty(&ifp->if_snd))
-		sis_start(ifp);
+		if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
+			uint32_t status;
 
-	if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
-		uint32_t status;
+			/* Reading the ISR register clears all interrupts. */
+			status = CSR_READ_4(sc, SIS_ISR);
 
-		/* Reading the ISR register clears all interrupts. */
-		status = CSR_READ_4(sc, SIS_ISR);
+			if (status & (SIS_ISR_RX_ERR|SIS_ISR_RX_OFLOW))
+				sis_rxeoc(sc);
 
-		if (status & (SIS_ISR_RX_ERR|SIS_ISR_RX_OFLOW))
-			sis_rxeoc(sc);
+			if (status & (SIS_ISR_RX_IDLE))
+				SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RX_ENABLE);
 
-		if (status & (SIS_ISR_RX_IDLE))
-			SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RX_ENABLE);
-
-		if (status & SIS_ISR_SYSERR) {
-			sis_reset(sc);
-			sis_init(sc);
+			if (status & SIS_ISR_SYSERR) {
+				sis_reset(sc);
+				sis_init(sc);
+			}
 		}
+		break;
 	}
 }
 #endif /* DEVICE_POLLING */
@@ -1716,17 +1721,6 @@ sis_intr(void *arg)
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
-
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
-		return;
-	if ((ifp->if_capenable & IFCAP_POLLING) &&
-	    ether_poll_register(sis_poll, ifp)) { /* ok, disable interrupts */
-		CSR_WRITE_4(sc, SIS_IER, 0);
-		sis_poll(ifp, 0, 1);
-		return;
-	}
-#endif /* DEVICE_POLLING */
 
 	/* Supress unwanted interrupts */
 	if (!(ifp->if_flags & IFF_UP)) {
@@ -2170,9 +2164,6 @@ sis_stop(struct sis_softc *sc)
 	callout_stop(&sc->sis_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-#ifdef DEVICE_POLLING
-	ether_poll_deregister(ifp);
-#endif
 	CSR_WRITE_4(sc, SIS_IER, 0);
 	CSR_WRITE_4(sc, SIS_IMR, 0);
 	SIS_SETBIT(sc, SIS_CSR, SIS_CSR_TX_DISABLE|SIS_CSR_RX_DISABLE);

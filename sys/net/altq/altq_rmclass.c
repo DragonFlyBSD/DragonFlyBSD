@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.2 2005/05/25 01:44:33 dillon Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -53,6 +53,7 @@
 #include <sys/callout.h>
 #include <sys/errno.h>
 #include <sys/time.h>
+#include <sys/thread.h>
 
 #include <net/if.h>
 
@@ -61,6 +62,8 @@
 #include <net/altq/altq_rmclass_debug.h>
 #include <net/altq/altq_red.h>
 #include <net/altq/altq_rio.h>
+
+#include <sys/thread2.h>
 
 #ifdef CBQ_TRACE
 static struct cbqtrace cbqtrace_buffer[NCBQTRACE+1];
@@ -1509,9 +1512,8 @@ rmc_restart(void *arg)
 {
 	struct rm_class *cl = arg;
 	struct rm_ifdat *ifd = cl->ifdat_;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	if (cl->sleeping_) {
 		cl->sleeping_ = 0;
 		cl->undertime_.tv_sec = 0;
@@ -1521,7 +1523,7 @@ rmc_restart(void *arg)
 			(ifd->restart)(ifd->ifq_);
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*

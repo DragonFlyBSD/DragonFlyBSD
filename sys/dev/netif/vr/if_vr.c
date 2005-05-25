@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.22 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.23 2005/05/25 01:44:31 dillon Exp $
  */
 
 /*
@@ -161,6 +161,9 @@ static void	vr_setmulti(struct vr_softc *);
 static void	vr_reset(struct vr_softc *);
 static int	vr_list_rx_init(struct vr_softc *);
 static int	vr_list_tx_init(struct vr_softc *);
+#ifdef DEVICE_POLLING
+static void	vr_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#endif
 
 #ifdef VR_USEIOSPACE
 #define VR_RES			SYS_RES_IOPORT
@@ -835,6 +838,9 @@ vr_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = vr_ioctl;
 	ifp->if_start = vr_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = vr_poll;
+#endif
 	ifp->if_watchdog = vr_watchdog;
 	ifp->if_init = vr_init;
 	ifp->if_baudrate = 10000000;
@@ -1604,15 +1610,25 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 }
 
 #ifdef DEVICE_POLLING
+
 static void
 vr_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct vr_softc *sc = ifp->if_softc;
 
-	if (cmd == POLL_DEREGISTER)
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* disable interrupts */
+		CSR_WRITE_2(sc, VR_IMR, 0x0000);
+		break;
+	case POLL_DEREGISTER:
+		/* enable interrupts */
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
-	else
+		break;
+	default:
 		vr_intr(sc);
+		break;
+	}
 }
 #endif
 
@@ -1631,8 +1647,7 @@ vr_watchdog(struct ifnet *ifp)
 		if_printf(ifp, "ints don't seem to be working, "
 			"emergency switch to polling\n");
 		emergency_poll_enable("if_vr");
-		if (ether_poll_register(vr_poll, ifp))
-			CSR_WRITE_2(sc, VR_IMR, 0x0000);
+		ether_poll_register(ifp);	/* XXX illegal */
 	} else 
 #endif
 	{

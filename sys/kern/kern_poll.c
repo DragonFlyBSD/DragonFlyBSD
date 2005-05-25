@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.14 2005/05/24 21:18:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.15 2005/05/25 01:44:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,6 +65,7 @@ void hardclock_device_poll(void);	/* hook from hardclock		*/
  *	other more expensive operations. This command is issued periodically
  *	but less frequently than POLL_ONLY.
  *  POLL_DEREGISTER: deregister and return to interrupt mode.
+ *  POLL_REGISTER: register and disable interrupts
  *
  * The first two commands are only issued if the interface is marked as
  * 'IFF_UP and IFF_RUNNING', the last one only if IFF_RUNNING is set.
@@ -159,7 +160,6 @@ SYSCTL_UINT(_kern_polling, OID_AUTO, stalled, CTLFLAG_RW,
 
 #define POLL_LIST_LEN  128
 struct pollrec {
-	poll_handler_t	*handler;
 	struct ifnet	*ifp;
 };
 
@@ -353,18 +353,24 @@ netisr_poll(struct netmsg *msg)
 
 	if (polling) {
 		for (i = 0 ; i < poll_handlers ; i++) {
-			if (pr[i].handler && (IFF_UP|IFF_RUNNING) ==
-			    (pr[i].ifp->if_flags & (IFF_UP|IFF_RUNNING)) )
-				pr[i].handler(pr[i].ifp, arg, cycles);
+			struct pollrec *p = &pr[i];
+			if ((p->ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING)) == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
+				p->ifp->if_poll(p->ifp, arg, cycles);
+			}
 		}
 	} else {	/* unregister */
 		for (i = 0 ; i < poll_handlers ; i++) {
-			if (pr[i].handler &&
-			    pr[i].ifp->if_flags & IFF_RUNNING) {
-				pr[i].ifp->if_flags &= ~IFF_POLLING;
-				pr[i].handler(pr[i].ifp, POLL_DEREGISTER, 1);
+			struct pollrec *p = &pr[i];
+			if (p->ifp->if_flags & IFF_POLLING) {
+				p->ifp->if_flags &= ~IFF_POLLING;
+				/*
+				 * Only call the interface deregistration
+				 * function if the interface is still 
+				 * running.
+				 */
+				if (p->ifp->if_flags & IFF_RUNNING)
+					p->ifp->if_poll(p->ifp, POLL_DEREGISTER, 1);
 			}
-			pr[i].handler=NULL;
 		}
 		residual_burst = 0;
 		poll_handlers = 0;
@@ -378,26 +384,37 @@ netisr_poll(struct netmsg *msg)
 /*
  * Try to register routine for polling. Returns 1 if successful
  * (and polling should be enabled), 0 otherwise.
- * A device is not supposed to register itself multiple times.
  *
- * This is called from within the *_intr() functions, so we do not need
- * further locking.
+ * Called from mainline code only, not called from an interrupt.
  */
 int
-ether_poll_register(poll_handler_t *h, struct ifnet *ifp)
+ether_poll_register(struct ifnet *ifp)
 {
-	int s;
+	int rc;
 
 	if (polling == 0) /* polling disabled, cannot register */
 		return 0;
-	if (h == NULL || ifp == NULL)		/* bad arguments	*/
-		return 0;
-	if ( !(ifp->if_flags & IFF_UP) )	/* must be up		*/
+	if ((ifp->if_flags & IFF_UP) == 0)	/* must be up		*/
 		return 0;
 	if (ifp->if_flags & IFF_POLLING)	/* already polling	*/
 		return 0;
+	if (ifp->if_poll == NULL)		/* no polling support   */
+		return 0;
 
-	s = splhigh();
+	/*
+	 * Attempt to register.  Interlock with IFF_POLLING.
+	 */
+	crit_enter();	/* XXX MP - not mp safe */
+	ifp->if_flags |= IFF_POLLING;
+	ifp->if_poll(ifp, POLL_REGISTER, 0);
+	if ((ifp->if_flags & IFF_POLLING) == 0) {
+		crit_exit();
+		return 0;
+	}
+
+	/*
+	 * Check if there is room.  If there isn't, deregister.
+	 */
 	if (poll_handlers >= POLL_LIST_LEN) {
 		/*
 		 * List full, cannot register more entries.
@@ -407,55 +424,60 @@ ether_poll_register(poll_handler_t *h, struct ifnet *ifp)
 		 * anyways, so just report a few times and then give up.
 		 */
 		static int verbose = 10 ;
-		splx(s);
 		if (verbose >0) {
 			printf("poll handlers list full, "
 				"maybe a broken driver ?\n");
 			verbose--;
 		}
-		return 0; /* no polling for you */
+		ifp->if_flags &= ~IFF_POLLING;
+		ifp->if_poll(ifp, POLL_DEREGISTER, 0);
+		rc = 0;
+	} else {
+		pr[poll_handlers].ifp = ifp;
+		poll_handlers++;
+		rc = 1;
 	}
-
-	pr[poll_handlers].handler = h;
-	pr[poll_handlers].ifp = ifp;
-	poll_handlers++;
-	ifp->if_flags |= IFF_POLLING;
-	splx(s);
-	return 1; /* polling enabled in next call */
+	crit_exit();
+	return (rc);
 }
 
 /*
- * Remove interface from the polling list. Normally called by *_stop().
- * It is not an error to call it with IFF_POLLING clear, the call is
- * sufficiently rare to be preferable to save the space for the extra
- * test in each driver in exchange of one additional function call.
+ * Remove interface from the polling list.  Occurs when polling is turned
+ * off.  Called from mainline code only, not called from an interrupt.
  */
 int
 ether_poll_deregister(struct ifnet *ifp)
 {
 	int i;
-	int s = splimp();
-	
-	if ( !ifp || !(ifp->if_flags & IFF_POLLING) ) {
-		splx(s);
+
+	crit_enter();
+	if (ifp == NULL || (ifp->if_flags & IFF_POLLING) == 0) {
+		crit_exit();
 		return 0;
 	}
-	for (i = 0 ; i < poll_handlers ; i++)
+	for (i = 0 ; i < poll_handlers ; i++) {
 		if (pr[i].ifp == ifp) /* found it */
 			break;
+	}
 	ifp->if_flags &= ~IFF_POLLING; /* found or not... */
 	if (i == poll_handlers) {
-		splx(s);
+		crit_exit();
 		printf("ether_poll_deregister: ifp not found!!!\n");
 		return 0;
 	}
 	poll_handlers--;
 	if (i < poll_handlers) { /* Last entry replaces this one. */
-		pr[i].handler = pr[poll_handlers].handler;
 		pr[i].ifp = pr[poll_handlers].ifp;
 	}
-	splx(s);
-	return 1;
+	crit_exit();
+
+	/*
+	 * Only call the deregistration function if the interface is still
+	 * in a run state.
+	 */
+	if (ifp->if_flags & IFF_RUNNING)
+		ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+	return (1);
 }
 
 void

@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.31 2005/05/24 20:59:01 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.32 2005/05/25 01:44:21 dillon Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -117,9 +117,11 @@ static int	em_detach(device_t);
 static int	em_shutdown(device_t);
 static void	em_intr(void *);
 static void	em_start(struct ifnet *);
+static void	em_start_serialized(struct ifnet *);
 static int	em_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	em_watchdog(struct ifnet *);
 static void	em_init(void *);
+static void	em_init_serialized(void *);
 static void	em_stop(void *);
 static void	em_media_status(struct ifnet *, struct ifmediareq *);
 static int	em_media_change(struct ifnet *);
@@ -157,6 +159,7 @@ static int	em_82547_fifo_workaround(struct adapter *, int);
 static void	em_82547_update_fifo_head(struct adapter *, int);
 static int	em_82547_tx_fifo_reset(struct adapter *);
 static void	em_82547_move_tail(void *arg);
+static void	em_82547_move_tail_serialized(void *arg);
 static int	em_dma_malloc(struct adapter *, bus_size_t,
 			      struct em_dma_alloc *, int);
 static void	em_dma_free(struct adapter *, struct em_dma_alloc *);
@@ -514,9 +517,9 @@ em_attach(device_t dev)
         else
 		adapter->pcix_82544 = FALSE;
 
-	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_TYPE_MISC,
 			   (void (*)(void *)) em_intr, adapter,
-			   &adapter->int_handler_tag, NULL);
+			   &adapter->int_handler_tag, &adapter->serializer);
 	if (error) {
 		device_printf(dev, "Error registering interrupt handler!\n");
 		ether_ifdetach(&adapter->interface_data.ac_if);
@@ -545,11 +548,10 @@ static int
 em_detach(device_t dev)
 {
 	struct adapter * adapter = device_get_softc(dev);
-	int s;
 
 	INIT_DEBUGOUT("em_detach: begin");
-	s = splimp();
 
+	lwkt_serialize_enter(&adapter->serializer);
 	adapter->in_detach = 1;
 
 	if (device_is_attached(dev)) {
@@ -590,7 +592,7 @@ em_detach(device_t dev)
 	adapter->sysctl_tree = NULL;
 	sysctl_ctx_free(&adapter->sysctl_ctx);
 
-	splx(s);
+	lwkt_serialize_exit(&adapter->serializer);
 	return(0);
 }
 
@@ -621,14 +623,21 @@ em_shutdown(device_t dev)
 static void
 em_start(struct ifnet *ifp)
 {
-	int s;
+	struct adapter *adapter = ifp->if_softc;
+
+	lwkt_serialize_enter(&adapter->serializer);
+	em_start_serialized(ifp);
+	lwkt_serialize_exit(&adapter->serializer);
+}
+
+static void
+em_start_serialized(struct ifnet *ifp)
+{
 	struct mbuf *m_head;
 	struct adapter *adapter = ifp->if_softc;
 
 	if (!adapter->link_active)
 		return;
-
-	s = splimp();
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		m_head = ifq_poll(&ifp->if_snd);
 
@@ -647,7 +656,6 @@ em_start(struct ifnet *ifp)
 		/* Set timeout in case hardware has problems transmitting */
 		ifp->if_timer = EM_TX_TIMEOUT;        
 	}
-	splx(s);
 }
 
 /*********************************************************************
@@ -662,11 +670,11 @@ em_start(struct ifnet *ifp)
 static int
 em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
-	int s, mask, error = 0;
+	int mask, error = 0;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct adapter *adapter = ifp->if_softc;
 
-	s = splimp();
+	lwkt_serialize_enter(&adapter->serializer);
 
 	if (adapter->in_detach)
 		goto out;
@@ -675,7 +683,9 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	case SIOCSIFADDR:
 	case SIOCGIFADDR:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCxIFADDR (Get/Set Interface Addr)");
+		lwkt_serialize_exit(&adapter->serializer);
 		ether_ioctl(ifp, command, data);
+		lwkt_serialize_enter(&adapter->serializer);
 		break;
 	case SIOCSIFMTU:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFMTU (Set Interface MTU)");
@@ -685,14 +695,14 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			ifp->if_mtu = ifr->ifr_mtu;
 			adapter->hw.max_frame_size = 
 			ifp->if_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
-			em_init(adapter);
+			em_init_serialized(adapter);
 		}
 		break;
 	case SIOCSIFFLAGS:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFFLAGS (Set Interface Flags)");
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING))
-				em_init(adapter);
+				em_init_serialized(adapter);
 			em_disable_promisc(adapter);
 			em_set_promisc(adapter);
 		} else {
@@ -708,10 +718,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			em_set_multi(adapter);
 			if (adapter->hw.mac_type == em_82542_rev2_0)
 				em_initialize_receive_unit(adapter);
-#ifdef DEVICE_POLLING
-			if (!(ifp->if_flags & IFF_POLLING))
-#endif
-				em_enable_intr(adapter);
+			em_enable_intr(adapter);
 		}
 		break;
 	case SIOCSIFMEDIA:
@@ -728,7 +735,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			else
 				ifp->if_capenable |= IFCAP_HWCSUM;
 			if (ifp->if_flags & IFF_RUNNING)
-				em_init(adapter);
+				em_init_serialized(adapter);
 		}
 		break;
 	default:
@@ -737,7 +744,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	}
 
 out:
-	splx(s);
+	lwkt_serialize_exit(&adapter->serializer);
 	return(error);
 }
 
@@ -786,13 +793,20 @@ em_watchdog(struct ifnet *ifp)
 static void
 em_init(void *arg)
 {
-	int s;
+	struct adapter *adapter = arg;
+
+	lwkt_serialize_enter(&adapter->serializer);
+	em_init_serialized(arg);
+	lwkt_serialize_exit(&adapter->serializer);
+}
+
+static void
+em_init_serialized(void *arg)
+{
 	struct adapter *adapter = arg;
 	struct ifnet *ifp = &adapter->interface_data.ac_if;
 
 	INIT_DEBUGOUT("em_init: begin");
-
-	s = splimp();
 
 	em_stop(adapter);
 
@@ -803,7 +817,6 @@ em_init(void *arg)
 	/* Initialize the hardware */
 	if (em_hardware_init(adapter)) {
 		if_printf(ifp, "Unable to initialize the hardware\n");
-		splx(s);
 		return;
 	}
 
@@ -813,7 +826,6 @@ em_init(void *arg)
 	if (em_setup_transmit_structures(adapter)) {
 		if_printf(ifp, "Could not setup transmit structures\n");
 		em_stop(adapter); 
-		splx(s);
 		return;
 	}
 	em_initialize_transmit_unit(adapter);
@@ -825,7 +837,6 @@ em_init(void *arg)
 	if (em_setup_receive_structures(adapter)) {
 		if_printf(ifp, "Could not setup receive structures\n");
 		em_stop(adapter);
-		splx(s);
 		return;
 	}
 	em_initialize_receive_unit(adapter);
@@ -845,25 +856,13 @@ em_init(void *arg)
 
 	callout_reset(&adapter->timer, 2*hz, em_local_timer, adapter);
 	em_clear_hw_cntrs(&adapter->hw);
-#ifdef DEVICE_POLLING
-	/*
-	 * Only enable interrupts if we are not polling, make sure
-	 * they are off otherwise.
-	 */
-	if (ifp->if_flags & IFF_POLLING)
-		em_disable_intr(adapter);
-	else
-#endif /* DEVICE_POLLING */
-		em_enable_intr(adapter);
+	em_enable_intr(adapter);
 
 	/* Don't reset the phy next time init gets called */
 	adapter->hw.phy_reset_disable = TRUE;
-
-	splx(s);
 }
 
 #ifdef DEVICE_POLLING
-static poll_handler_t em_poll;
 
 static void
 em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
@@ -871,11 +870,15 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct adapter *adapter = ifp->if_softc;
 	uint32_t reg_icr;
 
-	if (cmd == POLL_DEREGISTER) {       /* final call, enable interrupts */
+	lwkt_serialize_enter(&adapter->serializer);
+	switch(cmd) {
+	case POLL_REGISTER:
+		em_disable_intr(adapter);
+		break;
+	case POLL_DEREGISTER:
 		em_enable_intr(adapter);
-		return;
-	}
-	if (cmd == POLL_AND_CHECK_STATUS) {
+		break;
+	case POLL_AND_CHECK_STATUS:
 		reg_icr = E1000_READ_REG(&adapter->hw, ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 			callout_stop(&adapter->timer);
@@ -885,15 +888,21 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			callout_reset(&adapter->timer, 2*hz, em_local_timer,
 				      adapter);
 		}
+		/* fall through */
+	case POLL_ONLY:
+		if (ifp->if_flags & IFF_RUNNING) {
+			em_process_receive_interrupts(adapter, count);
+			em_clean_transmit_interrupts(adapter);
+		}
+		if (ifp->if_flags & IFF_RUNNING) {
+			if (!ifq_is_empty(&ifp->if_snd))
+				em_start_serialized(ifp);
+		}
+		break;
 	}
-	if (ifp->if_flags & IFF_RUNNING) {
-		em_process_receive_interrupts(adapter, count);
-		em_clean_transmit_interrupts(adapter);
-	}
-
-	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		em_start(ifp);
+	lwkt_serialize_exit(&adapter->serializer);
 }
+
 #endif /* DEVICE_POLLING */
 
 /*********************************************************************
@@ -909,17 +918,6 @@ em_intr(void *arg)
 	struct adapter *adapter = arg;
 
 	ifp = &adapter->interface_data.ac_if;  
-
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
-		return;
-
-	if (ether_poll_register(em_poll, ifp)) {
-		em_disable_intr(adapter);
-		em_poll(ifp, 0, 1);
-		return;
-	}
-#endif /* DEVICE_POLLING */
 
 	reg_icr = E1000_READ_REG(&adapter->hw, ICR);
 	if (!reg_icr)
@@ -945,7 +943,7 @@ em_intr(void *arg)
 	}
 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		em_start(ifp);
+		em_start_serialized(ifp);
 }
 
 /*********************************************************************
@@ -1027,6 +1025,8 @@ em_media_change(struct ifnet *ifp)
 	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
 		return(EINVAL);
 
+	lwkt_serialize_enter(&adapter->serializer);
+
 	switch (IFM_SUBTYPE(ifm->ifm_media)) {
 	case IFM_AUTO:
 		adapter->hw.autoneg = DO_AUTO_NEG;
@@ -1062,8 +1062,9 @@ em_media_change(struct ifnet *ifp)
 	 */
 	adapter->hw.phy_reset_disable = FALSE;
 
-	em_init(adapter);
+	em_init_serialized(adapter);
 
+	lwkt_serialize_exit(&adapter->serializer);
 	return(0);
 }
 
@@ -1263,7 +1264,16 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 static void
 em_82547_move_tail(void *arg)
 {
-	int s;
+	struct adapter *adapter = arg;
+
+	lwkt_serialize_enter(&adapter->serializer);
+	em_82547_move_tail_serialized(arg);
+	lwkt_serialize_exit(&adapter->serializer);
+}
+
+static void
+em_82547_move_tail_serialized(void *arg)
+{
 	struct adapter *adapter = arg;
 	uint16_t hw_tdt;
 	uint16_t sw_tdt;
@@ -1271,7 +1281,6 @@ em_82547_move_tail(void *arg)
 	uint16_t length = 0;
 	boolean_t eop = 0;
 
-	s = splimp();
 	hw_tdt = E1000_READ_REG(&adapter->hw, TDT);
 	sw_tdt = adapter->next_avail_tx_desc;
 
@@ -1294,7 +1303,6 @@ em_82547_move_tail(void *arg)
 			length = 0;
 		}
 	}	
-	splx(s);
 }
 
 static int
@@ -1462,12 +1470,11 @@ em_set_multi(struct adapter *adapter)
 static void
 em_local_timer(void *arg)
 {
-	int s;
 	struct ifnet *ifp;
 	struct adapter *adapter = arg;
 	ifp = &adapter->interface_data.ac_if;
 
-	s = splimp();
+	lwkt_serialize_enter(&adapter->serializer);
 
 	em_check_for_link(&adapter->hw);
 	em_print_link_status(adapter);
@@ -1478,7 +1485,7 @@ em_local_timer(void *arg)
 
 	callout_reset(&adapter->timer, 2*hz, em_local_timer, adapter);
 
-	splx(s);
+	lwkt_serialize_exit(&adapter->serializer);
 }
 
 static void
@@ -1643,6 +1650,9 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = em_ioctl;
 	ifp->if_start = em_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = em_poll;
+#endif
 	ifp->if_watchdog = em_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
@@ -2081,7 +2091,6 @@ em_transmit_checksum_setup(struct adapter * adapter,
 static void
 em_clean_transmit_interrupts(struct adapter *adapter)
 {
-	int s;
 	int i, num_avail;
 	struct em_buffer *tx_buffer;
 	struct em_tx_desc *tx_desc;
@@ -2090,7 +2099,6 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 	if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
 		return;
 
-	s = splimp();
 #ifdef DBG_STATS
 	adapter->clean_tx_interrupts++;
 #endif
@@ -2138,7 +2146,6 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 			ifp->if_timer = EM_TX_TIMEOUT;
 	}
 	adapter->num_tx_desc_avail = num_avail;
-	splx(s);
 }
 
 /*********************************************************************
@@ -2616,8 +2623,12 @@ em_enable_vlans(struct adapter *adapter)
 static void
 em_enable_intr(struct adapter *adapter)
 {
-	bus_enable_intr(adapter->dev, adapter->int_handler_tag);
-	E1000_WRITE_REG(&adapter->hw, IMS, (IMS_ENABLE_MASK));
+	struct ifnet *ifp = &adapter->interface_data.ac_if;
+	
+	if ((ifp->if_flags & IFF_POLLING) == 0) {
+		lwkt_serialize_handler_enable(&adapter->serializer);
+		E1000_WRITE_REG(&adapter->hw, IMS, (IMS_ENABLE_MASK));
+	}
 }
 
 static void
@@ -2625,7 +2636,7 @@ em_disable_intr(struct adapter *adapter)
 {
 	E1000_WRITE_REG(&adapter->hw, IMC, 
 			(0xffffffff & ~E1000_IMC_RXSEQ));
-	bus_disable_intr(adapter->dev, adapter->int_handler_tag);
+	lwkt_serialize_handler_disable(&adapter->serializer);
 }
 
 static int
@@ -2975,7 +2986,6 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 	int error;
 	int usecs;
 	int ticks;
-	int s;
 
 	info = (struct em_int_delay_info *)arg1;
 	adapter = info->adapter;
@@ -2988,7 +2998,7 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 	info->value = usecs;
 	ticks = E1000_USECS_TO_TICKS(usecs);
 
-	s = splimp();
+	lwkt_serialize_enter(&adapter->serializer);
 	regval = E1000_READ_OFFSET(&adapter->hw, info->offset);
 	regval = (regval & ~0xffff) | (ticks & 0xffff);
 	/* Handle a few special cases. */
@@ -3008,7 +3018,7 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 		break;
 	}
 	E1000_WRITE_OFFSET(&adapter->hw, info->offset, regval);
-	splx(s);
+	lwkt_serialize_exit(&adapter->serializer);
 	return(0);
 }
 
@@ -3045,15 +3055,15 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 		 * recalculate sysctl value assignment to get exact frequency.
 		 */
 		throttle = 1000000000 / 256 / throttle;
+		lwkt_serialize_enter(&adapter->serializer);
 		em_int_throttle_ceil = 1000000000 / 256 / throttle;
-		crit_enter();
 		E1000_WRITE_REG(&adapter->hw, ITR, throttle);
-		crit_exit();
+		lwkt_serialize_exit(&adapter->serializer);
 	} else {
+		lwkt_serialize_enter(&adapter->serializer);
 		em_int_throttle_ceil = 0;
-		crit_enter();
 		E1000_WRITE_REG(&adapter->hw, ITR, 0);
-		crit_exit();
+		lwkt_serialize_exit(&adapter->serializer);
 	}
 	device_printf(adapter->dev, "Interrupt moderation set to %d/sec\n", 
 			em_int_throttle_ceil);

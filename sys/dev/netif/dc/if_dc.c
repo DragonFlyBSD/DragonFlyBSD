@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.26 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.27 2005/05/25 01:44:20 dillon Exp $
  */
 
 /*
@@ -206,6 +206,10 @@ static void dc_intr		(void *);
 static void dc_start		(struct ifnet *);
 static int dc_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
+#ifdef DEVICE_POLLING
+static void dc_poll		(struct ifnet *ifp, enum poll_cmd cmd, 
+					int count);
+#endif
 static void dc_init		(void *);
 static void dc_stop		(struct dc_softc *);
 static void dc_watchdog		(struct ifnet *);
@@ -2054,6 +2058,9 @@ static int dc_attach(dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = dc_ioctl;
 	ifp->if_start = dc_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = dc_poll;
+#endif
 	ifp->if_watchdog = dc_watchdog;
 	ifp->if_init = dc_init;
 	ifp->if_baudrate = 10000000;
@@ -2780,33 +2787,41 @@ static void dc_tx_underrun(sc)
 }
 
 #ifdef DEVICE_POLLING
-static poll_handler_t dc_poll;
 
 static void
 dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct	dc_softc *sc = ifp->if_softc;
+	u_int32_t status;
 
-	if (cmd == POLL_DEREGISTER) { /* final call, enable interrupts */
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* Disable interrupts */
+		CSR_WRITE_4(sc, DC_IMR, 0x00000000);
+		break;
+	case POLL_DEREGISTER:
 		/* Re-enable interrupts. */
 		CSR_WRITE_4(sc, DC_IMR, DC_INTRS);
-		return;
-	}
-	sc->rxcycles = count;
-	dc_rxeof(sc);
-	dc_txeof(sc);
-	if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
-		dc_start(ifp);
-
-	if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
-		u_int32_t          status;
-
+		break;
+	case POLL_ONLY:
+		sc->rxcycles = count;
+		dc_rxeof(sc);
+		dc_txeof(sc);
+		if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
+			dc_start(ifp);
+		break;
+	case POLL_AND_CHECK_STATUS:
+		sc->rxcycles = count;
+		dc_rxeof(sc);
+		dc_txeof(sc);
+		if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
+			dc_start(ifp);
 		status = CSR_READ_4(sc, DC_ISR);
 		status &= (DC_ISR_RX_WATDOGTIMEO|DC_ISR_RX_NOBUF|
 			DC_ISR_TX_NOBUF|DC_ISR_TX_IDLE|DC_ISR_TX_UNDERRUN|
 			DC_ISR_BUS_ERR);
 		if (!status)
-			return ;
+			break;
 		/* ack what we have */
 		CSR_WRITE_4(sc, DC_ISR, status);
 
@@ -2829,6 +2844,7 @@ dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			dc_reset(sc);
 			dc_init(sc);
 		}
+		break;
 	}
 }
 #endif /* DEVICE_POLLING */
@@ -2847,15 +2863,6 @@ static void dc_intr(arg)
 	}
 
 	ifp = &sc->arpcom.ac_if;
-
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
-		return;
-	if (ether_poll_register(dc_poll, ifp)) { /* ok, disable interrupts */
-		CSR_WRITE_4(sc, DC_IMR, 0x00000000);
-		return;
-	}
-#endif /* DEVICE_POLLING */
 
 	if ( (CSR_READ_4(sc, DC_ISR) & DC_INTRS) == 0)
 		return ;
@@ -3400,9 +3407,6 @@ static void dc_stop(sc)
 	callout_stop(&sc->dc_stat_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-#ifdef DEVICE_POLLING
-	ether_poll_deregister(ifp);
-#endif
 
 	DC_CLRBIT(sc, DC_NETCFG, (DC_NETCFG_RX_ON|DC_NETCFG_TX_ON));
 	CSR_WRITE_4(sc, DC_IMR, 0x00000000);

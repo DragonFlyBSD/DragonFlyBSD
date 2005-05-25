@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.10 2005/05/24 20:58:38 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.11 2005/05/25 01:44:12 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -243,7 +243,7 @@ static __inline
 void
 atomic_intr_handler_enable(atomic_intr_t *p)
 {
-	__asm __volatile(MPLOCKED "andl $0xB0000000,%0" : "+m" (*p));
+	__asm __volatile(MPLOCKED "andl $0xBFFFFFFF,%0" : "+m" (*p));
 }
 
 static __inline

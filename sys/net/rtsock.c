@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.25 2005/04/18 23:50:30 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.26 2005/05/25 01:44:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -867,7 +867,7 @@ rt_ifmsg(struct ifnet *ifp)
 		return;
 	ifm = mtod(m, struct if_msghdr *);
 	ifm->ifm_index = ifp->if_index;
-	ifm->ifm_flags = (u_short)ifp->if_flags;
+	ifm->ifm_flags = ifp->if_flags;
 	ifm->ifm_data = ifp->if_data;
 	ifm->ifm_addrs = 0;
 	rts_input(m, 0);
@@ -1104,7 +1104,7 @@ sysctl_iflist(int af, struct walkarg *w)
 			struct if_msghdr *ifm = w->w_tmem;
 
 			ifm->ifm_index = ifp->if_index;
-			ifm->ifm_flags = (u_short)ifp->if_flags;
+			ifm->ifm_flags = ifp->if_flags;
 			ifm->ifm_data = ifp->if_data;
 			ifm->ifm_addrs = rtinfo.rti_addrs;
 			error = SYSCTL_OUT(w->w_req, ifm, msglen);

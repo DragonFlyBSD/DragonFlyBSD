@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.1 2005/05/24 21:22:05 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.2 2005/05/25 01:44:14 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -110,7 +110,11 @@ lwkt_serialize_handler_enable(lwkt_serialize_t s)
 void
 lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *), void *arg)
 {
-    if (atomic_intr_handler_is_enabled(&s->interlock)) {
+    /*
+     * note: a return value of 0 indicates that the interrupt handler is 
+     * enabled.
+     */
+    if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
 	atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
 	    func(arg);

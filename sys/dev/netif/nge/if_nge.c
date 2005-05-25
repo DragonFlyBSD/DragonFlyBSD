@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.23 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.24 2005/05/25 01:44:26 dillon Exp $
  */
 
 /*
@@ -186,6 +186,9 @@ static void	nge_setmulti(struct nge_softc *);
 static void	nge_reset(struct nge_softc *);
 static int	nge_list_rx_init(struct nge_softc *);
 static int	nge_list_tx_init(struct nge_softc *);
+#ifdef DEVICE_POLLING
+static void	nge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#endif
 
 #ifdef NGE_USEIOSPACE
 #define NGE_RES			SYS_RES_IOPORT
@@ -863,6 +866,9 @@ nge_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = nge_ioctl;
 	ifp->if_start = nge_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = nge_poll;
+#endif
 	ifp->if_watchdog = nge_watchdog;
 	ifp->if_init = nge_init;
 	ifp->if_baudrate = 1000000000;
@@ -1464,49 +1470,56 @@ nge_tick(void *xsc)
 }
 
 #ifdef DEVICE_POLLING
-static poll_handler_t nge_poll;
 
 static void
 nge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct nge_softc *sc = ifp->if_softc;
 
-	if (cmd == POLL_DEREGISTER) {	/* final call, enable interrupts */
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* disable interrupts */
+		CSR_WRITE_4(sc, NGE_IER, 0);
+		break;
+	case POLL_DEREGISTER:
+		/* enable interrupts */
 		CSR_WRITE_4(sc, NGE_IER, 1);
-		return;
-	}
+		break;
+	default:
+		/*
+		 * On the nge, reading the status register also clears it.
+		 * So before returning to intr mode we must make sure that all
+		 * possible pending sources of interrupts have been served.
+		 * In practice this means run to completion the *eof routines,
+		 * and then call the interrupt routine
+		 */
+		sc->rxcycles = count;
+		nge_rxeof(sc);
+		nge_txeof(sc);
+		if (!ifq_is_empty(&ifp->if_snd))
+			nge_start(ifp);
 
-	/*
-	 * On the nge, reading the status register also clears it.
-	 * So before returning to intr mode we must make sure that all
-	 * possible pending sources of interrupts have been served.
-	 * In practice this means run to completion the *eof routines,
-	 * and then call the interrupt routine
-	 */
-	sc->rxcycles = count;
-	nge_rxeof(sc);
-	nge_txeof(sc);
-	if (!ifq_is_empty(&ifp->if_snd))
-		nge_start(ifp);
+		if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
+			uint32_t status;
 
-	if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
-		uint32_t status;
+			/* Reading the ISR register clears all interrupts. */
+			status = CSR_READ_4(sc, NGE_ISR);
 
-		/* Reading the ISR register clears all interrupts. */
-		status = CSR_READ_4(sc, NGE_ISR);
+			if (status & (NGE_ISR_RX_ERR|NGE_ISR_RX_OFLOW))
+				nge_rxeof(sc);
 
-		if (status & (NGE_ISR_RX_ERR|NGE_ISR_RX_OFLOW))
-			nge_rxeof(sc);
+			if (status & (NGE_ISR_RX_IDLE))
+				NGE_SETBIT(sc, NGE_CSR, NGE_CSR_RX_ENABLE);
 
-		if (status & (NGE_ISR_RX_IDLE))
-			NGE_SETBIT(sc, NGE_CSR, NGE_CSR_RX_ENABLE);
-
-		if (status & NGE_ISR_SYSERR) {
-			nge_reset(sc);
-			nge_init(sc);
+			if (status & NGE_ISR_SYSERR) {
+				nge_reset(sc);
+				nge_init(sc);
+			}
 		}
+		break;
 	}
 }
+
 #endif /* DEVICE_POLLING */
 
 static void
@@ -1515,16 +1528,6 @@ nge_intr(void *arg)
 	struct nge_softc *sc = arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t status;
-
-#ifdef DEVICE_POLLING
-	if (ifp->if_flags & IFF_POLLING)
-		return;
-	if (ether_poll_register(nge_poll, ifp)) { /* ok, disable interrupts */
-		CSR_WRITE_4(sc, NGE_IER, 0);
-		nge_poll(ifp, 0, 1);
-		return;
-	}
-#endif /* DEVICE_POLLING */
 
 	/* Supress unwanted interrupts */
 	if (!(ifp->if_flags & IFF_UP)) {
@@ -2115,9 +2118,6 @@ nge_stop(struct nge_softc *sc)
 		mii = device_get_softc(sc->nge_miibus);
 
 	callout_stop(&sc->nge_stat_timer);
-#ifdef DEVICE_POLLING
-	ether_poll_deregister(ifp);
-#endif
 	CSR_WRITE_4(sc, NGE_IER, 0);
 	CSR_WRITE_4(sc, NGE_IMR, 0);
 	NGE_SETBIT(sc, NGE_CSR, NGE_CSR_TX_DISABLE|NGE_CSR_RX_DISABLE);

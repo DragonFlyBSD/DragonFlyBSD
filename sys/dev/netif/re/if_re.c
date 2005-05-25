@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.11 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.12 2005/05/25 01:44:27 dillon Exp $
  */
 
 /*
@@ -222,6 +222,9 @@ static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *);
 
 static int	re_diag(struct re_softc *);
+#ifdef DEVICE_POLLING
+static void	re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#endif
 
 static device_method_t re_methods[] = {
 	/* Device interface */
@@ -1132,7 +1135,7 @@ re_attach(device_t dev)
 	ifp->if_start = re_start;
 	ifp->if_capabilities |= IFCAP_HWCSUM|IFCAP_VLAN_HWTAGGING;
 #ifdef DEVICE_POLLING
-	ifp->if_capabilities |= IFCAP_POLLING;
+	ifp->if_poll = re_poll;
 #endif
 	ifp->if_watchdog = re_watchdog;
 	ifp->if_init = re_init;
@@ -1590,44 +1593,48 @@ re_tick(void *xsc)
 }
 
 #ifdef DEVICE_POLLING
+
 static void
 re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct re_softc *sc = ifp->if_softc;
 
-	if ((ifp->if_capenable & IFCAP_POLLING) == 0) {
-		ether_poll_deregister(ifp);
-		cmd = POLL_DEREGISTER;
-	}
-	if (cmd == POLL_DEREGISTER) { /* final call, enable interrupts */
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* disable interrupts */
+		CSR_WRITE_2(sc, RE_IMR, 0x0000);
+		break;
+	case POLL_DEREGISTER:
+		/* enable interrupts */
 		CSR_WRITE_2(sc, RE_IMR, RE_INTRS_CPLUS);
-		return;
-	}
+		break;
+	default:
+		sc->rxcycles = count;
+		re_rxeof(sc);
+		re_txeof(sc);
 
-	sc->rxcycles = count;
-	re_rxeof(sc);
-	re_txeof(sc);
+		if (!ifq_is_empty(&ifp->if_snd))
+			(*ifp->if_start)(ifp);
 
-	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
+			uint16_t       status;
 
-	if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
-		uint16_t       status;
+			status = CSR_READ_2(sc, RE_ISR);
+			if (status == 0xffff)
+				return;
+			if (status)
+				CSR_WRITE_2(sc, RE_ISR, status);
 
-		status = CSR_READ_2(sc, RE_ISR);
-		if (status == 0xffff)
-			return;
-		if (status)
-			CSR_WRITE_2(sc, RE_ISR, status);
+			/*
+			 * XXX check behaviour on receiver stalls.
+			 */
 
-		/*
-		 * XXX check behaviour on receiver stalls.
-		 */
-
-		if (status & RE_ISR_SYSTEM_ERR) {
-			re_reset(sc);
-			re_init(sc);
+			if (status & RE_ISR_SYSTEM_ERR) {
+				re_reset(sc);
+				re_init(sc);
+			}
 		}
+		break;
 	}
 }
 #endif /* DEVICE_POLLING */
@@ -1642,17 +1649,6 @@ re_intr(void *arg)
 
 	if (sc->suspended || (ifp->if_flags & IFF_UP) == 0)
 		return;
-
-#ifdef DEVICE_POLLING
-	if  (ifp->if_flags & IFF_POLLING)
-		return;
-	if ((ifp->if_capenable & IFCAP_POLLING) &&
-	    ether_poll_register(re_poll, ifp)) { /* ok, disable interrupts */
-		CSR_WRITE_2(sc, RE_IMR, 0x0000);
-		re_poll(ifp, 0, 1);
-		return;
-	}
-#endif /* DEVICE_POLLING */
 
 	s = splimp();
 
@@ -2117,9 +2113,9 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	case SIOCSIFCAP:
-		ifp->if_capenable &= ~(IFCAP_HWCSUM | IFCAP_POLLING);
+		ifp->if_capenable &= ~(IFCAP_HWCSUM);
 		ifp->if_capenable |=
-		    ifr->ifr_reqcap & (IFCAP_HWCSUM | IFCAP_POLLING);
+		    ifr->ifr_reqcap & (IFCAP_HWCSUM);
 		if (ifp->if_capenable & IFCAP_TXCSUM)
 			ifp->if_hwassist = RE_CSUM_FEATURES;
 		else
@@ -2170,9 +2166,6 @@ re_stop(struct re_softc *sc)
 	callout_stop(&sc->re_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-#ifdef DEVICE_POLLING
-	ether_poll_deregister(ifp);
-#endif /* DEVICE_POLLING */
 
 	CSR_WRITE_1(sc, RE_COMMAND, 0x00);
 	CSR_WRITE_2(sc, RE_IMR, 0x0000);

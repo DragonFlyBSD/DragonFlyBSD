@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.24 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.25 2005/05/25 01:44:16 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -106,6 +106,11 @@ struct	ifqueue {
 	int	ifq_drops;
 };
 
+#ifdef DEVICE_POLLING
+enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
+		POLL_REGISTER };
+#endif
+
 /*
  * Structure defining a network interface.
  *
@@ -173,6 +178,12 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
+#ifdef DEVICE_POLLING
+	void	(*if_poll)		/* IFF_POLLING support */
+		(struct ifnet *, enum poll_cmd, int);
+#else
+	void	(*if_poll_unused)(void); /* placeholder */
+#endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
@@ -443,11 +454,9 @@ int	if_clone_destroy(const char *);
     LLADDR((struct sockaddr_dl *) ifnet_addrs[ifp->if_index - 1]->ifa_addr)
 
 #ifdef DEVICE_POLLING
-enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER };
-
 typedef	void poll_handler_t (struct ifnet *ifp,
 		enum poll_cmd cmd, int count);
-int	ether_poll_register(poll_handler_t *h, struct ifnet *ifp);
+int	ether_poll_register(struct ifnet *ifp);
 int	ether_poll_deregister(struct ifnet *ifp);
 void	emergency_poll_enable(const char *name);
 #endif /* DEVICE_POLLING */

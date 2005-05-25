@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.9 2005/05/24 20:59:01 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.10 2005/05/25 01:44:21 dillon Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -75,6 +75,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
+#include <sys/serialize.h>
 #include "opt_bdg.h"
 
 #include <dev/netif/em/if_em_hw.h>
@@ -333,6 +334,7 @@ struct adapter {
 	struct em_hw    hw;
 
 	/* FreeBSD operating-system-specific structures */
+	struct lwkt_serialize serializer;
 	struct em_osdep osdep;
 	struct device   *dev;
 	struct resource *res_memory;

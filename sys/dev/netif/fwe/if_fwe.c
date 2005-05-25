@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.14 2005/02/18 23:10:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.15 2005/05/25 01:44:23 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -102,20 +102,6 @@ TUNABLE_INT("hw.firewire.fwe.tx_speed", &tx_speed);
 TUNABLE_INT("hw.firewire.fwe.rx_queue_len", &rx_queue_len);
 
 #ifdef DEVICE_POLLING
-#define FWE_POLL_REGISTER(func, fwe, ifp)			\
-	if (ether_poll_register(func, ifp)) {			\
-		struct firewire_comm *fc = (fwe)->fd.fc;	\
-		fc->set_intr(fc, 0);				\
-	}
-
-#define FWE_POLL_DEREGISTER(fwe, ifp)				\
-	do {							\
-		struct firewire_comm *fc = (fwe)->fd.fc;	\
-		ether_poll_deregister(ifp);			\
-		fc->set_intr(fc, 1);				\
-	} while(0)						\
-
-static poll_handler_t fwe_poll;
 
 static void
 fwe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
@@ -125,17 +111,23 @@ fwe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 	fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 	fc = fwe->fd.fc;
-	if (cmd == POLL_DEREGISTER) {
+	switch(cmd) {
+	case POLL_REGISTER:
+		/* disable interrupts */
+		fc->set_intr(fc, 0);
+		break;
+	case POLL_DEREGISTER:
 		/* enable interrupts */
 		fc->set_intr(fc, 1);
-		return;
+		break;
+	default:
+		fc->poll(fc, (cmd == POLL_AND_CHECK_STATUS)?0:1, count);
+		break;
 	}
-	fc->poll(fc, (cmd == POLL_AND_CHECK_STATUS)?0:1, count);
 }
-#else
-#define FWE_POLL_REGISTER(func, fwe, ifp)
-#define FWE_POLL_DEREGISTER(fwe, ifp)
+
 #endif
+
 static void
 fwe_identify(driver_t *driver, device_t parent)
 {
@@ -214,6 +206,9 @@ fwe_attach(device_t dev)
 	ifp->if_init = fwe_init;
 	ifp->if_start = fwe_start;
 	ifp->if_ioctl = fwe_ioctl;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = fwe_poll;
+#endif
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = (IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST);
 	ifq_set_maxlen(&ifp->if_snd, TX_MAX_QUEUE);
@@ -245,7 +240,7 @@ fwe_stop(struct fwe_softc *fwe)
 
 	fc = fwe->fd.fc;
 
-	FWE_POLL_DEREGISTER(fwe, ifp);
+	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
 	if (fwe->dma_ch >= 0) {
 		xferq = fc->ir[fwe->dma_ch];
@@ -271,8 +266,6 @@ fwe_stop(struct fwe_softc *fwe)
 		xferq->bulkxfer =  NULL;
 		fwe->dma_ch = -1;
 	}
-
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 }
 
 static int
@@ -384,12 +377,6 @@ found:
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	FWE_POLL_REGISTER(fwe_poll, fwe, ifp);
-#if 0
-	/* attempt to start output */
-	fwe_start(ifp);
-#endif
 }
 
 
@@ -570,9 +557,6 @@ fwe_as_input(struct fw_xferq *xferq)
 
 	fwe = (struct fwe_softc *)xferq->sc;
 	ifp = &fwe->fwe_if;
-#if 0
-	FWE_POLL_REGISTER(fwe_poll, fwe, ifp);
-#endif
 	while ((sxfer = STAILQ_FIRST(&xferq->stvalid)) != NULL) {
 		STAILQ_REMOVE_HEAD(&xferq->stvalid, link);
 		fp = mtod(sxfer->mbuf, struct fw_pkt *);
