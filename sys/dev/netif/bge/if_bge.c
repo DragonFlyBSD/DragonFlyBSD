@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.35 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.36 2005/05/25 21:35:51 hsu Exp $
  *
  */
 
@@ -699,15 +699,9 @@ bge_newbuf_std(struct bge_softc *sc, int i, struct mbuf *m)
 	struct bge_rx_bd *r;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
-			return(ENOBUFS);
-
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			m_freem(m_new);
-			return(ENOBUFS);
-		}
+			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 	} else {
 		m_new = m;
