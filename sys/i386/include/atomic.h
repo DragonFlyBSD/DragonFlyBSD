@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.11 2005/05/25 01:44:12 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.12 2005/05/25 22:59:20 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -169,6 +169,8 @@ atomic_poll_release_int(volatile u_int *p)
  *	bit 0-30	interrupt handler disabled bits (counter)
  *	bit 31		interrupt handler currently running bit (1 = run)
  *
+ * atomic_intr_cond_try(P)	Attempt to set bit 31.  Returns non-zero
+ *				on success, 0 on failure.
  *
  * atomic_intr_cond_enter(P, func, arg)
  *				Increment the request counter and attempt to
@@ -270,6 +272,17 @@ atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
 			 : "+m" (*p) \
 			 : "r"(func), "m"(arg) \
 			 : "ax", "cx", "dx");
+}
+
+static __inline
+int
+atomic_intr_cond_try(atomic_intr_t *p)
+{
+ 	int data;
+
+	__asm __volatile(MPLOCKED "btsl $31,%1; setnc %%al; andl $255,%%eax" 
+			 : "=a"(data) : "m"(*p));
+	return(data);
 }
 
 static __inline

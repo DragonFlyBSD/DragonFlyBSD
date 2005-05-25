@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.2 2005/05/25 01:44:14 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.3 2005/05/25 22:59:19 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -124,12 +124,21 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *), void *arg)
 
 /*
  * Helper functions
+ *
+ * It is possible to race an interrupt which acquires and releases the
+ * bit, then calls wakeup before we actually go to sleep, so we
+ * need to try again in a critical section before actually sleeping.
+ * This also works in the MP case since a remote thread calling wakeup
+ * on us has to forward the wakeup to us with IPI forwarding.
  */
 static void
 lwkt_serialize_sleep(void *info)
 {
     lwkt_serialize_t s = info;
-    tsleep(s, 0, "slize", 0);
+    crit_enter();
+    if (atomic_intr_cond_try(&s->interlock) == 0)
+	    tsleep(s, 0, "slize", 0);
+    crit_exit();
 }
 
 static void
