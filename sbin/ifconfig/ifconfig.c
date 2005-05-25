@@ -29,7 +29,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.22 2005/05/25 01:44:18 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.23 2005/05/25 14:58:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -193,8 +193,8 @@ struct	cmd {
 } cmds[] = {
 	{ "up",		IFF_UP,		setifflags,	NULL },
 	{ "down",	-IFF_UP,	setifflags,	NULL },
-	{ "poll",	IFF_POLLING,	setifflags,	NULL },
-	{ "-poll",	-IFF_POLLING,	setifflags,	NULL },
+	{ "polling",	IFF_POLLING,	setifflags,	NULL },
+	{ "-polling",	-IFF_POLLING,	setifflags,	NULL },
 	{ "arp",	-IFF_NOARP,	setifflags,	NULL },
 	{ "-arp",	IFF_NOARP,	setifflags,	NULL },
 	{ "debug",	IFF_DEBUG,	setifflags,	NULL },
@@ -291,8 +291,6 @@ struct	cmd {
 	{ "-txcsum",	-IFCAP_TXCSUM,	setifcap,	NULL },
 	{ "netcons",	IFCAP_NETCONS,	setifcap,	NULL },
 	{ "-netcons",	-IFCAP_NETCONS,	setifcap,	NULL },
-	{ "polling",	IFCAP_POLLING,	setifcap,	NULL },
-	{ "-polling",	-IFCAP_POLLING,	setifcap,	NULL },
 	{ "vlanmtu",	IFCAP_VLAN_MTU,		setifcap,	NULL },
 	{ "-vlanmtu",	-IFCAP_VLAN_MTU,	setifcap,	NULL },
 	{ "vlanhwtag",	IFCAP_VLAN_HWTAGGING,	setifcap,	NULL },
