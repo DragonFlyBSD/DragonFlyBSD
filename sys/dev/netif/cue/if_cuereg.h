@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cuereg.h,v 1.12 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.5 2004/09/14 22:35:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.6 2005/05/25 11:46:10 joerg Exp $
  */
 
 /*
@@ -172,7 +172,6 @@ struct cue_softc {
 	usbd_interface_handle	cue_iface;
 	int			cue_ed[CUE_ENDPT_MAX];
 	usbd_pipe_handle	cue_ep[CUE_ENDPT_MAX];
-	int			cue_unit;
 	u_int8_t		cue_mctab[CUE_MCAST_TABLE_LEN];
 	int			cue_if_flags;
 	u_int16_t		cue_rxfilt;

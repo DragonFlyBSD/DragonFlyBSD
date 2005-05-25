@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.18 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.19 2005/05/25 11:46:10 joerg Exp $
  */
 
 /*
@@ -316,7 +316,7 @@ cue_getmac(struct cue_softc *sc, void *buf)
 	CUE_UNLOCK(sc);
 
 	if (err) {
-		printf("cue%d: read MAC address failed\n", sc->cue_unit);
+		if_printf(&sc->arpcom.ac_if, "read MAC address failed\n");
 		return(-1);
 	}
 
@@ -409,7 +409,7 @@ cue_reset(struct cue_softc *sc)
 	USETW(req.wLength, 0);
 	err = usbd_do_request(sc->cue_udev, &req, NULL);
 	if (err)
-		printf("cue%d: reset failed\n", sc->cue_unit);
+		if_printf(&sc->arpcom.ac_if, "reset failed\n");
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -456,12 +456,11 @@ USB_ATTACH(cue)
 	bzero(sc, sizeof(struct cue_softc));
 	sc->cue_iface = uaa->iface;
 	sc->cue_udev = uaa->device;
-	sc->cue_unit = device_get_unit(self);
 	callout_init(&sc->cue_stat_timer);
 
 	if (usbd_set_config_no(sc->cue_udev, CUE_CONFIG_NO, 0)) {
-		printf("cue%d: getting interface handle failed\n",
-		    sc->cue_unit);
+		device_printf(self, "setting config no %d failed\n",
+			      CUE_CONFIG_NO);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -469,14 +468,13 @@ USB_ATTACH(cue)
 
 	usbd_devinfo(uaa->device, 0, devinfo);
 	device_set_desc_copy(self, devinfo);
-	printf("%s: %s\n", USBDEVNAME(self), devinfo);
+	device_printf(self, "%s\n", devinfo);
 
 	/* Find endpoints. */
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(uaa->iface, i);
 		if (!ed) {
-			printf("cue%d: couldn't get ep %d\n",
-			    sc->cue_unit, i);
+			device_printf(self, "couldn't get ep %d\n", i);
 			USB_ATTACH_ERROR_RETURN;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
@@ -497,6 +495,9 @@ USB_ATTACH(cue)
 #endif
 	CUE_LOCK(sc);
 
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(self), device_get_unit(self));
+
 #ifdef notdef
 	/* Reset the adapter. */
 	cue_reset(sc);
@@ -506,9 +507,7 @@ USB_ATTACH(cue)
 	 */
 	cue_getmac(sc, &eaddr);
 
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "cue", sc->cue_unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = cue_ioctl;
@@ -570,15 +569,15 @@ cue_newbuf(struct cue_softc *sc, struct cue_chain *c, struct mbuf *m)
 	if (m == NULL) {
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
-			printf("cue%d: no memory for rx list "
-			    "-- packet dropped!\n", sc->cue_unit);
+			if_printf(&sc->arpcom.ac_if, "no memory for rx list "
+				  "-- packet dropped!\n");
 			return(ENOBUFS);
 		}
 
 		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
-			printf("cue%d: no memory for rx list "
-			    "-- packet dropped!\n", sc->cue_unit);
+			if_printf(&sc->arpcom.ac_if, "no memory for rx list "
+				  "-- packet dropped!\n");
 			m_freem(m_new);
 			return(ENOBUFS);
 		}
@@ -698,9 +697,10 @@ cue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 			CUE_UNLOCK(sc);
 			return;
 		}
-		if (usbd_ratecheck(&sc->cue_rx_notice))
-			printf("cue%d: usb error on rx: %s\n", sc->cue_unit,
-			    usbd_errstr(status));
+		if (usbd_ratecheck(&sc->cue_rx_notice)) {
+			if_printf(ifp, "usb error on rx: %s\n",
+				  usbd_errstr(status));
+		}
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->cue_ep[CUE_ENDPT_RX]);
 		goto done;
@@ -765,8 +765,7 @@ cue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 			CUE_UNLOCK(sc);
 			return;
 		}
-		printf("cue%d: usb error on tx: %s\n", sc->cue_unit,
-		    usbd_errstr(status));
+		if_printf(ifp, "usb error on tx: %s\n", usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->cue_ep[CUE_ENDPT_TX]);
 		CUE_UNLOCK(sc);
@@ -942,14 +941,14 @@ cue_init(void *xsc)
 
 	/* Init TX ring. */
 	if (cue_tx_list_init(sc) == ENOBUFS) {
-		printf("cue%d: tx list init failed\n", sc->cue_unit);
+		if_printf(ifp, "tx list init failed\n");
 		CUE_UNLOCK(sc);
 		return;
 	}
 
 	/* Init RX ring. */
 	if (cue_rx_list_init(sc) == ENOBUFS) {
-		printf("cue%d: rx list init failed\n", sc->cue_unit);
+		if_printf(ifp, "rx list init failed\n");
 		CUE_UNLOCK(sc);
 		return;
 	}
@@ -975,16 +974,14 @@ cue_init(void *xsc)
 	err = usbd_open_pipe(sc->cue_iface, sc->cue_ed[CUE_ENDPT_RX],
 	    USBD_EXCLUSIVE_USE, &sc->cue_ep[CUE_ENDPT_RX]);
 	if (err) {
-		printf("cue%d: open rx pipe failed: %s\n",
-		    sc->cue_unit, usbd_errstr(err));
+		if_printf(ifp, "open rx pipe failed: %s\n", usbd_errstr(err));
 		CUE_UNLOCK(sc);
 		return;
 	}
 	err = usbd_open_pipe(sc->cue_iface, sc->cue_ed[CUE_ENDPT_TX],
 	    USBD_EXCLUSIVE_USE, &sc->cue_ep[CUE_ENDPT_TX]);
 	if (err) {
-		printf("cue%d: open tx pipe failed: %s\n",
-		    sc->cue_unit, usbd_errstr(err));
+		if_printf(ifp, "open tx pipe failed: %s\n", usbd_errstr(err));
 		CUE_UNLOCK(sc);
 		return;
 	}
@@ -1062,7 +1059,7 @@ cue_watchdog(struct ifnet *ifp)
 	CUE_LOCK(sc);
 
 	ifp->if_oerrors++;
-	printf("cue%d: watchdog timeout\n", sc->cue_unit);
+	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->cue_cdata.cue_tx_chain[0];
 	usbd_get_xfer_status(c->cue_xfer, NULL, NULL, NULL, &stat);
@@ -1099,13 +1096,13 @@ cue_stop(struct cue_softc *sc)
 	if (sc->cue_ep[CUE_ENDPT_RX] != NULL) {
 		err = usbd_abort_pipe(sc->cue_ep[CUE_ENDPT_RX]);
 		if (err) {
-			printf("cue%d: abort rx pipe failed: %s\n",
-		    	sc->cue_unit, usbd_errstr(err));
+			if_printf(ifp, "abort rx pipe failed: %s\n",
+		    		  usbd_errstr(err));
 		}
 		err = usbd_close_pipe(sc->cue_ep[CUE_ENDPT_RX]);
 		if (err) {
-			printf("cue%d: close rx pipe failed: %s\n",
-		    	sc->cue_unit, usbd_errstr(err));
+			if_printf(ifp, "close rx pipe failed: %s\n",
+		    		  usbd_errstr(err));
 		}
 		sc->cue_ep[CUE_ENDPT_RX] = NULL;
 	}
@@ -1113,13 +1110,13 @@ cue_stop(struct cue_softc *sc)
 	if (sc->cue_ep[CUE_ENDPT_TX] != NULL) {
 		err = usbd_abort_pipe(sc->cue_ep[CUE_ENDPT_TX]);
 		if (err) {
-			printf("cue%d: abort tx pipe failed: %s\n",
-		    	sc->cue_unit, usbd_errstr(err));
+			if_printf(ifp, "abort tx pipe failed: %s\n",
+		    		  usbd_errstr(err));
 		}
 		err = usbd_close_pipe(sc->cue_ep[CUE_ENDPT_TX]);
 		if (err) {
-			printf("cue%d: close tx pipe failed: %s\n",
-			    sc->cue_unit, usbd_errstr(err));
+			if_printf(ifp, "close tx pipe failed: %s\n",
+				  usbd_errstr(err));
 		}
 		sc->cue_ep[CUE_ENDPT_TX] = NULL;
 	}
@@ -1127,13 +1124,13 @@ cue_stop(struct cue_softc *sc)
 	if (sc->cue_ep[CUE_ENDPT_INTR] != NULL) {
 		err = usbd_abort_pipe(sc->cue_ep[CUE_ENDPT_INTR]);
 		if (err) {
-			printf("cue%d: abort intr pipe failed: %s\n",
-		    	sc->cue_unit, usbd_errstr(err));
+			if_printf(ifp, "abort intr pipe failed: %s\n",
+		    		  usbd_errstr(err));
 		}
 		err = usbd_close_pipe(sc->cue_ep[CUE_ENDPT_INTR]);
 		if (err) {
-			printf("cue%d: close intr pipe failed: %s\n",
-			    sc->cue_unit, usbd_errstr(err));
+			if_printf(ifp, "close intr pipe failed: %s\n",
+				  usbd_errstr(err));
 		}
 		sc->cue_ep[CUE_ENDPT_INTR] = NULL;
 	}
