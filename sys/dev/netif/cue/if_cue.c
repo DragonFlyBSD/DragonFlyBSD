@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.20 2005/05/25 11:51:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.21 2005/05/25 11:59:14 joerg Exp $
  */
 
 /*
@@ -343,11 +343,7 @@ cue_setmulti(struct cue_softc *sc)
 		sc->cue_mctab[i] = 0;
 
 	/* now program new ones */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-#else
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-#endif
 	{
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
@@ -469,10 +465,6 @@ USB_ATTACH(cue)
 		}
 	}
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	mtx_init(&sc->cue_mtx, device_get_nameunit(self), MTX_NETWORK_LOCK,
-	    MTX_DEF | MTX_RECURSE);
-#endif
 	CUE_LOCK(sc);
 
 	ifp = &sc->arpcom.ac_if;
@@ -531,9 +523,6 @@ cue_detach(device_ptr_t dev)
 		usbd_abort_pipe(sc->cue_ep[CUE_ENDPT_INTR]);
 
 	CUE_UNLOCK(sc);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	mtx_destroy(&sc->cue_mtx);
-#endif
 
 	return(0);
 }
