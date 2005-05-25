@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.27 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.28 2005/05/25 07:58:41 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -781,6 +781,10 @@ add_intrdesc(intrec *idesc)
 			       "shared irq%d\n", irq);
 			return (-1);
 		}
+		if ((idesc->flags & INTR_FAST) || (head->flags & INTR_FAST)) {
+			printf("\tdevice combination doesn't support "
+			       "multiple FAST interrupts on IRQ%d\n", irq);
+		}
 	}
 
 	/*
@@ -788,10 +792,13 @@ add_intrdesc(intrec *idesc)
 	 * individual enablement on handlers.
 	 */
 	if (head == NULL) {
-		if (icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0) != 0)
+		if (icu_setup(irq, idesc->handler, idesc->argument, idesc->maskptr, idesc->flags) != 0)
 			return (-1);
 		update_intrname(irq, idesc->name);
-	} else {
+	} else if (head->next == NULL) {
+		icu_unset(irq, head->handler);
+		if (icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0) != 0)
+			return (-1);
 		if (bootverbose && head->next == NULL)
 			printf("\tusing shared irq%d.\n", irq);
 		update_intrname(irq, "mux");
@@ -928,7 +935,7 @@ inthand_remove(intrec *idesc)
 		/*
 		 * No more interrupts on this irq
 		 */
-		icu_unset(irq, intr_mux);
+		icu_unset(irq, idesc->handler);
 		update_intrname(irq, NULL);
 	} else if (head->next) {
 		/*
@@ -939,6 +946,8 @@ inthand_remove(intrec *idesc)
 		/*
 		 * This irq is no longer shared
 		 */
+		icu_unset(irq, intr_mux);
+		icu_setup(irq, head->handler, head->argument, head->maskptr, head->flags);
 		update_intrname(irq, head->name);
 	}
 	update_masks(idesc->maskptr, irq);
