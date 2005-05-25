@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_auereg.h,v 1.17 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.6 2005/05/24 07:36:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.7 2005/05/25 11:42:59 joerg Exp $
  */
 
 /*
@@ -223,13 +223,7 @@ struct aue_cdata {
 #define AUE_INC(x, y)		(x) = (x + 1) % y
 
 struct aue_softc {
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define GET_MII(sc) (device_get_softc((sc)->aue_miibus))
-#elif defined(__NetBSD__)
-#define GET_MII(sc) (&(sc)->aue_mii)
-#elif defined(__OpenBSD__)
-#define GET_MII(sc) (&(sc)->aue_mii)
-#endif
 	struct arpcom		arpcom;
 	device_t		aue_miibus;
 	usbd_device_handle	aue_udev;
@@ -242,21 +236,13 @@ struct aue_softc {
 	int			aue_if_flags;
 	struct aue_cdata	aue_cdata;
 	struct callout		aue_stat_timer;
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	struct mtx		aue_mtx;
-#endif
 	u_int16_t		aue_flags;
 	char			aue_dying;
 	struct timeval		aue_rx_notice;
 };
 
-#if 0
-#define	AUE_LOCK(_sc)		mtx_lock(&(_sc)->aue_mtx)
-#define	AUE_UNLOCK(_sc)		mtx_unlock(&(_sc)->aue_mtx)
-#else
 #define	AUE_LOCK(_sc)
 #define	AUE_UNLOCK(_sc)
-#endif
 
 #define AUE_TIMEOUT		1000
 #define AUE_BUFSZ		1536
