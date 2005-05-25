@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.19 2005/05/25 11:46:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.20 2005/05/25 11:51:26 joerg Exp $
  */
 
 /*
@@ -69,9 +69,6 @@
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#include <machine/clock.h>
-#endif
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -112,7 +109,6 @@ Static void cue_watchdog(struct ifnet *);
 Static void cue_shutdown(device_ptr_t);
 
 Static void cue_setmulti(struct cue_softc *);
-Static uint32_t cue_mchash(const uint8_t *);
 Static void cue_reset(struct cue_softc *);
 
 Static int cue_csr_read_1(struct cue_softc *, int);
@@ -323,26 +319,7 @@ cue_getmac(struct cue_softc *sc, void *buf)
 	return(0);
 }
 
-#define CUE_POLY	0xEDB88320
-#define CUE_BITS	9
-
-Static uint32_t
-cue_mchash(const uint8_t *addr)
-{
-	uint32_t crc;
-	int idx, bit;
-	uint8_t data;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (idx = 0; idx < 6; idx++) {
-		for (data = *addr++, bit = 0; bit < 8; bit++, data >>= 1)
-			crc = (crc >> 1) ^ (((crc ^ data) & 1) ? CUE_POLY : 0);
-	}
-
-	return (crc & ((1 << CUE_BITS) - 1));
-}
+#define	CUE_BITS	9
 
 Static void
 cue_setmulti(struct cue_softc *sc)
@@ -374,7 +351,9 @@ cue_setmulti(struct cue_softc *sc)
 	{
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = cue_mchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_le(
+		    LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+		    ETHER_ADDR_LEN) & ((1 << CUE_BITS) - 1);
 		sc->cue_mctab[h >> 3] |= 1 << (h & 0x7);
 	}
 
@@ -383,7 +362,8 @@ cue_setmulti(struct cue_softc *sc)
 	 * so we can receive broadcast frames.
  	 */
 	if (ifp->if_flags & IFF_BROADCAST) {
-		h = cue_mchash(ifp->if_broadcastaddr);
+		h = ether_crc32_le(ifp->if_broadcastaddr, ETHER_ADDR_LEN) &
+		    ((1 << CUE_BITS) - 1);
 		sc->cue_mctab[h >> 3] |= 1 << (h & 0x7);
 	}
 
