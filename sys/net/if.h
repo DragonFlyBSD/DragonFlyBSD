@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.12 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.13 2005/05/25 14:59:05 dillon Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -163,7 +163,6 @@ struct if_data {
 #define IFCAP_VLAN_MTU		0x0008	/* VLAN-compatible MTU */
 #define IFCAP_VLAN_HWTAGGING	0x0010	/* hardware VLAN tag support */
 #define IFCAP_JUMBO_MTU		0x0020	/* 9000 byte MTU support */
-#define	IFCAP_POLLING		0x0040	/* driver supports polling */
 
 #define IFCAP_HWCSUM		(IFCAP_RXCSUM | IFCAP_TXCSUM)
 
