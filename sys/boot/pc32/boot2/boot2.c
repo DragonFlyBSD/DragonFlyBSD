@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.13 2004/07/27 19:37:17 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.14 2005/05/25 06:22:22 y0netan1 Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -318,7 +318,7 @@ main(void)
 	else
 	    putchar('\n');
 	autoboot = 0;
-	if (cmd[0] == 0 || parse())
+	if (parse())
 	    putchar('\a');
 	else
 	    load();
