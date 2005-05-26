@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.7 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.8 2005/05/26 22:49:17 joerg Exp $
  */
 
 /*
@@ -1252,14 +1252,14 @@
 
 /* VPD structures */
 struct vpd_res {
-	u_int8_t		vr_id;
-	u_int8_t		vr_len;
-	u_int8_t		vr_pad;
+	uint8_t			vr_id;
+	uint8_t			vr_len;
+	uint8_t			vr_pad;
 };
 
 struct vpd_key {
 	char			vk_key[2];
-	u_int8_t		vk_len;
+	uint8_t			vk_len;
 };
 
 #define VPD_RES_ID	0x82	/* ID string */
@@ -1282,23 +1282,23 @@ struct vpd_key {
 	bus_space_read_1((sc)->sk_btag, (sc)->sk_bhandle, (reg))
 
 struct sk_type {
-	u_int16_t		sk_vid;
-	u_int16_t		sk_did;
+	uint16_t		sk_vid;
+	uint16_t		sk_did;
 	char			*sk_name;
 };
 
 /* RX queue descriptor data structure */
 struct sk_rx_desc {
-	u_int32_t		sk_ctl;
-	u_int32_t		sk_next;
-	u_int32_t		sk_data_lo;
-	u_int32_t		sk_data_hi;
-	u_int32_t		sk_xmac_rxstat;
-	u_int32_t		sk_timestamp;
-	u_int16_t		sk_csum2;
-	u_int16_t		sk_csum1;
-	u_int16_t		sk_csum2_start;
-	u_int16_t		sk_csum1_start;
+	uint32_t		sk_ctl;
+	uint32_t		sk_next;
+	uint32_t		sk_data_lo;
+	uint32_t		sk_data_hi;
+	uint32_t		sk_xmac_rxstat;
+	uint32_t		sk_timestamp;
+	uint16_t		sk_csum2;
+	uint16_t		sk_csum1;
+	uint16_t		sk_csum2_start;
+	uint16_t		sk_csum1_start;
 };
 
 #define SK_OPCODE_DEFAULT	0x00550000
@@ -1320,16 +1320,16 @@ struct sk_rx_desc {
 	 SK_RXCTL_FIRSTFRAG|SK_RXCTL_OWN)
 
 struct sk_tx_desc {
-	u_int32_t		sk_ctl;
-	u_int32_t		sk_next;
-	u_int32_t		sk_data_lo;
-	u_int32_t		sk_data_hi;
-	u_int32_t		sk_xmac_txstat;
-	u_int16_t		sk_rsvd0;
-	u_int16_t		sk_csum_startval;
-	u_int16_t		sk_csum_startpos;
-	u_int16_t		sk_csum_writepos;
-	u_int32_t		sk_rsvd1;
+	uint32_t		sk_ctl;
+	uint32_t		sk_next;
+	uint32_t		sk_data_lo;
+	uint32_t		sk_data_hi;
+	uint32_t		sk_xmac_txstat;
+	uint16_t		sk_rsvd0;
+	uint16_t		sk_csum_startval;
+	uint16_t		sk_csum_startpos;
+	uint16_t		sk_csum_writepos;
+	uint32_t		sk_rsvd1;
 };
 
 #define SK_TXCTL_LEN		0x0000FFFF
@@ -1364,10 +1364,10 @@ struct sk_tx_desc {
 #define SK_JUMBO_MTU		(SK_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define SK_JSLOTS		384
 
-#define SK_JRAWLEN (SK_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(u_int64_t))
-#define SK_JLEN (SK_JRAWLEN + (sizeof(u_int64_t) - \
-	(SK_JRAWLEN % sizeof(u_int64_t))))
-#define SK_MCLBYTES (SK_JLEN - sizeof(u_int64_t))
+#define SK_JRAWLEN (SK_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
+#define SK_JLEN (SK_JRAWLEN + (sizeof(uint64_t) - \
+	(SK_JRAWLEN % sizeof(uint64_t))))
+#define SK_MCLBYTES (SK_JLEN - sizeof(uint64_t))
 #define SK_JPAGESZ PAGE_SIZE
 #define SK_RESID (SK_JPAGESZ - (SK_JLEN * SK_JSLOTS) % SK_JPAGESZ)
 #define SK_JMEM ((SK_JLEN * SK_JSLOTS) + SK_RESID)
@@ -1425,14 +1425,14 @@ struct sk_softc {
 	void			*sk_intrhand;	/* irq handler handle */
 	struct resource		*sk_irq;	/* IRQ resource handle */
 	struct resource		*sk_res;	/* I/O or shared mem handle */
-	u_int8_t		sk_unit;	/* controller number */
-	u_int8_t		sk_type;
+	uint8_t			sk_unit;	/* controller number */
+	uint8_t			sk_type;
 	char			*sk_vpd_prodname;
 	char			*sk_vpd_readonly;
-	u_int32_t		sk_rboff;	/* RAMbuffer offset */
-	u_int32_t		sk_ramsize;	/* amount of RAM on NIC */
-	u_int32_t		sk_pmd;		/* physical media type */
-	u_int32_t		sk_intrmask;
+	uint32_t		sk_rboff;	/* RAMbuffer offset */
+	uint32_t		sk_ramsize;	/* amount of RAM on NIC */
+	uint32_t		sk_pmd;		/* physical media type */
+	uint32_t		sk_intrmask;
 	struct sk_if_softc	*sk_if[2];
 	device_t		sk_devs[2];
 };
@@ -1441,13 +1441,13 @@ struct sk_softc {
 struct sk_if_softc {
 	struct arpcom		arpcom;		/* interface info */
 	device_t		sk_miibus;
-	u_int8_t		sk_unit;	/* interface number */
-	u_int8_t		sk_port;	/* port # on controller */
-	u_int8_t		sk_xmac_rev;	/* XMAC chip rev (B2 or C1) */
-	u_int32_t		sk_rx_ramstart;
-	u_int32_t		sk_rx_ramend;
-	u_int32_t		sk_tx_ramstart;
-	u_int32_t		sk_tx_ramend;
+	uint8_t			sk_unit;	/* interface number */
+	uint8_t			sk_port;	/* port # on controller */
+	uint8_t			sk_xmac_rev;	/* XMAC chip rev (B2 or C1) */
+	uint32_t		sk_rx_ramstart;
+	uint32_t		sk_rx_ramend;
+	uint32_t		sk_tx_ramstart;
+	uint32_t		sk_tx_ramend;
 	int			sk_phytype;
 	int			sk_phyaddr;
 	device_t		sk_dev;
