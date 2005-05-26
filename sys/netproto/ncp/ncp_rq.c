@@ -32,7 +32,7 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.7 2005/05/25 21:18:51 hsu Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.8 2005/05/26 22:59:57 hsu Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -158,7 +158,7 @@ ncp_rq_pathstring(struct ncp_rq *rqp, int size, char *name, struct ncp_nlstables
 		m->m_len += cplen;
 	}
 	if (size) {
-		m_getc(m, size, MT_DATA, MB_WAIT);
+		m_getm(m, size, MT_DATA, MB_WAIT);
 		while (size > 0){
 			m = m->m_next;
 			cplen = min(size, M_TRAILINGSPACE(m));
