@@ -29,7 +29,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.23 2005/05/25 14:58:32 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.24 2005/05/26 09:06:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1149,7 +1149,6 @@ status(const struct afswtch *afp, int addrcount, struct sockaddr_dl *sdl,
 	if ((s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0)) < 0)
 		err(1, "socket");
 
-	printf("flags %08x\n", flags);
 	printf("%s: ", name);
 	printb("flags", flags, IFFBITS);
 	if (ifm->ifm_data.ifi_metric)
