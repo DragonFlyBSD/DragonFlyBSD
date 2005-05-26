@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_tpublic.h,v 1.2.4.3 2001/10/08 05:57:06 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_tpublic.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_tpublic.h,v 1.3 2005/05/26 23:22:13 swildner Exp $ */
 /*
  * Qlogic ISP Host Adapter Public Target Interface Structures && Routines
  *---------------------------------------
@@ -184,8 +184,7 @@ typedef struct {
  */
 
 #ifndef	_LP64
-#if	defined(__alpha__) || defined(__sparcv9cpu) || defined(__sparc_v9__) ||\
-    defined(__ia64__)
+#if defined(__sparcv9cpu) || defined(__sparc_v9__) || defined(__ia64__)
 #define	_LP64
 #endif
 #endif

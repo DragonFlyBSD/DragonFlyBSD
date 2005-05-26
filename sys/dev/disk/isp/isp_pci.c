@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.5 2005/05/24 20:58:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.6 2005/05/26 23:22:13 swildner Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -371,13 +371,8 @@ isp_pci_attach(device_t dev)
 	/*
 	 * Figure out which we should try first - memory mapping or i/o mapping?
 	 */
-#ifdef	__alpha__
-	m1 = PCIM_CMD_MEMEN;
-	m2 = PCIM_CMD_PORTEN;
-#else
 	m1 = PCIM_CMD_PORTEN;
 	m2 = PCIM_CMD_MEMEN;
-#endif
 	bitmap = 0;
 	if (getenv_int("isp_mem_map", &bitmap)) {
 		if (bitmap & (1 << unit)) {

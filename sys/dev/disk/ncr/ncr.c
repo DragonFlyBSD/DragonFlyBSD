@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.9 2005/05/24 20:58:59 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.10 2005/05/26 23:22:13 swildner Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -274,12 +274,6 @@
 **
 **==========================================================
 */
-
-#ifdef __alpha__
-/* XXX */
-#undef vtophys
-#define	vtophys(va)	alpha_XXX_dmamap((vm_offset_t)va)
-#endif
 
 #define	INB(r) bus_space_read_1(np->bst, np->bsh, offsetof(struct ncr_reg, r))
 #define	INW(r) bus_space_read_2(np->bst, np->bsh, offsetof(struct ncr_reg, r))

@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.12 2005/05/24 20:59:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.13 2005/05/26 23:22:13 swildner Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -166,8 +166,6 @@ typedef	u_int32_t u32;
 
 #if	defined	__i386__
 #define MEMORY_BARRIER()	do { ; } while(0)
-#elif	defined	__alpha__
-#define MEMORY_BARRIER()	alpha_mb()
 #elif	defined	__powerpc__
 #define MEMORY_BARRIER()	__asm__ volatile("eieio; sync" : : : "memory")
 #elif	defined	__ia64__
@@ -691,11 +689,7 @@ static void sym_mfree(void *ptr, int size, char *name)
  */
 #define __sym_calloc_dma(b, s, n)	sym_calloc(s, n)
 #define __sym_mfree_dma(b, p, s, n)	sym_mfree(p, s, n)
-#ifdef	__alpha__
-#define	__vtobus(b, p)	alpha_XXX_dmamap((vm_offset_t)(p))
-#else /*__i386__, __sparc64__*/
 #define __vtobus(b, p)	vtophys(p)
-#endif
 
 #else
 /*
@@ -1033,18 +1027,6 @@ struct sym_nvram {
 #define io_write16(p, v) outw((p), cpu_to_scr(v))
 #define io_write32(p, v) outl((p), cpu_to_scr(v))
 
-#ifdef	__alpha__
-
-#define mmio_read8(a)	     readb(a)
-#define mmio_read16(a)	     readw(a)
-#define mmio_read32(a)	     readl(a)
-#define mmio_write8(a, b)    writeb(a, b)
-#define mmio_write16(a, b)   writew(a, b)
-#define mmio_write32(a, b)   writel(a, b)
-#define memcpy_to_pci(d, s, n)	memcpy_toio((u32)(d), (void *)(s), (n))
-
-#else /*__i386__, __sparc64__*/
-
 #define mmio_read8(a)	     scr_to_cpu((*(volatile unsigned char *) (a)))
 #define mmio_read16(a)	     scr_to_cpu((*(volatile unsigned short *) (a)))
 #define mmio_read32(a)	     scr_to_cpu((*(volatile unsigned int *) (a)))
@@ -1052,8 +1034,6 @@ struct sym_nvram {
 #define mmio_write16(a, b)  (*(volatile unsigned short *) (a)) = cpu_to_scr(b)
 #define mmio_write32(a, b)  (*(volatile unsigned int *) (a)) = cpu_to_scr(b)
 #define memcpy_to_pci(d, s, n)	bcopy((s), (void *)(d), (n))
-
-#endif
 
 /*
  *  Normal IO
@@ -9672,21 +9652,6 @@ int sym_cam_attach(hcb_p np)
 		goto fail;
 	}
 	np->path = path;
-
-	/*
-	 *  Hmmm... This should be useful, but I donnot want to 
-	 *  know about.
-	 */
-#if 	defined(__FreeBSD__) && __FreeBSD_version < 400000
-#ifdef	__alpha__
-#ifdef	FreeBSD_Bus_Io_Abstraction
-	alpha_register_pci_scsi(pci_get_bus(np->device),
-				pci_get_slot(np->device), np->sim);
-#else
-	alpha_register_pci_scsi(pci_tag->bus, pci_tag->slot, np->sim);
-#endif
-#endif
-#endif
 
 	/*
 	 *  Establish our async notification handler.
