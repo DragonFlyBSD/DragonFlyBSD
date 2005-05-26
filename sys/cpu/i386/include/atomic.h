@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.12 2005/05/25 22:59:20 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.13 2005/05/26 09:10:08 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -169,8 +169,9 @@ atomic_poll_release_int(volatile u_int *p)
  *	bit 0-30	interrupt handler disabled bits (counter)
  *	bit 31		interrupt handler currently running bit (1 = run)
  *
- * atomic_intr_cond_try(P)	Attempt to set bit 31.  Returns non-zero
- *				on success, 0 on failure.
+ * atomic_intr_cond_test(P)	Determine if the interlock is in an
+ *				acquired state.  Returns 0 if it not
+ *				acquired, non-zero if it is.
  *
  * atomic_intr_cond_enter(P, func, arg)
  *				Increment the request counter and attempt to
@@ -217,6 +218,7 @@ void atomic_intr_init(atomic_intr_t *p);
 int atomic_intr_handler_disable(atomic_intr_t *p);
 void atomic_intr_handler_enable(atomic_intr_t *p);
 int atomic_intr_handler_is_enabled(atomic_intr_t *p);
+int atomic_intr_cond_test(atomic_intr_t *p);
 void atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg);
 void atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg);
 
@@ -237,7 +239,7 @@ atomic_intr_handler_disable(atomic_intr_t *p)
 
 	__asm __volatile(MPLOCKED "orl $0x40000000,%1; movl %1,%%eax; " \
 				  "andl $0x80000000,%%eax" \
-				  : "=&a"(data) : "m"(*p));
+				  : "=a"(data) , "+m"(*p));
 	return(data);
 }
 
@@ -276,13 +278,9 @@ atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
 
 static __inline
 int
-atomic_intr_cond_try(atomic_intr_t *p)
+atomic_intr_cond_test(atomic_intr_t *p)
 {
- 	int data;
-
-	__asm __volatile(MPLOCKED "btsl $31,%1; setnc %%al; andl $255,%%eax" 
-			 : "=a"(data) : "m"(*p));
-	return(data);
+	return((int)(*p & 0x80000000));
 }
 
 static __inline

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.3 2005/05/25 22:59:19 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.4 2005/05/26 09:10:10 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -66,7 +66,7 @@ lwkt_serialize_init(lwkt_serialize_t s)
 {
     atomic_intr_init(&s->interlock);
 #ifdef INVARIANTS
-    s->last_td = NULL;
+    s->last_td = (void *)-4;
 #endif
 }
 
@@ -86,7 +86,8 @@ void
 lwkt_serialize_exit(lwkt_serialize_t s)
 {
 #ifdef INVARIANTS
-    s->last_td = NULL;
+    KKASSERT(s->last_td == curthread);
+    s->last_td = (void *)-2;
 #endif
     atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
 }
@@ -127,16 +128,15 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *), void *arg)
  *
  * It is possible to race an interrupt which acquires and releases the
  * bit, then calls wakeup before we actually go to sleep, so we
- * need to try again in a critical section before actually sleeping.
- * This also works in the MP case since a remote thread calling wakeup
- * on us has to forward the wakeup to us with IPI forwarding.
+ * need to check that the interlock is still acquired from within
+ * a critical section prior to sleeping.
  */
 static void
 lwkt_serialize_sleep(void *info)
 {
     lwkt_serialize_t s = info;
     crit_enter();
-    if (atomic_intr_cond_try(&s->interlock) == 0)
+    if (atomic_intr_cond_test(&s->interlock) != 0)
 	    tsleep(s, 0, "slize", 0);
     crit_exit();
 }
