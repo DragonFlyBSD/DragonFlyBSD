@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sctermvar.h,v 1.1.2.2 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sctermvar.h,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sctermvar.h,v 1.3 2005/05/26 16:24:33 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SCTERMVAR_H_
@@ -306,7 +306,7 @@ sc_term_respond(scr_stat *scp, u_char *s)
 static __inline void
 sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 {
-	vm_offset_t p;
+	uint16_t *p;
 	u_char *ptr;
 	u_char *map;
  	int cnt;
@@ -317,7 +317,7 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 	l = *len;
 
 	if (PRINTABLE(*ptr)) {
-		p = sc_vtb_pointer(&scp->vtb, scp->cursor_pos);
+		p = scp->vtb.vtb_buffer + scp->cursor_pos;
 		map = scp->sc->scr_map;
 
 		cnt = imin(l, scp->xsize - scp->xpos);

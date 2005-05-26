@@ -26,7 +26,7 @@
  * Copyright (c) 2000 Andrew Miklic
  *
  * $FreeBSD: src/sys/dev/syscons/scgfbrndr.c,v 1.14.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scgfbrndr.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scgfbrndr.c,v 1.4 2005/05/26 16:24:33 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -162,7 +162,7 @@ gfb_draw(scr_stat *scp, int from, int count, int flip)
 
 		/* Display new text rows... */
 		(*vidsw[scp->sc->adapter]->puts)(adp, from,
-		    (u_int16_t *)sc_vtb_pointer(&scp->vtb, from), count);
+		    scp->vtb.vtb_buffer + from, count);
 	}
 
 	/*
@@ -185,8 +185,7 @@ gfb_draw(scr_stat *scp, int from, int count, int flip)
 			}
 		else {
 			(*vidsw[scp->sc->adapter]->puts)(adp, from,
-			    (u_int16_t *)sc_vtb_pointer(&scp->vtb, from),
-			    count);
+			    scp->vtb.vtb_buffer + from, count);
 		}
 	}
 }

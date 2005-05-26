@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.19 2005/03/28 21:30:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.20 2005/05/26 16:24:33 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -843,7 +843,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    return EINVAL;
 	}
 	copyout ((void*)scp->vtb.vtb_buffer, ptr->buf,
-		 ptr->xsize * ptr->ysize * sizeof(u_int16_t));
+		 ptr->xsize * ptr->ysize * sizeof(uint16_t));
 	splx(s);
 	return 0;
     }

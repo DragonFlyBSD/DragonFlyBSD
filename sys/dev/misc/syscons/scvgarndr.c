@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.13 2005/05/16 11:26:03 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.14 2005/05/26 16:24:33 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -155,7 +155,7 @@ vga_txtborder(scr_stat *scp, int color)
 static void
 vga_txtdraw(scr_stat *scp, int from, int count, int flip)
 {
-	vm_offset_t p;
+	uint16_t *p;
 	int c;
 	int a;
 
@@ -163,7 +163,7 @@ vga_txtdraw(scr_stat *scp, int from, int count, int flip)
 		count = scp->xsize*scp->ysize - from;
 
 	if (flip) {
-		for (p = sc_vtb_pointer(&scp->scr, from); count-- > 0; ++from) {
+		for (p = scp->scr.vtb_buffer + from; count-- > 0; ++from) {
 			c = sc_vtb_getc(&scp->vtb, from);
 			a = sc_vtb_geta(&scp->vtb, from);
 			a = (a & 0x8800) | ((a & 0x7000) >> 4) 

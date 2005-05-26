@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.14 2005/04/26 21:23:50 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.15 2005/05/26 16:24:33 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -159,7 +159,7 @@ typedef struct sc_vtb {
 	int		vtb_cols;
 	int		vtb_rows;
 	int		vtb_size;
-	vm_offset_t	vtb_buffer;
+	uint16_t	*vtb_buffer;
 	int		vtb_tail;	/* valid for VTB_RINGBUFFER only */
 } sc_vtb_t;
 
@@ -605,8 +605,7 @@ void		sc_vtb_clear(sc_vtb_t *vtb, int c, int attr);
 int		sc_vtb_getc(sc_vtb_t *vtb, int at);
 int		sc_vtb_geta(sc_vtb_t *vtb, int at);
 void		sc_vtb_putc(sc_vtb_t *vtb, int at, int c, int a);
-vm_offset_t	sc_vtb_putchar(sc_vtb_t *vtb, vm_offset_t p, int c, int a);
-vm_offset_t	sc_vtb_pointer(sc_vtb_t *vtb, int at);
+uint16_t	*sc_vtb_putchar(sc_vtb_t *vtb, uint16_t *p, int c, int a);
 int		sc_vtb_pos(sc_vtb_t *vtb, int pos, int offset);
 
 #define		sc_vtb_tail(vtb)	((vtb)->vtb_tail)
