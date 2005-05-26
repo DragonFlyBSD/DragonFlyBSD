@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.28 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.29 2005/05/26 22:17:12 joerg Exp $
  */
 
 /*
@@ -1764,6 +1764,8 @@ static int sk_detach(dev)
 		device_delete_child(dev, sc_if->sk_miibus);
 	contigfree(sc_if->sk_cdata.sk_jumbo_buf, SK_JMEM, M_DEVBUF);
 	contigfree(sc_if->sk_rdata, sizeof(struct sk_ring_data), M_DEVBUF);
+
+	splx(s);
 
 	return(0);
 }
