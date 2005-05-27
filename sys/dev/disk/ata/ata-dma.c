@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.26 2005/04/05 22:37:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.27 2005/05/27 21:12:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -52,10 +52,6 @@ static void hpt_timing(struct ata_device *, int, int);
 static int hpt_cable80(struct ata_device *);
 
 /* misc defines */
-#ifdef __alpha__
-#undef vtophys
-#define vtophys(va)	alpha_XXX_dmamap((vm_offset_t)va)
-#endif
 #define ATAPI_DEVICE(atadev) \
 	((atadev->unit == ATA_MASTER && \
 	  atadev->channel->devices & ATA_ATAPI_MASTER) || \
