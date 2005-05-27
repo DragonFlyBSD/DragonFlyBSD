@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.27 2005/05/25 01:44:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.28 2005/05/27 15:03:12 joerg Exp $
  */
 
 /*
@@ -1979,11 +1979,6 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_ALLMULTI)
@@ -2038,7 +2033,8 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 	splx(s);
 	return (error);
