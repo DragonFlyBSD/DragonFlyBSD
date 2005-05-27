@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sctermvar.h,v 1.1.2.2 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sctermvar.h,v 1.3 2005/05/26 16:24:33 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sctermvar.h,v 1.4 2005/05/27 20:57:40 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SCTERMVAR_H_
@@ -323,17 +323,7 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 		cnt = imin(l, scp->xsize - scp->xpos);
 		i = cnt;
 		do {
-			/*
-			 * gcc-2.6.3 generates poor (un)sign extension code.
-			 * Casting the pointers in the following to volatile 
-			 * should have no effect, but in fact speeds up this 
-			 * inner loop from 26 to 18 cycles (+ cache misses) 
-			 * on i486's.
-			 * XXX: out of date?
-			 */
-#define	UCVP(ucp)	((u_char volatile *)(ucp))
-			p = sc_vtb_putchar(&scp->vtb, p,
-					   UCVP(map)[*UCVP(ptr)], attr);
+			p = sc_vtb_putchar(&scp->vtb, p, map[*ptr], attr);
 			++ptr;
 			--i;
 		} while ((i > 0) && PRINTABLE(*ptr));
