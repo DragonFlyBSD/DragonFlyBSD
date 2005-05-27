@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.31 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.32 2005/05/27 20:43:50 joerg Exp $
  */
 
 /*
@@ -174,9 +174,10 @@ static void	sk_reset(struct sk_softc *);
 static int	sk_newbuf(struct sk_if_softc *, struct sk_chain *,
 			  struct mbuf *);
 static int	sk_alloc_jumbo_mem(struct sk_if_softc *);
-static void	*sk_jalloc(struct sk_if_softc *);
-static void	sk_jfree(caddr_t, u_int);
-static void	sk_jref(caddr_t, u_int);
+static struct sk_jslot
+		*sk_jalloc(struct sk_if_softc *);
+static void	sk_jfree(void *);
+static void	sk_jref(void *);
 static int	sk_init_rx_ring(struct sk_if_softc *);
 static void	sk_init_tx_ring(struct sk_if_softc *);
 static uint32_t	sk_win_read_4(struct sk_softc *, int);
@@ -857,10 +858,9 @@ sk_newbuf(struct sk_if_softc *sc_if, struct sk_chain *c, struct mbuf *m)
 {
 	struct mbuf *m_new = NULL;
 	struct sk_rx_desc *r;
+	struct sk_jslot *buf;
 
 	if (m == NULL) {
-		caddr_t			*buf = NULL;
-
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
@@ -877,12 +877,14 @@ sk_newbuf(struct sk_if_softc *sc_if, struct sk_chain *c, struct mbuf *m)
 		}
 
 		/* Attach the buffer to the mbuf */
-		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT | M_EXT_OLD;
-		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
-		    m_new->m_len = SK_MCLBYTES;
-		m_new->m_ext.ext_nfree.old = sk_jfree;
-		m_new->m_ext.ext_nref.old = sk_jref;
+		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_nfree.new = sk_jfree;
+		m_new->m_ext.ext_nref.new = sk_jref;
+		m_new->m_ext.ext_size = SK_JUMBO_FRAMELEN;
+
+		m_new->m_data = m_new->m_ext.ext_buf;
+		m_new->m_flags |= M_EXT;
+		m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 	} else {
 		/*
 	 	 * We're re-using a previously allocated mbuf;
@@ -890,7 +892,7 @@ sk_newbuf(struct sk_if_softc *sc_if, struct sk_chain *c, struct mbuf *m)
 		 * default values.
 		 */
 		m_new = m;
-		m_new->m_len = m_new->m_pkthdr.len = SK_MCLBYTES;
+		m_new->m_len = m_new->m_pkthdr.len = SK_JLEN;
 		m_new->m_data = m_new->m_ext.ext_buf;
 	}
 
@@ -923,7 +925,7 @@ sk_alloc_jumbo_mem(struct sk_if_softc *sc_if)
 {
 	caddr_t ptr;
 	int i;
-	struct sk_jpool_entry *entry;
+	struct sk_jslot *entry;
 
 	/* Grab a big chunk o' storage. */
 	sc_if->sk_cdata.sk_jumbo_buf = contigmalloc(SK_JMEM, M_DEVBUF,
@@ -935,7 +937,6 @@ sk_alloc_jumbo_mem(struct sk_if_softc *sc_if)
 	}
 
 	SLIST_INIT(&sc_if->sk_jfree_listhead);
-	SLIST_INIT(&sc_if->sk_jinuse_listhead);
 
 	/*
 	 * Now divide it up into 9K pieces and save the addresses
@@ -947,25 +948,13 @@ sk_alloc_jumbo_mem(struct sk_if_softc *sc_if)
 	 */
 	ptr = sc_if->sk_cdata.sk_jumbo_buf;
 	for (i = 0; i < SK_JSLOTS; i++) {
-		uint64_t **aptr;
-		aptr = (uint64_t **)ptr;
-		aptr[0] = (uint64_t *)sc_if;
-		ptr += sizeof(uint64_t);
-		sc_if->sk_cdata.sk_jslots[i].sk_buf = ptr;
-		sc_if->sk_cdata.sk_jslots[i].sk_inuse = 0;
-		ptr += SK_MCLBYTES;
-		entry = malloc(sizeof(struct sk_jpool_entry), 
-		    M_DEVBUF, M_WAITOK);
-		if (entry == NULL) {
-			free(sc_if->sk_cdata.sk_jumbo_buf, M_DEVBUF);
-			sc_if->sk_cdata.sk_jumbo_buf = NULL;
-			printf("sk%d: no memory for jumbo "
-			    "buffer queue!\n", sc_if->sk_unit);
-			return(ENOBUFS);
-		}
-		entry->slot = i;
-		SLIST_INSERT_HEAD(&sc_if->sk_jfree_listhead,
-		    entry, jpool_entries);
+		entry = &sc_if->sk_cdata.sk_jslots[i];
+		entry->sk_sc = sc_if;
+		entry->sk_buf = ptr;
+		entry->sk_inuse = 0;
+		entry->sk_slot = i;
+		SLIST_INSERT_HEAD(&sc_if->sk_jfree_listhead, entry, jslot_link);
+		ptr += SK_JLEN;
 	}
 
 	return(0);
@@ -974,10 +963,10 @@ sk_alloc_jumbo_mem(struct sk_if_softc *sc_if)
 /*
  * Allocate a jumbo buffer.
  */
-static void *
+static struct sk_jslot *
 sk_jalloc(struct sk_if_softc *sc_if)
 {
-	struct sk_jpool_entry *entry;
+	struct sk_jslot *entry;
 
 	entry = SLIST_FIRST(&sc_if->sk_jfree_listhead);
 
@@ -988,10 +977,10 @@ sk_jalloc(struct sk_if_softc *sc_if)
 		return(NULL);
 	}
 
-	SLIST_REMOVE_HEAD(&sc_if->sk_jfree_listhead, jpool_entries);
-	SLIST_INSERT_HEAD(&sc_if->sk_jinuse_listhead, entry, jpool_entries);
-	sc_if->sk_cdata.sk_jslots[entry->slot].sk_inuse = 1;
-	return(sc_if->sk_cdata.sk_jslots[entry->slot].sk_buf);
+	SLIST_REMOVE_HEAD(&sc_if->sk_jfree_listhead, jslot_link);
+	entry->sk_inuse = 1;
+
+	return(entry);
 }
 
 /*
@@ -1000,79 +989,41 @@ sk_jalloc(struct sk_if_softc *sc_if)
  * a lot, but it's implemented for correctness.
  */
 static void
-sk_jref(caddr_t buf, u_int size)
+sk_jref(void *arg)
 {
-	struct sk_if_softc *sc_if;
-	uint64_t **aptr;
-	int i;
+	struct sk_jslot *entry = (struct sk_jslot *)arg;
+	struct sk_if_softc *sc = entry->sk_sc;
 
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc_if = (struct sk_if_softc *)(aptr[0]);
-
-	if (sc_if == NULL)
+	if (sc == NULL)
 		panic("sk_jref: can't find softc pointer!");
 
-	if (size != SK_MCLBYTES)
-		panic("sk_jref: adjusting refcount of buf of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc_if->sk_cdata.sk_jumbo_buf) / SK_JLEN;
-
-	if ((i < 0) || (i >= SK_JSLOTS))
+	if (&sc->sk_cdata.sk_jslots[entry->sk_slot] != entry)
 		panic("sk_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (sc_if->sk_cdata.sk_jslots[i].sk_inuse == 0)
+	if (entry->sk_inuse == 0)
 		panic("sk_jref: buffer already free!");
-	else
-		sc_if->sk_cdata.sk_jslots[i].sk_inuse++;
+	entry->sk_inuse++;
 }
 
 /*
  * Release a jumbo buffer.
  */
 static void
-sk_jfree(caddr_t buf, u_int size)
+sk_jfree(void *arg)
 {
-	struct sk_if_softc *sc_if;
-	uint64_t **aptr;
-	int i;
-	struct sk_jpool_entry *entry;
+	struct sk_jslot *entry = (struct sk_jslot *)arg;
+	struct sk_if_softc *sc = entry->sk_sc;
 
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc_if = (struct sk_if_softc *)(aptr[0]);
+	if (sc == NULL)
+		panic("sk_jref: can't find softc pointer!");
 
-	if (sc_if == NULL)
-		panic("sk_jfree: can't find softc pointer!");
-
-	if (size != SK_MCLBYTES)
-		panic("sk_jfree: freeing buffer of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc_if->sk_cdata.sk_jumbo_buf) / SK_JLEN;
-
-	if ((i < 0) || (i >= SK_JSLOTS))
-		panic("sk_jfree: asked to free buffer that we don't manage!");
-	else if (sc_if->sk_cdata.sk_jslots[i].sk_inuse == 0)
-		panic("sk_jfree: buffer already free!");
-	else {
-		sc_if->sk_cdata.sk_jslots[i].sk_inuse--;
-		if(sc_if->sk_cdata.sk_jslots[i].sk_inuse == 0) {
-			entry = SLIST_FIRST(&sc_if->sk_jinuse_listhead);
-			if (entry == NULL)
-				panic("sk_jfree: buffer not in use!");
-			entry->slot = i;
-			SLIST_REMOVE_HEAD(&sc_if->sk_jinuse_listhead, 
-					  jpool_entries);
-			SLIST_INSERT_HEAD(&sc_if->sk_jfree_listhead, 
-					  entry, jpool_entries);
-		}
-	}
+	if (&sc->sk_cdata.sk_jslots[entry->sk_slot] != entry)
+		panic("sk_jref: asked to reference buffer "
+		    "that we don't manage!");
+	if (entry->sk_inuse == 0)
+		panic("sk_jref: buffer already free!");
+	if (--entry->sk_inuse == 0)
+		SLIST_INSERT_HEAD(&sc->sk_jfree_listhead, entry, jslot_link);
 }
 
 /*

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.8 2005/05/26 22:49:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.9 2005/05/27 20:43:50 joerg Exp $
  */
 
 /*
@@ -1364,22 +1364,21 @@ struct sk_tx_desc {
 #define SK_JUMBO_MTU		(SK_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define SK_JSLOTS		384
 
-#define SK_JRAWLEN (SK_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
+#define SK_JRAWLEN (SK_JUMBO_FRAMELEN + ETHER_ALIGN)
 #define SK_JLEN (SK_JRAWLEN + (sizeof(uint64_t) - \
 	(SK_JRAWLEN % sizeof(uint64_t))))
-#define SK_MCLBYTES (SK_JLEN - sizeof(uint64_t))
 #define SK_JPAGESZ PAGE_SIZE
 #define SK_RESID (SK_JPAGESZ - (SK_JLEN * SK_JSLOTS) % SK_JPAGESZ)
 #define SK_JMEM ((SK_JLEN * SK_JSLOTS) + SK_RESID)
 
-struct sk_jslot {
-	caddr_t			sk_buf;
-	int			sk_inuse;
-};
+struct sk_if_softc;
 
-struct sk_jpool_entry {
-	int                             slot;
-	SLIST_ENTRY(sk_jpool_entry)	jpool_entries;
+struct sk_jslot {
+	struct sk_if_softc	*sk_sc;
+	void			*sk_buf;
+	int			sk_inuse;
+	int			sk_slot;
+	SLIST_ENTRY(sk_jslot)	jslot_link;
 };
 
 struct sk_chain {
@@ -1459,8 +1458,7 @@ struct sk_if_softc {
 	struct sk_softc		*sk_softc;	/* parent controller */
 	int			sk_tx_bmu;	/* TX BMU register */
 	int			sk_if_flags;
-	SLIST_HEAD(__sk_jfreehead, sk_jpool_entry)	sk_jfree_listhead;
-	SLIST_HEAD(__sk_jinusehead, sk_jpool_entry)	sk_jinuse_listhead;
+	SLIST_HEAD(__sk_jfreehead, sk_jslot)	sk_jfree_listhead;
 };
 
 #define SK_MAXUNIT	256
