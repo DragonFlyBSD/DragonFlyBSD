@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.11 2005/03/01 10:55:17 joerg Exp $
+$DragonFly: src/UPDATING,v 1.12 2005/05/27 09:29:32 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -42,7 +42,7 @@ object hierarchy is necessary.
 	# Please use the -h option and a mirror site to pull the 
 	# initial repository, but feel free to use the main repository
 	# machine to pull updates.
-	cvsup /usr/share/examples/cvsup/DragonFly-supfile
+	cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
 	# install the source from the CVS hierarchy (remove preexisting
 	# FreeBSD src first) (500MB)
 	cd /usr
@@ -99,7 +99,7 @@ date.  Please limit such automatic updates to once a day and try to randomize
 the hour and minute in the cron job a bit to avoid pileups.
 
 	# get the CVS repository (it is placed in /home/dcvs)
-	cvsup /usr/share/examples/cvsup/DragonFly-supfile
+	cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
 	# install the source from the CVS hierarchy
 	cd /usr
 	cvs -R -d /home/dcvs checkout -P src
