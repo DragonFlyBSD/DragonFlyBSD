@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.12 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.13 2005/05/27 15:19:40 joerg Exp $
  */
 
 /*
@@ -966,7 +966,7 @@ nv_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	default:
 		/* Everything else we forward to generic ether ioctl */
-		error = ether_ioctl(ifp, (int)command, data);
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 
