@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.12 2005/05/27 09:29:32 swildner Exp $
+$DragonFly: src/UPDATING,v 1.13 2005/05/27 10:01:24 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -156,7 +156,7 @@ DragonFly has its own 'port overrides' hierarchy in /usr/dfports.  You can
 check this out of the DragonFly cvs repository using:
 
 cd /usr
-cvs -R -d /cvs checkout -P dfports
+cvs -R -d /home/dcvs checkout -P dfports
 
 Be sure that you have installed 'relpath' from the DragonFly sources
 (/usr/src/usr.bin/relpath) as well as the updated /usr/share/mk files from
