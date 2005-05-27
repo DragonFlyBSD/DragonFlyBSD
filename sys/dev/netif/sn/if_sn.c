@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.15 2005/05/24 20:59:02 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.16 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -1129,12 +1129,6 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (cmd) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, cmd, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		if ((ifp->if_flags & IFF_UP) == 0 && ifp->if_flags & IFF_RUNNING) {
 			ifp->if_flags &= ~IFF_RUNNING;
@@ -1165,7 +1159,8 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	    error = 0;
 	    break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, cmd, data);
+		break;
 	}
 
 	splx(s);

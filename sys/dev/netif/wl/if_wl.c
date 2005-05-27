@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.17 2005/02/20 03:58:04 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.18 2005/05/27 15:36:10 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1148,12 +1148,6 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 #endif
     opri = splimp();
     switch (cmd) {
-    case SIOCSIFADDR:
-    case SIOCGIFADDR:
-    case SIOCSIFMTU:
-        error = ether_ioctl(ifp, cmd, data);
-        break;
-
     case SIOCSIFFLAGS:
 	if (ifp->if_flags & IFF_ALLMULTI) {
 	    mode |= MOD_ENAL;
@@ -1378,7 +1372,8 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 #endif
 
     default:
-	error = EINVAL;
+        error = ether_ioctl(ifp, cmd, data);
+        break;
     }
     splx(opri);
     return (error);

@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.17 2005/02/18 23:25:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.18 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -2112,12 +2112,6 @@ ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (command) {
-        case SIOCSIFADDR:
-        case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		/*
 		 * Note that this device doesn't have an "all multicast"
@@ -2152,7 +2146,8 @@ ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 
 	splx(s);

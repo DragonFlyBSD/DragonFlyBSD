@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.15 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -917,10 +917,6 @@ gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	GX_LOCK(gx);
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > GX_MAX_MTU) {
 			error = EINVAL;
@@ -971,7 +967,7 @@ gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

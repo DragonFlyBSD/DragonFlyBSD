@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.15 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -1086,12 +1086,6 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 	s=splimp();
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		ether_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		/*
 		 * Switch interface state between "running" and
@@ -1131,9 +1125,9 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
         case SIOCGIFMEDIA:
                 error = ifmedia_ioctl(ifp, ifr, &sc->media, command);
                 break;
-
-        default:
-		error = EINVAL;
+	default:
+		error = ether_ioctl(ifp, command, data);
+		break;
         }
 
 	(void) splx(s);

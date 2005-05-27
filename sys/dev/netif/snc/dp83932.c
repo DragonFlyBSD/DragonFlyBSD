@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.13 2005/02/20 02:54:21 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.14 2005/05/27 15:36:10 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -272,13 +272,6 @@ sncioctl(ifp, cmd, data, cr)
 	int	temp;
 
 	switch (cmd) {
-
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		err = ether_ioctl(ifp, cmd, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		if ((ifp->if_flags & IFF_UP) == 0 &&
 		    (ifp->if_flags & IFF_RUNNING) != 0) {
@@ -327,7 +320,8 @@ sncioctl(ifp, cmd, data, cr)
 		err = ifmedia_ioctl(ifp, ifr, &sc->sc_media, cmd);
 		break;
 	default:
-		err = EINVAL;
+		err = ether_ioctl(ifp, cmd, data);
+		break;
 	}
 	splx(s);
 	return (err);

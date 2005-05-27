@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.6 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.7 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -1643,11 +1643,6 @@ wi_ioctl(ifp, command, data, cr)
 	}
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		/*
 		 * Can't do promisc and hostap at the same time.  If all that's
@@ -2002,7 +1997,7 @@ wi_ioctl(ifp, command, data, cr)
 		error = owihap_ioctl(sc, command, data);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 out:

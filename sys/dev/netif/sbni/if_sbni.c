@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.18 2005/02/19 22:49:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -1050,11 +1050,6 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		ether_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		/*
 		 * If the interface is marked up and stopped, then start it.
@@ -1137,7 +1132,8 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 
 	splx(s);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.22 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.23 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -3094,11 +3094,6 @@ xl_ioctl(ifp, command, data, cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		XL_SEL_WIN(5);
 		rxfilt = CSR_READ_1(sc, XL_W5_RX_FILTER);
@@ -3153,7 +3148,7 @@ xl_ioctl(ifp, command, data, cr)
 			ifp->if_hwassist = 0;
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

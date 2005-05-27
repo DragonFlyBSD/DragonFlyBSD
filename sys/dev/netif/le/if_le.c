@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.23 2005/05/08 11:45:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.24 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -382,12 +382,6 @@ le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
     s = splimp();
 
     switch (cmd) {
-        case SIOCSIFADDR:
-        case SIOCGIFADDR:
-        case SIOCSIFMTU:
-                error = ether_ioctl(ifp, cmd, data);
-                break;
-
 	case SIOCSIFFLAGS: {
 	    sc->if_init(sc);
 	    break;
@@ -402,9 +396,9 @@ le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = 0;
 		break;
 
-	default: {
-	    error = EINVAL;
-	}
+	default:
+		error = ether_ioctl(ifp, cmd, data);
+		break;
     }
 
     splx(s);

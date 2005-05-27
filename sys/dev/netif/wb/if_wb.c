@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.19 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.20 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -1736,11 +1736,6 @@ static int wb_ioctl(ifp, command, data, cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			wb_init(sc);
@@ -1761,7 +1756,7 @@ static int wb_ioctl(ifp, command, data, cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.25 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.26 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -1352,10 +1352,6 @@ lge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > LGE_JUMBO_MTU)
 			error = EINVAL;
@@ -1397,7 +1393,7 @@ lge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

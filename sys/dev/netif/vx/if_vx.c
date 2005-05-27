@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.16 2005/02/20 03:53:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.17 2005/05/27 15:36:10 joerg Exp $
  *
  */
 
@@ -839,11 +839,6 @@ vxioctl(ifp, cmd, data, cr)
     s = splimp();
 
     switch (cmd) {
-    case SIOCSIFADDR:
-    case SIOCGIFADDR:
-	ether_ioctl(ifp, cmd, data);
-	break;
-
     case SIOCSIFFLAGS:
 	if ((ifp->if_flags & IFF_UP) == 0 &&
 	    (ifp->if_flags & IFF_RUNNING) != 0) {
@@ -894,7 +889,8 @@ vxioctl(ifp, cmd, data, cr)
 
 
     default:
-        error = EINVAL;
+	ether_ioctl(ifp, cmd, data);
+	break;
     }
 
     splx(s);

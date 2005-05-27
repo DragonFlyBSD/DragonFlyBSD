@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.18 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.19 2005/05/27 15:36:09 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -1716,11 +1716,6 @@ my_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 	MY_LOCK(sc);
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP)
 			my_init(sc);
@@ -1738,7 +1733,7 @@ my_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &sc->ifmedia, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 	MY_UNLOCK(sc);

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.36 2005/05/25 21:35:51 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.37 2005/05/27 15:36:09 joerg Exp $
  *
  */
 
@@ -2521,10 +2521,6 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		/* Disallow jumbo frames on 5705. */
 		if ((sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
@@ -2595,7 +2591,7 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = 0;
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

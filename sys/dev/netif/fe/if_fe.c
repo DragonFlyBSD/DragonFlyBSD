@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.15 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1766,14 +1766,6 @@ fe_ioctl (struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (command) {
-
-	  case SIOCSIFADDR:
-	  case SIOCGIFADDR:
-	  case SIOCSIFMTU:
-		/* Just an ordinary action.  */
-		error = ether_ioctl(ifp, command, data);
-		break;
-
 	  case SIOCSIFFLAGS:
 		/*
 		 * Switch interface state between "running" and
@@ -1813,7 +1805,7 @@ fe_ioctl (struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	  default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

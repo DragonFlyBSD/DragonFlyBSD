@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.13 2005/02/15 20:28:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.14 2005/05/27 15:36:09 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -602,12 +602,6 @@ el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (command) {
-        case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		/*
 		 * If interface is marked down and it is running, then stop it
@@ -626,7 +620,8 @@ el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 	(void) splx(s);
 	return (error);

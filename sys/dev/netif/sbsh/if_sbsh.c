@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.17 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.18 2005/05/27 15:36:10 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -473,13 +473,6 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				error = EIO;
 		}
 		break;
-
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, cmd, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
@@ -501,9 +494,8 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCDELMULTI:
 		error = 0;
 		break;
-
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, cmd, data);
 		break;
 	}
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.19 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.20 2005/05/27 15:36:10 joerg Exp $
  *
  */
 
@@ -648,15 +648,6 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 	s = splimp();
 
 	switch (command) {
-
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-	case SIOCSIFADDR:
-		RAY_DPRINTF(sc, RAY_DBG_IOCTL, "GIFADDR/SIFMTU");
-		error = ether_ioctl(ifp, command, data);
-/* XXX SIFADDR used to fall through to SIOCSIFFLAGS */
-		break;
-
 	case SIOCSIFFLAGS:
 		RAY_DPRINTF(sc, RAY_DBG_IOCTL, "SIFFLAGS 0x%0x", ifp->if_flags);
 		/*
@@ -738,8 +729,8 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		break;
 
 	default:
-		error = EINVAL;
-
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 
 	splx(s);

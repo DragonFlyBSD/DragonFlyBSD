@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.15 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -857,12 +857,6 @@ ep_if_ioctl(ifp, cmd, data, cr)
 	s = splimp();
 
 	switch (cmd) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, cmd, data);
-	break;
-
 	case SIOCSIFFLAGS:
 		if (((ifp->if_flags & IFF_UP) == 0) &&
 		    (ifp->if_flags & IFF_RUNNING)) {
@@ -899,7 +893,7 @@ ep_if_ioctl(ifp, cmd, data, cr)
 		}
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, cmd, data);
 		break;
 	}
 

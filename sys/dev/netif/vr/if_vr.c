@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.23 2005/05/25 01:44:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.24 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -1575,11 +1575,6 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			vr_init(sc);
@@ -1600,7 +1595,7 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

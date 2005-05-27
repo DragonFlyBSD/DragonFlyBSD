@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.17 2005/02/19 00:16:54 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.18 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -1401,12 +1401,6 @@ lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch (command) {
-        case SIOCSIFADDR:
-        case SIOCGIFADDR:
-        case SIOCSIFMTU:
-                error = ether_ioctl(ifp, command, data);
-                break;
-
 	case SIOCSIFFLAGS:
 #ifdef DEBUG
 		if (ifp->if_flags & IFF_DEBUG)
@@ -1457,7 +1451,8 @@ lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = 0;
 		break;
 	default:
-		error = EINVAL;
+                error = ether_ioctl(ifp, command, data);
+                break;
 	}
 	(void) splx(s);
 	return error;

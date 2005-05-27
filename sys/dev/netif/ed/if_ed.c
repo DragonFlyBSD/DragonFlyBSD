@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.20 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.21 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -2668,13 +2668,6 @@ ed_ioctl(ifp, command, data, cr)
 	s = splimp();
 
 	switch (command) {
-
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 
 		/*
@@ -2734,7 +2727,8 @@ ed_ioctl(ifp, command, data, cr)
 #endif
 
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 	(void) splx(s);
 	return (error);

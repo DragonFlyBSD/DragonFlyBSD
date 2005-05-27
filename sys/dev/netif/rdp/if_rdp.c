@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.14 2005/02/19 22:42:55 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.15 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -827,13 +827,6 @@ rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data,
 	s = splimp();
 
 	switch (command) {
-
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		/*
 		 * If the interface is marked up and stopped, then start it.
@@ -869,7 +862,8 @@ rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data,
 		break;
 
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 	(void) splx(s);
 	return (error);

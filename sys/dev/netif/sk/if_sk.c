@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.30 2005/05/26 22:49:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.31 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -1119,10 +1119,6 @@ sk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > SK_JUMBO_MTU)
 			error = EINVAL;
@@ -1159,7 +1155,7 @@ sk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

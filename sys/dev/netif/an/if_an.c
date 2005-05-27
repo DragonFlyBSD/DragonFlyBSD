@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.20 2005/05/24 09:52:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.21 2005/05/27 15:36:09 joerg Exp $
  */
 
 /*
@@ -1872,11 +1872,6 @@ an_ioctl(ifp, command, data, cr)
 	}
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING &&
@@ -2401,7 +2396,7 @@ an_ioctl(ifp, command, data, cr)
 			an_setdef(sc, &sc->areq);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 out:

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.21 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.22 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -2376,10 +2376,6 @@ static int ti_ioctl(ifp, command, data, cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > TI_JUMBO_MTU)
 			error = EINVAL;
@@ -2442,7 +2438,7 @@ static int ti_ioctl(ifp, command, data, cr)
 		error = 0;
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

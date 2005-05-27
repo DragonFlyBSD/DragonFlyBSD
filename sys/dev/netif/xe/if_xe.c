@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.18 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -732,12 +732,6 @@ xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr) {
 
   switch (command) {
 
-   case SIOCSIFADDR:
-   case SIOCGIFADDR:
-   case SIOCSIFMTU:
-    error = ether_ioctl(ifp, command, data);
-    break;
-
    case SIOCSIFFLAGS:
     /*
      * If the interface is marked up and stopped, then start it.  If it is
@@ -775,7 +769,8 @@ xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr) {
     break;
 
    default:
-    error = EINVAL;
+    error = ether_ioctl(ifp, command, data);
+    break;
   }
 
   (void)splx(s);

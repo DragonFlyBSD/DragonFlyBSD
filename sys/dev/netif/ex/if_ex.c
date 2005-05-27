@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.16 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.17 2005/05/27 15:36:09 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -777,12 +777,6 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch(cmd) {
-		case SIOCSIFADDR:
-		case SIOCGIFADDR:
-		case SIOCSIFMTU:
-			error = ether_ioctl(ifp, cmd, data);
-			break;
-
 		case SIOCSIFFLAGS:
 			DODEBUG(Start_End, printf("SIOCSIFFLAGS"););
 			if ((ifp->if_flags & IFF_UP) == 0 &&
@@ -814,7 +808,8 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 		default:
 			DODEBUG(Start_End, printf("unknown"););
-			error = EINVAL;
+			error = ether_ioctl(ifp, cmd, data);
+			break;
 	}
 
 	splx(s);

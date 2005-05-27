@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.18 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -535,11 +535,6 @@ static int sf_ioctl(ifp, command, data, cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING &&
@@ -570,7 +565,7 @@ static int sf_ioctl(ifp, command, data, cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 

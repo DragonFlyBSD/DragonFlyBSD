@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.18 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
  */
 
 /*
@@ -413,10 +413,6 @@ epic_ifioctl(ifp, command, data, cr)
 	x = splimp();
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		if (ifp->if_mtu == ifr->ifr_mtu)
 			break;
@@ -472,7 +468,8 @@ epic_ifioctl(ifp, command, data, cr)
 		break;
 
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
+		break;
 	}
 	splx(x);
 
