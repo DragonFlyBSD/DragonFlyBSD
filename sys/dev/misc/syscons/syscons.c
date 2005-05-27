@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.20 2005/05/26 16:24:33 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.21 2005/05/27 07:52:21 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -2517,8 +2517,7 @@ scinit(int unit, int flags)
 					 kernel_default.rev_color);
 	} else {
 	    /* assert(sc_malloc) */
-	    sc->dev = malloc(sizeof(dev_t)*sc->vtys, M_SYSCONS, M_WAITOK);
-	    bzero(sc->dev, sizeof(dev_t)*sc->vtys);
+	    sc->dev = malloc(sizeof(dev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
 	    sc->dev[0] = make_dev(&sc_cdevsw, unit*MAXCONS, UID_ROOT, 
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
