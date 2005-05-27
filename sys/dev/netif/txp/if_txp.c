@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.19 2005/05/24 20:59:03 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.20 2005/05/27 15:13:10 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1059,17 +1059,7 @@ txp_ioctl(ifp, command, data, cr)
 
 	s = splnet();
 
-	if ((error = ether_ioctl(ifp, command, data)) > 0) {
-		splx(s);
-		return error;
-	}
-
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			txp_init(sc);
@@ -1092,7 +1082,7 @@ txp_ioctl(ifp, command, data, cr)
 		error = ifmedia_ioctl(ifp, ifr, &sc->sc_ifmedia, command);
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 
