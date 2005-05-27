@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.25 2005/05/25 12:37:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.26 2005/05/27 15:08:11 joerg Exp $
  */
 
 /*
@@ -1954,10 +1954,6 @@ nge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	s = splimp();
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > NGE_JUMBO_MTU) {
 			error = EINVAL;
@@ -2018,7 +2014,7 @@ nge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 
