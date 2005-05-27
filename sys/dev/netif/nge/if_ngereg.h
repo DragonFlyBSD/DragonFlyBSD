@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.6 2005/05/25 12:37:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.7 2005/05/27 20:27:56 joerg Exp $
  */
 
 #define NGE_CSR			0x00
@@ -627,11 +627,6 @@ struct nge_jslot {
 	int			nge_inuse;
 	int			nge_slot;
 	SLIST_ENTRY(nge_jslot)	jslot_link;
-};
-
-struct nge_jpool_entry {
-	int				slot;
-	SLIST_ENTRY(nge_jpool_entry)	jpool_entries;
 };
 
 struct nge_ring_data {
