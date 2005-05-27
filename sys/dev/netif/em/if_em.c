@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.33 2005/05/26 09:10:36 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.34 2005/05/27 19:11:49 joerg Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -1659,12 +1659,12 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, adapter->hw.mac_addr);
+	if (adapter->hw.mac_type >= em_82543)
+		ifp->if_capabilities |= IFCAP_HWCSUM;
 
-	if (adapter->hw.mac_type >= em_82543) {
-		ifp->if_capabilities = IFCAP_HWCSUM;
-		ifp->if_capenable = ifp->if_capabilities;
-	}
+	ifp->if_capenable = ifp->if_capabilities;
+
+	ether_ifattach(ifp, adapter->hw.mac_addr);
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
