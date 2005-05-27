@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.4 2005/05/24 06:29:33 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.5 2005/05/27 07:35:59 swildner Exp $
 
 .include "../Makefile.inc"
 
@@ -219,6 +219,6 @@ ctype_noninline.h: ${SRCDIR}/config/os/bsd/netbsd/ctype_noninline.h ctype_noninl
 os_defines.h: ${SRCDIR}/config/os/bsd/netbsd/os_defines.h os_defines.h.patch
 	patch -o ${.TARGET} -i ${.CURDIR}/os_defines.h.patch ${SRCDIR}/config/os/bsd/netbsd/os_defines.h
 
-CLEANFILES+=	${THRHDRS} ctype_nonline.h ctype_base.h os_defines.h
+CLEANFILES+=	${THRHDRS} ctype_noninline.h ctype_base.h os_defines.h
 
 .include <bsd.lib.mk>
