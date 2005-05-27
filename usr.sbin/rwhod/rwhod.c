@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.17 2005/05/22 17:09:53 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.18 2005/05/27 11:24:49 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -54,6 +54,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libutil.h>
 #include <netdb.h>
 #include <paths.h>
 #include <stdio.h>
@@ -212,6 +213,7 @@ main(int argc, char *argv[])
 		usage();
 #ifndef DEBUG
 	daemon(1, 0);
+	pidfile(getprogname());
 #endif
 	signal(SIGHUP, onsignal);
 	openlog("rwhod", LOG_PID, LOG_DAEMON);
