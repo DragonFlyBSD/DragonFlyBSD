@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wbreg.h,v 1.7 1999/08/30 23:08:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.4 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.5 2005/05/28 22:15:07 joerg Exp $
  */
 
 /*
@@ -215,10 +215,10 @@
  */
 
 struct wb_desc {
-	u_int32_t		wb_status;
-	u_int32_t		wb_ctl;
-	u_int32_t		wb_ptr1;
-	u_int32_t		wb_ptr2;
+	uint32_t		wb_status;
+	uint32_t		wb_ctl;
+	uint32_t		wb_ptr1;
+	uint32_t		wb_ptr2;
 };
 
 #define wb_data		wb_ptr1
@@ -300,10 +300,10 @@ struct wb_txdesc {
 
 #define WB_UNSENT	0x1234
 
-#define WB_BUFBYTES	(1024 * sizeof(u_int32_t))
+#define WB_BUFBYTES	(1024 * sizeof(uint32_t))
 
 struct wb_buf {
-	u_int32_t		wb_data[1024];
+	uint32_t		wb_data[1024];
 };
 
 struct wb_list_data {
@@ -316,7 +316,7 @@ struct wb_chain {
 	struct wb_txdesc	*wb_ptr;
 	struct mbuf		*wb_mbuf;
 	struct wb_chain		*wb_nextdesc;
-	u_int8_t		wb_lastdesc;
+	uint8_t			wb_lastdesc;
 };
 
 struct wb_chain_onefrag {
@@ -324,11 +324,11 @@ struct wb_chain_onefrag {
 	struct mbuf		*wb_mbuf;
 	void			*wb_buf;
 	struct wb_chain_onefrag	*wb_nextdesc;
-	u_int8_t		wb_rlast;
+	uint8_t			wb_rlast;
 };
 
 struct wb_chain_data {
-	u_int8_t		wb_pad[WB_MIN_FRAMELEN];
+	uint8_t			wb_pad[WB_MIN_FRAMELEN];
 	struct wb_chain_onefrag	wb_rx_chain[WB_RX_LIST_CNT];
 	struct wb_chain		wb_tx_chain[WB_TX_LIST_CNT];
 
@@ -340,18 +340,18 @@ struct wb_chain_data {
 };
 
 struct wb_type {
-	u_int16_t		wb_vid;
-	u_int16_t		wb_did;
+	uint16_t		wb_vid;
+	uint16_t		wb_did;
 	char			*wb_name;
 };
 
 struct wb_mii_frame {
-	u_int8_t		mii_stdelim;
-	u_int8_t		mii_opcode;
-	u_int8_t		mii_phyaddr;
-	u_int8_t		mii_regaddr;
-	u_int8_t		mii_turnaround;
-	u_int16_t		mii_data;
+	uint8_t			mii_stdelim;
+	uint8_t			mii_opcode;
+	uint8_t			mii_phyaddr;
+	uint8_t			mii_regaddr;
+	uint8_t			mii_turnaround;
+	uint16_t		mii_data;
 };
 
 /*
@@ -371,9 +371,9 @@ struct wb_softc {
 	struct resource		*wb_irq;
 	void			*wb_intrhand;
 	struct wb_type		*wb_info;	/* Winbond adapter info */
-	u_int8_t		wb_unit;	/* interface number */
-	u_int8_t		wb_type;
-	u_int16_t		wb_txthresh;
+	uint8_t			wb_unit;	/* interface number */
+	uint8_t			wb_type;
+	uint16_t		wb_txthresh;
 	int			wb_cachesize;
 	caddr_t			wb_ldata_ptr;
 	struct wb_list_data	*wb_ldata;
