@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/extern.h,v 1.1.2.1 2002/02/15 11:43:51 des Exp $
- * $DragonFly: src/usr.bin/truss/extern.h,v 1.3 2003/11/04 15:34:41 eirikn Exp $
+ * $DragonFly: src/usr.bin/truss/extern.h,v 1.4 2005/05/28 00:22:04 swildner Exp $
  */
 
 #include <stdio.h>
@@ -41,10 +41,6 @@ extern int setup_and_wait(char **);
 extern int start_tracing(int, int);
 extern void restore_proc(int);
 extern const char *ioctlname(register_t val);
-#ifdef __alpha__
-extern void alpha_syscall_entry(int, int);
-extern void alpha_syscall_exit(int, int);
-#endif
 #ifdef __i386__
 extern void i386_syscall_entry(int, int);
 extern void i386_syscall_exit(int, int);

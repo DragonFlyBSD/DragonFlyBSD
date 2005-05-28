@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/main.c,v 1.15.2.3 2002/05/16 23:41:23 peter Exp $
- * $DragonFly: src/usr.bin/truss/main.c,v 1.4 2003/11/04 15:34:41 eirikn Exp $
+ * $DragonFly: src/usr.bin/truss/main.c,v 1.5 2005/05/28 00:22:04 swildner Exp $
  */
 
 /*
@@ -83,9 +83,6 @@ struct ex_types {
   void (*enter_syscall)(int, int);
   void (*exit_syscall)(int, int);
 } ex_types[] = {
-#ifdef __alpha__
-  { "FreeBSD ELF", alpha_syscall_entry, alpha_syscall_exit },
-#endif
 #ifdef __i386__
   { "FreeBSD a.out", i386_syscall_entry, i386_syscall_exit },
   { "FreeBSD ELF", i386_syscall_entry, i386_syscall_exit },
