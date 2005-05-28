@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.32 2005/05/27 20:43:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.33 2005/05/28 21:02:04 joerg Exp $
  */
 
 /*
@@ -202,8 +202,6 @@ static int	sk_marv_miibus_readreg(struct sk_if_softc *, int, int);
 static int	sk_marv_miibus_writereg(struct sk_if_softc *, int, int, int);
 static void	sk_marv_miibus_statchg(struct sk_if_softc *);
 
-static uint32_t	xmac_calchash(caddr_t);
-static uint32_t	gmac_calchash(caddr_t);
 static void	sk_setfilt(struct sk_if_softc *, caddr_t, int);
 static void	sk_setmulti(struct sk_if_softc *);
 static void	sk_setpromisc(struct sk_if_softc *);
@@ -612,62 +610,7 @@ sk_marv_miibus_statchg(struct sk_if_softc *sc_if)
 {
 }
 
-#define XMAC_POLY		0xEDB88320
-#define GMAC_POLY               0x04C11DB7L
-#define HASH_BITS		6
-
-static uint32_t
-xmac_calchash(caddr_t addr)
-{
-	uint32_t idx, bit, data, crc;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (idx = 0; idx < 6; idx++) {
-		for (data = *addr++, bit = 0; bit < 8; bit++, data >>= 1)
-			crc = (crc >> 1) ^ (((crc ^ data) & 1) ? XMAC_POLY : 0);
-	}
-
-	return (~crc & ((1 << HASH_BITS) - 1));
-}
-
-static uint32_t
-gmac_calchash(caddr_t addr)
-{
-    uint32_t idx, bit, crc, tmpData, data;
-
-    /* Compute CRC for the address value. */
-    crc = 0xFFFFFFFF; /* initial value */
-
-    for (idx = 0; idx < 6; idx++) {
-        data = *addr++;
-
-        /* Change bit order in byte. */
-        tmpData = data;
-        for (bit = 0; bit < 8; bit++) {
-            if (tmpData & 1) {
-                data |=  1 << (7 - bit);
-            }
-            else {
-                data &= ~(1 << (7 - bit));
-            }
-
-            tmpData >>= 1;
-        }
-
-        crc ^= (data << 24);
-        for (bit = 0; bit < 8; bit++) {
-            if (crc & 0x80000000) {
-                crc = (crc << 1) ^ GMAC_POLY;
-            } else {
-                crc <<= 1;
-            }
-        }
-    }
-
-    return (crc & ((1 << HASH_BITS) - 1));
-}
+#define	HASH_BITS		6
 
 static void sk_setfilt(struct sk_if_softc *sc_if, caddr_t addr, int slot)
 {
@@ -737,8 +680,9 @@ sk_setmulti(struct sk_if_softc *sc_if)
 
                         switch(sc->sk_type) {
                         case SK_GENESIS:
-                            h = xmac_calchash(
-                                LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+			    h = ~ether_crc32_le(LLADDR((struct sockaddr_dl *)
+				ifma->ifma_addr), ETHER_ADDR_LEN) &
+				((1 << HASH_BITS) -1 );
                             if (h < 32)
                                 hashes[0] |= (1 << h);
                             else
@@ -746,8 +690,9 @@ sk_setmulti(struct sk_if_softc *sc_if)
                             break;
 
                         case SK_YUKON:
-                            h = gmac_calchash(
-                                LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+			    h = ether_crc32_be(LLADDR((struct sockaddr_dl *)
+				ifma->ifma_addr), ETHER_ADDR_LEN) &
+				((1 << HASH_BITS) -1 );
                             if (h < 32)
                                 hashes[0] |= (1 << h);
                             else
