@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.11 2004/09/17 02:38:10 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.12 2005/05/28 01:16:30 swildner Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -432,10 +432,8 @@ scsi_low_rescan_bus_cam(slp)
 	struct scsi_low_softc *slp;
 {
   	struct cam_path *path;
-	union ccb *ccb = malloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT);
+	union ccb *ccb = malloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT | M_ZERO);
 	cam_status status;
-
-	bzero(ccb, sizeof(union ccb));
 
 	status = xpt_create_path(&path, xpt_periph,
 				 cam_sim_path(slp->sl_si.sim), -1, 0);

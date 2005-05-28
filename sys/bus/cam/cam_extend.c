@@ -13,7 +13,7 @@
  * functioning of this software in any circumstances.
  *
  * $FreeBSD: src/sys/cam/cam_extend.c,v 1.3 1999/08/28 00:40:39 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.4 2004/03/12 03:23:13 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.5 2005/05/28 01:16:30 swildner Exp $
  */
 /*
  * XXX XXX XXX XXX  We should get DEVFS working so that we
@@ -37,18 +37,6 @@ struct extend_array
 	void **ps;
 };
 
-static void *
-cam_extend_alloc(size_t s)
-{
-	return(malloc(s, M_DEVBUF, M_INTWAIT));
-}
-
-static void
-cam_extend_free(void *p)
-{
-	free(p, M_DEVBUF);
-}
-
 /* EXTEND_CHUNK: Number of extend slots to allocate whenever we need a new
  * one.
  */
@@ -59,13 +47,8 @@ cam_extend_free(void *p)
 struct extend_array *
 cam_extend_new(void)
 {
-	struct extend_array *p = cam_extend_alloc(sizeof(*p));
-	if (p) {
-		p->nelem = 0;
-		p->ps = 0;
-	}
-
-	return p;
+	return(malloc(sizeof(struct extend_array), M_DEVBUF,
+	    M_INTWAIT | M_ZERO));
 }
 
 void *
@@ -73,13 +56,13 @@ cam_extend_set(struct extend_array *ea, int index, void *value)
 {
 	if (index >= ea->nelem) {
 		void **space;
-		space = cam_extend_alloc(sizeof(void *) * (index + EXTEND_CHUNK));
-		bzero(space, sizeof(void *) * (index + EXTEND_CHUNK));
+		space = malloc(sizeof(void *) * (index + EXTEND_CHUNK),
+		    M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		/* Make sure we have something to copy before we copy it */
 		if (ea->nelem) {
 			bcopy(ea->ps, space, sizeof(void *) * ea->nelem);
-			cam_extend_free(ea->ps);
+			free(ea->ps, M_DEVBUF);
 		}
 
 		ea->ps = space;
