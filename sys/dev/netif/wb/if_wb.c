@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.21 2005/05/28 22:15:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.22 2005/05/28 22:22:33 joerg Exp $
  */
 
 /*
@@ -168,7 +168,6 @@ static int	wb_mii_readreg(struct wb_softc *, struct wb_mii_frame *);
 static int	wb_mii_writereg(struct wb_softc *, struct wb_mii_frame *);
 
 static void	wb_setcfg(struct wb_softc *, uint32_t);
-static uint8_t	wb_calchash(caddr_t);
 static void	wb_setmulti(struct wb_softc *);
 static void	wb_reset(struct wb_softc *);
 static void	wb_fixmedia(struct wb_softc *);
@@ -526,37 +525,6 @@ wb_miibus_statchg(device_t dev)
 	wb_setcfg(sc, mii->mii_media_active);
 }
 
-static uint8_t
-wb_calchash(caddr_t addr)
-{
-	uint32_t crc, carry;
-	int i, j;
-	uint8_t c;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (i = 0; i < 6; i++) {
-		c = *(addr + i);
-		for (j = 0; j < 8; j++) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (c & 0x01);
-			crc <<= 1;
-			c >>= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	/*
-	 * return the filter bit position
-	 * Note: I arrived at the following nonsense
-	 * through experimentation. It's not the usual way to
-	 * generate the bit position but it's the only thing
-	 * I could come up with that works.
-	 */
-	return(~(crc >> 26) & 0x0000003F);
-}
-
 /*
  * Program the 64-bit multicast hash filter.
  */
@@ -587,7 +555,8 @@ wb_setmulti(struct wb_softc *sc)
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = wb_calchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ~ether_crc32_be(LLADDR((struct sockaddr_dl *)
+		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 26;
 		if (h < 32)
 			hashes[0] |= (1 << h);
 		else
