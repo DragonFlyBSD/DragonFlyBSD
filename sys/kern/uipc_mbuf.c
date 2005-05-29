@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.38 2005/05/29 10:39:59 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.39 2005/05/29 16:32:20 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -1775,21 +1775,15 @@ nospace:
  * Move data from uio into mbufs.
  */
 struct mbuf *
-m_uiomove(struct uio *uio, int wait, int len0)
+m_uiomove(struct uio *uio)
 {
-	struct mbuf *head;		/* result mbuf chain */
 	struct mbuf *m;			/* current working mbuf */
-	struct mbuf **mp;
-	int resid, nsize, flags = M_PKTHDR, error;
+	struct mbuf *head = NULL;	/* result mbuf chain */
+	struct mbuf **mp = &head;
+	int resid = uio->uio_resid, nsize, flags = M_PKTHDR, error;
 
-	resid = min(len0, uio->uio_resid);
-
-	head = NULL;
-	mp = &head;
 	do {
-		m = m_getl(resid, wait, MT_DATA, flags, &nsize);
-		if (m == NULL)
-			goto failed;
+		m = m_getl(resid, MB_WAIT, MT_DATA, flags, &nsize);
 		if (flags) {
 			m->m_pkthdr.len = 0;
 			/* Leave room for protocol headers. */

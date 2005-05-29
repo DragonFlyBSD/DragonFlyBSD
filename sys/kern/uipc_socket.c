@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.30 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.31 2005/05/29 16:32:20 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -725,7 +725,7 @@ restart:
 	splx(s);
 
 	if (uio) {
-		top = m_uiomove(uio, MB_WAIT, 0);
+		top = m_uiomove(uio);
 		if (top == NULL)
 			goto release;
 	}

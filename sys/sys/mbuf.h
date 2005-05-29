@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.25 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.26 2005/05/29 16:32:20 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -484,7 +484,7 @@ struct	mbuf	*m_pullup(struct mbuf *, int);
 struct	mbuf	*m_retry(int, int);
 struct	mbuf	*m_retryhdr(int, int);
 struct	mbuf	*m_split(struct mbuf *, int, int);
-struct	mbuf 	*m_uiomove(struct uio *, int, int);
+struct	mbuf 	*m_uiomove(struct uio *);
 void		m_mclget(struct mbuf *m, int how);
 int		m_sharecount(struct mbuf *m);
 void		m_chtype(struct mbuf *m, int type);

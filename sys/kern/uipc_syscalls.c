@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.51 2005/03/31 19:28:54 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.52 2005/05/29 16:32:20 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1376,7 +1376,7 @@ sendfile(struct sendfile_args *uap)
 			auio.uio_td = td;
 			auio.uio_resid = hbytes;
 
-			mheader = m_uiomove(&auio, MB_WAIT, 0);
+			mheader = m_uiomove(&auio);
 
 			iovec_free(&iov, aiov);
 			if (mheader == NULL)
