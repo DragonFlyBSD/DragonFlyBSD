@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.37 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.38 2005/05/29 10:39:59 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -1717,7 +1717,7 @@ struct mbuf *
 m_defrag_nofree(struct mbuf *m0, int how)
 {
 	struct mbuf	*m_new = NULL, *m_final = NULL;
-	int		progress = 0, length;
+	int		progress = 0, length, nsize;
 
 	if (!(m0->m_flags & M_PKTHDR))
 		return (m0);
@@ -1730,13 +1730,10 @@ m_defrag_nofree(struct mbuf *m0, int how)
 	}
 #endif
 	
-	if (m0->m_pkthdr.len > MHLEN)
-		m_final = m_getcl(how, MT_DATA, M_PKTHDR);
-	else
-		m_final = m_gethdr(how, MT_DATA);
-
+	m_final = m_getl(m0->m_pkthdr.len, how, MT_DATA, M_PKTHDR, &nsize);
 	if (m_final == NULL)
 		goto nospace;
+	m_final->m_len = 0;	/* in case m0->m_pkthdr.len is zero */
 
 	if (m_dup_pkthdr(m_final, m0, how) == NULL)
 		goto nospace;
@@ -1749,10 +1746,7 @@ m_defrag_nofree(struct mbuf *m0, int how)
 			length = MCLBYTES;
 
 		if (m_new == NULL) {
-			if (length > MLEN)
-				m_new = m_getcl(how, MT_DATA, 0);
-			else
-				m_new = m_get(how, MT_DATA);
+			m_new = m_getl(length, how, MT_DATA, 0, &nsize);
 			if (m_new == NULL)
 				goto nospace;
 		}
@@ -1773,14 +1767,12 @@ nospace:
 	m_defragfailure++;
 	if (m_new)
 		m_free(m_new);
-	if (m_final)
-		m_freem(m_final);
+	m_freem(m_final);
 	return (NULL);
 }
 
 /*
  * Move data from uio into mbufs.
- * A length of zero means copy the whole uio.
  */
 struct mbuf *
 m_uiomove(struct uio *uio, int wait, int len0)
@@ -1788,52 +1780,39 @@ m_uiomove(struct uio *uio, int wait, int len0)
 	struct mbuf *head;		/* result mbuf chain */
 	struct mbuf *m;			/* current working mbuf */
 	struct mbuf **mp;
-	int resid, datalen, error;
+	int resid, nsize, flags = M_PKTHDR, error;
 
-	resid = (len0 == 0) ? uio->uio_resid : min(len0, uio->uio_resid);
+	resid = min(len0, uio->uio_resid);
 
 	head = NULL;
 	mp = &head;
 	do {
-		if (resid > MHLEN) {
-			m = m_getcl(wait, MT_DATA, head == NULL ? M_PKTHDR : 0);
-			if (m == NULL)
-				goto failed;
-			if (m->m_flags & M_PKTHDR)
-				m->m_pkthdr.len = 0;
-		} else {
-			if (head == NULL) {
-				MGETHDR(m, wait, MT_DATA);
-				if (m == NULL)
-					goto failed;
-				m->m_pkthdr.len = 0;
-				/* Leave room for protocol headers. */
-				if (resid < MHLEN)
-					MH_ALIGN(m, resid);
-			} else {
-				MGET(m, wait, MT_DATA);
-				if (m == NULL)
-					goto failed;
-			}
+		m = m_getl(resid, wait, MT_DATA, flags, &nsize);
+		if (m == NULL)
+			goto failed;
+		if (flags) {
+			m->m_pkthdr.len = 0;
+			/* Leave room for protocol headers. */
+			if (resid < MHLEN)
+				MH_ALIGN(m, resid);
+			flags = 0;
 		}
-		datalen = min(MCLBYTES, resid);
-		error = uiomove(mtod(m, caddr_t), datalen, uio);
+		m->m_len = min(nsize, resid);
+		error = uiomove(mtod(m, caddr_t), m->m_len, uio);
 		if (error) {
 			m_free(m);
 			goto failed;
 		}
-		m->m_len = datalen;
 		*mp = m;
 		mp = &m->m_next;
-		head->m_pkthdr.len += datalen;
-		resid -= datalen;
+		head->m_pkthdr.len += m->m_len;
+		resid -= m->m_len;
 	} while (resid > 0);
 
 	return (head);
 
 failed:
-	if (head)
-		m_freem(head);
+	m_freem(head);
 	return (NULL);
 }
 
