@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.26 2005/05/25 01:44:16 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.27 2005/05/29 10:08:36 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -765,16 +765,9 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	hlen = rt_msghdrsize(type);
 	KASSERT(hlen <= MCLBYTES, ("rt_msg_mbuf: hlen %d doesn't fit", hlen));
 
-	m = m_gethdr(MB_DONTWAIT, MT_DATA);
+	m = m_getl(hlen, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL)
 		return (NULL);
-	if (hlen > MHLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if (!(m->m_flags & M_EXT)) {
-			m_free(m);
-			return (NULL);
-		}
-	}
 	m->m_pkthdr.len = m->m_len = hlen;
 	m->m_pkthdr.rcvif = NULL;
 	rtinfo->rti_addrs = 0;

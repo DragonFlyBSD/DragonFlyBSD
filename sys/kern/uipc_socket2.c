@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.18 2005/04/20 21:37:06 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.19 2005/05/29 10:08:36 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -880,23 +880,14 @@ sbcreatecontrol(p, size, type, level)
 	struct mbuf *m;
 
 	if (CMSG_SPACE((u_int)size) > MCLBYTES)
-		return ((struct mbuf *) NULL);
-	if ((m = m_get(MB_DONTWAIT, MT_CONTROL)) == NULL)
-		return ((struct mbuf *) NULL);
-	if (CMSG_SPACE((u_int)size) > MLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			m_free(m);
-			return ((struct mbuf *) NULL);
-		}
-	}
-	cp = mtod(m, struct cmsghdr *);
-	m->m_len = 0;
-	KASSERT(CMSG_SPACE((u_int)size) <= M_TRAILINGSPACE(m),
-	    ("sbcreatecontrol: short mbuf"));
-	if (p != NULL)
-		(void)memcpy(CMSG_DATA(cp), p, size);
+		return (NULL);
+	m = m_getl(CMSG_SPACE((u_int)size), MB_DONTWAIT, MT_CONTROL, 0, NULL);
+	if (m == NULL)
+		return (NULL);
 	m->m_len = CMSG_SPACE(size);
+	cp = mtod(m, struct cmsghdr *);
+	if (p != NULL)
+		memcpy(CMSG_DATA(cp), p, size);
 	cp->cmsg_len = CMSG_LEN(size);
 	cp->cmsg_level = level;
 	cp->cmsg_type = type;

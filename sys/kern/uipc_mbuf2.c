@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.8 2004/07/31 07:52:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.9 2005/05/29 10:08:36 hsu Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -208,14 +208,7 @@ m_pulldown(m, off, len, offp)
 	 * now, we need to do the hard way.  don't m_copy as there's no room
 	 * on both end.
 	 */
-	MGET(o, MB_DONTWAIT, m->m_type);
-	if (o && len > MLEN) {
-		MCLGET(o, MB_DONTWAIT);
-		if ((o->m_flags & M_EXT) == 0) {
-			m_free(o);
-			o = NULL;
-		}
-	}
+	o = m_getl(len, MB_DONTWAIT, m->m_type, 0, NULL);
 	if (!o) {
 		m_freem(m);
 		return NULL;	/* ENOBUFS */
@@ -256,31 +249,13 @@ m_dup1(m, off, len, wait)
 	int wait;
 {
 	struct mbuf *n;
-	int l;
-	int copyhdr;
 
 	if (len > MCLBYTES)
 		return NULL;
-	if (off == 0 && (m->m_flags & M_PKTHDR) != 0) {
-		copyhdr = 1;
-		MGETHDR(n, wait, m->m_type);
-		l = MHLEN;
-	} else {
-		copyhdr = 0;
-		MGET(n, wait, m->m_type);
-		l = MLEN;
-	}
-	if (n && len > l) {
-		MCLGET(n, wait);
-		if ((n->m_flags & M_EXT) == 0) {
-			m_free(n);
-			n = NULL;
-		}
-	}
+	n = m_getl(len, wait, m->m_type, m->m_flags, NULL);
 	if (!n)
 		return NULL;
-
-	if (copyhdr && !m_dup_pkthdr(n, m, wait)) {
+	if (off == 0 && (m->m_flags & M_PKTHDR) && !m_dup_pkthdr(n, m, wait)) {
 		m_free(n);
 		return NULL;
 	}

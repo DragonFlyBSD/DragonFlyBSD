@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.24 2005/04/20 21:37:06 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.25 2005/05/29 10:08:36 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -339,6 +339,7 @@ struct mbstat {
 /*
  * MCLGET adds such clusters to a normal mbuf.  The flag M_EXT is set upon
  * success.
+ * Deprecated.  Use m_getcl() or m_getl() instead.
  */
 #define	MCLGET(m, how) do {						\
 	m_mclget((m), (how));						\
@@ -462,16 +463,18 @@ struct	mbuf	*m_copypacket(struct mbuf *, int);
 struct	mbuf	*m_defrag(struct mbuf *, int);
 struct	mbuf	*m_defrag_nofree(struct mbuf *, int);
 struct	mbuf	*m_devget(char *, int, int, struct ifnet *,
-		    void (*copy)(char *, caddr_t, u_int));
+		  void (*copy)(volatile const void *, volatile void *, size_t));
 struct	mbuf	*m_dup(struct mbuf *, int);
 int		 m_dup_pkthdr(struct mbuf *, const struct mbuf *, int);
 struct	mbuf	*m_free(struct mbuf *);
 void		 m_freem(struct mbuf *);
 struct	mbuf	*m_get(int, int);
+struct	mbuf    *m_getc(int len, int how, int type);
 struct  mbuf	*m_getcl(int how, short type, int flags);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
+struct	mbuf	*m_last(struct mbuf *m);
 u_int		 m_lengthm(struct mbuf *m, struct mbuf **lastm);
 void		 m_move_pkthdr(struct mbuf *, struct mbuf *);
 struct	mbuf	*m_prepend(struct mbuf *, int, int);
@@ -486,6 +489,29 @@ void		m_mclget(struct mbuf *m, int how);
 int		m_sharecount(struct mbuf *m);
 void		m_chtype(struct mbuf *m, int type);
 
+/*
+ * Allocate the right type of mbuf for the desired total length.
+ */
+static __inline struct mbuf *
+m_getl(int len, int how, int type, int flags, int *psize)
+{
+	struct mbuf *m;
+	int size;
+
+	if (len >= MINCLSIZE) {
+		m = m_getcl(how, type, flags);
+		size = MCLBYTES;
+	} else if (flags & M_PKTHDR) {
+		m = m_gethdr(how, type);
+		size = MHLEN;
+	} else {
+		m = m_get(how, type);
+		size = MLEN;
+	}
+	if (psize != NULL)
+		*psize = size;
+	return (m);
+}
 
 /*
  * Packets may have annotations attached by affixing a list

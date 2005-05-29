@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.29 2005/04/20 17:01:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.30 2005/05/29 10:08:36 hsu Exp $
  */
 
 /*
@@ -586,9 +586,7 @@ nfsm_reqh(struct vnode *vp, u_long procid, int hsiz, caddr_t *bposp)
 	struct nfsmount *nmp;
 	int nqflag;
 
-	MGET(mb, MB_WAIT, MT_DATA);
-	if (hsiz >= MINCLSIZE)
-		MCLGET(mb, MB_WAIT);
+	mb = m_getl(hsiz, MB_WAIT, MT_DATA, 0, NULL);
 	mb->m_len = 0;
 	bpos = mtod(mb, caddr_t);
 
@@ -699,12 +697,10 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = auth_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(mb) == 0) {
-				MGET(mb2, MB_WAIT, MT_DATA);
-				if (siz >= MINCLSIZE)
-					MCLGET(mb2, MB_WAIT);
+				mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
+				mb2->m_len = 0;
 				mb->m_next = mb2;
 				mb = mb2;
-				mb->m_len = 0;
 				bpos = mtod(mb, caddr_t);
 			}
 			i = min(siz, M_TRAILINGSPACE(mb));
@@ -732,12 +728,10 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = verf_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(mb) == 0) {
-				MGET(mb2, MB_WAIT, MT_DATA);
-				if (siz >= MINCLSIZE)
-					MCLGET(mb2, MB_WAIT);
+				mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
+				mb2->m_len = 0;
 				mb->m_next = mb2;
 				mb = mb2;
-				mb->m_len = 0;
 				bpos = mtod(mb, caddr_t);
 			}
 			i = min(siz, M_TRAILINGSPACE(mb));
@@ -844,7 +838,8 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 	char *uiocp;
 	struct mbuf *mp, *mp2;
 	int xfer, left, mlen;
-	int uiosiz, clflg, rem;
+	int uiosiz, rem;
+	boolean_t getcluster;
 	char *cp;
 
 #ifdef DIAGNOSTIC
@@ -852,11 +847,11 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 		panic("nfsm_uiotombuf: iovcnt != 1");
 #endif
 
-	if (siz > MLEN)		/* or should it >= MCLBYTES ?? */
-		clflg = 1;
+	if (siz >= MINCLSIZE)
+		getcluster = TRUE;
 	else
-		clflg = 0;
-	rem = nfsm_rndup(siz)-siz;
+		getcluster = FALSE;
+	rem = nfsm_rndup(siz) - siz;
 	mp = mp2 = *mq;
 	while (siz > 0) {
 		left = uiop->uio_iov->iov_len;
@@ -867,9 +862,10 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 		while (left > 0) {
 			mlen = M_TRAILINGSPACE(mp);
 			if (mlen == 0) {
-				MGET(mp, MB_WAIT, MT_DATA);
-				if (clflg)
-					MCLGET(mp, MB_WAIT);
+				if (getcluster)
+					mp = m_getcl(MB_WAIT, MT_DATA, 0);
+				else
+					mp = m_get(MB_WAIT, MT_DATA);
 				mp->m_len = 0;
 				mp2->m_next = mp;
 				mp2 = mp;
@@ -1028,10 +1024,10 @@ nfsm_strtmbuf(struct mbuf **mb, char **bpos, const char *cp, long siz)
 	}
 	/* Loop around adding mbufs */
 	while (siz > 0) {
-		MGET(m1, MB_WAIT, MT_DATA);
-		if (siz > MLEN)
-			MCLGET(m1, MB_WAIT);
-		m1->m_len = NFSMSIZ(m1);
+		int msize;
+
+		m1 = m_getl(siz, MB_WAIT, MT_DATA, 0, &msize);
+		m1->m_len = msize;
 		m2->m_next = m1;
 		m2 = m1;
 		tl = mtod(m1, u_int32_t *);

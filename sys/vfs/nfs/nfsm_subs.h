@@ -35,7 +35,7 @@
  *
  *	@(#)nfsm_subs.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsm_subs.h,v 1.27.2.1 2000/10/28 16:27:27 dwmalone Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.7 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.8 2005/05/29 10:08:36 hsu Exp $
  */
 
 
@@ -503,9 +503,8 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 		if (bp >= be) { \
 			if (mp == mb) \
 				mp->m_len += bp-bpos; \
-			MGET(mp, MB_WAIT, MT_DATA); \
-			MCLGET(mp, MB_WAIT); \
-			mp->m_len = NFSMSIZ(mp); \
+			mp = m_getcl(MB_WAIT, MT_DATA, 0); \
+			mp->m_len = MCLBYTES; \
 			mp2->m_next = mp; \
 			mp2 = mp; \
 			bp = mtod(mp, caddr_t); \

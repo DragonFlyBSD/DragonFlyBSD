@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.29 2005/03/31 19:28:54 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.30 2005/05/29 10:08:36 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -585,32 +585,14 @@ restart:
 			if (flags & MSG_EOR)
 				top->m_flags |= M_EOR;
 		    } else do {
-			if (top == 0) {
-				MGETHDR(m, MB_WAIT, MT_DATA);
-				if (m == NULL) {
-					error = ENOBUFS;
-					goto release;
-				}
-				mlen = MHLEN;
+			m = m_getl(resid, MB_WAIT, MT_DATA,
+				   top == NULL ? M_PKTHDR : 0, &mlen);
+			if (top == NULL) {
 				m->m_pkthdr.len = 0;
 				m->m_pkthdr.rcvif = (struct ifnet *)0;
-			} else {
-				MGET(m, MB_WAIT, MT_DATA);
-				if (m == NULL) {
-					error = ENOBUFS;
-					goto release;
-				}
-				mlen = MLEN;
 			}
-			if (resid >= MINCLSIZE) {
-				MCLGET(m, MB_WAIT);
-				if ((m->m_flags & M_EXT) == 0)
-					goto nopages;
-				mlen = MCLBYTES;
-				len = min(min(mlen, resid), space);
-			} else {
-nopages:
-				len = min(min(mlen, resid), space);
+			len = min(min(mlen, resid), space);
+			if (resid < MINCLSIZE) {
 				/*
 				 * For datagram protocols, leave room
 				 * for protocol headers in first mbuf.

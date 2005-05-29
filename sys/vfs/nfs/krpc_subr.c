@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.6 2004/06/02 14:43:04 eirikn Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.7 2005/05/29 10:08:36 hsu Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -467,14 +467,7 @@ xdr_string_encode(char *str, int len)
 	if (mlen > MCLBYTES)		/* If too big, we just can't do it. */
 		return (NULL);
 
-	m = m_get(MB_WAIT, MT_DATA);
-	if (mlen > MLEN) {
-		MCLGET(m, MB_WAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			(void) m_free(m);	/* There can be only one. */
-			return (NULL);
-		}
-	}
+	m = m_getl(mlen, MB_WAIT, MT_DATA, 0, NULL);
 	xs = mtod(m, struct xdr_string *);
 	m->m_len = mlen;
 	xs->len = txdr_unsigned(len);

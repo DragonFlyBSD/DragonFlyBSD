@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.26 2005/03/31 19:28:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.27 2005/05/29 10:08:36 hsu Exp $
  */
 
 /*
@@ -1747,10 +1747,7 @@ nfs_realign(struct mbuf **pm, int hsiz)
 
 	while ((m = *pm) != NULL) {
 		if ((m->m_len & 0x3) || (mtod(m, intptr_t) & 0x3)) {
-			MGET(n, MB_WAIT, MT_DATA);
-			if (m->m_len >= MINCLSIZE) {
-				MCLGET(n, MB_WAIT);
-			}
+			n = m_getl(m->m_len, MB_WAIT, MT_DATA, 0, NULL);
 			n->m_len = 0;
 			break;
 		}

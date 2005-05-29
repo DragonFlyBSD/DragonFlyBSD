@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.28 2005/05/27 15:03:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.29 2005/05/29 10:08:36 hsu Exp $
  */
 
 /*
@@ -1052,7 +1052,7 @@ fxp_start(struct ifnet *ifp)
 	 */
 	while (!ifq_is_empty(&ifp->if_snd) && sc->tx_queued < FXP_NTXCB - 1) {
 		struct mbuf *m, *mb_head;
-		int segment;
+		int segment, ntries = 0;
 
 		/*
 		 * Grab a packet to transmit. The packet is dequeued,
@@ -1091,23 +1091,16 @@ tbdinit:
 			 * mbuf chain first. Bail out if we can't get the
 			 * new buffers.
 			 */
-			MGETHDR(mn, MB_DONTWAIT, MT_DATA);
+			if (ntries > 0)
+				break;
+			mn = m_dup(mb_head, MB_DONTWAIT);
 			if (mn == NULL)
 				break;
-			if (mb_head->m_pkthdr.len > MHLEN) {
-				MCLGET(mn, MB_DONTWAIT);
-				if ((mn->m_flags & M_EXT) == 0) {
-					m_freem(mn);
-					break;
-				}
-			}
-			m_copydata(mb_head, 0, mb_head->m_pkthdr.len,
-			    mtod(mn, caddr_t));
-			mn->m_pkthdr.len = mn->m_len = mb_head->m_pkthdr.len;
 			 /* We can transmit the packet, dequeue it. */
 			mb_head = ifq_dequeue(&ifp->if_snd);
 			m_freem(mb_head);
 			mb_head = mn;
+			ntries = 1;
 			goto tbdinit;
 		} else {
 			/* Nothing to worry about, just dequeue. */
