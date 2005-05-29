@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.19 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.20 2005/05/29 15:52:26 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -812,15 +812,17 @@ sbdrop(sb, len)
 	int len;
 {
 	struct mbuf *m;
-	struct mbuf *next;
+	struct mbuf *nextpkt;
 
-	next = (m = sb->sb_mb) ? m->m_nextpkt : 0;
+	m = sb->sb_mb;
+	nextpkt = (m != NULL) ? m->m_nextpkt : NULL;
 	while (len > 0) {
-		if (m == 0) {
-			if (next == 0)
+		if (m == NULL) {
+			if (nextpkt == NULL)
 				panic("sbdrop");
-			m = next;
-			next = m->m_nextpkt;
+			m = nextpkt;
+			nextpkt = m->m_nextpkt;
+			m->m_nextpkt = NULL;
 			continue;
 		}
 		if (m->m_len > len) {
@@ -837,12 +839,12 @@ sbdrop(sb, len)
 		sbfree(sb, m);
 		m = m_free(m);
 	}
-	if (m) {
+	if (m != NULL) {
 		sb->sb_mb = m;
-		m->m_nextpkt = next;
+		m->m_nextpkt = nextpkt;
 	} else {
-		sb->sb_mb = next;
-		sb->sb_lastmbuf = NULL;
+		sb->sb_mb = nextpkt;
+		sb->sb_lastmbuf = NULL;		/* invalidate hint */
 	}
 }
 
