@@ -24,7 +24,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/Attic/fred.4th,v 1.6 2004/01/22 12:04:58 eirikn Exp $
+\ $DragonFly: src/sys/boot/forth/Attic/fred.4th,v 1.7 2005/05/29 23:35:00 swildner Exp $
 
 marker task-beastie.4th
 
@@ -49,27 +49,28 @@ variable rebootkey
 
 46 constant dot
 
-\ The BSD Daemon.  He is 19 rows high and 34 columns wide
-: technicolor-beastie ( x y -- )
-2dup at-xy ."               [1;31m,        ," 1+
-2dup at-xy ."              /(        )`" 1+
-2dup at-xy ."              \ \___   / |" 1+
-2dup at-xy ."              /- [37m_[31m  `-/  '" 1+
-2dup at-xy ."             ([37m/\/ \[31m \   /\" 1+
-2dup at-xy ."             [37m/ /   |[31m `    \" 1+
-2dup at-xy ."             [34mO O   [37m) [31m/    |" 1+
-2dup at-xy ."             [37m`-^--'[31m`<     '" 1+
-2dup at-xy ."            (_.)  _  )   /" 1+
-2dup at-xy ."             `.___/`    /       " 1+
-2dup at-xy ."               `-----' /" 1+
-2dup at-xy ."  [33m<----.[31m     __ / __   \" 1+
-2dup at-xy ."  [33m<----|====[31mO)))[33m==[31m) \) /[33m====|" 1+
-2dup at-xy ."  [33m<----'[31m    `--' `.__,' \" 1+
-2dup at-xy ."               |        |" 1+
-2dup at-xy ."                \       /       /\" 1+
-2dup at-xy ."           [36m______[31m( (_  / \______/" 1+
-2dup at-xy ."         [36m,'  ,-----'   |" 1+
-at-xy ."         `--{__________) [0m" 1+
+\ Fred, the official DragonFly BSD mascot.
+\ He is 19 rows high and 34 columns wide
+: technicolor-fred ( x y -- )
+	2dup at-xy ." " 1+
+	2dup at-xy ." " 1+
+	2dup at-xy ." ,--,           [31m|           [37m,--," 1+
+	2dup at-xy ." |   `-,       [31m,^,       [37m,-'   |" 1+
+	2dup at-xy ."  `,    `-,   [32m([31m/ \[32m)   [37m,-`    ,-'" 1+
+	2dup at-xy ."    `-,    `-,[31m/   \[37m,-`    ,-`" 1+
+	2dup at-xy ."       `------[31m(   )[37m------'" 1+
+	2dup at-xy ."   ,----------[31m(   )[37m-----------," 1+
+	2dup at-xy ."  |        _,-[31m(   )[37m-,_        |" 1+
+	2dup at-xy ."   `-,__,-`   [31m\   /   [37m`-,__,-'" 1+
+	2dup at-xy ."               [31m| |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               `|'[0m" 1+
+	2dup at-xy ." " 1+
+	     at-xy ."
 ;
 
 : boring-fred ( x y -- )
@@ -94,7 +95,7 @@ at-xy ."         `--{__________) [0m" 1+
 	     at-xy ."
 ;
 
-: print-beastie ( x y -- )
+: print-fred ( x y -- )
 	s" loader_color" getenv
 	dup -1 = if
 		drop
@@ -105,7 +106,7 @@ at-xy ."         `--{__________) [0m" 1+
 		boring-fred
 		exit
 	then
-	technicolor-beastie
+	technicolor-fred
 ;
 
 : acpienabled? ( -- flag )
@@ -136,13 +137,13 @@ at-xy ."         `--{__________) [0m" 1+
 	menuidx @ 48 +
 ;
 
-: beastie-menu ( -- )
+: fred-menu ( -- )
 	0 menuidx !
 	dot menubllt !
 	8 menuY !
 	5 menuX !
 	clear
-	46 4 print-beastie
+	46 4 print-fred
 	42 20 2 2 box
 	13 6 at-xy ." Welcome to DragonFly!"
 	printmenuitem ."  Boot DragonFly [default]" bootkey !
@@ -192,13 +193,13 @@ at-xy ."         `--{__________) [0m" 1+
 set-current
 
 : beastie-start
-	s" beastie_disable" getenv
+	s" fred_disable" getenv
 	dup -1 <> if
 		s" YES" compare-insensitive 0= if
 			exit
 		then
 	then
-	beastie-menu
+	fred-menu
 	s" autoboot_delay" getenv
 	dup -1 = if
 		drop

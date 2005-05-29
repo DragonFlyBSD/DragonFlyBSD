@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.4 2004/12/20 13:13:19 joerg Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.5 2005/05/29 23:35:00 swildner Exp $
 .Dd April 18, 1999
 .Dt LOADER.CONF 5
 .Os
@@ -156,8 +156,25 @@ selects the video console, and
 .Dq nullconsole
 selects a mute console
 (useful for systems with neither a video console nor a serial port).
+.It Va fred_disable
+.Pq Dq NO
+Shows a monochrome version of Fred, the official DragonFly BSD mascot, when the
+boot menu appears. To make his life a bit more colorful, consider setting
+.Pa loader_color
+to
+.Dq YES .
 .It Va kernel
 .Pq Dq /kernel
+.It Va loader_color
+.Pq Dq NO
+If set to
+.Dq YES ,
+you'll meet Fred, the official DragonFly BSD mascot, in technicolor when the
+boot menu appears (remember to set
+.Pa fred_disable
+to
+.Dq NO
+for this to work.)
 .It Va loader_conf_files
 .Pq Do /boot/loader.conf /boot/loader.conf.local Dc
 .It Va splash_bmp_load
