@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.33 2005/05/28 21:02:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.34 2005/05/30 11:56:00 joerg Exp $
  */
 
 /*
@@ -823,6 +823,7 @@ sk_newbuf(struct sk_if_softc *sc_if, struct sk_chain *c, struct mbuf *m)
 
 		/* Attach the buffer to the mbuf */
 		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_buf = buf->sk_buf;
 		m_new->m_ext.ext_nfree.new = sk_jfree;
 		m_new->m_ext.ext_nref.new = sk_jref;
 		m_new->m_ext.ext_size = SK_JUMBO_FRAMELEN;
