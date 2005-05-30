@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.57 2005/05/13 15:51:10 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.58 2005/05/30 00:42:39 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -156,8 +156,8 @@ upgrade_etc:	preupgrade
 	rm -rf ${DESTDIR}/usr/bin/gcc3
 	rm -rf ${DESTDIR}/usr/include/g++
 	csh -c "rm -f ${DESTDIR}/usr/bin/{genassym,gensetdefs,nawk,ptx,send-pr}"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man8,cat8}/{genassym,gensetdefs}.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man1,cat1}/{gawk,nawk,send-pr}.1.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/{genassym,gensetdefs}.8.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/{gawk,nawk,send-pr}.1.gz"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/{cc1,cc1obj,cc1plus}"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/{cpp,cpp0,f771,objformat}"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils212/{cc1,cc1obj,cc1plus}"
@@ -183,18 +183,18 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/bin/{pod2text,sperl5,sperl5.00503,splain,suidperl}"
 .for prog in a2p c2ph h2ph h2xs perlbug perlcc pl2pm pod2html pod2man s2p
 	rm -f ${DESTDIR}/usr/bin/${prog}
-	rm -f ${DESTDIR}/usr/share/man/man1/${prog}.1.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${prog}.1.gz
 .endfor
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libperl.a,libperl.so,libperl.so.3,libperl_p.a}"
-	rm -f ${DESTDIR}/usr/share/man/man1/perl.1.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl.1.gz
 .for man in 5004delta apio book bot call data debug delta diag dsc embed faq \
 	    faq.1 faq2 faq3 faq4 faq5 faq6 faq7 faq8 faq9 form func guts hist \
 	    ipc locale lol mod modinstall modlib obj op opentut pod port re \
 	    ref reftut run sec style sub syn thrtut tie toc toot trap var xs \
 	    xstut 
-	rm -f ${DESTDIR}/usr/share/man/man1/perl${man}.1.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl${man}.1.gz
 .endfor
-	rm -f ${DESTDIR}/usr/share/man/man7/style.perl.7.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}7/style.perl.7.gz
 	rm -rf ${DESTDIR}/usr/share/perl
 	rm -rf ${DESTDIR}/usr/share/examples/bc
 .if exists(${DESTDIR}/usr/share/info/dc.info.gz)
@@ -218,8 +218,8 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/dev/wcd*
 	rm -f ${DESTDIR}/dev/wd*
 	rm -f ${DESTDIR}/dev/wfd*
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man4,cat4}/wst.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man4,cat4}/{euc,utf2}.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/wst.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/{euc,utf2}.4.gz"
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.iso.kbd
 	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.kbd
 	csh -c "rm -f ${DESTDIR}/etc/rc.d/{bootconf.sh,lkm1,lkm2,lkm3,mountall,pcvt,wscons}"
@@ -236,15 +236,15 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/sbin/${cmd}
 .endfor
 .for man in cursor fontedit kcon loadfont mcon scon vt220keys vttest
-	rm -f ${DESTDIR}/usr/share/man/man1/${man}.1.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${man}.1.gz
 .endfor
 .for man in keycap kgetent kgetflag kgetnum kgetstr
-	rm -f ${DESTDIR}/usr/share/man/man3/${man}.3.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz
 .endfor
-	rm -f ${DESTDIR}/usr/share/man/man4/pcvt.4.gz
-	rm -f ${DESTDIR}/usr/share/man/man4/vt.4.gz
-	rm -f ${DESTDIR}/usr/share/man/man5/keycap.5.gz
-	rm -f ${DESTDIR}/usr/share/man/man8/ispcvt.8.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcvt.4.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}4/vt.4.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}5/keycap.5.gz
+	rm -f ${DESTDIR}/usr/share/man/{man,cat}8/ispcvt.8.gz
 	rm -f ${DESTDIR}/usr/share/misc/keycap.pcvt
 	rm -rf ${DESTDIR}/usr/share/misc/fonts
 	rm -rf ${DESTDIR}/usr/share/misc/pcvtfonts
