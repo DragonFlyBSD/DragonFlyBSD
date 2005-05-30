@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.11 2005/05/07 17:38:33 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.12 2005/05/30 00:54:46 swildner Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -121,7 +121,7 @@ these are the flags to pass to the
 daemon.
 .It Va battd_enable
 Enable
-.Xr battd 1
+.Xr battd 8
 to monitor the status of batteries present in the system.
 This also enables support for APM.
 .It Va battd_flags
@@ -131,7 +131,7 @@ If
 is set to
 .Dq Li YES ,
 these are the flags to pass to the
-.Xr battd 1
+.Xr battd 8
 daemon.
 .It Va devd_enable
 .Pq Vt bool
