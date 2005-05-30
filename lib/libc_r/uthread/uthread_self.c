@@ -30,12 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_self.c,v 1.3.2.2 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_self.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_self.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_self, pthread_self);
 
 pthread_t
 _pthread_self(void)
@@ -43,3 +41,5 @@ _pthread_self(void)
 	/* Return the running thread pointer: */
 	return (_get_curthread());
 }
+
+__strong_reference(_pthread_self, pthread_self);

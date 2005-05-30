@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_exit.c,v 1.16.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <unistd.h>
@@ -43,8 +43,6 @@
 
 #define FLAGS_IN_SCHEDQ	\
 	(PTHREAD_FLAGS_IN_PRIOQ|PTHREAD_FLAGS_IN_WAITQ|PTHREAD_FLAGS_IN_WORKQ)
-
-__weak_reference(_pthread_exit, pthread_exit);
 
 void __exit(int status)
 {
@@ -232,3 +230,5 @@ _pthread_exit(void *status)
 	/* This point should not be reached. */
 	PANIC("Dead thread has resumed");
 }
+
+__strong_reference(_pthread_exit, pthread_exit);

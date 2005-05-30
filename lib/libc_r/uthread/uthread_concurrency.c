@@ -30,15 +30,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_concurrency.c,v 1.1.2.1 2003/05/27 18:18:01 jdp Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_concurrency.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_concurrency.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 
 #include <errno.h>
 
 static int current_concurrency = 0;
-
-__weak_reference(_pthread_getconcurrency, pthread_getconcurrency);
-__weak_reference(_pthread_setconcurrency, pthread_setconcurrency);
 
 int
 _pthread_getconcurrency(void)
@@ -59,3 +56,6 @@ _pthread_setconcurrency(int new_level)
 	}
 	return(ret);
 }
+
+__strong_reference(_pthread_getconcurrency, pthread_getconcurrency);
+__strong_reference(_pthread_setconcurrency, pthread_setconcurrency);

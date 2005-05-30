@@ -30,13 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_getprio.c,v 1.6.2.1 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_getprio.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_getprio.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_getprio, pthread_getprio);
 
 int
 _pthread_getprio(pthread_t pthread)
@@ -55,3 +53,5 @@ _pthread_getprio(pthread_t pthread)
 	/* Return the thread priority or an error status: */
 	return (ret);
 }
+
+__strong_reference(_pthread_getprio, pthread_getprio);

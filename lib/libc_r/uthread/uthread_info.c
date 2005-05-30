@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_info.c,v 1.14.2.9 2003/02/15 05:35:31 kris Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -47,8 +47,6 @@
 #endif
 
 static void	dump_thread(int fd, pthread_t pthread, int long_version);
-
-__weak_reference(_pthread_set_name_np, pthread_set_name_np);
 
 struct s_thread_info {
 	enum pthread_state state;
@@ -288,3 +286,5 @@ _pthread_set_name_np(pthread_t thread, const char *name)
 		thread->name = strdup(name);
 	}
 }
+
+__strong_reference(_pthread_set_name_np, pthread_set_name_np);

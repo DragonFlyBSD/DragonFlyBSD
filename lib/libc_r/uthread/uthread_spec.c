@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_spec.c,v 1.14.2.2 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_spec.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_spec.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <signal.h>
 #include <stdlib.h>
@@ -41,12 +41,6 @@
 
 /* Static variables: */
 static	struct pthread_key key_table[PTHREAD_KEYS_MAX];
-
-__weak_reference(_pthread_key_create, pthread_key_create);
-__weak_reference(_pthread_key_delete, pthread_key_delete);
-__weak_reference(_pthread_getspecific, pthread_getspecific);
-__weak_reference(_pthread_setspecific, pthread_setspecific);
-
 
 int
 _pthread_key_create(pthread_key_t * key, void (*destructor) (void *))
@@ -204,3 +198,8 @@ _pthread_getspecific(pthread_key_t key)
 		data = NULL;
 	return (data);
 }
+
+__strong_reference(_pthread_key_create, pthread_key_create);
+__strong_reference(_pthread_key_delete, pthread_key_delete);
+__strong_reference(_pthread_getspecific, pthread_getspecific);
+__strong_reference(_pthread_setspecific, pthread_setspecific);

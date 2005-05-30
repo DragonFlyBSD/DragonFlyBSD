@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_cond.c,v 1.22.2.8 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_cond.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_cond.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <stdlib.h>
 #include <errno.h>
@@ -44,13 +44,6 @@
 static inline pthread_t	cond_queue_deq(pthread_cond_t);
 static inline void	cond_queue_remove(pthread_cond_t, pthread_t);
 static inline void	cond_queue_enq(pthread_cond_t, pthread_t);
-
-__weak_reference(_pthread_cond_init, pthread_cond_init);
-__weak_reference(_pthread_cond_destroy, pthread_cond_destroy);
-__weak_reference(_pthread_cond_wait, pthread_cond_wait);
-__weak_reference(_pthread_cond_timedwait, pthread_cond_timedwait);
-__weak_reference(_pthread_cond_signal, pthread_cond_signal);
-__weak_reference(_pthread_cond_broadcast, pthread_cond_broadcast);
 
 
 /* Reinitialize a condition variable to defaults. */
@@ -733,3 +726,10 @@ cond_queue_enq(pthread_cond_t cond, pthread_t pthread)
 	pthread->flags |= PTHREAD_FLAGS_IN_CONDQ;
 	pthread->data.cond = cond;
 }
+
+__strong_reference(_pthread_cond_init, pthread_cond_init);
+__strong_reference(_pthread_cond_destroy, pthread_cond_destroy);
+__strong_reference(_pthread_cond_wait, pthread_cond_wait);
+__strong_reference(_pthread_cond_timedwait, pthread_cond_timedwait);
+__strong_reference(_pthread_cond_signal, pthread_cond_signal);
+__strong_reference(_pthread_cond_broadcast, pthread_cond_broadcast);

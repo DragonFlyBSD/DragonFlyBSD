@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kevent.c,v 1.2.2.6 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kevent.c,v 1.3 2005/03/20 18:45:15 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kevent.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 
 #include <unistd.h>
@@ -34,8 +34,6 @@
 #include <sys/event.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_kevent, kevent);
 
 int 
 _kevent(int kq, const struct kevent *changelist, int nchanges,
@@ -76,3 +74,5 @@ _kevent(int kq, const struct kevent *changelist, int nchanges,
 	}
 	return (rc);
 }
+
+__strong_reference(_kevent, kevent);

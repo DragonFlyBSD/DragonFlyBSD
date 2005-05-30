@@ -30,13 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_attr_getstack.c,v 1.1.2.1 2003/03/04 16:49:54 phantom Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_attr_getstack.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_attr_getstack.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_attr_getstack, pthread_attr_getstack);
 
 int
 _pthread_attr_getstack(const pthread_attr_t * __restrict attr,
@@ -58,3 +56,4 @@ _pthread_attr_getstack(const pthread_attr_t * __restrict attr,
 	return(ret);
 }
 
+__strong_reference(_pthread_attr_getstack, pthread_attr_getstack);

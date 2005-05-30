@@ -30,14 +30,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_setschedparam.c,v 1.5.2.3 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_setschedparam.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_setschedparam.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <sys/param.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_setschedparam, pthread_setschedparam);
 
 int
 _pthread_setschedparam(pthread_t pthread, int policy, 
@@ -118,3 +116,5 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 	}
 	return(ret);
 }
+
+__strong_reference(_pthread_setschedparam, pthread_setschedparam);

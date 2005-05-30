@@ -30,13 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_join.c,v 1.12.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_join.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_join.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_join, pthread_join);
 
 int
 _pthread_join(pthread_t pthread, void **thread_return)
@@ -161,3 +159,5 @@ _pthread_join(pthread_t pthread, void **thread_return)
 	/* Return the completion status: */
 	return (ret);
 }
+
+__strong_reference(_pthread_join, pthread_join);

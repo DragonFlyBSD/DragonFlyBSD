@@ -30,16 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_clean.c,v 1.4.2.2 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_clean.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_clean.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <signal.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_cleanup_push, pthread_cleanup_push);
-__weak_reference(_pthread_cleanup_pop, pthread_cleanup_pop);
 
 void
 _pthread_cleanup_push(void (*routine) (void *), void *routine_arg)
@@ -71,3 +68,5 @@ _pthread_cleanup_pop(int execute)
 	}
 }
 
+__strong_reference(_pthread_cleanup_push, pthread_cleanup_push);
+__strong_reference(_pthread_cleanup_pop, pthread_cleanup_pop);

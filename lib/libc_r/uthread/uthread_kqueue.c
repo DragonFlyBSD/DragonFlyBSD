@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kqueue.c,v 1.1 2003/07/25 17:02:33 mp Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kqueue.c,v 1.1 2005/03/20 17:46:31 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kqueue.c,v 1.2 2005/05/30 20:50:53 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -33,8 +33,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_kqueue, kqueue);
 
 int
 _kqueue(void)
@@ -52,3 +50,5 @@ _kqueue(void)
 	}
 	return (fd);
 }
+
+__strong_reference(_kqueue, kqueue);

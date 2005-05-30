@@ -30,16 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_suspend_np.c,v 1.7.2.6 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_suspend_np.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_suspend_np.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
 
 static void	suspend_common(struct pthread *thread);
-
-__weak_reference(_pthread_suspend_np, pthread_suspend_np);
-__weak_reference(_pthread_suspend_all_np, pthread_suspend_all_np);
 
 /* Suspend a thread: */
 int
@@ -103,3 +100,6 @@ suspend_common(struct pthread *thread)
 		PTHREAD_SET_STATE(thread, PS_SUSPENDED);
 	}
 }
+
+__strong_reference(_pthread_suspend_np, pthread_suspend_np);
+__strong_reference(_pthread_suspend_all_np, pthread_suspend_all_np);

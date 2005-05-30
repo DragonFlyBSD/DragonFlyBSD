@@ -30,12 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_setprio.c,v 1.7.2.1 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_setprio.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_setprio.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_setprio, pthread_setprio);
 
 int
 _pthread_setprio(pthread_t pthread, int prio)
@@ -51,3 +49,5 @@ _pthread_setprio(pthread_t pthread, int prio)
 	/* Return the error status: */
 	return (ret);
 }
+
+__strong_reference(_pthread_setprio, pthread_setprio);

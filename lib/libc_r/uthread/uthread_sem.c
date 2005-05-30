@@ -27,7 +27,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sem.c,v 1.3.2.5 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_sem.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_sem.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -42,16 +42,6 @@
 		retval = -1;			\
 		goto RETURN;			\
 	}
-
-__weak_reference(_sem_init, sem_init);
-__weak_reference(_sem_destroy, sem_destroy);
-__weak_reference(_sem_open, sem_open);
-__weak_reference(_sem_close, sem_close);
-__weak_reference(_sem_unlink, sem_unlink);
-__weak_reference(_sem_wait, sem_wait);
-__weak_reference(_sem_trywait, sem_trywait);
-__weak_reference(_sem_post, sem_post);
-__weak_reference(_sem_getvalue, sem_getvalue);
 
 int
 _sem_init(sem_t *sem, int pshared, unsigned int value)
@@ -252,3 +242,13 @@ _sem_getvalue(sem_t *sem, int *sval)
   RETURN:
 	return retval;
 }
+
+__strong_reference(_sem_init, sem_init);
+__strong_reference(_sem_destroy, sem_destroy);
+__strong_reference(_sem_open, sem_open);
+__strong_reference(_sem_close, sem_close);
+__strong_reference(_sem_unlink, sem_unlink);
+__strong_reference(_sem_wait, sem_wait);
+__strong_reference(_sem_trywait, sem_trywait);
+__strong_reference(_sem_post, sem_post);
+__strong_reference(_sem_getvalue, sem_getvalue);

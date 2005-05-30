@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sigmask.c,v 1.5.2.3 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_sigmask.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_sigmask.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -39,8 +39,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_sigmask, pthread_sigmask);
 
 int
 _pthread_sigmask(int how, const sigset_t *set, sigset_t *oset)
@@ -105,3 +103,5 @@ _pthread_sigmask(int how, const sigset_t *set, sigset_t *oset)
 	/* Return the completion status: */
 	return (ret);
 }
+
+__strong_reference(_pthread_sigmask, pthread_sigmask);

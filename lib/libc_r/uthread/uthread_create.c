@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_create.c,v 1.24.2.6 2003/01/08 05:04:26 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.5 2005/05/11 19:47:00 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.6 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -58,8 +58,6 @@ int _thread_ctx_offset			= OFF(ctx);
 
 int _thread_PS_RUNNING_value		= PS_RUNNING;
 int _thread_PS_DEAD_value		= PS_DEAD;
-
-__weak_reference(_pthread_create, pthread_create);
 
 int
 _pthread_create(pthread_t *thread, const pthread_attr_t *attr,
@@ -328,3 +326,5 @@ _thread_start(void)
 	/* This point should never be reached. */
 	PANIC("Thread has resumed after exit");
 }
+
+__strong_reference(_pthread_create, pthread_create);

@@ -1,18 +1,13 @@
 /*
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  * $FreeBSD: src/lib/libc_r/uthread/uthread_cancel.c,v 1.3.2.9 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_cancel.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_cancel.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <sys/errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
 
 static void	finish_cancellation(void *arg);
-
-__weak_reference(_pthread_cancel, pthread_cancel);
-__weak_reference(_pthread_setcancelstate, pthread_setcancelstate);
-__weak_reference(_pthread_setcanceltype, pthread_setcanceltype);
-__weak_reference(_pthread_testcancel, pthread_testcancel);
 
 int
 _pthread_cancel(pthread_t pthread)
@@ -229,3 +224,8 @@ finish_cancellation(void *arg)
 		pthread_exit(PTHREAD_CANCELED);
 	}
 }
+
+__strong_reference(_pthread_cancel, pthread_cancel);
+__strong_reference(_pthread_setcancelstate, pthread_setcancelstate);
+__strong_reference(_pthread_setcanceltype, pthread_setcanceltype);
+__strong_reference(_pthread_testcancel, pthread_testcancel);

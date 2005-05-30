@@ -30,16 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_mattr_kind_np.c,v 1.4.2.2 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_mattr_kind_np.c,v 1.3 2005/01/08 03:27:21 hsu Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_mattr_kind_np.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_mutexattr_setkind_np, pthread_mutexattr_setkind_np);
-__weak_reference(_pthread_mutexattr_getkind_np, pthread_mutexattr_getkind_np);
-__weak_reference(_pthread_mutexattr_gettype, pthread_mutexattr_gettype);
-__weak_reference(_pthread_mutexattr_settype, pthread_mutexattr_settype);
 
 int
 _pthread_mutexattr_setkind_np(pthread_mutexattr_t *attr, int kind)
@@ -96,3 +91,8 @@ _pthread_mutexattr_gettype(pthread_mutexattr_t *attr, int *type)
 	}
 	return ret;
 }
+
+__strong_reference(_pthread_mutexattr_setkind_np, pthread_mutexattr_setkind_np);
+__strong_reference(_pthread_mutexattr_getkind_np, pthread_mutexattr_getkind_np);
+__strong_reference(_pthread_mutexattr_gettype, pthread_mutexattr_gettype);
+__strong_reference(_pthread_mutexattr_settype, pthread_mutexattr_settype);

@@ -30,16 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_resume_np.c,v 1.7.2.4 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_resume_np.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_resume_np.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
 
 static void	resume_common(struct pthread *);
-
-__weak_reference(_pthread_resume_np, pthread_resume_np);
-__weak_reference(_pthread_resume_all_np, pthread_resume_all_np);
 
 /* Resume a thread: */
 int
@@ -110,3 +107,6 @@ resume_common(struct pthread *thread)
 			PTHREAD_PRIOQ_INSERT_TAIL(thread);
 	}
 }
+
+__strong_reference(_pthread_resume_np, pthread_resume_np);
+__strong_reference(_pthread_resume_all_np, pthread_resume_all_np);

@@ -24,15 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_attr_get_np.c,v 1.2.2.2 2003/02/03 10:13:28 phantom Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_attr_get_np.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_attr_get_np.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
 #include <pthread_np.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_attr_get_np, pthread_attr_get_np);
 
 int
 _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
@@ -56,3 +54,5 @@ _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
 
 	return (0);
 }
+
+__strong_reference(_pthread_attr_get_np, pthread_attr_get_np);

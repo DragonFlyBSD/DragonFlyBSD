@@ -30,15 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_condattr_init.c,v 1.4.2.1 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_condattr_init.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_condattr_init.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
-
-__weak_reference(_pthread_condattr_init, pthread_condattr_init);
 
 int
 _pthread_condattr_init(pthread_condattr_t *attr)
@@ -57,3 +55,5 @@ _pthread_condattr_init(pthread_condattr_t *attr)
 	}
 	return(ret);
 }
+
+__strong_reference(_pthread_condattr_init, pthread_condattr_init);

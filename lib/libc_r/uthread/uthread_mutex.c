@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_mutex.c,v 1.20.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_mutex.c,v 1.3 2005/05/03 07:29:04 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_mutex.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <stdlib.h>
 #include <errno.h>
@@ -74,12 +74,6 @@ static inline void	mutex_queue_enq(pthread_mutex_t, pthread_t);
 
 
 static spinlock_t static_init_lock = _SPINLOCK_INITIALIZER;
-
-__weak_reference(_pthread_mutex_init, pthread_mutex_init);
-__weak_reference(_pthread_mutex_destroy, pthread_mutex_destroy);
-__weak_reference(_pthread_mutex_trylock, pthread_mutex_trylock);
-__weak_reference(_pthread_mutex_lock, pthread_mutex_lock);
-__weak_reference(_pthread_mutex_unlock, pthread_mutex_unlock);
 
 /* Reinitialize a mutex to defaults. */
 int
@@ -1456,3 +1450,8 @@ mutex_queue_enq(pthread_mutex_t mutex, pthread_t pthread)
 	pthread->flags |= PTHREAD_FLAGS_IN_MUTEXQ;
 }
 
+__strong_reference(_pthread_mutex_init, pthread_mutex_init);
+__strong_reference(_pthread_mutex_destroy, pthread_mutex_destroy);
+__strong_reference(_pthread_mutex_trylock, pthread_mutex_trylock);
+__strong_reference(_pthread_mutex_lock, pthread_mutex_lock);
+__strong_reference(_pthread_mutex_unlock, pthread_mutex_unlock);
