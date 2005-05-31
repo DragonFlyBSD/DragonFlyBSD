@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.22 2005/05/28 22:22:33 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.23 2005/05/31 12:31:21 joerg Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ static int	wb_probe(device_t);
 static int	wb_attach(device_t);
 static int	wb_detach(device_t);
 
-static void	wb_bfree(caddr_t, u_int);
+static void	wb_bfree(void *);
 static int	wb_newbuf(struct wb_softc *, struct wb_chain_onefrag *,
 			  struct mbuf *);
 static int	wb_encap(struct wb_softc *, struct wb_chain *, struct mbuf *);
@@ -954,7 +954,7 @@ wb_list_rx_init(struct wb_softc *sc)
 }
 
 static void
-wb_bfree(caddr_t buf, u_int size)
+wb_bfree(void *arg)
 {
 }
 
@@ -975,8 +975,8 @@ wb_newbuf(struct wb_softc *sc, struct wb_chain_onefrag *c, struct mbuf *m)
 		m_new->m_flags |= M_EXT | M_EXT_OLD;
 		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
 		    m_new->m_len = WB_BUFBYTES;
-		m_new->m_ext.ext_nfree.old = wb_bfree;
-		m_new->m_ext.ext_nref.old = wb_bfree;
+		m_new->m_ext.ext_nfree.new = wb_bfree;
+		m_new->m_ext.ext_nref.new = wb_bfree;
 	} else {
 		m_new = m;
 		m_new->m_len = m_new->m_pkthdr.len = WB_BUFBYTES;
