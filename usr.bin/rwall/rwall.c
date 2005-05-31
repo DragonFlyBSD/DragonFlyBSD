@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)wall.c	5.14 (Berkeley) 3/2/91
  * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
- * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.5 2005/02/14 18:06:28 liamfoy Exp $
+ * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.6 2005/05/31 19:11:04 liamfoy Exp $
  */
 
 /*
@@ -88,8 +88,6 @@ main(int argc, char **argv)
 
 	wallhost = argv[0];
 
-	makemsg(argv[1]);
-
 	/*
 	 * Create client "handle" used for calling MESSAGEPROG on the
 	 * server designated on the command line. We tell the rpc package
@@ -104,6 +102,8 @@ main(int argc, char **argv)
 		clnt_pcreateerror(wallhost);
 		exit(1);
 	}
+
+	makemsg(argv[1]);
 
 	tv.tv_sec = 15;		/* XXX ?? */
 	tv.tv_usec = 0;
