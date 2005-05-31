@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.30 2005/05/31 08:19:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.31 2005/05/31 08:23:29 joerg Exp $
  */
 
 /*
@@ -237,11 +237,11 @@ static int		sysctl_hw_fxp_int_delay(SYSCTL_HANDLER_ARGS);
 static poll_handler_t fxp_poll;
 #endif
 
-static __inline void	fxp_lwcopy(volatile u_int32_t *src,
+static void		fxp_lwcopy(volatile u_int32_t *src,
 			    volatile u_int32_t *dst);
-static __inline void 	fxp_scb_wait(struct fxp_softc *sc);
-static __inline void	fxp_scb_cmd(struct fxp_softc *sc, int cmd);
-static __inline void	fxp_dma_wait(volatile u_int16_t *status,
+static void 		fxp_scb_wait(struct fxp_softc *sc);
+static void		fxp_scb_cmd(struct fxp_softc *sc, int cmd);
+static void		fxp_dma_wait(volatile u_int16_t *status,
 			    struct fxp_softc *sc);
 
 static device_method_t fxp_methods[] = {
@@ -278,9 +278,9 @@ static int fxp_rnr;
 SYSCTL_INT(_hw, OID_AUTO, fxp_rnr, CTLFLAG_RW, &fxp_rnr, 0, "fxp rnr events");
 
 /*
- * Inline function to copy a 16-bit aligned 32-bit quantity.
+ * Copy a 16-bit aligned 32-bit quantity.
  */
-static __inline void
+static void
 fxp_lwcopy(volatile u_int32_t *src, volatile u_int32_t *dst)
 {
 #ifdef __i386__
@@ -298,7 +298,7 @@ fxp_lwcopy(volatile u_int32_t *src, volatile u_int32_t *dst)
  * Wait for the previous command to be accepted (but not necessarily
  * completed).
  */
-static __inline void
+static void
 fxp_scb_wait(struct fxp_softc *sc)
 {
 	int i = 10000;
@@ -313,7 +313,7 @@ fxp_scb_wait(struct fxp_softc *sc)
 		    CSR_READ_2(sc, FXP_CSR_FLOWCONTROL));
 }
 
-static __inline void
+static void
 fxp_scb_cmd(struct fxp_softc *sc, int cmd)
 {
 
@@ -324,7 +324,7 @@ fxp_scb_cmd(struct fxp_softc *sc, int cmd)
 	CSR_WRITE_1(sc, FXP_CSR_SCB_COMMAND, cmd);
 }
 
-static __inline void
+static void
 fxp_dma_wait(volatile u_int16_t *status, struct fxp_softc *sc)
 {
 	int i = 10000;
