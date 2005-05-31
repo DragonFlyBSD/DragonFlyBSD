@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.16 2005/05/25 13:12:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.17 2005/05/31 08:06:47 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -153,12 +153,11 @@ fwe_attach(device_t dev)
 {
 	struct fwe_softc *fwe;
 	struct ifnet *ifp;
-	int unit, s;
-	u_char *eaddr;
+	int s;
+	uint8_t eaddr[ETHER_ADDR_LEN];
 	struct fw_eui64 *eui;
 
 	fwe = ((struct fwe_softc *)device_get_softc(dev));
-	unit = device_get_unit(dev);
 
 	bzero(fwe, sizeof(struct fwe_softc));
 	/* XXX */
@@ -180,7 +179,6 @@ fwe_attach(device_t dev)
 	/* generate fake MAC address: first and last 3bytes from eui64 */
 #define LOCAL (0x02)
 #define GROUP (0x01)
-	eaddr = &fwe->eth_softc.arpcom.ac_enaddr[0];
 
 	eui = &fwe->fd.fc->eui;
 	eaddr[0] = (FW_EUI64_BYTE(eui, 0) | LOCAL) & ~GROUP;
@@ -189,15 +187,12 @@ fwe_attach(device_t dev)
 	eaddr[3] = FW_EUI64_BYTE(eui, 5);
 	eaddr[4] = FW_EUI64_BYTE(eui, 6);
 	eaddr[5] = FW_EUI64_BYTE(eui, 7);
-	printf("if_fwe%d: Fake Ethernet address: "
-		"%02x:%02x:%02x:%02x:%02x:%02x\n", unit,
-		eaddr[0], eaddr[1], eaddr[2], eaddr[3], eaddr[4], eaddr[5]);
 
 	/* fill the rest and attach interface */	
 	ifp = &fwe->fwe_if;
 	ifp->if_softc = &fwe->eth_softc;
 
-	if_initname(ifp, device_get_name(dev), unit);
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_init = fwe_init;
 	ifp->if_start = fwe_start;
 	ifp->if_ioctl = fwe_ioctl;
@@ -301,7 +296,7 @@ fwe_init(void *arg)
 			if ((xferq->flag & FWXFERQ_OPEN) == 0)
 				goto found;
 		}
-		printf("no free dma channel\n");
+		if_printf(ifp, "no free dma channel\n");
 		return;
 found:
 		fwe->dma_ch = i;
@@ -324,7 +319,7 @@ found:
 			sizeof(struct fw_bulkxfer) * xferq->bnchunk,
 							M_FWE, M_WAITOK);
 		if (xferq->bulkxfer == NULL) {
-			printf("if_fwe: malloc failed\n");
+			if_printf(ifp, "malloc failed\n");
 			return;
 		}
 		STAILQ_INIT(&xferq->stvalid);
@@ -338,8 +333,9 @@ found:
 				m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
 				STAILQ_INSERT_TAIL(&xferq->stfree,
 						&xferq->bulkxfer[i], link);
-			} else
-				printf("fwe_as_input: m_getcl failed\n");
+			} else {
+				if_printf(ifp, "fwe_init: m_getcl failed\n");
+			}
 		}
 		STAILQ_INIT(&fwe->xferlist);
 		for (i = 0; i < TX_MAX_QUEUE; i++) {
@@ -485,7 +481,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 	while (xferq->queued < xferq->maxq - 1) {
 		xfer = STAILQ_FIRST(&fwe->xferlist);
 		if (xfer == NULL) {
-			printf("if_fwe: lack of xfer\n");
+			if_printf(ifp, "lack of xfer\n");
 			return;
 		}
 		m = ifq_dequeue(&ifp->if_snd);
@@ -514,7 +510,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 	}
 #if 0
 	if (i > 1)
-		printf("%d queued\n", i);
+		if_printf(ifp, "%d queued\n", i);
 #endif
 	if (i > 0)
 		xferq->start(fwe->fd.fc);
@@ -545,8 +541,9 @@ fwe_as_input(struct fw_xferq *xferq)
 		if (m0 != NULL) {
 			m0->m_len = m0->m_pkthdr.len = m0->m_ext.ext_size;
 			STAILQ_INSERT_TAIL(&xferq->stfree, sxfer, link);
-		} else
-			printf("fwe_as_input: m_getcl failed\n");
+		} else {
+			if_printf(ifp, "fwe_as_input: m_getcl failed\n");
+		}
 
 		if (sxfer->resp != 0 || fp->mode.stream.len <
 		    ETHER_ALIGN + sizeof(struct ether_header)) {
