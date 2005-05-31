@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.23 2005/05/31 10:44:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.24 2005/05/31 12:29:05 joerg Exp $
  */
 
 /*
@@ -188,9 +188,10 @@ static void	ti_cmd_ext(struct ti_softc *, struct ti_cmd_desc *,
 			   caddr_t, int);
 static void	ti_handle_events(struct ti_softc *);
 static int	ti_alloc_jumbo_mem(struct ti_softc *);
-static void	*ti_jalloc(struct ti_softc *);
-static void	ti_jfree(caddr_t, u_int);
-static void	ti_jref(caddr_t, u_int);
+static struct ti_jslot *
+		ti_jalloc(struct ti_softc *);
+static void	ti_jfree(void *);
+static void	ti_jref(void *);
 static int	ti_newbuf_std(struct ti_softc *, int, struct mbuf *);
 static int	ti_newbuf_mini(struct ti_softc *, int, struct mbuf *);
 static int	ti_newbuf_jumbo(struct ti_softc *, int, struct mbuf *);
@@ -571,7 +572,7 @@ ti_handle_events(struct ti_softc *sc)
 static int
 ti_alloc_jumbo_mem(struct ti_softc *sc)
 {
-	struct ti_jpool_entry *entry;
+	struct ti_jslot *entry;
 	caddr_t ptr;
 	int i;
 
@@ -585,7 +586,6 @@ ti_alloc_jumbo_mem(struct ti_softc *sc)
 	}
 
 	SLIST_INIT(&sc->ti_jfree_listhead);
-	SLIST_INIT(&sc->ti_jinuse_listhead);
 
 	/*
 	 * Now divide it up into 9K pieces and save the addresses
@@ -597,25 +597,13 @@ ti_alloc_jumbo_mem(struct ti_softc *sc)
 	 */
 	ptr = sc->ti_cdata.ti_jumbo_buf;
 	for (i = 0; i < TI_JSLOTS; i++) {
-		uint64_t **aptr;
-		aptr = (uint64_t **)ptr;
-		aptr[0] = (uint64_t *)sc;
-		ptr += sizeof(uint64_t);
-		sc->ti_cdata.ti_jslots[i].ti_buf = ptr;
-		sc->ti_cdata.ti_jslots[i].ti_inuse = 0;
-		ptr += (TI_JLEN - sizeof(uint64_t));
-		entry = malloc(sizeof(struct ti_jpool_entry), 
-			       M_DEVBUF, M_WAITOK);
-		if (entry == NULL) {
-			contigfree(sc->ti_cdata.ti_jumbo_buf, TI_JMEM,
-			           M_DEVBUF);
-			sc->ti_cdata.ti_jumbo_buf = NULL;
-			printf("ti%d: no memory for jumbo "
-			    "buffer queue!\n", sc->ti_unit);
-			return(ENOBUFS);
-		}
-		entry->slot = i;
-		SLIST_INSERT_HEAD(&sc->ti_jfree_listhead, entry, jpool_entries);
+		entry = &sc->ti_cdata.ti_jslots[i];
+		entry->ti_sc = sc;
+		entry->ti_buf = ptr;
+		entry->ti_inuse = 0;
+		entry->ti_slot = i;
+		SLIST_INSERT_HEAD(&sc->ti_jfree_listhead, entry, jslot_link);
+		ptr += TI_JLEN;
 	}
 
 	return(0);
@@ -624,10 +612,10 @@ ti_alloc_jumbo_mem(struct ti_softc *sc)
 /*
  * Allocate a jumbo buffer.
  */
-static void *
+static struct ti_jslot *
 ti_jalloc(struct ti_softc *sc)
 {
-	struct ti_jpool_entry *entry;
+	struct ti_jslot *entry;
 
 	entry = SLIST_FIRST(&sc->ti_jfree_listhead);
 
@@ -636,10 +624,9 @@ ti_jalloc(struct ti_softc *sc)
 		return(NULL);
 	}
 
-	SLIST_REMOVE_HEAD(&sc->ti_jfree_listhead, jpool_entries);
-	SLIST_INSERT_HEAD(&sc->ti_jinuse_listhead, entry, jpool_entries);
-	sc->ti_cdata.ti_jslots[entry->slot].ti_inuse = 1;
-	return(sc->ti_cdata.ti_jslots[entry->slot].ti_buf);
+	SLIST_REMOVE_HEAD(&sc->ti_jfree_listhead, jslot_link);
+	entry->ti_inuse = 1;
+	return(entry);
 }
 
 /*
@@ -648,81 +635,41 @@ ti_jalloc(struct ti_softc *sc)
  * too much, but it's implemented for correctness.
  */
 static void
-ti_jref(caddr_t buf, u_int size)
+ti_jref(void *arg)
 {
-	struct ti_softc *sc;
-	uint64_t **aptr;
-	int i;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct ti_softc *)(aptr[0]);
+	struct ti_jslot *entry = (struct ti_jslot *)arg;
+	struct ti_softc *sc = entry->ti_sc;
 
 	if (sc == NULL)
 		panic("ti_jref: can't find softc pointer!");
 
-	if (size != TI_JUMBO_FRAMELEN)
-		panic("ti_jref: adjusting refcount of buf of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->ti_cdata.ti_jumbo_buf) / TI_JLEN;
-
-	if ((i < 0) || (i >= TI_JSLOTS))
+	if (&sc->ti_cdata.ti_jslots[entry->ti_slot] != entry)
 		panic("ti_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (sc->ti_cdata.ti_jslots[i].ti_inuse == 0)
+	if (entry->ti_inuse == 0)
 		panic("ti_jref: buffer already free!");
-	else
-		sc->ti_cdata.ti_jslots[i].ti_inuse++;
+	entry->ti_inuse++;
 }
 
 /*
  * Release a jumbo buffer.
  */
 static void
-ti_jfree(caddr_t buf, u_int size)
+ti_jfree(void *arg)
 {
-	struct ti_softc *sc;
-	struct ti_jpool_entry *entry;
-	uint64_t **aptr;
-	int i;
-
-	/* Extract the softc struct pointer. */
-	aptr = (uint64_t **)(buf - sizeof(uint64_t));
-	sc = (struct ti_softc *)(aptr[0]);
+	struct ti_jslot *entry = (struct ti_jslot *)arg;
+	struct ti_softc *sc = entry->ti_sc;
 
 	if (sc == NULL)
-		panic("ti_jfree: can't find softc pointer!");
+		panic("ti_jref: can't find softc pointer!");
 
-	if (size != TI_JUMBO_FRAMELEN)
-		panic("ti_jfree: freeing buffer of wrong size!");
-
-	/* calculate the slot this buffer belongs to */
-
-	i = ((vm_offset_t)aptr 
-	     - (vm_offset_t)sc->ti_cdata.ti_jumbo_buf) / TI_JLEN;
-
-	if ((i < 0) || (i >= TI_JSLOTS))
-		panic("ti_jfree: asked to free buffer that we don't manage!");
-	else if (sc->ti_cdata.ti_jslots[i].ti_inuse == 0)
-		panic("ti_jfree: buffer already free!");
-	else {
-		sc->ti_cdata.ti_jslots[i].ti_inuse--;
-		if(sc->ti_cdata.ti_jslots[i].ti_inuse == 0) {
-			entry = SLIST_FIRST(&sc->ti_jinuse_listhead);
-			if (entry == NULL)
-				panic("ti_jfree: buffer not in use!");
-			entry->slot = i;
-			SLIST_REMOVE_HEAD(&sc->ti_jinuse_listhead, 
-					  jpool_entries);
-			SLIST_INSERT_HEAD(&sc->ti_jfree_listhead, 
-					  entry, jpool_entries);
-		}
-	}
-
-	return;
+	if (&sc->ti_cdata.ti_jslots[entry->ti_slot] != entry)
+		panic("ti_jref: asked to reference buffer "
+		    "that we don't manage!");
+	if (entry->ti_inuse == 0)
+		panic("ti_jref: buffer already free!");
+	if (--entry->ti_inuse == 0)
+		SLIST_INSERT_HEAD(&sc->ti_jfree_listhead, entry, jslot_link);
 }
 
 
@@ -811,10 +758,9 @@ ti_newbuf_jumbo(struct ti_softc *sc, int i, struct mbuf *m)
 {
 	struct mbuf *m_new;
 	struct ti_rx_desc *r;
+	struct ti_jslot *buf;
 
 	if (m == NULL) {
-		caddr_t			*buf = NULL;
-
 		/* Allocate the mbuf. */
 		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
@@ -831,12 +777,14 @@ ti_newbuf_jumbo(struct ti_softc *sc, int i, struct mbuf *m)
 		}
 
 		/* Attach the buffer to the mbuf. */
-		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT | M_EXT_OLD;
-		m_new->m_len = m_new->m_pkthdr.len =
-		    m_new->m_ext.ext_size = TI_JUMBO_FRAMELEN;
-		m_new->m_ext.ext_nfree.old = ti_jfree;
-		m_new->m_ext.ext_nref.old = ti_jref;
+		m_new->m_ext.ext_arg = buf;
+		m_new->m_ext.ext_nfree.new = ti_jfree;
+		m_new->m_ext.ext_nref.new = ti_jref;
+		m_new->m_ext.ext_size = TI_JUMBO_FRAMELEN;
+
+		m_new->m_data = m_new->m_ext.ext_buf;
+		m_new->m_flags |= M_EXT;
+		m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 	} else {
 		m_new = m;
 		m_new->m_data = m_new->m_ext.ext_buf;

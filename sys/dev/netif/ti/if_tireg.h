@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tireg.h,v 1.13.2.4 2001/04/26 16:41:15 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.4 2005/05/31 10:44:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.5 2005/05/31 12:29:05 joerg Exp $
  */
 
 /*
@@ -1045,16 +1045,21 @@ struct ti_event_desc {
 #define TI_MSLOTS	256
 #define TI_JSLOTS	384
 
-#define TI_JRAWLEN (TI_JUMBO_FRAMELEN + ETHER_ALIGN + sizeof(uint64_t))
+#define TI_JRAWLEN (TI_JUMBO_FRAMELEN + ETHER_ALIGN)
 #define TI_JLEN (TI_JRAWLEN + (sizeof(uint64_t) - \
 	(TI_JRAWLEN % sizeof(uint64_t))))
 #define TI_JPAGESZ PAGE_SIZE
 #define TI_RESID (TI_JPAGESZ - (TI_JLEN * TI_JSLOTS) % TI_JPAGESZ)
 #define TI_JMEM ((TI_JLEN * TI_JSLOTS) + TI_RESID)
 
+struct ti_softc;
+
 struct ti_jslot {
-	caddr_t			ti_buf;
+	struct ti_softc		*ti_sc;
+	void			*ti_buf;
         int			ti_inuse;
+	int			ti_slot;
+	SLIST_ENTRY(ti_jslot)	jslot_link;
 };
 
 /*
@@ -1116,11 +1121,6 @@ struct ti_mc_entry {
 	SLIST_ENTRY(ti_mc_entry)	mc_entries;
 };
 
-struct ti_jpool_entry {
-	int                             slot;
-	SLIST_ENTRY(ti_jpool_entry)	jpool_entries;
-};
-
 struct ti_softc {
 	struct arpcom		arpcom;		/* interface info */
 	bus_space_handle_t	ti_bhandle;
@@ -1147,8 +1147,7 @@ struct ti_softc {
 	uint16_t		ti_mini;	/* current mini ring head */
 	uint16_t		ti_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__ti_mchead, ti_mc_entry)	ti_mc_listhead;
-	SLIST_HEAD(__ti_jfreehead, ti_jpool_entry)	ti_jfree_listhead;
-	SLIST_HEAD(__ti_jinusehead, ti_jpool_entry)	ti_jinuse_listhead;
+	SLIST_HEAD(__ti_jfreehead, ti_jslot)	ti_jfree_listhead;
 	uint32_t		ti_stat_ticks;
 	uint32_t		ti_rx_coal_ticks;
 	uint32_t		ti_tx_coal_ticks;
