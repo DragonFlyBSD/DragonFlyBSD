@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.29 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.30 2005/05/31 08:19:04 joerg Exp $
  */
 
 /*
@@ -64,7 +64,6 @@
 
 #include <vm/vm.h>		/* for vtophys */
 #include <vm/pmap.h>		/* for vtophys */
-#include <machine/clock.h>	/* for DELAY */
 
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
@@ -406,9 +405,8 @@ fxp_attach(device_t dev)
 	 * Enable bus mastering. Enable memory space too, in case
 	 * BIOS/Prom forgot about it.
 	 */
-	val = pci_read_config(dev, PCIR_COMMAND, 2);
-	val |= (PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, val, 2);
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 	val = pci_read_config(dev, PCIR_COMMAND, 2);
 
 	fxp_powerstate_d0(dev);
@@ -653,7 +651,7 @@ fxp_attach(device_t dev)
 	}
 
 	ifp = &sc->arpcom.ac_if;
-	if_initname(ifp, "fxp", device_get_unit(dev));
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_baudrate = 100000000;
 	ifp->if_init = fxp_init;
 	ifp->if_softc = sc;
@@ -816,7 +814,6 @@ fxp_resume(device_t dev)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	u_int16_t pci_command;
 	int i, s;
 
 	s = splimp();
@@ -831,10 +828,9 @@ fxp_resume(device_t dev)
 	pci_write_config(dev, PCIR_CACHELNSZ, sc->saved_cachelnsz, 1);
 	pci_write_config(dev, PCIR_LATTIMER, sc->saved_lattimer, 1);
 
-	/* reenable busmastering */
-	pci_command = pci_read_config(dev, PCIR_COMMAND, 2);
-	pci_command |= (PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, pci_command, 2);
+	/* reenable busmastering and memory space */
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 
 	CSR_WRITE_4(sc, FXP_CSR_PORT, FXP_PORT_SELECTIVE_RESET);
 	DELAY(10);
@@ -1544,12 +1540,9 @@ fxp_stop(struct fxp_softc *sc)
 static void
 fxp_watchdog(struct ifnet *ifp)
 {
-	struct fxp_softc *sc = ifp->if_softc;
-
-	device_printf(sc->dev, "device timeout\n");
+	if_printf(ifp, "device timeout\n");
 	ifp->if_oerrors++;
-
-	fxp_init(sc);
+	fxp_init(ifp->if_softc);
 }
 
 static void
