@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.18 2005/05/27 11:24:49 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.19 2005/05/31 13:50:09 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -429,11 +429,8 @@ onalrm(void)
 		utmptime = stb.st_mtime;
 		if (stb.st_size > utmpsize) {
 			utmpsize = stb.st_size + 10 * sizeof(struct utmp);
-			if (utmp)
-				utmp = (struct utmp *)realloc(utmp, utmpsize);
-			else
-				utmp = (struct utmp *)malloc(utmpsize);
-			if (! utmp) {
+			utmp = reallocf(utmp, utmpsize);
+			if (utmp == NULL) {
 				syslog(LOG_WARNING, "malloc failed: %m");
 				utmpsize = 0;
 				goto done;
