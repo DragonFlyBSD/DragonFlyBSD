@@ -1,5 +1,7 @@
 /*
  * phantglobs.c - globals for Phantasia
+ *
+ * $DragonFly: src/games/phantasia/phantglobs.c,v 1.2 2005/05/31 00:00:38 swildner Exp $
  */
 
 #include "include.h"

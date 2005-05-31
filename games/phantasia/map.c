@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/games/phantasia/map.c,v 1.2 2005/05/31 00:00:38 swildner Exp $
+ */
+
 #define	minusminus	plusplus
 #define	minusplus	plusminus
 
