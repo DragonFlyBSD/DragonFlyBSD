@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.52 2005/05/29 16:32:20 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.53 2005/05/31 14:11:43 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1608,15 +1608,15 @@ retry_lookup:
 		sfm->sf = sf;
 		sfm->mref_count = 1;
 
-		m->m_ext.ext_nfree.new = sf_buf_mfree;
-		m->m_ext.ext_nref.new = sf_buf_mref;
+		m->m_ext.ext_free = sf_buf_mfree;
+		m->m_ext.ext_ref = sf_buf_mref;
 		m->m_ext.ext_arg = sfm;
 		m->m_ext.ext_buf = (void *)sf->kva;
 		m->m_ext.ext_size = PAGE_SIZE;
 		m->m_data = (char *) sf->kva + pgoff;
 		m->m_flags |= M_EXT;
 		m->m_pkthdr.len = m->m_len = xfsize;
-		KKASSERT((m->m_flags & (M_EXT_OLD|M_EXT_CLUSTER)) == 0);
+		KKASSERT((m->m_flags & (M_EXT_CLUSTER)) == 0);
 
 		if (mheader != NULL) {
 			hbytes = mheader->m_pkthdr.len;

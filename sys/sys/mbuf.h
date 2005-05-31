@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.26 2005/05/29 16:32:20 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.27 2005/05/31 14:11:43 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -121,17 +121,9 @@ struct pkthdr {
  */
 struct m_ext {
 	caddr_t	ext_buf;		/* start of buffer */
-	union {
-	    void (*old)(caddr_t, u_int);
-	    void (*new)(void *arg);
-	    void *any;
-	} ext_nfree;
-	u_int	ext_size;		/* size of buffer, for ext_nfree */
-	union {
-	    void (*old)(caddr_t, u_int);
-	    void (*new)(void *arg);
-	    void *any;
-	} ext_nref;
+	void	(*ext_free)(void *);
+	u_int	ext_size;		/* size of buffer, for ext_free */
+	void	(*ext_ref)(void *);
 	void	*ext_arg;
 };
 
@@ -189,7 +181,6 @@ struct mbuf {
 #define	M_FRAG		0x0400	/* packet is a fragment of a larger packet */
 #define	M_FIRSTFRAG	0x0800	/* packet is first fragment */
 #define	M_LASTFRAG	0x1000	/* packet is last fragment */
-#define M_EXT_OLD	0x2000	/* new ext function format */
 #define M_EXT_CLUSTER	0x4000	/* standard cluster else special */
 
 /*

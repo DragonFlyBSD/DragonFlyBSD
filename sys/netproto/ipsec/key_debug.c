@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key_debug.c,v 1.1.4.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key_debug.c,v 1.6 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key_debug.c,v 1.7 2005/05/31 14:11:43 joerg Exp $	*/
 /*	$KAME: key_debug.c,v 1.26 2001/06/27 10:46:50 sakane Exp $	*/
 
 /*
@@ -643,8 +643,8 @@ kdebug_mbufhdr(m)
 	if (m->m_flags & M_EXT) {
 		printf("  m_ext{ ext_buf:%p ext_free:%p "
 		       "ext_size:%u ext_ref:%p }\n",
-			m->m_ext.ext_buf, m->m_ext.ext_nfree.any,
-			m->m_ext.ext_size, m->m_ext.ext_nref.any);
+			m->m_ext.ext_buf, m->m_ext.ext_free,
+			m->m_ext.ext_size, m->m_ext.ext_ref);
 	}
 
 	return;

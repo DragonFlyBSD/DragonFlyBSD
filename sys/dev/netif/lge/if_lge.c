@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.26 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.27 2005/05/31 14:11:42 joerg Exp $
  */
 
 /*
@@ -716,8 +716,8 @@ lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 		/* Attach the buffer to the mbuf */
 		m_new->m_ext.ext_arg = buf;
 		m_new->m_ext.ext_buf = buf->lge_buf;
-		m_new->m_ext.ext_nfree.new = lge_jfree;
-		m_new->m_ext.ext_nref.new = lge_jref;
+		m_new->m_ext.ext_free = lge_jfree;
+		m_new->m_ext.ext_ref = lge_jref;
 		m_new->m_ext.ext_size = LGE_JUMBO_FRAMELEN;
 
 		m_new->m_data = m_new->m_ext.ext_buf;

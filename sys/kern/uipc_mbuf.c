@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.39 2005/05/29 16:32:20 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.40 2005/05/31 14:11:43 joerg Exp $
  */
 
 #include "opt_param.h"
@@ -889,8 +889,6 @@ m_mclget(struct mbuf *m, int how)
 {
 	mbcluster_t mcl;
 
-	KKASSERT((m->m_flags & M_EXT_OLD) == 0);
-
 	/*
 	 * Allocate a cluster, return if we can't get one.
 	 */
@@ -925,8 +923,8 @@ m_mclget(struct mbuf *m, int how)
 	 */
 	m->m_ext.ext_arg = mcl;
 	m->m_ext.ext_buf = mcl->mcl_data;
-	m->m_ext.ext_nref.new = m_mclref;
-	m->m_ext.ext_nfree.new = m_mclfree;
+	m->m_ext.ext_ref = m_mclref;
+	m->m_ext.ext_free = m_mclfree;
 	m->m_ext.ext_size = MCLBYTES;
 
 	m->m_data = m->m_ext.ext_buf;
@@ -974,12 +972,9 @@ m_mclref(void *arg)
 static __inline void
 m_extref(const struct mbuf *m)
 {
-	KKASSERT(m->m_ext.ext_nfree.any != NULL);
+	KKASSERT(m->m_ext.ext_free != NULL);
 	crit_enter();
-	if (m->m_flags & M_EXT_OLD)
-		m->m_ext.ext_nref.old(m->m_ext.ext_buf, m->m_ext.ext_size);
-	else
-		m->m_ext.ext_nref.new(m->m_ext.ext_arg); 
+	m->m_ext.ext_ref(m->m_ext.ext_arg); 
 	crit_exit();
 }
 
@@ -1015,7 +1010,7 @@ m_free(struct mbuf *m)
 	n = m->m_next;
 	m->m_next = NULL;
 	if (m->m_flags & M_EXT) {
-		KKASSERT(m->m_ext.ext_nfree.any != NULL);
+		KKASSERT(m->m_ext.ext_free != NULL);
 		if (mcl_pool_count < mcl_pool_max && m && m->m_next == NULL &&
 		    (m->m_flags & (M_PKTHDR|M_EXT_CLUSTER)) == (M_PKTHDR|M_EXT_CLUSTER) &&
 		    m->m_type == MT_DATA && M_EXT_WRITABLE(m) ) {
@@ -1025,14 +1020,11 @@ m_free(struct mbuf *m)
 			++mcl_pool_count;
 			m = NULL;
 		} else {
-			if (m->m_flags & M_EXT_OLD)
-				m->m_ext.ext_nfree.old(m->m_ext.ext_buf, m->m_ext.ext_size);
-			else
-				m->m_ext.ext_nfree.new(m->m_ext.ext_arg);
+			m->m_ext.ext_free(m->m_ext.ext_arg);
 			m->m_flags = 0;
 			m->m_ext.ext_arg = NULL;
-			m->m_ext.ext_nref.new = NULL;
-			m->m_ext.ext_nfree.new = NULL;
+			m->m_ext.ext_ref = NULL;
+			m->m_ext.ext_free = NULL;
 		}
 	}
 	if (m) {
@@ -1144,8 +1136,7 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 			n->m_data = m->m_data + off;
 			m_extref(m);
 			n->m_ext = m->m_ext;
-			n->m_flags |= m->m_flags & 
-					(M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
+			n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 		} else {
 			bcopy(mtod(m, caddr_t)+off, mtod(n, caddr_t),
 			    (unsigned)n->m_len);
@@ -1191,7 +1182,7 @@ m_copypacket(struct mbuf *m, int how)
 		n->m_data = m->m_data;
 		m_extref(m);
 		n->m_ext = m->m_ext;
-		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
+		n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 	} else {
 		n->m_data = n->m_pktdat + (m->m_data - m->m_pktdat );
 		bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
@@ -1211,8 +1202,7 @@ m_copypacket(struct mbuf *m, int how)
 			n->m_data = m->m_data;
 			m_extref(m);
 			n->m_ext = m->m_ext;
-			n->m_flags |= m->m_flags &
-					 (M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
+			n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 		} else {
 			bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
 		}
@@ -1538,7 +1528,7 @@ extpacket:
 		n->m_data = m->m_data + len;
 		m_extref(m);
 		n->m_ext = m->m_ext;
-		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
+		n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 	} else {
 		bcopy(mtod(m, caddr_t) + len, mtod(n, caddr_t), remain);
 	}

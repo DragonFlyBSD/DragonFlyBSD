@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.5 2004/11/17 18:59:21 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.6 2005/05/31 14:11:43 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -975,8 +975,8 @@ ndis_ptom(m0, p)
 		}
 		m->m_len = buf->nb_bytecount;
 		m->m_data = MDL_VA(buf);
-		m->m_ext.ext_nfree.new = ndis_extfree_packet;
-		m->m_ext.ext_nref.new = ndis_extref_packet;
+		m->m_ext.ext_free = ndis_extfree_packet;
+		m->m_ext.ext_ref = ndis_extref_packet;
 		m->m_ext.ext_arg = p;
 		m->m_ext.ext_buf = m->m_data;
 		m->m_ext.ext_size = m->m_len;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.23 2005/05/31 12:31:21 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.24 2005/05/31 14:11:43 joerg Exp $
  */
 
 /*
@@ -972,11 +972,11 @@ wb_newbuf(struct wb_softc *sc, struct wb_chain_onefrag *c, struct mbuf *m)
 			return(ENOBUFS);
 
 		m_new->m_data = m_new->m_ext.ext_buf = c->wb_buf;
-		m_new->m_flags |= M_EXT | M_EXT_OLD;
+		m_new->m_flags |= M_EXT;
 		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
 		    m_new->m_len = WB_BUFBYTES;
-		m_new->m_ext.ext_nfree.new = wb_bfree;
-		m_new->m_ext.ext_nref.new = wb_bfree;
+		m_new->m_ext.ext_free = wb_bfree;
+		m_new->m_ext.ext_ref = wb_bfree;
 	} else {
 		m_new = m;
 		m_new->m_len = m_new->m_pkthdr.len = WB_BUFBYTES;

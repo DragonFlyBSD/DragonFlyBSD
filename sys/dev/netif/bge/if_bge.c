@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.37 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.38 2005/05/31 14:11:42 joerg Exp $
  *
  */
 
@@ -751,8 +751,8 @@ bge_newbuf_jumbo(struct bge_softc *sc, int i, struct mbuf *m)
 		/* Attach the buffer to the mbuf. */
 		m_new->m_ext.ext_arg = buf;
 		m_new->m_ext.ext_buf = buf->bge_buf;
-		m_new->m_ext.ext_nfree.new = bge_jfree;
-		m_new->m_ext.ext_nref.new = bge_jref;
+		m_new->m_ext.ext_free = bge_jfree;
+		m_new->m_ext.ext_ref = bge_jref;
 		m_new->m_ext.ext_size = BGE_JUMBO_FRAMELEN;
 
 		m_new->m_data = m_new->m_ext.ext_buf;

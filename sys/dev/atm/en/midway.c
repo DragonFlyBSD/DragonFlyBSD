@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.16 2005/02/10 00:07:23 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.17 2005/05/31 14:11:42 joerg Exp $
  */
 
 /*
@@ -1707,7 +1707,7 @@ STATIC int en_makeexclusive(sc, mm, prev)
     m = *mm;
     
     if (m->m_flags & M_EXT) {
-	if (m->m_ext.ext_nfree.any) {
+	if (m->m_ext.ext_free) {
 	    /* external buffer isn't an ordinary mbuf cluster! */
 	    printf("%s: mfix: special buffer! can't make a copy!\n",
 		   sc->sc_dev.dv_xname);
