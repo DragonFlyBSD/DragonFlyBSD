@@ -2,12 +2,48 @@
  * misc.c  Phantasia miscellaneous support routines
  *
  * $FreeBSD: src/games/phantasia/misc.c,v 1.7 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/misc.c,v 1.4 2004/01/26 18:14:43 drhodus Exp $
+ * $DragonFly: src/games/phantasia/misc.c,v 1.5 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
 
+/* functions which we need to know about */
+/* gamesupport.c */
+extern	void	enterscore(void);
+/* io.c */
+extern	int	getanswer(const char *, bool);
+extern	double	infloat(void);
+extern	void	more(int);
+/* main.c */
+extern	void	cleanup(bool);
+/* phantglobs.c */
+extern	double	drandom(void);
+
+void	movelevel(void);
+const char	*descrlocation(struct player *, bool);
+void	tradingpost(void);
+void	displaystats(void);
+void	allstatslist(void);
+const char	*descrtype(struct player *, bool);
+long	findname(char *, struct player *);
+long	allocrecord(void);
+void	freerecord(struct player *, long);
+void	leavegame(void);
+void	death(const char *);
+void	writerecord(struct player *, long);
+double	explevel(double);
+void	truncstring(char *);
+void	altercoordinates(double, double, int);
+void	readrecord(struct player *, long);
+void	adjuststats(void);
+void	initplayer(struct player *);
+void	readmessage(void);
+void	error(const char *);
+double	distance(double, double, double, double);
+void	ill_sig(int);
+const char	*descrstatus(struct player *);
+void	collecttaxes(double, double);
 
 /************************************************************************
 /
@@ -36,7 +72,8 @@
 /
 *************************************************************************/
 
-movelevel()
+void
+movelevel(void)
 {
 struct charstats	*statptr;	/* for pointing into Stattable */
 double	new;			/* new level */
@@ -116,20 +153,18 @@ double	inc;			/* increment between new and old levels */
 /
 *************************************************************************/
 
-char	*
-descrlocation(playerp, shortflag)
-struct player	*playerp;
-bool	shortflag;
+const char *
+descrlocation(struct player *playerp, bool shortflag)
 {
 double	circle;			/* corresponding circle for coordinates */
-int	quadrant;	/* quandrant of grid */
-char	*label;		/* pointer to place name */
-static char	*nametable[4][4] =   /* names of places */
+int	quadrant;	/* quadrant of grid */
+const char	*label;		/* pointer to place name */
+static const	char	*nametable[4][4] =   /* names of places */
 	{
-	"Anorien",	"Ithilien",	"Rohan",	"Lorien",
-	"Gondor",	"Mordor",	"Dunland",	"Rovanion",
-	"South Gondor", "Khand",	"Eriador",	"The Iron Hills",
-	"Far Harad",	"Near Harad",	"The Northern Waste", "Rhun"
+	{"Anorien",	"Ithilien",	"Rohan",	"Lorien"},
+	{"Gondor",	"Mordor",	"Dunland",	"Rovanion"},
+	{"South Gondor", "Khand",	"Eriador",	"The Iron Hills"},
+	{"Far Harad",	"Near Harad",	"The Northern Waste", "Rhun"}
 	};
 
     if (playerp->p_specialtype == SC_VALAR)
@@ -217,7 +252,8 @@ static char	*nametable[4][4] =   /* names of places */
 /
 *************************************************************************/
 
-tradingpost()
+void
+tradingpost(void)
 {
 double	numitems;	/* number of items to purchase */
 double	cost;		/* cost of purchase */
@@ -507,7 +543,8 @@ bool	dishonest = FALSE;/* set when merchant is dishonest */
 /
 *************************************************************************/
 
-displaystats()
+void
+displaystats(void)
 {
     mvprintw(0, 0, "%s%s\n", Player.p_name, descrlocation(&Player, FALSE));
     mvprintw(1, 0, "Level :%7.0f   Energy  :%9.0f(%9.0f)  Mana :%9.0f  Users:%3d\n",
@@ -541,9 +578,10 @@ displaystats()
 /
 *************************************************************************/
 
-allstatslist()
+void
+allstatslist(void)
 {
-static	char	*flags[] =	/* to print value of some bools */
+static	const char	*flags[] =	/* to print value of some bools */
 	    {
 	    "False",
 	    " True"
@@ -600,13 +638,11 @@ static	char	*flags[] =	/* to print value of some bools */
 /
 *************************************************************************/
 
-char	*
-descrtype(playerp, shortflag)
-struct player *playerp;
-bool	shortflag;
+const char *
+descrtype(struct player *playerp, bool shortflag)
 {
 int type;	/* for caluculating result subscript */
-static char	*results[] =	/* description table */
+static const char	*results[] =	/* description table */
 			{
 			" Magic User", " MU",
 			" Fighter", " F ",
@@ -694,9 +730,7 @@ static char	*results[] =	/* description table */
 *************************************************************************/
 
 long
-findname(name, playerp)
-char	*name;
-struct player *playerp;
+findname(char *name, struct player *playerp)
 {
 long	loc = 0;			/* location in the file */
 
@@ -740,7 +774,7 @@ long	loc = 0;			/* location in the file */
 *************************************************************************/
 
 long
-allocrecord()
+allocrecord(void)
 {
 long	loc = 0L;		/* location in file */
 
@@ -787,9 +821,8 @@ long	loc = 0L;		/* location in file */
 /
 *************************************************************************/
 
-freerecord(playerp, loc)
-struct player	*playerp;
-long	loc;
+void
+freerecord(struct player *playerp, long loc)
 {
     playerp->p_name[0] = CH_MARKDELETE;
     playerp->p_status = S_NOTUSED;
@@ -820,7 +853,8 @@ long	loc;
 /
 *************************************************************************/
 
-leavegame()
+void
+leavegame(void)
 {
 
     if (Player.p_level < 1.0)
@@ -867,12 +901,12 @@ leavegame()
 /
 *************************************************************************/
 
-death(how)
-char	*how;
+void
+death(const char *how)
 {
 FILE	*fp;		/* for updating various files */
 int	ch;		/* input */
-static	char	*deathmesg[] =
+static	const char	*deathmesg[] =
 	/* add more messages here, if desired */
 	{
 	"You have been wounded beyond repair.  ",
@@ -997,9 +1031,8 @@ static	char	*deathmesg[] =
 /
 *************************************************************************/
 
-writerecord(playerp, place)
-struct player	*playerp;
-long	place;
+void
+writerecord(struct player *playerp, long place)
 {
     fseek(Playersfp, place, 0);
     fwrite((char *) playerp, SZ_PLAYERSTRUCT, 1, Playersfp);
@@ -1032,8 +1065,7 @@ long	place;
 *************************************************************************/
 
 double
-explevel(experience)
-double	experience;
+explevel(double experience)
 {
     if (experience < 1.1e7)
 	return(floor(pow((experience / 1000.0), 0.4875)));
@@ -1065,10 +1097,10 @@ double	experience;
 /
 *************************************************************************/
 
-truncstring(string)
-char	*string;
+void
+truncstring(char *string)
 {
-int	length;		/* length of string */
+size_t	length;		/* length of string */
 
     length = strlen(string);
     while (string[--length] == ' ')
@@ -1102,10 +1134,8 @@ int	length;		/* length of string */
 /
 *************************************************************************/
 
-altercoordinates(xnew, ynew, operation)
-double	xnew;
-double	ynew;
-int	operation;
+void
+altercoordinates(double xnew, double ynew, int operation)
 {
     switch (operation)
 	{
@@ -1178,9 +1208,8 @@ int	operation;
 /
 *************************************************************************/
 
-readrecord(playerp, loc)
-struct player	*playerp;
-long	loc;
+void
+readrecord(struct player *playerp, long loc)
 {
     fseek(Playersfp, loc, 0);
     fread((char *) playerp, SZ_PLAYERSTRUCT, 1, Playersfp);
@@ -1209,7 +1238,8 @@ long	loc;
 /
 *************************************************************************/
 
-adjuststats()
+void
+adjuststats(void)
 {
 double	dtemp;				/* for temporary calculations */
 
@@ -1327,8 +1357,8 @@ double	dtemp;				/* for temporary calculations */
 /
 *************************************************************************/
 
-initplayer(playerp)
-struct  player   *playerp;
+void
+initplayer(struct player *playerp)
 {
     playerp->p_experience =
     playerp->p_level =
@@ -1409,7 +1439,8 @@ struct  player   *playerp;
 /
 *************************************************************************/
 
-readmessage()
+void
+readmessage(void)
 {
     move(3, 0);
     clrtoeol();
@@ -1442,8 +1473,8 @@ readmessage()
 /
 *************************************************************************/
 
-error(whichfile)
-	char	*whichfile;
+void
+error(const char *whichfile)
 {
 	int	(*funcp) (const char *, ...);
 
@@ -1488,13 +1519,12 @@ error(whichfile)
 *************************************************************************/
 
 double
-distance(x1, x2, y1, y2)
-double	x1, x2, y1, y2;
+distance(double x_1, double x_2, double y_1, double y_2)
 {
 double	deltax, deltay;
 
-    deltax = x1 - x2;
-    deltay = y1 - y2;
+    deltax = x_1 - x_2;
+    deltay = y_1 - y_2;
     return(sqrt(deltax * deltax + deltay * deltay));
 }
 
@@ -1523,8 +1553,8 @@ double	deltax, deltay;
 /
 *************************************************************************/
 
-ill_sig(whichsig)
-int whichsig;
+void
+ill_sig(int whichsig)
 {
     clear();
     if (!(whichsig == SIGINT || whichsig == SIGQUIT))
@@ -1558,9 +1588,8 @@ int whichsig;
 /
 *************************************************************************/
 
-char	*
-descrstatus(playerp)
-struct player	*playerp;
+const char *
+descrstatus(struct player *playerp)
 {
     switch (playerp->p_status)
 	{
@@ -1597,42 +1626,6 @@ struct player	*playerp;
 /**/
 /************************************************************************
 /
-/ FUNCTION NAME: drandom()
-/
-/ FUNCTION: return a random floating point number from 0.0 < 1.0
-/
-/ AUTHOR: E. A. Estes, 2/7/86
-/
-/ ARGUMENTS: none
-/
-/ RETURN VALUE: none
-/
-/ MODULES CALLED: random()
-/
-/ GLOBAL INPUTS: none
-/
-/ GLOBAL OUTPUTS: none
-/
-/ DESCRIPTION:
-/	Convert random integer from library routine into a floating
-/	point number, and divide by the largest possible random number.
-/	We mask large integers with 32767 to handle sites that return
-/	31 bit random integers.
-/
-*************************************************************************/
-
-double
-drandom()
-{
-    if (sizeof(int) != 2)
-	/* use only low bits */
-	return((double) (random() & 0x7fff) / 32768.0);
-    else
-	return((double) random() / 32768.0);
-}
-/**/
-/************************************************************************
-/
 / FUNCTION NAME: collecttaxes()
 /
 / FUNCTION: collect taxes from current player
@@ -1659,9 +1652,8 @@ drandom()
 /
 *************************************************************************/
 
-collecttaxes(gold, gems)
-double	gold;
-double	gems;
+void
+collecttaxes(double gold, double gems)
 {
 FILE	*fp;		/* to update Goldfile */
 double	dtemp;		/* for temporary calculations */

@@ -2,11 +2,48 @@
  * interplayer.c - player to player routines for Phantasia
  *
  * $FreeBSD: src/games/phantasia/interplayer.c,v 1.6 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/interplayer.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/interplayer.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
+
+/* functions which we need to know about */
+/* fight.c */
+extern	void	encounter(int);
+/* io.c */
+extern	int	getanswer(const char *, bool);
+extern	void	getstring(char *, int);
+extern	double	infloat(void);
+extern	int	inputoption(void);
+extern	void	more(int);
+/* misc.c */
+extern	void	altercoordinates(double, double, int);
+extern	void	collecttaxes(double, double);
+extern	void	death(const char *);
+extern	const char	*descrlocation(struct player *, bool);
+extern	const char	*descrstatus(struct player *);
+extern	const char	*descrtype(struct player *, bool);
+extern	void	displaystats(void);
+extern	double	distance(double, double, double, double);
+extern	long	findname(char *, struct player *);
+extern	void	readmessage(void);
+extern	void	readrecord(struct player *, long);
+extern	void	truncstring(char *);
+extern	void	writerecord(struct player *, long);
+/* phantglobs.c */
+extern	double	drandom(void);
+
+void	checkbattle(void);
+void	battleplayer(long);
+void	myturn(void);
+void	checktampered(void);
+void	tampered(int, double, double);
+void	userlist(bool);
+void	throneroom(void);
+void	dotampered(void);
+void	writevoid(struct energyvoid *, long);
+size_t	allocvoid(void);
 
 /************************************************************************
 /
@@ -33,7 +70,8 @@
 /
 *************************************************************************/
 
-checkbattle()
+void
+checkbattle(void)
 {
 long	foeloc = 0L;		/* location in file of person to fight */
 
@@ -110,8 +148,8 @@ long	foeloc = 0L;		/* location in file of person to fight */
 /
 *************************************************************************/
 
-battleplayer(foeplace)
-long	foeplace;
+void
+battleplayer(long foeplace)
 {
 double	dtemp;		/* for temporary calculations */
 double	oldhits = 0.0;	/* previous damage inflicted by foe */
@@ -365,7 +403,8 @@ LEAVE:
 /
 *************************************************************************/
 
-myturn()
+void
+myturn(void)
 {
 double	dtemp;		/* for temporary calculations */
 int	ch;		/* input */
@@ -473,7 +512,8 @@ HIT:
 /
 *************************************************************************/
 
-checktampered()
+void
+checktampered(void)
 {
 long	loc = 0L;		/* location in energy void file */
 
@@ -534,10 +574,8 @@ long	loc = 0L;		/* location in energy void file */
 /
 *************************************************************************/
 
-tampered(what, arg1, arg2)
-int	what;
-double	arg1;
-double	arg2;
+void
+tampered(int what, double arg1, double arg2)
 {
 long	loc;			/* location in file of other players */
 
@@ -731,8 +769,8 @@ long	loc;			/* location in file of other players */
 /
 *************************************************************************/
 
-userlist(ingameflag)
-bool	ingameflag;
+void
+userlist(bool ingameflag)
 {
 int	numusers = 0;	/* number of users on file */
 
@@ -826,7 +864,8 @@ int	numusers = 0;	/* number of users on file */
 /
 *************************************************************************/
 
-throneroom()
+void
+throneroom(void)
 {
 FILE	*fp;			/* to clear energy voids */
 long	loc = 0L;		/* location of old king in player file */
@@ -908,10 +947,11 @@ long	loc = 0L;		/* location of old king in player file */
 /
 *************************************************************************/
 
-dotampered()
+void
+dotampered(void)
 {
 short	tamper;			/* value for tampering with other players */
-char	*option;			/* pointer to option description */
+const char	*option;			/* pointer to option description */
 double	temp1 = 0.0, temp2 = 0.0;	/* other tampering values */
 int	ch;				/* input */
 long	loc;				/* location in energy void file */
@@ -941,7 +981,7 @@ FILE	*fp;				/* for opening gold file */
 		break;
 
 	    case '3':	/* create energy void */
-		if ((loc = allocvoid()) > 20L * SZ_VOIDSTRUCT)
+		if ((loc = allocvoid()) > 20L * (long)SZ_VOIDSTRUCT)
 		    /* can only have 20 void active at once */
 		    mvaddstr(5, 0, "Sorry, void creation limit reached.\n");
 		else
@@ -1160,9 +1200,8 @@ FILE	*fp;				/* for opening gold file */
 /
 *************************************************************************/
 
-writevoid(vp, loc)
-struct energyvoid	*vp;
-long	loc;
+void
+writevoid(struct energyvoid *vp, long loc)
 {
 
     fseek(Energyvoidfp, loc, 0);
@@ -1196,10 +1235,10 @@ long	loc;
 /
 *************************************************************************/
 
-long
-allocvoid()
+size_t
+allocvoid(void)
 {
-long	loc = 0L;		/* location of new energy void */
+size_t	loc = 0;		/* location of new energy void */
 
     fseek(Energyvoidfp, 0L, 0);
     while (fread((char *) &Enrgyvoid, SZ_VOIDSTRUCT, 1, Energyvoidfp) == 1)

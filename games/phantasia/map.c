@@ -1,11 +1,12 @@
 /*
- * $DragonFly: src/games/phantasia/map.c,v 1.2 2005/05/31 00:00:38 swildner Exp $
+ * $DragonFly: src/games/phantasia/map.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #define	minusminus	plusplus
 #define	minusplus	plusminus
 
-main()
+void
+main(void)
 {
     /* Set up */
 
@@ -129,9 +130,8 @@ main()
     exit(0);
 }
 
-plusplus(s, x, y)	/* draw strings in plus plus quadrant */
-char	*s;
-int	x, y;
+void
+plusplus(char *s, int x, int y)	/* draw strings in plus plus quadrant */
 {
 char	s1[2];
 
@@ -146,9 +146,8 @@ char	s1[2];
 	}
 }
 
-plusminus(s, x, y)	/* draw strings in plus minus quadrant */
-char	*s;
-int	x, y;
+void
+plusminus(char *s, int x, int y)	/* draw strings in plus minus quadrant */
 {
 char	s1[2];
 

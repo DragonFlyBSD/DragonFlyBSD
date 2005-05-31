@@ -1,7 +1,7 @@
 /*
  * include.h - includes all important files for Phantasia
  *
- * $DragonFly: src/games/phantasia/include.h,v 1.2 2005/05/31 00:00:38 swildner Exp $
+ * $DragonFly: src/games/phantasia/include.h,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <ctype.h>
@@ -12,6 +12,9 @@
 #include <time.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "macros.h"
 #include "phantdefs.h"

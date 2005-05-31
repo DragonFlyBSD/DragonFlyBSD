@@ -2,11 +2,26 @@
  * io.c - input/output routines for Phantasia
  *
  * $FreeBSD: src/games/phantasia/io.c,v 1.6 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/io.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/io.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
+
+/* functions which we need to know about */
+/* misc.c */
+extern	void	death(const char *);
+extern	void	leavegame(void);
+/* phantglobs.c */
+extern	double	drandom(void);
+
+void	getstring(char *, int);
+void	more(int);
+double	infloat(void);
+int	inputoption(void);
+void	interrupt(void);
+int	getanswer(const char *, bool);
+void	catchalarm(void);
 
 /************************************************************************
 /
@@ -43,9 +58,8 @@
 /
 *************************************************************************/
 
-getstring(cp, mx)
-char	*cp;
-int	mx;
+void
+getstring(char *cp, int mx)
 {
 char	*inptr;		/* pointer into string for next string */
 int	x, y;			/* original x, y coordinates on screen */
@@ -119,8 +133,8 @@ int	ch;			/* input */
 /
 *************************************************************************/
 
-more(where)
-int	where;
+void
+more(int where)
 {
     mvaddstr(where, 0, "-- more --");
     getanswer(" ", FALSE);
@@ -152,7 +166,7 @@ int	where;
 *************************************************************************/
 
 double
-infloat()
+infloat(void)
 {
 double	result;		/* return value */
 
@@ -189,7 +203,8 @@ double	result;		/* return value */
 /
 *************************************************************************/
 
-inputoption()
+int
+inputoption(void)
 {
     ++Player.p_age;		/* increase age */
 
@@ -232,7 +247,8 @@ inputoption()
 /
 *************************************************************************/
 
-interrupt()
+void
+interrupt(void)
 {
 char	line[81];		/* a place to store data already on screen */
 int	loop;		/* counter */
@@ -322,13 +338,12 @@ unsigned	savealarm;	/* to save alarm value */
 /
 *************************************************************************/
 
-getanswer(choices, def)
-char	*choices;
-bool	def;
+int
+getanswer(const char *choices, bool def)
 {
 int	ch;			/* input */
-int	loop;			/* counter */
-int	oldx, oldy;		/* original coordinates on screen */
+volatile int	loop;			/* counter */
+volatile int	oldx, oldy;		/* original coordinates on screen */
 
     getyx(stdscr, oldy, oldx);
     alarm(0);				/* make sure alarm is off */
@@ -354,7 +369,7 @@ int	oldx, oldy;		/* original coordinates on screen */
 #ifdef BSD41
 	    sigset(SIGALRM, catchalarm);
 #else
-	    signal(SIGALRM, catchalarm);
+	    signal(SIGALRM, (sig_t)catchalarm);
 #endif
 	    /* set timeout */
 	    if (Timeout)
@@ -434,7 +449,7 @@ YELL:		mvprintw(oldy + 1, 0, "Please choose one of : [%s]\n", choices);
 *************************************************************************/
 
 void
-catchalarm()
+catchalarm(void)
 {
     longjmp(Timeoenv, 1);
 }

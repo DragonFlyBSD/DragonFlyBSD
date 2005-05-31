@@ -2,11 +2,37 @@
  * gamesupport.c - auxiliary routines for support of Phantasia
  *
  * $FreeBSD: src/games/phantasia/gamesupport.c,v 1.6 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/gamesupport.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/gamesupport.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
+
+/* functions which we need to know about */
+/* interplayer.c */
+extern	void	userlist(bool);
+/* io.c */
+extern	int	getanswer(const char *, bool);
+extern	void	getstring(char *, int);
+extern	double	infloat(void);
+extern	void	more(int);
+/* main.c */
+extern	void	cleanup(bool);
+/* misc.c */
+extern	const char	*descrstatus(struct player *);
+extern	const char	*descrtype(struct player *, bool);
+extern	void	error(const char *);
+extern	long	findname(char *, struct player *);
+extern	void	freerecord(struct player *, long);
+extern	void	truncstring(char *);
+extern	void	writerecord(struct player *, long);
+
+void	changestats(bool);
+void	monstlist(void);
+void	scorelist(void);
+void	activelist(void);
+void	purgeoldplayers(void);
+void	enterscore(void);
 
 /************************************************************************
 /
@@ -54,13 +80,13 @@
 /
 *************************************************************************/
 
-changestats(ingameflag)
-bool	ingameflag;
+void
+changestats(bool ingameflag)
 {
 static char	flag[2] = /* for printing values of bools */
 	{'F', 'T'};
 struct player	*playerp;/* pointer to structure to alter */
-char	*prompt;	/* pointer to prompt string */
+const char	*prompt;	/* pointer to prompt string */
 int	c;			/* input */
 int	today;			/* day of year of today */
 int	temp;			/* temporary variable */
@@ -514,7 +540,8 @@ BALTER:
 /
 *************************************************************************/
 
-monstlist()
+void
+monstlist(void)
 {
 int 	count = 0;		/* count in file */
 
@@ -550,7 +577,8 @@ int 	count = 0;		/* count in file */
 /
 *************************************************************************/
 
-scorelist()
+void
+scorelist(void)
 {
 struct	scoreboard	sbuf;	/* for reading entries */
 FILE	*fp;		/* to open the file */
@@ -587,7 +615,8 @@ FILE	*fp;		/* to open the file */
 /
 *************************************************************************/
 
-activelist()
+void
+activelist(void)
 {
     fseek(Playersfp, 0L, 0);
     printf("Current characters on file are:\n\n");
@@ -624,7 +653,8 @@ activelist()
 /
 *************************************************************************/
 
-purgeoldplayers()
+void
+purgeoldplayers(void)
 {
 int	today;		/* day of year for today */
 int	daysold;	/* how many days since the character has been used */
@@ -680,7 +710,8 @@ long	loc = 0L;	/* location in file */
 /
 *************************************************************************/
 
-enterscore()
+void
+enterscore(void)
 {
 struct	scoreboard sbuf;		/* buffer to read in scoreboard entries */
 FILE	*fp;				/* to open scoreboard file */

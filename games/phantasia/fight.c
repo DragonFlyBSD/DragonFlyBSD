@@ -2,11 +2,41 @@
  * fight.c   Phantasia monster fighting routines
  *
  * $FreeBSD: src/games/phantasia/fight.c,v 1.7 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/fight.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/fight.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
+
+/* functions which we need to know about */
+/* io.c */
+extern	int	getanswer(const char *, bool);
+extern	void	getstring(char *, int);
+extern	double	infloat(void);
+extern	int	inputoption(void);
+extern	void	more(int);
+/* misc.c */
+extern	void	altercoordinates(double, double, int);
+extern	void	collecttaxes(double, double);
+extern	void	death(const char *);
+extern	void	displaystats(void);
+extern	void	readmessage(void);
+extern	void	truncstring(char *);
+extern	void	writerecord(struct player *, long);
+/* phantglobs.c */
+extern	double	drandom(void);
+
+void	encounter(int);
+int	pickmonster(void);
+void	playerhits(void);
+void	monsthits(void);
+void	cancelmonster(void);
+void	hitmonster(double);
+void	throwspell(void);
+void	callmonster(int);
+void	awardtreasure(void);
+void	cursedtreasure(void);
+void	scramblestats(void);
 
 /************************************************************************
 /
@@ -38,10 +68,10 @@
 /
 *************************************************************************/
 
-encounter(particular)
-int	particular;
+void
+encounter(int particular)
 {
-bool	firsthit = Player.p_blessing;	/* set if player gets the first hit */
+volatile bool	firsthit = Player.p_blessing;	/* set if player gets the first hit */
 int	flockcnt = 1;			/* how many time flocked */
 
     /* let others know what we are doing */
@@ -215,7 +245,8 @@ int	flockcnt = 1;			/* how many time flocked */
 /
 *************************************************************************/
 
-pickmonster()
+int
+pickmonster(void)
 {
     if (Player.p_specialtype == SC_VALAR)
 	/* even chance of any monster */
@@ -271,7 +302,8 @@ pickmonster()
 /
 *************************************************************************/
 
-playerhits()
+void
+playerhits(void)
 {
 double	inflict;	/* damage inflicted */
 int	ch;		/* input */
@@ -450,7 +482,8 @@ int	ch;		/* input */
 /
 *************************************************************************/
 
-monsthits()
+void
+monsthits(void)
 {
 double	inflict;		/* damage inflicted */
 int	ch;			/* input */
@@ -727,7 +760,8 @@ SPECIALHIT:
 /
 *************************************************************************/
 
-cancelmonster()
+void
+cancelmonster(void)
 {
     Curmonster.m_energy = 0.0;
     Curmonster.m_experience = 0.0;
@@ -760,8 +794,8 @@ cancelmonster()
 /
 *************************************************************************/
 
-hitmonster(inflict)
-double	inflict;
+void
+hitmonster(double inflict)
 {
     mvprintw(Lines++, 0, "You hit %s %.0f times!", Enemyname, inflict);
     Curmonster.m_energy -= inflict;
@@ -815,9 +849,10 @@ double	inflict;
 /
 *************************************************************************/
 
-throwspell()
+void
+throwspell(void)
 {
-double	inflict;	/* damage inflicted */
+double	inflict = 0;	/* damage inflicted */
 double	dtemp;		/* for dtemporary calculations */
 int	ch;		/* input */
 
@@ -1055,8 +1090,8 @@ int	ch;		/* input */
 /
 *************************************************************************/
 
-callmonster(which)
-int	which;
+void
+callmonster(int which)
 {
 struct monster	Othermonster;		/* to find a name for mimics */
 
@@ -1165,7 +1200,8 @@ struct monster	Othermonster;		/* to find a name for mimics */
 /
 *************************************************************************/
 
-awardtreasure()
+void
+awardtreasure(void)
 {
 int	whichtreasure;		/* calculated treasure to grant */
 int	temp;				/* temporary */
@@ -1614,7 +1650,8 @@ double	dtemp;				/* for temporary calculations */
 /
 *************************************************************************/
 
-cursedtreasure()
+void
+cursedtreasure(void)
 {
     if (Player.p_charms > 0)
 	{
@@ -1656,7 +1693,8 @@ cursedtreasure()
 /
 *************************************************************************/
 
-scramblestats()
+void
+scramblestats(void)
 {
 double	dbuf[6];		/* to put statistic in */
 double	dtemp1, dtemp2;		/* for swapping values */

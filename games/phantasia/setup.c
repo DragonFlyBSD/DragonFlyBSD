@@ -2,12 +2,33 @@
  * setup.c - set up all files for Phantasia
  *
  * $FreeBSD: src/games/phantasia/setup.c,v 1.11 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/setup.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/setup.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 #include "include.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+/* functions which we need to know about */
+/* phantglobs.c */
+extern	double	drandom(void);
+
+void	Error(const char *, const char *);
+
+static const char *files[] = {		/* all files to create */
+	_SPATH_MONST,
+	_SPATH_PEOPLE,
+	_SPATH_MESS,
+	_SPATH_LASTDEAD,
+	_SPATH_MOTD,
+	_SPATH_GOLD,
+	_SPATH_VOID,
+	_SPATH_SCORE,
+	NULL,
+};
+
+const char *monsterfile="monsters.asc";
+
 /**/
 /************************************************************************
 /
@@ -40,29 +61,11 @@
 /
 *************************************************************************/
 
-void Error();
-
-static char *files[] = {		/* all files to create */
-	_SPATH_MONST,
-	_SPATH_PEOPLE,
-	_SPATH_MESS,
-	_SPATH_LASTDEAD,
-	_SPATH_MOTD,
-	_SPATH_GOLD,
-	_SPATH_VOID,
-	_SPATH_SCORE,
-	NULL,
-};
-
-char *monsterfile="monsters.asc";
-
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
-	char	**filename;	/* for pointing to file names */
-	register int	fd;		/* file descriptor */
+	const	char	**filename;	/* for pointing to file names */
+	int	fd;		/* file descriptor */
 	FILE	*fp;			/* for opening files */
 	struct stat	fbuf;		/* for getting files statistics */
 	int ch;
@@ -227,43 +230,11 @@ main(argc, argv)
 *************************************************************************/
 
 void
-Error(str, file)
-char	*str, *file;
+Error(const char *str, const char *file)
 {
     fprintf(stderr, "Error: ");
     fprintf(stderr, str, file);
     perror(file);
     exit(1);
     /*NOTREACHED*/
-}
-/**/
-/************************************************************************
-/
-/ FUNCTION NAME: drandom()
-/
-/ FUNCTION: return a random number
-/
-/ AUTHOR: E. A. Estes, 2/7/86
-/
-/ ARGUMENTS: none
-/
-/ RETURN VALUE: none
-/
-/ MODULES CALLED: random()
-/
-/ GLOBAL INPUTS: none
-/
-/ GLOBAL OUTPUTS: none
-/
-/ DESCRIPTION:
-/
-*************************************************************************/
-
-double
-drandom()
-{
-    if (sizeof(int) != 2)
-	return((double) (random() & 0x7fff) / 32768.0);
-    else
-	return((double) random() / 32768.0);
 }

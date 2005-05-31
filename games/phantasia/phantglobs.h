@@ -1,5 +1,7 @@
 /*
  * phantglobs.h - global declarations for Phantasia
+ *
+ * $DragonFly: src/games/phantasia/phantglobs.h,v 1.2 2005/05/31 00:06:26 swildner Exp $
  */
 
 extern	double	Circle;		/* which circle player is in			*/
@@ -25,8 +27,8 @@ extern	jmp_buf Timeoenv;	/* used for timing out waiting for input	*/
 
 extern	long	Fileloc;	/* location in file of player statistics	*/
 
-extern	char	*Login;		/* pointer to login of current player		*/
-extern	char	*Enemyname;	/* pointer name of monster/player we are battling*/
+extern	const char	*Login;		/* pointer to login of current player		*/
+extern	const char	*Enemyname;	/* pointer name of monster/player we are battling*/
 
 extern	struct player	Player;	/* stats for player				*/
 extern	struct player	Other;	/* stats for another player			*/
@@ -49,37 +51,9 @@ extern	FILE	*Energyvoidfp;	/* pointer to open energy void file		*/
 extern	char	Databuf[];	/* a place to read data into			*/
 
 /* some canned strings for messages */
-extern	char	Illcmd[];
-extern	char	Illmove[];
-extern	char	Illspell[];
-extern	char	Nomana[];
-extern	char	Somebetter[];
-extern	char	Nobetter[];
-
-/* library functions and system calls */
-extern	char	*getlogin();
-extern	char	*getpass();
-extern	char	*strchr();
-extern	char	*strcat();
-extern	char	*strcpy();
-extern	char	*strncpy();
-extern	char	*getenv();
-struct	passwd	*getpwuid();
-extern	char	*fgets();
-
-/* functions which we need to know about */
-extern	int	interrupt();
-extern	int	ill_sig();
-extern	void	catchalarm();
-extern	long	recallplayer();
-extern	long	findname();
-extern	long	allocrecord();
-extern	long	rollnewplayer();
-extern	long	allocvoid();
-extern	double	drandom();
-extern	double	distance();
-extern	double	infloat();
-extern	double	explevel();
-extern	char	*descrlocation();
-extern	char	*descrtype();
-extern	char	*descrstatus();
+extern	const char	Illcmd[];
+extern	const char	Illmove[];
+extern	const char	Illspell[];
+extern	const char	Nomana[];
+extern	const char	Somebetter[];
+extern	const char	Nobetter[];

@@ -5,7 +5,7 @@
  * AT&T, March 12, 1986
  *
  * $FreeBSD: src/games/phantasia/main.c,v 1.8 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/main.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 /* DISCLAIMER:
@@ -64,6 +64,57 @@
 
 #include "include.h"
 
+/* functions which we need to know about */
+/* fight.c */
+extern	void	encounter(int);
+/* gamesupport.c */
+extern	void	activelist(void);
+extern	void	changestats(bool);
+extern	void	monstlist(void);
+extern	void	purgeoldplayers(void);
+extern	void	scorelist(void);
+/* interplayer.c */
+extern	void	checkbattle(void);
+extern	void	checktampered(void);
+extern	void	dotampered(void);
+extern	void	throneroom(void);
+extern	void	userlist(bool);
+/* io.c */
+extern	int	getanswer(const char *, bool);
+extern	void	getstring(char *, int);
+extern	double	infloat(void);
+extern	int	inputoption(void);
+extern	void	more(int);
+/* misc.c */
+extern	void	adjuststats(void);
+extern	long	allocrecord(void);
+extern	void	allstatslist(void);
+extern	void	altercoordinates(double, double, int);
+extern	void	collecttaxes(double, double);
+extern	void	death(const char *);
+extern	void	displaystats(void);
+extern	double	distance(double, double, double, double);
+extern	void	error(const char *);
+extern	long	findname(char *, struct player *);
+extern	void	initplayer(struct player *);
+extern	void	leavegame(void);
+extern	void	readmessage(void);
+extern	void	tradingpost(void);
+extern	void	truncstring(char *);
+extern	void	writerecord(struct player *, long);
+/* phantglobs.c */
+extern	double	drandom(void);
+
+void	initialstate(void);
+long	rollnewplayer(void);
+void	procmain(void);
+void	titlelist(void);
+long	recallplayer(void);
+void	neatstuff(void);
+void	genchar(int);
+void	playinit(void);
+void	cleanup(bool);
+
 /***************************************************************************
 / FUNCTION NAME: main()
 /
@@ -97,9 +148,8 @@
 /
 ****************************************************************************/
 
-main(argc, argv)
-int	argc;
-char	**argv;
+int
+main(int argc, char **argv)
 {
 bool	noheader = FALSE;	/* set if don't want header */
 bool	headeronly = FALSE;	/* set if only want header */
@@ -265,6 +315,7 @@ double	dtemp;			/* for temporary calculations */
 
 	if (Player.p_status == S_CLOAKED)
 	    /* costs 3 mana per turn to be cloaked */
+	    {
 	    if (Player.p_mana > 3.0)
 		Player.p_mana -= 3.0;
 	    else
@@ -273,6 +324,7 @@ double	dtemp;			/* for temporary calculations */
 		Player.p_status = S_PLAYING;
 		Changed = TRUE;
 		}
+	    }
 
 	if (Player.p_status != S_PLAYING && Player.p_status != S_CLOAKED)
 	    /* change status back to S_PLAYING */
@@ -338,7 +390,8 @@ double	dtemp;			/* for temporary calculations */
 /
 *************************************************************************/
 
-initialstate()
+void
+initialstate(void)
 {
     Beyond = FALSE;
     Marsh = FALSE;
@@ -400,7 +453,7 @@ initialstate()
 *************************************************************************/
 
 long
-rollnewplayer()
+rollnewplayer(void)
 {
 int	chartype;	/* character type */
 int	ch;		/* input */
@@ -518,7 +571,8 @@ int	ch;		/* input */
 /
 *************************************************************************/
 
-procmain()
+void
+procmain(void)
 {
 int	ch;			/* input */
 double	x;			/* desired new x coordinate */
@@ -702,7 +756,7 @@ bool	hasmoved = FALSE;	/* set if player has moved */
 	    break;
 
 	case '0':		/* decree */
-	    if (Wizard || Player.p_specialtype == SC_KING && Throne)
+	    if (Wizard || (Player.p_specialtype == SC_KING && Throne))
 		/* kings must be on throne to decree */
 		dotampered();
 	    else
@@ -751,12 +805,13 @@ bool	hasmoved = FALSE;	/* set if player has moved */
 /
 *************************************************************************/
 
-titlelist()
+void
+titlelist(void)
 {
 FILE	*fp;		/* used for opening various files */
 bool	councilfound = FALSE;	/* set if we find a member of the council */
 bool	kingfound = FALSE;	/* set if we find a king */
-double	hiexp, nxtexp;		/* used for finding the two highest players */
+double	hiexp, nxtexp = 0;	/* used for finding the two highest players */
 double	hilvl, nxtlvl;		/* used for finding the two highest players */
 char	hiname[21], nxtname[21];/* used for finding the two highest players */
 
@@ -885,7 +940,7 @@ char	hiname[21], nxtname[21];/* used for finding the two highest players */
 *************************************************************************/
 
 long
-recallplayer()
+recallplayer(void)
 {
 long	loc = 0L;		/* location in player file */
 int	loop;		/* loop counter */
@@ -970,7 +1025,8 @@ int	ch;			/* input */
 /
 *************************************************************************/
 
-neatstuff()
+void
+neatstuff(void)
 {
 double	temp;	/* for temporary calculations */
 int	ch;	/* input */
@@ -1104,8 +1160,8 @@ int	ch;	/* input */
 /
 *************************************************************************/
 
-genchar(type)
-int	type;
+void
+genchar(int type)
 {
 int	subscript;		/* used for subscripting into Stattable */
 struct charstats	*statptr;/* for pointing into Stattable */
@@ -1164,7 +1220,8 @@ struct charstats	*statptr;/* for pointing into Stattable */
 /
 *************************************************************************/
 
-playinit()
+void
+playinit(void)
 {
     /* catch/ingnore signals */
 
@@ -1270,8 +1327,8 @@ playinit()
 /
 *************************************************************************/
 
-cleanup(doexit)
-bool	doexit;
+void
+cleanup(bool doexit)
 {
     if (Windows)
 	{

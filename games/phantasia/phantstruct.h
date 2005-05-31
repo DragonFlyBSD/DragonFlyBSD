@@ -1,7 +1,7 @@
 /*
  * phantstruct.h - structure definitions for Phantasia
  *
- * $DragonFly: src/games/phantasia/phantstruct.h,v 1.2 2005/05/31 00:00:38 swildner Exp $
+ * $DragonFly: src/games/phantasia/phantstruct.h,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 struct	player	    	/* player statistics */
@@ -121,6 +121,6 @@ struct	charstats			/* character type statistics */
 
 struct menuitem				/* menu item for purchase */
     {
-    char	*item;		/* menu item name */
+    const char	*item;		/* menu item name */
     double	cost;		/* cost of item */
     };
