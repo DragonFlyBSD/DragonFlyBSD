@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.17 2005/05/31 08:10:44 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -134,7 +134,7 @@ eeprom_rdy(sc)
 	DELAY(100);
     }
     if (i >= MAX_EEPROMBUSY) {
-	printf("ep%d: eeprom failed to come ready.\n", sc->unit);
+	if_printf(&sc->arpcom.ac_if, "eeprom failed to come ready.\n");
 	return (0);
     }
     return (1);
@@ -197,8 +197,8 @@ ep_alloc(device_t dev)
                 goto bad;
         }
 
-        sc->dev = dev;
-        sc->unit = device_get_unit(dev);
+	if_initname(&sc->arpcom.ac_if,
+		    device_get_name(dev), device_get_unit(dev));
         sc->stat = 0;   /* 16 bit access */
 
         sc->ep_io_addr = rman_get_start(sc->iobase);
@@ -235,7 +235,7 @@ ep_get_media(sc)
 
         if (!(sc->ep_connectors & 7)) {
 		if (bootverbose)
-                	device_printf(sc->dev, "no connectors!\n");
+                	if_printf(&sc->arpcom.ac_if, "no connectors!\n");
         }
 
 	/*
@@ -289,7 +289,6 @@ ep_attach(sc)
 	attached = (ifp->if_softc != 0);
 
 	ifp->if_softc = sc;
-	if_initname(ifp, "ep", sc->unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_start = ep_if_start;
@@ -583,7 +582,8 @@ rescan:
 	if (status & S_CARD_FAILURE) {
 	    ifp->if_timer = 0;
 #ifdef EP_LOCAL_STATS
-	    printf("\nep%d:\n\tStatus: %x\n", sc->unit, status);
+	    printf("\n");
+	    if_printf(ifp, "\n\tStatus: %x\n", status);
 	    GO_WINDOW(4);
 	    printf("\tFIFO Diagnostic: %x\n", inw(BASE + EP_W4_FIFO_DIAG));
 	    printf("\tStat: %x\n", sc->stat);
@@ -595,7 +595,7 @@ rescan:
 #else
 
 #ifdef DIAGNOSTIC
-	    printf("ep%d: Status: %x (input buffer overflow)\n", sc->unit, status);
+	    if_printf(ifp, "Status: %x (input buffer overflow)\n", status);
 #else
 	    ++ifp->if_ierrors;
 #endif
@@ -820,8 +820,9 @@ ep_ifmedia_upd(ifp)
 			break;
 		default:
 			i = sc->ep_connector;
-			device_printf(sc->dev,
-				"strange connector type in EEPROM: assuming AUI\n");
+			if_printf(ifp, "strange connector type in EEPROM: "
+				  "assuming AUI\n");
+			break;
 	}
 
 	GO_WINDOW(0);
@@ -909,7 +910,7 @@ ep_if_watchdog(ifp)
     struct ep_softc *sc = ifp->if_softc;
 
     /*
-    printf("ep: watchdog\n");
+    if_printf(ifp, "watchdog\n");
 
     log(LOG_ERR, "%s: watchdog\n", ifp->if_xname);
     ifp->if_oerrors++;

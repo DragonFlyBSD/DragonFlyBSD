@@ -20,7 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_epvar.h,v 1.4.2.1 2000/05/24 01:47:45 archie Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_epvar.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_epvar.h,v 1.3 2005/05/31 08:10:44 joerg Exp $
  */
 
 struct ep_board {
@@ -36,8 +36,6 @@ struct ep_board {
 struct ep_softc {
 	struct arpcom		arpcom;		/* Ethernet common part	*/
 	struct ifmedia		ifmedia;	/* media info		*/
-
-	device_t		dev;
 
 	struct resource *	iobase;
 	struct resource *	irq;
@@ -63,8 +61,6 @@ struct ep_softc {
 	int			gone;		/* adapter is not present (for PCCARD) */
 
 	struct ep_board		epb;
-
-	int			unit;
 
 #ifdef  EP_LOCAL_STATS
 	short		tx_underrun;
