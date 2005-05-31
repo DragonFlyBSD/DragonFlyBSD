@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.29 2005/05/31 07:46:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.30 2005/05/31 07:51:13 joerg Exp $
  */
 
 /*
@@ -110,7 +110,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/clock.h>      /* for DELAY */
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
@@ -238,9 +237,8 @@ static int dc_miibus_writereg	(device_t, int, int, int);
 static void dc_miibus_statchg	(device_t);
 static void dc_miibus_mediainit	(device_t);
 
+static u_int32_t dc_crc_mask	(struct dc_softc *);
 static void dc_setcfg		(struct dc_softc *, int);
-static u_int32_t dc_crc_le	(struct dc_softc *, c_caddr_t);
-static u_int32_t dc_crc_be	(caddr_t);
 static void dc_setfilt_21143	(struct dc_softc *);
 static void dc_setfilt_asix	(struct dc_softc *);
 static void dc_setfilt_admtek	(struct dc_softc *);
@@ -1000,65 +998,25 @@ static void dc_miibus_mediainit(dev)
 	return;
 }
 
-#define DC_POLY		0xEDB88320
 #define DC_BITS_512	9
 #define DC_BITS_128	7
 #define DC_BITS_64	6
 
-static u_int32_t dc_crc_le(sc, addr)
-	struct dc_softc		*sc;
-	c_caddr_t		addr;
+static u_int32_t
+dc_crc_mask(struct dc_softc *sc)
 {
-	u_int32_t		idx, bit, data, crc;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (idx = 0; idx < 6; idx++) {
-		for (data = *addr++, bit = 0; bit < 8; bit++, data >>= 1)
-			crc = (crc >> 1) ^ (((crc ^ data) & 1) ? DC_POLY : 0);
-	}
-
 	/*
 	 * The hash table on the PNIC II and the MX98715AEC-C/D/E
 	 * chips is only 128 bits wide.
 	 */
 	if (sc->dc_flags & DC_128BIT_HASH)
-		return (crc & ((1 << DC_BITS_128) - 1));
+		return ((1 << DC_BITS_128) - 1);
 
 	/* The hash table on the MX98715BEC is only 64 bits wide. */
 	if (sc->dc_flags & DC_64BIT_HASH)
-		return (crc & ((1 << DC_BITS_64) - 1));
+		return ((1 << DC_BITS_64) - 1);
 
-	return (crc & ((1 << DC_BITS_512) - 1));
-}
-
-/*
- * Calculate CRC of a multicast group address, return the lower 6 bits.
- */
-static u_int32_t dc_crc_be(addr)
-	caddr_t			addr;
-{
-	u_int32_t		crc, carry;
-	int			i, j;
-	u_int8_t		c;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (i = 0; i < 6; i++) {
-		c = *(addr + i);
-		for (j = 0; j < 8; j++) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (c & 0x01);
-			crc <<= 1;
-			c >>= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	/* return the filter bit position */
-	return((crc >> 26) & 0x0000003F);
+	return ((1 << DC_BITS_512) - 1);
 }
 
 /*
@@ -1075,7 +1033,7 @@ void dc_setfilt_21143(sc)
 	struct dc_softc		*sc;
 {
 	struct dc_desc		*sframe;
-	u_int32_t		h, *sp;
+	u_int32_t		h, crc_mask, *sp;
 	struct ifmultiaddr	*ifma;
 	struct ifnet		*ifp;
 	int			i;
@@ -1106,17 +1064,20 @@ void dc_setfilt_21143(sc)
 	else
 		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_RX_ALLMULTI);
 
+	crc_mask = dc_crc_mask(sc);
 	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
 	    ifma = ifma->ifma_link.le_next) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = dc_crc_le(sc,
-		    LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_le(
+			LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+			ETHER_ADDR_LEN) & crc_mask;
 		sp[h >> 4] |= 1 << (h & 0xF);
 	}
 
 	if (ifp->if_flags & IFF_BROADCAST) {
-		h = dc_crc_le(sc, ifp->if_broadcastaddr);
+		h = ether_crc32_le(ifp->if_broadcastaddr,
+				   ETHER_ADDR_LEN) & crc_mask;
 		sp[h >> 4] |= 1 << (h & 0xF);
 	}
 
@@ -1146,6 +1107,7 @@ void dc_setfilt_admtek(sc)
 {
 	struct ifnet		*ifp;
 	int			h = 0;
+	u_int32_t		crc_mask;
 	u_int32_t		hashes[2] = { 0, 0 };
 	struct ifmultiaddr	*ifma;
 
@@ -1178,14 +1140,24 @@ void dc_setfilt_admtek(sc)
 		return;
 
 	/* now program new ones */
+	if (DC_IS_CENTAUR(sc))
+		crc_mask = dc_crc_mask(sc);
+	else
+		crc_mask = 0x3f;
 	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
 	    ifma = ifma->ifma_link.le_next) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		if (DC_IS_CENTAUR(sc))
-			h = dc_crc_le(sc, LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
-		else
-			h = dc_crc_be(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		if (DC_IS_CENTAUR(sc)) {
+			h = ether_crc32_le(
+				LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+				ETHER_ADDR_LEN) & crc_mask;
+		} else {
+			h = ether_crc32_be(
+				LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+				ETHER_ADDR_LEN);
+			h = (h >> 26) & crc_mask;
+		}
 		if (h < 32)
 			hashes[0] |= (1 << h);
 		else
@@ -1254,7 +1226,10 @@ void dc_setfilt_asix(sc)
 	    ifma = ifma->ifma_link.le_next) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = dc_crc_be(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_be(
+			LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+			ETHER_ADDR_LEN);
+		h = (h >> 26) & 0x3f;
 		if (h < 32)
 			hashes[0] |= (1 << h);
 		else
