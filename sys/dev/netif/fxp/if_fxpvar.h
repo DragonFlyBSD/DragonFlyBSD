@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.7 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.8 2005/05/31 08:27:47 joerg Exp $
  */
 
 /*
@@ -115,7 +115,6 @@ struct fxp_softc {
 	struct fxp_cb_mcs *mcsp;	/* Pointer to mcast setup descriptor */
 	struct ifmedia sc_media;	/* media information */
 	device_t miibus;
-	device_t dev;
 	struct sysctl_ctx_list sysctl_ctx;
 	struct sysctl_oid *sysctl_tree;
 	int tunable_int_delay;		/* interrupt delay value for ucode */

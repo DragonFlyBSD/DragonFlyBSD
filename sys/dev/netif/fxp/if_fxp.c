@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.31 2005/05/31 08:23:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.32 2005/05/31 08:27:47 joerg Exp $
  */
 
 /*
@@ -203,7 +203,7 @@ static void 		fxp_tick(void *xsc);
 static void		fxp_powerstate_d0(device_t dev);
 static void 		fxp_start(struct ifnet *ifp);
 static void		fxp_stop(struct fxp_softc *sc);
-static void 		fxp_release(struct fxp_softc *sc);
+static void 		fxp_release(device_t dev);
 static int		fxp_ioctl(struct ifnet *ifp, u_long command,
 			    caddr_t data, struct ucred *);
 static void 		fxp_watchdog(struct ifnet *ifp);
@@ -305,12 +305,14 @@ fxp_scb_wait(struct fxp_softc *sc)
 
 	while (CSR_READ_1(sc, FXP_CSR_SCB_COMMAND) && --i)
 		DELAY(2);
-	if (i == 0)
-		device_printf(sc->dev, "SCB timeout: 0x%x 0x%x 0x%x 0x%x\n",
+	if (i == 0) {
+		if_printf(&sc->arpcom.ac_if,
+		    "SCB timeout: 0x%x 0x%x 0x%x 0x%x\n",
 		    CSR_READ_1(sc, FXP_CSR_SCB_COMMAND),
 		    CSR_READ_1(sc, FXP_CSR_SCB_STATACK),
 		    CSR_READ_1(sc, FXP_CSR_SCB_RUSCUS),
 		    CSR_READ_2(sc, FXP_CSR_FLOWCONTROL));
+	}
 }
 
 static void
@@ -332,7 +334,7 @@ fxp_dma_wait(volatile u_int16_t *status, struct fxp_softc *sc)
 	while (!(*status & FXP_CB_STATUS_C) && --i)
 		DELAY(2);
 	if (i == 0)
-		device_printf(sc->dev, "DMA timeout\n");
+		if_printf(&sc->arpcom.ac_if, "DMA timeout\n");
 }
 
 /*
@@ -395,7 +397,6 @@ fxp_attach(device_t dev)
 	int s;
 
 	bzero(sc, sizeof(*sc));
-	sc->dev = dev;
 	callout_init(&sc->fxp_stat_timer);
 	sysctl_ctx_init(&sc->sysctl_ctx);
 
@@ -616,7 +617,7 @@ fxp_attach(device_t dev)
 	 */
 	fxp_read_eeprom(sc, (u_int16_t *)sc->arpcom.ac_enaddr, 0, 3);
 	if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
-		device_printf(dev, "10Mbps");
+		device_printf(dev, "10Mbps\n");
 	if (bootverbose) {
 		device_printf(dev, "PCI IDs: %04x %04x %04x %04x %04x\n",
 		    pci_get_vendor(dev), pci_get_device(dev),
@@ -688,7 +689,7 @@ failmem:
 	error = ENOMEM;
 fail:
 	splx(s);
-	fxp_release(sc);
+	fxp_release(dev);
 	return (error);
 }
 
@@ -696,12 +697,14 @@ fail:
  * release all resources
  */
 static void
-fxp_release(struct fxp_softc *sc)
+fxp_release(device_t dev)
 {
+	struct fxp_softc *sc;
 
-	bus_generic_detach(sc->dev);
+	sc = device_get_softc(dev);
+	bus_generic_detach(dev);
 	if (sc->miibus)
-		device_delete_child(sc->dev, sc->miibus);
+		device_delete_child(dev, sc->miibus);
 
 	if (sc->cbl_base)
 		free(sc->cbl_base, M_DEVBUF);
@@ -713,11 +716,11 @@ fxp_release(struct fxp_softc *sc)
 		m_freem(sc->rfa_headm);
 
 	if (sc->ih)
-		bus_teardown_intr(sc->dev, sc->irq, sc->ih);
+		bus_teardown_intr(dev, sc->irq, sc->ih);
 	if (sc->irq)
-		bus_release_resource(sc->dev, SYS_RES_IRQ, 0, sc->irq);
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	if (sc->mem)
-		bus_release_resource(sc->dev, sc->rtp, sc->rgd, sc->mem);
+		bus_release_resource(dev, sc->rtp, sc->rgd, sc->mem);
 
         sysctl_ctx_free(&sc->sysctl_ctx);
 }
@@ -754,7 +757,7 @@ fxp_detach(device_t dev)
 	splx(s);
 
 	/* Release our allocated resources. */
-	fxp_release(sc);
+	fxp_release(dev);
 
 	return (0);
 }
@@ -2148,7 +2151,7 @@ fxp_mc_setup(struct fxp_softc *sc)
 	    FXP_SCB_CUS_ACTIVE && --count)
 		DELAY(10);
 	if (count == 0) {
-		device_printf(sc->dev, "command queue timeout\n");
+		if_printf(&sc->arpcom.ac_if, "command queue timeout\n");
 		return;
 	}
 
@@ -2222,7 +2225,7 @@ fxp_load_ucode(struct fxp_softc *sc)
 	fxp_scb_cmd(sc, FXP_SCB_COMMAND_CU_START);
 	/* ...and wait for it to complete. */
 	fxp_dma_wait(&cbp->cb_status, sc);
-	device_printf(sc->dev,
+	if_printf(&sc->arpcom.ac_if,
 	    "Microcode loaded, int_delay: %d usec  bundle_max: %d\n",
 	    sc->tunable_int_delay, 
 	    uc->bundle_max_offset == 0 ? 0 : sc->tunable_bundle_max);
