@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.32 2005/05/31 08:27:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.33 2005/05/31 08:30:14 joerg Exp $
  */
 
 /*
@@ -396,7 +396,6 @@ fxp_attach(device_t dev)
 	int i, rid, m1, m2, prefer_iomap;
 	int s;
 
-	bzero(sc, sizeof(*sc));
 	callout_init(&sc->fxp_stat_timer);
 	sysctl_ctx_init(&sc->sysctl_ctx);
 
