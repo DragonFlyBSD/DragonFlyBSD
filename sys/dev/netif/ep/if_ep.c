@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.17 2005/05/31 08:10:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.18 2005/05/31 08:12:48 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -270,7 +270,6 @@ ep_attach(sc)
 	u_short *		p;
 	uint8_t			ether_addr[ETHER_ADDR_LEN];
 	int			i;
-	int			attached;
 
 	sc->gone = 0;
 
@@ -286,7 +285,6 @@ ep_attach(sc)
 	}
   
 	ifp = &sc->arpcom.ac_if;
-	attached = (ifp->if_softc != 0);
 
 	ifp->if_softc = sc;
 	ifp->if_mtu = ETHERMTU;
@@ -317,8 +315,7 @@ ep_attach(sc)
 		ep_ifmedia_upd(ifp);
 	}
 
-	if (!attached)
-		ether_ifattach(ifp, ether_addr);
+	ether_ifattach(ifp, ether_addr);
 
 #ifdef EP_LOCAL_STATS
 	sc->rx_no_first = sc->rx_no_mbuf = sc->rx_bpf_disc =
