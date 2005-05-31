@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.30 2005/05/31 07:51:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.31 2005/05/31 07:52:22 joerg Exp $
  */
 
 /*
@@ -986,7 +986,7 @@ static void dc_miibus_mediainit(dev)
 	struct ifmedia		*ifm;
 	int			rev;
 
-	rev = pci_read_config(dev, DC_PCI_CFRV, 4) & 0xFF;
+	rev = pci_get_revid(dev);
 
 	sc = device_get_softc(dev);
 	mii = device_get_softc(sc->dc_miibus);
@@ -1471,7 +1471,7 @@ static struct dc_type *dc_devtype(dev)
 		if ((pci_get_vendor(dev) == t->dc_vid) &&
 		    (pci_get_device(dev) == t->dc_did)) {
 			/* Check the PCI revision */
-			rev = pci_read_config(dev, DC_PCI_CFRV, 4) & 0xFF;
+			rev = pci_get_revid(dev);
 			if (t->dc_did == DC_DEVICEID_98713 &&
 			    rev >= DC_REVISION_98713A)
 				t++;
@@ -1778,9 +1778,9 @@ static int dc_attach(dev)
 	/*
 	 * Map control/status registers.
 	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_IOPORT);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 #ifdef DC_USEIOSPACE
@@ -1833,7 +1833,7 @@ static int dc_attach(dev)
 	
 	/* Need this info to decide on a chip type. */
 	sc->dc_info = dc_devtype(dev);
-	revision = pci_read_config(dev, DC_PCI_CFRV, 4) & 0x000000FF;
+	revision = pci_get_revid(dev);
 
 	/* Get the eeprom width, but PNIC has diff eeprom */
 	if (sc->dc_info->dc_did != DC_DEVICEID_82C168)
