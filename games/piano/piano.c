@@ -2,7 +2,7 @@
  * piano.c - a piano emulator
  *
  * $FreeBSD: src/games/piano/piano.c,v 1.7 1999/12/12 03:22:37 billf Exp $
- * $DragonFly: src/games/piano/piano.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/piano/piano.c,v 1.3 2005/05/31 00:22:38 swildner Exp $
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,9 +14,9 @@
 
 char *myname;
 int verbose;
-static char *initcmd = "t160 o1 l16 ml";
+static const char *initcmd = "t160 o1 l16 ml";
 
-static char usage_msg[] =
+static const char usage_msg[] =
 	"simple keyboard player V0.8086\n"
 	"usage: %s [-v][-i str]\n"
 	"\t-i str defaults 't160 o1 l16 ml'\n"
@@ -28,10 +28,10 @@ static char usage_msg[] =
 
 struct kdef_t {
 	int ch;
-	char *str;
+	const char *str;
 };
 
-static char *kstr[256];
+static const char *kstr[256];
 
 static struct kdef_t kdef[] = {
 	/* white key */
@@ -81,12 +81,13 @@ init_kstr(void)
 }/* init_kstr */
 
 static int
-fdputs(const char *s, int fd, int echo)
+fdputs(const char *s, int fd, int p_echo)
 {
-	int err, len = strlen(s);
+	int err;
+	size_t len = strlen(s);
 	write(fd, s, len);
 	err = write(fd, "\n", 1);
-	if (echo) {
+	if (p_echo) {
 		fputs(s, stdout);
 	}
 	return err;
