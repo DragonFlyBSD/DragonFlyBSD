@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.82 2005/04/09 20:30:15 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.83 2005/05/31 00:47:34 swildner Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -441,5 +441,13 @@ addresses within India.
 <TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A>
 </TR>
 
+<tr>
+<td><b>Linux CD Mall</b><br/>
+Linux CD Mall, a family business operating from Auckland, NZ, is run by
+Chris Hope and The Electric Toolbox Ltd to distribute Linux and BSD
+distributions on CD and DVD to New Zealand and the rest of the world.
+</td>
+<td><a href="http://www.linuxcdmall.com/dragonfly.html">http://www.linuxcdmall.com/dragonfly.html</a>
+</tr>
 
 </TABLE>
