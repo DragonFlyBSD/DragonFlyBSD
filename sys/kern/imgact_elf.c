@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.26 2005/03/08 12:30:32 davidxu Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.27 2005/05/31 17:45:19 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -87,6 +87,9 @@ static int elf_legacy_coredump = 0;
 SYSCTL_INT(_debug, OID_AUTO, elf_legacy_coredump, CTLFLAG_RW,
     &elf_legacy_coredump, 0, "");
 
+static int dragonfly_match_abi_note(const Elf_Note *);
+static int freebsd_match_abi_note(const Elf_Note *);
+
 static struct sysentvec elf_freebsd_sysvec = {
         SYS_MAXSYSCALL,
         sysent,
@@ -110,15 +113,53 @@ static struct sysentvec elf_freebsd_sysvec = {
 static Elf_Brandinfo freebsd_brand_info = {
 						ELFOSABI_FREEBSD,
 						"FreeBSD",
+						freebsd_match_abi_note,
 						"",
 						"/usr/libexec/ld-elf.so.1",
 						&elf_freebsd_sysvec
 					  };
+
+static Elf_Brandinfo dragonfly_brand_info = {
+						ELFOSABI_NONE,
+						"DragonFly",
+						dragonfly_match_abi_note,
+						"",
+						"/usr/libexec/ld-elf.so.2",
+						&elf_freebsd_sysvec
+					  };
+
 static Elf_Brandinfo *elf_brand_list[MAX_BRANDS] = {
+							&dragonfly_brand_info,
 							&freebsd_brand_info,
 							NULL, NULL, NULL,
-							NULL, NULL, NULL, NULL
+							NULL, NULL, NULL
 						    };
+
+static int
+freebsd_match_abi_note(const Elf_Note *abi_note)
+{
+	const char *abi_name = (const char *)
+	    ((const uint8_t *)abi_note + sizeof(*abi_note));
+
+	if (abi_note->n_namesz != sizeof("FreeBSD"))
+		return(FALSE);
+	if (memcmp(abi_name, "FreeBSD", sizeof("FreeBSD")))
+		return(FALSE);
+	return(TRUE);
+}
+
+static int
+dragonfly_match_abi_note(const Elf_Note *abi_note)
+{
+	const char *abi_name = (const char *)
+	    ((const uint8_t *)abi_note + sizeof(*abi_note));
+
+	if (abi_note->n_namesz != sizeof("DragonFly"))
+		return(FALSE);
+	if (memcmp(abi_name, "DragonFly", sizeof("DragonFly")))
+		return(FALSE);
+	return(TRUE);
+}
 
 int
 elf_insert_brand_entry(Elf_Brandinfo *entry)
@@ -483,6 +524,7 @@ exec_elf_imgact(struct image_params *imgp)
 	u_long addr, entry = 0, proghdr = 0;
 	int error, i;
 	const char *interp = NULL;
+	const Elf_Note *abi_note = NULL;
 	Elf_Brandinfo *brand_info;
 	char *path;
 
@@ -606,6 +648,23 @@ exec_elf_imgact(struct image_params *imgp)
 			}
 			interp = imgp->image_header + phdr[i].p_offset;
 			break;
+		case PT_NOTE:	/* Check for .note.ABI-tag */
+		{
+			const Elf_Note *tmp_note;
+			/* XXX handle anything outside the first page */
+			if (phdr[i].p_offset + phdr[i].p_filesz > PAGE_SIZE)
+				continue;
+			if (phdr[i].p_filesz < sizeof(Elf_Note))
+				continue; /* ENOEXEC? */
+			tmp_note = (const Elf_Note *)(imgp->image_header + phdr[i].p_offset);
+			if (tmp_note->n_type != 1)
+				continue;
+			if (tmp_note->n_namesz + sizeof(Elf_Note) +
+			    tmp_note->n_descsz > phdr[i].p_filesz)
+				continue; /* ENOEXEC? */
+			abi_note = tmp_note;
+		}	
+			break;
 		case PT_PHDR: 	/* Program header table info */
 			proghdr = phdr[i].p_vaddr;
 			break;
@@ -633,7 +692,7 @@ exec_elf_imgact(struct image_params *imgp)
 	 */
 
 	/* If the executable has a brand, search for it in the brand list. */
-	if (brand_info == NULL) {
+	if (brand_info == NULL && hdr->e_ident[EI_OSABI] != ELFOSABI_NONE) {
 		for (i = 0;  i < MAX_BRANDS;  i++) {
 			Elf_Brandinfo *bi = elf_brand_list[i];
 
@@ -648,7 +707,20 @@ exec_elf_imgact(struct image_params *imgp)
 		}
 	}
 
-	/* Lacking a known brand, search for a recognized interpreter. */
+	/* Search for a recognized ABI. */
+	if (brand_info == NULL && abi_note != NULL) {
+		for (i = 0; i < MAX_BRANDS; i++) {
+			Elf_Brandinfo *bi = elf_brand_list[i];
+
+			if (bi != NULL && bi->match_abi_note != NULL &&
+			    (*bi->match_abi_note)(abi_note)) {
+				brand_info = bi;
+				break;
+			}
+		}
+	}
+
+	/* Lacking a recognized ABI, search for a recognized interpreter. */
 	if (brand_info == NULL && interp != NULL) {
 		for (i = 0;  i < MAX_BRANDS;  i++) {
 			Elf_Brandinfo *bi = elf_brand_list[i];
@@ -678,7 +750,7 @@ exec_elf_imgact(struct image_params *imgp)
 		    hdr->e_ident[EI_OSABI]);
 		error = ENOEXEC;
 		goto fail;
-	}
+	} else
 
 	imgp->proc->p_sysent = brand_info->sysvec;
 	if (interp != NULL) {
