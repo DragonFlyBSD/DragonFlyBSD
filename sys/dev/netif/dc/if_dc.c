@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.28 2005/05/27 14:57:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.29 2005/05/31 07:46:17 joerg Exp $
  */
 
 /*
@@ -845,8 +845,8 @@ static int dc_miibus_readreg(dev, phy, reg)
 			phy_reg = DC_AL_ANER;
 			break;
 		default:
-			printf("dc%d: phy_read: bad phy register %x\n",
-			    sc->dc_unit, reg);
+			if_printf(&sc->arpcom.ac_if,
+				  "phy_read: bad phy register %x\n", reg);
 			return(0);
 			break;
 		}
@@ -922,8 +922,8 @@ static int dc_miibus_writereg(dev, phy, reg, data)
 			phy_reg = DC_AL_ANER;
 			break;
 		default:
-			printf("dc%d: phy_write: bad phy register %x\n",
-			    sc->dc_unit, reg);
+			if_printf(&sc->arpcom.ac_if,
+				  "phy_write: bad phy register %x\n", reg);
 			return(0);
 			break;
 		}
@@ -1312,9 +1312,10 @@ static void dc_setcfg(sc, media)
 			DELAY(10);
 		}
 
-		if (i == DC_TIMEOUT)
-			printf("dc%d: failed to force tx and "
-				"rx to idle state\n", sc->dc_unit);
+		if (i == DC_TIMEOUT) {
+			if_printf(&sc->arpcom.ac_if, 
+			    "failed to force tx and rx to idle state\n");
+		}
 	}
 
 	if (IFM_SUBTYPE(media) == IFM_100_TX) {
@@ -1459,7 +1460,7 @@ static void dc_reset(sc)
 	}
 
 	if (i == DC_TIMEOUT)
-		printf("dc%d: reset never completed!\n", sc->dc_unit);
+		if_printf(&sc->arpcom.ac_if, "reset never completed!\n");
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -1553,9 +1554,6 @@ static void dc_acpi(dev)
 	device_t		dev;
 {
 	u_int32_t		r, cptr;
-	int			unit;
-
-	unit = device_get_unit(dev);
 
 	/* Find the location of the capabilities block */
 	cptr = pci_read_config(dev, DC_PCI_CCAP, 4) & 0xFF;
@@ -1566,15 +1564,18 @@ static void dc_acpi(dev)
 		r = pci_read_config(dev, cptr + 4, 4);
 		if (r & DC_PSTATE_D3) {
 			u_int32_t		iobase, membase, irq;
+			struct dc_softc		*sc;
 
 			/* Save important PCI config data. */
 			iobase = pci_read_config(dev, DC_PCI_CFBIO, 4);
 			membase = pci_read_config(dev, DC_PCI_CFBMA, 4);
 			irq = pci_read_config(dev, DC_PCI_CFIT, 4);
 
+			sc = device_get_softc(dev);
 			/* Reset the power state. */
-			printf("dc%d: chip is in D%d power mode "
-			    "-- setting to D0\n", unit, r & DC_PSTATE_D3);
+			if_printf(&sc->arpcom.ac_if,
+				  "chip is in D%d power mode "
+				  "-- setting to D0\n", r & DC_PSTATE_D3);
 			r &= 0xFFFFFFFC;
 			pci_write_config(dev, cptr + 4, r, 4);
 
@@ -1584,7 +1585,6 @@ static void dc_acpi(dev)
 			pci_write_config(dev, DC_PCI_CFIT, irq, 4);
 		}
 	}
-	return;
 }
 
 static void dc_apply_fixup(sc, media)
@@ -1784,14 +1784,16 @@ static int dc_attach(dev)
 	struct dc_softc		*sc;
 	struct ifnet		*ifp;
 	u_int32_t		revision;
-	int			unit, error = 0, rid, mac_offset;
+	int			error = 0, rid, mac_offset;
 
 	s = splimp();
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	bzero(sc, sizeof(struct dc_softc));
 	callout_init(&sc->dc_stat_timer);
+
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	/*
 	 * Handle power management nonsense.
@@ -1808,13 +1810,13 @@ static int dc_attach(dev)
 
 #ifdef DC_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("dc%d: failed to enable I/O ports!\n", unit);
+		device_printf(dev, "failed to enable I/O ports!\n");
 		error = ENXIO;
 		goto fail;
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("dc%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1824,7 +1826,7 @@ static int dc_attach(dev)
 	sc->dc_res = bus_alloc_resource_any(dev, DC_RES, &rid, RF_ACTIVE);
 
 	if (sc->dc_res == NULL) {
-		printf("dc%d: couldn't map ports/memory\n", unit);
+		device_printf(dev, "couldn't map ports/memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1838,7 +1840,7 @@ static int dc_attach(dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->dc_irq == NULL) {
-		printf("dc%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
 		error = ENXIO;
 		goto fail;
@@ -1850,7 +1852,7 @@ static int dc_attach(dev)
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
 		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
-		printf("dc%d: couldn't set up irq\n", unit);
+		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 	
@@ -1960,8 +1962,7 @@ static int dc_attach(dev)
 		dc_read_srom(sc, sc->dc_romwidth);
 		break;
 	default:
-		printf("dc%d: unknown device: %x\n", sc->dc_unit,
-		    sc->dc_info->dc_did);
+		device_printf(dev, "unknown device: %x\n", sc->dc_info->dc_did);
 		break;
 	}
 
@@ -2033,13 +2034,11 @@ static int dc_attach(dev)
 		break;
 	}
 
-	sc->dc_unit = unit;
-
 	sc->dc_ldata = contigmalloc(sizeof(struct dc_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->dc_ldata == NULL) {
-		printf("dc%d: no memory for list buffers!\n", unit);
+		device_printf(dev, "no memory for list buffers!\n");
 		if (sc->dc_pnic_rx_buf != NULL)
 			free(sc->dc_pnic_rx_buf, M_DEVBUF);
 		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
@@ -2051,9 +2050,7 @@ static int dc_attach(dev)
 
 	bzero(sc->dc_ldata, sizeof(struct dc_list_data));
 
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "dc", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = dc_ioctl;
@@ -2103,7 +2100,7 @@ static int dc_attach(dev)
 	}
 
 	if (error) {
-		printf("dc%d: MII without any PHY!\n", sc->dc_unit);
+		device_printf(dev, "MII without any PHY!\n");
 		contigfree(sc->dc_ldata, sizeof(struct dc_list_data),
 		    M_DEVBUF);
 		if (sc->dc_pnic_rx_buf != NULL)
@@ -2763,13 +2760,13 @@ static void dc_tx_underrun(sc)
 			DELAY(10);
 		}
 		if (i == DC_TIMEOUT) {
-			printf("dc%d: failed to force tx to idle state\n",
-			    sc->dc_unit);
+			if_printf(&sc->arpcom.ac_if,
+				  "failed to force tx to idle state\n");
 			dc_init(sc);
 		}
 	}
 
-	printf("dc%d: TX underrun -- ", sc->dc_unit);
+	if_printf(&sc->arpcom.ac_if, "TX underrun -- ");
 	sc->dc_txthresh += DC_TXTHRESH_INC;
 	if (sc->dc_txthresh > DC_TXTHRESH_MAX) {
 		printf("using store and forward mode\n");
@@ -2840,7 +2837,7 @@ dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			dc_tx_underrun(sc);
 
 		if (status & DC_ISR_BUS_ERR) {
-			printf("dc_poll: dc%d bus error\n", sc->dc_unit);
+			if_printf(ifp, "dc_poll: bus error\n");
 			dc_reset(sc);
 			dc_init(sc);
 		}
@@ -3181,8 +3178,8 @@ static void dc_init(xsc)
 
 	/* Init circular RX list. */
 	if (dc_list_rx_init(sc) == ENOBUFS) {
-		printf("dc%d: initialization failed: no "
-		    "memory for rx buffers\n", sc->dc_unit);
+		if_printf(ifp, "initialization failed: no "
+			  "memory for rx buffers\n");
 		dc_stop(sc);
 		(void)splx(s);
 		return;
@@ -3374,7 +3371,7 @@ static void dc_watchdog(ifp)
 	sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("dc%d: watchdog timeout\n", sc->dc_unit);
+	if_printf(ifp, "watchdog timeout\n");
 
 	dc_stop(sc);
 	dc_reset(sc);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.5 2005/05/31 07:46:17 joerg Exp $
  */
 
 /*
@@ -684,7 +684,6 @@ struct dc_softc {
 	struct resource		*dc_res;
 	struct dc_type		*dc_info;	/* adapter info */
 	device_t		dc_miibus;
-	u_int8_t		dc_unit;	/* interface number */
 	u_int8_t		dc_type;
 	u_int8_t		dc_pmode;
 	u_int8_t		dc_link;
