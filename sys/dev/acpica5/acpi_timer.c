@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.4 2005/06/01 20:40:33 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -33,21 +33,16 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version >= 500000
-#include <sys/timetc.h>
-#else
-#include <sys/time.h>
-#endif
+#include <sys/systimer.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
+#include <machine/lock.h>
 #include <sys/rman.h>
 #include <bus/pci/pcivar.h>
 
 #include "acpi.h"
 #include "acpivar.h"
-
-#if 0
 
 /*
  * A timecounter based on the free-running ACPI timer.
@@ -63,16 +58,34 @@ static device_t			acpi_timer_dev;
 static struct resource		*acpi_timer_reg;
 static bus_space_handle_t	acpi_timer_bsh;
 static bus_space_tag_t		acpi_timer_bst;
+static sysclock_t		acpi_counter_mask;
+static sysclock_t		acpi_last_counter;
 
-static u_int	acpi_timer_frequency = 14318182 / 4;
+#define ACPI_TIMER_FREQ		(14318182 / 4)
+
+static sysclock_t acpi_timer_get_timecount(void);
+static sysclock_t acpi_timer_get_timecount24(void);
+static sysclock_t acpi_timer_get_timecount_safe(void);
+static void acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock);
+
+static struct cputimer acpi_cputimer = {
+	NULL,
+	"ACPI",
+	CPUTIMER_PRI_ACPI,
+	CPUTIMER_ACPI,
+	acpi_timer_get_timecount_safe,
+	cputimer_default_fromhz,
+	cputimer_default_fromus,
+	acpi_timer_construct,
+	cputimer_default_destruct,
+	ACPI_TIMER_FREQ,
+	0, 0, 0
+};
 
 static void	acpi_timer_identify(driver_t *driver, device_t parent);
 static int	acpi_timer_probe(device_t dev);
 static int	acpi_timer_attach(device_t dev);
-static u_int	acpi_timer_get_timecount(struct timecounter *tc);
-static u_int	acpi_timer_get_timecount_safe(struct timecounter *tc);
 static int	acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS);
-static void	acpi_timer_boot_test(void);
 
 static u_int	acpi_timer_read(void);
 static int	acpi_timer_test(void);
@@ -94,15 +107,6 @@ static driver_t acpi_timer_driver = {
 static devclass_t acpi_timer_devclass;
 DRIVER_MODULE(acpi_timer, acpi, acpi_timer_driver, acpi_timer_devclass, 0, 0);
 MODULE_DEPEND(acpi_timer, acpi, 1, 1, 1);
-
-static struct timecounter acpi_timer_timecounter = {
-	acpi_timer_get_timecount_safe,	/* get_timecount function */
-	0,				/* no poll_pps */
-	0,				/* no default counter_mask */
-	0,				/* no default frequency */
-	"ACPI",				/* name */
-	1000				/* quality */
-};
 
 static u_int
 acpi_timer_read()
@@ -148,12 +152,9 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
     acpi_timer_bst = rman_get_bustag(acpi_timer_reg);
     if (AcpiGbl_FADT->TmrValExt != 0)
-	acpi_timer_timecounter.tc_counter_mask = 0xffffffff;
+	acpi_counter_mask = 0xffffffff;
     else
-	acpi_timer_timecounter.tc_counter_mask = 0x00ffffff;
-    acpi_timer_timecounter.tc_frequency = acpi_timer_frequency;
-    if (testenv("debug.acpi.timer_test"))
-	acpi_timer_boot_test();
+	acpi_counter_mask = 0x00ffffff;
 
     /*
      * If all tests of the counter succeed, use the ACPI-fast method.  If
@@ -164,18 +165,24 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     for (i = 0; i < 10; i++)
 	j += acpi_timer_test();
     if (j == 10) {
-	acpi_timer_timecounter.tc_name = "ACPI-fast";
-	acpi_timer_timecounter.tc_get_timecount = acpi_timer_get_timecount;
+	if (acpi_counter_mask == 0xffffffff) {
+	    acpi_cputimer.name = "ACPI-fast";
+	    acpi_cputimer.count = acpi_timer_get_timecount;
+	} else {
+	    acpi_cputimer.name = "ACPI-fast24";
+	    acpi_cputimer.count = acpi_timer_get_timecount24;
+	}
     } else {
-	acpi_timer_timecounter.tc_name = "ACPI-safe";
-	acpi_timer_timecounter.tc_get_timecount = acpi_timer_get_timecount_safe;
+	acpi_cputimer.name = "ACPI-safe";
+	acpi_cputimer.count = acpi_timer_get_timecount_safe;
     }
-    tc_init(&acpi_timer_timecounter);
 
     sprintf(desc, "%d-bit timer at 3.579545MHz",
 	    AcpiGbl_FADT->TmrValExt ? 32 : 24);
     device_set_desc_copy(dev, desc);
 
+    cputimer_register(&acpi_cputimer);
+    cputimer_select(&acpi_cputimer, 0);
     return_VOID;
 }
 
@@ -195,12 +202,45 @@ acpi_timer_attach(device_t dev)
 }
 
 /*
- * Fetch current time value from reliable hardware.
+ * Construct the timer.  Adjust the base so the system clock does not
+ * jump weirdly.
  */
-static u_int
-acpi_timer_get_timecount(struct timecounter *tc)
+static void
+acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
-    return (acpi_timer_read());
+    timer->base = 0;
+    timer->base = oldclock - acpi_timer_get_timecount_safe();
+}
+
+/*
+ * Fetch current time value from reliable hardware.
+ *
+ * The cputimer interface requires a 32 bit return value.  If the ACPI timer
+ * is only 24 bits then we have to keep track of the upper 8 bits on our
+ * own.
+ *
+ * XXX we could probably get away with using a per-cpu field for this and
+ * just use interrupt disablement instead of clock_lock.
+ */
+static sysclock_t
+acpi_timer_get_timecount24(void)
+{
+    sysclock_t counter;
+
+    clock_lock();
+    counter = acpi_timer_read();
+    if (counter < acpi_last_counter)
+	acpi_cputimer.base += 0x01000000;
+    acpi_last_counter = counter;
+    counter += acpi_cputimer.base;
+    clock_unlock();
+    return (counter);
+}
+
+static sysclock_t
+acpi_timer_get_timecount(void)
+{
+    return (acpi_timer_read() + acpi_cputimer.base);
 }
 
 /*
@@ -210,10 +250,13 @@ acpi_timer_get_timecount(struct timecounter *tc)
  * against the fact that the bits can be wrong in two directions.  If
  * we only cared about monosity, two reads would be enough.
  */
-static u_int
-acpi_timer_get_timecount_safe(struct timecounter *tc)
+static sysclock_t
+acpi_timer_get_timecount_safe(void)
 {
     u_int u1, u2, u3;
+
+    if (acpi_counter_mask != 0xffffffff)
+	clock_lock();
 
     u2 = acpi_timer_read();
     u3 = acpi_timer_read();
@@ -223,7 +266,13 @@ acpi_timer_get_timecount_safe(struct timecounter *tc)
 	u3 = acpi_timer_read();
     } while (u1 > u2 || u2 > u3);
 
-    return (u2);
+    if (acpi_counter_mask != 0xffffffff) {
+	if (u2 < acpi_last_counter)
+	    acpi_cputimer.base += 0x01000000;
+	acpi_last_counter = u2;
+	clock_unlock();
+    }
+    return (u2 + acpi_cputimer.base);
 }
 
 /*
@@ -235,14 +284,12 @@ acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS)
     int error;
     u_int freq;
  
-    if (acpi_timer_timecounter.tc_frequency == 0)
+    if (acpi_cputimer.freq == 0)
 	return (EOPNOTSUPP);
-    freq = acpi_timer_frequency;
+    freq = acpi_cputimer.freq;
     error = sysctl_handle_int(oidp, &freq, sizeof(freq), req);
-    if (error == 0 && req->newptr != NULL) {
-	acpi_timer_frequency = freq;
-	acpi_timer_timecounter.tc_frequency = acpi_timer_frequency;
-    }
+    if (error == 0 && req->newptr != NULL)
+	cputimer_set_frequency(&acpi_cputimer, freq);
 
     return (error);
 }
@@ -274,7 +321,7 @@ SYSCTL_PROC(_machdep, OID_AUTO, acpi_timer_freq, CTLTYPE_INT | CTLFLAG_RW,
  * ] Status: This will not be fixed in the PIIX4 or PIIX4E, it is fixed
  * ] in the PIIX4M.
  */
-#define N 2000
+
 static int
 acpi_timer_test()
 {
@@ -286,9 +333,10 @@ acpi_timer_test()
     max = 0;
 
     /* Test the timer with interrupts disabled to get accurate results. */
-    s = intr_disable();
+    s = read_eflags();
+    cpu_disable_intr();
     last = acpi_timer_read();
-    for (n = 0; n < N; n++) {
+    for (n = 0; n < 2000; n++) {
 	this = acpi_timer_read();
 	delta = acpi_TimerDelta(this, last);
 	if (delta > max)
@@ -297,7 +345,7 @@ acpi_timer_test()
 	    min = delta;
 	last = this;
     }
-    intr_restore(s);
+    write_eflags(s);
 
     if (max - min > 2)
 	n = 0;
@@ -313,37 +361,4 @@ acpi_timer_test()
 
     return (n);
 }
-#undef N
 
-/*
- * Test harness for verifying ACPI timer behaviour.
- * Boot with debug.acpi.timer_test set to invoke this.
- */
-static void
-acpi_timer_boot_test(void)
-{
-    uint32_t u1, u2, u3;
-
-    u1 = acpi_timer_read();
-    u2 = acpi_timer_read();
-    u3 = acpi_timer_read();
-
-    device_printf(acpi_timer_dev, "timer test in progress, reboot to quit.\n");
-    for (;;) {
-	/*
-	 * The failure case is where u3 > u1, but u2 does not fall between
-	 * the two, ie. it contains garbage.
-	 */
-	if (u3 > u1) {
-	    if (u2 < u1 || u2 > u3)
-		device_printf(acpi_timer_dev,
-			      "timer is not monotonic: 0x%08x,0x%08x,0x%08x\n",
-			      u1, u2, u3);
-	}
-	u1 = u2;
-	u2 = u3;
-	u3 = acpi_timer_read();
-    }
-}
-
-#endif /* 0 */
