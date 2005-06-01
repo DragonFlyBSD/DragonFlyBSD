@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.2 2005/06/01 20:38:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.3 2005/06/01 22:25:12 dillon Exp $
  */
 /*
  * Generic cputimer - access to a reliable, free-running counter.
@@ -94,6 +94,7 @@ cputimer_select(struct cputimer *timer, int pri)
 	if (timer) {
 	    sys_cputimer = timer;
 	    timer->construct(timer, oldclock);
+	    cputimer_intr_config(timer);
 	}
     }
 }
@@ -169,6 +170,8 @@ cputimer_set_frequency(struct cputimer *timer, int freq)
     timer->freq = freq;
     timer->freq64_usec = (1000000LL << 32) / freq;
     timer->freq64_nsec = (1000000000LL << 32) / freq;
+    if (timer == sys_cputimer)
+	cputimer_intr_config(timer);
 }
 
 sysclock_t
@@ -216,60 +219,19 @@ static int
 sysctl_cputimer_reglist(SYSCTL_HANDLER_ARGS)
 {
     struct cputimer *scan;
-#if 0
-    struct cputimer *selected;
-#endif
     int error = 0;
     int loop = 0;
-#if 0
-    char buf[32];
-#endif
-
-#if 0
-    /*
-     * Writing to the reglist selects a timer
-     */
-    if (req->newptr != NULL) {
-	if (req->newlen < 0 || req->newlen >= sizeof(buf))
-	    return (ENAMETOOLONG);
-	error = SYSCTL_IN(req, buf, req->newlen);
-	buf[req->newlen] = 0;
-    } else {
-	buf[0] = 0;
-    }
-#else
-    if (req->newptr != NULL) {
-	return (EOPNOTSUPP);
-    }
-#endif
 
     /*
      * Build a list of available timers
      */
-#if 0
-    selected = NULL;
-#endif
     for (scan = cputimer_reg_base; scan; scan = scan->next) {
 	if (error == 0 && loop)
 	    error = SYSCTL_OUT(req, " ", 1);
 	if (error == 0)
 	    error = SYSCTL_OUT(req, scan->name, strlen(scan->name));
-#if 0
-	if (buf[0] && strcmp(buf, scan->name) == 0)
-	    selected = scan;
-#endif
 	++loop;
     }
-
-    /*
-     * If a particular timer is being selected by the sysctl, switch to it.
-     */
-#if 0
-    if (selected)
-	cputimer_select(selected, 0x7FFFFFFF);
-    if (error == 0 && buf[0] && selected == NULL)
-	error = ENOENT;
-#endif
     return (error);
 }
 
@@ -305,7 +267,7 @@ sysctl_cputimer_freq(SYSCTL_HANDLER_ARGS)
 SYSCTL_DECL(_kern_cputimer);
 SYSCTL_NODE(_kern, OID_AUTO, cputimer, CTLFLAG_RW, NULL, "cputimer");
 
-SYSCTL_PROC(_kern_cputimer, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RW,
+SYSCTL_PROC(_kern_cputimer, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RD,
 	    NULL, NULL, sysctl_cputimer_reglist, "A", "");
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, name, CTLTYPE_STRING|CTLFLAG_RD,
 	    NULL, NULL, sysctl_cputimer_name, "A", "");

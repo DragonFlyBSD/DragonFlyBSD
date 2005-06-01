@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.25 2005/06/01 20:19:45 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.26 2005/06/01 22:25:11 dillon Exp $
  */
 
 /*
@@ -139,6 +139,8 @@ static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
 static	u_int	tsc_present;
+
+static int i8254_cputimer_div;
 
 static struct callout sysbeepstop_ch;
 
@@ -299,22 +301,46 @@ i8254_cputimer_count(void)
 }
 
 /*
+ * This function is called whenever the system timebase changes, allowing
+ * us to calculate what is needed to convert a system timebase tick 
+ * into an 8254 tick for the interrupt timer.  If we can convert to a
+ * simple shift, multiplication, or division, we do so.  Otherwise 64
+ * bit arithmatic is required every time the interrupt timer is reloaded.
+ */
+void
+cputimer_intr_config(struct cputimer *timer)
+{
+    int freq;
+    int div;
+
+    /*
+     * Will a simple divide do the trick?
+     */
+    div = (timer->freq + (i8254_cputimer.freq / 2)) / i8254_cputimer.freq;
+    freq = i8254_cputimer.freq * div;
+
+    if (freq >= timer->freq - 1 && freq <= timer->freq + 1)
+	i8254_cputimer_div = div;
+    else
+	i8254_cputimer_div = 0;
+}
+
+/*
  * Reload for the next timeout.  It is possible for the reload value
  * to be 0 or negative, indicating that an immediate timer interrupt
  * is desired.  For now make the minimum 2 ticks.
+ *
+ * We may have to convert from the system timebase to the 8254 timebase.
  */
 void
 cputimer_intr_reload(sysclock_t reload)
 {
     __uint16_t count;
 
-    /*
-     * XXX reload value must be converted to our interrupt timer
-     * frequency.  This is temporary.
-     */
-    if (i8254_cputimer.freq != sys_cputimer->freq) {
+    if (i8254_cputimer_div)
+	reload /= i8254_cputimer_div;
+    else
 	reload = (int64_t)reload * i8254_cputimer.freq / sys_cputimer->freq;
-    }
 
     if ((int)reload < 2)
 	reload = 2;
@@ -373,38 +399,17 @@ DELAY(int n)
 
 	/*
 	 * Read the counter first, so that the rest of the setup overhead is
-	 * counted.  Guess the initial overhead is 20 usec (on most systems it
-	 * takes about 1.5 usec for each of the i/o's in getit().  The loop
-	 * takes about 6 usec on a 486/33 and 13 usec on a 386/20.  The
-	 * multiplications and divisions to scale the count take a while).
+	 * counted.  Then calculate the number of hardware timer ticks
+	 * required, rounding up to be sure we delay at least the requested
+	 * number of microseconds.
 	 */
 	prev_tick = sys_cputimer->count();
-	n -= 0;			/* XXX actually guess no initial overhead */
-	/*
-	 * Calculate (n * (cputimer_freq / 1e6)) without using floating point
-	 * and without any avoidable overflows.
-	 */
-	if (n <= 0) {
-		ticks_left = 0;
-	} else if (n < 256) {
-		/*
-		 * Use fixed point to avoid a slow division by 1000000.
-		 * 39099 = 1193182 * 2^15 / 10^6 rounded to nearest.
-		 * 2^15 is the first power of 2 that gives exact results
-		 * for n between 0 and 256.
-		 */
-		ticks_left = ((u_int)n * 39099 + (1 << 15) - 1) >> 15;
-	} else {
-		/*
-		 * Don't bother using fixed point, although gcc-2.7.2
-		 * generates particularly poor code for the long long
-		 * division, since even the slow way will complete long
-		 * before the delay is up (unless we're interrupted).
-		 */
-		ticks_left = ((u_int)n * (long long)sys_cputimer->freq + 999999)
-			     / 1000000;
-	}
+	ticks_left = ((u_int)n * (int64_t)sys_cputimer->freq + 999999) /
+		     1000000;
 
+	/*
+	 * Loop until done.
+	 */
 	while (ticks_left > 0) {
 		tick = sys_cputimer->count();
 #ifdef DELAYDEBUG

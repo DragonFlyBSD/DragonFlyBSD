@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.6 2005/06/01 20:19:46 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.7 2005/06/01 22:25:14 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -120,6 +120,7 @@ sysclock_t cputimer_default_fromus(int us);
 void cputimer_default_construct(struct cputimer *timer, sysclock_t oldclock);
 void cputimer_default_destruct(struct cputimer *timer);
 
+void cputimer_intr_config(struct cputimer *timer);
 void cputimer_intr_reload(sysclock_t clock);
 
 #endif
