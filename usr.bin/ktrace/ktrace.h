@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/ktrace/ktrace.h,v 1.2 2005/06/01 03:02:30 swildner Exp $
  */
 
 #define DEF_POINTS (KTRFAC_SYSCALL | KTRFAC_SYSRET | KTRFAC_NAMEI | \
