@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.5 2005/06/01 17:43:43 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.6 2005/06/01 20:19:46 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -82,6 +82,7 @@ void systimer_init_oneshot(systimer_t info, void *func, void *data, int us);
  */
 
 struct cputimer {
+    struct cputimer *next;
     const char	*name;
     int		pri;
     int		type;
@@ -110,9 +111,14 @@ extern struct cputimer *sys_cputimer;
 /*
  * note that cputimer_count() always returns a full-width wrapping counter.
  */
-void cputimer_select(struct cputimer *timer);
+void cputimer_select(struct cputimer *timer, int pri);
+void cputimer_register(struct cputimer *timer);
+void cputimer_deregister(struct cputimer *timer);
+void cputimer_set_frequency(struct cputimer *timer, int freq);
 sysclock_t cputimer_default_fromhz(int freq);
 sysclock_t cputimer_default_fromus(int us);
+void cputimer_default_construct(struct cputimer *timer, sysclock_t oldclock);
+void cputimer_default_destruct(struct cputimer *timer);
 
 void cputimer_intr_reload(sysclock_t clock);
 

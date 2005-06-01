@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.24 2005/06/01 17:43:46 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.25 2005/06/01 20:19:45 dillon Exp $
  */
 
 /*
@@ -147,6 +147,7 @@ static void i8254_cputimer_construct(struct cputimer *cputimer, sysclock_t last)
 static void i8254_cputimer_destruct(struct cputimer *cputimer);
 
 static struct cputimer	i8254_cputimer = {
+    NULL,
     "i8254",
     CPUTIMER_PRI_8254,
     0,
@@ -156,8 +157,7 @@ static struct cputimer	i8254_cputimer = {
     i8254_cputimer_construct,
     i8254_cputimer_destruct,
     TIMER_FREQ,
-    (1000000LL << 32) / TIMER_FREQ,
-    (1000000000LL << 32) / TIMER_FREQ
+    0, 0, 0
 };
 
 /*
@@ -307,6 +307,14 @@ void
 cputimer_intr_reload(sysclock_t reload)
 {
     __uint16_t count;
+
+    /*
+     * XXX reload value must be converted to our interrupt timer
+     * frequency.  This is temporary.
+     */
+    if (i8254_cputimer.freq != sys_cputimer->freq) {
+	reload = (int64_t)reload * i8254_cputimer.freq / sys_cputimer->freq;
+    }
 
     if ((int)reload < 2)
 	reload = 2;
@@ -585,7 +593,8 @@ i8254_restore(void)
 	 * Timer1 or timer2 is our free-running clock, but only if another
 	 * has not been selected.
 	 */
-	cputimer_select(&i8254_cputimer);
+	cputimer_register(&i8254_cputimer);
+	cputimer_select(&i8254_cputimer, 0);
 	clock_unlock();
 }
 
@@ -726,9 +735,7 @@ startrtclock()
 "CLK_USE_I8254_CALIBRATION not specified - using default frequency\n");
 		freq = i8254_cputimer.freq;
 #endif
-		i8254_cputimer.freq = freq;
-		i8254_cputimer.freq64_usec = (1000000LL << 32) / freq;
-		i8254_cputimer.freq64_nsec = (1000000000LL << 32) / freq;
+		cputimer_set_frequency(&i8254_cputimer, freq);
 	} else {
 		if (bootverbose)
 			printf(
