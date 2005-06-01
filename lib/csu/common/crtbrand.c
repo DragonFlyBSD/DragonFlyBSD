@@ -23,12 +23,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/common/crtbrand.c,v 1.1.2.1 2000/10/30 20:32:24 obrien Exp $
- * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.3 2004/02/03 07:34:06 dillon Exp $
+ * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.4 2005/06/01 18:07:10 joerg Exp $
  */
 
 #include <sys/param.h>
 
-#define ABI_VENDOR	"FreeBSD"
+#define ABI_VENDOR	"DragonFly"
 #define ABI_SECTION	".note.ABI-tag"
 #define ABI_NOTETYPE	1
 
