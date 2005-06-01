@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.7 2005/06/01 18:37:20 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -683,8 +683,8 @@ SetAliasAddressFromIfName(const char *ifn)
 	char *buf, *lim, *next;
 	struct if_msghdr *ifm;
 	struct ifa_msghdr *ifam;
-	struct sockaddr_dl *sdl;
-	struct sockaddr_in *sin;
+	struct sockaddr_dl *s_dl;
+	struct sockaddr_in *s_in;
 
 	mib[0] = CTL_NET;
 	mib[1] = PF_ROUTE;
@@ -720,9 +720,9 @@ SetAliasAddressFromIfName(const char *ifn)
 			continue;
 		}
 		if (ifm->ifm_type == RTM_IFINFO) {
-			sdl = (struct sockaddr_dl *)(ifm + 1);
-			if (strlen(ifn) == sdl->sdl_nlen &&
-			    strncmp(ifn, sdl->sdl_data, sdl->sdl_nlen) == 0) {
+			s_dl = (struct sockaddr_dl *)(ifm + 1);
+			if (strlen(ifn) == s_dl->sdl_nlen &&
+			    strncmp(ifn, s_dl->sdl_data, s_dl->sdl_nlen) == 0) {
 				ifIndex = ifm->ifm_index;
 				ifMTU = ifm->ifm_data.ifi_mtu;
 				break;
@@ -734,7 +734,7 @@ SetAliasAddressFromIfName(const char *ifn)
 /*
  * Get interface address.
  */
-	sin = NULL;
+	s_in = NULL;
 	while (next < lim) {
 		ifam = (struct ifa_msghdr *)next;
 		next += ifam->ifam_msglen;
@@ -758,17 +758,17 @@ SetAliasAddressFromIfName(const char *ifn)
 				if (ifam->ifam_addrs & i)
 					ADVANCE(cp, (struct sockaddr *)cp);
 			if (((struct sockaddr *)cp)->sa_family == AF_INET) {
-				sin = (struct sockaddr_in *)cp;
+				s_in = (struct sockaddr_in *)cp;
 				break;
 			}
 		}
 	}
-	if (sin == NULL)
+	if (s_in == NULL)
 		errx(1, "%s: cannot get interface address", ifn);
 
-	PacketAliasSetAddress(sin->sin_addr);
+	PacketAliasSetAddress(s_in->sin_addr);
 	syslog(LOG_INFO, "Aliasing to %s, mtu %d bytes",
-	       inet_ntoa(sin->sin_addr), ifMTU);
+	       inet_ntoa(s_in->sin_addr), ifMTU);
 
 	free(buf);
 }
@@ -787,13 +787,13 @@ void Warn (const char* msg)
 		warn ("%s", msg);
 }
 
-static void RefreshAddr (int sig)
+static void RefreshAddr (int sig __unused)
 {
 	if (ifName)
 		assignAliasAddr = 1;
 }
 
-static void InitiateShutdown (int sig)
+static void InitiateShutdown (int sig __unused)
 {
 /*
  * Start timer to allow kernel gracefully
@@ -805,7 +805,7 @@ static void InitiateShutdown (int sig)
 	alarm (10);
 }
 
-static void Shutdown (int sig)
+static void Shutdown (int sig __unused)
 {
 	running = 0;
 }
@@ -1349,7 +1349,7 @@ void SetupPortRedirect (const char* parms)
 	char*		protoName;
 	char*		separator;
 	int             i;
-	struct alias_link *link = NULL;
+	struct alias_link *alink = NULL;
 
 	strcpy (buf, parms);
 /*
@@ -1443,7 +1443,7 @@ void SetupPortRedirect (const char* parms)
 	        if (numRemotePorts == 1 && remotePort == 0)
 		        remotePortCopy = 0;
 
-		link = PacketAliasRedirectPort (localAddr,
+		alink = PacketAliasRedirectPort(localAddr,
 						htons(localPort + i),
 						remoteAddr,
 						htons(remotePortCopy),
@@ -1455,7 +1455,7 @@ void SetupPortRedirect (const char* parms)
 /*
  * Setup LSNAT server pool.
  */
-	if (serverPool != NULL && link != NULL) {
+	if (serverPool != NULL && alink != NULL) {
 		ptr = strtok(serverPool, ",");
 		while (ptr != NULL) {
 			if (StrToAddrAndPortRange(ptr, &localAddr, protoName, &portRange) != 0)
@@ -1464,7 +1464,7 @@ void SetupPortRedirect (const char* parms)
 			localPort = GETLOPORT(portRange);
 			if (GETNUMPORTS(portRange) != 1)
 				errx(1, "redirect_port: local port must be single in this context");
-			PacketAliasAddServer(link, localAddr, htons(localPort));
+			PacketAliasAddServer(alink, localAddr, htons(localPort));
 			ptr = strtok(NULL, ",");
 		}
 	}
@@ -1533,7 +1533,7 @@ void SetupAddressRedirect (const char* parms)
 	struct in_addr	localAddr;
 	struct in_addr	publicAddr;
 	char*		serverPool;
-	struct alias_link *link;
+	struct alias_link *alink;
 
 	strcpy (buf, parms);
 /*
@@ -1559,16 +1559,16 @@ void SetupAddressRedirect (const char* parms)
 		errx (1, "redirect_address: missing public address");
 
 	StrToAddr (ptr, &publicAddr);
-	link = PacketAliasRedirectAddr(localAddr, publicAddr);
+	alink = PacketAliasRedirectAddr(localAddr, publicAddr);
 
 /*
  * Setup LSNAT server pool.
  */
-	if (serverPool != NULL && link != NULL) {
+	if (serverPool != NULL && alink != NULL) {
 		ptr = strtok(serverPool, ",");
 		while (ptr != NULL) {
 			StrToAddr(ptr, &localAddr);
-			PacketAliasAddServer(link, localAddr, htons(~0));
+			PacketAliasAddServer(alink, localAddr, htons(~0));
 			ptr = strtok(NULL, ",");
 		}
 	}
