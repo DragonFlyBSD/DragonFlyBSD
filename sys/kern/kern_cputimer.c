@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.1 2005/06/01 20:19:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.2 2005/06/01 20:38:37 dillon Exp $
  */
 /*
  * Generic cputimer - access to a reliable, free-running counter.
@@ -206,17 +206,26 @@ cputimer_default_destruct(struct cputimer *cputimer)
 
 /************************************************************************
  *				SYSCTL SUPPORT				*
- ************************************************************************/
-
+ ************************************************************************
+ *
+ * Note: the ability to change the systimer is not currently enabled
+ * because it will mess up systimer calculations.  You have to live
+ * with what is configured at boot.
+ */
 static int
 sysctl_cputimer_reglist(SYSCTL_HANDLER_ARGS)
 {
     struct cputimer *scan;
+#if 0
     struct cputimer *selected;
+#endif
     int error = 0;
     int loop = 0;
+#if 0
     char buf[32];
+#endif
 
+#if 0
     /*
      * Writing to the reglist selects a timer
      */
@@ -228,28 +237,39 @@ sysctl_cputimer_reglist(SYSCTL_HANDLER_ARGS)
     } else {
 	buf[0] = 0;
     }
+#else
+    if (req->newptr != NULL) {
+	return (EOPNOTSUPP);
+    }
+#endif
 
     /*
      * Build a list of available timers
      */
+#if 0
     selected = NULL;
+#endif
     for (scan = cputimer_reg_base; scan; scan = scan->next) {
 	if (error == 0 && loop)
 	    error = SYSCTL_OUT(req, " ", 1);
 	if (error == 0)
 	    error = SYSCTL_OUT(req, scan->name, strlen(scan->name));
+#if 0
 	if (buf[0] && strcmp(buf, scan->name) == 0)
 	    selected = scan;
+#endif
 	++loop;
     }
 
     /*
      * If a particular timer is being selected by the sysctl, switch to it.
      */
+#if 0
     if (selected)
 	cputimer_select(selected, 0x7FFFFFFF);
     if (error == 0 && buf[0] && selected == NULL)
 	error = ENOENT;
+#endif
     return (error);
 }
 
