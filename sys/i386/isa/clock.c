@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.23 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.24 2005/06/01 17:43:46 dillon Exp $
  */
 
 /*
@@ -116,8 +116,6 @@ static void i8254_restore(void);
 #define TIMER_FREQ   1193182
 #endif
 
-int i8254_walltimer;
-TUNABLE_INT("hw.i8254.walltimer", &i8254_walltimer);
 static uint8_t i8254_walltimer_sel;
 static uint16_t i8254_walltimer_cntr;
 
@@ -126,13 +124,6 @@ int	disable_rtc_set;	/* disable resettodr() if != 0 */
 volatile u_int	idelayed;
 int	statclock_disable = 1;	/* we don't use the statclock right now */
 u_int	stat_imask = SWI_CLOCK_MASK;
-u_int	cputimer_freq = TIMER_FREQ;
-#if 0
-int64_t	cputimer_freq64_usec = ((int64_t)TIMER_FREQ << 32) / 1000000;
-int64_t	cputimer_freq64_nsec = ((int64_t)TIMER_FREQ << 32) / 1000000000LL;
-#endif
-int64_t	cputimer_freq64_usec = (1000000LL << 32) / TIMER_FREQ;
-int64_t	cputimer_freq64_nsec = (1000000000LL << 32) / TIMER_FREQ;
 u_int	tsc_freq;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
@@ -150,6 +141,24 @@ static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
 static	u_int	tsc_present;
 
 static struct callout sysbeepstop_ch;
+
+static sysclock_t i8254_cputimer_count(void);
+static void i8254_cputimer_construct(struct cputimer *cputimer, sysclock_t last);
+static void i8254_cputimer_destruct(struct cputimer *cputimer);
+
+static struct cputimer	i8254_cputimer = {
+    "i8254",
+    CPUTIMER_PRI_8254,
+    0,
+    i8254_cputimer_count,
+    cputimer_default_fromhz,
+    cputimer_default_fromus,
+    i8254_cputimer_construct,
+    i8254_cputimer_destruct,
+    TIMER_FREQ,
+    (1000000LL << 32) / TIMER_FREQ,
+    (1000000000LL << 32) / TIMER_FREQ
+};
 
 /*
  * timer0 clock interrupt.  Timer0 is in one-shot mode and has stopped
@@ -175,7 +184,7 @@ clkintr(struct intrframe frame)
 	 * directly or via IPI for any cpu with systimers queued, which is
 	 * usually *ALL* of them.  We need a better way to do this.
 	 */
-	timer1_count = cputimer_count();
+	timer1_count = sys_cputimer->count();
 	for (n = 0; n < ncpus; ++n) {
 	    gscan = globaldata_find(n);
 	    if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
@@ -266,27 +275,12 @@ DB_SHOW_COMMAND(rtc, rtc)
 #endif /* DDB */
 
 /*
- * Convert a frequency to a cpu timer count.
- */
-sysclock_t
-cputimer_fromhz(int freq)
-{
-	return(cputimer_freq / freq + 1);
-}
-
-sysclock_t
-cputimer_fromus(int us)
-{
-	return((int64_t)cputimer_freq * us / 1000000);
-}
-
-/*
  * Return the current cpu timer count as a 32 bit integer.
  */
+static
 sysclock_t
-cputimer_count(void)
+i8254_cputimer_count(void)
 {
-	static sysclock_t cputimer_base;
 	static __uint16_t cputimer_last;
 	__uint16_t count;
 	sysclock_t ret;
@@ -297,8 +291,8 @@ cputimer_count(void)
 	count |= ((__uint8_t)inb(i8254_walltimer_cntr) << 8);
 	count = -count;					/* -> countup */
 	if (count < cputimer_last)			/* rollover */
-		cputimer_base += 0x00010000;
-	ret = cputimer_base | count;
+		i8254_cputimer.base += 0x00010000;
+	ret = i8254_cputimer.base | count;
 	cputimer_last = count;
 	clock_unlock();
 	return(ret);
@@ -376,7 +370,7 @@ DELAY(int n)
 	 * takes about 6 usec on a 486/33 and 13 usec on a 386/20.  The
 	 * multiplications and divisions to scale the count take a while).
 	 */
-	prev_tick = cputimer_count();
+	prev_tick = sys_cputimer->count();
 	n -= 0;			/* XXX actually guess no initial overhead */
 	/*
 	 * Calculate (n * (cputimer_freq / 1e6)) without using floating point
@@ -399,12 +393,12 @@ DELAY(int n)
 		 * division, since even the slow way will complete long
 		 * before the delay is up (unless we're interrupted).
 		 */
-		ticks_left = ((u_int)n * (long long)cputimer_freq + 999999)
+		ticks_left = ((u_int)n * (long long)sys_cputimer->freq + 999999)
 			     / 1000000;
 	}
 
 	while (ticks_left > 0) {
-		tick = cputimer_count();
+		tick = sys_cputimer->count();
 #ifdef DELAYDEBUG
 		++getit_calls;
 #endif
@@ -524,7 +518,7 @@ calibrate_clocks(void)
 	}
 
 	/* Start keeping track of the i8254 counter. */
-	prev_count = cputimer_count();
+	prev_count = sys_cputimer->count();
 	tot_count = 0;
 
 	if (tsc_present) 
@@ -546,7 +540,7 @@ calibrate_clocks(void)
 	for (;;) {
 		if (!(rtcin(RTC_STATUSA) & RTCSA_TUP))
 			sec = rtcin(RTC_SEC);
-		count = cputimer_count();
+		count = sys_cputimer->count();
 		tot_count += (int)(count - prev_count);
 		prev_count = count;
 		if (sec != start_sec)
@@ -568,35 +562,85 @@ calibrate_clocks(void)
 	return (tot_count);
 
 fail:
-	printf("failed, using default i8254 clock of %u Hz\n", cputimer_freq);
-	return (cputimer_freq);
+	printf("failed, using default i8254 clock of %u Hz\n",
+		i8254_cputimer.freq);
+	return (i8254_cputimer.freq);
 }
 
 static void
 i8254_restore(void)
 {
 	timer0_state = ACQUIRED;
-	if (i8254_walltimer != 1 && i8254_walltimer != 2)
-		i8254_walltimer = 2;
 
-	if (i8254_walltimer == 1) {
-		i8254_walltimer_sel = TIMER_SEL1;
-		i8254_walltimer_cntr = TIMER_CNTR1;
-		timer1_state = ACQUIRED;
-	} else {
-		i8254_walltimer_sel = TIMER_SEL2;
-		i8254_walltimer_cntr = TIMER_CNTR2;
-		timer2_state = ACQUIRED;
-	}
 	clock_lock();
+
+	/*
+	 * Timer0 is our fine-grained variable clock interrupt
+	 */
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
 	outb(TIMER_CNTR0, 2);	/* lsb */
 	outb(TIMER_CNTR0, 0);	/* msb */
+
+	/*
+	 * Timer1 or timer2 is our free-running clock, but only if another
+	 * has not been selected.
+	 */
+	cputimer_select(&i8254_cputimer);
+	clock_unlock();
+}
+
+static void
+i8254_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
+{
+ 	int which;
+
+	/*
+	 * Should we use timer 1 or timer 2 ?
+	 */
+	which = 0;
+	TUNABLE_INT_FETCH("hw.i8254.walltimer", &which);
+	if (which != 1 && which != 2)
+		which = 2;
+
+	switch(which) {
+	case 1:
+		timer->name = "i8254_timer1";
+		timer->type = CPUTIMER_8254_SEL1;
+		i8254_walltimer_sel = TIMER_SEL1;
+		i8254_walltimer_cntr = TIMER_CNTR1;
+		timer1_state = ACQUIRED;
+		break;
+	case 2:
+		timer->name = "i8254_timer2";
+		timer->type = CPUTIMER_8254_SEL2;
+		i8254_walltimer_sel = TIMER_SEL2;
+		i8254_walltimer_cntr = TIMER_CNTR2;
+		timer2_state = ACQUIRED;
+		break;
+	}
+
+	timer->base = (oldclock + 0xFFFF) & ~0xFFFF;
+
 	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_RATEGEN | TIMER_16BIT);
 	outb(i8254_walltimer_cntr, 0);	/* lsb */
 	outb(i8254_walltimer_cntr, 0);	/* msb */
 	outb(IO_PPI, inb(IO_PPI) | 1);	/* bit 0: enable gate, bit 1: spkr */
-	clock_unlock();
+}
+
+static void
+i8254_cputimer_destruct(struct cputimer *timer)
+{
+	switch(timer->type) {
+	case CPUTIMER_8254_SEL1:
+	    timer1_state = RELEASED;
+	    break;
+	case CPUTIMER_8254_SEL2:
+	    timer2_state = RELEASED;
+	    break;
+	default:
+	    break;
+	}
+	timer->type = 0;
 }
 
 static void
@@ -673,23 +717,23 @@ startrtclock()
 	 * Otherwise use the default, and don't use the calibrated i586
 	 * frequency.
 	 */
-	delta = freq > cputimer_freq ? 
-			freq - cputimer_freq : cputimer_freq - freq;
-	if (delta < cputimer_freq / 100) {
+	delta = freq > i8254_cputimer.freq ? 
+			freq - i8254_cputimer.freq : i8254_cputimer.freq - freq;
+	if (delta < i8254_cputimer.freq / 100) {
 #ifndef CLK_USE_I8254_CALIBRATION
 		if (bootverbose)
 			printf(
 "CLK_USE_I8254_CALIBRATION not specified - using default frequency\n");
-		freq = cputimer_freq;
+		freq = i8254_cputimer.freq;
 #endif
-		cputimer_freq = freq;
-		cputimer_freq64_usec = (1000000LL << 32) / freq;
-		cputimer_freq64_nsec = (1000000000LL << 32) / freq;
+		i8254_cputimer.freq = freq;
+		i8254_cputimer.freq64_usec = (1000000LL << 32) / freq;
+		i8254_cputimer.freq64_nsec = (1000000000LL << 32) / freq;
 	} else {
 		if (bootverbose)
 			printf(
 		    "%d Hz differs from default of %d Hz by more than 1%%\n",
-			       freq, cputimer_freq);
+			       freq, i8254_cputimer.freq);
 		tsc_freq = 0;
 	}
 
@@ -975,8 +1019,8 @@ cpu_initclocks()
 		 */
 		printf("APIC_IO: Testing 8254 interrupt delivery\n");
 		cputimer_intr_reload(2);	/* XXX assumes 8254 */
-		base = cputimer_count();
-		while (cputimer_count() - base < cputimer_freq / 100)
+		base = sys_cputimer->count();
+		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 			;	/* nothing */
 		if (read_intr_count(apic_8254_intr) - lastcnt == 0) {
 			/* 
@@ -1107,7 +1151,10 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
     char buf[32];
 
     crit_enter();
-    count = cputimer_count();
+    if (sys_cputimer == &i8254_cputimer)
+	count = sys_cputimer->count();
+    else
+	count = 0;
     if (tsc_present)
 	tscval = rdtsc();
     else
@@ -1118,10 +1165,8 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
-SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &cputimer_freq, 0,
-    "frequency");
+SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &i8254_cputimer.freq, 0,
+	    "frequency");
 SYSCTL_PROC(_hw_i8254, OID_AUTO, timestamp, CTLTYPE_STRING|CTLFLAG_RD,
-		0, 0, hw_i8254_timestamp, "A", "");
-SYSCTL_INT(_hw_i8254, OID_AUTO, walltimer, CTLFLAG_RD, &i8254_walltimer, 0,
-    "timer used for the wall time; either 1 or 2");
+	    0, 0, hw_i8254_timestamp, "A", "");
 

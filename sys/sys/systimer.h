@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.4 2005/03/06 05:05:50 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.5 2005/06/01 17:43:43 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -68,16 +68,10 @@ void systimer_init_periodic(systimer_t info, void *func, void *data, int syshz);
 void systimer_init_periodic_nq(systimer_t info, void *func, void *data, int syshz);
 void systimer_init_oneshot(systimer_t info, void *func, void *data, int us);
 
-
 /*
- * note that cputimer_count() always returns a full-width wrapping counter.
- */
-sysclock_t cputimer_count(void);
-sysclock_t cputimer_fromhz(int freq);
-sysclock_t cputimer_fromus(int us);
-void cputimer_intr_reload(sysclock_t clock);
-
-/*
+ * cputimer interface.  This provides a free-running (non-interrupt) 
+ * timebase for the system.  The cputimer
+ *
  * These variables hold the fixed cputimer frequency, determining the
  * granularity of cputimer_count().  
  *
@@ -86,9 +80,41 @@ void cputimer_intr_reload(sysclock_t clock);
  *
  *	usec = (cputimer_freq64_usec * count) >> 32
  */
-extern sysclock_t cputimer_freq;	/* in Hz */
-extern int64_t cputimer_freq64_usec;	/* in (1e6 << 32) / timer_freq */
-extern int64_t cputimer_freq64_nsec;	/* in (1e9 << 32) / timer_freq */
+
+struct cputimer {
+    const char	*name;
+    int		pri;
+    int		type;
+    sysclock_t	(*count)(void);
+    sysclock_t	(*fromhz)(int freq);
+    sysclock_t	(*fromus)(int us);
+    void	(*construct)(struct cputimer *cputimer, sysclock_t oldclock);
+    void	(*destruct)(struct cputimer *cputimer);
+    sysclock_t	freq;		/* in Hz */
+    int64_t	freq64_usec;	/* in (1e6 << 32) / timer_freq */
+    int64_t	freq64_nsec;	/* in (1e9 << 32) / timer_freq */
+    sysclock_t	base;		/* (implementation dependant) */
+};
+
+extern struct cputimer *sys_cputimer;
+
+#define CPUTIMER_DUMMY		0
+#define CPUTIMER_8254_SEL1	1
+#define CPUTIMER_8254_SEL2	2
+#define CPUTIMER_ACPI		3
+
+#define CPUTIMER_PRI_DUMMY	-10
+#define CPUTIMER_PRI_8254	0
+#define CPUTIMER_PRI_ACPI	10
+
+/*
+ * note that cputimer_count() always returns a full-width wrapping counter.
+ */
+void cputimer_select(struct cputimer *timer);
+sysclock_t cputimer_default_fromhz(int freq);
+sysclock_t cputimer_default_fromus(int us);
+
+void cputimer_intr_reload(sysclock_t clock);
 
 #endif
 

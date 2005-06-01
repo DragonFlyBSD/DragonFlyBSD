@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.19 2005/02/01 22:41:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.20 2005/06/01 17:43:42 dillon Exp $
  *
  */
 
@@ -347,19 +347,20 @@ ithread_handler(void *arg)
 	 * XXX calling cputimer_count() is expensive but a livelock may
 	 * prevent other interrupts from occuring so we cannot use ticks.
 	 */
-	cputicks = cputimer_count();
+	cputicks = sys_cputimer->count();
 	++ill_count[intr];
 	bticks = cputicks - ill_ticks[intr];
 	ill_ticks[intr] = cputicks;
-	if (bticks > cputimer_freq)
-	    bticks = cputimer_freq;
+	if (bticks > sys_cputimer->freq)
+	    bticks = sys_cputimer->freq;
 
 	switch(ill_state[intr]) {
 	case LIVELOCK_NONE:
 	    ill_delta[intr] += bticks;
-	    if (ill_delta[intr] < LIVELOCK_TIMEFRAME(cputimer_freq))
+	    if (ill_delta[intr] < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
 		break;
-	    freq = (int64_t)ill_count[intr] * cputimer_freq / ill_delta[intr];
+	    freq = (int64_t)ill_count[intr] * sys_cputimer->freq / 
+		   ill_delta[intr];
 	    ill_delta[intr] = 0;
 	    ill_count[intr] = 0;
 	    if (freq < livelock_limit)
@@ -389,9 +390,10 @@ ithread_handler(void *arg)
 	     * will not exceed livelock_fallback).
 	     */
 	    ill_delta[intr] += bticks;
-	    if (ill_delta[intr] < LIVELOCK_TIMEFRAME(cputimer_freq))
+	    if (ill_delta[intr] < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
 		break;
-	    freq = (int64_t)ill_count[intr] * cputimer_freq / ill_delta[intr];
+	    freq = (int64_t)ill_count[intr] * sys_cputimer->freq / 
+		   ill_delta[intr];
 	    ill_delta[intr] = 0;
 	    ill_count[intr] = 0;
 	    if (freq < (livelock_fallback >> 1)) {

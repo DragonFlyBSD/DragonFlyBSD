@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.28 2005/04/24 02:01:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.29 2005/06/01 17:43:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -209,7 +209,7 @@ clock_getres(struct clock_getres_args *uap)
 		 * is unimportant.
 		 */
 		ts.tv_sec = 0;
-		ts.tv_nsec = 1000000000 / cputimer_freq + 1;
+		ts.tv_nsec = 1000000000 / sys_cputimer->freq + 1;
 		return(copyout(&ts, uap->tp, sizeof(ts)));
 	default:
 		return(EINVAL);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.24 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.25 2005/06/01 17:43:45 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1783,7 +1783,7 @@ siointr1(com)
 		if (com->pps.ppsparam.mode & PPS_CAPTUREBOTH) {
 			modem_status = inb(com->modem_status_port);
 		        if ((modem_status ^ com->last_modem_status) & MSR_DCD) {
-				count = cputimer_count();
+				count = sys_cputimer->count();
 				pps_event(&com->pps, count, 
 				    (modem_status & MSR_DCD) ? 
 				    PPS_CAPTUREASSERT : PPS_CAPTURECLEAR);

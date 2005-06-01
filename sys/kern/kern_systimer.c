@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.6 2005/03/27 19:25:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.7 2005/06/01 17:43:42 dillon Exp $
  */
 
 /*
@@ -46,8 +46,6 @@
  * Notes on machine-dependant code (in arch/arch/systimer.c)
  *
  * cputimer_intr_reload()	Reload the one-shot (per-cpu basis)
- *
- * cputimer_count()		Get the current absolute sysclock_t value.
  */
 
 #include <sys/param.h>
@@ -132,7 +130,7 @@ systimer_add(systimer_t info)
 	systimer_t scan2;
 	scan1 = TAILQ_FIRST(&gd->gd_systimerq);
 	if (scan1 == NULL || (int)(scan1->time - info->time) > 0) {
-	    cputimer_intr_reload(info->time - cputimer_count());
+	    cputimer_intr_reload(info->time - sys_cputimer->count());
 	    TAILQ_INSERT_HEAD(&gd->gd_systimerq, info, node);
 	} else {
 	    scan2 = TAILQ_LAST(&gd->gd_systimerq, systimerq);
@@ -197,8 +195,8 @@ systimer_init_periodic(systimer_t info, void *func, void *data, int hz)
     sysclock_t base_count;
 
     bzero(info, sizeof(struct systimer));
-    info->periodic = cputimer_fromhz(hz);
-    base_count = cputimer_count();
+    info->periodic = sys_cputimer->fromhz(hz);
+    base_count = sys_cputimer->count();
     base_count = base_count - (base_count % info->periodic);
     info->time = base_count + info->periodic;
     info->func = func;
@@ -213,8 +211,8 @@ systimer_init_periodic_nq(systimer_t info, void *func, void *data, int hz)
     sysclock_t base_count;
 
     bzero(info, sizeof(struct systimer));
-    info->periodic = cputimer_fromhz(hz);
-    base_count = cputimer_count();
+    info->periodic = sys_cputimer->fromhz(hz);
+    base_count = sys_cputimer->count();
     base_count = base_count - (base_count % info->periodic);
     info->time = base_count + info->periodic;
     info->func = func;
@@ -234,7 +232,7 @@ void
 systimer_init_oneshot(systimer_t info, void *func, void *data, int us)
 {
     bzero(info, sizeof(struct systimer));
-    info->time = cputimer_count() + cputimer_fromus(us);
+    info->time = sys_cputimer->count() + sys_cputimer->fromus(us);
     info->func = func;
     info->data = data;
     info->gd = mycpu;

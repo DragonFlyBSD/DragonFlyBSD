@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.7 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.8 2005/06/01 17:43:42 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -180,7 +180,7 @@ add_timer_randomness(struct random_bucket *r, struct timer_rand_state *state,
 	u_int		nbits;
 	u_int32_t	time;
 
-	num ^= cputimer_count() << 16;
+	num ^= sys_cputimer->count() << 16;
 	r->entropy_count += 2;
 		
 	time = ticks;
