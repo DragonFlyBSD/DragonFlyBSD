@@ -1,0 +1,6 @@
+This directory contains most of the file 4.13 distribution. The original
+source can be obtained from
+	ftp://ftp.astron.com/pub/file/file-4.13.tar.gz
+	(MD5 (file-4.13.tar.gz) = 2bfc0f878ee22e50441b68df2ccbb984)
+A list of the omitted files and directories can be found in
+README.DELETED.

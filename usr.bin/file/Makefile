@@ -1,7 +1,6 @@
-# $DragonFly: src/usr.bin/file/Makefile,v 1.4 2004/12/18 17:39:17 asmodai Exp $
+# $DragonFly: src/usr.bin/file/Makefile,v 1.5 2005/06/01 14:34:46 joerg Exp $
 
-FILEVER= 4.12
-SRCDIR=	${.CURDIR}/../../contrib/file-${FILEVER}/src
+SRCDIR=	${.CURDIR}/../../contrib/file-4/src
 .PATH: ${SRCDIR}
 
 MAGIC=	/usr/share/misc/magic

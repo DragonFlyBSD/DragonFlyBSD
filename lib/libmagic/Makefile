@@ -1,8 +1,7 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.7 2005/04/21 13:42:34 joerg Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.8 2005/06/01 14:34:46 joerg Exp $
 
-FILEVER= 4.12
-MAGICDIR= ${.CURDIR}/../../contrib/file-${FILEVER}/magic
-SRCDIR=	${.CURDIR}/../../contrib/file-${FILEVER}/src
+MAGICDIR= ${.CURDIR}/../../contrib/file-4/magic
+SRCDIR=	${.CURDIR}/../../contrib/file-4/src
 .PATH: ${SRCDIR}
 
 MAGIC=	/usr/share/misc/magic
