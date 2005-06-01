@@ -32,7 +32,7 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/subr.c,v 1.6 1999/08/28 01:02:34 peter Exp $
- * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.5 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.6 2005/06/01 03:05:40 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -47,12 +47,13 @@
 
 #include "ktrace.h"
 
+int
 getpoints(char *s)
 {
 	int facs = 0;
 
 	while (*s) {
-		switch(*s) {
+		switch (*s) {
 		case 'c':
 			facs |= KTRFAC_SYSCALL | KTRFAC_SYSRET;
 			break;
@@ -75,35 +76,9 @@ getpoints(char *s)
 			facs |= DEF_POINTS;
 			break;
 		default:
-			return (-1);
+			return(-1);
 		}
 		s++;
 	}
 	return (facs);
-}
-
-timevaladd(struct timeval *t1, struct timeval *t2)
-{
-	t1->tv_sec += t2->tv_sec;
-	t1->tv_usec += t2->tv_usec;
-	timevalfix(t1);
-}
-
-timevalsub(struct timeval *t1, struct timeval *t2)
-{
-	t1->tv_sec -= t2->tv_sec;
-	t1->tv_usec -= t2->tv_usec;
-	timevalfix(t1);
-}
-
-timevalfix(struct timeval *t1)
-{
-	if (t1->tv_usec < 0) {
-		t1->tv_sec--;
-		t1->tv_usec += 1000000;
-	}
-	if (t1->tv_usec >= 1000000) {
-		t1->tv_sec++;
-		t1->tv_usec -= 1000000;
-	}
 }

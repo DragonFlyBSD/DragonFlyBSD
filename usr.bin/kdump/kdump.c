@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.17 1999/12/29 05:05:33 peter Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.4 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.5 2005/06/01 03:05:40 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -443,4 +443,23 @@ usage(void)
 	(void)fprintf(stderr,
 	    "usage: kdump [-dnlRT] [-f trfile] [-m maxdata] [-t [cnisuw]]\n");
 	exit(1);
+}
+
+timevalsub(struct timeval *t1, struct timeval *t2)
+{
+	t1->tv_sec -= t2->tv_sec;
+	t1->tv_usec -= t2->tv_usec;
+	timevalfix(t1);
+}
+
+timevalfix(struct timeval *t1)
+{
+	if (t1->tv_usec < 0) {
+		t1->tv_sec--;
+		t1->tv_usec += 1000000;
+	}
+	if (t1->tv_usec >= 1000000) {
+		t1->tv_sec++;
+		t1->tv_usec -= 1000000;
+	}
 }

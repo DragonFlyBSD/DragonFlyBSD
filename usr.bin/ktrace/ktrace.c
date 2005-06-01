@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ktrace.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/ktrace.c,v 1.12.2.3 2001/07/11 00:29:27 mikeh Exp $
- * $DragonFly: src/usr.bin/ktrace/ktrace.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/ktrace/ktrace.c,v 1.4 2005/06/01 03:05:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -46,27 +46,30 @@
 
 #include <err.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "ktrace.h"
 
-void no_ktrace(int);
-void usage(void);
+static void	no_ktrace(int);
+static int	rpid(char *p);
+static void	usage(void);
 
+int
 main(int argc, char **argv)
 {
 	enum { NOTSET, CLEAR, CLEARALL } clear;
 	int append, ch, fd, inherit, ops, pid, pidset, trpoints;
-	char *tracefile;
+	const char *tracefile;
 	mode_t omask;
 	struct stat sb;
 
 	clear = NOTSET;
-	append = ops = pidset = inherit = 0;
+	append = ops = pid = pidset = inherit = 0;
 	trpoints = DEF_POINTS;
 	tracefile = DEF_TRACEFILE;
-	while ((ch = getopt(argc,argv,"aCcdf:g:ip:t:")) != -1)
-		switch((char)ch) {
+	while ((ch = getopt(argc, argv, "aCcdf:g:ip:t:")) != -1)
+		switch(ch) {
 		case 'a':
 			append = 1;
 			break;
@@ -107,13 +110,13 @@ main(int argc, char **argv)
 	argv += optind;
 	argc -= optind;
 	
-	if (pidset && *argv || !pidset && !*argv)
+	if ((pidset && *argv) || (!pidset && !*argv))
 		usage();
 			
 	if (inherit)
 		trpoints |= KTRFAC_INHERIT;
 
-	(void)signal(SIGSYS, no_ktrace);
+	signal(SIGSYS, no_ktrace);
 	if (clear != NOTSET) {
 		if (clear == CLEARALL) {
 			ops = KTROP_CLEAR | KTRFLAG_DESCEND;
@@ -141,8 +144,8 @@ main(int argc, char **argv)
 		    DEFFILEMODE)) < 0)
 			err(1, "%s", tracefile);
 	}
-	(void)umask(omask);
-	(void)close(fd);
+	umask(omask);
+	close(fd);
 
 	if (*argv) { 
 		if (ktrace(tracefile, ops, trpoints, getpid()) < 0)
@@ -155,6 +158,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
+static int
 rpid(char *p)
 {
 	static int first;
@@ -170,19 +174,19 @@ rpid(char *p)
 	return(atoi(p));
 }
 
-void
+static void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 "usage: ktrace [-aCcdi] [-f trfile] [-g pgrp | -p pid] [-t cnisuw]",
 "       ktrace [-adi] [-f trfile] [-t cnisuw] command");
 	exit(1);
 }
 
-void
-no_ktrace(int sig)
+static void
+no_ktrace(int sig __unused)
 {
-        (void)fprintf(stderr,
+        fprintf(stderr,
 "error:\tktrace() system call not supported in the running kernel\n\tre-compile kernel with 'options KTRACE'\n");
         exit(1);
 }
