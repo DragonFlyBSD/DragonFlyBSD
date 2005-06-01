@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.6 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.7 2005/06/01 20:21:47 joerg Exp $
  */
 
 /*-
@@ -107,7 +107,7 @@ static const struct ipw_ident ipw_ident_table[] = {
 static const struct ieee80211_rateset ipw_rateset_11b =
 	{ 4, { 2, 4, 11, 22 } };
 
-static int		ipw_dma_alloc(struct ipw_softc *);
+static int		ipw_dma_alloc(device_t);
 static void		ipw_release(struct ipw_softc *);
 static int		ipw_media_change(struct ifnet *);
 static void		ipw_media_status(struct ifnet *, struct ifmediareq *);
@@ -223,8 +223,6 @@ ipw_attach(device_t dev)
 	u_int16_t val;
 	int error, rid, i;
 
-	sc->sc_dev = dev;
-
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		device_printf(dev, "chip is in D%d power mode "
 		    "-- setting to D0\n", pci_get_powerstate(dev));
@@ -255,6 +253,8 @@ ipw_attach(device_t dev)
 		goto fail;
 	}
 
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	if (ipw_reset(sc) != 0) {
 		device_printf(dev, "could not reset adapter\n");
 		goto fail;
@@ -268,7 +268,7 @@ ipw_attach(device_t dev)
 		CTLFLAG_RD,
 		0, "");
 
-	if (ipw_dma_alloc(sc) != 0) {
+	if (ipw_dma_alloc(dev) != 0) {
 		device_printf(dev, "could not allocate DMA resources\n");
 		goto fail;
 	}
@@ -319,7 +319,6 @@ ipw_attach(device_t dev)
 	ic->ic_ibss_chan = &ic->ic_channels[0];
 
 	ifp->if_softc = sc;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_init = ipw_init;
 	ifp->if_ioctl = ipw_ioctl;
@@ -406,14 +405,16 @@ ipw_detach(device_t dev)
 }
 
 static int
-ipw_dma_alloc(struct ipw_softc *sc)
+ipw_dma_alloc(device_t dev)
 {
 	struct ipw_soft_bd *sbd;
         struct ipw_soft_hdr *shdr;
 	struct ipw_soft_buf *sbuf;
 	bus_addr_t physaddr;
 	int error, i;
+	struct ipw_softc *sc;
 
+	sc = device_get_softc(dev);
 	/*
 	 * Allocate and map tx ring
 	 */
@@ -421,22 +422,21 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, IPW_TBD_SZ, 1, IPW_TBD_SZ, 0,
 	    &sc->tbd_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not create tx ring DMA tag\n");
+		device_printf(dev, "could not create tx ring DMA tag\n");
 		goto fail;
 	}
 
 	error = bus_dmamem_alloc(sc->tbd_dmat, (void **)&sc->tbd_list,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->tbd_map);
 	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "could not allocate tx ring DMA memory\n");
+		device_printf(dev, "could not allocate tx ring DMA memory\n");
 		goto fail;
 	}
 
 	error = bus_dmamap_load(sc->tbd_dmat, sc->tbd_map, sc->tbd_list,
 	    IPW_TBD_SZ, ipw_dma_map_addr, &sc->tbd_phys, 0);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not map tx ring DMA memory\n");
+		device_printf(dev, "could not map tx ring DMA memory\n");
 		goto fail;
 	}
 
@@ -447,22 +447,21 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, IPW_RBD_SZ, 1, IPW_RBD_SZ, 0,
 	    &sc->rbd_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not create rx ring DMA tag\n");
+		device_printf(dev, "could not create rx ring DMA tag\n");
 		goto fail;
 	}
 
 	error = bus_dmamem_alloc(sc->rbd_dmat, (void **)&sc->rbd_list,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->rbd_map);
 	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "could not allocate rx ring DMA memory\n");
+		device_printf(dev, "could not allocate rx ring DMA memory\n");
 		goto fail;
 	}
 
 	error = bus_dmamap_load(sc->rbd_dmat, sc->rbd_map, sc->rbd_list,
 	    IPW_RBD_SZ, ipw_dma_map_addr, &sc->rbd_phys, 0);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not map rx ring DMA memory\n");
+		device_printf(dev, "could not map rx ring DMA memory\n");
 		goto fail;
 	}
 
@@ -473,15 +472,14 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, IPW_STATUS_SZ, 1, IPW_STATUS_SZ, 0,
 	    &sc->status_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "could not create status ring DMA tag\n");
+		device_printf(dev, "could not create status ring DMA tag\n");
 		goto fail;
 	}
 
 	error = bus_dmamem_alloc(sc->status_dmat, (void **)&sc->status_list,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->status_map);
 	if (error != 0) {
-		device_printf(sc->sc_dev,
+		device_printf(dev,
 		    "could not allocate status ring DMA memory\n");
 		goto fail;
 	}
@@ -490,8 +488,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    sc->status_list, IPW_STATUS_SZ, ipw_dma_map_addr, &sc->status_phys,
 	    0);
 	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "could not map status ring DMA memory\n");
+		device_printf(dev, "could not map status ring DMA memory\n");
 		goto fail;
 	}
 
@@ -502,14 +499,13 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, sizeof (struct ipw_cmd), 1,
 	    sizeof (struct ipw_cmd), 0, &sc->cmd_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not create command DMA tag\n");
+		device_printf(dev, "could not create command DMA tag\n");
 		goto fail;
 	}
 
 	error = bus_dmamap_create(sc->cmd_dmat, 0, &sc->cmd_map);
 	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "could not create command DMA map\n");
+		device_printf(dev, "could not create command DMA map\n");
 		goto fail;
 	}
 
@@ -520,7 +516,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, sizeof (struct ipw_hdr), 1,
 	    sizeof (struct ipw_hdr), 0, &sc->hdr_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not create header DMA tag\n");
+		device_printf(dev, "could not create header DMA tag\n");
 		goto fail;
 	}
 
@@ -529,8 +525,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
                 shdr = &sc->shdr_list[i];
 		error = bus_dmamap_create(sc->hdr_dmat, 0, &shdr->map);
 		if (error != 0) {
-			device_printf(sc->sc_dev,
-			    "could not create header DMA map\n");
+			device_printf(dev, "could not create header DMA map\n");
 			goto fail;
 		}
 		SLIST_INSERT_HEAD(&sc->free_shdr, shdr, next);
@@ -543,7 +538,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, IPW_MAX_NSEG, MCLBYTES, 0,
 	    &sc->txbuf_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not create tx DMA tag\n");
+		device_printf(dev, "could not create tx DMA tag\n");
 		goto fail;
 	}
 
@@ -552,8 +547,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 		sbuf = &sc->tx_sbuf_list[i];
 		error = bus_dmamap_create(sc->txbuf_dmat, 0, &sbuf->map);
 		if (error != 0) {
-			device_printf(sc->sc_dev,
-			    "could not create tx DMA map\n");
+			device_printf(dev, "could not create tx DMA map\n");
 			goto fail;
 		}
 		SLIST_INSERT_HEAD(&sc->free_sbuf, sbuf, next);
@@ -575,7 +569,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, IPW_NRBD, MCLBYTES, 0,
 	    &sc->rxbuf_dmat);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not create rx DMA tag\n");
+		device_printf(dev, "could not create rx DMA tag\n");
 		goto fail;
 	}
 
@@ -586,16 +580,14 @@ ipw_dma_alloc(struct ipw_softc *sc)
 
 		sbuf->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (sbuf->m == NULL) {
-			device_printf(sc->sc_dev,
-			    "could not allocate rx mbuf\n");
+			device_printf(dev, "could not allocate rx mbuf\n");
 			error = ENOMEM;
 			goto fail;
 		}
 
 		error = bus_dmamap_create(sc->rxbuf_dmat, 0, &sbuf->map);
 		if (error != 0) {
-			device_printf(sc->sc_dev,
-			    "could not create rx DMA map\n");
+			device_printf(dev, "could not create rx DMA map\n");
 			goto fail;
 		}
 
@@ -603,8 +595,7 @@ ipw_dma_alloc(struct ipw_softc *sc)
 		    mtod(sbuf->m, void *), MCLBYTES, ipw_dma_map_addr,
 		    &physaddr, 0);
 		if (error != 0) {
-			device_printf(sc->sc_dev,
-			    "could not map rx DMA memory\n");
+			device_printf(dev, "could not map rx DMA memory\n");
 			goto fail;
 		}
 
@@ -1033,7 +1024,7 @@ ipw_data_intr(struct ipw_softc *sc, struct ipw_status *status,
 
 	if (le32toh(status->len) < sizeof (struct ieee80211_frame_min) ||
 	    le32toh(status->len) > MCLBYTES) {
-		device_printf(sc->sc_dev, "bad frame length\n");
+		if_printf(ifp, "bad frame length\n");
 		return;
 	}
 
@@ -1074,7 +1065,7 @@ ipw_data_intr(struct ipw_softc *sc, struct ipw_status *status,
 
 	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
-		device_printf(sc->sc_dev, "could not allocate rx mbuf\n");
+		if_printf(ifp, "could not allocate rx mbuf\n");
 		sbuf->m = NULL;
 		return;
 	}
@@ -1082,7 +1073,7 @@ ipw_data_intr(struct ipw_softc *sc, struct ipw_status *status,
 	error = bus_dmamap_load(sc->rxbuf_dmat, sbuf->map, mtod(m, void *),
 	    MCLBYTES, ipw_dma_map_addr, &physaddr, 0);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not map rx DMA memory\n");
+		if_printf(ifp, "could not map rx DMA memory\n");
 		m_freem(m);
 		sbuf->m = NULL;
 		return;
@@ -1141,8 +1132,8 @@ ipw_rx_intr(struct ipw_softc *sc)
 			break;
 
 		default:
-			device_printf(sc->sc_dev, "unknown status code %u\n",
-			    le16toh(status->code));
+			if_printf(&sc->sc_ic.ic_if, "unknown status code %u\n",
+				  le16toh(status->code));
 		}
 
 		/* firmware was killed, stop processing received frames */
@@ -1243,7 +1234,7 @@ ipw_intr(void *arg)
 	DPRINTFN(8, ("INTR!0x%08x\n", r));
 
 	if (r & (IPW_INTR_FATAL_ERROR | IPW_INTR_PARITY_ERROR)) {
-		device_printf(sc->sc_dev, "fatal error\n");
+		if_printf(&sc->sc_ic.ic_if, "fatal error\n");
 		sc->sc_ic.ic_if.if_flags &= ~IFF_UP;
 		ipw_stop(sc);
 	}
@@ -1307,7 +1298,8 @@ ipw_cmd(struct ipw_softc *sc, u_int32_t type, void *data, u_int32_t len)
 	error = bus_dmamap_load(sc->cmd_dmat, sc->cmd_map, &sc->cmd,
 	    sizeof (struct ipw_cmd), ipw_dma_map_addr, &physaddr, 0);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not map command DMA memory\n");
+		if_printf(&sc->sc_ic.ic_if,
+			  "could not map command DMA memory\n");
 		return error;
 	}
 
@@ -1393,16 +1385,14 @@ ipw_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 	error = bus_dmamap_load_mbuf(sc->txbuf_dmat, sbuf->map, m0,
 	    ipw_dma_map_txbuf, &map, 0);
 	if (error != 0 && error != EFBIG) {
-		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
-		    error);
+		if_printf(ifp, "could not map mbuf (error %d)\n", error);
 		m_freem(m0);
 		return error;
 	}
 	if (error != 0) {
 		mnew = m_defrag(m0, MB_DONTWAIT);
 		if (mnew == NULL) {
-			device_printf(sc->sc_dev,
-			    "could not defragment mbuf\n");
+			if_printf(ifp, "could not defragment mbuf\n");
 			m_freem(m0);
 			return ENOBUFS;
 		}
@@ -1411,8 +1401,8 @@ ipw_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 		error = bus_dmamap_load_mbuf(sc->txbuf_dmat, sbuf->map, m0,
 		    ipw_dma_map_txbuf, &map, 0);
 		if (error != 0) {
-			device_printf(sc->sc_dev,
-			    "could not map mbuf (error %d)\n", error);
+			if_printf(ifp,
+				  "could not map mbuf (error %d)\n", error);
 			m_freem(m0);
 			return error;
 		}
@@ -1421,7 +1411,7 @@ ipw_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 	error = bus_dmamap_load(sc->hdr_dmat, shdr->map, &shdr->hdr,
 	    sizeof (struct ipw_hdr), ipw_dma_map_addr, &physaddr, 0);
 	if (error != 0) {
-		device_printf(sc->sc_dev, "could not map header DMA memory\n");
+		if_printf(ifp, "could not map header DMA memory\n");
 		bus_dmamap_unload(sc->txbuf_dmat, sbuf->map);
 		m_freem(m0);
 		return error;
@@ -1648,7 +1638,7 @@ ipw_stop_master(struct ipw_softc *sc)
 		DELAY(10);
 	}
 	if (ntries == 5)
-		device_printf(sc->sc_dev, "timeout waiting for master\n");
+		if_printf(&sc->sc_ic.ic_if, "timeout waiting for master\n");
 
 	CSR_WRITE_4(sc, IPW_CSR_RST, CSR_READ_4(sc, IPW_CSR_RST) |
 	    IPW_RST_PRINCETON_RESET);
@@ -1726,8 +1716,8 @@ ipw_load_ucode(struct ipw_softc *sc, u_char *uc, int size)
 		DELAY(1000);
 	}
 	if (ntries == 100) {
-		device_printf(sc->sc_dev,
-		    "timeout waiting for ucode to initialize\n");
+		if_printf(&sc->sc_ic.ic_if,
+			  "timeout waiting for ucode to initialize\n");
 		return EIO;
 	}
 
@@ -1776,7 +1766,7 @@ ipw_load_firmware(struct ipw_softc *sc, u_char *fw, int size)
 
 	/* Wait at most one second for firmware initialization to complete */
 	if ((error = tsleep(sc, 0, "ipwinit", hz)) != 0) {
-		device_printf(sc->sc_dev, "timeout waiting for firmware "
+		if_printf(&sc->sc_ic.ic_if, "timeout waiting for firmware "
 		    "initialization to complete\n");
 		return error;
 	}
@@ -2073,12 +2063,12 @@ ipw_init(void *priv)
 	ipw_stop(sc);
 
 	if (ipw_reset(sc) != 0) {
-		device_printf(sc->sc_dev, "could not reset adapter\n");
+		if_printf(ifp, "could not reset adapter\n");
 		goto fail;
 	}
 
 	if (ipw_load_ucode(sc, fw->ucode, fw->ucode_size) != 0) {
-		device_printf(sc->sc_dev, "could not load microcode\n");
+		if_printf(ifp, "could not load microcode\n");
 		goto fail;
 	}
 
@@ -2104,7 +2094,7 @@ ipw_init(void *priv)
 	CSR_WRITE_4(sc, IPW_CSR_RX_STATUS_BASE, sc->status_phys);
 
 	if (ipw_load_firmware(sc, fw->main, fw->main_size) != 0) {
-		device_printf(sc->sc_dev, "could not load firmware\n");
+		if_printf(ifp, "could not load firmware\n");
 		goto fail;
 	}
 
@@ -2117,7 +2107,7 @@ ipw_init(void *priv)
 	ipw_write_table1(sc, IPW_INFO_LOCK, 0);
 
 	if (ipw_config(sc) != 0) {
-		device_printf(sc->sc_dev, "device configuration failed\n");
+		if_printf(ifp, "device configuration failed\n");
 		goto fail;
 	}
 

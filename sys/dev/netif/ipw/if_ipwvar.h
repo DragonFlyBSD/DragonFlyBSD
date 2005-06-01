@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_ipwvar.h,v 1.2.2.1 2005/01/13 20:01:04 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.2 2005/03/08 17:50:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.3 2005/06/01 20:21:47 joerg Exp $
  */
 
 struct ipw_firmware {
@@ -93,7 +93,6 @@ struct ipw_softc {
 	struct ieee80211com		sc_ic;
 	int				(*sc_newstate)(struct ieee80211com *,
 					    enum ieee80211_state, int);
-	device_t			sc_dev;	
 	struct ipw_firmware		fw;
 	u_int32_t			flags;
 #define IPW_FLAG_FW_CACHED          (1 << 0)
