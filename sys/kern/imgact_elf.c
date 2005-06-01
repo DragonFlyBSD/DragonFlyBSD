@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.27 2005/05/31 17:45:19 joerg Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.28 2005/06/01 16:51:46 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -714,6 +714,25 @@ exec_elf_imgact(struct image_params *imgp)
 
 			if (bi != NULL && bi->match_abi_note != NULL &&
 			    (*bi->match_abi_note)(abi_note)) {
+				brand_info = bi;
+				break;
+			}
+		}
+	}
+
+	/*
+	 * ELFOSABI_NONE == ELFOSABI_SYSV, so a SYSV binary misses all
+	 * checks so far, since it is neither branded nor does it have
+	 * an ABI note.  If the EI_OSABI field is ELFOSABI_NONE, assume
+	 * it is svr4 and look for an entry in the elf_brand_list with
+	 * match_abi_note == NULL.
+	 */
+	if (brand_info == NULL && hdr->e_ident[EI_OSABI] == ELFOSABI_NONE) {
+		for (i = 0; i < MAX_BRANDS; i++) {
+			Elf_Brandinfo *bi = elf_brand_list[i];
+
+			if (bi != NULL && bi->match_abi_note == NULL &&
+			    ELFOSABI_SYSV == bi->brand) {
 				brand_info = bi;
 				break;
 			}
