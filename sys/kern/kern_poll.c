@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.16 2005/06/01 20:04:53 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.17 2005/06/01 20:47:14 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -157,7 +157,13 @@ static u_int32_t stalled;
 SYSCTL_UINT(_kern_polling, OID_AUTO, stalled, CTLFLAG_RW,
 	&stalled, 0, "potential stalls");
 
-static LIST_HEAD(, ifnet) poll_list = LIST_HEAD_INITIALIZER(poll_list);
+
+#define POLL_LIST_LEN  128
+struct pollrec {
+	struct ifnet	*ifp;
+};
+
+static struct pollrec pr[POLL_LIST_LEN];
 
 /*
  * register relevant netisr. Called from kern_clock.c:
@@ -300,10 +306,10 @@ out:
 static int
 netisr_poll(struct netmsg *msg)
 {
-	struct ifnet *ifp, *tmp_ifp;
 	static int reg_frac_count;
-	int cycles, s;
+	int i, cycles;
 	enum poll_cmd arg = POLL_ONLY;
+	int s;
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 	s = splimp();
@@ -346,16 +352,24 @@ netisr_poll(struct netmsg *msg)
 	residual_burst -= cycles;
 
 	if (polling) {
-		LIST_FOREACH_MUTABLE(ifp, &poll_list, if_poll_link, tmp_ifp) {
-			if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) ==
-			    (IFF_UP | IFF_RUNNING))
-				ifp->if_poll(ifp, arg, cycles);
+		for (i = 0 ; i < poll_handlers ; i++) {
+			struct pollrec *p = &pr[i];
+			if ((p->ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING)) == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
+				p->ifp->if_poll(p->ifp, arg, cycles);
+			}
 		}
 	} else {	/* unregister */
-		LIST_FOREACH_MUTABLE(ifp, &poll_list, if_poll_link, tmp_ifp) {
-			if (ifp->if_flags & IFF_RUNNING) {
-				ifp->if_flags &= ~IFF_POLLING;
-				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+		for (i = 0 ; i < poll_handlers ; i++) {
+			struct pollrec *p = &pr[i];
+			if (p->ifp->if_flags & IFF_POLLING) {
+				p->ifp->if_flags &= ~IFF_POLLING;
+				/*
+				 * Only call the interface deregistration
+				 * function if the interface is still 
+				 * running.
+				 */
+				if (p->ifp->if_flags & IFF_RUNNING)
+					p->ifp->if_poll(p->ifp, POLL_DEREGISTER, 1);
 			}
 		}
 		residual_burst = 0;
@@ -391,16 +405,38 @@ ether_poll_register(struct ifnet *ifp)
 	 * Attempt to register.  Interlock with IFF_POLLING.
 	 */
 	crit_enter();	/* XXX MP - not mp safe */
-	LIST_INSERT_HEAD(&poll_list, ifp, if_poll_link);
 	ifp->if_flags |= IFF_POLLING;
 	ifp->if_poll(ifp, POLL_REGISTER, 0);
-	poll_handlers++;
 	if ((ifp->if_flags & IFF_POLLING) == 0) {
 		crit_exit();
 		return 0;
 	}
-	rc = 1;
 
+	/*
+	 * Check if there is room.  If there isn't, deregister.
+	 */
+	if (poll_handlers >= POLL_LIST_LEN) {
+		/*
+		 * List full, cannot register more entries.
+		 * This should never happen; if it does, it is probably a
+		 * broken driver trying to register multiple times. Checking
+		 * this at runtime is expensive, and won't solve the problem
+		 * anyways, so just report a few times and then give up.
+		 */
+		static int verbose = 10 ;
+		if (verbose >0) {
+			printf("poll handlers list full, "
+				"maybe a broken driver ?\n");
+			verbose--;
+		}
+		ifp->if_flags &= ~IFF_POLLING;
+		ifp->if_poll(ifp, POLL_DEREGISTER, 0);
+		rc = 0;
+	} else {
+		pr[poll_handlers].ifp = ifp;
+		poll_handlers++;
+		rc = 1;
+	}
 	crit_exit();
 	return (rc);
 }
@@ -412,14 +448,27 @@ ether_poll_register(struct ifnet *ifp)
 int
 ether_poll_deregister(struct ifnet *ifp)
 {
+	int i;
+
 	crit_enter();
 	if (ifp == NULL || (ifp->if_flags & IFF_POLLING) == 0) {
 		crit_exit();
 		return 0;
 	}
-	LIST_REMOVE(ifp, if_poll_link);
-	ifp->if_flags &= ~IFF_POLLING;
+	for (i = 0 ; i < poll_handlers ; i++) {
+		if (pr[i].ifp == ifp) /* found it */
+			break;
+	}
+	ifp->if_flags &= ~IFF_POLLING; /* found or not... */
+	if (i == poll_handlers) {
+		crit_exit();
+		printf("ether_poll_deregister: ifp not found!!!\n");
+		return 0;
+	}
 	poll_handlers--;
+	if (i < poll_handlers) { /* Last entry replaces this one. */
+		pr[i].ifp = pr[poll_handlers].ifp;
+	}
 	crit_exit();
 
 	/*
@@ -437,17 +486,5 @@ emergency_poll_enable(const char *name)
 	if (polling == 0) {
 		polling = 1;
 		printf("%s forced polling on\n", name);
-	}
-}
-
-void
-ether_poll_update(struct ifnet *ifp)
-{
-	if ((ifp->if_flags & IFF_POLLING) &&
-	    (ifp->if_capenable & IFCAP_POLLING) == 0) {
-		ether_poll_deregister(ifp);
-	} else if ((ifp->if_flags & (IFF_POLLING | IFF_UP)) == IFF_UP &&
-	    (ifp->if_capenable & IFCAP_POLLING)) {
-		ether_poll_register(ifp);
 	}
 }
