@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)showmount.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/usr.bin/showmount/showmount.c,v 1.8 1999/08/28 01:05:43 peter Exp $
- * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.4 2005/06/01 18:25:45 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -105,9 +105,9 @@ int tcp_callrpc(char *host,
 int
 main(int argc, char **argv)
 {
-	register struct exportslist *exp;
-	register struct grouplist *grp;
-	register int rpcs = 0, mntvers = 1;
+	struct exportslist *exp;
+	struct grouplist *grp;
+	int rpcs = 0, mntvers = 1;
 	char ch;
 	char *host;
 	int estat;
@@ -264,9 +264,9 @@ tcp_callrpc(char *host, int prognum, int versnum, int procnum, xdrproc_t inproc,
 int
 xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 {
-	register struct mountlist *mp;
-	register struct mountlist *tp;
-	register struct mountlist **otp;
+	struct mountlist *mp;
+	struct mountlist *tp;
+	struct mountlist **otp;
 	int val, val2;
 	int bool;
 	char *strp;
@@ -344,8 +344,8 @@ next:
 int
 xdr_exports(XDR *xdrsp, struct exportslist **exp)
 {
-	register struct exportslist *ep;
-	register struct grouplist *gp;
+	struct exportslist *ep;
+	struct grouplist *gp;
 	int bool, grpbool;
 	char *strp;
 
