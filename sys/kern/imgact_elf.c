@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.28 2005/06/01 16:51:46 joerg Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.29 2005/06/01 20:04:53 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -769,7 +769,7 @@ exec_elf_imgact(struct image_params *imgp)
 		    hdr->e_ident[EI_OSABI]);
 		error = ENOEXEC;
 		goto fail;
-	} else
+	}
 
 	imgp->proc->p_sysent = brand_info->sysvec;
 	if (interp != NULL) {
