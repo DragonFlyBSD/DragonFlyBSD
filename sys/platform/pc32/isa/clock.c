@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.26 2005/06/01 22:25:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.27 2005/06/01 22:55:19 dillon Exp $
  */
 
 /*
@@ -593,6 +593,7 @@ i8254_restore(void)
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
 	outb(TIMER_CNTR0, 2);	/* lsb */
 	outb(TIMER_CNTR0, 0);	/* msb */
+	clock_unlock();
 
 	/*
 	 * Timer1 or timer2 is our free-running clock, but only if another
@@ -600,7 +601,6 @@ i8254_restore(void)
 	 */
 	cputimer_register(&i8254_cputimer);
 	cputimer_select(&i8254_cputimer, 0);
-	clock_unlock();
 }
 
 static void
@@ -635,10 +635,12 @@ i8254_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
 
 	timer->base = (oldclock + 0xFFFF) & ~0xFFFF;
 
+	clock_lock();
 	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_RATEGEN | TIMER_16BIT);
 	outb(i8254_walltimer_cntr, 0);	/* lsb */
 	outb(i8254_walltimer_cntr, 0);	/* msb */
 	outb(IO_PPI, inb(IO_PPI) | 1);	/* bit 0: enable gate, bit 1: spkr */
+	clock_unlock();
 }
 
 static void
