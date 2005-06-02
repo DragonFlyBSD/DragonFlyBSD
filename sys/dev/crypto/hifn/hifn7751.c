@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.8 2005/05/24 20:58:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.9 2005/06/02 21:40:54 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -64,6 +64,7 @@
 #include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <opencrypto/cryptodev.h>
 #include <sys/random.h>
@@ -523,12 +524,10 @@ static int
 hifn_detach(device_t dev)
 {
 	struct hifn_softc *sc = device_get_softc(dev);
-	int s;
 
 	KASSERT(sc != NULL, ("hifn_detach: null software carrier!"));
 
-	s = splimp();
-
+	crit_enter();
 	/*XXX other resources */
 	callout_stop(&sc->sc_tickto);
 	callout_stop(&sc->sc_rngto);
@@ -556,8 +555,7 @@ hifn_detach(device_t dev)
 
 	bus_release_resource(dev, SYS_RES_MEMORY, HIFN_BAR1, sc->sc_bar1res);
 	bus_release_resource(dev, SYS_RES_MEMORY, HIFN_BAR0, sc->sc_bar0res);
-
-	splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -1946,9 +1944,8 @@ static void
 hifn_tick(void* vsc)
 {
 	struct hifn_softc *sc = vsc;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	if (sc->sc_active == 0) {
 		struct hifn_dma *dma = sc->sc_dma;
 		u_int32_t r = 0;
@@ -1973,7 +1970,7 @@ hifn_tick(void* vsc)
 			WRITE_REG_1(sc, HIFN_1_DMA_CSR, r);
 	} else
 		sc->sc_active--;
-	splx(s);
+	crit_exit();
 	callout_reset(&sc->sc_tickto, hz, hifn_tick, sc);
 }
 

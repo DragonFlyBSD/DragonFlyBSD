@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.7 2005/05/24 20:58:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.8 2005/06/02 21:40:55 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -65,6 +65,7 @@
 #include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <crypto/sha1.h>
 #include <opencrypto/cryptodev.h>
@@ -493,13 +494,12 @@ static int
 ubsec_detach(device_t dev)
 {
 	struct ubsec_softc *sc = device_get_softc(dev);
-	int s;
 
 	KASSERT(sc != NULL, ("ubsec_detach: null software carrier"));
 
 	/* XXX wait/abort active ops */
 
-	s = splimp();
+	crit_enter();
 
 	callout_stop(&sc->sc_rngto);
 
@@ -533,7 +533,7 @@ ubsec_detach(device_t dev)
 	bus_dma_tag_destroy(sc->sc_dmat);
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, sc->sc_sr);
 
-	splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -998,7 +998,7 @@ static int
 ubsec_process(void *arg, struct cryptop *crp, int hint)
 {
 	struct ubsec_q *q = NULL;
-	int err = 0, i, j, s, nicealign;
+	int err = 0, i, j, nicealign;
 	struct ubsec_softc *sc = arg;
 	struct cryptodesc *crd1, *crd2, *maccrd, *enccrd;
 	int encoffset = 0, macoffset = 0, cpskip, cpoffset;
@@ -1017,17 +1017,17 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 		return (EINVAL);
 	}
 
-	s = splimp();
+	crit_enter();
 
 	if (SIMPLEQ_EMPTY(&sc->sc_freequeue)) {
 		ubsecstats.hst_queuefull++;
 		sc->sc_needwakeup |= CRYPTO_SYMQ;
-		splx(s);
+		crit_exit();
 		return (ERESTART);
 	}
 	q = SIMPLEQ_FIRST(&sc->sc_freequeue);
 	SIMPLEQ_REMOVE_HEAD(&sc->sc_freequeue, q, q_next);
-	splx(s);
+	crit_exit();
 
 	dmap = q->q_dma; /* Save dma pointer */
 	bzero(q, sizeof(struct ubsec_q));
@@ -1494,14 +1494,14 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 		    offsetof(struct ubsec_dmachunk, d_ctx),
 		    sizeof(struct ubsec_pktctx));
 
-	s = splimp();
+	crit_enter();
 	SIMPLEQ_INSERT_TAIL(&sc->sc_queue, q, q_next);
 	sc->sc_nqueue++;
 	ubsecstats.hst_ipackets++;
 	ubsecstats.hst_ibytes += dmap->d_alloc.dma_size;
 	if ((hint & CRYPTO_HINT_MORE) == 0 || sc->sc_nqueue >= UBS_MAX_AGGR)
 		ubsec_feed(sc);
-	splx(s);
+	crit_exit();
 	return (0);
 
 errout:
@@ -1518,9 +1518,9 @@ errout:
 			bus_dmamap_destroy(sc->sc_dmat, q->q_src_map);
 		}
 
-		s = splimp();
+		crit_enter();
 		SIMPLEQ_INSERT_TAIL(&sc->sc_freequeue, q, q_next);
-		splx(s);
+		crit_exit();
 	}
 	if (err != ERESTART) {
 		crp->crp_etype = err;
@@ -1762,11 +1762,10 @@ ubsec_rng(void *vsc)
 	struct ubsec_q2_rng *rng = &sc->sc_rng;
 	struct ubsec_mcr *mcr;
 	struct ubsec_ctx_rngbypass *ctx;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	if (rng->rng_used) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	sc->sc_nqueue2++;
@@ -1797,7 +1796,7 @@ ubsec_rng(void *vsc)
 	rng->rng_used = 1;
 	ubsec_feed2(sc);
 	ubsecstats.hst_rng++;
-	splx(s);
+	crit_exit();
 
 	return;
 
@@ -1806,7 +1805,7 @@ out:
 	 * Something weird happened, generate our own call back.
 	 */
 	sc->sc_nqueue2--;
-	splx(s);
+	crit_exit();
 	callout_reset(&sc->sc_rngto, sc->sc_rnghz, ubsec_rng, sc);
 }
 #endif /* UBSEC_NO_RNG */
@@ -2133,7 +2132,7 @@ ubsec_kprocess_modexp_sw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	struct ubsec_mcr *mcr;
 	struct ubsec_ctx_modexp *ctx;
 	struct ubsec_pktbuf *epb;
-	int s, err = 0;
+	int err = 0;
 	u_int nbits, normbits, mbits, shiftbits, ebits;
 
 	me = malloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
@@ -2283,11 +2282,11 @@ ubsec_kprocess_modexp_sw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	ubsec_dma_sync(&me->me_epb, BUS_DMASYNC_PREWRITE);
 
 	/* Enqueue and we're done... */
-	s = splimp();
+	crit_enter();
 	SIMPLEQ_INSERT_TAIL(&sc->sc_queue2, &me->me_q, q_next);
 	ubsec_feed2(sc);
 	ubsecstats.hst_modexp++;
-	splx(s);
+	crit_exit();
 
 	return (0);
 
@@ -2330,7 +2329,7 @@ ubsec_kprocess_modexp_hw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	struct ubsec_mcr *mcr;
 	struct ubsec_ctx_modexp *ctx;
 	struct ubsec_pktbuf *epb;
-	int s, err = 0;
+	int err = 0;
 	u_int nbits, normbits, mbits, shiftbits, ebits;
 
 	me = malloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
@@ -2480,10 +2479,10 @@ ubsec_kprocess_modexp_hw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	ubsec_dma_sync(&me->me_epb, BUS_DMASYNC_PREWRITE);
 
 	/* Enqueue and we're done... */
-	s = splimp();
+	crit_enter();
 	SIMPLEQ_INSERT_TAIL(&sc->sc_queue2, &me->me_q, q_next);
 	ubsec_feed2(sc);
-	splx(s);
+	crit_exit();
 
 	return (0);
 
@@ -2522,7 +2521,7 @@ ubsec_kprocess_rsapriv(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	struct ubsec_q2_rsapriv *rp = NULL;
 	struct ubsec_mcr *mcr;
 	struct ubsec_ctx_rsapriv *ctx;
-	int s, err = 0;
+	int err = 0;
 	u_int padlen, msglen;
 
 	msglen = ubsec_ksigbits(&krp->krp_param[UBS_RSAPRIV_PAR_P]);
@@ -2671,11 +2670,11 @@ ubsec_kprocess_rsapriv(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	ubsec_dma_sync(&rp->rpr_msgout, BUS_DMASYNC_PREREAD);
 
 	/* Enqueue and we're done... */
-	s = splimp();
+	crit_enter();
 	SIMPLEQ_INSERT_TAIL(&sc->sc_queue2, &rp->rpr_q, q_next);
 	ubsec_feed2(sc);
 	ubsecstats.hst_modexpcrt++;
-	splx(s);
+	crit_exit();
 	return (0);
 
 errout:
