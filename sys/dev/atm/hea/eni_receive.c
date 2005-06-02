@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_receive.c,v 1.5 1999/08/28 00:41:45 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.8 2005/02/01 00:51:49 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.9 2005/06/02 21:36:08 dillon Exp $
  */
 
 /*
@@ -657,9 +657,8 @@ eni_recv_drain ( eup )
 	u_long		DMA_Rdptr;
 	u_long		dma_wrp;
 	u_long		start, stop;
-	int		s;
 
-	s = splimp();
+	crit_enter();
 	/* Pop first buffer */
 	IF_DEQUEUE ( &eup->eu_rxqueue, m );
 	while ( m ) {
@@ -799,9 +798,7 @@ next_buffer:
 		IF_DEQUEUE ( &eup->eu_rxqueue, m );
 	}
 finish:
-	(void) splx(s);
-
-	return;
+	crit_exit();
 }
 
 /*

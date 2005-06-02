@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_transmit.c,v 1.6 1999/12/21 08:24:35 eivind Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.6 2005/02/01 00:51:49 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.7 2005/06/02 21:36:08 dillon Exp $
  */
 
 /*
@@ -242,7 +242,8 @@ eni_xmit_drain ( eup )
 	u_long		pdulen;
 	u_long		start, stop;
 	u_long		dmap;
-	int		s = splimp();
+
+	crit_enter();
 
 	/*
 	 * Pull the top element (PDU) off
@@ -298,7 +299,7 @@ eni_xmit_drain ( eup )
 			 * If this one isn't done, none of the others
 			 * are either.
 			 */
-			(void) splx(s);
+			crit_exit();
 			return;
 		    }
 		} else {
@@ -312,7 +313,7 @@ eni_xmit_drain ( eup )
 			 * If this one isn't done, none of the others
 			 * are either.
 			 */
-			(void) splx(s);
+			crit_exit();
 			return;
 		    }
 		}
@@ -367,8 +368,7 @@ eni_xmit_drain ( eup )
 	/*
 	 * We've drained the queue...
 	 */
-	(void) splx(s);
-	return;
+	crit_exit();
 }
 
 /*
@@ -397,7 +397,6 @@ eni_output ( cup, cvp, m )
 {
 	Eni_unit	*eup = (Eni_unit *)cup;
 	Eni_vcc		*evp = (Eni_vcc *)cvp;
-	int		s, s2;
 	int		pdulen = 0;
 	u_long		size;
 	u_long		buf_avail;
@@ -605,7 +604,7 @@ retry:
 		return;
 	}
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * Calculate size of buffer necessary to store PDU. If this
@@ -659,7 +658,7 @@ retry:
 #endif
 		eup->eu_pif.pif_oerrors++;
 	 	KB_FREEALL ( m );
-		(void) splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -694,7 +693,7 @@ retry:
 #endif
 		eup->eu_pif.pif_oerrors++;
 		KB_FREEALL( m );
-		(void) splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -796,9 +795,7 @@ retry:
 	/*
 	 * Place buffers onto transmit queue for draining
 	 */
-	s2 = splimp();
 	IF_ENQUEUE ( &eup->eu_txqueue, m );
-	(void) splx(s2);
 
 	/*
 	 * Update next word to be stored
@@ -810,8 +807,6 @@ retry:
 	 */
 	eup->eu_midway[MIDWAY_TX_WR] = dma_wr;
 	
-	(void) splx ( s );
-
-	return;
+	crit_exit();
 }
 

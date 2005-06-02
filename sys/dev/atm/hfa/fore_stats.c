@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_stats.c,v 1.4 1999/08/28 00:41:52 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_stats.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_stats.c,v 1.7 2005/06/02 21:36:09 dillon Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
  * We will then sleep pending command completion.  This must only be called
  * from the ioctl system call handler.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	fup	pointer to device unit structure
@@ -61,7 +61,7 @@ fore_get_stats(fup)
 {
 	H_cmd_queue	*hcp;
 	Cmd_queue	*cqp;
-	int		s, sst;
+	int		sst;
 
 	ATM_DEBUG1("fore_get_stats: fup=%p\n", fup);
 
@@ -76,11 +76,11 @@ fore_get_stats(fup)
 	 * If someone has already initiated a stats request, we'll
 	 * just wait for that one to complete
 	 */
-	s = splimp();
+	crit_enter();
 	if (fup->fu_flags & FUF_STATCMD) {
 
 		sst = tsleep((caddr_t)&fup->fu_stats, PCATCH, "fore", 0);
-		(void) splx(s);
+		crit_exit();
 		return (sst ? sst : fup->fu_stats_ret);
 	}
 
@@ -88,7 +88,7 @@ fore_get_stats(fup)
 	 * Limit stats gathering to once a second or so
 	 */
 	if (time_second == fup->fu_stats_time) {
-		(void) splx(s);
+		crit_exit();
 		return (0);
 	} else
 		fup->fu_stats_time = time_second;
@@ -118,7 +118,7 @@ fore_get_stats(fup)
 			FORE_STATS_ALIGN, 0);
 		if (dma == NULL) {
 			fup->fu_stats->st_drv.drv_cm_nodma++;
-			(void) splx(s);
+			crit_exit();
 			return (EIO);
 		}
 		fup->fu_statsd = dma;
@@ -132,7 +132,7 @@ fore_get_stats(fup)
 		 * Now wait for command to finish
 		 */
 		sst = tsleep((caddr_t)&fup->fu_stats, PCATCH, "fore", 0);
-		(void) splx(s);
+		crit_exit();
 		return (sst ? sst : fup->fu_stats_ret);
 
 	} else {
@@ -140,7 +140,7 @@ fore_get_stats(fup)
 		 * Command queue full
 		 */
 		fup->fu_stats->st_drv.drv_cm_full++;
-		(void) splx(s);
+		crit_exit();
 		return (EIO);
 	}
 }

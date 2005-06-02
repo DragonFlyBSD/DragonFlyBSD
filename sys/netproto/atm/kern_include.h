@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/kern_include.h,v 1.3 1999/08/28 00:48:40 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.7 2005/06/02 21:36:06 dillon Exp $
  *
  */
 
@@ -60,8 +60,9 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/syslog.h>
-
 #include <sys/eventhandler.h>
+#include <sys/thread2.h>
+
 #include <machine/clock.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>

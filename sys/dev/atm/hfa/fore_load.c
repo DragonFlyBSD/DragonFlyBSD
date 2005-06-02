@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.10 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.11 2005/06/02 21:36:09 dillon Exp $
  */
 
 /*
@@ -450,11 +450,10 @@ static void
 fore_reset(fup)
 	Fore_unit	*fup;
 {
-	int	s = splimp();
-
 	/*
 	 * Reset the board and return it to cold_start state
 	 */
+	crit_enter();
 	if (fup->fu_mon)
 		fup->fu_mon->mon_bstat = CP_WRITE(BOOT_COLDSTART);
 
@@ -476,8 +475,7 @@ fore_reset(fup)
 			break;
 		}
 	}
-
-	(void) splx(s);
+	crit_exit();
 	return;
 }
 

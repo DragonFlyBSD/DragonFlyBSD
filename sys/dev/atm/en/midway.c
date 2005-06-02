@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.17 2005/05/31 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.18 2005/06/02 21:36:07 dillon Exp $
  */
 
 /*
@@ -125,6 +125,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_atm.h>
@@ -1108,9 +1109,9 @@ struct ucred *cr;
     struct atm_rawioctl *ario = (struct atm_rawioctl *)data;
     int slot;
 #endif
-    int s, error = 0;
+    int error = 0;
 
-    s = splnet();
+    crit_enter();
 
     switch (cmd) {
 	case SIOCATMENA:		/* enable circuit for recv */
@@ -1192,7 +1193,7 @@ struct ucred *cr;
 	    error = EINVAL;
 	    break;
     }
-    splx(s);
+    crit_exit();
     return error;
 }
 
@@ -1208,7 +1209,7 @@ struct atm_pseudoioctl *pi;
 int on;
 
 {
-  u_int s, vci, flags, slot;
+  u_int vci, flags, slot;
   u_int32_t oldmode, newmode;
 
   vci = ATM_PH_VCI(&pi->aph);
@@ -1261,7 +1262,7 @@ int on;
   slot = sc->rxvc2slot[vci];
   if ((sc->rxslot[slot].oth_flags & (ENOTHER_FREE|ENOTHER_DRAIN)) != 0)
     return(EINVAL);
-  s = splimp();		/* block out enintr() */
+  crit_enter();		/* block out enintr() */
   oldmode = EN_READ(sc, MID_VC(vci));
   newmode = MIDV_SETMODE(oldmode, MIDV_TRASH) & ~MIDV_INSERVICE;
   EN_WRITE(sc, MID_VC(vci), (newmode | (oldmode & MIDV_INSERVICE)));
@@ -1284,7 +1285,7 @@ int on;
     sc->rxslot[slot].atm_vci = RX_NONE;
     sc->rxvc2slot[vci] = RX_NONE;
   }
-  splx(s);		/* enable enintr() */
+  crit_exit();		/* enable enintr() */
 #ifdef EN_DEBUG
   printf("%s: rx%d: VCI %d is now %s\n", sc->sc_dev.dv_xname, slot, vci,
 	(sc->rxslot[slot].oth_flags & ENOTHER_DRAIN) ? "draining" : "free");
@@ -1503,7 +1504,7 @@ int vc;
 
 /*
  * en_start: start transmitting the next packet that needs to go out
- * if there is one.    note that atm_output() has already splimp()'d us.
+ * if there is one.    note that atm_output() has already locked us.
  */
 
 STATIC void en_start(ifp)

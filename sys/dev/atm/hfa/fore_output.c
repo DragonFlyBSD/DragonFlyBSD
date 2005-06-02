@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_output.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.5 2005/06/02 21:36:09 dillon Exp $
  */
 
 /*
@@ -76,7 +76,6 @@ fore_output(cup, cvp, m)
 	Xmit_queue	*cqp;
 	Xmit_descr	*xdp;
 	int		retry, nsegs, pdulen;
-	int		s;
 
 #ifdef DIAGNOSTIC
 	if (atm_dev_print)
@@ -111,7 +110,7 @@ fore_output(cup, cvp, m)
 	 *
 	 * If queue is full we'll delay a bit before tossing the PDU
 	 */
-	s = splnet();
+	crit_enter();
 	hxp = fup->fu_xmit_tail;
 	if (!((*hxp->hxq_status) & QSTAT_FREE)) {
 
@@ -135,7 +134,7 @@ fore_output(cup, cvp, m)
 			if (vcp->vc_nif)
 				vcp->vc_nif->nif_if.if_oerrors++;
 			KB_FREEALL(m);
-			(void) splx(s);
+			crit_exit();
 			return;
 		}
 	}
@@ -155,7 +154,7 @@ fore_output(cup, cvp, m)
 		vcp->vc_oerrors++;
 		if (vcp->vc_nif)
 			vcp->vc_nif->nif_if.if_oerrors++;
-		(void) splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -180,7 +179,7 @@ fore_output(cup, cvp, m)
 	cqp->cq_descr = (CP_dma)
 		CP_WRITE((u_long)hxp->hxq_descr_dma | XMIT_SEGS_TO_BLKS(nsegs));
 
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * See if there are any completed queue entries
@@ -188,8 +187,6 @@ fore_output(cup, cvp, m)
 	DEVICE_LOCK((Cmn_unit *)fup);
 	fore_xmit_drain(fup);
 	DEVICE_UNLOCK((Cmn_unit *)fup);
-
-	return;
 }
 
 
