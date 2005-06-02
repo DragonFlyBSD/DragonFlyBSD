@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.26 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.27 2005/06/02 23:52:42 dillon Exp $
  */
 
 /*
@@ -187,15 +187,15 @@ static struct callout	arptimer_ch;
 static void
 arptimer(void *ignored_arg)
 {
-	int s = splnet();
 	struct llinfo_arp *la, *nla;
 
+	crit_enter();
 	LIST_FOREACH_MUTABLE(la, &llinfo_arp, la_le, nla) {
 		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_second)
 			arptfree(la);	/* might remove la from llinfo_arp! */
 	}
 	callout_reset(&arptimer_ch, arpt_prune * hz, arptimer, NULL);
-	splx(s);
+	crit_exit();
 }
 
 /*

@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.7 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.8 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include <sys/kernel.h>
 
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -183,16 +184,14 @@ ipflow_addstats(struct ipflow *ipf)
 static void
 ipflow_free(struct ipflow *ipf)
 {
-	int s;
-
 	/*
 	 * Remove the flow from the hash table (at elevated IPL).
 	 * Once it's off the list, we can deal with it at normal
 	 * network IPL.
 	 */
-	s = splimp();
+	crit_enter();
 	LIST_REMOVE(ipf, ipf_next);
-	splx(s);
+	crit_exit();
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
 	ipflow_inuse--;
@@ -204,7 +203,6 @@ ipflow_reap(void)
 {
 	struct ipflow *ipf, *maybe_ipf = NULL;
 	int idx;
-	int s;
 
 	for (idx = 0; idx < IPFLOW_HASHSIZE; idx++) {
 		ipf = LIST_FIRST(&ipflows[idx]);
@@ -234,9 +232,9 @@ done:
 	/*
 	 * Remove the entry from the flow table.
 	 */
-	s = splimp();
+	crit_enter();
 	LIST_REMOVE(ipf, ipf_next);
-	splx(s);
+	crit_exit();
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
 	return ipf;
@@ -272,7 +270,6 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	const struct ip *const ip = mtod(m, struct ip *);
 	struct ipflow *ipf;
 	unsigned hash;
-	int s;
 
 	/*
 	 * Don't create cache entries for ICMP messages.
@@ -297,9 +294,9 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		}
 		bzero(ipf, sizeof *ipf);
 	} else {
-		s = splimp();
+		crit_enter();
 		LIST_REMOVE(ipf, ipf_next);
-		splx(s);
+		crit_exit();
 		ipflow_addstats(ipf);
 		RTFREE(ipf->ipf_ro.ro_rt);
 		ipf->ipf_uses = ipf->ipf_last_uses = 0;
@@ -319,7 +316,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	 * Insert into the approriate bucket of the flow table.
 	 */
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
-	s = splimp();
+	crit_enter();
 	LIST_INSERT_HEAD(&ipflows[hash], ipf, ipf_next);
-	splx(s);
+	crit_exit();
 }

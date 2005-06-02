@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.14 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.15 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -202,7 +203,7 @@ in_control(so, cmd, data, ifp, td)
 	struct in_ifaddr *oia;
 	struct in_aliasreq *ifra = (struct in_aliasreq *)data;
 	struct sockaddr_in oldaddr;
-	int hostIsNew, iaIsNew, maskIsNew, s;
+	int hostIsNew, iaIsNew, maskIsNew;
 	int error = 0;
 
 	iaIsNew = 0;
@@ -284,7 +285,7 @@ in_control(so, cmd, data, ifp, td)
 			 * Protect from ipintr() traversing address list
 			 * while we're modifying it.
 			 */
-			s = splnet();
+			crit_enter();
 			
 			TAILQ_INSERT_TAIL(&in_ifaddrhead, ia, ia_link);
 			ifa = &ia->ia_ifa;
@@ -303,7 +304,7 @@ in_control(so, cmd, data, ifp, td)
 			if (!(ifp->if_flags & IFF_LOOPBACK))
 				in_interfaces++;
 			iaIsNew = 1;
-			splx(s);
+			crit_exit();
 		}
 		break;
 
@@ -456,12 +457,12 @@ in_control(so, cmd, data, ifp, td)
 	 * Protect from ipintr() traversing address list while we're modifying
 	 * it.
 	 */
-	s = splnet();
+	crit_enter();
 	TAILQ_REMOVE(&ifp->if_addrhead, &ia->ia_ifa, ifa_link);
 	TAILQ_REMOVE(&in_ifaddrhead, ia, ia_link);
 	LIST_REMOVE(ia, ia_hash);
 	IFAFREE(&ia->ia_ifa);
-	splx(s);
+	crit_exit();
 
 	return (error);
 }
@@ -676,7 +677,9 @@ in_ifinit(ifp, ia, sin, scrub)
 {
 	u_long i = ntohl(sin->sin_addr.s_addr);
 	struct sockaddr_in oldaddr;
-	int s = splimp(), flags = RTF_UP, error = 0;
+	int flags = RTF_UP, error = 0;
+
+	crit_enter();
 
 	oldaddr = ia->ia_addr;
 	if (oldaddr.sin_family == AF_INET)
@@ -693,7 +696,7 @@ in_ifinit(ifp, ia, sin, scrub)
 	if (ifp->if_ioctl &&
 	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
 				      (struct ucred *)NULL))) {
-		splx(s);
+		crit_exit();
 		/* LIST_REMOVE(ia, ia_hash) is done in in_control */
 		ia->ia_addr = oldaddr;
 		if (ia->ia_addr.sin_family == AF_INET)
@@ -701,7 +704,7 @@ in_ifinit(ifp, ia, sin, scrub)
 			    ia, ia_hash);
 		return (error);
 	}
-	splx(s);
+	crit_exit();
 	if (scrub) {
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&oldaddr;
 		in_ifscrub(ifp, ia);
@@ -827,7 +830,6 @@ in_addmulti(ap, ifp)
 	int error;
 	struct sockaddr_in sin;
 	struct ifmultiaddr *ifma;
-	int s = splnet();
 
 	/*
 	 * Call generic routine to add membership or increment
@@ -838,9 +840,10 @@ in_addmulti(ap, ifp)
 	sin.sin_family = AF_INET;
 	sin.sin_len = sizeof sin;
 	sin.sin_addr = *ap;
+	crit_enter();
 	error = if_addmulti(ifp, (struct sockaddr *)&sin, &ifma);
 	if (error) {
-		splx(s);
+		crit_exit();
 		return 0;
 	}
 
@@ -849,7 +852,7 @@ in_addmulti(ap, ifp)
 	 * a new record.  Otherwise, we are done.
 	 */
 	if (ifma->ifma_protospec != 0) {
-		splx(s);
+		crit_exit();
 		return ifma->ifma_protospec;
 	}
 
@@ -866,7 +869,7 @@ in_addmulti(ap, ifp)
 	 * Let IGMP know that we have joined a new IP multicast group.
 	 */
 	igmp_joingroup(inm);
-	splx(s);
+	crit_exit();
 	return (inm);
 }
 
@@ -877,10 +880,11 @@ void
 in_delmulti(inm)
 	struct in_multi *inm;
 {
-	struct ifmultiaddr *ifma = inm->inm_ifma;
+	struct ifmultiaddr *ifma;
 	struct in_multi my_inm;
-	int s = splnet();
 
+	crit_enter();
+	ifma = inm->inm_ifma;
 	my_inm.inm_ifp = NULL ; /* don't send the leave msg */
 	if (ifma->ifma_refcount == 1) {
 		/*
@@ -898,5 +902,5 @@ in_delmulti(inm)
 	if_delmulti(ifma->ifma_ifp, ifma->ifma_addr);
 	if (my_inm.inm_ifp != NULL)
 		igmp_leavegroup(&my_inm);
-	splx(s);
+	crit_exit();
 }

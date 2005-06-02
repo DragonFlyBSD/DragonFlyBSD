@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.35 2005/05/06 11:52:02 corecode Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.36 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -100,6 +100,7 @@
 #include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/limits.h>
 
@@ -194,9 +195,9 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
 /*
  * in_pcb.c: manage the Protocol Control Blocks.
  *
- * NOTE: It is assumed that most of these functions will be called at
- * splnet(). XXX - There are, unfortunately, a few exceptions to this
- * rule that should be fixed.
+ * NOTE: It is assumed that most of these functions will be called from
+ * a critical section.  XXX - There are, unfortunately, a few exceptions
+ * to this rule that should be fixed.
  *
  * NOTE: The caller should initialize the cpu field to the cpu running the
  * protocol stack associated with this inpcbinfo.
@@ -651,7 +652,6 @@ in_setsockaddr(so, nam)
 	struct socket *so;
 	struct sockaddr **nam;
 {
-	int s;
 	struct inpcb *inp;
 	struct sockaddr_in *sin;
 
@@ -663,16 +663,16 @@ in_setsockaddr(so, nam)
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof *sin;
 
-	s = splnet();
+	crit_enter();
 	inp = so->so_pcb;
 	if (!inp) {
-		splx(s);
+		crit_exit();
 		free(sin, M_SONAME);
 		return (ECONNRESET);
 	}
 	sin->sin_port = inp->inp_lport;
 	sin->sin_addr = inp->inp_laddr;
-	splx(s);
+	crit_exit();
 
 	*nam = (struct sockaddr *)sin;
 	return (0);
@@ -683,7 +683,6 @@ in_setpeeraddr(so, nam)
 	struct socket *so;
 	struct sockaddr **nam;
 {
-	int s;
 	struct inpcb *inp;
 	struct sockaddr_in *sin;
 
@@ -695,16 +694,16 @@ in_setpeeraddr(so, nam)
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof *sin;
 
-	s = splnet();
+	crit_enter();
 	inp = so->so_pcb;
 	if (!inp) {
-		splx(s);
+		crit_exit();
 		free(sin, M_SONAME);
 		return (ECONNRESET);
 	}
 	sin->sin_port = inp->inp_fport;
 	sin->sin_addr = inp->inp_faddr;
-	splx(s);
+	crit_exit();
 
 	*nam = (struct sockaddr *)sin;
 	return (0);
@@ -717,13 +716,12 @@ in_pcbnotifyall(head, faddr, errno, notify)
 	void (*notify) (struct inpcb *, int);
 {
 	struct inpcb *inp, *ninp;
-	int s;
 
 	/*
 	 * note: if INP_PLACEMARKER is set we must ignore the rest of
 	 * the structure and skip it.
 	 */
-	s = splnet();
+	crit_enter();
 	LIST_FOREACH_MUTABLE(inp, head, inp_list, ninp) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -736,7 +734,7 @@ in_pcbnotifyall(head, faddr, errno, notify)
 			continue;
 		(*notify)(inp, errno);		/* can remove inp from list! */
 	}
-	splx(s);
+	crit_exit();
 }
 
 void

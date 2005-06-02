@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.28 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.29 2005/06/02 23:52:42 dillon Exp $
  */
 
 #define _IP_VHL
@@ -51,6 +51,7 @@
 #include <sys/socketvar.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include <sys/in_cksum.h>
 
 #include <net/if.h>
@@ -143,7 +144,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	struct m_tag *mtag;
 	struct secpolicy *sp = NULL;
 	struct tdb_ident *tdbi;
-	int s;
 #endif /* FAST_IPSEC */
 	struct ip_fw_args args;
 	int src_was_INADDR_ANY = 0;	/* as the name says... */
@@ -583,7 +583,7 @@ skip_ipsec:
 	 * the lookup and related policy checking.
 	 */
 	mtag = m_tag_find(m, PACKET_TAG_IPSEC_PENDING_TDB, NULL);
-	s = splnet();
+	crit_enter();
 	if (mtag != NULL) {
 		tdbi = (struct tdb_ident *)(mtag + 1);
 		sp = ipsec_getpolicy(tdbi, IPSEC_DIR_OUTBOUND);
@@ -632,7 +632,7 @@ skip_ipsec:
 				 *     done: below.
 				 */
 				KEY_FREESP(&sp), sp = NULL;
-				splx(s);
+				crit_exit();
 				goto spd_done;
 			}
 		}
@@ -660,10 +660,10 @@ skip_ipsec:
 		 */
 		if (error == ENOENT)
 			error = 0;
-		splx(s);
+		crit_exit();
 		goto done;
 	} else {
-		splx(s);
+		crit_exit();
 
 		if (error != 0) {
 			/*
@@ -1771,7 +1771,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 	struct ifnet *ifp;
 	struct ip_moptions *imo = *imop;
 	int ifindex;
-	int s;
 
 	if (imo == NULL) {
 		/*
@@ -1829,10 +1828,10 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * IP address.  Find the interface and confirm that
 		 * it supports multicasting.
 		 */
-		s = splimp();
+		crit_enter();
 		ifp = ip_multicast_if(&addr, &ifindex);
 		if (ifp == NULL || !(ifp->if_flags & IFF_MULTICAST)) {
-			splx(s);
+			crit_exit();
 			error = EADDRNOTAVAIL;
 			break;
 		}
@@ -1841,7 +1840,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			imo->imo_multicast_addr = addr;
 		else
 			imo->imo_multicast_addr.s_addr = INADDR_ANY;
-		splx(s);
+		crit_exit();
 		break;
 
 	case IP_MULTICAST_TTL:
@@ -1907,7 +1906,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			error = EINVAL;
 			break;
 		}
-		s = splimp();
+		crit_enter();
 		/*
 		 * If no interface address was provided, use the interface of
 		 * the route to the given multicast address.
@@ -1923,7 +1922,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			rt = rtlookup((struct sockaddr *)&dst);
 			if (rt == NULL) {
 				error = EADDRNOTAVAIL;
-				splx(s);
+				crit_exit();
 				break;
 			}
 			--rt->rt_refcnt;
@@ -1938,7 +1937,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 */
 		if (ifp == NULL || !(ifp->if_flags & IFF_MULTICAST)) {
 			error = EADDRNOTAVAIL;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		/*
@@ -1953,12 +1952,12 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		}
 		if (i < imo->imo_num_memberships) {
 			error = EADDRINUSE;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		if (i == IP_MAX_MEMBERSHIPS) {
 			error = ETOOMANYREFS;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		/*
@@ -1968,11 +1967,11 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		if ((imo->imo_membership[i] =
 		     in_addmulti(&mreq.imr_multiaddr, ifp)) == NULL) {
 			error = ENOBUFS;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		++imo->imo_num_memberships;
-		splx(s);
+		crit_exit();
 		break;
 
 	case IP_DROP_MEMBERSHIP:
@@ -1989,7 +1988,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			break;
 		}
 
-		s = splimp();
+		crit_enter();
 		/*
 		 * If an interface address was specified, get a pointer
 		 * to its ifnet structure.
@@ -2000,7 +1999,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			ifp = ip_multicast_if(&mreq.imr_interface, NULL);
 			if (ifp == NULL) {
 				error = EADDRNOTAVAIL;
-				splx(s);
+				crit_exit();
 				break;
 			}
 		}
@@ -2016,7 +2015,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		}
 		if (i == imo->imo_num_memberships) {
 			error = EADDRNOTAVAIL;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		/*
@@ -2030,7 +2029,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		for (++i; i < imo->imo_num_memberships; ++i)
 			imo->imo_membership[i-1] = imo->imo_membership[i];
 		--imo->imo_num_memberships;
-		splx(s);
+		crit_exit();
 		break;
 
 	default:

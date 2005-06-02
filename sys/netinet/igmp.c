@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.10 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.11 2005/06/02 23:52:42 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
+#include <sys/thread2.h>
 
 #include <machine/stdarg.h>
 
@@ -353,8 +354,7 @@ void
 igmp_joingroup(inm)
 	struct in_multi *inm;
 {
-	int s = splnet();
-
+	crit_enter();
 	if (inm->inm_addr.s_addr == igmp_all_hosts_group
 	    || inm->inm_ifp->if_flags & IFF_LOOPBACK) {
 		inm->inm_timer = 0;
@@ -367,7 +367,7 @@ igmp_joingroup(inm)
 		inm->inm_state = IGMP_IREPORTEDLAST;
 		igmp_timers_are_running = 1;
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -386,7 +386,6 @@ igmp_fasttimo()
 {
 	struct in_multi *inm;
 	struct in_multistep step;
-	int s;
 
 	/*
 	 * Quick check to see if any work needs to be done, in order
@@ -396,7 +395,7 @@ igmp_fasttimo()
 	if (!igmp_timers_are_running)
 		return;
 
-	s = splnet();
+	crit_enter();
 	igmp_timers_are_running = 0;
 	IN_FIRST_MULTI(step, inm);
 	while (inm != NULL) {
@@ -410,15 +409,15 @@ igmp_fasttimo()
 		}
 		IN_NEXT_MULTI(step, inm);
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
 igmp_slowtimo()
 {
-	int s = splnet();
 	struct router_info *rti =  Head;
 
+	crit_enter();
 #ifdef IGMP_DEBUG
 	printf("[igmp.c,_slowtimo] -- > entering \n");
 #endif
@@ -434,7 +433,7 @@ igmp_slowtimo()
 #ifdef IGMP_DEBUG	
 	printf("[igmp.c,_slowtimo] -- > exiting \n");
 #endif
-	splx(s);
+	crit_exit();
 }
 
 static struct route igmprt;

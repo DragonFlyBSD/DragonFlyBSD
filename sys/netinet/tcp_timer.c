@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.14 2005/05/10 15:48:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.15 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -99,6 +99,7 @@
 #include <sys/protosw.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
+#include <sys/thread2.h>
 
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
 
@@ -189,13 +190,9 @@ int	tcp_maxidle;
 void
 tcp_slowtimo(void)
 {
-	int s;
-
-	s = splnet();
-
+	crit_enter();
 	tcp_maxidle = tcp_keepcnt * tcp_keepintvl;
-
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -225,11 +222,10 @@ void
 tcp_timer_delack(void *xtp)
 {
 	struct tcpcb *tp = xtp;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	if (callout_pending(tp->tt_delack) || !callout_active(tp->tt_delack)) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	callout_deactivate(tp->tt_delack);
@@ -237,22 +233,21 @@ tcp_timer_delack(void *xtp)
 	tp->t_flags |= TF_ACKNOW;
 	tcpstat.tcps_delack++;
 	tcp_output(tp);
-	splx(s);
+	crit_exit();
 }
 
 void
 tcp_timer_2msl(void *xtp)
 {
 	struct tcpcb *tp = xtp;
-	int s;
 #ifdef TCPDEBUG
 	int ostate;
 
 	ostate = tp->t_state;
 #endif
-	s = splnet();
+	crit_enter();
 	if (callout_pending(tp->tt_2msl) || !callout_active(tp->tt_2msl)) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	callout_deactivate(tp->tt_2msl);
@@ -273,7 +268,7 @@ tcp_timer_2msl(void *xtp)
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -281,15 +276,14 @@ tcp_timer_keep(void *xtp)
 {
 	struct tcpcb *tp = xtp;
 	struct tcptemp *t_template;
-	int s;
 #ifdef TCPDEBUG
 	int ostate;
 
 	ostate = tp->t_state;
 #endif
-	s = splnet();
+	crit_enter();
 	if (callout_pending(tp->tt_keep) || !callout_active(tp->tt_keep)) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	callout_deactivate(tp->tt_keep);
@@ -333,7 +327,7 @@ tcp_timer_keep(void *xtp)
 	if (tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	splx(s);
+	crit_exit();
 	return;
 
 dropit:
@@ -344,22 +338,21 @@ dropit:
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	splx(s);
+	crit_exit();
 }
 
 void
 tcp_timer_persist(void *xtp)
 {
 	struct tcpcb *tp = xtp;
-	int s;
 #ifdef TCPDEBUG
 	int ostate;
 
 	ostate = tp->t_state;
 #endif
-	s = splnet();
+	crit_enter();
 	if (callout_pending(tp->tt_persist) || !callout_active(tp->tt_persist)){
-		splx(s);
+		crit_exit();
 		return;
 	}
 	callout_deactivate(tp->tt_persist);
@@ -392,7 +385,7 @@ out:
 	if (tp && tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -442,16 +435,15 @@ void
 tcp_timer_rexmt(void *xtp)
 {
 	struct tcpcb *tp = xtp;
-	int s;
 	int rexmt;
 #ifdef TCPDEBUG
 	int ostate;
 
 	ostate = tp->t_state;
 #endif
-	s = splnet();
+	crit_enter();
 	if (callout_pending(tp->tt_rexmt) || !callout_active(tp->tt_rexmt)) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	callout_deactivate(tp->tt_rexmt);
@@ -570,5 +562,5 @@ out:
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	splx(s);
+	crit_exit();
 }

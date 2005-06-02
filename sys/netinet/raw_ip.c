@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.21 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.22 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -49,6 +49,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/stdarg.h>
 
@@ -511,7 +512,7 @@ static int
 rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
-	int error, s;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp)
@@ -522,9 +523,9 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	s = splnet();
+	crit_enter();
 	error = in_pcballoc(so, &ripcbinfo);
-	splx(s);
+	crit_exit();
 	if (error)
 		return error;
 	inp = (struct inpcb *)so->so_pcb;

@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.35 2005/04/05 07:08:52 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.36 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -105,6 +105,7 @@
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
 
+#include <sys/thread2.h>
 #include <sys/msgport2.h>
 
 #include <net/if.h>
@@ -174,12 +175,13 @@ static struct tcpcb *
 static int
 tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
-	int s = splnet();
 	int error;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp = 0;
 	TCPDEBUG0;
 
+	crit_enter();
+	inp = so->so_pcb;
 	TCPDEBUG1();
 	if (inp) {
 		error = EISCONN;
@@ -195,7 +197,7 @@ tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	tp = sototcpcb(so);
 out:
 	TCPDEBUG2(PRU_ATTACH);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -209,14 +211,15 @@ out:
 static int
 tcp_usr_detach(struct socket *so)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
+	crit_enter();
+	inp = so->so_pcb;
 	if (inp == NULL) {
-		splx(s);
+		crit_exit();
 		return EINVAL;	/* XXX */
 	}
 
@@ -230,21 +233,25 @@ tcp_usr_detach(struct socket *so)
 		tp = tcp_disconnect(tp);
 		TCPDEBUG2(PRU_DETACH);
 	}
-	splx(s);
+	crit_exit();
 	return error;
 }
 
-#define	COMMON_START()	TCPDEBUG0; \
+#define	COMMON_START(so, inp)		\
+			TCPDEBUG0; 	\
+					\
+			crit_enter();	\
+			inp = so->so_pcb; \
 			do { \
 				     if (inp == 0) { \
-					     splx(s); \
+					     crit_exit(); \
 					     return EINVAL; \
 				     } \
 				     tp = intotcpcb(inp); \
 				     TCPDEBUG1(); \
 		     } while(0)
 
-#define COMMON_END(req)	out: TCPDEBUG2(req); splx(s); return error; goto out
+#define COMMON_END(req)	out: TCPDEBUG2(req); crit_exit(); return error; goto out
 
 
 /*
@@ -253,13 +260,12 @@ tcp_usr_detach(struct socket *so)
 static int
 tcp_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 
 	/*
 	 * Must check for multicast addresses and disallow binding
@@ -282,13 +288,12 @@ tcp_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 tcp6_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 
 	/*
 	 * Must check for multicast addresses and disallow binding
@@ -346,15 +351,14 @@ in_pcbinswildcardhash_handler(struct lwkt_msg *msg0)
 static int
 tcp_usr_listen(struct socket *so, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 #ifdef SMP
 	int cpu;
 #endif
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
 		if (error != 0)
@@ -395,15 +399,14 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 static int
 tcp6_usr_listen(struct socket *so, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 #ifdef SMP
 	int cpu;
 #endif
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	if (inp->inp_lport == 0) {
 		if (!(inp->inp_flags & IN6P_IPV6_V6ONLY))
 			inp->inp_vflag |= INP_IPV4;
@@ -453,13 +456,12 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 static int
 tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 
 	/*
 	 * Must disallow TCP ``connections'' to multicast addresses.
@@ -483,13 +485,12 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 tcp6_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 
 	/*
 	 * Must disallow TCP ``connections'' to multicast addresses.
@@ -541,12 +542,11 @@ tcp6_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 tcp_usr_disconnect(struct socket *so)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	tp = tcp_disconnect(tp);
 	COMMON_END(PRU_DISCONNECT);
 }
@@ -559,18 +559,19 @@ tcp_usr_disconnect(struct socket *so)
 static int
 tcp_usr_accept(struct socket *so, struct sockaddr **nam)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
+	crit_enter();
+	inp = so->so_pcb;
 	if (so->so_state & SS_ISDISCONNECTED) {
 		error = ECONNABORTED;
 		goto out;
 	}
 	if (inp == 0) {
-		splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 	tp = intotcpcb(inp);
@@ -583,18 +584,20 @@ tcp_usr_accept(struct socket *so, struct sockaddr **nam)
 static int
 tcp6_usr_accept(struct socket *so, struct sockaddr **nam)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
+
+	crit_enter();
+	inp = so->so_pcb;
 
 	if (so->so_state & SS_ISDISCONNECTED) {
 		error = ECONNABORTED;
 		goto out;
 	}
 	if (inp == 0) {
-		splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 	tp = intotcpcb(inp);
@@ -609,12 +612,11 @@ tcp6_usr_accept(struct socket *so, struct sockaddr **nam)
 static int
 tcp_usr_shutdown(struct socket *so)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	socantsendmore(so);
 	tp = tcp_usrclosed(tp);
 	if (tp)
@@ -628,12 +630,11 @@ tcp_usr_shutdown(struct socket *so)
 static int
 tcp_usr_rcvd(struct socket *so, int flags)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	tcp_output(tp);
 	COMMON_END(PRU_RCVD);
 }
@@ -649,20 +650,22 @@ static int
 tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 	     struct sockaddr *nam, struct mbuf *control, struct thread *td)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 #ifdef INET6
 	int isipv6;
 #endif
 	TCPDEBUG0;
 
+	crit_enter();
+	inp = so->so_pcb;
+
 	if (inp == NULL) {
 		/*
 		 * OOPS! we lost a race, the TCP session got reset after
 		 * we checked SS_CANTSENDMORE, eg: while doing uiomove or a
-		 * network interrupt in the non-splnet() section of sosend().
+		 * network interrupt in the non-critical section of sosend().
 		 */
 		if (m)
 			m_freem(m);
@@ -773,12 +776,11 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 static int
 tcp_usr_abort(struct socket *so)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	tp = tcp_drop(tp, ECONNABORTED);
 	COMMON_END(PRU_ABORT);
 }
@@ -789,12 +791,11 @@ tcp_usr_abort(struct socket *so)
 static int
 tcp_usr_rcvoob(struct socket *so, struct mbuf *m, int flags)
 {
-	int s = splnet();
 	int error = 0;
-	struct inpcb *inp = so->so_pcb;
+	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START();
+	COMMON_START(so, inp);
 	if ((so->so_oobmark == 0 &&
 	     (so->so_state & SS_RCVATMARK) == 0) ||
 	    so->so_options & SO_OOBINLINE ||
@@ -1061,25 +1062,25 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 
 /*
  * The new sockopt interface makes it possible for us to block in the
- * copyin/out step (if we take a page fault).  Taking a page fault at
- * splnet() is probably a Bad Thing.  (Since sockets and pcbs both now
- * use TSM, there probably isn't any need for this function to run at
- * splnet() any more.  This needs more examination.)
+ * copyin/out step (if we take a page fault).  Taking a page fault while
+ * in a critical section is probably a Bad Thing.  (Since sockets and pcbs
+ * both now use TSM, there probably isn't any need for this function to 
+ * run in a critical section any more.  This needs more examination.)
  */
 int
 tcp_ctloutput(so, sopt)
 	struct socket *so;
 	struct sockopt *sopt;
 {
-	int	error, opt, optval, s;
+	int	error, opt, optval;
 	struct	inpcb *inp;
 	struct	tcpcb *tp;
 
 	error = 0;
-	s = splnet();		/* XXX */
+	crit_enter();		/* XXX */
 	inp = so->so_pcb;
 	if (inp == NULL) {
-		splx(s);
+		crit_exit();
 		return (ECONNRESET);
 	}
 	if (sopt->sopt_level != IPPROTO_TCP) {
@@ -1089,7 +1090,7 @@ tcp_ctloutput(so, sopt)
 		else
 #endif /* INET6 */
 		error = ip_ctloutput(so, sopt);
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	tp = intotcpcb(inp);
@@ -1176,7 +1177,7 @@ tcp_ctloutput(so, sopt)
 			error = sooptcopyout(sopt, &optval, sizeof optval);
 		break;
 	}
-	splx(s);
+	crit_exit();
 	return (error);
 }
 

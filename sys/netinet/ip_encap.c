@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.11 2005/02/01 05:34:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.12 2005/06/02 23:52:42 dillon Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -91,6 +91,7 @@
 
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 static void encap_add (struct encaptab *);
@@ -314,9 +315,8 @@ encap_attach(af, proto, sp, sm, dp, dm, psw, arg)
 {
 	struct encaptab *ep;
 	int error;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	/* sanity check on args */
 	if (sp->sa_len > sizeof ep->src || dp->sa_len > sizeof ep->dst) {
 		error = EINVAL;
@@ -368,11 +368,11 @@ encap_attach(af, proto, sp, sm, dp, dm, psw, arg)
 	encap_add(ep);
 
 	error = 0;
-	splx(s);
+	crit_exit();
 	return ep;
 
 fail:
-	splx(s);
+	crit_exit();
 	return NULL;
 }
 
@@ -386,9 +386,8 @@ encap_attach_func(af, proto, func, psw, arg)
 {
 	struct encaptab *ep;
 	int error;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	/* sanity check on args */
 	if (!func) {
 		error = EINVAL;
@@ -410,11 +409,11 @@ encap_attach_func(af, proto, func, psw, arg)
 	encap_add(ep);
 
 	error = 0;
-	splx(s);
+	crit_exit();
 	return ep;
 
 fail:
-	splx(s);
+	crit_exit();
 	return NULL;
 }
 

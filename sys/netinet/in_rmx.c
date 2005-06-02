@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.11 2005/03/09 23:31:44 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.12 2005/06/02 23:52:42 dillon Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <sys/socket.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -276,15 +277,14 @@ in_rtqtimo(void *rock)
 	struct rtqk_arg arg;
 	struct timeval atv;
 	static time_t last_adjusted_timeout = 0;
-	int s;
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = time_second + rtq_timeout;
 	arg.draining = arg.updating = 0;
-	s = splnet();
+	crit_enter();
 	rnh->rnh_walktree(rnh, in_rtqkill, &arg);
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Attempt to be somewhat dynamic about this:
@@ -309,9 +309,9 @@ in_rtqtimo(void *rock)
 #endif
 		arg.found = arg.killed = 0;
 		arg.updating = 1;
-		s = splnet();
+		crit_enter();
 		rnh->rnh_walktree(rnh, in_rtqkill, &arg);
-		splx(s);
+		crit_exit();
 	}
 
 	atv.tv_usec = 0;
@@ -324,16 +324,15 @@ in_rtqdrain(void)
 {
 	struct radix_node_head *rnh = rt_tables[AF_INET];
 	struct rtqk_arg arg;
-	int s;
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = 0;
 	arg.draining = 1;
 	arg.updating = 0;
-	s = splnet();
+	crit_enter();
 	rnh->rnh_walktree(rnh, in_rtqkill, &arg);
-	splx(s);
+	crit_exit();
 }
 
 /*

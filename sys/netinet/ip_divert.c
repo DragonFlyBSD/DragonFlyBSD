@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.23 2005/05/08 11:01:26 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.24 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -53,6 +53,7 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <vm/vm_zone.h>
 
@@ -342,7 +343,7 @@ static int
 div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
-	int error, s;
+	int error;
 
 	inp  = so->so_pcb;
 	if (inp)
@@ -353,9 +354,9 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	s = splnet();
+	crit_enter();
 	error = in_pcballoc(so, &divcbinfo);
-	splx(s);
+	crit_exit();
 	if (error)
 		return error;
 	inp = (struct inpcb *)so->so_pcb;
@@ -401,10 +402,9 @@ static int
 div_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
-	int s;
 	int error;
 
-	s = splnet();
+	crit_enter();
 	inp = so->so_pcb;
 	/* in_pcbbind assumes that nam is a sockaddr_in
 	 * and in_pcbbind requires a valid address. Since divert
@@ -419,7 +419,7 @@ div_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 		((struct sockaddr_in *)nam)->sin_addr.s_addr = INADDR_ANY;
 		error = in_pcbbind(inp, nam, td);
 	}
-	splx(s);
+	crit_exit();
 	return error;
 }
 

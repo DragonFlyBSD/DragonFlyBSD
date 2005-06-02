@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.34 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.35 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -100,6 +100,7 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <sys/in_cksum.h>
 
 #include <machine/stdarg.h>
@@ -629,7 +630,6 @@ udp_ctlinput(cmd, sa, vip)
 	void (*notify) (struct inpcb *, int) = udp_notify;
 	struct in_addr faddr;
 	struct inpcb *inp;
-	int s;
 
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
@@ -643,13 +643,13 @@ udp_ctlinput(cmd, sa, vip)
 	else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0)
 		return;
 	if (ip) {
-		s = splnet();
+		crit_enter();
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 		inp = in_pcblookup_hash(&udbinfo, faddr, uh->uh_dport,
 					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
 			(*notify)(inp, inetctlerrmap[cmd]);
-		splx(s);
+		crit_exit();
 	} else
 		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
 				notify);
@@ -663,7 +663,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in addrs[2];
 	struct inpcb *inp;
-	int error, s;
+	int error;
 
 	error = suser(req->td);
 	if (error)
@@ -671,7 +671,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error)
 		return (error);
-	s = splnet();
+	crit_enter();
 	inp = in_pcblookup_hash(&udbinfo, addrs[1].sin_addr, addrs[1].sin_port,
 				addrs[0].sin_addr, addrs[0].sin_port, 1, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
@@ -680,7 +680,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	}
 	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
 out:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -832,15 +832,14 @@ static int
 udp_abort(struct socket *so)
 {
 	struct inpcb *inp;
-	int s;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
-	s = splnet();
+	crit_enter();
 	in_pcbdetach(inp);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -848,7 +847,7 @@ static int
 udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
-	int s, error;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp != NULL)
@@ -857,9 +856,9 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	s = splnet();
+	crit_enter();
 	error = in_pcballoc(so, &udbinfo);
-	splx(s);
+	crit_exit();
 	if (error)
 		return error;
 
@@ -874,14 +873,14 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct inpcb *inp;
-	int s, error;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
-	s = splnet();
+	crit_enter();
 	error = in_pcbbind(inp, nam, td);
-	splx(s);
+	crit_exit();
 	if (error == 0) {
 		if (sin->sin_addr.s_addr != INADDR_ANY)
 			inp->inp_flags |= INP_WASBOUND_NOTANY;
@@ -894,7 +893,7 @@ static int
 udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
-	int s, error;
+	int error;
 	struct sockaddr_in *sin;
 
 	inp = so->so_pcb;
@@ -903,7 +902,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (inp->inp_faddr.s_addr != INADDR_ANY)
 		return EISCONN;
 	error = 0;
-	s = splnet();
+	crit_enter();
 	if (td->td_proc && td->td_proc->p_ucred->cr_prison != NULL &&
 	    inp->inp_laddr.s_addr == INADDR_ANY) {
 		error = in_pcbbind(inp, NULL, td);
@@ -915,7 +914,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 			in_pcbremwildcardhash(inp);
 		error = in_pcbconnect(inp, nam, td);
 	}
-	splx(s);
+	crit_exit();
 	if (error == 0)
 		soisconnected(so);
 	else if (error == EAFNOSUPPORT) {	/* connection dissolved */
@@ -935,14 +934,13 @@ static int
 udp_detach(struct socket *so)
 {
 	struct inpcb *inp;
-	int s;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
-	s = splnet();
+	crit_enter();
 	in_pcbdetach(inp);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -950,7 +948,6 @@ static int
 udp_disconnect(struct socket *so)
 {
 	struct inpcb *inp;
-	int s;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -958,9 +955,9 @@ udp_disconnect(struct socket *so)
 	if (inp->inp_faddr.s_addr == INADDR_ANY)
 		return ENOTCONN;
 
-	s = splnet();
+	crit_enter();
 	in_pcbdisconnect(inp);
-	splx(s);
+	crit_exit();
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
 	return 0;
 }

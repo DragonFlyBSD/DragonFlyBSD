@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.48 2005/05/10 15:48:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.49 2005/06/02 23:52:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1206,7 +1206,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	struct sockaddr_in addrs[2];
 	struct inpcb *inp;
 	int cpu;
-	int error, s;
+	int error;
 
 	error = suser(req->td);
 	if (error != 0)
@@ -1214,8 +1214,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error != 0)
 		return (error);
-	s = splnet();
-
+	crit_enter();
 	cpu = tcp_addrcpu(addrs[1].sin_addr.s_addr, addrs[1].sin_port,
 	    addrs[0].sin_addr.s_addr, addrs[0].sin_port);
 	inp = in_pcblookup_hash(&tcbinfo[cpu], addrs[1].sin_addr,
@@ -1226,7 +1225,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	}
 	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
 out:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1239,7 +1238,7 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in6 addrs[2];
 	struct inpcb *inp;
-	int error, s;
+	int error;
 	boolean_t mapped = FALSE;
 
 	error = suser(req->td);
@@ -1254,7 +1253,7 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 		else
 			return (EINVAL);
 	}
-	s = splnet();
+	crit_enter();
 	if (mapped) {
 		inp = in_pcblookup_hash(&tcbinfo[0],
 		    *(struct in_addr *)&addrs[1].sin6_addr.s6_addr[12],
@@ -1274,7 +1273,7 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 	}
 	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
 out:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1293,7 +1292,7 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	struct tcpcb *tp;
 	void (*notify)(struct inpcb *, int) = tcp_notify;
 	tcp_seq icmpseq;
-	int arg, cpu, s;
+	int arg, cpu;
 
 	if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
 		return;
@@ -1326,7 +1325,7 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	}
 
 	if (ip != NULL) {
-		s = splnet();
+		crit_enter();
 		th = (struct tcphdr *)((caddr_t)ip +
 				       (IP_VHL_HL(ip->ip_vhl) << 2));
 		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
@@ -1351,7 +1350,7 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 #endif
 			syncache_unreach(&inc, th);
 		}
-		splx(s);
+		crit_exit();
 	} else {
 		for (cpu = 0; cpu < ncpus2; cpu++) {
 			in_pcbnotifyall(&tcbinfo[cpu].pcblisthead, faddr, arg,

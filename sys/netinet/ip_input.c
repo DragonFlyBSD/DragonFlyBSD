@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.51 2005/04/18 23:43:04 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.52 2005/06/02 23:52:42 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -478,7 +478,7 @@ ip_input(struct mbuf *m)
 #ifdef FAST_IPSEC
 	struct tdb_ident *tdbi;
 	struct secpolicy *sp;
-	int s, error;
+	int error;
 #endif
 
 	args.eh = NULL;
@@ -834,7 +834,7 @@ pass:
 #endif
 #ifdef FAST_IPSEC
 		mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_DONE, NULL);
-		s = splnet();
+		crit_enter();
 		if (mtag != NULL) {
 			tdbi = (struct tdb_ident *)(mtag + 1);
 			sp = ipsec_getpolicy(tdbi, IPSEC_DIR_INBOUND);
@@ -843,7 +843,7 @@ pass:
 						   IP_FORWARDING, &error);
 		}
 		if (sp == NULL) {	/* NB: can happen if error */
-			splx(s);
+			crit_exit();
 			/*XXX error stat???*/
 			DPRINTF(("ip_input: no SP for forwarding\n"));	/*XXX*/
 			goto bad;
@@ -854,7 +854,7 @@ pass:
 		 */
 		error = ipsec_in_reject(sp, m);
 		KEY_FREESP(&sp);
-		splx(s);
+		crit_exit();
 		if (error) {
 			ipstat.ips_cantforward++;
 			goto bad;
@@ -1061,7 +1061,7 @@ found:
 		 * packet is returned to the ip input queue for delivery.
 		 */
 		mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_DONE, NULL);
-		s = splnet();
+		crit_enter();
 		if (mtag != NULL) {
 			tdbi = (struct tdb_ident *)(mtag + 1);
 			sp = ipsec_getpolicy(tdbi, IPSEC_DIR_INBOUND);
@@ -1081,7 +1081,7 @@ found:
 DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 			goto bad;
 		}
-		splx(s);
+		crit_exit();
 		if (error)
 			goto bad;
 	}
@@ -1382,9 +1382,9 @@ void
 ip_slowtimo(void)
 {
 	struct ipq *fp;
-	int s = splnet();
 	int i;
 
+	crit_enter();
 	for (i = 0; i < IPREASS_NHASH; i++) {
 		fp = ipq[i].next;
 		if (fp == NULL)
@@ -1414,7 +1414,7 @@ ip_slowtimo(void)
 		}
 	}
 	ipflow_slowtimo();
-	splx(s);
+	crit_exit();
 }
 
 /*
