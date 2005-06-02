@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.7 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ static struct t_atm_cause	atm_dev_cause = {
 /*
  * ATM Device Stack Instantiation
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments
  *	ssp		pointer to array of stack definition pointers
@@ -220,7 +220,6 @@ atm_dev_lower(cmd, tok, arg1, arg2)
 	Cmn_unit	*cup = (Cmn_unit *)cvcp->cvc_attr.nif->nif_pif;
 	struct vccb	*vcp;
 	u_int		state;
-	int		s;
 
 	switch ( cmd ) {
 
@@ -257,20 +256,20 @@ atm_dev_lower(cmd, tok, arg1, arg2)
 		 * Tell the device to open the VCC
 		 */
 		cvp->cv_state = CVS_INITED;
-		s = splimp();
+		crit_enter();
 		if ((*cup->cu_openvcc)(cup, cvp)) {
 			atm_cm_abort(cvp->cv_connvc, &atm_dev_cause);
-			(void) splx(s);
+			crit_exit();
 			break;
 		}
-		(void) splx(s);
+		crit_exit();
 		break;
 
 	case CPCS_TERM: {
 		KBuffer		*m, *prev, *next;
 		int		*ip;
 
-		s = splimp();
+		crit_enter();
 
 		/*
 		 * Disconnect the VCC - ignore return code
@@ -320,7 +319,7 @@ atm_dev_lower(cmd, tok, arg1, arg2)
 				prev = m;
 			}
 		}
-		(void) splx(s);
+		crit_exit();
 
 		/*
 		 * Free VCC resources
@@ -404,9 +403,9 @@ atm_dev_alloc(size, align, flags)
 	Mem_blk		*mbp;
 	Mem_ent		*mep;
 	u_int		kalign, ksize;
-	int		s, i;
+	int		i;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Find a free Mem_ent
@@ -430,7 +429,7 @@ atm_dev_alloc(size, align, flags)
 				M_INTWAIT | M_NULLOK);
 		if (mbp == NULL) {
 			log(LOG_ERR, "atm_dev_alloc: Mem_blk failure\n");
-			(void) splx(s);
+			crit_exit();
 			return (NULL);
 		}
 		KM_ZERO(mbp, sizeof(Mem_blk));
@@ -468,7 +467,7 @@ atm_dev_alloc(size, align, flags)
 	if (mep->me_kaddr == NULL) {
 		log(LOG_ERR, "atm_dev_alloc: %skernel memory unavailable\n",
 			(flags & ATM_DEV_NONCACHE) ? "non-cacheable " : "");
-		(void) splx(s);
+		crit_exit();
 		return (NULL);
 	}
 
@@ -487,7 +486,7 @@ atm_dev_alloc(size, align, flags)
 	ATM_DEBUG4("atm_dev_alloc: size=%d, align=%d, flags=%d, uaddr=%p\n", 
 		size, align, flags, mep->me_uaddr);
 
-	(void) splx(s);
+	crit_exit();
 
 	return (mep->me_uaddr);
 }
@@ -513,11 +512,11 @@ atm_dev_free(volatile void *uaddr)
 {
 	Mem_blk		*mbp;
 	Mem_ent		*mep;
-	int		s, i;
+	int		i;
 
 	ATM_DEBUG1("atm_dev_free: uaddr=%p\n", uaddr);
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Protect ourselves...
@@ -559,7 +558,7 @@ atm_dev_free(volatile void *uaddr)
 	 */
 	mep->me_uaddr = NULL;
 
-	(void) splx(s);
+	crit_exit();
 
 	return;
 }
@@ -684,8 +683,8 @@ atm_dev_vcc_find(cup, vpi, vci, type)
 	u_int		type;
 {
 	Cmn_vcc		*cvp;
-	int		s = splnet();
 
+	crit_enter();
 	/*
 	 * Go find VCC
 	 *
@@ -699,8 +698,7 @@ atm_dev_vcc_find(cup, vpi, vci, type)
 		    ((vcp->vc_type & type) == type))
 			break;
 	}
-
-	(void) splx(s);
+	crit_exit();
 	return (cvp);
 }
 
@@ -725,9 +723,9 @@ atm_unload()
 {
 	Mem_blk		*mbp;
 	Mem_ent		*mep;
-	int		s, i;
+	int		i;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Free up all of our memory management storage
@@ -751,7 +749,7 @@ atm_unload()
 		KM_FREE((caddr_t) mbp, sizeof(Mem_blk), M_DEVBUF);
 	}
 
-	(void) splx(s);
+	crit_exit();
 
 	return;
 }

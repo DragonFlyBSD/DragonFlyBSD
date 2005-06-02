@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_cm.c,v 1.6 1999/08/28 00:48:34 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.5 2004/09/16 22:59:06 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.6 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -145,7 +145,7 @@ atm_cm_connect(epp, token, ap, copp)
 	struct sigmgr	*smp;
 	struct stack_list	sl;
 	void		(*upf)(int, void *, int, int);
-	int		s, sli, err, err2;
+	int		sli, err, err2;
 
 	*copp = NULL;
 	cvp = NULL;
@@ -310,7 +310,7 @@ atm_cm_connect(epp, token, ap, copp)
 	 */
 	sl.sl_sap[sli] = 0;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * Let multiplexors decide whether we need a new VCC
@@ -346,7 +346,7 @@ atm_cm_connect(epp, token, ap, copp)
 		cop->co_mxh = cvp->cvc_conn->co_mxh;
 		*copp = cop;
 
-		(void) splx(s);
+		crit_exit();
 		return (err);
 
 	default:
@@ -466,7 +466,7 @@ atm_cm_connect(epp, token, ap, copp)
 	}
 
 donex:
-	(void) splx(s);
+	crit_exit();
 
 done:
 	if (err && err != EINPROGRESS) {
@@ -479,11 +479,11 @@ done:
 		/*
 		 * Finish connection setup
 		 */
-		s = splnet();
+		crit_enter();
 		cvp->cvc_flags |= CVCF_CONNQ;
 		ENQUEUE(cvp, Atm_connvc, cvc_q, atm_connection_queue);
 		LINK2TAIL(cop, Atm_connection, cop->co_mxh, co_next);
-		(void) splx(s);
+		crit_exit();
 		*copp = cop;
 	}
 	return (err);
@@ -523,7 +523,7 @@ atm_cm_listen(epp, token, ap, copp)
 	Atm_connection	**copp;
 {
 	Atm_connection	*cop;
-	int		s, err = 0;
+	int		err = 0;
 
 	*copp = NULL;
 
@@ -699,7 +699,7 @@ atm_cm_listen(epp, token, ap, copp)
 	/*
 	 * Now try to register the listening connection
 	 */
-	s = splnet();
+	crit_enter();
 	if (atm_cm_match(cop->co_lattr, NULL) != NULL) {
 		/*
 		 * Can't have matching listeners
@@ -711,7 +711,7 @@ atm_cm_listen(epp, token, ap, copp)
 	LINK2TAIL(cop, Atm_connection, atm_listen_queue, co_next);
 
 donex:
-	(void) splx(s);
+	crit_exit();
 
 done:
 	if (err) {
@@ -778,7 +778,7 @@ atm_cm_addllc(epp, token, llc, ecop, copp)
 {
 	Atm_connection	*cop, *cop2;
 	Atm_connvc	*cvp;
-	int		s, err;
+	int		err;
 
 	*copp = NULL;
 
@@ -805,7 +805,7 @@ atm_cm_addllc(epp, token, llc, ecop, copp)
 	cop->co_toku = token;
 	cop->co_llc = *llc;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * Ensure that supplied connection is really valid
@@ -877,7 +877,7 @@ atm_cm_addllc(epp, token, llc, ecop, copp)
 	cop->co_mxh = ecop->co_mxh;
 
 done:
-	(void) splx(s);
+	crit_exit();
 
 	if (err && err != EINPROGRESS) {
 		/*
@@ -964,9 +964,8 @@ atm_cm_release(cop, cause)
 	struct t_atm_cause	*cause;
 {
 	Atm_connvc	*cvp;
-	int		s;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * First, a quick state validation check
@@ -985,7 +984,7 @@ atm_cm_release(cop, cause)
 		break;
 
 	case COS_INCONN:
-		(void) splx(s);
+		crit_exit();
 		return (EFAULT);
 
 	default:
@@ -1006,11 +1005,11 @@ atm_cm_release(cop, cause)
 			break;
 
 		case CVCS_INCOMING:
-			(void) splx(s);
+			crit_exit();
 			return (EFAULT);
 
 		case CVCS_CLEAR:
-			(void) splx(s);
+			crit_exit();
 			return (EALREADY);
 
 		default:
@@ -1136,7 +1135,7 @@ atm_cm_incoming(vcp, ap)
 	Atm_attributes	*ap;
 {
 	Atm_connvc	*cvp;
-	int		s, err;
+	int		err;
 
 
 	/*
@@ -1262,9 +1261,9 @@ atm_cm_incoming(vcp, ap)
 	/*
 	 * Control queue length
 	 */
-	s = splnet();
+	crit_enter();
 	if (atm_incoming_qlen >= ATM_CALLQ_MAX) {
-		(void) splx(s);
+		crit_exit();
 		err = EBUSY;
 		goto fail;
 	}
@@ -1283,7 +1282,7 @@ atm_cm_incoming(vcp, ap)
 	 */
 	vcp->vc_connvc = cvp;
 
-	(void) splx(s);
+	crit_exit();
 
 	return (0);
 
@@ -1316,9 +1315,9 @@ atm_cm_connected(cvp)
 {
 	Atm_connection	*cop, *cop2;
 	KBuffer		*m;
-	int		s, err;
+	int		err;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * Validate connection vcc
@@ -1348,7 +1347,7 @@ atm_cm_connected(cvp)
 				cop = cop2;
 			}
 			atm_cm_closevc(cvp);
-			(void) splx(s);
+			crit_exit();
 			return;
 		}
 		break;
@@ -1398,7 +1397,7 @@ atm_cm_connected(cvp)
 		cop = cop2;
 	}
 
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * Input any queued packets
@@ -1437,7 +1436,6 @@ atm_cm_cleared(cvp)
 	Atm_connvc	*cvp;
 {
 	Atm_connection	*cop, *cop2;
-	int		s;
 
 #ifdef DIAGNOSTIC
 	if ((cvp->cvc_state == CVCS_FREE) ||
@@ -1447,7 +1445,7 @@ atm_cm_cleared(cvp)
 
 	cvp->cvc_state = CVCS_CLEAR;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * Terminate all connections
@@ -1464,7 +1462,7 @@ atm_cm_cleared(cvp)
 	 */
 	atm_cm_closevc(cvp);
 
-	(void) splx(s);
+	crit_exit();
 
 	return;
 }
@@ -1488,21 +1486,20 @@ atm_cm_procinq(arg)
 	void	*arg;
 {
 	Atm_connvc	*cvp;
-	int		cnt = 0, s;
+	int		cnt = 0;
 
 	/*
 	 * Only process incoming calls up to our quota
 	 */
 	while (cnt++ < ATM_CALLQ_MAX) {
-
-		s = splnet();
+		crit_enter();
 
 		/*
 		 * Get next awaiting call
 		 */
 		cvp = Q_HEAD(atm_incoming_queue, Atm_connvc);
 		if (cvp == NULL) {
-			(void) splx(s);
+			crit_exit();
 			break;
 		}
 		DEQUEUE(cvp, Atm_connvc, cvc_q, atm_incoming_queue);
@@ -1514,7 +1511,7 @@ atm_cm_procinq(arg)
 		 */
 		atm_cm_incall(cvp);
 
-		(void) splx(s);
+		crit_exit();
 	}
 
 	/*
@@ -1537,7 +1534,7 @@ atm_cm_procinq(arg)
  * If there are no listeners for the call, the signalling manager will be
  * notified of a call rejection.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to connection VCC for incoming call
@@ -1729,7 +1726,7 @@ fail:
  * endpoints by the Connection Manager.  If the call setup fails, then the
  * endpoints will receive a "call cleared" notification.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to connection VCC for incoming call
@@ -1911,7 +1908,7 @@ done:
  * argument may be supplied in order to allow multiple listeners to share 
  * an incoming call (if supported by the listeners).
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	ap	pointer to attributes to be matched
@@ -2107,7 +2104,7 @@ atm_cm_match(ap, pcop)
  * this function will attempt to locate an existing connection which meets
  * the requirements of the supplied attributes.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	ap	pointer to requested attributes
@@ -2292,7 +2289,7 @@ atm_cm_share_llc(ap)
  * user, if necessary, and freeing up control block memory.  The caller
  * is responsible for managing the connection VCC.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	cop	pointer to connection block
@@ -2389,7 +2386,7 @@ atm_cm_closeconn(cop, cause)
  * the call to the signalling manager, terminating the VCC protocol stack,
  * and freeing up control block memory.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to connection VCC block
@@ -2565,7 +2562,7 @@ atm_cm_closevc(cvp)
  * Called when a previously scheduled cvc control block timer expires.  
  * Processing will be based on the current cvc state.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	tip	pointer to cvc timer control block
@@ -2831,7 +2828,6 @@ atm_cm_cpcs_upper(cmd, tok, arg1, arg2)
 	Atm_connvc	*cvp = tok;
 	KBuffer		*m;
 	void		*bp;
-	int		s;
 
 	switch (cmd) {
 
@@ -2898,7 +2894,7 @@ atm_cm_cpcs_upper(cmd, tok, arg1, arg2)
 			}
 			KB_DATASTART(m, bp, void *);
 
-			s = splnet();
+			crit_enter();
 
 			while (cop) {
 				if (KM_CMP(bp, cop->co_llc.v.llc_info,
@@ -2907,7 +2903,7 @@ atm_cm_cpcs_upper(cmd, tok, arg1, arg2)
 				cop = cop->co_next;
 			}
 
-			(void) splx(s);
+			crit_exit();
 
 			if (cop == NULL) {
 				/*
@@ -3390,8 +3386,7 @@ int
 atm_endpoint_register(epp)
 	Atm_endpoint	*epp;
 {
-	int		s = splnet();
-
+	crit_enter();
 	/*
 	 * See if we need to be initialized
 	 */
@@ -3402,11 +3397,11 @@ atm_endpoint_register(epp)
 	 * Validate endpoint
 	 */
 	if (epp->ep_id > ENDPT_MAX) {
-		(void) splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 	if (atm_endpoints[epp->ep_id] != NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (EEXIST);
 	}
 
@@ -3415,7 +3410,7 @@ atm_endpoint_register(epp)
 	 */
 	atm_endpoints[epp->ep_id] = epp;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -3439,17 +3434,17 @@ int
 atm_endpoint_deregister(epp)
 	Atm_endpoint	*epp;
 {
-	int	s = splnet();
+	crit_enter();
 
 	/*
 	 * Validate endpoint
 	 */
 	if (epp->ep_id > ENDPT_MAX) {
-		(void) splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 	if (atm_endpoints[epp->ep_id] != epp) {
-		(void) splx(s);
+		crit_exit();
 		return (ENOENT);
 	}
 
@@ -3458,7 +3453,7 @@ atm_endpoint_deregister(epp)
 	 */
 	atm_endpoints[epp->ep_id] = NULL;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 

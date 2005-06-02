@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.9 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.10 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -78,7 +78,6 @@ atm_physif_register(cup, name, sdp)
 	struct stack_defn	*sdp;
 {
 	struct atm_pif	*pip;
-	int		s;
 
 	/*
 	 * See if we need to be initialized
@@ -93,7 +92,7 @@ atm_physif_register(cup, name, sdp)
 		return (EALREADY);
 	}
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * Make sure an interface is only registered once
@@ -101,7 +100,7 @@ atm_physif_register(cup, name, sdp)
 	for (pip = atm_interface_head; pip != NULL; pip = pip->pif_next) {
 		if ((cup->cu_unit == pip->pif_unit) && 
 		    (strcmp(name, pip->pif_name) == 0)) {
-			(void) splx(s);
+			crit_exit();
 			return (EEXIST);
 		}
 	}
@@ -122,7 +121,7 @@ atm_physif_register(cup, name, sdp)
 	LINK2TAIL(pip, struct atm_pif, atm_interface_head, pif_next);
 	cup->cu_flags |= CUF_REGISTER;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -149,7 +148,8 @@ atm_physif_deregister(cup)
 	struct atm_pif	*pip = (struct atm_pif *)&cup->cu_pif;
 	Cmn_vcc		*cvp;
 	int	err;
-	int	s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Detach and deregister, if needed
@@ -162,7 +162,7 @@ atm_physif_deregister(cup)
 		if (pip->pif_sigmgr != NULL) {
 			err = atm_sigmgr_detach(pip);
 			if (err && (err != ENOENT)) {
-				(void) splx(s);
+				crit_exit();
 				return (err);
 			}
 		}
@@ -171,7 +171,7 @@ atm_physif_deregister(cup)
 		 * Make sure signalling manager is detached
 		 */
 		if (pip->pif_sigmgr != NULL) {
-			(void) splx(s);
+			crit_exit();
 			return (EBUSY);
 		}
 
@@ -198,7 +198,7 @@ atm_physif_deregister(cup)
 	}
 	cup->cu_vcc = (Cmn_vcc *)NULL;
 
-	(void) splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -219,8 +219,8 @@ atm_physif_freenifs(pip)
 	struct atm_pif	*pip;
 {
 	struct atm_nif	*nip = pip->pif_nif;
-	int	s = splnet();
 
+	crit_enter();
 	while ( nip ) 
 	{
 		/*
@@ -238,7 +238,7 @@ atm_physif_freenifs(pip)
 	}
 	pip->pif_nif = (struct atm_nif *)NULL;
 
-	(void) splx(s);
+	crit_exit();
 
 	return;
 }
@@ -249,7 +249,7 @@ atm_physif_freenifs(pip)
  *
  * See <netatm/atm_ioctl.h> for definitions.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	code			Ioctl function (sub)code
@@ -614,8 +614,8 @@ atm_netconv_register(ncp)
 	struct atm_ncm	*ncp;
 {
 	struct atm_ncm	*tdp;
-	int		s = splnet();
 
+	crit_enter();
 	/*
 	 * See if we need to be initialized
 	 */
@@ -626,7 +626,7 @@ atm_netconv_register(ncp)
 	 * Validate protocol family
 	 */
 	if (ncp->ncm_family > AF_MAX) {
-		(void) splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 
@@ -635,7 +635,7 @@ atm_netconv_register(ncp)
 	 */
 	for (tdp = atm_netconv_head; tdp != NULL; tdp = tdp->ncm_next) {
 		if (tdp->ncm_family == ncp->ncm_family) {
-			(void) splx(s);
+			crit_exit();
 			return (EEXIST);
 		}
 	}
@@ -650,7 +650,7 @@ atm_netconv_register(ncp)
 	 */
 	atm_ifouttbl[ncp->ncm_family] = ncp->ncm_ifoutput;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -674,7 +674,9 @@ int
 atm_netconv_deregister(ncp)
 	struct atm_ncm	*ncp;
 {
-	int	found, s = splnet();
+	int	found;
+
+	crit_enter();
 
 	/*
 	 * Remove module from list
@@ -682,7 +684,7 @@ atm_netconv_deregister(ncp)
 	UNLINKF(ncp, struct atm_ncm, atm_netconv_head, ncm_next, found);
 
 	if (!found) {
-		(void) splx(s);
+		crit_exit();
 		return (ENOENT);
 	}
 
@@ -691,7 +693,7 @@ atm_netconv_deregister(ncp)
 	 */
 	atm_ifouttbl[ncp->ncm_family] = NULL;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -721,12 +723,11 @@ atm_nif_attach(nip)
 	struct atm_pif	*pip, *pip2;
 	struct ifnet	*ifp;
 	struct atm_ncm	*ncp;
-	int		s;
 
 	ifp = &nip->nif_if;
 	pip = nip->nif_pif;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Verify physical interface is registered
@@ -736,7 +737,7 @@ atm_nif_attach(nip)
 			break;
 	}
 	if ((pip == NULL) || (pip2 == NULL)) {
-		(void) splx(s);
+		crit_exit();
 		return (EFAULT);
 	}
 
@@ -759,12 +760,12 @@ atm_nif_attach(nip)
 		err = (*ncp->ncm_stat)(NCM_ATTACH, nip, 0);
 		if (err) {
 			atm_nif_detach(nip);
-			(void) splx(s);
+			crit_exit();
 			return (err);
 		}
 	}
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -791,14 +792,13 @@ atm_nif_detach(nip)
 	struct atm_nif	*nip;
 {
 	struct atm_ncm	*ncp;
-	int		s, i;
+	int		i;
 	struct ifnet	*ifp = &nip->nif_if;
 	struct ifaddr	*ifa;
 	struct in_ifaddr	*ia;
 	struct radix_node_head	*rnh;
 
-
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Notify convergence modules of network i/f demise
@@ -854,7 +854,7 @@ atm_nif_detach(nip)
 	 */
 	UNLINK(nip, struct atm_nif, nip->nif_pif->pif_nif, nif_pnext);
 
-	(void) splx(s);
+	crit_exit();
 }
 
 
@@ -926,8 +926,9 @@ atm_nif_setaddr(nip, ifa)
 	struct ifaddr	*ifa;
 {
 	struct atm_ncm	*ncp;
-	int	err = 0, s = splnet();
+	int	err = 0;
 
+	crit_enter();
 	/*
 	 * Notify convergence modules of network i/f change
 	 */
@@ -936,7 +937,7 @@ atm_nif_setaddr(nip, ifa)
 		if (err)
 			break;
 	}
-	(void) splx(s);
+	crit_exit();
 
 	return (err);
 }
@@ -1010,8 +1011,8 @@ atm_if_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct atm_nif	*nip = (struct atm_nif *)ifp;
 	int	error = 0;
-	int	s = splnet();
 
+	crit_enter();
 	switch ( cmd )
 	{
 	case SIOCGIFADDR:
@@ -1037,7 +1038,7 @@ atm_if_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	(void) splx(s);
+	crit_exit();
 	return ( error );
 }
 

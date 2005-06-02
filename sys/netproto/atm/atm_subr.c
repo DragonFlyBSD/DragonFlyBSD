@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.16 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.17 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -154,7 +154,8 @@ atm_allocate(sip)
 	void		*bp;
 	struct sp_chunk	*scp;
 	struct sp_link	*slp;
-	int		s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Count calls
@@ -205,7 +206,7 @@ atm_allocate(sip)
 
 		if (sip->si_chunks >= sip->si_maxallow) {
 			sip->si_fails++;
-			(void) splx(s);
+			crit_exit();
 			return (NULL);
 		}
 
@@ -213,7 +214,7 @@ atm_allocate(sip)
 				M_INTWAIT | M_NULLOK);
 		if (scp == NULL) {
 			sip->si_fails++;
-			(void) splx(s);
+			crit_exit();
 			return (NULL);
 		}
 		scp->sc_next = NULL;
@@ -271,7 +272,7 @@ atm_allocate(sip)
 	 */
 	KM_ZERO(bp, sip->si_blksiz);
 
-	(void) splx(s);
+	crit_exit();
 	return (bp);
 }
 
@@ -296,7 +297,8 @@ atm_free(bp)
 	struct sp_info	*sip;
 	struct sp_chunk	*scp;
 	struct sp_link	*slp;
-	int		s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Get containing chunk and pool info
@@ -320,7 +322,7 @@ atm_free(bp)
 	sip->si_free++;
 	scp->sc_used--;
 
-	(void) splx(s);
+	crit_exit();
 	return;
 }
 
@@ -333,7 +335,7 @@ atm_free(bp)
  * can be freed, taking some care to avoid freeing too many chunks
  * in order to avoid memory thrashing.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	tip	pointer to timer control block (atm_compactimer)
@@ -436,8 +438,8 @@ atm_release_pool(sip)
 	struct sp_info	*sip;
 {
 	struct sp_chunk	*scp, *scp_next;
-	int		s = splnet();
 
+	crit_enter();
 	/*
 	 * Free each chunk in pool
 	 */
@@ -467,8 +469,7 @@ atm_release_pool(sip)
 	 */
 	sip->si_chunksiz = 0;
 	UNLINK(sip, struct sp_info, atm_pool_head, si_next);
-
-	(void) splx(s);
+	crit_exit();
 	return;
 }
 
@@ -492,9 +493,8 @@ atm_timexp(arg)
 	void	*arg;
 {
 	struct atm_time	*tip;
-	int		s = splimp();
 
-
+	crit_enter();
 	/*
 	 * Decrement tick count
 	 */
@@ -526,11 +526,7 @@ atm_timexp(arg)
 		 * Call timeout handler (with network interrupts locked out)
 		 */
 		func = tip->ti_func;
-		(void) splx(s);
-		s = splnet();
 		(*func)(tip);
-		(void) splx(s);
-		s = splimp();
 
 		/*
 		 * Drain any deferred calls
@@ -542,7 +538,7 @@ restart:
 	/*
 	 * Restart the timer
 	 */
-	(void) splx(s);
+	crit_exit();
 	callout_reset(&atm_timexp_ch, hz / ATM_HZ, atm_timexp, NULL);
 }
 
@@ -574,7 +570,6 @@ atm_timeout(tip, t, func)
 	void		(*func)(struct atm_time *);
 {
 	struct atm_time	*tip1, *tip2;
-	int		s;
 
 
 	/*
@@ -592,7 +587,7 @@ atm_timeout(tip, t, func)
 	/*
 	 * Find out where we belong on the queue
 	 */
-	s = splimp();
+	crit_enter();
 	for (tip1 = NULL, tip2 = atm_timeq; tip2 && (tip2->ti_ticks <= t); 
 					    tip1 = tip2, tip2 = tip1->ti_next) {
 		t -= tip2->ti_ticks;
@@ -617,7 +612,7 @@ atm_timeout(tip, t, func)
 	tip->ti_ticks = t;
 	tip->ti_func = func;
 
-	(void) splx(s);
+	crit_exit();
 	return;
 }
 
@@ -640,7 +635,6 @@ atm_untimeout(tip)
 	struct atm_time	*tip;
 {
 	struct atm_time	*tip1, *tip2;
-	int		s;
 
 	/*
 	 * Is control block queued?
@@ -651,13 +645,13 @@ atm_untimeout(tip)
 	/*
 	 * Find control block on the queue
 	 */
-	s = splimp();
+	crit_enter();
 	for (tip1 = NULL, tip2 = atm_timeq; tip2 && (tip2 != tip); 
 					    tip1 = tip2, tip2 = tip1->ti_next) {
 	}
 
 	if (tip2 == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (1);
 	}
 
@@ -678,7 +672,7 @@ atm_untimeout(tip)
 	 */
 	tip->ti_flag &= ~TIF_QUEUED;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -713,14 +707,15 @@ atm_stack_enq(cmd, func, token, cvp, arg1, arg2)
 	int		arg2;
 {
 	struct stackq_entry	*sqp;
-	int		s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Get a new queue entry for this call
 	 */
 	sqp = (struct stackq_entry *)atm_allocate(&atm_stackq_pool);
 	if (sqp == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (ENOMEM);
 	}
 
@@ -744,7 +739,7 @@ atm_stack_enq(cmd, func, token, cvp, arg1, arg2)
 		atm_stackq_tail->sq_next = sqp;
 	atm_stackq_tail = sqp;
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -765,9 +760,9 @@ void
 atm_stack_drain()
 {
 	struct stackq_entry	*sqp, *qprev, *qnext;
-	int		s = splnet();
 	int		cnt;
 
+	crit_enter();
 	/*
 	 * Loop thru entire queue until queue is empty
 	 *	(but panic rather loop forever)
@@ -843,8 +838,7 @@ atm_stack_drain()
 	 */
 	if (atm_stackq_head != NULL)
 		panic("atm_stack_drain: Queue not emptied");
-
-	(void) splx(s);
+	crit_exit();
 }
 
 

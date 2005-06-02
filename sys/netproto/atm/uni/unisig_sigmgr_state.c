@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_sigmgr_state.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.6 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -825,11 +825,11 @@ unisig_sigmgr_act14(usp, m)
 	if (Q_HEAD(usp->us_vccq, struct vccb) == NULL &&
 			pip->pif_sigmgr) {
 		struct sigmgr	*smp = pip->pif_sigmgr;
-		int		s = splimp();
 
+		crit_enter();
 		pip->pif_sigmgr = NULL;
 		pip->pif_siginst = NULL;
-		(void) splx(s);
+		crit_exit();
 
 		UNLINK((struct siginst *)usp, struct siginst,
 				smp->sm_prinst, si_next);

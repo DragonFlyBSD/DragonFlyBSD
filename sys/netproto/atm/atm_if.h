@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.h,v 1.2 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.7 2005/06/02 22:37:45 dillon Exp $
  *
  */
 
@@ -332,8 +332,8 @@ struct atm_ncm {
 /*
  * Macros to lock out device interrupts
  */
-#define	DEVICE_LOCK(u)		((u)->cu_savepri = splimp())
-#define	DEVICE_UNLOCK(u)	((void) splx((u)->cu_savepri))
+#define	DEVICE_LOCK(u)		crit_enter()
+#define	DEVICE_UNLOCK(u)	crit_exit()
 
 /*
  * Macro to schedule the ATM interrupt queue handler

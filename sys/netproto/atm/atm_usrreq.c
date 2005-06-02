@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.10 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.11 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -74,8 +74,8 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
  */
 #ifdef DIAGNOSTIC
 #define ATM_INTRO()						\
-	int		s, err = 0;				\
-	s = splnet();						\
+	int		err = 0;				\
+	crit_enter();						\
 	/*							\
 	 * Stack queue should have been drained			\
 	 */							\
@@ -84,8 +84,8 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
 	;
 #else
 #define ATM_INTRO()						\
-	int		s, err = 0;				\
-	s = splnet();						\
+	int		err = 0;				\
+	crit_enter();						\
 	;
 #endif
 
@@ -94,7 +94,7 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
 	 * Drain any deferred calls				\
 	 */							\
 	STACK_DRAIN();						\
-	(void) splx(s);						\
+	crit_exit();						\
 	return (err);						\
 	;
 
@@ -434,7 +434,7 @@ out:
 /*
  * Process AIOCINFO ioctl system calls
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	data	pointer to AIOCINFO parameter structure

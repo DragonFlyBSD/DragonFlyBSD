@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_arp.c,v 1.7 2000/01/15 20:34:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.7 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.8 2005/06/02 22:37:50 dillon Exp $
  */
 
 /*
@@ -98,14 +98,13 @@ spansarp_svcout(ivp, dst)
 {
 	struct spanscls	*clp;
 	struct spansarp	*sap;
-	int	s;
 
 	ivp->iv_arpent = NULL;
 
 	/*
 	 * Lookup destination address
 	 */
-	s = splnet();
+	crit_enter();
 	SPANSARP_LOOKUP(dst->s_addr, sap);
 
 	if (sap) {
@@ -119,14 +118,14 @@ spansarp_svcout(ivp, dst)
 		 */
 		if (sap->sa_flags & SAF_VALID) {
 			ivp->iv_arpent = (struct arpmap *)sap;
-			(void) splx(s);
+			crit_exit();
 			return (MAP_VALID);
 		}
 
 		/*
 		 * We're already looking for this address
 		 */
-		(void) splx(s);
+		crit_exit();
 		return (MAP_PROCEEDING);
 	}
 
@@ -139,7 +138,7 @@ spansarp_svcout(ivp, dst)
 			break;
 	}
 	if (clp == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -148,7 +147,7 @@ spansarp_svcout(ivp, dst)
 	 */
 	sap = (struct spansarp *)atm_allocate(&spansarp_pool);
 	if (sap == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -185,7 +184,7 @@ spansarp_svcout(ivp, dst)
 	 */
 	(void) spansarp_request(sap);
 
-	(void) splx(s);
+	crit_exit();
 	return (MAP_PROCEEDING);
 }
 
@@ -247,8 +246,8 @@ spansarp_svcactive(ivp)
 	struct ipvcc	*ivp;
 {
 	struct spansarp	*sap;
-	int	s = splnet();
 
+	crit_enter();
 	/* 
 	 * Find an entry for the destination address
 	 */
@@ -265,8 +264,7 @@ spansarp_svcactive(ivp)
 		 */
 		sap->sa_reftime = 0;
 	}
-
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -290,14 +288,14 @@ spansarp_vcclose(ivp)
 	struct ipvcc	*ivp;
 {
 	struct spansarp	*sap;
-	int	s = splnet();
 
+	crit_enter();
 	/*
 	 * Get spansarp entry
 	 */
 	SPANSARP_LOOKUP(ivp->iv_dst.s_addr, sap);
 	if (sap == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -312,7 +310,7 @@ spansarp_vcclose(ivp)
 	 */
 	if ((sap->sa_flags & (SAF_VALID | SAF_LOCKED)) ||
 	    (sap->sa_origin >= SAO_PERM)) {
-		(void) splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -320,7 +318,7 @@ spansarp_vcclose(ivp)
 	 * If there are still other VCCs waiting, exit
 	 */
 	if (sap->sa_ivp) {
-		(void) splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -334,7 +332,7 @@ spansarp_vcclose(ivp)
 	 */
 	SPANSARP_DELETE(sap);
 	atm_free((caddr_t)sap);
-	(void) splx(s);
+	crit_exit();
 }
 
 
@@ -383,7 +381,7 @@ spansarp_stop()
  * 
  * Called whenever an IP network interface becomes active.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *      clp     pointer to CLS interface
@@ -409,7 +407,7 @@ spansarp_ipact(clp)
  * 
  * Called whenever an IP network interface becomes inactive.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *      clp     pointer to CLS interface
@@ -582,7 +580,7 @@ spansarp_input(clp, m)
 	struct spansarp		*sap;
 	struct ip_nif		*inp = clp->cls_ipnif;
 	struct in_addr	in_me, in_src, in_targ;
-	int		s, err;
+	int		err;
 
 	/*
 	 * Make sure IP interface has been activated
@@ -640,7 +638,7 @@ spansarp_input(clp, m)
 	/*
 	 * Update arp table with source address info
 	 */
-	s = splnet();
+	crit_enter();
 	SPANSARP_LOOKUP(in_src.s_addr, sap);
 	if (sap) {
 		/*
@@ -697,7 +695,7 @@ spansarp_input(clp, m)
 			SPANSARP_ADD(sap);
 		}
 	}
-	(void) splx(s);
+	crit_exit();
 
 chkop:
 	/*
@@ -732,7 +730,7 @@ free:
  * This function is called every SPANSARP_AGING seconds, in order to age
  * all the arp table entries.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	tip	pointer to spansarp aging timer control block
@@ -823,7 +821,7 @@ spansarp_aging(tip)
  * assuming that IP will set a timeout to close the VCC(s) requesting the
  * failing address resolution.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	tip	pointer to spansarp retry timer control block
@@ -867,7 +865,7 @@ spansarp_retry(tip)
 /*
  * SPANS ARP IOCTL support
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	code	PF_ATM sub-operation code

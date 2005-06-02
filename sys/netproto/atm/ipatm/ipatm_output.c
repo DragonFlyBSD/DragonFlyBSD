@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.6 2005/06/02 22:37:47 dillon Exp $
  */
 
 /*
@@ -141,18 +141,17 @@ ipatm_ifoutput(ifp, m, dst)
 		 */
 		if (in_broadcast(((struct sockaddr_in *)dst)->sin_addr, ifp)) {
 			struct ip_nif	*inp;
-			int	s;
 
 			/*
 			 * If interface server exists and provides broadcast 
 			 * services, then let it deal with this packet
 			 */
-			s = splnet();
+			crit_enter();
 			for (inp = ipatm_nif_head; inp; inp = inp->inf_next) {
 				if (inp->inf_nif == (struct atm_nif *)ifp)
 					break;
 			}
-			(void) splx(s);
+			crit_exit();
 
 			if ((inp == NULL) ||
 			    (inp->inf_serv == NULL) ||

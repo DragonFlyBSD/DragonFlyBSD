@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_signal.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_signal.c,v 1.4 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_signal.c,v 1.5 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -64,7 +64,8 @@ atm_sigmgr_register(smp)
 	struct sigmgr	*smp;
 {
 	struct sigmgr	*smp2;
-	int		s = splnet();
+
+	crit_enter();
 
 	/*
 	 * See if we need to be initialized
@@ -77,7 +78,7 @@ atm_sigmgr_register(smp)
 	 */
 	for (smp2 = atm_sigmgr_head; smp2 != NULL; smp2 = smp2->sm_next) {
 		if (smp->sm_proto == smp2->sm_proto) {
-			(void) splx(s);
+			crit_exit();
 			return (EEXIST);
 		}
 	}
@@ -87,7 +88,7 @@ atm_sigmgr_register(smp)
 	 */
 	LINK2TAIL(smp, struct sigmgr, atm_sigmgr_head, sm_next);
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -113,14 +114,14 @@ int
 atm_sigmgr_deregister(smp)
 	struct sigmgr	*smp;
 {
-	int		found, s = splnet();
+	int		found;
 
 	/*
 	 * Unlink descriptor
 	 */
+	crit_enter();
 	UNLINKF(smp, struct sigmgr, atm_sigmgr_head, sm_next, found);
-
-	(void) splx(s);
+	crit_exit();
 
 	if (!found)
 		return (ENOENT);
@@ -138,7 +139,7 @@ atm_sigmgr_deregister(smp)
  * since the signalling manager may initiate virtual circuit activity as part 
  * its response to this call.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	pip	pointer to atm physical interface control block
@@ -233,7 +234,7 @@ atm_sigmgr_attach(pip, proto)
  * The ATM interface must be detached from the signalling manager
  * before the interface can be de-registered.  
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	pip	pointer to atm physical interface control block
@@ -316,7 +317,8 @@ atm_stack_register(sdp)
 	struct stack_defn	*sdp;
 {
 	struct stack_defn	*tdp;
-	int	s = splnet();
+
+	crit_enter();
 
 	/*
 	 * See if we need to be initialized
@@ -332,7 +334,7 @@ atm_stack_register(sdp)
 			break;
 	}
 	if (tdp != NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (EEXIST);
 	}
 
@@ -341,7 +343,7 @@ atm_stack_register(sdp)
 	 */
 	LINK2TAIL(sdp, struct stack_defn, atm_stack_head, sd_next);
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -365,13 +367,14 @@ int
 atm_stack_deregister(sdp)
 	struct stack_defn	*sdp;
 {
-	int	found, s = splnet();
+	int	found;
 
 	/*
 	 * Remove service from list
 	 */
+	crit_enter();
 	UNLINKF(sdp, struct stack_defn, atm_stack_head, sd_next, found);
-	(void) splx(s);
+	crit_exit();
 
 	if (!found)
 		return (ENOENT);
@@ -395,7 +398,7 @@ atm_stack_deregister(sdp)
  * The service should then wait for subsequent protocol notification
  * via its stack command handlers.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to connection vcc block for the created stack

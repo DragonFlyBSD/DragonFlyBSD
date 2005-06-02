@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_subr.c,v 1.7 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_subr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_subr.c,v 1.5 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -134,7 +134,7 @@ unisig_cause_attr_from_ie(aap, iep)
  * machine.  The user will have to wait for a notify event to be sure
  * the SVC is fully open.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	usp	pointer to UNISIG protocol instance
@@ -314,7 +314,7 @@ unisig_open_vcc(usp, cvp)
  * Called when a user wants to close a VCC.  This function will clean
  * up the VCCB and, for an SVC, send a close request.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	usp	pointer to UNISIG protocol instance
@@ -374,7 +374,7 @@ unisig_close_vcc(usp, uvp)
  * Called to internally clear a VCC.  No external protocol is
  * initiated, the VCC is just closed and the owner is notified.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	usp	pointer to UNISIG protocol instance
@@ -455,7 +455,6 @@ unisig_switch_reset(usp, cause)
 	struct unisig	*usp;
 	int		cause;
 {
-	int			s;
 	struct unisig_vccb	*uvp, *vnext;
 
 	ATM_DEBUG2("unisig_switch_reset: usp=%p, cause=%d\n",
@@ -464,7 +463,7 @@ unisig_switch_reset(usp, cause)
 	/*
 	 * Terminate all of our VCCs
 	 */
-	s = splnet();
+	crit_enter();
 	for (uvp = Q_HEAD(usp->us_vccq, struct unisig_vccb); uvp;
 			uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
@@ -493,7 +492,7 @@ unisig_switch_reset(usp, cause)
 					uvp, uvp->uv_type);
 		}
 	}
-	(void) splx(s);
+	crit_exit();
 }
 #endif
 

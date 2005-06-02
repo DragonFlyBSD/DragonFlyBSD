@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_if.c,v 1.8 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.6 2004/04/22 05:09:46 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.7 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -180,8 +180,8 @@ int
 unisig_stop()
 {
 	int	err = 0;
-	int	s = splnet();
 
+	crit_enter();
 
 	/*
 	 * Any protocol instances still registered?
@@ -208,7 +208,7 @@ unisig_stop()
 	atm_release_pool(&unisig_iepool);
 
 done:
-	(void) splx(s);
+	crit_exit();
 	return (err);
 }
 
@@ -223,7 +223,7 @@ done:
  * instance will be created and then we'll just sit around waiting for
  * status or connection requests.
  *
- * Function must be called at splnet.
+ * Function must be called from a critical section.
  *
  * Arguments:
  *	smp	pointer to UNISIG signalling manager control block
@@ -239,7 +239,7 @@ unisig_attach(smp, pip)
 	struct sigmgr	*smp;
 	struct atm_pif	*pip;
 {
-	int			err = 0, s;
+	int			err = 0;
 	struct unisig		*usp = NULL;
 
 	ATM_DEBUG2("unisig_attach: smp=%p, pip=%p\n", smp, pip);
@@ -275,10 +275,10 @@ unisig_attach(smp, pip)
 	 * Link in interface
 	 */
 	usp->us_pif = pip;
-	s = splimp();
+	crit_enter();
 	pip->pif_sigmgr = smp;
 	pip->pif_siginst = (struct siginst *) usp;
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * Clear our ATM address.  The address will be set by user
@@ -316,10 +316,10 @@ done:
 					smp->sm_prinst, si_next);
 			KM_FREE(usp, sizeof(struct unisig), M_DEVBUF);
 		}
-		s = splimp();
+		crit_enter();
 		pip->pif_sigmgr = NULL;
 		pip->pif_siginst = NULL;
-		(void) splx(s);
+		crit_exit();
 	}
 
 	return (err);
@@ -334,7 +334,7 @@ done:
  * handle the detachment for all UNISIG-controlled interfaces.  All
  * circuits will be immediately terminated.
  *
- * Function must be called at splnet.
+ * Function must be called from a critical section.
  *
  * Arguments:
  *	pip	pointer to ATM physical interface control block
@@ -390,7 +390,7 @@ unisig_detach(pip)
  * atm_open_connection) over an ATM interface attached to the UNISIG
  * signalling manager are handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to user's requested connection parameters
@@ -457,7 +457,7 @@ unisig_setup(cvp, errp)
  * over an interface attached to the UNISIG signalling manager, are
  * handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to connection's VC control block
@@ -520,7 +520,7 @@ unisig_release(vcp, errp)
  * A user calls this routine (via the atm_accept_call function)
  * after it is notified that an open request was received for it.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to user's VCCB
@@ -595,7 +595,7 @@ free:
  * A user calls this routine (via the atm_reject_call function)
  * after it is notified that an open request was received for it.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	uvp	pointer to user's VCCB
@@ -662,7 +662,7 @@ failed:
  * The VCC owner will be notified of the request, in order to initiate
  * termination of the connection.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *      vcp     pointer to connection's VC control block
@@ -709,7 +709,7 @@ unisig_abort(vcp)
  * over an interface attached to the UNISIG signalling manager, are
  *handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to connection's VC control block
@@ -758,11 +758,11 @@ unisig_free(vcp)
 	if ((usp->us_state == UNISIG_DETACH) &&
 			(Q_HEAD(usp->us_vccq, struct vccb) == NULL)) {
 		struct sigmgr   *smp = pip->pif_sigmgr;
-		int     s = splimp();
 
+		crit_enter();
 		pip->pif_sigmgr = NULL;
 		pip->pif_siginst = NULL;
-		(void) splx(s);
+		crit_exit();
 
 		UNLINK((struct siginst *)usp, struct siginst,
 				smp->sm_prinst, si_next);
@@ -776,7 +776,7 @@ unisig_free(vcp)
 /*
  * UNISIG IOCTL support
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	code	PF_ATM sub-operation code

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_if.c,v 1.7 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.8 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.9 2005/06/02 22:37:49 dillon Exp $
  */
 
 /*
@@ -155,7 +155,8 @@ static int
 sigpvc_stop()
 {
 	int	err = 0;
-	int	s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Is protocol even setup?
@@ -186,7 +187,7 @@ sigpvc_stop()
 		err = ENXIO;
 
 done:
-	(void) splx(s);
+	crit_exit();
 	return (err);
 }
 
@@ -200,7 +201,7 @@ done:
  * A new sigpvc protocol instance will be created and then we'll just sit
  * around waiting for connection requests.
  *
- * Function must be called at splnet.
+ * Function must be called from a critical section.
  *
  * Arguments:
  *	smp	pointer to sigpvc signalling manager control block
@@ -269,7 +270,7 @@ done:
  * detachment for all SigPVC-controlled interfaces.  All circuits will be 
  * immediately terminated.
  *
- * Function must be called at splnet.
+ * Function must be called from a critical section.
  *
  * Arguments:
  *	pip	pointer to atm physical interface control block
@@ -343,7 +344,7 @@ sigpvc_detach(pip)
  * over an ATM interface attached to the SigPVC signalling manager are handled 
  * here.  Only PVC requests are allowed.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to CM's connection VCC
@@ -407,7 +408,7 @@ done:
  * (via the atm_close_connection function), which is running over an interface 
  * attached to the SigPVC signalling manager, are handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  * 
  * Arguments:
  *	vcp	pointer to connection's VC control block
@@ -450,7 +451,7 @@ sigpvc_release(vcp, errp)
  * (via the atm_free_connection function), which is running over an interface 
  * attached to the SigPVC signalling manager, are handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  * 
  * Arguments:
  *	vcp	pointer to connection's VCC control block
@@ -507,7 +508,7 @@ sigpvc_free(vcp)
 /*
  * Process Signalling Manager PF_ATM ioctls
  * 
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	code	PF_ATM sub-operation code

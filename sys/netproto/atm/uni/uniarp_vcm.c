@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_vcm.c,v 1.5 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.5 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -84,7 +84,7 @@ uniarp_pvcopen(ivp)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
-	int		s, err;
+	int		err;
 
 	ATM_DEBUG1("uniarp_pvcopen: ivp=%p\n", ivp);
 
@@ -130,7 +130,7 @@ uniarp_pvcopen(ivp)
 	/*
 	 * Get map entry set up
 	 */
-	s = splnet();
+	crit_enter();
 	uap->ua_dstatm.address_format = T_ATM_ABSENT;
 	uap->ua_dstatmsub.address_format = T_ATM_ABSENT;
 	uap->ua_intf = uip;
@@ -156,7 +156,7 @@ uniarp_pvcopen(ivp)
 	 */
 	uap->ua_aging = UNIARP_REVALID_AGE;
 
-	(void) splx(s);
+	crit_exit();
 	return (MAP_PROCEEDING);
 }
 
@@ -187,7 +187,8 @@ uniarp_svcout(ivp, dst)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
-	int	s = splnet();
+
+	crit_enter();
 
 	ATM_DEBUG2("uniarp_svcout: ivp=%p,dst=0x%x\n", ivp, dst->s_addr);
 
@@ -198,7 +199,7 @@ uniarp_svcout(ivp, dst)
 	 */
 	uip = (struct uniip *)ivp->iv_ipnif->inf_isintf;
 	if (uip == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -212,7 +213,7 @@ uniarp_svcout(ivp, dst)
 		 * We've got an entry, verify interface
 		 */
 		if (uap->ua_intf != uip) {
-			(void) splx(s);
+			crit_exit();
 			return (MAP_FAILED);
 		}
 
@@ -227,13 +228,13 @@ uniarp_svcout(ivp, dst)
 			/*
 			 * Entry is valid, we're done
 			 */
-			(void) splx(s);
+			crit_exit();
 			return (MAP_VALID);
 		} else {
 			/*
 			 * We're already looking for this address
 			 */
-			(void) splx(s);
+			crit_exit();
 			return (MAP_PROCEEDING);
 		}
 	}
@@ -245,7 +246,7 @@ uniarp_svcout(ivp, dst)
 	 * also deny the request.
 	 */
 	if (uip->uip_arpstate != UIAS_CLIENT_ACTIVE) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -254,7 +255,7 @@ uniarp_svcout(ivp, dst)
 	 */
 	uap = (struct uniarp *)atm_allocate(&uniarp_pool);
 	if (uap == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -290,7 +291,7 @@ uniarp_svcout(ivp, dst)
 	 */
 	UNIARP_TIMER(uap, UNIARP_ARP_RETRY);
 
-	(void) splx(s);
+	crit_exit();
 	return (MAP_PROCEEDING);
 }
 
@@ -324,7 +325,9 @@ uniarp_svcin(ivp, dst, dstsub)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
-	int	found = 0, i, s = splnet();
+	int	found = 0, i;
+
+	crit_enter();
 
 	ATM_DEBUG1("uniarp_svcin: ivp=%p\n", ivp);
 
@@ -344,7 +347,7 @@ uniarp_svcin(ivp, dst, dstsub)
          */
 	uip = (struct uniip *)ivp->iv_ipnif->inf_isintf;
 	if (uip == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -352,7 +355,7 @@ uniarp_svcin(ivp, dst, dstsub)
 	 * Make sure we're configured as a client or server
 	 */
 	if (uip->uip_arpstate == UIAS_NOTCONF) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -384,7 +387,7 @@ uniarp_svcin(ivp, dst, dstsub)
 		 * We've got an entry, verify interface
 		 */
 		if (uap->ua_intf != uip) {
-			(void) splx(s);
+			crit_exit();
 			return (MAP_FAILED);
 		}
 
@@ -399,13 +402,13 @@ uniarp_svcin(ivp, dst, dstsub)
 			/*
 			 * Entry is valid, we're done
 			 */
-			(void) splx(s);
+			crit_exit();
 			return (MAP_VALID);
 		} else {
 			/*
 			 * We're already looking for this address
 			 */
-			(void) splx(s);
+			crit_exit();
 			return (MAP_PROCEEDING);
 		}
 	}
@@ -415,7 +418,7 @@ uniarp_svcin(ivp, dst, dstsub)
 	 */
 	uap = (struct uniarp *)atm_allocate(&uniarp_pool);
 	if (uap == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (MAP_FAILED);
 	}
 
@@ -438,7 +441,7 @@ uniarp_svcin(ivp, dst, dstsub)
 	 */
 	LINK2TAIL(uap, struct uniarp, uniarp_nomaptab, ua_next);
 
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * Now we just wait for SVC to become active
@@ -468,7 +471,9 @@ uniarp_svcactive(ivp)
 	struct ip_nif	*inp;
 	struct uniip	*uip;
 	struct uniarp	*uap;
-	int	err, s = splnet();
+	int	err;
+
+	crit_enter();
 
 	ATM_DEBUG1("uniarp_svcactive: ivp=%p\n", ivp);
 
@@ -516,7 +521,7 @@ uniarp_svcactive(ivp)
 		 */
 		UNIIP_ARP_TIMER(uip, 1 * ATM_HZ);
 
-		(void) splx(s);
+		crit_exit();
 		return (0);
 	}
 
@@ -538,7 +543,7 @@ uniarp_svcactive(ivp)
 	    ((uap->ua_time.ti_flag & TIF_QUEUED) == 0))
 		UNIARP_TIMER(uap, UNIARP_ARP_RETRY);
 
-	(void) splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -563,7 +568,6 @@ uniarp_vcclose(ivp)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
-	int	s;
 
 	ATM_DEBUG1("uniarp_vcclose: ivp=%p\n", ivp);
 
@@ -582,7 +586,7 @@ uniarp_vcclose(ivp)
 		return;
 	uip = uap->ua_intf;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * If this is the arpserver VCC, then schedule ourselves to
@@ -611,7 +615,7 @@ uniarp_vcclose(ivp)
 		if ((uap->ua_flags & (UAF_VALID | UAF_LOCKED)) ||
 		    (uap->ua_origin >= UAO_PERM) ||
 		    (uap->ua_ivp != NULL)) {
-			(void) splx(s);
+			crit_exit();
 			return;
 		}
 
@@ -637,7 +641,7 @@ uniarp_vcclose(ivp)
 	 */
 	atm_free((caddr_t)uap);
 
-	(void) splx(s);
+	crit_exit();
 	return;
 }
 
@@ -682,9 +686,8 @@ uniarp_cleared(toku, cause)
 	struct t_atm_cause	*cause;
 {
 	struct ipvcc	*ivp = toku;
-	int		s;
 
-	s = splnet();
+	crit_enter();
 
 	/*
 	 * We're done with VCC
@@ -697,6 +700,6 @@ uniarp_cleared(toku, cause)
 	if (ivp->iv_state == IPVCC_FREE)
 		atm_free((caddr_t)ivp);
 
-	(void) splx(s);
+	crit_exit();
 }
 

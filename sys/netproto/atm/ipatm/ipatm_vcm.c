@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_vcm.c,v 1.4 1999/08/28 00:48:45 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.6 2005/02/12 01:28:07 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.7 2005/06/02 22:37:47 dillon Exp $
  */
 
 /*
@@ -329,7 +329,7 @@ ipatm_openpvc(pvp, sivp)
 	Atm_addr_pvc	*pvcp;
 	struct atm_nif	*nip;
 	struct ip_nif	*inp;
-	int	s, err = 0;
+	int	err = 0;
 
 	inp = pvp->ipp_ipnif;
 	nip = inp->inf_nif;
@@ -410,11 +410,11 @@ ipatm_openpvc(pvp, sivp)
 	/*
 	 * Queue VCC onto its network interface
 	 */
-	s = splnet();
+	crit_enter();
 	ipatm_vccnt++;
 	ENQUEUE(ivp, struct ipvcc, iv_elem, inp->inf_vcq);
 	ivp->iv_ipnif = inp;
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * Set destination IP address and IPVCC state
@@ -501,7 +501,7 @@ ipatm_createsvc(ifp, daf, dst, sivp)
 	struct ipvcc	*ivp;
 	struct in_addr	*ip;
 	Atm_addr	*atm;
-	int	s, err = 0;
+	int	err = 0;
 
 	/*
 	 * Get IP interface and make sure its ready
@@ -638,10 +638,10 @@ ipatm_createsvc(ifp, daf, dst, sivp)
 	/*
 	 * Queue VCC onto its network interface
 	 */
-	s = splnet();
+	crit_enter();
 	ipatm_vccnt++;
 	ENQUEUE(ivp, struct ipvcc, iv_elem, inp->inf_vcq);
-	(void) splx(s);
+	crit_exit();
 	*sivp = ivp;
 	return (0);
 
@@ -829,7 +829,7 @@ ipatm_activate(ivp)
  * problems are encountered, we will just tell the connection manager to
  * reject the call.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	tok	owner's matched listening token
@@ -1019,7 +1019,7 @@ ipatm_closevc(ivp, code)
 	int		code;
 {
 	struct ip_nif	*inp = ivp->iv_ipnif;
-	int	s, err;
+	int	err;
 
 	/*
 	 * Make sure VCC hasn't been through here already
@@ -1089,7 +1089,7 @@ ipatm_closevc(ivp, code)
 	/*
 	 * Remove VCC from network i/f
 	 */
-	s = splnet();
+	crit_enter();
 	DEQUEUE(ivp, struct ipvcc, iv_elem, inp->inf_vcq);
 
 	/*
@@ -1103,7 +1103,7 @@ ipatm_closevc(ivp, code)
 	if (ivp->iv_arpconn == NULL)
 		atm_free((caddr_t)ivp);
 	ipatm_vccnt--;
-	(void) splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -1190,7 +1190,6 @@ ipatm_iptovc(dst, nip)
 	struct ip_nif	*inp;
 	struct ipvcc	*ivp;
 	u_long		dstip = dst->sin_addr.s_addr;
-	int	s;
 
 	/*
 	 * Look in cache first
@@ -1201,13 +1200,13 @@ ipatm_iptovc(dst, nip)
 	/*
 	 * Oh well, we've got to search for it...first find the interface
 	 */
-	s = splnet();
+	crit_enter();
 	for (inp = ipatm_nif_head; inp; inp = inp->inf_next) {
 		if (inp->inf_nif == nip)
 			break;
 	}
 	if (inp == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (NULL);
 	}
 
@@ -1227,7 +1226,7 @@ ipatm_iptovc(dst, nip)
 		last_map_ipdst = dstip;
 		last_map_ipvcc = ivp;
 	}
-	(void) splx(s);
+	crit_exit();
 
 	return (ivp);
 }

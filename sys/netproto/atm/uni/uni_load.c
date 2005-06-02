@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uni_load.c,v 1.4 2000/01/17 20:49:54 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uni_load.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uni_load.c,v 1.7 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -130,8 +130,9 @@ done:
 static int
 uni_stop()
 {
-	int	err, s = splnet();
+	int	err;
 
+	crit_enter();
 	/*
 	 * Terminate uni sub-services
 	 */
@@ -152,7 +153,7 @@ uni_stop()
 		goto done;
 
 done:
-	(void) splx(s);
+	crit_exit();
 	return (err);
 }
 

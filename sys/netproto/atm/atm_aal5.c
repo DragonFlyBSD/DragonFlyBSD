@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.8 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.9 2005/06/02 22:37:45 dillon Exp $
  */
 
 /*
@@ -177,8 +177,8 @@ static Atm_attributes	atm_aal5_defattr = {
  */
 #ifdef DIAGNOSTIC
 #define ATM_INTRO(f)						\
-	int		s, err = 0;				\
-	s = splnet();						\
+	int		err = 0;				\
+	crit_enter();						\
 	ATM_DEBUG2("aal5 socket %s (%p)\n", f, so);		\
 	/*							\
 	 * Stack queue should have been drained			\
@@ -188,8 +188,8 @@ static Atm_attributes	atm_aal5_defattr = {
 	;
 #else /* !DIAGNOSTIC */
 #define ATM_INTRO(f)						\
-	int		s, err = 0;				\
-	s = splnet();						\
+	int		err = 0;				\
+	crit_enter();						\
 	;
 #endif /* DIAGNOSTIC */
 
@@ -198,7 +198,7 @@ static Atm_attributes	atm_aal5_defattr = {
 	 * Drain any deferred calls				\
 	 */							\
 	STACK_DRAIN();						\
-	(void) splx(s);						\
+	crit_exit();						\
 	return (err);						\
 	;
 
@@ -656,7 +656,7 @@ atm_aal5_peeraddr(struct socket *so, struct sockaddr **addr)
  * problems are encountered, we will just tell the connection manager to
  * reject the call.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	tok	owner's matched listening token

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_if.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.8 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.9 2005/06/02 22:37:50 dillon Exp $
  */
 
 /*
@@ -175,7 +175,8 @@ static int
 spans_stop()
 {
 	int	err = 0;
-	int	s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Is protocol even set up?
@@ -217,7 +218,7 @@ spans_stop()
 		err = ENXIO;
 
 done:
-	(void) splx(s);
+	crit_exit();
 	return (err);
 }
 
@@ -232,7 +233,7 @@ done:
  * instance will be created and then we'll just sit around waiting for
  * status or connection requests.
  *
- * Function must be called at splnet.
+ * Function must be called from a critical section.
  *
  * Arguments:
  *	smp	pointer to SPANS signalling manager control block
@@ -248,7 +249,7 @@ spans_attach(smp, pip)
 	struct sigmgr	*smp;
 	struct atm_pif	*pip;
 {
-	int		err = 0, n = 0, s;
+	int		err = 0, n = 0;
 	struct spans	*spp = NULL;
 	struct atm_nif	*np;
 
@@ -336,10 +337,10 @@ done:
 					smp->sm_prinst, si_next);
 			KM_FREE(spp, sizeof(struct spans), M_DEVBUF);
 		}
-		s = splimp();
+		crit_enter();
 		pip->pif_sigmgr = NULL;
 		pip->pif_siginst = NULL;
-		(void) splx(s);
+		crit_exit();
 	}
 
 	return (err);
@@ -354,7 +355,7 @@ done:
  * handle the detachment for all SPANS-controlled interfaces.  All
  * circuits will be immediately terminated.
  *
- * Function must be called at splnet.
+ * Function must be called from a critical section.
  *
  * Arguments:
  *	pip	pointer to ATM physical interface control block
@@ -469,7 +470,7 @@ spans_detach(pip)
  * atm_open_connection) over an ATM interface attached to the SPANS
  * signalling manager are handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	cvp	pointer to user's requested connection parameters
@@ -535,7 +536,7 @@ spans_setup(cvp, errp)
  * over an interface attached to the SPANS signalling manager, are
  * handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to connection's VC control block
@@ -607,7 +608,7 @@ spans_release(vcp, errp)
  * A user calls this routine (via the atm_accept_call function)
  * after it is notified that an open request was received for it.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to user's VCCB
@@ -680,7 +681,7 @@ failed:
  * A user calls this routine (via the atm_reject_call function)
  * after it is notified that an open request was received for it.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to user's VCCB
@@ -741,7 +742,7 @@ spans_reject(vcp, errp)
  * The VCC owner will be notified of the request, in order to initiate
  * termination of the connection.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to connection's VC control block
@@ -797,7 +798,7 @@ spans_abort(vcp)
  * is running over an interface attached to the SigPVC signalling
  * manager, are handled here.
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	vcp	pointer to connection's VC control block
@@ -860,7 +861,7 @@ spans_free(vcp)
 /*
  * SPANS IOCTL support
  *
- * Function will be called at splnet.
+ * Function will be called from a critical section.
  *
  * Arguments:
  *	code	PF_ATM sub-operation code

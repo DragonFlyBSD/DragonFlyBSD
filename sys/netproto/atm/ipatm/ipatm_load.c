@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_load.c,v 1.6 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.7 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.8 2005/06/02 22:37:47 dillon Exp $
  */
 
 /*
@@ -377,7 +377,7 @@ ipatm_start()
 {
 	struct atm_pif	*pip;
 	struct atm_nif	*nip;
-	int	err, s, i;
+	int	err, i;
 
 	/*
 	 * Verify software version
@@ -406,7 +406,7 @@ ipatm_start()
 	/*
 	 * Get current system configuration
 	 */
-	s = splnet();
+	crit_enter();
 	for (pip = atm_interface_head; pip; pip = pip->pif_next) {
 		/*
 		 * Process each network interface
@@ -420,7 +420,7 @@ ipatm_start()
 			 */
 			err = ipatm_nifstat(NCM_ATTACH, nip, 0);
 			if (err) {
-				(void) splx(s);
+				crit_exit();
 				goto done;
 			}
 
@@ -434,13 +434,13 @@ ipatm_start()
 			if (ia) {
 				err = ipatm_nifstat(NCM_SETADDR, nip, (int)ia);
 				if (err) {
-					(void) splx(s);
+					crit_exit();
 					goto done;
 				}
 			}
 		}
 	}
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * Fill in union fields
@@ -531,13 +531,12 @@ ipatm_stop()
 {
 	struct ip_nif	*inp;
 	int	err = 0, i;
-	int	s = splnet();
 
 	/*
 	 * Any VCCs still open??
 	 */
+	crit_enter();
 	if (ipatm_vccnt) {
-
 		/* Yes, can't stop now */
 		err = EBUSY;
 		goto done;
@@ -580,7 +579,7 @@ ipatm_stop()
 	atm_release_pool(&ipatm_nifpool);
 
 done:
-	(void) splx(s);
+	crit_exit();
 	return (err);
 }
 

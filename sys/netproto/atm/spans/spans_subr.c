@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_subr.c,v 1.4 1999/08/28 00:48:52 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.5 2005/06/02 22:37:50 dillon Exp $
  */
 
 /*
@@ -49,7 +49,7 @@
  * user will have to wait for a notify event to be sure the SVC is fully
  * open.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	spp	pointer to SPANS protocol instance
@@ -245,7 +245,7 @@ spans_open_vcc(spp, cvp)
  * Called when a user wants to close a VCC.  This function will clean
  * up the VCCB and, for an SVC, send a close request.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	spp	pointer to SPANS protocol instance
@@ -338,7 +338,7 @@ spans_close_vcc(spp, svp, force)
  * Called when the signalling manager wants to close a VCC immediately.
  * This function will clean up the VCCB and notify the owner.
  *
- * Must be called at splnet.
+ * Must be called from a critical section.
  *
  * Arguments:
  *	spp	pointer to SPANS protocol instance
@@ -430,7 +430,6 @@ spans_switch_reset(spp, cause)
 	int		cause;
 
 {
-	int		s;
 	struct vccb	*vcp, *vnext;
 
 	ATM_DEBUG2("spans_switch_reset: spp=%p, cause=%d\n",
@@ -447,7 +446,7 @@ spans_switch_reset(spp, cause)
 	/*
 	 * Terminate all of our VCCs
 	 */
-	s = splnet();
+	crit_enter();
 	for (vcp = Q_HEAD(spp->sp_vccq, struct vccb); vcp;
 			vcp = vnext) {
 
@@ -485,5 +484,5 @@ spans_switch_reset(spp, cause)
 					vcp, vcp->vc_type);
 		}
 	}
-	(void) splx(s);
+	crit_exit();
 }

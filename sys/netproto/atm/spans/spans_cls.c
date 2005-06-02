@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.6 2005/06/02 22:37:50 dillon Exp $
  */
 
 /*
@@ -265,7 +265,7 @@ spanscls_start()
 void
 spanscls_stop()
 {
-	int	s = splnet();
+	crit_enter();
 
 	/*
 	 * Tell ARP to stop
@@ -278,7 +278,7 @@ spanscls_stop()
 	if (spanscls_head) {
 		panic("spanscls_stop: bad state");
 	}
-	(void) splx(s);
+	crit_exit();
 
 	/*
 	 * De-register ourselves
@@ -298,7 +298,7 @@ spanscls_stop()
  * This function is called whenever a physical interface has been attached
  * to spans.  We will open the CLS PVC and await further events.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	spp	pointer to spans signalling protocol instance
@@ -371,7 +371,7 @@ spanscls_attach(spp)
  * This function is called whenever a physical interface has been detached
  * from spans.  We will close the CLS PVC and clean up everything.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	spp	pointer to spans signalling protocol instance
@@ -421,7 +421,7 @@ spanscls_detach(spp)
  * 
  * Called whenever an IP network interface becomes active.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	inp	pointer to IP network interface
@@ -471,7 +471,7 @@ spanscls_ipact(inp)
  * 
  * Called whenever an IP network interface becomes inactive.
  *
- * Called at splnet.
+ * Called from a critical section.
  *
  * Arguments:
  *	inp	pointer to IP network interface

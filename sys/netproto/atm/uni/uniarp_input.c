@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_input.c,v 1.6 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.6 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -272,8 +272,8 @@ proc_arp_req(ivp, m)
 	struct uniip	*uip;
 	struct uniarp	*uap;
 	struct in_addr	myip;
-	int		s = splnet();
 
+	crit_enter();
 	/*
 	 * Only an arp server should receive these
 	 */
@@ -378,7 +378,7 @@ proc_arp_req(ivp, m)
 	}
 
 drop:
-	(void) splx(s);
+	crit_exit();
 	if (m)
 		KB_FREEALL(m);
 	return;
@@ -407,8 +407,8 @@ proc_arp_rsp(ivp, m)
 	struct uniip	*uip;
 	struct uniarp	*uap;
 	struct in_addr	myip;
-	int		s = splnet();
 
+	crit_enter();
 	/*
 	 * Only the arp server should send these
 	 */
@@ -493,7 +493,7 @@ proc_arp_rsp(ivp, m)
 	(void) uniarp_cache_svc(uip, &sip, &satm, &satmsub, UAO_LOOKUP);
 
 drop:
-	(void) splx(s);
+	crit_exit();
 	KB_FREEALL(m);
 	return;
 }
@@ -522,8 +522,8 @@ proc_arp_nak(ivp, m)
 	struct uniarp	*uap;
 	struct in_addr	myip;
 	struct ipvcc	*inext;
-	int		s = splnet();
 
+	crit_enter();
 	/*
 	 * Only the arp server should send these
 	 */
@@ -574,7 +574,7 @@ proc_arp_nak(ivp, m)
 	}
 
 drop:
-	(void) splx(s);
+	crit_exit();
 	KB_FREEALL(m);
 	return;
 }
@@ -601,7 +601,8 @@ proc_inarp_req(ivp, m)
 	struct siginst	*sgp;
 	struct uniip	*uip;
 	struct in_addr	myip;
-	int		s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Get interface pointers
@@ -703,7 +704,7 @@ proc_inarp_req(ivp, m)
 	(void) uniarp_inarp_rsp(uip, &sip, &satm, &satmsub, ivp);
 
 drop:
-	(void) splx(s);
+	crit_exit();
 	KB_FREEALL(m);
 	return;
 }
@@ -730,7 +731,8 @@ proc_inarp_rsp(ivp, m)
 	struct siginst	*sgp;
 	struct uniip	*uip;
 	struct in_addr	myip;
-	int		s = splnet();
+
+	crit_enter();
 
 	/*
 	 * Get interface pointers
@@ -812,7 +814,7 @@ proc_inarp_rsp(ivp, m)
 	}
 
 drop:
-	(void) splx(s);
+	crit_exit();
 	KB_FREEALL(m);
 	return;
 }

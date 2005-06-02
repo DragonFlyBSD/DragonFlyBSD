@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_msg.c,v 1.6 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.6 2005/06/02 22:37:52 dillon Exp $
  */
 
 /*
@@ -612,7 +612,6 @@ unisig_rcv_restart(usp, msg)
 {
 	struct unisig_vccb	*uvp, *uvnext;
 	struct unisig_msg	*rsta_msg;
-	int			s;
 
 	ATM_DEBUG2("unisig_rcv_restart: usp=%p, msg=%p\n",
 			usp, msg);
@@ -638,7 +637,7 @@ unisig_rcv_restart(usp, msg)
 		/*
 		 * Restart all VCCs
 		 */
-		s = splnet();
+		crit_enter();
 		for (uvp=Q_HEAD(usp->us_vccq, struct unisig_vccb); uvp;
 				uvp=uvnext) {
 			uvnext = Q_NEXT(uvp, struct unisig_vccb,
@@ -648,7 +647,7 @@ unisig_rcv_restart(usp, msg)
 						T_ATM_CAUSE_NORMAL_CALL_CLEARING);
 			}
 		}
-		(void) splx(s);
+		crit_exit();
 	}
 
 	/*
