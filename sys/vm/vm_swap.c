@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.17 2004/12/17 00:18:49 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.18 2005/06/02 20:57:21 swildner Exp $
  */
 
 #include "opt_swap.h"
@@ -51,6 +51,7 @@
 #include <sys/lock.h>
 #include <sys/conf.h>
 #include <sys/stat.h>
+#include <sys/thread2.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/swap_pager.h>
@@ -87,7 +88,7 @@ swapdev_strategy(struct vop_strategy_args /* {
 			 struct buf *a_bp;
 		 } */ *ap)
 {
-	int s, sz, off, seg, index;
+	int sz, off, seg, index;
 	struct swdevt *sp;
 	struct vnode *vp;
 	struct buf *bp;
@@ -136,7 +137,7 @@ swapdev_strategy(struct vop_strategy_args /* {
 	bp->b_blkno = ctodb(bp->b_blkno);
 
 	vhold(sp->sw_vp);
-	s = splvm();
+	crit_enter();
 	if ((bp->b_flags & B_READ) == 0) {
 		vp = bp->b_vp;
 		if (vp) {
@@ -149,7 +150,7 @@ swapdev_strategy(struct vop_strategy_args /* {
 		sp->sw_vp->v_numoutput++;
 	}
 	pbreassignbuf(bp, sp->sw_vp);
-	splx(s);
+	crit_exit();
 	VOP_STRATEGY(bp->b_vp, bp);
 	return 0;
 }

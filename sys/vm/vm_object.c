@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.21 2004/11/12 00:09:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.22 2005/06/02 20:57:21 swildner Exp $
  */
 
 /*
@@ -91,8 +91,6 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
-
-#include <sys/thread2.h>
 
 #define EASY_SCAN_FACTOR	8
 
@@ -859,7 +857,6 @@ static void
 vm_object_deactivate_pages(vm_object_t object)
 {
 	vm_page_t p, next;
-	int s;
 
 	crit_enter();
 	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = next) {

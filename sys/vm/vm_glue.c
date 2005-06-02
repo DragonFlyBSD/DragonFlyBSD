@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.29 2005/02/07 20:39:01 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.30 2005/06/02 20:57:21 swildner Exp $
  */
 
 #include "opt_vm.h"
@@ -91,6 +91,7 @@
 
 #include <sys/user.h>
 #include <vm/vm_page2.h>
+#include <sys/thread2.h>
 
 /*
  * System initialization
@@ -314,15 +315,13 @@ vm_init_limits(void *udata)
 void
 faultin(struct proc *p)
 {
-	int s;
-
 	if ((p->p_flag & P_INMEM) == 0) {
 
 		++p->p_lock;
 
 		pmap_swapin_proc(p);
 
-		s = splhigh();
+		crit_enter();
 
 		/*
 		 * The process is in the kernel and controlled by LWKT,
@@ -335,7 +334,7 @@ faultin(struct proc *p)
 
 		/* undo the effect of setting SLOCK above */
 		--p->p_lock;
-		splx(s);
+		crit_exit();
 
 	}
 }

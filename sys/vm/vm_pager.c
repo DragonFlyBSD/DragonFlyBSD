@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.11 2004/07/14 03:10:17 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.12 2005/06/02 20:57:21 swildner Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 #include <sys/ucred.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -335,10 +336,9 @@ initpbuf(struct buf *bp)
 struct buf *
 getpbuf(int *pfreecnt)
 {
-	int s;
 	struct buf *bp;
 
-	s = splvm();
+	crit_enter();
 
 	for (;;) {
 		if (pfreecnt) {
@@ -358,7 +358,7 @@ getpbuf(int *pfreecnt)
 	TAILQ_REMOVE(&bswlist, bp, b_freelist);
 	if (pfreecnt)
 		--*pfreecnt;
-	splx(s);
+	crit_exit();
 
 	initpbuf(bp);
 	return bp;
@@ -373,19 +373,18 @@ getpbuf(int *pfreecnt)
 struct buf *
 trypbuf(int *pfreecnt)
 {
-	int s;
 	struct buf *bp;
 
-	s = splvm();
+	crit_enter();
 	if (*pfreecnt == 0 || (bp = TAILQ_FIRST(&bswlist)) == NULL) {
-		splx(s);
+		crit_exit();
 		return NULL;
 	}
 	TAILQ_REMOVE(&bswlist, bp, b_freelist);
 
 	--*pfreecnt;
 
-	splx(s);
+	crit_exit();
 
 	initpbuf(bp);
 
@@ -401,9 +400,7 @@ trypbuf(int *pfreecnt)
 void
 relpbuf(struct buf *bp, int *pfreecnt)
 {
-	int s;
-
-	s = splvm();
+	crit_enter();
 
 	if (bp->b_vp)
 		pbrelvp(bp);
@@ -420,7 +417,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 		if (++*pfreecnt == 1)
 			wakeup(pfreecnt);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /********************************************************
@@ -523,9 +520,7 @@ flushchainbuf(struct buf *nbp)
 void
 waitchainbuf(struct buf *bp, int count, int done)
 {
- 	int s;
-
-	s = splbio();
+	crit_enter();
 	while (bp->b_chain.count > count) {
 		bp->b_flags |= B_WANT;
 		tsleep(bp, 0, "bpchain", 0);
@@ -537,18 +532,16 @@ waitchainbuf(struct buf *bp, int count, int done)
 		}
 		biodone(bp);
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
 autochaindone(struct buf *bp)
 {
- 	int s;
-
-	s = splbio();
+	crit_enter();
 	if (bp->b_chain.count == 0)
 		biodone(bp);
 	else
 		bp->b_xflags |= BX_AUTOCHAINDONE;
-	splx(s);
+	crit_exit();
 }

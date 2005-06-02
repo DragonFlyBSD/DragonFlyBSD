@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.29 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.30 2005/06/02 20:57:21 swildner Exp $
  */
 
 /*
@@ -88,8 +88,6 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
-
-#include <sys/thread2.h>
 
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
@@ -882,9 +880,7 @@ loop:
 void
 vm_wait(void)
 {
-	int s;
-
-	s = splvm();
+	crit_enter();
 	if (curthread == pagethread) {
 		vm_pageout_pages_needed = 1;
 		tsleep(&vm_pageout_pages_needed, 0, "VMWait", 0);
@@ -895,7 +891,7 @@ vm_wait(void)
 		}
 		tsleep(&vmstats.v_free_count, 0, "vmwait", 0);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -911,15 +907,13 @@ vm_wait(void)
 void
 vm_waitpfault(void)
 {
-	int s;
-
-	s = splvm();
+	crit_enter();
 	if (!vm_pages_needed) {
 		vm_pages_needed = 1;
 		wakeup(&vm_pages_needed);
 	}
 	tsleep(&vmstats.v_free_count, 0, "pfault", 0);
-	splx(s);
+	crit_exit();
 }
 
 /*

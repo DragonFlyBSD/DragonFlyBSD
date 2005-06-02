@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.18 2005/03/04 00:44:49 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.19 2005/06/02 20:57:21 swildner Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 
 #include <vm/pmap.h>
 #include <machine/atomic.h>
+#include <sys/thread2.h>
 
 /*
  *	Management of resident (logical) pages.
@@ -539,7 +540,7 @@ static __inline int
 vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 {
 	if ((m->flags & PG_BUSY) || (also_m_busy && m->busy))  {
-		int s = splvm();
+		crit_enter();
 		if ((m->flags & PG_BUSY) || (also_m_busy && m->busy)) {
 			/*
 			 * Page is busy. Wait and retry.
@@ -547,7 +548,7 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 			vm_page_flag_set(m, PG_WANTED | PG_REFERENCED);
 			tsleep(m, 0, msg, 0);
 		}
-		splx(s);
+		crit_exit();
 		return(TRUE);
 		/* not reached */
 	}

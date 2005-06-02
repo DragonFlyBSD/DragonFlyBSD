@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.15 2005/06/02 19:57:07 swildner Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.16 2005/06/02 20:57:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -111,6 +111,7 @@
 #include <sys/sysctl.h>
 #include <sys/blist.h>
 #include <sys/lock.h>
+#include <sys/thread2.h>
 
 #ifndef MAX_PAGEOUT_CLUSTER
 #define MAX_PAGEOUT_CLUSTER 16
@@ -461,8 +462,6 @@ swap_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
 static void
 swap_pager_dealloc(vm_object_t object)
 {
-	int s;
-
 	/*
 	 * Remove from list right away so lookups will fail if we block for
 	 * pageout completion.
@@ -482,9 +481,9 @@ swap_pager_dealloc(vm_object_t object)
 	 * associated with vm_page_t's for this object.  We do not care
 	 * if paging is still in progress on some objects.
 	 */
-	s = splvm();
+	crit_enter();
 	swp_pager_meta_free_all(object);
-	splx(s);
+	crit_exit();
 }
 
 /************************************************************************
@@ -568,9 +567,9 @@ swp_pager_freeswapspace(daddr_t blk, int npages)
 void
 swap_pager_freespace(vm_object_t object, vm_pindex_t start, vm_size_t size)
 {
-	int s = splvm();
+	crit_enter();
 	swp_pager_meta_free(object, start, size);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -585,12 +584,11 @@ swap_pager_freespace(vm_object_t object, vm_pindex_t start, vm_size_t size)
 int
 swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 {
-	int s;
 	int n = 0;
 	daddr_t blk = SWAPBLK_NONE;
 	vm_pindex_t beg = start;	/* save start index */
 
-	s = splvm();
+	crit_enter();
 	while (size) {
 		if (n == 0) {
 			n = BLIST_MAX_ALLOC;
@@ -598,7 +596,7 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 				n >>= 1;
 				if (n == 0) {
 					swp_pager_meta_free(object, beg, start - beg);
-					splx(s);
+					crit_exit();
 					return(-1);
 				}
 			}
@@ -610,7 +608,7 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 		--n;
 	}
 	swp_pager_meta_free(object, start, n);
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -646,9 +644,8 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
     vm_pindex_t offset, int destroysource)
 {
 	vm_pindex_t i;
-	int s;
 
-	s = splvm();
+	crit_enter();
 
 	/*
 	 * If destroysource is set, we remove the source object from the 
@@ -729,7 +726,7 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
 		 */
 		srcobject->type = OBJT_DEFAULT;
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -751,17 +748,16 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
     int *after)
 {
 	daddr_t blk0;
-	int s;
 
 	/*
 	 * do we have good backing store at the requested index ?
 	 */
 
-	s = splvm();
+	crit_enter();
 	blk0 = swp_pager_meta_ctl(object, pindex, 0);
 
 	if (blk0 == SWAPBLK_NONE) {
-		splx(s);
+		crit_exit();
 		if (before)
 			*before = 0;
 		if (after)
@@ -804,7 +800,7 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 		}
 		*after = (i - 1);
 	}
-	splx(s);
+	crit_exit();
 	return (TRUE);
 }
 
@@ -856,7 +852,6 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 {
 	vm_pindex_t start;
 	int count;
-	int s;
 	char *data;
 	struct buf *nbp = NULL;
 
@@ -880,7 +875,7 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 	count = howmany(bp->b_bcount, PAGE_SIZE);
 	data = bp->b_data;
 
-	s = splvm();
+	crit_enter();
 
 	/*
 	 * Deal with B_FREEBUF
@@ -892,7 +887,7 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 		 *		  needed.
 		 */
 		swp_pager_meta_free(object, start, count);
-		splx(s);
+		crit_exit();
 		bp->b_resid = 0;
 		biodone(bp);
 		return;
@@ -935,7 +930,7 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 		     ((nbp->b_blkno ^ blk) & dmmax_mask)
 		    )
 		) {
-			splx(s);
+			crit_exit();
 			if (bp->b_flags & B_READ) {
 				++mycpu->gd_cnt.v_swapin;
 				mycpu->gd_cnt.v_swappgsin += btoc(nbp->b_bcount);
@@ -945,7 +940,7 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 				nbp->b_dirtyend = nbp->b_bcount;
 			}
 			flushchainbuf(nbp);
-			s = splvm();
+			crit_enter();
 			nbp = NULL;
 		}
 
@@ -980,7 +975,7 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 	 *  Flush out last buffer
 	 */
 
-	splx(s);
+	crit_exit();
 
 	if (nbp) {
 		if ((bp->b_flags & B_ASYNC) == 0)
@@ -1033,7 +1028,6 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 {
 	struct buf *bp;
 	vm_page_t mreq;
-	int s;
 	int i;
 	int j;
 	daddr_t blk;
@@ -1059,7 +1053,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 * not need to be, but it will go a little faster if it is.
 	 */
 
-	s = splvm();
+	crit_enter();
 	blk = swp_pager_meta_ctl(mreq->object, mreq->pindex, 0);
 
 	for (i = reqpage - 1; i >= 0; --i) {
@@ -1096,7 +1090,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		for (k = j; k < count; ++k)
 			vm_page_free(m[k]);
 	}
-	splx(s);
+	crit_exit();
 
 
 	/*
@@ -1174,7 +1168,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 * is set in the meta-data.
 	 */
 
-	s = splvm();
+	crit_enter();
 
 	while ((mreq->flags & PG_SWAPINPROG) != 0) {
 		vm_page_flag_set(mreq, PG_WANTED | PG_REFERENCED);
@@ -1189,7 +1183,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 
 	/*
 	 * mreq is left bussied after completion, but all the other pages
@@ -1270,7 +1264,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 
 	if (swap_async_max != nsw_wcount_async_max) {
 		int n;
-		int s;
 
 		/*
 		 * limit range
@@ -1286,14 +1279,14 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		 * count is too low, we may not be able to make the adjustment
 		 * at this time.
 		 */
-		s = splvm();
+		crit_enter();
 		n -= nsw_wcount_async_max;
 		if (nsw_wcount_async + n >= 0) {
 			nsw_wcount_async += n;
 			nsw_wcount_async_max += n;
 			wakeup(&nsw_wcount_async);
 		}
-		splx(s);
+		crit_exit();
 	}
 
 	/*
@@ -1305,7 +1298,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 	 */
 
 	for (i = 0; i < count; i += n) {
-		int s;
 		int j;
 		struct buf *bp;
 		daddr_t blk;
@@ -1317,7 +1309,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		n = min(BLIST_MAX_ALLOC, count - i);
 		n = min(n, nsw_cluster_max);
 
-		s = splvm();
+		crit_enter();
 
 		/*
 		 * Get biggest block of swap we can.  If we fail, fall
@@ -1334,7 +1326,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		if (blk == SWAPBLK_NONE) {
 			for (j = 0; j < n; ++j)
 				rtvals[i+j] = VM_PAGER_FAIL;
-			splx(s);
+			crit_exit();
 			continue;
 		}
 
@@ -1398,7 +1390,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		mycpu->gd_cnt.v_swappgsout += bp->b_xio.xio_npages;
 		swapdev_vp->v_numoutput++;
 
-		splx(s);
+		crit_exit();
 
 		/*
 		 * asynchronous
@@ -1431,7 +1423,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		 * our async completion routine at the end, thus avoiding a
 		 * double-free.
 		 */
-		s = splbio();
+		crit_enter();
 
 		while ((bp->b_flags & B_DONE) == 0) {
 			tsleep(bp, 0, "swwrt", 0);
@@ -1447,7 +1439,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 
 		swp_pager_async_iodone(bp);
 
-		splx(s);
+		crit_exit();
 	}
 }
 
@@ -1490,7 +1482,6 @@ swp_pager_sync_iodone(struct buf *bp)
 static void
 swp_pager_async_iodone(struct buf *bp)
 {
-	int s;
 	int i;
 	vm_object_t object = NULL;
 
@@ -1517,7 +1508,7 @@ swp_pager_async_iodone(struct buf *bp)
 
 	if (bp->b_xio.xio_npages)
 		object = bp->b_xio.xio_pages[0]->object;
-	s = splvm();
+	crit_enter();
 
 	/*
 	 * remove the mapping for kernel virtual
@@ -1670,7 +1661,7 @@ swp_pager_async_iodone(struct buf *bp)
 		)
 	    )
 	);
-	splx(s);
+	crit_exit();
 }
 
 /************************************************************************

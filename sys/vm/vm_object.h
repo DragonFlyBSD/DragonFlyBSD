@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.4 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.5 2005/06/02 20:57:21 swildner Exp $
  */
 
 /*
@@ -73,6 +73,7 @@
 #define	_VM_OBJECT_
 
 #include <sys/queue.h>
+#include <sys/thread2.h>
 #include <machine/atomic.h>
 
 enum obj_type { OBJT_DEFAULT, OBJT_SWAP, OBJT_VNODE, OBJT_DEVICE, OBJT_PHYS,
@@ -234,12 +235,12 @@ static __inline void
 vm_object_pip_sleep(vm_object_t object, char *waitid)
 {
 	if (object->paging_in_progress) {
-		int s = splvm();
+		crit_enter();
 		if (object->paging_in_progress) {
 			vm_object_set_flag(object, OBJ_PIPWNT);
 			tsleep(object, 0, waitid, 0);
 		}
-		splx(s);
+		crit_exit();
 	}
 }
 

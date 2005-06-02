@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.18 2005/03/02 18:42:09 hmp Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.19 2005/06/02 20:57:21 swildner Exp $
  */
 
 /*
@@ -62,6 +62,7 @@
 #include <sys/vmmeter.h>
 #include <sys/conf.h>
 #include <sys/sfbuf.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -413,7 +414,6 @@ static int
 vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 {
 	int i;
-	int s;
 	struct vnode *dp, *vp;
 	struct buf *bp;
 	vm_offset_t kva;
@@ -465,11 +465,11 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 
 			/* we definitely need to be at splvm here */
 
-			s = splvm();
+			crit_enter();
 			while ((bp->b_flags & B_DONE) == 0) {
 				tsleep(bp, 0, "vnsrd", 0);
 			}
-			splx(s);
+			crit_exit();
 			if ((bp->b_flags & B_ERROR) != 0)
 				error = EIO;
 
@@ -608,7 +608,6 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	int runpg;
 	int runend;
 	struct buf *bp;
-	int s;
 	int count;
 	int error = 0;
 
@@ -781,13 +780,13 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	/* do the input */
 	VOP_STRATEGY(bp->b_vp, bp);
 
-	s = splvm();
+	crit_enter();
 	/* we definitely need to be at splvm here */
 
 	while ((bp->b_flags & B_DONE) == 0) {
 		tsleep(bp, 0, "vnread", 0);
 	}
-	splx(s);
+	crit_exit();
 	if ((bp->b_flags & B_ERROR) != 0)
 		error = EIO;
 
