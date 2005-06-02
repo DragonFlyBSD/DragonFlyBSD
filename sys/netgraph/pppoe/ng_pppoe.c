@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.7 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.8 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
@@ -56,6 +56,7 @@
 #include <sys/errno.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <net/ethernet.h>
 
 #include <netgraph/ng_message.h>
@@ -1515,7 +1516,6 @@ AAA
 static void
 pppoe_ticker(void *arg)
 {
-	int s = splnet();
 	hook_p hook = arg;
 	sessp	sp = hook->private;
 	negp	neg = sp->neg;
@@ -1524,6 +1524,7 @@ pppoe_ticker(void *arg)
 	priv_p privp = hook->node->private;
 	meta_p dummy = NULL;
 
+	crit_enter();
 AAA
 	switch(sp->state) {
 		/*
@@ -1556,7 +1557,7 @@ AAA
 		/* timeouts have no meaning in other states */
 		printf("pppoe: unexpected timeout\n");
 	}
-	splx(s);
+	crit_exit();
 }
 
 

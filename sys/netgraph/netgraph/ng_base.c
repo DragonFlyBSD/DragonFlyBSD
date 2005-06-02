@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.14 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.15 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -445,16 +445,14 @@ ng_cutlinks(node_p node)
 void
 ng_unref(node_p node)
 {
-	int	s;
-
-	s = splhigh();
+	crit_enter();
 	if (--node->refs <= 0) {
 		node->type->refs--;
 		LIST_REMOVE(node, nodes);
 		LIST_REMOVE(node, idnodes);
 		FREE(node, M_NETGRAPH);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -464,11 +462,11 @@ ng_unref(node_p node)
 int
 ng_wait_node(node_p node, char *msg)
 {
-	int s, error = 0;
+	int error = 0;
 
 	if (msg == NULL)
 		msg = "netgraph";
-	s = splnet();
+	crit_enter();
 	node->sleepers++;
 	node->refs++;		/* the sleeping process counts as a reference */
 	while ((node->flags & (NG_BUSY | NG_INVALID)) == NG_BUSY)
@@ -482,7 +480,7 @@ ng_wait_node(node_p node, char *msg)
 		    ("%s: refs=%d", __func__, node->refs));
 		node->flags |= NG_BUSY;
 	}
-	splx(s);
+	crit_exit();
 
 	/* Release the reference we had on it */
 	if (error != 0)
@@ -661,12 +659,10 @@ ng_unname(node_p node)
 void
 ng_unref_hook(hook_p hook)
 {
-	int	s;
-
-	s = splhigh();
+	crit_enter();
 	if (--hook->refs == 0)
 		FREE(hook, M_NETGRAPH);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1720,15 +1716,15 @@ int
 ng_mod_event(module_t mod, int event, void *data)
 {
 	struct ng_type *const type = data;
-	int s, error = 0;
+	int error = 0;
 
 	switch (event) {
 	case MOD_LOAD:
 
 		/* Register new netgraph node type */
-		s = splnet();
+		crit_enter();
 		if ((error = ng_newtype(type)) != 0) {
-			splx(s);
+			crit_exit();
 			break;
 		}
 
@@ -1738,29 +1734,29 @@ ng_mod_event(module_t mod, int event, void *data)
 				type->refs--;	/* undo it */
 				LIST_REMOVE(type, types);
 			}
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
-		s = splnet();
+		crit_enter();
 		if (type->refs > 1) {		/* make sure no nodes exist! */
 			error = EBUSY;
 		} else {
 			if (type->refs == 0) {
 				/* failed load, nothing to undo */
-				splx(s);
+				crit_exit();
 				break;
 			}
 			if (type->mod_event != NULL) {	/* check with type */
 				error = (*type->mod_event)(mod, event, data);
 				if (error != 0) {	/* type refuses.. */
-					splx(s);
+					crit_exit();
 					break;
 				}
 			}
 			LIST_REMOVE(type, types);
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 	default:
@@ -1780,15 +1776,15 @@ ng_mod_event(module_t mod, int event, void *data)
 static int
 ngb_mod_event(module_t mod, int event, void *data)
 {
-	int s, error = 0;
+	int error = 0;
 
 	switch (event) {
 	case MOD_LOAD:
 		/* Register line discipline */
-		s = splimp();
+		crit_enter();
 		netisr_register(NETISR_NETGRAPH, cpu0_portfn, ngintr);
 		error = 0;
-		splx(s);
+		crit_exit();
 		break;
 	case MOD_UNLOAD:
 		/* You cant unload it because an interface may be using it.  */
@@ -1851,14 +1847,13 @@ static struct ng_queue_entry *
 ng_getqblk(void)
 {
 	struct ng_queue_entry *q;
-	int s;
 
 	/* Could be guarding against tty ints or whatever */
-	s = splhigh();
+	crit_enter();
 
 	/* Try get a cached queue block, or else allocate a new one */
 	if ((q = ngqfree) == NULL) {
-		splx(s);
+		crit_exit();
 		if (ngqsize < ngqroom) {	/* don't worry about races */
 			MALLOC(q, struct ng_queue_entry *,
 			    sizeof(*q), M_NETGRAPH, M_NOWAIT);
@@ -1866,7 +1861,7 @@ ng_getqblk(void)
 	} else {
 		ngqfree = q->next;
 		ngqfreesize--;
-		splx(s);
+		crit_exit();
 	}
 	return (q);
 }
@@ -1876,13 +1871,12 @@ ng_getqblk(void)
  */
 #define RETURN_QBLK(q)							\
 do {									\
-	int s;								\
 	if (ngqfreesize < ngqfreemax) { /* don't worry about races */ 	\
-		s = splhigh();						\
+		crit_enter();						\
 		(q)->next = ngqfree;					\
 		ngqfree = (q);						\
 		ngqfreesize++;						\
-		splx(s);						\
+		crit_exit();						\
 	} else {							\
 		FREE((q), M_NETGRAPH);					\
 	}								\
@@ -1896,7 +1890,6 @@ int
 ng_queue_data(hook_p hook, struct mbuf *m, meta_p meta)
 {
 	struct ng_queue_entry *q;
-	int s;
 
 	if (hook == NULL) {
 		NG_FREE_DATA(m, meta);
@@ -1913,7 +1906,7 @@ ng_queue_data(hook_p hook, struct mbuf *m, meta_p meta)
 	q->body.data.da_hook = hook;
 	q->body.data.da_m = m;
 	q->body.data.da_meta = meta;
-	s = splhigh();		/* protect refs and queue */
+	crit_enter();		/* protect refs and queue */
 	hook->refs++;		/* don't let it go away while on the queue */
 
 	/* Put it on the queue */
@@ -1924,7 +1917,7 @@ ng_queue_data(hook_p hook, struct mbuf *m, meta_p meta)
 	}
 	ngqlast = q;
 	ngqsize++;
-	splx(s);
+	crit_exit();
 
 	/* Schedule software interrupt to handle it later */
 	schednetisr(NETISR_NETGRAPH);
@@ -1939,7 +1932,6 @@ int
 ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 {
 	struct ng_queue_entry *q;
-	int     s;
 	node_p  dest = NULL;
 	char   *retaddr = NULL;
 	int     error;
@@ -1963,7 +1955,7 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 	q->body.msg.msg_node = dest;
 	q->body.msg.msg_msg = msg;
 	q->body.msg.msg_retaddr = retaddr;
-	s = splhigh();		/* protect refs and queue */
+	crit_enter();		/* protect refs and queue */
 	dest->refs++;		/* don't let it go away while on the queue */
 
 	/* Put it on the queue */
@@ -1974,7 +1966,7 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 	}
 	ngqlast = q;
 	ngqsize++;
-	splx(s);
+	crit_exit();
 
 	/* Schedule software interrupt to handle it later */
 	schednetisr(NETISR_NETGRAPH);
@@ -1996,15 +1988,14 @@ ngintr(struct netmsg *pmsg)
 	struct ng_mesg *msg;
 	node_p  node;
 	int     error = 0;
-	int     s;
 
 	while (1) {
-		s = splhigh();
+		crit_enter();
 		if ((ngq = ngqbase)) {
 			ngqbase = ngq->next;
 			ngqsize--;
 		}
-		splx(s);
+		crit_exit();
 		if (ngq == NULL)
 			goto out;
 		switch (ngq->flags) {

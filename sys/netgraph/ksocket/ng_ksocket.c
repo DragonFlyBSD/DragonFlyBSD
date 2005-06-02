@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.9 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.10 2005/06/02 22:11:45 swildner Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -58,6 +58,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
+#include <sys/thread2.h>
 #include <sys/uio.h>
 #include <sys/un.h>
 
@@ -993,13 +994,13 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	struct mbuf *m;
 	struct ng_mesg *response;
 	struct uio auio;
-	int s, flags, error;
+	int flags, error;
 
-	s = splnet();
+	crit_enter();
 
 	/* Sanity check */
 	if ((node->flags & NG_INVALID) != 0) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	KASSERT(so == priv->so, ("%s: wrong socket", __func__));
@@ -1045,7 +1046,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	 * will be called again.
 	 */
 	if (priv->hook == NULL) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1115,7 +1116,7 @@ sendit:		/* Forward data with optional peer sockaddr as meta info */
 		priv->flags |= KSF_EOFSEEN;
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*

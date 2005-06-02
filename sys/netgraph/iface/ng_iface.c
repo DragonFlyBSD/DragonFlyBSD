@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.10 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.11 2005/06/02 22:11:45 swildner Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -68,6 +68,7 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/libkern.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -342,12 +343,12 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
     struct ucred *cr)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
-	int s, error = 0;
+	int error = 0;
 
 #ifdef DEBUG
 	ng_iface_print_ioctl(ifp, command, data);
 #endif
-	s = splimp();
+	crit_enter();
 	switch (command) {
 
 	/* These two are mostly handled at a higher layer */
@@ -397,7 +398,7 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		error = EINVAL;
 		break;
 	}
-	(void) splx(s);
+	crit_exit();
 	return (error);
 }
 

@@ -38,7 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.1.2.1 2002/08/20 23:48:15 archie Exp $
- * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.6 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.7 2005/06/02 22:11:46 swildner Exp $
  */
 
 /*
@@ -57,6 +57,7 @@
 #include <sys/malloc.h>
 #include <sys/errno.h>
 #include <sys/libkern.h>
+#include <sys/thread2.h>
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
@@ -1262,10 +1263,9 @@ ng_l2tp_seq_xack_timeout(void *arg)
 	const node_p node = arg;
 	const priv_p priv = NG_NODE_PRIVATE(node);
 	struct l2tp_seq *const seq = &priv->seq;
-	int s;
 
 	/* Check if node is going away */
-	s = splnet();
+	crit_enter();
 	if (NG_NODE_NOT_VALID(node)) {
 		seq->xack_timer_running = 0;
 		if (!seq->rack_timer_running) {
@@ -1275,7 +1275,7 @@ ng_l2tp_seq_xack_timeout(void *arg)
 			NG_NODE_SET_PRIVATE(node, NULL);
 		}
 		NG_NODE_UNREF(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1290,7 +1290,7 @@ ng_l2tp_seq_xack_timeout(void *arg)
 	seq->xack_timer_running = 0;
 	NG_NODE_UNREF(node);
 	L2TP_SEQ_CHECK(seq);
-	splx(s);
+	crit_exit();
 }
 
 /* 
@@ -1305,10 +1305,9 @@ ng_l2tp_seq_rack_timeout(void *arg)
 	struct l2tp_seq *const seq = &priv->seq;
 	struct mbuf *m;
 	u_int delay;
-	int s;
 
 	/* Check if node is going away */
-	s = splnet();
+	crit_enter();
 	if (NG_NODE_NOT_VALID(node)) {
 		seq->rack_timer_running = 0;
 		if (!seq->xack_timer_running) {
@@ -1318,7 +1317,7 @@ ng_l2tp_seq_rack_timeout(void *arg)
 			NG_NODE_SET_PRIVATE(node, NULL);
 		}
 		NG_NODE_UNREF(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1358,7 +1357,7 @@ ng_l2tp_seq_rack_timeout(void *arg)
 done:
 	/* Done */
 	L2TP_SEQ_CHECK(seq);
-	splx(s);
+	crit_exit();
 }
 
 /*

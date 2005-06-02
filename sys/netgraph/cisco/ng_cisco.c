@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.7 2005/01/31 21:39:32 joerg Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.8 2005/06/02 22:11:45 swildner Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -49,6 +49,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <machine/inttypes.h>
 
@@ -589,11 +590,11 @@ static void
 cisco_keepalive(void *arg)
 {
 	const sc_p sc = arg;
-	int s = splimp();
 
+	crit_enter();
 	cisco_send(sc, CISCO_KEEPALIVE_REQ, sc->local_seq, sc->remote_seq);
 	sc->seqRetries++;
-	splx(s);
+	crit_exit();
 	callout_reset(&sc->timeout, hz * KEEPALIVE_SECS, 
 			cisco_keepalive, sc);
 }

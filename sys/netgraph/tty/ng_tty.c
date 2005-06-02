@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.9 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.10 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -72,6 +72,7 @@
 #include <sys/syslog.h>
 #include <sys/errno.h>
 #include <sys/ioccom.h>
+#include <sys/thread2.h>
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
@@ -194,13 +195,12 @@ ngt_open(dev_t dev, struct tty *tp)
 	struct thread *td = curthread;	/* XXX */
 	char name[sizeof(NG_TTY_NODE_TYPE) + 8];
 	sc_p sc;
-	int s, error;
+	int error;
 
 	/* Super-user only */
 	if ((error = suser(td)))
 		return (error);
-	s = splnet();
-	(void) spltty();	/* XXX is this necessary? */
+	crit_enter();
 
 	/* Already installed? */
 	if (tp->t_line == NETGRAPHDISC) {
@@ -257,7 +257,7 @@ ngt_open(dev_t dev, struct tty *tp)
 
 done:
 	/* Done */
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -270,9 +270,8 @@ static int
 ngt_close(struct tty *tp, int flag)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	ttyflush(tp, FREAD | FWRITE);
 	clist_free_cblocks(&tp->t_outq);
 	tp->t_line = 0;
@@ -286,7 +285,7 @@ ngt_close(struct tty *tp, int flag)
 		ngt_nodeop_ok = 0;
 		tp->t_sc = NULL;
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -315,9 +314,9 @@ static int
 ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
-	int s, error = 0;
+	int error = 0;
 
-	s = spltty();
+	crit_enter();
 	switch (cmd) {
 	case NGIOCGINFO:
 	    {
@@ -336,7 +335,7 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		ERROUT(ENOIOCTL);
 	}
 done:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -351,11 +350,11 @@ ngt_input(int c, struct tty *tp)
 	const sc_p sc = (sc_p) tp->t_sc;
 	const node_p node = sc->node;
 	struct mbuf *m;
-	int s, error = 0;
+	int error = 0;
 
 	if (!sc || tp != sc->tp)
 		return (0);
-	s = spltty();
+	crit_enter();
 	if (!sc->hook)
 		ERROUT(0);
 
@@ -401,7 +400,7 @@ ngt_input(int c, struct tty *tp)
 		sc->m = NULL;
 	}
 done:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -414,9 +413,8 @@ static int
 ngt_start(struct tty *tp)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	while (tp->t_outq.c_cc < NGT_HIWATER) {	/* XXX 2.2 specific ? */
 		struct mbuf *m = sc->qhead;
 
@@ -464,7 +462,7 @@ ngt_start(struct tty *tp)
 		callout_reset(&sc->ctimeout, 1, ngt_timeout, sc);
 		sc->flags |= FLG_TIMEOUT;
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -475,12 +473,11 @@ static void
 ngt_timeout(void *arg)
 {
 	const sc_p sc = (sc_p) arg;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	sc->flags &= ~FLG_TIMEOUT;
 	ngt_start(sc->tp);
-	splx(s);
+	crit_exit();
 }
 
 /******************************************************************
@@ -508,16 +505,16 @@ static int
 ngt_newhook(node_p node, hook_p hook, const char *name)
 {
 	const sc_p sc = node->private;
-	int s, error = 0;
+	int error = 0;
 
 	if (strcmp(name, NG_TTY_HOOK))
 		return (EINVAL);
-	s = spltty();
+	crit_enter();
 	if (sc->hook)
 		ERROUT(EISCONN);
 	sc->hook = hook;
 done:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -528,15 +525,14 @@ static int
 ngt_disconnect(hook_p hook)
 {
 	const sc_p sc = hook->node->private;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	if (hook != sc->hook)
 		panic(__func__);
 	sc->hook = NULL;
 	m_freem(sc->m);
 	sc->m = NULL;
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -570,12 +566,12 @@ static int
 ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
 	const sc_p sc = hook->node->private;
-	int s, error = 0;
+	int error = 0;
 
 	if (hook != sc->hook)
 		panic(__func__);
 	NG_FREE_META(meta);
-	s = spltty();
+	crit_enter();
 	if (sc->qlen >= MAX_MBUFQ)
 		ERROUT(ENOBUFS);
 	m->m_nextpkt = NULL;
@@ -587,7 +583,7 @@ ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	if (sc->qlen == 1)
 		ngt_start(sc->tp);
 done:
-	splx(s);
+	crit_exit();
 	if (m)
 		m_freem(m);
 	return (error);
@@ -654,18 +650,18 @@ static int
 ngt_mod_event(module_t mod, int event, void *data)
 {
 	/* struct ng_type *const type = data;*/
-	int s, error = 0;
+	int error = 0;
 
 	switch (event) {
 	case MOD_LOAD:
 #ifdef __i386__
 		/* Insure the soft net "engine" can't run during spltty code */
-		s = splhigh();
+		crit_enter();
 		tty_imask |= softnet_imask; /* spltty() block spl[soft]net() */
 		net_imask |= softtty_imask; /* splimp() block splsofttty() */
 		net_imask |= tty_imask;	    /* splimp() block spltty() */
 		update_intr_masks();
-		splx(s);
+		crit_exit();
 
 		if (bootverbose)
 			log(LOG_DEBUG, "new masks: bio %x, tty %x, net %x\n",
@@ -673,22 +669,22 @@ ngt_mod_event(module_t mod, int event, void *data)
 #endif
 
 		/* Register line discipline */
-		s = spltty();
+		crit_enter();
 		if ((ngt_ldisc = ldisc_register(NETGRAPHDISC, &ngt_disc)) < 0) {
-			splx(s);
+			crit_exit();
 			log(LOG_ERR, "%s: can't register line discipline",
 			    __func__);
 			return (EIO);
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
 
 		/* Unregister line discipline */
-		s = spltty();
+		crit_enter();
 		ldisc_deregister(ngt_ldisc);
-		splx(s);
+		crit_exit();
 		break;
 
 	default:

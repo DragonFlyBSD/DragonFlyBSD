@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.2.2.13 2002/10/10 18:27:54 archie Exp $
- * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.6 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.7 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 
@@ -62,6 +62,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -800,11 +801,11 @@ ng_pptpgre_stop_recv_ack_timer(node_p node)
 static void
 ng_pptpgre_recv_ack_timeout(void *arg)
 {
-	int s = splnet();
 	const node_p node = *((node_p *)arg);
 	const priv_p priv = node->private;
 	struct ng_pptpgre_ackp *const a = &priv->ackp;
 
+	crit_enter();
 	/* This complicated stuff is needed to avoid race conditions */
 	FREE(arg, M_NETGRAPH);
 	KASSERT(node->refs > 0, ("%s: no refs", __func__));
@@ -816,12 +817,12 @@ ng_pptpgre_recv_ack_timeout(void *arg)
 			node->private = NULL;
 		}
 		ng_unref(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (arg != a->rackTimerPtr) {	/* timer stopped race condition */
 		ng_unref(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	a->rackTimerPtr = NULL;
@@ -847,7 +848,7 @@ ng_pptpgre_recv_ack_timeout(void *arg)
 	a->xmitWin = (a->xmitWin + 1) / 2;	/* shrink transmit window */
 	a->winAck = priv->recvAck + a->xmitWin;	/* reset win expand time */
 	ng_unref(node);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -904,11 +905,11 @@ ng_pptpgre_stop_send_ack_timer(node_p node)
 static void
 ng_pptpgre_send_ack_timeout(void *arg)
 {
-	int s = splnet();
 	const node_p node = *((node_p *)arg);
 	const priv_p priv = node->private;
 	struct ng_pptpgre_ackp *const a = &priv->ackp;
 
+	crit_enter();
 	/* This complicated stuff is needed to avoid race conditions */
 	FREE(arg, M_NETGRAPH);
 	KASSERT(node->refs > 0, ("%s: no refs", __func__));
@@ -920,12 +921,12 @@ ng_pptpgre_send_ack_timeout(void *arg)
 			node->private = NULL;
 		}
 		ng_unref(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (a->sackTimerPtr != arg) {	/* timer stopped race condition */
 		ng_unref(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	a->sackTimerPtr = NULL;
@@ -933,7 +934,7 @@ ng_pptpgre_send_ack_timeout(void *arg)
 	/* Send a frame with an ack but no payload */
   	ng_pptpgre_xmit(node, NULL, NULL);
 	ng_unref(node);
-	splx(s);
+	crit_exit();
 }
 
 /*************************************************************************

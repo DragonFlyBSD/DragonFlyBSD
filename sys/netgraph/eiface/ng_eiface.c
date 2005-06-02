@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.7 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.8 2005/06/02 22:11:45 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -134,12 +135,12 @@ static int
 ng_eiface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
-	int s, error = 0;
+	int error = 0;
 
 #ifdef DEBUG
 	ng_eiface_print_ioctl(ifp, command, data);
 #endif
-	s = splimp();
+	crit_enter();
 	switch (command) {
 
 	/* These two are mostly handled at a higher layer */
@@ -188,7 +189,7 @@ ng_eiface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		error = EINVAL;
 		break;
 	}
-	(void) splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -197,14 +198,13 @@ ng_eiface_init(void *xsc)
 {
 	priv_p sc = xsc;
 	struct ifnet *ifp = sc->ifp;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
+	crit_exit();
 
 }
 
@@ -491,7 +491,7 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
 	const priv_p priv = hook->node->private;
 	struct ifnet *const ifp = priv->ifp;
-	int s, error = 0;
+	int error = 0;
 	struct ether_header *eh;
 	u_short ether_type;
 

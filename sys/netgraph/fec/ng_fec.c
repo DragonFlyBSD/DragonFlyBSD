@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.12 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.13 2005/06/02 22:11:45 swildner Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -99,6 +99,7 @@
 #include <sys/syslog.h>
 #include <sys/libkern.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -624,7 +625,7 @@ static int
 ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
-	int s, error = 0;
+	int error = 0;
 	struct ng_fec_private	*priv;
 	struct ng_fec_bundle	*b;
 
@@ -634,7 +635,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 #ifdef DEBUG
 	ng_fec_print_ioctl(ifp, command, data);
 #endif
-	s = splimp();
+	crit_enter();
 	switch (command) {
 
 	/* These two are mostly handled at a higher layer */
@@ -698,7 +699,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = EINVAL;
 		break;
 	}
-	(void) splx(s);
+	crit_exit();
 	return (error);
 }
 

@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.5.2.3 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.5 2004/09/16 03:43:09 dillon Exp $
+ * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.6 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -60,6 +60,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include "ng_lmi.h"
@@ -274,8 +275,8 @@ static void
 LMI_ticker(void *arg)
 {
 	sc_p sc = arg;
-	int s = splnet();
 
+	crit_enter();
 	if (sc->flags & SCF_AUTO) {
 		ngauto_state_machine(sc);
 		callout_reset(&sc->timeout, NG_LMI_POLL_RATE * hz,
@@ -289,7 +290,7 @@ LMI_ticker(void *arg)
 		}
 		callout_reset(&sc->timeout, sc->liv_rate * hz, LMI_ticker, sc);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void

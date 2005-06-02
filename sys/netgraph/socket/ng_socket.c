@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.9 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.10 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -63,6 +63,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #ifdef NOTYET
 #include <sys/vnode.h>
 #endif
@@ -389,15 +390,15 @@ ng_setsockaddr(struct socket *so, struct sockaddr **addr)
 {
 	struct ngpcb *pcbp;
 	struct sockaddr_ng *sg;
-	int sg_len, namelen, s;
+	int sg_len, namelen;
 
 	/* Why isn't sg_data a `char[1]' ? :-( */
 	sg_len = sizeof(struct sockaddr_ng) - sizeof(sg->sg_data) + 1;
 
-	s = splnet();
+	crit_enter();
 	pcbp = sotongpcb(so);
 	if ((pcbp == 0) || (pcbp->sockdata == NULL)) {
-		splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 
@@ -411,7 +412,7 @@ ng_setsockaddr(struct socket *so, struct sockaddr **addr)
 
 	if (pcbp->sockdata->node->name != NULL)
 		bcopy(pcbp->sockdata->node->name, sg->sg_data, namelen);
-	splx(s);
+	crit_exit();
 
 	sg->sg_len = sg_len;
 	sg->sg_family = AF_NETGRAPH;

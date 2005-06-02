@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.7 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.8 2005/06/02 22:11:45 swildner Exp $
  */
 
 /*
@@ -67,6 +67,7 @@
 #include <sys/syslog.h>
 #include <sys/socket.h>
 #include <sys/ctype.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ethernet.h>
@@ -932,17 +933,17 @@ ng_bridge_timeout(void *arg)
 {
 	const node_p node = arg;
 	const priv_p priv = node->private;
-	int s, bucket;
+	int bucket;
 	int counter = 0;
 	int linkNum;
 
 	/* If node was shut down, this is the final lingering timeout */
-	s = splnet();
+	crit_enter();
 	if ((node->flags & NG_INVALID) != 0) {
 		FREE(priv, M_NETGRAPH);
 		node->private = NULL;
 		ng_unref(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1002,7 +1003,7 @@ ng_bridge_timeout(void *arg)
 	    ("%s: links: %d != %d", __func__, priv->numLinks, counter));
 
 	/* Done */
-	splx(s);
+	crit_exit();
 }
 
 /*

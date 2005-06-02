@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.6 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.7 2005/06/02 22:11:45 swildner Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -735,9 +736,8 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 {
 	struct ifnet *ifp;
 	int error = 0;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	switch (event) {
 	case MOD_LOAD:
 
@@ -782,7 +782,7 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 		error = EOPNOTSUPP;
 		break;
 	}
-	splx(s);
+	crit_exit();
 	return (error);
 }
 

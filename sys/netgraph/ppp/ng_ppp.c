@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.8 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.9 2005/06/02 22:11:46 swildner Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -53,6 +53,7 @@
 #include <sys/malloc.h>
 #include <sys/errno.h>
 #include <sys/ctype.h>
+#include <sys/thread2.h>
 
 #include <machine/limits.h>
 
@@ -1450,12 +1451,12 @@ ng_ppp_frag_timeout(void *arg)
 {
 	const node_p node = arg;
 	const priv_p priv = node->private;
-	int s = splnet();
 
+	crit_enter();
 	/* Handle the race where shutdown happens just before splnet() above */
 	if ((node->flags & NG_INVALID) != 0) {
 		ng_unref(node);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1470,7 +1471,7 @@ ng_ppp_frag_timeout(void *arg)
 
 	/* Scan the fragment queue */
 	ng_ppp_frag_checkstale(node);
-	splx(s);
+	crit_exit();
 }
 
 /*
