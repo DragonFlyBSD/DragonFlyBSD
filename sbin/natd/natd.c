@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.7 2005/06/01 18:37:20 swildner Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.8 2005/06/02 16:16:37 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -105,8 +105,8 @@ static void	SetupPunchFW(const char *strValue);
 
 static	int			verbose;
 static 	int			background;
-static	int			running;
-static	int			assignAliasAddr;
+static	volatile sig_atomic_t	running;
+static	volatile sig_atomic_t	assignAliasAddr;
 static	char*			ifName;
 static  int			ifIndex;
 static	u_short			inPort;
@@ -131,6 +131,7 @@ int main (int argc, char** argv)
 	struct sockaddr_in	addr;
 	fd_set			readMask;
 	int			fdMax;
+	struct sigaction	sa;
 /* 
  * Initialize packet aliasing software.
  * Done already here to be able to alter option bits
@@ -289,10 +290,12 @@ int main (int argc, char** argv)
  * Catch signals to manage shutdown and
  * refresh of interface address.
  */
-	siginterrupt(SIGTERM, 1);
-	siginterrupt(SIGHUP, 1);
-	signal (SIGTERM, InitiateShutdown);
-	signal (SIGHUP, RefreshAddr);
+	sa.sa_handler = InitiateShutdown;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGTERM, &sa, NULL);
+	sa.sa_handler = RefreshAddr;
+	sigaction(SIGHUP, &sa, NULL);
 /*
  * Set alias address if it has been given.
  */
@@ -795,14 +798,17 @@ static void RefreshAddr (int sig __unused)
 
 static void InitiateShutdown (int sig __unused)
 {
+	struct sigaction sa;
 /*
  * Start timer to allow kernel gracefully
  * shutdown existing connections when system
  * is shut down.
  */
-	siginterrupt(SIGALRM, 1);
-	signal (SIGALRM, Shutdown);
-	alarm (10);
+	sa.sa_handler = Shutdown;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGALRM, &sa, NULL);
+	alarm(10);
 }
 
 static void Shutdown (int sig __unused)
