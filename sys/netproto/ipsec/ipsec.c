@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.9 2004/12/29 03:26:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.10 2005/06/02 23:50:30 hmp Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1796,7 +1796,7 @@ ok:
 }
 
 /*
- * shift variable length bunffer to left.
+ * shift variable length buffer to left.
  * IN:	bitmap: pointer to the buffer
  * 	nbit:	the number of to shift.
  *	wsize:	buffer size (bytes).
