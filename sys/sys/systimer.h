@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.7 2005/06/01 22:25:14 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.8 2005/06/02 21:51:31 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -61,12 +61,12 @@ typedef struct systimer {
 #define SYSTF_IPIRUNNING	0x0002
 #define SYSTF_NONQUEUED		0x0004
 
-void systimer_intr(sysclock_t *time, struct intrframe *frame);
-void systimer_add(systimer_t info);
-void systimer_del(systimer_t info);
-void systimer_init_periodic(systimer_t info, void *func, void *data, int syshz);
-void systimer_init_periodic_nq(systimer_t info, void *func, void *data, int syshz);
-void systimer_init_oneshot(systimer_t info, void *func, void *data, int us);
+void systimer_intr(sysclock_t *, struct intrframe *);
+void systimer_add(systimer_t);
+void systimer_del(systimer_t);
+void systimer_init_periodic(systimer_t, void *, void *, int);
+void systimer_init_periodic_nq(systimer_t, void *, void *, int);
+void systimer_init_oneshot(systimer_t, void *, void *, int);
 
 /*
  * cputimer interface.  This provides a free-running (non-interrupt) 
@@ -111,17 +111,17 @@ extern struct cputimer *sys_cputimer;
 /*
  * note that cputimer_count() always returns a full-width wrapping counter.
  */
-void cputimer_select(struct cputimer *timer, int pri);
-void cputimer_register(struct cputimer *timer);
-void cputimer_deregister(struct cputimer *timer);
-void cputimer_set_frequency(struct cputimer *timer, int freq);
-sysclock_t cputimer_default_fromhz(int freq);
-sysclock_t cputimer_default_fromus(int us);
-void cputimer_default_construct(struct cputimer *timer, sysclock_t oldclock);
-void cputimer_default_destruct(struct cputimer *timer);
+void cputimer_select(struct cputimer *, int);
+void cputimer_register(struct cputimer *);
+void cputimer_deregister(struct cputimer *);
+void cputimer_set_frequency(struct cputimer *, int);
+sysclock_t cputimer_default_fromhz(int);
+sysclock_t cputimer_default_fromus(int);
+void cputimer_default_construct(struct cputimer *, sysclock_t);
+void cputimer_default_destruct(struct cputimer *);
 
-void cputimer_intr_config(struct cputimer *timer);
-void cputimer_intr_reload(sysclock_t clock);
+void cputimer_intr_config(struct cputimer *);
+void cputimer_intr_reload(sysclock_t);
 
 #endif
 
