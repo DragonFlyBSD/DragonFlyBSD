@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.8 2004/06/02 14:42:48 eirikn Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.9 2005/06/02 20:40:33 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -52,6 +52,7 @@
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/endian.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 
@@ -840,7 +841,7 @@ fwohci_execute_db2(void *arg, bus_dma_segment_t *segs, int nseg,
 static void
 fwohci_start(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 {
-	int i, s;
+	int i;
 	int tcode, hdr_len, pl_off;
 	int fsegment = -1;
 	u_int32_t off;
@@ -864,7 +865,7 @@ fwohci_start(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 	if (dbch->flags & FWOHCI_DBCH_FULL)
 		return;
 
-	s = splfw();
+	crit_enter();
 	db_tr = dbch->top;
 txloop:
 	xfer = STAILQ_FIRST(&dbch->xferq.q);
@@ -1011,7 +1012,7 @@ kick:
 	}
 
 	dbch->top = db_tr;
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -1034,7 +1035,7 @@ fwohci_start_ats(struct firewire_comm *fc)
 void
 fwohci_txd(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 {
-	int s, ch, err = 0;
+	int ch, err = 0;
 	struct fwohcidb_tr *tr;
 	struct fwohcidb *db;
 	struct fw_xfer *xfer;
@@ -1052,7 +1053,7 @@ fwohci_txd(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 	}else{
 		return;
 	}
-	s = splfw();
+	crit_enter();
 	tr = dbch->bottom;
 	packets = 0;
 	fwdma_sync_multiseg_all(dbch->am, BUS_DMASYNC_POSTREAD);
@@ -1166,7 +1167,7 @@ out:
 		dbch->flags &= ~FWOHCI_DBCH_FULL;
 		fwohci_start(sc, dbch);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1491,7 +1492,7 @@ fwohci_itxbuf_enable(struct firewire_comm *fc, int dmach)
 	int err = 0;
 	unsigned short tag, ich;
 	struct fwohci_dbch *dbch;
-	int cycle_match, cycle_now, s, ldesc;
+	int cycle_match, cycle_now, ldesc;
 	u_int32_t stat;
 	struct fw_bulkxfer *first, *chunk, *prev;
 	struct fw_xferq *it;
@@ -1513,7 +1514,7 @@ fwohci_itxbuf_enable(struct firewire_comm *fc, int dmach)
 		return err;
 
 	ldesc = dbch->ndesc - 1;
-	s = splfw();
+	crit_enter();
 	prev = STAILQ_LAST(&it->stdma, fw_bulkxfer, link);
 	while  ((chunk = STAILQ_FIRST(&it->stvalid)) != NULL) {
 		struct fwohcidb *db;
@@ -1542,7 +1543,7 @@ fwohci_itxbuf_enable(struct firewire_comm *fc, int dmach)
 	}
 	fwdma_sync_multiseg_all(dbch->am, BUS_DMASYNC_PREWRITE);
 	fwdma_sync_multiseg_all(dbch->am, BUS_DMASYNC_PREREAD);
-	splx(s);
+	crit_exit();
 	stat = OREAD(sc, OHCI_ITCTL(dmach));
 	if (firewire_debug && (stat & OHCI_CNTL_CYCMATCH_S))
 		printf("stat 0x%x\n", stat);
@@ -1606,7 +1607,7 @@ static int
 fwohci_irx_enable(struct firewire_comm *fc, int dmach)
 {
 	struct fwohci_softc *sc = (struct fwohci_softc *)fc;
-	int err = 0, s, ldesc;
+	int err = 0, ldesc;
 	unsigned short tag, ich;
 	u_int32_t stat;
 	struct fwohci_dbch *dbch;
@@ -1640,7 +1641,7 @@ fwohci_irx_enable(struct firewire_comm *fc, int dmach)
 	}
 
 	ldesc = dbch->ndesc - 1;
-	s = splfw();
+	crit_enter();
 	prev = STAILQ_LAST(&ir->stdma, fw_bulkxfer, link);
 	while  ((chunk = STAILQ_FIRST(&ir->stfree)) != NULL) {
 		struct fwohcidb *db;
@@ -1670,7 +1671,7 @@ fwohci_irx_enable(struct firewire_comm *fc, int dmach)
 	}
 	fwdma_sync_multiseg_all(dbch->am, BUS_DMASYNC_PREWRITE);
 	fwdma_sync_multiseg_all(dbch->am, BUS_DMASYNC_PREREAD);
-	splx(s);
+	crit_exit();
 	stat = OREAD(sc, OHCI_IRCTL(dmach));
 	if (stat & OHCI_CNTL_DMA_ACTIVE)
 		return 0;
@@ -2067,7 +2068,6 @@ again:
 void
 fwohci_poll(struct firewire_comm *fc, int quick, int count)
 {
-	int s;
 	u_int32_t stat;
 	struct fwohci_softc *sc;
 
@@ -2085,9 +2085,9 @@ fwohci_poll(struct firewire_comm *fc, int quick, int count)
 		if (stat == 0 || stat == 0xffffffff)
 			return;
 	}
-	s = splfw();
+	crit_enter();
 	fwohci_intr_body(sc, stat, count);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -2115,11 +2115,11 @@ fwohci_tbuf_update(struct fwohci_softc *sc, int dmach)
 	struct fw_bulkxfer *chunk;
 	struct fw_xferq *it;
 	u_int32_t stat, count;
-	int s, w=0, ldesc;
+	int w=0, ldesc;
 
 	it = fc->it[dmach];
 	ldesc = sc->it[dmach].ndesc - 1;
-	s = splfw(); /* unnecessary ? */
+	crit_enter();	/* unnecessary? */
 	fwdma_sync_multiseg_all(sc->it[dmach].am, BUS_DMASYNC_POSTREAD);
 	if (firewire_debug)
 		dump_db(sc, ITX_CH + dmach);
@@ -2148,7 +2148,7 @@ fwohci_tbuf_update(struct fwohci_softc *sc, int dmach)
 		STAILQ_INSERT_TAIL(&it->stfree, chunk, link);
 		w++;
 	}
-	splx(s);
+	crit_exit();
 	if (w)
 		wakeup(it);
 }
@@ -2161,14 +2161,14 @@ fwohci_rbuf_update(struct fwohci_softc *sc, int dmach)
 	struct fw_bulkxfer *chunk;
 	struct fw_xferq *ir;
 	u_int32_t stat;
-	int s, w=0, ldesc;
+	int w=0, ldesc;
 
 	ir = fc->ir[dmach];
 	ldesc = sc->ir[dmach].ndesc - 1;
 #if 0
 	dump_db(sc, dmach);
 #endif
-	s = splfw();
+	crit_enter();
 	fwdma_sync_multiseg_all(sc->ir[dmach].am, BUS_DMASYNC_POSTREAD);
 	while ((chunk = STAILQ_FIRST(&ir->stdma)) != NULL) {
 		db_tr = (struct fwohcidb_tr *)chunk->end;
@@ -2203,7 +2203,7 @@ fwohci_rbuf_update(struct fwohci_softc *sc, int dmach)
 		}
 		w++;
 	}
-	splx(s);
+	crit_exit();
 	if (w) {
 		if (ir->flag & FWXFERQ_HANDLER) 
 			ir->hand(ir);
@@ -2692,7 +2692,6 @@ fwohci_arcv(struct fwohci_softc *sc, struct fwohci_dbch *dbch, int count)
 	u_int32_t stat, off, status;
 	u_int spd;
 	int len, plen, hlen, pcnt, offset;
-	int s;
 	caddr_t buf;
 	int resCount;
 
@@ -2704,7 +2703,7 @@ fwohci_arcv(struct fwohci_softc *sc, struct fwohci_dbch *dbch, int count)
 		return;
 	}
 
-	s = splfw();
+	crit_enter();
 	db_tr = dbch->top;
 	pcnt = 0;
 	/* XXX we cannot handle a packet which lies in more than two buf */
@@ -2896,5 +2895,5 @@ out:
 	if (pcnt < 1)
 		printf("fwohci_arcv: no packets\n");
 #endif
-	splx(s);
+	crit_exit();
 }

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.14 2004/05/19 22:52:39 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.15 2005/06/02 20:40:40 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -82,6 +82,7 @@
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include "usb.h"
 #include "usbdi.h"
@@ -363,9 +364,7 @@ usb_create_event_thread(void *arg)
 void
 usb_add_task(usbd_device_handle dev, struct usb_task *task)
 {
-	int s;
-
-	s = splusb();
+	crit_enter();
 	if (!task->onqueue) {
 		DPRINTFN(2,("usb_add_task: task=%p\n", task));
 		TAILQ_INSERT_TAIL(&usb_all_tasks, task, next);
@@ -374,20 +373,18 @@ usb_add_task(usbd_device_handle dev, struct usb_task *task)
 		DPRINTFN(3,("usb_add_task: task=%p on q\n", task));
 	}
 	wakeup(&usb_all_tasks);
-	splx(s);
+	crit_exit();
 }
 
 void
 usb_rem_task(usbd_device_handle dev, struct usb_task *task)
 {
-	int s;
-
-	s = splusb();
+	crit_enter();
 	if (task->onqueue) {
 		TAILQ_REMOVE(&usb_all_tasks, task, next);
 		task->onqueue = 0;
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -439,7 +436,6 @@ void
 usb_task_thread(void *arg)
 {
 	struct usb_task *task;
-	int s;
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_lock(&Giant);
@@ -447,7 +443,7 @@ usb_task_thread(void *arg)
 
 	DPRINTF(("usb_task_thread: start\n"));
 
-	s = splusb();
+	crit_enter();
 	for (;;) {
 		task = TAILQ_FIRST(&usb_all_tasks);
 		if (task == NULL) {
@@ -458,9 +454,9 @@ usb_task_thread(void *arg)
 		if (task != NULL) {
 			TAILQ_REMOVE(&usb_all_tasks, task, next);
 			task->onqueue = 0;
-			splx(s);
+			crit_exit();
 			task->fun(task->arg);
-			s = splusb();
+			crit_enter();
 		}
 	}
 }
@@ -504,7 +500,7 @@ usbread(dev_t dev, struct uio *uio, int flag)
 {
 	struct usb_event ue;
 	int unit = USBUNIT(dev);
-	int s, error, n;
+	int error, n;
 
 	if (unit != USB_DEV_MINOR)
 		return (ENODEV);
@@ -513,7 +509,7 @@ usbread(dev_t dev, struct uio *uio, int flag)
 		return (EINVAL);
 
 	error = 0;
-	s = splusb();
+	crit_enter();
 	for (;;) {
 		n = usb_get_next_event(&ue);
 		if (n != 0)
@@ -526,7 +522,7 @@ usbread(dev_t dev, struct uio *uio, int flag)
 		if (error)
 			break;
 	}
-	splx(s);
+	crit_exit();
 	if (!error)
 		error = uiomove((void *)&ue, uio->uio_resid, uio);
 
@@ -671,19 +667,19 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 int
 usbpoll(dev_t dev, int events, usb_proc_ptr p)
 {
-	int revents, mask, s;
+	int revents, mask;
 	int unit = USBUNIT(dev);
 
 	if (unit == USB_DEV_MINOR) {
 		revents = 0;
 		mask = POLLIN | POLLRDNORM;
 
-		s = splusb();
+		crit_enter();
 		if (events & mask && usb_nevents > 0)
 			revents |= events & mask;
 		if (revents == 0 && events & mask)
 			selrecord(p, &usb_selevent);
-		splx(s);
+		crit_exit();
 
 		return (revents);
 	} else {
@@ -701,11 +697,6 @@ usb_discover(void *v)
 {
 	struct usb_softc *sc = v;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	/* splxxx should be changed to mutexes for preemption safety some day */
-	int s;
-#endif
-
 	DPRINTFN(2,("usb_discover\n"));
 #ifdef USB_DEBUG
 	if (usb_noexplore > 1)
@@ -718,20 +709,20 @@ usb_discover(void *v)
 	 * from the event thread for the controller.
 	 */
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	s = splusb();
+	crit_enter();
 #endif
 	while (sc->sc_bus->needs_explore && !sc->sc_dying) {
 		sc->sc_bus->needs_explore = 0;
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-		splx(s);
+		crit_exit();
 #endif
 		sc->sc_bus->root_hub->hub->explore(sc->sc_bus->root_hub);
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-		s = splusb();
+		crit_enter();
 #endif
 	}
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	splx(s);
+	crit_exit();
 #endif
 }
 
@@ -743,7 +734,7 @@ usb_needs_explore(usbd_device_handle dev)
 	wakeup(&dev->bus->needs_explore);
 }
 
-/* Called at splusb() */
+/* Called from a critical section */
 int
 usb_get_next_event(struct usb_event *ue)
 {
@@ -792,7 +783,6 @@ usb_add_event(int type, struct usb_event *uep)
 	struct usb_event_q *ueq;
 	struct usb_event ue;
 	struct timeval thetime;
-	int s;
 
 	ueq = malloc(sizeof *ueq, M_USBDEV, M_INTWAIT);
 	ueq->ue = *uep;
@@ -800,7 +790,7 @@ usb_add_event(int type, struct usb_event *uep)
 	microtime(&thetime);
 	TIMEVAL_TO_TIMESPEC(&thetime, &ueq->ue.ue_time);
 
-	s = splusb();
+	crit_enter();
 	if (USB_EVENT_IS_DETACH(type)) {
 		struct usb_event_q *ueqi, *ueqi_next;
 
@@ -829,7 +819,7 @@ usb_add_event(int type, struct usb_event *uep)
 		psignal(usb_async_proc, SIGIO);
 		PROC_UNLOCK(usb_async_proc);
 	}
-	splx(s);
+	crit_exit();
 }
 
 void

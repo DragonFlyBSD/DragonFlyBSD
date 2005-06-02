@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.8 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.9 2005/06/02 20:40:31 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -439,27 +439,26 @@ targbhstart(struct cam_periph *periph, union ccb *start_ccb)
 	struct targbh_cmd_desc *desc;
 	struct ccb_scsiio *csio;
 	ccb_flags flags;
-	int    s;
 
 	softc = (struct targbh_softc *)periph->softc;
 	
-	s = splbio();
+	crit_enter();
 	ccbh = TAILQ_FIRST(&softc->work_queue);
 	if (periph->immediate_priority <= periph->pinfo.priority) {
 		start_ccb->ccb_h.ccb_type = TARGBH_CCB_WAITING;			
 		SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 				  periph_links.sle);
 		periph->immediate_priority = CAM_PRIORITY_NONE;
-		splx(s);
+		crit_exit();
 		wakeup(&periph->ccb_list);
 	} else if (ccbh == NULL) {
-		splx(s);
+		crit_exit();
 		xpt_release_ccb(start_ccb);	
 	} else {
 		TAILQ_REMOVE(&softc->work_queue, ccbh, periph_links.tqe);
 		TAILQ_INSERT_HEAD(&softc->pending_queue, ccbh,
 				  periph_links.tqe);
-		splx(s);	
+		crit_exit();
 		atio = (struct ccb_accept_tio*)ccbh;
 		desc = (struct targbh_cmd_desc *)atio->ccb_h.ccb_descr;
 
@@ -506,9 +505,9 @@ targbhstart(struct cam_periph *periph, union ccb *start_ccb)
 		CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE,
 			  ("Sending a CTIO\n"));
 		xpt_action(start_ccb);
-		s = splbio();
+		crit_enter();
 		ccbh = TAILQ_FIRST(&softc->work_queue);
-		splx(s);
+		crit_exit();
 	}
 	if (ccbh != NULL)
 		xpt_schedule(periph, /*priority*/1);

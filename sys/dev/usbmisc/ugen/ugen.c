@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.15 2004/07/08 03:53:54 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.16 2005/06/02 20:40:49 dillon Exp $
  */
 
 /* 
@@ -75,6 +75,7 @@
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -617,7 +618,6 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 	char *buf;
 	usbd_xfer_handle xfer;
 	usbd_status err;
-	int s;
 	int error = 0;
 	int ugen_bbsize;
 	u_char buffer[UGEN_CHUNK];
@@ -647,10 +647,10 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
 	case UE_INTERRUPT:
 		/* Block until activity occurred. */
-		s = splusb();
+		crit_enter();
 		while (sce->q.c_cc == 0) {
 			if (flag & IO_NDELAY) {
-				splx(s);
+				crit_exit();
 				error = EWOULDBLOCK;
 				goto done;
 			}
@@ -665,7 +665,7 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 				break;
 			}
 		}
-		splx(s);
+		crit_exit();
 
 		/* Transfer as many chunks as possible. */
 		while (sce->q.c_cc > 0 && uio->uio_resid > 0 && !error) {
@@ -714,10 +714,10 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		usbd_free_xfer(xfer);
 		break;
 	case UE_ISOCHRONOUS:
-		s = splusb();
+		crit_enter();
 		while (sce->cur == sce->fill) {
 			if (flag & IO_NDELAY) {
-				splx(s);
+				crit_exit();
 				error = EWOULDBLOCK;
 				goto done;
 			}
@@ -749,7 +749,7 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 			if(sce->cur >= sce->limit)
 				sce->cur = sce->ibuf;
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 
@@ -911,7 +911,6 @@ USB_DETACH(ugen)
 	USB_DETACH_START(ugen, sc);
 	struct ugen_endpoint *sce;
 	int i, dir;
-	int s;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	int maj, mn;
 #endif
@@ -931,7 +930,7 @@ USB_DETACH(ugen)
 				usbd_abort_pipe(sce->pipeh);
 		}
 	}
-	s = splusb();
+	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wake everyone */
 		for (i = 0; i < USB_MAX_ENDPOINTS; i++)
@@ -939,7 +938,7 @@ USB_DETACH(ugen)
 		/* Wait for processes to go away. */
 		usb_detach_wait(USBDEV(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	/* locate the major number */
@@ -1458,7 +1457,6 @@ ugenpoll(dev_t dev, int events, usb_proc_ptr p)
 	struct ugen_softc *sc;
 	struct ugen_endpoint *sce;
 	int revents = 0;
-	int s;
 
 	USB_GET_SC(ugen, UGENUNIT(dev), sc);
 
@@ -1479,7 +1477,7 @@ ugenpoll(dev_t dev, int events, usb_proc_ptr p)
 		return (EIO);
 	}
 
-	s = splusb();
+	crit_enter();
 	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
 	case UE_INTERRUPT:
 		if (events & (POLLIN | POLLRDNORM)) {
@@ -1509,7 +1507,7 @@ ugenpoll(dev_t dev, int events, usb_proc_ptr p)
 	default:
 		break;
 	}
-	splx(s);
+	crit_exit();
 	return (revents);
 }
 

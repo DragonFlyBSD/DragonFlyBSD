@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.17 2005/05/24 20:58:45 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.18 2005/06/02 20:40:33 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -52,6 +52,7 @@
 #include <sys/mutex.h>
 #endif
 #include <machine/resource.h>
+#include <sys/thread2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>		/* for DELAY() */
@@ -386,11 +387,8 @@ static int
 fwohci_pci_detach(device_t self)
 {
 	fwohci_softc_t *sc = device_get_softc(self);
-	int s;
 
-
-	s = splfw();
-
+	crit_enter();
 	if (sc->bsr)
 		fwohci_stop(sc, self);
 
@@ -431,7 +429,7 @@ fwohci_pci_detach(device_t self)
 	}
 
 	fwohci_detach(sc, self);
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -480,7 +478,7 @@ fwohci_pci_add_child(device_t dev, int order, const char *name, int unit)
 {
 	struct fwohci_softc *sc;
 	device_t child;
-	int s, err = 0;
+	int err = 0;
 
 	sc = (struct fwohci_softc *)device_get_softc(dev);
 	child = device_add_child(dev, name, unit);
@@ -504,9 +502,9 @@ fwohci_pci_add_child(device_t dev, int order, const char *name, int unit)
 	 * interrupt is disabled during the boot process.
 	 */
 	DELAY(250); /* 2 cycles */
-	s = splfw();
+	crit_enter();
 	fwohci_poll((void *)sc, 0, -1);
-	splx(s);
+	crit_exit();
 
 	return (child);
 }

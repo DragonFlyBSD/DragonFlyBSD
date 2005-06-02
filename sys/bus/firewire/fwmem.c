@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.6 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.7 2005/06/02 20:40:33 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -60,6 +60,7 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.26 2004/01/05 14:21:18 simo
 #include <sys/mman.h>
 #include <sys/ioccom.h>
 #include <sys/fcntl.h>
+#include <sys/thread2.h>
 
 #ifdef __DragonFly__
 #include "firewire.h"
@@ -345,7 +346,7 @@ fwmem_strategy(struct bio *bp)
 	struct fw_device *fwdev;
 	struct fw_xfer *xfer;
 	dev_t dev;
-	int unit, err=0, s, iolen;
+	int unit, err=0, iolen;
 
 	dev = bp->bio_dev;
 	/* XXX check request length */
@@ -353,7 +354,7 @@ fwmem_strategy(struct bio *bp)
         unit = DEV2UNIT(dev);
 	sc = devclass_get_softc(firewire_devclass, unit);
 
-	s = splfw();
+	crit_enter();
 	fms = (struct fwmem_softc *)dev->si_drv1;
 	fwdev = fw_noderesolve_eui64(sc->fc, &fms->eui);
 	if (fwdev == NULL) {
@@ -395,7 +396,7 @@ fwmem_strategy(struct bio *bp)
 	/* XXX */
 	bp->bio_resid = bp->bio_bcount - iolen;
 error:
-	splx(s);
+	crit_exit();
 	if (err != 0) {
 		if (fwmem_debug)
 			printf("%s: err=%d\n", __func__, err);

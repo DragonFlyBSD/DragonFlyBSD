@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.17 2004/09/18 19:40:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.18 2005/06/02 20:40:31 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -65,6 +65,7 @@
 #include <sys/taskqueue.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"
@@ -402,7 +403,6 @@ cdinit(void)
 static void
 cdoninvalidate(struct cam_periph *periph)
 {
-	int s;
 	struct cd_softc *softc;
 	struct buf *q_bp;
 	struct ccb_setasync csa;
@@ -423,11 +423,11 @@ cdoninvalidate(struct cam_periph *periph)
 	softc->flags |= CD_FLAG_INVALID;
 
 	/*
-	 * Although the oninvalidate() routines are always called at
-	 * splsoftcam, we need to be at splbio() here to keep the buffer
-	 * queue from being modified while we traverse it.
+	 * Although the oninvalidate() routines are always while in a
+	 * critical section, we need to be in a critical section here to
+	 * keep the buffer queue from being modified while we traverse it.
 	 */
-	s = splbio();
+	crit_enter();
 
 	/*
 	 * Return all queued I/O with ENXIO.
@@ -441,7 +441,7 @@ cdoninvalidate(struct cam_periph *periph)
 		q_bp->b_flags |= B_ERROR;
 		biodone(q_bp);
 	}
-	splx(s);
+	crit_exit();
 
 	/*
 	 * If this device is part of a changer, and it was scheduled
@@ -460,7 +460,6 @@ static void
 cdcleanup(struct cam_periph *periph)
 {
 	struct cd_softc *softc;
-	int s;
 
 	softc = (struct cd_softc *)periph->softc;
 
@@ -473,7 +472,7 @@ cdcleanup(struct cam_periph *periph)
 		printf("can't remove sysctl context\n");
 	}
 
-	s = splsoftcam();
+	crit_enter();
 	/*
 	 * In the queued, non-active case, the device in question
 	 * has already been removed from the changer run queue.  Since this
@@ -546,7 +545,7 @@ cdcleanup(struct cam_periph *periph)
 		disk_destroy(&softc->disk);
 	}
 	free(softc, M_DEVBUF);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -591,10 +590,9 @@ cdasync(void *callback_arg, u_int32_t code,
 	{
 		struct cd_softc *softc;
 		struct ccb_hdr *ccbh;
-		int s;
 
 		softc = (struct cd_softc *)periph->softc;
-		s = splsoftcam();
+		crit_enter();
 		/*
 		 * Don't fail on the expected unit attention
 		 * that will occur.
@@ -603,7 +601,7 @@ cdasync(void *callback_arg, u_int32_t code,
 		for (ccbh = LIST_FIRST(&softc->pending_ccbs);
 		     ccbh != NULL; ccbh = LIST_NEXT(ccbh, periph_links.le))
 			ccbh->ccb_state |= CD_CCB_RETRY_UA;
-		splx(s);
+		crit_exit();
 		/* FALLTHROUGH */
 	}
 	default:
@@ -1010,7 +1008,6 @@ cdopen(dev_t dev, int flags, int fmt, struct thread *td)
 	struct cam_periph *periph;
 	struct cd_softc *softc;
 	int unit, error;
-	int s;
 
 	unit = dkunit(dev);
 	periph = cam_extend_get(cdperiphs, unit);
@@ -1021,20 +1018,20 @@ cdopen(dev_t dev, int flags, int fmt, struct thread *td)
 	softc = (struct cd_softc *)periph->softc;
 
 	/*
-	 * Grab splsoftcam and hold it until we lock the peripheral.
+	 * Grab a critical section and hold it until we lock the peripheral.
 	 */
-	s = splsoftcam();
+	crit_enter();
 	if (softc->flags & CD_FLAG_INVALID) {
-		splx(s);
+		crit_exit();
 		return(ENXIO);
 	}
 
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 
-	splx(s);
+	crit_exit();
 
 	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
 		return(ENXIO);
@@ -1110,9 +1107,8 @@ static void
 cdshorttimeout(void *arg)
 {
 	struct cdchanger *changer;
-	int s;
 
-	s = splsoftcam();
+	crit_enter();
 
 	changer = (struct cdchanger *)arg;
 
@@ -1128,8 +1124,7 @@ cdshorttimeout(void *arg)
 		changer->flags |= CHANGER_MANUAL_CALL;
 		cdrunchangerqueue(changer);
 	}
-
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1139,9 +1134,8 @@ static void
 cdschedule(struct cam_periph *periph, int priority)
 {
 	struct cd_softc *softc;
-	int s;
 
-	s = splsoftcam();
+	crit_enter();
 
 	softc = (struct cd_softc *)periph->softc;
 
@@ -1178,11 +1172,10 @@ cdschedule(struct cam_periph *periph, int priority)
 			cdrunchangerqueue(softc->changer);
 		}
 	} else if ((softc->flags & CD_FLAG_ACTIVE)
-		&& ((softc->flags & CD_FLAG_SCHED_ON_COMP) == 0))
+		&& ((softc->flags & CD_FLAG_SCHED_ON_COMP) == 0)) {
 		xpt_schedule(periph, priority);
-
-	splx(s);
-
+	}
+	crit_exit();
 }
 
 static void
@@ -1191,9 +1184,8 @@ cdrunchangerqueue(void *arg)
 	struct cd_softc *softc;
 	struct cdchanger *changer;
 	int called_from_timeout;
-	int s;
 
-	s = splsoftcam();
+	crit_enter();
 
 	changer = (struct cdchanger *)arg;
 
@@ -1213,7 +1205,7 @@ cdrunchangerqueue(void *arg)
 
 	/* nothing to do if the queue is empty */
 	if (changer->devq.entries <= 0) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1233,7 +1225,7 @@ cdrunchangerqueue(void *arg)
 					cdrunchangerqueue, changer);
 				changer->flags |= CHANGER_TIMEOUT_SCHED;
 			}
-			splx(s);
+			crit_exit();
 			return;
 		}
 
@@ -1291,16 +1283,15 @@ cdrunchangerqueue(void *arg)
 	 */
 	changer->flags |= CHANGER_NEED_TIMEOUT;
 
-	splx(s);
+	crit_exit();
 }
 
 static void
 cdchangerschedule(struct cd_softc *softc)
 {
 	struct cdchanger *changer;
-	int s;
 
-	s = splsoftcam();
+	crit_enter();
 
 	changer = softc->changer;
 
@@ -1370,7 +1361,7 @@ cdchangerschedule(struct cd_softc *softc)
 		changer->flags &= ~CHANGER_NEED_TIMEOUT;
 
 	}
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1399,13 +1390,11 @@ static union ccb *
 cdgetccb(struct cam_periph *periph, u_int32_t priority)
 {
 	struct cd_softc *softc;
-	int s;
 
 	softc = (struct cd_softc *)periph->softc;
 
 	if (softc->flags & CD_FLAG_CHANGER) {
-
-		s = splsoftcam();
+		crit_enter();
 
 		/*
 		 * This should work the first time this device is woken up,
@@ -1431,11 +1420,10 @@ cdgetccb(struct cam_periph *periph, u_int32_t priority)
 			} else
 				tsleep(&softc->changer, 0, "cgticb", 0);
 		}
-		splx(s);
+		crit_exit();
 	}
 	return(cam_periph_getccb(periph, priority));
 }
-
 
 /*
  * Actually translate the requested transfer into one the physical driver
@@ -1448,7 +1436,6 @@ cdstrategy(struct buf *bp)
 	struct cam_periph *periph;
 	struct cd_softc *softc;
 	u_int  unit, part;
-	int    s;
 
 	unit = dkunit(bp->b_dev);
 	part = dkpart(bp->b_dev);
@@ -1467,13 +1454,13 @@ cdstrategy(struct buf *bp)
 	 * after we are in the queue.  Otherwise, we might not properly
 	 * clean up one of the buffers.
 	 */
-	s = splbio();
+	crit_enter();
 	
 	/*
 	 * If the device has been made invalid, error out
 	 */
 	if ((softc->flags & CD_FLAG_INVALID)) {
-		splx(s);
+		crit_exit();
 		bp->b_error = ENXIO;
 		goto bad;
 	}
@@ -1487,7 +1474,7 @@ cdstrategy(struct buf *bp)
 
 		error = cdcheckmedia(periph);
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			bp->b_error = error;
 			goto bad;
 		}
@@ -1498,7 +1485,7 @@ cdstrategy(struct buf *bp)
 	 */
 	bufqdisksort(&softc->buf_queue, bp);
 
-	splx(s);
+	crit_exit();
 	
 	/*
 	 * Schedule ourselves for performing the work.  We do things
@@ -1527,7 +1514,6 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 	struct buf *bp;
 	struct ccb_scsiio *csio;
 	struct scsi_read_capacity_data *rcap;
-	int s;
 
 	softc = (struct cd_softc *)periph->softc;
 
@@ -1536,9 +1522,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 	switch (softc->state) {
 	case CD_STATE_NORMAL:
 	{
-		int oldspl;
-
-		s = splbio();
+		crit_enter();
 		bp = bufq_first(&softc->buf_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			start_ccb->ccb_h.ccb_state = CD_CCB_WAITING;
@@ -1546,10 +1530,10 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 			SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
-			splx(s);
+			crit_exit();
 			wakeup(&periph->ccb_list);
 		} else if (bp == NULL) {
-			splx(s);
+			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else {
 			bufq_remove(&softc->buf_queue, bp);
@@ -1578,10 +1562,8 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 			 * Block out any asyncronous callbacks
 			 * while we touch the pending ccb list.
 			 */
-			oldspl = splcam();
 			LIST_INSERT_HEAD(&softc->pending_ccbs,
 					 &start_ccb->ccb_h, periph_links.le);
-			splx(oldspl);
 
 			/* We expect a unit attention from this device */
 			if ((softc->flags & CD_FLAG_RETRY_UA) != 0) {
@@ -1591,7 +1573,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 
 			start_ccb->ccb_h.ccb_bp = bp;
 			bp = bufq_first(&softc->buf_queue);
-			splx(s);
+			crit_exit();
 
 			xpt_action(start_ccb);
 		}
@@ -1637,7 +1619,6 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 	{
 		struct buf	*bp;
 		int		error;
-		int		oldspl;
 
 		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
 		error = 0;
@@ -1663,12 +1644,11 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		if (error != 0) {
-			int s;
 			struct buf *q_bp;
 
 			xpt_print_path(periph->path);
 			printf("cddone: got error %#x back\n", error);
-			s = splbio();
+			crit_enter();
 			while ((q_bp = bufq_first(&softc->buf_queue)) != NULL) {
 				bufq_remove(&softc->buf_queue, q_bp);
 				q_bp->b_resid = q_bp->b_bcount;
@@ -1676,7 +1656,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				q_bp->b_flags |= B_ERROR;
 				biodone(q_bp);
 			}
-			splx(s);
+			crit_exit();
 			bp->b_resid = bp->b_bcount;
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
@@ -1699,9 +1679,9 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		 * Block out any asyncronous callbacks
 		 * while we touch the pending ccb list.
 		 */
-		oldspl = splcam();
+		crit_enter();
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
-		splx(oldspl);
+		crit_exit();
 
 		if (softc->flags & CD_FLAG_CHANGER)
 			cdchangerschedule(softc);

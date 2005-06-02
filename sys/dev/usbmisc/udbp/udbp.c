@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.4 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.5 2005/06/02 20:40:46 dillon Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -531,15 +531,14 @@ udbp_setup_out_transfer(udbp_p sc)
 				 */
 	int pktlen;
 	usbd_status err;
-	int s, s1;
+	int s1;
 	struct mbuf *m;
 
-
-	s = splusb();
+	crit_enter();
 	if (sc->flags & OUT_BUSY)
 		panic("out transfer already in use, we should add queuing");
 	sc->flags |= OUT_BUSY;
-	splx(s);
+	crit_exit();
 	s1 = splimp(); /* Queueing happens at splnet */
 	IF_DEQUEUE(&sc->xmitq_hipri, m);
 	if (m == NULL) {
@@ -589,7 +588,6 @@ udbp_out_transfer_cb(usbd_xfer_handle xfer, usbd_private_handle priv,
 			usbd_status err)
 {
 	udbp_p sc = priv;		/* XXX see priv above */
-	int s;
 
 	if (err) {
 		DPRINTF(("%s: bulk-out transfer failed: %s\n",
@@ -601,10 +599,10 @@ udbp_out_transfer_cb(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	/* packet has been transmitted */
 
-	s = splusb();			/* mark the buffer available */
+	crit_enter();
 	sc->flags &= ~OUT_BUSY;
 	udbp_setup_out_transfer(sc);
-	splx(s);
+	crit_exit();
 }
 
 DRIVER_MODULE(udbp, uhub, udbp_driver, udbp_devclass, usbd_driver_load, 0);
@@ -728,7 +726,6 @@ ng_udbp_rcvdata(hook_p hook, item_p item)
 	const udbp_p sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
 	int error;
 	struct ifqueue	*xmitq_p;
-	int	s;
 	struct mbuf *m;
 	meta_p meta;
 
@@ -743,17 +740,17 @@ ng_udbp_rcvdata(hook_p hook, item_p item)
 	} else {
 		xmitq_p = (&sc->xmitq);
 	}
-	s = splusb();
+	crit_enter();
 	if (IF_QFULL(xmitq_p)) {
 		IF_DROP(xmitq_p);
-		splx(s);
+		crit_exit();
 		error = ENOBUFS;
 		goto bad;
 	}
 	IF_ENQUEUE(xmitq_p, m);
 	if (!(sc->flags & OUT_BUSY))
 		udbp_setup_out_transfer(sc);
-	splx(s);
+	crit_exit();
 	return (0);
 
 bad:	/*

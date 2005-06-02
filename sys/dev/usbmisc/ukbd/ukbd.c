@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.13 2005/02/21 20:48:28 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.14 2005/06/02 20:40:56 dillon Exp $
  */
 
 /*
@@ -66,6 +66,7 @@
 #endif
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbhid.h>
@@ -661,10 +662,8 @@ ukbd_term(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
 	int error;
-	int s;
 
-	s = splusb();
-
+	crit_enter();
 	state = (ukbd_state_t *)kbd->kb_data;
 	DPRINTF(("ukbd_term: ks_ifstate=0x%x\n", state->ks_ifstate));
 
@@ -673,7 +672,7 @@ ukbd_term(keyboard_t *kbd)
 	if (state->ks_ifstate & INTRENABLED)
 		ukbd_enable_intr(kbd, FALSE, NULL);
 	if (state->ks_ifstate & INTRENABLED) {
-		splx(s);
+		crit_exit();
 		DPRINTF(("ukbd_term: INTRENABLED!\n"));
 		return ENXIO;
 	}
@@ -690,8 +689,7 @@ ukbd_term(keyboard_t *kbd)
 			free(kbd, M_DEVBUF);
 		}
 	}
-
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -703,9 +701,8 @@ Static int
 ukbd_default_term(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
-	int s;
 
-	s = splusb();
+	crit_enter();
 
 	state = (ukbd_state_t *)kbd->kb_data;
 	DPRINTF(("ukbd_default_term: ks_ifstate=0x%x\n", state->ks_ifstate));
@@ -715,14 +712,14 @@ ukbd_default_term(keyboard_t *kbd)
 	if (state->ks_ifstate & INTRENABLED)
 		ukbd_enable_intr(kbd, FALSE, NULL);
 	if (state->ks_ifstate & INTRENABLED) {
-		splx(s);
+		crit_exit();
 		DPRINTF(("ukbd_term: INTRENABLED!\n"));
 		return ENXIO;
 	}
 	KBD_LOST_DEVICE(kbd);
 	KBD_LOST_PROBE(kbd);
 	KBD_LOST_INIT(kbd);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -733,14 +730,13 @@ ukbd_timeout(void *arg)
 {
 	keyboard_t *kbd;
 	ukbd_state_t *state;
-	int s;
 
 	kbd = (keyboard_t *)arg;
 	state = (ukbd_state_t *)kbd->kb_data;
-	s = splusb();
+	crit_enter();
 	(*kbdsw[kbd->kb_index]->intr)(kbd, (void *)USBD_NORMAL_COMPLETION);
 	callout_reset(&state->ks_timeout, hz / 40, ukbd_timeout, arg);
-	splx(s);
+	crit_exit();
 }
 
 Static int
@@ -873,16 +869,15 @@ Static int
 ukbd_getc(ukbd_state_t *state)
 {
 	int c;
-	int s;
 
 	if (state->ks_polling) {
 		DPRINTFN(1,("ukbd_getc: polling\n"));
-		s = splusb();
+		crit_enter();
 		while (state->ks_inputs <= 0)
 			usbd_dopoll(state->ks_iface);
-		splx(s);
+		crit_exit();
 	}
-	s = splusb();
+	crit_enter();
 	if (state->ks_inputs <= 0) {
 		c = -1;
 	} else {
@@ -890,7 +885,7 @@ ukbd_getc(ukbd_state_t *state)
 		--state->ks_inputs;
 		state->ks_inputhead = (state->ks_inputhead + 1)%INPUTBUFSIZE;
 	}
-	splx(s);
+	crit_exit();
 	return c;
 }
 
@@ -908,11 +903,9 @@ ukbd_test_if(keyboard_t *kbd)
 Static int
 ukbd_enable(keyboard_t *kbd)
 {
-	int s;
-
-	s = splusb();
+	crit_enter();
 	KBD_ACTIVATE(kbd);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -920,11 +913,9 @@ ukbd_enable(keyboard_t *kbd)
 Static int
 ukbd_disable(keyboard_t *kbd)
 {
-	int s;
-
-	s = splusb();
+	crit_enter();
 	KBD_DEACTIVATE(kbd);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1214,12 +1205,10 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		0, 2, 1, 3, 4, 6, 5, 7,
 	};
 	ukbd_state_t *state = kbd->kb_data;
-	int s;
 	int i;
 
-	s = splusb();
+	crit_enter();
 	switch (cmd) {
-
 	case KDGKBMODE:		/* get keyboard mode */
 		*(int *)arg = state->ks_mode;
 		break;
@@ -1240,7 +1229,7 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			}
 			break;
 		default:
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		break;
@@ -1251,7 +1240,7 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDSETLED:		/* set keyboard LED */
 		/* NOTE: lock key state in ks_state won't be changed */
 		if (*(int *)arg & ~LOCK_MASK) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		i = *(int *)arg;
@@ -1274,17 +1263,17 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		break;
 	case KDSKBSTATE:	/* set lock key state */
 		if (*(int *)arg & ~LOCK_MASK) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		state->ks_state &= ~LOCK_MASK;
 		state->ks_state |= *(int *)arg;
-		splx(s);
+		crit_exit();
 		/* set LEDs and quit */
 		return ukbd_ioctl(kbd, KDSETLED, arg);
 
 	case KDSETREPEAT:	/* set keyboard repeat rate (new interface) */
-		splx(s);
+		crit_exit();
 		if (!KBD_HAS_DEVICE(kbd))
 			return 0;
 		if (((int *)arg)[1] < 0)
@@ -1299,7 +1288,7 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		return 0;
 
 	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
-		splx(s);
+		crit_exit();
 		return set_typematic(kbd, *(int *)arg);
 
 	case PIO_KEYMAP:	/* set keyboard translation table */
@@ -1308,7 +1297,7 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		state->ks_accents = 0;
 		/* FALLTHROUGH */
 	default:
-		splx(s);
+		crit_exit();
 		return genkbd_commonioctl(kbd, cmd, arg);
 
 #ifdef USB_DEBUG
@@ -1318,7 +1307,7 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 #endif
 	}
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1379,12 +1368,11 @@ ukbd_poll(keyboard_t *kbd, int on)
 {
 	ukbd_state_t *state;
 	usbd_device_handle dev;
-	int s;
 
 	state = (ukbd_state_t *)kbd->kb_data;
 	usbd_interface2device_handle(state->ks_iface, &dev);
 
-	s = splusb();
+	crit_enter();
 	if (on) {
 		if (state->ks_polling == 0)
 			usbd_set_polling(dev, on);
@@ -1394,7 +1382,7 @@ ukbd_poll(keyboard_t *kbd, int on)
 		if (state->ks_polling == 0)
 			usbd_set_polling(dev, on);
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.7 2004/09/17 02:38:10 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.8 2005/06/02 20:40:31 dillon Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -60,7 +60,6 @@
 #undef	MSG_IDENTIFY
 #define	SCSI_LOW_DEBUGGER(dev)	Debugger((dev))
 #define	SCSI_LOW_DELAY(mu)	DELAY((mu))
-#define	SCSI_LOW_SPLSCSI	splcam
 #define	SCSI_LOW_BZERO(pt, size)	bzero((pt), (size))
 
 typedef	struct scsi_sense_data scsi_low_osdep_sense_data_t;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iiconf.c,v 1.10 1999/12/03 08:41:02 mdodd Exp $
- * $DragonFly: src/sys/bus/iicbus/iiconf.c,v 1.4 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iiconf.c,v 1.5 2005/06/02 20:40:36 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include "iiconf.h"
 #include "iicbus.h"
@@ -102,7 +103,7 @@ int
 iicbus_request_bus(device_t bus, device_t dev, int how)
 {
 	struct iicbus_softc *sc = (struct iicbus_softc *)device_get_softc(bus);
-	int s, error = 0;
+	int error = 0;
 
 	/* first, ask the underlying layers if the request is ok */
 	do {
@@ -113,15 +114,13 @@ iicbus_request_bus(device_t bus, device_t dev, int how)
 	} while (error == EWOULDBLOCK);
 
 	while (!error) {
-		s = splhigh();	
+		crit_enter();
 		if (sc->owner && sc->owner != dev) {
-			splx(s);
-
+			crit_exit();
 			error = iicbus_poll(sc, how);
 		} else {
 			sc->owner = dev;
-
-			splx(s);
+			crit_exit();
 			return (0);
 		}
 
@@ -143,7 +142,7 @@ int
 iicbus_release_bus(device_t bus, device_t dev)
 {
 	struct iicbus_softc *sc = (struct iicbus_softc *)device_get_softc(bus);
-	int s, error;
+	int error;
 
 	/* first, ask the underlying layers if the release is ok */
 	error = IICBUS_CALLBACK(device_get_parent(bus), IIC_RELEASE_BUS, NULL);
@@ -151,14 +150,13 @@ iicbus_release_bus(device_t bus, device_t dev)
 	if (error)
 		return (error);
 
-	s = splhigh();
+	crit_enter();
 	if (sc->owner != dev) {
-		splx(s);
+		crit_exit();
 		return (EACCES);
 	}
-
 	sc->owner = 0;
-	splx(s);
+	crit_exit();
 
 	/* wakeup waiting processes */
 	wakeup(sc);

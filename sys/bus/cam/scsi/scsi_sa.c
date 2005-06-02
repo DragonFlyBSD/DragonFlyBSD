@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.12 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.13 2005/06/02 20:40:31 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -46,6 +46,7 @@
 #ifdef _KERNEL
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 #endif
 #include <sys/devicestat.h>
 #include <machine/limits.h>
@@ -454,24 +455,23 @@ saopen(dev_t dev, int flags, int fmt, struct thread *td)
 	int mode;
 	int density;
 	int error;
-	int s;
 
 	unit = SAUNIT(dev);
 	mode = SAMODE(dev);
 	density = SADENSITY(dev);
 
-	s = splsoftcam();
+	crit_enter();
 	periph = cam_extend_get(saperiphs, unit);
 	if (periph == NULL) {
-		(void) splx(s);
+		crit_exit();
 		return (ENXIO);	
 	}
 	softc = (struct sa_softc *)periph->softc;
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
-	splx(s);
+	crit_exit();
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE|CAM_DEBUG_INFO,
 	    ("saopen(%d): dev=0x%x softc=0x%x\n", unit, unit, softc->flags));
@@ -666,7 +666,6 @@ sastrategy(struct buf *bp)
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	u_int  unit;
-	int    s;
 	
 	if (SA_IS_CTRL(bp->b_dev)) {
 		bp->b_error = EINVAL;
@@ -680,21 +679,21 @@ sastrategy(struct buf *bp)
 	}
 	softc = (struct sa_softc *)periph->softc;
 
-	s = splsoftcam();
+	crit_enter();
 
 	if (softc->flags & SA_FLAG_INVALID) {
-		splx(s);
+		crit_exit();
 		bp->b_error = ENXIO;
 		goto bad;
 	}
 
 	if (softc->flags & SA_FLAG_TAPE_FROZEN) {
-		splx(s);
+		crit_exit();
 		bp->b_error = EPERM;
 		goto bad;
 	}
 
-	splx(s);
+	crit_exit();
 
 	/*
 	 * If it's a null transfer, return immediatly
@@ -740,7 +739,7 @@ sastrategy(struct buf *bp)
 	 * after we are in the queue.  Otherwise, we might not properly
 	 * clean up one of the buffers.
 	 */
-	s = splbio();
+	crit_enter();
 	
 	/*
 	 * Place it at the end of the queue.
@@ -753,7 +752,7 @@ sastrategy(struct buf *bp)
 	     (softc->flags & SA_FLAG_FIXED)?  "fixed" : "variable",
 	     (bp->b_flags & B_READ)? "read" : "write", softc->queue_count));
 
-	splx(s);
+	crit_exit();
 	
 	/*
 	 * Schedule ourselves for performing the work.
@@ -779,7 +778,6 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	struct sa_softc *softc;
 	scsi_space_code spaceop;
 	int didlockperiph = 0;
-	int s;
 	int unit;
 	int mode;
 	int density;
@@ -820,15 +818,16 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			 * other thread that has this device open to do
 			 * an MTIOCERRSTAT that would clear latched status.
 			 */
-			s = splsoftcam();
+			crit_enter();
 			if ((periph->flags & CAM_PERIPH_LOCKED) == 0) {
 				error = cam_periph_lock(periph, PCATCH);
 				if (error != 0) {
-					splx(s);
+					crit_exit();
 					return (error);
 				}
 				didlockperiph = 1;
 			}
+			crit_exit();
 			break;
 
 		case MTIOCSETEOTMODEL:
@@ -840,13 +839,14 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			 * than at open time because we are sharing writable
 			 * access to data structures.
 			 */
-			s = splsoftcam();
+			crit_enter();
 			error = cam_periph_lock(periph, PCATCH);
 			if (error != 0) {
-				splx(s);
+				crit_exit();
 				return (error);
 			}
 			didlockperiph = 1;
+			crit_exit();
 			break;
 
 		default:
@@ -1308,7 +1308,6 @@ saoninvalidate(struct cam_periph *periph)
 	struct sa_softc *softc;
 	struct buf *q_bp;
 	struct ccb_setasync csa;
-	int s;
 
 	softc = (struct sa_softc *)periph->softc;
 
@@ -1326,11 +1325,10 @@ saoninvalidate(struct cam_periph *periph)
 	softc->flags |= SA_FLAG_INVALID;
 
 	/*
-	 * Although the oninvalidate() routines are always called at
-	 * splsoftcam, we need to be at splbio() here to keep the buffer
+	 * We need to be in a critical section here to keep the buffer
 	 * queue from being modified while we traverse it.
 	 */
-	s = splbio();
+	crit_enter();
 
 	/*
 	 * Return all queued I/O with ENXIO.
@@ -1345,7 +1343,7 @@ saoninvalidate(struct cam_periph *periph)
 		biodone(q_bp);
 	}
 	softc->queue_count = 0;
-	splx(s);
+	crit_exit();
 
 	xpt_print_path(periph->path);
 	printf("lost device\n");
@@ -1536,12 +1534,11 @@ sastart(struct cam_periph *periph, union ccb *start_ccb)
 	{
 		/* Pull a buffer from the queue and get going on it */		
 		struct buf *bp;
-		int s;
 
 		/*
 		 * See if there is a buf with work for us to do..
 		 */
-		s = splbio();
+		crit_enter();
 		bp = bufq_first(&softc->buf_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
@@ -1550,10 +1547,10 @@ sastart(struct cam_periph *periph, union ccb *start_ccb)
 			SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
-			splx(s);
+			crit_exit();
 			wakeup(&periph->ccb_list);
 		} else if (bp == NULL) {
-			splx(s);
+			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else if ((softc->flags & SA_FLAG_ERR_PENDING) != 0) {
 			struct buf *done_bp;
@@ -1596,7 +1593,7 @@ again:
 			    "%d more buffers queued up\n",
 			    (softc->flags & SA_FLAG_ERR_PENDING),
 			    (bp != NULL)? "not " : " ", softc->queue_count));
-			splx(s);
+			crit_exit();
 			xpt_release_ccb(start_ccb);
 			biodone(done_bp);
 		} else {
@@ -1617,7 +1614,7 @@ again:
 					xpt_print_path(periph->path);
 					printf("zero blocksize for "
 					    "FIXED length writes?\n");
-					splx(s);
+					crit_exit();
 					biodone(bp);
 					break;
 				}
@@ -1660,7 +1657,7 @@ again:
 			Set_CCB_Type(start_ccb, SA_CCB_BUFFER_IO);
 			start_ccb->ccb_h.ccb_bp = bp;
 			bp = bufq_first(&softc->buf_queue);
-			splx(s);
+			crit_exit();
 			xpt_action(start_ccb);
 		}
 		
@@ -1705,7 +1702,6 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		if (error == EIO) {
-			int s;			
 			struct buf *q_bp;
 
 			/*
@@ -1719,7 +1715,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 			 *
 			 */
 
-			s = splbio();
+			crit_enter();
 			softc->flags |= SA_FLAG_TAPE_FROZEN;
 			while ((q_bp = bufq_first(&softc->buf_queue)) != NULL) {
 				bufq_remove(&softc->buf_queue, q_bp);
@@ -1728,7 +1724,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 				q_bp->b_flags |= B_ERROR;
 				biodone(q_bp);
 			}
-			splx(s);
+			crit_exit();
 		}
 		if (error != 0) {
 			bp->b_resid = bp->b_bcount;

@@ -31,20 +31,18 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.12 2005/02/16 22:50:28 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.13 2005/06/02 20:40:40 dillon Exp $
  */
 
 /*
- * Callbacks in the USB code operate at splusb() (actually splbio()
- * in FreeBSD). However adding packets to the input queues has to be
- * done at splimp(). It is conceivable that this arrangement could
- * trigger a condition where the splimp() is ignored and the input
- * queues could get trampled in spite of our best effors to prevent
- * it. To work around this, we implement a special input queue for
- * USB ethernet adapter drivers. Rather than passing the frames directly
- * to ether_input(), we pass them here, then schedule a soft interrupt
- * to hand them to ether_input() later, outside of the USB interrupt
- * context.
+ * Callbacks in the USB code operate in a critical section.
+ *
+ * It is conceivable that this arrangement could trigger a condition
+ * where the input queues could get trampled in spite of our best effors
+ * to prevent it. To work around this, we implement a special input queue
+ * for USB ethernet adapter drivers. Rather than passing the frames directly
+ * to ether_input(), we pass them here, then schedule a soft interrupt to
+ * hand them to ether_input() later, outside of the USB interrupt context.
  *
  * It's questional as to whether this code should be expanded to
  * handle other kinds of devices, or handle USB transfer callbacks
@@ -79,14 +77,11 @@ Static int usbintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct ifnet *ifp;
-	int s;
 
-	s = splimp();
-
+	crit_enter();
 	ifp = m->m_pkthdr.rcvif;
 	(*ifp->if_input)(ifp, m);
-
-	splx(s);
+	crit_exit();
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 	return EASYNC;
@@ -102,11 +97,14 @@ usb_register_netisr(void)
 }
 
 /*
- * Must be called at splusb() (actually splbio()). This should be
- * the case when called from a transfer callback routine.
+ * Must be called from a critical section.  This should be the case when
+ * called from a transfer callback routine.  Don't trust it, though.
  */
 void
 usb_ether_input(struct mbuf *m)
 {
+	crit_enter();
 	netisr_queue(NETISR_USB, m);
+	crit_exit();
 }
+

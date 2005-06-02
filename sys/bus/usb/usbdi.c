@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.8 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.9 2005/06/02 20:40:40 dillon Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #endif
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 
@@ -285,7 +286,6 @@ usbd_transfer(usbd_xfer_handle xfer)
 	usb_dma_t *dmap = &xfer->dmabuf;
 	usbd_status err;
 	u_int size;
-	int s;
 
 	DPRINTFN(5,("usbd_transfer: xfer=%p, flags=%d, pipe=%p, running=%d\n",
 		    xfer, xfer->flags, pipe, pipe->running));
@@ -336,13 +336,13 @@ usbd_transfer(usbd_xfer_handle xfer)
 	/* Sync transfer, wait for completion. */
 	if (err != USBD_IN_PROGRESS)
 		return (err);
-	s = splusb();
+	crit_enter();
 	if (!xfer->done) {
 		if (pipe->device->bus->use_polling)
 			panic("usbd_transfer: not done\n");
 		tsleep(xfer, 0, "usbsyn", 0);
 	}
-	splx(s);
+	crit_exit();
 	return (xfer->status);
 }
 
@@ -537,7 +537,6 @@ usbd_status
 usbd_abort_pipe(usbd_pipe_handle pipe)
 {
 	usbd_status err;
-	int s;
 
 #ifdef DIAGNOSTIC
 	if (pipe == NULL) {
@@ -545,9 +544,9 @@ usbd_abort_pipe(usbd_pipe_handle pipe)
 		return (USBD_NORMAL_COMPLETION);
 	}
 #endif
-	s = splusb();
+	crit_enter();
 	err = usbd_ar_pipe(pipe);
-	splx(s);
+	crit_exit();
 	return (err);
 }
 
@@ -727,13 +726,11 @@ usbd_get_interface(usbd_interface_handle iface, u_int8_t *aiface)
 
 /*** Internal routines ***/
 
-/* Dequeue all pipe operations, called at splusb(). */
+/* Dequeue all pipe operations, called from a critical section. */
 Static usbd_status
 usbd_ar_pipe(usbd_pipe_handle pipe)
 {
 	usbd_xfer_handle xfer;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(2,("usbd_ar_pipe: pipe=%p\n", pipe));
 #ifdef USB_DEBUG
@@ -753,7 +750,7 @@ usbd_ar_pipe(usbd_pipe_handle pipe)
 	return (USBD_NORMAL_COMPLETION);
 }
 
-/* Called at splusb() */
+/* Called from a critical section. */
 void
 usb_transfer_complete(usbd_xfer_handle xfer)
 {
@@ -761,8 +758,6 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 	usb_dma_t *dmap = &xfer->dmabuf;
 	int repeat = pipe->repeat;
 	int polling;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(5, ("usb_transfer_complete: pipe=%p xfer=%p status=%d "
 		     "actlen=%d\n", pipe, xfer, xfer->status, xfer->actlen));
@@ -862,7 +857,6 @@ usb_insert_transfer(usbd_xfer_handle xfer)
 {
 	usbd_pipe_handle pipe = xfer->pipe;
 	usbd_status err;
-	int s;
 
 	DPRINTFN(5,("usb_insert_transfer: pipe=%p running=%d timeout=%d\n",
 		    pipe, pipe->running, xfer->timeout));
@@ -874,7 +868,7 @@ usb_insert_transfer(usbd_xfer_handle xfer)
 	}
 	xfer->busy_free = XFER_ONQU;
 #endif
-	s = splusb();
+	crit_enter();
 	SIMPLEQ_INSERT_TAIL(&pipe->queue, xfer, next);
 	if (pipe->running)
 		err = USBD_IN_PROGRESS;
@@ -882,18 +876,16 @@ usb_insert_transfer(usbd_xfer_handle xfer)
 		pipe->running = 1;
 		err = USBD_NORMAL_COMPLETION;
 	}
-	splx(s);
+	crit_exit();
 	return (err);
 }
 
-/* Called at splusb() */
+/* Called from a critical section. */
 void
 usbd_start_next(usbd_pipe_handle pipe)
 {
 	usbd_xfer_handle xfer;
 	usbd_status err;
-
-	SPLUSBCHECK;
 
 #ifdef DIAGNOSTIC
 	if (pipe == NULL) {

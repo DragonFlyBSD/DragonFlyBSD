@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.9 2004/05/19 22:52:52 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.10 2005/06/02 20:41:05 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -72,6 +72,7 @@
 #include <sys/poll.h>
 #include <sys/conf.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -626,7 +627,6 @@ uscanner_activate(device_ptr_t self, enum devact act)
 USB_DETACH(uscanner)
 {
 	USB_DETACH_START(uscanner, sc);
-	int s;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	int maj, mn;
 #endif
@@ -646,12 +646,12 @@ USB_DETACH(uscanner)
 	if (sc->sc_bulkout_pipe != NULL)
 		usbd_abort_pipe(sc->sc_bulkout_pipe);
 
-	s = splusb();
+	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
 		usb_detach_wait(USBDEV(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	/* locate the major number */

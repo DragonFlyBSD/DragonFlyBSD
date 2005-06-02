@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.10 2005/05/28 01:16:30 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.11 2005/06/02 20:40:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,8 @@
 #include <sys/bus.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
 
 #include "cam.h"
 #include "cam_ccb.h"
@@ -79,7 +81,6 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	lun_id_t	lun_id;
 	cam_status	status;
 	u_int		init_level;
-	int s;
 
 	init_level = 0;
 	/*
@@ -139,7 +140,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	if (status != CAM_REQ_CMP)
 		goto failure;
 
-	s = splsoftcam();
+	crit_enter();
 	cur_periph = TAILQ_FIRST(&(*p_drv)->units);
 	while (cur_periph != NULL
 	    && cur_periph->unit_number < periph->unit_number)
@@ -152,7 +153,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 		(*p_drv)->generation++;
 	}
 
-	splx(s);
+	crit_exit();
 
 	init_level++;
 
@@ -167,9 +168,9 @@ failure:
 		/* Initialized successfully */
 		break;
 	case 3:
-		s = splsoftcam();
+		crit_enter();
 		TAILQ_REMOVE(&(*p_drv)->units, periph, unit_links);
-		splx(s);
+		crit_exit();
 		xpt_remove_periph(periph);
 	case 2:
 		xpt_free_path(periph->path);
@@ -194,21 +195,20 @@ cam_periph_find(struct cam_path *path, char *name)
 {
 	struct periph_driver **p_drv;
 	struct cam_periph *periph;
-	int s;
 
 	SET_FOREACH(p_drv, periphdriver_set) {
 		if (name != NULL && (strcmp((*p_drv)->driver_name, name) != 0))
 			continue;
 
-		s = splsoftcam();
+		crit_enter();
 		for (periph = TAILQ_FIRST(&(*p_drv)->units); periph != NULL;
 		     periph = TAILQ_NEXT(periph, unit_links)) {
 			if (xpt_path_comp(periph->path, path) == 0) {
-				splx(s);
+				crit_exit();
 				return(periph);
 			}
 		}
-		splx(s);
+		crit_exit();
 		if (name != NULL)
 			return(NULL);
 	}
@@ -218,14 +218,12 @@ cam_periph_find(struct cam_path *path, char *name)
 cam_status
 cam_periph_acquire(struct cam_periph *periph)
 {
-	int s;
-
 	if (periph == NULL)
 		return(CAM_REQ_CMP_ERR);
 
-	s = splsoftcam();
+	crit_enter();
 	periph->refcount++;
-	splx(s);
+	crit_exit();
 
 	return(CAM_REQ_CMP);
 }
@@ -233,18 +231,15 @@ cam_periph_acquire(struct cam_periph *periph)
 void
 cam_periph_release(struct cam_periph *periph)
 {
-	int s;
-
 	if (periph == NULL)
 		return;
 
-	s = splsoftcam();
+	crit_enter();
 	if ((--periph->refcount == 0)
 	 && (periph->flags & CAM_PERIPH_INVALID)) {
 		camperiphfree(periph);
 	}
-	splx(s);
-
+	crit_exit();
 }
 
 /*
@@ -261,11 +256,10 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 {
 	struct	cam_periph *periph;
 	char	*periph_name, *strval;
-	int	s;
 	int	i, val, dunit;
 	const char *dname;
 
-	s = splsoftcam();
+	crit_enter();
 	periph_name = p_drv->driver_name;
 	for (;;newunit++) {
 
@@ -309,7 +303,7 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 		if (i == -1)
 			break;
 	}
-	splx(s);
+	crit_exit();
 	return (newunit);
 }
 
@@ -366,14 +360,12 @@ camperiphunit(struct periph_driver *p_drv, path_id_t pathid,
 void
 cam_periph_invalidate(struct cam_periph *periph)
 {
-	int s;
-
-	s = splsoftcam();
 	/*
 	 * We only call this routine the first time a peripheral is
-	 * invalidated.  The oninvalidate() routine is always called at
-	 * splsoftcam().
+	 * invalidated.  The oninvalidate() routine is always called in
+	 * a critical section.
 	 */
+	crit_enter();
 	if (((periph->flags & CAM_PERIPH_INVALID) == 0)
 	 && (periph->periph_oninval != NULL))
 		periph->periph_oninval(periph);
@@ -385,13 +377,12 @@ cam_periph_invalidate(struct cam_periph *periph)
 		camperiphfree(periph);
 	else if (periph->refcount < 0)
 		printf("cam_invalidate_periph: refcount < 0!!\n");
-	splx(s);
+	crit_exit();
 }
 
 static void
 camperiphfree(struct cam_periph *periph)
 {
-	int s;
 	struct periph_driver **p_drv;
 
 	SET_FOREACH(p_drv, periphdriver_set) {
@@ -408,10 +399,10 @@ camperiphfree(struct cam_periph *periph)
 	if (periph->periph_dtor != NULL)
 		periph->periph_dtor(periph);
 	
-	s = splsoftcam();
+	crit_enter();
 	TAILQ_REMOVE(&(*p_drv)->units, periph, unit_links);
 	(*p_drv)->generation++;
-	splx(s);
+	crit_exit();
 
 	xpt_remove_periph(periph);
 
@@ -691,11 +682,10 @@ union ccb *
 cam_periph_getccb(struct cam_periph *periph, u_int32_t priority)
 {
 	struct ccb_hdr *ccb_h;
-	int s;
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("entering cdgetccb\n"));
 
-	s = splsoftcam();
+	crit_enter();
 	
 	while (periph->ccb_list.slh_first == NULL) {
 		if (periph->immediate_priority > priority)
@@ -709,21 +699,18 @@ cam_periph_getccb(struct cam_periph *periph, u_int32_t priority)
 
 	ccb_h = periph->ccb_list.slh_first;
 	SLIST_REMOVE_HEAD(&periph->ccb_list, periph_links.sle);
-	splx(s);
+	crit_exit();
 	return ((union ccb *)ccb_h);
 }
 
 void
 cam_periph_ccbwait(union ccb *ccb)
 {
-	int s;
-
-	s = splsoftcam();
+	crit_enter();
 	if ((ccb->ccb_h.pinfo.index != CAM_UNQUEUED_INDEX)
 	 || ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INPROG))
 		tsleep(&ccb->ccb_h.cbfcnp, 0, "cbwait", 0);
-
-	splx(s);
+	crit_exit();
 }
 
 int

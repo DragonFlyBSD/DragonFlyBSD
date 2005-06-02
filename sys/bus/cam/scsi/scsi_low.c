@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.12 2005/05/28 01:16:30 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.13 2005/06/02 20:40:31 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -70,6 +70,7 @@
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -457,7 +458,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 	struct lun_info *li;
 	struct slccb *cb;
 	u_int lun, flags, msg, target;
-	int s, rv;
+	int rv;
 
 	target = (u_int) (ccb->ccb_h.target_id);
 	lun = (u_int) ccb->ccb_h.target_lun;
@@ -496,7 +497,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 		else
 			flags = CCB_SCSIIO;
 
-		s = SCSI_LOW_SPLSCSI();
+		crit_enter();
 		li = scsi_low_alloc_li(ti, lun, 1);
 
 		if (ti->ti_setup_msg != 0)
@@ -512,7 +513,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 			scsi_low_test_abort(slp, ti, li);
 		}
 #endif	/* SCSI_LOW_DEBUG */
-		splx(s);
+		crit_exit();
 		break;
 
 	case XPT_EN_LUN:		/* Enable LUN as a target */
@@ -535,10 +536,10 @@ scsi_low_scsi_action_cam(sim, ccb)
 		}
 #endif	/* SCSI_LOW_DIAGNOSTIC */
 
-		s = SCSI_LOW_SPLSCSI();
+		crit_enter();
 		cb = scsi_low_find_ccb(slp, target, lun, ccb->cab.abort_ccb);
 		rv = scsi_low_abort_ccb(slp, cb);
-		splx(s);
+		crit_exit();
 
 		if (rv == 0)
 			ccb->ccb_h.status = CAM_REQ_CMP;
@@ -565,7 +566,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 		if (lun == CAM_LUN_WILDCARD)
 			lun = 0;
 
-		s = SCSI_LOW_SPLSCSI();
+		crit_enter();
 		if ((cts->valid & (CCB_TRANS_BUS_WIDTH_VALID |
 				   CCB_TRANS_SYNC_RATE_VALID |
 				   CCB_TRANS_SYNC_OFFSET_VALID)) != 0)
@@ -615,7 +616,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 			if ((slp->sl_show_result & SHOW_CALCF_RES) != 0)
 				scsi_low_calcf_show(li);
 		}
-		splx(s);
+		crit_exit();
 
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
@@ -640,7 +641,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 		if (lun == CAM_LUN_WILDCARD)
 			lun = 0;
 
-		s = SCSI_LOW_SPLSCSI();
+		crit_enter();
 		li = scsi_low_alloc_li(ti, lun, 1);
 #ifdef CAM_NEW_TRAN_CODE
 		if (li != NULL && cts->type == CTS_TYPE_CURRENT_SETTINGS) {
@@ -746,7 +747,7 @@ scsi_low_scsi_action_cam(sim, ccb)
 		ccb->ccb_h.status = CAM_REQ_CMP;
 #endif
 settings_out:
-		splx(s);
+		crit_exit();
 		xpt_done(ccb);
 		break;
 	}
@@ -758,9 +759,9 @@ settings_out:
 	}
 
 	case XPT_RESET_BUS:		/* Reset the specified SCSI bus */
-		s = SCSI_LOW_SPLSCSI();
+		crit_enter();
 		scsi_low_restart(slp, SCSI_LOW_RESTART_HARD, NULL);
-		splx(s);
+		crit_exit();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -799,10 +800,10 @@ settings_out:
 		else
 			flags = CCB_NORETRY | CCB_URGENT;
 
-		s = SCSI_LOW_SPLSCSI();
+		crit_enter();
 		li = scsi_low_alloc_li(ti, lun, 1);
 		scsi_low_enqueue(slp, ti, li, cb, flags, msg);
-		splx(s);
+		crit_exit();
 		break;
 
 	case XPT_PATH_INQ: {		/* Path routing inquiry */
@@ -1059,15 +1060,13 @@ int
 scsi_low_deactivate(slp)
 	struct scsi_low_softc *slp;
 {
-	int s;
-
-	s = SCSI_LOW_SPLSCSI();
+	crit_enter();
 	slp->sl_flags |= HW_INACTIVE;
 	(*slp->sl_osdep_fp->scsi_low_osdep_timeout)
 		(slp, SCSI_LOW_TIMEOUT_CH_IO, SCSI_LOW_TIMEOUT_STOP);
 	(*slp->sl_osdep_fp->scsi_low_osdep_timeout)
 		(slp, SCSI_LOW_TIMEOUT_CH_ENGAGE, SCSI_LOW_TIMEOUT_STOP);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1075,21 +1074,21 @@ int
 scsi_low_activate(slp)
 	struct scsi_low_softc *slp;
 {
-	int error, s;
+	int error;
 
-	s = SCSI_LOW_SPLSCSI();
+	crit_enter();
 	slp->sl_flags &= ~HW_INACTIVE;
 	if ((error = scsi_low_restart(slp, SCSI_LOW_RESTART_HARD, NULL)) != 0)
 	{
 		slp->sl_flags |= HW_INACTIVE;
-		splx(s);
+		crit_exit();
 		return error;
 	}
 
 	slp->sl_timeout_count = 0;
 	(*slp->sl_osdep_fp->scsi_low_osdep_timeout)
 		(slp, SCSI_LOW_TIMEOUT_CH_IO, SCSI_LOW_TIMEOUT_START);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1158,7 +1157,8 @@ scsi_low_engage(arg)
 	void *arg;
 {
 	struct scsi_low_softc *slp = arg;
-	int s = SCSI_LOW_SPLSCSI();
+
+	crit_enter();
 
 	switch (slp->sl_rstep)
 	{
@@ -1178,7 +1178,7 @@ scsi_low_engage(arg)
 	case 2:
 		break;
 	}
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1368,13 +1368,12 @@ scsi_low_timeout(arg)
 	void *arg;
 {
 	struct scsi_low_softc *slp = arg;
-	int s;
 
-	s = SCSI_LOW_SPLSCSI();
+	crit_enter();
 	(void) scsi_low_timeout_check(slp);
 	(*slp->sl_osdep_fp->scsi_low_osdep_timeout)
 		(slp, SCSI_LOW_TIMEOUT_CH_IO, SCSI_LOW_TIMEOUT_START);
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1551,7 +1550,7 @@ scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
-	int s, i, nccb, rv;
+	int i, nccb, rv;
 
 	slp->sl_osdep_fp = &scsi_low_osdep_funcs_cam;
 
@@ -1598,11 +1597,11 @@ scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
 	callout_init(&slp->sl_si.timeout_ch);
 	callout_init(&slp->sl_si.engage_ch);
 
-	s = SCSI_LOW_SPLSCSI();
+	crit_enter();
 	rv = (*slp->sl_osdep_fp->scsi_low_osdep_attach) (slp);
 	if (rv != 0)
 	{
-		splx(s);
+		crit_exit();
 		printf("%s: scsi_low_attach: osdep attach failed\n",
 			slp->sl_xname);
 		return EINVAL;
@@ -1612,7 +1611,7 @@ scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
 	SCSI_LOW_DELAY(1000);	/* wait for 1ms */
 	if (scsi_low_init(slp, SCSI_LOW_RESTART_HARD) != 0)
 	{
-		splx(s);
+		crit_exit();
 		printf("%s: scsi_low_attach: initialization failed\n",
 			slp->sl_xname);
 		return EINVAL;
@@ -1634,7 +1633,7 @@ scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
 
 	/* call os depend attach done*/
 	(*slp->sl_osdep_fp->scsi_low_osdep_world_start) (slp);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1642,12 +1641,12 @@ int
 scsi_low_dettach(slp)
 	struct scsi_low_softc *slp;
 {
-	int s, rv;
+	int rv;
 
-	s = SCSI_LOW_SPLSCSI();
+	crit_enter();
 	if (scsi_low_is_busy(slp) != 0)
 	{
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 
@@ -1656,13 +1655,13 @@ scsi_low_dettach(slp)
 	rv = (*slp->sl_osdep_fp->scsi_low_osdep_dettach) (slp);
 	if (rv != 0)
 	{
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 
 	scsi_low_free_ti(slp);
 	LIST_REMOVE(slp, sl_chain);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

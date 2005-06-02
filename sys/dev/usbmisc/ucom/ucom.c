@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.17 2004/10/16 03:20:52 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.18 2005/06/02 20:40:45 dillon Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -87,6 +87,7 @@
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbcdc.h>
@@ -203,7 +204,6 @@ int
 ucom_detach(struct ucom_softc *sc)
 {
 	struct tty *tp = sc->sc_tty;
-	int s;
 	int unit;
 
 	DPRINTF(("ucom_detach: sc = %p, tp = %p\n", sc, sc->sc_tty));
@@ -230,12 +230,12 @@ ucom_detach(struct ucom_softc *sc)
 		return (0);
 	}
 
-	s = splusb();
+	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
 		usb_detach_wait(USBDEV(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 
 	unit = device_get_unit(sc->sc_dev);
 	cdevsw_remove(&ucom_cdevsw, UCOMUNIT_MASK, unit);

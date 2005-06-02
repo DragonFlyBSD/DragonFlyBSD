@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.13 2004/05/19 22:52:51 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.14 2005/06/02 20:40:50 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -80,6 +80,7 @@
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbhid.h>
@@ -302,7 +303,6 @@ uhid_activate(device_ptr_t self, enum devact act)
 USB_DETACH(uhid)
 {
 	USB_DETACH_START(uhid, sc);
-	int s;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	int maj, mn;
 #endif
@@ -318,14 +318,14 @@ USB_DETACH(uhid)
 		usbd_abort_pipe(sc->sc_intrpipe);
 
 	if (sc->sc_state & UHID_OPEN) {
-		s = splusb();
+		crit_enter();
 		if (--sc->sc_refcnt >= 0) {
 			/* Wake everyone */
 			wakeup(&sc->sc_q);
 			/* Wait for processes to go away. */
 			usb_detach_wait(USBDEV(sc->sc_dev));
 		}
-		splx(s);
+		crit_exit();
 	}
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -469,7 +469,6 @@ uhidclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 int
 uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 {
-	int s;
 	int error = 0;
 	size_t length;
 	u_char buffer[UHID_CHUNK];
@@ -486,10 +485,10 @@ uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 		return (uiomove(buffer, sc->sc_isize, uio));
 	}
 
-	s = splusb();
+	crit_enter();
 	while (sc->sc_q.c_cc == 0) {
 		if (flag & IO_NDELAY) {
-			splx(s);
+			crit_exit();
 			return (EWOULDBLOCK);
 		}
 		sc->sc_state |= UHID_ASLP;
@@ -508,7 +507,7 @@ uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 			usbd_clear_endpoint_stall(sc->sc_intrpipe);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	/* Transfer as many chunks as possible. */
 	while (sc->sc_q.c_cc > 0 && uio->uio_resid > 0 && !error) {
@@ -730,14 +729,13 @@ uhidpoll(dev_t dev, int events, usb_proc_ptr p)
 {
 	struct uhid_softc *sc;
 	int revents = 0;
-	int s;
 
 	USB_GET_SC(uhid, UHIDUNIT(dev), sc);
 
 	if (sc->sc_dying)
 		return (EIO);
 
-	s = splusb();
+	crit_enter();
 	if (events & (POLLOUT | POLLWRNORM))
 		revents |= events & (POLLOUT | POLLWRNORM);
 	if (events & (POLLIN | POLLRDNORM)) {
@@ -746,8 +744,7 @@ uhidpoll(dev_t dev, int events, usb_proc_ptr p)
 		else
 			selrecord(p, &sc->sc_rsel);
 	}
-
-	splx(s);
+	crit_exit();
 	return (revents);
 }
 

@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.13 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.14 2005/06/02 20:40:42 dillon Exp $
  *
  */
 
@@ -53,6 +53,7 @@
 #if defined(__DragonFly__) || __FreeBSD_version < 500106
 #include <sys/devicestat.h>	/* for struct devstat */
 #endif
+#include <sys/thread2.h>
 
 #ifdef __DragonFly__
 #include <bus/cam/cam.h>
@@ -850,7 +851,6 @@ END_DEBUG
 #if NEED_RESPONSE
 static void
 sbp_loginres_callback(struct fw_xfer *xfer){
-	int s;
 	struct sbp_dev *sdev;
 	sdev = (struct sbp_dev *)xfer->sc;
 SBP_DEBUG(1)
@@ -858,9 +858,9 @@ SBP_DEBUG(1)
 	printf("sbp_loginres_callback\n");
 END_DEBUG
 	/* recycle */
-	s = splfw();
+	crit_enter();
 	STAILQ_INSERT_TAIL(&sdev->target->sbp->fwb.xferlist, xfer, link);
-	splx(s);
+	crit_exit();
 	return;
 }
 #endif
@@ -869,13 +869,12 @@ static __inline void
 sbp_xfer_free(struct fw_xfer *xfer)
 {
 	struct sbp_dev *sdev;
-	int s;
 
 	sdev = (struct sbp_dev *)xfer->sc;
 	fw_xfer_unload(xfer);
-	s = splfw();
+	crit_enter();
 	STAILQ_INSERT_TAIL(&sdev->target->xferlist, xfer, link);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1248,21 +1247,21 @@ sbp_write_cmd(struct sbp_dev *sdev, int tcode, int offset)
 	struct fw_xfer *xfer;
 	struct fw_pkt *fp;
 	struct sbp_target *target;
-	int s, new = 0;
+	int new = 0;
 
 	target = sdev->target;
-	s = splfw();
+	crit_enter();
 	xfer = STAILQ_FIRST(&target->xferlist);
 	if (xfer == NULL) {
 		if (target->n_xfer > 5 /* XXX */) {
 			printf("sbp: no more xfer for this target\n");
-			splx(s);
+			crit_exit();
 			return(NULL);
 		}
 		xfer = fw_xfer_alloc_buf(M_SBP, 8, 0);
 		if(xfer == NULL){
 			printf("sbp: fw_xfer_alloc_buf failed\n");
-			splx(s);
+			crit_exit();
 			return NULL;
 		}
 		target->n_xfer ++;
@@ -1272,7 +1271,7 @@ sbp_write_cmd(struct sbp_dev *sdev, int tcode, int offset)
 	} else {
 		STAILQ_REMOVE_HEAD(&target->xferlist, link);
 	}
-	splx(s);
+	crit_exit();
 
 	microtime(&xfer->tv);
 
@@ -1308,23 +1307,23 @@ sbp_mgm_orb(struct sbp_dev *sdev, int func, struct sbp_ocb *aocb)
 	struct fw_pkt *fp;
 	struct sbp_ocb *ocb;
 	struct sbp_target *target;
-	int s, nid;
+	int nid;
 
 	target = sdev->target;
 	nid = target->sbp->fd.fc->nodeid | FWLOCALBUS;
 
-	s = splfw();
+	crit_enter();
 	if (func == ORB_FUN_RUNQUEUE) {
 		ocb = STAILQ_FIRST(&target->mgm_ocb_queue);
 		if (target->mgm_ocb_cur != NULL || ocb == NULL) {
-			splx(s);
+			crit_exit();
 			return;
 		}
 		STAILQ_REMOVE_HEAD(&target->mgm_ocb_queue, ocb);
 		goto start;
 	}
 	if ((ocb = sbp_get_ocb(sdev)) == NULL) {
-		splx(s);
+		crit_exit();
 		/* XXX */
 		return;
 	}
@@ -1366,12 +1365,12 @@ END_DEBUG
 	if (target->mgm_ocb_cur != NULL) {
 		/* there is a standing ORB */
 		STAILQ_INSERT_TAIL(&sdev->target->mgm_ocb_queue, ocb, ocb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 start:
 	target->mgm_ocb_cur = ocb;
-	splx(s);
+	crit_exit();
 
 	callout_reset(&target->mgm_ocb_timeout, 5*hz,
 				sbp_mgm_timeout, (caddr_t)ocb);
@@ -1845,11 +1844,9 @@ done0:
 static void
 sbp_recv(struct fw_xfer *xfer)
 {
-	int s;
-
-	s = splcam();
+	crit_enter();
 	sbp_recv1(xfer);
-	splx(s);
+	crit_exit();
 }
 /*
  * sbp_attach()
@@ -1860,7 +1857,7 @@ sbp_attach(device_t dev)
 	struct sbp_softc *sbp;
 	struct cam_devq *devq;
 	struct fw_xfer *xfer;
-	int i, s, error;
+	int i, error;
 
 SBP_DEBUG(0)
 	printf("sbp_attach (cold=%d)\n", cold);
@@ -1947,10 +1944,10 @@ END_DEBUG
 	sbp->fd.post_explore = sbp_post_explore;
 
 	if (sbp->fd.fc->status != -1) {
-		s = splfw();
+		crit_enter();
 		sbp_post_busreset((void *)sbp);
 		sbp_post_explore((void *)sbp);
-		splx(s);
+		crit_exit();
 	}
 	xpt_async(AC_BUS_RESET, sbp->path, /*arg*/ NULL);
 
@@ -2364,9 +2361,9 @@ printf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[0]), ntohl(ocb->orb[1]), ntoh
 printf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[4]), ntohl(ocb->orb[5]), ntohl(ocb->orb[6]), ntohl(ocb->orb[7]));
 */
 		if (ccb->csio.dxfer_len > 0) {
-			int s, error;
+			int error;
 
-			s = splsoftvm();
+			crit_enter();
 			error = bus_dmamap_load(/*dma tag*/sbp->dmat,
 					/*dma map*/ocb->dmamap,
 					ccb->csio.data_ptr,
@@ -2374,7 +2371,7 @@ printf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[4]), ntohl(ocb->orb[5]), ntoh
 					sbp_execute_ocb,
 					ocb,
 					/*flags*/0);
-			splx(s);
+			crit_exit();
 			if (error)
 				printf("sbp: bus_dmamap_load error %d\n", error);
 		} else
@@ -2506,11 +2503,9 @@ END_DEBUG
 static void
 sbp_action(struct cam_sim *sim, union ccb *ccb)
 {
-	int s;
-
-	s = splfw();
+	crit_enter();
 	sbp_action1(sim, ccb);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -2599,8 +2594,10 @@ sbp_dequeue_ocb(struct sbp_dev *sdev, struct sbp_status *sbp_status)
 {
 	struct sbp_ocb *ocb;
 	struct sbp_ocb *next;
-	int s = splfw(), order = 0;
+	int order = 0;
 	int flags;
+
+	crit_enter();
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
@@ -2640,7 +2637,7 @@ END_DEBUG
 		} else
 			order ++;
 	}
-	splx(s);
+	crit_exit();
 SBP_DEBUG(0)
 	if (ocb && order > 0) {
 		sbp_show_sdev_info(sdev, 2);
@@ -2653,8 +2650,9 @@ END_DEBUG
 static struct sbp_ocb *
 sbp_enqueue_ocb(struct sbp_dev *sdev, struct sbp_ocb *ocb)
 {
-	int s = splfw();
 	struct sbp_ocb *prev;
+
+	crit_enter();
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
@@ -2684,7 +2682,7 @@ END_DEBUG
 		prev->orb[1] = htonl(ocb->bus_addr);
 		prev->orb[0] = 0;
 	}
-	splx(s);
+	crit_exit();
 
 	return prev;
 }
@@ -2693,14 +2691,15 @@ static struct sbp_ocb *
 sbp_get_ocb(struct sbp_dev *sdev)
 {
 	struct sbp_ocb *ocb;
-	int s = splfw();
+
+	crit_enter();
 	ocb = STAILQ_FIRST(&sdev->free_ocbs);
 	if (ocb == NULL) {
 		printf("ocb shortage!!!\n");
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&sdev->free_ocbs, ocb);
-	splx(s);
+	crit_exit();
 	ocb->ccb = NULL;
 	return (ocb);
 }
@@ -2748,20 +2747,17 @@ END_DEBUG
 static void
 sbp_abort_all_ocbs(struct sbp_dev *sdev, int status)
 {
-	int s;
 	struct sbp_ocb *ocb, *next;
 	STAILQ_HEAD(, sbp_ocb) temp;
 
-	s = splfw();
-
+	crit_enter();
 	bcopy(&sdev->ocbs, &temp, sizeof(temp));
 	STAILQ_INIT(&sdev->ocbs);
 	for (ocb = STAILQ_FIRST(&temp); ocb != NULL; ocb = next) {
 		next = STAILQ_NEXT(ocb, ocb);
 		sbp_abort_ocb(ocb, status);
 	}
-
-	splx(s);
+	crit_exit();
 }
 
 static devclass_t sbp_devclass;

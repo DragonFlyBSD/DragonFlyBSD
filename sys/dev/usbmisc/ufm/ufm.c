@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.8 2004/05/19 22:52:51 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.9 2005/06/02 20:40:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,7 @@
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -266,11 +267,10 @@ static int
 ufm_do_req(struct ufm_softc *sc, u_int8_t reqtype, u_int8_t request,
     u_int16_t value, u_int16_t index, u_int8_t len, void *retbuf)
 {
-	int s;
 	usb_device_request_t req;
 	usbd_status err;
 
-	s = splusb();
+	crit_enter();
 	req.bmRequestType = reqtype;
 	req.bRequest = request;
 	USETW(req.wValue, value);
@@ -278,7 +278,7 @@ ufm_do_req(struct ufm_softc *sc, u_int8_t reqtype, u_int8_t request,
 	USETW(req.wLength, len);
 	err = usbd_do_request_flags(sc->sc_udev, &req, retbuf, 0, NULL,
 	    USBD_DEFAULT_TIMEOUT);
-	splx(s);
+	crit_exit();
 	if (err) {
 		printf("usbd_do_request_flags returned %#x\n", err);
 		return (EIO);
@@ -428,7 +428,6 @@ USB_DETACH(ufm)
 	USB_DETACH_START(ufm, sc);
 	struct ufm_endpoint *sce;
 	int i, dir;
-	int s;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	int maj, mn;
 
@@ -439,12 +438,12 @@ USB_DETACH(ufm)
 
 	sc->sc_dying = 1;
 
-	s = splusb();
+	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
 		usb_detach_wait(USBDEV(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	/* locate the major number */

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.40 2003/07/15 22:42:37 jmg Exp $
- * $DragonFly: src/sys/bus/usb/usbdivar.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usbdivar.h,v 1.5 2005/06/02 20:40:40 dillon Exp $
  */
 
 /*
@@ -260,20 +260,6 @@ void		usb_disconnect_port(struct usbd_port *up, device_ptr_t);
 /* Routines from usb.c */
 void		usb_needs_explore(usbd_device_handle);
 void		usb_schedsoftintr(struct usbd_bus *);
-
-/*
- * XXX This check is extremely bogus. Bad Bad Bad.
- */
-#if defined(DIAGNOSTIC) && 0
-#define SPLUSBCHECK \
-	do { int _s = splusb(), _su = splusb(); \
-             if (!cold && _s != _su) printf("SPLUSBCHECK failed 0x%x!=0x%x, %s:%d\n", \
-				   _s, _su, __FILE__, __LINE__); \
-	     splx(_s); \
-        } while (0)
-#else
-#define SPLUSBCHECK
-#endif
 
 /* Locator stuff. */
 

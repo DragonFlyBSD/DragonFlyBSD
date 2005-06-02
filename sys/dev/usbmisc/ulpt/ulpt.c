@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.11 2004/12/24 04:52:19 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.12 2005/06/02 20:40:58 dillon Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 #include <sys/conf.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -375,7 +376,6 @@ ulpt_activate(device_ptr_t self, enum devact act)
 USB_DETACH(ulpt)
 {
 	USB_DETACH_START(ulpt, sc);
-	int s;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	int maj, mn;
 #endif
@@ -397,7 +397,7 @@ USB_DETACH(ulpt)
 	 * close things down.
 	 */
 
-	s = splusb();
+	crit_enter();
 	--sc->sc_refcnt;
 	if (sc->sc_refcnt >= 0) {
 		printf("%s: waiting for idle\n", USBDEVNAME(sc->sc_dev));
@@ -405,7 +405,7 @@ USB_DETACH(ulpt)
 			usb_detach_wait(USBDEV(sc->sc_dev));
 		printf("%s: idle wait done\n", USBDEVNAME(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	/* locate the major number */

@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.10 2004/05/19 22:52:52 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.11 2005/06/02 20:41:04 dillon Exp $
  */
 
 /*
@@ -72,6 +72,7 @@
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -626,7 +627,7 @@ USB_DETACH(urio)
 		}
 	}
 
-	s = splusb();
+	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wake everyone */
 		for (i = 0; i < USB_MAX_ENDPOINTS; i++)
@@ -634,7 +635,7 @@ USB_DETACH(urio)
 		/* Wait for processes to go away. */
 		usb_detach_wait(USBDEV(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 #else
 	if (sc->sc_pipeh_in)
 		usbd_abort_pipe(sc->sc_pipeh_in);
@@ -642,12 +643,12 @@ USB_DETACH(urio)
 	if (sc->sc_pipeh_out)
 		usbd_abort_pipe(sc->sc_pipeh_out);
 
-	s = splusb();
+	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
 		usb_detach_wait(USBDEV(sc->sc_dev));
 	}
-	splx(s);
+	crit_exit();
 #endif
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)

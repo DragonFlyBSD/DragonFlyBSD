@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.13 2004/09/14 23:29:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.14 2005/06/02 20:40:59 dillon Exp $
  */
 
 /*
@@ -62,6 +62,7 @@
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbhid.h>
@@ -476,11 +477,10 @@ Static void
 ums_add_to_queue_timeout(void *priv)
 {
 	struct ums_softc *sc = priv;
-	int s;
 
-	s = splusb();
+	crit_enter();
 	ums_add_to_queue(sc, 0, 0, 0, 0);
-	splx(s);
+	crit_exit();
 }
 
 Static void
@@ -611,47 +611,45 @@ Static int
 ums_read(dev_t dev, struct uio *uio, int flag)
 {
 	struct ums_softc *sc;
-	int s;
 	char buf[sizeof(sc->qbuf)];
 	int l = 0;
 	int error;
 
 	USB_GET_SC(ums, UMSUNIT(dev), sc);
 
-	s = splusb();
+	crit_enter();
 	if (!sc) {
-		splx(s);
+		crit_exit();
 		return EIO;
 	}
 
 	while (sc->qcount == 0 )  {
 		if (flag & IO_NDELAY) {		/* non-blocking I/O */
-			splx(s);
+			crit_exit();
 			return EWOULDBLOCK;
 		}
 
 		sc->state |= UMS_ASLEEP;	/* blocking I/O */
 		error = tsleep(sc, PCATCH, "umsrea", 0);
 		if (error) {
-			splx(s);
+			crit_exit();
 			return error;
 		} else if (!sc->sc_enabled) {
-			splx(s);
+			crit_exit();
 			return EINTR;
 		}
 		/* check whether the device is still there */
 
 		sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
 		if (!sc) {
-			splx(s);
+			crit_exit();
 			return EIO;
 		}
 	}
 
 	/*
-	 * XXX we could optimise the use of splx/splusb somewhat. The writer
-	 * process only extends qcount and qtail. We could copy them and use the copies
-	 * to do the copying out of the queue.
+	 * The writer process only extends qcount and qtail. We could copy
+	 * them and use the copies to do the copying out of the queue.
 	 */
 
 	while ((sc->qcount > 0) && (uio->uio_resid > 0)) {
@@ -661,9 +659,9 @@ ums_read(dev_t dev, struct uio *uio, int flag)
 		if (l > sizeof(sc->qbuf) - sc->qtail)		/* transfer till end of buf */
 			l = sizeof(sc->qbuf) - sc->qtail;
 
-		splx(s);
+		crit_exit();
 		uiomove(&sc->qbuf[sc->qtail], l, uio);
-		s = splusb();
+		crit_enter();
 
 		if ( sc->qcount - l < 0 ) {
 			DPRINTF(("qcount below 0, count=%d l=%d\n", sc->qcount, l));
@@ -672,7 +670,7 @@ ums_read(dev_t dev, struct uio *uio, int flag)
 		sc->qcount -= l;	/* remove the bytes from the buffer */
 		sc->qtail = (sc->qtail + l) % sizeof(sc->qbuf);
 	}
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -682,14 +680,13 @@ ums_poll(dev_t dev, int events, usb_proc_ptr p)
 {
 	struct ums_softc *sc;
 	int revents = 0;
-	int s;
 
 	USB_GET_SC(ums, UMSUNIT(dev), sc);
 
 	if (!sc)
 		return 0;
 
-	s = splusb();
+	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (sc->qcount) {
 			revents = events & (POLLIN | POLLRDNORM);
@@ -698,7 +695,7 @@ ums_poll(dev_t dev, int events, usb_proc_ptr p)
 			selrecord(p, &sc->rsel);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return revents;
 }
@@ -708,7 +705,6 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 {
 	struct ums_softc *sc;
 	int error = 0;
-	int s;
 	mousemode_t mode;
 
 	USB_GET_SC(ums, UMSUNIT(dev), sc);
@@ -732,7 +728,7 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 		else if ((mode.level < 0) || (mode.level > 1))
 			return (EINVAL);
 
-		s = splusb();
+		crit_enter();
 		sc->mode.level = mode.level;
 
 		if (sc->mode.level == 0) {
@@ -757,7 +753,7 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 
 		bzero(sc->qbuf, sizeof(sc->qbuf));
 		sc->qhead = sc->qtail = sc->qcount = 0;
-		splx(s);
+		crit_exit();
 
 		break;
 	case MOUSE_GETLEVEL:
@@ -767,7 +763,7 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 		if (*(int *)addr < 0 || *(int *)addr > 1)
 			return (EINVAL);
 
-		s = splusb();
+		crit_enter();
 		sc->mode.level = *(int *)addr;
 
 		if (sc->mode.level == 0) {
@@ -792,18 +788,18 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 
 		bzero(sc->qbuf, sizeof(sc->qbuf));
 		sc->qhead = sc->qtail = sc->qcount = 0;
-		splx(s);
+		crit_exit();
 
 		break;
 	case MOUSE_GETSTATUS: {
 		mousestatus_t *status = (mousestatus_t *) addr;
 
-		s = splusb();
+		crit_enter();
 		*status = sc->status;
 		sc->status.obutton = sc->status.button;
 		sc->status.button = 0;
 		sc->status.dx = sc->status.dy = sc->status.dz = 0;
-		splx(s);
+		crit_exit();
 
 		if (status->dx || status->dy || status->dz)
 			status->flags |= MOUSE_POSCHANGED;

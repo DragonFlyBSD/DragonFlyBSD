@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.11 2004/12/05 04:24:42 drhodus Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.12 2005/06/02 20:40:40 dillon Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -79,6 +79,7 @@
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/endian.h>
@@ -690,9 +691,8 @@ uhci_power(int why, void *v)
 {
 	uhci_softc_t *sc = v;
 	int cmd;
-	int s;
 
-	s = splhardusb();
+	crit_enter();
 	cmd = UREAD2(sc, UHCI_CMD);
 
 	DPRINTF(("uhci_power: sc=%p, why=%d (was %d), cmd=0x%x\n",
@@ -752,7 +752,7 @@ uhci_power(int why, void *v)
 			uhci_dumpregs(sc);
 #endif
 	}
-	splx(s);
+	crit_exit();
 }
 
 #ifdef USB_DEBUG
@@ -952,7 +952,6 @@ uhci_poll_hub(void *addr)
 	usbd_xfer_handle xfer = addr;
 	usbd_pipe_handle pipe = xfer->pipe;
 	uhci_softc_t *sc = (uhci_softc_t *)pipe->device->bus;
-	int s;
 	u_char *p;
 
 	DPRINTFN(20, ("uhci_poll_hub\n"));
@@ -971,11 +970,11 @@ uhci_poll_hub(void *addr)
 
 	xfer->actlen = 1;
 	xfer->status = USBD_NORMAL_COMPLETION;
-	s = splusb();
+	crit_enter();
 	xfer->device->bus->intr_context++;
 	usb_transfer_complete(xfer);
 	xfer->device->bus->intr_context--;
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -1020,13 +1019,11 @@ uhci_rem_loop(uhci_softc_t *sc) {
 	}
 }
 
-/* Add high speed control QH, called at splusb(). */
+/* Add high speed control QH, called from a critical section. */
 void
 uhci_add_hs_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 {
 	uhci_soft_qh_t *eqh;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(10, ("uhci_add_ctrl: sqh=%p\n", sqh));
 	eqh = sc->sc_hctl_end;
@@ -1040,13 +1037,11 @@ uhci_add_hs_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 #endif
 }
 
-/* Remove high speed control QH, called at splusb(). */
+/* Remove high speed control QH, called from a critical section. */
 void
 uhci_remove_hs_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 {
 	uhci_soft_qh_t *pqh;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(10, ("uhci_remove_hs_ctrl: sqh=%p\n", sqh));
 #ifdef UHCI_CTL_LOOP
@@ -1073,13 +1068,11 @@ uhci_remove_hs_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 		sc->sc_hctl_end = pqh;
 }
 
-/* Add low speed control QH, called at splusb(). */
+/* Add low speed control QH, called from a critical section. */
 void
 uhci_add_ls_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 {
 	uhci_soft_qh_t *eqh;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(10, ("uhci_add_ls_ctrl: sqh=%p\n", sqh));
 	eqh = sc->sc_lctl_end;
@@ -1090,13 +1083,11 @@ uhci_add_ls_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 	sc->sc_lctl_end = sqh;
 }
 
-/* Remove low speed control QH, called at splusb(). */
+/* Remove low speed control QH, called from a critical section. */
 void
 uhci_remove_ls_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 {
 	uhci_soft_qh_t *pqh;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(10, ("uhci_remove_ls_ctrl: sqh=%p\n", sqh));
 	/* See comment in uhci_remove_hs_ctrl() */
@@ -1112,13 +1103,11 @@ uhci_remove_ls_ctrl(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 		sc->sc_lctl_end = pqh;
 }
 
-/* Add bulk QH, called at splusb(). */
+/* Add bulk QH, called from a critical section. */
 void
 uhci_add_bulk(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 {
 	uhci_soft_qh_t *eqh;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(10, ("uhci_add_bulk: sqh=%p\n", sqh));
 	eqh = sc->sc_bulk_end;
@@ -1130,13 +1119,11 @@ uhci_add_bulk(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 	uhci_add_loop(sc);
 }
 
-/* Remove bulk QH, called at splusb(). */
+/* Remove bulk QH, called from a critical section. */
 void
 uhci_remove_bulk(uhci_softc_t *sc, uhci_soft_qh_t *sqh)
 {
 	uhci_soft_qh_t *pqh;
-
-	SPLUSBCHECK;
 
 	DPRINTFN(10, ("uhci_remove_bulk: sqh=%p\n", sqh));
 	uhci_rem_loop(sc);
@@ -1358,7 +1345,7 @@ done:
 	uhci_idone(ii);
 }
 
-/* Called at splusb() */
+/* Called from a critical section. */
 void
 uhci_idone(uhci_intr_info_t *ii)
 {
@@ -1371,9 +1358,9 @@ uhci_idone(uhci_intr_info_t *ii)
 	DPRINTFN(12, ("uhci_idone: ii=%p\n", ii));
 #ifdef DIAGNOSTIC
 	{
-		int s = splhigh();
+		crit_enter();
 		if (ii->isdone) {
-			splx(s);
+			crit_exit();
 #ifdef USB_DEBUG
 			printf("uhci_idone: ii is done!\n   ");
 			uhci_dump_ii(ii);
@@ -1383,7 +1370,7 @@ uhci_idone(uhci_intr_info_t *ii)
 			return;
 		}
 		ii->isdone = 1;
-		splx(s);
+		crit_exit();
 	}
 #endif
 
@@ -1511,13 +1498,12 @@ void
 uhci_timeout_task(void *addr)
 {
 	usbd_xfer_handle xfer = addr;
-	int s;
 
 	DPRINTF(("uhci_timeout_task: xfer=%p\n", xfer));
 
-	s = splusb();
+	crit_enter();
 	uhci_abort_xfer(xfer, USBD_TIMEOUT);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1584,11 +1570,11 @@ uhci_reset(uhci_softc_t *sc)
 usbd_status
 uhci_run(uhci_softc_t *sc, int run)
 {
-	int s, n, running;
+	int n, running;
 	u_int16_t cmd;
 
 	run = run != 0;
-	s = splhardusb();
+	crit_enter();
 	DPRINTF(("uhci_run: setting run=%d\n", run));
 	cmd = UREAD2(sc, UHCI_CMD);
 	if (run)
@@ -1600,14 +1586,14 @@ uhci_run(uhci_softc_t *sc, int run)
 		running = !(UREAD2(sc, UHCI_STS) & UHCI_STS_HCH);
 		/* return when we've entered the state we want */
 		if (run == running) {
-			splx(s);
+			crit_exit();
 			DPRINTF(("uhci_run: done cmd=0x%x sts=0x%x\n",
 				 UREAD2(sc, UHCI_CMD), UREAD2(sc, UHCI_STS)));
 			return (USBD_NORMAL_COMPLETION);
 		}
 		usb_delay_ms(&sc->sc_bus, 1);
 	}
-	splx(s);
+	crit_exit();
 	printf("%s: cannot %s\n", USBDEVNAME(sc->sc_bus.bdev),
 	       run ? "start" : "stop");
 	return (USBD_IOERROR);
@@ -1825,7 +1811,6 @@ uhci_device_bulk_start(usbd_xfer_handle xfer)
 	uhci_soft_qh_t *sqh;
 	usbd_status err;
 	int len, isread, endpt;
-	int s;
 
 	DPRINTFN(3, ("uhci_device_bulk_start: xfer=%p len=%d flags=%d ii=%p\n",
 		     xfer, xfer->length, xfer->flags, ii));
@@ -1873,7 +1858,7 @@ uhci_device_bulk_start(usbd_xfer_handle xfer)
 	sqh->elink = data;
 	sqh->qh.qh_elink = htole32(data->physaddr | UHCI_PTR_TD);
 
-	s = splusb();
+	crit_enter();
 	uhci_add_bulk(sc, sqh);
 	uhci_add_intr_info(sc, ii);
 
@@ -1882,7 +1867,7 @@ uhci_device_bulk_start(usbd_xfer_handle xfer)
 			    uhci_timeout, ii);
 	}
 	xfer->status = USBD_IN_PROGRESS;
-	splx(s);
+	crit_exit();
 
 #ifdef USB_DEBUG
 	if (uhcidebug > 10) {
@@ -1907,9 +1892,9 @@ uhci_device_bulk_abort(usbd_xfer_handle xfer)
 
 /*
  * Abort a device request.
- * If this routine is called at splusb() it guarantees that the request
- * will be removed from the hardware scheduling and that the callback
- * for it will be called with USBD_CANCELLED status.
+ * If this routine is called from a critical section.  It guarentees that
+ * the request will be removed from the hardware scheduling and that 
+ * the callback for it will be called with USBD_CANCELLED status.
  * It's impossible to guarantee that the requested transfer will not
  * have happened since the hardware runs concurrently.
  * If the transaction has already happened we rely on the ordinary
@@ -1922,17 +1907,16 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	struct uhci_pipe *upipe = (struct uhci_pipe *)xfer->pipe;
 	uhci_softc_t *sc = (uhci_softc_t *)upipe->pipe.device->bus;
 	uhci_soft_td_t *std;
-	int s;
 
 	DPRINTFN(1,("uhci_abort_xfer: xfer=%p, status=%d\n", xfer, status));
 
 	if (sc->sc_dying) {
 		/* If we're dying, just do the software part. */
-		s = splusb();
+		crit_enter();
 		xfer->status = status;  /* make software ignore it */
 		usb_uncallout(xfer->timeout_handle, uhci_timeout, xfer);
 		usb_transfer_complete(xfer);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1942,13 +1926,13 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	/*
 	 * Step 1: Make interrupt routine and hardware ignore xfer.
 	 */
-	s = splusb();
+	crit_enter();
 	xfer->status = status;  /* make software ignore it */
 	usb_uncallout(xfer->timeout_handle, uhci_timeout, ii);
 	DPRINTFN(1,("uhci_abort_xfer: stop ii=%p\n", ii));
 	for (std = ii->stdstart; std != NULL; std = std->link.std)
 		std->td.td_status &= htole32(~(UHCI_TD_ACTIVE | UHCI_TD_IOC));
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Step 2: Wait until we know hardware has finished any possible
@@ -1956,7 +1940,7 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	 * has run.
 	 */
 	usb_delay_ms(upipe->pipe.device->bus, 2); /* Hardware finishes in 1ms */
-	s = splusb();
+	crit_enter();
 #ifdef USB_USE_SOFTINTR
 	sc->sc_softwake = 1;
 #endif /* USB_USE_SOFTINTR */
@@ -1965,7 +1949,7 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	DPRINTFN(1,("uhci_abort_xfer: tsleep\n"));
 	tsleep(&sc->sc_softwake, 0, "uhciab", 0);
 #endif /* USB_USE_SOFTINTR */
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Step 3: Execute callback.
@@ -1974,12 +1958,12 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 
 	DPRINTFN(1,("uhci_abort_xfer: callback\n"));
 
-	s = splusb();
+	crit_enter();
 #ifdef DIAGNOSTIC
 	ii->isdone = 1;
 #endif
 	usb_transfer_complete(xfer);
-	splx(s);
+	crit_exit();
 }
 
 /* Close a device bulk pipe. */
@@ -2061,7 +2045,7 @@ uhci_device_intr_start(usbd_xfer_handle xfer)
 	uhci_soft_qh_t *sqh;
 	usbd_status err;
 	int isread, endpt;
-	int i, s;
+	int i;
 
 	if (sc->sc_dying)
 		return (USBD_IOERROR);
@@ -2095,7 +2079,7 @@ uhci_device_intr_start(usbd_xfer_handle xfer)
 	}
 #endif
 
-	s = splusb();
+	crit_enter();
 	/* Set up interrupt info. */
 	ii->xfer = xfer;
 	ii->stdstart = data;
@@ -2116,7 +2100,7 @@ uhci_device_intr_start(usbd_xfer_handle xfer)
 	}
 	uhci_add_intr_info(sc, ii);
 	xfer->status = USBD_IN_PROGRESS;
-	splx(s);
+	crit_exit();
 
 #ifdef USB_DEBUG
 	if (uhcidebug > 10) {
@@ -2162,14 +2146,13 @@ uhci_device_intr_close(usbd_pipe_handle pipe)
 	struct uhci_pipe *upipe = (struct uhci_pipe *)pipe;
 	uhci_softc_t *sc = (uhci_softc_t *)pipe->device->bus;
 	int i, npoll;
-	int s;
 
 	/* Unlink descriptors from controller data structures. */
 	npoll = upipe->u.intr.npoll;
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < npoll; i++)
 		uhci_remove_intr(sc, upipe->u.intr.qhs[i]);
-	splx(s);
+	crit_exit();
 
 	/*
 	 * We now have to wait for any activity on the physical
@@ -2200,7 +2183,6 @@ uhci_device_request(usbd_xfer_handle xfer)
 	u_int32_t ls;
 	usbd_status err;
 	int isread;
-	int s;
 
 	DPRINTFN(3,("uhci_device_control type=0x%02x, request=0x%02x, "
 		    "wValue=0x%04x, wIndex=0x%04x len=%d, addr=%d, endpt=%d\n",
@@ -2270,7 +2252,7 @@ uhci_device_request(usbd_xfer_handle xfer)
 	sqh->elink = setup;
 	sqh->qh.qh_elink = htole32(setup->physaddr | UHCI_PTR_TD);
 
-	s = splusb();
+	crit_enter();
 	if (dev->speed == USB_SPEED_LOW)
 		uhci_add_ls_ctrl(sc, sqh);
 	else
@@ -2308,7 +2290,7 @@ uhci_device_request(usbd_xfer_handle xfer)
 			    uhci_timeout, ii);
 	}
 	xfer->status = USBD_IN_PROGRESS;
-	splx(s);
+	crit_exit();
 
 	return (USBD_NORMAL_COMPLETION);
 }
@@ -2348,7 +2330,7 @@ uhci_device_isoc_enter(usbd_xfer_handle xfer)
 	struct iso *iso = &upipe->u.iso;
 	uhci_soft_td_t *std;
 	u_int32_t buf, len, status;
-	int s, i, next, nframes;
+	int i, next, nframes;
 
 	DPRINTFN(5,("uhci_device_isoc_enter: used=%d next=%d xfer=%p "
 		    "nframes=%d\n",
@@ -2383,7 +2365,7 @@ uhci_device_isoc_enter(usbd_xfer_handle xfer)
 				     UHCI_TD_ACTIVE |
 				     UHCI_TD_IOS);
 	nframes = xfer->nframes;
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < nframes; i++) {
 		std = iso->stds[next];
 		if (++next >= UHCI_VFRAMELIST_COUNT)
@@ -2406,7 +2388,7 @@ uhci_device_isoc_enter(usbd_xfer_handle xfer)
 	iso->next = next;
 	iso->inuse += xfer->nframes;
 
-	splx(s);
+	crit_exit();
 }
 
 usbd_status
@@ -2416,7 +2398,7 @@ uhci_device_isoc_start(usbd_xfer_handle xfer)
 	uhci_softc_t *sc = (uhci_softc_t *)upipe->pipe.device->bus;
 	uhci_intr_info_t *ii = &UXFER(xfer)->iinfo;
 	uhci_soft_td_t *end;
-	int s, i;
+	int i;
 
 	DPRINTFN(5,("uhci_device_isoc_start: xfer=%p\n", xfer));
 
@@ -2441,7 +2423,7 @@ uhci_device_isoc_start(usbd_xfer_handle xfer)
 	}
 #endif
 
-	s = splusb();
+	crit_enter();
 
 	/* Set up interrupt info. */
 	ii->xfer = xfer;
@@ -2454,7 +2436,7 @@ uhci_device_isoc_start(usbd_xfer_handle xfer)
 #endif
 	uhci_add_intr_info(sc, ii);
 
-	splx(s);
+	crit_exit();
 
 	return (USBD_IN_PROGRESS);
 }
@@ -2465,14 +2447,14 @@ uhci_device_isoc_abort(usbd_xfer_handle xfer)
 	struct uhci_pipe *upipe = (struct uhci_pipe *)xfer->pipe;
 	uhci_soft_td_t **stds = upipe->u.iso.stds;
 	uhci_soft_td_t *std;
-	int i, n, s, nframes, maxlen, len;
+	int i, n, nframes, maxlen, len;
 
-	s = splusb();
+	crit_enter();
 
 	/* Transfer is already done. */
 	if (xfer->status != USBD_NOT_STARTED &&
 	    xfer->status != USBD_IN_PROGRESS) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2502,7 +2484,7 @@ uhci_device_isoc_abort(usbd_xfer_handle xfer)
 	/* Run callback and remove from interrupt list. */
 	usb_transfer_complete(xfer);
 
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -2513,7 +2495,7 @@ uhci_device_isoc_close(usbd_pipe_handle pipe)
 	uhci_softc_t *sc = (uhci_softc_t *)dev->bus;
 	uhci_soft_td_t *std, *vstd;
 	struct iso *iso;
-	int i, s;
+	int i;
 
 	/*
 	 * Make sure all TDs are marked as inactive.
@@ -2527,7 +2509,7 @@ uhci_device_isoc_close(usbd_pipe_handle pipe)
 		iso->stds[i]->td.td_status &= htole32(~UHCI_TD_ACTIVE);
 	usb_delay_ms(&sc->sc_bus, 2); /* wait for completion */
 
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < UHCI_VFRAMELIST_COUNT; i++) {
 		std = iso->stds[i];
 		for (vstd = sc->sc_vframes[i].htd;
@@ -2537,14 +2519,14 @@ uhci_device_isoc_close(usbd_pipe_handle pipe)
 		if (vstd == NULL) {
 			/*panic*/
 			printf("uhci_device_isoc_close: %p not found\n", std);
-			splx(s);
+			crit_exit();
 			return;
 		}
 		vstd->link = std->link;
 		vstd->td.td_link = std->td.td_link;
 		uhci_free_std(sc, std);
 	}
-	splx(s);
+	crit_exit();
 
 	free(iso->stds, M_USBHC);
 }
@@ -2561,7 +2543,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
 	uhci_soft_td_t *std, *vstd;
 	u_int32_t token;
 	struct iso *iso;
-	int i, s;
+	int i;
 
 	iso = &upipe->u.iso;
 	iso->stds = malloc(UHCI_VFRAMELIST_COUNT * sizeof (uhci_soft_td_t *),
@@ -2581,7 +2563,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
 	}
 
 	/* Insert TDs into schedule. */
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < UHCI_VFRAMELIST_COUNT; i++) {
 		std = iso->stds[i];
 		vstd = sc->sc_vframes[i].htd;
@@ -2590,7 +2572,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
 		vstd->link.std = std;
 		vstd->td.td_link = htole32(std->physaddr | UHCI_PTR_TD);
 	}
-	splx(s);
+	crit_exit();
 
 	iso->next = -1;
 	iso->inuse = 0;
@@ -2809,7 +2791,7 @@ usbd_status
 uhci_device_setintr(uhci_softc_t *sc, struct uhci_pipe *upipe, int ival)
 {
 	uhci_soft_qh_t *sqh;
-	int i, npoll, s;
+	int i, npoll;
 	u_int bestbw, bw, bestoffs, offs;
 
 	DPRINTFN(2, ("uhci_device_setintr: pipe=%p\n", upipe));
@@ -2850,11 +2832,11 @@ uhci_device_setintr(uhci_softc_t *sc, struct uhci_pipe *upipe, int ival)
 	}
 #undef MOD
 
-	s = splusb();
+	crit_enter();
 	/* Enter QHs into the controller data structures. */
 	for(i = 0; i < npoll; i++)
 		uhci_add_intr(sc, upipe->u.intr.qhs[i]);
-	splx(s);
+	crit_exit();
 
 	DPRINTFN(5, ("uhci_device_setintr: returns %p\n", upipe));
 	return (USBD_NORMAL_COMPLETION);
@@ -3138,7 +3120,7 @@ uhci_root_ctrl_start(usbd_xfer_handle xfer)
 	usb_device_request_t *req;
 	void *buf = NULL;
 	int port, x;
-	int s, len, value, index, status, change, l, totlen = 0;
+	int len, value, index, status, change, l, totlen = 0;
 	usb_port_status_t ps;
 	usbd_status err;
 
@@ -3448,9 +3430,9 @@ uhci_root_ctrl_start(usbd_xfer_handle xfer)
 	err = USBD_NORMAL_COMPLETION;
  ret:
 	xfer->status = err;
-	s = splusb();
+	crit_enter();
 	usb_transfer_complete(xfer);
-	splx(s);
+	crit_exit();
 	return (USBD_IN_PROGRESS);
 }
 

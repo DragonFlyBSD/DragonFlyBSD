@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.9 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.10 2005/06/02 20:40:33 dillon Exp $
  *
  */
 
@@ -56,6 +56,7 @@
 #include <machine/bus.h>
 
 #include <sys/ioccom.h>
+#include <sys/thread2.h>
 
 #ifdef __DragonFly__
 #include "firewire.h"
@@ -285,7 +286,7 @@ fw_read (dev_t dev, struct uio *uio, int ioflag)
 	struct firewire_softc *sc;
 	struct fw_xferq *ir;
 	struct fw_xfer *xfer;
-	int err = 0, s, slept = 0;
+	int err = 0, slept = 0;
 	int unit = DEV2UNIT(dev);
 	struct fw_pkt *fp;
 
@@ -304,9 +305,9 @@ readloop:
 		/* iso bulkxfer */
 		ir->stproc = STAILQ_FIRST(&ir->stvalid);
 		if (ir->stproc != NULL) {
-			s = splfw();
+			crit_enter();
 			STAILQ_REMOVE_HEAD(&ir->stvalid, link);
-			splx(s);
+			crit_exit();
 			ir->queued = 0;
 		}
 	}
@@ -325,10 +326,10 @@ readloop:
 	} else if(xfer != NULL) {
 #if 0 /* XXX broken */
 		/* per packet mode or FWACT_CH bind?*/
-		s = splfw();
+		crit_enter();
 		ir->queued --;
 		STAILQ_REMOVE_HEAD(&ir->q, link);
-		splx(s);
+		crit_exit();
 		fp = &xfer->recv.hdr;
 		if (sc->fc->irx_post != NULL)
 			sc->fc->irx_post(sc->fc, fp->mode.ld);
@@ -351,9 +352,9 @@ readloop:
 			fp->mode.stream.len + sizeof(u_int32_t), uio);
 		ir->queued ++;
 		if(ir->queued >= ir->bnpacket){
-			s = splfw();
+			crit_enter();
 			STAILQ_INSERT_TAIL(&ir->stfree, ir->stproc, link);
-			splx(s);
+			crit_exit();
 			sc->fc->irx_enable(sc->fc, ir->dmach);
 			ir->stproc = NULL;
 		}
@@ -371,7 +372,7 @@ fw_write (dev_t dev, struct uio *uio, int ioflag)
 	int err = 0;
 	struct firewire_softc *sc;
 	int unit = DEV2UNIT(dev);
-	int s, slept = 0;
+	int slept = 0;
 	struct fw_pkt *fp;
 	struct firewire_comm *fc;
 	struct fw_xferq *it;
@@ -388,9 +389,9 @@ isoloop:
 	if (it->stproc == NULL) {
 		it->stproc = STAILQ_FIRST(&it->stfree);
 		if (it->stproc != NULL) {
-			s = splfw();
+			crit_enter();
 			STAILQ_REMOVE_HEAD(&it->stfree, link);
-			splx(s);
+			crit_exit();
 			it->queued = 0;
 		} else if (slept == 0) {
 			slept = 1;
@@ -413,9 +414,9 @@ isoloop:
 				fp->mode.stream.len, uio);
 	it->queued ++;
 	if (it->queued >= it->bnpacket) {
-		s = splfw();
+		crit_enter();
 		STAILQ_INSERT_TAIL(&it->stvalid, it->stproc, link);
-		splx(s);
+		crit_exit();
 		it->stproc = NULL;
 		err = sc->fc->itx_enable(sc->fc, it->dmach);
 	}
@@ -435,7 +436,7 @@ fw_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
 	struct firewire_comm *fc;
 	struct fw_drv1 *d;
 	int unit = DEV2UNIT(dev);
-	int s, i, len, err = 0;
+	int i, len, err = 0;
 	struct fw_device *fwdev;
 	struct fw_bind *fwb;
 	struct fw_xferq *ir, *it;
@@ -645,11 +646,11 @@ out:
 		}
 		xfer->fc = sc->fc;
 
-		s = splfw();
+		crit_enter();
 		/* XXX broken. need multiple xfer */
 		STAILQ_INIT(&fwb->xferlist);
 		STAILQ_INSERT_TAIL(&fwb->xferlist, xfer, link);
-		splx(s);
+		crit_exit();
 		err = fw_bindadd(sc->fc, fwb);
 		break;
 	case FW_GDEVLST:

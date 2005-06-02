@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.6 2005/05/24 20:58:53 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.7 2005/06/02 20:40:37 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -35,6 +35,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include "ppbconf.h"
 #include "ppb_1284.h"
@@ -457,15 +458,14 @@ ppbus_teardown_intr(device_t bus, device_t child, struct resource *r, void *ih)
 int
 ppb_request_bus(device_t bus, device_t dev, int how)
 {
-	int s, error = 0;
+	int error = 0;
 	struct ppb_data *ppb = DEVTOSOFTC(bus);
 	struct ppb_device *ppbdev = (struct ppb_device *)device_get_ivars(dev);
 
 	while (!error) {
-		s = splhigh();	
+		crit_enter();
 		if (ppb->ppb_owner) {
-			splx(s);
-
+			crit_exit();
 			switch (how) {
 			case (PPB_WAIT | PPB_INTR):
 				error = tsleep(ppb, PCATCH, "ppbreq", 0);
@@ -492,7 +492,7 @@ ppb_request_bus(device_t bus, device_t dev, int how)
 			if (ppbdev->ctx.valid)
 				ppb_set_mode(bus, ppbdev->ctx.mode);
 
-			splx(s);
+			crit_exit();
 			return (0);
 		}
 	}
@@ -508,7 +508,7 @@ ppb_request_bus(device_t bus, device_t dev, int how)
 int
 ppb_release_bus(device_t bus, device_t dev)
 {
-	int s, error;
+	int error;
 	struct ppb_data *ppb = DEVTOSOFTC(bus);
 	struct ppb_device *ppbdev = (struct ppb_device *)device_get_ivars(dev);
 
@@ -518,14 +518,13 @@ ppb_release_bus(device_t bus, device_t dev)
 					       ppbdev->intr_cookie)))
 			return (error);
 
-	s = splhigh();
+	crit_enter();
 	if (ppb->ppb_owner != dev) {
-		splx(s);
+		crit_exit();
 		return (EACCES);
 	}
-
 	ppb->ppb_owner = 0;
-	splx(s);
+	crit_exit();
 
 	/* save the context of the device */
 	ppbdev->ctx.mode = ppb_get_mode(bus);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.12 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.13 2005/06/02 20:40:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <sys/devicestat.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"
@@ -178,7 +179,6 @@ passinit(void)
 static void
 passoninvalidate(struct cam_periph *periph)
 {
-	int s;
 	struct pass_softc *softc;
 	struct buf *q_bp;
 	struct ccb_setasync csa;
@@ -199,11 +199,10 @@ passoninvalidate(struct cam_periph *periph)
 	softc->flags |= PASS_FLAG_INVALID;
 
 	/*
-	 * Although the oninvalidate() routines are always called at
-	 * splsoftcam, we need to be at splbio() here to keep the buffer
+	 * We need to be in a critical section here to keep the buffer
 	 * queue from being modified while we traverse it.
 	 */
-	s = splbio();
+	crit_enter();
 
 	/*
 	 * Return all queued I/O with ENXIO.
@@ -217,7 +216,7 @@ passoninvalidate(struct cam_periph *periph)
 		q_bp->b_flags |= B_ERROR;
 		biodone(q_bp);
 	}
-	splx(s);
+	crit_exit();
 
 	if (bootverbose) {
 		xpt_print_path(periph->path);
@@ -351,7 +350,6 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 	struct cam_periph *periph;
 	struct pass_softc *softc;
 	int unit, error;
-	int s;
 
 	error = 0; /* default to no error */
 
@@ -366,9 +364,9 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 
 	softc = (struct pass_softc *)periph->softc;
 
-	s = splsoftcam();
+	crit_enter();
 	if (softc->flags & PASS_FLAG_INVALID) {
-		splx(s);
+		crit_exit();
 		return(ENXIO);
 	}
 
@@ -376,7 +374,7 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 	 * Don't allow access when we're running at a high securelvel.
 	 */
 	if (securelevel > 1) {
-		splx(s);
+		crit_exit();
 		return(EPERM);
 	}
 
@@ -384,7 +382,7 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 	 * Only allow read-write access.
 	 */
 	if (((flags & FWRITE) == 0) || ((flags & FREAD) == 0)) {
-		splx(s);
+		crit_exit();
 		return(EPERM);
 	}
 
@@ -394,16 +392,16 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 	if ((flags & O_NONBLOCK) != 0) {
 		xpt_print_path(periph->path);
 		printf("can't do nonblocking accesss\n");
-		splx(s);
+		crit_exit();
 		return(EINVAL);
 	}
 
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 
-	splx(s);
+	crit_exit();
 
 	if ((softc->flags & PASS_FLAG_OPEN) == 0) {
 		if (cam_periph_acquire(periph) != CAM_REQ_CMP)
@@ -455,7 +453,6 @@ passstrategy(struct buf *bp)
 	struct cam_periph *periph;
 	struct pass_softc *softc;
 	u_int  unit;
-	int    s;
 
 	/*
 	 * The read/write interface for the passthrough driver doesn't
@@ -490,11 +487,9 @@ passstrategy(struct buf *bp)
 	 * after we are in the queue.  Otherwise, we might not properly
 	 * clean up one of the buffers.
 	 */
-	s = splbio();
-	
+	crit_enter();
 	bufq_insert_tail(&softc->buf_queue, bp);
-
-	splx(s);
+	crit_exit();
 	
 	/*
 	 * Schedule ourselves for performing the work.
@@ -517,7 +512,6 @@ static void
 passstart(struct cam_periph *periph, union ccb *start_ccb)
 {
 	struct pass_softc *softc;
-	int s;
 
 	softc = (struct pass_softc *)periph->softc;
 
@@ -526,17 +520,17 @@ passstart(struct cam_periph *periph, union ccb *start_ccb)
 	{
 		struct buf *bp;
 
-		s = splbio();
+		crit_enter();
 		bp = bufq_first(&softc->buf_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			start_ccb->ccb_h.ccb_type = PASS_CCB_WAITING;			
 			SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
-			splx(s);
+			crit_exit();
 			wakeup(&periph->ccb_list);
 		} else if (bp == NULL) {
-			splx(s);
+			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else {
 
@@ -557,7 +551,7 @@ passstart(struct cam_periph *periph, union ccb *start_ccb)
 			bp->b_resid = bp->b_bcount;
 			biodone(bp);
 			bp = bufq_first(&softc->buf_queue);
-			splx(s);
+			crit_exit();
   
 			xpt_action(start_ccb);
 

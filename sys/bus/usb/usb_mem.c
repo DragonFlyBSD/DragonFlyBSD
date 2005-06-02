@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.4 2004/05/13 17:24:49 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.5 2005/06/02 20:40:40 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -66,6 +66,7 @@
 #ifdef DIAGNOSTIC
 #include <sys/proc.h>
 #endif
+#include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -125,25 +126,24 @@ usb_block_allocmem(bus_dma_tag_t tag, size_t size, size_t align,
 		   usb_dma_block_t **dmap)
 {
         usb_dma_block_t *p;
-	int s;
 
 	DPRINTFN(5, ("usb_block_allocmem: size=%lu align=%lu\n",
 		     (u_long)size, (u_long)align));
 
-	s = splusb();
+	crit_enter();
 	/* First check the free list. */
 	for (p = LIST_FIRST(&usb_blk_freelist); p; p = LIST_NEXT(p, next)) {
 		if (p->tag == tag && p->size >= size && p->align >= align) {
 			LIST_REMOVE(p, next);
 			usb_blk_nfree--;
-			splx(s);
+			crit_exit();
 			*dmap = p;
 			DPRINTFN(6,("usb_block_allocmem: free list size=%lu\n",
 				    (u_long)p->size));
 			return (USBD_NORMAL_COMPLETION);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	DPRINTFN(6, ("usb_block_allocmem: no free\n"));
 	p = malloc(sizeof *p, M_USB, M_INTWAIT);
@@ -199,13 +199,11 @@ free:
 Static void
 usb_block_freemem(usb_dma_block_t *p)
 {
-	int s;
-
 	DPRINTFN(6, ("usb_block_freemem: size=%lu\n", (u_long)p->size));
-	s = splusb();
+	crit_enter();
 	LIST_INSERT_HEAD(&usb_blk_freelist, p, next);
 	usb_blk_nfree++;
-	splx(s);
+	crit_exit();
 }
 
 usbd_status
@@ -216,7 +214,6 @@ usb_allocmem(usbd_bus_handle bus, size_t size, size_t align, usb_dma_t *p)
 	struct usb_frag_dma *f;
 	usb_dma_block_t *b;
 	int i;
-	int s;
 
 	/* compat w/ Net/OpenBSD */
 	if (align == 0)
@@ -235,7 +232,7 @@ usb_allocmem(usbd_bus_handle bus, size_t size, size_t align, usb_dma_t *p)
 		return (err);
 	}
 
-	s = splusb();
+	crit_enter();
 	/* Check for free fragments. */
 	for (f = LIST_FIRST(&usb_frag_freelist); f; f = LIST_NEXT(f, next))
 		if (f->block->tag == tag)
@@ -244,7 +241,7 @@ usb_allocmem(usbd_bus_handle bus, size_t size, size_t align, usb_dma_t *p)
 		DPRINTFN(1, ("usb_allocmem: adding fragments\n"));
 		err = usb_block_allocmem(tag, USB_MEM_BLOCK, USB_MEM_SMALL,&b);
 		if (err) {
-			splx(s);
+			crit_exit();
 			return (err);
 		}
 		b->fullblock = 0;
@@ -264,7 +261,7 @@ usb_allocmem(usbd_bus_handle bus, size_t size, size_t align, usb_dma_t *p)
 	p->offs = f->offs;
 	p->len = USB_MEM_SMALL;
 	LIST_REMOVE(f, next);
-	splx(s);
+	crit_exit();
 	DPRINTFN(5, ("usb_allocmem: use frag=%p size=%d\n", f, (int)size));
 	return (USBD_NORMAL_COMPLETION);
 }
@@ -273,7 +270,6 @@ void
 usb_freemem(usbd_bus_handle bus, usb_dma_t *p)
 {
 	struct usb_frag_dma *f;
-	int s;
 
 	if (p->block->fullblock) {
 		DPRINTFN(1, ("usb_freemem: large free\n"));
@@ -283,8 +279,8 @@ usb_freemem(usbd_bus_handle bus, usb_dma_t *p)
 	f = KERNADDR(p, 0);
 	f->block = p->block;
 	f->offs = p->offs;
-	s = splusb();
+	crit_enter();
 	LIST_INSERT_HEAD(&usb_frag_freelist, f, next);
-	splx(s);
+	crit_exit();
 	DPRINTFN(5, ("usb_freemem: frag=%p\n", f));
 }

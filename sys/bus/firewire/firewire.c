@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.10 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.11 2005/06/02 20:40:33 dillon Exp $
  *
  */
 
@@ -44,6 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>	/* for DELAY() */
@@ -159,13 +160,12 @@ struct fw_device *
 fw_noderesolve_nodeid(struct firewire_comm *fc, int dst)
 {
 	struct fw_device *fwdev;
-	int s;
 
-	s = splfw();
+	crit_enter();
 	STAILQ_FOREACH(fwdev, &fc->devices, link)
 		if (fwdev->dst == dst && fwdev->status != FWDEVINVAL)
 			break;
-	splx(s);
+	crit_exit();
 
 	return fwdev;
 }
@@ -177,13 +177,12 @@ struct fw_device *
 fw_noderesolve_eui64(struct firewire_comm *fc, struct fw_eui64 *eui)
 {
 	struct fw_device *fwdev;
-	int s;
 
-	s = splfw();
+	crit_enter();
 	STAILQ_FOREACH(fwdev, &fc->devices, link)
 		if (FW_EUI64_EQUAL(fwdev->eui, *eui))
 			break;
-	splx(s);
+	crit_exit();
 
 	if(fwdev == NULL) return NULL;
 	if(fwdev->status == FWDEVINVAL) return NULL;
@@ -293,7 +292,7 @@ static void
 fw_asystart(struct fw_xfer *xfer)
 {
 	struct firewire_comm *fc = xfer->fc;
-	int s;
+
 	if(xfer->retry++ >= fc->max_asyretry){
 		device_printf(fc->bdev, "max_asyretry exceeded\n");
 		xfer->resp = EBUSY;
@@ -310,11 +309,11 @@ fw_asystart(struct fw_xfer *xfer)
 		return;
 	}
 #endif
-	s = splfw();
+	crit_enter();
 	xfer->state = FWXF_INQ;
 	STAILQ_INSERT_TAIL(&xfer->q->q, xfer, link);
 	xfer->q->queued ++;
-	splx(s);
+	crit_exit();
 	/* XXX just queue for mbuf */
 	if (xfer->mbuf == NULL)
 		xfer->q->start(fc);
@@ -341,7 +340,7 @@ firewire_xfer_timeout(struct firewire_comm *fc)
 	struct tlabel *tl;
 	struct timeval tv;
 	struct timeval split_timeout;
-	int i, s;
+	int i;
 
 	split_timeout.tv_sec = 0;
 	split_timeout.tv_usec = 200 * 1000;	 /* 200 msec */
@@ -349,7 +348,7 @@ firewire_xfer_timeout(struct firewire_comm *fc)
 	microtime(&tv);
 	timevalsub(&tv, &split_timeout);
 
-	s = splfw();
+	crit_enter();
 	for (i = 0; i < 0x40; i ++) {
 		while ((tl = STAILQ_FIRST(&fc->tlabels[i])) != NULL) {
 			xfer = tl->xfer;
@@ -367,7 +366,7 @@ firewire_xfer_timeout(struct firewire_comm *fc)
 			fw_xfer_done(xfer);
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 #define WATCHDOC_HZ 10
@@ -885,9 +884,8 @@ fw_bindremove(struct firewire_comm *fc, struct fw_bind *fwb)
 	struct fw_xfer *xfer, *next;
 #endif
 	struct fw_bind *tfw;
-	int s;
 
-	s = splfw();
+	crit_enter();
 	STAILQ_FOREACH(tfw, &fc->binds, fclist)
 		if (tfw == fwb) {
 			STAILQ_REMOVE(&fc->binds, fwb, fw_bind, fclist);
@@ -895,7 +893,7 @@ fw_bindremove(struct firewire_comm *fc, struct fw_bind *fwb)
 		}
 
 	printf("%s: no such bind\n", __func__);
-	splx(s);
+	crit_exit();
 	return (1);
 found:
 #if 0
@@ -907,7 +905,7 @@ found:
 	STAILQ_INIT(&fwb->xferlist);
 #endif
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -918,19 +916,17 @@ static void
 fw_tl_free(struct firewire_comm *fc, struct fw_xfer *xfer)
 {
 	struct tlabel *tl;
-	int s = splfw();
 
+	crit_enter();
 	for( tl = STAILQ_FIRST(&fc->tlabels[xfer->tl]); tl != NULL;
 		tl = STAILQ_NEXT(tl, link)){
 		if(tl->xfer == xfer){
 			STAILQ_REMOVE(&fc->tlabels[xfer->tl], tl, tlabel, link);
 			free(tl, M_FW);
-			splx(s);
-			return;
+			break;
 		}
 	}
-	splx(s);
-	return;
+	crit_exit();
 }
 
 /*
@@ -941,13 +937,14 @@ fw_tl2xfer(struct firewire_comm *fc, int node, int tlabel)
 {
 	struct fw_xfer *xfer;
 	struct tlabel *tl;
-	int s = splfw();
+
+	crit_enter();
 
 	for( tl = STAILQ_FIRST(&fc->tlabels[tlabel]); tl != NULL;
 		tl = STAILQ_NEXT(tl, link)){
 		if(tl->xfer->send.hdr.mode.hdr.dst == node){
 			xfer = tl->xfer;
-			splx(s);
+			crit_exit();
 			if (firewire_debug > 2)
 				printf("fw_tl2xfer: found tl=%d\n", tlabel);
 			return(xfer);
@@ -955,7 +952,7 @@ fw_tl2xfer(struct firewire_comm *fc, int node, int tlabel)
 	}
 	if (firewire_debug > 1)
 		printf("fw_tl2xfer: not found tl=%d\n", tlabel);
-	splx(s);
+	crit_exit();
 	return(NULL);
 }
 
@@ -1022,15 +1019,13 @@ fw_xfer_done(struct fw_xfer *xfer)
 void
 fw_xfer_unload(struct fw_xfer* xfer)
 {
-	int s;
-
 	if(xfer == NULL ) return;
 	if(xfer->state == FWXF_INQ){
 		printf("fw_xfer_free FWXF_INQ\n");
-		s = splfw();
+		crit_enter();
 		STAILQ_REMOVE(&xfer->q->q, xfer, fw_xfer, link);
 		xfer->q->queued --;
-		splx(s);
+		crit_exit();
 	}
 	if (xfer->fc != NULL) {
 #if 1
@@ -1263,10 +1258,9 @@ void fw_sidrcv(struct firewire_comm* fc, u_int32_t *sid, u_int len)
 static void
 fw_bus_probe(struct firewire_comm *fc)
 {
-	int s;
 	struct fw_device *fwdev;
 
-	s = splfw();
+	crit_enter();
 	fc->status = FWBUSEXPLORE;
 	fc->retry_count = 0;
 
@@ -1282,7 +1276,7 @@ fw_bus_probe(struct firewire_comm *fc)
 	fc->ongodev = NULL;
 	fc->ongoeui.hi = 0xffffffff; fc->ongoeui.lo = 0xffffffff;
 	fw_bus_explore(fc);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1672,10 +1666,9 @@ fw_get_tlabel(struct firewire_comm *fc, struct fw_xfer *xfer)
 {
 	u_int i;
 	struct tlabel *tl, *tmptl;
-	int s;
 	static u_int32_t label = 0;
 
-	s = splfw();
+	crit_enter();
 	for( i = 0 ; i < 0x40 ; i ++){
 		label = (label + 1) & 0x3f;
 		for(tmptl = STAILQ_FIRST(&fc->tlabels[label]);
@@ -1688,14 +1681,14 @@ fw_get_tlabel(struct firewire_comm *fc, struct fw_xfer *xfer)
 			tl = malloc(sizeof(struct tlabel), M_FW, M_WAITOK);
 			tl->xfer = xfer;
 			STAILQ_INSERT_TAIL(&fc->tlabels[label], tl, link);
-			splx(s);
+			crit_exit();
 			if (firewire_debug > 1)
 				printf("fw_get_tlabel: dst=%d tl=%d\n",
 				    xfer->send.hdr.mode.hdr.dst, label);
 			return(label);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	printf("fw_get_tlabel: no free tlabel\n");
 	return(-1);
@@ -1763,7 +1756,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 {
 	struct fw_pkt *fp, *resfp;
 	struct fw_bind *bind;
-	int tcode, s;
+	int tcode;
 	int i, len, oldstate;
 #if 0
 	{
@@ -1889,13 +1882,15 @@ fw_rcv(struct fw_rcv_buf *rb)
 			len += rb->vec[i].iov_len;
 		switch(bind->act_type){
 		case FWACT_XFER:
-			/* splfw()?? */
+			crit_enter();
 			rb->xfer = STAILQ_FIRST(&bind->xferlist);
 			if (rb->xfer == NULL) {
 				printf("Discard a packet for this bind.\n");
+				crit_exit();
 				goto err;
 			}
 			STAILQ_REMOVE_HEAD(&bind->xferlist, link);
+			crit_exit();
 			fw_rcv_copy(rb);
 			rb->xfer->act.hand(rb->xfer);
 			return;
@@ -1909,18 +1904,20 @@ fw_rcv(struct fw_rcv_buf *rb)
 					rb->fc->ir[bind->sub]->queued);
 				goto err;
 			}
+			crit_enter();
 			rb->xfer = STAILQ_FIRST(&bind->xferlist);
 			if (rb->xfer == NULL) {
 				printf("Discard packet for this bind\n");
 				goto err;
 			}
 			STAILQ_REMOVE_HEAD(&bind->xferlist, link);
+			crit_exit();
 			fw_rcv_copy(rb);
-			s = splfw();
+			crit_enter();
 			rb->fc->ir[bind->sub]->queued++;
 			STAILQ_INSERT_TAIL(&rb->fc->ir[bind->sub]->q,
 			    rb->xfer, link);
-			splx(s);
+			crit_exit();
 
 			wakeup((caddr_t)rb->fc->ir[bind->sub]);
 
@@ -1951,10 +1948,10 @@ fw_rcv(struct fw_rcv_buf *rb)
 						vec[0].iov_len);
 		if (rb->xfer == NULL) goto err;
 		fw_rcv_copy(rb)
-		s = splfw();
+		crit_enter();
 		xferq->queued++;
 		STAILQ_INSERT_TAIL(&xferq->q, rb->xfer, link);
-		splx(s);
+		crit_exit();
 		sc = device_get_softc(rb->fc->bdev);
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 		if (&xferq->rsel.si_pid != 0)

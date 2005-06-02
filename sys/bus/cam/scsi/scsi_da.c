@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.22 2005/04/25 15:14:54 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.23 2005/06/02 20:40:31 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -54,6 +54,7 @@
 #include <sys/proc.h>
 #endif
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <machine/md_var.h>
 
@@ -526,7 +527,6 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 	int unit;
 	int part;
 	int error;
-	int s;
 
 	unit = dkunit(dev);
 	part = dkpart(dev);
@@ -548,13 +548,13 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 		return(ENXIO);
 	softc->flags |= DA_FLAG_OPEN;
 
-	s = splsoftcam();
+	crit_enter();
 	if ((softc->flags & DA_FLAG_PACK_INVALID) != 0) {
 		/* Invalidate our pack information. */
 		disk_invalidate(&softc->disk);
 		softc->flags &= ~DA_FLAG_PACK_INVALID;
 	}
-	splx(s);
+	crit_exit();
 
 	/* Do a read capacity */
 	{
@@ -740,7 +740,6 @@ dastrategy(struct buf *bp)
 	struct da_softc *softc;
 	u_int  unit;
 	u_int  part;
-	int    s;
 	
 	unit = dkunit(bp->b_dev);
 	part = dkpart(bp->b_dev);
@@ -762,13 +761,13 @@ dastrategy(struct buf *bp)
 	 * after we are in the queue.  Otherwise, we might not properly
 	 * clean up one of the buffers.
 	 */
-	s = splbio();
+	crit_enter();
 	
 	/*
 	 * If the device has been made invalid, error out
 	 */
 	if ((softc->flags & DA_FLAG_PACK_INVALID)) {
-		splx(s);
+		crit_exit();
 		bp->b_error = ENXIO;
 		goto bad;
 	}
@@ -778,7 +777,7 @@ dastrategy(struct buf *bp)
 	 */
 	bufqdisksort(&softc->buf_queue, bp);
 
-	splx(s);
+	crit_exit();
 	
 	/*
 	 * Schedule ourselves for performing the work.
@@ -1011,7 +1010,6 @@ dainit(void)
 static void
 daoninvalidate(struct cam_periph *periph)
 {
-	int s;
 	struct da_softc *softc;
 	struct buf *q_bp;
 	struct ccb_setasync csa;
@@ -1032,11 +1030,10 @@ daoninvalidate(struct cam_periph *periph)
 	softc->flags |= DA_FLAG_PACK_INVALID;
 
 	/*
-	 * Although the oninvalidate() routines are always called at
-	 * splsoftcam, we need to be at splbio() here to keep the buffer
-	 * queue from being modified while we traverse it.
+	 * Use a critical section to keep the buffer queue from being
+	 * modified while we traverse it.
 	 */
-	s = splbio();
+	crit_enter();
 
 	/*
 	 * Return all queued I/O with ENXIO.
@@ -1050,7 +1047,7 @@ daoninvalidate(struct cam_periph *periph)
 		q_bp->b_flags |= B_ERROR;
 		biodone(q_bp);
 	}
-	splx(s);
+	crit_exit();
 
 	SLIST_REMOVE(&softc_list, softc, da_softc, links);
 
@@ -1125,10 +1122,9 @@ daasync(void *callback_arg, u_int32_t code,
 	{
 		struct da_softc *softc;
 		struct ccb_hdr *ccbh;
-		int s;
 
 		softc = (struct da_softc *)periph->softc;
-		s = splsoftcam();
+		crit_enter();
 		/*
 		 * Don't fail on the expected unit attention
 		 * that will occur.
@@ -1137,7 +1133,7 @@ daasync(void *callback_arg, u_int32_t code,
 		for (ccbh = LIST_FIRST(&softc->pending_ccbs);
 		     ccbh != NULL; ccbh = LIST_NEXT(ccbh, periph_links.le))
 			ccbh->ccb_state |= DA_CCB_RETRY_UA;
-		splx(s);
+		crit_exit();
 		/* FALLTHROUGH*/
 	}
 	default:
@@ -1214,7 +1210,6 @@ dacmdsizesysctl(SYSCTL_HANDLER_ARGS)
 static cam_status
 daregister(struct cam_periph *periph, void *arg)
 {
-	int s;
 	struct da_softc *softc;
 	struct ccb_setasync csa;
 	struct ccb_pathinq cpi;
@@ -1298,9 +1293,9 @@ daregister(struct cam_periph *periph, void *arg)
 	 * Block our timeout handler while we
 	 * add this softc to the dev list.
 	 */
-	s = splsoftclock();
+	crit_enter();
 	SLIST_INSERT_HEAD(&softc_list, softc, links);
-	splx(s);
+	crit_exit();
 
 	/*
 	 * The DA driver supports a blocksize, but
@@ -1358,12 +1353,11 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 	{
 		/* Pull a buffer from the queue and get going on it */		
 		struct buf *bp;
-		int s;
 
 		/*
 		 * See if there is a buf with work for us to do..
 		 */
-		s = splbio();
+		crit_enter();
 		bp = bufq_first(&softc->buf_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
@@ -1372,13 +1366,12 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
-			splx(s);
+			crit_exit();
 			wakeup(&periph->ccb_list);
 		} else if (bp == NULL) {
-			splx(s);
+			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else {
-			int oldspl;
 			u_int8_t tag_code;
 
 			bufq_remove(&softc->buf_queue, bp);
@@ -1412,10 +1405,8 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			 * Block out any asyncronous callbacks
 			 * while we touch the pending ccb list.
 			 */
-			oldspl = splcam();
 			LIST_INSERT_HEAD(&softc->pending_ccbs,
 					 &start_ccb->ccb_h, periph_links.le);
-			splx(oldspl);
 
 			/* We expect a unit attention from this device */
 			if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
@@ -1425,7 +1416,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 
 			start_ccb->ccb_h.ccb_bp = bp;
 			bp = bufq_first(&softc->buf_queue);
-			splx(s);
+			crit_exit();
 
 			xpt_action(start_ccb);
 		}
@@ -1516,12 +1507,10 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 	case DA_CCB_BUFFER_IO:
 	{
 		struct buf *bp;
-		int    oldspl;
 
 		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
 		if ((done_ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 			int error;
-			int s;
 			int sf;
 			
 			if ((csio->ccb_h.ccb_state & DA_CCB_RETRY_UA) != 0)
@@ -1542,7 +1531,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			if (error != 0) {
 				struct buf *q_bp;
 
-				s = splbio();
+				crit_enter();
 
 				if (error == ENXIO) {
 					/*
@@ -1570,7 +1559,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 					q_bp->b_flags |= B_ERROR;
 					biodone(q_bp);
 				}
-				splx(s);
+				crit_exit();
 				bp->b_error = error;
 				bp->b_resid = bp->b_bcount;
 				bp->b_flags |= B_ERROR;
@@ -1596,9 +1585,9 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		 * Block out any asyncronous callbacks
 		 * while we touch the pending ccb list.
 		 */
-		oldspl = splcam();
+		crit_enter();
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
-		splx(oldspl);
+		crit_exit();
 
 		if (softc->device_stats.busy_count == 0)
 			softc->flags |= DA_FLAG_WENT_IDLE;
@@ -1870,12 +1859,11 @@ static void
 dasendorderedtag(void *arg)
 {
 	struct da_softc *softc;
-	int s;
 
 	for (softc = SLIST_FIRST(&softc_list);
 	     softc != NULL;
 	     softc = SLIST_NEXT(softc, links)) {
-		s = splsoftcam();
+		crit_enter();
 		if ((softc->ordered_tag_count == 0) 
 		 && ((softc->flags & DA_FLAG_WENT_IDLE) == 0)) {
 			softc->flags |= DA_FLAG_NEED_OTAG;
@@ -1884,7 +1872,7 @@ dasendorderedtag(void *arg)
 			softc->flags &= ~DA_FLAG_WENT_IDLE;
 
 		softc->ordered_tag_count = 0;
-		splx(s);
+		crit_exit();
 	}
 	/* Queue us up again */
 	callout_reset(&dasendorderedtag_ch,

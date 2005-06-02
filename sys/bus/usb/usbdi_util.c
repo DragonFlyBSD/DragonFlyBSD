@@ -2,7 +2,7 @@
  * $NetBSD: usbdi_util.c,v 1.24 1999/11/17 23:00:50 augustss Exp $
  * $NetBSD: usbdi_util.c,v 1.36 2001/11/13 06:24:57 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.31 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.7 2004/03/12 03:43:06 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.8 2005/06/02 20:40:40 dillon Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
 #endif
+#include <sys/thread2.h>
 
 #include "usb.h"
 #include "usbhid.h"
@@ -420,19 +421,19 @@ usbd_bulk_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 		   u_int32_t *size, char *lbl)
 {
 	usbd_status err;
-	int s, error;
+	int error;
 
 	usbd_setup_xfer(xfer, pipe, 0, buf, *size,
 			flags, timeout, usbd_bulk_transfer_cb);
 	DPRINTFN(1, ("usbd_bulk_transfer: start transfer %d bytes\n", *size));
-	s = splusb();		/* don't want callback until tsleep() */
+	crit_enter();
 	err = usbd_transfer(xfer);
 	if (err != USBD_IN_PROGRESS) {
-		splx(s);
+		crit_exit();
 		return (err);
 	}
 	error = tsleep((caddr_t)xfer, PCATCH, lbl, 0);
-	splx(s);
+	crit_exit();
 	if (error) {
 		DPRINTF(("usbd_bulk_transfer: tsleep=%d\n", error));
 		usbd_abort_pipe(pipe);
@@ -462,19 +463,19 @@ usbd_intr_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 		   u_int32_t *size, char *lbl)
 {
 	usbd_status err;
-	int s, error;
+	int error;
 
 	usbd_setup_xfer(xfer, pipe, 0, buf, *size,
 			flags, timeout, usbd_intr_transfer_cb);
 	DPRINTFN(1, ("usbd_intr_transfer: start transfer %d bytes\n", *size));
-	s = splusb();		/* don't want callback until tsleep() */
+	crit_enter(); 		/* don't want callback until tsleep() */
 	err = usbd_transfer(xfer);
 	if (err != USBD_IN_PROGRESS) {
-		splx(s);
+		crit_exit();
 		return (err);
 	}
 	error = tsleep(xfer, PCATCH, lbl, 0);
-	splx(s);
+	crit_exit();
 	if (error) {
 		DPRINTF(("usbd_intr_transfer: tsleep=%d\n", error));
 		usbd_abort_pipe(pipe);

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.h,v 1.62 2002/07/11 21:14:35 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.h,v 1.48 2003/07/14 20:31:03 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.h,v 1.5 2005/06/02 20:40:40 dillon Exp $
  */
 
 /*
@@ -271,15 +271,3 @@ struct usb_attach_arg {
 int usbd_driver_load(module_t mod, int what, void *arg);
 #endif
 
-/* XXX Perhaps USB should have its own levels? */
-#ifdef USB_USE_SOFTINTR
-#ifdef __HAVE_GENERIC_SOFT_INTERRUPTS
-#define splusb splsoftnet
-#else
-#define	splusb splsoftclock
-#endif /* __HAVE_GENERIC_SOFT_INTERRUPTS */
-#else
-#define splusb splbio
-#endif /* USB_USE_SOFTINTR */
-#define splhardusb splbio
-#define IPL_USB IPL_BIO

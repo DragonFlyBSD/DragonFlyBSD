@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.10 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.11 2005/06/02 20:40:31 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -82,6 +82,7 @@
 #include <sys/chio.h>
 #include <sys/errno.h>
 #include <sys/devicestat.h>
+#include <sys/thread2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"
@@ -426,7 +427,6 @@ chopen(dev_t dev, int flags, int fmt, struct thread *td)
 	struct cam_periph *periph;
 	struct ch_softc *softc;
 	int unit, error;
-	int s;
 
 	unit = CHUNIT(dev);
 	periph = cam_extend_get(chperiphs, unit);
@@ -436,18 +436,18 @@ chopen(dev_t dev, int flags, int fmt, struct thread *td)
 
 	softc = (struct ch_softc *)periph->softc;
 
-	s = splsoftcam();
+	crit_enter();
 	if (softc->flags & CH_FLAG_INVALID) {
-		splx(s);
+		crit_exit();
 		return(ENXIO);
 	}
 
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	
-	splx(s);
+	crit_exit();
 
 	if ((softc->flags & CH_FLAG_OPEN) == 0) {
 		if (cam_periph_acquire(periph) != CAM_REQ_CMP)
@@ -501,24 +501,22 @@ static void
 chstart(struct cam_periph *periph, union ccb *start_ccb)
 {
 	struct ch_softc *softc;
-	int s;
 
 	softc = (struct ch_softc *)periph->softc;
 
 	switch (softc->state) {
 	case CH_STATE_NORMAL:
 	{
-		s = splbio();
+		crit_enter();
 		if (periph->immediate_priority <= periph->pinfo.priority){
 			start_ccb->ccb_h.ccb_state = CH_CCB_WAITING;
 
 			SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
-			splx(s);
 			wakeup(&periph->ccb_list);
-		} else
-			splx(s);
+		}
+		crit_exit();
 		break;
 	}
 	case CH_STATE_PROBE:

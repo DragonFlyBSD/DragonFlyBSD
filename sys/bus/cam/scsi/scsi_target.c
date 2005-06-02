@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.10 2005/03/15 20:42:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.11 2005/06/02 20:40:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,7 @@
 #include <sys/poll.h>
 #include <sys/vnode.h>
 #include <sys/devicestat.h>
+#include <sys/thread2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"
@@ -288,14 +289,14 @@ static int
 targpoll(dev_t dev, int poll_events, struct proc *p)
 {
 	struct targ_softc *softc;
-	int	revents, s;
+	int	revents;
 
 	softc = (struct targ_softc *)dev->si_drv1;
 
 	/* Poll for write() is always ok. */
 	revents = poll_events & (POLLOUT | POLLWRNORM);
 	if ((poll_events & (POLLIN | POLLRDNORM)) != 0) {
-		s = splsoftcam();
+		crit_enter();
 		/* Poll for read() depends on user and abort queues. */
 		if (!TAILQ_EMPTY(&softc->user_ccb_queue) ||
 		    !TAILQ_EMPTY(&softc->abort_queue)) {
@@ -304,7 +305,7 @@ targpoll(dev_t dev, int poll_events, struct proc *p)
 		/* Only sleep if the user didn't poll for write. */
 		if (revents == 0)
 			selrecord(p, &softc->read_select);
-		splx(s);
+		crit_exit();
 	}
 
 	return (revents);
@@ -314,14 +315,13 @@ static int
 targkqfilter(dev_t dev, struct knote *kn)
 {
 	struct  targ_softc *softc;
-	int	s;
 
 	softc = (struct targ_softc *)dev->si_drv1;
 	kn->kn_hook = (caddr_t)softc;
 	kn->kn_fop = &targread_filtops;
-	s = splsoftcam();
+	crit_enter();
 	SLIST_INSERT_HEAD(&softc->read_select.si_note, kn, kn_selnext);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -329,12 +329,11 @@ static void
 targreadfiltdetach(struct knote *kn)
 {
 	struct  targ_softc *softc;
-	int	s;
 
 	softc = (struct targ_softc *)kn->kn_hook;
-	s = splsoftcam();
+	crit_enter();
 	SLIST_REMOVE(&softc->read_select.si_note, kn, knote, kn_selnext);
-	splx(s);
+	crit_exit();
 }
 
 /* Notify the user's kqueue when the user queue or abort queue gets a CCB */
@@ -342,13 +341,13 @@ static int
 targreadfilt(struct knote *kn, long hint)
 {
 	struct targ_softc *softc;
-	int	retval, s;
+	int	retval;
 
 	softc = (struct targ_softc *)kn->kn_hook;
-	s = splsoftcam();
+	crit_enter();
 	retval = !TAILQ_EMPTY(&softc->user_ccb_queue) ||
 		 !TAILQ_EMPTY(&softc->abort_queue);
-	splx(s);
+	crit_exit();
 	return (retval);
 }
 
@@ -451,7 +450,6 @@ static cam_status
 targdisable(struct targ_softc *softc)
 {
 	cam_status status;
-	int s;
 
 	if ((softc->state & TARG_STATE_LUN_ENABLED) == 0)
 		return (CAM_REQ_CMP);
@@ -459,9 +457,9 @@ targdisable(struct targ_softc *softc)
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH, ("targdisable\n"));
 
 	/* Abort any ccbs pending on the controller */
-	s = splcam();
+	crit_enter();
 	abort_all_pending(softc);
-	splx(s);
+	crit_exit();
 
 	/* Disable this lun */
 	status = targendislun(softc->path, /*enable*/0,
@@ -523,7 +521,7 @@ targwrite(dev_t dev, struct uio *uio, int ioflag)
 	union ccb *user_ccb;
 	struct targ_softc *softc;
 	struct targ_cmd_descr *descr;
-	int write_len, error, s;
+	int write_len, error;
 	int func_code, priority;
 
 	softc = (struct targ_softc *)dev->si_drv1;
@@ -555,11 +553,11 @@ targwrite(dev_t dev, struct uio *uio, int ioflag)
 			CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH,
 				  ("Sent ATIO/INOT (%p)\n", user_ccb));
 			xpt_action(ccb);
-			s = splsoftcam();
+			crit_enter();
 			TAILQ_INSERT_TAIL(&softc->pending_ccb_queue,
 					  &ccb->ccb_h,
 					  periph_links.tqe);
-			splx(s);
+			crit_exit();
 			break;
 		default:
 			if ((func_code & XPT_FC_QUEUED) != 0) {
@@ -570,10 +568,10 @@ targwrite(dev_t dev, struct uio *uio, int ioflag)
 				descr->user_ccb = user_ccb;
 				descr->priority = priority;
 				descr->func_code = func_code;
-				s = splsoftcam();
+				crit_enter();
 				TAILQ_INSERT_TAIL(&softc->work_queue,
 						  descr, tqe);
-				splx(s);
+				crit_exit();
 				xpt_schedule(softc->periph, priority);
 			} else {
 				CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH,
@@ -613,20 +611,20 @@ targstart(struct cam_periph *periph, union ccb *start_ccb)
 {
 	struct targ_softc *softc;
 	struct targ_cmd_descr *descr, *next_descr;
-	int s, error;
+	int error;
 
 	softc = (struct targ_softc *)periph->softc;
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH, ("targstart %p\n", start_ccb));
 
-	s = splsoftcam();
+	crit_enter();
 	descr = TAILQ_FIRST(&softc->work_queue);
 	if (descr == NULL) {
-		splx(s);
+		crit_exit();
 		xpt_release_ccb(start_ccb);
 	} else {
 		TAILQ_REMOVE(&softc->work_queue, descr, tqe);
 		next_descr = TAILQ_FIRST(&softc->work_queue);
-		splx(s);
+		crit_exit();
 
 		/* Initiate a transaction using the descr and supplied CCB */
 		error = targusermerge(softc, descr, start_ccb);
@@ -638,9 +636,9 @@ targstart(struct cam_periph *periph, union ccb *start_ccb)
 			xpt_release_ccb(start_ccb);
 			suword(&descr->user_ccb->ccb_h.status,
 			       CAM_REQ_CMP_ERR);
-			s = splsoftcam();
+			crit_enter();
 			TAILQ_INSERT_TAIL(&softc->abort_queue, descr, tqe);
-			splx(s);
+			crit_exit();
 			notify_user(softc);
 		}
 
@@ -684,7 +682,7 @@ targusermerge(struct targ_softc *softc, struct targ_cmd_descr *descr,
 		int s;
 
 		cab = (struct ccb_abort *)ccb;
-		s = splsoftcam();
+		crit_enter();
 		TAILQ_FOREACH(ccb_h, &softc->pending_ccb_queue,
 		    periph_links.tqe) {
 			struct targ_cmd_descr *ab_descr;
@@ -698,7 +696,7 @@ targusermerge(struct targ_softc *softc, struct targ_cmd_descr *descr,
 				break;
 			}
 		}
-		splx(s);
+		crit_exit();
 		/* CCB not found, set appropriate status */
 		if (ccb_h == NULL) {
 			k_ccbh->status = CAM_PATH_INVALID;
@@ -766,19 +764,17 @@ targsendccb(struct targ_softc *softc, union ccb *ccb,
 	 */
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH, ("sendccb %p\n", ccb));
 	if (XPT_FC_IS_QUEUED(ccb)) {
-		int s;
-
-		s = splsoftcam();
+		crit_enter();
 		TAILQ_INSERT_TAIL(&softc->pending_ccb_queue, ccb_h,
 				  periph_links.tqe);
-		splx(s);
+		crit_exit();
 	}
 	xpt_action(ccb);
 
 	return (0);
 }
 
-/* Completion routine for CCBs (called at splsoftcam) */
+/* Completion routine for CCBs (called in a critical section) */
 static void
 targdone(struct cam_periph *periph, union ccb *done_ccb)
 {
@@ -826,7 +822,7 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 	struct ccb_queue  *user_queue;
 	struct ccb_hdr	  *ccb_h;
 	union  ccb	  *user_ccb;
-	int		   read_len, error, s;
+	int		   read_len, error;
 
 	error = 0;
 	read_len = 0;
@@ -836,7 +832,7 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH, ("targread\n"));
 
 	/* If no data is available, wait or return immediately */
-	s = splsoftcam();
+	crit_enter();
 	ccb_h = TAILQ_FIRST(user_queue);
 	user_descr = TAILQ_FIRST(abort_queue);
 	while (ccb_h == NULL && user_descr == NULL) {
@@ -848,12 +844,12 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 				if (error == ERESTART) {
 					continue;
 				} else {
-					splx(s);
+					crit_exit();
 					goto read_fail;
 				}
 			}
 		} else {
-			splx(s);
+			crit_exit();
 			return (EAGAIN);
 		}
 	}
@@ -865,7 +861,7 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 		if (uio->uio_resid < sizeof(user_ccb))
 			break;
 		TAILQ_REMOVE(user_queue, ccb_h, periph_links.tqe);
-		splx(s);
+		crit_exit();
 		descr = (struct targ_cmd_descr *)ccb_h->targ_descr;
 		user_ccb = descr->user_ccb;
 		CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH,
@@ -878,7 +874,7 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 			goto read_fail;
 		read_len += sizeof(user_ccb);
 
-		s = splsoftcam();
+		crit_enter();
 		ccb_h = TAILQ_FIRST(user_queue);
 	}
 
@@ -887,7 +883,7 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 		if (uio->uio_resid < sizeof(user_ccb))
 			break;
 		TAILQ_REMOVE(abort_queue, user_descr, tqe);
-		splx(s);
+		crit_exit();
 		user_ccb = user_descr->user_ccb;
 		CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH,
 			  ("targread aborted descr %p (%p)\n",
@@ -898,10 +894,10 @@ targread(dev_t dev, struct uio *uio, int ioflag)
 			goto read_fail;
 		read_len += sizeof(user_ccb);
 
-		s = splsoftcam();
+		crit_enter();
 		user_descr = TAILQ_FIRST(abort_queue);
 	}
-	splx(s);
+	crit_exit();
 
 	/*
 	 * If we've successfully read some amount of data, don't report an

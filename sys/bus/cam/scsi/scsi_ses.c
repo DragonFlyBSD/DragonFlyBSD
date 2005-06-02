@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.11 2004/05/19 22:52:38 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.12 2005/06/02 20:40:31 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -38,6 +38,7 @@
 #include <sys/buf.h>
 #include <sys/errno.h>
 #include <sys/devicestat.h>
+#include <sys/thread2.h>
 #include <machine/stdarg.h>
 
 #include "../cam.h"
@@ -423,19 +424,19 @@ sesopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct cam_periph *periph;
 	struct ses_softc *softc;
-	int error, s;
+	int error;
 
-	s = splsoftcam();
+	crit_enter();
 	periph = cam_extend_get(sesperiphs, SESUNIT(dev));
 	if (periph == NULL) {
-		splx(s);
+		crit_exit();
 		return (ENXIO);
 	}
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
-	splx(s);
+	crit_exit();
 
 	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
 		cam_periph_unlock(periph);
@@ -504,13 +505,13 @@ sesclose(dev_t dev, int flag, int fmt, struct thread *td)
 static void
 sesstart(struct cam_periph *p, union ccb *sccb)
 {
-	int s = splbio();
+	crit_enter();
 	if (p->immediate_priority <= p->pinfo.priority) {
 		SLIST_INSERT_HEAD(&p->ccb_list, &sccb->ccb_h, periph_links.sle);
 		p->immediate_priority = CAM_PRIORITY_NONE;
 		wakeup(&p->ccb_list);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void

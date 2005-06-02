@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.11 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.12 2005/06/02 20:40:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/conf.h>
 #include <sys/ptio.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"
@@ -152,7 +153,6 @@ ptopen(dev_t dev, int flags, int fmt, struct thread *td)
 	struct pt_softc *softc;
 	int unit;
 	int error;
-	int s;
 
 	unit = minor(dev);
 	periph = cam_extend_get(ptperiphs, unit);
@@ -161,9 +161,9 @@ ptopen(dev_t dev, int flags, int fmt, struct thread *td)
 
 	softc = (struct pt_softc *)periph->softc;
 
-	s = splsoftcam();
+	crit_enter();
 	if (softc->flags & PT_FLAG_DEVICE_INVALID) {
-		splx(s);
+		crit_exit();
 		return(ENXIO);
 	}
 
@@ -171,11 +171,11 @@ ptopen(dev_t dev, int flags, int fmt, struct thread *td)
 	    ("ptopen: dev=%s (unit %d)\n", devtoname(dev), unit));
 
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		splx(s);
+		crit_exit();
 		return (error); /* error code from tsleep */
 	}
 
-	splx(s);
+	crit_exit();
 
 	if ((softc->flags & PT_FLAG_OPEN) == 0) {
 		if (cam_periph_acquire(periph) != CAM_REQ_CMP)
@@ -224,7 +224,6 @@ ptstrategy(struct buf *bp)
 	struct cam_periph *periph;
 	struct pt_softc *softc;
 	u_int  unit;
-	int    s;
 	
 	unit = minor(bp->b_dev);
 	periph = cam_extend_get(ptperiphs, unit);
@@ -239,13 +238,13 @@ ptstrategy(struct buf *bp)
 	 * after we are in the queue.  Otherwise, we might not properly
 	 * clean up one of the buffers.
 	 */
-	s = splbio();
+	crit_enter();
 	
 	/*
 	 * If the device has been made invalid, error out
 	 */
 	if ((softc->flags & PT_FLAG_DEVICE_INVALID)) {
-		splx(s);
+		crit_exit();
 		bp->b_error = ENXIO;
 		goto bad;
 	}
@@ -255,7 +254,7 @@ ptstrategy(struct buf *bp)
 	 */
 	bufq_insert_tail(&softc->buf_queue, bp);
 
-	splx(s);
+	crit_exit();
 	
 	/*
 	 * Schedule ourselves for performing the work.
@@ -377,7 +376,6 @@ ptctor(struct cam_periph *periph, void *arg)
 static void
 ptoninvalidate(struct cam_periph *periph)
 {
-	int s;
 	struct pt_softc *softc;
 	struct buf *q_bp;
 	struct ccb_setasync csa;
@@ -398,11 +396,10 @@ ptoninvalidate(struct cam_periph *periph)
 	softc->flags |= PT_FLAG_DEVICE_INVALID;
 
 	/*
-	 * Although the oninvalidate() routines are always called at
-	 * splsoftcam, we need to be at splbio() here to keep the buffer
+	 * We need to be in a critical section here to keep the buffer
 	 * queue from being modified while we traverse it.
 	 */
-	s = splbio();
+	crit_enter();
 
 	/*
 	 * Return all queued I/O with ENXIO.
@@ -417,7 +414,7 @@ ptoninvalidate(struct cam_periph *periph)
 		biodone(q_bp);
 	}
 
-	splx(s);
+	crit_exit();
 
 	xpt_print_path(periph->path);
 	printf("lost device\n");
@@ -477,10 +474,9 @@ ptasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 	{
 		struct pt_softc *softc;
 		struct ccb_hdr *ccbh;
-		int s;
 
 		softc = (struct pt_softc *)periph->softc;
-		s = splsoftcam();
+		crit_enter();
 		/*
 		 * Don't fail on the expected unit attention
 		 * that will occur.
@@ -489,7 +485,7 @@ ptasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 		for (ccbh = LIST_FIRST(&softc->pending_ccbs);
 		     ccbh != NULL; ccbh = LIST_NEXT(ccbh, periph_links.le))
 			ccbh->ccb_state |= PT_CCB_RETRY_UA;
-		splx(s);
+		crit_exit();
 		/* FALLTHROUGH */
 	}
 	default:
@@ -503,14 +499,13 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 {
 	struct pt_softc *softc;
 	struct buf *bp;
-	int s;
 
 	softc = (struct pt_softc *)periph->softc;
 
 	/*
 	 * See if there is a buf with work for us to do..
 	 */
-	s = splbio();
+	crit_enter();
 	bp = bufq_first(&softc->buf_queue);
 	if (periph->immediate_priority <= periph->pinfo.priority) {
 		CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
@@ -519,14 +514,12 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 		SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 				  periph_links.sle);
 		periph->immediate_priority = CAM_PRIORITY_NONE;
-		splx(s);
+		crit_exit();
 		wakeup(&periph->ccb_list);
 	} else if (bp == NULL) {
-		splx(s);
+		crit_exit();
 		xpt_release_ccb(start_ccb);
 	} else {
-		int oldspl;
-
 		bufq_remove(&softc->buf_queue, bp);
 
 		devstat_start_transaction(&softc->device_stats);
@@ -548,14 +541,12 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 		 * Block out any asyncronous callbacks
 		 * while we touch the pending ccb list.
 		 */
-		oldspl = splcam();
 		LIST_INSERT_HEAD(&softc->pending_ccbs, &start_ccb->ccb_h,
 				 periph_links.le);
-		splx(oldspl);
 
 		start_ccb->ccb_h.ccb_bp = bp;
 		bp = bufq_first(&softc->buf_queue);
-		splx(s);
+		crit_exit();
 
 		xpt_action(start_ccb);
 		
@@ -579,12 +570,10 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 	case PT_CCB_BUFFER_IO_UA:
 	{
 		struct buf *bp;
-		int    oldspl;
 
 		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
 		if ((done_ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 			int error;
-			int s;
 			int sf;
 			
 			if ((csio->ccb_h.ccb_state & PT_CCB_RETRY_UA) != 0)
@@ -604,7 +593,7 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 			if (error != 0) {
 				struct buf *q_bp;
 
-				s = splbio();
+				crit_enter();
 
 				if (error == ENXIO) {
 					/*
@@ -629,7 +618,7 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 					q_bp->b_flags |= B_ERROR;
 					biodone(q_bp);
 				}
-				splx(s);
+				crit_exit();
 				bp->b_error = error;
 				bp->b_resid = bp->b_bcount;
 				bp->b_flags |= B_ERROR;
@@ -657,9 +646,9 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 		 * Block out any asyncronous callbacks
 		 * while we touch the pending ccb list.
 		 */
-		oldspl = splcam();
+		crit_enter();
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
-		splx(oldspl);
+		crit_exit();
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
 		biodone(bp);
@@ -715,16 +704,14 @@ ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		break;
 	case PTIOCSETTIMEOUT:
 	{
-		int s;
-
 		if (*(int *)addr < 1) {
 			error = EINVAL;
 			break;
 		}
 
-		s = splsoftcam();
+		crit_enter();
 		softc->io_timeout = *(int *)addr * 1000;
-		splx(s);
+		crit_exit();
 
 		break;
 	}

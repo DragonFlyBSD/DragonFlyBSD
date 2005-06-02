@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.33 2004/01/06 14:30:46 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.7 2004/02/05 17:51:43 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.8 2005/06/02 20:40:33 dillon Exp $
  *
  */
 
@@ -46,8 +46,6 @@ typedef	struct proc fw_proc;
 
 #include <sys/select.h>
 #include <sys/uio.h>
-
-#define	splfw splimp
 
 struct fw_device{
 	u_int16_t dst;

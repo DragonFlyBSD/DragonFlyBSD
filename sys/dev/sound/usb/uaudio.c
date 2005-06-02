@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.5 2004/02/12 00:00:19 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.6 2005/06/02 20:40:43 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -67,6 +67,7 @@
 #endif
 #include <sys/poll.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/audioio.h>
@@ -1943,7 +1944,7 @@ uaudio_trigger_input(void *addr, void *start, void *end, int blksize,
 	struct uaudio_softc *sc = addr;
 	struct chan *ch = &sc->sc_chan;
 	usbd_status err;
-	int i, s;
+	int i;
 
 	if (sc->sc_dying)
 		return (EIO);
@@ -1969,10 +1970,10 @@ uaudio_trigger_input(void *addr, void *start, void *end, int blksize,
 	sc->sc_chan.intr = intr;
 	sc->sc_chan.arg = arg;
 
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < UAUDIO_NCHANBUFS-1; i++) /* XXX -1 shouldn't be needed */
 		uaudio_chan_rtransfer(ch);
-	splx(s);
+	crit_exit();
 
         return (0);
 }
@@ -1985,7 +1986,7 @@ uaudio_trigger_output(void *addr, void *start, void *end, int blksize,
 	struct uaudio_softc *sc = addr;
 	struct chan *ch = &sc->sc_chan;
 	usbd_status err;
-	int i, s;
+	int i;
 
 	if (sc->sc_dying)
 		return (EIO);
@@ -2011,10 +2012,10 @@ uaudio_trigger_output(void *addr, void *start, void *end, int blksize,
 	sc->sc_chan.intr = intr;
 	sc->sc_chan.arg = arg;
 
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < UAUDIO_NCHANBUFS-1; i++) /* XXX */
 		uaudio_chan_ptransfer(ch);
-	splx(s);
+	crit_exit();
 
         return (0);
 }
@@ -2111,7 +2112,7 @@ uaudio_chan_free_buffers(struct uaudio_softc *sc, struct chan *ch)
 		usbd_free_xfer(ch->chanbufs[i].xfer);
 }
 
-/* Called at splusb() */
+/* Called from a critical section. */
 void
 uaudio_chan_ptransfer(struct chan *ch)
 {
@@ -2184,7 +2185,6 @@ uaudio_chan_pintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 	struct chanbuf *cb = priv;
 	struct chan *ch = cb->chan;
 	u_int32_t count;
-	int s;
 
 	/* Return if we are aborting. */
 	if (status == USBD_CANCELLED)
@@ -2202,10 +2202,9 @@ uaudio_chan_pintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	ch->transferred += cb->size;
 #if defined(__DragonFly__)
-	/* s = spltty(); */
-	s = splhigh();
+	crit_enter();
 	chn_intr(ch->pcm_ch);
-	splx(s);
+	crit_exit();
 #else
 	s = splaudio();
 	/* Call back to upper layer */
@@ -2222,7 +2221,7 @@ uaudio_chan_pintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 	uaudio_chan_ptransfer(ch);
 }
 
-/* Called at splusb() */
+/* Called from a critical section. */
 void
 uaudio_chan_rtransfer(struct chan *ch)
 {
@@ -2834,7 +2833,7 @@ uaudio_trigger_output(device_t dev)
 	struct uaudio_softc *sc;
 	struct chan *ch;
 	usbd_status err;
-	int i, s;
+	int i;
 
 	sc = device_get_softc(dev);
 	ch = &sc->sc_chan;
@@ -2854,10 +2853,10 @@ uaudio_trigger_output(device_t dev)
 		return (EIO);
 	}
 
-	s = splusb();
+	crit_enter();
 	for (i = 0; i < UAUDIO_NCHANBUFS-1; i++) /* XXX */
 		uaudio_chan_ptransfer(ch);
-	splx(s);
+	crit_exit();
 
         return (0);
 }
