@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.13 2005/04/18 01:03:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.14 2005/06/02 21:55:22 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -96,7 +96,9 @@
 static int token_debug = 0;
 #endif
 
+#ifdef SMP
 static void lwkt_reqtoken_remote(void *data);
+#endif
 
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
