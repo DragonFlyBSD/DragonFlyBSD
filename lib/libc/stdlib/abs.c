@@ -31,14 +31,13 @@
  * SUCH DAMAGE.
  *
  * @(#)abs.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/abs.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/abs.c,v 1.3 2005/06/02 18:45:06 asmodai Exp $
  */
 
 #include <stdlib.h>
 
 int
-abs(j)
-	int j;
+abs(int j)
 {
 	return(j < 0 ? -j : j);
 }
