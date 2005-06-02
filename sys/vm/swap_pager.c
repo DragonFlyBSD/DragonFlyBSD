@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.14 2004/07/16 05:52:14 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.15 2005/06/02 19:57:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,6 @@
 #include <sys/sysctl.h>
 #include <sys/blist.h>
 #include <sys/lock.h>
-#include <sys/vmmeter.h>
 
 #ifndef MAX_PAGEOUT_CLUSTER
 #define MAX_PAGEOUT_CLUSTER 16
