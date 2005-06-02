@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.5 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.6 2005/06/02 21:51:00 dillon Exp $
  */
 
 /*
@@ -73,8 +73,10 @@
 #define	_VM_OBJECT_
 
 #include <sys/queue.h>
-#include <sys/thread2.h>
 #include <machine/atomic.h>
+#ifdef _KERNEL
+#include <sys/thread2.h>
+#endif
 
 enum obj_type { OBJT_DEFAULT, OBJT_SWAP, OBJT_VNODE, OBJT_DEVICE, OBJT_PHYS,
 		OBJT_DEAD };
