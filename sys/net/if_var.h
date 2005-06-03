@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.25 2005/05/25 01:44:16 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.26 2005/06/03 20:16:28 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -65,7 +65,6 @@
  * interfaces.  These routines live in the files if.c and route.c
  */
 
-#ifdef __STDC__
 /*
  * Forward structure declarations for function prototypes [sic].
  */
@@ -76,7 +75,6 @@ struct	rt_addrinfo;
 struct	socket;
 struct	ether_header;
 struct	ucred;
-#endif
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -273,7 +271,8 @@ typedef void if_init_f_t (void *);
 #define IF_HANDOFF_ADJ(ifq, m, ifp, adj)	if_handoff(ifq, m, ifp, adj)
 
 static __inline int
-if_handoff(struct ifqueue *ifq, struct mbuf *m, struct ifnet *ifp, int adjust)
+if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
+	   int _adjust)
 {
 	int need_if_start = 0;
 	int s = splimp();
@@ -454,11 +453,10 @@ int	if_clone_destroy(const char *);
     LLADDR((struct sockaddr_dl *) ifnet_addrs[ifp->if_index - 1]->ifa_addr)
 
 #ifdef DEVICE_POLLING
-typedef	void poll_handler_t (struct ifnet *ifp,
-		enum poll_cmd cmd, int count);
-int	ether_poll_register(struct ifnet *ifp);
-int	ether_poll_deregister(struct ifnet *ifp);
-void	emergency_poll_enable(const char *name);
+typedef	void poll_handler_t (struct ifnet *ifp, enum poll_cmd cmd, int count);
+int	ether_poll_register(struct ifnet *);
+int	ether_poll_deregister(struct ifnet *);
+void	emergency_poll_enable(const char *);
 #endif /* DEVICE_POLLING */
 #endif /* _KERNEL */
 
