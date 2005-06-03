@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.14 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.15 2005/06/03 23:31:36 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -333,7 +333,6 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	struct ng_fec_bundle	*b;
 	struct ifnet		*ifp, *bifp;
 	struct arpcom		*ac;
-	struct ifaddr		*ifa;
 	struct sockaddr_dl	*sdl;
 	struct ng_fec_portlist	*p, *new;
 
@@ -382,8 +381,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	 * by extension, all the other ports in the bundle).
 	 */
 	if (b->fec_ifcnt == 0) {
-		ifa = ifnet_addrs[ifp->if_index - 1];
-		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+		sdl = IF_LLSOCKADDR(ifp);
 		bcopy((char *)ac->ac_enaddr,
 		    priv->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 		bcopy((char *)ac->ac_enaddr,
