@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.12 2005/03/22 22:13:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.13 2005/06/03 23:57:32 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -712,7 +712,7 @@ journal_build_pad(struct journal_rawrecbeg *rawp, int recsize, int64_t transid)
     rawp->transid = transid;
     /*
      * WARNING, rendp may overlap rawp->seqno.  This is necessary to
-     * allow PAD records to fit in 16 bytes.  Use cpu_mb1() to
+     * allow PAD records to fit in 16 bytes.  Use cpu_ccfence() to
      * hopefully cause the compiler to not make any assumptions.
      */
     rendp = (void *)((char *)rawp + rawp->recsize - sizeof(*rendp));
@@ -722,9 +722,10 @@ journal_build_pad(struct journal_rawrecbeg *rawp, int recsize, int64_t transid)
 
     /*
      * Set the begin magic last.  This is what will allow the journal
-     * thread to write the record out.
+     * thread to write the record out.  Use a store fence to prevent
+     * compiler and cpu reordering of the writes.
      */
-    cpu_mb1();
+    cpu_sfence();
     rawp->begmagic = JREC_BEGMAGIC;
 }
 
@@ -857,7 +858,7 @@ journal_reserve(struct journal *jo, struct journal_rawrecbeg **rawpp,
 	 *
 	 * Note that stream records are always 16-byte aligned.
 	 */
-	cpu_mb1();
+	cpu_sfence();
 	jo->fifo.windex += (req + 15) & ~15;
 	*rawpp = rawp;
 	return(rawp + 1);
@@ -1049,7 +1050,7 @@ journal_commit(struct journal *jo, struct journal_rawrecbeg **rawpp,
      */
     if (closeout)
 	rawp->streamid |= JREC_STREAMCTL_END;
-    cpu_mb1();			/* memory barrier */
+    cpu_sfence();		/* memory and compiler barrier */
     rawp->begmagic = JREC_BEGMAGIC;
 
     journal_commit_wakeup(jo);

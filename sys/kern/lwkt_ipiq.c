@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.10 2005/04/18 01:02:58 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.11 2005/06/03 23:57:32 dillon Exp $
  */
 
 /*
@@ -182,7 +182,7 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = (ipifunc2_t)func;
     ip->ip_arg[windex] = arg;
-    cpu_mb1();
+    cpu_sfence();
     ++ip->ip_windex;
     --gd->gd_intr_nesting_level;
 
@@ -254,7 +254,7 @@ lwkt_send_ipiq_passive(globaldata_t target, ipifunc_t func, void *arg)
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = (ipifunc2_t)func;
     ip->ip_arg[windex] = arg;
-    cpu_mb1();
+    cpu_sfence();
     ++ip->ip_windex;
     --gd->gd_intr_nesting_level;
 
@@ -292,7 +292,7 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = (ipifunc2_t)func;
     ip->ip_arg[windex] = arg;
-    cpu_mb1();
+    cpu_sfence();
     ++ip->ip_windex;
 
     /*
@@ -367,6 +367,12 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
 		if (maxc < -1000000)
 			panic("LWKT_WAIT_IPIQ");
+		/*
+		 * xindex may be modified by another cpu, use a load fence
+		 * to ensure that the loop does not use a speculative value
+		 * (which may improve performance).
+		 */
+		cpu_lfence();
 	    }
 	    write_eflags(eflags);
 	}
@@ -450,7 +456,16 @@ static int
 lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
 {
     int ri;
-    int wi = ip->ip_windex;
+    int wi;
+
+    /*
+     * Obtain the current write index, which is modified by a remote cpu.
+     * Issue a load fence to prevent speculative reads of e.g. data written
+     * by the other cpu prior to it updating the index.
+     */
+    wi = ip->ip_windex;
+    cpu_lfence();
+
     /*
      * Note: xindex is only updated after we are sure the function has
      * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
@@ -460,7 +475,7 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
 	ip->ip_rindex = ri + 1;
 	ri &= MAXCPUFIFO_MASK;
 	ip->ip_func[ri](ip->ip_arg[ri], frame);
-	/* YYY memory barrier */
+	cpu_sfence();
 	ip->ip_xindex = ip->ip_rindex;
     }
 
@@ -709,7 +724,7 @@ lwkt_cpusync_remote2(lwkt_cpusync_t poll)
 	wi = ip->ip_windex & MAXCPUFIFO_MASK;
 	ip->ip_func[wi] = (ipifunc2_t)lwkt_cpusync_remote2;
 	ip->ip_arg[wi] = poll;
-	cpu_mb1();
+	cpu_sfence();
 	++ip->ip_windex;
     }
 }

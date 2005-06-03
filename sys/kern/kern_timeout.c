@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.14 2004/09/19 02:52:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.15 2005/06/03 23:57:32 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -494,7 +494,7 @@ callout_stop(struct callout *c)
 		 */
 		int seq;
 
-		cpu_mb1();	/* don't let tgd alias c_gd */
+		cpu_ccfence();	/* don't let tgd alias c_gd */
 		seq = lwkt_send_ipiq(tgd, (void *)callout_stop, c);
 		lwkt_wait_ipiq(tgd, seq);
 	} else 

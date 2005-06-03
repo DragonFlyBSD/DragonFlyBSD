@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.14 2005/06/02 21:55:22 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.15 2005/06/03 23:57:32 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -134,7 +134,7 @@ lwkt_chktokens(thread_t td)
     for (refs = td->td_toks; refs; refs = refs->tr_next) {
 	tok = refs->tr_tok;
 	if ((dgd = tok->t_cpu) != gd) {
-	    cpu_mb1();
+	    cpu_ccfence();	/* don't let the compiler reload tok->t_cpu */
 	    r = 0;
 
 	    /*
@@ -238,7 +238,7 @@ _lwkt_gettokref(lwkt_tokref_t ref)
      * avoid using a critical section.
      */
     ref->tr_next = td->td_toks;
-    cpu_mb1();		/* order memory / we can be interrupted */
+    cpu_ccfence();	/* prevent compiler reordering */
     td->td_toks = ref;
 
     /*
@@ -322,7 +322,7 @@ _lwkt_trytokref(lwkt_tokref_t ref)
      * avoid using a critical section.
      */
     ref->tr_next = td->td_toks;
-    cpu_mb1();		/* order memory / we can be interrupted */
+    cpu_ccfence();	/* prevent compiler reordering */
     td->td_toks = ref;
 
     /*
@@ -490,7 +490,7 @@ lwkt_reqtoken_remote(void *data)
     if (lwkt_oktogiveaway_token(tok)) {
 	if (tok->t_cpu == gd)
 	    tok->t_cpu = ref->tr_reqgd;
-	cpu_mb1();
+	cpu_ccfence();	/* prevent compiler reordering */
 	ref->tr_magic = LWKT_TOKREF_MAGIC1;
     } else {
 	ref->tr_gdreqnext = gd->gd_tokreqbase;
@@ -519,7 +519,7 @@ lwkt_drain_token_requests(void)
 	KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2);
 	if (ref->tr_tok->t_cpu == gd)
 	    ref->tr_tok->t_cpu = ref->tr_reqgd;
-	cpu_mb1();
+	cpu_ccfence();	/* prevent compiler reordering */
 	ref->tr_magic = LWKT_TOKREF_MAGIC1;
     }
 }

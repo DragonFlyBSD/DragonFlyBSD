@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.41 2005/06/01 17:43:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.42 2005/06/03 23:57:32 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -172,8 +172,16 @@ sysctl_get_basetime(SYSCTL_HANDLER_ARGS)
 {
 	struct timespec *bt;
 	int error;
+	int index;
 
-	bt = &basetime[basetime_index];
+	/*
+	 * Because basetime data and index may be updated by another cpu,
+	 * a load fence is required to ensure that the data we read has
+	 * not been speculatively read relative to a possibly updated index.
+	 */
+	index = basetime_index;
+	cpu_lfence();
+	bt = &basetime[index];
 	error = SYSCTL_OUT(req, bt, sizeof(*bt));
 	return (error);
 }
@@ -297,9 +305,10 @@ set_timeofday(struct timespec *ts)
 	ntp_delta = 0;
 
 	/*
-	 * We now have a new basetime, update the index.
+	 * We now have a new basetime, make sure all other cpus have it,
+	 * then update the index.
 	 */
-	cpu_mb1();
+	cpu_sfence();
 	basetime_index = ni;
 
 	crit_exit();
@@ -478,7 +487,7 @@ hardclock(systimer_t info, struct intrframe *frame)
 	    /*
 	     * Finally, our new basetime is ready to go live!
 	     */
-	    cpu_mb1();
+	    cpu_sfence();
 	    basetime_index = ni;
 	}
 

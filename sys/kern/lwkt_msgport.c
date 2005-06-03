@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.31 2005/01/19 17:41:20 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.32 2005/06/03 23:57:32 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -502,7 +502,8 @@ lwkt_abortmsg(lwkt_msg_t msg)
 	    port = msg->ms_reply_port;
 	else
 	    port = msg->ms_target_port;
-	cpu_mb1();
+
+	cpu_ccfence();	/* don't let the compiler reload ms_*_port */
 
 	/*
 	 * The chase call must run on the cpu owning the port.  Fully
@@ -529,7 +530,7 @@ lwkt_abortmsg_remote(lwkt_msg_t msg)
 	port = msg->ms_reply_port;
     else
 	port = msg->ms_target_port;
-    cpu_mb1();
+    cpu_ccfence();	/* don't let the compiler reload ms_*_port */
     td = port->mp_td;
     if (td->td_gd != mycpu) {
 	lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_abortmsg_remote, msg);

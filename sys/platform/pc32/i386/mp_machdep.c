@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.35 2005/04/26 00:31:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.36 2005/06/03 23:57:30 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2348,7 +2348,7 @@ ap_init(void)
 	 * trying to send us an IPI.
 	 */
 	smp_startup_mask |= 1 << mycpu->gd_cpuid;
-	cpu_mb1();
+	cpu_mfence();
 
 	/*
 	 * Interlock for finalization.  Wait until mp_finish is non-zero,
@@ -2361,11 +2361,12 @@ ap_init(void)
 	 *
 	 * Note: we are the idle thread, we can only spin.
 	 *
-	 * Note: cpu_mb1() is memory volatile and prevents mp_finish from
-	 * 	 being cached.
+	 * Note: The load fence is memory volatile and prevents the compiler
+	 * from improperly caching mp_finish, and the cpu from improperly
+	 * caching it.
 	 */
 	while (mp_finish == 0)
-	    cpu_mb1();
+	    cpu_lfence();
 	++curthread->td_mpcount;
 	while (cpu_try_mplock() == 0)
 	    ;
@@ -2431,7 +2432,7 @@ ap_finish(void)
 		printf("Finish MP startup");
 	rel_mplock();
 	while (smp_active_mask != smp_startup_mask)
-		cpu_mb1();
+		cpu_lfence();
 	while (try_mplock() == 0)
 		;
 	if (bootverbose)

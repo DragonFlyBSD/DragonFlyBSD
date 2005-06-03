@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.73 2005/06/03 22:57:27 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.74 2005/06/03 23:57:32 dillon Exp $
  */
 
 /*
@@ -976,9 +976,10 @@ lwkt_acquire(thread_t td)
 
     gd = td->td_gd;
     mygd = mycpu;
+    cpu_lfence();
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
     while (td->td_flags & TDF_RUNNING)	/* XXX spin */
-	cpu_mb1();
+	cpu_lfence();
     if (gd != mygd) {
 	crit_enter_gd(mygd);
 	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
@@ -1110,7 +1111,6 @@ lwkt_setcpu_self(globaldata_t rgd)
 	lwkt_switch();
 	/* we are now on the target cpu */
 	crit_exit_quick(td);
-	cpu_mb1();
     }
 #endif
 }
@@ -1135,9 +1135,9 @@ lwkt_setcpu_remote(void *arg)
     globaldata_t gd = mycpu;
 
     while (td->td_flags & TDF_RUNNING)
-	cpu_mb1();
+	cpu_lfence();
     td->td_gd = gd;
-    cpu_mb2();
+    cpu_sfence();
     td->td_flags &= ~TDF_MIGRATING;
     _lwkt_enqueue(td);
 }

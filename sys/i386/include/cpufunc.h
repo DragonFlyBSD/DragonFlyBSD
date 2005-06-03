@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.12 2005/06/03 20:20:44 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.13 2005/06/03 23:57:31 dillon Exp $
  */
 
 /*
@@ -142,16 +142,65 @@ cpu_enable_intr(void)
 	__asm __volatile("sti");
 }
 
+/*
+ * Cpu and compiler memory ordering fence.  mfence ensures strong read and
+ * write ordering.
+ *
+ * A serializing or fence instruction is required here.  A locked bus
+ * cycle on data for which we already own cache mastership is the most
+ * portable.
+ */
 static __inline void
-cpu_mb1(void)
+cpu_mfence(void)
+{
+#ifdef SMP
+	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+#else
+	__asm __volatile("" : : : "memory");
+#endif
+}
+
+/*
+ * cpu_lfence() ensures strong read ordering for reads issued prior
+ * to the instruction verses reads issued afterwords.
+ *
+ * A serializing or fence instruction is required here.  A locked bus
+ * cycle on data for which we already own cache mastership is the most
+ * portable.
+ */
+static __inline void
+cpu_lfence(void)
+{
+#ifdef SMP
+	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+#else
+	__asm __volatile("" : : : "memory");
+#endif
+}
+
+/*
+ * cpu_lfence() ensures strong write ordering for writes issued prior
+ * to the instruction verses writes issued afterwords.  Writes are
+ * ordered on intel cpus so we do not actually have to do anything.
+ */
+static __inline void
+cpu_sfence(void)
 {
 	__asm __volatile("" : : : "memory");
 }
 
+/*
+ * cpu_ccfence() prevents the compiler from reordering instructions, in
+ * particular stores, relative to the current cpu.  Use cpu_sfence() if
+ * you need to guarentee ordering by both the compiler and by the cpu.
+ *
+ * This also prevents the compiler from caching memory loads into local
+ * variables across the routine.
+ */
 static __inline void
-cpu_mb2(void)
+cpu_ccfence(void)
 {
-	__asm __volatile("subl %%eax,%%eax; cpuid" : : : "ax", "bx", "cx", "dx", "memory");
+	__asm __volatile("" : : : "memory");
 }
 
 #ifdef _KERNEL

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.3 2005/03/22 23:42:53 davidxu Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.4 2005/06/03 23:57:32 dillon Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ umtx_wakeup(struct umtx_wakeup_args *uap)
     vm_paddr_t pa;
     void *waddr;
 
-    cpu_mb2();
+    cpu_mfence();
     if (vm_fault_quick((caddr_t)__DEQUALIFY(int *, uap->ptr), VM_PROT_READ) < 0)
 	return (EFAULT);
     if ((pa = pmap_kextract((vm_offset_t)uap->ptr)) == 0)
