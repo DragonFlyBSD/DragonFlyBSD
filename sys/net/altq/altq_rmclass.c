@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.3 2005/06/03 18:04:14 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.4 2005/06/03 18:20:36 swildner Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.

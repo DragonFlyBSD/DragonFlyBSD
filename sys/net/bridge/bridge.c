@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.15 2005/06/03 18:04:14 swildner Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.16 2005/06/03 18:20:36 swildner Exp $
  */
 
 /*

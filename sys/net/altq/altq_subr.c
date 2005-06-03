@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.4 2005/06/03 18:04:14 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.5 2005/06/03 18:20:36 swildner Exp $ */
 
 /*
  * Copyright (C) 1997-2003

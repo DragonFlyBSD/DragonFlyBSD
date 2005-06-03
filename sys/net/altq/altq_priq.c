@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.3 2005/06/03 18:04:14 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.4 2005/06/03 18:20:36 swildner Exp $ */
 
 /*
  * Copyright (C) 2000-2003

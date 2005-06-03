@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.3 2005/06/03 18:04:14 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.4 2005/06/03 18:20:36 swildner Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.

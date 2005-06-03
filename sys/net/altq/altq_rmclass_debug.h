@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass_debug.h,v 1.3 2002/11/29 04:36:24 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass_debug.h,v 1.2 2005/06/03 18:04:14 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass_debug.h,v 1.3 2005/06/03 18:20:36 swildner Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1998 All rights reserved.

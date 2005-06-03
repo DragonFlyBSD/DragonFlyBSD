@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.12 2005/06/03 18:04:14 swildner Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.13 2005/06/03 18:20:36 swildner Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*

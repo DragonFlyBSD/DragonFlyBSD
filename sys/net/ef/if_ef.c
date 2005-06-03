@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.15 2005/06/03 18:04:14 swildner Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.16 2005/06/03 18:20:36 swildner Exp $
  */
 
 #include "opt_inet.h"

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.12 2005/06/03 18:04:14 swildner Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.13 2005/06/03 18:20:36 swildner Exp $
  */
 
 #if !defined(KLD_MODULE)
