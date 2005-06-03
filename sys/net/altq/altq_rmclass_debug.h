@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass_debug.h,v 1.3 2002/11/29 04:36:24 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass_debug.h,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass_debug.h,v 1.2 2005/06/03 18:04:14 swildner Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1998 All rights reserved.
@@ -33,6 +33,10 @@
 
 #ifndef _ALTQ_ALTQ_RMCLASS_DEBUG_H_
 #define	_ALTQ_ALTQ_RMCLASS_DEBUG_H_
+
+#ifdef _KERNEL
+#include <sys/thread2.h>
+#endif
 
 /* #pragma ident	"@(#)rm_class_debug.h	1.7	98/05/04 SMI" */
 
@@ -74,11 +78,11 @@ struct cbqtrace {
 	} \
 }
 
-#define	LOCK_TRACE()	splimp()
-#define	UNLOCK_TRACE(x)	splx(x)
+#define	LOCK_TRACE()	crit_enter();
+#define	UNLOCK_TRACE()	crit_exit();
 
 #define	CBQTRACE(func, act, obj) {		\
-	int __s = LOCK_TRACE();			\
+	LOCK_TRACE();				\
 	int *_p = &cbqtrace_ptr->count;	\
 	*_p++ = ++cbqtrace_count;		\
 	*_p++ = (int)(func);			\
@@ -88,7 +92,7 @@ struct cbqtrace {
 		cbqtrace_ptr = cbqtrace_buffer; \
 	else					\
 		cbqtrace_ptr = (struct cbqtrace *)(void *)_p; \
-	UNLOCK_TRACE(__s);			\
+	UNLOCK_TRACE();				\
 	}
 #else
 

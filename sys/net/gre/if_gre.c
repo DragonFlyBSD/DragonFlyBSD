@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.11 2005/01/26 00:37:39 joerg Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.12 2005/06/03 18:04:14 swildner Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -62,6 +62,7 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -396,7 +397,6 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct if_laddrreq *lifr = (struct if_laddrreq *)data;
 	struct in_aliasreq *aifr = (struct in_aliasreq *)data;
 	struct gre_softc *sc = ifp->if_softc;
-	int s;
 	struct sockaddr_in si;
 	struct sockaddr *sa = NULL;
 	int error;
@@ -404,7 +404,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	error = 0;
 
-	s = splnet();
+	crit_enter();
 	switch (cmd) {
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
@@ -615,7 +615,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 	return (error);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.14 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.15 2005/06/03 18:04:14 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -40,6 +40,7 @@
 #include <sys/syslog.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if_llc.h>
@@ -148,9 +149,8 @@ static int
 ef_detach(struct efnet *sc)
 {
 	struct ifnet *ifp = (struct ifnet*)&sc->ef_ac.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	if (ifp->if_flags & IFF_UP) {
 		if_down(ifp);
@@ -164,7 +164,7 @@ ef_detach(struct efnet *sc)
 	}
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -178,11 +178,11 @@ ef_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct efnet *sc = ifp->if_softc;
 	struct ifaddr *ifa = (struct ifaddr*)data;
-	int s, error;
+	int error;
 
 	EFDEBUG("IOCTL %ld for %s\n", cmd, ifp->if_xname);
 	error = 0;
-	s = splimp();
+	crit_enter();
 	switch (cmd) {
 	    case SIOCSIFADDR:
 		if (sc->ef_frametype == ETHER_FT_8023 && 
@@ -202,7 +202,7 @@ ef_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	    default:
 		error = EINVAL;
 	}
-	splx(s);
+	crit_exit();
 	return error;
 }
 

@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.2 2005/05/24 20:59:05 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.3 2005/06/03 18:04:14 swildner Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -142,14 +142,14 @@ int
 hfsc_pfattach(struct pf_altq *a)
 {
 	struct ifnet *ifp;
-	int s, error;
+	int error;
 
 	if ((ifp = ifunit(a->ifname)) == NULL || a->altq_disc == NULL)
 		return (EINVAL);
-	s = splimp();
+	crit_enter();
 	error = altq_attach(&ifp->if_snd, ALTQT_HFSC, a->altq_disc,
 	    hfsc_enqueue, hfsc_dequeue, hfsc_request, NULL, NULL);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -341,7 +341,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 		  struct hfsc_class *parent, int qlimit, int flags, int qid)
 {
 	struct hfsc_class *cl, *p;
-	int i, s;
+	int i;
 
 	if (hif->hif_classes >= HFSC_MAX_CLASSES)
 		return (NULL);
@@ -435,7 +435,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 	cl->cl_hif = hif;
 	cl->cl_parent = parent;
 
-	s = splimp();
+	crit_enter();
 	hif->hif_classes++;
 
 	/*
@@ -454,7 +454,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 			}
 		}
 		if (i == HFSC_MAX_CLASSES) {
-			splx(s);
+			crit_exit();
 			goto err_ret;
 		}
 	}
@@ -474,7 +474,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 			p = p->cl_siblings;
 		p->cl_siblings = cl;
 	}
-	splx(s);
+	crit_exit();
 
 	return (cl);
 
@@ -506,7 +506,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 static int
 hfsc_class_destroy(struct hfsc_class *cl)
 {
-	int i, s;
+	int i;
 
 	if (cl == NULL)
 		return (0);
@@ -514,7 +514,7 @@ hfsc_class_destroy(struct hfsc_class *cl)
 	if (is_a_parent_class(cl))
 		return (EBUSY);
 
-	s = splimp();
+	crit_enter();
 
 	if (!qempty(cl->cl_q))
 		hfsc_purgeq(cl);
@@ -545,7 +545,7 @@ hfsc_class_destroy(struct hfsc_class *cl)
 	}
 
 	cl->cl_hif->hif_classes--;
-	splx(s);
+	crit_exit();
 
 	actlist_destroy(cl->cl_actc);
 

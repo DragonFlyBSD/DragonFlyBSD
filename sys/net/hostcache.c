@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.c,v 1.6.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.5 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.6 2005/06/03 18:04:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/hostcache.h>
 #include <net/route.h>
@@ -87,7 +88,6 @@ hc_get(struct sockaddr *sa)
 	u_long hash;
 	struct hcentry *hc;
 	struct hctable *hct;
-	int s;
 
 	hct = &hctable[sa->sa_family];
 	if (hct->hct_nentries == 0)
@@ -100,7 +100,7 @@ hc_get(struct sockaddr *sa)
 	}
 	if (hc == NULL)
 		return NULL;
-	s = splnet();
+	crit_enter();
 	if (hc->hc_rt && !(hc->hc_rt->rt_flags & RTF_UP)) {
 		RTFREE(hc->hc_rt);
 		hc->hc_rt = NULL;
@@ -109,7 +109,7 @@ hc_get(struct sockaddr *sa)
 		hc->hc_rt = rtlookup(hc->hc_host);
 	}
 	hc_ref(hc);
-	splx(s);
+	crit_exit();
 	/* XXX move to front of list? */
 	return hc;
 }
@@ -117,18 +117,18 @@ hc_get(struct sockaddr *sa)
 void
 hc_ref(struct hcentry *hc)
 {
-	int s = splnet();
+	crit_enter();
 	if (hc->hc_refcnt++ == 0) {
 		hc->hc_hct->hct_idle--;
 		hc->hc_hct->hct_active++;
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
 hc_rele(struct hcentry *hc)
 {
-	int s = splnet();
+	crit_enter();
 #ifdef DIAGNOSTIC
 	printf("hc_rele: %p: negative refcnt!\n", (void *)hc);
 #endif
@@ -138,7 +138,7 @@ hc_rele(struct hcentry *hc)
 		hc->hc_hct->hct_active--;
 		hc->hc_idlesince = mono_time; /* XXX right one? */
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -151,7 +151,6 @@ hc_insert(struct hcentry *hc)
 	struct hcentry *hc2;
 	struct hctable *hct;
 	u_long hash;
-	int s;
 
 	hct = &hctable[hc->hc_host->sa_family];
 	hash = hct->hct_cb->hccb_hash(hc->hc_host, hct->hct_nentries);
@@ -164,7 +163,7 @@ hc_insert(struct hcentry *hc)
 	if (hc2 != NULL)
 		return EEXIST;
 	hc->hc_hct = hct;
-	s = splnet();
+	crit_enter();
 	LIST_INSERT_HEAD(&hct->hct_heads[hash], hc, hc_link);
 	hct->hct_idle++;
 	/*
@@ -172,7 +171,7 @@ hc_insert(struct hcentry *hc)
 	 */
 	if (100 * (hct->hct_idle + hct->hct_active) > 75 * hct->hct_nentries)
 		maybe_bump_hash(hct);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -185,7 +184,7 @@ int
 hc_delete(struct hcentry *hc)
 {
 	struct hctable *hct;
-	int error, s;
+	int error;
 
 	if (hc->hc_refcnt > 0)
 		return 0;
@@ -195,10 +194,10 @@ hc_delete(struct hcentry *hc)
 	if (error)
 		return 0;
 
-	s = splnet();
+	crit_enter();
 	LIST_REMOVE(hc, hc_link);
 	hc->hc_hct->hct_idle--;
-	splx(s);
+	crit_exit();
 	free(hc, M_HOSTCACHE);
 	return 0;
 }
@@ -208,7 +207,7 @@ hc_timeout(void *xhct)
 {
 	struct hcentry *hc;
 	struct hctable *hct;
-	int j, s;
+	int j;
 	time_t start;
 
 	hct = xhct;
@@ -224,10 +223,10 @@ hc_timeout(void *xhct)
 			if (hc->hc_idlesince.tv_sec + hc_maxidle <= start) {
 				if (hct->hct_cb->hccb_delete(hc))
 					continue;
-				s = splnet();
+				crit_enter();
 				LIST_REMOVE(hc, hc_link);
 				hct->hct_idle--;
-				splx(s);
+				crit_exit();
 			}
 		}
 	}

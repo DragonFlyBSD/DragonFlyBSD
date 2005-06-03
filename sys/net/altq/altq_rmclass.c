@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.2 2005/05/25 01:44:33 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.3 2005/06/03 18:04:14 swildner Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -196,7 +196,6 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 {
 	struct rm_class *cl;
 	struct rm_class *peer;
-	int s;
 
 	if (pri >= RM_MAXPRIO)
 		return (NULL);
@@ -296,7 +295,7 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 	/*
 	 * put the class into the class tree
 	 */
-	s = splimp();
+	crit_enter();
 	if ((peer = ifd->active_[pri]) != NULL) {
 		/* find the last class at this pri */
 		cl->peer_ = peer;
@@ -328,7 +327,7 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 		ifd->alloc_[pri] += cl->allotment_;
 		rmc_wrr_set_weights(ifd);
 	}
-	splx(s);
+	crit_exit();
 	return (cl);
 }
 
@@ -338,12 +337,11 @@ rmc_modclass(struct rm_class *cl, u_int nsecPerByte, int maxq, u_int maxidle,
 {
 	struct rm_ifdat *ifd;
 	u_int old_allotment;
-	int s;
 
 	ifd = cl->ifdat_;
 	old_allotment = cl->allotment_;
 
-	s = splimp();
+	crit_enter();
 	cl->allotment_ = RM_NS_PER_SEC / nsecPerByte; /* Bytes per sec */
 	cl->qthresh_ = 0;
 	cl->ns_per_byte_ = nsecPerByte;
@@ -377,7 +375,7 @@ rmc_modclass(struct rm_class *cl, u_int nsecPerByte, int maxq, u_int maxidle,
 		ifd->alloc_[cl->pri_] += cl->allotment_ - old_allotment;
 		rmc_wrr_set_weights(ifd);
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -530,14 +528,13 @@ void
 rmc_delete_class(struct rm_ifdat *ifd, struct rm_class *cl)
 {
 	struct rm_class *p, *head, *previous;
-	int s;
 
 	KKASSERT(cl->children_ == NULL);
 
 	if (cl->sleeping_)
 		callout_stop(&cl->callout_);
 
-	s = splimp();
+	crit_enter();
 	/*
 	 * Free packets in the packet queue.
 	 * XXX - this may not be a desired behavior.  Packets should be
@@ -610,7 +607,7 @@ rmc_delete_class(struct rm_ifdat *ifd, struct rm_class *cl)
 	rmc_depth_recompute(ifd->root_);
 #endif
 
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Free the class structure.

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.14 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.15 2005/06/03 18:04:14 swildner Exp $
  */
 
 /*
@@ -284,7 +284,7 @@ static void
 bridge_off(void)
 {
     struct ifnet *ifp ;
-    int i, s;
+    int i;
 
     DEB(printf("bridge_off: n_clusters %d\n", n_clusters);)
     TAILQ_FOREACH(ifp, &ifnet, if_link) {
@@ -295,9 +295,9 @@ bridge_off(void)
 	b = &(ifp2sc[ifp->if_index]);
 
 	if ( b->flags & IFF_BDG_PROMISC ) {
-	    s = splimp();
+	    crit_enter();
 	    ifpromisc(ifp, 0);
-	    splx(s);
+	    crit_exit();
 	    b->flags &= ~(IFF_BDG_PROMISC|IFF_MUTE) ;
 	    DEB(printf(">> now %s promisc OFF if_flags 0x%x bdg_flags 0x%x\n",
 		    ifp->if_xname,
@@ -309,7 +309,7 @@ bridge_off(void)
     }
     /* flush_tables */
 
-    s = splimp();
+    crit_enter();
     for (i=0; i < n_clusters; i++) {
 	free(clusters[i].ht, M_IFADDR);
 	free(clusters[i].my_macs, M_IFADDR);
@@ -318,7 +318,7 @@ bridge_off(void)
 	free(clusters, M_IFADDR);
     clusters = NULL;
     n_clusters =0;
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -328,7 +328,6 @@ static void
 bridge_on(void)
 {
     struct ifnet *ifp ;
-    int s ;
 
     TAILQ_FOREACH(ifp, &ifnet, if_link) {
 	struct bdg_softc *b = &ifp2sc[ifp->if_index];
@@ -336,15 +335,15 @@ bridge_on(void)
 	if ( !(b->flags & IFF_USED) )
 	    continue ;
 	if ( !( ifp->if_flags & IFF_UP) ) {
-	    s = splimp();
+	    crit_enter();
 	    if_up(ifp);
-	    splx(s);
+	    crit_exit();
 	}
 	if ( !(b->flags & IFF_BDG_PROMISC) ) {
 	    int ret ;
-	    s = splimp();
+	    crit_enter();
 	    ret = ifpromisc(ifp, 1);
-	    splx(s);
+	    crit_exit();
 	    b->flags |= IFF_BDG_PROMISC ;
 	    DEB(printf(">> now %s promisc ON if_flags 0x%x bdg_flags 0x%x\n",
 		    ifp->if_xname,
@@ -1104,7 +1103,6 @@ bdginit(void)
 static int
 bridge_modevent(module_t mod, int type, void *unused)
 {
-	int s;
 	int err = 0 ;
 
 	switch (type) {
@@ -1113,16 +1111,16 @@ bridge_modevent(module_t mod, int type, void *unused)
 			err = EEXIST;
 			break ;
 		}
-		s = splimp();
+		crit_enter();
 		err = bdginit();
-		splx(s);
+		crit_exit();
 		break;
 	case MOD_UNLOAD:
 #if !defined(KLD_MODULE)
 		printf("bridge statically compiled, cannot unload\n");
 		err = EINVAL ;
 #else
-		s = splimp();
+		crit_enter();
 		do_bridge = 0;
 		bridge_in_ptr = NULL;
 		bdg_forward_ptr = NULL;
@@ -1133,7 +1131,7 @@ bridge_modevent(module_t mod, int type, void *unused)
 		    free(clusters, M_IFADDR);
 		free(ifp2sc, M_IFADDR);
 		ifp2sc = NULL ;
-		splx(s);
+		crit_exit();
 #endif
 		break;
 	default:

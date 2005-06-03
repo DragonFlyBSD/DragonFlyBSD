@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.3 2005/05/24 20:59:05 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.4 2005/06/03 18:04:14 swildner Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -44,6 +44,7 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -144,20 +145,18 @@ altq_detach(struct ifaltq *ifq)
 int
 altq_enable(struct ifaltq *ifq)
 {
-	int s;
-
 	if (!ifq_is_ready(ifq))
 		return ENXIO;
 	if (ifq_is_enabled(ifq))
 		return 0;
 
-	s = splimp();
+	crit_enter();
 	ifq_purge(ifq);
 	KKASSERT(ifq->ifq_len == 0);
 	ifq->altq_flags |= ALTQF_ENABLED;
 	if (ifq->altq_clfier != NULL)
 		ifq->altq_flags |= ALTQF_CLASSIFY;
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -165,16 +164,14 @@ altq_enable(struct ifaltq *ifq)
 int
 altq_disable(struct ifaltq *ifq)
 {
-	int s;
-
 	if (!ifq_is_enabled(ifq))
 		return 0;
 
-	s = splimp();
+	crit_enter();
 	ifq_purge(ifq);
 	KKASSERT(ifq->ifq_len == 0);
 	ifq->altq_flags &= ~(ALTQF_ENABLED|ALTQF_CLASSIFY);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -196,9 +193,8 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 	struct mbuf *m;
 	int64_t interval;
 	uint64_t now;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	tbr = ifq->altq_tbr;
 	if (op == ALTDQ_REMOVE && tbr->tbr_lastop == ALTDQ_POLL) {
 		/* if this is a remove after poll, bypass tbr check */
@@ -218,7 +214,7 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 		}
 		/* if token is still negative, don't allow dequeue */
 		if (tbr->tbr_token <= 0) {
-			splx(s);
+			crit_exit();
 			return (NULL);
 		}
 	}
@@ -233,7 +229,7 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 	if (m != NULL && op == ALTDQ_REMOVE)
 		tbr->tbr_token -= TBR_SCALE(m_pktlen(m));
 	tbr->tbr_lastop = op;
-	splx(s);
+	crit_exit();
 	return (m);
 }
 
@@ -293,10 +289,10 @@ static void
 tbr_timeout(void *arg)
 {
 	struct ifnet *ifp;
-	int active, s;
+	int active;
 
 	active = 0;
-	s = splimp();
+	crit_enter();
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
 		if (ifp->if_snd.altq_tbr == NULL)
 			continue;
@@ -304,7 +300,7 @@ tbr_timeout(void *arg)
 		if (!ifq_is_empty(&ifp->if_snd) && ifp->if_start != NULL)
 			(*ifp->if_start)(ifp);
 	}
-	splx(s);
+	crit_exit();
 	if (active > 0)
 		callout_reset(&tbr_callout, 1, tbr_timeout, NULL);
 	else
@@ -339,7 +335,7 @@ altq_pfattach(struct pf_altq *a)
 {
 	struct ifnet *ifp;
 	struct tb_profile tb;
-	int s, error = 0;
+	int error = 0;
 
 	switch (a->scheduler) {
 	case ALTQT_NONE:
@@ -375,9 +371,9 @@ altq_pfattach(struct pf_altq *a)
 	if (error == 0 && ifp != NULL && ifq_is_enabled(&ifp->if_snd)) {
 		tb.rate = a->ifbandwidth;
 		tb.depth = a->tbrsize;
-		s = splimp();
+		crit_enter();
 		error = tbr_set(&ifp->if_snd, &tb);
-		splx(s);
+		crit_exit();
 	}
 
 	return (error);
@@ -392,7 +388,7 @@ int
 altq_pfdetach(struct pf_altq *a)
 {
 	struct ifnet *ifp;
-	int s, error = 0;
+	int error = 0;
 
 	if ((ifp = ifunit(a->ifname)) == NULL)
 		return (EINVAL);
@@ -401,12 +397,12 @@ altq_pfdetach(struct pf_altq *a)
 	if (a->altq_disc == NULL || a->altq_disc != ifp->if_snd.altq_disc)
 		return (0);
 
-	s = splimp();
+	crit_enter();
 	if (ifq_is_enabled(&ifp->if_snd))
 		error = altq_disable(&ifp->if_snd);
 	if (error == 0)
 		error = altq_detach(&ifp->if_snd);
-	splx(s);
+	crit_exit();
 
 	return (error);
 }

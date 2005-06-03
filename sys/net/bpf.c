@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.25 2005/04/20 10:22:44 hmp Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.26 2005/06/03 18:04:14 swildner Exp $
  */
 
 #include "use_bpf.h"
@@ -60,6 +60,8 @@
 
 #include <sys/socket.h>
 #include <sys/vnode.h>
+
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/bpf.h>
@@ -335,16 +337,15 @@ static int
 bpfclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct bpf_d *d = dev->si_drv1;
-	int s;
 
 	funsetown(d->bd_sigio);
-	s = splimp();
+	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
 	d->bd_state = BPF_IDLE;
 	if (d->bd_bif != NULL)
 		bpf_detachd(d);
-	splx(s);
+	crit_exit();
 	bpf_freed(d);
 	dev->si_drv1 = NULL;
 	free(d, M_BPF);
@@ -372,7 +373,6 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	struct bpf_d *d = dev->si_drv1;
 	int timed_out;
 	int error;
-	int s;
 
 	/*
 	 * Restrict application to use a buffer the same size as
@@ -381,7 +381,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	if (uio->uio_resid != d->bd_bufsize)
 		return(EINVAL);
 
-	s = splimp();
+	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
 	timed_out = (d->bd_state == BPF_TIMED_OUT);
@@ -409,17 +409,17 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 		 * it before using it again.
 		 */
 		if (d->bd_bif == NULL) {
-			splx(s);
+			crit_exit();
 			return(ENXIO);
 		}
 
 		if (ioflag & IO_NDELAY) {
-			splx(s);
+			crit_exit();
 			return(EWOULDBLOCK);
 		}
 		error = tsleep(d, PCATCH, "bpf", d->bd_rtout);
 		if (error == EINTR || error == ERESTART) {
-			splx(s);
+			crit_exit();
 			return(error);
 		}
 		if (error == EWOULDBLOCK) {
@@ -437,7 +437,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 				break;
 
 			if (d->bd_slen == 0) {
-				splx(s);
+				crit_exit();
 				return(0);
 			}
 			ROTATE_BUFFERS(d);
@@ -447,7 +447,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	/*
 	 * At this point, we know we have something in the hold slot.
 	 */
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Move data from hold buffer into user space.
@@ -456,11 +456,11 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	 */
 	error = uiomove(d->bd_hbuf, d->bd_hlen, uio);
 
-	s = splimp();
+	crit_enter();
 	d->bd_fbuf = d->bd_hbuf;
 	d->bd_hbuf = NULL;
 	d->bd_hlen = 0;
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -489,15 +489,14 @@ static void
 bpf_timed_out(void *arg)
 {
 	struct bpf_d *d = (struct bpf_d *)arg;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	if (d->bd_state == BPF_WAITING) {
 		d->bd_state = BPF_TIMED_OUT;
 		if (d->bd_slen != 0)
 			bpf_wakeup(d);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static	int
@@ -506,7 +505,7 @@ bpfwrite(dev_t dev, struct uio *uio, int ioflag)
 	struct bpf_d *d = dev->si_drv1;
 	struct ifnet *ifp;
 	struct mbuf *m;
-	int error, s;
+	int error;
 	static struct sockaddr dst;
 	int datlen;
 
@@ -528,9 +527,9 @@ bpfwrite(dev_t dev, struct uio *uio, int ioflag)
 	if (d->bd_hdrcmplt)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
-	s = splnet();
+	crit_enter();
 	error = (*ifp->if_output)(ifp, m, &dst, (struct rtentry *)NULL);
-	splx(s);
+	crit_exit();
 	/*
 	 * The driver frees the mbuf.
 	 */
@@ -580,13 +579,13 @@ static int
 bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 	struct bpf_d *d = dev->si_drv1;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
 	d->bd_state = BPF_IDLE;
-	splx(s);
+	crit_exit();
 
 	switch (cmd) {
 
@@ -601,11 +600,11 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		{
 			int n;
 
-			s = splimp();
+			crit_enter();
 			n = d->bd_slen;
 			if (d->bd_hbuf)
 				n += d->bd_hlen;
-			splx(s);
+			crit_exit();
 
 			*(int *)addr = n;
 			break;
@@ -660,9 +659,9 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Flush read packet buffer.
 	 */
 	case BIOCFLUSH:
-		s = splimp();
+		crit_enter();
 		reset_d(d);
-		splx(s);
+		crit_exit();
 		break;
 
 	/*
@@ -676,13 +675,13 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			error = EINVAL;
 			break;
 		}
-		s = splimp();
+		crit_enter();
 		if (d->bd_promisc == 0) {
 			error = ifpromisc(d->bd_bif->bif_ifp, 1);
 			if (error == 0)
 				d->bd_promisc = 1;
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 	/*
@@ -874,16 +873,15 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 {
 	struct bpf_insn *fcode, *old;
 	u_int flen, size;
-	int s;
 
 	old = d->bd_filter;
 	if (fp->bf_insns == NULL) {
 		if (fp->bf_len != 0)
 			return(EINVAL);
-		s = splimp();
+		crit_enter();
 		d->bd_filter = NULL;
 		reset_d(d);
-		splx(s);
+		crit_exit();
 		if (old != 0)
 			free(old, M_BPF);
 		return(0);
@@ -896,10 +894,10 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 	fcode = (struct bpf_insn *)malloc(size, M_BPF, M_WAITOK);
 	if (copyin(fp->bf_insns, fcode, size) == 0 &&
 	    bpf_validate(fcode, (int)flen)) {
-		s = splimp();
+		crit_enter();
 		d->bd_filter = fcode;
 		reset_d(d);
-		splx(s);
+		crit_exit();
 		if (old != 0)
 			free(old, M_BPF);
 
@@ -918,7 +916,7 @@ static int
 bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 {
 	struct bpf_if *bp;
-	int s, error;
+	int error;
 	struct ifnet *theywant;
 
 	theywant = ifunit(ifr->ifr_name);
@@ -951,7 +949,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 			if (error != 0)
 				return(error);
 		}
-		s = splimp();
+		crit_enter();
 		if (bp != d->bd_bif) {
 			if (d->bd_bif != NULL) {
 				/*
@@ -963,7 +961,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 			bpf_attachd(d, bp);
 		}
 		reset_d(d);
-		splx(s);
+		crit_exit();
 		return(0);
 	}
 
@@ -981,7 +979,6 @@ int
 bpfpoll(dev_t dev, int events, struct thread *td)
 {
 	struct bpf_d *d;
-	int s;
 	int revents;
 
 	d = dev->si_drv1;
@@ -989,7 +986,7 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 		return(ENXIO);
 
 	revents = events & (POLLOUT | POLLWRNORM);
-	s = splimp();
+	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
 		/*
 		 * An imitation of the FIONREAD ioctl code.
@@ -1011,7 +1008,7 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 	return(revents);
 }
 
@@ -1289,9 +1286,8 @@ bpfdetach(struct ifnet *ifp)
 {
 	struct bpf_if *bp, *bp_prev;
 	struct bpf_d *d;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	/* Locate BPF interface information */
 	bp_prev = NULL;
@@ -1303,7 +1299,7 @@ bpfdetach(struct ifnet *ifp)
 
 	/* Interface wasn't attached */
 	if (bp->bif_ifp == NULL) {
-		splx(s);
+		crit_exit();
 		printf("bpfdetach: %s was not attached\n", ifp->if_xname);
 		return;
 	}
@@ -1320,7 +1316,7 @@ bpfdetach(struct ifnet *ifp)
 
 	free(bp, M_BPF);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1361,7 +1357,6 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 	int error, opromisc;
 	struct ifnet *ifp;
 	struct bpf_if *bp;
-	int s;
 
 	if (d->bd_bif->bif_dlt == dlt)
 		return (0);
@@ -1372,7 +1367,7 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 	}
 	if (bp != NULL) {
 		opromisc = d->bd_promisc;
-		s = splimp();	
+		crit_enter();
 		bpf_detachd(d);
 		bpf_attachd(d, bp);
 		reset_d(d);
@@ -1385,7 +1380,7 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 			else
 				d->bd_promisc = 1;
 		}
-		splx(s);
+		crit_exit();
 	}
 	return(bp == NULL ? EINVAL : 0);
 }

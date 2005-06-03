@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.11 2005/01/26 00:37:39 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.12 2005/06/03 18:04:14 swildner Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/syslog.h>
 #include <sys/protosw.h>
 #include <sys/conf.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>	/* XXX: Shouldn't really be required! */
 #include <machine/cpu.h>
 
@@ -679,10 +680,9 @@ gif_set_tunnel(ifp, src, dst)
 	struct gif_softc *sc = (struct gif_softc *)ifp;
 	struct gif_softc *sc2;
 	struct sockaddr *osrc, *odst, *sa;
-	int s;
 	int error = 0; 
 
-	s = splnet();
+	crit_enter();
 
 	LIST_FOREACH(sc2, &gif_softc_list, gif_list) {
 		if (sc2 == sc)
@@ -764,7 +764,7 @@ gif_set_tunnel(ifp, src, dst)
 		ifp->if_flags |= IFF_RUNNING;
 	else
 		ifp->if_flags &= ~IFF_RUNNING;
-	splx(s);
+	crit_exit();
 
 	return 0;
 
@@ -773,7 +773,7 @@ gif_set_tunnel(ifp, src, dst)
 		ifp->if_flags |= IFF_RUNNING;
 	else
 		ifp->if_flags &= ~IFF_RUNNING;
-	splx(s);
+	crit_exit();
 
 	return error;
 }
@@ -783,9 +783,8 @@ gif_delete_tunnel(ifp)
 	struct ifnet *ifp;
 {
 	struct gif_softc *sc = (struct gif_softc *)ifp;
-	int s;
 
-	s = splnet();
+	crit_enter();
 
 	if (sc->gif_psrc) {
 		free((caddr_t)sc->gif_psrc, M_IFADDR);
@@ -807,5 +806,5 @@ gif_delete_tunnel(ifp)
 		ifp->if_flags |= IFF_RUNNING;
 	else
 		ifp->if_flags &= ~IFF_RUNNING;
-	splx(s);
+	crit_exit();
 }
