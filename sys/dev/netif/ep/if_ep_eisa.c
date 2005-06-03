@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.8 2005/05/31 08:10:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.9 2005/06/03 23:05:22 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,7 @@ ep_eisa_probe(device_t dev)
 	    break;
 	default:
 				/* Disabled */
-	    device_printf("3COM Network Adapter at "
+	    device_printf(dev, "3COM Network Adapter at "
 			  "slot %d has its IRQ disabled. "
 			  "Probe failed.\n", 
 			  eisa_get_slot(dev));
