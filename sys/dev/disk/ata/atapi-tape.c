@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.11 2004/05/19 22:52:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.12 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -44,6 +44,7 @@
 #include <machine/bus.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 #include "ata-all.h"
 #include "atapi-all.h"
 #include "atapi-tape.h"
@@ -419,7 +420,6 @@ static void
 aststrategy(struct buf *bp)
 {
     struct ast_softc *stp = bp->b_dev->si_drv1;
-    int s;
 
     if (stp->device->flags & ATA_D_DETACHING) {
 	bp->b_flags |= B_ERROR;
@@ -460,9 +460,9 @@ aststrategy(struct buf *bp)
 	}
     }
 
-    s = splbio();
+    crit_enter();
     bufq_insert_tail(&stp->queue, bp);
-    splx(s);
+    crit_exit();
     ata_start(stp->device->channel);
 }
 

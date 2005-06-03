@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.11 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.12 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <machine/bus.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 #include "ata-all.h"
 #include "atapi-all.h"
 #include "atapi-fd.h"
@@ -294,7 +295,6 @@ static void
 afdstrategy(struct buf *bp)
 {
     struct afd_softc *fdp = bp->b_dev->si_drv1;
-    int s;
 
     if (fdp->device->flags & ATA_D_DETACHING) {
 	bp->b_flags |= B_ERROR;
@@ -310,9 +310,9 @@ afdstrategy(struct buf *bp)
 	return;
     }
 
-    s = splbio();
+    crit_enter();
     bufqdisksort(&fdp->queue, bp);
-    splx(s);
+    crit_exit();
     ata_start(fdp->device->channel);
 }
 

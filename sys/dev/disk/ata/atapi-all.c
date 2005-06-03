@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.14 2004/09/18 18:33:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.15 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -46,6 +46,7 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 #include "ata-all.h"
 #include "atapi-all.h"
 
@@ -177,7 +178,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 		atapi_callback_t callback, void *driver)
 {
     struct atapi_request *request;
-    int error, s;
+    int error;
 
     request = malloc(sizeof(struct atapi_request), M_ATAPI, M_INTWAIT|M_ZERO);
     request->device = atadev;
@@ -203,7 +204,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     atapi_dump("ccb = ", &request->ccb[0], sizeof(request->ccb));
 #endif
     /* append onto controller queue and try to start controller */
-    s = splbio();
+    crit_enter();
     if (flags & ATPR_F_AT_HEAD)
 	TAILQ_INSERT_HEAD(&atadev->channel->atapi_queue, request, chain);
     else
@@ -212,14 +213,14 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 
     /* if callback used, then just return, gets called from interrupt context */
     if (callback) {
-	splx(s);
+	crit_exit();
 	return 0;
     }
 
     /* only sleep when command is in progress */
     if (request->error == EINPROGRESS)
 	tsleep((caddr_t)request, 0, "atprq", 0);
-    splx(s);
+    crit_exit();
     error = request->error;
     if (error)
 	 bcopy(&request->sense, atadev->result, sizeof(struct atapi_reqsense));

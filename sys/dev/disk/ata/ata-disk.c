@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.23 2004/09/23 11:50:03 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.24 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -54,6 +54,7 @@
 #include "ata-raid.h"
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 /* device structures */
 static d_open_t		adopen;
@@ -287,14 +288,13 @@ static int
 adclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ad_softc *adp = dev->si_drv1;
-    int s;
 
-    s = splbio();	/* interlock non-atomic channel lock */
+    crit_enter();	/* interlock non-atomic channel lock */
     ATA_SLEEPLOCK_CH(adp->device->channel, ATA_CONTROL);
     if (ata_command(adp->device, ATA_C_FLUSHCACHE, 0, 0, 0, ATA_WAIT_READY))
 	ata_prtdev(adp->device, "flushing cache on close failed\n");
     ATA_UNLOCK_CH(adp->device->channel);
-    splx(s);
+    crit_exit();
     return 0;
 }
 
@@ -306,7 +306,6 @@ static void
 adstrategy(struct buf *bp)
 {
     struct ad_softc *adp = bp->b_dev->si_drv1;
-    int s;
 
     if (adp->device->flags & ATA_D_DETACHING) {
 	bp->b_error = ENXIO;
@@ -314,9 +313,9 @@ adstrategy(struct buf *bp)
 	biodone(bp);
 	return;
     }
-    s = splbio();
+    crit_enter();
     bufqdisksort(&adp->queue, bp);
-    splx(s);
+    crit_exit();
     ata_start(adp->device->channel);
 }
 
@@ -829,11 +828,11 @@ ad_service(struct ad_softc *adp, int change)
 static void
 ad_free(struct ad_request *request)
 {
-    int s = splbio();
+    crit_enter();
     ata_dmafree(request->softc->device);
     request->softc->tags[request->tag] = NULL;
     mpipe_free(&request->softc->device->channel->req_mpipe, request);
-    splx(s);
+    crit_exit();
 }
 
 static void

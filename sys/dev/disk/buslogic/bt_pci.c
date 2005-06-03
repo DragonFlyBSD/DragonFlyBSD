@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_pci.c,v 1.11 2000/01/17 12:38:00 nyan Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_pci.c,v 1.3 2003/08/07 21:16:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt_pci.c,v 1.4 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include "btreg.h"
 
@@ -162,7 +163,6 @@ static int
 bt_pci_attach(device_t dev)
 {
 	struct bt_softc   *bt = device_get_softc(dev);
-	int		   opri;
 	int		   error;
 
 	/* Initialize softc */
@@ -194,16 +194,16 @@ bt_pci_attach(device_t dev)
 	 * that changes, we mask our interrupts during attach
 	 * too.
 	 */
-	opri = splcam();
+	crit_enter();
 
 	if (bt_probe(dev) || bt_fetch_adapter_info(dev) || bt_init(dev)) {
 		bt_pci_release_resources(dev);
-		splx(opri);
+		crit_exit();
 		return (ENXIO);
 	}
 
 	error = bt_attach(dev);
-	splx(opri);
+	crit_exit();
 
 	if (error) {
 		bt_pci_release_resources(dev);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.18 2004/11/12 00:09:03 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.19 2005/06/03 21:56:23 swildner Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -109,6 +109,8 @@
 #include <sys/buf2.h>
 
 #include <sys/ccdvar.h>
+
+#include <sys/thread2.h>
 
 #include <vm/vm_zone.h>
 
@@ -757,7 +759,6 @@ ccdstrategy(bp)
 {
 	int unit = ccdunit(bp->b_dev);
 	struct ccd_softc *cs = &ccd_softc[unit];
-	int s;
 	int wlabel;
 	struct disklabel *lp;
 
@@ -820,9 +821,9 @@ ccdstrategy(bp)
 	/*
 	 * "Start" the unit.
 	 */
-	s = splbio();
+	crit_enter();
 	ccdstart(cs, bp);
-	splx(s);
+	crit_exit();
 	return;
 done:
 	biodone(bp);
@@ -1115,9 +1116,9 @@ ccdiodone(cbp)
 {
 	struct buf *bp = cbp->cb_obp;
 	int unit = cbp->cb_unit;
-	int count, s;
+	int count;
 
-	s = splbio();
+	crit_enter();
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
 		printf("ccdiodone(%x)\n", cbp);
@@ -1183,7 +1184,7 @@ ccdiodone(cbp)
 			if ((cbp->cb_pflags & CCDPF_MIRROR_DONE) == 0) {
 				cbp->cb_mirror->cb_pflags |= CCDPF_MIRROR_DONE;
 				putccdbuf(cbp);
-				splx(s);
+				crit_exit();
 				return;
 			}
 		} else {
@@ -1201,7 +1202,7 @@ ccdiodone(cbp)
 					    &cbp->cb_mirror->cb_buf
 					);
 					putccdbuf(cbp);
-					splx(s);
+					crit_exit();
 					return;
 				} else {
 					putccdbuf(cbp->cb_mirror);
@@ -1231,7 +1232,7 @@ ccdiodone(cbp)
 		panic("ccdiodone: count");
 	if (bp->b_resid == 0)
 		ccdintr(&ccd_softc[unit], bp);
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1239,7 +1240,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 {
 	int unit = ccdunit(dev);
 	int i, j, lookedup = 0, error = 0;
-	int part, pmask, s;
+	int part, pmask;
 	struct ccd_softc *cs;
 	struct ccd_ioctl *ccio = (struct ccd_ioctl *)data;
 	struct ccddevice ccd;
@@ -1423,10 +1424,10 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		devstat_remove_entry(&cs->device_stats);
 
 		/* This must be atomic. */
-		s = splhigh();
+		crit_enter();
 		ccdunlock(cs);
 		bzero(cs, sizeof(struct ccd_softc));
-		splx(s);
+		crit_exit();
 
 		break;
 

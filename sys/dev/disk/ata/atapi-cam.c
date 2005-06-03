@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.7 2004/04/07 06:22:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.8 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/ata.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>
 
 #include <bus/cam/cam.h>
@@ -225,7 +226,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
     struct atapi_hcb *hcb = NULL;
     int unit = cam_sim_unit(sim);
     int bus = cam_sim_bus(sim);
-    int len, s;
+    int len;
     char *buf;
 
     switch (ccb_h->func_code) {
@@ -486,9 +487,9 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    ++len;
 	    buf = hcb->dxfer_alloc = malloc(len, M_ATACAM, M_INTWAIT | M_ZERO);
 	}
-	s = splbio();
+	crit_enter();
 	TAILQ_INSERT_TAIL(&softc->pending_hcbs, hcb, chain);
-	splx(s);
+	crit_exit();
 	if (atapi_queue_cmd(dev, hcb->cmd, buf, len,
 			    (((ccb_h->flags & CAM_DIR_MASK) == CAM_DIR_IN) ?
 			    ATPR_F_READ : 0) | ATPR_F_QUIET,
@@ -529,8 +530,8 @@ atapi_cb(struct atapi_request *req)
     struct atapi_hcb *hcb = (struct atapi_hcb *) req->driver;
     struct ccb_scsiio *csio = &hcb->ccb->csio;
     int hcb_status = req->result;
-    int s = splbio();
 
+    crit_enter();
 #ifdef CAMDEBUG
 	if (CAM_DEBUGGED(csio->ccb_h.path, CAM_DEBUG_CDB)) {
 		printf("atapi_cb: hcb@%p status = %02x: (sk = %02x%s%s%s)\n",
@@ -559,7 +560,7 @@ atapi_cb(struct atapi_request *req)
 	csio->scsi_status = SCSI_STATUS_OK;
 	free_hcb_and_ccb_done(hcb, CAM_REQ_CMP);
     }
-    splx(s);
+    crit_exit();
     return 0;
 }
 
@@ -586,10 +587,9 @@ static void
 atapi_async(void *callback_arg, u_int32_t code,
 	    struct cam_path *path, void *arg)
 {
-    int s = splbio();
-
+    crit_enter();
     atapi_async1(callback_arg, code, path, arg);
-    splx(s);
+    crit_exit();
 }
 
 static void 

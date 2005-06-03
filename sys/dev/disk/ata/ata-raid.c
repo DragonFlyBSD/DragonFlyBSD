@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.12 2004/07/20 17:55:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.13 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -48,6 +48,7 @@
 #include "ata-raid.h"
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 /* device structures */
 static d_open_t		aropen;
@@ -785,7 +786,7 @@ ar_config_changed(struct ar_softc *rdp, int writeback)
 static int
 ar_rebuild(struct ar_softc *rdp)
 {
-    int disk, s, count = 0, error = 0;
+    int disk, count = 0, error = 0;
     caddr_t buffer;
 
     if ((rdp->flags & (AR_F_READY|AR_F_DEGRADED)) != (AR_F_READY|AR_F_DEGRADED))
@@ -812,11 +813,11 @@ ar_rebuild(struct ar_softc *rdp)
 	return ENODEV;
 
     /* setup start conditions */
-    s = splbio();
+    crit_enter();
     rdp->lock_start = 0;
     rdp->lock_end = rdp->lock_start + 256;
     rdp->flags |= AR_F_REBUILDING;
-    splx(s);
+    crit_exit();
     buffer = malloc(256 * DEV_BSIZE, M_AR, M_WAITOK | M_ZERO);
 
     /* now go copy entire disk(s) */
@@ -855,10 +856,10 @@ ar_rebuild(struct ar_softc *rdp)
 	    free(buffer, M_AR);
 	    return error;
 	}
-	s = splbio();
+	crit_enter();
 	rdp->lock_start = rdp->lock_end;
 	rdp->lock_end = rdp->lock_start + size;
-	splx(s);
+	crit_exit();
 	wakeup(rdp);
     }
     free(buffer, M_AR);
@@ -869,11 +870,11 @@ ar_rebuild(struct ar_softc *rdp)
 	    rdp->disks[disk].flags |= (AR_DF_ASSIGNED | AR_DF_ONLINE);
 	}
     }
-    s = splbio();
+    crit_enter();
     rdp->lock_start = 0xffffffff;
     rdp->lock_end = 0xffffffff;
     rdp->flags &= ~AR_F_REBUILDING;
-    splx(s);
+    crit_exit();
     ar_config_changed(rdp, 1);
     return 0;
 }

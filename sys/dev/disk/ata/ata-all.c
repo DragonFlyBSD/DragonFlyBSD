@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.25 2005/05/27 21:12:51 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.26 2005/06/03 21:56:23 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -48,6 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/devicestat.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include <machine/stdarg.h>
 #include <machine/resource.h>
 #include <machine/bus.h>
@@ -211,7 +212,7 @@ ata_attach(device_t dev)
      * otherwise attach what the probe has found in ch->devices.
      */
     if (!ata_delayed_attach) {
-	int s = splbio();
+	crit_enter();
 
 	if (ch->devices & ATA_ATA_SLAVE)
 	    if (ata_getparam(&ch->device[SLAVE], ATA_C_ATA_IDENTIFY))
@@ -240,7 +241,7 @@ ata_attach(device_t dev)
 #if NATAPICAM > 0
 	atapi_cam_attach_bus(ch);
 #endif
-	splx(s);
+	crit_exit();
     }
     return 0;
 }
@@ -249,14 +250,13 @@ int
 ata_detach(device_t dev)
 {
     struct ata_channel *ch;
-    int s;
  
     if (!dev || !(ch = device_get_softc(dev)) ||
 	!ch->r_io || !ch->r_altio || !ch->r_irq)
 	return ENXIO;
 
     /* make sure channel is not busy */
-    s = splbio();
+    crit_enter();
     ATA_SLEEPLOCK_CH(ch, ATA_CONTROL);
 #if NATADISK > 0
     if (ch->devices & ATA_ATA_MASTER && ch->device[MASTER].driver)
@@ -273,7 +273,7 @@ ata_detach(device_t dev)
 #if NATAPICAM > 0
     atapi_cam_detach_bus(ch);
 #endif
-    splx(s);
+    crit_exit();
 
     if (ch->device[MASTER].param) {
 	free(ch->device[MASTER].param, M_ATA);
@@ -320,7 +320,6 @@ ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct thread *td)
     struct ata_channel *ch;
     device_t device = devclass_get_device(ata_devclass, iocmd->channel);
     int error;
-    int s;
 
     if (cmd != IOCATA)
 	return ENOTTY;
@@ -344,11 +343,11 @@ ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct thread *td)
 	case ATAREINIT:
 	    if (!device || !(ch = device_get_softc(device)))
 		return ENXIO;
-	    s = splbio();	/* interlock non-atomic channel lock */
+	    crit_enter();	/* interlock non-atomic channel lock */
 	    ATA_SLEEPLOCK_CH(ch, ATA_ACTIVE);
 	    if ((error = ata_reinit(ch)))
 		ATA_UNLOCK_CH(ch);
-	    splx(s);
+	    crit_exit();
 	    return error;
 
 	case ATAGMODE:
@@ -534,14 +533,14 @@ static void
 ata_boot_attach(void)
 {
     struct ata_channel *ch;
-    int ctlr, s;
+    int ctlr;
 
     if (ata_delayed_attach) {
 	config_intrhook_disestablish(ata_delayed_attach);
 	free(ata_delayed_attach, M_TEMP);
 	ata_delayed_attach = NULL;
     }
-    s = splbio();
+    crit_enter();
 
     /*
      * run through all ata devices and look for real ATA & ATAPI devices
@@ -591,7 +590,7 @@ ata_boot_attach(void)
 #endif
     }
 #endif
-    splx(s);
+    crit_exit();
 }
 
 static void
@@ -679,11 +678,10 @@ ata_start(struct ata_channel *ch)
 #if DEV_ATAPIALL
     struct atapi_request *atapi_request;
 #endif
-    int s;
 
-    s = splbio();	/* interlock non-atomic channel lock */
+    crit_enter();	/* interlock non-atomic channel lock */
     if (!ATA_LOCK_CH(ch, ATA_ACTIVE)) {
-	splx(s);
+	crit_exit();
 	return;
     }
 
@@ -706,7 +704,7 @@ ata_start(struct ata_channel *ch)
 	 */
 	KKASSERT(ad_request->donecount == 0);
 	if (ad_transfer(ad_request) == ATA_OP_CONTINUES) {
-	    splx(s);
+	    crit_exit();
 	    return;
 	}
     }
@@ -725,13 +723,13 @@ ata_start(struct ata_channel *ch)
 	ch->active = ATA_ACTIVE_ATAPI;
 	ch->running = atapi_request;
 	if (atapi_transfer(atapi_request) == ATA_OP_CONTINUES) {
-	    splx(s);
+	    crit_exit();
 	    return;
 	}
     }
 #endif
     ATA_UNLOCK_CH(ch);
-    splx(s);
+    crit_exit();
 }
 
 void
@@ -1360,7 +1358,6 @@ static void
 ata_change_mode(struct ata_device *atadev, int mode)
 {
     int umode, wmode, pmode;
-    int s;
 
     umode = ata_umode(atadev->param);
     wmode = ata_wmode(atadev->param);
@@ -1383,11 +1380,11 @@ ata_change_mode(struct ata_device *atadev, int mode)
 	wmode = -1;
     }
 
-    s = splbio();	/* interlock non-atomic channel lock */
+    crit_enter();	/* interlock non-atomic channel lock */
     ATA_SLEEPLOCK_CH(atadev->channel, ATA_ACTIVE);
     ata_dmainit(atadev, pmode, wmode, umode);
     ATA_UNLOCK_CH(atadev->channel);
-    splx(s);
+    crit_exit();
     ata_start(atadev->channel); /* XXX SOS */
 }
 

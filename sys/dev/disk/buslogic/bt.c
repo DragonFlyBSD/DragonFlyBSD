@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.8 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.9 2005/06/03 21:56:23 swildner Exp $
  */
 
  /*
@@ -49,6 +49,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
  
 /*
  * XXX It appears that BusLogic PCI adapters go out to lunch if you 
@@ -1016,9 +1017,7 @@ error_exit:
 static __inline void
 btfreeccb(struct bt_softc *bt, struct bt_ccb *bccb)
 {
-	int s;
-
-	s = splcam();
+	crit_enter();
 	if ((bccb->flags & BCCB_ACTIVE) != 0)
 		LIST_REMOVE(&bccb->ccb->ccb_h, sim_links.le);
 	if (bt->resource_shortage != 0
@@ -1029,16 +1028,15 @@ btfreeccb(struct bt_softc *bt, struct bt_ccb *bccb)
 	bccb->flags = BCCB_FREE;
 	SLIST_INSERT_HEAD(&bt->free_bt_ccbs, bccb, links);
 	bt->active_ccbs--;
-	splx(s);
+	crit_exit();
 }
 
 static __inline struct bt_ccb*
 btgetccb(struct bt_softc *bt)
 {
 	struct	bt_ccb* bccb;
-	int	s;
 
-	s = splcam();
+	crit_enter();
 	if ((bccb = SLIST_FIRST(&bt->free_bt_ccbs)) != NULL) {
 		SLIST_REMOVE_HEAD(&bt->free_bt_ccbs, links);
 		bt->active_ccbs++;
@@ -1050,7 +1048,7 @@ btgetccb(struct bt_softc *bt)
 			bt->active_ccbs++;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return (bccb);
 }
@@ -1076,11 +1074,9 @@ btaction(struct cam_sim *sim, union ccb *ccb)
 		 * get a bccb to use.
 		 */
 		if ((bccb = btgetccb(bt)) == NULL) {
-			int s;
-
-			s = splcam();
+			crit_enter();
 			bt->resource_shortage = TRUE;
-			splx(s);
+			crit_exit();
 			xpt_freeze_simq(bt->sim, /*count*/1);
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
 			xpt_done(ccb);
@@ -1162,10 +1158,9 @@ btaction(struct cam_sim *sim, union ccb *ccb)
 					 * to a single buffer.
 					 */
 					if ((ccbh->flags & CAM_DATA_PHYS)==0) {
-						int s;
 						int error;
 
-						s = splsoftvm();
+						crit_enter();
 						error = bus_dmamap_load(
 						    bt->buffer_dmat,
 						    bccb->dmamap,
@@ -1187,7 +1182,7 @@ btaction(struct cam_sim *sim, union ccb *ccb)
 							csio->ccb_h.status |=
 							    CAM_RELEASE_SIMQ;
 						}
-						splx(s);
+						crit_exit();
 					} else {
 						struct bus_dma_segment seg; 
 
@@ -1370,7 +1365,6 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	struct	 bt_ccb *bccb;
 	union	 ccb *ccb;
 	struct	 bt_softc *bt;
-	int	 s;
 
 	bccb = (struct bt_ccb *)arg;
 	ccb = bccb->ccb;
@@ -1428,7 +1422,7 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		bccb->hccb.data_addr = 0;
 	}
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 * Last time we need to check if this CCB needs to
@@ -1439,7 +1433,7 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 			bus_dmamap_unload(bt->buffer_dmat, bccb->dmamap);
 		btfreeccb(bt, bccb);
 		xpt_done(ccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 		
@@ -1477,7 +1471,7 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	bt->cur_outbox->action_code = BMBO_START;	
 	bt_outb(bt, COMMAND_REG, BOP_START_MBOX);
 	btnextoutbox(bt);
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -1838,7 +1832,6 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 	u_int	saved_status;
 	u_int	intstat;
 	u_int	reply_buf_size;
-	int	s;
 	int	cmd_complete;
 	int	error;
 
@@ -1888,10 +1881,10 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 	timeout = 10000;
 	while (param_len && --timeout) {
 		DELAY(100);
-		s = splcam();
+		crit_enter();
 		status = bt_inb(bt, STATUS_REG);
 		intstat = bt_inb(bt, INTSTAT_REG);
-		splx(s);
+		crit_exit();
 	
 		if ((intstat & (INTR_PENDING|CMD_COMPLETE))
 		 == (INTR_PENDING|CMD_COMPLETE)) {
@@ -1925,7 +1918,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 	 */
 	while (cmd_complete == 0 && --cmd_timeout) {
 
-		s = splcam();
+		crit_enter();
 		status = bt_inb(bt, STATUS_REG);
 		intstat = bt_inb(bt, INTSTAT_REG);
 		/*
@@ -1938,7 +1931,7 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 		if ((intstat & (INTR_PENDING|IMB_LOADED))
 		 == (INTR_PENDING|IMB_LOADED))
 			bt_intr(bt);
-		splx(s);
+		crit_exit();
 
 		if (bt->command_cmp != 0) {
  			/*
@@ -2002,9 +1995,9 @@ bt_cmd(struct bt_softc *bt, bt_op_t opcode, u_int8_t *params, u_int param_len,
 	 * Clear any pending interrupts.  Block interrupts so our
 	 * interrupt handler is not re-entered.
 	 */
-	s = splcam();
+	crit_enter();
 	bt_intr(bt);
-	splx(s);
+	crit_exit();
 	
 	if (error != 0)
 		return (error);
@@ -2244,7 +2237,6 @@ bttimeout(void *arg)
 	struct bt_ccb	*bccb;
 	union  ccb	*ccb;
 	struct bt_softc *bt;
-	int		 s;
 
 	bccb = (struct bt_ccb *)arg;
 	ccb = bccb->ccb;
@@ -2252,13 +2244,13 @@ bttimeout(void *arg)
 	xpt_print_path(ccb->ccb_h.path);
 	printf("CCB %p - timed out\n", (void *)bccb);
 
-	s = splcam();
+	crit_enter();
 
 	if ((bccb->flags & BCCB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
 		printf("CCB %p - timed out CCB already completed\n",
 		       (void *)bccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2340,6 +2332,6 @@ bttimeout(void *arg)
 		btnextoutbox(bt);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
