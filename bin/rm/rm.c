@@ -33,12 +33,13 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.11 2005/01/05 16:24:19 liamfoy Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.12 2005/06/03 16:00:23 dillon Exp $
  */
 
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/ioctl.h>
 
 #include <err.h>
 #include <errno.h>
@@ -74,6 +75,7 @@ main(int argc, char *argv[])
 {
 	int ch;
 	const char *p;
+	pid_t tty_pgrp;
 
 	/*
 	 * Test for the special case where the utility is called as
@@ -110,7 +112,15 @@ main(int argc, char *argv[])
 			iflag = 1;
 			break;
 		case 'I':
-			Iflag = 1;
+			/*
+			 * The -I flag is intended to be generally aliasable
+			 * in /etc/csh.cshrc.  We apply it only to foreground
+			 * processes.
+			 */
+			if (ioctl(0, TIOCGPGRP, &tty_pgrp) == 0) {
+				if (tty_pgrp == getpgrp())
+					Iflag = 1;
+			}
 			break;
 		case 'P':
 			Pflag = 1;
