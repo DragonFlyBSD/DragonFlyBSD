@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.13 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.14 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -80,6 +80,7 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -1196,7 +1197,8 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 {
 	int plen, iilen;
 	struct in6_ifaddr *oia;
-	int	s = splnet();
+
+	crit_enter();
 
 	TAILQ_REMOVE(&ifp->if_addrlist, &ia->ia_ifa, ifa_list);
 
@@ -1245,7 +1247,7 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 	 */
 	IFAFREE(&oia->ia_ifa);
 
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -1534,8 +1536,9 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	   int newhost)
 {
 	int	error = 0, plen, ifacount = 0;
-	int	s = splimp();
 	struct ifaddr *ifa;
+
+	crit_enter();
 
 	/*
 	 * Give the interface a chance to initialize
@@ -1556,10 +1559,10 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	if (ifacount <= 1 && ifp->if_ioctl &&
 	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
 	    			      (struct ucred *)NULL))) {
-		splx(s);
+		crit_exit();
 		return(error);
 	}
-	splx(s);
+	crit_exit();
 
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 
@@ -1605,9 +1608,10 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 	struct	in6_multi *in6m;
 	struct sockaddr_in6 sin6;
 	struct ifmultiaddr *ifma;
-	int	s = splnet();
 
 	*errorp = 0;
+
+	crit_enter();
 
 	/*
 	 * Call generic routine to add membership or increment
@@ -1620,7 +1624,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 	sin6.sin6_addr = *maddr6;
 	*errorp = if_addmulti(ifp, (struct sockaddr *)&sin6, &ifma);
 	if (*errorp) {
-		splx(s);
+		crit_exit();
 		return 0;
 	}
 
@@ -1635,7 +1639,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 	   at interrupt time?  If so, need to fix if_addmulti. XXX */
 	in6m = (struct in6_multi *)malloc(sizeof(*in6m), M_IPMADDR, M_NOWAIT);
 	if (in6m == NULL) {
-		splx(s);
+		crit_exit();
 		return (NULL);
 	}
 
@@ -1651,7 +1655,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 	 * group.
 	 */
 	mld6_start_listening(in6m);
-	splx(s);
+	crit_exit();
 	return(in6m);
 }
 
@@ -1662,7 +1666,8 @@ void
 in6_delmulti(struct in6_multi *in6m)
 {
 	struct ifmultiaddr *ifma = in6m->in6m_ifma;
-	int	s = splnet();
+
+	crit_enter();
 
 	if (ifma->ifma_refcount == 1) {
 		/*
@@ -1676,7 +1681,7 @@ in6_delmulti(struct in6_multi *in6m)
 	}
 	/* XXX - should be separate API for when we have an ifma? */
 	if_delmulti(ifma->ifma_ifp, ifma->ifma_addr);
-	splx(s);
+	crit_exit();
 }
 
 /*

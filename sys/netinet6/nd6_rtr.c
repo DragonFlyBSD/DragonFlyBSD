@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.9 2005/03/04 03:05:59 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.10 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -45,6 +45,7 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -473,7 +474,6 @@ defrouter_addreq(new)
 {
 	struct sockaddr_in6 def, mask, gate;
 	struct rtentry *newrt = NULL;
-	int s;
 
 	bzero(&def, sizeof(def));
 	bzero(&mask, sizeof(mask));
@@ -484,14 +484,14 @@ defrouter_addreq(new)
 	def.sin6_family = mask.sin6_family = gate.sin6_family = AF_INET6;
 	gate.sin6_addr = new->rtaddr;
 
-	s = splnet();
+	crit_enter();
 	rtrequest(RTM_ADD, (struct sockaddr *)&def, (struct sockaddr *)&gate,
 		  (struct sockaddr *)&mask, RTF_GATEWAY, &newrt);
 	if (newrt) {
 		nd6_rtmsg(RTM_ADD, newrt); /* tell user process */
 		newrt->rt_refcnt--;
 	}
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -650,10 +650,11 @@ defrtrlist_del(dr)
 void
 defrouter_select()
 {
-	int s = splnet();
 	struct nd_defrouter *dr, anydr;
 	struct rtentry *rt = NULL;
 	struct llinfo_nd6 *ln = NULL;
+
+	crit_enter();
 
 	/*
 	 * Search for a (probably) reachable router from the list.
@@ -715,7 +716,7 @@ defrouter_select()
 		}
 	}
 
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -724,7 +725,8 @@ defrtrlist_update(new)
 	struct nd_defrouter *new;
 {
 	struct nd_defrouter *dr, *n;
-	int s = splnet();
+
+	crit_enter();
 
 	if ((dr = defrouter_lookup(&new->rtaddr, new->ifp)) != NULL) {
 		/* entry exists */
@@ -737,19 +739,19 @@ defrtrlist_update(new)
 			dr->rtlifetime = new->rtlifetime;
 			dr->expire = new->expire;
 		}
-		splx(s);
+		crit_exit();
 		return(dr);
 	}
 
 	/* entry does not exist */
 	if (new->rtlifetime == 0) {
-		splx(s);
+		crit_exit();
 		return(NULL);
 	}
 
 	n = (struct nd_defrouter *)malloc(sizeof(*n), M_IP6NDP, M_NOWAIT);
 	if (n == NULL) {
-		splx(s);
+		crit_exit();
 		return(NULL);
 	}
 	bzero(n, sizeof(*n));
@@ -763,8 +765,7 @@ defrtrlist_update(new)
 	TAILQ_INSERT_TAIL(&nd_defrouter, n, dr_entry);
 	if (TAILQ_FIRST(&nd_defrouter) == n)
 		defrouter_select();
-	splx(s);
-		
+	crit_exit();
 	return(n);
 }
 
@@ -835,7 +836,7 @@ nd6_prelist_add(pr, dr, newp)
 	struct nd_defrouter *dr;
 {
 	struct nd_prefix *new = NULL;
-	int i, s;
+	int i;
 
 	new = (struct nd_prefix *)malloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
 	if (new == NULL)
@@ -853,10 +854,10 @@ nd6_prelist_add(pr, dr, newp)
 		new->ndpr_prefix.sin6_addr.s6_addr32[i] &=
 			new->ndpr_mask.s6_addr32[i];
 
-	s = splnet();
+	crit_enter();
 	/* link ndpr_entry to nd_prefix list */
 	LIST_INSERT_HEAD(&nd_prefix, new, ndpr_entry);
-	splx(s);
+	crit_exit();
 
 	/* ND_OPT_PI_FLAG_ONLINK processing */
 	if (new->ndpr_raf_onlink) {
@@ -883,7 +884,7 @@ prelist_remove(pr)
 	struct nd_prefix *pr;
 {
 	struct nd_pfxrouter *pfr, *next;
-	int e, s;
+	int e;
 
 	/* make sure to invalidate the prefix until it is really freed. */
 	pr->ndpr_vltime = 0;
@@ -908,7 +909,7 @@ prelist_remove(pr)
 	if (pr->ndpr_refcnt > 0)
 		return;		/* notice here? */
 
-	s = splnet();
+	crit_enter();
 
 	/* unlink ndpr_entry from nd_prefix list */
 	LIST_REMOVE(pr, ndpr_entry);
@@ -919,7 +920,7 @@ prelist_remove(pr)
 
 		free(pfr, M_IP6NDP);
 	}
-	splx(s);
+	crit_exit();
 
 	free(pr, M_IP6NDP);
 
@@ -936,13 +937,13 @@ prelist_update(new, dr, m)
 	struct ifaddr *ifa;
 	struct ifnet *ifp = new->ndpr_ifp;
 	struct nd_prefix *pr;
-	int s = splnet();
 	int error = 0;
 	int newprefix = 0;
 	int auth;
 	struct in6_addrlifetime lt6_tmp;
 
 	auth = 0;
+	crit_enter();
 	if (m) {
 		/*
 		 * Authenticity for NA consists authentication for
@@ -1215,7 +1216,7 @@ prelist_update(new, dr, m)
   afteraddrconf:
 
  end:
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -1900,18 +1901,19 @@ rt6_flush(gateway, ifp)
 	struct ifnet *ifp;
 {
 	struct radix_node_head *rnh = rt_tables[AF_INET6];
-	int s = splnet();
+
+	crit_enter();
 
 	/* We'll care only link-local addresses */
 	if (!IN6_IS_ADDR_LINKLOCAL(gateway)) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	/* XXX: hack for KAME's link-local address kludge */
 	gateway->s6_addr16[1] = htons(ifp->if_index);
 
 	rnh->rnh_walktree(rnh, rt6_deleteroute, (void *)gateway);
-	splx(s);
+	crit_exit();
 }
 
 static int

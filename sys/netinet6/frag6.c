@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.7 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.8 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -42,6 +42,7 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -627,8 +628,8 @@ void
 frag6_slowtimo(void)
 {
 	struct ip6q *q6;
-	int s = splnet();
 
+	crit_enter();
 	frag6_doing_reass = 1;
 	q6 = ip6q.ip6q_next;
 	if (q6)
@@ -670,7 +671,7 @@ frag6_slowtimo(void)
 	}
 #endif
 
-	splx(s);
+	crit_exit();
 }
 
 /*

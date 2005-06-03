@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.12 2005/03/04 03:48:25 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.13 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -83,6 +83,7 @@
 #include <sys/socketvar.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -340,15 +341,14 @@ in6_rtqtimo(void *rock)
 	struct rtqk_arg arg;
 	struct timeval atv;
 	static time_t last_adjusted_timeout = 0;
-	int s;
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = time_second + rtq_timeout;
 	arg.draining = arg.updating = 0;
-	s = splnet();
+	crit_enter();
 	rnh->rnh_walktree(rnh, in6_rtqkill, &arg);
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Attempt to be somewhat dynamic about this:
@@ -373,9 +373,9 @@ in6_rtqtimo(void *rock)
 #endif
 		arg.found = arg.killed = 0;
 		arg.updating = 1;
-		s = splnet();
+		crit_enter();
 		rnh->rnh_walktree(rnh, in6_rtqkill, &arg);
-		splx(s);
+		crit_exit();
 	}
 
 	atv.tv_usec = 0;
@@ -421,13 +421,12 @@ in6_mtutimo(void *rock)
 	struct radix_node_head *rnh = rock;
 	struct mtuex_arg arg;
 	struct timeval atv;
-	int s;
 
 	arg.rnh = rnh;
 	arg.nextstop = time_second + MTUTIMO_DEFAULT;
-	s = splnet();
+	crit_enter();
 	rnh->rnh_walktree(rnh, in6_mtuexpire, &arg);
-	splx(s);
+	crit_exit();
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop;
@@ -444,16 +443,15 @@ in6_rtqdrain(void)
 {
 	struct radix_node_head *rnh = rt_tables[AF_INET6];
 	struct rtqk_arg arg;
-	int s;
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = 0;
 	arg.draining = 1;
 	arg.updating = 0;
-	s = splnet();
+	crit_enter();
 	rnh->rnh_walktree(rnh, in6_rtqkill, &arg);
-	splx(s);
+	crit_exit();
 }
 #endif
 

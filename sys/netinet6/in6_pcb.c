@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.26 2005/03/06 05:09:25 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.27 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -84,6 +84,7 @@
 #include <sys/time.h>
 #include <sys/proc.h>
 #include <sys/jail.h>
+#include <sys/thread2.h>
 
 #include <vm/vm_zone.h>
 
@@ -630,7 +631,6 @@ in6_pcbdetach(struct inpcb *inp)
 int
 in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 {
-	int s;
 	struct inpcb *inp;
 	struct sockaddr_in6 *sin6;
 
@@ -642,16 +642,16 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_len = sizeof(*sin6);
 
-	s = splnet();
+	crit_enter();
 	inp = so->so_pcb;
 	if (!inp) {
-		splx(s);
+		crit_exit();
 		free(sin6, M_SONAME);
 		return EINVAL;
 	}
 	sin6->sin6_port = inp->inp_lport;
 	sin6->sin6_addr = inp->in6p_laddr;
-	splx(s);
+	crit_exit();
 	if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr))
 		sin6->sin6_scope_id = ntohs(sin6->sin6_addr.s6_addr16[1]);
 	else
@@ -666,7 +666,6 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 int
 in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
-	int s;
 	struct inpcb *inp;
 	struct sockaddr_in6 *sin6;
 
@@ -678,16 +677,16 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_len = sizeof(struct sockaddr_in6);
 
-	s = splnet();
+	crit_enter();
 	inp = so->so_pcb;
 	if (!inp) {
-		splx(s);
+		crit_exit();
 		free(sin6, M_SONAME);
 		return EINVAL;
 	}
 	sin6->sin6_port = inp->inp_fport;
 	sin6->sin6_addr = inp->in6p_faddr;
-	splx(s);
+	crit_exit();
 	if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr))
 		sin6->sin6_scope_id = ntohs(sin6->sin6_addr.s6_addr16[1]);
 	else
@@ -746,7 +745,7 @@ in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
  * Call the protocol specific routine (if any) to report
  * any errors for each matching socket.
  *
- * Must be called at splnet.
+ * Must be called under crit_enter().
  */
 void
 in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
@@ -756,7 +755,6 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 	struct inpcb *inp, *ninp;
 	struct sockaddr_in6 sa6_src, *sa6_dst;
 	u_int32_t flowinfo;
-	int s;
 
 	if ((unsigned)cmd >= PRC_NCMDS || dst->sa_family != AF_INET6)
 		return;
@@ -789,7 +787,7 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 	}
 	if (cmd != PRC_MSGSIZE)
 		arg = inet6ctlerrmap[cmd];
-	s = splnet();
+	crit_enter();
  	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
  		ninp = LIST_NEXT(inp, inp_list);
 
@@ -826,7 +824,7 @@ do_notify:
 		if (notify)
 			(*notify)(inp, arg);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*

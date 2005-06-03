@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.11 2005/03/09 19:32:52 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.12 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -54,6 +54,7 @@
 #include <sys/sysctl.h>
 #include <sys/proc.h>
 #include <sys/in_cksum.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -2378,7 +2379,6 @@ ipsec4_output(struct ipsec_output_state *state, struct secpolicy *sp, int flags)
 	struct ip *ip = NULL;
 	struct ipsecrequest *isr = NULL;
 	struct secasindex saidx;
-	int s;
 	int error;
 	struct sockaddr_in *dst4;
 	struct sockaddr_in *sin;
@@ -2470,9 +2470,9 @@ ipsec4_output(struct ipsec_output_state *state, struct secpolicy *sp, int flags)
 
 		/*
 		 * There may be the case that SA status will be changed when
-		 * we are refering to one. So calling splsoftnet().
+		 * we are refering to one. So calling crit_enter().
 		 */
-		s = splnet();
+		crit_enter();
 
 		if (isr->saidx.mode == IPSEC_MODE_TUNNEL) {
 			/*
@@ -2483,19 +2483,19 @@ ipsec4_output(struct ipsec_output_state *state, struct secpolicy *sp, int flags)
 				ipseclog((LOG_ERR, "ipsec4_output: "
 				    "family mismatched between inner and outer spi=%u\n",
 				    (u_int32_t)ntohl(isr->sav->spi)));
-				splx(s);
+				crit_exit();
 				error = EAFNOSUPPORT;
 				goto bad;
 			}
 
 			state->m = ipsec4_splithdr(state->m);
 			if (!state->m) {
-				splx(s);
+				crit_exit();
 				error = ENOMEM;
 				goto bad;
 			}
 			error = ipsec4_encapsulate(state->m, isr->sav);
-			splx(s);
+			crit_exit();
 			if (error) {
 				state->m = NULL;
 				goto bad;
@@ -2529,7 +2529,7 @@ ipsec4_output(struct ipsec_output_state *state, struct secpolicy *sp, int flags)
 				dst4 = (struct sockaddr_in *)state->dst;
 			}
 		} else
-			splx(s);
+			crit_exit();
 
 		state->m = ipsec4_splithdr(state->m);
 		if (!state->m) {
@@ -2771,7 +2771,6 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 	int error = 0;
 	int plen;
 	struct sockaddr_in6* dst6;
-	int s;
 
 	if (!state)
 		panic("state == NULL in ipsec6_output_tunnel");
@@ -2872,9 +2871,9 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 
 		/*
 		 * There may be the case that SA status will be changed when
-		 * we are refering to one. So calling splsoftnet().
+		 * we are refering to one. So calling crit_enter().
 		 */
-		s = splnet();
+		crit_enter();
 
 		if (isr->saidx.mode == IPSEC_MODE_TUNNEL) {
 			/*
@@ -2885,7 +2884,7 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 				ipseclog((LOG_ERR, "ipsec6_output_tunnel: "
 				    "family mismatched between inner and outer, spi=%u\n",
 				    (u_int32_t)ntohl(isr->sav->spi)));
-				splx(s);
+				crit_exit();
 				ipsec6stat.out_inval++;
 				error = EAFNOSUPPORT;
 				goto bad;
@@ -2893,13 +2892,13 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 
 			state->m = ipsec6_splithdr(state->m);
 			if (!state->m) {
-				splx(s);
+				crit_exit();
 				ipsec6stat.out_nomem++;
 				error = ENOMEM;
 				goto bad;
 			}
 			error = ipsec6_encapsulate(state->m, isr->sav);
-			splx(s);
+			crit_exit();
 			if (error) {
 				state->m = 0;
 				goto bad;
@@ -2935,7 +2934,7 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 				dst6 = (struct sockaddr_in6 *)state->dst;
 			}
 		} else
-			splx(s);
+			crit_exit();
 
 		state->m = ipsec6_splithdr(state->m);
 		if (!state->m) {

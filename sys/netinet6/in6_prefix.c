@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.6 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.7 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -75,6 +75,7 @@
 #include <sys/systm.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -391,7 +392,6 @@ assign_ra_entry(struct rr_prefix *rpp, int iilen, struct in6_ifaddr *ia)
 {
 	int error = 0;
 	struct rp_addr *rap;
-	int s;
 
 	if ((error = create_ra_entry(&rap)) != 0)
 		return error;
@@ -406,9 +406,9 @@ assign_ra_entry(struct rr_prefix *rpp, int iilen, struct in6_ifaddr *ia)
 #if 0 /* Can't do this now, because rpp may be on th stack. should fix it? */
 	ia->ia6_ifpr = rp2ifpr(rpp);
 #endif
-	s = splnet();
+	crit_enter();
 	LIST_INSERT_HEAD(&rpp->rp_addrhead, rap, ra_entry);
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -423,7 +423,7 @@ in6_prefix_add_llifid(int iilen, struct in6_ifaddr *ia)
 	struct rr_prefix *rpp;
 	struct rp_addr *rap;
 	struct socket so;
-	int error, s;
+	int error;
 
 	if ((error = create_ra_entry(&rap)) != 0)
 		return(error);
@@ -442,9 +442,9 @@ in6_prefix_add_llifid(int iilen, struct in6_ifaddr *ia)
 		if (rpp->rp_ifp != ia->ia_ifp)
 			continue;
 
-		s = splnet();
+		crit_enter();
 		LIST_INSERT_HEAD(&rpp->rp_addrhead, rap, ra_entry);
-		splx(s);
+		crit_exit();
 		add_each_addr(&so, rpp, rap);
 	}
 	return 0;
@@ -545,9 +545,9 @@ in6_prefix_remove_ifid(int iilen, struct in6_ifaddr *ia)
 		return;
 	rap = search_ifidwithprefix(ifpr2rp(ia->ia6_ifpr), IA6_IN6(ia));
 	if (rap != NULL) {
-		int s = splnet();
+		crit_enter();
 		LIST_REMOVE(rap, ra_entry);
-		splx(s);
+		crit_exit();
 		if (rap->ra_addr)
 			IFAFREE(&rap->ra_addr->ia_ifa);
 		free(rap, M_RR_ADDR);
@@ -670,7 +670,6 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 	struct rr_prefix *rpp;
 	struct ifprefix *ifpr;
 	struct rp_addr *rap;
-	int s;
 
 	/* search existing prefix */
 	for (ifpr = TAILQ_FIRST(&new->rp_ifp->if_prefixhead); ifpr;
@@ -721,9 +720,9 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 				free(rap, M_RR_ADDR);
 				continue;
 			}
-			s = splnet();
+			crit_enter();
 			LIST_INSERT_HEAD(&rpp->rp_addrhead, rap, ra_entry);
-			splx(s);
+			crit_exit();
 		}
 	} else {
 		/*
@@ -767,9 +766,9 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 			rp2ifpr(rpp)->ifpr_type = IN6_PREFIX_RR;
 		}
 		/* link rr_prefix entry to rr_prefix list */
-		s = splnet();
+		crit_enter();
 		LIST_INSERT_HEAD(&rr_prefix, rpp, rp_entry);
-		splx(s);
+		crit_exit();
 	}
 
 	if (!new->rp_raf_auto)
@@ -802,9 +801,7 @@ add_each_prefix(struct socket *so, struct rr_prefix *rpp)
 static void
 rp_remove(struct rr_prefix *rpp)
 {
-	int s;
-
-	s = splnet();
+	crit_enter();
 	/* unlink rp_entry from if_prefixlist */
 	{
 		struct ifnet *ifp = rpp->rp_ifp;
@@ -826,7 +823,7 @@ rp_remove(struct rr_prefix *rpp)
 	}
 	/* unlink rp_entry from rr_prefix list */
 	LIST_REMOVE(rpp, rp_entry);
-	splx(s);
+	crit_exit();
 	free(rpp, M_IP6RR);
 }
 
@@ -900,7 +897,7 @@ free_rp_entries(struct rr_prefix *rpp)
 {
 	/*
 	 * This func is only called with rpp on stack(not on list).
-	 * So no splnet() here
+	 * So no crit_enter() here
 	 */
 	while (!LIST_EMPTY(&rpp->rp_addrhead))
 	{
@@ -965,16 +962,15 @@ delete_each_prefix(struct rr_prefix *rpp, u_char origin)
 
 	while (rpp->rp_addrhead.lh_first != NULL) {
 		struct rp_addr *rap;
-		int s;
 
-		s = splnet();
+		crit_enter();
 		rap = LIST_FIRST(&rpp->rp_addrhead);
 		if (rap == NULL) {
-			splx(s);
+			crit_exit();
 			break;
 		}
 		LIST_REMOVE(rap, ra_entry);
-		splx(s);
+		crit_exit();
 		if (rap->ra_addr == NULL) {
 			free(rap, M_RR_ADDR);
 			continue;
@@ -1172,13 +1168,12 @@ in6_prefix_ioctl(struct socket *so, u_long cmd, caddr_t data,
 void
 in6_rr_timer(void *ignored_arg)
 {
-	int s;
 	struct rr_prefix *rpp;
 
 	callout_reset(&in6_rr_timer_ch, ip6_rr_prune * hz,
 	    in6_rr_timer, NULL);
 
-	s = splnet();
+	crit_enter();
 	/* expire */
 	rpp = LIST_FIRST(&rr_prefix);
 	while (rpp) {
@@ -1194,5 +1189,5 @@ in6_rr_timer(void *ignored_arg)
 			unprefer_prefix(rpp);
 		rpp = LIST_NEXT(rpp, rp_entry);
 	}
-	splx(s);
+	crit_exit();
 }

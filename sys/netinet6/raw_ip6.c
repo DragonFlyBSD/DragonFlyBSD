@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.18 2005/03/06 05:09:25 hsu Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.19 2005/06/03 19:56:08 eirikn Exp $
  */
 
 /*
@@ -77,6 +77,7 @@
 #include <sys/socketvar.h>
 #include <sys/errno.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -543,7 +544,7 @@ static int
 rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
-	int error, s;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp)
@@ -554,9 +555,9 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	s = splnet();
+	crit_enter();
 	error = in_pcballoc(so, &ripcbinfo);
-	splx(s);
+	crit_exit();
 	if (error)
 		return error;
 	inp = (struct inpcb *)so->so_pcb;

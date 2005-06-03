@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.19 2005/03/06 05:09:25 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.20 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -82,6 +82,7 @@
 #include <sys/systm.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -487,7 +488,7 @@ udp6_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in6 addrs[2];
 	struct inpcb *inp;
-	int error, s;
+	int error;
 
 	error = suser(req->td);
 	if (error)
@@ -500,7 +501,7 @@ udp6_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof(addrs));
 	if (error)
 		return (error);
-	s = splnet();
+	crit_enter();
 	inp = in6_pcblookup_hash(&udbinfo, &addrs[1].sin6_addr,
 				 addrs[1].sin6_port,
 				 &addrs[0].sin6_addr, addrs[0].sin6_port,
@@ -513,7 +514,7 @@ udp6_getcred(SYSCTL_HANDLER_ARGS)
 			   sizeof(struct ucred));
 
 out:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -525,15 +526,14 @@ static int
 udp6_abort(struct socket *so)
 {
 	struct inpcb *inp;
-	int s;
 
 	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
-	s = splnet();
+	crit_enter();
 	in6_pcbdetach(inp);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -541,7 +541,7 @@ static int
 udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
-	int s, error;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp != 0)
@@ -553,9 +553,9 @@ udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		if (error)
 			return error;
 	}
-	s = splnet();
+	crit_enter();
 	error = in_pcballoc(so, &udbinfo);
-	splx(s);
+	crit_exit();
 	if (error)
 		return error;
 	inp = (struct inpcb *)so->so_pcb;
@@ -579,7 +579,7 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct sockaddr_in6 *sin6_p = (struct sockaddr_in6 *)nam;
 	struct inpcb *inp;
-	int s, error;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp == 0)
@@ -596,16 +596,16 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 			in6_sin6_2_sin(&sin, sin6_p);
 			inp->inp_vflag |= INP_IPV4;
 			inp->inp_vflag &= ~INP_IPV6;
-			s = splnet();
+			crit_enter();
 			error = in_pcbbind(inp, (struct sockaddr *)&sin, td);
-			splx(s);
+			crit_exit();
 			return error;
 		}
 	}
 
-	s = splnet();
+	crit_enter();
 	error = in6_pcbbind(inp, nam, td);
-	splx(s);
+	crit_exit();
 	if (error == 0) {
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
 			inp->inp_flags |= INP_WASBOUND_NOTANY;
@@ -618,7 +618,7 @@ static int
 udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
-	int s, error;
+	int error;
 
 	inp = so->so_pcb;
 	if (inp == 0)
@@ -634,9 +634,9 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 			if (inp->inp_faddr.s_addr != INADDR_ANY)
 				return EISCONN;
 			in6_sin6_2_sin(&sin, sin6_p);
-			s = splnet();
+			crit_enter();
 			error = in_pcbconnect(inp, (struct sockaddr *)&sin, td);
-			splx(s);
+			crit_exit();
 			if (error == 0) {
 				inp->inp_vflag |= INP_IPV4;
 				inp->inp_vflag &= ~INP_IPV6;
@@ -649,9 +649,9 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		return EISCONN;
 	if (inp->inp_flags & INP_WILDCARD)
 		in_pcbremwildcardhash(inp);
-	s = splnet();
+	crit_enter();
 	error = in6_pcbconnect(inp, nam, td);
-	splx(s);
+	crit_exit();
 	if (error == 0) {
 		if (!ip6_v6only) { /* should be non mapped addr */
 			inp->inp_vflag &= ~INP_IPV4;
@@ -675,14 +675,13 @@ static int
 udp6_detach(struct socket *so)
 {
 	struct inpcb *inp;
-	int s;
 
 	inp = so->so_pcb;
 	if (inp == 0)
 		return EINVAL;
-	s = splnet();
+	crit_enter();
 	in6_pcbdetach(inp);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -690,7 +689,6 @@ static int
 udp6_disconnect(struct socket *so)
 {
 	struct inpcb *inp;
-	int s;
 
 	inp = so->so_pcb;
 	if (inp == 0)
@@ -706,9 +704,9 @@ udp6_disconnect(struct socket *so)
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
 		return ENOTCONN;
 
-	s = splnet();
+	crit_enter();
 	in6_pcbdisconnect(inp);
-	splx(s);
+	crit_exit();
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
 	return 0;
 }

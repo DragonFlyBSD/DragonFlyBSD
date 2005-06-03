@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.12 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.13 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -39,6 +39,7 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/md5.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -917,7 +918,8 @@ in6_tmpaddrtimer(void *ignored_arg)
 	struct nd_ifinfo *ndi;
 	u_int8_t nullbuf[8];
 	struct ifnet *ifp;
-	int s = splnet();
+
+	crit_enter();
 
 	callout_reset(&in6_tmpaddrtimer_ch,
 		      (ip6_temp_preferred_lifetime - ip6_desync_factor -
@@ -938,5 +940,5 @@ in6_tmpaddrtimer(void *ignored_arg)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 }

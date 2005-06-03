@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.11 2005/02/12 02:56:05 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.12 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/syslog.h>
 #include <sys/queue.h>
 #include <sys/callout.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -756,7 +757,6 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			 */
 			struct nd_defrouter *dr;
 			struct in6_addr *in6;
-			int s;
 
 			in6 = &((struct sockaddr_in6 *)rt_key(rt))->sin6_addr;
 
@@ -766,7 +766,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			 * is only called under the network software interrupt
 			 * context.  However, we keep it just for safety.  
 			 */
-			s = splnet();
+			crit_enter();
 			dr = defrouter_lookup(in6, rt->rt_ifp);
 			if (dr)
 				defrtrlist_del(dr);
@@ -780,7 +780,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 				 */
 				rt6_flush(&ip6->ip6_src, rt->rt_ifp);
 			}
-			splx(s);
+			crit_exit();
 		}
 		ln->ln_router = is_router;
 	}
@@ -1129,11 +1129,10 @@ nd6_dad_stop(struct ifaddr *ifa)
 static void
 nd6_dad_timer(struct ifaddr *ifa)
 {
-	int s;
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
 
-	s = splnet();		/* XXX */
+	crit_enter();		/* XXX */
 
 	/* Sanity check */
 	if (ia == NULL) {
@@ -1251,7 +1250,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 	}
 
 done:
-	splx(s);
+	crit_exit();
 }
 
 void

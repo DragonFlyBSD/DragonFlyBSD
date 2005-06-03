@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/mld6.c,v 1.4.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/mld6.c,v 1.5 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/mld6.c,v 1.6 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: mld6.c,v 1.27 2001/04/04 05:17:30 itojun Exp $	*/
 
 /*
@@ -79,6 +79,7 @@
 #include <sys/socket.h>
 #include <sys/protosw.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -137,8 +138,7 @@ mld6_init(void)
 void
 mld6_start_listening(struct in6_multi *in6m)
 {
-	int s = splnet();
-
+	crit_enter();
 	/*
 	 * RFC2710 page 10:
 	 * The node never sends a Report or Done for the link-scope all-nodes
@@ -159,7 +159,7 @@ mld6_start_listening(struct in6_multi *in6m)
 		in6m->in6m_state = MLD6_IREPORTEDLAST;
 		mld6_timers_are_running = 1;
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -344,7 +344,6 @@ mld6_fasttimeo(void)
 {
 	struct in6_multi *in6m;
 	struct in6_multistep step;
-	int s;
 
 	/*
 	 * Quick check to see if any work needs to be done, in order
@@ -353,7 +352,7 @@ mld6_fasttimeo(void)
 	if (!mld6_timers_are_running)
 		return;
 
-	s = splnet();
+	crit_enter();
 	mld6_timers_are_running = 0;
 	IN6_FIRST_MULTI(step, in6m);
 	while (in6m != NULL) {
@@ -367,7 +366,7 @@ mld6_fasttimeo(void)
 		}
 		IN6_NEXT_MULTI(step, in6m);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void

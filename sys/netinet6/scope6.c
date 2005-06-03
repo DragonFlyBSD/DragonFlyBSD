@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.4 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.5 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*
@@ -37,6 +37,7 @@
 #include <sys/socket.h>
 #include <sys/systm.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/route.h>
 #include <net/if.h>
@@ -59,11 +60,12 @@ scope6_init()
 struct scope6_id *
 scope6_ifattach(struct ifnet *ifp)
 {
-	int s = splnet();
 	struct scope6_id *sid;
 
 	sid = (struct scope6_id *)malloc(sizeof(*sid), M_IFADDR, M_WAITOK);
 	bzero(sid, sizeof(*sid));
+
+	crit_enter();
 
 	/*
 	 * XXX: IPV6_ADDR_SCOPE_xxx macros are not standard.
@@ -77,7 +79,7 @@ scope6_ifattach(struct ifnet *ifp)
 	sid->s6id_list[IPV6_ADDR_SCOPE_ORGLOCAL] = 1;
 #endif
 
-	splx(s);
+	crit_exit();
 	return sid;
 }
 
@@ -90,7 +92,7 @@ scope6_ifdetach(struct scope6_id *sid)
 int
 scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 {
-	int i, s;
+	int i;
 	int error = 0;
 	struct scope6_id *sid = SID(ifp);
 
@@ -107,7 +109,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 	 * interface addresses, routing table entries, PCB entries... 
 	 */
 
-	s = splnet();
+	crit_enter();
 
 	for (i = 0; i < 16; i++) {
 		if (idlist->s6id_list[i] &&
@@ -120,7 +122,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 				 * IDs, but we check the consistency for
 				 * safety in later use.
 				 */
-				splx(s);
+				crit_exit();
 				return(EINVAL);
 			}
 
@@ -132,7 +134,7 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 			sid->s6id_list[i] = idlist->s6id_list[i];
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
