@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.c,v 1.6.2.1 2000/04/14 13:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.4 2005/06/03 16:57:12 eirikn Exp $
  */
 /*
  * Ported from:
@@ -48,6 +48,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
@@ -855,9 +856,8 @@ adw_idle_cmd_send(struct adw_softc *adw, adw_idle_cmd_t cmd, u_int parameter)
 {
 	u_int		      timeout;
 	adw_idle_cmd_status_t status;
-	int		      s;
 
-	s = splcam();	
+	crit_enter();
 
 	/*
 	 * Clear the idle command status which is set by the microcode
@@ -890,6 +890,6 @@ adw_idle_cmd_send(struct adw_softc *adw, adw_idle_cmd_t cmd, u_int parameter)
 
 	if (timeout == 0)
 		panic("%s: Idle Command Timed Out!\n", adw_name(adw));
-	splx(s);
+	crit_exit();
 	return (status);
 }

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.7 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.8 2005/06/03 16:57:13 eirikn Exp $
  */
 
 /*
@@ -58,6 +58,7 @@
 #include <sys/queue.h>
 #include <sys/buf.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -222,14 +223,13 @@ u_int8_t tinfo_sync_period[] = {
 static __inline struct amd_srb *
 amdgetsrb(struct amd_softc * amd)
 {
-	int     intflag;
 	struct amd_srb *    pSRB;
 
-	intflag = splcam();
+	crit_enter();
 	pSRB = TAILQ_FIRST(&amd->free_srbs);
 	if (pSRB)
 		TAILQ_REMOVE(&amd->free_srbs, pSRB, links);
-	splx(intflag);
+	crit_exit();
 	return (pSRB);
 }
 
@@ -286,7 +286,6 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	struct	 amd_srb *srb;
 	union	 ccb *ccb;
 	struct	 amd_softc *amd;
-	int	 s;
 
 	srb = (struct amd_srb *)arg;
 	ccb = srb->pccb;
@@ -343,7 +342,7 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	srb->SGToBeXferLen = 0;
 	srb->EndMessage = 0;
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 * Last time we need to check if this CCB needs to
@@ -354,7 +353,7 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 			bus_dmamap_unload(amd->buffer_dmat, srb->dmamap);
 		TAILQ_INSERT_HEAD(&amd->free_srbs, srb, links);
 		xpt_done(ccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
@@ -365,7 +364,7 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 #endif
 	TAILQ_INSERT_TAIL(&amd->waiting_srbs, srb, links);
 	amdrunwaiting(amd);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -411,10 +410,9 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 				 * to a single buffer.
 				 */
 				if ((pccb->ccb_h.flags & CAM_DATA_PHYS) == 0) {
-					int s;
 					int error;
 
-					s = splsoftvm();
+					crit_enter();
 					error =
 					    bus_dmamap_load(amd->buffer_dmat,
 							    pSRB->dmamap,
@@ -434,7 +432,7 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 						pccb->ccb_h.status |=
 						    CAM_RELEASE_SIMQ;
 					}
-					splx(s);
+					crit_exit();
 				} else {
 					struct bus_dma_segment seg;
 
@@ -519,10 +517,9 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 		struct ccb_trans_settings *cts;
 		struct amd_target_info *targ_info;
 		struct amd_transinfo *tinfo;
-		int     intflag;
 
 		cts = &pccb->cts;
-		intflag = splcam();
+		crit_enter();
 		targ_info = &amd->tinfo[target_id];
 		if ((cts->flags & CCB_TRANS_CURRENT_SETTINGS) != 0) {
 			/* current transfer settings */
@@ -551,7 +548,7 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 		cts->sync_period = tinfo->period;
 		cts->sync_offset = tinfo->offset;
 		cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
-		splx(intflag);
+		crit_exit();
 		cts->valid = CCB_TRANS_SYNC_RATE_VALID
 			   | CCB_TRANS_SYNC_OFFSET_VALID
 			   | CCB_TRANS_BUS_WIDTH_VALID
@@ -566,7 +563,6 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 		struct ccb_trans_settings *cts;
 		struct amd_target_info *targ_info;
 		u_int  update_type;
-		int    intflag;
 		int    last_entry;
 
 		cts = &pccb->cts;
@@ -582,7 +578,7 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 			xpt_done(pccb);
 		}
 
-		intflag = splcam();
+		crit_enter();
 		targ_info = &amd->tinfo[target_id];
 
 		if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
@@ -652,7 +648,7 @@ amd_action(struct cam_sim * psim, union ccb * pccb)
 			targ_info->goal.period = cts->sync_period;
 			targ_info->goal.offset = cts->sync_offset;
 		}
-		splx(intflag);
+		crit_exit();
 		pccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(pccb);
 		break;
@@ -839,7 +835,6 @@ amdsettags(struct amd_softc *amd, u_int target, int tagenb)
 static void
 amd_reset(struct amd_softc * amd)
 {
-	int	   intflag;
 	u_int8_t   bval;
 	u_int16_t  i;
 
@@ -848,7 +843,7 @@ amd_reset(struct amd_softc * amd)
 	printf("DC390: RESET");
 #endif
 
-	intflag = splcam();
+	crit_enter();
 	bval = amd_read8(amd, CNTLREG1);
 	bval |= DIS_INT_ON_SCSI_RST;
 	amd_write8(amd, CNTLREG1, bval);	/* disable interrupt */
@@ -874,7 +869,7 @@ amd_reset(struct amd_softc * amd)
 			 CAM_DEV_QFRZN|CAM_SCSI_BUS_RESET);
 	amd->active_srb = NULL;
 	amd->ACBFlag = 0;
-	splx(intflag);
+	crit_exit();
 	return;
 }
 
@@ -1844,7 +1839,6 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 	u_int8_t   bval, i, status;
 	union ccb *pccb;
 	struct ccb_scsiio *pcsio;
-	int	   intflag;
 	struct amd_sg *ptr2;
 	u_int32_t   swlval;
 	u_int   target_id, target_lun;
@@ -1983,7 +1977,7 @@ SRBdone(struct amd_softc *amd, struct amd_srb *pSRB)
 		}
 	}
 ckc_e:
-	intflag = splcam();
+	crit_enter();
 	if ((pccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 		/* CAM request not yet complete =>device_Q frozen */
 		xpt_freeze_devq(pccb->ccb_h.path, 1);
@@ -1992,7 +1986,7 @@ ckc_e:
 	TAILQ_REMOVE(&amd->running_srbs, pSRB, links);
 	TAILQ_INSERT_HEAD(&amd->free_srbs, pSRB, links);
 	amdrunwaiting(amd);
-	splx(intflag);
+	crit_exit();
 	xpt_done(pccb);
 
 }
@@ -2000,20 +1994,17 @@ ckc_e:
 static void
 amd_ResetSCSIBus(struct amd_softc * amd)
 {
-	int     intflag;
-
-	intflag = splcam();
+	crit_enter();
 	amd->ACBFlag |= RESET_DEV;
 	amd_write8(amd, DMA_Cmd, DMA_IDLE_CMD);
 	amd_write8(amd, SCSICMDREG, RST_SCSI_BUS_CMD);
-	splx(intflag);
+	crit_exit();
 	return;
 }
 
 static void
 amd_ScsiRstDetect(struct amd_softc * amd)
 {
-	int     intflag;
 	u_int32_t   wlval;
 
 #ifdef AMD_DEBUG0
@@ -2024,7 +2015,7 @@ amd_ScsiRstDetect(struct amd_softc * amd)
 	while (--wlval) {	/* delay 1 sec */
 		DELAY(1000);
 	}
-	intflag = splcam();
+	crit_enter();
 
 	amd_write8(amd, DMA_Cmd, DMA_IDLE_CMD);
 	amd_write8(amd, SCSICMDREG, CLEAR_FIFO_CMD);
@@ -2044,7 +2035,7 @@ amd_ScsiRstDetect(struct amd_softc * amd)
 		amd->ACBFlag = 0;
 		amdrunwaiting(amd);
 	}
-	splx(intflag);
+	crit_exit();
 	return;
 }
 

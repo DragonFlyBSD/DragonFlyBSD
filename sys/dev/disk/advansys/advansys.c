@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.6 2004/09/17 03:39:38 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.7 2005/06/03 16:57:12 eirikn Exp $
  */
 /*
  * Ported from:
@@ -52,6 +52,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
@@ -96,28 +97,25 @@ static __inline struct adv_ccb_info *
 adv_get_ccb_info(struct adv_softc *adv)
 {
 	struct adv_ccb_info *cinfo;
-	int opri;
 
-	opri = splcam();
+	crit_enter();
 	if ((cinfo = SLIST_FIRST(&adv->free_ccb_infos)) != NULL) {
 		SLIST_REMOVE_HEAD(&adv->free_ccb_infos, links);
 	} else {
 		cinfo = adv_alloc_ccb_info(adv);
 	}
-	splx(opri);
+	crit_exit();
 
 	return (cinfo);
 }
 
 static __inline void
 adv_free_ccb_info(struct adv_softc *adv, struct adv_ccb_info *cinfo)
-{       
-	int opri;
-
-	opri = splcam();
+{
+	crit_enter();
 	cinfo->state = ACCB_FREE;
 	SLIST_INSERT_HEAD(&adv->free_ccb_infos, cinfo, links);
-	splx(opri);
+	crit_exit();
 }
 
 static __inline void
@@ -228,10 +226,9 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 				 * to a single buffer
 				 */
 				if ((ccb_h->flags & CAM_DATA_PHYS) == 0) {
-					int s;
 					int error;
 
-					s = splsoftvm();
+					crit_enter();
 					error =
 					    bus_dmamap_load(adv->buffer_dmat,
 							    cinfo->dmamap,
@@ -249,7 +246,7 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 						adv_set_state(adv,
 							      ADV_BUSDMA_BLOCK);
 					}
-					splx(s);
+					crit_exit();
 				} else {
 					struct bus_dma_segment seg;
 
@@ -294,7 +291,6 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 		target_bit_vector targ_mask;
 		struct adv_transinfo *tconf;
 		u_int	 update_type;
-		int	 s;
 
 		cts = &ccb->cts;
 		targ_mask = ADV_TID_TO_TARGET_MASK(cts->ccb_h.target_id);
@@ -316,9 +312,8 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 			ccb->ccb_h.status = CAM_REQ_INVALID;
 			break;
 		}
-		
-		s = splcam();
 
+		crit_enter();
 		if ((update_type & ADV_TRANS_GOAL) != 0) {
 			if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
 				if ((cts->flags & CCB_TRANS_DISC_ENB) != 0)
@@ -383,7 +378,7 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 					 cts->sync_offset, update_type);
 		}
 
-		splx(s);
+		crit_exit();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -394,14 +389,13 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 		struct ccb_trans_settings *cts;
 		struct adv_transinfo *tconf;
 		target_bit_vector target_mask;
-		int s;
 
 		cts = &ccb->cts;
 		target_mask = ADV_TID_TO_TARGET_MASK(cts->ccb_h.target_id);
 
 		cts->flags &= ~(CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB);
 
-		s = splcam();
+		crit_enter();
 		if ((cts->flags & CCB_TRANS_CURRENT_SETTINGS) != 0) {
 			tconf = &adv->tinfo[cts->ccb_h.target_id].current;
 			if ((adv->disc_enable & target_mask) != 0)
@@ -418,7 +412,7 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 
 		cts->sync_period = tconf->period;
 		cts->sync_offset = tconf->offset;
-		splx(s);
+		crit_exit();
 
 		cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
 		cts->valid = CCB_TRANS_SYNC_RATE_VALID
@@ -457,13 +451,11 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 	}
 	case XPT_RESET_BUS:		/* Reset the specified SCSI bus */
 	{
-		int s;
-
-		s = splcam();
+		crit_enter();
 		adv_stop_execution(adv);
 		adv_reset_bus(adv, /*initiate_reset*/TRUE);
 		adv_start_execution(adv);
-		splx(s);
+		crit_exit();
 
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
@@ -520,7 +512,6 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 	struct	adv_ccb_info *cinfo;
 	struct	adv_scsi_q scsiq;
 	struct	adv_sg_head sghead;
-	int	s;
 
 	csio = (struct ccb_scsiio *)arg;
 	ccb_h = &csio->ccb_h;
@@ -595,8 +586,8 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 		scsiq.sg_head = NULL;
 	}
 
-	s = splcam();
 
+	crit_enter();
 	/*
 	 * Last time we need to check if this SCB needs to
 	 * be aborted.
@@ -607,7 +598,7 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 		adv_clear_state(adv, (union ccb *)csio);
 		adv_free_ccb_info(adv, cinfo);
 		xpt_done((union ccb *)csio);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -620,7 +611,7 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 		adv_clear_state(adv, (union ccb *)csio);
 		adv_free_ccb_info(adv, cinfo);
 		xpt_done((union ccb *)csio);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	cinfo->state |= ACCB_ACTIVE;
@@ -629,7 +620,7 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 	/* Schedule our timeout */
 	callout_reset(&ccb_h->timeout_ch, (ccb_h->timeout * hz)/1000,
 	    adv_timeout, csio);
-	splx(s);
+	crit_exit();
 }
 
 static struct adv_ccb_info *
@@ -660,7 +651,6 @@ adv_destroy_ccb_info(struct adv_softc *adv, struct adv_ccb_info *cinfo)
 void
 adv_timeout(void *arg)
 {
-	int s;
 	union ccb *ccb;
 	struct adv_softc *adv;
 	struct adv_ccb_info *cinfo;
@@ -672,10 +662,10 @@ adv_timeout(void *arg)
 	xpt_print_path(ccb->ccb_h.path);
 	printf("Timed out\n");
 
-	s = splcam();
+	crit_enter();
 	/* Have we been taken care of already?? */
 	if (cinfo == NULL || cinfo->state == ACCB_FREE) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -722,7 +712,7 @@ adv_timeout(void *arg)
 		adv_reset_bus(adv, /*initiate_reset*/TRUE);
 	}
 	adv_start_execution(adv);
-	splx(s);
+	crit_exit();
 }
 
 struct adv_softc *

@@ -33,7 +33,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#20 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.4.2.3 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.5 2004/09/17 03:39:39 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.6 2005/06/03 16:57:13 eirikn Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -51,6 +51,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #define AHD_PCI_CONFIG 1
 #include <machine/bus_memio.h>
@@ -303,15 +304,15 @@ ahd_lockinit(struct ahd_softc *ahd)
 }
 
 static __inline void
-ahd_lock(struct ahd_softc *ahd, unsigned long *flags)
+ahd_lock(struct ahd_softc *ahd, unsigned long *flags __unused)
 {
-	*flags = splcam();
+	crit_enter();
 }
 
 static __inline void
-ahd_unlock(struct ahd_softc *ahd, unsigned long *flags)
+ahd_unlock(struct ahd_softc *ahd, unsigned long *flags __unused)
 {
-	splx(*flags);
+	crit_exit();
 }
 
 /* Lock held during command compeletion to the upper layer */

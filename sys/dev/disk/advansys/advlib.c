@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.5 2004/09/17 03:39:38 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.6 2005/06/03 16:57:12 eirikn Exp $
  */
 /*
  * Ported from:
@@ -47,6 +47,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
@@ -1098,10 +1099,9 @@ adv_set_syncrate(struct adv_softc *adv, struct cam_path *path,
 	if ((type & ADV_TRANS_CUR) != 0
 	 && ((old_period != period || old_offset != offset)
 	  || period == 0 || offset == 0) /*Changes in asyn fix settings*/) {
-		int s;
 		int halted;
 
-		s = splcam();
+		crit_enter();
 		halted = adv_is_chip_halted(adv);
 		if (halted == 0)
 			/* Must halt the chip first */
@@ -1121,7 +1121,7 @@ adv_set_syncrate(struct adv_softc *adv, struct cam_path *path,
 			/* Start the chip again */
 			adv_start_chip(adv);
 
-		splx(s);
+		crit_exit();
 		tinfo->current.period = period;
 		tinfo->current.offset = offset;
 

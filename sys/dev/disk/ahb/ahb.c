@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.9 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.10 2005/06/03 16:57:12 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
@@ -108,12 +109,11 @@ static __inline struct ecb*
 ahbecbget(struct ahb_softc *ahb)
 {
 	struct	ecb* ecb;
-	int	s;
 
-	s = splcam();
+	crit_enter();
 	if ((ecb = SLIST_FIRST(&ahb->free_ecbs)) != NULL)
 		SLIST_REMOVE_HEAD(&ahb->free_ecbs, links);
-	splx(s);
+	crit_exit();
 
 	return (ecb);
 }
@@ -121,12 +121,10 @@ ahbecbget(struct ahb_softc *ahb)
 static __inline void
 ahbecbfree(struct ahb_softc* ahb, struct ecb* ecb)
 {
-	int s;
-
-	s = splcam();
+	crit_enter();
 	ecb->state = ECB_FREE;
 	SLIST_INSERT_HEAD(&ahb->free_ecbs, ecb, links);
-	splx(s);
+	crit_exit();
 }
 
 static __inline u_int32_t
@@ -870,7 +868,6 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	union	  ccb *ccb;
 	struct	  ahb_softc *ahb;
 	u_int32_t ecb_paddr;
-	int	  s;
 
 	ecb = (struct ecb *)arg;
 	ccb = ecb->ccb;
@@ -931,7 +928,7 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		ecb->hecb.data_len = 0;
 	}
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 * Last time we need to check if this CCB needs to
@@ -942,7 +939,7 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 			bus_dmamap_unload(ahb->buffer_dmat, ecb->dmamap);
 		ahbecbfree(ahb, ecb);
 		xpt_done(ccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 		
@@ -955,7 +952,7 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
 		      ahbtimeout, ecb);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1034,10 +1031,9 @@ ahbaction(struct cam_sim *sim, union ccb *ccb)
 				 * to a single buffer.
 				 */
 				if ((ccb->ccb_h.flags & CAM_DATA_PHYS)==0) {
-					int s;
 					int error;
 
-					s = splsoftvm();
+					crit_enter();
 					error = bus_dmamap_load(
 					    ahb->buffer_dmat,
 					    ecb->dmamap,
@@ -1056,7 +1052,7 @@ ahbaction(struct cam_sim *sim, union ccb *ccb)
 						ccb->ccb_h.status |=
 						    CAM_RELEASE_SIMQ;
 					}
-					splx(s);
+					crit_exit();
 				} else {
 					struct bus_dma_segment seg; 
 
@@ -1138,9 +1134,8 @@ ahbaction(struct cam_sim *sim, union ccb *ccb)
 	case XPT_RESET_DEV:	/* Bus Device Reset the specified SCSI device */
 	{
 		int i;
-		int s;
 
-		s = splcam();
+		crit_enter();
 		ahb->immed_cmd = IMMED_RESET;
 		ahbqueuembox(ahb, IMMED_RESET, ATTN_IMMED|ccb->ccb_h.target_id);
 		/* Poll for interrupt completion */
@@ -1148,7 +1143,7 @@ ahbaction(struct cam_sim *sim, union ccb *ccb)
 			DELAY(1000);
 			ahbintr(cam_sim_softc(sim));
 		}
-		splx(s);
+		crit_exit();
 		break;
 	}
 	case XPT_CALC_GEOMETRY:
@@ -1238,7 +1233,6 @@ ahbtimeout(void *arg)
 	struct ecb	 *ecb;
 	union  ccb	 *ccb;
 	struct ahb_softc *ahb;
-	int		  s;
 
 	ecb = (struct ecb *)arg;
 	ccb = ecb->ccb;
@@ -1246,13 +1240,13 @@ ahbtimeout(void *arg)
 	xpt_print_path(ccb->ccb_h.path);
 	printf("ECB %p - timed out\n", (void *)ecb);
 
-	s = splcam();
+	crit_enter();
 
 	if ((ecb->state & ECB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
 		printf("ECB %p - timed out ECB already completed\n",
 		       (void *)ecb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	/*
@@ -1322,7 +1316,7 @@ ahbtimeout(void *arg)
 		ahbhandleimmed(ahb, 0, ahb->scsi_id|INTSTAT_IMMED_OK);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 static device_method_t ahb_eisa_methods[] = {

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.8 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.9 2005/06/03 16:57:12 eirikn Exp $
  */
 /*
  * Ported from:
@@ -51,6 +51,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
@@ -110,9 +111,8 @@ static __inline struct acb*
 adwgetacb(struct adw_softc *adw)
 {
 	struct	acb* acb;
-	int	s;
 
-	s = splcam();
+	crit_enter();
 	if ((acb = SLIST_FIRST(&adw->free_acb_list)) != NULL) {
 		SLIST_REMOVE_HEAD(&adw->free_acb_list, links);
 	} else if (adw->num_acbs < adw->max_acbs) {
@@ -124,7 +124,7 @@ adwgetacb(struct adw_softc *adw)
 			SLIST_REMOVE_HEAD(&adw->free_acb_list, links);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return (acb);
 }
@@ -132,9 +132,7 @@ adwgetacb(struct adw_softc *adw)
 static __inline void
 adwfreeacb(struct adw_softc *adw, struct acb *acb)
 {
-	int s;
-
-	s = splcam();
+	crit_enter();
 	if ((acb->state & ACB_ACTIVE) != 0)
 		LIST_REMOVE(&acb->ccb->ccb_h, sim_links.le);
 	if ((acb->state & ACB_RELEASE_SIMQ) != 0)
@@ -146,7 +144,7 @@ adwfreeacb(struct adw_softc *adw, struct acb *acb)
 	}
 	acb->state = ACB_FREE;
 	SLIST_INSERT_HEAD(&adw->free_acb_list, acb, links);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -183,7 +181,7 @@ adwallocsgmap(struct adw_softc *adw)
 
 /*
  * Allocate another chunk of CCB's. Return count of entries added.
- * Assumed to be called at splcam().
+ * Assumed to be called under crit_enter().
  */
 static int
 adwallocacbs(struct adw_softc *adw)
@@ -312,7 +310,7 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		acb->queue.sg_real_addr = 0;
 	}
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 * Last time we need to check if this CCB needs to
@@ -323,7 +321,7 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 			bus_dmamap_unload(adw->buffer_dmat, acb->dmamap);
 		adwfreeacb(adw, acb);
 		xpt_done(ccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -335,7 +333,7 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 
 	adw_send_acb(adw, acb, acbvtob(adw, acb));
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -366,11 +364,9 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 		}
 
 		if ((acb = adwgetacb(adw)) == NULL) {
-			int s;
-	
-			s = splcam();
+			crit_enter();
 			adw->state |= ADW_RESOURCE_SHORTAGE;
-			splx(s);
+			crit_exit();
 			xpt_freeze_simq(sim, /*count*/1);
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
 			xpt_done(ccb);
@@ -443,10 +439,9 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 				 * to a single buffer.
 				 */
 				if ((ccbh->flags & CAM_DATA_PHYS) == 0) {
-					int s;
 					int error;
 
-					s = splsoftvm();
+					crit_enter();
 					error =
 					    bus_dmamap_load(adw->buffer_dmat,
 							    acb->dmamap,
@@ -464,7 +459,7 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 						xpt_freeze_simq(sim, 1);
 						acb->state |= CAM_RELEASE_SIMQ;
 					}
-					splx(s);
+					crit_exit();
 				} else {
 					struct bus_dma_segment seg; 
 
@@ -524,12 +519,11 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 	{
 		struct	  ccb_trans_settings *cts;
 		u_int	  target_mask;
-		int	  s;
 
 		cts = &ccb->cts;
 		target_mask = 0x01 << ccb->ccb_h.target_id;
 
-		s = splcam();
+		crit_enter();
 		if ((cts->flags & CCB_TRANS_CURRENT_SETTINGS) != 0) {
 			u_int sdtrdone;
 
@@ -639,7 +633,7 @@ adw_action(struct cam_sim *sim, union ccb *ccb)
 				}
 			} 
 		}
-		splx(s);
+		crit_exit();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -1150,11 +1144,10 @@ int
 adw_attach(struct adw_softc *adw)
 {
 	struct ccb_setasync csa;
-	int s;
 	int error;
 
 	error = 0;
-	s = splcam();
+	crit_enter();
 	/* Hook up our interrupt handler */
 	if ((error = bus_setup_intr(adw->device, adw->irq, INTR_TYPE_CAM,
 				    adw_intr, adw, &adw->ih, NULL)) != 0) {
@@ -1197,7 +1190,7 @@ adw_attach(struct adw_softc *adw)
 	}
 
 fail:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1436,7 +1429,6 @@ adwtimeout(void *arg)
 	struct adw_softc     *adw;
 	adw_idle_cmd_status_t status;
 	int		      target_id;
-	int		      s;
 
 	acb = (struct acb *)arg;
 	ccb = acb->ccb;
@@ -1444,13 +1436,13 @@ adwtimeout(void *arg)
 	xpt_print_path(ccb->ccb_h.path);
 	printf("ACB %p - timed out\n", (void *)acb);
 
-	s = splcam();
+	crit_enter();
 
 	if ((acb->state & ACB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
 		printf("ACB %p - timed out CCB already completed\n",
 		       (void *)acb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1460,7 +1452,7 @@ adwtimeout(void *arg)
 	/* Attempt a BDR first */
 	status = adw_idle_cmd_send(adw, ADW_IDLE_CMD_DEVICE_RESET,
 				   ccb->ccb_h.target_id);
-	splx(s);
+	crit_exit();
 	if (status == ADW_IDLE_CMD_SUCCESS) {
 		printf("%s: BDR Delivered.  No longer in timeout\n",
 		       adw_name(adw));

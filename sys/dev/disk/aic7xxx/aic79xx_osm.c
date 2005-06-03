@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#27 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.3.2.4 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.7 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.8 2005/06/03 16:57:13 eirikn Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -1224,10 +1224,9 @@ ahd_setup_data(struct ahd_softc *ahd, struct cam_sim *sim,
 		if ((ccb_h->flags & CAM_SCATTER_VALID) == 0) {
 			/* We've been given a pointer to a single buffer */
 			if ((ccb_h->flags & CAM_DATA_PHYS) == 0) {
-				int s;
 				int error;
 
-				s = splsoftvm();
+				crit_enter();
 				error = bus_dmamap_load(ahd->buffer_dmat,
 							scb->dmamap,
 							csio->data_ptr,
@@ -1246,7 +1245,7 @@ ahd_setup_data(struct ahd_softc *ahd, struct cam_sim *sim,
 					scb->io_ctx->ccb_h.status |=
 					    CAM_RELEASE_SIMQ;
 				}
-				splx(s);
+				crit_exit();
 			} else {
 				struct bus_dma_segment seg;
 
