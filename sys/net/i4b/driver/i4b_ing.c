@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.6 2004/09/16 04:36:30 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.7 2005/06/03 16:49:57 dillon Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -50,6 +50,7 @@
 #include <sys/ioccom.h>
 #include <sys/syslog.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -344,9 +345,9 @@ ingclearqueue(struct ifqueue *iq)
 	
 	for(;;)
 	{
-		x = splimp();
+		crit_enter();
 		IF_DEQUEUE(iq, m);
-		splx(x);
+		crit_exit();
 
 		if(m)
 			m_freem(m);
@@ -367,11 +368,10 @@ static void
 ing_connect(int unit, void *cdp)
 {
 	struct ing_softc *sc = &ing_softc[unit];
-	int s;
 
 	sc->sc_cdp = (call_desc_t *)cdp;
 
-	s = SPLI4B();
+	crit_enter();
 
 	NDBGL4(L4_DIALST, "ing%d: setting dial state to ST_CONNECTED", unit);
 
@@ -391,7 +391,7 @@ ing_connect(int unit, void *cdp)
 
 	sc->sc_state = ST_CONNECTED;
 	
-	splx(s);
+	crit_exit();
 }
 	
 /*---------------------------------------------------------------------------*
@@ -754,7 +754,6 @@ ng_ing_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
 	struct ing_softc *sc = hook->node->private;
 	struct ifqueue  *xmitq_p;
-	int s;
 	
 	if(hook->private == NULL)
 	{
@@ -783,12 +782,12 @@ ng_ing_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		xmitq_p = (&sc->xmitq);
 	}
 
-	s = splimp();
+	crit_enter();
 
 	if (IF_QFULL(xmitq_p))
 	{
 		IF_DROP(xmitq_p);
-		splx(s);
+		crit_exit();
 		NG_FREE_DATA(m, meta);
 		return(ENOBUFS);
 	}
@@ -797,7 +796,7 @@ ng_ing_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	ing_tx_queue_empty(sc->sc_unit);
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -840,12 +839,10 @@ static int
 ng_ing_disconnect(hook_p hook)
 {
 	struct ing_softc *sc = hook->node->private;
-	int s;
 	
 	if(hook->private)
 	{
-		s = splimp();
-		splx(s);
+		splz();
 	}
 	else
 	{

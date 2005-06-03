@@ -30,7 +30,7 @@
  *	$Id: i4b_ifpi_l1.c,v 1.4 2000/06/02 16:14:36 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_l1.c,v 1.4.2.1 2001/08/10 14:08:36 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_l1.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_l1.c,v 1.5 2005/06/03 16:50:00 dillon Exp $
  *
  *      last edit-date: [Fri Jun  2 14:54:30 2000]
  *
@@ -45,7 +45,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -83,7 +83,6 @@ int
 ifpi_ph_data_req(int unit, struct mbuf *m, int freeflag)
 {
 	u_char cmd;
-	int s;
 	struct l1_softc *sc = ifpi_scp[unit];
 
 #ifdef NOTDEF
@@ -93,7 +92,7 @@ ifpi_ph_data_req(int unit, struct mbuf *m, int freeflag)
 	if(m == NULL)			/* failsafe */
 		return (0);
 
-	s = SPLI4B();
+	crit_enter();
 
 	if(sc->sc_I430state == ST_F3)	/* layer 1 not running ? */
 	{
@@ -124,7 +123,7 @@ ifpi_ph_data_req(int unit, struct mbuf *m, int freeflag)
 				MICROTIME(hdr.time);
 				i4b_l1_trace_ind(&hdr, m->m_len, m->m_data);
 			}
-			splx(s);
+			crit_exit();
 			return(1);
 		}
 
@@ -133,7 +132,7 @@ ifpi_ph_data_req(int unit, struct mbuf *m, int freeflag)
 		if(freeflag == MBUF_FREE)
 			i4b_Dfreembuf(m);			
 	
-		splx(s);
+		crit_exit();
 		return (0);
 	}
 
@@ -182,7 +181,7 @@ ifpi_ph_data_req(int unit, struct mbuf *m, int freeflag)
 	ISAC_WRITE(I_CMDR, cmd);
 	ISACCMDRWRDELAY();
 
-	splx(s);
+	crit_exit();
 	
 	return(1);
 }

@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.11 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.12 2005/06/03 16:50:13 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -59,6 +59,7 @@
 #include <sys/conf.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
@@ -281,18 +282,16 @@ i4battach()
 PDEVSTATIC int
 i4bopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
-	int x;
-	
 	if(minor(dev))
 		return(ENXIO);
 
 	if(openflag)
 		return(EBUSY);
 	
-	x = splimp();
+	crit_enter();
 	openflag = 1;
 	i4b_l4_daemon_attached();
-	splx(x);
+	crit_exit();
 	
 	return(0);
 }
@@ -303,11 +302,11 @@ i4bopen(dev_t dev, int flag, int fmt, struct thread *td)
 PDEVSTATIC int
 i4bclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
-	int x = splimp();	
+	crit_enter();
 	openflag = 0;
 	i4b_l4_daemon_detached();
 	i4b_Dcleanifq(&i4b_rdqueue);
-	splx(x);
+	crit_exit();
 	return(0);
 }
 
@@ -318,13 +317,12 @@ PDEVSTATIC int
 i4bread(dev_t dev, struct uio *uio, int ioflag)
 {
 	struct mbuf *m;
-	int x;
 	int error = 0;
 
 	if(minor(dev))
 		return(ENODEV);
 
-	x = splimp();
+	crit_enter();
 	while(IF_QEMPTY(&i4b_rdqueue))
 	{
 		readflag = 1;
@@ -335,14 +333,14 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
 		error = tsleep((caddr_t) &i4b_rdqueue, PCATCH, "bird", 0);
 #endif
 		if (error != 0) {
-			splx(x);
+			crit_exit();
 			return error;
 		}
 	}
 
 	IF_DEQUEUE(&i4b_rdqueue, m);
 
-	splx(x);
+	crit_exit();
 		
 	if(m && m->m_len)
 		error = uiomove(m->m_data, m->m_len, uio);
@@ -636,7 +634,6 @@ i4bioctl(dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
 		case I4B_TIMEOUT_UPD:
 		{
 			msg_timeout_upd_t *mtu;
-			int x;
 			
 			mtu = (msg_timeout_upd_t *)data;
 
@@ -698,12 +695,12 @@ i4bioctl(dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
 			if(error != 0)
 				break;
 
-			x = SPLI4B();
+			crit_enter();
 			cd->shorthold_data.shorthold_algorithm = mtu->shorthold_data.shorthold_algorithm;
 			cd->shorthold_data.unitlen_time = mtu->shorthold_data.unitlen_time;
 			cd->shorthold_data.idle_time = mtu->shorthold_data.idle_time;
 			cd->shorthold_data.earlyhup_time = mtu->shorthold_data.earlyhup_time;
-			splx(x);
+			crit_exit();
 			break;
 		}
 			
@@ -928,8 +925,6 @@ diag_done:
 PDEVSTATIC int
 i4bselect(dev_t dev, int rw, struct thread *td)
 {
-	int x;
-	
 	if(minor(dev))
 		return(ENODEV);
 
@@ -938,10 +933,10 @@ i4bselect(dev_t dev, int rw, struct thread *td)
 		case FREAD:
 			if(!IF_QEMPTY(&i4b_rdqueue))
 				return(1);
-			x = splimp();
+			crit_enter();
 			selrecord(td, &select_rd_info);
 			selflag = 1;
-			splx(x);
+			crit_exit();
 			return(0);
 			break;
 
@@ -960,8 +955,6 @@ i4bselect(dev_t dev, int rw, struct thread *td)
 PDEVSTATIC int
 i4bpoll(dev_t dev, int events, struct thread *td)
 {
-	int x;
-	
 	if(minor(dev))
 		return(ENODEV);
 
@@ -970,10 +963,10 @@ i4bpoll(dev_t dev, int events, struct thread *td)
 		if(!IF_QEMPTY(&i4b_rdqueue))
 			return(1);
 
-		x = splimp();
+		crit_enter();
 		selrecord(td, &select_rd_info);
 		selflag = 1;
-		splx(x);
+		crit_exit();
 		return(0);
 	}
 	else if((events & POLLOUT) || (events & POLLWRNORM))
@@ -992,15 +985,13 @@ i4bpoll(dev_t dev, int events, struct thread *td)
 void
 i4bputqueue(struct mbuf *m)
 {
-	int x;
-	
 	if(!openflag)
 	{
 		i4b_Dfreembuf(m);
 		return;
 	}
 
-	x = splimp();
+	crit_enter();
 	
 	if(IF_QFULL(&i4b_rdqueue))
 	{
@@ -1012,7 +1003,7 @@ i4bputqueue(struct mbuf *m)
 
 	IF_ENQUEUE(&i4b_rdqueue, m);
 
-	splx(x);	
+	crit_exit();
 
 	if(readflag)
 	{
@@ -1033,15 +1024,13 @@ i4bputqueue(struct mbuf *m)
 void
 i4bputqueue_hipri(struct mbuf *m)
 {
-	int x;
-	
 	if(!openflag)
 	{
 		i4b_Dfreembuf(m);
 		return;
 	}
 
-	x = splimp();
+	crit_enter();
 	
 	if(IF_QFULL(&i4b_rdqueue))
 	{
@@ -1053,7 +1042,7 @@ i4bputqueue_hipri(struct mbuf *m)
 
 	IF_PREPEND(&i4b_rdqueue, m);
 
-	splx(x);	
+	crit_exit();
 
 	if(readflag)
 	{

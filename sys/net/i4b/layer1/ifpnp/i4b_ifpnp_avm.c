@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.6 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.7 2005/06/03 16:50:03 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -57,6 +57,7 @@
 #include <bus/isa/isavar.h>
 
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #include <net/i4b/include/machine/i4b_debug.h>
@@ -460,13 +461,12 @@ avm_pnp_attach(device_t dev)
 	struct l1_softc *sc;
 	u_int v;
 	int unit, error = 0;
-	int s;
 	u_int16_t vid;
 	void *ih = 0;
 	bus_space_handle_t bhandle;
 	bus_space_tag_t btag; 
 
-	s = splimp();
+	crit_enter();
 
 	vid = isa_get_vendorid(dev);
 	sc = device_get_softc(dev);
@@ -476,7 +476,7 @@ avm_pnp_attach(device_t dev)
 	/* probably not really required */
 	if(unit > IFPNP_MAXUNIT) {
 		printf("avm_pnp%d: Error, unit > IFPNP_MAXUNIT!\n", unit);
-		splx(s);
+		crit_exit();
 		return(ENXIO);
 	}
 
@@ -621,7 +621,7 @@ avm_pnp_attach(device_t dev)
 	i4b_l1_mph_status_ind(L0IFPNPUNIT(sc->sc_unit), STI_ATTACH, sc->sc_cardtyp, &avm_pnp_l1mux_func);
 
   fail:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1024,7 +1024,7 @@ avm_pnp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 	struct l1_softc *sc = ifpnp_scp[unit];
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 
-	int s = SPLI4B();
+	crit_enter();
 	
 	if(activate == 0)
 	{
@@ -1086,7 +1086,7 @@ avm_pnp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 		chan->state |= HSCX_AVMA1PP_ACTIVE;
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1094,13 +1094,12 @@ avm_pnp_bchannel_start(int unit, int h_chan)
 {
 	struct l1_softc *sc = ifpnp_scp[unit];
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
-	int s;
 	int activity = -1;
 
-	s = SPLI4B();				/* enter critical section */
+	crit_enter();
 	if(chan->state & HSCX_TX_ACTIVE)	/* already running ? */
 	{
-		splx(s);
+		crit_exit();
 		return;				/* yes, leave */
 	}
 
@@ -1110,7 +1109,7 @@ avm_pnp_bchannel_start(int unit, int h_chan)
 	
 	if(chan->out_mbuf_head == NULL)		/* queue empty ? */
 	{
-		splx(s);			/* leave critical section */
+		crit_exit();
 		return;				/* yes, exit */
 	}
 
@@ -1152,7 +1151,7 @@ avm_pnp_bchannel_start(int unit, int h_chan)
 	if(activity == ACT_RX || activity == ACT_TX)
 		(*chan->isic_drvr_linktab->bch_activity)(chan->isic_drvr_linktab->unit, activity);
 
-	splx(s);	
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -1236,9 +1235,8 @@ avm_pnp_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 {
 	struct l1_softc *sc = ifpnp_scp[unit];
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
-	int s;
 
-	s = SPLI4B();
+	crit_enter();
 	
 	bsp->outbytes = chan->txcount;
 	bsp->inbytes = chan->rxcount;
@@ -1246,7 +1244,7 @@ avm_pnp_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 	chan->txcount = 0;
 	chan->rxcount = 0;
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*

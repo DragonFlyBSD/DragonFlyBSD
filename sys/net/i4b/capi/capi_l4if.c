@@ -25,7 +25,7 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.7 2005/06/03 16:49:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #include <net/i4b/include/machine/i4b_debug.h>
@@ -115,31 +116,30 @@ static void
 i4b_capi_bch_start_tx(int unit, int chan)
 {
     capi_softc_t *sc = capi_sc[unit];
-    int s;
 
-    s = SPLI4B();
-
+    crit_enter();
     if (sc->sc_bchan[chan].state != B_CONNECTED) {
-	splx(s);
+	crit_exit();
 	printf("capi%d: start_tx on unconnected channel\n", sc->sc_unit);
 	return;
     }
 
     if (sc->sc_bchan[chan].busy) {
-	splx(s);
+	crit_exit();
 	return;
     }
 
     capi_start_tx(sc, chan);
 
-    splx(s);
+    crit_exit();
 }
 
 static void
 i4b_capi_bch_stat(int unit, int chan, bchan_statistics_t *bsp)
 {
     capi_softc_t *sc = capi_sc[unit];
-    int s = SPLI4B();
+
+    crit_enter();
 
     bsp->outbytes = sc->sc_bchan[chan].txcount;
     bsp->inbytes = sc->sc_bchan[chan].rxcount;
@@ -147,7 +147,7 @@ i4b_capi_bch_stat(int unit, int chan, bchan_statistics_t *bsp)
     sc->sc_bchan[chan].txcount = 0;
     sc->sc_bchan[chan].rxcount = 0;
 
-    splx(s);
+    crit_exit();
 }
 
 int capi_start_tx(capi_softc_t *sc, int chan)
@@ -313,7 +313,7 @@ n_connect_request(u_int cdid)
 {
     call_desc_t *cd = cd_by_cdid(cdid);
     capi_softc_t *sc;
-    int bch, s;
+    int bch;
 
     if (!cd) {
 	printf("capi?: invalid cdid %d\n", cdid);
@@ -323,7 +323,7 @@ n_connect_request(u_int cdid)
     sc = capi_sc[ctrl_desc[cd->controller].unit];
     bch = cd->channelid;
 
-    s = SPLI4B();
+    crit_enter();
 
     if ((bch < 0) || (bch >= sc->sc_nbch))
 	for (bch = 0; bch < sc->sc_nbch; bch++)
@@ -331,7 +331,7 @@ n_connect_request(u_int cdid)
 		break;
 
     if (bch == sc->sc_nbch) {
-	splx(s);
+	crit_exit();
 	printf("capi%d: no free B channel\n", sc->sc_unit);
 	return;
     }
@@ -339,7 +339,7 @@ n_connect_request(u_int cdid)
     cd->channelid = bch;
 
     capi_connect_req(sc, cd);
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -354,7 +354,7 @@ n_connect_response(u_int cdid, int response, int cause)
 {
     call_desc_t *cd = cd_by_cdid(cdid);
     capi_softc_t *sc;
-    int bch, s;
+    int bch;
 
     if (!cd) {
 	printf("capi?: invalid cdid %d\n", cdid);
@@ -369,9 +369,9 @@ n_connect_response(u_int cdid, int response, int cause)
     cd->response = response;
     cd->cause_out = cause;
 
-    s = SPLI4B();
+    crit_enter();
     capi_connect_resp(sc, cd);
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -385,7 +385,7 @@ n_disconnect_request(u_int cdid, int cause)
 {
     call_desc_t *cd = cd_by_cdid(cdid);
     capi_softc_t *sc;
-    int bch, s;
+    int bch;
 
     if (!cd) {
 	printf("capi?: invalid cdid %d\n", cdid);
@@ -397,9 +397,9 @@ n_disconnect_request(u_int cdid, int cause)
 
     cd->cause_out = cause;
 
-    s = SPLI4B();
+    crit_enter();
     capi_disconnect_req(sc, cd);
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -412,7 +412,6 @@ n_alert_request(u_int cdid)
 {
     call_desc_t *cd = cd_by_cdid(cdid);
     capi_softc_t *sc;
-    int s;
 
     if (!cd) {
 	printf("capi?: invalid cdid %d\n", cdid);
@@ -421,9 +420,9 @@ n_alert_request(u_int cdid)
 
     sc = capi_sc[ctrl_desc[cd->controller].unit];
 
-    s = SPLI4B();
+    crit_enter();
     capi_alert_req(sc, cd);
-    splx(s);
+    crit_exit();
 }
 
 /*

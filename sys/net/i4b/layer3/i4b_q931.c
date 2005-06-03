@@ -30,7 +30,7 @@
  *	$Id: i4b_q931.c,v 1.32 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_q931.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.5 2004/02/16 20:48:33 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.6 2005/06/03 16:50:12 dillon Exp $
  *
  *      last edit-date: [Mon May 29 16:56:52 2000]
  *
@@ -47,6 +47,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
+#include <sys/thread2.h>
 
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
 #include <sys/callout.h>
@@ -124,7 +125,6 @@ i4b_decode_q931(int unit, int msg_len, u_char *msg_ptr)
 	int crflag = 0;
 	int i;	
 	int offset;
-	int s;
 	
 	/* check protocol discriminator */
 	
@@ -143,7 +143,7 @@ i4b_decode_q931(int unit, int msg_len, u_char *msg_ptr)
 	msg_ptr++;
 	msg_len--;
 
-	s = SPLI4B();		/* this has to be protected ! */
+	crit_enter();	/* this has to be protected ! */
 	
 	/* extract call reference */
 
@@ -196,12 +196,12 @@ i4b_decode_q931(int unit, int msg_len, u_char *msg_ptr)
 				NDBGL3(L3_P_ERR, "cannot find calldescriptor for cr = 0x%x, crflag = 0x%x, msg = 0x%x, frame = ", crval, crflag, *msg_ptr);
 				i4b_print_frame(msg_len, msg_ptr);
 			}
-			splx(s);
+			crit_exit();
 			return;
 		}
 	}
 
-	splx(s);
+	crit_exit();
 
 	/* decode and handle message type */
 	

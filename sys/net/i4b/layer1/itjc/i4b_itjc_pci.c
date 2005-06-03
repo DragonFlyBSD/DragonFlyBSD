@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.10 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.11 2005/06/03 16:50:07 dillon Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -62,6 +62,7 @@
 #include <bus/pci/pcivar.h>
 
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #include <net/i4b/include/machine/i4b_debug.h>
@@ -640,8 +641,7 @@ itjc_bchannel_dma_setup(struct l1_softc *sc, int h_chan, int activate)
 				*ring_end,
 				*cp;
 
-	int			s = SPLI4B();
-
+	crit_enter();
 	itjc_bus_setup(sc);
 
 	if (activate)
@@ -695,7 +695,7 @@ itjc_bchannel_dma_setup(struct l1_softc *sc, int h_chan, int activate)
 			itjc_dma_stop(sc);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 
@@ -1516,7 +1516,6 @@ itjc_attach(device_t dev)
 				did = pci_get_device(dev);
 
 	int			unit = device_get_unit(dev),
-				s = splimp(),
 				res_init_level = 0,
 				error = 0;
 
@@ -1524,13 +1523,14 @@ itjc_attach(device_t dev)
 
 	dma_context_t		*ctx = &dma_context[unit];
 
+	crit_enter();
 	bzero(sc, sizeof(struct l1_softc));
 
 	/* Probably not really required. */
 	if (unit > ITJC_MAXUNIT)
 	{
 		printf("itjc%d: Error, unit > ITJC_MAXUNIT!\n", unit);
-		splx(s);
+		crit_exit();
 		return ENXIO;
 	}
 
@@ -1729,7 +1729,7 @@ itjc_attach(device_t dev)
 	i4b_l1_mph_status_ind(L0ITJCUNIT(sc->sc_unit), STI_ATTACH, 
 		sc->sc_cardtyp, &itjc_l1mux_func);
 
-	splx(s);
+	crit_exit();
 	return 0;
 
   fail:
@@ -1763,7 +1763,7 @@ itjc_attach(device_t dev)
 
 	itjc_scp[unit] = NULL;
 
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -1825,7 +1825,8 @@ itjc_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 	struct l1_softc		*sc	= isic_find_sc(unit);
 #endif
 	l1_bchan_state_t	*chan	= &sc->sc_chan[h_chan];
-	int			s	= SPLI4B();
+
+	crit_enter();
 		
 	NDBGL1(L1_BCHAN, "unit=%d, channel=%d, %s",
 		unit, h_chan, activate ? "activate" : "deactivate");
@@ -1881,7 +1882,7 @@ itjc_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 	if (activate)
 		itjc_bchannel_dma_setup(sc, h_chan, activate); 
 
-	splx(s);
+	crit_exit();
 }
 
 
@@ -1916,20 +1917,19 @@ itjc_bchannel_start(int unit, int h_chan)
 	struct l1_softc	 *sc	= isic_find_sc(unit);
 #endif
 	l1_bchan_state_t *chan	= &sc->sc_chan[h_chan];
-
-	int		 s	= SPLI4B();
-
 	dma_tx_context_t *txc	= &dma_tx_context[unit][h_chan];
+
+	crit_enter();
 
 	if (chan->state & HSCX_TX_ACTIVE)
 	{
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	itjc_dma_tx_intr(sc, chan, txc);
 
-	splx(s);
+	crit_exit();
 #endif
 }
 
@@ -2058,9 +2058,8 @@ itjc_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 	struct l1_softc *sc = isic_find_sc(unit);
 #endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
-	int s;
 
-	s = SPLI4B();
+	crit_enter();
 	
 	bsp->outbytes = chan->txcount;
 	bsp->inbytes = chan->rxcount;
@@ -2068,7 +2067,7 @@ itjc_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 	chan->txcount = 0;
 	chan->rxcount = 0;
 
-	splx(s);
+	crit_exit();
 }
 
 

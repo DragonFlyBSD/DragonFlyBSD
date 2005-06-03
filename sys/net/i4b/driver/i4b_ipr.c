@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.15 2005/02/10 00:20:09 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.16 2005/06/03 16:49:57 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -86,6 +86,7 @@
 #endif
 
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -384,10 +385,9 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 {
 	struct ipr_softc *sc;
 	int unit;
-	int s;
 	struct ip *ip;
 	
-	s = SPLI4B();
+	crit_enter();
 
 #if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
 	unit = ifp->if_unit;
@@ -403,7 +403,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	{
 		printf(IPR_FMT "af%d not supported\n", IPR_ARG(sc), dst->sa_family);
 		m_freem(m);
-		splx(s);
+		crit_exit();
 		sc->sc_if.if_noproto++;
 		sc->sc_if.if_oerrors++;
 		return(EAFNOSUPPORT);
@@ -415,7 +415,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: interface is DOWN!", unit);
 		m_freem(m);
-		splx(s);
+		crit_exit();
 		sc->sc_if.if_oerrors++;
 		return(ENETDOWN);
 	}
@@ -433,7 +433,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 				m_freem(m);
 				iprclearqueues(sc);
 				sc->sc_dialresp = DSTAT_NONE;
-				splx(s);
+				crit_exit();
 				sc->sc_if.if_oerrors++;
 				return(ENETUNREACH);
 				break;
@@ -443,7 +443,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 				m_freem(m);
 				iprclearqueues(sc);
 				sc->sc_dialresp = DSTAT_NONE;
-				splx(s);
+				crit_exit();
 				sc->sc_if.if_oerrors++;
 				return(EHOSTUNREACH);				
 				break;
@@ -453,7 +453,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 				m_freem(m);
 				iprclearqueues(sc);
 				sc->sc_dialresp = DSTAT_NONE;
-				splx(s);
+				crit_exit();
 				sc->sc_if.if_oerrors++;
 				return(EHOSTUNREACH);				
 				break;
@@ -492,7 +492,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if (netisr_queue(NETISR_IP, m))
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: send queue full!", unit);
-		splx(s);
+		crit_exit();
 		sc->sc_if.if_oerrors++;
 		return(ENOBUFS);
 	}
@@ -502,7 +502,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	
 	ipr_tx_queue_empty(unit);
 
-	splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -526,10 +526,9 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ifaddr *ifa = (struct ifaddr *)data;
-	int s;
 	int error = 0;
 
-	s = SPLI4B();
+	crit_enter();
 	
 	switch (cmd)
 	{
@@ -609,7 +608,7 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -620,21 +619,19 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 static void
 iprclearqueues(struct ipr_softc *sc)
 {
-	int x;
-
 #if defined (__FreeBSD__) && __FreeBSD__ > 4
-	x = splimp();
+	crit_enter();
 	IF_DRAIN(&sc->sc_fastq);
 	IF_DRAIN(&sc->sc_if.if_snd);
-	splx(x);
+	crit_exit();
 #else
         struct mbuf *m;
 
 	for(;;)
 	{
-		x = splimp();
+		crit_enter();
 		IF_DEQUEUE(&sc->sc_fastq, m);
-		splx(x);
+		crit_exit();
 		if(m)
 			m_freem(m);
 		else
@@ -643,9 +640,9 @@ iprclearqueues(struct ipr_softc *sc)
 
 	for(;;)
         {
-		x = splimp();
+		crit_enter();
 		IF_DEQUEUE(&sc->sc_if.if_snd, m);
-		splx(x);
+		crit_exit();
 		if(m)
 			m_freem(m);
 		else
@@ -720,7 +717,7 @@ iprwatchdog(struct ifnet *ifp)
 static void
 i4bipr_connect_startio(struct ipr_softc *sc)
 {
-	int s = SPLI4B();
+	crit_enter();
 	
 	if(sc->sc_state == ST_CONNECTED_W)
 	{
@@ -728,7 +725,7 @@ i4bipr_connect_startio(struct ipr_softc *sc)
 		ipr_tx_queue_empty(THE_UNIT);
 	}
 
-	splx(s);
+	crit_exit();
 }
  
 /*---------------------------------------------------------------------------*
@@ -738,11 +735,10 @@ static void
 ipr_connect(int unit, void *cdp)
 {
 	struct ipr_softc *sc = &ipr_softc[unit];
-	int s;
 
 	sc->sc_cdp = (call_desc_t *)cdp;
 
-	s = SPLI4B();
+	crit_enter();
 
 	NDBGL4(L4_DIALST, "ipr%d: setting dial state to ST_CONNECTED", unit);
 
@@ -797,7 +793,7 @@ ipr_connect(int unit, void *cdp)
 		ipr_tx_queue_empty(unit);
 	}
 
-	splx(s);
+	crit_exit();
 
 	/* we don't need any negotiation - pass event back right now */
 	i4b_l4_negcomplete(sc->sc_cdp);
@@ -876,8 +872,8 @@ ipr_updown(int unit, int updown)
 /*---------------------------------------------------------------------------*
  *	this routine is called from the HSCX interrupt handler
  *	when a new frame (mbuf) has been received and was put on
- *	the rx queue. It is assumed that this routines runs at
- *	pri level splimp() ! Keep it short !
+ *	the rx queue. It is assumed that this routines runs in
+ *	a critical section ! Keep it short !
  *---------------------------------------------------------------------------*/
 static void
 ipr_rx_data_rdy(int unit)

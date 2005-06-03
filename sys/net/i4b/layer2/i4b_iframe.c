@@ -30,7 +30,7 @@
  *	$Id: i4b_iframe.c,v 1.25 2000/08/24 11:48:57 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_iframe.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_iframe.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_iframe.c,v 1.6 2005/06/03 16:50:10 dillon Exp $
  *
  *      last edit-date: [Thu Aug 24 12:49:18 2000]
  *
@@ -48,6 +48,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000

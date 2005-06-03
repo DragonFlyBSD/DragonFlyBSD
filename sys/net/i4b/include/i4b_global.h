@@ -28,7 +28,7 @@
  *	--------------------------------------
  *
  * $FreeBSD: src/sys/i4b/include/i4b_global.h,v 1.6.2.2 2002/07/07 10:17:10 hm Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.4 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.5 2005/06/03 16:49:58 dillon Exp $
  *
  *	last edit-date: [Sun Jul  7 12:11:35 2002]
  *
@@ -152,15 +152,11 @@
 #define TIMER_IDLE	1		/* a timer is running	*/
 #define TIMER_ACTIVE	2		/* a timer is idle	*/
 
-/* i4b's spl */
-
-#define	SPLI4B()	splimp()	/* spl for i4b		*/
-
 /* critial code region handling macros */
 
-#define CRIT_VAR	int _svd_spl_	/* declare variable	*/
-#define CRIT_BEG	_svd_spl_ = SPLI4B()	/* save spl	*/
-#define CRIT_END	splx(_svd_spl_)	/* restore spl		*/
+#define CRIT_VAR	int _svd_spl_ __unused;	/* dummy */
+#define CRIT_BEG	crit_enter()
+#define CRIT_END	crit_exit()
 
 /* definitions for the STATUS indications L1 -> L2 -> L3 */
 

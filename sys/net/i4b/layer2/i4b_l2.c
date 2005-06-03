@@ -28,7 +28,7 @@
  *	-------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.7 2005/06/03 16:50:10 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 16:43:31 2001]
  *
@@ -45,6 +45,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000

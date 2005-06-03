@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.6 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.7 2005/06/03 16:50:13 dillon Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -43,6 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
+#include <sys/thread2.h>
 
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
 #include <sys/callout.h>
@@ -83,9 +84,8 @@ get_cdid(void)
 {
 	static unsigned int cdid_count = 0;
 	int i;
-	int x;
 
-	x = SPLI4B();   
+	crit_enter();
 
 	/* get next id */
 	
@@ -108,7 +108,7 @@ again:
 		}
 	}
 
-	splx(x);
+	crit_exit();
 	
 	return(cdid_count);
 }
@@ -125,10 +125,9 @@ call_desc_t *
 reserve_cd(void)
 {
 	call_desc_t *cd;
-	int x;
 	int i;
 
-	x = SPLI4B();
+	crit_enter();
 
 	cd = NULL;
 	
@@ -145,7 +144,7 @@ reserve_cd(void)
 		}
 	}
 
-	splx(x);
+	crit_exit();
 
 	if(cd == NULL)
 		panic("reserve_cd: no free call descriptor available!");
@@ -167,7 +166,8 @@ void
 freecd_by_cd(call_desc_t *cd)
 {
 	int i;
-	int x = SPLI4B();
+
+	crit_enter();
 	
 	for(i=0; i < N_CALL_DESC; i++)
 	{
@@ -184,7 +184,7 @@ freecd_by_cd(call_desc_t *cd)
 	if(i == N_CALL_DESC)
 		panic("freecd_by_cd: ERROR, cd not found, cr = %d\n", cd->cr);
 
-	splx(x);		
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -328,7 +328,7 @@ i4b_l4_daemon_attached(void)
 {
 	int i;
 
-	int x = SPLI4B();
+	crit_enter();
 	
 	for(i=0; i < nctrl; i++)
 	{
@@ -338,7 +338,7 @@ i4b_l4_daemon_attached(void)
 			(*ctrl_desc[i].N_MGMT_COMMAND)(ctrl_desc[i].unit, CMR_DOPEN, 0);
 		}
 	}
-	splx(x);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -349,7 +349,7 @@ i4b_l4_daemon_detached(void)
 {
 	int i;
 
-	int x = SPLI4B();
+	crit_enter();
 
 	for(i=0; i < nctrl; i++)
 	{
@@ -359,7 +359,7 @@ i4b_l4_daemon_detached(void)
 			(*ctrl_desc[i].N_MGMT_COMMAND)(ctrl_desc[i].unit, CMR_DCLOSE, 0);
 		}
 	}
-	splx(x);
+	crit_exit();
 }
 
 #ifdef I4B_CD_DEBUG_PRINT

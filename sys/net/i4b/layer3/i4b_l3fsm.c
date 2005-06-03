@@ -30,7 +30,7 @@
  *	$Id: i4b_l3fsm.c,v 1.22 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_l3fsm.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_l3fsm.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_l3fsm.c,v 1.5 2005/06/03 16:50:12 dillon Exp $
  *
  *      last edit-date: [Thu Oct 12 17:58:35 2000]
  *
@@ -46,6 +46,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
+#include <sys/thread2.h>
 
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
 #include <sys/callout.h>
@@ -281,23 +282,22 @@ char *print_l3state(call_desc_t *cd)
  *---------------------------------------------------------------------------*/	
 static void F_00A(call_desc_t *cd)
 {
-	int s;
 	NDBGL3(L3_F_MSG, "FSM function F_00A executing");
 
 	cd->T303_first_to = 1;
 	T303_start(cd);
 
-	s = SPLI4B();
+	crit_enter();
 	if(i4b_get_dl_stat(cd) == DL_DOWN)
 	{
-		splx(s);
+		crit_exit();
 		DL_Est_Req(ctrl_desc[cd->controller].unit);
 		cd->Q931state = ST_OW;
 	}
 	else
 	{
 		cd->Q931state = ST_U1;
-		splx(s);
+		crit_exit();
 		i4b_l3_tx_setup(cd);
 	}		
 }
@@ -552,11 +552,11 @@ static void F_06F(call_desc_t *cd)
 	}
 	else
 	{
-		int s = SPLI4B();
+		crit_enter();
 		i4b_l3_tx_release_complete(cd, 1);
 		cd->Q931state = ST_U0;
 		freecd_by_cd(cd);
-		splx(s);
+		crit_exit();
 	}
 }
 

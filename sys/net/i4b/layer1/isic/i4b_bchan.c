@@ -28,7 +28,7 @@
  *	----------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_bchan.c,v 1.7.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_bchan.c,v 1.4 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_bchan.c,v 1.5 2005/06/03 16:50:05 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:07:12 2001]
  *
@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #include <net/i4b/include/machine/i4b_debug.h>
@@ -68,7 +69,7 @@ isic_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 	struct l1_softc *sc = &l1_sc[unit];
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 
-	int s = SPLI4B();
+	crit_enter();
 	
 	if(activate == 0)
 	{
@@ -129,7 +130,7 @@ isic_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 		isic_hscx_init(sc, h_chan, activate);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -142,15 +143,13 @@ isic_bchannel_start(int unit, int h_chan)
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	int next_len;
 	int len;
-
-	int s;
 	int activity = -1;
 	int cmd = 0;
 
-	s = SPLI4B();				/* enter critical section */
+	crit_enter();
 	if(chan->state & HSCX_TX_ACTIVE)	/* already running ? */
 	{
-		splx(s);
+		crit_exit();
 		return;				/* yes, leave */
 	}
 
@@ -160,7 +159,7 @@ isic_bchannel_start(int unit, int h_chan)
 	
 	if(chan->out_mbuf_head == NULL)		/* queue empty ? */
 	{
-		splx(s);			/* leave critical section */
+		crit_exit();
 		return;				/* yes, exit */
 	}
 
@@ -311,7 +310,7 @@ isic_bchannel_start(int unit, int h_chan)
 	if(cmd)
 		isic_hscx_cmd(sc, h_chan, cmd);
 		
-	splx(s);	
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -322,9 +321,8 @@ isic_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 {
 	struct l1_softc *sc = &l1_sc[unit];
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
-	int s;
 
-	s = SPLI4B();
+	crit_enter();
 	
 	bsp->outbytes = chan->txcount;
 	bsp->inbytes = chan->rxcount;
@@ -332,7 +330,7 @@ isic_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 	chan->txcount = 0;
 	chan->rxcount = 0;
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*

@@ -30,9 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.11 2005/01/23 13:47:24 joerg Exp $
- *
- *	NOTE: the code assumes that SPLI4B >= splimp !
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.12 2005/06/03 16:49:57 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -56,6 +54,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <sys/tty.h>
+#include <sys/thread2.h>
 
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 
@@ -240,7 +239,6 @@ int
 get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 {
 	struct mbuf *m;
-	int x;
 	int unit;
 	int trunc = 0;
 	int totlen = len + sizeof(i4b_trace_hdr_t);
@@ -300,9 +298,9 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 	{
 		struct mbuf *m1;
 
-		x = SPLI4B();
+		crit_enter();
 		IF_DEQUEUE(&trace_queue[unit], m1);
-		splx(x);		
+		crit_exit();
 
 		i4b_Bfreembuf(m1);
 	}
@@ -316,7 +314,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 	else
 		memcpy(&m->m_data[sizeof(i4b_trace_hdr_t)], buf, len);
 
-	x = SPLI4B();
+	crit_enter();
 	
 	IF_ENQUEUE(&trace_queue[unit], m);
 	
@@ -326,7 +324,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 		wakeup((caddr_t) &trace_queue[unit]);
 	}
 
-	splx(x);
+	crit_exit();
 	
 	return(1);
 }
@@ -337,7 +335,6 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 PDEVSTATIC int
 i4btrcopen(dev_t dev, int flag, int fmt, struct thread *td)
 {
-	int x;
 	int unit = minor(dev);
 
 	if(unit >= NI4BTRC)
@@ -349,11 +346,11 @@ i4btrcopen(dev_t dev, int flag, int fmt, struct thread *td)
 	if(analyzemode && (unit == outunit || unit == rxunit || unit == txunit))
 		return(EBUSY);
 
-	x = SPLI4B();
+	crit_enter();
 	
 	device_state[unit] = ST_ISOPEN;		
 
-	splx(x);
+	crit_exit();
 	
 	return(0);
 }
@@ -365,7 +362,7 @@ PDEVSTATIC int
 i4btrcclose(dev_t dev, int flag, int fmt, struct thread *td)
 {
 	int unit = minor(dev);
-	int i, x;
+	int i;
 	int cno = -1;
 
 	for(i=0; i < nctrl; i++)
@@ -397,9 +394,9 @@ i4btrcclose(dev_t dev, int flag, int fmt, struct thread *td)
 			(*ctrl_desc[cno].N_MGMT_COMMAND)(ctrl_desc[cno].unit, CMR_SETTRACE, TRACE_OFF);
 	}
 
-	x = SPLI4B();
+	crit_enter();
 	device_state[unit] = ST_IDLE;
-	splx(x);
+	crit_exit();
 	
 	return(0);
 }
@@ -411,14 +408,13 @@ PDEVSTATIC int
 i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 {
 	struct mbuf *m;
-	int x;
 	int error = 0;
 	int unit = minor(dev);
 	
 	if(!(device_state[unit] & ST_ISOPEN))
 		return(EIO);
 
-	x = SPLI4B();
+	crit_enter();
 	
 	while(IF_QEMPTY(&trace_queue[unit]) && (device_state[unit] & ST_ISOPEN))
 	{
@@ -435,7 +431,7 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 #endif                                                                                               
 		{
 			device_state[unit] &= ~ST_WAITDATA;
-			splx(x);
+			crit_exit();
 			return(error);
 		}
 	}
@@ -450,7 +446,7 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 	if(m)
 		i4b_Bfreembuf(m);
 
-	splx(x);
+	crit_exit();
 	
 	return(error);
 }

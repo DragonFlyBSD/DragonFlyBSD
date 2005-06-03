@@ -28,7 +28,7 @@
  *	---------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_l1.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_l1.c,v 1.3 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_l1.c,v 1.4 2005/06/03 16:50:07 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 17:16:19 2001]
  *
@@ -44,6 +44,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <machine/stdarg.h>
 #include <machine/clock.h>
@@ -84,7 +85,6 @@ int
 itjc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 {
 	u_char cmd;
-	int s;
 	struct l1_softc *sc = itjc_scp[unit];
 
 	NDBGL1(L1_PRIM, "PH-DATA-REQ, unit %d, freeflag=%d", unit, freeflag);
@@ -92,7 +92,7 @@ itjc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 	if(m == NULL)			/* failsafe */
 		return (0);
 
-	s = SPLI4B();
+	crit_enter();
 
 	if(sc->sc_I430state == ST_F3)	/* layer 1 not running ? */
 	{
@@ -123,7 +123,7 @@ itjc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 				MICROTIME(hdr.time);
 				i4b_l1_trace_ind(&hdr, m->m_len, m->m_data);
 			}
-			splx(s);
+			crit_exit();
 			return(1);
 		}
 
@@ -132,7 +132,7 @@ itjc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 		if(freeflag == MBUF_FREE)
 			i4b_Dfreembuf(m);			
 	
-		splx(s);
+		crit_exit();
 		return (0);
 	}
 
@@ -181,7 +181,7 @@ itjc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 	ISAC_WRITE(I_CMDR, cmd);
 	ISACCMDRWRDELAY();
 
-	splx(s);
+	crit_exit();
 	
 	return(1);
 }

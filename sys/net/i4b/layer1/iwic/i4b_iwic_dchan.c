@@ -28,7 +28,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_dchan.c,v 1.4.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_dchan.c,v 1.3 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_dchan.c,v 1.4 2005/06/03 16:50:08 dillon Exp $
  *
  *      last edit-date: [Tue Jan 16 13:20:14 2001]
  *
@@ -44,6 +44,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -227,9 +228,7 @@ iwic_dchan_xfer_irq(struct iwic_softc *sc, int ista)
 void
 iwic_dchan_disable(struct iwic_softc *sc)
 {
-	int s;
-
-	s = SPLI4B();
+	crit_enter();
 
 	if (sc->sc_dchan.obuf)
 	{
@@ -245,7 +244,7 @@ iwic_dchan_disable(struct iwic_softc *sc)
 		sc->sc_dchan.obuf2 = NULL;
 	}
 
-	splx(s);
+	crit_exit();
 
 	IWIC_WRITE(sc, CIX, CIX_DRC);
 }
@@ -256,12 +255,10 @@ iwic_dchan_disable(struct iwic_softc *sc)
 int
 iwic_dchan_data_req(struct iwic_softc *sc, struct mbuf *m, int freeflag)
 {
-	int s;
-
 	if (!m)
 		return 0;
 
-	s = SPLI4B();
+	crit_enter();
 
 	/* Queue message */
 
@@ -287,7 +284,7 @@ iwic_dchan_data_req(struct iwic_softc *sc, struct mbuf *m, int freeflag)
 
 	iwic_dchan_transmit(sc);
 
-	splx(s);
+	crit_exit();
 
 	return (0);
 }

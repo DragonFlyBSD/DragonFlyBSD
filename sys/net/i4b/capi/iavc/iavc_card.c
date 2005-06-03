@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' card specific support routines.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_card.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_card.c,v 1.5 2004/04/16 15:40:21 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_card.c,v 1.6 2005/06/03 16:49:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
@@ -151,8 +152,7 @@ int b1dma_detect(iavc_softc_t *sc)
 
 void b1dma_reset(iavc_softc_t *sc)
 {
-    int s = SPLI4B();
-
+    crit_enter();
     sc->sc_csr = 0;
     AMCC_WRITE(sc, AMCC_INTCSR, sc->sc_csr);
     AMCC_WRITE(sc, AMCC_MCSR, 0);
@@ -162,7 +162,7 @@ void b1dma_reset(iavc_softc_t *sc)
     iavc_write_port(sc, 0x10, 0x00); /* XXX magic numbers from */
     iavc_write_port(sc, 0x07, 0x00); /* XXX the linux driver */
 
-    splx(s);
+    crit_exit();
 
     AMCC_WRITE(sc, AMCC_MCSR, 0);
     DELAY(10 * 1000);

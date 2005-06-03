@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.13 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.14 2005/06/03 16:49:57 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -48,6 +48,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <sys/tty.h>
+#include <sys/thread2.h>
 
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
 #include <sys/callout.h>

@@ -30,7 +30,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.7.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.4 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.5 2005/06/03 16:50:08 dillon Exp $
  *
  *      last edit-date: [Tue Jan 16 13:21:24 2001]
  *
@@ -46,6 +46,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -415,7 +416,7 @@ iwic_bchannel_setup(int unit, int chan_no, int bprot, int activate)
 	struct iwic_softc *sc = &iwic_sc[unit];
 	struct iwic_bchan *chan = &sc->sc_bchan[chan_no];
 
-	int s = SPLI4B();
+	crit_enter();
 	
 	NDBGL1(L1_BCHAN, "unit %d, chan %d, bprot %d, activate %d", unit, chan_no, bprot, activate);
 
@@ -473,7 +474,7 @@ iwic_bchannel_setup(int unit, int chan_no, int bprot, int activate)
 		iwic_bchan_init(sc, chan_no, activate);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -534,18 +535,16 @@ iwic_bchannel_start(int unit, int chan_no)
 	struct iwic_bchan *chan = &sc->sc_bchan[chan_no];
 	int next_len;
 	int len;
-
-	int s;
 	int activity = -1;
 	int cmd = 0;
 
-	s = SPLI4B();				/* enter critical section */
+	crit_enter();
 
 	NDBGL1(L1_BCHAN, "unit %d, channel %d", unit, chan_no);
 
 	if(chan->state & ST_TX_ACTIVE)		/* already running ? */
 	{
-		splx(s);
+		crit_exit();
 		return;				/* yes, leave */
 	}
 
@@ -555,7 +554,7 @@ iwic_bchannel_start(int unit, int chan_no)
 	
 	if(chan->out_mbuf_head == NULL)		/* queue empty ? */
 	{
-		splx(s);			/* leave critical section */
+		crit_exit();
 		return;				/* yes, exit */
 	}
 
@@ -695,7 +694,7 @@ iwic_bchannel_start(int unit, int chan_no)
 		IWIC_WRITE(sc, chan->offset + B_CMDR, cmd);
 	}
 		
-	splx(s);	
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -707,7 +706,7 @@ iwic_bchannel_stat(int unit, int chan_no, bchan_statistics_t *bsp)
 	struct iwic_softc *sc = iwic_find_sc(unit);
 	struct iwic_bchan *bchan = &sc->sc_bchan[chan_no];
 
-	int s = SPLI4B();
+	crit_enter();
 
 	bsp->outbytes = bchan->txcount;
 	bsp->inbytes = bchan->rxcount;
@@ -715,7 +714,7 @@ iwic_bchannel_stat(int unit, int chan_no, bchan_statistics_t *bsp)
 	bchan->txcount = 0;
 	bchan->rxcount = 0;
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*

@@ -28,7 +28,7 @@
  *	--------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_l1fsm.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_l1fsm.c,v 1.4 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_l1fsm.c,v 1.5 2005/06/03 16:50:05 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:12:18 2001]
  *
@@ -42,6 +42,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -119,7 +120,7 @@ timer3_expired(struct l1_softc *sc)
 
 /*XXX*/		if(sc->sc_init_tries > 4)
 		{
-			int s = SPLI4B();
+			crit_enter();
 
 			sc->sc_init_tries = 0;
 			
@@ -137,7 +138,7 @@ timer3_expired(struct l1_softc *sc)
 				sc->sc_ol = 0;
 			}
 
-			splx(s);
+			crit_exit();
 
 			i4b_l1_mph_status_ind(L0ISICUNIT(sc->sc_unit), STI_NOL1ACC, 0, NULL);
 		}

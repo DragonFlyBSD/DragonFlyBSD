@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' Low Level Interface.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_lli.c,v 1.2.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.7 2005/06/03 16:49:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
@@ -141,7 +142,7 @@ int iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
     if (sc->sc_dma) {
 	/* Start the DMA engine */
 
-	int s = SPLI4B();
+	crit_enter();
 
 	sc->sc_csr = AVM_FLAG;
 	AMCC_WRITE(sc, AMCC_INTCSR, sc->sc_csr);
@@ -158,7 +159,7 @@ int iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
 	sc->sc_csr |= EN_RX_TC_INT|EN_TX_TC_INT;
 	AMCC_WRITE(sc, AMCC_INTCSR, sc->sc_csr);
 
-	splx(s);
+	crit_exit();
     }
 
     if(sc->sc_capi.card_type == CARD_TYPEC_AVM_B1_ISA)
@@ -279,7 +280,6 @@ static int iavc_send_init(iavc_softc_t *sc)
 {
     struct mbuf *m = i4b_Dgetmbuf(15);
     u_int8_t *p;
-    int s;
 
     if (!m) {
 	printf("iavc%d: can't get memory\n", sc->sc_unit);
@@ -300,13 +300,13 @@ static int iavc_send_init(iavc_softc_t *sc)
     p = amcc_put_word(p, sc->sc_capi.sc_nbch);
     p = amcc_put_word(p, sc->sc_unit);
 
-    s = SPLI4B();
+    crit_enter();
     IF_ENQUEUE(&sc->sc_txq, m);
 
     iavc_start_tx(sc);
 
     sc->sc_state = IAVC_INIT;
-    splx(s);
+    crit_exit();
     return 0;
 }
 

@@ -36,7 +36,7 @@
  *	$Id: i4b_ifpi_pci.c,v 1.4 2000/06/02 11:58:56 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.9 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.10 2005/06/03 16:50:00 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -56,6 +56,7 @@
 #include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -491,7 +492,6 @@ avma1pp_attach_avma1pp(device_t dev)
 	struct l1_softc *sc;
 	u_int v;
 	int unit, error = 0;
-	int s;
 	u_int16_t did, vid;
 	void *ih = 0;
 	bus_space_handle_t bhandle;
@@ -500,7 +500,7 @@ avma1pp_attach_avma1pp(device_t dev)
 	l1_bchan_state_t *chan;
 #endif
 
-	s = splimp();
+	crit_enter();
 
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
@@ -511,7 +511,7 @@ avma1pp_attach_avma1pp(device_t dev)
 	/* probably not really required */
 	if(unit > IFPI_MAXUNIT) {
 		printf("avma1pp%d: Error, unit > IFPI_MAXUNIT!\n", unit);
-		splx(s);
+		crit_exit();
 		return(ENXIO);
 	}
 
@@ -696,7 +696,7 @@ avma1pp_attach_avma1pp(device_t dev)
 	i4b_l1_mph_status_ind(L0IFPIUNIT(sc->sc_unit), STI_ATTACH, sc->sc_cardtyp, &avma1pp_l1mux_func);
 
   fail:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1119,7 +1119,7 @@ avma1pp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 #endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 
-	int s = SPLI4B();
+	crit_enter();
 	
 	if(activate == 0)
 	{
@@ -1174,7 +1174,7 @@ avma1pp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 		chan->state |= HSCX_AVMA1PP_ACTIVE;
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1186,13 +1186,12 @@ avma1pp_bchannel_start(int unit, int h_chan)
 	struct l1_softc *sc = isic_find_sc(unit);
 #endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
-	int s;
 	int activity = -1;
 
-	s = SPLI4B();				/* enter critical section */
+	crit_enter();
 	if(chan->state & HSCX_TX_ACTIVE)	/* already running ? */
 	{
-		splx(s);
+		crit_exit();
 		return;				/* yes, leave */
 	}
 
@@ -1202,7 +1201,7 @@ avma1pp_bchannel_start(int unit, int h_chan)
 	
 	if(chan->out_mbuf_head == NULL)		/* queue empty ? */
 	{
-		splx(s);			/* leave critical section */
+		crit_exit();
 		return;				/* yes, exit */
 	}
 
@@ -1244,7 +1243,7 @@ avma1pp_bchannel_start(int unit, int h_chan)
 	if(activity == ACT_RX || activity == ACT_TX)
 		(*chan->isic_drvr_linktab->bch_activity)(chan->isic_drvr_linktab->unit, activity);
 
-	splx(s);	
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -1340,9 +1339,8 @@ avma1pp_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 	struct l1_softc *sc = isic_find_sc(unit);
 #endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
-	int s;
 
-	s = SPLI4B();
+	crit_enter();
 	
 	bsp->outbytes = chan->txcount;
 	bsp->inbytes = chan->rxcount;
@@ -1350,7 +1348,7 @@ avma1pp_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 	chan->txcount = 0;
 	chan->rxcount = 0;
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*

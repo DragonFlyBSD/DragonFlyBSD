@@ -30,7 +30,7 @@
  *	$Id: i4b_l4.c,v 1.54 2000/08/28 07:24:59 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4.c,v 1.6.2.2 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4.c,v 1.6 2005/06/03 16:50:13 dillon Exp $
  *
  *      last edit-date: [Sun Aug 27 14:53:42 2000]
  *
@@ -45,6 +45,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
+#include <sys/thread2.h>
 
 #ifdef __NetBSD__
 #include <sys/types.h>
@@ -416,10 +417,9 @@ i4b_l4_connect_ind(call_desc_t *cd)
 void
 i4b_l4_connect_active_ind(call_desc_t *cd)
 {
-	int s;
 	struct mbuf *m;
 
-	s = SPLI4B();
+	crit_enter();
 
 	cd->last_active_time = cd->connect_time = SECOND;
 
@@ -431,7 +431,7 @@ i4b_l4_connect_active_ind(call_desc_t *cd)
 
 	i4b_l4_setup_timeout(cd);
 	
-	splx(s);	
+	crit_exit();
 	
 	if((m = i4b_Dgetmbuf(sizeof(msg_connect_active_ind_t))) != NULL)
 	{
@@ -935,12 +935,10 @@ i4b_l4_setup_timeout_var_unit(call_desc_t *cd)
 void
 i4b_idle_check(call_desc_t *cd)
 {
-	int s;
-
 	if(cd->cdid == CDID_UNUSED)
 		return;
 	
-	s = SPLI4B();
+	crit_enter();
 
 	/* failsafe */
 
@@ -993,7 +991,7 @@ i4b_idle_check(call_desc_t *cd)
 				break;
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
