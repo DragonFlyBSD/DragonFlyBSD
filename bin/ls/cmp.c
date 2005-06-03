@@ -35,7 +35,7 @@
  *
  * @(#)cmp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/cmp.c,v 1.9.2.2 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/cmp.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ls/cmp.c,v 1.3 2005/06/03 11:50:17 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -62,35 +62,71 @@ revnamecmp(const FTSENT *a, const FTSENT *b)
 int
 modcmp(const FTSENT *a, const FTSENT *b)
 {
-	return (b->fts_statp->st_mtime - a->fts_statp->st_mtime);
+	if (b->fts_statp->st_mtimespec.tv_sec >
+	    a->fts_statp->st_mtimespec.tv_sec)
+		return(1);
+	if (b->fts_statp->st_mtimespec.tv_sec <
+	    a->fts_statp->st_mtimespec.tv_sec)
+		return(-1);
+	if (b->fts_statp->st_mtimespec.tv_nsec >
+	    a->fts_statp->st_mtimespec.tv_nsec)
+		return(1);
+	if (b->fts_statp->st_mtimespec.tv_nsec <
+	    a->fts_statp->st_mtimespec.tv_nsec)
+		return(-1);
+	return(strcoll(a->fts_name, b->fts_name));
 }
 
 int
 revmodcmp(const FTSENT *a, const FTSENT *b)
 {
-	return (a->fts_statp->st_mtime - b->fts_statp->st_mtime);
+	return(modcmp(b, a));
 }
 
 int
 acccmp(const FTSENT *a, const FTSENT *b)
 {
-	return (b->fts_statp->st_atime - a->fts_statp->st_atime);
+	if (b->fts_statp->st_atimespec.tv_sec >
+	    a->fts_statp->st_atimespec.tv_sec)
+		return(1);
+	if (b->fts_statp->st_atimespec.tv_sec <
+	    a->fts_statp->st_atimespec.tv_sec)
+		return(-1);
+	if (b->fts_statp->st_atimespec.tv_nsec >
+	    a->fts_statp->st_atimespec.tv_nsec)
+		return(1);
+	if (b->fts_statp->st_atimespec.tv_nsec <
+	    a->fts_statp->st_atimespec.tv_nsec)
+		return(-1);
+	return(strcoll(a->fts_name, b->fts_name));
 }
 
 int
 revacccmp(const FTSENT *a, const FTSENT *b)
 {
-	return (a->fts_statp->st_atime - b->fts_statp->st_atime);
+	return(acccmp(b, a));
 }
 
 int
 statcmp(const FTSENT *a, const FTSENT *b)
 {
-	return (b->fts_statp->st_ctime - a->fts_statp->st_ctime);
+	if (b->fts_statp->st_ctimespec.tv_sec >
+	    a->fts_statp->st_ctimespec.tv_sec)
+		return(1);
+	if (b->fts_statp->st_ctimespec.tv_sec <
+	    a->fts_statp->st_ctimespec.tv_sec)
+		return(-1);
+	if (b->fts_statp->st_ctimespec.tv_nsec >
+	    a->fts_statp->st_ctimespec.tv_nsec)
+		return(1);
+	if (b->fts_statp->st_ctimespec.tv_nsec <
+	    a->fts_statp->st_ctimespec.tv_nsec)
+		return(-1);
+	return(strcoll(a->fts_name, b->fts_name));
 }
 
 int
 revstatcmp(const FTSENT *a, const FTSENT *b)
 {
-	return (a->fts_statp->st_ctime - b->fts_statp->st_ctime);
+	return(statcmp(b, a));
 }
