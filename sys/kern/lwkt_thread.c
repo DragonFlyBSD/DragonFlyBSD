@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.72 2005/04/22 17:41:15 joerg Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.73 2005/06/03 22:57:27 dillon Exp $
  */
 
 /*
@@ -456,7 +456,7 @@ lwkt_switch(void)
      * illegal.
      */
     if (gd->gd_intr_nesting_level && panicstr == NULL) {
-	panic("lwkt_switch: cannot switch from within a fast interrupt, yet");
+	panic("lwkt_switch: cannot switch from within a fast interrupt, yet, td %p\n", td);
     }
 
     /*
