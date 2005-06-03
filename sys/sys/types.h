@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.9 2005/06/03 09:45:53 asmodai Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.10 2005/06/03 11:07:34 asmodai Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -79,6 +79,7 @@ typedef	__uint32_t	fixpt_t;	/* fixed point number */
 typedef __uint64_t	fsblkcnt_t;	/* filesystem block count */
 typedef __uint64_t	fsfilcnt_t;	/* filesystem file count */
 typedef	__uint32_t	gid_t;		/* group id */
+typedef __int64_t	id_t;		/* general id, can hold gid/pid/uid_t */
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 typedef	__uint16_t	in_port_t;
 typedef	__uint32_t	ino_t;		/* inode number */
