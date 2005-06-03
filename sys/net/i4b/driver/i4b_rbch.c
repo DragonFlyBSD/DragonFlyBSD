@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.14 2005/06/03 16:49:57 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.15 2005/06/03 22:56:26 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -990,24 +990,9 @@ rbch_clrq(int unit)
 {
 	CRIT_VAR;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
 	CRIT_BEG;
 	IF_DRAIN(&rbch_softc[unit].sc_hdlcq);
 	CRIT_END;
-#else
-	struct mbuf *m;
-        for(;;)
-        {
-                CRIT_BEG;
-                IF_DEQUEUE(&rbch_softc[unit].sc_hdlcq, m);
-                CRIT_END;
-
-                if(m)
-                        m_freem(m);
-                else
-                        break;
-        }
-#endif	
 }
 				
 /*---------------------------------------------------------------------------*
