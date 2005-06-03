@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)cmp.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/bin/ls/cmp.c,v 1.9.2.2 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/cmp.c,v 1.4 2005/06/03 11:51:33 asmodai Exp $
+ * $FreeBSD: src/bin/ls/cmp.c,v 1.16 2005/01/10 08:39:23 imp Exp $
+ * $DragonFly: src/bin/ls/cmp.c,v 1.5 2005/06/03 11:54:37 asmodai Exp $
  */
 
 #include <sys/types.h>
