@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.36 2005/05/25 21:26:52 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.37 2005/06/03 23:23:03 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -1719,10 +1719,7 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	struct ifaddr *ifa;
 	struct ifreq ifr;
 
-	ifa = ifnet_addrs[ifp->if_index - 1];
-	if (ifa == NULL)
-		return (EINVAL);
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(ifp);
 	if (sdl == NULL)
 		return (EINVAL);
 	if (len != sdl->sdl_alen)	/* don't allow length to change */

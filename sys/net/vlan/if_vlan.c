@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.14 2005/05/08 17:42:35 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.15 2005/06/03 23:23:03 joerg Exp $
  */
 
 /*
@@ -458,7 +458,6 @@ vlan_input(struct ether_header *eh, struct mbuf *m)
 static int
 vlan_config(struct ifvlan *ifv, struct ifnet *p)
 {
-	struct ifaddr *ifa1, *ifa2;
 	struct sockaddr_dl *sdl1, *sdl2;
 
 	if (p->if_data.ifi_type != IFT_ETHER)
@@ -482,10 +481,8 @@ vlan_config(struct ifvlan *ifv, struct ifnet *p)
 	 * Set up our ``Ethernet address'' to reflect the underlying
 	 * physical interface's.
 	 */
-	ifa1 = ifnet_addrs[ifv->ifv_if.if_index - 1];
-	ifa2 = ifnet_addrs[p->if_index - 1];
-	sdl1 = (struct sockaddr_dl *)ifa1->ifa_addr;
-	sdl2 = (struct sockaddr_dl *)ifa2->ifa_addr;
+	sdl1 = IF_LLSOCKADDR(&ifv->ifv_if);
+	sdl2 = IF_LLSOCKADDR(p);
 	sdl1->sdl_type = IFT_ETHER;
 	sdl1->sdl_alen = ETHER_ADDR_LEN;
 	bcopy(LLADDR(sdl2), LLADDR(sdl1), ETHER_ADDR_LEN);
@@ -503,7 +500,6 @@ vlan_config(struct ifvlan *ifv, struct ifnet *p)
 static int
 vlan_unconfig(struct ifnet *ifp)
 {
-	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 	struct vlan_mc_entry *mc;
 	struct ifvlan *ifv;
@@ -544,8 +540,7 @@ vlan_unconfig(struct ifnet *ifp)
 	ifv->ifv_if.if_mtu = ETHERMTU;
 
 	/* Clear our MAC address. */
-	ifa = ifnet_addrs[ifv->ifv_if.if_index - 1];
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(&ifv->ifv_if);
 	sdl->sdl_type = IFT_ETHER;
 	sdl->sdl_alen = ETHER_ADDR_LEN;
 	bzero(LLADDR(sdl), ETHER_ADDR_LEN);

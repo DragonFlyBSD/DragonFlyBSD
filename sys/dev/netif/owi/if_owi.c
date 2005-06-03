@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.7 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.8 2005/06/03 23:23:03 joerg Exp $
  */
 
 /*
@@ -1541,11 +1541,9 @@ wi_setdef(sc, wreq)
 
 	switch(wreq->wi_type) {
 	case WI_RID_MAC_NODE:
-		ifa = ifaddr_byindex(ifp->if_index);
-		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 		bcopy((char *)&wreq->wi_val, (char *)&sc->arpcom.ac_enaddr,
 		   ETHER_ADDR_LEN);
-		bcopy((char *)&wreq->wi_val, LLADDR(sdl), ETHER_ADDR_LEN);
+		bcopy((char *)&wreq->wi_val, IF_LLADDR(ifp), ETHER_ADDR_LEN);
 		break;
 	case WI_RID_PORTTYPE:
 		sc->wi_ptype = le16toh(wreq->wi_val[0]);

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.30 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.31 2005/06/03 23:23:03 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -804,7 +804,6 @@ ether_ifattach(struct ifnet *ifp, uint8_t *lla)
 void
 ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 {
-	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
 	ifp->if_type = IFT_ETHER;
@@ -818,9 +817,7 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 	ifp->if_input = ether_input_internal;
 	ifp->if_resolvemulti = ether_resolvemulti;
 	ifp->if_broadcastaddr = etherbroadcastaddr;
-	ifa = ifnet_addrs[ifp->if_index - 1];
-	KASSERT(ifa != NULL, ("%s: no lladdr!\n", __func__));
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(ifp);
 	sdl->sdl_type = IFT_ETHER;
 	sdl->sdl_alen = ifp->if_addrlen;
 	bcopy(lla, LLADDR(sdl), ifp->if_addrlen);

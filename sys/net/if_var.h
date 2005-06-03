@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.27 2005/06/03 21:19:09 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.28 2005/06/03 23:23:03 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -449,8 +449,9 @@ void	if_clone_detach(struct if_clone *);
 int	if_clone_create(char *, int);
 int	if_clone_destroy(const char *);
 
-#define IF_LLADDR(ifp)							\
-    LLADDR((struct sockaddr_dl *) ifnet_addrs[ifp->if_index - 1]->ifa_addr)
+#define IF_LLSOCKADDR(ifp)						\
+    ((struct sockaddr_dl *) ifnet_addrs[(ifp)->if_index - 1]->ifa_addr)
+#define IF_LLADDR(ifp)	LLADDR(IF_LLSOCKADDR(ifp))
 
 #ifdef DEVICE_POLLING
 typedef	void poll_handler_t (struct ifnet *ifp, enum poll_cmd cmd, int count);

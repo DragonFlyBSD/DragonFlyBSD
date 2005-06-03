@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.22 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.5 2004/09/06 13:52:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.6 2005/06/03 23:23:03 joerg Exp $
  */
 
 #if 0
@@ -214,7 +214,6 @@ struct wi_card_ident {
 /*
  * Various compat hacks/kludges
  */
-#define ifaddr_byindex(idx) ifnet_addrs[(idx) - 1];
 #define	WI_LOCK_DECL()		int s
 #define	WI_LOCK(_sc)		s = splimp()
 #define	WI_UNLOCK(_sc)		splx(s)

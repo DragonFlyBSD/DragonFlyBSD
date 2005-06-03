@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.11 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.12 2005/06/03 23:23:03 joerg Exp $
  *
  */
 
@@ -90,7 +90,6 @@ static void	iso88025_input(struct ifnet *, struct mbuf *);
 void
 iso88025_ifattach(struct ifnet *ifp)
 {
-	struct ifaddr *ifa = NULL;
 	struct sockaddr_dl *sdl;
 
 	ifp->if_input = iso88025_input;
@@ -104,12 +103,7 @@ iso88025_ifattach(struct ifnet *ifp)
 	if (ifp->if_mtu == 0)
 		ifp->if_mtu = ISO88025_DEFAULT_MTU;
 
-	ifa = ifnet_addrs[ifp->if_index - 1];
-	if (ifa == NULL) {
-		printf("iso88025_ifattach: no lladdr!\n");
-		return;
-	}
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(ifp);
 	sdl->sdl_type = IFT_ISO88025;
 	sdl->sdl_alen = ifp->if_addrlen;
 	bcopy(((struct arpcom *)ifp)->ac_enaddr, LLADDR(sdl), ifp->if_addrlen);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.10 2005/06/02 22:37:45 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.11 2005/06/03 23:23:03 joerg Exp $
  */
 
 /*
@@ -285,7 +285,6 @@ atm_physif_ioctl(code, data, arg)
 	int			count, len, buf_len = aip->air_buf_len;
 	int			err = 0;
 	char			ifname[2*IFNAMSIZ];
-	struct ifaddr		*ifa;
 	struct in_ifaddr	*ia;
 	struct sockaddr_dl	*sdl;
 
@@ -523,15 +522,11 @@ atm_physif_ioctl(code, data, arg)
 			 * Set macaddr in <Link> address
 			 */
 			ifp->if_addrlen = 6;
-			ifa = ifnet_addrs[ifp->if_index - 1];
-			if ( ifa ) {
-				sdl = (struct sockaddr_dl *)
-					ifa->ifa_addr;
-				sdl->sdl_type = IFT_ETHER;
-				sdl->sdl_alen = ifp->if_addrlen;
-				bcopy ( (caddr_t)&cup->cu_config.ac_macaddr,
-					LLADDR(sdl), ifp->if_addrlen );
-			}
+			sdl = IF_LLSOCKADDR(ifp);
+			sdl->sdl_type = IFT_ETHER;
+			sdl->sdl_alen = ifp->if_addrlen;
+			bcopy ( (caddr_t)&cup->cu_config.ac_macaddr,
+				LLADDR(sdl), ifp->if_addrlen );
 		}
 		break;
 

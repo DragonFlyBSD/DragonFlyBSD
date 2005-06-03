@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.17 2005/05/08 18:11:02 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.18 2005/06/03 23:23:03 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -504,7 +504,6 @@ void
 fddi_ifattach(ifp)
 	struct ifnet *ifp;
 {
-	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
 	ifp->if_input = fddi_input;
@@ -521,8 +520,7 @@ fddi_ifattach(ifp)
 #endif
 	if_attach(ifp);
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-	ifa = ifnet_addrs[ifp->if_index - 1];
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(ifp);
 	sdl->sdl_type = IFT_FDDI;
 	sdl->sdl_alen = ifp->if_addrlen;
 	bcopy(((struct arpcom *)ifp)->ac_enaddr, LLADDR(sdl), ifp->if_addrlen);

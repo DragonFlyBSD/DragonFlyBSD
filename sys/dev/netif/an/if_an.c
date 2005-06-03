@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.21 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.22 2005/06/03 23:23:03 joerg Exp $
  */
 
 /*
@@ -1707,8 +1707,6 @@ an_setdef(sc, areq)
 	struct an_softc		*sc;
 	struct an_req		*areq;
 {
-	struct sockaddr_dl	*sdl;
-	struct ifaddr		*ifa;
 	struct ifnet		*ifp;
 	struct an_ltv_genconfig	*cfg;
 	struct an_ltv_ssidlist	*ssid;
@@ -1721,11 +1719,9 @@ an_setdef(sc, areq)
 	case AN_RID_GENCONFIG:
 		cfg = (struct an_ltv_genconfig *)areq;
 
-		ifa = ifnet_addrs[ifp->if_index - 1];
-		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 		bcopy((char *)&cfg->an_macaddr, (char *)&sc->arpcom.ac_enaddr,
 		    ETHER_ADDR_LEN);
-		bcopy((char *)&cfg->an_macaddr, LLADDR(sdl), ETHER_ADDR_LEN);
+		bcopy((char *)&cfg->an_macaddr, IF_LLADDR(ifp), ETHER_ADDR_LEN);
 
 		bcopy((char *)cfg, (char *)&sc->an_config,
 			sizeof(struct an_ltv_genconfig));

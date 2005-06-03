@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.13 2005/06/02 22:11:45 swildner Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.14 2005/06/03 23:23:03 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -399,8 +399,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	    (char *)&new->fec_mac, ETHER_ADDR_LEN);
 
 	/* Set up phony MAC address. */
-	ifa = ifnet_addrs[bifp->if_index - 1];
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(bifp);
 	bcopy(priv->arpcom.ac_enaddr, ac->ac_enaddr, ETHER_ADDR_LEN);
 	bcopy(priv->arpcom.ac_enaddr, LLADDR(sdl), ETHER_ADDR_LEN);
 
@@ -417,7 +416,6 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	struct ng_fec_bundle	*b;
 	struct ifnet		*ifp, *bifp;
 	struct arpcom		*ac;
-	struct ifaddr		*ifa;
 	struct sockaddr_dl	*sdl;
 	struct ng_fec_portlist	*p;
 
@@ -452,8 +450,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	/* Restore MAC address. */
 	ac = (struct arpcom *)bifp;
-	ifa = ifnet_addrs[bifp->if_index - 1];
-	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl = IF_LLSOCKADDR(bifp);
 	bcopy((char *)&p->fec_mac, ac->ac_enaddr, ETHER_ADDR_LEN);
 	bcopy((char *)&p->fec_mac, LLADDR(sdl), ETHER_ADDR_LEN);
 

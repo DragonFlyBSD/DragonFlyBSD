@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.8.2.3 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_wivar.h,v 1.2 2004/09/15 00:21:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_wivar.h,v 1.3 2005/06/03 23:23:03 joerg Exp $
  */
 
 #define WICACHE			/* turn on signal strength cache code */  
@@ -174,7 +174,6 @@ struct wi_card_ident {
  */
 #define le16toh(x) (x)
 #define htole16(x) (x)
-#define ifaddr_byindex(idx) ifnet_addrs[(idx) - 1];
 #define	WI_LOCK(_sc, _s)	s = splimp()
 #define	WI_UNLOCK(_sc, _s)	splx(s)
 #else

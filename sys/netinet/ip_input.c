@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.52 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.53 2005/06/03 23:23:03 joerg Exp $
  */
 
 #define	_IP_VHL
@@ -2229,8 +2229,7 @@ ip_savecontrol(struct inpcb *inp, struct mbuf **mp, struct ip *ip,
 
 		if (((ifp = m->m_pkthdr.rcvif)) &&
 		    ((ifp->if_index != 0) && (ifp->if_index <= if_index))) {
-			sdp = (struct sockaddr_dl *)
-			    ifnet_addrs[ifp->if_index - 1]->ifa_addr;
+			sdp = IF_LLSOCKADDR(ifp);
 			/*
 			 * Change our mind and don't try copy.
 			 */
