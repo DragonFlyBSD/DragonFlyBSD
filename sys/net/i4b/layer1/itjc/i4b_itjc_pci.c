@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.11 2005/06/03 16:50:07 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.12 2005/06/03 23:14:26 joerg Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -517,7 +517,8 @@ itjc_dma_start(struct l1_softc *sc)
 	u_int32_t		*pool_end,
 				*ip;
 
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	/* See if it is already running. */
 
@@ -612,7 +613,8 @@ itjc_dma_stop(struct l1_softc *sc)
 {
 	dma_context_t		*ctx	= &dma_context[sc->sc_unit];
 
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	/* Only stop the DMA if it is running. */
 
@@ -640,9 +642,12 @@ itjc_bchannel_dma_setup(struct l1_softc *sc, int h_chan, int activate)
 	u_int8_t		fill_byte,
 				*ring_end,
 				*cp;
+	bus_space_handle_t h;
+	bus_space_tag_t t;
 
 	crit_enter();
-	itjc_bus_setup(sc);
+	h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	if (activate)
 	{
@@ -970,7 +975,8 @@ u_int16_t *dst_p, u_int16_t *dst_end_p, u_int8_t tx_restart)
 			xdu_l,
 			xdu_h;
 
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	/*
 	 * Since the hardware is running, be conservative and assume
@@ -1069,7 +1075,8 @@ dma_rx_context_t *ctx)
 			crc,
 			ib;
 	
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 
 	if (ctx->state == ITJC_RS_IDLE)
@@ -1420,7 +1427,8 @@ done:
 static void
 itjc_read_fifo(struct l1_softc *sc, int what, void *buf, size_t size)
 {
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	if (what != ISIC_WHAT_ISAC)
 		panic("itjc_write_fifo: Trying to read from HSCX fifo.\n");
@@ -1433,7 +1441,8 @@ itjc_read_fifo(struct l1_softc *sc, int what, void *buf, size_t size)
 static void
 itjc_write_fifo(struct l1_softc *sc, int what, void *buf, size_t size)
 {
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	if (what != ISIC_WHAT_ISAC)
 		panic("itjc_write_fifo: Trying to write to HSCX fifo.\n");
@@ -1449,7 +1458,8 @@ itjc_write_fifo(struct l1_softc *sc, int what, void *buf, size_t size)
 static u_int8_t
 itjc_read_reg(struct l1_softc *sc, int what, bus_size_t offs)
 {
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	if (what != ISIC_WHAT_ISAC)
 	{
@@ -1469,7 +1479,8 @@ itjc_read_reg(struct l1_softc *sc, int what, bus_size_t offs)
 static void
 itjc_write_reg(struct l1_softc *sc, int what, bus_size_t offs, u_int8_t data)
 {
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	if (what != ISIC_WHAT_ISAC)
 	{
@@ -1780,7 +1791,8 @@ itjc_intr(void *xsc)
 	dma_rx_context_t	*rxc	= &dma_rx_context[sc->sc_unit][0];
 	dma_tx_context_t	*txc	= &dma_tx_context[sc->sc_unit][0];
 
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	/* Honor interrupts from successfully configured cards only. */
 	if (dma->state < ITJC_DS_STOPPED)
@@ -1941,8 +1953,8 @@ static void
 itjc_shutdown(device_t dev)
 {
 	struct l1_softc *sc = device_get_softc(dev);
-
-	itjc_bus_setup(sc);
+	bus_space_handle_t h = rman_get_bushandle(sc->sc_resources.io_base[0]);
+	bus_space_tag_t t = rman_get_bustag(sc->sc_resources.io_base[0]);
 
 	/*
 	 * Stop the DMA the nice and easy way.
