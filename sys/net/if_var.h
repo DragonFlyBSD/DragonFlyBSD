@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.26 2005/06/03 20:16:28 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.27 2005/06/03 21:19:09 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -274,25 +274,25 @@ static __inline int
 if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 	   int _adjust)
 {
-	int need_if_start = 0;
-	int s = splimp();
+	int _need_if_start = 0;
+	int _s = splimp();
  
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-		splx(s);
-		m_freem(m);
+	if (IF_QFULL(_ifq)) {
+		IF_DROP(_ifq);
+		splx(_s);
+		m_freem(_m);
 		return (0);
 	}
-	if (ifp != NULL) {
-		ifp->if_obytes += m->m_pkthdr.len + adjust;
-		if (m->m_flags & M_MCAST)
-			ifp->if_omcasts++;
-		need_if_start = !(ifp->if_flags & IFF_OACTIVE);
+	if (_ifp != NULL) {
+		_ifp->if_obytes += _m->m_pkthdr.len + _adjust;
+		if (_m->m_flags & M_MCAST)
+			_ifp->if_omcasts++;
+		_need_if_start = !(_ifp->if_flags & IFF_OACTIVE);
 	}
-	IF_ENQUEUE(ifq, m);
-	if (need_if_start)
-		(*ifp->if_start)(ifp);
-	splx(s);
+	IF_ENQUEUE(_ifq, _m);
+	if (_need_if_start)
+		(*_ifp->if_start)(_ifp);
+	splx(_s);
 	return (1);
 }
 
@@ -380,9 +380,9 @@ typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
 EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
 
 static __inline void
-IFAREF(struct ifaddr *ifa)
+IFAREF(struct ifaddr *_ifa)
 {
-	++ifa->ifa_refcnt;
+	++_ifa->ifa_refcnt;
 }
 
 #include <sys/malloc.h>
@@ -391,12 +391,12 @@ MALLOC_DECLARE(M_IFADDR);
 MALLOC_DECLARE(M_IFMADDR);
 
 static __inline void
-IFAFREE(struct ifaddr *ifa)
+IFAFREE(struct ifaddr *_ifa)
 {
-	if (ifa->ifa_refcnt <= 0)
-		free(ifa, M_IFADDR);
+	if (_ifa->ifa_refcnt <= 0)
+		free(_ifa, M_IFADDR);
 	else
-		ifa->ifa_refcnt--;
+		_ifa->ifa_refcnt--;
 }
 
 extern	struct ifnethead ifnet;
