@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.31 2005/04/26 00:47:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.32 2005/06/03 22:55:58 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -100,6 +100,7 @@
 #include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -171,6 +172,15 @@ MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
 static void kmeminit(void *dummy);
 
 SYSINIT(kmem, SI_SUB_KMEM, SI_ORDER_FIRST, kmeminit, NULL)
+
+#ifdef INVARIANTS
+/*
+ * If enabled any memory allocated without M_ZERO is initialized to -1.
+ */
+static int  use_malloc_pattern;
+SYSCTL_INT(_debug, OID_AUTO, use_malloc_pattern, CTLFLAG_RW,
+		&use_malloc_pattern, 0, "");
+#endif
 
 static void
 kmeminit(void *dummy)
@@ -352,6 +362,9 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
     SLGlobalData *slgd;
     struct globaldata *gd;
     int zi;
+#ifdef INVARIANTS
+    int i;
+#endif
 
     gd = mycpu;
     slgd = &gd->gd_slab;
@@ -586,8 +599,14 @@ done:
     if (flags & M_ZERO)
 	bzero(chunk, size);
 #ifdef INVARIANTS
-    else if ((flags & (M_ZERO|M_PASSIVE_ZERO)) == 0)
+    else if ((flags & (M_ZERO|M_PASSIVE_ZERO)) == 0) {
+	if (use_malloc_pattern) {
+	    for (i = 0; i < size; i += sizeof(int)) {
+		*(int *)((char *)chunk + i) = -1;
+	    }
+	}
 	chunk->c_Next = (void *)-1; /* avoid accidental double-free check */
+    }
 #endif
     return(chunk);
 fail:
