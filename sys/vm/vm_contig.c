@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.13 2005/02/22 21:35:33 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.14 2005/06/03 22:58:09 dillon Exp $
  */
 
 /*
@@ -364,6 +364,7 @@ void
 vm_contig_pg_free(int start, u_long size)
 {
 	vm_page_t pga = vm_page_array;
+	vm_page_t m;
 	int i;
 	
 	size = round_page(size);
@@ -371,7 +372,9 @@ vm_contig_pg_free(int start, u_long size)
 		panic("vm_contig_pg_free: size must not be 0");
 
 	for (i = start; i < (start + size / PAGE_SIZE); i++) {
-		vm_page_free(&pga[i]);
+		m = &pga[i];
+		vm_page_busy(m);
+		vm_page_free(m);
 	}
 }
 
