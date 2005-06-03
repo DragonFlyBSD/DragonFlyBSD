@@ -28,7 +28,7 @@
  *	-------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.7 2005/06/03 16:50:10 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.8 2005/06/03 22:57:56 joerg Exp $
  *
  *      last edit-date: [Fri Jan 12 16:43:31 2001]
  *
@@ -265,8 +265,8 @@ int
 i4b_mph_status_ind(int unit, int status, int parm)
 {
 	l2_softc_t *l2sc = &l2_softc[unit];
-	CRIT_VAR;
 	int sendup = 1;
+	CRIT_VAR;
 	
 	CRIT_BEG;
 
