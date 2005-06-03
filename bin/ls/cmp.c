@@ -35,7 +35,7 @@
  *
  * @(#)cmp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/cmp.c,v 1.9.2.2 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/cmp.c,v 1.3 2005/06/03 11:50:17 asmodai Exp $
+ * $DragonFly: src/bin/ls/cmp.c,v 1.4 2005/06/03 11:51:33 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -50,13 +50,13 @@
 int
 namecmp(const FTSENT *a, const FTSENT *b)
 {
-	return (strcoll(a->fts_name, b->fts_name));
+	return(strcoll(a->fts_name, b->fts_name));
 }
 
 int
 revnamecmp(const FTSENT *a, const FTSENT *b)
 {
-	return (strcoll(b->fts_name, a->fts_name));
+	return(strcoll(b->fts_name, a->fts_name));
 }
 
 int
