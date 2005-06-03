@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.6 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.7 2005/06/03 23:10:23 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -319,17 +319,19 @@ viapm_pro_attach(device_t dev)
 {
 	struct viapm_softc *viapm = (struct viapm_softc *)device_get_softc(dev);
 	u_int32_t l;
+#ifdef	notyet
 	int error;
+#endif
 
 	if (!(viapm->iores = bus_alloc_resource(dev, SYS_RES_IOPORT,
 		&viapm->iorid, 0l, ~0l, 1, RF_ACTIVE))) {
 		device_printf(dev, "could not allocate bus space\n");
-		goto error;
+		goto fail;
 	}
 	viapm->st = rman_get_bustag(viapm->iores);
 	viapm->sh = rman_get_bushandle(viapm->iores);
 
-#if notyet
+#ifdef notyet
 	/* force irq 9 */
 	l = pci_read_config(dev, VIAPM_PRO_SMBCTRL, 1);
 	pci_write_config(dev, VIAPM_PRO_SMBCTRL, l | 0x80, 1);
@@ -339,7 +341,7 @@ viapm_pro_attach(device_t dev)
 				&viapm->irqrid, 9, 9, 1,
 				RF_SHAREABLE | RF_ACTIVE))) {
 		device_printf(dev, "could not allocate irq\n");
-		goto error;
+		goto fail;
 	}
 
 	error = bus_setup_intr(dev, viapm->irqres, INTR_TYPE_MISC,
@@ -347,7 +349,7 @@ viapm_pro_attach(device_t dev)
 			       &viapm->irqih, NULL);
 	if (error) {
 		device_printf(dev, "could not setup irq\n");
-		goto error;
+		goto fail;
 	}
 #endif
 
@@ -368,17 +370,17 @@ viapm_pro_attach(device_t dev)
 	l = pci_read_config(dev, VIAPM_PRO_SMBCTRL, 1);
 	pci_write_config(dev, VIAPM_PRO_SMBCTRL, l | 1, 1);
 
-#if notyet
+#ifdef notyet
 	/* enable interrupts */
 	VIAPM_OUTB(SMBHCTRL, VIAPM_INB(SMBHCTRL) | SMBHCTRL_ENABLE);
 #endif
 
 	return 0;
 
-error:
+fail:
 	if (viapm->iores)
 		bus_release_resource(dev, SYS_RES_IOPORT, viapm->iorid, viapm->iores);
-#if notyet
+#ifdef notyet
 	if (viapm->irqres)
 		bus_release_resource(dev, SYS_RES_IRQ, viapm->irqrid, viapm->irqres);
 #endif
@@ -449,7 +451,7 @@ viapm_pro_detach(device_t dev)
 				viapm->iorid, viapm->iores)))
 		return (error);
 
-#if notyet
+#ifdef notyet
 	if ((error = bus_release_resource(dev, SYS_RES_IRQ,
 					viapm->irqrid, viapm->irqres))
 		return (error);
