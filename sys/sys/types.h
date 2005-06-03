@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.8 2005/06/03 09:17:36 asmodai Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.9 2005/06/03 09:45:53 asmodai Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -68,6 +68,8 @@ typedef	__uint64_t	u_quad_t;	/* quads */
 typedef	__int64_t	quad_t;
 typedef	quad_t *	qaddr_t;
 
+typedef __int64_t	blkcnt_t;	/* file block count */
+typedef __int64_t	blksize_t;	/* block size */
 typedef	char *		caddr_t;	/* core address */
 typedef	const char *	c_caddr_t;	/* core address, pointer to const */
 typedef	volatile char *	v_caddr_t;	/* core address, pointer to volatile */
