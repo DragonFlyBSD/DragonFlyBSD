@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.6 2005/05/11 19:46:47 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.7 2005/06/03 17:14:50 dillon Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_

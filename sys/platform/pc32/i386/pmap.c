@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.47 2004/10/12 19:29:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.48 2005/06/03 17:14:48 dillon Exp $
  */
 
 /*
@@ -268,8 +268,7 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
  *	the pv list scans are across different pmaps and it is very wasteful
  *	to do an entire invltlb when checking a single mapping.
  *
- *	Should only be called while splvm() is held or from a critical
- *	section.
+ *	Should only be called while in a critical section.
  */
 static unsigned * 
 pmap_pte_quick(pmap_t pmap, vm_offset_t va)
@@ -1341,7 +1340,6 @@ pmap_release(struct pmap *pmap)
 	vm_page_t p,n,ptdpg;
 	vm_object_t object = pmap->pm_pteobj;
 	int curgeneration;
-	int s;
 
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
@@ -1350,7 +1348,7 @@ pmap_release(struct pmap *pmap)
 	
 	ptdpg = NULL;
 retry:
-	s = splvm();
+	crit_enter();
 	curgeneration = object->generation;
 	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = n) {
 		n = TAILQ_NEXT(p, listq);
@@ -1361,12 +1359,12 @@ retry:
 		while (1) {
 			if (!pmap_release_free_page(pmap, p) &&
 			    (object->generation != curgeneration)) {
-				splx(s);
+				crit_exit();
 				goto retry;
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	if (ptdpg && !pmap_release_free_page(pmap, ptdpg))
 		goto retry;
@@ -1400,12 +1398,11 @@ pmap_growkernel(vm_offset_t addr)
 {
 	struct proc *p;
 	struct pmap *pmap;
-	int s;
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
 	pd_entry_t newpdir;
 
-	s = splhigh();
+	crit_enter();
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = KERNBASE;
 		nkpt = 0;
@@ -1446,7 +1443,7 @@ pmap_growkernel(vm_offset_t addr)
 		*pmap_pde(kernel_pmap, kernel_vm_end) = newpdir;
 		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1554,9 +1551,8 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 {
 	pv_entry_t pv;
 	int rtval;
-	int s;
 
-	s = splvm();
+	crit_enter();
 	if (m->md.pv_list_count < pmap->pm_stats.resident_count) {
 		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 			if (pmap == pv->pv_pmap && va == pv->pv_va) 
@@ -1579,7 +1575,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
 		free_pv_entry(pv);
 	}
-	splx(s);
+	crit_exit();
 	return rtval;
 }
 
@@ -1590,10 +1586,9 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 static void
 pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 {
-	int s;
 	pv_entry_t pv;
 
-	s = splvm();
+	crit_enter();
 	pv = get_pv_entry();
 	pv->pv_va = va;
 	pv->pv_pmap = pmap;
@@ -1603,7 +1598,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	m->md.pv_list_count++;
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1786,7 +1781,6 @@ pmap_remove_all(vm_page_t m)
 	struct pmap_inval_info info;
 	unsigned *pte, tpte;
 	pv_entry_t pv;
-	int s;
 
 #if defined(PMAP_DIAGNOSTIC)
 	/*
@@ -1799,7 +1793,7 @@ pmap_remove_all(vm_page_t m)
 #endif
 
 	pmap_inval_init(&info);
-	s = splvm();
+	crit_enter();
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 		pv->pv_pmap->pm_stats.resident_count--;
 
@@ -1835,7 +1829,7 @@ pmap_remove_all(vm_page_t m)
 	}
 
 	vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-	splx(s);
+	crit_exit();
 	pmap_inval_flush(&info);
 }
 
@@ -2317,8 +2311,8 @@ retry:
 	 * If we are processing a major portion of the object, then scan the
 	 * entire thing.
 	 *
-	 * We cannot safely scan the object's memq unless we are at splvm(),
-	 * since interrupts can remove pages from objects.
+	 * We cannot safely scan the object's memq unless we are in a
+	 * critical section since interrupts can remove pages from objects.
 	 */
 	crit_enter();
 	mpte = NULL;
@@ -2426,9 +2420,9 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 		starta = 0;
 
 	/*
-	 * splvm() protection is required to maintain the page/object 
-	 * association, interrupts can free pages and remove them from
-	 * their objects.
+	 * critical section protection is required to maintain the 
+	 * page/object association, interrupts can free pages and remove 
+	 * them from their objects.
 	 */
 	mpte = NULL;
 	crit_enter();
@@ -2828,23 +2822,22 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 {
 	pv_entry_t pv;
 	int loops = 0;
-	int s;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return FALSE;
 
-	s = splvm();
+	crit_enter();
 
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		if (pv->pv_pmap == pmap) {
-			splx(s);
+			crit_exit();
 			return TRUE;
 		}
 		loops++;
 		if (loops >= 16)
 			break;
 	}
-	splx(s);
+	crit_exit();
 	return (FALSE);
 }
 
@@ -2862,7 +2855,6 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
 	unsigned *pte, tpte;
 	pv_entry_t pv, npv;
-	int s;
 	vm_page_t m;
 	pmap_inval_info info;
 
@@ -2874,7 +2866,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 #endif
 
 	pmap_inval_init(&info);
-	s = splvm();
+	crit_enter();
 	for(pv = TAILQ_FIRST(&pmap->pm_pvlist);
 		pv;
 		pv = npv) {
@@ -2929,7 +2921,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		free_pv_entry(pv);
 	}
 	pmap_inval_flush(&info);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -2942,7 +2934,6 @@ pmap_testbit(vm_page_t m, int bit)
 {
 	pv_entry_t pv;
 	unsigned *pte;
-	int s;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return FALSE;
@@ -2950,7 +2941,7 @@ pmap_testbit(vm_page_t m, int bit)
 	if (TAILQ_FIRST(&m->md.pv_list) == NULL)
 		return FALSE;
 
-	s = splvm();
+	crit_enter();
 
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		/*
@@ -2971,11 +2962,11 @@ pmap_testbit(vm_page_t m, int bit)
 #endif
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
 		if (*pte & bit) {
-			splx(s);
+			crit_exit();
 			return TRUE;
 		}
 	}
-	splx(s);
+	crit_exit();
 	return (FALSE);
 }
 
@@ -2988,13 +2979,12 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 	struct pmap_inval_info info;
 	pv_entry_t pv;
 	unsigned *pte;
-	int s;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
 
 	pmap_inval_init(&info);
-	s = splvm();
+	crit_enter();
 
 	/*
 	 * Loop over all current mappings setting/clearing as appropos If
@@ -3054,7 +3044,7 @@ pmap_changebit(vm_page_t m, int bit, boolean_t setem)
 		}
 	}
 	pmap_inval_flush(&info);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -3097,13 +3087,12 @@ pmap_ts_referenced(vm_page_t m)
 {
 	pv_entry_t pv, pvf, pvn;
 	unsigned *pte;
-	int s;
 	int rtval = 0;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return (rtval);
 
-	s = splvm();
+	crit_enter();
 
 	if ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 
@@ -3134,7 +3123,7 @@ pmap_ts_referenced(vm_page_t m)
 			}
 		} while ((pv = pvn) != NULL && pv != pvf);
 	}
-	splx(s);
+	crit_exit();
 
 	return (rtval);
 }

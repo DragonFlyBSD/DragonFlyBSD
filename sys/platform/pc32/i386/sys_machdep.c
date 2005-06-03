@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.17 2005/05/23 18:23:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.18 2005/06/03 17:14:48 dillon Exp $
  *
  */
 
@@ -344,7 +344,6 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
 	unsigned int nldt, num;
 	union descriptor *lp;
-	int s;
 	struct i386_ldt_args ua, *uap = &ua;
 
 	if ((error = copyin(args, uap, sizeof(struct i386_ldt_args))) < 0)
@@ -355,7 +354,7 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 	    uap->start, uap->num, (void *)uap->descs);
 #endif
 
-	s = splhigh();
+	crit_enter();
 
 	if (pcb_ldt) {
 		nldt = (unsigned int)pcb_ldt->ldt_len;
@@ -372,14 +371,14 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 	 * are limited in scope, but uap->start can be anything.
 	 */
 	if (uap->start > nldt || uap->start + num > nldt) {
-		splx(s);
+		crit_exit();
 		return(EINVAL);
 	}
 
 	error = copyout(lp, uap->descs, num * sizeof(union descriptor));
 	if (!error)
 		*res = num;
-	splx(s);
+	crit_exit();
 	return(error);
 }
 

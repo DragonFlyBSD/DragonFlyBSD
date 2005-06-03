@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.8 2004/05/19 22:52:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.9 2005/06/03 17:14:51 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -49,6 +49,7 @@
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/uio.h>
+#include <sys/thread2.h>
 
 #include <machine/asc_ioctl.h>
 
@@ -699,7 +700,7 @@ ascread(dev_t dev, struct uio *uio, int ioflag)
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
   size_t nbytes;
-  int sps, res;
+  int res;
   unsigned char *p;
   
   lprintf("asc%d.read: minor %d icnt %ld\n", unit, minor(dev), scu->icnt);
@@ -726,7 +727,7 @@ ascread(dev_t dev, struct uio *uio, int ioflag)
 	  scu->sbuf.wptr, scu->sbuf.count, scu->bcount,scu->flags,
 	  scu->icnt);
 
-  sps=spltty();
+  crit_enter();
   if ( scu->sbuf.count == 0 ) { /* no data avail., must wait */
       if (!(scu->flags & DMA_ACTIVE)) dma_restart(scu);
       scu->flags |= SLEEPING;
@@ -734,7 +735,7 @@ ascread(dev_t dev, struct uio *uio, int ioflag)
       scu->flags &= ~SLEEPING;
       if ( res == 0 ) res = SUCCESS;
   }
-  splx(sps); /* lower priority... */
+  crit_exit();
   if (scu->flags & FLAG_DEBUG)
       tsleep((caddr_t)scu, PCATCH, "ascdly",hz);
   lprintf("asc%d.read(after): "
@@ -762,13 +763,13 @@ ascread(dev_t dev, struct uio *uio, int ioflag)
       return res;
   }
   
-  sps=spltty();
+  crit_enter();
   scu->sbuf.rptr += nbytes;
   if (scu->sbuf.rptr >= scu->sbuf.size) scu->sbuf.rptr=0;
   scu->sbuf.count -= nbytes;
 	/* having moved some data, can read mode */
   if (!(scu->flags & DMA_ACTIVE)) dma_restart(scu);
-  splx(sps); /* lower priority... */
+  crit_exit();
   if ( scu->flags & PBM_MODE ) scu->bcount -= nbytes;
   
   lprintf("asc%d.read: size 0x%x, pointer 0x%x, bcount 0x%x, ok\n",
@@ -852,7 +853,6 @@ ascpoll(dev_t dev, int events, struct thread *td)
 {
     int unit = UNIT(minor(dev));
     struct asc_unit *scu = unittab + unit;
-    int sps;
     struct proc *p;
     struct proc *p1;
     int revents = 0;
@@ -860,7 +860,7 @@ ascpoll(dev_t dev, int events, struct thread *td)
     p = td->td_proc;
     KKASSERT(p);
 
-    sps=spltty();
+    crit_enter();
 
     if (events & (POLLIN | POLLRDNORM)) {
 	if (scu->sbuf.count >0)
@@ -876,6 +876,6 @@ ascpoll(dev_t dev, int events, struct thread *td)
 		scu->selp.si_pid = p->p_pid;
 	}
     }
-    splx(sps);
+    crit_exit();
     return (revents);
 }

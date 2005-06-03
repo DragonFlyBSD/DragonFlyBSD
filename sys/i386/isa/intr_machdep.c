@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.28 2005/05/25 07:58:41 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.29 2005/06/03 17:14:51 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -640,20 +640,25 @@ intr_mux(void *arg)
 {
 	intrec **pp;
 	intrec *p;
-	intrmask_t oldspl;
 
 	for (pp = arg; (p = *pp) != NULL; pp = &p->next) {
 		if (p->serializer) {
 			/*
-			 * New handler dispatch method.  Note that this
+			 * New handler dispatch method.  Only the serializer
+			 * is used to interlock access.  Note that this
 			 * API includes a handler disablement feature.
 			 */
 			lwkt_serialize_handler_call(p->serializer,
 						    p->handler, p->argument);
 		} else {
-			oldspl = splq(p->mask);
+			/*
+			 * Old handlers may expect multiple interrupt
+			 * sources to be masked.  We must use a critical
+			 * section.
+			 */
+			crit_enter();
 			p->handler(p->argument);
-			splx(oldspl);
+			crit_exit();
 		}
 	}
 }
@@ -840,7 +845,6 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 {
 	intrec *idesc;
 	int errcode = -1;
-	intrmask_t oldspl;
 
 	if (ICU_LEN > 8 * sizeof *maskptr) {
 		printf("create_intr: ICU_LEN of %d too high for %d bit intrmask\n",
@@ -873,12 +877,10 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 	idesc->flags    = flags;
 	idesc->serializer = serializer;
 
-	/* block this irq */
-	oldspl = splq(1 << irq);
-
 	/* add irq to class selected by maskptr */
+	crit_enter();
 	errcode = add_intrdesc(idesc);
-	splx(oldspl);
+	crit_exit();
 
 	if (errcode != 0) {
 		if (bootverbose)
@@ -904,14 +906,13 @@ int
 inthand_remove(intrec *idesc)
 {
 	intrec **hook, *head;
-	intrmask_t oldspl;
 	int irq;
 
 	if (idesc == NULL)
 		return (-1);
 
 	irq = idesc->intr;
-	oldspl = splq(1 << irq);
+	crit_enter();
 
 	/*
 	 * Find and remove the interrupt descriptor.
@@ -919,7 +920,7 @@ inthand_remove(intrec *idesc)
 	hook = &intreclist_head[irq];
 	while (*hook != idesc) {
 		if (*hook == NULL) {
-			splx(oldspl);
+			crit_exit();
 			return(-1);
 		}
 		hook = &(*hook)->next;
@@ -951,7 +952,7 @@ inthand_remove(intrec *idesc)
 		update_intrname(irq, head->name);
 	}
 	update_masks(idesc->maskptr, irq);
-	splx(oldspl);
+	crit_exit();
 	free(idesc, M_DEVBUF);
 
 	return (0);

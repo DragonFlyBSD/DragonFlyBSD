@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.9 2004/08/10 16:03:12 eirikn Exp $	*/
+/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.10 2005/06/03 17:14:50 dillon Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -36,6 +36,7 @@
 
 #include <sys/buf.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 struct physio_proc;
 TAILQ_HEAD(physio_proc_head, physio_proc);
@@ -54,21 +55,20 @@ physio_proc_enter(bp)
 	struct buf *bp;
 {
 	struct physio_proc *pp;
-	int s;
 
 	if (bp == NULL || (bp->b_flags & B_PHYS) == 0)
 		return NULL;	
 	if ((pp = TAILQ_FIRST(&physio_proc_freet)) == NULL)
 		return NULL;
 
-	s = splstatclock();
+	crit_enter();
 	TAILQ_REMOVE(&physio_proc_freet, pp, pp_chain);
 #if !(defined(__DragonFly__) || defined(__FreeBSD__)) || \
     (defined(__FreeBSD_version) && __FreeBSD_version < 400001)
 	pp->pp_proc = bp->b_proc;
 #endif
 	TAILQ_INSERT_TAIL(&physio_proc_busyt, pp, pp_chain);
-	splx(s);
+	crit_exit();
 	return pp;
 }
 
@@ -76,16 +76,14 @@ static __inline void
 physio_proc_leave(pp)
 	struct physio_proc *pp;
 {
-	int s;
-
 	if (pp == NULL)
 		return;
 
-	s = splstatclock();
+	crit_enter();
 	TAILQ_REMOVE(&physio_proc_busyt, pp, pp_chain);
 	TAILQ_INSERT_TAIL(&physio_proc_freet, pp, pp_chain);
 	pp->pp_proc = NULL;
-	splx(s);
+	crit_exit();
 }
 
 void physio_proc_init (void);

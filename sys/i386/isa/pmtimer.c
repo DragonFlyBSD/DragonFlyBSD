@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/sys/i386/isa/Attic/pmtimer.c,v 1.2 2004/08/02 23:20:30 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/pmtimer.c,v 1.3 2005/06/03 17:14:51 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -82,31 +82,28 @@ static struct timeval diff_time;
 static int
 pmtimer_suspend(device_t dev)
 {
-	int	pl;
-
-	pl = splsoftclock();
+	crit_enter();
 	microtime(&diff_time);
 	inittodr(0);
 	microtime(&suspend_time);
 	timevalsub(&diff_time, &suspend_time);
-	splx(pl);
+	crit_exit();
 	return (0);
 }
 
 static int
 pmtimer_resume(device_t dev)
 {
-	int pl;
 	u_int second, minute, hour;
 	struct timeval resume_time;
 
 	/* modified for adjkerntz */
-	pl = splsoftclock();
+	crit_enter();
 	timer_restore();		/* restore the all timers */
 	inittodr(0);			/* adjust time to RTC */
 	microtime(&resume_time);
 
-	splx(pl);
+	crit_exit();
 	second = resume_time.tv_sec - suspend_time.tv_sec; 
 	hour = second / 3600;
 	second %= 3600;

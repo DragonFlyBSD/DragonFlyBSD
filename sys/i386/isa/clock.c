@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.27 2005/06/01 22:55:19 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.28 2005/06/03 17:14:51 dillon Exp $
  */
 
 /*
@@ -463,30 +463,27 @@ int
 rtcin(reg)
 	int reg;
 {
-	int s;
 	u_char val;
 
-	s = splhigh();
+	crit_enter();
 	outb(IO_RTC, reg);
 	inb(0x84);
 	val = inb(IO_RTC + 1);
 	inb(0x84);
-	splx(s);
+	crit_exit();
 	return (val);
 }
 
 static __inline void
 writertc(u_char reg, u_char val)
 {
-	int s;
-
-	s = splhigh();
+	crit_enter();
 	inb(0x84);
 	outb(IO_RTC, reg);
 	inb(0x84);
 	outb(IO_RTC + 1, val);
 	inb(0x84);		/* XXX work around wrong order in rtcin() */
-	splx(s);
+	crit_exit();
 }
 
 static __inline int

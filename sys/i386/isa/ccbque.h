@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ccbque.h,v 1.6 2004/10/14 03:05:54 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ccbque.h,v 1.7 2005/06/03 17:14:51 dillon Exp $
  */
 /*
  * Common command control queue funcs.
@@ -73,8 +73,9 @@ DEV##_init_ccbque(count)						\
 struct CCBTYPE *							\
 DEV##_get_ccb()								\
 {									\
-	struct CCBTYPE *cb;					\
-	int s = splcam();						\
+	struct CCBTYPE *cb;						\
+									\
+	crit_enter();							\
 									\
 	if (CCBTYPE##que.count < CCBTYPE##que.maxccb)			\
 	{								\
@@ -100,7 +101,7 @@ DEV##_get_ccb()								\
 	cb = NULL;							\
 									\
 out:									\
-	splx(s);							\
+	crit_exit();							\
 	return cb;							\
 }									\
 									\
@@ -108,7 +109,7 @@ void									\
 DEV##_free_ccb(cb)							\
 	struct CCBTYPE *cb;					\
 {									\
-	int s = splcam();						\
+	crit_enter();							\
 									\
 	TAILQ_INSERT_TAIL(&CCBTYPE##que.CCBTYPE##tab, cb, CHAIN);	\
 	CCBTYPE##que.count --;						\
@@ -118,6 +119,6 @@ DEV##_free_ccb(cb)							\
 		CCBTYPE##que.flags &= ~CCB_MWANTED;			\
 		wakeup ((caddr_t) &CCBTYPE##que.count);			\
 	}								\
-	splx(s);							\
+	crit_exit();							\
 }
 #endif	/* !_CCBQUE_H_ */

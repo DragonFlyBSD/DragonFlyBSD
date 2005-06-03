@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.10 2004/09/17 00:21:08 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.11 2005/06/03 17:12:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <machine/pc/bios.h>
 #include <machine/vm86.h>
@@ -322,12 +323,11 @@ apm_battery_low(void)
 static struct apmhook *
 apm_add_hook(struct apmhook **list, struct apmhook *ah)
 {
-	int s;
 	struct apmhook *p, *prev;
 
 	APM_DPRINT("Add hook \"%s\"\n", ah->ah_name);
 
-	s = splhigh();
+	crit_enter();
 	if (ah == NULL)
 		panic("illegal apm_hook!");
 	prev = NULL;
@@ -342,17 +342,16 @@ apm_add_hook(struct apmhook **list, struct apmhook *ah)
 		ah->ah_next = prev->ah_next;
 		prev->ah_next = ah;
 	}
-	splx(s);
+	crit_exit();
 	return ah;
 }
 
 static void
 apm_del_hook(struct apmhook **list, struct apmhook *ah)
 {
-	int s;
 	struct apmhook *p, *prev;
 
-	s = splhigh();
+	crit_enter();
 	prev = NULL;
 	for (p = *list; p != NULL; prev = p, p = p->ah_next)
 		if (p == ah)
@@ -365,7 +364,7 @@ deleteit:
 	else
 		*list = p->ah_next;
 nosuchnode:
-	splx(s);
+	crit_exit();
 }
 
 
@@ -410,12 +409,11 @@ static struct timeval diff_time;
 static int
 apm_default_resume(void *arg)
 {
-	int pl;
 	u_int second, minute, hour;
 	struct timeval resume_time, tmp_time;
 
 	/* modified for adjkerntz */
-	pl = splsoftclock();
+	crit_enter();
 	timer_restore();		/* restore the all timers */
 	inittodr(0);			/* adjust time to RTC */
 	microtime(&resume_time);
@@ -433,7 +431,7 @@ apm_default_resume(void *arg)
 	/* Fixup the calltodo list with the delta time. */
 	adjust_timeout_calltodo(&resume_time);
 #endif /* APM_FIXUP_CALLTODOK */
-	splx(pl);
+	crit_exit();
 #ifndef APM_FIXUP_CALLTODO
 	second = resume_time.tv_sec - suspend_time.tv_sec; 
 #else /* APM_FIXUP_CALLTODO */
@@ -455,14 +453,12 @@ apm_default_resume(void *arg)
 static int
 apm_default_suspend(void *arg)
 {
-	int	pl;
-
-	pl = splsoftclock();
+	crit_enter();
 	microtime(&diff_time);
 	inittodr(0);
 	microtime(&suspend_time);
 	timevalsub(&diff_time, &suspend_time);
-	splx(pl);
+	crit_exit();
 	return 0;
 }
 
