@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ah.c,v 1.1.4.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.5 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.6 2005/06/03 00:22:27 hmp Exp $	*/
 /*	$OpenBSD: ip_ah.c,v 1.63 2001/06/26 06:18:58 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -737,7 +737,7 @@ ah_input_cb(struct cryptop *crp)
 	struct secasindex *saidx;
 	u_int8_t nxt;
 	caddr_t ptr;
-	int s, authsize;
+	int authsize;
 
 	crd = crp->crp_desc;
 
@@ -749,7 +749,7 @@ ah_input_cb(struct cryptop *crp)
 	mtag = (struct m_tag *) tc->tc_ptr;
 	m = (struct mbuf *) crp->crp_buf;
 
-	s = splnet();
+	crit_enter();
 
 	sav = KEY_ALLOCSA(&tc->tc_dst, tc->tc_proto, tc->tc_spi);
 	if (sav == NULL) {
@@ -865,12 +865,12 @@ ah_input_cb(struct cryptop *crp)
 	IPSEC_COMMON_INPUT_CB(m, sav, skip, protoff, mtag);
 
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return error;
 bad:
 	if (sav)
 		KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	if (m != NULL)
 		m_freem(m);
 	if (tc != NULL)
@@ -1120,7 +1120,7 @@ ah_output_cb(struct cryptop *crp)
 	struct secasvar *sav;
 	struct mbuf *m;
 	caddr_t ptr;
-	int s, err;
+	int err;
 
 	tc = (struct tdb_crypto *) crp->crp_opaque;
 	KASSERT(tc != NULL, ("ah_output_cb: null opaque data area!"));
@@ -1129,7 +1129,7 @@ ah_output_cb(struct cryptop *crp)
 	ptr = (caddr_t) (tc + 1);
 	m = (struct mbuf *) crp->crp_buf;
 
-	s = splnet();
+	crit_enter();
 
 	isr = tc->tc_isr;
 	sav = KEY_ALLOCSA(&tc->tc_dst, tc->tc_proto, tc->tc_spi);
@@ -1148,7 +1148,7 @@ ah_output_cb(struct cryptop *crp)
 
 		if (crp->crp_etype == EAGAIN) {
 			KEY_FREESAV(&sav);
-			splx(s);
+			crit_exit();
 			return crypto_dispatch(crp);
 		}
 
@@ -1180,12 +1180,12 @@ ah_output_cb(struct cryptop *crp)
 	/* NB: m is reclaimed by ipsec_process_done. */
 	err = ipsec_process_done(m, isr);
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return err;
 bad:
 	if (sav)
 		KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	if (m)
 		m_freem(m);
 	free(tc, M_XDATA);

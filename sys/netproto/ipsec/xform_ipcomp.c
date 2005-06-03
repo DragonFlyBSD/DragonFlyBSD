@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.5 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.6 2005/06/03 00:22:27 hmp Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -215,7 +215,7 @@ ipcomp_input_cb(struct cryptop *crp)
 	struct mbuf *m;
 	struct secasvar *sav;
 	struct secasindex *saidx;
-	int s, hlen = IPCOMP_HLENGTH, error, clen;
+	int hlen = IPCOMP_HLENGTH, error, clen;
 	u_int8_t nproto;
 	caddr_t addr;
 
@@ -228,7 +228,7 @@ ipcomp_input_cb(struct cryptop *crp)
 	mtag = (struct mtag *) tc->tc_ptr;
 	m = (struct mbuf *) crp->crp_buf;
 
-	s = splnet();
+	crit_enter();
 
 	sav = KEY_ALLOCSA(&tc->tc_dst, tc->tc_proto, tc->tc_spi);
 	if (sav == NULL) {
@@ -252,7 +252,7 @@ ipcomp_input_cb(struct cryptop *crp)
 
 		if (crp->crp_etype == EAGAIN) {
 			KEY_FREESAV(&sav);
-			splx(s);
+			crit_exit();
 			return crypto_dispatch(crp);
 		}
 
@@ -306,12 +306,12 @@ ipcomp_input_cb(struct cryptop *crp)
 	IPSEC_COMMON_INPUT_CB(m, sav, skip, protoff, NULL);
 
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return error;
 bad:
 	if (sav)
 		KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	if (m)
 		m_freem(m);
 	if (tc != NULL)
@@ -498,7 +498,7 @@ ipcomp_output_cb(struct cryptop *crp)
 	struct ipsecrequest *isr;
 	struct secasvar *sav;
 	struct mbuf *m;
-	int s, error, skip, rlen;
+	int error, skip, rlen;
 
 	tc = (struct tdb_crypto *) crp->crp_opaque;
 	KASSERT(tc != NULL, ("ipcomp_output_cb: null opaque data area!"));
@@ -506,7 +506,7 @@ ipcomp_output_cb(struct cryptop *crp)
 	skip = tc->tc_skip;
 	rlen = crp->crp_ilen - skip;
 
-	s = splnet();
+	crit_enter();
 
 	isr = tc->tc_isr;
 	sav = KEY_ALLOCSA(&tc->tc_dst, tc->tc_proto, tc->tc_spi);
@@ -526,7 +526,7 @@ ipcomp_output_cb(struct cryptop *crp)
 
 		if (crp->crp_etype == EAGAIN) {
 			KEY_FREESAV(&sav);
-			splx(s);
+			crit_exit();
 			return crypto_dispatch(crp);
 		}
 		ipcompstat.ipcomps_noxform++;
@@ -579,12 +579,12 @@ ipcomp_output_cb(struct cryptop *crp)
 	/* NB: m is reclaimed by ipsec_process_done. */
 	error = ipsec_process_done(m, isr);
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return error;
 bad:
 	if (sav)
 		KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	if (m)
 		m_freem(m);
 	free(tc, M_XDATA);

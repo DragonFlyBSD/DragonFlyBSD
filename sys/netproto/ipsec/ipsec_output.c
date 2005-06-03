@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.6 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.7 2005/06/03 00:22:27 hmp Exp $
  */
 
 /*
@@ -340,12 +340,12 @@ ipsec4_process_packet(
 	struct secasindex saidx;
 	struct secasvar *sav;
 	struct ip *ip;
-	int s, error, i, off;
+	int error, i, off;
 
 	KASSERT(m != NULL, ("ipsec4_process_packet: null mbuf"));
 	KASSERT(isr != NULL, ("ipsec4_process_packet: null isr"));
 
-	s = splnet();			/* insure SA contents don't change */
+	crit_enter();
 
 	isr = ipsec_nextisr(m, isr, AF_INET, &saidx, &error);
 	if (isr == NULL)
@@ -464,10 +464,10 @@ ipsec4_process_packet(
 	} else {
 		error = ipsec_process_done(m, isr);
 	}
-	splx(s);
+	crit_exit();
 	return error;
 bad:
-	splx(s);
+	crit_exit();
 	if (m)
 		m_freem(m);
 	return error;

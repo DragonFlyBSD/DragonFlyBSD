@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.5 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.6 2005/06/03 00:22:27 hmp Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -446,7 +446,7 @@ static int
 esp_input_cb(struct cryptop *crp)
 {
 	u_int8_t lastthree[3], aalg[AH_HMAC_HASHLEN];
-	int s, hlen, skip, protoff, error;
+	int hlen, skip, protoff, error;
 	struct mbuf *m;
 	struct cryptodesc *crd;
 	struct auth_hash *esph;
@@ -467,7 +467,7 @@ esp_input_cb(struct cryptop *crp)
 	mtag = (struct m_tag *) tc->tc_ptr;
 	m = (struct mbuf *) crp->crp_buf;
 
-	s = splnet();
+	crit_enter();
 
 	sav = KEY_ALLOCSA(&tc->tc_dst, tc->tc_proto, tc->tc_spi);
 	if (sav == NULL) {
@@ -496,7 +496,7 @@ esp_input_cb(struct cryptop *crp)
 
 		if (crp->crp_etype == EAGAIN) {
 			KEY_FREESAV(&sav);
-			splx(s);
+			crit_exit();
 			return crypto_dispatch(crp);
 		}
 
@@ -609,12 +609,12 @@ DPRINTF(("esp_input_cb: %x %x\n", lastthree[0], lastthree[1]));
 	IPSEC_COMMON_INPUT_CB(m, sav, skip, protoff, mtag);
 
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return error;
 bad:
 	if (sav)
 		KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	if (m != NULL)
 		m_freem(m);
 	if (tc != NULL)
@@ -865,13 +865,13 @@ esp_output_cb(struct cryptop *crp)
 	struct ipsecrequest *isr;
 	struct secasvar *sav;
 	struct mbuf *m;
-	int s, err, error;
+	int err, error;
 
 	tc = (struct tdb_crypto *) crp->crp_opaque;
 	KASSERT(tc != NULL, ("esp_output_cb: null opaque data area!"));
 	m = (struct mbuf *) crp->crp_buf;
 
-	s = splnet();
+	crit_enter();
 
 	isr = tc->tc_isr;
 	sav = KEY_ALLOCSA(&tc->tc_dst, tc->tc_proto, tc->tc_spi);
@@ -894,7 +894,7 @@ esp_output_cb(struct cryptop *crp)
 
 		if (crp->crp_etype == EAGAIN) {
 			KEY_FREESAV(&sav);
-			splx(s);
+			crit_exit();
 			return crypto_dispatch(crp);
 		}
 
@@ -922,12 +922,12 @@ esp_output_cb(struct cryptop *crp)
 	/* NB: m is reclaimed by ipsec_process_done. */
 	err = ipsec_process_done(m, isr);
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return err;
 bad:
 	if (sav)
 		KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	if (m)
 		m_freem(m);
 	free(tc, M_XDATA);

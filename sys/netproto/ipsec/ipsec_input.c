@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.6 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.7 2005/06/03 00:22:27 hmp Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -109,7 +109,7 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
 	union sockaddr_union dst_address;
 	struct secasvar *sav;
 	u_int32_t spi;
-	int s, error;
+	int error;
 
 	IPSEC_ISTAT(sproto, espstat.esps_input, ahstat.ahs_input,
 		ipcompstat.ipcomps_input);
@@ -179,7 +179,7 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
 		return EPFNOSUPPORT;
 	}
 
-	s = splnet();
+	crit_enter();
 
 	/* NB: only pass dst since key_allocsa follows RFC2401 */
 	sav = KEY_ALLOCSA(&dst_address, sproto, spi);
@@ -190,7 +190,7 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
 			  (u_long) ntohl(spi), sproto));
 		IPSEC_ISTAT(sproto, espstat.esps_notdb, ahstat.ahs_notdb,
 		    ipcompstat.ipcomps_notdb);
-		splx(s);
+		crit_exit();
 		m_freem(m);
 		return ENOENT;
 	}
@@ -203,7 +203,7 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
 		IPSEC_ISTAT(sproto, espstat.esps_noxform, ahstat.ahs_noxform,
 		    ipcompstat.ipcomps_noxform);
 		KEY_FREESAV(&sav);
-		splx(s);
+		crit_exit();
 		m_freem(m);
 		return ENXIO;
 	}
@@ -214,7 +214,7 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
 	 */
 	error = (*sav->tdb_xform->xf_input)(m, sav, skip, protoff);
 	KEY_FREESAV(&sav);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
