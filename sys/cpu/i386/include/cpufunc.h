@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.11 2005/05/07 16:22:42 corecode Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.12 2005/06/03 20:20:44 dillon Exp $
  */
 
 /*
@@ -151,7 +151,7 @@ cpu_mb1(void)
 static __inline void
 cpu_mb2(void)
 {
-	__asm __volatile("cpuid" : : : "ax", "bx", "cx", "dx", "memory");
+	__asm __volatile("subl %%eax,%%eax; cpuid" : : : "ax", "bx", "cx", "dx", "memory");
 }
 
 #ifdef _KERNEL
