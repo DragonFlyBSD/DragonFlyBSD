@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.15 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.16 2005/06/04 14:41:57 joerg Exp $
  */
 
 #include "opt_bootp.h"
@@ -435,14 +435,6 @@ in_control(so, cmd, data, ifp, td)
 		 * a routing process they will come back.
 		 */
 		in_ifadown(&ia->ia_ifa, 1);
-		/*
-		 * XXX horrible hack to detect that we are being called
-		 * from if_detach()
-		 */
-		if (!ifnet_addrs[ifp->if_index - 1]) {
-			in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
-			in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
-		}
 		EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		error = 0;
 		break;
@@ -903,4 +895,11 @@ in_delmulti(inm)
 	if (my_inm.inm_ifp != NULL)
 		igmp_leavegroup(&my_inm);
 	crit_exit();
+}
+
+void
+in_ifdetach(struct ifnet *ifp)
+{
+	in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
+	in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
 }

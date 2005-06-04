@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.8 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.9 2005/06/04 14:41:57 joerg Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -225,6 +225,7 @@ do { \
 struct	route;
 struct	netmsg;
 
+void	in_ifdetach(struct ifnet *ifp);
 struct	in_multi *in_addmulti (struct in_addr *, struct ifnet *);
 void	in_delmulti (struct in_multi *);
 int	in_control (struct socket *, u_long, caddr_t, struct ifnet *,

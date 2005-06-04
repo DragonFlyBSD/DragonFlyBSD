@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.37 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.38 2005/06/04 14:41:57 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -363,6 +363,13 @@ if_detach(struct ifnet *ifp)
 		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
 		IFAFREE(ifa);
 	}
+
+#ifdef INET
+	/*
+	 * Remove all IPv4 kernel structures related to ifp.
+	 */
+	in_ifdetach(ifp);
+#endif
 
 #ifdef INET6
 	/*
