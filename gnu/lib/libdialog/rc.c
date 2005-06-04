@@ -16,6 +16,8 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ *  $DragonFly: src/gnu/lib/libdialog/rc.c,v 1.2 2005/06/04 13:42:28 eirikn Exp $
  */
 
 #include <dialog.h>
@@ -87,7 +89,7 @@ int parse_rc(void)
 {
   int i, l = 1, parse, fg, bg, hl;
   unsigned char str[MAX_LEN+1], *var, *value, *tempptr;
-  FILE *rc_file;
+  FILE *rc_file = NULL;
 
   /*
    *

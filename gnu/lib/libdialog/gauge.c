@@ -17,10 +17,11 @@
  * its use.
  *
  * $FreeBSD: src/gnu/lib/libdialog/gauge.c,v 1.2.12.2 2002/06/18 07:55:55 dougb Exp $
- * $DragonFly: src/gnu/lib/libdialog/gauge.c,v 1.2 2003/06/17 04:25:43 dillon Exp $
+ * $DragonFly: src/gnu/lib/libdialog/gauge.c,v 1.3 2005/06/04 13:42:28 eirikn Exp $
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "dialog.h"
 
