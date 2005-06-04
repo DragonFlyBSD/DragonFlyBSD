@@ -6,7 +6,7 @@
  * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.6 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.8 2004/08/28 07:27:02 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.9 2005/06/04 14:24:33 corecode Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -64,6 +64,9 @@
 # endif
 # include <sys/stream.h>
 # include <sys/kmem.h>
+#endif
+#if defined(__DragonFly__)
+# include <sys/thread2.h>
 #endif
 
 #include <net/if.h>
@@ -211,7 +214,7 @@ static int fr_state_flush(which, proto)
 int which, proto;
 {
 	ipstate_t *is, **isp;
-#if defined(_KERNEL) && !SOLARIS
+#if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
 	int delete, removed = 0, try;
@@ -1782,7 +1785,7 @@ void fr_stateunload()
 void fr_timeoutstate()
 {
 	ipstate_t *is, **isp;
-#if defined(_KERNEL) && !SOLARIS
+#if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
 

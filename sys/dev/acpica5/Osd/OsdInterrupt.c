@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdInterrupt.c,v 1.17 2004/04/14 03:41:06 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdInterrupt.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdInterrupt.c,v 1.5 2005/06/04 14:25:45 corecode Exp $
  */
 
 /*
@@ -38,6 +38,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
  
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>

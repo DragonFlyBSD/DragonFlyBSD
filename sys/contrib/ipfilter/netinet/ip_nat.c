@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.8 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.9 2005/01/07 20:15:47 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.10 2005/06/04 14:24:33 corecode Exp $
  */
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -60,6 +60,9 @@
 #endif
 #if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <sys/queue.h>
+#endif
+#if defined(__DragonFly__)
+# include <sys/thread2.h>
 #endif
 #include <net/if.h>
 #if defined(__DragonFly__) || __FreeBSD_version >= 300000
@@ -2789,7 +2792,7 @@ void ip_natunload()
 void ip_natexpire()
 {
 	struct nat *nat, **natp;
-#if defined(_KERNEL) && !SOLARIS
+#if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
 
@@ -2824,7 +2827,7 @@ void *ifp;
 	struct in_addr in;
 	ipnat_t *np;
 	void *ifp2;
-#if defined(_KERNEL) && !SOLARIS
+#if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
 

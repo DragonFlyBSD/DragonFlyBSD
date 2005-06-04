@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.5 2004/09/15 16:46:19 joerg Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.6 2005/06/04 14:25:45 corecode Exp $
  */
 
 #include "bus_if.h"
@@ -99,13 +99,13 @@ struct acpi_prw_data {
 
 #if defined(__DragonFly__)
 /*
- * In 4.x, ACPI is protected by splhigh().
+ * In DragonFly, ACPI is protected by critical sections.
  */
-# define ACPI_LOCK			s = splhigh()
-# define ACPI_UNLOCK			splx(s)
+# define ACPI_LOCK			crit_enter()
+# define ACPI_UNLOCK			crit_exit()
 # define ACPI_ASSERTLOCK
 # define ACPI_MSLEEP(a, b, c, d, e)	tsleep(a, c, d, e)
-# define ACPI_LOCK_DECL			int s
+# define ACPI_LOCK_DECL
 # define kthread_create(a, b, c, d, e, f)	kthread_create(a, b, c, f)
 #elif __FreeBSD_version < 500000
 /*

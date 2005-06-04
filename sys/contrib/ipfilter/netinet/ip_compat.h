@@ -6,7 +6,7 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.6 2004/07/04 09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.11 2004/07/28 00:22:36 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.12 2005/06/04 14:24:33 corecode Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -618,11 +618,16 @@ extern	void	m_copyback (struct mbuf *, int, int, caddr_t);
 #  define	SPL_NET(x)	x = splsoftnet()
 #  define	SPL_X(x)	(void) splx(x)
 # else
-#  if !SOLARIS && !defined(linux)
-#   define	SPL_IMP(x)	x = splimp()
-#   define	SPL_NET(x)	x = splnet()
-#   define	SPL_X(x)	(void) splx(x)
-#  endif
+#  if defined(__DragonFly__)
+#   define	SPL_NET(x)	crit_enter();
+#   define	SPL_X(x)	crit_exit();
+#  else /* __DragonFly__ */
+#   if !SOLARIS && !defined(linux)
+#    define	SPL_IMP(x)	x = splimp()
+#    define	SPL_NET(x)	x = splnet()
+#    define	SPL_X(x)	(void) splx(x)
+#   endif
+#  endif /* __DragonFly__ */
 # endif /* NetBSD && (NetBSD <= 1991011) && (NetBSD >= 199407) */
 # define	PANIC(x,y)	if (x) panic y
 #else /* KERNEL */

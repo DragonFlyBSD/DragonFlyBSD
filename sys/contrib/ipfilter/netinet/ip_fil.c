@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.16 2005/02/01 19:39:07 hrs Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.17 2005/06/04 14:24:33 corecode Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -65,6 +65,9 @@
 #endif
 #include <sys/protosw.h>
 #include <sys/socket.h>
+#if defined(__DragonFly__)
+# include <sys/thread2.h>
+#endif
 
 #include <net/if.h>
 #ifdef sun
@@ -365,7 +368,9 @@ int iplattach()
 # endif
 {
 	char *defpass;
+# if !defined(__DragonFly__)
 	int s;
+# endif
 # if defined(__sgi) || (defined(NETBSD_PF) && \
      (__NetBSD_Version__ >= 104200000)) || \
      (defined(__DragonFly_version) && (__DragonFly_version >= 100000))
@@ -530,7 +535,10 @@ int ipl_disable()
 int ipldetach()
 # endif
 {
-	int s, i;
+# if !defined(__DragonFly__)
+	int s;
+# endif
+	int i;
 #if defined(NETBSD_PF) && \
     ((__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011) || \
      (defined(__DragonFly_version) && (__DragonFly_version >= 100000)))
@@ -681,7 +689,7 @@ caddr_t data;
 int mode;
 #endif /* __sgi */
 {
-#if defined(_KERNEL) && !SOLARIS
+#if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
 	int error = 0, unit = 0, tmp;

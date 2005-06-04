@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.10 2005/04/16 08:17:02 y0netan1 Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.11 2005/06/04 14:25:45 corecode Exp $
  */
 
 #include "opt_acpi.h"
@@ -45,6 +45,7 @@
 #include <sys/linker.h>
 #include <sys/power.h>
 #include <sys/sbuf.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 #include <machine/globaldata.h>

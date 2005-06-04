@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.47 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.4 2005/03/12 14:33:40 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.5 2005/06/04 14:25:45 corecode Exp $
  */
 
 #include "opt_acpi.h"
@@ -39,6 +39,7 @@
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
 #include <sys/power.h>
+#include <sys/thread2.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>

@@ -5,7 +5,7 @@
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.6 2004/07/05 16:55:16 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.8 2004/08/10 16:03:12 eirikn Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.9 2005/06/04 14:24:33 corecode Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -118,6 +118,9 @@
 # include "ip_fil.h"
 # if defined(__DragonFly__) || __FreeBSD_version >= 300000
 #  include <sys/malloc.h>
+# endif
+# if defined(__DragonFly__)
+#  include <sys/thread2.h>
 # endif
 
 # ifndef MIN
@@ -414,7 +417,7 @@ struct uio *uio;
 	size_t dlen, copied;
 	int error = 0;
 	iplog_t *ipl;
-# if defined(_KERNEL) && !SOLARIS
+# if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 # endif
 

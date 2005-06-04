@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.7 2004/05/13 23:49:14 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.8 2005/06/04 14:24:33 corecode Exp $ 
  *
  */
 
@@ -192,7 +192,6 @@ static void
 flastrategy(struct buf *bp)
 {
 	int unit, error;
-	int s;
 	struct fla_s *sc;
 	enum doc2k_work what;
 
@@ -203,12 +202,12 @@ flastrategy(struct buf *bp)
 
 	sc = bp->b_dev->si_drv1;
 
-	s = splbio();
+	crit_enter();
 
 	bufqdisksort(&sc->buf_queue, bp);
 
 	if (sc->busy) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -218,7 +217,7 @@ flastrategy(struct buf *bp)
 		bp = bufq_first(&sc->buf_queue);
 		if (bp)
 			bufq_remove(&sc->buf_queue, bp);
-		splx(s);
+		crit_exit();
 		if (!bp)
 			break;
 
@@ -254,7 +253,7 @@ flastrategy(struct buf *bp)
 		devstat_end_transaction_buf(&sc->stats, bp);
 		biodone(bp);
 
-		s = splbio();
+		crit_enter();
 	}
 	sc->busy = 0;
 	return;

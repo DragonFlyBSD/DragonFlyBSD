@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.17 2005/05/24 20:58:56 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.18 2005/06/04 14:24:33 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -285,7 +285,7 @@ oltr_pci_probe(device_t dev)
 static int
 oltr_pci_attach(device_t dev)
 {
-        int 			i, s, rc = 0, rid,
+        int 			i, rc = 0, rid,
 				scratch_size;
 	int			media = IFM_TOKEN|IFM_TOK_UTP16;
 	u_long 			command;
@@ -293,7 +293,7 @@ oltr_pci_attach(device_t dev)
 	struct oltr_softc		*sc = device_get_softc(dev);
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
-        s = splimp();
+	crit_enter();
 
        	bzero(sc, sizeof(struct oltr_softc));
 	sc->unit = device_get_unit(dev);
@@ -417,12 +417,12 @@ oltr_pci_attach(device_t dev)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	iso88025_ifattach(ifp);
 
-	splx(s);
+	crit_exit();
 	return(0);
 
 config_failed:
 
-	splx(s);
+	crit_exit();
 	return(ENXIO);
 }
 
@@ -431,11 +431,11 @@ oltr_pci_detach(device_t dev)
 {
 	struct oltr_softc	*sc = device_get_softc(dev);
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
-	int s, i;
+	int i;
 
 	device_printf(dev, "driver unloading\n");
 
-	s = splimp();
+	crit_enter();
 
 	if_detach(ifp);
 	if (sc->state > OL_CLOSED)
@@ -456,7 +456,7 @@ oltr_pci_detach(device_t dev)
 		free(sc->work_memory, M_DEVBUF);
 	free(sc->TRlldAdapter, M_DEVBUF);
 
-	(void)splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -527,14 +527,14 @@ oltr_pci_probe(pcici_t config_id, pcidi_t device_id)
 static void
 oltr_pci_attach(pcici_t config_id, int unit)
 {
-        int 			i, s, rc = 0, scratch_size;
+        int 			i, rc = 0, scratch_size;
 	int			media = IFM_TOKEN|IFM_TOK_UTP16;
 	u_long 			command;
 	char 			PCIConfigHeader[64];
 	struct oltr_softc		*sc;
 	struct ifnet		*ifp; /* = &sc->arpcom.ac_if; */
 
-        s = splimp();
+	crit_enter();
 
 	sc = malloc(sizeof(struct oltr_softc), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
@@ -654,11 +654,11 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	iso88025_ifattach(ifp);
 
-	splx(s);
+	crit_exit();
 	return;
 
 config_failed:
-        (void)splx(s);
+	crit_exit();
 
 	return;
 }
@@ -683,7 +683,7 @@ oltr_start(struct ifnet *ifp)
 {
 	struct oltr_softc 	*sc = ifp->if_softc;
 	struct mbuf		*m0, *m;
-	int			copy_len, buffer, frame, fragment, rc, s;
+	int			copy_len, buffer, frame, fragment, rc;
 	
 	/*
 	 * Check to see if output is already active
@@ -731,9 +731,10 @@ outloop:
 		buffer = RING_BUFFER((buffer + 1));
 	}
 
-	s = splimp();
-	rc = TRlldTransmitFrame(sc->TRlldAdapter, &sc->frame_ring[frame], (void *)&sc->frame_ring[frame]);
-	(void)splx(s);
+	crit_enter();
+	rc = TRlldTransmitFrame(sc->TRlldAdapter, &sc->frame_ring[frame],
+				(void *)&sc->frame_ring[frame]);
+	crit_exit();
 
 	if (rc != TRLLD_TRANSMIT_OK) {
 		printf("oltr%d: TRlldTransmitFrame returned %d\n", sc->unit, rc);
@@ -792,7 +793,7 @@ oltr_init(void * xsc)
 	struct oltr_softc 	*sc = (struct oltr_softc *)xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct ifmedia		*ifm = &sc->ifmedia;
-	int			poll = 0, i, rc = 0, s;
+	int			poll = 0, i, rc = 0;
 	int			work_size;
 
 	/*
@@ -803,7 +804,7 @@ oltr_init(void * xsc)
 		return;
 	}
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Initialize Adapter
@@ -952,19 +953,19 @@ oltr_init(void * xsc)
 			break;
 		case TRLLD_OPEN_STATE:
 			printf("oltr%d: adapter not ready for open\n", sc->unit);
-			(void)splx(s);
+			crit_exit();
 			return;
 		case TRLLD_OPEN_ADDRESS_ERROR:
 			printf("oltr%d: illegal MAC address\n", sc->unit);
-			(void)splx(s);
+			crit_exit();
 			return;
 		case TRLLD_OPEN_MODE_ERROR:
 			printf("oltr%d: illegal open mode\n", sc->unit);
-			(void)splx(s);
+			crit_exit();
 			return;
 		default:
 			printf("oltr%d: unknown open error (%d)\n", sc->unit, rc);
-			(void)splx(s);
+			crit_exit();
 			return;
 	}
 
@@ -1006,12 +1007,12 @@ oltr_init(void * xsc)
 	/*callout_handle_init(&sc->oltr_stat_ch);*/
 	/*sc->oltr_stat_ch = timeout(oltr_stat, (void *)sc, 1*hz);*/
 
-	(void)splx(s);
+	crit_exit();
 	return;
 
 init_failed:
 	sc->state = OL_DEAD;
-	(void)splx(s);
+	crit_exit();
 	return;
 }
 
@@ -1020,9 +1021,9 @@ oltr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct oltr_softc 	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *)data;
-	int 			error = 0, s;
+	int 			error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFADDR:
@@ -1049,7 +1050,7 @@ oltr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	(void)splx(s);	
+	crit_exit();
 
 	return(error);
 }
@@ -1059,9 +1060,8 @@ void
 oltr_poll(void *arg)
 {
 	struct oltr_softc *sc = (struct oltr_softc *)arg;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	if (DEBUG_MASK & DEBUG_POLL) printf("P");
 
@@ -1069,7 +1069,7 @@ oltr_poll(void *arg)
 	callout_reset(&sc->oltr_poll_ch,
 		      (TRlldPoll(sc->TRlldAdapter) * hz / 1000), oltr_poll, sc);
 
-	(void)splx(s);
+	crit_exit();
 }
 
 #ifdef NOTYET
@@ -1077,9 +1077,8 @@ void
 oltr_stat(void *arg)
 {
 	struct oltr_softc	*sc = (struct oltr_softc *)arg;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	/* Set up next adapter poll */
 	sc->oltr_stat_ch = timeout(oltr_stat, (void *)sc, 1*hz);
@@ -1088,7 +1087,7 @@ oltr_stat(void *arg)
 		DriverStatistics((void *)sc, &sc->current);
 	}
 
-	(void)splx(s);
+	crit_exit();
 }
 #endif
 static int
@@ -1377,7 +1376,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 	struct ifnet		*ifp = (struct ifnet *)&sc->arpcom.ac_if;
 	struct mbuf		*m0, *m1, *m;
 	struct iso88025_header	*th;
-	int			frame_len = ByteCount, i = (int)FragmentHandle, rc, s;
+	int			frame_len = ByteCount, i = (int)FragmentHandle, rc;
 	int			mbuf_offset, mbuf_size, frag_offset, copy_length;
 	char			*fragment = sc->rx_ring[RING_BUFFER(i)].data;
 	
@@ -1473,7 +1472,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 		}
 
 dropped:
-		s = splimp();
+		crit_enter();
 		i = (int)FragmentHandle;
 		while (FragmentCount--) {
 			rc = TRlldReceiveFragment(sc->TRlldAdapter,
@@ -1486,7 +1485,7 @@ dropped:
 			}
 			i++;
 		}
-		(void)splx(s);
+		crit_exit();
 	}
 }
 

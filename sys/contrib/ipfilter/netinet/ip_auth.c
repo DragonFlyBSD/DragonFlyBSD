@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.7 2005/06/04 14:24:33 corecode Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -48,6 +48,9 @@
 #endif
 #if defined(__DragonFly__) || (_BSDI_VERSION >= 199802) || (__FreeBSD_version >= 400000)
 # include <sys/queue.h>
+#endif
+#if defined(__DragonFly__)
+# include <sys/thread2.h>
 #endif
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(bsdi)
 # include <machine/cpu.h>
@@ -317,7 +320,9 @@ int cmd;
 #if !defined(__DragonFly__) && !defined(__FreeBSD__)
 	struct ifqueue *ifq;
 #endif
+#if !defined(__DragonFly__)
 	int s;
+#endif
 #endif
 	frauth_t auth, *au = &auth, *fra;
 	int i, error = 0;
@@ -559,7 +564,7 @@ void fr_authexpire()
 	frauthent_t *fae, **faep;
 	frentry_t *fr, **frp;
 	mb_t *m;
-#if !SOLARIS && defined(_KERNEL)
+#if !SOLARIS && defined(_KERNEL) && !defined(__DragonFly__)
 	int s;
 #endif
 
@@ -613,7 +618,7 @@ frentry_t *fr, **frptr;
 {
 	frauthent_t *fae, **faep;
 	int error = 0;
-#if defined(KERNEL) && !SOLARIS
+#if defined(KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
 

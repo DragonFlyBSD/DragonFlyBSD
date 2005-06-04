@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.17.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.4 2004/05/19 22:52:40 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.5 2005/06/04 14:25:45 corecode Exp $ 
  */
 
 /*
@@ -48,7 +48,12 @@ ACPI_MODULE_NAME("SYNCH")
 
 static MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
+#if defined(__DragonFly__)
+# define AS_LOCK(as)		crit_enter()
+# define AS_UNLOCK(as)		crit_exit()
+# define AS_LOCK_DECL
+# define msleep(a, b, c, d, e)	tsleep(a, c, d, e)
+#elif __FreeBSD_version < 500000
 # define AS_LOCK(as)		s = splhigh()
 # define AS_UNLOCK(as)		splx(s)
 # define AS_LOCK_DECL		int s
