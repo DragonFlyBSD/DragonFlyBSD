@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/sys/platform/pc32/isa/pmtimer.c,v 1.3 2005/06/03 17:14:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/pmtimer.c,v 1.4 2005/06/04 03:22:08 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -37,6 +37,7 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 
 #include <bus/isa/isavar.h>
