@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.10 2005/04/01 21:35:10 liamfoy Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.11 2005/06/04 20:35:06 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -328,7 +328,8 @@ err:		if (unlink(to))
 static int
 copy(const char *from, const char *to)
 {
-	int pid, status;
+	int status;
+	pid_t pid;
 
 	if ((pid = fork()) == 0) {
 		execl(_PATH_CP, "mv", vflg ? "-PRpv" : "-PRp", "--", from, to,
