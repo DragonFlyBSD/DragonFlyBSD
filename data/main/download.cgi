@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.83 2005/05/31 00:47:34 swildner Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.84 2005/06/04 19:11:47 liamfoy Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -235,8 +235,8 @@ rsync
 <TD>bgp4.net</TD>
 <TD>Daily snapshots, official ISOs</TD>
 <TD>
-<a href="http://www.bgp4.net/pub/DragonFly/">HTTP</a>, 
-<a href="ftp://ftp.bgp4.net/pub/DragonFly/">FTP</a>
+<a href="http://mirror.bgp4.net/pub/DragonFly/">HTTP</a>, 
+<a href="ftp://mirror.bgp4.net/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
 
