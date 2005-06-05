@@ -31,8 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.1 2005/06/03 11:29:32 asmodai Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.2 2005/06/05 09:40:46 asmodai Exp $
  */
+
+#ifndef _SYS_STATVFS_H_
+#define _SYS_STATVFS_H_
 
 #include <sys/types.h>
 
@@ -61,5 +64,9 @@ struct statvfs {
 #define ST_RDONLY	0x1	/* fs is read-only */
 #define ST_NOSUID	0x2	/* fs does not support ST_ISUID or ST_ISGID */
 
+#if 0
 int	fstatvfs(int, struct statvfs *);
 int	statvfs(const char *__restrict, struct statvfs *__restrict);
+#endif
+
+#endif /* _SYS_STATVFS_H_ */
