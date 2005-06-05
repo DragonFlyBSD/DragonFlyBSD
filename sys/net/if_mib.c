@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_mib.c,v 1.8.2.1 2000/08/03 00:09:34 ps Exp $
- * $DragonFly: src/sys/net/if_mib.c,v 1.5 2005/05/06 11:52:02 corecode Exp $
+ * $DragonFly: src/sys/net/if_mib.c,v 1.6 2005/06/05 00:25:10 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -82,12 +82,12 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 
 	s = splnet();
 	if (name[0] <= 0 || name[0] > if_index ||
-	    ifnet_addrs[name[0] - 1] == NULL) {
+	    ifindex2ifnet[name[0]] == NULL) {
 		splx(s);
 		return ENOENT;
 	}
-	
-	ifp = ifnet_addrs[name[0] - 1]->ifa_ifp;
+
+	ifp = ifindex2ifnet[name[0]];
 	splx(s);
 
 	switch(name[1]) {
