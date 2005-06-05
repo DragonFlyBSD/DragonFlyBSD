@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.12 2004/07/19 16:24:27 dillon Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.13 2005/06/05 19:23:10 corecode Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -24,12 +24,14 @@ unix		?=	We run FreeBSD, not UNIX.
 X11BASE		?=	/usr/X11R6
 
 AR		?=	ar
+NXAR		?=	${NXENV} ${AR}
 .if defined(%POSIX)
 ARFLAGS		?=	-rv
 .else
 ARFLAGS		?=	rl
 .endif
 RANLIB		?=	ranlib
+NXRANLIB	?=	${NXENV} ${RANLIB}
 
 AS		?=	as
 AFLAGS		?=
@@ -79,6 +81,7 @@ LEX		?=	lex
 LFLAGS		?=
 
 LD		?=	ld
+NXLD		?=	${NXENV} ${LD}
 LDFLAGS		?=
 NXCFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
 NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
