@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.2 2005/06/05 09:40:46 asmodai Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.3 2005/06/05 12:16:53 joerg Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
@@ -58,6 +58,16 @@ struct statvfs {
 	unsigned long	f_fsid;		/* file system ID */
 	unsigned long	f_flag;		/* bit mask of f_flag values */
 	unsigned long	f_namemax;	/* maximum filename length */
+	uid_t		f_owner;	/* user that mounted the filesystem */
+	unsigned int	f_type;		/* filesystem type */
+
+	uint64_t  	f_syncreads;	/* count of sync reads since mount */
+	uint64_t  	f_syncwrites;	/* count of sync writes since mount */
+
+	uint64_t  	f_asyncreads;	/* count of async reads since mount */
+	uint64_t  	f_asyncwrites;	/* count of async writes since mount */
+
+	uint32_t	f_spare[8];	
 };
 
 /* f_flag definitions */
