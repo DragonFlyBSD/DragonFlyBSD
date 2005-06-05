@@ -6,7 +6,7 @@
  * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.6 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.9 2005/06/04 14:24:33 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.10 2005/06/05 12:17:46 corecode Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -65,7 +65,7 @@
 # include <sys/stream.h>
 # include <sys/kmem.h>
 #endif
-#if defined(__DragonFly__)
+#if defined(__DragonFly__) && defined(_KERNEL)
 # include <sys/thread2.h>
 #endif
 

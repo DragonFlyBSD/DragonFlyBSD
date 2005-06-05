@@ -6,7 +6,7 @@
  * @(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.7 2004/07/04 09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.8 2005/06/04 14:24:33 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.9 2005/06/05 12:17:46 corecode Exp $
  */
 #if defined(KERNEL) && !defined(_KERNEL)
 # define      _KERNEL
@@ -53,7 +53,7 @@
 # include <sys/stream.h>
 # include <sys/kmem.h>
 #endif
-#if defined(__DragonFly__)
+#if defined(__DragonFly__) && defined(_KERNEL)
 # include <sys/thread2.h>
 #endif
 #include <net/if.h>

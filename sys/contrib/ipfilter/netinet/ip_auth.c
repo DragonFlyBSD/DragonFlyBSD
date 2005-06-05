@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.7 2005/06/04 14:24:33 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.8 2005/06/05 12:17:46 corecode Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -49,7 +49,7 @@
 #if defined(__DragonFly__) || (_BSDI_VERSION >= 199802) || (__FreeBSD_version >= 400000)
 # include <sys/queue.h>
 #endif
-#if defined(__DragonFly__)
+#if defined(__DragonFly__) && defined(_KERNEL)
 # include <sys/thread2.h>
 #endif
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(bsdi)

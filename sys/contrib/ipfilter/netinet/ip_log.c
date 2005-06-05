@@ -5,7 +5,7 @@
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.6 2004/07/05 16:55:16 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.9 2005/06/04 14:24:33 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.10 2005/06/05 12:17:46 corecode Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -119,7 +119,7 @@
 # if defined(__DragonFly__) || __FreeBSD_version >= 300000
 #  include <sys/malloc.h>
 # endif
-# if defined(__DragonFly__)
+# if defined(__DragonFly__) && defined(_KERNEL)
 #  include <sys/thread2.h>
 # endif
 
