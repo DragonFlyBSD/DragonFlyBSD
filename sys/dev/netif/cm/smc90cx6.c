@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.12 2005/05/24 09:52:12 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.13 2005/06/05 16:05:33 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -987,14 +987,6 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 #endif
 
 	switch (command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCADDMULTI:
-	case SIOCDELMULTI:
-	case SIOCSIFMTU:
-		error = arc_ioctl(ifp, command, data);
-		break;
-
 	case SIOCSIFFLAGS:
 		if ((ifp->if_flags & IFF_UP) == 0 &&
 		    (ifp->if_flags & IFF_RUNNING) != 0) {
@@ -1015,7 +1007,7 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	default:
-		error = EINVAL;
+		error = arc_ioctl(ifp, command, data);
 		break;
 	}
 

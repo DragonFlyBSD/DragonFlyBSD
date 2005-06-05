@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.16 2005/06/03 23:23:03 joerg Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.17 2005/06/05 16:05:33 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -735,6 +735,9 @@ arc_ioctl(ifp, command, data)
 			error = EINVAL;
 		else
 			ifp->if_mtu = ifr->ifr_mtu;
+		break;
+	default:
+		error = EINVAL;
 		break;
 	}
 
