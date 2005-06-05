@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.10 2005/04/20 21:39:00 joerg Exp $
+# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.11 2005/06/05 22:43:19 corecode Exp $
 
 # include compiler-specific bsd.cpu.mk.  Note that CCVER may or may not
 # be passed as an environment variable.  If not set we make it consistent
@@ -22,6 +22,8 @@ HOST_CCVER?= ${_CCVER}
 .  include <bsd.cpu.gcc3.mk>
 .elif ${CCVER} == "gcc34"
 .  include <bsd.cpu.gcc34.mk>
+.elif ${CCVER} == "gcc40"
+.  include <bsd.cpu.gcc40.mk>
 .elif defined(CCVER_BSD_CPU_MK)
 .  if ${CCVER_BSD_CPU_MK} != ""
 .    include "${CCVER_BSD_CPU_MK}"

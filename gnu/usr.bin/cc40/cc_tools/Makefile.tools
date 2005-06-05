@@ -1,0 +1,97 @@
+# $DragonFly: src/gnu/usr.bin/cc40/cc_tools/Attic/Makefile.tools,v 1.1 2005/06/05 22:43:20 corecode Exp $
+
+.ORDER: options.c options.h
+
+insn-output.c:
+	${TOOLDIR}/genoutput/genoutput.nx ${MD_FILE} > ${.TARGET}
+
+insn-opinit.c:
+	${TOOLDIR}/genopinit/genopinit.nx ${MD_FILE} > ${.TARGET}
+
+insn-extract.c:
+	${TOOLDIR}/genextract/genextract.nx ${MD_FILE} > ${.TARGET}
+
+insn-attrtab.c:
+	${TOOLDIR}/genattrtab/genattrtab.nx ${MD_FILE} > ${.TARGET}
+
+insn-emit.c:
+	${TOOLDIR}/genemit/genemit.nx ${MD_FILE} > ${.TARGET}
+
+insn-attr.h:
+	${TOOLDIR}/genattr/genattr.nx ${MD_FILE} > ${.TARGET}
+
+insn-codes.h:
+	${TOOLDIR}/gencodes/gencodes.nx ${MD_FILE} > ${.TARGET}
+
+insn-recog.c:
+	${TOOLDIR}/genrecog/genrecog.nx ${MD_FILE} > ${.TARGET}
+
+insn-peep.c:
+	${TOOLDIR}/genpeep/genpeep.nx ${MD_FILE} > ${.TARGET}
+
+insn-conditions.c:
+	${TOOLDIR}/genconditions/genconditions.nx ${MD_FILE} > ${.TARGET}
+
+insn-constants.h:
+	${TOOLDIR}/genconstants/genconstants.nx ${MD_FILE} > ${.TARGET}
+
+insn-modes.c:
+	${TOOLDIR}/genmodes/genmodes.nx > ${.TARGET}
+
+insn-modes.h:
+	${TOOLDIR}/genmodes/genmodes.nx -h > ${.TARGET}
+
+min-insn-modes.c:
+	${TOOLDIR}/genmodes/genmodes.nx -m > ${.TARGET}
+
+genrtl.c:
+	${TOOLDIR}/gengenrtl/gengenrtl.nx > ${.TARGET}
+
+genrtl.h:
+	${TOOLDIR}/gengenrtl/gengenrtl.nx -h > ${.TARGET}
+
+gtype-desc.c gtype-desc.h:
+	${TOOLDIR}/gengtype/gengtype.nx
+
+.ORDER: gtype-desc.c gtype-desc.h
+
+insn-preds.c:
+	${TOOLDIR}/genpreds/genpreds.nx ${MD_FILE} > ${.TARGET}
+
+tm-preds.h:
+	${TOOLDIR}/genpreds/genpreds.nx -h ${MD_FILE} > ${.TARGET}
+
+tree-check.h:
+	${TOOLDIR}/gencheck/gencheck.nx > ${.TARGET}
+
+insn-config.h:
+	${TOOLDIR}/genconfig/genconfig.nx ${MD_FILE} > ${.TARGET}
+
+insn-flags.h:
+	${TOOLDIR}/genflags/genflags.nx ${MD_FILE} > ${.TARGET}
+
+gcov-iov.h:
+	${TOOLDIR}/gcov-iov/gcov-iov.nx > ${.TARGET}
+
+
+
+CLEANFILES+=	insn-conditions.c insn-modes.h insn-modes.c min-insn-modes.c genrtl.h
+CLEANFILES+=	genrtl.c tm-preds.h tree-check.h insn-constants.h insn-config.h
+CLEANFILES+=	insn-preds.c insn-flags.h insn-output.c insn-peep.c insn-recog.c
+CLEANFILES+=	insn-codes.h insn-attr.h options.h options.c optionlist
+CLEANFILES+=	insn-emit.c insn-attrtab.c insn-extract.c insn-opinit.c gcov-iov.h
+
+
+CLEANFILES+=	gtype-c.h gtype-cp.h gtype-desc.c gtype-desc.h
+CLEANFILES+=	gt-alias.h gt-bitmap.h gt-c-common.h gt-c-decl.h gt-c-parse.h \
+	gt-c-pragma.h gt-cfglayout.h gt-cgraph.h gt-class.h gt-coverage.h \
+	gt-cp-call.h gt-cp-class.h gt-cp-decl.h gt-cp-decl2.h gt-cp-mangle.h \
+	gt-cp-method.h gt-cp-name-lookup.h gt-cp-parser.h gt-cp-pt.h gt-cp-repo.h \
+	gt-cp-semantics.h gt-cp-tree.h gt-cp-typeck2.h gt-cselib.h gt-dbxout.h \
+	gt-dojump.h gt-dwarf2asm.h gt-dwarf2out.h gt-emit-rtl.h gt-except.h \
+	gt-explow.h gt-expr.h gt-function.h gt-gcse.h gt-gimplify.h gt-i386.h \
+	gt-integrate.h gt-lists.h gt-optabs.h gt-reg-stack.h gt-regclass.h \
+	gt-sdbout.h gt-stor-layout.h gt-stringpool.h gt-tree-cfg.h \
+	gt-tree-complex.h gt-tree-eh.h gt-tree-iterator.h gt-tree-mudflap.h \
+	gt-tree-nested.h gt-tree-phinodes.h gt-tree-ssa-operands.h \
+	gt-tree-ssa-propagate.h gt-tree-ssanames.h gt-tree.h gt-varasm.h

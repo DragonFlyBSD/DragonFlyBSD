@@ -1,0 +1,17 @@
+$DragonFly: src/gnu/lib/gcc40/libstdc++/Attic/os_defines.h.patch,v 1.1 2005/06/05 22:43:21 corecode Exp $
+
+Index: os_defines.h
+===================================================================
+RCS file: /cvs/src/contrib/gcc-3.4/libstdc++-v3/config/os/bsd/netbsd/os_defines.h,v
+retrieving revision 1.3
+diff -u -r1.3 os_defines.h
+--- config/os/bsd/netbsd/os_defines.h	2 Mar 2005 00:56:21 -0000	1.3
++++ config/os/bsd/netbsd/os_defines.h	9 Mar 2005 17:21:36 -0000
+@@ -33,6 +33,6 @@
+ // System-specific #define, typedefs, corrections, etc, go here.  This
+ // file will come before all others.
+ 
+-#define __ssize_t ssize_t
++#include <sys/types.h>
+ 
+ #endif
