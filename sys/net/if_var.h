@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.28 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.29 2005/06/05 12:35:24 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -186,6 +186,7 @@ struct ifnet {
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
 	void	*if_afdata[AF_MAX];
+	struct ifaddr	*if_lladdr;
 };
 typedef void if_init_f_t (void *);
 
@@ -404,7 +405,6 @@ extern struct	ifnet	**ifindex2ifnet;
 extern	int ifqmaxlen;
 extern	struct ifnet loif[];
 extern	int if_index;
-extern	struct ifaddr **ifnet_addrs;
 
 void	ether_ifattach(struct ifnet *, uint8_t *);
 void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int);
@@ -450,7 +450,7 @@ int	if_clone_create(char *, int);
 int	if_clone_destroy(const char *);
 
 #define IF_LLSOCKADDR(ifp)						\
-    ((struct sockaddr_dl *) ifnet_addrs[(ifp)->if_index - 1]->ifa_addr)
+    ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)
 #define IF_LLADDR(ifp)	LLADDR(IF_LLSOCKADDR(ifp))
 
 #ifdef DEVICE_POLLING

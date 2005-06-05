@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.38 2005/06/04 14:41:57 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.39 2005/06/05 12:35:24 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -158,7 +158,6 @@ ifinit(void *dummy)
 }
 
 int if_index = 0;
-struct ifaddr **ifnet_addrs;
 struct ifnet **ifindex2ifnet = NULL;
 
 /*
@@ -195,27 +194,20 @@ if_attach(struct ifnet *ifp)
 	TAILQ_INIT(&ifp->if_prefixhead);
 	LIST_INIT(&ifp->if_multiaddrs);
 	getmicrotime(&ifp->if_lastchange);
-	if (ifnet_addrs == NULL || if_index >= if_indexlim) {
+	if (ifindex2ifnet == NULL || if_index >= if_indexlim) {
 		unsigned int n;
-		caddr_t q;
+		struct ifnet **q;
 
 		if_indexlim <<= 1;
-		n = if_indexlim * sizeof(struct ifaddr *);
-		q = malloc(n, M_IFADDR, M_WAITOK | M_ZERO);
-		if (ifnet_addrs != NULL) {
-			bcopy(ifnet_addrs, q, n/2);
-			free(ifnet_addrs, M_IFADDR);
-		}
-		ifnet_addrs = (struct ifaddr **)q;
 
 		/* grow ifindex2ifnet */
-		n = if_indexlim * sizeof(struct ifnet *);
+		n = if_indexlim * sizeof(*q);
 		q = malloc(n, M_IFADDR, M_WAITOK | M_ZERO);
 		if (ifindex2ifnet) {
 			bcopy(ifindex2ifnet, q, n/2);
 			free(ifindex2ifnet, M_IFADDR);
 		}
-		ifindex2ifnet = (struct ifnet **)q;
+		ifindex2ifnet = q;
 	}
 
 	ifindex2ifnet[if_index] = ifp;
@@ -240,7 +232,7 @@ if_attach(struct ifnet *ifp)
 	sdl->sdl_nlen = namelen;
 	sdl->sdl_index = ifp->if_index;
 	sdl->sdl_type = ifp->if_type;
-	ifnet_addrs[if_index - 1] = ifa;
+	ifp->if_lladdr = ifa;
 	ifa->ifa_ifp = ifp;
 	ifa->ifa_rtrequest = link_rtrequest;
 	ifa->ifa_addr = (struct sockaddr *)sdl;
@@ -330,12 +322,9 @@ if_detach(struct ifnet *ifp)
 		altq_detach(&ifp->if_snd);
 
 	/*
-	 * Remove address from ifnet_addrs[] and maybe decrement if_index.
 	 * Clean up all addresses.
 	 */
-	ifnet_addrs[ifp->if_index - 1] = 0;
-	while (if_index > 0 && ifnet_addrs[if_index - 1] == 0)
-		if_index--;
+	ifp->if_lladdr = NULL;
 
 	for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa;
 	     ifa = TAILQ_FIRST(&ifp->if_addrhead)) {
@@ -401,7 +390,12 @@ if_detach(struct ifnet *ifp)
 			(*dp->dom_ifdetach)(ifp,
 				ifp->if_afdata[dp->dom_family]);
 
+	/*
+	 * Remove interface from ifindex2ifp[] and maybe decrement if_index.
+	 */
 	ifindex2ifnet[ifp->if_index] = NULL;
+	while (if_index > 0 && ifindex2ifnet[if_index] == NULL)
+		if_index--;
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
 	splx(s);
@@ -753,7 +747,7 @@ ifa_ifwithnet(struct sockaddr *addr)
 	    struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
 
 	    if (sdl->sdl_index && sdl->sdl_index <= if_index)
-		return (ifnet_addrs[sdl->sdl_index - 1]);
+		return (ifindex2ifnet[sdl->sdl_index]->if_lladdr);
 	}
 
 	/*
