@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.7 2004/05/13 23:49:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.8 2005/06/06 22:51:54 corecode Exp $
  *
  */
 
@@ -26,6 +26,7 @@
 #include <sys/linker.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #ifndef MD_NSECT
 #define MD_NSECT (10000 * 2)
@@ -164,7 +165,7 @@ mdstrategy(struct buf *bp)
 static void
 mdstrategy_malloc(struct buf *bp)
 {
-	int s, i;
+	int i;
 	struct md_s *sc;
 	devstat_trans_flags dop;
 	u_char *secp, **secpp, *dst;
@@ -177,12 +178,12 @@ mdstrategy_malloc(struct buf *bp)
 
 	sc = bp->b_dev->si_drv1;
 
-	s = splbio();
+	crit_enter();
 
 	bufqdisksort(&sc->buf_queue, bp);
 
 	if (sc->busy) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -192,7 +193,7 @@ mdstrategy_malloc(struct buf *bp)
 		bp = bufq_first(&sc->buf_queue);
 		if (bp)
 			bufq_remove(&sc->buf_queue, bp);
-		splx(s);
+		crit_exit();
 		if (!bp)
 			break;
 
@@ -281,7 +282,7 @@ mdstrategy_malloc(struct buf *bp)
 		bp->b_resid = 0;
 		devstat_end_transaction_buf(&sc->stats, bp);
 		biodone(bp);
-		s = splbio();
+		crit_enter();
 	}
 	sc->busy = 0;
 	return;
@@ -291,7 +292,6 @@ mdstrategy_malloc(struct buf *bp)
 static void
 mdstrategy_preload(struct buf *bp)
 {
-	int s;
 	struct md_s *sc;
 	devstat_trans_flags dop;
 
@@ -302,12 +302,12 @@ mdstrategy_preload(struct buf *bp)
 
 	sc = bp->b_dev->si_drv1;
 
-	s = splbio();
+	crit_enter();
 
 	bufqdisksort(&sc->buf_queue, bp);
 
 	if (sc->busy) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -317,7 +317,7 @@ mdstrategy_preload(struct buf *bp)
 		bp = bufq_first(&sc->buf_queue);
 		if (bp)
 			bufq_remove(&sc->buf_queue, bp);
-		splx(s);
+		crit_exit();
 		if (!bp)
 			break;
 
@@ -335,7 +335,7 @@ mdstrategy_preload(struct buf *bp)
 		bp->b_resid = 0;
 		devstat_end_transaction_buf(&sc->stats, bp);
 		biodone(bp);
-		s = splbio();
+		crit_enter();
 	}
 	sc->busy = 0;
 	return;

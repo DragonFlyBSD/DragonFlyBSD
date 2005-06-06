@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.21 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.22 2005/06/06 22:51:54 corecode Exp $
  *
  */
 
@@ -79,6 +79,7 @@
 #include <sys/rman.h>
 
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 #include <machine/ioctl_fd.h>
@@ -1127,12 +1128,11 @@ set_motor(struct fdc_data *fdc, int fdsu, int turnon)
 static void
 fd_turnoff(void *xfd)
 {
-	int	s;
 	fd_p fd = xfd;
 
 	TRACE1("[fd%d: turnoff]", fd->fdu);
 
-	s = splbio();
+	crit_enter();
 	/*
 	 * Don't turn off the motor yet if the drive is active.
 	 *
@@ -1143,28 +1143,27 @@ fd_turnoff(void *xfd)
 	 */
 	if (fd->fdc->state != DEVIDLE && fd->fdc->fdu == fd->fdu) {
 		fdc_intr(fd->fdc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	fd->flags &= ~FD_MOTOR;
 	set_motor(fd->fdc, fd->fdsu, TURNOFF);
-	splx(s);
+	crit_exit();
 }
 
 static void
 fd_motor_on(void *xfd)
 {
-	int	s;
 	fd_p fd = xfd;
 
-	s = splbio();
+	crit_enter();
 	fd->flags &= ~FD_MOTOR_WAIT;
 	if((fd->fdc->fd == fd) && (fd->fdc->state == MOTORWAIT))
 	{
 		fdc_intr(fd->fdc);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1385,7 +1384,6 @@ void
 fdstrategy(struct buf *bp)
 {
 	unsigned nblocks, blknum, cando;
- 	int	s;
  	fdu_t	fdu;
  	fdc_p	fdc;
  	fd_p	fd;
@@ -1448,7 +1446,7 @@ fdstrategy(struct buf *bp)
 		}
 	}
  	bp->b_pblkno = bp->b_blkno;
-	s = splbio();
+	crit_enter();
 	bufqdisksort(&fdc->head, bp);
 	callout_stop(&fd->toffhandle);
 
@@ -1457,7 +1455,7 @@ fdstrategy(struct buf *bp)
 	device_busy(fd->dev);
 
 	fdstart(fdc);
-	splx(s);
+	crit_exit();
 	return;
 
 bad:
@@ -1476,21 +1474,18 @@ bad:
 static void
 fdstart(struct fdc_data *fdc)
 {
-	int s;
-
-	s = splbio();
+	crit_enter();
 	if(fdc->state == DEVIDLE)
 	{
 		fdc_intr(fdc);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void
 fd_iotimeout(void *xfdc)
 {
  	fdc_p fdc;
-	int s;
 
 	fdc = xfdc;
 	TRACE1("fd%d[fd_iotimeout()]", fdc->fdu);
@@ -1506,23 +1501,21 @@ fd_iotimeout(void *xfdc)
 	 * the command completed but was invalid.  The state machine
 	 * will reset the FDC and retry once.
 	 */
-	s = splbio();
+	crit_enter();
 	fdc->status[0] = NE7_ST0_IC_IV;
 	fdc->flags &= ~FDC_STAT_VALID;
 	fdc->state = IOTIMEDOUT;
 	fdc_intr(fdc);
-	splx(s);
+	crit_exit();
 }
 
-/* just ensure it has the right spl */
+/* just ensure it is running in a critical section */
 static void
 fd_pseudointr(void *xfdc)
 {
-	int	s;
-
-	s = splbio();
+	crit_enter();
 	fdc_intr(xfdc);
-	splx(s);
+	crit_exit();
 }
 
 /***********************************************************************\
@@ -2160,7 +2153,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
  	fd_p	fd;
 
 	struct buf *bp;
-	int rv = 0, s;
+	int rv = 0;
 	size_t fdblk;
 
  	fdu	= FDUNIT(minor(dev));
@@ -2193,13 +2186,13 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	BUF_STRATEGY(bp, 0);
 
 	/* ...and wait for it to complete */
-	s = splbio();
+	crit_enter();
 	while(!(bp->b_flags & B_DONE)) {
 		rv = tsleep((caddr_t)bp, 0, "fdform", 20 * hz);
 		if (rv == EWOULDBLOCK)
 			break;
 	}
-	splx(s);
+	crit_exit();
 
 	if (rv == EWOULDBLOCK) {
 		/* timed out */

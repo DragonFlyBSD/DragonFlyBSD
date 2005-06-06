@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.11 2004/09/19 01:37:13 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.12 2005/06/06 22:51:54 corecode Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -57,6 +57,7 @@ static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 #include <sys/disklabel.h>
 #include <sys/kernel.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 
 #include <bus/isa/i386/isa_device.h>
@@ -391,7 +392,6 @@ void
 mcdstrategy(struct buf *bp)
 {
 	struct mcd_data *cd;
-	int s;
 
 	int unit = mcd_unit(bp->b_dev);
 
@@ -442,9 +442,9 @@ MCD_TRACE("strategy: drive not valid\n");
 	}
 
 	/* queue it */
-	s = splbio();
+	crit_enter();
 	bufqdisksort(&cd->head, bp);
-	splx(s);
+	crit_exit();
 
 	/* now check whether we can perform processing */
 	mcd_start(unit);
@@ -463,10 +463,10 @@ static void mcd_start(int unit)
 	struct mcd_data *cd = mcd_data + unit;
 	struct partition *p;
 	struct buf *bp;
-	int s = splbio();
 
+	crit_enter();
 	if (cd->flags & MCDMBXBSY) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -475,10 +475,10 @@ static void mcd_start(int unit)
 		/* block found to process, dequeue */
 		/*MCD_TRACE("mcd_start: found block bp=0x%x\n",bp,0,0,0);*/
 		bufq_remove(&cd->head, bp);
-		splx(s);
+		crit_exit();
 	} else {
 		/* nothing to do */
-		splx(s);
+		crit_exit();
 		return;
 	}
 

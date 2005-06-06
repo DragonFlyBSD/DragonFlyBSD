@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.6 2005/05/26 23:22:13 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.7 2005/06/06 22:51:54 corecode Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -1723,9 +1723,9 @@ isp_pci_dmasetup(struct ispsoftc *isp, struct ccb_scsiio *csio, ispreq_t *rq,
 
 	if ((csio->ccb_h.flags & CAM_SCATTER_VALID) == 0) {
 		if ((csio->ccb_h.flags & CAM_DATA_PHYS) == 0) {
-			int error, s;
+			int error;
 			dp = &pcs->dmaps[isp_handle_index(rq->req_handle)];
-			s = splsoftvm();
+			crit_enter();
 			error = bus_dmamap_load(pcs->dmat, *dp,
 			    csio->data_ptr, csio->dxfer_len, eptr, mp, 0);
 			if (error == EINPROGRESS) {
@@ -1740,7 +1740,7 @@ isp_pci_dmasetup(struct ispsoftc *isp, struct ccb_scsiio *csio, ispreq_t *rq,
 #endif
 				mp->error = error;
 			}
-			splx(s);
+			crit_exit();
 		} else {
 			/* Pointer to physical buffer */
 			struct bus_dma_segment seg;

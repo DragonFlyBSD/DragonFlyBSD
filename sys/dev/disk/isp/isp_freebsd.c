@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.12 2005/02/04 02:55:43 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.13 2005/06/06 22:51:54 corecode Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -1277,9 +1277,9 @@ isp_target_start_ctio(struct ispsoftc *isp, union ccb *ccb)
 static void
 isp_refire_putback_atio(void *arg)
 {
-	int s = splcam();
+	crit_enter();
 	isp_target_putback_atio(arg);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1928,9 +1928,8 @@ static void
 isp_kthread(void *arg)
 {
 	struct ispsoftc *isp = arg;
-	int s;
 
-	s = splcam();
+	crit_enter();
 	isp->isp_osinfo.intsok = 1;
 
 	/*

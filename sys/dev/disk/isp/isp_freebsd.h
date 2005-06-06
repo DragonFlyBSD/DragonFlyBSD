@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.h,v 1.26.2.17 2002/10/11 17:35:11 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.5 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.6 2005/06/06 22:51:54 corecode Exp $ */
 /*
  * Qlogic ISP SCSI Host Adapter FreeBSD Wrapper Definitions
  * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002 by Matthew Jacob
@@ -38,6 +38,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_memio.h>
 #include <machine/bus_pio.h>
@@ -129,8 +130,6 @@ struct isposinfo {
 		mboxwaiting	: 1,
 		intsok		: 1,
 		simqfrozen	: 3;
-	int			islocked;
-	int			splsaved;
 	struct thread		*kthread;
 	bus_dma_tag_t		cdmat;
 	bus_dmamap_t		cdmap;
@@ -390,23 +389,14 @@ static INLINE void isp_lockspl(struct ispsoftc *);
 static INLINE void
 isp_lockspl(struct ispsoftc *isp)
 {
-       int s = splcam();
-       if (isp->isp_osinfo.islocked++ == 0) {  
-               isp->isp_osinfo.splsaved = s;
-       } else {
-               splx(s);
-       }
+       crit_enter();
 }
 
 static INLINE void isp_unlockspl(struct ispsoftc *);
 static INLINE void
 isp_unlockspl(struct ispsoftc *isp)
 {
-       if (isp->isp_osinfo.islocked) {
-               if (--isp->isp_osinfo.islocked == 0) {
-                       splx(isp->isp_osinfo.splsaved);
-               }
-       }
+	crit_exit();
 }
 
 static INLINE void isp_mbox_wait_complete(struct ispsoftc *);

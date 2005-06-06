@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.5 2004/09/19 00:25:57 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.6 2005/06/06 22:51:54 corecode Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -50,6 +50,7 @@
 #endif
 #include <sys/proc.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_memio.h>
 #include <machine/bus_pio.h>
@@ -83,8 +84,8 @@
 
 #ifdef	RELENG_4
 #define	MPT_IFLAGS		INTR_TYPE_CAM
-#define	MPT_LOCK(mpt)		mpt_lockspl(mpt)
-#define	MPT_UNLOCK(mpt)		mpt_unlockspl(mpt)
+#define	MPT_LOCK(mpt)		crit_enter()
+#define	MPT_UNLOCK(mpt)		crit_exit()
 #define	MPTLOCK_2_CAMLOCK	MPT_UNLOCK
 #define	CAMLOCK_2_MPTLOCK	MPT_LOCK
 #define	MPT_LOCK_SETUP(mpt)
@@ -199,12 +200,6 @@ struct mpt_pci_cfg {
 
 typedef struct mpt_softc {
 	device_t		dev;
-#ifdef	RELENG_4
-	int			mpt_splsaved;
-	u_int32_t		mpt_islocked;	
-#else
-	struct mtx		mpt_lock;
-#endif
 	u_int32_t		: 16,
 		unit		: 8,
 		verbose		: 3,
@@ -328,31 +323,5 @@ void mpt_cam_attach(mpt_softc_t *);
 void mpt_cam_detach(mpt_softc_t *);
 void mpt_done(mpt_softc_t *, u_int32_t);
 void mpt_set_config_regs(mpt_softc_t *);
-
-#ifdef	RELENG_4
-static INLINE void mpt_lockspl(mpt_softc_t *);
-static INLINE void mpt_unlockspl(mpt_softc_t *);
-
-static INLINE void
-mpt_lockspl(mpt_softc_t *mpt)
-{
-       int s = splcam();
-       if (mpt->mpt_islocked++ == 0) {  
-               mpt->mpt_splsaved = s;
-       } else {
-               splx(s);
-       }
-}
-
-static INLINE void
-mpt_unlockspl(mpt_softc_t *mpt)
-{
-       if (mpt->mpt_islocked) {
-               if (--mpt->mpt_islocked == 0) {
-                       splx(mpt->mpt_splsaved);
-               }
-       }
-}
-#endif
 
 #endif	/* _MPT_FREEBSD_H */
