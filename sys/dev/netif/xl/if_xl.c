@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.23 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.24 2005/06/06 15:27:28 joerg Exp $
  */
 
 /*
@@ -1297,7 +1297,6 @@ static int
 xl_attach(dev)
 	device_t		dev;
 {
-	int			s;
 	u_char			eaddr[ETHER_ADDR_LEN];
 	u_int16_t		xcvr[2];
 	u_int32_t		command;
@@ -1305,8 +1304,6 @@ xl_attach(dev)
 	struct ifnet		*ifp;
 	int			media = IFM_ETHER|IFM_100_TX|IFM_FDX;
 	int			unit, error = 0, rid, res;
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -1764,8 +1761,6 @@ done:
 fail:
 	if (error)
 		xl_detach(dev);
-
-	splx(s);
 
 	return(error);
 }
