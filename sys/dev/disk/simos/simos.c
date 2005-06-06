@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/simos.c,v 1.7 1999/08/28 00:51:06 peter Exp $
- * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.5 2004/03/15 01:10:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.6 2005/06/06 21:48:16 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -32,6 +32,7 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -147,7 +148,6 @@ simos_start(struct simos_softc* sc, struct ccb_scsiio *csio)
 	int cmdlen;
 	caddr_t data;
 	int datalen;
-	int s;
 	u_int8_t* p;
 	int i, count, target;
 	vm_offset_t va;
@@ -178,7 +178,7 @@ simos_start(struct simos_softc* sc, struct ccb_scsiio *csio)
 		return;
 	}
 
-	s = splcam();
+	crit_enter();
 	
 	csio->ccb_h.status |= CAM_SIM_QUEUED;
 	sc->sc_pending = csio;
@@ -221,14 +221,14 @@ simos_start(struct simos_softc* sc, struct ccb_scsiio *csio)
 	sc->sc_regs->startIO = 1;
 	alpha_wmb();
 
-	splx(s);
+	crit_exit();
 }
 
 static void
 simos_done(struct simos_softc* sc)
 {
 	struct ccb_scsiio* csio = sc->sc_pending;
-	int s, done;
+	int done;
 
 	/*
 	 * Spurious interrupt caused by my bogus interrupt broadcasting.
@@ -242,7 +242,7 @@ simos_done(struct simos_softc* sc)
 	if (!done)
 		return;
 
-	s = splcam();
+	crit_enter();
 
 	if (done >> 16)
 		/* Error detected */
@@ -258,7 +258,7 @@ simos_done(struct simos_softc* sc)
 	
 	xpt_done((union ccb *) csio);
 
-	splx(s);
+	crit_exit();
 }
 
 static void

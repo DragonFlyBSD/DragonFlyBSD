@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.13 2005/05/26 23:22:13 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.14 2005/06/06 21:48:16 eirikn Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -94,6 +94,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #endif
+#include <sys/thread2.h>
 
 #include <sys/proc.h>
 
@@ -4197,9 +4198,9 @@ static void sym_intr(void *arg)
 
 static void sym_poll(struct cam_sim *sim)
 {
-	int s = splcam();
+	crit_enter();
 	sym_intr(cam_sim_softc(sim));  
-	splx(s);
+	crit_exit();
 }
 
 
@@ -7586,9 +7587,9 @@ static void sym_timeout1(void *arg)
 
 static void sym_timeout(void *arg)
 {
-	int s = splcam();
+	crit_enter();
 	sym_timeout1(arg);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -7666,9 +7667,9 @@ static void sym_reset_dev(hcb_p np, union ccb *ccb)
  */
 static void sym_action(struct cam_sim *sim, union ccb *ccb)
 {
-	int s = splcam();
+	crit_enter();
 	sym_action1(sim, ccb);
-	splx(s);
+	crit_exit();
 }
 
 static void sym_action1(struct cam_sim *sim, union ccb *ccb)
@@ -7980,9 +7981,8 @@ sym_execute_ccb(void *arg, bus_dma_segment_t *psegs, int nsegs, int error)
 	ccb_p	cp;
 	hcb_p	np;
 	union	ccb *ccb;
-	int	s;
 
-	s = splcam();
+	crit_enter();
 
 	cp  = (ccb_p) arg;
 	ccb = cp->cam_ccb;
@@ -8066,7 +8066,7 @@ sym_execute_ccb(void *arg, bus_dma_segment_t *psegs, int nsegs, int error)
 	 */
 	sym_put_start_queue(np, cp);
 out:
-	splx(s);
+	crit_exit();
 	return;
 out_abort:
 	sym_free_ccb(np, cp);
@@ -8105,11 +8105,9 @@ sym_setup_data_and_start(hcb_p np, struct ccb_scsiio *csio, ccb_p cp)
 		/* Single buffer */
 		if (!(ccb_h->flags & CAM_DATA_PHYS)) {
 			/* Buffer is virtual */
-			int s;
-
 			cp->dmamapped = (dir == CAM_DIR_IN) ? 
 						SYM_DMA_READ : SYM_DMA_WRITE;
-			s = splsoftvm();
+			crit_enter();
 			retv = bus_dmamap_load(np->data_dmat, cp->dmamap,
 					       csio->data_ptr, csio->dxfer_len,
 					       sym_execute_ccb, cp, 0);
@@ -8118,7 +8116,7 @@ sym_setup_data_and_start(hcb_p np, struct ccb_scsiio *csio, ccb_p cp)
 				xpt_freeze_simq(np->sim, 1);
 				csio->ccb_h.status |= CAM_RELEASE_SIMQ;
 			}
-			splx(s);
+			crit_exit();
 		} else {
 			/* Buffer is physical */
 			struct bus_dma_segment seg;
@@ -8654,9 +8652,8 @@ sym_async(void *cb_arg, u32 code, struct cam_path *path, void *arg)
 	struct cam_sim *sim;
 	u_int tn;
 	tcb_p tp;
-	int s;
 
-	s = splcam();
+	crit_enter();
 
 	sim = (struct cam_sim *) cb_arg;
 	np  = (hcb_p) cam_sim_softc(sim);
@@ -8684,7 +8681,7 @@ sym_async(void *cb_arg, u32 code, struct cam_path *path, void *arg)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -9509,14 +9506,13 @@ static void sym_pci_free(hcb_p np)
 	tcb_p tp;
 	lcb_p lp;
 	int target, lun;
-	int s;
 
 	/*
 	 *  First free CAM resources.
 	 */
-	s = splcam();
+	crit_enter();
 	sym_cam_free(np);
-	splx(s);
+	crit_exit();
 
 	/*
 	 *  Now every should be quiet for us to 
@@ -9601,9 +9597,9 @@ int sym_cam_attach(hcb_p np)
 	struct cam_sim *sim = 0;
 	struct cam_path *path = 0;
 	struct ccb_setasync csa;
-	int err, s;
+	int err;
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 *  Establish our interrupt handler.
@@ -9671,7 +9667,7 @@ int sym_cam_attach(hcb_p np)
 	 */
 	sym_init (np, 0);
 
-	splx(s);
+	crit_exit();
 	return 1;
 fail:
 	if (sim)
@@ -9679,7 +9675,7 @@ fail:
 
 	sym_cam_free(np);
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

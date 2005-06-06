@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.7 2005/05/24 20:59:00 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.8 2005/06/06 21:48:15 eirikn Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -45,6 +45,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 
@@ -315,13 +316,12 @@ static void
 ncv_card_unload(DEVPORT_PDEVICE devi)
 {
 	struct ncv_softc *sc = DEVPORT_PDEVGET_SOFTC(devi);
-	intrmask_t s;
 
 	printf("%s: unload\n", sc->sc_sclow.sl_xname);
-	s = splcam();
+	crit_enter();
 	scsi_low_deactivate((struct scsi_low_softc *)sc);
         scsi_low_dettach(&sc->sc_sclow);
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -362,9 +362,9 @@ ncvattach(DEVPORT_PDEVICE devi)
 	slp->sl_hostid = NCV_HOSTID;
 	slp->sl_cfgflags = flags;
 
-	s = splcam();
+	crit_enter();
 	ncvattachsubr(sc);
-	splx(s);
+	crit_exit();
 
 	return(NCVIOSZ);
 }

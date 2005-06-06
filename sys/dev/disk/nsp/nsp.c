@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.6 2004/02/12 00:00:16 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.7 2005/06/06 21:48:16 eirikn Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -52,6 +52,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #ifdef __NetBSD__
 #include <sys/device.h>
@@ -374,17 +375,17 @@ nsphw_start_selection(sc, cb)
 	bus_space_handle_t bsh = sc->sc_ioh;
 	struct targ_info *ti = cb->ti;
 	u_int8_t arbs, ph;
-	int s, wc;
+	int wc;
 
 	wc = sc->sc_tmaxcnt = cb->ccb_tcmax * 1000 * 1000;
 	sc->sc_dataout_timeout = 0;
 
 	/* check bus free */
-	s = splhigh();
+	crit_enter();
 	ph = nsp_cr_read_1(bst, bsh, NSPR_SCBUSMON);
 	if (ph != SCBUSMON_FREE)
 	{
-		splx(s);
+		crit_exit();
 #ifdef	NSP_STATICS
 		nsp_statics.arbit_conflict_1 ++;
 #endif	/* NSP_STATICS */
@@ -393,7 +394,7 @@ nsphw_start_selection(sc, cb)
 
 	/* start arbitration */
 	nsp_cr_write_1(bst, bsh, NSPR_ARBITS, ARBITS_EXEC);
-	splx(s);
+	crit_exit();
 
 	SCSI_LOW_SETUP_PHASE(ti, PH_ARBSTART);
 	do 
@@ -417,7 +418,7 @@ nsphw_start_selection(sc, cb)
 	SCSI_LOW_SETUP_PHASE(ti, PH_SELSTART);
 	scsi_low_arbit_win(slp);
 
-	s = splhigh();
+	crit_enter();
 	SCSI_LOW_DELAY(3);
 	nsp_cr_write_1(bst, bsh, NSPR_DATA,
 		       sc->sc_idbit | (1 << ti->ti_id));
@@ -453,14 +454,14 @@ nsphw_start_selection(sc, cb)
 			if ((ph & SCBUSMON_BSY) != 0)
 			{
 				nsphw_selection_done_and_expect_msgout(sc);
-				splx(s);
+				crit_exit();
 
 				SCSI_LOW_SETUP_PHASE(ti, PH_SELECTED);
 				return SCSI_LOW_START_OK;
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	/* check a selection timeout */
 	nsp_start_timer(sc, NSP_TIMER_1MS);

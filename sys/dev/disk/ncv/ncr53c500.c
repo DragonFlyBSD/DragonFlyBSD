@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.6 2004/02/12 00:00:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.7 2005/06/06 21:48:15 eirikn Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -46,6 +46,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #ifdef __NetBSD__
 #include <sys/device.h>
@@ -447,10 +448,10 @@ ncvhw_start_selection(sc, cb)
 	if (sc->sc_selstop == 0)
 		scsi_low_cmd(slp, ti);
 
-	s = splhigh();
+	crit_enter();
 	if ((bus_space_read_1(iot, ioh, cr0_stat) & STAT_INT) != 0)
 	{
-		splx(s);
+		crit_exit();
 		return SCSI_LOW_START_FAIL;
 	}
 
@@ -463,7 +464,7 @@ ncvhw_start_selection(sc, cb)
 			    slp->sl_scp.scp_cmd, slp->sl_scp.scp_cmdlen);
 	}
 	bus_space_write_1(iot, ioh, cr0_cmd, cmd);
-	splx(s);
+	crit_exit();
 
 	SCSI_LOW_SETUP_PHASE(ti, PH_SELSTART);
 	return SCSI_LOW_START_OK;

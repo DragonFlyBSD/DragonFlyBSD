@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.12 2005/02/15 18:40:38 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.13 2005/06/06 21:48:16 eirikn Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -57,6 +57,7 @@
 #include <sys/disklabel.h>
 #include <sys/kernel.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 #include <machine/stdarg.h>
@@ -317,7 +318,6 @@ static	void
 scdstrategy(struct buf *bp)
 {
 	struct scd_data *cd;
-	int s;
 	int unit = scd_unit(bp->b_dev);
 
 	cd = scd_data + unit;
@@ -362,9 +362,9 @@ scdstrategy(struct buf *bp)
 	bp->b_resid = 0;
 
 	/* queue it */
-	s = splbio();
+	crit_enter();
 	bufqdisksort(&cd->head, bp);
-	splx(s);
+	crit_exit();
 
 	/* now check whether we can perform processing */
 	scd_start(unit);
@@ -384,10 +384,10 @@ scd_start(int unit)
 	struct scd_data *cd = scd_data + unit;
 	struct buf *bp;
 	struct partition *p;
-	int s = splbio();
 
+	crit_enter();
 	if (cd->flags & SCDMBXBSY) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -396,10 +396,9 @@ scd_start(int unit)
 		/* block found to process, dequeue */
 		bufq_remove(&cd->head, bp);
 		cd->flags |= SCDMBXBSY;
-		splx(s);
 	} else {
 		/* nothing to do */
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -410,7 +409,7 @@ scd_start(int unit)
 	cd->mbx.retry = 3;
 	cd->mbx.bp = bp;
 	cd->mbx.p_offset = p->p_offset;
-	splx(s);
+	crit_exit();
 
 	scd_doread(SCD_S_BEGIN,&(cd->mbx));
 	return;

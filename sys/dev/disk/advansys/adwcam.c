@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.9 2005/06/03 16:57:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.10 2005/06/06 21:48:15 eirikn Exp $
  */
 /*
  * Ported from:
@@ -232,7 +232,6 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	struct	 acb *acb;
 	union	 ccb *ccb;
 	struct	 adw_softc *adw;
-	int	 s;
 
 	acb = (struct acb *)arg;
 	ccb = acb->ccb;

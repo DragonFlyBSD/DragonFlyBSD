@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.7 2005/05/24 20:59:00 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.8 2005/06/06 21:48:16 eirikn Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -47,6 +47,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 
@@ -269,13 +270,12 @@ static	void
 stg_card_unload(DEVPORT_PDEVICE devi)
 {
 	struct stg_softc *sc = DEVPORT_PDEVGET_SOFTC(devi);
-	intrmask_t s;
 
 	printf("%s: unload\n",sc->sc_sclow.sl_xname);
-	s = splcam();
+	crit_enter();
 	scsi_low_deactivate((struct scsi_low_softc *)sc);
         scsi_low_dettach(&sc->sc_sclow);
-	splx(s);
+	crit_exit();
 }
 
 static	int
@@ -298,7 +298,6 @@ stgattach(DEVPORT_PDEVICE devi)
 	struct scsi_low_softc *slp;
 	u_int32_t flags = DEVPORT_PDEVFLAGS(devi);
 	u_int iobase = DEVPORT_PDEVIOBASE(devi);
-	intrmask_t s;
 	char	dvname[16];
 
 	strcpy(dvname,"stg");
@@ -322,9 +321,9 @@ stgattach(DEVPORT_PDEVICE devi)
 	slp->sl_hostid = STG_HOSTID;
 	slp->sl_cfgflags = flags;
 
-	s = splcam();
+	crit_enter();
 	stgattachsubr(sc);
-	splx(s);
+	crit_exit();
 
 	return(STGIOSZ);
 }

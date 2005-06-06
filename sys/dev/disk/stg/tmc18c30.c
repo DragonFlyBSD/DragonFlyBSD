@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.7 2004/02/12 00:00:18 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.8 2005/06/06 21:48:16 eirikn Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -48,6 +48,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #ifdef __NetBSD__
 #include <sys/device.h>
@@ -328,7 +329,6 @@ stghw_start_selection(sc, cb)
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct targ_info *ti = cb->ti;
 	u_int8_t stat;
-	int s;
 
 	sc->sc_tmaxcnt = cb->ccb_tcmax * 1000 * 1000;
 	sc->sc_dataout_timeout = 0;
@@ -336,17 +336,17 @@ stghw_start_selection(sc, cb)
 	stghw_bcr_write_1(sc, BCTL_BUSFREE);
 	bus_space_write_1(iot, ioh, tmc_ictl, sc->sc_icinit);
 
-	s = splhigh();
+	crit_enter();
 	stat = bus_space_read_1(iot, ioh, tmc_astat);
 	if ((stat & ASTAT_INT) != 0)
 	{
-		splx(s);
+		crit_exit();
 		return SCSI_LOW_START_FAIL;
 	}
 
 	bus_space_write_1(iot, ioh, tmc_scsiid, sc->sc_idbit);
 	bus_space_write_1(iot, ioh, tmc_fctl, sc->sc_fcRinit | FCTL_ARBIT);
-	splx(s);
+	crit_exit();
 
 	SCSI_LOW_SETUP_PHASE(ti, PH_ARBSTART);
 	return SCSI_LOW_START_OK;
@@ -555,7 +555,7 @@ stg_pio_read(sc, ti, thold)
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct sc_p *sp = &slp->sl_scp;
-	int s, tout;
+	int tout;
 	u_int res;
 	u_int8_t stat;
 
@@ -571,16 +571,16 @@ stg_pio_read(sc, ti, thold)
 	{
 		if (thold > 0)
 		{
-			s = splhigh();
+			crit_enter();
 			res = bus_space_read_2(iot, ioh, tmc_fdcnt);
 			if (res < thold)
 			{
 				bus_space_write_1(iot, ioh, tmc_ictl,
 						  sc->sc_icinit);
-				splx(s);
+				crit_exit();
 				break;
 			}
-			splx(s);
+			crit_exit();
 		}
 		else
 		{
@@ -676,16 +676,16 @@ stg_pio_write(sc, ti, thold)
 
 		if (thold > 0)
 		{
-			s = splhigh();
+			crit_enter();
 			res = bus_space_read_2(iot, ioh, tmc_fdcnt);
 			if (res > thold)
 			{
 				bus_space_write_1(iot, ioh, tmc_ictl,
 						  sc->sc_icinit);
-				splx(s);
+				crit_exit();
 				break;
 			}
-			splx(s);
+			crit_exit();
 		}
 		else
 		{
@@ -1027,7 +1027,7 @@ stgintr(arg)
 	struct physio_proc *pp;
 	struct buf *bp;
 	u_int derror, flags;
-	int len, s;
+	int len;
 	u_int8_t status, astatus, regv;
 
 	/*******************************************
@@ -1131,7 +1131,7 @@ arb_fail:
 		SCSI_LOW_SETUP_PHASE(ti, PH_SELSTART);
 		scsi_low_arbit_win(slp);
 
-		s = splhigh();
+		crit_enter();
 		bus_space_write_1(iot, ioh, tmc_scsiid,
 				  sc->sc_idbit | (1 << ti->ti_id));
 		stghw_bcr_write_1(sc, sc->sc_imsg | sc->sc_busc | BCTL_SEL);
@@ -1145,7 +1145,7 @@ arb_fail:
 				stg_selection_done_and_expect_msgout(sc);
 			}	
 		}
-		splx(s);
+		crit_exit();
 		goto out;
 
 	case PH_SELSTART:

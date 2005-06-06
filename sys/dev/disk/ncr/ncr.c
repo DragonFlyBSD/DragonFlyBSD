@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.10 2005/05/26 23:22:13 swildner Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.11 2005/06/06 21:48:15 eirikn Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -181,6 +181,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
 #include <machine/bus.h>
@@ -3826,7 +3827,7 @@ ncr_intr(vnp)
 	void *vnp;
 {
 	ncb_p np = vnp;
-	int oldspl = splcam();
+	crit_enter();
 
 	if (DEBUG_FLAGS & DEBUG_TINY) printf ("[");
 
@@ -3843,7 +3844,7 @@ ncr_intr(vnp)
 
 	if (DEBUG_FLAGS & DEBUG_TINY) printf ("]\n");
 
-	splx (oldspl);
+	crit_exit();
 }
 
 /*==========================================================
@@ -3870,7 +3871,6 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		nccb_p cp;
 		lcb_p lp;
 		tcb_p tp;
-		int oldspl;
 		struct ccb_scsiio *csio;
 		u_int8_t *msgptr;
 		u_int msglen;
@@ -3883,7 +3883,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		tp = &np->target[ccb->ccb_h.target_id];
 		csio = &ccb->csio;
 
-		oldspl = splcam();
+		crit_enter();
 
 		/*
 		 * Last time we need to check if this CCB needs to
@@ -3891,7 +3891,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		 */
 		if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_INPROG) {
 			xpt_done(ccb);
-			splx(oldspl);
+			crit_exit();
 			return;
 		}
 		ccb->ccb_h.status |= CAM_SIM_QUEUED;
@@ -4046,7 +4046,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 			if (segments < 0) {
 				ccb->ccb_h.status = CAM_REQ_TOO_BIG;
 				ncr_free_nccb(np, cp);
-				splx(oldspl);
+				crit_exit();
 				xpt_done(ccb);
 				return;
 			}
@@ -4173,7 +4173,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		/*
 		**	and reenable interrupts
 		*/
-		splx (oldspl);
+		crit_exit();
 		break;
 	}
 	case XPT_RESET_DEV:	/* Bus Device Reset the specified SCSI device */
@@ -4191,7 +4191,6 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		struct	ccb_trans_settings *cts;
 		tcb_p	tp;
 		u_int	update_type;
-		int	s;
 
 		cts = &ccb->cts;
 		update_type = 0;
@@ -4200,7 +4199,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		if ((cts->flags & CCB_TRANS_USER_SETTINGS) != 0)
 			update_type |= NCR_TRANS_USER;
 		
-		s = splcam();
+		crit_enter();
 		tp = &np->target[ccb->ccb_h.target_id];
 		/* Tag and disc enables */
 		if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
@@ -4274,7 +4273,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 			if ((cts->valid & CCB_TRANS_BUS_WIDTH_VALID) != 0)
 				tp->tinfo.goal.width = cts->bus_width;
 		}
-		splx(s);
+		crit_exit();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -4285,12 +4284,11 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		struct	ccb_trans_settings *cts;
 		struct	ncr_transinfo *tinfo;
 		tcb_p	tp;		
-		int	s;
 
 		cts = &ccb->cts;
 		tp = &np->target[ccb->ccb_h.target_id];
 		
-		s = splcam();
+		crit_enter();
 		if ((cts->flags & CCB_TRANS_CURRENT_SETTINGS) != 0) {
 			tinfo = &tp->tinfo.current;
 			if (tp->tinfo.disc_tag & NCR_CUR_DISCENB)
@@ -4319,7 +4317,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		cts->sync_offset = tinfo->offset;
 		cts->bus_width = tinfo->width;
 
-		splx(s);
+		crit_exit();
 
 		cts->valid = CCB_TRANS_SYNC_RATE_VALID
 			   | CCB_TRANS_SYNC_OFFSET_VALID
@@ -5099,7 +5097,7 @@ ncr_timeout (void *arg)
 		/*
 		**	block ncr interrupts
 		*/
-		int oldspl = splcam();
+		crit_enter();
 		np->lasttime = thistime;
 
 		/*----------------------------------------------------
@@ -5170,7 +5168,7 @@ ncr_timeout (void *arg)
 			*/
 			ncr_complete (np, cp);
 		};
-		splx (oldspl);
+		crit_exit();
 	}
 
 	callout_reset(&np->timeout_ch, step ? step : 1, ncr_timeout, np);
@@ -5181,11 +5179,11 @@ ncr_timeout (void *arg)
 		**	Process pending interrupts.
 		*/
 
-		int	oldspl	= splcam();
+		crit_enter();
 		if (DEBUG_FLAGS & DEBUG_TINY) printf ("{");
 		ncr_exception (np);
 		if (DEBUG_FLAGS & DEBUG_TINY) printf ("}");
-		splx (oldspl);
+		crit_exit();
 	};
 }
 
@@ -5549,7 +5547,7 @@ void ncr_exception (ncb_p np)
 	**	Freeze system to be able to read the messages.
 	*/
 	printf ("ncr: fatal error: system halted - press reset to reboot ...");
-	(void) splhigh();
+	crit_enter();
 	for (;;);
 #endif
 
@@ -6402,11 +6400,10 @@ static	nccb_p ncr_get_nccb
 	(ncb_p np, u_long target, u_long lun)
 {
 	lcb_p lp;
-	int s;
 	nccb_p cp = NULL;
 
 	/* Keep our timeout handler out */
-	s = splsoftclock();
+	crit_enter();
 	
 	/*
 	**	Lun structure available ?
@@ -6435,12 +6432,12 @@ static	nccb_p ncr_get_nccb
 	if (cp != NULL) {
 		if (cp->magic) {
 			printf("%s: Bogus free cp found\n", ncr_name(np));
-			splx(s);
+			crit_exit();
 			return (NULL);
 		}
 		cp->magic = 1;
 	}
-	splx(s);
+	crit_exit();
 	return (cp);
 }
 
