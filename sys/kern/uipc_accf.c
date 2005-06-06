@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/uipc_accf.c,v 1.2.2.2 2000/09/20 21:19:21 ps Exp $
- *	$DragonFly: src/sys/kern/uipc_accf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ *	$DragonFly: src/sys/kern/uipc_accf.c,v 1.3 2005/06/06 15:02:28 dillon Exp $
  */
 
 #define ACCEPT_FILTER_MOD
@@ -43,6 +43,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 static SLIST_HEAD(, accept_filter) accept_filtlsthd =
 	SLIST_HEAD_INITIALIZER(&accept_filtlsthd);
@@ -113,15 +114,15 @@ accept_filt_generic_mod_event(module_t mod, int event, void *data)
 {
 	struct accept_filter *p;
 	struct accept_filter *accfp = (struct accept_filter *) data;
-	int	s, error;
+	int	error;
 
 	switch (event) {
 	case MOD_LOAD:
 		MALLOC(p, struct accept_filter *, sizeof(*p), M_ACCF, M_WAITOK);
 		bcopy(accfp, p, sizeof(*p));
-		s = splnet();
+		crit_enter();
 		error = accept_filt_add(p);
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
@@ -132,9 +133,9 @@ accept_filt_generic_mod_event(module_t mod, int event, void *data)
 		 * in the struct accept_filter.
 		 */
 		if (unloadable != 0) {
-			s = splnet();
+			crit_enter();
 			error = accept_filt_del(accfp->accf_name);
-			splx(s);
+			crit_exit();
 		} else
 			error = EOPNOTSUPP;
 		break;

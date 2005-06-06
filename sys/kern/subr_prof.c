@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.9 2004/06/01 22:19:30 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/ipl.h>
 #include <machine/cpu.h>
@@ -348,7 +349,6 @@ profil(struct profil_args *uap)
 {
 	struct proc *p = curproc;
 	struct uprof *upp;
-	int s;
 
 	if (uap->scale > (1 << 16))
 		return (EINVAL);
@@ -359,13 +359,13 @@ profil(struct profil_args *uap)
 	upp = &p->p_stats->p_prof;
 
 	/* Block profile interrupts while changing state. */
-	s = splstatclock();
+	crit_enter();
 	upp->pr_off = uap->offset;
 	upp->pr_scale = uap->scale;
 	upp->pr_base = uap->samples;
 	upp->pr_size = uap->size;
 	startprofclock(p);
-	splx(s);
+	crit_exit();
 
 	return (0);
 }

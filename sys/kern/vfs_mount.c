@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.10 2005/04/20 17:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.11 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -605,12 +605,11 @@ vnlru_proc(void)
 {
 	struct thread *td = curthread;
 	int done;
-	int s;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_FIRST);   
 
-	s = splbio();
+	crit_enter();
 	for (;;) {
 		kproc_suspend_loop();
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
@@ -641,7 +640,7 @@ vnlru_proc(void)
 			vnlru_nowhere = 0;
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*

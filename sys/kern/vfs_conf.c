@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.13 2005/04/19 17:54:42 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.14 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <sys/device.h>
 #include <sys/namecache.h>
 #include <sys/paths.h>
+#include <sys/thread2.h>
 
 #include "opt_ddb.h"
 #ifdef DDB
@@ -192,7 +193,6 @@ vfs_mountroot_try(const char *mountfrom)
 	char		*vfsname, *devname;
 	int		error;
 	char		patt[32];
-	int		s;
 
 	vfsname = NULL;
 	devname = NULL;
@@ -202,9 +202,9 @@ vfs_mountroot_try(const char *mountfrom)
 	if (mountfrom == NULL)
 		return(error);		/* don't complain */
 
-	s = splcam();			/* Overkill, but annoying without it */
+	crit_enter();
 	printf("Mounting root from %s\n", mountfrom);
-	splx(s);
+	crit_exit();
 
 	/* parse vfs name and devname */
 	vfsname = malloc(MFSNAMELEN, M_MOUNT, M_WAITOK);

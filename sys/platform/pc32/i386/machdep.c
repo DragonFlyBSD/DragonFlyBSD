@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.72 2005/03/17 08:22:38 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.73 2005/06/06 15:02:26 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1872,7 +1872,8 @@ init386(int first)
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
-	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
+	thread0.td_cpl = 0;			/* crit section protects us */
+	safepri = TDPRI_MAX;
 
 	/* make ldt memory segments */
 	/*

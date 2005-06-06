@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.41 2005/04/08 17:39:31 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.42 2005/06/06 15:02:27 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -66,6 +66,7 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
+#include <sys/thread2.h>
 #include <sys/file2.h>
 
 static MALLOC_DEFINE(M_FILEDESC, "file desc", "Open file descriptor table");
@@ -498,13 +499,11 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 void
 funsetown(struct sigio *sigio)
 {
-	int s;
-
 	if (sigio == NULL)
 		return;
-	s = splhigh();
+	crit_enter();
 	*(sigio->sio_myref) = NULL;
-	splx(s);
+	crit_exit();
 	if (sigio->sio_pgid < 0) {
 		SLIST_REMOVE(&sigio->sio_pgrp->pg_sigiolst, sigio,
 			     sigio, sio_pgsigio);
@@ -538,7 +537,6 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 	struct proc *proc;
 	struct pgrp *pgrp;
 	struct sigio *sigio;
-	int s;
 
 	if (pgid == 0) {
 		funsetown(*sigiop);
@@ -593,9 +591,9 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 	/* It would be convenient if p_ruid was in ucred. */
 	sigio->sio_ruid = curproc->p_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
-	s = splhigh();
+	crit_enter();
 	*sigiop = sigio;
-	splx(s);
+	crit_exit();
 	return (0);
 }
 

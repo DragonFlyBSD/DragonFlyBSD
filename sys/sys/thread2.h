@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.18 2005/06/03 23:57:34 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.19 2005/06/06 15:02:24 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -104,21 +104,6 @@ static __inline void
 crit_exit_gd(globaldata_t mygd)
 {
     crit_exit_quick(mygd->gd_curthread);
-}
-
-static __inline int
-crit_panic_save(void)
-{
-    thread_t td = curthread;
-    int pri = td->td_pri;
-    td->td_pri = td->td_pri & TDPRI_MASK;
-    return(pri);
-}
-
-static __inline void
-crit_panic_restore(int cpri)
-{
-    curthread->td_pri = cpri;
 }
 
 static __inline int

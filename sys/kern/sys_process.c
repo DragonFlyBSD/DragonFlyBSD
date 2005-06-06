@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.14 2003/10/15 21:52:38 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.15 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -439,14 +439,14 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 
 	sendsig:
 		/* deliver or queue signal */
-		s = splhigh();
+		crit_enter();
 		if (p->p_stat == SSTOP) {
 			p->p_xstat = data;
 			setrunnable(p);
 		} else if (data) {
 			psignal(p, data);
 		}
-		splx(s);
+		crit_exit();
 		return 0;
 
 	case PT_WRITE_I:

@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.13 2005/01/19 18:00:39 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.14 2005/06/06 15:02:27 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -50,6 +50,7 @@
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 /*
  * 0: no warnings, 1: warnings, 2: panic
@@ -108,7 +109,7 @@ shareunlock(struct lock *lkp, int decr) {
 static int
 acquire(struct lock *lkp, int extflags, int wanted) 
 {
-	int s, error;
+	int error;
 
 	if ((extflags & LK_NOWAIT) && (lkp->lk_flags & wanted)) {
 		return EBUSY;
@@ -119,7 +120,7 @@ acquire(struct lock *lkp, int extflags, int wanted)
 			return 0;
 	}
 
-	s = splhigh();
+	crit_enter();
 	while ((lkp->lk_flags & wanted) != 0) {
 		lkp->lk_flags |= LK_WAIT_NONZERO;
 		lkp->lk_waitcount++;
@@ -133,15 +134,15 @@ acquire(struct lock *lkp, int extflags, int wanted)
 			lkp->lk_waitcount--;
 		}
 		if (error) {
-			splx(s);
+			crit_exit();
 			return error;
 		}
 		if (extflags & LK_SLEEPFAIL) {
-			splx(s);
+			crit_exit();
 			return ENOLCK;
 		}
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

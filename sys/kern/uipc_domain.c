@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.8 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.9 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,8 @@
 #include <sys/socketvar.h>
 #include <sys/systm.h>
 #include <vm/vm_zone.h>
+
+#include <sys/thread2.h>
 
 /*
  * System initialization
@@ -79,9 +81,8 @@ static void
 net_init_domain(struct domain *dp)
 {
 	struct protosw *pr;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	if (dp->dom_init)
 		(*dp->dom_init)();
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
@@ -96,7 +97,7 @@ net_init_domain(struct domain *dp)
 	 */
 	max_hdr = max_linkhdr + max_protohdr;
 	max_datalen = MHLEN - max_hdr;
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -108,11 +109,10 @@ void
 net_add_domain(void *data)
 {
 	struct domain *dp = data;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	SLIST_INSERT_HEAD(&domains, dp, dom_next);
-	splx(s);
+	crit_exit();
 	net_init_domain(dp);
 }
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.20 2005/06/01 17:43:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.21 2005/06/06 15:02:27 dillon Exp $
  *
  */
 
@@ -73,18 +73,6 @@ SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
         CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
 SYSCTL_INT(_kern, OID_AUTO, livelock_fallback,
         CTLFLAG_RW, &livelock_fallback, 0, "Livelock interrupt fallback rate");
-
-/*
- * TEMPORARY sysctl to allow interrupt handlers to run without the critical
- * section (if set to 0).
- *
- * SEQUENCE OF EVENTS: default to prior operation, testing, change default
- * to 0, lots more testing, then make operation without a critical section
- * mandatory and remove the sysctl code and variable.
- */
-static int int_use_crit_section = 1;
-SYSCTL_INT(_kern, OID_AUTO, int_use_crit_section,
-        CTLFLAG_RW, &int_use_crit_section, 0, "Run interrupts entirely within a critical section");
 
 static void ithread_handler(void *arg);
 
@@ -298,8 +286,6 @@ ithread_handler(void *arg)
     intrec_t *nrec;
     struct random_softc *sc = &irandom_ary[intr];
     globaldata_t gd = mycpu;
-    int in_crit_section;	/* REMOVE WHEN TESTING COMPLETE */
-    intrmask_t s;
 
     /*
      * The loop must be entered with one critical section held.
@@ -308,29 +294,27 @@ ithread_handler(void *arg)
 
     for (;;) {
 	/*
-	 * Deal with the sysctl variable allowing the interrupt thread to run
-	 * without a critical section.  Once this is proven out it will
-	 * become the default.  Note that a critical section is always
-	 * held as of the top of the loop.
-	 */
-	in_crit_section = int_use_crit_section;
-	if (in_crit_section == 0)
-	    crit_exit_gd(gd);
-
-	/*
 	 * We can get woken up by the livelock periodic code too, run the 
 	 * handlers only if there is a real interrupt pending.  XXX
 	 *
 	 * Clear irunning[] prior to running the handlers to interlock
 	 * again new events occuring during processing of existing events.
+	 *
+	 * For now run each handler in a critical section.
 	 */
 	irunning[intr] = 0;
 	for (rec = *list; rec; rec = nrec) {
 	    nrec = rec->next;
-	    s = splq(*rec->maskptr);
 	    rec->handler(rec->argument);
-	    splx(s);
 	}
+
+	/*
+	 * Do a quick exit/enter to catch any higher-priority
+	 * interrupt sources and so user/system/interrupt statistics
+	 * work for interrupt threads.
+	 */
+	crit_exit_gd(gd);
+	crit_enter_gd(gd);
 
 	/*
 	 * This is our interrupt hook to add rate randomness to the random
@@ -412,16 +396,11 @@ ithread_handler(void *arg)
 	 * section safe and must be handled by the platform specific
 	 * ithread_done() routine.
 	 */
-	if (in_crit_section) {
-	    if (irunning[intr] == 0)
-		ithread_done(intr);
-	} else {
-	    crit_enter_gd(gd);
-	    if (irunning[intr] == 0)
-		ithread_done(intr);
-	}
+	if (irunning[intr] == 0)
+	    ithread_done(intr);
 	/* must be in critical section on loop */
     }
+    /* not reached */
 }
 
 /* 

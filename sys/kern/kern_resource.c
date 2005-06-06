@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.20 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.21 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -643,20 +643,19 @@ int
 chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 {
 	rlim_t new;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	new = uip->ui_sbsize + to - *hiwat;
 	/* don't allow them to exceed max, but allow subtraction */
 	if (to > *hiwat && new > max) {
-		splx(s);
+		crit_exit();
 		return (0);
 	}
 	uip->ui_sbsize = new;
 	*hiwat = to;
 	if (uip->ui_sbsize < 0)
 		printf("negative sbsize for uid = %d\n", uip->ui_uid);
-	splx(s);
+	crit_exit();
 	return (1);
 }
 

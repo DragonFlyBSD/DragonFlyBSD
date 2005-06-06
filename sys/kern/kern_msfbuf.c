@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.13 2005/04/20 10:24:48 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.14 2005/06/06 15:02:27 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -410,8 +410,6 @@ msf_buf_ref(struct msf_buf *msf)
  * and release resources back to the system.  Note that the sfbuf's
  * removal from the freelist is delayed, so it may in fact already be
  * on the free list.  This is the optimal (and most likely) scenario.
- *
- * Must be called at splimp.
  */
 void
 msf_buf_free(struct msf_buf *msf)

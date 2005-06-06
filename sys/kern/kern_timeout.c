@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.15 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.16 2005/06/06 15:02:28 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -562,7 +562,6 @@ adjust_timeout_calltodo(struct timeval *time_change)
 {
 	struct callout *p;
 	unsigned long delta_ticks;
-	int s;
 
 	/* 
 	 * How many ticks were we asleep?
@@ -590,7 +589,7 @@ adjust_timeout_calltodo(struct timeval *time_change)
 	 */
 
 	/* don't collide with softclock() */
-	s = splhigh(); 
+	crit_enter();
 	for (p = calltodo.c_next; p != NULL; p = p->c_next) {
 		p->c_time -= delta_ticks;
 
@@ -601,7 +600,7 @@ adjust_timeout_calltodo(struct timeval *time_change)
 		/* take back the ticks the timer didn't use (p->c_time <= 0) */
 		delta_ticks = -p->c_time;
 	}
-	splx(s);
+	crit_exit();
 
 	return;
 }

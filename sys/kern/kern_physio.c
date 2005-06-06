@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.9 2004/12/31 22:30:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,6 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 {
 	int i;
 	int error;
-	int spl;
 	int chk_blockno;
 	caddr_t sa;
 	off_t blockno;
@@ -122,10 +121,10 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 				}
 
 			BUF_STRATEGY(bp, 0);
-			spl = splbio();
+			crit_enter();
 			while ((bp->b_flags & B_DONE) == 0)
 				tsleep((caddr_t)bp, 0, "physstr", 0);
-			splx(spl);
+			crit_exit();
 
 			if (uio->uio_segflg == UIO_USERSPACE)
 				vunmapbuf(bp);

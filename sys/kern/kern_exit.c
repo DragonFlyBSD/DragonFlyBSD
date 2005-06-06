@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.40 2005/04/20 16:37:09 cpressey Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.41 2005/06/06 15:02:27 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -74,6 +74,8 @@
 #include <vm/vm_zone.h>
 #include <vm/vm_extern.h>
 #include <sys/user.h>
+
+#include <sys/thread2.h>
 
 /* Required to be non-static for SysVR4 emulator */
 MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
@@ -650,15 +652,14 @@ check_sigacts(void)
 {
 	struct proc *p = curproc;
 	struct sigacts *pss;
-	int s;
 
 	if (p->p_procsig->ps_refcnt == 1 &&
 	    p->p_sigacts != &p->p_addr->u_sigacts) {
 		pss = p->p_sigacts;
-		s = splhigh();
+		crit_enter();
 		p->p_addr->u_sigacts = *pss;
 		p->p_sigacts = &p->p_addr->u_sigacts;
-		splx(s);
+		crit_exit();
 		FREE(pss, M_SUBPROC);
 	}
 }

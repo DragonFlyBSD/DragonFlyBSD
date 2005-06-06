@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.13 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.14 2005/06/06 15:02:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
 #include <sys/uio.h>
+#include <sys/thread2.h>
 #include <sys/file2.h>
 
 #include <vm/vm_zone.h>
@@ -464,7 +465,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 	struct filterops *fops;
 	struct file *fp = NULL;
 	struct knote *kn = NULL;
-	int s, error = 0;
+	int error = 0;
 
 	if (kev->filter < 0) {
 		if (kev->filter + EVFILT_SYSCOUNT < 0)
@@ -555,11 +556,10 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 			kn->kn_kevent.udata = kev->udata;
 		}
 
-		s = splhigh();
+		crit_enter();
 		if (kn->kn_fop->f_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
-		splx(s);
-
+		crit_exit();
 	} else if (kev->flags & EV_DELETE) {
 		kn->kn_fop->f_detach(kn);
 		knote_drop(kn, td);
@@ -568,18 +568,18 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 
 	if ((kev->flags & EV_DISABLE) &&
 	    ((kn->kn_status & KN_DISABLED) == 0)) {
-		s = splhigh();
+		crit_enter();
 		kn->kn_status |= KN_DISABLED;
-		splx(s);
+		crit_exit();
 	}
 
 	if ((kev->flags & EV_ENABLE) && (kn->kn_status & KN_DISABLED)) {
-		s = splhigh();
+		crit_enter();
 		kn->kn_status &= ~KN_DISABLED;
 		if ((kn->kn_status & KN_ACTIVE) &&
 		    ((kn->kn_status & KN_QUEUED) == 0))
 			knote_enqueue(kn);
-		splx(s);
+		crit_exit();
 	}
 
 done:
@@ -597,7 +597,7 @@ kqueue_scan(struct file *fp, int maxevents, struct kevent *ulistp,
 	struct kevent *kevp;
 	struct timeval atv, rtv, ttv;
 	struct knote *kn, marker;
-	int s, count, timeout, nkev = 0, error = 0;
+	int count, timeout, nkev = 0, error = 0;
 
 	count = maxevents;
 	if (count == 0)
@@ -636,7 +636,7 @@ retry:
 
 start:
 	kevp = kq->kq_kev;
-	s = splhigh();
+	crit_enter();
 	if (kq->kq_count == 0) {
 		if (timeout < 0) { 
 			error = EWOULDBLOCK;
@@ -644,7 +644,7 @@ start:
 			kq->kq_state |= KQ_SLEEP;
 			error = tsleep(kq, PCATCH, "kqread", timeout);
 		}
-		splx(s);
+		crit_exit();
 		if (error == 0)
 			goto retry;
 		/* don't restart after signals... */
@@ -660,7 +660,7 @@ start:
 		kn = TAILQ_FIRST(&kq->kq_head);
 		TAILQ_REMOVE(&kq->kq_head, kn, kn_tqe); 
 		if (kn == &marker) {
-			splx(s);
+			crit_exit();
 			if (count == maxevents)
 				goto retry;
 			goto done;
@@ -682,10 +682,10 @@ start:
 		if (kn->kn_flags & EV_ONESHOT) {
 			kn->kn_status &= ~KN_QUEUED;
 			kq->kq_count--;
-			splx(s);
+			crit_exit();
 			kn->kn_fop->f_detach(kn);
 			knote_drop(kn, td);
-			s = splhigh();
+			crit_enter();
 		} else if (kn->kn_flags & EV_CLEAR) {
 			kn->kn_data = 0;
 			kn->kn_fflags = 0;
@@ -696,19 +696,19 @@ start:
 		}
 		count--;
 		if (nkev == KQ_NEVENTS) {
-			splx(s);
+			crit_exit();
 			error = copyout((caddr_t)&kq->kq_kev, (caddr_t)ulistp,
 			    sizeof(struct kevent) * nkev);
 			ulistp += nkev;
 			nkev = 0;
 			kevp = kq->kq_kev;
-			s = splhigh();
+			crit_enter();
 			if (error)
 				break;
 		}
 	}
 	TAILQ_REMOVE(&kq->kq_head, &marker, kn_tqe); 
-	splx(s);
+	crit_exit();
 done:
 	if (nkev != 0)
 		error = copyout((caddr_t)&kq->kq_kev, (caddr_t)ulistp,
@@ -750,8 +750,8 @@ kqueue_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 	int revents = 0;
-	int s = splnet();
 
+	crit_enter();
         if (events & (POLLIN | POLLRDNORM)) {
                 if (kq->kq_count) {
                         revents |= events & (POLLIN | POLLRDNORM);
@@ -760,7 +760,7 @@ kqueue_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 			kq->kq_state |= KQ_SEL;
 		}
 	}
-	splx(s);
+	crit_exit();
 	return (revents);
 }
 
@@ -920,8 +920,8 @@ done:
 }
 
 /*
- * should be called at spl == 0, since we don't want to hold spl
- * while calling fdrop and free.
+ * should be called outside of a critical section, since we don't want to
+ * hold a critical section while calling fdrop and free.
  */
 static void
 knote_drop(struct knote *kn, struct thread *td)
@@ -949,14 +949,14 @@ static void
 knote_enqueue(struct knote *kn)
 {
 	struct kqueue *kq = kn->kn_kq;
-	int s = splhigh();
 
+	crit_enter();
 	KASSERT((kn->kn_status & KN_QUEUED) == 0, ("knote already queued"));
 
 	TAILQ_INSERT_TAIL(&kq->kq_head, kn, kn_tqe); 
 	kn->kn_status |= KN_QUEUED;
 	kq->kq_count++;
-	splx(s);
+	crit_exit();
 	kqueue_wakeup(kq);
 }
 
@@ -964,14 +964,14 @@ static void
 knote_dequeue(struct knote *kn)
 {
 	struct kqueue *kq = kn->kn_kq;
-	int s = splhigh();
 
 	KASSERT(kn->kn_status & KN_QUEUED, ("knote not queued"));
+	crit_enter();
 
 	TAILQ_REMOVE(&kq->kq_head, kn, kn_tqe); 
 	kn->kn_status &= ~KN_QUEUED;
 	kq->kq_count--;
-	splx(s);
+	crit_exit();
 }
 
 static void

@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.42 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.43 2005/06/06 15:02:27 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -606,7 +606,7 @@ statclock(systimer_t info, struct intrframe *frame)
 		 * in ``non-process'' (i.e., interrupt) work.
 		 *
 		 * XXX assume system if frame is NULL.  A NULL frame 
-		 * can occur if ipi processing is done from an splx().
+		 * can occur if ipi processing is done from a crit_exit().
 		 */
 		if (frame && CLKF_INTR(frame))
 			td->td_iticks += bump;
@@ -742,10 +742,10 @@ startprofclock(struct proc *p)
 		p->p_flag |= P_PROFIL;
 #if 0	/* XXX */
 		if (++profprocs == 1 && stathz != 0) {
-			s = splstatclock();
+			crit_enter();
 			psdiv = psratio;
 			setstatclockrate(profhz);
-			splx(s);
+			crit_exit();
 		}
 #endif
 	}
@@ -761,10 +761,10 @@ stopprofclock(struct proc *p)
 		p->p_flag &= ~P_PROFIL;
 #if 0	/* XXX */
 		if (--profprocs == 0 && stathz != 0) {
-			s = splstatclock();
+			crit_enter();
 			psdiv = 1;
 			setstatclockrate(stathz);
-			splx(s);
+			crit_exit();
 		}
 #endif
 	}

@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.7 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.8 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 #include <sys/poll.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #define LOG_ASYNC	0x04
 #define LOG_RDWAIT	0x08
@@ -133,22 +134,21 @@ logread(dev_t dev, struct uio *uio, int flag)
 {
 	struct msgbuf *mbp = msgbufp;
 	long l;
-	int s;
 	int error = 0;
 
-	s = splhigh();
+	crit_enter();
 	while (mbp->msg_bufr == mbp->msg_bufx) {
 		if (flag & IO_NDELAY) {
-			splx(s);
+			crit_exit();
 			return (EWOULDBLOCK);
 		}
 		logsoftc.sc_state |= LOG_RDWAIT;
 		if ((error = tsleep((caddr_t)mbp, PCATCH, "klog", 0))) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 	}
-	splx(s);
+	crit_exit();
 	logsoftc.sc_state &= ~LOG_RDWAIT;
 
 	while (uio->uio_resid > 0) {
@@ -173,18 +173,16 @@ logread(dev_t dev, struct uio *uio, int flag)
 static	int
 logpoll(dev_t dev, int events, struct thread *td)
 {
-	int s;
 	int revents = 0;
 
-	s = splhigh();
-
+	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (msgbufp->msg_bufr != msgbufp->msg_bufx)
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
 			selrecord(td, &logsoftc.sc_selp);
 	}
-	splx(s);
+	crit_exit();
 	return (revents);
 }
 
@@ -216,15 +214,14 @@ static	int
 logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct thread *td)
 {
 	long l;
-	int s;
 
 	switch (com) {
 
 	/* return number of characters immediately available */
 	case FIONREAD:
-		s = splhigh();
+		crit_enter();
 		l = msgbufp->msg_bufx - msgbufp->msg_bufr;
-		splx(s);
+		crit_exit();
 		if (l < 0)
 			l += msgbufp->msg_size;
 		*(int *)data = l;

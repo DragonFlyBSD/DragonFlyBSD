@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.41 2005/01/14 02:20:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.42 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -69,6 +69,7 @@ int	lbolt;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;
+int	safepri;
 
 static struct callout loadav_callout;
 static struct callout roundrobin_callout;
@@ -91,7 +92,6 @@ static void	loadav (void *arg);
 static void	roundrobin (void *arg);
 static void	schedcpu (void *arg);
 static void	updatepri (struct proc *p);
-static void	crit_panicints(void);
 
 static int
 sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
@@ -212,7 +212,6 @@ schedcpu(void *arg)
 {
 	fixpt_t loadfac = averunnable.ldavg[0];
 	struct proc *p;
-	int s;
 	unsigned int ndecay;
 
 	FOREACH_PROC_IN_SYSTEM(p) {
@@ -237,7 +236,7 @@ schedcpu(void *arg)
 		if (p->p_slptime > 1)
 			continue;
 		/* prevent state changes and protect run queue */
-		s = splhigh();
+		crit_enter();
 		/*
 		 * p_cpticks runs at ESTCPUFREQ but must be divided by the
 		 * load average for par-100% use.  Higher p_interactive
@@ -271,7 +270,7 @@ schedcpu(void *arg)
 		else
 			p->p_estcpu = 0;
 		resetpriority(p);
-		splx(s);
+		crit_exit();
 	}
 	wakeup((caddr_t)&lbolt);
 	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);
@@ -307,13 +306,7 @@ static TAILQ_HEAD(slpquehead, thread) slpque[TABLESIZE];
 /*
  * During autoconfiguration or after a panic, a sleep will simply
  * lower the priority briefly to allow interrupts, then return.
- * The priority to be used (safepri) is machine-dependent, thus this
- * value is initialized and maintained in the machine-dependent layers.
- * This priority will typically be 0, or the lowest priority
- * that is safe for use on the interrupt stack; it can be made
- * higher to block network software interrupts after panics.
  */
-int safepri;
 
 void
 sleepinit(void)
@@ -347,6 +340,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	struct proc *p = td->td_proc;		/* may be NULL */
 	int sig = 0, catch = flags & PCATCH;
 	int id = LOOKUP(ident);
+	int oldpri;
 	struct callout thandle;
 
 	/*
@@ -360,7 +354,11 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 * don't run any other procs or panic below,
 		 * in case this is the idle process and already asleep.
 		 */
-		crit_panicints();
+		splz();
+		oldpri = td->td_pri & TDPRI_MASK;
+		lwkt_setpri_self(safepri);
+		lwkt_switch();
+		lwkt_setpri_self(oldpri);
 		return (0);
 	}
 	KKASSERT(td != &mycpu->gd_idlethread);	/* you must be kidding! */
@@ -673,9 +671,8 @@ mi_switch(struct proc *p)
 void
 setrunnable(struct proc *p)
 {
-	int s;
+	crit_enter();
 
-	s = splhigh();
 	switch (p->p_stat) {
 	case 0:
 	case SRUN:
@@ -703,7 +700,7 @@ setrunnable(struct proc *p)
 #endif
 	if (p->p_flag & P_INMEM)
 		lwkt_schedule(p->p_thread);
-	splx(s);
+	crit_exit();
 	if (p->p_slptime > 1)
 		updatepri(p);
 	p->p_slptime = 0;
@@ -890,19 +887,5 @@ schedulerclock(void *dummy)
 			rel_mplock();
 		}
 	}
-}
-
-static
-void
-crit_panicints(void)
-{
-    int s;
-    int cpri;
-
-    s = splhigh();
-    cpri = crit_panic_save();
-    splx(safepri);
-    crit_panic_restore(cpri);
-    splx(s);
 }
 

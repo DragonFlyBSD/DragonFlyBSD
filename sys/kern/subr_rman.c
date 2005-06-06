@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.6 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.7 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -461,7 +461,7 @@ rman_activate_resource(struct resource *r)
 int
 rman_await_resource(struct resource *r, lwkt_tokref_t ilock, int slpflags, int timo)
 {
-	int	rv, s;
+	int	rv;
 	struct	resource *whohas;
 	struct	rman *rm;
 
@@ -475,20 +475,20 @@ rman_await_resource(struct resource *r, lwkt_tokref_t ilock, int slpflags, int t
 		if (r->r_sharehead == 0)
 			panic("rman_await_resource");
 		/*
-		 * splhigh hopefully will prevent a race between
-		 * lwkt_reltoken and tsleep where a process
+		 * A critical section will hopefully will prevent a race 
+		 * between lwkt_reltoken and tsleep where a process
 		 * could conceivably get in and release the resource
 		 * before we have a chance to sleep on it. YYY
 		 */
-		s = splhigh();
+		crit_enter();
 		whohas->r_flags |= RF_WANTED;
 		rv = tsleep(r->r_sharehead, slpflags, "rmwait", timo);
 		if (rv) {
 			lwkt_reltoken(ilock);
-			splx(s);
+			crit_exit();
 			return rv;
 		}
-		splx(s);
+		crit_exit();
 	}
 }
 

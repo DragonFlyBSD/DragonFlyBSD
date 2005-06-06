@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.56 2005/05/06 11:52:02 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.57 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -295,7 +295,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	int slpflag, int slptimeo)
 {
 	struct vinvalbuf_bp_info info;
-	int s, error;
+	int error;
 	vm_object_t object;
 
 	/*
@@ -303,28 +303,28 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	 * is updated.
 	 */
 	if (flags & V_SAVE) {
-		s = splbio();
+		crit_enter();
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
 			error = tsleep((caddr_t)&vp->v_numoutput,
 			    slpflag, "vinvlbuf", slptimeo);
 			if (error) {
-				splx(s);
+				crit_exit();
 				return (error);
 			}
 		}
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
-			splx(s);
+			crit_exit();
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0)
 				return (error);
-			s = splbio();
+			crit_enter();
 			if (vp->v_numoutput > 0 ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("vinvalbuf: dirty bufs");
 		}
-		splx(s);
+		crit_exit();
   	}
-	s = splbio();
+	crit_enter();
 	info.slptimeo = slptimeo;
 	info.slpflag = slpflag;
 	info.flags = flags;
@@ -359,7 +359,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 		}
 	} while (vp->v_numoutput > 0);
 
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Destroy the copy in the VM cache, too.
@@ -441,7 +441,6 @@ vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
 {
 	daddr_t trunclbn;
 	int count;
-	int s;
 
 	/*
 	 * Round up to the *next* lbn, then destroy the buffers in question.  
@@ -450,7 +449,7 @@ vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
 	 */
 	trunclbn = (length + blksize - 1) / blksize;
 
-	s = splbio();
+	crit_enter();
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
 				vtruncbuf_bp_trunc_cmp,
@@ -482,7 +481,7 @@ vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
 		tsleep(&vp->v_numoutput, 0, "vbtrunc", 0);
 	}
 
-	splx(s);
+	crit_exit();
 
 	vnode_pager_setsize(vp, length);
 
@@ -591,7 +590,6 @@ struct vfsync_info {
 	int lazycount;
 	int lazylimit;
 	daddr_t lbn;
-	int s;
 	int (*checkdef)(struct buf *);
 };
 
@@ -605,10 +603,11 @@ vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
 
 	bzero(&info, sizeof(info));
 	info.vp = vp;
-	info.s = splbio();
 	info.lbn = lbn;
 	if ((info.checkdef = checkdef) == NULL)
 		info.syncdeps = 1;
+
+	crit_enter();
 
 	switch(waitfor) {
 	case MNT_LAZY:
@@ -670,7 +669,7 @@ vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
 		}
 		break;
 	}
-	splx(info.s);
+	crit_exit();
 	return(error);
 }
 
@@ -756,9 +755,9 @@ vfsync_bp(struct buf *bp, void *data)
 	    bp->b_lblkno >= info->lbn) {
 		bremfree(bp);
 		bp->b_flags |= B_INVAL | B_NOCACHE;
-		splx(info->s);
+		crit_exit();
 		brelse(bp);
-		info->s = splbio();
+		crit_enter();
 	}
 
 	if (info->synchronous) {
@@ -766,9 +765,9 @@ vfsync_bp(struct buf *bp, void *data)
 		 * Synchronous flushing.  An error may be returned.
 		 */
 		bremfree(bp);
-		splx(info->s);
+		crit_exit();
 		error = bwrite(bp);
-		info->s = splbio();
+		crit_enter();
 	} else { 
 		/*
 		 * Asynchronous flushing.  A negative return value simply
@@ -782,9 +781,9 @@ vfsync_bp(struct buf *bp, void *data)
 		} else {
 			info->lazycount += bp->b_bufsize;
 			bremfree(bp);
-			splx(info->s);
+			crit_exit();
 			bawrite(bp);
-			info->s = splbio();
+			crit_enter();
 		}
 		if (info->lazylimit && info->lazycount >= info->lazylimit)
 			error = 1;

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.36 2005/03/02 06:17:17 davidxu Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.37 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -65,6 +65,7 @@
 #include <sys/malloc.h>
 #include <sys/unistd.h>
 #include <sys/kern_syscall.h>
+#include <sys/thread2.h>
 
 
 #include <machine/ipl.h>
@@ -260,7 +261,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 		/*
 		 * Change setting atomically.
 		 */
-		splhigh();
+		crit_enter();
 
 		ps->ps_catchmask[_SIG_IDX(sig)] = act->sa_mask;
 		SIG_CANTMASK(ps->ps_catchmask[_SIG_IDX(sig)]);
@@ -331,7 +332,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 				SIGADDSET(p->p_sigcatch, sig);
 		}
 
-		spl0();
+		crit_exit();
 	}
 	return (0);
 }
@@ -413,8 +414,7 @@ execsigs(struct proc *p)
  * kern_sigprocmask() - MP SAFE ONLY IF p == curproc
  *
  *	Manipulate signal mask.  This routine is MP SAFE *ONLY* if
- *	p == curproc.  Also remember that in order to remain MP SAFE
- *	no spl*() calls may be made.
+ *	p == curproc.
  */
 int
 kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
@@ -769,7 +769,7 @@ trapsignal(struct proc *p, int sig, u_long code)
 void
 psignal(struct proc *p, int sig)
 {
-	int s, prop;
+	int prop;
 	sig_t action;
 
 	if (sig > _SIG_MAXSIG || sig <= 0) {
@@ -777,9 +777,9 @@ psignal(struct proc *p, int sig)
 		panic("psignal signal number");
 	}
 
-	s = splhigh();
+	crit_enter();
 	KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
-	splx(s);
+	crit_exit();
 
 	prop = sigprop(sig);
 
@@ -838,7 +838,9 @@ psignal(struct proc *p, int sig)
 	 */
 	if (action == SIG_HOLD && (!(prop & SA_CONT) || p->p_stat != SSTOP))
 		return;
-	s = splhigh();
+
+	crit_enter();
+
 	switch (p->p_stat) {
 	case SSLEEP:
 		/*
@@ -995,7 +997,7 @@ psignal(struct proc *p, int sig)
 run:
 	setrunnable(p);
 out:
-	splx(s);
+	crit_exit();
 }
 
 #ifdef SMP
@@ -1416,7 +1418,7 @@ postsig(int sig)
 		 * mask from before the sigsuspend is what we want
 		 * restored after the signal processing is completed.
 		 */
-		splhigh();
+		crit_enter();
 		if (p->p_flag & P_OLDMASK) {
 			returnmask = p->p_oldsigmask;
 			p->p_flag &= ~P_OLDMASK;
@@ -1438,7 +1440,7 @@ postsig(int sig)
 				SIGADDSET(p->p_sigignore, sig);
 			ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
 		}
-		spl0();
+		crit_exit();
 		p->p_stats->p_ru.ru_nsignals++;
 		if (p->p_sig != sig) {
 			code = 0;

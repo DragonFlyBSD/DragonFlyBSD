@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.20 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.21 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -637,7 +637,7 @@ select(struct select_args *uap)
 	fd_mask s_selbits[howmany(2048, NFDBITS)];
 	fd_mask *ibits[3], *obits[3], *selbits, *sbp;
 	struct timeval atv, rtv, ttv;
-	int s, ncoll, error, timo;
+	int ncoll, error, timo;
 	u_int nbufbytes, ncpbytes, nfdbits;
 
 	if (uap->nd < 0)
@@ -720,16 +720,16 @@ retry:
 		timo = ttv.tv_sec > 24 * 60 * 60 ?
 		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	}
-	s = splhigh();
+	crit_enter();
 	if ((p->p_flag & P_SELECT) == 0 || nselcoll != ncoll) {
-		splx(s);
+		crit_exit();
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
 
 	error = tsleep((caddr_t)&selwait, PCATCH, "select", timo);
 	
-	splx(s);
+	crit_exit();
 	if (error == 0)
 		goto retry;
 done:
@@ -800,7 +800,7 @@ poll(struct poll_args *uap)
 	struct pollfd *bits;
 	struct pollfd smallbits[32];
 	struct timeval atv, rtv, ttv;
-	int s, ncoll, error = 0, timo;
+	int ncoll, error = 0, timo;
 	u_int nfds;
 	size_t ni;
 	struct proc *p = curproc;
@@ -852,14 +852,14 @@ retry:
 		timo = ttv.tv_sec > 24 * 60 * 60 ?
 		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	} 
-	s = splhigh(); 
+	crit_enter();
 	if ((p->p_flag & P_SELECT) == 0 || nselcoll != ncoll) {
-		splx(s);
+		crit_exit();
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
 	error = tsleep((caddr_t)&selwait, PCATCH, "poll", timo);
-	splx(s);
+	crit_exit();
 	if (error == 0)
 		goto retry;
 done:
@@ -964,7 +964,6 @@ void
 selwakeup(struct selinfo *sip)
 {
 	struct proc *p;
-	int s;
 
 	if (sip->si_pid == 0)
 		return;
@@ -976,7 +975,7 @@ selwakeup(struct selinfo *sip)
 	p = pfind(sip->si_pid);
 	sip->si_pid = 0;
 	if (p != NULL) {
-		s = splhigh();
+		crit_enter();
 		if (p->p_wchan == (caddr_t)&selwait) {
 			if (p->p_stat == SSLEEP)
 				setrunnable(p);
@@ -984,7 +983,7 @@ selwakeup(struct selinfo *sip)
 				unsleep(p->p_thread);
 		} else if (p->p_flag & P_SELECT)
 			p->p_flag &= ~P_SELECT;
-		splx(s);
+		crit_exit();
 	}
 }
 

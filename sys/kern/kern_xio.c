@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.9 2005/03/02 18:42:08 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -97,7 +97,6 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
     vm_page_t m;
     int i;
     int n;
-    int s;
     int vmprot;
 
     addr = trunc_page((vm_offset_t)ubase);
@@ -118,10 +117,10 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 		break;
 	    if ((paddr = pmap_kextract(addr)) == 0)
 		break;
-	    s = splvm();
+	    crit_enter();
 	    m = PHYS_TO_VM_PAGE(paddr);
 	    vm_page_hold(m);
-	    splx(s);
+	    crit_exit();
 	    xio->xio_pages[i] = m;
 	    ubytes -= n;
 	    xio->xio_bytes += n;
@@ -157,7 +156,6 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
     vm_page_t m;
     int i;
     int n;
-    int s;
 
     addr = trunc_page((vm_offset_t)kbase);
     xio->xio_flags = 0;
@@ -170,10 +168,10 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
     for (i = 0; n && i < XIO_INTERNAL_PAGES; ++i) {
 	if ((paddr = pmap_kextract(addr)) == 0)
 	    break;
-	s = splvm();
+	crit_enter();
 	m = PHYS_TO_VM_PAGE(paddr);
 	vm_page_hold(m);
-	splx(s);
+	crit_exit();
 	xio->xio_pages[i] = m;
 	kbytes -= n;
 	xio->xio_bytes += n;
@@ -202,15 +200,14 @@ void
 xio_release(xio_t xio)
 {
     int i;
-    int s;
     vm_page_t m;
 
-    s = splvm();
+    crit_enter();
     for (i = 0; i < xio->xio_npages; ++i) {
 	m = xio->xio_pages[i];
 	vm_page_unhold(m);
     }
-    splx(s);
+    crit_exit();
     xio->xio_offset = 0;
     xio->xio_npages = 0;
     xio->xio_bytes = 0;

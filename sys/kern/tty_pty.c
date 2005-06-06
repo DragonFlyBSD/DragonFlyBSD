@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.12 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.13 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -57,6 +57,7 @@
 #include <sys/signalvar.h>
 #include <sys/malloc.h>
 #include <sys/device.h>
+#include <sys/thread2.h>
 
 MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
@@ -506,7 +507,6 @@ ptcpoll(dev, events, td)
 	struct tty *tp = dev->si_tty;
 	struct pt_ioctl *pti = dev->si_drv1;
 	int revents = 0;
-	int s;
 
 	if ((tp->t_state & TS_CONNECTED) == 0)
 		return (seltrue(dev, events, td) | POLLHUP);
@@ -514,7 +514,7 @@ ptcpoll(dev, events, td)
 	/*
 	 * Need to block timeouts (ttrstart).
 	 */
-	s = spltty();
+	crit_enter();
 
 	if (events & (POLLIN | POLLRDNORM))
 		if ((tp->t_state & TS_ISOPEN) &&
@@ -542,7 +542,7 @@ ptcpoll(dev, events, td)
 		if (events & (POLLOUT | POLLWRNORM)) 
 			selrecord(td, &pti->pt_selw);
 	}
-	splx(s);
+	crit_exit();
 
 	return (revents);
 }

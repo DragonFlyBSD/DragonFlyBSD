@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.61 2005/04/19 17:54:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.62 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -3620,7 +3620,7 @@ extattr_delete_file(struct extattr_delete_file_args *uap)
 void
 vfs_bufstats(void)
 {
-        int s, i, j, count;
+        int i, j, count;
         struct buf *bp;
         struct bqueues *dp;
         int counts[(MAXBSIZE / PAGE_SIZE) + 1];
@@ -3630,12 +3630,12 @@ vfs_bufstats(void)
                 count = 0;
                 for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
                         counts[j] = 0;
-                s = splbio();
+		crit_enter();
                 TAILQ_FOREACH(bp, dp, b_freelist) {
                         counts[bp->b_bufsize/PAGE_SIZE]++;
                         count++;
                 }
-                splx(s);
+		crit_exit();
                 printf("%s: total-%d", bname[i], count);
                 for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
                         if (counts[j] != 0)

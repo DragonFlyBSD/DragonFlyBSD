@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.36 2005/05/08 00:12:22 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.37 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -154,7 +154,8 @@ SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RW,
  * Disable background writes for now.  There appear to be races in the 
  * flags tests and locking operations as well as races in the completion
  * code modifying the original bp (origbp) without holding a lock, assuming
- * splbio protection when there might not be splbio protection.
+ * critical section protection when there might not be critical section
+ * protection.
  *
  * XXX disable also because the RB tree can't handle multiple blocks with
  * the same lblkno.
@@ -319,13 +320,13 @@ bufcountwakeup(void)
 static __inline void
 waitrunningbufspace(void)
 {
-	while (runningbufspace > hirunningspace) {
-		int s;
-
-		s = splbio();	/* fix race against interrupt/biodone() */
-		++runningbufreq;
-		tsleep(&runningbufreq, 0, "wdrain", 0);
-		splx(s);
+	if (runningbufspace > hirunningspace) {
+		crit_enter();
+		while (runningbufspace > hirunningspace) {
+			++runningbufreq;
+			tsleep(&runningbufreq, 0, "wdrain", 0);
+		}
+		crit_exit();
 	}
 }
 
@@ -491,7 +492,7 @@ bufinit(void)
 /*
  * bfreekva() - free the kva allocation for a buffer.
  *
- *	Must be called at splbio() or higher as this is the only locking for
+ *	Must be called from a critical section as this is the only locking for
  *	buffer_map.
  *
  *	Since this call frees up buffer space, we call bufspacewakeup().
@@ -526,8 +527,10 @@ bfreekva(struct buf * bp)
 void
 bremfree(struct buf * bp)
 {
-	int s = splbio();
-	int old_qindex = bp->b_qindex;
+	int old_qindex;
+
+	crit_enter();
+	old_qindex = bp->b_qindex;
 
 	if (bp->b_qindex != QUEUE_NONE) {
 		KASSERT(BUF_REFCNTNB(bp) == 1, 
@@ -556,7 +559,7 @@ bremfree(struct buf * bp)
 			break;
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 
@@ -647,7 +650,7 @@ breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
 int
 bwrite(struct buf * bp)
 {
-	int oldflags, s;
+	int oldflags;
 #if 0
 	struct buf *newbp;
 #endif
@@ -661,7 +664,7 @@ bwrite(struct buf * bp)
 
 	if (BUF_REFCNTNB(bp) == 0)
 		panic("bwrite: buffer is not busy???");
-	s = splbio();
+	crit_enter();
 	/*
 	 * If a background write is already in progress, delay
 	 * writing this block if it is asynchronous. Otherwise
@@ -669,7 +672,7 @@ bwrite(struct buf * bp)
 	 */
 	if (bp->b_xflags & BX_BKGRDINPROG) {
 		if (bp->b_flags & B_ASYNC) {
-			splx(s);
+			crit_exit();
 			bdwrite(bp);
 			return (0);
 		}
@@ -747,7 +750,7 @@ bwrite(struct buf * bp)
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
 
-	splx(s);
+	crit_exit();
 	if (oldflags & B_ASYNC)
 		BUF_KERNPROC(bp);
 	VOP_STRATEGY(bp->b_vp, bp);
@@ -910,7 +913,7 @@ bdwrite(struct buf *bp)
  *	Since the buffer is not on a queue, we do not update the numfreebuffers
  *	count.
  *
- *	Must be called at splbio().
+ *	Must be called from a critical section.
  *	The buffer must be on QUEUE_NONE.
  */
 void
@@ -935,7 +938,7 @@ bdirty(struct buf *bp)
  *	Since the buffer is not on a queue, we do not update the numfreebuffers
  *	count.
  *	
- *	Must be called at splbio().
+ *	Must be called from a critical section.
  *
  *	The buffer is typically on QUEUE_NONE but there is one case in 
  *	brelse() that calls this function after placing the buffer on
@@ -1002,15 +1005,13 @@ void
 bwillwrite(void)
 {
 	if (numdirtybuffers >= hidirtybuffers) {
-		int s;
-
-		s = splbio();
+		crit_enter();
 		while (numdirtybuffers >= hidirtybuffers) {
 			bd_wakeup(1);
 			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
 			tsleep(&needsbuffer, 0, "flswai", 0);
 		}
-		splx(s);
+		crit_exit();
 	}
 }
 
@@ -1033,11 +1034,9 @@ buf_dirty_count_severe(void)
 void
 brelse(struct buf * bp)
 {
-	int s;
-
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
-	s = splbio();
+	crit_enter();
 
 	if (bp->b_flags & B_LOCKED)
 		bp->b_flags &= ~B_ERROR;
@@ -1147,7 +1146,7 @@ brelse(struct buf * bp)
 			 * now.  Note that we left these pages wired
 			 * when we removed them so they had better exist,
 			 * and they cannot be ripped out from under us so
-			 * no splvm() protection is necessary.
+			 * no critical section protection is necessary.
 			 */
 			if (m == bogus_page) {
 				VOP_GETVOBJECT(vp, &obj);
@@ -1233,7 +1232,7 @@ brelse(struct buf * bp)
 		panic("brelse: multiple refs");
 		/* do not release to free list */
 		BUF_UNLOCK(bp);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1320,7 +1319,7 @@ brelse(struct buf * bp)
 	BUF_UNLOCK(bp);
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF |
 			B_DIRECT | B_NOWDRAIN);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1337,9 +1336,7 @@ brelse(struct buf * bp)
 void
 bqrelse(struct buf * bp)
 {
-	int s;
-
-	s = splbio();
+	crit_enter();
 
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("bqrelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
@@ -1349,7 +1346,7 @@ bqrelse(struct buf * bp)
 		/* do not release to free list */
 		panic("bqrelse: multiple refs");
 		BUF_UNLOCK(bp);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (bp->b_flags & B_LOCKED) {
@@ -1366,7 +1363,7 @@ bqrelse(struct buf * bp)
 		 * buffer (most importantly: the wired pages making up its
 		 * backing store) *now*.
 		 */
-		splx(s);
+		crit_exit();
 		brelse(bp);
 		return;
 	} else {
@@ -1388,16 +1385,16 @@ bqrelse(struct buf * bp)
 	/* unlock */
 	BUF_UNLOCK(bp);
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF);
-	splx(s);
+	crit_exit();
 }
 
 static void
 vfs_vmio_release(struct buf *bp)
 {
-	int i, s;
+	int i;
 	vm_page_t m;
 
-	s = splvm();
+	crit_enter();
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		bp->b_xio.xio_pages[i] = NULL;
@@ -1432,7 +1429,7 @@ vfs_vmio_release(struct buf *bp)
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
 	if (bp->b_bufsize) {
 		bufspacewakeup();
@@ -1479,14 +1476,13 @@ vfs_bio_awrite(struct buf * bp)
 	int j;
 	daddr_t lblkno = bp->b_lblkno;
 	struct vnode *vp = bp->b_vp;
-	int s;
 	int ncl;
 	struct buf *bpa;
 	int nwritten;
 	int size;
 	int maxcl;
 
-	s = splbio();
+	crit_enter();
 	/*
 	 * right now we support clustered writing only to regular files.  If
 	 * we find a clusterable block we could be in the middle of a cluster
@@ -1534,7 +1530,7 @@ vfs_bio_awrite(struct buf * bp)
 		 */
 		if (ncl != 1) {
 			nwritten = cluster_wbuild(vp, size, lblkno - j, ncl);
-			splx(s);
+			crit_exit();
 			return nwritten;
 		}
 	}
@@ -1543,7 +1539,7 @@ vfs_bio_awrite(struct buf * bp)
 	bremfree(bp);
 	bp->b_flags |= B_ASYNC;
 
-	splx(s);
+	crit_exit();
 	/*
 	 * default (old) behavior, writing out only one block
 	 *
@@ -1725,8 +1721,9 @@ restart:
 		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 
 		/*
-		 * spl protection not required when scrapping a buffer's
-		 * contents because it is already wired.
+		 * critical section protection is not required when
+		 * scrapping a buffer's contents because it is already 
+		 * wired.
 		 */
 		if (bp->b_bufsize)
 			allocbuf(bp, 0);
@@ -1876,8 +1873,6 @@ SYSINIT(bufdaemon, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST, kproc_start, &buf_kp)
 static void
 buf_daemon()
 {
-	int s;
-
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
 	 */
@@ -1887,7 +1882,7 @@ buf_daemon()
 	/*
 	 * This process is allowed to take the buffer cache to the limit
 	 */
-	s = splbio();
+	crit_enter();
 
 	for (;;) {
 		kproc_suspend_loop();
@@ -2004,7 +1999,7 @@ incore(struct vnode * vp, daddr_t blkno)
  *
  * Note that we ignore vm_page_free() races from interrupts against our
  * lookup, since if the caller is not protected our return value will not
- * be any more valid then otherwise once we splx().
+ * be any more valid then otherwise once we exit the critical section.
  */
 int
 inmem(struct vnode * vp, daddr_t blkno)
@@ -2179,13 +2174,12 @@ struct buf *
 getblk(struct vnode * vp, daddr_t blkno, int size, int slpflag, int slptimeo)
 {
 	struct buf *bp;
-	int s;
 	struct bufhashhdr *bh;
 
 	if (size > MAXBSIZE)
 		panic("getblk: size(%d) > MAXBSIZE(%d)", size, MAXBSIZE);
 
-	s = splbio();
+	crit_enter();
 loop:
 	/*
 	 * Block if we are low on buffers.   Certain processes are allowed
@@ -2215,7 +2209,7 @@ loop:
 			if (BUF_TIMELOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL,
 			    "getblk", slpflag, slptimeo) == ENOLCK)
 				goto loop;
-			splx(s);
+			crit_exit();
 			return (struct buf *) NULL;
 		}
 
@@ -2302,7 +2296,7 @@ loop:
 			goto loop;
 		}
 
-		splx(s);
+		crit_exit();
 		bp->b_flags &= ~B_DONE;
 	} else {
 		/*
@@ -2342,7 +2336,7 @@ loop:
 
 		if ((bp = getnewbuf(slpflag, slptimeo, size, maxsize)) == NULL) {
 			if (slpflag || slptimeo) {
-				splx(s);
+				crit_exit();
 				return NULL;
 			}
 			goto loop;
@@ -2354,9 +2348,9 @@ loop:
 		 * This can be a problem whether the vnode is locked or not.
 		 * If the buffer is created out from under us, we have to
 		 * throw away the one we just created.  There is now window
-		 * race because we are safely running at splbio() from the
-		 * point of the duplicate buffer creation through to here,
-		 * and we've locked the buffer.
+		 * race because we are safely running in a critical section
+		 * from the point of the duplicate buffer creation through
+		 * to here, and we've locked the buffer.
 		 */
 		if (gbincore(vp, blkno)) {
 			bp->b_flags |= B_INVAL;
@@ -2395,7 +2389,7 @@ loop:
 
 		allocbuf(bp, size);
 
-		splx(s);
+		crit_exit();
 		bp->b_flags &= ~B_DONE;
 	}
 	return (bp);
@@ -2405,21 +2399,21 @@ loop:
  * Get an empty, disassociated buffer of given size.  The buffer is initially
  * set to B_INVAL.
  *
- * spl protection is not required for the allocbuf() call because races are
- * impossible here.
+ * critical section protection is not required for the allocbuf() call
+ * because races are impossible here.
  */
 struct buf *
 geteblk(int size)
 {
 	struct buf *bp;
-	int s;
 	int maxsize;
 
 	maxsize = (size + BKVAMASK) & ~BKVAMASK;
 
-	s = splbio();
-	while ((bp = getnewbuf(0, 0, size, maxsize)) == 0);
-	splx(s);
+	crit_enter();
+	while ((bp = getnewbuf(0, 0, size, maxsize)) == 0)
+		;
+	crit_exit();
 	allocbuf(bp, size);
 	bp->b_flags |= B_INVAL;	/* b_dep cleared by getnewbuf() */
 	return (bp);
@@ -2440,8 +2434,8 @@ geteblk(int size)
  * allocbuf() only adjusts B_CACHE for VMIO buffers.  getblk() deals with
  * B_CACHE for the non-VMIO case.
  *
- * This routine does not need to be called at splbio() but you must own the
- * buffer.
+ * This routine does not need to be called from a critical section but you
+ * must own the buffer.
  */
 int
 allocbuf(struct buf *bp, int size)
@@ -2607,10 +2601,10 @@ allocbuf(struct buf *bp, int size)
 			 * B_CACHE if these pages are not valid for the 
 			 * range covered by the buffer.
 			 *
-			 * spl protection is required to protect against
-			 * interrupts unbusying and freeing pages between
-			 * our vm_page_lookup() and our busycheck/wiring
-			 * call.
+			 * critical section protection is required to protect
+			 * against interrupts unbusying and freeing pages
+			 * between our vm_page_lookup() and our
+			 * busycheck/wiring call.
 			 */
 			vp = bp->b_vp;
 			VOP_GETVOBJECT(vp, &obj);
@@ -2747,9 +2741,7 @@ allocbuf(struct buf *bp, int size)
 int
 biowait(struct buf * bp)
 {
-	int s;
-
-	s = splbio();
+	crit_enter();
 	while ((bp->b_flags & B_DONE) == 0) {
 #if defined(NO_SCHEDULE_MODS)
 		tsleep(bp, 0, "biowait", 0);
@@ -2760,7 +2752,7 @@ biowait(struct buf * bp)
 			tsleep(bp, 0, "biowr", 0);
 #endif
 	}
-	splx(s);
+	crit_exit();
 	if (bp->b_flags & B_EINTR) {
 		bp->b_flags &= ~B_EINTR;
 		return (EINTR);
@@ -2798,9 +2790,9 @@ biowait(struct buf * bp)
 void
 biodone(struct buf *bp)
 {
-	int s, error;
+	int error;
 
-	s = splbio();
+	crit_enter();
 
 	KASSERT(BUF_REFCNTNB(bp) > 0, ("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
 	KASSERT(!(bp->b_flags & B_DONE), ("biodone: bp %p already done", bp));
@@ -2811,7 +2803,7 @@ biodone(struct buf *bp)
 
 	if (bp->b_flags & B_FREEBUF) {
 		brelse(bp);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2823,7 +2815,7 @@ biodone(struct buf *bp)
 	if (bp->b_flags & B_CALL) {
 		bp->b_flags &= ~B_CALL;
 		(*bp->b_iodone) (bp);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_complete)
@@ -2966,7 +2958,7 @@ biodone(struct buf *bp)
 	} else {
 		wakeup(bp);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -2993,7 +2985,7 @@ vfs_unbusy_pages(struct buf *bp)
 			 * When restoring bogus changes the original pages
 			 * should still be wired, so we are in no danger of
 			 * losing the object association and do not need
-			 * spl protection particularly.
+			 * critical section protection particularly.
 			 */
 			if (m == bogus_page) {
 				m = vm_page_lookup(obj, OFF_TO_IDX(bp->b_offset) + i);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.32 2005/01/31 22:29:59 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.33 2005/06/06 15:02:27 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -67,6 +67,7 @@
 
 #include <sys/vmmeter.h>
 #include <sys/user.h>
+#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_ATFORK, "atfork", "atfork callback");
 
@@ -384,12 +385,11 @@ again:
 		p2->p_procsig->ps_refcnt++;
 		if (p1->p_sigacts == &p1->p_addr->u_sigacts) {
 			struct sigacts *newsigacts;
-			int s;
 
 			/* Create the shared sigacts structure */
 			MALLOC(newsigacts, struct sigacts *,
 			    sizeof(struct sigacts), M_SUBPROC, M_WAITOK);
-			s = splhigh();
+			crit_enter();
 			/*
 			 * Set p_sigacts to the new shared structure.
 			 * Note that this is updating p1->p_sigacts at the
@@ -400,7 +400,7 @@ again:
 			bcopy(&p1->p_addr->u_sigacts, p2->p_sigacts,
 			    sizeof(*p2->p_sigacts));
 			*p2->p_sigacts = p1->p_addr->u_sigacts;
-			splx(s);
+			crit_exit();
 		}
 	} else {
 		MALLOC(p2->p_procsig, struct procsig *, sizeof(struct procsig),
@@ -640,10 +640,10 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	KASSERT(p2 && p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));
 	resetpriority(p2);
-	(void) splhigh();
+	crit_enter();
 	p2->p_stat = SRUN;
 	setrunqueue(p2);
-	(void) spl0();
+	crit_exit();
 
 	/*
 	 * Now can be swapped.

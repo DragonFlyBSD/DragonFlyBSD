@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.17 2005/06/01 20:47:14 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.18 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -252,8 +252,8 @@ netisr_pollmore(struct netmsg *msg)
 {
 	struct timeval t;
 	int kern_load;
-	int s = splhigh();
 
+	crit_enter();
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 	phase = 5;
 	if (residual_burst > 0) {
@@ -290,17 +290,19 @@ netisr_pollmore(struct netmsg *msg)
 		phase = 6;
 	}
 out:
-	splx(s);
+	crit_exit();
 	return(EASYNC);
 }
 
 /*
  * netisr_poll is scheduled by schednetisr when appropriate, typically once
- * per tick. It is called at splnet() so first thing to do is to upgrade to
- * splimp(), and call all registered handlers.
+ * per tick.
  *
  * Note that the message is replied immediately in order to allow a new
  * ISR to be scheduled in the handler.
+ *
+ * XXX each registration should indicate whether it needs a critical
+ * section to operate.
  */
 /* ARGSUSED */
 static int
@@ -309,10 +311,9 @@ netisr_poll(struct netmsg *msg)
 	static int reg_frac_count;
 	int i, cycles;
 	enum poll_cmd arg = POLL_ONLY;
-	int s;
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
-	s = splimp();
+	crit_enter();
 	phase = 3;
 	if (residual_burst == 0) { /* first call in this tick */
 		microuptime(&poll_start_t);
@@ -377,7 +378,7 @@ netisr_poll(struct netmsg *msg)
 	}
 	schednetisr(NETISR_POLLMORE);
 	phase = 4;
-	splx(s);
+	crit_exit();
 	return(EASYNC);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.5 2005/02/01 22:41:26 dillon Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.6 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 #include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/kthread.h>
+#include <sys/thread2.h>
 
 #include <machine/ipl.h>
 
@@ -58,7 +59,6 @@ taskqueue_create(const char *name, int mflags,
 {
 	struct taskqueue *queue;
 	static int once = 1;
-	int s;
 
 	queue = malloc(sizeof(struct taskqueue), M_TASKQUEUE, mflags);
 	if (!queue)
@@ -69,13 +69,13 @@ taskqueue_create(const char *name, int mflags,
 	queue->tq_context = context;
 	queue->tq_draining = 0;
 
-	s = splhigh();
+	crit_enter();
 	if (once) {
 		STAILQ_INIT(&taskqueue_queues);
 		once = 0;
 	}
 	STAILQ_INSERT_TAIL(&taskqueue_queues, queue, tq_link);
-	splx(s);
+	crit_exit();
 
 	return queue;
 }
@@ -83,15 +83,15 @@ taskqueue_create(const char *name, int mflags,
 void
 taskqueue_free(struct taskqueue *queue)
 {
-	int s = splhigh();
+	crit_enter();
 	queue->tq_draining = 1;
-	splx(s);
+	crit_exit();
 
 	taskqueue_run(queue);
 
-	s = splhigh();
+	crit_enter();
 	STAILQ_REMOVE(&taskqueue_queues, queue, taskqueue, tq_link);
-	splx(s);
+	crit_exit();
 
 	free(queue, M_TASKQUEUE);
 }
@@ -100,15 +100,15 @@ struct taskqueue *
 taskqueue_find(const char *name)
 {
 	struct taskqueue *queue;
-	int s;
 
-	s = splhigh();
-	STAILQ_FOREACH(queue, &taskqueue_queues, tq_link)
+	crit_enter();
+	STAILQ_FOREACH(queue, &taskqueue_queues, tq_link) {
 		if (!strcmp(queue->tq_name, name)) {
-			splx(s);
+			crit_exit();
 			return queue;
 		}
-	splx(s);
+	}
+	crit_exit();
 	return 0;
 }
 
@@ -118,13 +118,13 @@ taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 	struct task *ins;
 	struct task *prev;
 
-	int s = splhigh();
+	crit_enter();
 
 	/*
 	 * Don't allow new tasks on a queue which is being freed.
 	 */
 	if (queue->tq_draining) {
-		splx(s);
+		crit_exit();
 		return EPIPE;
 	}
 
@@ -133,7 +133,7 @@ taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 	 */
 	if (task->ta_pending) {
 		task->ta_pending++;
-		splx(s);
+		crit_exit();
 		return 0;
 	}
 
@@ -160,7 +160,7 @@ taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 	if (queue->tq_enqueue)
 		queue->tq_enqueue(queue->tq_context);
 
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -168,11 +168,10 @@ taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 void
 taskqueue_run(struct taskqueue *queue)
 {
-	int s;
 	struct task *task;
 	int pending;
 
-	s = splhigh();
+	crit_enter();
 	while (STAILQ_FIRST(&queue->tq_queue)) {
 		/*
 		 * Carefully remove the first task from the queue and
@@ -182,13 +181,13 @@ taskqueue_run(struct taskqueue *queue)
 		STAILQ_REMOVE_HEAD(&queue->tq_queue, ta_link);
 		pending = task->ta_pending;
 		task->ta_pending = 0;
-		splx(s);
+		crit_exit();
 
 		task->ta_func(task->ta_context, pending);
 
-		s = splhigh();
+		crit_enter();
 	}
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -206,14 +205,12 @@ taskqueue_swi_run(void *arg)
 static void
 taskqueue_kthread(void *arg)
 {
-	int s;
-
 	for (;;) {
 		taskqueue_run(taskqueue_thread);
-		s = splhigh();
+		crit_enter();
 		if (STAILQ_EMPTY(&taskqueue_thread->tq_queue))
 			tsleep(&taskqueue_thread, 0, "tqthr", 0);
-		splx(s);
+		crit_exit();
 	}
 }
 

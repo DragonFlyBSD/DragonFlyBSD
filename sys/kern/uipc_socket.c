@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.31 2005/05/29 16:32:20 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.32 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -109,6 +109,8 @@
 #include <sys/uio.h>
 #include <sys/jail.h>
 #include <vm/vm_zone.h>
+
+#include <sys/thread2.h>
 
 #include <machine/limits.h>
 
@@ -225,11 +227,11 @@ socreate(int dom, struct socket **aso, int type,
 int
 sobind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s = splnet();
 	int error;
 
+	crit_enter();
 	error = so_pru_bind(so, nam, td);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -256,17 +258,17 @@ sodealloc(struct socket *so)
 int
 solisten(struct socket *so, int backlog, struct thread *td)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
  	if (so->so_state & (SS_ISCONNECTED | SS_ISCONNECTING)) {
- 		splx(s);
+		crit_exit();
  		return (EINVAL);
  	}
 
 	error = so_pru_listen(so, td);
 	if (error) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	if (TAILQ_EMPTY(&so->so_comp))
@@ -274,7 +276,7 @@ solisten(struct socket *so, int backlog, struct thread *td)
 	if (backlog < 0 || backlog > somaxconn)
 		backlog = somaxconn;
 	so->so_qlimit = backlog;
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -316,9 +318,9 @@ sofree(struct socket *so)
 int
 soclose(struct socket *so)
 {
-	int s = splnet();		/* conservative */
 	int error = 0;
 
+	crit_enter();
 	funsetown(so->so_sigio);
 	if (so->so_pcb == NULL)
 		goto discard;
@@ -371,12 +373,12 @@ discard:
 		panic("soclose: NOFDREF");
 	so->so_state |= SS_NOFDREF;
 	sofree(so);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
 /*
- * Must be called at splnet...
+ * Must be called from a critical section.
  */
 int
 soabort(so)
@@ -395,26 +397,25 @@ soabort(so)
 int
 soaccept(struct socket *so, struct sockaddr **nam)
 {
-	int s = splnet();
 	int error;
 
+	crit_enter();
 	if ((so->so_state & SS_NOFDREF) == 0)
 		panic("soaccept: !NOFDREF");
 	so->so_state &= ~SS_NOFDREF;
 	error = so_pru_accept(so, nam);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
 int
 soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s;
 	int error;
 
 	if (so->so_options & SO_ACCEPTCONN)
 		return (EOPNOTSUPP);
-	s = splnet();
+	crit_enter();
 	/*
 	 * If protocol is connection-based, can only connect once.
 	 * Otherwise, if connected, try to disconnect first.
@@ -433,27 +434,27 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		so->so_error = 0;
 		error = so_pru_connect(so, nam, td);
 	}
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
 int
 soconnect2(struct socket *so1, struct socket *so2)
 {
-	int s = splnet();
 	int error;
 
+	crit_enter();
 	error = so_pru_connect2(so1, so2);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
 int
 sodisconnect(struct socket *so)
 {
-	int s = splnet();
 	int error;
 
+	crit_enter();
 	if ((so->so_state & SS_ISCONNECTED) == 0) {
 		error = ENOTCONN;
 		goto bad;
@@ -464,7 +465,7 @@ sodisconnect(struct socket *so)
 	}
 	error = so_pru_disconnect(so);
 bad:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -494,7 +495,7 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	struct mbuf **mp;
 	struct mbuf *m;
 	long space, len, resid;
-	int clen = 0, error, s, dontroute, mlen;
+	int clen = 0, error, dontroute, mlen;
 	int atomic = sosendallatonce(so) || top;
 	int pru_flags;
 
@@ -524,20 +525,20 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		td->td_proc->p_stats->p_ru.ru_msgsnd++;
 	if (control)
 		clen = control->m_len;
-#define	gotoerr(errno)	{ error = errno; splx(s); goto release; }
+#define	gotoerr(errno)	{ error = errno; crit_exit(); goto release; }
 
 restart:
 	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out;
 	do {
-		s = splnet();
+		crit_enter();
 		if (so->so_state & SS_CANTSENDMORE)
 			gotoerr(EPIPE);
 		if (so->so_error) {
 			error = so->so_error;
 			so->so_error = 0;
-			splx(s);
+			crit_exit();
 			goto release;
 		}
 		if ((so->so_state & SS_ISCONNECTED) == 0) {
@@ -568,12 +569,12 @@ restart:
 				gotoerr(EWOULDBLOCK);
 			sbunlock(&so->so_snd);
 			error = sbwait(&so->so_snd);
-			splx(s);
+			crit_exit();
 			if (error)
 				goto out;
 			goto restart;
 		}
-		splx(s);
+		crit_exit();
 		mp = &top;
 		space -= clen;
 		do {
@@ -634,7 +635,7 @@ restart:
 		    } else {
 		    	    pru_flags = 0;
 		    }
-		    s = splnet();				/* XXX */
+		    crit_enter();
 		    /*
 		     * XXX all the SS_CANTSENDMORE checks previously
 		     * done could be out of date.  We could have recieved
@@ -645,7 +646,7 @@ restart:
 		     * also happens.  We must rethink this.
 		     */
 		    error = so_pru_send(so, pru_flags, top, addr, control, td);
-		    splx(s);
+		    crit_exit();
 		    if (dontroute)
 			    so->so_options &= ~SO_DONTROUTE;
 		    clen = 0;
@@ -683,7 +684,7 @@ int
 sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	  struct mbuf *top, struct mbuf *control, int flags, struct thread *td)
 {
-	int resid, error, s;
+	int resid, error;
 	boolean_t dontroute;		/* temporary SO_DONTROUTE setting */
 
 	if (td->td_proc && td->td_proc->p_stats)
@@ -699,13 +700,13 @@ restart:
 	if (error)
 		goto out;
 
-	s = splnet();
+	crit_enter();
 	if (so->so_state & SS_CANTSENDMORE)
 		gotoerr(EPIPE);
 	if (so->so_error) {
 		error = so->so_error;
 		so->so_error = 0;
-		splx(s);
+		crit_exit();
 		goto release;
 	}
 	if (!(so->so_state & SS_ISCONNECTED) && addr == NULL)
@@ -717,12 +718,12 @@ restart:
 			gotoerr(EWOULDBLOCK);
 		sbunlock(&so->so_snd);
 		error = sbwait(&so->so_snd);
-		splx(s);
+		crit_exit();
 		if (error)
 			goto out;
 		goto restart;
 	}
-	splx(s);
+	crit_exit();
 
 	if (uio) {
 		top = m_uiomove(uio);
@@ -756,7 +757,7 @@ out:
  * followed by an optional mbuf or mbufs containing ancillary data,
  * and then zero or more mbufs of data.
  * In order to avoid blocking network interrupts for the entire time here,
- * we splx() while doing the actual copy to user space.
+ * we exit the critical section while doing the actual copy to user space.
  * Although the sockbuf is locked, new data may still be appended,
  * and thus we must maintain consistency of the sockbuf during that time.
  *
@@ -774,7 +775,7 @@ soreceive(so, psa, uio, mp0, controlp, flagsp)
 	int *flagsp;
 {
 	struct mbuf *m, **mp;
-	int flags, len, error, s, offset;
+	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
 	struct mbuf *nextrecord;
 	int moff, type = 0;
@@ -815,7 +816,7 @@ restart:
 	error = sblock(&so->so_rcv, SBLOCKWAIT(flags));
 	if (error)
 		return (error);
-	s = splnet();
+	crit_enter();
 
 	m = so->so_rcv.sb_mb;
 	/*
@@ -867,7 +868,7 @@ restart:
 		}
 		sbunlock(&so->so_rcv);
 		error = sbwait(&so->so_rcv);
-		splx(s);
+		crit_exit();
 		if (error)
 			return (error);
 		goto restart;
@@ -948,9 +949,9 @@ dontblock:
 		 * block interrupts again.
 		 */
 		if (mp == 0) {
-			splx(s);
+			crit_exit();
 			error = uiomove(mtod(m, caddr_t) + moff, (int)len, uio);
-			s = splnet();
+			crit_enter();
 			if (error)
 				goto release;
 		} else
@@ -1025,7 +1026,7 @@ dontblock:
 			error = sbwait(&so->so_rcv);
 			if (error) {
 				sbunlock(&so->so_rcv);
-				splx(s);
+				crit_exit();
 				return (0);
 			}
 			m = so->so_rcv.sb_mb;
@@ -1056,7 +1057,7 @@ dontblock:
 	if (orig_resid == uio->uio_resid && orig_resid &&
 	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
 		sbunlock(&so->so_rcv);
-		splx(s);
+		crit_exit();
 		goto restart;
 	}
 
@@ -1064,7 +1065,7 @@ dontblock:
 		*flagsp |= flags;
 release:
 	sbunlock(&so->so_rcv);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1089,12 +1090,12 @@ sorflush(so)
 {
 	struct sockbuf *sb = &so->so_rcv;
 	struct protosw *pr = so->so_proto;
-	int s;
 	struct sockbuf asb;
 
 	sb->sb_flags |= SB_NOINTR;
 	(void) sblock(sb, M_WAITOK);
-	s = splimp();
+
+	crit_enter();
 	socantrcvmore(so);
 	sbunlock(sb);
 	asb = *sb;
@@ -1103,7 +1104,8 @@ sorflush(so)
 		sb->sb_sel.si_note = asb.sb_sel.si_note;
 		sb->sb_flags = SB_KNOTE;
 	}
-	splx(s);
+	crit_exit();
+
 	if (pr->pr_flags & PR_RIGHTS && pr->pr_domain->dom_dispose)
 		(*pr->pr_domain->dom_dispose)(asb.sb_mb);
 	sbrelease(&asb, so);
@@ -1624,7 +1626,8 @@ int
 sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 {
 	int revents = 0;
-	int s = splnet();
+
+	crit_enter();
 
 	if (events & (POLLIN | POLLRDNORM))
 		if (soreadable(so))
@@ -1657,7 +1660,7 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 	return (revents);
 }
 
@@ -1666,7 +1669,6 @@ sokqfilter(struct file *fp, struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 	struct sockbuf *sb;
-	int s;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -1684,10 +1686,10 @@ sokqfilter(struct file *fp, struct knote *kn)
 		return (1);
 	}
 
-	s = splnet();
+	crit_enter();
 	SLIST_INSERT_HEAD(&sb->sb_sel.si_note, kn, kn_selnext);
 	sb->sb_flags |= SB_KNOTE;
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1695,12 +1697,12 @@ static void
 filt_sordetach(struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
-	int s = splnet();
 
+	crit_enter();
 	SLIST_REMOVE(&so->so_rcv.sb_sel.si_note, kn, knote, kn_selnext);
 	if (SLIST_EMPTY(&so->so_rcv.sb_sel.si_note))
 		so->so_rcv.sb_flags &= ~SB_KNOTE;
-	splx(s);
+	crit_exit();
 }
 
 /*ARGSUSED*/
@@ -1726,12 +1728,12 @@ static void
 filt_sowdetach(struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
-	int s = splnet();
 
+	crit_enter();
 	SLIST_REMOVE(&so->so_snd.sb_sel.si_note, kn, knote, kn_selnext);
 	if (SLIST_EMPTY(&so->so_snd.sb_sel.si_note))
 		so->so_snd.sb_flags &= ~SB_KNOTE;
-	splx(s);
+	crit_exit();
 }
 
 /*ARGSUSED*/

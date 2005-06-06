@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.12 2005/02/19 00:47:03 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.13 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -127,16 +127,15 @@ cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno,
 		} else if ((bp->b_flags & B_RAM) == 0) {
 			return 0;
 		} else {
-			int s;
 			struct buf *tbp;
 			bp->b_flags &= ~B_RAM;
 			/*
-			 * We do the spl here so that there is no window
+			 * We do the crit here so that there is no window
 			 * between the incore and the b_usecount increment
-			 * below.  We opt to keep the spl out of the loop
+			 * below.  We opt to keep the crit out of the loop
 			 * for efficiency.
 			 */
-			s = splbio();
+			crit_enter();
 			for (i = 1; i < maxra; i++) {
 
 				if (!(tbp = incore(vp, lblkno+i))) {
@@ -151,7 +150,7 @@ cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno,
 					(i == (maxra - 1)))
 					tbp->b_flags |= B_RAM;
 			}
-			splx(s);
+			crit_exit();
 			if (i >= maxra) {
 				return 0;
 			}
@@ -731,12 +730,12 @@ int
 cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 {
 	struct buf *bp, *tbp;
-	int i, j, s;
+	int i, j;
 	int totalwritten = 0;
 	int dbsize = btodb(size);
 
 	while (len > 0) {
-		s = splbio();
+		crit_enter();
 		/*
 		 * If the buffer is not delayed-write (i.e. dirty), or it 
 		 * is delayed-write but either locked or inval, it cannot 
@@ -747,12 +746,12 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		  BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
 			++start_lbn;
 			--len;
-			splx(s);
+			crit_exit();
 			continue;
 		}
 		bremfree(tbp);
 		tbp->b_flags &= ~B_DONE;
-		splx(s);
+		crit_exit();
 
 		/*
 		 * Extra memory in the buffer, punt on this buffer.
@@ -805,13 +804,13 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		 */
 		for (i = 0; i < len; ++i, ++start_lbn) {
 			if (i != 0) { /* If not the first buffer */
-				s = splbio();
+				crit_enter();
 				/*
 				 * If the adjacent data is not even in core it
 				 * can't need to be written.
 				 */
 				if ((tbp = gbincore(vp, start_lbn)) == NULL) {
-					splx(s);
+					crit_exit();
 					break;
 				}
 
@@ -828,7 +827,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				    (bp->b_flags & (B_VMIO | B_NEEDCOMMIT))) ||
 				    (tbp->b_flags & B_LOCKED) ||
 				    BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
-					splx(s);
+					crit_exit();
 					break;
 				}
 
@@ -843,7 +842,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
 				    (vp->v_mount->mnt_iosize_max / PAGE_SIZE))) {
 					BUF_UNLOCK(tbp);
-					splx(s);
+					crit_exit();
 					break;
 				}
 				/*
@@ -853,7 +852,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				 */
 				bremfree(tbp);
 				tbp->b_flags &= ~B_DONE;
-				splx(s);
+				crit_exit();
 			} /* end of code for non-first buffers only */
 			/* check for latent dependencies to be handled */
 			if ((LIST_FIRST(&tbp->b_dep)) != NULL &&
@@ -894,13 +893,13 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 			bp->b_bcount += size;
 			bp->b_bufsize += size;
 
-			s = splbio();
+			crit_enter();
 			bundirty(tbp);
 			tbp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
 			tbp->b_flags |= B_ASYNC;
 			reassignbuf(tbp, tbp->b_vp);	/* put on clean list */
 			++tbp->b_vp->v_numoutput;
-			splx(s);
+			crit_exit();
 			BUF_KERNPROC(tbp);
 			TAILQ_INSERT_TAIL(&bp->b_cluster.cluster_head,
 				tbp, b_cluster.cluster_entry);

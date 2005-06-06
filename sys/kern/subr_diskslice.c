@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.9 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,7 @@
 #include <sys/syslog.h>
 #include <sys/vnode.h>
 #include <sys/device.h>
+#include <sys/thread2.h>
 
 #include <vfs/ufs/fs.h>
 
@@ -144,7 +145,6 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 	daddr_t	secno;
 	daddr_t	slicerel_secno;
 	struct diskslice *sp;
-	int s;
 
 	blkno = bp->b_blkno;
 	if (blkno < 0) {
@@ -259,9 +259,9 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 			 * temporarily corrupting the in-core copy.
 			 */
 			if (bp->b_vp != NULL) {
-				s = splbio();
+				crit_enter();
 				bp->b_vp->v_numoutput++;
-				splx(s);
+				crit_exit();
 			}
 			/* XXX need name here. */
 			msg = fixlabel((char *)NULL, sp,

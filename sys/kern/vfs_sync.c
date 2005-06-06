@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.5 2005/04/19 17:54:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.6 2005/06/06 15:02:28 dillon Exp $
  */
 
 /*
@@ -188,7 +188,6 @@ sched_sync(void)
 	struct synclist *slp;
 	struct vnode *vp;
 	long starttime;
-	int s;
 	struct thread *td = curthread;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
@@ -203,19 +202,19 @@ sched_sync(void)
 		 * Push files whose dirty time has expired.  Be careful
 		 * of interrupt race on slp queue.
 		 */
-		s = splbio();
+		crit_enter();
 		slp = &syncer_workitem_pending[syncer_delayno];
 		syncer_delayno += 1;
 		if (syncer_delayno == syncer_maxdelay)
 			syncer_delayno = 0;
-		splx(s);
+		crit_exit();
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT, td) == 0) {
 				VOP_FSYNC(vp, MNT_LAZY, td);
 				vput(vp);
 			}
-			s = splbio();
+			crit_enter();
 
 			/*
 			 * If the vnode is still at the head of the list
@@ -235,7 +234,7 @@ sched_sync(void)
 				}
 				vn_syncer_add_to_worklist(vp, syncdelay);
 			}
-			splx(s);
+			crit_exit();
 		}
 
 		/*
@@ -433,7 +432,8 @@ sync_inactive(struct vop_inactive_args *ap)
 /*
  * The syncer vnode is no longer needed and is being decommissioned.
  *
- * Modifications to the worklist must be protected at splbio().
+ * Modifications to the worklist must be protected with a critical
+ * section.
  *
  *	sync_reclaim { struct vnode *a_vp }
  */
@@ -441,15 +441,14 @@ static int
 sync_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	int s;
 
-	s = splbio();
+	crit_enter();
 	vp->v_mount->mnt_syncer = NULL;
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
 		vp->v_flag &= ~VONWORKLST;
 	}
-	splx(s);
+	crit_exit();
 
 	return (0);
 }
