@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.32 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.33 2005/06/06 21:50:28 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -904,7 +904,7 @@ dontblock:
 				   error = (*pr->pr_domain->dom_externalize)(m);
 				*controlp = m;
 				so->so_rcv.sb_mb = m->m_next;
-				m->m_next = 0;
+				m->m_next = NULL;
 				m = so->so_rcv.sb_mb;
 			} else {
 				so->so_rcv.sb_mb = m_free(m);
@@ -1507,46 +1507,30 @@ int
 soopt_getm(struct sockopt *sopt, struct mbuf **mp)
 {
 	struct mbuf *m, *m_prev;
-	int sopt_size = sopt->sopt_valsize;
+	int sopt_size = sopt->sopt_valsize, msize;
 
-	MGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_DATA);
-	if (m == 0)
-		return ENOBUFS;
-	if (sopt_size > MLEN) {
-		MCLGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			m_free(m);
-			return ENOBUFS;
-		}
-		m->m_len = min(MCLBYTES, sopt_size);
-	} else {
-		m->m_len = min(MLEN, sopt_size);
-	}
+	m = m_getl(sopt_size, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_DATA,
+		   0, &msize);
+	if (m == NULL)
+		return (ENOBUFS);
+	m->m_len = min(msize, sopt_size);
 	sopt_size -= m->m_len;
 	*mp = m;
 	m_prev = m;
 
-	while (sopt_size) {
-		MGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_DATA);
-		if (m == 0) {
+	while (sopt_size > 0) {
+		m = m_getl(sopt_size, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT,
+			   MT_DATA, 0, &msize);
+		if (m == NULL) {
 			m_freem(*mp);
-			return ENOBUFS;
+			return (ENOBUFS);
 		}
-		if (sopt_size > MLEN) {
-			MCLGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT);
-			if ((m->m_flags & M_EXT) == 0) {
-				m_freem(*mp);
-				return ENOBUFS;
-			}
-			m->m_len = min(MCLBYTES, sopt_size);
-		} else {
-			m->m_len = min(MLEN, sopt_size);
-		}
+		m->m_len = min(msize, sopt_size);
 		sopt_size -= m->m_len;
 		m_prev->m_next = m;
 		m_prev = m;
 	}
-	return 0;
+	return (0);
 }
 
 /* XXX; copyin sopt data into mbuf chain for (__FreeBSD__ < 3) routines. */
@@ -1565,7 +1549,7 @@ soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 				       m->m_len);
 			if (error != 0) {
 				m_freem(m0);
-				return(error);
+				return (error);
 			}
 		} else
 			bcopy(sopt->sopt_val, mtod(m, char *), m->m_len);
@@ -1595,7 +1579,7 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 				       m->m_len);
 			if (error != 0) {
 				m_freem(m0);
-				return(error);
+				return (error);
 			}
 		} else
 			bcopy(mtod(m, char *), sopt->sopt_val, m->m_len);
@@ -1607,7 +1591,7 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 	if (m != NULL) {
 		/* enough soopt buffer should be given from user-land */
 		m_freem(m0);
-		return(EINVAL);
+		return (EINVAL);
 	}
 	sopt->sopt_valsize = valsize;
 	return 0;
