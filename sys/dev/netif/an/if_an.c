@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.24 2005/06/06 16:16:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.25 2005/06/06 16:32:28 joerg Exp $
  */
 
 /*
@@ -100,7 +100,7 @@
 #include <sys/syslog.h>
 #endif
 #include <sys/sysctl.h>
-#include <machine/clock.h>	/* for DELAY */  
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/sysctl.h>
@@ -1111,12 +1111,11 @@ an_stats_update(xsc)
 {
 	struct an_softc		*sc;
 	struct ifnet		*ifp;
-	int			s;
-
-	s = splimp();
 
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
+
+	crit_enter();
 
 	sc->an_status.an_type = AN_RID_STATUS;
 	sc->an_status.an_len = sizeof(struct an_ltv_status);
@@ -1127,21 +1126,16 @@ an_stats_update(xsc)
 	else
 		sc->an_associated = 0;
 
-	/* Don't do this while we're transmitting */
-	if (ifp->if_flags & IFF_OACTIVE) {
-		callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
-		splx(s);
-		return;
+	/* Don't do this while we're not transmitting */
+	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+		sc->an_stats.an_len = sizeof(struct an_ltv_stats);
+		sc->an_stats.an_type = AN_RID_32BITS_CUM;
+		an_read_record(sc, (struct an_ltv_gen *)&sc->an_stats.an_len);
 	}
 
-	sc->an_stats.an_len = sizeof(struct an_ltv_stats);
-	sc->an_stats.an_type = AN_RID_32BITS_CUM;
-	an_read_record(sc, (struct an_ltv_gen *)&sc->an_stats.an_len);
-
 	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
-	splx(s);
 
-	return;
+	crit_exit();
 }
 
 void
@@ -1830,7 +1824,7 @@ an_ioctl(ifp, command, data, cr)
 	caddr_t			data;
 	struct ucred		*cr;
 {
-	int			s, error = 0;
+	int			error = 0;
 	int			len;
 	int			i;
 	struct an_softc		*sc;
@@ -1846,9 +1840,10 @@ an_ioctl(ifp, command, data, cr)
 	struct aironet_ioctl	l_ioctl;
 
 	sc = ifp->if_softc;
-	s = splimp();
 	ifr = (struct ifreq *)data;
 	ireq = (struct ieee80211req *)data;
+
+	crit_enter();
 
 	config = (struct an_ltv_genconfig *)&sc->areq;
 	key = (struct an_ltv_key *)&sc->areq;
@@ -1915,7 +1910,7 @@ an_ioctl(ifp, command, data, cr)
 		break;
 	case SIOCSAIRONET:
 		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
-			goto out;
+			break;
 		error = copyin(ifr->ifr_data, &sc->areq, sizeof(sc->areq));
 		if (error != 0)
 			break;
@@ -1923,7 +1918,7 @@ an_ioctl(ifp, command, data, cr)
 		break;
 	case SIOCGPRIVATE_0:              /* used by Cisco client utility */
 		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
-			goto out;
+			break;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		mode = l_ioctl.command;
 
@@ -1943,7 +1938,7 @@ an_ioctl(ifp, command, data, cr)
 		break;
 	case SIOCGPRIVATE_1:              /* used by Cisco client utility */
 		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
-			goto out;
+			break;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		l_ioctl.command = 0;
 		error = AIROMAGIC;
@@ -2176,7 +2171,7 @@ an_ioctl(ifp, command, data, cr)
 		break;
 	case SIOCS80211:
 		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
-			goto out;
+			break;
 		sc->areq.an_len = sizeof(sc->areq);
 		/*
 		 * We need a config structure for everything but the WEP
@@ -2383,8 +2378,8 @@ an_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-out:
-	splx(s);
+
+	crit_exit();
 
 	return(error != 0);
 }
@@ -2419,10 +2414,8 @@ an_init(xsc)
 {
 	struct an_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
-	int			s;
 
-	s = splimp();
-
+	crit_enter();
 	if (ifp->if_flags & IFF_RUNNING)
 		an_stop(sc);
 
@@ -2434,8 +2427,8 @@ an_init(xsc)
 		if (sc->mpi350)
 			an_init_mpi350_desc(sc);	
 		if (an_init_tx_ring(sc)) {
+			crit_exit();
 			if_printf(ifp, "tx buffer allocation failed\n");
-			splx(s);
 			return;
 		}
 	}
@@ -2473,8 +2466,8 @@ an_init(xsc)
 	sc->an_ssidlist.an_type = AN_RID_SSIDLIST;
 	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_ssidlist)) {
+		crit_exit();
 		if_printf(ifp, "failed to set ssid list\n");
-		splx(s);
 		return;
 	}
 
@@ -2482,8 +2475,8 @@ an_init(xsc)
 	sc->an_aplist.an_type = AN_RID_APLIST;
 	sc->an_aplist.an_len = sizeof(struct an_ltv_aplist);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_aplist)) {
+		crit_exit();
 		if_printf(ifp, "failed to set AP list\n");
-		splx(s);
 		return;
 	}
 
@@ -2491,15 +2484,15 @@ an_init(xsc)
 	sc->an_config.an_len = sizeof(struct an_ltv_genconfig);
 	sc->an_config.an_type = AN_RID_GENCONFIG;
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_config)) {
+		crit_exit();
 		if_printf(ifp, "failed to set configuration\n");
-		splx(s);
 		return;
 	}
 
 	/* Enable the MAC */
 	if (an_cmd(sc, AN_CMD_ENABLE, 0)) {
+		crit_exit();
 		if_printf(ifp, "failed to enable MAC\n");
-		splx(s);
 		return;
 	}
 
@@ -2513,9 +2506,8 @@ an_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
-	splx(s);
 
-	return;
+	crit_exit();
 }
 
 static void
@@ -2683,11 +2675,10 @@ an_stop(sc)
 {
 	struct ifnet		*ifp;
 	int			i;
-	int			s;
-
-	s = splimp();
 
 	ifp = &sc->arpcom.ac_if;
+
+	crit_enter();
 
 	an_cmd(sc, AN_CMD_FORCE_SYNCLOSS, 0);
 	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
@@ -2705,9 +2696,7 @@ an_stop(sc)
 		sc->an_flash_buffer = NULL;
 	}
 
-	splx(s);
-
-	return;
+	crit_exit();
 }
 
 static void
@@ -2715,22 +2704,19 @@ an_watchdog(ifp)
 	struct ifnet		*ifp;
 {
 	struct an_softc		*sc;
-	int			s;
 
 	sc = ifp->if_softc;
-	s = splimp();
 
-	if_printf(ifp, "device timeout\n");
-
+	crit_enter();
 	an_reset(sc);
 	if (sc->mpi350)
 		an_init_mpi350_desc(sc);	
 	an_init(sc);
 
 	ifp->if_oerrors++;
-	splx(s);
+	crit_exit();
 
-	return;
+	if_printf(ifp, "device timeout\n");
 }
 
 void
