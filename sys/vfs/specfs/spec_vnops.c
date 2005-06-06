@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.24 2005/04/15 19:08:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.25 2005/06/06 15:09:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,8 @@
 #include <vm/vm_pager.h>
 
 #include <sys/buf2.h>
+
+#include <sys/thread2.h>
 
 static int	spec_advlock (struct vop_advlock_args *);  
 static int	spec_bmap (struct vop_bmap_args *);
@@ -632,7 +634,7 @@ spec_getpages(struct vop_getpages_args *ap)
 {
 	vm_offset_t kva;
 	int error;
-	int i, pcount, size, s;
+	int i, pcount, size;
 	daddr_t blkno;
 	struct buf *bp;
 	vm_page_t m;
@@ -711,14 +713,14 @@ spec_getpages(struct vop_getpages_args *ap)
 	/* Do the input. */
 	VOP_STRATEGY(bp->b_vp, bp);
 
-	s = splbio();
+	crit_enter();
 
 	/* We definitely need to be at splbio here. */
 	while ((bp->b_flags & B_DONE) == 0) {
 		tsleep(bp, 0, "spread", 0);
 	}
 
-	splx(s);
+	crit_exit();
 
 	if ((bp->b_flags & B_ERROR) != 0) {
 		if (bp->b_error)

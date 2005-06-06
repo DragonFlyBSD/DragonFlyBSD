@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.22 2005/04/15 19:08:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.23 2005/06/06 15:09:38 drhodus Exp $
  */
 
 
@@ -57,6 +57,8 @@
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
+
+#include <sys/thread2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -1524,9 +1526,7 @@ nfs_doio(struct buf *bp, struct thread *td)
 		 */
     		if (error == EINTR
 		    || (!error && (bp->b_flags & B_NEEDCOMMIT))) {
-			int s;
-
-			s = splbio();
+			crit_enter();
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
 			if ((bp->b_flags & B_PAGING) == 0) {
 			    bdirty(bp);
@@ -1534,7 +1534,7 @@ nfs_doio(struct buf *bp, struct thread *td)
 			}
 			if (error && (bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
-			splx(s);
+			crit_exit();
 	    	} else {
 		    if (error) {
 			bp->b_flags |= B_ERROR;

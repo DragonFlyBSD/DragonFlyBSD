@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.4 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.5 2005/06/06 15:09:37 drhodus Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -59,11 +59,9 @@
  */
 void mark_buffer_dirty(struct buf *bh)
 {
-	int s;
-
-	s = splbio();
+	crit_enter();
 	bh->b_flags |= B_DIRTY;
-	splx(s);
+	crit_exit();
 } 
 
 struct ext2_group_desc * get_group_desc (struct mount * mp,

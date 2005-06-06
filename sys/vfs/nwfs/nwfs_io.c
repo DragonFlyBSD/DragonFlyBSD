@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.15 2005/04/15 19:08:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.16 2005/06/06 15:09:38 drhodus Exp $
  *
  */
 #include <sys/param.h>
@@ -56,6 +56,8 @@
 #include <netproto/ncp/ncp.h>
 #include <netproto/ncp/ncp_conn.h>
 #include <netproto/ncp/ncp_subr.h>
+
+#include <sys/thread2.h>
 
 #include "nwfs.h"
 #include "nwfs_node.h"
@@ -332,9 +334,8 @@ nwfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 		 */
     		if (error == EINTR
 		    || (!error && (bp->b_flags & B_NEEDCOMMIT))) {
-			int s;
 
-			s = splbio();
+			crit_enter();
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
@@ -344,7 +345,7 @@ nwfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 			}
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
-			splx(s);
+			crit_exit();
 	    	} else {
 			if (error) {
 				bp->b_flags |= B_ERROR;

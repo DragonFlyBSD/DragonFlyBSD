@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.21 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.22 2005/06/06 15:09:38 drhodus Exp $
  */
 
 
@@ -52,6 +52,8 @@
 #include <sys/fcntl.h>
 
 #include <sys/buf2.h>
+
+#include <sys/thread2.h>
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
@@ -376,19 +378,18 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 	PHOLD(curproc);
 
 	while (mfsp->mfs_active) {
-		int s;
 
-		s = splbio();
+		crit_enter();
 
 		while ((bp = bufq_first(&mfsp->buf_queue)) != NULL) {
 			bufq_remove(&mfsp->buf_queue, bp);
-			splx(s);
+			crit_exit();
 			mfs_doio(bp, mfsp);
 			wakeup((caddr_t)bp);
-			s = splbio();
+			crit_enter();
 		}
 
-		splx(s);
+		crit_exit();
 
 		/*
 		 * If a non-ignored signal is received, try to unmount.

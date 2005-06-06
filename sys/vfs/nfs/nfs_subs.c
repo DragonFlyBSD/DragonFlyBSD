@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.30 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.31 2005/06/06 15:09:38 drhodus Exp $
  */
 
 /*
@@ -2066,16 +2066,15 @@ nfs_clearcommit(struct mount *mp)
 {
 	struct vnode *vp, *nvp;
 	lwkt_tokref ilock;
-	int s;
 
 	lwkt_gettoken(&ilock, &mntvnode_token);
-	s = splbio();
+	crit_enter();
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
 		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 			nfs_clearcommit_bp, NULL);
 	}
-	splx(s);
+	crit_exit();
 	lwkt_reltoken(&ilock);
 }
 

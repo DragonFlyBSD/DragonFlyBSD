@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.25 2005/04/19 17:54:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.26 2005/06/06 15:09:38 drhodus Exp $
  */
 
 
@@ -75,6 +75,8 @@
 #include "nqnfs.h"
 #include "nfsmount.h"
 #include "nfsnode.h"
+
+#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_NQMHOST, "NQNFS Host", "Nqnfs host address table");
 
@@ -181,7 +183,7 @@ nqsrv_getlease(struct vnode *vp, u_int32_t *duration, int flags,
 	struct nqm **lphp;
 	struct vattr vattr;
 	fhandle_t fh;
-	int i, ok, error, s;
+	int i, ok, error;
 
 	if (vp->v_type != VREG && vp->v_type != VDIR && vp->v_type != VLNK)
 		return (0);
@@ -191,7 +193,7 @@ nqsrv_getlease(struct vnode *vp, u_int32_t *duration, int flags,
 	if (error)
 		return (error);
 	*frev = vattr.va_filerev;
-	s = splsoftclock();
+	crit_enter();
 	tlp = vp->v_lease;
 	if ((flags & ND_CHECK) == 0)
 		nfsstats.srvnqnfs_getleases++;
@@ -202,7 +204,7 @@ nqsrv_getlease(struct vnode *vp, u_int32_t *duration, int flags,
 		fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 		error = VFS_VPTOFH(vp, &fh.fh_fid);
 		if (error) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		lpp = NQFHHASH(fh.fh_fid.fid_data);
@@ -281,10 +283,10 @@ doreply:
 			if (flags & ND_WRITE)
 				lp->lc_flag |= LC_WRITTEN;
 		}
-		splx(s);
+		crit_exit();
 		return (0);
 	}
-	splx(s);
+	crit_exit();
 	if (flags & ND_CHECK)
 		return (0);
 
@@ -312,9 +314,9 @@ doreply:
 		panic("nfs_nqlease.c: Phoney lpp");
 	LIST_INSERT_HEAD(lpp, lp, lc_hash);
 	vp->v_lease = lp;
-	s = splsoftclock();
+	crit_enter();
 	nqsrv_instimeq(lp, *duration);
-	splx(s);
+	crit_exit();
 	*cachablep = 1;
 	if (++nfsstats.srvnqnfs_leases > nfsstats.srvnqnfs_maxleases)
 		nfsstats.srvnqnfs_maxleases = nfsstats.srvnqnfs_leases;
@@ -1144,15 +1146,14 @@ void
 nqnfs_lease_updatetime(int deltat)
 {
 	struct nqlease *lp;
-	int s;
 
 	if (nqnfsstarttime != 0)
 		nqnfsstarttime += deltat;
-	s = splsoftclock();
+	crit_enter();
 	for (lp = nqtimerhead.cqh_first; lp != (void *)&nqtimerhead;
 	    lp = lp->lc_timer.cqe_next)
 		lp->lc_expiry += deltat;
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Search the mount list for all nqnfs mounts and do their timer

@@ -38,7 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.5 2004/10/12 19:20:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.6 2005/06/06 15:09:38 drhodus Exp $
  */
 
 /*
@@ -162,22 +162,20 @@ extern u_char *fragtbl[];
  * reset the B_LOCKED flag and brelse() the buffer back on the LRU list
  */
 #define LCK_BUF(bp) { \
-	int s; \
-	s = splbio(); \
+	crit_enter(); \
 	(bp)->b_flags |= B_LOCKED; \
-	splx(s); \
+	crit_exit(); \
 	brelse(bp); \
 }
 
 #define ULCK_BUF(bp) { \
 	long flags; \
-	int s; \
-	s = splbio(); \
+	crit_enter(); \
 	flags = (bp)->b_flags; \
 	(bp)->b_flags &= ~(B_DIRTY | B_LOCKED); \
 	BUF_LOCK(bp, LK_EXCLUSIVE); \
 	bremfree(bp); \
-	splx(s); \
+	crit_exit(); \
 	if (flags & B_DIRTY) \
 		bwrite(bp); \
 	else \

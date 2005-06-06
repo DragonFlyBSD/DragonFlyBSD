@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.16 2005/04/15 19:08:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.17 2005/06/06 15:09:38 drhodus Exp $
  *
  */
 #include <sys/param.h>
@@ -64,6 +64,8 @@
 #include "smbfs_subr.h"
 
 #include <sys/buf.h>
+
+#include <sys/thread2.h>
 
 /*#define SMBFS_RWGENERIC*/
 
@@ -360,9 +362,8 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 		 */
     		if (error == EINTR
 		    || (!error && (bp->b_flags & B_NEEDCOMMIT))) {
-			int s;
 
-			s = splbio();
+			crit_enter();
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
@@ -372,7 +373,7 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 			}
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
-			splx(s);
+			crit_exit();
 	    	} else {
 			if (error) {
 				bp->b_flags |= B_ERROR;

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.26 2005/04/15 19:08:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.27 2005/06/06 15:09:38 drhodus Exp $
  */
 
 #include "opt_bootp.h"
@@ -60,6 +60,8 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <netinet/in.h>
+
+#include <sys/thread2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -456,7 +458,7 @@ nfs_mountroot(mp)
 	/*
 	 * XXX splnet, so networks will receive...
 	 */
-	splnet();
+	crit_enter();
 
 #ifdef notyet
 	/* Set up swap credentials. */
@@ -633,11 +635,10 @@ nfs_decode_args(nmp, argp)
 	struct nfsmount *nmp;
 	struct nfs_args *argp;
 {
-	int s;
 	int adjsock;
 	int maxio;
 
-	s = splnet();
+	crit_enter();
 	/*
 	 * Silently clear NFSMNT_NOCONN if it's a TCP mount, it makes
 	 * no sense in that context.
@@ -658,7 +659,7 @@ nfs_decode_args(nmp, argp)
 
 	/* Update flags atomically.  Don't change the lock bits. */
 	nmp->nm_flag = argp->flags | nmp->nm_flag;
-	splx(s);
+	crit_exit();
 
 	if ((argp->flags & NFSMNT_TIMEO) && argp->timeo > 0) {
 		nmp->nm_timeo = (argp->timeo * NFS_HZ + 5) / 10;

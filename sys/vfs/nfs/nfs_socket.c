@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.27 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.28 2005/06/06 15:09:38 drhodus Exp $
  */
 
 /*
@@ -205,7 +205,7 @@ int
 nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 {
 	struct socket *so;
-	int s, error, rcvreserve, sndreserve;
+	int error, rcvreserve, sndreserve;
 	int pktscale;
 	struct sockaddr *saddr;
 	struct sockaddr_in *sin;
@@ -278,7 +278,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 		 * connect system call but with the wait timing out so
 		 * that interruptible mounts don't hang here for a long time.
 		 */
-		s = splnet();
+		crit_enter();
 		while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 			(void) tsleep((caddr_t)&so->so_timeo, 0,
 				"nfscon", 2 * hz);
@@ -286,17 +286,17 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			    so->so_error == 0 && rep &&
 			    (error = nfs_sigintr(nmp, rep, rep->r_td)) != 0){
 				so->so_state &= ~SS_ISCONNECTING;
-				splx(s);
+				crit_exit();
 				goto bad;
 			}
 		}
 		if (so->so_error) {
 			error = so->so_error;
 			so->so_error = 0;
-			splx(s);
+			crit_exit();
 			goto bad;
 		}
-		splx(s);
+		crit_exit();
 	}
 	so->so_rcv.sb_timeo = (5 * hz);
 	so->so_snd.sb_timeo = (5 * hz);
@@ -935,7 +935,7 @@ nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
 	char nickv[RPCX_NICKVERF];
 	time_t reqtime, waituntil;
 	caddr_t dpos, cp2;
-	int t1, nqlflag, cachable, s, error = 0, mrest_len, auth_len, auth_type;
+	int t1, nqlflag, cachable, error = 0, mrest_len, auth_len, auth_type;
 	int trylater_delay = NQ_TRYLATERDEL, trylater_cnt = 0, failed_auth = 0;
 	int verf_len, verf_type;
 	u_int32_t xid;
@@ -1034,7 +1034,7 @@ tryagain:
 	 * it below.  splsoftclock() primarily protects nm_sent.  Note
 	 * that we may block in this code so there is no atomicy guarentee.
 	 */
-	s = splsoftclock();
+	crit_enter();
 	TAILQ_INSERT_TAIL(&nfs_reqq, rep, r_chain);
 
 	/* Get send time for nqnfs */
@@ -1069,14 +1069,14 @@ tryagain:
 	 * wait for the reply from our send or the timer's.
 	 */
 	rep->r_flags &= ~R_MASKTIMER;
-	splx(s);
+	crit_exit();
 	if (!error || error == EPIPE)
 		error = nfs_reply(rep);
 
 	/*
 	 * RPC done, unlink the request.
 	 */
-	s = splsoftclock();
+	crit_enter();
 	TAILQ_REMOVE(&nfs_reqq, rep, r_chain);
 
 	/*
@@ -1086,7 +1086,7 @@ tryagain:
 		rep->r_flags &= ~R_SENT;
 		nmp->nm_sent -= NFS_CWNDSCALE;
 	}
-	splx(s);
+	crit_exit();
 
 	/*
 	 * If there was a successful reply and a tprintf msg.
@@ -1373,7 +1373,7 @@ nfs_timer(void *arg /* never used */)
 	struct socket *so;
 	struct nfsmount *nmp;
 	int timeo;
-	int s, error;
+	int error;
 #ifndef NFS_NOSERVER
 	static long lasttime = 0;
 	struct nfssvc_sock *slp;
@@ -1381,7 +1381,7 @@ nfs_timer(void *arg /* never used */)
 #endif /* NFS_NOSERVER */
 	struct thread *td = &thread0; /* XXX for credentials, will break if sleep */
 
-	s = splnet();
+	crit_enter();
 	TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
 		nmp = rep->r_nmp;
 		if (rep->r_mrep || (rep->r_flags & (R_SOFTTERM|R_MASKTIMER)))
@@ -1487,7 +1487,7 @@ nfs_timer(void *arg /* never used */)
 		nfsrv_wakenfsd(slp, 1);
 	}
 #endif /* NFS_NOSERVER */
-	splx(s);
+	crit_exit();
 	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer, NULL);
 }
 
@@ -1500,26 +1500,24 @@ int
 nfs_nmcancelreqs(struct nfsmount *nmp)
 {
 	struct nfsreq *req;
-	int i, s1, s2;
+	int i;
 
-	s1 = splnet();
-	s2 = splsoftclock();
+	crit_enter();
 	TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
 		if (nmp != req->r_nmp || req->r_mrep != NULL ||
 		    (req->r_flags & R_SOFTTERM))
 			continue;
 		nfs_softterm(req);
 	}
-	splx(s2);
-	splx(s1);
+	crit_exit();
 
 	for (i = 0; i < 30; i++) {
-		int s = splnet();
+		crit_enter();
 		TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
 			if (nmp == req->r_nmp)
 				break;
 		}
-		splx(s);
+		crit_exit();
 		if (req == NULL)
 			return (0);
 		tsleep(&lbolt, 0, "nfscancel", 0);

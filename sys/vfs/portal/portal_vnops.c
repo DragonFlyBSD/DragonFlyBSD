@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.20 2005/04/20 19:38:22 hsu Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.21 2005/06/06 15:09:38 drhodus Exp $
  */
 
 /*
@@ -64,6 +64,8 @@
 #include <sys/un.h>
 #include <sys/unpcb.h>
 #include "portal.h"
+
+#include <sys/thread2.h>
 
 static int portal_fileid = PORTAL_ROOTFILEID+1;
 
@@ -208,7 +210,6 @@ portal_open(struct vop_open_args *ap)
 	struct portalnode *pt;
 	struct thread *td = ap->a_td;
 	struct vnode *vp = ap->a_vp;
-	int s;
 	struct uio auio;
 	struct iovec aiov[2];
 	int res;
@@ -276,16 +277,16 @@ portal_open(struct vop_open_args *ap)
 	 * will happen if the server dies.  Sleep for 5 second intervals
 	 * and keep polling the reference count.   XXX.
 	 */
-	s = splnet();
+	crit_enter();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		if (fmp->pm_server->f_count == 1) {
 			error = ECONNREFUSED;
-			splx(s);
+			crit_exit();
 			goto bad;
 		}
 		(void) tsleep((caddr_t) &so->so_timeo, 0, "portalcon", 5 * hz);
 	}
-	splx(s);
+	crit_exit();
 
 	if (so->so_error) {
 		error = so->so_error;

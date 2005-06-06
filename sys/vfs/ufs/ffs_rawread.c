@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.10 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.11 2005/06/06 15:09:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -91,16 +91,15 @@ ffs_rawread_setup(void)
 static int
 ffs_rawread_sync(struct vnode *vp, struct thread *td)
 {
-	int spl;
 	int error;
 	int upgraded;
 
 	/* Check for dirty mmap, pending writes and dirty buffers */
-	spl = splbio();
+	crit_enter();
 	if (vp->v_numoutput > 0 ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
-		splx(spl);
+		crit_exit();
 
 		if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
 			upgraded = 1;
@@ -117,13 +116,13 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		}
 
 		/* Wait for pending writes to complete */
-		spl = splbio();
+		crit_enter();
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
 			error = tsleep((caddr_t)&vp->v_numoutput, 0,
 				       "rawrdfls", 0);
 			if (error != 0) {
-				splx(spl);
+				crit_exit();
 				if (upgraded != 0)
 					VOP_LOCK(vp, LK_DOWNGRADE, td);
 				return (error);
@@ -131,22 +130,22 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		}
 		/* Flush dirty buffers */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
-			splx(spl);
+			crit_exit();
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0) {
 				if (upgraded != 0)
 					VOP_LOCK(vp, LK_DOWNGRADE, td);
 				return (error);
 			}
-			spl = splbio();
+			crit_enter();
 			if (vp->v_numoutput > 0 ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("ffs_rawread_sync: dirty bufs");
 		}
-		splx(spl);
+		crit_exit();
 		if (upgraded != 0)
 			VOP_LOCK(vp, LK_DOWNGRADE, td);
 	} else {
-		splx(spl);
+		crit_exit();
 	}
 	return 0;
 }
@@ -237,7 +236,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	struct buf *bp, *nbp, *tbp;
 	caddr_t sa, nsa, tsa;
 	uint iolen;
-	int spl;
 	int baseticks = ticks;
 	caddr_t udata;
 	long resid;
@@ -300,11 +298,11 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			}
 		}
 		
-		spl = splbio();
+		crit_enter();
 		while ((bp->b_flags & B_DONE) == 0) {
 			tsleep((caddr_t)bp, 0, "rawrd", 0);
 		}
-		splx(spl);
+		crit_exit();
 		
 		vunmapbuf(bp);
 		
@@ -367,11 +365,11 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	if (bp != NULL)
 		relpbuf(bp, &ffsrawbufcnt);
 	if (nbp != NULL) {			/* Run down readahead buffer */
-		spl = splbio();
+		crit_enter();
 		while ((nbp->b_flags & B_DONE) == 0) {
 			tsleep((caddr_t)nbp, 0, "rawrd", 0);
 		}
-		splx(spl);
+		crit_exit();
 		vunmapbuf(nbp);
 		relpbuf(nbp, &ffsrawbufcnt);
 	}

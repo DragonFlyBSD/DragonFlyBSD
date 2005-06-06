@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.17 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.18 2005/06/06 15:09:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,8 @@
 #include <sys/conf.h>
 
 #include <sys/buf2.h>
+
+#include <sys/thread2.h>
 
 #include "mfsnode.h"
 #include "mfs_extern.h"
@@ -166,7 +168,6 @@ mfs_strategy(struct vop_strategy_args *ap)
 	struct buf *bp = ap->a_bp;
 	struct mfsnode *mfsp;
 	struct thread *td = curthread;		/* XXX */
-	int s;
 
 	bp->b_dev = ap->a_vp->v_rdev;
 	mfsp = bp->b_dev->si_drv1;
@@ -182,7 +183,7 @@ mfs_strategy(struct vop_strategy_args *ap)
 	 * BPs from bio interrupts (?).  It may not be necessary.
 	 */
 
-	s = splbio();
+	crit_enter();
 
 	if (mfsp->mfs_td == NULL) {
 		/*
@@ -203,9 +204,9 @@ mfs_strategy(struct vop_strategy_args *ap)
 		/*
 		 * VOP to self
 		 */
-		splx(s);
+		crit_exit();
 		mfs_doio(bp, mfsp);
-		s = splbio();
+		crit_enter();
 	} else {
 		/*
 		 * VOP from some other process, queue to MFS process and
@@ -214,7 +215,7 @@ mfs_strategy(struct vop_strategy_args *ap)
 		bufq_insert_tail(&mfsp->buf_queue, bp);
 		wakeup((caddr_t)mfsp);
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 

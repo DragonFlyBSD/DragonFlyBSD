@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.20 2005/04/15 19:08:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.21 2005/06/06 15:09:37 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -182,7 +182,6 @@ static int ext2_fsync_bp(struct buf *bp, void *data);
 struct ext2_fsync_bp_info {
 	struct vnode *vp;
 	int waitfor;
-	int s;
 };
 
 static int
@@ -201,7 +200,7 @@ ext2_fsync(struct vop_fsync_args *ap)
 	 */
 	ext2_discard_prealloc(VTOI(vp));
 
-	info.s = splbio();
+	crit_enter();
 	info.vp = vp;
 loop:
 	info.waitfor = ap->a_waitfor;
@@ -222,7 +221,7 @@ loop:
 		}
 #endif
 	}
-	splx(info.s);
+	crit_exit();
 	return (UFS_UPDATE(ap->a_vp, ap->a_waitfor == MNT_WAIT));
 }
 
@@ -236,7 +235,7 @@ ext2_fsync_bp(struct buf *bp, void *data)
 	if ((bp->b_flags & B_DELWRI) == 0)
 		panic("ext2_fsync: not dirty");
 	bremfree(bp);
-	splx(info->s);
+	crit_exit();
 
 	/*
 	 * Wait for I/O associated with indirect blocks to complete,
@@ -246,7 +245,7 @@ ext2_fsync_bp(struct buf *bp, void *data)
 		(void) bawrite(bp);
 	else
 		(void) bwrite(bp);
-	info->s = splbio();
+	crit_enter();
 	return(1);
 }
 

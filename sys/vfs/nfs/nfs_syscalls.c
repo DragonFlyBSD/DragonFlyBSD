@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.20 2005/03/27 23:51:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.21 2005/06/06 15:09:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,8 @@
 #include "nfsnode.h"
 #include "nqnfs.h"
 #include "nfsrtt.h"
+
+#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_NFSSVC, "NFS srvsock", "Nfs server structure");
 
@@ -326,7 +328,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	int siz;
 	struct nfssvc_sock *slp;
 	struct socket *so;
-	int error, s;
+	int error;
 
 	so = (struct socket *)fp->f_data;
 #if 0
@@ -414,13 +416,13 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	slp->ns_nam = mynam;
 	fp->f_count++;
 	slp->ns_fp = fp;
-	s = splnet();
+	crit_enter();
 	so->so_upcallarg = (caddr_t)slp;
 	so->so_upcall = nfsrv_rcv;
 	so->so_rcv.sb_flags |= SB_UPCALL;
 	slp->ns_flag = (SLP_VALID | SLP_NEEDQ);
 	nfsrv_wakenfsd(slp, 1);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -436,7 +438,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 	struct nfsd *nfsd = nsd->nsd_nfsd;
 	struct nfsrv_descript *nd = NULL;
 	struct mbuf *m, *mreq;
-	int error = 0, cacherep, s, sotype, writes_todo;
+	int error = 0, cacherep, sotype, writes_todo;
 	int procrastinate;
 	u_quad_t cur_usec;
 
@@ -448,12 +450,12 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 		nsd->nsd_nfsd = nfsd = (struct nfsd *)
 			malloc(sizeof (struct nfsd), M_NFSD, M_WAITOK);
 		bzero((caddr_t)nfsd, sizeof (struct nfsd));
-		s = splnet();
+		crit_enter();
 		nfsd->nfsd_td = td;
 		TAILQ_INSERT_TAIL(&nfsd_head, nfsd, nfsd_chain);
 		nfs_numnfsd++;
 	} else
-		s = splnet();
+		crit_enter();
 
 	/*
 	 * Loop getting rpc requests until SIGKILL.
@@ -520,7 +522,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			nfsrv_slpderef(slp);
 			continue;
 		}
-		splx(s);
+		crit_exit();
 		sotype = slp->ns_so->so_type;
 		if (nd) {
 		    getmicrotime(&nd->nd_starttime);
@@ -670,7 +672,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			if (error == EINTR || error == ERESTART) {
 				free((caddr_t)nd, M_NFSRVDESC);
 				nfsrv_slpderef(slp);
-				s = splnet();
+				crit_enter();
 				goto done;
 			}
 			break;
@@ -692,16 +694,16 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 		     * need to be serviced.
 		     */
 		    cur_usec = nfs_curusec();
-		    s = splsoftclock();
+		    crit_enter();
 		    if (slp->ns_tq.lh_first &&
 			slp->ns_tq.lh_first->nd_time <= cur_usec) {
 			cacherep = RC_DOIT;
 			writes_todo = 1;
 		    } else
 			writes_todo = 0;
-		    splx(s);
+		    crit_exit();
 		} while (writes_todo);
-		s = splnet();
+		crit_enter();
 		if (nfsrv_dorec(slp, nfsd, &nd)) {
 			nfsd->nfsd_flag &= ~NFSD_REQINPROG;
 			nfsd->nfsd_slp = NULL;
@@ -710,7 +712,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 	}
 done:
 	TAILQ_REMOVE(&nfsd_head, nfsd, nfsd_chain);
-	splx(s);
+	crit_exit();
 	free((caddr_t)nfsd, M_NFSD);
 	nsd->nsd_nfsd = (struct nfsd *)0;
 	if (--nfs_numnfsd == 0)
@@ -733,7 +735,6 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 	struct socket *so;
 	struct file *fp;
 	struct nfsrv_rec *rec;
-	int s;
 
 	slp->ns_flag &= ~SLP_ALLFLAGS;
 	fp = slp->ns_fp;
@@ -764,14 +765,14 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 				FREE(nuidp->nu_nam, M_SONAME);
 			free((caddr_t)nuidp, M_NFSUID);
 		}
-		s = splsoftclock();
+		crit_enter();
 		for (nwp = slp->ns_tq.lh_first; nwp; nwp = nnwp) {
 			nnwp = nwp->nd_tq.le_next;
 			LIST_REMOVE(nwp, nd_tq);
 			free((caddr_t)nwp, M_NFSRVDESC);
 		}
 		LIST_INIT(&slp->ns_tq);
-		splx(s);
+		crit_exit();
 	}
 }
 

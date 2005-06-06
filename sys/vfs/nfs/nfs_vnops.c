@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.40 2005/04/15 19:08:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.41 2005/06/06 15:09:38 drhodus Exp $
  */
 
 
@@ -85,6 +85,8 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
+
+#include <sys/thread2.h>
 
 /* Defs */
 #define	TRUE	1
@@ -3016,12 +3018,11 @@ nfs_flush_bp(struct buf *bp, void *data)
 	struct nfs_flush_info *info = data;
 	off_t toff;
 	int error;
-	int s;
 
 	error = 0;
 	switch(info->mode) {
 	case NFI_FLUSHNEW:
-		s = splbio();
+		crit_enter();
 		if (info->loops && info->waitfor == MNT_WAIT) {
 			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 			if (error) {
@@ -3038,16 +3039,16 @@ nfs_flush_bp(struct buf *bp, void *data)
 				panic("nfs_fsync: not dirty");
 			if (bp->b_flags & B_NEEDCOMMIT) {
 				BUF_UNLOCK(bp);
-				splx(s);
+				crit_exit();
 				break;
 			}
 			bremfree(bp);
 
 			bp->b_flags |= B_ASYNC;
-			splx(s);
+			crit_exit();
 			VOP_BWRITE(bp->b_vp, bp);
 		} else {
-			splx(s);
+			crit_exit();
 			error = 0;
 		}
 		break;
@@ -3058,11 +3059,11 @@ nfs_flush_bp(struct buf *bp, void *data)
 		 * committed, but the normal flush loop will block on the
 		 * same buffer so we shouldn't get into an endless loop.
 		 */
-		s = splbio();
+		crit_enter();
 		if ((bp->b_flags & (B_DELWRI | B_NEEDCOMMIT)) != 
 		    (B_DELWRI | B_NEEDCOMMIT) ||
 		    BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
-			splx(s);
+			crit_exit();
 			break;
 		}
 
@@ -3091,7 +3092,7 @@ nfs_flush_bp(struct buf *bp, void *data)
 			error = nfs_flush_docommit(info, 0);
 			KKASSERT(info->bvsize == 0);
 		}
-		splx(s);
+		crit_exit();
 	}
 	return (error);
 }
@@ -3105,7 +3106,6 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 	off_t bytes;
 	int retv;
 	int i;
-	int s;
 
 	vp = info->vp;
 
@@ -3149,13 +3149,13 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 * specific.  We should probably move that
 				 * into bundirty(). XXX
 				 */
-				s = splbio();
+				crit_enter();
 				vp->v_numoutput++;
 				bp->b_flags |= B_ASYNC;
 				bundirty(bp);
 				bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
 				bp->b_dirtyoff = bp->b_dirtyend = 0;
-				splx(s);
+				crit_exit();
 				biodone(bp);
 			}
 		}
@@ -3223,7 +3223,6 @@ nfs_bwrite(struct vop_bwrite_args *ap)
 int
 nfs_writebp(struct buf *bp, int force, struct thread *td)
 {
-	int s;
 	int oldflags = bp->b_flags;
 #if 0
 	int retv = 1;
@@ -3244,12 +3243,12 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	 * Undirty the bp.  We will redirty it later if the I/O fails.
 	 */
 
-	s = splbio();
+	crit_enter();
 	bundirty(bp);
 	bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
 
 	bp->b_vp->v_numoutput++;
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Note: to avoid loopback deadlocks, we do not
@@ -3264,9 +3263,9 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 		int rtval = biowait(bp);
 
 		if (oldflags & B_DELWRI) {
-			s = splbio();
+			crit_enter();
 			reassignbuf(bp, bp->b_vp);
-			splx(s);
+			crit_exit();
 		}
 
 		brelse(bp);

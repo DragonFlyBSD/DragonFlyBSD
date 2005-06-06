@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.23 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.24 2005/06/06 15:09:38 drhodus Exp $
  */
 
 /*
@@ -87,6 +87,8 @@
 #include <vm/vm_object.h>
 
 #include <sys/buf2.h>
+
+#include <sys/thread2.h>
 
 #include "nfsproto.h"
 #include "rpcv2.h"
@@ -1190,7 +1192,7 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 	int32_t t1;
 	caddr_t bpos, dpos;
 	int error = 0, rdonly, cache, len, forat_ret = 1;
-	int ioflags, aftat_ret = 1, s, adjust, v3, zeroing;
+	int ioflags, aftat_ret = 1, adjust, v3, zeroing;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq, *mrep, *md;
 	struct vnode *vp = NULL;
@@ -1279,7 +1281,7 @@ nfsmout:
 	    /*
 	     * Add this entry to the hash and time queues.
 	     */
-	    s = splsoftclock();
+	    crit_enter();
 	    owp = NULL;
 	    wp = slp->ns_tq.lh_first;
 	    while (wp && wp->nd_time < nfsd->nd_time) {
@@ -1322,7 +1324,7 @@ nfsmout:
 		    LIST_INSERT_HEAD(wpp, nfsd, nd_hash);
 		}
 	    }
-	    splx(s);
+	    crit_exit();
 	}
     
 	/*
@@ -1331,7 +1333,7 @@ nfsmout:
 	 */
 loop1:
 	cur_usec = nfs_curusec();
-	s = splsoftclock();
+	crit_enter();
 	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = owp) {
 		owp = nfsd->nd_tq.le_next;
 		if (nfsd->nd_time > cur_usec)
@@ -1341,7 +1343,7 @@ loop1:
 		NFS_DPF(WG, ("P%03x", nfsd->nd_retxid & 0xfff));
 		LIST_REMOVE(nfsd, nd_tq);
 		LIST_REMOVE(nfsd, nd_hash);
-		splx(s);
+		crit_exit();
 		mrep = nfsd->nd_mrep;
 		nfsd->nd_mrep = NULL;
 		cred = &nfsd->nd_cr;
@@ -1454,7 +1456,7 @@ loop1:
 		     * Done. Put it at the head of the timer queue so that
 		     * the final phase can return the reply.
 		     */
-		    s = splsoftclock();
+		    crit_enter();
 		    if (nfsd != swp) {
 			nfsd->nd_time = 0;
 			LIST_INSERT_HEAD(&slp->ns_tq, nfsd, nd_tq);
@@ -1463,20 +1465,20 @@ loop1:
 		    if (nfsd) {
 			LIST_REMOVE(nfsd, nd_tq);
 		    }
-		    splx(s);
+		    crit_exit();
 		} while (nfsd);
-		s = splsoftclock();
+		crit_enter();
 		swp->nd_time = 0;
 		LIST_INSERT_HEAD(&slp->ns_tq, swp, nd_tq);
-		splx(s);
+		crit_exit();
 		goto loop1;
 	}
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Search for a reply to return.
 	 */
-	s = splsoftclock();
+	crit_enter();
 	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = nfsd->nd_tq.le_next)
 		if (nfsd->nd_mreq) {
 		    NFS_DPF(WG, ("X%03x", nfsd->nd_retxid & 0xfff));
@@ -1485,7 +1487,7 @@ loop1:
 		    *ndp = nfsd;
 		    break;
 		}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -3496,7 +3498,6 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		 */
 		int iosize = vp->v_mount->mnt_stat.f_iosize;
 		int iomask = iosize - 1;
-		int s;
 		daddr_t lblkno;
 
 		/*
@@ -3517,7 +3518,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			vm_object_page_clean(vp->v_object, off / PAGE_SIZE, (cnt + PAGE_MASK) / PAGE_SIZE, OBJPC_SYNC);
 		}
 
-		s = splbio();
+		crit_enter();
 		while (cnt > 0) {
 			struct buf *bp;
 
@@ -3542,7 +3543,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			cnt -= iosize;
 			++lblkno;
 		}
-		splx(s);
+		crit_exit();
 	}
 
 	aft_ret = VOP_GETATTR(vp, &aft, td);

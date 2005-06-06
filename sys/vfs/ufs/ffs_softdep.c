@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.23 2005/04/19 17:54:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.24 2005/06/06 15:09:38 drhodus Exp $
  */
 
 /*
@@ -69,6 +69,8 @@
 #include "softdep.h"
 #include "ffs_extern.h"
 #include "ufs_extern.h"
+
+#include <sys/thread2.h>
 
 /*
  * These definitions need to be adapted to the system to which
@@ -230,10 +232,9 @@ static struct bio_ops softdep_bioops = {
  */
 #ifndef /* NOT */ DEBUG
 static struct lockit {
-	int	lkt_spl;
 } lk = { 0 };
-#define ACQUIRE_LOCK(lk)		(lk)->lkt_spl = splbio()
-#define FREE_LOCK(lk)			splx((lk)->lkt_spl)
+#define ACQUIRE_LOCK(lk)		crit_enter();
+#define FREE_LOCK(lk)			crit_exit();
 
 #else /* DEBUG */
 #define NOHOLDER	((struct thread *)-1)
@@ -265,7 +266,7 @@ acquire_lock(lk)
 		else
 			panic("softdep_lock: lock held by %p", holder);
 	}
-	lk->lkt_spl = splbio();
+	crit_enter();
 	lk->lkt_held = curthread;
 	lockcnt++;
 }
@@ -278,7 +279,7 @@ free_lock(lk)
 	if (lk->lkt_held == NOHOLDER)
 		panic("softdep_unlock: lock not held");
 	lk->lkt_held = NOHOLDER;
-	splx(lk->lkt_spl);
+	crit_exit();
 }
 
 /*
@@ -4617,7 +4618,6 @@ request_cleanup(resource, islocked)
 	int islocked;
 {
 	struct thread *td = curthread;		/* XXX */
-	int s;
 
 	/*
 	 * We never hold up the filesystem syncer process.
@@ -4677,7 +4677,7 @@ request_cleanup(resource, islocked)
 	 */
 	if (islocked == 0)
 		ACQUIRE_LOCK(&lk);
-	s = splsoftclock();
+	crit_enter();
 	proc_waiting += 1;
 	if (!callout_active(&handle))
 		callout_reset(&handle, tickdelay > 2 ? tickdelay : 2,
@@ -4685,7 +4685,7 @@ request_cleanup(resource, islocked)
 	interlocked_sleep(&lk, SLEEP, (caddr_t)&proc_waiting, 0,
 	    "softupdate", 0);
 	proc_waiting -= 1;
-	splx(s);
+	crit_exit();
 	if (islocked == 0)
 		FREE_LOCK(&lk);
 	return (1);
