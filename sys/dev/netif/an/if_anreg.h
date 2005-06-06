@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_anreg.h,v 1.1.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.5 2005/05/24 08:16:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.6 2005/06/06 16:16:13 joerg Exp $
  */
 
 #define AN_TIMEOUT	65536
@@ -462,7 +462,6 @@ struct an_softc	{
         struct an_ltv_key	an_temp_keys[4];
 	int			an_tx_rate;
 	int			an_rxmode;
-	int			an_gone;
 	int			an_if_flags;
 	u_int8_t		an_txbuf[1536];
 	struct an_tx_ring_data	an_rdata;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.8 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.9 2005/06/06 16:16:13 joerg Exp $
  */
 
 /*
@@ -133,15 +133,10 @@ an_pccard_detach(device_t dev)
 	struct an_softc		*sc = device_get_softc(dev);
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
-	if (sc->an_gone) {
-		device_printf(dev,"already unloaded\n");
-		return(0);
-	}
 	an_stop(sc);
 	ifmedia_removeall(&sc->an_ifmedia);
 	ifp->if_flags &= ~IFF_RUNNING;
 	ether_ifdetach(ifp);
-	sc->an_gone = 1;
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	an_release_resources(dev);
 	return (0);

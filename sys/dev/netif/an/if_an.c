@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.23 2005/06/06 15:59:06 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.24 2005/06/06 16:16:13 joerg Exp $
  */
 
 /*
@@ -675,7 +675,6 @@ an_attach(sc, dev, flags)
 	int			error;
 
 	callout_init(&sc->an_stat_timer);
-	sc->an_gone = 0;
 	sc->an_associated = 0;
 	sc->an_monitor = 0;
 	sc->an_was_monitor = 0;
@@ -1155,9 +1154,6 @@ an_intr(xsc)
 
 	sc = (struct an_softc*)xsc;
 
-	if (sc->an_gone)
-		return;
-
 	ifp = &sc->arpcom.ac_if;
 
 	/* Disable interrupts. */
@@ -1305,9 +1301,6 @@ static void
 an_reset(sc)
 	struct an_softc		*sc;
 {
-	if (sc->an_gone)
-		return;
-
 	an_cmd(sc, AN_CMD_ENABLE, 0);
 	an_cmd(sc, AN_CMD_FW_RESTART, 0);
 	an_cmd(sc, AN_CMD_NOOP2, 0);
@@ -1862,11 +1855,6 @@ an_ioctl(ifp, command, data, cr)
 	status = (struct an_ltv_status *)&sc->areq;
 	ssids = (struct an_ltv_ssidlist *)&sc->areq;
 
-	if (sc->an_gone) {
-		error = ENODEV;
-		goto out;
-	}
-
 	switch (command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -2408,9 +2396,6 @@ an_init_tx_ring(sc)
 	int			i;
 	int			id;
 
-	if (sc->an_gone)
-		return (0);
-
 	if (!sc->mpi350) {
 		for (i = 0; i < AN_TX_RING_CNT; i++) {
 			if (an_alloc_nicmem(sc, 1518 +
@@ -2437,11 +2422,6 @@ an_init(xsc)
 	int			s;
 
 	s = splimp();
-
-	if (sc->an_gone) {
-		splx(s);
-		return;
-	}
 
 	if (ifp->if_flags & IFF_RUNNING)
 		an_stop(sc);
@@ -2553,9 +2533,6 @@ an_start(ifp)
 	u_int8_t		*buf;
 
 	sc = ifp->if_softc;
-
-	if (sc->an_gone)
-		return;
 
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
@@ -2710,11 +2687,6 @@ an_stop(sc)
 
 	s = splimp();
 
-	if (sc->an_gone) {
-		splx(s);
-		return;
-	}
-
 	ifp = &sc->arpcom.ac_if;
 
 	an_cmd(sc, AN_CMD_FORCE_SYNCLOSS, 0);
@@ -2747,11 +2719,6 @@ an_watchdog(ifp)
 
 	sc = ifp->if_softc;
 	s = splimp();
-
-	if (sc->an_gone) {
-		splx(s);
-		return;
-	}
 
 	if_printf(ifp, "device timeout\n");
 
