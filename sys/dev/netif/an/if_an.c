@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.22 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.23 2005/06/06 15:59:06 joerg Exp $
  */
 
 /*
@@ -469,12 +469,12 @@ an_dma_malloc(sc, size, dma, mapflags)
 {
 	int r;
 
-	r = bus_dmamap_create(sc->an_dtag, BUS_DMA_NOWAIT, &dma->an_dma_map);
+	r = bus_dmamap_create(sc->an_dtag, 0, &dma->an_dma_map);
 	if (r != 0)
 		goto fail_0;
 
 	r = bus_dmamem_alloc(sc->an_dtag, (void**) &dma->an_dma_vaddr,
-			     BUS_DMA_NOWAIT, &dma->an_dma_map);
+			     BUS_DMA_WAITOK, &dma->an_dma_map);
 	if (r != 0)
 		goto fail_1;
 
@@ -482,7 +482,7 @@ an_dma_malloc(sc, size, dma, mapflags)
 		            size,
 			    an_dma_malloc_cb,
 			    &dma->an_dma_paddr,
-			    mapflags | BUS_DMA_NOWAIT);
+			    mapflags);
 	if (r != 0)
 		goto fail_2;
 
