@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.20 2005/05/27 15:13:10 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.21 2005/06/06 23:12:07 okumoto Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -47,6 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -1055,9 +1056,9 @@ txp_ioctl(ifp, command, data, cr)
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int s, error = 0;
+	int error = 0;
 
-	s = splnet();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1086,7 +1087,7 @@ txp_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -1159,7 +1160,6 @@ txp_init(xsc)
 	struct ifnet *ifp;
 	u_int16_t p1;
 	u_int32_t p2;
-	int s;
 
 	sc = xsc;
 	ifp = &sc->sc_arpcom.ac_if;
@@ -1169,7 +1169,7 @@ txp_init(xsc)
 
 	txp_stop(sc);
 
-	s = splnet();
+	crit_enter();
 
 	txp_command(sc, TXP_CMD_MAX_PKT_SIZE_WRITE, TXP_MAX_PKTLEN, 0, 0,
 	    NULL, NULL, NULL, 1);
@@ -1204,7 +1204,7 @@ txp_init(xsc)
 
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1215,9 +1215,8 @@ txp_tick(vsc)
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	struct txp_rsp_desc *rsp = NULL;
 	struct txp_ext_desc *ext;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	txp_rxbuf_reclaim(sc);
 
 	if (txp_command2(sc, TXP_CMD_READ_STATISTICS, 0, 0, 0, NULL, 0,
@@ -1243,7 +1242,7 @@ out:
 	if (rsp != NULL)
 		free(rsp, M_DEVBUF);
 
-	splx(s);
+	crit_exit();
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
 
 	return;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.20 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.21 2005/06/06 23:12:07 okumoto Exp $
  */
 
 /*
@@ -186,6 +186,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -645,10 +646,10 @@ static int tl_mii_readreg(sc, frame)
 	struct tl_mii_frame	*frame;
 	
 {
-	int			i, ack, s;
+	int			i, ack;
 	int			minten = 0;
 
-	s = splimp();
+	crit_enter();
 
 	tl_mii_sync(sc);
 
@@ -728,7 +729,7 @@ fail:
 		tl_dio_setbit(sc, TL_NETSIO, TL_SIO_MINTEN);
 	}
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -740,12 +741,11 @@ static int tl_mii_writereg(sc, frame)
 	struct tl_mii_frame	*frame;
 	
 {
-	int			s;
 	int			minten;
 
 	tl_mii_sync(sc);
 
-	s = splimp();
+	crit_enter();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -786,7 +786,7 @@ static int tl_mii_writereg(sc, frame)
 	if (minten)
 		tl_dio_setbit(sc, TL_NETSIO, TL_SIO_MINTEN);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1102,7 +1102,7 @@ static int tl_probe(dev)
 static int tl_attach(dev)
 	device_t		dev;
 {
-	int			s, i;
+	int			i;
 	u_int32_t		command;
 	u_int16_t		did, vid;
 	struct tl_type		*t;
@@ -1110,7 +1110,7 @@ static int tl_attach(dev)
 	struct tl_softc		*sc;
 	int			unit, error = 0, rid;
 
-	s = splimp();
+	crit_enter();
 
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
@@ -1330,7 +1330,7 @@ static int tl_attach(dev)
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 fail:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1339,9 +1339,8 @@ static int tl_detach(dev)
 {
 	struct tl_softc		*sc;
 	struct ifnet		*ifp;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
@@ -1360,7 +1359,7 @@ static int tl_detach(dev)
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
 	bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1768,9 +1767,8 @@ static void tl_stats_update(xsc)
 	struct tl_stats		tl_stats;
 	struct mii_data		*mii;
 	u_int32_t		*p;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	bzero((char *)&tl_stats, sizeof(struct tl_stats));
 
@@ -1815,7 +1813,7 @@ static void tl_stats_update(xsc)
 		mii_tick(mii);
 	}
 
-	splx(s);
+	crit_exit();
 
 	return;
 }
@@ -2009,10 +2007,9 @@ static void tl_init(xsc)
 {
 	struct tl_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
-        int			s;
 	struct mii_data		*mii;
 
-	s = splimp();
+	crit_enter();
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -2083,7 +2080,7 @@ static void tl_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	(void)splx(s);
+	crit_exit();
 
 	/* Start the stats update counter */
 	callout_reset(&sc->tl_stat_timer, hz, tl_stats_update, sc);
@@ -2152,9 +2149,9 @@ static int tl_ioctl(ifp, command, data, cr)
 {
 	struct tl_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
-	int			s, error = 0;
+	int			error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -2200,7 +2197,7 @@ static int tl_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	crit_exit();
 
 	return(error);
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.20 2005/06/06 23:12:07 okumoto Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -215,9 +216,9 @@ epic_attach(dev)
 	epic_softc_t *sc;
 	u_int32_t command;
 	int unit, error;
-	int i, s, rid, tmp;
+	int i, rid, tmp;
 
-	s = splimp ();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -334,7 +335,7 @@ epic_attach(dev)
 	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 
 fail:
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -348,9 +349,8 @@ epic_detach(dev)
 {
 	struct ifnet *ifp;
 	epic_softc_t *sc;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
@@ -370,7 +370,7 @@ epic_detach(dev)
 	free(sc->tx_desc, M_DEVBUF);
 	free(sc->rx_desc, M_DEVBUF);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -408,9 +408,9 @@ epic_ifioctl(ifp, command, data, cr)
 	epic_softc_t *sc = ifp->if_softc;
 	struct mii_data	*mii;
 	struct ifreq *ifr = (struct ifreq *) data;
-	int x, error = 0;
+	int error = 0;
 
-	x = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -471,7 +471,7 @@ epic_ifioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	splx(x);
+	crit_exit();
 
 	return error;
 }
@@ -825,9 +825,8 @@ epic_ifwatchdog(ifp)
 	struct ifnet *ifp;
 {
 	epic_softc_t *sc = ifp->if_softc;
-	int x;
 
-	x = splimp();
+	crit_enter();
 
 	device_printf(sc->dev, "device timeout %d packets\n", sc->pending_txs);
 
@@ -851,7 +850,7 @@ epic_ifwatchdog(ifp)
 	if (!ifq_is_empty(&ifp->if_snd))
 		epic_ifstart(ifp);
 
-	splx(x);
+	crit_exit();
 }
 
 /*
@@ -863,16 +862,15 @@ epic_stats_update(void *xsc)
 {
 	epic_softc_t *sc = xsc;
 	struct mii_data * mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->miibus);
 	mii_tick(mii);
 
 	callout_reset(&sc->tx_stat_timer, hz, epic_stats_update, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1123,13 +1121,13 @@ epic_init(sc)
 	epic_softc_t *sc;
 {
 	struct ifnet *ifp = &sc->sc_if;
-	int s,i;
+	int	i;
 
-	s = splimp();
+	crit_enter();
 
 	/* If interface is already running, then we need not do anything */
 	if (ifp->if_flags & IFF_RUNNING) {
-		splx(s);
+		crit_exit();
 		return 0;
 	}
 
@@ -1152,7 +1150,7 @@ epic_init(sc)
 	/* Initialize rings */
 	if (epic_init_rings(sc)) {
 		device_printf(sc->dev, "failed to init rings\n");
-		splx(s);
+		crit_exit();
 		return -1;
 	}	
 
@@ -1203,7 +1201,7 @@ epic_init(sc)
 
 	callout_reset(&sc->tx_stat_timer, hz, epic_stats_update, sc);
 
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -1453,9 +1451,8 @@ static void
 epic_stop(sc)
 	epic_softc_t *sc;
 {
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	sc->sc_if.if_timer = 0;
 
@@ -1481,7 +1478,7 @@ epic_stop(sc)
 	/* Mark as stoped */
 	sc->sc_if.if_flags &= ~IFF_RUNNING;
 
-	splx(s);
+	crit_exit();
 	return;
 }
 

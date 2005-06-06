@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.18 2005/05/27 15:36:10 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.19 2005/06/06 23:12:07 okumoto Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -200,6 +200,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -367,7 +368,6 @@ wlprobe(struct isa_device *id)
     short	base = id->id_iobase;
     char		*str = "wl%d: board out of range [0..%d]\n";
     u_char		inbuf[100];
-    unsigned long	oldpri;
     int			irq;
 
     /* TBD. not true.
@@ -375,12 +375,12 @@ wlprobe(struct isa_device *id)
      */
 #define PCMD(base, hacr) outw((base), (hacr))
 
-    oldpri = splimp();
+    crit_enter();
     PCMD(base, HACR_RESET);			/* reset the board */
     DELAY(DELAYCONST);				/* >> 4 clocks at 6MHz */
     PCMD(base, HACR_RESET);			/* reset the board */
     DELAY(DELAYCONST);	                	/* >> 4 clocks at 6MHz */
-    splx(oldpri);
+    crit_exit();
 
     /* clear reset command and set PIO#1 in autoincrement mode */
     PCMD(base, HACR_DEFAULT);
@@ -668,7 +668,6 @@ wlinit(void *xsc)
     struct wl_softc *sc = xsc;
     struct ifnet	*ifp = &sc->wl_if;
     int			stat;
-    u_long		oldpri;
 
 #ifdef WLDEBUG
     if (sc->wl_if.if_flags & IFF_DEBUG)
@@ -681,7 +680,7 @@ wlinit(void *xsc)
 #endif
 	return;
     }
-    oldpri = splimp();
+    crit_enter();
     if ((stat = wlhwrst(sc->unit)) == TRUE) {
 	sc->wl_if.if_flags |= IFF_RUNNING;   /* same as DSF_RUNNING */
 	/* 
@@ -698,7 +697,7 @@ wlinit(void *xsc)
     } else {
 	printf("wl%d init(): trouble resetting board.\n", sc->unit);
     }
-    splx(oldpri);
+    crit_exit();
 }
 
 /*
@@ -1135,7 +1134,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
     struct wl_softc	*sc = WLSOFTC(unit);
     short		base = sc->base;
     short		mode = 0;
-    int			opri, error = 0;
+    int			error = 0;
     int			irq, irqval, i, isroot, size;
     caddr_t		up;
     char * 	        cpt;
@@ -1146,7 +1145,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
     if (sc->wl_if.if_flags & IFF_DEBUG)
 	printf("wl%d: entered wlioctl()\n",unit);
 #endif
-    opri = splimp();
+    crit_enter();
     switch (cmd) {
     case SIOCSIFFLAGS:
 	if (ifp->if_flags & IFF_ALLMULTI) {
@@ -1375,7 +1374,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
         error = ether_ioctl(ifp, cmd, data);
         break;
     }
-    splx(opri);
+    crit_exit();
     return (error);
 }
 
@@ -2370,7 +2369,7 @@ wlsetpsa(int unit)
 {
     struct wl_softc *sc = WLSOFTC(unit);
     short	base = sc->base;
-    int		i, oldpri;
+    int		i;
     u_short	crc;
 
     crc = wlpsacrc(sc->psa);	/* calculate CRC of PSA */
@@ -2378,7 +2377,7 @@ wlsetpsa(int unit)
     sc->psa[WLPSA_CRCHIGH] = (crc >> 8) & 0xff;
     sc->psa[WLPSA_CRCOK] = 0x55;	/* default to 'bad' until programming complete */
 
-    oldpri = splimp();		/* ick, long pause */
+    crit_enter();		/* ick, long pause */
     
     PCMD(base, HACR_DEFAULT & ~HACR_16BITS);
     PCMD(base, HACR_DEFAULT & ~HACR_16BITS);
@@ -2399,7 +2398,7 @@ wlsetpsa(int unit)
     PCMD(base, HACR_DEFAULT);
     PCMD(base, HACR_DEFAULT);
     
-    splx(oldpri);
+    crit_exit();
 }
 
 /* 

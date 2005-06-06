@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.17 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.18 2005/06/06 23:12:07 okumoto Exp $
  *
  */
 
@@ -63,6 +63,7 @@
 #include <sys/socket.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -392,7 +393,7 @@ vxstart(ifp)
 {
     struct vx_softc *sc = ifp->if_softc;
     struct mbuf *m0;
-    int sh, len, pad;
+    int len, pad;
 
     /* Don't transmit if interface is busy or not running */
     if ((sc->arpcom.ac_if.if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
@@ -442,10 +443,10 @@ startagain:
     BPF_MTAP(&sc->arpcom.ac_if, m0);
 
     /*
-     * Do the output at splhigh() so that an interrupt from another device
+     * Do the output in a critical section so that an interrupt from another device
      * won't cause a FIFO underrun.
      */
-    sh = splhigh();
+    crit_enter();
 
     CSR_WRITE_4(sc, VX_W1_TX_PIO_WR_1, len | TX_INDICATE);
 
@@ -463,7 +464,7 @@ startagain:
     while (pad--)
 	CSR_WRITE_1(sc, VX_W1_TX_PIO_WR_1, 0);	/* Padding */
 
-    splx(sh);
+    crit_exit();
 
     ++ifp->if_opackets;
     ifp->if_timer = 1;
@@ -769,11 +770,11 @@ vxget(sc, totlen)
     mp = &top;
 
     /*
-     * We read the packet at splhigh() so that an interrupt from another
+     * We read the packet in a critical section so that an interrupt from another
      * device doesn't cause the card's buffer to overflow while we're
      * reading it.  We may still lose packets at other times.
      */
-    sh = splhigh();
+    crit_enter();
 
     /*
      * Since we don't set allowLargePackets bit in MacControl register,
@@ -788,7 +789,7 @@ vxget(sc, totlen)
             if (m == 0) {
                 MGET(m, MB_DONTWAIT, MT_DATA);
                 if (m == 0) {
-                    splx(sh);
+                    crit_exit();
                     m_freem(top);
                     return 0;
                 }
@@ -819,7 +820,7 @@ vxget(sc, totlen)
 
     CSR_WRITE_2(sc, VX_COMMAND, RX_DISCARD_TOP_PACK);
 
-    splx(sh);
+    crit_exit();
 
     return top;
 }
@@ -834,9 +835,9 @@ vxioctl(ifp, cmd, data, cr)
 {
     struct vx_softc *sc = ifp->if_softc;
     struct ifreq *ifr = (struct ifreq *) data;
-    int s, error = 0;
+    int error = 0;
 
-    s = splimp();
+    crit_enter();
 
     switch (cmd) {
     case SIOCSIFFLAGS:
@@ -893,7 +894,7 @@ vxioctl(ifp, cmd, data, cr)
 	break;
     }
 
-    splx(s);
+    crit_exit();
 
     return (error);
 }
@@ -902,12 +903,12 @@ static void
 vxreset(sc)
     struct vx_softc *sc;
 {
-    int s;
-    s = splimp();
+
+    crit_enter();
 
     vxstop(sc);
     vxinit(sc);
-    splx(s);
+    crit_exit();
 }
 
 static void
@@ -974,9 +975,9 @@ vxmbuffill(sp)
     void *sp;
 {
     struct vx_softc *sc = (struct vx_softc *) sp;
-    int s, i;
+    int	i;
 
-    s = splimp();
+    crit_enter();
     i = sc->last_mb;
     do {
 	if (sc->mb[i] == NULL)
@@ -993,16 +994,16 @@ vxmbuffill(sp)
     } else {
 	sc->buffill_pending = 0;
     }
-    splx(s);
+    crit_exit();
 }
 
 static void
 vxmbufempty(sc)
     struct vx_softc *sc;
 {
-    int s, i;
+    int	i;
 
-    s = splimp();
+    crit_enter();
     for (i = 0; i < MAX_MBS; i++) {
 	if (sc->mb[i]) {
 	    m_freem(sc->mb[i]);
@@ -1012,5 +1013,5 @@ vxmbufempty(sc)
     sc->last_mb = sc->next_mb = 0;
     if (sc->buffill_pending != 0)
 	callout_stop(&sc->vx_timer);
-    splx(s);
+    crit_exit();
 }

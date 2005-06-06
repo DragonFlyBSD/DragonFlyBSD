@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.24 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.25 2005/06/06 23:12:07 okumoto Exp $
  */
 
 /*
@@ -67,6 +67,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -285,9 +286,9 @@ static int
 vr_mii_readreg(struct vr_softc *sc, struct vr_mii_frame *frame)
 #ifdef VR_USESWSHIFT	
 {
-	int i, ack, s;
+	int i, ack;
 
-	s = splimp();
+	crit_enter();
 
 	/* Set up frame for RX. */
 	frame->mii_stdelim = VR_MII_STARTDELIM;
@@ -357,7 +358,7 @@ fail:
 	SIO_SET(VR_MIICMD_CLK);
 	DELAY(1);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -365,9 +366,9 @@ fail:
 }
 #else
 {
-	int s, i;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
   	/* Set the PHY address. */
 	CSR_WRITE_1(sc, VR_PHYADDR, (CSR_READ_1(sc, VR_PHYADDR)& 0xe0)|
@@ -384,7 +385,7 @@ fail:
 	}
 	frame->mii_data = CSR_READ_2(sc, VR_MIIDATA);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -398,9 +399,8 @@ static int
 vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 #ifdef VR_USESWSHIFT	
 {
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	CSR_WRITE_1(sc, VR_MIICMD, 0);
 	VR_SETBIT(sc, VR_MIICMD, VR_MIICMD_DIRECTPGM);
@@ -431,15 +431,15 @@ vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 	/* Turn off xmit. */
 	SIO_CLR(VR_MIICMD_DIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
 #else
 {
-	int s, i;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
   	/* Set the PHY-adress */
 	CSR_WRITE_1(sc, VR_PHYADDR, (CSR_READ_1(sc, VR_PHYADDR)& 0xe0)|
@@ -457,7 +457,7 @@ vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 		DELAY(1);
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -690,14 +690,14 @@ vr_probe(device_t dev)
 static int
 vr_attach(device_t dev)
 {
-	int i, s;
+	int i;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	uint32_t command;
 	struct vr_softc *sc;
 	struct ifnet *ifp;
 	int error = 0, rid;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	callout_init(&sc->vr_stat_timer);
@@ -866,7 +866,7 @@ vr_attach(device_t dev)
 	ether_ifattach(ifp, eaddr);
 
 fail:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -875,9 +875,8 @@ vr_detach(device_t dev)
 {
 	struct vr_softc *sc;
 	struct ifnet *ifp;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
@@ -894,7 +893,7 @@ vr_detach(device_t dev)
 
 	contigfree(sc->vr_ldata, sizeof(struct vr_list_data), M_DEVBUF);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1205,9 +1204,8 @@ vr_tick(void *xsc)
 {
 	struct vr_softc *sc;
 	struct mii_data *mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = xsc;
 	if (sc->vr_flags & VR_F_RESTART) {
@@ -1223,7 +1221,7 @@ vr_tick(void *xsc)
 
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1441,9 +1439,9 @@ vr_init(void *xsc)
 	struct vr_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	int s, i;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->vr_miibus);
 
@@ -1479,7 +1477,7 @@ vr_init(void *xsc)
 	if (vr_list_rx_init(sc) == ENOBUFS) {
 		if_printf(ifp, "initialization failed: no memory for rx buffers\n");
 		vr_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1527,7 +1525,7 @@ vr_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
+	crit_exit();
 
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 }
@@ -1570,9 +1568,9 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct vr_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1599,7 +1597,7 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }

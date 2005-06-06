@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.25 2005/05/31 14:11:43 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.26 2005/06/06 23:12:07 okumoto Exp $
  */
 
 /*
@@ -87,6 +87,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -1398,10 +1399,10 @@ ti_attach(device_t dev)
 {
 	struct ti_softc *sc;
 	struct ifnet *ifp;
-	int error = 0, rid, s, unit;
+	int error = 0, rid, unit;
 	uint32_t command;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -1603,7 +1604,7 @@ ti_attach(device_t dev)
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 fail:
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -1613,9 +1614,8 @@ ti_detach(device_t dev)
 {
 	struct ti_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	ether_ifdetach(ifp);
 	ti_stop(sc);
@@ -1628,7 +1628,7 @@ ti_detach(device_t dev)
 	contigfree(sc->ti_rdata, sizeof(struct ti_ring_data), M_DEVBUF);
 	ifmedia_removeall(&sc->ifmedia);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1993,9 +1993,8 @@ static void
 ti_init(void *xsc)
 {
 	struct ti_softc *sc = xsc;
-        int s;
 
-	s = splimp();
+	crit_enter();
 
 	/* Cancel pending I/O and flush buffers. */
 	ti_stop(sc);
@@ -2003,11 +2002,11 @@ ti_init(void *xsc)
 	/* Init the gen info block, ring control blocks and firmware. */
 	if (ti_gibinit(sc)) {
 		printf("ti%d: initialization failure\n", sc->ti_unit);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -2199,9 +2198,9 @@ ti_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ti_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct ti_cmd_desc cmd;
-	int error = 0, mask, s;
+	int error = 0, mask;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -2268,7 +2267,7 @@ ti_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }

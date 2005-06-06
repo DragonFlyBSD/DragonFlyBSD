@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.24 2005/05/31 14:11:43 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.25 2005/06/06 23:12:07 okumoto Exp $
  */
 
 /*
@@ -94,6 +94,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -348,9 +349,9 @@ wb_mii_send(struct wb_softc *sc, uint32_t bits, int cnt)
 static int
 wb_mii_readreg(struct wb_softc *sc, struct wb_mii_frame *frame)
 {
-	int ack, i, s;
+	int ack, i;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -429,7 +430,7 @@ fail:
 	SIO_SET(WB_SIO_MII_CLK);
 	DELAY(1);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -442,9 +443,8 @@ fail:
 static int
 wb_mii_writereg(struct wb_softc *sc, struct wb_mii_frame *frame)	
 {
-	int s;
 
-	s = splimp();
+	crit_enter();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -478,7 +478,7 @@ wb_mii_writereg(struct wb_softc *sc, struct wb_mii_frame *frame)
 	 */
 	SIO_CLR(WB_SIO_MII_DIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -710,9 +710,9 @@ wb_attach(device_t dev)
 	uint32_t command;
 	struct wb_softc *sc;
 	struct ifnet *ifp;
-	int error = 0, rid, s, unit;
+	int error = 0, rid, unit;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -865,7 +865,7 @@ wb_attach(device_t dev)
 fail:
 	if (error)
 		device_delete_child(dev, sc->wb_miibus);
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -875,9 +875,8 @@ wb_detach(device_t dev)
 {
 	struct wb_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	wb_stop(sc);
 	ether_ifdetach(ifp);
@@ -893,7 +892,7 @@ wb_detach(device_t dev)
 	contigfree(sc->wb_ldata_ptr, sizeof(struct wb_list_data) + 8,
 	    M_DEVBUF);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1228,15 +1227,14 @@ wb_tick(void *xsc)
 {
 	struct wb_softc *sc = xsc;
 	struct mii_data *mii = device_get_softc(sc->wb_miibus);
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	mii_tick(mii);
 
 	callout_reset(&sc->wb_stat_timer, hz, wb_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1417,10 +1415,10 @@ wb_init(void *xsc)
 {
 	struct wb_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s, i;
+	int i;
 	struct mii_data *mii;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->wb_miibus);
 
@@ -1471,7 +1469,7 @@ wb_init(void *xsc)
 		printf("wb%d: initialization failed: no "
 			"memory for rx buffers\n", sc->wb_unit);
 		wb_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1522,7 +1520,7 @@ wb_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
+	crit_exit();
 
 	callout_reset(&sc->wb_stat_timer, hz, wb_tick, sc);
 }
@@ -1561,9 +1559,9 @@ wb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct wb_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 	struct ifreq *ifr = (struct ifreq *) data;
-	int error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1588,7 +1586,7 @@ wb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }

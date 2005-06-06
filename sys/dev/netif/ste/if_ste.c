@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.20 2005/06/06 23:12:07 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -240,9 +241,9 @@ static int ste_mii_readreg(sc, frame)
 	struct ste_mii_frame	*frame;
 	
 {
-	int			i, ack, s;
+	int			i, ack;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -317,7 +318,7 @@ fail:
 	MII_SET(STE_PHYCTL_MCLK);
 	DELAY(1);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -332,9 +333,8 @@ static int ste_mii_writereg(sc, frame)
 	struct ste_mii_frame	*frame;
 	
 {
-	int			s;
 
-	s = splimp();
+	crit_enter();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -368,7 +368,7 @@ static int ste_mii_writereg(sc, frame)
 	 */
 	MII_CLR(STE_PHYCTL_MDIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -833,9 +833,8 @@ static void ste_stats_update(xsc)
 	struct ste_softc	*sc;
 	struct ifnet		*ifp;
 	struct mii_data		*mii;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
@@ -861,7 +860,7 @@ static void ste_stats_update(xsc)
 	}
 
 	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
-	splx(s);
+	crit_exit();
 
 	return;
 }
@@ -897,13 +896,12 @@ static int ste_probe(dev)
 static int ste_attach(dev)
 	device_t		dev;
 {
-	int			s;
 	u_int32_t		command;
 	struct ste_softc	*sc;
 	struct ifnet		*ifp;
 	int			unit, error = 0, rid;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -1077,7 +1075,7 @@ static int ste_attach(dev)
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
  
 fail:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1086,9 +1084,8 @@ static int ste_detach(dev)
 {
 	struct ste_softc	*sc;
 	struct ifnet		*ifp;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
@@ -1105,7 +1102,7 @@ static int ste_detach(dev)
 
 	contigfree(sc->ste_ldata, sizeof(struct ste_list_data), M_DEVBUF);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1215,11 +1212,11 @@ static void ste_init(xsc)
 	void			*xsc;
 {
 	struct ste_softc	*sc;
-	int			i, s;
+	int			i;
 	struct ifnet		*ifp;
 	struct mii_data		*mii;
 
-	s = splimp();
+	crit_enter();
 
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
@@ -1237,7 +1234,7 @@ static void ste_init(xsc)
 		printf("ste%d: initialization failed: no "
 		    "memory for RX buffers\n", sc->ste_unit);
 		ste_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1316,7 +1313,7 @@ static void ste_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
+	crit_exit();
 
 	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
 
@@ -1403,9 +1400,9 @@ static int ste_ioctl(ifp, command, data, cr)
 	struct ste_softc	*sc;
 	struct ifreq		*ifr;
 	struct mii_data		*mii;
-	int			error = 0, s;
+	int			error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	sc = ifp->if_softc;
 	ifr = (struct ifreq *)data;
@@ -1450,7 +1447,7 @@ static int ste_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }

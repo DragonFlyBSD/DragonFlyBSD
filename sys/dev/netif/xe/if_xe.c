@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.20 2005/06/06 23:12:07 okumoto Exp $
  */
 
 /*
@@ -119,6 +119,7 @@
 #include <sys/sockio.h>
 #include <sys/systm.h>
 #include <sys/uio.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -596,7 +597,6 @@ xe_attach (device_t dev) {
 static void
 xe_init(void *xscp) {
   struct xe_softc *scp = xscp;
-  int s;
 
 #ifdef XE_DEBUG
   device_printf(scp->dev, "init\n");
@@ -610,7 +610,7 @@ xe_init(void *xscp) {
   scp->tx_collisions = 0;
   scp->ifp->if_timer = 0;
 
-  s = splimp();
+  crit_enter();
 
   XE_SELECT_PAGE(0x42);
   XE_OUTB(XE_SWC0, 0x20);	/* Disable source insertion (WTF is that?) */
@@ -666,13 +666,13 @@ xe_init(void *xscp) {
     xe_start(scp->ifp);
   }
 
-  (void)splx(s);
+  crit_exit();
 }
 
 
 /*
  * Start output on interface.  We make two assumptions here:
- *  1) that the current priority is set to splimp _before_ this code
+ *  1) that we are in a critical section _before_ this code
  *     is called *and* is returned to the appropriate priority after
  *     return
  *  2) that the IFF_OACTIVE flag is checked before this code is called
@@ -723,12 +723,12 @@ xe_start(struct ifnet *ifp) {
 static int
 xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr) {
   struct xe_softc *scp;
-  int s, error;
+  int		error;
 
   scp = ifp->if_softc;
   error = 0;
 
-  s = splimp();
+  crit_enter();
 
   switch (command) {
 
@@ -773,7 +773,7 @@ xe_ioctl (struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr) {
     break;
   }
 
-  (void)splx(s);
+  crit_exit();
 
   return error;
 }
@@ -1392,13 +1392,12 @@ static void xe_setmedia(void *xscp) {
  */
 static void
 xe_hard_reset(struct xe_softc *scp) {
-  int s;
 
 #ifdef XE_DEBUG
   device_printf(scp->dev, "hard_reset\n");
 #endif
 
-  s = splimp();
+  crit_enter();
 
   /*
    * Power cycle the card.
@@ -1414,7 +1413,7 @@ xe_hard_reset(struct xe_softc *scp) {
   DELAY(40000);
   XE_SELECT_PAGE(0);
 
-  (void)splx(s);
+  crit_exit();
 }
 
 
@@ -1427,13 +1426,12 @@ xe_hard_reset(struct xe_softc *scp) {
  */
 static void
 xe_soft_reset(struct xe_softc *scp) {
-  int s;
 
 #ifdef XE_DEBUG
   device_printf(scp->dev, "soft_reset\n");
 #endif
 
-  s = splimp();
+  crit_enter();
 
   /*
    * Reset the card, (again).
@@ -1485,7 +1483,7 @@ xe_soft_reset(struct xe_softc *scp) {
 
   XE_SELECT_PAGE(0);
 
-  (void)splx(s);
+  crit_exit();
 }
 
 
@@ -1496,13 +1494,12 @@ xe_soft_reset(struct xe_softc *scp) {
  */
 static void
 xe_stop(struct xe_softc *scp) {
-  int s;
 
 #ifdef XE_DEBUG
   device_printf(scp->dev, "stop\n");
 #endif
 
-  s = splimp();
+  crit_enter();
 
   /*
    * Shut off interrupts.
@@ -1523,7 +1520,7 @@ xe_stop(struct xe_softc *scp) {
   scp->ifp->if_flags &= ~IFF_OACTIVE;
   scp->ifp->if_timer = 0;
 
-  (void)splx(s);
+  crit_exit();
 }
 
 
@@ -1912,9 +1909,9 @@ xe_mii_send(struct xe_softc *scp, u_int32_t bits, int cnt) {
  */
 static int
 xe_mii_readreg(struct xe_softc *scp, struct xe_mii_frame *frame) {
-  int i, ack, s;
+  int i, ack;
 
-  s = splimp();
+  crit_enter();
 
   /*
    * Set up frame for RX.
@@ -1991,7 +1988,7 @@ fail:
   XE_MII_SET(XE_MII_CLK);
   DELAY(1);
 
-  splx(s);
+  crit_exit();
 
   if (ack)
     return(1);
@@ -2004,9 +2001,8 @@ fail:
  */
 static int
 xe_mii_writereg(struct xe_softc *scp, struct xe_mii_frame *frame) {
-  int s;
 
-  s = splimp();
+  crit_enter();
 
   /*
    * Set up frame for TX.
@@ -2042,7 +2038,7 @@ xe_mii_writereg(struct xe_softc *scp, struct xe_mii_frame *frame) {
    */
   XE_MII_CLR(XE_MII_DIR);
 
-  splx(s);
+  crit_exit();
 
   return(0);
 }
@@ -2089,9 +2085,9 @@ xe_phy_writereg(struct xe_softc *scp, u_int16_t reg, u_int16_t data) {
  */
 static void
 xe_mii_dump(struct xe_softc *scp) {
-  int i, s;
+  int i;
 
-  s = splimp();
+  crit_enter();
 
   device_printf(scp->dev, "MII registers: ");
   for (i = 0; i < 2; i++) {
@@ -2102,14 +2098,14 @@ xe_mii_dump(struct xe_softc *scp) {
   }
   printf("\n");
 
-  (void)splx(s);
+  crit_exit();
 }
 
 static void
 xe_reg_dump(struct xe_softc *scp) {
-  int page, i, s;
+  int page, i;
 
-  s = splimp();
+  crit_enter();
 
   device_printf(scp->dev, "Common registers: ");
   for (i = 0; i < 8; i++) {
@@ -2140,7 +2136,7 @@ xe_reg_dump(struct xe_softc *scp) {
     printf("\n");
   }
 
-  (void)splx(s);
+  crit_exit();
 }
 #endif
 
