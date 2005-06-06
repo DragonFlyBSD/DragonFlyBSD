@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.23 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.24 2005/06/06 23:13:26 okumoto Exp $
  */
 
 /*
@@ -80,6 +80,7 @@
 #include <sys/random.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
