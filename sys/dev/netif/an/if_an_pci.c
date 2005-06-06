@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.9 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.10 2005/06/06 15:53:17 joerg Exp $
  */
 
 /*
@@ -142,11 +142,8 @@ an_attach_pci(dev)
 	struct an_softc		*sc;
 	int 			flags, error = 0;
 
-	s = splimp();
-
 	sc = device_get_softc(dev);
 	flags = device_get_flags(dev);
-	bzero(sc, sizeof(struct an_softc));
 
 	if (pci_get_vendor(dev) == AIRONET_VENDORID &&
 	    pci_get_device(dev) == AIRONET_DEVICEID_MPI350) {
@@ -220,23 +217,22 @@ an_attach_pci(dev)
 
 	/* Allocate interrupt */
 	error = an_alloc_irq(dev, 0, RF_SHAREABLE);
-	if (error) {
+	if (error)
 		goto fail;
-        }
+
+	error = an_attach(sc, dev, flags);
+	if (error)
+		goto fail;
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
 			       an_intr, sc, &sc->irq_handle, NULL);
-	if (error) {
+	if (error)
 		goto fail;
-	}
 
-	error = an_attach(sc, dev, flags);
+	return(0);
 
 fail:
-	if (error)
-		an_release_resources(dev);
-	splx(s);
-
+	an_release_resources(dev);
 	return(error);
 }
 
