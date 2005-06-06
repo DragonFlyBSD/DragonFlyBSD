@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.19 2005/05/31 13:50:09 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.20 2005/06/06 18:17:09 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -707,7 +707,7 @@ Sendto(int s_debug, const void *buf, size_t cc, int flags,
 
 	ret = sendto(s_debug, buf, cc, flags, to, tolen);
 
-	printf("sendto %x.%d\n", ntohl(sock_in->sin_addr.s_addr),
+	printf("sendto %s:%d\n", inet_ntoa(sock_in->sin_addr),
 				 ntohs(sock_in->sin_port));
 	printf("hostname %s %s\n", w->wd_hostname,
 	   interval(ntohl(w->wd_sendtime) - ntohl(w->wd_boottime), "  up"));
