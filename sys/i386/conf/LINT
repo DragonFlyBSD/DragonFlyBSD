@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.52 2005/05/07 17:38:34 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.53 2005/06/06 22:45:39 corecode Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1879,6 +1879,7 @@ device		ahd		# AIC79xx devices
 device		amd		# AMD 53C974 (Tekram DC-390(T))
 device		isp		# Qlogic family
 device		ispfw		# Firmware for QLogic HBAs
+device		mpt		# LSI '909 FC adapters
 device		ncr		# NCR/Symbios Logic
 device		sym		# NCR/Symbios Logic (newer chipsets)
 device		trm		# Tekram DC395U/UW/F and DC315U
