@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.24 2005/06/06 15:27:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.25 2005/06/06 15:42:18 joerg Exp $
  */
 
 /*
@@ -106,6 +106,7 @@
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -454,9 +455,9 @@ xl_mii_readreg(sc, frame)
 	struct xl_mii_frame	*frame;
 	
 {
-	int			i, ack, s;
+	int			i, ack;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -526,7 +527,7 @@ fail:
 	MII_CLR(XL_MII_CLK);
 	MII_SET(XL_MII_CLK);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -542,9 +543,7 @@ xl_mii_writereg(sc, frame)
 	struct xl_mii_frame	*frame;
 	
 {
-	int			s;
-
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for TX.
@@ -582,7 +581,7 @@ xl_mii_writereg(sc, frame)
 	 */
 	MII_CLR(XL_MII_DIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1779,9 +1778,6 @@ xl_detach(dev)
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
 	int			rid, res;
-	int			s;
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
@@ -1793,6 +1789,8 @@ xl_detach(dev)
 		rid = XL_PCI_LOIO;   
 		res = SYS_RES_IOPORT;
 	}
+
+	crit_enter();
 
 	/*
 	 * Only try to communicate with the device if we were able to map
@@ -1812,6 +1810,9 @@ xl_detach(dev)
 
 	if (sc->xl_intrhand)
 		bus_teardown_intr(dev, sc->xl_irq, sc->xl_intrhand);
+
+	crit_exit();
+
 	if (sc->xl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->xl_irq);
 	if (sc->xl_fres != NULL)
@@ -1838,8 +1839,6 @@ xl_detach(dev)
 		    sc->xl_ldata.xl_tx_dmamap);
 		bus_dma_tag_destroy(sc->xl_ldata.xl_tx_tag);
 	}
-
-	splx(s);
 
 	return(0);
 }
@@ -2744,9 +2743,8 @@ xl_init(xsc)
 	int			error, i;
 	u_int16_t		rxfilt = 0;
 	struct mii_data		*mii = NULL;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -2787,7 +2785,7 @@ xl_init(xsc)
 		if_printf(ifp, "initialization of the rx ring failed (%d)\n",
 			  error);
 		xl_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2800,7 +2798,8 @@ xl_init(xsc)
 		if_printf(ifp, "initialization of the tx ring failed (%d)\n",
 			  error);
 		xl_stop(sc);
-		splx(s);
+		crit_exit();
+		return;
 	}
 
 	/*
@@ -2958,9 +2957,7 @@ xl_init(xsc)
 
 	callout_reset(&sc->xl_stat_timer, hz, xl_stats_update, sc);
 
-	splx(s);
-
-	return;
+	crit_exit();
 }
 
 /*
@@ -3084,9 +3081,8 @@ xl_ioctl(ifp, command, data, cr)
 	int			error = 0;
 	struct mii_data		*mii = NULL;
 	u_int8_t		rxfilt;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -3147,7 +3143,8 @@ xl_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
+
 	return(error);
 }
 
@@ -3271,16 +3268,13 @@ static int
 xl_suspend(dev)
 	device_t		dev;
 {
-	struct xl_softc		*sc;
-	int			s;
+	struct xl_softc *sc = device_get_softc(dev);
 
-	s = splimp();
-
-	sc = device_get_softc(dev);
+	crit_enter();
 
 	xl_stop(sc);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -3291,17 +3285,17 @@ xl_resume(dev)
 {
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
-	int			s;
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
+
+	crit_enter();
 
 	xl_reset(sc);
 	if (ifp->if_flags & IFF_UP)
 		xl_init(sc);
 
-	splx(s);
+	crit_exit();
+
 	return(0);
 }
