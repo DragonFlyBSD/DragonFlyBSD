@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_balloc.c,v 1.11.2.3 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.4 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.5 2005/06/06 15:35:06 dillon Exp $
  */
 /*
  *  linux/fs/ext2/balloc.c
@@ -36,6 +36,7 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/ufsmount.h>

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.23 2005/06/06 15:35:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -178,6 +178,8 @@ smbfs_open(struct vop_open_args *ap)
 		return EACCES;
 	}
 	if (vp->v_type == VDIR) {
+		if (np->n_opencount == 0)
+			np->n_cached_cred = crhold(ap->a_cred);
 		np->n_opencount++;
 		return 0;
 	}
@@ -216,6 +218,7 @@ smbfs_open(struct vop_open_args *ap)
 		error = smbfs_smb_open(np, accmode, &scred);
 	}
 	if (!error) {
+		np->n_cached_cred = crhold(ap->a_cred);
 		np->n_opencount++;
 	}
 	smbfs_attr_cacheremove(vp);
@@ -258,6 +261,8 @@ smbfs_closel(struct vop_close_args *ap)
 		error = smbfs_smb_close(np->n_mount->sm_share, np->n_fid, 
 			   &np->n_mtime, &scred);
 	}
+	crfree(np->n_cached_cred);
+	np->n_cached_cred = NULL;
 	smbfs_attr_cacheremove(vp);
 	return error;
 }

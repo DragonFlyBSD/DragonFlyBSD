@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.5 2005/06/06 15:09:37 drhodus Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.6 2005/06/06 15:35:06 dillon Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -46,6 +46,7 @@
 #include "fs.h"
 #include <sys/stat.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #ifdef __i386__
 #include "i386-bitops.h"

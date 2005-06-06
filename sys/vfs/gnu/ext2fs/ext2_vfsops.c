@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.28 2005/04/19 17:54:46 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.29 2005/06/06 15:35:06 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -57,6 +57,7 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/ufsmount.h>

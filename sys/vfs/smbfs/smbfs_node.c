@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.16 2004/12/17 00:18:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.17 2005/06/06 15:35:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -346,16 +346,16 @@ smbfs_inactive(struct vop_inactive_args *ap)
 	struct smb_cred scred;
 	int error;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
-
 	SMBVDEBUG("%s: %d\n", VTOSMB(vp)->n_name, vp->v_usecount);
 	if (np->n_opencount) {
 		error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
+		cred = np->n_cached_cred;
+		np->n_cached_cred = NULL;
 		smb_makescred(&scred, td, cred);
 		error = smbfs_smb_close(np->n_mount->sm_share, np->n_fid, 
 		   &np->n_mtime, &scred);
 		np->n_opencount = 0;
+		crfree(cred);
 	}
 	return (0);
 }

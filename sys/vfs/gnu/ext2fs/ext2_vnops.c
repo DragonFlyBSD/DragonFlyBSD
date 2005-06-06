@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.21 2005/06/06 15:09:37 drhodus Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.22 2005/06/06 15:35:06 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -67,6 +67,7 @@
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <sys/signalvar.h>
 #include <vfs/ufs/dir.h>

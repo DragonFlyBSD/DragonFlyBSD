@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.20 2005/04/20 17:01:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.21 2005/06/06 15:35:09 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -144,8 +144,10 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	int error;
 	char *pc, *pe;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	if (td->td_proc)
+	    cred = td->td_proc->p_ucred;
+	else
+	    cred = proc0.p_ucred;
 
 	if (data == NULL) {
 		printf("missing data argument\n");
@@ -254,8 +256,10 @@ smbfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	struct ucred *cred;
 	int error, flags;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	if (td->td_proc)
+	    cred = td->td_proc->p_ucred;
+	else
+	    cred = proc0.p_ucred;
 
 	SMBVDEBUG("smbfs_unmount: flags=%04x\n", mntflags);
 	flags = 0;
@@ -307,9 +311,6 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 	struct smb_cred scred;
 	int error;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
-
 	if (smp == NULL) {
 		SMBERROR("smp == NULL (bug in umount)\n");
 		return EINVAL;
@@ -318,6 +319,11 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = SMBTOV(smp->sm_root);
 		return vget(*vpp, LK_EXCLUSIVE | LK_RETRY, td);
 	}
+	if (td->td_proc)
+		cred = td->td_proc->p_ucred;
+	else
+		cred = proc0.p_ucred;
+
 	smb_makescred(&scred, td, cred);
 	error = smbfs_smb_lookup(NULL, NULL, 0, &fattr, &scred);
 	if (error)
@@ -388,8 +394,10 @@ smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	struct ucred *cred;
 	int error = 0;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	if (td->td_proc)
+	    cred = td->td_proc->p_ucred;
+	else
+	    cred = proc0.p_ucred;
 
 	if (np == NULL)
 		return EINVAL;

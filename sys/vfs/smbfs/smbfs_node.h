@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.h,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.h,v 1.4 2004/08/28 19:02:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.h,v 1.5 2005/06/06 15:35:09 dillon Exp $
  */
 #ifndef _FS_SMBFS_NODE_H_
 #define _FS_SMBFS_NODE_H_
@@ -61,6 +61,7 @@ struct smbnode {
 	long			n_ino;
 	int			n_dosattr;
 	int 			n_opencount;
+	struct ucred		*n_cached_cred;	/* cred used to open file */
 	u_int16_t		n_fid;		/* file handle */
 	int			n_rwstate;	/* granted access mode */
 	u_char			n_nmlen;
