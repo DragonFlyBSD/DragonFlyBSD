@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.9 2005/05/29 10:08:36 hsu Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.10 2005/06/07 19:08:55 hsu Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -316,15 +316,12 @@ m_tag_delete(struct mbuf *m, struct m_tag *t)
 
 /* Unlink and free a packet tag chain, starting from given tag. */
 void
-m_tag_delete_chain(struct mbuf *m, struct m_tag *t)
+m_tag_delete_chain(struct mbuf *m)
 {
 	struct m_tag *p, *q;
 
 	KASSERT(m, ("m_tag_delete_chain: null mbuf"));
-	if (t != NULL)
-		p = t;
-	else
-		p = SLIST_FIRST(&m->m_pkthdr.tags);
+	p = SLIST_FIRST(&m->m_pkthdr.tags);
 	if (p == NULL)
 		return;
 	while ((q = SLIST_NEXT(p, m_tag_link)) != NULL)
@@ -378,11 +375,11 @@ m_tag_copy_chain(struct mbuf *to, const struct mbuf *from, int how)
 
 	KASSERT(to && from,
 		("m_tag_copy: null argument, to %p from %p", to, from));
-	m_tag_delete_chain(to, NULL);
+	m_tag_delete_chain(to);
 	SLIST_FOREACH(p, &from->m_pkthdr.tags, m_tag_link) {
 		t = m_tag_copy(p, how);
 		if (t == NULL) {
-			m_tag_delete_chain(to, NULL);
+			m_tag_delete_chain(to);
 			return 0;
 		}
 		if (tprev == NULL)

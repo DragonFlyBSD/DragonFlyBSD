@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.16 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.17 2005/06/07 19:08:55 hsu Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -192,7 +192,7 @@ swi_softclock_setup(void *arg)
 	}
 }
 
-SYSINIT(softclock_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_softclock_setup, NULL);
+SYSINIT(softclock_setup, SI_SUB_CPU, SI_ORDER_FIRST, swi_softclock_setup, NULL);
 
 /*
  * This routine is called from the hardclock() (basically a FASTint/IPI) on

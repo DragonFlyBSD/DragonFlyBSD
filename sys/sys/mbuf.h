@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.27 2005/05/31 14:11:43 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.28 2005/06/07 19:08:55 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -377,10 +377,8 @@ struct mbstat {
 		("%s: invalid mbuf or no mbuf packet header!", __func__))
 
 /*
- * Compute the amount of space available
- * before the current start of data in an mbuf.
- *
- * The M_WRITABLE() is a temporary, conservative safety measure: the burden
+ * Compute the amount of space available before the current start of data.
+ * The M_EXT_WRITABLE() is a temporary, conservative safety measure: the burden
  * of checking writability of the mbuf data area rests solely with the caller.
  */
 #define	M_LEADINGSPACE(m)						\
@@ -390,9 +388,7 @@ struct mbstat {
 	    (m)->m_data - (m)->m_dat)
 
 /*
- * Compute the amount of space available
- * after the end of data in an mbuf.
- *
+ * Compute the amount of space available after the end of data in an mbuf.
  * The M_WRITABLE() is a temporary, conservative safety measure: the burden
  * of checking writability of the mbuf data area rests solely with the caller.
  */
@@ -460,8 +456,8 @@ int		 m_dup_pkthdr(struct mbuf *, const struct mbuf *, int);
 struct	mbuf	*m_free(struct mbuf *);
 void		 m_freem(struct mbuf *);
 struct	mbuf	*m_get(int, int);
-struct	mbuf    *m_getc(int len, int how, int type);
-struct  mbuf	*m_getcl(int how, short type, int flags);
+struct	mbuf	*m_getc(int len, int how, int type);
+struct	mbuf	*m_getcl(int how, short type, int flags);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
@@ -472,8 +468,6 @@ struct	mbuf	*m_prepend(struct mbuf *, int, int);
 void		 m_print(const struct mbuf *m);
 struct	mbuf	*m_pulldown(struct mbuf *, int, int, int *);
 struct	mbuf	*m_pullup(struct mbuf *, int);
-struct	mbuf	*m_retry(int, int);
-struct	mbuf	*m_retryhdr(int, int);
 struct	mbuf	*m_split(struct mbuf *, int, int);
 struct	mbuf 	*m_uiomove(struct uio *);
 void		m_mclget(struct mbuf *m, int how);
@@ -590,7 +584,7 @@ void		 m_tag_free(struct m_tag *);
 void		 m_tag_prepend(struct mbuf *, struct m_tag *);
 void		 m_tag_unlink(struct mbuf *, struct m_tag *);
 void		 m_tag_delete(struct mbuf *, struct m_tag *);
-void		 m_tag_delete_chain(struct mbuf *, struct m_tag *);
+void		 m_tag_delete_chain(struct mbuf *);
 struct	m_tag	*m_tag_locate(struct mbuf *, u_int32_t, int, struct m_tag *);
 struct	m_tag	*m_tag_copy(struct m_tag *, int);
 int		 m_tag_copy_chain(struct mbuf *, const struct mbuf *, int);

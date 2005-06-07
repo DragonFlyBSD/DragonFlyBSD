@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.33 2005/06/06 21:50:28 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.34 2005/06/07 19:08:55 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -886,6 +886,7 @@ dontblock:
 			m = m->m_next;
 		} else {
 			sbfree(&so->so_rcv, m);
+			m->m_nextpkt = NULL;
 			so->so_rcv.sb_mb = m_free(m);
 			m = so->so_rcv.sb_mb;
 		}
@@ -897,6 +898,7 @@ dontblock:
 			m = m->m_next;
 		} else {
 			sbfree(&so->so_rcv, m);
+			m->m_nextpkt = NULL;
 			if (controlp) {
 				if (pr->pr_domain->dom_externalize &&
 				    mtod(m, struct cmsghdr *)->cmsg_type ==
@@ -964,6 +966,7 @@ dontblock:
 				moff = 0;
 			} else {
 				nextrecord = m->m_nextpkt;
+				m->m_nextpkt = NULL;
 				sbfree(&so->so_rcv, m);
 				if (mp) {
 					*mp = m;
