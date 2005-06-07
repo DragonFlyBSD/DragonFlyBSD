@@ -1,16 +1,16 @@
 /*
  * natd - Network Address Translation Daemon for FreeBSD.
  *
- * This software is provided free of charge, with no 
+ * This software is provided free of charge, with no
  * warranty of any kind, either expressed or implied.
  * Use at your own risk.
- * 
+ *
  * You may copy, modify and distribute this software (icmp.c) freely.
  *
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/icmp.c,v 1.6 1999/08/28 00:13:45 peter Exp $
- * $DragonFly: src/sbin/natd/icmp.c,v 1.4 2004/08/19 23:48:16 joerg Exp $
+ * $DragonFly: src/sbin/natd/icmp.c,v 1.5 2005/06/07 20:21:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +37,8 @@
 
 #include "natd.h"
 
-int SendNeedFragIcmp (int sock, struct ip* failedDgram, int mtu)
+int
+SendNeedFragIcmp(int sock, struct ip *failedDgram, int mtu)
 {
 	char			icmpBuf[IP_MAXPACKET];
 	struct ip*		ip;
@@ -52,7 +53,7 @@ int SendNeedFragIcmp (int sock, struct ip* failedDgram, int mtu)
  * Don't send error if packet is
  * not the first fragment.
  */
-	if (ntohs (failedDgram->ip_off) & ~(IP_MF | IP_DF))
+	if (ntohs(failedDgram->ip_off) & ~(IP_MF | IP_DF))
 		return 0;
 /*
  * Dont respond if failed datagram is ICMP.
@@ -62,16 +63,16 @@ int SendNeedFragIcmp (int sock, struct ip* failedDgram, int mtu)
 /*
  * Start building the message.
  */
-	ip   = (struct ip*) icmpBuf;
-	icmp = (struct icmp*) (icmpBuf + sizeof (struct ip));
+	ip   = (struct ip *)icmpBuf;
+	icmp = (struct icmp *)(icmpBuf + sizeof(struct ip));
 /*
  * Complete ICMP part.
  */
-	icmp->icmp_type  	= ICMP_UNREACH;
+	icmp->icmp_type		= ICMP_UNREACH;
 	icmp->icmp_code		= ICMP_UNREACH_NEEDFRAG;
 	icmp->icmp_cksum	= 0;
 	icmp->icmp_void		= 0;
-	icmp->icmp_nextmtu	= htons (mtu);
+	icmp->icmp_nextmtu	= htons(mtu);
 /*
  * Copy header + 64 bits of original datagram.
  */
@@ -81,22 +82,22 @@ int SendNeedFragIcmp (int sock, struct ip* failedDgram, int mtu)
 		failBytes = 8;
 
 	failBytes += failHdrLen;
-	icmpLen    = ICMP_MINLEN + failBytes;
+	icmpLen	   = ICMP_MINLEN + failBytes;
 
-	memcpy (&icmp->icmp_ip, failedDgram, failBytes);
+	memcpy(&icmp->icmp_ip, failedDgram, failBytes);
 /*
  * Calculate checksum.
  */
-	icmp->icmp_cksum = PacketAliasInternetChecksum ((u_short*) icmp,
-							icmpLen);
+	icmp->icmp_cksum = PacketAliasInternetChecksum((u_short *)icmp,
+						       icmpLen);
 /*
  * Add IP header using old IP header as template.
  */
-	memcpy (ip, failedDgram, sizeof (struct ip));
+	memcpy(ip, failedDgram, sizeof(struct ip));
 
 	ip->ip_v	= 4;
 	ip->ip_hl	= 5;
-	ip->ip_len	= htons (sizeof (struct ip) + icmpLen);
+	ip->ip_len	= htons(sizeof(struct ip) + icmpLen);
 	ip->ip_p	= IPPROTO_ICMP;
 	ip->ip_tos	= 0;
 
@@ -104,7 +105,7 @@ int SendNeedFragIcmp (int sock, struct ip* failedDgram, int mtu)
 	ip->ip_dst = ip->ip_src;
 	ip->ip_src = swap;
 
-	PacketAliasIn ((char*) ip, IP_MAXPACKET);
+	PacketAliasIn((char *)ip, IP_MAXPACKET);
 
 	addr.sin_family		= AF_INET;
 	addr.sin_addr		= ip->ip_dst;
@@ -112,15 +113,15 @@ int SendNeedFragIcmp (int sock, struct ip* failedDgram, int mtu)
 /*
  * Put packet into processing queue.
  */
-	wrote = sendto (sock, 
-		        icmp,
-	    		icmpLen,
-	    		0,
-	    		(struct sockaddr*) &addr,
-	    		sizeof addr);
-	
+	wrote = sendto(sock,
+		       icmp,
+		       icmpLen,
+		       0,
+		       (struct sockaddr *)&addr,
+	    	       sizeof addr);
+
 	if (wrote != icmpLen)
-		Warn ("Cannot send ICMP message.");
+		Warn("Cannot send ICMP message.");
 
 	return 1;
 }

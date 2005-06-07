@@ -1,16 +1,16 @@
 /*
  * natd - Network Address Translation Daemon for FreeBSD.
  *
- * This software is provided free of charge, with no 
+ * This software is provided free of charge, with no
  * warranty of any kind, either expressed or implied.
  * Use at your own risk.
- * 
+ *
  * You may copy, modify and distribute this software (natd.c) freely.
  *
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.8 2005/06/02 16:16:37 swildner Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.9 2005/06/07 20:21:23 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -45,7 +45,7 @@
 
 #include "natd.h"
 
-/* 
+/*
  * Default values for input and output
  * divert socket ports.
  */
@@ -55,18 +55,18 @@
 /*
  * Definition of a port range, and macros to deal with values.
  * FORMAT:  HI 16-bits == first port in range, 0 == all ports.
- *          LO 16-bits == number of ports in range
+ *	    LO 16-bits == number of ports in range
  * NOTES:   - Port values are not stored in network byte order.
  */
 
 typedef u_long port_range;
 
-#define GETLOPORT(x)     ((x) >> 0x10)
-#define GETNUMPORTS(x)   ((x) & 0x0000ffff)
-#define GETHIPORT(x)     (GETLOPORT((x)) + GETNUMPORTS((x)))
+#define GETLOPORT(x)	 ((x) >> 0x10)
+#define GETNUMPORTS(x)	 ((x) & 0x0000ffff)
+#define GETHIPORT(x)	 (GETLOPORT((x)) + GETNUMPORTS((x)))
 
 /* Set y to be the low-port value in port_range variable x. */
-#define SETLOPORT(x,y)   ((x) = ((x) & 0x0000ffff) | ((y) << 0x10))
+#define SETLOPORT(x,y)	 ((x) = ((x) & 0x0000ffff) | ((y) << 0x10))
 
 /* Set y to be the number of ports in port_range variable x. */
 #define SETNUMPORTS(x,y) ((x) = ((x) & 0xffff0000) | (y))
@@ -75,54 +75,55 @@ typedef u_long port_range;
  * Function prototypes.
  */
 
-static void	DoAliasing (int fd, int direction);
-static void	DaemonMode (void);
-static void	HandleRoutingInfo (int fd);
-static void	Usage (void);
-static char*	FormatPacket (struct ip*);
-static void	PrintPacket (struct ip*);
-static void	SyslogPacket (struct ip*, int priority, const char *label);
-static void	SetAliasAddressFromIfName (const char *ifName);
-static void	InitiateShutdown (int);
-static void	Shutdown (int);
-static void	RefreshAddr (int);
-static void	ParseOption (const char* option, const char* parms);
-static void	ReadConfigFile (const char* fileName);
-static void	SetupPortRedirect (const char* parms);
-static void	SetupProtoRedirect(const char* parms);
-static void	SetupAddressRedirect (const char* parms);
-static void	StrToAddr (const char* str, struct in_addr* addr);
-static u_short  StrToPort (const char* str, const char* proto);
-static int      StrToPortRange (const char* str, const char* proto, port_range *portRange);
-static int 	StrToProto (const char* str);
-static int      StrToAddrAndPortRange (const char* str, struct in_addr* addr, char* proto, port_range *portRange);
-static void	ParseArgs (int argc, char** argv);
-static void	SetupPunchFW(const char *strValue);
+static void	DoAliasing(int, int);
+static void	DaemonMode(void);
+static void	HandleRoutingInfo(int);
+static void	Usage(void);
+static char*	FormatPacket(struct ip *);
+static void	PrintPacket(struct ip *);
+static void	SyslogPacket(struct ip *, int, const char *);
+static void	SetAliasAddressFromIfName(const char *);
+static void	InitiateShutdown(int);
+static void	Shutdown(int);
+static void	RefreshAddr(int);
+static void	ParseOption(const char *, const char *);
+static void	ReadConfigFile(const char *);
+static void	SetupPortRedirect(const char *);
+static void	SetupProtoRedirect(const char *);
+static void	SetupAddressRedirect(const char *);
+static void	StrToAddr(const char *, struct in_addr *);
+static u_short	StrToPort(const char *, const char *);
+static int	StrToPortRange(const char *, const char *, port_range *);
+static int	StrToProto(const char *);
+static int	StrToAddrAndPortRange(const char *, struct in_addr *, char *, port_range *);
+static void	ParseArgs(int, char **);
+static void	SetupPunchFW(const char *);
 
 /*
  * Globals.
  */
 
 static	int			verbose;
-static 	int			background;
+static	int			background;
 static	volatile sig_atomic_t	running;
 static	volatile sig_atomic_t	assignAliasAddr;
 static	char*			ifName;
-static  int			ifIndex;
+static	int			ifIndex;
 static	u_short			inPort;
 static	u_short			outPort;
 static	u_short			inOutPort;
 static	struct in_addr		aliasAddr;
-static 	int			dynamicMode;
-static  int			ifMTU;
+static	int			dynamicMode;
+static	int			ifMTU;
 static	int			aliasOverhead;
-static 	int			icmpSock;
-static  int			dropIgnoredIncoming;
-static  int			logDropped;
+static	int			icmpSock;
+static	int			dropIgnoredIncoming;
+static	int			logDropped;
 static	int			logFacility;
 static	int			logIpfwDenied;
 
-int main (int argc, char** argv)
+int
+main(int argc, char **argv)
 {
 	int			divertIn;
 	int			divertOut;
@@ -132,18 +133,18 @@ int main (int argc, char** argv)
 	fd_set			readMask;
 	int			fdMax;
 	struct sigaction	sa;
-/* 
+/*
  * Initialize packet aliasing software.
  * Done already here to be able to alter option bits
  * during command line and configuration file processing.
  */
-	PacketAliasInit ();
+	PacketAliasInit();
 /*
  * Parse options.
  */
 	inPort			= 0;
 	outPort			= 0;
-	verbose 		= 0;
+	verbose			= 0;
 	inOutPort		= 0;
 	ifName			= NULL;
 	ifMTU			= -1;
@@ -153,11 +154,11 @@ int main (int argc, char** argv)
 	aliasAddr.s_addr	= INADDR_NONE;
 	aliasOverhead		= 12;
 	dynamicMode		= 0;
- 	logDropped		= 0;
- 	logFacility		= LOG_DAEMON;
+	logDropped		= 0;
+	logFacility		= LOG_DAEMON;
 	logIpfwDenied		= -1;
 
-	ParseArgs (argc, argv);
+	ParseArgs(argc, argv);
 /*
  * Log ipfw(8) denied packets by default in verbose mode.
  */
@@ -166,31 +167,31 @@ int main (int argc, char** argv)
 /*
  * Open syslog channel.
  */
-	openlog ("natd", LOG_CONS | LOG_PID | (verbose ? LOG_PERROR : 0),
-		 logFacility);
+	openlog("natd", LOG_CONS | LOG_PID | (verbose ? LOG_PERROR : 0),
+		logFacility);
 /*
  * Check that valid aliasing address has been given.
  */
 	if (aliasAddr.s_addr == INADDR_NONE && ifName == NULL)
-		errx (1, "aliasing address not given");
+		errx(1, "aliasing address not given");
 
 	if (aliasAddr.s_addr != INADDR_NONE && ifName != NULL)
-		errx (1, "both alias address and interface "
-			 "name are not allowed");
+		errx(1, "both alias address and interface "
+			"name are not allowed");
 /*
  * Check that valid port number is known.
  */
 	if (inPort != 0 || outPort != 0)
 		if (inPort == 0 || outPort == 0)
-			errx (1, "both input and output ports are required");
+			errx(1, "both input and output ports are required");
 
 	if (inPort == 0 && outPort == 0 && inOutPort == 0)
-		ParseOption ("port", DEFAULT_SERVICE);
+		ParseOption("port", DEFAULT_SERVICE);
 
 /*
  * Check if ignored packets should be dropped.
  */
-	dropIgnoredIncoming = PacketAliasSetMode (0, 0);
+	dropIgnoredIncoming = PacketAliasSetMode(0, 0);
 	dropIgnoredIncoming &= PKT_ALIAS_DENY_INCOMING;
 /*
  * Create divert sockets. Use only one socket if -p was specified
@@ -198,10 +199,9 @@ int main (int argc, char** argv)
  * outgoing and incoming connnections.
  */
 	if (inOutPort) {
-
-		divertInOut = socket (PF_INET, SOCK_RAW, IPPROTO_DIVERT);
+		divertInOut = socket(PF_INET, SOCK_RAW, IPPROTO_DIVERT);
 		if (divertInOut == -1)
-			Quit ("Unable to create divert socket.");
+			Quit("Unable to create divert socket.");
 
 		divertIn  = -1;
 		divertOut = -1;
@@ -213,20 +213,18 @@ int main (int argc, char** argv)
 		addr.sin_addr.s_addr	= INADDR_ANY;
 		addr.sin_port		= inOutPort;
 
-		if (bind (divertInOut,
-			  (struct sockaddr*) &addr,
-			  sizeof addr) == -1)
-			Quit ("Unable to bind divert socket.");
-	}
-	else {
-
-		divertIn = socket (PF_INET, SOCK_RAW, IPPROTO_DIVERT);
+		if (bind(divertInOut,
+			 (struct sockaddr *)&addr,
+			 sizeof addr) == -1)
+			Quit("Unable to bind divert socket.");
+	} else {
+		divertIn = socket(PF_INET, SOCK_RAW, IPPROTO_DIVERT);
 		if (divertIn == -1)
-			Quit ("Unable to create incoming divert socket.");
+			Quit("Unable to create incoming divert socket.");
 
-		divertOut = socket (PF_INET, SOCK_RAW, IPPROTO_DIVERT);
+		divertOut = socket(PF_INET, SOCK_RAW, IPPROTO_DIVERT);
 		if (divertOut == -1)
-			Quit ("Unable to create outgoing divert socket.");
+			Quit("Unable to create outgoing divert socket.");
 
 		divertInOut = -1;
 
@@ -238,19 +236,19 @@ int main (int argc, char** argv)
 		addr.sin_addr.s_addr	= INADDR_ANY;
 		addr.sin_port		= inPort;
 
-		if (bind (divertIn,
-			  (struct sockaddr*) &addr,
-			  sizeof addr) == -1)
-			Quit ("Unable to bind incoming divert socket.");
+		if (bind(divertIn,
+			 (struct sockaddr *)&addr,
+			 sizeof addr) == -1)
+			Quit("Unable to bind incoming divert socket.");
 
 		addr.sin_family		= AF_INET;
 		addr.sin_addr.s_addr	= INADDR_ANY;
 		addr.sin_port		= outPort;
 
-		if (bind (divertOut,
-			  (struct sockaddr*) &addr,
-			  sizeof addr) == -1)
-			Quit ("Unable to bind outgoing divert socket.");
+		if (bind(divertOut,
+			 (struct sockaddr *)&addr,
+			 sizeof addr) == -1)
+			Quit("Unable to bind outgoing divert socket.");
 	}
 /*
  * Create routing socket if interface name specified and in dynamic mode.
@@ -258,22 +256,20 @@ int main (int argc, char** argv)
 	routeSock = -1;
 	if (ifName) {
 		if (dynamicMode) {
-
-			routeSock = socket (PF_ROUTE, SOCK_RAW, 0);
+			routeSock = socket(PF_ROUTE, SOCK_RAW, 0);
 			if (routeSock == -1)
-				Quit ("Unable to create routing info socket.");
+				Quit("Unable to create routing info socket.");
 
 			assignAliasAddr = 1;
-		}
-		else
-			SetAliasAddressFromIfName (ifName);
+		} else
+			SetAliasAddressFromIfName(ifName);
 	}
 /*
  * Create socket for sending ICMP messages.
  */
-	icmpSock = socket (AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	icmpSock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (icmpSock == -1)
-		Quit ("Unable to create ICMP socket.");
+		Quit("Unable to create ICMP socket.");
 
 /*
  * And disable reads for the socket, otherwise it slowly fills
@@ -285,7 +281,7 @@ int main (int argc, char** argv)
  * Become a daemon unless verbose mode was requested.
  */
 	if (!verbose)
-		DaemonMode ();
+		DaemonMode();
 /*
  * Catch signals to manage shutdown and
  * refresh of interface address.
@@ -300,7 +296,7 @@ int main (int argc, char** argv)
  * Set alias address if it has been given.
  */
 	if (aliasAddr.s_addr != INADDR_NONE)
-		PacketAliasSetAddress (aliasAddr);
+		PacketAliasSetAddress(aliasAddr);
 /*
  * We need largest descriptor number for select.
  */
@@ -320,87 +316,86 @@ int main (int argc, char** argv)
 		fdMax = routeSock;
 
 	while (running) {
-
 		if (divertInOut != -1 && !ifName) {
 /*
- * When using only one socket, just call 
+ * When using only one socket, just call
  * DoAliasing repeatedly to process packets.
  */
-			DoAliasing (divertInOut, DONT_KNOW);
+			DoAliasing(divertInOut, DONT_KNOW);
 			continue;
 		}
-/* 
+/*
  * Build read mask from socket descriptors to select.
  */
-		FD_ZERO (&readMask);
+		FD_ZERO(&readMask);
 /*
  * Check if new packets are available.
  */
 		if (divertIn != -1)
-			FD_SET (divertIn, &readMask);
+			FD_SET(divertIn, &readMask);
 
 		if (divertOut != -1)
-			FD_SET (divertOut, &readMask);
+			FD_SET(divertOut, &readMask);
 
 		if (divertInOut != -1)
-			FD_SET (divertInOut, &readMask);
+			FD_SET(divertInOut, &readMask);
 /*
  * Routing info is processed always.
  */
 		if (routeSock != -1)
-			FD_SET (routeSock, &readMask);
+			FD_SET(routeSock, &readMask);
 
-		if (select (fdMax + 1,
-			    &readMask,
-			    NULL,
-			    NULL,
-			    NULL) == -1) {
-
+		if (select(fdMax + 1,
+			   &readMask,
+			   NULL,
+			   NULL,
+			   NULL) == -1) {
 			if (errno == EINTR)
 				continue;
 
-			Quit ("Select failed.");
+			Quit("Select failed.");
 		}
 
 		if (divertIn != -1)
-			if (FD_ISSET (divertIn, &readMask))
-				DoAliasing (divertIn, INPUT);
+			if (FD_ISSET(divertIn, &readMask))
+				DoAliasing(divertIn, INPUT);
 
 		if (divertOut != -1)
-			if (FD_ISSET (divertOut, &readMask))
-				DoAliasing (divertOut, OUTPUT);
+			if (FD_ISSET(divertOut, &readMask))
+				DoAliasing(divertOut, OUTPUT);
 
-		if (divertInOut != -1) 
-			if (FD_ISSET (divertInOut, &readMask))
-				DoAliasing (divertInOut, DONT_KNOW);
+		if (divertInOut != -1)
+			if (FD_ISSET(divertInOut, &readMask))
+				DoAliasing(divertInOut, DONT_KNOW);
 
 		if (routeSock != -1)
-			if (FD_ISSET (routeSock, &readMask))
-				HandleRoutingInfo (routeSock);
+			if (FD_ISSET(routeSock, &readMask))
+				HandleRoutingInfo(routeSock);
 	}
 
 	if (background)
-		unlink (PIDFILE);
+		unlink(PIDFILE);
 
 	return 0;
 }
 
-static void DaemonMode (void)
+static void
+DaemonMode(void)
 {
 	FILE*	pidFile;
 
-	daemon (0, 0);
+	daemon(0, 0);
 	background = 1;
 
-	pidFile = fopen (PIDFILE, "w");
+	pidFile = fopen(PIDFILE, "w");
 	if (pidFile) {
-
-		fprintf (pidFile, "%d\n", getpid ());
-		fclose (pidFile);
+		fprintf(pidFile, "%d\n", getpid());
+		fclose(pidFile);
 	}
 }
 
-static void ParseArgs (int argc, char** argv)
+static void
+ParseArgs(int argc, char **argv)
 {
 	int		arg;
 	char*		opt;
@@ -408,39 +403,37 @@ static void ParseArgs (int argc, char** argv)
 	int		len; /* bounds checking */
 
 	for (arg = 1; arg < argc; arg++) {
-
 		opt  = argv[arg];
 		if (*opt != '-') {
-
-			warnx ("invalid option %s", opt);
-			Usage ();
+			warnx("invalid option %s", opt);
+			Usage();
 		}
 
 		parmBuf[0] = '\0';
 		len = 0;
 
 		while (arg < argc - 1) {
-
 			if (argv[arg + 1][0] == '-')
 				break;
 
 			if (len) {
-				strncat (parmBuf, " ", sizeof(parmBuf) - (len + 1));
+				strncat(parmBuf, " ", sizeof(parmBuf) - (len + 1));
 				len += strlen(parmBuf + len);
 			}
 
 			++arg;
-			strncat (parmBuf, argv[arg], sizeof(parmBuf) - (len + 1));
+			strncat(parmBuf, argv[arg], sizeof(parmBuf) - (len + 1));
 			len += strlen(parmBuf + len);
 
 		}
 
-		ParseOption (opt + 1, (len ? parmBuf : NULL));
+		ParseOption(opt + 1, (len ? parmBuf : NULL));
 
 	}
 }
 
-static void DoAliasing (int fd, int direction)
+static void
+DoAliasing(int fd, int direction)
 {
 	int			bytes;
 	int			origBytes;
@@ -453,32 +446,30 @@ static void DoAliasing (int fd, int direction)
 	char			msgBuf[80];
 
 	if (assignAliasAddr) {
-
-		SetAliasAddressFromIfName (ifName);
+		SetAliasAddressFromIfName(ifName);
 		assignAliasAddr = 0;
 	}
 /*
  * Get packet from socket.
  */
 	addrSize  = sizeof addr;
-	origBytes = recvfrom (fd,
-			      buf,
-			      sizeof buf,
-			      0,
-			      (struct sockaddr*) &addr,
-			      &addrSize);
+	origBytes = recvfrom(fd,
+			     buf,
+			     sizeof buf,
+			     0,
+			     (struct sockaddr *)&addr,
+			     &addrSize);
 
 	if (origBytes == -1) {
-
 		if (errno != EINTR)
-			Warn ("read from divert socket failed");
+			Warn("read from divert socket failed");
 
 		return;
 	}
 /*
  * This is a IP packet.
  */
-	ip = (struct ip*) buf;
+	ip = (struct ip *)buf;
 	if (direction == DONT_KNOW) {
 		if (addr.sin_addr.s_addr == INADDR_ANY)
 			direction = OUTPUT;
@@ -490,51 +481,48 @@ static void DoAliasing (int fd, int direction)
 /*
  * Print packet direction and protocol type.
  */
-		printf (direction == OUTPUT ? "Out " : "In  ");
+		printf(direction == OUTPUT ? "Out " : "In  ");
 
 		switch (ip->ip_p) {
 		case IPPROTO_TCP:
-			printf ("[TCP]  ");
+			printf("[TCP]  ");
 			break;
 
 		case IPPROTO_UDP:
-			printf ("[UDP]  ");
+			printf("[UDP]  ");
 			break;
 
 		case IPPROTO_ICMP:
-			printf ("[ICMP] ");
+			printf("[ICMP] ");
 			break;
 
 		default:
-			printf ("[%d]    ", ip->ip_p);
+			printf("[%d]	", ip->ip_p);
 			break;
 		}
 /*
  * Print addresses.
  */
-		PrintPacket (ip);
+		PrintPacket(ip);
 	}
 
 	if (direction == OUTPUT) {
 /*
  * Outgoing packets. Do aliasing.
  */
-		PacketAliasOut (buf, IP_MAXPACKET);
-	}
-	else {
-
+		PacketAliasOut(buf, IP_MAXPACKET);
+	} else {
 /*
  * Do aliasing.
- */	
-		status = PacketAliasIn (buf, IP_MAXPACKET);
+ */
+		status = PacketAliasIn(buf, IP_MAXPACKET);
 		if (status == PKT_ALIAS_IGNORED &&
 		    dropIgnoredIncoming) {
-
 			if (verbose)
-				printf (" dropped.\n");
+				printf(" dropped.\n");
 
 			if (logDropped)
-				SyslogPacket (ip, LOG_WARNING, "denied");
+				SyslogPacket(ip, LOG_WARNING, "denied");
 
 			return;
 		}
@@ -542,7 +530,7 @@ static void DoAliasing (int fd, int direction)
 /*
  * Length might have changed during aliasing.
  */
-	bytes = ntohs (ip->ip_len);
+	bytes = ntohs(ip->ip_len);
 /*
  * Update alias overhead size for outgoing packets.
  */
@@ -551,66 +539,60 @@ static void DoAliasing (int fd, int direction)
 		aliasOverhead = bytes - origBytes;
 
 	if (verbose) {
-		
 /*
  * Print addresses after aliasing.
  */
-		printf (" aliased to\n");
-		printf ("           ");
-		PrintPacket (ip);
-		printf ("\n");
+		printf(" aliased to\n");
+		printf("	   ");
+		PrintPacket(ip);
+		printf("\n");
 	}
 
 /*
  * Put packet back for processing.
  */
-	wrote = sendto (fd, 
-		        buf,
-	    		bytes,
-	    		0,
-	    		(struct sockaddr*) &addr,
-	    		sizeof addr);
-	
+	wrote = sendto(fd,
+		       buf,
+		       bytes,
+		       0,
+		       (struct sockaddr *)&addr,
+		       sizeof addr);
+
 	if (wrote != bytes) {
-
 		if (errno == EMSGSIZE) {
-
 			if (direction == OUTPUT &&
 			    ifMTU != -1)
-				SendNeedFragIcmp (icmpSock,
-						  (struct ip*) buf,
-						  ifMTU - aliasOverhead);
-		}
-		else if (errno == EACCES && logIpfwDenied) {
-
-			sprintf (msgBuf, "failed to write packet back");
-			Warn (msgBuf);
+				SendNeedFragIcmp(icmpSock,
+						 (struct ip *)buf,
+						 ifMTU - aliasOverhead);
+		} else if (errno == EACCES && logIpfwDenied) {
+			sprintf(msgBuf, "failed to write packet back");
+			Warn(msgBuf);
 		}
 	}
 }
 
-static void HandleRoutingInfo (int fd)
+static void
+HandleRoutingInfo(int fd)
 {
 	int			bytes;
 	struct if_msghdr	ifMsg;
 /*
  * Get packet from socket.
  */
-	bytes = read (fd, &ifMsg, sizeof ifMsg);
+	bytes = read(fd, &ifMsg, sizeof ifMsg);
 	if (bytes == -1) {
-
-		Warn ("read from routing socket failed");
+		Warn("read from routing socket failed");
 		return;
 	}
 
 	if (ifMsg.ifm_version != RTM_VERSION) {
-
-		Warn ("unexpected packet read from routing socket");
+		Warn("unexpected packet read from routing socket");
 		return;
 	}
 
 	if (verbose)
-		printf ("Routing message %#x received.\n", ifMsg.ifm_type);
+		printf("Routing message %#x received.\n", ifMsg.ifm_type);
 
 	if ((ifMsg.ifm_type == RTM_NEWADDR || ifMsg.ifm_type == RTM_IFINFO) &&
 	    ifMsg.ifm_index == ifIndex) {
@@ -620,17 +602,20 @@ static void HandleRoutingInfo (int fd)
 	}
 }
 
-static void PrintPacket (struct ip* ip)
+static void
+PrintPacket(struct ip *ip)
 {
-	printf ("%s", FormatPacket (ip));
+	printf("%s", FormatPacket(ip));
 }
 
-static void SyslogPacket (struct ip* ip, int priority, const char *label)
+static void
+SyslogPacket(struct ip *ip, int priority, const char *label)
 {
-	syslog (priority, "%s %s", label, FormatPacket (ip));
+	syslog(priority, "%s %s", label, FormatPacket(ip));
 }
 
-static char* FormatPacket (struct ip* ip)
+static char*
+FormatPacket(struct ip *ip)
 {
 	static char	buf[256];
 	struct tcphdr*	tcphdr;
@@ -639,39 +624,39 @@ static char* FormatPacket (struct ip* ip)
 	char		src[20];
 	char		dst[20];
 
-	strcpy (src, inet_ntoa (ip->ip_src));
-	strcpy (dst, inet_ntoa (ip->ip_dst));
+	strcpy(src, inet_ntoa(ip->ip_src));
+	strcpy(dst, inet_ntoa(ip->ip_dst));
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
-		tcphdr = (struct tcphdr*) ((char*) ip + (ip->ip_hl << 2));
-		sprintf (buf, "[TCP] %s:%d -> %s:%d",
-			      src,
-			      ntohs (tcphdr->th_sport),
-			      dst,
-			      ntohs (tcphdr->th_dport));
+		tcphdr = (struct tcphdr *)((char *)ip + (ip->ip_hl << 2));
+		sprintf(buf, "[TCP] %s:%d -> %s:%d",
+			     src,
+			     ntohs(tcphdr->th_sport),
+			     dst,
+			     ntohs(tcphdr->th_dport));
 		break;
 
 	case IPPROTO_UDP:
-		udphdr = (struct udphdr*) ((char*) ip + (ip->ip_hl << 2));
-		sprintf (buf, "[UDP] %s:%d -> %s:%d",
-			      src,
-			      ntohs (udphdr->uh_sport),
-			      dst,
-			      ntohs (udphdr->uh_dport));
+		udphdr = (struct udphdr *)((char *)ip + (ip->ip_hl << 2));
+		sprintf(buf, "[UDP] %s:%d -> %s:%d",
+			     src,
+			     ntohs(udphdr->uh_sport),
+			     dst,
+			     ntohs(udphdr->uh_dport));
 		break;
 
 	case IPPROTO_ICMP:
-		icmphdr = (struct icmp*) ((char*) ip + (ip->ip_hl << 2));
-		sprintf (buf, "[ICMP] %s -> %s %u(%u)",
-			      src,
-			      dst,
-			      icmphdr->icmp_type,
-			      icmphdr->icmp_code);
+		icmphdr = (struct icmp *)((char *)ip + (ip->ip_hl << 2));
+		sprintf(buf, "[ICMP] %s -> %s %u(%u)",
+			     src,
+			     dst,
+			     icmphdr->icmp_type,
+			     icmphdr->icmp_code);
 		break;
 
 	default:
-		sprintf (buf, "[%d] %s -> %s ", ip->ip_p, src, dst);
+		sprintf(buf, "[%d] %s -> %s ", ip->ip_p, src, dst);
 		break;
 	}
 
@@ -776,27 +761,31 @@ SetAliasAddressFromIfName(const char *ifn)
 	free(buf);
 }
 
-void Quit (const char* msg)
+void
+Quit(const char *msg)
 {
-	Warn (msg);
-	exit (1);
+	Warn(msg);
+	exit(1);
 }
 
-void Warn (const char* msg)
+void
+Warn(const char *msg)
 {
 	if (background)
-		syslog (LOG_ALERT, "%s (%m)", msg);
+		syslog(LOG_ALERT, "%s (%m)", msg);
 	else
-		warn ("%s", msg);
+		warn("%s", msg);
 }
 
-static void RefreshAddr (int sig __unused)
+static
+void RefreshAddr(int sig __unused)
 {
 	if (ifName)
 		assignAliasAddr = 1;
 }
 
-static void InitiateShutdown (int sig __unused)
+static void
+InitiateShutdown(int sig __unused)
 {
 	struct sigaction sa;
 /*
@@ -811,17 +800,17 @@ static void InitiateShutdown (int sig __unused)
 	alarm(10);
 }
 
-static void Shutdown (int sig __unused)
+static void
+Shutdown(int sig __unused)
 {
 	running = 0;
 }
 
-/* 
+/*
  * Different options recognized by this program.
  */
 
 enum Option {
-
 	PacketAliasOption,
 	Verbose,
 	InPort,
@@ -836,14 +825,13 @@ enum Option {
 	ConfigFile,
 	DynamicMode,
 	ProxyRule,
- 	LogDenied,
- 	LogFacility,
+	LogDenied,
+	LogFacility,
 	PunchFW,
 	LogIpfwDenied
 };
 
 enum Param {
-	
 	YesNo,
 	Numeric,
 	String,
@@ -857,13 +845,12 @@ enum Param {
  */
 
 struct OptionInfo {
-	
 	enum Option		type;
 	int			packetAliasOpt;
 	enum Param		parm;
 	const char*		parmDescription;
 	const char*		description;
-	const char*		name; 
+	const char*		name;
 	const char*		shortName;
 };
 
@@ -872,7 +859,6 @@ struct OptionInfo {
  */
 
 static struct OptionInfo optionTable[] = {
-
 	{ PacketAliasOption,
 		PKT_ALIAS_UNREGISTERED_ONLY,
 		YesNo,
@@ -936,7 +922,7 @@ static struct OptionInfo optionTable[] = {
 		"verbose mode, dump packet information",
 		"verbose",
 		"v" },
-	
+
 	{ DynamicMode,
 		0,
 		YesNo,
@@ -944,7 +930,7 @@ static struct OptionInfo optionTable[] = {
 		"dynamic mode, automatically detect interface address changes",
 		"dynamic",
 		NULL },
-	
+
 	{ InPort,
 		0,
 		Service,
@@ -952,7 +938,7 @@ static struct OptionInfo optionTable[] = {
 		"set port for incoming packets",
 		"in_port",
 		"i" },
-	
+
 	{ OutPort,
 		0,
 		Service,
@@ -960,7 +946,7 @@ static struct OptionInfo optionTable[] = {
 		"set port for outgoing packets",
 		"out_port",
 		"o" },
-	
+
 	{ Port,
 		0,
 		Service,
@@ -968,7 +954,7 @@ static struct OptionInfo optionTable[] = {
 		"set port (defaults to natd/divert)",
 		"port",
 		"p" },
-	
+
 	{ AliasAddress,
 		0,
 		Address,
@@ -976,7 +962,7 @@ static struct OptionInfo optionTable[] = {
 		"address to use for aliasing",
 		"alias_address",
 		"a" },
-	
+
 	{ TargetAddress,
 		0,
 		Address,
@@ -984,11 +970,11 @@ static struct OptionInfo optionTable[] = {
 		"address to use for incoming sessions",
 		"target_address",
 		"t" },
-	
+
 	{ InterfaceName,
 		0,
 		String,
-	        "network_if_name",
+		"network_if_name",
 		"take aliasing address from interface",
 		"interface",
 		"n" },
@@ -996,7 +982,7 @@ static struct OptionInfo optionTable[] = {
 	{ ProxyRule,
 		0,
 		String,
-	        "[type encode_ip_hdr|encode_tcp_stream] port xxxx server "
+		"[type encode_ip_hdr|encode_tcp_stream] port xxxx server "
 		"a.b.c.d:yyyy",
 		"add transparent proxying / destination NAT",
 		"proxy_rule",
@@ -1005,8 +991,8 @@ static struct OptionInfo optionTable[] = {
 	{ RedirectPort,
 		0,
 		String,
-	        "tcp|udp local_addr:local_port_range[,...] [public_addr:]public_port_range"
-	 	" [remote_addr[:remote_port_range]]",
+		"tcp|udp local_addr:local_port_range[,...] [public_addr:]public_port_range"
+		" [remote_addr[:remote_port_range]]",
 		"redirect a port (or ports) for incoming traffic",
 		"redirect_port",
 		NULL },
@@ -1014,7 +1000,7 @@ static struct OptionInfo optionTable[] = {
 	{ RedirectProto,
 		0,
 		String,
-	        "proto local_addr [public_addr] [remote_addr]",
+		"proto local_addr [public_addr] [remote_addr]",
 		"redirect packets of a given proto",
 		"redirect_proto",
 		NULL },
@@ -1022,7 +1008,7 @@ static struct OptionInfo optionTable[] = {
 	{ RedirectAddress,
 		0,
 		String,
-	        "local_addr[,...] public_addr",
+		"local_addr[,...] public_addr",
 		"define mapping between local and public addresses",
 		"redirect_address",
 		NULL },
@@ -1038,7 +1024,7 @@ static struct OptionInfo optionTable[] = {
 	{ LogDenied,
 		0,
 		YesNo,
-	        "[yes|no]",
+		"[yes|no]",
 		"enable logging of denied incoming packets",
 		"log_denied",
 		NULL },
@@ -1046,7 +1032,7 @@ static struct OptionInfo optionTable[] = {
 	{ LogFacility,
 		0,
 		String,
-	        "facility",
+		"facility",
 		"name of syslog facility to use for logging",
 		"log_facility",
 		NULL },
@@ -1054,7 +1040,7 @@ static struct OptionInfo optionTable[] = {
 	{ PunchFW,
 		0,
 		String,
-	        "basenumber:count",
+		"basenumber:count",
 		"punch holes in the firewall for incoming FTP/IRC DCC connections",
 		"punch_fw",
 		NULL },
@@ -1062,13 +1048,14 @@ static struct OptionInfo optionTable[] = {
 	{ LogIpfwDenied,
 		0,
 		YesNo,
-	        "[yes|no]",
+		"[yes|no]",
 		"log packets converted by natd, but denied by ipfw",
 		"log_ipfw_denied",
 		NULL },
 };
-	
-static void ParseOption (const char* option, const char* parms)
+
+static void
+ParseOption(const char *option, const char *parms)
 {
 	int			i;
 	struct OptionInfo*	info;
@@ -1080,25 +1067,23 @@ static void ParseOption (const char* option, const char* parms)
 	struct in_addr		addrValue;
 	int			max;
 	char*			end;
-	CODE* 			fac_record = NULL;
+	CODE*			fac_record = NULL;
 /*
  * Find option from table.
  */
-	max = sizeof (optionTable) / sizeof (struct OptionInfo);
+	max = sizeof(optionTable) / sizeof(struct OptionInfo);
 	for (i = 0, info = optionTable; i < max; i++, info++) {
-
-		if (!strcmp (info->name, option))
+		if (!strcmp(info->name, option))
 			break;
 
 		if (info->shortName)
-			if (!strcmp (info->shortName, option))
+			if (!strcmp(info->shortName, option))
 				break;
 	}
 
 	if (i >= max) {
-
-		warnx ("unknown option %s", option);
-		Usage ();
+		warnx("unknown option %s", option);
+		Usage();
 	}
 
 	uNumValue	= 0;
@@ -1113,58 +1098,58 @@ static void ParseOption (const char* option, const char* parms)
 		if (!parms)
 			parms = "yes";
 
-		if (!strcmp (parms, "yes"))
+		if (!strcmp(parms, "yes"))
 			yesNoValue = 1;
 		else
-			if (!strcmp (parms, "no"))
+			if (!strcmp(parms, "no"))
 				yesNoValue = 0;
 			else
-				errx (1, "%s needs yes/no parameter", option);
+				errx(1, "%s needs yes/no parameter", option);
 		break;
 
 	case Service:
 		if (!parms)
-			errx (1, "%s needs service name or "
-				 "port number parameter",
-				 option);
+			errx(1, "%s needs service name or "
+				"port number parameter",
+				option);
 
-		uNumValue = StrToPort (parms, "divert");
+		uNumValue = StrToPort(parms, "divert");
 		break;
 
 	case Numeric:
 		if (parms)
-			numValue = strtol (parms, &end, 10);
+			numValue = strtol(parms, &end, 10);
 		else
 			end = NULL;
 
 		if (end == parms)
-			errx (1, "%s needs numeric parameter", option);
+			errx(1, "%s needs numeric parameter", option);
 		break;
 
 	case String:
 		strValue = parms;
 		if (!strValue)
-			errx (1, "%s needs parameter", option);
+			errx(1, "%s needs parameter", option);
 		break;
 
 	case None:
 		if (parms)
-			errx (1, "%s does not take parameters", option);
+			errx(1, "%s does not take parameters", option);
 		break;
 
 	case Address:
 		if (!parms)
-			errx (1, "%s needs address/host parameter", option);
+			errx(1, "%s needs address/host parameter", option);
 
-		StrToAddr (parms, &addrValue);
+		StrToAddr(parms, &addrValue);
 		break;
 	}
 
 	switch (info->type) {
 	case PacketAliasOption:
-	
+
 		aliasValue = yesNoValue ? info->packetAliasOpt : 0;
-		PacketAliasSetMode (aliasValue, info->packetAliasOpt);
+		PacketAliasSetMode(aliasValue, info->packetAliasOpt);
 		break;
 
 	case Verbose:
@@ -1188,7 +1173,7 @@ static void ParseOption (const char* option, const char* parms)
 		break;
 
 	case AliasAddress:
-		memcpy (&aliasAddr, &addrValue, sizeof (struct in_addr));
+		memcpy(&aliasAddr, &addrValue, sizeof(struct in_addr));
 		break;
 
 	case TargetAddress:
@@ -1196,7 +1181,7 @@ static void ParseOption (const char* option, const char* parms)
 		break;
 
 	case RedirectPort:
-		SetupPortRedirect (strValue);
+		SetupPortRedirect(strValue);
 		break;
 
 	case RedirectProto:
@@ -1204,22 +1189,22 @@ static void ParseOption (const char* option, const char* parms)
 		break;
 
 	case RedirectAddress:
-		SetupAddressRedirect (strValue);
+		SetupAddressRedirect(strValue);
 		break;
 
 	case ProxyRule:
-		PacketAliasProxyRule (strValue);
+		PacketAliasProxyRule(strValue);
 		break;
 
 	case InterfaceName:
 		if (ifName)
-			free (ifName);
+			free(ifName);
 
-		ifName = strdup (strValue);
+		ifName = strdup(strValue);
 		break;
 
 	case ConfigFile:
-		ReadConfigFile (strValue);
+		ReadConfigFile(strValue);
 		break;
 
 	case LogDenied:
@@ -1230,19 +1215,16 @@ static void ParseOption (const char* option, const char* parms)
 
 		fac_record = facilitynames;
 		while (fac_record->c_name != NULL) {
-
-			if (!strcmp (fac_record->c_name, strValue)) {
-
+			if (!strcmp(fac_record->c_name, strValue)) {
 				logFacility = fac_record->c_val;
 				break;
 
-			}
-			else
+			} else
 				fac_record++;
 		}
 
 		if(fac_record->c_name == NULL)
-			errx(1, "Unknown log facility name: %s", strValue);	
+			errx(1, "Unknown log facility name: %s", strValue);
 
 		break;
 
@@ -1256,7 +1238,8 @@ static void ParseOption (const char* option, const char* parms)
 	}
 }
 
-void ReadConfigFile (const char* fileName)
+void
+ReadConfigFile(const char *fileName)
 {
 	FILE*	file;
 	char	*buf;
@@ -1264,7 +1247,7 @@ void ReadConfigFile (const char* fileName)
 	char	*ptr, *p;
 	char*	option;
 
-	file = fopen (fileName, "r");
+	file = fopen(fileName, "r");
 	if (!file)
 		err(1, "cannot open config file %s", fileName);
 
@@ -1292,51 +1275,51 @@ void ReadConfigFile (const char* fileName)
  * Extract option name.
  */
 		option = ptr;
-		while (*ptr && !isspace (*ptr))
+		while (*ptr && !isspace(*ptr))
 			++ptr;
 
 		if (*ptr != '\0') {
-
 			*ptr = '\0';
 			++ptr;
 		}
 /*
  * Skip white space between name and parms.
  */
-		while (*ptr && isspace (*ptr))
+		while (*ptr && isspace(*ptr))
 			++ptr;
 
-		ParseOption (option, *ptr ? ptr : NULL);
+		ParseOption(option, *ptr ? ptr : NULL);
 	}
 
-	fclose (file);
+	fclose(file);
 }
 
-static void Usage (void)
+static void
+Usage(void)
 {
 	int			i;
 	int			max;
 	struct OptionInfo*	info;
 
-	fprintf (stderr, "Recognized options:\n\n");
+	fprintf(stderr, "Recognized options:\n\n");
 
-	max = sizeof (optionTable) / sizeof (struct OptionInfo);
+	max = sizeof(optionTable) / sizeof(struct OptionInfo);
 	for (i = 0, info = optionTable; i < max; i++, info++) {
-
-		fprintf (stderr, "-%-20s %s\n", info->name,
+		fprintf(stderr, "-%-20s %s\n", info->name,
 						info->parmDescription);
 
 		if (info->shortName)
-			fprintf (stderr, "-%-20s %s\n", info->shortName,
+			fprintf(stderr, "-%-20s %s\n", info->shortName,
 							info->parmDescription);
 
-		fprintf (stderr, "      %s\n\n", info->description);
+		fprintf(stderr, "      %s\n\n", info->description);
 	}
 
-	exit (1);
+	exit(1);
 }
 
-void SetupPortRedirect (const char* parms)
+void
+SetupPortRedirect(const char *parms)
 {
 	char		buf[128];
 	char*		ptr;
@@ -1344,34 +1327,34 @@ void SetupPortRedirect (const char* parms)
 	struct in_addr	localAddr;
 	struct in_addr	publicAddr;
 	struct in_addr	remoteAddr;
-	port_range      portRange;
-	u_short         localPort      = 0;
-	u_short         publicPort     = 0;
-	u_short         remotePort     = 0;
-	u_short         numLocalPorts  = 0;
-	u_short         numPublicPorts = 0;
-	u_short         numRemotePorts = 0;
+	port_range	portRange;
+	u_short		localPort      = 0;
+	u_short		publicPort     = 0;
+	u_short		remotePort     = 0;
+	u_short		numLocalPorts  = 0;
+	u_short		numPublicPorts = 0;
+	u_short		numRemotePorts = 0;
 	int		proto;
 	char*		protoName;
 	char*		separator;
-	int             i;
+	int		i;
 	struct alias_link *alink = NULL;
 
-	strcpy (buf, parms);
+	strcpy(buf, parms);
 /*
  * Extract protocol.
  */
-	protoName = strtok (buf, " \t");
+	protoName = strtok(buf, " \t");
 	if (!protoName)
-		errx (1, "redirect_port: missing protocol");
+		errx(1, "redirect_port: missing protocol");
 
-	proto = StrToProto (protoName);
+	proto = StrToProto(protoName);
 /*
  * Extract local address.
  */
-	ptr = strtok (NULL, " \t");
+	ptr = strtok(NULL, " \t");
 	if (!ptr)
-		errx (1, "redirect_port: missing local address");
+		errx(1, "redirect_port: missing local address");
 
 	separator = strchr(ptr, ',');
 	if (separator) {		/* LSNAT redirection syntax. */
@@ -1380,8 +1363,8 @@ void SetupPortRedirect (const char* parms)
 		numLocalPorts = 1;
 		serverPool = ptr;
 	} else {
-		if ( StrToAddrAndPortRange (ptr, &localAddr, protoName, &portRange) != 0 )
-			errx (1, "redirect_port: invalid local port range");
+		if (StrToAddrAndPortRange(ptr, &localAddr, protoName, &portRange) != 0 )
+			errx(1, "redirect_port: invalid local port range");
 
 		localPort     = GETLOPORT(portRange);
 		numLocalPorts = GETNUMPORTS(portRange);
@@ -1391,19 +1374,18 @@ void SetupPortRedirect (const char* parms)
 /*
  * Extract public port and optionally address.
  */
-	ptr = strtok (NULL, " \t");
+	ptr = strtok(NULL, " \t");
 	if (!ptr)
-		errx (1, "redirect_port: missing public port");
+		errx(1, "redirect_port: missing public port");
 
-	separator = strchr (ptr, ':');
+	separator = strchr(ptr, ':');
 	if (separator) {
-	        if (StrToAddrAndPortRange (ptr, &publicAddr, protoName, &portRange) != 0 )
-		        errx (1, "redirect_port: invalid public port range");
-	}
-	else {
+		if (StrToAddrAndPortRange(ptr, &publicAddr, protoName, &portRange) != 0 )
+			errx(1, "redirect_port: invalid public port range");
+	} else {
 		publicAddr.s_addr = INADDR_ANY;
-		if (StrToPortRange (ptr, protoName, &portRange) != 0)
-		        errx (1, "redirect_port: invalid public port range");
+		if (StrToPortRange(ptr, protoName, &portRange) != 0)
+			errx(1, "redirect_port: invalid public port range");
 	}
 
 	publicPort     = GETLOPORT(portRange);
@@ -1412,20 +1394,19 @@ void SetupPortRedirect (const char* parms)
 /*
  * Extract remote address and optionally port.
  */
-	ptr = strtok (NULL, " \t");
+	ptr = strtok(NULL, " \t");
 	if (ptr) {
-		separator = strchr (ptr, ':');
+		separator = strchr(ptr, ':');
 		if (separator) {
-		        if (StrToAddrAndPortRange (ptr, &remoteAddr, protoName, &portRange) != 0)
-			        errx (1, "redirect_port: invalid remote port range");
+			if (StrToAddrAndPortRange(ptr, &remoteAddr, protoName, &portRange) != 0)
+				errx(1, "redirect_port: invalid remote port range");
 		} else {
-		        SETLOPORT(portRange, 0);
+			SETLOPORT(portRange, 0);
 			SETNUMPORTS(portRange, 1);
-			StrToAddr (ptr, &remoteAddr);
+			StrToAddr(ptr, &remoteAddr);
 		}
-	}
-	else {
-	        SETLOPORT(portRange, 0);
+	} else {
+		SETLOPORT(portRange, 0);
 		SETNUMPORTS(portRange, 1);
 		remoteAddr.s_addr = INADDR_ANY;
 	}
@@ -1437,17 +1418,17 @@ void SetupPortRedirect (const char* parms)
  * Make sure port ranges match up, then add the redirect ports.
  */
 	if (numLocalPorts != numPublicPorts)
-	        errx (1, "redirect_port: port ranges must be equal in size");
+		errx(1, "redirect_port: port ranges must be equal in size");
 
 	/* Remote port range is allowed to be '0' which means all ports. */
 	if (numRemotePorts != numLocalPorts && (numRemotePorts != 1 || remotePort != 0))
-	        errx (1, "redirect_port: remote port must be 0 or equal to local port range in size");
+		errx(1, "redirect_port: remote port must be 0 or equal to local port range in size");
 
 	for (i = 0 ; i < numPublicPorts ; ++i) {
-	        /* If remotePort is all ports, set it to 0. */
-	        u_short remotePortCopy = remotePort + i;
-	        if (numRemotePorts == 1 && remotePort == 0)
-		        remotePortCopy = 0;
+		/* If remotePort is all ports, set it to 0. */
+		u_short remotePortCopy = remotePort + i;
+		if (numRemotePorts == 1 && remotePort == 0)
+			remotePortCopy = 0;
 
 		alink = PacketAliasRedirectPort(localAddr,
 						htons(localPort + i),
@@ -1477,7 +1458,7 @@ void SetupPortRedirect (const char* parms)
 }
 
 void
-SetupProtoRedirect(const char* parms)
+SetupProtoRedirect(const char *parms)
 {
 	char		buf[128];
 	char*		ptr;
@@ -1488,7 +1469,7 @@ SetupProtoRedirect(const char* parms)
 	char*		protoName;
 	struct protoent *protoent;
 
-	strcpy (buf, parms);
+	strcpy(buf, parms);
 /*
  * Extract protocol.
  */
@@ -1531,7 +1512,8 @@ SetupProtoRedirect(const char* parms)
 	PacketAliasRedirectProto(localAddr, remoteAddr, publicAddr, proto);
 }
 
-void SetupAddressRedirect (const char* parms)
+void
+SetupAddressRedirect(const char *parms)
 {
 	char		buf[128];
 	char*		ptr;
@@ -1541,30 +1523,30 @@ void SetupAddressRedirect (const char* parms)
 	char*		serverPool;
 	struct alias_link *alink;
 
-	strcpy (buf, parms);
+	strcpy(buf, parms);
 /*
  * Extract local address.
  */
-	ptr = strtok (buf, " \t");
+	ptr = strtok(buf, " \t");
 	if (!ptr)
-		errx (1, "redirect_address: missing local address");
+		errx(1, "redirect_address: missing local address");
 
 	separator = strchr(ptr, ',');
 	if (separator) {		/* LSNAT redirection syntax. */
 		localAddr.s_addr = INADDR_NONE;
 		serverPool = ptr;
 	} else {
-		StrToAddr (ptr, &localAddr);
+		StrToAddr(ptr, &localAddr);
 		serverPool = NULL;
 	}
 /*
  * Extract public address.
  */
-	ptr = strtok (NULL, " \t");
+	ptr = strtok(NULL, " \t");
 	if (!ptr)
-		errx (1, "redirect_address: missing public address");
+		errx(1, "redirect_address: missing public address");
 
-	StrToAddr (ptr, &publicAddr);
+	StrToAddr(ptr, &publicAddr);
 	alink = PacketAliasRedirectAddr(localAddr, publicAddr);
 
 /*
@@ -1580,105 +1562,110 @@ void SetupAddressRedirect (const char* parms)
 	}
 }
 
-void StrToAddr (const char* str, struct in_addr* addr)
+void
+StrToAddr(const char *str, struct in_addr *addr)
 {
-	struct hostent* hp;
+	struct hostent *hp;
 
-	if (inet_aton (str, addr))
+	if (inet_aton(str, addr))
 		return;
 
-	hp = gethostbyname (str);
+	hp = gethostbyname(str);
 	if (!hp)
-		errx (1, "unknown host %s", str);
+		errx(1, "unknown host %s", str);
 
-	memcpy (addr, hp->h_addr, sizeof (struct in_addr));
+	memcpy(addr, hp->h_addr, sizeof(struct in_addr));
 }
 
-u_short StrToPort (const char* str, const char* proto)
+u_short
+StrToPort(const char *str, const char *proto)
 {
 	u_short		port;
 	struct servent*	sp;
 	char*		end;
 
-	port = strtol (str, &end, 10);
+	port = strtol(str, &end, 10);
 	if (end != str)
-		return htons (port);
+		return htons(port);
 
-	sp = getservbyname (str, proto);
+	sp = getservbyname(str, proto);
 	if (!sp)
-		errx (1, "unknown service %s/%s", str, proto);
+		errx(1, "unknown service %s/%s", str, proto);
 
 	return sp->s_port;
 }
 
-int StrToPortRange (const char* str, const char* proto, port_range *portRange)
+int
+StrToPortRange(const char *str, const char *proto, port_range *portRange)
 {
-	char*           sep;
+	char*		sep;
 	struct servent*	sp;
 	char*		end;
-	u_short         loPort;
-	u_short         hiPort;
-	
+	u_short		loPort;
+	u_short		hiPort;
+
 	/* First see if this is a service, return corresponding port if so. */
-	sp = getservbyname (str,proto);
+	sp = getservbyname(str,proto);
 	if (sp) {
-	        SETLOPORT(*portRange, ntohs(sp->s_port));
+		SETLOPORT(*portRange, ntohs(sp->s_port));
 		SETNUMPORTS(*portRange, 1);
 		return 0;
 	}
-	        
+
 	/* Not a service, see if it's a single port or port range. */
-	sep = strchr (str, '-');
+	sep = strchr(str, '-');
 	if (sep == NULL) {
-	        SETLOPORT(*portRange, strtol(str, &end, 10));
+		SETLOPORT(*portRange, strtol(str, &end, 10));
 		if (end != str) {
-		        /* Single port. */
-		        SETNUMPORTS(*portRange, 1);
+			/* Single port. */
+			SETNUMPORTS(*portRange, 1);
 			return 0;
 		}
 
 		/* Error in port range field. */
-		errx (1, "unknown service %s/%s", str, proto);
+		errx(1, "unknown service %s/%s", str, proto);
 	}
 
 	/* Port range, get the values and sanity check. */
-	sscanf (str, "%hu-%hu", &loPort, &hiPort);
+	sscanf(str, "%hu-%hu", &loPort, &hiPort);
 	SETLOPORT(*portRange, loPort);
 	SETNUMPORTS(*portRange, 0);	/* Error by default */
 	if (loPort <= hiPort)
-	        SETNUMPORTS(*portRange, hiPort - loPort + 1);
+		SETNUMPORTS(*portRange, hiPort - loPort + 1);
 
 	if (GETNUMPORTS(*portRange) == 0)
-	        errx (1, "invalid port range %s", str);
+		errx(1, "invalid port range %s", str);
 
 	return 0;
 }
 
 
-int StrToProto (const char* str)
+int
+StrToProto(const char *str)
 {
-	if (!strcmp (str, "tcp"))
+	if (!strcmp(str, "tcp"))
 		return IPPROTO_TCP;
 
-	if (!strcmp (str, "udp"))
+	if (!strcmp(str, "udp"))
 		return IPPROTO_UDP;
 
-	errx (1, "unknown protocol %s. Expected tcp or udp", str);
+	errx(1, "unknown protocol %s. Expected tcp or udp", str);
 }
 
-int StrToAddrAndPortRange (const char* str, struct in_addr* addr, char* proto, port_range *portRange)
+int
+StrToAddrAndPortRange(const char *str, struct in_addr *addr, char *proto, port_range *portRange)
 {
 	char*	ptr;
 
-	ptr = strchr (str, ':');
+	ptr = strchr(str, ':');
 	if (!ptr)
-		errx (1, "%s is missing port number", str);
+		errx(1, "%s is missing port number", str);
 
 	*ptr = '\0';
 	++ptr;
 
-	StrToAddr (str, addr);
-	return StrToPortRange (ptr, proto, portRange);
+	StrToAddr(str, addr);
+	return StrToPortRange(ptr, proto, portRange);
 }
 
 static void
