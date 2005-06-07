@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.5 2004/12/10 04:09:46 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.6 2005/06/07 00:52:34 y0netan1 Exp $
  */
 
 
@@ -210,12 +210,6 @@ MALLOC_DECLARE(M_IPSBUF);
 #define bio_disk	bio_dev
 #define d_drv1		si_drv1
 #define d_maxsize	si_iosize_max
-
-struct mtx {
-	volatile int	locked;
-	intrmask_t	spl;
-};
-
 
 #define disk_open_t	d_open_t
 #define disk_close_t	d_close_t
