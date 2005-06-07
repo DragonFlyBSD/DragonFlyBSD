@@ -25,12 +25,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.10 2004/12/10 04:09:46 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.11 2005/06/07 00:51:13 y0netan1 Exp $
  */
 
 #include <dev/raid/ips/ips.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 
 static d_open_t ips_open;
@@ -116,9 +117,8 @@ ips_cmdqueue_free(ips_softc_t *sc)
 {
 	int i, error = -1;
 	ips_command_t *command;
-	intrmask_t mask;
 
-	mask = splbio();
+	crit_enter();
 	if (sc->used_commands == 0) {
 		for (i = 0; i < sc->max_cmds; i++) {
 			command = &sc->commandarray[i];
@@ -133,7 +133,7 @@ ips_cmdqueue_free(ips_softc_t *sc)
 		error = 0;
 		sc->state |= IPS_OFFLINE;
 	}
-	splx(mask);
+	crit_exit();
 	return error;
 }
 
@@ -176,14 +176,13 @@ static int
 ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
     void *data)
 {
-	intrmask_t mask;
 	ips_command_t *command;
 	ips_wait_list_t *waiter;
 
 	waiter = malloc(sizeof(ips_wait_list_t), M_IPSBUF, M_INTWAIT);
-	mask = splbio();
+	crit_enter();
 	if (sc->state & IPS_OFFLINE) {
-		splx(mask);
+		crit_exit();
 		free(waiter, M_IPSBUF);
 		return EIO;
 	}
@@ -191,7 +190,7 @@ ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
 	if (command && !(sc->state & IPS_TIMEOUT)) {
 		SLIST_REMOVE_HEAD(&sc->free_cmd_list, next);
 		sc->used_commands++;
-		splx(mask);
+		crit_exit();
 		clear_ips_command(command);
 		bzero(command->command_buffer, IPS_COMMAND_LEN);
 		free(waiter, M_IPSBUF);
@@ -202,7 +201,7 @@ ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
 	waiter->callback = callback;
 	waiter->data = data;
 	STAILQ_INSERT_TAIL(&sc->cmd_wait_list, waiter, next);
-	splx(mask);
+	crit_exit();
 	return 0;
 }
 
@@ -212,20 +211,19 @@ ips_run_waiting_command(ips_softc_t *sc)
 	ips_wait_list_t *waiter;
 	ips_command_t	*command;
 	int (*callback)(ips_command_t*);
-	intrmask_t mask;
 
-	mask = splbio();
+	crit_enter();
 	waiter = STAILQ_FIRST(&sc->cmd_wait_list);
 	command = SLIST_FIRST(&sc->free_cmd_list);
 	if (waiter == NULL || command == NULL) {
-		splx(mask);
+		crit_exit();
 		return;
 	}
 	DEVICE_PRINTF(1, sc->dev, "removing command from wait queue\n");
 	SLIST_REMOVE_HEAD(&sc->free_cmd_list, next);
 	STAILQ_REMOVE_HEAD(&sc->cmd_wait_list, next);
 	sc->used_commands++;
-	splx(mask);
+	crit_exit();
 	clear_ips_command(command);
 	bzero(command->command_buffer, IPS_COMMAND_LEN);
 	command->arg = waiter->data;
@@ -246,23 +244,22 @@ ips_get_free_cmd(ips_softc_t *sc, int (*callback)(ips_command_t *), void *data,
     unsigned long flags)
 {
 	ips_command_t *command;
-	intrmask_t mask;
 
-	mask = splbio();
+	crit_enter();
 	if (sc->state & IPS_OFFLINE) {
-		splx(mask);
+		crit_exit();
 		return EIO;
 	}
 	command = SLIST_FIRST(&sc->free_cmd_list);
 	if (!command || (sc->state & IPS_TIMEOUT)) {
-		splx(mask);
+		crit_exit();
 		if (flags & IPS_NOWAIT_FLAG)
 			return EAGAIN;
 		return ips_add_waiting_command(sc, callback, data);
 	}
 	SLIST_REMOVE_HEAD(&sc->free_cmd_list, next);
 	sc->used_commands++;
-	splx(mask);
+	crit_exit();
 	clear_ips_command(command);
 	bzero(command->command_buffer, IPS_COMMAND_LEN);
 	command->arg = data;
@@ -273,12 +270,10 @@ ips_get_free_cmd(ips_softc_t *sc, int (*callback)(ips_command_t *), void *data,
 void
 ips_insert_free_cmd(ips_softc_t *sc, ips_command_t *command)
 {
-	intrmask_t mask;
-
-	mask = splbio();
+	crit_enter();
 	SLIST_INSERT_HEAD(&sc->free_cmd_list, command, next);
 	sc->used_commands--;
-	splx(mask);
+	crit_exit();
 	if (!(sc->state & IPS_TIMEOUT))
 		ips_run_waiting_command(sc);
 }
@@ -365,11 +360,10 @@ ips_timeout(void *arg)
 {
 	ips_command_t *command;
 	ips_softc_t *sc = arg;
-	intrmask_t mask;
 	int i, state = 0;
 
 	command = &sc->commandarray[0];
-	mask = splbio();
+	crit_enter();
 	for (i = 0; i < sc->max_cmds; i++) {
 		if (!command[i].timeout)
 			continue;
@@ -402,7 +396,7 @@ ips_timeout(void *arg)
 	}
 	if (sc->state != IPS_OFFLINE)
 		callout_reset(&sc->timer, 10 * hz, ips_timeout, sc);
-	splx(mask);
+	crit_exit();
 }
 
 /* check card and initialize it */
@@ -563,7 +557,7 @@ int
 ips_adapter_free(ips_softc_t *sc)
 {
 	int error = 0;
-	intrmask_t mask;
+
 	if (sc->state & IPS_DEV_OPEN)
 		return EBUSY;
 	if ((error = ips_diskdev_free(sc)))
@@ -574,9 +568,9 @@ ips_adapter_free(ips_softc_t *sc)
 		return EBUSY;
 	}
 	DEVICE_PRINTF(1, sc->dev, "free\n");
-	mask = splbio();
+	crit_enter();
 	callout_stop(&sc->timer);
-	splx(mask);
+	crit_exit();
 	if (sc->sg_dmatag)
 		bus_dma_tag_destroy(sc->sg_dmatag);
 	if (sc->command_dmatag)
@@ -616,19 +610,17 @@ ips_morpheus_intr(void *void_sc)
 void
 ips_issue_morpheus_cmd(ips_command_t *command)
 {
-	intrmask_t mask;
-
-	mask = splbio();
+	crit_enter();
 	/* hmmm, is there a cleaner way to do this? */
 	if (command->sc->state & IPS_OFFLINE) {
-		splx(mask);
+		crit_exit();
 		command->status.value = IPS_ERROR_STATUS;
 		command->callback(command);
 		return;
 	}
 	command->timeout = 10;
 	ips_write_4(command->sc, MORPHEUS_REG_IQPR, command->command_phys_addr);
-	splx(mask);
+	crit_exit();
 }
 
 static void
@@ -763,18 +755,17 @@ ips_copperhead_reinit(ips_softc_t *sc, int force)
 static u_int32_t
 ips_copperhead_cmd_status(ips_softc_t *sc)
 {
-	intrmask_t mask;
 	u_int32_t value;
 	int statnum;
 
 	statnum = sc->copper_queue->nextstatus++;
 	if (sc->copper_queue->nextstatus == IPS_MAX_CMD_NUM)
 		sc->copper_queue->nextstatus = 0;
-	mask = splbio();
+	crit_enter();
 	value = sc->copper_queue->status[statnum];
 	ips_write_4(sc, COPPER_REG_SQTR, sc->copper_queue->base_phys_addr +
 	    4 * statnum);
-	splx(mask);
+	crit_exit();
 	return value;
 }
 
@@ -799,13 +790,12 @@ ips_copperhead_intr(void *void_sc)
 void
 ips_issue_copperhead_cmd(ips_command_t *command)
 {
-	intrmask_t mask;
 	int i;
 
-	mask = splbio();
+	crit_enter();
 	/* hmmm, is there a cleaner way to do this? */
 	if (command->sc->state & IPS_OFFLINE) {
-		splx(mask);
+		crit_exit();
 		command->status.value = IPS_ERROR_STATUS;
 		command->callback(command);
 		return;
@@ -815,12 +805,12 @@ ips_issue_copperhead_cmd(ips_command_t *command)
 	    i++) {
 		if (i == 20) {
 			printf("sem bit still set, can't send a command\n");
-			splx(mask);
+			crit_exit();
 			return;
 		}
 		DELAY(500);	/* need to do a delay here */
 	}
 	ips_write_4(command->sc, COPPER_REG_CCSAR, command->command_phys_addr);
 	ips_write_2(command->sc, COPPER_REG_CCCR, COPPER_CMD_START);
-	splx(mask);
+	crit_exit();
 }
