@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_mchain.c,v 1.2.2.2 2002/04/13 12:46:40 bp Exp $
- * $DragonFly: src/sys/kern/libmchain/subr_mchain.c,v 1.3 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/kern/libmchain/subr_mchain.c,v 1.4 2005/06/07 19:06:08 hsu Exp $
  */
 
 
@@ -210,7 +210,7 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 	while (size > 0) {
 		if (mleft == 0) {
 			if (m->m_next == NULL) {
-				m = m_getm(m, size, M_WAITOK, MT_DATA);
+				m->m_next = m_getc(size, M_WAITOK, MT_DATA);
 				if (m == NULL)
 					return ENOBUFS;
 			}
