@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.46 2005/06/08 23:39:08 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.47 2005/06/08 23:50:35 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -881,7 +881,7 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 			    ("m_copym, length > size of mbuf chain"));
 			break;
 		}
-		n = m_get(wait, m->m_type);
+		n = m_getl(MLEN, wait, m->m_type, copyhdr ? M_PKTHDR : 0, NULL);
 		*np = n;
 		if (n == NULL)
 			goto nospace;
@@ -933,7 +933,7 @@ m_copypacket(struct mbuf *m, int how)
 {
 	struct mbuf *top, *n, *o;
 
-	n = m_get(how, m->m_type);
+	n = m_gethdr(how, m->m_type);
 	top = n;
 	if (!n)
 		goto nospace;
@@ -1432,9 +1432,9 @@ m_move_pkthdr(struct mbuf *to, struct mbuf *from)
 int
 m_dup_pkthdr(struct mbuf *to, const struct mbuf *from, int how)
 {
+	KASSERT((to->m_flags & M_PKTHDR), ("m_dup_pkthdr: not packet header"));
+
 	to->m_flags = (from->m_flags & M_COPYFLAGS) | (to->m_flags & M_EXT);
-	if (!(to->m_flags & M_EXT))
-		to->m_data = to->m_pktdat;
 	to->m_pkthdr = from->m_pkthdr;
 	SLIST_INIT(&to->m_pkthdr.tags);
 	return (m_tag_copy_chain(to, from, how));
