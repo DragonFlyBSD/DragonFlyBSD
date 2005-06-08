@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.10 2004/07/27 14:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.11 2005/06/08 23:29:29 hsu Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -320,7 +320,7 @@ awi_wep_encrypt(sc, m0, txflag)
 	ctx = sc->sc_wep_ctx;
 	m = m0;
 	left = m->m_pkthdr.len;
-	MGET(n, MB_DONTWAIT, m->m_type);
+	MGETHDR(n, MB_DONTWAIT, m->m_type);
 	n0 = n;
 	if (n == NULL)
 		goto fail;

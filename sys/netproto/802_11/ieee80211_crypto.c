@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto.c,v 1.3 2003/10/17 23:15:30 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211_crypto.c,v 1.1 2004/07/26 16:30:17 joerg Exp $
+ * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211_crypto.c,v 1.2 2005/06/08 23:29:29 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -121,7 +121,7 @@ ieee80211_wep_crypt(struct ifnet *ifp, struct mbuf *m0, int txflag)
 	}
 	m = m0;
 	left = m->m_pkthdr.len;
-	MGET(n, MB_DONTWAIT, m->m_type);
+	MGETHDR(n, MB_DONTWAIT, m->m_type);
 	n0 = n;
 	if (n == NULL) {
 		if (txflag)
