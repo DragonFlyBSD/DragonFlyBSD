@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.1 2005/06/07 19:07:11 hsu Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.2 2005/06/08 22:22:58 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
@@ -58,6 +58,7 @@ struct objcache
 			 void *allocator_args);
 void	*objcache_get(struct objcache *oc, int ocflags);
 void	 objcache_put(struct objcache *oc, void *obj);
+void	 objcache_dtor(struct objcache *oc, void *obj);
 void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 				  int size);
 boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);

@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.43 2005/06/08 19:29:32 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.44 2005/06/08 22:22:59 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -246,7 +246,7 @@ mbufphdr_ctor(void *obj, void *private, int ocflags)
 	m->m_next = NULL;
 	m->m_nextpkt = NULL;
 	m->m_data = m->m_pktdat;
-	m->m_flags = M_PKTHDR;
+	m->m_flags = M_PKTHDR | M_PHCACHE;
 
 	m->m_pkthdr.rcvif = NULL;	/* eliminate XXX JH */
 	SLIST_INIT(&m->m_pkthdr.tags);
@@ -271,7 +271,7 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 		buf = malloc(MCLBYTES, M_MBUFCL, M_INTWAIT | M_ZERO);
 	if (buf == NULL)
 		return (FALSE);
-	cl->mcl_refs = 1;
+	cl->mcl_refs = 0;
 	cl->mcl_data = buf;
 	return (TRUE);
 }
@@ -288,6 +288,7 @@ linkcluster(struct mbuf *m, struct mbcluster *cl)
 	m->m_ext.ext_ref = m_mclref;
 	m->m_ext.ext_free = m_mclfree;
 	m->m_ext.ext_size = MCLBYTES;
+	++cl->mcl_refs;
 
 	m->m_data = m->m_ext.ext_buf;
 	m->m_flags |= M_EXT | M_EXT_CLUSTER;
@@ -303,6 +304,7 @@ mbufphdrcluster_ctor(void *obj, void *private, int ocflags)
 	cl = objcache_get(mclmeta_cache, ocflags);
 	if (cl == NULL)
 		return (FALSE);
+	m->m_flags |= M_CLCACHE;
 	linkcluster(m, cl);
 	return (TRUE);
 }
@@ -317,6 +319,7 @@ mbufcluster_ctor(void *obj, void *private, int ocflags)
 	cl = objcache_get(mclmeta_cache, ocflags);
 	if (cl == NULL)
 		return (FALSE);
+	m->m_flags |= M_CLCACHE;
 	linkcluster(m, cl);
 	return (TRUE);
 }
@@ -326,24 +329,29 @@ mclmeta_dtor(void *obj, void *private)
 {
 	struct mbcluster *mcl = obj;
 
-	KKASSERT(mcl->mcl_refs == 1);
+	KKASSERT(mcl->mcl_refs == 0);
 	free(mcl->mcl_data, M_MBUFCL);
 }
 
+/*
+ * Used for both the cluster and cluster PHDR caches.
+ *
+ * The mbuf may have lost its cluster due to sharing, deal
+ * with the situation by checking M_EXT.
+ */
 static void
 mbufcluster_dtor(void *obj, void *private)
 {
 	struct mbuf *m = obj;
+	struct mbcluster *mcl;
 
-	objcache_put(mclmeta_cache, m->m_ext.ext_arg);
-}
-
-static void
-mbufphdrcluster_dtor(void *obj, void *private)
-{
-	struct mbuf *m = obj;
-
-	objcache_put(mclmeta_cache, m->m_ext.ext_arg);
+	if (m->m_flags & M_EXT) {
+		KKASSERT((m->m_flags & M_EXT_CLUSTER) != 0);
+		mcl = m->m_ext.ext_arg;
+		KKASSERT(mcl->mcl_refs == 1);
+		mcl->mcl_refs = 0;
+		objcache_put(mclmeta_cache, mcl);
+	}
 }
 
 struct objcache_malloc_args mbuf_malloc_args = { MSIZE, M_MBUF };
@@ -373,7 +381,7 @@ mbinit(void *dummy)
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
-	    nmbclusters, 64, mbufphdrcluster_ctor, mbufphdrcluster_dtor, NULL,
+	    nmbclusters, 64, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	return;
 }
@@ -623,6 +631,7 @@ m_mclget(struct mbuf *m, int how)
 {
 	struct mbcluster *mcl;
 
+	KKASSERT((m->m_flags & M_EXT) == 0);
 	mcl = objcache_get(mclmeta_cache, MBTOM(how));
 	if (mcl == NULL)
 		return;
@@ -647,8 +656,14 @@ m_mclfree(void *arg)
 {
 	struct mbcluster *mcl = arg;
 
-	KKASSERT(mcl->mcl_refs > 1);
-	atomic_subtract_int(&mcl->mcl_refs, 1);
+	/* XXX interrupt race.  Currently called from a critical section */
+	if (mcl->mcl_refs > 1) {
+		atomic_subtract_int(&mcl->mcl_refs, 1);
+	} else {
+		KKASSERT(mcl->mcl_refs == 1);
+		mcl->mcl_refs = 0;
+		objcache_put(mclmeta_cache, mcl);
+	}
 }
 
 extern void db_print_backtrace(void);
@@ -692,45 +707,106 @@ m_free(struct mbuf *m)
 	}
 #endif
 	if (m->m_flags & M_PKTHDR) {
-		m->m_pkthdr.rcvif = NULL;	/* eliminate XXX JH */
 		m_tag_delete_chain(m);		/* eliminate XXX JH */
+	}
+
+	m->m_flags &= (M_EXT | M_EXT_CLUSTER | M_CLCACHE | M_PHCACHE);
+
+	/*
+	 * Clean the M_PKTHDR state so we can return the mbuf to its original
+	 * cache.  This is based on the PHCACHE flag which tells us whether
+	 * the mbuf was originally allocated out of a packet-header cache
+	 * or a non-packet-header cache.
+	 */
+	if (m->m_flags & M_PHCACHE) {
+		m->m_flags |= M_PKTHDR;
+		m->m_pkthdr.rcvif = NULL;	/* eliminate XXX JH */
 		m->m_pkthdr.csum_flags = 0;	/* eliminate XXX JH */
 		m->m_pkthdr.fw_flags = 0;	/* eliminate XXX JH */
 	}
-	m->m_flags &= (M_PKTHDR | M_EXT | M_EXT_CLUSTER);
 
-	if (m->m_flags & M_EXT) {
-		crit_enter();	/* XXX not MP safe */
-				/* interrupt race decrementing count to 0 */
-		if (m_sharecount(m) > 1) {
+	/*
+	 * Handle remaining flags combinations.  M_CLCACHE tells us whether
+	 * the mbuf was originally allocated from a cluster cache or not,
+	 * and is totally separate from whether the mbuf is currently
+	 * associated with a cluster.
+	 */
+	crit_enter();
+	switch(m->m_flags & (M_CLCACHE | M_EXT | M_EXT_CLUSTER)) {
+	case M_CLCACHE | M_EXT | M_EXT_CLUSTER:
+		/*
+		 * mbuf+cluster cache case.  The mbuf was allocated from the
+		 * combined mbuf_cluster cache and can be returned to the
+		 * cache if the cluster hasn't been shared.
+		 */
+		if (m_sharecount(m) == 1) {
+			/*
+			 * The cluster has not been shared, we can just
+			 * reset the data pointer and return the mbuf
+			 * to the cluster cache.  Note that the reference
+			 * count is left intact (it is still associated with
+			 * an mbuf).
+			 */
+			m->m_data = m->m_ext.ext_buf;
+			if (m->m_flags & M_PHCACHE)
+				objcache_put(mbufphdrcluster_cache, m);
+			else
+				objcache_put(mbufcluster_cache, m);
+		} else {
+			/*
+			 * Hell.  Someone else has a ref on this cluster,
+			 * we have to disconnect it which means we can't
+			 * put it back into the mbufcluster_cache, we
+			 * have to destroy the mbuf.
+			 *
+			 * XXX we could try to connect another cluster to
+			 * it.
+			 */
 			m->m_ext.ext_free(m->m_ext.ext_arg); 
 			m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
-			crit_exit();
-			goto detachmbuf;
+			if (m->m_flags & M_PHCACHE)
+				objcache_dtor(mbufphdrcluster_cache, m);
+			else
+				objcache_dtor(mbufcluster_cache, m);
 		}
-		crit_exit();
-		KKASSERT(((struct mbcluster *)m->m_ext.ext_arg)->mcl_refs == 1);
-		m->m_data = m->m_ext.ext_buf;
-		if (m->m_flags & M_PKTHDR)
-			objcache_put(mbufphdrcluster_cache, m);
-		else
-			objcache_put(mbufcluster_cache, m);
-		crit_enter();
 		--mbstat.m_clusters;
-		crit_exit();
-	} else {
-detachmbuf:
-		if (m->m_flags & M_PKTHDR) {
+		break;
+	case M_EXT | M_EXT_CLUSTER:
+		/*
+		 * Normal cluster associated with an mbuf that was allocated
+		 * from the normal mbuf pool rather then the cluster pool.
+		 * The cluster has to be independantly disassociated from the
+		 * mbuf.
+		 */
+		--mbstat.m_clusters;
+		/* fall through */
+	case M_EXT:
+		/*
+		 * Normal cluster association case, disconnect the cluster from
+		 * the mbuf.  The cluster may or may not be custom.
+		 */
+		m->m_ext.ext_free(m->m_ext.ext_arg); 
+		m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
+		/* fall through */
+	case 0:
+		/*
+		 * return the mbuf to the mbuf cache.
+		 */
+		if (m->m_flags & M_PHCACHE) {
 			m->m_data = m->m_pktdat;
 			objcache_put(mbufphdr_cache, m);
 		} else {
 			m->m_data = m->m_dat;
 			objcache_put(mbuf_cache, m);
 		}
-		crit_enter();
 		--mbstat.m_mbufs;
-		crit_exit();
+		break;
+	default:
+		if (!panicstr)
+			panic("bad mbuf flags %p %08x\n", m, m->m_flags);
+		break;
 	}
+	crit_exit();
 	return (n);
 }
 
@@ -1341,7 +1417,7 @@ m_move_pkthdr(struct mbuf *to, struct mbuf *from)
 {
 	KASSERT(!(to->m_flags & M_EXT), ("m_move_pkthdr: to has cluster"));
 
-	to->m_flags = from->m_flags & M_COPYFLAGS;
+	to->m_flags |= from->m_flags & M_COPYFLAGS;
 	to->m_data = to->m_pktdat;
 	to->m_pkthdr = from->m_pkthdr;		/* especially tags */
 	SLIST_INIT(&from->m_pkthdr.tags);	/* purge tags from src */

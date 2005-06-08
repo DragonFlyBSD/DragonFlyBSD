@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.28 2005/06/07 19:08:55 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.29 2005/06/08 22:22:58 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -181,7 +181,9 @@ struct mbuf {
 #define	M_FRAG		0x0400	/* packet is a fragment of a larger packet */
 #define	M_FIRSTFRAG	0x0800	/* packet is first fragment */
 #define	M_LASTFRAG	0x1000	/* packet is last fragment */
+#define	M_CLCACHE	0x2000	/* mbuf allocated from the cluster cache */
 #define M_EXT_CLUSTER	0x4000	/* standard cluster else special */
+#define	M_PHCACHE	0x8000	/* mbuf allocated from the pkt header cache */
 
 /*
  * Flags copied when copying m_pkthdr.
