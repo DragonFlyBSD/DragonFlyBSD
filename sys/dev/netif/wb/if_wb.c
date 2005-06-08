@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.25 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.26 2005/06/08 19:20:09 joerg Exp $
  */
 
 /*
@@ -712,8 +712,6 @@ wb_attach(device_t dev)
 	struct ifnet *ifp;
 	int error = 0, rid, unit;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	callout_init(&sc->wb_stat_timer);
@@ -735,8 +733,8 @@ wb_attach(device_t dev)
 			irq = pci_read_config(dev, WB_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			printf("wb%d: chip is in D%d power mode "
-			"-- setting to D0\n", unit, command & WB_PSTATE_MASK);
+			device_printf(dev, "chip is in D%d power mode "
+			"-- setting to D0\n", command & WB_PSTATE_MASK);
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, WB_PCI_PWRMGMTCTRL, command, 4);
 
@@ -757,13 +755,13 @@ wb_attach(device_t dev)
 
 #ifdef WB_USEIOSPACE
 	if ((command & PCIM_CMD_PORTEN) == 0) {
-		printf("wb%d: failed to enable I/O ports!\n", unit);
+		device_printf(dev, "failed to enable I/O ports!\n");
 		error = ENXIO;
 		goto fail;
 	}
 #else
 	if ((command & PCIM_CMD_MEMEN) == 0) {
-		printf("wb%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -773,7 +771,7 @@ wb_attach(device_t dev)
 	sc->wb_res = bus_alloc_resource_any(dev, WB_RES, &rid, RF_ACTIVE);
 
 	if (sc->wb_res == NULL) {
-		printf("wb%d: couldn't map ports/memory\n", unit);
+		device_printf(dev, "couldn't map ports/memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -787,19 +785,8 @@ wb_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->wb_irq == NULL) {
-		printf("wb%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
+		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->wb_irq, INTR_TYPE_NET,
-			       wb_intr, sc, &sc->wb_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->wb_irq);
-		bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
-		printf("wb%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -817,13 +804,10 @@ wb_attach(device_t dev)
 	sc->wb_unit = unit;
 
 	sc->wb_ldata = contigmalloc(sizeof(struct wb_list_data) + 8, M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->wb_ldata == NULL) {
-		printf("wb%d: no memory for list buffers!\n", unit);
-		bus_teardown_intr(dev, sc->wb_irq, sc->wb_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->wb_irq);
-		bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
+		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -848,11 +832,6 @@ wb_attach(device_t dev)
 	 */
 	if (mii_phy_probe(dev, &sc->wb_miibus,
 	    wb_ifmedia_upd, wb_ifmedia_sts)) {
-		contigfree(sc->wb_ldata_ptr, sizeof(struct wb_list_data) + 8,
-		    M_DEVBUF);
-		bus_teardown_intr(dev, sc->wb_irq, sc->wb_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->wb_irq);
-		bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -862,11 +841,18 @@ wb_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr);
 
-fail:
-	if (error)
-		device_delete_child(dev, sc->wb_miibus);
-	crit_exit();
+	error = bus_setup_intr(dev, sc->wb_irq, INTR_TYPE_NET,
+			       wb_intr, sc, &sc->wb_intrhand, NULL);
 
+	if (error) {
+		device_printf(dev, "couldn't set up irq\n");
+		goto fail;
+	}
+
+	return(0);
+
+fail:
+	wb_detach(dev);
 	return(error);
 }
 
@@ -878,21 +864,25 @@ wb_detach(device_t dev)
 
 	crit_enter();
 
-	wb_stop(sc);
-	ether_ifdetach(ifp);
+	if (device_is_attached(dev)) {
+		if (bus_child_present(dev))
+			wb_stop(sc);
+		ether_ifdetach(ifp);
+		device_delete_child(dev, sc->wb_miibus);
+		bus_generic_detach(dev);
+	}
 
-	/* Delete any miibus and phy devices attached to this interface */
-	bus_generic_detach(dev);
-	device_delete_child(dev, sc->wb_miibus);
-
-	bus_teardown_intr(dev, sc->wb_irq, sc->wb_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->wb_irq);
-	bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
-
-	contigfree(sc->wb_ldata_ptr, sizeof(struct wb_list_data) + 8,
-	    M_DEVBUF);
-
+	if (sc->wb_intrhand)
+		bus_teardown_intr(dev, sc->wb_irq, sc->wb_intrhand);
 	crit_exit();
+	if (sc->wb_irq);
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->wb_irq);
+	if (sc->wb_res)
+		bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
+	if (sc->wb_ldata_ptr) {
+		contigfree(sc->wb_ldata_ptr, sizeof(struct wb_list_data) + 8,
+		    M_DEVBUF);
+	}
 
 	return(0);
 }
