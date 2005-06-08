@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.44 2005/06/08 22:22:59 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.45 2005/06/08 23:14:29 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -832,7 +832,7 @@ m_prepend(struct mbuf *m, int len, int how)
 {
 	struct mbuf *mn;
 
-	mn = m_get(how, m->m_type);
+	mn = m_getl(MLEN, how, m->m_type, m->m_flags & M_PKTHDR, NULL);
 	if (mn == NULL) {
 		m_freem(m);
 		return (NULL);
@@ -1199,7 +1199,8 @@ m_pullup(struct mbuf *n, int len)
 	} else {
 		if (len > MHLEN)
 			goto bad;
-		m = m_get(MB_DONTWAIT, n->m_type);
+		m = m_getl(MLEN, MB_DONTWAIT, n->m_type, n->m_flags & M_PKTHDR,
+			   NULL);
 		if (m == NULL)
 			goto bad;
 		m->m_len = 0;
