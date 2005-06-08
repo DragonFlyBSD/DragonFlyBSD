@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.42 2005/06/08 16:30:47 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.43 2005/06/08 19:29:32 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -700,11 +700,15 @@ m_free(struct mbuf *m)
 	m->m_flags &= (M_PKTHDR | M_EXT | M_EXT_CLUSTER);
 
 	if (m->m_flags & M_EXT) {
+		crit_enter();	/* XXX not MP safe */
+				/* interrupt race decrementing count to 0 */
 		if (m_sharecount(m) > 1) {
 			m->m_ext.ext_free(m->m_ext.ext_arg); 
 			m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
+			crit_exit();
 			goto detachmbuf;
 		}
+		crit_exit();
 		KKASSERT(((struct mbcluster *)m->m_ext.ext_arg)->mcl_refs == 1);
 		m->m_data = m->m_ext.ext_buf;
 		if (m->m_flags & M_PKTHDR)
