@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.13 2005/05/09 17:24:14 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.14 2005/06/08 22:14:37 dillon Exp $
 
 tag="\$Name:  $"
 
@@ -146,6 +146,9 @@ fi
 
 touch version
 v=`cat version` u=${USER-root} d=`pwd` h=`hostname` t=`date`
+if [ "$v" = "" ]; then
+    v=1
+fi
 i=`make -V KERN_IDENT`
 cat << EOF > vers.c
 $COPYRIGHT
