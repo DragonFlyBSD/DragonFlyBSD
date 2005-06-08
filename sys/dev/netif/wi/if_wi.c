@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.24 2005/06/06 23:13:26 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.25 2005/06/08 19:03:10 joerg Exp $
  */
 
 /*
@@ -509,8 +509,8 @@ wi_detach(device_t dev)
 	wi_stop(ifp, 0);
 
 	ieee80211_ifdetach(ifp);
-	WI_UNLOCK(sc);
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
+	WI_UNLOCK(sc);
 	wi_free(dev);
 	return (0);
 }
