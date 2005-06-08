@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.84 2005/06/04 19:11:47 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.85 2005/06/08 09:56:57 corecode Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -297,11 +297,10 @@ rsync
 </TR>
 
 <TR>
-<TD>bsd.vt220.com (Quebec)</TD>
-<TD>code, official ISOs</TD>
+<TD>GULUS (Quebec)</TD>
+<TD>code, official ISOs, snapshot ISOs</TD>
 <TD>
-<a href="http://bsd.vt220.com/DragonFly/">HTTP</a>
-<a href="ftp://bsd.vt220.com/DragonFly/">FTP</a>
+<a href="http://gulus.USherbrooke.ca/pub/distro/DragonFly/">HTTP</a>
 </TD>
 </TR>
 
