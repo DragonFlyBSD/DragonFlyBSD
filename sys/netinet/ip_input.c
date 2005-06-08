@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.53 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.54 2005/06/08 23:45:00 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1938,7 +1938,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	 * assume exclusive access to the IP header in `m', so any
 	 * data in a cluster may change before we reach icmp_error().
 	 */
-	MGET(mcopy, MB_DONTWAIT, m->m_type);
+	MGETHDR(mcopy, MB_DONTWAIT, m->m_type);
 	if (mcopy != NULL && !m_dup_pkthdr(mcopy, m, MB_DONTWAIT)) {
 		/*
 		 * It's probably ok if the pkthdr dup fails (because
