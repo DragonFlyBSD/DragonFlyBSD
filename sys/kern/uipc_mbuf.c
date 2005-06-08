@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.41 2005/06/07 19:08:55 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.42 2005/06/08 16:30:47 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -404,10 +404,10 @@ m_sharecount(struct mbuf *m)
 void
 m_chtype(struct mbuf *m, int type)
 {
-	m->m_type = type;
 	crit_enter();
-	--mbtypes[m->m_type];
 	++mbtypes[type];
+	--mbtypes[m->m_type];
+	m->m_type = type;
 	crit_exit();
 }
 
