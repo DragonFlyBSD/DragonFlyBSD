@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.13 2004/12/03 17:59:20 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.14 2005/06/08 08:25:50 okumoto Exp $
  */
 
 /* 
@@ -50,6 +50,7 @@
 #include <machine/bus.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #define ROCKET_C
 #include "rpreg.h"
@@ -633,7 +634,6 @@ static void
 rp_do_receive(struct rp_port *rp, struct tty *tp,
 			CHANNEL_t *cp, unsigned int ChanStatus)
 {
-	int	spl;
 	unsigned	int	CharNStat;
 	int	ToRecv, wRecv, ch, ttynocopy;
 
@@ -713,9 +713,9 @@ rp_do_receive(struct rp_port *rp, struct tty *tp,
 					break;
 				}
 				ch = (u_char) rp_readch1(cp,sGetTxRxDataIO(cp));
-				spl = spltty();
+				crit_enter();
 				(*linesw[tp->t_line].l_rint)(ch, tp);
-				splx(spl);
+				crit_exit();
 				ToRecv--;
 			}
 		}
@@ -809,7 +809,7 @@ static void rp_do_poll(void *not_used)
 int
 rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 {
-	int	oldspl, unit;
+	int	unit;
 	int	num_chan;
 	int	aiop, chan, port;
 	int	ChanStatus, line, i, count;
@@ -833,9 +833,9 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 	ctlp->tty = tty = malloc(sizeof(struct tty) * num_ports,
 				    M_TTYS, M_WAITOK | M_ZERO);
 
-	oldspl = spltty();
+	crit_enter();
 	rp_addr(unit) = rp;
-	splx(oldspl);
+	crit_exit();
 
 	cdevsw_add(&rp_cdevsw, 0xffff0000, (unit + 1) << 16);
 	for (i = 0 ; i < rp_num_ports[unit] ; i++) {
@@ -914,19 +914,19 @@ nogo:
 void
 rp_releaseresource(CONTROLLER_t *ctlp)
 {
-	int i, s, unit;
+	int i, unit;
 
 	unit = device_get_unit(ctlp->dev);
 
 	if (ctlp->rp != NULL) {
-		s = spltty();
+		crit_enter();
 		for (i = 0 ; i < sizeof(p_rp_addr) / sizeof(*p_rp_addr) ; i++)
 			if (p_rp_addr[i] == ctlp->rp)
 				p_rp_addr[i] = NULL;
 		for (i = 0 ; i < sizeof(p_rp_table) / sizeof(*p_rp_table) ; i++)
 			if (p_rp_table[i] == ctlp->rp)
 				p_rp_table[i] = NULL;
-		splx(s);
+		crit_exit();
 		free(ctlp->rp, M_DEVBUF);
 		ctlp->rp = NULL;
 	}
@@ -945,7 +945,7 @@ rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 	struct	rp_port *rp;
 	int	unit, port, mynor, umynor, flags;  /* SG */
 	struct	tty	*tp;
-	int	oldspl, error;
+	int	error;
 	unsigned int	IntMask, ChanStatus;
 
 	if (!rp_initialized) {
@@ -968,7 +968,7 @@ rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 	tp = rp->rp_tty;
 	dev->si_tty = tp;
 
-	oldspl = spltty();
+	crit_enter();
 
 open_top:
 	while(rp->state & ~SET_DTR) {
@@ -997,7 +997,7 @@ open_top:
 			}
 		}
 		if(tp->t_state & TS_XCLUDE && suser(td) != 0) {
-			splx(oldspl);
+			crit_exit();
 			error = EBUSY;
 			goto out2;
 		}
@@ -1050,7 +1050,7 @@ open_top:
 		error = rpparam(tp, &tp->t_termios);
 		--rp->wopeners;
 		if(error != 0) {
-			splx(oldspl);
+			crit_exit();
 			return(error);
 		}
 
@@ -1089,7 +1089,7 @@ open_top:
 		callout_reset(&rp_poll_ch, POLL_INTERVAL, rp_do_poll, NULL);
 */
 out:
-	splx(oldspl);
+	crit_exit();
 	if(!(tp->t_state & TS_ISOPEN) && rp->wopeners == 0) {
 		rphardclose(rp);
 	}
@@ -1102,7 +1102,7 @@ out2:
 int
 rpclose(dev_t dev, int flag, int mode, d_thread_t *td)
 {
-	int	oldspl, unit, mynor, umynor, port; /* SG */
+	int	unit, mynor, umynor, port; /* SG */
 	struct	rp_port *rp;
 	struct	tty	*tp;
 	CHANNEL_t	*cp;
@@ -1118,7 +1118,7 @@ rpclose(dev_t dev, int flag, int mode, d_thread_t *td)
 	cp = &rp->rp_channel;
 	tp = rp->rp_tty;
 
-	oldspl = spltty();
+	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	rp_disc_optim(tp, &tp->t_termios);
 	rpstop(tp, FREAD | FWRITE);
@@ -1127,7 +1127,7 @@ rpclose(dev_t dev, int flag, int mode, d_thread_t *td)
 	tp->t_state &= ~TS_BUSY;
 	ttyclose(tp);
 
-	splx(oldspl);
+	crit_exit();
 
 	device_unbusy(rp->rp_ctlp->dev);
 
@@ -1219,7 +1219,6 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	CHANNEL_t	*cp;
 	struct tty	*tp;
 	int	unit, mynor, port, umynor;            /* SG */
-	int	oldspl;
 	int	error = 0;
 	int	arg, flags, result, ChanStatus;
 	struct	termios *t;
@@ -1306,7 +1305,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	if(error != ENOIOCTL) {
 		return(error);
 	}
-	oldspl = spltty();
+	crit_enter();
 
 	flags = rp->rp_channel.TxControl[3];
 
@@ -1314,7 +1313,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	flags = rp->rp_channel.TxControl[3];
 	rp_disc_optim(tp, &tp->t_termios);
 	if(error != ENOIOCTL) {
-		splx(oldspl);
+		crit_exit();
 		return(error);
 	}
 	switch(cmd) {
@@ -1392,7 +1391,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	case TIOCMSDTRWAIT:
 		error = suser(td);
 		if(error != 0) {
-			splx(oldspl);
+			crit_exit();
 			return(error);
 		}
 		rp->dtr_wait = *(int *)data * hz/100;
@@ -1401,10 +1400,10 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		*(int *)data = rp->dtr_wait * 100/hz;
 		break;
 	default:
-		splx(oldspl);
+		crit_exit();
 		return ENOTTY;
 	}
-	splx(oldspl);
+	crit_exit();
 	return(0);
 }
 
@@ -1428,7 +1427,7 @@ rpparam(tp, t)
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
 	int	unit, mynor, port, umynor;               /* SG */
-	int	oldspl, cflag, iflag, oflag, lflag;
+	int	cflag, iflag, oflag, lflag;
 	int	ospeed;
 #ifdef RPCLOCAL
 	int	devshift;
@@ -1442,7 +1441,7 @@ rpparam(tp, t)
 	unit = minor_to_unit[mynor];
 	rp = rp_addr(unit) + port;
 	cp = &rp->rp_channel;
-	oldspl = spltty();
+	crit_enter();
 
 	cflag = t->c_cflag;
 #ifdef RPCLOCAL
@@ -1546,7 +1545,7 @@ rpparam(tp, t)
 	if(flags & SET_RTS)
 	else
 */
-	splx(oldspl);
+	crit_exit();
 
 	return(0);
 }
@@ -1576,7 +1575,7 @@ rpstart(tp)
 	struct	clist	*qp;
 	int	unit, mynor, port, umynor;               /* SG */
 	char	flags;
-	int	spl, xmit_fifo_room;
+	int	xmit_fifo_room;
 	int	count, wcount;
 
 
@@ -1587,11 +1586,11 @@ rpstart(tp)
 	rp = rp_addr(unit) + port;
 	cp = &rp->rp_channel;
 	flags = rp->rp_channel.TxControl[3];
-	spl = spltty();
+	crit_enter();
 
 	if(tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
-		splx(spl);
+		crit_exit();
 		return;
 	}
 	if(rp->rp_xmit_stopped) {
@@ -1605,7 +1604,7 @@ rpstart(tp)
 			tp->t_state &= ~TS_BUSY;
 		}
 		ttwwakeup(tp);
-		splx(spl);
+		crit_exit();
 		return;
 	}
 	xmit_fifo_room = TXFIFO_SIZE - sGetTxCnt(cp);
@@ -1625,7 +1624,7 @@ rpstart(tp)
 	rp->rp_restart = (qp->c_cc > 0) ? rp->rp_fifo_lw : 0;
 
 	ttwwakeup(tp);
-	splx(spl);
+	crit_exit();
 }
 
 static
@@ -1637,7 +1636,6 @@ rpstop(tp, flag)
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
 	int	unit, mynor, port, umynor;                  /* SG */
-	int	spl;
 
    umynor = (((minor(tp->t_dev) >> 16) -1) * 32);    /* SG */
 	port  = (minor(tp->t_dev) & 0x1f);                /* SG */
@@ -1646,7 +1644,7 @@ rpstop(tp, flag)
 	rp = rp_addr(unit) + port;
 	cp = &rp->rp_channel;
 
-	spl = spltty();
+	crit_enter();
 
 	if(tp->t_state & TS_BUSY) {
 		if((tp->t_state&TS_TTSTOP) == 0) {
@@ -1658,6 +1656,6 @@ rpstop(tp, flag)
 			}
 		}
 	}
-	splx(spl);
+	crit_exit();
 	rpstart(tp);
 }

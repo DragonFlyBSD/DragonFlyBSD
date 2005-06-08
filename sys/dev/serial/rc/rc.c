@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.13 2005/02/01 22:41:22 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.14 2005/06/08 08:25:50 okumoto Exp $
  *
  */
 
@@ -47,6 +47,7 @@
 #include <sys/fcntl.h>
 #include <sys/interrupt.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 #include <machine/ipl.h>
 
@@ -500,11 +501,11 @@ static void rc_start(tp)
 struct tty *tp;
 {
 	struct rc_chans       *rc = &rc_chans[GET_UNIT(tp->t_dev)];
-	int                    nec = rc->rc_rcb->rcb_addr, s;
+	int                    nec = rc->rc_rcb->rcb_addr;
 
 	if (rc->rc_flags & RC_OSBUSY)
 		return;
-	s = spltty();
+	crit_enter();
 	rc->rc_flags |= RC_OSBUSY;
 	cpu_disable_intr();
 	if (tp->t_state & TS_TTSTOP)
@@ -555,7 +556,7 @@ struct tty *tp;
 	}
 out:
 	rc->rc_flags &= ~RC_OSBUSY;
-	(void) splx(s);
+	crit_exit();
 }
 
 /* Handle delayed events. */
@@ -726,7 +727,7 @@ rcopen(dev, flag, mode, td)
 {
 	struct rc_chans *rc;
 	struct tty      *tp;
-	int             unit, nec, s, error = 0;
+	int             unit, nec, error = 0;
 
 	unit = GET_UNIT(dev);
 	if (unit >= NRC * CD180_NCHAN)
@@ -740,7 +741,7 @@ rcopen(dev, flag, mode, td)
 #ifdef RCDEBUG
 	printf("rc%d/%d: rcopen: dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
 #endif
-	s = spltty();
+	crit_enter();
 
 again:
 	while (rc->rc_flags & RC_DTR_OFF) {
@@ -804,7 +805,7 @@ again:
 	if ((tp->t_state & TS_ISOPEN) && CALLOUT(dev))
 		rc->rc_flags |= RC_ACTOUT;
 out:
-	(void) splx(s);
+	crit_exit();
 
 	if(rc->rc_dcdwaits == 0 && !(tp->t_state & TS_ISOPEN))
 		rc_hardclose(rc);
@@ -820,7 +821,7 @@ rcclose(dev, flag, mode, td)
 {
 	struct rc_chans *rc;
 	struct tty      *tp;
-	int  s, unit = GET_UNIT(dev);
+	int unit = GET_UNIT(dev);
 
 	if (unit >= NRC * CD180_NCHAN)
 		return ENXIO;
@@ -829,23 +830,23 @@ rcclose(dev, flag, mode, td)
 #ifdef RCDEBUG
 	printf("rc%d/%d: rcclose dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
 #endif
-	s = spltty();
+	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	disc_optim(tp, &tp->t_termios, rc);
 	rc_stop(tp, FREAD | FWRITE);
 	rc_hardclose(rc);
 	ttyclose(tp);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
 static void rc_hardclose(rc)
 struct rc_chans *rc;
 {
-	int s, nec = rc->rc_rcb->rcb_addr;
+	int nec = rc->rc_rcb->rcb_addr;
 	struct tty *tp = rc->rc_tp;
 
-	s = spltty();
+	crit_enter();
 	rcout(CD180_CAR, rc->rc_chan);
 
 	/* Disable rx/tx intrs */
@@ -868,7 +869,7 @@ struct rc_chans *rc;
 	rc->rc_flags &= ~RC_ACTOUT;
 	wakeup((caddr_t) &rc->rc_rcb);  /* wake bi */
 	wakeup(TSA_CARR_ON(tp));
-	(void) splx(s);
+	crit_exit();
 }
 
 /* Reset the bastard */
@@ -904,7 +905,7 @@ static int rc_param(tp, ts)
 {
 	struct rc_chans *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	int    nec = rc->rc_rcb->rcb_addr;
-	int      idivs, odivs, s, val, cflag, iflag, lflag, inpflow;
+	int      idivs, odivs, val, cflag, iflag, lflag, inpflow;
 
 	if (   ts->c_ospeed < 0 || ts->c_ospeed > 76800
 	    || ts->c_ispeed < 0 || ts->c_ispeed > 76800
@@ -915,7 +916,7 @@ static int rc_param(tp, ts)
 	odivs = RC_BRD(ts->c_ospeed);
 	idivs = RC_BRD(ts->c_ispeed);
 
-	s = spltty();
+	crit_enter();
 
 	/* Select channel */
 	rcout(CD180_CAR, rc->rc_chan);
@@ -1048,7 +1049,7 @@ static int rc_param(tp, ts)
 	if ((cflag & CCTS_OFLOW) && (rc->rc_msvr & MSVR_CTS))
 		rc->rc_flags |= RC_SEND_RDY;
 	rcout(CD180_IER, rc->rc_ier);
-	(void) splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1076,7 +1077,7 @@ caddr_t         data;
 struct thread *td;
 {
 	struct rc_chans       *rc = &rc_chans[GET_UNIT(dev)];
-	int                    s, error;
+	int                   error;
 	struct tty                     *tp = rc->rc_tp;
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
@@ -1086,7 +1087,7 @@ struct thread *td;
 	disc_optim(tp, &tp->t_termios, rc);
 	if (error != ENOIOCTL)
 		return (error);
-	s = spltty();
+	crit_enter();
 
 	switch (cmd) {
 	    case TIOCSBRK:
@@ -1124,7 +1125,7 @@ struct thread *td;
 	    case TIOCMSDTRWAIT:
 		error = suser(td);
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		rc->rc_dtrwait = *(int *)data * hz / 100;
@@ -1135,10 +1136,10 @@ struct thread *td;
 		break;
 
 	    default:
-		(void) splx(s);
+		crit_exit();
 		return ENOTTY;
 	}
-	(void) splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1221,14 +1222,14 @@ int rc_test(nec, unit)
 	int             unit;
 {
 	int     chan = 0;
-	int     i = 0, rcnt, old_level;
+	int     i = 0, rcnt;
 	unsigned int    iack, chipid;
 	unsigned short  divs;
 	static  u_char  ctest[] = "\377\125\252\045\244\0\377";
 #define CTLEN   8
 #define ERR(s)  { \
 		printf("rc%d: ", unit); printf s ; printf("\n"); \
-		(void) splx(old_level); return 1; }
+		crit_exit(); return 1; }
 
 	struct rtest {
 		u_char  txbuf[CD180_NFIFO];     /* TX buffer  */
@@ -1237,7 +1238,7 @@ int rc_test(nec, unit)
 		int     txptr;                  /* TX pointer */
 	} tchans[CD180_NCHAN];
 
-	old_level = spltty();
+	crit_enter();
 
 	chipid = RC_FAKEID;
 
@@ -1351,7 +1352,7 @@ int rc_test(nec, unit)
 			if (ctest[i] != tchans[chan].rxbuf[i])
 				ERR(("data mismatch chan %d ptr %d (%d != %d)\n",
 				    chan, i, ctest[i], tchans[chan].rxbuf[i]))
-	(void) splx(old_level);
+	crit_exit();
 	return 0;
 }
 
@@ -1419,11 +1420,9 @@ rc_wakeup(chan)
 	void	*chan;
 {
 	if (rc_scheduled_event != 0) {
-		int	s;
-
-		s = splsofttty();
+		crit_enter();
 		rcpoll(NULL);
-		splx(s);
+		crit_exit();
 	}
 	callout_reset(&rc_wakeup_ch, 1, rc_wakeup, NULL);
 }

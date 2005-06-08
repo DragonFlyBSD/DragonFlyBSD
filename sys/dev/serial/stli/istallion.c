@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.14 2004/09/19 01:33:32 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.15 2005/06/08 08:25:50 okumoto Exp $
  */
 
 /*****************************************************************************/
@@ -52,6 +52,7 @@
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -922,7 +923,7 @@ STATIC int stliopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty	*tp;
 	stliport_t	*portp;
-	int		error, callout, x;
+	int		error, callout;
 
 #if STLDEBUG
 	printf("stliopen(dev=%x,flag=%x,mode=%x,p=%x)\n", (int) dev, flag,
@@ -945,7 +946,7 @@ STATIC int stliopen(dev_t dev, int flag, int mode, struct thread *td)
 	callout = minor(dev) & STL_CALLOUTDEV;
 	error = 0;
 
-	x = spltty();
+	crit_enter();
 
 stliopen_restart:
 /*
@@ -1039,7 +1040,7 @@ stliopen_restart:
  *	active when the open failed...
  */
 stliopen_end:
-	splx(x);
+	crit_exit();
 	if (((tp->t_state & TS_ISOPEN) == 0) && (portp->waitopens == 0))
 		stli_shutdownclose(portp);
 
@@ -1052,7 +1053,6 @@ STATIC int stliclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty	*tp;
 	stliport_t	*portp;
-	int		x;
 
 #if STLDEBUG
 	printf("stliclose(dev=%s,flag=%x,mode=%x,p=%p)\n",
@@ -1069,12 +1069,12 @@ STATIC int stliclose(dev_t dev, int flag, int mode, struct thread *td)
 		return(ENXIO);
 	tp = &portp->tty;
 
-	x = spltty();
+	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	stli_ttyoptim(portp, &tp->t_termios);
 	stli_shutdownclose(portp);
 	ttyclose(tp);
-	splx(x);
+	crit_exit();
 	return(0);
 }
 
@@ -1157,7 +1157,7 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 	stlibrd_t	*brdp;
 	stliport_t	*portp;
 	long		arg;
-	int		error, i, x;
+	int		error, i;
 
 #if STLDEBUG
 	printf("stliioctl(dev=%s,cmd=%lx,data=%p,flag=%x,p=%p)\n",
@@ -1261,11 +1261,11 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 	if (error != ENOIOCTL)
 		return(error);
 
-	x = spltty();
+	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	stli_ttyoptim(portp, &tp->t_termios);
 	if (error != ENOIOCTL) {
-		splx(x);
+		crit_exit();
 		return(error);
 	}
 
@@ -1347,7 +1347,7 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 		error = ENOTTY;
 		break;
 	}
-	splx(x);
+	crit_exit();
 
 	return(error);
 }
@@ -1440,7 +1440,6 @@ static int stli_shutdownclose(stliport_t *portp)
 {
 	stlibrd_t	*brdp;
 	struct tty	*tp;
-	int		x;
 
 #if STLDEBUG
 	printf("stli_shutdownclose(portp=%p): brdnr=%d panelnr=%d portnr=%d\n",
@@ -1454,7 +1453,7 @@ static int stli_shutdownclose(stliport_t *portp)
 	stli_rawclose(brdp, portp, 0, 0);
 	stli_flush(portp, (FWRITE | FREAD));
 	if (tp->t_cflag & HUPCL) {
-		x = spltty();
+		crit_enter();
 		stli_mkasysigs(&portp->asig, 0, 0);
 		if (portp->state & ST_CMDING) {
 			portp->state |= ST_DOSIGS;
@@ -1462,7 +1461,7 @@ static int stli_shutdownclose(stliport_t *portp)
 			stli_sendcmd(brdp, portp, A_SETSIGNALS,
 				&portp->asig, sizeof(asysigs_t), 0);
 		}
-		splx(x);
+		crit_exit();
 		if (portp->dtrwait != 0) {
 			portp->state |= ST_DTRWAIT;
 			callout_reset(&portp->dtr_ch, portp->dtrwait,
@@ -1506,14 +1505,14 @@ static int stli_rawopen(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, i
 	volatile cdkhdr_t	*hdrp;
 	volatile cdkctrl_t	*cp;
 	volatile unsigned char	*bits;
-	int			rc, x;
+	int			rc;
 
 #if STLDEBUG
 	printf("stli_rawopen(brdp=%x,portp=%x,arg=%x,wait=%d)\n", (int) brdp,
 		(int) portp, (int) arg, wait);
 #endif
 
-	x = spltty();
+	crit_enter();
 
 /*
  *	Slave is already closing this port. This can happen if a hangup
@@ -1524,7 +1523,7 @@ static int stli_rawopen(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, i
 	while (portp->state & ST_CLOSING) {
 		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
-			splx(x);
+			crit_exit();
 			return(rc);
 		}
 	}
@@ -1545,7 +1544,7 @@ static int stli_rawopen(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, i
 	EBRDDISABLE(brdp);
 
 	if (wait == 0) {
-		splx(x);
+		crit_exit();
 		return(0);
 	}
 
@@ -1558,11 +1557,11 @@ static int stli_rawopen(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, i
 	while (portp->state & ST_OPENING) {
 		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
-			splx(x);
+			crit_exit();
 			return(rc);
 		}
 	}
-	splx(x);
+	crit_exit();
 
 	if ((rc == 0) && (portp->rc != 0))
 		rc = EIO;
@@ -1582,14 +1581,14 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
 	volatile cdkhdr_t	*hdrp;
 	volatile cdkctrl_t	*cp;
 	volatile unsigned char	*bits;
-	int			rc, x;
+	int			rc;
 
 #if STLDEBUG
 	printf("stli_rawclose(brdp=%x,portp=%x,arg=%x,wait=%d)\n", (int) brdp,
 		(int) portp, (int) arg, wait);
 #endif
 
-	x = spltty();
+	crit_enter();
 
 /*
  *	Slave is already closing this port. This can happen if a hangup
@@ -1599,7 +1598,7 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
 		while (portp->state & ST_CLOSING) {
 			rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 			if (rc) {
-				splx(x);
+				crit_exit();
 				return(rc);
 			}
 		}
@@ -1620,7 +1619,7 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
 
 	portp->state |= ST_CLOSING;
 	if (wait == 0) {
-		splx(x);
+		crit_exit();
 		return(0);
 	}
 
@@ -1632,11 +1631,11 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
 	while (portp->state & ST_CLOSING) {
 		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
-			splx(x);
+			crit_exit();
 			return(rc);
 		}
 	}
-	splx(x);
+	crit_exit();
 
 	if ((rc == 0) && (portp->rc != 0))
 		rc = EIO;
@@ -1654,7 +1653,7 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
 
 static int stli_cmdwait(stlibrd_t *brdp, stliport_t *portp, unsigned long cmd, void *arg, int size, int copyback)
 {
-	int	rc, x;
+	int	rc;
 
 #if STLDEBUG
 	printf("stli_cmdwait(brdp=%x,portp=%x,cmd=%x,arg=%x,size=%d,"
@@ -1662,11 +1661,11 @@ static int stli_cmdwait(stlibrd_t *brdp, stliport_t *portp, unsigned long cmd, v
 		(int) arg, size, copyback);
 #endif
 
-	x = spltty();
+	crit_enter();
 	while (portp->state & ST_CMDING) {
 		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
-			splx(x);
+			crit_exit();
 			return(rc);
 		}
 	}
@@ -1676,11 +1675,11 @@ static int stli_cmdwait(stlibrd_t *brdp, stliport_t *portp, unsigned long cmd, v
 	while (portp->state & ST_CMDING) {
 		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
-			splx(x);
+			crit_exit();
 			return(rc);
 		}
 	}
-	splx(x);
+	crit_exit();
 
 	if (portp->rc != 0)
 		return(EIO);
@@ -1706,7 +1705,7 @@ static void stli_start(struct tty *tp)
 	stliport_t		*portp;
 	stlibrd_t		*brdp;
 	unsigned int		len, stlen, head, tail, size;
-	int			count, x;
+	int			count;
 
 	portp = (stliport_t *) tp;
 
@@ -1715,7 +1714,7 @@ static void stli_start(struct tty *tp)
 		portp->brdnr, portp->portnr);
 #endif
 
-	x = spltty();
+	crit_enter();
 
 #if VFREEBSD == 205
 /*
@@ -1732,7 +1731,7 @@ static void stli_start(struct tty *tp)
 #endif
 
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
-		splx(x);
+		crit_exit();
 		return;
 	}
 
@@ -1745,7 +1744,7 @@ static void stli_start(struct tty *tp)
 	if (tp->t_outq.c_cc != 0) {
 		brdp = stli_brds[portp->brdnr];
 		if (brdp == (stlibrd_t *) NULL) {
-			splx(x);
+			crit_exit();
 			return;
 		}
 
@@ -1801,7 +1800,7 @@ static void stli_start(struct tty *tp)
 	ttwwakeup(tp);
 #endif
 
-	splx(x);
+	crit_exit();
 }
 
 /*****************************************************************************/
@@ -1815,18 +1814,18 @@ static int stli_param(struct tty *tp, struct termios *tiosp)
 	stlibrd_t	*brdp;
 	stliport_t	*portp;
 	asyport_t	aport;
-	int		x, rc;
+	int		rc;
 
 	portp = (stliport_t *) tp;
 	if ((brdp = stli_brds[portp->brdnr]) == (stlibrd_t *) NULL)
 		return(ENXIO);
 
-	x = spltty();
+	crit_enter();
 	stli_mkasyport(portp, &aport, tiosp);
 	/* can we sleep here? */
 	rc = stli_cmdwait(brdp, portp, A_SETPORT, &aport, sizeof(asyport_t), 0);
 	stli_ttyoptim(portp, tiosp);
-	splx(x);
+	crit_exit();
 	return(rc);
 }
 
@@ -1843,7 +1842,6 @@ static void stli_flush(stliport_t *portp, int flag)
 {
 	stlibrd_t	*brdp;
 	unsigned long	ftype;
-	int		x;
 
 #if STLDEBUG
 	printf("stli_flush(portp=%x,flag=%x)\n", (int) portp, flag);
@@ -1857,7 +1855,7 @@ static void stli_flush(stliport_t *portp, int flag)
 	if (brdp == (stlibrd_t *) NULL)
 		return;
 
-	x = spltty();
+	crit_enter();
 	if (portp->state & ST_CMDING) {
 		portp->state |= (flag & FWRITE) ? ST_DOFLUSHTX : 0;
 		portp->state |= (flag & FREAD) ? ST_DOFLUSHRX : 0;
@@ -1870,7 +1868,7 @@ static void stli_flush(stliport_t *portp, int flag)
 	}
 	if ((flag & FREAD) && (stli_rxtmpport == portp))
 		stli_rxtmplen = 0;
-	splx(x);
+	crit_exit();
 }
 
 /*****************************************************************************/
@@ -2317,9 +2315,9 @@ static void stli_poll(void *arg)
 {
 	volatile cdkhdr_t	*hdrp;
 	stlibrd_t		*brdp;
-	int 			brdnr, x;
+	int 			brdnr;
 
-	x = spltty();
+	crit_enter();
 
 /*
  *	Check each board and do any servicing required.
@@ -2337,7 +2335,7 @@ static void stli_poll(void *arg)
 			stli_brdpoll(brdp, hdrp);
 		EBRDDISABLE(brdp);
 	}
-	splx(x);
+	crit_exit();
 
 	callout_reset(&stli_poll_ch, 1, stli_poll, NULL);
 }
@@ -3360,7 +3358,7 @@ static int stli_startbrd(stlibrd_t *brdp)
 	volatile cdkmem_t	*memp;
 	volatile cdkasy_t	*ap;
 	stliport_t		*portp;
-	int			portnr, nrdevs, i, rc, x;
+	int			portnr, nrdevs, i, rc;
 
 #if STLDEBUG
 	printf("stli_startbrd(brdp=%x)\n", (int) brdp);
@@ -3368,7 +3366,7 @@ static int stli_startbrd(stlibrd_t *brdp)
 
 	rc = 0;
 
-	x = spltty();
+	crit_enter();
 	EBRDENABLE(brdp);
 	hdrp = (volatile cdkhdr_t *) EBRDGETMEMPTR(brdp, CDK_CDKADDR);
 	nrdevs = hdrp->nrdevs;
@@ -3447,7 +3445,7 @@ static int stli_startbrd(stlibrd_t *brdp)
 
 stli_donestartup:
 	EBRDDISABLE(brdp);
-	splx(x);
+	crit_exit();
 
 	if (rc == 0)
 		brdp->state |= BST_STARTED;
@@ -3720,7 +3718,7 @@ STATIC int stli_memrw(dev_t dev, struct uio *uiop, int flag)
 {
 	stlibrd_t	*brdp;
 	void		*memptr;
-	int		brdnr, size, n, error, x;
+	int		brdnr, size, n, error;
 
 #if STLDEBUG
 	printf("stli_memrw(dev=%x,uiop=%x,flag=%x)\n", (int) dev,
@@ -3740,7 +3738,7 @@ STATIC int stli_memrw(dev_t dev, struct uio *uiop, int flag)
 	error = 0;
 	size = brdp->memsize - uiop->uio_offset;
 
-	x = spltty();
+	crit_enter();
 	EBRDENABLE(brdp);
 	while (size > 0) {
 		memptr = (void *) EBRDGETMEMPTR(brdp, uiop->uio_offset);
@@ -3751,7 +3749,7 @@ STATIC int stli_memrw(dev_t dev, struct uio *uiop, int flag)
 			break;
 	}
 	EBRDDISABLE(brdp);
-	splx(x);
+	crit_exit();
 
 	return(error);
 }

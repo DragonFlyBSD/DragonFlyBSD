@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.14 2005/02/06 23:26:43 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.15 2005/06/08 08:25:50 okumoto Exp $
  */
 
 #ifndef lint
@@ -57,6 +57,7 @@ static const char si_copyright1[] =  "@(#) Copyright (C) Specialix International
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
@@ -627,7 +628,7 @@ try_next2:
 static	int
 siopen(dev_t dev, int flag, int mode, struct thread *td)
 {
-	int oldspl, error;
+	int error;
 	int card, port;
 	struct si_softc *sc;
 	struct tty *tp;
@@ -682,7 +683,7 @@ siopen(dev_t dev, int flag, int mode, struct thread *td)
 	DPRINT((pp, DBG_ENTRY|DBG_OPEN, "siopen(%s,%x,%x,%x)\n",
 		devtoname(dev), flag, mode, td));
 
-	oldspl = spltty();			/* Keep others out */
+	crit_enter();			/* Keep others out */
 	error = 0;
 
 open_top:
@@ -783,7 +784,7 @@ open_top:
 	pp->sp_state |= SS_OPEN;	/* made it! */
 
 out:
-	splx(oldspl);
+	crit_exit();
 
 	DPRINT((pp, DBG_OPEN, "leaving siopen\n"));
 
@@ -798,14 +799,13 @@ siclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct si_port *pp;
 	struct tty *tp;
-	int oldspl;
 	int error = 0;
 	int mynor = minor(dev);
 
 	if (IS_SPECIAL(mynor))
 		return(0);
 
-	oldspl = spltty();
+	crit_enter();
 
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
@@ -849,18 +849,17 @@ siclose(dev_t dev, int flag, int mode, struct thread *td)
 
 out:
 	DPRINT((pp, DBG_CLOSE|DBG_EXIT, "close done, returning\n"));
-	splx(oldspl);
+	crit_exit();
 	return(error);
 }
 
 static void
 sihardclose(struct si_port *pp)
 {
-	int oldspl;
 	struct tty *tp;
 	volatile struct si_channel *ccbp;
 
-	oldspl = spltty();
+	crit_enter();
 
 	tp = pp->sp_tty;
 	ccbp = pp->sp_ccb;			/* Find control block */
@@ -884,7 +883,7 @@ sihardclose(struct si_port *pp)
 	wakeup((caddr_t)&pp->sp_active_out);
 	wakeup(TSA_CARR_ON(tp));
 
-	splx(oldspl);
+	crit_exit();
 }
 
 
@@ -895,15 +894,14 @@ static void
 sidtrwakeup(void *chan)
 {
 	struct si_port *pp;
-	int oldspl;
 
-	oldspl = spltty();
+	crit_enter();
 
 	pp = (struct si_port *)chan;
 	pp->sp_state &= ~SS_DTR_OFF;
 	wakeup(&pp->sp_dtr_wait);
 
-	splx(oldspl);
+	crit_exit();
 }
 
 static	int
@@ -913,7 +911,6 @@ siwrite(dev_t dev, struct uio *uio, int flag)
 	struct tty *tp;
 	int error = 0;
 	int mynor = minor(dev);
-	int oldspl;
 
 	if (IS_SPECIAL(mynor)) {
 		DPRINT((0, DBG_ENTRY|DBG_FAIL|DBG_WRITE, "siwrite(CONTROLDEV!!)\n"));
@@ -923,7 +920,7 @@ siwrite(dev_t dev, struct uio *uio, int flag)
 	tp = pp->sp_tty;
 	DPRINT((pp, DBG_WRITE, "siwrite(%s,%x,%x)\n", devtoname(dev), uio, flag));
 
-	oldspl = spltty();
+	crit_enter();
 	/*
 	 * If writes are currently blocked, wait on the "real" tty
 	 */
@@ -940,7 +937,7 @@ siwrite(dev_t dev, struct uio *uio, int flag)
 
 	error = (*linesw[tp->t_line].l_write)(tp, uio, flag);
 out:
-	splx(oldspl);
+	crit_exit();
 	return (error);
 }
 
@@ -952,7 +949,6 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	struct tty *tp;
 	int error;
 	int mynor = minor(dev);
-	int oldspl;
 	int blocked = 0;
 #if defined(COMPAT_43)
 	u_long oldcmd;
@@ -1058,12 +1054,12 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	if (error != ENOIOCTL)
 		goto out;
 
-	oldspl = spltty();
+	crit_enter();
 
 	error = ttioctl(tp, cmd, data, flag);
 	si_disc_optim(tp, &tp->t_termios, pp);
 	if (error != ENOIOCTL) {
-		splx(oldspl);
+		crit_exit();
 		goto out;
 	}
 
@@ -1105,7 +1101,7 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	default:
 		error = ENOTTY;
 	}
-	splx(oldspl);
+	crit_exit();
 
 out:
 	DPRINT((pp, DBG_IOCTL|DBG_EXIT, "siioctl ret %d\n", error));
@@ -1126,7 +1122,6 @@ si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	struct si_tcsi *dp;
 	struct si_pstat *sps;
 	int *ip, error = 0;
-	int oldspl;
 	int card, port;
 	int mynor = minor(dev);
 
@@ -1144,7 +1139,7 @@ si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return(ENODEV);
 	}
 
-	oldspl = spltty();	/* better safe than sorry */
+	crit_enter();	/* better safe than sorry */
 
 	ip = (int *)data;
 
@@ -1256,7 +1251,7 @@ si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		goto out;
 	}
 out:
-	splx(oldspl);
+	crit_exit();
 	return(error);		/* success */
 }
 
@@ -1271,7 +1266,7 @@ siparam(struct tty *tp, struct termios *t)
 {
 	struct si_port *pp = TP2PP(tp);
 	volatile struct si_channel *ccbp;
-	int oldspl, cflag, iflag, oflag, lflag;
+	int cflag, iflag, oflag, lflag;
 	int error = 0;		/* shutup gcc */
 	int ispeed = 0;		/* shutup gcc */
 	int ospeed = 0;		/* shutup gcc */
@@ -1299,7 +1294,7 @@ siparam(struct tty *tp, struct termios *t)
 			return (EINVAL);
 	}
 
-	oldspl = spltty();
+	crit_enter();
 
 	ccbp = pp->sp_ccb;
 
@@ -1427,7 +1422,7 @@ siparam(struct tty *tp, struct termios *t)
 	DPRINT((pp, DBG_PARAM, "siparam, complete: MR1 %x MR2 %x HI_MASK %x PRTCL %x HI_BREAK %x\n",
 		ccbp->hi_mr1, ccbp->hi_mr2, ccbp->hi_mask, ccbp->hi_prtcl, ccbp->hi_break));
 
-	splx(oldspl);
+	crit_exit();
 	return(error);
 }
 
@@ -1438,9 +1433,8 @@ siparam(struct tty *tp, struct termios *t)
 static void
 si_write_enable(struct si_port *pp, int state)
 {
-	int oldspl;
 
-	oldspl = spltty();
+	crit_enter();
 
 	if (state) {
 		pp->sp_state &= ~SS_BLOCKWRITE;
@@ -1453,7 +1447,7 @@ si_write_enable(struct si_port *pp, int state)
 		pp->sp_state |= SS_BLOCKWRITE;
 	}
 
-	splx(oldspl);
+	crit_exit();
 }
 
 /*
@@ -1537,10 +1531,10 @@ si_poll(void *nothing)
 	int i;
 	volatile struct si_reg *regp;
 	struct si_port *pp;
-	int lost, oldspl, port;
+	int lost, port;
 
 	DPRINT((0, DBG_POLL, "si_poll()\n"));
-	oldspl = spltty();
+	crit_enter();
 	if (in_intr)
 		goto out;
 	lost = 0;
@@ -1580,7 +1574,7 @@ si_poll(void *nothing)
 	if (lost || si_realpoll)
 		si_intr(NULL);	/* call intr with fake vector */
 out:
-	splx(oldspl);
+	crit_exit();
 
 	callout_reset(&poll_ch, si_pollrate, si_poll, NULL);
 }
@@ -1900,9 +1894,9 @@ si_start(struct tty *tp)
 	struct clist *qp;
 	BYTE ipos;
 	int nchar;
-	int oldspl, count, n, amount, buffer_full;
+	int count, n, amount, buffer_full;
 
-	oldspl = spltty();
+	crit_enter();
 
 	qp = &tp->t_outq;
 	pp = TP2PP(tp);
@@ -1980,7 +1974,7 @@ si_start(struct tty *tp)
 	}
 
 out:
-	splx(oldspl);
+	crit_exit();
 	DPRINT((pp, DBG_EXIT|DBG_START, "leave si_start()\n"));
 }
 
@@ -1995,15 +1989,14 @@ si_lstart(void *arg)
 {
 	struct si_port *pp = arg;
 	struct tty *tp;
-	int oldspl;
 
 	DPRINT((pp, DBG_ENTRY|DBG_LSTART, "si_lstart(%x) sp_state %x\n",
 		pp, pp->sp_state));
 
-	oldspl = spltty();
+	crit_enter();
 
 	if ((pp->sp_state & SS_OPEN) == 0 || (pp->sp_state & SS_LSTART) == 0) {
-		splx(oldspl);
+		crit_exit();
 		return;
 	}
 	pp->sp_state &= ~SS_LSTART;
@@ -2018,7 +2011,7 @@ si_lstart(void *arg)
 	(*linesw[tp->t_line].l_start)(tp);
 
 	pp->sp_state &= ~SS_INLSTART;
-	splx(oldspl);
+	crit_exit();
 }
 
 /*
@@ -2063,14 +2056,13 @@ si_stop(struct tty *tp, int rw)
 static void
 si_command(struct si_port *pp, int cmd, int waitflag)
 {
-	int oldspl;
 	volatile struct si_channel *ccbp = pp->sp_ccb;
 	int x;
 
 	DPRINT((pp, DBG_ENTRY|DBG_PARAM, "si_command(%x,%x,%d): hi_stat 0x%x\n",
 		pp, cmd, waitflag, ccbp->hi_stat));
 
-	oldspl = spltty();		/* Keep others out */
+	crit_enter();		/* Keep others out */
 
 	/* wait until it's finished what it was doing.. */
 	/* XXX: sits in IDLE_BREAK until something disturbs it or break
@@ -2083,11 +2075,11 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 			DPRINT((pp, DBG_PARAM,
 				"cmd intr collision - completing %d\trequested %d\n",
 				x, cmd));
-			splx(oldspl);
+			crit_exit();
 			return;
 		} else if (ttysleep(pp->sp_tty, (caddr_t)&pp->sp_state, PCATCH,
 				"sicmd1", 1)) {
-			splx(oldspl);
+			crit_exit();
 			return;
 		}
 	}
@@ -2115,7 +2107,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 			DPRINT((pp, DBG_PARAM,
 				"attempt to sleep in si_intr - cmd req %d\n",
 				cmd));
-			splx(oldspl);
+			crit_exit();
 			return;
 		} else while(ccbp->hi_stat != IDLE_OPEN &&
 			     ccbp->hi_stat != IDLE_BREAK) {
@@ -2124,7 +2116,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 				break;
 		}
 	}
-	splx(oldspl);
+	crit_exit();
 }
 
 static void

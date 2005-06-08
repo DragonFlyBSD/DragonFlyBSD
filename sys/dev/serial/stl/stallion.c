@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.12 2004/09/19 02:00:25 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.13 2005/06/08 08:25:50 okumoto Exp $
  */
 
 /*****************************************************************************/
@@ -52,6 +52,7 @@
 #include <sys/proc.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
+#include <sys/thread2.h>
 #include <bus/isa/i386/isa_device.h>
 #include <i386/isa/ic/scd1400.h>
 #include <i386/isa/ic/sc26198.h>
@@ -1151,7 +1152,7 @@ STATIC int stlopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty	*tp;
 	stlport_t	*portp;
-	int		error, callout, x;
+	int		error, callout;
 
 #if STLDEBUG
 	printf("stlopen(dev=%x,flag=%x,mode=%x,p=%x)\n", (int) dev, flag,
@@ -1174,7 +1175,7 @@ STATIC int stlopen(dev_t dev, int flag, int mode, struct thread *td)
 	callout = minor(dev) & STL_CALLOUTDEV;
 	error = 0;
 
-	x = spltty();
+	crit_enter();
 
 stlopen_restart:
 /*
@@ -1256,7 +1257,7 @@ stlopen_restart:
  *	active when the open failed...
  */
 stlopen_end:
-	splx(x);
+	crit_exit();
 	if (((tp->t_state & TS_ISOPEN) == 0) && (portp->waitopens == 0))
 		stl_rawclose(portp);
 
@@ -1269,7 +1270,6 @@ STATIC int stlclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty	*tp;
 	stlport_t	*portp;
-	int		x;
 
 #if STLDEBUG
 	printf("stlclose(dev=%s,flag=%x,mode=%x,p=%p)\n", devtoname(dev),
@@ -1286,12 +1286,12 @@ STATIC int stlclose(dev_t dev, int flag, int mode, struct thread *td)
 		return(ENXIO);
 	tp = &portp->tty;
 
-	x = spltty();
+	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	stl_ttyoptim(portp, &tp->t_termios);
 	stl_rawclose(portp);
 	ttyclose(tp);
-	splx(x);
+	crit_exit();
 	return(0);
 }
 
@@ -1330,7 +1330,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 	struct termios	*newtios, *localtios;
 	struct tty	*tp;
 	stlport_t	*portp;
-	int		error, i, x;
+	int		error, i;
 
 #if STLDEBUG
 	printf("stlioctl(dev=%s,cmd=%lx,data=%p,flag=%x,p=%p)\n",
@@ -1432,11 +1432,11 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 	if (error != ENOIOCTL)
 		return(error);
 
-	x = spltty();
+	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	stl_ttyoptim(portp, &tp->t_termios);
 	if (error != ENOIOCTL) {
-		splx(x);
+		crit_exit();
 		return(error);
 	}
 
@@ -1493,7 +1493,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 		error = ENOTTY;
 		break;
 	}
-	splx(x);
+	crit_exit();
 
 	return(error);
 }
@@ -1604,7 +1604,7 @@ static void stl_start(struct tty *tp)
 	stlport_t	*portp;
 	unsigned int	len, stlen;
 	char		*head, *tail;
-	int		count, x;
+	int		count;
 
 	portp = (stlport_t *) tp;
 
@@ -1613,7 +1613,7 @@ static void stl_start(struct tty *tp)
 		portp->brdnr, portp->portnr);
 #endif
 
-	x = spltty();
+	crit_enter();
 
 /*
  *	Check if the ports input has been blocked, and take appropriate action.
@@ -1643,7 +1643,7 @@ static void stl_start(struct tty *tp)
 #endif
 
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
-		splx(x);
+		crit_exit();
 		return;
 	}
 
@@ -1698,7 +1698,7 @@ static void stl_start(struct tty *tp)
 	ttwwakeup(tp);
 #endif
 
-	splx(x);
+	crit_exit();
 }
 
 /*****************************************************************************/
@@ -1706,7 +1706,7 @@ static void stl_start(struct tty *tp)
 static void stl_flush(stlport_t *portp, int flag)
 {
 	char	*head, *tail;
-	int	len, x;
+	int	len;
 
 #if STLDEBUG
 	printf("stl_flush(portp=%x,flag=%x)\n", (int) portp, flag);
@@ -1715,7 +1715,7 @@ static void stl_flush(stlport_t *portp, int flag)
 	if (portp == (stlport_t *) NULL)
 		return;
 
-	x = spltty();
+	crit_enter();
 
 	if (flag & FWRITE) {
                 stl_uartflush(portp, FWRITE);
@@ -1750,7 +1750,7 @@ static void stl_flush(stlport_t *portp, int flag)
 			stl_flowcontrol(portp, 1, -1);
 	}
 
-	splx(x);
+	crit_exit();
 }
 
 /*****************************************************************************/
@@ -1953,7 +1953,7 @@ static void stl_poll(void *arg)
 	stlbrd_t	*brdp;
 	stlport_t	*portp;
 	struct tty	*tp;
-	int		brdnr, portnr, rearm, x;
+	int		brdnr, portnr, rearm;
 
 #if STLDEBUG
 	printf("stl_poll()\n");
@@ -1962,7 +1962,7 @@ static void stl_poll(void *arg)
 	stl_doingtimeout = 0;
 	rearm = 0;
 
-	x = spltty();
+	crit_enter();
 	for (brdnr = 0; (brdnr < stl_nrbrds); brdnr++) {
 		if ((brdp = stl_brds[brdnr]) == (stlbrd_t *) NULL)
 			continue;
@@ -1997,7 +1997,7 @@ static void stl_poll(void *arg)
 				rearm++;
 		}
 	}
-	splx(x);
+	crit_exit();
 
 	if (rearm)
 		stl_dotimeout();
@@ -2776,7 +2776,6 @@ static int stl_cd1400updatereg(stlport_t *portp, int regnr, int value)
 
 static void stl_cd1400flush(stlport_t *portp, int flag)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_cd1400flush(portp=%x,flag=%x)\n", (int) portp, flag);
@@ -2785,7 +2784,7 @@ static void stl_cd1400flush(stlport_t *portp, int flag)
         if (portp == (stlport_t *) NULL)
                 return;
 
-        x = spltty();
+        crit_enter();
 
         if (flag & FWRITE) {
                 BRDENABLE(portp->brdnr, portp->pagenr);
@@ -2800,7 +2799,7 @@ static void stl_cd1400flush(stlport_t *portp, int flag)
                 /* Hmmm */
         }
 
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -3179,7 +3178,6 @@ static int stl_cd1400setport(stlport_t *portp, struct termios *tiosp)
         unsigned char   srer, sreron, sreroff;
         unsigned char   mcor1, mcor2, rtpr;
         unsigned char   clk, div;
-        int             x;
 
 #if STLDEBUG
         printf("stl_cd1400setport(portp=%x,tiosp=%x): brdnr=%d portnr=%d\n",
@@ -3325,7 +3323,7 @@ static int stl_cd1400setport(stlport_t *portp, struct termios *tiosp)
                 tiosp->c_cc[VSTOP]);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x3));
         srer = stl_cd1400getreg(portp, SRER);
@@ -3366,7 +3364,7 @@ static int stl_cd1400setport(stlport_t *portp, struct termios *tiosp)
         portp->state |= ((tiosp->c_cflag & CRTS_IFLOW) ? ASY_RTSFLOWMODE : 0);
         portp->state |= ((tiosp->c_cflag & CCTS_OFLOW) ? ASY_CTSFLOWMODE : 0);
         stl_ttyoptim(portp, tiosp);
-        splx(x);
+        crit_exit();
 
         return(0);
 }
@@ -3380,14 +3378,13 @@ static int stl_cd1400setport(stlport_t *portp, struct termios *tiosp)
 
 static void stl_cd1400sendflow(stlport_t *portp, int hw, int sw)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_cd1400sendflow(portp=%x,hw=%d,sw=%d)\n",
                 (int) portp, hw, sw);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x03));
 
@@ -3418,7 +3415,7 @@ static void stl_cd1400sendflow(stlport_t *portp, int hw, int sw)
         }
 
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -3452,7 +3449,6 @@ static int stl_cd1400datastate(stlport_t *portp)
 static void stl_cd1400setsignals(stlport_t *portp, int dtr, int rts)
 {
         unsigned char   msvr1, msvr2;
-        int             x;
 
 #if STLDEBUG
         printf("stl_cd1400setsignals(portp=%x,dtr=%d,rts=%d)\n", (int) portp,
@@ -3466,7 +3462,7 @@ static void stl_cd1400setsignals(stlport_t *portp, int dtr, int rts)
         if (rts > 0)
                 msvr2 = MSVR2_RTS;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x03));
         if (rts >= 0) {
@@ -3487,7 +3483,7 @@ static void stl_cd1400setsignals(stlport_t *portp, int dtr, int rts)
         if (dtr >= 0)
                 stl_cd1400setreg(portp, MSVR1, msvr1);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -3499,19 +3495,19 @@ static void stl_cd1400setsignals(stlport_t *portp, int dtr, int rts)
 static int stl_cd1400getsignals(stlport_t *portp)
 {
         unsigned char   msvr1, msvr2;
-        int             sigs, x;
+        int             sigs;
 
 #if STLDEBUG
         printf("stl_cd1400getsignals(portp=%x)\n", (int) portp);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x3));
         msvr1 = stl_cd1400getreg(portp, MSVR1);
         msvr2 = stl_cd1400getreg(portp, MSVR2);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 
         sigs = 0;
         sigs |= (msvr1 & MSVR1_DCD) ? TIOCM_CD : 0;
@@ -3536,7 +3532,6 @@ static int stl_cd1400getsignals(stlport_t *portp)
 static void stl_cd1400enablerxtx(stlport_t *portp, int rx, int tx)
 {
         unsigned char   ccr;
-        int             x;
 
 #if STLDEBUG
         printf("stl_cd1400enablerxtx(portp=%x,rx=%d,tx=%d)\n",
@@ -3553,14 +3548,14 @@ static void stl_cd1400enablerxtx(stlport_t *portp, int rx, int tx)
         else if (rx > 0)
                 ccr |= CCR_RXENABLE;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x03));
         stl_cd1400ccrwait(portp);
         stl_cd1400setreg(portp, CCR, ccr);
         stl_cd1400ccrwait(portp);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -3572,7 +3567,6 @@ static void stl_cd1400enablerxtx(stlport_t *portp, int rx, int tx)
 static void stl_cd1400startrxtx(stlport_t *portp, int rx, int tx)
 {
         unsigned char   sreron, sreroff;
-        int             x;
 
 #if STLDEBUG
         printf("stl_cd1400startrxtx(portp=%x,rx=%d,tx=%d)\n",
@@ -3592,7 +3586,7 @@ static void stl_cd1400startrxtx(stlport_t *portp, int rx, int tx)
         else if (rx > 0)
                 sreron |= SRER_RXDATA;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x3));
         stl_cd1400setreg(portp, SRER,
@@ -3602,7 +3596,7 @@ static void stl_cd1400startrxtx(stlport_t *portp, int rx, int tx)
                 portp->state |= ASY_TXBUSY;
                 portp->tty.t_state |= TS_BUSY;
         }
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -3613,32 +3607,30 @@ static void stl_cd1400startrxtx(stlport_t *portp, int rx, int tx)
 
 static void stl_cd1400disableintrs(stlport_t *portp)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_cd1400disableintrs(portp=%x)\n", (int) portp);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x3));
         stl_cd1400setreg(portp, SRER, 0);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
 
 static void stl_cd1400sendbreak(stlport_t *portp, long len)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_cd1400sendbreak(portp=%x,len=%d)\n", (int) portp,
                 (int) len);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_cd1400setreg(portp, CAR, (portp->portnr & 0x3));
         stl_cd1400setreg(portp, COR2,
@@ -3653,7 +3645,7 @@ static void stl_cd1400sendbreak(stlport_t *portp, long len)
         } else {
                 portp->brklen = len;
         }
-        splx(x);
+        crit_exit();
         portp->stats.txbreaks++;
 }
 
@@ -3888,7 +3880,6 @@ static int stl_sc26198setport(stlport_t *portp, struct termios *tiosp)
 {
         unsigned char   mr0, mr1, mr2, clk;
         unsigned char   imron, imroff, iopr, ipr;
-        int             x;
 
 #if STLDEBUG
         printf("stl_sc26198setport(portp=%x,tiosp=%x): brdnr=%d portnr=%d\n",
@@ -4024,7 +4015,7 @@ static int stl_sc26198setport(stlport_t *portp, struct termios *tiosp)
                 tiosp->c_cc[VSTART], tiosp->c_cc[VSTOP]);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_sc26198setreg(portp, IMR, 0);
         stl_sc26198updatereg(portp, MR0, mr0);
@@ -4054,7 +4045,7 @@ static int stl_sc26198setport(stlport_t *portp, struct termios *tiosp)
         portp->state |= ((tiosp->c_cflag & CRTS_IFLOW) ? ASY_RTSFLOWMODE : 0);
         portp->state |= ((tiosp->c_cflag & CCTS_OFLOW) ? ASY_CTSFLOWMODE : 0);
         stl_ttyoptim(portp, tiosp);
-        splx(x);
+        crit_exit();
 
         return(0);
 }
@@ -4068,7 +4059,6 @@ static int stl_sc26198setport(stlport_t *portp, struct termios *tiosp)
 static void stl_sc26198setsignals(stlport_t *portp, int dtr, int rts)
 {
         unsigned char   iopioron, iopioroff;
-        int             x;
 
 #if STLDEBUG
         printf("stl_sc26198setsignals(portp=%x,dtr=%d,rts=%d)\n",
@@ -4086,7 +4076,7 @@ static void stl_sc26198setsignals(stlport_t *portp, int dtr, int rts)
         else if (rts > 0)
                 iopioron |= IPR_RTS;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         if ((rts >= 0) && (portp->tty.t_cflag & CRTS_IFLOW)) {
                 if (rts == 0) {
@@ -4102,7 +4092,7 @@ static void stl_sc26198setsignals(stlport_t *portp, int dtr, int rts)
         stl_sc26198setreg(portp, IOPIOR,
                 ((stl_sc26198getreg(portp, IOPIOR) & ~iopioroff) | iopioron));
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -4114,17 +4104,17 @@ static void stl_sc26198setsignals(stlport_t *portp, int dtr, int rts)
 static int stl_sc26198getsignals(stlport_t *portp)
 {
         unsigned char   ipr;
-        int             x, sigs;
+        int             sigs;
 
 #if STLDEBUG
         printf("stl_sc26198getsignals(portp=%x)\n", (int) portp);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         ipr = stl_sc26198getreg(portp, IPR);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 
         sigs = TIOCM_DSR;
         sigs |= (ipr & IPR_DCD) ? 0 : TIOCM_CD;
@@ -4143,7 +4133,6 @@ static int stl_sc26198getsignals(stlport_t *portp)
 static void stl_sc26198enablerxtx(stlport_t *portp, int rx, int tx)
 {
         unsigned char   ccr;
-        int             x;
 
 #if STLDEBUG
         printf("stl_sc26198enablerxtx(portp=%x,rx=%d,tx=%d)\n",
@@ -4160,12 +4149,12 @@ static void stl_sc26198enablerxtx(stlport_t *portp, int rx, int tx)
         else if (rx > 0)
                 ccr |= CR_RXENABLE;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_sc26198setreg(portp, SCCR, ccr);
         BRDDISABLE(portp->brdnr);
         portp->crenable = ccr;
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -4177,7 +4166,6 @@ static void stl_sc26198enablerxtx(stlport_t *portp, int rx, int tx)
 static void stl_sc26198startrxtx(stlport_t *portp, int rx, int tx)
 {
         unsigned char   imr;
-        int             x;
 
 #if STLDEBUG
         printf("stl_sc26198startrxtx(portp=%x,rx=%d,tx=%d)\n",
@@ -4194,7 +4182,7 @@ static void stl_sc26198startrxtx(stlport_t *portp, int rx, int tx)
         else if (rx > 0)
                 imr |= IR_RXRDY | IR_RXBREAK | IR_RXWATCHDOG;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         stl_sc26198setreg(portp, IMR, imr);
         BRDDISABLE(portp->brdnr);
@@ -4203,7 +4191,7 @@ static void stl_sc26198startrxtx(stlport_t *portp, int rx, int tx)
                 portp->state |= ASY_TXBUSY;
                 portp->tty.t_state |= TS_BUSY;
         }
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -4214,32 +4202,30 @@ static void stl_sc26198startrxtx(stlport_t *portp, int rx, int tx)
 
 static void stl_sc26198disableintrs(stlport_t *portp)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_sc26198disableintrs(portp=%x)\n", (int) portp);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         portp->imr = 0;
         stl_sc26198setreg(portp, IMR, 0);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
 
 static void stl_sc26198sendbreak(stlport_t *portp, long len)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_sc26198sendbreak(portp=%x,len=%d)\n",
                 (int) portp, (int) len);
 #endif
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         if (len == -1) {
                 stl_sc26198setreg(portp, SCCR, CR_TXSTARTBREAK);
@@ -4248,7 +4234,7 @@ static void stl_sc26198sendbreak(stlport_t *portp, long len)
                 stl_sc26198setreg(portp, SCCR, CR_TXSTOPBREAK);
         }
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -4260,7 +4246,6 @@ static void stl_sc26198sendbreak(stlport_t *portp, long len)
 static void stl_sc26198sendflow(stlport_t *portp, int hw, int sw)
 {
         unsigned char   mr0;
-        int             x;
 
 #if STLDEBUG
         printf("stl_sc26198sendflow(portp=%x,hw=%d,sw=%d)\n",
@@ -4270,7 +4255,7 @@ static void stl_sc26198sendflow(stlport_t *portp, int hw, int sw)
         if (portp == (stlport_t *) NULL)
                 return;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
 
         if (sw >= 0) {
@@ -4306,7 +4291,7 @@ static void stl_sc26198sendflow(stlport_t *portp, int hw, int sw)
         }
 
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/
@@ -4322,7 +4307,6 @@ static void stl_sc26198sendflow(stlport_t *portp, int hw, int sw)
 static int stl_sc26198datastate(stlport_t *portp)
 {
         unsigned char   sr;
-        int             x;
 
 #if STLDEBUG
         printf("stl_sc26198datastate(portp=%x)\n", (int) portp);
@@ -4333,11 +4317,11 @@ static int stl_sc26198datastate(stlport_t *portp)
         if (portp->state & ASY_TXBUSY) 
                 return(1);
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         sr = stl_sc26198getreg(portp, SR);
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 
         return((sr & SR_TXEMPTY) ? 0 : 1);
 }
@@ -4346,7 +4330,6 @@ static int stl_sc26198datastate(stlport_t *portp)
 
 static void stl_sc26198flush(stlport_t *portp, int flag)
 {
-        int     x;
 
 #if STLDEBUG
         printf("stl_sc26198flush(portp=%x,flag=%x)\n", (int) portp, flag);
@@ -4355,7 +4338,7 @@ static void stl_sc26198flush(stlport_t *portp, int flag)
         if (portp == (stlport_t *) NULL)
                 return;
 
-        x = spltty();
+        crit_enter();
         BRDENABLE(portp->brdnr, portp->pagenr);
         if (flag & FWRITE) {
                 stl_sc26198setreg(portp, SCCR, CR_TXRESET);
@@ -4366,7 +4349,7 @@ static void stl_sc26198flush(stlport_t *portp, int flag)
                         stl_sc26198getreg(portp, RXFIFO);
         }
         BRDDISABLE(portp->brdnr);
-        splx(x);
+        crit_exit();
 }
 
 /*****************************************************************************/

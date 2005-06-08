@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.15 2005/02/01 22:41:20 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.16 2005/06/08 08:25:50 okumoto Exp $
  */
 
 #include "opt_compat.h"
@@ -79,6 +79,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <machine/clock.h>
 #include <machine/ipl.h>
 #ifndef SMP
@@ -563,7 +564,6 @@ cyattach_common(cy_iobase, cy_align)
 
 		for (cdu = 0; cdu < CD1400_NO_OF_CHANNELS; ++cdu, ++unit) {
 			struct com_s	*com;
-			int		s;
 
 	com = malloc(sizeof *com, M_DEVBUF, M_WAITOK | M_ZERO);
 	com->unit = unit;
@@ -614,9 +614,9 @@ cyattach_common(cy_iobase, cy_align)
 	com->it_in.c_ispeed = com->it_in.c_ospeed = comdefaultrate;
 	com->it_out = com->it_in;
 
-	s = spltty();
+	crit_enter();
 	com_addr(unit) = com;
-	splx(s);
+	crit_exit();
 
 	if (!sio_registered) {
 		callout_init(&sio_timeout_handle);
@@ -660,7 +660,6 @@ sioopen(dev_t dev, int flag, int mode, struct thread *td)
 	struct com_s	*com;
 	int		error;
 	int		mynor;
-	int		s;
 	struct tty	*tp;
 	int		unit;
 
@@ -676,7 +675,7 @@ sioopen(dev_t dev, int flag, int mode, struct thread *td)
 	tp = com->tp = &sio_tty[unit];
 #endif
 	dev->si_tty = tp;
-	s = spltty();
+	crit_enter();
 	/*
 	 * We jump to this label after all non-interrupted sleeps to pick
 	 * up any changes of the device state.
@@ -829,7 +828,7 @@ open_top:
 		com->active_out = TRUE;
 	siosettimeout();
 out:
-	splx(s);
+	crit_exit();
 	if (!(tp->t_state & TS_ISOPEN) && com->wopeners == 0)
 		comhardclose(com);
 	return (error);
@@ -840,7 +839,6 @@ sioclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct com_s	*com;
 	int		mynor;
-	int		s;
 	struct tty	*tp;
 
 	mynor = minor(dev);
@@ -848,7 +846,7 @@ sioclose(dev_t dev, int flag, int mode, struct thread *td)
 		return (0);
 	com = com_addr(MINOR_TO_UNIT(mynor));
 	tp = com->tp;
-	s = spltty();
+	crit_enter();
 	cd_etc(com, CD1400_ETC_STOPBREAK);
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	disc_optim(tp, &tp->t_termios, com);
@@ -856,7 +854,7 @@ sioclose(dev_t dev, int flag, int mode, struct thread *td)
 	comhardclose(com);
 	ttyclose(tp);
 	siosettimeout();
-	splx(s);
+	crit_exit();
 #ifdef broken /* session holds a ref to the tty; can't deallocate */
 	ttyfree(tp);
 	com->tp = sio_tty[unit] = NULL;
@@ -869,13 +867,12 @@ comhardclose(com)
 	struct com_s	*com;
 {
 	cy_addr		iobase;
-	int		s;
 	struct tty	*tp;
 	int		unit;
 
 	unit = com->unit;
 	iobase = com->iobase;
-	s = spltty();
+	crit_enter();
 #if 0
 	com->poll = FALSE;
 	com->poll_output = FALSE;
@@ -941,7 +938,7 @@ comhardclose(com)
 	com->active_out = FALSE;
 	wakeup(&com->active_out);
 	wakeup(TSA_CARR_ON(tp));	/* restart any wopeners */
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1569,7 +1566,6 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	struct com_s	*com;
 	int		error;
 	int		mynor;
-	int		s;
 	struct tty	*tp;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	int		oldcmd;
@@ -1646,11 +1642,11 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return (error);
-	s = spltty();
+	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	disc_optim(tp, &tp->t_termios, com);
 	if (error != ENOIOCTL) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	switch (cmd) {
@@ -1694,7 +1690,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		/* must be root since the wait applies to following logins */
 		error = suser(td);
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		com->dtr_wait = *(int *)data * hz / 100;
@@ -1711,10 +1707,10 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		*(struct timeval *)data = com->dcd_timestamp;
 		break;
 	default:
-		splx(s);
+		crit_exit();
 		return (ENOTTY);
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1824,7 +1820,6 @@ comparam(tp, t)
 	int		odivisor;
 	int		oprescaler;
 	u_char		opt;
-	int		s;
 	int		unit;
 
 	/* do historical conversions */
@@ -1844,7 +1839,7 @@ comparam(tp, t)
 		return (EINVAL);
 
 	/* parameters are OK, convert them to the com struct and the device */
-	s = spltty();
+	crit_enter();
 	if (odivisor == 0)
 		(void)commctl(com, TIOCM_DTR, DMBIC);	/* hang up line */
 	else
@@ -2171,7 +2166,7 @@ comparam(tp, t)
 	}
 
 	enable_intr();
-	splx(s);
+	crit_exit();
 	comstart(tp);
 	if (com->ibufold != NULL) {
 		free(com->ibufold, M_DEVBUF);
@@ -2251,7 +2246,6 @@ comstart(tp)
 	struct tty	*tp;
 {
 	struct com_s	*com;
-	int		s;
 #ifdef CyDebug
 	bool_t		started;
 #endif
@@ -2259,7 +2253,7 @@ comstart(tp)
 
 	unit = DEV_TO_UNIT(tp->t_dev);
 	com = com_addr(unit);
-	s = spltty();
+	crit_enter();
 
 #ifdef CyDebug
 	++com->start_count;
@@ -2305,7 +2299,7 @@ comstart(tp)
 	enable_intr();
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (tp->t_outq.c_cc != 0) {
@@ -2385,7 +2379,7 @@ comstart(tp)
 	enable_intr();
 #endif
 	ttwwakeup(tp);
-	splx(s);
+	crit_exit();
 }
 
 static void

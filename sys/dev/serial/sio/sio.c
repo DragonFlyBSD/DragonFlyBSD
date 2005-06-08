@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.25 2005/06/01 17:43:45 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.26 2005/06/08 08:25:50 okumoto Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -74,6 +74,7 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/timepps.h>
+#include <sys/thread2.h>
 
 #include <machine/limits.h>
 
@@ -305,7 +306,7 @@ static	Port_t	likely_esp_ports[] = { 0x140, 0x180, 0x280, 0 };
 static int
 sysctl_machdep_comdefaultrate(SYSCTL_HANDLER_ARGS)
 {
-	int error, s;
+	int error;
 	speed_t newspeed;
 	struct com_s *com;
 	struct tty *tp;
@@ -342,9 +343,9 @@ sysctl_machdep_comdefaultrate(SYSCTL_HANDLER_ARGS)
 	if (tp && (tp->t_state & TS_ISOPEN)) {
 		tp->t_termios.c_ispeed =
 		tp->t_termios.c_ospeed = comdefaultrate;
-		s = spltty();
+		crit_enter();
 		error = comparam(tp, &tp->t_termios);
-		splx(s);
+		crit_exit();
 	}
 	return error;
 }
@@ -1256,7 +1257,6 @@ sioopen(dev_t dev, int flag, int mode, struct thread *td)
 	struct com_s	*com;
 	int		error;
 	int		mynor;
-	int		s;
 	struct tty	*tp;
 	int		unit;
 
@@ -1270,7 +1270,7 @@ sioopen(dev_t dev, int flag, int mode, struct thread *td)
 	if (mynor & CONTROL_MASK)
 		return (0);
 	tp = dev->si_tty = com->tp = ttymalloc(com->tp);
-	s = spltty();
+	crit_enter();
 	/*
 	 * We jump to this label after all non-interrupted sleeps to pick
 	 * up any changes of the device state.
@@ -1421,7 +1421,7 @@ open_top:
 		com->active_out = TRUE;
 	siosettimeout();
 out:
-	splx(s);
+	crit_exit();
 	if (!(tp->t_state & TS_ISOPEN) && com->wopeners == 0)
 		comhardclose(com);
 	return (error);
@@ -1432,7 +1432,6 @@ sioclose(dev_t dev, int	flag, int mode, struct thread *td)
 {
 	struct com_s	*com;
 	int		mynor;
-	int		s;
 	struct tty	*tp;
 
 	mynor = minor(dev);
@@ -1442,21 +1441,21 @@ sioclose(dev_t dev, int	flag, int mode, struct thread *td)
 	if (com == NULL)
 		return (ENODEV);
 	tp = com->tp;
-	s = spltty();
+	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	disc_optim(tp, &tp->t_termios, com);
 	comstop(tp, FREAD | FWRITE);
 	comhardclose(com);
 	ttyclose(tp);
 	siosettimeout();
-	splx(s);
+	crit_exit();
 	if (com->gone) {
 		printf("sio%d: gone\n", com->unit);
-		s = spltty();
+		crit_enter();
 		if (com->ibuf != NULL)
 			free(com->ibuf, M_DEVBUF);
 		bzero(tp, sizeof *tp);
-		splx(s);
+		crit_exit();
 	}
 	return (0);
 }
@@ -1465,12 +1464,11 @@ static void
 comhardclose(com)
 	struct com_s	*com;
 {
-	int		s;
 	struct tty	*tp;
 	int		unit;
 
 	unit = com->unit;
-	s = spltty();
+	crit_enter();
 	com->poll = FALSE;
 	com->poll_output = FALSE;
 	com->do_timestamp = FALSE;
@@ -1521,7 +1519,7 @@ comhardclose(com)
 	com->active_out = FALSE;
 	wakeup(&com->active_out);
 	wakeup(TSA_CARR_ON(tp));	/* restart any wopeners */
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1576,7 +1574,6 @@ siobusycheck(chan)
 	void	*chan;
 {
 	struct com_s	*com;
-	int		s;
 
 	com = (struct com_s *)chan;
 
@@ -1588,7 +1585,7 @@ siobusycheck(chan)
 	 * is safe because CS_BUSY is clear so there are no output interrupts
 	 * to lose.
 	 */
-	s = spltty();
+	crit_enter();
 	if (com->state & CS_BUSY)
 		com->extra_state &= ~CSE_BUSYCHECK;	/* False alarm. */
 	else if ((inb(com->line_status_port) & (LSR_TSRE | LSR_TXRDY))
@@ -1599,7 +1596,7 @@ siobusycheck(chan)
 	} else {
 		callout_reset(&com->busy_ch, hz / 100, siobusycheck, com);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static u_int
@@ -1987,7 +1984,6 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	struct com_s	*com;
 	int		error;
 	int		mynor;
-	int		s;
 	struct tty	*tp;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	u_long		oldcmd;
@@ -2066,11 +2062,11 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return (error);
-	s = spltty();
+	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	disc_optim(tp, &tp->t_termios, com);
 	if (error != ENOIOCTL) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	switch (cmd) {
@@ -2106,7 +2102,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		/* must be root since the wait applies to following logins */
 		error = suser(td);
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		com->dtr_wait = *(int *)data * hz / 100;
@@ -2123,13 +2119,13 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		*(struct timeval *)data = com->dcd_timestamp;
 		break;
 	default:
-		splx(s);
+		crit_exit();
 		error = pps_ioctl(cmd, data, &com->pps);
 		if (error == ENODEV)
 			error = ENOTTY;
 		return (error);
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -2216,7 +2212,6 @@ comparam(tp, t)
 	u_int		divisor;
 	u_char		dlbh;
 	u_char		dlbl;
-	int		s;
 	int		unit;
 
 	unit = DEV_TO_UNIT(tp->t_dev);
@@ -2240,7 +2235,7 @@ comparam(tp, t)
 	}
 
 	/* parameters are OK, convert them to the com struct and the device */
-	s = spltty();
+	crit_enter();
 	if (divisor == 0)
 		(void)commctl(com, TIOCM_DTR, DMBIC);	/* hang up line */
 	else
@@ -2391,7 +2386,7 @@ comparam(tp, t)
 		siointr1(com);
 
 	com_unlock();
-	splx(s);
+	crit_exit();
 	comstart(tp);
 	if (com->ibufold != NULL) {
 		free(com->ibufold, M_DEVBUF);
@@ -2471,14 +2466,13 @@ comstart(tp)
 	struct tty	*tp;
 {
 	struct com_s	*com;
-	int		s;
 	int		unit;
 
 	unit = DEV_TO_UNIT(tp->t_dev);
 	com = com_addr(unit);
 	if (com == NULL)
 		return;
-	s = spltty();
+	crit_enter();
 	com_lock();
 	if (tp->t_state & TS_TTSTOP)
 		com->state &= ~CS_TTGO;
@@ -2495,7 +2489,7 @@ comstart(tp)
 	com_unlock();
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (tp->t_outq.c_cc != 0) {
@@ -2549,7 +2543,7 @@ comstart(tp)
 		siointr1(com);	/* fake interrupt to start output */
 	com_unlock();
 	ttwwakeup(tp);
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -2955,7 +2949,7 @@ siocnprobe(cp)
 			if (resource_int_value("sio", unit, "port", &port))
 				continue;
 			iobase = port;
-			s = spltty();
+			crit_enter();
 			if (boothowto & RB_SERIAL) {
 				boot_speed =
 				    siocngetspeed(iobase, comdefaultrclk);
@@ -2981,7 +2975,7 @@ siocnprobe(cp)
 
 			siocnopen(&sp, iobase, comdefaultrate);
 
-			splx(s);
+			crit_exit();
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
 				cp->cn_dev = make_dev(&sio_cdevsw, unit,
 						UID_ROOT, GID_WHEEL, 0600,
@@ -3043,21 +3037,20 @@ siocncheckc(dev)
 {
 	int	c;
 	Port_t	iobase;
-	int	s;
 	struct siocnstate	sp;
 
 	if (minor(dev) == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
-	s = spltty();
+	crit_enter();
 	siocnopen(&sp, iobase, comdefaultrate);
 	if (inb(iobase + com_lsr) & LSR_RXRDY)
 		c = inb(iobase + com_data);
 	else
 		c = -1;
 	siocnclose(&sp, iobase);
-	splx(s);
+	crit_exit();
 	return (c);
 }
 
@@ -3068,20 +3061,19 @@ siocngetc(dev)
 {
 	int	c;
 	Port_t	iobase;
-	int	s;
 	struct siocnstate	sp;
 
 	if (minor(dev) == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
-	s = spltty();
+	crit_enter();
 	siocnopen(&sp, iobase, comdefaultrate);
 	while (!(inb(iobase + com_lsr) & LSR_RXRDY))
 		;
 	c = inb(iobase + com_data);
 	siocnclose(&sp, iobase);
-	splx(s);
+	crit_exit();
 	return (c);
 }
 
@@ -3090,7 +3082,6 @@ siocnputc(dev, c)
 	dev_t	dev;
 	int	c;
 {
-	int	s;
 	struct siocnstate	sp;
 	Port_t	iobase;
 
@@ -3098,12 +3089,12 @@ siocnputc(dev, c)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
-	s = spltty();
+	crit_enter();
 	siocnopen(&sp, iobase, comdefaultrate);
 	siocntxwait(iobase);
 	outb(iobase + com_data, c);
 	siocnclose(&sp, iobase);
-	splx(s);
+	crit_exit();
 }
 
 DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, 0, 0);
