@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.19 2005/02/15 18:23:41 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.20 2005/06/08 23:10:27 hsu Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -1120,29 +1120,17 @@ awi_fix_rxhdr(sc, m0)
 		np = &n0;
 		off = 0;
 		while (m0->m_pkthdr.len > off) {
+			int msize;
+
+			n = m_getl(m0->m_pkthdr.len - off, MB_DONTWAIT,
+				   MT_DATA, n0 == NULL ? M_PKTHDR : 0, &msize);
+			if (n == NULL) {
+				m_freem(m0);
+				return (NULL);
+			}
+			n->m_len = msize;
 			if (n0 == NULL) {
-				MGETHDR(n, MB_DONTWAIT, MT_DATA);
-				if (n == NULL) {
-					m_freem(m0);
-					return NULL;
-				}
 				M_MOVE_PKTHDR(n, m0);
-				n->m_len = MHLEN;
-			} else {
-				MGET(n, MB_DONTWAIT, MT_DATA);
-				if (n == NULL) {
-					m_freem(m0);
-					m_freem(n0);
-					return NULL;
-				}
-				n->m_len = MLEN;
-			}
-			if (m0->m_pkthdr.len - off >= MINCLSIZE) {
-				MCLGET(n, MB_DONTWAIT);
-				if (n->m_flags & M_EXT)
-					n->m_len = n->m_ext.ext_size;
-			}
-			if (n0 == NULL) {
 				newdata = (caddr_t)
 				    ALIGN(n->m_data
 				    + sizeof(struct ether_header))
