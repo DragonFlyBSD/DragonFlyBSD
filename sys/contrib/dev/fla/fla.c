@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.8 2005/06/04 14:24:33 corecode Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.9 2005/06/09 20:47:37 swildner Exp $ 
  *
  */
 
@@ -31,6 +31,7 @@
 #include <vm/pmap.h>
 #include <vm/vm_param.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <sys/bus.h>
 #include <bus/isa/isavar.h>

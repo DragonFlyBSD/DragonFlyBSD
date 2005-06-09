@@ -26,12 +26,13 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.43.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpivar.h,v 1.4 2005/06/04 14:25:45 corecode Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpivar.h,v 1.5 2005/06/09 20:47:37 swildner Exp $ 
  */
 
 #include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/lock.h>
 #include <sys/mutex.h>

@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.15 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.16 2005/06/09 20:47:37 swildner Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/aio.h>
 #include <sys/file2.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include <machine/limits.h>
 #include "opt_vfs_aio.h"
@@ -1472,7 +1473,7 @@ aio_suspend(struct aio_suspend_args *uap)
 	struct aiocblist *cb;
 	int i;
 	int njoblist;
-	int error, s, timo;
+	int error, timo;
 	long *ijoblist;
 	struct aiocb **ujoblist;
 	
@@ -2078,7 +2079,7 @@ aio_waitcomplete(struct aio_waitcomplete_args *uap)
 	struct timespec ts;
 	struct kaioinfo *ki;
 	struct aiocblist *cb = NULL;
-	int error, s, timo;
+	int error, timo;
 	
 	suword(uap->aiocbp, (int)NULL);
 

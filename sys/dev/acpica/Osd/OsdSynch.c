@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.17.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.5 2005/06/04 14:25:45 corecode Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdSynch.c,v 1.6 2005/06/09 20:47:37 swildner Exp $ 
  */
 
 /*
@@ -38,6 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/lock.h>
 #include <sys/mutex.h>

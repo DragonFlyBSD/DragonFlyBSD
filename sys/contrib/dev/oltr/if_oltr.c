@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.18 2005/06/04 14:24:33 corecode Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.19 2005/06/09 20:47:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -64,6 +64,7 @@
 #include <machine/clock.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
