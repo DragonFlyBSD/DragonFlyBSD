@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.28 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.29 2005/06/09 18:39:05 hsu Exp $
  */
 
 /*
@@ -1225,16 +1225,14 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 	caddr_t bpos;
 	struct mbuf *mb, *mb2;
 
-	MGETHDR(mreq, MB_WAIT, MT_DATA);
-	mb = mreq;
-	/*
-	 * If this is a big reply, use a cluster else
-	 * try and leave leading space for the lower level headers.
-	 */
 	siz += RPC_REPLYSIZ;
-	if ((max_hdr + siz) >= MINCLSIZE) {
-		MCLGET(mreq, MB_WAIT);
-	} else
+	mb = mreq = m_getl(max_hdr + siz, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+	mreq->m_pkthdr.len = 0;
+	/*
+	 * If this is not a cluster, try and leave leading space
+	 * for the lower level headers.
+	 */
+	if ((max_hdr + siz) < MINCLSIZE)
 		mreq->m_data += max_hdr;
 	tl = mtod(mreq, u_int32_t *);
 	mreq->m_len = 6 * NFSX_UNSIGNED;

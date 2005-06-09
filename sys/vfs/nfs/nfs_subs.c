@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.31 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.32 2005/06/09 18:39:05 hsu Exp $
  */
 
 /*
@@ -629,18 +629,18 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	caddr_t bpos;
 	int i;
 	struct mbuf *mreq, *mb2;
-	int siz, grpsiz, authsiz;
+	int siz, grpsiz, authsiz, dsiz;
 
 	authsiz = nfsm_rndup(auth_len);
-	MGETHDR(mb, MB_WAIT, MT_DATA);
-	if ((authsiz + 10 * NFSX_UNSIGNED) >= MINCLSIZE) {
-		MCLGET(mb, MB_WAIT);
-	} else if ((authsiz + 10 * NFSX_UNSIGNED) < MHLEN) {
-		MH_ALIGN(mb, authsiz + 10 * NFSX_UNSIGNED);
-	} else {
-		MH_ALIGN(mb, 8 * NFSX_UNSIGNED);
+	dsiz = authsiz + 10 * NFSX_UNSIGNED;
+	mb = m_getl(dsiz, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+	if (dsiz < MINCLSIZE) {
+		if (dsiz < MHLEN)
+			MH_ALIGN(mb, dsiz);
+		else
+			MH_ALIGN(mb, 8 * NFSX_UNSIGNED);
 	}
-	mb->m_len = 0;
+	mb->m_len = mb->m_pkthdr.len = 0;
 	mreq = mb;
 	bpos = mtod(mb, caddr_t);
 
