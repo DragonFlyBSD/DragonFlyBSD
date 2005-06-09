@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.26 2005/06/08 19:20:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.27 2005/06/09 17:09:34 joerg Exp $
  */
 
 /*
@@ -846,6 +846,7 @@ wb_attach(device_t dev)
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
+		ether_ifdetach(ifp);
 		goto fail;
 	}
 
@@ -868,9 +869,11 @@ wb_detach(device_t dev)
 		if (bus_child_present(dev))
 			wb_stop(sc);
 		ether_ifdetach(ifp);
-		device_delete_child(dev, sc->wb_miibus);
-		bus_generic_detach(dev);
 	}
+
+	if (sc->wb_miibus)
+		device_delete_child(dev, sc->wb_miibus);
+	bus_generic_detach(dev);
 
 	if (sc->wb_intrhand)
 		bus_teardown_intr(dev, sc->wb_irq, sc->wb_intrhand);
