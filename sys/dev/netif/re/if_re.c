@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.13 2005/06/09 02:03:38 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.14 2005/06/09 20:04:44 joerg Exp $
  */
 
 /*
@@ -120,6 +120,7 @@
 #include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -1196,9 +1197,9 @@ re_detach(device_t dev)
 {
 	struct re_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, s;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
 	/* These should only be active if attach succeeded */
 	if (device_is_attached(dev)) {
@@ -1211,6 +1212,9 @@ re_detach(device_t dev)
 
 	if (sc->re_intrhand)
 		bus_teardown_intr(dev, sc->re_irq, sc->re_intrhand);
+
+	crit_exit();
+
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
 	if (sc->re_res)
@@ -1264,8 +1268,6 @@ re_detach(device_t dev)
 
 	if (sc->re_parent_tag)
 		bus_dma_tag_destroy(sc->re_parent_tag);
-
-	splx(s);
 
 	return(0);
 }
@@ -1579,15 +1581,15 @@ re_tick(void *xsc)
 {
 	struct re_softc *sc = xsc;
 	struct mii_data *mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->re_miibus);
 	mii_tick(mii);
 
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
-	splx(s);
+
+	crit_exit();
 }
 
 #ifdef DEVICE_POLLING
@@ -1643,12 +1645,9 @@ re_intr(void *arg)
 	struct re_softc	*sc = arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t status;
-	int s;
 
 	if (sc->suspended || (ifp->if_flags & IFF_UP) == 0)
 		return;
-
-	s = splimp();
 
 	for (;;) {
 		status = CSR_READ_2(sc, RE_ISR);
@@ -1683,8 +1682,6 @@ re_intr(void *arg)
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
-
-	splx(s);
 }
 
 static int
@@ -1811,9 +1808,9 @@ re_start(struct ifnet *ifp)
 {
 	struct re_softc	*sc = ifp->if_softc;
 	struct mbuf *m_head = NULL, *m_head2;
-	int called_defrag, idx, s;
+	int called_defrag, idx;
 
-	s = splimp();
+	crit_enter();
 
 	idx = sc->re_ldata.re_tx_prodidx;
 
@@ -1868,12 +1865,12 @@ re_start(struct ifnet *ifp)
 	 */
 	CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 
-	splx(s);
-
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
+
+	crit_exit();
 }
 
 static void
@@ -1883,9 +1880,9 @@ re_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 	uint32_t rxcfg = 0;
-	int s;
 
-	s = splimp();
+	crit_enter();
+
 	mii = device_get_softc(sc->re_miibus);
 
 	/*
@@ -2031,7 +2028,7 @@ re_init(void *xsc)
 		CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
 
 	if (sc->re_testmode) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2043,7 +2040,8 @@ re_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
-	splx(s);
+
+	crit_exit();
 }
 
 /*
@@ -2083,9 +2081,9 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct re_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
-	int error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -2126,7 +2124,7 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -2135,10 +2133,11 @@ static void
 re_watchdog(struct ifnet *ifp)
 {
 	struct re_softc *sc = ifp->if_softc;
-	int s;
 
-	s = splimp();
 	if_printf(ifp, "watchdog timeout\n");
+
+	crit_enter();
+
 	ifp->if_oerrors++;
 
 	re_txeof(sc);
@@ -2146,7 +2145,7 @@ re_watchdog(struct ifnet *ifp)
 
 	re_init(sc);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -2157,9 +2156,10 @@ static void
 re_stop(struct re_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, s;
+	int i;
 
-	s = splimp();
+	crit_enter();
+
 	ifp->if_timer = 0;
 	callout_stop(&sc->re_timer);
 
@@ -2193,7 +2193,7 @@ re_stop(struct re_softc *sc)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*
