@@ -27,8 +27,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.8 2005/02/17 13:59:36 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.9 2005/06/09 20:55:05 swildner Exp $
  */
+
+#include <sys/thread2.h>
 
 /*
  * Driver Parameter Definitions
@@ -477,9 +479,7 @@ aac_initq_ ## name (struct aac_softc *sc)				\
 static __inline void							\
 aac_enqueue_ ## name (struct aac_command *cm)				\
 {									\
-	int s;								\
-									\
-	s = splbio();							\
+	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
 		printf("command %p is on another queue, flags = %#x\n",	\
 		       cm, cm->cm_flags);				\
@@ -488,14 +488,12 @@ aac_enqueue_ ## name (struct aac_command *cm)				\
 	TAILQ_INSERT_TAIL(&cm->cm_sc->aac_ ## name, cm, cm_link);	\
 	cm->cm_flags |= AAC_ON_ ## index;				\
 	AACQ_ADD(cm->cm_sc, index);					\
-	splx(s);							\
+	crit_exit();							\
 }									\
 static __inline void							\
 aac_requeue_ ## name (struct aac_command *cm)				\
 {									\
-	int s;								\
-									\
-	s = splbio();							\
+	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
 		printf("command %p is on another queue, flags = %#x\n",	\
 		       cm, cm->cm_flags);				\
@@ -504,15 +502,14 @@ aac_requeue_ ## name (struct aac_command *cm)				\
 	TAILQ_INSERT_HEAD(&cm->cm_sc->aac_ ## name, cm, cm_link);	\
 	cm->cm_flags |= AAC_ON_ ## index;				\
 	AACQ_ADD(cm->cm_sc, index);					\
-	splx(s);							\
+	crit_exit();							\
 }									\
 static __inline struct aac_command *					\
 aac_dequeue_ ## name (struct aac_softc *sc)				\
 {									\
 	struct aac_command *cm;						\
-	int s;								\
 									\
-	s = splbio();							\
+	crit_enter();							\
 	if ((cm = TAILQ_FIRST(&sc->aac_ ## name)) != NULL) {		\
 		if ((cm->cm_flags & AAC_ON_ ## index) == 0) {		\
 			printf("command %p not in queue, flags = %#x, "	\
@@ -524,15 +521,13 @@ aac_dequeue_ ## name (struct aac_softc *sc)				\
 		cm->cm_flags &= ~AAC_ON_ ## index;			\
 		AACQ_REMOVE(sc, index);					\
 	}								\
-	splx(s);							\
+	crit_exit();							\
 	return(cm);							\
 }									\
 static __inline void							\
 aac_remove_ ## name (struct aac_command *cm)				\
 {									\
-	int s;								\
-									\
-	s = splbio();							\
+	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_ ## index) == 0) {			\
 		printf("command %p not in queue, flags = %#x, "		\
 		       "bit = %#x\n", cm, cm->cm_flags, 		\
@@ -542,7 +537,7 @@ aac_remove_ ## name (struct aac_command *cm)				\
 	TAILQ_REMOVE(&cm->cm_sc->aac_ ## name, cm, cm_link);		\
 	cm->cm_flags &= ~AAC_ON_ ## index;				\
 	AACQ_REMOVE(cm->cm_sc, index);					\
-	splx(s);							\
+	crit_exit();							\
 }									\
 struct hack
 
@@ -564,26 +559,23 @@ aac_initq_bio(struct aac_softc *sc)
 static __inline void
 aac_enqueue_bio(struct aac_softc *sc, struct bio *bp)
 {
-	int s;
-
-	s = splbio();
+	crit_enter();
 	bioq_insert_tail(&sc->aac_bioq, bp);
 	AACQ_ADD(sc, AACQ_BIO);
-	splx(s);
+	crit_exit();
 }
 
 static __inline struct bio *
 aac_dequeue_bio(struct aac_softc *sc)
 {
-	int s;
 	struct bio *bp;
 
-	s = splbio();
+	crit_enter();
 	if ((bp = bioq_first(&sc->aac_bioq)) != NULL) {
 		bioq_remove(&sc->aac_bioq, bp);
 		AACQ_REMOVE(sc, AACQ_BIO);
 	}
-	splx(s);
+	crit_exit();
 	return(bp);
 }
 

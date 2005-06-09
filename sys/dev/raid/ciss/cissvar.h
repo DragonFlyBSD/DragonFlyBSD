@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.2 2003/02/06 21:42:59 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.4 2004/09/15 16:02:41 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.5 2005/06/09 20:55:05 swildner Exp $
  */
+
+#include <sys/thread2.h>
 
 /*
  * CISS adapter driver datastructures
@@ -311,46 +313,41 @@ ciss_initq_ ## name (struct ciss_softc *sc)				\
 static __inline void							\
 ciss_enqueue_ ## name (struct ciss_request *cr)				\
 {									\
-    int		s;							\
-									\
-    s = splcam();							\
+    crit_enter();							\
     TAILQ_INSERT_TAIL(&cr->cr_sc->ciss_ ## name, cr, cr_link);		\
     CISSQ_ADD(cr->cr_sc, index);					\
     cr->cr_onq = index;							\
-    splx(s);								\
+    crit_exit();							\
 }									\
 static __inline void							\
 ciss_requeue_ ## name (struct ciss_request *cr)				\
 {									\
-    int		s;							\
-									\
-    s = splcam();							\
+    crit_enter();							\
     TAILQ_INSERT_HEAD(&cr->cr_sc->ciss_ ## name, cr, cr_link);		\
     CISSQ_ADD(cr->cr_sc, index);					\
     cr->cr_onq = index;							\
-    splx(s);								\
+    crit_exit();							\
 }									\
 static __inline struct ciss_request *					\
 ciss_dequeue_ ## name (struct ciss_softc *sc)				\
 {									\
     struct ciss_request	*cr;						\
-    int			s;						\
 									\
-    s = splcam();							\
+    crit_enter();							\
     if ((cr = TAILQ_FIRST(&sc->ciss_ ## name)) != NULL) {		\
 	TAILQ_REMOVE(&sc->ciss_ ## name, cr, cr_link);			\
 	CISSQ_REMOVE(sc, index);					\
 	cr->cr_onq = -1;						\
     }									\
-    splx(s);								\
+    crit_exit();							\
     return(cr);								\
 }									\
 static __inline int							\
 ciss_remove_ ## name (struct ciss_request *cr)				\
 {									\
-    int			s, error;					\
+    int			error;						\
 									\
-    s = splcam();							\
+    crit_enter();							\
     if (cr->cr_onq != index) {						\
 	printf("request on queue %d (expected %d)\n", cr->cr_onq, index);\
 	error = 1;							\
@@ -360,7 +357,7 @@ ciss_remove_ ## name (struct ciss_request *cr)				\
 	cr->cr_onq = -1;						\
 	error = 0;							\
     }									\
-    splx(s);								\
+    crit_exit();							\
     return(error);							\
 }									\
 struct hack

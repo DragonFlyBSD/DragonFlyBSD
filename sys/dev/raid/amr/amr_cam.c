@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.5 2004/06/21 15:39:30 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.6 2005/06/09 20:55:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -95,33 +95,28 @@ static void		amr_cam_complete_extcdb(struct amr_command *ac);
 static __inline void
 amr_enqueue_ccb(struct amr_softc *sc, union ccb *ccb)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_TAIL(&sc->amr_cam_ccbq, &ccb->ccb_h, sim_links.tqe);
-    splx(s);
+    crit_exit();
 }
 
 static __inline void
 amr_requeue_ccb(struct amr_softc *sc, union ccb *ccb)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_HEAD(&sc->amr_cam_ccbq, &ccb->ccb_h, sim_links.tqe);
-    splx(s);
+    crit_exit();
 }
 
 static __inline union ccb *
 amr_dequeue_ccb(struct amr_softc *sc)
 {
     union ccb	*ccb;
-    int		s;
 
-    s = splbio();
+    crit_enter();
     if ((ccb = (union ccb *)TAILQ_FIRST(&sc->amr_cam_ccbq)) != NULL)
 	TAILQ_REMOVE(&sc->amr_cam_ccbq, &ccb->ccb_h, sim_links.tqe);
-    splx(s);
+    crit_exit();
     return(ccb);
 }
 

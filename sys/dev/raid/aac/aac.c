@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.17 2005/02/04 02:55:44 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.18 2005/06/09 20:55:05 swildner Exp $
  */
 
 /*
@@ -531,13 +531,12 @@ aac_shutdown(device_t dev)
 	struct aac_softc *sc;
 	struct aac_fib *fib;
 	struct aac_close_command *cc;
-	int s;
 
 	debug_called(1);
 
 	sc = device_get_softc(dev);
 
-	s = splbio();
+	crit_enter();
 
 	sc->aac_state |= AAC_STATE_SUSPEND;
 
@@ -575,7 +574,7 @@ aac_shutdown(device_t dev)
 
 	AAC_MASK_INTERRUPTS(sc);
 
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -586,18 +585,17 @@ int
 aac_suspend(device_t dev)
 {
 	struct aac_softc *sc;
-	int s;
 
 	debug_called(1);
 
 	sc = device_get_softc(dev);
 
-	s = splbio();
+	crit_enter();
 
 	sc->aac_state |= AAC_STATE_SUSPEND;
 	
 	AAC_MASK_INTERRUPTS(sc);
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -1118,7 +1116,7 @@ aac_dump_complete(struct aac_softc *sc)
 static int
 aac_wait_command(struct aac_command *cm, int timeout)
 {
-	int s, error = 0;
+	int error = 0;
 
 	debug_called(2);
 
@@ -1126,11 +1124,11 @@ aac_wait_command(struct aac_command *cm, int timeout)
 	cm->cm_queue = AAC_ADAP_NORM_CMD_QUEUE;
 	aac_enqueue_ready(cm);
 	aac_startio(cm->cm_sc);
-	s = splbio();
+	crit_enter();
 	while (!(cm->cm_flags & AAC_CMD_COMPLETED) && (error != EWOULDBLOCK)) {
 		error = tsleep(cm, 0, "aacwait", 0);
 	}
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1796,7 +1794,7 @@ static int
 aac_enqueue_fib(struct aac_softc *sc, int queue, struct aac_command *cm)
 {
 	u_int32_t pi, ci;
-	int s, error;
+	int error;
 	u_int32_t fib_size;
 	u_int32_t fib_addr;
 
@@ -1805,7 +1803,7 @@ aac_enqueue_fib(struct aac_softc *sc, int queue, struct aac_command *cm)
 	fib_size = cm->cm_fib->Header.Size; 
 	fib_addr = cm->cm_fib->Header.ReceiverFibAddress;
 
-	s = splbio();
+	crit_enter();
 
 	/* get the producer/consumer indices */
 	pi = sc->aac_queues->qt_qindex[queue][AAC_PRODUCER_INDEX];
@@ -1841,7 +1839,7 @@ aac_enqueue_fib(struct aac_softc *sc, int queue, struct aac_command *cm)
 	error = 0;
 
 out:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1854,12 +1852,12 @@ aac_dequeue_fib(struct aac_softc *sc, int queue, u_int32_t *fib_size,
 		struct aac_fib **fib_addr)
 {
 	u_int32_t pi, ci;
-	int s, error;
+	int error;
 	int notify;
 
 	debug_called(3);
 
-	s = splbio();
+	crit_enter();
 
 	/* get the producer/consumer indices */
 	pi = sc->aac_queues->qt_qindex[queue][AAC_PRODUCER_INDEX];
@@ -1902,7 +1900,7 @@ aac_dequeue_fib(struct aac_softc *sc, int queue, u_int32_t *fib_size,
 	error = 0;
 
 out:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1913,7 +1911,7 @@ static int
 aac_enqueue_response(struct aac_softc *sc, int queue, struct aac_fib *fib)
 {
 	u_int32_t pi, ci;
-	int s, error;
+	int error;
 	u_int32_t fib_size;
 	u_int32_t fib_addr;
 
@@ -1924,7 +1922,7 @@ aac_enqueue_response(struct aac_softc *sc, int queue, struct aac_fib *fib)
 	fib_addr = fib->Header.SenderFibAddress;
 	fib->Header.ReceiverFibAddress = fib_addr;
 
-	s = splbio();
+	crit_enter();
 
 	/* get the producer/consumer indices */
 	pi = sc->aac_queues->qt_qindex[queue][AAC_PRODUCER_INDEX];
@@ -1954,7 +1952,7 @@ aac_enqueue_response(struct aac_softc *sc, int queue, struct aac_fib *fib)
 	error = 0;
 
 out:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1966,7 +1964,6 @@ static void
 aac_timeout(void *xsc)
 {
 	struct aac_softc *sc = xsc;
-	int s;
 	struct aac_command *cm;
 	time_t deadline;
 
@@ -1978,9 +1975,9 @@ aac_timeout(void *xsc)
 	 * threads in the interrupt handler at the same time!  If calling
 	 * is deamed neccesary in the future, proper mutexes must be used.
 	 */
-	s = splbio();
+	crit_enter();
 	aac_intr(sc);
-	splx(s);
+	crit_exit();
 
 	/* kick the I/O queue to restart it in the case of deadlock */
 	aac_startio(sc);
@@ -1991,7 +1988,7 @@ aac_timeout(void *xsc)
 	 * only.
 	 */
 	deadline = time_second - AAC_CMD_TIMEOUT;
-	s = splbio();
+	crit_enter();
 	TAILQ_FOREACH(cm, &sc->aac_busy, cm_link) {
 		if ((cm->cm_timestamp  < deadline)
 			/* && !(cm->cm_flags & AAC_CMD_TIMEDOUT) */) {
@@ -2002,7 +1999,7 @@ aac_timeout(void *xsc)
 			AAC_PRINT_FIB(sc, cm->cm_fib);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	/* reset the timer for next time */
 	callout_reset(&sc->aac_watchdog, AAC_PERIODIC_INTERVAL * hz,
@@ -2737,7 +2734,7 @@ static int
 aac_getnext_aif(struct aac_softc *sc, caddr_t arg)
 {
 	struct get_adapter_fib_ioctl agf;
-	int error, s;
+	int error;
 
 	debug_called(2);
 
@@ -2750,7 +2747,7 @@ aac_getnext_aif(struct aac_softc *sc, caddr_t arg)
 			error = EFAULT;
 		} else {
 	
-			s = splbio();
+			crit_enter();
 			error = aac_return_aif(sc, agf.AifFib);
 	
 			if ((error == EAGAIN) && (agf.Wait)) {
@@ -2764,7 +2761,7 @@ aac_getnext_aif(struct aac_softc *sc, caddr_t arg)
 				}
 				sc->aac_state &= ~AAC_STATE_AIF_SLEEPER;
 			}
-		splx(s);
+			crit_exit();
 		}
 	}
 	return(error);

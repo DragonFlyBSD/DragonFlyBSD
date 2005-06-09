@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.14 2005/02/04 02:55:46 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.15 2005/06/09 20:55:05 swildner Exp $
  */
 
 /*
@@ -986,7 +986,6 @@ static int
 amr_quartz_poll_command(struct amr_command *ac)
 {
     struct amr_softc	*sc = ac->ac_sc;
-    int			s;
     int			error,count;
 
     debug_called(2);
@@ -994,7 +993,7 @@ amr_quartz_poll_command(struct amr_command *ac)
     /* now we have a slot, we can map the command (unmapped in amr_complete) */
     amr_mapcmd(ac);
 
-    s = splbio();
+    crit_enter();
 
     if (sc->amr_state & AMR_STATE_INTEN) {
 	    count=0;
@@ -1007,7 +1006,7 @@ amr_quartz_poll_command(struct amr_command *ac)
 	    
 	    if(sc->amr_busyslots) {
 		    device_printf(sc->amr_dev, "adapter is busy\n");
-		    splx(s);
+		    crit_exit();
 		    amr_unmapcmd(ac);
 		    ac->ac_status=0;
 		    return(1);
@@ -1038,7 +1037,7 @@ amr_quartz_poll_command(struct amr_command *ac)
     AMR_QPUT_IDB(sc, sc->amr_mailboxphys | AMR_QIDB_ACK);
     while(AMR_QGET_IDB(sc) & AMR_QIDB_ACK);
 
-    splx(s);
+    crit_exit();
 
     /* unmap the command's data buffer */
     amr_unmapcmd(ac);
@@ -1055,7 +1054,7 @@ static int
 amr_getslot(struct amr_command *ac)
 {
     struct amr_softc	*sc = ac->ac_sc;
-    int			s, slot, limit, error;
+    int			slot, limit, error;
 
     debug_called(3);
 
@@ -1072,7 +1071,7 @@ amr_getslot(struct amr_command *ac)
      * Allocate a slot.  XXX linear scan is slow
      */
     error = EBUSY;
-    s = splbio();
+    crit_enter();
     for (slot = 0; slot < sc->amr_maxio; slot++) {
 	if (sc->amr_busycmd[slot] == NULL) {
 	    sc->amr_busycmd[slot] = ac;
@@ -1082,7 +1081,7 @@ amr_getslot(struct amr_command *ac)
 	    break;
 	}
     }
-    splx(s);
+    crit_exit();
 
     return(error);
 }
@@ -1252,7 +1251,7 @@ static int
 amr_start(struct amr_command *ac)
 {
     struct amr_softc	*sc = ac->ac_sc;
-    int			done, s, i;
+    int			done, i;
 
     debug_called(3);
 
@@ -1288,7 +1287,7 @@ amr_start(struct amr_command *ac)
      */
     debug(4, "wait for mailbox");
     for (i = 10000, done = 0; (i > 0) && !done; i--) {
-	s = splbio();
+	crit_enter();
 	
 	/* is the mailbox free? */
 	if (sc->amr_mailbox->mb_busy == 0) {
@@ -1303,7 +1302,7 @@ amr_start(struct amr_command *ac)
 	    /* this is somewhat ugly */
 	    DELAY(100);
 	}
-	splx(s);	/* drop spl to allow completion interrupts */
+	crit_exit();
     }
 
     /*
@@ -1491,12 +1490,12 @@ amr_alloccmd_cluster(struct amr_softc *sc)
 {
     struct amr_command_cluster	*acc;
     struct amr_command		*ac;
-    int				s, i;
+    int				i;
 
     acc = malloc(AMR_CMD_CLUSTERSIZE, M_DEVBUF, M_INTWAIT);
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_TAIL(&sc->amr_cmd_clusters, acc, acc_link);
-    splx(s);
+    crit_exit();
     for (i = 0; i < AMR_CMD_CLUSTERCOUNT; i++) {
 	ac = &acc->acc_command[i];
 	bzero(ac, sizeof(*ac));
@@ -1559,13 +1558,13 @@ amr_std_submit_command(struct amr_softc *sc)
 static int
 amr_quartz_get_work(struct amr_softc *sc, struct amr_mailbox *mbsave)
 {
-    int		s, worked;
+    int		worked;
     u_int32_t	outd;
 
     debug_called(3);
 
     worked = 0;
-    s = splbio();
+    crit_enter();
 
     /* work waiting for us? */
     if ((outd = AMR_QGET_ODB(sc)) == AMR_QODB_READY) {
@@ -1596,20 +1595,20 @@ amr_quartz_get_work(struct amr_softc *sc, struct amr_mailbox *mbsave)
 	worked = 1;			/* got some work */
     }
 
-    splx(s);
+    crit_exit();
     return(worked);
 }
 
 static int
 amr_std_get_work(struct amr_softc *sc, struct amr_mailbox *mbsave)
 {
-    int		s, worked;
+    int		worked;
     u_int8_t	istat;
 
     debug_called(3);
 
     worked = 0;
-    s = splbio();
+    crit_enter();
 
     /* check for valid interrupt status */
     istat = AMR_SGET_ISTAT(sc);
@@ -1623,7 +1622,7 @@ amr_std_get_work(struct amr_softc *sc, struct amr_mailbox *mbsave)
 	worked = 1;
     }
 
-    splx(s);
+    crit_exit();
     return(worked);
 }
 

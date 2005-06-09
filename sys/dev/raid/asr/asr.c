@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.19 2005/05/24 20:59:03 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.20 2005/06/09 20:55:05 swildner Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -224,6 +224,7 @@ static dpt_sig_S ASR_sig = {
 #include <sys/rman.h>
 #include <sys/stat.h>
 #include <sys/device.h>
+#include <sys/thread2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -866,7 +867,6 @@ ASR_queue_s (
         INOUT union asr_ccb * ccb,
         IN PI2O_MESSAGE_FRAME Message)
 {
-        int                   s;
         U32                   Mask;
         Asr_softc_t         * sc = (Asr_softc_t *)(ccb->ccb_h.spriv_ptr0);
 
@@ -877,7 +877,7 @@ ASR_queue_s (
         I2O_MESSAGE_FRAME_setInitiatorContext64(Message, (long)ccb);
 
         /* Prevent interrupt service */
-        s = splcam ();
+	crit_enter();
         sc->ha_Virt->Mask = (Mask = sc->ha_Virt->Mask)
           | Mask_InterruptsDisabled;
 
@@ -895,7 +895,7 @@ ASR_queue_s (
 
         /* Re-enable Interrupts */
         sc->ha_Virt->Mask = Mask;
-        splx(s);
+	crit_exit();
 
         return (ccb->ccb_h.status);
 } /* ASR_queue_s */
@@ -930,9 +930,7 @@ ASR_ccbAdd (
         IN Asr_softc_t      * sc,
         INOUT union asr_ccb * ccb)
 {
-        int s;
-
-        s = splcam();
+	crit_enter();
         LIST_INSERT_HEAD(&(sc->ha_ccb), &(ccb->ccb_h), sim_links.le);
         if (ccb->ccb_h.timeout != CAM_TIME_INFINITY) {
                 if (ccb->ccb_h.timeout == CAM_TIME_DEFAULT) {
@@ -946,7 +944,7 @@ ASR_ccbAdd (
                 callout_reset(&ccb->ccb_h.timeout_ch,
 		    (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
         }
-        splx(s);
+	crit_exit();
 } /* ASR_ccbAdd */
 
 /*
@@ -957,12 +955,10 @@ ASR_ccbRemove (
         IN Asr_softc_t      * sc,
         INOUT union asr_ccb * ccb)
 {
-        int s;
-
-        s = splcam();
+	crit_enter();
         callout_stop(&ccb->ccb_h.timeout_ch);
         LIST_REMOVE(&(ccb->ccb_h), sim_links.le);
-        splx(s);
+	crit_exit();
 } /* ASR_ccbRemove */
 
 /*
@@ -974,7 +970,6 @@ ASR_failActiveCommands (
         IN Asr_softc_t                         * sc)
 {
         struct ccb_hdr                         * ccb;
-        int                                      s;
 
 #if 0 /* Currently handled by callers, unnecessary paranoia currently */
       /* Left in for historical perspective. */
@@ -991,7 +986,7 @@ ASR_failActiveCommands (
         (void)ASR_queue_c(sc, (PI2O_MESSAGE_FRAME)Message_Ptr);
 #endif
 
-        s = splcam();
+	crit_enter();
         /*
          *      We do not need to inform the CAM layer that we had a bus
          * reset since we manage it on our own, this also prevents the
@@ -1017,7 +1012,7 @@ ASR_failActiveCommands (
                         wakeup ((caddr_t)ccb);
                 }
         }
-        splx(s);
+	crit_exit();
 } /* ASR_failActiveCommands */
 
 /*
@@ -1234,19 +1229,18 @@ ASR_getTid (
         IN int           lun)
 {
         tid_t          * tid_ptr;
-        int              s;
         OUT tid_t        retval;
 
-        s = splcam();
+	crit_enter();
         if (((tid_ptr = ASR_getTidAddress (sc, bus, target, lun, FALSE))
           == (tid_t *)NULL)
         /* (tid_t)0 or (tid_t)-1 indicate no TID */
          || (*tid_ptr == (tid_t)0)) {
-                splx(s);
+		crit_exit();
                 return ((tid_t)-1);
         }
         retval = *tid_ptr;
-        splx(s);
+	crit_exit();
         return (retval);
 } /* ASR_getTid */
 
@@ -1266,20 +1260,19 @@ ASR_setTid (
         INOUT tid_t         TID)
 {
         tid_t             * tid_ptr;
-        int                 s;
 
         if (TID != (tid_t)-1) {
                 if (TID == 0) {
                         return ((tid_t)-1);
                 }
-                s = splcam();
+		crit_enter();
                 if ((tid_ptr = ASR_getTidAddress (sc, bus, target, lun, TRUE))
                  == (tid_t *)NULL) {
-                        splx(s);
+			crit_exit();
                         return ((tid_t)-1);
                 }
                 *tid_ptr = TID;
-                splx(s);
+		crit_exit();
         }
         return (TID);
 } /* ASR_setTid */
@@ -1441,12 +1434,12 @@ STATIC INLINE int
 ASR_reset(
         IN Asr_softc_t * sc)
 {
-        int              s, retVal;
+        int              retVal;
 
-        s = splcam();
+	crit_enter();
         if ((sc->ha_in_reset == HA_IN_RESET)
          || (sc->ha_in_reset == HA_OFF_LINE_RECOVERY)) {
-                splx (s);
+		crit_exit();
                 return (EBUSY);
         }
         /*
@@ -1474,7 +1467,7 @@ ASR_reset(
                             ? cam_sim_unit(xpt_path_sim(sc->ha_path[0]))
                             : 0);
                         sc->ha_in_reset = HA_OFF_LINE;
-                        splx (s);
+			crit_exit();
                         return (ENXIO);
 #               else
                         /* Wait Forever */
@@ -1482,7 +1475,7 @@ ASR_reset(
 #               endif
         }
         retVal = ASR_init (sc);
-        splx (s);
+	crit_exit();
         if (retVal != 0) {
                 debug_asr_printf ("ASR_init failed\n");
                 sc->ha_in_reset = HA_OFF_LINE;
@@ -1535,7 +1528,7 @@ asr_timeout(
          * the SCSI command is also *very* dangerous. A SCSI BUS reset is
          * our best bet, followed by a complete adapter reset if that fails.
          */
-        s = splcam();
+	crit_enter();
         /* Check if we already timed out once to raise the issue */
         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT) {
                 debug_asr_printf (" AGAIN\nreinitializing adapter\n");
@@ -1543,7 +1536,7 @@ asr_timeout(
                         callout_reset(&ccb->ccb_h.timeout_ch,
                             (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
                 }
-                splx(s);
+		crit_exit();
                 return;
         }
         debug_asr_printf ("\nresetting bus\n");
@@ -1554,7 +1547,7 @@ asr_timeout(
 		      asr_timeout, ccb);
         ASR_resetBus (sc, cam_sim_bus(xpt_path_sim(ccb->ccb_h.path)));
         xpt_async (AC_BUS_RESET, ccb->ccb_h.path, NULL);
-        splx(s);
+	crit_exit();
 } /* asr_timeout */
 
 /*
@@ -3318,7 +3311,6 @@ asr_open(
         int32_t          ifmt,
         IN d_thread_t *td)
 {
-        int              s;
         OUT int          error;
         UNREFERENCED_PARAMETER(flags);
         UNREFERENCED_PARAMETER(ifmt);
@@ -3327,13 +3319,13 @@ asr_open(
                 return (ENODEV);
         }
 	KKASSERT(td->td_proc);
-        s = splcam ();
+	crit_enter();
         if (ASR_ctlr_held) {
                 error = EBUSY;
         } else if ((error = suser_cred(td->td_proc->p_ucred, 0)) == 0) {
                 ++ASR_ctlr_held;
         }
-        splx(s);
+	crit_exit();
         return (error);
 } /* asr_open */
 
@@ -3739,7 +3731,7 @@ ASR_queue_i(
         /*
          * Wait for the board to report a finished instruction.
          */
-        s = splcam();
+	crit_enter();
         while ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INPROG) {
                 if (ASR_getBlinkLedCode(sc)) {
                         /* Reset Adapter */
@@ -3750,7 +3742,7 @@ ASR_queue_i(
                                 /* Command Cleanup */
                                 ASR_ccbRemove(sc, ccb);
                         }
-                        splx(s);
+			crit_exit();
                         /* Free up in-kernel buffers */
                         while ((elm = SLIST_FIRST(&sgList))
                           != (struct ioctlSgList_S *)NULL) {
@@ -3764,7 +3756,7 @@ ASR_queue_i(
                 /* Check every second for BlinkLed */
                 tsleep((caddr_t)ccb, 0, "asr", hz);
         }
-        splx(s);
+	crit_exit();
 
         debug_usr_cmd_printf ("Outbound: ");
         debug_usr_cmd_dump_message(Reply_Ptr);

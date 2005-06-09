@@ -53,8 +53,10 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.5 2004/09/15 16:11:52 joerg Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.6 2005/06/09 20:55:05 swildner Exp $
  */
+
+#include <sys/thread2.h>
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 # include <sys/taskqueue.h>
@@ -273,101 +275,87 @@ extern int	amr_dump_blocks(struct amr_softc *sc, int unit, u_int32_t lba, void *
 static __inline void
 amr_enqueue_bio(struct amr_softc *sc, struct bio *bio)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     bioq_insert_tail(&sc->amr_bioq, bio);
-    splx(s);
+    crit_exit();
 }
 
 static __inline struct bio *
 amr_dequeue_bio(struct amr_softc *sc)
 {
     struct bio	*bio;
-    int		s;
 
-    s = splbio();
+    crit_enter();
     if ((bio = bioq_first(&sc->amr_bioq)) != NULL)
 	bioq_remove(&sc->amr_bioq, bio);
-    splx(s);
+    crit_exit();
     return(bio);
 }
 
 static __inline void
 amr_enqueue_ready(struct amr_command *ac)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_TAIL(&ac->ac_sc->amr_ready, ac, ac_link);
-    splx(s);
+    crit_exit();
 }
 
 static __inline void
 amr_requeue_ready(struct amr_command *ac)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_HEAD(&ac->ac_sc->amr_ready, ac, ac_link);
-    splx(s);
+    crit_exit();
 }
 
 static __inline struct amr_command *
 amr_dequeue_ready(struct amr_softc *sc)
 {
     struct amr_command	*ac;
-    int			s;
 
-    s = splbio();
+    crit_enter();
     if ((ac = TAILQ_FIRST(&sc->amr_ready)) != NULL)
 	TAILQ_REMOVE(&sc->amr_ready, ac, ac_link);
-    splx(s);
+    crit_exit();
     return(ac);
 }
 
 static __inline void
 amr_enqueue_completed(struct amr_command *ac)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_TAIL(&ac->ac_sc->amr_completed, ac, ac_link);
-    splx(s);
+    crit_exit();
 }
 
 static __inline struct amr_command *
 amr_dequeue_completed(struct amr_softc *sc)
 {
     struct amr_command	*ac;
-    int			s;
 
-    s = splbio();
+    crit_enter();
     if ((ac = TAILQ_FIRST(&sc->amr_completed)) != NULL)
 	TAILQ_REMOVE(&sc->amr_completed, ac, ac_link);
-    splx(s);
+    crit_exit();
     return(ac);
 }
 
 static __inline void
 amr_enqueue_free(struct amr_command *ac)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_TAIL(&ac->ac_sc->amr_freecmds, ac, ac_link);
-    splx(s);
+    crit_exit();
 }
 
 static __inline struct amr_command *
 amr_dequeue_free(struct amr_softc *sc)
 {
     struct amr_command	*ac;
-    int			s;
 
-    s = splbio();
+    crit_enter();
     if ((ac = TAILQ_FIRST(&sc->amr_freecmds)) != NULL)
 	TAILQ_REMOVE(&sc->amr_freecmds, ac, ac_link);
-    splx(s);
+    crit_exit();
     return(ac);
 }

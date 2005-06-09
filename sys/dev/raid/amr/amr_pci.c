@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.4 2005/05/24 20:59:03 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.5 2005/06/09 20:55:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -340,7 +340,7 @@ static int
 amr_pci_shutdown(device_t dev)
 {
     struct amr_softc	*sc = device_get_softc(dev);
-    int			i,error,s;
+    int			i,error;
 
     debug_called(1);
 
@@ -352,7 +352,7 @@ amr_pci_shutdown(device_t dev)
     device_printf(sc->amr_dev, "flushing cache...");
     printf("%s\n", amr_flush(sc) ? "failed" : "done");
 
-    s = splbio();
+    crit_enter();
     error = 0;
 
     /* delete all our child devices */
@@ -367,7 +367,7 @@ amr_pci_shutdown(device_t dev)
     /* XXX disable interrupts? */
 
 shutdown_out:
-    splx(s);
+    crit_exit();
     return(error);
 }
 

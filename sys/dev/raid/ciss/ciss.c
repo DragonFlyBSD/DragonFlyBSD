@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.14 2005/05/24 20:59:03 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.15 2005/06/09 20:55:05 swildner Exp $
  */
 
 /*
@@ -1685,7 +1685,7 @@ ciss_poll_request(struct ciss_request *cr, int timeout)
 static int
 ciss_wait_request(struct ciss_request *cr, int timeout)
 {
-    int		s, error;
+    int		error;
 
     debug_called(2);
 
@@ -1693,7 +1693,7 @@ ciss_wait_request(struct ciss_request *cr, int timeout)
     if ((error = ciss_start(cr)) != 0)
 	return(error);
 
-    s = splcam();
+    crit_enter();
     while (cr->cr_flags & CISS_REQ_SLEEP) {
 	error = tsleep(cr, PCATCH, "cissREQ", (timeout * hz) / 1000);
 	/* 
@@ -1709,7 +1709,7 @@ ciss_wait_request(struct ciss_request *cr, int timeout)
 	 */
 	break;
     }
-    splx(s);
+    crit_exit();
     return(error);
 }
 
@@ -2818,7 +2818,7 @@ ciss_notify_abort(struct ciss_softc *sc)
     struct ciss_request		*cr;
     struct ciss_command		*cc;
     struct ciss_notify_cdb	*cnc;
-    int				error, s, command_status, scsi_status;
+    int				error, command_status, scsi_status;
 
     debug_called(1);
 
@@ -2908,7 +2908,7 @@ ciss_notify_abort(struct ciss_softc *sc)
      * requires the Notify Event command to be cancelled in order to
      * maintain internal bookkeeping.
      */
-    s = splcam();
+    crit_enter();
     while (sc->ciss_periodic_notify != NULL) {
 	error = tsleep(&sc->ciss_periodic_notify, 0, "cissNEA", hz * 5);
 	if (error == EWOULDBLOCK) {
@@ -2916,7 +2916,7 @@ ciss_notify_abort(struct ciss_softc *sc)
 	    break;
 	}
     }
-    splx(s);
+    crit_exit();
 
  out:
     /* release the cancel request */
