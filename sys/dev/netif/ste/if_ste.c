@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.23 2005/06/09 19:13:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.24 2005/06/09 19:26:55 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -873,10 +873,7 @@ static int ste_attach(dev)
 	struct ifnet		*ifp;
 	int			error = 0, rid;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
-	bzero(sc, sizeof(struct ste_softc));
 	sc->ste_dev = dev;
 
 	/*
@@ -951,18 +948,7 @@ static int ste_attach(dev)
 
 	if (sc->ste_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
-		bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->ste_irq, INTR_TYPE_NET,
-			       ste_intr, sc, &sc->ste_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
-		bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
-		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
@@ -980,9 +966,6 @@ static int ste_attach(dev)
 	if (ste_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
 	    STE_EEADDR_NODE0, 3, 0)) {
 		device_printf(dev, "failed to read station address\n");
-		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
-		bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
 		error = ENXIO;;
 		goto fail;
 	}
@@ -993,9 +976,6 @@ static int ste_attach(dev)
 
 	if (sc->ste_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
-		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
-		bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1006,11 +986,6 @@ static int ste_attach(dev)
 	if (mii_phy_probe(dev, &sc->ste_miibus,
 		ste_ifmedia_upd, ste_ifmedia_sts)) {
 		device_printf(dev, "MII without any phy!\n");
-		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
-		bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
-		contigfree(sc->ste_ldata,
-		    sizeof(struct ste_list_data), M_DEVBUF);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1038,8 +1013,18 @@ static int ste_attach(dev)
          */
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
  
+	error = bus_setup_intr(dev, sc->ste_irq, INTR_TYPE_NET,
+			       ste_intr, sc, &sc->ste_intrhand, NULL);
+	if (error) {
+		device_printf(dev, "couldn't set up irq\n");
+		ether_ifdetach(ifp);
+		goto fail;
+	}
+
+	return 0;
+
 fail:
-	crit_exit();
+	ste_detach(dev);
 	return(error);
 }
 
@@ -1054,19 +1039,28 @@ static int ste_detach(dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	ste_stop(sc);
-	ether_ifdetach(ifp);
-
+	if (device_is_attached(dev)) {
+		if (bus_child_present(dev))
+			ste_stop(sc);
+		ether_ifdetach(ifp);
+	}
+	if (sc->ste_miibus != NULL)
+		device_delete_child(dev, sc->ste_miibus);
 	bus_generic_detach(dev);
-	device_delete_child(dev, sc->ste_miibus);
 
-	bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
-	bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
-
-	contigfree(sc->ste_ldata, sizeof(struct ste_list_data), M_DEVBUF);
+	if (sc->ste_intrhand != NULL)
+		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
 
 	crit_exit();
+
+	if (sc->ste_irq != NULL)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
+	if (sc->ste_res != NULL)
+		bus_release_resource(dev, STE_RES, STE_RID, sc->ste_res);
+	if (sc->ste_ldata != NULL) {
+		contigfree(sc->ste_ldata, sizeof(struct ste_list_data),
+			   M_DEVBUF);
+	}
 
 	return(0);
 }
