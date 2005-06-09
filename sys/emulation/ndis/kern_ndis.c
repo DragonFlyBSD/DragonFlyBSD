@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.6 2005/05/31 14:11:43 joerg Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.7 2005/06/09 20:17:53 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -987,7 +987,7 @@ ndis_ptom(m0, p)
 #endif
 		p->np_refcnt++;
 		totlen += m->m_len;
-		if (m->m_flags & MT_HEADER)
+		if (m->m_flags & M_PKTHDR)
 			*m0 = m;
 		else
 			prev->m_next = m;
