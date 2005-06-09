@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.13 2005/05/27 10:01:24 swildner Exp $
+$DragonFly: src/UPDATING,v 1.14 2005/06/09 19:39:18 joerg Exp $
 
 Updating Information for DragonFly users.
 
@@ -9,6 +9,14 @@ If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 mailing list with the details.
 
 ------------------------------------------------------------------------------
+
+> Updating from pre-1.2 systems or FreeBSD 4.x to DragonFly 1.3+ (either
+  PREVIEW or HEAD)
+---------------------
+
+The compatiblity shims for the build environment have been removed, you
+have to update to DragonFly 1.2 release branch first.
+
 
 > Required user and group IDs when upgrading from either FreeBSD or DragonFly
 ---------------------
