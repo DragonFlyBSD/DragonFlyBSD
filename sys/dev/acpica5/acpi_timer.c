@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.4 2005/06/01 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.5 2005/06/09 19:14:11 eirikn Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -69,7 +69,7 @@ static sysclock_t acpi_timer_get_timecount_safe(void);
 static void acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock);
 
 static struct cputimer acpi_cputimer = {
-	NULL,
+	SLIST_ENTRY_INITIALIZER,
 	"ACPI",
 	CPUTIMER_PRI_ACPI,
 	CPUTIMER_ACPI,

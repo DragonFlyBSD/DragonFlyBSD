@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.3 2005/06/01 22:25:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.4 2005/06/09 19:14:12 eirikn Exp $
  */
 /*
  * Generic cputimer - access to a reliable, free-running counter.
@@ -49,7 +49,7 @@
 static sysclock_t dummy_cputimer_count(void);
 
 static struct cputimer dummy_cputimer = {
-    NULL,
+    SLIST_ENTRY_INITIALIZER,
     "dummy",
     CPUTIMER_PRI_DUMMY,
     CPUTIMER_DUMMY,
@@ -64,8 +64,8 @@ static struct cputimer dummy_cputimer = {
     0
 };
 
-static struct cputimer *cputimer_reg_base = &dummy_cputimer;
 struct cputimer *sys_cputimer = &dummy_cputimer;
+SLIST_HEAD(, cputimer) cputimerhead = SLIST_HEAD_INITIALIZER(&cputimerhead);
 
 /*
  * Generic cputimer API
@@ -105,18 +105,19 @@ cputimer_select(struct cputimer *timer, int pri)
 void
 cputimer_register(struct cputimer *timer)
 {
-    struct cputimer **scanpp;
     struct cputimer *scan;
 
-    for (scanpp = &cputimer_reg_base; 
-	 (scan = *scanpp) != NULL;
-	 scanpp = &scan->next
-    ) {
+    /*
+     * Initialize dummy_cputimer if the slist is empty, it does not get
+     * registered the normal way.
+     */
+    if (SLIST_EMPTY(&cputimerhead))
+	SLIST_FIRST(&cputimerhead) = &dummy_cputimer;
+    SLIST_FOREACH(scan, &cputimerhead, next) {
 	if (scan == timer)
 	    return;
     }
-    timer->next = NULL;
-    *scanpp = timer;
+    SLIST_INSERT_HEAD(&cputimerhead, timer, next);
 }
 
 /*
@@ -125,7 +126,6 @@ cputimer_register(struct cputimer *timer)
 void
 cputimer_deregister(struct cputimer *timer)
 {
-    struct cputimer **scanpp;
     struct cputimer *scan;
     struct cputimer *best;
 
@@ -133,15 +133,13 @@ cputimer_deregister(struct cputimer *timer)
      * Locate and remove the timer.  If the timer is our currently active
      * timer, revert to the dummy timer.
      */
-    scanpp = &cputimer_reg_base; 
-    while ((scan = *scanpp) != NULL) {
-	if (scan == timer) {
-	    *scanpp = timer->next;
-	    if (timer == sys_cputimer)
-		cputimer_select(&dummy_cputimer, 0x7FFFFFFF);
-	} else {
-	    scanpp = &scan->next;
-	}
+    SLIST_FOREACH(scan, &cputimerhead, next) {
+	    if (timer == scan) {
+		if (timer == sys_cputimer)
+		    cputimer_select(&dummy_cputimer, 0x7FFFFFFF);
+		SLIST_REMOVE(&cputimerhead, timer, cputimer, next);
+		break;
+	    }
     }
 
     /*
@@ -149,7 +147,7 @@ cputimer_deregister(struct cputimer *timer)
      */
     if (sys_cputimer == &dummy_cputimer) {
 	best = NULL;
-	for (scan = cputimer_reg_base; scan; scan = scan->next) {
+	SLIST_FOREACH(scan, &cputimerhead, next) {
 	    if (best == NULL || scan->pri > best->pri)
 		best = scan;
 	}
@@ -225,7 +223,7 @@ sysctl_cputimer_reglist(SYSCTL_HANDLER_ARGS)
     /*
      * Build a list of available timers
      */
-    for (scan = cputimer_reg_base; scan; scan = scan->next) {
+    SLIST_FOREACH(scan, &cputimerhead, next) {
 	if (error == 0 && loop)
 	    error = SYSCTL_OUT(req, " ", 1);
 	if (error == 0)

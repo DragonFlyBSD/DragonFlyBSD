@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.8 2005/06/02 21:51:31 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.9 2005/06/09 19:14:12 eirikn Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -82,7 +82,7 @@ void systimer_init_oneshot(systimer_t, void *, void *, int);
  */
 
 struct cputimer {
-    struct cputimer *next;
+    SLIST_ENTRY(cputimer) next;
     const char	*name;
     int		pri;
     int		type;

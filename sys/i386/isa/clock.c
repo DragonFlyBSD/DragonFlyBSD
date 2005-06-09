@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.28 2005/06/03 17:14:51 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.29 2005/06/09 19:14:12 eirikn Exp $
  */
 
 /*
@@ -149,7 +149,7 @@ static void i8254_cputimer_construct(struct cputimer *cputimer, sysclock_t last)
 static void i8254_cputimer_destruct(struct cputimer *cputimer);
 
 static struct cputimer	i8254_cputimer = {
-    NULL,
+    SLIST_ENTRY_INITIALIZER,
     "i8254",
     CPUTIMER_PRI_8254,
     0,
