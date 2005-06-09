@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.50 2005/06/09 17:14:13 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.51 2005/06/09 18:26:22 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -277,6 +277,15 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 }
 
 static void
+mclmeta_dtor(void *obj, void *private)
+{
+	struct mbcluster *mcl = obj;
+
+	KKASSERT(mcl->mcl_refs == 0);
+	free(mcl->mcl_data, M_MBUFCL);
+}
+
+static void
 linkcluster(struct mbuf *m, struct mbcluster *cl)
 {
 	/*
@@ -322,15 +331,6 @@ mbufcluster_ctor(void *obj, void *private, int ocflags)
 	m->m_flags |= M_CLCACHE;
 	linkcluster(m, cl);
 	return (TRUE);
-}
-
-static void
-mclmeta_dtor(void *obj, void *private)
-{
-	struct mbcluster *mcl = obj;
-
-	KKASSERT(mcl->mcl_refs == 0);
-	free(mcl->mcl_data, M_MBUFCL);
 }
 
 /*
@@ -633,14 +633,13 @@ m_mclget(struct mbuf *m, int how)
 
 	KKASSERT((m->m_flags & M_EXT) == 0);
 	mcl = objcache_get(mclmeta_cache, MBTOM(how));
-	if (mcl == NULL)
-		return;
-	linkcluster(m, mcl);
-
-	crit_enter();
-	--mbstat.m_mbufs;
-	++mbstat.m_clusters;
-	crit_exit();
+	if (mcl != NULL) {
+		linkcluster(m, mcl);
+		crit_enter();
+		++mbstat.m_clusters;
+		/* leave the m_mbufs count intact for original mbuf */
+		crit_exit();
+	}
 }
 
 static void
@@ -832,7 +831,10 @@ m_prepend(struct mbuf *m, int len, int how)
 {
 	struct mbuf *mn;
 
-	mn = m_getl(MLEN, how, m->m_type, m->m_flags & M_PKTHDR, NULL);
+	if (m->m_flags & M_PKTHDR)
+	    mn = m_gethdr(how, m->m_type);
+	else
+	    mn = m_get(how, m->m_type);
 	if (mn == NULL) {
 		m_freem(m);
 		return (NULL);
@@ -881,7 +883,15 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 			    ("m_copym, length > size of mbuf chain"));
 			break;
 		}
-		n = m_getl(MLEN, wait, m->m_type, copyhdr ? M_PKTHDR : 0, NULL);
+		/*
+		 * Because we are sharing any cluster attachment below,
+		 * be sure to get an mbuf that does not have a cluster
+		 * associated with it.
+		 */
+		if (copyhdr)
+			n = m_gethdr(wait, m->m_type);
+		else
+			n = m_get(wait, m->m_type);
 		*np = n;
 		if (n == NULL)
 			goto nospace;
@@ -896,6 +906,7 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 		}
 		n->m_len = min(len, m->m_len - off);
 		if (m->m_flags & M_EXT) {
+			KKASSERT((n->m_flags & M_EXT) == 0);
 			n->m_data = m->m_data + off;
 			m->m_ext.ext_ref(m->m_ext.ext_arg); 
 			n->m_ext = m->m_ext;
@@ -942,6 +953,7 @@ m_copypacket(struct mbuf *m, int how)
 		goto nospace;
 	n->m_len = m->m_len;
 	if (m->m_flags & M_EXT) {
+		KKASSERT((n->m_flags & M_EXT) == 0);
 		n->m_data = m->m_data;
 		m->m_ext.ext_ref(m->m_ext.ext_arg); 
 		n->m_ext = m->m_ext;
@@ -962,6 +974,7 @@ m_copypacket(struct mbuf *m, int how)
 
 		n->m_len = m->m_len;
 		if (m->m_flags & M_EXT) {
+			KKASSERT((n->m_flags & M_EXT) == 0);
 			n->m_data = m->m_data;
 			m->m_ext.ext_ref(m->m_ext.ext_arg); 
 			n->m_ext = m->m_ext;
@@ -1199,8 +1212,10 @@ m_pullup(struct mbuf *n, int len)
 	} else {
 		if (len > MHLEN)
 			goto bad;
-		m = m_getl(MLEN, MB_DONTWAIT, n->m_type, n->m_flags & M_PKTHDR,
-			   NULL);
+		if (n->m_flags & M_PKTHDR)
+			m = m_gethdr(MB_DONTWAIT, n->m_type);
+		else
+			m = m_get(MB_DONTWAIT, n->m_type);
 		if (m == NULL)
 			goto bad;
 		m->m_len = 0;
@@ -1288,6 +1303,7 @@ m_split(struct mbuf *m0, int len0, int wait)
 	}
 extpacket:
 	if (m->m_flags & M_EXT) {
+		KKASSERT((n->m_flags & M_EXT) == 0);
 		n->m_data = m->m_data + len;
 		m->m_ext.ext_ref(m->m_ext.ext_arg); 
 		n->m_ext = m->m_ext;
