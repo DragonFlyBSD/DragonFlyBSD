@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.49 2005/06/09 16:53:11 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.50 2005/06/09 17:14:13 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -1434,7 +1434,7 @@ m_dup_pkthdr(struct mbuf *to, const struct mbuf *from, int how)
 	KASSERT((to->m_flags & M_PKTHDR), ("m_dup_pkthdr: not packet header"));
 
 	to->m_flags = (from->m_flags & M_COPYFLAGS) |
-		      (to->m_flags & (M_EXT | M_EXT_CLUSTER));
+		      (to->m_flags & ~M_COPYFLAGS);
 	to->m_pkthdr = from->m_pkthdr;
 	SLIST_INIT(&to->m_pkthdr.tags);
 	return (m_tag_copy_chain(to, from, how));
