@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.2 2005/06/08 22:22:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.3 2005/06/09 16:53:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -322,7 +322,12 @@ retry:
 		}
 		if (obj == NULL) {
 			crit_enter();
+			/*
+			 * makes debugging easier when gets_cumulative does
+			 * not include gets_null.
+			 */
 			++cpucache->gets_null;
+			--cpucache->gets_cumulative;
 			crit_exit();
 		}
 		return(obj);
@@ -340,8 +345,14 @@ retry:
 		lwkt_reltoken(&ilock);
 		goto retry;
 	}
+
+	/*
+	 * Otherwise fail
+	 */
 	++cpucache->gets_null;
+	--cpucache->gets_cumulative;
 	crit_exit();
+	lwkt_reltoken(&ilock);
 	return (NULL);
 }
 
@@ -398,6 +409,7 @@ objcache_put(struct objcache *oc, void *obj)
 #ifdef notyet
 		/* use lazy IPI to send object to owning cluster XXX todo */
 		++cpucache->puts_othercluster;
+		crit_exit();
 		return;
 #endif
 	}
