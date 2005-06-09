@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/lib/gcc34/libstdc++/ctype_noninline.h.patch,v 1.1 2005/03/16 06:38:26 joerg Exp $
+$DragonFly: src/gnu/lib/gcc34/libstdc++/ctype_noninline.h.patch,v 1.2 2005/06/09 23:38:00 corecode Exp $
 
 Index: ctype_noninline.h
 ===================================================================
@@ -12,12 +12,12 @@ diff -u -r1.3 ctype_noninline.h
  // Information as gleaned from /usr/include/ctype.h
  
 -  extern "C" const u_int8_t _C_ctype_[];
-+  extern "C" const __uint16_t __libc_ctype_[];
++  extern "C" const __uint16_t __libc_C_ctype_[];
  
    const ctype_base::mask*
    ctype<char>::classic_table() throw()
 -  { return _C_ctype_ + 1; }
-+  { return __libc_ctype_ + 1; }
++  { return __libc_C_ctype_ + 1; }
  
    ctype<char>::ctype(__c_locale, const mask* __table, bool __del, 
  		     size_t __refs) 
