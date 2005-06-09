@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.47 2005/06/08 23:50:35 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.48 2005/06/09 01:55:12 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -1421,7 +1421,6 @@ m_move_pkthdr(struct mbuf *to, struct mbuf *from)
 	to->m_flags |= from->m_flags & M_COPYFLAGS;
 	to->m_pkthdr = from->m_pkthdr;		/* especially tags */
 	SLIST_INIT(&from->m_pkthdr.tags);	/* purge tags from src */
-	from->m_flags &= ~M_PKTHDR;
 }
 
 /*
