@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.11 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.12 2005/06/09 02:03:39 hsu Exp $
  */
 
 /*
@@ -267,7 +267,6 @@ nsipoutput(ifn, m, dst)
 		m0->m_next = m;
 		m0->m_len = sizeof (struct ip);
 		m0->m_pkthdr.len = m0->m_len + m->m_len;
-		m->m_flags &= ~M_PKTHDR;
 	} else {
 		M_PREPEND(m, sizeof (struct ip), MB_DONTWAIT);
 		if (m == 0)

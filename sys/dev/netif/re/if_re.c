@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.12 2005/05/25 01:44:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.13 2005/06/09 02:03:38 hsu Exp $
  */
 
 /*
@@ -1398,7 +1398,6 @@ re_rxeof(struct re_softc *sc)
 			if (sc->re_head == NULL) {
 				sc->re_head = sc->re_tail = m;
 			} else {
-				m->m_flags &= ~M_PKTHDR;
 				sc->re_tail->m_next = m;
 				sc->re_tail = m;
 			}
@@ -1468,7 +1467,6 @@ re_rxeof(struct re_softc *sc)
 				m_freem(m);
 			} else {
 				m->m_len -= ETHER_CRC_LEN;
-				m->m_flags &= ~M_PKTHDR;
 				sc->re_tail->m_next = m;
 			}
 			m = sc->re_head;

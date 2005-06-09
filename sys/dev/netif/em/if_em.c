@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.34 2005/05/27 19:11:49 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.35 2005/06/09 02:03:38 hsu Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -2508,7 +2508,6 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 				adapter->lmp = mp;
 			} else {
 				/* Chain mbuf's together */
-				mp->m_flags &= ~M_PKTHDR;
 				/* 
 				 * Adjust length of previous mbuf in chain if we 
 				 * received less than 4 bytes in the last descriptor.

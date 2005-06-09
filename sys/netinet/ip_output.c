@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.29 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.30 2005/06/09 02:03:38 hsu Exp $
  */
 
 #define _IP_VHL
@@ -999,7 +999,6 @@ pass:
 				m1 = m_split(m, length, MB_DONTWAIT);
 				if (m1 == NULL)
 					break;
-				m1->m_flags &= ~M_PKTHDR;
 				m2 = m;
 				while (m2->m_next != NULL)
 					m2 = m2->m_next;

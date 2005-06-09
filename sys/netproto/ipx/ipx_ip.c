@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.13 2004/06/03 18:30:04 joerg Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.14 2005/06/09 02:03:39 hsu Exp $
  */
 
 /*
@@ -258,7 +258,6 @@ ipxipoutput(ifp, m, dst, rt)
 		m0->m_next = m;
 		m0->m_len = sizeof(struct ip);
 		m0->m_pkthdr.len = m0->m_len + m->m_len;
-		m->m_flags &= ~M_PKTHDR;
 		m = m0;
 	} else {
 		M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);

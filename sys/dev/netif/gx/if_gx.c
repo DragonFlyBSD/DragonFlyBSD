@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.17 2005/06/09 02:03:38 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1260,7 +1260,6 @@ gx_rxeof(struct gx_softc *gx)
 				gx->gx_pktnextp = &m->m_next;
 			} else {
 				m->m_len = len;
-				m->m_flags &= ~M_PKTHDR;
 				gx->gx_pkthdr->m_pkthdr.len += len;
 				*(gx->gx_pktnextp) = m;
 				gx->gx_pktnextp = &m->m_next;
@@ -1273,7 +1272,6 @@ gx_rxeof(struct gx_softc *gx)
 			m->m_pkthdr.len = len;
 		} else {
 			m->m_len = len;
-			m->m_flags &= ~M_PKTHDR;
 			gx->gx_pkthdr->m_pkthdr.len += len;
 			*(gx->gx_pktnextp) = m;
 			m = gx->gx_pkthdr;
