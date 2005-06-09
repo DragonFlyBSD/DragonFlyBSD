@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.16 2005/02/11 23:20:19 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.17 2005/06/09 14:35:29 corecode Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -101,6 +101,10 @@
 	..
     ..
     c++
+        2.95
+            std
+	    ..
+        ..
 	3.4
 	    backward
 	    ..
@@ -111,10 +115,18 @@
 	    ext
 	    ..
 	..
-        2.95
-            std
+	4.0
+	    backward
 	    ..
-        ..
+	    bits
+	    ..
+	    debug
+	    ..
+	    ext
+	    ..
+	    tr1
+	    ..
+	..
     ..
     isc
     ..
