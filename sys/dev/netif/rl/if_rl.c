@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.22 2005/05/25 01:44:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.23 2005/06/09 19:45:12 joerg Exp $
  */
 
 /*
@@ -93,6 +93,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -412,9 +413,9 @@ rl_mii_send(struct rl_softc *sc, uint32_t bits, int cnt)
 static int
 rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)	
 {
-	int i, ack, s;
+	int ack, i;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -487,7 +488,7 @@ rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 	MII_SET(RL_MII_CLK);
 	DELAY(1);
 
-	splx(s);
+	crit_exit();
 
 	return(ack ? 1 : 0);
 }
@@ -498,13 +499,11 @@ rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 static int
 rl_mii_writereg(struct rl_softc *sc, struct rl_mii_frame *frame)
 {
-	int s;
+	crit_enter();
 
-	s = splimp();
 	/*
 	 * Set up frame for TX.
 	 */
-
 	frame->mii_stdelim = RL_MII_STARTDELIM;
 	frame->mii_opcode = RL_MII_WRITEOP;
 	frame->mii_turnaround = RL_MII_TURNAROUND;
@@ -534,7 +533,7 @@ rl_mii_writereg(struct rl_softc *sc, struct rl_mii_frame *frame)
 	 */
 	MII_CLR(RL_MII_DIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -960,12 +959,11 @@ rl_detach(device_t dev)
 {
 	struct rl_softc *sc;
 	struct ifnet *ifp;
-	int s;
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
 	if (device_is_attached(dev)) {
 		rl_stop(sc);
@@ -978,7 +976,8 @@ rl_detach(device_t dev)
 
 	if (sc->rl_intrhand)
 		bus_teardown_intr(dev, sc->rl_irq, sc->rl_intrhand);
-	splx(s);
+
+	crit_exit();
 
 	if (sc->rl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->rl_irq);
@@ -1227,16 +1226,15 @@ rl_tick(void *xsc)
 {
 	struct rl_softc *sc = xsc;
 	struct mii_data *mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->rl_miibus);
 	mii_tick(mii);
 
-	splx(s);
-
 	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
+
+	crit_exit();
 }
 
 #ifdef DEVICE_POLLING
@@ -1436,10 +1434,9 @@ rl_init(void *xsc)
 	struct rl_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	int s;
 	uint32_t rxcfg = 0;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->rl_miibus);
 
@@ -1539,9 +1536,9 @@ rl_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
-
 	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
+
+	crit_exit();
 }
 
 /*
@@ -1580,9 +1577,9 @@ rl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct rl_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data	*mii;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -1611,7 +1608,7 @@ rl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -1620,18 +1617,18 @@ static void
 rl_watchdog(struct ifnet *ifp)
 {
 	struct rl_softc *sc = ifp->if_softc;
-	int s;
-
-	s = splimp();
 
 	device_printf(sc->rl_dev, "watchdog timeout\n");
+
+	crit_enter();
+
 	ifp->if_oerrors++;
 
 	rl_txeof(sc);
 	rl_rxeof(sc);
 	rl_init(sc);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
