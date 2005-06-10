@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.12 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.13 2005/06/10 22:44:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/protosw.h>
 #include <sys/module.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -277,7 +278,8 @@ ns_pcbnotify(struct ns_addr *dst, int errno,
 	    void (*notify)(struct nspcb *), long param)
 {
 	struct nspcb *nsp, *oinp;
-	int s = splimp();
+
+	crit_enter();
 
 	for (nsp = (&nspcb)->nsp_next; nsp != (&nspcb);) {
 		if (!ns_hosteq(*dst,nsp->nsp_faddr)) {
@@ -294,7 +296,7 @@ ns_pcbnotify(struct ns_addr *dst, int errno,
 		oinp->nsp_notify_param = param;
 		(*notify)(oinp);
 	}
-	splx(s);
+	crit_exit();
 }
 
 #ifdef notdef

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.9 2004/05/19 22:53:01 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.10 2005/06/10 22:44:02 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -48,6 +48,7 @@
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -112,7 +113,6 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	struct proc *p = td->td_proc;
 	struct smb_dev *sdp;
 	struct ucred *cred;
-	int s;
 
 	KKASSERT(p != NULL);
 	cred = p->p_ucred;
@@ -138,10 +138,10 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	STAILQ_INIT(&sdp->sd_rplist);
 	bzero(&sdp->sd_pollinfo, sizeof(struct selinfo));
 */
-	s = splimp();
+	crit_enter();
 	sdp->sd_level = -1;
 	sdp->sd_flags |= NSMBFL_OPEN;
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -152,12 +152,11 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
 	struct smb_cred scred;
-	int s;
 
 	SMB_CHECKMINOR(dev);
-	s = splimp();
+	crit_enter();
 	if ((sdp->sd_flags & NSMBFL_OPEN) == 0) {
-		splx(s);
+		crit_exit();
 		return EBADF;
 	}
 	smb_makescred(&scred, td, NULL);
@@ -173,7 +172,7 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 */
 	dev->si_drv1 = NULL;
 	free(sdp, M_NSMBDEV);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.7 2004/09/16 21:55:03 joerg Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.8 2005/06/10 22:43:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -12,6 +12,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 #include <net/route.h>
 #include <netinet/in.h>
@@ -375,9 +376,11 @@ at_ifinit( ifp, aa, sat )
 {
     struct netrange	nr, onr;
     struct sockaddr_at	oldaddr;
-    int			s = splimp(), error = 0, i, j;
+    int			error = 0, i, j;
     int			netinc, nodeinc, nnets;
     u_short		net;
+
+    crit_enter();
 
     /* 
      * save the old addresses in the at_ifaddr just in case we need them.
@@ -462,7 +465,7 @@ at_ifinit( ifp, aa, sat )
 		    aa->aa_addr = oldaddr;
 		    aa->aa_firstnet = onr.nr_firstnet;
 		    aa->aa_lastnet = onr.nr_lastnet;
-		    splx(s);
+		    crit_exit();
 		    return( EINVAL );
 		}
 		/*
@@ -531,7 +534,7 @@ at_ifinit( ifp, aa, sat )
 		    aa->aa_addr = oldaddr;
 		    aa->aa_firstnet = onr.nr_firstnet;
 		    aa->aa_lastnet = onr.nr_lastnet;
-		    splx( s ); 
+		    crit_exit();
 		    return( EINTR );
 		}
 
@@ -565,7 +568,7 @@ at_ifinit( ifp, aa, sat )
 	    aa->aa_addr = oldaddr;
 	    aa->aa_firstnet = onr.nr_firstnet;
 	    aa->aa_lastnet = onr.nr_lastnet;
-	    splx( s );
+	    crit_exit();
 	    return( EADDRINUSE );
 	}
     }
@@ -584,7 +587,7 @@ at_ifinit( ifp, aa, sat )
 	aa->aa_addr = oldaddr;
 	aa->aa_firstnet = onr.nr_firstnet;
 	aa->aa_lastnet = onr.nr_lastnet;
-	splx( s );
+	crit_exit();
 	return( error );
     }
 
@@ -652,7 +655,7 @@ at_ifinit( ifp, aa, sat )
 	aa->aa_addr = oldaddr;
 	aa->aa_firstnet = onr.nr_firstnet;
 	aa->aa_lastnet = onr.nr_lastnet;
-	splx( s );
+	crit_exit();
 	return( error );
     }
 
@@ -661,7 +664,7 @@ at_ifinit( ifp, aa, sat )
      */
     aa->aa_ifa.ifa_flags |= IFA_ROUTE;
     aa->aa_flags |= AFA_ROUTE;
-    splx( s );
+    crit_exit();
     return( 0 );
 }
 

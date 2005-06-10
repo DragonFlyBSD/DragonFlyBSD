@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.10 2005/01/23 13:21:44 joerg Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.11 2005/06/10 22:44:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/socketvar.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -91,16 +92,15 @@ idp_input(struct mbuf *m, ...)
 	idp_ns.sns_addr = idp->idp_sna;
 	if (ns_neteqnn(idp->idp_sna.x_net, ns_zeronet) && ifp) {
 		struct ifaddr *ifa;
-		int s;
 
-		s = splimp();
+		crit_enter();
 		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 			if (ifa->ifa_addr->sa_family == AF_NS) {
 				idp_ns.sns_addr.x_net =
 					IA_SNS(ifa)->sns_addr.x_net;
 				break;
 			}
-		splx(s);
+		crit_exit();
 	}
 	nsp->nsp_rpt = idp->idp_pt;
 	if ( ! (nsp->nsp_flags & NSP_RAWIN) ) {
@@ -530,7 +530,6 @@ idp_send(struct socket *so, int flags, struct mbuf *m,
 	struct nspcb *nsp = sotonspcb(so);
 	struct ns_addr laddr;
 	int error;
-	int s;
 
 	if (nsp == NULL)
 		return(EINVAL);
@@ -539,7 +538,7 @@ idp_send(struct socket *so, int flags, struct mbuf *m,
 		goto release;
 	}
 
-	s = splnet();
+	crit_enter();
 	if (addr) {
 		laddr = nsp->nsp_laddr;
 		if (!ns_nullhost(nsp->nsp_faddr))
@@ -561,7 +560,7 @@ idp_send(struct socket *so, int flags, struct mbuf *m,
 			nsp->nsp_laddr.x_port = laddr.x_port;
 		}
 	}
-	splx(s);
+	crit_exit();
 release:
 	if (control)
 		m_freem(control);

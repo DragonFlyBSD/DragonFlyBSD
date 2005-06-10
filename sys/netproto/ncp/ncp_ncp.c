@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.7 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.8 2005/06/10 22:43:59 dillon Exp $
  *
  * Core of NCP protocol
  */
@@ -44,6 +44,7 @@
 #include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/mbuf.h>
+#include <sys/thread2.h>
 
 #ifdef IPX
 #include <netproto/ipx/ipx.h>
@@ -180,7 +181,7 @@ ncp_sign_packet(struct ncp_conn *conn, struct ncp_rq *rqp, int *size) {
  */
 static int 
 ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
-	int error=EIO,len, dosend, plen = 0, gotpacket, s;
+	int error=EIO,len, dosend, plen = 0, gotpacket;
 	struct socket *so;
 	struct thread *td = conn->td;
 	struct ncp_rqhdr *rq;
@@ -205,7 +206,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	/*
 	 * Flush out replies on previous reqs
 	 */
-	s = splnet();
+	crit_enter();
 	while (1/*so->so_rcv.sb_cc*/) {
 		if (ncp_poll(so,POLLIN) == 0) break;
 		if (ncp_sock_recv(so,&m,&len) != 0) break;
@@ -319,7 +320,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 		if (gotpacket) break;
 		/* try to resend, or just wait */
 	}
-	splx(s);
+	crit_exit();
 	conn->seq++;
 	if (error) {
 		NCPSDEBUG("error=%d\n",error);

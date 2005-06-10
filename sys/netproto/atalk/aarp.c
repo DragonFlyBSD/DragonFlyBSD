@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.15 2004/12/21 02:54:48 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.16 2005/06/10 22:43:58 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -74,7 +74,7 @@ static void
 aarptimer(void *ignored)
 {
     struct aarptab	*aat;
-    int			i, s;
+    int			i;
 
     aat = aarptab;
     for ( i = 0; i < AARPTAB_SIZE; i++, aat++ ) {
@@ -83,9 +83,9 @@ aarptimer(void *ignored)
 	if ( ++aat->aat_timer < (( aat->aat_flags & ATF_COM ) ?
 		AARPT_KILLC : AARPT_KILLI ))
 	    continue;
-	s = splimp();
+	crit_enter();
 	aarptfree( aat );
-	splx( s );
+	crit_exit();
     }
     callout_reset(&aarptimer_ch, AARPT_AGE * hz, aarptimer, NULL);
 }
@@ -203,7 +203,6 @@ aarpresolve( ac, m, destsat, desten )
 {
     struct at_ifaddr	*aa;
     struct aarptab	*aat;
-    int			s;
 
     if (at_broadcast(destsat)) {
 	m->m_flags |= M_BCAST;
@@ -218,7 +217,7 @@ aarpresolve( ac, m, destsat, desten )
 	return (1);
     }
 
-    s = splimp();
+    crit_enter();
     AARPTAB_LOOK( aat, destsat->sat_addr );
     if (aat == NULL) {			/* No entry */
 	aat = aarptnew( &destsat->sat_addr );
@@ -227,14 +226,14 @@ aarpresolve( ac, m, destsat, desten )
 	}
 	aat->aat_hold = m;
 	aarpwhohas(ac, destsat);
-	splx(s);
+	crit_exit();
 	return (0);
     }
     /* found an entry */
     aat->aat_timer = 0;
     if (aat->aat_flags & ATF_COM) {	/* entry is COMplete */
 	bcopy(aat->aat_enaddr, desten, sizeof aat->aat_enaddr);
-	splx(s);
+	crit_exit();
 	return (1);
     }
     /* entry has not completed */
@@ -243,7 +242,7 @@ aarpresolve( ac, m, destsat, desten )
     }
     aat->aat_hold = m;
     aarpwhohas(ac, destsat);
-    splx(s);
+    crit_exit();
     return (0);
 }
 

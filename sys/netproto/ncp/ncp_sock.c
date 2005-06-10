@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.10 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.11 2005/06/10 22:43:59 dillon Exp $
  *
  * Low level socket routines
  */
@@ -56,6 +56,7 @@
 #include <sys/syslog.h>
 #include <sys/mbuf.h>
 #include <net/route.h>
+#include <sys/thread2.h>
 
 #ifdef IPX
 #include <netproto/ipx/ipx.h>
@@ -84,7 +85,7 @@ static int ncp_soconnect(struct socket *so,struct sockaddr *target, struct threa
  */
 static int
 ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
-	int error,s;
+	int error;
 
 	error = soconnect(so, (struct sockaddr*)target, td);
 	if (error)
@@ -95,23 +96,23 @@ ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 	 * that interruptible mounts don't hang here for a long time.
 	 */
 	error = EIO;
-	s = splnet();
+	crit_enter();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		(void) tsleep((caddr_t)&so->so_timeo, 0, "ncpcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) &&
 		    so->so_error == 0 /*&& rep &&*/) {
 			so->so_state &= ~SS_ISCONNECTING;
-			splx(s);
+			crit_exit();
 			goto bad;
 		}
 	}
 	if (so->so_error) {
 		error = so->so_error;
 		so->so_error = 0;
-		splx(s);
+		crit_exit();
 		goto bad;
 	}
-		splx(s);
+	crit_exit();
 	error=0;
 bad:
 	return error;
@@ -201,7 +202,7 @@ ncp_sock_rselect(struct socket *so, struct thread *td,
 {
 	struct timeval atv,rtv,ttv;
 	struct proc *p = td->td_proc;
-	int s,timo,error=0;
+	int timo,error=0;
 
 	KKASSERT(p);
 
@@ -230,14 +231,14 @@ retry:
 		timevalsub(&ttv, &rtv);
 		timo = tvtohz_high(&ttv);
 	}
-	s = splhigh();
+	crit_enter();
 	if ((p->p_flag & P_SELECT) == 0) {
-		splx(s);
+		crit_exit();
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
 	error = tsleep((caddr_t)&selwait, 0, "ncpslt", timo);
-	splx(s);
+	crit_exit();
 done:
 	p->p_flag &= ~P_SELECT;
 	if (error == ERESTART) {
@@ -430,13 +431,11 @@ ncp_watchdog(struct ncp_conn *conn) {
 
 void
 ncp_check_conn(struct ncp_conn *conn) {
-	int s;
-
 	if (conn == NULL || !(conn->flags & NCPFL_ATTACHED))
 	        return;
-	s = splnet();
+	crit_enter();
 	ncp_check_rq(conn);
-	splx(s);
+	crit_exit();
 #ifdef IPX
 	ncp_watchdog(conn);
 #endif

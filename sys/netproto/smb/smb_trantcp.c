@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.11 2004/06/06 19:16:14 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.12 2005/06/10 22:44:02 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,6 +46,7 @@
 #include <sys/poll.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -103,7 +104,7 @@ nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct thread *
 {
 	struct proc *p = td->td_proc;
 	struct timeval atv, rtv, ttv;
-	int s, timo, error;
+	int timo, error;
 
 	if (tv) {
 		atv = *tv;
@@ -131,14 +132,14 @@ retry:
 		timevalsub(&ttv, &rtv);
 		timo = tvtohz_high(&ttv);
 	}
-	s = splhigh();
+	crit_enter();
 	if ((p->p_flag & P_SELECT) == 0) {
-		splx(s);
+		crit_exit();
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
 	error = tsleep((caddr_t)&selwait, 0, "nbsel", timo);
-	splx(s);
+	crit_exit();
 done:
 	p->p_flag &= ~P_SELECT;
 	if (error == ERESTART)
@@ -197,7 +198,7 @@ static int
 nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 {
 	struct socket *so;
-	int error, s;
+	int error;
 
 	error = socreate(AF_INET, &so, SOCK_STREAM, IPPROTO_TCP, td);
 	if (error)
@@ -219,23 +220,23 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 	error = soconnect(so, (struct sockaddr*)to, td);
 	if (error)
 		goto bad;
-	s = splnet();
+	crit_enter();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		tsleep(&so->so_timeo, 0, "nbcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0 &&
 			(error = nb_intr(nbp, td)) != 0) {
 			so->so_state &= ~SS_ISCONNECTING;
-			splx(s);
+			crit_exit();
 			goto bad;
 		}
 	}
 	if (so->so_error) {
 		error = so->so_error;
 		so->so_error = 0;
-		splx(s);
+		crit_exit();
 		goto bad;
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 bad:
 	smb_nbst_disconnect(nbp->nbp_vc, td);

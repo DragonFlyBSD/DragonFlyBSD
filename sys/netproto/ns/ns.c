@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.9 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.10 2005/06/10 22:44:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/errno.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -270,7 +271,9 @@ ns_ifinit(ifp, ia, sns, scrub)
 {
 	struct sockaddr_ns oldaddr;
 	union ns_host *h = &ia->ia_addr.sns_addr.x_host;
-	int s = splimp(), error;
+	int error;
+
+	crit_enter();
 
 	/*
 	 * Set up new addresses.
@@ -295,7 +298,7 @@ ns_ifinit(ifp, ia, sns, scrub)
 						(caddr_t)ia,
 						(struct ucred *)NULL))) {
 			ia->ia_addr = oldaddr;
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		ns_thishost = *h;
@@ -307,17 +310,17 @@ ns_ifinit(ifp, ia, sns, scrub)
 						(caddr_t)ia,
 						(struct ucred *)NULL))) {
 			ia->ia_addr = oldaddr;
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		if (!ns_hosteqnh(ns_thishost,*h)) {
 			ia->ia_addr = oldaddr;
-			splx(s);
+			crit_exit();
 			return (EINVAL);
 		}
 	} else {
 		ia->ia_addr = oldaddr;
-		splx(s);
+		crit_exit();
 		return (EINVAL);
 	}
 	ia->ia_ifa.ifa_metric = ifp->if_metric;

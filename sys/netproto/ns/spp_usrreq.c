@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.15 2005/01/23 13:21:44 joerg Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.16 2005/06/10 22:44:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -1751,11 +1752,11 @@ spp_fasttimo(void)
 {
 	struct nspcb *nsp;
 	struct sppcb *cb;
-	int s = splnet();
 
+	crit_enter();
 	nsp = nspcb.nsp_next;
-	if (nsp)
-	for (; nsp != &nspcb; nsp = nsp->nsp_next)
+	if (nsp) {
+	    for (; nsp != &nspcb; nsp = nsp->nsp_next) {
 		if ((cb = (struct sppcb *)nsp->nsp_pcb) &&
 		    (cb->s_flags & SF_DELACK)) {
 			cb->s_flags &= ~SF_DELACK;
@@ -1763,7 +1764,9 @@ spp_fasttimo(void)
 			sppstat.spps_delack++;
 			(void) spp_output(cb, (struct mbuf *) 0);
 		}
-	splx(s);
+	    }
+	}
+	crit_exit();
 }
 
 /*
@@ -1776,15 +1779,15 @@ spp_slowtimo(void)
 {
 	struct nspcb *ip, *ipnxt;
 	struct sppcb *cb;
-	int s = splnet();
 	int i;
 
 	/*
 	 * Search through tcb's and update active timers.
 	 */
+	crit_enter();
 	ip = nspcb.nsp_next;
 	if (ip == 0) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	while (ip != &nspcb) {
@@ -1806,7 +1809,7 @@ tpgone:
 		ip = ipnxt;
 	}
 	spp_iss += SPP_ISSINCR/PR_SLOWHZ;		/* increment iss */
-	splx(s);
+	crit_exit();
 }
 /*
  * SPP timer processing.

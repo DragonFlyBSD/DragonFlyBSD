@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.8 2004/06/06 19:16:12 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.9 2005/06/10 22:43:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -41,7 +42,6 @@ ddp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
-	int		s;
 	
 
 	ddp = sotoddpcb( so );
@@ -49,9 +49,9 @@ ddp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	    return( EINVAL);
 	}
 
-	s = splnet();
+	crit_enter();
 	error = at_pcballoc( so );
-	splx(s);
+	crit_exit();
 	if (error) {
 	    return (error);
 	}
@@ -62,15 +62,14 @@ static int
 ddp_detach(struct socket *so)
 {
 	struct ddpcb	*ddp;
-	int		s;
 	
 	ddp = sotoddpcb( so );
 	if ( ddp == NULL ) {
 	    return( EINVAL);
 	}
-	s = splnet();
+	crit_enter();
 	at_pcbdetach( so, ddp );
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -79,15 +78,14 @@ ddp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
-	int		s;
 	
 	ddp = sotoddpcb( so );
 	if ( ddp == NULL ) {
 	    return( EINVAL);
 	}
-	s = splnet();
+	crit_enter();
 	error = at_pcbsetaddr(ddp, nam, td);
-	splx(s);
+	crit_exit();
 	return (error);
 }
     
@@ -96,7 +94,6 @@ ddp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
-	int		s;
 	
 	ddp = sotoddpcb( so );
 	if ( ddp == NULL ) {
@@ -107,9 +104,9 @@ ddp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	    return(EISCONN);
 	}
 
-	s = splnet();
+	crit_enter();
 	error = at_pcbconnect( ddp, nam, td );
-	splx(s);
+	crit_exit();
 	if ( error == 0 )
 	    soisconnected( so );
 	return(error);
@@ -120,7 +117,6 @@ ddp_disconnect(struct socket *so)
 {
 
 	struct ddpcb	*ddp;
-	int		s;
 	
 	ddp = sotoddpcb( so );
 	if ( ddp == NULL ) {
@@ -130,10 +126,10 @@ ddp_disconnect(struct socket *so)
 	    return(ENOTCONN);
 	}
 
-	s = splnet();
+	crit_enter();
 	at_pcbdisconnect( ddp );
 	ddp->ddp_fsat.sat_addr.s_node = ATADDR_ANYNODE;
-	splx(s);
+	crit_exit();
 	soisdisconnected( so );
 	return(0);
 }
@@ -157,7 +153,6 @@ ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
-	int		s;
 	
 	ddp = sotoddpcb( so );
 	if ( ddp == NULL ) {
@@ -173,9 +168,9 @@ ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 			return(EISCONN);
 		}
 
-		s = splnet();
+		crit_enter();
 		error = at_pcbconnect(ddp, addr, td);
-		splx( s );
+		crit_exit();
 		if ( error ) {
 			return(error);
 		}
@@ -185,12 +180,12 @@ ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		}
 	}
 
-	s = splnet();
+	crit_enter();
 	error = ddp_output( m, so );
 	if ( addr ) {
 	    at_pcbdisconnect( ddp );
 	}
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -198,16 +193,15 @@ static int
 ddp_abort(struct socket *so)
 {
 	struct ddpcb	*ddp;
-	int		s;
 	
 	ddp = sotoddpcb( so );
 	if ( ddp == NULL ) {
 		return(EINVAL);
 	}
 	soisdisconnected( so );
-	s = splnet();
+	crit_enter();
 	at_pcbdetach( so, ddp );
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
