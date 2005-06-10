@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.3 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.4 2005/06/10 23:06:58 dillon Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.3 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.4 2005/06/10 23:06:58 dillon Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -185,14 +185,12 @@ sb_cmd(struct resource *io, u_char val)
 static void
 sb_setmixer(struct resource *io, u_int port, u_int value)
 {
-    	u_long   flags;
-
-    	flags = spltty();
+	crit_enter();
     	sb_wr(io, SB_MIX_ADDR, (u_char) (port & 0xff)); /* Select register */
     	DELAY(10);
     	sb_wr(io, SB_MIX_DATA, (u_char) (value & 0xff));
     	DELAY(10);
-    	splx(flags);
+	crit_exit();
 }
 
 static u_int

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.5 2005/06/10 23:06:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 #include <alpha/isa/isavar.h>
 #endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.5 2005/06/10 23:06:58 dillon Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e
@@ -182,7 +182,7 @@ gusisa_probe(device_t dev)
 {
 	device_t child;
 	struct resource *res, *res2;
-	int base, rid, rid2, s, flags;
+	int base, rid, rid2, flags;
 	unsigned char val;
 
 	base = isa_get_port(dev);
@@ -209,7 +209,7 @@ gusisa_probe(device_t dev)
 	port_wr(res, 5, 1);
 	DELAY(30 * 1000);
 
-	s = splhigh();
+	crit_enter();
 
 	/* Write to DRAM.  */
 
@@ -231,7 +231,7 @@ gusisa_probe(device_t dev)
 	port_wr(res, 4, 0);		/* High addr */
 	val = port_rd(res, 7);		/* DRAM */
 
-	splx(s);
+	crit_exit();
 
 	if (val != 0x55)
 		goto fail;
@@ -243,10 +243,10 @@ gusisa_probe(device_t dev)
 	if (res2 == NULL)
 		goto fail;
 
-	s = splhigh();
+	crit_enter();
 	port_wr(res2, 0x0f, 0x20);
 	val = port_rd(res2, 0x0f);
-	splx(s);
+	crit_exit();
 
 	if (val == 0xff || (val & 0x06) == 0)
 		val = 0;

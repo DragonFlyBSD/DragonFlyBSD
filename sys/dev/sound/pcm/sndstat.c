@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.7 2004/05/21 01:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.8 2005/06/10 23:07:01 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.7 2004/05/21 01:14:27 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.8 2005/06/10 23:07:01 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -90,18 +90,17 @@ static int sndstat_prepare(struct sbuf *s);
 static int
 sysctl_hw_sndverbose(SYSCTL_HANDLER_ARGS)
 {
-	intrmask_t s;
 	int error, verbose;
 
 	verbose = sndstat_verbose;
 	error = sysctl_handle_int(oidp, &verbose, sizeof(verbose), req);
 	if (error == 0 && req->newptr != NULL) {
-		s = spltty();
+		crit_enter();
 		if (verbose < 0 || verbose > 3)
 			error = EINVAL;
 		else
 			sndstat_verbose = verbose;
-		splx(s);
+		crit_exit();
 	}
 	return error;
 }
@@ -111,16 +110,15 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, verbose, CTLTYPE_INT | CTLFLAG_RW,
 static int
 sndstat_open(dev_t i_dev, int flags, int mode, struct thread *td)
 {
-	intrmask_t s;
 	int err;
 
-	s = spltty();
+	crit_enter();
 	if (sndstat_isopen) {
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 	if (sbuf_new(&sndstat_sbuf, NULL, 4096, 0) == NULL) {
-		splx(s);
+		crit_exit();
 		return ENXIO;
 	}
 	sndstat_bufptr = 0;
@@ -128,43 +126,40 @@ sndstat_open(dev_t i_dev, int flags, int mode, struct thread *td)
 	if (!err)
 		sndstat_isopen = 1;
 
-	splx(s);
+	crit_exit();
 	return err;
 }
 
 static int
 sndstat_close(dev_t i_dev, int flags, int mode, struct thread *td)
 {
-	intrmask_t s;
-
-	s = spltty();
+	crit_enter();
 	if (!sndstat_isopen) {
-		splx(s);
+		crit_exit();
 		return EBADF;
 	}
 	sbuf_delete(&sndstat_sbuf);
 	sndstat_isopen = 0;
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
 static int
 sndstat_read(dev_t i_dev, struct uio *buf, int flag)
 {
-	intrmask_t s;
 	int l, err;
 
-	s = spltty();
+	crit_enter();
 	if (!sndstat_isopen) {
-		splx(s);
+		crit_exit();
 		return EBADF;
 	}
     	l = min(buf->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
 	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, buf) : 0;
 	sndstat_bufptr += l;
 
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -186,7 +181,6 @@ sndstat_find(int type, int unit)
 int
 sndstat_register(device_t dev, char *str, sndstat_handler handler)
 {
-	intrmask_t s;
 	struct sndstat_entry *ent;
 	const char *devtype;
 	int type, unit;
@@ -217,12 +211,12 @@ sndstat_register(device_t dev, char *str, sndstat_handler handler)
 	ent->unit = unit;
 	ent->handler = handler;
 
-	s = spltty();
+	crit_enter();
 	SLIST_INSERT_HEAD(&sndstat_devlist, ent, link);
 	if (type == SS_TYPE_MODULE)
 		sndstat_files++;
 	sndstat_maxunit = (unit > sndstat_maxunit)? unit : sndstat_maxunit;
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -236,20 +230,19 @@ sndstat_registerfile(char *str)
 int
 sndstat_unregister(device_t dev)
 {
-	intrmask_t s;
 	struct sndstat_entry *ent;
 
-	s = spltty();
+	crit_enter();
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == dev) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
 			free(ent, M_DEVBUF);
-			splx(s);
+			crit_exit();
 
 			return 0;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return ENXIO;
 }
@@ -257,21 +250,20 @@ sndstat_unregister(device_t dev)
 int
 sndstat_unregisterfile(char *str)
 {
-	intrmask_t s;
 	struct sndstat_entry *ent;
 
-	s = spltty();
+	crit_enter();
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == NULL && ent->str == str) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
 			free(ent, M_DEVBUF);
 			sndstat_files--;
-			splx(s);
+			crit_exit();
 
 			return 0;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return ENXIO;
 }
@@ -334,15 +326,13 @@ sndstat_init(void)
 static int
 sndstat_uninit(void)
 {
-	intrmask_t s;
-
-	s = spltty();
+	crit_enter();
 	if (sndstat_isopen) {
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 	cdevsw_remove(&sndstat_cdevsw, -1, SND_DEV_STATUS);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

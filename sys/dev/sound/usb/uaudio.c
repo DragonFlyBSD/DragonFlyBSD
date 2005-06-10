@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.6 2005/06/02 20:40:43 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.7 2005/06/10 23:07:02 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -1594,7 +1594,7 @@ uaudio_open(void *addr, int flags)
 }
 
 /*
- * Close function is called at splaudio().
+ * Close function is called from a critical section.
  */
 void
 uaudio_close(void *addr)
@@ -2201,21 +2201,9 @@ uaudio_chan_pintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 #endif
 
 	ch->transferred += cb->size;
-#if defined(__DragonFly__)
 	crit_enter();
 	chn_intr(ch->pcm_ch);
 	crit_exit();
-#else
-	s = splaudio();
-	/* Call back to upper layer */
-	while (ch->transferred >= ch->blksize) {
-		ch->transferred -= ch->blksize;
-		DPRINTFN(5,("uaudio_chan_pintr: call %p(%p)\n", 
-			    ch->intr, ch->arg));
-		ch->intr(ch->arg);
-	}
-	splx(s);
-#endif
 
 	/* start next transfer */
 	uaudio_chan_ptransfer(ch);
@@ -2279,7 +2267,7 @@ uaudio_chan_rintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 	struct chanbuf *cb = priv;
 	struct chan *ch = cb->chan;
 	u_int32_t count;
-	int s, n;
+	int n;
 
 	/* Return if we are aborting. */
 	if (status == USBD_CANCELLED)
@@ -2319,20 +2307,9 @@ uaudio_chan_rintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	/* Call back to upper layer */
 	ch->transferred += cb->size;
-#if defined(__DragonFly__)
-	s = spltty();
+	crit_enter();
 	chn_intr(ch->pcm_ch);
-	splx(s);
-#else
-	s = splaudio();
-	while (ch->transferred >= ch->blksize) {
-		ch->transferred -= ch->blksize;
-		DPRINTFN(5,("uaudio_chan_rintr: call %p(%p)\n", 
-			    ch->intr, ch->arg));
-		ch->intr(ch->arg);
-	}
-	splx(s);
-#endif
+	crit_exit();
 
 	/* start next transfer */
 	uaudio_chan_rtransfer(ch);

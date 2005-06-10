@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.7 2004/05/21 01:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.8 2005/06/10 23:07:01 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.7 2004/05/21 01:14:27 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.8 2005/06/10 23:07:01 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -407,16 +407,15 @@ static int
 mixer_open(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct snd_mixer *m;
-	intrmask_t s;
 
 	m = i_dev->si_drv1;
-	s = spltty();
+	crit_enter();
 	snd_mtxlock(m->lock);
 
 	m->busy++;
 
 	snd_mtxunlock(m->lock);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -424,21 +423,20 @@ static int
 mixer_close(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct snd_mixer *m;
-	intrmask_t s;
 
 	m = i_dev->si_drv1;
-	s = spltty();
+	crit_enter();
 	snd_mtxlock(m->lock);
 
 	if (!m->busy) {
 		snd_mtxunlock(m->lock);
-		splx(s);
+		crit_exit();
 		return EBADF;
 	}
 	m->busy--;
 
 	snd_mtxunlock(m->lock);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -446,7 +444,6 @@ int
 mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 {
 	struct snd_mixer *m;
-	intrmask_t s;
 	int ret, *arg_i = (int *)arg;
 	int v = -1, j = cmd & 0xff;
 
@@ -454,7 +451,7 @@ mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 	if (!m->busy)
 		return EBADF;
 
-	s = spltty();
+	crit_enter();
 	snd_mtxlock(m->lock);
 	if ((cmd & MIXER_WRITE(0)) == MIXER_WRITE(0)) {
 		if (j == SOUND_MIXER_RECSRC)
@@ -462,7 +459,7 @@ mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		else
 			ret = mixer_set(m, j, *arg_i);
 		snd_mtxunlock(m->lock);
-		splx(s);
+		crit_exit();
 		return (ret == 0)? 0 : ENXIO;
 	}
 
@@ -490,7 +487,7 @@ mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		return (v != -1)? 0 : ENXIO;
 	}
 	snd_mtxunlock(m->lock);
-	splx(s);
+	crit_exit();
 	return ENXIO;
 }
 

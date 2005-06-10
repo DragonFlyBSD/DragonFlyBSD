@@ -39,7 +39,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.13.2.10 2002/05/07 17:02:25 greid Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.5 2005/06/10 23:06:59 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.5 2005/06/10 23:06:59 dillon Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");
@@ -555,7 +555,6 @@ es1371_init(struct es_info *es, device_t dev)
 static int
 es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
 {
-    	int sl;
     	unsigned t, x;
 	struct es_info *es = (struct es_info*)s;
 
@@ -564,7 +563,7 @@ es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
 	for (t = 0; t < 0x1000; t++)
 	  	if (!(bus_space_read_4(es->st, es->sh,(ES1371_REG_CODEC & CODEC_WIP))))
 			break;
-	sl = spltty();
+	crit_enter();
 	/* save the current state for later */
  	x = bus_space_read_4(es->st, es->sh, ES1371_REG_SMPRATE);
 	/* enable SRC state data in SRC mux */
@@ -591,7 +590,7 @@ es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
 		printf("two b_s_w: 0x%lx 0x%x 0x%x\n",
 		       rman_get_start(es->reg), ES1371_REG_SMPRATE, x);
 	bus_space_write_4(es->st, es->sh, ES1371_REG_SMPRATE, x);
-	splx(sl);
+	crit_exit();
 
 	return 0;
 }
@@ -599,7 +598,6 @@ es1371_wrcd(kobj_t obj, void *s, int addr, u_int32_t data)
 static int
 es1371_rdcd(kobj_t obj, void *s, int addr)
 {
-  	int sl;
   	unsigned t, x = 0;
   	struct es_info *es = (struct es_info *)s;
 
@@ -610,7 +608,7 @@ es1371_rdcd(kobj_t obj, void *s, int addr)
 	  		break;
    	if (debug > 0) printf("loop 1 t 0x%x x 0x%x ", t, x);
 
-  	sl = spltty();
+	crit_enter();
 
   	/* save the current state for later */
   	x = bus_space_read_4(es->st, es->sh, ES1371_REG_SMPRATE);
@@ -630,7 +628,7 @@ es1371_rdcd(kobj_t obj, void *s, int addr)
   	es1371_wait_src_ready(s);
   	bus_space_write_4(es->st, es->sh, ES1371_REG_SMPRATE, x);
 
-  	splx(sl);
+	crit_exit();
 
   	/* now wait for the stinkin' data (RDY) */
   	for (t = 0; t < 0x1000; t++)

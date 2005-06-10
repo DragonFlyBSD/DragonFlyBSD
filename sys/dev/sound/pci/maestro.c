@@ -25,7 +25,7 @@
  *
  * $Id: maestro.c,v 1.12 2000/09/06 03:32:34 taku Exp $
  * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.2.2.5 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.5 2005/06/10 23:06:59 dillon Exp $
  */
 
 /*
@@ -53,7 +53,7 @@
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.5 2005/06/10 23:06:59 dillon Exp $");
 
 #define inline __inline
 
@@ -1102,9 +1102,9 @@ static int
 agg_suspend(device_t dev)
 {
 	struct agg_info *ess = pcm_getdevinfo(dev);
-	int i, x;
+	int i;
 
-	x = spltty();
+	crit_enter();
 	wp_stoptimer(ess);
 	bus_space_write_2(ess->st, ess->sh, PORT_HOSTINT_CTRL, 0);
 
@@ -1114,7 +1114,7 @@ agg_suspend(device_t dev)
 #if 0	/* XXX - RECORDING */
 	aggch_stop_adc(&ess->rch);
 #endif
-	splx(x);
+	crit_exit();
 	/* Power down everything except clock. */
 	agg_wrcodec(NULL, ess, AC97_REG_POWER, 0xdf00);
 	DELAY(20);
@@ -1128,7 +1128,7 @@ agg_suspend(device_t dev)
 static int
 agg_resume(device_t dev)
 {
-	int i, x;
+	int i;
 	struct agg_info *ess = pcm_getdevinfo(dev);
 
 	agg_power(ess, PPMI_D0);
@@ -1139,7 +1139,7 @@ agg_resume(device_t dev)
 		return ENXIO;
 	}
 
-	x = spltty();
+	crit_enter();
 	for (i = 0; i < ess->playchns; i++)
 		if (ess->active & (1 << i))
 			aggch_start_dac(ess->pch + i);
@@ -1151,7 +1151,7 @@ agg_resume(device_t dev)
 		set_timer(ess);
 		wp_starttimer(ess);
 	}
-	splx(x);
+	crit_exit();
 	return 0;
 }
 

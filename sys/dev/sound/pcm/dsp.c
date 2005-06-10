@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.7 2004/05/21 01:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.8 2005/06/10 23:07:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.7 2004/05/21 01:14:27 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.8 2005/06/10 23:07:01 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -179,14 +179,13 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
-	intrmask_t s;
 	u_int32_t fmt;
 	int devtype;
 	struct proc *p = td->td_proc;
 
 	KKASSERT(p != NULL);
 
-	s = spltty();
+	crit_enter();
 	d = dsp_get_info(i_dev);
 	devtype = PCMDEV(i_dev);
 
@@ -211,7 +210,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 	case SND_DEV_DSPREC:
 		fmt = AFMT_U8;
 		if (mode & FWRITE) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		break;
@@ -229,14 +228,14 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 	if ((dsp_get_flags(i_dev) & SD_F_SIMPLEX) && (rdch || wrch)) {
 		/* simplex device, already open, exit */
 		pcm_unlock(d);
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 
 	if (((flags & FREAD) && rdch) || ((flags & FWRITE) && wrch)) {
 		/* device already open in one or both directions */
 		pcm_unlock(d);
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 
@@ -250,7 +249,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 		if (!rdch) {
 			/* no channel available, exit */
 			pcm_unlock(d);
-			splx(s);
+			crit_exit();
 			return EBUSY;
 		}
 		/* got a channel, already locked for us */
@@ -267,7 +266,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 			}
 				/* exit */
 			pcm_unlock(d);
-			splx(s);
+			crit_exit();
 			return EBUSY;
 		}
 		/* got a channel, already locked for us */
@@ -286,7 +285,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 			if (wrch && (flags & FWRITE))
 				pcm_chnrelease(wrch);
 			pcm_unlock(d);
-			splx(s);
+			crit_exit();
 			return ENODEV;
 		}
 		if (flags & O_NONBLOCK)
@@ -305,7 +304,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 				CHN_UNLOCK(rdch);
 			}
 			pcm_unlock(d);
-			splx(s);
+			crit_exit();
 			return ENODEV;
 		}
 		if (flags & O_NONBLOCK)
@@ -313,7 +312,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 		pcm_chnref(wrch, 1);
 	 	CHN_UNLOCK(wrch);
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -322,10 +321,9 @@ dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
 {
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
-	intrmask_t s;
 	int exit;
 
-	s = spltty();
+	crit_enter();
 	d = dsp_get_info(i_dev);
 	pcm_lock(d);
 	rdch = i_dev->si_drv1;
@@ -350,7 +348,7 @@ dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
 	}
 	if (exit) {
 		pcm_unlock(d);
-		splx(s);
+		crit_exit();
 		return 0;
 	}
 
@@ -378,7 +376,7 @@ dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
 		pcm_chnrelease(wrch);
 	}
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -386,10 +384,9 @@ static int
 dsp_read(dev_t i_dev, struct uio *buf, int flag)
 {
 	struct pcm_channel *rdch, *wrch;
-	intrmask_t s;
 	int ret;
 
-	s = spltty();
+	crit_enter();
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD);
 
 	KASSERT(rdch, ("dsp_read: nonexistant channel"));
@@ -397,7 +394,7 @@ dsp_read(dev_t i_dev, struct uio *buf, int flag)
 
 	if (rdch->flags & (CHN_F_MAPPED | CHN_F_DEAD)) {
 		relchns(i_dev, rdch, wrch, SD_F_PRIO_RD);
-		splx(s);
+		crit_exit();
 		return EINVAL;
 	}
 	if (!(rdch->flags & CHN_F_RUNNING))
@@ -405,7 +402,7 @@ dsp_read(dev_t i_dev, struct uio *buf, int flag)
 	ret = chn_read(rdch, buf);
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD);
 
-	splx(s);
+	crit_exit();
 	return ret;
 }
 
@@ -413,10 +410,9 @@ static int
 dsp_write(dev_t i_dev, struct uio *buf, int flag)
 {
 	struct pcm_channel *rdch, *wrch;
-	intrmask_t s;
 	int ret;
 
-	s = spltty();
+	crit_enter();
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_WR);
 
 	KASSERT(wrch, ("dsp_write: nonexistant channel"));
@@ -424,7 +420,7 @@ dsp_write(dev_t i_dev, struct uio *buf, int flag)
 
 	if (wrch->flags & (CHN_F_MAPPED | CHN_F_DEAD)) {
 		relchns(i_dev, rdch, wrch, SD_F_PRIO_WR);
-		splx(s);
+		crit_exit();
 		return EINVAL;
 	}
 	if (!(wrch->flags & CHN_F_RUNNING))
@@ -432,7 +428,7 @@ dsp_write(dev_t i_dev, struct uio *buf, int flag)
 	ret = chn_write(wrch, buf);
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_WR);
 
-	splx(s);
+	crit_exit();
 	return ret;
 }
 
@@ -441,7 +437,6 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 {
     	struct pcm_channel *wrch, *rdch;
 	struct snddev_info *d;
-	intrmask_t s;
 	int kill;
     	int ret = 0, *arg_i = (int *)arg, tmp;
 
@@ -458,7 +453,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		return mixer_ioctl(pdev, cmd, arg, mode, td);
 	}
 
-    	s = spltty();
+	crit_enter();
 	d = dsp_get_info(i_dev);
 	getchns(i_dev, &rdch, &wrch, 0);
 
@@ -469,7 +464,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		kill |= 2;
 	if (kill == 3) {
 		relchns(i_dev, rdch, wrch, 0);
-		splx(s);
+		crit_exit();
 		return EINVAL;
 	}
 	if (kill & 1)
@@ -964,7 +959,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		break;
     	}
 	relchns(i_dev, rdch, wrch, 0);
-	splx(s);
+	crit_exit();
     	return ret;
 }
 
@@ -972,10 +967,9 @@ static int
 dsp_poll(dev_t i_dev, int events, struct thread *td)
 {
 	struct pcm_channel *wrch = NULL, *rdch = NULL;
-	intrmask_t s;
 	int ret, e;
 
-	s = spltty();
+	crit_enter();
 	ret = 0;
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
@@ -991,7 +985,7 @@ dsp_poll(dev_t i_dev, int events, struct thread *td)
 	}
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
-	splx(s);
+	crit_exit();
 	return ret;
 }
 
@@ -999,13 +993,12 @@ static int
 dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
 {
 	struct pcm_channel *wrch = NULL, *rdch = NULL, *c;
-	intrmask_t s;
 	int ret;
 
 	if (nprot & PROT_EXEC)
 		return -1;
 
-	s = spltty();
+	crit_enter();
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 #if 0
 	/*
@@ -1018,7 +1011,7 @@ dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
 	} else if (rdch && (nprot & PROT_READ)) {
 		c = rdch;
 	} else {
-		splx(s);
+		crit_exit();
 		return -1;
 	}
 #else
@@ -1027,13 +1020,13 @@ dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
 
 	if (c == NULL) {
 		relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-		splx(s);
+		crit_exit();
 		return -1;
 	}
 
 	if (offset >= sndbuf_getsize(c->bufsoft)) {
 		relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-		splx(s);
+		crit_exit();
 		return -1;
 	}
 
@@ -1043,7 +1036,7 @@ dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
 	ret = atop(vtophys(sndbuf_getbufofs(c->bufsoft, offset)));
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
-	splx(s);
+	crit_exit();
 	return ret;
 }
 

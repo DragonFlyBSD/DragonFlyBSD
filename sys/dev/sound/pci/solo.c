@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.9.2.8 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.5 2005/06/10 23:06:59 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.5 2005/06/10 23:06:59 dillon Exp $");
 
 #define SOLO_DEFAULT_BUFSZ 16384
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -222,29 +222,26 @@ ess_cmd1(struct ess_info *sc, u_char cmd, int val)
 static void
 ess_setmixer(struct ess_info *sc, u_int port, u_int value)
 {
-    	u_long   flags;
-
 	DEB(printf("ess_setmixer: reg=%x, val=%x\n", port, value);)
-    	flags = spltty();
+	crit_enter();
     	ess_wr(sc, SB_MIX_ADDR, (u_char) (port & 0xff)); /* Select register */
     	DELAY(10);
     	ess_wr(sc, SB_MIX_DATA, (u_char) (value & 0xff));
     	DELAY(10);
-    	splx(flags);
+	crit_exit();
 }
 
 static int
 ess_getmixer(struct ess_info *sc, u_int port)
 {
     	int val;
-    	u_long flags;
 
-    	flags = spltty();
+	crit_enter();
     	ess_wr(sc, SB_MIX_ADDR, (u_char) (port & 0xff)); /* Select register */
     	DELAY(10);
     	val = ess_rd(sc, SB_MIX_DATA);
     	DELAY(10);
-    	splx(flags);
+	crit_exit();
 
     	return val;
 }
@@ -763,16 +760,15 @@ static int
 ess_dmapos(struct ess_info *sc, int ch)
 {
 	int p = 0, i = 0, j = 0;
-	u_long flags;
 
 	KASSERT(ch == 1 || ch == 2, ("bad ch"));
-	flags = spltty();
+	crit_enter();
 	if (ch == 1) {
 
 /*
  * During recording, this register is known to give back
  * garbage if it's not quiescent while being read. That's
- * why we spl, stop the DMA, and try over and over until
+ * why we crit, stop the DMA, and try over and over until
  * adjacent reads are "close", in the right order and not
  * bigger than is otherwise possible.
  */
@@ -790,7 +786,7 @@ ess_dmapos(struct ess_info *sc, int ch)
 	}
 	else if (ch == 2)
 		p = port_rd(sc->io, 0x4, 2);
-	splx(flags);
+	crit_exit();
 	return sc->dmasz[ch - 1] - p;
 }
 

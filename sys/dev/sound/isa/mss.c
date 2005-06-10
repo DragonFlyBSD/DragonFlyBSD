@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.5 2005/06/10 23:06:58 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.4 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.5 2005/06/10 23:06:58 dillon Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -631,9 +631,8 @@ gusmax_setup(struct mss_info *mss, device_t dev, struct resource *alt)
 	};
 	device_t parent = device_get_parent(dev);
 	unsigned char irqctl, dmactl;
-	int s;
 
-	s = splhigh();
+	crit_enter();
 
 	port_wr(alt, 0x0f, 0x05);
 	port_wr(alt, 0x00, 0x0c);
@@ -666,7 +665,7 @@ gusmax_setup(struct mss_info *mss, device_t dev, struct resource *alt)
 	port_wr(alt, 0x00, 0x0c);
 	port_wr(mss->conf_base, 2, 0);
 
-	splx(s);
+	crit_exit();
 }
 
 static int

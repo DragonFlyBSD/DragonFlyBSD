@@ -25,14 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.6 2003/08/01 17:46:18 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.7 2005/06/10 23:07:01 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.6 2003/08/01 17:46:18 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.7 2005/06/10 23:07:01 dillon Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #define	DMA_ALIGN_THRESHOLD	4
@@ -141,7 +141,7 @@ chn_sleep(struct pcm_channel *c, char *str, int timeout)
 
 /*
  * chn_dmaupdate() tracks the status of a dma transfer,
- * updating pointers. It must be called at spltty().
+ * updating pointers. It must be called from a critical section.
  */
 
 static unsigned int
@@ -321,7 +321,7 @@ chn_rddump(struct pcm_channel *c, unsigned int cnt)
 
 /*
  * Feed new data from the read buffer. Can be called in the bottom half.
- * Hence must be called at spltty.
+ * Hence must be called from a critical section.
  */
 int
 chn_rdfeed(struct pcm_channel *c)

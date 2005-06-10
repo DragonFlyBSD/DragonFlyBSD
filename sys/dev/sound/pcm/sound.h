@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.5 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.6 2005/06/10 23:07:01 dillon Exp $
  */
 
 /*
@@ -66,6 +66,7 @@
 #include <sys/sbuf.h>
 #include <sys/soundcard.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include <bus/isa/isavar.h>
 #include <sys/kobj.h>
 #include <vm/vm.h>
