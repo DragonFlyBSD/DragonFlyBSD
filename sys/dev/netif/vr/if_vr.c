@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.25 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.26 2005/06/10 15:13:37 joerg Exp $
  */
 
 /*
@@ -873,13 +873,10 @@ fail:
 static int
 vr_detach(device_t dev)
 {
-	struct vr_softc *sc;
-	struct ifnet *ifp;
+	struct vr_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	crit_enter();
-
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
 
 	vr_stop(sc);
 	ether_ifdetach(ifp);
@@ -888,12 +885,13 @@ vr_detach(device_t dev)
 	device_delete_child(dev, sc->vr_miibus);
 
 	bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
+
+	crit_exit();
+
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
 	bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
 
 	contigfree(sc->vr_ldata, sizeof(struct vr_list_data), M_DEVBUF);
-
-	crit_exit();
 
 	return(0);
 }
@@ -1202,12 +1200,11 @@ vr_txeoc(struct vr_softc *sc)
 static void
 vr_tick(void *xsc)
 {
-	struct vr_softc *sc;
+	struct vr_softc *sc = xsc;
 	struct mii_data *mii;
 
 	crit_enter();
 
-	sc = xsc;
 	if (sc->vr_flags & VR_F_RESTART) {
 		if_printf(&sc->arpcom.ac_if, "restarting\n");
 		vr_stop(sc);
@@ -1441,9 +1438,9 @@ vr_init(void *xsc)
 	struct mii_data *mii;
 	int i;
 
-	crit_enter();
-
 	mii = device_get_softc(sc->vr_miibus);
+
+	crit_enter();
 
 	/* Cancel pending I/O and free all RX/TX buffers. */
 	vr_stop(sc);
@@ -1475,9 +1472,9 @@ vr_init(void *xsc)
 
 	/* Init circular RX list. */
 	if (vr_list_rx_init(sc) == ENOBUFS) {
-		if_printf(ifp, "initialization failed: no memory for rx buffers\n");
 		vr_stop(sc);
 		crit_exit();
+		if_printf(ifp, "initialization failed: no memory for rx buffers\n");
 		return;
 	}
 
