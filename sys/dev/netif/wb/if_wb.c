@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.28 2005/06/10 16:02:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.29 2005/06/10 16:05:34 joerg Exp $
  */
 
 /*
@@ -719,38 +719,31 @@ wb_attach(device_t dev)
 	/*
 	 * Handle power management nonsense.
 	 */
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
+		uint32_t iobase, membase, irq;
 
-	command = pci_read_config(dev, WB_PCI_CAPID, 4) & 0x000000FF;
-	if (command == 0x01) {
+		/* Save important PCI config data. */
+		iobase = pci_read_config(dev, WB_PCI_LOIO, 4);
+		membase = pci_read_config(dev, WB_PCI_LOMEM, 4);
+		irq = pci_read_config(dev, WB_PCI_INTLINE, 4);
 
-		command = pci_read_config(dev, WB_PCI_PWRMGMTCTRL, 4);
-		if (command & WB_PSTATE_MASK) {
-			uint32_t iobase, membase, irq;
+		/* Reset the power state. */
+		device_printf(dev, "chip is in D%d power mode "
+		"-- setting to D0\n", pci_get_powerstate(dev));
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
-			/* Save important PCI config data. */
-			iobase = pci_read_config(dev, WB_PCI_LOIO, 4);
-			membase = pci_read_config(dev, WB_PCI_LOMEM, 4);
-			irq = pci_read_config(dev, WB_PCI_INTLINE, 4);
-
-			/* Reset the power state. */
-			device_printf(dev, "chip is in D%d power mode "
-			"-- setting to D0\n", command & WB_PSTATE_MASK);
-			command &= 0xFFFFFFFC;
-			pci_write_config(dev, WB_PCI_PWRMGMTCTRL, command, 4);
-
-			/* Restore PCI config data. */
-			pci_write_config(dev, WB_PCI_LOIO, iobase, 4);
-			pci_write_config(dev, WB_PCI_LOMEM, membase, 4);
-			pci_write_config(dev, WB_PCI_INTLINE, irq, 4);
-		}
+		/* Restore PCI config data. */
+		pci_write_config(dev, WB_PCI_LOIO, iobase, 4);
+		pci_write_config(dev, WB_PCI_LOMEM, membase, 4);
+		pci_write_config(dev, WB_PCI_INTLINE, irq, 4);
 	}
 
 	/*
 	 * Map control/status registers.
 	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_IOPORT);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 #ifdef WB_USEIOSPACE
