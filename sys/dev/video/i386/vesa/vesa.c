@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.9 2005/05/07 13:06:44 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.10 2005/06/10 23:25:09 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -38,6 +38,7 @@
 #include <sys/module.h>
 #include <sys/malloc.h>
 #include <sys/fbio.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -1585,16 +1586,15 @@ static int
 vesa_load(void)
 {
 	int error;
-	int s;
 
 	if (vesa_init_done)
 		return 0;
 
 	/* locate a VGA adapter */
-	s = spltty();
+	crit_enter();
 	vesa_adp = NULL;
 	error = vesa_configure(0);
-	splx(s);
+	crit_exit();
 
 	if (error == 0)
 		vesa_bios_info(bootverbose);
@@ -1608,7 +1608,6 @@ vesa_unload(void)
 	u_char palette[256*3];
 	int error;
 	int bits;
-	int s;
 
 	/* if the adapter is currently in a VESA mode, don't unload */
 	if ((vesa_adp != NULL) && VESA_MODE(vesa_adp->va_mode))
@@ -1618,7 +1617,7 @@ vesa_unload(void)
 	 * we shouldn't be unloading! XXX
 	 */
 
-	s = spltty();
+	crit_enter();
 	if ((error = vesa_unload_ioctl()) == 0) {
 		if (vesa_adp != NULL) {
 			if (vesa_adp_info->v_flags & V_DAC8)  {
@@ -1635,7 +1634,7 @@ vesa_unload(void)
 			vidsw[vesa_adp->va_index] = prevvidsw;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return error;
 }

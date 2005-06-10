@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/tga.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/tga.c,v 1.4 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/tga.c,v 1.5 2005/06/10 23:25:06 dillon Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -65,6 +65,7 @@
 #include <sys/malloc.h>
 #include <sys/fbio.h>
 #include <sys/consio.h>
+#include <sys/thread2.h>
 
 #include <bus/isa/isareg.h>
 #include "vgareg.h"
@@ -2229,11 +2230,11 @@ static int
 bt485_read_hw_cursor(video_adapter_t *adp, int *col, int *row)
 {
 	struct gfb_softc *sc;
-	int error, s;
+	int error;
 
 	error = 0;
 	sc = gfb_device_softcs[adp->va_model][adp->va_unit];
-	s = spltty();
+	crit_enter();
 	*col = (sc->gfbc->ramdac_rd(sc, BT485_REG_CURSOR_X_HIGH) & 0x0f) << 8;
 	*col |= sc->gfbc->ramdac_rd(sc, BT485_REG_CURSOR_X_LOW) & 0xff;
 	*col /= adp->va_info.vi_cwidth;
@@ -2242,7 +2243,7 @@ bt485_read_hw_cursor(video_adapter_t *adp, int *col, int *row)
 	*row |= sc->gfbc->ramdac_rd(sc, BT485_REG_CURSOR_Y_LOW) & 0xff;
 	*row /= adp->va_info.vi_cheight;
 	*row -= 4;
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -2269,7 +2270,7 @@ bt485_set_hw_cursor(video_adapter_t *adp, int col, int row)
 	} else {
 		/* Otherwise, just move the cursor as requested... */
 		sc = gfb_device_softcs[adp->va_model][adp->va_unit];
-		s = spltty();
+		crit_enter();
 		sc->gfbc->ramdac_wr(sc, BT485_REG_CURSOR_X_LOW,
 		    ((col + 8) * adp->va_info.vi_cwidth) & 0xff);
 		sc->gfbc->ramdac_wr(sc, BT485_REG_CURSOR_X_HIGH,
@@ -2278,7 +2279,7 @@ bt485_set_hw_cursor(video_adapter_t *adp, int col, int row)
 		    ((row + 4) * adp->va_info.vi_cheight) & 0xff);
 		sc->gfbc->ramdac_wr(sc, BT485_REG_CURSOR_Y_HIGH,
 		    (((row + 4) * adp->va_info.vi_cheight) >> 8) & 0x0f);
-		splx(s);
+		crit_exit();
 	}
 	return(error);
 }

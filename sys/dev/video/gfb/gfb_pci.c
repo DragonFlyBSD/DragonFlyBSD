@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/gfb/gfb_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.6 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/dev/video/gfb/Attic/gfb_pci.c,v 1.7 2005/06/10 23:25:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,7 @@
 
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -71,12 +72,11 @@ extern struct gfb_softc *gfb_device_softcs[2][16];
 int
 pcigfb_attach(device_t dev)
 {
-	int s;
 	gfb_softc_t sc;
 	video_adapter_t *adp;
 	int unit, flags, error, rid, va_index;
 
-	s = splimp();
+	crit_enter();
 	error = 0;
 	unit = device_get_unit(dev);
 	flags = device_get_flags(dev);
@@ -212,7 +212,7 @@ fail:
 	}
 	error = ENXIO;
 done:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 

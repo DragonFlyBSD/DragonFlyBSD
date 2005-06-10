@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.10 2005/03/13 01:53:56 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.11 2005/06/10 23:25:06 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -41,6 +41,7 @@
 #include <sys/fbio.h>
 #include <sys/linker_set.h>
 #include <sys/device.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -80,12 +81,11 @@ vid_realloc_array(void)
 	dev_t *new_cdevsw;
 #endif
 	int newsize;
-	int s;
 
 	if (!vid_malloc)
 		return ENOMEM;
 
-	s = spltty();
+	crit_enter();
 	newsize = ((adapters + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
 	new_adp = malloc(sizeof(*new_adp)*newsize, M_DEVBUF, M_WAITOK);
 	new_vidsw = malloc(sizeof(*new_vidsw)*newsize, M_DEVBUF, M_WAITOK);
@@ -113,7 +113,7 @@ vid_realloc_array(void)
 	vidcdevsw = new_cdevsw;
 #endif
 	adapters = newsize;
-	splx(s);
+	crit_exit();
 
 	if (bootverbose)
 		printf("fb: new array size %d\n", adapters);
@@ -236,18 +236,17 @@ int
 vid_allocate(char *driver, int unit, void *id)
 {
 	int index;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	index = vid_find_adapter(driver, unit);
 	if (index >= 0) {
 		if (adapter[index]->va_token) {
-			splx(s);
+			crit_exit();
 			return -1;
 		}
 		adapter[index]->va_token = id;
 	}
-	splx(s);
+	crit_exit();
 	return index;
 }
 
@@ -255,9 +254,8 @@ int
 vid_release(video_adapter_t *adp, void *id)
 {
 	int error;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	if (adp->va_token == NULL) {
 		error = EINVAL;
 	} else if (adp->va_token != id) {
@@ -266,7 +264,7 @@ vid_release(video_adapter_t *adp, void *id)
 		adp->va_token = NULL;
 		error = 0;
 	}
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -401,18 +399,16 @@ PSEUDO_SET(vfbattach, fb);
 int
 fb_attach(dev_t dev, video_adapter_t *adp)
 {
-	int s;
-
 	if (adp->va_index >= adapters)
 		return EINVAL;
 	if (adapter[adp->va_index] != adp)
 		return EINVAL;
 
-	s = spltty();
+	crit_enter();
 	reference_dev(dev);
 	adp->va_minor = minor(dev);
 	vidcdevsw[adp->va_index] = dev;
-	splx(s);
+	crit_exit();
 
 	printf("fb%d at %s%d\n", adp->va_index, adp->va_name, adp->va_unit);
 	return 0;
@@ -424,8 +420,6 @@ fb_attach(dev_t dev, video_adapter_t *adp)
 int
 fb_detach(dev_t dev, video_adapter_t *adp)
 {
-	int s;
-
 	if (adp->va_index >= adapters)
 		return EINVAL;
 	if (adapter[adp->va_index] != adp)
@@ -433,9 +427,9 @@ fb_detach(dev_t dev, video_adapter_t *adp)
 	if (vidcdevsw[adp->va_index] != dev)
 		return EINVAL;
 
-	s = spltty();
+	crit_enter();
 	vidcdevsw[adp->va_index] = NULL;
-	splx(s);
+	crit_exit();
 	release_dev(dev);
 	return 0;
 }
@@ -527,23 +521,19 @@ DEV_DRIVER_MODULE(fb, ???, fb_driver, fb_devclass, fb_cdevsw, 0, 0);
 int genfbopen(genfb_softc_t *sc, video_adapter_t *adp, int flag, int mode,
 	      struct thread *td)
 {
-	int s;
-
-	s = spltty();
+	crit_enter();
 	if (!(sc->gfb_flags & FB_OPEN))
 		sc->gfb_flags |= FB_OPEN;
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
 int genfbclose(genfb_softc_t *sc, video_adapter_t *adp, int flag, int mode,
 	       struct thread *td)
 {
-	int s;
-
-	s = spltty();
+	crit_enter();
 	sc->gfb_flags &= ~FB_OPEN;
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -700,12 +690,11 @@ int
 fb_commonioctl(video_adapter_t *adp, u_long cmd, caddr_t arg)
 {
 	int error;
-	int s;
 
 	/* assert(adp != NULL) */
 
 	error = 0;
-	s = spltty();
+	crit_enter();
 
 	switch (cmd) {
 
@@ -826,6 +815,6 @@ fb_commonioctl(video_adapter_t *adp, u_long cmd, caddr_t arg)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 	return error;
 }

@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.11 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.12 2005/06/10 23:25:05 dillon Exp $
  */
 
 /*
@@ -62,6 +62,7 @@
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -724,7 +725,6 @@ bktr_poll( dev_t dev, int events, struct thread *td)
 	int		unit;
 	bktr_ptr_t	bktr;
 	int revents = 0; 
-	DECLARE_INTR_MASK(s);
 
 	unit = UNIT(minor(dev));
 
@@ -736,7 +736,7 @@ bktr_poll( dev_t dev, int events, struct thread *td)
 	}
 
 	LOCK_VBI(bktr);
-	DISABLE_INTR(s);
+	crit_enter();
 
 	if (events & (POLLIN | POLLRDNORM)) {
 
@@ -750,7 +750,7 @@ bktr_poll( dev_t dev, int events, struct thread *td)
 		}
 	}
 
-	ENABLE_INTR(s);
+	crit_exit();
 	UNLOCK_VBI(bktr);
 
 	return (revents);

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.11 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.12 2005/06/10 23:25:06 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -42,6 +42,7 @@
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/fbio.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -1657,9 +1658,8 @@ static void
 set_font_mode(video_adapter_t *adp, u_char *buf)
 {
     u_char *mp;
-    int s;
 
-    s = splhigh();
+    crit_enter();
 
     /* save register values */
     if (adp->va_type == KD_VGA) {
@@ -1716,15 +1716,13 @@ set_font_mode(video_adapter_t *adp, u_char *buf)
     outw(GDCIDX, 0x0406);               /* addr = a0000, 64kb */
 #endif /* VGA_SLOW_IOACCESS */
 
-    splx(s);
+    crit_exit();
 }
 
 static void
 set_normal_mode(video_adapter_t *adp, u_char *buf)
 {
-    int s;
-
-    s = splhigh();
+    crit_enter();
 
     /* setup vga for normal operation mode again */
     inb(adp->va_crtc_addr + 6);			/* reset flip-flop */
@@ -1765,7 +1763,7 @@ set_normal_mode(video_adapter_t *adp, u_char *buf)
         outw(GDCIDX, 0x0006 | (((buf[4] & 0x03) | 0x0c)<<8));
 #endif /* VGA_SLOW_IOACCESS */
 
-    splx(s);
+    crit_exit();
 }
 
 #endif /* VGA_NO_FONT_LOADING */
@@ -1785,7 +1783,6 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
     u_int32_t segment;
     int c;
 #ifdef VGA_ALT_SEQACCESS
-    int s;
     u_char val = 0;
 #endif
 
@@ -1812,12 +1809,12 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 
 #ifdef VGA_ALT_SEQACCESS
     if (adp->va_type == KD_VGA) {	/* what about EGA? XXX */
-	s = splhigh();
+	crit_enter();
 	outb(TSIDX, 0x00); outb(TSREG, 0x01);
 	outb(TSIDX, 0x01); val = inb(TSREG);	/* disable screen */
 	outb(TSIDX, 0x01); outb(TSREG, val | 0x20);
 	outb(TSIDX, 0x00); outb(TSREG, 0x03);
-	splx(s);
+	crit_exit();
     }
 #endif
 
@@ -1834,11 +1831,11 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 
 #ifdef VGA_ALT_SEQACCESS
     if (adp->va_type == KD_VGA) {
-	s = splhigh();
+	crit_enter();
 	outb(TSIDX, 0x00); outb(TSREG, 0x01);
 	outb(TSIDX, 0x01); outb(TSREG, val & 0xdf);	/* enable screen */
 	outb(TSIDX, 0x00); outb(TSREG, 0x03);
-	splx(s);
+	crit_exit();
     }
 #endif
 
@@ -1865,7 +1862,6 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
     u_int32_t segment;
     int c;
 #ifdef VGA_ALT_SEQACCESS
-    int s;
     u_char val = 0;
 #endif
 
@@ -1892,12 +1888,12 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 
 #ifdef VGA_ALT_SEQACCESS
     if (adp->va_type == KD_VGA) {	/* what about EGA? XXX */
-	s = splhigh();
+	crit_enter();
 	outb(TSIDX, 0x00); outb(TSREG, 0x01);
 	outb(TSIDX, 0x01); val = inb(TSREG);	/* disable screen */
 	outb(TSIDX, 0x01); outb(TSREG, val | 0x20);
 	outb(TSIDX, 0x00); outb(TSREG, 0x03);
-	splx(s);
+	crit_exit();
     }
 #endif
 
@@ -1914,11 +1910,11 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 
 #ifdef VGA_ALT_SEQACCESS
     if (adp->va_type == KD_VGA) {
-	s = splhigh();
+	crit_enter();
 	outb(TSIDX, 0x00); outb(TSREG, 0x01);
 	outb(TSIDX, 0x01); outb(TSREG, val & 0xdf);	/* enable screen */
 	outb(TSIDX, 0x00); outb(TSREG, 0x03);
-	splx(s);
+	crit_exit();
     }
 #endif
 
@@ -1941,15 +1937,14 @@ vga_show_font(video_adapter_t *adp, int page)
 {
 #ifndef VGA_NO_FONT_LOADING
     static u_char cg[] = { 0x00, 0x05, 0x0a, 0x0f, 0x30, 0x35, 0x3a, 0x3f };
-    int s;
 
     prologue(adp, V_ADP_FONT, ENODEV);
     if (page < 0 || page >= 8)
 	return EINVAL;
 
-    s = splhigh();
+    crit_enter();
     outb(TSIDX, 0x03); outb(TSREG, cg[page]);
-    splx(s);
+    crit_exit();
 
     return 0;
 #else /* VGA_NO_FONT_LOADING */
@@ -2084,7 +2079,6 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
     u_char *buf;
     int crtc_addr;
     int i, j;
-    int s;
 
     if (size == 0) {
 	/* return the required buffer size */
@@ -2101,7 +2095,7 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
     bzero(buf, V_MODE_PARAM_SIZE);
     crtc_addr = adp->va_crtc_addr;
 
-    s = splhigh();
+    crit_enter();
 
     outb(TSIDX, 0x00); outb(TSREG, 0x01);	/* stop sequencer */
     for (i = 0, j = 5; i < 4; i++) {           
@@ -2127,7 +2121,7 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
     inb(crtc_addr + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
 
-    splx(s);
+    crit_exit();
 
 #if 1
     if (vga_get_info(adp, adp->va_mode, &info) == 0) {
@@ -2168,7 +2162,6 @@ vga_load_state(video_adapter_t *adp, void *p)
 {
     u_char *buf;
     int crtc_addr;
-    int s;
     int i;
 
     prologue(adp, V_ADP_STATELOAD, ENODEV);
@@ -2182,7 +2175,7 @@ vga_load_state(video_adapter_t *adp, void *p)
     dump_buffer(buf, V_MODE_PARAM_SIZE);
 #endif
 
-    s = splhigh();
+    crit_enter();
 
     outb(TSIDX, 0x00); outb(TSREG, 0x01);	/* stop sequencer */
     for (i = 0; i < 4; ++i) {			/* program sequencer */
@@ -2223,7 +2216,7 @@ vga_load_state(video_adapter_t *adp, void *p)
 #endif /* VGA_NO_BIOS */
 #endif /* notyet */
 
-    splx(s);
+    crit_exit();
     return 0;
 }
 
@@ -2251,7 +2244,6 @@ static int
 vga_read_hw_cursor(video_adapter_t *adp, int *col, int *row)
 {
     u_int16_t off;
-    int s;
 
     if (!vga_init_done)
 	return ENXIO;
@@ -2259,12 +2251,12 @@ vga_read_hw_cursor(video_adapter_t *adp, int *col, int *row)
     if (adp->va_info.vi_flags & V_INFO_GRAPHICS)
 	return ENODEV;
 
-    s = spltty();
+    crit_enter();
     outb(adp->va_crtc_addr, 14);
     off = inb(adp->va_crtc_addr + 1);
     outb(adp->va_crtc_addr, 15);
     off = (off << 8) | inb(adp->va_crtc_addr + 1);
-    splx(s);
+    crit_exit();
 
     *row = off / adp->va_info.vi_width;
     *col = off % adp->va_info.vi_width;
@@ -2283,7 +2275,6 @@ static int
 vga_set_hw_cursor(video_adapter_t *adp, int col, int row)
 {
     u_int16_t off;
-    int s;
 
     if (!vga_init_done)
 	return ENXIO;
@@ -2296,12 +2287,12 @@ vga_set_hw_cursor(video_adapter_t *adp, int col, int row)
 	off = row*adp->va_info.vi_width + col;
     }
 
-    s = spltty();
+    crit_enter();
     outb(adp->va_crtc_addr, 14);
     outb(adp->va_crtc_addr + 1, off >> 8);
     outb(adp->va_crtc_addr, 15);
     outb(adp->va_crtc_addr + 1, off & 0x00ff);
-    splx(s);
+    crit_exit();
 
     return 0;
 }
@@ -2317,12 +2308,10 @@ static int
 vga_set_hw_cursor_shape(video_adapter_t *adp, int base, int height,
 			int celsize, int blink)
 {
-    int s;
-
     if (!vga_init_done)
 	return ENXIO;
 
-    s = spltty();
+    crit_enter();
     switch (adp->va_type) {
     case KD_VGA:
     case KD_CGA:
@@ -2357,7 +2346,7 @@ vga_set_hw_cursor_shape(video_adapter_t *adp, int base, int height,
 	}
 	break;
     }
-    splx(s);
+    crit_exit();
 
     return 0;
 }
@@ -2372,9 +2361,8 @@ static int
 vga_blank_display(video_adapter_t *adp, int mode)
 {
     u_char val;
-    int s;
 
-    s = splhigh();
+    crit_enter();
     switch (adp->va_type) {
     case KD_VGA:
 	switch (mode) {
@@ -2408,7 +2396,7 @@ vga_blank_display(video_adapter_t *adp, int mode)
 
     case KD_EGA:
 	/* no support yet */
-	splx(s);
+	crit_exit();
 	return ENODEV;
 
     case KD_CGA:
@@ -2440,7 +2428,7 @@ vga_blank_display(video_adapter_t *adp, int mode)
     default:
 	break;
     }
-    splx(s);
+    crit_exit();
 
     return 0;
 }

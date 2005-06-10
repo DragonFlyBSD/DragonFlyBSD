@@ -62,7 +62,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.14 2005/03/12 11:35:27 corecode Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.15 2005/06/10 23:25:05 dillon Exp $
  */
 
 /*
@@ -114,6 +114,7 @@
 #include <machine/bus_memio.h>	/* for bus space */
 #include <machine/bus.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
@@ -2375,11 +2376,10 @@ common_ioctl( bktr_ptr_t bktr, ioctl_cmd_t cmd, caddr_t arg )
 #if defined( STATUS_SUM )
 	case BT848_GSTATUS:	/* reap status */
 		{
-                DECLARE_INTR_MASK(s);
-		DISABLE_INTR(s);
+		crit_enter();
 		temp = status_sum;
 		status_sum = 0;
-		ENABLE_INTR(s);
+		crit_exit();
 		*(u_int*)arg = temp;
 		break;
 		}

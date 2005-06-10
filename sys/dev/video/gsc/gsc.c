@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.9 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.10 2005/06/10 23:25:08 dillon Exp $
  *
  */
 
@@ -44,6 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
+#include <sys/thread2.h>
 
 #include <machine/gsc.h>
 
@@ -310,7 +311,6 @@ buffer_read(struct gsc_unit *scu)
   int res = SUCCESS;
   int chan_bit;
   char *p;
-  int sps;
   int delay;
 
   lprintf(("gsc.buffer_read: begin\n"));
@@ -321,7 +321,7 @@ buffer_read(struct gsc_unit *scu)
       return EIO;
     }
 
-  sps=splbio();
+  crit_enter();
 
   outb( scu->ctrl, scu->ctrl_byte | GSC_POWER_ON );
   outb( scu->clrp, 0 );
@@ -335,7 +335,7 @@ buffer_read(struct gsc_unit *scu)
     {
       if(delay >= scu->btime)
 	{
-	  splx(sps);
+	  crit_exit();
 	  lprintf(("gsc.buffer_read: timeout\n"));
 	  res = EWOULDBLOCK;
 	  break;
@@ -346,7 +346,7 @@ buffer_read(struct gsc_unit *scu)
       else
 	break;
     }
-  splx(sps);
+  crit_exit();
   isa_dmadone(ISADMA_READ, scu->sbuf.base, scu->sbuf.size, scu->channel);
   outb( scu->clrp, 0 );
 

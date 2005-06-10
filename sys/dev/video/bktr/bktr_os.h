@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.h,v 1.7 2003/12/01 19:03:50 truckman Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.h,v 1.4 2004/05/15 17:54:13 joerg Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.h,v 1.5 2005/06/10 23:25:05 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -53,9 +53,6 @@ vm_offset_t     get_bktr_mem( int unit, unsigned size );
 /************************************/
 /* *** Interrupt Enable/Disable *** */
 /************************************/
-#define DECLARE_INTR_MASK(s)	intrmask_t s
-#define DISABLE_INTR(s)		s=spltty()
-#define ENABLE_INTR(s)		splx(s)
 
 #ifdef USE_VBIMUTEX
 #define LOCK_VBI(bktr)		mtx_lock(&bktr->vbimutex)
