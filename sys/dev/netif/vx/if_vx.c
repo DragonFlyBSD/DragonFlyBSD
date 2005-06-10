@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.18 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.19 2005/06/10 15:29:17 swildner Exp $
  *
  */
 
@@ -743,7 +743,6 @@ vxget(sc, totlen)
     struct ifnet *ifp = &sc->arpcom.ac_if;
     struct mbuf *top, **mp, *m;
     int len;
-    int sh;
 
     m = sc->mb[sc->next_mb];
     sc->mb[sc->next_mb] = 0;

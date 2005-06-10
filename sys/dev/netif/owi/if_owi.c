@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.8 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.9 2005/06/10 15:29:17 swildner Exp $
  */
 
 /*
@@ -1533,8 +1533,6 @@ wi_setdef(sc, wreq)
 	struct wi_softc		*sc;
 	struct wi_req		*wreq;
 {
-	struct sockaddr_dl	*sdl;
-	struct ifaddr		*ifa;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

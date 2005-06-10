@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.8 2005/06/06 21:48:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.9 2005/06/10 15:29:16 swildner Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -649,7 +649,7 @@ stg_pio_write(sc, ti, thold)
 	bus_space_handle_t ioh = sc->sc_ioh;
 	struct sc_p *sp = &slp->sl_scp;
 	u_int res;
-	int s, tout;
+	int tout;
 	u_int8_t stat;
 
 	if ((slp->sl_flags & HW_PDMASTART) == 0)

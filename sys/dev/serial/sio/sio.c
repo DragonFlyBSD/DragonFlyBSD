@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.26 2005/06/08 08:25:50 okumoto Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.27 2005/06/10 15:29:17 swildner Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -2914,7 +2914,7 @@ siocnprobe(cp)
 	speed_t			boot_speed;
 	u_char			cfcr;
 	u_int			divisor;
-	int			s, unit;
+	int			unit;
 	struct siocnstate	sp;
 
 	/*

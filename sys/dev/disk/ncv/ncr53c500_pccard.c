@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.8 2005/06/06 21:48:15 eirikn Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.9 2005/06/10 15:29:16 swildner Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -344,7 +344,6 @@ ncvattach(DEVPORT_PDEVICE devi)
 	struct ncv_softc *sc;
 	struct scsi_low_softc *slp;
 	u_int32_t flags = DEVPORT_PDEVFLAGS(devi);
-	intrmask_t s;
 	char dvname[16]; /* SCSI_LOW_DVNAME_LEN */
 
 	strcpy(dvname, "ncv");
