@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.5 2005/06/02 20:40:46 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.6 2005/06/10 23:11:55 dillon Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -89,6 +89,7 @@
 #include <sys/ctype.h>
 #include <sys/errno.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 #include <machine/bus.h>
 
@@ -508,13 +509,13 @@ udbp_in_transfer_cb(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 		len = xfer->actlen;
 
-		s = splimp(); /* block network stuff too */
+		crit_enter();
 		if (sc->hook) {
 			/* get packet from device and send on */
 			m = m_devget(sc->sc_bulkin_buffer, len, 0, NULL, NULL);
 	    		NG_SEND_DATA_ONLY(err, sc->hook, m);
 		}
-		splx(s);
+		crit_exit();
 
 	}
 	/* schedule the next in transfer */
@@ -531,7 +532,6 @@ udbp_setup_out_transfer(udbp_p sc)
 				 */
 	int pktlen;
 	usbd_status err;
-	int s1;
 	struct mbuf *m;
 
 	crit_enter();
@@ -539,12 +539,12 @@ udbp_setup_out_transfer(udbp_p sc)
 		panic("out transfer already in use, we should add queuing");
 	sc->flags |= OUT_BUSY;
 	crit_exit();
-	s1 = splimp(); /* Queueing happens at splnet */
+	crit_enter();
 	IF_DEQUEUE(&sc->xmitq_hipri, m);
 	if (m == NULL) {
 		IF_DEQUEUE(&sc->xmitq, m);
 	}
-	splx(s1);
+	crit_exit();
 
 	if (!m) {
 		sc->flags &= ~OUT_BUSY;

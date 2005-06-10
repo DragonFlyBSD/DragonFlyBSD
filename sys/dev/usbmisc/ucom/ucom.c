@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.18 2005/06/02 20:40:45 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.19 2005/06/10 23:11:54 dillon Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -266,7 +266,6 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 	struct ucom_softc *sc;
 	usbd_status err;
 	struct tty *tp;
-	int s;
 	int error;
 
 	KKASSERT(td != NULL);
@@ -290,7 +289,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 	/*
 	 * Do the following iff this is a first open.
 	 */
-	s = spltty();
+	crit_enter();
 	while (sc->sc_opening)
 		tsleep(&sc->sc_opening, 0, "ucomop", 0);
 	sc->sc_opening = 1;
@@ -336,7 +335,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 				ucom_cleanup(sc);
 				sc->sc_opening = 0;
 				wakeup(&sc->sc_opening);
-				splx(s);
+				crit_exit();
 				return (error);
 			}
 		}
@@ -406,7 +405,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 
 	sc->sc_opening = 0;
 	wakeup(&sc->sc_opening);
-	splx(s);
+	crit_exit();
 
 	error = ttyopen(dev, tp);
 	if (error)
@@ -440,7 +439,7 @@ fail_1:
 fail_0:
 	sc->sc_opening = 0;
 	wakeup(&sc->sc_opening);
-	splx(s);
+	crit_exit();
 	return (error);
 
 bad:
@@ -462,7 +461,6 @@ ucomclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 {
 	struct ucom_softc *sc;
 	struct tty *tp;
-	int s;
 
 	USB_GET_SC(ucom, UCOMUNIT(dev), sc);
 
@@ -474,11 +472,11 @@ ucomclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	if (!ISSET(tp->t_state, TS_ISOPEN))
 		goto quit;
 
-	s = spltty();
+	crit_enter();
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	disc_optim(tp, &tp->t_termios, sc);
 	ttyclose(tp);
-	splx(s);
+	crit_exit();
 
 	if (sc->sc_dying)
 		goto quit;
@@ -557,7 +555,6 @@ ucomioctl(dev_t dev, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 	struct ucom_softc *sc;
 	struct tty *tp;
 	int error;
-	int s;
 	int d;
 
 	USB_GET_SC(ucom, UCOMUNIT(dev), sc);
@@ -574,23 +571,24 @@ ucomioctl(dev_t dev, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 		return (error);
 	}
 
-	s = spltty();
+	crit_enter();
 
 	error = ttioctl(tp, cmd, data, flag);
 	disc_optim(tp, &tp->t_termios, sc);
 	if (error != ENOIOCTL) {
-		splx(s);
+		crit_exit();
 		DPRINTF(("ucomioctl: ttioctl: error = %d\n", error));
 		return (error);
 	}
 
 	if (sc->sc_callback->ucom_ioctl != NULL) {
-		/* XXX splx(s) ? */
 		error = sc->sc_callback->ucom_ioctl(sc->sc_parent,
 						    sc->sc_portno,
 						    cmd, data, flag, p);
-		if (error >= 0)
+		if (error >= 0) {
+			crit_exit();
 			return (error);
+		}
 	}
 
 	error = 0;
@@ -643,7 +641,7 @@ ucomioctl(dev_t dev, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return (error);
 }
@@ -852,7 +850,6 @@ ucomstart(struct tty *tp)
 	struct ucom_softc *sc;
 	struct cblock *cbp;
 	usbd_status err;
-	int s;
 	u_char *data;
 	int cnt;
 
@@ -862,7 +859,7 @@ ucomstart(struct tty *tp)
 	if (sc->sc_dying)
 		return;
 
-	s = spltty();
+	crit_enter();
 
 	if (tp->t_state & TS_TBLOCK) {
 		if (ISSET(sc->sc_mcr, UMCR_RTS) &&
@@ -935,14 +932,13 @@ ucomstart(struct tty *tp)
 	ttwwakeup(tp);
 
     out:
-	splx(s);
+	crit_exit();
 }
 
 Static void
 ucomstop(struct tty *tp, int flag)
 {
 	struct ucom_softc *sc;
-	int s;
 
 	USB_GET_SC(ucom, UCOMUNIT(tp->t_dev), sc);
 
@@ -960,13 +956,13 @@ ucomstop(struct tty *tp, int flag)
 
 	if (flag & FWRITE) {
 		DPRINTF(("ucomstop: write\n"));
-		s = spltty();
+		crit_enter();
 		if (ISSET(tp->t_state, TS_BUSY)) {
 			/* XXX do what? */
 			if (!ISSET(tp->t_state, TS_TTSTOP))
 				SET(tp->t_state, TS_FLUSH);
 		}
-		splx(s);
+		crit_exit();
 	}
 
 	DPRINTF(("ucomstop: done\n"));
@@ -978,7 +974,6 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	struct ucom_softc *sc = (struct ucom_softc *)p;
 	struct tty *tp = sc->sc_tty;
 	u_int32_t cc;
-	int s;
 
 	DPRINTF(("ucomwritecb: status = %d\n", status));
 
@@ -1010,21 +1005,21 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	/* convert from USB bytes to tty bytes */
 	cc -= sc->sc_opkthdrlen;
 
-	s = spltty();
+	crit_enter();
 	CLR(tp->t_state, TS_BUSY);
 	if (ISSET(tp->t_state, TS_FLUSH))
 		CLR(tp->t_state, TS_FLUSH);
 	else
 		ndflush(&tp->t_outq, cc);
 	(*linesw[tp->t_line].l_start)(tp);
-	splx(s);
+	crit_exit();
 
 	return;
 
   error:
-	s = spltty();
+	crit_enter();
 	CLR(tp->t_state, TS_BUSY);
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -1065,7 +1060,6 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	u_int32_t cc;
 	u_char *cp;
 	int lostcc;
-	int s;
 
 	DPRINTF(("ucomreadcb: status = %d\n", status));
 
@@ -1097,7 +1091,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	if (cc < 1)
 		goto resubmit;
 
-	s = spltty();
+	crit_enter();
 	if (tp->t_state & TS_CAN_BYPASS_L_RINT) {
 		if (tp->t_rawq.c_cc + cc > tp->t_ihiwat
 		    && (sc->sc_state & UCS_RTS_IFLOW
@@ -1141,7 +1135,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 			cp++;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 resubmit:
 	err = ucomstartread(sc);
