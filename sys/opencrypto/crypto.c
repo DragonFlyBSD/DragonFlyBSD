@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.7 2005/02/01 22:41:27 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.8 2005/06/10 22:16:05 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -32,8 +32,8 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
-
 #include <sys/interrupt.h>
+#include <sys/thread2.h>
 #include <machine/ipl.h>
 
 #include <vm/vm_zone.h>
@@ -92,23 +92,23 @@ MALLOC_DEFINE(M_CRYPTO_DATA, "crypto", "crypto session records");
 /*
  * Synchronization: read carefully, this is non-trivial.
  *
- * Crypto requests are submitted via crypto_dispatch.  Typically
- * these come in from network protocols at spl0 (output path) or
- * splnet (input path).
+ * Crypto requests are submitted via crypto_dispatch.  No critical
+ * section or lock/interlock guarentees are made on entry.
  *
  * Requests are typically passed on the driver directly, but they
  * may also be queued for processing by a software interrupt thread,
- * cryptointr, that runs at splsoftcrypto.  This thread dispatches 
+ * cryptointr, that runs in a critical section.  This thread dispatches 
  * the requests to crypto drivers (h/w or s/w) who call crypto_done
  * when a request is complete.  Hardware crypto drivers are assumed
  * to register their IRQ's as network devices so their interrupt handlers
- * and subsequent "done callbacks" happen at splimp.
+ * and subsequent "done callbacks" happen at appropriate protection levels.
  *
  * Completed crypto ops are queued for a separate kernel thread that
- * handles the callbacks at spl0.  This decoupling insures the crypto
- * driver interrupt service routine is not delayed while the callback
- * takes place and that callbacks are delivered after a context switch
- * (as opposed to a software interrupt that clients must block).
+ * handles the callbacks with no critical section or lock/interlock
+ * guarentees.  This decoupling insures the crypto driver interrupt service
+ * routine is not delayed while the callback takes place and that callbacks
+ * are delivered after a context switch (as opposed to a software interrupt
+ * that clients must block).
  *
  * This scheme is not intended for SMP machines.
  */ 
@@ -216,9 +216,8 @@ crypto_newsession(u_int64_t *sid, struct cryptoini *cri, int hard)
 	struct cryptoini *cr;
 	u_int32_t hid, lid;
 	int err = EINVAL;
-	int s;
 
-	s = splcrypto();
+	crit_enter();
 
 	if (crypto_drivers == NULL)
 		goto done;
@@ -278,7 +277,7 @@ crypto_newsession(u_int64_t *sid, struct cryptoini *cri, int hard)
 		}
 	}
 done:
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -290,9 +289,9 @@ int
 crypto_freesession(u_int64_t sid)
 {
 	u_int32_t hid;
-	int err, s;
+	int err;
 
-	s = splcrypto();
+	crit_enter();
 
 	if (crypto_drivers == NULL) {
 		err = EINVAL;
@@ -326,7 +325,7 @@ crypto_freesession(u_int64_t sid)
 		bzero(&crypto_drivers[hid], sizeof(struct cryptocap));
 
 done:
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -338,9 +337,9 @@ int32_t
 crypto_get_driverid(u_int32_t flags)
 {
 	struct cryptocap *newdrv;
-	int i, s;
+	int i;
 
-	s = splcrypto();
+	crit_enter();
 	for (i = 0; i < crypto_drivers_num; i++)
 		if (crypto_drivers[i].cc_process == NULL &&
 		    (crypto_drivers[i].cc_flags & CRYPTOCAP_F_CLEANUP) == 0 &&
@@ -351,7 +350,7 @@ crypto_get_driverid(u_int32_t flags)
 	if (i == crypto_drivers_num) {
 		/* Be careful about wrap-around. */
 		if (2 * crypto_drivers_num <= crypto_drivers_num) {
-			splx(s);
+			crit_exit();
 			printf("crypto: driver count wraparound!\n");
 			return -1;
 		}
@@ -359,7 +358,7 @@ crypto_get_driverid(u_int32_t flags)
 		newdrv = malloc(2 * crypto_drivers_num *
 		    sizeof(struct cryptocap), M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 		if (newdrv == NULL) {
-			splx(s);
+			crit_exit();
 			printf("crypto: no space to expand driver table!\n");
 			return -1;
 		}
@@ -379,7 +378,7 @@ crypto_get_driverid(u_int32_t flags)
 	if (bootverbose)
 		printf("crypto: assign driver %u, flags %u\n", i, flags);
 
-	splx(s);
+	crit_exit();
 
 	return i;
 }
@@ -401,11 +400,10 @@ crypto_kregister(u_int32_t driverid, int kalg, u_int32_t flags,
     int (*kprocess)(void*, struct cryptkop *, int),
     void *karg)
 {
-	int s;
 	struct cryptocap *cap;
 	int err;
 
-	s = splcrypto();
+	crit_enter();
 
 	cap = crypto_checkdriver(driverid);
 	if (cap != NULL &&
@@ -432,7 +430,7 @@ crypto_kregister(u_int32_t driverid, int kalg, u_int32_t flags,
 	} else
 		err = EINVAL;
 
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -449,9 +447,9 @@ crypto_register(u_int32_t driverid, int alg, u_int16_t maxoplen,
     void *arg)
 {
 	struct cryptocap *cap;
-	int s, err;
+	int err;
 
-	s = splcrypto();
+	crit_enter();
 
 	cap = crypto_checkdriver(driverid);
 	/* NB: algorithms are in the range [1..max] */
@@ -484,7 +482,7 @@ crypto_register(u_int32_t driverid, int alg, u_int16_t maxoplen,
 	} else
 		err = EINVAL;
 
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -497,9 +495,11 @@ crypto_register(u_int32_t driverid, int alg, u_int16_t maxoplen,
 int
 crypto_unregister(u_int32_t driverid, int alg)
 {
-	int i, err, s = splcrypto();
+	int i, err;
 	u_int32_t ses;
 	struct cryptocap *cap;
+
+	crit_enter();
 
 	cap = crypto_checkdriver(driverid);
 	if (cap != NULL &&
@@ -528,7 +528,7 @@ crypto_unregister(u_int32_t driverid, int alg)
 	} else
 		err = EINVAL;
 
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -542,10 +542,11 @@ crypto_unregister(u_int32_t driverid, int alg)
 int
 crypto_unregister_all(u_int32_t driverid)
 {
-	int i, err, s = splcrypto();
+	int i, err;
 	u_int32_t ses;
 	struct cryptocap *cap;
 
+	crit_enter();
 	cap = crypto_checkdriver(driverid);
 	if (cap != NULL) {
 		for (i = CRYPTO_ALGORITHM_MIN; i <= CRYPTO_ALGORITHM_MAX; i++) {
@@ -565,7 +566,7 @@ crypto_unregister_all(u_int32_t driverid)
 	} else
 		err = EINVAL;
 
-	splx(s);
+	crit_exit();
 	return err;
 }
 
@@ -577,9 +578,9 @@ int
 crypto_unblock(u_int32_t driverid, int what)
 {
 	struct cryptocap *cap;
-	int needwakeup, err, s;
+	int needwakeup, err;
 
-	s = splcrypto();
+	crit_enter();
 	cap = crypto_checkdriver(driverid);
 	if (cap != NULL) {
 		needwakeup = 0;
@@ -596,7 +597,7 @@ crypto_unblock(u_int32_t driverid, int what)
 		err = 0;
 	} else
 		err = EINVAL;
-	splx(s);
+	crit_exit();
 
 	return err;
 }
@@ -609,7 +610,7 @@ int
 crypto_dispatch(struct cryptop *crp)
 {
 	u_int32_t hid = SESID2HID(crp->crp_sid);
-	int s, result;
+	int result;
 
 	cryptostats.cs_ops++;
 
@@ -617,7 +618,7 @@ crypto_dispatch(struct cryptop *crp)
 	if (crypto_timing)
 		nanouptime(&crp->crp_tstamp);
 #endif
-	s = splcrypto();
+	crit_enter();
 	if ((crp->crp_flags & CRYPTO_F_BATCH) == 0) {
 		struct cryptocap *cap;
 		/*
@@ -660,7 +661,7 @@ crypto_dispatch(struct cryptop *crp)
 			setsoftcrypto();
 		result = 0;
 	}
-	splx(s);
+	crit_exit();
 
 	return result;
 }
@@ -673,11 +674,11 @@ int
 crypto_kdispatch(struct cryptkop *krp)
 {
 	struct cryptocap *cap;
-	int s, result;
+	int result;
 
 	cryptostats.cs_kops++;
 
-	s = splcrypto();
+	crit_enter();
 	cap = crypto_checkdriver(krp->krp_hid);
 	if (cap && !cap->cc_kqblocked) {
 		result = crypto_kinvoke(krp, 0);
@@ -699,7 +700,7 @@ crypto_kdispatch(struct cryptkop *krp)
 		TAILQ_INSERT_TAIL(&crp_kq, krp, krp_next);
 		result = 0;
 	}
-	splx(s);
+	crit_exit();
 
 	return result;
 }
@@ -849,7 +850,7 @@ crypto_freereq(struct cryptop *crp)
 
 /*
  * Acquire a set of crypto descriptors.  The descriptors are self contained
- * so no special spl protection is necessary.
+ * so no special lock/interlock protection is necessary.
  */
 struct cryptop *
 crypto_getreq(int num)
@@ -911,7 +912,7 @@ crypto_done(struct cryptop *crp)
 #endif
 			crp->crp_callback(crp);
 	} else {
-		int s, wasempty;
+		int wasempty;
 		/*
 		 * Normal case; queue the callback for the thread.
 		 *
@@ -920,12 +921,12 @@ crypto_done(struct cryptop *crp)
 		 * back to mark operations completed.  Thus we need
 		 * to mask both while manipulating the return queue.
 		 */
-		s = splcrypto();
+		crit_enter();
 		wasempty = TAILQ_EMPTY(&crp_ret_q);
 		TAILQ_INSERT_TAIL(&crp_ret_q, crp, crp_next);
 		if (wasempty)
 			wakeup_one(&crp_ret_q);
-		splx(s);
+		crit_exit();
 	}
 }
 
@@ -935,7 +936,7 @@ crypto_done(struct cryptop *crp)
 void
 crypto_kdone(struct cryptkop *krp)
 {
-	int s, wasempty;
+	int wasempty;
 
 	if (krp->krp_status != 0)
 		cryptostats.cs_kerrs++;
@@ -945,20 +946,20 @@ crypto_kdone(struct cryptkop *krp)
 	 * back to mark operations completed.  Thus we need
 	 * to mask both while manipulating the return queue.
 	 */
-	s = splcrypto();
+	crit_enter();
 	wasempty = TAILQ_EMPTY(&crp_ret_kq);
 	TAILQ_INSERT_TAIL(&crp_ret_kq, krp, krp_next);
 	if (wasempty)
 		wakeup_one(&crp_ret_q);
-	splx(s);
+	crit_exit();
 }
 
 int
 crypto_getfeat(int *featp)
 {
 	int hid, kalg, feat = 0;
-	int s = splcrypto();
 
+	crit_enter();
 	if (!crypto_userasymcrypto)
 		goto out;	  
 
@@ -975,7 +976,7 @@ crypto_getfeat(int *featp)
 				feat |=  1 << kalg;
 	}
 out:
-	splx(s);
+	crit_exit();
 	*featp = feat;
 	return (0);
 }
@@ -989,10 +990,10 @@ cryptointr(void *dummy)
 	struct cryptop *crp, *submit;
 	struct cryptkop *krp;
 	struct cryptocap *cap;
-	int result, hint, s;
+	int result, hint;
 
 	cryptostats.cs_intrs++;
-	s = splcrypto();
+	crit_enter();
 	do {
 		/*
 		 * Find the first element in the queue that can be
@@ -1081,7 +1082,7 @@ cryptointr(void *dummy)
 			}
 		}
 	} while (submit != NULL || krp != NULL);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1092,9 +1093,8 @@ cryptoret(void)
 {
 	struct cryptop *crp;
 	struct cryptkop *krp;
-	int s;
 
-	s = splcrypto();
+	crit_enter();
 	for (;;) {
 		crp = TAILQ_FIRST(&crp_ret_q);
 		if (crp != NULL)
@@ -1104,7 +1104,7 @@ cryptoret(void)
 			TAILQ_REMOVE(&crp_ret_kq, krp, krp_next);
 
 		if (crp != NULL || krp != NULL) {
-			splx(s);		/* lower ipl for callbacks */
+			crit_exit();		/* lower ipl for callbacks */
 			if (crp != NULL) {
 #ifdef CRYPTO_TIMING
 				if (crypto_timing) {
@@ -1123,10 +1123,11 @@ cryptoret(void)
 			}
 			if (krp != NULL)
 				krp->krp_callback(krp);
-			s  = splcrypto();
+			crit_enter();
 		} else {
 			(void) tsleep(&crp_ret_q, 0, "crypto_wait", 0);
 			cryptostats.cs_rets++;
 		}
 	}
+	/* CODE NOT REACHED (crit_exit() would go here otherwise) */ 
 }

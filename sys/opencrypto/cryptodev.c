@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.9 2004/11/12 00:09:25 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.10 2005/06/10 22:16:05 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/fcntl.h>
 #include <sys/proc.h>
 #include <sys/file2.h>
+#include <sys/thread2.h>
 
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/xform.h>
@@ -314,7 +315,7 @@ cryptodev_op(
 {
 	struct cryptop *crp = NULL;
 	struct cryptodesc *crde = NULL, *crda = NULL;
-	int i, error, s;
+	int i, error;
 
 	if (cop->len > 256*1024-4)
 		return (E2BIG);
@@ -418,11 +419,11 @@ cryptodev_op(
 		crp->crp_mac=cse->tmp_mac;
 	}
 
-	s = splcrypto();	/* NB: only needed with CRYPTO_F_CBIMM */
+	crit_enter();
 	error = crypto_dispatch(crp);
 	if (error == 0 && (crp->crp_flags & CRYPTO_F_DONE) == 0)
 		error = tsleep(crp, 0, "crydev", 0);
-	splx(s);
+	crit_exit();
 	if (error)
 		goto bail;
 
