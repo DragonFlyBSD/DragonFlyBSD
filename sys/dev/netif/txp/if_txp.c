@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.21 2005/06/06 23:12:07 okumoto Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.22 2005/06/10 16:10:42 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1242,10 +1242,8 @@ out:
 	if (rsp != NULL)
 		free(rsp, M_DEVBUF);
 
-	crit_exit();
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
-
-	return;
+	crit_exit();
 }
 
 static void
