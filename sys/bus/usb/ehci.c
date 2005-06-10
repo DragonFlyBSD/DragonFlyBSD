@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.7 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.8 2005/06/10 18:21:11 dillon Exp $
  */
 
 /*
@@ -379,6 +379,7 @@ ehci_init(ehci_softc_t *sc)
 	sc->sc_bus.usbrev = USBREV_2_0;
 
 	/* Reset the controller */
+	EOWRITE4(sc, EHCI_USBINTR, 0);	/* disable interrupts */
 	DPRINTF(("%s: resetting\n", USBDEVNAME(sc->sc_bus.bdev)));
 	EOWRITE4(sc, EHCI_USBCMD, 0);	/* Halt controller */
 	usb_delay_ms(&sc->sc_bus, 1);
@@ -451,9 +452,6 @@ ehci_init(ehci_softc_t *sc)
 
 	lockinit(&sc->sc_doorbell_lock, 0, "ehcidb", 0, 0);
 
-	/* Enable interrupts */
-	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
-
 	/* Turn on controller */
 	EOWRITE4(sc, EHCI_USBCMD,
 		 EHCI_CMD_ITC_8 | /* 8 microframes */
@@ -485,6 +483,13 @@ ehci_init(ehci_softc_t *sc)
  bad1:
 	usb_freemem(&sc->sc_bus, &sc->sc_fldma);
 	return (err);
+}
+
+void
+ehci_init_intrs(ehci_softc_t *sc)
+{
+	/* Enable interrupts */
+	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
 }
 
 int

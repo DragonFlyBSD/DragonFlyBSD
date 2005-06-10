@@ -34,7 +34,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.6 2005/05/24 20:58:54 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.7 2005/06/10 18:21:11 dillon Exp $
  */
 
 /*
@@ -279,6 +279,7 @@ ehci_pci_attach(device_t self)
 #endif
 		return EIO;
 	}
+	ehci_init_intrs(sc);
 	return 0;
 }
 

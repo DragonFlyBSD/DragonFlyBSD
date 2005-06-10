@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehcivar.h,v 1.12 2001/12/31 12:16:57 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.1 2003/04/14 14:04:07 ticso Exp $
- * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.2 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.3 2005/06/10 18:21:11 dillon Exp $
  */
 
 /*
@@ -146,6 +146,7 @@ typedef struct ehci_softc {
 #define EOWRITE4(sc, a, x) bus_space_write_4((sc)->iot, (sc)->ioh, (sc)->sc_offs+(a), (x))
 
 usbd_status	ehci_init(ehci_softc_t *);
+void		ehci_init_intrs(ehci_softc_t *);
 int		ehci_intr(void *);
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 int		ehci_detach(ehci_softc_t *, int);
