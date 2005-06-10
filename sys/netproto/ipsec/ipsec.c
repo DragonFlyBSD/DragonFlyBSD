@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.10 2005/06/02 23:50:30 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.11 2005/06/10 23:59:31 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1652,8 +1652,6 @@ ipsec_chkreplay(seq, sav)
 	u_int32_t wsizeb;	/* constant: bits of window size */
 	int frlast;		/* constant: last frame */
 
-	SPLASSERT(net, "ipsec_chkreplay");
-
 	KASSERT(sav != NULL, ("ipsec_chkreplay: Null SA"));
 	KASSERT(sav->replay != NULL, ("ipsec_chkreplay: Null replay state"));
 
@@ -1711,8 +1709,6 @@ ipsec_updatereplay(seq, sav)
 	int fr;
 	u_int32_t wsizeb;	/* constant: bits of window size */
 	int frlast;		/* constant: last frame */
-
-	SPLASSERT(net, "ipsec_updatereplay");
 
 	KASSERT(sav != NULL, ("ipsec_updatereplay: Null SA"));
 	KASSERT(sav->replay != NULL, ("ipsec_updatereplay: Null replay state"));

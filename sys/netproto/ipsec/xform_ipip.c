@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.10 2004/11/30 19:21:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.11 2005/06/10 23:59:31 dillon Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -406,8 +406,6 @@ ipip_output(
 #ifdef INET6
 	struct ip6_hdr *ip6, *ip6o;
 #endif /* INET6 */
-
-	SPLASSERT(net, "ipip_output");
 
 	sav = isr->sav;
 	KASSERT(sav != NULL, ("ipip_output: null SA"));

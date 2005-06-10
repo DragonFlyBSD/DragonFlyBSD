@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.12 2005/06/03 00:22:27 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.13 2005/06/10 23:59:31 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -741,7 +741,6 @@ key_checkrequest(struct ipsecrequest *isr, const struct secasindex *saidx)
 	 * temporarily null out below.  Need to rethink how we
 	 * handle bundled SA's in the callback thread.
 	 */
-	SPLASSERT(net, "key_checkrequest");
 #if 0
 	/*
 	 * We do allocate new SA only if the state of SA in the holder is

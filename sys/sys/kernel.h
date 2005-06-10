@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.16 2005/04/20 17:57:16 joerg Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.17 2005/06/10 23:59:33 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -96,12 +96,6 @@ extern int lbolt;			/* once a second sleep address */
  * The SI_SUB_CONSOLE and SI_SUB_SWAP values represent values used by
  * the BSD 4.4Lite but not by FreeBSD; they are maintained in dependent
  * order to support porting.
- *
- * The SI_SUB_PROTO_BEGIN and SI_SUB_PROTO_END bracket a range of
- * initializations to take place at splimp().  This is a historical
- * wart that should be removed -- probably running everything at
- * splimp() until the first init that doesn't want it is the correct
- * fix.  They are currently present to ensure historical behavior.
  */
 enum sysinit_sub_id {
 	SI_SUB_DUMMY		= 0x0000000,	/* not executed; for linker*/
@@ -133,11 +127,12 @@ enum sysinit_sub_id {
 	SI_SUB_P1003_1B		= 0x6E00000,	/* P1003.1B realtime */
 	SI_SUB_PSEUDO		= 0x7000000,	/* pseudo devices*/
 	SI_SUB_EXEC		= 0x7400000,	/* execve() handlers */
-	SI_SUB_PROTO_BEGIN	= 0x8000000,	/* XXX: set splimp (kludge)*/
-	SI_SUB_PROTO_IF		= 0x8400000,	/* interfaces*/
+	SI_SUB_PROTO_BEGIN	= 0x8000000,	/* network protocol pre-init */
+	SI_SUB_PROTO_IF		= 0x8400000,	/* interfaces */
 	SI_SUB_PROTO_DOMAIN	= 0x8800000,	/* domains (address families?)*/
-	SI_SUB_PROTO_IFATTACHDOMAIN	= 0x8800001,	/* domain dependent data init */
-	SI_SUB_PROTO_END	= 0x8ffffff,	/* XXX: set splx (kludge)*/
+	SI_SUB_PROTO_IFATTACHDOMAIN	
+				= 0x8800001,	/* domain dependent data init */
+	SI_SUB_PROTO_END	= 0x8ffffff,	/* network protocol post-init */
 	SI_SUB_KPROF		= 0x9000000,	/* kernel profiling*/
 	SI_SUB_KICK_SCHEDULER	= 0xa000000,	/* start the timeout events*/
 	SI_SUB_INT_CONFIG_HOOKS	= 0xa800000,	/* Interrupts enabled config */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.6 2005/06/03 00:22:27 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.7 2005/06/10 23:59:31 dillon Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -270,8 +270,6 @@ esp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 
 	struct cryptodesc *crde;
 	struct cryptop *crp;
-
-	SPLASSERT(net, "esp_input");
 
 	KASSERT(sav != NULL, ("esp_input: null SA"));
 	KASSERT(sav->tdb_encalgxform != NULL,
@@ -649,8 +647,6 @@ esp_output(
 
 	struct cryptodesc *crde = NULL, *crda = NULL;
 	struct cryptop *crp;
-
-	SPLASSERT(net, "esp_output");
 
 	sav = isr->sav;
 	KASSERT(sav != NULL, ("esp_output: null SA"));

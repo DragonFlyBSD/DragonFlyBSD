@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.8 2003/10/02 22:26:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.9 2005/06/10 23:59:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,45 +81,6 @@ softclockpending(void)
  * Support for SPL assertions.
  */
 
-#ifdef INVARIANT_SUPPORT
-
-#define	SPLASSERT_IGNORE	0
-#define	SPLASSERT_LOG		1
-#define	SPLASSERT_PANIC		2
-
-static int splassertmode = SPLASSERT_LOG;
-SYSCTL_INT(_kern, OID_AUTO, splassertmode, CTLFLAG_RW,
-	&splassertmode, 0, "Set the mode of SPLASSERT");
-TUNABLE_INT("kern.splassertmode", &splassertmode);
-
-static void
-splassertfail(char *str, const char *msg, char *name, int level)
-{
-	switch (splassertmode) {
-	case SPLASSERT_IGNORE:
-		break;
-	case SPLASSERT_LOG:
-		printf(str, msg, name, level);
-		printf("\n");
-		break;
-	case SPLASSERT_PANIC:
-		panic(str, msg, name, level);
-		break;
-	}
-}
-
-#define	GENSPLASSERT(NAME, MODIFIER)			\
-void							\
-NAME##assert(const char *msg)				\
-{							\
-	if ((curthread->td_cpl & (MODIFIER)) != (MODIFIER)) \
-		splassertfail("%s: not %s, curthread->td_cpl == %#x",	\
-		    msg, __XSTRING(NAME) + 3, curthread->td_cpl);	\
-}
-#else
-#define	GENSPLASSERT(NAME, MODIFIER)
-#endif
-
 /************************************************************************
  *			GENERAL SPL CODE				*
  ************************************************************************
@@ -155,7 +116,6 @@ NAME##assert(const char *msg)				\
  */
 
 #define	GENSPL(NAME, OP, MODIFIER, PC)		\
-GENSPLASSERT(NAME, MODIFIER)			\
 unsigned NAME(void)				\
 {						\
 	unsigned x;				\

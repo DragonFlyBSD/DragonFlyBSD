@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ah.c,v 1.1.4.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.6 2005/06/03 00:22:27 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.7 2005/06/10 23:59:31 dillon Exp $	*/
 /*	$OpenBSD: ip_ah.c,v 1.63 2001/06/26 06:18:58 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -563,8 +563,6 @@ ah_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 	struct cryptodesc *crda;
 	struct cryptop *crp;
 
-	SPLASSERT(net, "ah_input");
-
 	KASSERT(sav != NULL, ("ah_input: null SA"));
 	KASSERT(sav->key_auth != NULL,
 		("ah_input: null authentication key"));
@@ -901,8 +899,6 @@ ah_output(
 	int error, rplen, authsize, maxpacketsize, roff;
 	u_int8_t prot;
 	struct newah *ah;
-
-	SPLASSERT(net, "ah_output");
 
 	sav = isr->sav;
 	KASSERT(sav != NULL, ("ah_output: null SA"));

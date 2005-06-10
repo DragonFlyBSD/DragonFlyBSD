@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.9 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.10 2005/06/10 23:59:33 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -47,6 +47,10 @@
 
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>	/* curthread */
+#endif
+
+#ifndef _SYS_THREAD2_H_
+#include <sys/thread2.h>	/* crit_*() functions */
 #endif
 
 /*
@@ -63,16 +67,16 @@ static __inline int
 BUF_LOCK(struct buf *bp, int locktype)
 {
 	lwkt_tokref ilock;
-	int s, ret;
+	int ret;
 
-	s = splbio();
+	crit_enter();
 	lwkt_gettoken(&ilock, &buftimetoken);
 	locktype |= LK_INTERLOCK;
 	bp->b_lock.lk_wmesg = buf_wmesg;
 	bp->b_lock.lk_prio = 0;		/* tsleep flags */
 	/* bp->b_lock.lk_timo = 0;   not necessary */
 	ret = lockmgr(&(bp)->b_lock, locktype, &ilock, curthread);
-	splx(s);
+	crit_exit();
 	return ret;
 }
 /*
@@ -82,16 +86,16 @@ static __inline int
 BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 {
 	lwkt_tokref ilock;
-	int s, ret;
+	int ret;
 
-	s = splbio();
+	crit_enter();
 	lwkt_gettoken(&ilock, &buftimetoken);
 	locktype |= LK_INTERLOCK | LK_TIMELOCK;
 	bp->b_lock.lk_wmesg = wmesg;
 	bp->b_lock.lk_prio = catch;	/* tsleep flags */
 	bp->b_lock.lk_timo = timo;
 	ret = lockmgr(&(bp)->b_lock, locktype, &ilock, curthread);
-	splx(s);
+	crit_exit();
 	return ret;
 }
 /*
@@ -101,11 +105,9 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 static __inline void
 BUF_UNLOCK(struct buf *bp)
 {
-	int s;
-
-	s = splbio();
+	crit_enter();
 	lockmgr(&(bp)->b_lock, LK_RELEASE, NULL, curthread);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -132,11 +134,11 @@ BUF_KERNPROC(struct buf *bp)
 static __inline int
 BUF_REFCNT(struct buf *bp)
 {
-	int s, ret;
+	int ret;
 
-	s = splbio();
+	crit_enter();
 	ret = lockcount(&(bp)->b_lock);
-	splx(s);
+	crit_exit();
 	return ret;
 }
 

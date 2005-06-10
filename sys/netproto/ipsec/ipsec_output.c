@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.7 2005/06/03 00:22:27 hmp Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.8 2005/06/10 23:59:31 dillon Exp $
  */
 
 /*
@@ -88,8 +88,6 @@ ipsec_process_done(struct mbuf *m, struct ipsecrequest *isr)
 	struct secasvar *sav;
 	struct secasindex *saidx;
 	int error;
-
-	SPLASSERT(net, "ipsec_process_done");
 
 	KASSERT(m != NULL, ("ipsec_process_done: null mbuf"));
 	KASSERT(isr != NULL, ("ipsec_process_done: null ISR"));
@@ -202,7 +200,6 @@ ipsec_nextisr(
 			    isr->saidx.proto == IPPROTO_AH ? (y)++ : (z)++)
 	struct secasvar *sav;
 
-	SPLASSERT(net, "ipsec_nextisr");
 	KASSERT(af == AF_INET || af == AF_INET6,
 		("ipsec_nextisr: invalid address family %u", af));
 again:

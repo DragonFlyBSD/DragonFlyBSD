@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.29 2005/06/08 22:22:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.30 2005/06/10 23:59:33 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -272,44 +272,6 @@ struct mbstat {
  */
 #define	MGETHDR_C      1
 #define	MGET_C         2
-
-/*
- * Wake up the next instance (if any) of m_mballoc_wait() which is
- * waiting for an mbuf to be freed.  This should be called at splimp().
- *
- * XXX: If there is another free mbuf, this routine will be called [again]
- * from the m_mballoc_wait routine in order to wake another sleep instance.
- */
-#define	MMBWAKEUP() do {						\
-	if (m_mballoc_wid) {						\
-		m_mballoc_wid--;					\
-		wakeup_one(&m_mballoc_wid); 				\
-	}								\
-} while (0)
-
-/*
- * Same as above, but for mbuf cluster(s).
- */
-#define	MCLWAKEUP() do {						\
-	if (m_clalloc_wid) {						\
-		m_clalloc_wid--;					\
-		wakeup_one(&m_clalloc_wid);				\
-	}								\
-} while (0)
-
-/*
- * mbuf utility macros:
- *
- *	MBUFLOCK(code)
- * prevents a section of code from from being interrupted by network
- * drivers.
- */
-#define	MBUFLOCK(code) do {						\
-	int _ms = splimp();						\
-									\
-	{ code }							\
-	splx(_ms);							\
-} while (0)
 
 /*
  * mbuf allocation/deallocation macros (YYY deprecated, too big):

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.6 2005/06/03 00:22:27 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.7 2005/06/10 23:59:31 dillon Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -139,8 +139,6 @@ ipcomp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 	struct cryptodesc *crdc;
 	struct cryptop *crp;
 	int hlen = IPCOMP_HLENGTH;
-
-	SPLASSERT(net, "ipcomp_input");
 
 	/* Get crypto descriptors */
 	crp = crypto_getreq(1);
@@ -342,8 +340,6 @@ ipcomp_output(
 	struct tdb_crypto *tc;
 	struct mbuf *mo;
 	struct ipcomp *ipcomp;
-
-	SPLASSERT(net, "ipcomp_output");
 
 	sav = isr->sav;
 	KASSERT(sav != NULL, ("ipcomp_output: null SA"));

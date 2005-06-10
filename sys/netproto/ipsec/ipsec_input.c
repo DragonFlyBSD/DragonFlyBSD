@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.7 2005/06/03 00:22:27 hmp Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.8 2005/06/10 23:59:31 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -253,8 +253,6 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 	struct tdb_ident *tdbi;
 	struct secasindex *saidx;
 	int error;
-
-	SPLASSERT(net, "ipsec4_common_input_cb");
 
 	KASSERT(m != NULL, ("ipsec4_common_input_cb: null mbuf"));
 	KASSERT(sav != NULL, ("ipsec4_common_input_cb: null SA"));
