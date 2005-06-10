@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.27 2005/06/09 17:09:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.28 2005/06/10 16:02:47 joerg Exp $
  */
 
 /*
@@ -595,9 +595,10 @@ wb_setcfg(struct wb_softc *sc, uint32_t media)
 				break;
 		}
 
-		if (i == WB_TIMEOUT)
-			printf("wb%d: failed to force tx and "
-				"rx to idle state\n", sc->wb_unit);
+		if (i == WB_TIMEOUT) {
+			if_printf(&sc->arpcom.ac_if, "failed to force tx and "
+				  "rx to idle state\n");
+		}
 	}
 
 	if (IFM_SUBTYPE(media) == IFM_10_T)
@@ -634,7 +635,7 @@ wb_reset(struct wb_softc *sc)
 			break;
 	}
 	if (i == WB_TIMEOUT)
-		printf("wb%d: reset never completed!\n", sc->wb_unit);
+		if_printf(&sc->arpcom.ac_if, "reset never completed!\n");
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
@@ -710,10 +711,9 @@ wb_attach(device_t dev)
 	uint32_t command;
 	struct wb_softc *sc;
 	struct ifnet *ifp;
-	int error = 0, rid, unit;
+	int error = 0, rid;
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	callout_init(&sc->wb_stat_timer);
 
 	/*
@@ -793,6 +793,9 @@ wb_attach(device_t dev)
 	/* Save the cache line size. */
 	sc->wb_cachesize = pci_read_config(dev, WB_PCI_CACHELEN, 4) & 0xFF;
 
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/* Reset the adapter. */
 	wb_reset(sc);
 
@@ -800,8 +803,6 @@ wb_attach(device_t dev)
 	 * Get station address from the EEPROM.
 	 */
 	wb_read_eeprom(sc, (caddr_t)&eaddr, 0, 3);
-
-	sc->wb_unit = unit;
 
 	sc->wb_ldata = contigmalloc(sizeof(struct wb_list_data) + 8, M_DEVBUF,
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -814,9 +815,7 @@ wb_attach(device_t dev)
 
 	bzero(sc->wb_ldata, sizeof(struct wb_list_data));
 
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "wb", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = wb_ioctl;
@@ -1015,8 +1014,8 @@ wb_rxeof(struct wb_softc *sc)
 		    (rxstat & WB_RXSTAT_RXCMP) == 0) {
 			ifp->if_ierrors++;
 			wb_newbuf(sc, cur_rx, m);
-			printf("wb%x: receiver babbling: possible chip "
-				"bug, forcing reset\n", sc->wb_unit);
+			if_printf(ifp, "receiver babbling: possible chip "
+				  "bug, forcing reset\n");
 			wb_fixmedia(sc);
 			wb_reset(sc);
 			wb_init(sc);
@@ -1459,8 +1458,8 @@ wb_init(void *xsc)
 
 	/* Init circular RX list. */
 	if (wb_list_rx_init(sc) == ENOBUFS) {
-		printf("wb%d: initialization failed: no "
-			"memory for rx buffers\n", sc->wb_unit);
+		if_printf(ifp, "initialization failed: no "
+			  "memory for rx buffers\n");
 		wb_stop(sc);
 		crit_exit();
 		return;
@@ -1590,11 +1589,10 @@ wb_watchdog(struct ifnet *ifp)
 	struct wb_softc *sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	printf("wb%d: watchdog timeout\n", sc->wb_unit);
+	if_printf(ifp, "watchdog timeout\n");
 #ifdef foo
 	if ((wb_phy_readreg(sc, PHY_BMSR) & PHY_BMSR_LINKSTAT) == 0)
-		printf("wb%d: no carrier - transceiver cable problem?\n",
-								sc->wb_unit);
+		if_printf(ifp, "no carrier - transceiver cable problem?\n");
 #endif
 	wb_stop(sc);
 	wb_reset(sc);

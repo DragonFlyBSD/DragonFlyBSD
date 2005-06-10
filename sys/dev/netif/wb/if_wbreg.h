@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wbreg.h,v 1.7 1999/08/30 23:08:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.5 2005/05/28 22:15:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.6 2005/06/10 16:02:47 joerg Exp $
  */
 
 /*
@@ -371,7 +371,6 @@ struct wb_softc {
 	struct resource		*wb_irq;
 	void			*wb_intrhand;
 	struct wb_type		*wb_info;	/* Winbond adapter info */
-	uint8_t			wb_unit;	/* interface number */
 	uint8_t			wb_type;
 	uint16_t		wb_txthresh;
 	int			wb_cachesize;
