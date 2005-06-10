@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.7 2004/05/19 22:52:47 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.8 2005/06/10 15:46:31 swildner Exp $"
 
 #include "opt_dpt.h"
 
@@ -49,6 +49,7 @@
 #include <sys/buf.h>
 #include <sys/uio.h>
 #include <sys/conf.h>
+#include <sys/thread2.h>
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
@@ -207,7 +208,6 @@ dpt_get_sysinfo(void)
 {
 	int             i;
 	int             j;
-	int             ospl;
 	char           *addr;
 
 	bzero(&dpt_sysinfo, sizeof(dpt_sysinfo_t));
@@ -218,7 +218,7 @@ dpt_get_sysinfo(void)
          * Let's hope anyone else who does this sort of things protects them
          * with splhigh too.
          */
-	ospl = splhigh();
+	crit_enter();
 
 	switch (cpu_class) {
 	case CPUCLASS_386:
@@ -378,7 +378,7 @@ dpt_get_sysinfo(void)
 		}
 		dpt_sysinfo.flags |= SI_DriveParamsValid;
 	}
-	splx(ospl);
+	crit_exit();
 
 	/* Get the processor information */
 	dpt_sysinfo.flags |= SI_ProcessorValid;
@@ -411,7 +411,6 @@ static int
 dpt_open(dev_t dev, int flags, int fmt, struct proc * p)
 {
 	int             minor_no;
-	int             ospl;
 	dpt_softc_t    *dpt;
 
 	minor_no = minor(dev);
@@ -424,10 +423,10 @@ dpt_open(dev_t dev, int flags, int fmt, struct proc * p)
 	if (dpt == NULL)
 		return (ENXIO);
 
-	ospl = splbio();
+	crit_enter();
 
 	if (dpt->state & DPT_HA_CONTROL_ACTIVE) {
-		splx(ospl);
+		crit_exit();
 		return (EBUSY);
 	} else {
 		if ((dpt_inbuf[minor_no & ~SCSI_CONTROL_MASK] = geteblk(PAGE_SIZE))
@@ -436,13 +435,13 @@ dpt_open(dev_t dev, int flags, int fmt, struct proc * p)
 			printf("dpt%d: Failed to obtain an I/O buffer\n",
 			       minor_no & ~SCSI_CONTROL_MASK);
 #endif
-			splx(ospl);
+			crit_exit();
 			return (EINVAL);
 		}
 	}
 
 	dpt->state |= DPT_HA_CONTROL_ACTIVE;
-	splx(ospl);
+	crit_exit();
 	return (0);
 }
 
@@ -527,7 +526,6 @@ dpt_read(dev_t dev, struct uio * uio, int ioflag)
 	dpt_softc_t    *dpt;
 	int             error;
 	int             minor_no;
-	int             ospl;
 
 	minor_no = minor(dev);
 	error = 0;
@@ -565,7 +563,7 @@ dpt_read(dev_t dev, struct uio * uio, int ioflag)
 		wbp = work_buffer;
 		work_size = 0;
 
-		ospl = splbio();
+		crit_enter();
 
 		command = dpt_rw_command[dpt->unit];
 		if (strcmp(command, DPT_RW_CMD_DUMP_SOFTC) == 0) {
@@ -640,7 +638,7 @@ dpt_read(dev_t dev, struct uio * uio, int ioflag)
 #ifdef DPT_DEBUG_CONTROL
 			printf("dpt%d: Bad READ state (%s)\n", minor_no, command);
 #endif
-			splx(ospl);
+			crit_exit();
 			error = EINVAL;
 		}
 
@@ -655,7 +653,7 @@ dpt_read(dev_t dev, struct uio * uio, int ioflag)
 #endif
 		}
 	}
-	splx(ospl);
+	crit_exit();
 	return (error);
 }
 

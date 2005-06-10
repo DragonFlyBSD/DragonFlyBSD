@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.7 2004/06/21 15:39:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.8 2005/06/10 15:46:31 swildner Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <machine/clock.h>
 #include <sys/rman.h>
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 #include "idareg.h"
 #include "idavar.h"
@@ -331,11 +332,11 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 	struct ida_hardware_qcb *hwqcb;
 	struct ida_qcb *qcb;
 	bus_dmasync_op_t op;
-	int s, error;
+	int error;
 
-	s = splbio();
+	crit_enter();
 	qcb = ida_get_qcb(ida);
-	splx(s);
+	crit_exit();
 
 	if (qcb == NULL) {
 		printf("ida_command: out of QCBs");
@@ -358,11 +359,11 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 
 	qcb->flags = flags | IDA_COMMAND;
 
-	s = splbio();
+	crit_enter();
 	STAILQ_INSERT_TAIL(&ida->qcb_queue, qcb, link.stqe);
 	ida_start(ida);
 	error = ida_wait(ida, qcb);
-	splx(s);
+	crit_exit();
 
 	/* XXX should have status returned here? */
 	/* XXX have "status pointer" area in QCB? */

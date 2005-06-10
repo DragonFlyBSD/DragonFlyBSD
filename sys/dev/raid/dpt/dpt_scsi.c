@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.8 2004/09/17 03:39:39 joerg Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.9 2005/06/10 15:46:31 swildner Exp $"
 
 #define _DPT_C_
 
@@ -56,6 +56,7 @@
 #include <sys/kernel.h>
 
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/bus_memio.h>
 #include <machine/bus_pio.h>
@@ -220,9 +221,8 @@ static __inline struct dpt_ccb*
 dptgetccb(struct dpt_softc *dpt)
 {
 	struct	dpt_ccb* dccb;
-	int	s;
 
-	s = splcam();
+	crit_enter();
 	if ((dccb = SLIST_FIRST(&dpt->free_dccb_list)) != NULL) {
 		SLIST_REMOVE_HEAD(&dpt->free_dccb_list, links);
 		dpt->free_dccbs--;
@@ -236,7 +236,7 @@ dptgetccb(struct dpt_softc *dpt)
 			dpt->free_dccbs--;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return (dccb);
 }
@@ -244,9 +244,7 @@ dptgetccb(struct dpt_softc *dpt)
 static __inline void
 dptfreeccb(struct dpt_softc *dpt, struct dpt_ccb *dccb)
 {
-	int s;
-
-	s = splcam();
+	crit_enter();
 	if ((dccb->state & DCCB_ACTIVE) != 0)
 		LIST_REMOVE(&dccb->ccb->ccb_h, sim_links.le);
 	if ((dccb->state & DCCB_RELEASE_SIMQ) != 0)
@@ -259,7 +257,7 @@ dptfreeccb(struct dpt_softc *dpt, struct dpt_ccb *dccb)
 	dccb->state = DCCB_FREE;
 	SLIST_INSERT_HEAD(&dpt->free_dccb_list, dccb, links);
 	++dpt->free_dccbs;
-	splx(s);
+	crit_exit();
 }
 
 static __inline u_int32_t
@@ -479,7 +477,6 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 	u_int8_t   status;
 
 	int	   ndx;
-	int	   ospl;
 	int	   result;
 
 	cp = &dccb->eata_ccb;
@@ -504,7 +501,7 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 	cp->cp_identify = 1;
 	cp->cp_datalen = htonl(size);
 
-	ospl = splcam();
+	crit_enter();
 
 	/*
 	 * This could be a simple for loop, but we suspected the compiler To
@@ -523,7 +520,7 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 		if (dpt_raid_busy(dpt)) {
 			printf("dpt%d WARNING: Get_conf() RSUS failed.\n",
 			       dpt->unit);
-			splx(ospl);
+			crit_exit();
 			return (0);
 		}
 	}
@@ -541,7 +538,7 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 		printf("dpt%d WARNING: Get_conf() failed (%d) to send "
 		       "EATA_CMD_DMA_READ_CONFIG\n",
 		       dpt->unit, result);
-		splx(ospl);
+		crit_exit();
 		return (0);
 	}
 	/* Wait for two seconds for a response.  This can be slow  */
@@ -555,7 +552,7 @@ dpt_get_conf(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 	/* Grab the status and clear interrupts */
 	status = dpt_inb(dpt, HA_RSTATUS);
 
-	splx(ospl);
+	crit_exit();
 
 	/*
 	 * Check the status carefully.  Return only if the
@@ -582,7 +579,6 @@ dpt_detect_cache(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 	u_int8_t   *param;
 	int	    bytes;
 	int	    result;
-	int	    ospl;
 	int	    ndx;
 	u_int8_t    status;
 
@@ -627,14 +623,14 @@ dpt_detect_cache(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 
 	cp->cp_datalen = htonl(512);
 
-	ospl = splcam();
+	crit_enter();
 	result = dpt_send_eata_command(dpt, cp, dccb_busaddr,
 				       EATA_CMD_DMA_SEND_CP,
 				       10000, 0, 0, 0);
 	if (result != 0) {
 		printf("dpt%d WARNING: detect_cache() failed (%d) to send "
 		       "EATA_CMD_DMA_SEND_CP\n", dpt->unit, result);
-		splx(ospl);
+		crit_exit();
 		return;
 	}
 	/* Wait for two seconds for a response.  This can be slow... */
@@ -647,7 +643,7 @@ dpt_detect_cache(dpt_softc_t *dpt, dpt_ccb_t *dccb, u_int32_t dccb_busaddr,
 
 	/* Grab the status and clear interrupts */
 	status = dpt_inb(dpt, HA_RSTATUS);
-	splx(ospl);
+	crit_exit();
 
 	/*
 	 * Sanity check
@@ -711,7 +707,6 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	struct	 dpt_ccb *dccb;
 	union	 ccb *ccb;
 	struct	 dpt_softc *dpt;
-	int	 s;
 
 	dccb = (struct dpt_ccb *)arg;
 	ccb = dccb->ccb;
@@ -768,7 +763,7 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		dccb->eata_ccb.cp_datalen = 0;
 	}
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 * Last time we need to check if this CCB needs to
@@ -779,7 +774,7 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 			bus_dmamap_unload(dpt->buffer_dmat, dccb->dmamap);
 		dptfreeccb(dpt, dccb);
 		xpt_done(ccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 		
@@ -798,7 +793,7 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		xpt_done(ccb);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -836,11 +831,9 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 			return;
 		}
 		if ((dccb = dptgetccb(dpt)) == NULL) {
-			int s;
-	
-			s = splcam();
+			crit_enter();
 			dpt->resource_shortage = 1;
-			splx(s);
+			crit_exit();
 			xpt_freeze_simq(sim, /*count*/1);
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
 			xpt_done(ccb);
@@ -914,10 +907,9 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 				 * to a single buffer.
 				 */
 				if ((ccbh->flags & CAM_DATA_PHYS) == 0) {
-					int s;
 					int error;
 
-					s = splsoftvm();
+					crit_enter();
 					error =
 					    bus_dmamap_load(dpt->buffer_dmat,
 							    dccb->dmamap,
@@ -935,7 +927,7 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 						xpt_freeze_simq(sim, 1);
 						dccb->state |= CAM_RELEASE_SIMQ;
 					}
-					splx(s);
+					crit_exit();
 				} else {
 					struct bus_dma_segment seg; 
 
@@ -1704,7 +1696,6 @@ dpttimeout(void *arg)
 	struct dpt_ccb	 *dccb;
 	union  ccb	 *ccb;
 	struct dpt_softc *dpt;
-	int		  s;
 
 	dccb = (struct dpt_ccb *)arg;
 	ccb = dccb->ccb;
@@ -1712,7 +1703,7 @@ dpttimeout(void *arg)
 	xpt_print_path(ccb->ccb_h.path);
 	printf("CCB %p - timed out\n", (void *)dccb);
 
-	s = splcam();
+	crit_enter();
 
 	/*
 	 * Try to clear any pending jobs.  FreeBSD will loose interrupts,
@@ -1726,7 +1717,7 @@ dpttimeout(void *arg)
 		xpt_print_path(ccb->ccb_h.path);
 		printf("CCB %p - timed out CCB already completed\n",
 		       (void *)dccb);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1734,7 +1725,7 @@ dpttimeout(void *arg)
 	dpt_send_immediate(dpt, &dccb->eata_ccb, dccb->eata_ccb.cp_busaddr,
 			   /*retries*/20000, EATA_SPECIFIC_ABORT, 0, 0);
 	ccb->ccb_h.status = CAM_CMD_TIMEOUT;
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1776,7 +1767,6 @@ static void
 dpt_reset_hba(dpt_softc_t *dpt)
 {
 	eata_ccb_t       *ccb;
-	int               ospl;
 	dpt_ccb_t         dccb, *dccbp;
 	int               result;
 	struct scsi_xfer *xs;
@@ -1806,13 +1796,13 @@ dpt_reset_hba(dpt_softc_t *dpt)
 	ccb->cp_scsi_cmd = 0;  /* Should be ignored */
 
 	/* Lock up the submitted queue.  We are very persistant here */
-	ospl = splcam();
+	crit_enter();
 	while (dpt->queue_status & DPT_SUBMITTED_QUEUE_ACTIVE) {
 		DELAY(100);
 	}
 	
 	dpt->queue_status |= DPT_SUBMITTED_QUEUE_ACTIVE;
-	splx(ospl);
+	crit_exit();
 
 	/* Send the RESET message */
 	if ((result = dpt_send_eata_command(dpt, &dccb.eata_ccb,
@@ -1857,9 +1847,9 @@ dpt_reset_hba(dpt_softc_t *dpt)
 			(dccbp->std_callback)(dpt, dccbp->eata_ccb.cp_channel,
 					       dccbp);
 		} else {
-			ospl = splcam();
+			crit_enter();
 			dpt_Qpush_free(dpt, dccbp);
-			splx(ospl);
+			crit_exit();
 		}
 	}
 
@@ -1885,7 +1875,6 @@ dpt_target_ccb(dpt_softc_t * dpt, int bus, u_int8_t target, u_int8_t lun,
 	       u_int16_t length, u_int16_t offset)
 {
 	eata_ccb_t     *cp;
-	int             ospl;
 
 	if ((length + offset) > DPT_MAX_TARGET_MODE_BUFFER_SIZE) {
 		printf("dpt%d:  Length of %d, and offset of %d are wrong\n",
@@ -1945,10 +1934,8 @@ dpt_set_target(int redo, dpt_softc_t * dpt,
 	       u_int8_t bus, u_int8_t target, u_int8_t lun, int mode,
 	       u_int16_t length, u_int16_t offset, dpt_ccb_t * ccb)
 {
-	int ospl;
-
 	if (dpt->target_mode_enabled) {
-		ospl = splcam();
+		crit_enter();
 
 		if (!redo)
 			dpt_target_ccb(dpt, bus, target, lun, ccb, mode,
@@ -1963,7 +1950,7 @@ dpt_set_target(int redo, dpt_softc_t * dpt,
 		dpt_Qadd_waiting(dpt, ccb);
 		dpt_sched_queue(dpt);
 
-		splx(ospl);
+		crit_exit();
 	} else {
 		printf("dpt%d:  Target Mode Request, but Target Mode is OFF\n",
 		       dpt->unit);
@@ -1986,7 +1973,6 @@ dpt_send_buffer(int unit, u_int8_t channel, u_int8_t target, u_int8_t lun,
 {
 	dpt_softc_t    *dpt;
 	dpt_ccb_t      *ccb = NULL;
-	int             ospl;
 
 	/* This is an external call.  Be a bit paranoid */
 	for (dpt = TAILQ_FIRST(&dpt_softc_list);
@@ -2009,21 +1995,21 @@ valid_unit:
 		    (dpt->buffer_receiver[channel][target][lun] == NULL))
 			return (NOT_REGISTERED);
 
-		ospl = splsoftcam();
+		crit_enter();
 		/* Process the free list */
 		if ((TAILQ_EMPTY(&dpt->free_ccbs)) && dpt_alloc_freelist(dpt)) {
 			printf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
 			       "             Please try later\n",
 			       dpt->unit);
-			splx(ospl);
+			crit_exit();
 			return (NO_RESOURCES);
 		}
 		/* Now grab the newest CCB */
 		if ((ccb = dpt_Qpop_free(dpt)) == NULL) {
-			splx(ospl);
+			crit_exit();
 			panic("dpt%d: Got a NULL CCB from pop_free()\n", dpt->unit);
 		}
-		splx(ospl);
+		crit_exit();
 
 		bcopy(dpt->rw_buffer[channel][target][lun] + offset, data, length);
 		dpt_target_ccb(dpt, channel, target, lun, ccb, mode, 
@@ -2031,7 +2017,7 @@ valid_unit:
 					   length, offset);
 		ccb->std_callback = (ccb_callback) callback; /* Potential trouble */
 
-		ospl = splcam();
+		crit_enter();
 		ccb->transaction_id = ++dpt->commands_processed;
 
 #ifdef DPT_MEASURE_PERFORMANCE
@@ -2041,7 +2027,7 @@ valid_unit:
 		dpt_Qadd_waiting(dpt, ccb);
 		dpt_sched_queue(dpt);
 
-		splx(ospl);
+		crit_exit();
 		return (0);
 	}
 	return (DRIVER_DOWN);
@@ -2050,7 +2036,6 @@ valid_unit:
 static void
 dpt_target_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 {
-	int             ospl;
 	eata_ccb_t     *cp;
 
 	cp = &ccb->eata_ccb;
@@ -2060,9 +2045,9 @@ dpt_target_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 	 *  We do NOT put it back on the free, etc., queues as it is a special
 	 * ccb, owned by the dpt_softc of this unit.
 	 */
-	ospl = splsoftcam();
+	crit_enter();
 	dpt_Qremove_completed(dpt, ccb);
-	splx(ospl);
+	crit_exit();
 
 #define br_channel           (ccb->eata_ccb.cp_channel)
 #define br_target            (ccb->eata_ccb.cp_id)
@@ -2104,10 +2089,10 @@ dpt_target_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 		printf("dpt%d:  %s is an unsupported command for target mode\n",
 		       dpt->unit, scsi_cmd_name(ccb->eata_ccb.cp_scsi_cmd));
 	}
-	ospl = splsoftcam();
+	crit_enter();
 	dpt->target_ccb[br_channel][br_target][br_lun] = NULL;
 	dpt_Qpush_free(dpt, ccb);
-	splx(ospl);
+	crit_exit();
 }
 
 
@@ -2123,7 +2108,6 @@ dpt_register_buffer(int unit, u_int8_t channel, u_int8_t target, u_int8_t lun,
 {
 	dpt_softc_t    *dpt;
 	dpt_ccb_t      *ccb = NULL;
-	int             ospl;
 
 	for (dpt = TAILQ_FIRST(&dpt_softc_list);
 	     dpt != NULL;
@@ -2148,23 +2132,23 @@ valid_unit:
 			/* Assign the requested callback */
 			dpt->buffer_receiver[channel][target][lun] = callback;
 			/* Get a CCB */
-			ospl = splsoftcam();
+			crit_enter();
 
 			/* Process the free list */
 			if ((TAILQ_EMPTY(&dpt->free_ccbs)) && dpt_alloc_freelist(dpt)) {
 				printf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
 				       "             Please try later\n",
 				       dpt->unit);
-				splx(ospl);
+				crit_exit();
 				return (NO_RESOURCES);
 			}
 			/* Now grab the newest CCB */
 			if ((ccb = dpt_Qpop_free(dpt)) == NULL) {
-				splx(ospl);
+				crit_exit();
 				panic("dpt%d: Got a NULL CCB from pop_free()\n",
 				      dpt->unit);
 			}
-			splx(ospl);
+			crit_exit();
 
 			/* Clean up the leftover of the previous tenant */
 			ccb->status = DPT_CCB_STATE_NEW;
@@ -2186,9 +2170,9 @@ valid_unit:
 		} else {
 			if (dpt->buffer_receiver[channel][target][lun] == callback) {
 				dpt->buffer_receiver[channel][target][lun] = NULL;
-				ospl = splsoftcam();
+				crit_enter();
 				dpt_Qpush_free(dpt, ccb);
-				splx(ospl);
+				crit_exit();
 				free(dpt->rw_buffer[channel][target][lun], M_DEVBUF);
 				return (SUCCESSFULLY_REGISTERED);
 			} else
@@ -2203,12 +2187,11 @@ u_int8_t
 dpt_blinking_led(dpt_softc_t * dpt)
 {
 	int             ndx;
-	int             ospl;
 	u_int32_t       state;
 	u_int32_t       previous;
 	u_int8_t        result;
 
-	ospl = splcam();
+	crit_enter();
 
 	result = 0;
 
@@ -2222,7 +2205,7 @@ dpt_blinking_led(dpt_softc_t * dpt)
 	if ((state == previous) && (state == DPT_BLINK_INDICATOR))
 		result = dpt_inb(dpt, 5);
 
-	splx(ospl);
+	crit_exit();
 	return (result);
 }
 
@@ -2240,7 +2223,6 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	int	   channel, target, lun;
 	int	   huh;
 	int	   result;
-	int	   ospl;
 	int	   submitted;
 
 	data = NULL;
@@ -2263,22 +2245,22 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 		}
 	}
 	/* Get a DPT CCB, so we can prepare a command */
-	ospl = splsoftcam();
+	crit_enter();
 
 	/* Process the free list */
 	if ((TAILQ_EMPTY(&dpt->free_ccbs)) && dpt_alloc_freelist(dpt)) {
 		printf("dpt%d ERROR: Cannot allocate any more free CCB's.\n"
 		       "             Please try later\n",
 		       dpt->unit);
-		splx(ospl);
+		crit_exit();
 		return (EFAULT);
 	}
 	/* Now grab the newest CCB */
 	if ((ccb = dpt_Qpop_free(dpt)) == NULL) {
-		splx(ospl);
+		crit_exit();
 		panic("dpt%d: Got a NULL CCB from pop_free()\n", dpt->unit);
 	} else {
-		splx(ospl);
+		crit_exit();
 		/* Clean up the leftover of the previous tenant */
 		ccb->status = DPT_CCB_STATE_NEW;
 	}
@@ -2348,9 +2330,9 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	if ((ccb->eata_ccb.cp_cdb[0] == MULTIFUNCTION_CMD)
 	    && (ccb->eata_ccb.cp_cdb[2] == BUS_QUIET)) {
 		/* We wait for ALL traffic for this HBa to subside */
-		ospl = splsoftcam();
+		crit_enter();
 		dpt->state |= DPT_HA_QUIET;
-		splx(ospl);
+		crit_exit();
 
 		while ((submitted = dpt->submitted_ccbs_count) != 0) {
 			huh = tsleep((void *) dpt, PCATCH, "dptqt", 100 * hz);
@@ -2370,9 +2352,9 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	/* Resume normal operation */
 	if ((ccb->eata_ccb.cp_cdb[0] == MULTIFUNCTION_CMD)
 	    && (ccb->eata_ccb.cp_cdb[2] == BUS_UNQUIET)) {
-		ospl = splsoftcam();
+		crit_enter();
 		dpt->state &= ~DPT_HA_QUIET;
-		splx(ospl);
+		crit_exit();
 	}
 	/**
 	 * Schedule the command and submit it.
@@ -2391,9 +2373,9 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	++dpt->performance.command_count[ccb->eata_ccb.cp_scsi_cmd];
 	ccb->command_started = microtime_now;
 #endif
-	ospl = splcam();
+	crit_enter();
 	dpt_Qadd_waiting(dpt, ccb);
-	splx(ospl);
+	crit_exit();
 
 	dpt_sched_queue(dpt);
 
@@ -2410,9 +2392,10 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 static void
 dpt_user_cmd_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 {
-	int             ospl = splsoftcam();
 	u_int32_t       result;
 	caddr_t         cmd_arg;
+
+	crit_enter();
 
 	/**
 	 * If Auto Request Sense is on, copyout the sense struct
@@ -2424,7 +2407,7 @@ dpt_user_cmd_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 			    sizeof(struct scsi_sense_data))) {
 			ccb->result = EFAULT;
 			dpt_Qpush_free(dpt, ccb);
-			splx(ospl);
+			crit_exit();
 			wakeup(ccb);
 			return;
 		}
@@ -2436,7 +2419,7 @@ dpt_user_cmd_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 			dpt_Qpush_free(dpt, ccb);
 			ccb->result = EFAULT;
 
-			splx(ospl);
+			crit_exit();
 			wakeup(ccb);
 			return;
 		}
@@ -2448,7 +2431,7 @@ dpt_user_cmd_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 	if (copyout((caddr_t) & result, cmd_arg, sizeof(result))) {
 		dpt_Qpush_free(dpt, ccb);
 		ccb->result = EFAULT;
-		splx(ospl);
+		crit_exit();
 		wakeup(ccb);
 		return;
 	}
@@ -2457,7 +2440,7 @@ dpt_user_cmd_done(dpt_softc_t * dpt, int bus, dpt_ccb_t * ccb)
 	dpt_Qpush_free(dpt, ccb);
 
 	/* Free allocated memory */
-	splx(ospl);
+	crit_exit();
 	return;
 }
 
@@ -2487,14 +2470,13 @@ static void
 dpt_handle_timeouts(dpt_softc_t * dpt)
 {
 	dpt_ccb_t      *ccb;
-	int             ospl;
 
-	ospl = splcam();
+	crit_enter();
 
 	if (dpt->state & DPT_HA_TIMEOUTS_ACTIVE) {
 		printf("dpt%d WARNING: Timeout Handling Collision\n",
 		       dpt->unit);
-		splx(ospl);
+		crit_exit();
 		return;
 	}
 	dpt->state |= DPT_HA_TIMEOUTS_ACTIVE;
@@ -2598,7 +2580,7 @@ dpt_handle_timeouts(dpt_softc_t * dpt)
 	}
 
 	dpt->state &= ~DPT_HA_TIMEOUTS_ACTIVE;
-	splx(ospl);
+	crit_exit();
 }
 
 #endif				/* DPT_HANDLE_TIMEOUTS */

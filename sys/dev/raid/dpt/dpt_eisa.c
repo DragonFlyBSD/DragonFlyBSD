@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_eisa.c,v 1.12.2.1 2000/08/07 18:48:14 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.4 2005/05/24 20:59:03 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_eisa.c,v 1.5 2005/06/10 15:46:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/eisa/eisaconf.h>
 
@@ -102,7 +103,6 @@ dpt_eisa_attach (device_t dev)
 	dpt_softc_t * dpt;
 	struct resource *io = 0;
 	struct resource *irq = 0;
-	int		s;
 	int		rid;
 	void *		ih;
 	int		error = 0;
@@ -149,7 +149,7 @@ dpt_eisa_attach (device_t dev)
 		goto bad;
 	}
 
-	s = splcam();
+	crit_enter();
 
 	if (dpt_init(dpt) != 0) {
 		dpt_free(dpt);
@@ -160,7 +160,7 @@ dpt_eisa_attach (device_t dev)
 	/* Register with the XPT */
 	dpt_attach(dpt);
 
-	splx(s);
+	crit_exit();
 
 	error = bus_setup_intr(dev, irq, INTR_TYPE_CAM, dpt_intr, dpt,
 			       &ih, NULL);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.8 2005/05/06 11:27:51 corecode Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.9 2005/06/10 15:46:31 swildner Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -48,6 +48,7 @@
 #include <sys/conf.h>
 #include <sys/stat.h>
 #include <sys/disklabel.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -250,16 +251,15 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
         {
             gdt_ucmd_t *ucmd;
             struct gdt_softc *gdt;
-            int lock;
 
             ucmd = (gdt_ucmd_t *)cmdarg;
             gdt = gdt_minor2softc(ucmd->io_node);
             if (gdt == NULL)
                 return (ENXIO);
-            lock = splcam();
+	    crit_enter();
             TAILQ_INSERT_TAIL(&gdt->sc_ucmd_queue, ucmd, links);
             ucmd->complete_flag = FALSE;
-            splx(lock);
+	    crit_exit();
             gdt_next(gdt);
             if (!ucmd->complete_flag)
                 (void) tsleep((void *)ucmd, PCATCH, "iirucw", 0);
@@ -315,7 +315,6 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
       case GDT_IOCTL_EVENT:
         {
             gdt_event_t *p;
-            int lock;
 
             p = (gdt_event_t *)cmdarg;
             if (p->erase == 0xff) {
@@ -327,14 +326,14 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
                     p->dvr.event_data.size = sizeof(p->dvr.event_data.eu.sync);
                 else
                     p->dvr.event_data.size = sizeof(p->dvr.event_data.eu.async);
-                lock = splcam();
+		crit_enter();
                 gdt_store_event(p->dvr.event_source, p->dvr.event_idx,
                                 &p->dvr.event_data);
-                splx(lock);
+		crit_exit();
             } else if (p->erase == 0xfe) {
-                lock = splcam();
+		crit_enter();
                 gdt_clear_events();
-                splx(lock);
+		crit_exit();
             } else if (p->erase == 0) {
                 p->handle = gdt_read_event(p->handle, &p->dvr);
             } else {

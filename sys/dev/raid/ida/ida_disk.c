@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.8 2004/05/19 22:52:47 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.9 2005/06/10 15:46:31 swildner Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -158,7 +159,6 @@ static void
 idad_strategy(struct buf *bp)
 {
 	struct idad_softc *drv;
-	int s;
 
 	drv = idad_getsoftc(bp->b_dev);
 	if (drv == NULL) {
@@ -181,10 +181,10 @@ idad_strategy(struct buf *bp)
 		goto done;
 
 	bp->b_driver1 = drv;
-	s = splbio();
+	crit_enter();
 	devstat_start_transaction(&drv->stats);
 	ida_submit_buf(drv->controller, bp);
-	splx(s);
+	crit_exit();
 	return;
 
 bad:
