@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.8 2004/06/05 05:34:57 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.9 2005/06/10 22:34:49 dillon Exp $
  */
 
 #include "opt_ipx.h"
@@ -48,6 +48,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -425,12 +426,11 @@ static int
 ipx_usr_abort(so)
 	struct socket *so;
 {
-	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
-	s = splnet();
+	crit_enter();
 	ipx_pcbdetach(ipxp);
-	splx(s);
+	crit_exit();
 	sofree(so);
 	soisdisconnected(so);
 	return (0);
@@ -440,14 +440,13 @@ static int
 ipx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error;
-	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
 	if (ipxp != NULL)
 		return (EINVAL);
-	s = splnet();
+	crit_enter();
 	error = ipx_pcballoc(so, &ipxpcb);
-	splx(s);
+	crit_exit();
 	if (error == 0)
 		error = soreserve(so, ipxsendspace, ipxrecvspace,
 				  ai->sb_rlimit);
@@ -466,14 +465,13 @@ static int
 ipx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int error;
-	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
 	if (!ipx_nullhost(ipxp->ipxp_faddr))
 		return (EISCONN);
-	s = splnet();
+	crit_enter();
 	error = ipx_pcbconnect(ipxp, nam, td);
-	splx(s);
+	crit_exit();
 	if (error == 0)
 		soisconnected(so);
 	return (error);
@@ -483,14 +481,13 @@ static int
 ipx_detach(so)
 	struct socket *so;
 {
-	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
 	if (ipxp == NULL)
 		return (ENOTCONN);
-	s = splnet();
+	crit_enter();
 	ipx_pcbdetach(ipxp);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -498,14 +495,13 @@ static int
 ipx_disconnect(so)
 	struct socket *so;
 {
-	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
 	if (ipx_nullhost(ipxp->ipxp_faddr))
 		return (ENOTCONN);
-	s = splnet();
+	crit_enter();
 	ipx_pcbdisconnect(ipxp);
-	splx(s);
+	crit_exit();
 	soisdisconnected(so);
 	return (0);
 }
@@ -528,8 +524,8 @@ ipx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	int error;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 	struct ipx_addr laddr;
-	int s = 0;
 
+	crit_enter();
 	if (nam != NULL) {
 		laddr = ipxp->ipxp_laddr;
 		if (!ipx_nullhost(ipxp->ipxp_faddr)) {
@@ -539,10 +535,8 @@ ipx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		/*
 		 * Must block input while temporarily connected.
 		 */
-		s = splnet();
 		error = ipx_pcbconnect(ipxp, nam, td);
 		if (error) {
-			splx(s);
 			goto send_release;
 		}
 	} else {
@@ -555,11 +549,10 @@ ipx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	m = NULL;
 	if (nam != NULL) {
 		ipx_pcbdisconnect(ipxp);
-		splx(s);
 		ipxp->ipxp_laddr = laddr;
 	}
-
 send_release:
+	crit_exit();
 	if (m != NULL)
 		m_freem(m);
 	return (error);
@@ -588,14 +581,13 @@ static int
 ripx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error = 0;
-	int s;
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
 	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return (error);
-	s = splnet();
+	crit_enter();
 	error = ipx_pcballoc(so, &ipxrawpcb);
-	splx(s);
+	crit_exit();
 	if (error)
 		return (error);
 	error = soreserve(so, ipxsendspace, ipxrecvspace, ai->sb_rlimit);

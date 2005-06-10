@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.15 2004/07/31 07:52:56 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.16 2005/06/10 22:34:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/thread2.h>
 
 #include <net/route.h>
 #include <netinet/tcp_fsm.h>
@@ -1267,16 +1268,15 @@ spx_ctloutput(struct socket *so, struct sockopt *sopt)
 static int
 spx_usr_abort(struct socket *so)
 {
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	s = splnet();
+	crit_enter();
 	spx_drop(cb, ECONNABORTED);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1305,7 +1305,6 @@ static int
 spx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error;
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 	struct mbuf *mm;
@@ -1316,7 +1315,7 @@ spx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if (ipxp != NULL)
 		return (EISCONN);
-	s = splnet();
+	crit_enter();
 	error = ipx_pcballoc(so, &ipxpcb);
 	if (error)
 		goto spx_attach_end;
@@ -1357,7 +1356,7 @@ spx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	    SPXTV_MIN, SPXTV_REXMTMAX);
 	ipxp->ipxp_pcb = (caddr_t)cb; 
 spx_attach_end:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1381,14 +1380,13 @@ static int
 spx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int error;
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	s = splnet();
+	crit_enter();
 	if (ipxp->ipxp_lport == 0) {
 		error = ipx_pcbbind(ipxp, (struct sockaddr *)NULL, td);
 		if (error)
@@ -1415,14 +1413,13 @@ spx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	ipxp->ipxp_fport = 0;
 	error = spx_output(cb, (struct mbuf *)NULL);
 spx_connect_end:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
 static int
 spx_detach(struct socket *so)
 {
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
@@ -1431,12 +1428,12 @@ spx_detach(struct socket *so)
 
 	if (ipxp == NULL)
 		return (ENOTCONN);
-	s = splnet();
+	crit_enter();
 	if (cb->s_state > TCPS_LISTEN)
 		spx_disconnect(cb);
 	else
 		spx_close(cb);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1448,16 +1445,15 @@ spx_detach(struct socket *so)
 static int
 spx_usr_disconnect(struct socket *so)
 {
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	s = splnet();
+	crit_enter();
 	spx_disconnect(cb);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1486,18 +1482,17 @@ spx_listen(struct socket *so, struct thread *td)
 static int
 spx_rcvd(struct socket *so, int flags)
 {
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	s = splnet();
+	crit_enter();
 	cb->s_flags |= SF_RVD;
 	spx_output(cb, (struct mbuf *)NULL);
 	cb->s_flags &= ~SF_RVD;
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1524,7 +1519,6 @@ spx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	struct mbuf *controlp, struct thread *td)
 {
 	int error;
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
@@ -1532,7 +1526,7 @@ spx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	s = splnet();
+	crit_enter();
 	if (flags & PRUS_OOB) {
 		if (sbspace(&so->so_snd) < -512) {
 			error = ENOBUFS;
@@ -1557,7 +1551,7 @@ spx_send_end:
 		m_freem(controlp);
 	if (m != NULL)
 		m_freem(m);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1565,7 +1559,6 @@ static int
 spx_shutdown(struct socket *so)
 {
 	int error;
-	int s;
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
 
@@ -1573,12 +1566,12 @@ spx_shutdown(struct socket *so)
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	s = splnet();
+	crit_enter();
 	socantsendmore(so);
 	cb = spx_usrclosed(cb);
 	if (cb != NULL)
 		error = spx_output(cb, (struct mbuf *)NULL);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1706,8 +1699,8 @@ spx_fasttimo(void)
 {
 	struct ipxpcb *ipxp;
 	struct spxpcb *cb;
-	int s = splnet();
 
+	crit_enter();
 	ipxp = ipxpcb.ipxp_next;
 	if (ipxp != NULL) {
 	    for (; ipxp != &ipxpcb; ipxp = ipxp->ipxp_next) {
@@ -1720,7 +1713,7 @@ spx_fasttimo(void)
 		}
 	    }
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1733,15 +1726,15 @@ spx_slowtimo(void)
 {
 	struct ipxpcb *ip, *ipnxt;
 	struct spxpcb *cb;
-	int s = splnet();
 	int i;
 
 	/*
 	 * Search through tcb's and update active timers.
 	 */
+	crit_enter();
 	ip = ipxpcb.ipxp_next;
 	if (ip == NULL) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	while (ip != &ipxpcb) {
@@ -1763,7 +1756,7 @@ tpgone:
 		ip = ipnxt;
 	}
 	spx_iss += SPX_ISSINCR/PR_SLOWHZ;		/* increment iss */
-	splx(s);
+	crit_exit();
 }
 
 /*

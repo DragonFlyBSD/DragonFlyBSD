@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.12 2005/03/04 02:21:49 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.13 2005/06/10 22:34:50 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 
 #include <machine/ipl.h>
 
@@ -77,7 +78,6 @@ key_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct sadb_msg *msg;
 	int len, error = 0;
-	int s;
 
 	if (m == 0)
 		panic("key_output: NULL pointer was passed.\n");
@@ -114,10 +114,10 @@ key_output(struct mbuf *m, struct socket *so, ...)
 	}
 
 	/*XXX giant lock*/
-	s = splnet();
+	crit_enter();
 	error = key_parse(m, so);
 	m = NULL;
-	splx(s);
+	crit_exit();
 end:
 	if (m)
 		m_freem(m);
@@ -369,10 +369,11 @@ key_sendup_mbuf(so, m, target)
 static int
 key_abort(struct socket *so)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_abort(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -384,7 +385,7 @@ static int
 key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct keycb *kp;
-	int s, error;
+	int error;
 
 	if (sotorawcb(so) != 0)
 		return EISCONN;	/* XXX panic? */
@@ -394,20 +395,20 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	bzero(kp, sizeof *kp);
 
 	/*
-	 * The splnet() is necessary to block protocols from sending
+	 * The critical section is necessary to block protocols from sending
 	 * error notifications (like RTM_REDIRECT or RTM_LOSING) while
 	 * this PCB is extant but incompletely initialized.
 	 * Probably we should try to do more of this work beforehand and
-	 * eliminate the spl.
+	 * eliminate the critical section.
 	 */
-	s = splnet();
+	crit_enter();
 	so->so_pcb = (caddr_t)kp;
 	error = raw_usrreqs.pru_attach(so, proto, ai);
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		free(kp, M_PCB);
 		so->so_pcb = (caddr_t) 0;
-		splx(s);
+		crit_exit();
 		return error;
 	}
 
@@ -421,7 +422,7 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	soisconnected(so);
 	so->so_options |= SO_USELOOPBACK;
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -432,10 +433,11 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 static int
 key_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -446,10 +448,11 @@ key_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 static int
 key_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -461,9 +464,9 @@ static int
 key_detach(struct socket *so)
 {
 	struct keycb *kp = (struct keycb *)sotorawcb(so);
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	if (kp != 0) {
 		if (kp->kp_raw.rcb_proto.sp_protocol
 		    == PF_KEY) /* XXX: AF_KEY */
@@ -473,7 +476,7 @@ key_detach(struct socket *so)
 		key_freereg(so);
 	}
 	error = raw_usrreqs.pru_detach(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -484,10 +487,11 @@ key_detach(struct socket *so)
 static int
 key_disconnect(struct socket *so)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_disconnect(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -498,10 +502,11 @@ key_disconnect(struct socket *so)
 static int
 key_peeraddr(struct socket *so, struct sockaddr **nam)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_peeraddr(so, nam);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -513,10 +518,11 @@ static int
 key_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -527,10 +533,11 @@ key_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 static int
 key_shutdown(struct socket *so)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_shutdown(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -541,10 +548,11 @@ key_shutdown(struct socket *so)
 static int
 key_sockaddr(struct socket *so, struct sockaddr **nam)
 {
-	int s, error;
-	s = splnet();
+	int error;
+
+	crit_enter();
 	error = raw_usrreqs.pru_sockaddr(so, nam);
-	splx(s);
+	crit_exit();
 	return error;
 }
 

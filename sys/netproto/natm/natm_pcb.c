@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/netnatm/natm_pcb.c,v 1.6.6.1 2000/08/03 18:56:28 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.4 2003/08/23 10:06:24 rob Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.5 2005/06/10 22:34:51 dillon Exp $ */
 /*	$NetBSD: natm_pcb.c,v 1.4 1996/11/09 03:26:27 chuck Exp $	*/
 
 /*
@@ -44,6 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -88,7 +89,7 @@ struct natmpcb *npcb;
 int op;
 
 {
-  int s = splimp();
+  crit_enter();
 
   if ((npcb->npcb_flags & NPCB_FREE) == 0) {
     LIST_REMOVE(npcb, pcblist);
@@ -102,7 +103,7 @@ int op;
     }
   }
 
-  splx(s);
+  crit_exit();
 }
 
 
@@ -120,9 +121,8 @@ u_int8_t vpi;
 
 {
   struct natmpcb *cpcb = NULL;		/* current pcb */
-  int s = splimp();
 
-
+  crit_enter();
   /*
    * lookup required
    */
@@ -163,7 +163,7 @@ u_int8_t vpi;
   LIST_INSERT_HEAD(&natm_pcbs, cpcb, pcblist);
 
 done:
-  splx(s);
+  crit_exit();
   return(cpcb);
 }
 

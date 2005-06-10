@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.17 2004/06/06 19:16:13 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.18 2005/06/10 22:34:51 dillon Exp $ */
 
 /*
  *
@@ -95,8 +95,8 @@ natm_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
     struct natmpcb *npcb;
     int error = 0;
-    int s = SPLSOFTNET();
 
+    crit_enter();
     npcb = (struct natmpcb *) so->so_pcb;
 
     if (npcb) {
@@ -118,7 +118,7 @@ natm_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
     so->so_pcb = (caddr_t) (npcb = npcb_alloc(M_WAITOK));
     npcb->npcb_socket = so;
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -127,8 +127,8 @@ natm_usr_detach(struct socket *so)
 {
     struct natmpcb *npcb;
     int error = 0;
-    int s = SPLSOFTNET();
 
+    crit_enter();
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
 	error = EINVAL;
@@ -142,7 +142,7 @@ natm_usr_detach(struct socket *so)
     so->so_pcb = NULL;
     sofree(so);
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -154,9 +154,10 @@ natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
     struct atm_pseudoioctl api;
     struct ifnet *ifp;
     int error = 0;
-    int s2, s = SPLSOFTNET();
-    int proto = so->so_proto->pr_protocol;
+    int proto;
 
+    crit_enter();
+    proto = so->so_proto->pr_protocol;
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
 	error = EINVAL;
@@ -212,21 +213,21 @@ natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
     ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
     ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
     api.rxhand = npcb;
-    s2 = splimp();
+    crit_enter();
     if (ifp->if_ioctl == NULL || 
 	ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
 		      td->td_proc->p_ucred) != 0) {
-	splx(s2);
+	crit_exit();
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
 	goto out;
     }
-    splx(s2);
+    crit_exit();
 
     soisconnected(so);
 
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -237,8 +238,8 @@ natm_usr_disconnect(struct socket *so)
     struct atm_pseudoioctl api;
     struct ifnet *ifp;
     int error = 0;
-    int s2, s = SPLSOFTNET();
 
+    crit_enter();
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
 	error = EINVAL;
@@ -260,16 +261,16 @@ natm_usr_disconnect(struct socket *so)
     ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
     ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
     api.rxhand = npcb;
-    s2 = splimp();
+    crit_enter();
     if (ifp->if_ioctl != NULL)
 	ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, (struct ucred *)NULL);
-    splx(s2);
+    crit_exit();
 
     npcb_free(npcb, NPCB_REMOVE);
     soisdisconnected(so);
 
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -287,8 +288,9 @@ natm_usr_send(struct socket *so, int flags, struct mbuf *m,
     struct natmpcb *npcb;
     struct atm_pseudohdr *aph;
     int error = 0;
-    int s = SPLSOFTNET();
     int proto = so->so_proto->pr_protocol;
+
+    crit_enter();
 
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
@@ -320,7 +322,7 @@ natm_usr_send(struct socket *so, int flags, struct mbuf *m,
     error = atm_output(npcb->npcb_ifp, m, NULL, NULL);
 
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -330,8 +332,8 @@ natm_usr_peeraddr(struct socket *so, struct sockaddr **nam)
     struct natmpcb *npcb;
     struct sockaddr_natm *snatm, ssnatm;
     int error = 0;
-    int s = SPLSOFTNET();
 
+    crit_enter();
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
 	error = EINVAL;
@@ -349,7 +351,7 @@ natm_usr_peeraddr(struct socket *so, struct sockaddr **nam)
     *nam = dup_sockaddr((struct sockaddr *)snatm);
 
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -360,7 +362,8 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
     struct natmpcb *npcb;
     struct atm_rawioctl ario;
     int error = 0;
-    int s = SPLSOFTNET();
+
+    crit_enter();
 
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
@@ -393,7 +396,7 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
 	error = EOPNOTSUPP;
 
  out:
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -441,7 +444,7 @@ struct proc *p;
 #endif
 
 {
-  int error = 0, s, s2;
+  int error = 0;
   struct natmpcb *npcb;
   struct sockaddr_natm *snatm;
   struct atm_pseudoioctl api;
@@ -450,7 +453,7 @@ struct proc *p;
   struct ifnet *ifp;
   int proto = so->so_proto->pr_protocol;
 
-  s = SPLSOFTNET();
+  crit_enter();
 
   npcb = (struct natmpcb *) so->so_pcb;
 
@@ -550,16 +553,16 @@ struct proc *p;
       ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
       ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
       api.rxhand = npcb;
-      s2 = splimp();
+      crit_enter();
       if (ifp->if_ioctl == NULL || 
 	  ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
 	  		(struct ucred *)NULL) != 0) {
-	splx(s2);
+	crit_exit();
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
 	break;
       }
-      splx(s2);
+      crit_exit();
 
       soisconnected(so);
 
@@ -582,10 +585,10 @@ struct proc *p;
       ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
       ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
       api.rxhand = npcb;
-      s2 = splimp();
+      crit_enter();
       if (ifp->if_ioctl != NULL)
 	  ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, (struct ucred *)NULL);
-      splx(s2);
+      crit_exit();
 
       npcb_free(npcb, NPCB_REMOVE);
       soisdisconnected(so);
@@ -692,7 +695,7 @@ struct proc *p;
   }
 
 done:
-  splx(s);
+  crit_exit();
   return(error);
 }
 
@@ -747,7 +750,7 @@ natm_init()
 }
 
 /*
- * natmintr: splsoftnet interrupt
+ * natmintr: software interrupt
  *
  * note: we expect a socket pointer in rcvif rather than an interface
  * pointer.    we can get the interface pointer from the so's PCB if
@@ -757,7 +760,6 @@ static int
 natmintr(struct netmsg *msg)
 {
   struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
-  int s;
   struct socket *so;
   struct natmpcb *npcb;
 
@@ -769,9 +771,9 @@ natmintr(struct netmsg *msg)
   npcb = (struct natmpcb *) m->m_pkthdr.rcvif; /* XXX: overloaded */
   so = npcb->npcb_socket;
 
-  s = splimp();			/* could have atm devs @ different levels */
+  crit_enter();
   npcb->npcb_inq--;
-  splx(s);
+  crit_exit();
 
   if (npcb->npcb_flags & NPCB_DRAIN) {
     m_freem(m);

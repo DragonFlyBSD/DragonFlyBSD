@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.12 2005/02/08 22:56:19 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.13 2005/06/10 22:34:50 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -54,6 +54,7 @@
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -512,7 +513,6 @@ key_allocsp(spidx, dir)
 {
 	struct secpolicy *sp;
 	struct timeval tv;
-	int s;
 
 	/* sanity check */
 	if (spidx == NULL)
@@ -528,7 +528,7 @@ key_allocsp(spidx, dir)
 	}
 
 	/* get a SP entry */
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
 		printf("*** objects\n");
 		kdebug_secpolicyindex(spidx));
@@ -544,7 +544,7 @@ key_allocsp(spidx, dir)
 			goto found;
 	}
 
-	splx(s);
+	crit_exit();
 	return NULL;
 
 found:
@@ -555,7 +555,7 @@ found:
 	microtime(&tv);
 	sp->lastused = tv.tv_sec;
 	sp->refcnt++;
-	splx(s);
+	crit_exit();
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		printf("DP key_allocsp cause refcnt++:%d SP:%p\n",
 			sp->refcnt, sp));
@@ -574,7 +574,6 @@ key_gettunnel(osrc, odst, isrc, idst)
 	struct secpolicy *sp;
 	const int dir = IPSEC_DIR_INBOUND;
 	struct timeval tv;
-	int s;
 	struct ipsecrequest *r1, *r2, *p;
 	struct sockaddr *os, *od, *is, *id;
 	struct secpolicyindex spidx;
@@ -585,7 +584,7 @@ key_gettunnel(osrc, odst, isrc, idst)
 		return NULL;
 	}
 
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 	LIST_FOREACH(sp, &sptree[dir], chain) {
 		if (sp->state == IPSEC_SPSTATE_DEAD)
 			continue;
@@ -625,14 +624,14 @@ key_gettunnel(osrc, odst, isrc, idst)
 			goto found;
 		}
 	}
-	splx(s);
+	crit_exit();
 	return NULL;
 
 found:
 	microtime(&tv);
 	sp->lastused = tv.tv_sec;
 	sp->refcnt++;
-	splx(s);
+	crit_exit();
 	return sp;
 }
 
@@ -930,7 +929,6 @@ key_allocsa(family, src, dst, proto, spi)
 	u_int stateidx, state;
 	struct sockaddr_in sin;
 	struct sockaddr_in6 sin6;
-	int s;
 	const u_int *saorder_state_valid;
 	int arraysize;
 
@@ -956,7 +954,7 @@ key_allocsa(family, src, dst, proto, spi)
 	 * IPsec tunnel packet is received.  But ESP tunnel mode is
 	 * encrypted so we can't check internal IP header.
 	 */
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 	LIST_FOREACH(sah, &sahtree, chain) {
 		/*
 		 * search a valid state list for inbound packet.
@@ -1055,12 +1053,12 @@ key_allocsa(family, src, dst, proto, spi)
 	}
 
 	/* not found */
-	splx(s);
+	crit_exit();
 	return NULL;
 
 found:
 	sav->refcnt++;
-	splx(s);
+	crit_exit();
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		printf("DP allocsa cause refcnt++:%d SA:%p\n",
 			sav->refcnt, sav));
@@ -1205,8 +1203,6 @@ static void
 key_delsp(sp)
 	struct secpolicy *sp;
 {
-	int s;
-
 	/* sanity check */
 	if (sp == NULL)
 		panic("key_delsp: NULL pointer is passed.\n");
@@ -1216,7 +1212,7 @@ key_delsp(sp)
 	if (sp->refcnt > 0)
 		return; /* can't free */
 
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 	/* remove from SP index */
 	if (__LIST_CHAINED(sp))
 		LIST_REMOVE(sp, chain);
@@ -1241,7 +1237,7 @@ key_delsp(sp)
 
 	keydb_delsecpolicy(sp);
 
-	splx(s);
+	crit_exit();
 
 	return;
 }
@@ -2479,14 +2475,13 @@ static int
 key_spdexpire(sp)
 	struct secpolicy *sp;
 {
-	int s;
 	struct mbuf *result = NULL, *m;
 	int len;
 	int error = -1;
 	struct sadb_lifetime *lt;
 
 	/* XXX: Why do we lock ? */
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 
 	/* sanity check */
 	if (sp == NULL)
@@ -2579,7 +2574,7 @@ key_spdexpire(sp)
  fail:
 	if (result)
 		m_freem(result);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -2621,14 +2616,13 @@ key_delsah(sah)
 {
 	struct secasvar *sav, *nextsav;
 	u_int stateidx, state;
-	int s;
 	int zombie = 0;
 
 	/* sanity check */
 	if (sah == NULL)
 		panic("key_delsah: NULL pointer is passed.\n");
 
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 
 	/* searching all SA registerd in the secindex. */
 	for (stateidx = 0;
@@ -2661,7 +2655,7 @@ key_delsah(sah)
 
 	/* don't delete sah only if there are savs. */
 	if (zombie) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2676,7 +2670,7 @@ key_delsah(sah)
 
 	KFREE(sah);
 
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -4167,12 +4161,11 @@ void
 key_timehandler(void *__dummy)
 {
 	u_int dir;
-	int s;
 	struct timeval tv;
 
 	microtime(&tv);
 
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 
 	/* SPD */
     {
@@ -4422,7 +4415,7 @@ key_timehandler(void *__dummy)
 	callout_reset(&key_timehandler_ch, hz, key_timehandler, NULL);
 #endif /* IPSEC_DEBUG2 */
 
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -6398,7 +6391,6 @@ static int
 key_expire(sav)
 	struct secasvar *sav;
 {
-	int s;
 	int satype;
 	struct mbuf *result = NULL, *m;
 	int len;
@@ -6406,7 +6398,7 @@ key_expire(sav)
 	struct sadb_lifetime *lt;
 
 	/* XXX: Why do we lock ? */
-	s = splnet();	/*called from softclock()*/
+	crit_enter();
 
 	/* sanity check */
 	if (sav == NULL)
@@ -6503,13 +6495,13 @@ key_expire(sav)
 	mtod(result, struct sadb_msg *)->sadb_msg_len =
 	    PFKEY_UNIT64(result->m_pkthdr.len);
 
-	splx(s);
+	crit_exit();
 	return key_sendup_mbuf(NULL, result, KEY_SENDUP_REGISTERED);
 
  fail:
 	if (result)
 		m_freem(result);
-	splx(s);
+	crit_exit();
 	return error;
 }
 

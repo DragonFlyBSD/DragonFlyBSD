@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.6 2004/04/22 05:09:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.7 2005/06/10 22:34:50 dillon Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*
@@ -43,6 +43,7 @@
 #include <sys/malloc.h>
 #include <sys/errno.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -128,25 +129,21 @@ void
 keydb_refsecasvar(p)
 	struct secasvar *p;
 {
-	int s;
-
-	s = splnet();
+	crit_enter();
 	p->refcnt++;
-	splx(s);
+	crit_exit();
 }
 
 void
 keydb_freesecasvar(p)
 	struct secasvar *p;
 {
-	int s;
-
-	s = splnet();
+	crit_enter();
 	p->refcnt--;
 	/* negative refcnt will cause panic intentionally */
 	if (p->refcnt <= 0)
 		keydb_delsecasvar(p);
-	splx(s);
+	crit_exit();
 }
 
 static void

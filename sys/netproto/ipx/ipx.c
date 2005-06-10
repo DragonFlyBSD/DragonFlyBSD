@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.7 2004/03/24 01:58:01 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.8 2005/06/10 22:34:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <sys/sockio.h>
 #include <sys/proc.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -254,7 +255,9 @@ ipx_ifinit(ifp, ia, sipx, scrub)
 	int scrub;
 {
 	struct sockaddr_ipx oldaddr;
-	int s = splimp(), error;
+	int error;
+
+	crit_enter();
 
 	/*
 	 * Set up new addresses.
@@ -277,10 +280,10 @@ ipx_ifinit(ifp, ia, sipx, scrub)
 	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (void *)ia,
 	   			      (struct ucred *)NULL))) {
 		ia->ia_addr = oldaddr;
-		splx(s);
+		crit_exit();
 		return (error);
 	}
-	splx(s);
+	crit_exit();
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 	/*
 	 * Add route for the network.

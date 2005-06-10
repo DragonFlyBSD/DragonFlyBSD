@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.10 2004/06/06 19:16:09 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.11 2005/06/10 22:34:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -312,7 +313,8 @@ ipx_pcbnotify(dst, errno, notify, param)
 	long param;
 {
 	struct ipxpcb *ipxp, *oinp;
-	int s = splimp();
+
+	crit_enter();
 
 	for (ipxp = (&ipxpcb)->ipxp_next; ipxp != (&ipxpcb);) {
 		if (!ipx_hosteq(*dst,ipxp->ipxp_faddr)) {
@@ -329,7 +331,7 @@ ipx_pcbnotify(dst, errno, notify, param)
 		oinp->ipxp_notify_param = param;
 		(*notify)(oinp);
 	}
-	splx(s);
+	crit_exit();
 }
 
 #ifdef notdef
