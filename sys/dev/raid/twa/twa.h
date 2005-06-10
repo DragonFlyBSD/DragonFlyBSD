@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.h,v 1.2 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.h,v 1.3 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -35,6 +35,7 @@
  * Author: Vinod Kashyap
  */
 
+#include <sys/thread2.h>
 
 /*
  * The scheme for the driver version is:
@@ -233,43 +234,36 @@ static __inline void twa_initq_ ## name(struct twa_softc *sc)		\
 }									\
 static __inline void twa_enqueue_ ## name(struct twa_request *tr)	\
 {									\
-	int	s;							\
-									\
-	s = splcam();							\
+	crit_enter();							\
 	TAILQ_INSERT_TAIL(&tr->tr_sc->twa_ ## name, tr, tr_link);	\
 	TWAQ_ADD(tr->tr_sc, index);					\
-	splx(s);							\
+	crit_exit();							\
 }									\
 static __inline void twa_requeue_ ## name(struct twa_request *tr)	\
 {									\
-	int	s;							\
-									\
-	s = splcam();							\
+	crit_enter();							\
 	TAILQ_INSERT_HEAD(&tr->tr_sc->twa_ ## name, tr, tr_link);	\
 	TWAQ_ADD(tr->tr_sc, index);					\
-	splx(s);							\
+	crit_exit();							\
 }									\
 static __inline struct twa_request *twa_dequeue_ ## name(struct twa_softc *sc)\
 {									\
 	struct twa_request	*tr;					\
-	int			s;					\
 									\
-	s = splcam();							\
+	crit_enter();							\
 	if ((tr = TAILQ_FIRST(&sc->twa_ ## name)) != NULL) {		\
 		TAILQ_REMOVE(&sc->twa_ ## name, tr, tr_link);		\
 		TWAQ_REMOVE(sc, index);					\
 	}								\
-	splx(s);							\
+	crit_exit();							\
 	return(tr);							\
 }									\
 static __inline void twa_remove_ ## name(struct twa_request *tr)	\
 {									\
-	int	s;							\
-									\
-	s = splcam();							\
+	crit_enter();							\
 	TAILQ_REMOVE(&tr->tr_sc->twa_ ## name, tr, tr_link);		\
 	TWAQ_REMOVE(tr->tr_sc, index);					\
-	splx(s);							\
+	crit_exit();							\
 }
 
 TWAQ_REQUEST_QUEUE(free, TWAQ_FREE)

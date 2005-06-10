@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_cam.c,v 1.1.2.3 2001/04/21 04:09:06 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.4 2004/03/15 03:05:11 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.5 2005/06/10 17:10:26 swildner Exp $
  */
 /*
  * CAM interface for FreeBSD
@@ -35,6 +35,7 @@
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/devicestat.h>
+#include <sys/thread2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -70,37 +71,32 @@ mly_initq_ccb(struct mly_softc *sc)
 static __inline void
 mly_enqueue_ccb(struct mly_softc *sc, union ccb *ccb)
 {
-    int		s;
-
-    s = splcam();
+    crit_enter();
     TAILQ_INSERT_TAIL(&sc->mly_cam_ccbq, &ccb->ccb_h, sim_links.tqe);
     MLYQ_ADD(sc, MLYQ_CCB);
-    splx(s);
+    crit_exit();
 }
 
 static __inline void
 mly_requeue_ccb(struct mly_softc *sc, union ccb *ccb)
 {
-    int		s;
-
-    s = splcam();
+    crit_enter();
     TAILQ_INSERT_HEAD(&sc->mly_cam_ccbq, &ccb->ccb_h, sim_links.tqe);
     MLYQ_ADD(sc, MLYQ_CCB);
-    splx(s);
+    crit_exit();
 }
 
 static __inline union ccb *
 mly_dequeue_ccb(struct mly_softc *sc)
 {
     union ccb	*ccb;
-    int		s;
 
-    s = splcam();
+    crit_enter();
     if ((ccb = (union ccb *)TAILQ_FIRST(&sc->mly_cam_ccbq)) != NULL) {
 	TAILQ_REMOVE(&sc->mly_cam_ccbq, &ccb->ccb_h, sim_links.tqe);
 	MLYQ_REMOVE(sc, MLYQ_CCB);
     }
-    splx(s);
+    crit_exit();
     return(ccb);
 }
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_pci.c,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.4 2005/05/24 20:59:04 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.5 2005/06/10 17:10:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -358,12 +359,11 @@ static int
 mly_pci_suspend(device_t dev)
 {
     struct mly_softc	*sc = device_get_softc(dev);
-    int			s;
 
     debug_called(1);
-    s = splcam();
+    crit_enter();
     mly_detach(sc);
-    splx(s);
+    crit_exit();
     return(0);
 }
 

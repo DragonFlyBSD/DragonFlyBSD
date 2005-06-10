@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.13 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.14 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -384,12 +384,12 @@ static int
 twe_detach(device_t dev)
 {
     struct twe_softc	*sc = device_get_softc(dev);
-    int			s, error;
+    int			error;
 
     debug_called(4);
 
     error = EBUSY;
-    s = splbio();
+    crit_enter();
     if (sc->twe_state & TWE_STATE_OPEN)
 	goto out;
 
@@ -402,7 +402,7 @@ twe_detach(device_t dev)
 
     error = 0;
  out:
-    splx(s);
+    crit_exit();
     return(error);
 }
 
@@ -416,11 +416,11 @@ static void
 twe_shutdown(device_t dev)
 {
     struct twe_softc	*sc = device_get_softc(dev);
-    int			i, s;
+    int			i;
 
     debug_called(4);
 
-    s = splbio();
+    crit_enter();
 
     /* 
      * Delete all our child devices.
@@ -434,7 +434,7 @@ twe_shutdown(device_t dev)
      */
     twe_deinit(sc);
 
-    splx(s);
+    crit_exit();
 }
 
 /********************************************************************************
@@ -444,15 +444,14 @@ static int
 twe_suspend(device_t dev)
 {
     struct twe_softc	*sc = device_get_softc(dev);
-    int			s;
 
     debug_called(4);
 
-    s = splbio();
+    crit_enter();
     sc->twe_state |= TWE_STATE_SUSPEND;
     
     twe_disable_interrupts(sc);
-    splx(s);
+    crit_exit();
 
     return(0);
 }
@@ -1103,12 +1102,12 @@ void
 twe_report(void)
 {
     struct twe_softc	*sc;
-    int			i, s;
+    int			i;
 
-    s = splbio();
+    crit_enter();
     for (i = 0; (sc = devclass_get_softc(twe_devclass, i)) != NULL; i++)
 	twe_print_controller(sc);
     printf("twed: total bio count in %u  out %u\n", twed_bio_in, twed_bio_out);
-    splx(s);
+    crit_exit();
 }
 #endif

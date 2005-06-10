@@ -25,8 +25,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.5 2005/02/17 13:59:36 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.6 2005/06/10 17:10:26 swildner Exp $
  */
+
+#include <sys/thread2.h>
 
 /********************************************************************************
  ********************************************************************************
@@ -327,46 +329,39 @@ mly_initq_ ## name (struct mly_softc *sc)				\
 static __inline void							\
 mly_enqueue_ ## name (struct mly_command *mc)				\
 {									\
-    int		s;							\
-									\
-    s = splcam();							\
+    crit_enter();							\
     TAILQ_INSERT_TAIL(&mc->mc_sc->mly_ ## name, mc, mc_link);		\
     MLYQ_ADD(mc->mc_sc, index);						\
-    splx(s);								\
+    crit_exit();							\
 }									\
 static __inline void							\
 mly_requeue_ ## name (struct mly_command *mc)				\
 {									\
-    int		s;							\
-									\
-    s = splcam();							\
+    crit_enter();							\
     TAILQ_INSERT_HEAD(&mc->mc_sc->mly_ ## name, mc, mc_link);		\
     MLYQ_ADD(mc->mc_sc, index);						\
-    splx(s);								\
+    crit_exit();							\
 }									\
 static __inline struct mly_command *					\
 mly_dequeue_ ## name (struct mly_softc *sc)				\
 {									\
     struct mly_command	*mc;						\
-    int			s;						\
 									\
-    s = splcam();							\
+    crit_enter();							\
     if ((mc = TAILQ_FIRST(&sc->mly_ ## name)) != NULL) {		\
 	TAILQ_REMOVE(&sc->mly_ ## name, mc, mc_link);			\
 	MLYQ_REMOVE(sc, index);						\
     }									\
-    splx(s);								\
+    crit_exit();							\
     return(mc);								\
 }									\
 static __inline void							\
 mly_remove_ ## name (struct mly_command *mc)				\
 {									\
-    int			s;						\
-									\
-    s = splcam();							\
+    crit_enter();							\
     TAILQ_REMOVE(&mc->mc_sc->mly_ ## name, mc, mc_link);		\
     MLYQ_REMOVE(mc->mc_sc, index);					\
-    splx(s);								\
+    crit_exit();							\
 }									\
 struct hack
 

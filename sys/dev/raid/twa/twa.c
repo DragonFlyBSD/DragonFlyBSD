@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.2 2004/06/21 15:39:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.3 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -557,7 +557,6 @@ twa_ioctl(struct twa_softc *sc, int cmd, void *buf)
 	struct twa_event_packet	event_buf;
 	int32_t			event_index;
 	int32_t			start_index;
-	int			s;
 	int			error = 0;
 		
 	switch (cmd) {
@@ -811,7 +810,7 @@ fw_passthru_done:
 					(wall_cmos_clock ? adjkerntz : 0);
 		copyin(user_buf->pdata, &twa_lock,
 				sizeof(struct twa_lock_packet));
-		s = splcam();
+		crit_enter();
 		if ((sc->twa_ioctl_lock.lock == TWA_LOCK_FREE) ||
 				(twa_lock.force_flag) ||
 				(cur_time >= sc->twa_ioctl_lock.timeout)) {
@@ -827,7 +826,7 @@ fw_passthru_done:
 			user_buf->twa_drvr_pkt.status =
 					TWA_ERROR_IOCTL_LOCK_ALREADY_HELD;
 		}
-		splx(s);
+		crit_exit();
 		copyout(&twa_lock, user_buf->pdata,
 				sizeof(struct twa_lock_packet));
 		break;
@@ -835,7 +834,7 @@ fw_passthru_done:
 
 
 	case TWA_IOCTL_RELEASE_LOCK:
-		s = splcam();
+		crit_enter();
 		if (sc->twa_ioctl_lock.lock == TWA_LOCK_FREE) {
 			twa_dbg_dprint(2, sc, "twa_ioctl: RELEASE_LOCK: Lock not held!");
 			user_buf->twa_drvr_pkt.status = TWA_ERROR_IOCTL_LOCK_NOT_HELD;
@@ -844,7 +843,7 @@ fw_passthru_done:
 			sc->twa_ioctl_lock.lock = TWA_LOCK_FREE;
 			user_buf->twa_drvr_pkt.status = 0;
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 
@@ -1381,7 +1380,6 @@ twa_complete_io(struct twa_request *tr)
 int
 twa_reset(struct twa_softc *sc)
 {
-	int	s;
 	int	error = 0;
 
 	twa_dbg_dprint_enter(2, sc);
@@ -1391,7 +1389,7 @@ twa_reset(struct twa_softc *sc)
 	 * accidental entry into our interrupt handler.
 	 */
 	twa_disable_interrupts(sc);
-	s = splcam();
+	crit_enter();
 	
 	/* Soft reset the controller. */
 	if ((error = twa_soft_reset(sc))) {
@@ -1418,7 +1416,7 @@ twa_reset(struct twa_softc *sc)
 	twa_drain_busy_queue(sc);
 
 out:
-	splx(s);
+	crit_exit();
 	/*
 	 * Enable interrupts, and also clear attention and response interrupts.
 	 */
@@ -1541,12 +1539,11 @@ twa_start(struct twa_request *tr)
 {
 	struct twa_softc	*sc = tr->tr_sc;
 	u_int32_t		status_reg;
-	int			s;
 	int			error;
 
 	twa_dbg_dprint_enter(10, sc);
 
-	s = splcam();
+	crit_enter();
 	/* Check to see if we can post a command. */
 	status_reg = TWA_READ_STATUS_REGISTER(sc);
 	if ((error = twa_check_ctlr_state(sc, status_reg)))
@@ -1575,7 +1572,7 @@ twa_start(struct twa_request *tr)
 	}
 
 out:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1596,13 +1593,12 @@ twa_done(struct twa_softc *sc)
 {
 	union twa_response_queue	rq;
 	struct twa_request		*tr;
-	int				s;
 	int				error = 0;
 	u_int32_t			status_reg;
     
 	twa_dbg_dprint_enter(10, sc);
 
-	s = splcam();
+	crit_enter();
 	for (;;) {
 		status_reg = TWA_READ_STATUS_REGISTER(sc);
 		if ((error = twa_check_ctlr_state(sc, status_reg)))
@@ -1620,7 +1616,7 @@ twa_done(struct twa_softc *sc)
 		twa_remove_busy(tr);
 		twa_enqueue_complete(tr);
 	}
-	splx(s);
+	crit_exit();
 
 	/* Complete this, and other requests in the complete queue. */
 	twa_drain_complete_queue(sc);
@@ -1997,10 +1993,9 @@ twa_enqueue_aen(struct twa_softc *sc, struct twa_command_header *cmd_hdr)
 	unsigned short		aen_code;
 	unsigned long		local_time;
 	unsigned long		sync_time;
-	int			s;
 
 	twa_dbg_dprint_enter(4, sc);
-	s = splcam();
+	crit_enter();
 	aen_code = cmd_hdr->status_block.error;
 
 	switch (aen_code) {
@@ -2071,7 +2066,7 @@ twa_enqueue_aen(struct twa_softc *sc, struct twa_command_header *cmd_hdr)
 		sc->twa_aen_head = (sc->twa_aen_head + 1) % TWA_Q_LENGTH;
 		break;
 	} /* switch */
-	splx(s);
+	crit_exit();
 }
 
 
@@ -2090,10 +2085,9 @@ static int
 twa_find_aen(struct twa_softc *sc, u_int16_t aen_code)
 {
 	u_int32_t	last_index;
-	int		s;
 	int		i;
 
-	s = splcam();
+	crit_enter();
 
 	if (sc->twa_aen_queue_wrapped)
 		last_index = sc->twa_aen_head;
@@ -2104,12 +2098,12 @@ twa_find_aen(struct twa_softc *sc, u_int16_t aen_code)
 	do {
 		i = (i + TWA_Q_LENGTH - 1) % TWA_Q_LENGTH;
 		if ((sc->twa_aen_queue[i])->aen_code == aen_code) {
-			splx(s);
+			crit_exit();
 			return(0);
 		}
 	} while (i != last_index);
 
-	splx(s);
+	crit_exit();
 	return(1);
 }
 

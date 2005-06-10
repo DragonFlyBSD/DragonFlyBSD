@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.7 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -400,13 +400,12 @@ static int
 twa_detach(device_t dev)
 {
 	struct twa_softc	*sc = device_get_softc(dev);
-	int			s;
 	int			error;
 
 	twa_dbg_dprint_enter(3, sc);
 
 	error = EBUSY;
-	s = splcam();
+	crit_enter();
 	if (sc->twa_state & TWA_STATE_OPEN)
 		goto out;
 
@@ -419,7 +418,7 @@ twa_detach(device_t dev)
 	error = 0;
 
 out:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -439,17 +438,16 @@ static int
 twa_shutdown(device_t dev)
 {
 	struct twa_softc	*sc = device_get_softc(dev);
-	int			s;
 	int			error = 0;
 
 	twa_dbg_dprint_enter(3, sc);
 
-	s = splcam();
+	crit_enter();
 
 	/* Disconnect from the controller. */
 	error = twa_deinit_ctlr(sc);
 
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -469,15 +467,14 @@ static int
 twa_suspend(device_t dev)
 {
 	struct twa_softc	*sc = device_get_softc(dev);
-	int			s;
 
 	twa_dbg_dprint_enter(3, sc);
 
-	s = splcam();
+	crit_enter();
 	sc->twa_state |= TWA_STATE_SUSPEND;
     
 	twa_disable_interrupts(sc);
-	splx(s);
+	crit_exit();
 
 	return(1);
 }
@@ -924,10 +921,9 @@ twa_report(void)
 {
 	struct twa_softc	*sc;
 	struct twa_request	*tr;
-	int			s;
 	int			i;
 
-	s = splcam();
+	crit_enter();
 	for (i = 0; (sc = devclass_get_softc(twa_devclass, i)) != NULL; i++) {
 		twa_print_controller(sc);
 		TAILQ_FOREACH(tr, &sc->twa_busy, tr_link)
@@ -935,7 +931,7 @@ twa_report(void)
 		TAILQ_FOREACH(tr, &sc->twa_complete, tr_link)
 			twa_print_request(tr, TWA_CMD_COMPLETE);
 	}
-	splx(s);
+	crit_exit();
 }
 
 
@@ -953,17 +949,16 @@ void
 twa_reset_stats(void)
 {
 	struct twa_softc	*sc;
-	int			s;
 	int			i;
 
-	s = splcam();
+	crit_enter();
 	for (i = 0; (sc = devclass_get_softc(twa_devclass, i)) != NULL; i++) {
 		sc->twa_qstats[TWAQ_FREE].q_max = 0;
 		sc->twa_qstats[TWAQ_BUSY].q_max = 0;
 		sc->twa_qstats[TWAQ_PENDING].q_max = 0;
 		sc->twa_qstats[TWAQ_COMPLETE].q_max = 0;
 	}
-	splx(s);
+	crit_exit();
 }
 
 

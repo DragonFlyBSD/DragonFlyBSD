@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.11 2004/09/15 14:24:33 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.12 2005/06/10 17:10:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/cam/scsi/scsi_all.h>
 
@@ -614,7 +615,6 @@ mly_fetch_event(struct mly_softc *sc)
 {
     struct mly_command		*mc;
     struct mly_command_ioctl	*mci;
-    int				s;
     u_int32_t			event;
 
     debug_called(2);
@@ -634,14 +634,14 @@ mly_fetch_event(struct mly_softc *sc)
      * Get an event number to fetch.  It's possible that we've raced with another
      * context for the last event, in which case there will be no more events.
      */
-    s = splcam();
+    crit_enter();
     if (sc->mly_event_counter == sc->mly_event_waiting) {
 	mly_release_command(mc);
-	splx(s);
+	crit_exit();
 	return;
     }
     event = sc->mly_event_counter++;
-    splx(s);
+    crit_exit();
 
     /* 
      * Build the ioctl.
@@ -829,12 +829,12 @@ static int
 mly_immediate_command(struct mly_command *mc)
 {
     struct mly_softc	*sc = mc->mc_sc;
-    int			error, s;
+    int			error;
 
     debug_called(2);
 
     /* spinning at splcam is ugly, but we're only used during controller init */
-    s = splcam();
+    crit_enter();
     if ((error = mly_start(mc)))
 	return(error);
 
@@ -849,7 +849,7 @@ mly_immediate_command(struct mly_command *mc)
 	    mly_done(mc->mc_sc);
 	}
     }
-    splx(s);
+    crit_exit();
     return(0);
 }
 
@@ -894,7 +894,6 @@ mly_start(struct mly_command *mc)
 {
     struct mly_softc		*sc = mc->mc_sc;
     union mly_command_packet	*pkt;
-    int				s;
 
     debug_called(2);
 
@@ -904,7 +903,7 @@ mly_start(struct mly_command *mc)
     mly_map_command(mc);
     mc->mc_packet->generic.command_id = mc->mc_slot;
 
-    s = splcam();
+    crit_enter();
 
     /*
      * Do we have to use the hardware mailbox?
@@ -914,7 +913,7 @@ mly_start(struct mly_command *mc)
 	 * Check to see if the controller is ready for us.
 	 */
 	if (MLY_IDBR_TRUE(sc, MLY_HM_CMDSENT)) {
-	    splx(s);
+	    crit_exit();
 	    return(EBUSY);
 	}
 	mc->mc_flags |= MLY_CMD_BUSY;
@@ -931,7 +930,7 @@ mly_start(struct mly_command *mc)
 
 	/* check to see if the next index is free yet */
 	if (pkt->mmbox.flag != 0) {
-	    splx(s);
+	    crit_exit();
 	    return(EBUSY);
 	}
 	mc->mc_flags |= MLY_CMD_BUSY;
@@ -951,7 +950,7 @@ mly_start(struct mly_command *mc)
     }
 
     mly_enqueue_busy(mc);
-    splx(s);
+    crit_exit();
     return(0);
 }
 
@@ -964,9 +963,9 @@ mly_done(struct mly_softc *sc)
     struct mly_command		*mc;
     union mly_status_packet	*sp;
     u_int16_t			slot;
-    int				s, worked;
+    int				worked;
 
-    s = splcam();
+    crit_enter();
     worked = 0;
 
     /* pick up hardware-mailbox commands */
@@ -1024,7 +1023,7 @@ mly_done(struct mly_softc *sc)
 	MLY_SET_REG(sc, sc->mly_odbr, MLY_AM_STSREADY);
     }
 
-    splx(s);
+    crit_exit();
     if (worked) {
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 	if (sc->mly_state & MLY_STATE_INTERRUPTS_ON)
@@ -1762,7 +1761,7 @@ static int
 mly_user_command(struct mly_softc *sc, struct mly_user_command *uc)
 {
     struct mly_command			*mc;
-    int					error, s;
+    int					error;
 
     /* allocate a command */
     if (mly_alloc_command(sc, &mc)) {
@@ -1791,12 +1790,12 @@ mly_user_command(struct mly_softc *sc, struct mly_user_command *uc)
     mc->mc_complete = NULL;
 
     /* execute the command */
-    s = splcam();
+    crit_enter();
     mly_requeue_ready(mc);
     mly_startio(sc);
     while (!(mc->mc_flags & MLY_CMD_COMPLETE))
 	tsleep(mc, 0, "mlyioctl", 0);
-    splx(s);
+    crit_exit();
 
     /* return the data to userspace */
     if (uc->DataTransferLength > 0)
@@ -1834,18 +1833,18 @@ static int
 mly_user_health(struct mly_softc *sc, struct mly_user_health *uh)
 {
     struct mly_health_status		mh;
-    int					error, s;
+    int					error;
     
     /* fetch the current health status from userspace */
     if ((error = copyin(uh->HealthStatusBuffer, &mh, sizeof(mh))) != 0)
 	return(error);
 
     /* spin waiting for a status update */
-    s = splcam();
+    crit_enter();
     error = EWOULDBLOCK;
     while ((error != 0) && (sc->mly_event_change == mh.change_counter))
 	error = tsleep(&sc->mly_event_change, PCATCH, "mlyhealth", 0);
-    splx(s);
+    crit_exit();
     
     /* copy the controller's health status buffer out (there is a race here if it changes again) */
     error = copyout(&sc->mly_mmbox->mmm_health.status, uh->HealthStatusBuffer, 

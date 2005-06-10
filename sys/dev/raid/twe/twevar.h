@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.4 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.3 2004/01/05 17:40:00 drhodus Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.4 2005/06/10 17:10:26 swildner Exp $
  */
 
 #ifdef TWE_DEBUG
@@ -186,46 +186,39 @@ twe_initq_ ## name (struct twe_softc *sc)				\
 static __inline void							\
 twe_enqueue_ ## name (struct twe_request *tr)				\
 {									\
-    int		s;							\
-									\
-    s = splbio();							\
+    crit_enter();							\
     TAILQ_INSERT_TAIL(&tr->tr_sc->twe_ ## name, tr, tr_link);		\
     TWEQ_ADD(tr->tr_sc, index);						\
-    splx(s);								\
+    crit_exit();							\
 }									\
 static __inline void							\
 twe_requeue_ ## name (struct twe_request *tr)				\
 {									\
-    int		s;							\
-									\
-    s = splbio();							\
+    crit_enter();							\
     TAILQ_INSERT_HEAD(&tr->tr_sc->twe_ ## name, tr, tr_link);		\
     TWEQ_ADD(tr->tr_sc, index);						\
-    splx(s);								\
+    crit_exit();							\
 }									\
 static __inline struct twe_request *					\
 twe_dequeue_ ## name (struct twe_softc *sc)				\
 {									\
     struct twe_request	*tr;						\
-    int			s;						\
 									\
-    s = splbio();							\
+    crit_enter();							\
     if ((tr = TAILQ_FIRST(&sc->twe_ ## name)) != NULL) {		\
 	TAILQ_REMOVE(&sc->twe_ ## name, tr, tr_link);			\
 	TWEQ_REMOVE(sc, index);						\
     }									\
-    splx(s);								\
+    crit_exit();							\
     return(tr);								\
 }									\
 static __inline void							\
 twe_remove_ ## name (struct twe_request *tr)				\
 {									\
-    int			s;						\
-									\
-    s = splbio();							\
+    crit_enter();							\
     TAILQ_REMOVE(&tr->tr_sc->twe_ ## name, tr, tr_link);		\
     TWEQ_REMOVE(tr->tr_sc, index);					\
-    splx(s);								\
+    crit_exit();							\
 }
 
 TWEQ_REQUEST_QUEUE(free, TWEQ_FREE)
@@ -247,25 +240,22 @@ twe_initq_bio(struct twe_softc *sc)
 static __inline void
 twe_enqueue_bio(struct twe_softc *sc, twe_bio *bp)
 {
-    int		s;
-
-    s = splbio();
+    crit_enter();
     TWE_BIO_QINSERT(sc->twe_bioq, bp);
     TWEQ_ADD(sc, TWEQ_BIO);
-    splx(s);
+    crit_exit();
 }
 
 static __inline twe_bio *
 twe_dequeue_bio(struct twe_softc *sc)
 {
-    int		s;
     twe_bio	*bp;
 
-    s = splbio();
+    crit_enter();
     if ((bp = TWE_BIO_QFIRST(sc->twe_bioq)) != NULL) {
 	TWE_BIO_QREMOVE(sc->twe_bioq, bp);
 	TWEQ_REMOVE(sc, TWEQ_BIO);
     }
-    splx(s);
+    crit_exit();
     return(bp);
 }

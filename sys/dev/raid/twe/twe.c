@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.9 2004/06/25 18:09:56 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.10 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -480,7 +480,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
     int				*arg = (int *)addr;
     struct twe_request		*tr;
     u_int8_t			srid;
-    int				s, error;
+    int				error;
 
     error = 0;
     switch(cmd) {
@@ -558,13 +558,13 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 
 	/* wait for another AEN to show up */
     case TWEIO_AEN_WAIT:
-	s = splbio();
+	crit_enter();
 	while ((*arg = twe_dequeue_aen(sc)) == TWE_AEN_QUEUE_EMPTY) {
 	    error = tsleep(&sc->twe_aen_queue, 0 | PCATCH, "tweaen", 0);
 	    if (error == EINTR)
 		break;
 	}
-	splx(s);
+	crit_exit();
 	break;
 
     case TWEIO_GET_PARAM:
@@ -888,18 +888,16 @@ twe_init_connection(struct twe_softc *sc, int mode)
 static int
 twe_wait_request(struct twe_request *tr)
 {
-    int		s;
-
     debug_called(4);
 
     tr->tr_flags |= TWE_CMD_SLEEPER;
     tr->tr_status = TWE_CMD_BUSY;
     twe_enqueue_ready(tr);
     twe_startio(tr->tr_sc);
-    s = splbio();
+    crit_enter();
     while (tr->tr_status == TWE_CMD_BUSY)
 	tsleep(tr, 0, "twewait", 0);
-    splx(s);
+    crit_exit();
     
     return(0);
 }
@@ -958,7 +956,7 @@ static void
 twe_reset(struct twe_softc *sc)
 {
     struct twe_request	*tr;
-    int			i, s;
+    int			i;
 
     /*
      * Sleep for a short period to allow AENs to be signalled.
@@ -971,7 +969,7 @@ twe_reset(struct twe_softc *sc)
      */
     twe_printf(sc, "controller reset in progress...\n");
     twe_disable_interrupts(sc);
-    s = splbio();
+    crit_enter();
 
     /*
      * Try to soft-reset the controller.
@@ -1007,7 +1005,7 @@ twe_reset(struct twe_softc *sc)
     twe_printf(sc, "controller reset done, %d commands restarted\n", i);
 
 out:
-    splx(s);
+    crit_exit();
     twe_enable_interrupts(sc);
 }
 
@@ -1026,7 +1024,7 @@ static int
 twe_start(struct twe_request *tr)
 {
     struct twe_softc	*sc = tr->tr_sc;
-    int			i, s, done;
+    int			i, done;
     u_int32_t		status_reg;
 
     debug_called(4);
@@ -1041,7 +1039,7 @@ twe_start(struct twe_request *tr)
      *     and let the command be rescheduled.
      */
     for (i = 100000, done = 0; (i > 0) && !done; i--) {
-	s = splbio();
+	crit_enter();
 	
 	/* check to see if we can post a command */
 	status_reg = TWE_STATUS(sc);
@@ -1062,7 +1060,7 @@ twe_start(struct twe_request *tr)
 	    }
 #endif
 	}
-	splx(s);	/* drop spl to allow completion interrupts */
+	crit_exit();	/* drop spl to allow completion interrupts */
     }
 
     /* command is enqueued */
@@ -1088,14 +1086,14 @@ twe_done(struct twe_softc *sc)
 {
     TWE_Response_Queue	rq;
     struct twe_request	*tr;
-    int			s, found;
+    int			found;
     u_int32_t		status_reg;
     
     debug_called(5);
 
     /* loop collecting completed commands */
     found = 0;
-    s = splbio();
+    crit_enter();
     for (;;) {
 	status_reg = TWE_STATUS(sc);
 	twe_check_bits(sc, status_reg);		/* XXX should this fail? */
@@ -1116,7 +1114,7 @@ twe_done(struct twe_softc *sc)
 	    break;					/* no response ready */
 	}
     }
-    splx(s);
+    crit_exit();
 
     /* if we've completed any commands, try posting some more */
     if (found)
@@ -1380,14 +1378,14 @@ static void
 twe_enqueue_aen(struct twe_softc *sc, u_int16_t aen)
 {
     char	*msg;
-    int		s, next, nextnext;
+    int		next, nextnext;
 
     debug_called(4);
 
     if ((msg = twe_format_aen(sc, aen)) != NULL)
 	twe_printf(sc, "AEN: <%s>\n", msg);
 
-    s = splbio();
+    crit_enter();
     /* enqueue the AEN */
     next = ((sc->twe_aen_head + 1) % TWE_Q_LENGTH);
     nextnext = ((sc->twe_aen_head + 2) % TWE_Q_LENGTH);
@@ -1410,7 +1408,7 @@ twe_enqueue_aen(struct twe_softc *sc, u_int16_t aen)
 	sc->twe_wait_aen = -1;
 	wakeup(&sc->twe_wait_aen);
     }
-    splx(s);
+    crit_exit();
 }
 
 /********************************************************************************
@@ -1442,15 +1440,15 @@ twe_dequeue_aen(struct twe_softc *sc)
 static int
 twe_find_aen(struct twe_softc *sc, u_int16_t aen)
 {
-    int		i, s, missing;
+    int		i, missing;
 
     missing = 1;
-    s = splbio();
+    crit_enter();
     for (i = sc->twe_aen_tail; (i != sc->twe_aen_head) && missing; i = (i + 1) % TWE_Q_LENGTH) {
 	if (sc->twe_aen_queue[i] == aen)
 	    missing = 0;
     }
-    splx(s);
+    crit_exit();
     return(missing);
 }
 
@@ -1467,14 +1465,14 @@ static int
 twe_wait_aen(struct twe_softc *sc, int aen, int timeout)
 {
     time_t	expiry;
-    int		found, s;
+    int		found;
 
     debug_called(4);
 
     expiry = time_second + timeout;
     found = 0;
 
-    s = splbio();
+    crit_enter();
     sc->twe_wait_aen = aen;
     do {
 	twe_fetch_aen(sc);
@@ -1482,7 +1480,7 @@ twe_wait_aen(struct twe_softc *sc, int aen, int timeout)
 	if (sc->twe_wait_aen == -1)
 	    found = 1;
     } while ((time_second <= expiry) && !found);
-    splx(s);
+    crit_exit();
     return(!found);
 }
 #endif

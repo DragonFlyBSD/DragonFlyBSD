@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.12 2005/05/24 20:59:04 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.13 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #include <sys/devicestat.h>
 #include <sys/disk.h>
 #include <sys/stat.h>
+#include <sys/thread2.h>
 
 #include <machine/resource.h>
 #include <machine/bus_memio.h>
@@ -568,12 +569,12 @@ mlx_detach(device_t dev)
 {
     struct mlx_softc	*sc = device_get_softc(dev);
     struct mlxd_softc	*mlxd;
-    int			i, s, error;
+    int			i, error;
 
     debug_called(1);
 
     error = EBUSY;
-    s = splbio();
+    crit_enter();
     if (sc->mlx_state & MLX_STATE_OPEN)
 	goto out;
 
@@ -593,7 +594,7 @@ mlx_detach(device_t dev)
 
     error = 0;
  out:
-    splx(s);
+    crit_exit();
     return(error);
 }
 
@@ -611,11 +612,11 @@ int
 mlx_shutdown(device_t dev)
 {
     struct mlx_softc	*sc = device_get_softc(dev);
-    int			i, s, error;
+    int			i, error;
 
     debug_called(1);
 
-    s = splbio();
+    crit_enter();
     error = 0;
 
     sc->mlx_state |= MLX_STATE_SHUTDOWN;
@@ -639,7 +640,7 @@ mlx_shutdown(device_t dev)
     }
 
  out:
-    splx(s);
+    crit_exit();
     return(error);
 }
 
@@ -650,11 +651,10 @@ int
 mlx_suspend(device_t dev)
 {
     struct mlx_softc	*sc = device_get_softc(dev);
-    int			s;
 
     debug_called(1);
 
-    s = splbio();
+    crit_enter();
     sc->mlx_state |= MLX_STATE_SUSPEND;
     
     /* flush controller */
@@ -662,7 +662,7 @@ mlx_suspend(device_t dev)
     printf("%s\n", mlx_flush(sc) ? "failed" : "done");
 
     sc->mlx_intaction(sc, MLX_INTACTION_DISABLE);
-    splx(s);
+    crit_exit();
 
     return(0);
 }
@@ -705,14 +705,12 @@ mlx_intr(void *arg)
 int
 mlx_submit_buf(struct mlx_softc *sc, mlx_bio *bp)
 {
-    int		s;
-    
     debug_called(1);
 
-    s = splbio();
+    crit_enter();
     MLX_BIO_QINSERT(sc->mlx_bioq, bp);
     sc->mlx_waitbufs++;
-    splx(s);
+    crit_exit();
     mlx_startio(sc);
     return(0);
 }
@@ -1697,7 +1695,7 @@ static int
 mlx_poll_command(struct mlx_command *mc)
 {
     struct mlx_softc	*sc = mc->mc_sc;
-    int			error, count, s;
+    int			error, count;
 
     debug_called(1);
 
@@ -1713,9 +1711,9 @@ mlx_poll_command(struct mlx_command *mc)
 	
     } while ((mc->mc_status == MLX_STATUS_BUSY) && (count++ < 15000000));
     if (mc->mc_status != MLX_STATUS_BUSY) {
-	s = splbio();
+	crit_enter();
 	TAILQ_REMOVE(&sc->mlx_work, mc, mc_link);
-	splx(s);
+	crit_exit();
 	return(0);
     }
     device_printf(sc->mlx_dev, "command failed - %s\n", mlx_diagnose_command(mc));
@@ -1738,14 +1736,13 @@ mlx_startio(struct mlx_softc *sc)
     int			blkcount;
     int			driveno;
     int			cmd;
-    int			s;
 
     /* avoid reentrancy */
     if (mlx_lock_tas(sc, MLX_LOCK_STARTING))
 	return;
 
     /* spin until something prevents us from doing any work */
-    s = splbio();
+    crit_enter();
     for (;;) {
 
 	/* see if there's work to be done */
@@ -1762,7 +1759,7 @@ mlx_startio(struct mlx_softc *sc)
 	/* get the buf containing our work */
 	MLX_BIO_QREMOVE(sc->mlx_bioq, bp);
 	sc->mlx_waitbufs--;
-	splx(s);
+	crit_exit();
 	
 	/* connect the buf to the command */
 	mc->mc_complete = mlx_completeio;
@@ -1815,9 +1812,9 @@ mlx_startio(struct mlx_softc *sc)
 	    mc->mc_status = MLX_STATUS_WEDGED;
 	    mlx_completeio(mc);
 	}
-	s = splbio();
+	crit_enter();
     }
-    splx(s);
+    crit_exit();
     mlx_lock_clr(sc, MLX_LOCK_STARTING);
 }
 
@@ -1966,7 +1963,7 @@ static int
 mlx_getslot(struct mlx_command *mc)
 {
     struct mlx_softc	*sc = mc->mc_sc;
-    int			s, slot, limit;
+    int			slot, limit;
 
     debug_called(1);
 
@@ -1986,7 +1983,7 @@ mlx_getslot(struct mlx_command *mc)
      *
      * XXX linear search is slow
      */
-    s = splbio();
+    crit_enter();
     for (slot = 0; slot < limit; slot++) {
 	debug(2, "try slot %d", slot);
 	if (sc->mlx_busycmd[slot] == NULL)
@@ -1996,7 +1993,7 @@ mlx_getslot(struct mlx_command *mc)
 	sc->mlx_busycmd[slot] = mc;
 	sc->mlx_busycmds++;
     }
-    splx(s);
+    crit_exit();
 
     /* out of slots? */
     if (slot >= limit)
@@ -2087,7 +2084,7 @@ static int
 mlx_start(struct mlx_command *mc)
 {
     struct mlx_softc	*sc = mc->mc_sc;
-    int			i, s, done;
+    int			i, done;
 
     debug_called(1);
 
@@ -2102,13 +2099,13 @@ mlx_start(struct mlx_command *mc)
     
     /* spin waiting for the mailbox */
     for (i = 100000, done = 0; (i > 0) && !done; i--) {
-	s = splbio();
+	crit_enter();
 	if (sc->mlx_tryqueue(sc, mc)) {
 	    done = 1;
 	    /* move command to work queue */
 	    TAILQ_INSERT_TAIL(&sc->mlx_work, mc, mc_link);
 	}
-	splx(s);	/* drop spl to allow completion interrupts */
+	crit_exit();	/* drop spl to allow completion interrupts */
     }
 
     /* command is enqueued */
@@ -2137,7 +2134,7 @@ static int
 mlx_done(struct mlx_softc *sc)
 {
     struct mlx_command	*mc;
-    int			s, result;
+    int			result;
     u_int8_t		slot;
     u_int16_t		status;
     
@@ -2146,7 +2143,7 @@ mlx_done(struct mlx_softc *sc)
     result = 0;
 
     /* loop collecting completed commands */
-    s = splbio();
+    crit_enter();
     for (;;) {
 	/* poll for a completed command's identifier and status */
 	if (sc->mlx_findcomplete(sc, &slot, &status)) {
@@ -2169,7 +2166,7 @@ mlx_done(struct mlx_softc *sc)
 	    break;
 	}
     }
-    splx(s);
+    crit_exit();
 
     /* if we've completed any commands, try posting some more */
     if (result)
@@ -2188,7 +2185,7 @@ static void
 mlx_complete(struct mlx_softc *sc) 
 {
     struct mlx_command	*mc, *nc;
-    int			s, count;
+    int			count;
     
     debug_called(2);
 
@@ -2196,7 +2193,7 @@ mlx_complete(struct mlx_softc *sc)
     if (mlx_lock_tas(sc, MLX_LOCK_COMPLETING))
 	return;
 
-    s = splbio();
+    crit_enter();
     count = 0;
 
     /* scan the list of busy/done commands */
@@ -2234,7 +2231,7 @@ mlx_complete(struct mlx_softc *sc)
 	}
 	mc = nc;
     }
-    splx(s);
+    crit_exit();
 
     mlx_lock_clr(sc, MLX_LOCK_COMPLETING);
 }
@@ -2264,14 +2261,13 @@ mlx_alloccmd(struct mlx_softc *sc)
 {
     struct mlx_command	*mc;
     int			error;
-    int			s;
 
     debug_called(1);
 
-    s = splbio();
+    crit_enter();
     if ((mc = TAILQ_FIRST(&sc->mlx_freecmds)) != NULL)
 	TAILQ_REMOVE(&sc->mlx_freecmds, mc, mc_link);
-    splx(s);
+    crit_exit();
 
     /* allocate a new command buffer? */
     if (mc == NULL) {
@@ -2295,13 +2291,11 @@ mlx_alloccmd(struct mlx_softc *sc)
 static void
 mlx_releasecmd(struct mlx_command *mc)
 {
-    int		s;
-    
     debug_called(1);
 
-    s = splbio();
+    crit_enter();
     TAILQ_INSERT_HEAD(&mc->mc_sc->mlx_freecmds, mc, mc_link);
-    splx(s);
+    crit_exit();
 }
 
 /********************************************************************************

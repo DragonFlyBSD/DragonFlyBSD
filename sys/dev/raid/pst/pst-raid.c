@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.11 2004/09/15 13:54:42 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.12 2005/06/10 17:10:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/eventhandler.h>
 #include <sys/malloc.h>
 #include <sys/lock.h>
+#include <sys/thread2.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/stdarg.h>
@@ -225,11 +226,11 @@ static void
 pststrategy(struct buf *bp)
 {
     struct pst_softc *psc = bp->b_dev->si_drv1;
-    int s = splbio();
 
+    crit_enter();
     bufqdisksort(&psc->queue, bp);
     pst_start(psc);
-    splx(s);
+    crit_exit();
 }
 
 static void
@@ -273,7 +274,6 @@ pst_done(struct iop_softc *sc, u_int32_t mfa, struct i2o_single_reply *reply)
     struct pst_request *request =
         (struct pst_request *)reply->transaction_context;
     struct pst_softc *psc = request->psc;
-    int s;
 
     callout_stop(&request->timeout);
     request->bp->b_resid = request->bp->b_bcount - reply->donecount;
@@ -284,19 +284,19 @@ pst_done(struct iop_softc *sc, u_int32_t mfa, struct i2o_single_reply *reply)
     }
     biodone(request->bp);
     free(request, M_PSTRAID);
-    s = splbio();
+    crit_enter();
     psc->iop->reg->oqueue = mfa;
     psc->outstanding--;
     pst_start(psc);
-    splx(s);
+    crit_exit();
 }
 
 static void
 pst_timeout(void *xrequest)
 {
     struct pst_request *request = xrequest;
-    int s = splbio();
 
+    crit_enter();
     printf("pst: timeout mfa=0x%08x cmd=%s\n",
 	   request->mfa, request->bp->b_flags & B_READ ? "READ" : "WRITE");
     iop_free_mfa(request->psc->iop, request->mfa);
@@ -307,7 +307,7 @@ pst_timeout(void *xrequest)
 	request->bp->b_flags |= B_ERROR;
 	biodone(request->bp);
 	request->psc->outstanding--;
-	splx(s);
+	crit_exit();
 	return;
     }
     if (!dumping)
@@ -320,7 +320,7 @@ pst_timeout(void *xrequest)
 	biodone(request->bp);
 	request->psc->outstanding--;
     }
-    splx(s);
+    crit_exit();
 }
 
 int

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_includes.h,v 1.1 2004/04/16 20:13:17 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_includes.h,v 1.2 2005/06/10 17:10:26 swildner Exp $
  */
 
 /*
@@ -44,6 +44,7 @@
 #include <sys/disk.h>
 #include <sys/stat.h>
 #include <sys/devicestat.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
