@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.20 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.21 2005/06/10 16:16:51 joerg Exp $
  */
 
 /*
@@ -218,8 +218,6 @@ epic_attach(dev)
 	int unit, error;
 	int i, rid, tmp;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 
@@ -282,27 +280,13 @@ epic_attach(dev)
 
 	if (sc->irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
-		bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-			       epic_intr, sc, &sc->sc_ih, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-		bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
-		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
 	/* Do OS independent part, including chip wakeup and reset */
 	error = epic_common_attach(sc);
 	if (error) {
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-		bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -311,9 +295,6 @@ epic_attach(dev)
 	if (mii_phy_probe(dev, &sc->miibus,
 	    epic_ifmedia_upd, epic_ifmedia_sts)) {
 		device_printf(dev, "ERROR! MII without any PHY!?\n");
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-		bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -334,9 +315,19 @@ epic_attach(dev)
 	ether_ifattach(ifp, sc->sc_macaddr);
 	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 
-fail:
-	crit_exit();
+	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
+			       epic_intr, sc, &sc->sc_ih, NULL);
 
+	if (error) {
+		device_printf(dev, "couldn't set up irq\n");
+		ether_ifdetach(ifp);
+		goto fail;
+	}
+
+	return(0);
+
+fail:
+	epic_detach(dev);
 	return(error);
 }
 
@@ -350,27 +341,36 @@ epic_detach(dev)
 	struct ifnet *ifp;
 	epic_softc_t *sc;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	ether_ifdetach(ifp);
+	crit_enter();
 
-	epic_stop(sc);
+	if (device_is_attached(dev)) {
+		ether_ifdetach(ifp);
+		epic_stop(sc);
+	}
 
+	if (sc->miibus)
+		device_delete_child(dev, sc->miibus);
 	bus_generic_detach(dev);
-	device_delete_child(dev, sc->miibus);
 
-	bus_teardown_intr(dev, sc->irq, sc->sc_ih);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-	bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
-
-	free(sc->tx_flist, M_DEVBUF);
-	free(sc->tx_desc, M_DEVBUF);
-	free(sc->rx_desc, M_DEVBUF);
+	if (sc->sc_ih)
+		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
 
 	crit_exit();
+
+	if (sc->irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
+	if (sc->res)
+		bus_release_resource(dev, EPIC_RES, EPIC_RID, sc->res);
+
+	if (sc->tx_flist)
+		free(sc->tx_flist, M_DEVBUF);
+	if (sc->tx_desc)
+		free(sc->tx_desc, M_DEVBUF);
+	if (sc->rx_desc)
+		free(sc->rx_desc, M_DEVBUF);
 
 	return(0);
 }
