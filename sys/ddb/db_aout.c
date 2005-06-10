@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_aout.c,v 1.27 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_aout.c,v 1.4 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_aout.c,v 1.5 2005/06/10 20:16:31 swildner Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  * Symbol table routines for a.out format files.
  */
 
-#if !defined(__ELF__) && !defined(__alpha__)
+#if !defined(__ELF__)
 
 #include <sys/param.h>
 #include <sys/systm.h>
