@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.38 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.2 2005/05/24 20:58:54 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.3 2005/06/10 18:33:04 dillon Exp $
  */
 
 /*
@@ -292,12 +292,12 @@ ohci_pci_attach(device_t self)
 	err = ohci_init(sc);
 	if (!err)
 		err = device_probe_and_attach(sc->sc_bus.bdev);
-
 	if (err) {
 		device_printf(self, "USB init failed\n");
 		ohci_pci_detach(self);
 		return EIO;
 	}
+	ohci_init_intrs(sc);
 	return 0;
 }
 

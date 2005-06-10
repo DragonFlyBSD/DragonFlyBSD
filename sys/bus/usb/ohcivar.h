@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.36 2003/12/22 15:18:46 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohcivar.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/ohcivar.h,v 1.5 2005/06/10 18:33:04 dillon Exp $
  */
 
 /*
@@ -161,6 +161,7 @@ struct ohci_xfer {
 #define OXFER(xfer) ((struct ohci_xfer *)(xfer))
 
 usbd_status	ohci_init(ohci_softc_t *);
+void		ohci_init_intrs(ohci_softc_t *);
 int		ohci_intr(void *);
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 int		ohci_detach(ohci_softc_t *, int);

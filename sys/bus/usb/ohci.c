@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/ohci.c,v 1.141 2003/12/22 15:40:10 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci.c,v 1.10 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci.c,v 1.11 2005/06/10 18:33:04 dillon Exp $
  */
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -829,6 +829,12 @@ ohci_init(ohci_softc_t *sc)
 	return (err);
 }
 
+void
+ohci_init_intrs(ohci_softc_t *sc)
+{
+	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs | OHCI_MIE);
+}
+
 Static usbd_status
 ohci_controller_init(ohci_softc_t *sc)
 {
@@ -903,9 +909,12 @@ ohci_controller_init(ohci_softc_t *sc)
 	OWRITE4(sc, OHCI_HCCA, DMAADDR(&sc->sc_hccadma, 0));
 	OWRITE4(sc, OHCI_CONTROL_HEAD_ED, sc->sc_ctrl_head->physaddr);
 	OWRITE4(sc, OHCI_BULK_HEAD_ED, sc->sc_bulk_head->physaddr);
-	/* disable all interrupts and then switch on all desired interrupts */
+
+	/*
+	 * disable all interrupts to avoid events while we are initializing
+	 * the device.
+	 */
 	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
-	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs | OHCI_MIE);
 	/* switch on desired functional features */
 	ctl = OREAD4(sc, OHCI_CONTROL);
 	ctl &= ~(OHCI_CBSR_MASK | OHCI_LES | OHCI_HCFS_MASK | OHCI_IR);
@@ -1079,6 +1088,8 @@ ohci_power(int why, void *v)
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_RECOVERY);
 		sc->sc_control = sc->sc_intre = 0;
 		sc->sc_bus.use_polling--;
+		ohci_init_intrs(sc);
+
 	}
 	crit_exit();
 }
