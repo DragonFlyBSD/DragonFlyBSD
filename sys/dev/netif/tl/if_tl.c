@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.21 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.22 2005/06/10 16:19:41 joerg Exp $
  */
 
 /*
@@ -2011,8 +2011,6 @@ static void tl_init(xsc)
 
 	crit_enter();
 
-	ifp = &sc->arpcom.ac_if;
-
 	/*
 	 * Cancel pending I/O.
 	 */
@@ -2080,10 +2078,10 @@ static void tl_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	crit_exit();
-
 	/* Start the stats update counter */
 	callout_reset(&sc->tl_stat_timer, hz, tl_stats_update, sc);
+
+	crit_exit();
 }
 
 /*
