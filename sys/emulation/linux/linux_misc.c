@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.23 2005/04/22 02:09:15 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.24 2005/06/10 23:27:01 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -55,6 +55,7 @@
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 #include <sys/wait.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -163,7 +164,6 @@ linux_alarm(struct linux_alarm_args *args)
 	struct proc *p = td->td_proc;
 	struct itimerval it, old_it;
 	struct timeval tv;
-	int s;
 
 	KKASSERT(p);
 
@@ -179,7 +179,7 @@ linux_alarm(struct linux_alarm_args *args)
 	it.it_value.tv_usec = 0;
 	it.it_interval.tv_sec = 0;
 	it.it_interval.tv_usec = 0;
-	s = splsoftclock();
+	crit_enter();
 	old_it = p->p_realtimer;
 	getmicrouptime(&tv);
 	if (timevalisset(&old_it.it_value))
@@ -190,7 +190,7 @@ linux_alarm(struct linux_alarm_args *args)
 		timevaladd(&it.it_value, &tv);
 	}
 	p->p_realtimer = it;
-	splx(s);
+	crit_exit();
 	if (timevalcmp(&old_it.it_value, &tv, >)) {
 		timevalsub(&old_it.it_value, &tv);
 		if (old_it.it_value.tv_usec != 0)

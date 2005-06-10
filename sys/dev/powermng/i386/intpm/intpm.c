@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.7 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.8 2005/06/10 23:29:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 #include <machine/resource.h>
 #include <bus/smbus/smbconf.h>
 
@@ -180,8 +181,8 @@ static int
 intsmb_callback(device_t dev, int index, caddr_t data)
 {
 	int error = 0;
-	intrmask_t s;
-	s=splnet();
+
+	crit_enter();
 	switch (index) {
 	case SMB_REQUEST_BUS:
 		break;
@@ -190,13 +191,12 @@ intsmb_callback(device_t dev, int index, caddr_t data)
 	default:
 		error = EINVAL;
 	}
-	splx(s);
+	crit_exit();
 	return (error);
 }
 /*counterpart of smbtx_smb_free*/
 static        int
 intsmb_free(device_t dev){
-        intrmask_t s;
         struct intsmb_softc *sc = (struct intsmb_softc *)device_get_softc(dev);
         if((bus_space_read_1(sc->st,sc->sh,PIIX4_SMBHSTSTS)&
 	    PIIX4_SMBHSTSTAT_BUSY)
@@ -206,7 +206,7 @@ intsmb_free(device_t dev){
 #endif
 	   || sc->isbusy)
                 return EBUSY;
-	s=splhigh();
+	crit_enter();
         sc->isbusy=1;
 	/*Disable Intrrupt in slave part*/
 #ifndef ENABLE_ALART
@@ -219,7 +219,7 @@ intsmb_free(device_t dev){
 			   PIIX4_SMBHSTSTAT_BUSC|
 			   PIIX4_SMBHSTSTAT_FAIL)
 		);
-	splx(s);
+	crit_exit();
         return 0;
 }
 
@@ -378,7 +378,6 @@ intsmb_stop_poll(device_t dev){
 static        int
 intsmb_stop(device_t dev){
         int error;
-	intrmask_t s;
         struct intsmb_softc *sc = (struct intsmb_softc *)device_get_softc(dev);
 	if(cold){
 		/*So that it can use device during probing device on SMBus.*/
@@ -405,12 +404,12 @@ intsmb_stop(device_t dev){
 		}
 	}
 	/*Timeout Procedure*/
-	s=splhigh();
+	crit_enter();
 	sc->isbusy=0;
 	/*Re-enable supressed intrrupt from slave part*/
 	bus_space_write_1(sc->st,sc->sh,
 			  PIIX4_SMBSLVCNT,PIIX4_SMBSLVCNT_ALTEN);
-	splx(s);
+	crit_exit();
         return EIO;
 }
 

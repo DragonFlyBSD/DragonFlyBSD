@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.5 2004/11/17 18:59:21 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.6 2005/06/10 23:27:02 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -1137,7 +1137,7 @@ ntoskrnl_munmaplockedpages(vaddr, buf)
 /*
  * The KeInitializeSpinLock(), KefAcquireSpinLockAtDpcLevel()
  * and KefReleaseSpinLockFromDpcLevel() appear to be analagous
- * to splnet()/splx() in their use. We can't create a new mutex
+ * to crit_enter()/crit_exit() in their use. We can't create a new mutex
  * lock here because there is no complimentary KeFreeSpinLock()
  * function. Instead, we grab a mutex from the mutex pool.
  */
