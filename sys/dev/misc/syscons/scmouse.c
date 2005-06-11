@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.9 2005/06/11 00:26:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.10 2005/06/11 00:29:10 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -35,6 +35,7 @@
 #include <sys/signalvar.h>
 #include <sys/proc.h>
 #include <sys/tty.h>
+#include <sys/thread2.h>
 
 #include <machine/console.h>
 #include <machine/mouse.h>
