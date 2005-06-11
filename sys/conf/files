@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.92 2005/06/07 19:07:11 hsu Exp $
+# $DragonFly: src/sys/conf/files,v 1.93 2005/06/11 09:03:48 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -291,7 +291,6 @@ dev/raid/amr/amr_pci.c			optional amr
 dev/raid/amr/amr.c			optional amr
 dev/disk/aha/aha.c			optional aha
 dev/disk/aha/aha_isa.c			optional aha isa
-dev/disk/aha/aha_mca.c			optional aha mca
 dev/disk/ahb/ahb.c			optional ahb eisa
 dev/disk/aic/aic.c			optional aic
 dev/disk/aic/aic_pccard.c		optional aic pccard
@@ -311,7 +310,6 @@ dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
 dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_isa.c		optional bt isa
-dev/disk/buslogic/bt_mca.c		optional bt mca
 dev/disk/buslogic/bt_eisa.c		optional bt eisa
 dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
@@ -333,7 +331,6 @@ dev/netif/ed/if_ed_pci.c	optional ed pci
 dev/netif/ep/if_ep.c		optional ep
 dev/netif/ep/if_ep_isa.c	optional ep isa
 dev/netif/ep/if_ep_eisa.c	optional ep eisa
-dev/netif/ep/if_ep_mca.c	optional ep mca
 dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/atm/en/midway.c		optional en
 dev/netif/ex/if_ex.c		optional ex
@@ -390,7 +387,6 @@ dev/raid/iir/iir.c		optional iir
 dev/raid/iir/iir_ctrl.c	optional iir
 dev/raid/iir/iir_pci.c	optional iir pci
 dev/netif/lge/if_lge.c	optional lge
-bus/mca/mca_bus.c	optional mca
 dev/disk/md/md.c		optional md
 dev/netif/mii_layer/mii.c		optional miibus
 dev/netif/mii_layer/mii_physubr.c	optional miibus

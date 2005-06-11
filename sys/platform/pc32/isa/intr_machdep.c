@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.29 2005/06/03 17:14:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.30 2005/06/11 09:03:49 swildner Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -45,7 +45,6 @@
  */
 
 #include "use_isa.h"
-#include "use_mca.h"
 #include "opt_auto_eoi.h"
 
 #include <sys/param.h>
@@ -80,10 +79,6 @@
 #include <machine/clock.h>
 #endif
 #include <machine/cpu.h>
-
-#if NMCA > 0
-#include <bus/mca/i386/mca_machdep.h>
-#endif
 
 /* XXX should be in suitable include files */
 #define	ICU_IMR_OFFSET		1		/* IO_ICU{1,2} + 1 */
@@ -189,10 +184,6 @@ isa_nmi(cd)
 	int eisa_port = inb(0x461);
 
 	log(LOG_CRIT, "NMI ISA %x, EISA %x\n", isa_port, eisa_port);
-#if NMCA > 0
-	if (MCA_system && mca_bus_nmi())
-		return(0);
-#endif
 	
 	if (isa_port & NMI_PARITY) {
 		log(LOG_CRIT, "RAM parity error, likely hardware failure.");
@@ -264,13 +255,7 @@ init_i8259(void)
 {
 
 	/* initialize 8259's */
-#if NMCA > 0
-	if (MCA_system)
-		outb(IO_ICU1, 0x19);		/* reset; program device, four bytes */
-	else
-#endif
-		outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
-
+	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
 	outb(IO_ICU1+ICU_IMR_OFFSET, NRSVIDT);	/* starting at this vector index */
 	outb(IO_ICU1+ICU_IMR_OFFSET, IRQ_SLAVE);		/* slave on line 7 */
 #ifdef AUTO_EOI_1
@@ -281,14 +266,7 @@ init_i8259(void)
 	outb(IO_ICU1+ICU_IMR_OFFSET, 0xff);		/* leave interrupts masked */
 	outb(IO_ICU1, 0x0a);		/* default to IRR on read */
 	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
-
-#if NMCA > 0
-	if (MCA_system)
-		outb(IO_ICU2, 0x19);		/* reset; program device, four bytes */
-	else
-#endif
-		outb(IO_ICU2, 0x11);		/* reset; program device, four bytes */
-
+	outb(IO_ICU2, 0x11);		/* reset; program device, four bytes */
 	outb(IO_ICU2+ICU_IMR_OFFSET, NRSVIDT+8); /* staring at this vector index */
 	outb(IO_ICU2+ICU_IMR_OFFSET, ICU_SLAVEID);         /* my slave id is 7 */
 #ifdef AUTO_EOI_2

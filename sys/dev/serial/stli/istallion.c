@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.15 2005/06/08 08:25:50 okumoto Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.16 2005/06/11 09:03:49 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -102,7 +102,6 @@
 #define	BRD_ECHMC	22
 #define	BRD_ECP		23
 #define BRD_ECPE	24
-#define	BRD_ECPMC	25
 #define	BRD_ECHPCI	26
 #define	BRD_ECH64PCI	27
 #define	BRD_EASYIOPCI	28
@@ -157,7 +156,6 @@ static struct callout	stli_poll_ch;
  */
 #define	BRD_ISA		0x1
 #define	BRD_EISA	0x2
-#define	BRD_MCA		0x4
 #define	BRD_PCI		0x8
 
 static unsigned char	stli_stliprobed[STL_MAXBRDS];
@@ -335,13 +333,12 @@ static char	*stli_brdnames[] = {
 /*
  *	Hardware configuration info for ECP boards. These defines apply
  *	to the directly accessable io ports of the ECP. There is a set of
- *	defines for each ECP board type, ISA, EISA and MCA.
+ *	defines for each ECP board type, ISA and EISA.
  */
 #define	ECP_IOSIZE	4
 #define	ECP_MEMSIZE	(128 * 1024)
 #define	ECP_ATPAGESIZE	(4 * 1024)
 #define	ECP_EIPAGESIZE	(64 * 1024)
-#define	ECP_MCPAGESIZE	(4 * 1024)
 
 #define	STL_EISAID	0x8c4e
 
@@ -542,7 +539,6 @@ STATIC	d_ioctl_t	stliioctl;
 static stliport_t *stli_dev2port(dev_t dev);
 static int	stli_isaprobe(struct isa_device *idp);
 static int	stli_eisaprobe(struct isa_device *idp);
-static int	stli_mcaprobe(struct isa_device *idp);
 static int	stli_brdinit(stlibrd_t *brdp);
 static int	stli_brdattach(stlibrd_t *brdp);
 static int	stli_initecp(stlibrd_t *brdp);
@@ -596,12 +592,6 @@ static void	stli_ecpeidisable(stlibrd_t *brdp);
 static void	stli_ecpeireset(stlibrd_t *brdp);
 static char	*stli_ecpeigetmemptr(stlibrd_t *brdp, unsigned long offset,
 			int line);
-static void	stli_ecpmcenable(stlibrd_t *brdp);
-static void	stli_ecpmcdisable(stlibrd_t *brdp);
-static void	stli_ecpmcreset(stlibrd_t *brdp);
-static char	*stli_ecpmcgetmemptr(stlibrd_t *brdp, unsigned long offset,
-			int line);
-
 static void	stli_onbinit(stlibrd_t *brdp);
 static void	stli_onbenable(stlibrd_t *brdp);
 static void	stli_onbdisable(stlibrd_t *brdp);
@@ -774,37 +764,6 @@ static int stli_eisaprobe(struct isa_device *idp)
 /*****************************************************************************/
 
 /*
- *	Probe for an MCA board type. Not really sure how to do this yet,
- *	so for now just use the supplied flag specifier as board type...
- */
-
-static int stli_mcaprobe(struct isa_device *idp)
-{
-	int	btype;
-
-#if STLDEBUG
-	printf("stli_mcaprobe(idp=%x): unit=%d iobase=%x flags=%x\n",
-		(int) idp, idp->id_unit, idp->id_iobase, idp->id_flags);
-#endif
-
-	switch (idp->id_flags) {
-	case BRD_ONBOARD2:
-	case BRD_ONBOARD2_32:
-	case BRD_ONBOARDRS:
-	case BRD_ECHMC:
-	case BRD_ECPMC:
-		btype = idp->id_flags;
-		break;
-	default:
-		btype = 0;
-		break;
-	}
-	return(0);
-}
-
-/*****************************************************************************/
-
-/*
  *	Probe for a board. This is involved, since we need to enable the
  *	shared memory region to see if the board is really there or not...
  */
@@ -824,26 +783,14 @@ static int stliprobe(struct isa_device *idp)
 
 /*
  *	First up determine what bus type of board we might be dealing
- *	with. It is easy to separate out the ISA from the EISA and MCA
- *	boards, based on their IO addresses. We may not be able to tell
- *	the EISA and MCA apart on IO address alone...
+ *	with. It is easy to separate out the ISA from the EISA
+ *	boards, based on their IO addresses.
  */
 	bclass = 0;
-	if ((idp->id_iobase > 0) && (idp->id_iobase < 0x400)) {
+	if ((idp->id_iobase > 0) && (idp->id_iobase < 0x400))
 		bclass |= BRD_ISA;
-	} else {
-		/* ONboard2 range */
-		if ((idp->id_iobase >= 0x700) && (idp->id_iobase < 0x900))
-			bclass |= BRD_MCA;
-		/* EC-MCA ranges */
-		if ((idp->id_iobase >= 0x7000) && (idp->id_iobase < 0x7400))
-			bclass |= BRD_MCA;
-		if ((idp->id_iobase >= 0x8000) && (idp->id_iobase < 0xc000))
-			bclass |= BRD_MCA;
-		/* EISA board range */
-		if ((idp->id_iobase & ~0xf000) == 0)
-			bclass |= BRD_EISA;
-	}
+	else if ((idp->id_iobase & ~0xf000) == 0)
+		bclass |= BRD_EISA;
 
 	if ((bclass == 0) || (idp->id_iobase == 0))
 		return(0);
@@ -856,8 +803,6 @@ static int stliprobe(struct isa_device *idp)
 		btype = stli_isaprobe(idp);
 	if ((btype == 0) && (bclass & BRD_EISA))
 		btype = stli_eisaprobe(idp);
-	if ((btype == 0) && (bclass & BRD_MCA))
-		btype = stli_mcaprobe(idp);
 	if (btype == 0)
 		return(0);
 
@@ -2732,55 +2677,6 @@ static void stli_ecpeireset(stlibrd_t *brdp)
 /*****************************************************************************/
 
 /*
- *	The following set of functions act on ECP MCA boards.
- */
-
-static void stli_ecpmcenable(stlibrd_t *brdp)
-{	
-	outb((brdp->iobase + ECP_MCCONFR), ECP_MCENABLE);
-}
-
-/*****************************************************************************/
-
-static void stli_ecpmcdisable(stlibrd_t *brdp)
-{	
-	outb((brdp->iobase + ECP_MCCONFR), ECP_MCDISABLE);
-}
-
-/*****************************************************************************/
-
-static char *stli_ecpmcgetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
-{	
-	void		*ptr;
-	unsigned char	val;
-
-	if (offset > brdp->memsize) {
-		printf("STALLION: shared memory pointer=%x out of range at "
-			"line=%d(%d), brd=%d\n", (int) offset, line,
-			__LINE__, brdp->brdnr);
-		ptr = 0;
-		val = 0;
-	} else {
-		ptr = (char *) brdp->vaddr + (offset % ECP_MCPAGESIZE);
-		val = ((unsigned char) (offset / ECP_MCPAGESIZE)) | ECP_MCENABLE;
-	}
-	outb((brdp->iobase + ECP_MCCONFR), val);
-	return(ptr);
-}
-
-/*****************************************************************************/
-
-static void stli_ecpmcreset(stlibrd_t *brdp)
-{	
-	outb((brdp->iobase + ECP_MCCONFR), ECP_MCSTOP);
-	DELAY(10);
-	outb((brdp->iobase + ECP_MCCONFR), ECP_MCDISABLE);
-	DELAY(500);
-}
-
-/*****************************************************************************/
-
-/*
  *	The following routines act on ONboards.
  */
 
@@ -3139,18 +3035,6 @@ static int stli_initecp(stlibrd_t *brdp)
 		brdp->reset = stli_ecpeireset;
 		break;
 
-	case BRD_ECPMC:
-		brdp->memsize = ECP_MEMSIZE;
-		brdp->pagesize = ECP_MCPAGESIZE;
-		brdp->init = NULL;
-		brdp->enable = stli_ecpmcenable;
-		brdp->reenable = stli_ecpmcenable;
-		brdp->disable = stli_ecpmcdisable;
-		brdp->getmemptr = stli_ecpmcgetmemptr;
-		brdp->intr = stli_ecpintr;
-		brdp->reset = stli_ecpmcreset;
-		break;
-
 	default:
 		return(EINVAL);
 	}
@@ -3476,7 +3360,6 @@ static int stli_brdinit(stlibrd_t *brdp)
 	switch (brdp->brdtype) {
 	case BRD_ECP:
 	case BRD_ECPE:
-	case BRD_ECPMC:
 		stli_initecp(brdp);
 		break;
 	case BRD_ONBOARD:

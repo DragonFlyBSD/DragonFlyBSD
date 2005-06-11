@@ -2,7 +2,6 @@
  * Generic driver for the BusLogic MultiMaster SCSI host adapters
  * Product specific probe and attach routines can be found in:
  * sys/dev/buslogic/bt_isa.c	BT-54X, BT-445 cards
- * sys/dev/buslogic/bt_mca.c	BT-64X, SDC3211B, SDC3211F
  * sys/dev/buslogic/bt_eisa.c	BT-74X, BT-75x cards, SDC3222F
  * sys/dev/buslogic/bt_pci.c	BT-946, BT-948, BT-956, BT-958 cards
  *
@@ -31,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.9 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.10 2005/06/11 09:03:48 swildner Exp $
  */
 
  /*

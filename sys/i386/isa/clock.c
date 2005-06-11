@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.29 2005/06/09 19:14:12 eirikn Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.30 2005/06/11 09:03:49 swildner Exp $
  */
 
 /*
@@ -50,7 +50,6 @@
  */
 
 #include "use_apm.h"
-#include "use_mca.h"
 #include "opt_clock.h"
 
 #include <sys/param.h>
@@ -91,10 +90,6 @@
 #include <i386/isa/timerreg.h>
 
 #include <i386/isa/intr_machdep.h>
-
-#if NMCA > 0
-#include <bus/mca/i386/mca_machdep.h>
-#endif
 
 #ifdef APIC_IO
 #include <i386/isa/intr_machdep.h>
@@ -197,11 +192,6 @@ clkintr(struct intrframe frame)
 		systimer_intr(&timer1_count, &frame);
 	    }
 	}
-#if NMCA > 0
-	/* Reset clock interrupt by asserting bit 7 of port 0x61 */
-	if (MCA_system)
-		outb(0x61, inb(0x61) | 0x80);
-#endif
 }
 
 

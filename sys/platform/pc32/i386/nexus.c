@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.15 2005/05/25 01:44:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.16 2005/06/11 09:03:49 swildner Exp $
  */
 
 /*
@@ -40,8 +40,6 @@
  * ISA code but it's easier to do it here for now), I/O port addresses,
  * and I/O memory address space.
  */
-
-#include "use_mca.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -259,14 +257,6 @@ nexus_attach(device_t dev)
 			panic("nexus_attach eisa");
 		device_probe_and_attach(child);
 	}
-#if NMCA > 0
-	if (!devclass_get_device(devclass_find("mca"), 0)) {
-        	child = BUS_ADD_CHILD(dev, 0, "mca", 0);
-        	if (child == NULL)
-                	panic("nexus_probe mca");
-		device_probe_and_attach(child);
-	}
-#endif
 	if (!devclass_get_device(devclass_find("isa"), 0)) {
 		child = BUS_ADD_CHILD(dev, 0, "isa", 0);
 		if (child == NULL)
