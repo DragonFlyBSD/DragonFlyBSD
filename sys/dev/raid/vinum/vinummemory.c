@@ -35,7 +35,7 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.5 2005/01/27 02:43:12 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.6 2005/06/11 00:05:46 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -111,9 +111,8 @@ expand_table(void **table, int oldsize, int newsize)
 {
     if (newsize > oldsize) {
 	int *temp;
-	int s;
 
-	s = splhigh();
+	crit_enter();
 	temp = (int *) Malloc(newsize);			    /* allocate a new table */
 	CHECKALLOC(temp, "vinum: Can't expand table\n");
 	bzero((char *) temp, newsize);			    /* clean it all out */
@@ -122,7 +121,7 @@ expand_table(void **table, int oldsize, int newsize)
 	    Free(*table);
 	}
 	*table = temp;
-	splx(s);
+	crit_exit();
     }
 }
 
@@ -156,7 +155,7 @@ MMalloc(int size, char *file, int line)
     if (result == NULL)
 	log(LOG_ERR, "vinum: can't allocate %d bytes from %s:%d\n", size, file, line);
     else {
-	s = splhigh();
+	crit_enter();
 	for (i = 0; i < malloccount; i++) {
 	    if (((result + size) > malloced[i].address)
 		&& (result < malloced[i].address + malloced[i].size)) /* overlap */
@@ -177,7 +176,7 @@ MMalloc(int size, char *file, int line)
 	}
 	if (malloccount > highwater)
 	    highwater = malloccount;
-	splx(s);
+	crit_exit();
     }
     return result;
 }
@@ -185,10 +184,9 @@ MMalloc(int size, char *file, int line)
 void
 FFree(void *mem, char *file, int line)
 {
-    int s;
     int i;
 
-    s = splhigh();
+    crit_enter();
     for (i = 0; i < malloccount; i++) {
 	if ((caddr_t) mem == malloced[i].address) {	    /* found it */
 	    bzero(mem, malloced[i].size);		    /* XXX */
@@ -215,17 +213,18 @@ FFree(void *mem, char *file, int line)
 	    }
 	    if (i < malloccount)			    /* more coming after */
 		bcopy(&malloced[i + 1], &malloced[i], (malloccount - i) * sizeof(struct mc));
-	    splx(s);
+	    crit_exit();
 	    return;
 	}
     }
-    splx(s);
+    crit_enter();
     log(LOG_ERR,
 	"Freeing unallocated data at 0x%p from %s, line %d\n",
 	mem,
 	file,
 	line);
     Debugger("Free");
+    crit_exit();
 }
 
 void

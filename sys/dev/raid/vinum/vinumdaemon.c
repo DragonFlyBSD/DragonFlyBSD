@@ -36,7 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -67,7 +67,6 @@ struct daemonq *intqp;					    /* and pointer in it */
 void
 vinum_daemon(void)
 {
-    int s;
     struct daemonq *request;
 
     curproc->p_flag |= P_INMEM | P_SYSTEM;		    /* we're a system process */
@@ -88,12 +87,12 @@ vinum_daemon(void)
 	    return;
 	}
 	while (daemonq != NULL) {			    /* we have work to do, */
-	    s = splhigh();				    /* don't get interrupted here */
+	    crit_enter();
 	    request = daemonq;				    /* get the request */
 	    daemonq = daemonq->next;			    /* and detach it */
 	    if (daemonq == NULL)			    /* got to the end, */
 		dqend = NULL;				    /* no end any more */
-	    splx(s);
+	    crit_exit();
 
 	    switch (request->type) {
 		/*
@@ -215,8 +214,6 @@ recover_io(struct request *rq)
 void
 queue_daemon_request(enum daemonrq type, union daemoninfo info)
 {
-    int s;
-
     struct daemonq *qelt = (struct daemonq *) Malloc(sizeof(struct daemonq));
 
     if (qelt == NULL) {					    /* malloc failed, we're prepared for that */
@@ -237,7 +234,7 @@ queue_daemon_request(enum daemonrq type, union daemoninfo info)
     qelt->next = NULL;					    /* end of the chain */
     qelt->type = type;
     qelt->info = info;
-    s = splhigh();
+    crit_enter();
     if (daemonq) {					    /* something queued already */
 	dqend->next = qelt;
 	dqend = qelt;
@@ -245,7 +242,7 @@ queue_daemon_request(enum daemonrq type, union daemoninfo info)
 	daemonq = qelt;					    /* this is the whole queue */
 	dqend = qelt;
     }
-    splx(s);
+    crit_exit();
     wakeup(&vinum_daemon);				    /* and give the dæmon a kick */
 }
 

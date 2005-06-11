@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -74,7 +74,7 @@ struct rqinfo *rqip = rqinfo;
 void
 logrq(enum rqinfo_type type, union rqinfou info, struct buf *ubp)
 {
-    int s = splhigh();
+    crit_enter();
 
     microtime(&rqip->timestamp);			    /* when did this happen? */
     rqip->type = type;
@@ -112,7 +112,7 @@ logrq(enum rqinfo_type type, union rqinfou info, struct buf *ubp)
     rqip++;
     if (rqip >= &rqinfo[RQINFO_SIZE])			    /* wrap around */
 	rqip = rqinfo;
-    splx(s);
+    crit_exit();
 }
 
 #endif
@@ -305,7 +305,6 @@ launch_requests(struct request *rq, int reviveok)
     struct rqelement *rqe;				    /* current element */
     struct drive *drive;
     int rcount;						    /* request count */
-    int s;
 
     /*
      * First find out whether we're reviving, and the
@@ -360,19 +359,6 @@ launch_requests(struct request *rq, int reviveok)
 #endif
 
     /*
-     * We used to have an splbio() here anyway, out
-     * of superstition.  With the division of labour
-     * below (first count the requests, then issue
-     * them), it looks as if we don't need this
-     * splbio() protection.  In fact, as dillon
-     * points out, there's a race condition
-     * incrementing and decrementing rq->active and
-     * rqg->active.  This splbio() didn't help
-     * there, because the device strategy routine
-     * can sleep.  Solve this by putting shorter
-     * duration locks on the code.
-     */
-    /*
      * This loop happens without any participation
      * of the bottom half, so it requires no
      * protection.
@@ -391,9 +377,9 @@ launch_requests(struct request *rq, int reviveok)
     /*
      * Now fire off the requests.  In this loop the
      * bottom half could be completing requests
-     * before we finish, so we need splbio() protection.
+     * before we finish, so we need critical section protection.
      */
-    s = splbio ();
+    crit_enter();
     for (rqg = rq->rqg; rqg != NULL;) {			    /* through the whole request chain */
 	if (rqg->lockbase >= 0)				    /* this rqg needs a lock first */
 	    rqg->lock = lockrange(rqg->lockbase, rqg->rq->bp, &PLEX[rqg->plexno]);
@@ -435,7 +421,7 @@ launch_requests(struct request *rq, int reviveok)
 	    }
 	}
     }
-    splx (s);
+    crit_exit();
     return 0;
 }
 
@@ -885,7 +871,6 @@ check_range_covered(struct request *rq)
 void
 sdio(struct buf *bp)
 {
-    int s;						    /* spl */
     struct sd *sd;
     struct sdbuf *sbp;
     daddr_t endoffset;
@@ -967,13 +952,13 @@ sdio(struct buf *bp)
 	    (int) sbp->b.b_blkno,
 	    sbp->b.b_bcount);
 #endif
-    s = splbio();
+    crit_enter();
 #if VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_sdiol, (union rqinfou) &sbp->b, &sbp->b);
 #endif
     BUF_STRATEGY(&sbp->b, 0);
-    splx(s);
+    crit_exit();
 }
 
 /*

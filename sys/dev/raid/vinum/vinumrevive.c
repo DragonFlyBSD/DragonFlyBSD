@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.4 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -57,7 +57,6 @@
 int
 revive_block(int sdno)
 {
-    int s;						    /* priority level */
     struct sd *sd;
     struct plex *plex;
     struct volume *vol;
@@ -140,9 +139,9 @@ revive_block(int sdno)
 	if (bp == NULL)					    /* no buffer space */
 	    return ENOMEM;				    /* chicken out */
     } else {						    /* data block */
-	s = splbio();
+	crit_enter();
 	bp = geteblk(size);				    /* Get a buffer */
-	splx(s);
+	crit_exit();
 	if (bp == NULL)
 	    return ENOMEM;
 
@@ -352,7 +351,6 @@ parityrebuild(struct plex *plex,
     off_t * errorloc)
 {
     int error;
-    int s;
     int sdno;
     u_int64_t stripe;					    /* stripe number */
     int *parity_buf;					    /* buffer address for current parity block */
@@ -392,18 +390,18 @@ parityrebuild(struct plex *plex,
     for (sdno = 0; sdno < bufcount; sdno++) {		    /* for each subdisk */
 	if ((sdno != psd) || (op != rebuildparity)) {
 	    /* Get a buffer header and initialize it. */
-	    s = splbio();
+	    crit_enter();
 	    bpp[sdno] = geteblk(mysize);		    /* Get a buffer */
 	    if (bpp[sdno] == NULL) {
 		while (sdno-- > 0) {			    /* release the ones we got */
 		    bpp[sdno]->b_flags |= B_INVAL;
 		    brelse(bpp[sdno]);			    /* give back our resources */
 		}
-		splx(s);
+		crit_exit();
 		printf("vinum: can't allocate buffer space for parity op.\n");
 		return NULL;				    /* no bpps */
 	    }
-	    splx(s);
+	    crit_exit();
 	    if (sdno == psd)
 		parity_buf = (int *) bpp[sdno]->b_data;
 	    if (sdno == newpsd)				    /* the new one? */
@@ -506,7 +504,6 @@ parityrebuild(struct plex *plex,
 int
 initsd(int sdno, int verify)
 {
-    int s;						    /* priority level */
     struct sd *sd;
     struct plex *plex;
     struct volume *vol;
@@ -540,9 +537,9 @@ initsd(int sdno, int verify)
 
     verified = 0;
     while (!verified) {					    /* until we're happy with it, */
-	s = splbio();
+	crit_enter();
 	bp = geteblk(size);				    /* Get a buffer */
-	splx(s);
+	crit_exit();
 	if (bp == NULL)
 	    return ENOMEM;
 
@@ -562,10 +559,10 @@ initsd(int sdno, int verify)
 	    brelse(bp);					    /* is this kosher? */
 	}
 	if ((error == 0) && verify) {			    /* check that it got there */
-	    s = splbio();
+	    crit_enter();
 	    bp = geteblk(size);				    /* get a buffer */
 	    if (bp == NULL) {
-		splx(s);
+		crit_exit();
 		error = ENOMEM;
 	    } else {
 		bp->b_bcount = size;
@@ -573,7 +570,7 @@ initsd(int sdno, int verify)
 		bp->b_blkno = sd->initialized;		    /* read from here */
 		bp->b_dev = VINUM_SD(sdno);		    /* create the device number */
 		bp->b_flags |= B_READ;			    /* read it back */
-		splx(s);
+		crit_exit();
 		sdio(bp);
 		biowait(bp);
 		/*

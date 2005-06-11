@@ -39,7 +39,7 @@
  *
  * $Id: vinumlock.c,v 1.13 2000/05/02 23:25:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumlock.c,v 1.18.2.3 2001/04/04 06:27:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -108,7 +108,6 @@ unlockdrive(struct drive *drive)
 struct rangelock *
 lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
 {
-    int s;
     struct rangelock *lock;
     struct rangelock *pos;				    /* position of first free lock */
     int foundlocks;					    /* number of locks found */
@@ -135,7 +134,7 @@ lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
      * We give the locks back from an interrupt
      * context, so we need to raise the spl here.
      */
-    s = splbio();
+    crit_enter();
 
     /* Wait here if the table is full */
     while (plex->usedlocks == PLEX_LOCKS)		    /* all in use */
@@ -190,7 +189,7 @@ lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
     pos->stripe = stripe;
     pos->bp = bp;
     plex->usedlocks++;					    /* one more lock */
-    splx(s);
+    crit_exit();
 #ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_lock, (union rqinfou) pos, bp);
