@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.25 2005/06/11 08:57:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.26 2005/06/11 08:58:48 joerg Exp $
  */
 
 /*
@@ -1204,7 +1204,7 @@ static int tl_attach(dev)
 	 * Now allocate memory for the TX and RX lists.
 	 */
 	sc->tl_ldata = contigmalloc(sizeof(struct tl_list_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->tl_ldata == NULL) {
 		printf("tl%d: no memory for list buffers!\n", unit);
