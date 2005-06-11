@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.11 2004/09/18 19:11:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.12 2005/06/11 00:27:09 dillon Exp $
  *
  */
 
@@ -149,6 +149,7 @@
 #include <sys/syslog.h>
 #include <sys/select.h>
 #include <sys/poll.h>
+#include <sys/thread2.h>
 
 #ifdef HIRESTIME
 #include <sys/time.h>
@@ -415,16 +416,15 @@ int twopen(dev, flag, mode, td)
      struct thread *td;
 {
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
-  int s;
 
-  s = spltty();
+  crit_enter();
   if(sc->sc_state == 0) {
     sc->sc_state = TWS_OPEN;
     sc->sc_nextin = sc->sc_nextout = 0;
     sc->sc_pktsize = 0;
     outb(sc->sc_port+tw_control, TWC_ENA);
   }
-  splx(s);
+  crit_exit();
   return(0);
 }
 
@@ -435,12 +435,11 @@ int twclose(dev, flag, mode, td)
      struct thread *td;
 {
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
-  int s;
 
-  s = spltty();
+  crit_enter();
   sc->sc_state = 0;
   outb(sc->sc_port+tw_control, 0);
-  splx(s);
+  crit_exit();
   return(0);
 }
 
@@ -451,14 +450,14 @@ int twread(dev, uio, ioflag)
 {
   u_char buf[3];
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
-  int error, cnt, s;
+  int error, cnt;
 
-  s = spltty();
+  crit_enter();
   cnt = MIN(uio->uio_resid, 3);
   if((error = twgetbytes(sc, buf, cnt)) == 0) {
     error = uiomove(buf, cnt, uio);
   }
-  splx(s);
+  crit_exit();
   return(error);
 }
 
@@ -469,7 +468,7 @@ int twwrite(dev, uio, ioflag)
 {
   struct tw_sc *sc;
   int house, key, reps;
-  int s, error;
+  int error;
   int cnt;
 
   sc = &tw_sc[TWUNIT(dev)];
@@ -479,16 +478,16 @@ int twwrite(dev, uio, ioflag)
    * into the sc_pkt buffer at the same time.  The following code
    * is an additional critical section that needs to be synchronized.
    */
-  s = spltty();
+  crit_enter();
   cnt = MIN(3 - sc->sc_pktsize, uio->uio_resid);
   error = uiomove(&(sc->sc_pkt[sc->sc_pktsize]), cnt, uio);
   if(error) {
-    splx(s);
+    crit_exit();
     return(error);
   }
   sc->sc_pktsize += cnt;
   if(sc->sc_pktsize < 3) {  /* Only transmit 3-byte packets */
-    splx(s);
+    crit_exit();
     return(0);
   }
   sc->sc_pktsize = 0;
@@ -499,7 +498,7 @@ int twwrite(dev, uio, ioflag)
   key = sc->sc_pkt[1];
   reps = sc->sc_pkt[2];
   if(house >= 16 || key >= 32) {
-    splx(s);
+    crit_exit();
     return(ENODEV);
   }
   /*
@@ -512,7 +511,7 @@ int twwrite(dev, uio, ioflag)
   while(sc->sc_state & (TWS_RCVING | TWS_XMITTING)) {
     error = tsleep((caddr_t)sc, PCATCH, "twwrite", 0);
     if(error) {
-      splx(s);
+      crit_exit();
       return(error);
     }
   }
@@ -520,12 +519,12 @@ int twwrite(dev, uio, ioflag)
   /*
    * Everything looks OK, let's do the transmission.
    */
-  splx(s);  /* Enable interrupts because this takes a LONG time */
+  crit_exit(); /* Enable interrupts because this takes a LONG time */
   error = twsend(sc, house, key, reps);
-  s = spltty();
+  crit_enter();
   sc->sc_state &= ~TWS_XMITTING;
   wakeup((caddr_t)sc);
-  splx(s);
+  crit_exit();
   if(error) return(EIO);
   else return(0);
 }
@@ -540,11 +539,10 @@ int twpoll(dev, events, td)
      struct thread *td;
 {
   struct tw_sc *sc;
-  int s;
   int revents = 0;
 
   sc = &tw_sc[TWUNIT(dev)];
-  s = spltty();
+  crit_enter();
   /* XXX is this correct?  the original code didn't test select rw mode!! */
   if (events & (POLLIN | POLLRDNORM)) {
     if(sc->sc_nextin != sc->sc_nextout)
@@ -552,7 +550,7 @@ int twpoll(dev, events, td)
     else
       selrecord(td, &sc->sc_selp);
   }
-  splx(s);
+  crit_exit();
   return(revents);
 }
 
@@ -818,7 +816,7 @@ struct tw_sc *sc;
 
 /*
  * Put a three-byte packet into the circular buffer
- * Should be called at priority spltty()
+ * Should be called from a critical section.
  */
 
 static int twputpkt(sc, p)
@@ -849,7 +847,7 @@ u_char *p;
 
 /*
  * Get bytes from the circular buffer
- * Should be called at priority spltty()
+ * Should be called from a critical section.
  */
 
 static int twgetbytes(sc, p, cnt)
@@ -882,10 +880,9 @@ twabortrcv(arg)
 	void *arg;
 {
   struct tw_sc *sc = arg;
-  int s;
   u_char pkt[3];
 
-  s = spltty();
+  crit_enter();
   sc->sc_state &= ~TWS_RCVING;
   /* simply ignore single isolated interrupts. */
   if (sc->sc_no_rcv > 1) {
@@ -897,7 +894,7 @@ twabortrcv(arg)
       twdebugtimes(sc);
   }
   wakeup((caddr_t)sc);
-  splx(s);
+  crit_exit();
 }
 
 static int
