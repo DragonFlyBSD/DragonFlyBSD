@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.23 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.24 2005/06/11 08:50:21 joerg Exp $
  */
 
 /*
@@ -1125,10 +1125,7 @@ static int tl_attach(dev)
 		t++;
 	}
 
-	if (t->tl_name == NULL) {
-		printf("tl%d: unknown device!?\n", unit);
-		goto fail;
-	}
+	KKASSERT(t->tl_name != NULL);
 
 	/*
 	 * Map control/status registers.
