@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.21 2005/05/27 07:52:21 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.22 2005/06/11 00:26:45 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -49,6 +49,7 @@
 #include <sys/kernel.h>
 #include <sys/cons.h>
 #include <sys/random.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 #include <machine/console.h>
@@ -163,11 +164,11 @@ static int wait_scrn_saver_stop(sc_softc_t *sc);
 #define scsplash_stick(stick)
 #endif /* NSPLASH */
 
-static int do_switch_scr(sc_softc_t *sc, int s);
+static void do_switch_scr(sc_softc_t *sc);
 static int vt_proc_alive(scr_stat *scp);
 static int signal_vt_rel(scr_stat *scp);
 static int signal_vt_acq(scr_stat *scp);
-static int finish_vt_rel(scr_stat *scp, int release, int *s);
+static int finish_vt_rel(scr_stat *scp, int release);
 static int finish_vt_acq(scr_stat *scp);
 static void exchange_scr(sc_softc_t *sc);
 static void update_cursor_image(scr_stat *scp);
@@ -506,16 +507,19 @@ scclose(dev_t dev, int flag, int mode, struct thread *td)
 {
     struct tty *tp = dev->si_tty;
     scr_stat *scp;
-    int s;
 
+    crit_enter();
     if (SC_VTY(dev) != SC_CONSOLECTL) {
 	scp = SC_STAT(tp->t_dev);
 	/* were we in the middle of the VT switching process? */
 	DPRINTF(5, ("sc%d: scclose(), ", scp->sc->unit));
-	s = spltty();
 	if ((scp == scp->sc->cur_scp) && (scp->sc->unit == sc_console_unit))
 	    cons_unavail = FALSE;
-	if (finish_vt_rel(scp, TRUE, &s) == 0)	/* force release */
+	/* 
+	 * note: must be called from a critical section because finish_vt_rel
+	 * will call do_switch_scr which releases it temporarily 
+	 */
+	if (finish_vt_rel(scp, TRUE) == 0)	/* force release */
 	    DPRINTF(5, ("reset WAIT_REL, "));
 	if (finish_vt_acq(scp) == 0)		/* force acknowledge */
 	    DPRINTF(5, ("reset WAIT_ACQ, "));
@@ -542,10 +546,9 @@ scclose(dev_t dev, int flag, int mode, struct thread *td)
 	    kbd_ioctl(scp->sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
 	DPRINTF(5, ("done.\n"));
     }
-    spltty();
     (*linesw[tp->t_line].l_close)(tp, flag);
     ttyclose(tp);
-    spl0();
+    crit_exit();
     return(0);
 }
 
@@ -642,7 +645,6 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
     struct tty *tp;
     sc_softc_t *sc;
     scr_stat *scp;
-    int s;
     struct proc *p = td->td_proc;
 
     KKASSERT(p);
@@ -696,14 +698,14 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
     case CONS_BLANKTIME:    	/* set screen saver timeout (0 = no saver) */
 	if (*(int *)data < 0 || *(int *)data > MAX_BLANKTIME)
             return EINVAL;
-	s = spltty();
+	crit_enter();
 	scrn_blank_time = *(int *)data;
 	run_scrn_saver = (scrn_blank_time != 0);
-	splx(s);
+	crit_exit();
 	return 0;
 
     case CONS_CURSORTYPE:   	/* set cursor type blink/noblink */
-	s = spltty();
+	crit_enter();
 	if (!ISGRAPHSC(sc->cur_scp))
 	    sc_remove_cursor_image(sc->cur_scp);
 	if ((*(int*)data) & 0x01)
@@ -722,7 +724,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    sc_set_cursor_image(sc->cur_scp);
 	    sc_draw_cursor_image(sc->cur_scp);
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 
     case CONS_BELLTYPE: 	/* set bell type sound/visual */
@@ -791,10 +793,10 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    /* if a LKM screen saver is running, stop it first. */
 	    scsplash_stick(FALSE);
 	    saver_mode = *(int *)data;
-	    s = spltty();
+	    crit_enter();
 #if NSPLASH > 0
 	    if ((error = wait_scrn_saver_stop(NULL))) {
-		splx(s);
+		crit_exit();
 		return error;
 	    }
 #endif /* NSPLASH */
@@ -804,14 +806,14 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    else
 		scp->status &= ~SAVER_RUNNING;
 	    scsplash_stick(TRUE);
-	    splx(s);
+	    crit_exit();
 	    break;
 	case CONS_LKM_SAVER:
-	    s = spltty();
+	    crit_enter();
 	    if ((saver_mode == CONS_USR_SAVER) && (scp->status & SAVER_RUNNING))
 		scp->status &= ~SAVER_RUNNING;
 	    saver_mode = *(int *)data;
-	    splx(s);
+	    crit_exit();
 	    break;
 	default:
 	    return EINVAL;
@@ -823,28 +825,28 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	 * Note that this ioctl does not guarantee the screen saver 
 	 * actually starts or stops. It merely attempts to do so...
 	 */
-	s = spltty();
+	crit_enter();
 	run_scrn_saver = (*(int *)data != 0);
 	if (run_scrn_saver)
 	    sc->scrn_time_stamp -= scrn_blank_time;
-	splx(s);
+	crit_exit();
 	return 0;
 
     case CONS_SCRSHOT:		/* get a screen shot */
     {
 	scrshot_t *ptr = (scrshot_t*)data;
-	s = spltty();
+	crit_enter();
 	if (ISGRAPHSC(scp)) {
-	    splx(s);
+	    crit_exit();
 	    return EOPNOTSUPP;
 	}
 	if (scp->xsize != ptr->xsize || scp->ysize != ptr->ysize) {
-	    splx(s);
+	    crit_exit();
 	    return EINVAL;
 	}
 	copyout ((void*)scp->vtb.vtb_buffer, ptr->buf,
 		 ptr->xsize * ptr->ysize * sizeof(uint16_t));
-	splx(s);
+	crit_exit();
 	return 0;
     }
 
@@ -860,7 +862,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return EPERM;
 	    }
 	}
-	s = spltty();
+	crit_enter();
 	if (mode->mode == VT_AUTO) {
 	    scp->smode.mode = VT_AUTO;
 	    scp->proc = NULL;
@@ -868,15 +870,19 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    DPRINTF(5, ("VT_AUTO, "));
 	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
 		cons_unavail = FALSE;
-	    /* were we in the middle of the vty switching process? */
-	    if (finish_vt_rel(scp, TRUE, &s) == 0)
+	    /* 
+	     * note: must be called from a critical section because 
+	     * finish_vt_rel will call do_switch_scr which releases it
+	     * temporarily.
+	     */
+	    if (finish_vt_rel(scp, TRUE) == 0)
 		DPRINTF(5, ("reset WAIT_REL, "));
 	    if (finish_vt_acq(scp) == 0)
 		DPRINTF(5, ("reset WAIT_ACQ, "));
 	} else {
 	    if (!ISSIGVALID(mode->relsig) || !ISSIGVALID(mode->acqsig)
 		|| !ISSIGVALID(mode->frsig)) {
-		splx(s);
+		crit_exit();
 		DPRINTF(5, ("error EINVAL\n"));
 		return EINVAL;
 	    }
@@ -887,7 +893,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
 		cons_unavail = TRUE;
 	}
-	splx(s);
+	crit_exit();
 	DPRINTF(5, ("\n"));
 	return 0;
     }
@@ -897,28 +903,38 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	return 0;
 
     case VT_RELDISP:    	/* screen switcher ioctl */
-	s = spltty();
+	crit_enter();
 	/*
 	 * This must be the current vty which is in the VT_PROCESS
 	 * switching mode...
 	 */
 	if ((scp != sc->cur_scp) || (scp->smode.mode != VT_PROCESS)) {
-	    splx(s);
+	    crit_exit();
 	    return EINVAL;
 	}
 	/* ...and this process is controlling it. */
 	if (scp->proc != p) {
-	    splx(s);
+	    crit_exit();
 	    return EPERM;
 	}
 	error = EINVAL;
 	switch(*(int *)data) {
 	case VT_FALSE:  	/* user refuses to release screen, abort */
-	    if ((error = finish_vt_rel(scp, FALSE, &s)) == 0)
+	    /* 
+	     * note: must be called from a critical section because 
+	     * finish_vt_rel will call do_switch_scr which releases it
+	     * temporarily.
+	     */
+	    if ((error = finish_vt_rel(scp, FALSE)) == 0)
 		DPRINTF(5, ("sc%d: VT_FALSE\n", sc->unit));
 	    break;
 	case VT_TRUE:   	/* user has released screen, go on */
-	    if ((error = finish_vt_rel(scp, TRUE, &s)) == 0)
+	    /* 
+	     * note: must be called from a critical section because 
+	     * finish_vt_rel will call do_switch_scr which releases it
+	     * temporarily.
+	     */
+	    if ((error = finish_vt_rel(scp, TRUE)) == 0)
 		DPRINTF(5, ("sc%d: VT_TRUE\n", sc->unit));
 	    break;
 	case VT_ACKACQ: 	/* acquire acknowledged, switch completed */
@@ -928,7 +944,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	default:
 	    break;
 	}
-	splx(s);
+	crit_exit();
 	return error;
 
     case VT_OPENQRY:    	/* return free virtual console */
@@ -943,18 +959,18 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
     case VT_ACTIVATE:   	/* switch to screen *data */
 	i = (*(int *)data == 0) ? scp->index : (*(int *)data - 1);
-	s = spltty();
+	crit_enter();
 	sc_clean_up(sc->cur_scp);
-	splx(s);
+	crit_exit();
 	return sc_switch_scr(sc, i);
 
     case VT_WAITACTIVE: 	/* wait for switch to occur */
 	i = (*(int *)data == 0) ? scp->index : (*(int *)data - 1);
 	if ((i < sc->first_vty) || (i >= sc->first_vty + sc->vtys))
 	    return EINVAL;
-	s = spltty();
+	crit_enter();
 	error = sc_clean_up(sc->cur_scp);
-	splx(s);
+	crit_exit();
 	if (error)
 	    return error;
 	scp = SC_STAT(SC_DEV(sc, i));
@@ -1090,10 +1106,10 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	{
 	    keyboard_t *newkbd;
 
-	    s = spltty();
+	    crit_enter();
 	    newkbd = kbd_get_keyboard(*(int *)data);
 	    if (newkbd == NULL) {
-		splx(s);
+		crit_exit();
 		return EINVAL;
 	    }
 	    error = 0;
@@ -1116,12 +1132,12 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		    error = EPERM;	/* XXX */
 		}
 	    }
-	    splx(s);
+	    crit_exit();
 	    return error;
 	}
 
     case CONS_RELKBD: 		/* release the current keyboard */
-	s = spltty();
+	crit_enter();
 	error = 0;
 	if (sc->kbd != NULL) {
 	    save_kbd_state(sc->cur_scp);
@@ -1131,7 +1147,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		sc->keyboard = -1;
 	    }
 	}
-	splx(s);
+	crit_exit();
 	return error;
 
     case CONS_GETTERM:		/* get the current terminal emulator info */
@@ -1159,10 +1175,10 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	}
 
     case CONS_SETTERM:		/* set the current terminal emulator */
-	s = spltty();
+	crit_enter();
 	error = sc_init_emulator(scp, ((term_info_t *)data)->ti_name);
 	/* FIXME: what if scp == sc_console! XXX */
-	splx(s);
+	crit_exit();
 	return error;
 
     case GIO_SCRNMAP:   	/* get output translation table */
@@ -1282,27 +1298,27 @@ static void
 scstart(struct tty *tp)
 {
     struct clist *rbp;
-    int s, len;
+    int len;
     u_char buf[PCBURST];
     scr_stat *scp = SC_STAT(tp->t_dev);
 
     if (scp->status & SLKED ||
 	(scp == scp->sc->cur_scp && scp->sc->blink_in_progress))
 	return;
-    s = spltty();
+    crit_enter();
     if (!(tp->t_state & (TS_TIMEOUT | TS_BUSY | TS_TTSTOP))) {
 	tp->t_state |= TS_BUSY;
 	rbp = &tp->t_outq;
 	while (rbp->c_cc) {
 	    len = q_to_b(rbp, buf, PCBURST);
-	    splx(s);
+	    crit_exit();
 	    sc_puts(scp, buf, len);
-	    s = spltty();
+	    crit_enter();
 	}
 	tp->t_state &= ~TS_BUSY;
 	ttwwakeup(tp);
     }
-    splx(s);
+    crit_exit();
 }
 
 static void
@@ -1366,7 +1382,6 @@ sccnputc(dev_t dev, int c)
 #ifndef SC_NO_HISTORY
     struct tty *tp;
 #endif /* !SC_NO_HISTORY */
-    int s;
 
     /* assert(sc_console != NULL) */
 
@@ -1394,9 +1409,9 @@ sccnputc(dev_t dev, int c)
     sc_puts(scp, buf, 1);
     scp->ts = save;
 
-    s = spltty();	/* block sckbdevent and scrn_timer */
+    crit_enter();
     sccnupdate(scp);
-    splx(s);
+    crit_exit();
 }
 
 static int
@@ -1444,9 +1459,9 @@ sccngetch(int flags)
     scr_stat *scp;
     u_char *p;
     int cur_mode;
-    int s = spltty();	/* block sckbdevent and scrn_timer while we poll */
     int c;
 
+    crit_enter();
     /* assert(sc_console != NULL) */
 
     /* 
@@ -1458,12 +1473,12 @@ sccngetch(int flags)
     sccnupdate(scp);
 
     if (fkeycp < fkey.len) {
-	splx(s);
+	crit_exit();
 	return fkey.str[fkeycp++];
     }
 
     if (scp->sc->kbd == NULL) {
-	splx(s);
+	crit_exit();
 	return -1;
     }
 
@@ -1485,7 +1500,7 @@ sccngetch(int flags)
     scp->kbd_mode = cur_mode;
     kbd_ioctl(scp->sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
     kbd_disable(scp->sc->kbd);
-    splx(s);
+    crit_exit();
 
     switch (KEYFLAGS(c)) {
     case 0:	/* normal char */
@@ -1549,7 +1564,6 @@ scrn_timer(void *arg)
     sc_softc_t *sc;
     scr_stat *scp;
     int again;
-    int s;
 
     again = (arg != NULL);
     if (arg != NULL)
@@ -1565,7 +1579,7 @@ scrn_timer(void *arg)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
 	return;
     }
-    s = spltty();
+    crit_enter();
 
     if ((sc->kbd == NULL) && (sc->config & SC_AUTODETECT_KBD)) {
 	/* try to allocate a keyboard automatically */
@@ -1612,7 +1626,7 @@ scrn_timer(void *arg)
 	|| sc->write_in_progress) {
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
-	splx(s);
+	crit_exit();
 	return;
     }
 
@@ -1630,7 +1644,7 @@ scrn_timer(void *arg)
 
     if (again)
 	callout_reset(&sc->scrn_timer_ch, hz / 25, scrn_timer, sc);
-    splx(s);
+    crit_exit();
 }
 
 static int
@@ -1888,10 +1902,9 @@ remove_scrn_saver(void (*this_saver)(sc_softc_t *, int))
 static int
 set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 {
-    int s;
 
     /* assert(scp == scp->sc->cur_scp) */
-    s = spltty();
+    crit_enter();
     if (!ISGRAPHSC(scp))
 	sc_remove_cursor_image(scp);
     scp->splash_save_mode = scp->mode;
@@ -1900,7 +1913,7 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
     scp->status |= (UNKNOWN_MODE | SAVER_RUNNING);
     scp->sc->flags |= SC_SCRN_BLANKED;
     ++scrn_blanked;
-    splx(s);
+    crit_exit();
     if (mode < 0)
 	return 0;
     scp->mode = mode;
@@ -1914,11 +1927,11 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 	sc_set_border(scp, border);
 	return 0;
     } else {
-	s = spltty();
+	crit_enter();
 	scp->mode = scp->splash_save_mode;
 	scp->status &= ~(UNKNOWN_MODE | SAVER_RUNNING);
 	scp->status |= scp->splash_save_status;
-	splx(s);
+	crit_exit();
 	return 1;
     }
 }
@@ -1928,10 +1941,9 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 {
     int mode;
     int status;
-    int s;
 
     /* assert(scp == scp->sc->cur_scp) */
-    s = spltty();
+    crit_enter();
     mode = scp->mode;
     status = scp->status;
     scp->mode = scp->splash_save_mode;
@@ -1942,7 +1954,7 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 	if (!ISGRAPHSC(scp))
 	    sc_draw_cursor_image(scp);
 	--scrn_blanked;
-	splx(s);
+	crit_exit();
 	return 0;
     }
     if (set_mode(scp) == 0) {
@@ -1950,12 +1962,12 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 	load_palette(scp->sc->adp, scp->sc->palette);
 #endif
 	--scrn_blanked;
-	splx(s);
+	crit_exit();
 	return 0;
     } else {
 	scp->mode = mode;
 	scp->status = status;
-	splx(s);
+	crit_exit();
 	return 1;
     }
 }
@@ -2007,7 +2019,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 {
     scr_stat *cur_scp;
     struct tty *tp;
-    int s;
 
     DPRINTF(5, ("sc0: sc_switch_scr() %d ", next_scr + 1));
 
@@ -2027,7 +2038,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	return 0;
     }
 
-    s = spltty();
+    crit_enter();
     cur_scp = sc->cur_scp;
 
     /* we are in the middle of the vty switching process... */
@@ -2046,10 +2057,14 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		/*
 		 * Force the previous switch to finish, but return now 
 		 * with error.
+		 *
+		 * note: must be called from a critical section because 
+		 * finish_vt_rel will call do_switch_scr which releases it
+		 * temporarily.
 		 */
 		DPRINTF(5, ("reset WAIT_REL, "));
-		finish_vt_rel(cur_scp, TRUE, &s);
-		splx(s);
+		finish_vt_rel(cur_scp, TRUE);
+		crit_exit();
 		DPRINTF(5, ("finishing previous switch\n"));
 		return EINVAL;
 	    } else if (cur_scp->status & SWITCH_WAIT_ACQ) {
@@ -2086,10 +2101,14 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		    /*
 		     * Act as if the controlling program returned
 		     * VT_FALSE.
+		     *
+		     * note: must be called from a critical section because 
+		     * finish_vt_rel will call do_switch_scr which releases it
+		     * temporarily.
 		     */
 		    DPRINTF(5, ("force reset WAIT_REL, "));
-		    finish_vt_rel(cur_scp, FALSE, &s);
-		    splx(s);
+		    finish_vt_rel(cur_scp, FALSE);
+		    crit_exit();
 		    DPRINTF(5, ("act as if VT_FALSE was seen\n"));
 		    return EINVAL;
 		}
@@ -2120,7 +2139,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
      */
     if ((next_scr < sc->first_vty) || (next_scr >= sc->first_vty + sc->vtys)
 	|| sc->switch_in_progress) {
-	splx(s);
+	crit_exit();
 	sc_bell(cur_scp, bios_value.bell_pitch, BELL_DURATION);
 	DPRINTF(5, ("error 1\n"));
 	return EINVAL;
@@ -2136,7 +2155,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	&& ISTTYOPEN(tp)
 	&& (cur_scp->smode.mode == VT_AUTO)
 	&& ISGRAPHSC(cur_scp)) {
-	splx(s);
+	crit_exit();
 	sc_bell(cur_scp, bios_value.bell_pitch, BELL_DURATION);
 	DPRINTF(5, ("error, graphics mode\n"));
 	return EINVAL;
@@ -2151,13 +2170,13 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     if ((sc_console == NULL) || (next_scr != sc_console->index)) {
 	tp = VIRTUAL_TTY(sc, next_scr);
 	if (!ISTTYOPEN(tp)) {
-	    splx(s);
+	    crit_exit();
 	    sc_bell(cur_scp, bios_value.bell_pitch, BELL_DURATION);
 	    DPRINTF(5, ("error 2, requested vty isn't open!\n"));
 	    return EINVAL;
 	}
 	if ((debugger > 0) && (SC_STAT(tp->t_dev)->smode.mode == VT_PROCESS)) {
-	    splx(s);
+	    crit_exit();
 	    DPRINTF(5, ("error 3, requested vty is in the VT_PROCESS mode\n"));
 	    return EINVAL;
 	}
@@ -2171,7 +2190,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     if (sc->new_scp == sc->old_scp) {
 	sc->switch_in_progress = 0;
 	wakeup((caddr_t)&sc->new_scp->smode);
-	splx(s);
+	crit_exit();
 	DPRINTF(5, ("switch done (new == old)\n"));
 	return 0;
     }
@@ -2182,41 +2201,45 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 
     /* wait for the controlling process to release the screen, if necessary */
     if (signal_vt_rel(sc->old_scp)) {
-	splx(s);
+	crit_exit();
 	return 0;
     }
 
     /* go set up the new vty screen */
-    splx(s);
+    crit_exit();
     exchange_scr(sc);
-    s = spltty();
+    crit_enter();
 
     /* wake up processes waiting for this vty */
     wakeup((caddr_t)&sc->cur_scp->smode);
 
     /* wait for the controlling process to acknowledge, if necessary */
     if (signal_vt_acq(sc->cur_scp)) {
-	splx(s);
+	crit_exit();
 	return 0;
     }
 
     sc->switch_in_progress = 0;
     if (sc->unit == sc_console_unit)
 	cons_unavail = FALSE;
-    splx(s);
+    crit_exit();
     DPRINTF(5, ("switch done\n"));
 
     return 0;
 }
 
-static int
-do_switch_scr(sc_softc_t *sc, int s)
+/*
+ * NOTE: must be called from a critical section because do_switch_scr
+ * will release it temporarily.
+ */
+static void
+do_switch_scr(sc_softc_t *sc)
 {
     vt_proc_alive(sc->new_scp);
 
-    splx(s);
+    crit_exit();
     exchange_scr(sc);
-    s = spltty();
+    crit_enter();
     /* sc->cur_scp == sc->new_scp */
     wakeup((caddr_t)&sc->cur_scp->smode);
 
@@ -2226,8 +2249,6 @@ do_switch_scr(sc_softc_t *sc, int s)
 	if (sc->unit == sc_console_unit)
 	    cons_unavail = FALSE;
     }
-
-    return s;
 }
 
 static int
@@ -2267,13 +2288,17 @@ signal_vt_acq(scr_stat *scp)
     return TRUE;
 }
 
+/*
+ * NOTE: must be called from a critical section because do_switch_scr
+ * will release it temporarily.
+ */
 static int
-finish_vt_rel(scr_stat *scp, int release, int *s)
+finish_vt_rel(scr_stat *scp, int release)
 {
     if (scp == scp->sc->old_scp && scp->status & SWITCH_WAIT_REL) {
 	scp->status &= ~SWITCH_WAIT_REL;
 	if (release)
-	    *s = do_switch_scr(scp->sc, *s);
+	    do_switch_scr(scp->sc);
 	else
 	    scp->sc->switch_in_progress = 0;
 	return 0;

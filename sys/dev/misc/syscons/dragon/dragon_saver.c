@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/dragon/dragon_saver.c,v 1.1.2.1 2003/05/11 01:17:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.4 2005/02/13 03:02:25 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.5 2005/06/11 00:26:47 dillon Exp $
  */
 
 #include	<sys/param.h>
@@ -36,6 +36,7 @@
 #include	<sys/syslog.h>
 #include	<sys/consio.h>
 #include	<sys/fbio.h>
+#include	<sys/thread2.h>
 
 #include	<sys/random.h>
 
@@ -183,17 +184,15 @@ dragon_update(video_adapter_t *adp)
 static int
 dragon_saver(video_adapter_t *adp, int blank)
 {
-	int pl;
-
 	if (blank) {
 		/* switch to graphics mode */
 		if (blanked <= 0) {
-			pl = splhigh();
+			crit_enter();
 			set_video_mode(adp, VIDEO_MODE);
 			vid = (u_char *)adp->va_window;
 			curve = CURVE + 1;
 			++blanked;
-			splx(pl);
+			crit_exit();
 		}
 
 		/* update display */

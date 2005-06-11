@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/rain/rain_saver.c,v 1.5.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.5 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.6 2005/06/11 00:26:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/consio.h>
 #include <sys/fbio.h>
 #include <sys/random.h>
+#include <sys/thread2.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
@@ -66,12 +67,12 @@ rain_update(video_adapter_t *adp)
 static int
 rain_saver(video_adapter_t *adp, int blank)
 {
-    int i, j, k, pl;
+    int i, j, k;
 
     if (blank) {
 	/* switch to graphics mode */
 	if (blanked <= 0) {
-	    pl = splhigh();
+	    crit_enter();
 	    set_video_mode(adp, M_VGA_CG320);
 	    load_palette(adp, rain_pal);
 #if 0 /* XXX conflict */
@@ -79,7 +80,7 @@ rain_saver(video_adapter_t *adp, int blank)
 #endif
 	    blanked++;
 	    vid = (u_char *)adp->va_window;
-	    splx(pl);
+	    crit_exit();
 	    bzero(vid, SCRW*SCRH);
 	    for (i = 0; i < SCRW; i += 2)
 		vid[i] = 1 + (random() % RAINMAX);

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.9 2005/02/18 16:38:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.10 2005/06/11 00:26:45 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -38,6 +38,7 @@
 #include <sys/signalvar.h>
 #include <sys/tty.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <machine/console.h>
 
@@ -54,7 +55,6 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     u_char *font;
     int prev_ysize;
     int error;
-    int s;
 
     if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info))
 	return ENODEV;
@@ -96,14 +96,14 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 	ysize = info.vi_height;
 
     /* stop screen saver, etc */
-    s = spltty();
+    crit_enter();
     if ((error = sc_clean_up(scp))) {
-	splx(s);
+	crit_exit();
 	return error;
     }
 
     if (sc_render_match(scp, scp->sc->adp->va_name, 0) == NULL) {
-	splx(s);
+	crit_exit();
 	return ENODEV;
     }
 
@@ -138,7 +138,7 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 #ifndef SC_NO_HISTORY
     sc_alloc_history_buffer(scp, 0, prev_ysize, FALSE);
 #endif
-    splx(s);
+    crit_exit();
 
     if (scp == scp->sc->cur_scp)
 	set_mode(scp);
@@ -166,20 +166,19 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
 #else
     video_info_t info;
     int error;
-    int s;
 
     if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info))
 	return ENODEV;
 
     /* stop screen saver, etc */
-    s = spltty();
+    crit_enter();
     if ((error = sc_clean_up(scp))) {
-	splx(s);
+	crit_exit();
 	return error;
     }
 
     if (sc_render_match(scp, scp->sc->adp->va_name, GRAPHICS_MODE) == NULL) {
-	splx(s);
+	crit_exit();
 	return ENODEV;
     }
 
@@ -202,7 +201,7 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
     sc_mouse_move(scp, scp->xpixel / 2, scp->ypixel / 2);
 #endif
     sc_init_emulator(scp, NULL);
-    splx(s);
+    crit_exit();
 
     if (scp == scp->sc->cur_scp)
 	set_mode(scp);
@@ -234,7 +233,6 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     u_char *font;
     int prev_ysize;
     int error;
-    int s;
 
     if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info))
 	return ENODEV;		/* this shouldn't happen */
@@ -304,14 +302,14 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 	return ENODEV;
 
     /* stop screen saver, etc */
-    s = spltty();
+    crit_enter();
     if ((error = sc_clean_up(scp))) {
-	splx(s);
+	crit_exit();
 	return error;
     }
 
     if (sc_render_match(scp, scp->sc->adp->va_name, PIXEL_MODE) == NULL) {
-	splx(s);
+	crit_exit();
 	return ENODEV;
     }
 
@@ -346,7 +344,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 #ifndef SC_NO_HISTORY
     sc_alloc_history_buffer(scp, 0, prev_ysize, FALSE);
 #endif
-    splx(s);
+    crit_exit();
 
     if (scp == scp->sc->cur_scp) {
 	sc_set_border(scp, scp->border);
@@ -379,7 +377,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
     video_adapter_t *adp;
     video_info_t info;
     int error;
-    int s;
 
     scp = SC_STAT(tp->t_dev);
     if (scp == NULL)		/* tp == SC_MOUSE */
@@ -552,13 +549,13 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 	     */
 	    if (scp->status & GRAPHICS_MODE)
 		return EINVAL;
-	    s = spltty();
+	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
-		splx(s);
+		crit_exit();
 		return error;
 	    }
 	    scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
-	    splx(s);
+	    crit_exit();
 	    /* no restore fonts & palette */
 	    if (scp == scp->sc->cur_scp)
 		set_mode(scp);
@@ -573,13 +570,13 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 	    if (scp->status & GRAPHICS_MODE)
 		return sc_set_pixel_mode(scp, tp, scp->xsize, scp->ysize, 
 					 scp->font_size);
-	    s = spltty();
+	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
-		splx(s);
+		crit_exit();
 		return error;
 	    }
 	    scp->status |= (UNKNOWN_MODE | PIXEL_MODE | MOUSE_HIDDEN);
-	    splx(s);
+	    crit_exit();
 	    if (scp == scp->sc->cur_scp) {
 		set_mode(scp);
 #ifndef SC_NO_PALETTE_LOADING
@@ -592,13 +589,13 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 #endif /* SC_PIXEL_MODE */
 
 	case KD_GRAPHICS:	/* switch to GRAPHICS (unknown) mode */
-	    s = spltty();
+	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
-		splx(s);
+		crit_exit();
 		return error;
 	    }
 	    scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
-	    splx(s);
+	    crit_exit();
 	    return 0;
 
 	default:

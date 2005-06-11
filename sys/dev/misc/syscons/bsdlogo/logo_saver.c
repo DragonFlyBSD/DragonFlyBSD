@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/logo/logo_saver.c,v 1.8 1999/08/28 00:47:51 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/bsdlogo/Attic/logo_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/bsdlogo/Attic/logo_saver.c,v 1.4 2005/06/11 00:26:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/syslog.h>
 #include <sys/consio.h>
 #include <sys/fbio.h>
+#include <sys/thread2.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
@@ -96,12 +97,12 @@ logo_update(video_adapter_t *adp)
 static int
 logo_saver(video_adapter_t *adp, int blank)
 {
-    int i, pl;
+    int i;
 
     if (blank) {
 	/* switch to graphics mode */
 	if (blanked <= 0) {
-	    pl = splhigh();
+	    crit_enter();
 	    set_video_mode(adp, scrmode);
 	    load_palette(adp, logo_pal);
 #if 0 /* XXX conflict */
@@ -111,7 +112,7 @@ logo_saver(video_adapter_t *adp, int blank)
 	    vid = (u_char *)adp->va_window;
 	    banksize = adp->va_window_size;
 	    bpsl = adp->va_line_width;
-	    splx(pl);
+	    crit_exit();
 	    for (i = 0; i < bpsl*scrh; i += banksize) {
 		set_origin(adp, i);
 		bzero(vid, banksize);

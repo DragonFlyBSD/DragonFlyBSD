@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/warp/warp_saver.c,v 1.7.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/warp/warp_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/warp/warp_saver.c,v 1.4 2005/06/11 00:26:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/consio.h>
 #include <sys/fbio.h>
 #include <sys/random.h>
+#include <sys/thread2.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
@@ -78,12 +79,10 @@ warp_update(void)
 static int
 warp_saver(video_adapter_t *adp, int blank)
 {
-    int pl;
-
     if (blank) {
 	/* switch to graphics mode */
 	if (blanked <= 0) {
-	    pl = splhigh();
+	    crit_enter();
 	    set_video_mode(adp, M_VGA_CG320);
 	    load_palette(adp, warp_pal);
 #if 0 /* XXX conflict */
@@ -91,7 +90,7 @@ warp_saver(video_adapter_t *adp, int blank)
 #endif
 	    blanked++;
 	    vid = (u_char *)adp->va_window;
-	    splx(pl);
+	    crit_exit();
 	    bzero(vid, SCRW*SCRH);
 	}
 

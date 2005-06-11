@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.8 2005/03/28 21:30:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.9 2005/06/11 00:26:45 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -97,9 +97,7 @@ sc_alloc_cut_buffer(scr_stat *scp, int wait)
 void
 sc_mouse_move(scr_stat *scp, int x, int y)
 {
-    int s;
-
-    s = spltty();
+    crit_enter();
     scp->mouse_xpos = scp->mouse_oldxpos = x;
     scp->mouse_ypos = scp->mouse_oldypos = y;
     if (scp->font_size <= 0)
@@ -108,7 +106,7 @@ sc_mouse_move(scr_stat *scp, int x, int y)
 	scp->mouse_pos = scp->mouse_oldpos = 
 	    (y/scp->font_size - scp->yoff)*scp->xsize + x/8 - scp->xoff;
     scp->status |= MOUSE_MOVED;
-    splx(s);
+    crit_exit();
 }
 
 /* adjust mouse position */
@@ -212,16 +210,14 @@ sc_inside_cutmark(scr_stat *scp, int pos)
 void
 sc_remove_cutmarking(scr_stat *scp)
 {
-    int s;
-
-    s = spltty();
+    crit_enter();
     if (scp->mouse_cut_end >= 0) {
 	mark_for_update(scp, scp->mouse_cut_start);
 	mark_for_update(scp, scp->mouse_cut_end);
     }
     scp->mouse_cut_start = scp->xsize*scp->ysize;
     scp->mouse_cut_end = -1;
-    splx(s);
+    crit_exit();
     scp->status &= ~MOUSE_CUTTING;
 }
 
@@ -302,7 +298,6 @@ mouse_cut(scr_stat *scp)
     int blank;
     int c;
     int p;
-    int s;
     int i;
 
     start = scp->mouse_cut_start;
@@ -346,7 +341,7 @@ mouse_cut(scr_stat *scp)
     }
 
     /* remove the current marking */
-    s = spltty();
+    crit_enter();
     if (scp->mouse_cut_start <= scp->mouse_cut_end) {
 	mark_for_update(scp, scp->mouse_cut_start);
 	mark_for_update(scp, scp->mouse_cut_end);
@@ -360,7 +355,7 @@ mouse_cut(scr_stat *scp)
     scp->mouse_cut_end = end;
     mark_for_update(scp, from);
     mark_for_update(scp, to);
-    splx(s);
+    crit_exit();
 }
 
 /* a mouse button is pressed, start cut operation */
@@ -369,7 +364,6 @@ mouse_cut_start(scr_stat *scp)
 {
     int i;
     int j;
-    int s;
 
     if (scp->status & MOUSE_VISIBLE) {
 	i = scp->mouse_cut_start;
@@ -380,20 +374,20 @@ mouse_cut_start(scr_stat *scp)
 	} else if (skip_spc_right(scp, scp->mouse_pos) >= scp->xsize) {
 	    /* if the pointer is on trailing blank chars, mark towards eol */
 	    i = skip_spc_left(scp, scp->mouse_pos) + 1;
-	    s = spltty();
+	    crit_enter();
 	    scp->mouse_cut_start =
 	        (scp->mouse_pos / scp->xsize) * scp->xsize + i;
 	    scp->mouse_cut_end =
 	        (scp->mouse_pos / scp->xsize + 1) * scp->xsize - 1;
-	    splx(s);
+	    crit_exit();
 	    cut_buffer[0] = '\r';
 	    cut_buffer[1] = '\0';
 	    scp->status |= MOUSE_CUTTING;
 	} else {
-	    s = spltty();
+	    crit_enter();
 	    scp->mouse_cut_start = scp->mouse_pos;
 	    scp->mouse_cut_end = scp->mouse_cut_start;
-	    splx(s);
+	    crit_exit();
 	    cut_buffer[0] = sc_vtb_getc(&scp->vtb, scp->mouse_cut_start);
 	    cut_buffer[1] = '\0';
 	    scp->status |= MOUSE_CUTTING;
@@ -419,7 +413,6 @@ mouse_cut_word(scr_stat *scp)
     int sol;
     int eol;
     int c;
-    int s;
     int i;
     int j;
 
@@ -430,7 +423,7 @@ mouse_cut_word(scr_stat *scp)
      */
     if (scp->status & MOUSE_VISIBLE) {
 	/* remove the current cut mark */
-	s = spltty();
+	crit_enter();
 	if (scp->mouse_cut_start <= scp->mouse_cut_end) {
 	    mark_for_update(scp, scp->mouse_cut_start);
 	    mark_for_update(scp, scp->mouse_cut_end);
@@ -440,7 +433,7 @@ mouse_cut_word(scr_stat *scp)
 	}
 	scp->mouse_cut_start = scp->xsize*scp->ysize;
 	scp->mouse_cut_end = -1;
-	splx(s);
+	crit_exit();
 
 	sol = (scp->mouse_pos / scp->xsize) * scp->xsize;
 	eol = sol + scp->xsize;
@@ -482,12 +475,12 @@ mouse_cut_word(scr_stat *scp)
 	scp->status |= MOUSE_CUTTING;
 
 	/* mark the region */
-	s = spltty();
+	crit_enter();
 	scp->mouse_cut_start = start;
 	scp->mouse_cut_end = end;
 	mark_for_update(scp, start);
 	mark_for_update(scp, end);
-	splx(s);
+	crit_exit();
     }
 }
 
@@ -495,13 +488,12 @@ mouse_cut_word(scr_stat *scp)
 static void
 mouse_cut_line(scr_stat *scp)
 {
-    int s;
     int i;
     int j;
 
     if (scp->status & MOUSE_VISIBLE) {
 	/* remove the current cut mark */
-	s = spltty();
+	crit_enter();
 	if (scp->mouse_cut_start <= scp->mouse_cut_end) {
 	    mark_for_update(scp, scp->mouse_cut_start);
 	    mark_for_update(scp, scp->mouse_cut_end);
@@ -516,7 +508,7 @@ mouse_cut_line(scr_stat *scp)
 	scp->mouse_cut_end = scp->mouse_cut_start + scp->xsize - 1;
 	mark_for_update(scp, scp->mouse_cut_start);
 	mark_for_update(scp, scp->mouse_cut_end);
-	splx(s);
+	crit_exit();
 
 	/* copy the line into the cut buffer */
 	for (i = 0, j = scp->mouse_cut_start; j <= scp->mouse_cut_end; ++j)
@@ -533,7 +525,6 @@ mouse_cut_extend(scr_stat *scp)
 {
     int start;
     int end;
-    int s;
 
     if ((scp->status & MOUSE_VISIBLE) && !(scp->status & MOUSE_CUTTING)
 	&& (scp->mouse_cut_end >= 0)) {
@@ -544,7 +535,7 @@ mouse_cut_extend(scr_stat *scp)
 	    start = scp->mouse_cut_end;
 	    end = scp->mouse_cut_start - 1;
 	}
-	s = spltty();
+	crit_enter();
 	if (scp->mouse_pos > end) {
 	    scp->mouse_cut_start = start;
 	    scp->mouse_cut_end = end;
@@ -560,7 +551,7 @@ mouse_cut_extend(scr_stat *scp)
 		scp->mouse_cut_end = start;
 	    }
 	}
-	splx(s);
+	crit_exit();
 	mouse_cut(scp);
 	scp->status |= MOUSE_CUTTING;
     }
@@ -583,7 +574,6 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
     mouse_info_t *mouse;
     scr_stat *cur_scp;
     scr_stat *scp;
-    int s;
     int f;
 
     scp = SC_STAT(tp->t_dev);
@@ -609,47 +599,47 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	    return 0;
 
 	case MOUSE_SHOW:
-	    s = spltty();
+	    crit_enter();
 	    if (!(scp->sc->flags & SC_MOUSE_ENABLED)) {
 		scp->sc->flags |= SC_MOUSE_ENABLED;
 		cur_scp->status &= ~MOUSE_HIDDEN;
 		if (!ISGRAPHSC(cur_scp))
 		    mark_all(cur_scp);
-		splx(s);
+		crit_exit();
 		return 0;
 	    } else {
-		splx(s);
+		crit_exit();
 		return EINVAL;
 	    }
 	    break;
 
 	case MOUSE_HIDE:
-	    s = spltty();
+	    crit_enter();
 	    if (scp->sc->flags & SC_MOUSE_ENABLED) {
 		scp->sc->flags &= ~SC_MOUSE_ENABLED;
 		sc_remove_all_mouse(scp->sc);
-		splx(s);
+		crit_exit();
 		return 0;
 	    } else {
-		splx(s);
+		crit_exit();
 		return EINVAL;
 	    }
 	    break;
 
 	case MOUSE_MOVEABS:
-	    s = spltty();
+	    crit_enter();
 	    scp->mouse_xpos = mouse->u.data.x;
 	    scp->mouse_ypos = mouse->u.data.y;
 	    set_mouse_pos(scp);
-	    splx(s);
+	    crit_exit();
 	    break;
 
 	case MOUSE_MOVEREL:
-	    s = spltty();
+	    crit_enter();
 	    scp->mouse_xpos += mouse->u.data.x;
 	    scp->mouse_ypos += mouse->u.data.y;
 	    set_mouse_pos(scp);
-	    splx(s);
+	    crit_exit();
 	    break;
 
 	case MOUSE_GETINFO:
@@ -667,7 +657,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	    if (SC_VTY(tp->t_dev) != SC_CONSOLECTL)
 		return ENOTTY;
 #endif
-	    s = spltty();
+	    crit_enter();
 	    if (mouse->u.data.x != 0 || mouse->u.data.y != 0) {
 		cur_scp->mouse_xpos += mouse->u.data.x;
 		cur_scp->mouse_ypos += mouse->u.data.y;
@@ -678,7 +668,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 		f = cur_scp->mouse_buttons ^ mouse->u.data.buttons;
 		cur_scp->mouse_buttons = mouse->u.data.buttons;
 	    }
-	    splx(s);
+	    crit_exit();
 
 	    if (sysmouse_event(mouse) == 0)
 		return 0;
@@ -815,7 +805,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	    } else {
 		if (mouse->u.mouse_char >= (unsigned char)-1 - 4)
 		    return EINVAL;
-		s = spltty();
+		crit_enter();
 		sc_remove_all_mouse(scp->sc);
 #ifndef SC_NO_FONT_LOADING
 		if (ISTEXTSC(cur_scp) && (cur_scp->font != NULL))
@@ -823,7 +813,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 				 cur_scp->sc->mouse_char, 4);
 #endif
 		scp->sc->mouse_char = mouse->u.mouse_char;
-		splx(s);
+		crit_exit();
 	    }
 	    break;
 

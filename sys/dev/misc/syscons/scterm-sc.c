@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm-sc.c,v 1.4.2.10 2001/06/11 09:05:39 phk Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.5 2005/01/28 21:08:38 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.6 2005/06/11 00:26:45 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -34,6 +34,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/consio.h>
+#include <sys/thread2.h>
 
 #include <machine/pc/display.h>
 
@@ -552,7 +553,7 @@ scterm_scan_esc(scr_stat *scp, term_stat *tcp, u_char c)
 			break;
 
 		case 'C':   /* set cursor type & shape */
-			i = spltty();
+			crit_enter();
 			if (!ISGRAPHSC(sc->cur_scp))
 				sc_remove_cursor_image(sc->cur_scp);
 			if (tcp->num_param == 1) {
@@ -579,7 +580,7 @@ scterm_scan_esc(scr_stat *scp, term_stat *tcp, u_char c)
 				sc_set_cursor_image(sc->cur_scp);
 				sc_draw_cursor_image(sc->cur_scp);
 			}
-			splx(i);
+			crit_exit();
 			break;
 
 		case 'F':   /* set adapter foreground */

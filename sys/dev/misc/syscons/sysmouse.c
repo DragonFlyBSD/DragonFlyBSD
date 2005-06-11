@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.8 2004/05/19 22:52:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.9 2005/06/11 00:26:45 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -35,6 +35,7 @@
 #include <sys/proc.h>
 #include <sys/tty.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <machine/console.h>
 #include <machine/mouse.h>
@@ -116,14 +117,13 @@ static int
 smclose(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct tty *tp;
-	int s;
 
 	tp = dev->si_tty;
-	s = spltty();
+	crit_enter();
 	mouse_level = 0;
 	(*linesw[tp->t_line].l_close)(tp, flag);
 	ttyclose(tp);
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -133,9 +133,8 @@ smstart(struct tty *tp)
 {
 	struct clist *rbp;
 	u_char buf[PCBURST];
-	int s;
 
-	s = spltty();
+	crit_enter();
 	if (!(tp->t_state & (TS_TIMEOUT | TS_BUSY | TS_TTSTOP))) {
 		tp->t_state |= TS_BUSY;
 		rbp = &tp->t_outq;
@@ -144,7 +143,7 @@ smstart(struct tty *tp)
 		tp->t_state &= ~TS_BUSY;
 		ttwwakeup(tp);
 	}
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -163,7 +162,6 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	mousehw_t *hw;
 	mousemode_t *mode;
 	int error;
-	int s;
 
 	tp = dev->si_tty;
 	switch (cmd) {
@@ -224,14 +222,14 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return 0;
 
 	case MOUSE_GETSTATUS:	/* get accumulated mouse events */
-		s = spltty();
+		crit_enter();
 		*(mousestatus_t *)data = mouse_status;
 		mouse_status.flags = 0;
 		mouse_status.obutton = mouse_status.button;
 		mouse_status.dx = 0;
 		mouse_status.dy = 0;
 		mouse_status.dz = 0;
-		splx(s);
+		crit_exit();
 		return 0;
 
 #if notyet
