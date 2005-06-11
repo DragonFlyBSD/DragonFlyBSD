@@ -38,7 +38,7 @@
 /*
  * $Id: vinumhdr.h,v 1.18 2001/01/04 00:14:14 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumhdr.h,v 1.16.2.1 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.9 2005/06/11 00:05:46 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumhdr.h,v 1.10 2005/06/11 00:35:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,14 +69,13 @@
 #ifdef _KERNEL
 #include <machine/setjmp.h>
 #include <machine/stdarg.h>
+#include <sys/thread2.h>
+#include <sys/buf2.h>
 #else
 #include <setjmp.h>
 #include <stdarg.h>
 #endif
 #include <vm/vm.h>
-
-#include <sys/thread2.h>
-#include <sys/buf2.h>
 
 #include "vinumvar.h"
 #include "vinumio.h"
