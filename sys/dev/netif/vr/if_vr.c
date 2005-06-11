@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.26 2005/06/10 15:13:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.27 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -969,15 +969,9 @@ vr_newbuf(struct vr_softc *sc, struct vr_chain_onefrag *c, struct mbuf *m)
 	struct mbuf *m_new = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
-			return(ENOBUFS);
-
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			m_freem(m_new);
-			return(ENOBUFS);
-		}
+			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 	} else {
 		m_new = m;
@@ -1322,19 +1316,11 @@ vr_encap(struct vr_softc *sc, struct vr_chain *c, struct mbuf *m_head)
 	 * waste time trying to decide when to copy and when not
 	 * to copy, just do it all the time.
 	 */
-	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+	m_new = m_getl(m_head->m_pkthdr.len, MB_DONTWAIT, MT_DATA, M_PKTHDR,
+		       NULL);
 	if (m_new == NULL) {
 		if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
-		return(1);
-	}
-	if (m_head->m_pkthdr.len > MHLEN) {
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			m_freem(m_new);
-			if_printf(&sc->arpcom.ac_if,
-				  "no memory for tx list\n");
-			return(1);
-		}
+		return (1);
 	}
 	m_copydata(m_head, 0, m_head->m_pkthdr.len,	
 				mtod(m_new, caddr_t));

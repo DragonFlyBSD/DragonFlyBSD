@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.11 2005/06/08 23:29:29 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.12 2005/06/11 04:26:53 hsu Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -307,7 +307,7 @@ awi_wep_encrypt(sc, m0, txflag)
 	struct mbuf *m, *n, *n0;
 	struct ieee80211_frame *wh;
 	struct awi_wep_algo *awa;
-	int left, len, moff, noff, keylen, kid;
+	int left, len, plen, msize, moff, noff, keylen, kid;
 	u_int32_t iv, crc;
 	u_int8_t *key, *ivp;
 	void *ctx;
@@ -320,25 +320,22 @@ awi_wep_encrypt(sc, m0, txflag)
 	ctx = sc->sc_wep_ctx;
 	m = m0;
 	left = m->m_pkthdr.len;
-	MGETHDR(n, MB_DONTWAIT, m->m_type);
-	n0 = n;
-	if (n == NULL)
-		goto fail;
-	M_MOVE_PKTHDR(n, m);
+
 	len = IEEE80211_WEP_IVLEN + IEEE80211_WEP_KIDLEN + IEEE80211_WEP_CRCLEN;
 	if (txflag) {
-		n->m_pkthdr.len += len;
+		plen = m->m_pkthdr.len + len;
 	} else {
-		n->m_pkthdr.len -= len;
+		plen = m->m_pkthdr.len - len;
 		left -= len;
 	}
-	n->m_len = MHLEN;
-	if (n->m_pkthdr.len >= MINCLSIZE) {
-		MCLGET(n, MB_DONTWAIT);
-		if (n->m_flags & M_EXT)
-			n->m_len = n->m_ext.ext_size;
-	}
+	n0 = n = m_getl(plen, MB_DONTWAIT, m->m_type, M_PKTHDR, &msize);
+	if (n == NULL)
+		goto fail;
+	n->m_len = msize;
+	n->m_pkthdr.len = plen;
+	M_MOVE_PKTHDR(n, m);
 	len = sizeof(struct ieee80211_frame);
+
 	memcpy(mtod(n, caddr_t), mtod(m, caddr_t), len);
 	left -= len;
 	moff = len;
@@ -383,16 +380,12 @@ awi_wep_encrypt(sc, m0, txflag)
 		if (len > n->m_len - noff) {
 			len = n->m_len - noff;
 			if (len == 0) {
-				MGET(n->m_next, MB_DONTWAIT, n->m_type);
+				n->m_next = m_getl(left, MB_DONTWAIT,
+						   n->m_type, 0, &msize);
 				if (n->m_next == NULL)
 					goto fail;
+				n->m_next->m_len = msize;
 				n = n->m_next;
-				n->m_len = MLEN;
-				if (left >= MINCLSIZE) {
-					MCLGET(n, MB_DONTWAIT);
-					if (n->m_flags & M_EXT)
-						n->m_len = n->m_ext.ext_size;
-				}
 				noff = 0;
 				continue;
 			}

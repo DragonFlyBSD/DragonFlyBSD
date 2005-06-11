@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.18 2005/05/31 08:12:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.19 2005/06/11 04:26:53 hsu Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -687,11 +687,9 @@ read_again:
     rx_fifo = rx_fifo2 = status & RX_BYTES_MASK;
 
     if (EP_FTST(sc, F_RX_FIRST)) {
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	m = m_getl(rx_fifo, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (!m)
 	    goto out;
-	if (rx_fifo >= MINCLSIZE)
-	    MCLGET(m, MB_DONTWAIT);
 	sc->top = sc->mcur = top = m;
 #define EROUND  ((sizeof(struct ether_header) + 3) & ~3)
 #define EOFF    (EROUND - sizeof(struct ether_header))
@@ -715,11 +713,9 @@ read_again:
 	lenthisone = min(rx_fifo, M_TRAILINGSPACE(m));
 	if (lenthisone == 0) {	/* no room in this one */
 	    mcur = m;
-	    MGET(m, MB_DONTWAIT, MT_DATA);
+	    m = m_getl(rx_fifo, MB_DONTWAIT, MT_DATA, 0, NULL);
 	    if (!m)
 		goto out;
-	    if (rx_fifo >= MINCLSIZE)
-		MCLGET(m, MB_DONTWAIT);
 	    m->m_len = 0;
 	    mcur->m_next = m;
 	    lenthisone = min(rx_fifo, M_TRAILINGSPACE(m));

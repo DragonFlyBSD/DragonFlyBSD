@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.14 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.15 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -1685,38 +1685,29 @@ ar_get_packets(struct ar_softc *sc)
 	while(ar_packet_avail(sc, &len, &rxstat)) {
 		TRC(printf("apa: len %d, rxstat %x\n", len, rxstat));
 		if(((rxstat & SCA_DESC_ERRORS) == 0) && (len < MCLBYTES)) {
-			MGETHDR(m, MB_DONTWAIT, MT_DATA);
+			m =  m_getl(len, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
 			if(m == NULL) {
 				/* eat packet if get mbuf fail!! */
 				ar_eat_packet(sc, 1);
 				continue;
 			}
-#ifndef NETGRAPH
-			m->m_pkthdr.rcvif = &sc->ifsppp.pp_if;
-#else	/* NETGRAPH */
+#ifdef NETGRAPH
 			m->m_pkthdr.rcvif = NULL;
 			sc->inbytes += len;
 			sc->inlast = 0;
-#endif	/* NETGRAPH */
+#else
+			m->m_pkthdr.rcvif = &sc->ifsppp.pp_if;
+#endif
 			m->m_pkthdr.len = m->m_len = len;
-			if(len > MHLEN) {
-				MCLGET(m, MB_DONTWAIT);
-				if((m->m_flags & M_EXT) == 0) {
-					m_freem(m);
-					ar_eat_packet(sc, 1);
-					continue;
-				}
-			}
 			ar_copy_rxbuf(m, sc, len);
-#ifndef NETGRAPH
+#ifdef NETGRAPH
+			NG_SEND_DATA_ONLY(error, sc->hook, m);
+			sc->ipackets++;
+#else
 			BPF_MTAP(&sc->ifsppp.pp_if, m);
 			sppp_input(&sc->ifsppp.pp_if, m);
 			sc->ifsppp.pp_if.if_ipackets++;
-#else	/* NETGRAPH */
-			NG_SEND_DATA_ONLY(error, sc->hook, m);
-			sc->ipackets++;
-#endif	/* NETGRAPH */
-
+#endif
 			/*
 			 * Update the eda to the previous descriptor.
 			 */

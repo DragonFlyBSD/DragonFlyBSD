@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.25 2005/06/06 16:32:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.26 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -898,14 +898,8 @@ an_rxeof(sc)
 			}
 			BPF_TAP(ifp, bpf_buf, len);
 		} else {
-			MGETHDR(m, M_NOWAIT, MT_DATA);
+			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 			if (m == NULL) {
-				ifp->if_ierrors++;
-				return;
-			}
-			MCLGET(m, M_NOWAIT);
-			if (!(m->m_flags & M_EXT)) {
-				m_freem(m);
 				ifp->if_ierrors++;
 				return;
 			}
@@ -982,14 +976,8 @@ an_rxeof(sc)
 			if (an_rx_desc.an_done && !an_rx_desc.an_valid) {
 				buf = sc->an_rx_buffer[count].an_dma_vaddr;
 
-				MGETHDR(m, M_NOWAIT, MT_DATA);
+				m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 				if (m == NULL) {
-					ifp->if_ierrors++;
-					return;
-				}
-				MCLGET(m, M_NOWAIT);
-				if (!(m->m_flags & M_EXT)) {
-					m_freem(m);
 					ifp->if_ierrors++;
 					return;
 				}

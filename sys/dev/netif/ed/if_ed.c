@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.21 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.22 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -2784,29 +2784,18 @@ ed_get_packet(sc, buf, len)
 	struct ether_header *eh;
 	struct mbuf *m;
 
-	/* Allocate a header mbuf */
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
-	if (m == NULL)
-		return;
-	m->m_pkthdr.rcvif = ifp;
-	m->m_pkthdr.len = m->m_len = len;
-
 	/*
+	 * Allocate a header mbuf.
 	 * We always put the received packet in a single buffer -
 	 * either with just an mbuf header or in a cluster attached
 	 * to the header. The +2 is to compensate for the alignment
 	 * fixup below.
 	 */
-	if ((len + 2) > MHLEN) {
-		/* Attach an mbuf cluster */
-		MCLGET(m, MB_DONTWAIT);
-
-		/* Insist on getting a cluster */
-		if ((m->m_flags & M_EXT) == 0) {
-			m_freem(m);
-			return;
-		}
-	}
+	m = m_getl(len + 2, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+	if (m == NULL)
+		return;
+	m->m_pkthdr.rcvif = ifp;
+	m->m_pkthdr.len = m->m_len = len;
 
 	/*
 	 * The +2 is to longword align the start of the real packet.

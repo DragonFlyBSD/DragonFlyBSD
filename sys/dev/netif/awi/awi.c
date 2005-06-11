@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.20 2005/06/08 23:10:27 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.21 2005/06/11 04:26:53 hsu Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -1310,6 +1310,7 @@ awi_devget(sc, off, len)
 	struct mbuf *m;
 	struct mbuf *top, **mp;
 	u_int tlen;
+	int msize;
 
 	top = sc->sc_rxpend;
 	mp = &top;
@@ -1336,32 +1337,22 @@ awi_devget(sc, off, len)
 	}
 
 	while (len > 0) {
-		if (top == NULL) {
-			MGETHDR(m, MB_DONTWAIT, MT_DATA);
-			if (m == NULL)
-				return NULL;
-			m->m_pkthdr.rcvif = sc->sc_ifp;
-			m->m_pkthdr.len = len;
-			m->m_len = MHLEN;
-		} else {
-			MGET(m, MB_DONTWAIT, MT_DATA);
-			if (m == NULL) {
-				m_freem(top);
-				return NULL;
-			}
-			m->m_len = MLEN;
+		m = m_getl(len, MB_DONTWAIT, MT_DATA,
+			   top == NULL ? M_PKTHDR : 0, &msize);
+		if (m == NULL) {
+			m_freem(top);
+			return (NULL);
 		}
-		if (len >= MINCLSIZE) {
-			MCLGET(m, MB_DONTWAIT);
-			if (m->m_flags & M_EXT)
-				m->m_len = m->m_ext.ext_size;
-		}
+		m->m_len = msize;
 		if (top == NULL) {
 			int hdrlen = sizeof(struct ieee80211_frame) +
 			    (sc->sc_format_llc ? sizeof(struct llc) :
 			    sizeof(struct ether_header));
 			caddr_t newdata = (caddr_t)
 			    ALIGN(m->m_data + hdrlen) - hdrlen;
+
+			m->m_pkthdr.rcvif = sc->sc_ifp;
+			m->m_pkthdr.len = len;
 			m->m_len -= newdata - m->m_data;
 			m->m_data = newdata;
 		}

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.31 2005/05/31 07:52:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.32 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -2226,15 +2226,9 @@ static int dc_newbuf(sc, i, m)
 	c = &sc->dc_ldata->dc_rx_list[i];
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
-			return(ENOBUFS);
-
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			m_freem(m_new);
-			return(ENOBUFS);
-		}
+			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 	} else {
 		m_new = m;

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.25 2005/06/08 19:03:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.26 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -1439,22 +1439,12 @@ wi_rx_intr(struct wi_softc *sc)
 			len = 0;
 	}
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	m = m_getl(off + len, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 		ifp->if_ierrors++;
-		DPRINTF(("wi_rx_intr: MGET failed\n"));
+		DPRINTF(("wi_rx_intr: m_getl failed\n"));
 		return;
-	}
-	if (off + len > MHLEN) {
-		MCLGET(m, MB_DONTWAIT);
-		if ((m->m_flags & M_EXT) == 0) {
-			CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-			m_freem(m);
-			ifp->if_ierrors++;
-			DPRINTF(("wi_rx_intr: MCLGET failed\n"));
-			return;
-		}
 	}
 
 	m->m_data += off - sizeof(struct ieee80211_frame);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.22 2005/06/10 16:19:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.23 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -1429,17 +1429,11 @@ static int tl_newbuf(sc, c)
 	struct tl_softc		*sc;
 	struct tl_chain_onefrag	*c;
 {
-	struct mbuf		*m_new = NULL;
+	struct mbuf *m_new;
 
-	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+	m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
-		return(ENOBUFS);
-
-	MCLGET(m_new, MB_DONTWAIT);
-	if (!(m_new->m_flags & M_EXT)) {
-		m_freem(m_new);
-		return(ENOBUFS);
-	}
+		return (ENOBUFS);
 
 	c->tl_mbuf = m_new;
 	c->tl_next = NULL;
@@ -1862,21 +1856,13 @@ static int tl_encap(sc, c, m_head)
 	 * and would waste cycles.
 	 */
 	if (m != NULL) {
-		struct mbuf		*m_new = NULL;
+		struct mbuf *m_new;
 
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		m_new = m_getl(m_head->m_pkthdr.len, MB_DONTWAIT, MT_DATA,
+			       M_PKTHDR, NULL);
 		if (m_new == NULL) {
 			printf("tl%d: no memory for tx list\n", sc->tl_unit);
-			return(1);
-		}
-		if (m_head->m_pkthdr.len > MHLEN) {
-			MCLGET(m_new, MB_DONTWAIT);
-			if (!(m_new->m_flags & M_EXT)) {
-				m_freem(m_new);
-				printf("tl%d: no memory for tx list\n",
-				sc->tl_unit);
-				return(1);
-			}
+			return (1);
 		}
 		m_copydata(m_head, 0, m_head->m_pkthdr.len,	
 					mtod(m_new, caddr_t));

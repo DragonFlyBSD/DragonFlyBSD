@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.26 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.27 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -684,21 +684,16 @@ ti_newbuf_std(struct ti_softc *sc, int i, struct mbuf *m)
 	struct ti_rx_desc *r;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
-			return(ENOBUFS);
-
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			m_freem(m_new);
-			return(ENOBUFS);
-		}
+			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 	} else {
 		m_new = m;
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 		m_new->m_data = m_new->m_ext.ext_buf;
 	}
+
 
 	m_adj(m_new, ETHER_ALIGN);
 	sc->ti_cdata.ti_rx_std_chain[i] = m_new;

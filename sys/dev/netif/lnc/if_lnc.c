@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.19 2005/05/31 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.20 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -319,14 +319,9 @@ alloc_mbuf_cluster(struct lnc_softc *sc, struct host_ring_entry *desc)
 		sc->mbufs = m->m_next;
 		/* XXX m->m_data = m->m_ext.ext_buf;*/
 	} else {
-		MGET(m, MB_DONTWAIT, MT_DATA);
-   	if (!m)
-			return(1);
-      MCLGET(m, MB_DONTWAIT);
-   	if (!m->m_ext.ext_buf) {
-			m_free(m);
-			return(1);
-		}
+		m = m_getcl(MB_DONTWAIT, MT_DATA, 0);
+		if (m == NULL)
+			return (1);
 	}
 
 	desc->buff.mbuf = m;
@@ -414,13 +409,11 @@ mbuf_packet(struct lnc_softc *sc, int start_of_packet, int pkt_len)
 		if (amount == 0) {
 			/* mbuf must be empty */
 			m_prev = m;
-			MGET(m, MB_DONTWAIT, MT_DATA);
-			if (!m) {
+			m = m_getl(pkt_len, MB_DONTWAIT, MT_DATA, 0, NULL);
+			if (m == NULL) {
 				m_freem(head);
-				return(0);
+				return (0);
 			}
-			if (pkt_len >= MINCLSIZE)
-				MCLGET(m, MB_DONTWAIT);
 			m->m_len = 0;
 			m_prev->m_next = m;
 			amount = min(blen, M_TRAILINGSPACE(m));
@@ -1217,17 +1210,12 @@ chain_to_cluster(struct mbuf *m)
 {
 	struct mbuf *new;
 
-	MGET(new, MB_DONTWAIT, MT_DATA);
-	if (new) {
-		MCLGET(new, MB_DONTWAIT);
-		if (new->m_ext.ext_buf) {
-			new->m_len = mbuf_to_buffer(m, new->m_data);
-			m_freem(m);
-			return(new);
-		} else
-			m_free(new);
-	}
-	return(0);
+	new = m_getcl(MB_DONTWAIT, MT_DATA, 0);
+	if (new == NULL)
+		return (0);
+	new->m_len = mbuf_to_buffer(m, new->m_data);
+	m_freem(m);
+	return (new);
 }
 
 /*

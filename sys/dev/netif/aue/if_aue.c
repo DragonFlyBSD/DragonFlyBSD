@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.23 2005/05/24 07:56:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.24 2005/06/11 04:26:53 hsu Exp $
  */
 
 /*
@@ -771,18 +771,10 @@ aue_newbuf(struct aue_softc *sc, struct aue_chain *c, struct mbuf *m)
 	struct mbuf		*m_new = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL) {
-			if_printf(&sc->arpcom.ac_if, "no memory for rx list "
-			    "-- packet dropped!\n");
-			return (ENOBUFS);
-		}
-
-		MCLGET(m_new, MB_DONTWAIT);
-		if (!(m_new->m_flags & M_EXT)) {
-			if_printf(&sc->arpcom.ac_if, "no memory for rx list "
-			    "-- packet dropped!\n");
-			m_freem(m_new);
+			if_printf(&sc->arpcom.ac_if,
+			    "no memory for rx list -- packet dropped!\n");
 			return (ENOBUFS);
 		}
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
