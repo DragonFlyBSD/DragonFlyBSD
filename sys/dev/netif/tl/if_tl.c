@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.24 2005/06/11 08:50:21 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.25 2005/06/11 08:57:26 joerg Exp $
  */
 
 /*
@@ -1110,13 +1110,10 @@ static int tl_attach(dev)
 	struct tl_softc		*sc;
 	int			unit, error = 0, rid;
 
-	crit_enter();
-
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
-	bzero(sc, sizeof(struct tl_softc));
 
 	t = tl_devs;
 	while(t->tl_name != NULL) {
@@ -1138,8 +1135,7 @@ static int tl_attach(dev)
 #ifdef TL_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
 		printf("tl%d: failed to enable I/O ports!\n", unit);
-		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	rid = TL_PCI_LOIO;
@@ -1159,7 +1155,7 @@ static int tl_attach(dev)
 	if (!(command & PCIM_CMD_MEMEN)) {
 		printf("tl%d: failed to enable memory mapping!\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	rid = TL_PCI_LOMEM;
@@ -1175,7 +1171,7 @@ static int tl_attach(dev)
 	if (sc->tl_res == NULL) {
 		printf("tl%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	sc->tl_btag = rman_get_bustag(sc->tl_res);
@@ -1199,19 +1195,8 @@ static int tl_attach(dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->tl_irq == NULL) {
-		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 		printf("tl%d: couldn't map interrupt\n", unit);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->tl_irq, INTR_TYPE_NET,
-			       tl_intr, sc, &sc->tl_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
-		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
-		printf("tl%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -1222,9 +1207,6 @@ static int tl_attach(dev)
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->tl_ldata == NULL) {
-		bus_teardown_intr(dev, sc->tl_irq, sc->tl_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
-		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 		printf("tl%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
@@ -1249,11 +1231,6 @@ static int tl_attach(dev)
 	 */
 	if (tl_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
 				sc->tl_eeaddr, ETHER_ADDR_LEN)) {
-		bus_teardown_intr(dev, sc->tl_irq, sc->tl_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
-		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
-		contigfree(sc->tl_ldata,
-		    sizeof(struct tl_list_data), M_DEVBUF);
 		printf("tl%d: failed to read station address\n", unit);
 		error = ENXIO;
 		goto fail;
@@ -1326,37 +1303,51 @@ static int tl_attach(dev)
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
+	error = bus_setup_intr(dev, sc->tl_irq, INTR_TYPE_NET,
+			       tl_intr, sc, &sc->tl_intrhand, NULL);
+
+	if (error) {
+		ether_ifdetach(ifp);
+		printf("tl%d: couldn't set up irq\n", unit);
+		goto fail;
+	}
+
+	return(0);
+
 fail:
-	crit_exit();
+	tl_detach(dev);
 	return(error);
 }
 
 static int tl_detach(dev)
 	device_t		dev;
 {
-	struct tl_softc		*sc;
-	struct ifnet		*ifp;
+	struct tl_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	if (device_is_attached(dev)) {
+		tl_stop(sc);
+		ether_ifdetach(ifp);
+	}
 
-	tl_stop(sc);
-	ether_ifdetach(ifp);
-
+	if (sc->tl_miibus)
+		device_delete_child(dev, sc->tl_miibus);
 	bus_generic_detach(dev);
-	device_delete_child(dev, sc->tl_miibus);
-
-	contigfree(sc->tl_ldata, sizeof(struct tl_list_data), M_DEVBUF);
-	if (sc->tl_bitrate)
-		ifmedia_removeall(&sc->ifmedia);
-
-	bus_teardown_intr(dev, sc->tl_irq, sc->tl_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
-	bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 
 	crit_exit();
+
+	if (sc->tl_ldata)
+		contigfree(sc->tl_ldata, sizeof(struct tl_list_data), M_DEVBUF);
+	if (sc->tl_bitrate)
+		ifmedia_removeall(&sc->ifmedia);
+	if (sc->tl_intrhand)
+		bus_teardown_intr(dev, sc->tl_irq, sc->tl_intrhand);
+	if (sc->tl_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
+	if (sc->tl_res)
+		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 
 	return(0);
 }
