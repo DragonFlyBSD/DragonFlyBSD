@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.23 2005/06/09 19:45:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.24 2005/06/12 15:55:59 joerg Exp $
  */
 
 /*
@@ -689,7 +689,7 @@ rl_setmulti(struct rl_softc *sc)
 			continue;
 		h = ether_crc32_be(
 		    LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
-		    ETHER_ADDR_LEN >> 26);
+		    ETHER_ADDR_LEN) >> 26;
 		if (h < 32)
 			hashes[0] |= (1 << h);
 		else
