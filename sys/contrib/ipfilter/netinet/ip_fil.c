@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.18 2005/06/05 12:17:46 corecode Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.19 2005/06/12 15:37:19 hsu Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -1248,7 +1248,7 @@ fr_info_t *fin;
 # if	(BSD < 199306) || defined(__sgi)
 	m = m_get(M_DONTWAIT, MT_HEADER);
 # elif defined(__DragonFly__)
-	m = m_get(MB_DONTWAIT, MT_HEADER);
+	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 # else
 	m = m_gethdr(M_DONTWAIT, MT_HEADER);
 # endif
