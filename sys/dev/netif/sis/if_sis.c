@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.23 2005/05/25 01:44:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.24 2005/06/12 17:19:07 joerg Exp $
  */
 
 /*
@@ -66,6 +66,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -510,9 +511,9 @@ sis_mii_send(struct sis_softc *sc, uint32_t bits, int cnt)
 static int
 sis_mii_readreg(struct sis_softc *sc, struct sis_mii_frame *frame)
 {
-	int i, ack, s;
+	int i, ack;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -586,7 +587,7 @@ fail:
 	SIO_SET(SIS_MII_CLK);
 	DELAY(1);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -599,9 +600,8 @@ fail:
 static int
 sis_mii_writereg(struct sis_softc *sc, struct sis_mii_frame *frame)
 {
-	int s;
+	crit_enter();
 
-	s = splimp();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -635,7 +635,7 @@ sis_mii_writereg(struct sis_softc *sc, struct sis_mii_frame *frame)
 	 */
 	SIO_CLR(SIS_MII_DIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1333,14 +1333,10 @@ fail:
 static int
 sis_detach(device_t dev)
 {
-	struct sis_softc *sc;
-	struct ifnet *ifp;
-	int s;
+	struct sis_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
-
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	if (device_is_attached(dev)) {
 		sis_reset(sc);
@@ -1353,6 +1349,9 @@ sis_detach(device_t dev)
 
 	if (sc->sis_intrhand)
 		bus_teardown_intr(dev, sc->sis_irq, sc->sis_intrhand);
+
+	crit_exit();
+
 	if (sc->sis_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sis_irq);
 	if (sc->sis_res)
@@ -1379,8 +1378,6 @@ sis_detach(device_t dev)
 		bus_dma_tag_destroy(sc->sis_tag);
 	if (sc->sis_parent_tag)
 		bus_dma_tag_destroy(sc->sis_parent_tag);
-
-	splx(s);
 
 	return(0);
 }
@@ -1633,15 +1630,11 @@ sis_txeof(struct sis_softc *sc)
 static void
 sis_tick(void *xsc)
 {
-	struct sis_softc *sc;
+	struct sis_softc *sc = xsc;
 	struct mii_data *mii;
-	struct ifnet *ifp;
-	int s;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
-
-	sc = xsc;
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	mii = device_get_softc(sc->sis_miibus);
 	mii_tick(mii);
@@ -1657,7 +1650,7 @@ sis_tick(void *xsc)
 
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 #ifdef DEVICE_POLLING
@@ -1882,9 +1875,8 @@ sis_init(void *xsc)
 	struct sis_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -1921,7 +1913,7 @@ sis_init(void *xsc)
 		if_printf(ifp, "initialization failed: "
 			  "no memory for rx buffers\n");
 		sis_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2042,9 +2034,9 @@ sis_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
-
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
+
+	crit_exit();
 }
 
 /*
@@ -2093,7 +2085,9 @@ sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct sis_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
-	int s, error = 0;
+	int error = 0;
+
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -2107,25 +2101,23 @@ sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		s = splimp();
 		if (sc->sis_type == SIS_TYPE_83815)
 			sis_setmulti_ns(sc);
 		else
 			sis_setmulti_sis(sc);
-		splx(s);
 		error = 0;
 		break;
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
 		mii = device_get_softc(sc->sis_miibus);
-		s = splimp();
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
-		splx(s);
 		break;
 	default:
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
+
+	crit_exit();
 
 	return(error);
 }
