@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.59 2005/05/30 00:54:46 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.60 2005/06/12 20:55:14 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -250,6 +250,7 @@ upgrade_etc:	preupgrade
 	rm -rf ${DESTDIR}/usr/share/misc/pcvtfonts
 	rm -rf ${DESTDIR}/usr/share/pcvt
 	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/battd.1.gz
+	rm -f ${DESTDIR}/usr/include/machine/bus_pc98.h
 	ldconfig -R
 
 distribution:

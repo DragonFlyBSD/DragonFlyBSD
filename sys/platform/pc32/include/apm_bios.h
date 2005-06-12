@@ -13,7 +13,7 @@
  * Aug, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/include/apm_bios.h,v 1.27.2.2 2002/04/12 16:47:00 bmah Exp $
- * $DragonFly: src/sys/platform/pc32/include/apm_bios.h,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/include/apm_bios.h,v 1.4 2005/06/12 20:55:14 swildner Exp $
  */
 
 #ifndef	_MACHINE_APM_BIOS_H_
@@ -25,13 +25,8 @@
 #include <sys/ioccom.h>
 
 /* BIOS id */
-#ifdef PC98
-#define APM_BIOS		0x9a
-#define APM_INT			0x1f
-#else
 #define APM_BIOS		0x53
 #define APM_INT			0x15
-#endif
 
 /* APM flags */
 #define APM_16BIT_SUPPORT	0x01
@@ -54,19 +49,11 @@
 #define APM_SETPWSTATE		0x07
 #define APM_ENABLEDISABLEPM	0x08
 #define APM_RESTOREDEFAULT	0x09
-#ifdef PC98
-#define	APM_GETPWSTATUS		0x3a
-#else
 #define	APM_GETPWSTATUS		0x0a
-#endif
 #define APM_GETPMEVENT		0x0b
 #define APM_GETPWSTATE		0x0c
 #define APM_ENABLEDISABLEDPM	0x0d
-#ifdef PC98
-#define APM_DRVVERSION		0x3e
-#else
 #define APM_DRVVERSION		0x0e
-#endif
 #define APM_ENGAGEDISENGAGEPM	0x0f
 #define APM_GETCAPABILITIES	0x10
 #define APM_RESUMETIMER		0x11

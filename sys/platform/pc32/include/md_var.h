@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.13 2004/04/29 17:25:00 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.14 2005/06/12 20:55:14 swildner Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -55,10 +55,6 @@ extern	u_int	cpu_procinfo;
 extern	char	cpu_vendor[];
 extern	u_int	cyrix_did;
 extern	char	kstack[];
-#ifdef PC98
-extern	int	need_pre_dma_flush;
-extern	int	need_post_dma_flush;
-#endif
 extern	int	nfs_diskless_valid;
 extern void	**ovbcopy_vector;
 extern	char	sigcode[];

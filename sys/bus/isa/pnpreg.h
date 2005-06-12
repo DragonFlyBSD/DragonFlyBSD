@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnpreg.h,v 1.3.2.1 2000/05/11 11:10:35 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnpreg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ *	$DragonFly: src/sys/bus/isa/pnpreg.h,v 1.3 2005/06/12 20:55:14 swildner Exp $
  *      from: pnp.h,v 1.7 1998/09/13 22:15:44 eivind Exp
  */
 
@@ -49,13 +49,8 @@
 #endif
 
 /* Static ports to access PnP state machine */
-#ifdef PC98
-#define _PNP_ADDRESS		0x259
-#define _PNP_WRITE_DATA		0xa59
-#else
 #define _PNP_ADDRESS		0x279
 #define _PNP_WRITE_DATA		0xa79
-#endif
 
 /* PnP Registers.  Write to ADDRESS and then use WRITE/READ_DATA */
 #define PNP_SET_RD_DATA		0x00

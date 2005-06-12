@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.7 2004/07/17 10:47:27 hmp Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.8 2005/06/12 20:55:14 swildner Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -174,19 +174,6 @@ extern int	isa_dmastatus (int chan);
 extern int	isa_dmastop (int chan);
 
 int isab_attach(device_t dev);
-
-#ifdef PC98
-#include <machine/bus.h>
-
-/*
- * Allocate discontinuous resources for ISA bus.
- */
-struct resource *
-isa_alloc_resourcev(device_t child, int type, int *rid,
-		    bus_addr_t *res, bus_size_t count, u_int flags);
-int
-isa_load_resourcev(struct resource *re, bus_addr_t *res, bus_size_t count);
-#endif
 
 #endif /* _KERNEL */
 

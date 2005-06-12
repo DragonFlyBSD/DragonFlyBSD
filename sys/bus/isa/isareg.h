@@ -35,12 +35,8 @@
  *
  *	from: @(#)isa.h	5.7 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/isareg.h,v 1.4.2.1 2000/07/18 20:39:05 dfr Exp $
- * $DragonFly: src/sys/bus/isa/isareg.h,v 1.3 2003/06/29 03:28:44 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isareg.h,v 1.4 2005/06/12 20:55:14 swildner Exp $
  */
-
-#ifdef PC98
-#error isa.h is included from PC-9801 source
-#endif
 
 #ifndef _ISA_ISA_H_
 #define	_ISA_ISA_H_

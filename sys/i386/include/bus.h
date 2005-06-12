@@ -29,23 +29,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus.h,v 1.7.2.2 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/i386/include/Attic/bus.h,v 1.4 2004/05/07 14:37:31 joerg Exp $
+ * $DragonFly: src/sys/i386/include/Attic/bus.h,v 1.5 2005/06/12 20:55:14 swildner Exp $
  */
 
 #ifndef _I386_BUS_H_
 #define _I386_BUS_H_
 
-#ifdef	PC98
-/* NEC PC-98 */
-#include "bus_pc98.h"
-#else
-/* IBM-PC */
 #include "bus_at386.h"
-#endif
 #include "bus_dma.h"
 
 /*
- * Stream accesses are the same as normal accesses on i386/pc98; there are no
+ * Stream accesses are the same as normal accesses on i386; there are no
  * supported bus systems with an endianess different from the host one.
  */
 #define	bus_space_read_stream_1(t, h, o)	bus_space_read_1((t), (h), (o))

@@ -2,7 +2,7 @@
  * IBM PC display definitions
  *
  * $FreeBSD: src/sys/i386/include/pc/display.h,v 1.5.2.1 2001/12/17 10:31:05 nyan Exp $
- * $DragonFly: src/sys/i386/include/pc/Attic/display.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/pc/Attic/display.h,v 1.3 2005/06/12 20:55:14 swildner Exp $
  */
 
 /* Color attributes for foreground text */
@@ -38,12 +38,7 @@
 
 /* Monochrome attributes for foreground text */
 
-#ifdef PC98
-/* PC-98 attributes for foreground text */
-#define	FG_UNDERLINE		0x08
-#else
 #define	FG_UNDERLINE		0x01
-#endif
 #define	FG_INTENSE		0x08
 
 /* Monochrome attributes for text background */

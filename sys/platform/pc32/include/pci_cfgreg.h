@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pci_cfgreg.h,v 1.4.2.1 2001/07/28 05:55:07 imp Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/pci_cfgreg.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/pci_cfgreg.h,v 1.4 2005/06/12 20:55:14 swildner Exp $
  *
  */
 
@@ -42,11 +42,7 @@
 #define CONF1_ENABLE_RES1  0x80000000ul
 
 #define CONF2_ENABLE_PORT  0x0cf8
-#ifdef PC98
-#define CONF2_FORWARD_PORT 0x0cf9
-#else
 #define CONF2_FORWARD_PORT 0x0cfa
-#endif
 
 #define CONF2_ENABLE_CHK   0x0e
 #define CONF2_ENABLE_RES   0x0e

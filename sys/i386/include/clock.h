@@ -4,7 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/include/Attic/clock.h,v 1.5 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/clock.h,v 1.6 2005/06/12 20:55:14 swildner Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_
@@ -31,9 +31,7 @@ extern int	apic_8254_intr;
  * Driver to clock driver interface.
  */
 
-#ifndef PC98
 int	rtcin (int val);
-#endif
 int	acquire_timer2 (int mode);
 int	release_timer2 (void);
 int	sysbeep (int pitch, int period);
