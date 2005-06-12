@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.18 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.19 2005/06/12 17:44:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -36,8 +36,7 @@
 #include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/random.h>
-#include <machine/clock.h>
-#include <machine/stdarg.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -221,9 +220,7 @@ sbsh_attach(device_t dev)
 {
 	struct sbsh_softc	*sc;
 	struct ifnet		*ifp;
-	int			unit, error = 0, rid, s;
-
-	s = splimp();
+	int			unit, error = 0, rid;
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -244,25 +241,12 @@ sbsh_attach(device_t dev)
 
 	if (sc->irq_res == NULL) {
 		printf("sbsh%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-					PCIR_MAPS + 4, sc->mem_res);
 		error = ENXIO;
 		goto fail;
 	}
 
 	sc->mem_base = rman_get_virtual(sc->mem_res);
 	init_card(sc);
-
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-				sbsh_intr, sc, &sc->intr_hand, NULL);
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-					PCIR_MAPS + 4, sc->mem_res);
-		printf("sbsh%d: couldn't set up irq\n", unit);
-		goto fail;
-	}
-
 	/* generate ethernet MAC address */
 	*(u_int32_t *)sc->arpcom.ac_enaddr = htonl(0x00ff0192);
 	read_random_unlimited(sc->arpcom.ac_enaddr + 4, 2);
@@ -282,31 +266,45 @@ sbsh_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
+	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+				sbsh_intr, sc, &sc->intr_hand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		printf("sbsh%d: couldn't set up irq\n", unit);
+		goto fail;
+	}
+
+	return(0);
+
 fail:
-	splx(s);
+	sbsh_detach(dev);
 	return (error);
 }
 
 static int
 sbsh_detach(device_t dev)
 {
-	struct sbsh_softc	*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct sbsh_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	if (device_is_attached(dev)) {
+		sbsh_stop(sc);
+		ether_ifdetach(ifp);
+	}
 
-	sbsh_stop(sc);
-	ether_ifdetach(ifp);
+	if (sc->intr_hand)
+		bus_teardown_intr(dev, sc->irq_res, sc->intr_hand);
 
-	bus_teardown_intr(dev, sc->irq_res, sc->intr_hand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);
-	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_MAPS + 4, sc->mem_res);
+	crit_exit();
 
-	splx(s);
+	if (sc->irq_res)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);
+	if (sc->mem_res)
+		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_MAPS + 4,
+				     sc->mem_res);
+
 	return (0);
 }
 
@@ -315,14 +313,13 @@ static void
 sbsh_start(struct ifnet *ifp)
 {
 	struct sbsh_softc  *sc = ifp->if_softc;
-	int  s;
 
-	if (sc->state != ACTIVE)
-		return;
+	crit_enter();
 
-	s = splimp();
-	start_xmit_frames(ifp->if_softc);
-	splx(s);
+	if (sc->state == ACTIVE)
+		start_xmit_frames(ifp->if_softc);
+
+	crit_exit();
 }
 
 
@@ -331,13 +328,14 @@ sbsh_init(void *xsc)
 {
 	struct sbsh_softc	*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
-	int			s;
 	u_int8_t		t;
 
-	if ((ifp->if_flags & IFF_RUNNING) || sc->state == NOT_LOADED)
-		return;
+	crit_enter();
 
-	s = splimp();
+	if ((ifp->if_flags & IFF_RUNNING) || sc->state == NOT_LOADED) {
+		crit_exit();
+		return;
+	}
 
 	bzero(&sc->in_stats, sizeof(struct sbni16_stats));
 	sc->head_xq = sc->tail_xq = sc->head_rq = sc->tail_rq = 0;
@@ -353,17 +351,17 @@ sbsh_init(void *xsc)
 		ifp->if_flags &= ~IFF_OACTIVE;
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 
 static void
 sbsh_stop(struct sbsh_softc *sc)
 {
-	int  s;
 	u_int8_t  t;
 
-	s = splimp();
+	crit_enter();
+
 	sc->regs->IMR = EXT;
 
 	t = 0;
@@ -379,7 +377,8 @@ sbsh_stop(struct sbsh_softc *sc)
 
 	sc->regs->IMR = 0;
 	sc->state = DOWN;
-	splx(s);
+
+	crit_enter();
 }
 
 
@@ -405,10 +404,10 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq		*ifr = (struct ifreq *) data;
 	struct cx28975_cfg	cfg;
 	struct dsl_stats	ds;
-	int			s, error = 0;
+	int			error = 0;
 	u_int8_t		t;
 
-	s = splimp();
+	crit_enter();
 
 	switch(cmd) {
 	case SIOCLOADFIRMW:
@@ -499,7 +498,8 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
+
 	return (error);
 }
 
@@ -515,12 +515,13 @@ sbsh_shutdown(device_t dev)
 static int
 sbsh_suspend(device_t dev)
 {
-	struct sbsh_softc	*sc = device_get_softc(dev);
-	int			s;
+	struct sbsh_softc *sc = device_get_softc(dev);
 
-	s = splimp();
+	crit_enter();
+
 	sbsh_stop(sc);
-	splx(s);
+
+	crit_exit();
 
 	return (0);
 }
@@ -528,17 +529,16 @@ sbsh_suspend(device_t dev)
 static int
 sbsh_resume(device_t dev)
 {
-	struct sbsh_softc	*sc = device_get_softc(dev);
-	struct ifnet		*ifp;
-	int			s;
+	struct sbsh_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	if (ifp->if_flags & IFF_UP)
 		sbsh_init(sc);
 
-	splx(s);
+	crit_exit();
+
 	return (0);
 }
 
@@ -650,9 +650,6 @@ start_xmit_frames(struct sbsh_softc *sc)
 }
 
 
-/*
- * MUST be called at splimp
- */
 static void
 encap_frame(struct sbsh_softc *sc, struct mbuf *m_head)
 {
