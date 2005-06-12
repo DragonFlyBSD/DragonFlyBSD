@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.54 2005/06/11 09:03:49 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.55 2005/06/12 19:24:10 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1555,10 +1555,8 @@ device		snd0 at isa? irq 10 drq 1 flags 0x0
 #  The "flags" and "iosiz" settings on the stli driver depend on the board:
 #	EasyConnection 8/64 ISA:     flags 23         iosiz 0x1000
 #	EasyConnection 8/64 EISA:    flags 24         iosiz 0x10000
-#	EasyConnection 8/64 MCA:     flags 25         iosiz 0x1000
 #	ONboard ISA:                 flags 4          iosiz 0x10000
 #	ONboard EISA:                flags 7          iosiz 0x10000
-#	ONboard MCA:                 flags 3          iosiz 0x10000
 #	Brumby:                      flags 2          iosiz 0x4000
 #	Stallion:                    flags 1          iosiz 0x10000
 #  For the PCI cards, "device stl" will suffice.
