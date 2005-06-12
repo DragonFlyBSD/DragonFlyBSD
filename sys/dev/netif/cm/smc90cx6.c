@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.13 2005/06/05 16:05:33 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.14 2005/06/12 15:39:33 hsu Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -624,22 +624,6 @@ cm_srint(vsc)
 	buffer = sc->sc_rx_act ^ 1;
 	splx(s);
 
-	/* Allocate header mbuf */
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
-
-	if (m == 0) {
-		/*
-		 * in case s.th. goes wrong with mem, drop it
-		 * to make sure the receiver can be started again
-		 * count it as input error (we dont have any other
-		 * detectable)
-		 */
-		ifp->if_ierrors++;
-		goto cleanup;
-	}
-
-	m->m_pkthdr.rcvif = ifp;
-
 	/*
 	 * Align so that IP packet will be longword aligned. Here we
 	 * assume that m_data of new packet is longword aligned.
@@ -657,24 +641,23 @@ cm_srint(vsc)
 	}
 
 	/*
-	 * first +2 bytes for align fixup below
-	 * second +2 bytes are for src/dst addresses
+	 * Allocate header mbuf.
+	 *
+	 * First +2 bytes for align fixup below.
+	 * Second +2 bytes are for src/dst addresses.
 	 */
-	if ((len + 2 + 2) > MHLEN) {
-		/* attach an mbuf cluster */
-		MCLGET(m, MB_DONTWAIT);
-
-		/* Insist on getting a cluster */
-		if ((m->m_flags & M_EXT) == 0) {
-			ifp->if_ierrors++;
-			goto cleanup;
-		}
-	}
-
-	if (m == 0) {
+	m = m_getl(len + 2 + 2, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+	if (m == NULL) {
+		/*
+		 * in case s.th. goes wrong with mem, drop it
+		 * to make sure the receiver can be started again
+		 * count it as input error (we dont have any other
+		 * detectable)
+		 */
 		ifp->if_ierrors++;
 		goto cleanup;
 	}
+	m->m_pkthdr.rcvif = ifp;
 
 	type = GETMEM(cm_ram_ptr + offset);
 	m->m_data += 1 + arc_isphds(type);
