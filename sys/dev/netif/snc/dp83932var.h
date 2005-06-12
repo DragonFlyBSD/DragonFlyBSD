@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932var.h,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932var.h,v 1.5 2005/06/12 16:31:50 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932var.h,v 1.6 2005/06/12 16:32:52 joerg Exp $	*/
 /*	$NecBSD: dp83932var.h,v 1.3 1999/01/24 01:39:51 kmatsuda Exp $	*/
 /*	$NetBSD: if_snvar.h,v 1.12 1998/05/01 03:42:47 scottr Exp $	*/
 
@@ -34,11 +34,6 @@
 #define hide		static
 #endif
 
-/* NetBSD Emulation */
-#ifdef __NetBSD__
-#define	splhardnet	splnet
-#endif
-#ifdef __DragonFly__
 #ifndef NBPG
 #define NBPG PAGE_SIZE
 #endif
@@ -47,7 +42,6 @@
 #endif
 typedef unsigned long ulong;
 #define delay(x) DELAY(x)
-#endif
 
 /*
  * Vendor types
