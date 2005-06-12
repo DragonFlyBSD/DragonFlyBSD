@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.17 2005/06/12 16:50:20 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.18 2005/06/12 17:03:47 joerg Exp $
  */
 
 /*
@@ -769,7 +769,6 @@ sn_intr(void *arg)
 	int             status, interrupts;
 	struct sn_softc *sc = (struct sn_softc *) arg;
 	struct ifnet   *ifp = &sc->arpcom.ac_if;
-	int             x;
 
 	/*
 	 * Chip state registers
@@ -779,10 +778,7 @@ sn_intr(void *arg)
 	u_short         tx_status;
 	u_short         card_stats;
 
-	/*
-	 * if_ep.c did this, so I do too.  Yet if_ed.c doesn't. I wonder...
-	 */
-	x = splbio();
+	crit_enter();
 
 	/*
 	 * Clear the watchdog.
@@ -988,7 +984,7 @@ out:
 	outb(BASE + INTR_MASK_REG_B, mask);
 	sc->intr_mask = mask;
 
-	splx(x);
+	crit_exit();
 }
 
 void
