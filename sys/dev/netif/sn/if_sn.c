@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.16 2005/05/27 15:36:10 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.17 2005/06/12 16:50:20 joerg Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -259,11 +260,10 @@ sninit(void *xsc)
 {
 	struct sn_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int             s;
 	int             flags;
 	int             mask;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * This resets the registers mostly to defaults, but doesn't affect
@@ -349,7 +349,7 @@ sninit(void *xsc)
 	 */
 	snstart(ifp);
 
-	splx(s);
+	crit_exit();
 }
 
 
@@ -360,21 +360,21 @@ snstart(struct ifnet *ifp)
 	u_int  len;
 	struct mbuf *m;
 	struct mbuf    *top;
-	int             s, pad;
+	int             pad;
 	int             mask;
 	u_short         length;
 	u_short         numPages;
 	u_char          packet_no;
 	int             time_out;
 
-	s = splimp();
+	crit_enter();
 
 	if (ifp->if_flags & IFF_OACTIVE) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	if (sc->pages_wanted != -1) {
-		splx(s);
+		crit_exit();
 		printf("%s: snstart() while memory allocation pending\n",
 		       ifp->if_xname);
 		return;
@@ -386,7 +386,7 @@ startagain:
 	 */
 	m = ifq_poll(&ifp->if_snd);
 	if (m == 0) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	/*
@@ -466,7 +466,7 @@ startagain:
 		ifp->if_flags |= IFF_OACTIVE;
 		sc->pages_wanted = numPages;
 
-		splx(s);
+		crit_exit();
 		return;
 	}
 	/*
@@ -563,8 +563,7 @@ readcheck:
 	if (inw(BASE + FIFO_PORTS_REG_W) & FIFO_REMPTY)
 		goto startagain;
 
-	splx(s);
-	return;
+	crit_exit();
 }
 
 
@@ -1124,9 +1123,9 @@ static int
 snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct sn_softc *sc = ifp->if_softc;
-	int             s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -1163,7 +1162,7 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return (error);
 }
@@ -1171,22 +1170,22 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 void
 snreset(struct sn_softc *sc)
 {
-	int	s;
-	
-	s = splimp();
+	crit_enter();
+
 	snstop(sc);
 	sninit(sc);
 
-	splx(s);
+	crit_exit();
 }
 
 void
 snwatchdog(struct ifnet *ifp)
 {
-	int	s;
-	s = splimp();
+	crit_enter();
+
 	sn_intr(ifp->if_softc);
-	splx(s);
+
+	crit_exit();
 }
 
 
