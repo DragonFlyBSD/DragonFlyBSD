@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.14 2005/05/27 15:36:10 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.15 2005/06/12 16:31:50 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -71,6 +71,7 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/errno.h>
+#include <sys/thread2.h>
 #if NRND > 0
 #include <sys/rnd.h>
 #endif
@@ -268,8 +269,9 @@ sncioctl(ifp, cmd, data, cr)
 {
 	struct ifreq *ifr;
 	struct snc_softc *sc = ifp->if_softc;
-	int	s = splhardnet(), err = 0;
-	int	temp;
+	int err = 0, temp;
+
+	crit_enter();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -323,7 +325,9 @@ sncioctl(ifp, cmd, data, cr)
 		err = ether_ioctl(ifp, cmd, data);
 		break;
 	}
-	splx(s);
+
+	crit_exit();
+
 	return (err);
 }
 
@@ -398,13 +402,12 @@ sncinit(xsc)
 {
 	struct snc_softc *sc = xsc;
 	u_long	s_rcr;
-	int	s;
 
 	if (sc->sc_if.if_flags & IFF_RUNNING)
 		/* already running */
 		return;
 
-	s = splhardnet();
+	crit_enter();
 
 	NIC_PUT(sc, SNCR_CR, CR_RST);	/* DCR only accessable in reset mode! */
 
@@ -455,8 +458,7 @@ sncinit(xsc)
 	sc->sc_if.if_flags |= IFF_RUNNING;
 	sc->sc_if.if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
-	return;
+	crit_exit();
 }
 
 /*
@@ -469,7 +471,8 @@ sncstop(sc)
 	struct snc_softc *sc;
 {
 	struct mtd *mtd;
-	int	s = splhardnet();
+
+	crit_enter();
 
 	/* stick chip in reset */
 	NIC_PUT(sc, SNCR_CR, CR_RST);
@@ -488,7 +491,8 @@ sncstop(sc)
 	sc->sc_if.if_timer = 0;
 	sc->sc_if.if_flags &= ~(IFF_RUNNING | IFF_UP);
 
-	splx(s);
+	crit_exit();
+
 	return (0);
 }
 
