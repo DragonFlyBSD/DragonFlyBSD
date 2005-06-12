@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.20 2005/06/12 17:29:49 joerg Exp $
  */
 
 /*
@@ -87,6 +87,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -530,9 +531,9 @@ static int sf_ioctl(ifp, command, data, cr)
 	struct sf_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
 	struct mii_data		*mii;
-	int			s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -569,7 +570,7 @@ static int sf_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -664,13 +665,11 @@ static int sf_probe(dev)
 static int sf_attach(dev)
 	device_t		dev;
 {
-	int			s, i;
+	int			i;
 	u_int32_t		command;
 	struct sf_softc		*sc;
 	struct ifnet		*ifp;
 	int			unit, rid, error = 0;
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -716,13 +715,13 @@ static int sf_attach(dev)
 	if (!(command & PCIM_CMD_PORTEN)) {
 		printf("sf%d: failed to enable I/O ports!\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
 		printf("sf%d: failed to enable memory mapping!\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 #endif
 
@@ -732,7 +731,7 @@ static int sf_attach(dev)
 	if (sc->sf_res == NULL) {
 		printf ("sf%d: couldn't map ports\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	sc->sf_btag = rman_get_bustag(sc->sf_res);
@@ -745,18 +744,7 @@ static int sf_attach(dev)
 
 	if (sc->sf_irq == NULL) {
 		printf("sf%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, SF_RES, SF_RID, sc->sf_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->sf_irq, INTR_TYPE_NET,
-			       sf_intr, sc, &sc->sf_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_res);
-		bus_release_resource(dev, SF_RES, SF_RID, sc->sf_res);
-		printf("sf%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -776,13 +764,10 @@ static int sf_attach(dev)
 
 	/* Allocate the descriptor queues. */
 	sc->sf_ldata = contigmalloc(sizeof(struct sf_list_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->sf_ldata == NULL) {
 		printf("sf%d: no memory for list buffers!\n", unit);
-		bus_teardown_intr(dev, sc->sf_irq, sc->sf_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_irq);
-		bus_release_resource(dev, SF_RES, SF_RID, sc->sf_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -793,10 +778,6 @@ static int sf_attach(dev)
 	if (mii_phy_probe(dev, &sc->sf_miibus,
 	    sf_ifmedia_upd, sf_ifmedia_sts)) {
 		printf("sf%d: MII without any phy!\n", sc->sf_unit);
-		contigfree(sc->sf_ldata,sizeof(struct sf_list_data),M_DEVBUF);
-		bus_teardown_intr(dev, sc->sf_irq, sc->sf_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_irq);
-		bus_release_resource(dev, SF_RES, SF_RID, sc->sf_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -819,36 +800,52 @@ static int sf_attach(dev)
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
+	error = bus_setup_intr(dev, sc->sf_irq, INTR_TYPE_NET,
+			       sf_intr, sc, &sc->sf_intrhand, NULL);
+
+	if (error) {
+		ether_ifdetach(ifp);
+		device_printf(dev, "couldn't set up irq\n");
+		goto fail;
+	}
+
+	return(0);
+
 fail:
-	splx(s);
+	sf_detach(dev);
 	return(error);
 }
 
 static int sf_detach(dev)
 	device_t		dev;
 {
-	struct sf_softc		*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct sf_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	if (device_is_attached(dev)) {
+		ether_ifdetach(ifp);
+		sf_stop(sc);
+	}
 
-	ether_ifdetach(ifp);
-	sf_stop(sc);
-
-	bus_generic_detach(dev);
 	device_delete_child(dev, sc->sf_miibus);
+	bus_generic_detach(dev);
 
-	bus_teardown_intr(dev, sc->sf_irq, sc->sf_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_irq);
-	bus_release_resource(dev, SF_RES, SF_RID, sc->sf_res);
+	if (sc->sf_intrhand)
+		bus_teardown_intr(dev, sc->sf_irq, sc->sf_intrhand);
 
-	contigfree(sc->sf_ldata, sizeof(struct sf_list_data), M_DEVBUF);
+	crit_exit();
 
-	splx(s);
+	if (sc->sf_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_irq);
+	if(sc->sf_res)
+		bus_release_resource(dev, SF_RES, SF_RID, sc->sf_res);
+
+	if (sc->sf_ldata) {
+		contigfree(sc->sf_ldata, sizeof(struct sf_list_data),
+			   M_DEVBUF);
+	}
 
 	return(0);
 }
@@ -1138,16 +1135,11 @@ static void sf_intr(arg)
 static void sf_init(xsc)
 	void			*xsc;
 {
-	struct sf_softc		*sc;
-	struct ifnet		*ifp;
-	struct mii_data		*mii;
-	int			i, s;
+	struct sf_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
-	s = splimp();
-
-	sc = xsc;
-	ifp = &sc->arpcom.ac_if;
-	mii = device_get_softc(sc->sf_miibus);
+	crit_enter();
 
 	sf_stop(sc);
 	sf_reset(sc);
@@ -1170,7 +1162,7 @@ static void sf_init(xsc)
 	if (sf_init_rx_ring(sc) == ENOBUFS) {
 		printf("sf%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->sf_unit);
-		(void)splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1245,9 +1237,7 @@ static void sf_init(xsc)
 
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 
-	splx(s);
-
-	return;
+	crit_exit();
 }
 
 static int sf_encap(sc, c, m_head)
@@ -1432,18 +1422,14 @@ static void sf_stop(sc)
 static void sf_stats_update(xsc)
 	void			*xsc;
 {
-	struct sf_softc		*sc;
-	struct ifnet		*ifp;
-	struct mii_data		*mii;
+	struct sf_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii = device_get_softc(sc->sf_miibus);
 	struct sf_stats		stats;
 	u_int32_t		*ptr;
-	int			i, s;
+	int			i;
 
-	s = splimp();
-
-	sc = xsc;
-	ifp = &sc->arpcom.ac_if;
-	mii = device_get_softc(sc->sf_miibus);
+	crit_enter();
 
 	ptr = (u_int32_t *)&stats;
 	for (i = 0; i < sizeof(stats)/sizeof(u_int32_t); i++)
@@ -1469,9 +1455,7 @@ static void sf_stats_update(xsc)
 
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 
-	splx(s);
-
-	return;
+	crit_exit();
 }
 
 static void sf_watchdog(ifp)
