@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/lib/Makefile,v 1.19.2.4 2003/01/21 23:06:52 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.10 2005/04/18 20:22:42 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.11 2005/06/13 22:35:54 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -14,7 +14,6 @@ CFLAGS+= -I. -I${CVSDIR}/src -I${CVSDIR}/lib
 CFLAGS+= -DHAVE_CONFIG_H -DIN_LIBINTL
 YFLAGS=
 CLEANFILES+=	config.h alloca.h getopt.h
-PATCHES= xgethostname.c.patch
 CONTRIBDIR=     ${CVSDIR}/lib
 
 VERSION!=       sed < ${CVSDIR}/configure \
@@ -29,10 +28,10 @@ SRCS=	config.h \
 	exitfail.c getdate.c getopt.h getopt.c getopt1.c gettime.c \
 	getnline.c md5.c save-cwd.c strftime.c xmalloc.c xalloc-die.c \
 	xgetcwd.c xgethostname.c xreadlink.c yesno.c \
-	sunos57-select.c getline.c getndelim2.c mktime.c \
+	pagealign_alloc.c getline.c getndelim2.c mktime.c \
 	getpass.c rpmatch.c vasnprintf.c printf-args.c printf-parse.c \
-	asnprintf.c \
-	${PATCHES}
+	asnprintf.c getcwd.c closeout.c chdir-long.c quotearg.c \
+	__fpending.c memrchr.c openat.c
 
 config.h: config.h.proto
 	sed -e "s,@VERSION@,${VERSION}-DragonFly,g" \
