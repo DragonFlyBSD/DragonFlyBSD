@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.17 2005/06/13 21:44:40 joerg Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -679,19 +680,21 @@ cs_init(void *xsc)
 {
 	struct cs_softc *sc=(struct cs_softc *)xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, s, rx_cfg;
+	int i, rx_cfg;
+
+	crit_enter();
 
 	/* address not known */
-	if (TAILQ_EMPTY(&ifp->if_addrhead)) /* unlikely? XXX */
+	if (TAILQ_EMPTY(&ifp->if_addrhead)) { /* unlikely? XXX */
+		crit_exit();
 		return;
+	}
 
 	/*
 	 * reset whatchdog timer
 	 */
 	ifp->if_timer=0;
 	sc->buf_len = 0;
-	
-	s=splimp();
 
 	/*
 	 * Hardware initialization of cs
@@ -754,7 +757,7 @@ cs_init(void *xsc)
 	 */
 	cs_start(ifp);
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
@@ -933,11 +936,11 @@ cs_xmit_buf( struct cs_softc *sc )
 static void
 cs_start(struct ifnet *ifp)
 {
-	int s, length;
+	int length;
 	struct mbuf *m, *mp;
 	struct cs_softc *sc = ifp->if_softc;
 
-	s = splimp();
+	crit_enter();
 
 	for (;;) {
 		if (sc->buf_len)
@@ -946,7 +949,7 @@ cs_start(struct ifnet *ifp)
 			m = ifq_dequeue(&ifp->if_snd);
 
 			if (m==NULL) {
-				(void) splx(s);
+				crit_exit();
 				return;
 			}
 
@@ -979,8 +982,8 @@ cs_start(struct ifnet *ifp)
 		 */
 		if (!(cs_readreg(sc->nic_addr, PP_BusST) & READY_FOR_TX_NOW)) {
 			ifp->if_timer = sc->buf_len;
-			(void) splx(s);
 			ifp->if_flags |= IFF_OACTIVE;
+			crit_exit();
 			return;
 		}
 
@@ -993,7 +996,7 @@ cs_start(struct ifnet *ifp)
 		 */
 		ifp->if_timer = length;
 
-		(void) splx(s);
+		crit_exit();
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
@@ -1005,7 +1008,7 @@ cs_start(struct ifnet *ifp)
 static void
 cs_stop(struct cs_softc *sc)
 {
-	int s = splimp();
+	crit_enter();
 
 	cs_writereg(sc->nic_addr, PP_RxCFG, 0);
 	cs_writereg(sc->nic_addr, PP_TxCFG, 0);
@@ -1015,7 +1018,7 @@ cs_stop(struct cs_softc *sc)
 	sc->arpcom.ac_if.if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	sc->arpcom.ac_if.if_timer = 0;
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
@@ -1077,13 +1080,13 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 {
 	struct cs_softc *sc=ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int s,error=0;
+	int error=0;
 
 #ifdef CS_DEBUG
 	printf("%s: ioctl(%lx)\n",sc->arpcom.ac_if.if_xname, command);
 #endif
 
-	s=splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -1130,7 +1133,8 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		break;
         }
 
-	(void) splx(s);
+	crit_exit();
+
 	return error;
 }
 
