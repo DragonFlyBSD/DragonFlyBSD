@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.7 2005/06/13 21:38:12 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.8 2005/06/13 21:39:14 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -103,12 +104,11 @@ cm_isa_detach(device_t dev)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
-	int s;
+
+	crit_enter();
 
 	cm_stop(sc);
 	ifp->if_flags &= ~IFF_RUNNING;
-
-	crit_enter();
 	arc_ifdetach(&sc->sc_arccom.ac_if);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 
