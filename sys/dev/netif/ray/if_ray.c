@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.20 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.21 2005/06/13 13:51:24 joerg Exp $
  *
  */
 
@@ -246,6 +246,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -577,9 +578,8 @@ ray_detach(device_t dev)
 	struct ray_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ray_comq_entry *com;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_STOP, "");
 
@@ -621,7 +621,7 @@ ray_detach(device_t dev)
 	ray_res_release(sc);
 	RAY_DPRINTF(sc, RAY_DBG_STOP, "unloading complete");
 
-	splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -637,7 +637,7 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 	struct ray_param_req pr;
 	struct ray_stats_req sr;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int s, error, error2;
+	int error, error2;
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_IOCTL, "");
 
@@ -645,7 +645,8 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		return (ENXIO);
 
 	error = error2 = 0;
-	s = splimp();
+
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -733,7 +734,7 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return (error);
 }
@@ -1389,12 +1390,9 @@ ray_watchdog(struct ifnet *ifp)
 /*
  * Send a packet.
  *
- * We make two assumptions here:
- *  1) That the current priority is set to splimp _before_ this code
- *     is called *and* is returned to the appropriate priority after
- *     return
- *  2) That the IFF_OACTIVE flag is checked before this code is called
- *     (i.e. that the output part of the interface is idle)
+ * We make one assumptions here:
+ *  - That the IFF_OACTIVE flag is checked before this code is called
+ *    (i.e. that the output part of the interface is idle)
  *
  * A simple one packet at a time TX routine is used - we don't bother
  * chaining TX buffers. Performance is sufficient to max out the
@@ -1608,14 +1606,13 @@ ray_tx_timo(void *xsc)
 {
 	struct ray_softc *sc = (struct ray_softc *)xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s;
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR, "");
 
 	if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd)) {
-		s = splimp();
+		crit_enter();
 		ray_tx(ifp);
-		splx(s);
+		crit_exit();
 	}
 }
 
