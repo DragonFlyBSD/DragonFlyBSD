@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.11 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.12 2005/06/13 14:00:29 joerg Exp $
  */
 
 /*
@@ -90,6 +90,7 @@
 #include <sys/sockio.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 #include <machine/bus.h>
@@ -455,12 +456,12 @@ lp_intr (void *arg)
 	device_t dev = (device_t)arg;
         device_t ppbus = device_get_parent(dev);
 	struct lp_data *sc = DEVTOSOFTC(dev);
-	int len, s, j;
+	int len, j;
 	u_char *bp;
 	u_char c, cl;
 	struct mbuf *top;
 
-	s = splhigh();
+	crit_enter();
 
 	if (sc->sc_if.if_flags & IFF_LINK0) {
 
@@ -575,7 +576,7 @@ lp_intr (void *arg)
 	}
 
     done:
-	splx(s);
+	crit_exit();
 	return;
 }
 
@@ -599,7 +600,7 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
 {
     device_t dev = UNITODEVICE(ifp->if_dunit);
     device_t ppbus = device_get_parent(dev);
-    int s, err;
+    int err;
     struct mbuf *mm;
     u_char *cp = "\0\0";
     u_char chksum = 0;
@@ -612,7 +613,7 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
 
     err = 1;			/* assume we're aborting because of an error */
 
-    s = splhigh();
+    crit_enter();
 
     /* Suspend (on laptops) or receive-errors might have taken us offline */
     ppb_wctr(ppbus, IRQENABLE);
@@ -695,7 +696,7 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
 		lprintf("^");
 		lp_intr(dev);
 	}
-	(void) splx(s);
+	crit_exit();
 	return 0;
     }
 
@@ -741,7 +742,7 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
 	lp_intr(dev);
     }
 
-    (void) splx(s);
+    crit_exit();
     return 0;
 }
 
