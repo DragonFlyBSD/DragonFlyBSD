@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.12 2005/02/18 23:19:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.13 2005/06/13 22:27:52 joerg Exp $
  */
 
 /*
@@ -44,6 +44,7 @@
 #include <sys/bus.h>
 #include <sys/time.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -282,10 +283,10 @@ icintr (device_t dev, int event, char *ptr)
 {
 	struct ic_softc *sc = (struct ic_softc *)device_get_softc(dev);
 	int unit = device_get_unit(dev);
-	int s, len;
+	int len;
 	struct mbuf *top;
 	
-	s = splhigh();
+	crit_enter();
 
 	switch (event) {
 
@@ -353,8 +354,7 @@ icintr (device_t dev, int event, char *ptr)
 		panic("%s: unknown event (%d)!", __func__, event);
 	}
 
-	splx(s);
-	return;
+	crit_exit();
 }
 
 /*
@@ -367,15 +367,14 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 	device_t icdev = devclass_get_device(ic_devclass, ifp->if_dunit);
 	device_t parent = device_get_parent(icdev);
 	struct ic_softc *sc = (struct ic_softc *)device_get_softc(icdev);
-
-	int s, len, sent;
+	int len, sent;
 	struct mbuf *mm;
 	u_char *cp;
 	uint32_t hdr = dst->sa_family;
 
 	ifp->if_flags |= IFF_RUNNING;
 
-	s = splhigh();
+	crit_enter();
 
 	/* already sending? */
 	if (sc->ic_sending) {
@@ -408,7 +407,8 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 	sc->ic_sending = 1;
 
 	m_freem(m);
-	splx(s);
+
+	crit_exit();
 
 	/* send the packet */
 	if (iicbus_block_write(parent, sc->ic_addr, sc->ic_obuf,
@@ -426,7 +426,7 @@ icoutput(struct ifnet *ifp, struct mbuf *m,
 
 error:
 	m_freem(m);
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
