@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.38 2005/05/31 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.39 2005/06/13 21:24:03 joerg Exp $
  *
  */
 
@@ -80,6 +80,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -590,7 +591,7 @@ bge_alloc_jumbo_mem(struct bge_softc *sc)
 
 	/* Grab a big chunk o' storage. */
 	sc->bge_cdata.bge_jumbo_buf = contigmalloc(BGE_JMEM, M_DEVBUF,
-		M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+		M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->bge_cdata.bge_jumbo_buf == NULL) {
 		if_printf(&sc->arpcom.ac_if, "no memory for jumbo buffers!\n");
@@ -624,7 +625,8 @@ bge_alloc_jumbo_mem(struct bge_softc *sc)
 static void
 bge_free_jumbo_mem(struct bge_softc *sc)
 {
-	contigfree(sc->bge_cdata.bge_jumbo_buf, BGE_JMEM, M_DEVBUF);
+	if (sc->bge_cdata.bge_jumbo_buf)
+		contigfree(sc->bge_cdata.bge_jumbo_buf, BGE_JMEM, M_DEVBUF);
 }
 
 /*
@@ -1457,7 +1459,6 @@ bge_probe(device_t dev)
 static int
 bge_attach(device_t dev)
 {
-	int s;
 	uint32_t command;
 	struct ifnet *ifp;
 	struct bge_softc *sc;
@@ -1465,8 +1466,6 @@ bge_attach(device_t dev)
 	uint32_t mac_addr = 0;
 	int error = 0, rid;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
@@ -1482,7 +1481,7 @@ bge_attach(device_t dev)
 	if (!(command & PCIM_CMD_MEMEN)) {
 		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	rid = BGE_PCI_BAR0;
@@ -1492,7 +1491,7 @@ bge_attach(device_t dev)
 	if (sc->bge_res == NULL) {
 		device_printf(dev, "couldn't map memory\n");
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	sc->bge_btag = rman_get_bustag(sc->bge_res);
@@ -1511,15 +1510,6 @@ bge_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->bge_irq, INTR_TYPE_NET,
-			       bge_intr, sc, &sc->bge_intrhand, NULL);
-
-	if (error) {
-		bge_release_resources(sc);
-		device_printf(dev, "couldn't set up irq\n");
-		goto fail;
-	}
-
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
@@ -1528,7 +1518,6 @@ bge_attach(device_t dev)
 
 	if (bge_chipinit(sc)) {
 		device_printf(dev, "chip initialization failed\n");
-		bge_release_resources(sc);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1548,17 +1537,15 @@ bge_attach(device_t dev)
 	} else if (bge_read_eeprom(sc, ether_addr,
 	    BGE_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
 		device_printf(dev, "failed to read station address\n");
-		bge_release_resources(sc);
 		error = ENXIO;
 		goto fail;
 	}
 
 	/* Allocate the general information block and ring buffers. */
 	sc->bge_rdata = contigmalloc(sizeof(struct bge_ring_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->bge_rdata == NULL) {
-		bge_release_resources(sc);
 		error = ENXIO;
 		device_printf(dev, "no memory for list buffers!\n");
 		goto fail;
@@ -1581,7 +1568,6 @@ bge_attach(device_t dev)
 	if (sc->bge_asicrev != BGE_ASICREV_BCM5705) {
 		if (bge_alloc_jumbo_mem(sc)) {
 			device_printf(dev, "jumbo buffer allocation failed\n");
-			bge_release_resources(sc);
 			error = ENXIO;
 			goto fail;
 		}
@@ -1653,8 +1639,6 @@ bge_attach(device_t dev)
 		if (mii_phy_probe(dev, &sc->bge_miibus,
 		    bge_ifmedia_upd, bge_ifmedia_sts)) {
 			device_printf(dev, "MII without any PHY!\n");
-			bge_release_resources(sc);
-			bge_free_jumbo_mem(sc);
 			error = ENXIO;
 			goto fail;
 		}
@@ -1686,8 +1670,18 @@ bge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, ether_addr);
 
+	error = bus_setup_intr(dev, sc->bge_irq, INTR_TYPE_NET,
+			       bge_intr, sc, &sc->bge_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		device_printf(dev, "couldn't set up irq\n");
+		goto fail;
+	}
+
+	return(0);
+
 fail:
-	splx(s);
+	bge_detach(dev);
 
 	return(error);
 }
@@ -1695,31 +1689,29 @@ fail:
 static int
 bge_detach(device_t dev)
 {
-	struct bge_softc *sc;
-	struct ifnet *ifp;
-	int s;
+	struct bge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
-
-	ether_ifdetach(ifp);
-	bge_stop(sc);
-	bge_reset(sc);
-
-	if (sc->bge_tbi) {
-		ifmedia_removeall(&sc->bge_ifmedia);
-	} else {
-		bus_generic_detach(dev);
-		device_delete_child(dev, sc->bge_miibus);
+	if (device_is_attached(dev)) {
+		ether_ifdetach(ifp);
+		bge_stop(sc);
+		bge_reset(sc);
 	}
 
+	if (sc->bge_tbi)
+		ifmedia_removeall(&sc->bge_ifmedia);
+	if (sc->bge_miibus);
+		device_delete_child(dev, sc->bge_miibus);
+	bus_generic_detach(dev);
+
 	bge_release_resources(sc);
+
+	crit_exit();
+
 	if (sc->bge_asicrev != BGE_ASICREV_BCM5705)
 		bge_free_jumbo_mem(sc);
-
-	splx(s);
 
 	return(0);
 }
@@ -2094,17 +2086,18 @@ bge_tick(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii = NULL;
 	struct ifmedia *ifm = NULL;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5705)
 		bge_stats_update_regs(sc);
 	else
 		bge_stats_update(sc);
+
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
+
 	if (sc->bge_link) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2118,7 +2111,7 @@ bge_tick(void *xsc)
 			if (!ifq_is_empty(&ifp->if_snd))
 				(*ifp->if_start)(ifp);
 		}
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2138,7 +2131,7 @@ bge_tick(void *xsc)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -2339,12 +2332,11 @@ bge_init(void *xsc)
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t *m;
-        int s;
 
-	s = splimp();
+	crit_enter();
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2359,7 +2351,7 @@ bge_init(void *xsc)
 	 */
 	if (bge_blockinit(sc)) {
 		if_printf(ifp, "initialization failure\n");
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -2431,9 +2423,9 @@ bge_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
-
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
+
+	crit_exit();
 }
 
 /*
@@ -2515,10 +2507,10 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct bge_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
-	int s, mask, error = 0;
+	int mask, error = 0;
 	struct mii_data *mii;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -2595,7 +2587,7 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
