@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.20 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.21 2005/06/13 18:43:58 joerg Exp $
  */
 
 /*
@@ -63,6 +63,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -488,14 +489,11 @@ static int pcn_probe(dev)
 static int pcn_attach(dev)
 	device_t		dev;
 {
-	int			s;
 	uint8_t			eaddr[ETHER_ADDR_LEN];
 	u_int32_t		command;
 	struct pcn_softc	*sc;
 	struct ifnet		*ifp;
 	int			unit, error = 0, rid;
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -540,14 +538,14 @@ static int pcn_attach(dev)
 #ifdef PCN_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
 		printf("pcn%d: failed to enable I/O ports!\n", unit);
-		error = ENXIO;;
-		goto fail;
+		error = ENXIO;
+		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
 		printf("pcn%d: failed to enable memory mapping!\n", unit);
-		error = ENXIO;;
-		goto fail;
+		error = ENXIO;
+		return(error);
 	}
 #endif
 
@@ -557,7 +555,7 @@ static int pcn_attach(dev)
 	if (sc->pcn_res == NULL) {
 		printf("pcn%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	sc->pcn_btag = rman_get_bustag(sc->pcn_res);
@@ -570,18 +568,7 @@ static int pcn_attach(dev)
 
 	if (sc->pcn_irq == NULL) {
 		printf("pcn%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, PCN_RES, PCN_RID, sc->pcn_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->pcn_irq, INTR_TYPE_NET,
-			       pcn_intr, sc, &sc->pcn_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_res);
-		bus_release_resource(dev, PCN_RES, PCN_RID, sc->pcn_res);
-		printf("pcn%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -602,9 +589,6 @@ static int pcn_attach(dev)
 
 	if (sc->pcn_ldata == NULL) {
 		printf("pcn%d: no memory for list buffers!\n", unit);
-		bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_irq);
-		bus_release_resource(dev, PCN_RES, PCN_RID, sc->pcn_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -629,11 +613,6 @@ static int pcn_attach(dev)
 	if (mii_phy_probe(dev, &sc->pcn_miibus,
 	    pcn_ifmedia_upd, pcn_ifmedia_sts)) {
 		printf("pcn%d: MII without any PHY!\n", sc->pcn_unit);
-		contigfree(sc->pcn_ldata, sizeof(struct pcn_list_data),
-		    M_DEVBUF);
-		bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_irq);
-		bus_release_resource(dev, PCN_RES, PCN_RID, sc->pcn_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -643,39 +622,51 @@ static int pcn_attach(dev)
 	 */
 	ether_ifattach(ifp, eaddr);
 
+	error = bus_setup_intr(dev, sc->pcn_irq, INTR_TYPE_NET,
+			       pcn_intr, sc, &sc->pcn_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		device_printf(dev, "couldn't set up irq\n");
+		goto fail;
+	}
+
 fail:
-	splx(s);
+	pcn_detach(dev);
 	return(error);
 }
 
 static int pcn_detach(dev)
 	device_t		dev;
 {
-	struct pcn_softc	*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct pcn_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
-
-	pcn_reset(sc);
-	pcn_stop(sc);
-	ether_ifdetach(ifp);
-
-	if (sc->pcn_miibus != NULL) {
-		bus_generic_detach(dev);
-		device_delete_child(dev, sc->pcn_miibus);
+	if (device_is_attached(dev)) {
+		pcn_reset(sc);
+		pcn_stop(sc);
+		ether_ifdetach(ifp);
 	}
 
-	bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_irq);
-	bus_release_resource(dev, PCN_RES, PCN_RID, sc->pcn_res);
+	if (sc->pcn_miibus != NULL)
+		device_delete_child(dev, sc->pcn_miibus);
+	bus_generic_detach(dev);
 
-	contigfree(sc->pcn_ldata, sizeof(struct pcn_list_data), M_DEVBUF);
+	if (sc->pcn_intrhand)
+		bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
 
-	splx(s);
+	crit_enter();
+
+	if (sc->pcn_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_irq);
+	if (sc->pcn_res)
+		bus_release_resource(dev, PCN_RES, PCN_RID, sc->pcn_res);
+
+	if (sc->pcn_ldata) {
+		contigfree(sc->pcn_ldata, sizeof(struct pcn_list_data),
+			   M_DEVBUF);
+	}
 
 	return(0);
 }
@@ -892,15 +883,11 @@ static void pcn_txeof(sc)
 static void pcn_tick(xsc)
 	void			*xsc;
 {
-	struct pcn_softc	*sc;
-	struct mii_data		*mii;
-	struct ifnet		*ifp;
-	int			s;
+	struct pcn_softc *sc = xsc;
+	struct mii_data *mii;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
-
-	sc = xsc;
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	mii = device_get_softc(sc->pcn_miibus);
 	mii_tick(mii);
@@ -919,9 +906,7 @@ static void pcn_tick(xsc)
 
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 
-	splx(s);
-
-	return;
+	crit_exit();
 }
 
 static void pcn_intr(arg)
@@ -1095,9 +1080,8 @@ static void pcn_init(xsc)
 	struct pcn_softc	*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct mii_data		*mii = NULL;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -1120,7 +1104,8 @@ static void pcn_init(xsc)
 		printf("pcn%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->pcn_unit);
 		pcn_stop(sc);
-		(void)splx(s);
+
+		crit_exit();
 		return;
 	}
 
@@ -1191,8 +1176,9 @@ static void pcn_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	(void)splx(s);
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
+
+	crit_exit();
 }
 
 /*
@@ -1248,9 +1234,9 @@ static int pcn_ioctl(ifp, command, data, cr)
 	struct pcn_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
 	struct mii_data		*mii = NULL;
-	int			s, error = 0;
+	int			error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1299,7 +1285,7 @@ static int pcn_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	crit_exit();
 
 	return(error);
 }
