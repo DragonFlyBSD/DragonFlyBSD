@@ -35,7 +35,7 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.6 2005/06/11 00:05:46 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.7 2005/06/13 22:21:39 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -217,7 +217,6 @@ FFree(void *mem, char *file, int line)
 	    return;
 	}
     }
-    crit_enter();
     log(LOG_ERR,
 	"Freeing unallocated data at 0x%p from %s, line %d\n",
 	mem,
