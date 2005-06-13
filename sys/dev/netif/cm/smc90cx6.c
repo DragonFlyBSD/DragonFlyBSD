@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.14 2005/06/12 15:39:33 hsu Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.15 2005/06/13 21:38:12 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -55,6 +55,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <sys/bus.h>
 
 #include <machine/bus.h>
@@ -278,10 +279,9 @@ cm_attach(dev)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
-	int s;
 	u_int8_t linkaddress;
 
-	s = splhigh();
+	crit_enter();
 
 	/*
 	 * read the arcnet address from the board
@@ -304,7 +304,7 @@ cm_attach(dev)
 	sc->sc_recontime = sc->sc_reconcount = 0;
 
 	/* and reenable kernel int level */
-	splx(s);
+	crit_exit();
 
 	/*
 	 * set interface to stopped condition (reset)
@@ -349,17 +349,14 @@ cm_init(xsc)
 	void *xsc;
 {
 	struct cm_softc *sc = (struct cm_softc *)xsc;
-	struct ifnet *ifp;
-	int s;
-
-	ifp = &sc->sc_arccom.ac_if;
+	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
-		s = splimp();
+		crit_enter();
 		ifp->if_flags |= IFF_RUNNING;
 		cm_reset(sc);
 		cm_start(ifp);
-		splx(s);
+		crit_exit();
 	}
 }
 
@@ -474,8 +471,7 @@ cm_start(ifp)
 	struct cm_softc *sc = ifp->if_softc;
 	struct mbuf *m,*mp;
 
-	int cm_ram_ptr;
-	int len, tlen, offset, s, buffer;
+	int cm_ram_ptr, len, tlen, offset, buffer;
 #ifdef CMTIMINGS
 	u_long copystart, lencopy, perbyte;
 #endif
@@ -484,20 +480,22 @@ cm_start(ifp)
 	printf("%s: start(%p)\n", ifp->if_xname, ifp);
 #endif
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		return;
+	crit_enter();
 
-	s = splimp();
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
+		crit_exit();
+		return;
+	}
 
 	if (sc->sc_tx_fillcount >= 2) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	m = arc_frag_next(ifp);
 	buffer = sc->sc_tx_act ^ 1;
 
-	splx(s);
+	crit_exit();
 
 	if (m == 0)
 		return;
@@ -564,7 +562,7 @@ cm_start(ifp)
 	sc->sc_retransmits[buffer] = (m->m_flags & M_BCAST) ? 1 : 5;
 
 	/* actually transmit the packet */
-	s = splimp();
+	crit_enter();
 
 	if (++sc->sc_tx_fillcount > 1) {
 		/*
@@ -590,7 +588,9 @@ cm_start(ifp)
 
 		sc->sc_arccom.ac_if.if_timer = ARCTIMEOUT;
 	}
-	splx(s);
+
+	crit_exit();
+
 	m_freem(m);
 
 	/*
@@ -612,17 +612,15 @@ cm_srint(vsc)
 	void *vsc;
 {
 	struct cm_softc *sc = (struct cm_softc *)vsc;
-	int buffer, len, offset, s, type;
+	int buffer, len, offset, type;
 	int cm_ram_ptr;
 	struct mbuf *m;
 	struct arc_header *ah;
-	struct ifnet *ifp;
+	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 
-	ifp = &sc->sc_arccom.ac_if;
-
-	s = splimp();
+	crit_enter();
 	buffer = sc->sc_rx_act ^ 1;
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Align so that IP packet will be longword aligned. Here we
@@ -684,7 +682,8 @@ cleanup:
 
 	/* mark buffer as invalid by source id 0 */
 	PUTMEM(buffer << 9, 0);
-	s = splimp();
+
+	crit_enter();
 
 	if (--sc->sc_rx_fillcount == 2 - 1) {
 
@@ -701,7 +700,7 @@ cleanup:
 		    ifp->if_xname, buffer);
 #endif
 	}
-	splx(s);
+	crit_exit();
 }
 
 __inline static void
@@ -956,13 +955,14 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct cm_softc *sc;
 	struct ifaddr *ifa;
 	struct ifreq *ifr;
-	int s, error;
+	int error;
 
 	error = 0;
 	sc = ifp->if_softc;
 	ifa = (struct ifaddr *)data;
 	ifr = (struct ifreq *)data;
-	s = splimp();
+
+	crit_enter();
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 2)
 	printf("%s: ioctl() called, cmd = 0x%lx\n",
@@ -994,7 +994,7 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -1008,8 +1008,6 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
  * Only thing we do is disable transmitter. We'll get an transmit timeout,
  * and the int handler will have to decide not to retransmit (in case
  * retransmission is implemented).
- *
- * This one assumes being called inside splimp()
  */
 
 void
