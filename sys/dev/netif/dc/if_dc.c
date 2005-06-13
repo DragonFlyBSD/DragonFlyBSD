@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.32 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.33 2005/06/13 22:10:56 joerg Exp $
  */
 
 /*
@@ -96,6 +96,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -642,9 +643,9 @@ static int dc_mii_readreg(sc, frame)
 	struct dc_mii_frame	*frame;
 	
 {
-	int			i, ack, s;
+	int ack, i;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -699,7 +700,7 @@ fail:
 	dc_mii_writebit(sc, 0);
 	dc_mii_writebit(sc, 0);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -714,9 +715,8 @@ static int dc_mii_writereg(sc, frame)
 	struct dc_mii_frame	*frame;
 	
 {
-	int			s;
+	crit_enter();
 
-	s = splimp();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -741,7 +741,7 @@ static int dc_mii_writereg(sc, frame)
 	dc_mii_writebit(sc, 0);
 	dc_mii_writebit(sc, 0);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1753,7 +1753,7 @@ static void dc_parse_21143_srom(sc)
 static int dc_attach(dev)
 	device_t		dev;
 {
-	int			s, tmp = 0;
+	int			tmp = 0;
 	u_char			eaddr[ETHER_ADDR_LEN];
 	u_int32_t		command;
 	struct dc_softc		*sc;
@@ -1761,10 +1761,7 @@ static int dc_attach(dev)
 	u_int32_t		revision;
 	int			error = 0, rid, mac_offset;
 
-	s = splimp();
-
 	sc = device_get_softc(dev);
-	bzero(sc, sizeof(struct dc_softc));
 	callout_init(&sc->dc_stat_timer);
 
 	ifp = &sc->arpcom.ac_if;
@@ -1787,13 +1784,13 @@ static int dc_attach(dev)
 	if (!(command & PCIM_CMD_PORTEN)) {
 		device_printf(dev, "failed to enable I/O ports!\n");
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
 		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 #endif
 
@@ -1816,18 +1813,7 @@ static int dc_attach(dev)
 
 	if (sc->dc_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
-		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->dc_irq, INTR_TYPE_NET,
-			       dc_intr, sc, &sc->dc_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
-		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
-		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 	
@@ -2010,15 +1996,10 @@ static int dc_attach(dev)
 	}
 
 	sc->dc_ldata = contigmalloc(sizeof(struct dc_list_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->dc_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
-		if (sc->dc_pnic_rx_buf != NULL)
-			free(sc->dc_pnic_rx_buf, M_DEVBUF);
-		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
-		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -2076,13 +2057,6 @@ static int dc_attach(dev)
 
 	if (error) {
 		device_printf(dev, "MII without any PHY!\n");
-		contigfree(sc->dc_ldata, sizeof(struct dc_list_data),
-		    M_DEVBUF);
-		if (sc->dc_pnic_rx_buf != NULL)
-			free(sc->dc_pnic_rx_buf, M_DEVBUF);
-		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
-		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -2104,36 +2078,51 @@ static int dc_attach(dev)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-fail:
-	splx(s);
+	error = bus_setup_intr(dev, sc->dc_irq, INTR_TYPE_NET,
+			       dc_intr, sc, &sc->dc_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		device_printf(dev, "couldn't set up irq\n");
+		goto fail;
+	}
 
+	return(0);
+
+fail:
+	dc_detach(dev);
 	return(error);
 }
 
 static int dc_detach(dev)
 	device_t		dev;
 {
-	struct dc_softc		*sc;
-	struct ifnet		*ifp;
-	int			s;
-	struct dc_mediainfo	*m;
+	struct dc_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct dc_mediainfo *m;
 
-	s = splimp();
+	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	if (device_is_attached(dev)) {
+		dc_stop(sc);
+		ether_ifdetach(ifp);
+	}
 
-	dc_stop(sc);
-	ether_ifdetach(ifp);
-
+	if (sc->dc_miibus)
+		device_delete_child(dev, sc->dc_miibus);
 	bus_generic_detach(dev);
-	device_delete_child(dev, sc->dc_miibus);
 
-	bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
-	bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
+	if (sc->dc_intrhand)
+		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
 
-	contigfree(sc->dc_ldata, sizeof(struct dc_list_data), M_DEVBUF);
+	crit_exit();
+
+	if (sc->dc_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
+	if (sc->dc_res)
+		bus_release_resource(dev, DC_RES, DC_RID, sc->dc_res);
+
+	if (sc->dc_ldata)
+		contigfree(sc->dc_ldata, sizeof(struct dc_list_data), M_DEVBUF);
 	if (sc->dc_pnic_rx_buf != NULL)
 		free(sc->dc_pnic_rx_buf, M_DEVBUF);
 
@@ -2142,9 +2131,9 @@ static int dc_detach(dev)
 		free(sc->dc_mi, M_DEVBUF);
 		sc->dc_mi = m;
 	}
-	free(sc->dc_srom, M_DEVBUF);
 
-	splx(s);
+	if (sc->dc_srom)
+		free(sc->dc_srom, M_DEVBUF);
 
 	return(0);
 }
@@ -2624,16 +2613,13 @@ dc_txeof(sc)
 static void dc_tick(xsc)
 	void			*xsc;
 {
-	struct dc_softc		*sc;
-	struct mii_data		*mii;
-	struct ifnet		*ifp;
-	int			s;
-	u_int32_t		r;
+	struct dc_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii;
+	u_int32_t r;
 
-	s = splimp();
+	crit_enter();
 
-	sc = xsc;
-	ifp = &sc->arpcom.ac_if;
 	mii = device_get_softc(sc->dc_miibus);
 
 	if (sc->dc_flags & DC_REDUCED_MII_POLL) {
@@ -2696,9 +2682,7 @@ static void dc_tick(xsc)
 	else
 		callout_reset(&sc->dc_stat_timer, hz, dc_tick, sc);
 
-	splx(s);
-
-	return;
+	crit_exit();
 }
 
 /*
@@ -3065,9 +3049,8 @@ static void dc_init(xsc)
 	struct dc_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct mii_data		*mii;
-	int			s;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->dc_miibus);
 
@@ -3150,7 +3133,7 @@ static void dc_init(xsc)
 		if_printf(ifp, "initialization failed: no "
 			  "memory for rx buffers\n");
 		dc_stop(sc);
-		(void)splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -3213,7 +3196,7 @@ static void dc_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	(void)splx(s);
+	crit_exit();
 
 	/* Don't start the ticker if this is a homePNA link. */
 	if (IFM_SUBTYPE(mii->mii_media.ifm_media) == IFM_HPNA_1)
@@ -3289,9 +3272,9 @@ static int dc_ioctl(ifp, command, data, cr)
 	struct dc_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
 	struct mii_data		*mii;
-	int			s, error = 0;
+	int			error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -3327,7 +3310,7 @@ static int dc_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -3434,13 +3417,10 @@ static void dc_shutdown(dev)
 static int dc_suspend(dev)
 	device_t		dev;
 {
-	int		i;
-	int			s;
-	struct dc_softc		*sc;
+	struct dc_softc	*sc = device_get_softc(dev);
+	int i;
 
-	s = splimp();
-
-	sc = device_get_softc(dev);
+	crit_enter();
 
 	dc_stop(sc);
 
@@ -3453,7 +3433,7 @@ static int dc_suspend(dev)
 
 	sc->suspended = 1;
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -3465,15 +3445,11 @@ static int dc_suspend(dev)
 static int dc_resume(dev)
 	device_t		dev;
 {
-	int		i;
-	int			s;
-	struct dc_softc		*sc;
-	struct ifnet		*ifp;
+	struct dc_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
-	s = splimp();
-
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	dc_acpi(dev);
 
@@ -3495,6 +3471,6 @@ static int dc_resume(dev)
 
 	sc->suspended = 0;
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
