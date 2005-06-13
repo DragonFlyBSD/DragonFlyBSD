@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.10 2005/05/25 11:38:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.11 2005/06/13 20:51:17 joerg Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -73,6 +73,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -204,10 +205,13 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	struct axe_softc	*sc = USBGETSOFTC(dev);
 	usbd_status		err;
 	u_int16_t		val;
-	int s;
 
-	if (sc->axe_dying)
+	crit_enter();
+
+	if (sc->axe_dying) {
+		crit_exit();
 		return(0);
+	}
 
 #ifdef notdef
 	/*
@@ -215,20 +219,26 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	 * PHYs attached to the chip, so only read from those.
 	 */
 
-	if (sc->axe_phyaddrs[0] != AXE_NOPHY && phy != sc->axe_phyaddrs[0])
+	if (sc->axe_phyaddrs[0] != AXE_NOPHY && phy != sc->axe_phyaddrs[0]) {
+		crit_exit();
 		return (0);
+	}
 
-	if (sc->axe_phyaddrs[1] != AXE_NOPHY && phy != sc->axe_phyaddrs[1])
+	if (sc->axe_phyaddrs[1] != AXE_NOPHY && phy != sc->axe_phyaddrs[1]) {
+		crit_Exit();
 		return (0);
+	}
 #endif
-	if (sc->axe_phyaddrs[0] != 0xFF && sc->axe_phyaddrs[0] != phy)
+	if (sc->axe_phyaddrs[0] != 0xFF && sc->axe_phyaddrs[0] != phy) {
+		crit_exit();
 		return (0);
+	}
 
-	s = splimp();
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
 	err = axe_cmd(sc, AXE_CMD_MII_READ_REG, reg, phy, (void *)&val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
-	splx(s);
+
+	crit_exit();
 
 	if (err) {
 		if_printf(&sc->arpcom.ac_if, "read PHY failed\n");
@@ -246,16 +256,19 @@ axe_miibus_writereg(device_ptr_t dev, int phy, int reg, int val)
 {
 	struct axe_softc	*sc = USBGETSOFTC(dev);
 	usbd_status		err;
-	int s;
 
-	if (sc->axe_dying)
+	crit_enter();
+
+	if (sc->axe_dying) {
+		crit_exit();
 		return(0);
+	}
 
-	s = splimp();
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
 	err = axe_cmd(sc, AXE_CMD_MII_WRITE_REG, reg, phy, (void *)&val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
-	splx(s);
+
+	crit_exit();
 
 	if (err) {
 		if_printf(&sc->arpcom.ac_if, "write PHY failed\n");
@@ -339,22 +352,20 @@ axe_mchash(const uint8_t *addr)
 Static void
 axe_setmulti(struct axe_softc *sc)
 {
-	struct ifnet		*ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ifmultiaddr	*ifma;
 	u_int32_t		h = 0;
 	u_int16_t		rxmode;
 	u_int8_t		hashtbl[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	int s;
 
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
-	s = splimp();
 	axe_cmd(sc, AXE_CMD_RXCTL_READ, 0, 0, (void *)&rxmode);
 
 	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
 		rxmode |= AXE_RXCMD_ALLMULTI;
 		axe_cmd(sc, AXE_CMD_RXCTL_WRITE, 0, rxmode, NULL);
-		splx(s);
+		crit_exit();
 		return;
 	} else
 		rxmode &= ~AXE_RXCMD_ALLMULTI;
@@ -369,7 +380,7 @@ axe_setmulti(struct axe_softc *sc)
 	axe_cmd(sc, AXE_CMD_WRITE_MCAST, 0, 0, (void *)&hashtbl);
 	axe_cmd(sc, AXE_CMD_RXCTL_WRITE, 0, rxmode, NULL);
 
-	splx(s);
+	crit_exit();
 }
 
 Static void
@@ -520,14 +531,11 @@ USB_ATTACH(axe)
 Static int
 axe_detach(device_ptr_t dev)
 {
-	struct axe_softc	*sc;
-	struct ifnet		*ifp;
-	int s;
+	struct axe_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
-	s = splimp();
 	sc->axe_dying = 1;
 	callout_stop(&sc->axe_stat_timer);
 	ether_ifdetach(ifp);
@@ -539,7 +547,7 @@ axe_detach(device_ptr_t dev)
 	if (sc->axe_ep[AXE_ENDPT_INTR] != NULL)
 		usbd_abort_pipe(sc->axe_ep[AXE_ENDPT_INTR]);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -625,17 +633,15 @@ axe_tx_list_init(struct axe_softc *sc)
 Static void
 axe_rxstart(struct ifnet *ifp)
 {
-	struct axe_softc	*sc;
-	struct axe_chain	*c;
-	int s;
+	struct axe_softc *sc = ifp->if_softc;
+	struct axe_chain *c;
 
-	sc = ifp->if_softc;
-	s = splimp();
+	crit_enter();
 	c = &sc->axe_cdata.axe_rx_chain[sc->axe_cdata.axe_rx_prod];
 
 	if (axe_newbuf(sc, c, NULL) == ENOBUFS) {
 		ifp->if_ierrors++;
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -644,9 +650,8 @@ axe_rxstart(struct ifnet *ifp)
 	    c, mtod(c->axe_mbuf, char *), AXE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, axe_rxeof);
 	usbd_transfer(c->axe_xfer);
-	splx(s);
 
-	return;
+	crit_exit();
 }
 
 /*
@@ -656,25 +661,22 @@ axe_rxstart(struct ifnet *ifp)
 Static void
 axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
-	struct axe_softc	*sc;
-	struct axe_chain	*c;
-        struct mbuf		*m;
-        struct ifnet		*ifp;
-	int s, total_len = 0;
+	struct axe_chain *c = priv;
+	struct axe_softc *sc = c->axe_sc;
+        struct ifnet *ifp = &sc->arpcom.ac_if;
+        struct mbuf *m;
+	int total_len = 0;
 
-	c = priv;
-	sc = c->axe_sc;
-	s = splimp();
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			splx(s);
+			crit_exit();
 			return;
 		}
 		if (usbd_ratecheck(&sc->axe_rx_notice)) {
@@ -702,8 +704,8 @@ axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
 	axe_rxstart(ifp);
-	splx(s);
 
+	crit_exit();
 	return;
 done:
 	/* Setup new transfer. */
@@ -711,9 +713,8 @@ done:
 	    c, mtod(c->axe_mbuf, char *), AXE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, axe_rxeof);
 	usbd_transfer(c->axe_xfer);
-	splx(s);
 
-	return;
+	crit_exit();
 }
 
 /*
@@ -724,27 +725,22 @@ done:
 Static void
 axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
-	struct axe_softc	*sc;
-	struct axe_chain	*c;
-	struct ifnet		*ifp;
-	usbd_status		err;
-	int s;
+	struct axe_chain *c = priv;
+	struct axe_softc *sc = c->axe_sc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	usbd_status err;
 
-	c = priv;
-	sc = c->axe_sc;
-	ifp = &sc->arpcom.ac_if;
-
-	s = splimp();
+	crit_enter();
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			splx(s);
+			crit_exit();
 			return;
 		}
 		if_printf(ifp, "usb error on tx: %s\n", usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->axe_ep[AXE_ENDPT_TX]);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -765,28 +761,21 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
 
-	splx(s);
+	crit_exit();
 }
 
 Static void
 axe_tick(void *xsc)
 {
-	struct axe_softc	*sc;
-	struct ifnet		*ifp;
+	struct axe_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data		*mii;
-	int s;
 
-	sc = xsc;
-
-	if (sc == NULL)
-		return;
-
-	ifp = &sc->arpcom.ac_if;
 	mii = GET_MII(sc);
 	if (mii == NULL)
 		return;
 
-	s = splimp();
+	crit_enter();
 
 	mii_tick(mii);
 	if (!sc->axe_link && mii->mii_media_status & IFM_ACTIVE &&
@@ -798,7 +787,7 @@ axe_tick(void *xsc)
 
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 Static int
@@ -834,32 +823,30 @@ axe_encap(struct axe_softc *sc, struct mbuf *m, int idx)
 Static void
 axe_start(struct ifnet *ifp)
 {
-	struct axe_softc	*sc;
-	struct mbuf		*m_head = NULL;
-	int s;
+	struct axe_softc *sc = ifp->if_softc;
+	struct mbuf *m_head = NULL;
 
-	sc = ifp->if_softc;
-	s = splimp();
+	crit_enter();
 
 	if (!sc->axe_link) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	if (ifp->if_flags & IFF_OACTIVE) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	m_head = ifq_poll(&ifp->if_snd);
 	if (m_head == NULL) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	if (axe_encap(sc, m_head, 0)) {
 		ifp->if_flags |= IFF_OACTIVE;
-		splx(s);
+		crit_exit();
 		return;
 	}
 	m_head = ifq_dequeue(&ifp->if_snd);
@@ -876,7 +863,8 @@ axe_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-	splx(s);
+
+	crit_exit();
 }
 
 Static void
@@ -886,12 +874,14 @@ axe_init(void *xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct axe_chain	*c;
 	usbd_status		err;
-	int i, rxmode, s;
+	int i, rxmode;
 
-	if (ifp->if_flags & IFF_RUNNING)
+	crit_enter();
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		crit_exit();
 		return;
-
-	s = splimp();
+	}
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -908,15 +898,15 @@ axe_init(void *xsc)
 
 	/* Init TX ring. */
 	if (axe_tx_list_init(sc) == ENOBUFS) {
+		crit_exit();
 		if_printf(ifp, "tx list init failed\n");
-		splx(s);
 		return;
 	}
 
 	/* Init RX ring. */
 	if (axe_rx_list_init(sc) == ENOBUFS) {
+		crit_exit();
 		if_printf(ifp, "rx list init failed\n");
-		splx(s);
 		return;
 	}
 
@@ -944,16 +934,16 @@ axe_init(void *xsc)
 	err = usbd_open_pipe(sc->axe_iface, sc->axe_ed[AXE_ENDPT_RX],
 	    USBD_EXCLUSIVE_USE, &sc->axe_ep[AXE_ENDPT_RX]);
 	if (err) {
+		crit_exit();
 		if_printf(ifp, "open rx pipe failed: %s\n", usbd_errstr(err));
-		splx(s);
 		return;
 	}
 
 	err = usbd_open_pipe(sc->axe_iface, sc->axe_ed[AXE_ENDPT_TX],
 	    USBD_EXCLUSIVE_USE, &sc->axe_ep[AXE_ENDPT_TX]);
 	if (err) {
+		crit_exit();
 		if_printf(ifp, "open tx pipe failed: %s\n", usbd_errstr(err));
-		splx(s);
 		return;
 	}
 
@@ -969,11 +959,9 @@ axe_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
-
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
 
-	return;
+	crit_exit();
 }
 
 Static int
@@ -983,9 +971,9 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq		*ifr = (struct ifreq *)data;
 	struct mii_data		*mii;
 	u_int16_t		rxmode;
-	int error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1033,7 +1021,7 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -1041,13 +1029,11 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 Static void
 axe_watchdog(struct ifnet *ifp)
 {
-	struct axe_softc	*sc;
-	struct axe_chain	*c;
-	usbd_status		stat;
-	int s;
+	struct axe_softc *sc = ifp->if_softc;
+	struct axe_chain *c;
+	usbd_status stat;
 
-	sc = ifp->if_softc;
-	s = splimp();
+	crit_enter();
 
 	ifp->if_oerrors++;
 	if_printf(ifp, "watchdog timeout\n");
@@ -1059,7 +1045,7 @@ axe_watchdog(struct ifnet *ifp)
 	if (!ifq_is_empty(&ifp->if_snd))
 		axe_start(ifp);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1071,9 +1057,9 @@ axe_stop(struct axe_softc *sc)
 {
 	usbd_status		err;
 	struct ifnet		*ifp;
-	int i, s;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
 	axe_reset(sc);
 
@@ -1159,7 +1145,8 @@ axe_stop(struct axe_softc *sc)
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
         sc->axe_link = 0;
-	splx(s);
+
+	crit_exit();
 }
 
 /*
