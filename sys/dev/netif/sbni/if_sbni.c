@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.19 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.20 2005/06/13 13:47:50 joerg Exp $
  */
 
 /*
@@ -70,6 +70,7 @@
 #include <sys/callout.h>
 #include <sys/syslog.h>
 #include <sys/random.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <sys/rman.h>
@@ -260,12 +261,10 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 static void
 sbni_init(void *xsc)
 {
-	struct sbni_softc *sc;
-	struct ifnet *ifp;
-	int  s;
+	struct sbni_softc *sc =xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc = (struct sbni_softc *)xsc;
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	/* address not known */
 	if (TAILQ_EMPTY(&ifp->if_addrhead))
@@ -277,8 +276,6 @@ sbni_init(void *xsc)
 	 */
 	if (ifp->if_flags & IFF_RUNNING)
 		return;
-
-	s = splimp();
 	ifp->if_timer = 0;
 	card_start(sc);
 	callout_reset(&sc->sbni_stat_timer,hz / SBNI_HZ, sbni_timeout, sc);
@@ -288,7 +285,8 @@ sbni_init(void *xsc)
 
 	/* attempt to start output */
 	sbni_start(ifp);
-	splx(s);
+
+	crit_exit();
 }
 
 
@@ -647,8 +645,7 @@ append_frame_to_pkt(struct sbni_softc *sc, u_int framelen, u_int32_t crc)
 
 
 /*
- * Prepare to start output on adapter. Current priority must be set to splimp
- * before this routine is called.
+ * Prepare to start output on adapter.
  * Transmitter will be actually activated when marker has been accepted.
  */
 
@@ -864,12 +861,10 @@ indicate_pkt(struct sbni_softc *sc)
 static void
 sbni_timeout(void *xsc)
 {
-	struct sbni_softc *sc;
-	int s;
+	struct sbni_softc *sc = xsc;
 	u_char csr0;
 
-	sc = (struct sbni_softc *)xsc;
-	s = splimp();
+	crit_enter();
 
 	csr0 = sbni_inb(sc, CSR0);
 	if (csr0 & RC_CHK) {
@@ -890,7 +885,8 @@ sbni_timeout(void *xsc)
 
 	sbni_outb(sc, CSR0, csr0 | RC_CHK); 
 	callout_reset(&sc->sbni_stat_timer, hz / SBNI_HZ, sbni_timeout, sc);
-	splx(s);
+
+	crit_exit();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1041,13 +1037,13 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr;
 	struct sbni_in_stats *in_stats;
 	struct sbni_flags flags;
-	int error, s;
+	int error;
 
 	sc = ifp->if_softc;
 	ifr = (struct ifreq *)data;
 	error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -1136,7 +1132,8 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
+
 	return (error);
 }
 
