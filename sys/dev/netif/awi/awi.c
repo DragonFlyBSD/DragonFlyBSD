@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.21 2005/06/11 04:26:53 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.22 2005/06/13 20:25:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -87,14 +87,6 @@
  */
 
 #include "opt_inet.h"
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
-#define	NBPFILTER	1
-#elif defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
-#include "use_bpf.h"
-#define	NBPFILTER	NBPF
-#else
-#include "bpfilter.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -106,20 +98,12 @@
 #include <sys/sockio.h>
 #include <sys/errno.h>
 #include <sys/syslog.h>
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #include <sys/bus.h>
-#else
-#include <sys/device.h>
-#endif
 
 #include <net/if.h>
 #include <net/ifq_var.h>
 #include <net/if_dl.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
-#else
-#include <net/if_ether.h>
-#endif
 #include <net/if_media.h>
 #include <net/if_llc.h>
 #include <netproto/802_11/ieee80211.h>
@@ -130,39 +114,19 @@
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
-#ifdef __NetBSD__
-#include <netinet/if_inarp.h>
-#else
 #include <netinet/if_ether.h>
 #endif
-#endif
 
-#if NBPFILTER > 0
 #include <net/bpf.h>
 #include <net/bpfdesc.h>
-#endif
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
-#ifdef __NetBSD__
-#include <machine/intr.h>
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include <machine/clock.h>
-#endif
 
-#ifdef __NetBSD__
-#include <dev/ic/am79c930reg.h>
-#include <dev/ic/am79c930var.h>
-#include <dev/ic/awireg.h>
-#include <dev/ic/awivar.h>
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include "am79c930reg.h"
-#include "am79c930var.h"
-#include "awireg.h"
-#include "awivar.h"
-#endif
+#include <dev/netif/awi/am79c930reg.h>
+#include <dev/netif/awi/am79c930var.h>
+#include <dev/netif/awi/awireg.h>
+#include <dev/netif/awi/awivar.h>
 
 static int awi_ioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *);
 #ifdef IFM_IEEE80211
@@ -219,23 +183,12 @@ int awi_dump_hdr = 0;
 int awi_dump_len = 28;
 #endif
 
-#if NBPFILTER > 0
 #define	AWI_BPF_NORM	0
 #define	AWI_BPF_RAW	1
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	AWI_BPF_MTAP(sc, m, raw) do {					\
 	if ((sc)->sc_rawbpf == (raw))					\
 		BPF_MTAP((sc)->sc_ifp, (m));				\
 } while (0);
-#else
-#define	AWI_BPF_MTAP(sc, m, raw) do {					\
-	if ((sc)->sc_ifp->if_bpf && (sc)->sc_rawbpf == (raw))		\
-		bpf_mtap((sc)->sc_ifp->if_bpf, (m));			\
-} while (0);
-#endif
-#else
-#define	AWI_BPF_MTAP(sc, m, raw)
-#endif
 
 #ifndef llc_snap
 #define llc_snap              llc_un.type_snap
@@ -290,15 +243,10 @@ awi_attach(sc)
 #ifdef IFF_NOTRAILERS
 	ifp->if_flags |= IFF_NOTRAILERS;
 #endif
-#ifdef __NetBSD__
-	memcpy(ifp->if_xname, sc->sc_dev.dv_xname, IFNAMSIZ);
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 	memcpy(sc->sc_ec.ac_enaddr, sc->sc_mib_addr.aMAC_Address,
 	    ETHER_ADDR_LEN);
-#endif
 
 	if_printf(ifp, "IEEE802.11 %s %dMbps (firmware %s)\n",
 	    sc->sc_mib_phy.IEEE_PHY_Type == AWI_PHY_TYPE_FH ? "FH" : "DS",
@@ -331,99 +279,6 @@ awi_attach(sc)
 	sc->sc_attached = 1;
 	return 0;
 }
-
-#ifdef __NetBSD__
-int
-awi_detach(sc)
-	struct awi_softc *sc;
-{
-	struct ifnet *ifp = sc->sc_ifp;
-	int s;
-
-	/* Succeed if there is no work to do. */
-	if (!sc->sc_attached)
-		return (0);
-
-	s = splnet();
-	sc->sc_invalid = 1;
-	awi_stop(sc);
-	while (sc->sc_sleep_cnt > 0) {
-		wakeup(sc);
-		(void)tsleep(sc, 0, "awidet", 1);
-	}
-	if (sc->sc_wep_ctx != NULL)
-		free(sc->sc_wep_ctx, M_DEVBUF);
-#if NBPFILTER > 0
-	bpfdetach(ifp);
-#endif
-#ifdef IFM_IEEE80211
-	ifmedia_delete_instance(&sc->sc_media, IFM_INST_ANY);
-#endif
-	ether_ifdetach(ifp);
-	if_detach(ifp);
-	if (sc->sc_enabled) {
-		if (sc->sc_disable)
-			(*sc->sc_disable)(sc);
-		sc->sc_enabled = 0;
-	}
-	splx(s);
-	return 0;
-}
-
-int
-awi_activate(self, act)
-	struct device *self;
-	enum devact act;
-{
-	struct awi_softc *sc = (struct awi_softc *)self;
-	int s, error = 0;
-
-	s = splnet();
-	switch (act) {
-	case DVACT_ACTIVATE:
-		error = EOPNOTSUPP;
-		break;
-
-	case DVACT_DEACTIVATE:
-		sc->sc_invalid = 1;
-		if (sc->sc_ifp)
-			if_deactivate(sc->sc_ifp);
-		break;
-	}
-	splx(s);
-
-	return error;
-}
-
-void
-awi_power(sc, why)
-	struct awi_softc *sc;
-	int why;
-{
-	int s;
-	int ocansleep;
-
-	if (!sc->sc_enabled)
-		return;
-
-	s = splnet();
-	ocansleep = sc->sc_cansleep;
-	sc->sc_cansleep = 0;
-#ifdef needtobefixed	/*ONOE*/
-	if (why == PWR_RESUME) {
-		sc->sc_enabled = 0;
-		awi_init(sc);
-		(void)awi_intr(sc);
-	} else {
-		awi_stop(sc);
-		if (sc->sc_disable)
-			(*sc->sc_disable)(sc);
-	}
-#endif
-	sc->sc_cansleep = ocansleep;
-	splx(s);
-}
-#endif /* __NetBSD__ */
 
 static int
 awi_ioctl(ifp, cmd, data, cr)
@@ -472,13 +327,7 @@ awi_ioctl(ifp, cmd, data, cr)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = ENETRESET;	/*XXX*/
-#else
-		error = (cmd == SIOCADDMULTI) ?
-		    ether_addmulti(ifr, &sc->sc_ec) :
-		    ether_delmulti(ifr, &sc->sc_ec);
-#endif
 		/*
 		 * Do not rescan BSS.  Rather, just reset multicast filter.
 		 */
@@ -496,11 +345,9 @@ awi_ioctl(ifp, cmd, data, cr)
 			ifp->if_mtu = ifr->ifr_mtu;
 		break;
 	case SIOCS80211NWID:
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser_cred(cr, NULL_CRED_OKAY);	/* EPERM if no proc */
 		if (error)
 			break;
-#endif
 		error = copyin(ifr->ifr_data, &nwid, sizeof(nwid));
 		if (error)
 			break;
@@ -530,11 +377,9 @@ awi_ioctl(ifp, cmd, data, cr)
 		error = copyout(p + 1, ifr->ifr_data, 1 + IEEE80211_NWID_LEN);
 		break;
 	case SIOCS80211NWKEY:
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser_cred(cr, NULL_CRED_OKAY);	/* EPERM if no proc */
 		if (error)
 			break;
-#endif
 		error = awi_wep_setnwkey(sc, (struct ieee80211_nwkey *)data);
 		break;
 	case SIOCG80211NWKEY:
@@ -752,12 +597,7 @@ awi_init(sc)
 	struct ifnet *ifp = sc->sc_ifp;
 	int error, ostatus;
 	int n;
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct ifmultiaddr *ifma;
-#else
-	struct ether_multi *enm;
-	struct ether_multistep step;
-#endif
 
 	/* reinitialize muticast filter */
 	n = 0;
@@ -768,11 +608,9 @@ awi_init(sc)
 		goto set_mib;
 	}
 	sc->sc_mib_mac.aPromiscuous_Enable = 0;
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if (ifp->if_amcount != 0)
 		goto set_mib;
-	for (ifma = LIST_FIRST(&ifp->if_multiaddrs); ifma != NULL;
-	    ifma = LIST_NEXT(ifma, ifma_link)) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		if (n == AWI_GROUP_ADDR_SIZE)
@@ -782,19 +620,6 @@ awi_init(sc)
 		    ETHER_ADDR_LEN);
 		n++;
 	}
-#else
-	ETHER_FIRST_MULTI(step, &sc->sc_ec, enm);
-	while (enm != NULL) {
-		if (n == AWI_GROUP_ADDR_SIZE ||
-		    memcmp(enm->enm_addrlo, enm->enm_addrhi, ETHER_ADDR_LEN)
-		    != 0)
-			goto set_mib;
-		memcpy(sc->sc_mib_addr.aGroup_Addresses[n], enm->enm_addrlo,
-		    ETHER_ADDR_LEN);
-		n++;
-		ETHER_NEXT_MULTI(step, enm);
-	}
-#endif
 	for (; n < AWI_GROUP_ADDR_SIZE; n++)
 		memset(sc->sc_mib_addr.aGroup_Addresses[n], 0, ETHER_ADDR_LEN);
 	ifp->if_flags &= ~IFF_ALLMULTI;
@@ -1214,9 +1039,6 @@ awi_input(sc, m, rxts, rssi)
 			break;
 		}
 		ifp->if_ipackets++;
-#if !(defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4))
-		AWI_BPF_MTAP(sc, m, AWI_BPF_NORM);
-#endif
 		(*ifp->if_input)(ifp, m);
 		break;
 	case IEEE80211_FC0_TYPE_MGT:

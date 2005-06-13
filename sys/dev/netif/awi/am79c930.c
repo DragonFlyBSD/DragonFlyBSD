@@ -1,6 +1,6 @@
 /* $NetBSD: am79c930.c,v 1.5 2000/03/23 13:57:58 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/am79c930.c,v 1.2.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.5 2004/02/13 02:44:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/am79c930.c,v 1.6 2005/06/13 20:25:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -64,28 +64,12 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if !defined(__DragonFly__) && !defined(__FreeBSD__)
-#include <sys/device.h>
-#endif
 
 #include <machine/cpu.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#endif
 #include <machine/bus.h>
-#ifdef __NetBSD__
-#include <machine/intr.h>
-#endif
 
-#ifdef __NetBSD__
-#include <dev/ic/am79c930reg.h>
-#include <dev/ic/am79c930var.h>
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include "am79c930reg.h"
-#include "am79c930var.h"
-#endif
+#include <dev/netif/awi/am79c930reg.h>
+#include <dev/netif/awi/am79c930var.h>
 
 #define AM930_DELAY(x) /*nothing*/
 

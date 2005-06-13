@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.8 2004/07/27 14:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.9 2005/06/13 20:25:56 joerg Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -51,46 +51,25 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/sockio.h>
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #include <sys/bus.h>
-#else
-#include <sys/device.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_dl.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #include <net/if_arp.h>
-#else
-#include <net/if_ether.h>
-#endif
 #include <net/if_media.h>
 #include <netproto/802_11/ieee80211.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include <machine/clock.h>
-#endif
 
-#ifdef __NetBSD__
-#include <dev/ic/am79c930reg.h>
-#include <dev/ic/am79c930var.h>
-#include <dev/ic/awireg.h>
-#include <dev/ic/awivar.h>
-
-#include <dev/pcmcia/if_wi_ieee.h>	/* XXX */
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include "am79c930reg.h"
-#include "am79c930var.h"
+#include <dev/netif/awi/am79c930reg.h>
+#include <dev/netif/awi/am79c930var.h>
 
 #include <netproto/802_11/if_wavelan_ieee.h>
-#include "awireg.h"
-#include "awivar.h"
-#endif
+#include <dev/netif/awi/awireg.h>
+#include <dev/netif/awi/awivar.h>
 
 static int awi_cfgget (struct ifnet *ifp, u_long cmd, caddr_t data);
 static int awi_cfgset (struct ifnet *ifp, u_long cmd, caddr_t data);
@@ -109,11 +88,7 @@ awi_wicfg(ifp, cmd, data)
 		error = awi_cfgget(ifp, cmd, data);
 		break;
 	case SIOCSWAVELAN:
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser(td);	/* note: EPERM if no proc */
-#else
-		error = suser(curproc->p_ucred, &curproc->p_acflag);
-#endif
 		if (error)
 			break;
 		error = awi_cfgset(ifp, cmd, data);
@@ -274,11 +249,7 @@ awi_cfgget(ifp, cmd, data)
 	case WI_RID_DEFLT_CRYPT_KEYS:
 		keys = (struct wi_ltv_keys *)&wreq;
 		/* do not show keys to non-root user */
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		error = suser(td);	/* note: EPERM if no proc */
-#else
-		error = suser(curproc->p_ucred, &curproc->p_acflag);
-#endif
 		if (error) {
 			memset(keys, 0, sizeof(*keys));
 			error = 0;

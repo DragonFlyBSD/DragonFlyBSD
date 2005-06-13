@@ -1,6 +1,6 @@
 /* $NetBSD: awivar.h,v 1.12 2000/07/21 04:48:56 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/awivar.h,v 1.6.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.5 2004/07/10 12:48:55 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.6 2005/06/13 20:25:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -90,14 +90,7 @@ struct awi_wep_algo {
 
 struct awi_softc 
 {
-#ifdef __NetBSD__
-	struct device 		sc_dev;
-	struct ethercom		sc_ec;
-	void			*sc_ih; /* interrupt handler */
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct arpcom		sc_ec;
-#endif
 	struct am79c930_softc 	sc_chip;
 	struct ifnet		*sc_ifp;
 	int			(*sc_enable) (struct awi_softc *);
@@ -196,11 +189,6 @@ struct awi_softc
 int	awi_attach (struct awi_softc *);
 int	awi_intr (void *);
 void	awi_reset (struct awi_softc *);
-#ifdef __NetBSD__
-int	awi_activate (struct device *, enum devact);
-int	awi_detach (struct awi_softc *);
-void	awi_power (struct awi_softc *, int);
-#endif
 
 void awi_stop (struct awi_softc *sc);
 int awi_init (struct awi_softc *sc);

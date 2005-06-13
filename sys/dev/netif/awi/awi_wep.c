@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.12 2005/06/11 04:26:53 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.13 2005/06/13 20:25:56 joerg Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -60,44 +60,23 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/sockio.h>
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 #include <sys/bus.h>
-#else
-#include <sys/device.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_dl.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #include <net/if_arp.h>
-#else
-#include <net/if_ether.h>
-#endif
 #include <net/if_media.h>
 #include <netproto/802_11/ieee80211.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include <machine/clock.h>
-#endif
 
-#ifdef __NetBSD__
-#include <dev/ic/am79c930reg.h>
-#include <dev/ic/am79c930var.h>
-#include <dev/ic/awireg.h>
-#include <dev/ic/awivar.h>
-
-#include <crypto/arc4/arc4.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#include "am79c930reg.h"
-#include "am79c930var.h"
-#include "awireg.h"
-#include "awivar.h"
+#include <dev/netif/awi/am79c930reg.h>
+#include <dev/netif/awi/am79c930var.h>
+#include <dev/netif/awi/awireg.h>
+#include <dev/netif/awi/awivar.h>
 
 #include <crypto/rc4/rc4.h>
 static __inline int
@@ -117,7 +96,6 @@ arc4_encrypt(void *ctx, u_int8_t *dst, u_int8_t *src, int len)
 {
 	rc4_crypt(ctx, src, dst, len);
 }
-#endif
 
 static void awi_crc_init (void);
 static u_int32_t awi_crc_update (u_int32_t crc, u_int8_t *buf, int len);
@@ -191,11 +169,7 @@ awi_wep_getnwkey(sc, nwkey)
 	nwkey->i_wepon = awi_wep_getalgo(sc);
 	nwkey->i_defkid = sc->sc_wep_defkid + 1;
 	/* do not show any keys to non-root user */
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	suerr = suser(curthread);	/* note: EPERM if no proc */
-#else
-	suerr = suser(curproc->p_ucred, &curproc->p_acflag);
-#endif
 	error = 0;
 	for (i = 0; i < IEEE80211_WEP_NKID; i++) {
 		if (nwkey->i_key[i].i_keydat == NULL)
