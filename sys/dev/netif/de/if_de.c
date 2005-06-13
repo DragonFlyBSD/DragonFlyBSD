@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.37 2005/05/29 10:08:35 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.38 2005/06/13 23:03:15 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -48,7 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/eventhandler.h>
-#include <machine/clock.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/bus.h>
@@ -128,12 +128,14 @@ static void
 tulip_timeout_callback(void *arg)
 {
     tulip_softc_t *sc = arg;
-    int s = splimp();
+
+    crit_enter();
 
     sc->tulip_flags &= ~TULIP_TIMEOUTPENDING;
     sc->tulip_probe_timeout -= 1000 / TULIP_HZ;
     (sc->tulip_boardsw->bd_media_poll)(sc, TULIP_MEDIAPOLL_TIMER);
-    splx(s);
+
+    crit_exit();
 }
 
 static void
@@ -3724,10 +3726,10 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
     tulip_softc_t *sc = (tulip_softc_t *)ifp->if_softc;
     struct ifaddr *ifa = (struct ifaddr *)data;
     struct ifreq *ifr = (struct ifreq *)data;
-    int s;
     int error = 0;
 
-    s = splimp();
+    crit_enter();
+
     switch (cmd) {
 	case SIOCSIFADDR: {
 	    ifp->if_flags |= IFF_UP;
@@ -3853,7 +3855,8 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 	}
     }
 
-    splx(s);
+    crit_exit();
+
     return error;
 }
 
@@ -4175,7 +4178,6 @@ tulip_pci_attach(device_t dev)
 	       (sc->tulip_revinfo & 0xF0) >> 4, sc->tulip_revinfo & 0x0F);
 	device_printf(dev, "address unknown\n");
     } else {
-	int s;
 	void (*intr_rtn)(void *) = tulip_intr_normal;
 
 	if (sc->tulip_features & TULIP_HAVE_SHAREDINTR)
@@ -4196,9 +4198,9 @@ tulip_pci_attach(device_t dev)
 	    }
 	}
 
-	s = splimp();
+	crit_enter();
 	tulip_attach(sc);
-	splx(s);
+	crit_exit();
     }
     return 0;
 }
