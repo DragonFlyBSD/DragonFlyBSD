@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.11 2005/02/20 04:41:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.12 2005/06/13 18:13:20 joerg Exp $
  *
  */
 
@@ -39,6 +39,7 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/thread2.h>
 #if defined(__bsdi__) || defined(__NetBSD__)
 #include <sys/device.h>
 #endif
@@ -239,9 +240,9 @@ int
 pdq_ifioctl(struct ifnet *ifp, ioctl_cmd_t cmd, caddr_t data, struct ucred *cr)
 {
     pdq_softc_t *sc = (pdq_softc_t *) ((caddr_t) ifp - offsetof(pdq_softc_t, sc_ac.ac_if));
-    int s, error = 0;
+    int error = 0;
 
-    s = splimp();
+    crit_enter();
 
     switch (cmd) {
 	case SIOCSIFADDR: {
@@ -332,7 +333,8 @@ pdq_ifioctl(struct ifnet *ifp, ioctl_cmd_t cmd, caddr_t data, struct ucred *cr)
 	}
     }
 
-    splx(s);
+    crit_exit();
+
     return error;
 }
 
