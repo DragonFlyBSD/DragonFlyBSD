@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.15 2005/01/23 20:21:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.16 2005/06/13 21:53:24 joerg Exp $
  *
  */
 #undef DEBUG
@@ -36,6 +36,7 @@
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/conf.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 
@@ -310,7 +311,7 @@ static int
 cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	cx_chan_t *q, *c = ifp->if_softc;
-	int error, s, was_up, should_be_up;
+	int error, was_up, should_be_up;
 
 	/*
 	 * No socket ioctls while the channel is in async mode.
@@ -349,7 +350,8 @@ cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	}
 
 	/* We get here only in case of SIFFLAGS or SIFADDR. */
-	s = splimp ();
+	crit_enter();
+
 	should_be_up = (ifp->if_flags & IFF_RUNNING) != 0;
 	if (!was_up && should_be_up) {
 		/* Interface goes up -- start it. */
@@ -372,12 +374,14 @@ cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if (! c->sopt.ext)
 			sppp_flush (c->ifp);
 	}
-	splx (s);
+
+	crit_exit();
+
 	return (0);
 }
 
 /*
- * Stop the interface.  Called on splimp().
+ * Stop the interface.
  */
 static void
 cxdown (cx_chan_t *c)
@@ -397,7 +401,7 @@ cxdown (cx_chan_t *c)
 }
 
 /*
- * Start the interface.  Called on splimp().
+ * Start the interface.
  */
 static void
 cxup (cx_chan_t *c)
@@ -535,7 +539,6 @@ cxsend (cx_chan_t *c)
 
 /*
  * Start output on the (master) interface and all slave interfaces.
- * Always called on splimp().
  */
 static void
 cxstart (struct ifnet *ifp)
@@ -559,7 +562,6 @@ cxstart (struct ifnet *ifp)
 /*
  * Handle transmit timeouts.
  * Recover after lost transmit interrupts.
- * Always called on splimp().
  */
 static void
 cxwatchdog (struct ifnet *ifp)

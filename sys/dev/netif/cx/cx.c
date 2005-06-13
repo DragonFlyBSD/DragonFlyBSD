@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.14 2004/09/19 01:28:54 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.15 2005/06/13 21:53:24 joerg Exp $
  *
  */
 #undef DEBUG
@@ -31,6 +31,7 @@
 #include <sys/proc.h>
 #include <sys/tty.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 #if defined(__DragonFly__) || defined(__FreeBSD__)
@@ -188,7 +189,7 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 		ttsetwater (tp);
 	}
 
-	spltty ();
+	crit_enter();
 	if (! (tp->t_state & TS_ISOPEN)) {
 		/*
 		 * Compute optimal receiver buffer length.
@@ -242,7 +243,7 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 	}
 	print (("cx%d.%d: cxopen done csr=%b\n", c->board->num, c->num,
 		inb(CSR(c->chip->port)), CSRA_BITS));
-	spl0 ();
+	crit_exit();
 	if (error)
 		return (error);
 #if defined(__DragonFly__) || __FreeBSD__ >= 2
@@ -258,7 +259,6 @@ int cxclose (dev_t dev, int flag, int mode, struct thread *td)
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
 	struct tty *tp;
-	int s;
 
 	if (unit == UNIT_CTL)
 		return (0);
@@ -267,7 +267,8 @@ int cxclose (dev_t dev, int flag, int mode, struct thread *td)
 
 	/* Disable receiver.
 	 * Transmitter continues sending the queued data. */
-	s = spltty ();
+	crit_enter();
+
 	outb (CAR(c->chip->port), c->num & 3);
 	outb (IER(c->chip->port), IER_TXD | IER_MDM);
 	cx_cmd (c->chip->port, CCR_DISRX);
@@ -284,7 +285,7 @@ int cxclose (dev_t dev, int flag, int mode, struct thread *td)
 		if (! (tp->t_state & TS_BUSY))
 			cxoproc (tp);
 	}
-	splx (s);
+	crit_exit();
 	ttyclose (tp);
 	return (0);
 }
@@ -295,7 +296,7 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	cx_chan_t *c, *m;
 	cx_stat_t *st;
 	struct tty *tp;
-	int error, s;
+	int error;
 	unsigned char msv;
 	struct ifnet *master;
 
@@ -373,11 +374,11 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			case 0: c->board->if0type = o->iftype; break;
 			case 8: c->board->if8type = o->iftype; break;
 			}
-			s = spltty ();
+			crit_enter();
 			cxswitch (c, o->sopt);
 			cx_setup_chan (c);
 			outb (IER(c->chip->port), 0);
-			splx (s);
+			crit_exit();
 			break;
 
 		case CXIOCGETSTAT:
@@ -433,10 +434,11 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	if (error != ENOIOCTL)
 		return (error);
 
-	s = spltty ();
+	crit_enter();
+
 	switch (cmd) {
 	default:
-		splx (s);
+		crit_exit();
 		return (ENOTTY);
 	case TIOCSBRK:          /* Start sending line break */
 		c->brk = BRK_SEND;
@@ -476,7 +478,8 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		if (c->rts)        *(int*)data |= TIOCM_RTS;
 		break;
 	}
-	splx (s);
+
+	crit_exit();
 	return (0);
 }
 
@@ -576,7 +579,8 @@ void cxoproc (struct tty *tp)
 	int unit = UNIT (tp->t_dev);
 	cx_chan_t *c = cxchan[unit];
 	unsigned short port = c->chip->port;
-	int s = spltty ();
+
+	crit_enter();
 
 	/* Set current channel number */
 	outb (CAR(port), c->num & 3);
@@ -606,7 +610,7 @@ void cxoproc (struct tty *tp)
 		selwakeup(&tp->t_wsel);
 	}
 #endif
-	splx (s);
+	crit_exit();
 }
 
 static int
@@ -615,15 +619,15 @@ cxparam (struct tty *tp, struct termios *t)
 	int unit = UNIT (tp->t_dev);
 	cx_chan_t *c = cxchan[unit];
 	unsigned short port = c->chip->port;
-	int clock, period, s;
+	int clock, period;
 	cx_cor1_async_t cor1;
 
 	if (t->c_ospeed == 0) {
 		/* Clear DTR and RTS. */
-		s = spltty ();
+		crit_enter();
 		cx_chan_dtr (c, 0);
 		cx_chan_rts (c, 0);
-		splx (s);
+		crit_exit();
 		print (("cx%d.%d: cxparam (hangup)\n", c->board->num, c->num));
 		return (0);
 	}
@@ -688,7 +692,7 @@ cxparam (struct tty *tp, struct termios *t)
 	c->aopt.schr2 = t->c_cc[VSTOP];         /* XOFF */
 
 	/* Set current channel number. */
-	s = spltty ();
+	crit_enter();
 	outb (CAR(port), c->num & 3);
 
 	/* Set up receiver clock values. */
@@ -716,7 +720,8 @@ cxparam (struct tty *tp, struct termios *t)
 		/* Unfortunately, it may cause transmitter glitches... */
 		cx_cmd (port, CCR_INITCH);
 	}
-	splx (s);
+
+	crit_exit();
 	return (0);
 }
 
@@ -727,7 +732,8 @@ void cxstop (struct tty *tp, int flag)
 {
 	cx_chan_t *c = cxchan[UNIT(tp->t_dev)];
 	unsigned short port = c->chip->port;
-	int s = spltty ();
+
+	crit_enter();
 
 	if (tp->t_state & TS_BUSY) {
 		print (("cx%d.%d: cxstop\n", c->board->num, c->num));
@@ -738,7 +744,8 @@ void cxstop (struct tty *tp, int flag)
 		/* Stop transmitter */
 		cx_cmd (port, CCR_DISTX);
 	}
-	splx (s);
+
+	crit_exit();
 }
 
 /*
@@ -925,14 +932,13 @@ cxtimeout (void *a)
 	cx_board_t *b;
 	cx_chan_t *c;
 	struct tty *tp;
-	int s;
 
 	for (b = cxboard; b < cxboard + NCX; ++b) {
 		for (c = b->chan; c < b->chan + NCHAN; ++c) {
 			tp = c->ttyp;
 			if (c->type == T_NONE || c->mode != M_ASYNC || !tp)
 				continue;
-			s = spltty ();
+			crit_enter();
 			if (tp->t_state & TS_BUSY) {
 				tp->t_state &= ~TS_BUSY;
 				if (tp->t_line)
@@ -940,7 +946,7 @@ cxtimeout (void *a)
 				else
 					cxoproc (tp);
 			}
-			splx (s);
+			crit_exit();
 		}
 	}
 	callout_reset (&cxtimeout_ch, hz * 5, cxtimeout, NULL);
