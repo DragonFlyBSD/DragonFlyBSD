@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_isa.c,v 1.12 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.4 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.5 2005/06/13 22:55:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -50,6 +51,8 @@
 
 #include <dev/netif/lnc/if_lncvar.h>
 #include <dev/netif/lnc/if_lncreg.h>
+
+static int	lnc_isa_detach(device_t);
 
 static struct isa_pnp_id lnc_pnp_ids[] = {
 	{0,	NULL}
@@ -66,7 +69,6 @@ lnc_legacy_probe(device_t dev)
 
 	if (! sc->portres) {
 		device_printf(dev, "Failed to allocate I/O ports\n");
-		lnc_release_resources(dev);
 		return (ENXIO);
 	}
 
@@ -88,7 +90,7 @@ lnc_legacy_probe(device_t dev)
 	if ((sc->nic.ic = lance_probe(sc))) {
 		device_set_desc(dev, "BICC Isolan");
 		sc->nic.ident = BICC;
-		lnc_release_resources(dev);
+		lnc_isa_detach(dev);
 		return (0);
 	} else {
 	    /* It's not a BICC so try the standard NE2100 ports */
@@ -97,10 +99,10 @@ lnc_legacy_probe(device_t dev)
 	    if ((sc->nic.ic = lance_probe(sc))) {
 		sc->nic.ident = NE2100;
 		device_set_desc(dev, "NE2100");
-		lnc_release_resources(dev);
+		lnc_isa_detach(dev);
 		return (0);
 	    } else {
-		lnc_release_resources(dev);
+		lnc_isa_detach(dev);
 		return (ENXIO);
 	    }
 	}
@@ -134,29 +136,33 @@ static int
 lnc_isa_attach(device_t dev)
 {
 	lnc_softc_t *sc = device_get_softc(dev);
-	int err = 0;
+	int error = 0;
 	bus_size_t lnc_mem_size;
 
-	device_printf(dev, "Attaching %s\n", device_get_desc(dev));
+	/*
+	 * The probe routines can allocate resources and to make our
+	 * live easier, bzero the softc now.
+	 */
+	bzero(sc, sizeof(*sc));
 
 	sc->portrid = 0;
 	sc->portres = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &sc->portrid,
 	    RF_ACTIVE);
 
-	if (! sc->portres) {
+	if (!sc->portres) {
 		device_printf(dev, "Failed to allocate I/O ports\n");
-		lnc_release_resources(dev);
-		return (ENXIO);
+		error = ENXIO;
+		goto fail;
 	}
 
 	sc->drqrid = 0;
 	sc->drqres = bus_alloc_resource_any(dev, SYS_RES_DRQ, &sc->drqrid,
 	    RF_ACTIVE);
 
-	if (! sc->drqres) {
+	if (!sc->drqres) {
 		device_printf(dev, "Failed to allocate DMA channel\n");
-		lnc_release_resources(dev);
-		return (ENXIO);
+		error = ENXIO;
+		goto fail;
 	}
 
 	if (isa_get_irq(dev) == -1)
@@ -168,17 +174,8 @@ lnc_isa_attach(device_t dev)
 
 	if (! sc->irqres) {
 		device_printf(dev, "Failed to allocate irq\n");
-		lnc_release_resources(dev);
-		return (ENXIO);
-	}
-
-	err = bus_setup_intr(dev, sc->irqres, INTR_TYPE_NET, lncintr,
-	                     sc, &sc->intrhand, NULL);
-
-	if (err) {
-		device_printf(dev, "Failed to setup irq handler\n");
-		lnc_release_resources(dev);
-		return (err);
+		error = ENXIO;
+		goto fail;
 	}
 
 	/* XXX temp setting for nic */
@@ -203,40 +200,38 @@ lnc_isa_attach(device_t dev)
 	lnc_mem_size += (NDESC(sc->nrdre) * RECVBUFSIZE) +
 			(NDESC(sc->ntdre) * TRANSBUFSIZE);
 
-	err = bus_dma_tag_create(NULL,			/* parent */
-				 4,			/* alignement */
-				 0,			/* boundary */
-				 BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
-				 BUS_SPACE_MAXADDR,	/* highaddr */
-				 NULL, NULL,		/* filter, filterarg */
-				 lnc_mem_size,		/* segsize */
-				 1,			/* nsegments */
-				 BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
-				 0,			/* flags */
-				 &sc->dmat);
+	error = bus_dma_tag_create(NULL,		/* parent */
+				   4,			/* alignement */
+				   0,			/* boundary */
+				   BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
+				   BUS_SPACE_MAXADDR,	/* highaddr */
+				   NULL, NULL,		/* filter, filterarg */
+				   lnc_mem_size,	/* segsize */
+				   1,			/* nsegments */
+				   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
+				   BUS_DMA_ALLOCNOW,	/* flags */
+				   &sc->dmat);
 
-	if (err) {
+	if (error) {
 		device_printf(dev, "Can't create DMA tag\n");
-		lnc_release_resources(dev);
-		return (ENOMEM);
+		goto fail;
 	}
 
-	err = bus_dmamem_alloc(sc->dmat, (void **)&sc->recv_ring,
-	                       BUS_DMA_NOWAIT, &sc->dmamap);
+	error = bus_dmamem_alloc(sc->dmat, (void **)&sc->recv_ring,
+	                       BUS_DMA_WAITOK, &sc->dmamap);
 
-	if (err) {
+	if (error) {
 		device_printf(dev, "Couldn't allocate memory\n");
-		lnc_release_resources(dev);
-		return (ENOMEM);
+		goto fail;
 	}
 
-	err = bus_dmamap_load(sc->dmat, sc->dmamap, sc->recv_ring, lnc_mem_size,
-			lnc_alloc_callback, sc->recv_ring, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load(sc->dmat, sc->dmamap, sc->recv_ring,
+				lnc_mem_size, lnc_alloc_callback,
+				sc->recv_ring, 0);
 
-	if (err) {
+	if (error) {
 		device_printf(dev, "Couldn't load DMA map\n");
-		lnc_release_resources(dev);
-		return (ENOMEM);
+		goto fail;
 	}
 
 	isa_dmacascade(rman_get_start(sc->drqres));
@@ -244,23 +239,55 @@ lnc_isa_attach(device_t dev)
 	/* Call generic attach code */
 	if (! lnc_attach_common(dev)) {
 		device_printf(dev, "Generic attach code failed\n");
-		lnc_release_resources(dev);
-		return (ENXIO);
+		error = ENXIO;
+		goto fail;
 	}
+
+	error = bus_setup_intr(dev, sc->irqres, INTR_TYPE_NET, lncintr,
+	            	       sc, &sc->intrhand, NULL);
+	if (error) {
+		device_printf(dev, "Failed to setup irq handler\n");
+		ether_ifdetach(&sc->arpcom.ac_if);
+		goto fail;
+	}
+
 	return (0);
+
+fail:
+	lnc_isa_detach(dev);
+	return(error);
 }
 
 static int
 lnc_isa_detach(device_t dev)
 {
 	lnc_softc_t *sc = device_get_softc(dev);
-	int s = splimp();
 
-	ether_ifdetach(&sc->arpcom.ac_if);
-	splx(s);
+	crit_enter();
 
-	lnc_stop(sc);
-	lnc_release_resources(dev);
+	if (device_is_attached(dev)) {
+		ether_ifdetach(&sc->arpcom.ac_if);
+		lnc_stop(sc);
+	}
+
+	if (sc->intrhand)
+		bus_teardown_intr(dev, sc->irqres, sc->intrhand);
+
+	crit_exit();
+
+	if (sc->irqres)
+		bus_release_resource(dev, SYS_RES_IRQ, sc->irqrid, sc->irqres);
+	if (sc->portres)
+		bus_release_resource(dev, SYS_RES_IOPORT,
+		                     sc->portrid, sc->portres);
+	if (sc->drqres)
+		bus_release_resource(dev, SYS_RES_DRQ, sc->drqrid, sc->drqres);
+	if (sc->dmamap) {
+		bus_dmamap_unload(sc->dmat, sc->dmamap);
+		bus_dmamem_free(sc->dmat, sc->recv_ring, sc->dmamap);
+	}
+	if (sc->dmat)
+		bus_dma_tag_destroy(sc->dmat);
 
 	return (0);
 }

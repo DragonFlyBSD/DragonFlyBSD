@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lncvar.h,v 1.23 2001/07/04 13:00:20 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lncvar.h,v 1.1 2003/12/07 19:23:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lncvar.h,v 1.2 2005/06/13 22:55:15 joerg Exp $
  */
 
 /*
@@ -254,7 +254,6 @@ struct host_ring_entry {
 
 /* Functional declarations */
 extern int lance_probe(struct lnc_softc *);
-extern void lnc_release_resources(device_t);
 extern int lnc_attach_common(device_t);
 extern void lnc_stop(struct lnc_softc *);
 

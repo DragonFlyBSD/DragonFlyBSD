@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.20 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.21 2005/06/13 22:55:15 joerg Exp $
  */
 
 /*
@@ -71,6 +71,7 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -209,31 +210,6 @@ ether_crc(const u_char *ether_addr)
     }
     return crc;
 #undef POLYNOMIAL
-}
-
-void
-lnc_release_resources(device_t dev)
-{
-	lnc_softc_t *sc = device_get_softc(dev);
-
-	if (sc->irqres) {
-		bus_teardown_intr(dev, sc->irqres, sc->intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, sc->irqrid, sc->irqres);
-	}
-
-	if (sc->portres)
-		bus_release_resource(dev, SYS_RES_IOPORT,
-		                     sc->portrid, sc->portres);
-	if (sc->drqres)
-		bus_release_resource(dev, SYS_RES_DRQ, sc->drqrid, sc->drqres);
-
-	if (sc->dmat) {
-		if (sc->dmamap) {
-			bus_dmamap_unload(sc->dmat, sc->dmamap);
-			bus_dmamem_free(sc->dmat, sc->recv_ring, sc->dmamap);
-		}
-		bus_dma_tag_destroy(sc->dmat);
-	}
 }
 
 /*
@@ -913,19 +889,20 @@ lnc_init(xsc)
 	void *xsc;
 {
 	struct lnc_softc *sc = xsc;
-	int s, i;
+	int i;
 	char *lnc_mem;
+
+	crit_enter();
 
 	/* Check that interface has valid address */
 
 	if (TAILQ_EMPTY(&sc->arpcom.ac_if.if_addrhead)) { /* XXX unlikely */
-printf("XXX no address?\n");
+		printf("XXX no address?\n");
+		crit_exit();
 		return;
 	}
 
 	/* Shut down interface */
-
-	s = splimp();
 	lnc_stop(sc);
 	sc->arpcom.ac_if.if_flags |= IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST; /* XXX??? */
 
@@ -978,7 +955,7 @@ printf("XXX no address?\n");
 		for (i = 0; i < NDESC(sc->nrdre); i++) {
 			if (alloc_mbuf_cluster(sc, sc->recv_ring+i)) {
 				log(LOG_ERR, "Initialisation failed -- no mbufs\n");
-				splx(s);
+				crit_exit();
 				return;
 			}
 		}
@@ -1087,7 +1064,7 @@ printf("Enabling lnc interrupts\n");
 		log(LOG_ERR, "%s: Initialisation failed\n", 
 		    sc->arpcom.ac_if.if_xname);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1384,9 +1361,9 @@ lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 
 	struct lnc_softc *sc = ifp->if_softc;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -1442,7 +1419,9 @@ lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
                 error = ether_ioctl(ifp, command, data);
                 break;
 	}
-	(void) splx(s);
+
+	crit_exit();
+
 	return error;
 }
 

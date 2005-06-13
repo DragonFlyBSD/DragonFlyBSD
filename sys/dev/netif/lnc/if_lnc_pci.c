@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_pci.c,v 1.25 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.6 2005/06/13 22:55:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/socket.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -57,6 +58,8 @@
 #define PCI_DEVICE_ID_PCHome_PCI 0x2001
 
 #define LNC_PROBE_PRIORITY -1
+
+static int	lnc_pci_detach(device_t);
 
 static int
 lnc_pci_probe(device_t dev)
@@ -93,10 +96,8 @@ lnc_pci_attach(device_t dev)
 	lnc_softc_t *sc = device_get_softc(dev);
 	unsigned command;
 	int rid = 0;
-	int err = 0;
+	int error = 0;
 	bus_size_t lnc_mem_size;
-
-	device_printf(dev, "Attaching %s\n", device_get_desc(dev));
 
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 	command |= PCIM_CMD_PORTEN | PCIM_CMD_BUSMASTEREN;
@@ -106,20 +107,21 @@ lnc_pci_attach(device_t dev)
 	sc->portres = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
 	    RF_ACTIVE);
 
-	if (! sc->portres)
+	if (! sc->portres) {
 		device_printf(dev, "Cannot allocate I/O ports\n");
+		error = ENXIO;
+		goto fail;
+	}
 
 	rid = 0;
 	sc->irqres = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_ACTIVE | RF_SHAREABLE);
 
-	if (! sc->irqres)
+	if (! sc->irqres) {
 		device_printf(dev, "Cannot allocate irq\n");
-
-	err = bus_setup_intr(dev, sc->irqres, INTR_TYPE_NET, lncintr,
-	                     sc, &sc->intrhand, NULL);
-	if (err)
-		device_printf(dev, "Cannot setup irq handler\n");
+		error = ENXIO;
+		goto fail;
+	}
 
 	sc->lnc_btag = rman_get_bustag(sc->portres);
 	sc->lnc_bhandle = rman_get_bushandle(sc->portres);
@@ -145,61 +147,90 @@ lnc_pci_attach(device_t dev)
 	lnc_mem_size += (NDESC(sc->nrdre) * RECVBUFSIZE) +
 			(NDESC(sc->ntdre) * TRANSBUFSIZE);
 
-	err = bus_dma_tag_create(NULL,			/* parent */
-				 1,			/* alignement */
-				 0,			/* boundary */
-				 BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
-				 BUS_SPACE_MAXADDR,	/* highaddr */
-				 NULL, NULL,		/* filter, filterarg */
-				 lnc_mem_size,		/* segsize */
-				 1,			/* nsegments */
-				 BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
-				 0,			/* flags */
-				 &sc->dmat);
+	error = bus_dma_tag_create(NULL,		/* parent */
+				   1,			/* alignement */
+				   0,			/* boundary */
+				   BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
+				   BUS_SPACE_MAXADDR,	/* highaddr */
+				   NULL, NULL,		/* filter, filterarg */
+				   lnc_mem_size,	/* segsize */
+				   1,			/* nsegments */
+				   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
+				   BUS_DMA_ALLOCNOW,	/* flags */
+				   &sc->dmat);
 
-	if (err) {
+	if (error) {
 		device_printf(dev, "Can't create DMA tag\n");
-		/* XXX need to free currently allocated resources here */
-		return (ENOMEM);
+		goto fail;
 	}
 
-	err = bus_dmamem_alloc(sc->dmat, (void **)&sc->recv_ring,
-	                       BUS_DMA_NOWAIT, &sc->dmamap);
-
-	if (err) {
+	error = bus_dmamem_alloc(sc->dmat, (void **)&sc->recv_ring,
+	                       BUS_DMA_WAITOK, &sc->dmamap);
+	if (error) {
 		device_printf(dev, "Couldn't allocate memory\n");
-		/* XXX need to free currently allocated resources here */
-		return (ENOMEM);
+		goto fail;
 	}
 
-	bus_dmamap_load(sc->dmat, sc->dmamap, sc->recv_ring, lnc_mem_size,
-			lnc_alloc_callback, sc->recv_ring, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load(sc->dmat, sc->dmamap, sc->recv_ring,
+				lnc_mem_size, lnc_alloc_callback,
+				sc->recv_ring, 0);
+	if (error) {
+		device_printf(dev, "Couldn't map receive ring\n");
+		goto fail;
+	}
 
 	/* Call generic attach code */
 	if (! lnc_attach_common(dev)) {
 		device_printf(dev, "Generic attach code failed\n");
+		error = ENXIO;
+		goto fail;
 	}
+
+	error = bus_setup_intr(dev, sc->irqres, INTR_TYPE_NET, lncintr,
+	                     sc, &sc->intrhand, NULL);
+	if (error) {
+		device_printf(dev, "Cannot setup irq handler\n");
+		ether_ifdetach(&sc->arpcom.ac_if);
+		goto fail;
+	}
+
 	return (0);
+
+fail:
+	lnc_pci_detach(dev);
+	return(error);
 }
 
 static int
 lnc_pci_detach(device_t dev)
 {
 	lnc_softc_t *sc = device_get_softc(dev);
-	int s = splimp();
 
-	ether_ifdetach(&sc->arpcom.ac_if);
+	crit_enter();
 
-	lnc_stop(sc);
-	bus_teardown_intr(dev, sc->irqres, sc->intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irqres);
-	bus_release_resource(dev, SYS_RES_IOPORT, PCIR_MAPS, sc->portres);
+	if (device_is_attached(dev)) {
+		ether_ifdetach(&sc->arpcom.ac_if);
+		lnc_stop(sc);
+	}
 
-	bus_dmamap_unload(sc->dmat, sc->dmamap);
-	bus_dmamem_free(sc->dmat, sc->recv_ring, sc->dmamap);
-	bus_dma_tag_destroy(sc->dmat);
+	if (sc->intrhand)
+		bus_teardown_intr(dev, sc->irqres, sc->intrhand);
 
-	splx(s);
+	crit_exit();
+
+	if (sc->irqres)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irqres);
+	if (sc->portres)
+		bus_release_resource(dev, SYS_RES_IOPORT, PCIR_MAPS,
+				     sc->portres);
+
+	if (sc->dmamap) {
+		bus_dmamap_unload(sc->dmat, sc->dmamap);
+		bus_dmamem_free(sc->dmat, sc->recv_ring, sc->dmamap);
+	}
+	if (sc->dmat)
+		bus_dma_tag_destroy(sc->dmat);
+
 	return (0);
 }
 
