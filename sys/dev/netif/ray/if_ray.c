@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.21 2005/06/13 13:51:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.22 2005/06/13 19:19:19 joerg Exp $
  *
  */
 
@@ -3349,9 +3349,8 @@ ray_com_ecf_timo(void *xsc)
 	struct ray_softc *sc = (struct ray_softc *)xsc;
     	struct ray_comq_entry *com;
 	u_int8_t cmd, status;
-	int s;
 
-	s = splnet();
+	crit_enter();
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_COM, "");
 	RAY_MAP_CM(sc);
@@ -3384,7 +3383,7 @@ ray_com_ecf_timo(void *xsc)
 
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*
