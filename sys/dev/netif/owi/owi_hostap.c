@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.3 2005/02/11 22:25:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.4 2005/06/13 19:05:19 joerg Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -56,6 +56,7 @@
 #include <sys/bus.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -289,7 +290,6 @@ owihap_shutdown(struct wi_softc *sc)
 {
 	struct wihap_info	*whi = &sc->wi_hostap_info;
 	struct wihap_sta_info	*sta, *next;
-	int s;
 
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
 		printf("wihap_shutdown: sc=0x%x whi=0x%x\n",
@@ -302,7 +302,8 @@ owihap_shutdown(struct wi_softc *sc)
 	 * a single broadcast.  Maybe try that someday.
 	 */
 
-	s = splnet();
+	crit_enter();
+
 	sta = LIST_FIRST(&whi->sta_list);
 	while (sta) {
 		callout_stop(&sta->tmo);
@@ -326,7 +327,8 @@ owihap_shutdown(struct wi_softc *sc)
 	}
 
 	whi->apflags = 0;
-	splx(s);
+
+	crit_exit();
 }
 
 /* sta_hash_func()
@@ -352,9 +354,9 @@ wihap_sta_timeout(void *v)
 	struct wihap_sta_info	*sta = v;
 	struct wi_softc		*sc = sta->sc;
 	struct wihap_info	*whi = &sc->wi_hostap_info;
-	int	s;
 
-	s = splnet();
+	crit_enter();
+
 	if (sta->flags & WI_SIFLAGS_ASSOC) {
 		if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
 			device_printf(sc->dev, "inactivity disassoc: %6D\n",
@@ -382,7 +384,8 @@ wihap_sta_timeout(void *v)
 		if (!(sta->flags & WI_SIFLAGS_PERM))
 			wihap_sta_delete(sta);
 	}
-	splx(s);
+
+	crit_exit();
 }
 
 /* wihap_sta_delete()
@@ -937,7 +940,7 @@ void
 owihap_mgmt_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 {
 	caddr_t	pkt;
-	int	s, len;
+	int	len;
 
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
 		wihap_debug_frame_type(rxfrm);
@@ -949,7 +952,8 @@ owihap_mgmt_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 	    htole16(WI_FTYPE_MGMT)) {
 
 		/* any of the following will mess w/ the station list */
-		s = splnet();
+		crit_enter();
+
 		switch (le16toh(rxfrm->wi_frame_ctl) & WI_FCTL_STYPE) {
 		case WI_STYPE_MGMT_ASREQ:
 			wihap_assoc_req(sc, rxfrm, pkt, len);
@@ -979,7 +983,8 @@ owihap_mgmt_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 			wihap_deauth_req(sc, rxfrm, pkt, len);
 			break;
 		}
-		splx(s);
+
+		crit_exit();
 	}
 
 	m_freem(m);
@@ -994,10 +999,10 @@ static int
 wihap_sta_is_assoc(struct wihap_info *whi, u_int8_t addr[])
 {
 	struct wihap_sta_info *sta;
-	int retval, s;
+	int retval = 0;
 
-	s = splnet();
-	retval = 0;
+	crit_enter();
+
 	sta = wihap_sta_find(whi, addr);
 	if (sta != NULL && (sta->flags & WI_SIFLAGS_ASSOC)) {
 		/* Keep it active. */
@@ -1005,7 +1010,9 @@ wihap_sta_is_assoc(struct wihap_info *whi, u_int8_t addr[])
 			      wihap_sta_timeout, sta);
 		retval = 1;
 	}
-	splx(s);
+
+	crit_exit();
+
 	return (retval);
 }
 
@@ -1019,23 +1026,25 @@ owihap_check_tx(struct wihap_info *whi, u_int8_t addr[], u_int8_t *txrate)
 {
 	struct wihap_sta_info *sta;
 	static u_int8_t txratetable[] = { 10, 20, 55, 110 };
-	int s;
 
 	if (addr[0] & 0x01) {
 		*txrate = 0; /* XXX: multicast rate? */
 		return(1);
 	}
-	s = splnet();
+
+	crit_enter();
+
 	sta = wihap_sta_find(whi, addr);
 	if (sta != NULL && (sta->flags & WI_SIFLAGS_ASSOC)) {
 		/* Keep it active. */
 		callout_reset(&sta->tmo, hz * whi->inactivity_time,
 			      wihap_sta_timeout, sta);
 		*txrate = txratetable[ sta->tx_curr_rate ];
-		splx(s);
+		crit_exit();
 		return(1);
 	}
-	splx(s);
+
+	crit_exit();
 
 	return(0);
 }
@@ -1056,7 +1065,7 @@ owihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct wihap_info	*whi = &sc->wi_hostap_info;
 	struct wihap_sta_info	*sta;
-	int			mcast, s;
+	int			mcast;
 
 	/* TODS flag must be set. */
 	if (!(rxfrm->wi_frame_ctl & htole16(WI_FCTL_TODS))) {
@@ -1076,7 +1085,7 @@ owihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 		return (1);
 	}
 
-	s = splnet();
+	crit_enter();
 
 	/* Find source station. */
 	sta = wihap_sta_find(whi, rxfrm->wi_addr2);
@@ -1088,7 +1097,7 @@ owihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 			    rxfrm->wi_addr2, ":");
  		wihap_sta_disassoc(sc, rxfrm->wi_addr2,
  		    IEEE80211_REASON_ASSOC_LEAVE);
-		splx(s);
+		crit_exit();
 		m_freem(m);
 		return(1);
 	}
@@ -1097,7 +1106,7 @@ owihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 		      wihap_sta_timeout, sta);
 	sta->sig_info = le16toh(rxfrm->wi_q_info);
 
-	splx(s);
+	crit_exit();
 
 	/* Repeat this packet to BSS? */
 	mcast = (rxfrm->wi_addr3[0] & 0x01) != 0;
@@ -1134,7 +1143,7 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 	struct hostap_getall	reqall;
 	struct hostap_sta	reqsta;
 	struct hostap_sta	stabuf;
-	int			s, error = 0, n, flag;
+	int			error = 0, n, flag;
 	struct thread		*td = curthread;
 
 	if (!(sc->arpcom.ac_if.if_flags & IFF_RUNNING))
@@ -1146,7 +1155,9 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 			break;
 		if ((error = copyin(ifr->ifr_data, &reqsta, sizeof(reqsta))))
 			break;
-		s = splnet();
+
+		crit_enter();
+
 		sta = wihap_sta_find(whi, reqsta.addr);
 		if (sta == NULL)
 			error = ENOENT;
@@ -1162,24 +1173,31 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 
 			wihap_sta_delete(sta);
 		}
-		splx(s);
+
+		crit_exit();
+
 		break;
 
 	case SIOCHOSTAP_GET:
 		if ((error = copyin(ifr->ifr_data, &reqsta, sizeof(reqsta))))
 			break;
-		s = splnet();
+
+		crit_enter();
+
 		sta = wihap_sta_find(whi, reqsta.addr);
 		if (sta == NULL) {
 			error = ENOENT;
-			splx(s);
+
+			crit_exit();
 		} else {
 			reqsta.flags = sta->flags;
 			reqsta.asid = sta->asid;
 			reqsta.capinfo = sta->capinfo;
 			reqsta.sig_info = sta->sig_info;
 			reqsta.rates = sta->rates;
-			splx(s);
+
+			crit_exit();
+
 			error = copyout(&reqsta, ifr->ifr_data,
 			    sizeof(reqsta));
 		}
@@ -1190,23 +1208,25 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 			break;
 		if ((error = copyin(ifr->ifr_data, &reqsta, sizeof(reqsta))))
 			break;
-		s = splnet();
+
+		crit_enter();
+
 		sta = wihap_sta_find(whi, reqsta.addr);
 		if (sta != NULL) {
 			error = EEXIST;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		if (whi->n_stations >= WIHAP_MAX_STATIONS) {
 			error = ENOSPC;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		sta = wihap_sta_alloc(sc, reqsta.addr);
 		sta->flags = reqsta.flags;
 		callout_reset(&sta->tmo, hz * whi->inactivity_time,
 			      wihap_sta_timeout, sta);
-		splx(s);
+		crit_exit();
 		break;
 
 	case SIOCHOSTAP_SFLAGS:
@@ -1215,8 +1235,10 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 		if ((error = copyin(ifr->ifr_data, &flag, sizeof(int))))
 			break;
 
+		crit_enter();
 		whi->apflags = (whi->apflags & WIHAPFL_CANTCHANGE) |
 		    (flag & ~WIHAPFL_CANTCHANGE);
+		crit_exit();
 		break;
 
 	case SIOCHOSTAP_GFLAGS:
@@ -1230,7 +1252,7 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 
 		reqall.nstations = whi->n_stations;
 		n = 0;
-		s = splnet();
+		crit_enter();
 		sta = LIST_FIRST(&whi->sta_list);
 		while (sta && reqall.size >= n+sizeof(struct hostap_sta)) {
 
@@ -1249,7 +1271,7 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 			sta = LIST_NEXT(sta, list);
 			n += sizeof(struct hostap_sta);
 		}
-		splx(s);
+		crit_exit();
 
 		if (!error)
 			error = copyout(&reqall, ifr->ifr_data,

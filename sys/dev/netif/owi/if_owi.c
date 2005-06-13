@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.9 2005/06/10 15:29:17 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.10 2005/06/13 19:05:19 joerg Exp $
  */
 
 /*
@@ -64,9 +64,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500033
 #include <sys/endian.h>
-#endif
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
@@ -77,6 +75,7 @@
 #include <sys/random.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -181,17 +180,14 @@ int
 owi_generic_detach(dev)
 	device_t		dev;
 {
-	struct wi_softc		*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct wi_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc = device_get_softc(dev);
-	WI_LOCK(sc, s);
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	if (sc->wi_gone) {
 		device_printf(dev, "already unloaded\n");
-		WI_UNLOCK(sc, s);
+		crit_exit();
 		return(ENODEV);
 	}
 
@@ -202,13 +198,11 @@ owi_generic_detach(dev)
 
 	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
+
+	crit_exit();
+
 	owi_free(dev);
 	sc->wi_gone = 1;
-
-	WI_UNLOCK(sc, s);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	mtx_destroy(&sc->wi_mtx);
-#endif
 
 	return(0);
 }
@@ -221,27 +215,16 @@ owi_generic_attach(device_t dev)
 	struct wi_ltv_gen	gen;
 	struct ifnet		*ifp;
 	int			error;
-	int			s;
 
 	/* XXX maybe we need the splimp stuff here XXX */
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 	callout_init(&sc->wi_stat_timer);
 
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-			       wi_intr, sc, &sc->wi_intrhand, NULL);
-
-	if (error) {
-		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
-		owi_free(dev);
-		return (error);
-	}
-
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_init(&sc->wi_mtx, device_get_nameunit(dev), MTX_NETWORK_LOCK,
 	    MTX_DEF | MTX_RECURSE);
 #endif
-	WI_LOCK(sc, s);
 
 	/* Reset the NIC. */
 	wi_reset(sc);
@@ -258,7 +241,6 @@ owi_generic_attach(device_t dev)
 	if ((error = wi_read_record(sc, (struct wi_ltv_gen *)&mac)) != 0) {
 		device_printf(dev, "mac read failed %d\n", error);
 		owi_free(dev);
-		WI_UNLOCK(sc, s);
 		return (error);
 	}
 	bcopy((char *)&mac.wi_mac_addr,
@@ -458,7 +440,15 @@ owi_generic_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
-	WI_UNLOCK(sc, s);
+
+	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
+			       wi_intr, sc, &sc->wi_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
+		owi_free(dev);
+		return (error);
+	}
 
 	return(0);
 }
@@ -833,24 +823,22 @@ static void
 wi_inquire(xsc)
 	void			*xsc;
 {
-	struct wi_softc		*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct wi_softc *sc = xsc;
+	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
-	sc = xsc;
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	callout_reset(&sc->wi_stat_timer, hz* 60, wi_inquire, sc);
 
 	/* Don't do this while we're transmitting */
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifp->if_flags & IFF_OACTIVE) {
+		crit_exit();
 		return;
+	}
 
-	WI_LOCK(sc, s);
 	wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_COUNTERS, 0, 0);
-	WI_UNLOCK(sc, s);
 
-	return;
+	crit_exit();
 }
 
 static void
@@ -911,18 +899,12 @@ wi_intr(xsc)
 	void		*xsc;
 {
 	struct wi_softc		*sc = xsc;
-	struct ifnet		*ifp;
+	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	u_int16_t		status;
-	int			s;
-
-	WI_LOCK(sc, s);
-
-	ifp = &sc->arpcom.ac_if;
 
 	if (sc->wi_gone || !(ifp->if_flags & IFF_UP)) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, 0xFFFF);
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
-		WI_UNLOCK(sc, s);
 		return;
 	}
 
@@ -971,10 +953,6 @@ wi_intr(xsc)
 	if (!ifq_is_empty(&ifp->if_snd)) {
 		wi_start(ifp);
 	}
-
-	WI_UNLOCK(sc, s);
-
-	return;
 }
 
 static int
@@ -1622,16 +1600,15 @@ wi_ioctl(ifp, command, data, cr)
 	int			len;
 	u_int8_t		tmpkey[14];
 	char			tmpssid[IEEE80211_NWID_LEN];
-	struct wi_softc		*sc;
+	struct wi_softc		*sc = ifp->if_softc;
 	struct wi_req		wreq;
 	struct ifreq		*ifr;
 	struct ieee80211req	*ireq;
-	int			s;
-
-	sc = ifp->if_softc;
-	WI_LOCK(sc, s);
+	
 	ifr = (struct ifreq *)data;
 	ireq = (struct ieee80211req *)data;
+
+	crit_enter();
 
 	if (sc->wi_gone) {
 		error = ENODEV;
@@ -1997,7 +1974,7 @@ wi_ioctl(ifp, command, data, cr)
 		break;
 	}
 out:
-	WI_UNLOCK(sc, s);
+	crit_exit();
 
 	return(error);
 }
@@ -2010,12 +1987,11 @@ wi_init(xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct wi_ltv_macaddr	mac;
 	int			id = 0;
-	int			s;
 
-	WI_LOCK(sc, s);
+	crit_enter();
 
 	if (sc->wi_gone) {
-		WI_UNLOCK(sc, s);
+		crit_exit();
 		return;
 	}
 
@@ -2140,9 +2116,8 @@ wi_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->wi_stat_timer, hz * 60, wi_inquire, sc);
-	WI_UNLOCK(sc, s);
 
-	return;
+	crit_exit();
 }
 
 #define RC4STATE 256
@@ -2229,30 +2204,28 @@ static void
 wi_start(ifp)
 	struct ifnet		*ifp;
 {
-	struct wi_softc		*sc;
+	struct wi_softc		*sc = ifp->if_softc;
 	struct mbuf		*m0;
 	struct wi_frame		tx_frame;
 	struct ether_header	*eh;
 	int			id;
-	int			s;
 
-	sc = ifp->if_softc;
-	WI_LOCK(sc, s);
+	crit_enter();
 
 	if (sc->wi_gone) {
-		WI_UNLOCK(sc, s);
+		crit_exit();
 		return;
 	}
 
 	if (ifp->if_flags & IFF_OACTIVE) {
-		WI_UNLOCK(sc, s);
+		crit_exit();
 		return;
 	}
 
 nextpkt:
 	m0 = ifq_dequeue(&ifp->if_snd);
 	if (m0 == NULL) {
-		WI_UNLOCK(sc, s);
+		crit_exit();
 		return;
 	}
 
@@ -2366,8 +2339,7 @@ nextpkt:
 	 */
 	ifp->if_timer = 5;
 
-	WI_UNLOCK(sc, s);
-	return;
+	crit_exit();
 }
 
 int
@@ -2414,12 +2386,11 @@ wi_stop(sc)
 	struct wi_softc		*sc;
 {
 	struct ifnet		*ifp;
-	int			s;
 
-	WI_LOCK(sc, s);
+	crit_enter();
 
 	if (sc->wi_gone) {
-		WI_UNLOCK(sc, s);
+		crit_exit();
 		return;
 	}
 
@@ -2441,8 +2412,7 @@ wi_stop(sc)
 
 	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
 
-	WI_UNLOCK(sc, s);
-	return;
+	crit_exit();
 }
 
 static void
