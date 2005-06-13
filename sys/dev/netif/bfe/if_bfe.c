@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.17 2005/06/13 21:07:55 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -396,6 +397,7 @@ bfe_attach(device_t dev)
 			       bfe_intr, sc, &sc->bfe_intrhand, NULL);
 
 	if (error) {
+		ether_ifdetach(ifp);
 		bfe_release_resources(sc);
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
@@ -409,15 +411,10 @@ fail:
 static int
 bfe_detach(device_t dev)
 {
-	struct bfe_softc *sc;
-	struct ifnet *ifp;
-	int s;
+	struct bfe_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc = device_get_softc(dev);
-
-	s = splimp();
-
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	if (device_is_attached(dev)) {
 		bfe_stop(sc);
@@ -426,12 +423,13 @@ bfe_detach(device_t dev)
 
 	bfe_chip_reset(sc);
 
-	bus_generic_detach(dev);
 	if (sc->bfe_miibus != NULL)
 		device_delete_child(dev, sc->bfe_miibus);
+	bus_generic_detach(dev);
 
 	bfe_release_resources(sc);
-	splx(s);
+
+	crit_exit();
 
 	return(0);
 }
@@ -443,16 +441,13 @@ bfe_detach(device_t dev)
 static void
 bfe_shutdown(device_t dev)
 {
-	struct bfe_softc *sc;
-	int s;
+	struct bfe_softc *sc = device_get_softc(dev);
 
-	sc = device_get_softc(dev);
+	crit_enter();
 
-	s = splimp();
 	bfe_stop(sc); 
-	splx(s);
 
-	return;
+	crit_exit();
 }
 
 static int
@@ -630,9 +625,8 @@ static void
 bfe_clear_stats(struct bfe_softc *sc)
 {
 	u_long reg;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	CSR_WRITE_4(sc, BFE_MIB_CTRL, BFE_MIB_CLR_ON_READ);
 	for (reg = BFE_TX_GOOD_O; reg <= BFE_TX_PAUSE; reg += 4)
@@ -640,35 +634,35 @@ bfe_clear_stats(struct bfe_softc *sc)
 	for (reg = BFE_RX_GOOD_O; reg <= BFE_RX_NPAUSE; reg += 4)
 		CSR_READ_4(sc, reg);
 
-	splx(s);
+	crit_exit();
 }
 
 static int 
 bfe_resetphy(struct bfe_softc *sc)
 {
 	uint32_t val;
-	int s;
 
-	s = splimp();
+	crit_enter();
+
 	bfe_writephy(sc, 0, BMCR_RESET);
 	DELAY(100);
 	bfe_readphy(sc, 0, &val);
 	if (val & BMCR_RESET) {
+		crit_exit();
 		if_printf(&sc->arpcom.ac_if,
 			  "PHY Reset would not complete.\n");
-		splx(s);
 		return(ENXIO);
 	}
-	splx(s);
+
+	crit_exit();
 	return(0);
 }
 
 static void
 bfe_chip_halt(struct bfe_softc *sc)
 {
-	int s;
+	crit_enter();
 
-	s = splimp();
 	/* disable interrupts - not that it actually does..*/
 	CSR_WRITE_4(sc, BFE_IMASK, 0);
 	CSR_READ_4(sc, BFE_IMASK);
@@ -680,16 +674,15 @@ bfe_chip_halt(struct bfe_softc *sc)
 	CSR_WRITE_4(sc, BFE_DMATX_CTRL, 0);
 	DELAY(10);
 
-	splx(s);
+	crit_exit();
 }
 
 static void
 bfe_chip_reset(struct bfe_softc *sc)
 {
 	uint32_t val;    
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	/* Set the interrupt vector for the enet core */
 	bfe_pci_setup(sc, BFE_INTVEC_ENET0);
@@ -761,7 +754,7 @@ bfe_chip_reset(struct bfe_softc *sc)
 	bfe_resetphy(sc);
 	bfe_setupphy(sc);
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -965,9 +958,9 @@ static int
 bfe_readphy(struct bfe_softc *sc, uint32_t reg, uint32_t *val)
 {
 	int err; 
-	int s;
 
-	s = splimp();
+	crit_enter();
+
 	/* Clear MII ISR */
 	CSR_WRITE_4(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII);
 	CSR_WRITE_4(sc, BFE_MDIO_DATA, (BFE_MDIO_SB_START |
@@ -978,7 +971,7 @@ bfe_readphy(struct bfe_softc *sc, uint32_t reg, uint32_t *val)
 	err = bfe_wait_bit(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII, 100, 0);
 	*val = CSR_READ_4(sc, BFE_MDIO_DATA) & BFE_MDIO_DATA_DATA;
 
-	splx(s);
+	crit_exit();
 	return(err);
 }
 
@@ -986,9 +979,9 @@ static int
 bfe_writephy(struct bfe_softc *sc, uint32_t reg, uint32_t val)
 {
 	int status;
-	int s;
 
-	s = splimp();
+	crit_enter();
+
 	CSR_WRITE_4(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII);
 	CSR_WRITE_4(sc, BFE_MDIO_DATA, (BFE_MDIO_SB_START |
 				(BFE_MDIO_OP_WRITE << BFE_MDIO_OP_SHIFT) |
@@ -998,7 +991,7 @@ bfe_writephy(struct bfe_softc *sc, uint32_t reg, uint32_t val)
 				(val & BFE_MDIO_DATA_DATA)));
 	status = bfe_wait_bit(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII, 100, 0);
 
-	splx(s);
+	crit_exit();
 
 	return status;
 }
@@ -1011,9 +1004,8 @@ static int
 bfe_setupphy(struct bfe_softc *sc)
 {
 	uint32_t val;
-	int s;
 	
-	s = splimp();
+	crit_enter();
 
 	/* Enable activity LED */
 	bfe_readphy(sc, 26, &val);
@@ -1024,7 +1016,7 @@ bfe_setupphy(struct bfe_softc *sc)
 	bfe_readphy(sc, 27, &val);
 	bfe_writephy(sc, 27, val | (1 << 6));
 
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -1045,13 +1037,10 @@ bfe_stats_update(struct bfe_softc *sc)
 static void
 bfe_txeof(struct bfe_softc *sc)
 {
-	struct ifnet *ifp;
-	int s;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t i, chipidx;
 
-	s = splimp();
-
-	ifp = &sc->arpcom.ac_if;
+	crit_enter();
 
 	chipidx = CSR_READ_4(sc, BFE_DMATX_STAT) & BFE_STAT_CDMASK;
 	chipidx /= sizeof(struct bfe_desc);
@@ -1080,26 +1069,24 @@ bfe_txeof(struct bfe_softc *sc)
 	else
 		ifp->if_timer = 5;
 
-	splx(s);
+	crit_exit();
 }
 
 /* Pass a received packet up the stack */
 static void
 bfe_rxeof(struct bfe_softc *sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
-	struct ifnet *ifp;
 	struct bfe_rxheader *rxheader;
 	struct bfe_data *r;
 	uint32_t cons, status, current, len, flags;
-	int s;
 
-	s = splimp();
+	crit_enter();
+
 	cons = sc->bfe_rx_cons;
 	status = CSR_READ_4(sc, BFE_DMARX_STAT);
 	current = (status & BFE_STAT_CDMASK) / sizeof(struct bfe_desc);
-
-	ifp = &sc->arpcom.ac_if;
 
 	while (current != cons) {
 		r = &sc->bfe_rx_ring[cons];
@@ -1142,20 +1129,18 @@ bfe_rxeof(struct bfe_softc *sc)
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
 	sc->bfe_rx_cons = cons;
-	splx(s);
+
+	crit_exit();
 }
 
 static void
 bfe_intr(void *xsc)
 {
 	struct bfe_softc *sc = xsc;
-	struct ifnet *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t istat, imask, flag;
-	int s;
 
-	ifp = &sc->arpcom.ac_if;
-
-	s = splimp();
+	crit_enter();
 
 	istat = CSR_READ_4(sc, BFE_ISTAT);
 	imask = CSR_READ_4(sc, BFE_IMASK);
@@ -1171,7 +1156,7 @@ bfe_intr(void *xsc)
 
 	/* not expecting this interrupt, disregard it */
 	if (istat == 0) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1200,7 +1185,7 @@ bfe_intr(void *xsc)
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		bfe_start(ifp);
 
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1272,29 +1257,27 @@ bfe_encap(struct bfe_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 static void
 bfe_start(struct ifnet *ifp)
 {
-	struct bfe_softc *sc;
+	struct bfe_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	int idx;
-	int s;
 
-	sc = ifp->if_softc;
-	idx = sc->bfe_tx_prod;
-
-	s = splimp();
+	crit_enter();
 
 	/* 
 	 * not much point trying to send if the link is down or we have nothing to
 	 * send
 	 */
 	if (!sc->bfe_link) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
 	if (ifp->if_flags & IFF_OACTIVE) {
-		splx(s);
+		crit_exit();
 		return;
 	}
+
+	idx = sc->bfe_tx_prod;
 
 	while (sc->bfe_tx_ring[idx].bfe_mbuf == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
@@ -1327,7 +1310,8 @@ bfe_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-	splx(s);
+
+	crit_exit();
 }
 
 static void
@@ -1335,12 +1319,11 @@ bfe_init(void *xsc)
 {
 	struct bfe_softc *sc = (struct bfe_softc*)xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1351,6 +1334,7 @@ bfe_init(void *xsc)
 		if_printf(ifp, "bfe_init failed. "
 			  " Not enough memory for list buffers\n");
 		bfe_stop(sc);
+		crit_exit();
 		return;
 	}
 
@@ -1366,7 +1350,7 @@ bfe_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1375,13 +1359,10 @@ bfe_init(void *xsc)
 static int
 bfe_ifmedia_upd(struct ifnet *ifp)
 {
-	struct bfe_softc *sc;
+	struct bfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
-	int s;
 
-	sc = ifp->if_softc;
-
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->bfe_miibus);
 	sc->bfe_link = 0;
@@ -1393,7 +1374,7 @@ bfe_ifmedia_upd(struct ifnet *ifp)
 	}
 	mii_mediachg(mii);
 
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -1405,16 +1386,15 @@ bfe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->bfe_miibus);
 	mii_pollstat(mii);
 	ifmr->ifm_active = mii->mii_media_active;
 	ifmr->ifm_status = mii->mii_media_status;
 
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1424,9 +1404,8 @@ bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
 	int error = 0;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 		case SIOCSIFFLAGS:
@@ -1454,28 +1433,26 @@ bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			break;
 	}
 
-	splx(s);
+	crit_exit();
+
 	return error;
 }
 
 static void
 bfe_watchdog(struct ifnet *ifp)
 {
-	struct bfe_softc *sc;
-	int s;
-
-	sc = ifp->if_softc;
-
-	s = splimp();
+	struct bfe_softc *sc = ifp->if_softc;
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
+
+	crit_enter();
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	bfe_init(sc);
 
 	ifp->if_oerrors++;
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1483,12 +1460,8 @@ bfe_tick(void *xsc)
 {
 	struct bfe_softc *sc = xsc;
 	struct mii_data *mii;
-	int s;
 
-	if (sc == NULL)
-		return;
-
-	s = splimp();
+	crit_enter();
 
 	mii = device_get_softc(sc->bfe_miibus);
 
@@ -1496,7 +1469,7 @@ bfe_tick(void *xsc)
 	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
 
 	if (sc->bfe_link) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1508,7 +1481,7 @@ bfe_tick(void *xsc)
 	if (!sc->bfe_link)
 		sc->bfe_link++;
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1518,14 +1491,11 @@ bfe_tick(void *xsc)
 static void
 bfe_stop(struct bfe_softc *sc)
 {
-	struct ifnet *ifp;
-	int s;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
 	callout_stop(&sc->bfe_stat_timer);
-
-	ifp = &sc->arpcom.ac_if;
 
 	bfe_chip_halt(sc);
 	bfe_tx_ring_free(sc);
@@ -1533,5 +1503,5 @@ bfe_stop(struct bfe_softc *sc)
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
-	splx(s);
+	crit_exit();
 }
