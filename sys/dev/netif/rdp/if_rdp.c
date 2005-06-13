@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.15 2005/05/27 15:36:10 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.16 2005/06/13 13:31:04 joerg Exp $
  */
 
 /*
@@ -75,6 +75,7 @@
 #include <sys/linker_set.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -635,9 +636,8 @@ static void
 rdp_reset(struct ifnet *ifp)
 {
 	struct rdp_softc *sc = ifp->if_softc;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Stop interface and re-initialize.
@@ -645,7 +645,7 @@ rdp_reset(struct ifnet *ifp)
 	rdp_stop(sc);
 	rdp_init(sc);
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
@@ -689,14 +689,14 @@ rdp_init(void *xsc)
 {
 	struct rdp_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, s;
+	int i;
 	u_char reg;
+
+	crit_enter();
 
 	/* address not known */
 	if (TAILQ_EMPTY(&ifp->if_addrhead))
 		return;
-
-	s = splimp();
 
 	ifp->if_timer = 0;
 
@@ -734,17 +734,14 @@ rdp_init(void *xsc)
 	 */
 	rdp_start(ifp);
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
  * Start output on interface.
- * We make two assumptions here:
- *  1) that the current priority is set to splimp _before_ this code
- *     is called *and* is returned to the appropriate priority after
- *     return
- *  2) that the IFF_OACTIVE flag is checked before this code is called
- *     (i.e. that the output part of the interface is idle)
+ * We make one assumption here:
+ *  - that the IFF_OACTIVE flag is checked before this code is called
+ *    (i.e. that the output part of the interface is idle)
  */
 static void
 rdp_start(struct ifnet *ifp)
@@ -822,9 +819,9 @@ rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data,
 	  struct ucred *ur)
 {
 	struct rdp_softc *sc = ifp->if_softc;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -865,7 +862,9 @@ rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data,
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	(void) splx(s);
+
+	crit_exit();
+
 	return (error);
 }
 
