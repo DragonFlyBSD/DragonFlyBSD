@@ -107,7 +107,6 @@ lib/ftello.c
 lib/ftruncate.c
 lib/getdate.y
 lib/gethostname.c
-lib/getpagesize.h
 lib/gettimeofday.c
 lib/libcvs.dep
 lib/libcvs.dsp
