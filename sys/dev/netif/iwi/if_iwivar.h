@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.1 2005/03/06 05:02:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.2 2005/06/13 22:14:17 joerg Exp $
  */
 
 struct iwi_firmware {
@@ -196,9 +196,9 @@ struct iwi_softc {
  * routine. Revert back to the old ipl mechanism for now.
  */
 
-#define IWI_IPLLOCK_INFO       int saved_ipl_level
-#define IWI_IPLLOCK(_sc)       saved_ipl_level =  splimp()
-#define IWI_IPLUNLOCK(_sc)     splx(saved_ipl_level)
+#define IWI_IPLLOCK_INFO
+#define IWI_IPLLOCK(_sc)	crit_enter()
+#define IWI_IPLUNLOCK(_sc)	crit_exit()
 
 /* tsleepable events */
 #define IWI_FW_WAKE_MONITOR(sc)      (sc + 1)
