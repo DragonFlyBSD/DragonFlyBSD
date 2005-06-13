@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.27 2005/05/31 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.28 2005/06/13 20:07:38 joerg Exp $
  */
 
 /*
@@ -95,6 +95,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -144,7 +145,6 @@ static int	nge_attach(device_t);
 static int	nge_detach(device_t);
 
 static int	nge_alloc_jumbo_mem(struct nge_softc *);
-static void	nge_free_jumbo_mem(struct nge_softc *);
 static struct nge_jslot
 		*nge_jalloc(struct nge_softc *);
 static void	nge_jfree(void *);
@@ -400,9 +400,9 @@ nge_mii_send(struct nge_softc *sc, uint32_t bits, int cnt)
 static int
 nge_mii_readreg(struct nge_softc *sc, struct nge_mii_frame *frame)
 {
-	int ack, i, s;
+	int ack, i;
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Set up frame for RX.
@@ -476,7 +476,7 @@ fail:
 	SIO_SET(NGE_MEAR_MII_CLK);
 	DELAY(1);
 
-	splx(s);
+	crit_exit();
 
 	if (ack)
 		return(1);
@@ -489,9 +489,8 @@ fail:
 static int
 nge_mii_writereg(struct nge_softc *sc, struct nge_mii_frame *frame)
 {
-	int s;
+	crit_enter();
 
-	s = splimp();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -525,7 +524,7 @@ nge_mii_writereg(struct nge_softc *sc, struct nge_mii_frame *frame)
 	 */
 	SIO_CLR(NGE_MEAR_MII_DIR);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -728,10 +727,8 @@ nge_attach(device_t dev)
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	uint32_t		command;
-	int error = 0, rid, s, unit;
+	int error = 0, rid, unit;
 	const char		*sep = "";
-
-	s = splimp();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -775,14 +772,14 @@ nge_attach(device_t dev)
 #ifdef NGE_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
 		printf("nge%d: failed to enable I/O ports!\n", unit);
-		error = ENXIO;;
-		goto fail;
+		error = ENXIO;
+		return(error);
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
 		printf("nge%d: failed to enable memory mapping!\n", unit);
-		error = ENXIO;;
-		goto fail;
+		error = ENXIO;
+		return(error);
 	}
 #endif
 
@@ -792,7 +789,7 @@ nge_attach(device_t dev)
 	if (sc->nge_res == NULL) {
 		printf("nge%d: couldn't map ports/memory\n", unit);
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
 
 	sc->nge_btag = rman_get_bustag(sc->nge_res);
@@ -805,18 +802,7 @@ nge_attach(device_t dev)
 
 	if (sc->nge_irq == NULL) {
 		printf("nge%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, NGE_RES, NGE_RID, sc->nge_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->nge_irq, INTR_TYPE_NET,
-			       nge_intr, sc, &sc->nge_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
-		bus_release_resource(dev, NGE_RES, NGE_RID, sc->nge_res);
-		printf("nge%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -837,9 +823,6 @@ nge_attach(device_t dev)
 
 	if (sc->nge_ldata == NULL) {
 		printf("nge%d: no memory for list buffers!\n", unit);
-		bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
-		bus_release_resource(dev, NGE_RES, NGE_RID, sc->nge_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -849,11 +832,6 @@ nge_attach(device_t dev)
 	if (nge_alloc_jumbo_mem(sc)) {
 		printf("nge%d: jumbo buffer allocation failed\n",
                     sc->nge_unit);
-		contigfree(sc->nge_ldata,
-		    sizeof(struct nge_list_data), M_DEVBUF);
-		bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
-		bus_release_resource(dev, NGE_RES, NGE_RID, sc->nge_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -915,11 +893,6 @@ nge_attach(device_t dev)
 	    
 		} else {
 			printf("nge%d: MII without any PHY!\n", sc->nge_unit);
-			nge_free_jumbo_mem(sc);
-			bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
-			bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
-			bus_release_resource(dev, NGE_RES, NGE_RID, 
-					 sc->nge_res);
 			error = ENXIO;
 			goto fail;
 		}
@@ -930,40 +903,53 @@ nge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr);
 
-fail:
+	error = bus_setup_intr(dev, sc->nge_irq, INTR_TYPE_NET,
+			       nge_intr, sc, &sc->nge_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		device_printf(dev, "couldn't set up irq\n");
+		goto fail;
+	}
 
-	splx(s);
+	return(0);
+fail:
+	nge_detach(dev);
 	return(error);
 }
 
 static int
 nge_detach(device_t dev)
 {
-	struct nge_softc *sc;
-	struct ifnet *ifp;
-	int s;
+	struct nge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
+	crit_enter();
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	if (device_is_attached(dev)) {
+		nge_reset(sc);
+		nge_stop(sc);
+		ether_ifdetach(ifp);
+	}
 
-	nge_reset(sc);
-	nge_stop(sc);
-	ether_ifdetach(ifp);
-
-	bus_generic_detach(dev);
-	if (!sc->nge_tbi)
+	if (sc->nge_miibus)
 		device_delete_child(dev, sc->nge_miibus);
+	bus_generic_detach(dev);
 
-	bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
-	bus_release_resource(dev, NGE_RES, NGE_RID, sc->nge_res);
+	if (sc->nge_intrhand)
+		bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
 
-	contigfree(sc->nge_ldata, sizeof(struct nge_list_data), M_DEVBUF);
-	nge_free_jumbo_mem(sc);
+	crit_exit();
 
-	splx(s);
+	if (sc->nge_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
+	if (sc->nge_res)
+		bus_release_resource(dev, NGE_RES, NGE_RID, sc->nge_res);
+	if (sc->nge_ldata) {
+		contigfree(sc->nge_ldata, sizeof(struct nge_list_data),
+			   M_DEVBUF);
+	}
+	if (sc->nge_cdata.nge_jumbo_buf)
+		contigfree(sc->nge_cdata.nge_jumbo_buf, NGE_JMEM, M_DEVBUF);
 
 	return(0);
 }
@@ -1129,11 +1115,6 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 	return(0);
 }
 
-static void
-nge_free_jumbo_mem(struct nge_softc *sc)
-{
-	contigfree(sc->nge_cdata.nge_jumbo_buf, NGE_JMEM, M_DEVBUF);
-}
 
 /*
  * Allocate a jumbo buffer.
@@ -1376,9 +1357,8 @@ nge_tick(void *xsc)
 	struct nge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	if (sc->nge_tbi) {
 		if (sc->nge_link == 0) {
@@ -1411,7 +1391,7 @@ nge_tick(void *xsc)
 	}
 	callout_reset(&sc->nge_stat_timer, hz, nge_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 #ifdef DEVICE_POLLING
@@ -1663,12 +1643,13 @@ nge_init(void *xsc)
 	struct nge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	int s;
 
-	if (ifp->if_flags & IFF_RUNNING)
+	crit_enter();
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		crit_exit();
 		return;
-
-	s = splimp();
+	}
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -1697,7 +1678,7 @@ nge_init(void *xsc)
 		printf("nge%d: initialization failed: no "
 			"memory for rx buffers\n", sc->nge_unit);
 		nge_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1840,7 +1821,7 @@ nge_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1949,9 +1930,9 @@ nge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct nge_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
-	int error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -2018,7 +1999,7 @@ nge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
