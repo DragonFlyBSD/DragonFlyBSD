@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.22 2005/06/13 20:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.23 2005/06/13 20:30:45 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -99,6 +99,7 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -201,7 +202,6 @@ awi_attach(sc)
 	struct awi_softc *sc;
 {
 	struct ifnet *ifp = sc->sc_ifp;
-	int s;
 	int error;
 #ifdef IFM_IEEE80211
 	int i;
@@ -210,7 +210,7 @@ awi_attach(sc)
 	struct ifmediareq imr;
 #endif
 
-	s = splnet();
+	crit_enter();
 	/*
 	 * Even if we can sleep in initialization state,
 	 * all other processes (e.g. ifconfig) have to wait for
@@ -222,11 +222,11 @@ awi_attach(sc)
 	error = awi_init_hw(sc);
 	if (error) {
 		sc->sc_invalid = 1;
-		splx(s);
+		crit_exit();
 		return error;
 	}
 	error = awi_init_mibs(sc);
-	splx(s);
+	crit_exit();
 	if (error) {
 		sc->sc_invalid = 1;
 		return error;
@@ -290,11 +290,11 @@ awi_ioctl(ifp, cmd, data, cr)
 	struct awi_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ifaddr *ifa = (struct ifaddr *)data;
-	int s, error;
+	int error;
 	struct ieee80211_nwid nwid;
 	u_int8_t *p;
 
-	s = splnet();
+	crit_enter();
 
 	/* serialize ioctl */
 	error = awi_lock(sc);
@@ -397,7 +397,7 @@ awi_ioctl(ifp, cmd, data, cr)
 	}
 	awi_unlock(sc);
   cantlock:
-	splx(s);
+	crit_exit();
 	return error;
 }
 
