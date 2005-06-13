@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.28 2005/06/13 20:07:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.29 2005/06/13 20:09:24 joerg Exp $
  */
 
 /*
@@ -819,7 +819,7 @@ nge_attach(device_t dev)
 	sc->nge_unit = unit;
 
 	sc->nge_ldata = contigmalloc(sizeof(struct nge_list_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->nge_ldata == NULL) {
 		printf("nge%d: no memory for list buffers!\n", unit);
@@ -1088,7 +1088,7 @@ nge_alloc_jumbo_mem(struct nge_softc *sc)
 
 	/* Grab a big chunk o' storage. */
 	sc->nge_cdata.nge_jumbo_buf = contigmalloc(NGE_JMEM, M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->nge_cdata.nge_jumbo_buf == NULL) {
 		printf("nge%d: no memory for jumbo buffers!\n", sc->nge_unit);
