@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_nvreg.h,v 1.6 2004/08/12 14:00:05 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.6 2005/04/04 18:45:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.7 2005/06/13 19:21:19 joerg Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -173,10 +173,10 @@ struct nv_type {
 #define sc_if arpcom.ac_if
 #define sc_macaddr arpcom.ac_enaddr
 
-#define NV_LOCK(_sc)		int s = splimp()
-#define NV_UNLOCK(_sc)		splx(s)
-#define NV_OSLOCK(_sc)		(int)(_sc)->spl = splimp()
-#define NV_OSUNLOCK(_sc)	splx((int)(_sc)->spl)
+#define NV_LOCK(_sc)		crit_enter()
+#define NV_UNLOCK(_sc)		crit_exit()
+#define NV_OSLOCK(_sc)		crit_enter()
+#define NV_OSUNLOCK(_sc)	crit_exit()
 
 extern int ADAPTER_ReadPhy (PVOID pContext, ULONG ulPhyAddr, ULONG ulReg, ULONG *pulVal);
 extern int ADAPTER_WritePhy (PVOID pContext, ULONG ulPhyAddr, ULONG ulReg, ULONG ulVal);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.13 2005/05/27 15:19:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.14 2005/06/13 19:21:19 joerg Exp $
  */
 
 /*
@@ -84,6 +84,7 @@
 #include <sys/sysctl.h>
 #include <sys/queue.h>
 #include <sys/module.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
