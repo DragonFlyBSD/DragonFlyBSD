@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.20 2005/06/12 17:29:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.21 2005/06/13 10:20:49 joerg Exp $
  */
 
 /*
@@ -829,7 +829,8 @@ static int sf_detach(dev)
 		sf_stop(sc);
 	}
 
-	device_delete_child(dev, sc->sf_miibus);
+	if (sc->sf_miibus)
+		device_delete_child(dev, sc->sf_miibus);
 	bus_generic_detach(dev);
 
 	if (sc->sf_intrhand)
