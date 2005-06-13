@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.15 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.16 2005/06/13 20:36:45 joerg Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/module.h>
+#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -606,8 +607,6 @@ ar_xmit(struct ar_softc *sc)
  * packet to be send, and from the interrupt handler after a finished
  * transmit.
  *
- * NOTE: it should run at spl_imp().
- *
  * This function only place the data in the oncard buffers. It does not
  * start the transmition. ar_xmit() does that.
  *
@@ -773,7 +772,7 @@ top_arstart:
 static int
 arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
-	int s, error;
+	int error;
 	int was_up, should_be_up;
 	struct ar_softc *sc = ifp->if_softc;
 
@@ -793,7 +792,8 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	TRC(if_printf(ifp, "arioctl %s.\n",
 		(cmd == SIOCSIFFLAGS) ? "SIOCSIFFLAGS" : "SIOCSIFADDR");)
 
-	s = splimp();
+	crit_enter();
+
 	should_be_up = ifp->if_flags & IFF_RUNNING;
 
 	if(!was_up && should_be_up) {
@@ -808,7 +808,8 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ar_down(sc);
 		sppp_flush(ifp);
 	}
-	splx(s);
+
+	crit_exit();
 	return (0);
 }
 #endif	/* NETGRAPH */
@@ -2054,16 +2055,19 @@ static void
 ngar_watchdog_frame(void * arg)
 {
 	struct ar_softc * sc = arg;
-	int s;
 	int	speed;
 
-	if(sc->running == 0)
+	crit_enter();
+
+	if (sc->running == 0) {
+		crit_exit();
 		return; /* if we are not running let timeouts die */
+	}
+
 	/*
 	 * calculate the apparent throughputs 
 	 *  XXX a real hack
 	 */
-	s = splimp();
 	speed = sc->inbytes - sc->lastinbytes;
 	sc->lastinbytes = sc->inbytes;
 	if ( sc->inrate < speed )
@@ -2073,27 +2077,35 @@ ngar_watchdog_frame(void * arg)
 	if ( sc->outrate < speed )
 		sc->outrate = speed;
 	sc->inlast++;
-	splx(s);
+
+	crit_exit();
 
 	if ((sc->inlast > QUITE_A_WHILE)
 	&& (sc->out_deficit > LOTS_OF_PACKETS)) {
 		log(LOG_ERR, "ar%d: No response from remote end\n", sc->unit);
-		s = splimp();
+
+		crit_enter();
+
 		ar_down(sc);
 		ar_up(sc);
 		sc->inlast = sc->out_deficit = 0;
-		splx(s);
+
+		crit_exit();
 	} else if ( sc->xmit_busy ) { /* no TX -> no TX timeouts */
 		if (sc->out_dog == 0) { 
 			log(LOG_ERR, "ar%d: Transmit failure.. no clock?\n",
 					sc->unit);
-			s = splimp();
+
+			crit_enter();
+
 			arwatchdog(sc);
 #if 0
 			ar_down(sc);
 			ar_up(sc);
 #endif
-			splx(s);
+
+			crit_exit();
+
 			sc->inlast = sc->out_deficit = 0;
 		} else {
 			sc->out_dog--;
@@ -2216,7 +2228,6 @@ ngar_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 static int
 ngar_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
-	int s;
 	int error = 0;
 	struct ar_softc * sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
 	struct ifqueue	*xmitq_p;
@@ -2237,16 +2248,20 @@ ngar_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	else
 		xmitq_p = (&sc->xmitq);
 
-	s = splimp();
+	crit_enter();
+
 	if (IF_QFULL(xmitq_p)) {
 		IF_DROP(xmitq_p);
-		splx(s);
+
+		crit_exit();
+
 		error = ENOBUFS;
 		goto bad;
 	}
 	IF_ENQUEUE(xmitq_p, m);
 	arstart(sc);
-	splx(s);
+
+	crit_exit();
 	return (0);
 
 bad:
@@ -2311,16 +2326,18 @@ static	int
 ngar_disconnect(hook_p hook)
 {
 	struct ar_softc * sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
-	int	s;
+
 	/*
 	 * If it's the data hook, then free resources etc.
 	 */
 	if (NG_HOOK_PRIVATE(hook)) {
-		s = splimp();
+		crit_enter();
+
 		sc->datahooks--;
 		if (sc->datahooks == 0)
 			ar_down(sc);
-		splx(s);
+
+		crit_exit();
 	} else {
 		sc->debug_hook = NULL;
 	}
