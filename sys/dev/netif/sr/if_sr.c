@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.14 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.15 2005/06/13 18:11:52 joerg Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <sys/mbuf.h>
 #include <sys/sockio.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -740,8 +741,6 @@ sr_xmit(struct sr_softc *sc)
  * packet to be send, and from the interrupt handler after a finished
  * transmit.
  *
- * NOTE: it should run at spl_imp().
- *
  * This function only place the data in the oncard buffers. It does not
  * start the transmition. sr_xmit() does that.
  *
@@ -1002,7 +1001,7 @@ static int bug_splats[] = {0, 0, 0, 0, 0, 0, 0, 0};
 static int
 srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
-	int s, error, was_up, should_be_up;
+	int error, was_up, should_be_up;
 	struct sr_softc *sc = ifp->if_softc;
 
 #if BUGGY > 0
@@ -1048,7 +1047,8 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		return 0;
 	}
 
-	s = splimp();
+	crit_enter();
+
 	should_be_up = ifp->if_flags & IFF_RUNNING;
 
 	if (!was_up && should_be_up) {
@@ -1070,7 +1070,9 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		sr_down(sc);
 		sppp_flush(ifp);
 	}
-	splx(s);
+
+	crit_exit();
+
 	return 0;
 }
 #endif /* NETGRAPH */
@@ -2531,7 +2533,6 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 static void
 sr_modemck(void *arg)
 {
-	u_int s;
 	int card;		/* card index in table */
 	int cards;		/* card list index */
 	int mch;		/* channel on card */
@@ -2546,12 +2547,14 @@ sr_modemck(void *arg)
 	struct ifnet *ifp;	/* interface control table */
 	msci_channel *msci;	/* regs specific to channel */
 
-	s = splimp();
+	crit_enter();
 
 #if	0
 	if (sr_opens == 0) {	/* count of "up" channels */
 		sr_watcher = 0;	/* indicate no watcher */
-		splx(s);
+
+		crit_exit();
+
 		return;
 	}
 #endif
@@ -2633,7 +2636,7 @@ sr_modemck(void *arg)
 	 */
 	timeout(sr_modemck, NULL, hz);
 
-	splx(s);
+	crit_exit();
 }
 #endif
 #else	/* NETGRAPH */
@@ -2644,16 +2647,17 @@ sr_modemck(void *arg)
 static void
 sr_modemck(struct sr_softc *sc )
 {
-	u_int s;
 	u_char got_st3;			/* contents of ST3 */
 	struct sr_hardc *hc = sc->hc;	/* card's configuration */
 	msci_channel *msci;		/* regs specific to channel */
 
-	s = splimp();
+	crit_enter();
 
-
-	if (sc->running == 0)
+	if (sc->running == 0) {
+		crit_exit();
 		return;
+	}
+
 	/*
 	 * OK, now we can go looking at this channel's register contents...
 	 */
@@ -2664,7 +2668,8 @@ sr_modemck(struct sr_softc *sc )
 	 * We want to see if the DCD signal is up (DCD is true if zero)
 	 */
 	sc->dcd = (got_st3 & SCA_ST3_DCD) == 0;
-	splx(s);
+
+	crit_exit();
 }
 
 #endif	/* NETGRAPH */
@@ -2691,16 +2696,19 @@ static void
 ngsr_watchdog_frame(void * arg)
 {
 	struct sr_softc * sc = arg;
-	int s;
 	int	speed;
 
-	if (sc->running == 0)
+	crit_enter();
+
+	if (sc->running == 0) {
+		crit_enter();
 		return; /* if we are not running let timeouts die */
+	}
 	/*
 	 * calculate the apparent throughputs 
 	 *  XXX a real hack
 	 */
-	s = splimp();
+
 	speed = sc->inbytes - sc->lastinbytes;
 	sc->lastinbytes = sc->inbytes;
 	if ( sc->inrate < speed )
@@ -2710,27 +2718,35 @@ ngsr_watchdog_frame(void * arg)
 	if ( sc->outrate < speed )
 		sc->outrate = speed;
 	sc->inlast++;
-	splx(s);
+
+	crit_exit();
 
 	if ((sc->inlast > QUITE_A_WHILE)
 	&& (sc->out_deficit > LOTS_OF_PACKETS)) {
 		log(LOG_ERR, "sr%d: No response from remote end\n", sc->unit);
-		s = splimp();
+
+		crit_enter();
+
 		sr_down(sc);
 		sr_up(sc);
 		sc->inlast = sc->out_deficit = 0;
-		splx(s);
+
+		crit_exit();
 	} else if ( sc->xmit_busy ) { /* no TX -> no TX timeouts */
 		if (sc->out_dog == 0) { 
 			log(LOG_ERR, "sr%d: Transmit failure.. no clock?\n",
 					sc->unit);
-			s = splimp();
+
+			crit_enter();
+
 			srwatchdog(sc);
 #if 0
 			sr_down(sc);
 			sr_up(sc);
 #endif
-			splx(s);
+
+			crit_exit();
+
 			sc->inlast = sc->out_deficit = 0;
 		} else {
 			sc->out_dog--;
@@ -2863,7 +2879,6 @@ ngsr_rcvmsg(node_p node,
 static	int
 ngsr_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
-	int s;
 	int error = 0;
 	struct sr_softc * sc = hook->node->private;
 	struct ifqueue	*xmitq_p;
@@ -2884,16 +2899,22 @@ ngsr_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	} else {
 		xmitq_p = (&sc->xmitq);
 	}
-	s = splimp();
+
+	crit_enter();
+
 	if (IF_QFULL(xmitq_p)) {
 		IF_DROP(xmitq_p);
-		splx(s);
+
+		crit_exit();
+
 		error = ENOBUFS;
 		goto bad;
 	}
 	IF_ENQUEUE(xmitq_p, m);
 	srstart(sc);
-	splx(s);
+
+	crit_exit();
+
 	return (0);
 
 bad:
@@ -2944,16 +2965,17 @@ static	int
 ngsr_disconnect(hook_p hook)
 {
 	struct sr_softc * sc = hook->node->private;
-	int	s;
 	/*
 	 * If it's the data hook, then free resources etc.
 	 */
 	if (hook->private) {
-		s = splimp();
+		crit_enter();
+
 		sc->datahooks--;
 		if (sc->datahooks == 0)
 			sr_down(sc);
-		splx(s);
+
+		crit_exit();
 	} else {
 		sc->debug_hook = NULL;
 	}
