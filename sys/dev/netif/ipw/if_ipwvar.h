@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_ipwvar.h,v 1.2.2.1 2005/01/13 20:01:04 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.3 2005/06/01 20:21:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.4 2005/06/13 22:16:29 joerg Exp $
  */
 
 struct ipw_firmware {
@@ -168,6 +168,6 @@ struct ipw_softc {
 #define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
 #define SIOCSKILLFW	 _IOW('i', 138, struct ifreq)
 
-#define IPW_LOCK_DECL()	intrmask_t s
-#define IPW_LOCK(_sc)	s = splimp()
-#define IPW_UNLOCK(_sc)	splx(s)
+#define IPW_LOCK_DECL()
+#define IPW_LOCK(_sc)	crit_enter()
+#define IPW_UNLOCK(_sc)	crit_exit()

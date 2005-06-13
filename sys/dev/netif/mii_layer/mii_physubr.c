@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.6 2005/06/13 22:18:44 joerg Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
 #include <sys/errno.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 
@@ -132,9 +133,10 @@ mii_phy_auto_timeout(arg)
 	void *arg;
 {
 	struct mii_softc *mii = arg;
-	int s, bmsr;
+	int bmsr;
 
-	s = splnet();
+	crit_enter();
+
 	mii->mii_flags &= ~MIIF_DOINGAUTO;
 	bmsr = PHY_READ(mii, MII_BMSR);
 #if 0
@@ -145,7 +147,8 @@ mii_phy_auto_timeout(arg)
 
 	/* Update the media status. */
 	(void) (*mii->mii_service)(mii, mii->mii_pdata, MII_POLLSTAT);
-	splx(s);
+
+	crit_exit();
 }
 
 void

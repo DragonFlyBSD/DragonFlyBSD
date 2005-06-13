@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.7 2005/06/01 20:21:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.8 2005/06/13 22:16:29 joerg Exp $
  */
 
 /*-
@@ -46,6 +46,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 #include <sys/ucred.h>
 
 #include <machine/bus.h>
