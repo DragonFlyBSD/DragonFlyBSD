@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.17 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.18 2005/06/14 19:42:08 joerg Exp $
  */
 
 /*
@@ -61,9 +61,6 @@
  * pinging you can use up all your bandwidth).  Made low clist behavior
  * more robust and slightly less likely to hang serial line.
  * Sped up a bunch of things.
- *
- * Note that splimp() is used throughout to block both (tty) input
- * interrupts and network activity; thus, splimp must be >= spltty.
  */
 
 #include "use_sl.h"
@@ -86,6 +83,7 @@
 #include <sys/clist.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -240,18 +238,6 @@ static int
 slinit(sc)
 	struct sl_softc *sc;
 {
-#ifdef __i386__
-	int s;
-
-	s = splhigh();
-	tty_imask |= net_imask;
-	net_imask = tty_imask;
-	update_intr_masks();
-	splx(s);
-	if (bootverbose)
-		printf("new imasks: bio %x, tty %x, net %x\n",
-		    bio_imask, tty_imask, net_imask);
-#endif
 	if (sc->sc_ep == NULL)
 		sc->sc_ep = malloc(SLBUFSIZE, M_DEVBUF, M_WAITOK);
 	sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
@@ -270,7 +256,7 @@ slopen(dev_t dev, struct tty *tp)
 {
 	struct sl_softc *sc;
 	int nsl;
-	int s, error;
+	int error;
 	struct thread *td = curthread;	/* XXX */
 
 	error = suser(td);
@@ -306,9 +292,9 @@ slopen(dev_t dev, struct tty *tp)
 			    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1);
 			clist_alloc_cblocks(&tp->t_rawq, 0, 0);
 
-			s = splnet();
+			crit_enter();
 			if_up(&sc->sc_if);
-			splx(s);
+			crit_exit();
 			return (0);
 		}
 	return (ENXIO);
@@ -324,15 +310,10 @@ slclose(tp,flag)
 	int flag;
 {
 	struct sl_softc *sc;
-	int s;
 
 	ttyflush(tp, FREAD | FWRITE);
-	/*
-	 * XXX the placement of the following spl is misleading.  tty
-	 * interrupts must be blocked across line discipline switches
-	 * and throughout closes to avoid races.
-	 */
-	s = splimp();		/* actually, max(spltty, splnet) */
+	crit_exit();
+
 	clist_free_cblocks(&tp->t_outq);
 	tp->t_line = 0;
 	sc = (struct sl_softc *)tp->t_sc;
@@ -356,7 +337,7 @@ slclose(tp,flag)
 		sc->sc_mp = 0;
 		sc->sc_buf = 0;
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -369,9 +350,10 @@ static int
 sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 {
 	struct sl_softc *sc = (struct sl_softc *)tp->t_sc, *nc, *tmpnc;
-	int s, nsl;
+	int nsl;
 
-	s = splimp();
+	crit_enter();
+
 	switch (cmd) {
 	case SLIOCGUNIT:
 		*(int *)data = sc->sc_if.if_dunit;
@@ -407,7 +389,7 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 					goto slfound;
 				}
 			}
-			splx(s);
+			crit_exit();
 			return (ENXIO);
 		}
 	slfound:
@@ -451,10 +433,10 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 		break;
 
 	default:
-		splx(s);
+		crit_exit();
 		return (ENOIOCTL);
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -473,7 +455,7 @@ sloutput(ifp, m, dst, rtp)
 {
 	struct sl_softc *sc = &sl_softc[ifp->if_dunit];
 	struct ip *ip;
-	int error, s;
+	int error;
 	struct altq_pktattr pktattr;
 
 	ifq_classify(&ifp->if_snd, m, dst->sa_family, &pktattr);
@@ -503,7 +485,9 @@ sloutput(ifp, m, dst, rtp)
 		m_freem(m);
 		return (ENETRESET);		/* XXX ? */
 	}
-	s = splimp();
+
+	crit_enter();
+
 	if ((ip->ip_tos & IPTOS_LOWDELAY) && !ifq_is_enabled(&sc->sc_if.if_snd)) {
 		if (IF_QFULL(&sc->sc_fastq)) {
 			IF_DROP(&sc->sc_fastq);
@@ -518,12 +502,12 @@ sloutput(ifp, m, dst, rtp)
 	}
 	if (error) {
 		sc->sc_if.if_oerrors++;
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	if (sc->sc_ttyp->t_outq.c_cc == 0)
 		slstart(sc->sc_ttyp);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -540,7 +524,6 @@ slstart(tp)
 	struct mbuf *m;
 	u_char *cp;
 	struct ip *ip;
-	int s;
 	u_char bpfbuf[SLTMAX + SLIP_HDRLEN];
 	int len = 0;
 
@@ -568,13 +551,13 @@ slstart(tp)
 		/*
 		 * Get a packet and send it to the interface.
 		 */
-		s = splimp();
+		crit_enter();
 		IF_DEQUEUE(&sc->sc_fastq, m);
 		if (m)
 			sc->sc_if.if_omcasts++;		/* XXX */
 		else
 			m = ifq_dequeue(&sc->sc_if.if_snd);
-		splx(s);
+		crit_exit();
 		if (m == NULL)
 			return 0;
 
@@ -935,9 +918,9 @@ slioctl(ifp, cmd, data, cr)
 {
 	struct ifaddr *ifa = (struct ifaddr *)data;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (cmd) {
 
@@ -993,7 +976,8 @@ slioctl(ifp, cmd, data, cr)
 	default:
 		error = EINVAL;
 	}
-	splx(s);
+
+	crit_exit();
 	return (error);
 }
 
@@ -1021,15 +1005,14 @@ sl_outfill(chan)
 {
 	struct sl_softc *sc = chan;
 	struct tty *tp = sc->sc_ttyp;
-	int s;
 
 	if (sc->sc_outfill && tp != NULL) {
 		if (sc->sc_flags & SC_OUTWAIT) {
-			s = splimp ();
+			crit_enter();
 			++sc->sc_if.if_obytes;
 			(void) putc(FRAME_END, &tp->t_outq);
 			(*tp->t_oproc)(tp);
-			splx (s);
+			crit_exit();
 		} else
 			sc->sc_flags |= SC_OUTWAIT;
 		callout_reset(&sc->sc_oftimeout, sc->sc_outfill,
