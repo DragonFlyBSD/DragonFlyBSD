@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.16 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.17 2005/06/14 11:41:37 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1008,14 +1008,6 @@ fe_init (void * xsc)
 {
 	struct fe_softc *sc = xsc;
 	int s;
-
-	/* We need an address. */
-	if (TAILQ_EMPTY(&sc->sc_if.if_addrhead)) { /* XXX unlikely */
-#ifdef DIAGNOSTIC
-		printf("fe%d: init() without any address\n", sc->sc_unit);
-#endif
-		return;
-	}
 
 	/* Start initializing 86960.  */
 	s = splimp();

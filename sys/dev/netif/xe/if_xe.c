@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.20 2005/06/06 23:12:07 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.21 2005/06/14 11:41:37 joerg Exp $
  */
 
 /*
@@ -601,8 +601,6 @@ xe_init(void *xscp) {
 #ifdef XE_DEBUG
   device_printf(scp->dev, "init\n");
 #endif
-
-  if (TAILQ_EMPTY(&scp->ifp->if_addrhead)) return;
 
   /* Reset transmitter flags */
   scp->tx_queued = 0;

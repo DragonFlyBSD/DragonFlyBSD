@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.21 2005/06/13 22:55:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.22 2005/06/14 11:41:37 joerg Exp $
  */
 
 /*
@@ -893,14 +893,6 @@ lnc_init(xsc)
 	char *lnc_mem;
 
 	crit_enter();
-
-	/* Check that interface has valid address */
-
-	if (TAILQ_EMPTY(&sc->arpcom.ac_if.if_addrhead)) { /* XXX unlikely */
-		printf("XXX no address?\n");
-		crit_exit();
-		return;
-	}
 
 	/* Shut down interface */
 	lnc_stop(sc);

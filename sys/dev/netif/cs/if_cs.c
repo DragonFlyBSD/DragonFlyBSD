@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.17 2005/06/13 21:44:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.18 2005/06/14 11:41:37 joerg Exp $
  */
 
 /*
@@ -683,12 +683,6 @@ cs_init(void *xsc)
 	int i, rx_cfg;
 
 	crit_enter();
-
-	/* address not known */
-	if (TAILQ_EMPTY(&ifp->if_addrhead)) { /* unlikely? XXX */
-		crit_exit();
-		return;
-	}
 
 	/*
 	 * reset whatchdog timer

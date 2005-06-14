@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.14 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.15 2005/06/14 11:41:37 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -240,10 +240,6 @@ el_init(xsc)
 	/* Set up pointers */
 	ifp = &sc->arpcom.ac_if;
 	base = sc->el_base;
-
-	/* If address not known, do nothing. */
-	if(TAILQ_EMPTY(&ifp->if_addrhead)) /* XXX unlikely */
-		return;
 
 	s = splimp();
 

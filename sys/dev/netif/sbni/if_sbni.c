@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.20 2005/06/13 13:47:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.21 2005/06/14 11:41:37 joerg Exp $
  */
 
 /*
@@ -265,10 +265,6 @@ sbni_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	crit_enter();
-
-	/* address not known */
-	if (TAILQ_EMPTY(&ifp->if_addrhead))
-		return;
 
 	/*
 	 * kludge to avoid multiple initialization when more than once

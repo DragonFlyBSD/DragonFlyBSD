@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.16 2005/06/13 13:31:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.17 2005/06/14 11:41:37 joerg Exp $
  */
 
 /*
@@ -693,10 +693,6 @@ rdp_init(void *xsc)
 	u_char reg;
 
 	crit_enter();
-
-	/* address not known */
-	if (TAILQ_EMPTY(&ifp->if_addrhead))
-		return;
 
 	ifp->if_timer = 0;
 

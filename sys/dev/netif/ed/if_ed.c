@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.23 2005/06/14 11:08:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.24 2005/06/14 11:41:37 joerg Exp $
  */
 
 /*
@@ -1893,12 +1893,6 @@ ed_init(xsc)
 	crit_enter();
 
 	if (sc->gone) {
-		crit_exit();
-		return;
-	}
-
-	/* address not known */
-	if (TAILQ_EMPTY(&ifp->if_addrhead)) { /* unlikely? XXX */
 		crit_exit();
 		return;
 	}

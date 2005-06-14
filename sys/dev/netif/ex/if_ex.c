@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.17 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.18 2005/06/14 11:41:37 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -284,9 +284,6 @@ ex_init(void *xsc)
 
 	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_dunit););
 
-	if (TAILQ_FIRST(&ifp->if_addrhead) == NULL) {
-		return;
-	}
 	s = splimp();
 	ifp->if_timer = 0;
 
