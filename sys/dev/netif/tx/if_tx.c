@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.22 2005/06/14 12:25:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.23 2005/06/14 12:26:31 joerg Exp $
  */
 
 /*
@@ -239,9 +239,9 @@ epic_attach(dev)
 	ifq_set_ready(&ifp->if_snd);
 
 	/* Enable ports, memory and busmastering */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN;
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_IOPORT);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 #if defined(EPIC_USEIOSPACE)
@@ -513,8 +513,8 @@ epic_common_attach(sc)
 	sc->serinst = -1;
 
 	/* Fetch card id */
-	sc->cardvend = pci_read_config(sc->dev, PCIR_SUBVEND_0, 2);
-	sc->cardid = pci_read_config(sc->dev, PCIR_SUBDEV_0, 2);
+	sc->cardvend = pci_get_subvendor(sc->dev);
+	sc->cardid = pci_get_subdevice(sc->dev);
 
 	if (sc->cardvend != SMC_VENDORID)
 		device_printf(sc->dev, "unknown card vendor %04xh\n", sc->cardvend);
