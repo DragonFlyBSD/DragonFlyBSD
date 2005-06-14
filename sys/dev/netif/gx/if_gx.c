@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.17 2005/06/09 02:03:38 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.18 2005/06/14 16:47:38 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <sys/queue.h>
 
 #include <net/if.h>
@@ -165,7 +166,6 @@ static int	gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 static void	gx_setmulti(struct gx_softc *gx);
 static void	gx_reset(struct gx_softc *gx);
 static void 	gx_phy_reset(struct gx_softc *gx);
-static void 	gx_release(struct gx_softc *gx);
 static void	gx_stop(struct gx_softc *gx);
 static void	gx_watchdog(struct ifnet *ifp);
 static void	gx_start(struct ifnet *ifp);
@@ -236,22 +236,15 @@ gx_attach(device_t dev)
 	struct gx_device *gx_dev;
 	struct ifnet *ifp;
 	u_int32_t command;
-	int rid, s;
+	int rid;
 	int error = 0;
 
-	s = splimp();
-
 	gx = device_get_softc(dev);
-	bzero(gx, sizeof(struct gx_softc));
 	gx->gx_dev = dev;
 
 	gx_dev = gx_match(dev);
 	gx->gx_vflags = gx_dev->version_flags;
 	gx->gx_ipg = gx_dev->version_ipg;
-
-	mtx_init(&gx->gx_mtx, device_get_nameunit(dev), MTX_DEF | MTX_RECURSE);
-
-	GX_LOCK(gx);
 
 	/*
 	 * Map control/status registers.
@@ -301,13 +294,6 @@ gx_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, gx->gx_irq, INTR_TYPE_NET,
-			       gx_intr, gx, &gx->gx_intrhand, NULL);
-	if (error) {
-		device_printf(dev, "couldn't setup irq\n");
-		goto fail;
-	}
-
 	/* compensate for different register mappings */
 	if (gx->gx_vflags & GXF_OLD_REGS)
 		gx->gx_reg = old_regs;
@@ -323,7 +309,7 @@ gx_attach(device_t dev)
 
 	/* Allocate the ring buffers. */
 	gx->gx_rdata = contigmalloc(sizeof(struct gx_ring_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (gx->gx_rdata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
@@ -384,32 +370,18 @@ gx_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, gx->arpcom.ac_enaddr);
 
-	GX_UNLOCK(gx);
-	splx(s);
+	error = bus_setup_intr(dev, gx->gx_irq, INTR_TYPE_NET,
+			       gx_intr, gx, &gx->gx_intrhand, NULL);
+	if (error) {
+		device_printf(dev, "couldn't setup irq\n");
+		goto fail;
+	}
+
 	return (0);
 
 fail:
-	GX_UNLOCK(gx);
-	gx_release(gx);
-	splx(s);
+	gx_detach(dev);
 	return (error);
-}
-
-static void
-gx_release(struct gx_softc *gx)
-{
-
-	bus_generic_detach(gx->gx_dev);
-	if (gx->gx_miibus)
-		device_delete_child(gx->gx_dev, gx->gx_miibus);
-
-	if (gx->gx_intrhand)
-		bus_teardown_intr(gx->gx_dev, gx->gx_irq, gx->gx_intrhand);
-	if (gx->gx_irq)
-		bus_release_resource(gx->gx_dev, SYS_RES_IRQ, 0, gx->gx_irq);
-	if (gx->gx_res)
-		bus_release_resource(gx->gx_dev, SYS_RES_MEMORY,
-		    GX_PCI_LOMEM, gx->gx_res);
 }
 
 static void
@@ -417,17 +389,12 @@ gx_init(void *xsc)
 {
 	struct gx_softc *gx = (struct gx_softc *)xsc;
 	struct ifmedia *ifm;
-	struct ifnet *ifp;
-	device_t dev;
+	struct ifnet *ifp = &gx->arpcom.ac_if;
 	u_int16_t *m;
 	u_int32_t ctrl;
-	int s, i, tmp;
+	int i, tmp;
 
-	dev = gx->gx_dev;
-	ifp = &gx->arpcom.ac_if;
-
-	s = splimp();
-	GX_LOCK(gx);
+	crit_enter();
 
 	/* Disable host interrupts, halt chip. */
 	gx_reset(gx);
@@ -580,8 +547,7 @@ printf("66mhz: %s  64bit: %s\n",
 	CSR_READ_4(gx, GX_STATUS) & GX_STAT_BUS64 ? "yes" : "no");
 #endif
 
-	GX_UNLOCK(gx);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -601,27 +567,36 @@ gx_shutdown(device_t dev)
 static int
 gx_detach(device_t dev)
 {
-	struct gx_softc *gx;
-	struct ifnet *ifp;
-	int s;
+	struct gx_softc *gx = device_get_softc(dev);
+	struct ifnet *ifp = &gx->arpcom.ac_if;
 
-	s = splimp();
+	if (device_is_attached(dev)) {
+		ether_ifdetach(ifp);
+		gx_reset(gx);
+		gx_stop(gx);
+	}
 
-	gx = device_get_softc(dev);
-	ifp = &gx->arpcom.ac_if;
-	GX_LOCK(gx);
+	if (gx->gx_miibus)
+		device_delete_child(gx->gx_dev, gx->gx_miibus);
+	bus_generic_detach(gx->gx_dev);
 
-	ether_ifdetach(ifp);
-	gx_reset(gx);
-	gx_stop(gx);
-	ifmedia_removeall(&gx->gx_media);
-	gx_release(gx);
+	if (gx->gx_intrhand)
+		bus_teardown_intr(gx->gx_dev, gx->gx_irq, gx->gx_intrhand);
 
-	contigfree(gx->gx_rdata, sizeof(struct gx_ring_data), M_DEVBUF);
-		
-	GX_UNLOCK(gx);
-	mtx_destroy(&gx->gx_mtx);
-	splx(s);
+	crit_exit();
+
+	if (gx->gx_irq)
+		bus_release_resource(gx->gx_dev, SYS_RES_IRQ, 0, gx->gx_irq);
+	if (gx->gx_res)
+		bus_release_resource(gx->gx_dev, SYS_RES_MEMORY,
+		    GX_PCI_LOMEM, gx->gx_res);
+
+	if (gx->gx_rdata)
+		contigfree(gx->gx_rdata, sizeof(struct gx_ring_data),
+			   M_DEVBUF);
+
+	if (gx->gx_tbimode)
+		ifmedia_removeall(&gx->gx_media);
 
 	return (0);
 }
@@ -874,11 +849,10 @@ gx_miibus_writereg(device_t dev, int phy, int reg, int value)
 static void
 gx_miibus_statchg(device_t dev)
 {
-	struct gx_softc *gx;
+	struct gx_softc *gx = device_get_softc(dev);
 	struct mii_data *mii;
-	int reg, s;
+	int reg;
 
-	gx = device_get_softc(dev);
 	if (gx->gx_tbimode)
 		return;
 
@@ -887,8 +861,7 @@ gx_miibus_statchg(device_t dev)
 	 */
 	mii = device_get_softc(gx->gx_miibus);
 
-	s = splimp();
-	GX_LOCK(gx);
+	crit_enter();
 
 	reg = CSR_READ_4(gx, GX_CTRL);
 	if (mii->mii_media_active & IFM_FLAG0)
@@ -901,8 +874,7 @@ gx_miibus_statchg(device_t dev)
 		reg &= ~GX_CTRL_TX_FLOWCTRL;
 	CSR_WRITE_4(gx, GX_CTRL, reg);
 
-	GX_UNLOCK(gx);
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -911,10 +883,9 @@ gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct gx_softc	*gx = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
-	int s, mask, error = 0;
+	int mask, error = 0;
 
-	s = splimp();
-	GX_LOCK(gx);
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -971,8 +942,8 @@ gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	GX_UNLOCK(gx);
-	splx(s);
+	crit_exit();
+
 	return (error);
 }
 
@@ -1392,15 +1363,11 @@ gx_txeof(struct gx_softc *gx)
 static void
 gx_intr(void *xsc)
 {
-	struct gx_softc	*gx;
-	struct ifnet *ifp;
+	struct gx_softc	*gx = xsc;
+	struct ifnet *ifp = &gx->arpcom.ac_if;
 	u_int32_t intr;
-	int s;
 
-	gx = xsc;
-	ifp = &gx->arpcom.ac_if;
-
-	s = splimp();
+	crit_enter();
 
 	gx->gx_interrupts++;
 
@@ -1445,7 +1412,7 @@ gx_intr(void *xsc)
 	if (ifp->if_flags & IFF_RUNNING && !ifq_is_empty(&ifp->if_snd))
 		gx_start(ifp);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1573,13 +1540,10 @@ printf("overflow(2): %d, %d\n", cnt, GX_TX_RING_CNT);
 static void
 gx_start(struct ifnet *ifp)
 {
-	struct gx_softc	*gx;
+	struct gx_softc	*gx = ifp->if_softc;
 	struct mbuf *m_head;
-	int s;
 
-	s = splimp();
-
-	gx = ifp->if_softc;
+	crit_enter();
 
 	for (;;) {
 		m_head = ifq_poll(&ifp->if_snd);
@@ -1605,5 +1569,5 @@ gx_start(struct ifnet *ifp)
 		ifp->if_timer = 5;
 	}
 
-	splx(s);
+	crit_exit();
 }

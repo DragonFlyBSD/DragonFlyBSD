@@ -27,19 +27,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gxvar.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxvar.h,v 1.5 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxvar.h,v 1.6 2005/06/14 16:47:38 joerg Exp $
  */
-
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#define GX_LOCK(gx)		
-#define GX_UNLOCK(gx)		
-#define mtx_init(a, b, c)
-#define mtx_destroy(a)
-struct mtx { int filler; };
-#else
-#define GX_LOCK(gx)		mtx_lock(&(gx)->gx_mtx)
-#define GX_UNLOCK(gx)		mtx_unlock(&(gx)->gx_mtx)
-#endif
 
 #ifndef PCIM_CMD_MWIEN
 #define PCIM_CMD_MWIEN		0x0010
@@ -135,7 +124,6 @@ struct gx_softc {
 	int			gx_txcnt;
 	int			gx_txcontext;	/* current TX context */
 	struct gx_regs		gx_reg;
-	struct mtx		gx_mtx;
 
 /* tunables */
 	int			gx_tx_intr_delay;
