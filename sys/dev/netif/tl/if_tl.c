@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.28 2005/06/14 12:38:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.29 2005/06/14 12:42:00 joerg Exp $
  */
 
 /*
@@ -1108,6 +1108,7 @@ static int tl_attach(dev)
 	struct ifnet		*ifp;
 	struct tl_softc		*sc;
 	int			error = 0, rid;
+	uint8_t			eaddr[ETHER_ADDR_LEN];
 
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
@@ -1229,8 +1230,7 @@ static int tl_attach(dev)
 	/*
 	 * Get station address from the EEPROM.
 	 */
-	if (tl_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
-				sc->tl_eeaddr, ETHER_ADDR_LEN)) {
+	if (tl_read_eeprom(sc, eaddr, sc->tl_eeaddr, ETHER_ADDR_LEN)) {
 		device_printf(dev, "failed to read station address\n");
 		error = ENXIO;
 		goto fail;
@@ -1253,7 +1253,7 @@ static int tl_attach(dev)
         if (sc->tl_dinfo->tl_vid == OLICOM_VENDORID) {
                 for (i = 0; i < ETHER_ADDR_LEN; i += 2) {
                         u_int16_t               *p;
-                        p = (u_int16_t *)&sc->arpcom.ac_enaddr[i];
+                        p = (u_int16_t *)&eaddr[i];
                         *p = ntohs(*p);
                 }
         }
@@ -1299,7 +1299,7 @@ static int tl_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, eaddr);
 
 	error = bus_setup_intr(dev, sc->tl_irq, INTR_TYPE_NET,
 			       tl_intr, sc, &sc->tl_intrhand, NULL);
