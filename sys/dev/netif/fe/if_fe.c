@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.17 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.18 2005/06/14 15:19:28 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -81,7 +81,7 @@
 #include <sys/interrupt.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
-#include <machine/clock.h>
+#include <sys/thread2.h>
 
 #include <sys/bus.h>
 #include <machine/bus.h>
@@ -943,9 +943,7 @@ fe_reset (struct fe_softc *sc)
 void
 fe_stop (struct fe_softc *sc)
 {
-	int s;
-
-	s = splimp();
+	crit_enter();
 
 	/* Disable interrupts.  */
 	fe_outb(sc, FE_DLCR2, 0x00);
@@ -979,7 +977,7 @@ fe_stop (struct fe_softc *sc)
 	if (sc->stop)
 		sc->stop(sc);
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
@@ -1007,10 +1005,9 @@ static void
 fe_init (void * xsc)
 {
 	struct fe_softc *sc = xsc;
-	int s;
 
 	/* Start initializing 86960.  */
-	s = splimp();
+	crit_enter();
 
 	/* Call a hook before we start initializing the chip.  */
 	if (sc->init)
@@ -1120,7 +1117,7 @@ fe_init (void * xsc)
 	fe_start(&sc->sc_if);
 #endif
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
@@ -1753,9 +1750,9 @@ fe_ioctl (struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct fe_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	  case SIOCSIFFLAGS:
@@ -1801,7 +1798,8 @@ fe_ioctl (struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	(void) splx(s);
+	crit_exit();
+
 	return (error);
 }
 
