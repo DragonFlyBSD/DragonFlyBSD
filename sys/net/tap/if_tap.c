@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.19 2005/06/14 18:30:55 joerg Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.20 2005/06/14 18:37:26 joerg Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -60,6 +60,7 @@
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/route.h>
 
@@ -248,7 +249,8 @@ tapcreate(dev)
 	ifp->if_ioctl = tapifioctl;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = (IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST);
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, ether_addr);
 
@@ -305,16 +307,11 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 {
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
-	struct mbuf		*m = NULL;
 
 	/* junk all pending output */
 
 	crit_enter();
-	do {
-		IF_DEQUEUE(&ifp->if_snd, m);
-		if (m != NULL)
-			m_freem(m);
-	} while (m != NULL);
+	ifq_purge(&ifp->if_snd);
 	crit_exit();
 
 	/*
@@ -467,19 +464,11 @@ tapifstart(ifp)
 
 	if (((tp->tap_flags & TAP_VMNET) == 0) && 
 	    ((tp->tap_flags & TAP_READY) != TAP_READY)) {
-		struct mbuf	*m = NULL;
-
 		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
 			 minor(tp->tap_dev), tp->tap_flags);
 
 		crit_enter();
-		do {
-			IF_DEQUEUE(&ifp->if_snd, m);
-			if (m != NULL)
-				m_freem(m);
-			ifp->if_oerrors ++;
-		} while (m != NULL);
-
+		ifq_purge(&ifp->if_snd);
 		crit_exit();
 		return;
 	}
@@ -488,7 +477,7 @@ tapifstart(ifp)
 
 	ifp->if_flags |= IFF_OACTIVE;
 
-	if (ifp->if_snd.ifq_len != 0) {
+	if (!ifq_is_empty(&ifp->if_snd)) {
 		if (tp->tap_flags & TAP_RWAIT) {
 			tp->tap_flags &= ~TAP_RWAIT;
 			wakeup((caddr_t)tp);
@@ -518,6 +507,7 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
  	struct tapinfo		*tapp = NULL;
+	struct mbuf *mb;
 
 	switch (cmd) {
  		case TAPSIFINFO:
@@ -558,14 +548,11 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 
 		case FIONREAD:
 			crit_enter();
-			if (ifp->if_snd.ifq_head) {
-				struct mbuf	*mb = ifp->if_snd.ifq_head;
-
-				for(*(int *)data = 0;mb != NULL;mb = mb->m_next)
+			*(int *)data = 0;
+			if ((mb = ifq_poll(&ifp->if_snd)) != NULL) {
+				for(; mb != NULL; mb = mb->m_next)
 					*(int *)data += mb->m_len;
 			} 
-			else
-				*(int *)data = 0;
 			crit_exit();
 		break;
 
@@ -650,7 +637,7 @@ tapread(dev, uio, flag)
 	/* sleep until we get a packet */
 	do {
 		crit_enter();
-		IF_DEQUEUE(&ifp->if_snd, m0);
+		m0 = ifq_dequeue(&ifp->if_snd);
 		crit_exit();
 
 		if (m0 == NULL) {
@@ -779,10 +766,10 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 	crit_enter();
 
 	if (events & (POLLIN | POLLRDNORM)) {
-		if (ifp->if_snd.ifq_len > 0) {
+		if (!ifq_is_empty(&ifp->if_snd)) {
 			TAPDEBUG(ifp,
-				 "has data in queue. len = %d, minor = %#x\n",
-				 ifp->if_snd.ifq_len, minor(tp->tap_dev));
+				 "has data in queue. minor = %#x\n",
+				 minor(tp->tap_dev));
 
 			revents |= (events & (POLLIN | POLLRDNORM));
 		} 
