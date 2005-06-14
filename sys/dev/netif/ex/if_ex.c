@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.18 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.19 2005/06/14 15:23:18 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -45,6 +45,7 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -277,14 +278,14 @@ ex_init(void *xsc)
 {
 	struct ex_softc *	sc = (struct ex_softc *) xsc;
 	struct ifnet *		ifp = &sc->arpcom.ac_if;
-	int			s;
 	int			i;
 	int			iobase = sc->iobase;
 	unsigned short		temp_reg;
 
 	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_dunit););
 
-	s = splimp();
+	crit_enter();
+
 	ifp->if_timer = 0;
 
 	/*
@@ -356,7 +357,8 @@ ex_init(void *xsc)
 	outb(iobase + CMD_REG, Rcv_Enable_CMD);
 
 	ex_start(ifp);
-	splx(s);
+
+	crit_exit();
 
 	DODEBUG(Start_End, printf("ex_init%d: finish\n", ifp->if_dunit););
 }
@@ -367,14 +369,14 @@ ex_start(struct ifnet *ifp)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 	int			iobase = sc->iobase;
-	int			i, s, len, data_len, avail, dest, next;
+	int			i, len, data_len, avail, dest, next;
 	unsigned char		tmp16[2];
 	struct mbuf *		opkt;
 	struct mbuf *		m;
 
 	DODEBUG(Start_End, printf("ex_start%d: start\n", unit););
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Main loop: send outgoing packets to network card until there are no
@@ -535,7 +537,7 @@ ex_start(struct ifnet *ifp)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 
 	DODEBUG(Start_End, printf("ex_start%d: finish\n", unit););
 }
@@ -766,12 +768,11 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 	struct ifreq *		ifr = (struct ifreq *)data;
-	int			s;
 	int			error = 0;
 
 	DODEBUG(Start_End, printf("ex_ioctl%d: start ", ifp->if_dunit););
 
-	s = splimp();
+	crit_enter();
 
 	switch(cmd) {
 		case SIOCSIFFLAGS:
@@ -809,7 +810,7 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	DODEBUG(Start_End, printf("\nex_ioctl%d: finish\n", ifp->if_dunit););
 
@@ -820,20 +821,16 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 static void
 ex_reset(struct ex_softc *sc)
 {
-	int s;
-
 	DODEBUG(Start_End, printf("ex_reset%d: start\n", unit););
   
-	s = splimp();
+	crit_enter();
 
 	ex_stop(sc);
 	ex_init(sc);
 
-	splx(s);
+	crit_exit();
 
 	DODEBUG(Start_End, printf("ex_reset%d: finish\n", unit););
-
-	return;
 }
 
 static void
