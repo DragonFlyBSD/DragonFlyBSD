@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.27 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.28 2005/06/14 19:47:30 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -96,8 +96,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/domain.h>
-
-#include <machine/stdarg.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -140,11 +139,11 @@ static void	rt_setmetrics (u_long, struct rt_metrics *,
 static int
 rts_abort(struct socket *so)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_abort(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -154,7 +153,7 @@ static int
 rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct rawcb *rp;
-	int s, error;
+	int error;
 
 	if (sotorawcb(so) != NULL)
 		return EISCONN;	/* XXX panic? */
@@ -164,18 +163,18 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		return ENOBUFS;
 
 	/*
-	 * The splnet() is necessary to block protocols from sending
+	 * The critical section is necessary to block protocols from sending
 	 * error notifications (like RTM_REDIRECT or RTM_LOSING) while
 	 * this PCB is extant but incompletely initialized.
 	 * Probably we should try to do more of this work beforehand and
-	 * eliminate the spl.
+	 * eliminate the critical section.
 	 */
-	s = splnet();
+	crit_enter();
 	so->so_pcb = rp;
 	error = raw_attach(so, proto, ai->sb_rlimit);
 	rp = sotorawcb(so);
 	if (error) {
-		splx(s);
+		crit_exit();
 		free(rp, M_PCB);
 		return error;
 	}
@@ -197,29 +196,29 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	route_cb.any_count++;
 	soisconnected(so);
 	so->so_options |= SO_USELOOPBACK;
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
 static int
 rts_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
-	splx(s);
+	crit_exit();
 	return error;
 }
 
 static int
 rts_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -230,9 +229,9 @@ static int
 rts_detach(struct socket *so)
 {
 	struct rawcb *rp = sotorawcb(so);
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	if (rp != NULL) {
 		switch(rp->rcb_proto.sp_protocol) {
 		case AF_INET:
@@ -251,18 +250,18 @@ rts_detach(struct socket *so)
 		route_cb.any_count--;
 	}
 	error = raw_usrreqs.pru_detach(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
 static int
 rts_disconnect(struct socket *so)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_disconnect(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -271,11 +270,11 @@ rts_disconnect(struct socket *so)
 static int
 rts_peeraddr(struct socket *so, struct sockaddr **nam)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_peeraddr(so, nam);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -286,11 +285,11 @@ static int
 rts_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -299,22 +298,22 @@ rts_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 static int
 rts_shutdown(struct socket *so)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_shutdown(so);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
 static int
 rts_sockaddr(struct socket *so, struct sockaddr **nam)
 {
-	int s, error;
+	int error;
 
-	s = splnet();
+	crit_enter();
 	error = raw_usrreqs.pru_sockaddr(so, nam);
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -1143,7 +1142,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	int	*name = (int *)arg1;
 	u_int	namelen = arg2;
 	struct radix_node_head *rnh;
-	int	i, s, error = EINVAL;
+	int	i, error = EINVAL;
 	u_char  af;
 	struct	walkarg w;
 
@@ -1159,7 +1158,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	w.w_arg = name[2];
 	w.w_req = req;
 
-	s = splnet();
+	crit_enter();
 	switch (w.w_op) {
 
 	case NET_RT_DUMP:
@@ -1174,7 +1173,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	case NET_RT_IFLIST:
 		error = sysctl_iflist(af, &w);
 	}
-	splx(s);
+	crit_exit();
 	if (w.w_tmem != NULL)
 		free(w.w_tmem, M_RTABLE);
 	return (error);
