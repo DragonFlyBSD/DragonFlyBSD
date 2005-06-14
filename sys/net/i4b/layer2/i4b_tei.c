@@ -30,17 +30,13 @@
  *	$Id: i4b_tei.c,v 1.25 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_tei.c,v 1.6.2.2 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_tei.c,v 1.5 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_tei.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Fri Oct 13 15:56:35 2000]
  *
  *---------------------------------------------------------------------------*/
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bq921.h"
-#else
-#define	NI4BQ921	1
-#endif
 #if NI4BQ921 > 0
 
 #include <sys/param.h>
@@ -50,16 +46,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#endif
 
 #include "../include/i4b_global.h"
 #include "../include/i4b_l1l2.h"
@@ -284,8 +271,6 @@ void
 i4b_make_rand_ri(l2_softc_t *l2sc)
 {
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-
 	u_short val;
 
 #ifdef RANDOMDEV
@@ -293,29 +278,6 @@ i4b_make_rand_ri(l2_softc_t *l2sc)
 #else
 	val = (u_short)random();
 #endif /* RANDOMDEV */ 
-
-#else
-
-	u_short val;
-	int i;
-	static int called = 42;
-	
-	val = (l2sc->last_rih << 8) | l2sc->last_ril;
-
-	val += ++called;
-	
-	for(i=0; i < 50 ; i++, val++)
-	{
-		val |= l2sc->unit+i;
-		val <<= i;
-		val ^= (time.tv_sec >> 16) ^ time.tv_usec;
-		val <<= i;
-		val ^= time.tv_sec ^ (time.tv_usec >> 16);
-
-		if(val != 0 && val != 0xffff)
-			break;
-	}
-#endif
 	l2sc->last_rih = (val >> 8) & 0x00ff;
 	l2sc->last_ril = val & 0x00ff;
 }

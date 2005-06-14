@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.7 2005/06/03 16:50:13 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.8 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -45,17 +45,8 @@
 #include <sys/mbuf.h>
 #include <sys/thread2.h>
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#endif
 
 #include "../include/i4b_l3l4.h"
 #include "../include/i4b_global.h"
@@ -68,9 +59,7 @@ static unsigned int get_cdid(void);
 
 int nctrl;				/* number of attached controllers */
 
-#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
-void i4b_init_callout(call_desc_t *);
-#endif
+static void i4b_init_callout(call_desc_t *);
 
 /*---------------------------------------------------------------------------*
  *      return a new unique call descriptor id
@@ -149,9 +138,7 @@ reserve_cd(void)
 	if(cd == NULL)
 		panic("reserve_cd: no free call descriptor available!");
 
-#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 	i4b_init_callout(cd);
-#endif
 
 	return(cd);
 }
@@ -205,9 +192,7 @@ cd_by_cdid(unsigned int cdid)
 		{
 			NDBGL4(L4_MSG, "found cdid - index=%d cdid=%u cr=%d",
 					i, call_desc[i].cdid, call_desc[i].cr);
-#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 			i4b_init_callout(&call_desc[i]);
-#endif
 			return(&(call_desc[i]));
 		}
 	}
@@ -236,9 +221,7 @@ cd_by_unitcr(int unit, int cr, int crf)
 	  {
 	    NDBGL4(L4_MSG, "found cd, index=%d cdid=%u cr=%d",
 			i, call_desc[i].cdid, call_desc[i].cr);
-#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 	    i4b_init_callout(&call_desc[i]);
-#endif
 	    return(&(call_desc[i]));
 	  }
 	}
@@ -261,21 +244,11 @@ get_rand_cr(int unit)
 	{
 		int found = 1;
 		
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-
 #ifdef RANDOMDEV
 		read_random((char *)&val, sizeof(val));
 #else
 		val = (u_char)random();
 #endif /* RANDOMDEV */
-
-#else
-		val |= unit+i;
-		val <<= i;
-		val ^= (time.tv_sec >> 8) ^ time.tv_usec;
-		val <<= i;
-		val ^= time.tv_sec ^ (time.tv_usec >> 8);
-#endif
 
 		retval = val & 0x7f;
 		
@@ -301,8 +274,7 @@ get_rand_cr(int unit)
 /*---------------------------------------------------------------------------*
  *	initialize the callout handles for FreeBSD
  *---------------------------------------------------------------------------*/
-#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
-void
+static void
 i4b_init_callout(call_desc_t *cd)
 {
 	if(cd->callouts_inited == 0)
@@ -318,7 +290,6 @@ i4b_init_callout(call_desc_t *cd)
 		cd->callouts_inited = 1;
 	}
 }
-#endif
 
 /*---------------------------------------------------------------------------*
  *      daemon is attached

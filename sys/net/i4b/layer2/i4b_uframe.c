@@ -30,17 +30,13 @@
  *	$Id: i4b_uframe.c,v 1.13 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_uframe.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_uframe.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_uframe.c,v 1.5 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Mon May 29 16:55:30 2000]
  *
  *---------------------------------------------------------------------------*/
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bq921.h"
-#else
-#define	NI4BQ921	1
-#endif
 #if NI4BQ921 > 0
 
 #include <sys/param.h>
@@ -49,16 +45,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#endif
 
 #include "../include/i4b_l1l2.h"
 #include "../include/i4b_l2l3.h"

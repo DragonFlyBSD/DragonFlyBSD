@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.10 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.11 2005/06/14 21:19:18 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -142,13 +142,8 @@ PDEVSTATIC d_read_t	i4btelread;
 PDEVSTATIC d_read_t	i4btelwrite;
 PDEVSTATIC d_ioctl_t	i4btelioctl;
 
-#ifdef OS_USES_POLL
 PDEVSTATIC d_poll_t i4btelpoll;
 #define POLLFIELD i4btelpoll
-#else
-PDEVSTATIC d_select_t i4btelsel;
-#define POLLFIELD i4btelsel
-#endif
 
 #define CDEV_MAJOR 56
 
@@ -455,15 +450,8 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 
 			NDBGL4(L4_TELDBG, "i4btel%d, queue empty!", unit);
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-			if((error = msleep((caddr_t) &sc->isdn_linktab->rx_queue,
-					&sc->isdn_linktab->rx_queue->ifq_mtx,
-					TTIPRI | PCATCH,
-					"rtel", 0 )) != 0)
-#else
 			if((error = tsleep((caddr_t) &sc->isdn_linktab->rx_queue,
 						PCATCH, "rtel", 0 )) != 0)
-#endif						
 			{
 				sc->devstate &= ~ST_RDWAITDATA;
 				splx(s);
@@ -584,14 +572,8 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 		{
 			sc->devstate |= ST_WRWAITEMPTY;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4	
-			if((error = msleep((caddr_t) &sc->isdn_linktab->tx_queue,
-					&sc->isdn_linktab->tx_queue->ifq_mtx,
-					TTIPRI | PCATCH, "wtel", 0)) != 0)
-#else
 			if((error = tsleep((caddr_t) &sc->isdn_linktab->tx_queue,
 					PCATCH, "wtel", 0)) != 0)
-#endif					
 			{
 				sc->devstate &= ~ST_WRWAITEMPTY;
 				splx(s);
@@ -629,14 +611,10 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 				mtod(m,u_char *)[i] = bitreverse[mtod(m,u_char *)[i]];
 			}
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4			
-			(void) IF_HANDOFF(sc->isdn_linktab->tx_queue, m, NULL);
-#else
 			if(IF_QFULL(sc->isdn_linktab->tx_queue))
 				m_freem(m);
 			else
 				IF_ENQUEUE(sc->isdn_linktab->tx_queue, m);
-#endif			
 			(*sc->isdn_linktab->bch_tx_start)(sc->isdn_linktab->unit, sc->isdn_linktab->channel);
 		}
 	
@@ -721,8 +699,6 @@ tel_tone(tel_sc_t *sc)
 	(*sc->isdn_linktab->bch_tx_start)(sc->isdn_linktab->unit, sc->isdn_linktab->channel);
 }
 
-
-#ifdef OS_USES_POLL
 /*---------------------------------------------------------------------------*
  *	device driver poll
  *---------------------------------------------------------------------------*/
@@ -802,85 +778,6 @@ i4btelpoll(dev_t dev, int events, struct thread *td)
 	splx(s);
 	return(revents);
 }
-
-#else /* OS_USES_POLL */
-
-/*---------------------------------------------------------------------------*
- *	device driver select
- *---------------------------------------------------------------------------*/
-PDEVSTATIC int
-i4btelsel(dev_t dev, int rw, struct thread *td)
-{
-	int s;
-	int unit = UNIT(dev);
-	int func = FUNC(dev);	
-
-	tel_sc_t *sc = &tel_sc[unit][func];
-	
-	s = splhigh();
-
-	if (!(sc->devstate & ST_ISOPEN))
-	{
-		NDBGL4(L4_TELDBG, "i4btel%d, !ST_ISOPEN", unit);
-		splx(s);
-		return(0);
-	}
-
-	if (func == FUNCTEL)
-	{
-		/* Don't even bother if we're not connected */
-		if (!(sc->devstate & ST_CONNECTED) || sc->isdn_linktab == NULL)
-		{
-			splx(s);
-			return 0;
-		}
-
-		if (rw == FREAD)
-		{
-			if (!IF_QEMPTY(sc->isdn_linktab->rx_queue))
-			{
-				NDBGL4(L4_TELDBG, "i4btel%d, FREAD", unit);
-				splx(s);
-				return 1;
-			}
-		}
-		else if (rw == FWRITE)
-		{
-			if (!IF_QFULL(sc->isdn_linktab->tx_queue))
-			{
-				NDBGL4(L4_TELDBG, "i4btel%d, FWRITE", unit);
-				splx(s);
-				return 1;
-			}
-		}
-	}
-	else if (func == FUNCDIAL)
-	{
-		if (rw == FWRITE)
-		{
-			NDBGL4(L4_TELDBG, "i4bteld%d,  FWRITE", unit);
-			splx(s);
-			return 1;
-		}
-
-		if (rw == FREAD)
-		{
-			NDBGL4(L4_TELDBG, "i4bteld%d,  FREAD, result = %d", unit, sc->result);
-			if (sc->result != 0)
-			{
-				splx(s);
-				return 1;
-			}
-		}
-	}
-
-	NDBGL4(L4_TELDBG, "i4bteld%d,  selrecord", unit);
-	selrecord(p, &sc->selp);
-	splx(s);
-	return 0;
-}
-
-#endif /* OS_USES_POLL */
 
 /*===========================================================================*
  *			ISDN INTERFACE ROUTINES

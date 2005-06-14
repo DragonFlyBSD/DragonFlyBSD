@@ -28,7 +28,7 @@
  *	----------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_bchan.c,v 1.7.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_bchan.c,v 1.5 2005/06/03 16:50:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_bchan.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Wed Jan 24 09:07:12 2001]
  *
@@ -91,10 +91,6 @@ isic_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 
 	chan->rx_queue.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4	
-	mtx_init(&chan->rx_queue.ifq_mtx, "i4b_isic_rx", MTX_DEF);
-#endif
-
 	i4b_Bcleanifq(&chan->rx_queue);	/* clean rx queue */
 
 	chan->rxcount = 0;		/* reset rx counter */
@@ -109,10 +105,6 @@ isic_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 
 	chan->tx_queue.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4	
-	mtx_init(&chan->tx_queue.ifq_mtx, "i4b_isic_tx", MTX_DEF);
-#endif
-	
 	i4b_Bcleanifq(&chan->tx_queue);	/* clean tx queue */
 
 	chan->txcount = 0;		/* reset tx counter */

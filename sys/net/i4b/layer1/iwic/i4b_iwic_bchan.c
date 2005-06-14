@@ -30,7 +30,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.7.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.5 2005/06/03 16:50:08 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Tue Jan 16 13:21:24 2001]
  *
@@ -253,9 +253,6 @@ iwic_bchan_xirq(struct iwic_softc *sc, int chan_no)
 				if(!(i4b_l1_bchan_tel_silence(chan->in_mbuf->m_data, chan->in_mbuf->m_len)))
 					activity = ACT_RX;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-				(void) IF_HANDOFF(&chan->rx_queue, chan->in_mbuf, NULL);
-#else
 				if(!(IF_QFULL(&chan->rx_queue)))
 				{
 					IF_ENQUEUE(&chan->rx_queue, chan->in_mbuf);
@@ -264,7 +261,6 @@ iwic_bchan_xirq(struct iwic_softc *sc, int chan_no)
 				{
 					i4b_Bfreembuf(chan->in_mbuf);
 				}
-#endif
 				/* signal upper driver that data is available */
 
 				(*chan->iwic_drvr_linktab->bch_rx_data_ready)(chan->iwic_drvr_linktab->unit);
@@ -435,10 +431,6 @@ iwic_bchannel_setup(int unit, int chan_no, int bprot, int activate)
 
 	chan->rx_queue.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	mtx_init(&chan->rx_queue.ifq_mtx, "i4b_iwic_rx", MTX_DEF);
-#endif
-
 	i4b_Bcleanifq(&chan->rx_queue);	/* clean rx queue */
 
 	chan->rxcount = 0;		/* reset rx counter */
@@ -452,10 +444,6 @@ iwic_bchannel_setup(int unit, int chan_no, int bprot, int activate)
 	/* transmitter part */
 
 	chan->tx_queue.ifq_maxlen = IFQ_MAXLEN;
-
-#if defined (__FreeBSD__) && __FreeBSD__ > 4	
-	mtx_init(&chan->tx_queue.ifq_mtx, "i4b_iwic_tx", MTX_DEF);
-#endif
 
 	i4b_Bcleanifq(&chan->tx_queue);	/* clean tx queue */
 	

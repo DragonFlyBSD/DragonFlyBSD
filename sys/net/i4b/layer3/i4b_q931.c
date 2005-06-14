@@ -30,17 +30,13 @@
  *	$Id: i4b_q931.c,v 1.32 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_q931.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.6 2005/06/03 16:50:12 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_q931.c,v 1.7 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Mon May 29 16:56:52 2000]
  *
  *---------------------------------------------------------------------------*/
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bq931.h"
-#else
-#define	NI4BQ931	1
-#endif
 
 #if NI4BQ931 > 0
 
@@ -49,19 +45,9 @@
 #include <sys/mbuf.h>
 #include <sys/thread2.h>
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_cause.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#include <i4b/i4b_cause.h>
-#endif
 
 #include "../include/i4b_isdnq931.h"
 #include "../include/i4b_l3l4.h"
@@ -72,10 +58,6 @@
 #include "i4b_q931.h"
 
 #include "../layer4/i4b_l4.h"
-
-#if !defined(__DragonFly__) && !defined(__FreeBSD__)
-#define	memcpy(d,s,l)	bcopy(s,d,l)
-#endif
 
 unsigned int i4b_l3_debug = L3_DEBUG_DEFAULT;
 

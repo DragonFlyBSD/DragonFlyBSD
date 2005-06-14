@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.7 2005/06/03 16:50:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.8 2005/06/14 21:19:18 joerg Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -797,9 +797,6 @@ avm_pnp_hscx_intr(int h_chan, u_int stat, u_int cnt, struct l1_softc *sc)
 						 activity = ACT_RX;
 				
 					  /* move rx'd data to rx queue */
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-					  (void) IF_HANDOFF(&chan->rx_queue, chan->in_mbuf, NULL);
-#else
 					  if(!(IF_QFULL(&chan->rx_queue)))
 					  {
 						IF_ENQUEUE(&chan->rx_queue, chan->in_mbuf);
@@ -808,7 +805,6 @@ avm_pnp_hscx_intr(int h_chan, u_int stat, u_int cnt, struct l1_softc *sc)
 					  {
 						i4b_Bfreembuf(chan->in_mbuf);
 					  }
-#endif
 					  /* signal upper layer that data are available */
 					  (*chan->isic_drvr_linktab->bch_rx_data_ready)(chan->isic_drvr_linktab->unit);
 
@@ -1047,10 +1043,6 @@ avm_pnp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 
 	chan->rx_queue.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	mtx_init(&chan->rx_queue.ifq_mtx, "i4b_avm_pnp_rx", MTX_DEF);
-#endif
-
 	i4b_Bcleanifq(&chan->rx_queue);	/* clean rx queue */
 
 	chan->rxcount = 0;		/* reset rx counter */
@@ -1065,9 +1057,6 @@ avm_pnp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 
 	chan->tx_queue.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	mtx_init(&chan->tx_queue.ifq_mtx, "i4b_avm_pnp_tx", MTX_DEF);
-#endif
 	i4b_Bcleanifq(&chan->tx_queue);	/* clean tx queue */
 
 	chan->txcount = 0;		/* reset tx counter */

@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.6 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.7 2005/06/14 21:19:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -230,10 +230,6 @@ iavc_pci_attach(device_t dev)
     memset(&sc->sc_txq, 0, sizeof(struct ifqueue));
     sc->sc_txq.ifq_maxlen = sc->sc_capi.sc_nbch * 4;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-    mtx_init(&sc->sc_txq.ifq_mtx, "i4b_ivac_pci", MTX_DEF);
-#endif
-    
     sc->sc_intr = FALSE;
     sc->sc_state = IAVC_DOWN;
     sc->sc_blocked = FALSE;

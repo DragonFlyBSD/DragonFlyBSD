@@ -28,7 +28,7 @@
  *	------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_mbuf.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.5 2004/06/02 14:42:58 eirikn Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Sat Jan 13 13:15:45 2001]
  *
@@ -47,18 +47,8 @@
 
 #ifdef I4B_MBUF_TYPE_DEBUG
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-
 #define MT_DCHAN	42
 #define MT_BCHAN	43
-
-#else /* NetBSD */
-
-#define MT_DCHAN        MT_DATA
-#define MT_BCHAN        MT_DATA
-
-#endif
-
 #define MT_I4B_D	MT_DCHAN
 #define MT_I4B_B	MT_BCHAN
 
@@ -141,16 +131,7 @@ i4b_Dcleanifq(struct ifqueue *ifq)
 {
 	int x = splimp();
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
 	IF_DRAIN(ifq);
-#else
-	struct mbuf *m;
-	while(!IF_QEMPTY(ifq))
-	{
-		IF_DEQUEUE(ifq, m);
-		i4b_Dfreembuf(m);
-	}
-#endif
 	splx(x);
 }
 
@@ -226,16 +207,7 @@ i4b_Bcleanifq(struct ifqueue *ifq)
 {
 	int x = splimp();
 	
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
 	IF_DRAIN(ifq);
-#else
-	struct mbuf *m;
-	while(!IF_QEMPTY(ifq))
-	{
-		IF_DEQUEUE(ifq, m);
-		i4b_Bfreembuf(m);
-	}
-#endif
 	splx(x);
 }
 

@@ -37,21 +37,17 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.12 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.13 2005/06/14 21:19:18 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
  *---------------------------------------------------------------------------*/
 
 
-#ifndef __NetBSD__
-#endif
 #include "use_i4bisppp.h"
 
-#ifndef __NetBSD__
 #if NI4BISPPP == 0
 # error "You need to define `device sppp <N>' with options ISPPP"
-#endif
 #endif
 
 #include <sys/param.h>
@@ -69,64 +65,27 @@
 #include <net/sppp/if_sppp.h>
 
 
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008)
 #include "use_bpf.h"     
-#else
-#include "bpfilter.h"
-#endif
-#if NBPFILTER > 0 || NBPF > 0
 #include <sys/time.h>
 #include <net/bpf.h>
-#endif
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
-#else
-#include <i4b/i4b_ioctl.h>
-#include <i4b/i4b_cause.h>
-#include <i4b/i4b_debug.h>
-#endif
 
 #include "../include/i4b_global.h"
 #include "../include/i4b_l3l4.h"
 #include "../layer4/i4b_l4.h"
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	PDEVSTATIC	static
 
-#ifdef __DragonFly__
 #define	ISPPP_FMT	"%s: "
 #define	ISPPP_ARG(sc)	((sc)->sc_if.if_xname)
 #define IFP2UNIT(ifp)	((struct i4bisppp_softc *)ifp->if_softc)->sc_unit
-#else
-#define ISPPP_FMT	"isp%d: "
-#define	ISPPP_ARG(sc)	((sc)->sc_if.if_unit)
-#define IFP2UNIT(ifp)	(ifp)->if_unit
-#endif
 		
-# if defined(__DragonFly__) || __FreeBSD_version >= 300001
 #  define IOCTL_CMD_T u_long
-# else
-#  define IOCTL_CMD_T int
-# endif
 
-#elif defined __NetBSD__ || defined __OpenBSD__
-#define	ISPPP_FMT	"%s: "
-#define	ISPPP_ARG(sc)	((sc)->sc_if.if_xname)
-#define	PDEVSTATIC	/* not static */
-#define IOCTL_CMD_T	u_long
-#define IFP2UNIT(ifp)	((struct i4bisppp_softc *)ifp->if_softc)->sc_unit
-#else
-# error "What system are you using?"
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 PDEVSTATIC void i4bispppattach(void *);
 PSEUDO_SET(i4bispppattach, i4b_isppp);
-#else
-PDEVSTATIC void i4bispppattach(void);
-#endif
 
 #define I4BISPPPACCT		1	/* enable accounting messages */
 #define	I4BISPPPACCTINTVL	2	/* accounting msg interval in secs */
@@ -148,10 +107,7 @@ struct i4bisppp_softc {
 #define sc_if sc_if_un.scu_if
 
 	int	sc_state;	/* state of the interface	*/
-
-#if !defined(__FreeBSD__) || defined(__DragonFly__)
-	int	sc_unit;	/* unit number for Net/OpenBSD	*/
-#endif
+	int	sc_unit;	/* unit number			*/
 
 	call_desc_t *sc_cdp;	/* ptr to call descriptor	*/
 
@@ -165,9 +121,7 @@ struct i4bisppp_softc {
 	int sc_fn;		/* flag, first null acct	*/
 #endif
 
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001)
 	struct callout	sc_timeout;
-#endif
 
 } i4bisppp_softc[NI4BISPPP];
 
@@ -211,11 +165,7 @@ enum i4bisppp_states {
  *	interface attach routine at kernel boot time
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4bispppattach(void *dummy)
-#else
-i4bispppattach()
-#endif
 {
 	struct i4bisppp_softc *sc = i4bisppp_softc;
 	int i;
@@ -233,27 +183,10 @@ i4bispppattach()
 		
 		sc->sc_if.if_softc = sc;
 
-#ifdef __DragonFly__
 		if_initname(&(sc->sc_if), "isp", i);
-#elif defined(__FreeBSD__)
-		sc->sc_if.if_name = "isp";
-#if defined(__FreeBSD_version) && __FreeBSD_version < 300001
-		sc->sc_if.if_next = NULL;
-#endif
-		sc->sc_if.if_unit = i;
-#else
-		sprintf(sc->sc_if.if_xname, "isp%d", i);
-		sc->sc_unit = i;
-#endif
-
 		sc->sc_if.if_mtu = PP_MTU;
 
-#ifdef __NetBSD__
-		sc->sc_if.if_flags = IFF_SIMPLEX | IFF_POINTOPOINT |
-					IFF_MULTICAST;
-#else
 		sc->sc_if.if_flags = IFF_SIMPLEX | IFF_POINTOPOINT;
-#endif
 
 		sc->sc_if.if_type = IFT_ISDNBASIC;
 		sc->sc_state = ST_IDLE;
@@ -540,9 +473,7 @@ i4bisppp_connect(int unit, void *cdp)
 #endif
 
 	sp->pp_up(sp);		/* tell PPP we are ready */
-#ifndef __NetBSD__
 	sp->pp_last_sent = sp->pp_last_recv = SECOND;
-#endif
 	splx(s);
 }
 
@@ -698,15 +629,11 @@ i4bisppp_tx_queue_empty(int unit)
 time_t
 i4bisppp_idletime(int unit)
 {
-#ifdef __NetBSD__
-       return(i4bisppp_softc[unit].sc_cdp->last_active_time);
-#else
 	struct sppp *sp;
 	sp = (struct sppp *) &i4bisppp_softc[unit];
 
 	return((sp->pp_last_recv < sp->pp_last_sent) ?
 			sp->pp_last_sent : sp->pp_last_recv);
-#endif
 }
 
 /*---------------------------------------------------------------------------*

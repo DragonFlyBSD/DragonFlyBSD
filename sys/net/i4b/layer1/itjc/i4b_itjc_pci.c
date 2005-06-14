@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.12 2005/06/03 23:14:26 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.13 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1831,11 +1831,7 @@ itjc_intr(void *xsc)
 static void
 itjc_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc		*sc	= itjc_scp[unit];
-#else
-	struct l1_softc		*sc	= isic_find_sc(unit);
-#endif
 	l1_bchan_state_t	*chan	= &sc->sc_chan[h_chan];
 
 	crit_enter();
@@ -1923,11 +1919,7 @@ itjc_bchannel_start(int unit, int h_chan)
 	 * But, don't despair. The impact of it is unnoticeable.
 	 */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc  *sc	= itjc_scp[unit];
-#else
-	struct l1_softc	 *sc	= isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan	= &sc->sc_chan[h_chan];
 	dma_tx_context_t *txc	= &dma_tx_context[unit][h_chan];
 
@@ -1982,11 +1974,7 @@ itjc_shutdown(device_t dev)
 isdn_link_t *
 itjc_ret_linktab(int unit, int channel)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc		*sc = itjc_scp[unit];
-#else
-	struct l1_softc		*sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t	*chan = &sc->sc_chan[channel];
 
 	return(&chan->isic_isdn_linktab);
@@ -1998,11 +1986,7 @@ itjc_ret_linktab(int unit, int channel)
 void
 itjc_set_linktab(int unit, int channel, drvr_link_t *dlt)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc	= itjc_scp[unit];
-#else
-	struct l1_softc *sc	= isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan	= &sc->sc_chan[channel];
 
 	chan->isic_drvr_linktab = dlt;
@@ -2064,11 +2048,7 @@ itjc_init_linktab(struct l1_softc *sc)
 static void
 itjc_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = itjc_scp[unit];
-#else
-	struct l1_softc *sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 
 	crit_enter();

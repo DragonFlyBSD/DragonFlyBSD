@@ -21,7 +21,7 @@
  * $Id: i4b_isppp.h,v 1.5 2000/07/18 15:05:37 hm Exp $
  *
  * $FreeBSD: src/sys/i386/include/i4b_isppp.h,v 1.1.2.2 2001/09/28 07:43:19 gj Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.5 2005/06/14 21:19:18 joerg Exp $
  */
 
 #ifndef _I4B_ISPPP_H_
@@ -31,19 +31,10 @@
 
 
 #ifdef SPPP_VJ
-#if !(defined (KERNEL) || defined (_KERNEL))
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#if 0
-/*
- * this is needed on FreeBSD to make /usr/src/usr.bin/kdump and
- * /usr/src/usr.bin/truss compile.
- */
-#include <sys/mbuf.h>
-#endif
+#ifndef (_KERNEL))
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <net/slcompress.h>
-#endif
 #endif
 #endif
 
@@ -124,10 +115,8 @@ struct sppp {
 	u_char  confid[IDX_COUNT];	/* id of last configuration request */
 	int	rst_counter[IDX_COUNT];	/* restart counter */
 	int	fail_counter[IDX_COUNT]; /* negotiation failure counter */
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
 	struct callout timeout[IDX_COUNT]; /* per-proto and if callouts */
 	struct callout pap_my_to; /* PAP needs one more... */
-#endif
 	struct slcp lcp;		/* LCP params */
 	struct sipcp ipcp;		/* IPCP params */
 	struct sauth myauth;		/* auth params, i'm peer */
@@ -212,15 +201,7 @@ void sppp_attach (struct ifnet *ifp);
 void sppp_detach (struct ifnet *ifp);
 void sppp_input (struct ifnet *ifp, struct mbuf *m);
 
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300003)
 int sppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
-#else
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-int sppp_ioctl (struct ifnet *ifp, int cmd, void *data);
-#else
-int sppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
-#endif
-#endif
 
 struct mbuf *sppp_dequeue (struct ifnet *ifp);
 struct mbuf *sppp_pick(struct ifnet *ifp);
@@ -233,15 +214,7 @@ void isppp_attach (struct ifnet *ifp);
 void isppp_detach (struct ifnet *ifp);
 void isppp_input (struct ifnet *ifp, struct mbuf *m);
 
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300003)
 int isppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
-#else
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-int isppp_ioctl (struct ifnet *ifp, int cmd, void *data);
-#else
-int isppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
-#endif
-#endif
 
 struct mbuf *isppp_dequeue (struct ifnet *ifp);
 struct mbuf *isppp_pick(struct ifnet *ifp);

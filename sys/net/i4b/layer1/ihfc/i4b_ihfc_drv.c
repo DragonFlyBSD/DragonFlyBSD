@@ -33,7 +33,7 @@
  *	last edit-date: [Fri Jan 12 17:06:52 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.9.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.5 2004/06/21 06:02:20 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.6 2005/06/14 21:19:18 joerg Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -360,9 +360,6 @@ ihfc_init (ihfc_sc_t *sc, u_char chan, int prot, int activate)
 
 			S_IFQUEUE.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-			mtx_init(&S_IFQUEUE.ifq_mtx, "i4b_ihfc", MTX_DEF);
-#endif
 			if (!activate) continue;
 
 			if (S_HFC & HFC_1)
@@ -385,9 +382,6 @@ ihfc_init (ihfc_sc_t *sc, u_char chan, int prot, int activate)
 
 			S_IFQUEUE.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-			mtx_init(&S_IFQUEUE.ifq_mtx, "i4b_ihfc", MTX_DEF);
-#endif
 			S_PROT = prot;
 
 			if (!activate) continue;

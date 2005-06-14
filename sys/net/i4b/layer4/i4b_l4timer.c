@@ -30,7 +30,7 @@
  *	$Id: i4b_l4timer.c,v 1.18 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4timer.c,v 1.6.2.1 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4timer.c,v 1.6 2005/06/03 16:50:13 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4timer.c,v 1.7 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Thu Aug 24 12:50:17 2000]
  *
@@ -45,17 +45,8 @@
 #include <sys/systm.h>
 #include <sys/thread2.h>
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#endif
 
 #include "../include/i4b_global.h"
 #include "../include/i4b_l3l4.h"

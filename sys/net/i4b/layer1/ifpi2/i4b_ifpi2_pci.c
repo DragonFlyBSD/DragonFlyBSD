@@ -36,7 +36,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.9 2005/06/03 16:50:02 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.10 2005/06/14 21:19:18 joerg Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -452,9 +452,6 @@ avma1pp2_attach_avma1pp(device_t dev)
 	void *ih = 0;
 	bus_space_handle_t bhandle;
 	bus_space_tag_t btag; 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	l1_bchan_state_t *chan;
-#endif
 
 	crit_enter();
 
@@ -582,16 +579,6 @@ avma1pp2_attach_avma1pp(device_t dev)
 
 	/* init the ISAC */
 	ifpi2_isacsx_init(sc);
-
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	/* Init the channel mutexes */
-	chan = &sc->sc_chan[HSCX_CH_A];
-	mtx_init(&chan->rx_queue.ifq_mtx, "i4b_avma1pp2_rx", MTX_DEF);
-	mtx_init(&chan->tx_queue.ifq_mtx, "i4b_avma1pp2_tx", MTX_DEF);
-	chan = &sc->sc_chan[HSCX_CH_B];
-	mtx_init(&chan->rx_queue.ifq_mtx, "i4b_avma1pp2_rx", MTX_DEF);
-	mtx_init(&chan->tx_queue.ifq_mtx, "i4b_avma1pp2_tx", MTX_DEF);
-#endif
 
 	/* init the "HSCX" */
 	avma1pp2_bchannel_setup(sc->sc_unit, HSCX_CH_A, BPROT_NONE, 0);
@@ -807,9 +794,6 @@ avma1pp2_hscx_intr(int h_chan, u_int stat, struct l1_softc *sc)
 				
 					  /* move rx'd data to rx queue */
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-					  (void) IF_HANDOFF(&chan->rx_queue, chan->in_mbuf, NULL);
-#else
 					  if(!(IF_QFULL(&chan->rx_queue)))
 					  {
 						IF_ENQUEUE(&chan->rx_queue, chan->in_mbuf);
@@ -818,7 +802,6 @@ avma1pp2_hscx_intr(int h_chan, u_int stat, struct l1_softc *sc)
 					  {
 						i4b_Bfreembuf(chan->in_mbuf);
 					  }
-#endif					
 					  /* signal upper layer that data are available */
 					  (*chan->isic_drvr_linktab->bch_rx_data_ready)(chan->isic_drvr_linktab->unit);
 
@@ -1053,11 +1036,7 @@ avma1pp2_hscx_init(struct l1_softc *sc, int h_chan, int activate)
 static void
 avma1pp2_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi2_scp[unit];
-#else
-	struct l1_softc *sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 
 	crit_enter();
@@ -1121,11 +1100,7 @@ avma1pp2_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 static void
 avma1pp2_bchannel_start(int unit, int h_chan)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi2_scp[unit];
-#else
-	struct l1_softc *sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	int activity = -1;
 
@@ -1193,11 +1168,7 @@ avma1pp2_bchannel_start(int unit, int h_chan)
 static isdn_link_t *
 avma1pp2_ret_linktab(int unit, int channel)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi2_scp[unit];
-#else
-	struct l1_softc *sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan = &sc->sc_chan[channel];
 
 	return(&chan->isic_isdn_linktab);
@@ -1209,11 +1180,7 @@ avma1pp2_ret_linktab(int unit, int channel)
 static void
 avma1pp2_set_linktab(int unit, int channel, drvr_link_t *dlt)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi2_scp[unit];
-#else
-	struct l1_softc *sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan = &sc->sc_chan[channel];
 
 	chan->isic_drvr_linktab = dlt;
@@ -1274,11 +1241,7 @@ avma1pp2_init_linktab(struct l1_softc *sc)
 static void
 avma1pp2_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi2_scp[unit];
-#else
-	struct l1_softc *sc = isic_find_sc(unit);
-#endif
 	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 
 	crit_enter();

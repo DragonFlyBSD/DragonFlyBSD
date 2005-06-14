@@ -25,7 +25,7 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.7 2005/06/03 16:49:54 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.8 2005/06/14 21:19:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -235,12 +235,6 @@ capi_ll_attach(capi_softc_t *sc)
 	memset(&sc->sc_bchan[i].rx_queue, 0, sizeof(struct ifqueue));
 	sc->sc_bchan[i].tx_queue.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_bchan[i].rx_queue.ifq_maxlen = IFQ_MAXLEN;
-
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	mtx_init(&sc->sc_bchan[i].tx_queue.ifq_mtx, "i4b_capi_tx", MTX_DEF);
-	mtx_init(&sc->sc_bchan[i].rx_queue.ifq_mtx, "i4b_capi_rx", MTX_DEF);	
-#endif    
-
 	sc->sc_bchan[i].txcount = 0;
 	sc->sc_bchan[i].rxcount = 0;
 

@@ -30,7 +30,7 @@
  *	$Id: i4b_l4.c,v 1.54 2000/08/28 07:24:59 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4.c,v 1.6.2.2 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4.c,v 1.6 2005/06/03 16:50:13 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4.c,v 1.7 2005/06/14 21:19:19 joerg Exp $
  *
  *      last edit-date: [Sun Aug 27 14:53:42 2000]
  *
@@ -47,46 +47,19 @@
 #include <sys/mbuf.h>
 #include <sys/thread2.h>
 
-#ifdef __NetBSD__
-#include <sys/types.h>
-#endif
-
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
-#endif
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bing.h"
-#endif
-
-#ifdef __bsdi__
-#define NI4BISPPP 0
-#include "ibc.h"
-#else
 #include "use_i4bisppp.h"
-#endif
-
 #include "use_i4brbch.h"
 #include "use_i4btel.h"
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_cause.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#include <i4b/i4b_cause.h>
-#endif
 
 #include "../include/i4b_global.h"
 #include "../include/i4b_l3l4.h"
 #include "../include/i4b_mbuf.h"
 #include "i4b_l4.h"
-
-#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__NetBSD__)
-#define memcpy(dst, src, len)	bcopy((src), (dst), (len))
-#endif
 
 unsigned int i4b_l4_debug = L4_DEBUG_DEFAULT;
 
@@ -657,12 +630,6 @@ i4b_link_bchandrvr(call_desc_t *cd)
 			break;
 #endif
 
-#if defined(__bsdi__) && NIBC > 0
-		case BDRV_IBC:
-			cd->dlt = ibc_ret_linktab(cd->driver_unit);
-			break;
-#endif
-
 #if NI4BING > 0
 		case BDRV_ING:
 			cd->dlt = ing_ret_linktab(cd->driver_unit);
@@ -708,12 +675,6 @@ i4b_link_bchandrvr(call_desc_t *cd)
 #if NI4BISPPP > 0
 		case BDRV_ISPPP:
 			i4bisppp_set_linktab(cd->driver_unit, cd->ilt);
-			break;
-#endif
-
-#if defined(__bsdi__) && NIBC > 0
-		case BDRV_IBC:
-			ibc_set_linktab(cd->driver_unit, cd->ilt);
 			break;
 #endif
 

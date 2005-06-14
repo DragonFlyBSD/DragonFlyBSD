@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.16 2005/06/03 16:49:57 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.17 2005/06/14 21:19:18 joerg Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -61,9 +61,7 @@
 
 #if NI4BIPR > 0
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "opt_i4b.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,18 +69,10 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/ioccom.h>
 #include <sys/sockio.h>
 #ifdef IPR_VJ
 #include <sys/malloc.h>
-#endif
-#else
-#include <sys/ioctl.h>
-#endif
-
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-#include <sys/callout.h>
 #endif
 
 #include <sys/kernel.h>
@@ -116,47 +106,24 @@
 				/* undef to uncompress in the mbuf itself    */
 #endif /* IPR_VJ */
 
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008)
 #include "use_bpf.h"
-#else
-#include "bpfilter.h"
-#endif
 
 #if NBPFILTER > 0 || NBPF > 0
 #include <sys/time.h>
 #include <net/bpf.h>
 #endif
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
-#else
-#include <i4b/i4b_debug.h>
-#include <i4b/i4b_ioctl.h>
-#endif
 
 #include "../include/i4b_global.h"
 #include "../include/i4b_l3l4.h"
 
 #include "../layer4/i4b_l4.h"
 
-#if !defined(__DragonFly__) || !defined(__FreeBSD__)
-#include <machine/cpu.h> /* For softnet */
-#endif
-
-#if defined(__FreeBSD__) && !defined(__DragonFly__)
-#define IPR_FMT	"ipr%d: "
-#define	IPR_ARG(sc)	((sc)->sc_if.if_unit)
-#define	PDEVSTATIC	static
-#elif defined(__bsdi__)
-#define IPR_FMT	"ipr%d: "
-#define	IPR_ARG(sc)	((sc)->sc_if.if_unit)
-#define	PDEVSTATIC	/* not static */
-#else
 #define	IPR_FMT	"%s: "
 #define	IPR_ARG(sc)	((sc)->sc_if.if_xname)
 #define	PDEVSTATIC	/* not static */
-#endif
 
 #define I4BIPRMTU	1500		/* regular MTU */
 #define I4BIPRMAXMTU	2000		/* max MTU */
@@ -176,11 +143,7 @@ static isdn_link_t *isdn_linktab[NI4BIPR];
 struct ipr_softc {
 	struct ifnet	sc_if;		/* network-visible interface	*/
 	int		sc_state;	/* state of the interface	*/
-
-#if !defined(__FreeBSD__) || defined(__DragonFly__)
-	int		sc_unit;	/* unit number for Net/OpenBSD	*/
-#endif
-
+	int		sc_unit;	/* unit number			*/
 	call_desc_t	*sc_cdp;	/* ptr to call descriptor	*/
 	int		sc_updown;	/* soft state of interface	*/
 	struct ifqueue  sc_fastq;	/* interactive traffic		*/
@@ -222,33 +185,15 @@ enum ipr_states {
 	ST_CONNECTED_A,			/* connected to remote		*/
 };
 
-#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
-#define	THE_UNIT	sc->sc_if.if_unit
-#else
 #define	THE_UNIT	sc->sc_unit
-#endif
 
-#if defined(__DragonFly__) || defined __FreeBSD__ || defined __NetBSD__
 #  define IOCTL_CMD_T u_long
-#else
-#  define IOCTL_CMD_T int
-#endif
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 PDEVSTATIC void i4biprattach(void *);
 PSEUDO_SET(i4biprattach, i4b_ipr);
 static int i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data,
 		       struct ucred *cr);
-#else
-PDEVSTATIC void i4biprattach (void);
-static int i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
-#endif
-
-#ifdef __bsdi__
-static int iprwatchdog(int unit);
-#else
 static void iprwatchdog(struct ifnet *ifp);
-#endif
 static void ipr_init_linktab(int unit);
 static void ipr_tx_queue_empty(int unit);
 static int i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct rtentry *rtp);
@@ -262,11 +207,7 @@ static void iprclearqueues(struct ipr_softc *sc);
  *	interface attach routine at kernel boot time
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4biprattach(void *dummy)
-#else
-i4biprattach()
-#endif
 {
 	struct ipr_softc *sc = ipr_softc;
 	int i;
@@ -285,19 +226,7 @@ i4biprattach()
 
 		sc->sc_state = ST_IDLE;
 		
-#ifdef __DragonFly__
 		if_initname(&(sc->sc_if), "ipr", i);
-#elif defined(__FreeBSD__)
-		sc->sc_if.if_name = "ipr";
-		sc->sc_if.if_unit = i;
-#elif defined(__bsdi__)
-		sc->sc_if.if_name = "ipr";
-		sc->sc_if.if_unit = i;
-#else
-		sprintf(sc->sc_if.if_xname, "ipr%d", i);
-		sc->sc_if.if_softc = sc;
-		sc->sc_unit = i;
-#endif
 
 #ifdef	IPR_VJ
 		sc->sc_if.if_flags = IFF_POINTOPOINT | IFF_SIMPLEX | IPR_AUTOCOMP;
@@ -315,9 +244,6 @@ i4biprattach()
 		sc->sc_if.if_snd.ifq_maxlen = I4BIPRMAXQLEN;
 		sc->sc_fastq.ifq_maxlen = I4BIPRMAXQLEN;
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-		mtx_init(&sc->sc_fastq.ifq_mtx, "i4b_ipr_fastq", MTX_DEF);
-#endif		
 		sc->sc_if.if_ipackets = 0;
 		sc->sc_if.if_ierrors = 0;
 		sc->sc_if.if_opackets = 0;
@@ -346,11 +272,7 @@ i4biprattach()
 #endif
 
 #ifdef	IPR_VJ
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		sl_compress_init(&sc->sc_compr, -1);
-#else
-		sl_compress_init(&sc->sc_compr);
-#endif
 
 #ifdef IPR_VJ_USEBUFFER
 		if(!((sc->sc_cbuf =
@@ -365,14 +287,7 @@ i4biprattach()
 		sc->sc_lastdialresp = DSTAT_NONE;
 		
 		if_attach(&sc->sc_if);
-
-#if NBPFILTER > 0 || NBPF > 0
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
-#else
-		bpfattach(&sc->sc_if.if_bpf, &sc->sc_if, DLT_NULL, sizeof(u_int));
-#endif
-#endif		
 	}
 }
 
@@ -389,13 +304,8 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	
 	crit_enter();
 
-#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
-	unit = ifp->if_unit;
-	sc = &ipr_softc[unit];
-#else
 	sc = ifp->if_softc;
 	unit = sc->sc_unit;
-#endif
 
 	/* check for IP */
 	
@@ -488,7 +398,6 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 
 	/* check for space in choosen send queue */
 	
-#if defined(__DragonFly__) || defined (__FreeBSD__)
 	if (netisr_queue(NETISR_IP, m))
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: send queue full!", unit);
@@ -496,7 +405,6 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		sc->sc_if.if_oerrors++;
 		return(ENOBUFS);
 	}
-#endif
 	
 	NDBGL4(L4_IPRDBG, "ipr%d: add packet to send queue!", unit);
 	
@@ -510,19 +418,10 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 /*---------------------------------------------------------------------------*
  *	process ioctl
  *---------------------------------------------------------------------------*/
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 static int
 i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data, struct ucred *cr)
-#else
-static int
-i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
-#endif
 {
-#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
-	struct ipr_softc *sc = &ipr_softc[ifp->if_unit];
-#else
 	struct ipr_softc *sc = ifp->if_softc;
-#endif
 
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ifaddr *ifa = (struct ifaddr *)data;
@@ -548,11 +447,7 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 				if(sc->sc_if.if_flags & IFF_RUNNING)
 				{
 					/* disconnect ISDN line */
-#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
-					i4b_l4_drvrdisc(BDRV_IPR, ifp->if_unit);
-#else
 					i4b_l4_drvrdisc(BDRV_IPR, sc->sc_unit);
-#endif
 					sc->sc_if.if_flags &= ~IFF_RUNNING;
 				}
 
@@ -571,7 +466,6 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			microtime(&sc->sc_if.if_lastchange);
 			break;
 
-#if !defined(__OpenBSD__)			
 		case SIOCSIFMTU:	/* set interface MTU */
 			if(ifr->ifr_mtu > I4BIPRMAXMTU)
 				error = EINVAL;
@@ -583,7 +477,6 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 				microtime(&sc->sc_if.if_lastchange);
 			}
 			break;
-#endif /* __OPENBSD__ */
 
 #if 0
 	/* not needed for FreeBSD, done in sl_compress_init() (-hm) */
@@ -619,12 +512,6 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 static void
 iprclearqueues(struct ipr_softc *sc)
 {
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	crit_enter();
-	IF_DRAIN(&sc->sc_fastq);
-	IF_DRAIN(&sc->sc_if.if_snd);
-	crit_exit();
-#else
         struct mbuf *m;
 
 	for(;;)
@@ -648,32 +535,17 @@ iprclearqueues(struct ipr_softc *sc)
 		else
 			break;
 	}
-#endif
 }
         
 #if I4BIPRACCT
 /*---------------------------------------------------------------------------*
  *	watchdog routine
  *---------------------------------------------------------------------------*/
-#ifdef __bsdi__
-static int
-iprwatchdog(int unit)
-{
-#else
 static void
 iprwatchdog(struct ifnet *ifp)
 {
-#endif
-#if defined(__FreeBSD__) && !defined(__DragonFly__)
-	int unit = ifp->if_unit;
-	struct ipr_softc *sc = &ipr_softc[unit];
-#elif defined(__bsdi__)
-	struct ipr_softc *sc = &ipr_softc[unit];
-	struct ifnet *ifp = &ipr_softc[unit].sc_if;
-#else
 	struct ipr_softc *sc = ifp->if_softc;
 	int unit = sc->sc_unit;
-#endif
 	bchan_statistics_t bs;
 	
 	/* get # of bytes in and out from the HSCX driver */ 
@@ -701,9 +573,6 @@ iprwatchdog(struct ifnet *ifp)
 			 sc->sc_ioutb, sc->sc_iinb, ro, ri, sc->sc_outb, sc->sc_inb);
  	}
 	sc->sc_if.if_timer = I4BIPRACCTINTVL; 	
-#ifdef __bsdi__
-	return 0;
-#endif
 }
 #endif /* I4BIPRACCT */
 
@@ -1032,13 +901,11 @@ error:
 	if (sc->sc_if.if_bpf)
 		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
 
-#if defined(__DragonFly__) || defined (__FreeBSD__)
 	if (netisr_queue(NETISR_IP, m)) {
 		NDBGL4(L4_IPRDBG, "ipr%d: ipintrq full!", unit);
 		sc->sc_if.if_ierrors++;
 		sc->sc_if.if_iqdrops++;		
 	}
-#endif
 }
 
 /*---------------------------------------------------------------------------*

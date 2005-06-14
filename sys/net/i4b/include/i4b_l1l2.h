@@ -30,7 +30,7 @@
  *	$Id: i4b_l1l2.h,v 1.11 2000/06/02 16:14:35 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/include/i4b_l1l2.h,v 1.6.2.1 2001/08/10 14:08:36 obrien Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_l1l2.h,v 1.4 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_l1l2.h,v 1.5 2005/06/14 21:19:18 joerg Exp $
  *
  *	last edit-date: [Fri Jun  2 14:35:03 2000]
  *
@@ -39,11 +39,7 @@
 #ifndef _I4B_L1L2_H_
 #define _I4B_L1L2_H_
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_trace.h>
-#else
-#include <i4b/i4b_trace.h>
-#endif
 
 extern struct i4b_l1l2_func i4b_l1l2_func;
 
