@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.18 2005/05/08 18:17:05 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.19 2005/06/14 17:38:36 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -526,21 +526,17 @@ tunread(dev, uio, flag)
 	tp->tun_flags &= ~TUN_RWAIT;
 
 	s = splimp();
-	do {
-		m0 = ifq_dequeue(&ifp->if_snd);
-		if (m0 == 0) {
-			if (flag & IO_NDELAY) {
-				splx(s);
-				return EWOULDBLOCK;
-			}
-			tp->tun_flags |= TUN_RWAIT;
-			if((error = tsleep((caddr_t)tp, PCATCH,
-					"tunread", 0)) != 0) {
-				splx(s);
-				return error;
-			}
+	while ((m0 = ifq_dequeue(&ifp->if_snd)) == NULL) {
+		if (flag & IO_NDELAY) {
+			splx(s);
+			return EWOULDBLOCK;
 		}
-	} while (m0 == 0);
+		tp->tun_flags |= TUN_RWAIT;
+		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0) {
+			splx(s);
+			return error;
+		}
+	}
 	splx(s);
 
 	while (m0 && uio->uio_resid > 0 && error == 0) {
