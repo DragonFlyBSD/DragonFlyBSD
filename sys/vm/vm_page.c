@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.30 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.31 2005/06/14 17:16:00 dillon Exp $
  */
 
 /*
@@ -167,6 +167,7 @@ vm_add_new_page(vm_paddr_t pa)
 	m->flags = 0;
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
 	m->queue = m->pc + PQ_FREE;
+	KKASSERT(m->dirty == 0);
 
 	vpq = &vm_page_queues[m->queue];
 	if (vpq->flipflop)
@@ -187,9 +188,14 @@ vm_add_new_page(vm_paddr_t pa)
  * Allocates memory for the page cells, and for the object/offset-to-page
  * hash table headers.  Each page cell is initialized and placed on the
  * free list.
+ *
+ * starta/enda represents the range of physical memory addresses available
+ * for use (skipping memory already used by the kernel), subject to
+ * phys_avail[].  Note that phys_avail[] has already mapped out memory
+ * already in use by the kernel.
  */
 vm_offset_t
-vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
+vm_page_startup(vm_offset_t vaddr)
 {
 	vm_offset_t mapped;
 	struct vm_page **bucket;
@@ -200,8 +206,6 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	vm_paddr_t pa;
 	int nblocks;
 	vm_paddr_t last_pa;
-
-	/* the biggest memory array is the second group of pages */
 	vm_paddr_t end;
 	vm_paddr_t biggestone, biggestsize;
 
@@ -263,7 +267,9 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	vm_page_hash_mask = vm_page_bucket_count - 1;
 
 	/*
-	 * Validate these addresses.
+	 * Cut a chunk out of the largest block of physical memory,
+	 * moving its end point down to accomodate the hash table and
+	 * vm_page_array.
 	 */
 	new_end = end - vm_page_bucket_count * sizeof(struct vm_page *);
 	new_end = trunc_page(new_end);
@@ -826,6 +832,8 @@ loop:
 	 * a critical section.
 	 */
 	KASSERT(m != NULL, ("vm_page_alloc(): missing page on free queue\n"));
+	KASSERT(m->dirty == 0, 
+		("vm_page_alloc: free/cache page %p was dirty", m));
 
 	/*
 	 * Remove from free queue
@@ -847,8 +855,6 @@ loop:
 	m->act_count = 0;
 	m->busy = 0;
 	m->valid = 0;
-	KASSERT(m->dirty == 0, 
-		("vm_page_alloc: free/cache page %p was dirty", m));
 
 	/*
 	 * vm_page_insert() is safe prior to the crit_exit().  Note also that

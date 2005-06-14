@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.19 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.20 2005/06/14 17:16:00 dillon Exp $
  */
 
 /*
@@ -406,7 +406,7 @@ void vm_page_insert (vm_page_t, vm_object_t, vm_pindex_t);
 vm_page_t vm_page_lookup (vm_object_t, vm_pindex_t);
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, vm_object_t, vm_pindex_t);
-vm_offset_t vm_page_startup (vm_offset_t, vm_offset_t, vm_offset_t);
+vm_offset_t vm_page_startup (vm_offset_t);
 vm_page_t vm_add_new_page (vm_paddr_t pa);
 void vm_page_unmanage (vm_page_t);
 void vm_page_unwire (vm_page_t, int);
@@ -559,12 +559,15 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
  * Make page all dirty
  */
 static __inline void
-vm_page_dirty(vm_page_t m)
+_vm_page_dirty(vm_page_t m, const char *info)
 {
-	KASSERT(m->queue - m->pc != PQ_CACHE,
-		("vm_page_dirty: page in cache!"));
+	int pqtype = m->queue - m->pc;
+	KASSERT(pqtype != PQ_CACHE && pqtype != PQ_FREE,
+		("vm_page_dirty: page in free/cache queue!"));
 	m->dirty = VM_PAGE_BITS_ALL;
 }
+
+#define vm_page_dirty(m)	_vm_page_dirty(m, __FUNCTION__)
 
 /*
  * Set page to not be dirty.  Note: does not clear pmap modify bits .

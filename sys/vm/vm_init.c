@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_init.c,v 1.20 1999/10/29 18:09:29 phk Exp $
- * $DragonFly: src/sys/vm/vm_init.c,v 1.7 2004/05/31 17:06:41 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_init.c,v 1.8 2005/06/14 17:16:00 dillon Exp $
  */
 
 /*
@@ -105,7 +105,7 @@ vm_mem_init(void *dummy)
 	 */
 
 	vm_set_page_size();
-	virtual_avail = vm_page_startup(avail_start, avail_end, virtual_avail);
+	virtual_avail = vm_page_startup(virtual_avail);
 	/*
 	 * Initialize other VM packages
 	 */
