@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.29 2005/06/10 16:05:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.30 2005/06/14 14:19:22 joerg Exp $
  */
 
 /*
@@ -708,7 +708,6 @@ static int
 wb_attach(device_t dev)
 {
 	u_char eaddr[ETHER_ADDR_LEN];
-	uint32_t command;
 	struct wb_softc *sc;
 	struct ifnet *ifp;
 	int error = 0, rid;
@@ -738,27 +737,7 @@ wb_attach(device_t dev)
 		pci_write_config(dev, WB_PCI_INTLINE, irq, 4);
 	}
 
-	/*
-	 * Map control/status registers.
-	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_IOPORT);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-#ifdef WB_USEIOSPACE
-	if ((command & PCIM_CMD_PORTEN) == 0) {
-		device_printf(dev, "failed to enable I/O ports!\n");
-		error = ENXIO;
-		goto fail;
-	}
-#else
-	if ((command & PCIM_CMD_MEMEN) == 0) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;
-		goto fail;
-	}
-#endif
 
 	rid = WB_RID;
 	sc->wb_res = bus_alloc_resource_any(dev, WB_RES, &rid, RF_ACTIVE);

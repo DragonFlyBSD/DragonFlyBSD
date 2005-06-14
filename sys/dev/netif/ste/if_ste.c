@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.26 2005/06/14 12:46:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.27 2005/06/14 14:19:22 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -868,7 +868,6 @@ static int ste_probe(dev)
 static int ste_attach(dev)
 	device_t		dev;
 {
-	u_int32_t		command;
 	struct ste_softc	*sc;
 	struct ifnet		*ifp;
 	int			error = 0, rid;
@@ -913,23 +912,6 @@ static int ste_attach(dev)
 	 * Map control/status registers.
 	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_IOPORT);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-#ifdef STE_USEIOSPACE
-	if (!(command & PCIM_CMD_PORTEN)) {
-		device_printf(dev, "failed to enable I/O ports!\n");
-		error = ENXIO;
-		goto fail;
-	}
-#else
-	if (!(command & PCIM_CMD_MEMEN)) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;
-		goto fail;
-	}
-#endif
 
 	rid = STE_RID;
 	sc->ste_res = bus_alloc_resource_any(dev, STE_RES, &rid, RF_ACTIVE);

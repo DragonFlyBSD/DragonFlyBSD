@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.24 2005/06/12 15:55:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.25 2005/06/14 14:19:22 joerg Exp $
  */
 
 /*
@@ -786,11 +786,7 @@ rl_attach(device_t dev)
 		pci_write_config(dev, RL_PCI_INTLINE, irq, 4);
 	}
 
-	/*
-	 * Map control/status registers.
-	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, RL_RES);
 
 	rid = RL_RID; 
 	sc->rl_res = bus_alloc_resource_any(dev, RL_RES, &rid, RF_ACTIVE);

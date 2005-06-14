@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.39 2005/06/13 21:24:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.40 2005/06/14 14:19:22 joerg Exp $
  *
  */
 
@@ -1459,7 +1459,6 @@ bge_probe(device_t dev)
 static int
 bge_attach(device_t dev)
 {
-	uint32_t command;
 	struct ifnet *ifp;
 	struct bge_softc *sc;
 	uint32_t hwcfg = 0;
@@ -1475,14 +1474,6 @@ bge_attach(device_t dev)
 	 * Map control/status registers.
 	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-	if (!(command & PCIM_CMD_MEMEN)) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;
-		return(error);
-	}
 
 	rid = BGE_PCI_BAR0;
 	sc->bge_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,

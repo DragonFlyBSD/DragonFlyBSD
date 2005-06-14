@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.25 2005/06/06 15:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.26 2005/06/14 14:19:22 joerg Exp $
  */
 
 /*
@@ -1298,7 +1298,6 @@ xl_attach(dev)
 {
 	u_char			eaddr[ETHER_ADDR_LEN];
 	u_int16_t		xcvr[2];
-	u_int32_t		command;
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
 	int			media = IFM_ETHER|IFM_100_TX|IFM_FDX;
@@ -1387,16 +1386,6 @@ xl_attach(dev)
 	 * Map control/status registers.
 	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_IOPORT);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-	if (!(command & PCIM_CMD_PORTEN) && !(command & PCIM_CMD_MEMEN)) {
-		device_printf(dev,
-		    "failed to enable I/O ports and memory mappings!\n");
-		error = ENXIO;
-		goto fail;
-	}
 
 	rid = XL_PCI_LOMEM;
 	res = SYS_RES_MEMORY;

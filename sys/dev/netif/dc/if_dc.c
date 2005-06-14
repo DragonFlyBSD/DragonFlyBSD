@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.33 2005/06/13 22:10:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.34 2005/06/14 14:19:22 joerg Exp $
  */
 
 /*
@@ -1776,23 +1776,6 @@ static int dc_attach(dev)
 	 * Map control/status registers.
 	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_IOPORT);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-#ifdef DC_USEIOSPACE
-	if (!(command & PCIM_CMD_PORTEN)) {
-		device_printf(dev, "failed to enable I/O ports!\n");
-		error = ENXIO;
-		return(error);
-	}
-#else
-	if (!(command & PCIM_CMD_MEMEN)) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;
-		return(error);
-	}
-#endif
 
 	rid = DC_RID;
 	sc->dc_res = bus_alloc_resource_any(dev, DC_RES, &rid, RF_ACTIVE);

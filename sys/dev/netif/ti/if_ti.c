@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.33 2005/06/14 13:53:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.34 2005/06/14 14:19:22 joerg Exp $
  */
 
 /*
@@ -1400,7 +1400,6 @@ ti_attach(device_t dev)
 	struct ti_softc *sc;
 	struct ifnet *ifp;
 	int error = 0, rid;
-	uint32_t command;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 
 	sc = device_get_softc(dev);
@@ -1409,18 +1408,7 @@ ti_attach(device_t dev)
 	ifp->if_capabilities = IFCAP_HWCSUM;
 	ifp->if_capenable = ifp->if_capabilities;
 
-	/*
-	 * Map control/status registers.
-	 */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-	if ((command & PCIM_CMD_MEMEN) == 0) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;
-		return(error);
-	}
 
 	/*
 	 * Initialize media before any possible error may occur,

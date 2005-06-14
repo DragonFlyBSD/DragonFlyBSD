@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.25 2005/06/14 12:33:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.26 2005/06/14 14:19:22 joerg Exp $
  */
 
 /*
@@ -212,7 +212,6 @@ epic_attach(dev)
 {
 	struct ifnet *ifp;
 	epic_softc_t *sc;
-	u_int32_t command;
 	int error;
 	int i, rid, tmp;
 
@@ -237,25 +236,7 @@ epic_attach(dev)
 	ifq_set_maxlen(&ifp->if_snd, TX_RING_SIZE - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	/* Enable ports, memory and busmastering */
 	pci_enable_busmaster(dev);
-	pci_enable_io(dev, SYS_RES_IOPORT);
-	pci_enable_io(dev, SYS_RES_MEMORY);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-#if defined(EPIC_USEIOSPACE)
-	if ((command & PCIM_CMD_PORTEN) == 0) {
-		device_printf(dev, "failed to enable I/O mapping!\n");
-		error = ENXIO;
-		goto fail;
-	}
-#else
-	if ((command & PCIM_CMD_MEMEN) == 0) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;
-		goto fail;
-	}
-#endif
 
 	rid = EPIC_RID;
 	sc->res = bus_alloc_resource_any(dev, EPIC_RES, &rid, RF_ACTIVE);
