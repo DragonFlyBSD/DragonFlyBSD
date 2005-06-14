@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.27 2005/05/31 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.28 2005/06/14 15:01:58 joerg Exp $
  */
 
 /*
@@ -81,6 +81,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -427,9 +428,7 @@ lge_attach(device_t dev)
 	uint32_t command;
 	struct lge_softc *sc;
 	struct ifnet *ifp;
-	int unit, error = 0, rid, s;
-
-	s = splimp();
+	int unit, error = 0, rid;
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -504,18 +503,7 @@ lge_attach(device_t dev)
 
 	if (sc->lge_irq == NULL) {
 		printf("lge%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->lge_irq, INTR_TYPE_NET,
-			       lge_intr, sc, &sc->lge_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
-		bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
-		printf("lge%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 
@@ -532,13 +520,10 @@ lge_attach(device_t dev)
 	sc->lge_unit = unit;
 
 	sc->lge_ldata = contigmalloc(sizeof(struct lge_list_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->lge_ldata == NULL) {
 		printf("lge%d: no memory for list buffers!\n", unit);
-		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
-		bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -548,11 +533,6 @@ lge_attach(device_t dev)
 	if (lge_alloc_jumbo_mem(sc)) {
 		printf("lge%d: jumbo buffer allocation failed\n",
                     sc->lge_unit);
-		contigfree(sc->lge_ldata, sizeof(struct lge_list_data),
-			   M_DEVBUF);
-		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
-		bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -583,12 +563,6 @@ lge_attach(device_t dev)
 	if (mii_phy_probe(dev, &sc->lge_miibus,
 	    lge_ifmedia_upd, lge_ifmedia_sts)) {
 		printf("lge%d: MII without any PHY!\n", sc->lge_unit);
-		contigfree(sc->lge_ldata,
-		    sizeof(struct lge_list_data), M_DEVBUF);
-		lge_free_jumbo_mem(sc);
-		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
-		bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -598,8 +572,18 @@ lge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr);
 
+	error = bus_setup_intr(dev, sc->lge_irq, INTR_TYPE_NET,
+			       lge_intr, sc, &sc->lge_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		printf("lge%d: couldn't set up irq\n", unit);
+		goto fail;
+	}
+
+	return(0);
+
 fail:
-	splx(s);
+	lge_detach(dev);
 	return(error);
 }
 
@@ -608,25 +592,33 @@ lge_detach(device_t dev)
 {
 	struct lge_softc *sc= device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
-	lge_reset(sc);
-	lge_stop(sc);
-	ether_ifdetach(ifp);
+	if (device_is_attached(dev)) {
+		lge_reset(sc);
+		lge_stop(sc);
+		ether_ifdetach(ifp);
+	}
 
+	if (sc->lge_miibus)
+		device_delete_child(dev, sc->lge_miibus);
 	bus_generic_detach(dev);
-	device_delete_child(dev, sc->lge_miibus);
 
-	bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
-	bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
+	if (sc->lge_intrhand)
+		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
 
-	contigfree(sc->lge_ldata, sizeof(struct lge_list_data), M_DEVBUF);
+	crit_exit();
+
+	if (sc->lge_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
+	if (sc->lge_res)
+		bus_release_resource(dev, LGE_RES, LGE_RID, sc->lge_res);
+
+	if (sc->lge_ldata)
+		contigfree(sc->lge_ldata, sizeof(struct lge_list_data),
+			   M_DEVBUF);
 	lge_free_jumbo_mem(sc);
-
-	splx(s);
 
 	return(0);
 }
@@ -769,7 +761,7 @@ lge_alloc_jumbo_mem(struct lge_softc *sc)
 
 	/* Grab a big chunk o' storage. */
 	sc->lge_cdata.lge_jumbo_buf = contigmalloc(LGE_JMEM, M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->lge_cdata.lge_jumbo_buf == NULL) {
 		printf("lge%d: no memory for jumbo buffers!\n", sc->lge_unit);
@@ -799,7 +791,8 @@ lge_alloc_jumbo_mem(struct lge_softc *sc)
 static void
 lge_free_jumbo_mem(struct lge_softc *sc)
 {
-	contigfree(sc->lge_cdata.lge_jumbo_buf, LGE_JMEM, M_DEVBUF);
+	if (sc->lge_cdata.lge_jumbo_buf)
+		contigfree(sc->lge_cdata.lge_jumbo_buf, LGE_JMEM, M_DEVBUF);
 }
 
 /*
@@ -1005,9 +998,8 @@ lge_tick(void *xsc)
 	struct lge_softc *sc = xsc;
 	struct mii_data *mii;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	CSR_WRITE_4(sc, LGE_STATSIDX, LGE_STATS_SINGLE_COLL_PKTS);
 	ifp->if_collisions += CSR_READ_4(sc, LGE_STATSVAL);
@@ -1032,7 +1024,7 @@ lge_tick(void *xsc)
 
 	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
 
-	splx(s);
+	crit_exit();
 }
 
 static void
@@ -1180,12 +1172,13 @@ lge_init(void *xsc)
 	struct lge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	int s;
 
-	if (ifp->if_flags & IFF_RUNNING)
+	crit_enter();
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		crit_exit();
 		return;
-
-	s = splimp();
+	}
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -1204,7 +1197,7 @@ lge_init(void *xsc)
 		printf("lge%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->lge_unit);
 		lge_stop(sc);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -1301,9 +1294,9 @@ lge_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
-
 	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
+
+	crit_exit();
 }
 
 /*
@@ -1347,9 +1340,9 @@ lge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct lge_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data	 *mii;
-	int error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -1397,7 +1390,7 @@ lge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
