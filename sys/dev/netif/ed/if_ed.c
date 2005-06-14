@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.22 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.23 2005/06/14 11:08:40 joerg Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -1789,11 +1790,13 @@ ed_reset(ifp)
 	struct ifnet *ifp;
 {
 	struct ed_softc *sc = ifp->if_softc;
-	int     s;
 
-	if (sc->gone)
+	crit_enter();
+
+	if (sc->gone) {
+		crit_exit();
 		return;
-	s = splimp();
+	}
 
 	/*
 	 * Stop interface and re-initialize.
@@ -1801,7 +1804,7 @@ ed_reset(ifp)
 	ed_stop(sc);
 	ed_init(sc);
 
-	(void) splx(s);
+	crit_exit();
 }
 
 /*
@@ -1857,17 +1860,22 @@ ed_tick(arg)
 {
 	struct ed_softc *sc = arg;
 	struct mii_data *mii;
-	int s;
 
-	if (sc->gone)
+	crit_enter();
+
+	if (sc->gone) {
+		crit_exit();
 		return;
-	s = splimp();
+	}
+
 	if (sc->miibus != NULL) {
 		mii = device_get_softc(sc->miibus);
 		mii_tick(mii);
 	}
+
 	callout_reset(&sc->ed_timer, hz, ed_tick, sc);
-	splx(s);
+
+	crit_exit();
 }
 #endif
 
@@ -1880,21 +1888,26 @@ ed_init(xsc)
 {
 	struct ed_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int     i, s;
+	int i;
 
-	if (sc->gone)
+	crit_enter();
+
+	if (sc->gone) {
+		crit_exit();
 		return;
+	}
 
 	/* address not known */
-	if (TAILQ_EMPTY(&ifp->if_addrhead)) /* unlikely? XXX */
+	if (TAILQ_EMPTY(&ifp->if_addrhead)) { /* unlikely? XXX */
+		crit_exit();
 		return;
+	}
 
 	/*
 	 * Initialize the NIC in the exact order outlined in the NS manual.
 	 * This init procedure is "mandatory"...don't change what or when
 	 * things happen.
 	 */
-	s = splimp();
 
 	/* reset transmitter flags */
 	sc->xmit_busy = 0;
@@ -2033,7 +2046,8 @@ ed_init(xsc)
 #ifndef ED_NO_MIIBUS
 	callout_reset(&sc->ed_timer, hz, ed_tick, sc);
 #endif
-	(void) splx(s);
+
+	crit_exit();
 }
 
 /*
@@ -2659,13 +2673,15 @@ ed_ioctl(ifp, command, data, cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
 #endif
-	int     s, error = 0;
+	int error = 0;
+
+	crit_enter();
 
 	if (sc == NULL || sc->gone) {
 		ifp->if_flags &= ~IFF_RUNNING;
+		crit_exit();
 		return ENXIO;
 	}
-	s = splimp();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -2730,7 +2746,9 @@ ed_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	(void) splx(s);
+
+	crit_exit();
+
 	return (error);
 }
 
@@ -3338,13 +3356,13 @@ ed_miibus_readreg(dev, phy, reg)
 	device_t dev;
 	int phy, reg;
 {
-	struct ed_softc *sc;
-	int failed, s, val;
+	struct ed_softc *sc = device_get_softc(dev);
+	int failed, val;
 
-	s = splimp();
-	sc = device_get_softc(dev);
+	crit_enter();
+
 	if (sc->gone) {
-		splx(s);
+		crit_exit();
 		return (0);
 	}
 
@@ -3358,7 +3376,8 @@ ed_miibus_readreg(dev, phy, reg)
 	val = (*sc->mii_readbits)(sc, ED_MII_DATA_BITS);
 	(*sc->mii_writebits)(sc, ED_MII_IDLE, ED_MII_IDLE_BITS);
 
-	splx(s);
+	crit_exit();
+
 	return (failed ? 0 : val);
 }
 
@@ -3367,13 +3386,12 @@ ed_miibus_writereg(dev, phy, reg, data)
 	device_t dev;
 	int phy, reg, data;
 {
-	struct ed_softc *sc;
-	int s;
+	struct ed_softc *sc = device_get_softc(dev);
 
-	s = splimp();
-	sc = device_get_softc(dev);
+	crit_enter();
+
 	if (sc->gone) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -3386,7 +3404,7 @@ ed_miibus_writereg(dev, phy, reg, data)
 	(*sc->mii_writebits)(sc, data, ED_MII_DATA_BITS);
 	(*sc->mii_writebits)(sc, ED_MII_IDLE, ED_MII_IDLE_BITS);
 
-	splx(s);
+	crit_exit();
 }
 
 int
