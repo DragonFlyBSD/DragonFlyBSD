@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.19 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.20 2005/06/14 11:05:47 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -40,11 +40,9 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
-#include <sys/types.h>
+#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/module.h>
-
-#define NBPFILTER	1
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -92,7 +90,6 @@ static int      MY_USEIOSPACE = 1;
 /*
  * Various supported device vendors/types and their names.
  */
-struct my_type *my_info_tmp;
 static struct my_type my_devs[] = {
 	{MYSONVENDORID, MTD800ID, "Myson MTD80X Based Fast Ethernet Card"},
 	{MYSONVENDORID, MTD803ID, "Myson MTD80X Based Fast Ethernet Card"},
@@ -176,8 +173,6 @@ my_send_cmd_to_phy(struct my_softc * sc, int opcode, int regad)
 	int             i;
 	int             mask, data;
 
-	MY_LOCK(sc);
-
 	/* enable MII output */
 	miir = CSR_READ_4(sc, MY_MANAGEMENT);
 	miir &= 0xfffffff0;
@@ -218,7 +213,6 @@ my_send_cmd_to_phy(struct my_softc * sc, int opcode, int regad)
 			miir &= ~MY_MASK_MIIR_MII_WRITE;
 	}
 
-	MY_UNLOCK(sc);
 	return miir;
 }
 
@@ -228,8 +222,6 @@ my_phy_readreg(struct my_softc * sc, int reg)
 {
 	long            miir;
 	int             mask, data;
-
-	MY_LOCK(sc);
 
 	if (sc->my_info->my_did == MTD803ID)
 		data = CSR_READ_2(sc, MY_PHYBASE + reg * 2);
@@ -263,7 +255,6 @@ my_phy_readreg(struct my_softc * sc, int reg)
 		CSR_WRITE_4(sc, MY_MANAGEMENT, miir);
 	}
 
-	MY_UNLOCK(sc);
 	return (u_int16_t) data;
 }
 
@@ -273,8 +264,6 @@ my_phy_writereg(struct my_softc * sc, int reg, int data)
 {
 	long            miir;
 	int             mask;
-
-	MY_LOCK(sc);
 
 	if (sc->my_info->my_did == MTD803ID)
 		CSR_WRITE_2(sc, MY_PHYBASE + reg * 2, data);
@@ -304,8 +293,6 @@ my_phy_writereg(struct my_softc * sc, int reg, int data)
 		miir &= ~MY_MASK_MIIR_MII_MDC;
 		CSR_WRITE_4(sc, MY_MANAGEMENT, miir);
 	}
-	MY_UNLOCK(sc);
-	return;
 }
 
 static          u_int8_t
@@ -345,16 +332,12 @@ my_calchash(caddr_t addr)
 static void
 my_setmulti(struct my_softc * sc)
 {
-	struct ifnet   *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int             h = 0;
 	u_int32_t       hashes[2] = {0, 0};
 	struct ifmultiaddr *ifma;
 	u_int32_t       rxfilt;
 	int             mcnt = 0;
-
-	MY_LOCK(sc);
-
-	ifp = &sc->arpcom.ac_if;
 
 	rxfilt = CSR_READ_4(sc, MY_TCRRCR);
 
@@ -363,8 +346,6 @@ my_setmulti(struct my_softc * sc)
 		CSR_WRITE_4(sc, MY_TCRRCR, rxfilt);
 		CSR_WRITE_4(sc, MY_MAR0, 0xFFFFFFFF);
 		CSR_WRITE_4(sc, MY_MAR1, 0xFFFFFFFF);
-
-		MY_UNLOCK(sc);
 
 		return;
 	}
@@ -391,8 +372,6 @@ my_setmulti(struct my_softc * sc)
 	CSR_WRITE_4(sc, MY_MAR0, hashes[0]);
 	CSR_WRITE_4(sc, MY_MAR1, hashes[1]);
 	CSR_WRITE_4(sc, MY_TCRRCR, rxfilt);
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -403,8 +382,6 @@ my_autoneg_xmit(struct my_softc * sc)
 {
 	u_int16_t       phy_sts = 0;
 
-	MY_LOCK(sc);
-
 	my_phy_writereg(sc, PHY_BMCR, PHY_BMCR_RESET);
 	DELAY(500);
 	while (my_phy_readreg(sc, PHY_BMCR) & PHY_BMCR_RESET);
@@ -412,9 +389,6 @@ my_autoneg_xmit(struct my_softc * sc)
 	phy_sts = my_phy_readreg(sc, PHY_BMCR);
 	phy_sts |= PHY_BMCR_AUTONEGENBL | PHY_BMCR_AUTONEGRSTR;
 	my_phy_writereg(sc, PHY_BMCR, phy_sts);
-
-	MY_UNLOCK(sc);
-	return;
 }
 
 
@@ -426,13 +400,8 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 {
 	u_int16_t       phy_sts = 0, media, advert, ability;
 	u_int16_t       ability2 = 0;
-	struct ifnet   *ifp;
-	struct ifmedia *ifm;
-
-	MY_LOCK(sc);
-
-	ifm = &sc->ifmedia;
-	ifp = &sc->arpcom.ac_if;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct ifmedia *ifm = &sc->ifmedia;
 
 	ifm->ifm_media = IFM_ETHER | IFM_AUTO;
 
@@ -447,7 +416,6 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 			printf("my%d: autonegotiation not supported\n",
 			    sc->my_unit);
 		ifm->ifm_media = IFM_ETHER | IFM_10_T | IFM_HDX;
-		MY_UNLOCK(sc);
 		return;
 	}
 #endif
@@ -471,14 +439,12 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 		 */
 		if (sc->my_cdata.my_tx_head != NULL) {
 			sc->my_want_auto = 1;
-			MY_UNLOCK(sc);
 			return;
 		}
 		my_autoneg_xmit(sc);
 		ifp->if_timer = 5;
 		sc->my_autoneg = 1;
 		sc->my_want_auto = 0;
-		MY_UNLOCK(sc);
 		return;
 	case MY_FLAG_DELAYTIMEO:
 		ifp->if_timer = 0;
@@ -486,7 +452,6 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 		break;
 	default:
 		printf("my%d: invalid autoneg flag: %d\n", sc->my_unit, flag);
-		MY_UNLOCK(sc);
 		return;
 	}
 
@@ -583,8 +548,6 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 		sc->my_tx_pend = 0;
 		my_start(ifp);
 	}
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -593,11 +556,9 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 static void
 my_getmode_mii(struct my_softc * sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_int16_t       bmsr;
-	struct ifnet   *ifp;
 
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
 	bmsr = my_phy_readreg(sc, PHY_BMSR);
 	if (bootverbose)
 		printf("my%d: PHY status word: %x\n", sc->my_unit, bmsr);
@@ -681,8 +642,6 @@ my_getmode_mii(struct my_softc * sc)
 		ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_AUTO, 0, NULL);
 		sc->ifmedia.ifm_media = IFM_ETHER | IFM_AUTO;
 	}
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -691,11 +650,9 @@ my_getmode_mii(struct my_softc * sc)
 static void
 my_setmode_mii(struct my_softc * sc, int media)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_int16_t       bmcr;
-	struct ifnet   *ifp;
 
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
 	/*
 	 * If an autoneg session is in progress, stop it.
 	 */
@@ -741,8 +698,6 @@ my_setmode_mii(struct my_softc * sc, int media)
 	}
 	my_phy_writereg(sc, PHY_BMCR, bmcr);
 	my_setcfg(sc, bmcr);
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -755,7 +710,6 @@ my_setcfg(struct my_softc * sc, int bmcr)
 {
 	int             i, restart = 0;
 
-	MY_LOCK(sc);
 	if (CSR_READ_4(sc, MY_TCRRCR) & (MY_TE | MY_RE)) {
 		restart = 1;
 		MY_CLRBIT(sc, MY_TCRRCR, (MY_TE | MY_RE));
@@ -781,8 +735,6 @@ my_setcfg(struct my_softc * sc, int bmcr)
 		MY_CLRBIT(sc, MY_TCRRCR, MY_FD);
 	if (restart)
 		MY_SETBIT(sc, MY_TCRRCR, MY_TE | MY_RE);
-	MY_UNLOCK(sc);
-	return;
 }
 
 static void
@@ -790,7 +742,6 @@ my_reset(struct my_softc * sc)
 {
 	int    i;
 
-	MY_LOCK(sc);
 	MY_SETBIT(sc, MY_BCR, MY_SWR);
 	for (i = 0; i < MY_TIMEOUT; i++) {
 		DELAY(10);
@@ -802,8 +753,6 @@ my_reset(struct my_softc * sc)
 
 	/* Wait a little while for the chip to get its brains in order. */
 	DELAY(1000);
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -814,17 +763,18 @@ static int
 my_probe(device_t dev)
 {
 	struct my_type *t;
+	uint16_t vendor, product;
 
-	t = my_devs;
-	while (t->my_name != NULL) {
-		if ((pci_get_vendor(dev) == t->my_vid) &&
-		    (pci_get_device(dev) == t->my_did)) {
+	vendor = pci_get_vendor(dev);
+	product = pci_get_device(dev);
+
+	for (t = my_devs; t->my_name != NULL; t++) {
+		if (vendor == t->my_vid && product == t->my_did) {
 			device_set_desc(dev, t->my_name);
-			my_info_tmp = t;
 			return (0);
 		}
-		t++;
 	}
+
 	return (ENXIO);
 }
 
@@ -835,7 +785,7 @@ my_probe(device_t dev)
 static int
 my_attach(device_t dev)
 {
-	int             s, i;
+	int             i;
 	u_char          eaddr[ETHER_ADDR_LEN];
 	u_int32_t       command, iobase;
 	struct my_softc *sc;
@@ -846,35 +796,32 @@ my_attach(device_t dev)
 	struct my_type *p;
 	u_int16_t       phy_vid, phy_did, phy_sts = 0;
 	int             rid, unit, error = 0;
+	struct my_type *t;
+	uint16_t vendor, product;
 
-	s = splimp();
+	vendor = pci_get_vendor(dev);
+	product = pci_get_device(dev);
+
+	for (t = my_devs; t->my_name != NULL; t++) {
+		if (vendor == t->my_vid && product == t->my_did)
+			break;
+	}
+
+	if (t->my_name == NULL)
+		return(ENXIO);
+
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
-	if (sc == NULL) {
-		printf("my%d: no memory for softc struct!\n", unit);
-		error = ENXIO;
-		goto fail;
-
-	}
-	bzero(sc, sizeof(struct my_softc));
-	/*mtx_init(&sc->my_mtx, device_get_nameunit(dev), MTX_DEF | MTX_RECURSE);*/
-	MY_LOCK(sc);
 
 	/*
 	 * Map control/status registers.
 	 */
-#if 0
-	command = pci_read_config(dev, PCI_COMMAND_STATUS_REG, 4);
-	command |= (PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCI_COMMAND_STATUS_REG, command & 0x000000ff, 4);
-	command = pci_read_config(dev, PCI_COMMAND_STATUS_REG, 4);
-#endif
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 	command |= (PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN);
 	pci_write_config(dev, PCIR_COMMAND, command & 0x000000ff, 4);
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
-	if (my_info_tmp->my_did == MTD800ID) {
+	if (t->my_did == MTD800ID) {
 		iobase = pci_read_config(dev, MY_PCI_LOIO, 4);
 		if (iobase & 0x300)
 			MY_USEIOSPACE = 0;
@@ -882,35 +829,16 @@ my_attach(device_t dev)
 	if (MY_USEIOSPACE) {
 		if (!(command & PCIM_CMD_PORTEN)) {
 			printf("my%d: failed to enable I/O ports!\n", unit);
-			free(sc, M_DEVBUF);
 			error = ENXIO;
-			goto fail;
+			return(error);
 		}
-#if 0
-		if (!pci_map_port(config_id, MY_PCI_LOIO, (u_int16_t *) & (sc->my_bhandle))) {
-			printf("my%d: couldn't map ports\n", unit);
-			error = ENXIO;
-			goto fail;
-		}
-		  
-		sc->my_btag = I386_BUS_SPACE_IO;
-#endif
 	} else {
 		if (!(command & PCIM_CMD_MEMEN)) {
 			printf("my%d: failed to enable memory mapping!\n",
 			    unit);
 			error = ENXIO;
-			goto fail;
+			return(error);
 		}
-#if 0
-		 if (!pci_map_mem(config_id, MY_PCI_LOMEM, &vbase, &pbase)) {
-			printf ("my%d: couldn't map memory\n", unit);
-			error = ENXIO;
-			goto fail;
-		}
-		sc->my_btag = I386_BUS_SPACE_MEM;
-		sc->my_bhandle = vbase;
-#endif
 	}
 
 	rid = MY_RID;
@@ -930,22 +858,12 @@ my_attach(device_t dev)
 
 	if (sc->my_irq == NULL) {
 		printf("my%d: couldn't map interrupt\n", unit);
-		bus_release_resource(dev, MY_RES, MY_RID, sc->my_res);
 		error = ENXIO;
-		goto fail;
-	}
-	error = bus_setup_intr(dev, sc->my_irq, INTR_TYPE_NET,
-			       my_intr, sc, &sc->my_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->my_irq);
-		bus_release_resource(dev, MY_RES, MY_RID, sc->my_res);
-		printf("my%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
 	callout_init(&sc->my_stat_ch);
 
-	sc->my_info = my_info_tmp;
+	sc->my_info = t;
 
 	/* Reset the adapter. */
 	my_reset(sc);
@@ -961,7 +879,6 @@ my_attach(device_t dev)
 	sc->my_ldata_ptr = malloc(sizeof(struct my_list_data) + 8,
 				  M_DEVBUF, M_WAITOK);
 	if (sc->my_ldata_ptr == NULL) {
-		free(sc, M_DEVBUF);
 		printf("my%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
@@ -1047,50 +964,43 @@ my_attach(device_t dev)
 
 	ether_ifattach(ifp, eaddr);
 
-#if 0
-	at_shutdown(my_shutdown, sc, SHUTDOWN_POST_SYNC);
-	shutdownhook_establish(my_shutdown, sc);
-#endif
-	 
-	MY_UNLOCK(sc);
+	error = bus_setup_intr(dev, sc->my_irq, INTR_TYPE_NET,
+			       my_intr, sc, &sc->my_intrhand, NULL);
+	if (error) {
+		ether_ifdetach(ifp);
+		printf("my%d: couldn't set up irq\n", unit);
+		goto fail;
+	}
+
 	return (0);
 
 fail:
-	MY_UNLOCK(sc);
-	/*mtx_destroy(&sc->my_mtx);*/
-	splx(s);
+	my_detach(dev);
 	return (error);
 }
 
 static int
 my_detach(device_t dev)
 {
-	struct my_softc *sc;
-	struct ifnet   *ifp;
-	int             s;
+	struct my_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	s = splimp();
-	sc = device_get_softc(dev);
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
-	ether_ifdetach(ifp);
-	my_stop(sc);
+	crit_enter();
+	if (device_is_attached(dev)) {
+		ether_ifdetach(ifp);
+		my_stop(sc);
+	}
 
-#if 0
-	bus_generic_detach(dev);
-	device_delete_child(dev, sc->rl_miibus);
-#endif
+	if (sc->my_intrhand)
+		bus_teardown_intr(dev, sc->my_irq, sc->my_intrhand);
 
-	bus_teardown_intr(dev, sc->my_irq, sc->my_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->my_irq);
-	bus_release_resource(dev, MY_RES, MY_RID, sc->my_res);
-#if 0
-	contigfree(sc->my_cdata.my_rx_buf, MY_RXBUFLEN + 32, M_DEVBUF);
-#endif
-	free(sc, M_DEVBUF);
-	MY_UNLOCK(sc);
-	splx(s);
-	/*mtx_destroy(&sc->my_mtx);*/
+	crit_exit();
+
+	if (sc->my_irq)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->my_irq);
+	if (sc->my_res)
+		bus_release_resource(dev, MY_RES, MY_RID, sc->my_res);
+
 	return (0);
 }
 
@@ -1105,7 +1015,6 @@ my_list_tx_init(struct my_softc * sc)
 	struct my_list_data *ld;
 	int             i;
 
-	MY_LOCK(sc);
 	cd = &sc->my_cdata;
 	ld = sc->my_ldata;
 	for (i = 0; i < MY_TX_LIST_CNT; i++) {
@@ -1118,7 +1027,6 @@ my_list_tx_init(struct my_softc * sc)
 	}
 	cd->my_tx_free = &cd->my_tx_chain[0];
 	cd->my_tx_tail = cd->my_tx_head = NULL;
-	MY_UNLOCK(sc);
 	return (0);
 }
 
@@ -1134,7 +1042,6 @@ my_list_rx_init(struct my_softc * sc)
 	struct my_list_data *ld;
 	int             i;
 
-	MY_LOCK(sc);
 	cd = &sc->my_cdata;
 	ld = sc->my_ldata;
 	for (i = 0; i < MY_RX_LIST_CNT; i++) {
@@ -1153,7 +1060,6 @@ my_list_rx_init(struct my_softc * sc)
 		}
 	}
 	cd->my_rx_head = &cd->my_rx_chain[0];
-	MY_UNLOCK(sc);
 	return (0);
 }
 
@@ -1165,7 +1071,6 @@ my_newbuf(struct my_softc * sc, struct my_chain_onefrag * c)
 {
 	struct mbuf    *m_new = NULL;
 
-	MY_LOCK(sc);
 	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL) {
 		printf("my%d: no memory for rx list -- packet dropped!\n",
@@ -1183,7 +1088,6 @@ my_newbuf(struct my_softc * sc, struct my_chain_onefrag * c)
 	c->my_ptr->my_data = vtophys(mtod(m_new, caddr_t));
 	c->my_ptr->my_ctl = (MCLBYTES - 1) << MY_RBSShift;
 	c->my_ptr->my_status = MY_OWNByNIC;
-	MY_UNLOCK(sc);
 	return (0);
 }
 
@@ -1194,14 +1098,12 @@ my_newbuf(struct my_softc * sc, struct my_chain_onefrag * c)
 static void
 my_rxeof(struct my_softc * sc)
 {
-	struct mbuf    *m;
-	struct ifnet   *ifp;
+	struct mbuf *m;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct my_chain_onefrag *cur_rx;
-	int             total_len = 0;
-	u_int32_t       rxstat;
+	int total_len = 0;
+	u_int32_t rxstat;
 
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
 	while (!((rxstat = sc->my_cdata.my_rx_head->my_ptr->my_status)
 	    & MY_OWNByNIC)) {
 		cur_rx = sc->my_cdata.my_rx_head;
@@ -1244,8 +1146,6 @@ my_rxeof(struct my_softc * sc)
 		ifp->if_ipackets++;
 		(*ifp->if_input)(ifp, m);
 	}
-	MY_UNLOCK(sc);
-	return;
 }
 
 
@@ -1256,11 +1156,9 @@ my_rxeof(struct my_softc * sc)
 static void
 my_txeof(struct my_softc * sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct my_chain *cur_tx;
-	struct ifnet   *ifp;
 
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
 	/* Clear the timeout timer. */
 	ifp->if_timer = 0;
 	if (sc->my_cdata.my_tx_head == NULL)
@@ -1300,8 +1198,6 @@ my_txeof(struct my_softc * sc)
 	if (CSR_READ_4(sc, MY_TCRRCR) & MY_Enhanced) {
 		ifp->if_collisions += (CSR_READ_4(sc, MY_TSR) & MY_NCRMask);
 	}
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -1310,10 +1206,8 @@ my_txeof(struct my_softc * sc)
 static void
 my_txeoc(struct my_softc * sc)
 {
-	struct ifnet   *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 	if (sc->my_cdata.my_tx_head == NULL) {
 		ifp->if_flags &= ~IFF_OACTIVE;
@@ -1327,24 +1221,18 @@ my_txeoc(struct my_softc * sc)
 			CSR_WRITE_4(sc, MY_TXPDR, 0xFFFFFFFF);
 		}
 	}
-	MY_UNLOCK(sc);
-	return;
 }
 
 static void
 my_intr(void *arg)
 {
-	struct my_softc *sc;
-	struct ifnet   *ifp;
-	u_int32_t       status;
+	struct my_softc *sc = arg;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	u_int32_t status;
 
-	sc = arg;
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
-	if (!(ifp->if_flags & IFF_UP)) {
-		MY_UNLOCK(sc);
+	if (!(ifp->if_flags & IFF_UP))
 		return;
-	}
+
 	/* Disable interrupts. */
 	CSR_WRITE_4(sc, MY_IMR, 0x00000000);
 
@@ -1388,8 +1276,6 @@ my_intr(void *arg)
 	CSR_WRITE_4(sc, MY_IMR, MY_INTRS);
 	if (!ifq_is_empty(&ifp->if_snd))
 		my_start(ifp);
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -1403,7 +1289,6 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
 	int             total_len;
 	struct mbuf    *m, *m_new = NULL;
 
-	MY_LOCK(sc);
 	/* calculate the total tx pkt length */
 	total_len = 0;
 	for (m = m_head; m != NULL; m = m->m_next)
@@ -1444,7 +1329,6 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
 	c->my_mbuf = m_head;
 	c->my_lastdesc = 0;
 	MY_TXNEXT(c) = vtophys(&c->my_nextdesc->my_ptr->my_frag[0]);
-	MY_UNLOCK(sc);
 	return (0);
 }
 
@@ -1457,15 +1341,15 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
 static void
 my_start(struct ifnet * ifp)
 {
-	struct my_softc *sc;
+	struct my_softc *sc = ifp->if_softc;
 	struct mbuf    *m_head = NULL;
 	struct my_chain *cur_tx = NULL, *start_tx;
 
-	sc = ifp->if_softc;
-	MY_LOCK(sc);
+	crit_enter();
+
 	if (sc->my_autoneg) {
 		sc->my_tx_pend = 1;
-		MY_UNLOCK(sc);
+		crit_exit();
 		return;
 	}
 	/*
@@ -1473,9 +1357,10 @@ my_start(struct ifnet * ifp)
 	 */
 	if (sc->my_cdata.my_tx_free->my_mbuf != NULL) {
 		ifp->if_flags |= IFF_OACTIVE;
-		MY_UNLOCK(sc);
+		crit_exit();
 		return;
 	}
+
 	start_tx = sc->my_cdata.my_tx_free;
 	while (sc->my_cdata.my_tx_free->my_mbuf == NULL) {
 		m_head = ifq_dequeue(&ifp->if_snd);
@@ -1497,7 +1382,7 @@ my_start(struct ifnet * ifp)
 	 * If there are no packets queued, bail.
 	 */
 	if (cur_tx == NULL) {
-		MY_UNLOCK(sc);
+		crit_exit();
 		return;
 	}
 	/*
@@ -1518,8 +1403,8 @@ my_start(struct ifnet * ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-	MY_UNLOCK(sc);
-	return;
+
+	crit_exit();
 }
 
 static void
@@ -1527,15 +1412,13 @@ my_init(void *xsc)
 {
 	struct my_softc *sc = xsc;
 	struct ifnet   *ifp = &sc->arpcom.ac_if;
-	int             s;
 	u_int16_t       phy_bmcr = 0;
 
-	MY_LOCK(sc);
+	crit_enter();
 	if (sc->my_autoneg) {
-		MY_UNLOCK(sc);
+		crit_exit();
 		return;
 	}
-	s = splimp();
 	if (sc->my_pinfo != NULL)
 		phy_bmcr = my_phy_readreg(sc, PHY_BMCR);
 	/*
@@ -1566,8 +1449,7 @@ my_init(void *xsc)
 		printf("my%d: init failed: no memory for rx buffers\n",
 		    sc->my_unit);
 		my_stop(sc);
-		(void)splx(s);
-		MY_UNLOCK(sc);
+		crit_exit();
 		return;
 	}
 	/* Init TX descriptors. */
@@ -1615,9 +1497,7 @@ my_init(void *xsc)
 		my_phy_writereg(sc, PHY_BMCR, phy_bmcr);
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	(void)splx(s);
-	MY_UNLOCK(sc);
-	return;
+	crit_exit();
 }
 
 /*
@@ -1627,21 +1507,21 @@ my_init(void *xsc)
 static int
 my_ifmedia_upd(struct ifnet * ifp)
 {
-	struct my_softc *sc;
-	struct ifmedia *ifm;
+	struct my_softc *sc = ifp->if_softc;
+	struct ifmedia *ifm = &sc->ifmedia;
 
-	sc = ifp->if_softc;
-	MY_LOCK(sc);
-	ifm = &sc->ifmedia;
-	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER) {
-		MY_UNLOCK(sc);
+	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
 		return (EINVAL);
-	}
+
+	crit_enter();
+
 	if (IFM_SUBTYPE(ifm->ifm_media) == IFM_AUTO)
 		my_autoneg_mii(sc, MY_FLAG_SCHEDDELAY, 1);
 	else
 		my_setmode_mii(sc, ifm->ifm_media);
-	MY_UNLOCK(sc);
+
+	crit_exit();
+
 	return (0);
 }
 
@@ -1652,11 +1532,11 @@ my_ifmedia_upd(struct ifnet * ifp)
 static void
 my_ifmedia_sts(struct ifnet * ifp, struct ifmediareq * ifmr)
 {
-	struct my_softc *sc;
+	struct my_softc *sc = ifp->if_softc;
 	u_int16_t advert = 0, ability = 0;
 
-	sc = ifp->if_softc;
-	MY_LOCK(sc);
+	crit_enter();
+
 	ifmr->ifm_active = IFM_ETHER;
 	if (!(my_phy_readreg(sc, PHY_BMCR) & PHY_BMCR_AUTONEGENBL)) {
 #if 0				/* this version did not support 1000M, */
@@ -1672,7 +1552,8 @@ my_ifmedia_sts(struct ifnet * ifp, struct ifmediareq * ifmr)
 		else
 			ifmr->ifm_active |= IFM_HDX;
 
-		MY_UNLOCK(sc);
+		crit_exit();
+
 		return;
 	}
 	ability = my_phy_readreg(sc, PHY_LPAR);
@@ -1702,8 +1583,8 @@ my_ifmedia_sts(struct ifnet * ifp, struct ifmediareq * ifmr)
 		ifmr->ifm_active = IFM_ETHER | IFM_10_T | IFM_FDX;
 	else if (advert & PHY_ANAR_10BTHALF && ability & PHY_ANAR_10BTHALF)
 		ifmr->ifm_active = IFM_ETHER | IFM_10_T | IFM_HDX;
-	MY_UNLOCK(sc);
-	return;
+
+	crit_exit();
 }
 
 static int
@@ -1711,10 +1592,9 @@ my_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct my_softc *sc = ifp->if_softc;
 	struct ifreq   *ifr = (struct ifreq *) data;
-	int             s, error = 0;
+	int             error = 0;
 
-	s = splimp();
-	MY_LOCK(sc);
+	crit_enter();
 	switch (command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP)
@@ -1736,21 +1616,21 @@ my_ioctl(struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	MY_UNLOCK(sc);
-	(void)splx(s);
+
+	crit_exit();
 	return (error);
 }
 
 static void
 my_watchdog(struct ifnet * ifp)
 {
-	struct my_softc *sc;
+	struct my_softc *sc = ifp->if_softc;
 
-	sc = ifp->if_softc;
-	MY_LOCK(sc);
+	crit_enter();
+
 	if (sc->my_autoneg) {
 		my_autoneg_mii(sc, MY_FLAG_DELAYTIMEO, 1);
-		MY_UNLOCK(sc);
+		crit_exit();
 		return;
 	}
 	ifp->if_oerrors++;
@@ -1763,8 +1643,7 @@ my_watchdog(struct ifnet * ifp)
 	my_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))
 		my_start(ifp);
-	MY_LOCK(sc);
-	return;
+	crit_exit();
 }
 
 
@@ -1774,11 +1653,9 @@ my_watchdog(struct ifnet * ifp)
 static void
 my_stop(struct my_softc * sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int    i;
-	struct ifnet   *ifp;
 
-	MY_LOCK(sc);
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
 	MY_CLRBIT(sc, MY_TCRRCR, (MY_RE | MY_TE));
@@ -1809,8 +1686,6 @@ my_stop(struct my_softc * sc)
 	bzero((char *)&sc->my_ldata->my_tx_list,
 	    sizeof(sc->my_ldata->my_tx_list));
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	MY_UNLOCK(sc);
-	return;
 }
 
 /*
