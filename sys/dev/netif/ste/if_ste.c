@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.25 2005/06/09 19:29:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.26 2005/06/14 12:46:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -872,6 +872,7 @@ static int ste_attach(dev)
 	struct ste_softc	*sc;
 	struct ifnet		*ifp;
 	int			error = 0, rid;
+	uint8_t			eaddr[ETHER_ADDR_LEN];
 
 	sc = device_get_softc(dev);
 	sc->ste_dev = dev;
@@ -963,10 +964,9 @@ static int ste_attach(dev)
 	/*
 	 * Get station address from the EEPROM.
 	 */
-	if (ste_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
-	    STE_EEADDR_NODE0, 3, 0)) {
+	if (ste_read_eeprom(sc, eaddr, STE_EEADDR_NODE0, 3, 0)) {
 		device_printf(dev, "failed to read station address\n");
-		error = ENXIO;;
+		error = ENXIO;
 		goto fail;
 	}
 
@@ -1006,7 +1006,7 @@ static int ste_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, eaddr);
 
         /*
          * Tell the upper layer(s) we support long frames.
