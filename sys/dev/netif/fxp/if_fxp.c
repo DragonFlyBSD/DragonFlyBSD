@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.33 2005/05/31 08:30:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.34 2005/06/14 17:01:17 joerg Exp $
  */
 
 /*
@@ -37,10 +37,10 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
-		/* #include <sys/mutex.h> */
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -394,12 +394,9 @@ fxp_attach(device_t dev)
 	u_int32_t val;
 	u_int16_t data;
 	int i, rid, m1, m2, prefer_iomap;
-	int s;
 
 	callout_init(&sc->fxp_stat_timer);
 	sysctl_ctx_init(&sc->sysctl_ctx);
-
-	s = splimp(); 
 
 	/*
 	 * Enable bus mastering. Enable memory space too, in case
@@ -462,13 +459,6 @@ fxp_attach(device_t dev)
 	if (sc->irq == NULL) {
 		device_printf(dev, "could not map interrupt\n");
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
-			       fxp_intr, sc, &sc->ih, NULL);
-	if (error) {
-		device_printf(dev, "could not setup irq\n");
 		goto fail;
 	}
 
@@ -680,14 +670,21 @@ fxp_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, FXP_NTXCB - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	splx(s);
+	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
+			       fxp_intr, sc, &sc->ih, NULL);
+	if (error) {
+		if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
+			ifmedia_removeall(&sc->sc_media);
+		device_printf(dev, "could not setup irq\n");
+		goto fail;
+	}
+
 	return (0);
 
 failmem:
 	device_printf(dev, "Failed to malloc memory\n");
 	error = ENOMEM;
 fail:
-	splx(s);
 	fxp_release(dev);
 	return (error);
 }
@@ -698,12 +695,11 @@ fail:
 static void
 fxp_release(device_t dev)
 {
-	struct fxp_softc *sc;
+	struct fxp_softc *sc = device_get_softc(dev);
 
-	sc = device_get_softc(dev);
-	bus_generic_detach(dev);
 	if (sc->miibus)
 		device_delete_child(dev, sc->miibus);
+	bus_generic_detach(dev);
 
 	if (sc->cbl_base)
 		free(sc->cbl_base, M_DEVBUF);
@@ -714,8 +710,6 @@ fxp_release(device_t dev)
 	if (sc->rfa_headm)
 		m_freem(sc->rfa_headm);
 
-	if (sc->ih)
-		bus_teardown_intr(dev, sc->irq, sc->ih);
 	if (sc->irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	if (sc->mem)
@@ -731,12 +725,11 @@ static int
 fxp_detach(device_t dev)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
-	int s;
 
 	/* disable interrupts */
 	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
 
-	s = splimp();
+	crit_enter();
 
 	/*
 	 * Stop DMA and drop transmit queue.
@@ -751,9 +744,13 @@ fxp_detach(device_t dev)
 	/*
 	 * Free all media structures.
 	 */
-	ifmedia_removeall(&sc->sc_media);
+	if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
+		ifmedia_removeall(&sc->sc_media);
 
-	splx(s);
+	if (sc->ih)
+		bus_teardown_intr(dev, sc->irq, sc->ih);
+
+	crit_exit();
 
 	/* Release our allocated resources. */
 	fxp_release(dev);
@@ -787,9 +784,9 @@ static int
 fxp_suspend(device_t dev)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
-	int i, s;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
 	fxp_stop(sc);
 	
@@ -802,7 +799,7 @@ fxp_suspend(device_t dev)
 
 	sc->suspended = 1;
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -816,9 +813,9 @@ fxp_resume(device_t dev)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i, s;
+	int i;
 
-	s = splimp();
+	crit_enter();
 
 	fxp_powerstate_d0(dev);
 
@@ -843,7 +840,7 @@ fxp_resume(device_t dev)
 
 	sc->suspended = 0;
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1379,7 +1376,6 @@ fxp_tick(void *xsc)
 	struct fxp_stats *sp = sc->fxp_stats;
 	struct fxp_cb_tx *txp;
 	struct mbuf *m;
-	int s;
 
 	ifp->if_opackets += sp->tx_good;
 	ifp->if_collisions += sp->tx_total_collisions;
@@ -1406,7 +1402,9 @@ fxp_tick(void *xsc)
 		if (tx_threshold < 192)
 			tx_threshold += 64;
 	}
-	s = splimp();
+
+	crit_enter();
+
 	/*
 	 * Release any xmit buffers that have completed DMA. This isn't
 	 * strictly necessary to do here, but it's advantagous for mbufs
@@ -1467,11 +1465,12 @@ fxp_tick(void *xsc)
 	}
 	if (sc->miibus != NULL)
 		mii_tick(device_get_softc(sc->miibus));
-	splx(s);
 	/*
 	 * Schedule another timeout one second from now.
 	 */
 	callout_reset(&sc->fxp_stat_timer, hz, fxp_tick, sc);
+
+	crit_exit();
 }
 
 /*
@@ -1556,9 +1555,10 @@ fxp_init(void *xsc)
 	struct fxp_cb_ias *cb_ias;
 	struct fxp_cb_tx *txp;
 	struct fxp_cb_mcs *mcsp;
-	int i, prm, s;
+	int i, prm;
 
-	s = splimp();
+	crit_enter();
+
 	/*
 	 * Cancel any pending I/O
 	 */
@@ -1792,12 +1792,13 @@ fxp_init(void *xsc)
 	else
 #endif /* DEVICE_POLLING */
 	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, 0);
-	splx(s);
 
 	/*
 	 * Start stats updater.
 	 */
 	callout_reset(&sc->fxp_stat_timer, hz, fxp_tick, sc);
+
+	crit_exit();
 }
 
 static int
@@ -1962,9 +1963,9 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct fxp_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 
@@ -2024,7 +2025,9 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	splx(s);
+
+	crit_exit();
+
 	return (error);
 }
 
