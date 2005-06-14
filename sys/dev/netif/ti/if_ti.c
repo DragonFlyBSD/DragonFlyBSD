@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.27 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.28 2005/06/14 13:34:52 joerg Exp $
  */
 
 /*
@@ -275,6 +275,7 @@ ti_eeprom_putbyte(struct ti_softc *sc, int byte)
 static uint8_t
 ti_eeprom_getbyte(struct ti_softc *sc, int addr, uint8_t *dest)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 	uint8_t byte = 0;
 
@@ -284,8 +285,8 @@ ti_eeprom_getbyte(struct ti_softc *sc, int addr, uint8_t *dest)
 	 * Send write control code to EEPROM.
 	 */
 	if (ti_eeprom_putbyte(sc, EEPROM_CTL_WRITE)) {
-		printf("ti%d: failed to send write command, status: %x\n",
-		    sc->ti_unit, CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
+		if_printf(ifp, "failed to send write command, status: %x\n",
+			  CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
 		return(1);
 	}
 
@@ -293,16 +294,16 @@ ti_eeprom_getbyte(struct ti_softc *sc, int addr, uint8_t *dest)
 	 * Send first byte of address of byte we want to read.
 	 */
 	if (ti_eeprom_putbyte(sc, (addr >> 8) & 0xFF)) {
-		printf("ti%d: failed to send address, status: %x\n",
-		    sc->ti_unit, CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
+		if_printf(ifp, "failed to send address, status: %x\n",
+			  CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
 		return(1);
 	}
 	/*
 	 * Send second byte address of byte we want to read.
 	 */
 	if (ti_eeprom_putbyte(sc, addr & 0xFF)) {
-		printf("ti%d: failed to send address, status: %x\n",
-		    sc->ti_unit, CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
+		if_printf(ifp, "failed to send address, status: %x\n",
+			  CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
 		return(1);
 	}
 
@@ -312,8 +313,8 @@ ti_eeprom_getbyte(struct ti_softc *sc, int addr, uint8_t *dest)
 	 * Send read control code to EEPROM.
 	 */
 	if (ti_eeprom_putbyte(sc, EEPROM_CTL_READ)) {
-		printf("ti%d: failed to send read command, status: %x\n",
-		    sc->ti_unit, CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
+		if_printf(ifp, "failed to send read command, status: %x\n",
+			  CSR_READ_4(sc, TI_MISC_LOCAL_CTL));
 		return(1);
 	}
 
@@ -402,16 +403,18 @@ ti_mem(struct ti_softc *sc, uint32_t addr, uint32_t len, caddr_t buf)
 static void
 ti_loadfw(struct ti_softc *sc)
 {
+	struct ifnet *ifp;
+
 	switch(sc->ti_hwrev) {
 	case TI_HWREV_TIGON:
 		if (tigonFwReleaseMajor != TI_FIRMWARE_MAJOR ||
 		    tigonFwReleaseMinor != TI_FIRMWARE_MINOR ||
 		    tigonFwReleaseFix != TI_FIRMWARE_FIX) {
-			printf("ti%d: firmware revision mismatch; want "
-			    "%d.%d.%d, got %d.%d.%d\n", sc->ti_unit,
-			    TI_FIRMWARE_MAJOR, TI_FIRMWARE_MINOR,
-			    TI_FIRMWARE_FIX, tigonFwReleaseMajor,
-			    tigonFwReleaseMinor, tigonFwReleaseFix);
+			if_printf(ifp, "firmware revision mismatch; want "
+				  "%d.%d.%d, got %d.%d.%d\n",
+				  TI_FIRMWARE_MAJOR, TI_FIRMWARE_MINOR,
+				  TI_FIRMWARE_FIX, tigonFwReleaseMajor,
+				  tigonFwReleaseMinor, tigonFwReleaseFix);
 			return;
 		}
 		ti_mem(sc, tigonFwTextAddr, tigonFwTextLen,
@@ -428,11 +431,11 @@ ti_loadfw(struct ti_softc *sc)
 		if (tigon2FwReleaseMajor != TI_FIRMWARE_MAJOR ||
 		    tigon2FwReleaseMinor != TI_FIRMWARE_MINOR ||
 		    tigon2FwReleaseFix != TI_FIRMWARE_FIX) {
-			printf("ti%d: firmware revision mismatch; want "
-			    "%d.%d.%d, got %d.%d.%d\n", sc->ti_unit,
-			    TI_FIRMWARE_MAJOR, TI_FIRMWARE_MINOR,
-			    TI_FIRMWARE_FIX, tigon2FwReleaseMajor,
-			    tigon2FwReleaseMinor, tigon2FwReleaseFix);
+			if_printf(ifp, "firmware revision mismatch; want "
+				  "%d.%d.%d, got %d.%d.%d\n",
+				  TI_FIRMWARE_MAJOR, TI_FIRMWARE_MINOR,
+				  TI_FIRMWARE_FIX, tigon2FwReleaseMajor,
+				  tigon2FwReleaseMinor, tigon2FwReleaseFix);
 			return;
 		}
 		ti_mem(sc, tigon2FwTextAddr, tigon2FwTextLen,
@@ -446,8 +449,7 @@ ti_loadfw(struct ti_softc *sc)
 		CSR_WRITE_4(sc, TI_CPU_PROGRAM_COUNTER, tigon2FwStartAddr);
 		break;
 	default:
-		printf("ti%d: can't load firmware: unknown hardware rev\n",
-		    sc->ti_unit);
+		if_printf(ifp, "can't load firmware: unknown hardware rev\n");
 		break;
 	}
 }
@@ -501,6 +503,7 @@ ti_cmd_ext(struct ti_softc *sc, struct ti_cmd_desc *cmd, caddr_t arg, int len)
 static void
 ti_handle_events(struct ti_softc *sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ti_event_desc *e;
 
 	if (sc->ti_rdata->ti_event_ring == NULL)
@@ -511,20 +514,22 @@ ti_handle_events(struct ti_softc *sc)
 		switch(e->ti_event) {
 		case TI_EV_LINKSTAT_CHANGED:
 			sc->ti_linkstat = e->ti_code;
-			if (e->ti_code == TI_EV_CODE_LINK_UP)
-				printf("ti%d: 10/100 link up\n", sc->ti_unit);
-			else if (e->ti_code == TI_EV_CODE_GIG_LINK_UP)
-				printf("ti%d: gigabit link up\n", sc->ti_unit);
-			else if (e->ti_code == TI_EV_CODE_LINK_DOWN)
-				printf("ti%d: link down\n", sc->ti_unit);
+			if (e->ti_code == TI_EV_CODE_LINK_UP) {
+				if_printf(ifp, "10/100 link up\n");
+			} else if (e->ti_code == TI_EV_CODE_GIG_LINK_UP) {
+				if_printf(ifp, "gigabit link up\n");
+			} else if (e->ti_code == TI_EV_CODE_LINK_DOWN) {
+				if_printf(ifp, "link down\n");
+			}
 			break;
 		case TI_EV_ERROR:
-			if (e->ti_code == TI_EV_CODE_ERR_INVAL_CMD)
-				printf("ti%d: invalid command\n", sc->ti_unit);
-			else if (e->ti_code == TI_EV_CODE_ERR_UNIMP_CMD)
-				printf("ti%d: unknown command\n", sc->ti_unit);
-			else if (e->ti_code == TI_EV_CODE_ERR_BADCFG)
-				printf("ti%d: bad config data\n", sc->ti_unit);
+			if (e->ti_code == TI_EV_CODE_ERR_INVAL_CMD) {
+				if_printf(ifp, "invalid command\n");
+			} else if (e->ti_code == TI_EV_CODE_ERR_UNIMP_CMD) {
+				if_printf(ifp, "unknown command\n");
+			} else if (e->ti_code == TI_EV_CODE_ERR_BADCFG) {
+				if_printf(ifp, "bad config data\n");
+			}
 			break;
 		case TI_EV_FIRMWARE_UP:
 			ti_init2(sc);
@@ -537,8 +542,7 @@ ti_handle_events(struct ti_softc *sc)
 			/* Who cares. */
 			break;
 		default:
-			printf("ti%d: unknown event: %d\n",
-			    sc->ti_unit, e->ti_event);
+			if_printf(ifp, "unknown event: %d\n", e->ti_event);
 			break;
 		}
 		/* Advance the consumer index. */
@@ -582,7 +586,7 @@ ti_alloc_jumbo_mem(struct ti_softc *sc)
 		M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->ti_cdata.ti_jumbo_buf == NULL) {
-		printf("ti%d: no memory for jumbo buffers!\n", sc->ti_unit);
+		if_printf(&sc->arpcom.ac_if, "no memory for jumbo buffers!\n");
 		return(ENOBUFS);
 	}
 
@@ -621,7 +625,7 @@ ti_jalloc(struct ti_softc *sc)
 	entry = SLIST_FIRST(&sc->ti_jfree_listhead);
 
 	if (entry == NULL) {
-		printf("ti%d: no free jumbo buffers\n", sc->ti_unit);
+		if_printf(&sc->arpcom.ac_if, "no free jumbo buffers\n");
 		return(NULL);
 	}
 
@@ -767,8 +771,8 @@ ti_newbuf_jumbo(struct ti_softc *sc, int i, struct mbuf *m)
 		buf = ti_jalloc(sc);
 		if (buf == NULL) {
 			m_freem(m_new);
-			printf("ti%d: jumbo allocation failed "
-			    "-- packet dropped!\n", sc->ti_unit);
+			if_printf(&sc->arpcom.ac_if, "jumbo allocation failed "
+				  "-- packet dropped!\n");
 			return(ENOBUFS);
 		}
 
@@ -956,7 +960,7 @@ ti_add_mcast(struct ti_softc *sc, struct ether_addr *addr)
 		TI_DO_CMD_EXT(TI_CMD_EXT_ADD_MCAST, 0, 0, (caddr_t)&ext, 2);
 		break;
 	default:
-		printf("ti%d: unknown hwrev\n", sc->ti_unit);
+		if_printf(&sc->arpcom.ac_if, "unknown hwrev\n");
 		break;
 	}
 }
@@ -982,7 +986,7 @@ ti_del_mcast(struct ti_softc *sc, struct ether_addr *addr)
 		TI_DO_CMD_EXT(TI_CMD_EXT_DEL_MCAST, 0, 0, (caddr_t)&ext, 2);
 		break;
 	default:
-		printf("ti%d: unknown hwrev\n", sc->ti_unit);
+		if_printf(&sc->arpcom.ac_if, "unknown hwrev\n");
 		break;
 	}
 }
@@ -1098,7 +1102,7 @@ ti_chipinit(struct ti_softc *sc)
 
 	/* Check the ROM failed bit to see if self-tests passed. */
 	if (CSR_READ_4(sc, TI_CPU_STATE) & TI_CPUSTATE_ROMFAIL) {
-		printf("ti%d: board self-diagnostics failed!\n", sc->ti_unit);
+		if_printf(ifp, "board self-diagnostics failed!\n");
 		return(ENODEV);
 	}
 
@@ -1114,7 +1118,7 @@ ti_chipinit(struct ti_softc *sc)
 		sc->ti_hwrev = TI_HWREV_TIGON_II;
 		break;
 	default:
-		printf("ti%d: unsupported chip revision\n", sc->ti_unit);
+		if_printf(ifp, "unsupported chip revision\n");
 		return(ENODEV);
 	}
 
@@ -1155,10 +1159,11 @@ ti_chipinit(struct ti_softc *sc)
 			break;
 		default:
 		/* Disable PCI memory write and invalidate. */
-			if (bootverbose)
-				printf("ti%d: cache line size %d not "
-				    "supported; disabling PCI MWI\n",
-				    sc->ti_unit, cacheline);
+			if (bootverbose) {
+				if_printf(ifp, "cache line size %d not "
+					  "supported; disabling PCI MWI\n",
+					  cacheline);
+			}
 			CSR_WRITE_4(sc, TI_PCI_CMDSTAT, CSR_READ_4(sc,
 			    TI_PCI_CMDSTAT) & ~PCIM_CMD_MWIEN);
 			break;
@@ -1188,7 +1193,7 @@ ti_chipinit(struct ti_softc *sc)
 	 * the firmware racks up lots of nicDmaReadRingFull
 	 * errors.  This is not compatible with hardware checksums.
 	 */
-	if (sc->arpcom.ac_if.if_hwassist == 0)
+	if (ifp->if_hwassist == 0)
 		TI_SETBIT(sc, TI_GCR_OPMODE, TI_OPMODE_1_DMA_ACTIVE);
 
 	/* Recommended settings from Tigon manual. */
@@ -1196,8 +1201,8 @@ ti_chipinit(struct ti_softc *sc)
 	CSR_WRITE_4(sc, TI_GCR_DMA_READCFG, TI_DMA_STATE_THRESH_8W);
 
 	if (ti_64bitslot_war(sc)) {
-		printf("ti%d: bios thinks we're in a 64 bit slot, "
-		    "but we aren't", sc->ti_unit);
+		if_printf(ifp, "bios thinks we're in a 64 bit slot, "
+			  "but we aren't");
 		return(EINVAL);
 	}
 
@@ -1394,16 +1399,16 @@ ti_attach(device_t dev)
 {
 	struct ti_softc *sc;
 	struct ifnet *ifp;
-	int error = 0, rid, unit;
+	int error = 0, rid;
 	uint32_t command;
 
 	crit_enter();
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_capabilities = IFCAP_HWCSUM;
-	ifp->if_capenable = sc->arpcom.ac_if.if_capabilities;
+	ifp->if_capenable = ifp->if_capabilities;
 
 	/*
 	 * Map control/status registers.
@@ -1414,7 +1419,7 @@ ti_attach(device_t dev)
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 	if ((command & PCIM_CMD_MEMEN) == 0) {
-		printf("ti%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1424,7 +1429,7 @@ ti_attach(device_t dev)
 	    RF_ACTIVE);
 
 	if (sc->ti_res == NULL) {
-		printf ("ti%d: couldn't map memory\n", unit);
+		device_printf(dev, "couldn't map memory\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1440,7 +1445,7 @@ ti_attach(device_t dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->ti_irq == NULL) {
-		printf("ti%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1452,14 +1457,12 @@ ti_attach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    TI_PCI_LOMEM, sc->ti_res);
-		printf("ti%d: couldn't set up irq\n", unit);
+		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
-	sc->ti_unit = unit;
-
 	if (ti_chipinit(sc)) {
-		printf("ti%d: chip initialization failed\n", sc->ti_unit);
+		device_printf(dev, "chip initialization failed\n");
 		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
 		bus_release_resource(dev, SYS_RES_MEMORY,
@@ -1473,7 +1476,7 @@ ti_attach(device_t dev)
 
 	/* Init again -- zeroing memory may have clobbered some registers. */
 	if (ti_chipinit(sc)) {
-		printf("ti%d: chip initialization failed\n", sc->ti_unit);
+		device_printf(dev, "chip initialization failed\n");
 		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
 		bus_release_resource(dev, SYS_RES_MEMORY,
@@ -1491,7 +1494,7 @@ ti_attach(device_t dev)
 	 */
 	if (ti_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
 				TI_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
-		printf("ti%d: failed to read station address\n", unit);
+		device_printf(dev, "failed to read station address\n");
 		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
 		bus_release_resource(dev, SYS_RES_MEMORY,
@@ -1510,7 +1513,7 @@ ti_attach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    TI_PCI_LOMEM, sc->ti_res);
 		error = ENXIO;
-		printf("ti%d: no memory for list buffers!\n", sc->ti_unit);
+		device_printf(dev, "no memory for list buffers!\n");
 		goto fail;
 	}
 
@@ -1518,7 +1521,7 @@ ti_attach(device_t dev)
 
 	/* Try to allocate memory for jumbo buffers. */
 	if (ti_alloc_jumbo_mem(sc)) {
-		printf("ti%d: jumbo buffer allocation failed\n", sc->ti_unit);
+		device_printf(dev, "jumbo buffer allocation failed\n");
 		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
 		bus_release_resource(dev, SYS_RES_MEMORY,
@@ -1554,7 +1557,6 @@ ti_attach(device_t dev)
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
-	if_initname(ifp, "ti", sc->ti_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = ti_ioctl;
 	ifp->if_start = ti_start;
@@ -1996,7 +1998,7 @@ ti_init(void *xsc)
 
 	/* Init the gen info block, ring control blocks and firmware. */
 	if (ti_gibinit(sc)) {
-		printf("ti%d: initialization failure\n", sc->ti_unit);
+		if_printf(&sc->arpcom.ac_if, "initialization failure\n");
 		crit_exit();
 		return;
 	}
@@ -2272,7 +2274,7 @@ ti_watchdog(struct ifnet *ifp)
 {
 	struct ti_softc *sc = ifp->if_softc;
 
-	printf("ti%d: watchdog timeout -- resetting\n", sc->ti_unit);
+	if_printf(ifp, "watchdog timeout -- resetting\n");
 	ti_stop(sc);
 	ti_init(sc);
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tireg.h,v 1.13.2.4 2001/04/26 16:41:15 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.5 2005/05/31 12:29:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.6 2005/06/14 13:34:52 joerg Exp $
  */
 
 /*
@@ -1130,7 +1130,6 @@ struct ti_softc {
 	struct resource		*ti_irq;
 	struct resource		*ti_res;
 	struct ifmedia		ifmedia;	/* media info */
-	uint8_t			ti_unit;	/* interface number */
 	uint8_t			ti_hwrev;	/* Tigon rev (1 or 2) */
 	uint8_t			ti_copper;	/* 1000baseTX card */
 	uint8_t			ti_linkstat;	/* Link state */
