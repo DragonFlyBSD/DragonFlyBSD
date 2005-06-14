@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.15 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.16 2005/06/14 17:34:29 joerg Exp $
  */
 
 /*
@@ -70,6 +70,7 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>	/* XXX: Shouldn't really be required! */
 
 #include <net/bpf.h>
@@ -210,15 +211,14 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 {
 	struct ifvlan *ifv;
 	struct ifnet *ifp;
-	int s;
 
 	ifv = malloc(sizeof(struct ifvlan), M_VLAN, M_WAITOK | M_ZERO);
 	ifp = &ifv->ifv_if;
 	SLIST_INIT(&ifv->vlan_mc_listhead);
 
-	s = splnet();
+	crit_enter();
 	LIST_INSERT_HEAD(&ifv_list, ifv, ifv_list);
-	splx(s);
+	crit_exit();
 
 	ifp->if_softc = ifv;
 	if_initname(ifp, "vlan", unit);
@@ -244,14 +244,14 @@ static void
 vlan_clone_destroy(struct ifnet *ifp)
 {
 	struct ifvlan *ifv = ifp->if_softc;
-	int s;
 
-	s = splnet();
+	crit_enter();
+
 	LIST_REMOVE(ifv, ifv_list);
 	vlan_unconfig(ifp);
-	splx(s);
-
 	ether_ifdetach(ifp);
+
+	crit_exit();
 
 	free(ifv, M_VLAN);
 }
@@ -563,6 +563,8 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	ifa = (struct ifaddr *)data;
 	ifv = ifp->if_softc;
 
+	crit_enter();
+
 	switch (cmd) {
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
@@ -631,11 +633,8 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 		if (vlr.vlr_parent[0] == '\0') {
 			vlan_unconfig(ifp);
-			if (ifp->if_flags & IFF_UP) {
-				int s = splimp();
+			if (ifp->if_flags & IFF_UP)
 				if_down(ifp);
-				splx(s);
-			}		
 			ifp->if_flags &= ~IFF_RUNNING;
 			break;
 		}
@@ -679,5 +678,8 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	default:
 		error = EINVAL;
 	}
+
+	crit_exit();
+
 	return error;
 }
