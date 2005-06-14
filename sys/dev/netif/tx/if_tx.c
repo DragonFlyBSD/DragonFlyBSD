@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.23 2005/06/14 12:26:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.24 2005/06/14 12:30:19 joerg Exp $
  */
 
 /*
@@ -101,7 +101,6 @@ static void epic_start_activity(epic_softc_t *);
 static void epic_set_rx_mode(epic_softc_t *);
 static void epic_set_tx_mode(epic_softc_t *);
 static void epic_set_mc_table(epic_softc_t *);
-static u_int8_t epic_calchash(caddr_t);
 static int epic_read_eeprom(epic_softc_t *,u_int16_t);
 static void epic_output_eepromw(epic_softc_t *, u_int16_t);
 static u_int16_t epic_input_eepromw(epic_softc_t *);
@@ -1278,7 +1277,9 @@ epic_set_mc_table(sc)
 #endif
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = epic_calchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = (ether_crc32_be(
+			LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+			ETHER_ADDR_LEN) >> 26) & 0x3f;
 		filter[h >> 4] |= 1 << (h & 0xF);
 	}
 
@@ -1289,35 +1290,6 @@ epic_set_mc_table(sc)
 
 	return;
 }
-
-/*
- * Synopsis: calculate EPIC's hash of multicast address.
- */
-static u_int8_t
-epic_calchash(addr)
-	caddr_t addr;
-{
-	u_int32_t crc, carry;
-	int i, j;
-	u_int8_t c;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (i = 0; i < 6; i++) {
-		c = *(addr + i);
-		for (j = 0; j < 8; j++) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (c & 0x01);
-			crc <<= 1;
-			c >>= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	return ((crc >> 26) & 0x3F);
-}
-
 
 /*
  * Synopsis: Start receive process and transmit one, if they need.
