@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.7 2005/02/12 21:04:41 eirikn Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.8 2005/06/14 13:25:40 joerg Exp $
  */
 
 /*
@@ -67,8 +67,7 @@ static db_cmdfcn_t	db_fncall;
 static db_cmdfcn_t	db_gdb;
 static db_cmdfcn_t	db_reset;
 
-/* XXX this is actually forward-static. */
-extern struct command	db_show_cmds[];
+static struct command	db_show_cmds[];
 
 /*
  * if 'ed' style: 'dot' is set at start of last item printed,
