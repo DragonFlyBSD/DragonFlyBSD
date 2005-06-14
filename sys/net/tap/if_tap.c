@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.17 2005/04/30 04:27:51 y0netan1 Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.18 2005/06/14 18:15:37 joerg Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -70,7 +70,7 @@
 
 #define CDEV_NAME	"tap"
 #define CDEV_MAJOR	149
-#define TAPDEBUG	if (tapdebug) printf
+#define TAPDEBUG	if (tapdebug) if_printf
 
 #define TAP		"tap"
 #define VMNET		"vmnet"
@@ -168,10 +168,9 @@ tapmodevent(mod, type, data)
 			if (ifp != NULL) {
 				struct tap_softc	*tp = ifp->if_softc;
 
-				TAPDEBUG("detaching %s. minor = %#x, " \
+				TAPDEBUG(ifp, "detached. minor = %#x, " \
 					"taplastunit = %d\n",
-					ifp->if_xname, minor(tp->tap_dev),
-					taplastunit);
+					minor(tp->tap_dev), taplastunit);
 
 				s = splimp();
 				ether_ifdetach(ifp);
@@ -256,8 +255,7 @@ tapcreate(dev)
 
 	tp->tap_flags |= TAP_INITED;
 
-	TAPDEBUG("interface %s created. minor = %#x\n",
-			ifp->if_xname, minor(tp->tap_dev));
+	TAPDEBUG(ifp, "created. minor = %#x\n", minor(tp->tap_dev));
 } /* tapcreate */
 
 
@@ -290,9 +288,9 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 	tp->tap_flags |= TAP_OPEN;
 	taprefcnt ++;
 
-	TAPDEBUG("%s is open. minor = %#x, refcnt = %d, taplastunit = %d\n",
-		tp->tap_if.if_xname,
-		minor(tp->tap_dev), taprefcnt, taplastunit);
+	TAPDEBUG(&tp->arpcom.ac_if,
+		 "opened. minor = %#x, refcnt = %d, taplastunit = %d\n",
+		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
 	return (0);
 } /* tapopen */
@@ -361,14 +359,12 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 	taprefcnt --;
 	if (taprefcnt < 0) {
 		taprefcnt = 0;
-		printf("%s minor = %#x, refcnt = %d is out of sync. " \
-			"set refcnt to 0\n", ifp->if_xname,
-			minor(tp->tap_dev), taprefcnt);
+		if_printf(ifp, "minor = %#x, refcnt = %d is out of sync. "
+			"set refcnt to 0\n", minor(tp->tap_dev), taprefcnt);
 	}
 
-	TAPDEBUG("%s is closed. minor = %#x, refcnt = %d, taplastunit = %d\n",
-			ifp->if_xname, minor(tp->tap_dev),
-			taprefcnt, taplastunit);
+	TAPDEBUG(ifp, "closed. minor = %#x, refcnt = %d, taplastunit = %d\n",
+		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
 	return (0);
 } /* tapclose */
@@ -386,8 +382,7 @@ tapifinit(xtp)
 	struct tap_softc	*tp = (struct tap_softc *)xtp;
 	struct ifnet		*ifp = &tp->tap_if;
 
-	TAPDEBUG("initializing %s, minor = %#x\n",
-			ifp->if_xname, minor(tp->tap_dev));
+	TAPDEBUG(ifp, "initializing, minor = %#x\n", minor(tp->tap_dev));
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -466,8 +461,7 @@ tapifstart(ifp)
 	struct tap_softc	*tp = ifp->if_softc;
 	int			 s;
 
-	TAPDEBUG("%s starting, minor = %#x\n", 
-			ifp->if_xname, minor(tp->tap_dev));
+	TAPDEBUG(ifp, "starting, minor = %#x\n", minor(tp->tap_dev));
 
 	/*
 	 * do not junk pending output if we are in VMnet mode.
@@ -478,9 +472,8 @@ tapifstart(ifp)
 	    ((tp->tap_flags & TAP_READY) != TAP_READY)) {
 		struct mbuf	*m = NULL;
 
-		TAPDEBUG("%s not ready. minor = %#x, tap_flags = 0x%x\n",
-			ifp->if_xname,
-			minor(tp->tap_dev), tp->tap_flags);
+		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
+			 minor(tp->tap_dev), tp->tap_flags);
 
 		s = splimp();
 		do {
@@ -645,13 +638,11 @@ tapread(dev, uio, flag)
 	struct mbuf		*m0 = NULL;
 	int			 error = 0, len, s;
 
-	TAPDEBUG("%s reading, minor = %#x\n",
-			ifp->if_xname, minor(tp->tap_dev));
+	TAPDEBUG(ifp, "reading, minor = %#x\n", minor(tp->tap_dev));
 
 	if ((tp->tap_flags & TAP_READY) != TAP_READY) {
-		TAPDEBUG("%s not ready. minor = %#x, tap_flags = 0x%x\n",
-				ifp->if_xname,
-				minor(tp->tap_dev), tp->tap_flags);
+		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
+			 minor(tp->tap_dev), tp->tap_flags);
 
 		return (EHOSTDOWN);
 	}
@@ -688,8 +679,8 @@ tapread(dev, uio, flag)
 	}
 
 	if (m0 != NULL) {
-		TAPDEBUG("%s dropping mbuf, minor = %#x\n",
-				ifp->if_xname, minor(tp->tap_dev));
+		TAPDEBUG(ifp, "dropping mbuf, minor = %#x\n",
+			 minor(tp->tap_dev));
 		m_freem(m0);
 	}
 
@@ -713,16 +704,14 @@ tapwrite(dev, uio, flag)
 	struct mbuf		*top = NULL, **mp = NULL, *m = NULL;
 	int		 	 error = 0, tlen, mlen;
 
-	TAPDEBUG("%s writting, minor = %#x\n",
-				ifp->if_xname, minor(tp->tap_dev));
+	TAPDEBUG(ifp, "writting, minor = %#x\n", minor(tp->tap_dev));
 
 	if (uio->uio_resid == 0)
 		return (0);
 
 	if ((uio->uio_resid < 0) || (uio->uio_resid > TAPMRU)) {
-		TAPDEBUG("%s invalid packet len = %d, minor = %#x\n",
-				ifp->if_xname,
-				uio->uio_resid, minor(tp->tap_dev));
+		TAPDEBUG(ifp, "invalid packet len = %d, minor = %#x\n",
+			 uio->uio_resid, minor(tp->tap_dev));
 
 		return (EIO);
 	}
@@ -787,21 +776,20 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 	struct ifnet		*ifp = &tp->tap_if;
 	int		 	 s, revents = 0;
 
-	TAPDEBUG("%s polling, minor = %#x\n",
-				ifp->if_xname, minor(tp->tap_dev));
+	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
 
 	s = splimp();
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (ifp->if_snd.ifq_len > 0) {
-			TAPDEBUG("%s have data in queue. len = %d, " \
-				"minor = %#x\n", ifp->if_xname,
-				ifp->if_snd.ifq_len, minor(tp->tap_dev));
+			TAPDEBUG(ifp,
+				 "has data in queue. len = %d, minor = %#x\n",
+				 ifp->if_snd.ifq_len, minor(tp->tap_dev));
 
 			revents |= (events & (POLLIN | POLLRDNORM));
 		} 
 		else {
-			TAPDEBUG("%s waiting for data, minor = %#x\n",
-				ifp->if_xname, minor(tp->tap_dev));
+			TAPDEBUG(ifp, "waiting for data, minor = %#x\n",
+				 minor(tp->tap_dev));
 
 			selrecord(td, &tp->tap_rsel);
 		}
