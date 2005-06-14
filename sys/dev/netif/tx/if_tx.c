@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.24 2005/06/14 12:30:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.25 2005/06/14 12:33:44 joerg Exp $
  */
 
 /*
@@ -1270,11 +1270,7 @@ epic_set_mc_table(sc)
 	filter[2] = 0;
 	filter[3] = 0;
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-#else
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-#endif
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = (ether_crc32_be(
