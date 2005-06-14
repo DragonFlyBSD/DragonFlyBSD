@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tlreg.h,v 1.15 1999/09/19 22:39:24 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tlreg.h,v 1.4 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tlreg.h,v 1.5 2005/06/14 12:38:04 joerg Exp $
  */
 
 
@@ -119,7 +119,6 @@ struct tl_softc {
 	struct resource		*tl_res;
 	device_t		tl_miibus;
 	struct tl_type		*tl_dinfo;	/* ThunderLAN adapter info */
-	u_int8_t		tl_unit;	/* interface number */
 	u_int8_t		tl_eeaddr;
 	struct tl_list_data	*tl_ldata;	/* TX/RX lists and mbufs */
 	struct tl_chain_data	tl_cdata;

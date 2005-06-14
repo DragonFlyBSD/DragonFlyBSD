@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.26 2005/06/11 08:58:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.27 2005/06/14 12:38:04 joerg Exp $
  */
 
 /*
@@ -199,7 +199,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/clock.h>      /* for DELAY */
 #include <machine/bus_memio.h>
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
@@ -537,8 +536,8 @@ static u_int8_t tl_eeprom_getbyte(sc, addr, dest)
 	 * Send write control code to EEPROM.
 	 */
 	if (tl_eeprom_putbyte(sc, EEPROM_CTL_WRITE)) {
-		printf("tl%d: failed to send write command, status: %x\n",
-				sc->tl_unit, tl_dio_read8(sc, TL_NETSIO));
+		if_printf(&sc->arpcom.ac_if, "failed to send write command, "
+			  "status: %x\n", tl_dio_read8(sc, TL_NETSIO));
 		return(1);
 	}
 
@@ -546,8 +545,8 @@ static u_int8_t tl_eeprom_getbyte(sc, addr, dest)
 	 * Send address of byte we want to read.
 	 */
 	if (tl_eeprom_putbyte(sc, addr)) {
-		printf("tl%d: failed to send address, status: %x\n",
-				sc->tl_unit, tl_dio_read8(sc, TL_NETSIO));
+		if_printf(&sc->arpcom.ac_if, "failed to send address, "
+			  "status: %x\n", tl_dio_read8(sc, TL_NETSIO));
 		return(1);
 	}
 
@@ -557,8 +556,8 @@ static u_int8_t tl_eeprom_getbyte(sc, addr, dest)
 	 * Send read control code to EEPROM.
 	 */
 	if (tl_eeprom_putbyte(sc, EEPROM_CTL_READ)) {
-		printf("tl%d: failed to send write command, status: %x\n",
-				sc->tl_unit, tl_dio_read8(sc, TL_NETSIO));
+		if_printf(&sc->arpcom.ac_if, "failed to send write command, "
+			  "status: %x\n", tl_dio_read8(sc, TL_NETSIO));
 		return(1);
 	}
 
@@ -1108,12 +1107,11 @@ static int tl_attach(dev)
 	struct tl_type		*t;
 	struct ifnet		*ifp;
 	struct tl_softc		*sc;
-	int			unit, error = 0, rid;
+	int			error = 0, rid;
 
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 
 	t = tl_devs;
 	while(t->tl_name != NULL) {
@@ -1134,7 +1132,7 @@ static int tl_attach(dev)
 
 #ifdef TL_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("tl%d: failed to enable I/O ports!\n", unit);
+		device_printf(dev, "failed to enable I/O ports!\n");
 		return(error);
 	}
 
@@ -1153,7 +1151,7 @@ static int tl_attach(dev)
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("tl%d: failed to enable memory mapping!\n", unit);
+		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
 		return(error);
 	}
@@ -1169,7 +1167,7 @@ static int tl_attach(dev)
 #endif
 
 	if (sc->tl_res == NULL) {
-		printf("tl%d: couldn't map ports/memory\n", unit);
+		device_printf(dev, "couldn't map ports/memory\n");
 		error = ENXIO;
 		return(error);
 	}
@@ -1195,7 +1193,7 @@ static int tl_attach(dev)
 	    RF_SHAREABLE | RF_ACTIVE);
 
 	if (sc->tl_irq == NULL) {
-		printf("tl%d: couldn't map interrupt\n", unit);
+		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1207,14 +1205,13 @@ static int tl_attach(dev)
 	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->tl_ldata == NULL) {
-		printf("tl%d: no memory for list buffers!\n", unit);
+		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
 
 	bzero(sc->tl_ldata, sizeof(struct tl_list_data));
 
-	sc->tl_unit = unit;
 	sc->tl_dinfo = t;
 	if (t->tl_vid == COMPAQ_VENDORID || t->tl_vid == TI_VENDORID)
 		sc->tl_eeaddr = TL_EEPROM_EADDR;
@@ -1226,12 +1223,15 @@ static int tl_attach(dev)
 	tl_hardreset(dev);
 	tl_softreset(sc, 1);
 
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/*
 	 * Get station address from the EEPROM.
 	 */
 	if (tl_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
 				sc->tl_eeaddr, ETHER_ADDR_LEN)) {
-		printf("tl%d: failed to read station address\n", unit);
+		device_printf(dev, "failed to read station address\n");
 		error = ENXIO;
 		goto fail;
 	}
@@ -1258,9 +1258,7 @@ static int tl_attach(dev)
                 }
         }
 
-	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "tl", sc->tl_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = tl_ioctl;
 	ifp->if_start = tl_start;
@@ -1308,7 +1306,7 @@ static int tl_attach(dev)
 
 	if (error) {
 		ether_ifdetach(ifp);
-		printf("tl%d: couldn't set up irq\n", unit);
+		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
@@ -1640,9 +1638,10 @@ static int tl_intvec_adchk(xsc, type)
 
 	sc = xsc;
 
-	if (type)
-		printf("tl%d: adapter check: %x\n", sc->tl_unit,
-			(unsigned int)CSR_READ_4(sc, TL_CH_PARM));
+	if (type) {
+		if_printf(&sc->arpcom.ac_if, "adapter check: %x\n",
+			  (unsigned int)CSR_READ_4(sc, TL_CH_PARM));
+	}
 
 	tl_softreset(sc, 1);
 	tl_stop(sc);
@@ -1664,7 +1663,7 @@ static int tl_intvec_netsts(xsc, type)
 	netsts = tl_dio_read16(sc, TL_NETSTS);
 	tl_dio_write16(sc, TL_NETSTS, netsts);
 
-	printf("tl%d: network status: %x\n", sc->tl_unit, netsts);
+	if_printf(&sc->arpcom.ac_if, "network status: %x\n", netsts);
 
 	return(1);
 }
@@ -1693,7 +1692,7 @@ static void tl_intr(xsc)
 	switch(ints) {
 	case (TL_INTR_INVALID):
 #ifdef DIAGNOSTIC
-		printf("tl%d: got an invalid interrupt!\n", sc->tl_unit);
+		if_printf(ifp, "got an invalid interrupt!\n");
 #endif
 		/* Re-enable interrupts but don't ack this one. */
 		CMD_PUT(sc, type);
@@ -1713,7 +1712,7 @@ static void tl_intr(xsc)
 		r = tl_intvec_rxeof((void *)sc, type);
 		break;
 	case (TL_INTR_DUMMY):
-		printf("tl%d: got a dummy interrupt\n", sc->tl_unit);
+		if_printf(ifp, "got a dummy interrupt\n");
 		r = 1;
 		break;
 	case (TL_INTR_ADCHK):
@@ -1726,7 +1725,7 @@ static void tl_intr(xsc)
 		r = tl_intvec_rxeoc((void *)sc, type);
 		break;
 	default:
-		printf("%s: bogus interrupt type\n", ifp->if_xname);
+		if_printf(ifp, "bogus interrupt type\n");
 		break;
 	}
 
@@ -1780,9 +1779,9 @@ static void tl_stats_update(xsc)
 		if (tx_thresh != TL_AC_TXTHRESH_WHOLEPKT) {
 			tx_thresh >>= 4;
 			tx_thresh++;
-			printf("tl%d: tx underrun -- increasing "
-			    "tx threshold to %d bytes\n", sc->tl_unit,
-			    (64 * (tx_thresh * 4)));
+			if_printf(ifp, "tx underrun -- increasing "
+				  "tx threshold to %d bytes\n",
+				  (64 * (tx_thresh * 4)));
 			tl_dio_clrbit(sc, TL_ACOMMIT, TL_AC_TXTHRESH);
 			tl_dio_setbit(sc, TL_ACOMMIT, tx_thresh << 4);
 		}
@@ -1849,7 +1848,7 @@ static int tl_encap(sc, c, m_head)
 		m_new = m_getl(m_head->m_pkthdr.len, MB_DONTWAIT, MT_DATA,
 			       M_PKTHDR, NULL);
 		if (m_new == NULL) {
-			printf("tl%d: no memory for tx list\n", sc->tl_unit);
+			if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
 			return (1);
 		}
 		m_copydata(m_head, 0, m_head->m_pkthdr.len,	
@@ -1868,9 +1867,10 @@ static int tl_encap(sc, c, m_head)
 	 * frame size. We have to pad it to make the chip happy.
 	 */
 	if (total_len < TL_MIN_FRAMELEN) {
-		if (frag == TL_MAXFRAGS)
-			printf("tl%d: all frags filled but "
-				"frame still to small!\n", sc->tl_unit);
+		if (frag == TL_MAXFRAGS) {
+			if_printf(&sc->arpcom.ac_if, "all frags filled but "
+				  "frame still to small!\n");
+		}
 		f = &c->tl_ptr->tl_frag[frag];
 		f->tlist_dcnt = TL_MIN_FRAMELEN - total_len;
 		f->tlist_dadr = vtophys(&sc->tl_ldata->tl_pad);
@@ -2023,8 +2023,8 @@ static void tl_init(xsc)
 
 	/* Init circular RX list. */
 	if (tl_list_rx_init(sc) == ENOBUFS) {
-		printf("tl%d: initialization failed: no "
-			"memory for rx buffers\n", sc->tl_unit);
+		if_printf(ifp, "initialization failed: no "
+			  "memory for rx buffers\n");
 		tl_stop(sc);
 		return;
 	}
@@ -2181,7 +2181,7 @@ static void tl_watchdog(ifp)
 
 	sc = ifp->if_softc;
 
-	printf("tl%d: device timeout\n", sc->tl_unit);
+	if_printf(ifp, "device timeout\n");
 
 	ifp->if_oerrors++;
 
