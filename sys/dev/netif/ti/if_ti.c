@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.32 2005/06/14 13:42:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.33 2005/06/14 13:53:25 joerg Exp $
  */
 
 /*
@@ -1401,6 +1401,7 @@ ti_attach(device_t dev)
 	struct ifnet *ifp;
 	int error = 0, rid;
 	uint32_t command;
+	uint8_t eaddr[ETHER_ADDR_LEN];
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
@@ -1474,8 +1475,7 @@ ti_attach(device_t dev)
 	 * the NIC). This means the MAC address is actually preceeded
 	 * by two zero bytes. We need to skip over those.
 	 */
-	if (ti_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
-				TI_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
+	if (ti_read_eeprom(sc, eaddr, TI_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
 		device_printf(dev, "failed to read station address\n");
 		error = ENXIO;
 		goto fail;
@@ -1565,7 +1565,7 @@ ti_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, eaddr);
 
 	error = bus_setup_intr(dev, sc->ti_irq, INTR_TYPE_NET,
 			       ti_intr, sc, &sc->ti_intrhand, NULL);
