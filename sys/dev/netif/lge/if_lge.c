@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.28 2005/06/14 15:01:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.29 2005/06/14 15:08:16 joerg Exp $
  */
 
 /*
@@ -425,7 +425,6 @@ static int
 lge_attach(device_t dev)
 {
 	uint8_t eaddr[ETHER_ADDR_LEN];
-	uint32_t command;
 	struct lge_softc *sc;
 	struct ifnet *ifp;
 	int unit, error = 0, rid;
@@ -437,52 +436,27 @@ lge_attach(device_t dev)
 	/*
 	 * Handle power management nonsense.
 	 */
-	command = pci_read_config(dev, LGE_PCI_CAPID, 4) & 0x000000FF;
-	if (command == 0x01) {
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
+		uint32_t iobase, membase, irq;
 
-		command = pci_read_config(dev, LGE_PCI_PWRMGMTCTRL, 4);
-		if (command & LGE_PSTATE_MASK) {
-			uint32_t iobase, membase, irq;
+		/* Save important PCI config data. */
+		iobase = pci_read_config(dev, LGE_PCI_LOIO, 4);
+		membase = pci_read_config(dev, LGE_PCI_LOMEM, 4);
+		irq = pci_read_config(dev, LGE_PCI_INTLINE, 4);
 
-			/* Save important PCI config data. */
-			iobase = pci_read_config(dev, LGE_PCI_LOIO, 4);
-			membase = pci_read_config(dev, LGE_PCI_LOMEM, 4);
-			irq = pci_read_config(dev, LGE_PCI_INTLINE, 4);
+		/* Reset the power state. */
+		device_printf(dev, "chip is in D%d power mode "
+		"-- setting to D0\n", pci_get_powerstate(dev));
 
-			/* Reset the power state. */
-			printf("lge%d: chip is in D%d power mode "
-			"-- setting to D0\n", unit, command & LGE_PSTATE_MASK);
-			command &= 0xFFFFFFFC;
-			pci_write_config(dev, LGE_PCI_PWRMGMTCTRL, command, 4);
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
-			/* Restore PCI config data. */
-			pci_write_config(dev, LGE_PCI_LOIO, iobase, 4);
-			pci_write_config(dev, LGE_PCI_LOMEM, membase, 4);
-			pci_write_config(dev, LGE_PCI_INTLINE, irq, 4);
-		}
+		/* Restore PCI config data. */
+		pci_write_config(dev, LGE_PCI_LOIO, iobase, 4);
+		pci_write_config(dev, LGE_PCI_LOMEM, membase, 4);
+		pci_write_config(dev, LGE_PCI_INTLINE, irq, 4);
 	}
 
-	/*
-	 * Map control/status registers.
-	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-#ifdef LGE_USEIOSPACE
-	if (!(command & PCIM_CMD_PORTEN)) {
-		printf("lge%d: failed to enable I/O ports!\n", unit);
-		error = ENXIO;
-		goto fail;
-	}
-#else
-	if (!(command & PCIM_CMD_MEMEN)) {
-		printf("lge%d: failed to enable memory mapping!\n", unit);
-		error = ENXIO;
-		goto fail;
-	}
-#endif
+	pci_enable_busmaster(dev);
 
 	rid = LGE_RID;
 	sc->lge_res = bus_alloc_resource_any(dev, LGE_RES, &rid, RF_ACTIVE);

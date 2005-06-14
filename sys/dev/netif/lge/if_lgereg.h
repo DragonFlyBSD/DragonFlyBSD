@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.7 2005/05/25 12:18:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.8 2005/06/14 15:08:16 joerg Exp $
  */
 
 
@@ -595,17 +595,3 @@ struct lge_softc {
 #define LGE_PCI_MINLAT		0x0F
 #define LGE_PCI_RESETOPT	0x48
 #define LGE_PCI_EEPROM_DATA	0x4C
-
-/* power management registers */
-#define LGE_PCI_CAPID		0x50 /* 8 bits */
-#define LGE_PCI_NEXTPTR		0x51 /* 8 bits */
-#define LGE_PCI_PWRMGMTCAP	0x52 /* 16 bits */
-#define LGE_PCI_PWRMGMTCTRL	0x54 /* 16 bits */
-
-#define LGE_PSTATE_MASK		0x0003
-#define LGE_PSTATE_D0		0x0000
-#define LGE_PSTATE_D1		0x0001
-#define LGE_PSTATE_D2		0x0002
-#define LGE_PSTATE_D3		0x0003
-#define LGE_PME_EN		0x0010
-#define LGE_PME_STATUS		0x8000
