@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.19 2005/06/14 17:38:36 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.20 2005/06/14 17:43:01 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -62,7 +62,7 @@ PSEUDO_SET(tunattach, if_tun);
 
 static void tuncreate (dev_t dev);
 
-#define TUNDEBUG	if (tundebug) printf
+#define TUNDEBUG	if (tundebug) if_printf
 static int tundebug = 0;
 SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0, "");
 
@@ -160,7 +160,7 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 	tp->tun_pid = td->td_proc->p_pid;
 	ifp = &tp->tun_if;
 	tp->tun_flags |= TUN_OPEN;
-	TUNDEBUG("%s: open\n", ifp->if_xname);
+	TUNDEBUG(ifp, "open\n");
 	return (0);
 }
 
@@ -208,7 +208,7 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	funsetown(tp->tun_sigio);
 	selwakeup(&tp->tun_rsel);
 
-	TUNDEBUG ("%s: closed\n", ifp->if_xname);
+	TUNDEBUG(ifp, "closed\n");
 	return (0);
 }
 
@@ -220,7 +220,7 @@ tuninit(ifp)
 	struct ifaddr *ifa;
 	int error = 0;
 
-	TUNDEBUG("%s: tuninit\n", ifp->if_xname);
+	TUNDEBUG(ifp, "tuninit\n");
 
 	ifp->if_flags |= IFF_UP | IFF_RUNNING;
 	getmicrotime(&ifp->if_lastchange);
@@ -274,18 +274,15 @@ tunifioctl(ifp, cmd, data, cr)
 		break;
 	case SIOCSIFADDR:
 		error = tuninit(ifp);
-		TUNDEBUG("%s: address set, error=%d\n",
-			 ifp->if_xname, error);
+		TUNDEBUG(ifp, "address set, error=%d\n", error);
 		break;
 	case SIOCSIFDSTADDR:
 		error = tuninit(ifp);
-		TUNDEBUG("%s destination address set, error=%d\n",
-			 ifp->if_xname, error);
+		TUNDEBUG(ifp, "destination address set, error=%d\n", error);
 		break;
 	case SIOCSIFMTU:
 		ifp->if_mtu = ifr->ifr_mtu;
-		TUNDEBUG("%s: mtu set\n",
-			 ifp->if_xname);
+		TUNDEBUG(ifp, "mtu set\n");
 		break;
 	case SIOCSIFFLAGS:
 	case SIOCADDMULTI:
@@ -312,11 +309,10 @@ tunoutput(ifp, m0, dst, rt)
 	int error, s;
 	struct altq_pktattr pktattr;
 
-	TUNDEBUG ("%s: tunoutput\n", ifp->if_xname);
+	TUNDEBUG(ifp, "tunoutput\n");
 
 	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG ("%s: not ready 0%o\n", ifp->if_xname,
-			  tp->tun_flags);
+		TUNDEBUG(ifp, "not ready 0%o\n", tp->tun_flags);
 		m_freem (m0);
 		return EHOSTDOWN;
 	}
@@ -516,10 +512,9 @@ tunread(dev, uio, flag)
 	struct mbuf	*m0;
 	int		error=0, len, s;
 
-	TUNDEBUG ("%s: read\n", ifp->if_xname);
+	TUNDEBUG(ifp, "read\n");
 	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG ("%s: not ready 0%o\n", ifp->if_xname,
-			  tp->tun_flags);
+		TUNDEBUG(ifp, "not ready 0%o\n", tp->tun_flags);
 		return EHOSTDOWN;
 	}
 
@@ -547,7 +542,7 @@ tunread(dev, uio, flag)
 	}
 
 	if (m0) {
-		TUNDEBUG("%s: Dropping mbuf\n", ifp->if_xname);
+		TUNDEBUG(ifp, "Dropping mbuf\n");
 		m_freem(m0);
 	}
 	return error;
@@ -569,14 +564,13 @@ tunwrite(dev, uio, flag)
 	uint32_t	family;
 	int		isr;
 
-	TUNDEBUG("%s: tunwrite\n", ifp->if_xname);
+	TUNDEBUG(ifp, "tunwrite\n");
 
 	if (uio->uio_resid == 0)
 		return 0;
 
 	if (uio->uio_resid < 0 || uio->uio_resid > TUNMRU) {
-		TUNDEBUG("%s: len=%d!\n", ifp->if_xname,
-		    uio->uio_resid);
+		TUNDEBUG(ifp, "len=%d!\n", uio->uio_resid);
 		return EIO;
 	}
 	tlen = uio->uio_resid;
@@ -694,15 +688,14 @@ tunpoll(dev_t dev, int events, struct thread *td)
 	int		revents = 0;
 
 	s = splimp();
-	TUNDEBUG("%s: tunpoll\n", ifp->if_xname);
+	TUNDEBUG(ifp, "tunpoll\n");
 
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
-			TUNDEBUG("%s: tunpoll q=%d\n", ifp->if_xname,
-			    ifp->if_snd.ifq_len);
+			TUNDEBUG(ifp, "tunpoll q=%d\n", ifp->if_snd.ifq_len);
 			revents |= events & (POLLIN | POLLRDNORM);
 		} else {
-			TUNDEBUG("%s: tunpoll waiting\n", ifp->if_xname);
+			TUNDEBUG(ifp, "tunpoll waiting\n");
 			selrecord(td, &tp->tun_rsel);
 		}
 	}
