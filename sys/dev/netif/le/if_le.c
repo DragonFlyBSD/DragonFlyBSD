@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.24 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.25 2005/06/14 15:11:23 joerg Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/thread2.h>
 #include <sys/malloc.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
@@ -307,12 +308,8 @@ le_attach(struct isa_device *dvp)
 static void
 le_intr(int unit)
 {
-    int s = splimp();
-
     le_intrs[unit]++;
     (*le_intrvec[unit])(&le_softc[unit]);
-
-    splx(s);
 }
 
 #define	LE_XTRA		0
@@ -374,12 +371,12 @@ static int
 le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
     struct le_softc *sc = ifp->if_softc;
-    int s, error = 0;
+    int error = 0;
 
     if ((sc->le_flags & IFF_UP) == 0)
 	return EIO;
 
-    s = splimp();
+    crit_enter();
 
     switch (cmd) {
 	case SIOCSIFFLAGS: {
@@ -401,7 +398,8 @@ le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
     }
 
-    splx(s);
+    crit_exit();
+
     return error;
 }
 
@@ -696,12 +694,11 @@ static void
 lemac_init(void *xsc)
 {
     struct le_softc *sc = (struct le_softc *)xsc;
-    int s;
 
     if ((sc->le_flags & IFF_UP) == 0)
 	return;
 
-    s = splimp();
+    crit_enter();
 
     /*
      * If the interface has the up flag
@@ -742,7 +739,8 @@ lemac_init(void *xsc)
 	LEMAC_INTR_DISABLE(sc);
 	sc->le_if.if_flags &= ~IFF_RUNNING;
     }
-    splx(s);
+
+    crit_exit();
 }
 
 /*
