@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.29 2005/06/14 13:36:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.30 2005/06/14 13:36:42 joerg Exp $
  */
 
 /*
@@ -403,7 +403,7 @@ ti_mem(struct ti_softc *sc, uint32_t addr, uint32_t len, caddr_t buf)
 static void
 ti_loadfw(struct ti_softc *sc)
 {
-	struct ifnet *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	switch(sc->ti_hwrev) {
 	case TI_HWREV_TIGON:
