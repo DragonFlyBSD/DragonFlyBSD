@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.30 2005/06/14 13:36:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.31 2005/06/14 13:41:15 joerg Exp $
  */
 
 /*
@@ -1402,8 +1402,6 @@ ti_attach(device_t dev)
 	int error = 0, rid;
 	uint32_t command;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -1420,8 +1418,14 @@ ti_attach(device_t dev)
 	if ((command & PCIM_CMD_MEMEN) == 0) {
 		device_printf(dev, "failed to enable memory mapping!\n");
 		error = ENXIO;
-		goto fail;
+		return(error);
 	}
+
+	/*
+	 * Initialize media before any possible error may occur,
+	 * so we can destroy it unconditionally, if an error occurs later on.
+	 */
+	ifmedia_init(&sc->ifmedia, IFM_IMASK, ti_ifmedia_upd, ti_ifmedia_sts);
 
 	rid = TI_PCI_LOMEM;
 	sc->ti_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
@@ -1439,33 +1443,16 @@ ti_attach(device_t dev)
 
 	/* Allocate interrupt */
 	rid = 0;
-	
 	sc->ti_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_SHAREABLE | RF_ACTIVE);
-
 	if (sc->ti_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
 		error = ENXIO;
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->ti_irq, INTR_TYPE_NET,
-			       ti_intr, sc, &sc->ti_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    TI_PCI_LOMEM, sc->ti_res);
-		device_printf(dev, "couldn't set up irq\n");
-		goto fail;
-	}
-
 	if (ti_chipinit(sc)) {
 		device_printf(dev, "chip initialization failed\n");
-		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    TI_PCI_LOMEM, sc->ti_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1476,10 +1463,6 @@ ti_attach(device_t dev)
 	/* Init again -- zeroing memory may have clobbered some registers. */
 	if (ti_chipinit(sc)) {
 		device_printf(dev, "chip initialization failed\n");
-		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    TI_PCI_LOMEM, sc->ti_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1494,10 +1477,6 @@ ti_attach(device_t dev)
 	if (ti_read_eeprom(sc, (caddr_t)&sc->arpcom.ac_enaddr,
 				TI_EE_MAC_OFFSET + 2, ETHER_ADDR_LEN)) {
 		device_printf(dev, "failed to read station address\n");
-		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    TI_PCI_LOMEM, sc->ti_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1507,12 +1486,8 @@ ti_attach(device_t dev)
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->ti_rdata == NULL) {
-		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    TI_PCI_LOMEM, sc->ti_res);
-		error = ENXIO;
 		device_printf(dev, "no memory for list buffers!\n");
+		error = ENXIO;
 		goto fail;
 	}
 
@@ -1521,12 +1496,6 @@ ti_attach(device_t dev)
 	/* Try to allocate memory for jumbo buffers. */
 	if (ti_alloc_jumbo_mem(sc)) {
 		device_printf(dev, "jumbo buffer allocation failed\n");
-		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    TI_PCI_LOMEM, sc->ti_res);
-		contigfree(sc->ti_rdata, sizeof(struct ti_ring_data),
-		    M_DEVBUF);
 		error = ENXIO;
 		goto fail;
 	}
@@ -1566,7 +1535,6 @@ ti_attach(device_t dev)
 	ifq_set_ready(&ifp->if_snd);
 
 	/* Set up ifmedia support. */
-	ifmedia_init(&sc->ifmedia, IFM_IMASK, ti_ifmedia_upd, ti_ifmedia_sts);
 	if (sc->ti_copper) {
 		/*
 		 * Copper cards allow manual 10/100 mode selection,
@@ -1599,9 +1567,17 @@ ti_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
-fail:
-	crit_exit();
+	error = bus_setup_intr(dev, sc->ti_irq, INTR_TYPE_NET,
+			       ti_intr, sc, &sc->ti_intrhand, NULL);
+	if (error) {
+		device_printf(dev, "couldn't set up irq\n");
+		ether_ifdetach(ifp);
+		goto fail;
+	}
+	return 0;
 
+fail:
+	ti_detach(dev);
 	return(error);
 }
 
@@ -1613,18 +1589,28 @@ ti_detach(device_t dev)
 
 	crit_enter();
 
-	ether_ifdetach(ifp);
-	ti_stop(sc);
+	if (device_is_attached(dev)) {
+		if (bus_child_present(dev))
+			ti_stop(sc);
+		ether_ifdetach(ifp);
+	}
 
-	bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
-	bus_release_resource(dev, SYS_RES_MEMORY, TI_PCI_LOMEM, sc->ti_res);
-
-	contigfree(sc->ti_cdata.ti_jumbo_buf, TI_JMEM, M_DEVBUF);
-	contigfree(sc->ti_rdata, sizeof(struct ti_ring_data), M_DEVBUF);
-	ifmedia_removeall(&sc->ifmedia);
+	if (sc->ti_intrhand != NULL)
+		bus_teardown_intr(dev, sc->ti_irq, sc->ti_intrhand);
 
 	crit_exit();
+
+	if (sc->ti_irq != NULL)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ti_irq);
+	if (sc->ti_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY,
+				     TI_PCI_LOMEM, sc->ti_res);
+	}
+	if (sc->ti_cdata.ti_jumbo_buf != NULL)
+		contigfree(sc->ti_cdata.ti_jumbo_buf, TI_JMEM, M_DEVBUF);
+	if (sc->ti_rdata != NULL)
+		contigfree(sc->ti_rdata, sizeof(struct ti_ring_data), M_DEVBUF);
+	ifmedia_removeall(&sc->ifmedia);
 
 	return(0);
 }
