@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.19 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.20 2005/06/14 14:44:42 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -69,6 +69,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -337,17 +338,13 @@ ep_if_init(xsc)
 {
     struct ep_softc *sc = xsc;
     struct ifnet *ifp = &sc->arpcom.ac_if;
-    int s, i;
+    int i;
 
     if (sc->gone)
 	return;
 
-	/*
-    if (ifp->if_addrlist == (struct ifaddr *) 0)
-	return;
-	*/
+    crit_enter();
 
-    s = splimp();
     while (inw(BASE + EP_STATUS) & S_COMMAND_IN_PROGRESS);
 
     GO_WINDOW(0);
@@ -422,7 +419,7 @@ ep_if_init(xsc)
     GO_WINDOW(1);
     ep_if_start(ifp);
 
-    splx(s);
+    crit_exit();
 }
 
 static const char padmap[] = {0, 3, 2, 1};
@@ -435,7 +432,7 @@ ep_if_start(ifp)
     u_int len;
     struct mbuf *m;
     struct mbuf *top;
-    int s, pad;
+    int pad;
 
     if (sc->gone) {
 	return;
@@ -446,11 +443,15 @@ ep_if_start(ifp)
 	return;
     }
 
+    crit_enter();
+
 startagain:
     /* Sneak a peek at the next packet */
     m = ifq_poll(&ifp->if_snd);
-    if (m == NULL)
+    if (m == NULL) {
+	crit_exit();
 	return;
+    }
 
     for (len = 0, top = m; m; m = m->m_next)
 	len += m->m_len;
@@ -475,6 +476,7 @@ startagain:
 	/* make sure */
 	if (inw(BASE + EP_W1_FREE_TX) < len + pad + 4) {
 	    ifp->if_flags |= IFF_OACTIVE;
+	    crit_exit();
 	    return;
 	}
     } else {
@@ -482,8 +484,6 @@ startagain:
     }
 
     m = ifq_dequeue(&ifp->if_snd);
-
-    s = splhigh();
 
     outw(BASE + EP_W1_TX_PIO_WR_1, len); 
     outw(BASE + EP_W1_TX_PIO_WR_1, 0x0);	/* Second dword meaningless */
@@ -509,8 +509,6 @@ startagain:
     while (pad--)
 	outb(BASE + EP_W1_TX_PIO_WR_1, 0);	/* Padding */
 
-    splx(s);
-
     BPF_MTAP(ifp, top);
 
     ifp->if_timer = 2;
@@ -529,6 +527,8 @@ readcheck:
 	 */
 	if (!ifq_is_empty(&ifp->if_snd))
 	    outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | 8);
+
+        crit_exit();
 	return;
     }
     goto startagain;
@@ -538,24 +538,16 @@ void
 ep_intr(arg)
     void *arg;
 {
-    struct ep_softc *sc;
+    struct ep_softc *sc = arg;
+    struct ifnet *ifp = &sc->arpcom.ac_if;
     int status;
-    struct ifnet *ifp;
-    int x;
-
-    x = splbio();
-
-    sc = (struct ep_softc *)arg;
 
      /*
       * quick fix: Try to detect an interrupt when the card goes away.
       */
     if (sc->gone || inw(BASE + EP_STATUS) == 0xffff) {
-	    splx(x);
 	    return;
     }
-
-    ifp = &sc->arpcom.ac_if;
 
     outw(BASE + EP_COMMAND, SET_INTR_MASK); /* disable all Ints */
 
@@ -599,7 +591,6 @@ rescan:
 
 #endif
 	    ep_if_init(sc);
-	    splx(x);
 	    return;
 	}
 	if (status & S_TX_COMPLETE) {
@@ -648,8 +639,6 @@ rescan:
 
     /* re-enable Ints */
     outw(BASE + EP_COMMAND, SET_INTR_MASK | S_5_INTS);
-
-    splx(x);
 }
 
 static void
@@ -846,9 +835,9 @@ ep_if_ioctl(ifp, cmd, data, cr)
 {
 	struct ep_softc *	sc = ifp->if_softc;
 	struct ifreq *		ifr = (struct ifreq *)data;
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -891,7 +880,7 @@ ep_if_ioctl(ifp, cmd, data, cr)
 		break;
 	}
 
-	(void)splx(s);
+	crit_exit();
 
 	return (error);
 }
