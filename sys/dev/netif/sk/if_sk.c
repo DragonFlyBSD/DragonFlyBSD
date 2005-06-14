@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.35 2005/05/31 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.36 2005/06/14 11:27:28 joerg Exp $
  */
 
 /*
@@ -94,6 +94,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <sys/queue.h>
 
 #include <net/if.h>
@@ -1011,9 +1012,9 @@ sk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct sk_if_softc *sc_if = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
-	int error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -1056,7 +1057,7 @@ sk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 
 	return(error);
 }
@@ -1317,11 +1318,11 @@ static int
 skc_attach(device_t dev)
 {
 	struct sk_softc *sc;
-	int error = 0, *port, rid, s, unit;
+	int error = 0, *port, rid, unit;
 	uint32_t command;
 	uint8_t skrs;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -1512,7 +1513,7 @@ skc_attach(device_t dev)
 	bus_generic_attach(dev);
 
 fail:
-	splx(s);
+	crit_exit();
 	return(error);
 }
 
@@ -1521,9 +1522,8 @@ sk_detach(device_t dev)
 {
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	sk_stop(sc_if);
 	ether_ifdetach(ifp);
@@ -1533,7 +1533,7 @@ sk_detach(device_t dev)
 	contigfree(sc_if->sk_cdata.sk_jumbo_buf, SK_JMEM, M_DEVBUF);
 	contigfree(sc_if->sk_rdata, sizeof(struct sk_ring_data), M_DEVBUF);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -1542,9 +1542,8 @@ static int
 skc_detach(device_t dev)
 {
 	struct sk_softc *sc;
-	int s;
 
-	s = splimp();
+	crit_enter();
 
 	sc = device_get_softc(dev);
 
@@ -1558,7 +1557,7 @@ skc_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sk_irq);
 	bus_release_resource(dev, SK_RES, SK_RID, sc->sk_res);
 
-	splx(s);
+	crit_exit();
 
 	return(0);
 }
@@ -2241,10 +2240,9 @@ sk_init(void *xsc)
 	struct sk_softc *sc = sc_if->sk_softc;
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	struct mii_data *mii = device_get_softc(sc_if->sk_miibus);
-	int s;
 	uint16_t reg;
 
-	s = splimp();
+	crit_enter();
 
 	/* Cancel pending I/O and free all RX/TX buffers. */
 	sk_stop(sc_if);
@@ -2324,7 +2322,7 @@ sk_init(void *xsc)
 		printf("sk%d: initialization failed: no "
 		    "memory for rx buffers\n", sc_if->sk_unit);
 		sk_stop(sc_if);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	sk_init_tx_ring(sc_if);
@@ -2360,7 +2358,7 @@ sk_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	splx(s);
+	crit_exit();
 }
 
 static void
