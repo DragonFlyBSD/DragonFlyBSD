@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_txvar.h,v 1.14.2.1 2002/10/29 01:43:50 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.4 2004/09/15 01:00:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.5 2005/06/14 12:25:32 joerg Exp $
  */
 
 /*
@@ -76,7 +76,6 @@ typedef struct {
 	device_t		dev;
 	struct callout		tx_stat_timer;
 
-	u_int32_t		unit;
 	void			*sc_ih;
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;

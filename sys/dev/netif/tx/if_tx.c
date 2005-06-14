@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.21 2005/06/10 16:16:51 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.22 2005/06/14 12:25:32 joerg Exp $
  */
 
 /*
@@ -66,7 +66,6 @@
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
-#include <machine/clock.h>	/* for DELAY */
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -215,21 +214,19 @@ epic_attach(dev)
 	struct ifnet *ifp;
 	epic_softc_t *sc;
 	u_int32_t command;
-	int unit, error;
+	int error;
 	int i, rid, tmp;
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 
 	/* Preinitialize softc structure */
 	bzero(sc, sizeof(epic_softc_t));		
-	sc->unit = unit;
 	sc->dev = dev;
 	callout_init(&sc->tx_stat_timer);
 
 	/* Fill ifnet structure */
 	ifp = &sc->sc_if;
-	if_initname(ifp, "tx", unit);
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
 	ifp->if_ioctl = epic_ifioctl;
@@ -702,8 +699,10 @@ epic_tx_done(sc)
 		else sc->sc_if.if_oerrors++;
 		sc->sc_if.if_collisions += (status >> 8) & 0x1F;
 #if defined(EPIC_DIAG)
-		if ((status & 0x1001) == 0x1001)
-			device_printf(sc->dev,  "Tx ERROR: excessive coll. number\n");
+		if ((status & 0x1001) == 0x1001) {
+			if_printf(&sc->sc_if,
+				  "Tx ERROR: excessive coll. number\n");
+		}
 #endif
 	}
 
@@ -729,9 +728,9 @@ epic_intr(arg)
 	    if (status & (INTSTAT_RQE|INTSTAT_OVW)) {
 #if defined(EPIC_DIAG)
 		if (status & INTSTAT_OVW)
-		    device_printf(sc->dev, "RX buffer overflow\n");
+		    if_printf(&sc->sc_if, "RX buffer overflow\n");
 		if (status & INTSTAT_RQE)
-		    device_printf(sc->dev, "RX FIFO overflow\n");
+		    if_printf(&sc->sc_if, "RX FIFO overflow\n");
 #endif
 		if ((CSR_READ_4(sc, COMMAND) & COMMAND_RXQUEUED) == 0)
 		    CSR_WRITE_4(sc, COMMAND, COMMAND_RXQUEUED);
@@ -750,7 +749,7 @@ epic_intr(arg)
 		      INTSTAT_APE|INTSTAT_DPE|INTSTAT_TXU|INTSTAT_RXE)) {
     	    if (status & (INTSTAT_FATAL|INTSTAT_PMA|INTSTAT_PTA|
 			  INTSTAT_APE|INTSTAT_DPE)) {
-		device_printf(sc->dev, "PCI fatal errors occured: %s%s%s%s\n",
+		if_printf(&sc->sc_if, "PCI fatal errors occured: %s%s%s%s\n",
 		    (status&INTSTAT_PMA)?"PMA ":"",
 		    (status&INTSTAT_PTA)?"PTA ":"",
 		    (status&INTSTAT_APE)?"APE ":"",
@@ -765,7 +764,7 @@ epic_intr(arg)
 
 	    if (status & INTSTAT_RXE) {
 #if defined(EPIC_DIAG)
-		device_printf(sc->dev, "CRC/Alignment error\n");
+		if_printf(sc->sc_if, "CRC/Alignment error\n");
 #endif
 		sc->sc_if.if_ierrors++;
 	    }
@@ -794,13 +793,13 @@ epic_tx_underrun(sc)
 	if (sc->tx_threshold > TRANSMIT_THRESHOLD_MAX) {
 		sc->txcon &= ~TXCON_EARLY_TRANSMIT_ENABLE;
 #if defined(EPIC_DIAG)
-		device_printf(sc->dev, "Tx UNDERRUN: early TX disabled\n");
+		if_printf(&sc->sc_if, "Tx UNDERRUN: early TX disabled\n");
 #endif
 	} else {
 		sc->tx_threshold += 0x40;
 #if defined(EPIC_DIAG)
-		device_printf(sc->dev, "Tx UNDERRUN: TX threshold increased to %d\n",
-		    sc->tx_threshold);
+		if_printf(&sc->sc_if, "Tx UNDERRUN: "
+			  "TX threshold increased to %d\n", sc->tx_threshold);
 #endif
 	}
 
@@ -828,7 +827,7 @@ epic_ifwatchdog(ifp)
 
 	crit_enter();
 
-	device_printf(sc->dev, "device timeout %d packets\n", sc->pending_txs);
+	if_printf(ifp, "device timeout %d packets\n", sc->pending_txs);
 
 	/* Try to finish queued packets */
 	epic_tx_done(sc);
@@ -839,12 +838,12 @@ epic_ifwatchdog(ifp)
 		ifp->if_oerrors+=sc->pending_txs;
 
 		/* Reinitialize board */
-		device_printf(sc->dev, "reinitialization\n");
+		if_printf(ifp, "reinitialization\n");
 		epic_stop(sc);
 		epic_init(sc);
 
 	} else
-		device_printf(sc->dev, "seems we can continue normaly\n");
+		if_printf(ifp, "seems we can continue normaly\n");
 
 	/* Start output */
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -992,7 +991,7 @@ epic_ifmedia_upd(ifp)
 
 		break;
 	default:
-		device_printf(sc->dev, "ERROR! Unknown PHY selected\n");
+		if_printf(ifp, "ERROR! Unknown PHY selected\n");
 		return (EINVAL);
 	}
 
@@ -1107,7 +1106,7 @@ epic_miibus_mediainit(dev)
 		ifmedia_add(ifm, media, 0, NULL);
 
 		/* Report to user */
-		device_printf(sc->dev, "serial PHY detected (10Base2/BNC)\n");
+		if_printf(&sc->sc_if, "serial PHY detected (10Base2/BNC)\n");
 	}
 
 	return;
@@ -1149,7 +1148,7 @@ epic_init(sc)
 
 	/* Initialize rings */
 	if (epic_init_rings(sc)) {
-		device_printf(sc->dev, "failed to init rings\n");
+		if_printf(ifp, "failed to init rings\n");
 		crit_exit();
 		return -1;
 	}	
@@ -1362,10 +1361,10 @@ epic_stop_activity(sc)
 	status = CSR_READ_4(sc, INTSTAT);
 
 	if ((status & INTSTAT_RXIDLE) == 0)
-		device_printf(sc->dev, "ERROR! Can't stop Rx DMA\n");
+		if_printf(&sc->sc_if, "ERROR! Can't stop Rx DMA\n");
 
 	if ((status & INTSTAT_TXIDLE) == 0)
-		device_printf(sc->dev, "ERROR! Can't stop Tx DMA\n");
+		if_printf(&sc->sc_if, "ERROR! Can't stop Tx DMA\n");
 
 	/*
 	 * May need to queue one more packet if TQE, this is rare
@@ -1393,7 +1392,7 @@ epic_queue_last_packet(sc)
 	struct mbuf *m0;
 	int i;
 
-	device_printf(sc->dev, "queue last packet\n");
+	if_printf(&sc->sc_if, "queue last packet\n");
 
 	desc = sc->tx_desc + sc->cur_tx;
 	flist = sc->tx_flist + sc->cur_tx;
@@ -1437,7 +1436,7 @@ epic_queue_last_packet(sc)
 	}
 
 	if ((CSR_READ_4(sc, INTSTAT) & INTSTAT_TXIDLE) == 0)
-		device_printf(sc->dev, "ERROR! can't stop Tx DMA (2)\n");
+		if_printf(&sc->sc_if, "ERROR! can't stop Tx DMA (2)\n");
 	else
 		epic_tx_done(sc);
 
