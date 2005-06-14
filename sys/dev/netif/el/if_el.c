@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.15 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.16 2005/06/14 14:35:05 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -32,6 +32,7 @@
 #include <sys/syslog.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -210,13 +211,12 @@ el_reset(xsc)
 	void *xsc;
 {
 	struct el_softc *sc = xsc;
-	int s;
 
 	dprintf(("elreset()\n"));
-	s = splimp();
+	crit_enter();
 	el_stop(sc);
 	el_init(sc);
-	splx(s);
+	crit_exit();
 }
 
 static void el_stop(xsc)
@@ -233,15 +233,10 @@ el_init(xsc)
 	void *xsc;
 {
 	struct el_softc *sc = xsc;
-	struct ifnet *ifp;
-	int s;
-	u_short base;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	u_short base = sc->el_base;
 
-	/* Set up pointers */
-	ifp = &sc->arpcom.ac_if;
-	base = sc->el_base;
-
-	s = splimp();
+	crit_enter();
 
 	/* First, reset the board. */
 	dprintf(("Resetting board...\n"));
@@ -270,7 +265,7 @@ el_init(xsc)
 	/* And start output. */
 	el_start(ifp);
 
-	splx(s);
+	crit_exit();
 }
 
 /* Start output on interface.  Get datagrams from the queue and output
@@ -283,19 +278,19 @@ el_start(struct ifnet *ifp)
 	struct el_softc *sc;
 	u_short base;
 	struct mbuf *m, *m0;
-	int s, i, len, retries, done;
+	int i, len, retries, done;
 
 	/* Get things pointing in the right directions */
 	sc = ifp->if_softc;
 	base = sc->el_base;
 
 	dprintf(("el_start()...\n"));
-	s = splimp();
+	crit_enter();
 
 	/* Don't do anything if output is active */
-	if(sc->arpcom.ac_if.if_flags & IFF_OACTIVE)
+	if (ifp->if_flags & IFF_OACTIVE)
 		return;
-	sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
+	ifp->if_flags |= IFF_OACTIVE;
 
 	/* The main loop.  They warned me against endless loops, but
 	 * would I listen?  NOOO....
@@ -307,7 +302,7 @@ el_start(struct ifnet *ifp)
 		/* If there's nothing to send, return. */
 		if(m0 == NULL) {
 			sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
-			splx(s);
+			crit_exit();
 			return;
 		}
 
@@ -372,9 +367,8 @@ el_start(struct ifnet *ifp)
 		 */
 		(void)inb(base+EL_AS);
 		outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
-		splx(s);
-		/* Interrupt here */
-		s = splimp();
+		crit_exit();
+		crit_enter();
 	}
 }
 
@@ -593,9 +587,9 @@ elget(buf, totlen, ifp)
 static int
 el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
-	int s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -619,7 +613,9 @@ el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	(void) splx(s);
+
+	crit_exit();
+
 	return (error);
 }
 
