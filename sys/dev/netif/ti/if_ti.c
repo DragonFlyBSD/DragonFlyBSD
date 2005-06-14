@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.28 2005/06/14 13:34:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.29 2005/06/14 13:36:00 joerg Exp $
  */
 
 /*
@@ -1413,9 +1413,8 @@ ti_attach(device_t dev)
 	/*
 	 * Map control/status registers.
 	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
+	pci_enable_busmaster(dev);
+	pci_enable_io(dev, SYS_RES_MEMORY);
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 
 	if ((command & PCIM_CMD_MEMEN) == 0) {
