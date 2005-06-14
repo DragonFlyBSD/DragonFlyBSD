@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.21 2005/06/14 18:09:47 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.22 2005/06/14 20:41:24 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -293,7 +293,7 @@ tunifioctl(ifp, cmd, data, cr)
 		error = EINVAL;
 	}
 
-	crit_Exit();
+	crit_exit();
 	return (error);
 }
 
