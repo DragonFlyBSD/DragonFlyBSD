@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.18 2005/05/27 15:36:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.19 2005/06/14 15:30:58 joerg Exp $
  */
 
 /*
@@ -121,6 +121,7 @@ iomem and and with 0xffff.
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -1492,9 +1493,8 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	volatile struct ie_int_sys_conf_ptr *iscp;
 	volatile struct ie_sys_ctl_block *scb;
 	u_long	realbase;
-	int	s;
 
-	s = splimp();
+	crit_exit();
 
 	realbase = (uintptr_t) where + size - (1 << 24);
 
@@ -1527,7 +1527,7 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	DELAY(100);		/* wait a while... */
 
 	if (iscp->ie_busy) {
-		splx(s);
+		crit_exit();
 		return (0);
 	}
 	/*
@@ -1551,7 +1551,7 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	DELAY(100);
 
 	if (iscp->ie_busy) {
-		splx(s);
+		crit_exit();
 		return (0);
 	}
 	ie_softc[unit].iosize = size;
@@ -1564,7 +1564,8 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	 * Acknowledge any interrupts we may have caused...
 	 */
 	ie_ack(scb, IE_ST_WHENCE, unit, ie_softc[unit].ie_chan_attn);
-	splx(s);
+
+	crit_exit();
 
 	return (1);
 }
@@ -1728,10 +1729,10 @@ sl_read_ether(int unit, unsigned char addr[6])
 static void
 iereset(int unit)
 {
-	int	s = splimp();
+	crit_enter();
 
 	if (unit >= NIE) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	printf("ie%d: reset\n", unit);
@@ -1756,8 +1757,7 @@ iereset(int unit)
 	ie_softc[unit].arpcom.ac_if.if_flags |= IFF_UP;
 	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
 
-	splx(s);
-	return;
+	crit_exit();
 }
 
 /*
@@ -1857,14 +1857,14 @@ run_tdr(int unit, volatile struct ie_tdr_cmd *cmd)
 static void
 start_receiver(int unit)
 {
-	int	s = splimp();
+	crit_enter();
 
 	ie_softc[unit].scb->ie_recv_list = MK_16(MEM, ie_softc[unit].rframes[0]);
 	command_and_wait(unit, IE_RU_START, 0, 0);
 
 	ie_ack(ie_softc[unit].scb, IE_ST_WHENCE, unit, ie_softc[unit].ie_chan_attn);
 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1942,7 +1942,6 @@ setup_rfa(v_caddr_t ptr, struct ie_softc * ie)
 
 /*
  * Run the multicast setup command.
- * Call at splimp().
  */
 static int
 mc_setup(int unit, v_caddr_t ptr,
@@ -1975,8 +1974,6 @@ mc_setup(int unit, v_caddr_t ptr,
  * and adds to it all the other structures we need to operate the adapter.
  * This includes executing the CONFIGURE, IA-SETUP, and MC-SETUP commands,
  * starting the receiver unit, and clearing interrupts.
- *
- * THIS ROUTINE MUST BE CALLED AT splimp() OR HIGHER.
  */
 static void
 ieinit(xsc)
@@ -1987,6 +1984,8 @@ ieinit(xsc)
 	v_caddr_t ptr;
 	int	i;
 	int	unit = ie->unit;
+
+	crit_enter();
 
 	ptr = Alignvol((volatile char *) scb + sizeof *scb);
 
@@ -2006,6 +2005,7 @@ ieinit(xsc)
 
 		if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 		 || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
+			crit_exit();
 			printf("ie%d: configure command failed\n", unit);
 			return;
 		}
@@ -2025,6 +2025,7 @@ ieinit(xsc)
 		scb->ie_command_list = MK_16(MEM, cmd);
 		if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 		    || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
+			crit_exit();
 			printf("ie%d: individual address "
 			       "setup command failed\n", unit);
 			return;
@@ -2095,7 +2096,7 @@ ieinit(xsc)
 							 * we're here */
 	start_receiver(unit);
 
-	return;
+	crit_exit();
 }
 
 static void
@@ -2107,9 +2108,9 @@ ie_stop(int unit)
 static int
 ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
-	int	s, error = 0;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -2150,7 +2151,7 @@ ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
