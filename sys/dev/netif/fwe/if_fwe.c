@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.17 2005/05/31 08:06:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.18 2005/06/14 17:05:58 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -48,6 +48,7 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 #include <machine/bus.h>
 
 #include <net/bpf.h>
@@ -153,7 +154,6 @@ fwe_attach(device_t dev)
 {
 	struct fwe_softc *fwe;
 	struct ifnet *ifp;
-	int s;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	struct fw_eui64 *eui;
 
@@ -205,9 +205,7 @@ fwe_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, TX_MAX_QUEUE);
 	ifq_set_ready(&ifp->if_snd);
 
-	s = splimp();
 	ether_ifattach(ifp, eaddr);
-	splx(s);
 
         /* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
@@ -259,16 +257,14 @@ fwe_stop(struct fwe_softc *fwe)
 static int
 fwe_detach(device_t dev)
 {
-	struct fwe_softc *fwe;
-	int s;
+	struct fwe_softc *fwe = device_get_softc(dev);
 
-	fwe = (struct fwe_softc *)device_get_softc(dev);
-	s = splimp();
+	crit_enter();
 
 	fwe_stop(fwe);
 	ether_ifdetach(&fwe->fwe_if);
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -367,11 +363,12 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct fwe_softc *fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 	struct ifstat *ifs = NULL;
-	int s, error, len;
+	int error = 0, len;
+
+	crit_enter();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		s = splimp();
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING))
 				fwe_init(&fwe->eth_softc);
@@ -381,14 +378,12 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 		/* XXX keep promiscoud mode */
 		ifp->if_flags |= IFF_PROMISC;
-		splx(s);
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		break;
 
 	case SIOCGIFSTATUS:
-		s = splimp();
 		ifs = (struct ifstat *)data;
 		len = strlen(ifs->ascii);
 		if (len < sizeof(ifs->ascii))
@@ -396,16 +391,15 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				sizeof(ifs->ascii) - len,
 				"\tch %d dma %d\n",
 					fwe->stream_ch, fwe->dma_ch);
-		splx(s);
 		break;
 	default:
-		s = splimp();
 		error = ether_ioctl(ifp, cmd, data);
-		splx(s);
-		return (error);
+		break;
 	}
 
-	return (0);
+	crit_exit();
+
+	return (error);
 }
 
 static void
@@ -413,7 +407,6 @@ fwe_output_callback(struct fw_xfer *xfer)
 {
 	struct fwe_softc *fwe;
 	struct ifnet *ifp;
-	int s;
 
 	fwe = (struct fwe_softc *)xfer->sc;
 	ifp = &fwe->fwe_if;
@@ -425,9 +418,11 @@ fwe_output_callback(struct fw_xfer *xfer)
 	m_freem(xfer->mbuf);
 	fw_xfer_unload(xfer);
 
-	s = splimp();
+	crit_enter();
+
 	STAILQ_INSERT_TAIL(&fwe->xferlist, xfer, link);
-	splx(s);
+
+	crit_exit();
 
 	/* for queue full */
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -438,28 +433,25 @@ static void
 fwe_start(struct ifnet *ifp)
 {
 	struct fwe_softc *fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
-	int s;
 
 	FWEDEBUG(ifp, "starting\n");
+
+	crit_enter();
 
 	if (fwe->dma_ch < 0) {
 		FWEDEBUG(ifp, "not ready\n");
 
-		s = splimp();
 		ifq_purge(&ifp->if_snd);
-		splx(s);
+	} else {
+		ifp->if_flags |= IFF_OACTIVE;
 
-		return;
+		if (!ifq_is_empty(&ifp->if_snd))
+			fwe_as_output(fwe, ifp);
+
+		ifp->if_flags &= ~IFF_OACTIVE;
 	}
 
-	s = splimp();
-	ifp->if_flags |= IFF_OACTIVE;
-
-	if (!ifq_is_empty(&ifp->if_snd))
-		fwe_as_output(fwe, ifp);
-
-	ifp->if_flags &= ~IFF_OACTIVE;
-	splx(s);
+	crit_exit();
 }
 
 #define HDR_LEN 4
