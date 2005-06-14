@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.20 2005/06/14 17:43:01 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.21 2005/06/14 18:09:47 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <sys/filio.h>
 #include <sys/sockio.h>
+#include <sys/thread2.h>
 #include <sys/ttycom.h>
 #include <sys/poll.h>
 #include <sys/signalvar.h>
@@ -171,7 +172,6 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 static	int
 tunclose(dev_t dev, int foo, int bar, struct thread *td)
 {
-	int	s;
 	struct tun_softc *tp;
 	struct ifnet	*ifp;
 
@@ -182,27 +182,27 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	tp->tun_pid = 0;
 
 	/* Junk all pending output. */
-	s = splimp();
+	crit_enter();
 	ifq_purge(&ifp->if_snd);
-	splx(s);
+	crit_exit();
 
 	if (ifp->if_flags & IFF_UP) {
-		s = splimp();
+		crit_enter();
 		if_down(ifp);
-		splx(s);
+		crit_exit();
 	}
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		struct ifaddr *ifa;
 
-		s = splimp();
+		crit_enter();
 		/* find internet addresses and delete routes */
 		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 			if (ifa->ifa_addr->sa_family == AF_INET)
 				rtinit(ifa, (int)RTM_DELETE,
 				    tp->tun_flags & TUN_DSTADDR ? RTF_HOST : 0);
 		ifp->if_flags &= ~IFF_RUNNING;
-		splx(s);
+		crit_exit();
 	}
 
 	funsetown(tp->tun_sigio);
@@ -262,9 +262,10 @@ tunifioctl(ifp, cmd, data, cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct tun_softc *tp = ifp->if_softc;
 	struct ifstat *ifs;
-	int		error = 0, s;
+	int error = 0;
 
-	s = splimp();
+	crit_enter();
+
 	switch(cmd) {
 	case SIOCGIFSTATUS:
 		ifs = (struct ifstat *)data;
@@ -291,7 +292,8 @@ tunifioctl(ifp, cmd, data, cr)
 	default:
 		error = EINVAL;
 	}
-	splx(s);
+
+	crit_Exit();
 	return (error);
 }
 
@@ -306,7 +308,7 @@ tunoutput(ifp, m0, dst, rt)
 	struct rtentry *rt;
 {
 	struct tun_softc *tp = ifp->if_softc;
-	int error, s;
+	int error;
 	struct altq_pktattr pktattr;
 
 	TUNDEBUG(ifp, "tunoutput\n");
@@ -348,9 +350,9 @@ tunoutput(ifp, m0, dst, rt)
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			s = splimp();	/* spl on queue manipulation */
+			crit_enter();
 			IF_DROP(&ifp->if_snd);
-			splx(s);
+			crit_exit();
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		} else {
@@ -364,9 +366,9 @@ tunoutput(ifp, m0, dst, rt)
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			s = splimp();	/* spl on queue manipulation */
+			crit_enter();
 			IF_DROP(&ifp->if_snd);
-			splx(s);
+			crit_exit();
 			ifp->if_oerrors++;
 			return ENOBUFS;
 		} else
@@ -395,7 +397,6 @@ tunoutput(ifp, m0, dst, rt)
 static	int
 tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
-	int		s;
 	struct tun_softc *tp = dev->si_drv1;
  	struct tuninfo *tunp;
 
@@ -464,7 +465,8 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			tp->tun_flags &= ~TUN_ASYNC;
 		break;
 	case FIONREAD:
-		s = splimp();
+		crit_enter();
+
 		if (!ifq_is_empty(&tp->tun_if.if_snd)) {
 			struct mbuf *mb;
 
@@ -473,7 +475,8 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 				*(int *)data += mb->m_len;
 		} else
 			*(int *)data = 0;
-		splx(s);
+
+		crit_exit();
 		break;
 	case FIOSETOWN:
 		return (fsetown(*(int *)data, &tp->tun_sigio));
@@ -510,7 +513,7 @@ tunread(dev, uio, flag)
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	struct mbuf	*m0;
-	int		error=0, len, s;
+	int		error=0, len;
 
 	TUNDEBUG(ifp, "read\n");
 	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
@@ -520,19 +523,21 @@ tunread(dev, uio, flag)
 
 	tp->tun_flags &= ~TUN_RWAIT;
 
-	s = splimp();
+	crit_enter();
+
 	while ((m0 = ifq_dequeue(&ifp->if_snd)) == NULL) {
 		if (flag & IO_NDELAY) {
-			splx(s);
+			crit_exit();
 			return EWOULDBLOCK;
 		}
 		tp->tun_flags |= TUN_RWAIT;
 		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0) {
-			splx(s);
+			crit_exit();
 			return error;
 		}
 	}
-	splx(s);
+
+	crit_exit();
 
 	while (m0 && uio->uio_resid > 0 && error == 0) {
 		len = min(uio->uio_resid, m0->m_len);
@@ -682,13 +687,13 @@ tunwrite(dev, uio, flag)
 static	int
 tunpoll(dev_t dev, int events, struct thread *td)
 {
-	int		s;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	int		revents = 0;
 
-	s = splimp();
 	TUNDEBUG(ifp, "tunpoll\n");
+
+	crit_enter();
 
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
@@ -702,7 +707,8 @@ tunpoll(dev_t dev, int events, struct thread *td)
 	if (events & (POLLOUT | POLLWRNORM))
 		revents |= events & (POLLOUT | POLLWRNORM);
 
-	splx(s);
+	crit_exit();
+
 	return (revents);
 }
 
