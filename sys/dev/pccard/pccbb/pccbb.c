@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.6 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.7 2005/06/14 16:24:34 swildner Exp $
  */
 
 /*
@@ -175,8 +175,8 @@ struct yenta_chipinfo {
 	{PCIC_ID_OZ6860, "O2Micro OZ6836/6860 PCI-CardBus Bridge", CB_CIRRUS},
 	{PCIC_ID_OZ6872, "O2Micro OZ6812/6872 PCI-CardBus Bridge", CB_CIRRUS},
 	{PCIC_ID_OZ6912, "O2Micro OZ6912/6972 PCI-CardBus Bridge", CB_CIRRUS},
-	{PCIC_ID_OZ6922, "O2Micro OZ6822 PCI-CardBus Bridge", CB_CIRRUS},
-	{PCIC_ID_OZ6933, "O2Micro OZ6833 PCI-CardBus Bridge", CB_CIRRUS},
+	{PCIC_ID_OZ6922, "O2Micro OZ6922 PCI-CardBus Bridge", CB_CIRRUS},
+	{PCIC_ID_OZ6933, "O2Micro OZ6933 PCI-CardBus Bridge", CB_CIRRUS},
 
 	/* sentinel */
 	{0 /* null id */, "unknown", CB_UNKNOWN},
