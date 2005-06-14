@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.25 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.26 2005/06/14 12:24:04 joerg Exp $
  *
  */
 
@@ -1666,34 +1666,50 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct resource_list *rl = &dinfo->resources;
-
-#ifdef __i386__
 	pcicfgregs *cfg = &dinfo->cfg;
+
 	/*
 	 * Perform lazy resource allocation
 	 *
 	 * XXX add support here for SYS_RES_IOPORT and SYS_RES_MEMORY
 	 */
 	if (device_get_parent(child) == dev) {
+		switch (type) {
+		case SYS_RES_IRQ:
+#ifdef __i386__
 		/*
 		 * If device doesn't have an interrupt routed, and is
 		 * deserving of an interrupt, try to assign it one.
 		 */
-		if ((type == SYS_RES_IRQ) &&
-		    (cfg->intline == 255 || cfg->intline == 0) &&
-		    (cfg->intpin != 0) && (start == 0) && (end == ~0UL)) {
-			cfg->intline = PCIB_ROUTE_INTERRUPT(
-				device_get_parent(dev), child,
-				cfg->intpin);
-			if (cfg->intline != 255) {
-				pci_write_config(child, PCIR_INTLINE,
-				    cfg->intline, 1);
-				resource_list_add(rl, SYS_RES_IRQ, 0,
-				    cfg->intline, cfg->intline, 1);
+			if ((cfg->intline == 255 || cfg->intline == 0) &&
+			    (cfg->intpin != 0) &&
+			    (start == 0) && (end == ~0UL)) {
+				cfg->intline = PCIB_ROUTE_INTERRUPT(
+					device_get_parent(dev), child,
+					cfg->intpin);
+				if (cfg->intline != 255) {
+					pci_write_config(child, PCIR_INTLINE,
+					    cfg->intline, 1);
+					resource_list_add(rl, SYS_RES_IRQ, 0,
+					    cfg->intline, cfg->intline, 1);
+				}
+			}
+#endif
+		case SYS_RES_IOPORT:
+		case SYS_RES_MEMORY:
+			if (*rid < PCIR_BAR(cfg->nummaps)) {
+				/*
+				 * Enable the I/O mode.  We should
+				 * also be assigning resources too
+				 * when none are present.  The
+				 * resource_list_alloc kind of sorta does
+				 * this...
+				 */
+				if (PCI_ENABLE_IO(dev, child, type))
+					return (NULL);
 			}
 		}
 	}
-#endif
 	return resource_list_alloc(rl, dev, child, type, rid,
 				   start, end, count, flags);
 }
