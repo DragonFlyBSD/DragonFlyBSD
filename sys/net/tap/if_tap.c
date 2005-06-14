@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.18 2005/06/14 18:15:37 joerg Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.19 2005/06/14 18:30:55 joerg Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -52,6 +52,7 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 #include <sys/ttycom.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
@@ -137,7 +138,7 @@ tapmodevent(mod, type, data)
 {
 	static int		 attached = 0;
 	struct ifnet		*ifp = NULL;
-	int			 unit, s;
+	int			 unit;
 
 	switch (type) {
 	case MOD_LOAD:
@@ -157,13 +158,13 @@ tapmodevent(mod, type, data)
 		/* XXX: maintain tap ifs in a local list */
 		unit = 0;
 		while (unit <= taplastunit) {
-			s = splimp();
+			crit_enter();
 			TAILQ_FOREACH(ifp, &ifnet, if_link)
 				if ((strcmp(ifp->if_dname, TAP) == 0) ||
 				    (strcmp(ifp->if_dname, VMNET) == 0))
 					if (ifp->if_dunit == unit)
 						break;
-			splx(s);
+			crit_exit();
 
 			if (ifp != NULL) {
 				struct tap_softc	*tp = ifp->if_softc;
@@ -172,9 +173,9 @@ tapmodevent(mod, type, data)
 					"taplastunit = %d\n",
 					minor(tp->tap_dev), taplastunit);
 
-				s = splimp();
+				crit_enter();
 				ether_ifdetach(ifp);
-				splx(s);
+				crit_exit();
 				destroy_dev(tp->tap_dev);
 				free(tp, M_TAP);
 			}
@@ -205,7 +206,7 @@ tapcreate(dev)
 	struct ifnet		*ifp = NULL;
 	struct tap_softc	*tp = NULL;
 	uint8_t			ether_addr[ETHER_ADDR_LEN];
-	int			 unit, s;
+	int			 unit;
 	char			*name = NULL;
 
 	/* allocate driver storage and create device */
@@ -249,9 +250,7 @@ tapcreate(dev)
 	ifp->if_flags = (IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST);
 	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 
-	s = splimp();
 	ether_ifattach(ifp, ether_addr);
-	splx(s);
 
 	tp->tap_flags |= TAP_INITED;
 
@@ -304,20 +303,19 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 static int
 tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 {
-	int			 s;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	struct mbuf		*m = NULL;
 
 	/* junk all pending output */
 
-	s = splimp();
+	crit_enter();
 	do {
 		IF_DEQUEUE(&ifp->if_snd, m);
 		if (m != NULL)
 			m_freem(m);
 	} while (m != NULL);
-	splx(s);
+	crit_exit();
 
 	/*
 	 * do not bring the interface down, and do not anything with
@@ -325,7 +323,7 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 	 */
 
 	if (((tp->tap_flags & TAP_VMNET) == 0) && (ifp->if_flags & IFF_UP)) {
-		s = splimp();
+		crit_enter();
 		if_down(ifp);
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* find internet addresses and delete routes */
@@ -347,7 +345,7 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 
 			ifp->if_flags &= ~IFF_RUNNING;
 		}
-		splx(s);
+		crit_exit();
 	}
 
 	funsetown(tp->tap_sigio);
@@ -406,24 +404,24 @@ tapifioctl(ifp, cmd, data, cr)
 {
 	struct tap_softc 	*tp = (struct tap_softc *)(ifp->if_softc);
 	struct ifstat		*ifs = NULL;
-	int			 s, dummy;
+	int			 dummy;
 
 	switch (cmd) {
 		case SIOCSIFADDR:
 		case SIOCGIFADDR:
 		case SIOCSIFMTU:
-			s = splimp();
+			crit_enter();
 			dummy = ether_ioctl(ifp, cmd, data);
-			splx(s);
+			crit_exit();
 			return (dummy);
 
 		case SIOCSIFFLAGS: /* XXX -- just like vmnet does */
 		case SIOCADDMULTI:
 		case SIOCDELMULTI:
-		break;
+			break;
 
 		case SIOCGIFSTATUS:
-			s = splimp();
+			crit_enter();
 			ifs = (struct ifstat *)data;
 			dummy = strlen(ifs->ascii);
 			if (tp->tap_td != NULL && dummy < sizeof(ifs->ascii)) {
@@ -438,8 +436,8 @@ tapifioctl(ifp, cmd, data, cr)
 					"\tOpened by td %p\n", tp->tap_td);
 				}
 			}
-			splx(s);
-		break;
+			crit_exit();
+			break;
 
 		default:
 			return (EINVAL);
@@ -459,7 +457,6 @@ tapifstart(ifp)
 	struct ifnet	*ifp;
 {
 	struct tap_softc	*tp = ifp->if_softc;
-	int			 s;
 
 	TAPDEBUG(ifp, "starting, minor = %#x\n", minor(tp->tap_dev));
 
@@ -475,19 +472,20 @@ tapifstart(ifp)
 		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
 			 minor(tp->tap_dev), tp->tap_flags);
 
-		s = splimp();
+		crit_enter();
 		do {
 			IF_DEQUEUE(&ifp->if_snd, m);
 			if (m != NULL)
 				m_freem(m);
 			ifp->if_oerrors ++;
 		} while (m != NULL);
-		splx(s);
 
+		crit_exit();
 		return;
 	}
 
-	s = splimp();
+	crit_enter();
+
 	ifp->if_flags |= IFF_OACTIVE;
 
 	if (ifp->if_snd.ifq_len != 0) {
@@ -504,7 +502,8 @@ tapifstart(ifp)
 	}
 
 	ifp->if_flags &= ~IFF_OACTIVE;
-	splx(s);
+
+	crit_exit();
 } /* tapifstart */
 
 
@@ -519,16 +518,15 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
  	struct tapinfo		*tapp = NULL;
-	int			 s;
 
 	switch (cmd) {
  		case TAPSIFINFO:
-			s = splimp();
+			crit_enter();
  		        tapp = (struct tapinfo *)data;
  			ifp->if_mtu = tapp->mtu;
  			ifp->if_type = tapp->type;
  			ifp->if_baudrate = tapp->baudrate;
-			splx(s);
+			crit_exit();
  		break;
 
 	 	case TAPGIFINFO:
@@ -550,16 +548,16 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		break;
 
 		case FIOASYNC:
-			s = splimp();
+			crit_enter();
 			if (*(int *)data)
 				tp->tap_flags |= TAP_ASYNC;
 			else
 				tp->tap_flags &= ~TAP_ASYNC;
-			splx(s);
+			crit_exit();
 		break;
 
 		case FIONREAD:
-			s = splimp();
+			crit_enter();
 			if (ifp->if_snd.ifq_head) {
 				struct mbuf	*mb = ifp->if_snd.ifq_head;
 
@@ -568,7 +566,7 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 			} 
 			else
 				*(int *)data = 0;
-			splx(s);
+			crit_exit();
 		break;
 
 		case FIOSETOWN:
@@ -600,9 +598,9 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 			f &= ~IFF_CANTCHANGE;
 			f |= IFF_UP;
 
-			s = splimp();
+			crit_enter();
 			ifp->if_flags = f | (ifp->if_flags & IFF_CANTCHANGE);
-			splx(s);
+			crit_exit();
 		} break;
 
 		case OSIOCGIFADDR:	/* get MAC address of the remote side */
@@ -636,7 +634,7 @@ tapread(dev, uio, flag)
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	struct mbuf		*m0 = NULL;
-	int			 error = 0, len, s;
+	int			 error = 0, len;
 
 	TAPDEBUG(ifp, "reading, minor = %#x\n", minor(tp->tap_dev));
 
@@ -651,9 +649,9 @@ tapread(dev, uio, flag)
 
 	/* sleep until we get a packet */
 	do {
-		s = splimp();
+		crit_enter();
 		IF_DEQUEUE(&ifp->if_snd, m0);
-		splx(s);
+		crit_exit();
 
 		if (m0 == NULL) {
 			if (flag & IO_NDELAY)
@@ -774,11 +772,12 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 {
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
-	int		 	 s, revents = 0;
+	int		 	 revents = 0;
 
 	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
 
-	s = splimp();
+	crit_enter();
+
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (ifp->if_snd.ifq_len > 0) {
 			TAPDEBUG(ifp,
@@ -798,6 +797,6 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 	if (events & (POLLOUT | POLLWRNORM))
 		revents |= (events & (POLLOUT | POLLWRNORM));
 
-	splx(s);
+	crit_exit();
 	return (revents);
 } /* tappoll */
