@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.31 2005/06/14 13:41:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.32 2005/06/14 13:42:14 joerg Exp $
  */
 
 /*
@@ -583,7 +583,7 @@ ti_alloc_jumbo_mem(struct ti_softc *sc)
 
 	/* Grab a big chunk o' storage. */
 	sc->ti_cdata.ti_jumbo_buf = contigmalloc(TI_JMEM, M_DEVBUF,
-		M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+		M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->ti_cdata.ti_jumbo_buf == NULL) {
 		if_printf(&sc->arpcom.ac_if, "no memory for jumbo buffers!\n");
@@ -1483,7 +1483,7 @@ ti_attach(device_t dev)
 
 	/* Allocate the general information block and ring buffers. */
 	sc->ti_rdata = contigmalloc(sizeof(struct ti_ring_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->ti_rdata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
