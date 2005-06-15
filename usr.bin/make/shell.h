@@ -36,12 +36,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.7 2005/05/20 11:48:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.8 2005/06/15 08:04:42 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
 #define	shell_h_6002e3b8
 
+#include "str.h"
 #include "util.h"
 
 /**
@@ -71,10 +72,9 @@ struct Shell {
 	char	*echoOn;	/* command to turn it back on */
 
 	/*
-	 * What the shell prints, and its length, when given the
-	 * echo-off command. This line will not be printed when
-	 * received from the shell. This is usually the command which
-	 * was executed to turn off echoing
+	 * What the shell prints, when given the echo-off command.
+	 * This line will not be printed when received from the shell.
+	 * This is usually the command which was executed to turn off echoing.
 	 */
 	char	*noPrint;
 
@@ -89,6 +89,9 @@ struct Shell {
 
 	char	*echo;	/* command line flag: echo commands */
 	char	*exit;	/* command line flag: exit on error */
+
+	ArgArray builtins;
+	char	*meta;
 };
 
 extern struct Shell		*commandShell;
