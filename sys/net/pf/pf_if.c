@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.3 2004/09/28 16:22:41 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.3.2.1 2005/06/15 16:09:34 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -760,6 +760,7 @@ pfi_maybe_destroy(struct pfi_kif *p)
 		pfi_dummy->pfik_addcnt++;
 		TAILQ_INSERT_TAIL(&pfi_dummy->pfik_grouphead, p,
 		    pfik_instances);
+		splx(s);
 		return (0);
 	}
 	pfi_ifcnt--;

@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.c,v 1.11 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: if_pfsync.c,v 1.26 2004/03/28 18:14:20 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.1.2.1 2005/06/15 16:09:34 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1039,24 +1039,20 @@ pfsync_request_update(struct pfsync_state_upd *up, struct in_addr *src)
 	struct pfsync_header *h;
 	struct pfsync_softc *sc = ifp->if_softc;
 	struct pfsync_state_upd_req *rup;
-	int s = 0, ret = 0;
+	int ret = 0;
 
 	if (sc->sc_mbuf == NULL) {
 		if ((sc->sc_mbuf = pfsync_get_mbuf(sc, PFSYNC_ACT_UREQ,
-		    (void *)&sc->sc_statep.s)) == NULL) {
-			splx(s);
+		    (void *)&sc->sc_statep.s)) == NULL)
 			return (ENOMEM);
-		}
 		h = mtod(sc->sc_mbuf, struct pfsync_header *);
 	} else {
 		h = mtod(sc->sc_mbuf, struct pfsync_header *);
 		if (h->action != PFSYNC_ACT_UREQ) {
 			pfsync_sendout(sc);
 			if ((sc->sc_mbuf = pfsync_get_mbuf(sc, PFSYNC_ACT_UREQ,
-			    (void *)&sc->sc_statep.s)) == NULL) {
-				splx(s);
+			    (void *)&sc->sc_statep.s)) == NULL)
 				return (ENOMEM);
-			}
 			h = mtod(sc->sc_mbuf, struct pfsync_header *);
 		}
 	}
