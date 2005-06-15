@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.4 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.5 2005/06/15 16:32:58 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -696,13 +696,12 @@ void
 pf_purge_timeout(void *arg)
 {
 	struct callout	*to = arg;
-	int		 s;
 
-	s = splsoftnet();
+	crit_enter();
 	pf_purge_expired_states();
 	pf_purge_expired_fragments();
 	pf_purge_expired_src_nodes();
-	splx(s);
+	crit_exit();
 
 	callout_reset(to, pf_default_rule.timeout[PFTM_INTERVAL] * hz,
 	    pf_purge_timeout, to);

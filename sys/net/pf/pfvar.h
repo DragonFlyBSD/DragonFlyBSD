@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
 /*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
 /* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.2 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.3 2005/06/15 16:32:58 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -165,8 +165,6 @@ struct pfi_dynaddr {
 /*
  * Address manipulation macros
  */
-
-#define	splsoftnet()	splnet()
 
 /* XXX correct values for zinit? */
 #define	ZONE_CREATE(var, type, desc)				\

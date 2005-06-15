@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.3 2004/09/28 16:22:41 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.4 2005/06/15 16:32:58 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -47,6 +47,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 #include <sys/time.h>
 #include <vm/vm_zone.h>
 
@@ -228,11 +229,10 @@ void
 pfi_attach_ifnet(struct ifnet *ifp)
 {
 	struct pfi_kif	*p, *q, key;
-	int		 s;
 	int		 realname;
 
 	pfi_initialize();
-	s = splsoftnet();
+	crit_enter();
 	pfi_update++;
 	if (ifp->if_index >= pfi_indexlim) {
 		/*
@@ -318,23 +318,22 @@ pfi_attach_ifnet(struct ifnet *ifp)
 	    pfi_kifaddr_update_event, p, EVENTHANDLER_PRI_ANY);
 	pfi_index2kif[ifp->if_index] = p;
 	pfi_dohooks(p);
-	splx(s);
+	crit_exit();
 }
 
 void
 pfi_detach_ifnet(struct ifnet *ifp)
 {
 	struct pfi_kif	*p, *q, key;
-	int		 s;
 
 	strlcpy(key.pfik_name, ifp->if_xname, sizeof(key.pfik_name));
 
-	s = splsoftnet();
+	crit_enter();
 	pfi_update++;
 	p = RB_FIND(pfi_ifhead, &pfi_ifs, &key);
 	if (p == NULL) {
 		printf("pfi_detach_ifnet: cannot find %s", ifp->if_xname);
-		splx(s);
+		crit_exit();
 		return;
 	}
 	EVENTHANDLER_DEREGISTER(ifaddr_event, p->pfik_ah_cookie);
@@ -344,16 +343,15 @@ pfi_detach_ifnet(struct ifnet *ifp)
 	pfi_index2kif[ifp->if_index] = NULL;
 	pfi_dohooks(p);
 	pfi_maybe_destroy(p);
-	splx(s);
+	crit_exit();
 }
 
 struct pfi_kif *
 pfi_lookup_create(const char *name)
 {
 	struct pfi_kif	*p, *q, key;
-	int		 s;
 
-	s = splsoftnet();
+	crit_enter();
 	p = pfi_lookup_if(name);
 	if (p == NULL) {
 		pfi_copy_group(key.pfik_name, name, sizeof(key.pfik_name));
@@ -367,7 +365,7 @@ pfi_lookup_create(const char *name)
 			    PFI_IFLAG_PLACEHOLDER);
 		}
 	}
-	splx(s);
+	crit_exit();
 	return (p);
 }
 
@@ -421,7 +419,7 @@ pfi_dynaddr_setup(struct pf_addr_wrap *aw, sa_family_t af)
 	struct pfi_dynaddr	*dyn;
 	char			 tblname[PF_TABLE_NAME_SIZE];
 	struct pf_ruleset	*ruleset = NULL;
-	int			 s, rv = 0;
+	int			 rv = 0;
 
 	if (aw->type != PF_ADDR_DYNIFTL)
 		return (0);
@@ -430,7 +428,7 @@ pfi_dynaddr_setup(struct pf_addr_wrap *aw, sa_family_t af)
 		return (1);
 	bzero(dyn, sizeof(*dyn));
 
-	s = splsoftnet();
+	crit_enter();
 	dyn->pfid_kif = pfi_attach_rule(aw->v.ifname);
 	if (dyn->pfid_kif == NULL)
 		senderr(1);
@@ -469,7 +467,7 @@ pfi_dynaddr_setup(struct pf_addr_wrap *aw, sa_family_t af)
 
 	aw->p.dyn = dyn;
 	pfi_dynaddr_update(aw->p.dyn);
-	splx(s);
+	crit_exit();
 	return (0);
 
 _bad:
@@ -480,7 +478,7 @@ _bad:
 	if (dyn->pfid_kif != NULL)
 		pfi_detach_rule(dyn->pfid_kif);
 	pool_put(&pfi_addr_pl, dyn);
-	splx(s);
+	crit_exit();
 	return (rv);
 }
 
@@ -649,13 +647,11 @@ pfi_address_add(struct sockaddr *sa, int af, int net)
 void
 pfi_dynaddr_remove(struct pf_addr_wrap *aw)
 {
-	int	s;
-
 	if (aw->type != PF_ADDR_DYNIFTL || aw->p.dyn == NULL ||
 	    aw->p.dyn->pfid_kif == NULL || aw->p.dyn->pfid_kt == NULL)
 		return;
 
-	s = splsoftnet();
+	crit_enter();
 	hook_disestablish(aw->p.dyn->pfid_kif->pfik_ah_head,
 	    aw->p.dyn->pfid_hook_cookie);
 	pfi_detach_rule(aw->p.dyn->pfid_kif);
@@ -664,7 +660,7 @@ pfi_dynaddr_remove(struct pf_addr_wrap *aw)
 	aw->p.dyn->pfid_kt = NULL;
 	pool_put(&pfi_addr_pl, aw->p.dyn);
 	aw->p.dyn = NULL;
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -679,12 +675,10 @@ pfi_dynaddr_copyout(struct pf_addr_wrap *aw)
 void
 pfi_kifaddr_update(void *v)
 {
-	int		 s;
-
-	s = splsoftnet();
+	crit_enter();
 	pfi_update++;
 	pfi_dohooks(v);
-	splx(s);
+	crit_exit();
 }
 
 int
@@ -730,7 +724,7 @@ pfi_if_create(const char *name, struct pfi_kif *q, int flags)
 int
 pfi_maybe_destroy(struct pfi_kif *p)
 {
-	int		 i, j, k, s;
+	int		 i, j, k;
 	struct pfi_kif	*q = p->pfik_parent;
 
 	if ((p->pfik_flags & (PFI_IFLAG_ATTACHED | PFI_IFLAG_GROUP)) ||
@@ -738,7 +732,7 @@ pfi_maybe_destroy(struct pfi_kif *p)
 		if (!(p->pfik_flags & PFI_IFLAG_PLACEHOLDER))
 			return (0);
 
-	s = splsoftnet();
+	crit_enter();
 	if (q != NULL) {
 		for (i = 0; i < 2; i++)
 			for (j = 0; j < 2; j++)
@@ -760,11 +754,12 @@ pfi_maybe_destroy(struct pfi_kif *p)
 		pfi_dummy->pfik_addcnt++;
 		TAILQ_INSERT_TAIL(&pfi_dummy->pfik_grouphead, p,
 		    pfik_instances);
+		crit_exit();
 		return (0);
 	}
 	pfi_ifcnt--;
 	RB_REMOVE(pfi_ifhead, &pfi_ifs, p);
-	splx(s);
+	crit_exit();
 
 	free(p->pfik_ah_head, PFI_MTYPE);
 	free(p, PFI_MTYPE);
@@ -817,13 +812,13 @@ void
 pfi_fill_oldstatus(struct pf_status *pfs)
 {
 	struct pfi_kif	*p, key;
-	int		 i, j, k, s;
+	int		 i, j, k;
 
 	strlcpy(key.pfik_name, pfs->ifname, sizeof(key.pfik_name));
-	s = splsoftnet();
+	crit_enter();
 	p = RB_FIND(pfi_ifhead, &pfi_ifs, &key);
 	if (p == NULL) {
-		splx(s);
+		crit_exit();
 		return;
 	}
 	bzero(pfs->pcounters, sizeof(pfs->pcounters));
@@ -836,17 +831,17 @@ pfi_fill_oldstatus(struct pf_status *pfs)
 				pfs->bcounters[i][j] +=
 					p->pfik_bytes[i][j][k];
 			}
-	splx(s);
+	crit_exit();
 }
 
 int
 pfi_clr_istats(const char *name, int *nzero, int flags)
 {
 	struct pfi_kif	*p;
-	int		 n = 0, s;
+	int		 n = 0;
 	long		 tzero = time_second;
 
-	s = splsoftnet();
+	crit_enter();
 	ACCEPT_FLAGS(PFI_FLAG_GROUP|PFI_FLAG_INSTANCE);
 	RB_FOREACH(p, pfi_ifhead, &pfi_ifs) {
 		if (pfi_skip_if(name, p, flags))
@@ -856,7 +851,7 @@ pfi_clr_istats(const char *name, int *nzero, int flags)
 		p->pfik_tzero = tzero;
 		n++;
 	}
-	splx(s);
+	crit_exit();
 	if (nzero != NULL)
 		*nzero = n;
 	return (0);
@@ -866,10 +861,10 @@ int
 pfi_get_ifaces(const char *name, struct pfi_if *buf, int *size, int flags)
 {
 	struct pfi_kif	*p;
-	int		 s, n = 0;
+	int		 n = 0;
 
 	ACCEPT_FLAGS(PFI_FLAG_GROUP|PFI_FLAG_INSTANCE);
-	s = splsoftnet();
+	crit_enter();
 	RB_FOREACH(p, pfi_ifhead, &pfi_ifs) {
 		if (pfi_skip_if(name, p, flags))
 			continue;
@@ -877,12 +872,12 @@ pfi_get_ifaces(const char *name, struct pfi_if *buf, int *size, int flags)
 			if (!p->pfik_tzero)
 				p->pfik_tzero = boottime.tv_sec;
 			if (copyout(p, buf++, sizeof(*buf))) {
-				splx(s);
+				crit_exit();
 				return (EFAULT);
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 	*size = n;
 	return (0);
 }

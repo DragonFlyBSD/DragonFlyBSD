@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.4 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.5 2005/06/15 16:32:58 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -51,6 +51,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
@@ -731,13 +732,13 @@ pf_commit_altq(u_int32_t ticket)
 {
 	struct pf_altqqueue	*old_altqs;
 	struct pf_altq		*altq;
-	int			 s, err, error = 0;
+	int			 err, error = 0;
 
 	if (!altqs_inactive_open || ticket != ticket_altqs_inactive)
 		return (EBUSY);
 
 	/* swap altqs, keep the old. */
-	s = splsoftnet();
+	crit_enter();
 	old_altqs = pf_altqs_active;
 	pf_altqs_active = pf_altqs_inactive;
 	pf_altqs_inactive = old_altqs;
@@ -749,7 +750,7 @@ pf_commit_altq(u_int32_t ticket)
 			/* attach the discipline */
 			error = altq_pfattach(altq);
 			if (error) {
-				splx(s);
+				crit_exit();
 				return (error);
 			}
 		}
@@ -770,7 +771,7 @@ pf_commit_altq(u_int32_t ticket)
 			pf_qid_unref(altq->qid);
 		pool_put(&pf_altq_pl, altq);
 	}
-	splx(s);
+	crit_exit();
 
 	altqs_inactive_open = 0;
 	return (error);
@@ -819,7 +820,6 @@ pf_commit_rules(u_int32_t ticket, int rs_num, char *anchor, char *ruleset)
 	struct pf_ruleset	*rs;
 	struct pf_rule		*rule;
 	struct pf_rulequeue	*old_rules;
-	int			 s;
 
 	if (rs_num < 0 || rs_num >= PF_RULESET_MAX)
 		return (EINVAL);
@@ -829,7 +829,7 @@ pf_commit_rules(u_int32_t ticket, int rs_num, char *anchor, char *ruleset)
 		return (EBUSY);
 
 	/* Swap rules, keep the old. */
-	s = splsoftnet();
+	crit_enter();
 	old_rules = rs->rules[rs_num].active.ptr;
 	rs->rules[rs_num].active.ptr =
 	    rs->rules[rs_num].inactive.ptr;
@@ -844,7 +844,7 @@ pf_commit_rules(u_int32_t ticket, int rs_num, char *anchor, char *ruleset)
 	rs->rules[rs_num].inactive.open = 0;
 	pf_remove_if_empty_ruleset(rs);
 	pf_update_anchor_rules();
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -853,7 +853,6 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 	struct pf_pooladdr	*pa = NULL;
 	struct pf_pool		*pool = NULL;
-	int			 s;
 	int			 error = 0;
 
 	/* XXX keep in sync with switch() below */
@@ -1152,7 +1151,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			error = EINVAL;
 			break;
 		}
-		s = splsoftnet();
+		crit_enter();
 		tail = TAILQ_LAST(ruleset->rules[rs_num].active.ptr,
 		    pf_rulequeue);
 		if (tail)
@@ -1160,7 +1159,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		else
 			pr->nr = 0;
 		pr->ticket = ruleset->rules[rs_num].active.ticket;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1184,13 +1183,13 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			error = EBUSY;
 			break;
 		}
-		s = splsoftnet();
+		crit_enter();
 		rule = TAILQ_FIRST(ruleset->rules[rs_num].active.ptr);
 		while ((rule != NULL) && (rule->nr != pr->nr))
 			rule = TAILQ_NEXT(rule, entries);
 		if (rule == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		bcopy(rule, &pr->rule, sizeof(struct pf_rule));
@@ -1204,7 +1203,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			else
 				pr->rule.skip[i].nr =
 				    rule->skip[i].ptr->nr;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1341,7 +1340,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		pf_empty_pool(&pf_pabuf);
 
-		s = splsoftnet();
+		crit_enter();
 
 		if (pcr->action == PF_CHANGE_ADD_HEAD)
 			oldrule = TAILQ_FIRST(
@@ -1357,7 +1356,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			if (oldrule == NULL) {
 				pf_rm_rule(NULL, newrule);
 				error = EINVAL;
-				splx(s);
+				crit_exit();
 				break;
 			}
 		}
@@ -1388,7 +1387,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		pf_update_anchor_rules();
 
 		ruleset->rules[rs_num].active.ticket++;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1397,7 +1396,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pfioc_state_kill *psk = (struct pfioc_state_kill *)addr;
 		int			 killed = 0;
 
-		s = splsoftnet();
+		crit_enter();
 		RB_FOREACH(state, pf_state_tree_id, &tree_id) {
 			if (!psk->psk_ifname[0] || !strcmp(psk->psk_ifname,
 			    state->u.s.kif->pfik_name)) {
@@ -1415,7 +1414,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 #if NPFSYNC
 		pfsync_clear_states(pf_status.hostid, psk->psk_ifname);
 #endif
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1424,7 +1423,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pfioc_state_kill	*psk = (struct pfioc_state_kill *)addr;
 		int			 killed = 0;
 
-		s = splsoftnet();
+		crit_enter();
 		RB_FOREACH(state, pf_state_tree_id, &tree_id) {
 			if ((!psk->psk_af || state->af == psk->psk_af)
 			    && (!psk->psk_proto || psk->psk_proto ==
@@ -1452,7 +1451,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			}
 		}
 		pf_purge_expired_states();
-		splx(s);
+		crit_exit();
 		psk->psk_af = killed;
 		break;
 	}
@@ -1472,12 +1471,12 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			error = ENOMEM;
 			break;
 		}
-		s = splsoftnet();
+		crit_enter();
 		kif = pfi_lookup_create(ps->state.u.ifname);
 		if (kif == NULL) {
 			pool_put(&pf_state_pl, state);
 			error = ENOENT;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		bcopy(&ps->state, state, sizeof(struct pf_state));
@@ -1496,7 +1495,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			pool_put(&pf_state_pl, state);
 			error = ENOMEM;
 		}
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1506,7 +1505,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		u_int32_t		 nr;
 
 		nr = 0;
-		s = splsoftnet();
+		crit_enter();
 		RB_FOREACH(state, pf_state_tree_id, &tree_id) {
 			if (nr >= ps->nr)
 				break;
@@ -1514,7 +1513,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		if (state == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		bcopy(state, &ps->state, sizeof(struct pf_state));
@@ -1523,7 +1522,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		    (uint32_t)(-1) : state->nat_rule.ptr->nr;
 		ps->state.anchor.nr = (state->anchor.ptr == NULL) ?
 		    (uint32_t)(-1) : state->anchor.ptr->nr;
-		splx(s);
+		crit_exit();
 		ps->state.expire = pf_state_expires(state);
 		if (ps->state.expire > time_second)
 			ps->state.expire -= time_second;
@@ -1541,15 +1540,15 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		int			 space = ps->ps_len;
 
 		if (space == 0) {
-			s = splsoftnet();
+			crit_enter();
 			TAILQ_FOREACH(kif, &pfi_statehead, pfik_w_states)
 				nr += kif->pfik_states;
-			splx(s);
+			crit_exit();
 			ps->ps_len = sizeof(struct pf_state) * nr;
 			return (0);
 		}
 
-		s = splsoftnet();
+		crit_enter();
 		p = ps->ps_states;
 		TAILQ_FOREACH(kif, &pfi_statehead, pfik_w_states)
 			RB_FOREACH(state, pf_state_tree_ext_gwy,
@@ -1577,14 +1576,14 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 					pstore.expire = 0;
 				error = copyout(&pstore, p, sizeof(*p));
 				if (error) {
-					splx(s);
+					crit_exit();
 					goto fail;
 				}
 				p++;
 				nr++;
 			}
 		ps->ps_len = sizeof(struct pf_state) * nr;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1635,7 +1634,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		    !pnl->dport || !pnl->sport)
 			error = EINVAL;
 		else {
-			s = splsoftnet();
+			crit_enter();
 
 			/*
 			 * userland gives us source and dest of connection,
@@ -1676,7 +1675,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 				}
 			} else
 				error = ENOENT;
-			splx(s);
+			crit_exit();
 		}
 		break;
 	}
@@ -1746,12 +1745,12 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pf_ruleset	*ruleset = &pf_main_ruleset;
 		struct pf_rule		*rule;
 
-		s = splsoftnet();
+		crit_enter();
 		TAILQ_FOREACH(rule,
 		    ruleset->rules[PF_RULESET_FILTER].active.ptr, entries)
 			rule->evaluations = rule->packets =
 			    rule->bytes = 0;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1779,7 +1778,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct tb_profile	 tb;
 
 		/* enable all altq interfaces on active list */
-		s = splsoftnet();
+		crit_enter();
 		TAILQ_FOREACH(altq, pf_altqs_active, entries) {
 			if (altq->qname[0] == 0) {
 				if ((ifp = ifunit(altq->ifname)) == NULL) {
@@ -1798,7 +1797,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 					break;
 			}
 		}
-		splx(s);
+		crit_exit();
 		DPFPRINTF(PF_DEBUG_MISC, ("altq: started\n"));
 		break;
 	}
@@ -1810,7 +1809,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		int			 err;
 
 		/* disable all altq interfaces on active list */
-		s = splsoftnet();
+		crit_enter();
 		TAILQ_FOREACH(altq, pf_altqs_active, entries) {
 			if (altq->qname[0] == 0) {
 				if ((ifp = ifunit(altq->ifname)) == NULL) {
@@ -1829,7 +1828,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 					error = err;
 			}
 		}
-		splx(s);
+		crit_exit();
 		DPFPRINTF(PF_DEBUG_MISC, ("altq: stopped\n"));
 		break;
 	}
@@ -1898,11 +1897,11 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pf_altq		*altq;
 
 		pa->nr = 0;
-		s = splsoftnet();
+		crit_enter();
 		TAILQ_FOREACH(altq, pf_altqs_active, entries)
 			pa->nr++;
 		pa->ticket = ticket_altqs_active;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1916,7 +1915,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			break;
 		}
 		nr = 0;
-		s = splsoftnet();
+		crit_enter();
 		altq = TAILQ_FIRST(pf_altqs_active);
 		while ((altq != NULL) && (nr < pa->nr)) {
 			altq = TAILQ_NEXT(altq, entries);
@@ -1924,11 +1923,11 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		if (altq == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		bcopy(altq, &pa->altq, sizeof(struct pf_altq));
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -1949,7 +1948,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		nbytes = pq->nbytes;
 		nr = 0;
-		s = splsoftnet();
+		crit_enter();
 		altq = TAILQ_FIRST(pf_altqs_active);
 		while ((altq != NULL) && (nr < pq->nr)) {
 			altq = TAILQ_NEXT(altq, entries);
@@ -1957,11 +1956,11 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		if (altq == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		error = altq_getqstats(altq, pq->buf, &nbytes);
-		splx(s);
+		crit_exit();
 		if (error == 0) {
 			pq->scheduler = altq->scheduler;
 			pq->nbytes = nbytes;
@@ -2028,17 +2027,17 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pfioc_pooladdr	*pp = (struct pfioc_pooladdr *)addr;
 
 		pp->nr = 0;
-		s = splsoftnet();
+		crit_enter();
 		pool = pf_get_pool(pp->anchor, pp->ruleset, pp->ticket,
 		    pp->r_action, pp->r_num, 0, 1, 0);
 		if (pool == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		TAILQ_FOREACH(pa, &pool->list, entries)
 			pp->nr++;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -2046,12 +2045,12 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pfioc_pooladdr	*pp = (struct pfioc_pooladdr *)addr;
 		u_int32_t		 nr = 0;
 
-		s = splsoftnet();
+		crit_enter();
 		pool = pf_get_pool(pp->anchor, pp->ruleset, pp->ticket,
 		    pp->r_action, pp->r_num, 0, 1, 1);
 		if (pool == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		pa = TAILQ_FIRST(&pool->list);
@@ -2061,13 +2060,13 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		if (pa == NULL) {
 			error = EBUSY;
-			splx(s);
+			crit_exit();
 			break;
 		}
 		bcopy(pa, &pp->addr, sizeof(struct pf_pooladdr));
 		pfi_dynaddr_copyout(&pp->addr.addr);
 		pf_tbladdr_copyout(&pp->addr.addr);
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -2139,7 +2138,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			}
 		}
 
-		s = splsoftnet();
+		crit_enter();
 
 		if (pca->action == PF_CHANGE_ADD_HEAD)
 			oldpa = TAILQ_FIRST(&pool->list);
@@ -2155,7 +2154,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			}
 			if (oldpa == NULL) {
 				error = EINVAL;
-				splx(s);
+				crit_exit();
 				break;
 			}
 		}
@@ -2180,7 +2179,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		pool->cur = TAILQ_FIRST(&pool->list);
 		PF_ACPY(&pool->counter, &pool->cur->addr.v.a.addr,
 		    pca->af);
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -2476,17 +2475,17 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
 	case DIOCOSFPADD: {
 		struct pf_osfp_ioctl *io = (struct pf_osfp_ioctl *)addr;
-		s = splsoftnet();
+		crit_enter();
 		error = pf_osfp_add(io);
-		splx(s);
+		crit_exit();
 		break;
 	}
 
 	case DIOCOSFPGET: {
 		struct pf_osfp_ioctl *io = (struct pf_osfp_ioctl *)addr;
-		s = splsoftnet();
+		crit_enter();
 		error = pf_osfp_get(io);
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -2683,15 +2682,15 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		int			 space = psn->psn_len;
 
 		if (space == 0) {
-			s = splsoftnet();
+			crit_enter();
 			RB_FOREACH(n, pf_src_tree, &tree_src_tracking)
 				nr++;
-			splx(s);
+			crit_exit();
 			psn->psn_len = sizeof(struct pf_src_node) * nr;
 			return (0);
 		}
 
-		s = splsoftnet();
+		crit_enter();
 		p = psn->psn_src_nodes;
 		RB_FOREACH(n, pf_src_tree, &tree_src_tracking) {
 			int	secs = time_second;
@@ -2709,14 +2708,14 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 				pstore.expire = 0;
 			error = copyout(&pstore, p, sizeof(*p));
 			if (error) {
-				splx(s);
+				crit_exit();
 				goto fail;
 			}
 			p++;
 			nr++;
 		}
 		psn->psn_len = sizeof(struct pf_src_node) * nr;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -2724,7 +2723,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		struct pf_src_node	*n;
 		struct pf_state		*state;
 
-		s = splsoftnet();
+		crit_enter();
 		RB_FOREACH(state, pf_state_tree_id, &tree_id) {
 			state->src_node = NULL;
 			state->nat_src_node = NULL;
@@ -2735,7 +2734,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		}
 		pf_purge_expired_src_nodes();
 		pf_status.src_nodes = 0;
-		splx(s);
+		crit_exit();
 		break;
 	}
 
@@ -2751,9 +2750,9 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	}
 
 	case DIOCOSFPFLUSH:
-		s = splsoftnet();
+		crit_enter();
 		pf_osfp_flush();
-		splx(s);
+		crit_exit();
 		break;
 
 	case DIOCIGETIFACES: {

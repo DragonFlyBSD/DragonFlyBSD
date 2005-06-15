@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pflog.c,v 1.9 2004/06/22 20:13:24 brooks Exp $	*/
 /*	$OpenBSD: if_pflog.c,v 1.11 2003/12/31 11:18:25 cedric Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.2 2004/11/14 17:27:31 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.3 2005/06/15 16:32:58 joerg Exp $ */
 
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -50,6 +50,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/sockio.h>
+#include <sys/thread2.h>
 #include <vm/vm_zone.h>
 
 #include <net/if.h>
@@ -146,12 +147,10 @@ pflog_clone_create(struct if_clone *ifc, int unit)
 void
 pflogstart(struct ifnet *ifp)
 {
-	int s;
-
-	s = splimp();
+	crit_enter();
 	IF_DROP(&ifp->if_snd);
 	IF_DRAIN(&ifp->if_snd);
-	splx(s);
+	crit_exit();
 }
 
 int
