@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.13 2005/05/08 17:52:06 joerg Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.14 2005/06/15 19:29:30 joerg Exp $
  */
 
 /*
@@ -48,6 +48,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/thread2.h>
 #include <sys/errno.h>
 
 #include <net/if.h>
@@ -232,7 +233,6 @@ atm_input(ifp, ah, m, rxhand)
 {
 	u_int16_t etype = ETHERTYPE_IP; /* default */
 	int isr;
-	int s;
 
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
@@ -243,9 +243,9 @@ atm_input(ifp, ah, m, rxhand)
 	if (rxhand) {
 #ifdef NATM
 		struct natmpcb *npcb = rxhand;
-		s = splimp();		/* in case 2 atm cards @ diff lvls */
+		crit_enter();		/* in case 2 atm cards @ diff lvls */
 		npcb->npcb_inq++;	/* count # in queue */
-		splx(s);
+		crit_exit();
 		isr = NETISR_NATM;
 		m->m_pkthdr.rcvif = rxhand; /* XXX: overload */
 #else

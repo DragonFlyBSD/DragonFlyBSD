@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.31 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.32 2005/06/15 19:29:30 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -364,7 +364,6 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ip_fw *rule = NULL;
 	int error = 0;
-	int s;
 	struct altq_pktattr pktattr;
 
 	/* Extract info from dummynet tag, ignore others */
@@ -392,7 +391,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 no_bridge:
 	if (ifq_is_enabled(&ifp->if_snd))
 		altq_etherclassify(&ifp->if_snd, m, &pktattr);
-	s = splimp();
+	crit_enter();
 	if (IPFW_LOADED && ether_ipfw != 0) {
 		struct ether_header save_eh, *eh;
 
@@ -400,6 +399,7 @@ no_bridge:
 		save_eh = *eh;
 		m_adj(m, ETHER_HDR_LEN);
 		if (!ether_ipfw_chk(&m, ifp, &rule, eh, FALSE)) {
+			crit_exit();
 			if (m != NULL) {
 				m_freem(m);
 				return ENOBUFS; /* pkt dropped */
@@ -414,8 +414,10 @@ no_bridge:
 			m->m_pkthdr.len += ETHER_HDR_LEN ;
 		} else {
 			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
-			if (m == NULL) /* nope... */
+			if (m == NULL) /* nope... */ {
+				crit_exit();
 				return ENOBUFS;
+			}
 			bcopy(&save_eh, mtod(m, struct ether_header *),
 			      ETHER_HDR_LEN);
 		}
@@ -426,7 +428,7 @@ no_bridge:
 	 * successful, and start output if interface not yet active.
 	 */
 	error = ifq_handoff(ifp, m, &pktattr);
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -842,11 +844,9 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 void
 ether_ifdetach(struct ifnet *ifp)
 {
-	int s;
-
-	s = splnet();
+	crit_enter();
 	if_down(ifp);
-	splx(s);
+	crit_exit();
 
 	if (ng_ether_detach_p != NULL)
 		(*ng_ether_detach_p)(ifp);

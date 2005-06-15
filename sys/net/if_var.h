@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.29 2005/06/05 12:35:24 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.30 2005/06/15 19:29:30 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -84,6 +84,7 @@ struct	ucred;
 #include <sys/eventhandler.h>
 #include <sys/mbuf.h>
 #include <sys/systm.h>		/* XXX */
+#include <sys/thread2.h>
 #endif /* _KERNEL */
 
 #define IF_DUNIT_NONE   -1
@@ -276,11 +277,12 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 	   int _adjust)
 {
 	int _need_if_start = 0;
-	int _s = splimp();
- 
+
+	crit_enter(); 
+
 	if (IF_QFULL(_ifq)) {
 		IF_DROP(_ifq);
-		splx(_s);
+		crit_exit();
 		m_freem(_m);
 		return (0);
 	}
@@ -293,7 +295,7 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 	IF_ENQUEUE(_ifq, _m);
 	if (_need_if_start)
 		(*_ifp->if_start)(_ifp);
-	splx(_s);
+	crit_exit();
 	return (1);
 }
 

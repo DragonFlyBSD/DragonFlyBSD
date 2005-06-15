@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.39 2005/06/05 12:35:24 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.40 2005/06/15 19:29:30 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -141,18 +141,17 @@ void
 ifinit(void *dummy)
 {
 	struct ifnet *ifp;
-	int s;
 
 	callout_init(&if_slowtimo_timer);
 
-	s = splimp();
+	crit_enter();
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_snd.ifq_maxlen == 0) {
 			if_printf(ifp, "XXX: driver didn't set ifq_maxlen\n");
 			ifp->if_snd.ifq_maxlen = ifqmaxlen;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	if_slowtimo(0);
 }
@@ -264,12 +263,11 @@ static void
 if_attachdomain(void *dummy)
 {
 	struct ifnet *ifp;
-	int s;
 
-	s = splnet();
-	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
+	crit_enter();
+	TAILQ_FOREACH(ifp, &ifnet, if_list)
 		if_attachdomain1(ifp);
-	splx(s);
+	crit_exit();
 }
 SYSINIT(domainifattach, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_FIRST,
 	if_attachdomain, NULL);
@@ -278,9 +276,8 @@ static void
 if_attachdomain1(struct ifnet *ifp)
 {
 	struct domain *dp;
-	int s;
 
-	s = splnet();
+	crit_enter();
 
 	/* address family dependent data region */
 	bzero(ifp->if_afdata, sizeof(ifp->if_afdata));
@@ -288,7 +285,7 @@ if_attachdomain1(struct ifnet *ifp)
 		if (dp->dom_ifattach)
 			ifp->if_afdata[dp->dom_family] =
 				(*dp->dom_ifattach)(ifp);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -300,7 +297,6 @@ if_detach(struct ifnet *ifp)
 {
 	struct ifaddr *ifa;
 	struct radix_node_head	*rnh;
-	int s;
 	int i;
 	struct domain *dp;
 
@@ -309,7 +305,7 @@ if_detach(struct ifnet *ifp)
 	/*
 	 * Remove routes and flush queues.
 	 */
-	s = splnet();
+	crit_enter();
 #ifdef DEVICE_POLLING
 	if (ifp->if_flags & IFF_POLLING)
 		ether_poll_deregister(ifp);
@@ -398,7 +394,7 @@ if_detach(struct ifnet *ifp)
 		if_index--;
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -968,7 +964,8 @@ static void
 if_slowtimo(void *arg)
 {
 	struct ifnet *ifp;
-	int s = splimp();
+
+	crit_enter();
 
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_timer == 0 || --ifp->if_timer)
@@ -976,7 +973,9 @@ if_slowtimo(void *arg)
 		if (ifp->if_watchdog)
 			(*ifp->if_watchdog)(ifp);
 	}
-	splx(s);
+
+	crit_exit();
+
 	callout_reset(&if_slowtimo_timer, hz / IFNET_SLOWHZ, if_slowtimo, NULL);
 }
 
@@ -1103,14 +1102,14 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			/* Smart drivers twiddle their own routes */
 		} else if (ifp->if_flags & IFF_UP &&
 		    (new_flags & IFF_UP) == 0) {
-			int s = splimp();
+			crit_enter();
 			if_down(ifp);
-			splx(s);
+			crit_exit();
 		} else if (new_flags & IFF_UP &&
 		    (ifp->if_flags & IFF_UP) == 0) {
-			int s = splimp();
+			crit_enter();
 			if_up(ifp);
-			splx(s);
+			crit_exit();
 		}
 
 #ifdef DEVICE_POLLING
@@ -1359,9 +1358,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 #ifdef INET6
 			DELAY(100);/* XXX: temporary workaround for fxp issue*/
 			if (ifp->if_flags & IFF_UP) {
-				int s = splimp();
+				crit_enter();
 				in6_if_up(ifp);
-				splx(s);
+				crit_exit();
 			}
 #endif
 		}
@@ -1516,8 +1515,9 @@ int
 if_allmulti(struct ifnet *ifp, int onswitch)
 {
 	int error = 0;
-	int s = splimp();
 	struct ifreq ifr;
+
+	crit_enter();
 
 	if (onswitch) {
 		if (ifp->if_amcount++ == 0) {
@@ -1539,7 +1539,8 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 					      (struct ucred *)NULL);
 		}
 	}
-	splx(s);
+
+	crit_exit();
 
 	if (error == 0)
 		rt_ifmsg(ifp);
@@ -1557,7 +1558,7 @@ if_addmulti(
 	struct ifmultiaddr **retifma)
 {
 	struct sockaddr *llsa, *dupsa;
-	int error, s;
+	int error;
 	struct ifmultiaddr *ifma;
 
 	/*
@@ -1600,9 +1601,9 @@ if_addmulti(
 	 * Some network interfaces can scan the address list at
 	 * interrupt time; lock them out.
 	 */
-	s = splimp();
+	crit_enter();
 	LIST_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
-	splx(s);
+	crit_exit();
 	*retifma = ifma;
 
 	if (llsa != 0) {
@@ -1621,18 +1622,18 @@ if_addmulti(
 			ifma->ifma_addr = dupsa;
 			ifma->ifma_ifp = ifp;
 			ifma->ifma_refcount = 1;
-			s = splimp();
+			crit_enter();
 			LIST_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
-			splx(s);
+			crit_exit();
 		}
 	}
 	/*
 	 * We are certain we have added something, so call down to the
 	 * interface to let them know about it.
 	 */
-	s = splimp();
+	crit_enter();
 	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, (struct ucred *)NULL);
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -1645,7 +1646,6 @@ int
 if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 {
 	struct ifmultiaddr *ifma;
-	int s;
 
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		if (sa_equal(sa, ifma->ifma_addr))
@@ -1660,7 +1660,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 
 	rt_newmaddrmsg(RTM_DELMADDR, ifma);
 	sa = ifma->ifma_lladdr;
-	s = splimp();
+	crit_enter();
 	LIST_REMOVE(ifma, ifma_link);
 	/*
 	 * Make sure the interface driver is notified
@@ -1668,7 +1668,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	 */
 	if (ifma->ifma_addr->sa_family == AF_LINK && sa == 0)
 		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
-	splx(s);
+	crit_exit();
 	free(ifma->ifma_addr, M_IFMADDR);
 	free(ifma, M_IFMADDR);
 	if (sa == 0)
@@ -1696,10 +1696,10 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 		return 0;
 	}
 
-	s = splimp();
+	crit_enter();
 	LIST_REMOVE(ifma, ifma_link);
 	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
-	splx(s);
+	crit_exit();
 	free(ifma->ifma_addr, M_IFMADDR);
 	free(sa, M_IFMADDR);
 	free(ifma, M_IFMADDR);

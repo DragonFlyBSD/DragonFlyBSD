@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.16 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.17 2005/06/15 19:29:30 joerg Exp $
  */
 
 /*
@@ -241,7 +241,7 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 	if (ifq_is_enabled(&ifp->if_snd) && ifp->if_start == lo_altqstart) {
 		struct altq_pktattr pktattr;
 		int32_t *afp;
-	        int error, s;
+	        int error;
 
 		/*
 		 * if the queueing discipline needs packet classification,
@@ -255,10 +255,10 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 		afp = mtod(m, int32_t *);
 		*afp = (int32_t)af;
 
-	        s = splimp();
+	        crit_enter();
 		error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
 		(*ifp->if_start)(ifp);
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 #endif /* ALTQ */
@@ -309,12 +309,12 @@ lo_altqstart(struct ifnet *ifp)
 {
 	struct mbuf *m;
 	int32_t af, *afp;
-	int s, isr;
+	int isr;
 	
 	while (1) {
-		s = splimp();
+		crit_enter();
 		m = ifq_dequeue(&ifp->if_snd);
-		splx(s);
+		crit_exit();
 		if (m == NULL)
 			return;
 

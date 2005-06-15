@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.21 2005/05/02 00:56:48 y0netan1 Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.22 2005/06/15 19:29:30 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -97,6 +97,7 @@
 #include <sys/sysctl.h>
 #include <sys/globaldata.h>
 #include <sys/thread.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -557,11 +558,10 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	struct ifaddr *ifa;
 	struct sockaddr *ndst;
 	int error = 0;
-	int s;
 
 #define gotoerr(x) { error = x ; goto bad; }
 
-	s = splnet();
+	crit_enter();
 	/*
 	 * Find the correct routing tree to use for this Address Family
 	 */
@@ -767,7 +767,7 @@ makeroute:
 		error = EOPNOTSUPP;
 	}
 bad:
-	splx(s);
+	crit_exit();
 	return (error);
 }
 

@@ -24,13 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/intrq.c,v 1.3 2000/01/29 16:13:08 peter Exp $
- * $DragonFly: src/sys/net/Attic/intrq.c,v 1.4 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/intrq.c,v 1.5 2005/06/15 19:29:30 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 #include <sys/time.h>
 
 #include <net/if.h>
@@ -98,15 +99,15 @@ family_enqueue(family, m)
 	for (entry = 0; entry < sizeof queue / sizeof queue[0]; entry++)
 		if (queue[entry].family == family) {
 			if (queue[entry].present) {
-				s = splimp();
+				crit_enter();
 				if (IF_QFULL(queue[entry].q)) {
 					IF_DROP(queue[entry].q);
-					splx(s);
+					crit_exit();
 					m_freem(m);
 					return ENOBUFS;
 				}
 				IF_ENQUEUE(queue[entry].q, m);
-				splx(s);
+				crit_exit();
 				schednetisr(queue[entry].isr);
 				return 0;
 			} else

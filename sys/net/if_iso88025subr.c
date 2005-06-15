@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.12 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.13 2005/06/15 19:29:30 joerg Exp $
  *
  */
 
@@ -166,7 +166,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct iso88025_sockaddr_data *sd = (struct iso88025_sockaddr_data *)dst->sa_data;
 	struct llc *l;
 	struct sockaddr_dl *sdl = NULL;
-	int s, error = 0, rif_len = 0;
+	int error = 0, rif_len = 0;
 	u_char edst[6];
 	struct rtentry *rt;
 	int len = m->m_pkthdr.len, loop_copy = 0;
@@ -278,7 +278,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		}
 	}
 
-	s = splimp();
+	crit_enter();
 	/*
 	 * Queue message on interface, and start output if interface
 	 * not yet active.
@@ -286,7 +286,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if (IF_QFULL(&ifp->if_snd)) {
 		printf("iso88025_output: packet dropped QFULL.\n");
 		IF_DROP(&ifp->if_snd);
-		splx(s);
+		crit_exit();
 		senderr(ENOBUFS);
 	}
 	if (m->m_flags & M_MCAST)
@@ -294,7 +294,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	IF_ENQUEUE(&ifp->if_snd, m);
 	if (!(ifp->if_flags & IFF_OACTIVE))
 		(*ifp->if_start)(ifp);
-	splx(s);
+	crit_exit();
 	ifp->if_obytes += len + ISO88025_HDR_LEN + 8;
 	return (error);
 

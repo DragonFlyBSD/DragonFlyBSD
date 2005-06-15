@@ -28,10 +28,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.3 2005/04/04 17:08:16 joerg Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.4 2005/06/15 19:29:30 joerg Exp $
  */
 #ifndef _NET_IFQ_VAR_H
 #define _NET_IFQ_VAR_H
+
+#include <sys/thread2.h>
 
 #ifdef ALTQ
 static __inline int
@@ -118,9 +120,9 @@ ifq_classify(struct ifaltq *_ifq, struct mbuf *_m, uint8_t _af,
 static __inline int
 ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 {
-	int _error, _s;
+	int _error;
 
-	_s = splimp();
+	crit_enter();
 	_error = ifq_enqueue(&_ifp->if_snd, _m, _pa);
 	if (_error == 0) {
 		_ifp->if_obytes += _m->m_pkthdr.len;
@@ -129,7 +131,7 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 		if ((_ifp->if_flags & IFF_OACTIVE) == 0)
 			(*_ifp->if_start)(_ifp);
 	}
-	splx(_s);
+	crit_exit();
 	return(_error);
 }
 
