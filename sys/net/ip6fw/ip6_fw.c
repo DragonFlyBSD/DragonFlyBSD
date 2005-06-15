@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.12 2005/02/17 13:59:59 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.13 2005/06/15 17:12:24 joerg Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -72,6 +72,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <sys/time.h>
 #include <net/if.h>
 #include <net/route.h>
@@ -841,7 +842,6 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 	struct ip6_fw *ftmp = 0;
 	struct ip6_fw_chain *fwc = 0, *fcp, *fcpl = 0;
 	u_short nbr = 0;
-	int s;
 
 	fwc = malloc(sizeof *fwc, M_IP6FW, M_INTWAIT);
 	ftmp = malloc(sizeof *ftmp, M_IP6FW, M_INTWAIT);
@@ -852,16 +852,16 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 	ftmp->fw_bcnt = 0L;
 	fwc->rule = ftmp;
 	
-	s = splnet();
+	crit_enter();
 
 	if (!chainptr->lh_first) {
 		LIST_INSERT_HEAD(chainptr, fwc, chain);
-		splx(s);
+		crit_exit();
 		return(0);
         } else if (ftmp->fw_number == (u_short)-1) {
 		if (fwc)  free(fwc, M_IP6FW);
 		if (ftmp) free(ftmp, M_IP6FW);
-		splx(s);
+		crit_exit();
 		dprintf(("%s bad rule number\n", err_prefix));
 		return (EINVAL);
         }
@@ -893,7 +893,7 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -901,16 +901,15 @@ static int
 del_entry6(struct ip6_fw_head *chainptr, u_short number)
 {
 	struct ip6_fw_chain *fcp;
-	int s;
 
-	s = splnet();
+	crit_enter();
 
 	fcp = chainptr->lh_first;
 	if (number != (u_short)-1) {
 		for (; fcp; fcp = fcp->chain.le_next) {
 			if (fcp->rule->fw_number == number) {
 				LIST_REMOVE(fcp, chain);
-				splx(s);
+				crit_exit();
 				free(fcp->rule, M_IP6FW);
 				free(fcp, M_IP6FW);
 				return 0;
@@ -918,7 +917,7 @@ del_entry6(struct ip6_fw_head *chainptr, u_short number)
 		}
 	}
 
-	splx(s);
+	crit_exit();
 	return (EINVAL);
 }
 
@@ -927,7 +926,6 @@ zero_entry6(struct mbuf *m)
 {
 	struct ip6_fw *frwl;
 	struct ip6_fw_chain *fcp;
-	int s;
 
 	if (m && m->m_len != 0) {
 		if (m->m_len != sizeof(struct ip6_fw))
@@ -942,13 +940,13 @@ zero_entry6(struct mbuf *m)
 	 *	same number, so we don't stop after finding the first
 	 *	match if zeroing a specific entry.
 	 */
-	s = splnet();
+	crit_enter();
 	for (fcp = ip6_fw_chain.lh_first; fcp; fcp = fcp->chain.le_next)
 		if (!frwl || frwl->fw_number == fcp->rule->fw_number) {
 			fcp->rule->fw_bcnt = fcp->rule->fw_pcnt = 0;
 			fcp->rule->timestamp = 0;
 		}
-	splx(s);
+	crit_exit();
 
 	if (fw6_verbose) {
 		if (frwl)
@@ -1144,9 +1142,9 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 		while (ip6_fw_chain.lh_first != NULL &&
 		    ip6_fw_chain.lh_first->rule->fw_number != (u_short)-1) {
 			struct ip6_fw_chain *fcp = ip6_fw_chain.lh_first;
-			int s = splnet();
+			crit_enter();
 			LIST_REMOVE(ip6_fw_chain.lh_first, chain);
-			splx(s);
+			crit_exit();
 			free(fcp->rule, M_IP6FW);
 			free(fcp, M_IP6FW);
 		}
@@ -1251,20 +1249,18 @@ static ip6_fw_ctl_t *old_ctl_ptr;
 static int
 ip6fw_modevent(module_t mod, int type, void *unused)
 {
-	int s;
-
 	switch (type) {
 	case MOD_LOAD:
-		s = splnet();
+		crit_enter();
 
 		old_chk_ptr = ip6_fw_chk_ptr;
 		old_ctl_ptr = ip6_fw_ctl_ptr;
 
 		ip6_fw_init();
-		splx(s);
+		crit_exit();
 		return 0;
 	case MOD_UNLOAD:
-		s = splnet();
+		crit_enter();
 		ip6_fw_chk_ptr =  old_chk_ptr;
 		ip6_fw_ctl_ptr =  old_ctl_ptr;
 		while (LIST_FIRST(&ip6_fw_chain) != NULL) {
@@ -1274,7 +1270,7 @@ ip6fw_modevent(module_t mod, int type, void *unused)
 			free(fcp, M_IP6FW);
 		}
 
-		splx(s);
+		crit_exit();
 		printf("IPv6 firewall unloaded\n");
 		return 0;
 	default:
