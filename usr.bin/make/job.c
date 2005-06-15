@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.112 2005/05/23 20:04:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.113 2005/06/15 07:48:17 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2859,10 +2859,16 @@ CompatInterrupt(int signo, GNode *ENDNode)
 }
 
 /**
- * Compat_RunCommand
- *	Execute the next command for a target. If the command returns an
- *	error, the node's made field is set to ERROR and creation stops.
- *	The node from which the command came is also given.
+ * Execute the next command for a target. If the command returns an
+ * error, the node's made field is set to ERROR and creation stops.
+ * The node from which the command came is also given. This is used
+ * to execute the commands in compat mode and when executing commands
+ * with the '+' flag in non-compat mode. In these modes each command
+ * line should be executed by its own shell. We do some optimisation here:
+ * if the shell description defines both a string of meta characters and
+ * a list of builtins and the command line neither contains a meta character
+ * nor starts with one of the builtins then we execute the command directly
+ * without invoking a shell.
  *
  * Results:
  *	0 if the command succeeded, 1 if an error occurred.
