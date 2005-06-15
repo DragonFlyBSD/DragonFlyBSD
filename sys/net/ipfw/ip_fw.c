@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.12 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.13 2005/06/15 18:46:54 joerg Exp $
  */
 
 #define        DEB(x)
@@ -46,6 +46,7 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <sys/ucred.h>
 #include <net/if.h>
 #include <net/route.h>
@@ -1642,7 +1643,6 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 {
 	struct ip_fw *ftmp, *fcp, *fcpl;
 	u_short nbr = 0;
-	int s;
 
 	ftmp = malloc(sizeof *ftmp, M_IPFW, M_WAITOK | M_ZERO);
 	if (!ftmp)
@@ -1655,7 +1655,7 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 	ftmp->next_rule_ptr = NULL ;
 	ftmp->pipe_ptr = NULL ;
 	
-	s = splimp();
+	crit_enter();
 
 	if (LIST_FIRST(head) == 0) {
 		LIST_INSERT_HEAD(head, ftmp, next);
@@ -1692,7 +1692,7 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 	flush_rule_ptrs();
 done:
 	static_count++;
-	splx(s);
+	crit_exit();
 	DEB(printf("++ installed rule %d, static count now %d\n",
 		ftmp->fw_number, static_count);)
 	return (0);
@@ -1732,13 +1732,11 @@ del_entry(struct ip_fw_head *chainptr, u_short number)
     if (number != IPFW_DEFAULT_RULE) {
 	LIST_FOREACH(rule, chainptr, next) {
 	    if (rule->fw_number == number) {
-		int s ;
-
-		s = splimp(); /* prevent access to rules while removing */
+		crit_enter(); /* prevent access to rules while removing */
 		while (rule && rule->fw_number == number)
 		    rule = free_chain(rule);
 		/* XXX could move flush_rule_ptrs() here */
-		splx(s);
+		crit_exit();
 		return 0 ;
 	    }
 	}
@@ -1757,12 +1755,11 @@ static int
 zero_entry(struct ip_fw *frwl, int log_only)
 {
     struct ip_fw *rule;
-    int s;
     u_short number = 0 ;
     char *msg ;
 
     if (frwl == 0) {
-	s = splimp();
+	crit_enter();
 	LIST_FOREACH(rule, &ip_fw_chain_head, next) {
 	    if (log_only == 0) {
 		rule->fw_bcnt = rule->fw_pcnt = 0;
@@ -1770,7 +1767,7 @@ zero_entry(struct ip_fw *frwl, int log_only)
 	    }
 	    rule->fw_loghighest = rule->fw_pcnt+rule->fw_logamount;
 	}
-	splx(s);
+	crit_exit();
 	msg = log_only ? "ipfw: All logging counts cleared.\n" :
 			"ipfw: Accounting cleared.\n";
     } else {
@@ -1783,7 +1780,7 @@ zero_entry(struct ip_fw *frwl, int log_only)
 	 */
 	LIST_FOREACH(rule, &ip_fw_chain_head, next)
 	    if (number == rule->fw_number) {
-		s = splimp();
+		crit_enter();
 		while (rule && number == rule->fw_number) {
 		    if (log_only == 0) {
 			rule->fw_bcnt = rule->fw_pcnt = 0;
@@ -1792,7 +1789,7 @@ zero_entry(struct ip_fw *frwl, int log_only)
 		    rule->fw_loghighest = rule->fw_pcnt+ rule->fw_logamount;
 		    rule = LIST_NEXT(rule, next);
 		}
-		splx(s);
+		crit_exit();
 		cleared = 1;
 		break;
 	    }
@@ -1932,7 +1929,7 @@ check_ipfw_struct(struct ip_fw *frwl)
 static int
 ip_fw_ctl(struct sockopt *sopt)
 {
-	int error, s;
+	int error;
 	size_t size;
 	struct ip_fw *fcp;
 	struct ip_fw frwl, *bp , *buf;
@@ -1954,7 +1951,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		 * followed by a possibly empty list of dynamic rule.
 		 * The last dynamic rule has NULL in the "next" field.
 		 */
-		s = splimp();
+		crit_enter();
 		/* size of static rules */
 		size = static_count * sizeof(struct ip_fw) ;
 		if (ipfw_dyn_v)		/* add size of dyn.rules */
@@ -1997,7 +1994,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		    if (last != NULL)
 			last->next = NULL ; /* mark last dynamic rule */
 		}
-		splx(s);
+		crit_exit();
 
 		error = sooptcopyout(sopt, buf, size);
 		free(buf, M_TEMP);
@@ -2017,11 +2014,11 @@ ip_fw_ctl(struct sockopt *sopt)
 		 * the old list without the need for a lock.
 		 */
 
-		s = splimp();
+		crit_enter();
 		while ( (fcp = LIST_FIRST(&ip_fw_chain_head)) &&
 			fcp->fw_number != IPFW_DEFAULT_RULE )
 		    free_chain(fcp);
-		splx(s);
+		crit_exit();
 		break;
 
 	case IP_FW_ADD:
@@ -2137,7 +2134,6 @@ ip_fw_init(void)
 static int
 ipfw_modevent(module_t mod, int type, void *unused)
 {
-	int s;
 	int err = 0 ;
 #if defined(KLD_MODULE)
 	struct ip_fw *fcp;
@@ -2145,14 +2141,14 @@ ipfw_modevent(module_t mod, int type, void *unused)
 	
 	switch (type) {
 	case MOD_LOAD:
-		s = splimp();
+		crit_enter();
 		if (IPFW_LOADED) {
-			splx(s);
+			crit_exit();
 			printf("IP firewall already loaded\n");
 			err = EEXIST ;
 		} else {
 			ip_fw_init();
-			splx(s);
+			crit_exit();
 		}
 		break ;
 	case MOD_UNLOAD:
@@ -2160,12 +2156,12 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		printf("ipfw statically compiled, cannot unload\n");
 		err = EBUSY;
 #else
-		s = splimp();
+		crit_enter();
 		ip_fw_chk_ptr = NULL ;
 		ip_fw_ctl_ptr = NULL ;
 		while ( (fcp = LIST_FIRST(&ip_fw_chain_head)) != NULL)
 			free_chain(fcp);
-		splx(s);
+		crit_exit();
 		printf("IP firewall unloaded\n");
 #endif
 		break ;

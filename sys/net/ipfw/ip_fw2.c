@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.15 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.16 2005/06/15 18:46:54 joerg Exp $
  */
 
 #define        DEB(x)
@@ -54,6 +54,7 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <sys/ucred.h>
 #include <sys/in_cksum.h>
 #include <net/if.h>
@@ -1991,7 +1992,6 @@ static int
 add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 {
 	struct ip_fw *rule, *f, *prev;
-	int s;
 	int l = RULESIZE(input_rule);
 
 	if (*head == NULL && input_rule->rulenum != IPFW_DEFAULT_RULE)
@@ -2010,7 +2010,7 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 	rule->bcnt = 0;
 	rule->timestamp = 0;
 
-	s = splimp();
+	crit_enter();
 
 	if (*head == NULL) {	/* default rule */
 		*head = rule;
@@ -2058,7 +2058,7 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 done:
 	static_count++;
 	static_len += l;
-	splx(s);
+	crit_exit();
 	DEB(printf("++ installed rule %d, static count now %d\n",
 		rule->rulenum, static_count);)
 	return (0);
@@ -2127,7 +2127,6 @@ static int
 del_entry(struct ip_fw **chain, u_int32_t arg)
 {
 	struct ip_fw *prev, *rule;
-	int s;
 	u_int16_t rulenum;
 	u_int8_t cmd, new_set;
 
@@ -2159,7 +2158,7 @@ del_entry(struct ip_fw **chain, u_int32_t arg)
 		if (rule->rulenum != rulenum)
 			return EINVAL;
 
-		s = splimp(); /* no access to rules while removing */
+		crit_enter(); /* no access to rules while removing */
 		/*
 		 * flush pointers outside the loop, then delete all matching
 		 * rules. prev remains the same throughout the cycle.
@@ -2167,11 +2166,11 @@ del_entry(struct ip_fw **chain, u_int32_t arg)
 		flush_rule_ptrs();
 		while (rule && rule->rulenum == rulenum)
 			rule = delete_rule(chain, prev, rule);
-		splx(s);
+		crit_exit();
 		break;
 
 	case 1:	/* delete all rules with given set number */
-		s = splimp();
+		crit_enter();
 		flush_rule_ptrs();
 		for (prev = NULL, rule = *chain; rule ; )
 			if (rule->set == rulenum)
@@ -2180,33 +2179,33 @@ del_entry(struct ip_fw **chain, u_int32_t arg)
 				prev = rule;
 				rule = rule->next;
 			}
-		splx(s);
+		crit_exit();
 		break;
 
 	case 2:	/* move rules with given number to new set */
-		s = splimp();
+		crit_enter();
 		for (rule = *chain; rule ; rule = rule->next)
 			if (rule->rulenum == rulenum)
 				rule->set = new_set;
-		splx(s);
+		crit_exit();
 		break;
 
 	case 3: /* move rules with given set number to new set */
-		s = splimp();
+		crit_enter();
 		for (rule = *chain; rule ; rule = rule->next)
 			if (rule->set == rulenum)
 				rule->set = new_set;
-		splx(s);
+		crit_exit();
 		break;
 
 	case 4: /* swap two sets */
-		s = splimp();
+		crit_enter();
 		for (rule = *chain; rule ; rule = rule->next)
 			if (rule->set == rulenum)
 				rule->set = new_set;
 			else if (rule->set == new_set)
 				rule->set = rulenum;
-		splx(s);
+		crit_exit();
 		break;
 	}
 	return 0;
@@ -2238,15 +2237,14 @@ static int
 zero_entry(int rulenum, int log_only)
 {
 	struct ip_fw *rule;
-	int s;
 	char *msg;
 
 	if (rulenum == 0) {
-		s = splimp();
+		crit_enter();
 		norule_counter = 0;
 		for (rule = layer3_chain; rule; rule = rule->next)
 			clear_counters(rule, log_only);
-		splx(s);
+		crit_exit();
 		msg = log_only ? "ipfw: All logging counts reset.\n" :
 				"ipfw: Accounting cleared.\n";
 	} else {
@@ -2257,12 +2255,12 @@ zero_entry(int rulenum, int log_only)
 		 */
 		for (rule = layer3_chain; rule; rule = rule->next)
 			if (rule->rulenum == rulenum) {
-				s = splimp();
+				crit_enter();
 				while (rule && rule->rulenum == rulenum) {
 					clear_counters(rule, log_only);
 					rule = rule->next;
 				}
-				splx(s);
+				crit_exit();
 				cleared = 1;
 				break;
 			}
@@ -2465,7 +2463,7 @@ bad_size:
 static int
 ipfw_ctl(struct sockopt *sopt)
 {
-	int error, s, rulenum;
+	int error, rulenum;
 	size_t size;
 	struct ip_fw *bp , *buf, *rule;
 
@@ -2497,7 +2495,7 @@ ipfw_ctl(struct sockopt *sopt)
 		 * followed by a possibly empty list of dynamic rule.
 		 * The last dynamic rule has NULL in the "next" field.
 		 */
-		s = splimp();
+		crit_enter();
 		size = static_len;	/* size of static rules */
 		if (ipfw_dyn_v)		/* add size of dyn.rules */
 			size += (dyn_count * sizeof(ipfw_dyn_rule));
@@ -2545,7 +2543,7 @@ ipfw_ctl(struct sockopt *sopt)
 			if (last != NULL) /* mark last dynamic rule */
 				last->next = NULL;
 		}
-		splx(s);
+		crit_exit();
 
 		error = sooptcopyout(sopt, buf, size);
 		free(buf, M_TEMP);
@@ -2565,9 +2563,9 @@ ipfw_ctl(struct sockopt *sopt)
 		 * the old list without the need for a lock.
 		 */
 
-		s = splimp();
+		crit_enter();
 		free_chain(&layer3_chain, 0 /* keep default rule */);
-		splx(s);
+		crit_exit();
 		break;
 
 	case IP_FW_ADD:
@@ -2650,13 +2648,12 @@ static void
 ipfw_tick(void * __unused unused)
 {
 	int i;
-	int s;
 	ipfw_dyn_rule *q;
 
 	if (dyn_keepalive == 0 || ipfw_dyn_v == NULL || dyn_count == 0)
 		goto done;
 
-	s = splimp();
+	crit_enter();
 	for (i = 0 ; i < curr_dyn_buckets ; i++) {
 		for (q = ipfw_dyn_v[i] ; q ; q = q->next ) {
 			if (q->dyn_type == O_LIMIT_PARENT)
@@ -2675,7 +2672,7 @@ ipfw_tick(void * __unused unused)
 			send_pkt(&(q->id), q->ack_fwd - 1, q->ack_rev, 0);
 		}
 	}
-	splx(s);
+	crit_exit();
 done:
 	callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
 		      ipfw_tick, NULL);
@@ -2736,19 +2733,18 @@ ipfw_init(void)
 static int
 ipfw_modevent(module_t mod, int type, void *unused)
 {
-	int s;
 	int err = 0;
 
 	switch (type) {
 	case MOD_LOAD:
-		s = splimp();
+		crit_enter();
 		if (IPFW_LOADED) {
-			splx(s);
+			crit_exit();
 			printf("IP firewall already loaded\n");
 			err = EEXIST;
 		} else {
 			ipfw_init();
-			splx(s);
+			crit_exit();
 		}
 		break;
 
@@ -2757,12 +2753,12 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		printf("ipfw statically compiled, cannot unload\n");
 		err = EBUSY;
 #else
-                s = splimp();
+                crit_enter();
 		callout_stop(&ipfw_timeout_h);
 		ip_fw_chk_ptr = NULL;
 		ip_fw_ctl_ptr = NULL;
 		free_chain(&layer3_chain, 1 /* kill default rule */);
-		splx(s);
+		crit_exit();
 		printf("IP firewall unloaded\n");
 #endif
 		break;
