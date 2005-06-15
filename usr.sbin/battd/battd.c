@@ -31,7 +31,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.8 2005/03/09 18:58:22 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.9 2005/06/15 21:29:21 liamfoy Exp $
+ *
+ * Dedicated to my grandfather Peter Foy. Goodnight... 
  */
 
 #include <sys/file.h>
