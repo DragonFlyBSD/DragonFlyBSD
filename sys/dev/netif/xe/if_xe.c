@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.21 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.22 2005/06/15 11:35:22 joerg Exp $
  */
 
 /*
@@ -2195,6 +2195,7 @@ xe_activate(device_t dev)
 	err = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET, xe_intr, sc,
 			     &sc->intrhand, NULL);
 	if (err) {
+		ether_ifdetach(&sc->arpcom.ac_if);
 		xe_deactivate(dev);
 		return err;
 	}

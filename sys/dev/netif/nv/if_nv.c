@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.14 2005/06/13 19:21:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.15 2005/06/15 11:35:22 joerg Exp $
  */
 
 /*
@@ -505,6 +505,7 @@ nv_attach(device_t dev)
 	error = bus_setup_intr(sc->dev, sc->irq, INTR_TYPE_NET,
 			       nv_intr, sc, &sc->sc_ih, NULL);
 	if (error) {
+		ether_ifdetach(ifp);
 		device_printf(sc->dev, "couldn't set up interrupt handler\n");
 		goto fail;
 	}

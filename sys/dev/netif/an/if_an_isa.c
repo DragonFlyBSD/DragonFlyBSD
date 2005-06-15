@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.9 2005/06/06 15:53:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.10 2005/06/15 11:35:22 joerg Exp $
  */
 
 /*
@@ -123,8 +123,11 @@ an_attach_isa(dev)
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
 			       an_intr, sc, &sc->irq_handle, NULL);
-	if (error)
+	if (error) {
+		ether_ifdetach(&sc->arpcom.ac_if);
+		ifmedia_removeall(&sc->an_ifmedia);
 		goto fail;
+	}
 
 	return (0);
 
