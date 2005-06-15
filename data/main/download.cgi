@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.85 2005/06/08 09:56:57 corecode Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.86 2005/06/15 21:47:30 corecode Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -163,8 +163,9 @@ that day and can become quite large.  For example, 1.2.75.
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>Snapshots master site, official ISOs</TD>
 <TD>
-<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">HTTP</a>
-<a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>
+<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">HTTP</a>,
+<a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>,
+<a href="http://chlamydia.fs.ei.tum.de/services/#rsync">rsync</a>
 </TD>
 </TR>
 
@@ -322,9 +323,19 @@ rsync
 </TR>
 
 <TR>
+<TD>chlamydia.fs.ei.tum.de (Germany)</TD>
+<TD>Code</TD>
+<TD>
+<a href="http://chlamydia.fs.ei.tum.de/services/#anoncvs">anoncvs</a>,
+<a href="http://chlamydia.fs.ei.tum.de/services/#cvsup">cvsup</a>
+</TD>
+</TR>
+
+<TR>
 <TD>AllBSD.org (Japan)</TD>
 <TD>Code</TD>
 <TD>
+<a href="http://www.allbsd.org/#pub-anoncvs">anoncvs</a>,
 rsync, cvsup, cvsync, cvsweb
 </TD>
 </TR>
