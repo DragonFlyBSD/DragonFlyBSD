@@ -7,7 +7,7 @@
  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
  *
  * $FreeBSD: src/games/bs/bs.c,v 1.9 2000/02/21 03:07:31 billf Exp $
- * $DragonFly: src/games/bs/bs.c,v 1.5 2005/03/15 20:53:37 dillon Exp $
+ * $DragonFly: src/games/bs/bs.c,v 1.6 2005/06/15 20:59:13 swildner Exp $
  */
 
 #include <assert.h>
@@ -303,12 +303,9 @@ rnd(int n)
 static void
 randomplace(int b, ship_t *ss) 
 {
-    int bwidth = BWIDTH - ss->length;
-    int bdepth = BDEPTH - ss->length;
-
     do {
-		ss->y = rnd(bdepth);
-		ss->x = rnd(bwidth);
+		ss->y = rnd(BDEPTH);
+		ss->x = rnd(BWIDTH);
 		ss->dir = rnd(2) ? E : S;
     } while (!checkplace(b, ss, FALSE));
 }
@@ -631,8 +628,8 @@ checkplace(int b, ship_t *ss, int vis)
     int l, xend, yend;
 
     /* first, check for board edges */
-    xend = ss->x + ss->length * xincr[ss->dir];
-    yend = ss->y + ss->length * yincr[ss->dir];
+    xend = ss->x + (ss->length - 1) * xincr[ss->dir];
+    yend = ss->y + (ss->length - 1) * yincr[ss->dir];
     if (!ONBOARD(xend, yend)) {
 		if (vis) {
 	    	switch(rnd(3)) {
