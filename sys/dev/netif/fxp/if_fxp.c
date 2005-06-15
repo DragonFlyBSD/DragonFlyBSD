@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.34 2005/06/14 17:01:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.35 2005/06/15 11:15:37 joerg Exp $
  */
 
 /*
@@ -673,6 +673,7 @@ fxp_attach(device_t dev)
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
 			       fxp_intr, sc, &sc->ih, NULL);
 	if (error) {
+		ether_ifdetach(ifp);
 		if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
 			ifmedia_removeall(&sc->sc_media);
 		device_printf(dev, "could not setup irq\n");
