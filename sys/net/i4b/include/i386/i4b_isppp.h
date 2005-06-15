@@ -21,7 +21,7 @@
  * $Id: i4b_isppp.h,v 1.5 2000/07/18 15:05:37 hm Exp $
  *
  * $FreeBSD: src/sys/i386/include/i4b_isppp.h,v 1.1.2.2 2001/09/28 07:43:19 gj Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.6 2005/06/15 07:15:03 asmodai Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.7 2005/06/15 09:26:10 dillon Exp $
  */
 
 #ifndef _I4B_ISPPP_H_
@@ -31,7 +31,7 @@
 
 
 #ifdef SPPP_VJ
-#ifndef (_KERNEL)
+#ifndef _KERNEL
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <net/slcompress.h>
