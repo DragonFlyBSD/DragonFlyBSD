@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.24 2005/02/11 22:25:57 joerg Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.25 2005/06/15 12:27:19 joerg Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -201,22 +201,22 @@ pppintr(struct netmsg *msg)
 {
     struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
     struct ppp_softc *sc;
-    int i, s;
+    int i;
 
     sc = ppp_softc;
     for (i = 0; i < NPPP; ++i, ++sc) {
-	s = splimp();
+	crit_enter();
 	if (!(sc->sc_flags & SC_TBUSY)
 	    && (!ifq_is_empty(&sc->sc_if.if_snd) || !IF_QEMPTY(&sc->sc_fastq))) {
 	    sc->sc_flags |= SC_TBUSY;
-	    splx(s);
+	    crit_exit();
 	    (*sc->sc_start)(sc);
 	} else
-	    splx(s);
+	    crit_exit();
 	for (;;) {
-	    s = splimp();
+	    crit_enter();
 	    IF_DEQUEUE(&sc->sc_rawq, m);
-	    splx(s);
+	    crit_exit();
 	    if (m == NULL)
 		break;
 	    ppp_inproc(sc, m);
@@ -372,7 +372,7 @@ int
 pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
     int flag, struct thread *td)
 {
-    int s, error, flags, mru, npx;
+    int error, flags, mru, npx;
     u_int nb;
     struct ppp_option_data *odp;
     struct compressor **cp;
@@ -404,14 +404,13 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	if ((error = suser(td)) != 0)
 	    return (error);
 	flags = *(int *)data & SC_MASK;
-	s = splsoftnet();
+	crit_enter();
 #ifdef PPP_COMPRESS
 	if (sc->sc_flags & SC_CCP_OPEN && !(flags & SC_CCP_OPEN))
 	    ppp_ccp_closed(sc);
 #endif
-	splimp();
 	sc->sc_flags = (sc->sc_flags & ~SC_MASK) | flags;
-	splx(s);
+	crit_exit();
 	break;
 
     case PPPIOCSMRU:
@@ -431,9 +430,9 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	if ((error = suser(td)) != 0)
 	    return (error);
 	if (sc->sc_comp) {
-	    s = splsoftnet();
+	    crit_enter();
 	    sl_compress_init(sc->sc_comp, *(int *)data);
-	    splx(s);
+	    crit_exit();
 	}
 	break;
 #endif
@@ -464,7 +463,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 		 */
 		error = 0;
 		if (odp->transmit) {
-		    s = splsoftnet();
+		    crit_enter();
 		    if (sc->sc_xc_state != NULL)
 			(*sc->sc_xcomp->comp_free)(sc->sc_xc_state);
 		    sc->sc_xcomp = *cp;
@@ -475,11 +474,10 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 			       sc->sc_if.if_xname);
 			error = ENOBUFS;
 		    }
-		    splimp();
 		    sc->sc_flags &= ~SC_COMP_RUN;
-		    splx(s);
+		    crit_exit();
 		} else {
-		    s = splsoftnet();
+		    crit_enter();
 		    if (sc->sc_rc_state != NULL)
 			(*sc->sc_rcomp->decomp_free)(sc->sc_rc_state);
 		    sc->sc_rcomp = *cp;
@@ -490,9 +488,8 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 			       sc->sc_if.if_xname);
 			error = ENOBUFS;
 		    }
-		    splimp();
 		    sc->sc_flags &= ~SC_DECOMP_RUN;
-		    splx(s);
+		    crit_exit();
 		}
 		return (error);
 	    }
@@ -519,23 +516,23 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	    if ((error = suser(td)) != 0)
 		return (error);
 	    if (npi->mode != sc->sc_npmode[npx]) {
-		s = splsoftnet();
+		crit_enter();
 		sc->sc_npmode[npx] = npi->mode;
 		if (npi->mode != NPMODE_QUEUE) {
 		    ppp_requeue(sc);
 		    (*sc->sc_start)(sc);
 		}
-		splx(s);
+		crit_exit();
 	    }
 	}
 	break;
 
     case PPPIOCGIDLE:
-	s = splsoftnet();
+	crit_enter();
 	t = time_second;
 	((struct ppp_idle *)data)->xmit_idle = t - sc->sc_last_sent;
 	((struct ppp_idle *)data)->recv_idle = t - sc->sc_last_recv;
-	splx(s);
+	crit_exit();
 	break;
 
 #ifdef PPP_FILTER
@@ -563,10 +560,10 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	    newcode = 0;
 	bp = (cmd == PPPIOCSPASS)? &sc->sc_pass_filt: &sc->sc_active_filt;
 	oldcode = bp->bf_insns;
-	s = splimp();
+	crit_enter();
 	bp->bf_len = nbp->bf_len;
 	bp->bf_insns = newcode;
-	splx(s);
+	crit_exit();
 	if (oldcode != 0)
 	    free(oldcode, M_DEVBUF);
 	break;
@@ -596,7 +593,9 @@ pppsioctl(ifp, cmd, data, cr)
 #ifdef	PPP_COMPRESS
     struct ppp_comp_stats *pcp;
 #endif
-    int s = splimp(), error = 0;
+    int error = 0;
+
+    crit_enter();
 
     switch (cmd) {
     case SIOCSIFFLAGS:
@@ -702,7 +701,7 @@ pppsioctl(ifp, cmd, data, cr)
     default:
 	error = ENOTTY;
     }
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -722,7 +721,7 @@ pppoutput(ifp, m0, dst, rtp)
     struct ppp_softc *sc = &ppp_softc[ifp->if_dunit];
     int protocol, address, control;
     u_char *cp;
-    int s, error;
+    int error;
     struct ip *ip;
     struct ifqueue *ifq;
     enum NPmode mode;
@@ -861,7 +860,7 @@ pppoutput(ifp, m0, dst, rtp)
     /*
      * Put the packet on the appropriate queue.
      */
-    s = splsoftnet();	/* redundant */
+    crit_enter();
     if (mode == NPMODE_QUEUE) {
 	/* XXX we should limit the number of packets on this queue */
 	*sc->sc_npqtail = m0;
@@ -883,7 +882,7 @@ pppoutput(ifp, m0, dst, rtp)
 	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
 	}
 	if (error) {
-	    splx(s);
+	    crit_exit();
 	    sc->sc_if.if_oerrors++;
 	    sc->sc_stats.ppp_oerrors++;
 	    return (error);
@@ -894,7 +893,7 @@ pppoutput(ifp, m0, dst, rtp)
     ifp->if_opackets++;
     ifp->if_obytes += len;
 
-    splx(s);
+    crit_exit();
     return (0);
 
 bad:
@@ -972,11 +971,10 @@ void
 ppp_restart(sc)
     struct ppp_softc *sc;
 {
-    int s = splimp();
-
+    crit_enter();
     sc->sc_flags &= ~SC_TBUSY;
     schednetisr(NETISR_PPP);
-    splx(s);
+    crit_exit();
 }
 
 
@@ -1124,7 +1122,7 @@ ppp_ccp(sc, m, rcvd)
 {
     u_char *dp, *ep;
     struct mbuf *mp;
-    int slen, s;
+    int slen;
 
     /*
      * Get a pointer to the data after the PPP header.
@@ -1156,9 +1154,9 @@ ppp_ccp(sc, m, rcvd)
     case CCP_TERMACK:
 	/* CCP must be going down - disable compression */
 	if (sc->sc_flags & SC_CCP_UP) {
-	    s = splimp();
+	    crit_enter();
 	    sc->sc_flags &= ~(SC_CCP_UP | SC_COMP_RUN | SC_DECOMP_RUN);
-	    splx(s);
+	    crit_exit();
 	}
 	break;
 
@@ -1172,9 +1170,9 @@ ppp_ccp(sc, m, rcvd)
 		    && (*sc->sc_xcomp->comp_init)
 			(sc->sc_xc_state, dp + CCP_HDRLEN, slen - CCP_HDRLEN,
 			 sc->sc_if.if_dunit, 0, sc->sc_flags & SC_DEBUG)) {
-		    s = splimp();
+		    crit_enter();
 		    sc->sc_flags |= SC_COMP_RUN;
-		    splx(s);
+		    crit_exit();
 		}
 	    } else {
 		/* peer is agreeing to send compressed packets. */
@@ -1183,10 +1181,10 @@ ppp_ccp(sc, m, rcvd)
 			(sc->sc_rc_state, dp + CCP_HDRLEN, slen - CCP_HDRLEN,
 			 sc->sc_if.if_dunit, 0, sc->sc_mru,
 			 sc->sc_flags & SC_DEBUG)) {
-		    s = splimp();
+		    crit_enter();
 		    sc->sc_flags |= SC_DECOMP_RUN;
 		    sc->sc_flags &= ~(SC_DC_ERROR | SC_DC_FERROR);
-		    splx(s);
+		    crit_exit();
 		}
 	    }
 	}
@@ -1200,9 +1198,9 @@ ppp_ccp(sc, m, rcvd)
 	    } else {
 		if (sc->sc_rc_state && (sc->sc_flags & SC_DECOMP_RUN)) {
 		    (*sc->sc_rcomp->decomp_reset)(sc->sc_rc_state);
-		    s = splimp();
+		    crit_enter();
 		    sc->sc_flags &= ~SC_DC_ERROR;
-		    splx(s);
+		    crit_exit();
 		}
 	    }
 	}
@@ -1240,13 +1238,14 @@ ppppktin(sc, m, lost)
     struct mbuf *m;
     int lost;
 {
-    int s = splimp();
+    crit_enter();
 
     if (lost)
 	m->m_flags |= M_ERRMARK;
     IF_ENQUEUE(&sc->sc_rawq, m);
     schednetisr(NETISR_PPP);
-    splx(s);
+
+    crit_exit();
 }
 
 /*
@@ -1263,7 +1262,7 @@ ppp_inproc(sc, m)
 {
     struct ifnet *ifp = &sc->sc_if;
     int isr;
-    int s, ilen = 0, xlen, proto, rv;
+    int ilen = 0, xlen, proto, rv;
     u_char *cp, adrs, ctrl;
     struct mbuf *mp, *dmp = NULL;
     u_char *iphdr;
@@ -1286,9 +1285,9 @@ ppp_inproc(sc, m)
 
     if (m->m_flags & M_ERRMARK) {
 	m->m_flags &= ~M_ERRMARK;
-	s = splimp();
+	crit_enter();
 	sc->sc_flags |= SC_VJ_RESET;
-	splx(s);
+	crit_exit();
     }
 
 #ifdef PPP_COMPRESS
@@ -1318,13 +1317,13 @@ ppp_inproc(sc, m)
 	     */
 	    if (sc->sc_flags & SC_DEBUG)
 		printf("%s: decompress failed %d\n", ifp->if_xname, rv);
-	    s = splimp();
+	    crit_enter();
 	    sc->sc_flags |= SC_VJ_RESET;
 	    if (rv == DECOMP_ERROR)
 		sc->sc_flags |= SC_DC_ERROR;
 	    else
 		sc->sc_flags |= SC_DC_FERROR;
-	    splx(s);
+	    crit_exit();
 	}
 
     } else {
@@ -1349,9 +1348,9 @@ ppp_inproc(sc, m)
 	 */
 	if (sc->sc_comp)
 	    sl_uncompress_tcp(NULL, 0, TYPE_ERROR, sc->sc_comp);
-	s = splimp();
+	crit_enter();
 	sc->sc_flags &= ~SC_VJ_RESET;
-	splx(s);
+	crit_exit();
     }
 
     /*

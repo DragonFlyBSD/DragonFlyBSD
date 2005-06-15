@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.12 2005/02/11 22:25:57 joerg Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.13 2005/06/15 12:27:20 joerg Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -84,6 +84,7 @@
 #include <sys/dkstat.h>
 #include <sys/socket.h>
 #include <sys/fcntl.h>
+#include <sys/thread2.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
@@ -164,27 +165,6 @@ void
 pppasyncattach(dummy)
     void *dummy;
 {
-#ifdef __i386__
-    int s;
-
-    s = splhigh();
-
-    /*
-     * Make sure that the soft net "engine" cannot run while spltty code is
-     * active.  The if_ppp.c code can walk down into b_to_q etc, and it is
-     * bad if the tty system was in the middle of another b_to_q...
-     */
-    tty_imask |= softnet_imask;	/* spltty() block spl[soft]net() */
-    net_imask |= softtty_imask;	/* splimp() block splsofttty() */
-    net_imask |= tty_imask;	/* splimp() block spltty() */
-    update_intr_masks();
-
-    splx(s);
-    if ( bootverbose )
-        printf("new masks: bio %x, tty %x, net %x\n",
-                bio_imask, tty_imask, net_imask);
-#endif
-
     /* register line discipline */
     linesw[PPPDISC] = pppdisc;
 }
@@ -200,23 +180,23 @@ pppopen(dev_t dev, struct tty *tp)
 {
     struct thread *td = curthread;	/* XXX */
     struct ppp_softc *sc;
-    int error, s;
+    int error;
 
     if ((error = suser(td)) != 0)
 	return (error);
 
-    s = spltty();
+    crit_enter();
 
     if (tp->t_line == PPPDISC) {
 	sc = (struct ppp_softc *) tp->t_sc;
 	if (sc != NULL && sc->sc_devp == (void *) tp) {
-	    splx(s);
+	    crit_exit();
 	    return (0);
 	}
     }
 
     if ((sc = pppalloc(td)) == NULL) {
-	splx(s);
+	crit_exit();
 	return ENXIO;
     }
 
@@ -253,7 +233,7 @@ pppopen(dev_t dev, struct tty *tp)
 			sc->sc_if.if_mtu + PPP_HIWAT);
     clist_alloc_cblocks(&tp->t_rawq, 0, 0);
 
-    splx(s);
+    crit_exit();
 
     return (0);
 }
@@ -270,9 +250,8 @@ pppclose(tp, flag)
     int flag;
 {
     struct ppp_softc *sc;
-    int s;
 
-    s = spltty();
+    crit_enter();
     ttyflush(tp, FREAD | FWRITE);
     clist_free_cblocks(&tp->t_canq);
     clist_free_cblocks(&tp->t_outq);
@@ -285,7 +264,7 @@ pppclose(tp, flag)
 	    pppdealloc(sc);
 	}
     }
-    splx(s);
+    crit_exit();
     return 0;
 }
 
@@ -296,9 +275,8 @@ static void
 pppasyncrelinq(sc)
     struct ppp_softc *sc;
 {
-    int s;
+    crit_enter();
 
-    s = spltty();
     if (sc->sc_outm) {
 	m_freem(sc->sc_outm);
 	sc->sc_outm = NULL;
@@ -311,7 +289,8 @@ pppasyncrelinq(sc)
 	callout_stop(&sc->sc_timeout);
 	sc->sc_flags &= ~SC_TIMEOUT;
     }
-    splx(s);
+
+    crit_exit();
 }
 
 /*
@@ -322,13 +301,12 @@ pppasyncsetmtu(sc)
 struct ppp_softc *sc;
 {
     struct tty *tp = (struct tty *) sc->sc_devp;
-    int s;
 
-    s = spltty();
+    crit_enter();
     if (tp != NULL)
 	clist_alloc_cblocks(&tp->t_outq, sc->sc_if.if_mtu + PPP_HIWAT,
 			     sc->sc_if.if_mtu + PPP_HIWAT);
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -344,7 +322,6 @@ pppread(tp, uio, flag)
 {
     struct ppp_softc *sc = (struct ppp_softc *)tp->t_sc;
     struct mbuf *m, *m0;
-    int s;
     int error = 0;
 
     if (sc == NULL)
@@ -353,25 +330,25 @@ pppread(tp, uio, flag)
      * Loop waiting for input, checking that nothing disasterous
      * happens in the meantime.
      */
-    s = spltty();
+    crit_exit();
     for (;;) {
 	if (tp != (struct tty *) sc->sc_devp || tp->t_line != PPPDISC) {
-	    splx(s);
+	    crit_exit();
 	    return 0;
 	}
 	if (sc->sc_inq.ifq_head != NULL)
 	    break;
 	if ((tp->t_state & TS_CONNECTED) == 0) {
-	    splx(s);
+	    crit_exit();
 	    return 0;		/* end of file */
 	}
 	if (tp->t_state & TS_ASYNC || flag & IO_NDELAY) {
-	    splx(s);
+	    crit_exit();
 	    return (EWOULDBLOCK);
 	}
 	error = ttysleep(tp, TSA_HUP_OR_INPUT(tp), PCATCH, "pppin", 0);
 	if (error) {
-	    splx(s);
+	    crit_exit();
 	    return error;
 	}
     }
@@ -381,7 +358,7 @@ pppread(tp, uio, flag)
 
     /* Get the packet from the input queue */
     IF_DEQUEUE(&sc->sc_inq, m0);
-    splx(s);
+    crit_exit();
 
     for (m = m0; m && uio->uio_resid; m = m->m_next)
 	if ((error = uiomove(mtod(m, u_char *), m->m_len, uio)) != 0)
@@ -404,7 +381,7 @@ pppwrite(tp, uio, flag)
     struct ppp_softc *sc = (struct ppp_softc *)tp->t_sc;
     struct mbuf *m, *m0, **mp;
     struct sockaddr dst;
-    int len, error, s;
+    int len, error;
 
     if ((tp->t_state & TS_CONNECTED) == 0)
 	return 0;		/* wrote 0 bytes */
@@ -416,12 +393,12 @@ pppwrite(tp, uio, flag)
 	uio->uio_resid < PPP_HDRLEN)
 	return (EMSGSIZE);
 
-    s = spltty();
+    crit_enter();
     for (mp = &m0; uio->uio_resid; mp = &m->m_next) {
 	MGET(m, MB_WAIT, MT_DATA);
 	if ((*mp = m) == NULL) {
 	    m_freem(m0);
-	    splx(s);
+	    crit_exit();
 	    return (ENOBUFS);
 	}
 	m->m_len = 0;
@@ -432,7 +409,7 @@ pppwrite(tp, uio, flag)
 	    len = uio->uio_resid;
 	if ((error = uiomove(mtod(m, u_char *), len, uio)) != 0) {
 	    m_freem(m0);
-	    splx(s);
+	    crit_exit();
 	    return (error);
 	}
 	m->m_len = len;
@@ -444,7 +421,7 @@ pppwrite(tp, uio, flag)
 
     /* call the upper layer to "transmit" it... */
     error = pppoutput(&sc->sc_if, m0, &dst, (struct rtentry *)0);
-    splx(s);
+    crit_exit();
     return (error);
 }
 
@@ -458,7 +435,7 @@ static int
 ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
-    int error, s;
+    int error;
 
     if (sc == NULL || tp != (struct tty *) sc->sc_devp)
 	return (ENOIOCTL);
@@ -488,12 +465,12 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
     case PPPIOCSXASYNCMAP:
 	if ((error = suser(td)) != 0)
 	    break;
-	s = spltty();
+	crit_enter();
 	bcopy(data, sc->sc_asyncmap, sizeof(sc->sc_asyncmap));
 	sc->sc_asyncmap[1] = 0;		    /* mustn't escape 0x20 - 0x3f */
 	sc->sc_asyncmap[2] &= ~0x40000000;  /* mustn't escape 0x5e */
 	sc->sc_asyncmap[3] |= 0x60000000;   /* must escape 0x7d, 0x7e */
-	splx(s);
+	crit_exit();
 	break;
 
     case PPPIOCGXASYNCMAP:
@@ -571,7 +548,6 @@ pppasyncstart(sc)
     int len;
     u_char *start, *stop, *cp;
     int n, ndone, done, idle;
-    int s;
 
     idle = 0;
     /* XXX assumes atomic access to *tp although we're not at spltty(). */
@@ -636,17 +612,17 @@ pppasyncstart(sc)
 		 * Put it out in a different form.
 		 */
 		if (len) {
-		    s = spltty();
+		    crit_enter();
 		    if (putc(PPP_ESCAPE, &tp->t_outq)) {
-			splx(s);
+			crit_exit();
 			break;
 		    }
 		    if (putc(*start ^ PPP_TRANS, &tp->t_outq)) {
 			(void) unputc(&tp->t_outq);
-			splx(s);
+			crit_exit();
 			break;
 		    }
-		    splx(s);
+		    crit_exit();
 		    sc->sc_stats.ppp_obytes += 2;
 		    start++;
 		    len--;
@@ -687,7 +663,7 @@ pppasyncstart(sc)
 		 * Try to output the FCS and flag.  If the bytes
 		 * don't all fit, back out.
 		 */
-		s = spltty();
+		crit_enter();
 		for (q = endseq; q < p; ++q)
 		    if (putc(*q, &tp->t_outq)) {
 			done = 0;
@@ -695,7 +671,7 @@ pppasyncstart(sc)
 			    unputc(&tp->t_outq);
 			break;
 		    }
-		splx(s);
+		crit_exit();
 		if (done)
 		    sc->sc_stats.ppp_obytes += q - endseq;
 	    }
@@ -727,7 +703,7 @@ pppasyncstart(sc)
     }
 
     /* Call pppstart to start output again if necessary. */
-    s = spltty();
+    crit_enter();
     pppstart(tp);
 
     /*
@@ -740,7 +716,7 @@ pppasyncstart(sc)
 	sc->sc_flags |= SC_TIMEOUT;
     }
 
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -752,14 +728,13 @@ pppasyncctlp(sc)
     struct ppp_softc *sc;
 {
     struct tty *tp;
-    int s;
 
     /* Put a placeholder byte in canq for ttselect()/ttnread(). */
-    s = spltty();
+    crit_enter();
     tp = (struct tty *) sc->sc_devp;
     putc(0, &tp->t_canq);
     ttwakeup(tp);
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -812,12 +787,11 @@ ppp_timeout(x)
 {
     struct ppp_softc *sc = (struct ppp_softc *) x;
     struct tty *tp = (struct tty *) sc->sc_devp;
-    int s;
 
-    s = spltty();
+    crit_enter();
     sc->sc_flags &= ~SC_TIMEOUT;
     pppstart(tp);
-    splx(s);
+    crit_exit();
 }
 
 /*
@@ -864,7 +838,7 @@ pppinput(c, tp)
 {
     struct ppp_softc *sc;
     struct mbuf *m;
-    int ilen, s;
+    int ilen;
 
     sc = (struct ppp_softc *) tp->t_sc;
     if (sc == NULL || tp != (struct tty *) sc->sc_devp)
@@ -908,7 +882,7 @@ pppinput(c, tp)
 	}
     }
 
-    s = spltty();
+    crit_enter();
     if (c & 0x80)
 	sc->sc_flags |= SC_RCV_B7_1;
     else
@@ -917,7 +891,7 @@ pppinput(c, tp)
 	sc->sc_flags |= SC_RCV_ODDP;
     else
 	sc->sc_flags |= SC_RCV_EVNP;
-    splx(s);
+    crit_exit();
 
     if (sc->sc_flags & SC_LOG_RAWIN)
 	ppplogchar(sc, c);
@@ -935,7 +909,7 @@ pppinput(c, tp)
 	 */
 	if (sc->sc_flags & (SC_FLUSH | SC_ESCAPED)
 	    || (ilen > 0 && sc->sc_fcs != PPP_GOODFCS)) {
-	    s = spltty();
+	    crit_enter();
 	    sc->sc_flags |= SC_PKTLOST;	/* note the dropped packet */
 	    if ((sc->sc_flags & (SC_FLUSH | SC_ESCAPED)) == 0){
 		if (sc->sc_flags & SC_DEBUG)
@@ -945,7 +919,7 @@ pppinput(c, tp)
 		sc->sc_stats.ppp_ierrors++;
 	    } else
 		sc->sc_flags &= ~(SC_FLUSH | SC_ESCAPED);
-	    splx(s);
+	    crit_exit();
 	    return 0;
 	}
 
@@ -953,11 +927,11 @@ pppinput(c, tp)
 	    if (ilen) {
 		if (sc->sc_flags & SC_DEBUG)
 		    printf("%s: too short (%d)\n", sc->sc_if.if_xname, ilen);
-		s = spltty();
+		crit_enter();
 		sc->sc_if.if_ierrors++;
 		sc->sc_stats.ppp_ierrors++;
 		sc->sc_flags |= SC_PKTLOST;
-		splx(s);
+		crit_exit();
 	    }
 	    return 0;
 	}
@@ -980,9 +954,9 @@ pppinput(c, tp)
 
 	ppppktin(sc, m, sc->sc_flags & SC_PKTLOST);
 	if (sc->sc_flags & SC_PKTLOST) {
-	    s = spltty();
+	    crit_enter();
 	    sc->sc_flags &= ~SC_PKTLOST;
-	    splx(s);
+	    crit_exit();
 	}
 
 	pppgetm(sc);
@@ -998,16 +972,16 @@ pppinput(c, tp)
     if (c < 0x20 && (sc->sc_rasyncmap & (1 << c)))
 	return 0;
 
-    s = spltty();
+    crit_enter();
     if (sc->sc_flags & SC_ESCAPED) {
 	sc->sc_flags &= ~SC_ESCAPED;
 	c ^= PPP_TRANS;
     } else if (c == PPP_ESCAPE) {
 	sc->sc_flags |= SC_ESCAPED;
-	splx(s);
+        crit_exit();
 	return 0;
     }
-    splx(s);
+    crit_exit();
 
     /*
      * Initialize buffer on first octet received.
@@ -1097,11 +1071,11 @@ pppinput(c, tp)
 
  flush:
     if (!(sc->sc_flags & SC_FLUSH)) {
-	s = spltty();
+	crit_enter();
 	sc->sc_if.if_ierrors++;
 	sc->sc_stats.ppp_ierrors++;
 	sc->sc_flags |= SC_FLUSH;
-	splx(s);
+	crit_exit();
 	if (sc->sc_flags & SC_LOG_FLUSH)
 	    ppplogchar(sc, c);
     }
