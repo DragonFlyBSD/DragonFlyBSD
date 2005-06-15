@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.16 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.17 2005/06/15 11:56:03 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -560,17 +560,15 @@ PDEVSTATIC int
 i4brbchpoll(dev_t dev, int events, struct thread *td)
 {
 	int revents = 0;	/* Events we found */
-	int s;
 	int unit = minor(dev);
 	struct rbch_softc *sc = &rbch_softc[unit];
 	
 	/* We can't check for anything but IN or OUT */
-
-	s = splhigh();
+	crit_enter();
 
 	if(!(sc->sc_devstate & ST_ISOPEN))
 	{
-		splx(s);
+		crit_exit();
 		return(POLLNVAL);
 	}
 
@@ -605,7 +603,7 @@ i4brbchpoll(dev_t dev, int events, struct thread *td)
 	if(revents == 0)
 		selrecord(td, &sc->selp);
 
-	splx(s);
+	crit_exit();
 	return(revents);
 }
 

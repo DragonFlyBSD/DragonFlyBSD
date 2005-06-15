@@ -36,7 +36,7 @@
  *      $Id: i4b_ihfc_pnp.c,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5 2005/05/26 23:17:31 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.6 2005/06/15 11:56:03 joerg Exp $
  *     
  *---------------------------------------------------------------------------*/
 
@@ -48,6 +48,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
 #include <net/if.h>
 
 

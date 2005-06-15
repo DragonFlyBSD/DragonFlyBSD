@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.7 2005/06/03 16:49:57 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.8 2005/06/15 11:56:03 joerg Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -840,12 +840,7 @@ ng_ing_disconnect(hook_p hook)
 {
 	struct ing_softc *sc = hook->node->private;
 	
-	if(hook->private)
-	{
-		splz();
-	}
-	else
-	{
+	if(hook->private == NULL) {
 		sc->debughook = NULL;
 	}
 	return (0);

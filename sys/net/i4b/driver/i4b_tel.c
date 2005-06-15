@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.11 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.12 2005/06/15 11:56:03 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -52,6 +52,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <sys/thread2.h>
 #include <sys/tty.h>
 
 #ifdef DEVFS
@@ -265,14 +266,13 @@ i4btelclose(dev_t dev, int flag, int fmt, struct thread *td)
 	int func = FUNC(dev);
 	tel_sc_t *sc;
 	int error = 0;
-	int x;
 	
 	if(unit > NI4BTEL)
 		return(ENXIO);
 
 	sc = &tel_sc[unit][func];		
 
-	x = splimp();
+	crit_enter();
 	sc->devstate &= ~ST_TONE;		
 
 	if((func == FUNCTEL) &&
@@ -292,7 +292,7 @@ i4btelclose(dev_t dev, int flag, int fmt, struct thread *td)
 	}
 
 	sc->devstate &= ~ST_ISOPEN;		
-	splx(x);
+	crit_exit();
 	wakeup((caddr_t) &sc->tones);
 
 	return(error);
@@ -308,7 +308,6 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	int func = FUNC(dev);
 	int error = 0;
         struct mbuf *m;
-        int s;
 
 	tel_sc_t *sc = &tel_sc[unit][func];
 
@@ -348,7 +347,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 				break;
 	
 			case I4B_TEL_EMPTYINPUTQUEUE:
-				s = splimp();
+				crit_enter();
 				while((sc->devstate & ST_CONNECTED)	&&
 					(sc->devstate & ST_ISOPEN) 	&&
 					!IF_QEMPTY(sc->isdn_linktab->rx_queue))
@@ -357,7 +356,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 					if(m)
 						i4b_Bfreembuf(m);
 				}
-				splx(s);
+			    	crit_exit();
 				break;
 
 			case I4B_TEL_VR_REQ:
@@ -376,21 +375,21 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 				struct i4b_tel_tones *tt;
 
 				tt = (struct i4b_tel_tones *)data;
-				s = splimp();
+				crit_enter();
 				while ((sc->devstate & ST_TONE) && 
 				    sc->tones.duration[sc->toneidx] != 0) {
 					if((error = tsleep((caddr_t) &sc->tones,
 					    PCATCH, "rtone", 0 )) != 0) {
-					    	splx(s);
+					    	crit_exit();
 						return(error);
 					}
 				} 
 				if(!(sc->devstate & ST_ISOPEN)) {
-					splx(s);
+				    	crit_exit();
 					return (EIO);
 				}
 				if(!(sc->devstate & ST_CONNECTED)) {
-					splx(s);
+				    	crit_exit();
 					return (EIO);
 				}
 
@@ -398,7 +397,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 				sc->toneidx = 0;
 				sc->tonefreq = tt->frequency[0];
 				sc->devstate |= ST_TONE;
-				splx(s);
+			    	crit_exit();
 				tel_tone(sc);
 				break;
 			}
@@ -430,7 +429,6 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 	int func = FUNC(dev);
 
 	struct mbuf *m;
-	int s;
 	int error = 0;
 
 	tel_sc_t *sc = &tel_sc[unit][func];
@@ -440,7 +438,7 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 
 	if(func == FUNCTEL)
 	{
-		s = splimp();
+		crit_enter();
 
 		while((sc->devstate & ST_ISOPEN)        &&
 		      (sc->devstate & ST_CONNECTED)	&&
@@ -454,20 +452,20 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 						PCATCH, "rtel", 0 )) != 0)
 			{
 				sc->devstate &= ~ST_RDWAITDATA;
-				splx(s);
+			    	crit_exit();
 				return(error);
 			}
 		}
 	
 		if(!(sc->devstate & ST_ISOPEN))
 		{
-			splx(s);
+		    	crit_exit();
 			return(EIO);
 		}
 	
 		if(!(sc->devstate & ST_CONNECTED))
 		{
-			splx(s);
+		    	crit_exit();
 			return(EIO);
 		}
 		
@@ -500,11 +498,11 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 		if(m)
 			i4b_Bfreembuf(m);
 	
-		splx(s);
+		crit_exit();
 	}
 	else if(func == FUNCDIAL)
 	{
-		s = splimp();
+		crit_enter();
 		while((sc->result == 0) && (sc->devstate & ST_ISOPEN))
 		{
 			sc->devstate |= ST_RDWAITDATA;
@@ -513,14 +511,14 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 						PCATCH, "rtel1", 0 )) != 0)
 			{
 				sc->devstate &= ~ST_RDWAITDATA;
-				splx(s);
+				crit_exit();
 				return(error);
 			}
 		}
 	
 		if(!(sc->devstate & ST_ISOPEN))
 		{
-			splx(s);
+			crit_exit();
 			return(EIO);
 		}
 	
@@ -534,7 +532,7 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 			error = EIO;
 		}
 
-		splx(s);			
+		crit_exit();
 	}
 	return(error);
 }
@@ -548,7 +546,6 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	struct mbuf *m;
-	int s;
 	int error = 0;
 	tel_sc_t *sc = &tel_sc[unit][func];
 	
@@ -559,10 +556,10 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 
 	if(func == FUNCTEL)
 	{
-		s = splimp();
+		crit_enter();
 		
 		if(!(sc->devstate & ST_CONNECTED)) {
-			splx(s);
+			crit_exit();
 			return(EIO);
 		}
 			
@@ -576,20 +573,20 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 					PCATCH, "wtel", 0)) != 0)
 			{
 				sc->devstate &= ~ST_WRWAITEMPTY;
-				splx(s);
+				crit_exit();
 				return(error);
 			}
 		}
 	
 		if(!(sc->devstate & ST_ISOPEN))
 		{
-			splx(s);
+			crit_exit();
 			return(EIO);
 		}
 	
 		if(!(sc->devstate & ST_CONNECTED))
 		{
-			splx(s);
+			crit_exit();
 			return(EIO);
 		}
 
@@ -618,7 +615,7 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 			(*sc->isdn_linktab->bch_tx_start)(sc->isdn_linktab->unit, sc->isdn_linktab->channel);
 		}
 	
-		splx(s);
+		crit_exit();
 	}
 	else if(func == FUNCDIAL)
 	{
@@ -706,18 +703,17 @@ PDEVSTATIC int
 i4btelpoll(dev_t dev, int events, struct thread *td)
 {
 	int revents = 0;	/* Events we found */
-	int s;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);	
 
 	tel_sc_t *sc = &tel_sc[unit][func];
 	
-	s = splhigh();
+	crit_enter();
 
 	if(!(sc->devstate & ST_ISOPEN))
 	{
 		NDBGL4(L4_TELDBG, "i4btel%d, !ST_ISOPEN", unit);
-		splx(s);
+		crit_exit();
 		return(0);
 	}
 
@@ -775,7 +771,7 @@ i4btelpoll(dev_t dev, int events, struct thread *td)
 			selrecord(td, &sc->selp);
 		}
 	}
-	splx(s);
+	crit_exit();
 	return(revents);
 }
 

@@ -37,7 +37,7 @@
  *      $Id: i4b_ihfc_l1if.c,v 1.10 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.7.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.7 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.8 2005/06/15 11:56:03 joerg Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -50,7 +50,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-
+#include <sys/thread2.h>
 
 #include <net/if.h>
 

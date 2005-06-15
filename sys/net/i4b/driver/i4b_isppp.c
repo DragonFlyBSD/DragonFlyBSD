@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.13 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.14 2005/06/15 11:56:03 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -58,6 +58,7 @@
 #include <sys/ioccom.h>
 #include <sys/sockio.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -262,10 +263,10 @@ i4bisppp_ioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data,
 	switch(cmd) {
 	case SIOCSIFFLAGS:
 #if 0 /* never used ??? */
-		x = splimp();
+		crit_enter();
 		if ((ifp->if_flags & IFF_UP) == 0)
 			callout_stop(&sc->sc_timeout);
-		splx(x);
+		crit_exit();
 #endif
 		break;
 	}
@@ -291,9 +292,9 @@ i4bisppp_start(struct ifnet *ifp)
 		return;
 
 	/*
-	 * s = splimp();
+	 * crit_enter();
 	 * ifp->if_flags |= IFF_OACTIVE; // - need to clear this somewhere
-	 * splx(s);
+	 * crit_exit();
 	 */
 
 	while ((m = sppp_dequeue(&sc->sc_if)) != NULL)
@@ -453,7 +454,8 @@ i4bisppp_connect(int unit, void *cdp)
 {
 	struct i4bisppp_softc *sc = &i4bisppp_softc[unit];
 	struct sppp *sp = &sc->sc_if_un.scu_sp;
-	int s = splimp();
+
+	crit_enter();
 
 	sc->sc_cdp = (call_desc_t *)cdp;
 	sc->sc_state = ST_CONNECTED;
@@ -474,7 +476,8 @@ i4bisppp_connect(int unit, void *cdp)
 
 	sp->pp_up(sp);		/* tell PPP we are ready */
 	sp->pp_last_sent = sp->pp_last_recv = SECOND;
-	splx(s);
+
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -487,13 +490,13 @@ i4bisppp_disconnect(int unit, void *cdp)
 	struct i4bisppp_softc *sc = &i4bisppp_softc[unit];
 	struct sppp *sp = &sc->sc_if_un.scu_sp;
 
-	int s = splimp();
+	crit_enter();
 
 	/* new stuff to check that the active channel is being closed */
 	if (cd != sc->sc_cdp)
 	{
 		NDBGL4(L4_ISPDBG, "isp%d, channel%d not active!", unit, cd->channelid);
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -515,7 +518,7 @@ i4bisppp_disconnect(int unit, void *cdp)
 		sp->pp_down(sp);	/* tell PPP we have hung up */
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -575,7 +578,6 @@ i4bisppp_rx_data_rdy(int unit)
 {
 	struct i4bisppp_softc *sc = &i4bisppp_softc[unit];
 	struct mbuf *m;
-	int s;
 	
 	if((m = *isdn_linktab[unit]->rx_mbuf) == NULL)
 		return;
@@ -600,11 +602,9 @@ i4bisppp_rx_data_rdy(int unit)
 
 	BPF_MTAP(&sc->sc_if, m);
 
-	s = splimp();
-
+	crit_enter();
 	sppp_input(&sc->sc_if, m);
-
-	splx(s);
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*

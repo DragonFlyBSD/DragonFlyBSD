@@ -28,7 +28,7 @@
  *	------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_mbuf.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.7 2005/06/15 11:56:03 joerg Exp $
  *
  *      last edit-date: [Sat Jan 13 13:15:45 2001]
  *
@@ -38,6 +38,8 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/thread2.h>
+
 #include <net/if.h>
 
 #include "../include/i4b_mbuf.h"
@@ -129,10 +131,11 @@ i4b_Dfreembuf(struct mbuf *m)
 void
 i4b_Dcleanifq(struct ifqueue *ifq)
 {
-	int x = splimp();
+	crit_enter();
 
 	IF_DRAIN(ifq);
-	splx(x);
+
+	crit_exit();
 }
 
 /*---------------------------------------------------------------------------*
@@ -205,10 +208,11 @@ i4b_Bfreembuf(struct mbuf *m)
 void
 i4b_Bcleanifq(struct ifqueue *ifq)
 {
-	int x = splimp();
+	crit_enter();
 	
 	IF_DRAIN(ifq);
-	splx(x);
+
+	crit_exit();
 }
 
 /* EOF */
