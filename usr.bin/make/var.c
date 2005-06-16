@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.209 2005/05/16 17:30:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.210 2005/06/16 08:38:24 okumoto Exp $
  */
 
 /**
@@ -839,7 +839,7 @@ VarLocal(const char name[])
 }
 
 /**
- * Find the given variable in the given context and the enviornment.
+ * Find the given variable in the given context and the environment.
  *
  * Results:
  *	A pointer to the structure describing the desired variable or
@@ -1043,11 +1043,11 @@ Var_SetEnv(const char *name, GNode *ctxt)
 	if (v != NULL) {
 		/*
 		 * Do not allow .EXPORT: to be set on variables
-		 * from the comand line or MAKEFLAGS.
+		 * from the command line or MAKEFLAGS.
 		 */
 		Error(
 		    "Warning: Did not set .EXPORTVAR: on %s because it "
-		    "is from the comand line or MAKEFLAGS", name);
+		    "is from the command line or MAKEFLAGS", name);
 		return;
 	}
 
