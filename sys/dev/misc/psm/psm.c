@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.14 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.15 2005/06/16 16:18:06 joerg Exp $
  */
 
 /*
@@ -76,6 +76,7 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/select.h>
+#include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 
@@ -806,12 +807,11 @@ reinitialize(struct psm_softc *sc, int doinit)
 {
     int err;
     int c;
-    int s;
 
     /* don't let anybody mess with the aux device */
     if (!kbdc_lock(sc->kbdc, TRUE))
 	return (EIO);
-    s = spltty();
+    crit_enter();
 
     /* block our watchdog timer */
     sc->watchdog = FALSE;
@@ -830,7 +830,7 @@ reinitialize(struct psm_softc *sc, int doinit)
   	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT
 	        | KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
         /* CONTROLLER ERROR */
-	splx(s);
+	crit_exit();
         kbdc_lock(sc->kbdc, FALSE);
 	log(LOG_ERR, "psm%d: unable to set the command byte (reinitialize).\n",
 	    sc->unit);
@@ -860,7 +860,7 @@ reinitialize(struct psm_softc *sc, int doinit)
 	    err = ENXIO;
 	}
     }
-    splx(s);
+    crit_exit();
 
     /* restore the driver state */
     if ((sc->state & PSM_OPEN) && (err == 0)) {
@@ -1302,7 +1302,6 @@ psmopen(dev_t dev, int flag, int fmt, struct thread *td)
     struct psm_softc *sc;
     int command_byte;
     int err;
-    int s;
 
     /* Get device data */
     sc = PSM_SOFTC(unit);
@@ -1345,7 +1344,7 @@ psmopen(dev_t dev, int flag, int fmt, struct thread *td)
 	return (EIO);
 
     /* save the current controller command byte */
-    s = spltty();
+    crit_enter();
     command_byte = get_controller_command_byte(sc->kbdc);
 
     /* enable the aux port and temporalily disable the keyboard */
@@ -1356,7 +1355,7 @@ psmopen(dev_t dev, int flag, int fmt, struct thread *td)
 	        | KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
         /* CONTROLLER ERROR; do you know how to get out of this? */
         kbdc_lock(sc->kbdc, FALSE);
-	splx(s);
+	crit_exit();
 	log(LOG_ERR, "psm%d: unable to set the command byte (psmopen).\n",
 	    unit);
 	return (EIO);
@@ -1368,7 +1367,7 @@ psmopen(dev_t dev, int flag, int fmt, struct thread *td)
      * but timeout routines will be blocked by the poll flag set 
      * via `kbdc_lock()'
      */
-    splx(s);
+    crit_exit();
   
     /* enable the mouse device */
     err = doopen(sc, command_byte);
@@ -1387,18 +1386,17 @@ psmclose(dev_t dev, int flag, int fmt, struct thread *td)
     struct psm_softc *sc = PSM_SOFTC(unit);
     int stat[3];
     int command_byte;
-    int s;
 
     /* don't let timeout routines in the keyboard driver to poll the kbdc */
     if (!kbdc_lock(sc->kbdc, TRUE))
 	return (EIO);
 
     /* save the current controller command byte */
-    s = spltty();
+    crit_enter();
     command_byte = get_controller_command_byte(sc->kbdc);
     if (command_byte == -1) {
         kbdc_lock(sc->kbdc, FALSE);
-	splx(s);
+	crit_exit();
 	return (EIO);
     }
 
@@ -1416,7 +1414,7 @@ psmclose(dev_t dev, int flag, int fmt, struct thread *td)
 	 * so long as the mouse will accept the DISABLE command.
 	 */
     }
-    splx(s);
+    crit_exit();
 
     /* stop the watchdog timer */
     callout_stop(&sc->callout);
@@ -1527,36 +1525,35 @@ psmread(dev_t dev, struct uio *uio, int flag)
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     unsigned char buf[PSM_SMALLBUFSIZE];
     int error = 0;
-    int s;
     int l;
 
     if ((sc->state & PSM_VALID) == 0)
 	return EIO;
 
     /* block until mouse activity occured */
-    s = spltty();
+    crit_enter();
     while (sc->queue.count <= 0) {
         if (PSM_NBLOCKIO(dev)) {
-            splx(s);
+            crit_exit();
             return EWOULDBLOCK;
         }
         sc->state |= PSM_ASLP;
         error = tsleep((caddr_t) sc, PCATCH, "psmrea", 0);
         sc->state &= ~PSM_ASLP;
         if (error) {
-            splx(s);
+            crit_exit();
             return error;
         } else if ((sc->state & PSM_VALID) == 0) {
             /* the device disappeared! */
-            splx(s);
+            crit_exit();
             return EIO;
 	}
     }
-    splx(s);
+    crit_exit();
 
     /* copy data to the user land */
     while ((sc->queue.count > 0) && (uio->uio_resid > 0)) {
-        s = spltty();
+        crit_enter();
 	l = min(sc->queue.count, uio->uio_resid);
 	if (l > sizeof(buf))
 	    l = sizeof(buf);
@@ -1571,7 +1568,7 @@ psmread(dev_t dev, struct uio *uio, int flag)
 	}
 	sc->queue.count -= l;
 	sc->queue.head = (sc->queue.head + l) % sizeof(sc->queue.buf);
-        splx(s);
+        crit_exit();
         error = uiomove(buf, l, uio);
         if (error)
 	    break;
@@ -1583,12 +1580,10 @@ psmread(dev_t dev, struct uio *uio, int flag)
 static int
 block_mouse_data(struct psm_softc *sc, int *c)
 {
-    int s;
-
     if (!kbdc_lock(sc->kbdc, TRUE)) 
 	return EIO;
 
-    s = spltty();
+    crit_enter();
     *c = get_controller_command_byte(sc->kbdc);
     if ((*c == -1) 
 	|| !set_controller_command_byte(sc->kbdc, 
@@ -1596,7 +1591,7 @@ block_mouse_data(struct psm_softc *sc, int *c)
             KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT
                 | KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
         /* this is CONTROLLER ERROR */
-	splx(s);
+	crit_exit();
         kbdc_lock(sc->kbdc, FALSE);
 	return EIO;
     }
@@ -1616,7 +1611,7 @@ block_mouse_data(struct psm_softc *sc, int *c)
     empty_aux_buffer(sc->kbdc, 0);	/* flush the queue */
     read_aux_data_no_wait(sc->kbdc);	/* throw away data if any */
     sc->inputbytes = 0;
-    splx(s);
+    crit_exit();
 
     return 0;
 }
@@ -1660,30 +1655,29 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
     int stat[3];
     int command_byte;
     int error = 0;
-    int s;
 
     /* Perform IOCTL command */
     switch (cmd) {
 
     case OLD_MOUSE_GETHWINFO:
-	s = spltty();
+	crit_enter();
         ((old_mousehw_t *)addr)->buttons = sc->hw.buttons;
         ((old_mousehw_t *)addr)->iftype = sc->hw.iftype;
         ((old_mousehw_t *)addr)->type = sc->hw.type;
         ((old_mousehw_t *)addr)->hwid = sc->hw.hwid & 0x00ff;
-	splx(s);
+	crit_exit();
         break;
 
     case MOUSE_GETHWINFO:
-	s = spltty();
+	crit_enter();
         *(mousehw_t *)addr = sc->hw;
 	if (sc->mode.level == PSM_LEVEL_BASE)
 	    ((mousehw_t *)addr)->model = MOUSE_MODEL_GENERIC;
-	splx(s);
+	crit_exit();
         break;
 
     case OLD_MOUSE_GETMODE:
-	s = spltty();
+	crit_enter();
 	switch (sc->mode.level) {
 	case PSM_LEVEL_BASE:
 	    ((old_mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
@@ -1698,11 +1692,11 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
         ((old_mousemode_t *)addr)->rate = sc->mode.rate;
         ((old_mousemode_t *)addr)->resolution = sc->mode.resolution;
         ((old_mousemode_t *)addr)->accelfactor = sc->mode.accelfactor;
-	splx(s);
+	crit_exit();
         break;
 
     case MOUSE_GETMODE:
-	s = spltty();
+	crit_enter();
         *(mousemode_t *)addr = sc->mode;
         ((mousemode_t *)addr)->resolution = 
 	    MOUSE_RES_LOW - sc->mode.resolution;
@@ -1722,7 +1716,7 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	    ((mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
 	    break;
 	}
-	splx(s);
+	crit_exit();
         break;
 
     case OLD_MOUSE_SETMODE:
@@ -1796,12 +1790,12 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	set_mouse_scaling(sc->kbdc, 1);
 	get_mouse_status(sc->kbdc, stat, 0, 3);
 
-        s = spltty();
+        crit_enter();
     	sc->mode.rate = mode.rate;
     	sc->mode.resolution = mode.resolution;
     	sc->mode.accelfactor = mode.accelfactor;
     	sc->mode.level = mode.level;
-        splx(s);
+        crit_exit();
 
 	unblock_mouse_data(sc, command_byte);
         break;
@@ -1817,7 +1811,7 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
         break;
 
     case MOUSE_GETSTATUS:
-        s = spltty();
+        crit_enter();
 	status = sc->status;
 	sc->status.flags = 0;
 	sc->status.obutton = sc->status.button;
@@ -1825,7 +1819,7 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	sc->status.dx = 0;
 	sc->status.dy = 0;
 	sc->status.dz = 0;
-        splx(s);
+        crit_exit();
         *(mousestatus_t *)addr = status;
         break;
 
@@ -1833,11 +1827,11 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
     case MOUSE_GETVARS:
 	var = (mousevar_t *)addr;
 	bzero(var, sizeof(*var));
-	s = spltty();
+	crit_enter();
         var->var[0] = MOUSE_VARS_PS2_SIG;
         var->var[1] = sc->config;
         var->var[2] = sc->flags;
-	splx(s);
+	crit_exit();
         break;
 
     case MOUSE_SETVARS:
@@ -1946,10 +1940,9 @@ static void
 psmtimeout(void *arg)
 {
     struct psm_softc *sc;
-    int s;
 
     sc = (struct psm_softc *)arg;
-    s = spltty();
+    crit_enter();
     if (sc->watchdog && kbdc_lock(sc->kbdc, TRUE)) {
 	if (verbose >= 4)
 	    log(LOG_DEBUG, "psm%d: lost interrupt?\n", sc->unit);
@@ -1957,8 +1950,8 @@ psmtimeout(void *arg)
 	kbdc_lock(sc->kbdc, FALSE);
     }
     sc->watchdog = TRUE;
-    splx(s);
     callout_reset(&sc->callout, hz, psmtimeout, (void *)(uintptr_t)sc);
+    crit_exit();
 }
 
 static void
@@ -2389,18 +2382,17 @@ static int
 psmpoll(dev_t dev, int events, struct thread *td)
 {
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
-    int s;
     int revents = 0;
 
     /* Return true if a mouse event available */
-    s = spltty();
+    crit_enter();
     if (events & (POLLIN | POLLRDNORM)) {
 	if (sc->queue.count > 0)
 	    revents |= events & (POLLIN | POLLRDNORM);
 	else
 	    selrecord(td, &sc->rsel);
     }
-    splx(s);
+    crit_exit();
 
     return (revents);
 }
