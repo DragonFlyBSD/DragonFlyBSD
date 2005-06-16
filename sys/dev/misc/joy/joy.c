@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.7 2004/05/19 22:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.8 2005/06/16 15:51:34 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/joystick.h>
 
@@ -195,13 +196,9 @@ joyread(dev_t dev, struct uio *uio, int flag)
     int state = 0;
     struct timespec x, y;
     struct joystick c;
-#ifndef i386
-    int s;
 
-    s = splhigh();
-#else
-    disable_intr ();
-#endif
+    crit_enter();
+
     bus_space_write_1 (bt, port, 0, 0xff);
     nanotime(&start);
     end.tv_sec = 0;
@@ -222,11 +219,9 @@ joyread(dev_t dev, struct uio *uio, int flag)
 	if (timespecisset(&x) && timespecisset(&y))
 	    break;
     }
-#ifndef i386
-    splx(s);
-#else
-    enable_intr ();
-#endif
+
+    crit_exit();
+
     if (timespecisset(&x)) {
 	timespecsub(&x, &start);
 	c.x = joy->x_off[joypart(dev)] + x.tv_nsec / 1000;

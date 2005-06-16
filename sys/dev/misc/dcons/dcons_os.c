@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.1 2004/10/25 13:53:26 simokawa Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.2 2005/06/16 15:50:17 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,7 @@
 #include <sys/tty.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 #include <sys/ucred.h>
 
 #include <machine/bus.h>
@@ -278,7 +279,7 @@ static int
 dcons_open(DEV dev, int flag, int mode, THREAD *td)
 {
 	struct tty *tp;
-	int unit, error, s;
+	int unit, error;
 
 	unit = minor(dev);
 	if (unit != 0)
@@ -292,7 +293,7 @@ dcons_open(DEV dev, int flag, int mode, THREAD *td)
 
 	error = 0;
 
-	s = spltty();
+	crit_enter();
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		tp->t_state |= TS_CARR_ON;
 		ttychars(tp);
@@ -303,10 +304,10 @@ dcons_open(DEV dev, int flag, int mode, THREAD *td)
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		ttsetwater(tp);
 	} else if ((tp->t_state & TS_XCLUDE) && suser(td)) {
-		splx(s);
+		crit_exit();
 		return (EBUSY);
 	}
-	splx(s);
+	crit_exit();
 
 #if __FreeBSD_version < 502113
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
@@ -379,10 +380,9 @@ static void
 dcons_tty_start(struct tty *tp)
 {
 	struct dcons_softc *dc;
-	int s;
 
 	dc = (struct dcons_softc *)tp->t_dev->si_drv1;
-	s = spltty();
+	crit_enter();
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
 		return;
@@ -394,7 +394,7 @@ dcons_tty_start(struct tty *tp)
 	tp->t_state &= ~TS_BUSY;
 
 	ttwwakeup(tp);
-	splx(s);
+	crit_exit();
 }
 
 static void
