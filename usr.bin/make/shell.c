@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.16 2005/06/16 20:27:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.17 2005/06/16 20:29:23 okumoto Exp $
  */
 
 #include <string.h>
@@ -174,6 +174,8 @@ ShellFree(struct Shell *sh)
 		free(sh->ignErr);
 		free(sh->echo);
 		free(sh->exit);
+		ArgArray_Done(&sh->builtins);
+		free(sh->meta);
 		free(sh);
 	}
 }
