@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.210 2005/06/16 08:38:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.211 2005/06/16 20:39:13 okumoto Exp $
  */
 
 /**
@@ -1140,11 +1140,10 @@ Var_Value(const char name[], GNode *ctxt)
 
 	n = VarPossiblyExpand(name, ctxt);
 	v = VarFindAny(n, ctxt);
+	free(n);
 	if (v == NULL) {
-		free(n);
 		return (NULL);
 	} else {
-		free(n);
 		return (Buf_Data(v->val));
 	}
 }
