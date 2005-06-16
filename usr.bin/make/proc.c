@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/proc.c,v 1.2 2005/06/16 20:42:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/proc.c,v 1.3 2005/06/16 20:51:04 okumoto Exp $
  */
 
 #include <unistd.h>
@@ -40,7 +40,7 @@
  * Replace the current process.
  */
 void
-ProcExec(const ProcStuff *ps)
+Proc_Exec(const ProcStuff *ps)
 {
 	if (ps->in != STDIN_FILENO) {
 		/*
