@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.10 2004/05/19 22:52:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.11 2005/06/16 16:27:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -26,6 +26,7 @@
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/snoop.h>
+#include <sys/thread2.h>
 #include <sys/vnode.h>
 #include <sys/device.h>
 
@@ -237,7 +238,7 @@ snpread(dev, uio, flag)
 	int flag;
 {
 	struct snoop *snp;
-	int error, len, n, nblen, s;
+	int error, len, n, nblen;
 	caddr_t from;
 	char *nbuf;
 
@@ -277,7 +278,7 @@ snpread(dev, uio, flag)
 	if ((snp->snp_flags & SNOOP_OFLOW) && (n < snp->snp_len)) {
 		snp->snp_flags &= ~SNOOP_OFLOW;
 	}
-	s = spltty();
+	crit_enter();
 	nblen = snp->snp_blen;
 	if (((nblen / 2) >= SNOOP_MINLEN) && (nblen / 2) >= snp->snp_len) {
 		while (nblen / 2 >= snp->snp_len && nblen / 2 >= SNOOP_MINLEN)
@@ -290,7 +291,7 @@ snpread(dev, uio, flag)
 			snp->snp_base = 0;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return (error);
 }
@@ -302,7 +303,7 @@ snp_in(snp, buf, n)
 	int n;
 {
 	int s_free, s_tail;
-	int s, len, nblen;
+	int len, nblen;
 	caddr_t from, to;
 	char *nbuf;
 
@@ -332,7 +333,7 @@ snp_in(snp, buf, n)
 
 
 	if (n > s_free) {
-		s = spltty();
+		crit_enter();
 		nblen = snp->snp_blen;
 		while ((n > s_free) && ((nblen * 2) <= SNOOP_MAXLEN)) {
 			nblen = snp->snp_blen * 2;
@@ -350,10 +351,10 @@ snp_in(snp, buf, n)
 				snp->snp_flags &= ~SNOOP_RWAIT;
 				wakeup((caddr_t)snp);
 			}
-			splx(s);
+			crit_exit();
 			return (0);
 		}
-		splx(s);
+		crit_exit();
 	}
 	if (n > s_tail) {
 		from = (caddr_t)(snp->snp_buf + snp->snp_base);
@@ -485,7 +486,6 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 	struct snoop *snp;
 	struct tty *tp, *tpo;
 	dev_t tdev;
-	int s;
 
 	snp = dev->si_drv1;
 	switch (cmd) {
@@ -500,7 +500,7 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 		if (tp->t_state & TS_SNOOP)
 			return (EBUSY);
 
-		s = spltty();
+		crit_enter();
 
 		if (snp->snp_target == NODEV) {
 			tpo = snp->snp_tty;
@@ -521,7 +521,7 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 		 */
 		snp->snp_flags &= ~SNOOP_OFLOW;
 		snp->snp_flags &= ~SNOOP_DOWN;
-		splx(s);
+		crit_exit();
 		break;
 
 	case SNPGTTY:
@@ -544,7 +544,7 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 		break;
 
 	case FIONREAD:
-		s = spltty();
+		crit_enter();
 		if (snp->snp_tty != NULL)
 			*(int *)data = snp->snp_len;
 		else
@@ -556,7 +556,7 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 			} else {
 				*(int *)data = SNP_DETACH;
 			}
-		splx(s);
+		crit_exit();
 		break;
 
 	default:

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.7 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.8 2005/06/16 16:29:39 joerg Exp $
  *
  */
 
@@ -35,6 +35,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
   
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -723,7 +724,7 @@ ppc_pc873xx_detect(struct ppc_data *ppc, int chipset_mode)	/* XXX mode never for
 static int
 ppc_smc37c66xgt_detect(struct ppc_data *ppc, int chipset_mode)
 {
-	int s, i;
+	int i;
 	u_char r;
 	int type = -1;
 	int csr = SMC66x_CSR;	/* initial value is 0x3F0 */
@@ -737,10 +738,10 @@ ppc_smc37c66xgt_detect(struct ppc_data *ppc, int chipset_mode)
 	 * Detection: enter configuration mode and read CRD register.
 	 */
 	 
-	s = splhigh();
+	crit_enter();
 	outb(csr, SMC665_iCODE);
 	outb(csr, SMC665_iCODE);
-	splx(s);
+	crit_exit();
 
 	outb(csr, 0xd);
 	if (inb(cio) == 0x65) {
@@ -749,10 +750,10 @@ ppc_smc37c66xgt_detect(struct ppc_data *ppc, int chipset_mode)
 	}
 
 	for (i = 0; i < 2; i++) {
-		s = splhigh();
+		crit_enter();
 		outb(csr, SMC666_iCODE);
 		outb(csr, SMC666_iCODE);
-		splx(s);
+		crit_exit();
 
 		outb(csr, 0xd);
 		if (inb(cio) == 0x66) {
@@ -931,13 +932,12 @@ end_detect:
 static int
 ppc_smc37c935_detect(struct ppc_data *ppc, int chipset_mode)
 {
-	int s;
 	int type = -1;
 
-	s = splhigh();
+	crit_enter();
 	outb(SMC935_CFG, 0x55); /* enter config mode */
 	outb(SMC935_CFG, 0x55);
-	splx(s);
+	crit_exit();
 
 	outb(SMC935_IND, SMC935_ID); /* check device id */
 	if (inb(SMC935_DAT) == 0x2)
@@ -1644,7 +1644,7 @@ ppc_write(device_t dev, char *buf, int len, int how)
 {
 	struct ppc_data *ppc = DEVTOSOFTC(dev);
 	char ecr, ecr_sav, ctr, ctr_sav;
-	int s, error = 0;
+	int error = 0;
 	int spin;
 
 #ifdef PPC_DEBUG
@@ -1695,7 +1695,7 @@ ppc_write(device_t dev, char *buf, int len, int how)
 		 * by the dma interrupt, we may miss
 		 * the wakeup otherwise
 		 */
-		s = splhigh();
+		crit_enter();
 
 		ppc->ppc_dmastat = PPC_DMA_INIT;
 
@@ -1724,7 +1724,7 @@ ppc_write(device_t dev, char *buf, int len, int how)
 
 		} while (error == EWOULDBLOCK);
 
-		splx(s);
+		crit_exit();
 
 		if (error) {
 #ifdef PPC_DEBUG
