@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.13 2005/06/15 18:01:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.14 2005/06/16 20:26:27 okumoto Exp $
  */
 
 #include <string.h>
@@ -53,6 +53,17 @@ struct Shell	*commandShell = NULL;
 
 /**
  * Find a matching shell in 'shells' given its final component.
+ *
+ * Descriptions for various shells. What the list of builtins should contain
+ * is debatable: either all builtins or only those which may specified on
+ * a single line without use of meta-characters. For correct makefiles that
+ * contain only correct command lines there is no difference. But if a command
+ * line, for example, is: 'if -foo bar' and there is an executable named 'if'
+ * in the path, the first possibility would execute that 'if' while in the
+ * second case the shell would give an error. Histerically only a small
+ * subset of the builtins and no reserved words where given in the list which
+ * corresponds roughly to the first variant. So go with this but add missing
+ * words.
  *
  * @result
  *	A pointer to a Shell structure, or NULL if no shell with
@@ -83,6 +94,10 @@ ShellMatch(const char name[])
 		shell->ignErr		= strdup("csh -c \"%s || exit 0\"");
 		shell->echo		= strdup("v");
 		shell->exit		= strdup("e");
+		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\@\n");
+		brk_string(&shell->builtins,
+		    "alias cd eval exec exit read set ulimit unalias "
+		    "umask unset wait", TRUE);
 
 	} else if (strcmp(name, "sh") == 0) {
 		/*
@@ -107,10 +122,16 @@ ShellMatch(const char name[])
 #endif
 		shell->echo		= strdup("v");
 		shell->exit		= strdup("e");
+		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
+		brk_string(&shell->builtins,
+		    "alias cd eval exec exit read set ulimit unalias "
+		    "umask unset wait", TRUE);
+
 	} else if (strcmp(name, "ksh") == 0) {
 		/*
 		 * KSH description. The Korn shell has a superset of
-		 * the Bourne shell's functionality.
+		 * the Bourne shell's functionality.  There are probably
+		 * builtins missing here.
 		 */
 		shell->name		= strdup(name);
 		shell->path		= str_concat(shellDir, '/', name);
@@ -123,6 +144,11 @@ ShellMatch(const char name[])
 		shell->ignErr		= strdup("set +e");
 		shell->echo		= strdup("v");
 		shell->exit		= strdup("e");
+		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
+		brk_string(&shell->builtins,
+		    "alias cd eval exec exit read set ulimit unalias "
+		    "umask unset wait", TRUE);
+
 	} else {
 		free(shell);
 		shell = NULL;
