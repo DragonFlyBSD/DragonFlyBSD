@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.30 2005/05/23 18:24:59 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.31 2005/06/16 20:44:13 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -95,11 +95,7 @@ hash:
 # allow you to shoot yourself in the foot if you want to :-)
 
 MAKE_SHELL?=	sh
-.if ${MAKE_SHELL} == "csh"
-CFLAGS+=	-DDEFSHELLNAME=\"${MAKE_SHELL}\"
-.elif ${MAKE_SHELL} == "sh"
-CFLAGS+=	-DDEFSHELLNAME=\"${MAKE_SHELL}\"
-.elif ${MAKE_SHELL} == "ksh"
+.if ${MAKE_SHELL} == "csh" || ${MAKE_SHELL} == "sh" || ${MAKE_SHELL} == "ksh"
 CFLAGS+=	-DDEFSHELLNAME=\"${MAKE_SHELL}\"
 .else
 .error "MAKE_SHELL must be set to one of \"csh\", \"sh\" or \"ksh\"."
