@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.49 2005/05/19 17:10:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.50 2005/06/16 21:47:38 okumoto Exp $
  */
 
 /*-
@@ -774,7 +774,8 @@ ArchArchiveTouch(struct arfile *ar, int64_t ts)
 	 * change timestamp, be sure to not NUL-terminated it, but
 	 * to fill with spaces.
 	 */
-	snprintf(ar->hdr.ar_date, sizeof(ar->hdr.ar_date), "%lld", ts);
+	snprintf(ar->hdr.ar_date, sizeof(ar->hdr.ar_date), "%jd",
+	    (intmax_t)ts);
 	memset(ar->hdr.ar_date + strlen(ar->hdr.ar_date),
 	    ' ', sizeof(ar->hdr.ar_date) - strlen(ar->hdr.ar_date));
 
