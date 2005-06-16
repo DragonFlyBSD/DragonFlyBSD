@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.11 2004/09/19 01:56:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.12 2005/06/16 16:06:40 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -70,6 +70,7 @@
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include "spicreg.h"
 
@@ -487,7 +488,7 @@ static int
 spicread(dev_t dev, struct uio *uio, int flag)
 {
 	struct spic_softc *sc;
-	int l, s, error;
+	int l, error;
 	u_char buf[SCBUFLEN];
 
 	sc = devclass_get_softc(spic_devclass, 0);
@@ -495,24 +496,24 @@ spicread(dev_t dev, struct uio *uio, int flag)
 	if (uio->uio_resid <= 0) /* What kind of a read is this?! */
 		return 0;
 
-	s = spltty();
+	crit_enter();
 	while (!(sc->sc_count)) {
 		sc->sc_sleeping=1;
 		error = tsleep((caddr_t) sc, PCATCH, "jogrea", 0);
 		sc->sc_sleeping=0;
 		if (error) {
-			splx(s);
+			crit_exit();
 			return error;
 		}
 	}
-	splx(s);
+	crit_exit();
 
-	s = spltty();
+	crit_enter();
 	l = min(uio->uio_resid, sc->sc_count);
 	bcopy(sc->sc_buf, buf, l);
 	sc->sc_count -= l;
 	bcopy(sc->sc_buf + l, sc->sc_buf, l);
-	splx(s);
+	crit_exit();
 	return uiomove(buf, l, uio);
 
 }
@@ -539,7 +540,7 @@ spicpoll(dev_t dev, int events, struct thread *td)
 	KKASSERT(p);
 
 	sc = devclass_get_softc(spic_devclass, 0);
-	s = spltty();
+	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (sc->sc_count)
 			revents |= events & (POLLIN | POLLRDNORM);
@@ -551,7 +552,7 @@ spicpoll(dev_t dev, int events, struct thread *td)
 				sc->sc_rsel.si_pid = p->p_pid;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	return revents;
 }

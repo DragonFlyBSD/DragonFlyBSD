@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.10 2005/04/19 18:05:02 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.11 2005/06/16 16:03:40 joerg Exp $
  *
  */
 
@@ -55,6 +55,7 @@
 #define b_actf	b_act.tqe_next
 #include <sys/dataacq.h>
 #include <sys/conf.h>
+#include <sys/thread2.h>
 
 #ifdef LOUTB
 #include <machine/clock.h>
@@ -355,10 +356,9 @@ ad_clear(struct ctlr *ctlr)
 static __inline void
 reset(struct ctlr *ctlr)
 {
-	int s = splhigh();
-
+	crit_enter();
 	CR_CLR(ctlr, 3);	/* Turn off interrupts first */
-	splx(s);
+	crit_exit();
 
 	CR_CLR(ctlr, 1);
 	CR_CLR(ctlr, 2);
@@ -593,12 +593,12 @@ tmo_stop(void *p)
 	struct ctlr *ctlr = (struct ctlr *)p;
 	struct buf *bp;
 
-	int s = spltty();
+	crit_enter();
 
 	if (ctlr == 0)
 	{
 		printf("labpc?: Null ctlr struct?\n");
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -610,7 +610,7 @@ tmo_stop(void *p)
 
 	if (bp == 0) {
 		printf(", Null bp.\n");
-		splx(s);
+		crit_exit();
 		return;
 	}
 
@@ -618,7 +618,7 @@ tmo_stop(void *p)
 
 	done_and_start_next(ctlr, bp, ETIMEDOUT);
 
-	splx(s);
+	crit_exit();
 }
 
 static void ad_intr(struct ctlr *ctlr)
@@ -816,9 +816,7 @@ start(struct ctlr *ctlr)
 static void
 ad_strategy(struct buf *bp, struct ctlr *ctlr)
 {
-	int s;
-
-	s = spltty();
+	crit_enter();
 	bp->b_actf = NULL;
 
 	if (ctlr->start_queue.b_bcount)
@@ -833,7 +831,7 @@ ad_strategy(struct buf *bp, struct ctlr *ctlr)
 		ctlr->last = bp;
 		start(ctlr);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /* da_strategy: Send data to the D-A.  The CHAN field should be
