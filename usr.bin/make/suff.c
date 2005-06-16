@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.60 2005/05/20 11:48:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.61 2005/06/16 23:11:42 okumoto Exp $
  */
 
 /*-
@@ -1551,7 +1551,6 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 		DEBUGF(SUFF, ("using null suffix\n"));
 		ms = suffNull;
 	}
-
 
 	/*
 	* Set the other two local variables required for this target.

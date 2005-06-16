@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.19 2005/06/16 22:35:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.20 2005/06/16 23:11:42 okumoto Exp $
  */
 
 #include <string.h>
@@ -57,6 +57,7 @@ struct Shell	*commandShell = NULL;
 static int
 sort_builtins(const void *p1, const void *p2)
 {
+
 	return (strcmp(*(const char* const*)p1, *(const char* const*)p2));
 }
 
@@ -103,7 +104,7 @@ Shell_Dump(const struct Shell *sh)
 	for (i = 1; i < sh->builtins.argc; i++)
 		fprintf(stderr, " '%s'", sh->builtins.argv[i]);
 	fprintf(stderr, "\n  meta='%s'\n", sh->meta);
-	fprintf(stderr, "  unsetenv='%d'\n", sh->unsetenv);
+	fprintf(stderr, "  unsetenv=%d\n", sh->unsetenv);
 }
 
 /**

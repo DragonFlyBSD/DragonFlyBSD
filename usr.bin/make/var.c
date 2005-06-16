@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.211 2005/06/16 20:39:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.212 2005/06/16 23:11:42 okumoto Exp $
  */
 
 /**
@@ -1027,6 +1027,7 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 void
 Var_SetGlobal(const char name[], const char value[])
 {
+
 	Var_Set(name, value, VAR_GLOBAL);
 }
 
@@ -1130,7 +1131,7 @@ Var_Exists(const char *name, GNode *ctxt)
  * Return the value of the named variable in the given context
  *
  * Results:
- *	The value if the variable exists, NULL if it doesn't
+ *	The value if the variable exists, NULL if it doesn't.
  */
 const char *
 Var_Value(const char name[], GNode *ctxt)

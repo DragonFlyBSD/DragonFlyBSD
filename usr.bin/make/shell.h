@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.10 2005/06/16 20:42:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.11 2005/06/16 23:11:42 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
@@ -90,8 +90,8 @@ struct Shell {
 	char	*echo;	/* command line flag: echo commands */
 	char	*exit;	/* command line flag: exit on error */
 
-	ArgArray builtins;
-	char	*meta;
+	ArgArray builtins;	/* ordered list of shell builtins */
+	char	*meta;		/* shell meta characters */
 
 	Boolean	unsetenv;	/* unsetenv("ENV") before exec */
 };
