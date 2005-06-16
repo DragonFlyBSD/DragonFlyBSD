@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.18 2005/06/16 20:42:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.19 2005/06/16 22:35:15 okumoto Exp $
  */
 
 #include <string.h>
@@ -52,112 +52,12 @@
 struct Shell	*commandShell = NULL;
 
 /**
- * Find a matching shell in 'shells' given its final component.
- *
- * Descriptions for various shells. What the list of builtins should contain
- * is debatable: either all builtins or only those which may specified on
- * a single line without use of meta-characters. For correct makefiles that
- * contain only correct command lines there is no difference. But if a command
- * line, for example, is: 'if -foo bar' and there is an executable named 'if'
- * in the path, the first possibility would execute that 'if' while in the
- * second case the shell would give an error. Histerically only a small
- * subset of the builtins and no reserved words where given in the list which
- * corresponds roughly to the first variant. So go with this but add missing
- * words.
- *
- * @result
- *	A pointer to a Shell structure, or NULL if no shell with
- *	the given name is found.
+ * Helper function for sorting the builtin list alphabetically.
  */
-static struct Shell *
-ShellMatch(const char name[])
+static int
+sort_builtins(const void *p1, const void *p2)
 {
-	struct Shell	*shell;
-	const char	*shellDir = PATH_DEFSHELLDIR;
-
-	shell = emalloc(sizeof(struct Shell));
-
-	if (strcmp(name, "csh") == 0) {
-		/*
-		 * CSH description. The csh can do echo control by playing
-		 * with the setting of the 'echo' shell variable. Sadly,
-		 * however, it is unable to do error control nicely.
-		 */
-		shell->name		= strdup(name);
-		shell->path		= str_concat(shellDir, '/', name);
-		shell->hasEchoCtl	= TRUE;
-		shell->echoOff		= strdup("unset verbose");
-		shell->echoOn		= strdup("set verbose");
-		shell->noPrint		= strdup("unset verbose");
-		shell->hasErrCtl	= FALSE;
-		shell->errCheck		= strdup("echo \"%s\"\n");
-		shell->ignErr		= strdup("csh -c \"%s || exit 0\"");
-		shell->echo		= strdup("v");
-		shell->exit		= strdup("e");
-		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\@\n");
-		brk_string(&shell->builtins,
-		    "alias cd eval exec exit read set ulimit unalias "
-		    "umask unset wait", TRUE);
-		shell->unsetenv		= FALSE;
-
-	} else if (strcmp(name, "sh") == 0) {
-		/*
-		 * SH description. Echo control is also possible and, under
-		 * sun UNIX anyway, one can even control error checking.
-		 */
-
-		shell->name		= strdup(name);
-		shell->path		= str_concat(shellDir, '/', name);
-		shell->hasEchoCtl	= TRUE;
-		shell->echoOff		= strdup("set -");
-		shell->echoOn		= strdup("set -v");
-		shell->noPrint		= strdup("set -");
-#ifdef OLDBOURNESHELL
-		shell->hasErrCtl	= FALSE;
-		shell->errCheck		= strdup("echo \"%s\"\n");
-		shell->ignErr		= strdup("sh -c '%s || exit 0'\n");
-#else
-		shell->hasErrCtl	= TRUE;
-		shell->errCheck		= strdup("set -e");
-		shell->ignErr		= strdup("set +e");
-#endif
-		shell->echo		= strdup("v");
-		shell->exit		= strdup("e");
-		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
-		brk_string(&shell->builtins,
-		    "alias cd eval exec exit read set ulimit unalias "
-		    "umask unset wait", TRUE);
-		shell->unsetenv		= FALSE;
-
-	} else if (strcmp(name, "ksh") == 0) {
-		/*
-		 * KSH description. The Korn shell has a superset of
-		 * the Bourne shell's functionality.  There are probably
-		 * builtins missing here.
-		 */
-		shell->name		= strdup(name);
-		shell->path		= str_concat(shellDir, '/', name);
-		shell->hasEchoCtl	= TRUE;
-		shell->echoOff		= strdup("set -");
-		shell->echoOn		= strdup("set -v");
-		shell->noPrint		= strdup("set -");
-		shell->hasErrCtl	= TRUE;
-		shell->errCheck		= strdup("set -e");
-		shell->ignErr		= strdup("set +e");
-		shell->echo		= strdup("v");
-		shell->exit		= strdup("e");
-		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
-		brk_string(&shell->builtins,
-		    "alias cd eval exec exit read set ulimit unalias "
-		    "umask unset wait", TRUE);
-		shell->unsetenv		= TRUE;
-
-	} else {
-		free(shell);
-		shell = NULL;
-	}
-
-	return (shell);
+	return (strcmp(*(const char* const*)p1, *(const char* const*)p2));
 }
 
 /**
@@ -183,10 +83,27 @@ ShellFree(struct Shell *sh)
 	}
 }
 
-static int
-sort_builtins(const void *p1, const void *p2)
+/**
+ * Dump a shell specification to stderr.
+ */
+void
+Shell_Dump(const struct Shell *sh)
 {
-	return (strcmp(*(const char* const*)p1, *(const char* const*)p2));
+	int i;
+
+	fprintf(stderr, "Shell %p:\n", sh);
+	fprintf(stderr, "  name='%s' path='%s'\n", sh->name, sh->path);
+	fprintf(stderr, "  hasEchoCtl=%d echoOff='%s' echoOn='%s'\n",
+	    sh->hasEchoCtl, sh->echoOff, sh->echoOn);
+	fprintf(stderr, "  noPrint='%s'\n", sh->noPrint);
+	fprintf(stderr, "  hasErrCtl=%d errCheck='%s' ignErr='%s'\n",
+	    sh->hasErrCtl, sh->errCheck, sh->ignErr);
+	fprintf(stderr, "  echo='%s' exit='%s'\n", sh->echo, sh->exit);
+	fprintf(stderr, "  builtins=%d\n", sh->builtins.argc - 1);
+	for (i = 1; i < sh->builtins.argc; i++)
+		fprintf(stderr, " '%s'", sh->builtins.argv[i]);
+	fprintf(stderr, "\n  meta='%s'\n", sh->meta);
+	fprintf(stderr, "  unsetenv='%d'\n", sh->unsetenv);
 }
 
 /**
@@ -307,6 +224,121 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 	}
 
 	return (sh);
+}
+
+void
+Shell_Init(void)
+{
+	commandShell = ShellMatch(DEFSHELLNAME);
+}
+
+/**
+ * Find a matching shell in 'shells' given its final component.
+ *
+ * Descriptions for various shells. What the list of builtins should contain
+ * is debatable: either all builtins or only those which may specified on
+ * a single line without use of meta-characters. For correct makefiles that
+ * contain only correct command lines there is no difference. But if a command
+ * line, for example, is: 'if -foo bar' and there is an executable named 'if'
+ * in the path, the first possibility would execute that 'if' while in the
+ * second case the shell would give an error. Histerically only a small
+ * subset of the builtins and no reserved words where given in the list which
+ * corresponds roughly to the first variant. So go with this but add missing
+ * words.
+ *
+ * @result
+ *	A pointer to a Shell structure, or NULL if no shell with
+ *	the given name is found.
+ */
+static struct Shell *
+ShellMatch(const char name[])
+{
+	struct Shell	*shell;
+	const char	*shellDir = PATH_DEFSHELLDIR;
+
+	shell = emalloc(sizeof(struct Shell));
+
+	if (strcmp(name, "csh") == 0) {
+		/*
+		 * CSH description. The csh can do echo control by playing
+		 * with the setting of the 'echo' shell variable. Sadly,
+		 * however, it is unable to do error control nicely.
+		 */
+		shell->name		= strdup(name);
+		shell->path		= str_concat(shellDir, '/', name);
+		shell->hasEchoCtl	= TRUE;
+		shell->echoOff		= strdup("unset verbose");
+		shell->echoOn		= strdup("set verbose");
+		shell->noPrint		= strdup("unset verbose");
+		shell->hasErrCtl	= FALSE;
+		shell->errCheck		= strdup("echo \"%s\"\n");
+		shell->ignErr		= strdup("csh -c \"%s || exit 0\"");
+		shell->echo		= strdup("v");
+		shell->exit		= strdup("e");
+		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\@\n");
+		brk_string(&shell->builtins,
+		    "alias cd eval exec exit read set ulimit unalias "
+		    "umask unset wait", TRUE);
+		shell->unsetenv		= FALSE;
+
+	} else if (strcmp(name, "sh") == 0) {
+		/*
+		 * SH description. Echo control is also possible and, under
+		 * sun UNIX anyway, one can even control error checking.
+		 */
+
+		shell->name		= strdup(name);
+		shell->path		= str_concat(shellDir, '/', name);
+		shell->hasEchoCtl	= TRUE;
+		shell->echoOff		= strdup("set -");
+		shell->echoOn		= strdup("set -v");
+		shell->noPrint		= strdup("set -");
+#ifdef OLDBOURNESHELL
+		shell->hasErrCtl	= FALSE;
+		shell->errCheck		= strdup("echo \"%s\"\n");
+		shell->ignErr		= strdup("sh -c '%s || exit 0'\n");
+#else
+		shell->hasErrCtl	= TRUE;
+		shell->errCheck		= strdup("set -e");
+		shell->ignErr		= strdup("set +e");
+#endif
+		shell->echo		= strdup("v");
+		shell->exit		= strdup("e");
+		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
+		brk_string(&shell->builtins,
+		    "alias cd eval exec exit read set ulimit unalias "
+		    "umask unset wait", TRUE);
+		shell->unsetenv		= FALSE;
+
+	} else if (strcmp(name, "ksh") == 0) {
+		/*
+		 * KSH description. The Korn shell has a superset of
+		 * the Bourne shell's functionality.  There are probably
+		 * builtins missing here.
+		 */
+		shell->name		= strdup(name);
+		shell->path		= str_concat(shellDir, '/', name);
+		shell->hasEchoCtl	= TRUE;
+		shell->echoOff		= strdup("set -");
+		shell->echoOn		= strdup("set -v");
+		shell->noPrint		= strdup("set -");
+		shell->hasErrCtl	= TRUE;
+		shell->errCheck		= strdup("set -e");
+		shell->ignErr		= strdup("set +e");
+		shell->echo		= strdup("v");
+		shell->exit		= strdup("e");
+		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
+		brk_string(&shell->builtins,
+		    "alias cd eval exec exit read set ulimit unalias "
+		    "umask unset wait", TRUE);
+		shell->unsetenv		= TRUE;
+
+	} else {
+		free(shell);
+		shell = NULL;
+	}
+
+	return (shell);
 }
 
 /**
@@ -437,33 +469,3 @@ Shell_Parse(const char line[])
 
 	return (TRUE);
 }
-
-void
-Shell_Init(void)
-{
-	commandShell = ShellMatch(DEFSHELLNAME);
-}
-
-/**
- * Dump a shell specification to stderr.
- */
-void
-Shell_Dump(const struct Shell *sh)
-{
-	int i;
-
-	fprintf(stderr, "Shell %p:\n", sh);
-	fprintf(stderr, "  name='%s' path='%s'\n", sh->name, sh->path);
-	fprintf(stderr, "  hasEchoCtl=%d echoOff='%s' echoOn='%s'\n",
-	    sh->hasEchoCtl, sh->echoOff, sh->echoOn);
-	fprintf(stderr, "  noPrint='%s'\n", sh->noPrint);
-	fprintf(stderr, "  hasErrCtl=%d errCheck='%s' ignErr='%s'\n",
-	    sh->hasErrCtl, sh->errCheck, sh->ignErr);
-	fprintf(stderr, "  echo='%s' exit='%s'\n", sh->echo, sh->exit);
-	fprintf(stderr, "  builtins=%d\n", sh->builtins.argc - 1);
-	for (i = 1; i < sh->builtins.argc; i++)
-		fprintf(stderr, " '%s'", sh->builtins.argv[i]);
-	fprintf(stderr, "\n  meta='%s'\n", sh->meta);
-	fprintf(stderr, "  unsetenv='%d'\n", sh->unsetenv);
-}
-
