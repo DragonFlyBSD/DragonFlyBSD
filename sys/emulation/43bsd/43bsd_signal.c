@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.1 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.2 2005/06/16 17:55:58 dillon Exp $
  * 	from: DragonFly kern/kern_sig.c,v 1.22
  *
  * These syscalls used to live in kern/kern_sig.c.  They are modified
@@ -55,6 +55,7 @@
 #include <sys/proc.h>
 #include <sys/signal.h>
 #include <sys/signalvar.h>
+#include <sys/thread2.h>
 
 #define	ONSIG	32		/* NSIG for osig* syscalls.  XXX. */
 
@@ -117,10 +118,10 @@ osigblock(struct osigblock_args *uap)
 
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
-	(void) splhigh();
+	crit_enter();
 	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
 	SIGSETOR(p->p_sigmask, set);
-	(void) spl0();
+	crit_exit();
 	return (0);
 }
 
@@ -132,10 +133,10 @@ osigsetmask(struct osigsetmask_args *uap)
 
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
-	(void) splhigh();
+	crit_enter();
 	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
 	SIGSETLO(p->p_sigmask, set);
-	(void) spl0();
+	crit_exit();
 	return (0);
 }
 

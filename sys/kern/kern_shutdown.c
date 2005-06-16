@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.19 2005/04/19 17:54:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.20 2005/06/16 17:55:06 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -64,6 +64,7 @@
 #include <sys/sysproto.h>
 #include <sys/device.h>
 #include <sys/cons.h>
+#include <sys/thread2.h>
 #include <sys/buf2.h>
 
 #include <machine/pcb.h>
@@ -335,7 +336,7 @@ boot(int howto)
 	 * been completed.
 	 */
 	EVENTHANDLER_INVOKE(shutdown_post_sync, howto);
-	splhigh();
+	crit_enter();
 	if ((howto & (RB_HALT|RB_DUMP)) == RB_DUMP && !cold)
 		dumpsys();
 
