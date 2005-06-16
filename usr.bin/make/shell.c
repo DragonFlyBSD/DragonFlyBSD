@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.15 2005/06/16 20:27:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.16 2005/06/16 20:27:53 okumoto Exp $
  */
 
 #include <string.h>
@@ -158,34 +158,6 @@ ShellMatch(const char name[])
 }
 
 /**
- * Make a new copy of the shell structure including a copy of the strings
- * in it. This also defaults some fields in case they are NULL.
- *
- * Returns:
- *	The function returns a pointer to the new shell structure.
- */
-static struct Shell *
-ShellCopy(const struct Shell *o)
-{
-	struct Shell *n;
-
-	n = emalloc(sizeof(struct Shell));
-	n->name		= estrdup(o->name);
-	n->path		= estrdup(o->path);
-	n->hasEchoCtl	= o->hasEchoCtl;
-	n->echoOff	= o->echoOff ? estrdup(o->echoOff) : NULL;
-	n->echoOn	= o->echoOn ? estrdup(o->echoOn) : NULL;
-	n->noPrint	= o->noPrint ? estrdup(o->noPrint) : NULL;
-	n->hasErrCtl	= o->hasErrCtl;
-	n->errCheck	= o->errCheck ? estrdup(o->errCheck) : estrdup("");
-	n->ignErr	= o->ignErr ? estrdup(o->ignErr) : estrdup("%s");
-	n->echo		= o->echo ? estrdup(o->echo) : estrdup("");
-	n->exit		= o->exit ? estrdup(o->exit) : estrdup("");
-
-	return (n);
-}
-
-/**
  * Free a shell structure and all associated strings.
  */
 static void
@@ -204,6 +176,126 @@ ShellFree(struct Shell *sh)
 		free(sh->exit);
 		free(sh);
 	}
+}
+
+static int
+sort_builtins(const void *p1, const void *p2)
+{
+	return (strcmp(*(const char* const*)p1, *(const char* const*)p2));
+}
+
+/**
+ * Parse a shell specification line and return the new Shell structure.
+ * In case of an error a message is printed and NULL is returned.
+ */
+static struct Shell *
+ShellParseSpec(const char *spec, Boolean *fullSpec)
+{
+	ArgArray	aa;
+	struct Shell	*sh;
+	char		*eq;
+	char		*keyw;
+	int		arg;
+
+	*fullSpec = FALSE;
+
+	sh = emalloc(sizeof(*sh));
+	memset(sh, 0, sizeof(*sh));
+	ArgArray_Init(&sh->builtins);
+
+	/*
+	 * Parse the specification by keyword but skip the first word
+	 */
+	brk_string(&aa, spec, TRUE);
+
+	for (arg = 1; arg < aa.argc; arg++) {
+		/*
+		 * Split keyword and value
+		 */
+		keyw = aa.argv[arg];
+		if ((eq = strchr(keyw, '=')) == NULL) {
+			Parse_Error(PARSE_FATAL, "missing '=' in shell "
+			    "specification keyword '%s'", keyw);
+			ArgArray_Done(&aa);
+			ShellFree(sh);
+			return (NULL);
+		}
+		*eq++ = '\0';
+
+		if (strcmp(keyw, "path") == 0) {
+			free(sh->path);
+			sh->path = estrdup(eq);
+		} else if (strcmp(keyw, "name") == 0) {
+			free(sh->name);
+			sh->name = estrdup(eq);
+		} else if (strcmp(keyw, "quiet") == 0) {
+			free(sh->echoOff);
+			sh->echoOff = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "echo") == 0) {
+			free(sh->echoOn);
+			sh->echoOn = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "filter") == 0) {
+			free(sh->noPrint);
+			sh->noPrint = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "echoFlag") == 0) {
+			free(sh->echo);
+			sh->echo = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "errFlag") == 0) {
+			free(sh->exit);
+			sh->exit = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "hasErrCtl") == 0) {
+			sh->hasErrCtl = (*eq == 'Y' || *eq == 'y' ||
+			    *eq == 'T' || *eq == 't');
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "check") == 0) {
+			free(sh->errCheck);
+			sh->errCheck = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "ignore") == 0) {
+			free(sh->ignErr);
+			sh->ignErr = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "builtins") == 0) {
+			ArgArray_Done(&sh->builtins);
+			brk_string(&sh->builtins, eq, TRUE);
+			qsort(sh->builtins.argv + 1, sh->builtins.argc - 1,
+			    sizeof(char *), sort_builtins);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "meta") == 0) {
+			free(sh->meta);
+			sh->meta = estrdup(eq);
+			*fullSpec = TRUE;
+		} else {
+			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
+			    "specification '%s'", keyw);
+			ArgArray_Done(&aa);
+			ShellFree(sh);
+			return (NULL);
+		}
+	}
+	ArgArray_Done(&aa);
+
+	/*
+	 * Some checks (could be more)
+	 */
+	if (*fullSpec) {
+		if ((sh->echoOn != NULL) ^ (sh->echoOff != NULL)) {
+			Parse_Error(PARSE_FATAL, "Shell must have either both "
+			    "echoOff and echoOn or none of them");
+			ShellFree(sh);
+			return (NULL);
+		}
+
+		if (sh->echoOn != NULL && sh->echoOff != NULL)
+			sh->hasEchoCtl = TRUE;
+	}
+
+	return (sh);
 }
 
 /**
@@ -245,109 +337,54 @@ ShellFree(struct Shell *sh)
  *			    is TRUE or template of command to execute a
  *			    command so as to ignore any errors it returns if
  *			    hasErrCtl is FALSE.
+ *	    builtins	    A space separated list of builtins. If one
+ *			    of these builtins is detected when make wants
+ *			    to execute a command line, the command line is
+ *			    handed to the shell. Otherwise make may try to
+ *			    execute the command directly. If this list is empty
+ *			    it is assumed, that the command must always be
+ *			    handed over to the shell.
+ *	    meta	    The shell meta characters. If this is not specified
+ *			    or empty, commands are alway passed to the shell.
+ *			    Otherwise they are not passed when they contain
+ *			    neither a meta character nor a builtin command.
  */
 Boolean
 Shell_Parse(const char line[])
 {
-	ArgArray	aa;
-	int		argc;
-	char		**argv;
-	Boolean		fullSpec = FALSE;
-	struct Shell	newShell;
+	Boolean		fullSpec;
 	struct Shell	*sh;
 
-	memset(&newShell, 0, sizeof(newShell));
+	/* parse the specification */
+	if ((sh = ShellParseSpec(line, &fullSpec)) == NULL)
+		return (FALSE);
 
-	/*
-	 * Parse the specification by keyword but skip the first word
-	 */
-	brk_string(&aa, line, TRUE);
-
-	for (argc = aa.argc - 1, argv = aa.argv + 1; argc != 0; argc--, argv++)
-	{
-		char		*eq;
-
-		/*
-		 * Split keyword and value
-		 */
-		if ((eq = strchr(*argv, '=')) == NULL) {
-			Parse_Error(PARSE_FATAL,
-			    "missing '=' in shell specification keyword '%s'",
-			    *argv);
-			ArgArray_Done(&aa);
-			return (FALSE);
-		}
-		*eq++ = '\0';
-
-		if (strcmp(*argv, "path") == 0) {
-			newShell.path = eq;
-		} else if (strcmp(*argv, "name") == 0) {
-			newShell.name = eq;
-		} else if (strcmp(*argv, "quiet") == 0) {
-			newShell.echoOff = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "echo") == 0) {
-			newShell.echoOn = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "filter") == 0) {
-			newShell.noPrint = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "echoFlag") == 0) {
-			newShell.echo = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "errFlag") == 0) {
-			newShell.exit = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "hasErrCtl") == 0) {
-			newShell.hasErrCtl = (*eq == 'Y' || *eq == 'y' ||
-			    *eq == 'T' || *eq == 't');
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "check") == 0) {
-			newShell.errCheck = eq;
-			fullSpec = TRUE;
-		} else if (strcmp(*argv, "ignore") == 0) {
-			newShell.ignErr = eq;
-			fullSpec = TRUE;
-		} else {
-			Parse_Error(PARSE_FATAL,
-			    "unknown keyword in shell specification '%s'",
-			    *argv);
-			ArgArray_Done(&aa);
-			return (FALSE);
-		}
-	}
-
-	/*
-	 * Some checks (could be more)
-	 */
-	if (fullSpec) {
-		if ((newShell.echoOn != NULL) ^ (newShell.echoOff != NULL))
-			Parse_Error(PARSE_FATAL,
-			    "Shell must have either both "
-			    "echoOff and echoOn or none of them");
-
-		if (newShell.echoOn != NULL && newShell.echoOff)
-			newShell.hasEchoCtl = TRUE;
-	}
-
-	if (newShell.path == NULL) {
+	if (sh->path == NULL) {
+		struct Shell	*match;
 		/*
 		 * If no path was given, the user wants one of the pre-defined
 		 * shells, yes? So we find the one s/he wants with the help of
 		 * ShellMatch and set things up the right way.
 		 */
-		if (newShell.name == NULL) {
+		if (sh->name == NULL) {
 			Parse_Error(PARSE_FATAL,
 			    "Neither path nor name specified");
-			ArgArray_Done(&aa);
+			ShellFree(sh);
 			return (FALSE);
 		}
-		if ((sh = ShellMatch(newShell.name)) == NULL) {
+		if (fullSpec) {
+			Parse_Error(PARSE_FATAL, "No path specified");
+			ShellFree(sh);
+			return (FALSE);
+		}
+		if ((match = ShellMatch(sh->name)) == NULL) {
 			Parse_Error(PARSE_FATAL, "%s: no matching shell",
-			    newShell.name);
-			ArgArray_Done(&aa);
+			    sh->name);
+			ShellFree(sh);
 			return (FALSE);
 		}
+		ShellFree(sh);
+		sh = match;
 
 	} else {
 		/*
@@ -357,25 +394,29 @@ Shell_Parse(const char line[])
 		 * word and copy it to a new location. In either case, we need
 		 * to record the path the user gave for the shell.
 		 */
-		if (newShell.name == NULL) {
+		if (sh->name == NULL) {
 			/* get the base name as the name */
-			newShell.name = strrchr(newShell.path, '/');
-			if (newShell.name == NULL) {
-				newShell.name = newShell.path;
+			if ((sh->name = strrchr(sh->path, '/')) == NULL) {
+				sh->name = estrdup(sh->path);
 			} else {
-				newShell.name += 1;
+				sh->name = estrdup(sh->name + 1);
 			}
 		}
 
 		if (!fullSpec) {
-			if ((sh = ShellMatch(newShell.name)) == NULL) {
+			struct Shell	*match;
+
+			if ((match = ShellMatch(sh->name)) == NULL) {
 				Parse_Error(PARSE_FATAL,
-				    "%s: no matching shell", newShell.name);
-				ArgArray_Done(&aa);
+				    "%s: no matching shell", sh->name);
+				ShellFree(sh);
 				return (FALSE);
 			}
-		} else {
-			sh = ShellCopy(&newShell);
+			free(match->path);
+			match->path = sh->path;
+			sh->path = NULL;
+			ShellFree(sh);
+			sh = match;
 		}
 	}
 
@@ -383,7 +424,6 @@ Shell_Parse(const char line[])
 	ShellFree(commandShell);
 	commandShell = sh;
 
-	ArgArray_Done(&aa);
 	return (TRUE);
 }
 
