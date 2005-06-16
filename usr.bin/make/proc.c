@@ -23,13 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/proc.c,v 1.1 2005/05/23 18:24:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/proc.c,v 1.2 2005/06/16 20:42:58 okumoto Exp $
  */
 
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include <stdlib.h>
 
 #include "proc.h"
 #include "shell.h"
@@ -75,6 +76,11 @@ ProcExec(const ProcStuff *ps)
 		 */
 		if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1)
 			Punt("Cannot dup2: %s", strerror(errno));
+	}
+
+	if (commandShell->unsetenv) {
+		/* for the benfit of ksh */
+		unsetenv("ENV");
 	}
 
 	/*

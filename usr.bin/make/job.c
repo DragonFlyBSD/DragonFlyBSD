@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.114 2005/06/16 20:28:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.115 2005/06/16 20:42:58 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -543,13 +543,6 @@ Proc_Init()
 			err(2, "setrlimit");
 		}
 	}
-#endif
-
-#if DEFSHELL == 2
-	/*
-	 * Turn off ENV to make ksh happier.
-	 */
-	unsetenv("ENV");
 #endif
 }
 

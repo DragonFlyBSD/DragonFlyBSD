@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.17 2005/06/16 20:29:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.18 2005/06/16 20:42:58 okumoto Exp $
  */
 
 #include <string.h>
@@ -98,6 +98,7 @@ ShellMatch(const char name[])
 		brk_string(&shell->builtins,
 		    "alias cd eval exec exit read set ulimit unalias "
 		    "umask unset wait", TRUE);
+		shell->unsetenv		= FALSE;
 
 	} else if (strcmp(name, "sh") == 0) {
 		/*
@@ -126,6 +127,7 @@ ShellMatch(const char name[])
 		brk_string(&shell->builtins,
 		    "alias cd eval exec exit read set ulimit unalias "
 		    "umask unset wait", TRUE);
+		shell->unsetenv		= FALSE;
 
 	} else if (strcmp(name, "ksh") == 0) {
 		/*
@@ -148,6 +150,7 @@ ShellMatch(const char name[])
 		brk_string(&shell->builtins,
 		    "alias cd eval exec exit read set ulimit unalias "
 		    "umask unset wait", TRUE);
+		shell->unsetenv		= TRUE;
 
 	} else {
 		free(shell);
@@ -251,7 +254,8 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 			sh->exit = estrdup(eq);
 			*fullSpec = TRUE;
 		} else if (strcmp(keyw, "hasErrCtl") == 0) {
-			sh->hasErrCtl = (*eq == 'Y' || *eq == 'y' ||
+			sh->hasErrCtl = (
+			    *eq == 'Y' || *eq == 'y' ||
 			    *eq == 'T' || *eq == 't');
 			*fullSpec = TRUE;
 		} else if (strcmp(keyw, "check") == 0) {
@@ -271,6 +275,11 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 		} else if (strcmp(keyw, "meta") == 0) {
 			free(sh->meta);
 			sh->meta = estrdup(eq);
+			*fullSpec = TRUE;
+		} else if (strcmp(keyw, "unsetenv") == 0) {
+			sh->unsetenv = (
+			    *eq == 'Y' || *eq == 'y' ||
+			    *eq == 'T' || *eq == 't');
 			*fullSpec = TRUE;
 		} else {
 			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
@@ -455,5 +464,6 @@ Shell_Dump(const struct Shell *sh)
 	for (i = 1; i < sh->builtins.argc; i++)
 		fprintf(stderr, " '%s'", sh->builtins.argv[i]);
 	fprintf(stderr, "\n  meta='%s'\n", sh->meta);
+	fprintf(stderr, "  unsetenv='%d'\n", sh->unsetenv);
 }
 
