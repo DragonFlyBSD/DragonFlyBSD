@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.12 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.13 2005/06/16 16:08:58 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -40,6 +40,7 @@
 #include <sys/bus.h>
 #if defined(__DragonFly__) || __FreeBSD_version >= 400005
 #include <sys/taskqueue.h>
+#include <sys/thread2.h>
 #endif
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/mutex.h>
@@ -273,11 +274,14 @@ atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
 static __inline atomic_t
 test_and_set_bit(int b, volatile void *p)
 {
-	int s = splhigh();
-	unsigned int m = 1<<b;
-	unsigned int r = *(volatile int *)p & m;
+	unsigned int m;
+	unsigned int r;
+
+	crit_enter();
+	m = 1<<b;
+	r = *(volatile int *)p & m;
 	*(volatile int *)p |= m;
-	splx(s);
+	crit_exit();
 	return r;
 }
 
