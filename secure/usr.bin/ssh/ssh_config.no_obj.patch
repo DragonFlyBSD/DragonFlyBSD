@@ -1,6 +1,11 @@
-$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- ssh_config.orig	2003-08-13 12:37:05.000000000 +0200
-+++ ssh_config	2004-07-23 13:16:14.000000000 +0200
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.no_obj.patch,v 1.2 2005/06/16 08:14:02 corecode Exp $
+Index: ssh_config
+===================================================================
+RCS file: /space/cvs/dragonfly/src/crypto/openssh-3.9p1/ssh_config,v
+retrieving revision 1.1
+diff -u -r1.1 ssh_config
+--- ssh_config	30 Aug 2004 21:59:58 -0000	1.1
++++ ssh_config	16 Jun 2005 08:08:13 -0000
 @@ -23,7 +23,7 @@
  #   PasswordAuthentication yes
  #   HostbasedAuthentication no
@@ -10,8 +15,11 @@ $DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.no_obj.patch,v 1.1 2004/07/3
  #   AddressFamily any
  #   ConnectTimeout 0
  #   StrictHostKeyChecking ask
-@@ -35,3 +35,4 @@
+@@ -35,3 +35,7 @@
  #   Cipher 3des
  #   Ciphers aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour,aes192-cbc,aes256-cbc
  #   EscapeChar ~
 +#   VersionAddendum DragonFly-20040710
++
++#   XAuthLocation /usr/X11R6/bin/xauth		# default ports/dfports
++#   XAuthLocation /usr/pkg/xorg/bin/xauth	# location for pkgsrc

@@ -1,6 +1,11 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- sshd_config.orig	2004-07-23 14:26:51.000000000 +0200
-+++ sshd_config	2004-07-23 14:25:05.000000000 +0200
+$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.2 2005/06/16 08:14:02 corecode Exp $
+Index: sshd_config
+===================================================================
+RCS file: /space/cvs/dragonfly/src/crypto/openssh-3.9p1/sshd_config,v
+retrieving revision 1.1
+diff -u -r1.1 sshd_config
+--- sshd_config	30 Aug 2004 21:59:58 -0000	1.1
++++ sshd_config	16 Jun 2005 08:11:07 -0000
 @@ -10,15 +10,19 @@
  # possible, but leave them commented.  Uncommented options change a
  # default value.
@@ -30,9 +35,9 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.1 2004/0
 -#PermitRootLogin yes
 +#PermitRootLogin no
  #StrictModes yes
+ #MaxAuthTries 6
  
- #RSAAuthentication yes
-@@ -54,7 +58,7 @@
+@@ -55,7 +59,7 @@
  #PasswordAuthentication yes
  #PermitEmptyPasswords no
  
@@ -41,7 +46,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.1 2004/0
  #ChallengeResponseAuthentication yes
  
  # Kerberos options
-@@ -74,7 +78,7 @@
+@@ -80,7 +84,7 @@
  
  #AllowTcpForwarding yes
  #GatewayPorts no
@@ -50,3 +55,13 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.1 2004/0
  #X11DisplayOffset 10
  #X11UseLocalhost yes
  #PrintMotd yes
+@@ -96,6 +100,9 @@
+ #PidFile /var/run/sshd.pid
+ #MaxStartups 10
+ 
++#XAuthLocation /usr/X11R6/bin/xauth		# default ports/dfports
++#XAuthLocation /usr/pkg/xorg/bin/xauth		# localtion for pkgsrc
++
+ # no default banner path
+ #Banner /some/path
+ 
