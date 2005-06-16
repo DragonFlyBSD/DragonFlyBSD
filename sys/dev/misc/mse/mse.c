@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.12 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.13 2005/06/16 16:39:54 joerg Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -52,6 +52,7 @@
 #include <sys/bus.h>
 #include <sys/poll.h>
 #include <sys/select.h>
+#include <sys/thread2.h>
 #include <sys/uio.h>
 
 #include <machine/bus_pio.h>
@@ -398,7 +399,6 @@ mseopen(dev, flags, fmt, td)
 	struct thread *td;
 {
 	mse_softc_t *sc;
-	int s;
 
 	sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	if (sc == NULL)
@@ -421,9 +421,9 @@ mseopen(dev, flags, fmt, td)
 	/*
 	 * Initialize mouse interface and enable interrupts.
 	 */
-	s = spltty();
+	crit_enter();
 	(*sc->sc_enablemouse)(sc->sc_iot, sc->sc_ioh);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -438,13 +438,12 @@ mseclose(dev, flags, fmt, td)
 	struct thread *td;
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
-	int s;
 
+	crit_enter();
 	callout_stop(&sc->sc_callout);
-	s = spltty();
 	(*sc->sc_disablemouse)(sc->sc_iot, sc->sc_ioh);
 	sc->sc_flags &= ~MSESC_OPEN;
-	splx(s);
+	crit_exit();
 	return(0);
 }
 
@@ -460,24 +459,24 @@ mseread(dev, uio, ioflag)
 	int ioflag;
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
-	int xfer, s, error;
+	int xfer, error;
 
 	/*
 	 * If there are no protocol bytes to be read, set up a new protocol
 	 * packet.
 	 */
-	s = spltty(); /* XXX Should be its own spl, but where is imlXX() */
+	crit_enter(); /* XXX Should be its own spl, but where is imlXX() */
 	if (sc->sc_bytesread >= sc->mode.packetsize) {
 		while (sc->sc_deltax == 0 && sc->sc_deltay == 0 &&
 		       (sc->sc_obuttons ^ sc->sc_buttons) == 0) {
 			if (MSE_NBLOCKIO(dev)) {
-				splx(s);
+				crit_exit();
 				return (0);
 			}
 			sc->sc_flags |= MSESC_WANT;
 			error = tsleep((caddr_t)sc, PCATCH, "mseread", 0);
 			if (error) {
-				splx(s);
+				crit_exit();
 				return (error);
 			}
 		}
@@ -507,7 +506,7 @@ mseread(dev, uio, ioflag)
 		sc->sc_deltax = sc->sc_deltay = 0;
 		sc->sc_bytesread = 0;
 	}
-	splx(s);
+	crit_exit();
 	xfer = min(uio->uio_resid, sc->mode.packetsize - sc->sc_bytesread);
 	error = uiomove(&sc->sc_bytes[sc->sc_bytesread], xfer, uio);
 	if (error)
@@ -530,20 +529,19 @@ mseioctl(dev, cmd, addr, flag, td)
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	mousestatus_t status;
 	int err = 0;
-	int s;
 
 	switch (cmd) {
 
 	case MOUSE_GETHWINFO:
-		s = spltty();
+		crit_enter();
 		*(mousehw_t *)addr = sc->hw;
 		if (sc->mode.level == 0)
 			((mousehw_t *)addr)->model = MOUSE_MODEL_GENERIC;
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOUSE_GETMODE:
-		s = spltty();
+		crit_enter();
 		*(mousemode_t *)addr = sc->mode;
 		switch (sc->mode.level) {
 		case 0:
@@ -554,7 +552,7 @@ mseioctl(dev, cmd, addr, flag, td)
 	    		((mousemode_t *)addr)->syncmask[1] = MOUSE_SYS_SYNC;
 			break;
 		}
-		splx(s);
+		crit_exit();
 		break;
 
 	case MOUSE_SETMODE:
@@ -605,7 +603,7 @@ mseioctl(dev, cmd, addr, flag, td)
 		break;
 
 	case MOUSE_GETSTATUS:
-		s = spltty();
+		crit_enter();
 		status = sc->status;
 		sc->status.flags = 0;
 		sc->status.obutton = sc->status.button;
@@ -613,7 +611,7 @@ mseioctl(dev, cmd, addr, flag, td)
 		sc->status.dx = 0;
 		sc->status.dy = 0;
 		sc->status.dz = 0;
-		splx(s);
+		crit_exit();
 		*(mousestatus_t *)addr = status;
 		break;
 
@@ -643,10 +641,9 @@ msepoll(dev, events, td)
 	struct thread *td;
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
-	int s;
 	int revents = 0;
 
-	s = spltty();
+	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (sc->sc_bytesread != sc->mode.packetsize ||
 		    sc->sc_deltax != 0 || sc->sc_deltay != 0 ||
@@ -660,7 +657,7 @@ msepoll(dev, events, td)
 			selrecord(td, &sc->sc_selp);
 		}
 	}
-	splx(s);
+	crit_exit();
 	return (revents);
 }
 
