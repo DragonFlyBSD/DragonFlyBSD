@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.19 2005/06/14 11:41:37 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.20 2005/06/16 14:51:55 joerg Exp $
  */
 
 /*
@@ -172,8 +172,6 @@ sn_attach(device_t dev)
 	struct ifnet   *ifp = &sc->arpcom.ac_if;
 	u_short         i;
 	u_char         *p;
-	struct ifaddr  *ifa;
-	struct sockaddr_dl *sdl;
 	int             rev;
 	u_short         address;
 	int		j;
