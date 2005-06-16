@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.11 2005/06/16 16:03:40 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.12 2005/06/16 16:04:28 joerg Exp $
  *
  */
 
@@ -157,7 +157,8 @@ struct ctlr
 /* loutb is a slow outb for debugging.  The overrun test may fail
  * with this for some slower processors.
  */
-static __inline void loutb(int port, u_char val)
+static void
+loutb(int port, u_char val)
 {
 	outb(port, val);
 	DELAY(1);
@@ -340,7 +341,7 @@ done_and_start_next(struct ctlr *ctlr, struct buf *bp, int err)
 	start(ctlr);
 }
 
-static __inline void
+static void
 ad_clear(struct ctlr *ctlr)
 {
 	int i;
@@ -353,7 +354,7 @@ ad_clear(struct ctlr *ctlr)
 
 /* reset: Reset the board following the sequence on page 5-1
  */
-static __inline void
+static void
 reset(struct ctlr *ctlr)
 {
 	crit_enter();
@@ -502,7 +503,7 @@ static void null_intr (struct ctlr *ctlr)             { }
 static void null_start(struct ctlr *ctlr, long count) { }
 static void null_stop (struct ctlr *ctlr)             { }
 
-static __inline void
+static void
 trigger(struct ctlr *ctlr)
 {
 	CR_EXPR(ctlr, 2, |= SWTRIG);
