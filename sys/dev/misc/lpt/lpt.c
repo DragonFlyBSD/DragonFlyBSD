@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.11 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.12 2005/06/16 16:21:30 joerg Exp $
  */
 
 /*
@@ -72,6 +72,7 @@
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 #include <sys/malloc.h>
 
 #include <machine/clock.h>
@@ -466,7 +467,6 @@ lptout(void *arg)
 static	int
 lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 {
-	int s;
 	int trys, err;
 	u_int unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
@@ -497,7 +497,7 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 		return (err);
 	}
 
-	s = spltty();
+	crit_enter();
 	lprintf((LPT_NAME " flags 0x%x\n", sc->sc_flags));
 
 	/* set IRQ status according to ENABLE_IRQ flag
@@ -523,7 +523,7 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 	do {
 		/* ran out of waiting for the printer */
 		if (trys++ >= LPINITRDY*4) {
-			splx(s);
+			crit_exit();
 			sc->sc_state = 0;
 			lprintf(("status %x\n", ppb_rstr(ppbus)));
 
@@ -535,7 +535,7 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 		if (tsleep((caddr_t)lptdev, PCATCH, "lptinit", hz/4) !=
 		    EWOULDBLOCK) {
 			sc->sc_state = 0;
-			splx(s);
+			crit_exit();
 
 			lpt_release_ppbus(lptdev);
 			return (EBUSY);
@@ -560,7 +560,8 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 	sc->sc_inbuf = malloc(BUFSIZE, M_LPT, M_WAITOK);
 	sc->sc_statbuf = malloc(BUFSTATSIZE, M_LPT, M_WAITOK);
 	sc->sc_xfercnt = 0;
-	splx(s);
+
+	crit_exit();
 
 	/* release the ppbus */
 	lpt_release_ppbus(lptdev);
@@ -900,12 +901,11 @@ static void
 lptintr(device_t dev)
 {
 	/* call the interrupt at required spl level */
-	int s = spltty();
+	crit_enter();
 
 	lpt_intr(dev);
 
-	splx(s);
-	return;
+	crit_exit();
 }
 
 static	int
