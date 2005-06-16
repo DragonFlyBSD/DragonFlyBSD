@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.7 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.8 2005/06/16 15:53:35 dillon Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -252,16 +253,15 @@ u_int8_t dc395x_trm_tinfo_sync_period[] = {
 static PSRB
 trm_GetSRB(PACB pACB)
 {
-	int	intflag;
 	PSRB	pSRB;
 
-	intflag = splcam();
+	crit_enter();
     	pSRB = pACB->pFreeSRB;
 	if (pSRB) {
 		pACB->pFreeSRB = pSRB->pNextSRB;
 		pSRB->pNextSRB = NULL;
 	}
-	splx(intflag);
+	crit_exit();
     	return (pSRB);
 }
 
@@ -269,9 +269,8 @@ static void
 trm_RewaitSRB0(PDCB pDCB, PSRB pSRB)
 {
 	PSRB	psrb1;
-	int	intflag;
 
-	intflag = splcam();
+	crit_enter();
     	if ((psrb1 = pDCB->pWaitingSRB)) {
 		pSRB->pNextSRB = psrb1;
 		pDCB->pWaitingSRB = pSRB;
@@ -280,17 +279,16 @@ trm_RewaitSRB0(PDCB pDCB, PSRB pSRB)
 		pDCB->pWaitingSRB = pSRB;
 		pDCB->pWaitLastSRB = pSRB;
 	}
-	splx(intflag);
+	crit_exit();
 }
 
 static void
 trm_RewaitSRB(PDCB pDCB, PSRB pSRB)
 {
 	PSRB	psrb1;
-	int	intflag;
 	u_int8_t	bval;
 
-	intflag = splcam();
+	crit_enter();
     	pDCB->GoingSRBCnt--;
 	psrb1 = pDCB->pGoingSRB;
 	if (pSRB == psrb1)
@@ -312,17 +310,16 @@ trm_RewaitSRB(PDCB pDCB, PSRB pSRB)
 	}
 	bval = pSRB->TagNumber;
 	pDCB->TagMask &= (~(1 << bval));	  /* Free TAG number */
-	splx(intflag);
+	crit_exit();
 }
 
 static void
 trm_DoWaitingSRB(PACB pACB)
 {
-	int	intflag;
 	PDCB	ptr, ptr1;
 	PSRB	pSRB;
 
-	intflag = splcam();
+	crit_enter();
     	if (!(pACB->pActiveDCB) && 
 	    !(pACB->ACBFlag & (RESET_DETECT+RESET_DONE+RESET_DEV))) {
 		ptr = pACB->pDCBRunRobin;
@@ -362,7 +359,7 @@ trm_DoWaitingSRB(PACB pACB)
 			}
 		}
 	}
-	splx(intflag);
+	crit_exit();
 	return;
 }
 
@@ -383,7 +380,6 @@ trm_SRBwaiting(PDCB pDCB, PSRB pSRB)
 static void
 trm_ExecuteSRB(void *arg, bus_dma_segment_t *dm_segs, int nseg, int vp)
 {
-	int		flags;
 	PACB		pACB;
 	PSRB		pSRB;
 	union ccb	*ccb;
@@ -429,14 +425,14 @@ trm_ExecuteSRB(void *arg, bus_dma_segment_t *dm_segs, int nseg, int vp)
 	pSRB->SRBState = 0;
 	pSRB->ScsiPhase = PH_BUS_FREE; /* SCSI bus free Phase */
 
-	flags = splcam();
+	crit_enter();
 	if (ccb->ccb_h.status != CAM_REQ_INPROG) {
 		if (nseg != 0)
 			bus_dmamap_unload(pACB->buffer_dmat, pSRB->dmamap);
 		pSRB->pNextSRB = pACB->pFreeSRB;
 		pACB->pFreeSRB = pSRB;
 		xpt_done(ccb);
-		splx(flags);
+		crit_exit();
 		return;
 	}
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
@@ -446,17 +442,16 @@ trm_ExecuteSRB(void *arg, bus_dma_segment_t *dm_segs, int nseg, int vp)
 		      trmtimeout, srb);
 #endif
 	trm_SendSRB(pACB, pSRB);
-	splx(flags);
+	crit_exit();
 	return;
 }
 
 static void
 trm_SendSRB(PACB pACB, PSRB pSRB)
 {
-	int	intflag;
 	PDCB	pDCB;
 
-	intflag = splcam();
+	crit_enter();
 	pDCB = pSRB->pSRBDCB;
 	if (!(pDCB->MaxCommand > pDCB->GoingSRBCnt) || (pACB->pActiveDCB)
 	    || (pACB->ACBFlag & (RESET_DETECT+RESET_DONE+RESET_DEV))) {
@@ -498,7 +493,7 @@ trm_SendSRB(PACB pACB, PSRB pSRB)
 		trm_RewaitSRB0(pDCB, pSRB);
 	}
 SND_EXIT:
-	splx(intflag);
+	crit_exit();
 	/*
 	 *	enable interrupt
 	 */
@@ -567,10 +562,9 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 				      CAM_SCATTER_VALID) == 0) {
 					if ((pccb->ccb_h.flags 
 					      & CAM_DATA_PHYS) == 0) {
-						int flags;
 						int error;
 
-						flags = splsoftvm();
+						crit_enter();
 						error = bus_dmamap_load(
 						    pACB->buffer_dmat,
 						    pSRB->dmamap,
@@ -586,7 +580,7 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 							pccb->ccb_h.status |=
 							  CAM_RELEASE_SIMQ;
 						}
-						splx(flags);
+						crit_exit();
 					} else {   
 						struct bus_dma_segment seg;
 
@@ -775,14 +769,13 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 	 	 */
 		case XPT_GET_TRAN_SETTINGS: {
 			struct	ccb_trans_settings *cts;        
-			int	intflag;
 			struct	trm_transinfo *tinfo;
 			PDCB	pDCB;	
 			
 			TRM_DPRINTF(" XPT_GET_TRAN_SETTINGS \n");
 	    		cts = &pccb->cts;
 			pDCB = pACB->pDCB[target_id][target_lun];
-			intflag = splcam();
+			crit_enter();
 			/*
 			 * disable interrupt
 			 */
@@ -818,7 +811,7 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 			TRM_DPRINTF("offset: %d  \n", tinfo->offset);
 			TRM_DPRINTF("width: %d  \n", tinfo->width);
 
-	    		splx(intflag);
+			crit_exit();
 			cts->valid = CCB_TRANS_SYNC_RATE_VALID | 
 			    CCB_TRANS_SYNC_OFFSET_VALID | 
 			    CCB_TRANS_BUS_WIDTH_VALID | 
@@ -836,7 +829,6 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 		case XPT_SET_TRAN_SETTINGS: {
 			struct	ccb_trans_settings *cts;
 			u_int	update_type;
-			int	intflag;
 			PDCB	pDCB;
 
 			TRM_DPRINTF(" XPT_SET_TRAN_SETTINGS \n");
@@ -846,7 +838,7 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 				update_type |= TRM_TRANS_GOAL;
 			if ((cts->flags & CCB_TRANS_USER_SETTINGS) != 0)
 				update_type |= TRM_TRANS_USER;
-			intflag = splcam();
+			crit_enter();
 	    		pDCB = pACB->pDCB[target_id][target_lun];
 
 			if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
@@ -919,7 +911,7 @@ trm_action(struct cam_sim *psim, union ccb *pccb)
 				pDCB->tinfo.goal.offset = cts->sync_offset;
 				pDCB->tinfo.goal.width  = cts->bus_width;
 			}
-			splx(intflag);
+			crit_exit();
 			pccb->ccb_h.status = CAM_REQ_CMP;
 			xpt_done(pccb);
 			break;
@@ -1118,11 +1110,10 @@ trm_RecoverSRB(PACB pACB)
 static void
 trm_reset(PACB pACB)
 {
-	int		intflag;
 	u_int16_t	i;
 
     	TRM_DPRINTF("trm: RESET");
-    	intflag = splcam();
+	crit_enter();
 	trm_reg_write8(0x00, TRMREG_DMA_INTEN);
 	trm_reg_write8(0x00, TRMREG_SCSI_INTEN);
 
@@ -1144,7 +1135,7 @@ trm_reset(PACB pACB)
 	/* Tell the XPT layer that a bus reset occured    */
 	if (pACB->ppath != NULL)
 		xpt_async(AC_BUS_RESET, pACB->ppath, NULL);
-	splx(intflag);
+	crit_exit();
     	return;
 }
 
@@ -2164,14 +2155,13 @@ trm_Disconnect(PACB pACB)
 {
 	PDCB		pDCB;
 	PSRB		pSRB, psrb;
-	int		intflag;
 	u_int16_t	i,j, cnt;
 	u_int8_t	bval;
 	u_int		target_id,target_lun;
 	
 	TRM_DPRINTF("trm_Disconnect...............\n ");
 	
-	intflag = splcam();
+	crit_enter();
        	pDCB = pACB->pActiveDCB;
 	if (!pDCB) {
 		TRM_DPRINTF(" Exception Disconnect DCB=NULL..............\n ");
@@ -2181,6 +2171,7 @@ trm_Disconnect(PACB pACB)
 		/* 1 msec */
 		trm_reg_write16((DO_CLRFIFO | DO_HWRESELECT),
 		    TRMREG_SCSI_CONTROL);
+		crit_exit();
 		return;
 	}
 	pSRB = pDCB->pActiveSRB; 
@@ -2240,7 +2231,7 @@ disc1:
 			trm_SRBdone(pACB, pDCB, pSRB);
 		}
 	}
-	splx(intflag);
+	crit_exit();
 	return;
 }
 
@@ -2319,7 +2310,6 @@ trm_SRBdone(PACB pACB, PDCB pDCB, PSRB pSRB)
 	union ccb		*pccb;
 	struct ccb_scsiio	*pcsio;
 	PSCSI_INQDATA		ptr;
-	int			intflag;
 	u_int			target_id,target_lun;
 	PDCB			pTempDCB;
 
@@ -2482,7 +2472,7 @@ NO_DEV:
 	  			TRM_DPRINTF("trm_SRBdone NO Device:target_id= %d ,target_lun= %d \n",
 				    target_id,
 				    target_lun);
-		      		intflag = splcam();
+				crit_enter();
 				pACB->scan_devices[target_id][target_lun] = 0;
 				/* no device set scan device flag =0*/
 				/* pDCB Q link */
@@ -2511,7 +2501,7 @@ NO_DEV:
 					pACB->pLinkDCB = NULL;
 					pACB->pDCBRunRobin = NULL;
 				}
-				splx(intflag);
+				crit_exit();
 			} else { 
 #ifdef trm_DEBUG1
 				int j;
@@ -2550,7 +2540,7 @@ NO_DEV:
 		}
 		/* pACB->scan_devices[target_id][target_lun] */
 	}
-    	intflag = splcam();
+	crit_enter();
 	/*  ReleaseSRB(pDCB, pSRB); */
 	if (pSRB == pDCB->pGoingSRB)
 		pDCB->pGoingSRB = pSRB->pNextSRB;
@@ -2569,7 +2559,7 @@ NO_DEV:
 	pDCB->GoingSRBCnt--;
 	trm_DoWaitingSRB(pACB);
 
-	splx(intflag);
+	crit_exit();
 	/*  Notify cmd done */
 	xpt_done (pccb);
 }
@@ -2610,28 +2600,25 @@ trm_DoingSRB_Done(PACB pACB)
 static void 
 trm_ResetSCSIBus(PACB pACB)
 {
-	int	intflag;
-
-	intflag = splcam();
+	crit_enter();
     	pACB->ACBFlag |= RESET_DEV;
 
 	trm_reg_write16(DO_RSTSCSI,TRMREG_SCSI_CONTROL);
 	while (!(trm_reg_read16(TRMREG_SCSI_INTSTATUS) & INT_SCSIRESET));
-	splx(intflag);
+	crit_exit();
 	return;
 }
 
 static void 
 trm_ScsiRstDetect(PACB pACB)
 {
-	int	intflag;
 	u_long	wlval;
 
 	TRM_DPRINTF("trm_ScsiRstDetect \n");
 	wlval = 1000;
 	while (--wlval)
 		DELAY(1000);
-	intflag = splcam();
+	crit_enter();
     	trm_reg_write8(STOPDMAXFER,TRMREG_DMA_CONTROL);
 
 	trm_reg_write16(DO_CLRFIFO,TRMREG_SCSI_CONTROL);
@@ -2647,7 +2634,7 @@ trm_ScsiRstDetect(PACB pACB)
 		pACB->ACBFlag = 0;
 		trm_DoWaitingSRB(pACB);
 	}
-	splx(intflag);
+	crit_exit();
     	return;
 }
 
@@ -2718,12 +2705,11 @@ trm_initDCB(PACB pACB, PDCB pDCB, u_int16_t unit,u_int32_t i,u_int32_t j)
 	u_int8_t	bval,PeriodIndex;
 	u_int		target_id,target_lun;
 	PDCB		pTempDCB;
-	int		intflag;
     
     	target_id  = i;
 	target_lun = j;
 
-	intflag = splcam();
+	crit_enter();
 	if (pACB->pLinkDCB == 0) {
 		pACB->pLinkDCB = pDCB;
 		/* 
@@ -2743,7 +2729,7 @@ trm_initDCB(PACB pACB, PDCB pDCB, u_int16_t unit,u_int32_t i,u_int32_t j)
 		/* connect current DCB tail to this DCB Q head */
 		pDCB->pNextDCB=pACB->pLinkDCB;
 	}
-	splx(intflag);
+	crit_exit();
 
 	pACB->DeviceCnt++;
 	pDCB->pDCBACB = pACB;

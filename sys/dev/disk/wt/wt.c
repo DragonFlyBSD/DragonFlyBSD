@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.9 2004/09/19 02:02:28 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.10 2005/06/16 15:53:38 dillon Exp $
  *
  */
 
@@ -68,6 +68,7 @@
 #include <sys/malloc.h>
 #include <sys/mtio.h>
 #include <sys/conf.h>
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 
@@ -510,7 +511,6 @@ wtstrategy (struct buf *bp)
 {
 	int u = minor (bp->b_dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
-	int s;
 
 	bp->b_resid = bp->b_bcount;
 	if (u >= NWT || t->type == UNKNOWN) {
@@ -565,12 +565,12 @@ wtstrategy (struct buf *bp)
 		goto xit;
 
 	t->flags &= ~TPEXCEP;
-	s = splbio ();
+	crit_enter();
 	if (wtstart (t, bp->b_flags & B_READ ? ISADMA_READ : ISADMA_WRITE, bp->b_data, bp->b_bcount)) {
 		wtwait (t, 0, (bp->b_flags & B_READ) ? "wtread" : "wtwrite");
 		bp->b_resid -= t->dmacount;
 	}
-	splx (s);
+	crit_exit();
 
 	if (t->flags & TPEXCEP) {
 errxit:		bp->b_error = EIO;
@@ -756,13 +756,13 @@ wtpoll (wtinfo_t *t, int mask, int bits)
 static int
 wtcmd (wtinfo_t *t, int cmd)
 {
-	int s, x;
+	int s;
 
 	TRACE (("wtcmd() cmd=0x%x\n", cmd));
-	x = splbio();
+	crit_enter();
 	s = wtpoll (t, t->BUSY | t->NOEXCEP, t->BUSY | t->NOEXCEP); /* ready? */
 	if (! (s & t->NOEXCEP)) {                       /* error */
-	        splx(x);
+		crit_exit();
 		return (0);
 	}
 
@@ -772,7 +772,7 @@ wtcmd (wtinfo_t *t, int cmd)
 	wtpoll (t, t->BUSY, t->BUSY);                   /* wait for ready */
 	outb (t->CTLPORT, t->IEN | t->ONLINE);          /* reset request */
 	wtpoll (t, t->BUSY, 0);                         /* wait for not ready */
-	splx(x);
+	crit_exit();
 	return (1);
 }
 
@@ -812,14 +812,14 @@ wtdma (wtinfo_t *t)
 static int
 wtstart (wtinfo_t *t, unsigned flags, void *vaddr, unsigned len)
 {
-	int s, x;
+	int s;
 
 	TRACE (("wtstart()\n"));
-	x = splbio();
+	crit_enter();
 	s = wtpoll (t, t->BUSY | t->NOEXCEP, t->BUSY | t->NOEXCEP); /* ready? */
 	if (! (s & t->NOEXCEP)) {
 		t->flags |= TPEXCEP;            /* error */
-		splx(x);
+		crit_exit();
 		return (0);
 	}
 	t->flags &= ~TPEXCEP;                   /* clear exception flag */
@@ -828,7 +828,7 @@ wtstart (wtinfo_t *t, unsigned flags, void *vaddr, unsigned len)
 	t->dmacount = 0;
 	t->dmaflags = flags;
 	wtdma (t);
-	splx(x);
+	crit_exit();
 	return (1);
 }
 
@@ -854,19 +854,18 @@ static void
 wtimer (void *xt)
 {
 	wtinfo_t *t = (wtinfo_t *)xt;
-	int s;
 
 	t->flags &= ~TPTIMER;
 	if (! (t->flags & (TPACTIVE | TPREW | TPRMARK | TPWMARK)))
 		return;
 
 	/* If i/o going, simulate interrupt. */
-	s = splbio ();
+	crit_enter();
 	if ((inb (t->STATPORT) & (t->BUSY | t->NOEXCEP)) != (t->BUSY | t->NOEXCEP)) {
 		TRACE (("wtimer() -- "));
 		wtintr (t->unit);
 	}
-	splx (s);
+	crit_exit();
 
 	/* Restart timer if i/o pending. */
 	if (t->flags & (TPACTIVE | TPREW | TPRMARK | TPWMARK))
@@ -948,9 +947,8 @@ static int
 wtstatus (wtinfo_t *t)
 {
 	char *p;
-	int x;
 
-	x = splbio();
+	crit_enter();
 	wtpoll (t, t->BUSY | t->NOEXCEP, t->BUSY | t->NOEXCEP); /* ready? */
 	outb (t->CMDPORT, QIC_RDSTAT);  /* send `read status' command */
 
@@ -963,7 +961,7 @@ wtstatus (wtinfo_t *t)
 	while (p < (char*)&t->error + 6) {
 		int s = wtpoll (t, t->BUSY | t->NOEXCEP, t->BUSY | t->NOEXCEP);
 		if (! (s & t->NOEXCEP)) {               /* error */
-		        splx(x);
+			crit_exit();
 			return (0);
 		}
 
@@ -974,6 +972,6 @@ wtstatus (wtinfo_t *t)
 		DELAY(20);
 		outb (t->CTLPORT, t->ONLINE);           /* unset request */
 	}
-	splx(x);
+	crit_exit();
 	return (1);
 }

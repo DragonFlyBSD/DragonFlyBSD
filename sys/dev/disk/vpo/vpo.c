@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.4 2004/03/15 01:10:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.5 2005/06/16 15:53:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/devicestat.h>	/* for struct devstat */
+#include <sys/thread2.h>	/* for crit_*() */
 
 #include <machine/clock.h>
 
@@ -214,12 +215,11 @@ static void
 vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 {
 	int errno;	/* error in errno.h */
-	int s;
 #ifdef VP0_DEBUG
 	int i;
 #endif
 
-	s = splcam();
+	crit_enter();
 
 	if (vpo->vpo_isplus) {
 		errno = imm_do_scsi(&vpo->vpo_io, VP0_INITIATOR,
@@ -327,7 +327,7 @@ vpo_intr(struct vpo_data *vpo, struct ccb_scsiio *csio)
 	csio->ccb_h.status = CAM_REQ_CMP;
 
 error:
-	splx(s);
+	crit_exit();
 
 	return;
 }
