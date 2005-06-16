@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.212 2005/06/16 23:11:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.213 2005/06/16 23:33:15 okumoto Exp $
  */
 
 /**
@@ -2546,8 +2546,7 @@ Var_Print(Lst *vlist, Boolean expandVars)
 			free(v);
 			free(value);
 		} else {
-			const char	*value;
-			value = Var_Value(name, VAR_GLOBAL);
+			const char *value = Var_Value(name, VAR_GLOBAL);
 			printf("%s\n", value != NULL ? value : "");
 		}
 	}
