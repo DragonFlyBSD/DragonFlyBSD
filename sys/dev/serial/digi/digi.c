@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.2 2005/01/04 05:27:47 cpressey Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.3 2005/06/16 16:03:12 dillon Exp $
  */
 
 /*-
@@ -51,6 +51,7 @@
 #include <sys/fcntl.h>
 #include <sys/bus.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 #include <machine/resource.h>
 
 #include <dev/serial/digi/digiio.h>
@@ -723,7 +724,6 @@ digiopen(dev_t dev, int flag, int mode, struct thread *td)
 	int unit;
 	int pnum;
 	struct digi_p *port;
-	int s;
 	int error, mynor;
 	volatile struct board_chan *bc;
 
@@ -752,7 +752,7 @@ digiopen(dev_t dev, int flag, int mode, struct thread *td)
 	tp = dev->si_tty = port->tp;
 	bc = port->bc;
 
-	s = spltty();
+	crit_enter();
 
 open_top:
 	while (port->status & DIGI_DTR_OFF) {
@@ -869,7 +869,7 @@ open_top:
 	if (tp->t_state & TS_ISOPEN)
 		sc->opencnt++;
 out:
-	splx(s);
+	crit_exit();
 
 	if (!(tp->t_state & TS_ISOPEN))
 		digihardclose(port);
@@ -888,7 +888,6 @@ digiclose(dev_t dev, int flag, int mode, struct thread *td)
 	int unit, pnum;
 	struct digi_softc *sc;
 	struct digi_p *port;
-	int s;
 
 	mynor = minor(dev);
 	unit = MINOR_TO_UNIT(mynor);
@@ -907,14 +906,14 @@ digiclose(dev_t dev, int flag, int mode, struct thread *td)
 
 	DLOG(DIGIDB_CLOSE, (sc->dev, "port %d: closing\n", pnum));
 
-	s = spltty();
+	crit_enter();
 	linesw[tp->t_line].l_close(tp, flag);
 	digi_disc_optim(tp, &tp->t_termios, port);
 	digistop(tp, FREAD | FWRITE);
 	digihardclose(port);
 	ttyclose(tp);
-	if (--sc->opencnt == 0)
-		splx(s);
+	--sc->opencnt;
+	crit_exit();
 	return (0);
 }
 
@@ -932,11 +931,10 @@ static void
 digihardclose(struct digi_p *port)
 {
 	volatile struct board_chan *bc;
-	int s;
 
 	bc = port->bc;
 
-	s = spltty();
+	crit_enter();
 	port->sc->setwin(port->sc, 0);
 	bc->idata = 0;
 	bc->iempty = 0;
@@ -958,7 +956,7 @@ digihardclose(struct digi_p *port)
 	port->active_out = FALSE;
 	wakeup(&port->active_out);
 	wakeup(TSA_CARR_ON(port->tp));
-	splx(s);
+	crit_exit();
 }
 
 static int
@@ -1259,14 +1257,14 @@ digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 	if (error >= 0 && error != ENOIOCTL)
 		return (error);
-	s = spltty();
+	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	if (error == 0 && cmd == TIOCGETA)
 		((struct termios *)data)->c_iflag |= port->c_iflag;
 
 	digi_disc_optim(tp, &tp->t_termios, port);
 	if (error >= 0 && error != ENOIOCTL) {
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	sc->setwin(sc, 0);
@@ -1305,7 +1303,7 @@ digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case TIOCMSDTRWAIT:
 		error = suser(td);
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		port->dtr_wait = *(int *)data *hz / 100;
@@ -1321,10 +1319,10 @@ digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 #endif
 	default:
-		splx(s);
+		crit_exit();
 		return (ENOTTY);
 	}
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -1361,7 +1359,7 @@ digiparam(struct tty *tp, struct termios *t)
 	if (cflag < 0 || (cflag > 0 && t->c_ispeed != t->c_ospeed))
 		return (EINVAL);
 
-	s = splclock();
+	crit_enter();
 
 	window = sc->window;
 	sc->setwin(sc, 0);
@@ -1436,7 +1434,7 @@ digiparam(struct tty *tp, struct termios *t)
 		sc->towin(sc, 0);
 	if (window != 0)
 		sc->towin(sc, window);
-	splx(s);
+	crit_exit();
 
 	return (0);
 }
@@ -1678,7 +1676,6 @@ digistart(struct tty *tp)
 	volatile struct board_chan *bc;
 	int head, tail;
 	int size, ocount, totcnt = 0;
-	int s;
 	int wmask;
 
 	unit = MINOR_TO_UNIT(minor(tp->t_dev));
@@ -1692,7 +1689,7 @@ digistart(struct tty *tp)
 
 	wmask = port->txbufsize - 1;
 
-	s = spltty();
+	crit_enter();
 	port->lcc = tp->t_outq.c_cc;
 	sc->setwin(sc, 0);
 	if (!(tp->t_state & TS_TBLOCK)) {
@@ -1753,7 +1750,7 @@ digistart(struct tty *tp)
 	port->lbuf = size;
 	DLOG(DIGIDB_INT, (sc->dev, "port%d: s total cnt = %d\n", pnum, totcnt));
 	ttwwakeup(tp);
-	splx(s);
+	crit_exit();
 }
 
 static void

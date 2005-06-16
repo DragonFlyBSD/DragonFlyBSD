@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.11 2004/09/19 01:13:33 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.12 2005/06/16 16:03:10 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -86,8 +86,9 @@
 #include <sys/bus.h>
 #include <sys/kobj.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
+#include <machine/bus.h>
 #include <machine/resource.h>
 
 #include <machine/clock.h>
@@ -944,7 +945,6 @@ dgmopen(dev_t dev, int flag, int mode, struct thread *td)
 	int mynor;
 	int pnum;
 	struct dgm_p *port;
-	int s, cs;
 	int error;
 	volatile struct board_chan *bc;
 
@@ -983,7 +983,7 @@ dgmopen(dev_t dev, int flag, int mode, struct thread *td)
 	bc = port->brdchan;
 
 open_top:
-	s = spltty();
+	crit_enter();
 
 	while (port->closing) {
 		error = tsleep(&port->closing, PCATCH, "dgocl", 0);
@@ -1020,7 +1020,7 @@ open_top:
 				    " error = %d\n", unit, pnum, error);
 				goto out;
 			}
-			splx(s);
+			crit_exit();
 			goto open_top;
 		}
 		if (tp->t_state & TS_XCLUDE && suser(td)) {
@@ -1042,7 +1042,7 @@ open_top:
 							port->it_out :
 							port->it_in;
 
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		port->imodem = bc->mstat;
 		bc->rout = bc->rin; /* clear input queue */
@@ -1053,7 +1053,7 @@ open_top:
 #endif
 
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 
 		port->wopeners++;
 		error = dgmparam(tp, &tp->t_termios);
@@ -1085,7 +1085,7 @@ open_top:
 			    " error = %d\n", unit, pnum, error);
 			goto out;
 		}
-		splx(s);
+		crit_exit();
 		goto open_top;
 	}
 	error = linesw[tp->t_line].l_open(dev, tp);
@@ -1104,7 +1104,7 @@ open_top:
 
 out:
 	disc_optim(tp, &tp->t_termios);
-	splx(s);
+	crit_exit();
 
 	if (!(tp->t_state & TS_ISOPEN) && port->wopeners == 0)
 		dgmhardclose(port);
@@ -1124,7 +1124,6 @@ dgmclose(dev_t dev, int flag, int mode, struct thread *td)
 	int unit, pnum;
 	struct dgm_softc *sc;
 	struct dgm_p *port;
-	int s;
 	int i;
 
 	mynor = minor(dev);
@@ -1142,7 +1141,7 @@ dgmclose(dev_t dev, int flag, int mode, struct thread *td)
 	DPRINT3(DB_CLOSE, "dgm%d: port%d: draining port\n", unit, pnum);
         dgm_drain_or_flush(port);
 
-	s = spltty();
+	crit_enter();
 
 	port->closing = 1;
 	DPRINT3(DB_CLOSE, "dgm%d: port%d: closing line disc\n", unit, pnum);
@@ -1163,7 +1162,7 @@ dgmclose(dev_t dev, int flag, int mode, struct thread *td)
 		if (sc->ports[i].used)
 			break;
 
-	splx(s);
+	crit_exit();
 
 	DPRINT3(DB_CLOSE, "dgm%d: port%d: closed\n", unit, pnum);
 
@@ -1181,11 +1180,10 @@ dgmhardclose(struct dgm_p *port)
 {
 	volatile struct board_chan *bc = port->brdchan;
 	struct dgm_softc *sc;
-	int cs;
 
 	sc = devclass_get_softc(dgmdevclass, port->sc->unit);
 	DPRINT2(DB_INFO, "dgm%d: dgmhardclose\n", sc->unit);
-	cs = splclock();
+	crit_enter();
 	port->do_timestamp = 0;
 	setwin(sc, 0);
 
@@ -1198,7 +1196,7 @@ dgmhardclose(struct dgm_p *port)
 	}
 
 	hidewin(sc);
-	splx(cs);
+	crit_exit();
 
 	callout_reset(&port->hc_timeout, hz / 2, dgm_pause, &port->brdchan);
 	tsleep(&port->brdchan, PCATCH, "dgclo", 0);
@@ -1393,7 +1391,6 @@ dgmpoll(void *unit_c)
 					for (obuf_full = FALSE;
 					    tp->t_outq.c_cc != 0 && !obuf_full;
 					    ) {
-						int s;
 						/* add "last-minute" data to write buffer */
 						if (!(tp->t_state & TS_BUSY)) {
 							hidewin(sc);
@@ -1410,7 +1407,7 @@ dgmpoll(void *unit_c)
 #endif
 					                setwin(sc, 0);
 				                }
-						s = spltty();
+						crit_enter();
 
 					whead = bc->tin & wrapmask;
 					wtail = bc->tout & wrapmask;
@@ -1429,7 +1426,7 @@ dgmpoll(void *unit_c)
 						bc->iempty = 1;
 						bc->ilow = 1;
 						obuf_full = TRUE;
-						splx(s);
+						crit_exit();
 						break;
 					}
 
@@ -1441,7 +1438,7 @@ dgmpoll(void *unit_c)
 					setwin(sc, 0);
 					bc->tin = whead;
 					bc->tin = whead & wrapmask;
-					splx(s);
+					crit_exit();
 				}
 
 				if (obuf_full) {
@@ -1499,7 +1496,6 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	struct tty *tp;
 	volatile struct board_chan *bc;
 	int error;
-	int s, cs;
 	int tiocm_xxx;
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
@@ -1590,18 +1586,18 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	}
 
 	if (cmd == TIOCSTOP) {
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, PAUSETX, 0, 0, 0, 0);
 		bmws_set(ws);
-		splx(cs);
+		crit_exit();
 		return 0;
 	} else if (cmd == TIOCSTART) {
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, RESUMETX, 0, 0, 0, 0);
 		bmws_set(ws);
-		splx(cs);
+		crit_exit();
 		return 0;
 	}
 
@@ -1611,12 +1607,12 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, td);
 	if (error != ENOIOCTL)
 		return error;
-	s = spltty();
+	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	disc_optim(tp, &tp->t_termios);
 	port->mustdrain = 0;
 	if (error != ENOIOCTL) {
-		splx(s);
+		crit_exit();
 		if (cmd == TIOCSETA || cmd == TIOCSETAW || cmd == TIOCSETAF) {
 			DPRINT6(DB_PARAM, "dgm%d: port%d: dgmioctl-RES c = 0x%x i = 0x%x l = 0x%x\n", unit, pnum, tp->t_cflag, tp->t_iflag, tp->t_lflag);
 		}
@@ -1629,12 +1625,12 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		error = dgmdrain(port);
 
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			return error;
 		}
 #endif
 
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 
 		/* now it sends 400 millisecond break because I don't know */
@@ -1642,7 +1638,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 		fepcmd(port, SENDBREAK, 400, 0, 10, 0);
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 		break;
 	case TIOCCBRK:
 		/* now it's empty */
@@ -1650,7 +1646,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case TIOCSDTR:
 		DPRINT3(DB_MODEM, "dgm%d: port%d: set DTR\n", unit, pnum);
 		port->omodem |= DTR;
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, SETMODEM, port->omodem, RTS, 0, 1);
 
@@ -1658,12 +1654,12 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			DPRINT3(DB_MODEM, "dgm%d: port%d: DTR is off\n", unit, pnum);
 
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 		break;
 	case TIOCCDTR:
 		DPRINT3(DB_MODEM, "dgm%d: port%d: reset DTR\n", unit, pnum);
 		port->omodem &= ~DTR;
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, SETMODEM, port->omodem, RTS|DTR, 0, 1);
 
@@ -1672,7 +1668,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		}
 
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 		break;
 	case TIOCMSET:
 		if (*(int *)data & TIOCM_DTR)
@@ -1685,11 +1681,11 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		else
 			port->omodem &= ~RTS;
 
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, SETMODEM, port->omodem, RTS|DTR, 0, 1);
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 		break;
 	case TIOCMBIS:
 		if (*(int *)data & TIOCM_DTR)
@@ -1698,11 +1694,11 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		if (*(int *)data & TIOCM_RTS)
 			port->omodem |= RTS;
 
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, SETMODEM, port->omodem, RTS|DTR, 0, 1);
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 		break;
 	case TIOCMBIC:
 		if (*(int *)data & TIOCM_DTR)
@@ -1711,11 +1707,11 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		if (*(int *)data & TIOCM_RTS)
 			port->omodem &= ~RTS;
 
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 		fepcmd(port, SETMODEM, port->omodem, RTS|DTR, 0, 1);
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 		break;
 	case TIOCMGET:
 		setwin(sc, 0);
@@ -1757,7 +1753,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		/* must be root since the wait applies to following logins */
 		error = suser(td);
 		if (error != 0) {
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		port->close_delay = *(int *)data * hz / 100;
@@ -1775,11 +1771,11 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 	default:
 		bmws_set(ws);
-		splx(s);
+		crit_exit();
 		return ENOTTY;
 	}
 	bmws_set(ws);
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -1914,7 +1910,6 @@ dgmparam(struct tty *tp, struct termios *t)
 	int mval;
 	int iflag;
 	int hflow;
-	int cs;
 	BoardMemWinState ws = bmws_get();
 
 	sc = devclass_get_softc(dgmdevclass, unit);
@@ -1938,7 +1933,7 @@ dgmparam(struct tty *tp, struct termios *t)
 		return (EINVAL);
 	}
 
-	cs = splclock();
+	crit_enter();
 	setwin(sc, 0);
 
 	if (cflag == 0) { /* hangup */
@@ -1992,7 +1987,7 @@ dgmparam(struct tty *tp, struct termios *t)
 	}
 
 	bmws_set(ws);
-	splx(cs);
+	crit_exit();
 
 	return 0;
 
@@ -2008,7 +2003,6 @@ dgmstart(struct tty *tp)
 	volatile struct board_chan *bc;
 	int head, tail;
 	int size, ocount;
-	int s;
 	int wmask;
 
 	BoardMemWinState ws = bmws_get();
@@ -2021,10 +2015,9 @@ dgmstart(struct tty *tp)
 
 	wmask = port->txbufsize - 1;
 
-	s = spltty();
+	crit_enter();
 
 	while (tp->t_outq.c_cc != 0) {
-		int cs;
 #ifndef TS_ASLEEP	/* post 2.0.5 FreeBSD */
 		ttwwakeup(tp);
 #else
@@ -2036,7 +2029,7 @@ dgmstart(struct tty *tp)
 			/*selwakeup(&tp->t_wsel);*/
 		}
 #endif
-		cs = splclock();
+		crit_enter();
 		setwin(sc, 0);
 
 		head = bc->tin & wmask;
@@ -2070,10 +2063,10 @@ dgmstart(struct tty *tp)
 		if (size == 0) {
 			bc->iempty = 1;
 			bc->ilow = 1;
-			splx(cs);
+			crit_exit();
 			bmws_set(ws);
 			tp->t_state |= TS_BUSY;
-			splx(s);
+			crit_exit();
 			return;
 		}
 
@@ -2090,11 +2083,11 @@ dgmstart(struct tty *tp)
 		DPRINT5(DB_WR, "dgm%d: port%d: tx avail = %d count = %d\n",
 		    unit, pnum, size, ocount);
 		hidewin(sc);
-		splx(cs);
+		crit_exit();
 	}
 
 	bmws_set(ws);
-	splx(s);
+	crit_exit();
 
 #ifndef TS_ASLEEP	/* post 2.0.5 FreeBSD */
 	if (tp->t_state & TS_BUSY) {
@@ -2119,7 +2112,6 @@ dgmstop(struct tty *tp, int rw)
 	struct dgm_p *port;
 	struct dgm_softc *sc;
 	volatile struct board_chan *bc;
-	int s;
 
 	BoardMemWinState ws = bmws_get();
 
@@ -2132,7 +2124,7 @@ dgmstop(struct tty *tp, int rw)
 
 	DPRINT3(DB_WR, "dgm%d: port%d: stop\n", port->sc->unit, port->pnum);
 
-	s = spltty();
+	crit_enter();
 	setwin(sc, 0);
 
 	if (rw & FWRITE) {
@@ -2148,7 +2140,7 @@ dgmstop(struct tty *tp, int rw)
 	}
 	hidewin(sc);
 	bmws_set(ws);
-	splx(s);
+	crit_exit();
 	dgmstart(tp);
 }
 
