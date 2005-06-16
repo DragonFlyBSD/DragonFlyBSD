@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.9 2004/04/07 05:45:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.10 2005/06/16 21:12:31 dillon Exp $
  */
 
 /*
@@ -269,7 +269,7 @@ int unit;
   EVENTHANDLER_REGISTER(shutdown_post_sync, en_pci_shutdown, scp,
 			SHUTDOWN_PRI_DEFAULT);
 
-  if (!pci_map_int(config_id, en_intr, (void *) sc, &net_imask)) {
+  if (!pci_map_int(config_id, en_intr, (void *) sc)) {
     printf("%s: couldn't establish interrupt\n", sc->sc_dev.dv_xname);
     return;
   }

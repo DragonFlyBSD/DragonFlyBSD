@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.8 2005/06/10 22:16:05 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.9 2005/06/16 21:12:49 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -156,7 +156,7 @@ crypto_init(void)
 	TAILQ_INIT(&crp_ret_q);
 	TAILQ_INIT(&crp_ret_kq);
 
-	register_swi(SWI_CRYPTO, cryptointr, NULL, "swi_crypto", NULL);
+	register_swi(SWI_CRYPTO, cryptointr, NULL, "swi_crypto");
 	error = kthread_create((void (*)(void *)) cryptoret, NULL,
 		    &cryptothread, "cryptoret");
 	if (error) {

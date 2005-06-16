@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.4 2004/03/30 19:14:15 dillon Exp $
+ * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.5 2005/06/16 21:12:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -94,8 +94,6 @@ ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
 #endif
 
 ASSYM(RW_OWNER, offsetof(struct lwkt_rwlock, rw_owner));
-
-ASSYM(TD_CPL, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_cpl));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);

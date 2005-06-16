@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.17 2005/02/27 12:44:43 asmodai Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.18 2005/06/16 21:12:47 dillon Exp $
  */
 
 #define ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
@@ -113,12 +113,9 @@ IDTVEC(vec_name) ; 							\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
-	movl	TD_CPL(%ebx),%eax ;	/* save the cpl for doreti */	\
-	pushl	%eax ;							\
+	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num), %eax ;				\
-	jz	2f ;							\
+	jl	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
@@ -207,12 +204,9 @@ IDTVEC(vec_name) ; 							\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
-	movl	TD_CPL(%ebx), %eax ;					\
-	pushl	%eax ;		/* push CPL for doreti */		\
+	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num), %eax ;				\
-	jz	2f ;							\
+	jl	2f ;							\
 1: ;									\
 	/* set the pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\

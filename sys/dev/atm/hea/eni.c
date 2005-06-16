@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.7 2005/02/01 00:51:49 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.8 2005/06/16 21:12:27 dillon Exp $
  */
 
 /*
@@ -460,7 +460,7 @@ eni_pci_attach ( pcici_t config_id, int unit )
 	/*
 	 * Map interrupt in
 	 */
-	if ( !pci_map_int ( config_id, eni_intr, (void *)eup, &net_imask ) )
+	if ( !pci_map_int ( config_id, eni_intr, (void *)eup) )
 	{
 		log(LOG_ERR, "%s%d: unable to map interrupt\n", 
 			ENI_DEV_NAME, unit);

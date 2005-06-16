@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.11 2005/06/02 21:36:09 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.12 2005/06/16 21:12:29 dillon Exp $
  */
 
 /*
@@ -270,7 +270,7 @@ fore_pci_attach(config_id, unit)
 	/*
 	 * Map interrupt in
 	 */
-	if ( !pci_map_int( config_id, fore_intr, fup, &net_imask ) ) {
+	if ( !pci_map_int( config_id, fore_intr, fup) ) {
 		log(LOG_ERR, "%s%d: unable to map interrupt\n", 
 			FORE_DEV_NAME, unit);
 		goto failed;

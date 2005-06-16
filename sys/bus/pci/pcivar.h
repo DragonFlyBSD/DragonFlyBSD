@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.8 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.9 2005/06/16 21:12:25 dillon Exp $
  *
  */
 
@@ -376,10 +376,9 @@ u_long pci_conf_read (pcici_t tag, u_long reg);
 void pci_conf_write (pcici_t tag, u_long reg, u_long data);
 int pci_map_port (pcici_t tag, u_long reg, pci_port_t* pa);
 int pci_map_mem (pcici_t tag, u_long reg, vm_offset_t* va, vm_offset_t* pa);
-int pci_map_int (pcici_t tag, pci_inthand_t *handler, void *arg,
-		 intrmask_t *maskptr);
+int pci_map_int (pcici_t tag, pci_inthand_t *handler, void *arg);
 int pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
-		      intrmask_t *maskptr, u_int flags);
+		      u_int flags);
 int pci_unmap_int (pcici_t tag);
 
 pcici_t pci_get_parent_from_tag(pcici_t tag);

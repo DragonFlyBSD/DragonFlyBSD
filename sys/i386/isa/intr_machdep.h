@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.14 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.15 2005/06/16 21:12:47 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -149,7 +149,6 @@ typedef void unpendhand_t(void);
 
 extern u_long *intr_countp[];	/* pointers into intrcnt[] */
 extern inthand2_t *intr_handler[];	/* C entry points for FAST ints */
-extern u_int intr_mask[];	/* sets of intrs masked during handling of 1 */
 extern void *intr_unit[];	/* cookies to pass to intr handlers */
 
 inthand_t
@@ -212,19 +211,16 @@ inthand_t
 void	call_fast_unpend(int irq);
 void	isa_defaultirq (void);
 int	isa_nmi (int cd);
-int	icu_setup (int intr, inthand2_t *func, void *arg, 
-		       u_int *maskptr, int flags);
+int	icu_setup (int intr, inthand2_t *func, void *arg, int flags);
 int	icu_unset (int intr, inthand2_t *handler);
 void	icu_reinit (void);
-int	update_intr_masks (void);
 
 /*
  * WARNING: These are internal functions and not to be used by device drivers!
  * They are subject to change without notice. 
  */
 struct intrec *inthand_add(const char *name, int irq, inthand2_t handler,
-			   void *arg, intrmask_t *maskptr, int flags,
-			   lwkt_serialize_t serializer);
+			   void *arg, int flags, lwkt_serialize_t serializer);
 
 int inthand_remove(struct intrec *idesc);
 void forward_fastint_remote(void *arg);

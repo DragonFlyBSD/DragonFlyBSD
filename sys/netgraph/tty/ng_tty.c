@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.10 2005/06/02 22:11:46 swildner Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.11 2005/06/16 21:12:48 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -654,20 +654,6 @@ ngt_mod_event(module_t mod, int event, void *data)
 
 	switch (event) {
 	case MOD_LOAD:
-#ifdef __i386__
-		/* Insure the soft net "engine" can't run during spltty code */
-		crit_enter();
-		tty_imask |= softnet_imask; /* spltty() block spl[soft]net() */
-		net_imask |= softtty_imask; /* splimp() block splsofttty() */
-		net_imask |= tty_imask;	    /* splimp() block spltty() */
-		update_intr_masks();
-		crit_exit();
-
-		if (bootverbose)
-			log(LOG_DEBUG, "new masks: bio %x, tty %x, net %x\n",
-			    bio_imask, tty_imask, net_imask);
-#endif
-
 		/* Register line discipline */
 		crit_enter();
 		if ((ngt_ldisc = ldisc_register(NETGRAPHDISC, &ngt_disc)) < 0) {

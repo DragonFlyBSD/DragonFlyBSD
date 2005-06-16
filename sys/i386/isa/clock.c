@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.30 2005/06/11 09:03:49 swildner Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.31 2005/06/16 21:12:47 dillon Exp $
  */
 
 /*
@@ -118,7 +118,6 @@ int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
 volatile u_int	idelayed;
 int	statclock_disable = 1;	/* we don't use the statclock right now */
-u_int	stat_imask = SWI_CLOCK_MASK;
 u_int	tsc_freq;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
@@ -129,7 +128,6 @@ enum tstate timer1_state;
 enum tstate timer2_state;
 
 static	int	beeping = 0;
-static	u_int	clk_imask = HWI_MASK | SWI_MASK;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
@@ -945,7 +943,6 @@ cpu_initclocks()
 		 * flag which would normally cause the RTC to generate
 		 * interrupts.
 		 */
-		stat_imask = HWI_MASK | SWI_MASK;
 		rtc_statusb = RTCSB_24HR;
 	} else {
 	        /* Setting stathz to nonzero early helps avoid races. */
@@ -971,12 +968,12 @@ cpu_initclocks()
 	}
 
 	clkdesc = inthand_add("clk", apic_8254_intr, (inthand2_t *)clkintr,
-			      NULL, &clk_imask, INTR_EXCL | INTR_FAST, NULL);
+			      NULL, INTR_EXCL | INTR_FAST, NULL);
 	INTREN(1 << apic_8254_intr);
 	
 #else /* APIC_IO */
 
-	inthand_add("clk", 0, (inthand2_t *)clkintr, NULL, &clk_imask,
+	inthand_add("clk", 0, (inthand2_t *)clkintr, NULL,
 		    INTR_EXCL | INTR_FAST, NULL);
 	INTREN(IRQ0);
 
@@ -996,7 +993,7 @@ cpu_initclocks()
 			panic("APIC RTC != 8");
 #endif /* APIC_IO */
 
-		inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL, &stat_imask,
+		inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL,
 			    INTR_EXCL | INTR_FAST, NULL);
 
 #ifdef APIC_IO
@@ -1052,7 +1049,7 @@ cpu_initclocks()
 			setup_8254_mixed_mode();
 			inthand_add("clk", apic_8254_intr,
 				    (inthand2_t *)clkintr,
-				    NULL, &clk_imask, 
+				    NULL,
 				    INTR_EXCL | INTR_FAST, NULL);
 			INTREN(1 << apic_8254_intr);
 		}

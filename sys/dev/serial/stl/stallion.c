@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.13 2005/06/08 08:25:50 okumoto Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.14 2005/06/16 21:12:42 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -1087,7 +1087,7 @@ void stlpciattach(pcici_t tag, int unit)
         brdp->unitid = brdp->brdnr; /* PCI units auto-assigned */
         brdp->irq = ((int) pci_conf_read(tag, 0x3c)) & 0xff;
         brdp->irqtype = 0;
-        if (pci_map_int(tag, stlpciintr, (void *) NULL, &tty_imask) == 0) {
+        if (pci_map_int(tag, stlpciintr, (void *) NULL) == 0) {
                 printf("STALLION: failed to map interrupt irq=%d for unit=%d\n",
                         brdp->irq, brdp->brdnr);
                 return;

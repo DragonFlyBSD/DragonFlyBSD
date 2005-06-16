@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.16 2005/06/06 15:02:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.17 2005/06/16 21:12:44 dillon Exp $
  */
 
 /*
@@ -168,12 +168,6 @@ configure(dummy)
 	if (isa_bus_device)
 		isa_probe_children(isa_bus_device);
 #endif
-
-	/*
-	 * Now we're ready to handle (pending) interrupts.
-	 * XXX this is slightly misplaced.
-	 */
-	spl0();
 
 	/*
 	 * Allow lowering of the ipl to the lowest kernel level if we

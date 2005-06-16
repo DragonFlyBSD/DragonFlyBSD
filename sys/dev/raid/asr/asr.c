@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.20 2005/06/09 20:55:05 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.21 2005/06/16 21:12:38 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -81,7 +81,6 @@
  *              - Performance affected by TID caching reallocing.
  *              - Made suggested changes by Justin_Gibbs@adaptec.com
  *                      - use splcam instead of splbio.
- *                      - use cam_imask instead of bio_imask.
  *                      - use u_int8_t instead of u_char.
  *                      - use u_int16_t instead of u_short.
  *                      - use u_int32_t instead of u_long where appropriate.

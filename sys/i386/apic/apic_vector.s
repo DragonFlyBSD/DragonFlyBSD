@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.18 2004/02/21 06:37:08 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.19 2005/06/16 21:12:47 dillon Exp $
  */
 
 
@@ -153,12 +153,10 @@ IDTVEC(vec_name) ;							\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	EOI_IRQ(irq_num) ;						\
 	movl	PCPU(curthread),%ebx ;					\
-	movl	TD_CPL(%ebx),%eax ;					\
+	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num), %eax ;				\
-	jz	2f ;							\
+	jl	2f ;							\
 1: ;									\
 	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
@@ -266,12 +264,10 @@ IDTVEC(vec_name) ;							\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	EOI_IRQ(irq_num) ;						\
 	movl	PCPU(curthread),%ebx ;					\
-	movl	TD_CPL(%ebx),%eax ;					\
+	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;		/* cpl do restore */			\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num),%eax ;				\
-	jz	2f ;							\
+	jl	2f ;							\
 1: ;									\
 	/* set the pending bit and return, leave the interrupt masked */ \
 	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
@@ -428,7 +424,7 @@ Xipiq:
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	decl	PCPU(intr_nesting_level)
 	addl	$8,%esp
-	pushl	TD_CPL(%ebx)
+	pushl	$0			/* CPL for frame (REMOVED) */
 	MEXITCOUNT
 	jmp	doreti
 1:
@@ -540,39 +536,6 @@ Xrendezvous:
 	
 	
 	.data
-
-#if 0
-/*
- * Addresses of interrupt handlers.
- *  XresumeNN: Resumption addresses for HWIs.
- */
-	.globl _ihandlers
-_ihandlers:
-/*
- * used by:
- *  ipl.s:	doreti_unpend
- */
-	.long	Xresume0,  Xresume1,  Xresume2,  Xresume3 
-	.long	Xresume4,  Xresume5,  Xresume6,  Xresume7
-	.long	Xresume8,  Xresume9,  Xresume10, Xresume11
-	.long	Xresume12, Xresume13, Xresume14, Xresume15 
-	.long	Xresume16, Xresume17, Xresume18, Xresume19
-	.long	Xresume20, Xresume21, Xresume22, Xresume23
-/*
- * used by:
- *  ipl.s:	doreti_unpend
- *  apic_ipl.s:	splz_unpend
- */
-	.long	_swi_null, swi_net, _swi_null, _swi_null
-	.long	_swi_vm, _swi_null, _softclock
-
-imasks:				/* masks for interrupt handlers */
-	.space	NHWI*4		/* padding; HWI masks are elsewhere */
-
-	.long	SWI_TTY_MASK, SWI_NET_MASK, SWI_CAMNET_MASK, SWI_CAMBIO_MASK
-	.long	SWI_VM_MASK, SWI_TQ_MASK, SWI_CLOCK_MASK
-#endif	/* 0 */
-
 
 #ifdef COUNT_XINVLTLB_HITS
 	.globl	xhits

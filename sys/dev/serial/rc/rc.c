@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.14 2005/06/08 08:25:50 okumoto Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.15 2005/06/16 21:12:40 dillon Exp $
  *
  */
 
@@ -271,7 +271,7 @@ rcattach(dvp)
 	rcb->rcb_probed = RC_ATTACHED;
 	if (!rc_started) {
 		cdevsw_add(&rc_cdevsw, -1, rcb->rcb_unit);
-		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll", NULL);
+		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll");
 		callout_init(&rc_wakeup_ch);
 		rc_wakeup(NULL);
 		rc_started = 1;

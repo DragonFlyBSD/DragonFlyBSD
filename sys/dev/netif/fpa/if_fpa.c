@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.9 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.10 2005/06/16 21:12:34 dillon Exp $
  */
 
 /*
@@ -187,7 +187,7 @@ pdq_pci_attach(
     bcopy((caddr_t) sc->sc_pdq->pdq_hwaddr.lanaddr_bytes, sc->sc_ac.ac_enaddr, 6);
     pdqs_pci[unit] = sc;
     pdq_ifattach(sc, pdq_pci_ifwatchdog);
-    pci_map_int(config_id, pdq_pci_ifintr, (void*) sc, &net_imask);
+    pci_map_int(config_id, pdq_pci_ifintr, (void*) sc);
     EVENTHANDLER_REGISTER(shutdown_post_sync, pdq_pci_shutdown, sc,
 			  SHUTDOWN_PRI_DEFAULT);
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.16 2005/06/11 09:03:49 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.17 2005/06/16 21:12:44 dillon Exp $
  */
 
 /*
@@ -498,7 +498,6 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		 int flags, void (*ihand)(void *), void *arg,
 		 void **cookiep, lwkt_serialize_t serializer)
 {
-	intrmask_t	*mask;
 	driver_t	*driver;
 	int	error, icflags;
 
@@ -513,34 +512,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		icflags = INTR_EXCL;
 
 	driver = device_get_driver(child);
-	switch (flags & INTR_TYPE_MASK) {
-	case INTR_TYPE_AV:
-	case INTR_TYPE_TTY:
-		mask = &tty_imask;
-		break;
-	case INTR_TYPE_BIO:
-		mask = &bio_imask;
-		break;
-	case INTR_TYPE_NET:
-		mask = &net_imask;
-		break;
-	case INTR_TYPE_CAM:
-		mask = &cam_imask;
-		break;
-	case INTR_TYPE_CLK:
-		mask = NULL;
-		printf("nexus: Warning: do not know what imask to use for INTR_TYPE_CLK\n");
-		break;
-	case INTR_TYPE_MISC:
-		mask = NULL;
-		break;
-	default:
-		panic("still using grody create_intr interface");
-	}
-	if (serializer && mask != NULL) {
-		device_printf(child, "nexus_setup_intr: Warning, driver must set interrupt type to INTR_TYPE_MISC when using a serializer.\n");
-		mask = NULL;
-	}
+
 	if (flags & INTR_FAST)
 		icflags |= INTR_FAST;
 
@@ -552,7 +524,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		return (error);
 
 	*cookiep = inthand_add(device_get_nameunit(child), irq->r_start,
-	    ihand, arg, mask, icflags, serializer);
+	    ihand, arg, icflags, serializer);
 	if (*cookiep == NULL)
 		error = EINVAL;	/* XXX ??? */
 

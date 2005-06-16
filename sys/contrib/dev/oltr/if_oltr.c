@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.19 2005/06/09 20:47:37 swildner Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.20 2005/06/16 21:12:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -608,7 +608,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	/*
 	 * Allocate interrupt and DMA channel
 	 */
-	if (!pci_map_int(config_id, oltr_intr, sc, &net_imask)) {
+	if (!pci_map_int(config_id, oltr_intr, sc)) {
 		printf("oltr%d: couldn't setup interrupt\n", unit);
 		goto config_failed;
 	}

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.5 2004/02/21 17:35:35 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.6 2005/06/16 21:12:39 dillon Exp $
  */
 
 /*
@@ -119,11 +119,11 @@ cy_attach(config_id, unit)
 	if (
 #ifdef CY_PCI_FASTINTR
 	    !pci_map_int_right(config_id, (pci_inthand_t *)cyintr,
-			       (void *)adapter, &tty_imask,
+			       (void *)adapter,
 			       INTR_EXCL | INTR_FAST) &&
 #endif
 	    !pci_map_int_right(config_id, (pci_inthand_t *)cyintr,
-			       (void *)adapter, &tty_imask, 0)) {
+			       (void *)adapter, 0)) {
 		printf("cy%d: couldn't map interrupt\n", unit);
 		goto fail;
 	}

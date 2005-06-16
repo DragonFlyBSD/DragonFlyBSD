@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.17 2004/03/30 19:14:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.18 2005/06/16 21:12:47 dillon Exp $
  */
 
 
@@ -45,29 +45,8 @@
  * AT/386
  * Vector interrupt control section
  *
- *  *_imask	- Interrupt masks for various spl*() functions
  *  ipending	- Pending interrupts (set when a masked interrupt occurs)
  */
-
-	.data
-	ALIGN_DATA
-
-/* current priority (all off) */
-
-	.globl	tty_imask
-tty_imask:	.long	SWI_TTY_MASK
-	.globl	bio_imask
-bio_imask:	.long	SWI_CLOCK_MASK | SWI_CAMBIO_MASK
-	.globl	net_imask
-net_imask:	.long	SWI_NET_MASK | SWI_CAMNET_MASK
-	.globl	cam_imask
-cam_imask:	.long	SWI_CAMBIO_MASK | SWI_CAMNET_MASK
-	.globl	soft_imask
-soft_imask:	.long	SWI_MASK
-	.globl	softnet_imask
-softnet_imask:	.long	SWI_NET_MASK
-	.globl	softtty_imask
-softtty_imask:	.long	SWI_TTY_MASK
 
 	.text
 	/*
@@ -101,23 +80,27 @@ softtty_imask:	.long	SWI_TTY_MASK
 	 * If we are in a critical section we cannot run any pending ints
 	 * nor can be play with mp_lock.
 	 *
+	 * NOTE: Since SPLs no longer exist, all callers of this function
+	 * push $0 for the CPL.  HOWEVER, we *STILL* use the cpl mask within
+	 * this function to mark fast interrupts which could not be dispatched
+	 * do to the unavailability of the BGL.
 	 */
 	SUPERALIGN_TEXT
 	.type	doreti,@function
 doreti:
 	FAKE_MCOUNT(bintr)		/* init "from" bintr -> doreti */
-	popl	%eax			/* cpl to restore */
+	popl	%eax			/* cpl to restore XXX */
+	movl	$0,%eax			/* irq mask unavailable due to BGL */
 	movl	PCPU(curthread),%ebx
 	cli				/* interlock with TDPRI_CRIT */
 	cmpl	$0,PCPU(reqflags)	/* short cut if nothing to do */
 	je	5f
-	movl	%eax,TD_CPL(%ebx)	/* save cpl being restored */
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) /* can't unpend if in critical sec */
 	jge	5f
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) /* force all ints to pending */
 doreti_next:
 	sti				/* allow new interrupts */
-	movl	%eax,%ecx		/* cpl being restored */
+	movl	%eax,%ecx		/* irq mask unavailable due to BGL */
 	notl	%ecx
 	cli				/* disallow YYY remove */
 #ifdef SMP
@@ -143,11 +126,9 @@ doreti_next:
 2:
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
-	 * If our temporary cpl mask is 0 then we have processed all pending
-	 * fast and normal ints including those requiring the MP lock,
-	 * and we have processed as many of the reqflags as possible based
-	 * on whether we came from user mode or not.   So if %eax is 0 we
-	 * can clear the interrupt-related reqflags.
+	 * %eax contains the mask of IRQ's that are not available due to
+	 * BGL requirements.  We can only clear RQF_INTPEND if *ALL* pending
+	 * interrupts have been processed.
 	 */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
 	testl	%eax,%eax
@@ -191,7 +172,8 @@ doreti_popl_fs_fault:
 	jmp	alltraps_with_regs_pushed
 
 	/*
-	 * FAST interrupt pending
+	 * FAST interrupt pending.  NOTE: stack context holds frame structure
+	 * for fast interrupt procedure, do not do random pushes or pops!
 	 */
 	ALIGN_TEXT
 doreti_fast:
@@ -199,7 +181,8 @@ doreti_fast:
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	doreti_next
-	pushl	%eax			/* YYY cpl (expected by frame) */
+	pushl	%eax			/* save IRQ mask unavailable for BGL */
+					/* NOTE: is also CPL in frame */
 #ifdef SMP
 	pushl	%ecx			/* save ecx */
 	call	try_mplock
@@ -272,13 +255,14 @@ doreti_ast:
 	 * IPIQ message pending.  We clear RQF_IPIQ automatically.
 	 */
 doreti_ipiq:
+	movl	%eax,%esi		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	subl	$8,%esp			/* add dummy vec and ppl */
 	call	lwkt_process_ipiq_frame
 	addl	$8,%esp
 	decl	PCPU(intr_nesting_level)
-	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
+	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
 #endif
@@ -288,8 +272,8 @@ doreti_ipiq:
 	 *	  interrupts regardless of critical section nesting.  ASTs
 	 *	  are not dispatched.
 	 *
-	 *	YYY at the moment I leave us in a critical section so as
-	 *	not to have to mess with the cpls which will soon be obsolete.
+	 * 	  Use %eax to track those IRQs that could not be processed
+	 *	  due to BGL requirements.
 	 */
 	SUPERALIGN_TEXT
 
@@ -297,8 +281,8 @@ ENTRY(splz)
 	pushfl
 	pushl	%ebx
 	movl	PCPU(curthread),%ebx
-	movl	TD_CPL(%ebx),%eax
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	movl	$0,%eax
 
 splz_next:
 	cli
@@ -318,9 +302,9 @@ splz_next:
 
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
-	 * If our temporary cpl mask is 0 then we have processed everything
-	 * (including any pending fast ints requiring the MP lock), and
-	 * we can clear RQF_INTPEND.
+	 * If our mask of IRQs we couldn't process due to BGL requirements
+	 * is 0 then there are no pending interrupt sources left and we
+	 * can clear RQF_INTPEND.
 	 */
 	testl	%eax,%eax
 	jnz	5f

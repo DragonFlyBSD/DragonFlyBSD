@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.8 2005/05/24 20:58:52 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.9 2005/06/16 21:12:25 dillon Exp $
  *
  */
 
@@ -107,14 +107,13 @@ pci_map_mem(pcici_t cfg, u_long reg, vm_offset_t* va, vm_offset_t* pa)
 }
 
 int
-pci_map_int(pcici_t cfg, pci_inthand_t *handler, void *arg, intrmask_t *maskptr)
+pci_map_int(pcici_t cfg, pci_inthand_t *handler, void *arg)
 {
-	return (pci_map_int_right(cfg, handler, arg, maskptr, 0));
+	return (pci_map_int_right(cfg, handler, arg, 0));
 }
 
 int
-pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
-		  intrmask_t *maskptr, u_int intflags)
+pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags)
 {
 	int error;
 #ifdef APIC_IO
@@ -143,14 +142,6 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
 		/*
 		 * This is ugly. Translate the mask into an interrupt type.
 		 */
-		if (maskptr == &tty_imask)
-			flags |= INTR_TYPE_TTY;
-		else if (maskptr == &bio_imask)
-			flags |= INTR_TYPE_BIO;
-		else if (maskptr == &net_imask)
-			flags |= INTR_TYPE_NET;
-		else if (maskptr == &cam_imask)
-			flags |= INTR_TYPE_CAM;
 
 		error = BUS_SETUP_INTR(device_get_parent(cfg->dev), cfg->dev,
 				       res, flags, handler, arg, &ih, NULL);

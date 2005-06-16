@@ -33,7 +33,7 @@
  * 
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/i386/include/Attic/thread.h,v 1.12 2005/04/11 11:00:40 hmp Exp $
+ * $DragonFly: src/sys/i386/include/Attic/thread.h,v 1.13 2005/06/16 21:12:46 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
@@ -44,14 +44,13 @@
 union savefpu;
 
 struct md_thread {
-    unsigned int	mtd_cpl;
+    unsigned int	mtd_unused;	/* used to be mtd_cpl */
     union savefpu	*mtd_savefpu;
     struct segment_descriptor mtd_tls[NGTLS];
 };
 
 #ifdef _KERNEL
 
-#define td_cpl		td_mach.mtd_cpl
 #define td_savefpu	td_mach.mtd_savefpu
 #define td_tls		td_mach.mtd_tls
 

@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.23 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.24 2005/06/16 21:12:47 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -160,7 +160,7 @@ SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 #endif
 
 #ifndef SMP
-static	u_int			npx0_imask = SWI_CLOCK_MASK;
+static	u_int			npx0_imask;
 static	struct gate_descriptor	npx_idt_probeintr;
 static	int			npx_intrno;
 static	volatile u_int		npx_intrs_while_probing;

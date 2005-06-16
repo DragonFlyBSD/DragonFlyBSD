@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.14 2004/07/23 14:09:31 joerg Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.15 2005/06/16 21:12:43 dillon Exp $
  */
 
 /*		Change History:
@@ -1056,7 +1056,7 @@ met_attach(pcici_t tag, int unit)
 		unit, (old_irq & 0xff), (new_irq & 0xff));
 #endif /* METEOR_IRQ */
 				/* setup the interrupt handling routine */
-	pci_map_int(tag, meteor_intr, (void*) mtr, &net_imask); 
+	pci_map_int(tag, meteor_intr, (void*) mtr); 
 
 /*
  * PCI latency timer.  32 is a good value for 4 bus mastering slots, if

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.23 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.24 2005/06/16 21:12:44 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -721,8 +721,6 @@ IDTVEC(fpu)
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 
-	movl	PCPU(curthread),%ebx		/* save original cpl */
-	movl	TD_CPL(%ebx), %ebx
 	incl	PCPU(cnt)+V_TRAP
 
 	/* additional dummy pushes to fake an interrupt frame */
@@ -734,7 +732,7 @@ IDTVEC(fpu)
 
 	/* convert back to a trapframe for doreti */
 	addl	$4,%esp
-	movl	%ebx,(%esp)
+	movl	$0,(%esp)		/* DUMMY CPL FOR DORETI */
 	MEXITCOUNT
 	jmp	doreti
 #else	/* NNPX > 0 */
@@ -774,8 +772,6 @@ alltraps_with_regs_pushed:
 calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
 	incl	PCPU(cnt)+V_TRAP
-	movl	PCPU(curthread),%eax	/* keep orig cpl here during call */
-	movl	TD_CPL(%eax),%ebx
 	/* warning, trap frame dummy arg, no extra reg pushes */
 	call	trap
 
@@ -783,7 +779,7 @@ calltrap:
 	 * Return via doreti to handle ASTs.  Have to change trap frame
 	 * to interrupt frame.
 	 */
-	pushl	%ebx			/* cpl to restore */
+	pushl	$0			/* DUMMY CPL FOR DORETI */
 	MEXITCOUNT
 	jmp	doreti
 
@@ -956,7 +952,6 @@ ENTRY(fork_trampoline)
 	/* cut from syscall */
 
 	sti
-	call	spl0
 	call	splz
 
 #if defined(INVARIANTS) && defined(SMP)

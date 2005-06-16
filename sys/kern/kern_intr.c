@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.21 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.22 2005/06/16 21:12:19 dillon Exp $
  *
  */
 
@@ -45,7 +45,6 @@
 typedef struct intrec {
     struct intrec *next;
     inthand2_t	*handler;
-    intrmask_t	*maskptr;	/* LEGACY */
     void	*argument;
     const char	*name;
     int		intr;
@@ -62,7 +61,6 @@ static u_int ill_delta[NHWI+NSWI];	/* track elapsed to calculate freq */
 static int ill_state[NHWI+NSWI];	/* current state */
 static struct systimer ill_timer[NHWI+NSWI];	/* enforced freq. timer */
 static struct systimer ill_rtimer[NHWI+NSWI];	/* recovery timer */
-static intrmask_t dummy_intr_mask;
 
 #define LIVELOCK_NONE		0
 #define LIVELOCK_LIMITED	1
@@ -78,22 +76,17 @@ static void ithread_handler(void *arg);
 
 /*
  * Register an SWI or INTerrupt handler.
- *
- * Note that maskptr exists to support legacy spl handling and is not intended
- * to be permanent (because spls are not compatible with BGL removal).
  */
 thread_t
-register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
-	intrmask_t *maskptr)
+register_swi(int intr, inthand2_t *handler, void *arg, const char *name)
 {
     if (intr < NHWI || intr >= NHWI + NSWI)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name, maskptr));
+    return(register_int(intr, handler, arg, name));
 }
 
 thread_t
-register_int(int intr, inthand2_t *handler, void *arg, const char *name,
-	intrmask_t *maskptr)
+register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 {
     intrec_t **list;
     intrec_t *rec;
@@ -101,14 +94,11 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     if (intr < 0 || intr >= NHWI + NSWI)
 	panic("register_int: bad intr %d", intr);
-    if (maskptr == NULL)
-	maskptr = &dummy_intr_mask;
 
     rec = malloc(sizeof(intrec_t), M_DEVBUF, M_NOWAIT);
     if (rec == NULL)
 	panic("register_swi: malloc failed");
     rec->handler = handler;
-    rec->maskptr = maskptr;
     rec->argument = arg;
     rec->name = name;
     rec->intr = intr;

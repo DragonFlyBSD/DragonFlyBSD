@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.30 2005/06/10 23:59:33 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.31 2005/06/16 21:12:21 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -261,65 +261,8 @@ void		schedsofttty (void);
 void		schedsoftvm (void);
 void		schedsofttq (void);
 intrmask_t	softclockpending (void);
-void		spl0 (void);
-intrmask_t	splbio (void);
-intrmask_t	splcam (void);
-intrmask_t	splclock (void);
-intrmask_t	splcrypto (void);
-intrmask_t	splhigh (void);
-intrmask_t	splimp (void);
-intrmask_t	splnet (void);
-intrmask_t	splsoftcam (void);
-intrmask_t	splsoftcambio (void);
-intrmask_t	splsoftcamnet (void);
-intrmask_t	splsoftclock (void);
-intrmask_t	splsofttty (void);
-intrmask_t	splsoftvm (void);
-intrmask_t	splsofttq (void);
-intrmask_t	splstatclock (void);
-intrmask_t	spltty (void);
-intrmask_t	splvm (void);
-void		splx (intrmask_t);
-intrmask_t	splq (intrmask_t);
 void		splz (void);
 #endif /* __i386__ */
-
-#ifdef INVARIANT_SUPPORT
-void	splbioassert (const char *msg);
-void	splcamassert (const char *msg);
-void	splclockassert (const char *msg);
-void	splcryptoassert (const char *msg);
-void	splhighassert (const char *msg);
-void	splimpassert (const char *msg);
-void	splnetassert (const char *msg);
-void	splsoftcamassert (const char *msg);
-void	splsoftcambioassert (const char *msg);
-void	splsoftcamnetassert (const char *msg);
-void	splsoftclockassert (const char *msg);
-void	splsoftttyassert (const char *msg);
-void	splsoftvmassert (const char *msg);
-void	splsofttqassert (const char *msg);
-void	splstatclockassert (const char *msg);
-void	splttyassert (const char *msg);
-void	splvmassert (const char *msg);
-#endif /* INVARIANT_SUPPORT */
-
-/*
- * XXX It's not clear how "machine independent" these will be yet, but
- * they are used all over the place especially in pci drivers.  We would
- * have to modify lots of drivers since <machine/cpufunc.h> no longer
- * implicitly causes these to be defined when it #included <machine/spl.h>
- */
-extern intrmask_t bio_imask;	/* group of interrupts masked with splbio() */
-extern intrmask_t cam_imask;	/* group of interrupts masked with splcam() */
-extern intrmask_t net_imask;	/* group of interrupts masked with splimp() */
-extern intrmask_t stat_imask;	/* interrupts masked with splstatclock() */
-extern intrmask_t tty_imask;	/* group of interrupts masked with spltty() */
-
-/* Read only */
-extern const intrmask_t soft_imask;    /* interrupts masked with splsoft*() */
-extern const intrmask_t softnet_imask; /* interrupt masked with splnet() */
-extern const intrmask_t softtty_imask; /* interrupt masked with splsofttty() */
 
 /*
  * Various callout lists.
