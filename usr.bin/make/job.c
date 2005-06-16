@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.113 2005/06/15 07:48:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.114 2005/06/16 20:28:52 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2952,7 +2952,8 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		return (0);
 	}
 
-	if (strpbrk(cmd, "#=|^(){};&<>*?[]:$`\\\n")) {
+	if (commandShell->meta != NULL &&
+	    strpbrk(cmd, commandShell->meta) != NULL) {
 		/*
 		 * We found a "meta" character and need to pass the command
 		 * off to the shell.
@@ -2960,13 +2961,8 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		av = NULL;
 
 	} else {
-		const char **p;
-		const char *sh_builtin[] = {
-			"alias", "cd", "eval", "exec",
-			"exit", "read", "set", "ulimit",
-			"unalias", "umask", "unset", "wait",
-			":", NULL
-		};
+		char **p;
+		char **sh_builtin = commandShell->builtins.argv + 1;
 
 		/*
 		 * Break the command into words to form an argument
