@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.6 2005/06/06 22:51:54 corecode Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.7 2005/06/16 15:48:59 dillon Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -86,8 +86,6 @@
 #define	MPT_IFLAGS		INTR_TYPE_CAM
 #define	MPT_LOCK(mpt)		crit_enter()
 #define	MPT_UNLOCK(mpt)		crit_exit()
-#define	MPTLOCK_2_CAMLOCK	MPT_UNLOCK
-#define	CAMLOCK_2_MPTLOCK	MPT_LOCK
 #define	MPT_LOCK_SETUP(mpt)
 #define	MPT_LOCK_DESTROY(mpt)
 #else
@@ -104,18 +102,12 @@
 
 #define	MPT_LOCK(mpt)		mtx_lock(&(mpt)->mpt_lock)
 #define	MPT_UNLOCK(mpt)		mtx_unlock(&(mpt)->mpt_lock)
-#define	MPTLOCK_2_CAMLOCK(mpt)	\
-	mtx_unlock(&(mpt)->mpt_lock); mtx_lock(&Giant)
-#define	CAMLOCK_2_MPTLOCK(mpt)	\
-	mtx_unlock(&Giant); mtx_lock(&(mpt)->mpt_lock)
 #else
 #define	MPT_IFLAGS		INTR_TYPE_CAM | INTR_ENTROPY
 #define	MPT_LOCK_SETUP(mpt)	do { } while (0)
 #define	MPT_LOCK_DESTROY(mpt)	do { } while (0)
 #define	MPT_LOCK(mpt)		do { } while (0)
 #define	MPT_UNLOCK(mpt)		do { } while (0)
-#define	MPTLOCK_2_CAMLOCK(mpt)	do { } while (0)
-#define	CAMLOCK_2_MPTLOCK(mpt)	do { } while (0)
 #endif
 #endif
 	

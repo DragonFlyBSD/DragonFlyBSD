@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.4 2005/05/24 20:58:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.5 2005/06/16 15:48:59 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -367,9 +367,7 @@ mpt_attach(device_t dev)
 		/*
 		 *  Attach to CAM
 		 */
-		MPTLOCK_2_CAMLOCK(mpt);
 		mpt_cam_attach(mpt);
-		CAMLOCK_2_MPTLOCK(mpt);
 		MPT_UNLOCK(mpt);
 	}
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.7 2005/03/21 22:08:41 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.8 2005/06/16 15:48:59 dillon Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -146,9 +146,7 @@ mpttimeout(void *arg)
 	ccb->ccb_h.status = CAM_CMD_TIMEOUT;
 	ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
 	mpt->outofbeer = 0;
-	MPTLOCK_2_CAMLOCK(mpt);
 	xpt_done(ccb);
-	CAMLOCK_2_MPTLOCK(mpt);
 	MPT_UNLOCK(mpt);
 }
 
@@ -158,6 +156,7 @@ mpttimeout2(void *arg)
 	request_t *req = arg;
 	if (req->debug == REQ_TIMEOUT) {
 		mpt_softc_t *mpt = (mpt_softc_t *) req->link.sle_next;
+
 		MPT_LOCK(mpt);
 		mpt_free_request(mpt, req);
 		MPT_UNLOCK(mpt);
@@ -187,6 +186,8 @@ mpt_execute_req(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	req = ccb->ccb_h.ccb_req_ptr;
 	mpt_req = req->req_vbuf;
 
+	MPT_LOCK(mpt);
+
 	if (error == 0 && nseg > MPT_SGL_MAX) {
 		error = EFBIG;
 	}
@@ -205,9 +206,8 @@ mpt_execute_req(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		}
 		ccb->ccb_h.status &= ~CAM_SIM_QUEUED;
 		xpt_done(ccb);
-		CAMLOCK_2_MPTLOCK(mpt);
 		mpt_free_request(mpt, req);
-		MPTLOCK_2_CAMLOCK(mpt);
+		MPT_UNLOCK(mpt);
 		return;
 	}
 	
@@ -346,15 +346,13 @@ mpt_execute_req(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	if (ccb->ccb_h.status != CAM_REQ_INPROG) {
 		if (nseg && (ccb->ccb_h.flags & CAM_SG_LIST_PHYS) == 0)
 			bus_dmamap_unload(mpt->buffer_dmat, req->dmap);
-		CAMLOCK_2_MPTLOCK(mpt);
 		mpt_free_request(mpt, req);
-		MPTLOCK_2_CAMLOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		return;
 	}
 
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
-	MPTLOCK_2_CAMLOCK(mpt);
 	if (ccb->ccb_h.timeout != CAM_TIME_INFINITY) {
 		callout_reset(&ccb->ccb_h.timeout_ch,
 		    (ccb->ccb_h.timeout * hz) / 1000, mpttimeout, ccb);
@@ -362,7 +360,7 @@ mpt_execute_req(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	if (mpt->verbose > 1)
 		mpt_print_scsi_io_request(mpt_req);
 	mpt_send_cmd(mpt, req);
-	MPTLOCK_2_CAMLOCK(mpt);
+	MPT_UNLOCK(mpt);
 }
 
 static void
@@ -376,8 +374,8 @@ mpt_start(union ccb *ccb)
 
 	/* Get the pointer for the physical addapter */
 	mpt = ccb->ccb_h.ccb_mpt_ptr;
+	MPT_LOCK(mpt);
 
-	CAMLOCK_2_MPTLOCK(mpt);
 	/* Get a request structure off the free list */
 	if ((req = mpt_get_request(mpt)) == NULL) {
 		if (mpt->outofbeer == 0) {
@@ -387,12 +385,11 @@ mpt_start(union ccb *ccb)
 				device_printf(mpt->dev, "FREEZEQ\n");
 			}
 		}
-		MPTLOCK_2_CAMLOCK(mpt);
 		ccb->ccb_h.status = CAM_REQUEUE_REQ;
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		return;
 	}
-	MPTLOCK_2_CAMLOCK(mpt);
 
 	/* Link the ccb and the request structure so we can find */
 	/* the other knowing either the request or the ccb		 */
@@ -526,6 +523,7 @@ mpt_start(union ccb *ccb)
 	} else {
 		mpt_execute_req(req, NULL, 0, 0);
 	}
+	MPT_UNLOCK(mpt);
 }
 
 static int
@@ -900,9 +898,9 @@ mpt_done(mpt_softc_t *mpt, u_int32_t reply)
 				device_printf(mpt->dev, "THAWQ\n");
 			}
 		}
-		MPTLOCK_2_CAMLOCK(mpt);
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
-		CAMLOCK_2_MPTLOCK(mpt);
+		MPT_UNLOCK(mpt);
 		goto done;
 	}
 
@@ -1013,9 +1011,9 @@ device_printf(mpt->dev, "underrun, scsi status is %x\n", ccb->csio.scsi_status);
 			device_printf(mpt->dev, "THAWQ\n");
 		}
 	}
-	MPTLOCK_2_CAMLOCK(mpt);
+	MPT_LOCK(mpt);
 	xpt_done(ccb);
-	CAMLOCK_2_MPTLOCK(mpt);
+	MPT_UNLOCK(mpt);
 
 done:
 	/* If IOC done with this request free it up */
@@ -1044,11 +1042,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_RESET_BUS:
 		if (mpt->verbose > 1)
 		    device_printf(mpt->dev, "XPT_RESET_BUS\n");
-		CAMLOCK_2_MPTLOCK(mpt);
 		error = mpt_bus_reset(ccb);
 		switch (error) {
 		case CAM_REQ_INPROG:
-			MPTLOCK_2_CAMLOCK(mpt);
 			break;
 		case CAM_REQUEUE_REQ:
 			if (mpt->outofbeer == 0) {
@@ -1059,8 +1055,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 				}
 			}
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
-			MPTLOCK_2_CAMLOCK(mpt);
+			MPT_LOCK(mpt);
 			xpt_done(ccb);
+			MPT_UNLOCK(mpt);
 			break;
 
 		case CAM_REQ_CMP:
@@ -1073,14 +1070,16 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 					device_printf(mpt->dev, "THAWQ\n");
 				}
 			}
-			MPTLOCK_2_CAMLOCK(mpt);
+			MPT_LOCK(mpt);
 			xpt_done(ccb);
+			MPT_UNLOCK(mpt);
 			break;
 
 		default:
 			ccb->ccb_h.status = CAM_REQ_CMP_ERR;
-			MPTLOCK_2_CAMLOCK(mpt);
+			MPT_LOCK(mpt);
 			xpt_done(ccb);
+			MPT_UNLOCK(mpt);
 		}
 		break;
 		
@@ -1091,7 +1090,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		if ((ccb->ccb_h.flags & CAM_CDB_POINTER) != 0) {
 			if ((ccb->ccb_h.flags & CAM_CDB_PHYS) != 0) {
 				ccb->ccb_h.status = CAM_REQ_INVALID;
+				MPT_LOCK(mpt);
 				xpt_done(ccb);
+				MPT_UNLOCK(mpt);
 				break;
 			}
 		}
@@ -1099,7 +1100,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		if (ccb->csio.cdb_len >
 		    sizeof (((PTR_MSG_SCSI_IO_REQUEST)0)->CDB)) {
 			ccb->ccb_h.status = CAM_REQ_INVALID;
+			MPT_LOCK(mpt);
 			xpt_done(ccb);
+			MPT_UNLOCK(mpt);
 			return;
 		}
 		ccb->csio.scsi_status = SCSI_STATUS_OK;
@@ -1111,7 +1114,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		 * XXX: Need to implement
 		 */
 		ccb->ccb_h.status = CAM_UA_ABORT;
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		break;
 
 #ifdef	CAM_NEW_TRAN_CODE
@@ -1137,7 +1142,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		cts = &ccb->cts;
 		if (!IS_CURRENT_SETTINGS(cts)) {
 			ccb->ccb_h.status = CAM_REQ_INVALID;
+			MPT_LOCK(mpt);
 			xpt_done(ccb);
+			MPT_UNLOCK(mpt);
 			break;
 		}
 		tgt = cts->ccb_h.target_id;
@@ -1205,7 +1212,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 				offset = spi->sync_offset;
 			}
 #endif
-			CAMLOCK_2_MPTLOCK(mpt);
 			if (dval & DP_DISC_ENABLE) {
 				mpt->mpt_disc_enable |= (1 << tgt);
 			} else if (dval & DP_DISC_DISABL) {
@@ -1219,20 +1225,21 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 			if (dval & DP_WIDTH) {
 				if (mpt_setwidth(mpt, tgt, dval & DP_WIDE)) {
 					ccb->ccb_h.status = CAM_REQ_CMP_ERR;
-					MPTLOCK_2_CAMLOCK(mpt);
+					MPT_LOCK(mpt);
 					xpt_done(ccb);
+					MPT_UNLOCK(mpt);
 					break;
 				}
 			}
 			if (dval & DP_SYNC) {
 				if (mpt_setsync(mpt, tgt, period, offset)) {
 					ccb->ccb_h.status = CAM_REQ_CMP_ERR;
-					MPTLOCK_2_CAMLOCK(mpt);
+					MPT_LOCK(mpt);
 					xpt_done(ccb);
+					MPT_UNLOCK(mpt);
 					break;
 				}
 			}
-			MPTLOCK_2_CAMLOCK(mpt);
 			if (mpt->verbose > 1) {
 				device_printf(mpt->dev, 
 				    "SET tgt %d flags %x period %x off %x\n",
@@ -1240,7 +1247,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 			}
 		}
 		ccb->ccb_h.status = CAM_REQ_CMP;
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		break;
 
 	case XPT_GET_TRAN_SETTINGS:
@@ -1295,7 +1304,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 				dval = 0;
 
 				tmp = mpt->mpt_dev_page0[tgt];
-				CAMLOCK_2_MPTLOCK(mpt);
 				if (mpt_read_cfg_page(mpt, tgt, &tmp.Header)) {
 					device_printf(mpt->dev,
 					    "cannot get target %d DP0\n", tgt);
@@ -1308,7 +1316,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 						    tmp.Information);
 					}
 				}
-				MPTLOCK_2_CAMLOCK(mpt);
 
 				if (tmp.NegotiatedParameters & 
 				    MPI_SCSIDEVPAGE0_NP_WIDE)
@@ -1395,7 +1402,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 			}
 		}
 		ccb->ccb_h.status = CAM_REQ_CMP;
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		break;
 
 	case XPT_CALC_GEOMETRY:
@@ -1407,7 +1416,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		ccg = &ccb->ccg;
 		if (ccg->block_size == 0) {
 			ccb->ccb_h.status = CAM_REQ_INVALID;
+			MPT_LOCK(mpt);
 			xpt_done(ccb);
+			MPT_UNLOCK(mpt);
 			break;
 		}
 
@@ -1422,7 +1433,9 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		secs_per_cylinder = ccg->heads * ccg->secs_per_track;
 		ccg->cylinders = ccg->volume_size / secs_per_cylinder;
 		ccb->ccb_h.status = CAM_REQ_CMP;
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		break;
 	}
 	case XPT_PATH_INQ:		/* Path routing inquiry */
@@ -1453,12 +1466,16 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 		cpi->unit_number = cam_sim_unit(sim);
 		cpi->ccb_h.status = CAM_REQ_CMP;
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		break;
 	}
 	default:
 		ccb->ccb_h.status = CAM_REQ_INVALID;
+		MPT_LOCK(mpt);
 		xpt_done(ccb);
+		MPT_UNLOCK(mpt);
 		break;
 	}
 }
