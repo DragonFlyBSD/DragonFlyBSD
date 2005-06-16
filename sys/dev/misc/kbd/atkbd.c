@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.8 2005/05/07 17:38:33 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.9 2005/06/16 16:00:11 joerg Exp $
  */
 
 #include "opt_kbd.h"
@@ -36,6 +36,7 @@
 #include <sys/bus.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -123,7 +124,6 @@ static void
 atkbd_timeout(void *arg)
 {
 	keyboard_t *kbd;
-	int s;
 
 	/*
 	 * The original text of the following comments are extracted 
@@ -150,7 +150,7 @@ atkbd_timeout(void *arg)
 	 *
 	 * The keyboard apparently unwedges the irq in most cases.
 	 */
-	s = spltty();
+	crit_enter();
 	kbd = (keyboard_t *)arg;
 	if ((*kbdsw[kbd->kb_index]->lock)(kbd, TRUE)) {
 		/*
@@ -162,8 +162,8 @@ atkbd_timeout(void *arg)
 		if ((*kbdsw[kbd->kb_index]->check_char)(kbd))
 			(*kbdsw[kbd->kb_index]->intr)(kbd, NULL);
 	}
-	splx(s);
 	callout_reset(&kbd->kb_atkbd_timeout_ch, hz / 10, atkbd_timeout, arg);
+	crit_exit();
 }
 
 /* LOW-LEVEL */
@@ -471,16 +471,15 @@ static int
 atkbd_test_if(keyboard_t *kbd)
 {
 	int error;
-	int s;
 
 	error = 0;
 	empty_both_buffers(((atkbd_state_t *)kbd->kb_data)->kbdc, 10);
-	s = spltty();
+	crit_enter();
 	if (!test_controller(((atkbd_state_t *)kbd->kb_data)->kbdc))
 		error = EIO;
 	else if (test_kbd_port(((atkbd_state_t *)kbd->kb_data)->kbdc) != 0)
 		error = EIO;
-	splx(s);
+	crit_exit();
 
 	return error;
 }
@@ -492,11 +491,9 @@ atkbd_test_if(keyboard_t *kbd)
 static int
 atkbd_enable(keyboard_t *kbd)
 {
-	int s;
-
-	s = spltty();
+	crit_enter();
 	KBD_ACTIVATE(kbd);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -504,11 +501,9 @@ atkbd_enable(keyboard_t *kbd)
 static int
 atkbd_disable(keyboard_t *kbd)
 {
-	int s;
-
-	s = spltty();
+	crit_enter();
 	KBD_DEACTIVATE(kbd);
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -798,10 +793,10 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	};
 	atkbd_state_t *state = kbd->kb_data;
 	int error;
-	int s;
 	int i;
 
-	s = spltty();
+	crit_enter();
+
 	switch (cmd) {
 
 	case KDGKBMODE:		/* get keyboard mode */
@@ -824,7 +819,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			}
 			break;
 		default:
-			splx(s);
+			crit_exit();;
 			return EINVAL;
 		}
 		break;
@@ -835,7 +830,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDSETLED:		/* set keyboard LED */
 		/* NOTE: lock key state in ks_state won't be changed */
 		if (*(int *)arg & ~LOCK_MASK) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		i = *(int *)arg;
@@ -851,7 +846,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			error = write_kbd(state->kbdc, KBDC_SET_LEDS,
 					  ledmap[i & LED_MASK]);
 			if (error) {
-				splx(s);
+				crit_exit();
 				return error;
 			}
 		}
@@ -863,17 +858,17 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		break;
 	case KDSKBSTATE:	/* set lock key state */
 		if (*(int *)arg & ~LOCK_MASK) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		state->ks_state &= ~LOCK_MASK;
 		state->ks_state |= *(int *)arg;
-		splx(s);
+		crit_exit();
 		/* set LEDs and quit */
 		return atkbd_ioctl(kbd, KDSETLED, arg);
 
 	case KDSETREPEAT:	/* set keyboard repeat rate (new interface) */
-		splx(s);
+		crit_exit();
 		if (!KBD_HAS_DEVICE(kbd))
 			return 0;
 		i = typematic(((int *)arg)[0], ((int *)arg)[1]);
@@ -885,7 +880,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		return error;
 
 	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
-		splx(s);
+		crit_exit();;
 		if (!KBD_HAS_DEVICE(kbd))
 			return 0;
 		error = write_kbd(state->kbdc, KBDC_SET_TYPEMATIC, *(int *)arg);
@@ -901,11 +896,11 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		state->ks_accents = 0;
 		/* FALL THROUGH */
 	default:
-		splx(s);
+		crit_exit();
 		return genkbd_commonioctl(kbd, cmd, arg);
 	}
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -962,15 +957,14 @@ static int
 atkbd_poll(keyboard_t *kbd, int on)
 {
 	atkbd_state_t *state;
-	int s;
 
 	state = (atkbd_state_t *)kbd->kb_data;
-	s = spltty();
+	crit_enter();
 	if (on)
 		++state->ks_polling;
 	else
 		--state->ks_polling;
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -1274,14 +1268,12 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 static int
 write_kbd(KBDC kbdc, int command, int data)
 {
-    int s;
-
     /* prevent the timeout routine from polling the keyboard */
     if (!kbdc_lock(kbdc, TRUE)) 
 	return EBUSY;
 
     /* disable the keyboard and mouse interrupt */
-    s = spltty();
+    crit_enter();
 #if 0
     c = get_controller_command_byte(kbdc);
     if ((c == -1) 
@@ -1291,7 +1283,7 @@ write_kbd(KBDC kbdc, int command, int data)
                 | KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 	/* CONTROLLER ERROR */
         kbdc_lock(kbdc, FALSE);
-	splx(s);
+	crit_exit();
 	return EIO;
     }
     /* 
@@ -1301,7 +1293,7 @@ write_kbd(KBDC kbdc, int command, int data)
      * but the timeout routine (`scrn_timer()') will be blocked 
      * by the lock flag set via `kbdc_lock()'
      */
-    splx(s);
+    crit_exit();
 #endif
 
     if (send_kbd_command_and_data(kbdc, command, data) != KBD_ACK)
@@ -1315,7 +1307,7 @@ write_kbd(KBDC kbdc, int command, int data)
 	/* CONTROLLER ERROR */
     }
 #else
-    splx(s);
+    crit_exit();
 #endif
     kbdc_lock(kbdc, FALSE);
 
