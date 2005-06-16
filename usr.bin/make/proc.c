@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/proc.c,v 1.3 2005/06/16 20:51:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/proc.c,v 1.4 2005/06/16 23:06:56 okumoto Exp $
  */
 
 #include <unistd.h>
@@ -42,6 +42,7 @@
 void
 Proc_Exec(const ProcStuff *ps)
 {
+
 	if (ps->in != STDIN_FILENO) {
 		/*
 		 * Redirect the child's stdin to the input fd
@@ -121,8 +122,8 @@ Proc_Exec(const ProcStuff *ps)
 		execv(commandShell->path, ps->argv);
 
 		write(STDERR_FILENO,
-		      "Could not execute shell\n",
-		      sizeof("Could not execute shell"));
+		    "Could not execute shell\n",
+		    sizeof("Could not execute shell"));
 	}
 
 	/*
@@ -130,4 +131,3 @@ Proc_Exec(const ProcStuff *ps)
 	 */
 	_exit(1);
 }
-
