@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.45 2005/05/23 20:04:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.46 2005/06/16 22:46:48 okumoto Exp $
  */
 
 /*
@@ -629,7 +629,7 @@ CondToken(Parser *parser, Boolean doEval)
 				}
 				free(string);
 				if (rhs == condExpr) {
-					if (!qt && *cp == ')')
+					if (*cp == '\0' || (!qt && *cp == ')'))
 						condExpr = cp;
 					else
 						condExpr = cp + 1;
