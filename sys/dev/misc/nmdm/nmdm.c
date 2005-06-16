@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.10 2004/05/19 22:52:43 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.11 2005/06/16 16:31:34 joerg Exp $
  */
 
 /*
@@ -44,6 +44,7 @@
 #include <sys/ioctl_compat.h>
 #endif
 #include <sys/proc.h>
+#include <sys/thread2.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
@@ -496,11 +497,11 @@ nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
 	struct tty *tp = dev->si_tty;
 	struct nm_softc *pti = dev->si_drv1;
-	int error, s;
+	int error;
 	struct tty *tp2;
 	struct softpart *ourpart, *otherpart;
 
-	s = spltty();
+	crit_enter();
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
 
@@ -542,14 +543,14 @@ nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		case TIOCTIMESTAMP:
 		case TIOCDCDTIMESTAMP:
 		default:
-			splx(s);
+			crit_exit();
 			error = ENOTTY;
 			return (error);
 		}
 		error = 0;
 		nmdm_crossover(pti, ourpart, otherpart);
 	}
-	splx(s);
+	crit_exit();
 	return (error);
 }
 
