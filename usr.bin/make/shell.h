@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.8 2005/06/15 08:04:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.9 2005/06/16 20:27:17 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
@@ -94,9 +94,10 @@ struct Shell {
 	char	*meta;
 };
 
-extern struct Shell		*commandShell;
+extern struct Shell	*commandShell;
 
-void				Shell_Init(void);
-Boolean				Shell_Parse(const char []);
+void		Shell_Init(void);
+Boolean		Shell_Parse(const char []);
+void		Shell_Dump(const struct Shell *);
 
 #endif /* shell_h_6002e3b8 */

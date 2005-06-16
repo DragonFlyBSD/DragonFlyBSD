@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.14 2005/06/16 20:26:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.15 2005/06/16 20:27:17 okumoto Exp $
  */
 
 #include <string.h>
@@ -391,5 +391,27 @@ void
 Shell_Init(void)
 {
 	commandShell = ShellMatch(DEFSHELLNAME);
+}
+
+/**
+ * Dump a shell specification to stderr.
+ */
+void
+Shell_Dump(const struct Shell *sh)
+{
+	int i;
+
+	fprintf(stderr, "Shell %p:\n", sh);
+	fprintf(stderr, "  name='%s' path='%s'\n", sh->name, sh->path);
+	fprintf(stderr, "  hasEchoCtl=%d echoOff='%s' echoOn='%s'\n",
+	    sh->hasEchoCtl, sh->echoOff, sh->echoOn);
+	fprintf(stderr, "  noPrint='%s'\n", sh->noPrint);
+	fprintf(stderr, "  hasErrCtl=%d errCheck='%s' ignErr='%s'\n",
+	    sh->hasErrCtl, sh->errCheck, sh->ignErr);
+	fprintf(stderr, "  echo='%s' exit='%s'\n", sh->echo, sh->exit);
+	fprintf(stderr, "  builtins=%d\n", sh->builtins.argc - 1);
+	for (i = 1; i < sh->builtins.argc; i++)
+		fprintf(stderr, " '%s'", sh->builtins.argv[i]);
+	fprintf(stderr, "\n  meta='%s'\n", sh->meta);
 }
 
