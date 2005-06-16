@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.6 2004/09/17 03:39:39 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.7 2005/06/16 15:38:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <sys/buf.h>   
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include <sys/bus.h>
 
 #include <machine/bus_pio.h>
@@ -79,17 +80,21 @@ static struct aic_scb *
 aic_get_scb(struct aic_softc *aic)
 {
 	struct aic_scb *scb;
-	int s = splcam();
+
+	crit_enter();
+
 	if ((scb = free_scbs) != NULL)
 		free_scbs = (struct aic_scb *)free_scbs->ccb;
-	splx(s);
+
+	crit_exit();
 	return (scb);
 }
 
 static void
 aic_free_scb(struct aic_softc *aic, struct aic_scb *scb)
 {
-	int s = splcam();
+	crit_enter();
+
 	if ((aic->flags & AIC_RESOURCE_SHORTAGE) != 0 &&
 	    (scb->ccb->ccb_h.status & CAM_RELEASE_SIMQ) == 0) {
 		scb->ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
@@ -98,14 +103,14 @@ aic_free_scb(struct aic_softc *aic, struct aic_scb *scb)
 	scb->flags = 0;
 	scb->ccb = (union ccb *)free_scbs;
 	free_scbs = scb;
-	splx(s);
+
+	crit_exit();
 }
 
 static void
 aic_action(struct cam_sim *sim, union ccb *ccb)
 {
 	struct aic_softc *aic;
-	int s;
 
 	CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("aic_action\n"));
 
@@ -118,9 +123,9 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 		struct aic_scb *scb;
 
 		if ((scb = aic_get_scb(aic)) == NULL) {
-			s = splcam();
+			crit_enter();
 			aic->flags |= AIC_RESOURCE_SHORTAGE;
-			splx(s);
+			crit_exit();
 			xpt_freeze_simq(aic->sim, /*count*/1);
 			ccb->ccb_h.status = CAM_REQUEUE_REQ;
 			xpt_done(ccb);
@@ -176,7 +181,7 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 		cts = &ccb->cts;
 		ti = &aic->tinfo[ccb->ccb_h.target_id];
 
-		s = splcam();
+		crit_enter();
 
 		if ((cts->valid & CCB_TRANS_DISC_VALID) != 0 &&
 		    (aic->flags & AIC_DISC_ENABLE) != 0) {
@@ -205,7 +210,7 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 				ti->flags |= TINFO_SDTR_NEGO;
 		}
 
-		splx(s);
+		crit_exit();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -218,7 +223,7 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 		cts = &ccb->cts;
 		ti = &aic->tinfo[ccb->ccb_h.target_id];
 
-		s = splcam();
+		crit_enter();
 
 		cts->flags &= ~(CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB);
 		if ((ti->flags & TINFO_DISC_ENB) != 0)
@@ -235,7 +240,7 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 		}
 		cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
 
-		splx(s);
+		crit_exit();
 
 		cts->valid = CCB_TRANS_SYNC_RATE_VALID
 			   | CCB_TRANS_SYNC_OFFSET_VALID
@@ -311,12 +316,11 @@ aic_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	struct aic_scb *scb = (struct aic_scb *)arg;
 	union ccb *ccb = scb->ccb;
 	struct aic_softc *aic = (struct aic_softc *)ccb->ccb_h.ccb_aic_ptr;
-	int s;
 
-	s = splcam();
+	crit_enter();
 
 	if (ccb->ccb_h.status != CAM_REQ_INPROG) {
-		splx(s);
+		crit_exit();
 		aic_free_scb(aic, scb);
 		xpt_done(ccb);
 		return;
@@ -330,7 +334,7 @@ aic_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		      aic_timeout, scb);
 
 	aic_start(aic);
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -1120,7 +1124,6 @@ aic_timeout(void *arg)
 	struct aic_scb *scb = (struct aic_scb *)arg;
 	union ccb *ccb = scb->ccb;
 	struct aic_softc *aic = (struct aic_softc *)ccb->ccb_h.ccb_aic_ptr;
-	int s;
 
 	xpt_print_path(ccb->ccb_h.path);
 	printf("ccb %p - timed out", ccb);
@@ -1128,10 +1131,10 @@ aic_timeout(void *arg)
 		printf(", nexus %p", aic->nexus->ccb);
 	printf(", phase 0x%x, state %d\n", aic_inb(aic, SCSISIGI), aic->state);
 
-	s = splcam();
+	crit_enter();
 
 	if ((scb->flags & SCB_ACTIVE) == 0) {
-		splx(s);
+		crit_exit();
 		xpt_print_path(ccb->ccb_h.path);
 		printf("ccb %p - timed out already completed\n", ccb);
 		return;
@@ -1162,7 +1165,7 @@ aic_timeout(void *arg)
 		aic_reset(aic, /*initiate_reset*/TRUE);
 	}
 
-	splx(s);
+	crit_exit();
 }
 
 void
