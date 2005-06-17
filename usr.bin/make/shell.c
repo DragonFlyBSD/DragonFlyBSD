@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.20 2005/06/16 23:11:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.21 2005/06/17 07:50:49 okumoto Exp $
  */
 
 #include <string.h>
@@ -227,12 +227,6 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 	return (sh);
 }
 
-void
-Shell_Init(void)
-{
-	commandShell = ShellMatch(DEFSHELLNAME);
-}
-
 /**
  * Find a matching shell in 'shells' given its final component.
  *
@@ -340,6 +334,12 @@ ShellMatch(const char name[])
 	}
 
 	return (shell);
+}
+
+void
+Shell_Init(void)
+{
+	commandShell = ShellMatch(DEFSHELLNAME);
 }
 
 /**

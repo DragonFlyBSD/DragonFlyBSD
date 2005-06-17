@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.11 2005/06/16 23:11:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.12 2005/06/17 07:50:49 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
@@ -63,7 +63,7 @@ struct Shell {
 	 * the full path of the shell.
 	 */
 	char	*name;
-	char	*path;
+	char	*path;		/* full path to the shell */
 
 	/* True if both echoOff and echoOn defined */
 	Boolean	hasEchoCtl;
