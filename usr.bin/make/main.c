@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.113 2005/06/17 10:27:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.114 2005/06/17 22:22:44 okumoto Exp $
  */
 
 /*
@@ -884,6 +884,9 @@ main(int argc, char **argv)
 	char	curdir[MAXPATHLEN];	/* startup directory */
 	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
 
+	/*------------------------------------------------------------*
+	 * This section initializes variables that require no input.
+	 *------------------------------------------------------------*/
 	/*
 	 * Initialize program global variables.
 	 */
@@ -913,6 +916,10 @@ main(int argc, char **argv)
 	mf.noBuiltins = FALSE;		/* Read the built-in rules */
 	mf.queryFlag = FALSE;
 
+	/*------------------------------------------------------------*
+	 * This section initializes variables that depend on things
+	 * in the enviornment, command line, or a input file.
+	 *------------------------------------------------------------*/
 	if (getenv("MAKE_JOBS_FIFO") == NULL)
 		mf.forceJobs = FALSE;
 	else
@@ -984,6 +991,10 @@ main(int argc, char **argv)
 	}
 
 	ReadInputFiles(&parser, &mf, curdir, objdir);
+
+	/*------------------------------------------------------------*
+	 * We are finished processing inputs.
+	 *------------------------------------------------------------*/
 
 	/* Install all the flags into the MAKE envariable. */
 	{
