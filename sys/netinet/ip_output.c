@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.30 2005/06/09 02:03:38 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.31 2005/06/17 19:12:20 dillon Exp $
  */
 
 #define _IP_VHL
@@ -585,7 +585,7 @@ skip_ipsec:
 	mtag = m_tag_find(m, PACKET_TAG_IPSEC_PENDING_TDB, NULL);
 	crit_enter();
 	if (mtag != NULL) {
-		tdbi = (struct tdb_ident *)(mtag + 1);
+		tdbi = (struct tdb_ident *)m_tag_data(mtag);
 		sp = ipsec_getpolicy(tdbi, IPSEC_DIR_OUTBOUND);
 		if (sp == NULL)
 			error = -EINVAL;	/* force silent drop */
@@ -619,7 +619,7 @@ skip_ipsec:
 			 */
 			if (sp->req->sav == NULL)
 				break;
-			tdbi = (struct tdb_ident *)(mtag + 1);
+			tdbi = (struct tdb_ident *)m_tag_data(mtag);
 			if (tdbi->spi == sp->req->sav->spi &&
 			    tdbi->proto == sp->req->sav->sah->saidx.proto &&
 			    bcmp(&tdbi->dst, &sp->req->sav->sah->saidx.dst,
@@ -686,7 +686,7 @@ skip_ipsec:
 		mtag = m_tag_find(m, PACKET_TAG_IPSEC_OUT_CRYPTO_NEEDED, NULL);
 		if (mtag != NULL && !(ifp->if_capenable & IFCAP_IPSEC)) {
 			/* notify IPsec to do its own crypto */
-			ipsp_skipcrypto_unmark((struct tdb_ident *)(mtag + 1));
+			ipsp_skipcrypto_unmark((struct tdb_ident *)m_tag_data(mtag));
 			error = EHOSTUNREACH;
 			goto bad;
 		}

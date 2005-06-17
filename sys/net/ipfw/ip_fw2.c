@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.16 2005/06/15 18:46:54 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.17 2005/06/17 19:12:19 dillon Exp $
  */
 
 #define        DEB(x)
@@ -1404,7 +1404,7 @@ after_ip_checks:
 
 		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
 		if (mtag != NULL)
-			skipto = *(u_int16_t *)(mtag + 1);
+			skipto = *(u_int16_t *)m_tag_data(mtag);
 		else
 			skipto = 0;
 
@@ -1859,12 +1859,12 @@ check_body:
 					break;
 
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
-				    sizeof(u_int16_t), M_NOWAIT);
+						sizeof(u_int16_t), M_NOWAIT);
 				if (mtag == NULL) {
 					retval = IP_FW_PORT_DENY_FLAG;
 					goto done;
 				}
-				*(u_int16_t *)mtag = f->rulenum;
+				*(u_int16_t *)m_tag_data(mtag) = f->rulenum;
 				m_tag_prepend(m, mtag);
 				retval = (cmd->opcode == O_DIVERT) ?
 				    cmd->arg1 :

@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.54 2005/06/08 23:45:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.55 2005/06/17 19:12:20 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -836,7 +836,7 @@ pass:
 		mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_DONE, NULL);
 		crit_enter();
 		if (mtag != NULL) {
-			tdbi = (struct tdb_ident *)(mtag + 1);
+			tdbi = (struct tdb_ident *)m_tag_data(mtag);
 			sp = ipsec_getpolicy(tdbi, IPSEC_DIR_INBOUND);
 		} else {
 			sp = ipsec_getpolicybyaddr(m, IPSEC_DIR_INBOUND,
@@ -1063,7 +1063,7 @@ found:
 		mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_DONE, NULL);
 		crit_enter();
 		if (mtag != NULL) {
-			tdbi = (struct tdb_ident *)(mtag + 1);
+			tdbi = (struct tdb_ident *)m_tag_data(mtag);
 			sp = ipsec_getpolicy(tdbi, IPSEC_DIR_INBOUND);
 		} else {
 			sp = ipsec_getpolicybyaddr(m, IPSEC_DIR_INBOUND,

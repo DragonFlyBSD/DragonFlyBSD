@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.25 2005/02/11 22:25:57 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.26 2005/06/17 19:12:22 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -1577,8 +1577,8 @@ ip6_addaux(struct mbuf *m)
 			m_tag_prepend(m, tag);
 	}
 	if (tag)
-		bzero(tag+1, sizeof (struct ip6aux));
-	return tag ? (struct ip6aux*)(tag+1) : NULL;
+		bzero(m_tag_data(tag), sizeof (struct ip6aux));
+	return tag ? (struct ip6aux *)m_tag_data(tag) : NULL;
 }
 
 struct ip6aux *

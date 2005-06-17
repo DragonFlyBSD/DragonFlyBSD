@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.30 2005/06/10 23:59:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.31 2005/06/17 19:12:18 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -558,6 +558,12 @@ struct	m_tag	*m_tag_next(struct mbuf *, struct m_tag *);
 
 /* these are for openbsd compatibility */
 #define	MTAG_ABI_COMPAT		0		/* compatibility ABI */
+
+static __inline void *
+m_tag_data(struct m_tag *tag)
+{
+	return ((void *)(tag + 1));
+}
 
 static __inline struct m_tag *
 m_tag_get(int type, int length, int wait)

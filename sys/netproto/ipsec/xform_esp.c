@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.7 2005/06/10 23:59:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.8 2005/06/17 19:12:23 dillon Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -331,7 +331,7 @@ esp_input(struct mbuf *m, struct secasvar *sav, int skip, int protoff)
 	for (mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_CRYPTO_DONE, NULL);
 	     mtag != NULL;
 	     mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_CRYPTO_DONE, mtag)) {
-		tdbi = (struct tdb_ident *) (mtag + 1);
+		tdbi = (struct tdb_ident *)m_tag_data(mtag);
 		if (tdbi->proto == sav->sah->saidx.proto &&
 		    tdbi->spi == sav->spi &&
 		    !bcmp(&tdbi->dst, &sav->sah->saidx.dst,

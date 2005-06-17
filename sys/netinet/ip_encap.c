@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.12 2005/06/02 23:52:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.13 2005/06/17 19:12:20 dillon Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -497,7 +497,7 @@ encap_fillarg(m, ep)
 
 	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof(void *), MB_DONTWAIT);
 	if (tag != NULL) {
-		*(void **)(tag + 1) = ep->arg;
+		*(void **)m_tag_data(tag) = ep->arg;
 		m_tag_prepend(m, tag);
 	}
 }
@@ -511,7 +511,7 @@ encap_getarg(m)
 
 	tag = m_tag_find(m, PACKET_TAG_ENCAP, NULL);
 	if (tag != NULL) {
-		p = *(void **)(tag + 1);
+		p = *(void **)m_tag_data(tag);
 		m_tag_delete(m, tag);
 	}
 	return p;

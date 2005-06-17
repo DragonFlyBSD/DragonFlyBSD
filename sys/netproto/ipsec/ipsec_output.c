@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.8 2005/06/10 23:59:31 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.9 2005/06/17 19:12:23 dillon Exp $
  */
 
 /*
@@ -138,7 +138,7 @@ ipsec_process_done(struct mbuf *m, struct ipsecrequest *isr)
 		goto bad;
 	}
 
-	tdbi = (struct tdb_ident *)(mtag + 1);
+	tdbi = (struct tdb_ident *)m_tag_data(mtag);
 	tdbi->dst = saidx->dst;
 	tdbi->proto = saidx->proto;
 	tdbi->spi = sav->spi;

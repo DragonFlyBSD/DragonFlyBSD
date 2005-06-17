@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.10 2005/06/07 19:08:55 hsu Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.11 2005/06/17 19:12:16 dillon Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -294,6 +294,7 @@ void
 m_tag_prepend(struct mbuf *m, struct m_tag *t)
 {
 	KASSERT(m && t, ("m_tag_prepend: null argument, m %p t %p", m, t));
+	KASSERT(m->m_flags & M_PKTHDR, ("m_tag_prepend: mbuf %p non-header", m));
 	SLIST_INSERT_HEAD(&m->m_pkthdr.tags, t, m_tag_link);
 }
 
@@ -302,6 +303,7 @@ void
 m_tag_unlink(struct mbuf *m, struct m_tag *t)
 {
 	KASSERT(m && t, ("m_tag_unlink: null argument, m %p t %p", m, t));
+	KASSERT(m->m_flags & M_PKTHDR, ("m_tag_unlink: mbuf %p non-header", m));
 	SLIST_REMOVE(&m->m_pkthdr.tags, t, m_tag, m_tag_link);
 }
 
@@ -310,6 +312,7 @@ void
 m_tag_delete(struct mbuf *m, struct m_tag *t)
 {
 	KASSERT(m && t, ("m_tag_delete: null argument, m %p t %p", m, t));
+	KASSERT(m->m_flags & M_PKTHDR, ("m_tag_delete: mbuf %p non-header", m));
 	m_tag_unlink(m, t);
 	m_tag_free(t);
 }
@@ -321,6 +324,7 @@ m_tag_delete_chain(struct mbuf *m)
 	struct m_tag *p, *q;
 
 	KASSERT(m, ("m_tag_delete_chain: null mbuf"));
+	KASSERT(m->m_flags & M_PKTHDR, ("m_tag_delete_chain: mbuf %p non-header", m));
 	p = SLIST_FIRST(&m->m_pkthdr.tags);
 	if (p == NULL)
 		return;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.24 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.25 2005/06/17 19:12:20 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -158,7 +158,7 @@ divert_packet(struct mbuf *m, int incoming, int port)
 	KASSERT(port != 0, ("%s: port=0", __func__));
 
 	if ((mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
-		divsrc.sin_port = *(u_int16_t *)(mtag + 1);
+		divsrc.sin_port = *(u_int16_t *)m_tag_data(mtag);
 	else
 		divsrc.sin_port = 0;
 
@@ -272,7 +272,7 @@ div_output(struct socket *so, struct mbuf *m,
 	if (sin) {
 		int i;
 
-		*(u_int16_t *)mtag = sin->sin_port;
+		*(u_int16_t *)m_tag_data(mtag) = sin->sin_port;
 		/*
 		 * Find receive interface with the given name, stuffed
 		 * (if it exists) in the sin_zero[] field.
@@ -283,6 +283,8 @@ div_output(struct socket *so, struct mbuf *m,
 			;
 		if ( i > 0 && i < sizeof sin->sin_zero)
 			m->m_pkthdr.rcvif = ifunit(sin->sin_zero);
+	} else {
+		*(u_int16_t *)m_tag_data(mtag) = 0;
 	}
 
 	/* Reinject packet into the system as incoming or outgoing */

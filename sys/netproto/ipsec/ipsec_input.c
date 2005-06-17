@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.8 2005/06/10 23:59:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.9 2005/06/17 19:12:23 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -385,7 +385,7 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 	 */
 	if (mt == NULL && sproto != IPPROTO_IPCOMP) {
 		mtag = m_tag_get(PACKET_TAG_IPSEC_IN_DONE,
-		    sizeof(struct tdb_ident), M_NOWAIT);
+				sizeof(struct tdb_ident), M_NOWAIT);
 		if (mtag == NULL) {
 			DPRINTF(("ipsec4_common_input_cb: failed to get tag\n"));
 			IPSEC_ISTAT(sproto, espstat.esps_hdrops,
@@ -394,7 +394,7 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 			goto bad;
 		}
 
-		tdbi = (struct tdb_ident *)(mtag + 1);
+		tdbi = (struct tdb_ident *)m_tag_data(mtag);
 		bcopy(&saidx->dst, &tdbi->dst, saidx->dst.sa.sa_len);
 		tdbi->proto = sproto;
 		tdbi->spi = sav->spi;
@@ -692,7 +692,7 @@ ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav, int skip, int proto
 	 */
 	if (mt == NULL && sproto != IPPROTO_IPCOMP) {
 		mtag = m_tag_get(PACKET_TAG_IPSEC_IN_DONE,
-		    sizeof(struct tdb_ident), M_NOWAIT);
+				sizeof(struct tdb_ident), M_NOWAIT);
 		if (mtag == NULL) {
 			DPRINTF(("ipsec_common_input_cb: failed to "
 			    "get tag\n"));
@@ -702,7 +702,7 @@ ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav, int skip, int proto
 			goto bad;
 		}
 
-		tdbi = (struct tdb_ident *)(mtag + 1);
+		tdbi = (struct tdb_ident *)m_tag_data(mtag);
 		bcopy(&saidx->dst, &tdbi->dst, sizeof(union sockaddr_union));
 		tdbi->proto = sproto;
 		tdbi->spi = sav->spi;

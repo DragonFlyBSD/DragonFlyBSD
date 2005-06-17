@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.12 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.13 2005/06/17 19:12:22 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -3348,7 +3348,7 @@ ipsec_addhist(struct mbuf *m, int proto, u_int32_t spi)
 			sizeof (struct ipsec_history), M_NOWAIT);
 	if (tag == NULL)
 		return ENOBUFS;
-	p = (struct ipsec_history *)(tag+1);
+	p = (struct ipsec_history *)m_tag_data(tag);
 	bzero(p, sizeof(*p));
 	p->ih_proto = proto;
 	p->ih_spi = spi;
