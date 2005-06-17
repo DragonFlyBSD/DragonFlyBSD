@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.35 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.36 2005/06/17 08:49:49 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -59,6 +59,7 @@
 void
 ArgArray_Init(ArgArray *aa)
 {
+
 	aa->size = 8;
 	aa->argv = emalloc((aa->size + 1) * sizeof(char *));
 	aa->argc = 0;
@@ -73,6 +74,7 @@ ArgArray_Init(ArgArray *aa)
 void
 ArgArray_Done(ArgArray *aa)
 {
+
 	if (aa->buffer == NULL) {
 		int	i;
 		/* args are individually allocated */
@@ -550,4 +552,3 @@ Str_SYSVSubst(Buffer *buf, const char *pat, const char *src, int len)
 	/* append the rest */
 	Buf_Append(buf, pat);
 }
-
