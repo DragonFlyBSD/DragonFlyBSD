@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.51 2005/06/09 18:26:22 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.52 2005/06/17 18:58:02 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -722,6 +722,7 @@ m_free(struct mbuf *m)
 		m->m_pkthdr.rcvif = NULL;	/* eliminate XXX JH */
 		m->m_pkthdr.csum_flags = 0;	/* eliminate XXX JH */
 		m->m_pkthdr.fw_flags = 0;	/* eliminate XXX JH */
+		SLIST_INIT(&m->m_pkthdr.tags);
 	}
 
 	/*
