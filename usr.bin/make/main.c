@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.112 2005/06/17 08:11:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.113 2005/06/17 10:27:53 okumoto Exp $
  */
 
 /*
@@ -650,7 +650,10 @@ Main_ParseArgLine(MakeFlags *mf, char line[], int mflags)
 }
 
 /**
- * Try to change the current working directory into path.
+ * Try to change the current working directory to path, and return
+ * the whole path using getcwd().
+ *
+ * @note for amd managed mount points we really should use pawd(1).
  */
 static int
 chdir_verify_path(const char path[], char newdir[])
@@ -662,7 +665,7 @@ chdir_verify_path(const char path[], char newdir[])
 	 * an error.
 	 */
 	if (stat(path, &sb) < 0) {
-		return (0);	/* fail but no report */
+		return (0);
 	}
 	if (S_ISDIR(sb.st_mode) == 0) {
 		return (0);
