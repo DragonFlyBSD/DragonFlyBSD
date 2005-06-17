@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.61 2005/06/14 16:50:43 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.62 2005/06/17 23:10:11 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -143,7 +143,13 @@ upgrade_etc:	preupgrade
 .endif
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 	rm -f ${DESTDIR}/usr/sbin/pccardc ${DESTDIR}/usr/sbin/pccardd
+	rm -f ${DESTDIR}/usr/share/examples/etc/defaults/pccard.conf
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/pccard.conf.5.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/pccardc.8.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/pccardd.8.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/rc.pccard.8.gz"
 	rm -f ${DESTDIR}/etc/defaults/pccard ${DESTDIR}/etc/rc.d/pccard
+	rm -f ${DESTDIR}/etc/defaults/pccard.conf
 .if exists(${DESTDIR}/usr/libexec/gcc34) && exists(${DESTDIR}/usr/libexec/binutils215)
 	rm -rf ${DESTDIR}/usr/lib/gcc3
 	rm -rf ${DESTDIR}/usr/libexec/gcc3

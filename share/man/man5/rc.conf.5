@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.12 2005/05/30 00:54:46 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.13 2005/06/17 23:10:11 swildner Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -138,16 +138,6 @@ daemon.
 Run
 .Xr devd 8
 to handle device added, removed or unknown events from the kernel.
-.It Va pccard_enable
-.Pq Vt bool
-If set to
-.Dq Li YES ,
-enable PCCARD support at boot time.
-.It Va pccard_mem
-.Pq Vt str
-Set to PCCARD controller memory address or
-.Dq Li DEFAULT
-for the default value.
 .It Va pccard_ifconfig
 .Pq Vt str
 List of arguments to be passed to
@@ -158,29 +148,6 @@ insertion of the card (e.g.\&
 for a fixed address or
 .Dq Li DHCP
 for a DHCP client).
-.It Va pccard_beep
-.Pq Vt int
-If 0,
-set the PCCARD controller to silent mode.
-If 1,
-set it to beep mode.
-If 2,
-set it to melody mode.
-.It Va pccard_conf
-.Pq Vt str
-Path to the configuration file for the
-.Xr pccardd 8
-daemon (e.g.\&
-.Pa /etc/pccard.conf.sample ) .
-.It Va pccardd_flags
-.Pq Vt str
-If
-.Va pccard_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to the
-.Xr pccardd 8
-daemon.
 .It Va pccard_ether_delay
 .Pq Vt str
 Set the delay before starting
