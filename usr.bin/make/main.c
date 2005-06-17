@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.111 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.112 2005/06/17 08:11:28 okumoto Exp $
  */
 
 /*
@@ -876,7 +876,7 @@ main(int argc, char **argv)
 {
 	MakeFlags	mf;
 	Parser		parser;
-	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
+	Boolean outOfDate = TRUE;	/* FALSE if all targets up to date */
 
 	char	curdir[MAXPATHLEN];	/* startup directory */
 	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
