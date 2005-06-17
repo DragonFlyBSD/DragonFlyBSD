@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.62 2005/06/17 23:10:11 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.63 2005/06/17 23:17:02 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -189,18 +189,18 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/bin/{pod2text,sperl5,sperl5.00503,splain,suidperl}"
 .for prog in a2p c2ph h2ph h2xs perlbug perlcc pl2pm pod2html pod2man s2p
 	rm -f ${DESTDIR}/usr/bin/${prog}
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${prog}.1.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${prog}.1.gz"
 .endfor
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libperl.a,libperl.so,libperl.so.3,libperl_p.a}"
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl.1.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl.1.gz"
 .for man in 5004delta apio book bot call data debug delta diag dsc embed faq \
 	    faq.1 faq2 faq3 faq4 faq5 faq6 faq7 faq8 faq9 form func guts hist \
 	    ipc locale lol mod modinstall modlib obj op opentut pod port re \
 	    ref reftut run sec style sub syn thrtut tie toc toot trap var xs \
 	    xstut 
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl${man}.1.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl${man}.1.gz"
 .endfor
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}7/style.perl.7.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}7/style.perl.7.gz"
 	rm -rf ${DESTDIR}/usr/share/perl
 	rm -rf ${DESTDIR}/usr/share/examples/bc
 .if exists(${DESTDIR}/usr/share/info/dc.info.gz)
@@ -242,22 +242,22 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/sbin/${cmd}
 .endfor
 .for man in cursor fontedit kcon loadfont mcon scon vt220keys vttest
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${man}.1.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${man}.1.gz"
 .endfor
 .for man in keycap kgetent kgetflag kgetnum kgetstr
 	rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz
 .endfor
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcvt.4.gz
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}4/vt.4.gz
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}5/keycap.5.gz
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}8/ispcvt.8.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcvt.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/vt.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/keycap.5.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/ispcvt.8.gz"
 	rm -f ${DESTDIR}/usr/share/misc/keycap.pcvt
 	rm -rf ${DESTDIR}/usr/share/misc/fonts
 	rm -rf ${DESTDIR}/usr/share/misc/pcvtfonts
 	rm -rf ${DESTDIR}/usr/share/pcvt
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}1/battd.1.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/battd.1.gz"
 	rm -f ${DESTDIR}/usr/include/machine/bus_pc98.h
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcic.4.gz
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcic.4.gz"
 	ldconfig -R
 
 distribution:
