@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.28 2005/05/23 20:04:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.29 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /*
@@ -325,7 +325,7 @@ Make_HandleUse(GNode *cgn, GNode *pgn)
  *	The unmade field of pgn is decremented and pgn may be placed on
  *	the toBeMade queue if this field becomes 0.
  *
- * 	If the child was made, the parent's childMade field will be set true
+ *	If the child was made, the parent's childMade field will be set true
  *	and its cmtime set to now.
  *
  *	If the child wasn't made, the cmtime field of the parent will be
@@ -359,10 +359,10 @@ Make_Update(GNode *cgn)
 		 * parse.h : parse.o
 		 *
 		 * parse.o : parse.y
-		 *  	yacc -d parse.y
-		 *  	cc -c y.tab.c
-		 *  	mv y.tab.o parse.o
-		 *  	cmp -s y.tab.h parse.h || mv y.tab.h parse.h
+		 *	yacc -d parse.y
+		 *	cc -c y.tab.c
+		 *	mv y.tab.o parse.o
+		 *	cmp -s y.tab.h parse.h || mv y.tab.h parse.h
 		 *
 		 * In this case, if the definitions produced by yacc haven't
 		 * changed from before, parse.h won't have been updated and
@@ -485,7 +485,7 @@ Make_Update(GNode *cgn)
  * Side Effects:
  *	The ALLSRC and OODATE variables of the given node is filled in.
  *	If the node is a .JOIN node, its TARGET variable will be set to
- * 	match its ALLSRC variable.
+ *	match its ALLSRC variable.
  */
 void
 Make_DoAllVar(GNode *gn)

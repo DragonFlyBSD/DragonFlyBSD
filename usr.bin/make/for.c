@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.41 2005/05/05 09:08:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.42 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /*-
@@ -39,7 +39,7 @@
  *	Functions to handle loops in a makefile.
  *
  * Interface:
- *	For_Eval 	Evaluate the loop in the passed line.
+ *	For_Eval	Evaluate the loop in the passed line.
  *	For_Run		Run accumulated loop
  *
  */

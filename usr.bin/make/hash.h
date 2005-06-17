@@ -38,7 +38,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.19 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.16 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.17 2005/06/17 07:54:24 okumoto Exp $
  */
 
 #ifndef hash_h_f6312f46
@@ -46,8 +46,8 @@
 
 /* hash.h --
  *
- * 	This file contains definitions used by the hash module,
- * 	which maintains hash tables.
+ *	This file contains definitions used by the hash module,
+ *	which maintains hash tables.
  */
 
 #include "util.h"
@@ -64,9 +64,9 @@ typedef struct Hash_Entry {
 
 typedef struct Hash_Table {
 	struct Hash_Entry **bucketPtr;	/* Buckets in the table */
-	int 		size;		/* Actual size of array. */
-	int 		numEntries;	/* Number of entries in the table. */
-	int 		mask;		/* Used to select bits for hashing. */
+	int		size;		/* Actual size of array. */
+	int		numEntries;	/* Number of entries in the table. */
+	int		mask;		/* Used to select bits for hashing. */
 } Hash_Table;
 
 /*
@@ -76,7 +76,7 @@ typedef struct Hash_Table {
 typedef struct Hash_Search {
 	const Hash_Table *tablePtr;	/* Table being searched. */
 	int		nextIndex;	/* Next bucket to check */
-	Hash_Entry 	*hashEntryPtr;	/* Next entry in current bucket */
+	Hash_Entry	*hashEntryPtr;	/* Next entry in current bucket */
 } Hash_Search;
 
 /*

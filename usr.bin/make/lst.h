@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.28 2005/05/19 17:10:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.29 2005/06/17 07:54:24 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -65,8 +65,8 @@ typedef	struct	LstNode	LstNode;
  * The list itself
  */
 struct Lst {
-	LstNode  	*firstPtr; /* first node in list */
-	LstNode  	*lastPtr;  /* last node in list */
+	LstNode		*firstPtr; /* first node in list */
+	LstNode		*lastPtr;  /* last node in list */
 };
 typedef	struct	Lst Lst;
 
@@ -110,7 +110,7 @@ void		Lst_Append(Lst *, LstNode *, void *);
 /* Place an element at the front of a lst. */
 #define	Lst_AtFront(LST, D)	(Lst_Insert((LST), Lst_First(LST), (D)))
 /* Place an element at the end of a lst. */
-#define	Lst_AtEnd(LST, D) 	(Lst_Append((LST), Lst_Last(LST), (D)))
+#define	Lst_AtEnd(LST, D)	(Lst_Append((LST), Lst_Last(LST), (D)))
 /* Remove an element */
 void		Lst_Remove(Lst *, LstNode *);
 /* Replace a node with a new value */

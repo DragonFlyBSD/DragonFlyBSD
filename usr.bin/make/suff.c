@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.61 2005/06/16 23:11:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.62 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /*-
@@ -46,47 +46,47 @@
  *	using suffix transformation rules
  *
  * Interface:
- *	Suff_Init 	    	Initialize all things to do with suffixes.
+ *	Suff_Init		Initialize all things to do with suffixes.
  *
- *	Suff_DoPaths	    	This function is used to make life easier
- *	    	  	    	when searching for a file according to its
- *	    	  	    	suffix. It takes the global search path,
- *	    	  	    	as defined using the .PATH: target, and appends
- *	    	  	    	its directories to the path of each of the
- *	    	  	    	defined suffixes, as specified using
- *	    	  	    	.PATH<suffix>: targets. In addition, all
- *	    	  	    	directories given for suffixes labeled as
- *	    	  	    	include files or libraries, using the .INCLUDES
- *	    	  	    	or .LIBS targets, are played with using
- *	    	  	    	Dir_MakeFlags to create the .INCLUDES and
- *	    	  	    	.LIBS global variables.
+ *	Suff_DoPaths		This function is used to make life easier
+ *				when searching for a file according to its
+ *				suffix. It takes the global search path,
+ *				as defined using the .PATH: target, and appends
+ *				its directories to the path of each of the
+ *				defined suffixes, as specified using
+ *				.PATH<suffix>: targets. In addition, all
+ *				directories given for suffixes labeled as
+ *				include files or libraries, using the .INCLUDES
+ *				or .LIBS targets, are played with using
+ *				Dir_MakeFlags to create the .INCLUDES and
+ *				.LIBS global variables.
  *
- *	Suff_ClearSuffixes  	Clear out all the suffixes and defined
- *	    	  	    	transformations.
+ *	Suff_ClearSuffixes	Clear out all the suffixes and defined
+ *				transformations.
  *
- *	Suff_IsTransform    	Return TRUE if the passed string is the lhs
- *	    	  	    	of a transformation rule.
+ *	Suff_IsTransform	Return TRUE if the passed string is the lhs
+ *				of a transformation rule.
  *
- *	Suff_AddSuffix	    	Add the passed string as another known suffix.
+ *	Suff_AddSuffix		Add the passed string as another known suffix.
  *
- *	Suff_GetPath	    	Return the search path for the given suffix.
+ *	Suff_GetPath		Return the search path for the given suffix.
  *
- *	Suff_AddInclude	    	Mark the given suffix as denoting an include
- *	    	  	    	file.
+ *	Suff_AddInclude		Mark the given suffix as denoting an include
+ *				file.
  *
- *	Suff_AddLib	    	Mark the given suffix as denoting a library.
+ *	Suff_AddLib		Mark the given suffix as denoting a library.
  *
- *	Suff_AddTransform   	Add another transformation to the suffix
- *	    	  	    	graph. Returns  GNode suitable for framing, I
- *	    	  	    	mean, tacking commands, attributes, etc. on.
+ *	Suff_AddTransform	Add another transformation to the suffix
+ *				graph. Returns  GNode suitable for framing, I
+ *				mean, tacking commands, attributes, etc. on.
  *
- *	Suff_SetNull	    	Define the suffix to consider the suffix of
- *	    	  	    	any file that doesn't have a known one.
+ *	Suff_SetNull		Define the suffix to consider the suffix of
+ *				any file that doesn't have a known one.
  *
- *	Suff_FindDeps	    	Find implicit sources for and the location of
- *	    	  	    	a target based on its suffix. Returns the
- *	    	  	    	bottom-most node added to the graph or NULL
- *	    	  	    	if the target had no implicit sources.
+ *	Suff_FindDeps		Find implicit sources for and the location of
+ *				a target based on its suffix. Returns the
+ *				bottom-most node added to the graph or NULL
+ *				if the target had no implicit sources.
  */
 
 #include <sys/queue.h>
@@ -248,7 +248,7 @@ SuffTransFind(const char *name)
 	return (NULL);
 }
 
- 	    /*********** Maintenance Functions ************/
+	/*********** Maintenance Functions ************/
 
 #if 0
 /*
@@ -867,7 +867,7 @@ SuffSrcCreate(char *file, char *prefix, Suff *suff, Src *parent, GNode *node)
 	return (s);
 }
 
- 	  /********** Implicit Source Search Functions *********/
+	  /********** Implicit Source Search Functions *********/
 
 /*-
  *-----------------------------------------------------------------------
@@ -881,7 +881,7 @@ SuffSrcCreate(char *file, char *prefix, Suff *suff, Src *parent, GNode *node)
  *	None
  *
  * Side Effects:
- * 	Lots of structures are created and added to the list
+ *	Lots of structures are created and added to the list
  *-----------------------------------------------------------------------
  */
 static void
@@ -1301,7 +1301,7 @@ SuffExpandWildcards(GNode *child, Lst *members)
  * Side Effects:
  *	The expanded node is removed from the parent's list of children,
  *	and the parent's unmade counter is decremented, but other nodes
- * 	may be added.
+ *	may be added.
  *
  *-----------------------------------------------------------------------
  */
@@ -1676,7 +1676,7 @@ SuffFindNormalDeps(GNode *gn, Lst *slst)
 				break;
 			ln = LST_NEXT(ln);
 		}
-				
+
 		if (ln != NULL) {
 			int	prefLen;	/* Length of the prefix */
 			Src	*target;

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.110 2005/05/23 20:05:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.111 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /*
@@ -618,10 +618,10 @@ rearg:
 
 /**
  * Main_ParseArgLine
- *  	Used by the parse module when a .MFLAGS or .MAKEFLAGS target
+ *	Used by the parse module when a .MFLAGS or .MAKEFLAGS target
  *	is encountered and by main() when reading the .MAKEFLAGS envariable.
  *	Takes a line of arguments and breaks it into its
- * 	component words and passes those words and the number of them to the
+ *	component words and passes those words and the number of them to the
  *	MainParseArgs function.
  *	The line should have all its leading whitespace removed.
  *
@@ -763,7 +763,7 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
 static void
 InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[])
 {
-    	const char	*machine;
+	const char	*machine;
 	const char	*machine_arch;
 	const char	*machine_cpu;
 

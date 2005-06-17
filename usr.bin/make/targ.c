@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.37 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.29 2005/05/15 17:50:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.30 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /*
@@ -171,7 +171,7 @@ Targ_FindNode(const char *name, int flags)
 	GNode		*gn;	/* node in that element */
 	Hash_Entry	*he;	/* New or used hash entry for node */
 	Boolean		isNew;	/* Set TRUE if Hash_CreateEntry had to create */
-		      		/* an entry for the node */
+				/* an entry for the node */
 
 	if (flags & TARG_CREATE) {
 		he = Hash_CreateEntry(&targets, name, &isNew);
@@ -390,8 +390,7 @@ TargPrintNode(const GNode *gn, int pass)
 					printf("# non-existent (maybe): %s\n",
 					    gn->made == MADE ? "made" :
 					    gn->made == UPTODATE ? "up-to-date":
-					    gn->made == ERROR?"error when made":
-				 	    "aborted");
+					    gn->made == ERROR ? "error when made" : "aborted");
 				} else {
 					printf("# unmade\n");
 				}

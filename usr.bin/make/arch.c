@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.50 2005/06/16 21:47:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.51 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /*-
@@ -676,9 +676,9 @@ ArchArchiveNext(struct arfile *ar)
 	/*
 	 * Look whether this is a long name. There are several variants
 	 * of long names:
-	 *	"#1/12           "	- 12 length of following filename
-	 *	"/17             "	- index into name table
-	 *	" 17             "	- index into name table
+	 *	"#1/12		"	- 12 length of following filename
+	 *	"/17		"	- index into name table
+	 *	" 17		"	- index into name table
 	 * Note that in the last case we must also check that there is no
 	 * slash in the name because of filenames with leading spaces:
 	 *	" 777.o/           "	- filename 777.o

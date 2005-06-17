@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.34 2005/05/24 09:27:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.35 2005/06/17 07:54:24 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -68,7 +68,7 @@ ArgArray_Init(ArgArray *aa)
 }
 
 /**
- * Cleanup the memory allocated for in the argument array object. 
+ * Cleanup the memory allocated for in the argument array object.
  */
 void
 ArgArray_Done(ArgArray *aa)
@@ -333,7 +333,7 @@ MAKEFLAGS_break(ArgArray *aa, const char str[])
 			if (aa->argc == aa->size) {
 				aa->size *= 2;
 				aa->argv = erealloc(aa->argv,
- 				    (aa->size + 1) * sizeof(char *));
+				    (aa->size + 1) * sizeof(char *));
 			}
 
 			*arg++ = '\0';

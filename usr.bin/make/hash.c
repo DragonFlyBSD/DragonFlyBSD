@@ -38,15 +38,15 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.24 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.17 2005/05/05 09:06:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.18 2005/06/17 07:54:24 okumoto Exp $
  */
 
 /* hash.c --
  *
- * 	This module contains routines to manipulate a hash table.
- * 	See hash.h for a definition of the structure of the hash
- * 	table.  Hash tables grow automatically as the amount of
- * 	information increases.
+ *	This module contains routines to manipulate a hash table.
+ *	See hash.h for a definition of the structure of the hash
+ *	table.  Hash tables grow automatically as the amount of
+ *	information increases.
  */
 
 #include <stdlib.h>
@@ -74,9 +74,9 @@ static void RebuildTable(Hash_Table *);
  *
  * Hash_InitTable --
  *
- * 	Set up the hash table t with a given number of buckets, or a
- * 	reasonable default if the number requested is less than or
- * 	equal to zero.  Hash tables will grow in size as needed.
+ *	Set up the hash table t with a given number of buckets, or a
+ *	reasonable default if the number requested is less than or
+ *	equal to zero.  Hash tables will grow in size as needed.
  *
  *
  * Results:
@@ -153,7 +153,7 @@ Hash_DeleteTable(Hash_Table *t)
  *
  * Hash_FindEntry --
  *
- * 	Searches a hash table for an entry corresponding to key.
+ *	Searches a hash table for an entry corresponding to key.
  *
  * Results:
  *	The return value is a pointer to the entry for key,
@@ -250,7 +250,7 @@ Hash_CreateEntry(Hash_Table *t, const char *key, Boolean *newPtr)
  *
  * Hash_DeleteEntry --
  *
- * 	Delete the given hash table entry and free memory associated with
+ *	Delete the given hash table entry and free memory associated with
  *	it.
  *
  * Results:
@@ -361,7 +361,7 @@ Hash_EnumNext(Hash_Search *searchPtr)
  *	is larger than the old one.
  *
  * Results:
- * 	None.
+ *	None.
  *
  * Side Effects:
  *	The entire hash table is moved, so any bucket numbers
