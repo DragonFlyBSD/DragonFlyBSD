@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.4 2005/06/13 19:05:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.5 2005/06/18 19:05:02 corecode Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -41,9 +41,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500033
 #include <sys/endian.h>
-#endif
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
