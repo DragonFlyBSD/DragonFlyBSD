@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.21 2005/06/17 07:50:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.22 2005/06/18 09:01:12 okumoto Exp $
  */
 
 #include <string.h>
@@ -337,9 +337,9 @@ ShellMatch(const char name[])
 }
 
 void
-Shell_Init(void)
+Shell_Init(const char shellname[])
 {
-	commandShell = ShellMatch(DEFSHELLNAME);
+	commandShell = ShellMatch(shellname);
 }
 
 /**

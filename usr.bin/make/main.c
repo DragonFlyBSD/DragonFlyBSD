@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.114 2005/06/17 22:22:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.115 2005/06/18 09:01:12 okumoto Exp $
  */
 
 /*
@@ -935,7 +935,7 @@ main(int argc, char **argv)
 	 * command line
 	 */
 	Proc_Init();
-	Shell_Init();
+	Shell_Init(DEFSHELLNAME);
 
 	InitVariables(&mf, argc, argv, curdir, objdir);
 
