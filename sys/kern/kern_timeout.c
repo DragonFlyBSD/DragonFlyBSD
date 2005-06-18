@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.18 2005/06/16 04:43:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.19 2005/06/18 12:56:41 eirikn Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -472,7 +472,7 @@ callout_stop(struct callout *c)
         if ((c->c_flags & CALLOUT_DID_INIT) == 0) {
 		callout_init(c);
 		printf(
-		    "callout_reset(%p) from %p: callout was not initialized\n",
+		    "callout_stop(%p) from %p: callout was not initialized\n",
 		    c, ((int **)&c)[-1]);
 #ifdef DDB
 		db_print_backtrace();
