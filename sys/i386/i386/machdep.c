@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.72 2005/03/17 08:22:38 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.72.2.1 2005/06/19 22:55:57 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -231,10 +231,10 @@ int bootverbose = 0;
 vm_paddr_t Maxmem = 0;
 long dumplo;
 
-vm_paddr_t phys_avail[10];
+vm_paddr_t phys_avail[22];	/* 10 entries + (0,0) terminator */
 
 /* must be 2 less so 0 0 can signal end of chunks */
-#define PHYS_AVAIL_ARRAY_END ((sizeof(phys_avail) / sizeof(vm_offset_t)) - 2)
+#define PHYS_AVAIL_ARRAY_END ((sizeof(phys_avail) / sizeof(phys_avail[0])) - 2)
 
 static vm_offset_t buffer_sva, buffer_eva;
 vm_offset_t clean_sva, clean_eva;
@@ -1306,7 +1306,7 @@ sdtossd(sd, ssd)
 	ssd->ssd_gran  = sd->sd_gran;
 }
 
-#define PHYSMAP_SIZE	(2 * 8)
+#define PHYSMAP_SIZE	(2 * 10)
 
 /*
  * Populate the (physmap) array with base/bound pairs describing the
@@ -1727,7 +1727,7 @@ physmap_done:
 				phys_avail[pa_indx] += PAGE_SIZE;
 			} else {
 				pa_indx++;
-				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
+				if (pa_indx >= PHYS_AVAIL_ARRAY_END) {
 					printf("Too many holes in the physical address space, giving up\n");
 					pa_indx--;
 					break;
