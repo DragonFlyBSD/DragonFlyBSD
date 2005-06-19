@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libg2c/Attic/Makefile,v 1.1 2005/06/19 16:18:22 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libg2c/Attic/Makefile,v 1.2 2005/06/19 16:45:32 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -73,6 +73,10 @@ SRCS+=	chdir_.c chmod_.c lnblnk_.c hostnm_.c rename_.c fgetc_.c fputc_.c
 SRCS+=	umask_.c sys_clock_.c date_.c second_.c flush1_.c mclock_.c
 SRCS+=	alarm_.c datetime_.c
 
+SRCS+=	g2c.h
+
+g2c.h: ${SRCDIR}/g2c.hin
+	cp ${SRCDIR}/g2c.hin ${.TARGET}
 mainF.c: ${SRCDIR}/libF77/main.c
 	cp ${SRCDIR}/libF77/main.c ${.TARGET}
 VersionF.c: ${SRCDIR}/libF77/Version.c
@@ -82,6 +86,6 @@ VersionI.c: ${SRCDIR}/libI77/Version.c
 VersionU.c: ${SRCDIR}/libU77/Version.c
 	cp ${SRCDIR}/libU77/Version.c ${.TARGET}
 
-CLEANFILES+=	VersionF.c VersionI.c VersionU.c
+CLEANFILES+=	g2c.h mainF.c VersionF.c VersionI.c VersionU.c
 
 .include <bsd.lib.mk>
