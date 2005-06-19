@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.74 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.75 2005/06/19 22:43:32 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -118,6 +118,8 @@
 #include <sys/random.h>
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
+
+#define PHYSMAP_ENTRIES		10
 
 extern void init386 (int first);
 extern void dblfault_handler (void);
@@ -231,10 +233,7 @@ int bootverbose = 0;
 vm_paddr_t Maxmem = 0;
 long dumplo;
 
-vm_paddr_t phys_avail[10];
-
-/* must be 2 less so 0 0 can signal end of chunks */
-#define PHYS_AVAIL_ARRAY_END ((sizeof(phys_avail) / sizeof(vm_offset_t)) - 2)
+vm_paddr_t phys_avail[PHYSMAP_ENTRIES*2+2];
 
 static vm_offset_t buffer_sva, buffer_eva;
 vm_offset_t clean_sva, clean_eva;
@@ -1306,8 +1305,6 @@ sdtossd(sd, ssd)
 	ssd->ssd_gran  = sd->sd_gran;
 }
 
-#define PHYSMAP_SIZE	(2 * 8)
-
 /*
  * Populate the (physmap) array with base/bound pairs describing the
  * available physical memory in the system, then test this memory and
@@ -1327,7 +1324,8 @@ getmemsize(int first)
 	u_int basemem, extmem;
 	struct vm86frame vmf;
 	struct vm86context vmc;
-	vm_offset_t pa, physmap[PHYSMAP_SIZE];
+	vm_offset_t pa;
+	vm_offset_t physmap[PHYSMAP_ENTRIES*2];
 	pt_entry_t *pte;
 	const char *cp;
 	struct {
@@ -1460,7 +1458,7 @@ int15e820:
 		}
 
 		physmap_idx += 2;
-		if (physmap_idx == PHYSMAP_SIZE) {
+		if (physmap_idx == PHYSMAP_ENTRIES*2) {
 			printf(
 		"Too many segments in the physical address map, giving up\n");
 			break;
@@ -1727,7 +1725,7 @@ physmap_done:
 				phys_avail[pa_indx] += PAGE_SIZE;
 			} else {
 				pa_indx++;
-				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
+				if (pa_indx >= PHYSMAP_ENTRIES*2) {
 					printf("Too many holes in the physical address space, giving up\n");
 					pa_indx--;
 					break;
