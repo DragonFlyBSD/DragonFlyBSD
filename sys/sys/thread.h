@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.62 2005/04/18 01:03:33 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.63 2005/06/19 22:07:17 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -106,10 +106,20 @@ typedef struct lwkt_tokref {
     struct globaldata	*tr_reqgd;	/* requesting cpu */
 } lwkt_tokref;
 
+/*
+ * The magic number indicates the trans-cpu state of a token reference.
+ *
+ * MAGIC1 - token reference is not in transit to another cpu
+ * MAGIC2 - token reference is in transit to another cpu
+ * MAGIC3 - token reference is in a state where it should not be
+ *	    checked by lwkt_chktoken().
+ */
 #define LWKT_TOKREF_MAGIC1		\
 			((__uint32_t)0x544f4b52)	/* normal */
 #define LWKT_TOKREF_MAGIC2		\
 			((__uint32_t)0x544f4b53)	/* pending req */
+#define LWKT_TOKREF_MAGIC3		\
+			((__uint32_t)0x544f4b54)	/* indeterminant */
 #define LWKT_TOKREF_INIT(tok)		\
 			{ tok, LWKT_TOKREF_MAGIC1 }
 #define LWKT_TOKREF_DECLARE(name, tok)	\
