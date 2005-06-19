@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.116 2005/06/19 14:29:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.117 2005/06/19 14:30:02 okumoto Exp $
  */
 
 /*
@@ -1046,15 +1046,14 @@ main(int argc, char **argv)
 	if (DEBUG(GRAPH1))
 		Targ_PrintGraph(1);
 
-	/* print the values of any variables requested by the user */
 	if (Lst_IsEmpty(&mf.variables)) {
 		/*
-		 * Since the user has not requested that any variables
-		 * be printed, we can build targets.
+		 * Build targets.
 		 *
-		 * Have read the entire graph and need to make a list of targets
-		 * to create. If none was given on the command line, we consult
-		 * the parsing module to find the main target(s) to create.
+		 * We have read the entire graph and need to make
+		 * a list of targets to create.  If none were given
+		 * on the command line, we consult the parsing
+		 * module to find the main target(s) to create.
 		 */
 		Lst targs = Lst_Initializer(targs);
 
@@ -1072,6 +1071,9 @@ main(int argc, char **argv)
 		Lst_Destroy(&targs, NOFREE);
 
 	} else {
+		/*
+		 * Print the values of variables requested by the user.
+		 */
 		outOfDate = TRUE;
 		Var_Print(&mf.variables, mf.expandVars);
 	}
