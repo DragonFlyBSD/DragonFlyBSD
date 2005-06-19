@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.118 2005/06/19 14:30:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.119 2005/06/19 14:31:03 okumoto Exp $
  */
 
 /*
@@ -857,6 +857,37 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
 	}
 }
 
+static int
+build_stuff(MakeFlags *mf)
+{
+	Boolean outOfDate;	/* FALSE if all targets up to date */
+
+	/*
+	 * Build targets.
+	 *
+	 * We have read the entire graph and need to make
+	 * a list of targets to create.  If none were given
+	 * on the command line, we consult the parsing
+	 * module to find the main target(s) to create.
+	 */
+	Lst targs = Lst_Initializer(targs);
+
+	if (Lst_IsEmpty(&mf->create))
+		Parse_MainName(&targs);
+	else
+		Targ_FindList(&targs, &mf->create, TARG_CREATE);
+
+	/* Traverse the graph, checking on all the targets */
+	if (compatMake) {
+		outOfDate = Compat_Run(&targs, mf->queryFlag);
+	} else {
+		outOfDate = Make_Run(&targs, mf->queryFlag);
+	}
+	Lst_Destroy(&targs, NOFREE);
+
+	return (mf->queryFlag && outOfDate) ? 1 : 0;
+}
+
 /**
  * main
  *	The main function, for obvious reasons. Initializes variables
@@ -879,10 +910,9 @@ main(int argc, char **argv)
 {
 	MakeFlags	mf;
 	Parser		parser;
-	Boolean outOfDate;	/* FALSE if all targets up to date */
-
-	char	curdir[MAXPATHLEN];	/* startup directory */
-	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
+	int		status;		/* exit status */
+	char		curdir[MAXPATHLEN];	/* startup directory */
+	char		objdir[MAXPATHLEN];	/* where we chdir'ed to */
 
 	/*------------------------------------------------------------*
 	 * This section initializes variables that require no input.
@@ -1047,35 +1077,21 @@ main(int argc, char **argv)
 		Targ_PrintGraph(1);
 
 	if (Lst_IsEmpty(&mf.variables)) {
-		/*
-		 * Build targets.
-		 *
-		 * We have read the entire graph and need to make
-		 * a list of targets to create.  If none were given
-		 * on the command line, we consult the parsing
-		 * module to find the main target(s) to create.
-		 */
-		Lst targs = Lst_Initializer(targs);
-
-		if (Lst_IsEmpty(&mf.create))
-			Parse_MainName(&targs);
-		else
-			Targ_FindList(&targs, &mf.create, TARG_CREATE);
-
-		/* Traverse the graph, checking on all the targets */
-		if (compatMake) {
-			outOfDate = Compat_Run(&targs, mf.queryFlag);
-		} else {
-			outOfDate = Make_Run(&targs, mf.queryFlag);
-		}
-		Lst_Destroy(&targs, NOFREE);
-
+		status = build_stuff(&mf);
 	} else {
-		/*
-		 * Print the values of variables requested by the user.
-		 */
-		outOfDate = TRUE;
+		/* Print the values of variables requested by the user. */
 		Var_Print(&mf.variables, mf.expandVars);
+
+		/*
+		 * XXX
+		 * This should be a "don't care", we do not check
+		 * the status of any files.  It might make sense to
+		 * modify Var_Print() to indicate that one of the
+		 * requested variables did not exist, and use that
+		 * as the return status.
+		 * XXX
+		 */
+		status = mf.queryFlag ? 1 : 0;
 	}
 
 	/* print the graph now it's been processed if the user requested it */
@@ -1090,6 +1106,6 @@ main(int argc, char **argv)
 	Lst_Destroy(&mf.makefiles, free);
 	Lst_Destroy(&mf.variables, free);
 
-	return (mf.queryFlag && outOfDate) ? 1 : 0;
+	return (status);
 }
 
