@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.115 2005/06/18 09:01:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.116 2005/06/19 14:29:42 okumoto Exp $
  */
 
 /*
@@ -879,7 +879,7 @@ main(int argc, char **argv)
 {
 	MakeFlags	mf;
 	Parser		parser;
-	Boolean outOfDate = TRUE;	/* FALSE if all targets up to date */
+	Boolean outOfDate;	/* FALSE if all targets up to date */
 
 	char	curdir[MAXPATHLEN];	/* startup directory */
 	char	objdir[MAXPATHLEN];	/* where we chdir'ed to */
@@ -1072,8 +1072,13 @@ main(int argc, char **argv)
 		Lst_Destroy(&targs, NOFREE);
 
 	} else {
+		outOfDate = TRUE;
 		Var_Print(&mf.variables, mf.expandVars);
 	}
+
+	/* print the graph now it's been processed if the user requested it */
+	if (DEBUG(GRAPH2))
+		Targ_PrintGraph(2);
 
 #if 0
 	TAILQ_DESTROY(&mf.sysIncPath);
@@ -1083,13 +1088,6 @@ main(int argc, char **argv)
 	Lst_Destroy(&mf.makefiles, free);
 	Lst_Destroy(&mf.variables, free);
 
-	/* print the graph now it's been processed if the user requested it */
-	if (DEBUG(GRAPH2))
-		Targ_PrintGraph(2);
-
-	if (mf.queryFlag && outOfDate)
-		return (1);
-	else
-		return (0);
+	return (mf.queryFlag && outOfDate) ? 1 : 0;
 }
 
