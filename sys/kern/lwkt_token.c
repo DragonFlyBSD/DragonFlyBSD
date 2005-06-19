@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.15 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.16 2005/06/19 21:50:47 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -129,6 +129,7 @@ lwkt_chktokens(thread_t td)
     lwkt_tokref_t refs;
     globaldata_t dgd;
     lwkt_token_t tok;
+    __uint32_t magic;
     int r = 1;
 
     for (refs = td->td_toks; refs; refs = refs->tr_next) {
@@ -144,7 +145,9 @@ lwkt_chktokens(thread_t td)
 	     * It can be set from MAGIC2 to MAGIC1 by a remote cpu but can
 	     * only be set from MAGIC1 to MAGIC2 by our cpu.
 	     */
-	    if (refs->tr_magic == LWKT_TOKREF_MAGIC1) {
+	    magic = refs->tr_magic;
+	    cpu_ccfence();
+	    if (magic == LWKT_TOKREF_MAGIC1) {
 		refs->tr_magic = LWKT_TOKREF_MAGIC2;	/* MP synched slowreq*/
 		refs->tr_reqgd = gd;
 		tok->t_reqcpu = gd;	/* MP unsynchronized 'fast' req */
@@ -153,6 +156,9 @@ lwkt_chktokens(thread_t td)
 		    refs->tr_magic = LWKT_TOKREF_MAGIC1;
 		    break;
 		}
+	    } else if (magic != LWKT_TOKREF_MAGIC2) {
+		panic("lwkt_chktoken(): token ref %p tok %p bad magic %08x\n",
+			refs, refs->tr_tok, magic);
 	    }
 	}
     }
@@ -223,6 +229,7 @@ static __inline
 void
 _lwkt_gettokref(lwkt_tokref_t ref)
 {
+    lwkt_tokref_t scan;
     lwkt_token_t tok;
     globaldata_t gd;
     thread_t td;
@@ -233,30 +240,43 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 
     /*
      * Link the request into our thread's list.  This interlocks against
-     * remote requests from other cpus and prevents the token from being
-     * given away if our cpu already owns it.  This also allows us to
+     * remote requests from other cpus, prevents the token from being
+     * given away if our cpu already owns it, and interlocks against 
+     * preempting threads which may want the token.  This also allows us to
      * avoid using a critical section.
      */
     ref->tr_next = td->td_toks;
     cpu_ccfence();	/* prevent compiler reordering */
     td->td_toks = ref;
+    tok = ref->tr_tok;
 
     /*
-     * If our cpu does not own the token then let the scheduler deal with
-     * it.  We are guarenteed to own the tokens on our thread's token
-     * list when we are switched back in.
-     *
-     * Otherwise make sure the token is not held by a thread we are
-     * preempting.  If it is, let the scheduler deal with it.
+     * If we are preempting another thread which owns the token we have to
+     * yield to get out from the preemption because we cannot obtain a token
+     * owned by the thread we are preempting.
      */
-    tok = ref->tr_tok;
+    if (td->td_preempted) {
+	while ((td = td->td_preempted) != NULL) {
+	    for (scan = td->td_toks; scan; scan = scan->tr_next) {
+		if (scan->tr_tok == tok) {
+		    lwkt_yield();
+		    KKASSERT(tok->t_cpu == gd);
+		    goto breakout;
+		}
+	    }
+	}
+breakout: ;
+	td = gd->gd_curthread;	/* our thread, again */
+    }
+
+    /*
+     * If our cpu does not own the token then (currently) spin while we
+     * await it.  XXX we should yield here but some testing is required
+     * before we do so, there could be some interlock issues with e.g.
+     * softupdates before we can yield.  ZZZ
+     */
 #ifdef SMP
     if (tok->t_cpu != gd) {
-	/*
-	 * Temporarily operate on tokens synchronously.  We have to fix
-	 * a number of interlocks and especially the softupdates code to
-	 * be able to properly yield.  ZZZ
-	 */
 #if defined(MAKE_TOKENS_SPIN)
 	int x = 40000000;
 	int y = 10;
@@ -281,22 +301,8 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 #error MAKE_TOKENS_XXX ?
 #endif
 	KKASSERT(tok->t_cpu == gd);
-    } else /* NOTE CONDITIONAL */
-#endif
-    if (td->td_preempted) {
-	while ((td = td->td_preempted) != NULL) {
-	    lwkt_tokref_t scan;
-	    for (scan = td->td_toks; scan; scan = scan->tr_next) {
-		if (scan->tr_tok == tok) {
-		    lwkt_yield();
-		    KKASSERT(tok->t_cpu == gd);
-		    goto breakout;
-		}
-	    }
-	}
-breakout: ;
     }
-    /* 'td' variable no longer valid due to preempt loop above */
+#endif
 }
 
 
@@ -320,7 +326,13 @@ _lwkt_trytokref(lwkt_tokref_t ref)
      * remote requests from other cpus and prevents the token from being
      * given away if our cpu already owns it.  This also allows us to
      * avoid using a critical section.
+     *
+     * Force a panic to occur if chktokens is called while the reference
+     * is linked to td_toks but before we have resolved whether we can
+     * keep it.  chktokens should never be called on our ref list
+     * preemptively.
      */
+    ref->tr_magic = LWKT_TOKREF_MAGIC3;
     ref->tr_next = td->td_toks;
     cpu_ccfence();	/* prevent compiler reordering */
     td->td_toks = ref;
@@ -335,8 +347,9 @@ _lwkt_trytokref(lwkt_tokref_t ref)
 #ifdef SMP
     if (tok->t_cpu != gd) {
 	td->td_toks = ref->tr_next;	/* remove ref */
+	ref->tr_magic = LWKT_TOKREF_MAGIC1;
 	return(0);
-    } else /* NOTE CONDITIONAL */
+    }
 #endif
     if (td->td_preempted) {
 	while ((td = td->td_preempted) != NULL) {
@@ -345,11 +358,17 @@ _lwkt_trytokref(lwkt_tokref_t ref)
 		if (scan->tr_tok == tok) {
 		    td = gd->gd_curthread;	/* our thread */
 		    td->td_toks = ref->tr_next;	/* remove ref */
+		    ref->tr_magic = LWKT_TOKREF_MAGIC1;
 		    return(0);
 		}
 	    }
 	}
     }
+
+    /*
+     * We own the token, legitimize the reference.
+     */
+    ref->tr_magic = LWKT_TOKREF_MAGIC1;
     /* 'td' variable no longer valid */
     return(1);
 }
@@ -386,11 +405,13 @@ lwkt_trytokref(lwkt_tokref_t ref)
 void
 lwkt_reltoken(lwkt_tokref *_ref)
 {
+    lwkt_tokref_t scan;
     lwkt_tokref *ref;
     lwkt_tokref **pref;
     lwkt_token_t tok;
     globaldata_t gd;
     thread_t td;
+    int giveaway;
 
     /*
      * Guard check and stack check (if in the same stack page).  We must
@@ -404,20 +425,41 @@ lwkt_reltoken(lwkt_tokref *_ref)
     KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1 || 
 	     ref->tr_magic == LWKT_TOKREF_MAGIC2);
 #endif
-    /*
-     * Locate and unlink the token.  Interlock with the token's cpureq
-     * to give the token away before we release it from our thread list,
-     * which allows us to avoid using a critical section.
-     */
+
+    tok = ref->tr_tok;
     gd = mycpu;
     td = gd->gd_curthread;
+    KKASSERT(tok->t_cpu == gd);
+
+    /*
+     * We can only give away the token if we aren't holding it recursively.
+     * Also use the opportunity to locate the link field for the token.
+     *
+     * We do not have to scan preempted threads since by definition we cannot
+     * be holding any token held by a thread we are preempting.
+     */
+    giveaway = 1;
     for (pref = &td->td_toks; (ref = *pref) != _ref; pref = &ref->tr_next) {
 	KKASSERT(ref != NULL);
+	if (ref->tr_tok == tok)
+	    giveaway = 0;
     }
-    tok = ref->tr_tok;
-    KKASSERT(tok->t_cpu == gd);
-    tok->t_cpu = tok->t_reqcpu;	/* we do not own 'tok' after this */
-    *pref = ref->tr_next;	/* note: also removes giveaway interlock */
+    for (scan = ref->tr_next; scan; scan = scan->tr_next) {
+	if (scan->tr_tok == tok)
+	    giveaway = 0;
+    }
+    if (giveaway == 0) {
+	printf("Warning: no giveaway lwkt_reltoken caller %p\n",
+		((void **)&_ref)[-1]);
+    }
+
+    /*
+     * Give the token away (if we can) before removing the interlock.  Once
+     * the interlock is removed, the token can be given away by an IPI.
+     */
+    if (giveaway)
+	tok->t_cpu = tok->t_reqcpu;	
+    *pref = ref->tr_next;
 
     /*
      * If we had gotten the token opportunistically and it still happens to
@@ -439,6 +481,7 @@ lwkt_reltoken(lwkt_tokref *_ref)
 #error MAKE_TOKENS_XXX ?
 #endif
     }
+    KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1);
 }
 
 /*

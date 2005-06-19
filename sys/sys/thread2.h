@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.19 2005/06/06 15:02:24 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.20 2005/06/19 21:50:50 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -50,12 +50,14 @@ crit_enter(void)
     if (td->td_pri < 0)
 	crit_panic();
 #endif
+    cpu_ccfence();
 }
 
 static __inline void
 crit_enter_quick(struct thread *curtd)
 {
     curtd->td_pri += TDPRI_CRIT;
+    cpu_ccfence();
 }
 
 static __inline void
@@ -72,6 +74,7 @@ crit_exit_noyield(struct thread *curtd)
     if (curtd->td_pri < 0)
 	crit_panic();
 #endif
+    cpu_ccfence();	/* prevent compiler reordering */
 }
 
 static __inline void
