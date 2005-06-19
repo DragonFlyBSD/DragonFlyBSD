@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.117 2005/06/19 14:30:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.118 2005/06/19 14:30:29 okumoto Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ typedef struct MakeFlags {
 	struct Path	sysIncPath;
 
 	Boolean	expandVars;	/* fully expand printed variables */
-	Boolean	noBuiltins;	/* -r flag */
+	Boolean	builtins;	/* -r flag */
 	Boolean	forceJobs;      /* -j argument given */
 
 	/**
@@ -279,7 +279,7 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
 static void
 ReadInputFiles(Parser *parser, MakeFlags *mf, const char curdir[], const char objdir[])
 {
-	if (!mf->noBuiltins) {
+	if (mf->builtins) {
 		/* Path of sys.mk */
 		Lst	sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode	*ln;
@@ -539,7 +539,7 @@ rearg:
 			MFLAGS_append("-q", NULL);
 			break;
 		case 'r':
-			mf->noBuiltins = TRUE;
+			mf->builtins = FALSE;
 			MFLAGS_append("-r", NULL);
 			break;
 		case 's':
@@ -913,7 +913,7 @@ main(int argc, char **argv)
 	TAILQ_INIT(&mf.sysIncPath);
 
 	mf.expandVars = TRUE;
-	mf.noBuiltins = FALSE;		/* Read the built-in rules */
+	mf.builtins = TRUE;		/* Read the built-in rules */
 	mf.queryFlag = FALSE;
 
 	/*------------------------------------------------------------*
