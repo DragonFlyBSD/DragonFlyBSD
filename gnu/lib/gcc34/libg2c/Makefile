@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libg2c/Attic/Makefile,v 1.2 2005/06/19 16:45:32 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libg2c/Attic/Makefile,v 1.3 2005/06/19 17:13:59 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -9,6 +9,7 @@ SRCDIR=	${GCCDIR}/libf2c
 
 .PATH: ${SRCDIR} ${SRCDIR}/libF77 ${SRCDIR}/libI77 ${SRCDIR}/libU77
 
+CFLAGS+=	-I${.OBJDIR}
 CFLAGS+=	-I${SRCDIR}
 CFLAGS+=	-I${SRCDIR}/libF77
 CFLAGS+=	-I${SRCDIR}/libI77
