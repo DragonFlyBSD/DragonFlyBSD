@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.16 2005/06/19 21:50:47 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.17 2005/06/20 07:40:30 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -132,6 +132,7 @@ lwkt_chktokens(thread_t td)
     __uint32_t magic;
     int r = 1;
 
+    KKASSERT(gd->gd_curthread->td_pri >= TDPRI_CRIT);
     for (refs = td->td_toks; refs; refs = refs->tr_next) {
 	tok = refs->tr_tok;
 	if ((dgd = tok->t_cpu) != gd) {
@@ -236,6 +237,7 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 
     gd = mycpu;			/* our cpu */
     KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1);
+    KKASSERT(gd->gd_intr_nesting_level == 0);
     td = gd->gd_curthread;	/* our thread */
 
     /*
@@ -319,6 +321,7 @@ _lwkt_trytokref(lwkt_tokref_t ref)
 
     gd = mycpu;			/* our cpu */
     KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1);
+    KKASSERT(gd->gd_intr_nesting_level == 0);
     td = gd->gd_curthread;	/* our thread */
 
     /*
@@ -429,7 +432,9 @@ lwkt_reltoken(lwkt_tokref *_ref)
     tok = ref->tr_tok;
     gd = mycpu;
     td = gd->gd_curthread;
+
     KKASSERT(tok->t_cpu == gd);
+    KKASSERT(gd->gd_intr_nesting_level == 0);
 
     /*
      * We can only give away the token if we aren't holding it recursively.
@@ -448,10 +453,6 @@ lwkt_reltoken(lwkt_tokref *_ref)
 	if (scan->tr_tok == tok)
 	    giveaway = 0;
     }
-    if (giveaway == 0) {
-	printf("Warning: no giveaway lwkt_reltoken caller %p\n",
-		((void **)&_ref)[-1]);
-    }
 
     /*
      * Give the token away (if we can) before removing the interlock.  Once
@@ -459,6 +460,7 @@ lwkt_reltoken(lwkt_tokref *_ref)
      */
     if (giveaway)
 	tok->t_cpu = tok->t_reqcpu;	
+    KKASSERT(*pref == ref);
     *pref = ref->tr_next;
 
     /*
@@ -557,6 +559,7 @@ lwkt_drain_token_requests(void)
     globaldata_t gd = mycpu;
     lwkt_tokref_t ref;
 
+    KKASSERT(gd->gd_curthread->td_pri >= TDPRI_CRIT);
     while ((ref = gd->gd_tokreqbase) != NULL) {
 	gd->gd_tokreqbase = ref->tr_gdreqnext;
 	KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2);
