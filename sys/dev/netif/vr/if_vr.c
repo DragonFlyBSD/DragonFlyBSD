@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.30 2005/06/20 13:04:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.31 2005/06/20 13:08:01 joerg Exp $
  */
 
 /*
@@ -672,8 +672,6 @@ vr_attach(device_t dev)
 	struct ifnet *ifp;
 	int error = 0, rid;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	callout_init(&sc->vr_stat_timer);
 
@@ -706,8 +704,7 @@ vr_attach(device_t dev)
 
 	if (sc->vr_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
-		error = ENXIO;
-		goto fail;
+		return ENXIO;
 	}
 
 	sc->vr_btag = rman_get_bustag(sc->vr_res);
@@ -720,18 +717,7 @@ vr_attach(device_t dev)
 
 	if (sc->vr_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
-		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
 		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->vr_irq, INTR_TYPE_NET,
-			       vr_intr, sc, &sc->vr_intrhand, NULL);
-
-	if (error) {
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
-		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
-		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
@@ -769,13 +755,10 @@ vr_attach(device_t dev)
 		eaddr[i] = CSR_READ_1(sc, VR_PAR0 + i);
 
 	sc->vr_ldata = contigmalloc(sizeof(struct vr_list_data), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->vr_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
-		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
-		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
 		error = ENXIO;
 		goto fail;
 	}
@@ -802,11 +785,6 @@ vr_attach(device_t dev)
 	if (mii_phy_probe(dev, &sc->vr_miibus,
 	    vr_ifmedia_upd, vr_ifmedia_sts)) {
 		if_printf(ifp, "MII without any phy!\n");
-		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
-		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
-		contigfree(sc->vr_ldata,
-		    sizeof(struct vr_list_data), M_DEVBUF);
 		error = ENXIO;
 		goto fail;
 	}
@@ -814,8 +792,18 @@ vr_attach(device_t dev)
 	/* Call MI attach routine. */
 	ether_ifattach(ifp, eaddr);
 
+	error = bus_setup_intr(dev, sc->vr_irq, INTR_TYPE_NET,
+			       vr_intr, sc, &sc->vr_intrhand, NULL);
+
+	if (error) {
+		device_printf(dev, "couldn't set up irq\n");
+		ether_ifdetach(ifp);
+		goto fail;
+	}
+	return 0;
+
 fail:
-	crit_exit();
+	vr_detach(dev);
 	return(error);
 }
 
@@ -827,20 +815,25 @@ vr_detach(device_t dev)
 
 	crit_enter();
 
-	vr_stop(sc);
-	ether_ifdetach(ifp);
-
+	if (device_is_attached(dev)) {
+		vr_stop(sc);
+		ether_ifdetach(ifp);
+	}
+	if (sc->vr_miibus != NULL)
+		device_delete_child(dev, sc->vr_miibus);
 	bus_generic_detach(dev);
-	device_delete_child(dev, sc->vr_miibus);
 
-	bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
+	if (sc->vr_intrhand != NULL)
+		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
 
 	crit_exit();
 
-	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
-	bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
-
-	contigfree(sc->vr_ldata, sizeof(struct vr_list_data), M_DEVBUF);
+	if (sc->vr_irq != NULL)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
+	if (sc->vr_res != NULL)
+		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
+	if (sc->vr_ldata != NULL)
+		contigfree(sc->vr_ldata, sizeof(struct vr_list_data), M_DEVBUF);
 
 	return(0);
 }
