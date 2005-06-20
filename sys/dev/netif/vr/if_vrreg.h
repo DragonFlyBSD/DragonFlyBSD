@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.6 2005/05/05 22:57:45 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.7 2005/06/20 13:01:15 joerg Exp $
  */
 
 /*
@@ -461,8 +461,6 @@ struct vr_softc {
 	struct resource		*vr_irq;
 	void			*vr_intrhand;
 	device_t		vr_miibus;
-	struct vr_type		*vr_info;	/* Rhine adapter info */
-	uint8_t			vr_type;
 	uint8_t			vr_revid;	/* Rhine chip revision */
 	uint8_t			vr_flags;	/* See VR_F_* below */
 	struct vr_list_data	*vr_ldata;

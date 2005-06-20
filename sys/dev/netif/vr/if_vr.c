@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.27 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.28 2005/06/20 13:01:15 joerg Exp $
  */
 
 /*
@@ -668,16 +668,16 @@ static int
 vr_probe(device_t dev)
 {
 	struct vr_type *t;
+	uint16_t vid, did;
 
-	t = vr_devs;
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
 
-	while(t->vr_name != NULL) {
-		if ((pci_get_vendor(dev) == t->vr_vid) &&
-		    (pci_get_device(dev) == t->vr_did)) {
+	for (t = vr_devs; t->vr_name != NULL; ++t) {
+		if (vid == t->vr_vid && did == t->vr_did) {
 			device_set_desc(dev, t->vr_name);
 			return(0);
 		}
-		t++;
 	}
 
 	return(ENXIO);
@@ -793,6 +793,9 @@ vr_attach(device_t dev)
 	 */
 	VR_CLRBIT(sc, VR_STICKHW, (VR_STICKHW_DS0|VR_STICKHW_DS1));
 
+	ifp = &sc->arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/* Reset the adapter. */
 	vr_reset(sc);
 
@@ -803,9 +806,6 @@ vr_attach(device_t dev)
         pci_write_config(dev, VR_PCI_MODE,
 	    pci_read_config(dev, VR_PCI_MODE, 4) | (VR_MODE3_MIION << 24), 4);
 	VR_CLRBIT(sc, VR_MIICMD, VR_MIICMD_AUTOPOLL);
-
-	ifp = &sc->arpcom.ac_if;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	/*
 	 * Get station address. The way the Rhine chips work,
