@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.23 2005/06/20 13:24:14 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.24 2005/06/20 13:26:15 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -206,7 +206,6 @@ txp_attach(dev)
 {
 	struct txp_softc *sc;
 	struct ifnet *ifp;
-	u_int32_t command;
 	u_int16_t p1;
 	u_int32_t p2;
 	int error = 0, rid;
@@ -217,27 +216,7 @@ txp_attach(dev)
 	ifp = &sc->sc_arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	/*
-	 * Map control/status registers.
-	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-#ifdef TXP_USEIOSPACE
-	if (!(command & PCIM_CMD_PORTEN)) {
-		device_printf(dev, "failed to enable I/O ports!\n");
-		error = ENXIO;;
-		goto fail;
-	}
-#else
-	if (!(command & PCIM_CMD_MEMEN)) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;;
-		goto fail;
-	}
-#endif
+	pci_enable_busmaster(dev);
 
 	rid = TXP_RID;
 	sc->sc_res = bus_alloc_resource_any(dev, TXP_RES, &rid, RF_ACTIVE);
