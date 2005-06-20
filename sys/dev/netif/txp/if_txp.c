@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.28 2005/06/20 13:51:54 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.29 2005/06/20 13:56:08 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -241,21 +241,13 @@ txp_attach(dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET,
-			       txp_intr, sc, &sc->sc_intrhand, NULL);
-
-	if (error) {
-		device_printf(dev, "couldn't set up irq\n");
-		goto fail;
-	}
-
 	if (txp_chip_init(sc)) {
 		error = ENXIO;
 		goto fail;
 	}
 
 	sc->sc_fwbuf = contigmalloc(32768, M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 	error = txp_download_fw(sc);
 	contigfree(sc->sc_fwbuf, 32768, M_DEVBUF);
 	sc->sc_fwbuf = NULL;
@@ -264,7 +256,7 @@ txp_attach(dev)
 		goto fail;
 
 	sc->sc_ldata = contigmalloc(sizeof(struct txp_ldata), M_DEVBUF,
-	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
 	bzero(sc->sc_ldata, sizeof(struct txp_ldata));
 
 	if (txp_alloc_rings(sc)) {
@@ -320,10 +312,16 @@ txp_attach(dev)
 	ifp->if_hwassist = 0;
 	txp_capabilities(sc);
 
-	/*
-	 * Attach us everywhere
-	 */
 	ether_ifattach(ifp, enaddr);
+
+	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET,
+			       txp_intr, sc, &sc->sc_intrhand, NULL);
+	if (error) {
+		device_printf(dev, "couldn't set up irq\n");
+		ether_ifdetach(ifp);
+		goto fail;
+	}
+
 	return(0);
 
 fail:
@@ -339,6 +337,8 @@ txp_detach(dev)
 	struct ifnet *ifp;
 	int i;
 
+	crit_enter();
+
 	sc = device_get_softc(dev);
 	ifp = &sc->sc_arpcom.ac_if;
 
@@ -352,6 +352,8 @@ txp_detach(dev)
 		free(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);
 
 	txp_release_resources(dev);
+
+	crit_exit();
 
 	return(0);
 }
