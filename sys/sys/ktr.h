@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/ktr.h,v 1.6 2005/06/20 20:37:26 dillon Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.7 2005/06/20 21:12:49 dillon Exp $
  */
 /*
  * Generic Kernel trace buffer support.  
@@ -136,7 +136,7 @@ SYSCTL_DECL(_debug_ktr);
 #define KTR_INFO_MASTER_EXTERN(master)					\
 	    const static int ktr_ ## master ## _enable = 0
 
-#define KTR_INFO(master, name, maskbit, format, datasize)		\
+#define KTR_INFO(compile, master, name, maskbit, format, datasize)	\
 	    static const int ktr_ ## master ## _ ## name ## _mask =	\
 		1 << maskbit
 
