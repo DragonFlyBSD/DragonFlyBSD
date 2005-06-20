@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.74 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.75 2005/06/20 07:31:05 dillon Exp $
  */
 
 /*
@@ -911,14 +911,22 @@ lwkt_schedule(thread_t td)
 	 *
 	 * (remember, wait structures use stable storage)
 	 *
-	 * NOTE: tokens no longer enter a critical section, so we only need
-	 * to account for the crit_enter() above when calling
-	 * _lwkt_schedule_post().
+	 * NOTE: we have to account for the number of critical sections
+	 * under our control when calling _lwkt_schedule_post() so it
+	 * can figure out whether preemption is allowed.
+	 *
+	 * NOTE: The wait structure algorithms are a mess and need to be
+	 * rewritten.
+	 *
+	 * NOTE: We cannot safely acquire or release a token, even 
+	 * non-blocking, because this routine may be called in the context
+	 * of a thread already holding the token and thus not provide any
+	 * interlock protection.  We cannot safely manipulate the td_toks
+	 * list for the same reason.  Instead we depend on our critical
+	 * section if the token is owned by our cpu.
 	 */
 	if ((w = td->td_wait) != NULL) {
-	    lwkt_tokref wref;
-
-	    if (lwkt_trytoken(&wref, &w->wa_token)) {
+	    if (w->wa_token.t_cpu == mygd) {
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
@@ -933,7 +941,6 @@ lwkt_schedule(thread_t td)
 		_lwkt_enqueue(td);
 		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 #endif
-		lwkt_reltoken(&wref);
 	    } else {
 		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc_t)lwkt_schedule, td);
 	    }
