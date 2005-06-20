@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/ktr.h,v 1.5 2005/06/20 17:59:30 dillon Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.6 2005/06/20 20:37:26 dillon Exp $
  */
 /*
  * Generic Kernel trace buffer support.  
@@ -69,11 +69,12 @@ struct ktr_entry {
 	void	*ktr_caller2;
 	int32_t	ktr_line;
 	int32_t ktr_unused;
-	char	ktr_data[KTR_BUFSIZE];
+	int32_t	ktr_data[KTR_BUFSIZE / sizeof(int32_t)];
 };
 
 void	ktr_log(struct ktr_info *info, const char *file, int line, ...);
 void	ktr_log_ptr(struct ktr_info *info, const char *file, int line, const void *ptr);
+void    cpu_ktr_caller(struct ktr_entry *ktr);
 
 /*
  * Take advantage of constant integer optimizations by the compiler

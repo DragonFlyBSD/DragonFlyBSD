@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.5 2005/06/20 17:59:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.6 2005/06/20 20:37:24 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -100,15 +100,18 @@ MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
 SYSCTL_NODE(_debug, OID_AUTO, ktr, CTLFLAG_RW, 0, "ktr");
 
-int32_t	ktr_cpumask = -1;
+static int32_t	ktr_cpumask = -1;
 TUNABLE_INT("debug.ktr.cpumask", &ktr_cpumask);
 SYSCTL_INT(_debug_ktr, OID_AUTO, cpumask, CTLFLAG_RW, &ktr_cpumask, 0, "");
 
-int	ktr_entries = KTR_ENTRIES;
+static int	ktr_entries = KTR_ENTRIES;
 SYSCTL_INT(_debug_ktr, OID_AUTO, entries, CTLFLAG_RD, &ktr_entries, 0, "");
 
-int	ktr_version = KTR_VERSION;
+static int	ktr_version = KTR_VERSION;
 SYSCTL_INT(_debug_ktr, OID_AUTO, version, CTLFLAG_RD, &ktr_version, 0, "");
+
+static int	ktr_stacktrace = 1;
+SYSCTL_INT(_debug_ktr, OID_AUTO, stacktrace, CTLFLAG_RD, &ktr_stacktrace, 0, "");
 
 /*
  * Give cpu0 a static buffer so the tracepoint facility can be used during
@@ -162,6 +165,8 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 			bcopyi(ptr, entry->ktr_data, KTR_BUFSIZE);
 		else
 			bcopyi(ptr, entry->ktr_data, info->kf_data_size);
+		if (ktr_stacktrace)
+			cpu_ktr_caller(entry);
 	}
 #ifdef KTR_VERBOSE
 	if (ktr_verbose && info->kf_format) {
@@ -182,15 +187,19 @@ ktr_log(struct ktr_info *info, const char *file, int line, ...)
 {
 	__va_list va;
 
-	__va_start(va, line);
-	ktr_write_entry(info, file, line, va);
-	__va_end(va);
+	if (panicstr == NULL) {
+		__va_start(va, line);
+		ktr_write_entry(info, file, line, va);
+		__va_end(va);
+	}
 }
 
 void
 ktr_log_ptr(struct ktr_info *info, const char *file, int line, const void *ptr)
 {
-	ktr_write_entry(info, file, line, ptr);
+	if (panicstr == NULL) {
+		ktr_write_entry(info, file, line, ptr);
+	}
 }
 
 #ifdef DDB
@@ -315,8 +324,9 @@ db_mach_vtrace(int cpu, struct ktr_entry *kp, int idx)
 		    kp->ktr_file, kp->ktr_line);
 	}
 	db_printf("%s\t", kp->ktr_info->kf_name);
+	db_printf("from(%p,%p) ", kp->ktr_caller1, kp->ktr_caller2);
 	if (kp->ktr_info->kf_format) {
-		int32_t *args = (int32_t *)kp->ktr_data;
+		int32_t *args = kp->ktr_data;
 		db_printf(kp->ktr_info->kf_format,
 			  args[0], args[1], args[2], args[3],
 			  args[4], args[5], args[6], args[7],
