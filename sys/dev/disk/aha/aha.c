@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.9 2005/06/03 16:57:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.10 2005/06/20 02:56:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1198,6 +1198,7 @@ ahaexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		xpt_freeze_simq(aha->sim, /*count*/1);
 		ccb->ccb_h.status = CAM_REQUEUE_REQ;
 		xpt_done(ccb);
+		crit_exit();
 		return;
 	}
 	paddr = ahaccbvtop(aha, accb);
