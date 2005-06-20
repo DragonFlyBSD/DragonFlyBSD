@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.19 2005/06/20 18:00:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.20 2005/06/20 20:38:01 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -103,25 +103,24 @@ static void lwkt_reqtoken_remote(void *data);
 
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
-#define TOKEN_STRING	"REF=%p TOK=%p TD=%p CALLER=%p"
+#define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
 #if !defined(KTR_TOKENS)
 #define	KTR_TOKENS	KTR_ALL
 #endif
 
 KTR_INFO_MASTER(tokens);
-KTR_INFO(KTR_TOKENS, tokens, try, 0, TOKEN_STRING, sizeof(void *) * 4);
-KTR_INFO(KTR_TOKENS, tokens, get, 1, TOKEN_STRING, sizeof(void *) * 4);
-KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, sizeof(void *) * 4);
+KTR_INFO(KTR_TOKENS, tokens, try, 0, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, get, 1, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, sizeof(void *) * 3);
 #ifdef SMP
-KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, sizeof(void *) * 4);
-KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, sizeof(void *) * 4);
-KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, sizeof(void *) * 4);
-KTR_INFO(KTR_TOKENS, tokens, drain, 6, TOKEN_STRING, sizeof(void *) * 4);
+KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, drain, 6, TOKEN_STRING, sizeof(void *) * 3);
 #endif
 
-#define logtoken(name, ref, stackptr)					\
-	KTR_LOG(tokens_ ## name, ref, ref->tr_tok, curthread,		\
-		((stackptr) ? (stackptr)[-1] : NULL))
+#define logtoken(name, ref)						\
+	KTR_LOG(tokens_ ## name, ref, ref->tr_tok, curthread)
 
 #ifdef _KERNEL
 
@@ -174,13 +173,13 @@ lwkt_chktokens(thread_t td)
 		refs->tr_reqgd = gd;
 		tok->t_reqcpu = gd;	/* MP unsynchronized 'fast' req */
 
-		logtoken(reqremote, refs, (void **)&td);
+		logtoken(reqremote, refs);
 
 		if (lwkt_send_ipiq_nowait(dgd, lwkt_reqtoken_remote, refs)) {
 		    /* failed */
 		    refs->tr_magic = LWKT_TOKREF_MAGIC1;
 
-		    logtoken(reqfail, refs, (void **)&td);
+		    logtoken(reqfail, refs);
 		    break;
 		}
 	    } else if (magic != LWKT_TOKREF_MAGIC2) {
@@ -406,14 +405,14 @@ void
 lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
     lwkt_tokref_init(ref, tok);
-    logtoken(get, ref, (void **)&ref);
+    logtoken(get, ref);
     _lwkt_gettokref(ref);
 }
 
 void
 lwkt_gettokref(lwkt_tokref_t ref)
 {
-    logtoken(get, ref, (void **)&ref);
+    logtoken(get, ref);
     _lwkt_gettokref(ref);
 }
 
@@ -421,14 +420,14 @@ int
 lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
     lwkt_tokref_init(ref, tok);
-    logtoken(try, ref, (void **)&ref);
+    logtoken(try, ref);
     return(_lwkt_trytokref(ref));
 }
 
 int
 lwkt_trytokref(lwkt_tokref_t ref)
 {
-    logtoken(try, ref, (void **)&ref);
+    logtoken(try, ref);
     return(_lwkt_trytokref(ref));
 }
 
@@ -446,7 +445,7 @@ lwkt_reltoken(lwkt_tokref *_ref)
     thread_t td;
     int giveaway;
 
-    logtoken(release, _ref, (void **)&_ref);
+    logtoken(release, _ref);
     /*
      * Guard check and stack check (if in the same stack page).  We must
      * also wait for any action pending on remote cpus which we do by
@@ -558,7 +557,7 @@ lwkt_reqtoken_remote(void *data)
     globaldata_t gd = mycpu;
     lwkt_token_t tok = ref->tr_tok;
 
-    logtoken(remote, ref, (void **)&data);
+    logtoken(remote, ref);
     /*
      * We do not have to queue the token if we can give it away
      * immediately.  Otherwise we queue it to our globaldata structure.
@@ -594,7 +593,7 @@ lwkt_drain_token_requests(void)
     KKASSERT(gd->gd_curthread->td_pri >= TDPRI_CRIT);
     while ((ref = gd->gd_tokreqbase) != NULL) {
 	gd->gd_tokreqbase = ref->tr_gdreqnext;
-	logtoken(drain, ref, NULL);
+	logtoken(drain, ref);
 	KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2);
 	if (ref->tr_tok->t_cpu == gd)
 	    ref->tr_tok->t_cpu = ref->tr_reqgd;
