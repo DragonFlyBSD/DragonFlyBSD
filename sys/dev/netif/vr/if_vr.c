@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.28 2005/06/20 13:01:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.29 2005/06/20 13:02:48 joerg Exp $
  */
 
 /*
@@ -692,7 +692,6 @@ vr_attach(device_t dev)
 {
 	int i;
 	uint8_t eaddr[ETHER_ADDR_LEN];
-	uint32_t command;
 	struct vr_softc *sc;
 	struct ifnet *ifp;
 	int error = 0, rid;
@@ -705,52 +704,26 @@ vr_attach(device_t dev)
 	/*
 	 * Handle power management nonsense.
 	 */
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
+		uint32_t iobase, membase, irq;
 
-	command = pci_read_config(dev, VR_PCI_CAPID, 4) & 0x000000FF;
-	if (command == 0x01) {
-		command = pci_read_config(dev, VR_PCI_PWRMGMTCTRL, 4);
-		if (command & VR_PSTATE_MASK) {
-			uint32_t iobase, membase, irq;
+		/* Save important PCI config data. */
+		iobase = pci_read_config(dev, VR_PCI_LOIO, 4);
+		membase = pci_read_config(dev, VR_PCI_LOMEM, 4);
+		irq = pci_read_config(dev, VR_PCI_INTLINE, 4);
 
-			/* Save important PCI config data. */
-			iobase = pci_read_config(dev, VR_PCI_LOIO, 4);
-			membase = pci_read_config(dev, VR_PCI_LOMEM, 4);
-			irq = pci_read_config(dev, VR_PCI_INTLINE, 4);
+		/* Reset the power state. */
+		device_printf(dev, "chip is in D%d power mode "
+		"-- setting to D0\n", pci_get_powerstate(dev));
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
-			/* Reset the power state. */
-			device_printf(dev, "chip is in D%d power mode "
-			"-- setting to D0\n", command & VR_PSTATE_MASK);
-			command &= 0xFFFFFFFC;
-			pci_write_config(dev, VR_PCI_PWRMGMTCTRL, command, 4);
-
-			/* Restore PCI config data. */
-			pci_write_config(dev, VR_PCI_LOIO, iobase, 4);
-			pci_write_config(dev, VR_PCI_LOMEM, membase, 4);
-			pci_write_config(dev, VR_PCI_INTLINE, irq, 4);
-		}
+		/* Restore PCI config data. */
+		pci_write_config(dev, VR_PCI_LOIO, iobase, 4);
+		pci_write_config(dev, VR_PCI_LOMEM, membase, 4);
+		pci_write_config(dev, VR_PCI_INTLINE, irq, 4);
 	}
 
-	/*
-	 * Map control/status registers.
-	 */
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	command |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	sc->vr_revid = pci_read_config(dev, VR_PCI_REVID, 4) & 0x000000FF;
-
-#ifdef VR_USEIOSPACE
-	if (!(command & PCIM_CMD_PORTEN)) {
-		device_printf(dev, "failed to enable I/O ports!\n");
-		free(sc, M_DEVBUF);
-		goto fail;
-	}
-#else
-	if (!(command & PCIM_CMD_MEMEN)) {
-		device_printf(dev, "failed to enable memory mapping!\n");
-		goto fail;
-	}
-#endif
+	pci_enable_busmaster(dev);
 
 	rid = VR_RID;
 	sc->vr_res = bus_alloc_resource_any(dev, VR_RES, &rid, RF_ACTIVE);
