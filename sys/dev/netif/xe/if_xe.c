@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.22 2005/06/15 11:35:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.23 2005/06/20 16:48:02 joerg Exp $
  */
 
 /*
@@ -1574,14 +1574,15 @@ xe_disable_intr(struct xe_softc *scp) {
 static void
 xe_setmulti(struct xe_softc *scp) {
   struct ifnet *ifp;
-  struct ifmultiaddr *maddr;
+  struct ifmultiaddr *ifma;
   int count;
 
   ifp = &scp->arpcom.ac_if;
-  maddr = ifp->if_multiaddrs.lh_first;
 
   /* Get length of multicast list */
-  for (count = 0; maddr != NULL; maddr = maddr->ifma_link.le_next, count++);
+  count = 0;
+  LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
+    count++;
 
   if ((ifp->if_flags & IFF_PROMISC) || (ifp->if_flags & IFF_ALLMULTI) || (count > 9)) {
     /*
@@ -1627,11 +1628,11 @@ xe_setmulti(struct xe_softc *scp) {
  */
 static void
 xe_setaddrs(struct xe_softc *scp) {
-  struct ifmultiaddr *maddr;
+  struct ifmultiaddr *ifma;
   u_int8_t *addr;
   u_int8_t page, slot, byte, i;
 
-  maddr = scp->arpcom.ac_if.if_multiaddrs.lh_first;
+  ifma = LIST_FIRST(&scp->arpcom.ac_if.if_multiaddrs);
 
   XE_SELECT_PAGE(page = 0x50);
 
@@ -1640,10 +1641,10 @@ xe_setaddrs(struct xe_softc *scp) {
     if (slot == 0)
       addr = (u_int8_t *)(&scp->arpcom.ac_enaddr);
     else {
-      while (maddr != NULL && maddr->ifma_addr->sa_family != AF_LINK)
-	maddr = maddr->ifma_link.le_next;
-      if (maddr != NULL)
-	addr = LLADDR((struct sockaddr_dl *)maddr->ifma_addr);
+      while (ifma != NULL && ifma->ifma_addr->sa_family != AF_LINK)
+        ifma = LIST_NEXT(ifma, ifma_link);
+      if (ifma != NULL)
+	addr = LLADDR((struct sockaddr_dl *)ifma->ifma_addr);
       else
 	addr = (u_int8_t *)(&scp->arpcom.ac_enaddr);
     }
