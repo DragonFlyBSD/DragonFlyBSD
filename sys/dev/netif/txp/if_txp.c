@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.27 2005/06/20 13:49:52 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.28 2005/06/20 13:51:54 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -185,16 +185,16 @@ txp_probe(dev)
 	device_t dev;
 {
 	struct txp_type *t;
+	uint16_t vid, did;
 
-	t = txp_devs;
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
 
-	while(t->txp_name != NULL) {
-		if ((pci_get_vendor(dev) == t->txp_vid) &&
-		    (pci_get_device(dev) == t->txp_did)) {
+	for (t = txp_devs; t->txp_name != NULL; ++t) {
+		if ((vid == t->txp_vid) && (did == t->txp_did)) {
 			device_set_desc(dev, t->txp_name);
 			return(0);
 		}
-		t++;
 	}
 
 	return(ENXIO);
