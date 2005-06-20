@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.24 2005/06/20 13:26:15 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.25 2005/06/20 13:39:17 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1702,12 +1702,8 @@ txp_set_filter(sc)
 	struct txp_softc *sc;
 {
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
-	u_int32_t crc, carry, hashbit, hash[2];
-	u_int16_t filter;
-	u_int8_t octet;
-	int i, j, mcnt = 0;
+	uint16_t filter;
 	struct ifmultiaddr *ifma;
-	char *enm;
 
 	if (ifp->if_flags & IFF_PROMISC) {
 		filter = TXP_RXFILT_PROMISC;
@@ -1719,9 +1715,12 @@ txp_set_filter(sc)
 	if (ifp->if_flags & IFF_BROADCAST)
 		filter |= TXP_RXFILT_BROADCAST;
 
-	if (ifp->if_flags & IFF_ALLMULTI)
+	if (ifp->if_flags & IFF_ALLMULTI) {
 		filter |= TXP_RXFILT_ALLMULTI;
-	else {
+	} else {
+		uint32_t hashbit, hash[2];
+		int mcnt = 0;
+
 		hash[0] = hash[1] = 0;
 
 		for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
@@ -1729,23 +1728,10 @@ txp_set_filter(sc)
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 
-			enm = LLADDR((struct sockaddr_dl *)ifma->ifma_addr);
 			mcnt++;
-			crc = 0xffffffff;
-
-			for (i = 0; i < ETHER_ADDR_LEN; i++) {
-				octet = enm[i];
-				for (j = 0; j < 8; j++) {
-					carry = ((crc & 0x80000000) ? 1 : 0) ^
-					    (octet & 1);
-					crc <<= 1;
-					octet >>= 1;
-					if (carry)
-						crc = (crc ^ TXP_POLYNOMIAL) |
-						    carry;
-				}
-			}
-			hashbit = (u_int16_t)(crc & (64 - 1));
+			hashbit = (uint16_t)(ether_crc32_be(
+			    LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+			    ETHER_ADDR_LEN) & (64 - 1));
 			hash[hashbit / 32] |= (1 << hashbit % 32);
 		}
 
@@ -1757,11 +1743,8 @@ txp_set_filter(sc)
 	}
 
 setit:
-
 	txp_command(sc, TXP_CMD_RX_FILTER_WRITE, filter, 0, 0,
 	    NULL, NULL, NULL, 1);
-
-	return;
 }
 
 static void

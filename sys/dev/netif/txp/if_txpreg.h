@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txpreg.h,v 1.30 2001/06/23 04:18:02 jason Exp $ */
 /*	$FreeBSD: src/sys/dev/txp/if_txpreg.h,v 1.2.2.1 2001/07/30 17:31:39 wpaul Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.4 2005/06/20 13:24:14 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.5 2005/06/20 13:39:17 joerg Exp $ */
 
 /*
  * Copyright (c) 2001 Aaron Campbell <aaron@monkey.org>.
@@ -457,9 +457,6 @@ struct txp_tcpseg_desc {
 #define	TXP_RXFILT_BROADCAST	0x0004	/* broadcast packets */
 #define	TXP_RXFILT_PROMISC	0x0008	/* promiscuous mode */
 #define	TXP_RXFILT_HASHMULTI	0x0010	/* use multicast filter */
-
-/* multicast polynomial */
-#define	TXP_POLYNOMIAL		0x04c11db7
 
 /*
  * boot record (pointers to rings)
