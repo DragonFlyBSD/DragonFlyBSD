@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.34 2005/06/20 21:11:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.35 2005/06/20 23:21:34 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -129,12 +129,12 @@
 KTR_INFO_MASTER(memory);
 KTR_INFO(KTR_MEMORY, memory, malloc, 0, MEMORY_STRING, MEMORY_ARG_SIZE);
 KTR_INFO(KTR_MEMORY, memory, free_zero, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_ovsz, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_ovsz_delayed, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_chunk, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_ovsz, 2, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_ovsz_delayed, 3, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_chunk, 4, MEMORY_STRING, MEMORY_ARG_SIZE);
 #ifdef SMP
-KTR_INFO(KTR_MEMORY, memory, free_request, 2, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_remote, 3, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_request, 5, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_remote, 6, MEMORY_STRING, MEMORY_ARG_SIZE);
 #endif
 
 #define logmemory(name, ptr, type, size, flags)				\
