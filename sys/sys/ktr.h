@@ -1,37 +1,41 @@
-/*-
- * Copyright (c) 1996 Berkeley Software Design, Inc. All rights reserved.
- *
+/*
+ * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ * 
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Berkeley Software Design Inc's name may not be used to endorse or
- *    promote products derived from this software without specific prior
- *    written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY BERKELEY SOFTWARE DESIGN INC ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL BERKELEY SOFTWARE DESIGN INC BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	from BSDI $Id: ktr.h,v 1.10.2.7 2000/03/16 21:44:42 cp Exp $
- * $FreeBSD: /repoman/r/ncvs/src/sys/sys/ktr.h,v 1.21 2003/03/11 20:07:22 jhb Exp $
- * $DragonFly: src/sys/sys/ktr.h,v 1.4 2005/03/09 23:26:11 hmp Exp $
+ * 
+ * $DragonFly: src/sys/sys/ktr.h,v 1.5 2005/06/20 17:59:30 dillon Exp $
  */
-
 /*
- *	Wraparound kernel trace buffer support.
+ * Generic Kernel trace buffer support.  
+ *
  */
 
 #ifndef _SYS_KTR_H_
@@ -41,141 +45,104 @@
 #include "opt_ktr.h"
 #endif
 
-/*
- * Trace classes
- */
-#define	KTR_GEN		0x00000001		/* General (TR) */
-#define	KTR_NET		0x00000002		/* Network */
-#define	KTR_DEV		0x00000004		/* Device driver */
-#define	KTR_LOCK	0x00000008		/* MP locking */
-#define	KTR_SMP		0x00000010		/* MP general */
-#define	KTR_FS		0x00000020		/* Filesystem */
-#define	KTR_PMAP	0x00000040		/* Pmap tracing */
-#define	KTR_MALLOC	0x00000080		/* Malloc tracing */
-#define	KTR_TRAP	0x00000100		/* Trap processing */
-#define	KTR_INTR	0x00000200		/* Interrupt tracing */
-#define	KTR_SIG		0x00000400		/* Signal processing */
-#define	KTR_CLK		0x00000800		/* hardclock verbose */
-#define	KTR_PROC	0x00001000		/* Process scheduling */
-#define	KTR_SYSC	0x00002000		/* System call */
-#define	KTR_INIT	0x00004000		/* System initialization */
-#define	KTR_KGDB	0x00008000		/* Trace kgdb internals */
-#define	KTR_IO		0x00010000		/* Upper I/O  */
-#define	KTR_EVH		0x00020000		/* Eventhandler */
-#define	KTR_NFS		0x00040000		/* NFS */
-#define	KTR_VOP		0x00080000		/* VFS and VNODE ops */
-#define	KTR_VM		0x00100000		/* The virtual memory system */
-#define	KTR_RUNQ	0x00200000		/* Run queue */
-#define	KTR_CONTENTION	0x00800000		/* Lock contention */
-#define	KTR_ALL		0x00ffffff
-
-/*
- * Trace classes which can be assigned to particular use at compile time
- * These must remain in high 22 as some assembly code counts on it
- */
-#define	KTR_CT1		0x01000000
-#define	KTR_CT2		0x02000000
-#define	KTR_CT3		0x04000000
-#define	KTR_CT4		0x08000000
-#define	KTR_CT5		0x10000000
-#define	KTR_CT6		0x20000000
-#define	KTR_CT7		0x40000000
-#define	KTR_CT8		0x80000000
-
-/* Trace classes to compile in */
-#ifndef KTR_COMPILE
-#define	KTR_COMPILE	(KTR_ALL)
+#if !defined(KTR_ALL)
+#define KTR_ALL		0
 #endif
 
-/*
- * Version number for ktr_entry struct.  Increment this when you break binary
- * compatibility.
- */
-#define	KTR_VERSION	1
-
-#define	KTR_PARMS	6
+#define	KTR_BUFSIZE	48
+#define KTR_VERSION	2
 
 #ifndef LOCORE
 
-struct ktr_entry {
-	u_int64_t ktr_timestamp;
-	int	ktr_cpu;
-	int	ktr_line;
-	const	char *ktr_file;
-	const	char *ktr_desc;
-	u_long	ktr_parms[KTR_PARMS];
+struct ktr_info {
+	const char *kf_name;	/* human-interpreted subsystem name */
+	int32_t *kf_master_enable; /* the master enable variable */
+	const char *kf_format;	/* data format */
+	int kf_data_size;	/* relevance of the data buffer */
 };
 
-extern int ktr_cpumask;
-extern int ktr_mask;
-extern int ktr_entries;
-extern int ktr_verbose;
+struct ktr_entry {
+	u_int64_t ktr_timestamp;
+	struct ktr_info *ktr_info;
+	const	char *ktr_file;
+	void	*ktr_caller1;
+	void	*ktr_caller2;
+	int32_t	ktr_line;
+	int32_t ktr_unused;
+	char	ktr_data[KTR_BUFSIZE];
+};
 
-extern volatile int ktr_idx[MAXCPU];
-extern struct ktr_entry *ktr_buf[MAXCPU];
+void	ktr_log(struct ktr_info *info, const char *file, int line, ...);
+void	ktr_log_ptr(struct ktr_info *info, const char *file, int line, const void *ptr);
 
-#endif /* !LOCORE */
+/*
+ * Take advantage of constant integer optimizations by the compiler
+ * to optimize-out disabled code at compile-time.  If KTR_ENABLE_<name>
+ * is 0, the compiler avoids generating all related code when KTR is enabled.
+ */
 
 #ifdef KTR
 
-void	ktr_tracepoint(u_int mask, const char *file, int line,
-	    const char *format, u_long arg1, u_long arg2, u_long arg3,
-	    u_long arg4, u_long arg5, u_long arg6);
+SYSCTL_DECL(_debug_ktr);
 
-#define CTR6(m, format, p1, p2, p3, p4, p5, p6) do {			\
-	if (KTR_COMPILE & (m))						\
-		ktr_tracepoint((m), __FILE__, __LINE__, format,		\
-		    (u_long)(p1), (u_long)(p2), (u_long)(p3),		\
-		    (u_long)(p4), (u_long)(p5), (u_long)(p6));		\
-	} while(0)
-#define	CTR0(m, format)			CTR6(m, format, 0, 0, 0, 0, 0, 0)
-#define	CTR1(m, format, p1)		CTR6(m, format, p1, 0, 0, 0, 0, 0)
-#define	CTR2(m, format, p1, p2)		CTR6(m, format, p1, p2, 0, 0, 0, 0)
-#define	CTR3(m, format, p1, p2, p3)	CTR6(m, format, p1, p2, p3, 0, 0, 0)
-#define	CTR4(m, format, p1, p2, p3, p4)	CTR6(m, format, p1, p2, p3, p4, 0, 0)
-#define	CTR5(m, format, p1, p2, p3, p4, p5)	CTR6(m, format, p1, p2, p3, p4, p5, 0)
-#else	/* KTR */
-#undef KTR_COMPILE
-#define KTR_COMPILE 0
-#define	CTR0(m, d)
-#define	CTR1(m, d, p1)
-#define	CTR2(m, d, p1, p2)
-#define	CTR3(m, d, p1, p2, p3)
-#define	CTR4(m, d, p1, p2, p3, p4)
-#define	CTR5(m, d, p1, p2, p3, p4, p5)
-#define	CTR6(m, d, p1, p2, p3, p4, p5, p6)
-#endif	/* KTR */
+#define KTR_INFO_MASTER(master)						    \
+	    SYSCTL_NODE(_debug_ktr, OID_AUTO, master, CTLFLAG_RW, 0, "");   \
+	    int ktr_ ## master ## _enable = -1;				    \
+	    SYSCTL_INT(_debug_ktr, OID_AUTO, master ## _enable, CTLFLAG_RW, \
+			&ktr_ ## master ## _enable, 0, "")
 
-#define	TR0(d)				CTR0(KTR_GEN, d)
-#define	TR1(d, p1)			CTR1(KTR_GEN, d, p1)
-#define	TR2(d, p1, p2)			CTR2(KTR_GEN, d, p1, p2)
-#define	TR3(d, p1, p2, p3)		CTR3(KTR_GEN, d, p1, p2, p3)
-#define	TR4(d, p1, p2, p3, p4)		CTR4(KTR_GEN, d, p1, p2, p3, p4)
-#define	TR5(d, p1, p2, p3, p4, p5)	CTR5(KTR_GEN, d, p1, p2, p3, p4, p5)
-#define	TR6(d, p1, p2, p3, p4, p5, p6)	CTR6(KTR_GEN, d, p1, p2, p3, p4, p5, p6)
+#define KTR_INFO_MASTER_EXTERN(master)					\
+	    SYSCTL_DECL(_debug_ktr_ ## master);				\
+	    extern int ktr_ ## master ## _enable			\
 
 /*
- * Trace initialization events, similar to CTR with KTR_INIT, but
- * completely ifdef'ed out if KTR_INIT isn't in KTR_COMPILE (to
- * save string space, the compiler doesn't optimize out strings
- * for the conditional ones above).
+ * This creates a read-only sysctl so the user knows what the mask
+ * definitions are and a number of static const int's which are used
+ * by the compiler to optimize the trace logging at compile-time and
+ * run-time.
  */
-#if (KTR_COMPILE & KTR_INIT) != 0
-#define	ITR0(d)				CTR0(KTR_INIT, d)
-#define	ITR1(d, p1)			CTR1(KTR_INIT, d, p1)
-#define	ITR2(d, p1, p2)			CTR2(KTR_INIT, d, p1, p2)
-#define	ITR3(d, p1, p2, p3)		CTR3(KTR_INIT, d, p1, p2, p3)
-#define	ITR4(d, p1, p2, p3, p4)		CTR4(KTR_INIT, d, p1, p2, p3, p4)
-#define	ITR5(d, p1, p2, p3, p4, p5)	CTR5(KTR_INIT, d, p1, p2, p3, p4, p5)
-#define	ITR6(d, p1, p2, p3, p4, p5, p6)	CTR6(KTR_INIT, d, p1, p2, p3, p4, p5, p6)
+#define KTR_INFO(compile, master, name, maskbit, format, datasize)	\
+	    static const int ktr_ ## master ## _ ## name ## _mask =	\
+		1 << maskbit;						\
+	    static const int ktr_ ## master ## _ ## name ## _enable =	\
+		compile;						\
+	    static int ktr_ ## master ## _ ## name ## _mask_ro =	\
+		1 << maskbit;						\
+	    SYSCTL_INT(_debug_ktr_ ## master, OID_AUTO, name ## _mask,	\
+		CTLFLAG_RD, &ktr_ ## master ## _ ## name ## _mask_ro,	\
+		0, "");							\
+	    static struct ktr_info ktr_info_ ## master ## _ ## name = { \
+		#master "_" #name,					\
+		&ktr_ ## master ## _enable,				\
+		format,							\
+		datasize }
+
+#define KTR_LOG(name, args...)						\
+	    if (ktr_ ## name ## _enable &&				\
+	      (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) \
+	    ktr_log(&ktr_info_ ## name, __FILE__, __LINE__, ##args)
+
+#define KTR_LOG_PTR(name, ptr)						\
+	    if (ktr_ ## name ## _enable &&				\
+	      (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) \
+	    ktr_log_ptr(&ktr_info_ ## name, __FILE__, __LINE__, ptr)
+
 #else
-#define	ITR0(d)
-#define	ITR1(d, p1)
-#define	ITR2(d, p1, p2)
-#define	ITR3(d, p1, p2, p3)
-#define	ITR4(d, p1, p2, p3, p4)
-#define	ITR5(d, p1, p2, p3, p4, p5)
-#define	ITR6(d, p1, p2, p3, p4, p5, p6)
+
+#define KTR_INFO_MASTER(master)						\
+	    const static int ktr_ ## master ## _enable = 0
+
+#define KTR_INFO_MASTER_EXTERN(master)					\
+	    const static int ktr_ ## master ## _enable = 0
+
+#define KTR_INFO(master, name, maskbit, format, datasize)		\
+	    static const int ktr_ ## master ## _ ## name ## _mask =	\
+		1 << maskbit
+
+#define KTR_LOG(info, args...)
+#define KTR_LOG_PTR(info, ptr)
+
 #endif
 
+#endif /* !LOCORE */
 #endif /* !_SYS_KTR_H_ */

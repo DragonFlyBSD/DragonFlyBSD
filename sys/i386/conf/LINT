@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.55 2005/06/12 19:24:10 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.56 2005/06/20 17:59:33 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2661,10 +2661,7 @@ options 	VFS_BIO_DEBUG
 options 	XBONEHACK
 
 options	KTR
-options	KTR_MASK=1
-options	KTR_CPUMASK=1
-options	KTR_COMPILE=(KTR_ALL)	# Every trace class, see sys/ktr.h for
-       	                     	# the different class numbers
+options KTR_ALL
 options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1
 
