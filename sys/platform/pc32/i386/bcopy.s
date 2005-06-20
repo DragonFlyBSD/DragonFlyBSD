@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.6 2004/07/16 05:48:29 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.7 2005/06/20 17:43:37 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -87,6 +87,25 @@ ENTRY(bcopyb)
 	cld
 	ret
 
+	/*
+	 * bcopyi(s, d, len)	(NON OVERLAPPING)
+	 *
+	 * This is a dumb 32-bit-granular bcopy
+	 */
+	ALIGN_TEXT
+ENTRY(bcopyi)
+	pushl	%esi
+	pushl	%edi
+	movl	12(%esp),%esi
+	movl	16(%esp),%edi
+	movl	20(%esp),%ecx
+	shrl	$2,%ecx
+	cld
+	rep
+	movsl
+	popl	%edi
+	popl	%esi
+	ret
 
 	/*
 	 * If memcpy/bcopy is called as part of a copyin or copyout, the

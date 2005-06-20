@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/i386/include/Attic/md_var.h,v 1.14 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/i386/include/Attic/md_var.h,v 1.15 2005/06/20 17:43:39 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -69,6 +69,7 @@ struct  mdglobaldata;
 struct  thread;
 
 void	bcopyb (const void *from, void *to, size_t len);
+void	bcopyi (const void *from, void *to, size_t len);
 void	busdma_swi (void);
 void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
 void	cpu_halt (void);
