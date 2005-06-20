@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.32 2005/06/03 22:55:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.33 2005/06/20 20:49:14 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -131,6 +131,10 @@ static int32_t weirdary[16];
 
 static void *kmem_slab_alloc(vm_size_t bytes, vm_offset_t align, int flags);
 static void kmem_slab_free(void *ptr, vm_size_t bytes);
+#if defined(INVARIANTS)
+static void chunk_mark_allocated(SLZone *z, void *chunk);
+static void chunk_mark_free(SLZone *z, void *chunk);
+#endif
 
 /*
  * Misc constants.  Note that allocations that are exact multiples of 
@@ -505,6 +509,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 			panic("chunk %p FFPG %d/%d", chunk, z->z_FirstFreePg, ZonePageCount);
 		if (chunk->c_Next && (uintptr_t)chunk->c_Next < VM_MIN_KERNEL_ADDRESS)
 			panic("chunkNEXT %p %p FFPG %d/%d", chunk, chunk->c_Next, z->z_FirstFreePg, ZonePageCount);
+		chunk_mark_allocated(z, chunk);
 #endif
 		z->z_PageAry[z->z_FirstFreePg] = chunk->c_Next;
 		goto done;
@@ -529,6 +534,9 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	    flags &= ~M_ZERO;
 	    flags |= M_PASSIVE_ZERO;
 	}
+#if defined(INVARIANTS)
+	chunk_mark_allocated(z, chunk);
+#endif
 	goto done;
     }
 
@@ -558,13 +566,27 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	}
 
 	/*
+	 * How big is the base structure?
+	 */
+#if defined(INVARIANTS)
+	/*
+	 * Make room for z_Bitmap.  An exact calculation is somewhat more
+	 * complicated so don't make an exact calculation.
+	 */
+	off = offsetof(SLZone, z_Bitmap[(ZoneSize / size + 31) / 32]);
+	bzero(z->z_Bitmap, (ZoneSize / size + 31) / 8);
+#else
+	off = sizeof(SLZone);
+#endif
+
+	/*
 	 * Guarentee power-of-2 alignment for power-of-2-sized chunks.
 	 * Otherwise just 8-byte align the data.
 	 */
 	if ((size | (size - 1)) + 1 == (size << 1))
-	    off = (sizeof(SLZone) + size - 1) & ~(size - 1);
+	    off = (off + size - 1) & ~(size - 1);
 	else
-	    off = (sizeof(SLZone) + MIN_CHUNK_MASK) & ~MIN_CHUNK_MASK;
+	    off = (off + MIN_CHUNK_MASK) & ~MIN_CHUNK_MASK;
 	z->z_Magic = ZALLOC_SLAB_MAGIC;
 	z->z_ZoneIndex = zi;
 	z->z_NMax = (ZoneSize - off) / size;
@@ -582,6 +604,9 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	    flags &= ~M_ZERO;	/* already zero'd */
 	    flags |= M_PASSIVE_ZERO;
 	}
+#if defined(INVARIANTS)
+	chunk_mark_allocated(z, chunk);
+#endif
 
 	/*
 	 * Slide the base index for initial allocations out of the next
@@ -828,6 +853,7 @@ free(void *ptr, struct malloc_type *type)
 		panic("Double free at %p", chunk);
 	}
     }
+    chunk_mark_free(z, chunk);
 #endif
 
     /*
@@ -892,6 +918,40 @@ free(void *ptr, struct malloc_type *type)
     }
     crit_exit();
 }
+
+#if defined(INVARIANTS)
+/*
+ * Helper routines for sanity checks
+ */
+static
+void
+chunk_mark_allocated(SLZone *z, void *chunk)
+{
+    int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
+    __uint32_t *bitptr;
+
+    KASSERT(bitdex >= 0 && bitdex < z->z_NMax, ("memory chunk %p bit index %d is illegal", chunk, bitdex));
+    bitptr = &z->z_Bitmap[bitdex >> 5];
+    bitdex &= 31;
+    KASSERT((*bitptr & (1 << bitdex)) == 0, ("memory chunk %p is already allocated!", chunk));
+    *bitptr |= 1 << bitdex;
+}
+
+static
+void
+chunk_mark_free(SLZone *z, void *chunk)
+{
+    int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
+    __uint32_t *bitptr;
+
+    KASSERT(bitdex >= 0 && bitdex < z->z_NMax, ("memory chunk %p bit index %d is illegal!", chunk, bitdex));
+    bitptr = &z->z_Bitmap[bitdex >> 5];
+    bitdex &= 31;
+    KASSERT((*bitptr & (1 << bitdex)) != 0, ("memory chunk %p is already free!", chunk));
+    *bitptr &= ~(1 << bitdex);
+}
+
+#endif
 
 /*
  * kmem_slab_alloc()	(MP SAFE) (GETS BGL)

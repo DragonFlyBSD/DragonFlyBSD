@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/slaballoc.h,v 1.7 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/slaballoc.h,v 1.8 2005/06/20 20:49:12 dillon Exp $
  */
 
 #ifndef _SYS_SLABALLOC_H_
@@ -93,6 +93,9 @@ typedef struct SLZone {
     int		z_ZoneIndex;
     int		z_Flags;
     SLChunk	*z_PageAry[ZALLOC_MAX_ZONE_SIZE / PAGE_SIZE];
+#if defined(INVARIANTS)
+    __uint32_t	z_Bitmap[];	/* bitmap of free chunks for sanity check */
+#endif
 } SLZone;
 
 #define SLZF_UNOTZEROD		0x0001
