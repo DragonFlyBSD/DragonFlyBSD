@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.33 2005/06/20 20:49:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.34 2005/06/20 21:11:13 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -101,6 +101,7 @@
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 #include <sys/sysctl.h>
+#include <sys/ktr.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -117,6 +118,27 @@
 #include <sys/thread2.h>
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
+
+#define MEMORY_STRING	"ptr=%p type=%p size=%d flags=%04x"
+#define MEMORY_ARG_SIZE	(sizeof(void *) * 2 + sizeof(unsigned long) + 	\
+			sizeof(int))
+
+#if !defined(KTR_MEMORY)
+#define KTR_MEMORY	KTR_ALL
+#endif
+KTR_INFO_MASTER(memory);
+KTR_INFO(KTR_MEMORY, memory, malloc, 0, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_zero, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_ovsz, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_ovsz_delayed, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_chunk, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
+#ifdef SMP
+KTR_INFO(KTR_MEMORY, memory, free_request, 2, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_remote, 3, MEMORY_STRING, MEMORY_ARG_SIZE);
+#endif
+
+#define logmemory(name, ptr, type, size, flags)				\
+	KTR_LOG(memory_ ## name, ptr, type, size, flags)
 
 /*
  * Fixed globals (not per-cpu)
@@ -401,8 +423,10 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	    ttl += type->ks_memuse[i];
 	type->ks_loosememuse = ttl;	/* not MP synchronized */
 	if (ttl >= type->ks_limit) {
-	    if (flags & M_NULLOK)
+	    if (flags & M_NULLOK) {
+		logmemory(malloc, NULL, type, size, flags);
 		return(NULL);
+	    }
 	    panic("%s: malloc limit exceeded", type->ks_shortdesc);
 	}
     }
@@ -414,8 +438,10 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
      * adaptec driver, not only allocate 0 bytes, they check for NULL and
      * also realloc() later on.  Joy.
      */
-    if (size == 0)
+    if (size == 0) {
+	logmemory(malloc, ZERO_LENGTH_PTR, type, size, flags);
 	return(ZERO_LENGTH_PTR);
+    }
 
     /*
      * Handle hysteresis from prior frees here in malloc().  We cannot
@@ -456,8 +482,10 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 
 	size = round_page(size);
 	chunk = kmem_slab_alloc(size, PAGE_SIZE, flags);
-	if (chunk == NULL)
+	if (chunk == NULL) {
+	    logmemory(malloc, NULL, type, size, flags);
 	    return(NULL);
+	}
 	flags &= ~M_ZERO;	/* result already zero'd if M_ZERO was set */
 	flags |= M_PASSIVE_ZERO;
 	kup = btokup(chunk);
@@ -633,9 +661,11 @@ done:
 	chunk->c_Next = (void *)-1; /* avoid accidental double-free check */
     }
 #endif
+    logmemory(malloc, chunk, type, size, flags);
     return(chunk);
 fail:
     crit_exit();
+    logmemory(malloc, NULL, type, size, flags);
     return(NULL);
 }
 
@@ -734,6 +764,7 @@ static
 void
 free_remote(void *ptr)
 {
+    logmemory(free_remote, ptr, *(struct malloc_type **)ptr, -1, 0);
     free(ptr, *(struct malloc_type **)ptr);
 }
 
@@ -764,8 +795,10 @@ free(void *ptr, struct malloc_type *type)
     /*
      * Handle special 0-byte allocations
      */
-    if (ptr == ZERO_LENGTH_PTR)
+    if (ptr == ZERO_LENGTH_PTR) {
+	logmemory(free_zero, ptr, type, -1, 0);
 	return;
+    }
 
     /*
      * Handle oversized allocations.  XXX we really should require that a
@@ -798,6 +831,7 @@ free(void *ptr, struct malloc_type *type)
 	    --type->ks_inuse[gd->gd_cpuid];
 	    type->ks_memuse[gd->gd_cpuid] -= size;
 	    if (mycpu->gd_intr_nesting_level || (gd->gd_curthread->td_flags & TDF_INTTHREAD)) {
+		logmemory(free_ovsz_delayed, ptr, type, size, 0);
 		z = (SLZone *)ptr;
 		z->z_Magic = ZALLOC_OVSZ_MAGIC;
 		z->z_Next = slgd->FreeOvZones;
@@ -806,6 +840,7 @@ free(void *ptr, struct malloc_type *type)
 		crit_exit();
 	    } else {
 		crit_exit();
+		logmemory(free_ovsz, ptr, type, size, 0);
 		kmem_slab_free(ptr, size);	/* may block */
 	    }
 	    return;
@@ -827,12 +862,15 @@ free(void *ptr, struct malloc_type *type)
     if (z->z_CpuGd != gd) {
 	*(struct malloc_type **)ptr = type;
 #ifdef SMP
+	logmemory(free_request, ptr, type, z->z_ChunkSize, 0);
 	lwkt_send_ipiq_passive(z->z_CpuGd, free_remote, ptr);
 #else
 	panic("Corrupt SLZone");
 #endif
 	return;
     }
+
+    logmemory(free_chunk, ptr, type, z->z_ChunkSize, 0);
 
     if (type->ks_magic != M_MAGIC)
 	panic("free: malloc type lacks magic");
