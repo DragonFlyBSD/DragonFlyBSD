@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.29 2005/06/20 13:02:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.30 2005/06/20 13:04:52 joerg Exp $
  */
 
 /*
@@ -157,7 +157,6 @@ static int	vr_miibus_writereg(device_t, int, int, int);
 static void	vr_miibus_statchg(device_t);
 
 static void	vr_setcfg(struct vr_softc *, int);
-static uint8_t	vr_calchash(uint8_t *);
 static void	vr_setmulti(struct vr_softc *);
 static void	vr_reset(struct vr_softc *);
 static int	vr_list_rx_init(struct vr_softc *);
@@ -529,41 +528,12 @@ vr_miibus_statchg(device_t dev)
 }
 
 /*
- * Calculate CRC of a multicast group address, return the lower 6 bits.
- */
-static uint8_t
-vr_calchash(uint8_t *addr)
-{
-	uint32_t crc, carry;
-	int i, j;
-	uint8_t c;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (i = 0; i < 6; i++) {
-		c = *(addr + i);
-		for (j = 0; j < 8; j++) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (c & 0x01);
-			crc <<= 1;
-			c >>= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	/* return the filter bit position */
-	return((crc >> 26) & 0x0000003F);
-}
-
-/*
  * Program the 64-bit multicast hash filter.
  */
 static void
 vr_setmulti(struct vr_softc *sc)
 {
 	struct ifnet *ifp;
-	int h = 0;
 	uint32_t hashes[2] = { 0, 0 };
 	struct ifmultiaddr *ifma;
 	uint8_t rxfilt;
@@ -588,9 +558,15 @@ vr_setmulti(struct vr_softc *sc)
 	/* Now program new ones. */
 	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
 				ifma = ifma->ifma_link.le_next) {
+		int h;
+
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = vr_calchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+
+		/* use the lower 6 bits */
+		h = (ether_crc32_be(
+			LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+			ETHER_ADDR_LEN) >> 26) & 0x0000003F;
 		if (h < 32)
 			hashes[0] |= (1 << h);
 		else
