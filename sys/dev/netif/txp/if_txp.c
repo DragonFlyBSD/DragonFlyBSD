@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.29 2005/06/20 13:56:08 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.30 2005/06/20 15:10:41 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1728,8 +1728,7 @@ txp_set_filter(sc)
 
 		hash[0] = hash[1] = 0;
 
-		for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-		    ifma = ifma->ifma_link.le_next) {
+		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 

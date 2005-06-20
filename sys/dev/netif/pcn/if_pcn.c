@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.21 2005/06/13 18:43:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.22 2005/06/20 15:10:41 joerg Exp $
  */
 
 /*
@@ -342,8 +342,7 @@ static void pcn_setmulti(sc)
 		pcn_csr_write(sc, PCN_CSR_MAR0 + i, 0);
 
 	/* now program new ones */
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = pcn_crc(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));

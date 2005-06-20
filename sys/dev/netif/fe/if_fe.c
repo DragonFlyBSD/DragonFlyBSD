@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.18 2005/06/14 15:19:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.19 2005/06/20 15:10:40 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -2088,8 +2088,7 @@ fe_mcaf ( struct fe_softc *sc )
 	struct ifmultiaddr *ifma;
 
 	filter = fe_filter_nothing;
-	for (ifma = sc->arpcom.ac_if.if_multiaddrs.lh_first; ifma;
-	     ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &sc->arpcom.ac_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		index = fe_hash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));

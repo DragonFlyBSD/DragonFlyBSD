@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.19 2005/06/14 15:30:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.20 2005/06/20 15:10:41 joerg Exp $
  */
 
 /*
@@ -2165,8 +2165,7 @@ ie_mc_reset(int unit)
 	 * Step through the list of addresses.
 	 */
 	ie->mcast_count = 0;
-	for (ifma = ie->arpcom.ac_if.if_multiaddrs.lh_first; ifma;
-	     ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ie->arpcom.ac_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 

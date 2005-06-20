@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.25 2005/06/14 15:11:23 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.26 2005/06/20 15:10:41 joerg Exp $
  */
 
 /*
@@ -482,8 +482,7 @@ le_multi_filter(struct le_softc *sc)
 
     sc->le_flags |= IFF_MULTICAST;
 
-    for (ifma = ifp->if_multiaddrs.lh_first; ifma;
-	 ifma = ifma->ifma_link.le_next) {
+    LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 	    if (ifma->ifma_addr->sa_family != AF_LINK)
 		    continue;
 

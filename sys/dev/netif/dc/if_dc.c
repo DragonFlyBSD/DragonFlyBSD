@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.34 2005/06/14 14:19:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.35 2005/06/20 15:10:40 joerg Exp $
  */
 
 /*
@@ -1065,8 +1065,7 @@ void dc_setfilt_21143(sc)
 		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_RX_ALLMULTI);
 
 	crc_mask = dc_crc_mask(sc);
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_le(
@@ -1144,8 +1143,7 @@ void dc_setfilt_admtek(sc)
 		crc_mask = dc_crc_mask(sc);
 	else
 		crc_mask = 0x3f;
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		if (DC_IS_CENTAUR(sc)) {
@@ -1222,8 +1220,7 @@ void dc_setfilt_asix(sc)
 		return;
 
 	/* now program new ones */
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_be(

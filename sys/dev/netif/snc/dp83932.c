@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.15 2005/06/12 16:31:50 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.16 2005/06/20 15:10:41 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -680,8 +680,7 @@ camprogram(sc)
 	ifp->if_flags &= ~IFF_ALLMULTI;
 
 	/* Loop through multicast addresses */
-        for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-                                ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
                 if (ifma->ifma_addr->sa_family != AF_LINK)
                         continue;
 		if (mcount == MAXCAM) {

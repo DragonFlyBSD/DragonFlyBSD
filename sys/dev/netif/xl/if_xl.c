@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.26 2005/06/14 14:19:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.27 2005/06/20 15:10:41 joerg Exp $
  */
 
 /*
@@ -851,8 +851,7 @@ xl_setmulti(sc)
 		return;
 	}
 
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-				ifma = ifma->ifma_link.le_next)
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		mcnt++;
 
 	if (mcnt)
@@ -896,8 +895,7 @@ xl_setmulti_hash(sc)
 		CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_RX_SET_HASH|i);
 
 	/* now program new ones */
-        for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-                                ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = xl_calchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));

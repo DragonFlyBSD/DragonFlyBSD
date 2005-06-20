@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.20 2005/06/16 14:51:55 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.21 2005/06/20 15:10:41 joerg Exp $
  */
 
 /*
@@ -1415,8 +1415,7 @@ sn_getmcf(struct arpcom *ac, u_char *mcf)
 
 	bzero(mcf, MCFSZ);
 
-	for (ifma = ac->ac_if.if_multiaddrs.lh_first; ifma;
-	     ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ac->ac_if.if_multiaddrs, ifma_link) {
 	    if (ifma->ifma_addr->sa_family != AF_LINK)
 		return 0;
 	    index = smc_crc(LLADDR((struct sockaddr_dl *)ifma->ifma_addr)) & 0x3f;

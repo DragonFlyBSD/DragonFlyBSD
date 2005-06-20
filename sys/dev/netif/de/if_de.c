@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.38 2005/06/13 23:03:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.39 2005/06/20 15:10:40 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -2758,9 +2758,7 @@ tulip_addr_filter(tulip_softc_t *sc)
 #endif
 
     multicnt = 0;
-    for (ifma = sc->tulip_if.if_multiaddrs.lh_first; ifma != NULL;
-	 ifma = ifma->ifma_link.le_next) {
-
+    LIST_FOREACH(ifma, &sc->tulip_if.if_multiaddrs, ifma_link) {
 	    if (ifma->ifma_addr->sa_family == AF_LINK)
 		multicnt++;
     }
@@ -2787,9 +2785,7 @@ tulip_addr_filter(tulip_softc_t *sc)
 	 */
 	bzero(sc->tulip_setupdata, sizeof(sc->tulip_setupdata));
 
-	for (ifma = sc->tulip_if.if_multiaddrs.lh_first; ifma != NULL;
-	     ifma = ifma->ifma_link.le_next) {
-
+	LIST_FOREACH(ifma, &sc->tulip_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 
@@ -2838,8 +2834,7 @@ tulip_addr_filter(tulip_softc_t *sc)
 	    /*
 	     * Else can get perfect filtering for 16 addresses.
 	     */
-	    for (ifma = sc->tulip_if.if_multiaddrs.lh_first; ifma != NULL;
-		 ifma = ifma->ifma_link.le_next) {
+	    LIST_FOREACH(ifma, &sc->tulip_if.if_multiaddrs, ifma_link) {
 		    if (ifma->ifma_addr->sa_family != AF_LINK)
 			    continue;
 		    addrp = LLADDR((struct sockaddr_dl *)ifma->ifma_addr);

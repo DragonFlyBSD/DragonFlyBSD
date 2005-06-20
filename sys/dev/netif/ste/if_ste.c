@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.27 2005/06/14 14:19:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.28 2005/06/20 15:10:41 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -573,8 +573,7 @@ static void ste_setmulti(sc)
 	CSR_WRITE_2(sc, STE_MAR3, 0);
 
 	/* now program new ones */
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_be(

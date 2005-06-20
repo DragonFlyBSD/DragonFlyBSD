@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.22 2005/06/13 19:19:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.23 2005/06/20 15:10:41 joerg Exp $
  *
  */
 
@@ -2685,8 +2685,7 @@ ray_mcast(struct ray_softc *sc, struct ray_comq_entry *com)
 	 * The multicast list is only 16 items long so use promiscuous
 	 * mode and don't bother updating the multicast list.
 	 */
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next)
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		count++;
 	if (count == 0) {
 		ray_com_runq_done(sc);
@@ -2705,8 +2704,7 @@ ray_mcast(struct ray_softc *sc, struct ray_comq_entry *com)
 	SRAM_WRITE_FIELD_1(sc, com->c_ccs,
 	    ray_cmd_update_mcast, c_nmcast, count);
 	bufp = RAY_HOST_TO_ECF_BASE;
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		SRAM_WRITE_REGION(
 		    sc,
 		    bufp,

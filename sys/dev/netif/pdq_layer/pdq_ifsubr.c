@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.12 2005/06/13 18:13:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.13 2005/06/20 15:10:41 joerg Exp $
  *
  */
 
@@ -222,8 +222,7 @@ pdq_os_addr_fill(
     pdq_softc_t *sc = (pdq_softc_t *) pdq->pdq_os_ctx;
     struct ifmultiaddr *ifma;
 
-    for (ifma = sc->sc_if.if_multiaddrs.lh_first; ifma && num_addrs > 0;
-	 ifma = ifma->ifma_link.le_next) {
+    LIST_FOREACH(ifma, &sc->sc_if.if_multiaddrs, ifma_link) {
 	    char *mcaddr;
 	    if (ifma->ifma_addr->sa_family != AF_LINK)
 		    continue;

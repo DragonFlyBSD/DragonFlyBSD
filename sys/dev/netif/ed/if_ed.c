@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.24 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.25 2005/06/20 15:10:40 joerg Exp $
  */
 
 /*
@@ -3564,8 +3564,7 @@ ds_getmcaf(sc, mcaf)
 	mcaf[0] = 0;
 	mcaf[1] = 0;
 
-	for (ifma = sc->arpcom.ac_if.if_multiaddrs.lh_first; ifma;
-	     ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &sc->arpcom.ac_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		index = ds_mchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr))
