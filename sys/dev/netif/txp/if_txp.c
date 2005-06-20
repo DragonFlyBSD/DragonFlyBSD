@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.26 2005/06/20 13:41:51 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.27 2005/06/20 13:49:52 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -224,8 +224,7 @@ txp_attach(dev)
 
 	if (sc->sc_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
-		error = ENXIO;
-		goto fail;
+		return(ENXIO);
 	}
 
 	sc->sc_bt = rman_get_bustag(sc->sc_res);
@@ -251,6 +250,7 @@ txp_attach(dev)
 	}
 
 	if (txp_chip_init(sc)) {
+		error = ENXIO;
 		goto fail;
 	}
 
@@ -260,25 +260,27 @@ txp_attach(dev)
 	contigfree(sc->sc_fwbuf, 32768, M_DEVBUF);
 	sc->sc_fwbuf = NULL;
 
-	if (error) {
+	if (error)
 		goto fail;
-	}
 
 	sc->sc_ldata = contigmalloc(sizeof(struct txp_ldata), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
 	bzero(sc->sc_ldata, sizeof(struct txp_ldata));
 
 	if (txp_alloc_rings(sc)) {
+		error = ENXIO;
 		goto fail;
 	}
 
 	if (txp_command(sc, TXP_CMD_MAX_PKT_SIZE_WRITE, TXP_MAX_PKTLEN, 0, 0,
 	    NULL, NULL, NULL, 1)) {
+		error = ENXIO;
 		goto fail;
 	}
 
 	if (txp_command(sc, TXP_CMD_STATION_ADDRESS_READ, 0, 0, 0,
 	    &p1, &p2, NULL, 1)) {
+		error = ENXIO;
 		goto fail;
 	}
 
