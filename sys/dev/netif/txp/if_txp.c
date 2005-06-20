@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.25 2005/06/20 13:39:17 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.26 2005/06/20 13:41:51 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -206,8 +206,9 @@ txp_attach(dev)
 {
 	struct txp_softc *sc;
 	struct ifnet *ifp;
-	u_int16_t p1;
-	u_int32_t p2;
+	uint16_t p1;
+	uint32_t p2;
+	uint8_t enaddr[ETHER_ADDR_LEN];
 	int error = 0, rid;
 
 	sc = device_get_softc(dev);
@@ -283,12 +284,12 @@ txp_attach(dev)
 
 	txp_set_filter(sc);
 
-	sc->sc_arpcom.ac_enaddr[0] = ((uint8_t *)&p1)[1];
-	sc->sc_arpcom.ac_enaddr[1] = ((uint8_t *)&p1)[0];
-	sc->sc_arpcom.ac_enaddr[2] = ((uint8_t *)&p2)[3];
-	sc->sc_arpcom.ac_enaddr[3] = ((uint8_t *)&p2)[2];
-	sc->sc_arpcom.ac_enaddr[4] = ((uint8_t *)&p2)[1];
-	sc->sc_arpcom.ac_enaddr[5] = ((uint8_t *)&p2)[0];
+	enaddr[0] = ((uint8_t *)&p1)[1];
+	enaddr[1] = ((uint8_t *)&p1)[0];
+	enaddr[2] = ((uint8_t *)&p2)[3];
+	enaddr[3] = ((uint8_t *)&p2)[2];
+	enaddr[4] = ((uint8_t *)&p2)[1];
+	enaddr[5] = ((uint8_t *)&p2)[0];
 
 	ifmedia_init(&sc->sc_ifmedia, 0, txp_ifmedia_upd, txp_ifmedia_sts);
 	ifmedia_add(&sc->sc_ifmedia, IFM_ETHER|IFM_10_T, 0, NULL);
@@ -320,7 +321,7 @@ txp_attach(dev)
 	/*
 	 * Attach us everywhere
 	 */
-	ether_ifattach(ifp, sc->sc_arpcom.ac_enaddr);
+	ether_ifattach(ifp, enaddr);
 	return(0);
 
 fail:
