@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.17 2005/06/20 07:40:30 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.18 2005/06/20 07:58:39 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -102,6 +102,52 @@ static void lwkt_reqtoken_remote(void *data);
 
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
+/*
+ * Token debugging code, log token operations and who called them.
+ */
+#ifdef DEBUG_TOKENS
+
+static struct toklog {
+    enum tokenum { TOKTRY, TOKGET, TOKREL1, TOKREL2, TOKREMOTE,
+		   TOKREQREMOTE, TOKREQFAIL, TOKDRAIN } type;
+    int toremote;
+    lwkt_tokref_t ref;
+    lwkt_token_t tok;
+    thread_t td;
+    void *caller;
+} toklog[SMP_MAXCPU][2048];
+
+static int tokindex[SMP_MAXCPU];
+
+static void
+logtoken(lwkt_tokref_t ref, void *stackptr, enum tokenum type)
+{
+    struct toklog *log;
+    globaldata_t gd;
+
+    if (panicstr == NULL) {
+	gd = mycpu;
+	crit_enter();
+	log = &toklog[gd->gd_cpuid][tokindex[gd->gd_cpuid]];
+	log->type = type;
+	log->ref = ref;
+	log->tok = ref->tr_tok;
+	if (stackptr)
+	    log->caller = ((void **)stackptr)[-1];
+	else
+	    log->caller = NULL;
+	log->td = gd->gd_curthread;
+	tokindex[gd->gd_cpuid] = (tokindex[gd->gd_cpuid] + 1) & 2047;
+	crit_exit();
+    }
+}
+
+#else
+
+#define logtoken(ref, stackptr, type)
+
+#endif
+
 #ifdef _KERNEL
 
 #ifdef INVARIANTS
@@ -152,9 +198,14 @@ lwkt_chktokens(thread_t td)
 		refs->tr_magic = LWKT_TOKREF_MAGIC2;	/* MP synched slowreq*/
 		refs->tr_reqgd = gd;
 		tok->t_reqcpu = gd;	/* MP unsynchronized 'fast' req */
+
+		logtoken(refs, &td, TOKREQREMOTE);
+
 		if (lwkt_send_ipiq_nowait(dgd, lwkt_reqtoken_remote, refs)) {
 		    /* failed */
 		    refs->tr_magic = LWKT_TOKREF_MAGIC1;
+
+		    logtoken(refs, &td, TOKREQFAIL);
 		    break;
 		}
 	    } else if (magic != LWKT_TOKREF_MAGIC2) {
@@ -380,12 +431,14 @@ void
 lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
     lwkt_tokref_init(ref, tok);
+    logtoken(ref, &ref, TOKGET);
     _lwkt_gettokref(ref);
 }
 
 void
 lwkt_gettokref(lwkt_tokref_t ref)
 {
+    logtoken(ref, &ref, TOKGET);
     _lwkt_gettokref(ref);
 }
 
@@ -393,12 +446,14 @@ int
 lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
     lwkt_tokref_init(ref, tok);
+    logtoken(ref, &ref, TOKTRY);
     return(_lwkt_trytokref(ref));
 }
 
 int
 lwkt_trytokref(lwkt_tokref_t ref)
 {
+    logtoken(ref, &ref, TOKTRY);
     return(_lwkt_trytokref(ref));
 }
 
@@ -416,6 +471,7 @@ lwkt_reltoken(lwkt_tokref *_ref)
     thread_t td;
     int giveaway;
 
+    logtoken(_ref, &_ref, TOKREL1);
     /*
      * Guard check and stack check (if in the same stack page).  We must
      * also wait for any action pending on remote cpus which we do by
@@ -527,6 +583,7 @@ lwkt_reqtoken_remote(void *data)
     globaldata_t gd = mycpu;
     lwkt_token_t tok = ref->tr_tok;
 
+    logtoken(ref, &data, TOKREMOTE);
     /*
      * We do not have to queue the token if we can give it away
      * immediately.  Otherwise we queue it to our globaldata structure.
