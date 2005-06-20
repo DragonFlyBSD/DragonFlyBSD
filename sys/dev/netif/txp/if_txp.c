@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.22 2005/06/10 16:10:42 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.23 2005/06/20 13:24:14 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -70,7 +70,6 @@
 
 #include <vm/vm.h>              /* for vtophys */
 #include <vm/pmap.h>            /* for vtophys */
-#include <machine/clock.h>	/* for DELAY */
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
@@ -120,7 +119,7 @@ static void txp_stop	(struct txp_softc *);
 static void txp_init	(void *);
 static void txp_watchdog	(struct ifnet *);
 
-static void txp_release_resources (struct txp_softc *);
+static void txp_release_resources (device_t);
 static int txp_chip_init (struct txp_softc *);
 static int txp_reset_adapter (struct txp_softc *);
 static int txp_download_fw (struct txp_softc *);
@@ -210,13 +209,13 @@ txp_attach(dev)
 	u_int32_t command;
 	u_int16_t p1;
 	u_int32_t p2;
-	int unit, error = 0, rid;
+	int error = 0, rid;
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
-	sc->sc_dev = dev;
-	sc->sc_cold = 1;
 	callout_init(&sc->txp_stat_timer);
+
+	ifp = &sc->sc_arpcom.ac_if;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	/*
 	 * Map control/status registers.
@@ -259,7 +258,6 @@ txp_attach(dev)
 
 	if (sc->sc_irq == NULL) {
 		device_printf(dev, "couldn't map interrupt\n");
-		txp_release_resources(sc);
 		error = ENXIO;
 		goto fail;
 	}
@@ -268,13 +266,11 @@ txp_attach(dev)
 			       txp_intr, sc, &sc->sc_intrhand, NULL);
 
 	if (error) {
-		txp_release_resources(sc);
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
 
 	if (txp_chip_init(sc)) {
-		txp_release_resources(sc);
 		goto fail;
 	}
 
@@ -285,7 +281,6 @@ txp_attach(dev)
 	sc->sc_fwbuf = NULL;
 
 	if (error) {
-		txp_release_resources(sc);
 		goto fail;
 	}
 
@@ -294,19 +289,16 @@ txp_attach(dev)
 	bzero(sc->sc_ldata, sizeof(struct txp_ldata));
 
 	if (txp_alloc_rings(sc)) {
-		txp_release_resources(sc);
 		goto fail;
 	}
 
 	if (txp_command(sc, TXP_CMD_MAX_PKT_SIZE_WRITE, TXP_MAX_PKTLEN, 0, 0,
 	    NULL, NULL, NULL, 1)) {
-		txp_release_resources(sc);
 		goto fail;
 	}
 
 	if (txp_command(sc, TXP_CMD_STATION_ADDRESS_READ, 0, 0, 0,
 	    &p1, &p2, NULL, 1)) {
-		txp_release_resources(sc);
 		goto fail;
 	}
 
@@ -318,8 +310,6 @@ txp_attach(dev)
 	sc->sc_arpcom.ac_enaddr[3] = ((uint8_t *)&p2)[2];
 	sc->sc_arpcom.ac_enaddr[4] = ((uint8_t *)&p2)[1];
 	sc->sc_arpcom.ac_enaddr[5] = ((uint8_t *)&p2)[0];
-
-	sc->sc_cold = 0;
 
 	ifmedia_init(&sc->sc_ifmedia, 0, txp_ifmedia_upd, txp_ifmedia_sts);
 	ifmedia_add(&sc->sc_ifmedia, IFM_ETHER|IFM_10_T, 0, NULL);
@@ -335,9 +325,7 @@ txp_attach(dev)
 	    NULL, NULL, NULL, 0);
 	ifmedia_set(&sc->sc_ifmedia, IFM_ETHER|IFM_AUTO);
 
-	ifp = &sc->sc_arpcom.ac_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "txp", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = txp_ioctl;
@@ -357,7 +345,7 @@ txp_attach(dev)
 	return(0);
 
 fail:
-	txp_release_resources(sc);
+	txp_release_resources(dev);
 	return(error);
 }
 
@@ -381,18 +369,17 @@ txp_detach(dev)
 	for (i = 0; i < RXBUF_ENTRIES; i++)
 		free(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);
 
-	txp_release_resources(sc);
+	txp_release_resources(dev);
 
 	return(0);
 }
 
 static void
-txp_release_resources(sc)
-	struct txp_softc *sc;
+txp_release_resources(device_t dev)
 {
-	device_t dev;
+	struct txp_softc *sc;
 
-	dev = sc->sc_dev;
+	sc = device_get_softc(dev);
 
 	if (sc->sc_intrhand != NULL)
 		bus_teardown_intr(dev, sc->sc_irq, sc->sc_intrhand);
@@ -467,7 +454,7 @@ txp_reset_adapter(sc)
 	}
 
 	if (r != STAT_WAITING_FOR_HOST_REQUEST) {
-		device_printf(sc->sc_dev, "reset hung\n");
+		if_printf(&sc->sc_arpcom.ac_if, "reset hung\n");
 		return (-1);
 	}
 
@@ -496,7 +483,8 @@ txp_download_fw(sc)
 		DELAY(50);
 	}
 	if (r != STAT_WAITING_FOR_HOST_REQUEST) {
-		device_printf(sc->sc_dev, "not waiting for host request\n");
+		if_printf(&sc->sc_arpcom.ac_if,
+			  "not waiting for host request\n");
 		return (-1);
 	}
 
@@ -505,7 +493,7 @@ txp_download_fw(sc)
 
 	fileheader = (struct txp_fw_file_header *)tc990image;
 	if (bcmp("TYPHOON", fileheader->magicid, sizeof(fileheader->magicid))) {
-		device_printf(sc->sc_dev, "fw invalid magic\n");
+		if_printf(&sc->sc_arpcom.ac_if, "fw invalid magic\n");
 		return (-1);
 	}
 
@@ -514,7 +502,7 @@ txp_download_fw(sc)
 	WRITE_REG(sc, TXP_H2A_0, TXP_BOOTCMD_RUNTIME_IMAGE);
 
 	if (txp_download_fw_wait(sc)) {
-		device_printf(sc->sc_dev, "fw wait failed, initial\n");
+		if_printf(&sc->sc_arpcom.ac_if, "fw wait failed, initial\n");
 		return (-1);
 	}
 
@@ -538,7 +526,7 @@ txp_download_fw(sc)
 		DELAY(50);
 	}
 	if (r != STAT_WAITING_FOR_BOOT) {
-		device_printf(sc->sc_dev, "not waiting for boot\n");
+		if_printf(&sc->sc_arpcom.ac_if, "not waiting for boot\n");
 		return (-1);
 	}
 
@@ -562,7 +550,7 @@ txp_download_fw_wait(sc)
 	}
 
 	if (!(r & TXP_INT_A2H_0)) {
-		device_printf(sc->sc_dev, "fw wait failed comm0\n");
+		if_printf(&sc->sc_arpcom.ac_if, "fw wait failed comm0\n");
 		return (-1);
 	}
 
@@ -570,7 +558,7 @@ txp_download_fw_wait(sc)
 
 	r = READ_REG(sc, TXP_A2H_0);
 	if (r != STAT_WAITING_FOR_SEGMENT) {
-		device_printf(sc->sc_dev, "fw not waiting for segment\n");
+		if_printf(&sc->sc_arpcom.ac_if, "fw not waiting for segment\n");
 		return (-1);
 	}
 	return (0);
@@ -594,7 +582,7 @@ txp_download_fw_section(sc, sect, sectnum)
 	/* Make sure we aren't past the end of the image */
 	rseg = ((u_int8_t *)sect) - ((u_int8_t *)tc990image);
 	if (rseg >= sizeof(tc990image)) {
-		device_printf(sc->sc_dev, "fw invalid section address, "
+		if_printf(&sc->sc_arpcom.ac_if, "fw invalid section address, "
 		    "section %d\n", sectnum);
 		return (-1);
 	}
@@ -602,7 +590,7 @@ txp_download_fw_section(sc, sect, sectnum)
 	/* Make sure this section doesn't go past the end */
 	rseg += sect->nbytes;
 	if (rseg >= sizeof(tc990image)) {
-		device_printf(sc->sc_dev, "fw truncated section %d\n",
+		if_printf(&sc->sc_arpcom.ac_if, "fw truncated section %d\n",
 		    sectnum);
 		return (-1);
 	}
@@ -620,7 +608,7 @@ txp_download_fw_section(sc, sect, sectnum)
 	m.m_flags = 0;
 	csum = in_cksum(&m, sect->nbytes);
 	if (csum != sect->cksum) {
-		device_printf(sc->sc_dev, "fw section %d, bad "
+		if_printf(&sc->sc_arpcom.ac_if, "fw section %d, bad "
 		    "cksum (expected 0x%x got 0x%x)\n",
 		    sectnum, sect->cksum, csum);
 		err = -1;
@@ -635,7 +623,7 @@ txp_download_fw_section(sc, sect, sectnum)
 	WRITE_REG(sc, TXP_H2A_0, TXP_BOOTCMD_SEGMENT_AVAILABLE);
 
 	if (txp_download_fw_wait(sc)) {
-		device_printf(sc->sc_dev, "fw wait failed, "
+		if_printf(&sc->sc_arpcom.ac_if, "fw wait failed, "
 		    "section %d\n", sectnum);
 		err = -1;
 	}
@@ -708,8 +696,7 @@ txp_rx_reclaim(sc, r)
 	while (roff != woff) {
 
 		if (rxd->rx_flags & RX_FLAGS_ERROR) {
-			device_printf(sc->sc_dev, "error 0x%x\n",
-			    rxd->rx_stat);
+			if_printf(ifp, "error 0x%x\n", rxd->rx_stat);
 			ifp->if_ierrors++;
 			goto next;
 		}
@@ -1018,7 +1005,7 @@ txp_alloc_rings(sc)
 	}
 
 	if (r != STAT_WAITING_FOR_BOOT) {
-		device_printf(sc->sc_dev, "not waiting for boot\n");
+		if_printf(&sc->sc_arpcom.ac_if, "not waiting for boot\n");
 		return(ENXIO);
 	}
 
@@ -1034,7 +1021,7 @@ txp_alloc_rings(sc)
 		DELAY(50);
 	}
 	if (r != STAT_RUNNING) {
-		device_printf(sc->sc_dev, "fw not running\n");
+		if_printf(&sc->sc_arpcom.ac_if, "fw not running\n");
 		return(ENXIO);
 	}
 
@@ -1398,7 +1385,7 @@ txp_command2(sc, id, in1, in2, in3, in_extp, in_extn, rspp, wait)
 	u_int16_t seq;
 
 	if (txp_cmd_desc_numfree(sc) < (in_extn + 1)) {
-		device_printf(sc->sc_dev, "no free cmd descriptors\n");
+		if_printf(&sc->sc_arpcom.ac_if, "no free cmd descriptors\n");
 		return (-1);
 	}
 
@@ -1447,7 +1434,7 @@ txp_command2(sc, id, in1, in2, in3, in_extp, in_extn, rspp, wait)
 		DELAY(50);
 	}
 	if (i == 1000 || (*rspp) == NULL) {
-		device_printf(sc->sc_dev, "0x%x command failed\n", id);
+		if_printf(&sc->sc_arpcom.ac_if, "0x%x command failed\n", id);
 		return (-1);
 	}
 
@@ -1479,7 +1466,7 @@ txp_response(sc, ridx, id, seq, rspp)
 		}
 
 		if (rsp->rsp_flags & RSP_FLAGS_ERROR) {
-			device_printf(sc->sc_dev, "response error!\n");
+			if_printf(&sc->sc_arpcom.ac_if, "response error!\n");
 			txp_rsp_fixup(sc, rsp, NULL);
 			ridx = hv->hv_resp_read_idx;
 			continue;
@@ -1490,10 +1477,10 @@ txp_response(sc, ridx, id, seq, rspp)
 		case TXP_CMD_MEDIA_STATUS_READ:
 			break;
 		case TXP_CMD_HELLO_RESPONSE:
-			device_printf(sc->sc_dev, "hello\n");
+			if_printf(&sc->sc_arpcom.ac_if, "hello\n");
 			break;
 		default:
-			device_printf(sc->sc_dev, "unknown id(0x%x)\n",
+			if_printf(&sc->sc_arpcom.ac_if, "unknown id(0x%x)\n",
 			    rsp->rsp_id);
 		}
 

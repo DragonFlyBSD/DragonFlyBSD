@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txpreg.h,v 1.30 2001/06/23 04:18:02 jason Exp $ */
 /*	$FreeBSD: src/sys/dev/txp/if_txpreg.h,v 1.2.2.1 2001/07/30 17:31:39 wpaul Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.3 2004/09/15 01:02:54 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.4 2005/06/20 13:24:14 joerg Exp $ */
 
 /*
  * Copyright (c) 2001 Aaron Campbell <aaron@monkey.org>.
@@ -593,7 +593,6 @@ struct txp_ldata {
 
 struct txp_softc {
 	struct arpcom		sc_arpcom;	/* ethernet common */
-	device_t		sc_dev;
 	struct txp_hostvar	*sc_hostvar;
 	struct txp_boot_record	*sc_boot;
 	bus_space_handle_t	sc_bh;		/* bus handle (regs) */
@@ -614,11 +613,8 @@ struct txp_softc {
 	struct txp_rx_ring	sc_rxhir, sc_rxlor;
 	u_int16_t		sc_xcvr;
 	u_int16_t		sc_seq;
-	int			sc_cold;
 	u_int32_t		sc_rx_capability, sc_tx_capability;
 };
-
-#define	TXP_DEVNAME(sc)		((sc)->sc_cold ? "" : (sc)->sc_dev.dv_xname)
 
 struct txp_fw_file_header {
 	u_int8_t	magicid[8];	/* TYPHOON\0 */
