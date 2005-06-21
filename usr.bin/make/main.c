@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.119 2005/06/19 14:31:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.120 2005/06/21 20:59:00 okumoto Exp $
  */
 
 /*
@@ -857,20 +857,19 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
 	}
 }
 
+/**
+ * Build targets.
+ *
+ * We have read the entire graph and need to make
+ * a list of targets to create.  If none were given
+ * on the command line, we consult the parsing
+ * module to find the main target(s) to create.
+ */
 static int
 build_stuff(MakeFlags *mf)
 {
-	Boolean outOfDate;	/* FALSE if all targets up to date */
-
-	/*
-	 * Build targets.
-	 *
-	 * We have read the entire graph and need to make
-	 * a list of targets to create.  If none were given
-	 * on the command line, we consult the parsing
-	 * module to find the main target(s) to create.
-	 */
-	Lst targs = Lst_Initializer(targs);
+	int	status;
+	Lst	targs = Lst_Initializer(targs);
 
 	if (Lst_IsEmpty(&mf->create))
 		Parse_MainName(&targs);
@@ -879,13 +878,17 @@ build_stuff(MakeFlags *mf)
 
 	/* Traverse the graph, checking on all the targets */
 	if (compatMake) {
+		Boolean outOfDate;
 		outOfDate = Compat_Run(&targs, mf->queryFlag);
+		status = (mf->queryFlag && outOfDate) ? 1 : 0;
 	} else {
+		Boolean outOfDate;
 		outOfDate = Make_Run(&targs, mf->queryFlag);
+		status = (mf->queryFlag && outOfDate) ? 1 : 0;
 	}
 	Lst_Destroy(&targs, NOFREE);
 
-	return (mf->queryFlag && outOfDate) ? 1 : 0;
+	return (status);
 }
 
 /**
