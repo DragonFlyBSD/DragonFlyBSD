@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.2 2005/06/21 00:47:07 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.3 2005/06/21 06:50:28 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -34,6 +34,7 @@
 #include <sys/ktr.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/queue.h>
 
 #include <err.h>
 #include <fcntl.h>
@@ -57,6 +58,8 @@ static void print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *ent
 static struct ktr_info *kvm_ktrinfo(kvm_t *kd, void *kptr);
 static const char *kvm_string(kvm_t *kd, const char *kptr);
 static const char *trunc_path(const char *str, int maxlen);
+static void read_symbols(const char *execfile);
+static const char *address_to_symbol(void *kptr);
 
 static struct nlist nl[] = {
 	{ "_ktr_version" },
@@ -70,13 +73,14 @@ static struct nlist nl[] = {
 static int cflag;
 static int fflag;
 static int iflag;
-static int mflag;
 static int nflag;
 static int qflag;
 static int rflag;
 static int tflag;
 static int xflag;
 static int pflag;
+static int Mflag;
+static int Nflag;
 static int64_t last_timestamp;
 
 static char corefile[PATH_MAX];
@@ -103,6 +107,7 @@ main(int ac, char **av)
 	int entries;
 	int *ktr_idx;
 	int ncpus;
+	int did_display_flag = 0;
 	int in;
 	int c;
 	int i;
@@ -112,7 +117,7 @@ main(int ac, char **av)
 	 * Parse commandline arguments.
 	 */
 	fo = stdout;
-	while ((c = getopt(ac, av, "acfiqrtxpN:M:o:")) != -1)
+	while ((c = getopt(ac, av, "acfiqrtxpN:M:o:")) != -1) {
 		switch (c) {
 		case 'a':
 			cflag = 1;
@@ -129,7 +134,7 @@ main(int ac, char **av)
 			if (strlcpy(execfile, optarg, sizeof(execfile))
 			    >= sizeof(execfile))
 				errx(1, "%s: File name too long", optarg);
-			nflag = 1;
+			Nflag = 1;
 			break;
 		case 'f':
 			fflag = 1;
@@ -141,7 +146,10 @@ main(int ac, char **av)
 			if (strlcpy(corefile, optarg, sizeof(corefile))
 			    >= sizeof(corefile))
 				errx(1, "%s: File name too long", optarg);
-			mflag = 1;
+			Mflag = 1;
+			break;
+		case 'n':
+			nflag = 1;
 			break;
 		case 'o':
 			if ((fo = fopen(optarg, "w")) == NULL)
@@ -166,6 +174,15 @@ main(int ac, char **av)
 		default:
 			usage();
 		}
+	}
+	if (cflag + iflag + tflag + xflag + fflag + pflag == 0) {
+		cflag = 1;
+		iflag = 1;
+		tflag = 1;
+		fflag = 1;
+		pflag = 1;
+	}
+
 	ac -= optind;
 	av += optind;
 	if (ac != 0)
@@ -175,8 +192,8 @@ main(int ac, char **av)
 	 * Open our execfile and corefile, resolve needed symbols and read in
 	 * the trace buffer.
 	 */
-	if ((kd = kvm_openfiles(nflag ? execfile : NULL,
-	    mflag ? corefile : NULL, NULL, O_RDONLY, errbuf)) == NULL)
+	if ((kd = kvm_openfiles(Nflag ? execfile : NULL,
+	    Mflag ? corefile : NULL, NULL, O_RDONLY, errbuf)) == NULL)
 		errx(1, "%s", errbuf);
 	if (kvm_nlist(kd, nl) != 0)
 		errx(1, "%s", kvm_geterr(kd));
@@ -191,6 +208,9 @@ main(int ac, char **av)
 		errx(1, "%s", kvm_geterr(kd));
 	ktr_buf = malloc(sizeof(*ktr_buf) * ncpus);
 	ktr_idx = malloc(sizeof(*ktr_idx) * ncpus);
+
+	if (nflag == 0)
+		read_symbols(Nflag ? execfile : NULL);
 
 	if (kvm_read(kd, nl[2].n_value, ktr_idx, sizeof(*ktr_idx) * ncpus) == -1)
 		errx(1, "%s", kvm_geterr(kd));
@@ -225,8 +245,12 @@ print_header(FILE *fo, int row)
 			fprintf(fo, "%-3s ", "cpu");
 		if (tflag || rflag)
 			fprintf(fo, "%-16s ", "timestamp");
-		if (xflag)
-			fprintf(fo, "%-10s %-10s", "caller1", "caller2");
+		if (xflag) {
+			if (nflag)
+			    fprintf(fo, "%-10s %-10s", "caller2", "caller1");
+			else
+			    fprintf(fo, "%-20s %-20s", "caller2", "caller1");
+		}
 		if (iflag)
 			fprintf(fo, "%-20s ", "ID");
 		if (fflag)
@@ -252,8 +276,17 @@ print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry)
 		else
 			fprintf(fo, "%-16lld ", entry->ktr_timestamp);
 	}
-	if (xflag)	
-		fprintf(fo, "%p %p ", entry->ktr_caller1, entry->ktr_caller2);
+	if (xflag) {
+		if (nflag) {
+		    fprintf(fo, "%p %p ", 
+			    entry->ktr_caller2, entry->ktr_caller1);
+		} else {
+		    fprintf(fo, "%-20s ", 
+			    address_to_symbol(entry->ktr_caller2));
+		    fprintf(fo, "%-20s ", 
+			    address_to_symbol(entry->ktr_caller1));
+		}
+	}
 	if (iflag) {
 		info = kvm_ktrinfo(kd, entry->ktr_info);
 		if (info)
@@ -346,10 +379,92 @@ trunc_path(const char *str, int maxlen)
 		return(str);
 }
 
+struct symdata {
+	TAILQ_ENTRY(symdata) link;
+	const char *symname;
+	char *symaddr;
+	char symtype;
+};
+
+static TAILQ_HEAD(symlist, symdata) symlist;
+static struct symdata *symcache;
+static char *symbegin;
+static char *symend;
+
+static
+void
+read_symbols(const char *execfile)
+{
+	char buf[256];
+	char cmd[256];
+	int buflen = sizeof(buf);
+	FILE *fp;
+	struct symdata *sym;
+	char *s1;
+	char *s2;
+	char *s3;
+
+	TAILQ_INIT(&symlist);
+
+	if (execfile == NULL) {
+		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
+			execfile = "/kernel";
+		else
+			execfile = buf;
+	}
+	snprintf(cmd, sizeof(cmd), "nm -n %s", execfile);
+	if ((fp = popen(cmd, "r")) != NULL) {
+		while (fgets(buf, sizeof(buf), fp) != NULL) {
+		    s1 = strtok(buf, " \t\n");
+		    s2 = strtok(NULL, " \t\n");
+		    s3 = strtok(NULL, " \t\n");
+		    if (s1 && s2 && s3) {
+			sym = malloc(sizeof(struct symdata));
+			sym->symaddr = (char *)strtoul(s1, NULL, 16);
+			sym->symtype = s2[0];
+			sym->symname = strdup(s3);
+			if (strcmp(s3, "kernbase") == 0)
+				symbegin = sym->symaddr;
+			if (strcmp(s3, "end") == 0)
+				symend = sym->symaddr;
+			TAILQ_INSERT_TAIL(&symlist, sym, link);
+		    }
+		}
+		pclose(fp);
+	}
+	symcache = TAILQ_FIRST(&symlist);
+}
+
+static
+const char *
+address_to_symbol(void *kptr)
+{
+	static char buf[64];
+
+	if (symcache == NULL ||
+	   (char *)kptr < symbegin || (char *)kptr >= symend
+	) {
+		snprintf(buf, sizeof(buf), "%p", kptr);
+		return(buf);
+	}
+	while ((char *)symcache->symaddr < (char *)kptr) {
+		if (TAILQ_NEXT(symcache, link) == NULL)
+			break;
+		symcache = TAILQ_NEXT(symcache, link);
+	}
+	while ((char *)symcache->symaddr > (char *)kptr) {
+		if (symcache != TAILQ_FIRST(&symlist))
+			symcache = TAILQ_PREV(symcache, symlist, link);
+	}
+	snprintf(buf, sizeof(buf), "%s+%d", symcache->symname,
+		(int)((char *)kptr - symcache->symaddr));
+	return(buf);
+}
+
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: ktrdump [-acfipqrtx] [-N execfile] "
+	fprintf(stderr, "usage: ktrdump [-acfinpqrtx] [-N execfile] "
 			"[-M corefile] [-o outfile]\n");
 	exit(1);
 }
