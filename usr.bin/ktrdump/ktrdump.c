@@ -23,12 +23,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.9 2004/09/27 05:56:57 julian Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.1 2005/03/08 01:54:59 hmp Exp $
+ *
+ * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.2 2005/06/21 00:47:07 dillon Exp $
  */
 
-#include <sys/param.h>
+#include <sys/cdefs.h>
+
+#include <sys/types.h>
 #include <sys/ktr.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -45,30 +47,37 @@
 #include <unistd.h>
 
 #define	SBUFLEN	128
-#define	USAGE \
-	"usage: ktrdump [-c] [-f] [-q] [-r] [-t] [-e execfile] [-i ktrfile ] [-m corefile] [-o outfile]"
 
 extern char *optarg;
 extern int optind;
 
 static void usage(void);
+static void print_header(FILE *fo, int row);
+static void print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry);
+static struct ktr_info *kvm_ktrinfo(kvm_t *kd, void *kptr);
+static const char *kvm_string(kvm_t *kd, const char *kptr);
+static const char *trunc_path(const char *str, int maxlen);
 
 static struct nlist nl[] = {
 	{ "_ktr_version" },
 	{ "_ktr_entries" },
 	{ "_ktr_idx" },
 	{ "_ktr_buf" },
+	{ "_ncpus" },
 	{ NULL }
 };
 
 static int cflag;
-static int eflag;
 static int fflag;
+static int iflag;
 static int mflag;
+static int nflag;
 static int qflag;
 static int rflag;
 static int tflag;
-static int iflag;
+static int xflag;
+static int pflag;
+static int64_t last_timestamp;
 
 static char corefile[PATH_MAX];
 static char execfile[PATH_MAX];
@@ -77,7 +86,6 @@ static char desc[SBUFLEN];
 static char errbuf[_POSIX2_LINE_MAX];
 static char fbuf[PATH_MAX];
 static char obuf[PATH_MAX];
-static char sbuf[KTR_PARMS][SBUFLEN];
 
 /*
  * Reads the ktr trace buffer from kernel memory and prints the trace entries.
@@ -85,53 +93,62 @@ static char sbuf[KTR_PARMS][SBUFLEN];
 int
 main(int ac, char **av)
 {
-	u_long parms[KTR_PARMS];
-	struct ktr_entry *buf;
+	struct ktr_entry **ktr_buf;
 	uintmax_t tlast, tnow;
 	struct stat sb;
 	kvm_t *kd;
-	FILE *out;
+	FILE *fo;
 	char *p;
 	int version;
 	int entries;
-	int index;
-	int parm;
+	int *ktr_idx;
+	int ncpus;
 	int in;
 	int c;
-	int i = 0;
+	int i;
+	int n;
 
 	/*
 	 * Parse commandline arguments.
 	 */
-	out = stdout;
-	while ((c = getopt(ac, av, "cfqrte:i:m:o:")) != -1)
+	fo = stdout;
+	while ((c = getopt(ac, av, "acfiqrtxpN:M:o:")) != -1)
 		switch (c) {
+		case 'a':
+			cflag = 1;
+			iflag = 1;
+			tflag = 1;
+			xflag = 1;
+			fflag = 1;
+			pflag = 1;
+			break;
 		case 'c':
 			cflag = 1;
 			break;
-		case 'e':
+		case 'N':
 			if (strlcpy(execfile, optarg, sizeof(execfile))
 			    >= sizeof(execfile))
 				errx(1, "%s: File name too long", optarg);
-			eflag = 1;
+			nflag = 1;
 			break;
 		case 'f':
 			fflag = 1;
 			break;
 		case 'i':
 			iflag = 1;
-			if ((in = open(optarg, O_RDONLY)) == -1)
-				err(1, "%s", optarg);
 			break;
-		case 'm':
+		case 'M':
 			if (strlcpy(corefile, optarg, sizeof(corefile))
 			    >= sizeof(corefile))
 				errx(1, "%s: File name too long", optarg);
 			mflag = 1;
 			break;
 		case 'o':
-			if ((out = fopen(optarg, "w")) == NULL)
+			if ((fo = fopen(optarg, "w")) == NULL)
 				err(1, "%s", optarg);
+			break;
+		case 'p':
+			pflag++;
 			break;
 		case 'q':
 			qflag++;
@@ -141,6 +158,9 @@ main(int ac, char **av)
 			break;
 		case 't':
 			tflag = 1;
+			break;
+		case 'x':
+			xflag = 1;
 			break;
 		case '?':
 		default:
@@ -155,135 +175,181 @@ main(int ac, char **av)
 	 * Open our execfile and corefile, resolve needed symbols and read in
 	 * the trace buffer.
 	 */
-	if ((kd = kvm_openfiles(eflag ? execfile : NULL,
+	if ((kd = kvm_openfiles(nflag ? execfile : NULL,
 	    mflag ? corefile : NULL, NULL, O_RDONLY, errbuf)) == NULL)
 		errx(1, "%s", errbuf);
-	if (kvm_nlist(kd, nl) != 0 ||
-	    kvm_read(kd, nl[0].n_value, &version, sizeof(version)) == -1)
+	if (kvm_nlist(kd, nl) != 0)
 		errx(1, "%s", kvm_geterr(kd));
+	if (kvm_read(kd, nl[0].n_value, &version, sizeof(version)) == -1)
+		errx(1, "%s", kvm_geterr(kd));
+	if (kvm_read(kd, nl[4].n_value, &ncpus, sizeof(ncpus)) == -1)
+		errx(1, "%s", kvm_geterr(kd));
+
 	if (version != KTR_VERSION)
 		errx(1, "ktr version mismatch");
-	if (iflag) {
-		if (fstat(in, &sb) == -1)
-			errx(1, "stat");
-		entries = sb.st_size / sizeof(*buf);
-		index = 0;
-		buf = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, in, 0);
-		if (buf == MAP_FAILED)
-			errx(1, "mmap");
-	} else {
-		if (kvm_read(kd, nl[1].n_value, &entries, sizeof(entries))
-		    == -1)
-			errx(1, "%s", kvm_geterr(kd));
-		if ((buf = malloc(sizeof(*buf) * entries)) == NULL)
-			err(1, NULL);
-		if (kvm_read(kd, nl[2].n_value, &index, sizeof(index)) == -1 ||
-		    kvm_read(kd, nl[3].n_value, buf, sizeof(*buf) * entries)
-		    == -1)
-			errx(1, "%s", kvm_geterr(kd));
-	}
+	if (kvm_read(kd, nl[1].n_value, &entries, sizeof(entries)) == -1)
+		errx(1, "%s", kvm_geterr(kd));
+	ktr_buf = malloc(sizeof(*ktr_buf) * ncpus);
+	ktr_idx = malloc(sizeof(*ktr_idx) * ncpus);
 
-	/*
-	 * Print a nice header.
-	 */
-	if (!qflag) {
-		fprintf(out, "%-6s ", "index");
-		if (cflag)
-			fprintf(out, "%-3s ", "cpu");
-		if (tflag)
-			fprintf(out, "%-16s ", "timestamp");
-		if (fflag)
-			fprintf(out, "%-40s ", "file and line");
-		fprintf(out, "%s", "trace");
-		fprintf(out, "\n");
-
-		fprintf(out, "------ ");
-		if (cflag)
-			fprintf(out, "--- ");
-		if (tflag)
-			fprintf(out, "---------------- ");
-		if (fflag)
-			fprintf(out,
-			    "---------------------------------------- ");
-		fprintf(out, "----- ");
-		fprintf(out, "\n");
+	if (kvm_read(kd, nl[2].n_value, ktr_idx, sizeof(*ktr_idx) * ncpus) == -1)
+		errx(1, "%s", kvm_geterr(kd));
+	if (kvm_read(kd, nl[3].n_value, ktr_buf, sizeof(*ktr_buf) * ncpus) == -1)
+		errx(1, "%s", kvm_geterr(kd));
+	for (n = 0; n < ncpus; ++n) {
+		void *kptr = ktr_buf[n];
+		ktr_buf[n] = malloc(sizeof(**ktr_buf) * entries);
+		if (kvm_read(kd, (uintptr_t)kptr, ktr_buf[n], sizeof(**ktr_buf) * entries) == -1)
+		errx(1, "%s", kvm_geterr(kd));
 	}
 
 	/*
 	 * Now tear through the trace buffer.
 	 */
-	if (!iflag)
-		i = (index - 1) & (entries - 1);
-	tlast = -1;
-	for (;;) {
-		if (buf[i].ktr_desc == NULL)
-			break;
-		if (kvm_read(kd, (u_long)buf[i].ktr_desc, desc,
-		    sizeof(desc)) == -1)
-			errx(1, "%s", kvm_geterr(kd));
-		desc[sizeof(desc) - 1] = '\0';
-		parm = 0;
-		for (p = desc; (c = *p++) != '\0';) {
-			if (c != '%')
-				continue;
-			if ((c = *p++) == '\0')
-				break;
-			if (parm == KTR_PARMS)
-				errx(1, "too many parameters");
-			switch (c) {
-			case 's':
-				if (kvm_read(kd, (u_long)buf[i].ktr_parms[parm],
-				    sbuf[parm], sizeof(sbuf[parm])) == -1)
-					strcpy(sbuf[parm], "(null)");
-				sbuf[parm][sizeof(sbuf[0]) - 1] = '\0';
-				parms[parm] = (u_long)sbuf[parm];
-				parm++;
-				break;
-			default:
-				parms[parm] = buf[i].ktr_parms[parm];
-				parm++;
-				break;
-			}
-		}
-		fprintf(out, "%6d ", i);
-		if (cflag)
-			fprintf(out, "%3d ", buf[i].ktr_cpu);
-		if (tflag) {
-			tnow = (uintmax_t)buf[i].ktr_timestamp;
-			if (rflag) {
-				if (tlast == -1)
-					tlast = tnow;
-				fprintf(out, "%16ju ", tlast - tnow);
-				tlast = tnow;
-			} else
-				fprintf(out, "%16ju ", tnow);
-		}
-		if (fflag) {
-			if (kvm_read(kd, (u_long)buf[i].ktr_file, fbuf,
-			    sizeof(fbuf)) == -1)
-				strcpy(fbuf, "(null)");
-			snprintf(obuf, sizeof(obuf), "%s:%d", fbuf,
-			    buf[i].ktr_line);
-			fprintf(out, "%-40s ", obuf);
-		}
-		fprintf(out, desc, parms[0], parms[1], parms[2], parms[3],
-		    parms[4], parms[5]);
-		fprintf(out, "\n");
-		if (!iflag) {
-			if (i == index)
-				break;
-			i = (i - 1) & (entries - 1);
-		} else {
-			if (++i == entries)
-				break;
+	for (n = 0; n < ncpus; ++n) {
+		last_timestamp = 0;
+		for (i = 0; i < entries; ++i) {
+			print_header(fo, i);
+			print_entry(fo, kd, n, i, &ktr_buf[n][i]);
 		}
 	}
-
 	return (0);
+}
+
+static void
+print_header(FILE *fo, int row)
+{
+	if (qflag == 0 && row % 20 == 0) {
+		fprintf(fo, "%-6s ", "index");
+		if (cflag)
+			fprintf(fo, "%-3s ", "cpu");
+		if (tflag || rflag)
+			fprintf(fo, "%-16s ", "timestamp");
+		if (xflag)
+			fprintf(fo, "%-10s %-10s", "caller1", "caller2");
+		if (iflag)
+			fprintf(fo, "%-20s ", "ID");
+		if (fflag)
+			fprintf(fo, "%10s%-30s ", "", "file and line");
+		if (pflag)
+			fprintf(fo, "%s", "trace");
+		fprintf(fo, "\n");
+	}
+}
+
+static void
+print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry)
+{
+	struct ktr_info *info = NULL;
+
+	fprintf(fo, " %5d ", i);
+	if (cflag)
+		fprintf(fo, "%-3d ", n);
+	if (tflag || rflag) {
+		if (rflag)
+			fprintf(fo, "%-16lld ", entry->ktr_timestamp -
+						last_timestamp);
+		else
+			fprintf(fo, "%-16lld ", entry->ktr_timestamp);
+	}
+	if (xflag)	
+		fprintf(fo, "%p %p ", entry->ktr_caller1, entry->ktr_caller2);
+	if (iflag) {
+		info = kvm_ktrinfo(kd, entry->ktr_info);
+		if (info)
+			fprintf(fo, "%-20s ", kvm_string(kd, info->kf_name));
+		else
+			fprintf(fo, "%-20s ", "<empty>");
+	}
+	if (fflag)
+		fprintf(fo, "%34s:%-4d ", trunc_path(kvm_string(kd, entry->ktr_file), 34), entry->ktr_line);
+	if (pflag) {
+		if (info == NULL)
+			info = kvm_ktrinfo(kd, entry->ktr_info);
+		if (info) {
+			fprintf(fo, kvm_string(kd, info->kf_format),
+				entry->ktr_data[0], entry->ktr_data[1],
+				entry->ktr_data[2], entry->ktr_data[3],
+				entry->ktr_data[4], entry->ktr_data[5],
+				entry->ktr_data[6], entry->ktr_data[7],
+				entry->ktr_data[8], entry->ktr_data[9]);
+		} else {
+			fprintf(fo, "");
+		}
+	}
+	fprintf(fo, "\n");
+	last_timestamp = entry->ktr_timestamp;
+}
+
+static
+struct ktr_info *
+kvm_ktrinfo(kvm_t *kd, void *kptr)
+{
+	static struct ktr_info save_info;
+	static void *save_kptr;
+
+	if (kptr == NULL)
+		return(NULL);
+	if (save_kptr != kptr) {
+		if (kvm_read(kd, (uintptr_t)kptr, &save_info, sizeof(save_info)) == -1) {
+			bzero(&save_info, sizeof(save_info));
+		} else {
+			save_kptr = kptr;
+		}
+	}
+	return(&save_info);
+}
+
+static
+const char *
+kvm_string(kvm_t *kd, const char *kptr)
+{
+	static char save_str[128];
+	static const char *save_kptr;
+	int l;
+	int n;
+
+	if (kptr == NULL)
+		return("?");
+	if (save_kptr != kptr) {
+		save_kptr = kptr;
+		l = 0;
+		while (l < sizeof(save_str) - 1) {
+			n = 256 - ((intptr_t)(kptr + l) & 255);
+			if (n > sizeof(save_str) - l - 1)
+				n = sizeof(save_str) - l - 1;
+			if (kvm_read(kd, (uintptr_t)(kptr + l), save_str + l, n) < 0)
+				break;
+			while (l < sizeof(save_str) && n) {
+			    if (save_str[l] == 0)
+				    break;
+			    --n;
+			    ++l;
+			}
+			if (n)
+			    break;
+		}
+		save_str[l] = 0;
+	}
+	return(save_str);
+}
+
+static
+const char *
+trunc_path(const char *str, int maxlen)
+{
+	int len = strlen(str);
+
+	if (len > maxlen)
+		return(str + len - maxlen);
+	else
+		return(str);
 }
 
 static void
 usage(void)
 {
-	errx(1, USAGE);
+	fprintf(stderr, "usage: ktrdump [-acfipqrtx] [-N execfile] "
+			"[-M corefile] [-o outfile]\n");
+	exit(1);
 }
