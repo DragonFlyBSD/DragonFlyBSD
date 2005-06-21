@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.32 2005/06/20 13:30:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.33 2005/06/21 12:35:14 joerg Exp $
  */
 
 /*
@@ -698,6 +698,8 @@ vr_attach(device_t dev)
 
 	pci_enable_busmaster(dev);
 
+	sc->vr_revid = pci_get_revid(dev);
+
 	rid = VR_RID;
 	sc->vr_res = bus_alloc_resource_any(dev, VR_RES, &rid, RF_ACTIVE);
 
@@ -781,12 +783,14 @@ vr_attach(device_t dev)
 	/*
 	 * Do MII setup.
 	 */
+        crit_enter();
 	if (mii_phy_probe(dev, &sc->vr_miibus,
 	    vr_ifmedia_upd, vr_ifmedia_sts)) {
 		if_printf(ifp, "MII without any phy!\n");
 		error = ENXIO;
 		goto fail;
 	}
+	crit_exit();
 
 	/* Call MI attach routine. */
 	ether_ifattach(ifp, eaddr);
