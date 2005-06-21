@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.11 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.12 2005/06/21 05:03:12 dillon Exp $
  */
 
 /*
@@ -303,7 +303,8 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
     } else {
 	if (ipiq_optimized == 0)
 	    cpu_send_ipiq(target->gd_cpuid);
-	++ipiq_avoided;
+	else
+	    ++ipiq_avoided;
     }
     return(0);
 }
@@ -457,12 +458,15 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
 {
     int ri;
     int wi;
+    void (*copy_func)(void *data, struct intrframe *frame);
+    void *copy_arg;
 
     /*
      * Obtain the current write index, which is modified by a remote cpu.
      * Issue a load fence to prevent speculative reads of e.g. data written
      * by the other cpu prior to it updating the index.
      */
+    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     wi = ip->ip_windex;
     cpu_lfence();
 
@@ -472,9 +476,13 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
      * function may send an IPI which may block/drain.
      */
     while ((ri = ip->ip_rindex) != wi) {
-	ip->ip_rindex = ri + 1;
 	ri &= MAXCPUFIFO_MASK;
-	ip->ip_func[ri](ip->ip_arg[ri], frame);
+	copy_func = ip->ip_func[ri];
+	copy_arg = ip->ip_arg[ri];
+	cpu_mfence();
+	++ip->ip_rindex;
+	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) == ((ri + 1) & MAXCPUFIFO_MASK));
+	copy_func(copy_arg, frame);
 	cpu_sfence();
 	ip->ip_xindex = ip->ip_rindex;
     }
