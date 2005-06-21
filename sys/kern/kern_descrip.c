@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.39 2005/02/02 20:36:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.39.2.1 2005/06/21 18:12:16 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -794,8 +794,13 @@ fdalloc(struct proc *p, int want, int *result)
 	 * Search for a free descriptor starting at the higher
 	 * of want or fd_freefile.  If that fails, consider
 	 * expanding the ofile array.
+	 *
+	 * In 1.2-REL u_short fields in struct filedesc limit us to 65535 
+	 * descriptors per process.
 	 */
 	lim = min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
+	if (lim > 65535)
+		lim = 65535;
 	for (;;) {
 		last = min(fdp->fd_nfiles, lim);
 		if ((i = want) < fdp->fd_freefile)
