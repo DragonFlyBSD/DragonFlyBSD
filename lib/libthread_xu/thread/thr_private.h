@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.6 2005/05/07 09:29:46 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.7 2005/06/21 07:47:01 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -100,7 +100,7 @@
 	do { 							\
 		(dst)->tv_sec = (src)->tv_sec + (val)->tv_sec;	\
 		(dst)->tv_nsec = (src)->tv_nsec + (val)->tv_nsec; \
-		if ((dst)->tv_nsec > 1000000000) {		\
+		if ((dst)->tv_nsec >= 1000000000) {		\
 			(dst)->tv_sec++;			\
 			(dst)->tv_nsec -= 1000000000;		\
 		}						\
