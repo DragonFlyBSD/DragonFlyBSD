@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.120 2005/06/21 20:59:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.121 2005/06/21 20:59:42 okumoto Exp $
  */
 
 /*
@@ -878,9 +878,7 @@ build_stuff(MakeFlags *mf)
 
 	/* Traverse the graph, checking on all the targets */
 	if (compatMake) {
-		Boolean outOfDate;
-		outOfDate = Compat_Run(&targs, mf->queryFlag);
-		status = (mf->queryFlag && outOfDate) ? 1 : 0;
+		status = Compat_Run(&targs, mf->queryFlag);
 	} else {
 		Boolean outOfDate;
 		outOfDate = Make_Run(&targs, mf->queryFlag);

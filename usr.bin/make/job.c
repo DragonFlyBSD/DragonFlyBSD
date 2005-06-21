@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.116 2005/06/16 20:51:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.117 2005/06/21 20:59:42 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3304,16 +3304,13 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 }
 
 /**
- * Compat_Run
- *	Start making again, given a list of target nodes.
+ * Start making given a list of target nodes.  Returns what the exist
+ * status of make should be.
  *
- * Results:
- *	None.
- *
- * Side Effects:
- *	Guess what?
+ * @note Obviously some function we call is exiting since the code only
+ *	 returns 0.  We will fix that bug eventually.
  */
-Boolean
+int
 Compat_Run(Lst *targs, Boolean queryFlag)
 {
 	GNode	*gn = NULL;	/* Current root target */
@@ -3327,8 +3324,8 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	/*
 	 * If the user has defined a .BEGIN target, execute the commands
 	 * attached to it.
-	*/
-	if (!queryFlag) {
+	 */
+	if (queryFlag == FALSE) {
 		gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
 			LST_FOREACH(ln, &gn->commands) {
@@ -3337,7 +3334,14 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 			}
 			if (gn->made == ERROR) {
 				printf("\n\nStop.\n");
-				return (TRUE);
+				/*
+				 * XXX
+				 * (queryFlag && outOfDate) ? 1 : 0 ->
+				 * (FALSE && TRUE) ? 1 : 0 ->
+				 * 0 Successful completion?
+				 * XXX
+				 */
+				return (0);
 			}
 		}
 	}
@@ -3376,6 +3380,6 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 		}
 	}
 
-	return (FALSE);
+	return (0);	/* Successful completion */
 }
 
