@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.62 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.63 2005/06/21 23:58:53 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1323,7 +1323,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 					return (0);
 				}
 				if (fdp->fd_ofiles[indx] == fp) {
-					fdp->fd_ofiles[indx] = NULL;
+					funsetfd(fdp, indx);
 					fdrop(fp, td);	/* fd_ofiles[] ref */
 				}
 			}
@@ -1392,7 +1392,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			 */
 			vrele(vp);
 			if (fdp->fd_ofiles[indx] == fp) {
-				fdp->fd_ofiles[indx] = NULL;
+				funsetfd(fdp, indx);
 				fdrop(fp, td);
 			}
 			fdrop(fp, td);
@@ -3273,7 +3273,7 @@ fhopen(struct fhopen_args *uap)
 			 * or close()d it when we weren't looking.
 			 */
 			if (fdp->fd_ofiles[indx] == fp) {
-				fdp->fd_ofiles[indx] = NULL;
+				funsetfd(fdp, indx);
 				fdrop(fp, td);
 			}
 

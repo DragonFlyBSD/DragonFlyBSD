@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.42 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.43 2005/06/21 23:58:53 hsu Exp $
  */
 
 #include "opt_init_path.h"
@@ -344,6 +344,7 @@ proc0_init(void *dummy __unused)
 	fdp->fd_fd.fd_cmask = cmask;
 	fdp->fd_fd.fd_ofiles = fdp->fd_dfiles;
 	fdp->fd_fd.fd_ofileflags = fdp->fd_dfileflags;
+	fdp->fd_fd.fd_oallocated = fdp->fd_dallocated;
 	fdp->fd_fd.fd_nfiles = NDFILE;
 
 	/* Create the limits structures. */

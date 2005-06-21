@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.42 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.43 2005/06/21 23:58:53 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -391,6 +391,7 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 	struct file *fp;
 	struct file *delfp;
 	int holdleaders;
+	boolean_t fdalloced = FALSE;
 	int error, newfd;
 
 	/*
@@ -419,6 +420,7 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 			fdrop(fp, td);
 			return (error);
 		}
+		fdalloced = TRUE;
 	}
 	if (type == DUP_VARIABLE)
 		new = newfd;
@@ -430,6 +432,8 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 	 */
 	if (fdp->fd_ofiles[old] != fp) {
 		if (fdp->fd_ofiles[new] == NULL) {
+			if (fdalloced)
+				fdreserve(fdp, newfd, -1);
 			if (new < fdp->fd_freefile)
 				fdp->fd_freefile = new;
 			while (fdp->fd_lastfile > 0 &&
@@ -466,10 +470,12 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 	/*
 	 * Duplicate the source descriptor, update lastfile
 	 */
-	fdp->fd_ofiles[new] = fp;
-	fdp->fd_ofileflags[new] = fdp->fd_ofileflags[old] &~ UF_EXCLOSE;
 	if (new > fdp->fd_lastfile)
 		fdp->fd_lastfile = new;
+	if (!fdalloced && fdp->fd_ofiles[new] == NULL)
+		fdreserve(fdp, new, 1);
+	fdp->fd_ofiles[new] = fp;
+	fdp->fd_ofileflags[new] = fdp->fd_ofileflags[old] &~ UF_EXCLOSE;
 	*res = new;
 
 	/*
@@ -669,8 +675,7 @@ kern_close(int fd)
 	if (fdp->fd_ofileflags[fd] & UF_MAPPED)
 		(void) munmapfd(p, fd);
 #endif
-	fdp->fd_ofiles[fd] = NULL;
-	fdp->fd_ofileflags[fd] = 0;
+	funsetfd(fdp, fd);
 	holdleaders = 0;
 	if (p->p_fdtol != NULL) {
 		/*
@@ -687,8 +692,6 @@ kern_close(int fd)
 	 */
 	while (fdp->fd_lastfile > 0 && fdp->fd_ofiles[fdp->fd_lastfile] == NULL)
 		fdp->fd_lastfile--;
-	if (fd < fdp->fd_freefile)
-		fdp->fd_freefile = fd;
 	if (fd < fdp->fd_knlistsize)
 		knote_fdclose(p, fd);
 	error = closef(fp, td);
@@ -806,80 +809,161 @@ fpathconf(struct fpathconf_args *uap)
 	return(error);
 }
 
-/*
- * Allocate a file descriptor for the process.
- */
 static int fdexpand;
 SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0, "");
 
+static void
+fdgrow(struct filedesc *fdp, int want)
+{
+	struct file **newofile;
+	char *newofileflags;
+	int *newoallocated;
+	int nf, extra;
+
+	nf = fdp->fd_nfiles;
+	do {
+		/* nf has to be of the form 2^n - 1 */
+		nf = 2 * nf + 1;
+	} while (nf <= want);
+
+	newofile = malloc(nf * OFILESIZE + 1, M_FILEDESC, M_WAITOK);
+
+	/*
+	 * deal with file-table extend race that might have occured
+	 * when malloc was blocked.
+	 */
+	if (fdp->fd_nfiles >= nf) {
+		free(newofile, M_FILEDESC);
+		return;
+	}
+	newofileflags = (char *) &newofile[nf];
+	newoallocated = (int *) &newofileflags[nf+1];
+	/*
+	 * Copy the existing ofile and ofileflags arrays
+	 * and zero the new portion of each array.
+	 */
+	extra = nf - fdp->fd_nfiles;
+	bcopy(fdp->fd_ofiles, newofile, fdp->fd_nfiles * sizeof(struct file *));
+	bzero(&newofile[fdp->fd_nfiles], extra * sizeof(struct file *));
+	bcopy(fdp->fd_ofileflags, newofileflags, fdp->fd_nfiles * sizeof(char));
+	bzero(&newofileflags[fdp->fd_nfiles], extra * sizeof(char));
+	bcopy(fdp->fd_oallocated, newoallocated, fdp->fd_nfiles * sizeof(int));
+	bzero(&newoallocated[fdp->fd_nfiles], extra * sizeof(int));
+	if (fdp->fd_nfiles > NDFILE)
+		free(fdp->fd_ofiles, M_FILEDESC);
+	fdp->fd_ofiles = newofile;
+	fdp->fd_ofileflags = newofileflags;
+	fdp->fd_oallocated = newoallocated;
+	fdp->fd_nfiles = nf;
+	fdexpand++;
+}
+
+/*
+ * Number of nodes in right subtree, including the root.
+ */
+static __inline int
+right_subtree_size(int n)
+{
+	return (n ^ (n | (n + 1)));
+}
+
+/*
+ * Bigger ancestor.
+ */
+static __inline int
+right_ancestor(int n)
+{
+	return (n | (n + 1));
+}
+
+/*
+ * Smaller ancestor.
+ */
+static __inline int
+left_ancestor(int n)
+{
+	return ((n & (n + 1)) - 1);
+}
+
+void
+fdreserve(struct filedesc *fdp, int fd, int incr)
+{
+	while (fd >= 0) {
+		fdp->fd_oallocated[fd] += incr;
+		KKASSERT(fdp->fd_oallocated[fd] >= 0);
+		fd = left_ancestor(fd);
+	}
+}
+
+/*
+ * Allocate a file descriptor for the process.
+ */
 int
 fdalloc(struct proc *p, int want, int *result)
 {
 	struct filedesc *fdp = p->p_fd;
-	int i;
-	int lim, last, nfiles;
-	struct file **newofile;
-	char *newofileflags;
+	int fd, rsize, rsum, node, lim;
+
+	lim = min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
+	if (want >= lim)
+		return (EMFILE);
+	if (want >= fdp->fd_nfiles)
+		fdgrow(fdp, want);
 
 	/*
 	 * Search for a free descriptor starting at the higher
 	 * of want or fd_freefile.  If that fails, consider
 	 * expanding the ofile array.
 	 */
-	lim = min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
-	for (;;) {
-		last = min(fdp->fd_nfiles, lim);
-		if ((i = want) < fdp->fd_freefile)
-			i = fdp->fd_freefile;
-		for (; i < last; i++) {
-			if (fdp->fd_ofiles[i] == NULL) {
-				fdp->fd_ofileflags[i] = 0;
-				if (i > fdp->fd_lastfile)
-					fdp->fd_lastfile = i;
-				if (want <= fdp->fd_freefile)
-					fdp->fd_freefile = i;
-				*result = i;
-				return (0);
+retry:
+	/* move up the tree looking for a subtree with a free node */
+	for (fd = max(want, fdp->fd_freefile); fd < min(fdp->fd_nfiles, lim);
+	     fd = right_ancestor(fd)) {
+		if (fdp->fd_oallocated[fd] == 0)
+			goto found;
+
+		rsize = right_subtree_size(fd);
+		if (fdp->fd_oallocated[fd] == rsize)
+			continue;	/* right subtree full */
+
+		/*
+		 * Free fd is in the right subtree of the tree rooted at fd.
+		 * Call that subtree R.  Look for the smallest (leftmost)
+		 * subtree of R with an unallocated fd: continue moving
+		 * down the left branch until encountering a full left
+		 * subtree, then move to the right.
+		 */
+		for (rsum = 0, rsize /= 2; rsize > 0; rsize /= 2) {
+			node = fd + rsize;
+			rsum += fdp->fd_oallocated[node];
+			if (fdp->fd_oallocated[fd] == rsum + rsize) {
+				fd = node;	/* move to the right */
+				if (fdp->fd_oallocated[node] == 0)
+					goto found;
+				rsum = 0;
 			}
 		}
-
-		/*
-		 * No space in current array.  Expand?
-		 */
-		if (fdp->fd_nfiles >= lim)
-			return (EMFILE);
-		if (fdp->fd_nfiles < NDEXTENT)
-			nfiles = NDEXTENT;
-		else
-			nfiles = 2 * fdp->fd_nfiles;
-		newofile = malloc(nfiles * OFILESIZE, M_FILEDESC, M_WAITOK);
-
-		/*
-		 * deal with file-table extend race that might have occured
-		 * when malloc was blocked.
-		 */
-		if (fdp->fd_nfiles >= nfiles) {
-			free(newofile, M_FILEDESC);
-			continue;
-		}
-		newofileflags = (char *) &newofile[nfiles];
-		/*
-		 * Copy the existing ofile and ofileflags arrays
-		 * and zero the new portion of each array.
-		 */
-		bcopy(fdp->fd_ofiles, newofile,
-			(i = sizeof(struct file *) * fdp->fd_nfiles));
-		bzero((char *)newofile + i, nfiles * sizeof(struct file *) - i);
-		bcopy(fdp->fd_ofileflags, newofileflags,
-			(i = sizeof(char) * fdp->fd_nfiles));
-		bzero(newofileflags + i, nfiles * sizeof(char) - i);
-		if (fdp->fd_nfiles > NDFILE)
-			free(fdp->fd_ofiles, M_FILEDESC);
-		fdp->fd_ofiles = newofile;
-		fdp->fd_ofileflags = newofileflags;
-		fdp->fd_nfiles = nfiles;
-		fdexpand++;
+		goto found;
 	}
+
+	/*
+	 * No space in current array.  Expand?
+	 */
+	if (fdp->fd_nfiles >= lim)
+		return (EMFILE);
+	fdgrow(fdp, want);
+	goto retry;
+
+found:
+	KKASSERT(fd < fdp->fd_nfiles);
+	fdp->fd_ofileflags[fd] = 0;
+	if (fd > fdp->fd_lastfile)
+		fdp->fd_lastfile = fd;
+	if (want <= fdp->fd_freefile)
+		fdp->fd_freefile = fd;
+	*result = fd;
+	KKASSERT(fdp->fd_ofiles[fd] == NULL);
+	fdreserve(fdp, fd, 1);
 	return (0);
 }
 
@@ -975,18 +1059,25 @@ done:
 int
 fsetfd(struct proc *p, struct file *fp, int *resultfd)
 {
-	int i;
-	int error;
+	int fd, error;
 
-	KKASSERT(p);
-
-	i = -1;
-	if ((error = fdalloc(p, 0, &i)) == 0) {
+	fd = -1;
+	if ((error = fdalloc(p, 0, &fd)) == 0) {
 		fhold(fp);
-		p->p_fd->fd_ofiles[i] = fp;
+		p->p_fd->fd_ofiles[fd] = fp;
 	}
-	*resultfd = i;
+	*resultfd = fd;
 	return (0);
+}
+
+void
+funsetfd(struct filedesc *fdp, int fd)
+{
+	fdp->fd_ofiles[fd] = NULL;
+	fdp->fd_ofileflags[fd] = 0;
+	fdreserve(fdp, fd, -1);
+	if (fd < fdp->fd_freefile)
+		fdp->fd_freefile = fd;
 }
 
 void
@@ -1050,6 +1141,7 @@ fdinit(struct proc *p)
 	newfdp->fd_fd.fd_cmask = cmask;
 	newfdp->fd_fd.fd_ofiles = newfdp->fd_dfiles;
 	newfdp->fd_fd.fd_ofileflags = newfdp->fd_dfileflags;
+	newfdp->fd_fd.fd_oallocated = newfdp->fd_dallocated;
 	newfdp->fd_fd.fd_nfiles = NDFILE;
 	newfdp->fd_fd.fd_knlistsize = -1;
 
@@ -1108,25 +1200,30 @@ fdcopy(struct proc *p)
 	 * in use.
 	 */
 	if (newfdp->fd_lastfile < NDFILE) {
-		newfdp->fd_ofiles = ((struct filedesc0 *) newfdp)->fd_dfiles;
-		newfdp->fd_ofileflags =
-		    ((struct filedesc0 *) newfdp)->fd_dfileflags;
+		struct filedesc0 *newfdp0 = (struct filedesc0 *)newfdp;
+
+		newfdp->fd_ofiles = newfdp0->fd_dfiles;
+		newfdp->fd_ofileflags = newfdp0->fd_dfileflags;
+		newfdp->fd_oallocated = newfdp0->fd_dallocated;
 		i = NDFILE;
 	} else {
 		/*
-		 * Compute the smallest multiple of NDEXTENT needed
+		 * Compute the smallest file table size
 		 * for the file descriptors currently in use,
 		 * allowing the table to shrink.
 		 */
 		i = newfdp->fd_nfiles;
-		while (i > 2 * NDEXTENT && i > newfdp->fd_lastfile * 2)
-			i /= 2;
-		newfdp->fd_ofiles = malloc(i * OFILESIZE, M_FILEDESC, M_WAITOK);
+		while ((i-1)/2 > newfdp->fd_lastfile && (i-1)/2 > NDFILE)
+			i = (i-1)/2;
+		newfdp->fd_ofiles = malloc(i * OFILESIZE + 1, M_FILEDESC,
+		    M_WAITOK);
 		newfdp->fd_ofileflags = (char *) &newfdp->fd_ofiles[i];
+		newfdp->fd_oallocated = (int *) &newfdp->fd_ofileflags[i+1];
 	}
 	newfdp->fd_nfiles = i;
 	bcopy(fdp->fd_ofiles, newfdp->fd_ofiles, i * sizeof(struct file **));
 	bcopy(fdp->fd_ofileflags, newfdp->fd_ofileflags, i * sizeof(char));
+	bcopy(fdp->fd_oallocated, newfdp->fd_oallocated, i * sizeof(int));
 
 	/*
 	 * kq descriptors cannot be copied.
@@ -1134,11 +1231,8 @@ fdcopy(struct proc *p)
 	if (newfdp->fd_knlistsize != -1) {
 		fpp = &newfdp->fd_ofiles[newfdp->fd_lastfile];
 		for (i = newfdp->fd_lastfile; i >= 0; i--, fpp--) {
-			if (*fpp != NULL && (*fpp)->f_type == DTYPE_KQUEUE) {
-				*fpp = NULL;
-				if (i < newfdp->fd_freefile)
-					newfdp->fd_freefile = i;
-			}
+			if (*fpp != NULL && (*fpp)->f_type == DTYPE_KQUEUE)
+				funsetfd(newfdp, i);	/* nulls out *fpp */
 			if (*fpp == NULL && i == newfdp->fd_lastfile && i > 0)
 				newfdp->fd_lastfile--;
 		}
@@ -1329,10 +1423,7 @@ setugidsafety(struct proc *p)
 			 * a race while close blocks.
 			 */
 			fp = fdp->fd_ofiles[i];
-			fdp->fd_ofiles[i] = NULL;
-			fdp->fd_ofileflags[i] = 0;
-			if (i < fdp->fd_freefile)
-				fdp->fd_freefile = i;
+			funsetfd(fdp, i);
 			(void) closef(fp, td);
 		}
 	}
@@ -1374,10 +1465,7 @@ fdcloseexec(struct proc *p)
 			 * a race while close blocks.
 			 */
 			fp = fdp->fd_ofiles[i];
-			fdp->fd_ofiles[i] = NULL;
-			fdp->fd_ofileflags[i] = 0;
-			if (i < fdp->fd_freefile)
-				fdp->fd_freefile = i;
+			funsetfd(fdp, i);
 			(void) closef(fp, td);
 		}
 	}
@@ -1672,9 +1760,8 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 			(void) munmapfd(p, indx);
 #endif
 		fdp->fd_ofiles[indx] = fdp->fd_ofiles[dfd];
-		fdp->fd_ofiles[dfd] = NULL;
 		fdp->fd_ofileflags[indx] = fdp->fd_ofileflags[dfd];
-		fdp->fd_ofileflags[dfd] = 0;
+		funsetfd(fdp, dfd);
 
 		/*
 		 * we now own the reference to fp that the ofiles[] array
@@ -1693,8 +1780,6 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 			   fdp->fd_ofiles[fdp->fd_lastfile] == NULL) {
 				fdp->fd_lastfile--;
 			}
-			if (dfd < fdp->fd_freefile)
-				fdp->fd_freefile = dfd;
 		}
 		return (0);
 

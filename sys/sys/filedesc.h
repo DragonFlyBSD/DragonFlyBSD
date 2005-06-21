@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.9 2005/06/21 17:59:47 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.10 2005/06/21 23:58:53 hsu Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -47,15 +47,13 @@
  * A process is initially started out with NDFILE descriptors stored within
  * this structure, selected to be enough for typical applications based on
  * the historical limit of 20 open files (and the usage of descriptors by
- * shells).  If these descriptors are exhausted, a larger descriptor table
+ * shells) and the constraint of being one less than a power of 2.
+ * If these descriptors are exhausted, a larger descriptor table
  * may be allocated, up to a process' resource limit; the internal arrays
- * are then unused.  The initial expansion is set to NDEXTENT; each time
- * it runs out, it is doubled until the resource limit is reached. NDEXTENT
- * should be selected to be the biggest multiple of OFILESIZE (see below)
- * that will fit in a power-of-two sized piece of memory.
+ * are then unused.  Each time the file table runs out, it is doubled until
+ * the resource limit is reached.
  */
-#define NDFILE		20
-#define NDEXTENT	50		/* 250 bytes in 256-byte alloc. */
+#define NDFILE		15		/* must be of the form 2^n - 1 */
 
 struct klist;
 struct namecache;
@@ -63,6 +61,7 @@ struct namecache;
 struct filedesc {
 	struct	file **fd_ofiles;	/* file structures for open files */
 	char	*fd_ofileflags;		/* per-process open file flags */
+	int	*fd_oallocated;		/* subtree allocation count */
 	struct	vnode *fd_cdir;		/* current directory (phaseout) */
 	struct	vnode *fd_rdir;		/* root directory (phaseout) */
 	struct	vnode *fd_jdir;		/* jail root directory (phaseout) */
@@ -95,6 +94,7 @@ struct filedesc0 {
 	 */
 	struct	file *fd_dfiles[NDFILE];
 	char	fd_dfileflags[NDFILE];
+	int	fd_dallocated[NDFILE];
 };
 
 
@@ -127,7 +127,7 @@ struct filedesc_to_leader {
 /*
  * Storage required per open file descriptor.
  */
-#define OFILESIZE (sizeof(struct file *) + sizeof(char))
+#define OFILESIZE (sizeof(struct file *) + sizeof(char) + sizeof(int))
 
 /*
  * This structure that holds the information needed to send a SIGIO or
@@ -164,8 +164,10 @@ struct proc;
 int	dupfdopen (struct filedesc *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
+void	fdreserve (struct filedesc *fdp, int fd0, int incr);
 int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
 int	fsetfd (struct proc *p, struct file *fp, int *resultfd);
+void	funsetfd (struct filedesc *fdp, int fd);
 void	fsetcred (struct file *fp, struct ucred *cr);
 void	ffree (struct file *);
 struct	filedesc *fdinit (struct proc *p);

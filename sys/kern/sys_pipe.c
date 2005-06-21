@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.27 2005/03/09 02:22:31 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.28 2005/06/21 23:58:53 hsu Exp $
  */
 
 /*
@@ -266,7 +266,7 @@ pipe(struct pipe_args *uap)
 	error = falloc(p, &wf, &fd2);
 	if (error) {
 		if (fdp->fd_ofiles[fd1] == rf) {
-			fdp->fd_ofiles[fd1] = NULL;
+			funsetfd(fdp, fd1);
 			fdrop(rf, td);
 		}
 		fdrop(rf, td);
