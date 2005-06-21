@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.8 2005/02/28 16:34:34 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.9 2005/06/21 15:25:56 joerg Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.8 2005/02/28 16:33:58 joerg Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.9 2005/06/21 15:24:04 joerg Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1082,6 +1082,7 @@
 #define	PCI_PRODUCT_BROADCOM_BCM5705	0x1653		/* BCM5705 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5705M	0x165d		/* BCM5705M 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5705_ALT	0x165e		/* BCM5705 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM5751	0x1677		/* BCM5751 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5782	0x1696		/* BCM5782 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5901	0x170d		/* BCM5901 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5901A2	0x170e		/* BCM5901A 10/100 Ethernet */

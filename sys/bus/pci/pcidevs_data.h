@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.8 2005/02/28 16:34:34 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.9 2005/06/21 15:25:56 joerg Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.8 2005/02/28 16:33:58 joerg Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.9 2005/06/21 15:24:04 joerg Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2361,6 +2361,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5705 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5751,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5751 10/100/1000 Ethernet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5782,
