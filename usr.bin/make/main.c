@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.121 2005/06/21 20:59:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.122 2005/06/21 21:04:49 okumoto Exp $
  */
 
 /*
@@ -280,20 +280,19 @@ static void
 ReadInputFiles(Parser *parser, MakeFlags *mf, const char curdir[], const char objdir[])
 {
 	if (mf->builtins) {
-		/* Path of sys.mk */
+		char	defsysmk[] = PATH_DEFSYSMK;	/* Path of sys.mk */
 		Lst	sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode	*ln;
-		char	defsysmk[] = PATH_DEFSYSMK;
 
 		Path_Expand(defsysmk, &mf->sysIncPath, &sysMkPath);
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
+
 		LST_FOREACH(ln, &sysMkPath) {
-			if (!ReadMakefile(parser, mf, Lst_Datum(ln), curdir, objdir))
-				break;
+			char *name = Lst_Datum(ln);
+			if (!ReadMakefile(parser, mf, name, curdir, objdir))
+				Fatal("make: cannot open %s.", name);
 		}
-		if (ln != NULL)
-			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 		Lst_Destroy(&sysMkPath, free);
 	}
 
@@ -301,11 +300,10 @@ ReadInputFiles(Parser *parser, MakeFlags *mf, const char curdir[], const char ob
 		LstNode *ln;
 
 		LST_FOREACH(ln, &mf->makefiles) {
-			if (!ReadMakefile(parser, mf, Lst_Datum(ln), curdir, objdir))
-				break;
+			char *name = Lst_Datum(ln);
+			if (!ReadMakefile(parser, mf, name, curdir, objdir))
+				Fatal("make: cannot open %s.", name);
 		}
-		if (ln != NULL)
-			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 	} else if (ReadMakefile(parser, mf, "BSDmakefile", curdir, objdir)) {
 		/* read BSDmakefile */
 	} else if (ReadMakefile(parser, mf, "makefile", curdir, objdir)) {
@@ -1104,8 +1102,8 @@ main(int argc, char **argv)
 	TAILQ_DESTROY(&mf.parseIncPath);
 #endif
 	Lst_Destroy(&mf.create, free);
-	Lst_Destroy(&mf.makefiles, free);
 	Lst_Destroy(&mf.variables, free);
+	Lst_Destroy(&mf.makefiles, free);
 
 	return (status);
 }
