@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.117 2005/06/21 20:59:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.118 2005/06/21 21:04:32 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3304,7 +3304,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 }
 
 /**
- * Start making given a list of target nodes.  Returns what the exist
+ * Start making given a list of target nodes.  Returns what the exit
  * status of make should be.
  *
  * @note Obviously some function we call is exiting since the code only

@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.29 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.30 2005/06/21 21:04:32 okumoto Exp $
  */
 
 /*
@@ -267,8 +267,6 @@ Make_OODate(GNode *gn)
  * Side Effects:
  *	Children and commands may be added to the parent and the parent's
  *	type may be changed.
- *
- *-----------------------------------------------------------------------
  */
 int
 Make_HandleUse(GNode *cgn, GNode *pgn)
