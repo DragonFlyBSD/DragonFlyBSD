@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.40 2005/06/14 14:19:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.41 2005/06/21 15:27:55 joerg Exp $
  *
  */
 
@@ -155,6 +155,8 @@ static struct bge_type bge_devs[] = {
 		"Broadcom BCM5705M Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705_ALT,
 		"Broadcom BCM5705M Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5751,
+		"Broadcom BCM5751 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5782,
 		"Broadcom BCM5782 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, BCOM_DEVICEID_BCM5788,
