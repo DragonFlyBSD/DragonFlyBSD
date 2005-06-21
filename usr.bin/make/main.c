@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.122 2005/06/21 21:04:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.123 2005/06/21 21:05:54 okumoto Exp $
  */
 
 /*
@@ -969,6 +969,13 @@ main(int argc, char **argv)
 	InitVariables(&mf, argc, argv, curdir, objdir);
 
 	/*
+	 * Be compatible if user did not specify -j and did not explicitly
+	 * turned compatibility on
+	 */
+	if (!compatMake && !mf.forceJobs)
+		compatMake = TRUE;
+
+	/*
 	 * Once things are initialized, add the original directory to the
 	 * search path. The current directory is also placed as a variable
 	 * for make scripts.
@@ -979,13 +986,6 @@ main(int argc, char **argv)
 
 	if (strcmp(objdir, curdir) != 0)
 		Path_AddDir(&dirSearchPath, curdir);
-
-	/*
-	 * Be compatible if user did not specify -j and did not explicitly
-	 * turned compatibility on
-	 */
-	if (!compatMake && !mf.forceJobs)
-		compatMake = TRUE;
 
 	/*
 	 * Initialize target and suffix modules in preparation for
