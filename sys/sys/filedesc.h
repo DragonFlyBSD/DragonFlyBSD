@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.8 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.9 2005/06/21 17:59:47 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -70,10 +70,10 @@ struct filedesc {
 	struct  namecache *fd_nrdir;	/* root directory */
 	struct  namecache *fd_njdir;	/* jail directory */
 	int	fd_nfiles;		/* number of open files allocated */
-	u_short	fd_lastfile;		/* high-water mark of fd_ofiles */
-	u_short	fd_freefile;		/* approx. next free file */
-	u_short	fd_cmask;		/* mask for file creation */
-	u_short	fd_refcnt;		/* reference count */
+	int	fd_lastfile;		/* high-water mark of fd_ofiles */
+	int	fd_freefile;		/* approx. next free file */
+	int	fd_cmask;		/* mask for file creation */
+	int	fd_refcnt;		/* reference count */
 
 	int	fd_knlistsize;		/* size of knlist */
 	struct	klist *fd_knlist;	/* list of attached knotes */
