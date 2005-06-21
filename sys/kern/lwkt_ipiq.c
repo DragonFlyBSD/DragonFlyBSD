@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.12 2005/06/21 05:03:12 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.13 2005/06/21 05:25:17 dillon Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/queue.h>
 #include <sys/thread2.h>
 #include <sys/sysctl.h>
+#include <sys/ktr.h>
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
@@ -109,13 +110,29 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_avoided, CTLFLAG_RW, &ipiq_avoided, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_passive, CTLFLAG_RW, &ipiq_passive, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, ipiq_optimized, CTLFLAG_RW, &ipiq_optimized, 0, "");
-#endif
 
+#define IPIQ_STRING	"func=%p arg=%p scpu=%d dcpu=%d"
+#define IPIQ_ARG_SIZE	(sizeof(void *) * 2 + sizeof(int) * 2)
+
+#if !defined(KTR_IPIQ)
+#define KTR_IPIQ	KTR_ALL
 #endif
+KTR_INFO_MASTER(ipiq);
+KTR_INFO(KTR_IPIQ, ipiq, send_norm, 0, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, send_pasv, 1, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, send_nbio, 2, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
+
+#define logipiq(name, func, arg, sgd, dgd)	\
+	KTR_LOG(ipiq_ ## name, func, arg, sgd->gd_cpuid, dgd->gd_cpuid)
+
+#endif	/* SMP */
+#endif	/* KERNEL */
 
 #ifdef SMP
 
-static int lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame);
+static int lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame);
 static void lwkt_cpusync_remote1(lwkt_cpusync_t poll);
 static void lwkt_cpusync_remote2(lwkt_cpusync_t poll);
 
@@ -143,6 +160,8 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
     lwkt_ipiq_t ip;
     int windex;
     struct globaldata *gd = mycpu;
+
+    logipiq(send_norm, func, arg, gd, target);
 
     if (target == gd) {
 	func(arg);
@@ -220,6 +239,7 @@ lwkt_send_ipiq_passive(globaldata_t target, ipifunc_t func, void *arg)
 
     KKASSERT(target != gd);
     crit_enter();
+    logipiq(send_pasv, func, arg, gd, target);
     ++gd->gd_intr_nesting_level;
 #ifdef INVARIANTS
     if (gd->gd_intr_nesting_level > 20)
@@ -279,6 +299,7 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
     int windex;
     struct globaldata *gd = mycpu;
 
+    logipiq(send_nbio, func, arg, gd, target);
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     if (target == gd) {
 	func(arg);
@@ -287,8 +308,10 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
     ++ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
-    if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 2 / 3)
+    if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 2 / 3) {
+	logipiq(send_fail, func, arg, gd, target);
 	return(ENOENT);
+    }
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = (ipifunc2_t)func;
     ip->ip_arg[windex] = arg;
@@ -403,21 +426,23 @@ void
 lwkt_process_ipiq(void)
 {
     globaldata_t gd = mycpu;
+    globaldata_t sgd;
     lwkt_ipiq_t ip;
     int n;
 
 again:
     for (n = 0; n < ncpus; ++n) {
 	if (n != gd->gd_cpuid) {
-	    ip = globaldata_find(n)->gd_ipiq;
+	    sgd = globaldata_find(n);
+	    ip = sgd->gd_ipiq;
 	    if (ip != NULL) {
-		while (lwkt_process_ipiq1(&ip[gd->gd_cpuid], NULL))
+		while (lwkt_process_ipiq1(sgd, &ip[gd->gd_cpuid], NULL))
 		    ;
 	    }
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq1(&gd->gd_cpusyncq, NULL)) {
+	if (lwkt_process_ipiq1(gd, &gd->gd_cpusyncq, NULL)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
 	    need_ipiq();
@@ -430,21 +455,23 @@ void
 lwkt_process_ipiq_frame(struct intrframe frame)
 {
     globaldata_t gd = mycpu;
+    globaldata_t sgd;
     lwkt_ipiq_t ip;
     int n;
 
 again:
     for (n = 0; n < ncpus; ++n) {
 	if (n != gd->gd_cpuid) {
-	    ip = globaldata_find(n)->gd_ipiq;
+	    sgd = globaldata_find(n);
+	    ip = sgd->gd_ipiq;
 	    if (ip != NULL) {
-		while (lwkt_process_ipiq1(&ip[gd->gd_cpuid], &frame))
+		while (lwkt_process_ipiq1(sgd, &ip[gd->gd_cpuid], &frame))
 		    ;
 	    }
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq1(&gd->gd_cpusyncq, &frame)) {
+	if (lwkt_process_ipiq1(gd, &gd->gd_cpusyncq, &frame)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
 	    need_ipiq();
@@ -454,7 +481,7 @@ again:
 #endif
 
 static int
-lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
+lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame)
 {
     int ri;
     int wi;
@@ -482,6 +509,7 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
 	cpu_mfence();
 	++ip->ip_rindex;
 	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) == ((ri + 1) & MAXCPUFIFO_MASK));
+	logipiq(receive, copy_func, copy_arg, sgd, mycpu);
 	copy_func(copy_arg, frame);
 	cpu_sfence();
 	ip->ip_xindex = ip->ip_rindex;
