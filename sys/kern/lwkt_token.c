@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.11 2005/02/01 22:36:26 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.11.2.1 2005/06/21 18:02:41 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -379,10 +379,12 @@ void
 lwkt_reltoken(lwkt_tokref *_ref)
 {
     lwkt_tokref *ref;
+    lwkt_tokref *scan;
     lwkt_tokref **pref;
     lwkt_token_t tok;
     globaldata_t gd;
     thread_t td;
+    int giveaway;
 
     /*
      * Guard check and stack check (if in the same stack page).  We must
@@ -403,12 +405,21 @@ lwkt_reltoken(lwkt_tokref *_ref)
      */
     gd = mycpu;
     td = gd->gd_curthread;
+    tok = ref->tr_tok;
+
+    giveaway = 1;
     for (pref = &td->td_toks; (ref = *pref) != _ref; pref = &ref->tr_next) {
 	KKASSERT(ref != NULL);
+	if (ref->tr_tok == tok)
+	    giveaway = 0;
     }
-    tok = ref->tr_tok;
+    for (scan = ref->tr_next; scan; scan = scan->tr_next) {
+	if (scan->tr_tok == tok)
+	    giveaway = 0;
+    }
     KKASSERT(tok->t_cpu == gd);
-    tok->t_cpu = tok->t_reqcpu;	/* we do not own 'tok' after this */
+    if (giveaway)
+	tok->t_cpu = tok->t_reqcpu;	/* we do not own 'tok' after this */
     *pref = ref->tr_next;	/* note: also removes giveaway interlock */
 
     /*
