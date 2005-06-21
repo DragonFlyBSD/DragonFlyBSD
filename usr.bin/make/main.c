@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.123 2005/06/21 21:05:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.124 2005/06/21 21:06:24 okumoto Exp $
  */
 
 /*
@@ -1004,18 +1004,11 @@ main(int argc, char **argv)
 	 */
 	if (TAILQ_EMPTY(&mf.sysIncPath)) {
 		char syspath[] = PATH_DEFSYSPATH;
-		char *cp = NULL;
-		char *start;
+		char *start = syspath;
+		char *cp;
 
-		for (start = syspath; *start != '\0'; start = cp) {
-			for (cp = start; *cp != '\0' && *cp != ':'; cp++)
-				continue;
-			if (*cp == '\0') {
-				Path_AddDir(&mf.sysIncPath, start);
-			} else {
-				*cp++ = '\0';
-				Path_AddDir(&mf.sysIncPath, start);
-			}
+		while ((cp = strsep(&start, ":")) != NULL) {
+			Path_AddDir(&mf.sysIncPath, cp);
 		}
 	}
 
