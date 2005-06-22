@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.17 2005/06/22 20:09:34 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.18 2005/06/22 20:11:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,8 @@
 #include <sys/malloc.h>		/* malloc region definitions */
 #include <sys/file.h>
 #include <sys/filedesc.h>
+#include <sys/kern_syscall.h>
+#include <sys/nlookup.h>
 #include <sys/unistd.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
@@ -279,32 +281,27 @@ svr4_ptm_alloc(struct thread *td)
 	static char ptyname[] = "/dev/ptyXX";
 	static char ttyletters[] = "pqrstuwxyzPQRST";
 	static char ttynumbers[] = "0123456789abcdef";
-	caddr_t sg = stackgap_init();
-	char *path = stackgap_alloc(&sg, sizeof(ptyname));
-	struct open_args oa;
-	int l = 0, n = 0;
-	int error;
 	struct proc *p = td->td_proc;
+	struct nlookupdata nd;
+	int error, fd, l = 0, n = 0;
 
 	KKASSERT(p);
-
-	SCARG(&oa, path) = path;
-	SCARG(&oa, flags) = O_RDWR;
-	SCARG(&oa, mode) = 0;
 
 	for (;;) {
 		ptyname[8] = ttyletters[l];
 		ptyname[9] = ttynumbers[n];
 
-		if ((error = copyout(ptyname, path, sizeof(ptyname))) != 0)
-			return error;
+		error = nlookup_init(&nd, ptyname, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = kern_open(&nd, O_RDWR, 0, &fd);
+		nlookup_done(&nd);
 
-		switch (error = open(&oa)) {
+		switch (error) {
 		case ENOENT:
 		case ENXIO:
 			return error;
 		case 0:
-			p->p_dupfd = oa.sysmsg_result;
+			p->p_dupfd = fd;
 			return ENXIO;
 		default:
 			if (ttynumbers[++n] == '\0') {
