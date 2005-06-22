@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.127 2005/06/22 22:02:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.128 2005/06/22 22:03:03 okumoto Exp $
  */
 
 /*
@@ -938,41 +938,23 @@ main(int argc, char **argv)
 	mf.expandVars = TRUE;
 	mf.builtins = TRUE;		/* Read the built-in rules */
 	mf.queryFlag = FALSE;
-
-	/*------------------------------------------------------------*
-	 * This section initializes variables that depend on things
-	 * in the enviornment, command line, or a input file.
-	 *------------------------------------------------------------*/
-	if (getenv("MAKE_JOBS_FIFO") == NULL)
-		mf.forceJobs = FALSE;
-	else
-		mf.forceJobs = TRUE;
-
-	parser.create = &mf.create;
-	parser.parseIncPath = &mf.parseIncPath;
-	parser.sysIncPath = &mf.sysIncPath;
+	mf.forceJobs = FALSE;
 
 	/*
 	 * Initialize the various modules.
 	 */
 	Proc_Init();
 	Shell_Init(DEFSHELLNAME);
-
-	InitVariables(&mf, argc, argv, curdir, objdir);
-
-	/*
-	 * Be compatible if user did not specify -j and did not explicitly
-	 * turned compatibility on
-	 */
-	if (!compatMake && !mf.forceJobs)
-		compatMake = TRUE;
-
-	Dir_Init(curdir, objdir);
 	Targ_Init();
 	Suff_Init();
 
-	DEFAULT = NULL;
-	time(&now);
+	/*------------------------------------------------------------*
+	 * This section initializes variables that depend on things
+	 * in the enviornment, command line, or a input file.
+	 *------------------------------------------------------------*/
+	InitVariables(&mf, argc, argv, curdir, objdir);
+
+	Dir_Init(curdir, objdir);
 
 	/*
 	 * If no user-supplied system path was given (through the -m option)
@@ -988,6 +970,23 @@ main(int argc, char **argv)
 			Path_AddDir(&mf.sysIncPath, cp);
 		}
 	}
+
+	if (getenv("MAKE_JOBS_FIFO") != NULL)
+		mf.forceJobs = TRUE;
+
+	/*
+	 * Be compatible if user did not specify -j and did not explicitly
+	 * turned compatibility on
+	 */
+	if (compatMake == FALSE && mf.forceJobs == FALSE)
+		compatMake = TRUE;
+
+	DEFAULT = NULL;
+	time(&now);
+
+	parser.create = &mf.create;
+	parser.parseIncPath = &mf.parseIncPath;
+	parser.sysIncPath = &mf.sysIncPath;
 
 	ReadInputFiles(&parser, &mf, curdir, objdir);
 
