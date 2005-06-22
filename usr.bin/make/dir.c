@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.37 2005/05/20 11:48:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.38 2005/06/22 22:02:43 okumoto Exp $
  */
 
 /*-
@@ -217,40 +217,17 @@ static Dir *dot;	    /* contents of current directory */
  */
 static Hash_Table mtimes;
 
-/*-
- *-----------------------------------------------------------------------
- * Dir_Init --
- *	initialize things for this module
- *
- * Results:
- *	none
- *
- * Side Effects:
- *	none
- *-----------------------------------------------------------------------
+/**
+ * initialize things for this module
+ *	add the "." directory
+ *	add curdir if it is not the same as objdir
  */
 void
-Dir_Init(void)
+Dir_Init(const char curdir[], const char objdir[])
 {
 
 	Hash_InitTable(&mtimes, 0);
-}
 
-/*-
- *-----------------------------------------------------------------------
- * Dir_InitDot --
- *	initialize the "." directory
- *
- * Results:
- *	none
- *
- * Side Effects:
- *	some directories may be opened.
- *-----------------------------------------------------------------------
- */
-void
-Dir_InitDot(void)
-{
 
 	dot = Path_AddDir(NULL, ".");
 	if (dot == NULL)
@@ -261,6 +238,9 @@ Dir_InitDot(void)
 	 * reference count to make sure it's not destroyed.
 	 */
 	dot->refCount += 1;
+
+	if (strcmp(objdir, curdir) != 0)
+		Path_AddDir(&dirSearchPath, curdir);
 }
 
 /*-

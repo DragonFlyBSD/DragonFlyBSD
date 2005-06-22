@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.126 2005/06/22 18:04:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.127 2005/06/22 22:02:43 okumoto Exp $
  */
 
 /*
@@ -953,9 +953,7 @@ main(int argc, char **argv)
 	parser.sysIncPath = &mf.sysIncPath;
 
 	/*
-	 * Initialize the parsing, directory and variable modules to prepare
-	 * for the reading of inclusion paths and variable settings on the
-	 * command line
+	 * Initialize the various modules.
 	 */
 	Proc_Init();
 	Shell_Init(DEFSHELLNAME);
@@ -969,22 +967,7 @@ main(int argc, char **argv)
 	if (!compatMake && !mf.forceJobs)
 		compatMake = TRUE;
 
-	/*
-	 * Once things are initialized, add the original directory to the
-	 * search path. The current directory is also placed as a variable
-	 * for make scripts.
-	 */
-
-	Dir_Init();
-	Dir_InitDot();		/* Initialize the "." directory */
-
-	if (strcmp(objdir, curdir) != 0)
-		Path_AddDir(&dirSearchPath, curdir);
-
-	/*
-	 * Initialize target and suffix modules in preparation for
-	 * parsing the makefile(s)
-	 */
+	Dir_Init(curdir, objdir);
 	Targ_Init();
 	Suff_Init();
 
