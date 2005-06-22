@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.125 2005/06/22 18:04:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.126 2005/06/22 18:04:49 okumoto Exp $
  */
 
 /*
@@ -630,13 +630,6 @@ void
 Main_ParseArgLine(MakeFlags *mf, const char line[], int mflags)
 {
 	ArgArray	aa;
-
-	if (line == NULL)
-		return;
-	for (; *line == ' '; ++line)
-		continue;
-	if (!*line)
-		return;
 
 	if (mflags) {
 		MAKEFLAGS_break(&aa, line);

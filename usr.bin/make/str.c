@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.36 2005/06/17 08:49:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.37 2005/06/22 18:04:49 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -146,8 +146,7 @@ brk_string(ArgArray *aa, const char str[], Boolean expand)
 		continue;
 
 	ArgArray_Init(aa);
-
-	aa->buffer = estrdup(str);;
+	aa->buffer = estrdup(str);
 
 	arg = aa->buffer;
 	start = arg;
@@ -314,7 +313,6 @@ MAKEFLAGS_break(ArgArray *aa, const char str[])
 	char	*start;
 
 	ArgArray_Init(aa);
-
 	aa->buffer = strdup(str);
 
 	arg = aa->buffer;
