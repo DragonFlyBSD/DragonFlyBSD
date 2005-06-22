@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/cleanvar,v 1.5 2003/07/14 13:02:36 mtm Exp $
-# $DragonFly: src/etc/rc.d/cleanvar,v 1.3 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/cleanvar,v 1.4 2005/06/22 19:55:30 dillon Exp $
 #
 
 # PROVIDE: cleanvar
@@ -12,6 +12,8 @@
 
 dummy_rc_command "$1"
 
+# use recursion and shell test, because /usr/bin/find is not yet mounted
+#
 purgedir()
 {
 	local dir file
@@ -42,6 +44,8 @@ purgedir()
 #
 [ "$1" != "reload" ] && rm -f /var/run/clean_var /var/spool/lock/clean_var
 
+# purge /var/run /var/spool/lock and /var/spool/uucp/.Temp/*
+#
 if [ -d /var/run -a ! -f /var/run/clean_var ]; then
 	purgedir /var/run
 	# And an initial utmp file

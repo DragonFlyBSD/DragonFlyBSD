@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.13 2005/06/17 23:10:11 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.14 2005/06/22 19:55:29 dillon Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -2236,6 +2236,18 @@ enable SysVR4 emulation at boot time.
 If set to
 .Dq Li YES ,
 load System V IPC primitives at boot time.
+.\" ----- cleanvar_enable setting--------------------------------
+.It Va cleanvar_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to have
+.Pa /var/run ,
+.Pa /var/spool/lock
+and
+.Pa /var/spool/uucp/.Temp/*
+cleaned at startup.
+.\" ----- clear_tmp_enable setting-------------------------------
 .It Va clear_tmp_enable
 .Pq Vt bool
 Set to
@@ -2243,6 +2255,7 @@ Set to
 to have
 .Pa /tmp
 cleaned at startup.
+.\" ----- ldconfig_paths setting --------------------------------
 .It Va ldconfig_paths
 .Pq Vt str
 Set to the list of shared library paths to use with
@@ -2250,6 +2263,7 @@ Set to the list of shared library paths to use with
 NOTE:
 .Pa /usr/lib
 will always be added first, so it need not appear in this list.
+.\" ----- ldconfig_paths_aout setting ---------------------------
 .It Va ldconfig_paths_aout
 .Pq Vt str
 Set to the list of shared library paths to use with
