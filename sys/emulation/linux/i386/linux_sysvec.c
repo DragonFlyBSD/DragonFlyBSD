@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.17 2005/05/31 17:45:20 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.18 2005/06/22 15:27:45 joerg Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -794,6 +794,7 @@ struct sysentvec elf_linux_sysvec = {
 };
 
 static int	linux_match_abi_note(const Elf_Note *abi_note);
+static int	linux_match_suse_note(const Elf_Note *abi_note);
 
 static Elf32_Brandinfo linux_brand = {
 					ELFOSABI_LINUX,
@@ -813,9 +814,19 @@ static Elf32_Brandinfo linux_glibc2brand = {
 					&elf_linux_sysvec
 				 };
 
+static Elf32_Brandinfo linux_suse_brand = {
+					ELFOSABI_LINUX,
+					"Linux",
+					linux_match_suse_note,
+					"/compat/linux",
+					"/lib/ld-linux.so.2",
+					&elf_linux_sysvec
+				 };
+
 Elf32_Brandinfo *linux_brandlist[] = {
 					&linux_brand,
 					&linux_glibc2brand,
+					&linux_suse_brand,
 					NULL
 				};
 
@@ -836,6 +847,20 @@ linux_match_abi_note(const Elf_Note *abi_note)
 
 	if (*descr != 0)
 		return(FALSE);
+	return(TRUE);
+}
+
+static int
+linux_match_suse_note(const Elf_Note *abi_note)
+{
+	const char *abi_name = (const char *)
+	    ((const uint8_t *)abi_note + sizeof(*abi_note));
+
+	if (abi_note->n_namesz != sizeof("SuSE"))
+		return(FALSE);
+	if (memcmp(abi_name, "SuSE", sizeof("SuSE")))
+		return(FALSE);
+
 	return(TRUE);
 }
 
