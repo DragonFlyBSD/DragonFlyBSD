@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.32 2005/04/20 16:37:09 cpressey Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.33 2005/06/22 19:40:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
 #include <sys/aio.h>
+#include <sys/libkern.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -93,6 +94,30 @@ int debug_execve_args = 0;
 SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
     0, "");
 
+/*
+ * stackgap_random specifies if the stackgap should have a random size added
+ * to it.  It must be a power of 2.  If non-zero, the stack gap will be 
+ * calculated as: ALIGN(arc4random() & (stackgap_random - 1)).
+ */
+static int stackgap_random = 1024;
+static int
+sysctl_kern_stackgap(SYSCTL_HANDLER_ARGS)
+{
+	int error, new_val;
+	new_val = stackgap_random;
+	error = sysctl_handle_int(oidp, &new_val, 0, req);
+	if (error != 0 || req->newptr == NULL)
+		return (error);
+	if ((new_val < 0) || (new_val > 16 * PAGE_SIZE) || ! powerof2(new_val))
+		return (EINVAL);
+	stackgap_random = new_val;
+
+	return(0);
+}
+
+SYSCTL_PROC(_kern, OID_AUTO, stackgap_random, CTLFLAG_RW|CTLTYPE_UINT, 
+	0, 0, sysctl_kern_stackgap, "IU", "Max random stack gap (power of 2)");
+	
 void
 print_execve_args(struct image_args *args)
 {
@@ -771,7 +796,7 @@ exec_free_args(struct image_args *args)
 register_t *
 exec_copyout_strings(struct image_params *imgp)
 {
-	int argc, envc;
+	int argc, envc, sgap;
 	char **vectp;
 	char *stringp, *destp;
 	register_t *stack_base;
@@ -784,7 +809,11 @@ exec_copyout_strings(struct image_params *imgp)
 	 */
 	arginfo = (struct ps_strings *)PS_STRINGS;
 	szsigcode = *(imgp->proc->p_sysent->sv_szsigcode);
-	destp =	(caddr_t)arginfo - szsigcode - SPARE_USRSPACE -
+	if (stackgap_random != 0)
+		sgap = ALIGN(arc4random() & (stackgap_random - 1));
+	else
+		sgap = 0;
+	destp =	(caddr_t)arginfo - szsigcode - SPARE_USRSPACE - sgap -
 	    roundup((ARG_MAX - imgp->args->space), sizeof(char *));
 
 	/*
