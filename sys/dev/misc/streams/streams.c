@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.16 2005/06/22 01:33:24 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.17 2005/06/22 20:09:34 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -283,7 +283,6 @@ svr4_ptm_alloc(struct thread *td)
 	char *path = stackgap_alloc(&sg, sizeof(ptyname));
 	struct open_args oa;
 	int l = 0, n = 0;
-	register_t fd = -1;
 	int error;
 	struct proc *p = td->td_proc;
 
@@ -293,7 +292,7 @@ svr4_ptm_alloc(struct thread *td)
 	SCARG(&oa, flags) = O_RDWR;
 	SCARG(&oa, mode) = 0;
 
-	while (fd == -1) {
+	for (;;) {
 		ptyname[8] = ttyletters[l];
 		ptyname[9] = ttynumbers[n];
 
@@ -310,12 +309,11 @@ svr4_ptm_alloc(struct thread *td)
 		default:
 			if (ttynumbers[++n] == '\0') {
 				if (ttyletters[++l] == '\0')
-					break;
+					return(ENOENT);
 				n = 0;
 			}
 		}
 	}
-	return ENOENT;
 }
 
 
