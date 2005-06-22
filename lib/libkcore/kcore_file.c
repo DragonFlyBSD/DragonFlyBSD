@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.2 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_file.c,v 1.3 2005/06/22 01:51:40 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -95,10 +95,10 @@ kcore_get_files(struct kcore_data *kc, struct kinfo_file **files, size_t *len)
 			continue;
 		}
 		for (n = 0; n < fdp.fd_nfiles; n++) {
-			if (kvm_read(kc->kd, (long)(&fdp.fd_ofiles[n]), &fpp,
+			if (kvm_read(kc->kd, (long)(&fdp.fd_files[n].fp), &fpp,
 				     sizeof(fpp)) != sizeof(fpp)) {
 				warnx("cannot read filep  at %p for pid %d\n",
-				      &fdp.fd_ofiles[n], p->p_pid);
+				      &fdp.fd_files[n].fp, p->p_pid);
 			}
 			if (fpp == NULL)
 				continue;
