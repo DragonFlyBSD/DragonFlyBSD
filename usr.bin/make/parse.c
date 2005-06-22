@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.90 2005/05/23 20:05:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.91 2005/06/22 22:03:36 okumoto Exp $
  */
 
 /*-
@@ -687,7 +687,7 @@ ParseDoSrc(Parser *parser, int tOp, char *src, Lst *allsrc)
  *---------------------------------------------------------------------
  */
 static void
-ParseDoDependency(Parser *parser, struct MakeFlags *mf, char line[])
+ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 {
 	char	*cp;	/* our current position */
 	GNode	*gn;	/* a general purpose temporary node */
@@ -1075,7 +1075,7 @@ ParseDoDependency(Parser *parser, struct MakeFlags *mf, char line[])
 		 * set the initial character to a null-character so the loop to
 		 * get sources won't get anything
 		 */
-		Main_ParseArgLine(mf, line, 0);
+		Main_ParseArgLine(cli, line, 0);
 		*line = '\0';
 
 	} else if (specType == Warn) {
@@ -2347,7 +2347,7 @@ parse_directive(Parser *parser, char *line)
  *	are added to the dependency graph. etc. etc. etc.
  */
 void
-Parse_File(Parser *parser, struct MakeFlags *mf, const char name[], FILE *stream)
+Parse_File(Parser *parser, struct CLI *cli, const char name[], FILE *stream)
 {
 	char	*cp;	/* pointer into the line */
 	char	*line;	/* the line we're working on */
@@ -2461,7 +2461,7 @@ Parse_File(Parser *parser, struct MakeFlags *mf, const char name[], FILE *stream
 			Lst_Destroy(&targets, NOFREE);
 			inLine = TRUE;
 
-			ParseDoDependency(parser, mf, line);
+			ParseDoDependency(parser, cli, line);
 		}
 
   nextLine:

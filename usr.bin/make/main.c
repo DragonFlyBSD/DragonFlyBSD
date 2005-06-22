@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.129 2005/06/22 22:03:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.130 2005/06/22 22:03:36 okumoto Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ extern char **environ;	/* XXX what header declares this variable? */
  */
 #define	DEFMAXJOBS	1
 
-typedef struct MakeFlags {
+typedef struct CLI {
 	/** ordered list of makefiles to read */
 	Lst makefiles;
 
@@ -120,7 +120,7 @@ typedef struct MakeFlags {
 	 * see if the targets are out-of-date
 	 */
 	Boolean		queryFlag;
-} MakeFlags;
+} CLI;
 
 /* (-E) vars to override from env */
 Lst envFirstVars = Lst_Initializer(envFirstVars);
@@ -190,7 +190,7 @@ MFLAGS_append(const char *flag, char *arg)
  *	TRUE if ok. FALSE if couldn't open file.
  */
 static Boolean
-ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir[], const char objdir[])
+ReadMakefile(Parser *parser, CLI *cli, const char file[], const char curdir[], const char objdir[])
 {
 	char	path[MAXPATHLEN];
 	FILE	*stream;
@@ -198,7 +198,7 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
 	char	*name;
 
 	if (!strcmp(file, "-")) {
-		Parse_File(parser, mf, "(stdin)", stdin);
+		Parse_File(parser, cli, "(stdin)", stdin);
 		Var_SetGlobal("MAKEFILE", "");
 		return (TRUE);
 	}
@@ -238,7 +238,7 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
 	if (stream != NULL) {
 		if (strcmp(file, ".depend") != 0)
 			Var_SetGlobal("MAKEFILE", file);
-		Parse_File(parser, mf, path, stream);
+		Parse_File(parser, cli, path, stream);
 		fclose(stream);
 		return (TRUE);
 	}
@@ -247,9 +247,9 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
 	fname = estrdup(file);
 	name = NULL;
 	if (name == NULL)
-		name = Path_FindFile(fname, &mf->parseIncPath);
+		name = Path_FindFile(fname, &cli->parseIncPath);
 	if (name == NULL)
-		name = Path_FindFile(fname, &mf->sysIncPath);
+		name = Path_FindFile(fname, &cli->sysIncPath);
 
 	if (name != NULL) {
 		stream = fopen(name, "r");
@@ -262,7 +262,7 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
 			 */
 			if (strcmp(file, ".depend") != 0)
 				Var_SetGlobal("MAKEFILE", name);
-			Parse_File(parser, mf, name, stream);
+			Parse_File(parser, cli, name, stream);
 			fclose(stream);
 			return (TRUE);
 		}
@@ -277,44 +277,44 @@ ReadMakefile(Parser *parser, MakeFlags *mf, const char file[], const char curdir
  * makefile.
  */
 static void
-ReadInputFiles(Parser *parser, MakeFlags *mf, const char curdir[], const char objdir[])
+ReadInputFiles(Parser *parser, CLI *cli, const char curdir[], const char objdir[])
 {
-	if (mf->builtins) {
+	if (cli->builtins) {
 		char	defsysmk[] = PATH_DEFSYSMK;	/* Path of sys.mk */
 		Lst	sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode	*ln;
 
-		Path_Expand(defsysmk, &mf->sysIncPath, &sysMkPath);
+		Path_Expand(defsysmk, &cli->sysIncPath, &sysMkPath);
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 
 		LST_FOREACH(ln, &sysMkPath) {
 			char *name = Lst_Datum(ln);
-			if (!ReadMakefile(parser, mf, name, curdir, objdir))
+			if (!ReadMakefile(parser, cli, name, curdir, objdir))
 				Fatal("make: cannot open %s.", name);
 		}
 		Lst_Destroy(&sysMkPath, free);
 	}
 
-	if (!Lst_IsEmpty(&mf->makefiles)) {
+	if (!Lst_IsEmpty(&cli->makefiles)) {
 		LstNode *ln;
 
-		LST_FOREACH(ln, &mf->makefiles) {
+		LST_FOREACH(ln, &cli->makefiles) {
 			char *name = Lst_Datum(ln);
-			if (!ReadMakefile(parser, mf, name, curdir, objdir))
+			if (!ReadMakefile(parser, cli, name, curdir, objdir))
 				Fatal("make: cannot open %s.", name);
 		}
-	} else if (ReadMakefile(parser, mf, "BSDmakefile", curdir, objdir)) {
+	} else if (ReadMakefile(parser, cli, "BSDmakefile", curdir, objdir)) {
 		/* read BSDmakefile */
-	} else if (ReadMakefile(parser, mf, "makefile", curdir, objdir)) {
+	} else if (ReadMakefile(parser, cli, "makefile", curdir, objdir)) {
 		/* read makefile */
-	} else if (ReadMakefile(parser, mf, "Makefile", curdir, objdir)) {
+	} else if (ReadMakefile(parser, cli, "Makefile", curdir, objdir)) {
 		/* read Makefile */
 	} else {
 		/* No Makefile found */
 	}
 
-	ReadMakefile(parser, mf, ".depend", curdir, objdir);
+	ReadMakefile(parser, cli, ".depend", curdir, objdir);
 }
 
 /**
@@ -381,7 +381,7 @@ Main_ParseWarn(const char *arg, int iscmd)
  *	given
  */
 static void
-MainParseArgs(MakeFlags *mf, int argc, char **argv)
+MainParseArgs(CLI *cli, int argc, char **argv)
 {
 	int c;
 	Boolean	found_dd = FALSE;
@@ -412,15 +412,15 @@ rearg:
 			MFLAGS_append("-D", optarg);
 			break;
 		case 'I':
-			Path_AddDir(&mf->parseIncPath, optarg);
+			Path_AddDir(&cli->parseIncPath, optarg);
 			MFLAGS_append("-I", optarg);
 			break;
 		case 'V':
-			Lst_AtEnd(&mf->variables, estrdup(optarg));
+			Lst_AtEnd(&cli->variables, estrdup(optarg));
 			MFLAGS_append("-V", optarg);
 			break;
 		case 'X':
-			mf->expandVars = FALSE;
+			cli->expandVars = FALSE;
 			break;
 		case 'B':
 			compatMake = TRUE;
@@ -500,7 +500,7 @@ rearg:
 			MFLAGS_append("-e", NULL);
 			break;
 		case 'f':
-			Lst_AtEnd(&mf->makefiles, estrdup(optarg));
+			Lst_AtEnd(&cli->makefiles, estrdup(optarg));
 			break;
 		case 'i':
 			ignoreErrors = TRUE;
@@ -509,7 +509,7 @@ rearg:
 		case 'j': {
 			char *endptr;
 
-			mf->forceJobs = TRUE;
+			cli->forceJobs = TRUE;
 			jobLimit = strtol(optarg, &endptr, 10);
 			if (jobLimit <= 0 || *endptr != '\0') {
 				warnx("illegal number, -j argument -- %s",
@@ -524,7 +524,7 @@ rearg:
 			MFLAGS_append("-k", NULL);
 			break;
 		case 'm':
-			Path_AddDir(&mf->sysIncPath, optarg);
+			Path_AddDir(&cli->sysIncPath, optarg);
 			MFLAGS_append("-m", optarg);
 			break;
 		case 'n':
@@ -532,12 +532,12 @@ rearg:
 			MFLAGS_append("-n", NULL);
 			break;
 		case 'q':
-			mf->queryFlag = TRUE;
+			cli->queryFlag = TRUE;
 			/* Kind of nonsensical, wot? */
 			MFLAGS_append("-q", NULL);
 			break;
 		case 'r':
-			mf->builtins = FALSE;
+			cli->builtins = FALSE;
 			MFLAGS_append("-r", NULL);
 			break;
 		case 's':
@@ -593,7 +593,7 @@ rearg:
 				 * any more options.  But what do we do
 				 * with it?  For now treat it like a target.
 				 */
-				Lst_AtEnd(&mf->create, estrdup(*argv));
+				Lst_AtEnd(&cli->create, estrdup(*argv));
 			} else {
 				/*
 				 * (*argv) is a -flag, so backup argv and
@@ -609,7 +609,7 @@ rearg:
 			Punt("illegal (null) argument.");
 
 		} else {
-			Lst_AtEnd(&mf->create, estrdup(*argv));
+			Lst_AtEnd(&cli->create, estrdup(*argv));
 		}
 	}
 }
@@ -627,7 +627,7 @@ rearg:
  *	Only those that come from the various arguments.
  */
 void
-Main_ParseArgLine(MakeFlags *mf, const char line[], int mflags)
+Main_ParseArgLine(CLI *cli, const char line[], int mflags)
 {
 	ArgArray	aa;
 
@@ -636,7 +636,7 @@ Main_ParseArgLine(MakeFlags *mf, const char line[], int mflags)
 	} else {
 		brk_string(&aa, line, TRUE);
 	}
-	MainParseArgs(mf, aa.argc, aa.argv);
+	MainParseArgs(cli, aa.argc, aa.argv);
 	ArgArray_Done(&aa);
 }
 
@@ -755,7 +755,7 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
  *	MFLAGS also gets initialized empty, for compatibility.
  */
 static void
-InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[])
+InitVariables(CLI *cli, int argc, char *argv[], char curdir[], char objdir[])
 {
 	const char	*machine;
 	const char	*machine_arch;
@@ -823,9 +823,9 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
 	 * variable.  Then parse the command line arguments.
 	 */
 	if ((make_flags = getenv("MAKEFLAGS")) != NULL) {
-		Main_ParseArgLine(mf, make_flags, 1);
+		Main_ParseArgLine(cli, make_flags, 1);
 	}
-	MainParseArgs(mf, argc, argv);
+	MainParseArgs(cli, argc, argv);
 
 	determine_objdir(machine, curdir, objdir);
 	Var_SetGlobal(".CURDIR", curdir);
@@ -836,12 +836,12 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
 	 * created. If none specified, make the variable empty -- the parser
 	 * will fill the thing in with the default or .MAIN target.
 	 */
-	if (Lst_IsEmpty(&mf->create)) {
+	if (Lst_IsEmpty(&cli->create)) {
 		Var_SetGlobal(".TARGETS", "");
 	} else {
 		LstNode *ln;
 
-		for (ln = Lst_First(&mf->create); ln != NULL; ln = Lst_Succ(ln)) {
+		for (ln = Lst_First(&cli->create); ln != NULL; ln = Lst_Succ(ln)) {
 			char *name = Lst_Datum(ln);
 
 			Var_Append(".TARGETS", name, VAR_GLOBAL);
@@ -858,23 +858,23 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
  * module to find the main target(s) to create.
  */
 static int
-build_stuff(MakeFlags *mf)
+build_stuff(CLI *cli)
 {
 	int	status;
 	Lst	targs = Lst_Initializer(targs);
 
-	if (Lst_IsEmpty(&mf->create))
+	if (Lst_IsEmpty(&cli->create))
 		Parse_MainName(&targs);
 	else
-		Targ_FindList(&targs, &mf->create, TARG_CREATE);
+		Targ_FindList(&targs, &cli->create, TARG_CREATE);
 
 	/* Traverse the graph, checking on all the targets */
 	if (compatMake) {
-		status = Compat_Run(&targs, mf->queryFlag);
+		status = Compat_Run(&targs, cli->queryFlag);
 	} else {
 		Boolean outOfDate;
-		outOfDate = Make_Run(&targs, mf->queryFlag);
-		status = (mf->queryFlag && outOfDate) ? 1 : 0;
+		outOfDate = Make_Run(&targs, cli->queryFlag);
+		status = (cli->queryFlag && outOfDate) ? 1 : 0;
 	}
 	Lst_Destroy(&targs, NOFREE);
 
@@ -901,7 +901,7 @@ build_stuff(MakeFlags *mf)
 int
 main(int argc, char **argv)
 {
-	MakeFlags	mf;
+	CLI	cli;
 	Parser		parser;
 	int		status;		/* exit status */
 	char		curdir[MAXPATHLEN];	/* startup directory */
@@ -929,16 +929,16 @@ main(int argc, char **argv)
 	/*
 	 * Initialize make flags variable.
 	 */
-	Lst_Init(&mf.makefiles);
-	Lst_Init(&mf.variables);
-	Lst_Init(&mf.create);
-	TAILQ_INIT(&mf.parseIncPath);
-	TAILQ_INIT(&mf.sysIncPath);
+	Lst_Init(&cli.makefiles);
+	Lst_Init(&cli.variables);
+	Lst_Init(&cli.create);
+	TAILQ_INIT(&cli.parseIncPath);
+	TAILQ_INIT(&cli.sysIncPath);
 
-	mf.expandVars = TRUE;
-	mf.builtins = TRUE;		/* Read the built-in rules */
-	mf.queryFlag = FALSE;
-	mf.forceJobs = FALSE;
+	cli.expandVars = TRUE;
+	cli.builtins = TRUE;		/* Read the built-in rules */
+	cli.queryFlag = FALSE;
+	cli.forceJobs = FALSE;
 
 	/*
 	 * Initialize the various modules.
@@ -953,7 +953,7 @@ main(int argc, char **argv)
 	 * This section initializes variables that depend on things
 	 * in the enviornment, command line, or a input file.
 	 *------------------------------------------------------------*/
-	InitVariables(&mf, argc, argv, curdir, objdir);
+	InitVariables(&cli, argc, argv, curdir, objdir);
 
 	Dir_CurObj(curdir, objdir);
 
@@ -962,34 +962,34 @@ main(int argc, char **argv)
 	 * add the directories from the DEFSYSPATH (more than one may be given
 	 * as dir1:...:dirn) to the system include path.
 	 */
-	if (TAILQ_EMPTY(&mf.sysIncPath)) {
+	if (TAILQ_EMPTY(&cli.sysIncPath)) {
 		char syspath[] = PATH_DEFSYSPATH;
 		char *start = syspath;
 		char *cp;
 
 		while ((cp = strsep(&start, ":")) != NULL) {
-			Path_AddDir(&mf.sysIncPath, cp);
+			Path_AddDir(&cli.sysIncPath, cp);
 		}
 	}
 
 	if (getenv("MAKE_JOBS_FIFO") != NULL)
-		mf.forceJobs = TRUE;
+		cli.forceJobs = TRUE;
 
 	/*
 	 * Be compatible if user did not specify -j and did not explicitly
 	 * turned compatibility on
 	 */
-	if (compatMake == FALSE && mf.forceJobs == FALSE)
+	if (compatMake == FALSE && cli.forceJobs == FALSE)
 		compatMake = TRUE;
 
 	DEFAULT = NULL;
 	time(&now);
 
-	parser.create = &mf.create;
-	parser.parseIncPath = &mf.parseIncPath;
-	parser.sysIncPath = &mf.sysIncPath;
+	parser.create = &cli.create;
+	parser.parseIncPath = &cli.parseIncPath;
+	parser.sysIncPath = &cli.sysIncPath;
 
-	ReadInputFiles(&parser, &mf, curdir, objdir);
+	ReadInputFiles(&parser, &cli, curdir, objdir);
 
 	/*------------------------------------------------------------*
 	 * We are finished processing inputs.
@@ -1032,11 +1032,11 @@ main(int argc, char **argv)
 	if (DEBUG(GRAPH1))
 		Targ_PrintGraph(1);
 
-	if (Lst_IsEmpty(&mf.variables)) {
-		status = build_stuff(&mf);
+	if (Lst_IsEmpty(&cli.variables)) {
+		status = build_stuff(&cli);
 	} else {
 		/* Print the values of variables requested by the user. */
-		Var_Print(&mf.variables, mf.expandVars);
+		Var_Print(&cli.variables, cli.expandVars);
 
 		/*
 		 * XXX
@@ -1047,7 +1047,7 @@ main(int argc, char **argv)
 		 * as the return status.
 		 * XXX
 		 */
-		status = mf.queryFlag ? 1 : 0;
+		status = cli.queryFlag ? 1 : 0;
 	}
 
 	/* print the graph now it's been processed if the user requested it */
@@ -1055,12 +1055,12 @@ main(int argc, char **argv)
 		Targ_PrintGraph(2);
 
 #if 0
-	TAILQ_DESTROY(&mf.sysIncPath);
-	TAILQ_DESTROY(&mf.parseIncPath);
+	TAILQ_DESTROY(&cli.sysIncPath);
+	TAILQ_DESTROY(&cli.parseIncPath);
 #endif
-	Lst_Destroy(&mf.create, free);
-	Lst_Destroy(&mf.variables, free);
-	Lst_Destroy(&mf.makefiles, free);
+	Lst_Destroy(&cli.create, free);
+	Lst_Destroy(&cli.variables, free);
+	Lst_Destroy(&cli.makefiles, free);
 
 	return (status);
 }

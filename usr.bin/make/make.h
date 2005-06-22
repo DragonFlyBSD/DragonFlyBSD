@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.35 2005/06/22 18:04:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.36 2005/06/22 22:03:36 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -58,7 +58,7 @@
 struct GNode;
 struct Lst;
 struct Buffer;
-struct MakeFlags;
+struct CLI;
 
 /*
  * Warning flags
@@ -73,7 +73,7 @@ int Make_HandleUse(struct GNode *, struct GNode *);
 void Make_Update(struct GNode *);
 void Make_DoAllVar(struct GNode *);
 Boolean Make_Run(struct Lst *, Boolean);
-void Main_ParseArgLine(struct MakeFlags *, const char [], int);
+void Main_ParseArgLine(struct CLI *, const char [], int);
 int Main_ParseWarn(const char *, int);
 
 #endif /* make_h_a91074b9 */
