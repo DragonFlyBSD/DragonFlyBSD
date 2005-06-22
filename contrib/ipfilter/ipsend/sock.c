@@ -1,5 +1,5 @@
 /* $FreeBSD: src/contrib/ipfilter/ipsend/sock.c,v 1.3.2.4 2003/03/01 03:55:53 darrenr Exp $ */
-/* $DragonFly: src/contrib/ipfilter/ipsend/sock.c,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
+/* $DragonFly: src/contrib/ipfilter/ipsend/sock.c,v 1.3 2005/06/22 02:08:19 dillon Exp $ */
 /*
  * sock.c (C) 1995-1998 Darren Reed
  *
@@ -188,7 +188,8 @@ struct	tcpiphdr *ti;
 	struct	socket	*s;
 	struct	user	*up;
 	struct	proc	*p;
-	struct	file	*f, **o;
+	struct	file	*f;
+	struct  fdnode	*o;
 
 	if (!(p = getproc()))
 		return NULL;
@@ -207,7 +208,7 @@ struct	tcpiphdr *ti;
 	    }
 #endif
 
-	o = (struct file **)calloc(1, sizeof(*o) * (up->u_lastfile + 1));
+	o = (struct fdnode *)calloc(1, sizeof(*o) * (up->u_lastfile + 1));
 	if (KMCPY(o, up->u_ofile, (up->u_lastfile + 1) * sizeof(*o)) == -1)
 	    {
 		fprintf(stderr, "read(%#x,%#x,%d) - u_ofile - failed\n",
@@ -215,9 +216,9 @@ struct	tcpiphdr *ti;
 		return NULL;
 	    }
 	f = (struct file *)calloc(1, sizeof(*f));
-	if (KMCPY(f, o[fd], sizeof(*f)) == -1)
+	if (KMCPY(f, o[fd].fp, sizeof(*f)) == -1)
 	    {
-		fprintf(stderr, "read(%#x,%#x,%d) - o[fd] - failed\n",
+		fprintf(stderr, "read(%#x,%#x,%d) - o[fd].fp - failed\n",
 			up->u_ofile[fd], f, sizeof(*f));
 		return NULL;
 	    }
@@ -269,7 +270,6 @@ static struct kinfo_proc *getproc()
 	return &kp;
 }
 
-
 struct	tcpcb	*find_tcp(tfd, ti)
 int	tfd;
 struct	tcpiphdr *ti;
@@ -279,7 +279,8 @@ struct	tcpiphdr *ti;
 	struct	socket	*s;
 	struct	filedesc	*fd;
 	struct	kinfo_proc	*p;
-	struct	file	*f, **o;
+	struct	file	*f;
+	struct	fdnode	*o;
 
 	if (!(p = getproc()))
 		return NULL;
@@ -301,18 +302,18 @@ struct	tcpiphdr *ti;
 	    }
 #endif
 
-	o = (struct file **)calloc(1, sizeof(*o) * (fd->fd_lastfile + 1));
-	if (KMCPY(o, fd->fd_ofiles, (fd->fd_lastfile + 1) * sizeof(*o)) == -1)
+	o = (struct fdnode *)calloc(1, sizeof(*o) * (fd->fd_lastfile + 1));
+	if (KMCPY(o, fd->fd_files, (fd->fd_lastfile + 1) * sizeof(*o)) == -1)
 	    {
 		fprintf(stderr, "read(%#lx,%#lx,%lu) - u_ofile - failed\n",
-			(u_long)fd->fd_ofiles, (u_long)o, (u_long)sizeof(*o));
+			(u_long)fd->fd_files, (u_long)o, (u_long)sizeof(*o));
 		return NULL;
 	    }
 	f = (struct file *)calloc(1, sizeof(*f));
-	if (KMCPY(f, o[tfd], sizeof(*f)) == -1)
+	if (KMCPY(f, o[tfd].fp, sizeof(*f)) == -1)
 	    {
-		fprintf(stderr, "read(%#lx,%#lx,%lu) - o[tfd] - failed\n",
-			(u_long)o[tfd], (u_long)f, (u_long)sizeof(*f));
+		fprintf(stderr, "read(%#lx,%#lx,%lu) - o[tfd].fp - failed\n",
+			(u_long)o[tfd].fp, (u_long)f, (u_long)sizeof(*f));
 		return NULL;
 	    }
 
