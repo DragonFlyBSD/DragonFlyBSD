@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.124 2005/06/21 21:06:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.125 2005/06/22 18:04:13 okumoto Exp $
  */
 
 /*
@@ -627,7 +627,7 @@ rearg:
  *	Only those that come from the various arguments.
  */
 void
-Main_ParseArgLine(MakeFlags *mf, char line[], int mflags)
+Main_ParseArgLine(MakeFlags *mf, const char line[], int mflags)
 {
 	ArgArray	aa;
 
@@ -767,7 +767,7 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
 	const char	*machine;
 	const char	*machine_arch;
 	const char	*machine_cpu;
-
+	const char	*make_flags;
 
 	Var_Init(environ);
 
@@ -829,8 +829,9 @@ InitVariables(MakeFlags *mf, int argc, char *argv[], char curdir[], char objdir[
 	 * First snag things out of the MAKEFLAGS environment
 	 * variable.  Then parse the command line arguments.
 	 */
-	Main_ParseArgLine(mf, getenv("MAKEFLAGS"), 1);
-
+	if ((make_flags = getenv("MAKEFLAGS")) != NULL) {
+		Main_ParseArgLine(mf, make_flags, 1);
+	}
 	MainParseArgs(mf, argc, argv);
 
 	determine_objdir(machine, curdir, objdir);
@@ -1022,7 +1023,8 @@ main(int argc, char **argv)
 	{
 		const char *p;
 
-		if (((p = Var_Value(".MAKEFLAGS", VAR_GLOBAL)) != NULL) && *p)
+		p = Var_Value(".MAKEFLAGS", VAR_GLOBAL);
+		if (p != NULL && *p != '\0')
 			setenv("MAKEFLAGS", p, 1);
 	}
 
@@ -1033,27 +1035,13 @@ main(int argc, char **argv)
 	 * <directory>:<directory>:<directory>...
 	 */
 	if (Var_Exists("VPATH", VAR_CMD)) {
-		Buffer	*buf;
-		char	*vpath;
-		char	savec;
+		Buffer	*buf = Var_Subst("${VPATH}", VAR_CMD, FALSE);
+		char	*start = Buf_Data(buf);
+		char	*cp;
 
-		buf = Var_Subst("${VPATH}", VAR_CMD, FALSE);
-		vpath = Buf_Data(buf);
-		do {
-			char	*ptr;
-			/* skip to end of directory */
-			for (ptr = vpath; *ptr != ':' && *ptr != '\0'; ptr++)
-				;
-
-			/* Save terminator character so know when to stop */
-			savec = *ptr;
-			*ptr = '\0';
-
-			/* Add directory to search path */
-			Path_AddDir(&dirSearchPath, vpath);
-
-			vpath = ptr + 1;
-		} while (savec != '\0');
+		while ((cp = strsep(&start, ":")) != NULL) {
+			Path_AddDir(&dirSearchPath, cp);
+		}
 
 		Buf_Destroy(buf, TRUE);
 	}
