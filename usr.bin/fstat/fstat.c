@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.13 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.14 2005/06/22 01:50:03 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -120,12 +120,13 @@ int	pid_width = 5;
 int	ino_width = 6;
 
 
-struct file **ofiles;	/* buffer of pointers to file structures */
+struct fdnode *ofiles; 	/* buffer of pointers to file structures */
 int maxfiles;
+
 #define ALLOC_OFILES(d)	\
 	if ((d) > maxfiles) { \
 		free(ofiles); \
-		ofiles = malloc((d) * sizeof(struct file *)); \
+		ofiles = malloc((d) * sizeof(struct fdnode)); \
 		if (ofiles == NULL) { \
 			err(1, NULL); \
 		} \
@@ -300,8 +301,7 @@ dofiles(struct kinfo_proc *kp)
 {
 	int i;
 	struct file file;
-	struct filedesc0 filed0;
-#define	filed	filed0.fd_fd
+	struct filedesc filed;
 	struct proc *p = &kp->kp_proc;
 	struct eproc *ep = &kp->kp_eproc;
 
@@ -312,7 +312,7 @@ dofiles(struct kinfo_proc *kp)
 
 	if (p->p_fd == NULL)
 		return;
-	if (!KVM_READ(p->p_fd, &filed0, sizeof (filed0))) {
+	if (!KVM_READ(p->p_fd, &filed, sizeof (filed))) {
 		dprintf(stderr, "can't read filedesc at %p for pid %d\n",
 		    (void *)p->p_fd, Pid);
 		return;
@@ -339,24 +339,20 @@ dofiles(struct kinfo_proc *kp)
 	/*
 	 * open files
 	 */
-#define FPSIZE	(sizeof (struct file *))
 	ALLOC_OFILES(filed.fd_lastfile+1);
-	if (filed.fd_nfiles > NDFILE) {
-		if (!KVM_READ(filed.fd_ofiles, ofiles,
-		    (filed.fd_lastfile+1) * FPSIZE)) {
-			dprintf(stderr,
-			    "can't read file structures at %p for pid %d\n",
-			    (void *)filed.fd_ofiles, Pid);
-			return;
-		}
-	} else
-		bcopy(filed0.fd_dfiles, ofiles, (filed.fd_lastfile+1) * FPSIZE);
+	if (!KVM_READ(filed.fd_files, ofiles,
+	    (filed.fd_lastfile+1) * sizeof(struct fdnode))) {
+		dprintf(stderr,
+		    "can't read file structures at %p for pid %d\n",
+		    (void *)filed.fd_files, Pid);
+		return;
+	}
 	for (i = 0; i <= filed.fd_lastfile; i++) {
-		if (ofiles[i] == NULL)
+		if (ofiles[i].fp == NULL)
 			continue;
-		if (!KVM_READ(ofiles[i], &file, sizeof (struct file))) {
+		if (!KVM_READ(ofiles[i].fp, &file, sizeof (struct file))) {
 			dprintf(stderr, "can't read file %d at %p for pid %d\n",
-			    i, (void *)ofiles[i], Pid);
+			    i, (void *)ofiles[i].fp, Pid);
 			continue;
 		}
 		if (file.f_type == DTYPE_VNODE) {
