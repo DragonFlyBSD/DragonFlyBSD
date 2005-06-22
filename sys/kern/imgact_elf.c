@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.29 2005/06/01 20:04:53 joerg Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.30 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1408,7 +1408,7 @@ elf_putfiles(struct proc *p, elf_buf_t target)
 	 * ignore STDIN/STDERR/STDOUT.
 	 */
 	for (i = 3; error == 0 && i < p->p_fd->fd_nfiles; i++) {
-		if ((fp = p->p_fd->fd_ofiles[i]) == NULL)
+		if ((fp = p->p_fd->fd_files[i].fp) == NULL)
 			continue;
 		/* 
 		 * XXX Only checkpoint vnodes for now.

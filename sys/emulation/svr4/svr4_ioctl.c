@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.11 2003/09/12 00:43:30 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.12 2005/06/22 01:33:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -110,7 +110,7 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	cmd = SCARG(uap, com);
 
 	if ((u_int)SCARG(uap, fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[SCARG(uap, fd)]) == NULL)
+	    (fp = fdp->fd_files[SCARG(uap, fd)].fp) == NULL)
 		return EBADF;
 
 	if ((fp->f_flag & (FREAD | FWRITE)) == 0)

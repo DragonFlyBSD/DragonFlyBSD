@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.21 2005/04/20 19:43:53 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.22 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -936,7 +936,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp++;
-			p->p_fd->fd_ofiles[f] = fp;
+			p->p_fd->fd_files[f].fp = fp;
 			fp->f_msgcount--;
 			unp_rights--;
 			*fdp++ = f;
@@ -948,7 +948,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp--;
-			p->p_fd->fd_ofiles[f] = fp;
+			p->p_fd->fd_files[f].fp = fp;
 			fp->f_msgcount--;
 			unp_rights--;
 			*fdp-- = f;
@@ -1018,9 +1018,9 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	for (i = 0; i < oldfds; i++) {
 		fd = *fdp++;
 		if ((unsigned)fd >= fdescp->fd_nfiles ||
-		    fdescp->fd_ofiles[fd] == NULL)
+		    fdescp->fd_files[fd].fp == NULL)
 			return (EBADF);
-		if (fdescp->fd_ofiles[fd]->f_type == DTYPE_KQUEUE)
+		if (fdescp->fd_files[fd].fp->f_type == DTYPE_KQUEUE)
 			return (EOPNOTSUPP);
 	}
 	/*
@@ -1062,7 +1062,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		fdp = (int *)(cm + 1) + oldfds - 1;
 		rp = (struct file **)CMSG_DATA(cm) + oldfds - 1;
 		for (i = 0; i < oldfds; i++) {
-			fp = fdescp->fd_ofiles[*fdp--];
+			fp = fdescp->fd_files[*fdp--].fp;
 			*rp-- = fp;
 			fp->f_count++;
 			fp->f_msgcount++;
@@ -1072,7 +1072,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		fdp = (int *)(cm + 1);
 		rp = (struct file **)CMSG_DATA(cm);
 		for (i = 0; i < oldfds; i++) {
-			fp = fdescp->fd_ofiles[*fdp++];
+			fp = fdescp->fd_files[*fdp++].fp;
 			*rp++ = fp;
 			fp->f_count++;
 			fp->f_msgcount++;

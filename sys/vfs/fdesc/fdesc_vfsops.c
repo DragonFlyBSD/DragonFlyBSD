@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.13 2005/02/11 22:07:32 joerg Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.14 2005/06/22 01:33:32 dillon Exp $
  */
 
 /*
@@ -177,7 +177,7 @@ fdesc_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	last = min(fdp->fd_nfiles, lim);
 	freefd = 0;
 	for (i = fdp->fd_freefile; i < last; i++)
-		if (fdp->fd_ofiles[i] == NULL)
+		if (fdp->fd_files[i].fp == NULL)
 			freefd++;
 
 	/*

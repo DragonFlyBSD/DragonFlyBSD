@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.15 2004/10/12 19:20:42 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.16 2005/06/22 01:33:29 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -255,7 +255,7 @@ fd_revoke(struct thread *td, int fd)
 	KKASSERT(p);
 
 	fdp = p->p_fd;
-	if ((u_int)fd >= fdp->fd_nfiles || (fp = fdp->fd_ofiles[fd]) == NULL)
+	if ((u_int)fd >= fdp->fd_nfiles || (fp = fdp->fd_files[fd].fp) == NULL)
 		return EBADF;
 
 	if (fp->f_type != DTYPE_VNODE) 
@@ -304,7 +304,7 @@ fd_truncate(struct thread *td, int fd, struct flock *flp, int *retval)
 	/*
 	 * We only support truncating the file.
 	 */
-	if ((u_int)fd >= fdp->fd_nfiles || (fp = fdp->fd_ofiles[fd]) == NULL)
+	if ((u_int)fd >= fdp->fd_nfiles || (fp = fdp->fd_files[fd].fp) == NULL)
 		return EBADF;
 
 	vp = (struct vnode *)fp->f_data;
@@ -375,7 +375,7 @@ svr4_sys_open(struct svr4_sys_open_args *uap)
 	    !(p->p_flag & P_CONTROLT)) {
 #if defined(NOTYET)
 		struct filedesc	*fdp = p->p_fd;
-		struct file	*fp = fdp->fd_ofiles[retval];
+		struct file	*fp = fdp->fd_files[retval].fp;
 
 		/* ignore any error, just give it a try */
 		if (fp->f_type == DTYPE_VNODE)

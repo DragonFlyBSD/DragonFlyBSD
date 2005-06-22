@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ioctl.c,v 1.13.2.1 2001/07/31 20:14:21 jon Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.8 2003/10/13 21:08:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.9 2005/06/22 01:33:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -350,7 +350,7 @@ ibcs2_ioctl(struct ibcs2_ioctl_args *uap)
 	fdp = p->p_fd;
 
 	if (SCARG(uap, fd) < 0 || SCARG(uap, fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[SCARG(uap, fd)]) == NULL) {
+	    (fp = fdp->fd_files[SCARG(uap, fd)].fp) == NULL) {
 		DPRINTF(("ibcs2_ioctl(td=%p): bad fd %d ", td, SCARG(uap, fd)));
 		return EBADF;
 	}

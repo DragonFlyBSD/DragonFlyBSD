@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.17 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.18 2005/06/22 01:33:32 dillon Exp $
  */
 
 /*
@@ -210,7 +210,7 @@ fdesc_lookup(struct vop_lookup_args *ap)
 		fd = 10 * fd + *pname++ - '0';
 	}
 
-	if (fd >= nfiles || p->p_fd->fd_ofiles[fd] == NULL) {
+	if (fd >= nfiles || p->p_fd->fd_files[fd].fp == NULL) {
 		error = EBADF;
 		goto bad;
 	}
@@ -299,7 +299,7 @@ fdesc_getattr(struct vop_getattr_args *ap)
 	case Fdesc:
 		fd = VTOFDESC(vp)->fd_fd;
 
-		if (fd >= fdp->fd_nfiles || (fp = fdp->fd_ofiles[fd]) == NULL)
+		if (fd >= fdp->fd_nfiles || (fp = fdp->fd_files[fd].fp) == NULL)
 			return (EBADF);
 
 		bzero(&stb, sizeof(stb));
@@ -446,7 +446,7 @@ fdesc_readdir(struct vop_readdir_args *ap)
 			dp->d_type = DT_DIR;
 			break;
 		default:
-			if (fdp->fd_ofiles[fcnt] == NULL)
+			if (fdp->fd_files[fcnt].fp == NULL)
 				goto done;
 
 			bzero((caddr_t) dp, UIO_MX);

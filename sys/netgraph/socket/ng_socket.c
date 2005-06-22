@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.10 2005/06/02 22:11:46 swildner Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.11 2005/06/22 01:33:30 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -568,7 +568,7 @@ ng_internalize(struct mbuf *control, struct thread *td)
 	 * struct file. */
 	fd = *(int *) (cm + 1);
 	if ((unsigned) fd >= fdp->fd_nfiles
-	    || (fp = fdp->fd_ofiles[fd]) == NULL) {
+	    || (fp = fdp->fd_files[fd].fp) == NULL) {
 		return (EBADF);
 	}
 

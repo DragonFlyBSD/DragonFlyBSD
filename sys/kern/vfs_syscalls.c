@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.63 2005/06/21 23:58:53 hsu Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.64 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -747,7 +747,7 @@ mountctl(struct mountctl_args *uap)
 	if (uap->fd == -1) {
 		fp = NULL;
 	} else if ((u_int)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL) {
+	    (fp = fdp->fd_files[uap->fd].fp) == NULL) {
 		error = EBADF;
 		goto done;
 	}
@@ -1311,7 +1311,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		 * if it succeeds.
 		 *
 		 * Note that if fsetfd() succeeds it will add a ref to fp
-		 * which represents the fd_ofiles[] assignment.  We must still
+		 * which represents the fd_files[] assignment.  We must still
 		 * drop our reference.
 		 */
 		if ((error == ENODEV || error == ENXIO) && p->p_dupfd >= 0) {
@@ -1322,9 +1322,9 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 					fdrop(fp, td);	/* our ref */
 					return (0);
 				}
-				if (fdp->fd_ofiles[indx] == fp) {
+				if (fdp->fd_files[indx].fp == fp) {
 					funsetfd(fdp, indx);
-					fdrop(fp, td);	/* fd_ofiles[] ref */
+					fdrop(fp, td);	/* fd_files[] ref */
 				}
 			}
 		}
@@ -1362,7 +1362,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * like opening the file succeeded but it was immediately closed.
 	 */
 	if (fp->f_count == 1) {
-		KASSERT(fdp->fd_ofiles[indx] != fp,
+		KASSERT(fdp->fd_files[indx].fp != fp,
 		    ("Open file descriptor lost all refs"));
 		vrele(vp);
 		fo_close(fp, td);
@@ -1391,7 +1391,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			 * owned by the descriptor array, the other by us.
 			 */
 			vrele(vp);
-			if (fdp->fd_ofiles[indx] == fp) {
+			if (fdp->fd_files[indx].fp == fp) {
 				funsetfd(fdp, indx);
 				fdrop(fp, td);
 			}
@@ -1759,7 +1759,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 	int error;
 
 	if ((u_int)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[fd]) == NULL)
+	    (fp = fdp->fd_files[fd].fp) == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE)
 		return (ESPIPE);
@@ -3056,7 +3056,7 @@ getvnode(struct filedesc *fdp, int fd, struct file **fpp)
 	struct file *fp;
 
 	if ((u_int)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[fd]) == NULL)
+	    (fp = fdp->fd_files[fd].fp) == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO)
 		return (EINVAL);
@@ -3272,7 +3272,7 @@ fhopen(struct fhopen_args *uap)
 			 * but handle the case where someone might have dup()d
 			 * or close()d it when we weren't looking.
 			 */
-			if (fdp->fd_ofiles[indx] == fp) {
+			if (fdp->fd_files[indx].fp == fp) {
 				funsetfd(fdp, indx);
 				fdrop(fp, td);
 			}

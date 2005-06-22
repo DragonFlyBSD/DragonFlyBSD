@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.21 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.22 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -89,7 +89,7 @@ holdfp(fdp, fd, flag)
 	struct file* fp;
 
 	if (((u_int)fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[fd]) == NULL ||
+	    (fp = fdp->fd_files[fd].fp) == NULL ||
 	    (fp->f_flag & flag) == 0) {
 		return (NULL);
 	}
@@ -425,7 +425,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	KKASSERT(p);
 	fdp = p->p_fd;
 	if ((u_int)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[fd]) == NULL)
+	    (fp = fdp->fd_files[fd].fp) == NULL)
 		return(EBADF);
 
 	if ((fp->f_flag & (FREAD | FWRITE)) == 0)
@@ -494,10 +494,10 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 
 	switch (com) {
 	case FIONCLEX:
-		fdp->fd_ofileflags[fd] &= ~UF_EXCLOSE;
+		fdp->fd_files[fd].fileflags &= ~UF_EXCLOSE;
 		return(0);
 	case FIOCLEX:
-		fdp->fd_ofileflags[fd] |= UF_EXCLOSE;
+		fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
 		return(0);
 	}
 
@@ -776,7 +776,7 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 			for (fd = i; bits && fd < nfd; fd++, bits >>= 1) {
 				if (!(bits & 1))
 					continue;
-				fp = fdp->fd_ofiles[fd];
+				fp = fdp->fd_files[fd].fp;
 				if (fp == NULL)
 					return (EBADF);
 				if (fo_poll(fp, flag[msk], fp->f_cred, td)) {
@@ -896,7 +896,7 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 		} else if (fds->fd < 0) {
 			fds->revents = 0;
 		} else {
-			fp = fdp->fd_ofiles[fds->fd];
+			fp = fdp->fd_files[fds->fd].fp;
 			if (fp == NULL) {
 				fds->revents = POLLNVAL;
 				n++;

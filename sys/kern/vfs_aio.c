@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.16 2005/06/09 20:47:37 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.17 2005/06/22 01:33:21 dillon Exp $
  */
 
 /*
@@ -1191,7 +1191,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 		return EBADF;
 	}
 
-	fp = aiocbe->fd_file = fdp->fd_ofiles[fd];
+	fp = aiocbe->fd_file = fdp->fd_files[fd].fp;
 	if ((fp == NULL) || ((opcode == LIO_WRITE) && ((fp->f_flag & FWRITE) ==
 	    0))) {
 		TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
@@ -1254,7 +1254,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 			goto aqueue_fail;
 	}
 	if ((u_int)kev.ident >= fdp->fd_nfiles ||
-	    (kq_fp = fdp->fd_ofiles[kev.ident]) == NULL ||
+	    (kq_fp = fdp->fd_files[kev.ident].fp) == NULL ||
 	    (kq_fp->f_type != DTYPE_KQUEUE)) {
 		error = EBADF;
 		goto aqueue_fail;
@@ -1596,7 +1596,7 @@ aio_cancel(struct aio_cancel_args *uap)
 
 	fdp = p->p_fd;
 	if ((u_int)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
+	    (fp = fdp->fd_files[uap->fd].fp) == NULL)
 		return (EBADF);
 
         if (fp->f_type == DTYPE_VNODE) {

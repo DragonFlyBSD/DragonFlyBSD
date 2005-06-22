@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.43 2005/06/21 23:58:53 hsu Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.44 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -81,7 +81,7 @@ void mi_startup(void);				/* Should be elsewhere */
 static struct session session0;
 static struct pgrp pgrp0;
 static struct procsig procsig0;
-static struct filedesc0 filedesc0;
+static struct filedesc filedesc0;
 static struct plimit limit0;
 static struct vmspace vmspace0;
 struct proc *initproc;
@@ -272,8 +272,8 @@ SYSINIT(leavecrit, SI_SUB_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
 static void
 proc0_init(void *dummy __unused)
 {
-	struct proc		*p;
-	struct filedesc0	*fdp;
+	struct filedesc	*fdp;
+	struct proc *p;
 	unsigned i;
 
 	p = &proc0;
@@ -338,14 +338,12 @@ proc0_init(void *dummy __unused)
 
 	/* Create the file descriptor table. */
 	fdp = &filedesc0;
-	p->p_fd = &fdp->fd_fd;
+	p->p_fd = fdp;
 	p->p_fdtol = NULL;
-	fdp->fd_fd.fd_refcnt = 1;
-	fdp->fd_fd.fd_cmask = cmask;
-	fdp->fd_fd.fd_ofiles = fdp->fd_dfiles;
-	fdp->fd_fd.fd_ofileflags = fdp->fd_dfileflags;
-	fdp->fd_fd.fd_oallocated = fdp->fd_dallocated;
-	fdp->fd_fd.fd_nfiles = NDFILE;
+	fdp->fd_refcnt = 1;
+	fdp->fd_cmask = cmask;
+	fdp->fd_files = fdp->fd_builtin_files;
+	fdp->fd_nfiles = NDFILE;
 
 	/* Create the limits structures. */
 	p->p_limit = &limit0;

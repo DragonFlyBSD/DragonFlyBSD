@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.7 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.8 2005/06/22 01:33:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ svr4_sys_read(struct svr4_sys_read_args *uap)
      SCARG(&ra, buf) = SCARG(uap, buf);
      SCARG(&ra, nbyte) = SCARG(uap, nbyte);
 
-     if ((fp = fdp->fd_ofiles[SCARG(uap, fd)]) == NULL) {
+     if ((fp = fdp->fd_files[SCARG(uap, fd)].fp) == NULL) {
        DPRINTF(("Something fishy with the user-supplied file descriptor...\n"));
        return EBADF;
      }
@@ -192,11 +192,11 @@ svr4_fil_ioctl(fp, td, retval, fd, cmd, data)
 
 	switch (cmd) {
 	case SVR4_FIOCLEX:
-		fdp->fd_ofileflags[fd] |= UF_EXCLOSE;
+		fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
 		return 0;
 
 	case SVR4_FIONCLEX:
-		fdp->fd_ofileflags[fd] &= ~UF_EXCLOSE;
+		fdp->fd_files[fd].fileflags &= ~UF_EXCLOSE;
 		return 0;
 
 	case SVR4_FIOGETOWN:

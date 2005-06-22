@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.14 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.15 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -401,7 +401,7 @@ kevent(struct kevent_args *uap)
 	fdp = p->p_fd;
 
         if (((u_int)uap->fd) >= fdp->fd_nfiles ||
-            (fp = fdp->fd_ofiles[uap->fd]) == NULL ||
+            (fp = fdp->fd_files[uap->fd].fp) == NULL ||
 	    (fp->f_type != DTYPE_KQUEUE))
 		return (EBADF);
 
@@ -484,7 +484,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 	if (fops->f_isfd) {
 		/* validate descriptor */
 		if ((u_int)kev->ident >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_ofiles[kev->ident]) == NULL)
+		    (fp = fdp->fd_files[kev->ident].fp) == NULL)
 			return (EBADF);
 		fhold(fp);
 

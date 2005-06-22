@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.2 2005/02/26 20:32:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.3 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -637,7 +637,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 		 * have not already closed.
 		 */
 		if (cfi->cfi_index < p->p_fd->fd_nfiles &&
-		    (ofp = p->p_fd->fd_ofiles[cfi->cfi_index]) != NULL) {
+		    (ofp = p->p_fd->fd_files[cfi->cfi_index].fp) != NULL) {
 			kern_close(cfi->cfi_index);
 		}
 
@@ -651,7 +651,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 			goto done;
 		}
 		KKASSERT(fd == cfi->cfi_index);
-		p->p_fd->fd_ofiles[cfi->cfi_index] = tempfp;		
+		p->p_fd->fd_files[cfi->cfi_index].fp = tempfp;		
 		cfi++;
 		PRINTF(("restoring %d\n", cfi->cfi_index));
 	}

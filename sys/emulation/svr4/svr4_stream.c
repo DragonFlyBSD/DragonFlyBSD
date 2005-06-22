@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.13 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.14 2005/06/22 01:33:29 dillon Exp $
  */
 
 /*
@@ -1745,7 +1745,7 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 	KKASSERT(p);
 	fdp = p->p_fd;
 	retval = &uap->sysmsg_result;
-	fp = fdp->fd_ofiles[SCARG(uap, fd)];
+	fp = fdp->fd_files[SCARG(uap, fd)].fp;
 
 	if (((u_int)SCARG(uap, fd) >= fdp->fd_nfiles) || (fp == NULL)) {
 #ifdef DEBUG_SVR4
@@ -1942,7 +1942,7 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 	KKASSERT(p);
 	fdp = p->p_fd;
 	retval = &uap->sysmsg_result;
-	fp = fdp->fd_ofiles[SCARG(uap, fd)];
+	fp = fdp->fd_files[SCARG(uap, fd)].fp;
 
 	if (((u_int)SCARG(uap, fd) >= fdp->fd_nfiles) || (fp == NULL))
 		return EBADF;

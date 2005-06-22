@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.10 2005/06/21 23:58:53 hsu Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.11 2005/06/22 01:33:22 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -55,13 +55,21 @@
  */
 #define NDFILE		15		/* must be of the form 2^n - 1 */
 
+struct file;
 struct klist;
 struct namecache;
 
+struct fdnode {
+	struct file *fp;
+	char	fileflags;
+	char	unused01;
+	char	unused02;
+	char	unused03;
+	int	allocated;
+};
+
 struct filedesc {
-	struct	file **fd_ofiles;	/* file structures for open files */
-	char	*fd_ofileflags;		/* per-process open file flags */
-	int	*fd_oallocated;		/* subtree allocation count */
+	struct fdnode *fd_files;	/* file structures for open files */
 	struct	vnode *fd_cdir;		/* current directory (phaseout) */
 	struct	vnode *fd_rdir;		/* root directory (phaseout) */
 	struct	vnode *fd_jdir;		/* jail root directory (phaseout) */
@@ -69,7 +77,7 @@ struct filedesc {
 	struct  namecache *fd_nrdir;	/* root directory */
 	struct  namecache *fd_njdir;	/* jail directory */
 	int	fd_nfiles;		/* number of open files allocated */
-	int	fd_lastfile;		/* high-water mark of fd_ofiles */
+	int	fd_lastfile;		/* high-water mark of fd_files */
 	int	fd_freefile;		/* approx. next free file */
 	int	fd_cmask;		/* mask for file creation */
 	int	fd_refcnt;		/* reference count */
@@ -80,24 +88,8 @@ struct filedesc {
 	struct	klist *fd_knhash;	/* hash table for attached knotes */
 	int	fd_holdleaderscount;	/* block fdfree() for shared close() */
 	int	fd_holdleaderswakeup;	/* fdfree() needs wakeup */
+	struct	fdnode	fd_builtin_files[NDFILE];
 };
-
-/*
- * Basic allocation of descriptors:
- * one of the above, plus arrays for NDFILE descriptors.
- */
-struct filedesc0 {
-	struct	filedesc fd_fd;
-	/*
-	 * These arrays are used when the number of open files is
-	 * <= NDFILE, and are then pointed to by the pointers above.
-	 */
-	struct	file *fd_dfiles[NDFILE];
-	char	fd_dfileflags[NDFILE];
-	int	fd_dallocated[NDFILE];
-};
-
-
 
 /*
  * Structure to keep track of (process leader, struct fildedesc) tuples.
@@ -123,11 +115,6 @@ struct filedesc_to_leader {
 #if 0
 #define	UF_MAPPED 	0x02		/* mapped from device */
 #endif
-
-/*
- * Storage required per open file descriptor.
- */
-#define OFILESIZE (sizeof(struct file *) + sizeof(char) + sizeof(int))
 
 /*
  * This structure that holds the information needed to send a SIGIO or

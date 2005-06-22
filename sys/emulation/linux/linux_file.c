@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.20 2005/04/22 02:09:15 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.21 2005/06/22 01:33:27 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -141,7 +141,7 @@ linux_open(struct linux_open_args *args)
 	if (error == 0 && !(flags & O_NOCTTY) && 
 		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct filedesc *fdp = p->p_fd;
-		struct file *fp = fdp->fd_ofiles[args->sysmsg_result];
+		struct file *fp = fdp->fd_files[args->sysmsg_result].fp;
 
 		if (fp->f_type == DTYPE_VNODE)
 			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
@@ -1040,7 +1040,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 		 */
 		fdp = p->p_fd;
 		if ((u_int)args->fd >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_ofiles[args->fd]) == NULL)
+		    (fp = fdp->fd_files[args->fd].fp) == NULL)
 			return (EBADF);
 		if (fp->f_type == DTYPE_PIPE)
 			return (EINVAL);

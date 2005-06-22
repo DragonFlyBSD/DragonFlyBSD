@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.21 2004/10/12 19:29:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.22 2005/06/22 01:33:34 dillon Exp $
  */
 
 /*
@@ -243,7 +243,7 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 		 * sure it is of appropriate type.
 		 */
 		if (((unsigned) fd) >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_ofiles[fd]) == NULL)
+		    (fp = fdp->fd_files[fd].fp) == NULL)
 			return (EBADF);
 		if (fp->f_type != DTYPE_VNODE)
 			return (EINVAL);
@@ -510,7 +510,7 @@ munmapfd(p, fd)
 	/*
 	 * XXX should unmap any regions mapped to this file
 	 */
-	p->p_fd->fd_ofileflags[fd] &= ~UF_MAPPED;
+	p->p_fd->fd_files[fd].fileflags &= ~UF_MAPPED;
 }
 #endif
 

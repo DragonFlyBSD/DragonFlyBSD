@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.10 2005/06/10 22:44:02 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.11 2005/06/22 01:33:31 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -383,7 +383,7 @@ nsmb_getfp(struct filedesc* fdp, int fd, int flag)
 	struct file* fp;
 
 	if (((u_int)fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[fd]) == NULL ||
+	    (fp = fdp->fd_files[fd].fp) == NULL ||
 	    (fp->f_flag & flag) == 0)
 		return (NULL);
 	return (fp);

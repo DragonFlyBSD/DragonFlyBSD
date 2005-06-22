@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.54 2005/06/21 23:58:53 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.55 2005/06/22 01:33:21 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -111,7 +111,7 @@ kern_socket(int domain, int type, int protocol, int *res)
 		return (error);
 	error = socreate(domain, &so, type, protocol, td);
 	if (error) {
-		if (fdp->fd_ofiles[fd] == fp) {
+		if (fdp->fd_files[fd].fp == fp) {
 			funsetfd(fdp, fd);
 			fdrop(fp, td);
 		}
@@ -344,7 +344,7 @@ done:
 	 */
 	if (error) {
 		*res = -1;
-		if (fdp->fd_ofiles[fd] == nfp) {
+		if (fdp->fd_files[fd].fp == nfp) {
 			funsetfd(fdp, fd);
 			fdrop(nfp, td);
 		}
@@ -524,13 +524,13 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	fdrop(fp2, td);
 	return (error);
 free4:
-	if (fdp->fd_ofiles[sv[1]] == fp2) {
+	if (fdp->fd_files[sv[1]].fp == fp2) {
 		funsetfd(fdp, sv[1]);
 		fdrop(fp2, td);
 	}
 	fdrop(fp2, td);
 free3:
-	if (fdp->fd_ofiles[sv[0]] == fp1) {
+	if (fdp->fd_files[sv[0]].fp == fp1) {
 		funsetfd(fdp, sv[0]);
 		fdrop(fp1, td);
 	}
@@ -1259,7 +1259,7 @@ holdsock(struct filedesc *fdp, int fdes, struct file **fpp)
 	*fpp = NULL;
 	if ((unsigned)fdes >= fdp->fd_nfiles)
 		return EBADF;
-	if ((fp = fdp->fd_ofiles[fdes]) == NULL)
+	if ((fp = fdp->fd_files[fdes].fp) == NULL)
 		return EBADF;
 	if (fp->f_type != DTYPE_SOCKET)
 		return ENOTSOCK;
