@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.128 2005/06/22 22:03:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.129 2005/06/22 22:03:19 okumoto Exp $
  */
 
 /*
@@ -947,6 +947,7 @@ main(int argc, char **argv)
 	Shell_Init(DEFSHELLNAME);
 	Targ_Init();
 	Suff_Init();
+	Dir_Init();
 
 	/*------------------------------------------------------------*
 	 * This section initializes variables that depend on things
@@ -954,7 +955,7 @@ main(int argc, char **argv)
 	 *------------------------------------------------------------*/
 	InitVariables(&mf, argc, argv, curdir, objdir);
 
-	Dir_Init(curdir, objdir);
+	Dir_CurObj(curdir, objdir);
 
 	/*
 	 * If no user-supplied system path was given (through the -m option)

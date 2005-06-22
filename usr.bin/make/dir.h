@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.18 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.19 2005/06/22 22:02:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.20 2005/06/22 22:03:19 okumoto Exp $
  */
 
 #ifndef dir_h_6002e3b8
@@ -54,7 +54,8 @@ struct Dir;
 struct PathElement;
 TAILQ_HEAD(Path, PathElement);
 
-void Dir_Init(const char [], const char []);
+void Dir_Init(void);
+void Dir_CurObj(const char [], const char []);
 Boolean Dir_HasWildcards(const char *);
 int Dir_MTime(struct GNode *);
 void Dir_PrintDirectories(void);

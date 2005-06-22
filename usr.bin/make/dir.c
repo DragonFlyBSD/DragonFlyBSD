@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.38 2005/06/22 22:02:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.39 2005/06/22 22:03:19 okumoto Exp $
  */
 
 /*-
@@ -190,11 +190,10 @@ struct PathElement {
 };
 
 /* main search path */
-struct Path dirSearchPath = TAILQ_HEAD_INITIALIZER(dirSearchPath);
+struct Path			dirSearchPath;
 
 /* the list of all open directories */
-static TAILQ_HEAD(, Dir) openDirectories =
-    TAILQ_HEAD_INITIALIZER(openDirectories);
+static TAILQ_HEAD(, Dir)	openDirectories;
 
 /*
  * Variables for gathering statistics on the efficiency of the hashing
@@ -223,11 +222,21 @@ static Hash_Table mtimes;
  *	add curdir if it is not the same as objdir
  */
 void
-Dir_Init(const char curdir[], const char objdir[])
+Dir_Init()
 {
 
 	Hash_InitTable(&mtimes, 0);
+	TAILQ_INIT(&dirSearchPath);
+	TAILQ_INIT(&openDirectories);
+}
 
+/**
+ * add the "." directory
+ * add curdir if it is not the same as objdir
+ */
+void
+Dir_CurObj(const char curdir[], const char objdir[])
+{
 
 	dot = Path_AddDir(NULL, ".");
 	if (dot == NULL)
