@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.57 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.58 2005/06/25 19:04:37 dillon Exp $
  */
 
 /*
@@ -1784,6 +1784,17 @@ fork_return(p, frame)
 	frame.tf_eflags &= ~PSL_C;	/* success */
 	frame.tf_edx = 1;
 
+	/*
+	 * Newly forked processes are given a kernel priority.  We have to
+	 * adjust the priority to a normal user priority and fake entry
+	 * into the kernel (call userenter()) to install a passive release
+	 * function just in case userret() decides to stop the process.  This
+	 * can occur when ^Z races a fork.  If we do not install the passive
+	 * release function the current process designation will not be
+	 * released when the thread goes to sleep.
+	 */
+	lwkt_setpri_self(TDPRI_USER_NORM);
+	userenter(p->p_thread);
 	userret(p, &frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(p->p_thread, KTR_SYSRET))
