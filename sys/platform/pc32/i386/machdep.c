@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.75 2005/06/19 22:43:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.76 2005/06/25 20:03:34 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1866,6 +1866,7 @@ init386(int first)
 	lwkt_set_comm(&thread0, "thread0");
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
+	proc0.p_usched = &usched_bsd4;
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;

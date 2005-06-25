@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.56 2004/09/17 01:29:45 joerg Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.57 2005/06/25 20:03:30 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -63,6 +63,7 @@
 #ifdef _KERNEL
 #include <sys/globaldata.h>
 #endif
+#include <sys/usched.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
 /*
@@ -127,7 +128,6 @@ struct	pargs {
  */
 
 struct jail;
-struct sched;
 
 struct	proc {
 	TAILQ_ENTRY(proc) p_procq;	/* run/sleep queue. */
@@ -160,7 +160,7 @@ struct	proc {
 	struct	proc *p_pptr;	 	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */
 	LIST_HEAD(, proc) p_children;	/* Pointer to list of children. */
-	struct callout p_ithandle; /* for scheduling p_realtimer */
+	struct callout p_ithandle;	/* for scheduling p_realtimer */
 	struct	varsymset p_varsymset;
 
 /* The following fields are all zeroed upon creation in fork. */
@@ -238,7 +238,7 @@ struct	proc {
 	void	*p_emuldata;	/* process-specific emulator state data */
 	struct thread *p_thread; /* temporarily embed thread struct in proc */
 	struct upcall *p_upcall; /* USERLAND POINTER! registered upcall */
-	struct sched *p_sched;	/* work-in-progress / Peter Kadau */
+	struct usched *p_usched; /* Userland scheduling control */
 	int	p_numposixlocks; /* number of POSIX locks */
 	TAILQ_HEAD(, sysmsg) p_sysmsgq; /* Recorded asynch system calls */
 	int p_num_sysmsg;		/* How many sysmsg's this proc has running */
@@ -437,15 +437,10 @@ void	resched_cpus(u_int32_t mask);
 void	schedulerclock (void *dummy);
 void	setrunnable (struct proc *);
 void	clrrunnable (struct proc *, int stat);
-void	setrunqueue (struct proc *);
 void	sleepinit (void);
 int	suser (struct thread *td);
 int	suser_proc (struct proc *p);
 int	suser_cred (struct ucred *cred, int flag);
-void	remrunqueue (struct proc *);
-void	release_curproc (struct proc *curp);
-void	acquire_curproc (struct proc *curp);
-void	select_curproc(struct globaldata *);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);
 void	unsleep (struct thread *);

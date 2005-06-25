@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.43 2005/06/25 19:06:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.44 2005/06/25 20:03:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -269,7 +269,7 @@ schedcpu(void *arg)
 			p->p_estcpu -= ndecay;
 		else
 			p->p_estcpu = 0;
-		resetpriority(p);
+		p->p_usched->resetpriority(p);
 		crit_exit();
 	}
 	wakeup((caddr_t)&lbolt);
@@ -291,7 +291,7 @@ updatepri(struct proc *p)
 		p->p_estcpu -= ndecay;
 	else
 		p->p_estcpu = 0;
-	resetpriority(p);
+	p->p_usched->resetpriority(p);
 }
 
 /*
@@ -373,7 +373,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	if (p) {
 		if (flags & PNORESCHED)
 			td->td_flags |= TDF_NORESCHED;
-		release_curproc(p);
+		p->p_usched->release_curproc(p);
 		p->p_slptime = 0;
 	}
 	lwkt_deschedule_self(td);
@@ -665,6 +665,39 @@ setrunnable(struct proc *p)
 }
 
 /*
+ * Yield / synchronous reschedule.  This is a bit tricky because the trap
+ * code might have set a lazy release on the switch function.   Setting
+ * P_PASSIVE_ACQ will ensure that the lazy release executes when we call
+ * switch, and that we are given a greater chance of affinity with our
+ * current cpu.
+ *
+ * We call lwkt_setpri_self() to rotate our thread to the end of the lwkt
+ * run queue.  lwkt_switch() will also execute any assigned passive release
+ * (which usually calls release_curproc()), allowing a same/higher priority
+ * process to be designated as the current process.  
+ *
+ * While it is possible for a lower priority process to be designated,
+ * it's call to lwkt_maybe_switch() in acquire_curproc() will likely
+ * round-robin back to us and we will be able to re-acquire the current
+ * process designation.
+ */
+void
+uio_yield(void)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+	lwkt_setpri_self(td->td_pri & TDPRI_MASK);
+	if (p) {
+		p->p_flag |= P_PASSIVE_ACQ;
+		lwkt_switch();
+		p->p_flag &= ~P_PASSIVE_ACQ;
+	} else {
+		lwkt_switch();
+	}
+}
+
+/*
  * Change the process state to NOT be runnable, removing it from the run
  * queue.
  */
@@ -673,7 +706,7 @@ clrrunnable(struct proc *p, int stat)
 {
 	crit_enter_quick(p->p_thread);
 	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ))
-		remrunqueue(p);
+		p->p_usched->remrunqueue(p);
 	p->p_stat = stat;
 	crit_exit_quick(p->p_thread);
 }
@@ -768,7 +801,7 @@ schedulerclock(void *dummy)
 		p->p_cpticks++;		/* cpticks runs at ESTCPUFREQ */
 		p->p_estcpu = ESTCPULIM(p->p_estcpu + ESTCPUVFREQ / ESTCPUFREQ);
 		if (try_mplock()) {
-			resetpriority(p);
+			p->p_usched->resetpriority(p);
 			rel_mplock();
 		}
 	}

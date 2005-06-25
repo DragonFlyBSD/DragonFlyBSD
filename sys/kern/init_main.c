@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.44 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.45 2005/06/25 20:03:28 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -566,7 +566,7 @@ start_init(void *dummy)
 		 */
 		if ((error = execve(&args)) == 0) {
 			if (p->p_thread->td_gd->gd_uschedcp != p)
-				acquire_curproc(p);
+				p->p_usched->acquire_curproc(p);
 			rel_mplock();
 			return;
 		}

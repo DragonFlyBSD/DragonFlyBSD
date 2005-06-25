@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.33 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.34 2005/06/25 20:03:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -522,6 +522,11 @@ again:
 	p2->p_interactive = 0;
 
 	/*
+	 * Inherit the scheduler
+	 */
+	p2->p_usched = p1->p_usched;
+
+	/*
 	 * This begins the section where we must prevent the parent
 	 * from being swapped.
 	 */
@@ -558,7 +563,8 @@ again:
 	}
 
 	/*
-	 * Make child runnable and add to run queue.
+	 * Set the start time.  Note that the process is not runnable.  The
+	 * caller is responsible for making it runnable.
 	 */
 	microtime(&p2->p_thread->td_start);
 	p2->p_acflag = AFORK;
@@ -639,10 +645,10 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 */
 	KASSERT(p2 && p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));
-	resetpriority(p2);
+	p2->p_usched->resetpriority(p2);
 	crit_enter();
 	p2->p_stat = SRUN;
-	setrunqueue(p2);
+	p2->p_usched->setrunqueue(p2);
 	crit_exit();
 
 	/*

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.41 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.42 2005/06/25 20:03:28 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -397,7 +397,7 @@ exit1(int rv)
 	 * Release the current user process designation on the process so
 	 * the userland scheduler can work in someone else.
 	 */
-	release_curproc(p);
+	p->p_usched->release_curproc(p);
 
 	/*
 	 * Finally, call machine-dependent code to release the remaining

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.58 2005/06/25 19:04:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.59 2005/06/25 20:03:34 dillon Exp $
  */
 
 /*
@@ -186,7 +186,7 @@ passive_release(struct thread *td)
 
 	td->td_release = NULL;
 	lwkt_setpri_self(TDPRI_KERN_USER);
-	release_curproc(p);
+	p->p_usched->release_curproc(p);
 }
 
 /*
@@ -262,7 +262,7 @@ userexit(struct proc *p)
 	 * be chosen again if it has a considerably better priority.
 	 */
 	if (user_resched_wanted())
-		release_curproc(p);
+		p->p_usched->release_curproc(p);
 #endif
 
 again:
@@ -286,7 +286,7 @@ again:
 	 */
 	if (p != gd->gd_uschedcp) {
 		++slow_release;
-		acquire_curproc(p);
+		p->p_usched->acquire_curproc(p);
 		/* We may have switched cpus on acquisition */
 		gd = td->td_gd;
 	} else {
@@ -318,7 +318,7 @@ again:
 	 * is pending the trap will be re-entered.
 	 */
 	if (user_resched_wanted()) {
-		select_curproc(gd);
+		p->p_usched->select_curproc(gd);
 		if (p != gd->gd_uschedcp) {
 			lwkt_setpri_self(TDPRI_KERN_USER);
 			goto again;
