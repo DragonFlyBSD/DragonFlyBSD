@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.57 2005/06/25 20:03:30 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.58 2005/06/25 21:18:42 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -134,75 +134,71 @@ struct	proc {
 	LIST_ENTRY(proc) p_list;	/* List of all processes. */
 
 	/* substructures: */
-	struct	ucred *p_ucred;		/* Process owner's identity. */
-	struct	filedesc *p_fd;		/* Ptr to open files structure. */
+	struct ucred	*p_ucred;	/* Process owner's identity. */
+	struct filedesc	*p_fd;		/* Ptr to open files structure. */
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node */
-	struct	pstats *p_stats;	/* Accounting/statistics (PROC ONLY). */
-	struct	plimit *p_limit;	/* Process limits. */
-#if 0
-	struct	vm_object *p_upages_obj;/* Upages object */
-#else
-	void		*p_dummy1;
-#endif
+	struct pstats	*p_stats;	/* Accounting/statistics (PROC ONLY). */
+	struct plimit	*p_limit;	/* Process limits. */
+	void		*p_pad0;
 	struct	procsig *p_procsig;
 #define p_sigacts	p_procsig->ps_sigacts
 #define p_sigignore	p_procsig->ps_sigignore
 #define p_sigcatch	p_procsig->ps_sigcatch
 #define	p_rlimit	p_limit->pl_rlimit
 
-	int	p_flag;			/* P_* flags. */
-	char	p_stat;			/* S* process status. */
-	char	p_pad1[3];
+	int		p_flag;		/* P_* flags. */
+	char		p_stat;		/* S* process status. */
+	char		p_pad1[3];
 
-	pid_t	p_pid;			/* Process identifier. */
+	pid_t		p_pid;		/* Process identifier. */
 	LIST_ENTRY(proc) p_hash;	/* Hash chain. */
 	LIST_ENTRY(proc) p_pglist;	/* List of processes in pgrp. */
-	struct	proc *p_pptr;	 	/* Pointer to parent process. */
+	struct proc	*p_pptr;	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */
 	LIST_HEAD(, proc) p_children;	/* Pointer to list of children. */
-	struct callout p_ithandle;	/* for scheduling p_realtimer */
-	struct	varsymset p_varsymset;
+	struct callout	p_ithandle;	/* for scheduling p_realtimer */
+	struct varsymset p_varsymset;
 
 /* The following fields are all zeroed upon creation in fork. */
 #define	p_startzero	p_oppid
 
-	pid_t	p_oppid;	 /* Save parent pid during ptrace. XXX */
-	int	p_dupfd;	 /* Sideways return value from fdopen. XXX */
+	pid_t		p_oppid;	/* Save parent pid during ptrace. XXX */
+	int		p_dupfd;	/* Sideways return value from fdopen. XXX */
 
-	struct	vmspace *p_vmspace;	/* Address space. */
+	struct vmspace	*p_vmspace;	/* Address space. */
 
 	/* scheduling */
-	u_int	p_estcpu;	 /* Time averaged value of p_cpticks. */
-	u_int	p_estcpu_fork;	 /* estcpu as of fork, used in batch detect */
-	int	p_cpticks;	 /* Ticks of cpu time. */
-	fixpt_t	p_pctcpu;	 /* %cpu for this process during p_swtime */
-	u_int	p_swtime;	 /* Time swapped in or out. */
-	u_int	p_slptime;	 /* Time since last blocked. */
+	u_int		p_estcpu;	/* Time averaged value of p_cpticks. */
+	u_int		p_estcpu_fork;	/* estcpu as of fork, used in batch detect */
+	int		p_cpticks;	/* Ticks of cpu time. */
+	fixpt_t		p_pctcpu;	/* %cpu for this process */
+	u_int		p_swtime;	/* Time swapped in or out. */
+	u_int		p_slptime;	/* Time since last blocked. */
 
-	struct	itimerval p_realtimer;	/* Alarm timer. */
+	struct itimerval p_realtimer;	/* Alarm timer. */
 
-	int	p_traceflag;		/* Kernel trace points. */
-	struct	vnode *p_tracep;	/* Trace to vnode. */
+	int		p_traceflag;	/* Kernel trace points. */
+	struct vnode	*p_tracep;	/* Trace to vnode. */
 
-	sigset_t p_siglist;		/* Signals arrived but not delivered. */
+	sigset_t	p_siglist;	/* Signals arrived but not delivered. */
 
-	struct	vnode *p_textvp;	/* Vnode of executable. */
+	struct vnode	*p_textvp;	/* Vnode of executable. */
 
-	char	p_lock;			/* Process lock (prevent swap) count. */
-	short	p_priority;		/* overall priority (lower==better) */
-	char	p_rqindex;		/* Run queue index */
-
+	char		p_lock;		/* Process lock (prevent swap) count. */
+	short		p_priority;	/* overall priority (lower==better) */
+	char		p_rqindex;	/* Run queue index */
+	
 	unsigned int	p_stops;	/* procfs event bitmask */
 	unsigned int	p_stype;	/* procfs stop event type */
-	char	p_step;			/* procfs stop *once* flag */
+	char		p_step;		/* procfs stop *once* flag */
 	unsigned char	p_pfsflags;	/* procfs flags */
-	char	p_pad3[2];		/* padding for alignment */
-	struct	sigiolst p_sigiolst;	/* list of sigio sources */
-	int	p_sigparent;		/* signal to parent on exit */
-	sigset_t p_oldsigmask;		/* saved mask from before sigpause */
-	int	p_sig;			/* for core dump/debugger XXX */
-        u_long	p_code;	  	        /* for core dump/debugger XXX */
-	struct	klist p_klist;		/* knotes attached to this process */
+	char		p_pad3[2];	/* padding for alignment */
+	struct		sigiolst p_sigiolst;	/* list of sigio sources */
+	int		p_sigparent;	/* signal to parent on exit */
+	sigset_t	p_oldsigmask;	/* saved mask from before sigpause */
+	int		p_sig;		/* for core dump/debugger XXX */
+        u_long		p_code;		/* for core dump/debugger XXX */
+	struct klist	p_klist;	/* knotes attached to this process */
 
 /* End area that is zeroed on creation. */
 #define	p_endzero	p_startcopy
@@ -210,38 +206,38 @@ struct	proc {
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_sigmask
 
-	sigset_t p_sigmask;	/* Current signal mask. */
-	stack_t	p_sigstk;	/* sp & on stack state variable */
-	char	p_interactive;	/* long term interactivity par-0 */
-	char	p_nice;		/* Process "nice" value. */
+	sigset_t	p_sigmask;	/* Current signal mask. */
+	stack_t		p_sigstk;	/* sp & on stack state variable */
+	char		p_interactive;	/* long term interactivity par-0 */
+	char		p_nice;		/* Process "nice" value. */
 
-	struct 	pgrp *p_pgrp;	/* Pointer to process group. */
+	struct pgrp	*p_pgrp;	/* Pointer to process group. */
 
-	struct 	sysentvec *p_sysent; /* System call dispatch information. */
+	struct sysentvec *p_sysent;	/* System call dispatch information. */
 
-	struct	rtprio p_rtprio;	/* Realtime priority. */
-	struct	pargs *p_args;
+	struct rtprio	p_rtprio;	/* Realtime priority. */
+	struct pargs	*p_args;
 /* End area that is copied on creation. */
 #define	p_endcopy	p_addr
-	struct	user *p_addr;	/* Kernel virtual addr of u-area (PROC ONLY). */
-	struct	mdproc p_md;	/* Any machine-dependent fields. */
+	struct user	*p_addr;	/* Kernel virtual addr of u-area (PROC ONLY) */
+	struct mdproc	p_md;		/* Any machine-dependent fields. */
 
-	u_short	p_xstat;	/* Exit status for wait; also stop signal. */
-	u_short	p_acflag;	/* Accounting flags. */
-	struct	rusage *p_ru;	/* Exit information. XXX */
+	u_short		p_xstat;	/* Exit status or last stop signal */
+	u_short		p_acflag;	/* Accounting flags. */
+	struct		rusage *p_ru;	/* Exit information. XXX */
 
-	int	p_nthreads;	/* number of threads (only in leader) */
-	void	*p_aioinfo;	/* ASYNC I/O info */
-	int	p_wakeup;	/* thread id */
-	struct proc *p_peers;	
-	struct proc *p_leader;
-	void	*p_emuldata;	/* process-specific emulator state data */
-	struct thread *p_thread; /* temporarily embed thread struct in proc */
-	struct upcall *p_upcall; /* USERLAND POINTER! registered upcall */
-	struct usched *p_usched; /* Userland scheduling control */
-	int	p_numposixlocks; /* number of POSIX locks */
+	int		p_nthreads;	/* number of threads (only in leader) */
+	void		*p_aioinfo;	/* ASYNC I/O info */
+	int		p_wakeup;	/* thread id */
+	struct proc	*p_peers;	
+	struct proc	*p_leader;
+	void		*p_emuldata;	/* process-specific emulator state */
+	struct thread	*p_thread;	/* backpointer to proc's thread */
+	struct upcall 	*p_upcall;	/* REGISTERED USERLAND POINTER! */
+	struct usched	*p_usched;	/* Userland scheduling control */
+	int		p_numposixlocks; /* number of POSIX locks */
 	TAILQ_HEAD(, sysmsg) p_sysmsgq; /* Recorded asynch system calls */
-	int p_num_sysmsg;		/* How many sysmsg's this proc has running */
+	int		 p_num_sysmsg;	/* Number of asynch messages running */
 };
 
 #if defined(_KERNEL)
