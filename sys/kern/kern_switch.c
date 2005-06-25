@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.23 2004/07/24 20:37:04 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.24 2005/06/25 19:06:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -641,6 +641,75 @@ uio_yield(void)
 	} else {
 		lwkt_switch();
 	}
+}
+
+/*
+ * Compute the priority of a process when running in user mode.
+ * Arrange to reschedule if the resulting priority is better
+ * than that of the current process.
+ */
+void
+resetpriority(struct proc *p)
+{
+	int newpriority;
+	int interactive;
+	int opq;
+	int npq;
+
+	/*
+	 * Set p_priority for general process comparisons
+	 */
+	switch(p->p_rtprio.type) {
+	case RTP_PRIO_REALTIME:
+		p->p_priority = PRIBASE_REALTIME + p->p_rtprio.prio;
+		return;
+	case RTP_PRIO_NORMAL:
+		break;
+	case RTP_PRIO_IDLE:
+		p->p_priority = PRIBASE_IDLE + p->p_rtprio.prio;
+		return;
+	case RTP_PRIO_THREAD:
+		p->p_priority = PRIBASE_THREAD + p->p_rtprio.prio;
+		return;
+	}
+
+	/*
+	 * NORMAL priorities fall through.  These are based on niceness
+	 * and cpu use.  Lower numbers == higher priorities.
+	 */
+	newpriority = (int)(NICE_ADJUST(p->p_nice - PRIO_MIN) +
+			p->p_estcpu / ESTCPURAMP);
+
+	/*
+	 * p_interactive is -128 to +127 and represents very long term
+	 * interactivity or batch (whereas estcpu is a much faster variable).
+	 * Interactivity can modify the priority by up to 8 units either way.
+	 * (8 units == approximately 4 nice levels).
+	 */
+	interactive = p->p_interactive / 10;
+	newpriority += interactive;
+
+	newpriority = MIN(newpriority, MAXPRI);
+	newpriority = MAX(newpriority, 0);
+	npq = newpriority / PPQ;
+	crit_enter();
+	opq = (p->p_priority & PRIMASK) / PPQ;
+	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ) && opq != npq) {
+		/*
+		 * We have to move the process to another queue
+		 */
+		remrunqueue(p);
+		p->p_priority = PRIBASE_NORMAL + newpriority;
+		setrunqueue(p);
+	} else {
+		/*
+		 * We can just adjust the priority and it will be picked
+		 * up later.
+		 */
+		KKASSERT(opq == npq || (p->p_flag & P_ONRUNQ) == 0);
+		p->p_priority = PRIBASE_NORMAL + newpriority;
+	}
+	crit_exit();
 }
 
 #ifdef SMP

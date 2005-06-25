@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.42 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.43 2005/06/25 19:06:22 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -490,53 +490,11 @@ unsleep(struct thread *td)
 {
 	crit_enter();
 	if (td->td_wchan) {
-#if 0
-		if (p->p_flag & P_XSLEEP) {
-			struct xwait *w = p->p_wchan;
-			TAILQ_REMOVE(&w->waitq, p, p_procq);
-			p->p_flag &= ~P_XSLEEP;
-		} else
-#endif
 		TAILQ_REMOVE(&slpque[LOOKUP(td->td_wchan)], td, td_threadq);
 		td->td_wchan = NULL;
 	}
 	crit_exit();
 }
-
-#if 0
-/*
- * Make all processes sleeping on the explicit lock structure runnable.
- */
-void
-xwakeup(struct xwait *w)
-{
-	struct proc *p;
-
-	crit_enter();
-	++w->gen;
-	while ((p = TAILQ_FIRST(&w->waitq)) != NULL) {
-		TAILQ_REMOVE(&w->waitq, p, p_procq);
-		KASSERT(p->p_wchan == w && (p->p_flag & P_XSLEEP),
-		    ("xwakeup: wchan mismatch for %p (%p/%p) %08x", p, p->p_wchan, w, p->p_flag & P_XSLEEP));
-		p->p_wchan = NULL;
-		p->p_flag &= ~P_XSLEEP;
-		if (p->p_stat == SSLEEP) {
-			/* OPTIMIZED EXPANSION OF setrunnable(p); */
-			if (p->p_slptime > 1)
-				updatepri(p);
-			p->p_slptime = 0;
-			p->p_stat = SRUN;
-			if (p->p_flag & P_INMEM) {
-				lwkt_schedule(td);
-			} else {
-				p->p_flag |= P_SWAPINREQ;
-				wakeup((caddr_t)&proc0);
-			}
-		}
-	}
-	crit_exit();
-}
-#endif
 
 /*
  * Make all processes sleeping on the specified identifier runnable.
@@ -694,10 +652,6 @@ setrunnable(struct proc *p)
 	 * around with the userland scheduler until the thread tries to 
 	 * return to user mode.
 	 */
-#if 0
-	if (p->p_flag & P_INMEM)
-		setrunqueue(p);
-#endif
 	if (p->p_flag & P_INMEM)
 		lwkt_schedule(p->p_thread);
 	crit_exit();
@@ -722,75 +676,6 @@ clrrunnable(struct proc *p, int stat)
 		remrunqueue(p);
 	p->p_stat = stat;
 	crit_exit_quick(p->p_thread);
-}
-
-/*
- * Compute the priority of a process when running in user mode.
- * Arrange to reschedule if the resulting priority is better
- * than that of the current process.
- */
-void
-resetpriority(struct proc *p)
-{
-	int newpriority;
-	int interactive;
-	int opq;
-	int npq;
-
-	/*
-	 * Set p_priority for general process comparisons
-	 */
-	switch(p->p_rtprio.type) {
-	case RTP_PRIO_REALTIME:
-		p->p_priority = PRIBASE_REALTIME + p->p_rtprio.prio;
-		return;
-	case RTP_PRIO_NORMAL:
-		break;
-	case RTP_PRIO_IDLE:
-		p->p_priority = PRIBASE_IDLE + p->p_rtprio.prio;
-		return;
-	case RTP_PRIO_THREAD:
-		p->p_priority = PRIBASE_THREAD + p->p_rtprio.prio;
-		return;
-	}
-
-	/*
-	 * NORMAL priorities fall through.  These are based on niceness
-	 * and cpu use.  Lower numbers == higher priorities.
-	 */
-	newpriority = (int)(NICE_ADJUST(p->p_nice - PRIO_MIN) +
-			p->p_estcpu / ESTCPURAMP);
-
-	/*
-	 * p_interactive is -128 to +127 and represents very long term
-	 * interactivity or batch (whereas estcpu is a much faster variable).
-	 * Interactivity can modify the priority by up to 8 units either way.
-	 * (8 units == approximately 4 nice levels).
-	 */
-	interactive = p->p_interactive / 10;
-	newpriority += interactive;
-
-	newpriority = MIN(newpriority, MAXPRI);
-	newpriority = MAX(newpriority, 0);
-	npq = newpriority / PPQ;
-	crit_enter();
-	opq = (p->p_priority & PRIMASK) / PPQ;
-	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ) && opq != npq) {
-		/*
-		 * We have to move the process to another queue
-		 */
-		remrunqueue(p);
-		p->p_priority = PRIBASE_NORMAL + newpriority;
-		setrunqueue(p);
-	} else {
-		/*
-		 * We can just adjust the priority and it will be picked
-		 * up later.
-		 */
-		KKASSERT(opq == npq || (p->p_flag & P_ONRUNQ) == 0);
-		p->p_priority = PRIBASE_NORMAL + newpriority;
-	}
-	crit_exit();
 }
 
 /*
