@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.3 2005/06/16 16:03:12 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.4 2005/06/25 19:54:55 dillon Exp $
  */
 
 /*-
@@ -1058,7 +1058,7 @@ digi_loaddata(struct digi_softc *sc)
 static int
 digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
-	int unit, pnum, mynor, error, s;
+	int unit, pnum, mynor, error;
 	struct digi_softc *sc;
 	struct digi_p *port;
 	struct tty *tp;
@@ -1337,7 +1337,6 @@ digiparam(struct tty *tp, struct termios *t)
 	int cflag;
 	int iflag;
 	int hflow;
-	int s;
 	int window;
 
 	mynor = minor(tp->t_dev);
