@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.34 2005/06/25 20:03:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.35 2005/06/26 04:36:31 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -509,22 +509,10 @@ again:
 #endif
 
 	/*
-	 * Give the child process an estcpu skewed towards the batch side
-	 * of the parent.  This prevents batch programs from glitching 
-	 * interactive programs when they are first started.  If the child
-	 * is not a batch program it's priority will be corrected by the
-	 * scheduler.
-	 *
-	 * The interactivity model always starts at 0 (par value).
-	 */
-	p2->p_estcpu_fork = p2->p_estcpu = 
-		ESTCPULIM(p1->p_estcpu + ESTCPURAMP);
-	p2->p_interactive = 0;
-
-	/*
-	 * Inherit the scheduler
+	 * Inherit the scheduler and initialize scheduler-related fields. 
 	 */
 	p2->p_usched = p1->p_usched;
+	p2->p_usched->heuristic_forking(p1, p2);
 
 	/*
 	 * This begins the section where we must prevent the parent

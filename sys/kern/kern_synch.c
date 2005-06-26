@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.44 2005/06/25 20:03:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.45 2005/06/26 04:36:31 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -237,6 +237,7 @@ schedcpu(void *arg)
 			continue;
 		/* prevent state changes and protect run queue */
 		crit_enter();
+
 		/*
 		 * p_cpticks runs at ESTCPUFREQ but must be divided by the
 		 * load average for par-100% use.  Higher p_interactive
@@ -245,11 +246,9 @@ schedcpu(void *arg)
 		 */
 		if ((((fixpt_t)p->p_cpticks * cload(loadfac)) >> FSHIFT)  >
 		    ESTCPUFREQ / 4) {
-			if (p->p_interactive < 127)
-				++p->p_interactive;
+			p->p_usched->heuristic_estcpu(p, 1);
 		} else {
-			if (p->p_interactive > -127)
-				--p->p_interactive;
+			p->p_usched->heuristic_estcpu(p, -1);
 		}
 		/*
 		 * p_pctcpu is only for ps.

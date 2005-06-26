@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.1 2005/06/25 20:03:30 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.2 2005/06/26 04:36:33 dillon Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -26,6 +26,23 @@ struct usched {
     void (*setrunqueue)(struct proc *);
     void (*remrunqueue)(struct proc *);
     void (*resetpriority)(struct proc *);
+    void (*heuristic_forking)(struct proc *, struct proc *);
+    void (*heuristic_exiting)(struct proc *, struct proc *);
+    void (*heuristic_estcpu)(struct proc *, int);
+};
+
+union usched_data {
+    /*
+     * BSD4 scheduler. 
+     */
+    struct {
+	short	priority;	/* lower is better */
+	char	interactive;	/* interactivity heuristic */
+	char	rqindex;
+	u_int	estcpu_fork;	/* interactivity heuristic */
+    } bsd4;
+
+    int		pad[4];		/* PAD for future expansion */
 };
 
 extern struct usched	usched_bsd4;

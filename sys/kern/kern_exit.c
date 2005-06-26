@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.42 2005/06/25 20:03:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.43 2005/06/26 04:36:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -452,14 +452,16 @@ loop:
 			continue;
 
 		/* This special case handles a kthread spawned by linux_clone 
-		 * (see linux_misc.c).  The linux_wait4 and linux_waitpid functions
-		 * need to be able to distinguish between waiting on a process and
-		 * waiting on a thread.  It is a thread if p_sigparent is not SIGCHLD,
-		 * and the WLINUXCLONE option signifies we want to wait for threads
-		 * and not processes.
+		 * (see linux_misc.c).  The linux_wait4 and linux_waitpid 
+		 * functions need to be able to distinguish between waiting
+		 * on a process and waiting on a thread.  It is a thread if
+		 * p_sigparent is not SIGCHLD, and the WLINUXCLONE option
+		 * signifies we want to wait for threads and not processes.
 		 */
-		if ((p->p_sigparent != SIGCHLD) ^ ((options & WLINUXCLONE) != 0))
+		if ((p->p_sigparent != SIGCHLD) ^ 
+		    ((options & WLINUXCLONE) != 0)) {
 			continue;
+		}
 
 		nfound++;
 		if (p->p_stat == SZOMB) {
@@ -488,17 +490,8 @@ loop:
 			}
 			lwkt_wait_free(p->p_thread);
 
-			/*
-			 * Charge the parent for the child's change in
-			 * estimated cpu as of when the child exits to
-			 * account for batch scripts, large make's, etc.
-			 */
-			if (q->p_pid != 1) {
-			    if (p->p_estcpu > p->p_estcpu_fork) {
-				q->p_estcpu = ESTCPULIM(q->p_estcpu +
-						p->p_estcpu - p->p_estcpu_fork);
-			    }
-			}
+			/* scheduling hook for heuristic */
+			p->p_usched->heuristic_exiting(q, p);
 
 			/* Take care of our return values. */
 			*res = p->p_pid;

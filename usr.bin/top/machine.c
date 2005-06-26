@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.15 2005/01/14 06:00:04 cpressey Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.16 2005/06/26 04:36:35 dillon Exp $
  */
 
 
@@ -611,7 +611,7 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
 	    namelength, namelength,
 	    (*get_userid)(EP(pp, e_ucred.cr_ruid)),
 	    (show_threads && (TP(pp, td_proc) == NULL)) ? TP(pp, td_pri) :
-	    	PP(pp, p_priority),
+	    	PP(pp, p_usdata.bsd4.priority),
 	    nice,
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),
@@ -698,7 +698,7 @@ static unsigned char sorted_state[] =
                 sorted_state[(unsigned char) PP(p1, p_stat)]) == 0)
 
 #define ORDERKEY_PRIO \
-  if ((result = PP(p2, p_priority) - PP(p1, p_priority)) == 0)
+  if ((result = PP(p2, p_usdata.bsd4.priority) - PP(p1, p_usdata.bsd4.priority)) == 0)
 
 #define ORDERKEY_KTHREADS \
   if ((result = (TP(p1, td_proc) == NULL) - (TP(p2, td_proc) == NULL)) == 0)

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.58 2005/06/25 21:18:42 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.59 2005/06/26 04:36:33 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -169,7 +169,6 @@ struct	proc {
 
 	/* scheduling */
 	u_int		p_estcpu;	/* Time averaged value of p_cpticks. */
-	u_int		p_estcpu_fork;	/* estcpu as of fork, used in batch detect */
 	int		p_cpticks;	/* Ticks of cpu time. */
 	fixpt_t		p_pctcpu;	/* %cpu for this process */
 	u_int		p_swtime;	/* Time swapped in or out. */
@@ -184,15 +183,13 @@ struct	proc {
 
 	struct vnode	*p_textvp;	/* Vnode of executable. */
 
-	char		p_lock;		/* Process lock (prevent swap) count. */
-	short		p_priority;	/* overall priority (lower==better) */
-	char		p_rqindex;	/* Run queue index */
+	union usched_data p_usdata;	/* User scheduler specific */
 	
 	unsigned int	p_stops;	/* procfs event bitmask */
 	unsigned int	p_stype;	/* procfs stop event type */
 	char		p_step;		/* procfs stop *once* flag */
 	unsigned char	p_pfsflags;	/* procfs flags */
-	char		p_pad3[2];	/* padding for alignment */
+	char		p_pad2[2];	/* padding for alignment */
 	struct		sigiolst p_sigiolst;	/* list of sigio sources */
 	int		p_sigparent;	/* signal to parent on exit */
 	sigset_t	p_oldsigmask;	/* saved mask from before sigpause */
@@ -208,8 +205,9 @@ struct	proc {
 
 	sigset_t	p_sigmask;	/* Current signal mask. */
 	stack_t		p_sigstk;	/* sp & on stack state variable */
-	char		p_interactive;	/* long term interactivity par-0 */
+	char		p_lock;		/* Process lock (prevent swap) count. */
 	char		p_nice;		/* Process "nice" value. */
+	char		p_pad3[2];
 
 	struct pgrp	*p_pgrp;	/* Pointer to process group. */
 

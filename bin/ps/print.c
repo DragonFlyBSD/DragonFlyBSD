@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.20 2005/03/17 02:17:54 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.21 2005/06/26 04:36:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -238,12 +238,14 @@ state(const KINFO *k, const struct varent *vent)
 /*
  * Normalized priority (lower is better).  For pure threads
  * output a negated LWKT priority (so lower still means better).
+ *
+ * XXX bsd4 scheduler specific.
  */
 void
 pri(const KINFO *k, const struct varent *vent)
 {
 	if (KI_THREAD(k)->td_proc)
-	    printf("%*d", vent->width, KI_PROC(k)->p_priority);
+	    printf("%*d", vent->width, KI_PROC(k)->p_usdata.bsd4.priority);
 	else
 	    printf("%*d", vent->width, -(KI_THREAD(k)->td_pri & TDPRI_MASK));
 }

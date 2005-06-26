@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.15 2004/11/17 10:09:44 joerg Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.16 2005/06/26 04:36:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -589,7 +589,7 @@ pscomp(const void *a, const void *b)
 		  KI_EPROC(k)->e_vm.vm_tsize)
 
 	if (sortby == SORTIAC)
-		return (KI_PROC((const KINFO *)a)->p_interactive - KI_PROC((const KINFO *)b)->p_interactive);
+		return (KI_PROC((const KINFO *)a)->p_usdata.bsd4.interactive - KI_PROC((const KINFO *)b)->p_usdata.bsd4.interactive);
 	if (sortby == SORTCPU)
 		return (getpcpu((const KINFO *)b) - getpcpu((const KINFO *)a));
 	if (sortby == SORTMEM)
