@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.59 2005/06/26 04:36:33 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.60 2005/06/26 22:03:23 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -369,39 +369,14 @@ extern struct proclist zombproc;	/* List of zombie processes. */
 extern struct proc *initproc;		/* Process slot for init */
 extern struct thread *pagethread, *updatethread;
 
-#define	NQS	32			/* 32 run queues. */
-TAILQ_HEAD(rq, proc);
-
 /*
- * Scheduler estcpu macros.
- *
- * p_priority = NICE_ADJUST(p->p_nice - PRIO_MIN) +
- *			p->p_estcpu / ESTCPURAMP;
- *
- * NICE_WEIGHT determines the p_estcpu overlap between nice levels.   It
- * cannot exceed 3.0.  A value of 2.0 gives us a nice small overlap between
- * nice -20 and nice +0.  A value of 3.0 reduces the overlap while a value
- * of 1.0 increases the overlap.
- *
- * ESTCPURAMP determines how slowly estcpu effects the process priority.
- * Higher numbers result in slower ramp-up times because estcpu is incremented
- * once per scheduler tick and maxes out at ESTCPULIM.
- *
- * ESTCPULIM = (127 - 2 * 40) * 8 = 376
- *
- * NOTE: ESTCPUVFREQ is the 'virtual' estcpu accumulation frequency, whereas
- * ESTCPUFREQ is the actual interrupt rate.  The ratio is used to scale
- * both the ramp-up and the decay calculations in kern_synch.c.  
+ * Scheduler independant variables.  The primary scheduler polling frequency,
+ * the maximum ESTCPU value, and the weighting factor for nice values.  A
+ * cpu bound program's estcpu will increase to ESTCPUMAX - 1.
  */
-
-#define ESTCPURAMP	8			/* higher equals slower */
-#define NICE_ADJUST(value)	(((unsigned int)(NICE_WEIGHT * 128) * (value)) / 128)
-#define ESTCPUMAX	((MAXPRI - NICE_ADJUST(PRIO_MAX - PRIO_MIN)) * ESTCPURAMP)
+#define ESTCPUMAX	128
 #define ESTCPULIM(v)	min((v), ESTCPUMAX)
-#define ESTCPUFREQ	20			/* estcpu update frequency */
-#define ESTCPUVFREQ	40			/* virtual freq controls ramp*/
-#define	NICE_WEIGHT	2.0			/* priorities per nice level */
-#define	PPQ		((MAXPRI + 1) / NQS)	/* priorities per queue */
+#define ESTCPUFREQ	50
 
 extern	u_long ps_arg_cache_limit;
 extern	int ps_argsopen;
@@ -425,7 +400,6 @@ void	mi_switch (struct proc *p);
 void	procinit (void);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
-void	resetpriority (struct proc *);
 int	roundrobin_interval (void);
 void	resched_cpus(u_int32_t mask);
 void	schedulerclock (void *dummy);

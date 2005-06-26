@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.6 2005/06/26 22:03:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1977,7 +1977,7 @@ ndis_wi_ioctl_get(ifp, command, data)
 		error = ndis_set_info(sc, OID_802_11_BSSID_LIST_SCAN,
 		    NULL, &len);
 		if (error == 0)
-			tsleep(&error, PPAUSE|PCATCH, "ssidscan", hz * 2);
+			tsleep(&error, PCATCH, "ssidscan", hz * 2);
 		len = 0;
 		error = ndis_get_info(sc, OID_802_11_BSSID_LIST, NULL, &len);
 		if (error != ENOSPC)

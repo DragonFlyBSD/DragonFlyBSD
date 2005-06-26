@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.45 2005/06/26 04:36:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.46 2005/06/26 22:03:22 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -93,6 +93,10 @@ static void	roundrobin (void *arg);
 static void	schedcpu (void *arg);
 static void	updatepri (struct proc *p);
 
+/*
+ * Adjust the scheduler quantum.  The quantum is specified in microseconds.
+ * Note that 'tick' is in microseconds per tick.
+ */
 static int
 sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 {
@@ -159,7 +163,7 @@ resched_cpus(u_int32_t mask)
 
 /*
  * The load average is scaled by FSCALE (2048 typ).  The estimated cpu is
- * incremented at a rate of ESTCPUVFREQ per second (40hz typ), but this is
+ * incremented at a rate of ESTCPUFREQ per second (50hz typ), but this is
  * divided up across all cpu bound processes running in the system so an
  * individual process will get less under load.  ESTCPULIM typicaly caps
  * out at ESTCPUMAX (around 376, or 11 nice levels).
@@ -170,16 +174,14 @@ resched_cpus(u_int32_t mask)
  * should reach this value when estcpu reaches ESTCPUMAX.  That calculation
  * is:
  *
- *	ESTCPUMAX * decay = ESTCPUVFREQ / load
- *	decay = ESTCPUVFREQ / (load * ESTCPUMAX)
+ *	ESTCPUMAX * decay = ESTCPUFREQ / load
+ *	decay = ESTCPUFREQ / (load * ESTCPUMAX)
  *	decay = estcpu * 0.053 / load
  *
  * If the load is less then 1.0 we assume a load of 1.0.
  */
 
 #define cload(loadav)	((loadav) < FSCALE ? FSCALE : (loadav))
-#define decay_cpu(loadav,estcpu)	\
-    ((estcpu) * (FSCALE * ESTCPUVFREQ / ESTCPUMAX) / cload(loadav))
 
 /* decay 95% of `p_pctcpu' in 60 seconds; see CCPU_SHIFT before changing */
 static fixpt_t	ccpu = 0.95122942450071400909 * FSCALE;	/* exp(-1/20) */
@@ -212,7 +214,7 @@ schedcpu(void *arg)
 {
 	fixpt_t loadfac = averunnable.ldavg[0];
 	struct proc *p;
-	unsigned int ndecay;
+	int ndecay;
 
 	FOREACH_PROC_IN_SYSTEM(p) {
 		/*
@@ -228,28 +230,12 @@ schedcpu(void *arg)
 		/*
 		 * If the process has slept the entire second,
 		 * stop recalculating its priority until it wakes up.
-		 *
-		 * Note that interactive calculations do not occur for
-		 * long sleeps (because that isn't necessarily indicative
-		 * of an interactive process).
 		 */
 		if (p->p_slptime > 1)
 			continue;
 		/* prevent state changes and protect run queue */
 		crit_enter();
 
-		/*
-		 * p_cpticks runs at ESTCPUFREQ but must be divided by the
-		 * load average for par-100% use.  Higher p_interactive
-		 * values mean less interactive, lower values mean more 
-		 * interactive.
-		 */
-		if ((((fixpt_t)p->p_cpticks * cload(loadfac)) >> FSHIFT)  >
-		    ESTCPUFREQ / 4) {
-			p->p_usched->heuristic_estcpu(p, 1);
-		} else {
-			p->p_usched->heuristic_estcpu(p, -1);
-		}
 		/*
 		 * p_pctcpu is only for ps.
 		 */
@@ -262,13 +248,41 @@ schedcpu(void *arg)
 		p->p_pctcpu += ((FSCALE - ccpu) *
 			(p->p_cpticks * FSCALE / ESTCPUFREQ)) >> FSHIFT;
 #endif
+		/*
+		 * A single cpu-bound process with a system load of 1.0 will
+		 * increment cpticks by ESTCPUFREQ per second.  Scale
+		 * cpticks by the load to normalize it relative to 
+		 * ESTCPUFREQ.  This gives us an indication as to what
+		 * proportional percentage of available cpu the process has
+		 * used with a nominal range of 0 to ESTCPUFREQ.
+		 *
+		 * It should be noted that since the load average is a
+		 * trailing indicator, a jump in the load will cause this
+		 * calculation to be higher then normal.  This is desireable
+		 * because it penalizes the processes responsible for the
+		 * spike.
+		 */
+		ndecay = (int)((p->p_cpticks * cload(loadfac)) >> FSHIFT);
+
+		/*
+		 * Reduce p_estcpu based on the amount of cpu that could
+		 * have been used but wasn't.  Convert ndecay from the
+		 * amount used to the amount not used, and scale with our
+		 * nice value.
+		 *
+		 * The nice scaling determines how much the nice value
+		 * effects the cpu the process gets.
+		 */
+		ndecay = ESTCPUFREQ - ndecay;
+		ndecay -= p->p_nice * (ESTCPUMAX / 16) / PRIO_MAX;
+
 		p->p_cpticks = 0;
-		ndecay = decay_cpu(loadfac, p->p_estcpu);
-		if (p->p_estcpu > ndecay)
+		if (ndecay > 0) {
+			if (ndecay > p->p_estcpu / 2)
+				ndecay = p->p_estcpu / 2;
 			p->p_estcpu -= ndecay;
-		else
-			p->p_estcpu = 0;
-		p->p_usched->resetpriority(p);
+			p->p_usched->resetpriority(p);
+		}
 		crit_exit();
 	}
 	wakeup((caddr_t)&lbolt);
@@ -283,14 +297,16 @@ schedcpu(void *arg)
 static void
 updatepri(struct proc *p)
 {
-	unsigned int ndecay;
+	int ndecay;
 
-	ndecay = decay_cpu(averunnable.ldavg[0], p->p_estcpu) * p->p_slptime;
-	if (p->p_estcpu > ndecay)
-		p->p_estcpu -= ndecay;
-	else
-		p->p_estcpu = 0;
-	p->p_usched->resetpriority(p);
+	ndecay = p->p_slptime * ESTCPUFREQ;
+	if (ndecay > 0) {
+		if (p->p_estcpu > ndecay)
+			p->p_estcpu -= ndecay;
+		else
+			p->p_estcpu = 0;
+		p->p_usched->resetpriority(p);
+	}
 }
 
 /*
@@ -303,16 +319,15 @@ static TAILQ_HEAD(slpquehead, thread) slpque[TABLESIZE];
 #define LOOKUP(x)	(((intptr_t)(x) >> 8) & (TABLESIZE - 1))
 
 /*
- * During autoconfiguration or after a panic, a sleep will simply
- * lower the priority briefly to allow interrupts, then return.
+ * General scheduler initialization.  We force a reschedule 25 times
+ * a second by default.
  */
-
 void
 sleepinit(void)
 {
 	int i;
 
-	sched_quantum = hz/10;
+	sched_quantum = (hz + 24) / 25;
 	hogticks = 2 * sched_quantum;
 	for (i = 0; i < TABLESIZE; i++)
 		TAILQ_INIT(&slpque[i]);
@@ -331,6 +346,9 @@ sleepinit(void)
  *
  * Note that if we are a process, we release_curproc() before messing with
  * the LWKT scheduler.
+ *
+ * During autoconfiguration or after a panic, a sleep will simply
+ * lower the priority briefly to allow interrupts, then return.
  */
 int
 tsleep(void *ident, int flags, const char *wmesg, int timo)
@@ -780,12 +798,6 @@ sched_setup(void *dummy)
  * time in 5 * loadav seconds.  This causes the system to favor processes
  * which haven't run much recently, and to round-robin among other processes.
  *
- * The actual schedulerclock interrupt rate is ESTCPUFREQ, but we generally
- * want to ramp-up at a faster rate, ESTCPUVFREQ, so p_estcpu is scaled
- * by (ESTCPUVFREQ / ESTCPUFREQ).  You can control the ramp-up/ramp-down
- * rate by adjusting ESTCPUVFREQ in sys/proc.h in integer multiples
- * of ESTCPUFREQ.
- *
  * WARNING! called from a fast-int or an IPI, the MP lock MIGHT NOT BE HELD
  * and we cannot block.
  */
@@ -798,7 +810,7 @@ schedulerclock(void *dummy)
 	td = curthread;
 	if ((p = td->td_proc) != NULL) {
 		p->p_cpticks++;		/* cpticks runs at ESTCPUFREQ */
-		p->p_estcpu = ESTCPULIM(p->p_estcpu + ESTCPUVFREQ / ESTCPUFREQ);
+		p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
 		if (try_mplock()) {
 			p->p_usched->resetpriority(p);
 			rel_mplock();

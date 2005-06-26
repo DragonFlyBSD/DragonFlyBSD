@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.10 2005/06/10 17:10:26 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.11 2005/06/26 22:03:29 dillon Exp $
  */
 
 /*
@@ -488,7 +488,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
     case TWEIO_COMMAND:
 	/* get a request */
 	while (twe_get_request(sc, &tr))
-	    tsleep(sc, PPAUSE, "twioctl", hz);
+	    tsleep(sc, 0, "twioctl", hz);
 
 	/*
 	 * Save the command's request ID, copy the user-supplied command in,

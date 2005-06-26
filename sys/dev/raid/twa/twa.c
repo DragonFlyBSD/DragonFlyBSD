@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.3 2005/06/10 17:10:26 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.4 2005/06/26 22:03:28 dillon Exp $
  */
 
 /*
@@ -575,7 +575,7 @@ twa_ioctl(struct twa_softc *sc, int cmd, void *buf)
 			 * No free request packets available.  Sleep until
 			 * one becomes available.
 			 */
-			tsleep(&(sc->twa_wait_timeout), PPAUSE, "twioctl", hz);
+			tsleep(&(sc->twa_wait_timeout), 0, "twioctl", hz);
 
 		/*
 		 * Make sure that the data buffer sent to firmware is a 

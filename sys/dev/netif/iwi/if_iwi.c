@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.3 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.4 2005/06/26 22:03:25 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -1733,7 +1733,7 @@ iwi_wi_ioctl_get(struct ifnet *ifp, caddr_t data)
 	case WI_RID_READ_APS:
 		ieee80211_begin_scan(ifp);
 		(void) tsleep(IWI_FW_SCAN_COMPLETED(sc), 
-			PPAUSE|PCATCH, "ssidscan", hz * 2);
+			PCATCH, "ssidscan", hz * 2);
 		ieee80211_end_scan(ifp);
 		break;
 	default:

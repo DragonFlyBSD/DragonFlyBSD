@@ -37,7 +37,7 @@
  *
  *	@(#)param.c	8.3 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/kern/subr_param.c,v 1.42.2.10 2002/03/09 21:05:47 silby Exp $
- * $DragonFly: src/sys/kern/subr_param.c,v 1.6 2005/04/14 07:55:36 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_param.c,v 1.7 2005/06/26 22:03:22 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -73,7 +73,7 @@
 int	hz;
 int	stathz;
 int	profhz;
-int	tick;
+int	tick;				/* tick interval in microseconds */
 int	maxusers;			/* base tunable */
 int	maxproc;			/* maximum # of processes */
 int	maxprocperuid;			/* max # of procs per user */
