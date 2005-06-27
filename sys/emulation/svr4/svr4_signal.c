@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.9 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.10 2005/06/27 01:49:59 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/signal.h>
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
+#include <sys/thread2.h>
 
 #include "svr4.h"
 #include "svr4_types.h"
@@ -531,7 +532,7 @@ svr4_sys_sigprocmask(struct svr4_sys_sigprocmask_args *uap)
 
 	svr4_to_bsd_sigset(&sss, &bss);
 
-	(void) splhigh();
+	crit_enter();
 
 	switch (SCARG(uap, how)) {
 	case SVR4_SIG_BLOCK:
@@ -553,7 +554,7 @@ svr4_sys_sigprocmask(struct svr4_sys_sigprocmask_args *uap)
 		break;
 	}
 
-	(void) spl0();
+	crit_exit();
 
 	return error;
 }

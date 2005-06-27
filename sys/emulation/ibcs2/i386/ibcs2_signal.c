@@ -26,13 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_signal.c,v 1.16 1999/10/10 09:14:31 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.7 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.8 2005/06/27 01:49:59 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
+#include <sys/thread2.h>
 
 #include "ibcs2_types.h"
 #include "ibcs2_signal.h"
@@ -402,7 +403,7 @@ ibcs2_sigprocmask(struct ibcs2_sigprocmask_args *uap)
 
 	ibcs2_to_bsd_sigset(&iss, &bss);
 
-	(void) splhigh();
+	crit_enter();
 
 	switch (SCARG(uap, how)) {
 	case IBCS2_SIG_BLOCK:
@@ -424,7 +425,7 @@ ibcs2_sigprocmask(struct ibcs2_sigprocmask_args *uap)
 		break;
 	}
 
-	(void) spl0();
+	crit_exit();
 
 	return error;
 }
