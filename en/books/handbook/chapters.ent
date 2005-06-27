@@ -1,5 +1,5 @@
 <!-- 
-     Creates entities for each chapter in the FreeBSD Handbook. Each entity
+     Creates entities for each chapter in the Handbook. Each entity
      is named chap.foo, where foo is the value of the id attribute on that
      chapter, and corresponds to the name of the directory in which that
      chapter's .sgml file is stored.
@@ -7,7 +7,7 @@
      Chapters should be listed in the order in which they are referenced.
  
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/chapters.ent,v 1.25 2003/11/24 18:26:34 hrs Exp $
-     $DragonFly: doc/en/books/handbook/chapters.ent,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/chapters.ent,v 1.2 2005/06/27 23:42:11 reed Exp $
 -->
 
 <!ENTITY chap.preface			SYSTEM "preface/preface.sgml">

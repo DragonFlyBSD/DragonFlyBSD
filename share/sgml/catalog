@@ -1,13 +1,13 @@
   -- ...................................................................... --
   -- FreeBSD SGML Public Identifiers ...................................... --
   
-  -- $DragonFly: doc/share/sgml/catalog,v 1.2 2004/06/25 15:54:58 justin Exp $
+  -- $DragonFly: doc/share/sgml/catalog,v 1.3 2005/06/27 23:42:11 reed Exp $
   --
 
   -- ...................................................................... --
   -- Language neutral ..................................................... --
  
-  -- These identifiers are shared across all translations of the FreeBSD
+  -- These identifiers are shared across all translations of the
      documentation, even though the listed language is "EN"
   --
 
@@ -45,7 +45,7 @@ PUBLIC "-//DragonFlyBSD//ENTITIES DocBook URL Entities//EN"
   -- English specific ..................................................... --
 
   -- These identifiers should only be used by English language versions of 
-     the FreeBSD Documentation.
+     the documentation.
 
      All other translations should base their FPIs on these, but change the
      final parameter in the FPI to represent the target language, as 
