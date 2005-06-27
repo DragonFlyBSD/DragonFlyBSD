@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/cutting-edge/chapter.sgml,v 1.200 2004/05/17 19:48:36 simon Exp $
-     $DragonFly: doc/en/books/handbook/cutting-edge/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
+     $DragonFly: doc/en/books/handbook/cutting-edge/chapter.sgml,v 1.3 2005/06/27 23:22:08 reed Exp $
 -->
 
 <chapter id="updating">
@@ -75,7 +75,7 @@ TODO: link to an explanation of ports and dfports, so people know why to go thro
 
       <para><userinput>hostname</userinput> should be the closest mirror to you.  A 
       list of mirrors sites can be found on the 
-      <ulink url="http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/cvsup.html#HANDBOOK-MIRRORS-CHAPTER-SGML-CENTRAL-CVSUP">FreeBSD website</ulink>.</para>
+      <ulink url="http://www.dragonflybsd.org/main/download.cgi">&os; website</ulink>.</para>
   </sect1>
 
   <sect1 id="updating-before-building">
