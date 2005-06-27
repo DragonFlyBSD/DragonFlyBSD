@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.5 2004/12/31 03:47:05 dillon Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.6 2005/06/27 23:23:44 reed Exp $
 -->
 
 <chapter id="introduction">
@@ -145,11 +145,11 @@
 	</indexterm>
 	<indexterm>
 	  <primary>binary compatibility</primary>
-	  <secondary>NetBSD</secondary>
+	  <secondary>&netbsd;</secondary>
 	</indexterm>
 	<listitem>
 	  <para><emphasis>Binary compatibility</emphasis> with many
-	    programs built for Linux, SCO, SVR4, BSDI and NetBSD.</para>
+	    programs built for Linux, SCO, SVR4, BSDI and &netbsd;.</para>
 	</listitem>
 	
 	<listitem>
@@ -232,6 +232,9 @@
       <para>&os; is based on the 4.4BSD-Lite release from Computer
         Systems Research Group (CSRG) at the University of California at
 	Berkeley, along with later development of FreeBSD by the FreeBSD 
+	
+	<indexterm><primary>FreeBSD</primary></indexterm>
+
 	Project.  It carries on the distinguished tradition of BSD
 	systems development.  In addition to the fine work provided by
 	CSRG, the &os; Project has put in many thousands of hours in
@@ -401,8 +404,6 @@
       code base was taken from the 4.8 release of FreeBSD, which offered 
       better performance and more complete features.  </para>
 
-      <indexterm><primary>Greenman, David</primary></indexterm>
-      <indexterm><primary>Walnut Creek CDROM</primary></indexterm>
       <para>Development has proceeded at a very quick rate since then, with 
       Matt Dillon and a small group of developers fixing longstanding 
       BSD bugs and modernizing the new &os; system.</para>
@@ -513,7 +514,7 @@
     <sect2 id="relnotes">
       <title>The Current &os; Release</title>
 
-      <indexterm><primary>NetBSD</primary></indexterm>
+      <indexterm><primary>&netbsd;</primary></indexterm>
       <indexterm><primary>FreeBSD</primary></indexterm>
       <indexterm><primary>OpenBSD</primary></indexterm>
       <indexterm><primary>386BSD</primary></indexterm>
@@ -531,7 +532,7 @@
         &pentium;&nbsp;4 (or compatible),
         and &xeon; based computer
         systems.  It is based primarily on FreeBSD 4.8, and includes 
-        enhancements from U.C. Berkeley's CSRG group, NetBSD, OpenBSD, 
+        enhancements from U.C. Berkeley's CSRG group, &netbsd;, OpenBSD, 
         386BSD, and the Free Software Foundation.</para>
 <!-- mention of a new ports system goes here, once one exists. -->
 
@@ -574,7 +575,7 @@
     <sect2>
       <title>"&os;" Origin</title>
 
-      <indexterm><primary>NetBSD</primary></indexterm>
+      <indexterm><primary>&netbsd;</primary></indexterm>
       <indexterm><primary>FreeBSD</primary></indexterm>
       <indexterm><primary>OpenBSD</primary></indexterm>
       <indexterm><primary>386BSD</primary></indexterm>
