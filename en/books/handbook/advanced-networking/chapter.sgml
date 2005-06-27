@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.2 2004/08/02 18:47:42 justin Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.3 2005/06/27 23:42:50 reed Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -3409,13 +3409,13 @@ ISDN BRI line</literallayout>
       <indexterm><primary>HP-UX</primary></indexterm>
       <indexterm><primary>AIX</primary></indexterm>
       <indexterm><primary>Linux</primary></indexterm>
-      <indexterm><primary>NetBSD</primary></indexterm>
+      <indexterm><primary>&netbsd;</primary></indexterm>
       <indexterm><primary>OpenBSD</primary></indexterm>
       <para>NIS, which stands for Network Information Services, was
         developed by Sun Microsystems to centralize administration of &unix;
         (originally &sunos;) systems.  It has now essentially become an
         industry standard; all major &unix; like systems (&solaris;, HP-UX, &aix;, Linux,
-        NetBSD, OpenBSD, FreeBSD, &os;, etc.) support NIS.</para>
+        &netbsd;, OpenBSD, FreeBSD, &os;, etc.) support NIS.</para>
 
       <indexterm><primary>yellow pages</primary><see>NIS</see></indexterm>
       <para>NIS was formerly known as Yellow Pages, but because of
