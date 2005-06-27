@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.21 2005/06/16 21:39:50 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.22 2005/06/27 14:48:29 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -119,12 +119,6 @@ int			multicast_mode  = NO_MULTICAST;
 int			multicast_scope;
 struct sockaddr_in	multicast_addr;
 
-/*
- * Alarm interval. Don't forget to change the down time check in ruptime
- * if this is changed.
- */
-#define AL_INTERVAL (3 * 60)
-
 char	myname[MAXHOSTNAMELEN];
 
 /*
@@ -174,6 +168,7 @@ main(int argc, char *argv[])
 	struct pollfd pfd[1];
 	char *ep, *cp;
 	int on = 1;
+	int send_time = 180;	/* Default time, 180 seconds (3 minutes) */
 	struct sockaddr_in m_sin;
 	uid_t unpriv_uid;
 	gid_t unpriv_gid;
@@ -202,8 +197,28 @@ main(int argc, char *argv[])
 					MAX_MULTICAST_SCOPE);
 			}
 			else multicast_mode = PER_INTERFACE_MULTICAST;
-		}
-		else if (strcmp(*argv, "-i") == 0)
+		} else if (strcmp(*argv, "-g") == 0) {
+			if (argc > 1 && *(argv + 1)[0] != '-') {
+				argv++, argc--;
+				send_time = (int)strtol(*argv, &ep, 10);
+				if (send_time <= 0)
+					errx(1, "time must be greater than 0");
+
+				if (ep[0] != '\0') {
+					if (ep[1] != '\0')
+						errx(1, "invalid argument: %s", *argv);
+					if (*ep == 'M' || *ep == 'm') {
+						/* Time in minutes. */
+						send_time *= 60;
+					} else
+						errx(1, "invalid argument: %s", *argv);
+				}
+
+				if (send_time > 180)
+					errx(1, "cannot be greater than 180 seconds (3 minutes)");
+			} else
+				errx(1, "missing argument");
+		} else if (strcmp(*argv, "-i") == 0)
 			insecure_mode = 1;
 		else if (strcmp(*argv, "-l") == 0)
 			quiet_mode = 1;
@@ -263,13 +278,13 @@ main(int argc, char *argv[])
 
 	if (!quiet_mode) {
 		send_host_information();
-		delta = AL_INTERVAL;
+		delta = send_time;
 		gettimeofday(&now, NULL);
 		timeadd(&now, delta, &next);
 	}
 
 	pfd[0].fd = s;
-	pfd[0].revents = POLLIN;
+	pfd[0].events = POLLIN;
  
 	for (;;) {
 		int n;

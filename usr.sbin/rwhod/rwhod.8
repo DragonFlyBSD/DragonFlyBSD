@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)rwhod.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/usr.sbin/rwhod/rwhod.8,v 1.13.2.4 2003/03/11 22:31:33 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/rwhod/rwhod.8,v 1.2 2003/06/17 04:30:03 dillon Exp $
+.\" $DragonFly: src/usr.sbin/rwhod/rwhod.8,v 1.3 2005/06/27 14:48:29 liamfoy Exp $
 .\"
 .Dd December 11, 1993
 .Dt RWHOD 8
@@ -44,6 +44,7 @@
 .Op Fl i
 .Op Fl p
 .Op Fl l
+.Op Fl g Ar time
 .Op Fl m Op Ar ttl
 .Sh DESCRIPTION
 The
@@ -79,6 +80,18 @@ The
 option enables insecure mode, which causes
 .Nm
 to ignore the source port on incoming packets.
+.Pp
+The
+.Fl g
+option allows for the broadcast
+.Ar time
+for 
+.Nm
+to be reduced below 3 minutes. This enables for more 'real' time statistics
+of the host.
+The
+.Ar time
+operand can be given as 30 (30 seconds) or 1m (1 minute), for example.
 .Pp
 The
 .Fl p
