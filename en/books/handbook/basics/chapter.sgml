@@ -2,7 +2,7 @@
      The DragonFly BSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.3 2004/10/07 20:03:22 justin Exp $
+     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.4 2005/06/27 23:44:28 reed Exp $
 -->
 
 <chapter id="basics">
@@ -727,6 +727,11 @@ total 530
 	    </row>
 	    
 	    <row>
+	      <entry><filename class="directory">/usr/dfports</filename></entry>
+	      <entry>The &os; ports collection (optional).</entry>
+	    </row>
+	    
+	    <row>
 	      <entry><filename class="directory">/usr/include/</filename></entry>
 	      <entry>Standard C include files.</entry>
 	    </row>
@@ -772,13 +777,23 @@ total 530
 	    </row>
 	    
 	    <row>
-	      <entry><filename class="directory">/usr/ports</filename></entry>
-	      <entry>The FreeBSD ports collection (optional).</entry>
+	      <entry><filename class="directory">/usr/pkg</filename></entry>
+	      <entry>Used as
+	        the default destination for the files installed via the
+		&pkgsrc; framework or &pkgsrc; packages. The configuration
+		directory is tunable, but the default location is
+		<filename>/usr/pkg/etc</filename>.
+	      </entry>
 	    </row>
 
 	    <row>
-	      <entry><filename class="directory">/usr/dfports</filename></entry>
-	      <entry>The &os; ports collection (optional).</entry>
+	      <entry><filename class="directory">/usr/pkgsrc</filename></entry>
+	      <entry>The &pkgsrc; collection for installing packages (optional).</entry>
+	    </row>
+
+	    <row>
+	      <entry><filename class="directory">/usr/ports</filename></entry>
+	      <entry>The FreeBSD ports collection (optional).</entry>
 	    </row>
 	    
 	    <row>
@@ -1922,7 +1937,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       variables.  &os; comes with a set of shells, such as 
       <command>sh</command>, the Bourne Shell, and <command>tcsh</command>, 
       the improved C-shell.  Many other shells are available
-      from the FreeBSD Ports Collection, such as
+      from &pkgsrc; and the FreeBSD Ports collections, such as
       <command>zsh</command> and <command>bash</command>.</para>
 
     <para>Which shell do you use?  It is really a matter of taste.  If you
@@ -2166,7 +2181,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para>&os; also comes with more powerful text editors such as
       <command>vi</command> as part of the base system, while other editors, like
       <command>emacs</command> and <command>vim</command>,
-      are part of the FreeBSD Ports Collection.  These editors offer much
+      are part of the &pkgsrc; and FreeBSD Ports collections.  These editors offer much
       more functionality and power at the expense of being a little more
       complicated to learn.  However if you plan on doing a lot of text
       editing, learning a more powerful editor such as
