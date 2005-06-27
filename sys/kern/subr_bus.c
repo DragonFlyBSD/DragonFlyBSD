@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.26 2005/05/24 20:58:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.27 2005/06/27 12:24:46 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -1060,14 +1060,8 @@ device_probe_and_attach(device_t dev)
 		device_t tmp;
 
 		printf("%s", device_get_nameunit(dev));
-		for (tmp = dev->parent; tmp; tmp = tmp->parent) {
-		    const char *desc;
-
-		    if ((desc = device_get_desc(tmp)) != NULL)
-			printf(".%s[%s]", device_get_nameunit(tmp), desc);
-		    else
+		for (tmp = dev->parent; tmp; tmp = tmp->parent)
 			printf(".%s", device_get_nameunit(tmp));
-		}
 		printf("\n");
 	}
 	if (!device_is_quiet(dev))
