@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.3 2004/08/02 18:47:44 justin Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.4 2005/06/27 23:49:01 reed Exp $
 -->
 
 <chapter id="linuxemu">
@@ -190,10 +190,10 @@ Id Refs Address    Size     Name
 	  and the runtime linker.  Also, you will need to create a
 	  <quote>shadow root</quote> directory,
 	  <filename>/compat/linux</filename>, for Linux libraries on your
-	  FreeBSD system.  Any shared libraries opened by Linux programs
-	  run under FreeBSD will look in this tree first.  So, if a Linux
+	  &os; system.  Any shared libraries opened by Linux programs
+	  run under &os; will look in this tree first.  So, if a Linux
 	  program loads, for example, <filename>/lib/libc.so</filename>,
-	  FreeBSD will first try to open
+	  &os; will first try to open
 	  <filename>/compat/linux/lib/libc.so</filename>, and if that does
 	  not exist, it will then try <filename>/lib/libc.so</filename>.
 	  Shared libraries should be installed in the shadow tree
@@ -384,7 +384,7 @@ multi on</programlisting>
     <para>The Linux version of <application>&mathematica;</application>
       runs perfectly under &os;
       however the binaries shipped by Wolfram need to be branded so that
-      FreeBSD knows to use the Linux ABI to execute them.</para>
+      &os; knows to use the Linux ABI to execute them.</para>
 
     <para>The Linux version of <application>&mathematica;</application>
       or <application>&mathematica; for Students</application> can
@@ -1226,7 +1226,7 @@ export PATH</programlisting>
 	<application>&sap.r3; System</application>
 	with <application>&oracle; Database</application>
 	for Linux onto a &os; machine, including the installation
-	of FreeBSD and <application>&oracle;</application>. Two different
+	of &os; and <application>&oracle;</application>. Two different
 	configurations will be described:</para>
 
       <itemizedlist>
@@ -1573,6 +1573,7 @@ export PATH</programlisting>
 
     <sect2 id="installation">
       <title>Installation of FreeBSD</title>
+      <!-- reed: todo: this all needs to be removed or fixed for DragonFly -->
 
       <para>First you have to install FreeBSD.</para>
 
@@ -1729,7 +1730,7 @@ pam-0.68-7.i386.rpm</userinput></screen>
 	  relinking during <application>&oracle;</application> installation
 	  will not work).  There are some other issues regarding
 	  relinking of <application>&oracle;</application>, but that is
-	  a <application>&oracle;</application> Linux issue, not FreeBSD specific.</para>
+	  a <application>&oracle;</application> Linux issue, not &os; specific.</para>
 
       </sect3>
 
@@ -3228,11 +3229,11 @@ options SHMMAXPGS=393216
       <title>How Does It Work?</title>
       <indexterm><primary>execution class loader</primary></indexterm>
 
-      <para>FreeBSD has an abstraction called an <quote>execution class
+      <para>&os; has an abstraction called an <quote>execution class
 	loader</quote>.  This is a wedge into the &man.execve.2; system
 	call.</para>
 
-      <para>What happens is that FreeBSD has a list of loaders, instead of
+      <para>What happens is that &os; has a list of loaders, instead of
 	a single loader with a fallback to the <literal>#!</literal>
 	loader for running any shell interpreters or shell scripts.</para>
 
@@ -3253,14 +3254,15 @@ options SHMMAXPGS=393216
 	invoked the &man.csh.1; shell instead (we believe SCO first made
 	this hack).</para>
 
-      <para>What FreeBSD does now is go through a list of loaders, with a
+      <para>What &os; does now is go through a list of loaders, with a
 	generic <literal>#!</literal> loader that knows about interpreters
 	as the characters which follow to the next whitespace next to
 	last, followed by a fallback to
 	<filename>/bin/sh</filename>.</para>
       <indexterm><primary>ELF</primary></indexterm>
 
-      <para>For the Linux ABI support, FreeBSD sees the magic number as an
+      <!-- reed: todo: is this FreeBSD okay? -->
+      <para>For the Linux ABI support, &os; sees the magic number as an
 	ELF binary (it makes no distinction between FreeBSD, &solaris;,
 	Linux, or any other OS which has an ELF image type, at this
 	point).</para>
@@ -3301,7 +3303,7 @@ options SHMMAXPGS=393216
       <para>When a system call is called by the Linux binary, the trap
 	code dereferences the system call function pointer off the
 	<literal>proc</literal> structure, and gets the Linux, not the
-	FreeBSD, system call entry points.</para>
+	&os;, system call entry points.</para>
 
       <para>In addition, the Linux mode dynamically
 	<emphasis>reroots</emphasis> lookups; this is, in effect, what the
@@ -3315,19 +3317,19 @@ options SHMMAXPGS=393216
 	directory.  This makes sure that binaries that require other
 	binaries can run (e.g., the Linux toolchain can all run under
 	Linux ABI support).  It also means that the Linux binaries can
-	load and execute FreeBSD binaries, if there are no corresponding
+	load and execute &os; binaries, if there are no corresponding
 	Linux binaries present, and that you could place a &man.uname.1;
 	command in the <filename>/compat/linux</filename> directory tree
 	to ensure that the Linux binaries could not tell they were not
 	running on Linux.</para>
 
-      <para>In effect, there is a Linux kernel in the FreeBSD kernel; the
+      <para>In effect, there is a Linux kernel in the &os; kernel; the
 	various underlying functions that implement all of the services
-	provided by the kernel are identical to both the FreeBSD system
+	provided by the kernel are identical to both the &os; system
 	call table entries, and the Linux system call table entries: file
 	system operations, virtual memory operations, signal delivery,
-	System V IPC, etc&hellip;  The only difference is that FreeBSD
-	binaries get the FreeBSD <emphasis>glue</emphasis> functions, and
+	System V IPC, etc&hellip;  The only difference is that &os;
+	binaries get the &os; <emphasis>glue</emphasis> functions, and
 	Linux binaries get the Linux <emphasis>glue</emphasis> functions
 	(most older OS's only had their own <emphasis>glue</emphasis>
 	functions: addresses of functions in a static global
@@ -3336,10 +3338,10 @@ options SHMMAXPGS=393216
 	the <literal>proc</literal> structure of the process making the
 	call).</para>
 
-      <para>Which one is the native FreeBSD ABI?  It does not matter.
+      <para>Which one is the native &os; ABI?  It does not matter.
 	Basically the only difference is that (currently; this could
 	easily be changed in a future release, and probably will be after
-	this) the FreeBSD <emphasis>glue</emphasis> functions are
+	this) the &os; <emphasis>glue</emphasis> functions are
 	statically linked into the kernel, and the Linux <emphasis>glue</emphasis> functions
 	can be statically linked, or they can be accessed via a kernel
 	module.</para>
@@ -3349,13 +3351,24 @@ options SHMMAXPGS=393216
 	simulator, to cut off the next question) involved.</para>
 
       <para>So why is it sometimes called <quote>Linux emulation</quote>?
-	To make it hard to sell FreeBSD!  Really, it
+	To make it hard to sell &os;!  Really, it
 	is because the historical implementation was done at a time when
 	there was really no word other than that to describe what was
-	going on; saying that FreeBSD ran Linux binaries was not true, if
+	going on; saying that FreeBSD
+	
+	<footnote>
+          <indexterm><primary>FreeBSD</primary></indexterm>
+
+	  <para>FreeBSD's original Linux compatibility code was
+	    committed in June 1995. It fulfilled milestone number one:
+	    running DOOM.</para> </footnote>
+
+	ran Linux binaries was not true, if
 	you did not compile the code in or load a module, and there needed
 	to be a word to describe what was being loaded&mdash;hence
 	<quote>the Linux emulator</quote>.</para>
+
+
     </sect2>
   </sect1>
 </chapter>
