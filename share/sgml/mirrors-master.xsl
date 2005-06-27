@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<!-- $DragonFly: doc/share/sgml/mirrors-master.xsl,v 1.2 2004/04/08 18:25:51 justin Exp $ -->
+<!-- $DragonFly: doc/share/sgml/mirrors-master.xsl,v 1.3 2005/06/27 23:36:02 reed Exp $ -->
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 
@@ -53,8 +53,8 @@
   <xsl:template name="mirrors-docbook-contact">
     <xsl:param name="email" select="'someone@somewhere'"/>
 
-    <para>In case of problems, please contact the hostmaster
-      <email><xsl:value-of select="$email" /></email> for this domain.</para>
+    <para>In case of problems, please contact
+      <email><xsl:value-of select="$email" /></email>.</para>
   </xsl:template>
 
   <!-- template: "mirrors-lastmodified" -->
