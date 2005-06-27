@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.20 2005/06/20 20:38:01 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.21 2005/06/27 19:24:52 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -562,7 +562,7 @@ lwkt_reqtoken_remote(void *data)
      * We do not have to queue the token if we can give it away
      * immediately.  Otherwise we queue it to our globaldata structure.
      */
-    KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2);
+    KASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2, ("ref %p token %p magic %08x", ref, ref->tr_tok, ref->tr_magic));
     if (lwkt_oktogiveaway_token(tok)) {
 	if (tok->t_cpu == gd)
 	    tok->t_cpu = ref->tr_reqgd;
