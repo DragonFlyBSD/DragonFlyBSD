@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.21 2005/06/20 15:10:41 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.22 2005/06/27 01:43:15 swildner Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -2037,7 +2037,7 @@ wlconfig(int unit)
     outw(PIOP1(base), AC_MCSETUP|AC_CW_EL);		/* ac_command */
     outw(PIOR1(base), OFFSET_CU + 8);
 #if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version >= 300000)
-    LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+    LIST_FOREACH(ifma, &sc->wl_if.if_multiaddrs, ifma_link) {
 	if (ifma->ifma_addr->sa_family != AF_LINK)
 	    continue;
 	
