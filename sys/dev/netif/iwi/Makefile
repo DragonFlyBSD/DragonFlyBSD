@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/netif/iwi/Makefile,v 1.1 2005/03/06 05:02:02 dillon Exp $
+# $DragonFly: src/sys/dev/netif/iwi/Makefile,v 1.2 2005/06/27 10:58:22 corecode Exp $
 #
 KMOD    = if_iwi
 SRCS    = if_iwi.c \
@@ -7,7 +7,7 @@ SRCS    = if_iwi.c \
           pci_if.h \
           opt_inet.h
 
-CFLAGS	+=  -DIWI_DEBUG -DNBPFILTER=1 -DALTQ
+CFLAGS	+=  -DIWI_DEBUG -DNBPFILTER=1
 
 #WARNS?=6
 
