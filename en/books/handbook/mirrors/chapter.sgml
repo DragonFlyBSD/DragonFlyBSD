@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mirrors/chapter.sgml,v 1.340 2004/04/24 17:41:22 hrs Exp $
-     $DragonFly: doc/en/books/handbook/mirrors/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
+     $DragonFly: doc/en/books/handbook/mirrors/chapter.sgml,v 1.3 2005/06/27 23:32:57 reed Exp $
 -->
 
 <appendix id="mirrors">
@@ -16,6 +16,7 @@
 
       <para>&os; is available as a purchasable CD:</para>
 
+      <!-- reed: should this section be with following? and where is the CD? -->
       <itemizedlist>
 	<listitem>
 	  <address>
@@ -29,7 +30,7 @@
     <sect2>
       <title>CD and DVD Sets</title>
 
-      <para>FreeBSD CD and DVD sets are available from many online
+      <para>DragonFly BSD CD and DVD sets are available from online
 	retailers:</para>
 
     <itemizedlist>
@@ -42,10 +43,17 @@
 	  Phone: <phone>+1 800 407-5170</phone>
 	  Fax: <fax>+1 1 801 765-0877</fax>
 	  Email: <email>sales@bsdmall.com</email>
-	  WWW: <otheraddr><ulink url="http://www.bsdmall.com/freebsd1.html"></ulink></otheraddr>
+	  WWW: <otheraddr><ulink url="http://www.bsdmall.com/"></ulink></otheraddr>
         </address>
       </listitem>
 
+      <listitem>
+        <address>
+	  <otheraddr>BSD-Systems</otheraddr>
+	  Email: <email>sales@bsd-systems.co.uk</email>
+	  WWW: <otheraddr><ulink url="http://www.bsd-systems.co.uk/"></ulink></otheraddr>
+        </address>
+      </listitem>
  
 
     </itemizedlist>
@@ -66,6 +74,21 @@
     <para>The <ulink
 	url="http://www.dragonflybsd.org/main/download.cgi">&os; mirror
 	sites list</ulink> is the best, most up-to-date source.</para>
+
+    <para>Additionally, &os; is available via anonymous FTP from the
+      following mirror sites.  If you choose to obtain &os; via anonymous
+      FTP, please try to use a site near you.  The mirror sites listed as
+      <quote>Primary Mirror Sites</quote> typically have the entire &os; archive (all
+      the currently available versions for each of the architectures) but
+      you will probably have faster download times from a site that is
+      in your country or region.  The regional sites carry the most recent
+      versions for the most popular architecture(s) but might not carry
+      the entire &os; archive.  All sites provide access via anonymous
+      FTP but some sites also provide access via other methods.  The access
+      methods available for each site are provided in parentheses
+      after the hostname.</para>
+
+   &chap.mirrors.ftp.inc;
 
   </sect1>
 
@@ -630,7 +653,7 @@ doc/zh_*</screen>
     <sect2 id="cvsup-mirrors">
     <title>CVSup Sites</title>
 
-    <para><link linkend="cvsup">CVSup</link> servers for FreeBSD are running
+    <para><link linkend="cvsup">CVSup</link> servers for &os; are running
       at the following sites:</para>
 
     &chap.mirrors.cvsup.inc;
@@ -666,7 +689,22 @@ doc/zh_*</screen>
 
     <variablelist>
       <varlistentry>
+	<!-- reed: todo: is this correct? -->
 	<term>RELENG_1_0_RELEASE</term>
+
+	<listitem>
+	  <para>&os; 1.0</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>DragonFly_RELEASE_1_2</term>
+
+	<listitem>
+	  <para>&os; 1.2</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>DragonFly_1_0_REL</term>
 
 	<listitem>
 	  <para>&os; 1.0</para>
