@@ -1,6 +1,3 @@
-/*	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $	*/
-/*	$DragonFly: src/include/ctype.h,v 1.11 2005/05/09 09:53:07 y0netan1 Exp $ */
-
 /*
  * Copyright (c) 1989 The Regents of the University of California.
  * All rights reserved.
@@ -35,6 +32,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
+ *	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $
+ *	$DragonFly: src/include/ctype.h,v 1.12 2005/06/27 20:27:35 dillon Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -87,6 +86,8 @@ int	isblank(int);
 #endif
 __END_DECLS
 
+#if !defined(_CTYPE_H_DISABLE_MACROS_)
+
 #define	isdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _D))
 #define	islower(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _L))
 #define	isspace(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _S))
@@ -122,5 +123,7 @@ extern const __uint16_t	__libc_C_ctype_[];
 extern const __int16_t	__libc_C_toupper_[];
 extern const __int16_t	__libc_C_tolower_[];
 #endif
+
+#endif /* !_CTYPE_H_DISABLE_MACROS_ */
 
 #endif /* !_CTYPE_H_ */
