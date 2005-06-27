@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/madt.c,v 1.17 2004/06/10 20:03:46 jhb Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/madt.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/madt.c,v 1.4 2005/06/27 22:32:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -210,9 +210,6 @@ madt_probe(void)
 	 */
 	if (AcpiOsGetRootPointer(ACPI_LOGICAL_ADDRESSING, &rsdp_ptr) != AE_OK)
 		return (ENXIO);
-#ifdef __i386__
-	KASSERT(rsdp_ptr.Pointer.Physical < KERNLOAD, ("RSDP too high"));
-#endif
 	rsdp = pmap_mapdev(rsdp_ptr.Pointer.Physical, sizeof(RSDP_DESCRIPTOR));
 	if (rsdp == NULL) {
 		if (bootverbose)
