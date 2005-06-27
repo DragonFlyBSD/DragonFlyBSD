@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.h,v 1.2 1999/08/28 00:44:59 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.h,v 1.3 2005/06/27 02:27:10 swildner Exp $
  *
  */
 
@@ -39,11 +39,7 @@
 #define CONF1_ENABLE_RES1  0x80000000ul
 
 #define CONF2_ENABLE_PORT  0x0cf8
-#ifdef PC98
-#define CONF2_FORWARD_PORT 0x0cf9
-#else
 #define CONF2_FORWARD_PORT 0x0cfa
-#endif
 
 #define CONF2_ENABLE_CHK   0x0e
 #define CONF2_ENABLE_RES   0x0e

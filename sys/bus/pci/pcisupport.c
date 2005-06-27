@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.14 2004/03/24 20:34:08 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.15 2005/06/27 02:27:10 swildner Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -390,12 +390,6 @@ pci_chip_match(device_t dev)
 	case 0x700e1022:
 		return ("AMD-761 host to PCI bridge");
 
-	/* NEC -- vendor 0x1033 */
-	case 0x00021033:
-		return ("NEC 0002 PCI to PC-98 local bus bridge");
-	case 0x00161033:
-		return ("NEC 0016 PCI to PC-98 local bus bridge");
-
 	/* AcerLabs -- vendor 0x10b9 */
 	/* Funny : The datasheet told me vendor id is "10b8",sub-vendor */
 	/* id is '10b9" but the register always shows "10b9". -Foxfair  */
@@ -437,20 +431,6 @@ pci_chip_match(device_t dev)
 	/* Toshiba -- vendor 0x1179 */
 	case 0x07011179:
 		return ("Toshiba Fast Infra Red controller");
-
-	/* NEC -- vendor 0x1033 */
-
-	/* PCI to C-bus bridge */
-	/* The following chipsets are PCI to PC98 C-bus bridge.
-	 * The C-bus is the 16-bits bus on PC98 and it should be probed as
-	 * PCI to ISA bridge.  Because class of the C-bus is not defined,
-	 * C-bus bridges are recognized as "other bridge."  To make C-bus
-	 * bridge be recognized as ISA bridge, this function returns NULL.
-	 */
-	case 0x00011033:
-	case 0x002c1033:
-	case 0x003b1033:
-		return NULL;
 	};
 
 	if (pci_get_class(dev) == PCIC_BRIDGE
@@ -697,14 +677,6 @@ const char* pci_vga_match(device_t dev)
 		case 0x00f4:
 			chip = "68554"; break;
                 }
-		break;
-	case 0x1033:
-		vendor = "NEC";
-		switch (id >> 16) {
-		case 0x0009:
-			type = "PCI to PC-98 Core Graph bridge";
-			break;
-		}
 		break;
 	case 0x1039:
 		vendor = "SiS";

@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.13 2005/05/24 20:58:51 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.14 2005/06/27 02:27:10 swildner Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -1330,7 +1330,6 @@ devclass_t	pccard_devclass;
 
 /* Maybe we need to have a slot device? */
 DRIVER_MODULE(pccard, pcic, pccard_driver, pccard_devclass, 0, 0);
-DRIVER_MODULE(pccard, pc98pcic, pccard_driver, pccard_devclass, 0, 0);
 DRIVER_MODULE(pccard, cbb, pccard_driver, pccard_devclass, 0, 0);
 DRIVER_MODULE(pccard, tcic, pccard_driver, pccard_devclass, 0, 0);
 MODULE_VERSION(pccard, 1);

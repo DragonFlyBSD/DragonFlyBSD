@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.3 2005/01/17 17:50:21 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.4 2005/06/27 02:27:10 swildner Exp $
  */
 
 #include "opt_pci.h"
@@ -649,14 +649,6 @@ isab_match(device_t dev)
 	case 0x01001078:
 		return ("Cyrix Cx5530 PCI-ISA bridge");
 
-	/* NEC -- vendor 0x1033 */
-	/* The "C-bus" is 16-bits bus on PC98. */
-	case 0x00011033:
-		return ("NEC 0001 PCI to PC-98 C-bus bridge");
-	case 0x002c1033:
-		return ("NEC 002C PCI to PC-98 C-bus bridge");
-	case 0x003b1033:
-		return ("NEC 003B PCI to PC-98 C-bus bridge");
 	/* UMC United Microelectronics 0x1060 */
 	case 0x886a1060:
 		return ("UMC UM8886 ISA Bridge with EIDE");
