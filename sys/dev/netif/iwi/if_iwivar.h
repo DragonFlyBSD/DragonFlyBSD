@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.2 2005/06/13 22:14:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.3 2005/06/27 11:28:54 corecode Exp $
  */
 
 struct iwi_firmware {
@@ -133,7 +133,6 @@ struct iwi_softc {
 
 	int			sc_tx_timer;
 
-#if NBPFILTER > 0
 	struct bpf_if		*sc_drvbpf;
 
 	union {
@@ -149,7 +148,6 @@ struct iwi_softc {
 	} sc_txtapu;
 #define sc_txtap	sc_txtapu.th
 	int			sc_txtap_len;
-#endif
 	int 			num_stations;
 	u_int8_t                stations[IWI_FW_MAX_STATIONS][ETHER_ADDR_LEN];
 

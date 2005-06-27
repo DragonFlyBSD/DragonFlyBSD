@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/netif/iwi/Makefile,v 1.2 2005/06/27 10:58:22 corecode Exp $
+# $DragonFly: src/sys/dev/netif/iwi/Makefile,v 1.3 2005/06/27 11:28:54 corecode Exp $
 #
 KMOD    = if_iwi
 SRCS    = if_iwi.c \
@@ -7,11 +7,11 @@ SRCS    = if_iwi.c \
           pci_if.h \
           opt_inet.h
 
-CFLAGS	+=  -DIWI_DEBUG -DNBPFILTER=1
-
 #WARNS?=6
 
+.if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:
 	echo "#define INET 1" > ${.TARGET}
+.endif
 
 .include <bsd.kmod.mk>

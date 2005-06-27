@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.4 2005/06/26 22:03:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.5 2005/06/27 11:28:54 corecode Exp $
  */
 
 #include "opt_inet.h"
@@ -1671,9 +1671,7 @@ iwi_start(struct ifnet *ifp)
  
 		m0 = ifq_dequeue(&ifp->if_snd);
 
-#if NBPFILTER > 0
 		BPF_MTAP(ifp, m0);
-#endif
 
 		m0 = ieee80211_encap(ifp, m0, &ni);
 		if (m0 == NULL)
