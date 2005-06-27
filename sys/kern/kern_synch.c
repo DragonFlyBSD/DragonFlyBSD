@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.46 2005/06/26 22:03:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.47 2005/06/27 18:37:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -72,7 +72,6 @@ int	ncpus2, ncpus2_shift, ncpus2_mask;
 int	safepri;
 
 static struct callout loadav_callout;
-static struct callout roundrobin_callout;
 static struct callout schedcpu_callout;
 
 struct loadavg averunnable =
@@ -89,9 +88,7 @@ static fixpt_t cexp[3] = {
 
 static void	endtsleep (void *);
 static void	loadav (void *arg);
-static void	roundrobin (void *arg);
 static void	schedcpu (void *arg);
-static void	updatepri (struct proc *p);
 
 /*
  * Adjust the scheduler quantum.  The quantum is specified in microseconds.
@@ -116,105 +113,48 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof sched_quantum, sysctl_kern_quantum, "I", "");
 
-int 
-roundrobin_interval(void)
-{
-	return (sched_quantum);
-}
-
-/*
- * Force switch among equal priority processes every 100ms. 
- *
- * WARNING!  The MP lock is not held on ipi message remotes.
- */
-#ifdef SMP
-
-static void
-roundrobin_remote(void *arg)
-{
-	struct proc *p = lwkt_preempted_proc();
- 	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
-		need_user_resched();
-}
-
-#endif
-
-static void
-roundrobin(void *arg)
-{
-	struct proc *p = lwkt_preempted_proc();
- 	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
-		need_user_resched();
-#ifdef SMP
-	lwkt_send_ipiq_mask(mycpu->gd_other_cpus, roundrobin_remote, NULL);
-#endif
- 	callout_reset(&roundrobin_callout, sched_quantum, roundrobin, NULL);
-}
-
-#ifdef SMP
-
-void
-resched_cpus(u_int32_t mask)
-{
-	lwkt_send_ipiq_mask(mask, roundrobin_remote, NULL);
-}
-
-#endif
-
-/*
- * The load average is scaled by FSCALE (2048 typ).  The estimated cpu is
- * incremented at a rate of ESTCPUFREQ per second (50hz typ), but this is
- * divided up across all cpu bound processes running in the system so an
- * individual process will get less under load.  ESTCPULIM typicaly caps
- * out at ESTCPUMAX (around 376, or 11 nice levels).
- *
- * Generally speaking the decay equation needs to break-even on growth
- * at the limit at all load levels >= 1.0, so if the estimated cpu for
- * a process increases by (ESTVCPUFREQ / load) per second, then the decay
- * should reach this value when estcpu reaches ESTCPUMAX.  That calculation
- * is:
- *
- *	ESTCPUMAX * decay = ESTCPUFREQ / load
- *	decay = ESTCPUFREQ / (load * ESTCPUMAX)
- *	decay = estcpu * 0.053 / load
- *
- * If the load is less then 1.0 we assume a load of 1.0.
- */
-
-#define cload(loadav)	((loadav) < FSCALE ? FSCALE : (loadav))
-
-/* decay 95% of `p_pctcpu' in 60 seconds; see CCPU_SHIFT before changing */
-static fixpt_t	ccpu = 0.95122942450071400909 * FSCALE;	/* exp(-1/20) */
-SYSCTL_INT(_kern, OID_AUTO, ccpu, CTLFLAG_RD, &ccpu, 0, "");
-
-/* kernel uses `FSCALE', userland (SHOULD) use kern.fscale */
-static int	fscale __unused = FSCALE;
-SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
-
 /*
  * If `ccpu' is not equal to `exp(-1/20)' and you still want to use the
  * faster/more-accurate formula, you'll have to estimate CCPU_SHIFT below
  * and possibly adjust FSHIFT in "param.h" so that (FSHIFT >= CCPU_SHIFT).
  *
  * To estimate CCPU_SHIFT for exp(-1/20), the following formula was used:
- *	1 - exp(-1/20) ~= 0.0487 ~= 0.0488 == 1 (fixed pt, *11* bits).
+ *     1 - exp(-1/20) ~= 0.0487 ~= 0.0488 == 1 (fixed pt, *11* bits).
  *
  * If you don't want to bother with the faster/more-accurate formula, you
  * can set CCPU_SHIFT to (FSHIFT + 1) which will use a slower/less-accurate
  * (more general) method of calculating the %age of CPU used by a process.
+ *
+ * decay 95% of `p_pctcpu' in 60 seconds; see CCPU_SHIFT before changing 
  */
-#define	CCPU_SHIFT	11
+#define CCPU_SHIFT	11
+
+static fixpt_t ccpu = 0.95122942450071400909 * FSCALE; /* exp(-1/20) */
+SYSCTL_INT(_kern, OID_AUTO, ccpu, CTLFLAG_RD, &ccpu, 0, "");
+
+/*
+ * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
+ */
+static int     fscale __unused = FSCALE;
+SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 
 /*
  * Recompute process priorities, once a second.
+ *
+ * Since the userland schedulers are typically event oriented, if the
+ * estcpu calculation at wakeup() time is not sufficient to make a
+ * process runnable relative to other processes in the system we have
+ * a 1-second recalc to help out.
+ *
+ * This code also allows us to store sysclock_t data in the process structure
+ * without fear of an overrun, since sysclock_t are guarenteed to hold 
+ * several seconds worth of count.
  */
 /* ARGSUSED */
 static void
 schedcpu(void *arg)
 {
-	fixpt_t loadfac = averunnable.ldavg[0];
 	struct proc *p;
-	int ndecay;
 
 	FOREACH_PROC_IN_SYSTEM(p) {
 		/*
@@ -222,66 +162,19 @@ schedcpu(void *arg)
 		 * (if sleeping).  We ignore overflow; with 16-bit int's
 		 * (remember them?) overflow takes 45 days.
 		 */
+		crit_enter();
 		p->p_swtime++;
 		if (p->p_stat == SSLEEP || p->p_stat == SSTOP)
 			p->p_slptime++;
-		p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
 
 		/*
-		 * If the process has slept the entire second,
-		 * stop recalculating its priority until it wakes up.
+		 * Only recalculate processes that are active or have slept
+		 * less then 2 seconds.  The schedulers understand this.
 		 */
-		if (p->p_slptime > 1)
-			continue;
-		/* prevent state changes and protect run queue */
-		crit_enter();
-
-		/*
-		 * p_pctcpu is only for ps.
-		 */
-#if	(FSHIFT >= CCPU_SHIFT)
-		p->p_pctcpu += (ESTCPUFREQ == 100)?
-			((fixpt_t) p->p_cpticks) << (FSHIFT - CCPU_SHIFT):
-                	100 * (((fixpt_t) p->p_cpticks)
-				<< (FSHIFT - CCPU_SHIFT)) / ESTCPUFREQ;
-#else
-		p->p_pctcpu += ((FSCALE - ccpu) *
-			(p->p_cpticks * FSCALE / ESTCPUFREQ)) >> FSHIFT;
-#endif
-		/*
-		 * A single cpu-bound process with a system load of 1.0 will
-		 * increment cpticks by ESTCPUFREQ per second.  Scale
-		 * cpticks by the load to normalize it relative to 
-		 * ESTCPUFREQ.  This gives us an indication as to what
-		 * proportional percentage of available cpu the process has
-		 * used with a nominal range of 0 to ESTCPUFREQ.
-		 *
-		 * It should be noted that since the load average is a
-		 * trailing indicator, a jump in the load will cause this
-		 * calculation to be higher then normal.  This is desireable
-		 * because it penalizes the processes responsible for the
-		 * spike.
-		 */
-		ndecay = (int)((p->p_cpticks * cload(loadfac)) >> FSHIFT);
-
-		/*
-		 * Reduce p_estcpu based on the amount of cpu that could
-		 * have been used but wasn't.  Convert ndecay from the
-		 * amount used to the amount not used, and scale with our
-		 * nice value.
-		 *
-		 * The nice scaling determines how much the nice value
-		 * effects the cpu the process gets.
-		 */
-		ndecay = ESTCPUFREQ - ndecay;
-		ndecay -= p->p_nice * (ESTCPUMAX / 16) / PRIO_MAX;
-
-		p->p_cpticks = 0;
-		if (ndecay > 0) {
-			if (ndecay > p->p_estcpu / 2)
-				ndecay = p->p_estcpu / 2;
-			p->p_estcpu -= ndecay;
-			p->p_usched->resetpriority(p);
+		if (p->p_slptime <= 1) {
+			p->p_usched->recalculate(p);
+		} else {
+			p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
 		}
 		crit_exit();
 	}
@@ -290,24 +183,25 @@ schedcpu(void *arg)
 }
 
 /*
- * Recalculate the priority of a process after it has slept for a while.
- * For all load averages >= 1 and max p_estcpu of 255, sleeping for at
- * least six times the loadfactor will decay p_estcpu to zero.
+ * This is only used by ps.  Generate a cpu percentage use over
+ * a period of one second.
  */
-static void
-updatepri(struct proc *p)
+void
+updatepcpu(struct proc *p, int cpticks, int ttlticks)
 {
-	int ndecay;
+	fixpt_t acc;
+	int remticks;
 
-	ndecay = p->p_slptime * ESTCPUFREQ;
-	if (ndecay > 0) {
-		if (p->p_estcpu > ndecay)
-			p->p_estcpu -= ndecay;
-		else
-			p->p_estcpu = 0;
-		p->p_usched->resetpriority(p);
+	acc = (cpticks << FSHIFT) / ttlticks;
+	if (ttlticks >= ESTCPUFREQ) {
+		p->p_pctcpu = acc;
+	} else {
+		remticks = ESTCPUFREQ - ttlticks;
+		p->p_pctcpu = (acc * ttlticks + p->p_pctcpu * remticks) /
+				ESTCPUFREQ;
 	}
 }
+
 
 /*
  * We're only looking at 7 bits of the address; everything is
@@ -534,19 +428,13 @@ restart:
 			TAILQ_REMOVE(qp, td, td_threadq);
 			td->td_wchan = NULL;
 			if ((p = td->td_proc) != NULL && p->p_stat == SSLEEP) {
-				/* OPTIMIZED EXPANSION OF setrunnable(p); */
-				if (p->p_slptime > 1)
-					updatepri(p);
-				p->p_slptime = 0;
 				p->p_stat = SRUN;
 				if (p->p_flag & P_INMEM) {
 					/*
 					 * LWKT scheduled now, there is no
 					 * userland runq interaction until
 					 * the thread tries to return to user
-					 * mode.
-					 *
-					 * setrunqueue(p); 
+					 * mode.  We do NOT call setrunqueue().
 					 */
 					lwkt_schedule(td);
 				} else {
@@ -667,18 +555,16 @@ setrunnable(struct proc *p)
 	/*
 	 * The process is controlled by LWKT at this point, we do not mess
 	 * around with the userland scheduler until the thread tries to 
-	 * return to user mode.
+	 * return to user mode.  We do not clear p_slptime or call
+	 * setrunqueue().
 	 */
-	if (p->p_flag & P_INMEM)
+	if (p->p_flag & P_INMEM) {
 		lwkt_schedule(p->p_thread);
-	crit_exit();
-	if (p->p_slptime > 1)
-		updatepri(p);
-	p->p_slptime = 0;
-	if ((p->p_flag & P_INMEM) == 0) {
+	} else {
 		p->p_flag |= P_SWAPINREQ;
 		wakeup((caddr_t)&proc0);
 	}
+	crit_exit();
 }
 
 /*
@@ -775,46 +661,10 @@ static void
 sched_setup(void *dummy)
 {
 	callout_init(&loadav_callout);
-	callout_init(&roundrobin_callout);
 	callout_init(&schedcpu_callout);
 
 	/* Kick off timeout driven events by calling first time. */
-	roundrobin(NULL);
 	schedcpu(NULL);
 	loadav(NULL);
-}
-
-/*
- * We adjust the priority of the current process.  The priority of
- * a process gets worse as it accumulates CPU time.  The cpu usage
- * estimator (p_estcpu) is increased here.  resetpriority() will
- * compute a different priority each time p_estcpu increases by
- * INVERSE_ESTCPU_WEIGHT * (until MAXPRI is reached).
- *
- * The cpu usage estimator ramps up quite quickly when the process is 
- * running (linearly), and decays away exponentially, at a rate which
- * is proportionally slower when the system is busy.  The basic principle
- * is that the system will 90% forget that the process used a lot of CPU
- * time in 5 * loadav seconds.  This causes the system to favor processes
- * which haven't run much recently, and to round-robin among other processes.
- *
- * WARNING! called from a fast-int or an IPI, the MP lock MIGHT NOT BE HELD
- * and we cannot block.
- */
-void
-schedulerclock(void *dummy)
-{
-	struct thread *td;
-	struct proc *p;
-
-	td = curthread;
-	if ((p = td->td_proc) != NULL) {
-		p->p_cpticks++;		/* cpticks runs at ESTCPUFREQ */
-		p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
-		if (try_mplock()) {
-			p->p_usched->resetpriority(p);
-			rel_mplock();
-		}
-	}
 }
 

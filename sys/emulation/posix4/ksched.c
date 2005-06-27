@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.4 2004/03/30 19:14:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.5 2005/06/27 18:38:02 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -58,7 +58,7 @@ int ksched_attach(struct ksched **p)
 	struct ksched *ksched= p31b_malloc(sizeof(*ksched));
 
 	ksched->rr_interval.tv_sec = 0;
-	ksched->rr_interval.tv_nsec = 1000000000L / roundrobin_interval();
+	ksched->rr_interval.tv_nsec = 1000000000L / 10;	/* XXX */
 
 	*p = ksched;
 	return 0;

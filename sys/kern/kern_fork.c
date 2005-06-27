@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.35 2005/06/26 04:36:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.36 2005/06/27 18:37:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -510,8 +510,12 @@ again:
 
 	/*
 	 * Inherit the scheduler and initialize scheduler-related fields. 
+	 * Set cpbase to the last timeout that occured (not the upcoming
+	 * timeout).
 	 */
 	p2->p_usched = p1->p_usched;
+	p2->p_cpbase = mycpu->gd_schedclock.time - 
+			mycpu->gd_schedclock.periodic;
 	p2->p_usched->heuristic_forking(p1, p2);
 
 	/*

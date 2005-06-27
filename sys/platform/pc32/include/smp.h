@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.11 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.12 2005/06/27 18:37:55 dillon Exp $
  *
  */
 
@@ -109,7 +109,6 @@ int	stop_cpus		(u_int);
 void	ap_init			(void);
 int	restart_cpus		(u_int);
 void	forward_signal		(struct proc *);
-void	forward_roundrobin	(void);
 #ifdef	APIC_INTR_REORDER
 void	set_lapic_isrloc	(int, int);
 #endif /* APIC_INTR_REORDER */

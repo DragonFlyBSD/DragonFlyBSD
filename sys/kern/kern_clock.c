@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.43 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.44 2005/06/27 18:37:57 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -625,9 +625,11 @@ statclock(systimer_t info, struct intrframe *frame)
 }
 
 /*
- * The scheduler clock typically runs at a 20Hz rate.  NOTE! systimer,
+ * The scheduler clock typically runs at a 50Hz rate.  NOTE! systimer,
  * the MP lock might not be held.  We can safely manipulate parts of curproc
  * but that's about it.
+ *
+ * Each cpu has its own scheduler clock.
  */
 static void
 schedclock(systimer_t info, struct intrframe *frame)
@@ -638,9 +640,18 @@ schedclock(systimer_t info, struct intrframe *frame)
 	struct vmspace *vm;
 	long rss;
 
-	schedulerclock(NULL);	/* mpsafe */
+	if ((p = lwkt_preempted_proc()) != NULL) {
+		/*
+		 * Account for cpu time used and hit the scheduler.  Note
+		 * that this call MUST BE MP SAFE, and the BGL IS NOT HELD
+		 * HERE.
+		 */
+                p->p_usched->schedulerclock(p, info->periodic, info->time);
+	}
 	if ((p = curproc) != NULL) {
-		/* Update resource usage integrals and maximums. */
+		/*
+		 * Update resource usage integrals and maximums.
+		 */
 		if ((pstats = p->p_stats) != NULL &&
 		    (ru = &pstats->p_ru) != NULL &&
 		    (vm = p->p_vmspace) != NULL) {

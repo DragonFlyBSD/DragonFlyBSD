@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.35 2005/03/27 19:25:10 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.36 2005/06/27 18:37:59 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -139,7 +139,7 @@ struct globaldata {
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
 	short		gd_upri;		/* userland scheduler helper */
-	short		gd_unused01;
+	short		gd_rrcount;		/* userland scheduler helper */
 	struct thread	gd_schedthread;		/* userland scheduler helper */
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */

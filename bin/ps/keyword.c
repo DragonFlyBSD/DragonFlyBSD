@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.18 2005/06/26 04:36:34 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.19 2005/06/27 18:38:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ static const VAR var[] = {
 	{"caught", "", "sigcatch", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"command", "COMMAND", NULL, COMM|LJUST|USER, command, NULL, 16, 0, 0, NULL,
 		NULL},
-	{"cpu", "CPU", NULL, 0, pvar, NULL, 3, POFF(p_estcpu), UINT, "d", NULL},
+	{"cpu", "CPU", NULL, 0, pvar, NULL, 3, POFF(p_usdata.bsd4.estcpu), UINT, "d", NULL},
 	{"lastcpu", "C", NULL, 0, pvar, NULL, 3, EOFF(e_cpuid), UINT, "d", NULL},
 	{"cputime", "", "time", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"f", "F", NULL, 0, pvar, NULL, 7, POFF(p_flag), INT, "x", NULL},

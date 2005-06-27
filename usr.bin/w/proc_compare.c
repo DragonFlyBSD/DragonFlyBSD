@@ -32,7 +32,7 @@
  *
  * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.4 2003/11/21 22:46:15 dillon Exp $
+ * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.5 2005/06/27 18:38:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,9 +84,9 @@ proc_compare(register struct proc *p1, register struct proc *p2)
 		/*
 		 * tie - favor one with highest recent cpu utilization
 		 */
-		if (p2->p_estcpu > p1->p_estcpu)
+		if (p2->p_usdata.bsd4.estcpu > p1->p_usdata.bsd4.estcpu)
 			return (1);
-		if (p1->p_estcpu > p2->p_estcpu)
+		if (p1->p_usdata.bsd4.estcpu > p2->p_usdata.bsd4.estcpu)
 			return (0);
 		return (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
 	}

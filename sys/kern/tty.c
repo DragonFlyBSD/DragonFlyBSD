@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.17 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.18 2005/06/27 18:37:57 dillon Exp $
  */
 
 /*-
@@ -2452,7 +2452,7 @@ ttyinfo(tp)
  *
  *	1) Only foreground processes are eligible - implied.
  *	2) Runnable processes are favored over anything else.  The runner
- *	   with the highest cpu utilization is picked (p_estcpu).  Ties are
+ *	   with the highest cpu utilization is picked (p_cpticks).  Ties are
  *	   broken by picking the highest pid.
  *	3) The sleeper with the shortest sleep time is next.  With ties,
  *	   we pick out just "short-term" sleepers (P_SINTR == 0).
@@ -2483,9 +2483,9 @@ proc_compare(p1, p2)
 		/*
 		 * tie - favor one with highest recent cpu utilization
 		 */
-		if (p2->p_estcpu > p1->p_estcpu)
+		if (p2->p_cpticks > p1->p_cpticks)
 			return (1);
-		if (p1->p_estcpu > p2->p_estcpu)
+		if (p1->p_cpticks > p2->p_cpticks)
 			return (0);
 		return (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
 	}

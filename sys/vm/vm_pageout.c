@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.13 2005/06/25 20:03:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.14 2005/06/27 18:38:00 dillon Exp $
  */
 
 /*
@@ -1163,7 +1163,6 @@ rescan0:
 		}
 		if (bigproc != NULL) {
 			killproc(bigproc, "out of swap space");
-			bigproc->p_estcpu = 0;
 			bigproc->p_nice = PRIO_MIN;
 			bigproc->p_usched->resetpriority(bigproc);
 			wakeup(&vmstats.v_free_count);

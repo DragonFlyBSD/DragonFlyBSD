@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.60 2005/06/26 22:03:23 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.61 2005/06/27 18:37:59 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -63,6 +63,7 @@
 #ifdef _KERNEL
 #include <sys/globaldata.h>
 #endif
+#include <sys/systimer.h>
 #include <sys/usched.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
@@ -167,9 +168,11 @@ struct	proc {
 
 	struct vmspace	*p_vmspace;	/* Address space. */
 
-	/* scheduling */
-	u_int		p_estcpu;	/* Time averaged value of p_cpticks. */
-	int		p_cpticks;	/* Ticks of cpu time. */
+	/*
+	 * Scheduling.
+	 */
+	sysclock_t	p_cpticks;	/* cpu used in sched clock ticks */
+	sysclock_t	p_cpbase;	/* Measurement base */
 	fixpt_t		p_pctcpu;	/* %cpu for this process */
 	u_int		p_swtime;	/* Time swapped in or out. */
 	u_int		p_slptime;	/* Time since last blocked. */
@@ -374,8 +377,6 @@ extern struct thread *pagethread, *updatethread;
  * the maximum ESTCPU value, and the weighting factor for nice values.  A
  * cpu bound program's estcpu will increase to ESTCPUMAX - 1.
  */
-#define ESTCPUMAX	128
-#define ESTCPULIM(v)	min((v), ESTCPUMAX)
 #define ESTCPUFREQ	50
 
 extern	u_long ps_arg_cache_limit;
@@ -392,6 +393,7 @@ extern struct vm_zone *proc_zone;
 
 int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
 void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
+void	updatepcpu(struct proc *, int, int);
 int	inferior (struct proc *p);
 int	leavepgrp (struct proc *p);
 void	sess_hold(struct session *sp);
@@ -400,9 +402,6 @@ void	mi_switch (struct proc *p);
 void	procinit (void);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
-int	roundrobin_interval (void);
-void	resched_cpus(u_int32_t mask);
-void	schedulerclock (void *dummy);
 void	setrunnable (struct proc *);
 void	clrrunnable (struct proc *, int stat);
 void	sleepinit (void);
