@@ -8,7 +8,7 @@
 
      Please keep this file sorted.
 
-     $DragonFly: doc/share/sgml/trademarks.ent,v 1.2 2004/06/25 15:54:59 justin Exp $
+     $DragonFly: doc/share/sgml/trademarks.ent,v 1.3 2005/06/27 23:11:57 reed Exp $
 -->
 
 <!ENTITY tm-attrib.3com "<para>3Com and HomeConnect are registered
@@ -54,6 +54,8 @@
 <!ENTITY mac "<trademark class='registered'>Mac</trademark>">
 <!ENTITY macintosh "<trademark class='registered'>Macintosh</trademark>">
 <!ENTITY macos "<trademark class='registered'>Mac&nbsp;OS</trademark>">
+<!ENTITY netbsd "<trademark class='registered'>NetBSD</trademark>">
+<!ENTITY pkgsrc "<trademark class='registered'>pkgsrc</trademark>">
 <!ENTITY quicktime "<trademark class='registered'>Quicktime</trademark>">
 <!ENTITY truetype "<trademark class='registered'>TrueType</trademark>">
 
@@ -108,6 +110,12 @@
 
 <!ENTITY tm-attrib.freebsd "<para>FreeBSD is a registered trademark of
   Wind River Systems, Inc.  This is expected to change soon.</para>">
+
+<!ENTITY tm-attrib.netbsd "<para>NetBSD is a registered trademark of
+  The NetBSD Foundation, Inc.</para>">
+
+<!ENTITY tm-attrib.pkgsrc "<para>pkgsrc is a registered trademark of
+  The NetBSD Foundation, Inc.</para>">
 
 <!-- http://www.heidelberg.com/hq/eng/small_print/trademarks.asp -->
 <!ENTITY tm-attrib.heidelberger "<para>Heidelberg, Helvetica,
