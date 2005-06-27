@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mail/chapter.sgml,v 1.117 2004/04/25 09:07:34 blackend Exp $
-     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.4 2005/02/09 03:58:54 justin Exp $
+     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.5 2005/06/27 23:26:19 reed Exp $
 -->
 
 <chapter id="mail">
@@ -237,8 +237,8 @@
       <para>You may view the MX records for any domain by using the
 	&man.host.1; command, as seen in the example below:</para>
 
-      <screen>&prompt.user; <userinput>host -t mx FreeBSD.org</userinput>
-FreeBSD.org mail is handled (pri=10) by mx1.FreeBSD.org</screen>
+      <screen>&prompt.user; <userinput>host -t mx DragonflyBSD.org</userinput>
+DragonflyBSD.org mail is handled (pri=10) by crater.dragonflybsd.org</screen>
     </sect2>
 
     <sect2 id="mail-receive">
@@ -390,7 +390,7 @@ FreeBSD.org mail is handled (pri=10) by mx1.FreeBSD.org</screen>
     </indexterm>
 
     <para>&man.sendmail.8; is the default Mail Transfer Agent (MTA) in
-      FreeBSD.  <application>sendmail</application>'s job is to accept
+      &os;.  <application>sendmail</application>'s job is to accept
       mail from Mail User Agents (<acronym>MUA</acronym>) and deliver it
       to the appropriate mailer as defined by its configuration file.
       <application>sendmail</application> can also accept network
@@ -680,6 +680,7 @@ postmaster@example.com          postmaster@noc.example.net
 
       <para>You have a wide choice of MTAs available.  A good
 	starting point is the
+	&pkgsrc; collection or
 	<link linkend="ports">FreeBSD Ports Collection</link> where
 	you will be able to find many.  Of course you are free to use
 	any MTA you want from any location, as long as you can make
@@ -741,10 +742,10 @@ postmaster@example.com          postmaster@noc.example.net
       <title>Running Your New MTA on Boot</title>
 
       <para>You may have a choice of two methods for running your
-	new MTA on boot, again depending on what version of FreeBSD
+	new MTA on boot, again depending on what version of &os;
 	you are running.</para>
 
-      <para>With later versions of FreeBSD, you can use the
+      <para>With later versions of &os;, you can use the
 	above method or you can set</para>
 
       <programlisting>mta_start_script="filename"</programlisting>
@@ -1072,7 +1073,7 @@ www.example.org</programlisting>
         hosts as long as you have set up
 	<filename>/etc/resolv.conf</filename> or are running your own
 	name server.  If you would like to have mail for your host
-	delivered to the MTA (e.g., <application>sendmail</application>) on your own FreeBSD host, there are two methods:</para>
+	delivered to the MTA (e.g., <application>sendmail</application>) on your own &os; host, there are two methods:</para>
 
       <itemizedlist>
         <listitem>
@@ -1702,7 +1703,7 @@ sasl_pwcheck_program="/usr/local/sbin/pwcheck"</programlisting>
       way they interact with email; this gives users increased
       functionality and flexibility.  &os; contains support for
       numerous mail user agents, all of which can be easily installed
-      using the <link linkend="ports">FreeBSD Ports Collection</link>.
+      using the &pkgsrc; or <link linkend="ports">FreeBSD Ports</link> collections.
       Users may choose between graphical email clients such as
       <application>evolution</application> or
       <application>balsa</application>, console based clients such as
