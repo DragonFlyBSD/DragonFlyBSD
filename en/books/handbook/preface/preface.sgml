@@ -1,6 +1,6 @@
 <!--
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/preface/preface.sgml,v 1.19 2003/11/05 10:36:55 ceri Exp $
-     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
+     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.3 2005/06/27 23:34:40 reed Exp $
 -->
 
 <preface id="book-preface">
@@ -121,7 +121,7 @@
       <term><emphasis><xref linkend="security">, Security</emphasis></term>
       <listitem>
 	<para>Describes many different tools available to help keep your
-	FreeBSD system secure, including Kerberos, IPsec, OpenSSH, and
+	&os; system secure, including Kerberos, IPsec, OpenSSH, and
 	network firewalls.</para>
       </listitem>
     </varlistentry>
@@ -339,7 +339,7 @@
   <screen><prompt>E:\&gt;</prompt> <userinput>tools\fdimage floppies\kern.flp A:</userinput></screen>
 
   <para>Examples starting with &prompt.root; indicate a command that
-    must be invoked as the superuser in FreeBSD.  You can login as
+    must be invoked as the superuser in &os;.  You can login as
     <username>root</username> to type the command, or login as your
     normal account and use &man.su.1; to gain
     superuser privileges.</para>
@@ -363,10 +363,10 @@
 
   <para>The DragonFly Handbook was originally built from an edition of the 
     FreeBSD Handbook.  The FreeBSD Handbook was created by the collective 
-    hard work of hundreds of people, and the DragonFlyBSD Documentation Team
+    hard work of hundreds of people, and the &os; Documentation Team
     appreciates all their labor.  Included here is a list of all 
     individually identified people and corporations that contributed 
-    resources to the FreeBSD Handbook.</para>
+    resources to this handbook.</para>
     
   <para>Eric Anderson, Satoshi Asami, Bojan Bistrovic, Neil Blakey-Milner, Andrew
     Boothman, Harti Brandt, Jim Brown, BSDi, Andrey A. Chernov, Peter Childs, Munish
@@ -381,7 +381,7 @@
     Mock, Marcel Moolenaar, Moses Moore, Bill Moran, Rich Murphey, Mark Murray, Alex
     Nash, Gregory Neil Shapiro, David O'Brien, Eric Ogren, Gary Palmer, Hiten M.
     Pandya, Bill Paul, Dan Pelleg, Steve Peterson, John Polstra, Andy
-    Polyakov, Randy Pratt, Tom Rhodes, Trev Roydhouse, Peter Schultz, Piero Serini,
+    Polyakov, Randy Pratt, Jeremy C. Reed, Tom Rhodes, Trev Roydhouse, Peter Schultz, Piero Serini,
     Christopher Shumway, Marc Silver, Mike Smith, Brian Somers,
     Gennady B. Sorokopud, Wylie Stilwell, Murray Stokely, Greg Sutter, Bill Swingle,
     Valentino Vaschetto, Robert Watson, 
