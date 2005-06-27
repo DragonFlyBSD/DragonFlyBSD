@@ -1,6 +1,6 @@
 #
 # $FreeBSD: doc/en_US.ISO8859-1/books/handbook/Makefile,v 1.81 2004/05/11 05:52:39 den Exp $
-# $DragonFly: doc/en/books/handbook/Makefile,v 1.1 2004/06/25 15:24:33 justin Exp $
+# $DragonFly: doc/en/books/handbook/Makefile,v 1.2 2005/06/27 23:18:43 reed Exp $
 #
 # Build the DragonFlyBSD Handbook.
 #
@@ -189,7 +189,7 @@ CHAPTERS?= ${SRCS:M*chapter.sgml}
 
 SGMLFLAGS+= ${CHAPTERS:S/\/chapter.sgml//:S/^/-i chap./}
 .if defined(WITH_GLOSSARY) && !empty(WITH_GLOSSARY)
-SGMLFLAGS+= -i chap.freebsd-glossary
+SGMLFLAGS+= -i chap.dragonfly-glossary
 .endif
 
 # XXX The Handbook build currently overflows some internal, hardcoded 

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/book.sgml,v 1.147 2004/05/05 12:52:47 den Exp $
-     $DragonFly: doc/en/books/handbook/book.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/book.sgml,v 1.2 2005/06/27 23:18:43 reed Exp $
 -->
 
 <!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
@@ -55,7 +55,7 @@
 <!ENTITY % chap.eresources "IGNORE">
 <!ENTITY % chap.pgpkeys "IGNORE">
 <!ENTITY % chap.index "IGNORE">
-<!ENTITY % chap.freebsd-glossary "IGNORE">
+<!ENTITY % chap.dragonfly-glossary "IGNORE">
 
 <!ENTITY % pgpkeys SYSTEM "../../../share/pgpkeys/pgpkeys.ent"> %pgpkeys;
 ]>
@@ -92,6 +92,7 @@
     <legalnotice id="trademarks" role="trademarks">
       &tm-attrib.dragonflybsd;
       &tm-attrib.freebsd;
+      &tm-attrib.netbsd;
       &tm-attrib.3com;
       &tm-attrib.3ware;
       &tm-attrib.arm;
@@ -115,6 +116,7 @@
       &tm-attrib.nexthop;
       &tm-attrib.opengroup;
       &tm-attrib.oracle;
+      &tm-attrib.pkgsrc;
       &tm-attrib.powerquest;
       &tm-attrib.realnetworks;
       &tm-attrib.redhat;
@@ -142,7 +144,7 @@
         this document is always available from the <ulink
         url="http://www.dragonFlybsd.org/">&os; web site</ulink> 
         or <link linkend="mirrors-ftp">mirror sites</link>, 
-        in a variety of formats.  Hard copy versions are not yet available.  
+        in a variety of formats.
       </para>
       
       <para>Portions of this document originally documented use of the <ulink
@@ -247,7 +249,7 @@
     <![ %chap.eresources;               [ &chap.eresources;           ]]>
     <![ %chap.pgpkeys;                  [ &chap.pgpkeys;              ]]>
   </part>
-  <![ %chap.freebsd-glossary;         [ &bookinfo.freebsd-glossary; ]]>
+  <![ %chap.dragonfly-glossary;         [ &bookinfo.dragonfly-glossary; ]]>
   <![ %chap.index;                    [ &chap.index;                ]]>
   
   &chap.colophon;
