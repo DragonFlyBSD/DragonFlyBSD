@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.3 2004/08/25 20:42:15 justin Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.4 2005/06/27 23:46:34 reed Exp $
 -->
 
 <chapter id="config-tuning">
@@ -611,7 +611,7 @@ HOME=/var/log
 
     <indexterm><primary>rcNG</primary></indexterm>
 
-    <para>&os; uses the NetBSD
+    <para>&os; uses the &netbsd;
       <filename>rc.d</filename> system for system initialization.
       Users should notice the files listed in the
       <filename>/etc/rc.d</filename> directory.  Many of these files
@@ -720,7 +720,21 @@ sshd is running as pid 433.</screen>
       </listitem>
 
       <listitem>
-	<para>KEYWORD: &os; or NetBSD.  This is used for *BSD dependent features.</para>
+	<para>KEYWORD: When &man.rcorder.8; uses the <option>-k</option>
+	 option, then only the rc.d files matching this keyword are used.
+	 For example, when using <option>-k shutdown</option>, only the
+	 <filename>rc.d</filename> scripts defining the
+	 <literal>shutdown</literal> keyword are used.
+
+	 <footnote>
+	   <para>Previously this was used to define *BSD dependent features.
+	   </para></footnote>
+	</para>
+
+	<para>With the <option>-s</option> option, &man.rcorder.8 will
+	skip any <filename>rc.d</filename> script defining the
+	corresponding keyword to skip. For example, scripts defining the
+	<literal>nostart</literal> keyword are skipped at boot time.</para>
       </listitem>
     </itemizedlist>
 
@@ -1993,7 +2007,11 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	</indexterm>
 
 	<para>The TCP Bandwidth Delay Product Limiting is similar to
-	  TCP/Vegas in <application>NetBSD</application>.  It can be
+	  TCP/Vegas in <application>&netbsd;</application>.
+
+	  <indexterm><primary>&netbsd;</primary></indexterm>
+	  
+	  It can be
 	  enabled by setting <varname>net.inet.tcp.inflight_enable</varname>
 	  sysctl variable to <literal>1</literal>.  The system will attempt
 	  to calculate the bandwidth delay product for each connection and
@@ -2379,7 +2397,11 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	device drivers and the kernel to accept information from the
 	<acronym>ACPI</acronym> subsystem.  For &os;, Intel has
 	provided an interpreter (<acronym>ACPI-CA</acronym>) that is
-	shared with Linux and NetBSD.  The path to the 
+	shared with Linux and &netbsd;.
+
+	<indexterm><primary>&netbsd;</primary></indexterm>
+	
+	The path to the 
 	<acronym>ACPI-CA</acronym> source code is 
 	<filename role="directory">src/sys/contrib/dev/acpica-unix-YYYYMMDD</filename>, 
 	where YYYYMMDD is the release date of the ACPI-CA source code. The 
