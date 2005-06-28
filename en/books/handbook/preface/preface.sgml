@@ -1,6 +1,6 @@
 <!--
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/preface/preface.sgml,v 1.19 2003/11/05 10:36:55 ceri Exp $
-     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.3 2005/06/27 23:34:40 reed Exp $
+     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.4 2005/06/28 01:40:02 reed Exp $
 -->
 
 <preface id="book-preface">
@@ -331,13 +331,6 @@
   <bridgehead id="preface-conv-examples"
   renderas=sect2>Examples</bridgehead>
 
-  <para>Examples starting with <devicename>E:\&gt;</devicename>
-  indicate a &ms-dos; command.  Unless otherwise noted, these commands
-  may be executed from a <quote>Command Prompt</quote> window in a modern &microsoft.windows;
-  environment.</para>
-
-  <screen><prompt>E:\&gt;</prompt> <userinput>tools\fdimage floppies\kern.flp A:</userinput></screen>
-
   <para>Examples starting with &prompt.root; indicate a command that
     must be invoked as the superuser in &os;.  You can login as
     <username>root</username> to type the command, or login as your
@@ -352,6 +345,13 @@
     and other shell commands.</para>
 
   <screen>&prompt.user; <userinput>top</userinput></screen>
+
+  <para>Examples starting with <devicename>E:\&gt;</devicename>
+  indicate a &ms-dos; command.  Unless otherwise noted, these commands
+  may be executed from a <quote>Command Prompt</quote> window in a modern &microsoft.windows;
+  environment.</para>
+
+  <screen><prompt>E:\&gt;</prompt> <userinput>tools\fdimage floppies\kern.flp A:</userinput></screen>
 
   <bridgehead id="preface-acknowledgements"
   renderas=sect1>Acknowledgments</bridgehead>
