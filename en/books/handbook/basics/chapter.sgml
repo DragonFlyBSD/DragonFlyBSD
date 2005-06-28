@@ -2,7 +2,7 @@
      The DragonFly BSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.4 2005/06/27 23:44:28 reed Exp $
+     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.5 2005/06/28 02:35:16 reed Exp $
 -->
 
 <chapter id="basics">
@@ -97,6 +97,7 @@
 Local package initialization:.
 Additional TCP options:.
 
+<!-- todo: reed: DragonFly did not exist in 2002 -->
 Fri Sep 20 13:01:06 EEST 2002
 
 DragonFlyBSD/i386 (pc3.example.org) (ttyv0)
@@ -780,9 +781,9 @@ total 530
 	      <entry><filename class="directory">/usr/pkg</filename></entry>
 	      <entry>Used as
 	        the default destination for the files installed via the
-		&pkgsrc; framework or &pkgsrc; packages. The configuration
-		directory is tunable, but the default location is
-		<filename>/usr/pkg/etc</filename>.
+		&pkgsrc; framework or &pkgsrc; packages (optional).
+		The configuration directory is tunable, but the default
+		location is <filename>/usr/pkg/etc</filename>.
 	      </entry>
 	    </row>
 
@@ -1038,6 +1039,8 @@ total 530
 	</textobject>
       </mediaobject>
 
+<!-- reed: todo: the two above images or placed on separate pages and
+ have too much white space -->
       <para>If you are familiar with &ms-dos;, this is similar, although not
 	identical, to the <command>join</command> command.</para>
 
@@ -1319,6 +1322,9 @@ total 530
 	  <literal>e</literal> for the <filename>/var</filename> directory
 	  hierarchy, and <literal>f</literal> for the
 	  <filename>/usr</filename> directory hierarchy.</para>
+
+	  <!-- reed: todo: the following image is on page by itself
+	  and maybe page header is covered -- noticed with xdvi -->
 
         <mediaobject>
           <imageobject>
@@ -1666,6 +1672,7 @@ total 530
     <para>By default, <command>ps</command> only shows you the commands that are running
       and are owned by you.  For example:</para>
 
+    <!- reed: todo: update this to have non-FreeBSD examples -->
     <screen>&prompt.user; <userinput>ps</userinput>
   PID  TT  STAT      TIME COMMAND
   298  p0  Ss     0:01.10 tcsh
@@ -1712,7 +1719,7 @@ total 530
     <para>The output from &man.top.1; is similar.  A sample session looks like
       this:</para>
 
-<!-- needs to be changed to reflect new threads-aware top -->      
+<!-- todo: needs to be changed to reflect new threads-aware top -->      
       
     <screen>&prompt.user; <userinput>top</userinput>
 last pid: 72257;  load averages:  0.13,  0.09,  0.03    up 0+13:38:33  22:39:10
@@ -2119,7 +2126,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <note>
 	<para>The shell that you wish to use <emphasis>must</emphasis> be
 	  present in the <filename>/etc/shells</filename> file.  If you
-	  have installed a shell from the <link linkend="ports">ports
+	  have installed a shell from the &pkgsrc; or <link linkend="ports">ports
 	  collection</link>, then this should have been done for you
 	  already.  If you installed the shell by hand, you must do
 	  this.</para>
@@ -2143,7 +2150,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para>A lot of configuration in &os; is done by editing text files.
       Because of this, it would be a good idea to become familiar
       with a text editor.  &os; comes with a few as part of the base
-      system, and many more are available in the ports collection.</para>
+      system, and many more are available in the &pkgsrc; and ports collections.</para>
 
     <indexterm>
       <primary><command>ee</command></primary>
@@ -2385,7 +2392,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
 	</listitem>
 
 	<listitem>
-	  <para>Kernel developers.</para>
+	  <para>Kernel internals.</para>
 	</listitem>
       </orderedlist>
 
