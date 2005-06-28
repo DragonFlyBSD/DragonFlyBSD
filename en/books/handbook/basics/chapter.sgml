@@ -2,7 +2,7 @@
      The DragonFly BSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.5 2005/06/28 02:35:16 reed Exp $
+     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.6 2005/06/28 05:43:29 reed Exp $
 -->
 
 <chapter id="basics">
@@ -1039,292 +1039,292 @@ total 530
 	</textobject>
       </mediaobject>
 
-<!-- reed: todo: the two above images or placed on separate pages and
- have too much white space -->
-      <para>If you are familiar with &ms-dos;, this is similar, although not
-	identical, to the <command>join</command> command.</para>
+	<!-- reed: todo: the two above images or placed on separate pages and
+	 have too much white space -->
+	      <para>If you are familiar with &ms-dos;, this is similar, although not
+		identical, to the <command>join</command> command.</para>
 
-      <para>This is not normally something you need to concern yourself with.
-	Typically you create filesystems when installing &os; and decide
-	where to mount them, and then never change them unless you add a new
-	disk.</para>
+	      <para>This is not normally something you need to concern yourself with.
+		Typically you create filesystems when installing &os; and decide
+		where to mount them, and then never change them unless you add a new
+		disk.</para>
 
-      <para>It is entirely possible to have one large root filesystem, and not
-	need to create any others.  There are some drawbacks to this approach,
-	and one advantage.</para>
+	      <para>It is entirely possible to have one large root filesystem, and not
+		need to create any others.  There are some drawbacks to this approach,
+		and one advantage.</para>
 
-      <itemizedlist>
-	<title>Benefits of Multiple Filesystems</title>
-      
-	<listitem>
-	  <para>Different filesystems can have different <firstterm>mount
-	    options</firstterm>.  For example, with careful planning, the
-	    root filesystem can be mounted read-only, making it impossible for
-	    you to inadvertently delete or edit a critical file.  Separating
-	    user-writable filesystems, such as <filename>/home</filename>,
-	    from other filesystems also allows them to be mounted
-	    <firstterm>nosuid</firstterm>; this option prevents the
-	    <firstterm>suid</firstterm>/<firstterm>guid</firstterm> bits on
-	    executables stored on the filesystem from taking effect, possibly
-	    improving security.</para>
-	</listitem>
-
-	<listitem>
-	  <para>&os; automatically optimizes the layout of files on a
-	    filesystem, depending on how the filesystem is being used.  So a
-	    filesystem that contains many small files that are written
-	    frequently will have a different optimization to one that contains
-	    fewer, larger files.  By having one big filesystem this
-	    optimization breaks down.</para>
-	</listitem>
-	
-	<listitem>
-	  <para>&os;'s filesystems are very robust should you lose power.
-	    However, a power loss at a critical point could still damage the
-	    structure of the filesystem.  By splitting your data over multiple
-	    filesystems it is more likely that the system will still come up,
-	    making it easier for you to restore from backup as necessary.</para>
-	</listitem>
-      </itemizedlist>
-
-      <itemizedlist>
-	<title>Benefit of a Single Filesystem</title>
-
-	<listitem>
-	  <para>Filesystems are a fixed size.  If you create a filesystem when
-	    you install &os; and give it a specific size, you may later
-	    discover that you need to make the partition bigger.  The 
-	    &man.growfs.8; command makes it possible to 
-	    increase the size of a filesystem on the fly.</para>
-	</listitem>
-      </itemizedlist>
-    
-      <para>Filesystems are contained in partitions.  This does not have the
-	same meaning as the common usage of the term partition (for example, &ms-dos;
-	partition), because of &os;'s &unix; heritage.  Each partition is
-	identified by a letter from <literal>a</literal> through to
-	<literal>h</literal>.  Each partition can contain only one filesystem,
-	which means that filesystems are often described by either their
-	typical mount point in the filesystem hierarchy, or the letter of the
-	partition they are contained in.</para>
-
-      <para>&os; also uses disk space for <firstterm>swap
-	  space</firstterm>.  Swap space provides &os; with
-	<firstterm>virtual memory</firstterm>.  This allows your computer to
-	behave as though it has much more memory than it actually does.  When
-	&os; runs out of memory it moves some of the data that is not
-	currently being used to the swap space, and moves it back in (moving
-	something else out) when it needs it.</para>
-
-      <para>Some partitions have certain conventions associated with
-	them.</para>
-
-      <informaltable frame="none" pgwide="1">
-	<tgroup cols="2">
-	  <colspec colwidth="1*">
-	  <colspec colwidth="5*">
-
-	  <thead>
-	    <row>
-	      <entry>Partition</entry>
-
-	      <entry>Convention</entry>
-	    </row>
-	  </thead>
-
-	  <tbody>
-	    <row>
-	      <entry><literal>a</literal></entry>
-
-	      <entry>Normally contains the root filesystem</entry>
-	    </row>
-
-	    <row>
-	      <entry><literal>b</literal></entry>
-
-	      <entry>Normally contains swap space</entry>
-	    </row>
-
-	    <row>
-	      <entry><literal>c</literal></entry>
-
-	      <entry>Normally the same size as the enclosing slice.  This
-		allows utilities that need to work on the entire slice (for
-		example, a bad block scanner) to work on the
-		<literal>c</literal> partition.  You would not normally create
-		a filesystem on this partition.</entry>
-	    </row>
-
-	    <row>
-	      <entry><literal>d</literal></entry>
-
-	      <entry>Partition <literal>d</literal> used to have a special
-		meaning associated with it, although that is now gone.  To
-		this day, some tools may operate oddly if told to work on
-		partition <literal>d</literal>, so
-		<application>sysinstall</application> will not normally create
-		partition <literal>d</literal>.</entry>
-	    </row>
-	  </tbody>
-	</tgroup>
-      </informaltable>
-
-      <para>Each partition-that-contains-a-filesystem is stored in what
-	&os; calls a <firstterm>slice</firstterm>.  Slice is &os;'s term
-	for what the common call partitions, and again, this is because of
-	&os;'s &unix; background.  Slices are numbered, starting at 1,
-	through to 4.</para>
-
-	<indexterm><primary>slices</primary></indexterm>
-	<indexterm><primary>partitions</primary></indexterm>
-	<indexterm><primary>dangerously dedicated</primary></indexterm>
-
-      <para>Slice numbers follow
-	the device name, prefixed with an <literal>s</literal>,
-	starting at 1.  So <quote>da0<emphasis>s1</emphasis></quote>
-	is the first slice on the first SCSI drive.  There can only be
-	four physical slices on a disk, but you can have logical
-	slices inside physical slices of the appropriate type.  These
-	extended slices are numbered starting at 5, so
-	<quote>ad0<emphasis>s5</emphasis></quote> is the first
-	extended slice on the first IDE disk.  These devices are used by file
-	systems that expect to occupy a slice.</para> 
-
-      <para>Slices, <quote>dangerously dedicated</quote> physical
-	drives, and other drives contain
-	<firstterm>partitions</firstterm>, which are represented as
-	letters from <literal>a</literal> to <literal>h</literal>.
-	This letter is appended to the device name, so
-	<quote>da0<emphasis>a</emphasis></quote> is the a partition on
-	the first da drive, which is <quote>dangerously dedicated</quote>.
-	<quote>ad1s3<emphasis>e</emphasis></quote> is the fifth partition
-	in the third slice of the second IDE disk drive.</para>
-	
-      <para>Finally, each disk on the system is identified.  A disk name
-	starts with a code that indicates the type of disk, and then a number,
-	indicating which disk it is.  Unlike slices, disk numbering starts at
-	0.  Common codes that you will see are listed in 
-	<xref linkend="basics-dev-codes">.</para>
-
-      <para>When referring to a partition &os; requires that you also name
-	the slice and disk that contains the partition, and when referring to
-	a slice you should also refer to the disk name.  Do this by listing
-	the disk name, <literal>s</literal>, the slice number, and then the
-	partition letter.  Examples are shown in 
-	<xref linkend="basics-disk-slice-part">.</para>
-
-      <para><xref linkend="basics-concept-disk-model"> shows a conceptual
-	model of the disk layout that should help make things clearer.</para>
-
-      <para>In order to install &os; you must first configure the disk
-	slices, then create partitions within the slice you will use for
-	&os;, and then create a filesystem (or swap space) in each
-	partition, and decide where that filesystem will be mounted.</para>
-
-      <table frame="none" pgwide="1" id="basics-dev-codes">
-	<title>Disk Device Codes</title>
-
-	<tgroup cols="2">
-          <colspec colwidth="1*">
-          <colspec colwidth="5*">
-
-	  <thead>
-	    <row>
-	      <entry>Code</entry>
-	    
-	      <entry>Meaning</entry>
-	    </row>
-	  </thead>
-
-	  <tbody>
-	    <row>
-	      <entry><devicename>ad</devicename></entry>
-
-	      <entry>ATAPI (IDE) disk</entry>
-	    </row>
-
-	    <row>
-	      <entry><devicename>da</devicename></entry>
+	      <itemizedlist>
+		<title>Benefits of Multiple Filesystems</title>
 	      
-	      <entry>SCSI direct access disk</entry>
-	    </row>
-	    
-	    <row>
-	      <entry><devicename>acd</devicename></entry>
-	      
-	      <entry>ATAPI (IDE) CDROM</entry>
-	    </row>
-	    
-	    <row>
-	      <entry><devicename>cd</devicename></entry>
-	      
-	      <entry>SCSI CDROM</entry>
-	    </row>
-	    
-	    <row>
-	      <entry><devicename>fd</devicename></entry>
-	      
-	      <entry>Floppy disk</entry>
-	    </row>
-	  </tbody>
-	</tgroup>
-      </table>
-      
-      <example id="basics-disk-slice-part">
-	<title>Sample Disk, Slice, and Partition Names</title>
-	
-	<informaltable frame="none" pgwide="1">
-	  <tgroup cols="2">
-            <colspec colwidth="1*">
-            <colspec colwidth="5*">
+		<listitem>
+		  <para>Different filesystems can have different <firstterm>mount
+		    options</firstterm>.  For example, with careful planning, the
+		    root filesystem can be mounted read-only, making it impossible for
+		    you to inadvertently delete or edit a critical file.  Separating
+		    user-writable filesystems, such as <filename>/home</filename>,
+		    from other filesystems also allows them to be mounted
+		    <firstterm>nosuid</firstterm>; this option prevents the
+		    <firstterm>suid</firstterm>/<firstterm>guid</firstterm> bits on
+		    executables stored on the filesystem from taking effect, possibly
+		    improving security.</para>
+		</listitem>
 
-	    <thead>
-	      <row>
-		<entry>Name</entry>
+		<listitem>
+		  <para>&os; automatically optimizes the layout of files on a
+		    filesystem, depending on how the filesystem is being used.  So a
+		    filesystem that contains many small files that are written
+		    frequently will have a different optimization to one that contains
+		    fewer, larger files.  By having one big filesystem this
+		    optimization breaks down.</para>
+		</listitem>
 		
-		<entry>Meaning</entry>
-	      </row>
-	    </thead>
+		<listitem>
+		  <para>&os;'s filesystems are very robust should you lose power.
+		    However, a power loss at a critical point could still damage the
+		    structure of the filesystem.  By splitting your data over multiple
+		    filesystems it is more likely that the system will still come up,
+		    making it easier for you to restore from backup as necessary.</para>
+		</listitem>
+	      </itemizedlist>
+
+	      <itemizedlist>
+		<title>Benefit of a Single Filesystem</title>
+
+		<listitem>
+		  <para>Filesystems are a fixed size.  If you create a filesystem when
+		    you install &os; and give it a specific size, you may later
+		    discover that you need to make the partition bigger.  The 
+		    &man.growfs.8; command makes it possible to 
+		    increase the size of a filesystem on the fly.</para>
+		</listitem>
+	      </itemizedlist>
 	    
-	    <tbody>
-	      <row>
-		<entry><literal>ad0s1a</literal></entry>
+	      <para>Filesystems are contained in partitions.  This does not have the
+		same meaning as the common usage of the term partition (for example, &ms-dos;
+		partition), because of &os;'s &unix; heritage.  Each partition is
+		identified by a letter from <literal>a</literal> through to
+		<literal>h</literal>.  Each partition can contain only one filesystem,
+		which means that filesystems are often described by either their
+		typical mount point in the filesystem hierarchy, or the letter of the
+		partition they are contained in.</para>
+
+	      <para>&os; also uses disk space for <firstterm>swap
+		  space</firstterm>.  Swap space provides &os; with
+		<firstterm>virtual memory</firstterm>.  This allows your computer to
+		behave as though it has much more memory than it actually does.  When
+		&os; runs out of memory it moves some of the data that is not
+		currently being used to the swap space, and moves it back in (moving
+		something else out) when it needs it.</para>
+
+	      <para>Some partitions have certain conventions associated with
+		them.</para>
+
+	      <informaltable frame="none" pgwide="1">
+		<tgroup cols="2">
+		  <colspec colwidth="1*">
+		  <colspec colwidth="5*">
+
+		  <thead>
+		    <row>
+		      <entry>Partition</entry>
+
+		      <entry>Convention</entry>
+		    </row>
+		  </thead>
+
+		  <tbody>
+		    <row>
+		      <entry><literal>a</literal></entry>
+
+		      <entry>Normally contains the root filesystem</entry>
+		    </row>
+
+		    <row>
+		      <entry><literal>b</literal></entry>
+
+		      <entry>Normally contains swap space</entry>
+		    </row>
+
+		    <row>
+		      <entry><literal>c</literal></entry>
+
+		      <entry>Normally the same size as the enclosing slice.  This
+			allows utilities that need to work on the entire slice (for
+			example, a bad block scanner) to work on the
+			<literal>c</literal> partition.  You would not normally create
+			a filesystem on this partition.</entry>
+		    </row>
+
+		    <row>
+		      <entry><literal>d</literal></entry>
+
+		      <entry>Partition <literal>d</literal> used to have a special
+			meaning associated with it, although that is now gone.  To
+			this day, some tools may operate oddly if told to work on
+			partition <literal>d</literal>, so
+			<application>sysinstall</application> will not normally create
+			partition <literal>d</literal>.</entry>
+		    </row>
+		  </tbody>
+		</tgroup>
+	      </informaltable>
+
+	      <para>Each partition-that-contains-a-filesystem is stored in what
+		&os; calls a <firstterm>slice</firstterm>.  Slice is &os;'s term
+		for what the common call partitions, and again, this is because of
+		&os;'s &unix; background.  Slices are numbered, starting at 1,
+		through to 4.</para>
+
+		<indexterm><primary>slices</primary></indexterm>
+		<indexterm><primary>partitions</primary></indexterm>
+		<indexterm><primary>dangerously dedicated</primary></indexterm>
+
+	      <para>Slice numbers follow
+		the device name, prefixed with an <literal>s</literal>,
+		starting at 1.  So <quote>da0<emphasis>s1</emphasis></quote>
+		is the first slice on the first SCSI drive.  There can only be
+		four physical slices on a disk, but you can have logical
+		slices inside physical slices of the appropriate type.  These
+		extended slices are numbered starting at 5, so
+		<quote>ad0<emphasis>s5</emphasis></quote> is the first
+		extended slice on the first IDE disk.  These devices are used by file
+		systems that expect to occupy a slice.</para> 
+
+	      <para>Slices, <quote>dangerously dedicated</quote> physical
+		drives, and other drives contain
+		<firstterm>partitions</firstterm>, which are represented as
+		letters from <literal>a</literal> to <literal>h</literal>.
+		This letter is appended to the device name, so
+		<quote>da0<emphasis>a</emphasis></quote> is the a partition on
+		the first da drive, which is <quote>dangerously dedicated</quote>.
+		<quote>ad1s3<emphasis>e</emphasis></quote> is the fifth partition
+		in the third slice of the second IDE disk drive.</para>
 		
-		<entry>The first partition (<literal>a</literal>) on the first
-		  slice (<literal>s1</literal>) on the first IDE disk
-		  (<literal>ad0</literal>).</entry>
-	      </row>
+	      <para>Finally, each disk on the system is identified.  A disk name
+		starts with a code that indicates the type of disk, and then a number,
+		indicating which disk it is.  Unlike slices, disk numbering starts at
+		0.  Common codes that you will see are listed in 
+		<xref linkend="basics-dev-codes">.</para>
 
-	      <row>
-		<entry><literal>da1s2e</literal></entry>
+	      <para>When referring to a partition &os; requires that you also name
+		the slice and disk that contains the partition, and when referring to
+		a slice you should also refer to the disk name.  Do this by listing
+		the disk name, <literal>s</literal>, the slice number, and then the
+		partition letter.  Examples are shown in 
+		<xref linkend="basics-disk-slice-part">.</para>
+
+	      <para><xref linkend="basics-concept-disk-model"> shows a conceptual
+		model of the disk layout that should help make things clearer.</para>
+
+	      <para>In order to install &os; you must first configure the disk
+		slices, then create partitions within the slice you will use for
+		&os;, and then create a filesystem (or swap space) in each
+		partition, and decide where that filesystem will be mounted.</para>
+
+	      <table frame="none" pgwide="1" id="basics-dev-codes">
+		<title>Disk Device Codes</title>
+
+		<tgroup cols="2">
+		  <colspec colwidth="1*">
+		  <colspec colwidth="5*">
+
+		  <thead>
+		    <row>
+		      <entry>Code</entry>
+		    
+		      <entry>Meaning</entry>
+		    </row>
+		  </thead>
+
+		  <tbody>
+		    <row>
+		      <entry><devicename>ad</devicename></entry>
+
+		      <entry>ATAPI (IDE) disk</entry>
+		    </row>
+
+		    <row>
+		      <entry><devicename>da</devicename></entry>
+		      
+		      <entry>SCSI direct access disk</entry>
+		    </row>
+		    
+		    <row>
+		      <entry><devicename>acd</devicename></entry>
+		      
+		      <entry>ATAPI (IDE) CDROM</entry>
+		    </row>
+		    
+		    <row>
+		      <entry><devicename>cd</devicename></entry>
+		      
+		      <entry>SCSI CDROM</entry>
+		    </row>
+		    
+		    <row>
+		      <entry><devicename>fd</devicename></entry>
+		      
+		      <entry>Floppy disk</entry>
+		    </row>
+		  </tbody>
+		</tgroup>
+	      </table>
+	      
+	      <example id="basics-disk-slice-part">
+		<title>Sample Disk, Slice, and Partition Names</title>
 		
-		<entry>The fifth partition (<literal>e</literal>) on the
-		  second slice (<literal>s2</literal>) on the second SCSI disk
-		  (<literal>da1</literal>).</entry>
-	      </row>
-	    </tbody>
-	  </tgroup>
-	</informaltable>
-      </example>
+		<informaltable frame="none" pgwide="1">
+		  <tgroup cols="2">
+		    <colspec colwidth="1*">
+		    <colspec colwidth="5*">
 
-      <example id="basics-concept-disk-model">
-	<title>Conceptual Model of a Disk</title>
+		    <thead>
+		      <row>
+			<entry>Name</entry>
+			
+			<entry>Meaning</entry>
+		      </row>
+		    </thead>
+		    
+		    <tbody>
+		      <row>
+			<entry><literal>ad0s1a</literal></entry>
+			
+			<entry>The first partition (<literal>a</literal>) on the first
+			  slice (<literal>s1</literal>) on the first IDE disk
+			  (<literal>ad0</literal>).</entry>
+		      </row>
 
-	<para>This diagram shows &os;'s view of the first IDE disk attached
-	  to the system.  Assume that the disk is 4&nbsp;GB in size, and contains
-	  two 2&nbsp;GB slices (&ms-dos; partitions).  The first slice contains a &ms-dos;
-	  disk, <devicename>C:</devicename>, and the second slice contains a
-	  &os; installation.  This example &os; installation has three
-	  partitions, and a swap partition.</para>
+		      <row>
+			<entry><literal>da1s2e</literal></entry>
+			
+			<entry>The fifth partition (<literal>e</literal>) on the
+			  second slice (<literal>s2</literal>) on the second SCSI disk
+			  (<literal>da1</literal>).</entry>
+		      </row>
+		    </tbody>
+		  </tgroup>
+		</informaltable>
+	      </example>
 
-	<para>The three partitions will each hold a filesystem.  Partition
-	  <literal>a</literal> will be used for the root filesystem,
-	  <literal>e</literal> for the <filename>/var</filename> directory
-	  hierarchy, and <literal>f</literal> for the
-	  <filename>/usr</filename> directory hierarchy.</para>
+	      <example id="basics-concept-disk-model">
+		<title>Conceptual Model of a Disk</title>
 
-	  <!-- reed: todo: the following image is on page by itself
-	  and maybe page header is covered -- noticed with xdvi -->
+		<para>This diagram shows &os;'s view of the first IDE disk attached
+		  to the system.  Assume that the disk is 4&nbsp;GB in size, and contains
+		  two 2&nbsp;GB slices (&ms-dos; partitions).  The first slice contains a &ms-dos;
+		  disk, <devicename>C:</devicename>, and the second slice contains a
+		  &os; installation.  This example &os; installation has three
+		  partitions, and a swap partition.</para>
+
+		<para>The three partitions will each hold a filesystem.  Partition
+		  <literal>a</literal> will be used for the root filesystem,
+		  <literal>e</literal> for the <filename>/var</filename> directory
+		  hierarchy, and <literal>f</literal> for the
+		  <filename>/usr</filename> directory hierarchy.</para>
+
+		  <!-- reed: todo: the following image is on page by itself
+		  and maybe page header is covered, noticed with xdvi -->
 
         <mediaobject>
           <imageobject>
@@ -1672,7 +1672,7 @@ total 530
     <para>By default, <command>ps</command> only shows you the commands that are running
       and are owned by you.  For example:</para>
 
-    <!- reed: todo: update this to have non-FreeBSD examples -->
+    <!-- reed: todo: update this to have non-FreeBSD examples -->
     <screen>&prompt.user; <userinput>ps</userinput>
   PID  TT  STAT      TIME COMMAND
   298  p0  Ss     0:01.10 tcsh
