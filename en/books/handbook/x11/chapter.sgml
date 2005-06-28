@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.4 2005/06/27 23:58:53 reed Exp $
+     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.5 2005/06/28 15:13:03 reed Exp $
 -->
 
 <chapter id="x11">
@@ -318,8 +318,6 @@
     <para>The rest of this chapter will explain how to configure
       <application>&xfree86;</application>, and how to set up a productive desktop
       environment.</para>
-
-<!-- Easiest way is from sysinstall for XFree86 4.X -->
 
   </sect1>
 

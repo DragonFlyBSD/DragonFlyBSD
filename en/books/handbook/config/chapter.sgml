@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.5 2005/06/28 06:31:14 reed Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.6 2005/06/28 15:13:03 reed Exp $
 -->
 
 <chapter id="config-tuning">
@@ -115,7 +115,7 @@
 	<title>Base Partitions</title>
 
 	<para>When laying out file systems with &man.disklabel.8;
-	  or &man.sysinstall.8;, remember that hard
+	  remember that hard
 	  drives transfer data faster from the outer
 	  tracks to the inner.
 	  Thus smaller and heavier-accessed file systems
@@ -147,11 +147,13 @@
 	  one partition while barely using another can be a
 	  hassle.</para>
 
+<!-- todo: reed: fix this for the new installer, if it applies
 	<note><para>Some users have found that &man.sysinstall.8;'s
 	    <literal>Auto-defaults</literal> partition sizer will
 	    sometimes select smaller than adequate <filename>/var</filename>
 	    and <filename>/</filename> partitions.  Partition wisely and
 	    generously.</para></note>
+-->
 
       </sect3>
 
@@ -274,8 +276,8 @@
       similar program, while the <filename>rc.conf</filename> file
       remains unique.</para>
 
-    <para>Upgrading the system using &man.sysinstall.8;
-      or <command>make world</command> will not overwrite the
+    <para>Upgrading the system using
+      <command>make world</command> will not overwrite the
       <filename>rc.conf</filename>
       file, so system configuration information will not be lost.</para>
 
@@ -838,9 +840,8 @@ ukphy1:  10baseT, 10baseT-FDX, 100baseTX, 100baseTX-FDX, auto</screen>
       </indexterm>
 
       <para>Once the right driver is loaded for the network card, the
-	card needs to be configured.  As with many other things, the
-	network card may have been configured at installation time by
-	<application>sysinstall</application>.</para>
+	card needs to be configured. As with many other things, the
+	network card may have been configured at installation time.</para>
 
       <para>To display the configuration for the network interfaces on
 	your system, enter the following command:</para>

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/l10n/chapter.sgml,v 1.96 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/l10n/chapter.sgml,v 1.2 2004/08/02 18:47:44 justin Exp $
+     $DragonFly: doc/en/books/handbook/l10n/chapter.sgml,v 1.3 2005/06/28 15:13:03 reed Exp $
 -->
 
 <chapter id="l10n">
@@ -443,16 +443,12 @@ font8x8=<replaceable>font_name</replaceable></programlisting>
         the <filename>/usr/share/syscons/fonts</filename> directory,
 	without the <filename>.fnt</filename> suffix.</para>
 
-      <indexterm>
-        <primary><application>sysinstall</application></primary>
-      </indexterm>
       <indexterm><primary>keymap</primary></indexterm>
       <indexterm><primary>screenmap</primary></indexterm>
       <para>Also be sure to set the correct keymap and screenmap for your
-	single C chars character set through
-	<filename>/stand/sysinstall</filename>.
-	Once inside <application>sysinstall</application>, choose <guimenuitem>Configure</guimenuitem>, then
-	<guimenuitem>Console</guimenuitem>.  Alternatively, you can add the
+	single C chars character set.
+	<!-- todo: reed: add notes for doing this via installer -->
+	You can add the
 	following to <filename>/etc/rc.conf</filename>:</para>
 
       <programlisting>scrnmap=<replaceable>screenmap_name</replaceable>

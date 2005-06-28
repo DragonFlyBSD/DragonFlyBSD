@@ -2,7 +2,7 @@
      The DragonFly BSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.6 2005/06/28 05:43:29 reed Exp $
+     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.7 2005/06/28 15:13:03 reed Exp $
 -->
 
 <chapter id="basics">
@@ -1161,8 +1161,6 @@ total 530
 		      <entry>Partition <literal>d</literal> used to have a special
 			meaning associated with it, although that is now gone.  To
 			this day, some tools may operate oddly if told to work on
-			partition <literal>d</literal>, so
-			<application>sysinstall</application> will not normally create
 			partition <literal>d</literal>.</entry>
 		    </row>
 		  </tbody>
