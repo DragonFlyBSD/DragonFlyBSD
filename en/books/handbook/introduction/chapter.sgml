@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.6 2005/06/27 23:23:44 reed Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.7 2005/06/28 02:30:30 reed Exp $
 -->
 
 <chapter id="introduction">
@@ -54,6 +54,7 @@
 
     <para>&os; is a 4.4BSD-Lite based operating system for
       Intel (x86 and &itanium;).  A port to AMD64 is in progress. 
+      <!-- reed: todo: the following sentence can be removed -->
       You can also
       read about <link linkend="history">the history of &os;</link>,
       or the <link linkend="relnotes">current release</link>.  
@@ -425,8 +426,8 @@
         <primary>DragonFly BSD Project</primary>
         <secondary>goals</secondary>
       </indexterm>
-      <para>&os; is an effort to maintain the traditional BSD format - lean, 
-      stable code - along with modern features such as lightweight threads, 
+      <para>&os; is an effort to maintain the traditional BSD format &mdash; lean, 
+      stable code &mdash; along with modern features such as lightweight threads, 
       a workable packaging system, and a revised VFS.  Underpinning all this work is 
       efficient support for multiple processors, something rare among open source 
       systems.  Because &os; is built on an existing very stable code base, 
