@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.7 2005/01/21 11:09:40 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.8 2005/06/28 18:38:06 joerg Exp $
  */
 
 #include "vinumhdr.h"
@@ -96,6 +96,8 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
     } else if (bcmp(dname, "twed", 4) == 0) {               /* 3ware raid */
       devmajor = 147;
       dname += 2;
+    } else if (bcmp(dname, "ar", 2) == 0) {
+	devmajor = 157;
     } else
 	return ENODEV;
     dname += 2;						    /* point past */
