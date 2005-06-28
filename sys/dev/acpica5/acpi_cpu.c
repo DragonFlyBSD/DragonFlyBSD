@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.8 2004/11/21 09:07:14 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.9 2005/06/28 07:15:38 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -825,9 +825,10 @@ acpi_cpu_startup_cx()
 #endif
 
     /* Take over idling from cpu_idle_default_hook(). */
-    KKASSERT(0);
-    /* XXX only set this if ncpus == 1, for now XXX */
-    cpu_idle_hook = acpi_cpu_idle;
+    if (ncpus == 1)
+	cpu_idle_hook = acpi_cpu_idle;
+    else
+	printf("Warning: ACPI idle hook not yet supported for SMP\n");
 }
 
 /*
