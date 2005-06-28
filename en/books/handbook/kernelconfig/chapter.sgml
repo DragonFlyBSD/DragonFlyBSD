@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/kernelconfig/chapter.sgml,v 1.132 2004/05/20 14:40:08 simon Exp $
-     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.3 2004/08/24 19:32:44 justin Exp $
+     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.4 2005/06/28 01:29:21 reed Exp $
 -->
 
 <chapter id="kernelconfig">
@@ -467,7 +467,7 @@ pseudo-device   loop          # Network loopback</programlisting>
       debugging information when building the kernel and strips most
       symbols after the resulting kernel is linked, to save some space
       at the install location.  If you are going to do tests of kernels
-      in the -CURRENT branch or develop changes of your own for the &os;
+      in the DEVELOPMENT branch or develop changes of your own for the &os;
       kernel, you might want to uncomment this line.  It will enable the
       use of the <option>-g</option> option which enables debugging
       information when passed to &man.gcc.1;.  </para>
