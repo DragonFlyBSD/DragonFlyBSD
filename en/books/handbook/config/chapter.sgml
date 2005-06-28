@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.4 2005/06/27 23:46:34 reed Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.5 2005/06/28 06:31:14 reed Exp $
 -->
 
 <chapter id="config-tuning">
@@ -45,38 +45,39 @@
       can be set to tune a &os; system.
       </para>
 
-    <para>After reading this chapter, you will know:</para>
+    <para>After reading this chapter, you will know:
 
-    <itemizedlist>
-      <listitem>
-	<para>How to efficiently work with
-	  file systems and swap partitions.</para>
-      </listitem>
-      <listitem>
-	<para>The basics of <filename>rc.conf</filename> configuration and
-	  <filename>/usr/local/etc/rc.d</filename> startup systems.</para>
-      </listitem>
-      <listitem>
-	<para>How to configure and test a network card.</para>
-      </listitem>
-      <listitem>
-	<para>How to configure virtual hosts on your network devices.</para>
-      </listitem>
-      <listitem>
-	<para>How to use the various configuration files in
-	  <filename>/etc</filename>.</para>
-      </listitem>
-      <listitem>
-        <para>How to tune &os; using <command>sysctl</command>
-          variables.</para>
-      </listitem>
-      <listitem>
-	<para>How to tune disk performance and modify kernel
-	  limitations.</para>
-      </listitem>
-    </itemizedlist>
+      <itemizedlist>
+        <listitem>
+  	<para>How to efficiently work with
+  	  file systems and swap partitions.</para>
+        </listitem>
+        <listitem>
+  	<para>The basics of <filename>rc.conf</filename> configuration and
+  	  <filename>rc.d</filename> startup systems.</para>
+        </listitem>
+        <listitem>
+  	<para>How to configure and test a network card.</para>
+        </listitem>
+        <listitem>
+  	<para>How to configure virtual hosts on your network devices.</para>
+        </listitem>
+        <listitem>
+  	<para>How to use the various configuration files in
+  	  <filename>/etc</filename>.</para>
+        </listitem>
+        <listitem>
+          <para>How to tune &os; using <command>sysctl</command>
+            variables.</para>
+        </listitem>
+        <listitem>
+  	<para>How to tune disk performance and modify kernel
+  	  limitations.</para>
+        </listitem>
+      </itemizedlist>
+    </para>
 
-    <para>Before reading this chapter, you should:</para>
+    <para>Before reading this chapter, you should:
 
     <itemizedlist>
       <listitem>
@@ -90,6 +91,7 @@
 	  (<xref linkend="kernelconfig">).</para>
       </listitem>
     </itemizedlist>
+    </para>
   </sect1>
 
   <sect1 id="configtuning-initial">
@@ -1071,7 +1073,7 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
 	configured the network services?  Did you configure the firewall
 	correctly?  Is the card you are using supported by &os;?  Always
 	check the hardware notes before sending off a bug report.  Update
-	your version of &os; to the latest STABLE version.  Check the
+	your version of &os; to the latest PREVIEW version.  Check the
 	mailing list archives, or perhaps search the Internet.</para>
 
       <para>If the card works, yet performance is poor, it would be
@@ -1467,6 +1469,7 @@ cron.*                                          /var/log/cron
 
       <programlisting>kern.logsigexit=0       # Do not log fatal signal exits (e.g. sig 11)
 compat.linux.osname=&os;
+<!-- todo: reed: check this -->
 compat.linux.osrelease=4.3-STABLE</programlisting>
     </sect2>
   </sect1>
