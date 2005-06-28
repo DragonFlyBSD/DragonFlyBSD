@@ -2,7 +2,7 @@
     DragonFlyBSD Specific Glossary Terms
 	Please keep this file sorted.
 
-    $DragonFly: doc/en/share/sgml/glossary/dragonfly-glossary.sgml,v 1.1.1.1 2004/04/02 09:36:23 hmp Exp $
+    $DragonFly: doc/en/share/sgml/glossary/dragonfly-glossary.sgml,v 1.2 2005/06/28 01:15:58 reed Exp $
 -->
 
 <glossary status="draft" id="dragonfly-glossary">
@@ -46,9 +46,7 @@
       <glossterm>Kernel Scheduler Entities</glossterm>
       <acronym>KSE</acronym>
       <glossdef>
-	<para>A kernel-supported threading system.  See the <ulink
-	  url="http://www.FreeBSD.org/kse">project home page</ulink>
-	  for further details.</para>
+	<para>A kernel-supported threading system.</para>
       </glossdef>
     </glossentry>
 
@@ -74,7 +72,7 @@
       <glossterm>Merge From Stable</glossterm>
       <acronym>MFS</acronym>
       <glossdef>
-	<para>In the normal course of FreeBSD development, a change will
+	<para>In the normal course of &os; development, a change will
 	  be committed to the -CURRENT branch for testing before being
 	  merged to -STABLE.  On rare occassions, a change will go into
 	  -STABLE first and then be merged to -CURRENT.</para>
