@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.4 2005/06/27 18:37:59 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.5 2005/06/29 01:25:06 dillon Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -40,7 +40,7 @@ union usched_data {
 	short	priority;	/* lower is better */
 	char	interactive;	/* (currently not used) */
 	char	rqindex;
-	int	childscpu;
+	int	origcpu;
 	int	estcpu;		/* dynamic priority modification */
     } bsd4;
 

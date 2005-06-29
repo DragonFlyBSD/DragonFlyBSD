@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.44 2005/06/27 18:37:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.45 2005/06/29 01:25:08 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -646,6 +646,7 @@ schedclock(systimer_t info, struct intrframe *frame)
 		 * that this call MUST BE MP SAFE, and the BGL IS NOT HELD
 		 * HERE.
 		 */
+		++p->p_cpticks;
                 p->p_usched->schedulerclock(p, info->periodic, info->time);
 	}
 	if ((p = curproc) != NULL) {

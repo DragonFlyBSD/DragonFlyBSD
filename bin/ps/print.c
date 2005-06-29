@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.21 2005/06/26 04:36:34 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.22 2005/06/29 01:25:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -656,6 +656,17 @@ pvar(const KINFO *k, const struct varent *vent)
 {
 	printval((char *)((char *)KI_PROC(k) + vent->var->off), vent);
 }
+
+void
+pest(const KINFO *k, const struct varent *vent)
+{
+	int val;
+
+	val = *(int *)((char *)KI_PROC(k) + vent->var->off);
+	val = val / 128;
+	printval((char *)&val, vent);
+}
+
 
 void
 tvar(const KINFO *k, const struct varent *vent)
