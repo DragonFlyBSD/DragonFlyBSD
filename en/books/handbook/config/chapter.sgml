@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.6 2005/06/28 15:13:03 reed Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.7 2005/06/29 03:17:43 reed Exp $
 -->
 
 <chapter id="config-tuning">
@@ -563,9 +563,10 @@ HOME=/var/log
         edit/install the system crontab. Simply use your favorite
         editor: the <command>cron</command> utility will notice that the file
         has changed and immediately begin using the updated version. 
-        See
-        <ulink url="http://www.freebsd.org/doc/en_US.ISO8859-1/books/faq/admin.html#ROOT-NOT-FOUND-CRON-ERRORS">
-        this FAQ entry </ulink> for more information.</para>
+	If you use <command>crontab</command> to load the
+	<filename>/etc/crontab</filename> file you may get an error
+	like <errorname>root: not found</errorname> because of the 
+	system crontab's additional user field.</para>
       </important>
 
       <para>To install a freshly written user
@@ -673,8 +674,8 @@ $sshd_enable=YES</screen>
 
     <note>
       <para>The second line (<literal># sshd</literal>) is the output
-        from the <command>sshd</command> command, not a <username>root</username>
-        console.</para>
+        from the <command>rc.d</command> script, not a
+        <username>root</username> prompt.</para>
     </note>
 
     <para>To determine if a service is running, a
@@ -726,13 +727,14 @@ sshd is running as pid 433.</screen>
       <listitem>
 	<para>KEYWORD: When &man.rcorder.8; uses the <option>-k</option>
 	 option, then only the rc.d files matching this keyword are used.
-	 For example, when using <option>-k shutdown</option>, only the
-	 <filename>rc.d</filename> scripts defining the
-	 <literal>shutdown</literal> keyword are used.
 
 	 <footnote>
 	   <para>Previously this was used to define *BSD dependent features.
 	   </para></footnote>
+
+	 For example, when using <option>-k shutdown</option>, only the
+	 <filename>rc.d</filename> scripts defining the
+	 <literal>shutdown</literal> keyword are used.
 	</para>
 
 	<para>With the <option>-s</option> option, &man.rcorder.8 will
@@ -747,8 +749,8 @@ sshd is running as pid 433.</screen>
       some other &unix; operating systems.</para>
 
     <para>Additional information about the &os; 
-      <filename>rc.d</filename> system can be found in the &man.rc.8;
-      and &man.rc.subr.8; manual pages.</para>
+      <filename>rc.d</filename> system can be found in the &man.rc.8;,
+      &man.rc.conf.5;, and &man.rc.subr.8; manual pages.</para>
   </sect1>
 
   <sect1 id="config-network-setup">
@@ -1400,6 +1402,7 @@ cron.*                                          /var/log/cron
 !ppp
 *.*                                             /var/log/ppp.log</programlisting>
 
+<!-- todo: reed: this should be documented in book -->
 	<para>Consult the &man.syslog.conf.5; manual page for more
 	  information.</para>
       </sect3>
@@ -1447,6 +1450,7 @@ cron.*                                          /var/log/cron
 /var/log/monthly.log                    640  12    *    $M1D0 Z
 /var/log/console.log                    640  5     100  *     Z</programlisting>
 
+<!-- todo: reed: this should be documented in book -->
 	<para>Consult the &man.newsyslog.8; manual page for more
 	  information.</para>
       </sect3>
@@ -1674,7 +1678,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	  boot loader at boot time.  Attempting to do it after the
 	  kernel boots will have no effect.</para>
 
-	<para>For more information, please see &man.ata.4;.</para>
+	<para>For more information, please see &man.ata.4; manual page.</para>
       </sect3>
 
     </sect2>
@@ -2073,12 +2077,8 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
       <para>The best way to add swap, of course, is to use this as an
 	excuse to add another hard drive.  You can always use another
 	hard drive, after all.  If you can do this, go reread the
-	discussion of <ulink
-	url="configtuning-initial.html#SWAP-DESIGN">swap space
-	</ulink> from the <ulink
-	url="configtuning-initial.html">Initial Configuration</ulink>
-	section of the Handbook for some suggestions on how to best
-	arrange your swap.</para>
+	discussion about swap space in <xref linkend="configtuning-initial">
+	for some suggestions on how to best arrange your swap.</para>
     </sect2>
 
     <sect2 id="nfs-swap">
