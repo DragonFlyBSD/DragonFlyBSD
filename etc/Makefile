@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.65 2005/06/30 19:47:22 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.66 2005/06/30 20:12:13 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -295,6 +295,12 @@ upgrade_etc:	preupgrade
 .endif
 	rm -f ${DESTDIR}/usr/share/info/cpp2.info.gz
 	rm -f ${DESTDIR}/usr/share/info/gcc2.info.gz
+	rm -f ${DESTDIR}/usr/sbin/ntp-genkeys
+	rm -f ${DESTDIR}/usr/sbin/ntpdc
+	rm -f ${DESTDIR}/usr/sbin/ntptime
+	rm -f ${DESTDIR}/usr/sbin/ntptimeset
+	rm -f ${DESTDIR}/usr/sbin/ntptrace
+	rm -f ${DESTDIR}/usr/sbin/scriptdump
 	ldconfig -R
 
 distribution:
