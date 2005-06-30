@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined2.c,v 1.3 2005/03/15 02:25:25 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined2.c,v 1.4 2005/06/30 21:12:55 corecode Exp $*
  */
 /*
  * Part 2 of the mined editor.
@@ -61,7 +61,7 @@ void UP()
 }
 
 static char *help_string=
-"			Mined (Minix Editor), FreeBSD version.\n"
+"			Mined (Minix Editor), DragonFly version.\n"
 "------------------------+-------------------------------+---------------------\n"
 "	CURSOR MOTION	|		EDITING		|	MISC\n"
 " Up			| ^N	Delete next word	| ^L	Erase & redraw\n"
