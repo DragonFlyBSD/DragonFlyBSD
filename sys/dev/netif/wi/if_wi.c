@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.27 2005/06/30 15:57:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.28 2005/06/30 17:11:28 joerg Exp $
  */
 
 /*
@@ -255,17 +255,16 @@ wi_attach(device_t dev)
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
 			       wi_intr, sc, &sc->wi_intrhand, NULL);
-
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
-		wi_free(dev);
-		return (error);
+		goto fail;
 	}
 
 	sc->wi_cmd_count = 500;
 	/* Reset the NIC. */
-	if (wi_reset(sc) != 0)
-		return ENXIO;		/* XXX */
+	error = wi_reset(sc);
+	if (error)
+		goto fail;
 
 	/*
 	 * Read the station address.
@@ -279,13 +278,14 @@ wi_attach(device_t dev)
 		buflen = IEEE80211_ADDR_LEN;
 		error = wi_read_rid(sc, WI_RID_MAC_NODE, ic->ic_myaddr, &buflen);
 	}
-	if (error || IEEE80211_ADDR_EQ(ic->ic_myaddr, empty_macaddr)) {
-		if (error != 0)
-			device_printf(dev, "mac read failed %d\n", error);
-		else
-			device_printf(dev, "mac read failed (all zeros)\n");
-		wi_free(dev);
-		return (error);
+	if (error) {
+		device_printf(dev, "mac read failed %d\n", error);
+		goto fail;
+	}
+	if (IEEE80211_ADDR_EQ(ic->ic_myaddr, empty_macaddr)) {
+		device_printf(dev, "mac read failed (all zeros)\n");
+		error = ENXIO;
+		goto fail;
 	}
 
 	/* Read NIC identification */
@@ -491,7 +491,12 @@ wi_attach(device_t dev)
 	sc->sc_rx_th.wr_ihdr.it_len = htole16(sc->sc_rx_th_len);
 	sc->sc_rx_th.wr_ihdr.it_present = htole32(WI_RX_RADIOTAP_PRESENT);
 
-	return (0);
+
+	return(0);
+
+fail:
+	wi_free(dev);
+	return(error);
 }
 
 int
@@ -509,7 +514,6 @@ wi_detach(device_t dev)
 	wi_stop(ifp, 0);
 
 	ieee80211_ifdetach(ifp);
-	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
 	WI_UNLOCK(sc);
 	wi_free(dev);
 	return (0);
@@ -2837,6 +2841,10 @@ wi_free(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
 
+	if (sc->wi_intrhand != NULL) {
+		bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
+		sc->wi_intrhand = NULL;
+	}
 	if (sc->iobase != NULL) {
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iobase_rid, sc->iobase);
 		sc->iobase = NULL;

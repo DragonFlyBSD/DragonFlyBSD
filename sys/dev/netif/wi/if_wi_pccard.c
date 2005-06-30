@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.47 2004/06/09 06:31:40 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.6 2004/09/06 13:52:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.7 2005/06/30 17:11:28 joerg Exp $
  */
 
 /*
@@ -211,7 +211,6 @@ wi_pccard_attach(device_t dev)
 	int			error;
 	uint32_t		vendor;
 	uint32_t		product;
-	int			retval;
 
 	sc = device_get_softc(dev);
 
@@ -242,8 +241,5 @@ wi_pccard_attach(device_t dev)
 		return (ENXIO);
 #endif
 	}
-	retval = wi_attach(dev);
-	if (retval != 0)
-		wi_free(dev);
-	return (retval);
+	return wi_attach(dev);
 }

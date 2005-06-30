@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.22 2004/03/17 17:50:48 njl Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.6 2005/06/30 16:05:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.7 2005/06/30 17:11:28 joerg Exp $
  */
 
 /*
@@ -232,10 +232,7 @@ wi_pci_attach(device_t dev)
 		return (ENXIO);
 	}
 
-	error = wi_attach(dev);
-	if (error != 0)
-		wi_free(dev);
-	return (error);
+	return wi_attach(dev);
 }
 
 static int
