@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/disks/chapter.sgml,v 1.201 2004/06/07 13:36:45 hmp Exp $
-     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
+     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.3 2005/06/30 03:22:20 reed Exp $
 -->
 
 <chapter id="disks">
@@ -771,7 +771,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 
       <para>Will burn a copy of <replaceable>imagefile.iso</replaceable> on
 	<replaceable>cddevice</replaceable>. The default device is
-	<filename>/dev/acd0</filename> (or <filename>/dev/acd0c</filename> under &os;&nbsp;4.X). See &man.burncd.8; for options to
+	<filename>/dev/acd0c</filename>. See &man.burncd.8; for options to
 	set the write speed, eject the CD after burning, and write audio
 	data.</para>
     </sect2>
@@ -803,6 +803,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
         <primary>CDROMs</primary>
         <secondary>burning</secondary>
       </indexterm>
+      <!-- todo: reed: use dragonfly example -->
       <screen>&prompt.root; <userinput>cdrecord -scanbus</userinput>
 Cdrecord 1.9 (i386-unknown-freebsd4.2) Copyright (C) 1995-2000 J&ouml;rg Schilling
 Using libscg version 'schily-0.1'
@@ -902,7 +903,7 @@ scsibus1:
 	    files, and that <command>burncd</command> should fixate the disk
 	    when finished.</para>
 
-	  <screen>&prompt.root; <userinput>burncd -f <replaceable>/dev/acd0</replaceable> audio track1.cdr track2.cdr <replaceable>...</replaceable> fixate</userinput></screen>
+	  <screen>&prompt.root; <userinput>burncd -f <replaceable>/dev/acd0c</replaceable> audio track1.cdr track2.cdr <replaceable>...</replaceable> fixate</userinput></screen>
 	</step>
       </procedure>
     </sect2>
@@ -914,12 +915,12 @@ scsibus1:
 	functionally equivalent to the image file created with
 	<filename role="package">sysutils/mkisofs</filename>, and you can use it to duplicate
 	any data CD.  The example given here assumes that your CDROM
-	device is <devicename>acd0</devicename>.  Substitute your
+	device is <devicename>acd0c</devicename>.  Substitute your
 	correct CDROM device.  A <literal>c</literal> must be appended
 	to the end of the device name to indicate the entire partition
 	or, in the case of CDROMs, the entire disc.</para>
 
-      <screen>&prompt.root; <userinput>dd if=/dev/acd0 of=file.iso bs=2048</userinput></screen>
+      <screen>&prompt.root; <userinput>dd if=/dev/acd0c of=file.iso bs=2048</userinput></screen>
 
       <para>Now that you have an image, you can burn it to CD as
 	described above.</para>
@@ -1051,6 +1052,7 @@ device pass</programlisting>
 	machine.  During the boot process, your burner should show up,
 	like so:</para>
 
+      <!-- todo: add DragonFly example -->
       <screen>acd0: CD-RW &lt;MATSHITA CD-RW/DVD-ROM UJDA740&gt; at ata1-master PIO4
 cd0 at ata1 bus 0 target 0 lun 0
 cd0: &lt;MATSHITA CDRW/DVD UJDA740 1.00&gt; Removable CD-ROM SCSI-0 device
@@ -2154,9 +2156,9 @@ sa0(ncr1:4:0):  Logical unit is in process of becoming ready</screen>
 	names, unreadable and unwritable files, devices, files that change
 	size during the backup, files that are created/deleted during the
 	backup and more.  She presented the results at LISA V in Oct. 1991.
-	See <ulink
-	  url="http://berdmann.dyndns.org/zwicky/testdump.doc.html">torture-testing
-	  Backup and Archive Programs</ulink>.</para>
+	Read the <ulink
+	  url="http://berdmann.dyndns.org/zwicky/testdump.doc.html">Torture-testing
+	  Backup and Archive Programs</ulink> study for more information.</para>
     </sect2>
 
     <sect2>
@@ -2525,7 +2527,7 @@ Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
       </example>
     </sect2>
 
-    <sect2 id="disks-md-freebsd4">
+    <sect2 id="disks-md">
       <title>Memory-Based File System</title>
       <indexterm>
         <primary>disks</primary>
