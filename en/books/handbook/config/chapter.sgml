@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.7 2005/06/29 03:17:43 reed Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.8 2005/06/30 01:59:41 reed Exp $
 -->
 
 <chapter id="config-tuning">
@@ -396,10 +396,8 @@ exit 0
     <para>Some additional system services may not be covered by the
       toggles in <filename>/etc/rc.conf</filename>.  These are
       traditionally enabled by placing the command(s) to invoke them
-      in <filename>/etc/rc.local</filename>.  As of &os;&nbsp;3.1 there
-      is no default <filename>/etc/rc.local</filename>; if it is
-      created by the administrator it will however be honored in the
-      normal fashion.  Note that <filename>rc.local</filename> is
+      in <filename>/etc/rc.local</filename> (which does not exist by default).
+      Note that <filename>rc.local</filename> is
       generally regarded as the location of last resort; if there is a
       better place to start a service, do it there.</para>
 
@@ -472,6 +470,7 @@ exit 0
       (the system crontab):</para>
 
 
+    <!-- todo: add up-to-date crontab -->
     <programlisting># /etc/crontab - root's crontab for &os;
 #
 # &dollar;&os;: src/etc/crontab,v 1.32 2002/11/22 16:13:39 tom Exp &dollar;
