@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.9 2005/04/20 20:27:04 joerg Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.10 2005/06/30 15:55:17 corecode Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -55,24 +55,18 @@ CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 .endif
 
 # decompression functionality from libbz2
-.PATH:	${.CURDIR}/../../contrib/bzip2
-CFLAGS+=-I. -DBZ_NO_STDIO -DBZ_NO_COMPRESS
-SRCS+=	_bzlib.c _crctable.c _decompress.c _huffman.c _randtable.c _bzlib.h \
-	_bzlib_private.h
+BZ2DIR=	${.CURDIR}/../../contrib/bzip2-1.0
+.PATH:	${BZ2DIR}
+CFLAGS+=-I${BZ2DIR} -DBZ_NO_STDIO -DBZ_NO_COMPRESS
+SRCS+=	bzlib.c crctable.c decompress.c huffman.c randtable.c bzlib.h \
+	bzlib_private.h
 
 # check your belt - ugly bzip2 stuff ahead
-.for file in bzlib.c bzlib.h bzlib_private.h
-CLEANFILES+=   _${file} _${file}.orig
+.for file in bzlib.c
+CLEANFILES+=   ${file}
 
-_${file}: ${file} ${file}.diff
-	patch -s --suffix=.orig -o ${.TARGET} < ${.ALLSRC:M*.diff} ${.ALLSRC:M*.[ch]}
-.endfor
-
-.for file in crctable.c decompress.c huffman.c randtable.c
-CLEANFILES+=    _${file}
-
-_${file}: ${file}
-	sed "s|bzlib_private\.h|_bzlib_private.h|" ${.ALLSRC} > ${.TARGET}
+${file}: ${BZ2DIR}/${file} ${file}.diff
+	patch -o ${.TARGET} < ${.ALLSRC:M*.diff} ${.ALLSRC:M*.[ch]}
 .endfor
 
 .include "../libz/Makefile.stand"
