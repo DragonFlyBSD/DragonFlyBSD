@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/disks/chapter.sgml,v 1.201 2004/06/07 13:36:45 hmp Exp $
-     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.3 2005/06/30 03:22:20 reed Exp $
+     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.4 2005/06/30 16:15:31 reed Exp $
 -->
 
 <chapter id="disks">
@@ -2157,8 +2157,8 @@ sa0(ncr1:4:0):  Logical unit is in process of becoming ready</screen>
 	size during the backup, files that are created/deleted during the
 	backup and more.  She presented the results at LISA V in Oct. 1991.
 	Read the <ulink
-	  url="http://berdmann.dyndns.org/zwicky/testdump.doc.html">Torture-testing
-	  Backup and Archive Programs</ulink> study for more information.</para>
+	  url="http://berdmann.dyndns.org/zwicky/testdump.doc.html"><quote>Torture-testing
+	  Backup and Archive Programs</quote></ulink> study for more information.</para>
     </sect2>
 
     <sect2>
