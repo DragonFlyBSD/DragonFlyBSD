@@ -27,8 +27,16 @@ manual.pdf
 manual.ps
 manual.xml
 mk251.c
+sample1.bz2
+sample1.ref
+sample2.bz2
+sample2.ref
+sample3.bz2
+sample3.ref
 spewG.c
 unzcrash.c
 words0
+words1
 words2
+words3
 xmlproc.sh
