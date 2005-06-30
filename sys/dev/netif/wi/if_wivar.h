@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.22 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.7 2005/06/06 23:13:26 okumoto Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.8 2005/06/30 15:57:27 joerg Exp $
  */
 
 #if 0
@@ -64,8 +64,6 @@ struct wi_softc	{
 	struct ieee80211com	sc_ic;
 	int			(*sc_newstate)(struct ieee80211com *,
 					enum ieee80211_state, int);
-	device_t		sc_dev;
-	int			sc_unit;
 	int			wi_gone;
 	int			sc_enabled;
 	int			sc_reset;
@@ -226,6 +224,5 @@ void	wi_free(device_t);
 extern devclass_t wi_devclass;
 void	wi_init(void *);
 void	wi_intr(void *);
-int	wi_mgmt_xmit(struct wi_softc *, caddr_t, int);
 void	wi_stop(struct ifnet *, int);
 int	wi_symbol_load_firm(struct wi_softc *, const void *, int, const void *, int);

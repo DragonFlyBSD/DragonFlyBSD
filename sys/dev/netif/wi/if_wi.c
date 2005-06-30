@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.26 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.27 2005/06/30 15:57:27 joerg Exp $
  */
 
 /*
@@ -84,7 +84,6 @@
 
 #include <machine/bus.h>
 #include <machine/resource.h>
-#include <machine/clock.h>
 #include <machine/atomic.h>
 #include <sys/rman.h>
 
@@ -181,8 +180,8 @@ static	int wi_debug = 0;
 SYSCTL_INT(_hw_wi, OID_AUTO, debug, CTLFLAG_RW, &wi_debug,
 	    0, "control debugging printfs");
 
-#define	DPRINTF(X)	if (wi_debug) printf X
-#define	DPRINTF2(X)	if (wi_debug > 1) printf X
+#define	DPRINTF(X)	if (wi_debug) if_printf X
+#define	DPRINTF2(X)	if (wi_debug > 1) if_printf X
 #define	IFF_DUMPPKTS(_ifp) \
 	(((_ifp)->if_flags & (IFF_DEBUG|IFF_LINK2)) == (IFF_DEBUG|IFF_LINK2))
 #else
@@ -247,6 +246,9 @@ wi_attach(device_t dev)
 	};
 	int error;
 
+	ifp->if_softc = sc;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+
 	/*
 	 * NB: no locking is needed here; don't put it here
 	 *     unless you can prove it!
@@ -289,8 +291,6 @@ wi_attach(device_t dev)
 	/* Read NIC identification */
 	wi_read_nicid(sc);
 
-	ifp->if_softc = sc;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = wi_ioctl;
 	ifp->if_start = wi_start;
@@ -734,7 +734,7 @@ wi_init(void *arg)
 			error = wi_alloc_fid(sc, sc->sc_buflen,
 			    &sc->sc_txd[i].d_fid);
 			if (error) {
-				device_printf(sc->sc_dev,
+				if_printf(ifp,
 				    "tx buffer allocation failed (error %u)\n",
 				    error);
 				goto out;
@@ -791,7 +791,7 @@ out:
 		wi_stop(ifp, 1);
 	}
 	WI_UNLOCK(sc);
-	DPRINTF(("wi_init: return %d\n", error));
+	DPRINTF((ifp, "wi_init: return %d\n", error));
 	return;
 }
 
@@ -1024,7 +1024,7 @@ wi_watchdog(struct ifnet *ifp)
 	if (sc->sc_scan_timer) {
 		if (--sc->sc_scan_timer <= WI_SCAN_WAIT - WI_SCAN_INQWAIT &&
 		    sc->sc_firmware_type == WI_INTERSIL) {
-			DPRINTF(("wi_watchdog: inquire scan\n"));
+			DPRINTF((ifp, "wi_watchdog: inquire scan\n"));
 			wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_SCAN_RESULTS, 0, 0);
 		}
 		if (sc->sc_scan_timer)
@@ -1034,7 +1034,7 @@ wi_watchdog(struct ifnet *ifp)
 	if (sc->sc_syn_timer) {
 		if (--sc->sc_syn_timer == 0) {
 			struct ieee80211com *ic = (struct ieee80211com *) ifp;
-			DPRINTF2(("wi_watchdog: %d false syns\n",
+			DPRINTF2((ifp, "wi_watchdog: %d false syns\n",
 			    sc->sc_false_syns));
 			sc->sc_false_syns = 0;
 			ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
@@ -1274,8 +1274,8 @@ wi_sync_bssid(struct wi_softc *sc, u_int8_t new_bssid[IEEE80211_ADDR_LEN])
 	if (IEEE80211_ADDR_EQ(new_bssid, ni->ni_bssid))
 		return;
 
-	DPRINTF(("wi_sync_bssid: bssid %6D -> ", ni->ni_bssid, ":"));
-	DPRINTF(("%6D ?\n", new_bssid, ":"));
+	DPRINTF((ifp, "wi_sync_bssid: bssid %6D -> %6D ?\n", ni->ni_bssid, ":",
+	    new_bssid, ":"));
 
 	/* In promiscuous mode, the BSSID field is not a reliable
 	 * indicator of the firmware's BSSID. Damp spurious
@@ -1401,7 +1401,7 @@ wi_rx_intr(struct wi_softc *sc)
 	if (wi_read_bap(sc, fid, 0, &frmhdr, sizeof(frmhdr))) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 		ifp->if_ierrors++;
-		DPRINTF(("wi_rx_intr: read fid %x failed\n", fid));
+		DPRINTF((ifp, "wi_rx_intr: read fid %x failed\n", fid));
 		return;
 	}
 
@@ -1415,7 +1415,8 @@ wi_rx_intr(struct wi_softc *sc)
 	if (status & WI_STAT_ERRSTAT) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 		ifp->if_ierrors++;
-		DPRINTF(("wi_rx_intr: fid %x error status %x\n", fid, status));
+		DPRINTF((ifp, "wi_rx_intr: fid %x error status %x\n",
+			 fid, status));
 		return;
 	}
 	rssi = frmhdr.wi_rx_signal;
@@ -1433,7 +1434,7 @@ wi_rx_intr(struct wi_softc *sc)
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 			CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 			ifp->if_ierrors++;
-			DPRINTF(("wi_rx_intr: oversized packet\n"));
+			DPRINTF((ifp, "wi_rx_intr: oversized packet\n"));
 			return;
 		} else
 			len = 0;
@@ -1443,7 +1444,7 @@ wi_rx_intr(struct wi_softc *sc)
 	if (m == NULL) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 		ifp->if_ierrors++;
-		DPRINTF(("wi_rx_intr: m_getl failed\n"));
+		DPRINTF((ifp, "wi_rx_intr: m_getl failed\n"));
 		return;
 	}
 
@@ -1546,11 +1547,11 @@ wi_tx_ex_intr(struct wi_softc *sc)
 			}
 			ifp->if_oerrors++;
 		} else {
-			DPRINTF(("port disconnected\n"));
+			DPRINTF((ifp, "port disconnected\n"));
 			ifp->if_collisions++;	/* XXX */
 		}
 	} else
-		DPRINTF(("wi_tx_ex_intr: read fid %x failed\n", fid));
+		DPRINTF((ifp, "wi_tx_ex_intr: read fid %x failed\n", fid));
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_TX_EXC);
 }
 
@@ -1607,7 +1608,7 @@ wi_info_intr(struct wi_softc *sc)
 
 	case WI_INFO_LINK_STAT:
 		wi_read_bap(sc, fid, sizeof(ltbuf), &stat, sizeof(stat));
-		DPRINTF(("wi_info_intr: LINK_STAT 0x%x\n", le16toh(stat)));
+		DPRINTF((ifp, "wi_info_intr: LINK_STAT 0x%x\n", le16toh(stat)));
 		switch (le16toh(stat)) {
 		case WI_INFO_LINK_STAT_CONNECTED:
 			sc->sc_flags &= ~WI_FLAGS_OUTRANGE;
@@ -1664,7 +1665,7 @@ wi_info_intr(struct wi_softc *sc)
 		break;
 
 	default:
-		DPRINTF(("wi_info_intr: got fid %x type %x len %d\n", fid,
+		DPRINTF((ifp, "wi_info_intr: got fid %x type %x len %d\n", fid,
 		    le16toh(ltbuf[1]), le16toh(ltbuf[0])));
 		break;
 	}
@@ -1712,7 +1713,7 @@ wi_read_nicid(struct wi_softc *sc)
 	memset(ver, 0, sizeof(ver));
 	len = sizeof(ver);
 	wi_read_rid(sc, WI_RID_CARD_ID, ver, &len);
-	device_printf(sc->sc_dev, "using ");
+	if_printf(&sc->sc_ic.ic_if, "using ");
 
 	sc->sc_firmware_type = WI_NOTYPE;
 	for (id = wi_card_ident; id->card_name != NULL; id++) {
@@ -1764,7 +1765,7 @@ wi_read_nicid(struct wi_softc *sc)
 		}
 	}
 	printf("\n");
-	device_printf(sc->sc_dev, "%s Firmware: ",
+	if_printf(&sc->sc_ic.ic_if, "%s Firmware: ",
 	     sc->sc_firmware_type == WI_LUCENT ? "Lucent" :
 	    (sc->sc_firmware_type == WI_SYMBOL ? "Symbol" : "Intersil"));
 	if (sc->sc_firmware_type != WI_LUCENT)	/* XXX */
@@ -2344,7 +2345,7 @@ wi_cmd(struct wi_softc *sc, int cmd, int val0, int val1, int val2)
 		DELAY(1*1000);	/* 1ms */
 	}
 	if (i == 0) {
-		device_printf(sc->sc_dev, "wi_cmd: busy bit won't clear.\n" );
+		if_printf(&sc->sc_ic.ic_if, "wi_cmd: busy bit won't clear.\n" );
 		sc->wi_gone = 1;
 		count--;
 		return(ETIMEDOUT);
@@ -2380,7 +2381,7 @@ wi_cmd(struct wi_softc *sc, int cmd, int val0, int val1, int val2)
 
 	count--;
 	if (i == WI_TIMEOUT) {
-		device_printf(sc->sc_dev,
+		if_printf(&sc->sc_ic.ic_if,
 		    "timeout in wi_cmd 0x%04x; event status 0x%04x\n", cmd, s);
 		if (s == 0xffff)
 			sc->wi_gone = 1;
@@ -2402,8 +2403,8 @@ wi_seek_bap(struct wi_softc *sc, int id, int off)
 		if ((status & WI_OFF_BUSY) == 0)
 			break;
 		if (i == WI_TIMEOUT) {
-			device_printf(sc->sc_dev, "timeout in wi_seek to %x/%x\n",
-			    id, off);
+			if_printf(&sc->sc_ic.ic_if,
+				  "timeout in wi_seek to %x/%x\n", id, off);
 			sc->sc_bap_off = WI_OFF_ERR;	/* invalidate */
 			if (status == 0xffff)
 				sc->wi_gone = 1;
@@ -2412,7 +2413,8 @@ wi_seek_bap(struct wi_softc *sc, int id, int off)
 		DELAY(1);
 	}
 	if (status & WI_OFF_ERR) {
-		device_printf(sc->sc_dev, "failed in wi_seek to %x/%x\n", id, off);
+		if_printf(&sc->sc_ic.ic_if, "failed in wi_seek to %x/%x\n",
+			  id, off);
 		sc->sc_bap_off = WI_OFF_ERR;	/* invalidate */
 		return EIO;
 	}
@@ -2484,8 +2486,8 @@ wi_write_bap(struct wi_softc *sc, int id, int off, void *buf, int buflen)
 		sc->sc_bap_off = WI_OFF_ERR;	/* invalidate */
 		if (CSR_READ_2(sc, WI_DATA0) != 0x1234 ||
 		    CSR_READ_2(sc, WI_DATA0) != 0x5678) {
-			device_printf(sc->sc_dev,
-				"detect auto increment bug, try again\n");
+			if_printf(&sc->sc_ic.ic_if,
+				  "detect auto increment bug, try again\n");
 			goto again;
 		}
 	}
@@ -2526,8 +2528,8 @@ wi_alloc_fid(struct wi_softc *sc, int len, int *idp)
 	int i;
 
 	if (wi_cmd(sc, WI_CMD_ALLOC_MEM, len, 0, 0)) {
-		device_printf(sc->sc_dev, "failed to allocate %d bytes on NIC\n",
-		    len);
+		if_printf(&sc->sc_ic.ic_if,
+			  "failed to allocate %d bytes on NIC\n", len);
 		return ENOMEM;
 	}
 
@@ -2535,7 +2537,7 @@ wi_alloc_fid(struct wi_softc *sc, int len, int *idp)
 		if (CSR_READ_2(sc, WI_EVENT_STAT) & WI_EV_ALLOC)
 			break;
 		if (i == WI_TIMEOUT) {
-			device_printf(sc->sc_dev, "timeout in alloc\n");
+			if_printf(&sc->sc_ic.ic_if, "timeout in alloc\n");
 			return ETIMEDOUT;
 		}
 		DELAY(1);
@@ -2561,15 +2563,15 @@ wi_read_rid(struct wi_softc *sc, int rid, void *buf, int *buflenp)
 		return error;
 
 	if (le16toh(ltbuf[1]) != rid) {
-		device_printf(sc->sc_dev, "record read mismatch, rid=%x, got=%x\n",
-		    rid, le16toh(ltbuf[1]));
+		if_printf(&sc->sc_ic.ic_if,
+			  "record read mismatch, rid=%x, got=%x\n",
+			  rid, le16toh(ltbuf[1]));
 		return EIO;
 	}
 	len = (le16toh(ltbuf[0]) - 1) * 2;	 /* already got rid */
 	if (*buflenp < len) {
-		device_printf(sc->sc_dev, "record buffer is too small, "
-		    "rid=%x, size=%d, len=%d\n",
-		    rid, *buflenp, len);
+		if_printf(&sc->sc_ic.ic_if, "record buffer is too small, "
+			  "rid=%x, size=%d, len=%d\n", rid, *buflenp, len);
 		return ENOSPC;
 	}
 	*buflenp = len;
@@ -2606,7 +2608,7 @@ wi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 	struct wi_ssid ssid;
 	u_int8_t old_bssid[IEEE80211_ADDR_LEN];
 
-	DPRINTF(("%s: %s -> %s\n", __func__,
+	DPRINTF((ifp, "%s: %s -> %s\n", __func__,
 		ieee80211_state_name[ic->ic_state],
 		ieee80211_state_name[nstate]));
 
@@ -2693,7 +2695,7 @@ wi_scan_ap(struct wi_softc *sc, u_int16_t chanmask, u_int16_t txrate)
 	if (error == 0) {
 		sc->sc_scan_timer = WI_SCAN_WAIT;
 		sc->sc_ic.ic_if.if_timer = 1;
-		DPRINTF(("wi_scan_ap: start scanning, "
+		DPRINTF((&sc->sc_ic.ic_if, "wi_scan_ap: start scanning, "
 			"chamask 0x%x txrate 0x%x\n", chanmask, txrate));
 	}
 	return error;
@@ -2723,9 +2725,9 @@ wi_scan_result(struct wi_softc *sc, int fid, int cnt)
 		szbuf = sizeof(struct wi_scan_data);
 		break;
 	default:
-		device_printf(sc->sc_dev,
-			"wi_scan_result: unknown firmware type %u\n",
-			sc->sc_firmware_type);
+		if_printf(&sc->sc_ic.ic_if,
+			  "wi_scan_result: unknown firmware type %u\n",
+			  sc->sc_firmware_type);
 		naps = 0;
 		goto done;
 	}
@@ -2739,8 +2741,9 @@ wi_scan_result(struct wi_softc *sc, int fid, int cnt)
 	for (i = 0; i < naps; i++, ap++) {
 		wi_read_bap(sc, fid, off, &ws_dat,
 		    (sizeof(ws_dat) < szbuf ? sizeof(ws_dat) : szbuf));
-		DPRINTF2(("wi_scan_result: #%d: off %d bssid %6D\n", i, off,
-		    ws_dat.wi_bssid, ":"));
+		DPRINTF2((&sc->sc_ic.ic_if,
+			  "wi_scan_result: #%d: off %d bssid %6D\n",
+			  i, off, ws_dat.wi_bssid, ":"));
 		off += szbuf;
 		ap->scanreason = le16toh(ws_hdr.wi_reason);
 		memcpy(ap->bssid, ws_dat.wi_bssid, sizeof(ap->bssid));
@@ -2759,7 +2762,8 @@ wi_scan_result(struct wi_softc *sc, int fid, int cnt)
 done:
 	/* Done scanning */
 	sc->sc_scan_timer = 0;
-	DPRINTF(("wi_scan_result: scan complete: ap %d\n", naps));
+	DPRINTF((&sc->sc_ic.ic_if, "wi_scan_result: scan complete: ap %d\n",
+		 naps));
 #undef N
 }
 
@@ -2825,9 +2829,6 @@ wi_alloc(device_t dev, int rid)
 		return (ENXIO);
 	}
 
-	sc->sc_dev = dev;
-	sc->sc_unit = device_get_unit(dev);
-
 	return (0);
 }
 
@@ -2848,8 +2849,6 @@ wi_free(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid, sc->mem);
 		sc->mem = NULL;
 	}
-
-	return;
 }
 
 static int
