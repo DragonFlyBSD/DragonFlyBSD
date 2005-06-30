@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.5 2005/06/30 01:51:06 reed Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.6 2005/06/30 20:55:19 reed Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -2762,8 +2762,7 @@ margaux:ha=0123456789ab:tc=.def100
 	<para>There are two other undocumented <filename>make.conf</filename>
 	  options which may be useful for setting up a serial console diskless
 	  machine: <literal>BOOT_PXELDR_PROBE_KEYBOARD</literal>, and
-	  <literal>BOOT_PXELDR_ALWAYS_SERIAL</literal> (the latter only exists
-	  on &os;&nbsp;5.X).</para>
+	  <literal>BOOT_PXELDR_ALWAYS_SERIAL</literal>.</para>
 
 	<para>To use <acronym>PXE</acronym> when the machine starts, you will
 	  usually need to select the <literal>Boot from network</literal>
