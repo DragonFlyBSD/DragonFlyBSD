@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.64 2005/06/30 19:24:35 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.65 2005/06/30 19:47:22 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -258,6 +258,43 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/battd.1.gz"
 	rm -f ${DESTDIR}/usr/include/machine/bus_pc98.h
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcic.4.gz"
+.if exists(${DESTDIR}/usr/share/info/bzip2.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/bzip2.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/bzip2.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/bzip2.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/gasp.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/gasp.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/gasp.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/gasp.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/gperf.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/gperf.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/gperf.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/gperf.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/gxxint.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/gxxint.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/gxxint.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/gxxint.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/iostream.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/iostream.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/iostream.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/iostream.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/ptx.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/ptx.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/ptx.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/ptx.info
+.endif
+.if exists(${DESTDIR}/usr/share/info/send-pr.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/send-pr.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/send-pr.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/send-pr.info
+.endif
+	rm -f ${DESTDIR}/usr/share/info/cpp2.info.gz
+	rm -f ${DESTDIR}/usr/share/info/gcc2.info.gz
 	ldconfig -R
 
 distribution:
