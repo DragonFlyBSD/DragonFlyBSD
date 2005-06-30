@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.4 2005/06/27 23:58:05 reed Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.5 2005/06/30 02:14:18 reed Exp $
 -->
 
 <chapter id="multimedia">
@@ -232,13 +232,6 @@ device sbc0 at isa? port 0x220 irq 5 drq 1 flags 0x15</programlisting>
 	other settings to match your card.  See the &man.sbc.4; manual
 	page for more information.</para>
 
-      <note>
-	<!-- todo: reed: what about this? -->
-	<para>The Sound Blaster Live is not supported under FreeBSD&nbsp;4.0
-	  without a patch, which this section will not cover.  It is
-	  recommended that you update to the latest -STABLE before
-	  trying to use this card.</para>
-      </note>
     </sect3>
 
     <sect3>
