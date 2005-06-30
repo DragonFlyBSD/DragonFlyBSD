@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.4 2005/06/28 15:13:03 reed Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.5 2005/06/30 01:51:06 reed Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -816,7 +816,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
 &prompt.root; <userinput>sysctl net.link.ether.bridge_cfg="wi0,xl0"</userinput>
 &prompt.root; <userinput>sysctl net.inet.ip.forwarding=1</userinput></screen>
 
-<!-- will this be needed after the 802.11 import by Joerg? -->
+<!-- todo: will this be needed after the 802.11 import by Joerg? -->
 	
 <!--
 	<para>On &os;&nbsp;5.2-RELEASE and later, you have to use
@@ -2907,9 +2907,8 @@ options     BOOTP_NFSROOT  # NFS mount root filesystem using BOOTP info
 	<sect4>
 	  <title>Using the <filename>clone_root</filename> Script</title>
 
-	<para>This is the quickest way to create a root filesystem, but
-	  currently it is only supported on &os;&nbsp;4.X.  This shell script
-	  is located at
+	<para>This is the quickest way to create a root filesystem. but
+	  This shell script is located at
 	  <filename>/usr/share/examples/diskless/clone_root</filename>
 	  and needs customization, at least to adjust
 	  the place where the filesystem will be created (the
@@ -2940,7 +2939,7 @@ options     BOOTP_NFSROOT  # NFS mount root filesystem using BOOTP info
 	  <title>Using the Standard <command>make world</command>
 	    Procedure</title>
 
-	  <para>This method can be applied to either &os;&nbsp;4.X or 5.X and
+	  <para>This method 
 	    will install a complete virgin system (not only the root filesystem)
 	    into <envar>DESTDIR</envar>.
 	    All you have to do is simply execute the following script:</para>
@@ -4807,7 +4806,7 @@ nis_client_flags="-S <replaceable>NIS domain</replaceable>,<replaceable>server</
 	  <listitem>
             <para>Make sure that the <devicename>bpf</devicename>
 	      device is compiled into your kernel.  To do this, add
-	      <literal>device bpf</literal> (<literal>pseudo-device bpf</literal> under &os;&nbsp;4.X) to your kernel
+	      <literal>pseudo-device bpf</literal> to your kernel
 	      configuration file, and rebuild the kernel.  For more
 	      information about building kernels, see <xref
 	      linkend="kernelconfig">.</para>
@@ -4930,7 +4929,7 @@ dhcp_flags=""</programlisting>
 	  </indexterm>
 	  <para>In order to configure your &os; system as a DHCP server,
 	    you will need to ensure that the &man.bpf.4;
-	    device is compiled into your kernel.  To do this, add
+	    device is compiled into your kernel. To do this, add
 	    <literal>pseudo-device bpf</literal> to your kernel
 	    configuration file, and rebuild the kernel.  For more
 	    information about building kernels, see <xref
