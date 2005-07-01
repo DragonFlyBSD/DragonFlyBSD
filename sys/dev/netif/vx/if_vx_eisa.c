@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.11 2005/07/01 20:14:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.12 2005/07/01 20:21:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -67,20 +67,15 @@ vx_match(eisa_id_t type)
     switch (type) {
       case EISA_DEVICE_ID_3COM_3C592:
 	return "3Com 3C592 Network Adapter";
-	break;
       case EISA_DEVICE_ID_3COM_3C597_TX:
 	return "3Com 3C597-TX Network Adapter";
-	break;
       case EISA_DEVICE_ID_3COM_3C597_T4:
 	return "3Com 3C597-T4 Network Adapter";
-	break;
       case EISA_DEVICE_ID_3COM_3C597_MII:
 	return "3Com 3C597-MII Network Adapter";
-	break;
       default:
-	break;
+	return (NULL);
     }
-    return (NULL);
 }
 
 static int
@@ -112,11 +107,10 @@ static int
 vx_eisa_attach(device_t dev)
 {
     struct vx_softc *sc;
-    struct resource *io = 0;
-    struct resource *eisa_io = 0;
-    struct resource *irq = 0;
+    struct resource *eisa_io = NULL;
     int		    rid;
-    void	    *ih;
+
+    sc = device_get_softc(dev);
 
     /*
      * The addresses are sorted in increasing order
@@ -124,54 +118,47 @@ vx_eisa_attach(device_t dev)
      * driver comes first.
      */
     rid = 0;
-    io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
-    if (!io) {
+    sc->vx_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
+    if (sc->vx_res == NULL) {
 	device_printf(dev, "No I/O space?!\n");
 	goto bad;
     }
 
     rid = 1;
     eisa_io = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, RF_ACTIVE);
-    if (!eisa_io) {
+    if (eisa_io == NULL) {
 	device_printf(dev, "No I/O space?!\n");
 	goto bad;
     }
 
-    sc = device_get_softc(dev);
-
-    sc->vx_res = io;
-    sc->vx_bhandle = rman_get_bushandle(io);
-    sc->vx_btag = rman_get_bustag(io);
+    sc->vx_bhandle = rman_get_bushandle(sc->vx_res);
+    sc->vx_btag = rman_get_bustag(sc->vx_res);
 
     rid = 0;
-    irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
-    if (!irq) {
+    sc->vx_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
+    if (sc->vx_irq == NULL) {
 	device_printf(dev, "No irq?!\n");
 	goto bad;
     }
-
-    sc->vx_irq = irq;
 
     /* Now the registers are availible through the lower ioport */
 
     vxattach(dev);
 
-    if (bus_setup_intr(dev, irq, INTR_TYPE_NET, vxintr, sc, &ih, NULL)) {
+    if (bus_setup_intr(dev, sc->vx_irq, INTR_TYPE_NET, vxintr, sc,
+		       &sc->vx_intrhand, NULL)) {
 	ether_ifdetach(&sc->arpcom.ac_if);
 	goto bad;
     }
-
-    sc->vx_intrhand = ih;
-
     return 0;
 
  bad:
-    if (io)
-	bus_release_resource(dev, SYS_RES_IOPORT, 0, io);
+    if (sc->vx_res)
+	bus_release_resource(dev, SYS_RES_IOPORT, 0, sc->vx_res);
     if (eisa_io)
 	bus_release_resource(dev, SYS_RES_IOPORT, 0, eisa_io);
-    if (irq)
-	bus_release_resource(dev, SYS_RES_IRQ, 0, irq);
+    if (sc->vx_irq)
+	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vx_irq);
     return -1;
 }
 
