@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.22 2005/06/27 14:48:29 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.23 2005/07/01 13:13:00 liamfoy Exp $ 
  */
 
 #include <sys/param.h>
@@ -323,8 +323,6 @@ handleread(int sock)
 	struct whod wd;
 	int cc, whod; 
 	socklen_t len = sizeof(from);
-
-	system("touch /home/liamfoy/nikita");
 
 	cc = recvfrom(sock, (char *)&wd, sizeof(struct whod), 0,
 		(struct sockaddr *)&from, &len);
