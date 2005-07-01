@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/man/Makefile,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/lib/libncurses/man/Makefile,v 1.2 2005/07/01 21:35:37 swildner Exp $
 
 MAN=	\
 	clear.1 \
@@ -647,6 +647,7 @@ MLINKS+=	mitem_userptr.3 set_item_userptr.3
 MLINKS+=	mitem_value.3 item_value.3
 MLINKS+=	mitem_value.3 set_item_value.3
 MLINKS+=	mitem_visible.3 item_visible.3
+MLINKS+=	ncurses.3 curses.3
 MLINKS+=	panel.3 bottom_panel.3
 MLINKS+=	panel.3 del_panel.3
 MLINKS+=	panel.3 hide_panel.3
