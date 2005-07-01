@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.9 2005/07/01 20:14:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.10 2005/07/01 20:23:52 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -73,19 +73,16 @@ static devclass_t vx_devclass;
 DRIVER_MODULE(if_vx, pci, vx_driver, vx_devclass, 0, 0);
 
 static void
-vx_pci_shutdown(
-	device_t dev)
+vx_pci_shutdown(device_t dev)
 {
    struct vx_softc	*sc;
 
    sc = device_get_softc(dev);
    vxstop(sc); 
-   return;
 }
 
 static int
-vx_pci_probe(
-	device_t dev)
+vx_pci_probe(device_t dev)
 {
    u_int32_t		device_id;
 
@@ -119,8 +116,7 @@ vx_pci_probe(
 }
 
 static int 
-vx_pci_attach(
-	device_t dev)
+vx_pci_attach(device_t dev)
 {
     struct vx_softc *sc;
     int rid;
@@ -144,11 +140,6 @@ vx_pci_attach(
     if (sc->vx_irq == NULL)
 	goto bad;
 
-    if (bus_setup_intr(dev, sc->vx_irq, INTR_TYPE_NET,
-		       vxintr, sc, &sc->vx_intrhand, NULL))
-	ether_ifdetach(&sc->arpcom.ac_if);
-	goto bad;
-
     if (vxattach(dev) == 0) {
 	goto bad;
     }
@@ -167,11 +158,15 @@ vx_pci_attach(
 	}
     }
 
+    if (bus_setup_intr(dev, sc->vx_irq, INTR_TYPE_NET,
+		       vxintr, sc, &sc->vx_intrhand, NULL)) {
+	ether_ifdetach(&sc->arpcom.ac_if);
+	goto bad;
+    }
+
     return(0);
 
 bad:
-    if (sc->vx_intrhand != NULL)
-	bus_teardown_intr(dev, sc->vx_irq, sc->vx_intrhand);
     if (sc->vx_res != NULL)
 	bus_release_resource(dev, SYS_RES_IOPORT, 0, sc->vx_res);
     if (sc->vx_irq != NULL)
