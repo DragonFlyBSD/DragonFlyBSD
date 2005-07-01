@@ -20,7 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vxreg.h,v 1.6 2000/05/01 19:54:26 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.5 2004/09/15 01:09:23 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.6 2005/07/01 20:14:13 joerg Exp $
  *
  October 2, 1994
 
@@ -53,7 +53,6 @@
  */
 struct vx_softc {
     struct arpcom arpcom;	/* Ethernet common part		*/
-    int unit;			/* unit number */
     bus_space_handle_t		vx_bhandle;
     bus_space_tag_t		vx_btag;
     void			*vx_intrhand;
@@ -471,7 +470,7 @@ extern struct vx_softc *vx_softc[];
 extern u_long vx_count;
 extern struct vx_softc *vxalloc (int);
 extern void vxfree (struct vx_softc *);
-extern int vxattach (struct vx_softc *);
+extern int vxattach (device_t);
 extern void vxstop (struct vx_softc *);
 extern void vxintr (void *);
 extern int vxbusyeeprom (struct vx_softc *);

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.19 2005/06/10 15:29:17 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.20 2005/07/01 20:14:13 joerg Exp $
  *
  */
 
@@ -56,6 +56,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/bus.h>
 #include <sys/systm.h>
 #include <sys/sockio.h>
 #include <sys/malloc.h>
@@ -75,8 +76,6 @@
 #include <machine/bus.h>
 
 #include <net/bpf.h>
-
-#include <machine/clock.h>
 
 #include "if_vxreg.h"
 
@@ -125,16 +124,21 @@ static void vxsetlink (struct vx_softc *);
 /* int vxbusyeeprom (struct vx_softc *); */
 
 int
-vxattach(sc)
-    struct vx_softc *sc;
+vxattach(device_t dev)
 {
-    struct ifnet *ifp = &sc->arpcom.ac_if;
+    struct vx_softc *sc;
+    struct ifnet *ifp;
     int i;
+
+    sc = device_get_softc(dev);
 
     callout_init(&sc->vx_timer);
     GO_WINDOW(0);
     CSR_WRITE_2(sc, VX_COMMAND, GLOBAL_RESET);
     VX_BUSY_WAIT;
+
+    ifp = &sc->arpcom.ac_if;
+    if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
     vxgetlink(sc);
 
@@ -155,7 +159,6 @@ vxattach(sc)
         sc->arpcom.ac_enaddr[(i << 1) + 1] = x;
     }
 
-    if_initname(ifp, "vx", sc->unit);
     ifp->if_mtu = ETHERMTU;
     ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
     ifq_set_ready(&ifp->if_snd);
@@ -256,15 +259,15 @@ vxgetlink(sc)
     sc->vx_connectors = CSR_READ_2(sc, VX_W3_RESET_OPT) & 0x7f;
     for (n = 0, k = 0; k < VX_CONNECTORS; k++) {
       if (sc->vx_connectors & conn_tab[k].bit) {
-	if (n > 0) {
-	  printf("/");
-	}
-	printf("%s", conn_tab[k].name);
+	if (n == 0)
+	  if_printf(&sc->arpcom.ac_if, "%s", conn_tab[k].name);
+	else
+	  printf("/%s", conn_tab[k].name);
 	n++;
       }
     }
-    if (sc->vx_connectors == 0) {
-	printf("no connectors!");
+    if (n == 0) {
+	if_printf(&sc->arpcom.ac_if, "no connectors!\n");
 	return;
     }
     GO_WINDOW(3);
@@ -274,9 +277,9 @@ vxgetlink(sc)
     if (sc->vx_connector & 0x10) {
 	sc->vx_connector &= 0x0f;
 	printf("[*%s*]", conn_tab[(int)sc->vx_connector].name);
-	printf(": disable 'auto select' with DOS util!");
+	printf(": disable 'auto select' with DOS util!\n");
     } else {
-	printf("[*%s*]", conn_tab[(int)sc->vx_connector].name);
+	printf("[*%s*]\n", conn_tab[(int)sc->vx_connector].name);
     }
 }
 
@@ -346,10 +349,9 @@ vxsetlink(sc)
     k = (prev_flags ^ ifp->if_flags) & (IFF_LINK0 | IFF_LINK1 | IFF_LINK2);
     if ((k != 0) || (prev_conn != i)) {
 	if (warning != 0) {
-	    printf("vx%d: warning: %s\n", sc->unit, warning);
+	    if_printf(ifp, "warning: %s\n", warning);
 	}
-	printf("vx%d: selected %s. (%s)\n",
-	       sc->unit, conn_tab[i].name, reason);
+	if_printf(ifp, "selected %s. (%s)\n", conn_tab[i].name, reason);
     }
 
     /* Set the selected connector. */
@@ -487,7 +489,7 @@ readcheck:
 	/* Check if we are stuck and reset [see XXX comment] */
 	if (vxstatus(sc)) {
 	    if (ifp->if_flags & IFF_DEBUG)
-	       printf("%s: adapter reset\n", ifp->if_xname);
+	       if_printf(ifp, "adapter reset\n");
 	    vxreset(sc);
 	}
     }
@@ -517,26 +519,26 @@ vxstatus(sc)
 
     if (fifost & FIFOS_RX_UNDERRUN) {
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    printf("vx%d: RX underrun\n", sc->unit);
+	    if_printf(&sc->arpcom.ac_if, "RX underrun\n");
 	vxreset(sc);
 	return 0;
     }
 
     if (fifost & FIFOS_RX_STATUS_OVERRUN) {
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    printf("vx%d: RX Status overrun\n", sc->unit);
+	    if_printf(&sc->arpcom.ac_if, "RX Status overrun\n");
 	return 1;
     }
 
     if (fifost & FIFOS_RX_OVERRUN) {
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    printf("vx%d: RX overrun\n", sc->unit);
+	    if_printf(&sc->arpcom.ac_if, "RX overrun\n");
 	return 1;
     }
 
     if (fifost & FIFOS_TX_OVERRUN) {
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    printf("vx%d: TX overrun\n", sc->unit);
+	    if_printf(&sc->arpcom.ac_if, "TX overrun\n");
 	vxreset(sc);
 	return 0;
     }
@@ -560,13 +562,14 @@ vxtxstat(sc)
     if (i & TXS_JABBER) {
 	++sc->arpcom.ac_if.if_oerrors;
 	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    printf("vx%d: jabber (%x)\n", sc->unit, i);
+	    if_printf(&sc->arpcom.ac_if, "jabber (%x)\n", i);
 	vxreset(sc);
     } else if (i & TXS_UNDERRUN) {
 	++sc->arpcom.ac_if.if_oerrors;
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    printf("vx%d: fifo underrun (%x) @%d\n",
-		sc->unit, i, sc->tx_start_thresh);
+	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG) {
+	    if_printf(&sc->arpcom.ac_if, "fifo underrun (%x) @%d\n",
+		i, sc->tx_start_thresh);
+	}
 	if (sc->tx_succ_ok < 100)
 	    sc->tx_start_thresh = min(ETHER_MAX_LEN, sc->tx_start_thresh + 20);
 	sc->tx_succ_ok = 0;
@@ -613,7 +616,7 @@ vxintr(voidsc)
 	    vxstart(&sc->arpcom.ac_if);
 	}
 	if (status & S_CARD_FAILURE) {
-	    printf("vx%d: adapter failure (%x)\n", sc->unit, status);
+	    if_printf(ifp, "adapter failure (%x)\n", status);
 	    ifp->if_timer = 0;
 	    vxreset(sc);
 	    return;
@@ -662,7 +665,7 @@ again:
 	    s = "dribble bits";
 
 	if (s)
-	printf("vx%d: %s\n", sc->unit, s);
+	    if_printf(ifp, "%s\n", s);
     }
 
     if (len & ERR_INCOMPLETE)
@@ -722,7 +725,7 @@ again:
 	/* Check if we are stuck and reset [see XXX comment] */
 	if (len & ERR_INCOMPLETE) {
 	    if (ifp->if_flags & IFF_DEBUG)
-		printf("vx%d: adapter reset\n", sc->unit);
+		if_printf(ifp, "adapter reset\n");
 	    vxreset(sc);
 	    return;
 	}
@@ -917,7 +920,7 @@ vxwatchdog(ifp)
     struct vx_softc *sc = ifp->if_softc;
 
     if (ifp->if_flags & IFF_DEBUG)
-	printf("%s: device timeout\n", ifp->if_xname);
+	if_printf(ifp, "device timeout\n");
     ifp->if_flags &= ~IFF_OACTIVE;
     vxstart(ifp);
     vxintr(sc);
@@ -963,7 +966,7 @@ vxbusyeeprom(sc)
             break;
     }
     if (!i) {
-        printf("vx%d: eeprom failed to come ready\n", sc->unit);
+        if_printf(&sc->arpcom.ac_if, "eeprom failed to come ready\n");
         return (1);
     }
     return (0);

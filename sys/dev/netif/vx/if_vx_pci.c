@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.8 2005/06/15 11:35:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.9 2005/07/01 20:14:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -149,7 +149,7 @@ vx_pci_attach(
 	ether_ifdetach(&sc->arpcom.ac_if);
 	goto bad;
 
-    if (vxattach(sc) == 0) {
+    if (vxattach(dev) == 0) {
 	goto bad;
     }
 

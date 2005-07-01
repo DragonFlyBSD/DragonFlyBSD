@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.10 2005/06/15 11:35:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.11 2005/07/01 20:14:13 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -154,7 +154,7 @@ vx_eisa_attach(device_t dev)
 
     /* Now the registers are availible through the lower ioport */
 
-    vxattach(sc);
+    vxattach(dev);
 
     if (bus_setup_intr(dev, irq, INTR_TYPE_NET, vxintr, sc, &ih, NULL)) {
 	ether_ifdetach(&sc->arpcom.ac_if);
