@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.20 2005/07/01 20:14:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.21 2005/07/01 20:18:39 joerg Exp $
  *
  */
 
@@ -79,14 +79,11 @@
 
 #include "if_vxreg.h"
 
-#define ETHER_MAX_LEN	1518
-#define ETHER_ADDR_LEN	6
-
 DECLARE_DUMMY_MODULE(if_vx);
 
 static struct connector_entry {
   int bit;
-  char *name;
+  const char *name;
 } conn_tab[VX_CONNECTORS] = {
 #define CONNECTOR_UTP	0
   { 0x08, "utp"},
@@ -289,7 +286,7 @@ vxsetlink(sc)
 {       
     struct ifnet *ifp = &sc->arpcom.ac_if;  
     int i, j, k;
-    char *reason, *warning;
+    const char *reason, *warning;
     static short prev_flags;
     static char prev_conn = -1;
 
@@ -475,16 +472,16 @@ readcheck:
     if ((CSR_READ_2(sc, VX_W1_RX_STATUS) & ERR_INCOMPLETE) == 0) {
 	/* We received a complete packet. */
 	
-	if ((CSR_READ_2(sc, VX_STATUS) & S_INTR_LATCH) == 0) {
-	    /*
-	     * No interrupt, read the packet and continue
-	     * Is  this supposed to happen? Is my motherboard
-	     * completely busted?
-	     */
-	    vxread(sc);
-	} else
+	if ((CSR_READ_2(sc, VX_STATUS) & S_INTR_LATCH) != 0) {
 	    /* Got an interrupt, return so that it gets serviced. */
 	    return;
+	}
+	/*
+	 * No interrupt, read the packet and continue
+	 * Is  this supposed to happen? Is my motherboard
+	 * completely busted?
+	 */
+	vxread(sc);
     } else {
 	/* Check if we are stuck and reset [see XXX comment] */
 	if (vxstatus(sc)) {
@@ -627,9 +624,7 @@ vxintr(voidsc)
 	    vxstart(ifp);
 	}
     }
-
     /* no more interrupts */
-    return;
 }
 
 static void
@@ -647,7 +642,7 @@ again:
 
     if (ifp->if_flags & IFF_DEBUG) {
 	int err = len & ERR_MASK;
-	char *s = NULL;
+	const char *s = NULL;
 
 	if (len & ERR_INCOMPLETE)
 	    s = "incomplete packet";
