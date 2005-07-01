@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.17 2005/06/13 21:07:55 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.18 2005/07/01 12:39:54 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -84,6 +84,8 @@ MODULE_DEPEND(bfe, miibus, 1, 1, 1);
 static struct bfe_type bfe_devs[] = {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401,
 	    "Broadcom BCM4401 Fast Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401B0,
+	    "Broadcom BCM4401-B0 Fast Ethernet" },
 	{ 0, 0, NULL }
 };
 
