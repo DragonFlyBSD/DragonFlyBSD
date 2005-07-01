@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc/Makefile,v 1.3 2004/06/21 03:48:06 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc/Makefile,v 1.4 2005/07/01 21:00:15 swildner Exp $
 
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
@@ -6,6 +6,7 @@
 
 PROG=	cc
 LINKS=	${BINDIR}/cc ${BINDIR}/gcc
+MLINKS=	cc.1 c++.1 cc.1 g++.1 cc.1 gcc.1
 
 SRCS=	gcc.c gccspec.c intl.c prefix.c version_local.c
 SRCS+=	insn-constants.h insn-flags.h specs.h
