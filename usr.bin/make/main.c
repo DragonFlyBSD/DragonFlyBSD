@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.133 2005/07/02 10:48:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.134 2005/07/02 10:48:42 okumoto Exp $
  */
 
 /*
@@ -946,7 +946,7 @@ main(int argc, char **argv)
 	} else {
 		LstNode *ln;
 
-		for (ln = Lst_First(&cli.create); ln != NULL; ln = Lst_Succ(ln)) {
+		LST_FOREACH(ln, &cli.create) {
 			char *name = Lst_Datum(ln);
 
 			Var_Append(".TARGETS", name, VAR_GLOBAL);
