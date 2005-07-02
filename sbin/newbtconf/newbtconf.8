@@ -1,5 +1,5 @@
 .\"     $NetBSD: newbtconf.8,v 1.18 2004/08/31 17:08:06 uwe Exp $
-.\"	$DragonFly: src/sbin/newbtconf/newbtconf.8,v 1.2 2005/07/02 20:50:02 swildner Exp $
+.\"	$DragonFly: src/sbin/newbtconf/newbtconf.8,v 1.3 2005/07/02 21:05:56 swildner Exp $
 .\"
 .\" Copyright (c) 1999 Darren Reed.  All rights reserved.
 .\"
@@ -101,6 +101,7 @@ pointing to
 .Pa /etc/etc.current/\*[Lt]filename\*[Gt] :
 .Bd -literal -offset indent
 /etc/defaultdomain
+/etc/dntpd.conf
 /etc/fstab
 /etc/ifconfig.*
 /etc/inetd.conf
@@ -109,7 +110,7 @@ pointing to
 /etc/myname
 /etc/netstart
 /etc/nsswitch.conf
-/etc/ntp.conf
+/etc/ntpd.conf
 /etc/rc.conf
 /etc/rc.conf.d
 /etc/resolv.conf
@@ -226,6 +227,7 @@ Symbolic link to default config directory.
 .Pp
 .It Pa /etc/defaultdomain
 These files all become symbolic links.
+.It Pa /etc/dntpd.conf
 .It Pa /etc/fstab
 .It Pa /etc/ifconfig.*
 .It Pa /etc/inetd.conf
@@ -234,7 +236,7 @@ These files all become symbolic links.
 .It Pa /etc/myname
 .It Pa /etc/netstart
 .It Pa /etc/nsswitch.conf
-.It Pa /etc/ntp.conf
+.It Pa /etc/ntpd.conf
 .It Pa /etc/rc.conf
 .It Pa /etc/rc.conf.d
 .It Pa /etc/resolv.conf
