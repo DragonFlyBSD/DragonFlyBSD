@@ -1,5 +1,5 @@
 .\"     $NetBSD: newbtconf.8,v 1.18 2004/08/31 17:08:06 uwe Exp $
-.\"	$DragonFly: src/sbin/newbtconf/newbtconf.8,v 1.1 2005/05/16 20:57:31 rob Exp $
+.\"	$DragonFly: src/sbin/newbtconf/newbtconf.8,v 1.2 2005/07/02 20:50:02 swildner Exp $
 .\"
 .\" Copyright (c) 1999 Darren Reed.  All rights reserved.
 .\"
@@ -79,7 +79,7 @@ with every boot),
 is not automatically updated.
 .Ss Getting Started
 By default,
-.Nx
+.Dx
 only has one boot-up configuration - that set in the
 file
 .Pa /etc/rc.conf .
@@ -116,7 +116,7 @@ pointing to
 .Ed
 .Pp
 To test that this has been performed correctly, reboot your system into
-.Nx .
+.Dx .
 After the kernel has autoconfigured and tty flags have been set,
 a prompt should appear, preceded by the following like, looking like this:
 .Bd -literal
@@ -179,7 +179,7 @@ Which configuration [nonet] ?
 .Ss \&No Network
 Assuming that we performed the above command successfully, in order to
 successfully configure
-.Nx
+.Dx
 to not configure interfaces (or generate no
 errors from attempting to do so), the following settings (at least) should
 be used in
