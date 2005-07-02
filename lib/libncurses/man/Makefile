@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/man/Makefile,v 1.2 2005/07/01 21:35:37 swildner Exp $
+# $DragonFly: src/lib/libncurses/man/Makefile,v 1.3 2005/07/02 00:11:03 swildner Exp $
 
 MAN=	\
 	clear.1 \
@@ -462,6 +462,7 @@ MLINKS+=	curs_termattrs.3 longname.3
 MLINKS+=	curs_termattrs.3 term_attrs.3
 MLINKS+=	curs_termattrs.3 termattrs.3
 MLINKS+=	curs_termattrs.3 termname.3
+MLINKS+=	curs_termcap.3 termcap.3
 MLINKS+=	curs_termcap.3 tgetent.3
 MLINKS+=	curs_termcap.3 tgetflag.3
 MLINKS+=	curs_termcap.3 tgetnum.3
