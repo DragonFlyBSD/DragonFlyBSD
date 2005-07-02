@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.131 2005/07/02 10:45:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.132 2005/07/02 10:47:48 okumoto Exp $
  */
 
 /*
@@ -755,16 +755,13 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
  *	MFLAGS also gets initialized empty, for compatibility.
  */
 static void
-InitVariables(CLI *cli, int argc, char *argv[], char curdir[], char objdir[])
+InitVariables(const char progname[])
 {
 	const char	*machine;
 	const char	*machine_arch;
 	const char	*machine_cpu;
-	const char	*make_flags;
 
-	Var_Init(environ);
-
-	Var_SetGlobal("MAKE", argv[0]);
+	Var_SetGlobal("MAKE", progname);
 	Var_SetGlobal(".MAKEFLAGS", "");
 	Var_SetGlobal("MFLAGS", "");
 
@@ -817,36 +814,6 @@ InitVariables(CLI *cli, int argc, char *argv[], char curdir[], char objdir[])
 	Var_SetGlobal("MACHINE", machine);
 	Var_SetGlobal("MACHINE_ARCH", machine_arch);
 	Var_SetGlobal("MACHINE_CPU", machine_cpu);
-
-	/*
-	 * First snag things out of the MAKEFLAGS environment
-	 * variable.  Then parse the command line arguments.
-	 */
-	if ((make_flags = getenv("MAKEFLAGS")) != NULL) {
-		Main_ParseArgLine(cli, make_flags, 1);
-	}
-	MainParseArgs(cli, argc, argv);
-
-	determine_objdir(machine, curdir, objdir);
-	Var_SetGlobal(".CURDIR", curdir);
-	Var_SetGlobal(".OBJDIR", objdir);
-
-	/*
-	 * Set up the .TARGETS variable to contain the list of targets to be
-	 * created. If none specified, make the variable empty -- the parser
-	 * will fill the thing in with the default or .MAIN target.
-	 */
-	if (Lst_IsEmpty(&cli->create)) {
-		Var_SetGlobal(".TARGETS", "");
-	} else {
-		LstNode *ln;
-
-		for (ln = Lst_First(&cli->create); ln != NULL; ln = Lst_Succ(ln)) {
-			char *name = Lst_Datum(ln);
-
-			Var_Append(".TARGETS", name, VAR_GLOBAL);
-		}
-	}
 }
 
 /**
@@ -899,11 +866,12 @@ build_stuff(CLI *cli)
 int
 main(int argc, char **argv)
 {
-	CLI	cli;
+	CLI		cli;
 	Parser		parser;
 	int		status;		/* exit status */
 	char		curdir[MAXPATHLEN];	/* startup directory */
 	char		objdir[MAXPATHLEN];	/* where we chdir'ed to */
+	const char	*make_flags;
 
 	/*------------------------------------------------------------*
 	 * This section initializes variables that require no input.
@@ -951,7 +919,39 @@ main(int argc, char **argv)
 	 * This section initializes variables that depend on things
 	 * in the enviornment, command line, or a input file.
 	 *------------------------------------------------------------*/
-	InitVariables(&cli, argc, argv, curdir, objdir);
+	Var_Init(environ);
+
+	InitVariables(argv[0]);
+
+	/*
+	 * First snag things out of the MAKEFLAGS environment
+	 * variable.  Then parse the command line arguments.
+	 */
+	if ((make_flags = getenv("MAKEFLAGS")) != NULL) {
+		Main_ParseArgLine(&cli, make_flags, 1);
+	}
+	MainParseArgs(&cli, argc, argv);
+
+	determine_objdir(Var_Value("MACHINE", VAR_GLOBAL), curdir, objdir);
+	Var_SetGlobal(".CURDIR", curdir);
+	Var_SetGlobal(".OBJDIR", objdir);
+
+	/*
+	 * Set up the .TARGETS variable to contain the list of targets to be
+	 * created. If none specified, make the variable empty -- the parser
+	 * will fill the thing in with the default or .MAIN target.
+	 */
+	if (Lst_IsEmpty(&cli.create)) {
+		Var_SetGlobal(".TARGETS", "");
+	} else {
+		LstNode *ln;
+
+		for (ln = Lst_First(&cli.create); ln != NULL; ln = Lst_Succ(ln)) {
+			char *name = Lst_Datum(ln);
+
+			Var_Append(".TARGETS", name, VAR_GLOBAL);
+		}
+	}
 
 	Dir_CurObj(curdir, objdir);
 
