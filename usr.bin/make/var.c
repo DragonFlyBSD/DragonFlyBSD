@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.213 2005/06/16 23:33:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.214 2005/07/02 10:47:28 okumoto Exp $
  */
 
 /**
@@ -283,7 +283,7 @@ VarTail(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	const char *slash;
 
 	if (addSpace) {
-		Buf_AddByte (buf, (Byte)' ');
+		Buf_AddByte(buf, (Byte)' ');
 	}
 
 	slash = strrchr(word, '/');
