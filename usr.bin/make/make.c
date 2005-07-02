@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.30 2005/06/21 21:04:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.31 2005/07/02 10:45:29 okumoto Exp $
  */
 
 /*
@@ -96,8 +96,6 @@ static Lst toBeMade = Lst_Initializer(toBeMade);
  * returns TRUE, there's a cycle in the graph.
  */
 static int numNodes;
-
-static Boolean MakeStartJobs(Boolean);
 
 /**
  * Make_TimeStamp
@@ -569,13 +567,13 @@ Make_DoAllVar(GNode *gn)
  * Results:
  *	If the query flag was given to pmake, no job will be started,
  *	but as soon as an out-of-date target is found, this function
- *	returns TRUE. At all other times, this function returns FALSE.
+ *	returns 1. At all other times, this function returns 0.
  *
  * Side Effects:
  *	Nodes are removed from the toBeMade queue and job table slots
  *	are filled.
  */
-static Boolean
+static int
 MakeStartJobs(Boolean queryFlag)
 {
 	GNode	*gn;
@@ -617,7 +615,7 @@ MakeStartJobs(Boolean queryFlag)
 		if (Make_OODate(gn)) {
 			DEBUGF(MAKE, ("out-of-date\n"));
 			if (queryFlag) {
-				return (TRUE);
+				return (1);	/* target was not up-to-date */
 			}
 			Make_DoAllVar(gn);
 			Job_Make(gn);
@@ -638,7 +636,7 @@ MakeStartJobs(Boolean queryFlag)
 			Make_Update(gn);
 		}
 	}
-	return (FALSE);
+	return (0);	/* Successful completion */
 }
 
 /**
@@ -702,7 +700,7 @@ MakePrintStatus(GNode *gn, Boolean cycle)
  *	possible.
  *
  * Results:
- *	TRUE if work was done. FALSE otherwise.
+ *	Exit status of make.
  *
  * Side Effects:
  *	The make field of all nodes involved in the creation of the given
@@ -779,18 +777,17 @@ Make_Run(Lst *targs, Boolean queryFlag)
 		 * the next loop... (we won't actually start any, of course,
 		 * this is just to see if any of the targets was out of date)
 		 */
-		return (MakeStartJobs(queryFlag));
-
-	} else {
-		/*
-		 * Initialization. At the moment, no jobs are running and
-		 * until some get started, nothing will happen since the
-		 * remaining upward traversal of the graph is performed by the
-		 * routines in job.c upon the finishing of a job. So we fill
-		 * the Job table as much as we can before going into our loop.
-		 */
-		MakeStartJobs(queryFlag);
+		return MakeStartJobs(TRUE);
 	}
+
+	/*
+	 * Initialization. At the moment, no jobs are running and
+	 * until some get started, nothing will happen since the
+	 * remaining upward traversal of the graph is performed by the
+	 * routines in job.c upon the finishing of a job. So we fill
+	 * the Job table as much as we can before going into our loop.
+	 */
+	MakeStartJobs(FALSE);
 
 	/*
 	 * Main Loop: The idea here is that the ending of jobs will take
@@ -805,7 +802,7 @@ Make_Run(Lst *targs, Boolean queryFlag)
 	while (!Job_Empty()) {
 		Job_CatchOutput(!Lst_IsEmpty(&toBeMade));
 		Job_CatchChildren(!usePipes);
-		MakeStartJobs(queryFlag);
+		MakeStartJobs(FALSE);
 	}
 
 	errors = Job_Finish();
@@ -818,5 +815,5 @@ Make_Run(Lst *targs, Boolean queryFlag)
 	LST_FOREACH(ln, targs)
 		MakePrintStatus(Lst_Datum(ln), errors);
 
-	return (TRUE);
+	return 0;	/* Successful completion */
 }

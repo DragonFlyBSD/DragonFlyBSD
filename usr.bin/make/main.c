@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.130 2005/06/22 22:03:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.131 2005/07/02 10:45:29 okumoto Exp $
  */
 
 /*
@@ -872,12 +872,10 @@ build_stuff(CLI *cli)
 	if (compatMake) {
 		status = Compat_Run(&targs, cli->queryFlag);
 	} else {
-		Boolean outOfDate;
-		outOfDate = Make_Run(&targs, cli->queryFlag);
-		status = (cli->queryFlag && outOfDate) ? 1 : 0;
+		status = Make_Run(&targs, cli->queryFlag);
 	}
-	Lst_Destroy(&targs, NOFREE);
 
+	Lst_Destroy(&targs, NOFREE);
 	return (status);
 }
 
