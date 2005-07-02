@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.132 2005/07/02 10:47:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.133 2005/07/02 10:48:06 okumoto Exp $
  */
 
 /*
@@ -874,10 +874,10 @@ main(int argc, char **argv)
 	const char	*make_flags;
 
 	/*------------------------------------------------------------*
-	 * This section initializes variables that require no input.
+	 * This section initializes stuff that require no input.
 	 *------------------------------------------------------------*/
 	/*
-	 * Initialize program global variables.
+	 * Initialize program globals.
 	 */
 	beSilent = FALSE;		/* Print commands as executed */
 	ignoreErrors = FALSE;		/* Pay attention to non-zero returns */
@@ -893,7 +893,7 @@ main(int argc, char **argv)
 	compatMake = FALSE;		/* No compat mode */
 
 	/*
-	 * Initialize make flags variable.
+	 * Initialize program flags.
 	 */
 	Lst_Init(&cli.makefiles);
 	Lst_Init(&cli.variables);
@@ -916,7 +916,7 @@ main(int argc, char **argv)
 	Dir_Init();
 
 	/*------------------------------------------------------------*
-	 * This section initializes variables that depend on things
+	 * This section initializes stuff that depend on things
 	 * in the enviornment, command line, or a input file.
 	 *------------------------------------------------------------*/
 	Var_Init(environ);
