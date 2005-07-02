@@ -23,11 +23,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/proc.h,v 1.2 2005/06/16 20:51:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/proc.h,v 1.3 2005/07/02 10:46:01 okumoto Exp $
  */
 
 #ifndef proc_h_458845848
 #define proc_h_458845848
+
+struct Shell;
 
 /**
  * Information used to create a new process.
@@ -48,6 +50,6 @@ typedef struct ProcStuff {
 	pid_t	child_pid;
 } ProcStuff;
 
-void Proc_Exec(const ProcStuff *) __dead2;
+void Proc_Exec(const ProcStuff *, struct Shell *) __dead2;
 
 #endif /* proc_h_458845848 */

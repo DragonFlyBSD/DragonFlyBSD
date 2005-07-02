@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/proc.c,v 1.4 2005/06/16 23:06:56 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/proc.c,v 1.5 2005/07/02 10:46:01 okumoto Exp $
  */
 
 #include <unistd.h>
@@ -40,7 +40,7 @@
  * Replace the current process.
  */
 void
-Proc_Exec(const ProcStuff *ps)
+Proc_Exec(const ProcStuff *ps, struct Shell *shell)
 {
 
 	if (ps->in != STDIN_FILENO) {
@@ -79,7 +79,7 @@ Proc_Exec(const ProcStuff *ps)
 			Punt("Cannot dup2: %s", strerror(errno));
 	}
 
-	if (commandShell->unsetenv) {
+	if (shell->unsetenv) {
 		/* for the benfit of ksh */
 		unsetenv("ENV");
 	}
@@ -119,7 +119,7 @@ Proc_Exec(const ProcStuff *ps)
 		write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 		write(STDERR_FILENO, "\n", 1);
 	} else {
-		execv(commandShell->path, ps->argv);
+		execv(shell->path, ps->argv);
 
 		write(STDERR_FILENO,
 		    "Could not execute shell\n",

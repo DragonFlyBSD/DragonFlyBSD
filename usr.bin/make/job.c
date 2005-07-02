@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.118 2005/06/21 21:04:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.119 2005/07/02 10:46:01 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1454,7 +1454,7 @@ JobExec(Job *job, char **argv)
 		if (fifoFd >= 0)
 			close(fifoFd);
 
-		Proc_Exec(&ps);
+		Proc_Exec(&ps, commandShell);
 		/* NOTREACHED */
 
 	} else {
@@ -2756,7 +2756,7 @@ Cmd_Exec(const char *cmd, const char **error)
 		/*
 		 * Child
 		 */
-		Proc_Exec(&ps);
+		Proc_Exec(&ps, commandShell);
 		/* NOTREACHED */
 
 	} else {
@@ -3014,7 +3014,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		/*
 		 * Child
 		 */
-		Proc_Exec(&ps);
+		Proc_Exec(&ps, commandShell);
 		/* NOTREACHED */
 
 	} else {
