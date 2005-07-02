@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.71 2005/07/02 10:57:54 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.72 2005/07/02 13:22:58 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -207,7 +207,7 @@ upgrade_etc:	preupgrade
 	install-info --delete ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/dc.info
 .endif
-	csh -c "rm -f ${DESTDIR}/usr/include/{gmp,mp.h}"
+	csh -c "rm -f ${DESTDIR}/usr/include/{gmp,mp}.h"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libmp.a,libmp.so,libmp.so.3}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libgmp.a,libgmp.so,libgmp.so.3}"
 .if exists(${DESTDIR}/usr/share/info/gmp.info.gz)
