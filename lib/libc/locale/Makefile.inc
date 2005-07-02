@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.8 2005/05/08 15:55:15 joerg Exp $
+# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.9 2005/07/02 00:12:07 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/locale
 
@@ -24,4 +24,5 @@ MLINKS+=iswalnum.3 iswgraph.3 iswalnum.3 iswlower.3
 MLINKS+=iswalnum.3 iswprint.3 iswalnum.3 iswpunct.3
 MLINKS+=iswalnum.3 iswspace.3 iswalnum.3 iswupper.3
 MLINKS+=iswalnum.3 iswxdigit.3 towlower.3 towupper.3
+MLINKS+=setlocale.3 localeconv.3
 .endif
