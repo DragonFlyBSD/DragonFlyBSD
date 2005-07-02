@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.121 2005/07/02 10:46:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.122 2005/07/02 10:47:13 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -477,11 +477,6 @@ mkfifotemp(char *template)
 	/*NOTREACHED*/
 }
 
-static void
-catch_child(int sig __unused)
-{
-}
-
 /**
  * In lieu of a good way to prevent every possible looping in make(1), stop
  * there from being more than MKLVL_MAXVAL processes forked by make(1), to
@@ -510,32 +505,36 @@ check_make_level(void)
 }
 
 /**
+ * Signal handler - set a variable and defer handling to the main code.
+ */
+static void
+catchsignal(int signo)
+{
+	interrupted = signo;
+}
+
+static void
+catch_child(int sig __unused)
+{
+}
+
+
+/**
  */
 void
 Proc_Init()
 {
-	/*
-	 * Catch SIGCHLD so that we get kicked out of select() when we
-	 * need to look at a child.  This is only known to matter for the
-	 * -j case (perhaps without -P).
-	 *
-	 * XXX this is intentionally misplaced.
-	 */
-	struct sigaction sa;
-
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-	sa.sa_handler = catch_child;
-	sigaction(SIGCHLD, &sa, NULL);
+	struct sigaction	sa;
 
 	check_make_level();
 
 #ifdef RLIMIT_NOFILE
-	/*
-	 * get rid of resource limit on file descriptors
-	 */
 	{
-		struct rlimit rl;
+		struct rlimit		rl;
+
+		/*
+		 * get rid of resource limit on file descriptors
+		 */
 		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
 			err(2, "getrlimit");
 		}
@@ -545,28 +544,27 @@ Proc_Init()
 		}
 	}
 #endif
-}
 
-/**
- * Signal handler - set a variable and defer handling to the main code.
- */
-static void
-catchsignal(int signo)
-{
-	interrupted = signo;
-}
+	/* Initialize signal flag */
+	interrupted = 0;
 
-/**
- * Catch the four signals that POSIX specifies if they aren't ignored.
- */
-static void
-Proc_Setupsignals(Boolean compat)
-{
-	struct sigaction sa;
-
+	/*
+	 * Setup handler to catch SIGCHLD so that we get kicked out of
+	 * select() when we need to look at a child.  This is only known to
+	 * matter for the -j case (perhaps without -P).
+	 */
 	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
+	sa.sa_handler = catch_child;
+	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+	sigaction(SIGCHLD, &sa, NULL);
+
+	/*
+	 * Catch the four signals that POSIX specifies if they aren't
+	 * ignored.
+	 */
+	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = catchsignal;
+	sa.sa_flags = 0;
 
 	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
 		sigaction(SIGHUP, &sa, NULL);
@@ -581,29 +579,27 @@ Proc_Setupsignals(Boolean compat)
 		sigaction(SIGTERM, &sa, NULL);
 	}
 
-	if (compat) {
-		return;
-	}
-
-	/*
-	 * There are additional signals that need to be caught and
-	 * passed if either the export system wants to be told
-	 * directly of signals or if we're giving each job its own
-	 * process group (since then it won't get signals from the
-	 * terminal driver as we own the terminal)
-	 */
 #ifdef USE_PGRP
-	if (signal(SIGTSTP, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTSTP, &sa, NULL);
-	}
-	if (signal(SIGTTOU, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTTOU, &sa, NULL);
-	}
-	if (signal(SIGTTIN, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGTTIN, &sa, NULL);
-	}
-	if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGWINCH, &sa, NULL);
+	if (compat == FALSE) {
+		/*
+		 * There are additional signals that need to be caught and
+		 * passed if either the export system wants to be told
+		 * directly of signals or if we're giving each job its own
+		 * process group (since then it won't get signals from the
+		 * terminal driver as we own the terminal)
+		 */
+		if (signal(SIGTSTP, SIG_IGN) != SIG_IGN) {
+			sigaction(SIGTSTP, &sa, NULL);
+		}
+		if (signal(SIGTTOU, SIG_IGN) != SIG_IGN) {
+			sigaction(SIGTTOU, &sa, NULL);
+		}
+		if (signal(SIGTTIN, SIG_IGN) != SIG_IGN) {
+			sigaction(SIGTTIN, &sa, NULL);
+		}
+		if (signal(SIGWINCH, SIG_IGN) != SIG_IGN) {
+			sigaction(SIGWINCH, &sa, NULL);
+		}
 	}
 #endif
 }
@@ -2458,8 +2454,6 @@ Job_Init(int maxproc)
 		targFmt = TARG_FMT;
 	}
 
-	Proc_Setupsignals(FALSE);
-
 #ifdef USE_KQUEUE
 	if ((kqfd = kqueue()) == -1) {
 		Punt("kqueue: %s", strerror(errno));
@@ -3326,8 +3320,6 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	int	error_cnt;	/* Number of targets not remade due to errors */
 	LstNode	*ln;
 	GNode	*ENDNode;
-
-	Proc_Setupsignals(TRUE);
 
 	ENDNode = Targ_FindNode(".END", TARG_CREATE);
 	/*
