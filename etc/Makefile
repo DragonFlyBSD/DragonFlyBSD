@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.69 2005/07/01 21:09:34 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.70 2005/07/02 00:21:42 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -192,8 +192,8 @@ upgrade_etc:	preupgrade
 .endfor
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libperl.a,libperl.so,libperl.so.3,libperl_p.a}"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl.1.gz"
-.for man in 5004delta apio book bot call data debug delta diag dsc embed faq \
-	    faq.1 faq2 faq3 faq4 faq5 faq6 faq7 faq8 faq9 form func guts hist \
+.for man in 5004delta apio book bot call data debug delta diag doc dsc embed faq \
+	    faq1 faq2 faq3 faq4 faq5 faq6 faq7 faq8 faq9 form func guts hist \
 	    ipc locale lol mod modinstall modlib obj op opentut pod port re \
 	    ref reftut run sec style sub syn thrtut tie toc toot trap var xs \
 	    xstut 
@@ -218,6 +218,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/etc/rc.d/ntpdate
 	rm -f ${DESTDIR}/usr/sbin/ntpdate
 	rm -f ${DESTDIR}/modules/if_wx.ko
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/wx.4.gz"
 	rm -f ${DESTDIR}/dev/rwcd*
 	rm -f ${DESTDIR}/dev/rwst*
 	rm -f ${DESTDIR}/dev/wcd*
@@ -305,6 +306,20 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/bin/ntpq
 	rm -f ${DESTDIR}/usr/bin/perldoc
 	rm -f ${DESTDIR}/usr/bin/sendbug
+.for man in gasp gperf sendbug
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${man}.1.gz"
+.endfor
+.for man in dft_fgbg dllockinit dynamic_fieldinfo fgetrune fputrune fungetrune \
+	    mbmb mbrrune mbrune menu_attribs multibyte rune setinvalidrune \
+	    setrunelocale sgetrune sputrune
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz"
+.endfor
+.for man in gbk ntp.conf ntp.keys
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/${man}.5.gz"
+.endfor
+.for man in ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace sysinstall
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
+.endfor
 	ldconfig -R
 
 distribution:
