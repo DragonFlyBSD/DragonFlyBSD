@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.120 2005/07/02 10:46:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.121 2005/07/02 10:46:53 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -168,6 +168,7 @@
  */
 #define	JOB_BUFSIZE	1024
 typedef struct Job {
+	struct Shell	*shell;
 	pid_t		pid;	/* The child's process ID */
 
 	struct GNode	*node;	/* The target the child is making */
@@ -740,7 +741,7 @@ JobPassSig(int signo)
 static int
 JobPrintCommand(char *cmd, Job *job)
 {
-	struct Shell	*shell = commandShell;
+	struct Shell	*shell = job->shell;
 	Boolean	noSpecials;	/* true if we shouldn't worry about
 				 * inserting special commands into
 				 * the input stream. */
@@ -1392,7 +1393,7 @@ Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 static void
 JobExec(Job *job, char **argv)
 {
-	struct Shell	*shell = commandShell;
+	struct Shell	*shell = job->shell;
 	ProcStuff	ps;
 
 	if (DEBUG(JOB)) {
@@ -1516,7 +1517,7 @@ JobExec(Job *job, char **argv)
 static void
 JobMakeArgv(Job *job, char **argv)
 {
-	struct Shell	*shell = commandShell;
+	struct Shell	*shell = job->shell;
 	int		argc;
 	static char	args[10];	/* For merged arguments */
 
@@ -1679,14 +1680,15 @@ JobStart(GNode *gn, int flags, Job *previous)
 		JobPassSig(interrupted);
 		return (JOB_ERROR);
 	}
-	if (previous != NULL) {
-		previous->flags &= ~(JOB_FIRST | JOB_IGNERR | JOB_SILENT);
-		job = previous;
-	} else {
+	if (previous == NULL) {
 		job = emalloc(sizeof(Job));
 		flags |= JOB_FIRST;
+	} else {
+		previous->flags &= ~(JOB_FIRST | JOB_IGNERR | JOB_SILENT);
+		job = previous;
 	}
 
+	job->shell = commandShell;
 	job->node = gn;
 	job->tailCmds = NULL;
 
@@ -1945,7 +1947,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 static char *
 JobOutput(Job *job, char *cp, char *endp, int msg)
 {
-	struct Shell	*shell = commandShell;
+	struct Shell	*shell = job->shell;
 	char		*ecp;
 
 	if (shell->noPrint) {
