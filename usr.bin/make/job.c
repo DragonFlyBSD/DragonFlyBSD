@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.119 2005/07/02 10:46:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.120 2005/07/02 10:46:28 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -740,6 +740,7 @@ JobPassSig(int signo)
 static int
 JobPrintCommand(char *cmd, Job *job)
 {
+	struct Shell	*shell = commandShell;
 	Boolean	noSpecials;	/* true if we shouldn't worry about
 				 * inserting special commands into
 				 * the input stream. */
@@ -819,8 +820,8 @@ JobPrintCommand(char *cmd, Job *job)
 
 	if (shutUp) {
 		if (!(job->flags & JOB_SILENT) && !noSpecials &&
-		    commandShell->hasEchoCtl) {
-			DBPRINTF("%s\n", commandShell->echoOff);
+		    shell->hasEchoCtl) {
+			DBPRINTF("%s\n", shell->echoOff);
 		} else {
 			shutUp = FALSE;
 		}
@@ -828,7 +829,7 @@ JobPrintCommand(char *cmd, Job *job)
 
 	if (errOff) {
 		if (!(job->flags & JOB_IGNERR) && !noSpecials) {
-			if (commandShell->hasErrCtl) {
+			if (shell->hasErrCtl) {
 				/*
 				 * We don't want the error-control commands
 				 * showing up either, so we turn off echoing
@@ -839,15 +840,15 @@ JobPrintCommand(char *cmd, Job *job)
 				 * it already is?
 				 */
 				if (!(job->flags & JOB_SILENT) && !shutUp &&
-				    commandShell->hasEchoCtl) {
-					DBPRINTF("%s\n", commandShell->echoOff);
-					DBPRINTF("%s\n", commandShell->ignErr);
-					DBPRINTF("%s\n", commandShell->echoOn);
+				    shell->hasEchoCtl) {
+					DBPRINTF("%s\n", shell->echoOff);
+					DBPRINTF("%s\n", shell->ignErr);
+					DBPRINTF("%s\n", shell->echoOn);
 				} else {
-					DBPRINTF("%s\n", commandShell->ignErr);
+					DBPRINTF("%s\n", shell->ignErr);
 				}
-			} else if (commandShell->ignErr &&
-			    *commandShell->ignErr != '\0') {
+			} else if (shell->ignErr &&
+			    *shell->ignErr != '\0') {
 				/*
 				 * The shell has no error control, so we need to
 				 * be weird to get it to ignore any errors from
@@ -860,12 +861,12 @@ JobPrintCommand(char *cmd, Job *job)
 				 * template.
 				 */
 				if (!(job->flags & JOB_SILENT) && !shutUp &&
-				    commandShell->hasEchoCtl) {
-					DBPRINTF("%s\n", commandShell->echoOff);
-					DBPRINTF(commandShell->errCheck, cmd);
+				    shell->hasEchoCtl) {
+					DBPRINTF("%s\n", shell->echoOff);
+					DBPRINTF(shell->errCheck, cmd);
 					shutUp = TRUE;
 				}
-				cmdTemplate = commandShell->ignErr;
+				cmdTemplate = shell->ignErr;
 				/*
 				 * The error ignoration (hee hee) is already
 				 * taken care of by the ignErr template, so
@@ -889,14 +890,14 @@ JobPrintCommand(char *cmd, Job *job)
 		 * for the whole command...
 		 */
 		if (!shutUp && !(job->flags & JOB_SILENT) &&
-		    commandShell->hasEchoCtl) {
-			DBPRINTF("%s\n", commandShell->echoOff);
+		    shell->hasEchoCtl) {
+			DBPRINTF("%s\n", shell->echoOff);
 			shutUp = TRUE;
 		}
-		DBPRINTF("%s\n", commandShell->errCheck);
+		DBPRINTF("%s\n", shell->errCheck);
 	}
 	if (shutUp) {
-		DBPRINTF("%s\n", commandShell->echoOn);
+		DBPRINTF("%s\n", shell->echoOn);
 	}
 	return (0);
 }
@@ -1391,6 +1392,7 @@ Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 static void
 JobExec(Job *job, char **argv)
 {
+	struct Shell	*shell = commandShell;
 	ProcStuff	ps;
 
 	if (DEBUG(JOB)) {
@@ -1454,7 +1456,7 @@ JobExec(Job *job, char **argv)
 		if (fifoFd >= 0)
 			close(fifoFd);
 
-		Proc_Exec(&ps, commandShell);
+		Proc_Exec(&ps, shell);
 		/* NOTREACHED */
 
 	} else {
@@ -1514,14 +1516,15 @@ JobExec(Job *job, char **argv)
 static void
 JobMakeArgv(Job *job, char **argv)
 {
+	struct Shell	*shell = commandShell;
 	int		argc;
 	static char	args[10];	/* For merged arguments */
 
-	argv[0] = commandShell->name;
+	argv[0] = shell->name;
 	argc = 1;
 
-	if ((commandShell->exit && *commandShell->exit != '-') ||
-	    (commandShell->echo && *commandShell->echo != '-')) {
+	if ((shell->exit && *shell->exit != '-') ||
+	    (shell->echo && *shell->echo != '-')) {
 		/*
 		 * At least one of the flags doesn't have a minus before it, so
 		 * merge them together. Have to do this because the *(&(@*#*&#$#
@@ -1530,21 +1533,21 @@ JobMakeArgv(Job *job, char **argv)
 		 * arguments.
 		 */
 		sprintf(args, "-%s%s", (job->flags & JOB_IGNERR) ? "" :
-		    commandShell->exit ? commandShell->exit : "",
+		    shell->exit ? shell->exit : "",
 		    (job->flags & JOB_SILENT) ? "" :
-		    commandShell->echo ? commandShell->echo : "");
+		    shell->echo ? shell->echo : "");
 
 		if (args[1]) {
 			argv[argc] = args;
 			argc++;
 		}
 	} else {
-		if (!(job->flags & JOB_IGNERR) && commandShell->exit) {
-			argv[argc] = commandShell->exit;
+		if (!(job->flags & JOB_IGNERR) && shell->exit) {
+			argv[argc] = shell->exit;
 			argc++;
 		}
-		if (!(job->flags & JOB_SILENT) && commandShell->echo) {
-			argv[argc] = commandShell->echo;
+		if (!(job->flags & JOB_SILENT) && shell->echo) {
+			argv[argc] = shell->echo;
 			argc++;
 		}
 	}
@@ -1567,9 +1570,9 @@ JobRestart(Job *job)
 		/*
 		 * Set up the control arguments to the shell. This is based on
 		 * the flags set earlier for this job. If the JOB_IGNERR flag
-		 * is clear, the 'exit' flag of the commandShell is used to
+		 * is clear, the 'exit' flag of the shell is used to
 		 * cause it to exit upon receiving an error. If the JOB_SILENT
-		 * flag is clear, the 'echo' flag of the commandShell is used
+		 * flag is clear, the 'echo' flag of the shell is used
 		 * to get it to start echoing as soon as it starts
 		 * processing commands.
 		 */
@@ -1942,10 +1945,11 @@ JobStart(GNode *gn, int flags, Job *previous)
 static char *
 JobOutput(Job *job, char *cp, char *endp, int msg)
 {
-	char *ecp;
+	struct Shell	*shell = commandShell;
+	char		*ecp;
 
-	if (commandShell->noPrint) {
-		ecp = strstr(cp, commandShell->noPrint);
+	if (shell->noPrint) {
+		ecp = strstr(cp, shell->noPrint);
 		while (ecp != NULL) {
 			if (cp != ecp) {
 				*ecp = '\0';
@@ -1963,7 +1967,7 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
 				fprintf(stdout, "%s", cp);
 				fflush(stdout);
 			}
-			cp = ecp + strlen(commandShell->noPrint);
+			cp = ecp + strlen(shell->noPrint);
 			if (cp != endp) {
 				/*
 				 * Still more to print, look again after
@@ -1975,7 +1979,7 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
 				    *cp == '\n') {
 					cp++;
 				}
-				ecp = strstr(cp, commandShell->noPrint);
+				ecp = strstr(cp, shell->noPrint);
 			} else {
 				return (cp);
 			}
@@ -2513,6 +2517,7 @@ Job_Full(void)
 Boolean
 Job_Empty(void)
 {
+
 	if (nJobs == 0) {
 		if (!TAILQ_EMPTY(&stoppedJobs) && !aborting) {
 			/*
@@ -2709,6 +2714,7 @@ JobRestartJobs(void)
 Buffer *
 Cmd_Exec(const char *cmd, const char **error)
 {
+	struct Shell	*shell = commandShell;
 	int	fds[2];	/* Pipe streams */
 	int	status;	/* command exit status */
 	Buffer	*buf;	/* buffer to store the result */
@@ -2739,7 +2745,7 @@ Cmd_Exec(const char *cmd, const char **error)
 
 	/* Set up arguments for shell */
 	ps.argv = emalloc(4 * sizeof(char *));
-	ps.argv[0] = strdup(commandShell->name);
+	ps.argv[0] = strdup(shell->name);
 	ps.argv[1] = strdup("-c");
 	ps.argv[2] = strdup(cmd);
 	ps.argv[3] = NULL;
@@ -2756,7 +2762,7 @@ Cmd_Exec(const char *cmd, const char **error)
 		/*
 		 * Child
 		 */
-		Proc_Exec(&ps, commandShell);
+		Proc_Exec(&ps, shell);
 		/* NOTREACHED */
 
 	} else {
@@ -2872,6 +2878,7 @@ CompatInterrupt(int signo, GNode *ENDNode)
 static int
 Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 {
+	struct Shell	*shell = commandShell;
 	ArgArray	aa;
 	char		*cmdStart;	/* Start of expanded command */
 	Boolean		silent;		/* Don't print command */
@@ -2945,8 +2952,8 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		return (0);
 	}
 
-	if (commandShell->meta != NULL &&
-	    strpbrk(cmd, commandShell->meta) != NULL) {
+	if (shell->meta != NULL &&
+	    strpbrk(cmd, shell->meta) != NULL) {
 		/*
 		 * We found a "meta" character and need to pass the command
 		 * off to the shell.
@@ -2955,7 +2962,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 
 	} else {
 		char **p;
-		char **sh_builtin = commandShell->builtins.argv + 1;
+		char **sh_builtin = shell->builtins.argv + 1;
 
 		/*
 		 * Break the command into words to form an argument
@@ -2991,7 +2998,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		 * supposed to exit when it hits an error.
 		 */
 		ps.argv = emalloc(4 * sizeof(char *));
-		ps.argv[0] = strdup(commandShell->path);
+		ps.argv[0] = strdup(shell->path);
 		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
 		ps.argv[2] = strdup(cmd);
 		ps.argv[3] = NULL;
@@ -3014,7 +3021,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		/*
 		 * Child
 		 */
-		Proc_Exec(&ps, commandShell);
+		Proc_Exec(&ps, shell);
 		/* NOTREACHED */
 
 	} else {
