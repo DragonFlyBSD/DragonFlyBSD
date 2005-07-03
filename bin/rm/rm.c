@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.12 2005/06/03 16:00:23 dillon Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.13 2005/07/03 00:42:13 corecode Exp $
  */
 
 #include <sys/stat.h>
@@ -98,7 +98,7 @@ main(int argc, char *argv[])
 	}
 
 	Pflag = rflag = 0;
-	while ((ch = getopt(argc, argv, "dfiIPRrvW")) != -1)
+	while ((ch = getopt(argc, argv, "dfiIPRrvW")) != -1) {
 		switch(ch) {
 		case 'd':
 			dflag = 1;
@@ -138,6 +138,7 @@ main(int argc, char *argv[])
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -153,7 +154,7 @@ main(int argc, char *argv[])
 	if (*argv) {
 		stdin_ok = isatty(STDIN_FILENO);
 
-		if (Iflag) {
+		if (Iflag && !iflag) {
 			if (check2(argv) == 0)
 				exit (1);
 		}
