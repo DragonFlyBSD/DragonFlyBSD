@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)intro.2	8.5 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/sys/intro.2,v 1.21.2.7 2003/02/24 01:01:48 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/intro.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/intro.2,v 1.3 2005/07/03 14:43:27 corecode Exp $
 .\"
 .Dd February 27, 1995
 .Dt INTRO 2
@@ -52,24 +52,34 @@ their error returns, and other common definitions and concepts.
 .\"<more later...>
 .Sh RETURN VALUES
 Nearly all of the system calls provide an error number referenced via
-the external identifier errno.
+the external identifier
+.Va errno.
 This identifier is defined in
-.Aq Pa sys/errno.h
+.Aq Pa errno.h
 as
 .Pp
-.Dl extern    int *       __error();
+.Dl extern __thread int      errno;
+.Dl static __inline int    * __error(void);
 .Dl #define   errno       (* __error())
 .Pp
+This means there exists a thread-local
+.Va errno
+variable, though it is shadowed by the inline
+.Va __error()
+function to allow compilation of source code which
+erroneously itself declares
+.Va errno
+as
+.Va extern int errno;
+which collides with the thread-local declaration.
 The
 .Va __error()
-function returns a pointer to a field in the thread specific structure for
-threads other than the initial thread.
-For the initial thread and
-non-threaded processes,
-.Va __error()
-returns a pointer to a global
+function returns a pointer the thread specific
 .Va errno
-variable that is compatible with the previous definition.
+variable. As it is defined
+.Va inline ,
+it will compile to a no-op, effectively producing
+the same code as if the define wouldn't exist.
 .Pp
 When a system call detects an error,
 it returns an integer value
