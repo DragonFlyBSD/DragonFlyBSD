@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.13 2005/07/03 00:42:13 corecode Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.14 2005/07/03 00:51:44 corecode Exp $
  */
 
 #include <sys/stat.h>
@@ -456,8 +456,8 @@ check(const char *path, const char *name, struct stat *sp)
 		 * because their permissions are meaningless.  Check stdin_ok
 		 * first because we may not have stat'ed the file.
 		 * Also skip this check if the -P option was specified because
-  	         * we will not be able to overwrite file contents and will
-  	         * barf later.
+	         * we will not be able to overwrite file contents and will
+	         * barf later.
 		 */
 		if (!stdin_ok || S_ISLNK(sp->st_mode) || Pflag ||
 		    (!access(name, W_OK) &&
@@ -471,7 +471,7 @@ check(const char *path, const char *name, struct stat *sp)
 		    modep + 1, modep[9] == ' ' ? "" : " ",
 		    user_from_uid(sp->st_uid, 0),
 		    group_from_gid(sp->st_gid, 0),
-		    *flagsp ? flagsp : "", *flagsp ? " " : "", 
+		    *flagsp ? flagsp : "", *flagsp ? " " : "",
 		    path);
 		free(flagsp);
 	}
