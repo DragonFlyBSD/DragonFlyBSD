@@ -24,11 +24,11 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.50 2005/02/23 07:23:35 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/acpi.4,v 1.2 2005/04/16 08:17:02 y0netan1 Exp $
+.\" $DragonFly: src/share/man/man4/acpi.4,v 1.3 2005/07/03 20:58:35 asmodai Exp $
 .\"
 .Dd February 13, 2005
 .Dt ACPI 4
-.Os
+.Dx
 .Sh NAME
 .Nm acpi
 .Nd Advanced Configuration and Power Management support
@@ -263,7 +263,7 @@ and levels in
 .Va debug.acpi.level .
 .Pp
 The first set of layers is for ACPI-CA components, and the second is for
-.Fx
+.Dx
 drivers.
 The ACPI-CA layer descriptions include the prefix for the files they
 refer to.
@@ -320,7 +320,7 @@ Thermal zone driver
 Timer driver
 .It Li ACPI_ALL_DRIVERS
 All the above
-.Fx
+.Dx
 ACPI drivers
 .El
 .Pp
@@ -390,7 +390,7 @@ debug.acpi.level="ACPI_LV_ALL_EXCEPTIONS"
 Debugging output by the ACPI CA subsystem is prefixed with the
 module name in lowercase, followed by a source line number.
 Output from the
-.Fx Ns -local
+.Dx Ns -local
 code follows the same format, but
 the module name is uppercased.
 .Sh OVERRIDING YOUR BIOS BYTECODE
@@ -399,7 +399,7 @@ ACPI interprets bytecode named AML
 provided by the BIOS vendor as a memory image at boot time.
 Sometimes, the AML code contains a bug that does not appear when parsed
 by the Microsoft implementation.
-.Fx
+.Dx
 provides a way to override it with your own AML code to work around
 or debug such problems.
 Note that all AML in your DSDT and any SSDT tables is overridden.
@@ -445,7 +445,7 @@ Intel Architecture Labs.
 .Pp
 The following people made notable contributions to the ACPI subsystem
 in
-.Fx :
+.Dx :
 .An Michael Smith ,
 .An Takanori Watanabe Aq takawata@jp.FreeBSD.org ,
 .An Mitsuru IWASAKI Aq iwasaki@jp.FreeBSD.org ,
