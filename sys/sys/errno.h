@@ -37,7 +37,7 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
- * $DragonFly: src/sys/sys/errno.h,v 1.7 2005/07/02 18:13:52 corecode Exp $
+ * $DragonFly: src/sys/sys/errno.h,v 1.8 2005/07/03 13:08:02 corecode Exp $
  */
 
 #ifndef _SYS_ERRNO_H_
@@ -46,8 +46,7 @@
 #ifndef _KERNEL
 extern __thread int	errno;
 
-#include <sys/cdefs.h>
-static inline int *__error(void)
+static __inline__ int *__error(void)
 {
 	return (&errno);
 }
