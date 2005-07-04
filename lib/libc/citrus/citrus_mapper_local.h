@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_mapper_local.h,v 1.1 2003/06/25 09:51:36 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_mapper_local.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_mapper_local.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -30,6 +30,8 @@
 #ifndef _CITRUS_MAPPER_LOCAL_H_
 #define _CITRUS_MAPPER_LOCAL_H_
 
+#include "citrus_module.h"
+
 #define _CITRUS_MAPPER_GETOPS_FUNC_BASE(_n_)				\
 int _n_(struct _citrus_mapper_ops *, size_t, u_int32_t)
 #define _CITRUS_MAPPER_GETOPS_FUNC(_n_)					\
@@ -47,7 +49,8 @@ static int	_citrus_##_m_##_mapper_convert				\
 	 _citrus_index_t * __restrict, _citrus_index_t,			\
 	 void * __restrict);						\
 static void	_citrus_##_m_##_mapper_init_state			\
-	(struct _citrus_mapper * __restrict, void * __restrict);
+	(struct _citrus_mapper * __restrict, void * __restrict);	\
+CITRUS_MODULE(_m_, mapper, _citrus_##_m_##_mapper_getops)
 
 #define _CITRUS_MAPPER_DEF_OPS(_m_)					\
 struct _citrus_mapper_ops _citrus_##_m_##_mapper_ops = {		\

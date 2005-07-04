@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_module.h,v 1.1 2002/03/17 22:14:20 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_module.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_module.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -30,6 +30,31 @@
 
 #ifndef _CITRUS_MODULE_H_
 #define _CITRUS_MODULE_H_
+
+#include <sys/linker_set.h>
+
+struct citrus_metadata {
+    const char *module_name;
+    const char *interface_name;
+    void *module_ops;
+};
+
+#ifdef __PIC__
+#define CITRUS_MODULE(name, interface, ops)
+#else
+
+#define	CITRUS_MODULE(name, interface, ops)				\
+static const char __citrus_module_ ## name ## _ ## interface ## _str[] = \
+    #name; \
+static struct citrus_metadata						\
+    __citrus_module_ ## name ## _ ## interface = { 			\
+	    __citrus_module_ ## name ## _ ##interface ## _str,		\
+	    #interface, ops						\
+};									\
+__weak_reference(__citrus_module_ ## name ## _ ## interface ## _str,	\
+		 _citrus_module_ ## name);				\
+DATA_SET(citrus_set, __citrus_module_ ## name ## _ ## interface);
+#endif
 
 typedef struct _citrus_module_rec *_citrus_module_t;
 

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_iconv_local.h,v 1.2 2003/07/01 09:42:16 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_iconv_local.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_iconv_local.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -30,6 +30,8 @@
 #ifndef _CITRUS_ICONV_LOCAL_H_
 #define _CITRUS_ICONV_LOCAL_H_
 
+#include "citrus_module.h"
+
 #define _CITRUS_ICONV_GETOPS_FUNC_BASE(_n_)				\
 int _n_(struct _citrus_iconv_ops *, size_t, uint32_t)
 #define _CITRUS_ICONV_GETOPS_FUNC(_n_)					\
@@ -51,7 +53,8 @@ static int	_citrus_##_m_##_iconv_convert				\
 static int	_citrus_##_m_##_iconv_init_context			\
 	(struct _citrus_iconv *);					\
 static void	_citrus_##_m_##_iconv_uninit_context			\
-	(struct _citrus_iconv *)
+	(struct _citrus_iconv *);					\
+CITRUS_MODULE(_m_, iconv, _citrus_##_m_##_iconv_getops)
 
 
 #define _CITRUS_ICONV_DEF_OPS(_m_)					\

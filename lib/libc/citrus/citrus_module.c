@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_module.c,v 1.4 2004/12/21 09:00:01 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.3 2005/07/04 08:02:43 joerg Exp $ */
 
 /*-
  * Copyright (c)1999, 2000, 2001, 2002 Citrus Project,
@@ -111,7 +111,7 @@
 #include <dirent.h>
 #include <dlfcn.h>
 
-#ifdef _I18N_DYNAMIC
+#ifdef __PIC__
 
 static int _getdewey(int [], char *);
 static int _cmpndewey(int [], int, int [], int);
@@ -335,11 +335,35 @@ _citrus_unload_module(_citrus_module_t handle)
 #else
 /* !_I18N_DYNAMIC */
 
+SET_DECLARE(citrus_set, struct citrus_metadata);
+
+struct citrus_metadata empty = {
+    NULL, NULL, NULL
+};
+
+DATA_SET(citrus_set, empty);
+
+#define MAGIC_HANDLE	(void *)(0xC178C178)
+
 void *
 /*ARGSUSED*/
-_citrus_find_getops(_citrus_module_t handle, const char *modname,
+_citrus_find_getops(_citrus_module_t handle __unused, const char *modname,
 		    const char *ifname)
 {
+	struct citrus_metadata **mdp, *mod;
+
+	_DIAGASSERT(handle == MAGIC_HANDLE);
+
+	SET_FOREACH(mdp, citrus_set) {
+		mod = *mdp;
+		if (mod == NULL || mod->module_name == NULL || mod->interface_name == NULL)
+			continue;
+		if (strcmp(mod->module_name, modname) != 0)
+			continue;
+		if (strcmp(mod->interface_name, ifname) != 0)
+			continue;	
+		return(mod->module_ops);
+	}
 	return (NULL);
 }
 
@@ -347,12 +371,23 @@ int
 /*ARGSUSED*/
 _citrus_load_module(_citrus_module_t *rhandle, char const *modname)
 {
+	struct citrus_metadata **mdp, *mod;
+
+	SET_FOREACH(mdp, citrus_set) {
+		mod = *mdp;
+		if (mod == NULL || mod->module_name == NULL)
+			continue;
+		if (strcmp(mod->module_name, modname) != 0)
+			continue;
+		*rhandle = MAGIC_HANDLE;
+		return(0);
+	}
 	return (EINVAL);
 }
 
 void
 /*ARGSUSED*/
-_citrus_unload_module(_citrus_module_t handle)
+_citrus_unload_module(_citrus_module_t handle __unused)
 {
 }
 #endif

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_stdenc_local.h,v 1.2 2003/06/26 12:09:57 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_stdenc_local.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_stdenc_local.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -30,6 +30,8 @@
 
 #ifndef _CITRUS_STDENC_LOCAL_H_
 #define _CITRUS_STDENC_LOCAL_H_
+
+#include "citrus_module.h"
 
 #define _CITRUS_STDENC_GETOPS_FUNC_BASE(n)			\
 int n(struct _citrus_stdenc_ops *, size_t, uint32_t)
@@ -64,7 +66,8 @@ static int	_citrus_##_e_##_stdenc_wctomb				\
 	 _citrus_wc_t, void * __restrict, size_t * __restrict);		\
 static int	_citrus_##_e_##_stdenc_put_state_reset			\
 	(struct _citrus_stdenc * __restrict, char * __restrict, size_t,	\
-	 void * __restrict, size_t * __restrict)
+	 void * __restrict, size_t * __restrict);			\
+CITRUS_MODULE(_e_, stdenc, _citrus_##_e_##_stdenc_getops)
 
 #define _CITRUS_STDENC_DEF_OPS(_e_)					\
 struct _citrus_stdenc_ops _citrus_##_e_##_stdenc_ops = {		\

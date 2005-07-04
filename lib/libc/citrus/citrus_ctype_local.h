@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_ctype_local.h,v 1.2 2003/03/05 20:18:15 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_ctype_local.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_ctype_local.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
 
 
 /*-
@@ -31,6 +31,8 @@
 
 #ifndef _CITRUS_CTYPE_LOCAL_H_
 #define _CITRUS_CTYPE_LOCAL_H_
+
+#include "citrus_module.h"
 
 #define _CITRUS_CTYPE_GETOPS_FUNC_BASE(_n_)				\
 int _n_(_citrus_ctype_ops_rec_t *, size_t, uint32_t)
@@ -89,7 +91,8 @@ static int	_citrus_##_e_##_ctype_wctomb(void * __restrict,		      \
 static int	_citrus_##_e_##_ctype_btowc(_citrus_ctype_rec_t * __restrict, \
 				      int, wint_t * __restrict);	      \
 static int	_citrus_##_e_##_ctype_wctob(_citrus_ctype_rec_t * __restrict, \
-				      wint_t, int * __restrict)
+				      wint_t, int * __restrict);	      \
+CITRUS_MODULE(_e_, ctype, _citrus_##_e_##_ctype_getops)
 
 #define _CITRUS_CTYPE_DEF_OPS(_e_)					\
 _citrus_ctype_ops_rec_t _citrus_##_e_##_ctype_ops = {			\

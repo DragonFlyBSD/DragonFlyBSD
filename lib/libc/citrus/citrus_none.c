@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_none.c,v 1.12 2004/01/18 03:57:30 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.3 2005/04/26 14:03:57 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.4 2005/07/04 08:02:43 joerg Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -45,12 +45,40 @@
 #include "citrus_stdenc.h"
 
 /* ---------------------------------------------------------------------- */
+static int
+_citrus_NONE_ctype_getops(_citrus_ctype_ops_rec_t *, size_t, uint32_t);
+static int
+_citrus_NONE_stdenc_getops(struct _citrus_stdenc_ops *, size_t, uint32_t);
 
 _CITRUS_CTYPE_DECLS(NONE);
 _CITRUS_CTYPE_DEF_OPS(NONE);
 
 
 /* ---------------------------------------------------------------------- */
+
+static int
+_citrus_NONE_ctype_getops(_citrus_ctype_ops_rec_t *ops, size_t lenops,
+			uint32_t expected_version)
+{
+	if (expected_version<_CITRUS_CTYPE_ABI_VERSION || lenops<sizeof(*ops))
+		return (EINVAL);
+
+	memcpy(ops, &_citrus_NONE_ctype_ops, sizeof(_citrus_NONE_ctype_ops));
+
+	return (0);
+}
+
+static int
+_citrus_NONE_stdenc_getops(struct _citrus_stdenc_ops *ops, size_t lenops,
+			 uint32_t expected_version)
+{
+	if (expected_version<_CITRUS_STDENC_ABI_VERSION || lenops<sizeof(*ops))
+		return (EINVAL);
+
+	memcpy(ops, &_citrus_NONE_stdenc_ops, sizeof(_citrus_NONE_stdenc_ops));
+
+	return (0);
+}
 
 static int
 /*ARGSUSED*/
