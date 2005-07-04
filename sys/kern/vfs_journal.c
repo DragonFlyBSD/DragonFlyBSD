@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.13 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.14 2005/07/04 21:05:53 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -1500,7 +1500,7 @@ jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
     save = jrecord_push(jrec, JTYPE_VATTR);
     if (vat->va_type != VNON)
 	jrecord_leaf(jrec, JLEAF_VTYPE, &vat->va_type, sizeof(vat->va_type));
-    if (vat->va_uid != VNOVAL)
+    if (vat->va_mode != (mode_t)VNOVAL)
 	jrecord_leaf(jrec, JLEAF_MODES, &vat->va_mode, sizeof(vat->va_mode));
     if (vat->va_nlink != VNOVAL)
 	jrecord_leaf(jrec, JLEAF_NLINK, &vat->va_nlink, sizeof(vat->va_nlink));
@@ -1761,6 +1761,8 @@ journal_write(struct vop_write_args *ap)
      *
      * XXX fix the UIO code to not destroy iov's during a scan so we can
      *     reuse the uio over and over again.
+     *
+     * XXX UNDO code needs to journal the old data prior to the write.
      */
     uio_copy = *ap->a_uio;
     if (uio_copy.uio_iovcnt == 1) {
@@ -1774,6 +1776,14 @@ journal_write(struct vop_write_args *ap)
     }
 
     error = vop_journal_operate_ap(&ap->a_head);
+
+    /*
+     * XXX bad hack to figure out the offset for O_APPEND writes (note: 
+     * uio field state after the VFS operation).
+     */
+    uio_copy.uio_offset = ap->a_uio->uio_offset - 
+				(uio_copy.uio_resid - ap->a_uio->uio_resid);
+
     mp = ap->a_head.a_ops->vv_mount;
     if (error == 0) {
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
@@ -1928,6 +1938,7 @@ journal_ncreate(struct vop_ncreate_args *ap)
 	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
 	    if (*ap->a_vpp)
 		jrecord_write_vnode_ref(&jrec, *ap->a_vpp);
+	    jrecord_write_vattr(&jrec, ap->a_vap);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}

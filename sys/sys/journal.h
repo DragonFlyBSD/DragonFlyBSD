@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.3 2005/03/22 22:13:32 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.4 2005/07/04 21:05:54 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -219,7 +219,7 @@ struct journal_ackrecord {
  */
 
 struct journal_subrecord {
-	int16_t rectype;	/* 2 control bits, 14 record type bits */
+	u_int16_t rectype;	/* 2 control bits, 14 record type bits */
 	int16_t reserved;	/* future use */
 	int32_t recsize;	/* record size (mandatory if not NESTED) */
 	/* ADDITIONAL DATA */
@@ -228,6 +228,7 @@ struct journal_subrecord {
 #define JMASK_NESTED		0x8000	/* data is a nested recursion */
 #define JMASK_LAST		0x4000
 #define JMASK_SUBRECORD		0x0400
+#define JTYPE_MASK		(~JMASK_LAST)
 
 #define JLEAF_PAD		0x0000
 #define JLEAF_ABORT		0x0001
