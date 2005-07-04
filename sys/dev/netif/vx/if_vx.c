@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.22 2005/07/04 07:26:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.23 2005/07/04 07:32:37 joerg Exp $
  *
  */
 
@@ -314,7 +314,7 @@ vxsetlink(sc)
 
     i = sc->vx_connector;	/* default in EEPROM */
     reason = "default";
-    warning = 0;
+    warning = NULL;
 
     if (ifp->if_flags & IFF_LINK0) {
 	if (sc->vx_connectors & conn_tab[CONNECTOR_AUI].bit) {
@@ -346,7 +346,7 @@ vxsetlink(sc)
     /* Avoid unnecessary message. */
     k = (prev_flags ^ ifp->if_flags) & (IFF_LINK0 | IFF_LINK1 | IFF_LINK2);
     if ((k != 0) || (prev_conn != i)) {
-	if (warning != 0) {
+	if (warning != NULL) {
 	    if_printf(ifp, "warning: %s\n", warning);
 	}
 	if_printf(ifp, "selected %s. (%s)\n", conn_tab[i].name, reason);
@@ -396,7 +396,7 @@ vxstart(ifp)
     int len, pad;
 
     /* Don't transmit if interface is busy or not running */
-    if ((sc->arpcom.ac_if.if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
+    if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 	return;
 
 startagain:
@@ -405,8 +405,7 @@ startagain:
     if (m0 == NULL)
 	return;
     /* We need to use m->m_pkthdr.len, so require the header */
-     if ((m0->m_flags & M_PKTHDR) == 0)
-	panic("vxstart: no header mbuf");
+     M_ASSERTPKTHDR(m0);
      len = m0->m_pkthdr.len;
 
      pad = (4 - len) & 3;
@@ -440,11 +439,11 @@ startagain:
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_START_THRESH |
 	((len / 4 + sc->tx_start_thresh) >> 2));
 
-    BPF_MTAP(&sc->arpcom.ac_if, m0);
+    BPF_MTAP(ifp, m0);
 
     /*
-     * Do the output in a critical section so that an interrupt from another device
-     * won't cause a FIFO underrun.
+     * Do the output in a critical section so that an interrupt from
+     * another device won't cause a FIFO underrun.
      */
     crit_enter();
 
@@ -507,6 +506,7 @@ vxstatus(sc)
     struct vx_softc *sc;
 {
     int fifost;
+    struct ifnet *ifp = &sc->arpcom.ac_if;
 
     /*
      * Check the FIFO status and act accordingly
@@ -516,69 +516,71 @@ vxstatus(sc)
     GO_WINDOW(1);
 
     if (fifost & FIFOS_RX_UNDERRUN) {
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    if_printf(&sc->arpcom.ac_if, "RX underrun\n");
+	if (ifp->if_flags & IFF_DEBUG)
+	    if_printf(ifp, "RX underrun\n");
 	vxreset(sc);
 	return 0;
     }
 
     if (fifost & FIFOS_RX_STATUS_OVERRUN) {
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    if_printf(&sc->arpcom.ac_if, "RX Status overrun\n");
+	if (ifp->if_flags & IFF_DEBUG)
+	    if_printf(ifp, "RX Status overrun\n");
 	return 1;
     }
 
     if (fifost & FIFOS_RX_OVERRUN) {
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    if_printf(&sc->arpcom.ac_if, "RX overrun\n");
+	if (ifp->if_flags & IFF_DEBUG)
+	    if_printf(ifp, "RX overrun\n");
 	return 1;
     }
 
     if (fifost & FIFOS_TX_OVERRUN) {
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    if_printf(&sc->arpcom.ac_if, "TX overrun\n");
+	if (ifp->if_flags & IFF_DEBUG)
+	    if_printf(ifp, "TX overrun\n");
 	vxreset(sc);
-	return 0;
     }
 
     return 0;
 }
 
 static void     
-vxtxstat(sc)
-    struct vx_softc *sc;
+vxtxstat(struct vx_softc *sc)
 {
-    int i;
+	int i;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-    /*
-    * We need to read+write TX_STATUS until we get a 0 status
-    * in order to turn off the interrupt flag.
-    */
-    while ((i = CSR_READ_1(sc, VX_W1_TX_STATUS)) & TXS_COMPLETE) {
-	CSR_WRITE_1(sc, VX_W1_TX_STATUS, 0x0);
+	/*
+	 * We need to read+write TX_STATUS until we get a 0 status
+	 * in order to turn off the interrupt flag.
+	 */
+	while ((i = CSR_READ_1(sc, VX_W1_TX_STATUS)) & TXS_COMPLETE) {
+		CSR_WRITE_1(sc, VX_W1_TX_STATUS, 0x0);
 
-    if (i & TXS_JABBER) {
-	++sc->arpcom.ac_if.if_oerrors;
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG)
-	    if_printf(&sc->arpcom.ac_if, "jabber (%x)\n", i);
-	vxreset(sc);
-    } else if (i & TXS_UNDERRUN) {
-	++sc->arpcom.ac_if.if_oerrors;
-	if (sc->arpcom.ac_if.if_flags & IFF_DEBUG) {
-	    if_printf(&sc->arpcom.ac_if, "fifo underrun (%x) @%d\n",
-		i, sc->tx_start_thresh);
+		if (i & TXS_JABBER) {
+			++ifp->if_oerrors;
+			if (ifp->if_flags & IFF_DEBUG)
+				if_printf(ifp, "jabber (%x)\n", i);
+			vxreset(sc);
+		} else if (i & TXS_UNDERRUN) {
+			++ifp->if_oerrors;
+			if (ifp->if_flags & IFF_DEBUG) {
+				if_printf(ifp, "fifo underrun (%x) @%d\n",
+					  i, sc->tx_start_thresh);
+			}
+			if (sc->tx_succ_ok < 100) {
+				sc->tx_start_thresh = min(
+				    ETHER_MAX_LEN, sc->tx_start_thresh + 20);
+			}
+			sc->tx_succ_ok = 0;
+			vxreset(sc);
+		} else if (i & TXS_MAX_COLLISION) {
+			++ifp->if_collisions;
+			CSR_WRITE_2(sc, VX_COMMAND, TX_ENABLE);
+			ifp->if_flags &= ~IFF_OACTIVE;
+		} else {
+			sc->tx_succ_ok = (sc->tx_succ_ok+1) & 127;
+		}
 	}
-	if (sc->tx_succ_ok < 100)
-	    sc->tx_start_thresh = min(ETHER_MAX_LEN, sc->tx_start_thresh + 20);
-	sc->tx_succ_ok = 0;
-	vxreset(sc);
-    } else if (i & TXS_MAX_COLLISION) {
-	++sc->arpcom.ac_if.if_collisions;
-	CSR_WRITE_2(sc, VX_COMMAND, TX_ENABLE);
-	sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
-    } else
-	sc->tx_succ_ok = (sc->tx_succ_ok+1) & 127;
-    }
 }
 
 void
@@ -610,8 +612,8 @@ vxintr(voidsc)
 	    vxread(sc);
 	if (status & S_TX_AVAIL) {
 	    ifp->if_timer = 0;
-	    sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
-	    vxstart(&sc->arpcom.ac_if);
+	    ifp->if_flags &= ~IFF_OACTIVE;
+	    vxstart(ifp);
 	}
 	if (status & S_CARD_FAILURE) {
 	    if_printf(ifp, "adapter failure (%x)\n", status);
@@ -676,7 +678,7 @@ again:
 
     /* Pull packet off interface. */
     m = vxget(sc, len);
-    if (m == 0) {
+    if (m == NULL) {
 	ifp->if_ierrors++;
 	goto abort;
     }
@@ -744,11 +746,11 @@ vxget(sc, totlen)
     int len;
 
     m = sc->mb[sc->next_mb];
-    sc->mb[sc->next_mb] = 0;
-    if (m == 0) {
+    sc->mb[sc->next_mb] = NULL;
+    if (m == NULL) {
         MGETHDR(m, MB_DONTWAIT, MT_DATA);
-        if (m == 0)
-            return 0;
+        if (m == NULL)
+            return NULL;
     } else {
         /* If the queue is no longer full, refill. */
         if (sc->last_mb == sc->next_mb && sc->buffill_pending == 0) {
@@ -764,32 +766,32 @@ vxget(sc, totlen)
     m->m_pkthdr.rcvif = ifp;
     m->m_pkthdr.len = totlen;
     len = MHLEN;
-    top = 0;
+    top = NULL;
     mp = &top;
 
     /*
-     * We read the packet in a critical section so that an interrupt from another
-     * device doesn't cause the card's buffer to overflow while we're
-     * reading it.  We may still lose packets at other times.
+     * We read the packet in a critical section so that an interrupt
+     * from another device doesn't cause the card's buffer to overflow
+     * while we're reading it.  We may still lose packets at other times.
      */
     crit_enter();
 
     /*
      * Since we don't set allowLargePackets bit in MacControl register,
      * we can assume that totlen <= 1500bytes.
-     * The while loop will be performed iff we have a packet with
+     * The while loop will be performed if we have a packet with
      * MLEN < m_len < MINCLSIZE.
      */
     while (totlen > 0) {
         if (top) {
             m = sc->mb[sc->next_mb];
-            sc->mb[sc->next_mb] = 0;
-            if (m == 0) {
+            sc->mb[sc->next_mb] = NULL;
+            if (m == NULL) {
                 MGET(m, MB_DONTWAIT, MT_DATA);
-                if (m == 0) {
+                if (m == NULL) {
                     crit_exit();
                     m_freem(top);
-                    return 0;
+                    return NULL;
                 }
             } else {
                 sc->next_mb = (sc->next_mb + 1) % MAX_MBS;
