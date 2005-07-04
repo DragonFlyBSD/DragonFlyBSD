@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.2 2003/07/12 15:39:20 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.2 2005/07/04 08:52:56 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -61,6 +61,8 @@ _CITRUS_MAPPER_DEF_OPS(mapper_serial);
 static int	_citrus_mapper_parallel_mapper_convert(
 	struct _citrus_mapper * __restrict, _index_t * __restrict, _index_t,
 	void * __restrict);
+
+CITRUS_MODULE(mapper_parallel, mapper, _citrus_mapper_parallel_mapper_getops)
 _CITRUS_MAPPER_DEF_OPS(mapper_parallel);
 #undef _citrus_mapper_parallel_mapper_init
 #undef _citrus_mapper_parallel_mapper_uninit
