@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.21 2005/07/01 20:18:39 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.22 2005/07/04 07:26:46 joerg Exp $
  *
  */
 
@@ -125,6 +125,7 @@ vxattach(device_t dev)
 {
     struct vx_softc *sc;
     struct ifnet *ifp;
+    uint8_t eaddr[ETHER_ADDR_LEN];
     int i;
 
     sc = device_get_softc(dev);
@@ -152,8 +153,8 @@ vxattach(device_t dev)
         if (vxbusyeeprom(sc))
             return 0;
         x = CSR_READ_2(sc, VX_W0_EEPROM_DATA);
-        sc->arpcom.ac_enaddr[(i << 1)] = x >> 8;
-        sc->arpcom.ac_enaddr[(i << 1) + 1] = x;
+        eaddr[(i << 1)] = x >> 8;
+        eaddr[(i << 1) + 1] = x;
     }
 
     ifp->if_mtu = ETHERMTU;
@@ -166,7 +167,7 @@ vxattach(device_t dev)
     ifp->if_watchdog = vxwatchdog;
     ifp->if_softc = sc;
 
-    ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+    ether_ifattach(ifp, eaddr);
 
     sc->tx_start_thresh = 20;	/* probably a good starting point. */
 
