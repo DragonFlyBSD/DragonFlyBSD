@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/mailwrapper/Makefile,v 1.4.2.5 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/mailwrapper/Makefile,v 1.3 2005/03/02 07:36:32 cpressey Exp $
+# $DragonFly: src/usr.sbin/mailwrapper/Makefile,v 1.4 2005/07/04 13:35:18 corecode Exp $
 
 .if !defined(NO_MAILWRAPPER)
 PROG=	mailwrapper
@@ -10,6 +10,7 @@ DPADD=	${LIBUTIL}
 LDADD=	-lutil
 .endif
 
+.if !defined(NO_MAILWRAPPER) || !defined(NO_SENDMAIL)
 SYMLINKS= 	${BINDIR}/mailwrapper /usr/sbin/sendmail  \
 		${BINDIR}/mailwrapper /usr/sbin/hoststat  \
 		${BINDIR}/mailwrapper /usr/sbin/purgestat \
@@ -18,6 +19,7 @@ SYMLINKS= 	${BINDIR}/mailwrapper /usr/sbin/sendmail  \
 
 .if defined(NO_MAILWRAPPER) && !defined(NO_SENDMAIL)
 SYMLINKS+=	/usr/libexec/sendmail/sendmail ${BINDIR}/mailwrapper
+.endif
 .endif
 
 afterinstall:
