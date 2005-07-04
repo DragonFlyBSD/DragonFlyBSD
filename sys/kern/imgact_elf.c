@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.30 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.31 2005/07/04 16:02:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1088,8 +1088,17 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 		if (vp->v_mount)
 			vnh->vnh_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 		error = VFS_VPTOFH(vp, &vnh->vnh_fh.fh_fid);
-		if (error) 
-			return error;
+		if (error) {
+			char *freepath, *fullpath;
+
+			if (vn_fullpath(curproc, vp, &fullpath, &freepath)) {
+				printf("Warning: coredump, error %d: cannot store file handle for vnode %p\n", error, vp);
+			} else {
+				printf("Warning: coredump, error %d: cannot store file handle for %s\n", error, fullpath);
+				free(freepath, M_TEMP);
+			}
+			error = 0;
+		}
 
 		phdr->p_type = PT_LOAD;
 		phdr->p_offset = 0;        /* not written to core */
