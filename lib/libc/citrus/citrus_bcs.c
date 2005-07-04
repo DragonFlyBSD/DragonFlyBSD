@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_bcs.c,v 1.4 2004/01/02 21:49:35 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_bcs.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$NetBSD: citrus_bcs.c,v 1.5 2005/05/14 17:55:42 tshiozak Exp $	*/
+/*	$DragonFly: src/lib/libc/citrus/citrus_bcs.c,v 1.2 2005/07/04 10:02:24 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -34,6 +34,9 @@
 #include "citrus_namespace.h"
 #include "citrus_bcs.h"
 
+/*
+ * case insensitive comparison between two C strings.
+ */
 int
 _citrus_bcs_strcasecmp(const char * __restrict str1,
 		       const char * __restrict str2)
@@ -48,6 +51,9 @@ _citrus_bcs_strcasecmp(const char * __restrict str1,
 	return ((c1 == c2) ? 0 : ((c1 > c2) ? 1 : -1));
 }
 
+/*
+ * case insensitive comparison between two C strings with limitation of length.
+ */
 int
 _citrus_bcs_strncasecmp(const char * __restrict str1,
 			const char * __restrict str2, size_t sz)
@@ -63,6 +69,9 @@ _citrus_bcs_strncasecmp(const char * __restrict str1,
 	return ((c1 == c2) ? 0 : ((c1 > c2) ? 1 : -1));
 }
 
+/*
+ * skip white space characters.
+ */
 const char *
 _citrus_bcs_skip_ws(const char *p)
 {
@@ -73,6 +82,9 @@ _citrus_bcs_skip_ws(const char *p)
 	return (p);
 }
 
+/*
+ * skip non white space characters.
+ */
 const char *
 _citrus_bcs_skip_nonws(const char *p)
 {
@@ -83,6 +95,9 @@ _citrus_bcs_skip_nonws(const char *p)
 	return (p);
 }
 
+/*
+ * skip white space characters with limitation of length.
+ */
 const char *
 _citrus_bcs_skip_ws_len(const char * __restrict p, size_t * __restrict len)
 {
@@ -95,6 +110,9 @@ _citrus_bcs_skip_ws_len(const char * __restrict p, size_t * __restrict len)
 	return (p);
 }
 
+/*
+ * skip non white space characters with limitation of length.
+ */
 const char *
 _citrus_bcs_skip_nonws_len(const char * __restrict p, size_t * __restrict len)
 {
@@ -107,6 +125,9 @@ _citrus_bcs_skip_nonws_len(const char * __restrict p, size_t * __restrict len)
 	return (p);
 }
 
+/*
+ * truncate trailing white space characters.
+ */
 void
 _citrus_bcs_trunc_rws_len(const char * __restrict p, size_t * __restrict len)
 {
@@ -115,6 +136,9 @@ _citrus_bcs_trunc_rws_len(const char * __restrict p, size_t * __restrict len)
 		(*len)--;
 }
 
+/*
+ * destructive transliterate to lowercase.
+ */
 void
 _citrus_bcs_convert_to_lower(char *s)
 {
@@ -124,7 +148,11 @@ _citrus_bcs_convert_to_lower(char *s)
 	}
 }
 
-void _citrus_bcs_convert_to_upper(char *s)
+/*
+ * destructive transliterate to uppercase.
+ */
+void
+_citrus_bcs_convert_to_upper(char *s)
 {
 	while (*s) {
 		*s = _bcs_toupper(*s);

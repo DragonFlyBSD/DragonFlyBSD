@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_bcs.h,v 1.2 2004/01/02 21:49:35 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_bcs.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$NetBSD: citrus_bcs.h,v 1.3 2005/05/14 17:55:42 tshiozak Exp $	*/
+/*	$DragonFly: src/lib/libc/citrus/citrus_bcs.h,v 1.2 2005/07/04 10:04:52 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -31,12 +31,19 @@
 #define _CITRUS_BCS_H_
 
 /*
- * predicate/conversion for basic character set.
+ *
+ * `Basic character set' is a term defined in the ISO C standard.
+ * Citrus bcs is, if anything, close to `portable character set'
+ * defined in the POSIX.
  */
 
 #define _CITRUS_BCS_PRED(_name_, _cond_) \
 static __inline int _citrus_bcs_##_name_(uint8_t c) { return (_cond_); }
 
+/*
+ * predicates.
+ * Unlike predicates defined in ctype.h, these do not accept EOF.
+ */
 _CITRUS_BCS_PRED(isblank, c == ' ' || c == '\t')
 _CITRUS_BCS_PRED(iseol, c == '\n' || c == '\r')
 _CITRUS_BCS_PRED(isspace,
@@ -51,6 +58,10 @@ _CITRUS_BCS_PRED(isxdigit,
 		 _citrus_bcs_isdigit(c) ||
 		 (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))
 
+/*
+ * transliterate between uppercase and lowercase.
+ * Unlike transliterator defined in ctype.h, these do not accept EOF.
+ */
 static __inline uint8_t
 _citrus_bcs_toupper(uint8_t c)
 {
