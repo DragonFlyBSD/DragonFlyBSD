@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_region.h,v 1.5 2004/12/30 05:00:42 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_region.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$NetBSD: citrus_region.h,v 1.6 2005/05/14 17:55:42 tshiozak Exp $	*/
+/*	$DragonFly: src/lib/libc/citrus/citrus_region.h,v 1.2 2005/07/04 10:11:57 joerg Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -89,6 +89,17 @@ _citrus_region_peek32(const struct _citrus_region *r, size_t pos)
 	uint32_t val;
 	memcpy(&val, _citrus_region_offset(r, pos), 4);
 	return val;
+}
+
+static __inline int
+_citrus_region_get_subregion(struct _citrus_region *subr,
+			     const struct _citrus_region *r,
+			     size_t ofs, size_t sz)
+{
+	if (_citrus_region_check(r, ofs, sz))
+		return -1;
+	_citrus_region_init(subr, _citrus_region_offset(r, ofs), sz);
+	return 0;
 }
 
 #endif
