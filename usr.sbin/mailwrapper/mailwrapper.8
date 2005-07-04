@@ -1,6 +1,6 @@
-.\"	$NetBSD: mailwrapper.8,v 1.6 1999/03/25 16:40:17 is Exp $
-.\" $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.8,v 1.4.2.6 2003/03/11 21:13:50 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.8,v 1.2 2003/06/17 04:29:57 dillon Exp $
+.\"	$NetBSD: mailwrapper.8,v 1.11 2002/02/08 01:38:50 ross Exp $
+.\" $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.8,v 1.12 2004/07/02 23:12:48 ru Exp $
+.\" $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.8,v 1.3 2005/07/04 13:33:02 corecode Exp $
 .\"
 .\" Copyright (c) 1998
 .\" 	Perry E. Metzger.  All rights reserved.
@@ -88,7 +88,7 @@ similar functionality.
 Although having replacement programs that plug replace
 .Xr sendmail 8
 helps in installing alternative MTAs, it essentially makes the
-configuration of the system depend on hard installing new programs in
+configuration of the system depend on hand installing new programs in
 .Pa /usr .
 This leads to configuration problems for many administrators, since
 they may wish to install a new MTA without altering the system
@@ -123,6 +123,9 @@ option with
 .Va daily_status_include_submit_mailq
 should be turned off in
 .Pa /etc/periodic.conf .
+.Sh EXIT STATUS
+.Nm
+exits 0 on success, and \*[Gt]0 if an error occurs.
 .Sh FILES
 Configuration for
 .Nm
@@ -135,11 +138,15 @@ which is not usually invoked on its own.
 .Sh DIAGNOSTICS
 The
 .Nm
-utility will return an error value and print a diagnostic if its configuration
-file is missing or malformed, or does not contain a mapping for the
-name under which
+utility will print a diagnostic if its configuration file is malformed or does
+not contain a mapping for the name under which
 .Nm
 was invoked.
+In case the configuration file does not exist at all, a syslog event is being
+generated and
+.Nm
+falls back to the default mailer, which is
+.Xr sendmail 8 .
 .Sh SEE ALSO
 .Xr mail 1 ,
 .Xr mailq 1 ,
@@ -155,7 +162,7 @@ utility first appeared in
 and then
 .Fx 4.0 .
 .Sh AUTHORS
-Perry E. Metzger <perry@piermont.com>
+.An Perry E. Metzger Aq perry@piermont.com
 .Sh BUGS
 The entire reason this program exists is a crock.
 Instead, a command
