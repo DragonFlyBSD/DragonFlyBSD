@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.15 2005/07/05 00:14:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.16 2005/07/05 06:19:29 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -1586,6 +1586,22 @@ jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp)
 	jrecord_write_path(jrec, JLEAF_PATH_REF, ncp);
 }
 
+static void
+jrecord_write_vnode_link(struct jrecord *jrec, struct vnode *vp, 
+			 struct namecache *notncp)
+{
+    struct namecache *ncp;
+
+    TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+	if (ncp == notncp)
+	    continue;
+	if ((ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
+	    break;
+    }
+    if (ncp)
+	jrecord_write_path(jrec, JLEAF_PATH_REF, ncp);
+}
+
 #if 0
 /*
  * Write out the current contents of the file within the specified
@@ -2007,8 +2023,10 @@ journal_nlink(struct vop_nlink_args *ap)
 	    save = jrecord_push(&jrec, JTYPE_LINK);
 	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
 	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
-	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
 	    /* XXX PATH to VP and inode number */
+	    /* XXX this call may not record the correct path when
+	     * multiple paths are available */
+	    jrecord_write_vnode_link(&jrec, ap->a_vp, ap->a_ncp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
