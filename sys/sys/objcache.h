@@ -29,12 +29,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.2 2005/06/08 22:22:58 dillon Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.3 2005/07/05 20:26:50 hmp Exp $
  */
 
 #ifndef _OBJCACHE_H_
 #define _OBJCACHE_H_
 
+#ifdef	_KERNEL
 #define OC_MFLAGS	0x0000ffff	/* same as malloc flags */
 
 typedef boolean_t (objcache_ctor_fn)(void *obj, void *private, int ocflags);
@@ -76,5 +77,7 @@ void	 objcache_malloc_free(void *obj, void *allocator_args);
 
 void	*objcache_nop_alloc(void *allocator_args, int ocflags);
 void	 objcache_nop_free(void *obj, void *allocator_args);
+
+#endif	/* !_KERNEL */
 
 #endif
