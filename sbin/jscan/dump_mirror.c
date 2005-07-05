@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.1 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.2 2005/07/05 02:38:34 dillon Exp $
  */
 
 #include "jscan.h"
@@ -43,7 +43,7 @@ static int dump_mirror_subrecord(struct jstream *js, off_t *off,
 				 off_t recsize, int level, struct jattr *jattr);
 static int dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 				 int recsize, int level, struct jattr *jattr);
-static int dump_mirror_rebuild(u_int16_t rectype, struct jattr *jattr);
+static int dump_mirror_rebuild(u_int16_t rectype, struct jstream *js, struct jattr *jattr);
 
 void
 dump_mirror(struct jfile *jf)
@@ -67,8 +67,10 @@ dump_mirror_stream(struct jstream *js)
 	jsread(js, 0, &head, sizeof(head));
 
 	sid = head.streamid & JREC_STREAMID_MASK;
-	if (debug_opt)
-	    printf("STREAM %04x {\n", (int)(u_int16_t)head.streamid);
+	if (debug_opt) {
+	    printf("STREAM %04x DATA (%lld) {\n",
+		(int)(u_int16_t)head.streamid, js->js_normalized_total);
+	}
 	if (sid >= JREC_STREAMID_JMIN && sid < JREC_STREAMID_JMAX) {
 	    off_t off = sizeof(head);
 	    dump_mirror_toprecord(js, &off, js->js_normalized_total -
@@ -99,8 +101,10 @@ dump_mirror_stream(struct jstream *js)
 	    }
 	}
 	umask(save_umask);
-	if (debug_opt)
+	if (debug_opt) {
 	    printf("}\n");
+	    fflush(stdout);
+	}
 }
 
 static int
@@ -154,11 +158,17 @@ dump_mirror_toprecord(struct jstream *js, off_t *off, off_t recsize, int level)
 	    *off = base + sizeof(sub) + payload;
 	    if (debug_opt)
 		printf("\n");
+	} else if ((sub.rectype & JTYPE_MASK) == JLEAF_PAD) {
+	    if (debug_opt) {
+		if (payload)
+		    printf(" DATA (%d)", payload);
+		printf("\n");
+	    }
 	} else {
 	    if (debug_opt)
-		printf("[%d bytes of unknown content]\n", sub.recsize);
+		printf("[%d bytes of unknown content]\n", payload);
 	}
-	dump_mirror_rebuild(sub.rectype, &jattr);
+	dump_mirror_rebuild(sub.rectype, js, &jattr);
 	jattr_reset(&jattr);
 	if (error)
 	    break;
@@ -202,7 +212,7 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 	if (debug_opt) {
 	    printf("%*.*s", level * 4, level * 4, "");
 	    printf("@%lld ", base);
-	    printf("RECORD %s [%04x/%d]", type_to_name(sub.rectype), 
+	    printf("SRECORD %s [%04x/%d]", type_to_name(sub.rectype), 
 		   (int)(u_int16_t)sub.rectype, sub.recsize);
 	}
 	if (sub.recsize == -1) {
@@ -241,6 +251,12 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 	    *off = base + sizeof(sub) + payload;
 	    if (debug_opt)
 		printf("\n");
+	} else if ((sub.rectype & JTYPE_MASK) == JLEAF_PAD) {
+	    if (debug_opt) {
+		if (payload)
+		    printf(" DATA (%d)", payload);
+		printf("\n");
+	    }
 	} else {
 	    if (debug_opt)
 		printf("[%d bytes of unknown content]\n", sub.recsize);
@@ -268,22 +284,41 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 	     int recsize, int level __unused, struct jattr *jattr)
 {
     const char *buf;
+    struct jattr_data *data;
     int error;
 
     if (jattr == NULL)
 	return (0);
 
-    error = jsreadp(js, off, (const void **)&buf, recsize);
-    if (error)
-	return (error);
+    if ((rectype & ~JMASK_LAST) != JLEAF_FILEDATA) {
+	error = jsreadp(js, off, (const void **)&buf, recsize);
+	if (error)
+	    return (error);
+    } else {
+	buf = NULL;
+	error = 0;
+    }
 
     switch(rectype & ~JMASK_LAST) {
     case JLEAF_PAD:
     case JLEAF_ABORT:
 	break;
+    case JLEAF_SYMLINKDATA:
     case JLEAF_FILEDATA:
-	jattr->data = dupdata(buf, recsize);
-	jattr->datalen = recsize;
+	printf("DOING FILEDATA1 %p  off %08llx bytes %d\n", jattr->last_data, off, recsize);
+	if ((data = jattr->last_data) == NULL) {
+		jattr->data.off = off;
+		jattr->data.bytes = recsize;
+		jattr->last_data = &jattr->data;
+	} else {
+		data->next = malloc(sizeof(jattr->data));
+		data = data->next;
+		data->off = off;
+		data->bytes = recsize;
+		data->next = NULL;
+		jattr->last_data = data;
+	}
+	printf("DOING FILEDATA2 %p\n", jattr->last_data);
 	break;
     case JLEAF_PATH1:
 	jattr->path1 = dupdatapath(buf, recsize);
@@ -329,10 +364,6 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 	break;
     case JLEAF_RESERVED_0F:
 	break;
-    case JLEAF_SYMLINKDATA:
-	jattr->data = dupdata(buf, recsize);
-	jattr->datalen = recsize;
-	break;
     case JLEAF_SEEKPOS:
 	jattr->seekpos = buf_to_int64(buf, recsize);
 	break;
@@ -376,8 +407,9 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 }
 
 static int
-dump_mirror_rebuild(u_int16_t rectype, struct jattr *jattr)
+dump_mirror_rebuild(u_int16_t rectype, struct jstream *js, struct jattr *jattr)
 {
+    struct jattr_data *data;
     int error = 0;
     int fd;
 
@@ -399,10 +431,14 @@ again:
 	break;
     case JTYPE_WRITE:
     case JTYPE_PUTPAGES:
-	if (jattr->pathref && jattr->seekpos != -1 && jattr->data) {
+	if (jattr->pathref && jattr->seekpos != -1) {
 	    if ((fd = open(jattr->pathref, O_RDWR)) >= 0) {
 		lseek(fd, jattr->seekpos, 0);
-		write(fd, jattr->data, jattr->datalen);
+		for (data = &jattr->data; data; data = data->next) {
+		    printf("WRITEBLOCK @ %016llx/%d\n", data->off, data->bytes);
+		    if (data->bytes)
+			jsreadcallback(js, write, fd, data->off, data->bytes);
+		}
 		close(fd);
 	    }
 	}

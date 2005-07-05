@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.3 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.4 2005/07/05 02:38:34 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -89,7 +89,6 @@ struct jstream {
      * chain.
      */
     struct jstream	*js_cache;
-    off_t		js_cache_off;
 
     char		js_data[4];	/* variable length (original data) */
 };
@@ -135,4 +134,6 @@ int dump_debug_payload(int16_t rectype, struct jstream *js, off_t off,
 int jsreadany(struct jstream *js, off_t off, const void **bufp);
 int jsreadp(struct jstream *js, off_t off, const void **bufp, int bytes);
 int jsread(struct jstream *js, off_t off, void *buf, int bytes);
+int jsreadcallback(struct jstream *js, ssize_t (*func)(int, const void *, size_t), int fd, off_t off, int bytes);
+
 

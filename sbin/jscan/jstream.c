@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jstream.c,v 1.2 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jstream.c,v 1.3 2005/07/05 02:38:34 dillon Exp $
  */
 
 #include "jscan.h"
@@ -115,7 +115,12 @@ jscan_stream(struct jfile *jf)
 		js = NULL;
 		break;
 	    }
-	    js->js_size = recsize;
+
+	    /*
+	     * note: recsize is aligned (the actual record size),
+	     * head.recsize is unaligned (the actual payload size).
+	     */
+	    js->js_size = head.recsize;
 	    bcopy(js->js_data + recsize - sizeof(tail), &tail, sizeof(tail));
 	    if (tail.endmagic != JREC_ENDMAGIC) {
 		jf_warn(jf, "bad endmagic, searching for new record");
@@ -162,7 +167,7 @@ jscan_stream(struct jfile *jf)
 		js = NULL;
 		break;
 	    }
-	    js->js_size = recsize;
+	    js->js_size = tail.recsize;
 	    bcopy(js->js_data + recsize - sizeof(tail), &tail, sizeof(tail));
 	    bcopy(js->js_data, &head, sizeof(head));
 	    if (head.begmagic != JREC_BEGMAGIC) {
@@ -360,6 +365,31 @@ jsreadp(struct jstream *js, off_t off, const void **bufp,
     return(error);
 }
 
+int
+jsreadcallback(struct jstream *js, ssize_t (*func)(int, const void *, size_t),
+		int fd, off_t off, int bytes)
+{
+    const void *bufp;
+    int res;
+    int n;
+    int r;
+
+    res = 0;
+    while (bytes && (n = jsreadany(js, off, &bufp)) > 0) {
+	if (n > bytes)
+	    n = bytes;
+	r = func(fd, bufp, n);
+	if (r != n) {
+	    if (res == 0)
+		res = -1;
+	}
+	res += n;
+	bytes -= n;
+	off += n;
+    }
+    return(res);
+}
+
 /*
  * Return the largest contiguous buffer starting at the specified offset,
  * or 0.
@@ -370,11 +400,10 @@ jsreadany(struct jstream *js, off_t off, const void **bufp)
     struct jstream *scan;
     int n;
 
-    if ((scan = js->js_cache) == NULL || scan->js_cache_off > off)
+    if ((scan = js->js_cache) == NULL || scan->js_normalized_off > off)
 	scan = js;
     while (scan && scan->js_normalized_off <= off) {
 	js->js_cache = scan;
-	js->js_cache_off = scan->js_normalized_off;
 	if (scan->js_normalized_off + scan->js_normalized_size > off) {
 	    n = (int)(off - scan->js_normalized_off);
 	    *bufp = scan->js_normalized_base + n;

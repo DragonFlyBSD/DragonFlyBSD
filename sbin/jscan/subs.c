@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/subs.c,v 1.4 2005/07/05 02:38:34 dillon Exp $
  */
 
 #include "jscan.h"
@@ -234,6 +234,7 @@ void
 jattr_reset(struct jattr *jattr)
 {
     struct jattr *undo;
+    struct jattr_data *data;
 
     if (jattr->path1)
 	free(jattr->path1);
@@ -249,8 +250,10 @@ jattr_reset(struct jattr *jattr)
 	free(jattr->attrname);
     if (jattr->pathref)
 	free(jattr->pathref);
-    if (jattr->data)
-	free(jattr->data);
+    while ((data = jattr->data.next) != NULL) {
+	jattr->data.next = data->next;
+	free(data);
+    }
     if ((undo = jattr->undo) != NULL)
 	jattr_reset(jattr->undo);
     bzero(jattr, sizeof(*jattr));
