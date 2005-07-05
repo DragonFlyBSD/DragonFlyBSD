@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.14 2005/07/04 21:05:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.15 2005/07/05 00:14:27 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -1298,7 +1298,16 @@ jrecord_write(struct jrecord *jrec, int16_t rectype, int bytes)
     last = (void *)jrec->stream_ptr;
     last->rectype = rectype;
     last->reserved = 0;
-    last->recsize = sizeof(struct journal_subrecord) + bytes;
+
+    /*
+     * We may not know the record size for recursive records and the 
+     * header may become unavailable due to limited FIFO space.  Write
+     * -1 to indicate this special case.
+     */
+    if ((rectype & JMASK_NESTED) && bytes == 0)
+	last->recsize = -1;
+    else
+	last->recsize = sizeof(struct journal_subrecord) + bytes;
     jrec->last = last;
     jrec->residual = bytes;		/* remaining data to be posted */
     jrec->residual_align = -bytes & 7;	/* post-data alignment required */
