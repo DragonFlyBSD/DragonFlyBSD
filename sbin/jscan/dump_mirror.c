@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.2 2005/07/05 02:38:34 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.3 2005/07/05 04:08:07 dillon Exp $
  */
 
 #include "jscan.h"
@@ -305,7 +305,6 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 	break;
     case JLEAF_SYMLINKDATA:
     case JLEAF_FILEDATA:
-	printf("DOING FILEDATA1 %p  off %08llx bytes %d\n", jattr->last_data, off, recsize);
 	if ((data = jattr->last_data) == NULL) {
 		jattr->data.off = off;
 		jattr->data.bytes = recsize;
@@ -318,7 +317,6 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 		data->next = NULL;
 		jattr->last_data = data;
 	}
-	printf("DOING FILEDATA2 %p\n", jattr->last_data);
 	break;
     case JLEAF_PATH1:
 	jattr->path1 = dupdatapath(buf, recsize);
@@ -435,7 +433,6 @@ again:
 	    if ((fd = open(jattr->pathref, O_RDWR)) >= 0) {
 		lseek(fd, jattr->seekpos, 0);
 		for (data = &jattr->data; data; data = data->next) {
-		    printf("WRITEBLOCK @ %016llx/%d\n", data->off, data->bytes);
 		    if (data->bytes)
 			jsreadcallback(js, write, fd, data->off, data->bytes);
 		}

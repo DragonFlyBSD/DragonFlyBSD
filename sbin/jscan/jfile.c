@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.4 2005/07/05 04:08:07 dillon Exp $
  */
 
 #include "jscan.h"
@@ -110,9 +110,19 @@ jalign(struct jfile *jf)
 int
 jread(struct jfile *jf, void *buf, int bytes)
 {
+    int n;
+    
     if (jf->jf_direction == JF_FORWARDS) {
-	if (fread(buf, bytes, 1, jf->jf_fp) == 1) {
-		jf->jf_pos += bytes;
+	while (bytes) {
+	    n = fread(buf, 1, bytes, jf->jf_fp);
+	    if (n <= 0)
+		break;
+	    assert(n <= bytes);
+	    jf->jf_pos += n;
+	    buf = (char *)buf + n;
+	    bytes -= n;
+	}
+	if (bytes == 0) {
 		return (0);
 	} else {
 		fseeko(jf->jf_fp, jf->jf_pos, SEEK_SET);
