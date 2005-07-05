@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.17 2005/06/03 23:06:31 joerg Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.18 2005/07/05 10:20:39 corecode Exp $
  */
 
 /*
@@ -876,7 +876,7 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
 	     * XXX I think this needs to be reworked to enable stateful
 	     * filtering. Think about this. For now, declare the packet as incoming.
 	     */
-	    error = pfil_run_hooks(&inet_pfil_hook, &m0, ifp, PFIL_IN);
+	    error = pfil_run_hooks(&inet_pfil_hook, &m0, src, PFIL_IN);
 	    if (error != 0 || m0 == NULL)
 		return m0;
 
