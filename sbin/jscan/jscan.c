@@ -31,30 +31,35 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
  */
 
 #include "jscan.h"
 
-enum jmode { JS_NONE, JS_DEBUG };
+enum jmode { JS_NONE, JS_DEBUG, JS_MIRROR };
 
 static void usage(const char *av0);
+
+int debug_opt;
 
 int
 main(int ac, char **av)
 {
-    int fd;
     int ch;
     int i;
     enum jdirection direction = JF_FORWARDS;
     enum jmode jmode = JS_NONE;
     struct jfile *jf;
 
-    while ((ch = getopt(ac, av, "dr")) != -1) {
+    while ((ch = getopt(ac, av, "dmr")) != -1) {
 	switch(ch) {
 	case 'd':
+	    debug_opt = 1;
 	    if (jmode == JS_NONE)
 		jmode = JS_DEBUG;
+	    break;
+	case 'm':
+	    jmode = JS_MIRROR;
 	    break;
 	case 'r':
 	    direction = JF_BACKWARDS;
@@ -66,6 +71,10 @@ main(int ac, char **av)
     }
     if (jmode == JS_NONE)
 	usage(av[0]);
+    if (jmode == JS_MIRROR && direction == JF_BACKWARDS) {
+	fprintf(stderr, "Cannot mirror in reverse scan mode\n");
+	usage(av[0]);
+    }
 
     /*
      * Using specified input streams.  If no files are specified, stdin
@@ -81,9 +90,14 @@ main(int ac, char **av)
 		jf = jopen_stream(av[i], direction);
 	    if (jf != NULL) {
 		switch(jmode) {
+		case JS_MIRROR:
+		    dump_mirror(jf);
+		    break;
 		case JS_DEBUG:
-			dump_debug(jf);
-			break;
+		    dump_debug(jf);
+		    break;
+		case JS_NONE:
+		    break;
 		}
 		jclose_stream(jf);
 	    } else {
@@ -98,7 +112,7 @@ main(int ac, char **av)
 static void
 usage(const char *av0)
 {
-    fprintf(stderr, "%s [-d] [journal files]\n", av0);
+    fprintf(stderr, "%s [-dm] [journal_file/stdin]*\n", av0);
     exit(1);
 }
 

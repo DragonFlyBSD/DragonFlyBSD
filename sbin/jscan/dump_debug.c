@@ -31,15 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
  */
 
 #include "jscan.h"
 
 static void dump_debug_stream(struct jstream *js);
-static int dump_subrecord(struct jstream *js, off_t off, int recsize, int level);
-static int dump_payload(int16_t rectype, struct jstream *js, off_t off,
-	     int recsize, int level);
+static int dump_debug_subrecord(struct jstream *js, off_t *off, 
+				off_t recsize, int level);
 
 void
 dump_debug(struct jfile *jf)
@@ -63,9 +62,10 @@ dump_debug_stream(struct jstream *js)
 	sid = head.streamid & JREC_STREAMID_MASK;
 	printf("STREAM %04x {\n", (int)(u_int16_t)head.streamid);
 	if (sid >= JREC_STREAMID_JMIN && sid < JREC_STREAMID_JMAX) {
-	    dump_subrecord(js, sizeof(head),
-			head.recsize - sizeof(struct journal_rawrecbeg) -
-			sizeof(struct journal_rawrecend),
+	    off_t off = sizeof(head);
+
+	    dump_debug_subrecord(js, &off,
+			js->js_normalized_total - sizeof(head),
 			1);
 	} else {
 	    switch(head.streamid & JREC_STREAMID_MASK) {
@@ -90,54 +90,75 @@ dump_debug_stream(struct jstream *js)
 }
 
 static int
-dump_subrecord(struct jstream *js, off_t off, int recsize, int level)
+dump_debug_subrecord(struct jstream *js, off_t *off, off_t recsize, int level)
 {
     struct journal_subrecord sub;
     int payload;
     int subsize;
     int error;
-    int i;
+    off_t base = *off;
 
     error = 0;
     while (recsize > 0) {
-	if ((error = jsread(js, off, &sub, sizeof(sub))) != 0)
+	if ((error = jsread(js, base, &sub, sizeof(sub))) != 0) {
 	    break;
+	}
 	printf("%*.*s", level * 4, level * 4, "");
-	printf("@%lld ", off);
+	printf("@%lld ", base);
 	printf("RECORD %s [%04x/%d]", type_to_name(sub.rectype), 
 				(int)(u_int16_t)sub.rectype, sub.recsize);
-	payload = sub.recsize - sizeof(sub);
-	subsize = (sub.recsize + 7) & ~7;
+	if (sub.recsize == -1) {
+	    if ((sub.rectype & JMASK_NESTED) == 0) {
+		printf("Record size of -1 only works for nested records\n");
+		error = -1;
+		break;
+	    }
+	    payload = 0x7FFFFFFF;
+	    subsize = 0x7FFFFFFF;
+	} else {
+	    payload = sub.recsize - sizeof(sub);
+	    subsize = (sub.recsize + 7) & ~7;
+	}
 	if (sub.rectype & JMASK_NESTED) {
 	    printf(" {\n");
-	    if (payload)
-		error = dump_subrecord(js, off + sizeof(sub), payload, level + 1);
+	    if (payload) {
+		*off = base + sizeof(sub);
+		error = dump_debug_subrecord(js, off, payload, level + 1);
+	    }
 	    printf("%*.*s}\n", level * 4, level * 4, "");
 	} else if (sub.rectype & JMASK_SUBRECORD) {
 	    printf(" DATA (%d)", payload);
-	    error = dump_payload(sub.rectype, js, off + sizeof(sub), payload, level);
+	    error = dump_debug_payload(sub.rectype, js, base + sizeof(sub), payload, level);
+	    *off = base + sizeof(sub) + payload;
 	    printf("\n");
-	    if (error)
-		break;
 	} else {
-	    printf("[unknown content]\n", sub.recsize);
+	    printf("[%d bytes of unknown content]\n", sub.recsize);
 	}
-	if (subsize == 0)
+	if (error)
+	    break;
+	if (sub.recsize == -1) {
+	    recsize -= ((*off + 7) & ~7) - base;
+	    base = (*off + 7) & ~7;
+	} else {
+	    if (subsize == 0)
 		subsize = sizeof(sub);
-	recsize -= subsize;
-	off += subsize;
+	    recsize -= subsize;
+	    base += subsize;
+	}
+	if (sub.rectype & JMASK_LAST)
+		break;
     }
+    *off = base;
     return(error);
 }
 
-static int
-dump_payload(int16_t rectype, struct jstream *js, off_t off, 
+int
+dump_debug_payload(int16_t rectype, struct jstream *js, off_t off, 
 	     int recsize, int level)
 {
     enum { DT_NONE, DT_STRING, DT_DEC, DT_HEX, DT_OCT,
 	   DT_DATA, DT_TIMESTAMP } dt = DT_DATA;
     const char *buf;
-    int didalloc;
     int error;
     int i;
     int j;
@@ -160,6 +181,7 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
 	break;
     case JLEAF_UID:
     case JLEAF_GID:
+    case JLEAF_VTYPE:
 	dt = DT_DEC;
 	break;
     case JLEAF_MODES:
@@ -233,16 +255,16 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
     case DT_DEC:
 	switch(recsize) {
 	case 1:
-	    printf(" %d", (int)*(u_int8_t *)buf);
+	    printf(" %d", (int)*(const u_int8_t *)buf);
 	    break;
 	case 2:
-	    printf(" %d", (int)*(u_int16_t *)buf);
+	    printf(" %d", (int)*(const u_int16_t *)buf);
 	    break;
 	case 4:
-	    printf(" %d", (int)*(u_int32_t *)buf);
+	    printf(" %d", (int)*(const u_int32_t *)buf);
 	    break;
 	case 8:
-	    printf(" %d", (int64_t)*(u_int64_t *)buf);
+	    printf(" %lld", (int64_t)*(const u_int64_t *)buf);
 	    break;
 	default:
 	    printf(" ?");
@@ -252,16 +274,16 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
     case DT_HEX:
 	switch(recsize) {
 	case 1:
-	    printf(" 0x%02x", (int)*(u_int8_t *)buf);
+	    printf(" 0x%02x", (int)*(const u_int8_t *)buf);
 	    break;
 	case 2:
-	    printf(" 0x%04x", (int)*(u_int16_t *)buf);
+	    printf(" 0x%04x", (int)*(const u_int16_t *)buf);
 	    break;
 	case 4:
-	    printf(" 0x%08x", (int)*(u_int32_t *)buf);
+	    printf(" 0x%08x", (int)*(const u_int32_t *)buf);
 	    break;
 	case 8:
-	    printf(" 0x%016llx", (int64_t)*(u_int64_t *)buf);
+	    printf(" 0x%016llx", (int64_t)*(const u_int64_t *)buf);
 	    break;
 	default:
 	    printf(" ?");
@@ -271,16 +293,16 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
     case DT_OCT:
 	switch(recsize) {
 	case 1:
-	    printf(" %03o", (int)*(u_int8_t *)buf);
+	    printf(" %03o", (int)*(const u_int8_t *)buf);
 	    break;
 	case 2:
-	    printf(" %06o", (int)*(u_int16_t *)buf);
+	    printf(" %06o", (int)*(const u_int16_t *)buf);
 	    break;
 	case 4:
-	    printf(" %011o", (int)*(u_int32_t *)buf);
+	    printf(" %011o", (int)*(const u_int32_t *)buf);
 	    break;
 	case 8:
-	    printf(" %022llo", (int64_t)*(u_int64_t *)buf);
+	    printf(" %022llo", (int64_t)*(const u_int64_t *)buf);
 	    break;
 	default:
 	    printf(" ?");
@@ -290,7 +312,7 @@ dump_payload(int16_t rectype, struct jstream *js, off_t off,
     case DT_TIMESTAMP:
 	{
 	    struct tm *tp;
-	    time_t t = ((struct timespec *)buf)->tv_sec;
+	    time_t t = ((const struct timespec *)buf)->tv_sec;
 	    char outbuf[64];
 
 	    tp = localtime(&t);

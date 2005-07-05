@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jstream.c,v 1.1 2005/03/07 02:38:28 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jstream.c,v 1.2 2005/07/05 00:26:03 dillon Exp $
  */
 
 #include "jscan.h"
@@ -39,6 +39,7 @@
 static struct jhash	*JHashAry[JHASH_SIZE];
 
 static struct jstream *jaddrecord(struct jfile *jf, struct jstream *js);
+static void jnormalize(struct jstream *js);
 
 /*
  * Locate the next (or previous) complete virtual stream transaction given a
@@ -195,8 +196,6 @@ jaddrecord(struct jfile *jf, struct jstream *js)
     struct journal_rawrecbeg *head = (void *)js->js_data;
     struct jhash *jh;
     struct jhash **jhp;
-    struct jstream *jscan;
-    off_t off;
 
     /*
      * Check for a completely self-contained transaction, just return the
@@ -205,6 +204,7 @@ jaddrecord(struct jfile *jf, struct jstream *js)
     if ((head->streamid & (JREC_STREAMCTL_BEGIN|JREC_STREAMCTL_END)) ==
 	(JREC_STREAMCTL_BEGIN|JREC_STREAMCTL_END)
     ) {
+	jnormalize(js);
 	return (js);
     }
 
@@ -250,15 +250,40 @@ jaddrecord(struct jfile *jf, struct jstream *js)
 	*jhp = jh->jh_hash;
 	js = jh->jh_first;
 	free(jh);
-	off = 0;
-	for (jscan = js; jscan; jscan = jscan->js_next) {
-	    jscan->js_off = off;
-	    off += jscan->js_size;
-	}
+
+	jnormalize(js);
     } else {
 	js = NULL;
     }
     return (js);
+}
+
+/*
+ * Renormalize the jscan list to remove all the meta record headers
+ * and trailers except for the very first one.
+ */
+static
+void
+jnormalize(struct jstream *js)
+{
+    struct jstream *jscan;
+    off_t off;
+
+    js->js_normalized_off = 0;
+    js->js_normalized_base = js->js_data;
+    js->js_normalized_size = ((struct journal_rawrecbeg *)js->js_data)->recsize - sizeof(struct journal_rawrecend);
+    js->js_normalized_total = js->js_normalized_size;
+    off = js->js_normalized_size;
+    for (jscan = js->js_next; jscan; jscan = jscan->js_next) {
+	jscan->js_normalized_off = off;
+	jscan->js_normalized_base = jscan->js_data + 
+		sizeof(struct journal_rawrecbeg);
+	jscan->js_normalized_size = jscan->js_size -
+	       sizeof(struct journal_rawrecbeg) -
+	       sizeof(struct journal_rawrecend);
+	off += jscan->js_normalized_size;
+	js->js_normalized_total += jscan->js_normalized_size;
+    }
 }
 
 void
@@ -313,10 +338,8 @@ int
 jsreadp(struct jstream *js, off_t off, const void **bufp,
 	int bytes)
 {
-    char *ptr;
-    int error;
+    int error = 0;
     int n;
-    int o;
 
     n = jsreadany(js, off, bufp);
     if (n < bytes) {
@@ -325,6 +348,7 @@ jsreadp(struct jstream *js, off_t off, const void **bufp,
 		free(js->js_alloc_buf);
 	    js->js_alloc_buf = malloc(bytes);
 	    js->js_alloc_size = bytes;
+	    assert(js->js_alloc_buf != NULL);
 	}
 	error = jsread(js, off, js->js_alloc_buf, bytes);
 	if (error) {
@@ -348,13 +372,13 @@ jsreadany(struct jstream *js, off_t off, const void **bufp)
 
     if ((scan = js->js_cache) == NULL || scan->js_cache_off > off)
 	scan = js;
-    while (scan && scan->js_off <= off) {
+    while (scan && scan->js_normalized_off <= off) {
 	js->js_cache = scan;
-	js->js_cache_off = scan->js_off;
-	if (scan->js_off + scan->js_size > off) {
-	    n = (int)(off - scan->js_off);
-	    *bufp = scan->js_data + n;
-	    return(scan->js_size - n);
+	js->js_cache_off = scan->js_normalized_off;
+	if (scan->js_normalized_off + scan->js_normalized_size > off) {
+	    n = (int)(off - scan->js_normalized_off);
+	    *bufp = scan->js_normalized_base + n;
+	    return(scan->js_normalized_size - n);
 	}
 	scan = scan->js_next;
     }

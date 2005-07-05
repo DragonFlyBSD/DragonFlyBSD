@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
  */
 
 #include "jscan.h"
@@ -116,7 +116,7 @@ jread(struct jfile *jf, void *buf, int bytes)
 		return (0);
 	} else {
 		fseeko(jf->jf_fp, jf->jf_pos, SEEK_SET);
-		return (errno);
+		return (errno ? errno : ENOENT);
 	}
     } else {
 	if (bytes > jf->jf_pos)

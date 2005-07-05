@@ -31,12 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.2 2005/03/07 05:05:04 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.3 2005/07/05 00:26:03 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/journal.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -46,6 +47,9 @@
 #include <time.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
+#include <assert.h>
+#include "jattr.h"
 
 enum jdirection { JF_FORWARDS, JF_BACKWARDS};
 
@@ -68,12 +72,26 @@ struct jdata {
 struct jstream {
     struct jstream	*js_next;	/* linked list / same transaction */
     int			js_size;	/* amount of data, in bytes */
-    off_t		js_off;
     char		*js_alloc_buf;
     int			js_alloc_size;
+
+    /*
+     * Normalized fields strip all rawrecbeg, rawrecend, and deadspace except
+     * for the initial rawrecbeg header.
+     */
+    char		*js_normalized_base;
+    int			js_normalized_size;
+    off_t		js_normalized_off;
+    off_t		js_normalized_total;
+
+    /*
+     * This is used by the first js record only to cache other records in the
+     * chain.
+     */
     struct jstream	*js_cache;
     off_t		js_cache_off;
-    char		js_data[4];	/* variable length */
+
+    char		js_data[4];	/* variable length (original data) */
 };
 
 struct jhash {
@@ -86,8 +104,16 @@ struct jhash {
 #define JHASH_SIZE	1024
 #define JHASH_MASK	(JHASH_SIZE - 1)
 
+extern int debug_opt;
+
 const char *type_to_name(int16_t rectype);
 void stringout(FILE *fp, char c, int exact);
+void jattr_reset(struct jattr *jattr);
+int64_t buf_to_int64(const void *buf, int bytes);
+void *dupdata(const void *buf, int bytes);
+char *dupdatastr(const void *buf, int bytes);
+char *dupdatapath(const void *buf, int bytes);
+
 
 struct jstream *jscan_stream(struct jfile *jf);
 void jscan_dispose(struct jstream *js);
@@ -102,6 +128,9 @@ void jflush(struct jfile *jf);
 void jf_warn(struct jfile *jf, const char *ctl, ...);
 
 void dump_debug(struct jfile *jf);
+void dump_mirror(struct jfile *jf);
+int dump_debug_payload(int16_t rectype, struct jstream *js, off_t off,
+		       int recsize, int level);
 
 int jsreadany(struct jstream *js, off_t off, const void **bufp);
 int jsreadp(struct jstream *js, off_t off, const void **bufp, int bytes);

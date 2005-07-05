@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.2 2005/03/07 05:05:04 dillon Exp $
+ * $DragonFly: src/sbin/jscan/subs.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
  */
 
 #include "jscan.h"
@@ -141,6 +141,9 @@ type_to_name(int16_t rectype)
     case JLEAF_GID:
 	str = "gid";
 	break;
+    case JLEAF_VTYPE:
+	str = "vtype";
+	break;
     case JLEAF_MODES:
 	str = "modes";
 	break;
@@ -227,4 +230,117 @@ stringout(FILE *fp, char c, int exact)
     }
 }
 
+void
+jattr_reset(struct jattr *jattr)
+{
+    struct jattr *undo;
+
+    if (jattr->path1)
+	free(jattr->path1);
+    if (jattr->path2)
+	free(jattr->path2);
+    if (jattr->path3)
+	free(jattr->path3);
+    if (jattr->path4)
+	free(jattr->path4);
+    if (jattr->comm)
+	free(jattr->comm);
+    if (jattr->attrname)
+	free(jattr->attrname);
+    if (jattr->pathref)
+	free(jattr->pathref);
+    if (jattr->data)
+	free(jattr->data);
+    if ((undo = jattr->undo) != NULL)
+	jattr_reset(jattr->undo);
+    bzero(jattr, sizeof(*jattr));
+    jattr->undo = undo;
+    jattr->uid = (uid_t)-1;
+    jattr->gid = (gid_t)-1;
+    jattr->size = (off_t)-1;
+    jattr->modes = -1;
+    jattr->flags = -1;
+    jattr->seekpos = -1;
+}
+
+int64_t
+buf_to_int64(const void *buf, int bytes)
+{
+    int64_t v;
+
+    switch(bytes) {
+    case 1:
+	v = (int64_t)*(const u_int8_t *)buf;
+	break;
+    case 2:
+	v = (int64_t)*(const u_int16_t *)buf;
+	break;
+    case 4:
+	v = (int64_t)*(const u_int32_t *)buf;
+	break;
+    case 8:
+	v = *(const int64_t *)buf;
+	break;
+    default:
+	v = 0;
+    }
+    return(v);
+}
+
+void *
+dupdata(const void *buf, int bytes)
+{
+    void *res;
+
+    res = malloc(bytes);
+    bcopy(buf, res, bytes);
+
+    return(res);
+}
+
+char *
+dupdatastr(const void *buf, int bytes)
+{
+    char *res;
+
+    res = malloc(bytes + 1);
+    bcopy(buf, res, bytes);
+    res[bytes] = 0;
+
+    return(res);
+}
+
+/*
+ * Similar to dupdatastr() but contains sanity checks.
+ */
+char *
+dupdatapath(const void *buf, int bytes)
+{
+    char *res;
+    char *scan;
+
+    res = malloc(bytes + 1);
+    bcopy(buf, res, bytes);
+    res[bytes] = 0;
+
+    if (res[0] == '/') {
+	fprintf(stderr, "Bad path: %s\n", res);
+	free(res);
+	return(NULL);
+    }
+    scan = res;
+    for (;;) {
+	if (scan[0] == '.' && scan[1] == '.' &&
+	    (scan[2] == 0 || scan[2] == '/')
+	) {
+	    fprintf(stderr, "Bad path: %s\n", res);
+	    free(res);
+	    return(NULL);
+	}
+	if ((scan = strchr(scan, '/')) == NULL)
+	    break;
+	++scan;
+    }
+    return(res);
+}
 
