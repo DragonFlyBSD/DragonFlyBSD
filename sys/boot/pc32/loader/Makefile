@@ -1,8 +1,8 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/loader/Makefile,v 1.8 2005/07/04 21:39:05 asmodai Exp $
+# $DragonFly: src/sys/boot/pc32/loader/Makefile,v 1.9 2005/07/05 20:35:35 dillon Exp $
 #
 
-LDR=		loader
+PROG=		loader
 STRIP=
 NEWVERSWHAT=	"bootstrap loader" i386
 BINDIR?=	/boot
@@ -55,7 +55,7 @@ CFLAGS+=	-DLOADER_GZIP_SUPPORT
 CFLAGS+=	-I${.CURDIR}/../../common
 CFLAGS+=	-I${.CURDIR}/../../.. -I.
 
-CLEANFILES+=	vers.c vers.o ${LDR}.list ${LDR}.bin ${LDR}.sym ${LDR}.help
+CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
 CFLAGS+=	-Wall
 LDFLAGS=	-nostdlib -static -Ttext ${ORG}
@@ -97,21 +97,21 @@ vers.o:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 	sh ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version ${NEWVERSWHAT}
 	${CC} ${CFLAGS} -c vers.c
 
-${LDR}: ${LDR}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT}
+${PROG}: ${PROG}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT}
 	btxld -v -f aout -e ${LOADER_ADDRESS} -o ${.TARGET} -l ${BTXLDR} \
-		-b ${BTXKERN} ${LDR}.bin
+		-b ${BTXKERN} ${PROG}.bin
 #	/usr/bin/kzip ${.TARGET}
 #	mv ${.TARGET}.kz ${.TARGET}
 
-${LDR}.bin: ${LDR}.sym
+${PROG}.bin: ${PROG}.sym
 	cp ${.ALLSRC} ${.TARGET}
 	strip -R .comment -R .note ${.TARGET}
 
-${LDR}.help: help.common help.i386
+${PROG}.help: help.common help.i386
 	cat ${.ALLSRC} | awk -f ${.CURDIR}/../../common/merge_help.awk > ${.TARGET}
 
 .PATH: ${.CURDIR}/../../forth 
-FILES=	${LDR}.help loader.4th support.4th loader.conf loader-bootp.conf
+FILES=	${PROG}.help loader.4th support.4th loader.conf loader-bootp.conf
 FILES+= screen.4th frames.4th beastie.4th
 FILESDIR_loader.conf=	/boot/defaults
 FILESDIR_loader-bootp.conf=	/boot/defaults
@@ -125,7 +125,7 @@ FILES+=	${.CURDIR}/loader.rc
 # Cannot use ${OBJS} above this line
 .include <bsd.prog.mk>
 
-${LDR}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBFICL} vers.o
+${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBFICL} vers.o
 	${CC} ${LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
 		${LIBFICL} ${LIBI386} ${LIBSTAND}
 
