@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.15 2004/11/20 20:50:33 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.16 2005/07/05 15:57:10 hmp Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -49,7 +49,7 @@
  * to perform the operation we have requested by pre-dispoing td_mpcount.
  *
  * Additionally, the LWKT threading system manages the MP lock and
- * lwkt_switch(), in particular, may be called after pre-dispoing td_mpcount
+ * lwkt_switch(), in particular, may be called after pre-disposing td_mpcount
  * to handle 'blocking' on the MP lock.
  *
  *
