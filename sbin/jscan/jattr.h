@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jattr.h,v 1.2 2005/07/05 02:38:34 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jattr.h,v 1.3 2005/07/05 06:20:07 dillon Exp $
  */
 
 struct jattr {
@@ -49,6 +49,8 @@ struct jattr {
     char *comm;
     char *attrname;
     char *pathref;
+    char *symlinkdata;
+    int symlinklen;
     struct jattr_data {
 	struct jattr_data *next;
 	off_t off;

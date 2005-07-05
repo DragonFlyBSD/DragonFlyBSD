@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.3 2005/07/05 04:08:07 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.4 2005/07/05 06:20:07 dillon Exp $
  */
 
 #include "jscan.h"
@@ -304,6 +304,9 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
     case JLEAF_ABORT:
 	break;
     case JLEAF_SYMLINKDATA:
+	jattr->symlinkdata = dupdatastr(buf, recsize);
+	jattr->symlinklen = recsize;
+	break;
     case JLEAF_FILEDATA:
 	if ((data = jattr->last_data) == NULL) {
 		jattr->data.off = off;
@@ -459,8 +462,14 @@ again:
     case JTYPE_MKNOD:
 	break;
     case JTYPE_LINK:
+	if (jattr->pathref && jattr->path1) {
+	    link(jattr->pathref, jattr->path1);
+	}
 	break;
     case JTYPE_SYMLINK:
+	if (jattr->symlinkdata && jattr->path1) {
+	    symlink(jattr->symlinkdata, jattr->path1);
+	}
 	break;
     case JTYPE_WHITEOUT:
 	break;
