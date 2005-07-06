@@ -35,7 +35,7 @@
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
  * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.5 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.5.2.1 2005/07/06 13:27:11 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -1160,7 +1160,7 @@ expmeta(char *enddir, char *name)
 			if (*p == '\0')
 				break;
 		}
-		if (metaflag == 0 || stat(expdir, &statb) >= 0)
+		if (metaflag == 0 || lstat(expdir, &statb) >= 0)
 			addfname(expdir);
 		return;
 	}
