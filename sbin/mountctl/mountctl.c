@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.4 2005/03/22 21:42:39 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.5 2005/07/06 06:04:32 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -97,8 +97,11 @@ main(int ac, char **av)
     const char *mountpt = NULL;
     char *tmp;
 
-    while ((ch = getopt(ac, av, "adflo:mw:x:ACFSZ")) != -1) {
+    while ((ch = getopt(ac, av, "2adflo:mw:x:ACFSZ")) != -1) {
 	switch(ch) {
+	case '2':
+	    twoway_opt = 1;
+	    break;
 	case 'a':
 	    aopt = 1;
 	    if (aopt + dopt + lopt + mopt != 1) {
@@ -433,8 +436,9 @@ mountctl_list(const char *keyword, const char *mountpt, int __unused fd, void *i
     printf("%s:%s\n", mountpt, rstat->id[0] ? rstat->id : "<NOID>");
     printf("    membufsize=%s\n", numtostr(rstat->membufsize));
     printf("    membufused=%s\n", numtostr(rstat->membufused));
-    printf("    membufiopend=%s\n", numtostr(rstat->membufiopend));
+    printf("    membufunacked=%s\n", numtostr(rstat->membufunacked));
     printf("    total_bytes=%s\n", numtostr(rstat->bytessent));
+    printf("    fifo_stalls=%lld\n", rstat->fifostalls);
 }
 
 static void
@@ -467,6 +471,10 @@ mountctl_add(const char *keyword, const char *mountpt, int fd)
     snprintf(joinfo.id, sizeof(joinfo.id), "%s", keyword);
     if (memfifo_opt > 0)
 	joinfo.membufsize = memfifo_opt;
+    if (twoway_opt > 0)
+	joinfo.flags |= MC_JOURNAL_WANT_FULLDUPLEX;
+    if (reversable_opt > 0)
+	joinfo.flags |= MC_JOURNAL_WANT_REVERSABLE;
 
     error = mountctl(mountpt, MOUNTCTL_INSTALL_VFS_JOURNAL, fd,
 			&joinfo, sizeof(joinfo), NULL, 0);

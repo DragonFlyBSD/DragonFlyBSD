@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.3 2005/03/08 20:29:55 swildner Exp $
+.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.4 2005/07/06 06:04:32 dillon Exp $
 .\"
 .Dd January 8, 2005
 .Dt MOUNTCTL 8
@@ -45,6 +45,7 @@
 .Op Ar tag/mountpt | mountpt:tag
 .Nm
 .Fl a
+.Op Fl 2
 .Op Fl w Ar output_path
 .Op Fl x Ar filedesc
 .Op Fl o Ar option
@@ -104,6 +105,11 @@ will modify the options associated with an existing journal.  Options are
 specified in the OPTION KEYWORDS section.
 .Sh OTHER OPTIONS
 .Bl -tag -width indent
+.It Fl 2
+Specify full-duplex operation.  The kernel will not throw away journal
+data in its internal FIFO until the transaction id is acknowlwedged.  This
+requires a full-duplex journaling descriptor.  Note that shell pipes are
+full-duplex-capable.
 .It Fl F
 Flush a journal, equivalent to the 'flush' keyword.
 This option implies
@@ -166,7 +172,9 @@ the journal backwards as well as forwards to 'undo' operations.  This is the
 default.
 .It Ar twoway
 Indicate that the journaling stream is a two-way stream and that transaction
-id acknowledgements will be returned.
+id acknowledgements will be returned.  This option is the same as the
+.Fl 2
+option.
 .It Ar memfifo=size[k,m]
 Specify the size of the in-kernel memory FIFO used to buffer the journaling
 stream between processes doing filesystem operations and the worker thread
@@ -219,6 +227,7 @@ time the flush was issued.
 .Sh FILES
 .Sh SEE ALSO
 .Xr mount 2 ,
+.Xr jscan 8
 .Sh BUGS
 .Sh CAVEATS
 This utility is currently under construction and not all features have been
