@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.7 2005/03/22 22:13:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.8 2005/07/06 06:02:23 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -103,16 +103,18 @@ struct mountctl_journal_ret_status {
 	int	flags;
 	int64_t	membufsize;
 	int64_t	membufused;
-	int64_t	membufiopend;
+	int64_t	membufunacked;
 	int64_t	swapbufsize;
 	int64_t	swapbufused;
-	int64_t	swapbufiopend;
+	int64_t	swapbufunacked;
 	int64_t transidstart;
 	int64_t transidcurrent;
-	int64_t transidiopend;
+	int64_t transidunacked;
 	int64_t transidacked;
 	int64_t bytessent;
 	int64_t bytesacked;
+	int64_t fifostalls;
+	int64_t reserved[4];
 	struct timeval lastack;
 };
 
@@ -142,6 +144,7 @@ struct journal {
 	int		flags;		/* journaling flags */
 	int64_t		transid;
 	int64_t		total_acked;
+	int64_t		fifostalls;
 	struct journal_memfifo fifo;
 	struct thread	wthread;
 	struct thread	rthread;
