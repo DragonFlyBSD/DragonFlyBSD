@@ -1,0 +1,17 @@
+$DragonFly: src/lib/libz/patches/Attic/inftrees.c.patch,v 1.1.2.2 2005/07/06 23:06:10 corecode Exp $
+Index: inftrees.c
+===================================================================
+RCS file: /space/cvs/dragonfly/src/contrib/zlib-1.2.2/inftrees.c,v
+retrieving revision 1.1
+diff -u -r1.1 inftrees.c
+--- inftrees.c	23 Oct 2004 13:49:54 -0000	1.1
++++ inftrees.c	6 Jul 2005 14:44:49 -0000
+@@ -134,7 +134,7 @@
+         left -= count[len];
+         if (left < 0) return -1;        /* over-subscribed */
+     }
+-    if (left > 0 && (type == CODES || (codes - count[0] != 1)))
++    if (left > 0 && (type == CODES || max != 1))
+         return -1;                      /* incomplete set */
+ 
+     /* generate offsets into symbol table for each length for sorting */

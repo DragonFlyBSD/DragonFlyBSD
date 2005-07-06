@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/lib/libz/Makefile,v 1.11.2.4 2003/02/01 13:33:12 sobomax Exp $
-# $DragonFly: src/lib/libz/Makefile,v 1.6 2004/12/06 11:29:51 joerg Exp $
+# $DragonFly: src/lib/libz/Makefile,v 1.6.2.1 2005/07/06 23:06:10 corecode Exp $
 #
 
 LIB=		z
@@ -22,6 +22,8 @@ CLEANFILES+=	example.o example foo.gz minigzip.o minigzip
 SRCS=	adler32.c compress.c crc32.c deflate.c gzio.c infback.c
 SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zopen.c zutil.c
 SRCS+=	${PATCHES}
+
+CFLAGS+= -I${.OBJDIR} -I${CONTRIBDIR}
 
 INCS=		zconf.h zlib.h
 
