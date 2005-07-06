@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.5 2005/07/05 06:20:07 dillon Exp $
+ * $DragonFly: src/sbin/jscan/subs.c,v 1.6 2005/07/06 06:21:05 dillon Exp $
  */
 
 #include "jscan.h"
@@ -217,7 +217,12 @@ type_to_name(int16_t rectype)
 void
 stringout(FILE *fp, char c, int exact)
 {
-    if (c != '\\' && c != '\"' && isprint(c)) {
+    if ((c >= 'a' && c <= 'z') ||
+	(c >= 'A' && c <= 'Z') ||
+	(c >= '0' && c <= '9')
+    ) {
+	putc(c, fp);
+    } else if (isprint((unsigned char)c) && c != '\\' && c != '\"') {
 	putc(c, fp);
     } else if (exact == 0) {
 	putc('.', fp);
