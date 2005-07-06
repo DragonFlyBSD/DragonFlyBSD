@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.2 2005/07/05 00:26:03 dillon Exp $
+.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.3 2005/07/06 06:06:44 dillon Exp $
 .\"
 .Dd March 6, 2005
 .Dt JSCAN 8
@@ -41,7 +41,7 @@
 .Nd journal file processing program
 .Sh SYNOPSIS
 .Nm
-.Fl rd
+.Fl 2rd
 .Op Ar journal_files
 .Pp
 .Sh DESCRIPTION
@@ -50,6 +50,9 @@ The
 utility scans journal files for the purposes of debugging dumps, restoration,
 undo, mirroring, and other journaling features.
 .Bl -tag -width indent
+.It Fl 2
+Implement the full-duplex acknowledgement protocol on the input descriptor.
+Note that shell pipes are full-duplex and can be used with this option.
 .It Fl d
 dumps the contents of the journaling file in a human readable format.
 .It Fl r

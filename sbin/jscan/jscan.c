@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.4 2005/07/06 06:06:44 dillon Exp $
  */
 
 #include "jscan.h"
@@ -47,12 +47,16 @@ main(int ac, char **av)
 {
     int ch;
     int i;
+    int jfflags = 0;
     enum jdirection direction = JF_FORWARDS;
     enum jmode jmode = JS_NONE;
     struct jfile *jf;
 
-    while ((ch = getopt(ac, av, "dmr")) != -1) {
+    while ((ch = getopt(ac, av, "2dmrw:W:")) != -1) {
 	switch(ch) {
+	case '2':
+	    jfflags |= JF_FULL_DUPLEX;
+	    break;
 	case 'd':
 	    debug_opt = 1;
 	    if (jmode == JS_NONE)
@@ -64,6 +68,10 @@ main(int ac, char **av)
 	case 'r':
 	    direction = JF_BACKWARDS;
 	    break;
+	case 'W':
+	    /* fallthrough */
+	case 'w':
+	    /* not implemented yet */
 	default:
 	    fprintf(stderr, "unknown option: -%c\n", optopt);
 	    usage(av[0]);
@@ -85,9 +93,9 @@ main(int ac, char **av)
     } else {
 	for (i = optind; i < ac; ++i) {
 	    if (strcmp(av[i], "stdin") == 0)
-		jf = jopen_fp(stdin, direction);
+		jf = jopen_fp(stdin, direction, jfflags);
 	    else
-		jf = jopen_stream(av[i], direction);
+		jf = jopen_stream(av[i], direction, jfflags);
 	    if (jf != NULL) {
 		switch(jmode) {
 		case JS_MIRROR:

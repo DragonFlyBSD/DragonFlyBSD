@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.4 2005/07/05 04:08:07 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.5 2005/07/06 06:06:44 dillon Exp $
  */
 
 #include "jscan.h"
@@ -40,20 +40,20 @@
  * Open a journal for directional scanning
  */
 struct jfile *
-jopen_stream(const char *path, enum jdirection jdir)
+jopen_stream(const char *path, enum jdirection jdir, int flags)
 {
     FILE *fp;
     struct jfile *jf;
 
     if ((fp = fopen(path, "r")) == NULL)
 	return (NULL);
-    if ((jf = jopen_fp(fp, jdir)) == NULL)
+    if ((jf = jopen_fp(fp, jdir, flags)) == NULL)
 	fclose (fp);
     return(jf);
 }
 
 struct jfile *
-jopen_fp(FILE *fp, enum jdirection jdir)
+jopen_fp(FILE *fp, enum jdirection jdir, int flags)
 {
     struct jfile *jf;
 
@@ -62,6 +62,7 @@ jopen_fp(FILE *fp, enum jdirection jdir)
     jf->jf_fp = fp;
     jf->jf_direction = jdir;
     jf->jf_setpt = -1;
+    jf->jf_flags = flags;
     if (jdir == JF_BACKWARDS) {
 	fseeko(jf->jf_fp, 0L, SEEK_END);
 	jf->jf_pos = ftello(jf->jf_fp);
@@ -140,6 +141,15 @@ jread(struct jfile *jf, void *buf, int bytes)
 		return (errno);
 	}
     }
+}
+
+int
+jwrite(struct jfile *jf, void *buf, int bytes)
+{
+    int n;
+
+    n = write(fileno(jf->jf_fp), buf, bytes);
+    return(n);
 }
 
 void

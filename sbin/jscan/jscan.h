@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.4 2005/07/05 02:38:34 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.5 2005/07/06 06:06:44 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -60,7 +60,10 @@ struct jfile {
     FILE		*jf_fp;
     enum jdirection	jf_direction;
     int			jf_error;
+    int			jf_flags;
 };
+
+#define JF_FULL_DUPLEX	0x0001
 
 struct jdata {
     struct jdata	*jd_next;
@@ -116,11 +119,12 @@ char *dupdatapath(const void *buf, int bytes);
 
 struct jstream *jscan_stream(struct jfile *jf);
 void jscan_dispose(struct jstream *js);
-struct jfile *jopen_stream(const char *path, enum jdirection jdir);
-struct jfile *jopen_fp(FILE *fp, enum jdirection jdir);
+struct jfile *jopen_stream(const char *path, enum jdirection jdir, int flags);
+struct jfile *jopen_fp(FILE *fp, enum jdirection jdir, int flags);
 void jclose_stream(struct jfile *jf);
 void jalign(struct jfile *jf);
 int jread(struct jfile *jf, void *buf, int bytes);
+int jwrite(struct jfile *jf, void *buf, int bytes);
 void jset(struct jfile *jf);
 void jreturn(struct jfile *jf);
 void jflush(struct jfile *jf);

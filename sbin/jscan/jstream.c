@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jstream.c,v 1.3 2005/07/05 02:38:34 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jstream.c,v 1.4 2005/07/06 06:06:44 dillon Exp $
  */
 
 #include "jscan.h"
@@ -63,6 +63,7 @@ jscan_stream(struct jfile *jf)
 {
     struct journal_rawrecbeg head;
     struct journal_rawrecend tail;
+    struct journal_ackrecord ack;
     int recsize;
     int search;
     int error;
@@ -114,6 +115,24 @@ jscan_stream(struct jfile *jf)
 		free(js);
 		js = NULL;
 		break;
+	    }
+
+	    /*
+	     * XXX if the stream is full duplex send the ack back now.  This
+	     * really needs to be delayed until the transaction is committed,
+	     * but there are stalling issues if the transaction being
+	     * collected exceeds to the size of the FIFO.  So for now this
+	     * is just for testing.
+	     */
+	    if (jf->jf_flags & JF_FULL_DUPLEX) {
+		bzero(&ack, sizeof(ack));
+		ack.rbeg.begmagic = JREC_BEGMAGIC;
+		ack.rbeg.streamid = JREC_STREAMID_ACK;
+		ack.rbeg.transid = head.transid;
+		ack.rbeg.recsize = sizeof(ack);
+		ack.rend.endmagic = JREC_ENDMAGIC;
+		ack.rend.recsize = sizeof(ack);
+		jwrite(jf, &ack, sizeof(ack));
 	    }
 
 	    /*
