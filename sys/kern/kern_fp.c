@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.9 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.10 2005/07/06 05:59:39 dillon Exp $
  */
 
 /*
@@ -264,12 +264,12 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
 }
 
 int
-fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res)
+fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all)
 {
     struct uio auio;
     struct iovec aiov;
-    size_t count;
     int error;
+    int lastresid;
 
     if (res)
 	*res = 0;
@@ -289,18 +289,37 @@ fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res)
 	auio.uio_segflg = UIO_SYSSPACE;
     auio.uio_td = curthread;
 
-    count = nbytes;
-    error = fo_read(fp, &auio, fp->f_cred, 0, auio.uio_td);
+    /*
+     * If all is false call fo_read() once.
+     * If all is true we attempt to read the entire request.  We have to
+     * break out of the loop if an unrecoverable error or EOF occurs.
+     */
+    do {
+	lastresid = auio.uio_resid;
+	error = fo_read(fp, &auio, fp->f_cred, 0, auio.uio_td);
+    } while (all && auio.uio_resid &&
+	     ((error == 0 && auio.uio_resid != lastresid) || 
+	     error == ERESTART || error == EINTR));
+    if (all && error == 0 && auio.uio_resid)
+	error = ESPIPE;
+
+    /*
+     * If an error occured but some data was read, silently forget the
+     * error.  However, if this is a non-blocking descriptor and 'all'
+     * was specified, return an error even if some data was read (this
+     * is considered a bug in the caller for using an illegal combination
+     * of 'all' and a non-blocking descriptor).
+     */
     if (error) {
-	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
-	    error == EWOULDBLOCK)
-	) {
-	    error = 0;
+	if (auio.uio_resid != nbytes) {
+	    if (error == ERESTART || error == EINTR)
+		error = 0;
+	    if (error == EWOULDBLOCK && all == 0)
+		error = 0;
 	}
     }
-    count -= auio.uio_resid;
     if (res)
-	*res = count;
+	*res = nbytes - auio.uio_resid;
     return(error);
 }
 

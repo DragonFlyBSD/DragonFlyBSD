@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.12 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.13 2005/07/06 05:59:43 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -128,7 +128,7 @@ extern int fp_open(const char *path, int flags, int mode, struct file **fpp);
 extern int fp_vpopen(struct vnode *vp, int flags, struct file **fpp);
 extern int fp_pread(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res);
 extern int fp_pwrite(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res);
-extern int fp_read(struct file *fp, void *buf, size_t nbytes, ssize_t *res);
+extern int fp_read(struct file *fp, void *buf, size_t nbytes, ssize_t *res, int all);
 extern int fp_write(struct file *fp, void *buf, size_t nbytes, ssize_t *res);
 extern int fp_stat(struct file *fp, struct stat *ub);
 extern int fp_mmap(void *addr, size_t size, int prot, int flags, struct file *fp, off_t pos, void **resp);

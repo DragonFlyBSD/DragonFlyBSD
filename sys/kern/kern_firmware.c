@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.2 2005/03/24 17:24:04 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.3 2005/07/06 05:59:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -177,8 +177,8 @@ firmware_image_load_file(const char *image_name)
 	if (img == NULL)
 		goto fail_stat;
 
-	if ((error = fp_read(fp, img->fw_image, img->fw_imglen, &nread)) != 0 ||
-		nread != img->fw_imglen) {
+	error = fp_read(fp, img->fw_image, img->fw_imglen, &nread, 1);
+	if (error != 0 || nread != img->fw_imglen) {
 		printf("firmware image could not be read: %d\n", error);
                 goto fail_read;
 	}
