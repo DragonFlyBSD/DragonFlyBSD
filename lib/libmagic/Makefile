@@ -1,7 +1,6 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.9 2005/06/01 15:09:11 joerg Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.10 2005/07/06 14:01:57 joerg Exp $
 
 MAGICDIR= ${.CURDIR}/../../contrib/file-4/magic
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
 .PATH: ${CONTRIBDIR}
 
@@ -13,7 +12,6 @@ SHLIB_MAJOR=	2
 
 SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
 	is_tar.c magic.c print.c readelf.c softmagic.c
-SRCS+=	${PATCHES}
 INCS=	magic.h
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
