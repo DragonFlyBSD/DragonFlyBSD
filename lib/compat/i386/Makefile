@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/compat/i386/Makefile,v 1.1 2005/05/02 20:19:18 dillon Exp $
+# $DragonFly: src/lib/compat/i386/Makefile,v 1.2 2005/07/07 12:55:04 corecode Exp $
 #
 
 COMPAT_LIBS= libalias.so.4 libarchive.so.1 libatm.so.2 libbz2.so.1 \
@@ -24,14 +24,16 @@ LATEST_LIBS+= ${LATEST_${lib}}
 
 show:
 .for lib in ${LATEST_LIBS}
-	@echo "Selecting ${lib} for ${lib:C/(.*)\.so\.([0-9]*)\.(.*)/\1.so.\2/}"
+	@echo "Selecting ${lib} for ${lib:C/(.*)\.so\.([0-9]*)\.(.*)/\1.so.\2/:C|,|/|g}"
 .endfor
 
 install:
 .for lib in ${LATEST_LIBS}
+	directpath=${lib:C/[^,]*$//:C|,|/|g}; \
+	destpath=${DESTDIR}/$${directpath:-${LIBDIR}/compat} ; \
 	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
 	    ${.CURDIR}/${lib} \
-	    ${DESTDIR}${LIBDIR}/compat/${lib:C/(.*)\.so\.([0-9]*)\.(.*)/\1.so.\2/}
+	    $${destpath}/${lib:C/(.*,)?(.*)\.so\.([0-9]*)\.(.*)/\2.so.\3/}
 .endfor
 
 .include <bsd.lib.mk>
