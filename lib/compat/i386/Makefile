@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/compat/i386/Makefile,v 1.2 2005/07/07 12:55:04 corecode Exp $
+# $DragonFly: src/lib/compat/i386/Makefile,v 1.3 2005/07/07 13:01:46 corecode Exp $
 #
 
 COMPAT_LIBS= libalias.so.4 libarchive.so.1 libatm.so.2 libbz2.so.1 \
@@ -14,7 +14,8 @@ COMPAT_LIBS= libalias.so.4 libarchive.so.1 libatm.so.2 libbz2.so.1 \
 	     libradius.so.1 libreadline.so.5 librpcsvc.so.2 libsbuf.so.2 \
 	     libskey.so.2 libsmb.so.1 libssh.so.2 libssl.so.3 \
 	     libtacplus.so.1 libthread_xu.so.1 libusbhid.so.0 \
-	     libutil.so.3 libvgl.so.2 libwrap.so.3 libxpg4.so.3 libz.so.2
+	     libutil.so.3 libvgl.so.2 libwrap.so.3 libxpg4.so.3 libz.so.2 \
+	     usr,libexec,ld-elf.so.1
 
 LATEST_LIBS=
 .for lib in ${COMPAT_LIBS}
