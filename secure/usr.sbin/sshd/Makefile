@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.8 2005/04/08 11:26:52 joerg Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.9 2005/07/07 12:43:36 corecode Exp $
 #
 
 PROG=	sshd
@@ -24,7 +24,7 @@ SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
 	loginrec.c.patch monitor.c.patch \
 	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch 
 
-SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch sshd_config.no_obj.patch
+SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch
 
 .if defined(MAKE_KERBEROS5)
 DISTRIBUTION=krb5
@@ -59,9 +59,6 @@ CFLAGS+=-DUSE_POSIX_THREADS
 LDADD+= -pthread
 DPADD+= ${LIBC_R}
 .endif
-
-etc-ssh: sshd_config
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${.ALLSRC} ${DESTDIR}/etc/ssh
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.74 2005/07/07 11:49:55 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.75 2005/07/07 12:43:36 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -34,11 +34,11 @@ BIN1=	amd.map auth.conf \
 
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
-SSH=	lib/libssh \
-	usr.bin/ssh \
-	usr.sbin/sshd
+DIRS+=	secure/lib/libssh \
+	secure/usr.bin/ssh \
+	secure/usr.sbin/sshd
 .endif
-SSL=	${.CURDIR}/../crypto/openssl-0.9.7e/apps/openssl.cnf
+DIRS+=	secure/usr.bin/openssl
 .endif
 
 # Files that should be installed read-only-executable (555) root:wheel
@@ -355,16 +355,12 @@ distribution:
 	cd ${.CURDIR}/sendmail; ${MAKE} obj
 	cd ${.CURDIR}/sendmail; ${MAKE} distribution
 .endif
-.if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
-.if !defined(NO_OPENSSH)
-.for _f in ${SSH}
-	cd ${.CURDIR}/../secure/${_f} && ${MAKE} obj
-	cd ${.CURDIR}/../secure/${_f} && ${MAKE} etc-ssh
+.for dir in ${DIRS}
+.if exists(${.CURDIR}/../${dir}/Makefile.etc)
+	cd ${.CURDIR}/../${dir}; ${MAKE} -f Makefile.etc obj
+	cd ${.CURDIR}/../${dir}; ${MAKE} -f Makefile.etc install
+.endif
 .endfor
-.endif
-	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${SSL} ${DESTDIR}/etc/ssl
-.endif
 .if !defined(NO_MAKEDEV)
 	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev

@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libssh/Makefile,v 1.2.2.7 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/lib/libssh/Makefile,v 1.4 2004/07/31 19:03:00 geekgod Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile,v 1.5 2005/07/07 12:43:36 corecode Exp $
 
 LIB=	ssh
 SRCS=	acss.c authfd.c authfile.c bufaux.c buffer.c canohost.c channels.c \
@@ -24,9 +24,6 @@ CFLAGS+= -DKRB5 -DHEIMDAL
 
 DPADD+=	${LIBZ}
 LDADD+=	-lz
-
-etc-ssh:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${SSHDIR}/moduli ${DESTDIR}/etc/ssh
 
 .include "../../Makefile.ssh.common"
 .include <bsd.lib.mk>
