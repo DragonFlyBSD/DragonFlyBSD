@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/rmail/Makefile,v 1.8.2.6 2002/03/25 21:31:30 gshapiro Exp $
-# $DragonFly: src/bin/rmail/Makefile,v 1.5 2005/02/06 06:16:40 okumoto Exp $
+# $DragonFly: src/bin/rmail/Makefile,v 1.6 2005/07/07 11:49:55 corecode Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/rmail
@@ -43,6 +43,6 @@ LDFLAGS+=${SENDMAIL_LDFLAGS}
 NOSHARED?= NO
 
 sm_os.h:
-	ln -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
 
 .include <bsd.prog.mk>

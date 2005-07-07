@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/msgdef/Makefile,v 1.38.2.3 2002/08/17 19:30:37 ache Exp $
-# $DragonFly: src/share/msgdef/Makefile,v 1.5 2004/09/28 16:30:13 asmodai Exp $
+# $DragonFly: src/share/msgdef/Makefile,v 1.6 2005/07/07 11:49:56 corecode Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -92,104 +92,104 @@ afterinstall:
 			   ${LOCALEDIR}/${lang}/LC_MESSAGES
 .endfor
 .for link in ${LATIN15LINKS}
-	ln -sf ../${link}.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-1/LC_MESSAGES \
 	       ${LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES
 .endfor
 .for link in ${GB_LINKS}
-	ln -sf ../en_GB.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../en_GB.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES
-	ln -sf ../en_GB.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../en_GB.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES
-	ln -sf ../en_GB.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../en_GB.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.US-ASCII/LC_MESSAGES
 .endfor
 .for link in ${FR_LINKS}
-	ln -sf ../fr_FR.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../fr_FR.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES
-	ln -sf ../fr_FR.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../fr_FR.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES
 .endfor
 .for link in ${DE_LINKS}
-	ln -sf ../de_DE.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../de_DE.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES
-	ln -sf ../de_DE.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../de_DE.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES
 .endfor
 .for link in ${IT_LINKS}
-	ln -sf ../it_IT.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../it_IT.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES
-	ln -sf ../it_IT.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../it_IT.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES
 .endfor
 .for link in ${NL_LINKS}
-	ln -sf ../nl_NL.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../nl_NL.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES
-	ln -sf ../nl_NL.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../nl_NL.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES
 .endfor
 .for link in ${CZ_LINKS}
-	ln -sf ../cs_CZ.ISO8859-2/LC_MESSAGES \
+	${LN} -sf ../cs_CZ.ISO8859-2/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-2/LC_MESSAGES
 .endfor
 .for link in ${PT_LINKS}
-	ln -sf ../pt_PT.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../pt_PT.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES
 .endfor
 .for link in ${ASCIILINKS}
-	ln -sf ../${link}.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-1/LC_MESSAGES \
 		${LOCALEDIR}/${link}.US-ASCII/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN1LINKS}
-	ln -sf ../${link}.ISO8859-1/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-1/LC_MESSAGES \
                ${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN2LINKS}
-	ln -sf ../${link}.ISO8859-2/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-2/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN9LINKS}
-	ln -sf ../${link}.ISO8859-9/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-9/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN13LINKS}
-	ln -sf ../${link}.ISO8859-13/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-13/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN15LINKS}
-	ln -sf ../${link}.ISO8859-15/LC_MESSAGES \
+	${LN} -sf ../${link}.ISO8859-15/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${GB_LINKS}
-	ln -sf ../en_GB.UTF-8/LC_MESSAGES \
+	${LN} -sf ../en_GB.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${FR_LINKS}
-	ln -sf ../fr_FR.UTF-8/LC_MESSAGES \
+	${LN} -sf ../fr_FR.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${DE_LINKS}
-	ln -sf ../de_DE.UTF-8/LC_MESSAGES \
+	${LN} -sf ../de_DE.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${IT_LINKS}
-	ln -sf ../it_IT.UTF-8/LC_MESSAGES \
+	${LN} -sf ../it_IT.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${NL_LINKS}
-	ln -sf ../nl_NL.UTF-8/LC_MESSAGES \
+	${LN} -sf ../nl_NL.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${CZ_LINKS}
-	ln -sf ../cs_CZ.UTF-8/LC_MESSAGES \
+	${LN} -sf ../cs_CZ.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${PT_LINKS}
-	ln -sf ../pt_PT.UTF-8/LC_MESSAGES \
+	${LN} -sf ../pt_PT.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
-	ln -sf ../ko_KR.eucKR/LC_MESSAGES \
+	${LN} -sf ../ko_KR.eucKR/LC_MESSAGES \
 		${LOCALEDIR}/ko_KR.UTF-8/LC_MESSAGES
-	ln -sf ../zh_TW.UTF-8/LC_MESSAGES \
+	${LN} -sf ../zh_TW.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/zh_HK.UTF-8/LC_MESSAGES
 
 .include <bsd.prog.mk>

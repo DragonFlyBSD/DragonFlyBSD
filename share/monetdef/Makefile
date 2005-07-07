@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/monetdef/Makefile,v 1.37.2.3 2002/08/17 19:38:08 ache Exp $
-# $DragonFly: src/share/monetdef/Makefile,v 1.7 2004/10/07 13:32:37 asmodai Exp $
+# $DragonFly: src/share/monetdef/Makefile,v 1.8 2005/07/07 11:49:56 corecode Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -98,52 +98,52 @@ afterinstall:
 		${LOCALEDIR}/${lang}/LC_MONETARY
 .endfor
 .for link in ${LATIN15LINKS}
-	ln -sf ../${link}.ISO8859-1/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-1/LC_MONETARY \
 	       ${LOCALEDIR}/${link}.ISO8859-15/LC_MONETARY
 .endfor
 .for link in ${ASCIILINKS}
-	ln -sf ../${link}.ISO8859-1/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-1/LC_MONETARY \
 		${LOCALEDIR}/${link}.US-ASCII/LC_MONETARY
 .endfor
 .for link in ${CH_LINKS}
-	ln -sf ../${CH_SRC}.ISO8859-1/LC_MONETARY \
+	${LN} -sf ../${CH_SRC}.ISO8859-1/LC_MONETARY \
 		${LOCALEDIR}/${link}.ISO8859-1/LC_MONETARY
 .endfor
-	ln -sf ../ja_JP.eucJP/LC_MONETARY \
+	${LN} -sf ../ja_JP.eucJP/LC_MONETARY \
 		${LOCALEDIR}/ja_JP.SJIS/LC_MONETARY
 .for link in ${UTF8_LATIN1LINKS}
-	ln -sf ../${link}.ISO8859-1/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-1/LC_MONETARY \
                 ${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN2LINKS}
-	ln -sf ../${link}.ISO8859-2/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-2/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN7LINKS}
-	ln -sf ../${link}.ISO8859-7/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-7/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN9LINKS}
-	ln -sf ../${link}.ISO8859-9/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-9/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN13LINKS}
-	ln -sf ../${link}.ISO8859-13/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-13/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN15LINKS}
-	ln -sf ../${link}.ISO8859-15/LC_MONETARY \
+	${LN} -sf ../${link}.ISO8859-15/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${CH_LINKS}
-	ln -sf ../${CH_SRC}.UTF-8/LC_MONETARY \
+	${LN} -sf ../${CH_SRC}.UTF-8/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
-	ln -sf ../ja_JP.eucJP/LC_MONETARY \
+	${LN} -sf ../ja_JP.eucJP/LC_MONETARY \
 		${LOCALEDIR}/ja_JP.UTF-8/LC_MONETARY
-	ln -sf ../ko_KR.eucKR/LC_MONETARY \
+	${LN} -sf ../ko_KR.eucKR/LC_MONETARY \
 		${LOCALEDIR}/ko_KR.UTF-8/LC_MONETARY
-	ln -sf ../zh_TW.Big5/LC_MONETARY \
+	${LN} -sf ../zh_TW.Big5/LC_MONETARY \
 		${LOCALEDIR}/zh_TW.UTF-8/LC_MONETARY
 
 .include <bsd.prog.mk>

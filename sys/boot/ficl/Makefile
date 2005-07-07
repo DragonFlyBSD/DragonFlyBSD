@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ficl/Makefile,v 1.35 2003/06/30 19:08:49 ru Exp $
-# $DragonFly: src/sys/boot/ficl/Makefile,v 1.7 2005/04/20 20:27:04 joerg Exp $
+# $DragonFly: src/sys/boot/ficl/Makefile,v 1.8 2005/07/07 11:49:56 corecode Exp $
 #
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
@@ -56,7 +56,7 @@ ${SRCS:M*.c:R:S/$/.o/g}: machine
 beforedepend ${OBJS}: machine
 
 machine:
-	ln -sf ${.CURDIR}/../../i386/include machine
+	${LN} -sf ${.CURDIR}/../../i386/include machine
 
 CLEANFILES+=	machine
 .endif

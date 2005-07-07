@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.9 2005/07/05 20:35:35 dillon Exp $
+# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.10 2005/07/07 11:49:56 corecode Exp $
 #
 
 PROG=		loader
@@ -134,7 +134,7 @@ ${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBFICL} vers.o
 beforedepend ${OBJS}: machine
 
 machine:
-	ln -sf ${.CURDIR}/../../../i386/include machine
+	${LN} -sf ${.CURDIR}/../../../i386/include machine
 
 .endif
 

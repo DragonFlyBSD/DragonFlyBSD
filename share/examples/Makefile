@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/examples/Makefile,v 1.28.2.6 2002/08/08 09:03:47 ru Exp $
-# $DragonFly: src/share/examples/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $DragonFly: src/share/examples/Makefile,v 1.3 2005/07/07 11:49:56 corecode Exp $
 #
 # Doing a make install builds /usr/share/examples
 
@@ -33,7 +33,7 @@ copies::
 
 .for dir in ${DIRS}
 symlinks::
-	rm -rf ${DDIR}/${dir}; ln -s ${.CURDIR}/${dir} ${DDIR}
+	rm -rf ${DDIR}/${dir}; ${LN} -s ${.CURDIR}/${dir} ${DDIR}
 .endfor
 
 etc-examples:

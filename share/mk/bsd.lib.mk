@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.11 2005/04/29 21:25:09 joerg Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.12 2005/07/07 11:49:56 corecode Exp $
 #
 
 .include <bsd.init.mk>
@@ -188,7 +188,7 @@ ${SHLIB_NAME}: ${SOBJS}
 	@${ECHO} building shared library ${SHLIB_NAME}
 	rm -f ${.TARGET} ${SHLIB_LINK}
 .if defined(SHLIB_LINK)
-	ln -fs ${.TARGET} ${SHLIB_LINK}
+	${LN} -fs ${.TARGET} ${SHLIB_LINK}
 .endif
 	${CC} ${LDFLAGS} -shared -Wl,-x \
 	    -o ${.TARGET} -Wl,-soname,${SONAME} \
@@ -254,7 +254,7 @@ _libinstall:
 	    ${_INSTALLFLAGS} ${_SHLINSTALLFLAGS} \
 	    ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}
 .if defined(SHLIB_LINK)
-	ln -fs ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}/${SHLIB_LINK}
+	${LN} -fs ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}/${SHLIB_LINK}
 .endif
 .endif
 .if defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ia64/libski/Makefile,v 1.10 2003/07/02 11:47:33 ru Exp $
-# $DragonFly: src/sys/boot/ia64/libski/Makefile,v 1.1 2003/11/10 06:08:37 dillon Exp $
+# $DragonFly: src/sys/boot/ia64/libski/Makefile,v 1.2 2005/07/07 11:49:56 corecode Exp $
 
 LIB=		ski
 INTERNALLIB=	true
@@ -28,7 +28,7 @@ CFLAGS+= -DDISK_DEBUG
 .endif
 
 machine:
-	ln -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
+	${LN} -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
 
 CLEANFILES+=	machine
 

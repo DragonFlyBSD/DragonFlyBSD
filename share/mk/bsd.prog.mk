@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.9 2005/07/03 11:58:01 swildner Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.10 2005/07/07 11:49:56 corecode Exp $
 
 .include <bsd.init.mk>
 
@@ -120,7 +120,7 @@ _proginstall:
 .endif
 .endif
 .if defined(HIDEGAME)
-	(cd ${DESTDIR}${ORIGBINDIR}; ln -fs dm ${PROG}; \
+	(cd ${DESTDIR}${ORIGBINDIR}; ${LN} -fs dm ${PROG}; \
 	    chown -h ${BINOWN}:${ORIGBINGRP} ${PROG})
 .endif
 .endif # !target(realinstall)

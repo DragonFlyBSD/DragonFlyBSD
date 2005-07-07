@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.13 2005/05/07 21:22:32 corecode Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.14 2005/07/07 11:49:56 corecode Exp $
 
 PROG=		boot2
 NOMAN=
@@ -158,7 +158,7 @@ boot2.o: machine
 beforedepend ${OBJS}: machine
 
 machine:
-	ln -sf ${.CURDIR}/../../../i386/include machine
+	${LN} -sf ${.CURDIR}/../../../i386/include machine
 
 CLEANFILES+=	machine
 .endif

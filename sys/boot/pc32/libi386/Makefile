@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/libi386/Makefile,v 1.32 2003/07/02 12:45:45 ru Exp $
-# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.4 2004/02/21 06:37:05 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.5 2005/07/07 11:49:56 corecode Exp $
 #
 LIB=			i386
 INTERNALLIB=		true
@@ -44,7 +44,7 @@ beforedepend ${OBJS}: machine
 
 CLEANFILES+=	machine
 machine:
-	ln -sf ${.CURDIR}/../../../i386/include machine
+	${LN} -sf ${.CURDIR}/../../../i386/include machine
 
 .endif
 

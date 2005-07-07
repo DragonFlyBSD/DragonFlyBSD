@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/kern/Makefile.misc,v 1.1 2003/08/21 20:08:26 dillon Exp $
+# $DragonFly: src/sys/kern/Makefile.misc,v 1.2 2005/07/07 11:49:57 corecode Exp $
 #
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -52,9 +52,9 @@ DGEN=	conf \
 #
 #links::
 #	rm -f ${.CURDIR}/${SYSTAGS}
-#	-ln -s ${SYSDIR}/${MACHINE_ARCH}/tags ${.CURDIR}/${SYSTAGS}
+#	-${LN} -s ${SYSDIR}/${MACHINE_ARCH}/tags ${.CURDIR}/${SYSTAGS}
 #	-cd ${.CURDIR} && for i in ${DGEN}; do \
-#	    (cd ../$$i && { rm -f tags; ln -s ${SYSTAGS} tags; }) done
+#	    (cd ../$$i && { rm -f tags; ${LN} -s ${SYSTAGS} tags; }) done
 #	-cd ${.CURDIR} && for i in ${TAGARCH}; do \
 #	    (cd ../$$i && make ${MFLAGS} SYSTAGS=${SYSTAGS} links); done
 

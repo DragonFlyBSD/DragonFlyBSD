@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/ypserv/Makefile,v 1.17.2.3 2002/08/07 16:32:02 ru Exp $
-# $DragonFly: src/usr.sbin/ypserv/Makefile,v 1.2 2003/06/17 04:30:04 dillon Exp $
+# $DragonFly: src/usr.sbin/ypserv/Makefile,v 1.3 2005/07/07 11:49:57 corecode Exp $
 
 PROG=	ypserv
 SRCS=	yp_svc.c yp_server.c yp_dblookup.c yp_dnslookup.c \
@@ -36,7 +36,7 @@ afterinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${.CURDIR}/ypinit.sh ${DESTDIR}${BINDIR}/ypinit
 	@if [ ! -f ${DESTDIR}/var/yp/Makefile.dist ]; then \
-		ln -s	${DESTDIR}/var/yp/Makefile.dist \
+		${LN} -s	${DESTDIR}/var/yp/Makefile.dist \
 			${DESTDIR}/var/yp/Makefile; fi
 
 .include <bsd.prog.mk>

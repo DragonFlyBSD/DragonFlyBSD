@@ -1,5 +1,5 @@
 # $FreeBSD: src/bin/csh/Makefile,v 1.11.2.8 2002/02/19 00:36:40 mp Exp $
-# $DragonFly: src/bin/csh/Makefile,v 1.6 2005/03/10 14:35:09 joerg Exp $
+# $DragonFly: src/bin/csh/Makefile,v 1.7 2005/07/07 11:49:55 corecode Exp $
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 #
 # C Shell with process control; VM/UNIX VAX Makefile
@@ -77,7 +77,7 @@ NLSSRCFILES_${catalog:C/.*://}!= cd ${NLSSRCDIR_${catalog:C/.*://}}; echo set[0-
 .endfor
 
 csh.1: tcsh.man
-	ln -sf ${.ALLSRC} ${.TARGET}
+	${LN} -sf ${.ALLSRC} ${.TARGET}
 
 build-tools: gethost.nx
 

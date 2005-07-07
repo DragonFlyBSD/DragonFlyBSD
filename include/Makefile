@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.24 2005/04/21 16:36:34 joerg Exp $
+# $DragonFly: src/include/Makefile,v 1.25 2005/07/07 11:49:55 corecode Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -174,7 +174,7 @@ copies:		mtree_setup
 		${DESTDIR}/usr/include/i4b_machine
 .endif
 .for i in ${SHDRS}
-	ln -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
+	${LN} -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
 .endfor
 .for i in ${RMHEADERS}
 	rm -f ${DESTDIR}/usr/include/$i
@@ -184,22 +184,22 @@ symlinks:	mtree_setup
 	@${ECHO} "Setting up symlinks to kernel source tree..."
 .for i in ${LDIRS}
 	rm -rf ${DESTDIR}/usr/include/$i
-	ln -s ../../sys/$i ${DESTDIR}/usr/include/$i
+	${LN} -s ../../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
 	rm -rf ${DESTDIR}/usr/include/crypto
-	ln -s ../../sys/opencrypto ${DESTDIR}/usr/include/crypto
+	${LN} -s ../../sys/opencrypto ${DESTDIR}/usr/include/crypto
 .for i in ${LSYMSUBDIRS}
 	rm -rf ${DESTDIR}/usr/include/$i
-	ln -s ../../../sys/$i ${DESTDIR}/usr/include/$i
+	${LN} -s ../../../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
 .for i in ${LSYMSUBDIRS3}
 	rm -rf ${DESTDIR}/usr/include/$i
-	ln -s ../../../../sys/$i ${DESTDIR}/usr/include/$i
+	${LN} -s ../../../../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
 	rm -rf ${DESTDIR}/usr/include/machine
-	ln -s ../../sys/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/machine
+	${LN} -s ../../sys/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/machine
 	rm -rf ${DESTDIR}/usr/include/i4b_machine
-	ln -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine
+	${LN} -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine
 
 .include <bsd.prog.mk>
 

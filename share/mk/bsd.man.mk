@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.man.mk,v 1.31.2.11 2002/12/19 13:48:33 ru Exp $
-# $DragonFly: src/share/mk/bsd.man.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.man.mk,v 1.3 2005/07/07 11:49:56 corecode Exp $
 #
 # The include file <bsd.man.mk> handles installing manual pages and 
 # their links.
@@ -217,7 +217,7 @@ _maninstall: ${MAN}
 		t=${DESTDIR}${MANDIR}$${sect}${MANSUBDIR}/$$name; \
 		${ECHO} $${t}${ZEXT} -\> $${l}${ZEXT}; \
 		rm -f $${t} $${t}${MCOMPRESS_EXT}; \
-		ln $${l}${ZEXT} $${t}${ZEXT}; \
+		${LN} $${l}${ZEXT} $${t}${ZEXT}; \
 	done
 .if defined(MANBUILDCAT) && !empty(MANBUILDCAT)
 	@set `echo ${MLINKS} " " | sed 's/\.\([^.]*\) /.\1 \1 /g'`; \
@@ -232,7 +232,7 @@ _maninstall: ${MAN}
 		t=${DESTDIR}${CATDIR}$${sect}${MANSUBDIR}/$$name; \
 		${ECHO} $${t}${ZEXT} -\> $${l}${ZEXT}; \
 		rm -f $${t} $${t}${MCOMPRESS_EXT}; \
-		ln $${l}${ZEXT} $${t}${ZEXT}; \
+		${LN} $${l}${ZEXT} $${t}${ZEXT}; \
 	done
 .endif
 .endif

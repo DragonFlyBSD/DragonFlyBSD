@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/editmap/Makefile,v 1.1.2.1 2002/03/25 21:29:58 gshapiro Exp $
-# $DragonFly: src/usr.sbin/editmap/Makefile,v 1.3 2004/01/31 06:56:44 dillon Exp $
+# $DragonFly: src/usr.sbin/editmap/Makefile,v 1.4 2005/07/07 11:49:57 corecode Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH: ${SENDMAIL_DIR}/editmap
@@ -45,6 +45,6 @@ LDADD+=${SENDMAIL_LDADD}
 LDFLAGS+=${SENDMAIL_LDFLAGS}
 
 sm_os.h:
-	ln -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
 
 .include <bsd.prog.mk>

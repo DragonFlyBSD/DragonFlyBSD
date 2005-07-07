@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.71 2005/06/02 06:08:07 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.72 2005/07/07 11:49:55 corecode Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -305,7 +305,7 @@ _worldtmp:
 .endfor
 	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.include.dist	\
 		-p ${WORLDDEST}/usr/include > /dev/null
-	ln -sf ${.CURDIR}/sys ${WORLDDEST}
+	${LN} -sf ${.CURDIR}/sys ${WORLDDEST}
 
 _bootstrap-tools:
 	@echo
@@ -767,7 +767,7 @@ _strfile=	games/fortune/strfile
 .endif
 
 bootstrap-tools:
-	ln -fs /bin/date ${BTOOLSDEST}/bin/date
+	${LN} -fs /bin/date ${BTOOLSDEST}/bin/date
 .for _tool in ${_strfile} \
     usr.bin/patch \
     bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/colldef/Makefile,v 1.32.2.11 2002/08/17 19:14:44 ache Exp $
-# $DragonFly: src/share/colldef/Makefile,v 1.4 2004/09/27 19:30:50 asmodai Exp $
+# $DragonFly: src/share/colldef/Makefile,v 1.5 2005/07/07 11:49:56 corecode Exp $
 #
 
 NOMAN=YES
@@ -95,35 +95,35 @@ afterinstall:
 		${locale}.out ${LOCALEDIR}/${locale}/LC_COLLATE
 .endfor
 .for link in ${ASCIILINKS}
-	ln -fs ../la_LN.US-ASCII/LC_COLLATE \
+	${LN} -fs ../la_LN.US-ASCII/LC_COLLATE \
 	       ${LOCALEDIR}/${link}/LC_COLLATE
 .endfor
 .for link in ${ZHLINKS}
-	ln -fs ../is_IS.ISO8859-1/LC_COLLATE \
+	${LN} -fs ../is_IS.ISO8859-1/LC_COLLATE \
 	       ${LOCALEDIR}/${link}/LC_COLLATE
 .endfor
 .for link in ${LATIN1LINKS}
-	ln -fs ../la_LN.ISO8859-1/LC_COLLATE \
+	${LN} -fs ../la_LN.ISO8859-1/LC_COLLATE \
 	       ${LOCALEDIR}/${link}.ISO8859-1/LC_COLLATE
-	ln -fs ../la_LN.ISO8859-15/LC_COLLATE \
+	${LN} -fs ../la_LN.ISO8859-15/LC_COLLATE \
 	       ${LOCALEDIR}/${link}.ISO8859-15/LC_COLLATE
 .endfor
 .for link in ${LATIN2LINKS}
-	ln -fs ../la_LN.ISO8859-2/LC_COLLATE \
+	${LN} -fs ../la_LN.ISO8859-2/LC_COLLATE \
 	       ${LOCALEDIR}/${link}.ISO8859-2/LC_COLLATE
 .endfor
 .for link in ${DELINKS}
-	ln -fs ../de_DE.ISO8859-1/LC_COLLATE \
+	${LN} -fs ../de_DE.ISO8859-1/LC_COLLATE \
 	       ${LOCALEDIR}/${link}.ISO8859-1/LC_COLLATE
-	ln -fs ../de_DE.ISO8859-15/LC_COLLATE \
+	${LN} -fs ../de_DE.ISO8859-15/LC_COLLATE \
 	       ${LOCALEDIR}/${link}.ISO8859-15/LC_COLLATE
 .endfor
-	ln -fs ../cs_CZ.ISO8859-2/LC_COLLATE \
+	${LN} -fs ../cs_CZ.ISO8859-2/LC_COLLATE \
 	       ${LOCALEDIR}/sk_SK.ISO8859-2/LC_COLLATE
-	ln -fs ../pt_PT.ISO8859-1/LC_COLLATE \
+	${LN} -fs ../pt_PT.ISO8859-1/LC_COLLATE \
 		${LOCALEDIR}/pt_BR.ISO8859-1/LC_COLLATE
 .for link in ${UTF8LINKS}
-	ln -fs ../la_LN.UTF-8/LC_COLLATE \
+	${LN} -fs ../la_LN.UTF-8/LC_COLLATE \
 		${LOCALEDIR}/${link}.UTF-8/LC_COLLATE
 .endfor
 

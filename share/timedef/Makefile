@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/timedef/Makefile,v 1.11.2.11 2002/08/17 19:25:45 ache Exp $
-# $DragonFly: src/share/timedef/Makefile,v 1.5 2004/09/27 14:44:33 asmodai Exp $
+# $DragonFly: src/share/timedef/Makefile,v 1.6 2005/07/07 11:49:56 corecode Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -107,100 +107,100 @@ afterinstall:
 			   ${LOCALEDIR}/$$l/LC_TIME; \
 	done
 	for l in ${LATIN15LINKS}; do \
-		ln -fs ../$$l.ISO8859-1/LC_TIME \
+		${LN} -fs ../$$l.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
 	done
 	for l in ${DE_LINKS}; do \
-		ln -fs ../de_DE.ISO8859-1/LC_TIME \
+		${LN} -fs ../de_DE.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \
-		ln -fs ../de_DE.ISO8859-1/LC_TIME \
+		${LN} -fs ../de_DE.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
 	done
 	for l in ${IT_LINKS}; do \
-		ln -fs ../it_IT.ISO8859-1/LC_TIME \
+		${LN} -fs ../it_IT.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \
-		ln -fs ../it_IT.ISO8859-1/LC_TIME \
+		${LN} -fs ../it_IT.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
 	done
 	for l in ${FR_LINKS}; do \
-		ln -fs ../fr_FR.ISO8859-1/LC_TIME \
+		${LN} -fs ../fr_FR.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \
-		ln -fs ../fr_FR.ISO8859-1/LC_TIME \
+		${LN} -fs ../fr_FR.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
 	done
 	for l in ${LN_LINKS}; do \
-		ln -fs ../la_LN.ISO8859-1/LC_TIME \
+		${LN} -fs ../la_LN.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l/LC_TIME; \
 	done
 	for l in ${NL_LINKS}; do \
-		ln -fs ../nl_NL.ISO8859-1/LC_TIME \
+		${LN} -fs ../nl_NL.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \
-		ln -fs ../nl_NL.ISO8859-1/LC_TIME \
+		${LN} -fs ../nl_NL.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
 	done
 	for l in ${US_LINKS}; do \
-		ln -fs ../en_US.ISO8859-1/LC_TIME \
+		${LN} -fs ../en_US.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \
-		ln -fs ../en_US.ISO8859-1/LC_TIME \
+		${LN} -fs ../en_US.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
-		ln -fs ../en_US.ISO8859-1/LC_TIME \
+		${LN} -fs ../en_US.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.US-ASCII/LC_TIME; \
 	done
 	for l in ${GB_LINKS}; do \
-		ln -fs ../en_GB.ISO8859-1/LC_TIME \
+		${LN} -fs ../en_GB.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-1/LC_TIME; \
-		ln -fs ../en_GB.ISO8859-1/LC_TIME \
+		${LN} -fs ../en_GB.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.ISO8859-15/LC_TIME; \
-		ln -fs ../en_GB.ISO8859-1/LC_TIME \
+		${LN} -fs ../en_GB.ISO8859-1/LC_TIME \
 		       ${LOCALEDIR}/$$l.US-ASCII/LC_TIME; \
 	done
-	ln -fs ../en_GB.ISO8859-1/LC_TIME \
+	${LN} -fs ../en_GB.ISO8859-1/LC_TIME \
 	       ${LOCALEDIR}/en_GB.US-ASCII/LC_TIME
-	ln -fs ../en_US.ISO8859-1/LC_TIME \
+	${LN} -fs ../en_US.ISO8859-1/LC_TIME \
 	       ${LOCALEDIR}/en_US.US-ASCII/LC_TIME
-	ln -fs ../en_US.ISO8859-1/LC_TIME \
+	${LN} -fs ../en_US.ISO8859-1/LC_TIME \
 	       ${LOCALEDIR}/af_ZA.ISO8859-1/LC_TIME
-	ln -fs ../en_US.ISO8859-15/LC_TIME \
+	${LN} -fs ../en_US.ISO8859-15/LC_TIME \
 	       ${LOCALEDIR}/af_ZA.ISO8859-15/LC_TIME
-	ln -fs ../ko_KR.eucKR/LC_TIME \
+	${LN} -fs ../ko_KR.eucKR/LC_TIME \
 	       ${LOCALEDIR}/ko_KR.CP949/LC_TIME
-	ln -fs ../zh_CN.GB2312/LC_TIME \
+	${LN} -fs ../zh_CN.GB2312/LC_TIME \
 	       ${LOCALEDIR}/zh_CN.GBK/LC_TIME
 	for l in ${UTF8_LATIN1LINKS}; do \
-	       ln -fs ../$$l.ISO8859-1/LC_TIME \
+	       ${LN} -fs ../$$l.ISO8859-1/LC_TIME \
 	             ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
 	for l in ${DE_LINKS}; do \
-	       ln -fs ../de_DE.UTF-8/LC_TIME \
+	       ${LN} -fs ../de_DE.UTF-8/LC_TIME \
 	              ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
 	for l in ${IT_LINKS}; do \
-	       ln -fs ../it_IT.UTF-8/LC_TIME \
+	       ${LN} -fs ../it_IT.UTF-8/LC_TIME \
 	              ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
 	for l in ${FR_LINKS}; do \
-	       ln -fs ../fr_FR.UTF-8/LC_TIME \
+	       ${LN} -fs ../fr_FR.UTF-8/LC_TIME \
 	              ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
 	for l in ${NL_LINKS}; do \
-	       ln -fs ../nl_NL.UTF-8/LC_TIME \
+	       ${LN} -fs ../nl_NL.UTF-8/LC_TIME \
 	              ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
 	for l in ${US_LINKS}; do \
-	       ln -fs ../en_US.UTF-8/LC_TIME \
+	       ${LN} -fs ../en_US.UTF-8/LC_TIME \
 	              ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
 	for l in ${GB_LINKS}; do \
-	       ln -fs ../en_GB.UTF-8/LC_TIME \
+	       ${LN} -fs ../en_GB.UTF-8/LC_TIME \
 	              ${LOCALEDIR}/$$l.UTF-8/LC_TIME; \
 	done
-	ln -fs ../en_GB.UTF-8/LC_TIME \
+	${LN} -fs ../en_GB.UTF-8/LC_TIME \
 	       ${LOCALEDIR}/en_IE.UTF-8/LC_TIME
-	ln -fs ../en_US.UTF-8/LC_TIME \
+	${LN} -fs ../en_US.UTF-8/LC_TIME \
 	       ${LOCALEDIR}/af_ZA.UTF-8/LC_TIME
-	ln -fs ../zh_TW.UTF-8/LC_TIME \
+	${LN} -fs ../zh_TW.UTF-8/LC_TIME \
 	       ${LOCALEDIR}/zh_HK.UTF-8/LC_TIME
-	ln -fs ../zh_TW.UTF-8/LC_TIME \
+	${LN} -fs ../zh_TW.UTF-8/LC_TIME \
 	       ${LOCALEDIR}/zh_HK.Big5HKSCS/LC_TIME
 
 .include <bsd.prog.mk>

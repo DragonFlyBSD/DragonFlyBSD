@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.73 2005/07/03 22:34:48 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.74 2005/07/07 11:49:55 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -125,8 +125,8 @@ upgrade_etc:	preupgrade
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
-	ln -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
-	ln -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
+	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
+	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 .if exists(${DESTDIR}/usr/sbin/named-checkzone)
 	rm -f ${DESTDIR}/usr/libexec/named-xfer
 	rm -f ${DESTDIR}/usr/bin/dnsquery
@@ -382,8 +382,8 @@ distribution:
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		dot.profile ${DESTDIR}/root/.profile; \
 	    rm -f ${DESTDIR}/.cshrc ${DESTDIR}/.profile; \
-	    ln ${DESTDIR}/root/.cshrc ${DESTDIR}/.cshrc; \
-	    ln ${DESTDIR}/root/.profile ${DESTDIR}/.profile
+	    ${LN} ${DESTDIR}/root/.cshrc ${DESTDIR}/.cshrc; \
+	    ${LN} ${DESTDIR}/root/.profile ${DESTDIR}/.profile
 	cd ${.CURDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
 	cd ${.CURDIR}/namedb; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
@@ -395,7 +395,7 @@ distribution:
 	@if [ -d ${DESTDIR}/etc/mail -a -f ${DESTDIR}/etc/mail/aliases -a \
 	      ! -f ${DESTDIR}/etc/aliases ]; then \
 		set -x; \
-		ln -s mail/aliases ${DESTDIR}/etc/aliases; \
+		${LN} -s mail/aliases ${DESTDIR}/etc/aliases; \
 	fi
 	${INSTALL} -o ${BINOWN} -g operator -m 664 /dev/null \
 	    ${DESTDIR}/etc/dumpdates
@@ -453,15 +453,15 @@ distrib-dirs:
 .if !defined(NO_SENDMAIL)
 	mtree -deU -f ${.CURDIR}/mtree/BSD.sendmail.dist -p ${DESTDIR}/
 .endif
-	cd ${DESTDIR}/etc/namedb; rm -f etc/namedb; ln -s ".." etc/namedb
-	cd ${DESTDIR}/; rm -f ${DESTDIR}/sys; ln -s usr/src/sys sys
-	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ln -sf ../man* .
+	cd ${DESTDIR}/etc/namedb; rm -f etc/namedb; ${LN} -s ".." etc/namedb
+	cd ${DESTDIR}/; rm -f ${DESTDIR}/sys; ${LN} -s usr/src/sys sys
+	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/man; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/man.alias`; \
 	while [ $$# -gt 0 ] ; \
 	do \
 		rm -rf "$$1"; \
-		ln -s "$$2" "$$1"; \
+		${LN} -s "$$2" "$$1"; \
 		shift; shift; \
 	done
 	cd ${DESTDIR}/usr/share/locale; \
@@ -469,16 +469,16 @@ distrib-dirs:
 	while [ $$# -gt 0 ] ; \
 	do \
 		rm -rf "$$1"; \
-		ln -s "$$2" "$$1"; \
+		${LN} -s "$$2" "$$1"; \
 		shift; shift; \
 	done
-	cd ${DESTDIR}/usr/share/openssl/man/en.ISO8859-1; ln -sf ../man* .
+	cd ${DESTDIR}/usr/share/openssl/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/nls; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/nls.alias`; \
 	while [ $$# -gt 0 ] ; \
 	do \
 		rm -rf "$$1"; \
-		ln -s "$$2" "$$1"; \
+		${LN} -s "$$2" "$$1"; \
 		shift; shift; \
 	done
 

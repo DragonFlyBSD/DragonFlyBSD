@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ia64/skiload/Makefile,v 1.12 2003/11/09 06:53:37 marcel Exp $
-# $DragonFly: src/sys/boot/ia64/skiload/Makefile,v 1.1 2003/11/10 06:08:37 dillon Exp $
+# $DragonFly: src/sys/boot/ia64/skiload/Makefile,v 1.2 2005/07/07 11:49:56 corecode Exp $
 
 .PATH: ${.CURDIR}/../common
 
@@ -73,7 +73,7 @@ beforeinstall:
 .endif
 
 machine:
-	ln -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
+	${LN} -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
 
 ${PROG}: ${OBJS} ${LIBFICL} ${LIBSKI} ${LIBSTAND} vers.o
 	${LD} ${LDFLAGS} -o ${PROG} -M \

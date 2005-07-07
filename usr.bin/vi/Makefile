@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/usr.bin/vi/Makefile,v 1.27.2.7 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/vi/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
+# $DragonFly: src/usr.bin/vi/Makefile,v 1.3 2005/07/07 11:49:57 corecode Exp $
 #
 # This has most of the glue needed to compile tknvi and the perl hooks,
 # but not all.
@@ -171,52 +171,52 @@ afterinstall:
 		${CATALOGS:S;^;${SRCDIR}/catalog/;} \
 		${DESTDIR}/usr/share/vi/catalog
 	for l in ${NLLINKS}; do \
-		ln -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		ln -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		ln -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		ln -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
+		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
+		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
+		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
+		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
 	done
 	for l in ${ENLINKS}; do \
-		ln -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		ln -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		ln -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		ln -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-		ln -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.US-ASCII; \
+		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
+		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
+		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
+		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
+		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.US-ASCII; \
 	done
-	ln -fs english ${DESTDIR}/usr/share/vi/catalog/en_US.US-ASCII
-	ln -fs english ${DESTDIR}/usr/share/vi/catalog/US-ASCII
-	ln -fs english ${DESTDIR}/usr/share/vi/catalog/ASCII
-	ln -fs english ${DESTDIR}/usr/share/vi/catalog/POSIX
-	ln -fs english ${DESTDIR}/usr/share/vi/catalog/C
+	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/en_US.US-ASCII
+	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/US-ASCII
+	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/ASCII
+	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/POSIX
+	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/C
 	for l in ${FRLINKS}; do \
-		ln -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		ln -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		ln -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		ln -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
+		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
+		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
+		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
+		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
 	done
 	for l in ${DELINKS}; do \
-		ln -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		ln -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		ln -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		ln -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
+		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
+		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
+		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
+		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
 	done
 	for l in ${ESLINKS}; do \
-		ln -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		ln -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		ln -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		ln -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
+		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
+		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
+		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
+		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
 	done
 	for l in ${SVLINKS}; do \
-		ln -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		ln -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		ln -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		ln -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
+		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
+		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
+		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
+		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
 	done
 	for l in ${PLLINKS}; do \
-		ln -fs polish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-2; \
-		ln -fs polish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-2; \
+		${LN} -fs polish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-2; \
+		${LN} -fs polish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-2; \
 	done
-	ln -fs ru_SU.KOI8-R ${DESTDIR}/usr/share/vi/catalog/ru_RU.KOI8-R
+	${LN} -fs ru_SU.KOI8-R ${DESTDIR}/usr/share/vi/catalog/ru_RU.KOI8-R
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${SRCDIR}/tcl_scripts/*.tcl \
 		${DESTDIR}/usr/share/vi/tcl

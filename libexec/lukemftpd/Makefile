@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/4/94
 # $FreeBSD: src/libexec/lukemftpd/Makefile,v 1.5.2.2 2002/08/30 06:50:58 obrien Exp $
-# $DragonFly: src/libexec/lukemftpd/Attic/Makefile,v 1.3 2004/01/31 06:56:40 dillon Exp $
+# $DragonFly: src/libexec/lukemftpd/Attic/Makefile,v 1.4 2005/07/07 11:49:55 corecode Exp $
 
 LUKEMFTPD=	${.CURDIR}/../../contrib/lukemftpd
 .PATH: ${LUKEMFTPD}/src
@@ -42,7 +42,7 @@ LDADD+=	${MINUSLPAM}
 ftpd.o ftpcmd.o: version.h
 
 lukemftpd.8: ftpd.8
-	ln -sf ${.ALLSRC} ${.TARGET}
+	${LN} -sf ${.ALLSRC} ${.TARGET}
 
 CLEANFILES+= lukemftpd.8
 

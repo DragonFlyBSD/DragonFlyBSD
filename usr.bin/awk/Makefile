@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/awk/Makefile,v 1.9.2.1 2002/06/21 20:12:08 obrien Exp $
-# $DragonFly: src/usr.bin/awk/Makefile,v 1.8 2004/11/09 19:31:14 joerg Exp $
+# $DragonFly: src/usr.bin/awk/Makefile,v 1.9 2005/07/07 11:49:57 corecode Exp $
 
 AWKSRC=	${.CURDIR}/../../contrib/awk20040207
 .PATH: ${AWKSRC}
@@ -19,7 +19,7 @@ LDADD=	-lm
 CLEANFILES= maketab proctab.c ytab.h maketab.nx
 
 ytab.h: awkgram.h
-	ln -sf ${.ALLSRC} ${.TARGET}
+	${LN} -sf ${.ALLSRC} ${.TARGET}
 
 proctab.c: maketab.nx
 	./maketab.nx > proctab.c

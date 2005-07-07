@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.info.mk,v 1.57.2.7 2003/05/21 13:00:46 ru Exp $
-# $DragonFly: src/share/mk/bsd.info.mk,v 1.5 2005/01/06 14:54:57 swildner Exp $
+# $DragonFly: src/share/mk/bsd.info.mk,v 1.6 2005/07/07 11:49:56 corecode Exp $
 #
 # The include file <bsd.info.mk> handles installing GNU (tex)info files.
 # Texinfo is a documentation system that uses a single source
@@ -122,7 +122,7 @@ DVIPS2ASCII?=	dvips2ascii
 
 .info.html:
 	${INFO2HTML} ${.IMPSRC}
-	ln -f ${.TARGET:R}.info.Top.html ${.TARGET} 
+	${LN} -f ${.TARGET:R}.info.Top.html ${.TARGET} 
 
 .PATH: ${.CURDIR} ${SRCDIR}
 

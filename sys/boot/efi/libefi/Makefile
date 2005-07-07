@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/efi/libefi/Makefile,v 1.12 2003/07/02 11:53:55 ru Exp $
-# $DragonFly: src/sys/boot/efi/libefi/Makefile,v 1.1 2003/11/10 06:08:32 dillon Exp $
+# $DragonFly: src/sys/boot/efi/libefi/Makefile,v 1.2 2005/07/07 11:49:56 corecode Exp $
 
 .PATH: ${.CURDIR}/../../../${MACHINE_ARCH}/${MACHINE_ARCH}
 
@@ -31,7 +31,7 @@ CFLAGS+= -DDISK_DEBUG
 .endif
 
 machine:
-	ln -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
+	${LN} -sf ${.CURDIR}/../../../${MACHINE_ARCH}/include machine
 
 CLEANFILES+=	machine
 

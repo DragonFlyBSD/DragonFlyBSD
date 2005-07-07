@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile,v 1.3 2005/05/08 00:44:59 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile,v 1.4 2005/07/07 11:49:55 corecode Exp $
 
 .include "../Makefile.inc0"
 
@@ -29,7 +29,7 @@ SRCS+=	elf-hints.h
 CLEANFILES+=	elf-hints.h
 
 elf-hints.h:
-	ln -sf ${.CURDIR}/../../../../include/${.TARGET} .
+	${LN} -sf ${.CURDIR}/../../../../include/${.TARGET} .
 .endif
 
 WARNS=	1
@@ -65,7 +65,7 @@ ldemul-list.h:
 	echo "#define EMULATION_LIST ${EMLST} 0" >> ${.TARGET}
 
 stringify.sed:
-	ln -sf ${SRCDIR}/ld/emultempl/astring.sed ${.TARGET}
+	${LN} -sf ${SRCDIR}/ld/emultempl/astring.sed ${.TARGET}
 
 afterinstall:
 	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \

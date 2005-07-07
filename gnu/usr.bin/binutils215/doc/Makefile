@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/doc/Attic/Makefile,v 1.2 2005/01/04 14:28:06 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/doc/Attic/Makefile,v 1.3 2005/07/07 11:49:55 corecode Exp $
 
 .include "../Makefile.inc0"
 
@@ -26,7 +26,7 @@ as.info:	as.texinfo asconfig.texi c-i386.texi gasver.texi
 ld.info:	ld.texinfo bfdsumm.texi ldver.texi configdoc.texi
 
 configdoc.texi: gen-doc.texi
-	ln -sf ${.ALLSRC} ${.TARGET}
+	${LN} -sf ${.ALLSRC} ${.TARGET}
 
 .PATH: ${SRCDIR}/binutils/doc
 binutils.info: binutils.texi config.texi

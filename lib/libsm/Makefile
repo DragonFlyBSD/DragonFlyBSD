@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.6 2004/07/23 18:15:08 drhodus Exp $
+# $DragonFly: src/lib/libsm/Makefile,v 1.7 2005/07/07 11:49:55 corecode Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/libsm
@@ -32,6 +32,6 @@ CLEANFILES+=sm_os.h
 INTERNALLIB=		true
 
 sm_os.h:
-	ln -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
 
 .include <bsd.lib.mk>

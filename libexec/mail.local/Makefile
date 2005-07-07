@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/libexec/mail.local/Makefile,v 1.10.2.7 2002/03/25 21:31:38 gshapiro Exp $
-# $DragonFly: src/libexec/mail.local/Makefile,v 1.3 2004/01/31 06:56:40 dillon Exp $
+# $DragonFly: src/libexec/mail.local/Makefile,v 1.4 2005/07/07 11:49:55 corecode Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/mail.local
@@ -30,6 +30,6 @@ LDADD+=${SENDMAIL_LDADD}
 LDFLAGS+=${SENDMAIL_LDFLAGS}
 
 sm_os.h:
-	ln -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
 
 .include <bsd.prog.mk>

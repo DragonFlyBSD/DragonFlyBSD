@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.incs.mk,v 1.3.2.1 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.incs.mk,v 1.5 2005/04/12 23:35:37 okumoto Exp $
+# $DragonFly: src/share/mk/bsd.incs.mk,v 1.6 2005/07/07 11:49:56 corecode Exp $
 
 .if !target(__<bsd.init.mk>__)
 .error bsd.incs.mk cannot be included directly.
@@ -72,7 +72,7 @@ installincludes:
 		t=${DESTDIR}$$1; \
 		shift; \
 		${ECHO} $$t -\> $$l; \
-		ln -fhs $$l $$t; \
+		${LN} -fhs $$l $$t; \
 	done; true
 .endif
 .endif # !target(installincludes)

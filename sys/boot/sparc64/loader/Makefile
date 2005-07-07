@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/sparc64/loader/Makefile,v 1.15 2002/12/20 04:32:10 jake Exp $
-# $DragonFly: src/sys/boot/sparc64/loader/Makefile,v 1.1 2003/11/10 06:08:40 dillon Exp $
+# $DragonFly: src/sys/boot/sparc64/loader/Makefile,v 1.2 2005/07/07 11:49:57 corecode Exp $
 
 BASE=		loader
 PROG=		${BASE}
@@ -108,7 +108,7 @@ FILES+= loader.rc
 beforedepend ${OBJS}: machine
 
 machine:
-	ln -sf ${.CURDIR}/../../../sparc64/include machine
+	${LN} -sf ${.CURDIR}/../../../sparc64/include machine
 .endif
 
 CLEANFILES+=	machine

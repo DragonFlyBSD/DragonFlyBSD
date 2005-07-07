@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/vacation/Makefile,v 1.6.2.3 2002/03/25 21:31:50 gshapiro Exp $
-# $DragonFly: src/usr.bin/vacation/Makefile,v 1.4 2004/02/13 03:53:37 dillon Exp $
+# $DragonFly: src/usr.bin/vacation/Makefile,v 1.5 2005/07/07 11:49:57 corecode Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/vacation
@@ -48,6 +48,6 @@ LDADD+=${SENDMAIL_LDADD}
 LDFLAGS+=${SENDMAIL_LDFLAGS}
 
 sm_os.h:
-	ln -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
 
 .include <bsd.prog.mk>

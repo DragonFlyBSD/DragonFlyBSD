@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/sendmail/Makefile,v 1.1.2.7 2003/05/10 17:24:25 gshapiro Exp $
-# $DragonFly: src/share/sendmail/Makefile,v 1.3 2004/01/31 06:56:41 dillon Exp $
+# $DragonFly: src/share/sendmail/Makefile,v 1.4 2005/07/07 11:49:56 corecode Exp $
 #
 # Doing a make install builds /usr/share/sendmail/
 
@@ -30,6 +30,6 @@ copies::
 .endfor
 
 symlinks::
-	rm -rf ${DDIR}/${CFDIR}; ln -s ${SENDMAIL_DIR}/${CFDIR} ${DDIR}/${CFDIR}
+	rm -rf ${DDIR}/${CFDIR}; ${LN} -s ${SENDMAIL_DIR}/${CFDIR} ${DDIR}/${CFDIR}
 
 .include <bsd.prog.mk>

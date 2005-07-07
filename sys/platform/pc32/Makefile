@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/i386/Makefile,v 1.8 2000/01/27 01:22:06 mckusick Exp $
-# $DragonFly: src/sys/platform/pc32/Makefile,v 1.5 2005/06/11 09:03:49 swildner Exp $
+# $DragonFly: src/sys/platform/pc32/Makefile,v 1.6 2005/07/07 11:49:57 corecode Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/11/93
 
 # Makefile for i386 links, tags file
@@ -19,11 +19,11 @@ DI386=	acpica apm conf i386 include isa
 
 links::
 	-for i in ${COMMDIR1}; do \
-	    (cd $$i && { rm -f tags; ln -s ../${TAGDIR}/tags tags; }) done
+	    (cd $$i && { rm -f tags; ${LN} -s ../${TAGDIR}/tags tags; }) done
 	-for i in ${COMMDIR2}; do \
-	    (cd $$i && { rm -f tags; ln -s ../../${TAGDIR}/tags tags; }) done
+	    (cd $$i && { rm -f tags; ${LN} -s ../../${TAGDIR}/tags tags; }) done
 	-for i in ${DI386}; do \
-	    (cd $$i && { rm -f tags; ln -s ../tags tags; }) done
+	    (cd $$i && { rm -f tags; ${LN} -s ../tags tags; }) done
 
 SI386=	${SYS}/i386/acpica/*.[ch] ${SYS}/i386/apm/*.[ch] \
 	${SYS}/i386/i386/*.[ch] ${SYS}/i386/include/*.[ch] \

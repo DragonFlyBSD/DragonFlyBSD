@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.obj.mk,v 1.30.2.10 2003/02/15 05:36:25 kris Exp $
-# $DragonFly: src/share/mk/bsd.obj.mk,v 1.3 2005/04/12 23:35:37 okumoto Exp $
+# $DragonFly: src/share/mk/bsd.obj.mk,v 1.4 2005/07/07 11:49:56 corecode Exp $
 #
 # The include file <bsd.obj.mk> handles creating the 'obj' directory
 # and cleaning up object files, etc.
@@ -94,7 +94,7 @@ obj:
 objlink:
 	@if test -d ${CANONICALOBJDIR}/; then \
 		rm -f ${.CURDIR}/obj; \
-		ln -s ${CANONICALOBJDIR} ${.CURDIR}/obj; \
+		${LN} -s ${CANONICALOBJDIR} ${.CURDIR}/obj; \
 	else \
 		echo "No ${CANONICALOBJDIR} to link to - do a make obj."; \
 	fi

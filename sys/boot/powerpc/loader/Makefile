@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/powerpc/loader/Makefile,v 1.11 2003/08/16 02:48:20 obrien Exp $
-# $DragonFly: src/sys/boot/powerpc/loader/Makefile,v 1.1 2003/11/10 06:08:40 dillon Exp $
+# $DragonFly: src/sys/boot/powerpc/loader/Makefile,v 1.2 2005/07/07 11:49:57 corecode Exp $
 
 BASE=		loader
 PROG=		${BASE}
@@ -105,7 +105,7 @@ ${PROG}: ${OBJS} ${LIBOFW} ${LIBSTAND} ${LIBFICL} start.o vers.o
 		vers.o ${LIBFICL} ${LIBOFW} ${LIBSTAND}
 
 machine:
-	ln -sf ${.CURDIR}/../../../powerpc/include machine
+	${LN} -sf ${.CURDIR}/../../../powerpc/include machine
 
 # Cannot use ${OBJS} above this line
 .include <bsd.prog.mk>

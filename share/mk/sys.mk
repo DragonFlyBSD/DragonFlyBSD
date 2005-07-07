@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.13 2005/06/05 19:23:10 corecode Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.14 2005/07/07 11:49:56 corecode Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -76,6 +76,7 @@ FFLAGS		?=	-O
 EFLAGS		?=
 
 INSTALL		?=	install
+LN		?=	ln
 
 LEX		?=	lex
 LFLAGS		?=
