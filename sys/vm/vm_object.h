@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.6 2005/06/02 21:51:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.7 2005/07/07 16:54:02 hmp Exp $
  */
 
 /*
@@ -78,8 +78,14 @@
 #include <sys/thread2.h>
 #endif
 
-enum obj_type { OBJT_DEFAULT, OBJT_SWAP, OBJT_VNODE, OBJT_DEVICE, OBJT_PHYS,
-		OBJT_DEAD };
+enum obj_type { 
+	OBJT_DEFAULT,
+	OBJT_SWAP,   	/* object backed by swap blocks */
+	OBJT_VNODE, 	/* object backed by file pages (vnode) */
+	OBJT_DEVICE, 	/* object backed by device pages */
+	OBJT_PHYS,  	/* object backed by physical pages */
+	OBJT_DEAD   	/* dead object */
+};
 typedef u_char objtype_t;
 
 /*
