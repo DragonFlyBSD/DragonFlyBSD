@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/gen/tolower_.c,v 1.9 2003/07/26 19:24:45 salo Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/tolower.c,v 1.1 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/gen/tolower.c,v 1.2 2005/07/07 07:17:47 dillon Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@NetBSD.org>.
@@ -56,5 +56,5 @@ const int16_t *__libc_tolower_tab_ = __libc_C_tolower_;
 int
 tolower(int c)
 {
-	return((__libc_tolower_tab_ + 1)[c]);
+	return(__libc_ctype_convert(__libc_tolower_tab_, c));
 }

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/gen/isctype.c,v 1.16 2003/08/07 16:42:52 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/isctype.c,v 1.4 2005/05/08 15:52:05 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/gen/isctype.c,v 1.5 2005/07/07 07:17:47 dillon Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -42,84 +42,84 @@
 int
 isalnum(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_A|_D));
+	return(__libc_ctype_index(_A|_D, c));
 }
 
 #undef isalpha
 int
 isalpha(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_A));
+	return(__libc_ctype_index(_A, c));
 }
 
 #undef isblank
 int
 isblank(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _B);
+	return(__libc_ctype_index(_B, c));
 }
 
 #undef iscntrl
 int
 iscntrl(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _C);
+	return(__libc_ctype_index(_C, c));
 }
 
 #undef isdigit
 int
 isdigit(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _D);
+	return(__libc_ctype_index(_D, c));
 }
 
 #undef isgraph
 int
 isgraph(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_G));
+	return(__libc_ctype_index(_G, c));
 }
 
 #undef islower
 int
 islower(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _L);
+	return(__libc_ctype_index(_L, c));
 }
 
 #undef isprint
 int
 isprint(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_R));
+	return(__libc_ctype_index(_R, c));
 }
 
 #undef ispunct
 int
 ispunct(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _P);
+	return(__libc_ctype_index(_P, c));
 }
 
 #undef isspace
 int
 isspace(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _S);
+	return(__libc_ctype_index(_S, c));
 }
 
 #undef isupper
 int
 isupper(int c)
 {
-	return((__libc_ctype_ + 1)[c] & _U);
+	return(__libc_ctype_index(_U, c));
 }
 
 #undef isxdigit
 int
 isxdigit(int c)
 {
-	return((__libc_ctype_ + 1)[c] & (_X));
+	return(__libc_ctype_index(_X, c));
 }
 
 #undef _toupper

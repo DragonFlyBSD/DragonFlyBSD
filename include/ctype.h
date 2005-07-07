@@ -33,7 +33,7 @@
  *
  *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
  *	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $
- *	$DragonFly: src/include/ctype.h,v 1.13 2005/07/07 05:55:05 joerg Exp $
+ *	$DragonFly: src/include/ctype.h,v 1.14 2005/07/07 07:17:42 dillon Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -86,21 +86,53 @@ int	isblank(int);
 #endif
 __END_DECLS
 
+#ifdef _CTYPE_PRIVATE
+extern const __uint16_t	__libc_C_ctype_[];
+extern const __int16_t	__libc_C_toupper_[];
+extern const __int16_t	__libc_C_tolower_[];
+#endif
+
+/*
+ * don't get all wishy washy and try to support architectures where
+ * char isn't 8 bits.   It's 8 bits, period.
+ */
 #if !defined(_CTYPE_H_DISABLE_MACROS_)
 
-#define	isdigit(c)	((int)((__libc_ctype_ + 1)[(c)] & _D))
-#define	islower(c)	((int)((__libc_ctype_ + 1)[(c)] & _L))
-#define	isspace(c)	((int)((__libc_ctype_ + 1)[(c)] & _S))
-#define	ispunct(c)	((int)((__libc_ctype_ + 1)[(c)] & _P))
-#define	isupper(c)	((int)((__libc_ctype_ + 1)[(c)] & _U))
-#define	isalpha(c)	((int)((__libc_ctype_ + 1)[(c)] & _A))
-#define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(c)] & _X))
-#define	isalnum(c)	((int)((__libc_ctype_ + 1)[(c)] & (_A|_D)))
-#define	isprint(c)	((int)((__libc_ctype_ + 1)[(c)] & _R))
-#define	isgraph(c)	((int)((__libc_ctype_ + 1)[(c)] & _G))
-#define	iscntrl(c)	((int)((__libc_ctype_ + 1)[(c)] & _C))
-#define	tolower(c)	((int)((__libc_tolower_tab_ + 1)[(c)]))
-#define	toupper(c)	((int)((__libc_toupper_tab_ + 1)[(c)]))
+#define _CTYPE_NUM_CHARS	(1 << (8*sizeof(char)))
+
+static __inline int
+__libc_ctype_index(__uint16_t mask, int c)
+{
+	if (c < -1 || c >= _CTYPE_NUM_CHARS)
+		return(0);	/* XXX maybe assert instead? */
+	return(__libc_ctype_[c + 1] & mask);
+}
+
+static __inline int
+__libc_ctype_convert(__int16_t *array, int c)
+{
+	if (c < -1 || c >= _CTYPE_NUM_CHARS)
+		return(c);	/* XXX maybe assert instead? */
+	return(array[c + 1]);
+}
+
+#ifndef _CTYPE_PRIVATE
+#undef _CTYPE_NUM_CHARS
+#endif
+
+#define	isdigit(c)	__libc_ctype_index(_D, c)
+#define	islower(c)	__libc_ctype_index(_L, c)
+#define	isspace(c)	__libc_ctype_index(_S, c)
+#define	ispunct(c)	__libc_ctype_index(_P, c)
+#define	isupper(c)	__libc_ctype_index(_U, c)
+#define	isalpha(c)	__libc_ctype_index(_A, c)
+#define	isxdigit(c)	__libc_ctype_index(_X, c)
+#define	isalnum(c)	__libc_ctype_index(_A|_D, c)
+#define	isprint(c)	__libc_ctype_index(_R, c)
+#define	isgraph(c)	__libc_ctype_index(_G, c)
+#define	iscntrl(c)	__libc_ctype_index(_C, c)
+#define	tolower(c)	__libc_ctype_convert(__libc_tolower_tab_, c)
+#define	toupper(c)	__libc_ctype_convert(__libc_toupper_tab_, c)
 
 #if defined(__XSI_VISIBLE)
 #define	isascii(c)	((unsigned)(c) <= 0177)
@@ -111,17 +143,7 @@ __END_DECLS
 
 #if __ISO_C_VISIBLE >= 1999 || __POSIX_VISIBLE >= 200112L || \
     __XSI_VISIBLE >= 600
-#define isblank(c)	((int)((__libc_ctype_ + 1)[(c)] & _B))
-#endif
-
-#ifdef _CTYPE_PRIVATE
-#include <machine/limits.h>	/* for CHAR_BIT */
-
-#define _CTYPE_NUM_CHARS	(1 << CHAR_BIT)
-
-extern const __uint16_t	__libc_C_ctype_[];
-extern const __int16_t	__libc_C_toupper_[];
-extern const __int16_t	__libc_C_tolower_[];
+#define isblank(c)	__libc_ctype_index(_B, c)
 #endif
 
 #endif /* !_CTYPE_H_DISABLE_MACROS_ */
