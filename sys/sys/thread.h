@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.63 2005/06/19 22:07:17 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.64 2005/07/07 20:28:26 hmp Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -104,7 +104,13 @@ typedef struct lwkt_tokref {
     lwkt_tokref_t	tr_next;	/* linked list */
     lwkt_tokref_t	tr_gdreqnext;	/* based at gd_tokreqbase */
     struct globaldata	*tr_reqgd;	/* requesting cpu */
+    int          	tr_flags;	/* token state and debug flags */
 } lwkt_tokref;
+
+/*
+ * Token state and debug flags.
+ */
+#define	LWKT_TOKREF_CONTENDED	0x002	/* token ownership contention */
 
 /*
  * The magic number indicates the trans-cpu state of a token reference.

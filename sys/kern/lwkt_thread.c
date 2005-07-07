@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.75 2005/06/20 07:31:05 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.76 2005/07/07 20:28:26 hmp Exp $
  */
 
 /*
@@ -98,6 +98,8 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
+static __int64_t token_contention_count = 0;
+static __int64_t mplock_contention_count = 0;
 
 #ifdef _KERNEL
 
@@ -109,7 +111,12 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
-
+#ifdef	INVARIANTS
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
+	&token_contention_count, 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, mplock_contention_count, CTLFLAG_RW,
+	&mplock_contention_count, 0, "spinning due to MPLOCK contention");
+#endif
 #endif
 
 /*
@@ -576,11 +583,21 @@ again:
 		u_int32_t rqmask = gd->gd_runqmask;
 		while (rqmask) {
 		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
-			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock())
+			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock()) {
+				/* spinning due to MP lock being held */
+#ifdef	INVARIANTS
+				++mplock_contention_count;
+#endif
 			    continue;
+			}
 			mpheld = MP_LOCK_HELD();
-			if (ntd->td_toks && !lwkt_chktokens(ntd))
+			if (ntd->td_toks && !lwkt_chktokens(ntd)) {
+				/* spinning due to token contention */
+#ifdef	INVARIANTS
+				++token_contention_count;
+#endif
 			    continue;
+			}
 			break;
 		    }
 		    if (ntd)

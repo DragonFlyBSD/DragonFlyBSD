@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.21 2005/06/27 19:24:52 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.22 2005/07/07 20:28:26 hmp Exp $
  */
 
 #ifdef _KERNEL
@@ -104,6 +104,8 @@ static void lwkt_reqtoken_remote(void *data);
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
+#define CONTENDED_STRING	"REF=%p TOK=%p TD=%p (contention started)"
+#define UNCONTENDED_STRING	"REF=%p TOK=%p TD=%p (contention stopped)"
 #if !defined(KTR_TOKENS)
 #define	KTR_TOKENS	KTR_ALL
 #endif
@@ -117,6 +119,8 @@ KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, drain, 6, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, contention_start, 7, CONTENDED_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, contention_stop, 7, UNCONTENDED_STRING, sizeof(void *) * 3);
 #endif
 
 #define logtoken(name, ref)						\
@@ -158,6 +162,13 @@ lwkt_chktokens(thread_t td)
 	if ((dgd = tok->t_cpu) != gd) {
 	    cpu_ccfence();	/* don't let the compiler reload tok->t_cpu */
 	    r = 0;
+#ifdef	INVARIANTS
+		if ((refs->tr_flags & LWKT_TOKREF_CONTENDED) == 0) {
+			refs->tr_flags |= LWKT_TOKREF_CONTENDED;
+			/* mark token contended */
+			logtoken(contention_start, refs);
+		}
+#endif
 
 	    /*
 	     * Queue a request to the target cpu, exit the loop early if
@@ -187,6 +198,13 @@ lwkt_chktokens(thread_t td)
 			refs, refs->tr_tok, magic);
 	    }
 	}
+#ifdef	INVARIANTS
+	if (refs->tr_flags & LWKT_TOKREF_CONTENDED) {
+		/* mark token uncontended */
+		refs->tr_flags &= ~LWKT_TOKREF_CONTENDED;
+		logtoken(contention_stop, refs);
+	}
+#endif
     }
     return(r);
 }
