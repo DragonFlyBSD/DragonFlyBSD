@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.10 2005/07/01 20:23:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.11 2005/07/07 13:23:28 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -44,10 +44,43 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
 #include "if_vxreg.h"
+
+static const struct vx_pci_type {
+	uint16_t	 vx_vid;
+	uint16_t	 vx_did;
+	const char	*vx_desc;
+} vx_pci_types[] = {
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C590,
+		"3Com 3c590 PCI Ethernet Adapter" },
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C595TX,
+		"3Com 3c595-TX PCI Ethernet Adapter" },
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C595T4,
+		"3Com 3c595-T4 PCI Ethernet Adapter" },
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C595MII,
+		"3Com 3c595-MII PCI Ethernet Adapter" },
+
+	/*
+	 * The (Fast) Etherlink XL adapters are now supported by
+	 * the xl driver, which uses bus master DMA and is much
+	 * faster. (And which also supports the 3c905B.
+	 */
+#ifdef VORTEX_ETHERLINK_XL
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C900TPO,
+		"3Com 3c900-TPO Fast Etherlink XL" },
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C900COMBO,
+		"3Com 3c900-COMBO Fast Etherlink XL" },
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C905TX,
+		"3Com 3c905-TX Fast Etherlink XL" },
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C905T4,
+		"3Com 3c905-T4 Fast Etherlink XL" },
+#endif
+	{ 0, 0, NULL }
+};
 
 static void vx_pci_shutdown(device_t);
 static int vx_pci_probe(device_t);
@@ -84,35 +117,18 @@ vx_pci_shutdown(device_t dev)
 static int
 vx_pci_probe(device_t dev)
 {
-   u_int32_t		device_id;
+	const struct vx_pci_type *t;
+	uint16_t vid, did;
 
-   device_id = pci_read_config(dev, PCIR_DEVVENDOR, 4);
-
-   if(device_id == 0x590010b7ul) {
-      device_set_desc(dev, "3COM 3C590 Etherlink III PCI");
-      return(0);
-   }
-   if(device_id == 0x595010b7ul || device_id == 0x595110b7ul ||
-	device_id == 0x595210b7ul) {
-      device_set_desc(dev, "3COM 3C595 Etherlink III PCI");
-      return(0);
-   }
-	/*
-	 * The (Fast) Etherlink XL adapters are now supported by
-	 * the xl driver, which uses bus master DMA and is much
-	 * faster. (And which also supports the 3c905B.
-	 */
-#ifdef VORTEX_ETHERLINK_XL
-   if(device_id == 0x900010b7ul || device_id == 0x900110b7ul) {
-      device_set_desc(dev, "3COM 3C900 Etherlink XL PCI");
-      return(0);
-   }
-   if(device_id == 0x905010b7ul || device_id == 0x905110b7ul) {
-      device_set_desc(dev, "3COM 3C905 Etherlink XL PCI");
-      return(0);
-   }
-#endif
-   return (ENXIO);
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
+	for (t = vx_pci_types; t->vx_desc != NULL; ++t) {
+		if (vid == t->vx_vid && did == t->vx_did) {
+			device_set_desc(dev, t->vx_desc);
+			return 0;
+		}
+	}
+	return ENXIO;
 }
 
 static int 
@@ -145,7 +161,7 @@ vx_pci_attach(device_t dev)
     }
 
     /* defect check for 3C590 */
-    if ((pci_read_config(dev, PCIR_DEVVENDOR, 4) >> 16) == 0x5900) {
+    if (pci_get_device(dev) == PCI_PRODUCT_3COM_3C590) {
 	GO_WINDOW(0);
 	if (vxbusyeeprom(sc))
 	    goto bad;
