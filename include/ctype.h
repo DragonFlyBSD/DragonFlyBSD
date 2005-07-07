@@ -33,7 +33,7 @@
  *
  *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
  *	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $
- *	$DragonFly: src/include/ctype.h,v 1.12 2005/06/27 20:27:35 dillon Exp $
+ *	$DragonFly: src/include/ctype.h,v 1.13 2005/07/07 05:55:05 joerg Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -88,19 +88,19 @@ __END_DECLS
 
 #if !defined(_CTYPE_H_DISABLE_MACROS_)
 
-#define	isdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _D))
-#define	islower(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _L))
-#define	isspace(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _S))
-#define	ispunct(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _P))
-#define	isupper(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _U))
-#define	isalpha(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _A))
-#define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _X))
-#define	isalnum(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & (_A|_D)))
-#define	isprint(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _R))
-#define	isgraph(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _G))
-#define	iscntrl(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _C))
-#define	tolower(c)	((int)((__libc_tolower_tab_ + 1)[(int)(c)]))
-#define	toupper(c)	((int)((__libc_toupper_tab_ + 1)[(int)(c)]))
+#define	isdigit(c)	((int)((__libc_ctype_ + 1)[(c)] & _D))
+#define	islower(c)	((int)((__libc_ctype_ + 1)[(c)] & _L))
+#define	isspace(c)	((int)((__libc_ctype_ + 1)[(c)] & _S))
+#define	ispunct(c)	((int)((__libc_ctype_ + 1)[(c)] & _P))
+#define	isupper(c)	((int)((__libc_ctype_ + 1)[(c)] & _U))
+#define	isalpha(c)	((int)((__libc_ctype_ + 1)[(c)] & _A))
+#define	isxdigit(c)	((int)((__libc_ctype_ + 1)[(c)] & _X))
+#define	isalnum(c)	((int)((__libc_ctype_ + 1)[(c)] & (_A|_D)))
+#define	isprint(c)	((int)((__libc_ctype_ + 1)[(c)] & _R))
+#define	isgraph(c)	((int)((__libc_ctype_ + 1)[(c)] & _G))
+#define	iscntrl(c)	((int)((__libc_ctype_ + 1)[(c)] & _C))
+#define	tolower(c)	((int)((__libc_tolower_tab_ + 1)[(c)]))
+#define	toupper(c)	((int)((__libc_toupper_tab_ + 1)[(c)]))
 
 #if defined(__XSI_VISIBLE)
 #define	isascii(c)	((unsigned)(c) <= 0177)
@@ -111,7 +111,7 @@ __END_DECLS
 
 #if __ISO_C_VISIBLE >= 1999 || __POSIX_VISIBLE >= 200112L || \
     __XSI_VISIBLE >= 600
-#define isblank(c)	((int)((__libc_ctype_ + 1)[(int)(c)] & _B))
+#define isblank(c)	((int)((__libc_ctype_ + 1)[(c)] & _B))
 #endif
 
 #ifdef _CTYPE_PRIVATE
