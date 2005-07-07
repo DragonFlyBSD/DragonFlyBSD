@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.8 2005/03/28 14:42:44 joerg Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.9 2005/07/07 15:15:24 joerg Exp $
  */
 
 #include "use_vt.h"
@@ -32,7 +32,6 @@
 #include "use_el.h"
 #include "use_le.h"
 #include "use_rdp.h"
-#include "use_wl.h"
 #include "use_pcm.h"
 #include "use_mcd.h"
 #include "use_scd.h"
@@ -61,7 +60,6 @@ extern struct isa_driver  cxdriver;
 extern struct isa_driver  eldriver;
 extern struct isa_driver  ledriver;
 extern struct isa_driver rdpdriver;
-extern struct isa_driver  wldriver;
 extern struct isa_driver mcddriver;
 extern struct isa_driver scddriver;
 extern struct isa_driver  wtdriver;
@@ -158,9 +156,6 @@ static struct old_isa_driver old_drivers[] = {
 #endif
 #if NEL > 0
 	{ INTR_TYPE_NET, &eldriver },
-#endif
-#if NWL > 0
-	{ INTR_TYPE_NET, &wldriver },
 #endif
 
 /* MISC */
