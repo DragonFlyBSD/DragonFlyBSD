@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_CTX_get_verify_mode 3"
-.TH SSL_CTX_get_verify_mode 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_CTX_get_verify_mode 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_CTX_get_verify_mode, SSL_get_verify_mode, SSL_CTX_get_verify_depth, SSL_get_verify_depth, SSL_get_verify_callback, SSL_CTX_get_verify_callback \- get currently set verification parameters
 .SH "SYNOPSIS"
@@ -139,12 +139,12 @@ SSL_CTX_get_verify_mode, SSL_get_verify_mode, SSL_CTX_get_verify_depth, SSL_get_
 .Ve
 .PP
 .Vb 6
-\& int SSL_CTX_get_verify_mode(SSL_CTX *ctx);
-\& int SSL_get_verify_mode(SSL *ssl);
-\& int SSL_CTX_get_verify_depth(SSL_CTX *ctx);
-\& int SSL_get_verify_depth(SSL *ssl);
-\& int (*SSL_CTX_get_verify_callback(SSL_CTX *ctx))(int, X509_STORE_CTX *);
-\& int (*SSL_get_verify_callback(SSL *ssl))(int, X509_STORE_CTX *);
+\& int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
+\& int SSL_get_verify_mode(const SSL *ssl);
+\& int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);
+\& int SSL_get_verify_depth(const SSL *ssl);
+\& int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(int, X509_STORE_CTX *);
+\& int (*SSL_get_verify_callback(const SSL *ssl))(int, X509_STORE_CTX *);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"

@@ -1,9 +1,9 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.7 2004/12/18 20:53:19 asmodai Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.8 2005/07/07 12:18:28 corecode Exp $
 
-OSSLVERSION=	0.9.7e
-LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-${OSSLVERSION}
-LCRYPTO_DOC=	${.CURDIR}/../../../crypto/openssl-${OSSLVERSION}/doc
+OSSLVERSION=	0.9.8
+LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
+LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 
 CFLAGS+=	-DTERMIOS -DANSI_SOURCE
 CFLAGS+=	-I${LCRYPTO_SRC} -I${LCRYPTO_SRC}/crypto \
@@ -17,8 +17,6 @@ _idea_h=	idea/idea.h
 
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+= -DL_ENDIAN
-.elif ${MACHINE_ARCH} == "alpha"
-# no ENDIAN stuff defined for alpha (64-bit)
 .endif
 
 HDRS+=	\
@@ -43,12 +41,10 @@ HDRS+=	\
 	dsa/dsa.h \
 	dso/dso.h \
 	ec/ec.h \
-	engine/eng_int.h engine/engine.h engine/hw_4758_cca_err.h \
-	engine/hw_aep_err.h engine/hw_atalla_err.h engine/hw_cswift_err.h \
-	engine/hw_ncipher_err.h engine/hw_nuron_err.h engine/hw_sureware_err.h \
-	engine/hw_ubsec_err.h \
+	ecdh/ecdh.h \
+	ecdsa/ecdsa.h \
+	engine/eng_int.h engine/engine.h \
 	err/err.h \
-	../fips/fips.h ../fips/rand/fips_rand.h \
 	hmac/hmac.h \
 	${_idea_h} \
 	krb5/krb5_asn.h \
@@ -61,11 +57,13 @@ HDRS+=	\
 	objects/objects.h objects/obj_mac.h \
 	pem/pem.h pem/pem2.h \
 	pkcs12/pkcs12.h pkcs7/pkcs7.h \
+	pqueue/pqueue.h pqueue/pq_compat.h \
 	rand/rand.h \
 	rc2/rc2.h rc4/rc4.h rc5/rc5.h \
 	ripemd/ripemd.h \
 	rsa/rsa.h \
 	stack/stack.h stack/safestack.h \
+	store/store.h \
 	sha/sha.h \
 	txt_db/txt_db.h \
 	ui/ui.h ui/ui_compat.h ui/ui_locl.h \
@@ -110,11 +108,9 @@ MANDIR=	${SHAREDIR}/openssl/man/man
 
 .if defined(LIB)
 _docs=	${LIB}
-_skip=	des_modes
 _sec=	3
 .else
 _docs=	apps
-_skip=	config
 _sec=	1
 .endif
 
@@ -131,21 +127,15 @@ man-update:
 
 man-makefile-update:
 	rm -f ${.CURDIR}/Makefile.man
-	echo '# $$DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.7 2004/12/18 20:53:19 asmodai Exp $$' >> ${.CURDIR}/Makefile.man
+	echo '# $$''DragonFly$$' >> ${.CURDIR}/Makefile.man
 	echo '# DO NOT EDIT: generated from man-makefile-update target' >> \
 	    ${.CURDIR}/Makefile.man
 	for i in ${LCRYPTO_DOC}/${_docs}/*.pod; do \
 		fn=`basename $$i .pod`; \
-		if [ "$$fn" != "${_skip}" ]; then \
-		${ECHO} "MAN+= $$fn.${_sec}" >> ${.CURDIR}/Makefile.man; \
-		fi; \
-	done
-	for i in ${LCRYPTO_DOC}/${_docs}/*.pod; do \
-		fn=`basename $$i .pod`; \
-		if [ "$$fn" != "${_skip}" ]; then \
+		sec=`perl ${LCRYPTO_SRC}/util/extract-section.pl < $$i`; \
+		sec=$${sec:-${_sec}}; \
+		${ECHO} "MAN+= $$fn.$$sec" >> ${.CURDIR}/Makefile.man; \
 		perl ${LCRYPTO_SRC}/util/extract-names.pl < $$i | \
-		  awk "/^$$fn\$$/ { next; } \
-		  { print \"MLINKS+= $$fn.${_sec} \" \$$1 \".${_sec}\" }" >> \
-		  ${.CURDIR}/Makefile.man; \
-		fi; \
+		  sed -Ee "/^$$fn\$$/d;s/^(.*)/MLINKS+= $$fn.$$sec \1.$$sec/" >> \
+		    ${.CURDIR}/Makefile.man; \
 	done

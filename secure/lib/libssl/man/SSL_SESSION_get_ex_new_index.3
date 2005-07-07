@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_SESSION_get_ex_new_index 3"
-.TH SSL_SESSION_get_ex_new_index 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_SESSION_get_ex_new_index 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_SESSION_get_ex_new_index, SSL_SESSION_set_ex_data, SSL_SESSION_get_ex_data \- internal application specific data functions
 .SH "SYNOPSIS"
@@ -150,7 +150,7 @@ SSL_SESSION_get_ex_new_index, SSL_SESSION_set_ex_data, SSL_SESSION_get_ex_data \
 .Ve
 .PP
 .Vb 1
-\& void *SSL_SESSION_get_ex_data(SSL_SESSION *session, int idx);
+\& void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx);
 .Ve
 .PP
 .Vb 6

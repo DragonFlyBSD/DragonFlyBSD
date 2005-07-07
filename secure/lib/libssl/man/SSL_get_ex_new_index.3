@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_get_ex_new_index 3"
-.TH SSL_get_ex_new_index 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_get_ex_new_index 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_get_ex_new_index, SSL_set_ex_data, SSL_get_ex_data \- internal application specific data functions
 .SH "SYNOPSIS"
@@ -150,7 +150,7 @@ SSL_get_ex_new_index, SSL_set_ex_data, SSL_get_ex_data \- internal application s
 .Ve
 .PP
 .Vb 1
-\& void *SSL_get_ex_data(SSL *ssl, int idx);
+\& void *SSL_get_ex_data(const SSL *ssl, int idx);
 .Ve
 .PP
 .Vb 6

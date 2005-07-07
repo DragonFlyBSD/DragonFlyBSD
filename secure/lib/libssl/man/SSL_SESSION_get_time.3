@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_SESSION_get_time 3"
-.TH SSL_SESSION_get_time 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_SESSION_get_time 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_SESSION_get_time, SSL_SESSION_set_time, SSL_SESSION_get_timeout, SSL_SESSION_get_timeout \- retrieve and manipulate session time and timeout settings
 .SH "SYNOPSIS"
@@ -139,16 +139,16 @@ SSL_SESSION_get_time, SSL_SESSION_set_time, SSL_SESSION_get_timeout, SSL_SESSION
 .Ve
 .PP
 .Vb 4
-\& long SSL_SESSION_get_time(SSL_SESSION *s);
+\& long SSL_SESSION_get_time(const SSL_SESSION *s);
 \& long SSL_SESSION_set_time(SSL_SESSION *s, long tm);
-\& long SSL_SESSION_get_timeout(SSL_SESSION *s);
+\& long SSL_SESSION_get_timeout(const SSL_SESSION *s);
 \& long SSL_SESSION_set_timeout(SSL_SESSION *s, long tm);
 .Ve
 .PP
 .Vb 4
-\& long SSL_get_time(SSL_SESSION *s);
+\& long SSL_get_time(const SSL_SESSION *s);
 \& long SSL_set_time(SSL_SESSION *s, long tm);
-\& long SSL_get_timeout(SSL_SESSION *s);
+\& long SSL_get_timeout(const SSL_SESSION *s);
 \& long SSL_set_timeout(SSL_SESSION *s, long tm);
 .Ve
 .SH "DESCRIPTION"

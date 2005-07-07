@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_get_fd 3"
-.TH SSL_get_fd 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_get_fd 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_get_fd \- get file descriptor linked to an SSL object
 .SH "SYNOPSIS"
@@ -139,9 +139,9 @@ SSL_get_fd \- get file descriptor linked to an SSL object
 .Ve
 .PP
 .Vb 3
-\& int SSL_get_fd(SSL *ssl);
-\& int SSL_get_rfd(SSL *ssl);
-\& int SSL_get_wfd(SSL *ssl);
+\& int SSL_get_fd(const SSL *ssl);
+\& int SSL_get_rfd(const SSL *ssl);
+\& int SSL_get_wfd(const SSL *ssl);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"

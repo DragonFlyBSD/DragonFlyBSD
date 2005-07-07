@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_CTX_set_info_callback 3"
-.TH SSL_CTX_set_info_callback 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_CTX_set_info_callback 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_CTX_set_info_callback, SSL_CTX_get_info_callback, SSL_set_info_callback, SSL_get_info_callback \- handle information callback for SSL connections
 .SH "SYNOPSIS"
@@ -140,12 +140,12 @@ SSL_CTX_set_info_callback, SSL_CTX_get_info_callback, SSL_set_info_callback, SSL
 .PP
 .Vb 2
 \& void SSL_CTX_set_info_callback(SSL_CTX *ctx, void (*callback)());
-\& void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))();
+\& void (*SSL_CTX_get_info_callback(const SSL_CTX *ctx))();
 .Ve
 .PP
 .Vb 2
 \& void SSL_set_info_callback(SSL *ssl, void (*callback)());
-\& void (*SSL_get_info_callback(SSL *ssl))();
+\& void (*SSL_get_info_callback(const SSL *ssl))();
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"

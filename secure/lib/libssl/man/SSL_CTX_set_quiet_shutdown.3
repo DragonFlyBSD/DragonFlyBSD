@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_CTX_set_quiet_shutdown 3"
-.TH SSL_CTX_set_quiet_shutdown 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_CTX_set_quiet_shutdown 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_CTX_set_quiet_shutdown, SSL_CTX_get_quiet_shutdown, SSL_set_quiet_shutdown, SSL_get_quiet_shutdown \- manipulate shutdown behaviour
 .SH "SYNOPSIS"
@@ -140,12 +140,12 @@ SSL_CTX_set_quiet_shutdown, SSL_CTX_get_quiet_shutdown, SSL_set_quiet_shutdown, 
 .PP
 .Vb 2
 \& void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
-\& int SSL_CTX_get_quiet_shutdown(SSL_CTX *ctx);
+\& int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
 .Ve
 .PP
 .Vb 2
 \& void SSL_set_quiet_shutdown(SSL *ssl, int mode);
-\& int SSL_get_quiet_shutdown(SSL *ssl);
+\& int SSL_get_quiet_shutdown(const SSL *ssl);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"

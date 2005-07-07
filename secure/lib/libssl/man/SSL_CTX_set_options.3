@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_CTX_set_options 3"
-.TH SSL_CTX_set_options 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_CTX_set_options 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_CTX_set_options, SSL_set_options, SSL_CTX_get_options, SSL_get_options \- manipulate SSL engine options
 .SH "SYNOPSIS"
@@ -274,7 +274,7 @@ When choosing a cipher, use the server's preferences instead of the client
 preferences. When not set, the \s-1SSL\s0 server will always follow the clients
 preferences. When set, the SSLv3/TLSv1 server will choose following its
 own preferences. Because of the different protocol, for SSLv2 the server
-will send his list of preferences to the client and the client chooses.
+will send its list of preferences to the client and the client chooses.
 .IP "\s-1SSL_OP_PKCS1_CHECK_1\s0" 4
 .IX Item "SSL_OP_PKCS1_CHECK_1"
 \&...

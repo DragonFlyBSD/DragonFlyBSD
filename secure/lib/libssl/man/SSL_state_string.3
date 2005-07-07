@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SSL_state_string 3"
-.TH SSL_state_string 3 "2004-12-22" "0.9.7e" "OpenSSL"
+.TH SSL_state_string 3 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 SSL_state_string, SSL_state_string_long \- get textual description of state of an SSL object
 .SH "SYNOPSIS"
@@ -139,8 +139,8 @@ SSL_state_string, SSL_state_string_long \- get textual description of state of a
 .Ve
 .PP
 .Vb 2
-\& const char *SSL_state_string(SSL *ssl);
-\& const char *SSL_state_string_long(SSL *ssl);
+\& const char *SSL_state_string(const SSL *ssl);
+\& const char *SSL_state_string_long(const SSL *ssl);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"

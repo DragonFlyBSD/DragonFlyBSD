@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ENC 1"
-.TH ENC 1 "2004-12-18" "0.9.7e" "OpenSSL"
+.TH ENC 1 "2005-07-06" "0.9.8" "OpenSSL"
 .SH "NAME"
 enc \- symmetric cipher routines
 .SH "SYNOPSIS"
@@ -330,9 +330,9 @@ Blowfish and \s-1RC5\s0 algorithms use a 128 bit key.
 .Vb 7
 \& rc2-cbc            128 bit RC2 in CBC mode
 \& rc2                Alias for rc2-cbc
-\& rc2-cfb            128 bit RC2 in CBC mode
-\& rc2-ecb            128 bit RC2 in CBC mode
-\& rc2-ofb            128 bit RC2 in CBC mode
+\& rc2-cfb            128 bit RC2 in CFB mode
+\& rc2-ecb            128 bit RC2 in ECB mode
+\& rc2-ofb            128 bit RC2 in OFB mode
 \& rc2-64-cbc         64 bit RC2 in CBC mode
 \& rc2-40-cbc         40 bit RC2 in CBC mode
 .Ve
@@ -346,9 +346,9 @@ Blowfish and \s-1RC5\s0 algorithms use a 128 bit key.
 .Vb 5
 \& rc5-cbc            RC5 cipher in CBC mode
 \& rc5                Alias for rc5-cbc
-\& rc5-cfb            RC5 cipher in CBC mode
-\& rc5-ecb            RC5 cipher in CBC mode
-\& rc5-ofb            RC5 cipher in CBC mode
+\& rc5-cfb            RC5 cipher in CFB mode
+\& rc5-ecb            RC5 cipher in ECB mode
+\& rc5-ofb            RC5 cipher in OFB mode
 .Ve
 .SH "EXAMPLES"
 .IX Header "EXAMPLES"

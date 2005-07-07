@@ -1,21 +1,47 @@
-/* $FreeBSD: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.1.2.4 2003/02/14 22:38:14 nectar Exp $ */
-/* $DragonFly: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.2 2003/06/17 04:27:48 dillon Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/opensslconf-i386.h,v 1.3 2005/07/07 12:18:28 corecode Exp $ */
 /* opensslconf.h */
-
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */
 
 /* OpenSSL was configured with the following options: */
+#ifndef OPENSSL_DOING_MAKEDEPEND
+
+#ifndef OPENSSL_NO_GMP
+# define OPENSSL_NO_GMP
+#endif
+#ifndef OPENSSL_NO_KRB5
+# define OPENSSL_NO_KRB5
+#endif
+#ifndef OPENSSL_NO_MDC2
+# define OPENSSL_NO_MDC2
+#endif
+#ifndef OPENSSL_NO_RC5
+# define OPENSSL_NO_RC5
+#endif
+
+#endif /* OPENSSL_DOING_MAKEDEPEND */
+#ifndef OPENSSL_THREADS
+# define OPENSSL_THREADS
+#endif
+#ifndef OPENSSL_NO_STATIC_ENGINE
+# define OPENSSL_NO_STATIC_ENGINE
+#endif
+
+/* The OPENSSL_NO_* macros are also defined as NO_* if the application
+   asks for it.  This is a transient feature that is provided for those
+   who haven't had the time to do the appropriate changes in their
+   applications.  */
 #ifdef OPENSSL_ALGORITHM_DEFINES
-   /* no ciphers excluded */
-#endif
-#ifdef OPENSSL_THREAD_DEFINES
-# ifndef THREADS
-#  define THREADS
+# if defined(OPENSSL_NO_GMP) && !defined(NO_GMP)
+#  define NO_GMP
 # endif
-#endif
-#ifdef OPENSSL_OTHER_DEFINES
-# ifndef NO_ASM
-#  define NO_ASM
+# if defined(OPENSSL_NO_KRB5) && !defined(NO_KRB5)
+#  define NO_KRB5
+# endif
+# if defined(OPENSSL_NO_MDC2) && !defined(NO_MDC2)
+#  define NO_MDC2
+# endif
+# if defined(OPENSSL_NO_RC5) && !defined(NO_RC5)
+#  define NO_RC5
 # endif
 #endif
 
@@ -26,11 +52,15 @@
 
 #if !(defined(VMS) || defined(__VMS)) /* VMS uses logical names instead */
 #if defined(HEADER_CRYPTLIB_H) && !defined(OPENSSLDIR)
+#define ENGINESDIR "/usr/lib/ssl/engines"
 #define OPENSSLDIR "/etc/ssl"
 #endif
 #endif
 
+#undef OPENSSL_UNISTD
 #define OPENSSL_UNISTD <unistd.h>
+
+#undef OPENSSL_EXPORT_VAR_AS_FUNCTION
 
 #if defined(HEADER_IDEA_H) && !defined(IDEA_INT)
 #define IDEA_INT unsigned int
@@ -65,7 +95,7 @@
 #endif
 #endif
 
-#if (defined(HEADER_DES_H) || defined(HEADER_NEW_DES_H)) && !defined(DES_LONG)
+#if (defined(HEADER_NEW_DES_H) || defined(HEADER_DES_H)) && !defined(DES_LONG)
 /* If this is set to 'unsigned int' on a DEC Alpha, this gives about a
  * %20 speed up (longs are 8 bytes, int's are 4). */
 #ifndef DES_LONG
@@ -165,7 +195,7 @@ YOU SHOULD NOT HAVE BOTH DES_RISC1 AND DES_RISC2 DEFINED!!!!!
 #  define DES_PTR
 #  define DES_RISC2
 #  define DES_UNROLL
-#elif defined( i386 )		/* x86 boxes, should be gcc */
+#elif defined(i386) || defined(__i386__)	/* x86 boxes, should be gcc */
 #  define DES_PTR
 #  define DES_RISC1
 #  define DES_UNROLL
@@ -174,5 +204,3 @@ YOU SHOULD NOT HAVE BOTH DES_RISC1 AND DES_RISC2 DEFINED!!!!!
 
 #endif /* DES_DEFAULT_OPTIONS */
 #endif /* HEADER_DES_LOCL_H */
-/* The Kerberos 5 support is MIT-specific. */
-#define OPENSSL_NO_KRB5

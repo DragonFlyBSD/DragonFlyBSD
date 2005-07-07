@@ -1,16 +1,27 @@
-# $DragonFly: src/secure/usr.bin/openssl/Makefile.man,v 1.4 2004/12/18 21:34:12 asmodai Exp $
+# $DragonFly: src/secure/usr.bin/openssl/Makefile.man,v 1.5 2005/07/07 12:18:30 corecode Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= CA.pl.1
 MAN+= asn1parse.1
 MAN+= ca.1
 MAN+= ciphers.1
+MAN+= config.5
 MAN+= crl.1
 MAN+= crl2pkcs7.1
 MAN+= dgst.1
+MLINKS+= dgst.1 md5.1
+MLINKS+= dgst.1 md4.1
+MLINKS+= dgst.1 md2.1
+MLINKS+= dgst.1 sha1.1
+MLINKS+= dgst.1 sha.1
+MLINKS+= dgst.1 mdc2.1
+MLINKS+= dgst.1 ripemd160.1
 MAN+= dhparam.1
 MAN+= dsa.1
 MAN+= dsaparam.1
+MAN+= ec.1
+MAN+= ecparam.1
 MAN+= enc.1
+MAN+= errstr.1
 MAN+= gendsa.1
 MAN+= genrsa.1
 MAN+= nseq.1
@@ -34,10 +45,4 @@ MAN+= spkac.1
 MAN+= verify.1
 MAN+= version.1
 MAN+= x509.1
-MLINKS+= dgst.1 md5.1
-MLINKS+= dgst.1 md4.1
-MLINKS+= dgst.1 md2.1
-MLINKS+= dgst.1 sha1.1
-MLINKS+= dgst.1 sha.1
-MLINKS+= dgst.1 mdc2.1
-MLINKS+= dgst.1 ripemd160.1
+MAN+= x509v3_config.5
