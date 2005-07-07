@@ -33,7 +33,7 @@
  *
  *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
  *	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $
- *	$DragonFly: src/include/ctype.h,v 1.14 2005/07/07 07:17:42 dillon Exp $
+ *	$DragonFly: src/include/ctype.h,v 1.15 2005/07/07 07:20:11 dillon Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -109,7 +109,7 @@ __libc_ctype_index(__uint16_t mask, int c)
 }
 
 static __inline int
-__libc_ctype_convert(__int16_t *array, int c)
+__libc_ctype_convert(const __int16_t *array, int c)
 {
 	if (c < -1 || c >= _CTYPE_NUM_CHARS)
 		return(c);	/* XXX maybe assert instead? */
