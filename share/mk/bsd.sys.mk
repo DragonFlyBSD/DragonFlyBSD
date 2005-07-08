@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.6 2005/03/09 16:12:29 corecode Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.7 2005/07/08 13:05:53 joerg Exp $
 #
 # This file contains common settings used for building FreeBSD
 # sources.
@@ -51,6 +51,10 @@ CFLAGS		+=	-Werror
 .   endif
 .  endif
 . endif
+.endif
+
+.if defined(WARNS_NO_UNUSED_PARAMETERS)
+CFLAGS+=	-Wno-unused-parameters
 .endif
 
 # Allow user-specified additional warning flags
