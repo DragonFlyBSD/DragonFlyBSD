@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.37 2005/07/08 08:09:40 corecode Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.38 2005/07/08 15:38:54 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -20,6 +20,8 @@
 	gcc40
 	..
 	i18n
+	..
+	security
 	..
         aout
         ..
