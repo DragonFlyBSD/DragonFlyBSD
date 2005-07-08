@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.35 2005/07/04 21:05:27 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.36 2005/07/08 03:20:24 y0netan1 Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -1082,6 +1082,10 @@
                 ..
                 cat3
                 ..
+                cat5
+                ..
+                cat7
+                ..
                 en.ISO8859-1    uname=root
                     cat1
                     ..
@@ -1092,6 +1096,10 @@
                 man1
                 ..
                 man3
+                ..
+                man5
+                ..
+                man7
                 ..
             ..
         ..
