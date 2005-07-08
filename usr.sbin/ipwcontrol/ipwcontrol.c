@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $Id: ipwcontrol.c,v 1.5.2.1 2005/01/13 20:01:05 damien Exp $
- * $DragonFly: src/usr.sbin/ipwcontrol/Attic/ipwcontrol.c,v 1.1 2005/03/06 18:25:14 dillon Exp $
+ * $DragonFly: src/usr.sbin/ipwcontrol/Attic/ipwcontrol.c,v 1.2 2005/07/08 13:17:33 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -55,8 +55,8 @@ static void usage(void);
 static int do_req(const char *, unsigned long, void *);
 static void load_firmware(const char *, const char *);
 static void kill_firmware(const char *);
-static void get_radio_state(void);
-static void get_statistics(void);
+static void get_radio_state(const char *);
+static void get_statistics(const char *);
 
 int
 main(int argc, char **argv)
@@ -91,7 +91,7 @@ main(int argc, char **argv)
 			return EX_OK;
 
 		case 'r':
-			get_radio_state();
+			get_radio_state(iface);
 			return EX_OK;
 
 		default:
@@ -99,7 +99,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	get_statistics();
+	get_statistics(iface);
 
 	return EX_OK;
 }
@@ -169,12 +169,17 @@ kill_firmware(const char *iface)
 }
 
 static void
-get_radio_state()
+get_radio_state(const char *iface)
 {
 	int radio, len;
+	char sysctl_name[24];
+
+	len = snprintf(sysctl_name, sizeof(sysctl_name), "hw.%s.radio", iface);
+	if (len == -1 || len > (int)sizeof(sysctl_name))
+		err(EX_OSERR, "Could not get radio transmitter state");
 
 	len = sizeof radio;
-	if (sysctlbyname("dev.ipw.0.radio", &radio, &len, NULL, 0) == -1)
+	if (sysctlbyname(sysctl_name, &radio, &len, NULL, 0) == -1)
 		err(EX_OSERR, "Could not get radio transmitter state");
 
 	(void)printf("Radio is %s\n", radio ? "ON" : "OFF");
@@ -369,14 +374,19 @@ static const struct statistic tbl[] = {
 };
 
 static void
-get_statistics()
+get_statistics(const char *iface)
 {
 	static u_int32_t stats[256];
 	const struct statistic *st;
 	int len;
+	char sysctl_name[24];
+
+	len = snprintf(sysctl_name, sizeof(sysctl_name), "hw.%s.stats", iface);
+	if (len == -1 || len > (int)sizeof(sysctl_name))
+		err(EX_OSERR, "Can't retrieve statistics");
 
 	len = sizeof stats;
-	if (sysctlbyname("dev.ipw.0.stats", stats, &len, NULL, 0) == -1)
+	if (sysctlbyname(sysctl_name, stats, &len, NULL, 0) == -1)
 		err(EX_OSERR, "Can't retrieve statistics");
 
 	for (st = tbl; st->index != 0; st++) {
