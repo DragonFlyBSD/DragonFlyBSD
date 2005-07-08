@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.27 2005/06/03 18:19:51 swildner Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.28 2005/07/08 18:19:39 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -521,8 +521,10 @@ bpfwrite(dev_t dev, struct uio *uio, int ioflag)
 	if (error)
 		return(error);
 
-	if (datlen > ifp->if_mtu)
+	if (datlen > ifp->if_mtu) {
+		m_freem(m);
 		return(EMSGSIZE);
+	}
 
 	if (d->bd_hdrcmplt)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
