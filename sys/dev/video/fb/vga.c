@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.12 2005/06/10 23:25:06 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.13 2005/07/09 22:39:58 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -38,7 +38,6 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
-#include <sys/proc.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/fbio.h>
@@ -454,10 +453,6 @@ static int set_line_length(video_adapter_t *adp, int pixel);
 static int set_display_start(video_adapter_t *adp, int x, int y);
 
 #ifndef VGA_NO_MODE_CHANGE
-static void filll_io(int val, vm_offset_t d, size_t size);
-#endif
-
-#ifndef VGA_NO_MODE_CHANGE
 #ifdef VGA_WIDTH90
 static void set_width90(adp_state_t *params);
 #endif
@@ -470,6 +465,7 @@ static void set_normal_mode(video_adapter_t *adp, u_char *buf);
 #endif
 
 #ifndef VGA_NO_MODE_CHANGE
+static void filll_io(int val, vm_offset_t d, size_t size);
 static void planar_fill(video_adapter_t *adp, int val);
 static void packed_fill(video_adapter_t *adp, int val);
 static void direct_fill(video_adapter_t *adp, int val);
@@ -1337,7 +1333,7 @@ filll_io(int val, vm_offset_t d, size_t size)
 	d += sizeof(u_int32_t);
     }
 }
-#endif /* VGA_NO_MODE_CHANGE */
+#endif /* !VGA_NO_MODE_CHANGE */
 
 /* entry points */
 
@@ -1542,7 +1538,7 @@ vga_set_mode(video_adapter_t *adp, int mode)
 #ifdef VGA_WIDTH90
     case M_VGA_C90x60: case M_VGA_M90x60:
 	set_width90(&params);
-	/* FALL THROUGH */
+	/* FALLTHROUGH */
 #endif
     case M_VGA_C80x60: case M_VGA_M80x60:
 	params.regs[2]  = 0x08;
@@ -1552,7 +1548,7 @@ vga_set_mode(video_adapter_t *adp, int mode)
 #ifdef VGA_WIDTH90
     case M_VGA_C90x30: case M_VGA_M90x30:
 	set_width90(&params);
-	/* FALL THROUGH */
+	/* FALLTHROUGH */
 #endif
     case M_VGA_C80x30: case M_VGA_M80x30:
 	params.regs[19] = 0x4f;
@@ -1569,7 +1565,7 @@ special_480l:
 #ifdef VGA_WIDTH90
     case M_VGA_C90x43: case M_VGA_M90x43:
 	set_width90(&params);
-	/* FALL THROUGH */
+	/* FALLTHROUGH */
 #endif
     case M_ENH_C80x43: case M_ENH_B80x43:
 	params.regs[28] = 87;
@@ -1578,7 +1574,7 @@ special_480l:
 #ifdef VGA_WIDTH90
     case M_VGA_C90x50: case M_VGA_M90x50:
 	set_width90(&params);
-	/* FALL THROUGH */
+	/* FALLTHROUGH */
 #endif
     case M_VGA_C80x50: case M_VGA_M80x50:
 special_80x50:
@@ -1589,7 +1585,7 @@ special_80x50:
 #ifdef VGA_WIDTH90
     case M_VGA_C90x25: case M_VGA_M90x25:
 	set_width90(&params);
-	/* FALL THROUGH */
+	/* FALLTHROUGH */
 #endif
     case M_VGA_C40x25: case M_VGA_C80x25:
     case M_VGA_M80x25:
@@ -1609,7 +1605,7 @@ setup_mode:
 	params.regs[5-1+0x04] |= 0x04;
 	/* turn off doubleword mode */
 	params.regs[10+0x14] &= 0xbf;
-	/* turn off word adressing */
+	/* turn off word addressing */
 	params.regs[10+0x17] |= 0x40;
 	/* set logical screen width */
 	params.regs[10+0x13] = 80;
@@ -2830,14 +2826,17 @@ get_palette(video_adapter_t *adp, int base, int count,
     u_char *g;
     u_char *b;
 
-    if (base < 0 || base >= 256 || count < 0 || (u_int)(base + count) > 256)
+    if (count < 0 || base < 0 || count > 256 || base > 256 ||
+	base + count > 256)
 	return EINVAL;
 
     r = malloc(count*3, M_DEVBUF, M_WAITOK);
     g = r + count;
     b = g + count;
-    if (vga_save_palette2(adp, base, count, r, g, b))
+    if (vga_save_palette2(adp, base, count, r, g, b)) {
+	free(r, M_DEVBUF);
 	return ENODEV;
+    }
     copyout(r, red, count);
     copyout(g, green, count);
     copyout(b, blue, count);
@@ -2859,16 +2858,20 @@ set_palette(video_adapter_t *adp, int base, int count,
     u_char *b;
     int err;
 
-    if (base < 0 || base >= 256 || count < 0 || (u_int)(base + count) > 256)
+    if (count < 0 || base < 0 || count > 256 || base > 256 ||
+	base + count > 256)
 	return EINVAL;
 
     r = malloc(count*3, M_DEVBUF, M_WAITOK);
     g = r + count;
     b = g + count;
-    copyin(red, r, count);
-    copyin(green, g, count);
-    copyin(blue, b, count);
-    err = vga_load_palette2(adp, base, count, r, g, b);
+    err = copyin(red, r, count);
+    if (!err)
+	err = copyin(green, g, count);
+    if (!err)
+	err = copyin(blue, b, count);
+    if (!err)
+	err = vga_load_palette2(adp, base, count, r, g, b);
     free(r, M_DEVBUF);
 
     return (err ? ENODEV : 0);
