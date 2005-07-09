@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.95 2005/06/25 20:03:33 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.96 2005/07/09 21:58:10 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -951,7 +951,7 @@ netgraph/mppc/ng_mppc.c			optional netgraph_mppc_compression
 # The next two files (plus the header file net/mppc.h) are proprietary and
 # must be obtained elsewhere in order to enable NETGRAPH_MPPC_COMPRESSION
 netgraph/mppc/mppcc.c			optional netgraph_mppc_compression
-netgarph/mppc/mppcd.c			optional netgraph_mppc_compression
+netgraph/mppc/mppcd.c			optional netgraph_mppc_compression
 netgraph/mppc/ng_mppc.c			optional netgraph_mppc_encryption
 crypto/rc4/rc4.c			optional awi
 crypto/rc4/rc4.c			optional netgraph_mppc_encryption
