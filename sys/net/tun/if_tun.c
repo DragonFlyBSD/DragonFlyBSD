@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.22 2005/06/14 20:41:24 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.23 2005/07/10 15:17:00 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -384,10 +384,18 @@ tunoutput(ifp, m0, dst, rt)
 	}
 
 	error = ifq_handoff(ifp, m0, &pktattr);
-	if (error)
+	if (error) {
 		ifp->if_collisions++;
-	else
+	} else {
 		ifp->if_opackets++;
+		if (tp->tun_flags & TUN_RWAIT) {
+			tp->tun_flags &= ~TUN_RWAIT;
+		wakeup((caddr_t)tp);
+		}
+		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
+			pgsigio(tp->tun_sigio, SIGIO, 0);
+		selwakeup(&tp->tun_rsel);
+	}
 	return (error);
 }
 
