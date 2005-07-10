@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.8 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.9 2005/07/10 13:06:18 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/bus.h>
 #include <sys/fbio.h>
@@ -62,10 +63,14 @@ static devclass_t	isavga_devclass;
 
 static int		isavga_probe(device_t dev);
 static int		isavga_attach(device_t dev);
+static int		isavga_suspend(device_t dev);
+static int		isavga_resume(device_t dev);
 
 static device_method_t isavga_methods[] = {
 	DEVMETHOD(device_probe,		isavga_probe),
 	DEVMETHOD(device_attach,	isavga_attach),
+	DEVMETHOD(device_suspend,	isavga_suspend),
+	DEVMETHOD(device_resume,	isavga_resume),
 
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	{ 0, 0 }
@@ -180,6 +185,58 @@ isavga_attach(device_t dev)
 	bus_generic_attach(dev);
 #endif
 
+	return 0;
+}
+
+static int
+isavga_suspend(device_t dev)
+{
+	vga_softc_t *sc;
+	int err, nbytes;
+
+	sc = device_get_softc(dev);
+	err = bus_generic_suspend(dev);
+	if (err)
+		return (err);
+
+	/* Save the video state across the suspend. */
+	if (sc->state_buf != NULL) {
+		free(sc->state_buf, M_TEMP);
+		sc->state_buf = NULL;
+	}
+	nbytes = (*vidsw[sc->adp->va_index]->save_state)(sc->adp, NULL, 0);
+	if (nbytes <= 0)
+		return (0);
+	sc->state_buf = malloc(nbytes, M_TEMP, M_NOWAIT | M_ZERO);
+	if (sc->state_buf == NULL)
+		return (0);
+	if (bootverbose)
+		device_printf(dev, "saving %d bytes of video state\n", nbytes);
+	if ((*vidsw[sc->adp->va_index]->save_state)(sc->adp, sc->state_buf,
+	    nbytes) != 0) {
+		device_printf(dev, "failed to save state (nbytes=%d)\n",
+		    nbytes);
+		free(sc->state_buf, M_TEMP);
+		sc->state_buf = NULL;
+	}
+	return (0);
+}
+
+static int
+isavga_resume(device_t dev)
+{
+	vga_softc_t *sc;
+
+	sc = device_get_softc(dev);
+	if (sc->state_buf != NULL) {
+		if ((*vidsw[sc->adp->va_index]->load_state)(sc->adp,
+		    sc->state_buf) != 0)
+			device_printf(dev, "failed to reload state\n");
+		free(sc->state_buf, M_TEMP);
+		sc->state_buf = NULL;
+	}
+
+	bus_generic_resume(dev);
 	return 0;
 }
 
