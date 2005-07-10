@@ -1,10 +1,20 @@
-# $DragonFly: src/lib/libz/Makefile.stand,v 1.2 2005/07/06 15:02:06 corecode Exp $
+# $DragonFly: src/lib/libz/Makefile.stand,v 1.3 2005/07/10 09:40:35 corecode Exp $
 
 # decompression functionality from libz for libstand
 
 # relative to lib/libstand
-.PATH:	${.CURDIR}/../../contrib/zlib-1.2.2
-CFLAGS+=-DHAVE_MEMCPY
-ZLIB_PATCHES!= ${.CURDIR}/../../contrib/zlib-1.2.2/patches/*.patch
+ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2.2
+.PATH: ${ZLIBDIR}
+
+CFLAGS+=-DHAVE_MEMCPY -I${ZLIBDIR}
 SRCS+=	adler32.c crc32.c deflate.c infback.c inffast.c inflate.c \
-	inftrees.c zutil.c ${ZLIB_PATCHES}
+	inftrees.c zutil.c
+
+ZLIB_PATCHES!= echo ${.CURDIR}/../libz/patches/*.patch
+.for patch in ${ZLIB_PATCHES}
+.for file in ${patch:R:T}
+CLEANFILES+=	${file}
+${file}: ${ZLIBDIR}/${file} ${patch}
+	patch -o ${.TARGET} -i ${patch} ${ZLIBDIR}/${file}
+.endfor
+.endfor
