@@ -1,6 +1,6 @@
-# $DragonFly: src/secure/Makefile.ssh.common,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+# $DragonFly: src/secure/Makefile.ssh.common,v 1.3 2005/07/11 22:49:45 corecode Exp $
 
-SSHDIR=		${.CURDIR}/../../../crypto/openssh-3.9p1
+SSHDIR=		${.CURDIR}/../../../crypto/openssh-4
 
 CONTRIBDIR=	${SSHDIR}
 

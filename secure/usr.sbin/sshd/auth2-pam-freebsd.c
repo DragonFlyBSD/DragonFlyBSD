@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/openssh/auth2-pam-freebsd.c,v 1.1.2.6 2003/04/07 09:56:46 des Exp $
- * $DragonFly: src/secure/usr.sbin/sshd/Attic/auth2-pam-freebsd.c,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+ * $DragonFly: src/secure/usr.sbin/sshd/Attic/auth2-pam-freebsd.c,v 1.3 2005/07/11 22:49:46 corecode Exp $
  */
 
 #include "includes.h"
@@ -549,6 +549,12 @@ do_pam_session(void)
 	sshpam_session_open = 1;
 }
 
+int
+is_pam_session_open(void)
+{
+	return sshpam_session_open;
+}
+
 void
 do_pam_setcred(int init)
 {
@@ -689,7 +695,7 @@ free_pam_environment(char **env)
  * display.
  */
 static int
-sshpam_passwd_conv(int n, struct pam_message **msg,
+sshpam_passwd_conv(int n, const struct pam_message **msg,
     struct pam_response **resp, void *data)
 {
         struct pam_response *reply;
