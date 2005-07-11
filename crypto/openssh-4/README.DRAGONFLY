@@ -1,0 +1,7 @@
+Original source can be downloaded from OpenBSD at
+ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-4.1p1.tar.gz
+
+MD5 (openssh-4.1p1.tar.gz) = 959c663e709c981f07a3315bfd64f3d0
+SHA1 (openssh-4.1p1.tar.gz) = e85d389da8ad8290f5031b8f9972e2623c674e46
+
+A list of deleted files is in README.DELETED.
