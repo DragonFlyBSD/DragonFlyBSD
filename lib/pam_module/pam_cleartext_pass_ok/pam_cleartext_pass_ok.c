@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/modules/pam_cleartext_pass_ok/pam_cleartext_pass_ok.c,v 1.2 1999/01/20 21:55:24 jdp Exp $
- *	$DragonFly: src/lib/pam_module/pam_cleartext_pass_ok/pam_cleartext_pass_ok.c,v 1.1 2005/07/08 15:42:01 joerg Exp $
+ *	$DragonFly: src/lib/pam_module/pam_cleartext_pass_ok/pam_cleartext_pass_ok.c,v 1.2 2005/07/12 22:55:46 joerg Exp $
  */
 
 #include <stdio.h>
@@ -35,8 +35,8 @@
 #include <security/pam_modules.h>
 
 PAM_EXTERN int
-pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
-    const char **argv)
+pam_sm_authenticate(pam_handle_t *pamh, int flags __unused, int argc __unused,
+    const char **argv __unused)
 {
 	int retval;
 	const void *item;
@@ -61,7 +61,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 }
 
 PAM_EXTERN int
-pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv)
+pam_sm_setcred(pam_handle_t *pamh __unused, int flags __unused,
+    int argc __unused, const char **argv __unused)
 {
 	return PAM_SUCCESS;
 }
