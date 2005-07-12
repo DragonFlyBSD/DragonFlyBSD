@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/pam_module/pam_unix/Makefile,v 1.1 2005/07/08 15:42:01 joerg Exp $
+# $DragonFly: src/lib/pam_module/pam_unix/Makefile,v 1.2 2005/07/12 23:30:24 joerg Exp $
 
 LIB=	pam_unix
 SRCS=	pam_unix.c
@@ -6,7 +6,6 @@ WARNS?=	2
 WARNS_NO_UNUSED_PARAMETERS=
 
 LDADD=	-lcrypt
-DPADD=	${LIBCRYPT}
 
 .include <bsd.lib.mk>
 
