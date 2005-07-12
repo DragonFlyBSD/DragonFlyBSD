@@ -15,7 +15,6 @@ auth-pam.c
 auth-shadow.c
 auth-sia.c
 auth-sia.h
-auth-skey.c
 buildpkg.sh.in
 config.guess
 config.h.in
@@ -71,7 +70,6 @@ envpass.sh
 fixpaths
 fixprogs
 install-sh
-loginrec.c
 logintest.c
 mdoc2man.awk
 mkinstalldirs
