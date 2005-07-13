@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.12 2005/07/13 15:25:32 corecode Exp $
+# $DragonFly: src/Makefile,v 1.13 2005/07/13 15:26:21 corecode Exp $
 #
 # The user-driven targets are:
 #
@@ -197,7 +197,7 @@ iamoncrater:
 #
 # Build compatibility overrides
 #
-.ifdef ${CCVER}
+.ifdef CCVER
 .if ${CCVER} == "gcc2"
 CCVER=	gcc34
 .endif
