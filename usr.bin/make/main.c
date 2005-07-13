@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.136 2005/07/13 20:40:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.137 2005/07/13 20:41:27 okumoto Exp $
  */
 
 /*
@@ -647,7 +647,7 @@ Main_ParseArgLine(CLI *cli, const char line[], int mflags)
  * @note for amd managed mount points we really should use pawd(1).
  */
 static int
-chdir_verify_path(const char path[], char newdir[])
+CheckDir(const char path[], char newdir[])
 {
 	struct stat sb;
 
@@ -675,11 +675,19 @@ chdir_verify_path(const char path[], char newdir[])
 		warn("warning: %s", path);
 		return (0);
 	}
+
+	/*
+	 * Directory in path is accessable, newdir should now contain the
+	 * path to it.
+	 */
 	return (1);
 }
 
+/**
+ * Determine location of the object directory.
+ */
 static void
-determine_objdir(const char machine[], char curdir[], char objdir[])
+FindObjDir(const char machine[], char curdir[], char objdir[])
 {
 	struct stat	sa;
 	char		newdir[MAXPATHLEN];
@@ -711,7 +719,7 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
 	 */
 	if ((env = getenv("MAKEOBJDIRPREFIX")) != NULL) {
 		snprintf(mdpath, MAXPATHLEN, "%s%s", env, curdir);
-		if (chdir_verify_path(mdpath, newdir)) {
+		if (CheckDir(mdpath, newdir)) {
 			strcpy(objdir, newdir);
 			return;
 		}
@@ -720,7 +728,7 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
 	}
 
 	if ((env = getenv("MAKEOBJDIR")) != NULL) {
-		if (chdir_verify_path(env, newdir)) {
+		if (CheckDir(env, newdir)) {
 			strcpy(objdir, newdir);
 			return;
 		}
@@ -729,18 +737,18 @@ determine_objdir(const char machine[], char curdir[], char objdir[])
 	}
 
 	snprintf(mdpath, MAXPATHLEN, "%s.%s", PATH_OBJDIR, machine);
-	if (chdir_verify_path(mdpath, newdir)) {
+	if (CheckDir(mdpath, newdir)) {
 		strcpy(objdir, newdir);
 		return;
 	}
 
-	if (chdir_verify_path(PATH_OBJDIR, newdir)) {
+	if (CheckDir(PATH_OBJDIR, newdir)) {
 		strcpy(objdir, newdir);
 		return;
 	}
 
 	snprintf(mdpath, MAXPATHLEN, "%s%s", PATH_OBJDIRPREFIX, curdir);
-	if (chdir_verify_path(mdpath, newdir)) {
+	if (CheckDir(mdpath, newdir)) {
 		strcpy(objdir, newdir);
 		return;
 	}
@@ -817,15 +825,11 @@ InitVariables(const char progname[])
 }
 
 /**
- * Build targets.
- *
- * We have read the entire graph and need to make
- * a list of targets to create.  If none were given
- * on the command line, we consult the parsing
- * module to find the main target(s) to create.
+ * Build targets given in the command line or if none were given
+ * use the main target determined by the parsing module.
  */
 static int
-build_stuff(CLI *cli)
+BuildStuff(CLI *cli)
 {
 	int	status;
 	Lst	targs = Lst_Initializer(targs);
@@ -932,7 +936,7 @@ main(int argc, char **argv)
 	}
 	MainParseArgs(&cli, argc, argv);
 
-	determine_objdir(Var_Value("MACHINE", VAR_GLOBAL), curdir, objdir);
+	FindObjDir(Var_Value("MACHINE", VAR_GLOBAL), curdir, objdir);
 	Var_SetGlobal(".CURDIR", curdir);
 	Var_SetGlobal(".OBJDIR", objdir);
 
@@ -1031,7 +1035,7 @@ main(int argc, char **argv)
 		Targ_PrintGraph(1);
 
 	if (Lst_IsEmpty(&cli.variables)) {
-		status = build_stuff(&cli);
+		status = BuildStuff(&cli);
 	} else {
 		/* Print the values of variables requested by the user. */
 		Var_Print(&cli.variables, cli.expandVars);
