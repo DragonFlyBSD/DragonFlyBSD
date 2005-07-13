@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.9 2005/07/13 18:16:14 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.10 2005/07/13 18:27:08 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -133,13 +133,16 @@ typedef struct {
 /* Extensions. */
 #define EM_S370		9	/* IBM System/370 */
 #define EM_MIPS_RS4_BE	10	/* MIPS R4000 Big-Endian */ /* Depreciated */
+/*			11-14	reserved */
 #define EM_PARISC	15	/* HPPA */
+/*			16	reserved */
 #define EM_VPP500	17	/* Fujitsu VPP500 */
 #define EM_SPARC32PLUS	18	/* SPARC v8plus */
 #define EM_960		19	/* Intel 80960 */
 #define EM_PPC		20	/* PowerPC 32-bit */
 #define EM_PPC64	21	/* PowerPC 64-bit */
 #define EM_S390		22	/* IBM S390 */
+/*			23-35	reserved */
 #define EM_V800		36	/* NEC V800 series */
 #define EM_FR20		37	/* Fujitsu FR20 */
 #define EM_RH32		38	/* TRW RH-32 */
