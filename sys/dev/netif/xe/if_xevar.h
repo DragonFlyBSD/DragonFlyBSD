@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xevar.h,v 1.1.2.1 2000/06/01 01:23:53 imp Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xevar.h,v 1.4 2005/07/13 17:10:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xevar.h,v 1.5 2005/07/13 17:31:05 joerg Exp $
  */
 #ifndef DEV_XE_IF_XEDEV_H
 #define DEV_XE_IF_XEDEV_H
@@ -40,8 +40,8 @@ struct xe_softc {
   struct callout xe_timer;
   struct ifnet *ifp;
   struct ifmedia *ifm;
-  char *card_type;	/* Card model name */
-  char *vendor;		/* Card manufacturer */
+  const char *card_type;	/* Card model name */
+  const char *vendor;		/* Card manufacturer */
   bus_space_tag_t bst;	/* Bus space tag for card */
   bus_space_handle_t bsh; /* Bus space handle for card */
   void *intrhand;
@@ -81,5 +81,10 @@ struct xe_softc {
 #define CISTPL_TYPE(tpl)	bus_space_read_1(bst, bsh, tpl + 0)
 #define CISTPL_LEN(tpl)		bus_space_read_1(bst, bsh, tpl + 2)
 #define CISTPL_DATA(tpl,pos)	bus_space_read_1(bst, bsh, tpl+ 4 + ((pos)<<1))
+
+int	xe_attach(device_t);
+int	xe_detach(device_t);
+int	xe_activate(device_t);
+void	xe_deactivate(device_t);
 
 #endif /* DEV_XE_IF_XEVAR_H */
