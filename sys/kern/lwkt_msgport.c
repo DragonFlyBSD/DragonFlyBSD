@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.32 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.33 2005/07/13 16:04:00 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -412,6 +412,20 @@ static
 void
 lwkt_putport_remote(lwkt_msg_t msg)
 {
+#ifdef INVARIANTS
+    /*
+     * try to catch a free-after-send issue.
+     */
+    if (msg->ms_target_port == (void *)0xdeadc0de) {
+	int i;
+	for (i = 0; i < 1000000; ++i) {
+		if (msg->ms_target_port != (void *)0xdeadc0de)
+			break;
+		cpu_lfence();
+	}
+	panic("msg %p ms_target_port is bogus: reads %p after %d loops\n", msg, msg->ms_target_port, i);
+    }
+#endif
     _lwkt_putport(msg->ms_target_port, msg, 1);
 }
 
