@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.7 2005/07/13 18:06:21 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.8 2005/07/13 18:13:19 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -50,7 +50,7 @@ typedef struct {
 } Elf_Note;
 
 /* Indexes into the e_ident array.  Keep synced with 
-   http://www.sco.com/developer/gabi/ch4.eheader.html */
+   http://www.caldera.com/developers/gabi/ */
 #define EI_MAG0		0	/* Magic number, byte 0. */
 #define EI_MAG1		1	/* Magic number, byte 1. */
 #define EI_MAG2		2	/* Magic number, byte 2. */
@@ -196,7 +196,24 @@ typedef struct {
 #define EM_OPENRISC	92	/* OpenRISC 32-bit embedded processor */
 #define EM_ARC_A5	93	/* ARC Cores Tangent-A5 */
 #define EM_XTENSA	94	/* Tensilica Xtensa Architecture */
-#define EM_NUM		95
+#define EM_VIDEOCORE	95	/* Alphamosaic VideoCore processor */
+#define EM_TMM_GPP	96	/* Thompson Multimedia General Purpose Proc  */
+#define EM_NS32K	97	/* National Semiconductor 32000 series */
+#define EM_TPC		98	/* Tenor Network TPC processor */
+#define EM_SNP1K	99	/* Trebia SNP 1000 processor */
+#define EM_ST200	100	/* STMicroelectronics ST200 microcontroller */
+#define EM_IP2K		101	/* Ubicom IP2xxx microcontroller family */
+#define EM_MAX		102	/* MAX Processor */
+#define EM_CR		103	/* NatSemi CompactRISC microprocessor */
+#define EM_F2MC16	104	/* Fujitsu F2MC16 */
+#define EM_MSP430	105	/* TI embedded microcontroller msp430 */
+#define EM_BLACKFIN 	106	/* Analog Devices Blackfin (DSP) processor */
+#define EM_SE_C33 	107	/* S1C33 Family of Seiko Epson processors */
+#define EM_SEP		108	/* Sharp embedded microprocessor */
+#define EM_ARCA		109	/* Arca RISC Microprocessor */
+#define EM_UNICORE	110	/* Microprocessor series from PKU-Unity Ltd. */
+				/* and MPRC of Peking University */
+#define EM_NUM		111
 #define EM_ALPHA	0x9026	/* Alpha (written in the absence of an ABI */
 
 /* Special section indexes. */
