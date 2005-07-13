@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.4 2005/02/06 02:00:23 joerg Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.5 2005/07/13 17:40:35 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -173,6 +173,7 @@ typedef struct {
 #define SHF_WRITE	0x1		/* Section contains writable data. */
 #define SHF_ALLOC	0x2		/* Section occupies memory. */
 #define SHF_EXECINSTR	0x4		/* Section contains instructions. */
+#define SHF_TLS		0x400		/* Section contains TLS data. */
 #define SHF_MASKPROC	0xf0000000	/* Reserved for processor-specific. */
 
 /* Values for p_type. */
@@ -287,6 +288,7 @@ typedef struct {
 #define STT_FUNC	2	/* Function. */
 #define STT_SECTION	3	/* Section. */
 #define STT_FILE	4	/* Source file. */
+#define STT_TLS		6	/* TLS object. */
 #define STT_LOPROC	13	/* reserved range for processor */
 #define STT_HIPROC	15	/*  specific symbol types */
 
