@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.5 2005/03/08 13:02:05 davidxu Exp $
+ * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.6 2005/07/13 18:33:50 asmodai Exp $
  */
 
 #ifndef _MACHINE_ELF_H_
@@ -45,7 +45,7 @@
 
 #define ELF_ARCH	EM_386
 
-#define ELF_MACHINE_OK(x) ((x) == EM_386 || (x) == EM_486)
+#define ELF_MACHINE_OK(x) ((x) == EM_386)
 
 /*
  * Auxiliary vector entries for passing information to the interpreter.

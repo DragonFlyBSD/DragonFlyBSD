@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.10 2005/07/13 18:27:08 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.11 2005/07/13 18:33:50 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -126,7 +126,7 @@ typedef struct {
 #define EM_386		3	/* Intel i386. */
 #define EM_68K		4	/* Motorola 68000. */
 #define EM_88K		5	/* Motorola 88000. */
-#define EM_486		6	/* Intel i486. */
+/*			6	reserved (was EM_486) */
 #define EM_860		7	/* Intel i860. */
 #define EM_MIPS		8	/* MIPS R3000 Big-Endian only */
 
