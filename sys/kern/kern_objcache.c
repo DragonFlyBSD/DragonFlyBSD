@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.3 2005/06/09 16:53:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.4 2005/07/13 16:06:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -263,10 +263,14 @@ retry:
 	 * Obtain the depot token.
 	 */
 	depot = &oc->depot[myclusterid];
+#if 0
 	if (!lwkt_trytoken(&ilock, &depot->token)) {
 		lwkt_gettoken(&ilock, &depot->token);
 		++depot->contested;
 	}
+#else
+	lwkt_gettoken(&ilock, &depot->token);
+#endif
 
 	/* Check if depot has a full magazine. */
 	if (!SLIST_EMPTY(&depot->fullmagazines)) {
@@ -452,10 +456,14 @@ retry:
 	 * Obtain the depot token.
 	 */
 	depot = &oc->depot[myclusterid];
+#if 0
 	if (!lwkt_trytoken(&ilock, &depot->token)) {
 		lwkt_gettoken(&ilock, &depot->token);
 		++depot->contested;
 	}
+#else
+	lwkt_gettoken(&ilock, &depot->token);
+#endif
 
 	/*
 	 * If an empty magazine is available in the depot, cycle it
@@ -510,10 +518,14 @@ objcache_dtor(struct objcache *oc, void *obj)
 	lwkt_tokref ilock;
 
 	depot = &oc->depot[myclusterid];
+#if 0
 	if (!lwkt_trytoken(&ilock, &depot->token)) {
 		lwkt_gettoken(&ilock, &depot->token);
 		++depot->contested;
 	}
+#else
+	lwkt_gettoken(&ilock, &depot->token);
+#endif
 	++depot->unallocated_objects;
 	if (depot->waiting)
 		wakeup(depot);
