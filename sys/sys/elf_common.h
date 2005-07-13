@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.11 2005/07/13 18:33:50 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.12 2005/07/13 18:36:24 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -99,6 +99,9 @@ typedef struct {
 #define ELFOSABI_TRU64		10	/* TRU64 UNIX */
 #define ELFOSABI_MODESTO	11	/* Novell Modesto */
 #define ELFOSABI_OPENBSD	12	/* OpenBSD */
+#define ELFOSABI_OPENVMS	13	/* OpenVMS */
+#define ELFOSABI_NSK		14	/* HP Non-Stop Kernel */
+#define ELSOSABI_AROS		15	/* Amiga Research OS */
 #define ELFOSABI_ARM		97	/* ARM */
 #define ELFOSABI_STANDALONE	255	/* Standalone (embedded) application */
 
