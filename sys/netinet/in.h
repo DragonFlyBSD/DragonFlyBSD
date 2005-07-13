@@ -32,11 +32,13 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.11 2005/07/13 12:49:56 joerg Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.12 2005/07/13 14:11:42 joerg Exp $
  */
 
 #ifndef _NETINET_IN_H_
 #define _NETINET_IN_H_
+
+#include <sys/types.h>
 
 #ifndef _KERNEL
 #include <machine/endian.h>
