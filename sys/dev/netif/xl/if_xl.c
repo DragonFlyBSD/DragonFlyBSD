@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.28 2005/07/13 17:00:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.29 2005/07/13 17:01:31 joerg Exp $
  */
 
 /*
@@ -1122,22 +1122,19 @@ xl_reset(sc)
  * IDs against our list and return a device name if we find a match.
  */
 static int
-xl_probe(dev)
-	device_t		dev;
+xl_probe(device_t dev)
 {
-	struct xl_type		*t;
+	struct xl_type *t;
+	uint16_t vid, did;
 
-	t = xl_devs;
-
-	while(t->xl_name != NULL) {
-		if ((pci_get_vendor(dev) == t->xl_vid) &&
-		    (pci_get_device(dev) == t->xl_did)) {
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
+	for (t = xl_devs; t->xl_name != NULL; t++) {
+		if (vid == t->xl_vid && did == t->xl_did) {
 			device_set_desc(dev, t->xl_name);
 			return(0);
 		}
-		t++;
 	}
-
 	return(ENXIO);
 }
 
