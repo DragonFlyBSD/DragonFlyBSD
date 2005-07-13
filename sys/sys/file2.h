@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file2.h,v 1.2 2003/07/29 20:03:08 dillon Exp $
+ * $DragonFly: src/sys/sys/file2.h,v 1.3 2005/07/13 01:38:53 dillon Exp $
  */
 
 #ifndef _SYS_FILE2_H_
@@ -123,6 +123,12 @@ static __inline int
 fo_close(struct file *fp, struct thread *td)
 {
 	return ((*fp->f_ops->fold_close)(fp, td));
+}
+
+static __inline int
+fo_shutdown(struct file *fp, int how, struct thread *td)
+{
+	return ((*fp->f_ops->fold_shutdown)(fp, how, td));
 }
 
 static __inline int

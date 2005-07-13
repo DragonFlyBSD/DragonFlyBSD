@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.29 2005/02/21 18:56:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.30 2005/07/13 01:38:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,14 +75,14 @@ struct fileops vnode_fileops = {
 	NULL,	/* port */
 	NULL,	/* clone */
 	vn_read, vn_write, vn_ioctl, vn_poll, vn_kqfilter,
-	vn_statfile, vn_closefile
+	vn_statfile, vn_closefile, nofo_shutdown
 };
 
 struct fileops specvnode_fileops = {
 	NULL,	/* port */
 	NULL,	/* clone */
 	svn_read, svn_write, vn_ioctl, vn_poll, vn_kqfilter,
-	vn_statfile, vn_closefile
+	vn_statfile, vn_closefile, nofo_shutdown
 };
 
 /*

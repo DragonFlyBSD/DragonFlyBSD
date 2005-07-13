@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.10 2005/07/06 05:59:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.11 2005/07/13 01:38:50 dillon Exp $
  */
 
 /*
@@ -608,5 +608,11 @@ int
 fp_close(file_t fp)
 {
     return(fdrop(fp, curthread));
+}
+
+int
+fp_shutdown(file_t fp, int how)
+{
+    return(fo_shutdown(fp, how, curthread));
 }
 

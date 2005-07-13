@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.45 2005/06/22 19:58:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.46 2005/07/13 01:38:50 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -140,6 +140,7 @@ static int badfo_poll (struct file *fp, int events,
 static int badfo_kqfilter (struct file *fp, struct knote *kn);
 static int badfo_stat (struct file *fp, struct stat *sb, struct thread *td);
 static int badfo_close (struct file *fp, struct thread *td);
+static int badfo_shutdown (struct file *fp, int how, struct thread *td);
 
 /*
  * Descriptor management.
@@ -737,6 +738,41 @@ kern_close(int fd)
 			wakeup(&fdp->fd_holdleaderscount);
 		}
 	}
+	return (error);
+}
+
+/*
+ * shutdown_args(int fd, int how)
+ */
+int
+kern_shutdown(int fd, int how)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
+	struct file *fp;
+	int error;
+
+	KKASSERT(p);
+
+	fdp = p->p_fd;
+	if ((unsigned)fd >= fdp->fd_nfiles ||
+	    (fp = fdp->fd_files[fd].fp) == NULL)
+		return (EBADF);
+	fhold(fp);
+	error = fo_shutdown(fp, how, td);
+	fdrop(fp, td);
+
+	return (error);
+}
+
+int
+shutdown(struct shutdown_args *uap)
+{
+	int error;
+
+	error = kern_shutdown(uap->s, uap->how);
+
 	return (error);
 }
 
@@ -1939,7 +1975,8 @@ struct fileops badfileops = {
 	badfo_poll,
 	badfo_kqfilter,
 	badfo_stat,
-	badfo_close
+	badfo_close,
+	badfo_shutdown
 };
 
 static int
@@ -1981,6 +2018,18 @@ static int
 badfo_close(struct file *fp, struct thread *td)
 {
 	return (EBADF);
+}
+
+static int
+badfo_shutdown(struct file *fp, int how, struct thread *td)
+{
+	return (EBADF);
+}
+
+int
+nofo_shutdown(struct file *fp, int how, struct thread *td)
+{
+	return (EOPNOTSUPP);
 }
 
 SYSINIT(fildescdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,

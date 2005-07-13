@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.7 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.8 2005/07/13 01:38:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@ struct	fileops socketops = {
 	NULL,	/* port */
 	NULL,	/* clone */
 	soo_read, soo_write, soo_ioctl, soo_poll, sokqfilter,
-	soo_stat, soo_close
+	soo_stat, soo_close, soo_shutdown
 };
 
 /* ARGSUSED */
@@ -180,3 +180,15 @@ soo_close(struct file *fp, struct thread *td)
 	fp->f_data = 0;
 	return (error);
 }
+
+/* ARGSUSED */
+int
+soo_shutdown(struct file *fp, int how, struct thread *td)
+{
+	int error = 0;
+
+	if (fp->f_data)
+		error = soshutdown((struct socket *)fp->f_data, how);
+	return (error);
+}
+

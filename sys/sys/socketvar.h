@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.18 2005/03/28 19:53:30 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.19 2005/07/13 01:38:53 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -316,6 +316,7 @@ int	soo_read (struct file *fp, struct uio *uio, struct ucred *cred,
 int	soo_write (struct file *fp, struct uio *uio, struct ucred *cred,
 	    int flags, struct thread *td);
 int	soo_close (struct file *fp, struct thread *td);
+int	soo_shutdown (struct file *fp, int how, struct thread *td);
 int	soo_ioctl (struct file *fp, u_long cmd, caddr_t data,
 	    struct thread *td);
 int	soo_poll (struct file *fp, int events, struct ucred *cred,

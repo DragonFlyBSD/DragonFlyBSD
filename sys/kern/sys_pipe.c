@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.30 2005/07/04 18:39:16 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.31 2005/07/13 01:38:50 dillon Exp $
  */
 
 /*
@@ -72,6 +72,7 @@
 #include <sys/module.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
+#include <sys/socket.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -96,6 +97,7 @@ static int pipe_read (struct file *fp, struct uio *uio,
 static int pipe_write (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags, struct thread *td);
 static int pipe_close (struct file *fp, struct thread *td);
+static int pipe_shutdown (struct file *fp, int how, struct thread *td);
 static int pipe_poll (struct file *fp, int events, struct ucred *cred,
 		struct thread *td);
 static int pipe_kqfilter (struct file *fp, struct knote *kn);
@@ -106,7 +108,7 @@ static struct fileops pipeops = {
 	NULL,	/* port */
 	NULL,	/* clone */
 	pipe_read, pipe_write, pipe_ioctl, pipe_poll, pipe_kqfilter,
-	pipe_stat, pipe_close
+	pipe_stat, pipe_close, pipe_shutdown
 };
 
 static void	filt_pipedetach(struct knote *kn);
@@ -1251,6 +1253,42 @@ pipe_close(struct file *fp, struct thread *td)
 	funsetown(cpipe->pipe_sigio);
 	pipeclose(cpipe);
 	return (0);
+}
+
+/*
+ * Shutdown one or both directions of a full-duplex pipe.
+ */
+/* ARGSUSED */
+static int
+pipe_shutdown(struct file *fp, int how, struct thread *td)
+{
+	struct pipe *rpipe = (struct pipe *)fp->f_data;
+	struct pipe *wpipe;
+	int error = EPIPE;
+
+	switch(how) {
+	case SHUT_RDWR:
+	case SHUT_RD:
+		if (rpipe) {
+			rpipe->pipe_state |= PIPE_EOF;
+			pipeselwakeup(rpipe);
+			if (rpipe->pipe_busy)
+				wakeup(rpipe);
+			error = 0;
+		}
+		if (how == SHUT_RD)
+			break;
+		/* fall through */
+	case SHUT_WR:
+		if (rpipe && (wpipe = rpipe->pipe_peer) != NULL) {
+			wpipe->pipe_state |= PIPE_EOF;
+			pipeselwakeup(wpipe);
+			if (wpipe->pipe_busy)
+				wakeup(wpipe);
+			error = 0;
+		}
+	}
+	return (error);
 }
 
 static void

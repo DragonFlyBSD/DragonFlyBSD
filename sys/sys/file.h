@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.13 2005/07/06 05:59:43 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.14 2005/07/13 01:38:53 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -77,6 +77,7 @@ struct	fileops {
 	int	(*fold_stat)	(struct file *fp, struct stat *sb,
 				    struct thread *td);
 	int	(*fold_close)	(struct file *fp, struct thread *td);
+	int	(*fold_shutdown)	(struct file *fp, int how, struct thread *td);
 };
 
 #define	FOF_OFFSET	1	/* fo_read(), fo_write() flags */
@@ -133,7 +134,10 @@ extern int fp_write(struct file *fp, void *buf, size_t nbytes, ssize_t *res);
 extern int fp_stat(struct file *fp, struct stat *ub);
 extern int fp_mmap(void *addr, size_t size, int prot, int flags, struct file *fp, off_t pos, void **resp);
 
+extern int nofo_shutdown(struct file *fp, int how, struct thread *td);
+
 extern int fp_close(struct file *fp);
+extern int fp_shutdown(struct file *fp, int how);
 
 extern struct filelist filehead; /* head of list of open files */
 extern struct fileops vnode_fileops;

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.55 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.56 2005/07/13 01:38:50 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -942,36 +942,6 @@ cleanup:
 	iovec_free(&iov, aiov);
 	if (control)
 		m_freem(control);
-	return (error);
-}
-
-/*
- * shutdown_args(int s, int how)
- */
-int
-kern_shutdown(int s, int how)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct file *fp;
-	int error;
-
-	KKASSERT(p);
-	error = holdsock(p->p_fd, s, &fp);
-	if (error)
-		return (error);
-	error = soshutdown((struct socket *)fp->f_data, how);
-	fdrop(fp, td);
-	return(error);
-}
-
-int
-shutdown(struct shutdown_args *uap)
-{
-	int error;
-
-	error = kern_shutdown(uap->s, uap->how);
-
 	return (error);
 }
 

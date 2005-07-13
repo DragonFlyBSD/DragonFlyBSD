@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.10 2005/06/10 22:16:05 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.11 2005/07/13 01:38:52 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -99,7 +99,8 @@ static struct fileops cryptofops = {
     cryptof_poll,
     cryptof_kqfilter,
     cryptof_stat,
-    cryptof_close
+    cryptof_close,
+    nofo_shutdown
 };
 
 static struct csession *csefind(struct fcrypt *, u_int);

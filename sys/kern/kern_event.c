@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.15 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.16 2005/07/13 01:38:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +79,8 @@ static struct fileops kqueueops = {
 	kqueue_poll,
 	kqueue_kqfilter,
 	kqueue_stat,
-	kqueue_close
+	kqueue_close,
+	nofo_shutdown
 };
 
 static void 	knote_attach(struct knote *kn, struct filedesc *fdp);

@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.18 2005/06/22 20:11:59 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.19 2005/07/13 01:38:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ static struct fileops svr4_netops = {
 	NULL,	/* port */
 	NULL,	/* clone */
 	soo_read, soo_write, soo_ioctl, soo_poll, sokqfilter,
-	soo_stat, svr4_soo_close
+	soo_stat, svr4_soo_close, soo_shutdown
 };
  
 #define CDEV_MAJOR 103
