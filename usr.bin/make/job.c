@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.125 2005/07/13 20:41:11 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.126 2005/07/13 20:41:43 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -514,17 +514,16 @@ Proc_Init()
 /**
  * Wait for child process to terminate.
  */
-static int
+static void
 ProcWait(ProcStuff *ps)
 {
 	pid_t	pid;
-	int	status;
 
 	/*
 	 * Wait for the process to exit.
 	 */
 	for (;;) {
-		pid = waitpid(ps->child_pid, &status, 0);
+		pid = waitpid(ps->child_pid, &ps->child_status, 0);
 		if (pid == -1 && errno != EINTR) {
 			Fatal("error in wait: %d", pid);
 			/* NOTREACHED */
@@ -536,8 +535,6 @@ ProcWait(ProcStuff *ps)
 			break;
 		}
 	}
-
-	return (status);
 }
 
 /**
@@ -2635,7 +2632,6 @@ Cmd_Exec(const char *cmd, const char **error)
 {
 	struct Shell	*shell = commandShell;
 	int	fds[2];	/* Pipe streams */
-	int	status;	/* command exit status */
 	Buffer	*buf;	/* buffer to store the result */
 	ssize_t	rcnt;
 	ProcStuff	ps;
@@ -2708,8 +2704,8 @@ Cmd_Exec(const char *cmd, const char **error)
 		 */
 		close(fds[0]);
 
-		status = ProcWait(&ps);
-		if (status)
+		ProcWait(&ps);
+		if (ps.child_status)
 			*error = "\"%s\" returned non-zero status";
 
 		Buf_StripNewlines(buf);
@@ -2799,7 +2795,6 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 	Boolean		silent;		/* Don't print command */
 	Boolean		doit;		/* Execute even in -n */
 	Boolean		errCheck;	/* Check errors */
-	int		reason;		/* Reason for child's death */
 	int		status;		/* Description of child's death */
 	LstNode		*cmdNode;	/* Node where current cmd is located */
 	char		**av;		/* Argument vector for thing to exec */
@@ -2962,7 +2957,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		/*
 		 * The child is off and running. Now all we can do is wait...
 		 */
-		reason = ProcWait(&ps);
+		ProcWait(&ps);
 
 		if (interrupted)
 			CompatInterrupt(interrupted, ENDNode);
@@ -2971,17 +2966,17 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		 * Decode and report the reason child exited, then
 		 * indicate how we handled it.
 		 */
-		if (WIFEXITED(reason)) {
-			status = WEXITSTATUS(reason);
+		if (WIFEXITED(ps.child_status)) {
+			status = WEXITSTATUS(ps.child_status);
 			if (status == 0) {
 				return (0);
 			} else {
 				printf("*** Error code %d", status);
 			}
-		} else if (WIFSTOPPED(reason)) {
-			status = WSTOPSIG(reason);
+		} else if (WIFSTOPPED(ps.child_status)) {
+			status = WSTOPSIG(ps.child_status);
 		} else {
-			status = WTERMSIG(reason);
+			status = WTERMSIG(ps.child_status);
 			printf("*** Signal %d", status);
 		}
 
