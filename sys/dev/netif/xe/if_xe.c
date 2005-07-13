@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.25 2005/07/13 17:31:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.26 2005/07/13 17:46:05 joerg Exp $
  */
 
 /*
@@ -166,6 +166,7 @@ struct xe_mii_frame {
  * Prototypes start here
  */
 static void      xe_init		(void *xscp);
+static void      xe_intr		(void *xscp);
 static void      xe_start		(struct ifnet *ifp);
 static int       xe_ioctl		(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *);
 static void      xe_watchdog		(struct ifnet *ifp);
@@ -222,9 +223,15 @@ xe_detach(device_t dev)
 {
   struct xe_softc *sc = device_get_softc(dev);
 
+  crit_enter();
+
   sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
   callout_stop(&sc->xe_timer);
   ether_ifdetach(&sc->arpcom.ac_if);
+  bus_teardown_intr(dev, sc->irq_res, sc->intrhand);
+
+  crit_exit();
+
   xe_deactivate(dev);
   return 0;
 }
@@ -236,6 +243,7 @@ int
 xe_attach (device_t dev)
 {
   struct xe_softc *scp = device_get_softc(dev);
+  int err;
 
 #ifdef XE_DEBUG
   device_printf(dev, "attach\n");
@@ -307,6 +315,14 @@ xe_attach (device_t dev)
 
   /* Attach the interface */
   ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr);
+
+  err = bus_setup_intr(dev, scp->irq_res, INTR_TYPE_NET, xe_intr, scp,
+		       &scp->intrhand, NULL);
+  if (err) {
+    ether_ifdetach(&scp->arpcom.ac_if);
+    xe_deactivate(dev);
+    return err;
+  }
 
   /* Done */
   return 0;
@@ -1867,7 +1883,7 @@ int
 xe_activate(device_t dev)
 {
 	struct xe_softc *sc = device_get_softc(dev);
-	int start, err;
+	int start;
 
 	if (!sc->dingo) {
 		sc->port_rid = 0;	/* 0 is managed by pccard */
@@ -1917,13 +1933,6 @@ xe_activate(device_t dev)
 		xe_deactivate(dev);
 		return ENOMEM;
 	}
-	err = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET, xe_intr, sc,
-			     &sc->intrhand, NULL);
-	if (err) {
-		ether_ifdetach(&sc->arpcom.ac_if);
-		xe_deactivate(dev);
-		return err;
-	}
 
 	sc->bst = rman_get_bustag(sc->port_res);
 	sc->bsh = rman_get_bushandle(sc->port_res);
@@ -1934,10 +1943,7 @@ void
 xe_deactivate(device_t dev)
 {
 	struct xe_softc *sc = device_get_softc(dev);
-	
-	if (sc->intrhand)
-		bus_teardown_intr(dev, sc->irq_res, sc->intrhand);
-	sc->intrhand = 0;
+
 	if (sc->port_res)
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->port_rid, 
 		    sc->port_res);
@@ -1946,5 +1952,4 @@ xe_deactivate(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->irq_rid, 
 		    sc->irq_res);
 	sc->irq_res = 0;
-	return;
 }
