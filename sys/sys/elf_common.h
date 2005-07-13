@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.5 2005/07/13 17:40:35 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.6 2005/07/13 17:45:15 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -114,6 +114,10 @@ typedef struct {
 #define ET_EXEC		2	/* Executable. */
 #define ET_DYN		3	/* Shared object. */
 #define ET_CORE		4	/* Core file. */
+#define ET_LOOS		0xfe00	/* OS-specific range start. */
+#define ET_HIOS		0xfeff	/* OS-specific range end. */
+#define ET_LIPROC	0xff00	/* Processor-specific range start. */
+#define ET_HIPROC	0xffff	/* Processor-specific range end. */
 
 /* Values for e_machine. */
 #define EM_NONE		0	/* Unknown machine. */
