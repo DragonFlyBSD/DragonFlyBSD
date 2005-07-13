@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.12 2005/05/19 17:10:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.13 2005/07/13 20:40:52 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -100,6 +100,12 @@ do {						\
 #define	MAX(a, b)  ((a) > (b) ? (a) : (b))
 #endif
 
+/*
+ * XXX: Avoid SunOS bug... FILENO() is fp->_file, and file
+ * is a char! So when we go above 127 we turn negative!
+ */
+#define FILENO(a) ((unsigned)fileno(a))
+
 void Debug(const char *, ...);
 void DebugM(const char *, ...);
 void Error(const char *, ...);
@@ -112,5 +118,7 @@ void *emalloc(size_t);
 void *erealloc(void *, size_t);
 int eunlink(const char *);
 void print_flags(FILE *, const struct flag2str *, u_int, int);
+int mkfifotemp(char *);
+
 
 #endif /* util_h_b7020fdb */

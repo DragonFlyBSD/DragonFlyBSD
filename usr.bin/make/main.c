@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.135 2005/07/13 20:39:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.136 2005/07/13 20:40:52 okumoto Exp $
  */
 
 /*
@@ -932,6 +932,10 @@ main(int argc, char **argv)
 	}
 	MainParseArgs(&cli, argc, argv);
 
+	determine_objdir(Var_Value("MACHINE", VAR_GLOBAL), curdir, objdir);
+	Var_SetGlobal(".CURDIR", curdir);
+	Var_SetGlobal(".OBJDIR", objdir);
+
 	/*
 	 * Set up the .TARGETS variable to contain the list of targets to be
 	 * created. If none specified, make the variable empty -- the parser
@@ -949,9 +953,6 @@ main(int argc, char **argv)
 		}
 	}
 
-	determine_objdir(Var_Value("MACHINE", VAR_GLOBAL), curdir, objdir);
-	Var_SetGlobal(".CURDIR", curdir);
-	Var_SetGlobal(".OBJDIR", objdir);
 	Dir_CurObj(curdir, objdir);
 
 	/*

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.123 2005/07/13 20:40:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.124 2005/07/13 20:40:52 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -277,12 +277,6 @@ static int	aborting = 0;	/* why is the make aborting? */
 #define	ABORT_WAIT	3	/* Waiting for jobs to finish */
 
 /*
- * XXX: Avoid SunOS bug... FILENO() is fp->_file, and file
- * is a char! So when we go above 127 we turn negative!
- */
-#define	FILENO(a) ((unsigned)fileno(a))
-
-/*
  * post-make command processing. The node postCommands is really just the
  * .END target but we keep it around to avoid having to search for it
  * all the time.
@@ -388,94 +382,6 @@ static void JobRestartJobs(void);
 static int Compat_RunCommand(char *, GNode *, GNode *);
 
 static GNode	    *curTarg = NULL;
-
-/**
- * Create a fifo file with a uniq filename, and returns a file
- * descriptor to that fifo.
- */
-static int
-mkfifotemp(char *template)
-{
-	char *start;
-	char *pathend;
-	char *ptr;
-	const char padchar[] =
-	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-	if (template[0] == '\0') {
-		errno = EINVAL;	/* bad input string */
-		return (-1);
-	}
-
-	/* Find end of template string. */
-	pathend = strchr(template, '\0');
-	ptr = pathend - 1;
-
-	/*
-	 * Starting from the end of the template replace spaces with 'X' in
-	 * them with random characters until there are no more 'X'.
-	 */
-	while (ptr >= template && *ptr == 'X') {
-		uint32_t rand_num = arc4random() % (sizeof(padchar) - 1);
-		*ptr-- = padchar[rand_num];
-	}
-	start = ptr + 1;
-
-	/* Check the target directory. */
-	for (; ptr > template; --ptr) {
-		if (*ptr == '/') {
-			struct stat sbuf;
-
-			*ptr = '\0';
-			if (stat(template, &sbuf) != 0)
-				return (-1);
-
-			if (!S_ISDIR(sbuf.st_mode)) {
-				errno = ENOTDIR;
-				return (-1);
-			}
-			*ptr = '/';
-			break;
-		}
-	}
-
-	for (;;) {
-		if (mkfifo(template, 0600) == 0) {
-			int fd;
-
-			if ((fd = open(template, O_RDWR, 0600)) < 0) {
-				unlink(template);
-				return (-1);
-			} else {
-				return (fd);
-			}
-		} else {
-			if (errno != EEXIST) {
-				return (-1);
-			}
-		}
-
-		/*
-		 * If we have a collision, cycle through the space of
-		 * filenames.
-		 */
-		for (ptr = start;;) {
-			char *pad;
-
-			if (*ptr == '\0' || ptr == pathend)
-				return (-1);
-
-			pad = strchr(padchar, *ptr);
-			if (pad == NULL || *++pad == '\0') {
-				*ptr++ = padchar[0];
-			} else {
-				*ptr++ = *pad;
-				break;
-			}
-		}
-	}
-	/*NOTREACHED*/
-}
 
 /**
  * In lieu of a good way to prevent every possible looping in make(1), stop

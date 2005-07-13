@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.16 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.23 2005/05/15 17:50:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.24 2005/07/13 20:40:52 okumoto Exp $
  */
 
 /*-
@@ -53,6 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "globals.h"
 #include "job.h"
@@ -301,3 +302,92 @@ print_flags(FILE *fp, const struct flag2str *tab, u_int flags, int par)
 	if (par)
 		fprintf(fp, ")");
 }
+
+/**
+ * Create a fifo file with a uniq filename, and returns a file
+ * descriptor to that fifo.
+ */
+int
+mkfifotemp(char *template)
+{
+	char *start;
+	char *pathend;
+	char *ptr;
+	const char padchar[] =
+	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+	if (template[0] == '\0') {
+		errno = EINVAL;	/* bad input string */
+		return (-1);
+	}
+
+	/* Find end of template string. */
+	pathend = strchr(template, '\0');
+	ptr = pathend - 1;
+
+	/*
+	 * Starting from the end of the template replace spaces with 'X' in
+	 * them with random characters until there are no more 'X'.
+	 */
+	while (ptr >= template && *ptr == 'X') {
+		uint32_t rand_num = arc4random() % (sizeof(padchar) - 1);
+		*ptr-- = padchar[rand_num];
+	}
+	start = ptr + 1;
+
+	/* Check the target directory. */
+	for (; ptr > template; --ptr) {
+		if (*ptr == '/') {
+			struct stat sbuf;
+
+			*ptr = '\0';
+			if (stat(template, &sbuf) != 0)
+				return (-1);
+
+			if (!S_ISDIR(sbuf.st_mode)) {
+				errno = ENOTDIR;
+				return (-1);
+			}
+			*ptr = '/';
+			break;
+		}
+	}
+
+	for (;;) {
+		if (mkfifo(template, 0600) == 0) {
+			int fd;
+
+			if ((fd = open(template, O_RDWR, 0600)) < 0) {
+				unlink(template);
+				return (-1);
+			} else {
+				return (fd);
+			}
+		} else {
+			if (errno != EEXIST) {
+				return (-1);
+			}
+		}
+
+		/*
+		 * If we have a collision, cycle through the space of
+		 * filenames.
+		 */
+		for (ptr = start;;) {
+			char *pad;
+
+			if (*ptr == '\0' || ptr == pathend)
+				return (-1);
+
+			pad = strchr(padchar, *ptr);
+			if (pad == NULL || *++pad == '\0') {
+				*ptr++ = padchar[0];
+			} else {
+				*ptr++ = *pad;
+				break;
+			}
+		}
+	}
+	/*NOTREACHED*/
+}
+
