@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.27 2005/06/20 15:10:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.28 2005/07/13 17:00:34 joerg Exp $
  */
 
 /*
@@ -121,7 +121,6 @@
 #include <machine/bus_memio.h>
 #include <machine/bus_pio.h>
 #include <machine/bus.h>
-#include <machine/clock.h>      /* for DELAY */
 #include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -1299,10 +1298,9 @@ xl_attach(dev)
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
 	int			media = IFM_ETHER|IFM_100_TX|IFM_FDX;
-	int			unit, error = 0, rid, res;
+	int			error = 0, rid, res;
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 
 	ifmedia_init(&sc->ifmedia, 0, xl_ifmedia_upd, xl_ifmedia_sts);
 
