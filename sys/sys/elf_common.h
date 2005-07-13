@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.12 2005/07/13 18:36:24 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.13 2005/07/13 18:40:34 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -227,8 +227,11 @@ typedef struct {
 #define SHN_LORESERVE	0xff00		/* First of reserved range. */
 #define SHN_LOPROC	0xff00		/* First processor-specific. */
 #define SHN_HIPROC	0xff1f		/* Last processor-specific. */
+#define SHN_LOOS	0xff20		/* First OS-specific. */
+#define SHN_HIOS	0xff3f		/* Last OS-specific. */
 #define SHN_ABS		0xfff1		/* Absolute values. */
 #define SHN_COMMON	0xfff2		/* Common data. */
+#define SHN_XINDEX	0xffff		/* Section header index too large. */
 #define SHN_HIRESERVE	0xffff		/* Last of reserved range. */
 
 /* sh_type */
