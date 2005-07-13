@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.124 2005/07/13 20:40:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.125 2005/07/13 20:41:11 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -66,7 +66,7 @@
  *			it will block for a time given by the SEL_* constants,
  *			below, or until output is ready.
  *
- *	Job_Init	Called to intialize this module. in addition, any
+ *	Job_Init	Called to initialize this module. in addition, any
  *			commands attached to the .BEGIN target are executed
  *			before this function returns. Hence, the makefile must
  *			have been parsed before this function is called.
@@ -262,6 +262,7 @@ typedef struct Job {
 #define	inPipe		output.o_pipe.op_inPipe
 #define	outBuf		output.o_pipe.op_outBuf
 #define	curPos		output.o_pipe.op_curPos
+
 #define	outFile		output.o_file.of_outFile
 #define	outFd		output.o_file.of_outFd
 
@@ -389,7 +390,7 @@ static GNode	    *curTarg = NULL;
  * prevent a forkbomb from happening, in a dumb and mechanical way.
  *
  * Side Effects:
- *	Creates or modifies enviornment variable MKLVL_ENVVAR via setenv().
+ *	Creates or modifies environment variable MKLVL_ENVVAR via setenv().
  */
 static void
 check_make_level(void)
@@ -722,7 +723,7 @@ JobPrintCommand(char *cmd, Job *job)
 		  case '+':
 			if (noSpecials) {
 				/*
-				 * We're not actually exececuting anything...
+				 * We're not actually executing anything...
 				 * but this one needs to be - use compat mode
 				 * just for it.
 				 */
@@ -1918,7 +1919,7 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
  *	this makes up a line, we print it tagged by the job's identifier,
  *	as necessary.
  *	If output has been collected in a temporary file, we open the
- *	file and read it line by line, transfering it to our own
+ *	file and read it line by line, transferring it to our own
  *	output channel until the file is empty. At which point we
  *	remove the temporary file.
  *	In both cases, however, we keep our figurative eye out for the
@@ -2777,7 +2778,7 @@ CompatInterrupt(int signo, GNode *ENDNode)
  * The node from which the command came is also given. This is used
  * to execute the commands in compat mode and when executing commands
  * with the '+' flag in non-compat mode. In these modes each command
- * line should be executed by its own shell. We do some optimisation here:
+ * line should be executed by its own shell. We do some optimization here:
  * if the shell description defines both a string of meta characters and
  * a list of builtins and the command line neither contains a meta character
  * nor starts with one of the builtins then we execute the command directly
@@ -3158,7 +3159,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 			 * of a file created on a remote machine will not be
 			 * modified before the stat() implied by the Dir_MTime
 			 * occurs, thus leading us to believe that the file
-			 * is unchanged, wreaking havoc with files that depend
+			 * is unchanged, wrecking havoc with files that depend
 			 * on this one.
 			 *
 			 * I have decided it is better to make too much than to
