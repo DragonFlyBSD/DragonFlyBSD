@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.16 2005/07/13 19:11:52 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.17 2005/07/13 19:37:09 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -383,6 +383,8 @@ typedef struct {
 #define STB_LOCAL	0	/* Local symbol */
 #define STB_GLOBAL	1	/* Global symbol */
 #define STB_WEAK	2	/* like global - lower precedence */
+#define STB_LOOS	10	/* reserved range for OS specific */
+#define STB_HIOS	12	/*  symbol bindings */
 #define STB_LOPROC	13	/* reserved range for processor */
 #define STB_HIPROC	15	/*  specific symbol bindings */
 
@@ -392,11 +394,20 @@ typedef struct {
 #define STT_FUNC	2	/* Function. */
 #define STT_SECTION	3	/* Section. */
 #define STT_FILE	4	/* Source file. */
+#define STT_COMMON	5	/* Unintialized common block. */
 #define STT_TLS		6	/* TLS object. */
+#define STT_LOOS	10	/* reserved range for OS specific */
+#define STT_HIOS	12	/*  symbol bindings */
 #define STT_LOPROC	13	/* reserved range for processor */
 #define STT_HIPROC	15	/*  specific symbol types */
 
 /* Special symbol table indexes. */
 #define STN_UNDEF	0	/* Undefined symbol index. */
+
+/* Symbol visibility flags. */
+#define STV_DEFAULT	0	/* Default symbol visibility. */
+#define STV_INTERNAL	1	/* Processor-specific visibility. */
+#define STV_HIDDEN	2	/* Symbol hidden if not exported. */
+#define STV_PROTECTED	3	/* Not preemptable, not exported. */
 
 #endif /* !_SYS_ELF_COMMON_H_ */
