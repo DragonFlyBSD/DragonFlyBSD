@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.11 2005/04/22 20:51:37 dillon Exp $
+# $DragonFly: src/Makefile,v 1.12 2005/07/13 15:25:32 corecode Exp $
 #
 # The user-driven targets are:
 #
@@ -171,7 +171,7 @@ make:
 #
 
 preupgrade:
-	@cd ${.CURDIR}/etc; make preupgrade
+	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk preupgrade
 
 upgrade:	upgrade_etc
 
@@ -179,7 +179,7 @@ upgrade:	upgrade_etc
 # Handle post-installworld updating of static files (e.g. like /etc/rc)
 #
 upgrade_etc:
-	@cd ${.CURDIR}/etc; make upgrade_etc
+	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
 
 #
 # Convenient targets for use by the CVS repository meister.  

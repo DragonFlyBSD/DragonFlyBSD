@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.36 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.37 2005/07/13 15:25:32 corecode Exp $
 #
 
 ISODIR ?= /usr/release
@@ -132,7 +132,8 @@ buildiso:
 	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} installworld )
-	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease make DESTDIR=${ISOROOT} distribution )
+	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
+		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
 		installkernel KERNCONF=${KERNCONF} )
