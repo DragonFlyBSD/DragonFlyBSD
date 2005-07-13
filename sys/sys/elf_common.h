@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.17 2005/07/13 19:37:09 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.18 2005/07/13 19:40:58 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -298,9 +298,11 @@ typedef struct {
 #define PT_HIPROC	0x7fffffff	/* Last processor-specific type. */
 
 /* Values for p_flags. */
-#define PF_X		0x1	/* Executable. */
-#define PF_W		0x2	/* Writable. */
-#define PF_R		0x4	/* Readable. */
+#define PF_X		0x1		/* Executable. */
+#define PF_W		0x2		/* Writable. */
+#define PF_R		0x4		/* Readable. */
+#define PF_MASKOS	0x0ff00000	/* Reserved for OS-specific. */
+#define PF_MASKPROC	0xf0000000	/* Reserved for processor-specific. */
 
 /* Values for d_tag. */
 #define DT_NULL		0	/* Terminating entry. */
