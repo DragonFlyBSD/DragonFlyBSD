@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.122 2005/07/02 10:47:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.123 2005/07/13 20:40:30 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -631,6 +631,22 @@ ProcWait(ProcStuff *ps)
 	}
 
 	return (status);
+}
+
+/**
+ * Execute the list of command associated with the node.
+ */
+static void
+Compat_RunCmds(GNode *gn, Lst *cmds, GNode *ENDNode)
+{
+	LstNode	*ln;
+
+	LST_FOREACH(ln, cmds) {
+		char	*cmd = Lst_Datum(ln);
+
+		if (Compat_RunCommand(cmd, gn, ENDNode))
+			break;
+	}
 }
 
 /**
@@ -2812,7 +2828,6 @@ CompatInterrupt(int signo, GNode *ENDNode)
 {
 	GNode		*gn;
 	sigset_t	nmask, omask;
-	LstNode		*ln;
 
 	sigemptyset(&nmask);
 	sigaddset(&nmask, SIGINT);
@@ -2838,10 +2853,7 @@ CompatInterrupt(int signo, GNode *ENDNode)
 	if (signo == SIGINT) {
 		gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
 		if (gn != NULL) {
-			LST_FOREACH(ln, &gn->commands) {
-				if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
-					break;
-			}
+			Compat_RunCmds(gn, &gn->commands, ENDNode);
 		}
 	}
 
@@ -3177,10 +3189,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 			 */
 			if (!touchFlag) {
 				curTarg = gn;
-				LST_FOREACH(ln, &gn->commands) {
-					if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
-						break;
-				}
+				Compat_RunCmds(gn, &gn->commands, ENDNode);
 				curTarg = NULL;
 			} else {
 				Job_Touch(gn, gn->type & OP_SILENT);
@@ -3318,7 +3327,6 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 {
 	GNode	*gn = NULL;	/* Current root target */
 	int	error_cnt;	/* Number of targets not remade due to errors */
-	LstNode	*ln;
 	GNode	*ENDNode;
 
 	ENDNode = Targ_FindNode(".END", TARG_CREATE);
@@ -3329,10 +3337,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	if (queryFlag == FALSE) {
 		gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
-			LST_FOREACH(ln, &gn->commands) {
-				if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
-					break;
-			}
+			Compat_RunCmds(gn, &gn->commands, ENDNode);
 			if (gn->made == ERROR) {
 				printf("\n\nStop.\n");
 				/*
@@ -3375,10 +3380,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	 * If the user has defined a .END target, run its commands.
 	 */
 	if (error_cnt == 0) {
-		LST_FOREACH(ln, &ENDNode->commands) {
-			if (Compat_RunCommand(Lst_Datum(ln), gn, ENDNode))
-				break;
-		}
+		Compat_RunCmds(gn, &ENDNode->commands, ENDNode);
 	}
 
 	return (0);	/* Successful completion */
