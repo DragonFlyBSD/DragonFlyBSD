@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.4 2005/07/06 06:04:32 dillon Exp $
+.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.5 2005/07/13 02:00:19 dillon Exp $
 .\"
 .Dd January 8, 2005
 .Dt MOUNTCTL 8
@@ -50,6 +50,12 @@
 .Op Fl x Ar filedesc
 .Op Fl o Ar option
 .Op Fl o Ar option ...
+.Ar mountpt:tag
+.Nm
+.Fl r
+.Op Fl 2
+.Op Fl w Ar output_path
+.Op Fl x Ar filedesc
 .Ar mountpt:tag
 .Nm
 .Fl d
@@ -95,6 +101,15 @@ kernel-implemented swap backing will be available for journals but that is
 not the case at the moment.
 .Pp
 .Nm
+.Fl r
+will restart an existing journal, directing it to a new file descriptor.
+A shutdown is sent to the old journal and the system waits for the return
+diection (if running full-duplex) to EOF.  The new descriptor is then
+installed and the FIFO index is reset to the last acknowledged transaction.
+Clients scanning a journal across such a disconnect must check for repeated
+transaction ids since some overlap between the old and new journal may occur.
+.Pp
+.Nm
 .Fl d
 will remove the specified journal(s).  A mount point, a tag, or both may be
 specified.  This function will operate on all matching journals.
@@ -124,7 +139,7 @@ or
 .Fl d
 are not specified.
 .It Fl S
-Start or restart a journal, equivalent to the 'start' keyword.
+Start a stopped journal, equivalent to the 'start' keyword.
 This option implies
 .Fl m .
 .It Fl C
@@ -184,17 +199,16 @@ buffers larger then 4MB are not recommended.
 Specify the size of the kernel-managed swap-backed FIFO used to buffer
 overflows.
 .It Ar path=filepath
-Switch the journal's output stream to a new file.  This feature is typically
-used to restart a dead stream. 
+Specify where the journal's output stream should be directed.  
 Note that the
 .Fl w
 option is equivalent to specifying the path option.  Both should not be 
 specified.
 .It Ar fd=filedesc
-Switch the journal's output stream to a file descriptor specified by number.
-Use file descriptor 1 if you wish to reopen the journal to the current
-stdout.  This feature is typically used to restart a dead stream (for example
-if a TCP stream fails).
+Specify where the journal's output stream should be directed by handing over
+a file desciptor.
+Use file descriptor 1 if you wish to output the journal to the current
+stdout. 
 Note that the
 .Fl w
 option is equivalent to specifying the path option.  Both should not be 

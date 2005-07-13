@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.5 2005/07/06 06:02:23 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.6 2005/07/13 01:58:23 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -152,7 +152,8 @@ struct journal_ackrecord {
 #define JREC_STREAMID_DISCONT	0x0002	/* discontinuity */
 #define JREC_STREAMID_ANNOTATE	0x0003	/* annotation */
 #define JREC_STREAMID_ACK	0x0004	/* acknowledgement */
-				/* 0x0005-0x007F reserved by DragonFly */
+#define JREC_STREAMID_RESTART	0x0005	/* disctoninuity - journal restart */
+				/* 0x0006-0x007F reserved by DragonFly */
 				/* 0x0080-0x00FF for third party use */
 #define JREC_STREAMID_JMIN	0x0100	/* lowest allowed general id */
 #define JREC_STREAMID_JMAX	0x2000	/* (one past the highest allowed id) */

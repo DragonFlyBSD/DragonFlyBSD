@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.17 2005/07/06 06:02:22 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.18 2005/07/13 01:58:20 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -88,6 +88,8 @@
 #include <sys/file.h>
 #include <sys/proc.h>
 #include <sys/msfbuf.h>
+#include <sys/socket.h>
+#include <sys/socketvar.h>
 
 #include <machine/limits.h>
 
@@ -104,14 +106,20 @@ static int journal_attach(struct mount *mp);
 static void journal_detach(struct mount *mp);
 static int journal_install_vfs_journal(struct mount *mp, struct file *fp,
 			    const struct mountctl_install_journal *info);
+static int journal_restart_vfs_journal(struct mount *mp, struct file *fp,
+			    const struct mountctl_restart_journal *info);
 static int journal_remove_vfs_journal(struct mount *mp,
 			    const struct mountctl_remove_journal *info);
+static int journal_restart(struct mount *mp, struct file *fp,
+			    struct journal *jo, int flags);
 static int journal_destroy(struct mount *mp, struct journal *jo, int flags);
 static int journal_resync_vfs_journal(struct mount *mp, const void *ctl);
 static int journal_status_vfs_journal(struct mount *mp,
 		       const struct mountctl_status_journal *info,
 		       struct mountctl_journal_ret_status *rstat,
 		       int buflen, int *res);
+static void journal_create_threads(struct journal *jo);
+static void journal_destroy_threads(struct journal *jo, int flags);
 static void journal_wthread(void *info);
 static void journal_rthread(void *info);
 
@@ -199,6 +207,7 @@ journal_mountctl(struct vop_mountctl_args *ap)
 	    if (TAILQ_EMPTY(&mp->mnt_jlist))
 		journal_detach(mp);
 	    break;
+	case MOUNTCTL_RESTART_VFS_JOURNAL:
 	case MOUNTCTL_REMOVE_VFS_JOURNAL:
 	case MOUNTCTL_RESYNC_VFS_JOURNAL:
 	case MOUNTCTL_STATUS_VFS_JOURNAL:
@@ -217,6 +226,14 @@ journal_mountctl(struct vop_mountctl_args *ap)
 		error = EBADF;
 	    if (error == 0)
 		error = journal_install_vfs_journal(mp, ap->a_fp, ap->a_ctl);
+	    break;
+	case MOUNTCTL_RESTART_VFS_JOURNAL:
+	    if (ap->a_ctllen != sizeof(struct mountctl_restart_journal))
+		error = EINVAL;
+	    if (error == 0 && ap->a_fp == NULL)
+		error = EBADF;
+	    if (error == 0)
+		error = journal_restart_vfs_journal(mp, ap->a_fp, ap->a_ctl);
 	    break;
 	case MOUNTCTL_REMOVE_VFS_JOURNAL:
 	    if (ap->a_ctllen != sizeof(struct mountctl_remove_journal))
@@ -330,25 +347,78 @@ journal_install_vfs_journal(struct mount *mp, struct file *fp,
 	free(jo, M_JOURNAL);
     } else {
 	fhold(fp);
-	jo->flags |= MC_JOURNAL_WACTIVE;
-	lwkt_create(journal_wthread, jo, NULL, &jo->wthread,
-			TDF_STOPREQ, -1, "journal w:%.*s", JIDMAX, jo->id);
-	lwkt_setpri(&jo->wthread, TDPRI_KERN_DAEMON);
-	lwkt_schedule(&jo->wthread);
-
-	if (jo->flags & MC_JOURNAL_WANT_FULLDUPLEX) {
-	    jo->flags |= MC_JOURNAL_RACTIVE;
-	    lwkt_create(journal_rthread, jo, NULL, &jo->rthread,
-			TDF_STOPREQ, -1, "journal r:%.*s", JIDMAX, jo->id);
-	    lwkt_setpri(&jo->rthread, TDPRI_KERN_DAEMON);
-	    lwkt_schedule(&jo->rthread);
-	}
+	journal_create_threads(jo);
 	jrecord_init(jo, &jrec, JREC_STREAMID_DISCONT);
 	jrecord_write(&jrec, JTYPE_ASSOCIATE, 0);
 	jrecord_done(&jrec, 0);
 	TAILQ_INSERT_TAIL(&mp->mnt_jlist, jo, jentry);
     }
     return(error);
+}
+
+/*
+ * Restart a journal with a new descriptor.   The existing reader and writer
+ * threads are terminated and a new descriptor is associated with the
+ * journal.  The FIFO rindex is reset to xindex and the threads are then
+ * restarted.
+ */
+static int
+journal_restart_vfs_journal(struct mount *mp, struct file *fp,
+			   const struct mountctl_restart_journal *info)
+{
+    struct journal *jo;
+    int error;
+
+    TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	if (bcmp(jo->id, info->id, sizeof(jo->id)) == 0)
+	    break;
+    }
+    if (jo)
+	error = journal_restart(mp, fp, jo, info->flags);
+    else
+	error = EINVAL;
+    return (error);
+}
+
+static int
+journal_restart(struct mount *mp, struct file *fp, 
+		struct journal *jo, int flags)
+{
+    /*
+     * XXX lock the jo
+     */
+
+#if 0
+    /*
+     * Record the fact that we are doing a restart in the journal.
+     * XXX it isn't safe to do this if the journal is being restarted
+     * because it was locked up and the writer thread has already exited.
+     */
+    jrecord_init(jo, &jrec, JREC_STREAMID_RESTART);
+    jrecord_write(&jrec, JTYPE_DISASSOCIATE, 0);
+    jrecord_done(&jrec, 0);
+#endif
+
+    /*
+     * Stop the reader and writer threads and clean up the current 
+     * descriptor.
+     */
+    printf("RESTART WITH FP %p KILLING %p\n", fp, jo->fp);
+    journal_destroy_threads(jo, flags);
+
+    if (jo->fp)
+	fdrop(jo->fp, curthread);
+
+    /*
+     * Associate the new descriptor, reset the FIFO index, and recreate
+     * the threads.
+     */
+    fhold(fp);
+    jo->fp = fp;
+    jo->fifo.rindex = jo->fifo.xindex;
+    journal_create_threads(jo);
+
+    return(0);
 }
 
 /*
@@ -392,7 +462,6 @@ static int
 journal_destroy(struct mount *mp, struct journal *jo, int flags)
 {
     struct jrecord jrec;
-    int wcount;
 
     TAILQ_REMOVE(&mp->mnt_jlist, jo, jentry);
 
@@ -400,19 +469,8 @@ journal_destroy(struct mount *mp, struct journal *jo, int flags)
     jrecord_write(&jrec, JTYPE_DISASSOCIATE, 0);
     jrecord_done(&jrec, 0);
 
-    jo->flags |= MC_JOURNAL_STOP_REQ | (flags & MC_JOURNAL_STOP_IMM);
-    wakeup(&jo->fifo);
-    wcount = 0;
-    while (jo->flags & (MC_JOURNAL_WACTIVE | MC_JOURNAL_RACTIVE)) {
-	tsleep(jo, 0, "jwait", hz);
-	if (++wcount % 10 == 0) {
-	    printf("Warning: journal %s waiting for descriptors to close\n",
-		jo->id);
-	}
-    }
-    lwkt_free_thread(&jo->wthread); /* XXX SMP */
-    if (jo->flags & MC_JOURNAL_WANT_FULLDUPLEX)
-	lwkt_free_thread(&jo->rthread); /* XXX SMP */
+    journal_destroy_threads(jo, flags);
+
     if (jo->fp)
 	fdrop(jo->fp, curthread);
     if (jo->fifo.membase)
@@ -471,6 +529,51 @@ journal_status_vfs_journal(struct mount *mp,
 	buflen -= sizeof(*rstat);
     }
     return(error);
+}
+
+static void
+journal_create_threads(struct journal *jo)
+{
+	jo->flags &= ~(MC_JOURNAL_STOP_REQ | MC_JOURNAL_STOP_IMM);
+	jo->flags |= MC_JOURNAL_WACTIVE;
+	lwkt_create(journal_wthread, jo, NULL, &jo->wthread,
+			TDF_STOPREQ, -1, "journal w:%.*s", JIDMAX, jo->id);
+	lwkt_setpri(&jo->wthread, TDPRI_KERN_DAEMON);
+	lwkt_schedule(&jo->wthread);
+
+	if (jo->flags & MC_JOURNAL_WANT_FULLDUPLEX) {
+	    jo->flags |= MC_JOURNAL_RACTIVE;
+	    lwkt_create(journal_rthread, jo, NULL, &jo->rthread,
+			TDF_STOPREQ, -1, "journal r:%.*s", JIDMAX, jo->id);
+	    lwkt_setpri(&jo->rthread, TDPRI_KERN_DAEMON);
+	    lwkt_schedule(&jo->rthread);
+	}
+}
+
+static void
+journal_destroy_threads(struct journal *jo, int flags)
+{
+    int wcount;
+
+    jo->flags |= MC_JOURNAL_STOP_REQ | (flags & MC_JOURNAL_STOP_IMM);
+    wakeup(&jo->fifo);
+    wcount = 0;
+    while (jo->flags & (MC_JOURNAL_WACTIVE | MC_JOURNAL_RACTIVE)) {
+	tsleep(jo, 0, "jwait", hz);
+	if (++wcount % 10 == 0) {
+	    printf("Warning: journal %s waiting for descriptors to close\n",
+		jo->id);
+	}
+    }
+
+    /*
+     * XXX SMP - threads should move to cpu requesting the restart or
+     * termination before finishing up to properly interlock.
+     */
+    tsleep(jo, 0, "jwait", hz);
+    lwkt_free_thread(&jo->wthread);
+    if (jo->flags & MC_JOURNAL_WANT_FULLDUPLEX)
+	lwkt_free_thread(&jo->rthread);
 }
 
 /*
@@ -598,6 +701,7 @@ journal_wthread(void *info)
 	    }
 	}
     }
+    fp_shutdown(jo->fp, SHUT_WR);
     jo->flags &= ~MC_JOURNAL_WACTIVE;
     wakeup(jo);
     wakeup(&jo->fifo.windex);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.5 2005/07/06 06:04:32 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.6 2005/07/13 02:00:19 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -61,6 +61,8 @@ static int mountctl_scan(void (*func)(const char *, const char *, int, void *),
 static void mountctl_list(const char *keyword, const char *mountpt,
 		int __unused fd, void *info);
 static void mountctl_add(const char *keyword, const char *mountpt, int fd);
+static void mountctl_restart(const char *keyword, const char *mountpt, 
+		int fd, void __unused *);
 static void mountctl_delete(const char *keyword, const char *mountpt,
 		int __unused fd, void __unused *);
 static void mountctl_modify(const char *keyword, const char *mountpt, int fd, void __unused *);
@@ -90,6 +92,7 @@ main(int ac, char **av)
     int fopt = 0;
     int lopt = 0;
     int mopt = 0;
+    int ropt = 0;
     int mimplied = 0;
     const char *wopt = NULL;
     const char *xopt = NULL;
@@ -97,21 +100,28 @@ main(int ac, char **av)
     const char *mountpt = NULL;
     char *tmp;
 
-    while ((ch = getopt(ac, av, "2adflo:mw:x:ACFSZ")) != -1) {
+    while ((ch = getopt(ac, av, "2adflmo:rw:x:ACFSZ")) != -1) {
 	switch(ch) {
 	case '2':
 	    twoway_opt = 1;
 	    break;
+	case 'r':
+	    ropt = 1;
+	    if (aopt + dopt + lopt + mopt + ropt != 1) {
+		fprintf(stderr, "too many action options specified\n");
+		usage();
+	    }
+	    break;
 	case 'a':
 	    aopt = 1;
-	    if (aopt + dopt + lopt + mopt != 1) {
+	    if (aopt + dopt + lopt + mopt + ropt != 1) {
 		fprintf(stderr, "too many action options specified\n");
 		usage();
 	    }
 	    break;
 	case 'd':
 	    dopt = 1;
-	    if (aopt + dopt + lopt + mopt != 1) {
+	    if (aopt + dopt + lopt + mopt + ropt != 1) {
 		fprintf(stderr, "too many action options specified\n");
 		usage();
 	    }
@@ -121,7 +131,7 @@ main(int ac, char **av)
 	    break;
 	case 'l':
 	    lopt = 1;
-	    if (aopt + dopt + lopt + mopt != 1) {
+	    if (aopt + dopt + lopt + mopt + ropt != 1) {
 		fprintf(stderr, "too many action options specified\n");
 		usage();
 	    }
@@ -131,7 +141,7 @@ main(int ac, char **av)
 	    break;
 	case 'm':
 	    mopt = 1;
-	    if (aopt + dopt + lopt + mopt != 1) {
+	    if (aopt + dopt + lopt + mopt + ropt != 1) {
 		fprintf(stderr, "too many action options specified\n");
 		usage();
 	    }
@@ -177,7 +187,7 @@ main(int ac, char **av)
      */
     switch(ac) {
     case 0:
-	if (aopt) {
+	if (aopt || ropt) {
 	    fprintf(stderr, "action requires a tag and/or mount "
 			    "point to be specified\n");
 	    usage();
@@ -204,14 +214,14 @@ main(int ac, char **av)
     /*
      * Additional sanity checks
      */
-    if (aopt + dopt + lopt + mopt + mimplied == 0) {
+    if (aopt + dopt + lopt + mopt + ropt + mimplied == 0) {
 	fprintf(stderr, "no action or implied action options were specified\n");
 	usage();
     }
-    if (mimplied && aopt + dopt + lopt == 0)
+    if (mimplied && aopt + dopt + lopt + ropt == 0)
 	mopt = 1;
-    if ((wopt || xopt) && !(aopt || mopt)) {
-	fprintf(stderr, "-w/-x/path/fd options may only be used with -m/-a\n");
+    if ((wopt || xopt) && !(aopt || ropt || mopt)) {
+	fprintf(stderr, "-w/-x/path/fd options may only be used with -m/-a/-r\n");
 	usage();
     }
     if (aopt && (keyword == NULL || mountpt == NULL)) {
@@ -239,7 +249,7 @@ main(int ac, char **av)
 	}
     } else if (xopt) {
 	fd = strtol(xopt, NULL, 0);
-    } else if (aopt) {
+    } else if (aopt || ropt) {
 	fd = 1;		/* stdout default for -a */
     } else {
 	fd = -1;
@@ -252,19 +262,26 @@ main(int ac, char **av)
 	mountctl_scan(mountctl_list, keyword, mountpt, fd);
     if (aopt)
 	mountctl_add(keyword, mountpt, fd);
+    if (ropt) {
+	ch = mountctl_scan(mountctl_restart, keyword, mountpt, fd);
+	if (ch)
+	    fprintf(stderr, "%d journals restarted\n", ch);
+	else
+	    fprintf(stderr, "Unable to locate any matching journals\n");
+    }
     if (dopt) {
 	ch = mountctl_scan(mountctl_delete, keyword, mountpt, -1);
 	if (ch)
-	    printf("%d journals deleted\n", ch);
+	    fprintf(stderr, "%d journals deleted\n", ch);
 	else
-	    printf("Unable to locate any matching journals\n");
+	    fprintf(stderr, "Unable to locate any matching journals\n");
     }
     if (mopt) {
 	ch = mountctl_scan(mountctl_modify, keyword, mountpt, fd);
 	if (ch)
-	    printf("%d journals modified\n", ch);
+	    fprintf(stderr, "%d journals modified\n", ch);
 	else
-	    printf("Unable to locate any matching journals\n");
+	    fprintf(stderr, "Unable to locate any matching journals\n");
     }
 
     return(exitCode);
@@ -487,7 +504,34 @@ mountctl_add(const char *keyword, const char *mountpt, int fd)
 }
 
 static void
-mountctl_delete(const char *keyword, const char *mountpt, int __unused fd, void __unused *info)
+mountctl_restart(const char *keyword, const char *mountpt, 
+		 int fd, void __unused *info)
+{
+    struct mountctl_restart_journal joinfo;
+    int error;
+
+    /* XXX make sure descriptor is not on same filesystem as journal */
+
+    bzero(&joinfo, sizeof(joinfo));
+
+    snprintf(joinfo.id, sizeof(joinfo.id), "%s", keyword);
+    if (twoway_opt > 0)
+	joinfo.flags |= MC_JOURNAL_WANT_FULLDUPLEX;
+    if (reversable_opt > 0)
+	joinfo.flags |= MC_JOURNAL_WANT_REVERSABLE;
+
+    error = mountctl(mountpt, MOUNTCTL_RESTART_VFS_JOURNAL, fd,
+			&joinfo, sizeof(joinfo), NULL, 0);
+    if (error == 0) {
+	fprintf(stderr, "%s:%s restarted\n", mountpt, joinfo.id);
+    } else {
+	fprintf(stderr, "%s:%s restart failed, error %s\n", mountpt, joinfo.id, strerror(errno));
+    }
+}
+
+static void
+mountctl_delete(const char *keyword, const char *mountpt, 
+		int __unused fd, void __unused *info)
 {
     struct mountctl_remove_journal joinfo;
     int error;

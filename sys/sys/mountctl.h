@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.8 2005/07/06 06:02:23 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.9 2005/07/13 01:58:23 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -50,6 +50,7 @@
 #define MOUNTCTL_REMOVE_VFS_JOURNAL	2
 #define MOUNTCTL_RESYNC_VFS_JOURNAL	3
 #define MOUNTCTL_STATUS_VFS_JOURNAL	4
+#define MOUNTCTL_RESTART_VFS_JOURNAL	5
 
 #define MOUNTCTL_INSTALL_BLK_JOURNAL	8
 #define MOUNTCTL_REMOVE_BLK_JOURNAL	9
@@ -79,6 +80,12 @@ struct mountctl_install_journal {
 #define MC_JOURNAL_WANT_AUDIT		0x00010000	/* audit trail */
 #define MC_JOURNAL_WANT_REVERSABLE	0x00020000	/* reversable stream */
 #define MC_JOURNAL_WANT_FULLDUPLEX	0x00040000	/* has ack stream */
+
+struct mountctl_restart_journal {
+	char	id[JIDMAX];
+	int	flags;
+	int	unused01;
+};
 
 struct mountctl_remove_journal {
 	char	id[JIDMAX];
