@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1999, 2000 Andrew J. Korty
+ * Copyright 1998 Juniper Networks, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,24 +23,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.h,v 1.1.2.2 2002/07/03 21:41:30 des Exp $
- * $DragonFly: src/lib/libpam/modules/pam_ssh/Attic/pam_ssh.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
- *
+ * $FreeBSD: src/lib/libpam/libpam/security/pam_mod_misc.h,v 1.12 2003/05/31 16:56:35 des Exp $
+ * $DragonFly: src/lib/libpam/pam_mod_misc.h,v 1.1 2005/07/13 12:34:21 joerg Exp $
  */
 
-#define SSH_CLIENT_DIR		".ssh"
+#ifndef PAM_MOD_MISC_H
+#define PAM_MOD_MISC_H
 
-#define	MODULE_NAME		"pam_ssh"
-#define	NEED_PASSPHRASE		"SSH passphrase: "
-#define	SSH_AGENT		"ssh-agent"
+#include <sys/cdefs.h>
 
-#define ENV_PID_SUFFIX		"_AGENT_PID"
-#define ENV_SOCKET_SUFFIX	"_AUTH_SOCK"
+/*
+ * Common option names
+ */
+#define	PAM_OPT_NULLOK		"nullok"
+#define PAM_OPT_AUTH_AS_SELF	"auth_as_self"
+#define PAM_OPT_ECHO_PASS	"echo_pass"
+#define PAM_OPT_DEBUG		"debug"
 
-#define DEF_KEYFILES		"id_dsa,id_rsa,identity"
+__BEGIN_DECLS
+void	_pam_verbose_error(pam_handle_t *, int, const char *,
+		const char *, const char *, ...);
+__END_DECLS
 
-#define OPT_KEYFILES		"keyfiles"
-#define OPT_TRY_FIRST_PASS	"try_first_pass"
-#define OPT_USE_FIRST_PASS	"use_first_pass"
+#define	PAM_LOG(...) \
+	openpam_log(PAM_LOG_DEBUG, __VA_ARGS__)
 
-#define SEP_KEYFILES		","
+#define PAM_RETURN(arg) \
+	return (arg)
+
+#define PAM_VERBOSE_ERROR(...) \
+	_pam_verbose_error(pamh, flags, __FILE__, __FUNCTION__, __VA_ARGS__)
+
+#endif

@@ -32,7 +32,7 @@
  *
  * @(#)login.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/login/login.c,v 1.51.2.15 2003/04/29 14:10:41 des Exp $
- * $DragonFly: src/usr.bin/login/login.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/login/login.c,v 1.5 2005/07/13 12:34:22 joerg Exp $
  */
 
 #if 0
@@ -76,7 +76,8 @@ static char copyright[] =
 
 #ifdef USE_PAM
 #include <security/pam_appl.h>
-#include <security/pam_misc.h>
+#include <security/pam_types.h>
+#include <security/openpam.h>
 #include <sys/wait.h>
 #endif /* USE_PAM */
 
@@ -634,7 +635,7 @@ main(int argc, char **argv)
 			PAM_END;
 			exit(0);
 		} else {
-			if ((e = pam_end(pamh, PAM_DATA_SILENT)) != PAM_SUCCESS)
+			if ((e = pam_end(pamh, PAM_SILENT)) != PAM_SUCCESS)
 				syslog(LOG_ERR, "pam_end: %s",
 				    pam_strerror(pamh, e));
 		}
@@ -764,7 +765,9 @@ auth_pam(void)
 	const void *item;
 	int rval;
 	int e;
-	static struct pam_conv conv = { misc_conv, NULL };
+	static struct pam_conv conv;
+
+	conv.conv = &openpam_ttyconv;
 
 	if ((e = pam_start("login", username, &conv, &pamh)) != PAM_SUCCESS) {
 		syslog(LOG_ERR, "pam_start: %s", pam_strerror(pamh, e));

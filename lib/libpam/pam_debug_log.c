@@ -1,5 +1,5 @@
 /*-
- * Copyright 1998 Juniper Networks, Inc.
+ * Copyright 2001 Mark R V Murray
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,46 +23,40 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/lib/libpam/modules/pam_cleartext_pass_ok/pam_cleartext_pass_ok.c,v 1.2 1999/01/20 21:55:24 jdp Exp $
- *	$DragonFly: src/lib/libpam/modules/pam_cleartext_pass_ok/Attic/pam_cleartext_pass_ok.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $FreeBSD: src/lib/libpam/libpam/pam_debug_log.c,v 1.8 2002/04/14 16:44:04 des Exp $
+ * $DragonFly: src/lib/libpam/pam_debug_log.c,v 1.1 2005/07/13 12:34:21 joerg Exp $
  */
 
+#include <libgen.h>
+#include <stdarg.h>
 #include <stdio.h>
-#include <skey.h>
+#include <stdlib.h>
+#include <string.h>
 
-#define PAM_SM_AUTH
-#include <security/pam_modules.h>
+#include <security/pam_appl.h>
+#include <security/openpam.h>
+#include <security/pam_mod_misc.h>
 
-PAM_EXTERN int
-pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
-    const char **argv)
+/* Print a verbose error, including the function name and a
+ * cleaned up filename.
+ */
+void
+_pam_verbose_error(pam_handle_t *pamh, int flags,
+    const char *file, const char *function, const char *format, ...)
 {
-	int retval;
-	const void *item;
-	const char *user;
-	const char *tty;
-	const char *rhost;
+	va_list ap;
+	char *fmtbuf, *modname, *period;
 
-	if ((retval = pam_get_user(pamh, &user, NULL)) != PAM_SUCCESS)
-		return retval;
-	if ((retval = pam_get_item(pamh, PAM_TTY, &item)) != PAM_SUCCESS)
-		return retval;
-	tty = (const char *)item;
-	if ((retval = pam_get_item(pamh, PAM_RHOST, &item)) != PAM_SUCCESS)
-		return retval;
-	rhost = (const char *)item;
-	/*
-	 * The cast in the next statement is necessary only because the
-	 * declaration of skeyaccess is wrong.
-	 */
-	return skeyaccess((char *)user, tty, rhost, NULL) ?
-	    PAM_SUCCESS : PAM_AUTH_ERR;
+	if (!(flags & PAM_SILENT) && !openpam_get_option(pamh, "no_warn")) {
+		modname = basename(file);
+		period = strchr(modname, '.');
+		if (period == NULL)
+			period = strchr(modname, '\0');
+		va_start(ap, format);
+		asprintf(&fmtbuf, "%.*s: %s: %s\n", (int)(period - modname),
+		    modname, function, format);
+		pam_verror(pamh, fmtbuf, ap);
+		free(fmtbuf);
+		va_end(ap);
+	}
 }
-
-PAM_EXTERN int
-pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv)
-{
-	return PAM_SUCCESS;
-}
-
-PAM_MODULE_ENTRY("pam_cleartext_pass_ok");
