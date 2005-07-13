@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.8 2005/07/13 18:13:19 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.9 2005/07/13 18:16:14 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -145,6 +145,7 @@ typedef struct {
 #define EM_RH32		38	/* TRW RH-32 */
 #define EM_RCE		39	/* Motorola RCE */
 #define EM_ARM		40	/* ARM */
+#define EM_ALPHA	41	/* Digital Alpha */
 #define EM_SH		42	/* Hitachi SH */
 #define EM_SPARCV9	43	/* SPARC v9 64-bit */
 #define EM_TRICORE	44	/* Siemens Tricore */
@@ -214,7 +215,6 @@ typedef struct {
 #define EM_UNICORE	110	/* Microprocessor series from PKU-Unity Ltd. */
 				/* and MPRC of Peking University */
 #define EM_NUM		111
-#define EM_ALPHA	0x9026	/* Alpha (written in the absence of an ABI */
 
 /* Special section indexes. */
 #define SHN_UNDEF	     0		/* Undefined, missing, irrelevant. */
