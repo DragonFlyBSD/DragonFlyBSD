@@ -55,7 +55,7 @@
  *	@(#)inet.h	8.1 (Berkeley) 6/2/93
  *	From: Id: inet.h,v 8.5 1997/01/29 08:48:09 vixie Exp $
  * $FreeBSD: src/include/arpa/inet.h,v 1.11.2.1 2001/04/21 14:53:03 ume Exp $
- * $DragonFly: src/include/arpa/inet.h,v 1.4 2004/08/23 16:03:44 joerg Exp $
+ * $DragonFly: src/include/arpa/inet.h,v 1.5 2005/07/13 12:49:56 joerg Exp $
  */
 
 #ifndef _ARPA_INET_H_
@@ -66,7 +66,15 @@
 #include <sys/types.h>
 #include <sys/cdefs.h>
 
-struct in_addr;
+#ifndef _STRUCT_IN_ADDR_DECLARED
+#define _STRUCT_IN_ADDR_DECLARED
+/*
+ * Internet address (a structure for historical reasons)
+ */
+struct in_addr {
+	in_addr_t s_addr;
+};
+#endif
 
 /* XXX all new diversions!! argh!! */
 #define	inet_addr	__inet_addr

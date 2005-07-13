@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.10 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.11 2005/07/13 12:49:56 joerg Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -243,12 +243,15 @@
  */
 #define IPPORT_RESERVEDSTART	600
 
+#ifndef _STRUCT_IN_ADDR_DECLARED
+#define _STRUCT_IN_ADDR_DECLARED
 /*
  * Internet address (a structure for historical reasons)
  */
 struct in_addr {
 	in_addr_t s_addr;
 };
+#endif
 
 /*
  * Definitions of bits in internet address integers.
