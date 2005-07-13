@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.15 2005/07/13 19:07:05 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.16 2005/07/13 19:11:52 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -274,6 +274,11 @@ typedef struct {
 #define SHF_TLS		0x400		/* Section contains TLS data. */
 #define SHF_MASKOS	0x0ff00000	/* Reserved for OS-specific. */
 #define SHF_MASKPROC	0xf0000000	/* Reserved for processor-specific. */
+
+/* Section group flags. */
+#define GRP_COMDAT	0x1		/* Group is a COMDAT. */
+#define GRP_MASKOS	0x0ff00000	/* Reserved for OS-specific. */
+#define GRP_MASKPROC	0xf0000000	/* Reserved for processor-specific. */
 
 /* Values for p_type. */
 #define PT_NULL		0	/* Unused entry. */
