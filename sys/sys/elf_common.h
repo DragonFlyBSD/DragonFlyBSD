@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.13 2005/07/13 18:40:34 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.14 2005/07/13 18:46:31 asmodai Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -247,7 +247,12 @@ typedef struct {
 #define SHT_REL		9		/* relation section without addends */
 #define SHT_SHLIB	10		/* reserved - purpose unknown */
 #define SHT_DYNSYM	11		/* dynamic symbol table section */ 
-#define SHT_NUM		12		/* number of section types */
+#define SHT_INIT_ARRAY	14		/* array of constructors */
+#define SHT_FINI_ARRAY	15		/* array of destructors */
+#define SHT_PREINIT_ARRAY 16		/* array of pre-constructors */
+#define SHT_GROUP	17		/* array of pre-constructors */
+#define SHT_SYMTAB_SHNDX 18		/* extended section indices */
+#define SHT_NUM		19		/* number of section types */
 #define SHT_LOOS	0x60000000	/* First of OS specific semantics */
 #define SHT_HIOS	0x6fffffff	/* Last of OS specific semantics */
 #define SHT_LOPROC	0x70000000	/* reserved range for processor */
