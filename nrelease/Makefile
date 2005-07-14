@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.37 2005/07/13 15:25:32 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.38 2005/07/14 07:35:52 corecode Exp $
 #
 
 ISODIR ?= /usr/release
@@ -137,7 +137,7 @@ buildiso:
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
 		installkernel KERNCONF=${KERNCONF} )
-	${LN} -s kernel ${ISOROOT}/kernel.BOOTP
+	ln -s kernel ${ISOROOT}/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
