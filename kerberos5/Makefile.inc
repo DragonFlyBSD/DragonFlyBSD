@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/Makefile.inc,v 1.24 2004/12/21 09:33:44 ru Exp $
-# $DragonFly: src/kerberos5/Makefile.inc,v 1.6 2005/01/16 14:25:45 eirikn Exp $
+# $DragonFly: src/kerberos5/Makefile.inc,v 1.7 2005/07/14 18:02:33 joerg Exp $
 
 NO_LINT=
 
@@ -28,27 +28,9 @@ LIBSL=		${.OBJDIR}/../../lib/libsl/libsl.a
 LIBSL=		${.CURDIR}/../../lib/libsl/libsl.a
 .endif
 
-.if exists(${.OBJDIR}/../../tools/make-print-version/make-print-version)
-MAKEPRINTVERSION=${.OBJDIR}/../../tools/make-print-version/make-print-version
-.elif exists(${.OBJDIR}/../../bintools/make-print-version/make-print-version)
-MAKEPRINTVERSION=${.OBJDIR}/../../bintools/make-print-version/make-print-version
-.else
-MAKEPRINTVERSION=make-print-version
-.endif
-.if exists(${.OBJDIR}/../../tools/make-roken/make-roken)
-MAKEROKEN=	${.OBJDIR}/../../tools/make-roken/make-roken
-.elif exists(${.OBJDIR}/../../bintools/make-roken/make-roken)
-MAKEROKEN=	${.OBJDIR}/../../bintools/make-roken/make-roken
-.else
-MAKEROKEN=	make-roken
-.endif
-.if exists(${.OBJDIR}/../../tools/asn1_compile/asn1_compile)
-ASN1COMPILE=	${.OBJDIR}/../../tools/asn1_compile/asn1_compile
-.elif exists(${.OBJDIR}/../../bintools/asn1_compile/asn1_compile)
-ASN1COMPILE=	${.OBJDIR}/../../bintools/asn1_compile/asn1_compile
-.else
-ASN1COMPILE=	asn1_compile
-.endif
+MAKEPRINTVERSION=${.OBJDIR}/../../tools/make-print-version/make-print-version.nx
+MAKEROKEN=	${.OBJDIR}/../../tools/make-roken/make-roken.nx
+ASN1COMPILE=	${.OBJDIR}/../../tools/asn1_compile/asn1_compile.nx
 
 .if defined(SRCS)
 

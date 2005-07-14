@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/tools/asn1_compile/Makefile,v 1.5 2004/12/21 08:47:01 ru Exp $
-# $DragonFly: src/kerberos5/tools/asn1_compile/Makefile,v 1.1 2005/01/16 14:25:47 eirikn Exp $
+# $DragonFly: src/kerberos5/tools/asn1_compile/Makefile,v 1.2 2005/07/14 18:02:33 joerg Exp $
 
 PROG=	asn1_compile
 NOMAN=
@@ -37,7 +37,7 @@ print_version.h:
 roken.h:
 	${MAKEROKEN} > ${.TARGET}
 
-.include <bsd.prog.mk>
+.include <bsd.hostprog.mk>
 
 # There are two print_version.c's, the one we need is in ${KRB5DIR}/lib/vers,
 # so the order of paths is important here.

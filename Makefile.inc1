@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.73 2005/07/13 12:34:21 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.74 2005/07/14 18:02:33 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -819,7 +819,7 @@ _fortran= gnu/usr.bin/cc34/f771
 
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
     !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
-_libkrb5= kerberos5/bintools kerberos5/lib/libroken kerberos5/lib/libvers \
+_libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
     kerberos5/lib/libasn1 kerberos5/lib/libhdb kerberos5/lib/libsl
 .endif
 
