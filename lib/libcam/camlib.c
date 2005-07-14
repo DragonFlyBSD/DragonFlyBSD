@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.c,v 1.8.2.2 2002/05/23 04:19:22 ken Exp $
- * $DragonFly: src/lib/libcam/camlib.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libcam/camlib.c,v 1.3 2005/07/14 09:13:27 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -97,8 +97,7 @@ cam_getccb(struct cam_device *dev)
 void
 cam_freeccb(union ccb *ccb)
 {
-	if (ccb != NULL)
-		free(ccb);
+	free(ccb);
 }
 
 /*
@@ -708,8 +707,7 @@ cam_close_device(struct cam_device *dev)
 
 	cam_close_spec_device(dev);
 
-	if (dev != NULL)
-		free(dev);
+	free(dev);
 }
 
 void
@@ -757,6 +755,11 @@ cam_device_dup(struct cam_device *device)
 	}
 
 	newdev = malloc(sizeof(struct cam_device));
+	if (newdev == NULL) {
+		snprintf(cam_errbuf, CAM_ERRBUF_SIZE, 
+			 "%s: couldn't malloc CAM device structure", func_name);
+		return(NULL);
+	}
 
 	bcopy(device, newdev, sizeof(struct cam_device));
 
