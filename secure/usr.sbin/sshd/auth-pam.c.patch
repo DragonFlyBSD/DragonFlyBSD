@@ -1,0 +1,95 @@
+$DragonFly: src/secure/usr.sbin/sshd/Attic/auth-pam.c.patch,v 1.1 2005/07/14 18:29:48 joerg Exp $
+
+Index: auth-pam.c
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/crypto/openssh-4/auth-pam.c,v
+retrieving revision 1.1
+diff -u -r1.1 auth-pam.c
+--- auth-pam.c	14 Jul 2005 13:10:21 -0000	1.1
++++ auth-pam.c	14 Jul 2005 17:55:10 -0000
+@@ -150,6 +150,7 @@
+     void *(*thread_start)(void *), void *arg)
+ {
+ 	pid_t pid;
++	struct pam_ctxt *ctx = arg;
+ 
+ 	sshpam_thread_status = -1;
+ 	switch ((pid = fork())) {
+@@ -157,10 +158,14 @@
+ 		error("fork(): %s", strerror(errno));
+ 		return (-1);
+ 	case 0:
++		close(ctx->pam_psock);
++		ctx->pam_psock = -1;
+ 		thread_start(arg);
+ 		_exit(1);
+ 	default:
+ 		*thread = pid;
++		close(ctx->pam_csock);
++		ctx->pam_csock = -1;
+ 		sshpam_oldsig = signal(SIGCHLD, sshpam_sigchld_handler);
+ 		return (0);
+ 	}
+@@ -300,7 +305,7 @@
+  * Conversation function for authentication thread.
+  */
+ static int
+-sshpam_thread_conv(int n, struct pam_message **msg,
++sshpam_thread_conv(int n, const struct pam_message **msg,
+     struct pam_response **resp, void *data)
+ {
+ 	Buffer buffer;
+@@ -400,7 +405,7 @@
+ 	u_int i;
+ 	const char *pam_user;
+ 
+-	pam_get_item(sshpam_handle, PAM_USER, (void **)&pam_user);
++	pam_get_item(sshpam_handle, PAM_USER, (const void **)&pam_user);
+ 	environ[0] = NULL;
+ 
+ 	if (sshpam_authctxt != NULL) {
+@@ -492,7 +497,7 @@
+ }
+ 
+ static int
+-sshpam_null_conv(int n, struct pam_message **msg,
++sshpam_null_conv(int n, const struct pam_message **msg,
+     struct pam_response **resp, void *data)
+ {
+ 	debug3("PAM: %s entering, %d messages", __func__, n);
+@@ -502,7 +507,7 @@
+ static struct pam_conv null_conv = { sshpam_null_conv, NULL };
+ 
+ static int
+-sshpam_store_conv(int n, struct pam_message **msg,
++sshpam_store_conv(int n, const struct pam_message **msg,
+     struct pam_response **resp, void *data)
+ {
+ 	struct pam_response *reply;
+@@ -575,7 +580,7 @@
+ 	if (sshpam_handle != NULL) {
+ 		/* We already have a PAM context; check if the user matches */
+ 		sshpam_err = pam_get_item(sshpam_handle,
+-		    PAM_USER, (void **)&pam_user);
++		    PAM_USER, (const void **)&pam_user);
+ 		if (sshpam_err == PAM_SUCCESS && strcmp(user, pam_user) == 0)
+ 			return (0);
+ 		pam_end(sshpam_handle, sshpam_err);
+@@ -891,7 +896,7 @@
+ }
+ 
+ static int
+-sshpam_tty_conv(int n, struct pam_message **msg,
++sshpam_tty_conv(int n, const struct pam_message **msg,
+     struct pam_response **resp, void *data)
+ {
+ 	char input[PAM_MAX_MSG_SIZE];
+@@ -1050,7 +1055,7 @@
+  * display.
+  */
+ static int
+-sshpam_passwd_conv(int n, struct pam_message **msg,
++sshpam_passwd_conv(int n, const struct pam_message **msg,
+     struct pam_response **resp, void *data)
+ {
+ 	struct pam_response *reply;

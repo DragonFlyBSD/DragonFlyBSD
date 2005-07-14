@@ -1,13 +1,13 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.9 2005/07/07 12:43:36 corecode Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.10 2005/07/14 18:29:48 joerg Exp $
 #
 
 PROG=	sshd
-SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
-	sshpty.c sshlogin.c servconf.c serverloop.c uidswap.c \
+SRCS=	sshd.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
+	auth-rh-rsa.c sshpty.c sshlogin.c servconf.c serverloop.c uidswap.c \
 	auth.c auth1.c auth2.c auth-options.c session.c \
 	auth-chall.c auth2-chall.c groupaccess.c auth-skey.c \
-	auth-bsdauth.c auth2-pam-freebsd.c auth2-hostbased.c \
+	auth-bsdauth.c auth2-hostbased.c \
 	auth2-kbdint.c auth2-none.c auth2-passwd.c auth2-pubkey.c \
 	monitor_mm.c monitor.c monitor_wrap.c monitor_fdpass.c \
 	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c
@@ -20,8 +20,12 @@ MAN=	sshd.8 sshd_config.5
 SRCS+=	auth-passwd-freebsd.c
 CFLAGS+=-DCUSTOM_SYS_AUTH_PASSWD
 
+# Flags for PAM
+CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
+	-DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
+
 SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
-	loginrec.c.patch monitor.c.patch \
+	loginrec.c.patch monitor.c.patch auth-pam.c.patch \
 	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch 
 
 SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch
@@ -43,22 +47,6 @@ CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
 
 LDADD+=	-lcrypt -lutil -lz -lwrap ${MINUSLPAM}
 DPADD+=	${LIBCRYPT} ${LIBUTIL} ${LIBZ} ${LIBWRAP} ${LIBPAM}
-
-# There's a privilege separation bug when PAM authentication is
-# used and posix threads are disabled.  Both descriptors of the socketpair
-# used for the communication between the [net] and the [pam] process are
-# left open, and when a timeout kills one procses the other does not see
-# it because it still has both end points open.  This eventually causes
-# sshd to start rejecting connections.  So, enable posix threading
-# here even though I don't want to use it.
-#
-OPENSSH_USE_POSIX_THREADS=1
-
-.if defined(OPENSSH_USE_POSIX_THREADS) && !defined(NOLIBC_R)
-CFLAGS+=-DUSE_POSIX_THREADS
-LDADD+= -pthread
-DPADD+= ${LIBC_R}
-.endif
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
