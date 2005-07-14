@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libpam/Makefile,v 1.3 2005/07/13 12:34:21 joerg Exp $
+# $DragonFly: src/lib/libpam/Makefile,v 1.4 2005/07/14 14:21:16 joerg Exp $
 
 LIB=	pam
 WARNS?=	6
@@ -9,7 +9,7 @@ PATCHES!=	echo ${.CURDIR}/patches/*.patch
 
 MODULE_DIR=	/usr/lib/security
 
-CFLAGS+= -DOPENPAM_MODULES_DIR='"${MODULE_DIR}"'
+CFLAGS+= -DOPENPAM_MODULES_DIR='"${MODULE_DIR}/"'
 CFLAGS+= -DLIB_MAJ=${MODULE_SHLIB_MAJOR}
 CFLAGS+= -I${SRCDIR}/lib
 
