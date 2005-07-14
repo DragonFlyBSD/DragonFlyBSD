@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.33 2005/04/20 17:01:51 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.34 2005/07/14 12:38:46 hmp Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -167,7 +167,7 @@ struct vnode {
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
-	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of clean bufs */
+	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
 	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
 	long	v_numoutput;			/* num of writes in progress */
 	enum	vtype v_type;			/* vnode type */
