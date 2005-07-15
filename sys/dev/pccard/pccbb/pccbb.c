@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.7 2005/06/14 16:24:34 swildner Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.8 2005/07/15 17:30:16 eirikn Exp $
  */
 
 /*
@@ -648,7 +648,6 @@ cbb_attach(device_t brdev)
 	if (sc->irq_res == NULL) {
 		printf("cbb: Unable to map IRQ...\n");
 		goto err;
-		return (ENOMEM);
 	}
 
 	if (bus_setup_intr(brdev, sc->irq_res, INTR_TYPE_NET, cbb_intr, sc,
