@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.3 2005/07/15 15:15:26 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.4 2005/07/15 15:37:37 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -4112,12 +4112,18 @@ sctp_input(m, va_alist)
 #endif
 
 #if !(defined(__FreeBSD__) || defined(__APPLE__))
-	int off;
+#ifdef __DragonFly__
+	__va_list ap;
+	__va_start(ap, m);
+	iphlen = __va_arg(ap, int);
+	__va_end(ap);
+#else
 	va_list ap;
 
 	va_start(ap, m);
-	iphlen = off = va_arg(ap, int);
+	iphlen = va_arg(ap, int);
 	va_end(ap);
+#endif
 #else
 	iphlen = off;
 #endif
