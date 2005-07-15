@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.4 2005/07/15 15:34:03 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.5 2005/07/15 15:52:00 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -746,7 +746,7 @@ sctp_attach(struct socket *so, int proto, struct proc *p)
 		splx(s);
 		return EINVAL;
 	}
-	error = soreserve(so, sctp_sendspace, sctp_recvspace);
+	error = soreserve(so, sctp_sendspace, sctp_recvspace, NULL);
 	if (error) {
 		splx(s);
 		return error;
