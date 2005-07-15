@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.6 2005/07/15 17:21:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.7 2005/07/15 17:23:47 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -1936,6 +1936,8 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 #endif
 #elif defined(__NetBSD__) || defined(__APPLE__)
 			    suser(p->p_ucred, &p->p_acflag)
+#elif defined(__DragonFly__)
+			    suser(p)
 #else
 			    suser(p, 0)
 #endif
