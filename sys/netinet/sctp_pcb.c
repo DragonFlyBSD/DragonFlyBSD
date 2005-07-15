@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.5 2005/07/15 17:19:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.6 2005/07/15 17:21:28 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -1586,7 +1586,6 @@ sctp_inpcb_alloc(struct socket *so)
 #else
 	callout_init(&inp->sctp_ep.signature_change.timer);
 #endif
-	printf("signature_change.timer has been initiated!\n");
 	inp->sctp_ep.signature_change.type = SCTP_TIMER_TYPE_NEWCOOKIE;
 
 	/* now init the actual endpoint default data */
