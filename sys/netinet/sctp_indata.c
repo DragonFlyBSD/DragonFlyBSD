@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.3 2005/07/15 15:15:26 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.4 2005/07/15 15:43:55 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -2557,7 +2557,12 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 	 */
 	if (m->m_len < (long)MHLEN && m->m_next == NULL) {
 		/* we only handle mbufs that are singletons.. not chains */
-		MGET(m, M_DONTWAIT, MT_DATA);
+#ifdef __DragonFly__
+		if ((*mm)->m_flags & M_PKTHDR)
+			MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+		else
+#endif
+			MGET(m, MB_DONTWAIT, MT_DATA);
 		if (m) {
 			/* ok lets see if we can copy the data up */
 			caddr_t *from, *to;
