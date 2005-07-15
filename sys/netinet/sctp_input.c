@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.4 2005/07/15 15:37:37 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.5 2005/07/15 15:39:48 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -4143,7 +4143,7 @@ sctp_input(m, va_alist)
 	 * Strip IP options, we don't allow any in or out.
 	 */
 	if ((size_t)iphlen > sizeof(struct ip)) {
-		ip_stripoptions(m, (struct mbuf *)0);
+		ip_stripoptions(m);
 		iphlen = sizeof(struct ip);
 	}
 
