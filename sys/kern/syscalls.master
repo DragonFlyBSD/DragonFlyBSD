@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.22 2005/04/08 08:31:06 joerg Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.23 2005/07/15 17:54:47 eirikn Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -522,9 +522,8 @@
 			    const struct kevent *changelist, int nchanges, \
 			    struct kevent *eventlist, int nevents, \
 			    const struct timespec *timeout); }
-
-; 364-392 used by FreeBSD-current
-364	UNIMPL	NOHIDE	nosys
+364	STD	BSD	{ int sctp_peeloff(int sd, caddr_t name ); }
+; 365-392 used by FreeBSD-current
 365	UNIMPL	NOHIDE	nosys
 366	UNIMPL	NOHIDE	nosys
 367	UNIMPL	NOHIDE	nosys

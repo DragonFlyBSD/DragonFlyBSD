@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.10 2005/01/26 23:09:58 hsu Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.11 2005/07/15 17:54:48 eirikn Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -342,6 +342,7 @@ struct msghdr {
 #define	MSG_WAITALL	0x40		/* wait for full request or error */
 #define	MSG_DONTWAIT	0x80		/* this message should be nonblocking */
 #define	MSG_EOF		0x100		/* data completes connection */
+#define	MSG_NOTIFICATION 0x200		/* notification message */
 
 /*
  * Header for ancillary data objects in msg_control buffer.

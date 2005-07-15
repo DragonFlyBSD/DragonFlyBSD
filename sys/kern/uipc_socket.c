@@ -82,10 +82,11 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.34 2005/06/07 19:08:55 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.35 2005/07/15 17:54:47 eirikn Exp $
  */
 
 #include "opt_inet.h"
+#include "opt_sctp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -259,23 +260,40 @@ int
 solisten(struct socket *so, int backlog, struct thread *td)
 {
 	int error;
+#ifdef SCTP
+	short oldopt, oldqlimit;
+#endif /* SCTP */
 
 	crit_enter();
- 	if (so->so_state & (SS_ISCONNECTED | SS_ISCONNECTING)) {
+	if (so->so_state & (SS_ISCONNECTED | SS_ISCONNECTING)) {
 		crit_exit();
- 		return (EINVAL);
- 	}
-
-	error = so_pru_listen(so, td);
-	if (error) {
-		crit_exit();
-		return (error);
+		return (EINVAL);
 	}
+
+#ifdef SCTP
+	oldopt = so->so_options;
+	oldqlimit = so->so_qlimit;
+#endif /* SCTP */
+
 	if (TAILQ_EMPTY(&so->so_comp))
 		so->so_options |= SO_ACCEPTCONN;
 	if (backlog < 0 || backlog > somaxconn)
 		backlog = somaxconn;
 	so->so_qlimit = backlog;
+	/* SCTP needs to look at tweak both the inbound backlog parameter AND
+	 * the so_options (UDP model both connect's and gets inbound
+	 * connections .. implicitly).
+	 */
+	error = so_pru_listen(so, td);
+	if (error) {
+#ifdef SCTP
+		/* Restore the params */
+		so->so_options = oldopt;
+		so->so_qlimit = oldqlimit;
+#endif /* SCTP */
+		crit_exit();
+		return (error);
+	}
 	crit_exit();
 	return (0);
 }
@@ -891,6 +909,26 @@ dontblock:
 			m = so->so_rcv.sb_mb;
 		}
 	}
+#ifdef SCTP
+	if (pr->pr_flags & PR_ADDR_OPT) {
+		/*
+		 * For SCTP we may be getting a
+		 * whole message OR a partial delivery.
+		 */
+		if (m->m_type == MT_SONAME) {
+			orig_resid = 0;
+			if (psa)
+				*psa = dup_sockaddr(mtod(m, struct sockaddr *));
+			if (flags & MSG_PEEK) {
+				m = m->m_next;
+			} else {
+				sbfree(&so->so_rcv, m);
+				so->so_rcv.sb_mb = m_free(m);
+				m = so->so_rcv.sb_mb;
+			}
+		}
+	}
+#endif /* SCTP */
 	while (m && m->m_type == MT_CONTROL && error == 0) {
 		if (flags & MSG_PEEK) {
 			if (controlp)
@@ -961,6 +999,10 @@ dontblock:
 		if (len == m->m_len - moff) {
 			if (m->m_flags & M_EOR)
 				flags |= MSG_EOR;
+#ifdef SCTP
+			if (m->m_flags & M_NOTIFICATION)
+				flags |= MSG_NOTIFICATION;
+#endif /* SCTP */
 			if (flags & MSG_PEEK) {
 				m = m->m_next;
 				moff = 0;

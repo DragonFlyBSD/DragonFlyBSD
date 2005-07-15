@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.33 2005/06/20 17:59:31 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.34 2005/07/15 17:54:47 eirikn Exp $
 #
 #        On the handling of kernel options
 #
@@ -546,3 +546,16 @@ DCONS_FORCE_GDB		opt_dcons.h
 
 # depricated drivers and options
 I_WANT_DEPRECATED_STUFF	opt_deprecated.h
+
+# SCTP
+SCTP			opt_sctp.h
+SCTP_DEBUG		opt_sctp.h
+SCTP_TCP_MODEL_SUPPORT	opt_sctp.h
+SCTP_USE_ADLER32	opt_sctp.h
+SCTP_HIGH_SPEED		opt_sctp.h
+SCTP_STAT_LOGGIN	opt_sctp.h
+SCTP_CWND_LOGGING	opt_sctp.h
+SCTP_BLK_LOGGING	opt_sctp.h
+SCTP_STR_LOGGING	opt_sctp.h
+SCTP_FR_LOGGING		opt_sctp.h
+SCTP_MAP_LOGGING	opt_sctp.h

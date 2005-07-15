@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.12 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.13 2005/07/15 17:54:47 eirikn Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -40,6 +40,7 @@
 #include "opt_mrouting.h"
 #include "opt_ipsec.h"
 #include "opt_inet6.h"
+#include "opt_sctp.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -95,6 +96,13 @@
 #include <netns/ns_if.h>
 #endif
 
+#ifdef SCTP
+#include <netinet/in_pcb.h>
+#include <netinet/sctp_pcb.h>
+#include <netinet/sctp.h>
+#include <netinet/sctp_var.h>
+#endif /* SCTP */
+
 #include <net/netisr.h>		/* for cpu0_soport */
 
 extern	struct domain inetdomain;
@@ -120,6 +128,33 @@ struct protosw inetsw[] = {
   tcp_init,	0,		tcp_slowtimo,	tcp_drain,
   &tcp_usrreqs
 },
+#ifdef SCTP
+/*
+ * Order is very important here, we add the good one in
+ * in this postion so it maps to the right ip_protox[]
+ * postion for SCTP. Don't move the one above below
+ * this one or IPv6/4 compatability will break
+ */
+{ SOCK_DGRAM,	&inetdomain,	IPPROTO_SCTP,	PR_ADDR_OPT|PR_WANTRCVD,
+  sctp_input,	0,		sctp_ctlinput,	sctp_ctloutput,
+  cpu0_soport,
+  sctp_init,	0,		0,		sctp_drain,
+  &sctp_usrreqs
+},
+{ SOCK_SEQPACKET,&inetdomain,	IPPROTO_SCTP,	PR_ADDR_OPT|PR_WANTRCVD,
+  sctp_input,	0,		sctp_ctlinput,	sctp_ctloutput,
+  cpu0_soport,
+  0,		0,		0,		sctp_drain,
+  &sctp_usrreqs
+},
+
+{ SOCK_STREAM,	&inetdomain,	IPPROTO_SCTP,	PR_CONNREQUIRED|PR_ADDR_OPT|PR_WANTRCVD,
+  sctp_input,	0,		sctp_ctlinput,	sctp_ctloutput,
+  cpu0_soport,
+  0,		0,		0,		sctp_drain,
+  &sctp_usrreqs
+},
+#endif /* SCTP */
 { SOCK_RAW,	&inetdomain,	IPPROTO_RAW,	PR_ATOMIC|PR_ADDR,
   rip_input,	0,		rip_ctlinput,	rip_ctloutput,
   cpu0_soport,

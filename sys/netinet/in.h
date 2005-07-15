@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.12 2005/07/13 14:11:42 joerg Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.13 2005/07/15 17:54:47 eirikn Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -170,6 +170,7 @@
 /* 101-254: Partly Unassigned */
 #define	IPPROTO_PIM		103		/* Protocol Independent Mcast */
 #define	IPPROTO_PGM		113		/* PGM */
+#define	IPPROTO_SCTP		132		/* SCTP */
 #define	IPPROTO_PFSYNC		240		/* PFSYNC */
 /* 255: Reserved */
 /* BSD Private, local use, namespace incursion */

@@ -35,10 +35,11 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.56 2005/07/13 01:38:50 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.57 2005/07/15 17:54:47 eirikn Exp $
  */
 
 #include "opt_ktrace.h"
+#include "opt_sctp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -76,6 +77,10 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+
+#ifdef SCTP
+#include <netinet/sctp_peeloff.h>
+#endif /* SCTP */
 
 struct sfbuf_mref {
 	struct sf_buf	*sf;
@@ -1672,4 +1677,96 @@ done0:
 	if (mheader != NULL)
 		m_freem(mheader);
 	return (error);
+}
+
+int
+sctp_peeloff(struct sctp_peeloff_args *uap)
+{
+#ifdef SCTP
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *lfp = NULL;
+	struct file *nfp = NULL;
+	int error;
+	struct socket *head, *so;
+	caddr_t assoc_id;
+	int fd;
+	short fflag;		/* type must match fp->f_flag */
+
+	assoc_id = uap->name;
+	error = holdsock(fdp, uap->sd, &lfp);
+	if (error) {
+		return (error);
+	}
+	crit_enter();
+	head = (struct socket *)lfp->f_data;
+	error = sctp_can_peel_off(head, assoc_id);
+	if (error) {
+		crit_exit();
+		goto done;
+	}
+	/*
+	 * At this point we know we do have a assoc to pull
+	 * we proceed to get the fd setup. This may block
+	 * but that is ok.
+	 */
+
+	fflag = lfp->f_flag;
+	error = falloc(p, &nfp, &fd);
+	if (error) {
+		/*
+		 * Probably ran out of file descriptors. Put the
+		 * unaccepted connection back onto the queue and
+		 * do another wakeup so some other process might
+		 * have a chance at it.
+		 */
+		crit_exit();
+		goto done;
+	}
+	fhold(nfp);
+	uap->sysmsg_result = fd;
+
+	so = sctp_get_peeloff(head, assoc_id, &error);
+	if (so == NULL) {
+		/*
+		 * Either someone else peeled it off OR
+		 * we can't get a socket.
+		 */
+		goto noconnection;
+	}
+	so->so_state &= ~SS_COMP;
+	so->so_state &= ~SS_NOFDREF;
+	so->so_head = NULL;
+	if (head->so_sigio != NULL)
+		fsetown(fgetown(head->so_sigio), &so->so_sigio);
+
+	nfp->f_data = (caddr_t)so;
+	nfp->f_flag = fflag;
+	nfp->f_ops = &socketops;
+	nfp->f_type = DTYPE_SOCKET;
+
+noconnection:
+	/*
+	 * close the new descriptor, assuming someone hasn't ripped it
+	 * out from under us.
+	 */
+	if (error) {
+		if (fdp->fd_files[fd].fp == nfp) {
+			funsetfd(fdp, fd);
+			fdrop(nfp, td);
+		}
+	}
+	crit_exit();
+	/*
+	 * Release explicitly held references before returning.
+	 */
+done:
+	if (nfp != NULL)
+		fdrop(nfp, td);
+	fdrop(lfp, td);
+	return (error);
+#else /* SCTP */
+	return(EOPNOTSUPP);
+#endif /* SCTP */
 }
