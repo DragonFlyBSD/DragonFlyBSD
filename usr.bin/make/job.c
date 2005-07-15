@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.126 2005/07/13 20:41:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.127 2005/07/15 21:27:29 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -108,9 +108,6 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/stat.h>
-#ifdef USE_KQUEUE
-#include <sys/event.h>
-#endif
 #include <sys/wait.h>
 #include <ctype.h>
 #include <err.h>
@@ -145,7 +142,6 @@
 #define	MKLVL_MAXVAL	500
 #define	MKLVL_ENVVAR	"__MKLVL__"
 
-#ifndef USE_KQUEUE
 /*
  * The SEL_ constants determine the maximum amount of time spent in select
  * before coming out to see if a child has finished. SEL_SEC is the number of
@@ -153,7 +149,6 @@
  */
 #define	SEL_SEC		2
 #define	SEL_USEC	0
-#endif /* !USE_KQUEUE */
 
 /*
  * Job Table definitions.
@@ -311,13 +306,8 @@ static struct JobList jobs = TAILQ_HEAD_INITIALIZER(jobs);
 static Boolean	jobFull;	/* Flag to tell when the job table is full. It
 				 * is set TRUE when (1) the total number of
 				 * running jobs equals the maximum allowed */
-#ifdef USE_KQUEUE
-static int	kqfd;		/* File descriptor obtained by kqueue() */
-#else
 static fd_set	outputs;	/* Set of descriptors of pipes connected to
 				 * the output channels of children */
-#endif
-
 static GNode	*lastNode;	/* The node for which output was most recently
 				 * produced. */
 static const char *targFmt;	/* Format string to use to head output from a
@@ -831,9 +821,7 @@ JobClose(Job *job)
 {
 
 	if (usePipes) {
-#if !defined(USE_KQUEUE)
 		FD_CLR(job->inPipe, &outputs);
-#endif
 		if (job->outPipe != job->inPipe) {
 			close(job->outPipe);
 		}
@@ -1388,26 +1376,8 @@ JobExec(Job *job, char **argv)
 			 * current position in the buffer to the beginning and
 			 * mark another stream to watch in the outputs mask.
 			 */
-#ifdef USE_KQUEUE
-			struct kevent	kev[2];
-#endif
 			job->curPos = 0;
-
-#if defined(USE_KQUEUE)
-			EV_SET(&kev[0], job->inPipe, EVFILT_READ, EV_ADD, 0, 0, job);
-			EV_SET(&kev[1], job->pid, EVFILT_PROC,
-			    EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, NULL);
-			if (kevent(kqfd, kev, 2, NULL, 0, NULL) != 0) {
-				/*
-				 * kevent() will fail if the job is already
-				 * finished
-				 */
-				if (errno != EINTR && errno != EBADF && errno != ESRCH)
-					Punt("kevent: %s", strerror(errno));
-			}
-#else
 			FD_SET(job->inPipe, &outputs);
-#endif /* USE_KQUEUE */
 		}
 
 		if (job->cmdFILE != NULL && job->cmdFILE != stdout) {
@@ -2207,53 +2177,16 @@ Job_CatchChildren(Boolean block)
  *	Output is read from pipes if we're piping.
  */
 void
-#ifdef USE_KQUEUE
-Job_CatchOutput(int flag __unused)
-#else
 Job_CatchOutput(int flag)
-#endif
 {
 	int		nfds;
-#ifdef USE_KQUEUE
-#define KEV_SIZE	4
-	struct kevent	kev[KEV_SIZE];
-	int		i;
-#else
 	struct timeval	timeout;
 	fd_set		readfds;
 	Job		*job;
-#endif
 
 	fflush(stdout);
 
 	if (usePipes) {
-#ifdef USE_KQUEUE
-		if ((nfds = kevent(kqfd, NULL, 0, kev, KEV_SIZE, NULL)) == -1) {
-			if (errno != EINTR)
-				Punt("kevent: %s", strerror(errno));
-			if (interrupted)
-				JobPassSig(interrupted);
-		} else {
-			for (i = 0; i < nfds; i++) {
-				if (kev[i].flags & EV_ERROR) {
-					warnc(kev[i].data, "kevent");
-					continue;
-				}
-				switch (kev[i].filter) {
-				  case EVFILT_READ:
-					JobDoOutput(kev[i].udata, FALSE);
-					break;
-				  case EVFILT_PROC:
-					/*
-					 * Just wake up and let
-					 * Job_CatchChildren() collect the
-					 * terminated job.
-					 */
-					break;
-				}
-			}
-		}
-#else
 		readfds = outputs;
 		timeout.tv_sec = SEL_SEC;
 		timeout.tv_usec = SEL_USEC;
@@ -2279,7 +2212,6 @@ Job_CatchOutput(int flag)
 			}
 			job = TAILQ_NEXT(job, link);
 		}
-#endif /* !USE_KQUEUE */
 	}
 }
 
@@ -2373,12 +2305,6 @@ Job_Init(int maxproc)
 	} else {
 		targFmt = TARG_FMT;
 	}
-
-#ifdef USE_KQUEUE
-	if ((kqfd = kqueue()) == -1) {
-		Punt("kqueue: %s", strerror(errno));
-	}
-#endif
 
 	begin = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 

@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.34 2005/06/18 09:01:12 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.35 2005/07/15 21:27:29 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -13,9 +13,6 @@ WARNS_WERROR=	YES
 NOSHARED?=	YES
 
 CFLAGS+=-DMAKE_VERSION=\"5200408120\"
-
-# There is no obvious performance improvement currently.
-# CFLAGS+=-DUSE_KQUEUE
 
 # Make object files which depend on preprocessor symbols defined
 # in the Makefile which are not compilation options but rather
