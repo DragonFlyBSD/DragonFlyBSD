@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.3 2005/07/15 15:15:26 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -1091,7 +1091,7 @@ sctp_process_cookie_existing(struct mbuf *m, int iphlen, int offset,
 			printf("sctp_handle_cookie: got a cookie, while shutting down!\n");
 		}
 #endif
-		MGETHDR(op_err, M_DONTWAIT, MT_HEADER);
+		MGETHDR(op_err, MB_DONTWAIT, MT_HEADER);
 		if (op_err == NULL) {
 			/* FOOBAR */
 			return (NULL);
@@ -1810,7 +1810,7 @@ sctp_handle_cookie_echo(struct mbuf *m, int iphlen, int offset,
 		return (NULL);
 	}
 
-	m_sig = m_split(m, sig_offset, M_DONTWAIT);
+	m_sig = m_split(m, sig_offset, MB_DONTWAIT);
 	if (m_sig == NULL) {
 		/* out of memory or ?? */
 #ifdef SCTP_DEBUG
@@ -1961,7 +1961,7 @@ sctp_handle_cookie_echo(struct mbuf *m, int iphlen, int offset,
 			printf("sctp_handle_cookie: got a STALE cookie!\n");
 		}
 #endif
-		MGETHDR(op_err, M_DONTWAIT, MT_HEADER);
+		MGETHDR(op_err, MB_DONTWAIT, MT_HEADER);
 		if (op_err == NULL) {
 			/* FOOBAR */
 			return (NULL);
@@ -3250,7 +3250,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 				struct mbuf *oper;
 				struct sctp_paramhdr *phdr;
 				oper = NULL;
-				MGETHDR(oper, M_DONTWAIT, MT_HEADER);
+				MGETHDR(oper, MB_DONTWAIT, MT_HEADER);
 				if (oper) {
 					/* pre-reserve some space */
 					oper->m_data +=
@@ -3517,7 +3517,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 					struct mbuf *oper;
 					struct sctp_paramhdr *phdr;
 					oper = NULL;
-					MGETHDR(oper, M_DONTWAIT, MT_HEADER);
+					MGETHDR(oper, MB_DONTWAIT, MT_HEADER);
 					if (oper) {
 						oper->m_len =
 						    oper->m_pkthdr.len =
@@ -3718,7 +3718,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 			if ((ch->chunk_type & 0x40) && (stcb != NULL)) {
 				struct mbuf *mm;
 				struct sctp_paramhdr *phd;
-				MGETHDR(mm, M_DONTWAIT, MT_HEADER);
+				MGETHDR(mm, MB_DONTWAIT, MT_HEADER);
 				if (mm) {
 					phd = mtod(mm, struct sctp_paramhdr *);
 					/* We cheat and use param type since we
@@ -3734,7 +3734,7 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 					mm->m_len = sizeof(*phd);
 					mm->m_next = sctp_m_copym(m, *offset,
 					    SCTP_SIZE32(chk_length),
-					    M_DONTWAIT);
+					    MB_DONTWAIT);
 					if (mm->m_next) {
 						mm->m_pkthdr.len =
 						    SCTP_SIZE32(chk_length) +

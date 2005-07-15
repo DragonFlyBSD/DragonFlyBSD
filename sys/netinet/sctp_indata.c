@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.3 2005/07/15 15:15:26 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -203,7 +203,7 @@ sctp_build_ctl_nchunk(struct sctp_tcb *stcb, uint32_t tsn, uint32_t ppid,
 		return (NULL);
 	}
 
-	MGETHDR(ret, M_DONTWAIT, MT_CONTROL);
+	MGETHDR(ret, MB_DONTWAIT, MT_CONTROL);
 	if (ret == NULL) {
 		/* No space */
 		return (ret);
@@ -253,7 +253,7 @@ sctp_build_ctl(struct sctp_tcb *stcb, struct sctp_tmit_chunk *chk)
 		/* user does not want the sndrcv ctl */
 		return (NULL);
 	}
-	MGET(ret, M_DONTWAIT, MT_CONTROL);
+	MGET(ret, MB_DONTWAIT, MT_CONTROL);
 	if (ret == NULL) {
 		/* No space */
 		return (ret);
@@ -395,7 +395,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 #endif
 	/* XXX need to append PKTHDR to the socket buffer first */
 	if ((chk->data->m_flags & M_PKTHDR) == 0) {
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			/* no room! */
 			if (hold_locks == 0)
@@ -617,7 +617,7 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 		}
 
 		if ((chk->data->m_flags & M_PKTHDR) == 0) {
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if (m == NULL) {
 				/* no room! */
 				if (hold_locks == 0)
@@ -853,7 +853,7 @@ sctp_queue_data_to_stream(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 * association destruction
 		 */
 		TAILQ_INSERT_HEAD(&strm->inqueue, chk, sctp_next);
-		MGET(oper, M_DONTWAIT, MT_DATA);
+		MGET(oper, MB_DONTWAIT, MT_DATA);
 		if (oper) {
 			struct sctp_paramhdr *ph;
 			u_int32_t *ippp;
@@ -1084,7 +1084,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					printf("Gak, Evil plot, its not first, no fragmented delivery in progress\n");
 				}
 #endif
-				MGET(oper, M_DONTWAIT, MT_DATA);
+				MGET(oper, MB_DONTWAIT, MT_DATA);
 				if (oper) {
 					struct sctp_paramhdr *ph;
 					u_int32_t *ippp;
@@ -1114,7 +1114,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 					printf("Gak, Evil plot, it IS a first and fragmented delivery in progress\n");
 				}
 #endif
-				MGET(oper, M_DONTWAIT, MT_DATA);
+				MGET(oper, MB_DONTWAIT, MT_DATA);
 				if (oper) {
 					struct sctp_paramhdr *ph;
 					u_int32_t *ippp;
@@ -1144,7 +1144,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						    asoc->str_of_pdapi);
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1175,7 +1175,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						    asoc->ssn_of_pdapi);
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1275,7 +1275,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						printf("Gak, Evil plot, it's a FIRST!\n");
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1311,7 +1311,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						    prev->rec.data.stream_number);
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1349,7 +1349,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						    prev->rec.data.stream_seq);
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1383,7 +1383,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						printf("Prev check - Gak, evil plot, its not FIRST and it must be!\n");
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1428,7 +1428,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						printf("Gak, Evil plot, its not a last!\n");
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1465,7 +1465,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						printf("Gak, Evil plot, new prev chunk is a LAST\n");
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1501,7 +1501,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						    next->rec.data.stream_number);
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1539,7 +1539,7 @@ sctp_queue_data_for_reasm(struct sctp_tcb *stcb, struct sctp_association *asoc,
 						    next->rec.data.stream_seq);
 					}
 #endif
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -1811,7 +1811,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		struct sctp_paramhdr *phdr;
 		struct mbuf *mb;
 
-		MGETHDR(mb, M_DONTWAIT, MT_DATA);
+		MGETHDR(mb, MB_DONTWAIT, MT_DATA);
 		if (mb != NULL) {
 			/* add some space up front so prepend will work well */
 			mb->m_data += sizeof(struct sctp_chunkhdr);
@@ -1863,7 +1863,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		 * throw it in the stream so it gets cleaned up in
 		 * association destruction
 		 */
-		MGET(oper, M_DONTWAIT, MT_DATA);
+		MGET(oper, MB_DONTWAIT, MT_DATA);
 		if (oper) {
 			struct sctp_paramhdr *ph;
 			u_int32_t *ippp;
@@ -1887,7 +1887,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 	if (last_chunk == 0) {
 		dmbuf = sctp_m_copym(*m,
 		    (offset + sizeof(struct sctp_data_chunk)),
-		    the_len, M_DONTWAIT);
+		    the_len, MB_DONTWAIT);
 	} else {
 		/* We can steal the last chunk */
 		dmbuf = *m;
@@ -1935,7 +1935,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 
 		if ((dmbuf->m_flags & M_PKTHDR) == 0) {
 			struct mbuf *tmp;
-			MGETHDR(tmp, M_DONTWAIT, MT_DATA);
+			MGETHDR(tmp, MB_DONTWAIT, MT_DATA);
 			if (tmp == NULL) {
 
 				/* no room! */
@@ -2078,7 +2078,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			if (TAILQ_EMPTY(&asoc->reasmqueue) &&
 			    (estimate_tsn == chk->rec.data.TSN_seq)) {
 				/* Evil/Broke peer */
-				MGET(oper, M_DONTWAIT, MT_DATA);
+				MGET(oper, MB_DONTWAIT, MT_DATA);
 				if (oper) {
 					struct sctp_paramhdr *ph;
 					u_int32_t *ippp;
@@ -2101,7 +2101,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				return (0);
 			} else {
 				if (sctp_does_chk_belong_to_reasm(asoc, chk)) {
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -2135,7 +2135,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				 * our peer is broken or evil.
 				 */
 				if (sctp_does_chk_belong_to_reasm(asoc, chk)) {
-					MGET(oper, M_DONTWAIT, MT_DATA);
+					MGET(oper, MB_DONTWAIT, MT_DATA);
 					if (oper) {
 						struct sctp_paramhdr *ph;
 						u_int32_t *ippp;
@@ -2614,7 +2614,7 @@ sctp_process_data(struct mbuf **mm, int iphlen, int *offset, int length,
 			 * data chunk.
 			 */
 			struct mbuf *op_err;
-			MGET(op_err, M_DONTWAIT, MT_DATA);
+			MGET(op_err, MB_DONTWAIT, MT_DATA);
 			if (op_err) {
 				struct sctp_paramhdr *ph;
 				u_int32_t *ippp;
@@ -3617,7 +3617,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 		hopeless_peer:
 			*abort_now = 1;
 			/* XXX */
-			MGET(oper, M_DONTWAIT, MT_DATA);
+			MGET(oper, MB_DONTWAIT, MT_DATA);
 			if (oper) {
 				struct sctp_paramhdr *ph;
 				u_int32_t *ippp;

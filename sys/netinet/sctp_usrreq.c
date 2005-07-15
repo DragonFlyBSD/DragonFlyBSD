@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -224,7 +224,7 @@ sctp_split_chunks(struct sctp_association *asoc,
 	/* Copy it all */
 	*new_chk = *chk;
 	/*  split the data */
-	new_chk->data = m_split(chk->data, (chk->send_size>>1), M_DONTWAIT);
+	new_chk->data = m_split(chk->data, (chk->send_size>>1), MB_DONTWAIT);
 	if (new_chk->data == NULL) {
 		/* Can't split */
 		chk->flags |= CHUNK_FLAGS_FRAGMENT_OK;
@@ -998,7 +998,7 @@ sctp_disconnect(struct socket *so)
 					/* Left with Data unread */
 					struct mbuf *err;
 					err = NULL;
-					MGET(err, M_DONTWAIT, MT_DATA);
+					MGET(err, MB_DONTWAIT, MT_DATA);
 					if (err) {
 						/* Fill in the user initiated abort */
 						struct sctp_paramhdr *ph;
@@ -3635,9 +3635,9 @@ sctp_ctloutput(struct socket *so, struct sockopt *sopt)
 	}
 	if (sopt->sopt_valsize) {
 
-		m = m_get(M_WAIT, MT_DATA);
+		m = m_get(MB_WAIT, MT_DATA);
 		if (sopt->sopt_valsize > MLEN) {
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if ((m->m_flags & M_EXT) == 0) {
 				sctp_m_freem(m);
 				splx(s);

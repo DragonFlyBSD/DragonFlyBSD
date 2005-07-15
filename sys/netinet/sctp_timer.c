@@ -1,5 +1,5 @@
 /*	$KAME: sctp_timer.c,v 1.28 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -209,7 +209,7 @@ sctp_threshold_management(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	if (stcb->asoc.overall_error_count > threshold) {
 		/* Abort notification sends a ULP notify */
 		struct mbuf *oper;
-		MGET(oper, M_DONTWAIT, MT_DATA);
+		MGET(oper, MB_DONTWAIT, MT_DATA);
 		if (oper) {
 			struct sctp_paramhdr *ph;
 			u_int32_t *ippp;
@@ -941,7 +941,7 @@ int  sctp_cookie_timer(struct sctp_inpcb *inp,
 		if (SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_COOKIE_ECHOED) {
 			/* FOOBAR! */
 			struct mbuf *oper;
-			MGET(oper, M_DONTWAIT, MT_DATA);
+			MGET(oper, MB_DONTWAIT, MT_DATA);
 			if (oper) {
 				struct sctp_paramhdr *ph;
 				u_int32_t *ippp;

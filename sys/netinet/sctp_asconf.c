@@ -1,5 +1,5 @@
 /*	$KAME: sctp_asconf.c,v 1.23 2004/08/17 06:28:01 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.2 2005/07/15 15:15:26 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -136,7 +136,7 @@ sctp_asconf_success_response(uint32_t id)
 	struct mbuf *m_reply = NULL;
 	struct sctp_asconf_paramhdr *aph;
 
-	MGET(m_reply, M_DONTWAIT, MT_DATA);
+	MGET(m_reply, MB_DONTWAIT, MT_DATA);
 	if (m_reply == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_ASCONF1) {
@@ -164,7 +164,7 @@ sctp_asconf_error_response(uint32_t id, uint16_t cause, uint8_t *error_tlv,
 	struct sctp_error_cause *error;
 	uint8_t *tlv;
 
-	MGET(m_reply, M_DONTWAIT, MT_DATA);
+	MGET(m_reply, MB_DONTWAIT, MT_DATA);
 	if (m_reply == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_ASCONF1) {
@@ -645,7 +645,7 @@ sctp_handle_asconf(struct mbuf *m, unsigned int offset, struct sctp_asconf_chunk
 		sctp_m_freem(asoc->last_asconf_ack_sent);
 		asoc->last_asconf_ack_sent = NULL;
 	}
-	MGETHDR(m_ack, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_ack, MB_DONTWAIT, MT_DATA);
 	if (m_ack == NULL) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_ASCONF1) {
@@ -2274,7 +2274,7 @@ sctp_compose_asconf(struct sctp_tcb *stcb)
 	 * address on the fly
 	 */
 	m_asconf_chk = NULL;
-	MGETHDR(m_asconf_chk, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_asconf_chk, MB_DONTWAIT, MT_DATA);
 	if (m_asconf_chk == NULL) {
 		/* no mbuf's */
 #ifdef SCTP_DEBUG
@@ -2284,7 +2284,7 @@ sctp_compose_asconf(struct sctp_tcb *stcb)
 		return (NULL);
 	}
 	m_asconf = NULL;
-	MGETHDR(m_asconf, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m_asconf, MB_DONTWAIT, MT_HEADER);
 	if (m_asconf == NULL) {
 		/* no mbuf's */
 #ifdef SCTP_DEBUG
@@ -2294,7 +2294,7 @@ sctp_compose_asconf(struct sctp_tcb *stcb)
 		sctp_m_freem(m_asconf_chk);
 		return (NULL);
 	}
-	MCLGET(m_asconf, M_DONTWAIT);
+	MCLGET(m_asconf, MB_DONTWAIT);
 	if ((m_asconf->m_flags & M_EXT) != M_EXT) {
 		/* failed to get cluster buffer */
 #ifdef SCTP_DEBUG

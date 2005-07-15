@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.3 2005/07/15 15:15:26 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -215,7 +215,7 @@ sctp_add_addr_to_mbuf(struct mbuf *m, struct ifaddr *ifa)
 		while (mret->m_next != NULL) {
 			mret = mret->m_next;
 		}
-		MGET(mret->m_next, M_DONTWAIT, MT_DATA);
+		MGET(mret->m_next, MB_DONTWAIT, MT_DATA);
 		if (mret->m_next == NULL) {
 			/* We are hosed, can't add more addresses */
 			return (m);
@@ -266,17 +266,17 @@ sctp_add_cookie(struct sctp_inpcb *inp, struct mbuf *init, int init_offset,
 
 	mret = NULL;
 
-	MGET(mret, M_DONTWAIT, MT_DATA);
+	MGET(mret, MB_DONTWAIT, MT_DATA);
 	if (mret == NULL) {
 		return (NULL);
 	}
-	copy_init = sctp_m_copym(init, init_offset, M_COPYALL, M_DONTWAIT);
+	copy_init = sctp_m_copym(init, init_offset, M_COPYALL, MB_DONTWAIT);
 	if (copy_init == NULL) {
 		sctp_m_freem(mret);
 		return (NULL);
 	}
 	copy_initack = sctp_m_copym(initack, initack_offset, M_COPYALL,
-	    M_DONTWAIT);
+	    MB_DONTWAIT);
 	if (copy_initack == NULL) {
 		sctp_m_freem(mret);
 		sctp_m_freem(copy_init);
@@ -318,7 +318,7 @@ sctp_add_cookie(struct sctp_inpcb *inp, struct mbuf *init, int init_offset,
 			break;
 		}
 	}
-	MGET(sig, M_DONTWAIT, MT_DATA);
+	MGET(sig, MB_DONTWAIT, MT_DATA);
 	if (sig == NULL) {
 		/* no space */
 		sctp_m_freem(mret);
@@ -2134,7 +2134,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 	if (to->sa_family == AF_INET) {
 		struct ip *ip;
 		struct route iproute;
-		M_PREPEND(m, sizeof(struct ip), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
 		if (m == NULL) {
 			/* failed to prepend data, give up */
 			return (ENOMEM);
@@ -2348,7 +2348,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		int error;
 		u_short prev_port=0;
 
-		M_PREPEND(m, sizeof(struct ip6_hdr), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct ip6_hdr), MB_DONTWAIT);
 		if (m == NULL) {
 			/* failed to prepend data, give up */
 			return (ENOMEM);
@@ -2703,13 +2703,13 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 		/* we are hosed since I can't start the INIT timer? */
 		return;
 	}
-	MGETHDR(m, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 	if (m == NULL) {
 		/* No memory, INIT timer will re-attempt. */
 		return;
 	}
 	/* make it into a M_EXT */
-	MCLGET(m, M_DONTWAIT);
+	MCLGET(m, MB_DONTWAIT);
 	if ((m->m_flags & M_EXT) != M_EXT) {
 		/* Failed to get cluster buffer */
 		sctp_m_freem(m);
@@ -3062,7 +3062,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 			*abort_processing = 1;
 			if (op_err == NULL) {
 				/* Ok need to try to get a mbuf */
-				MGETHDR(op_err, M_DONTWAIT, MT_DATA);
+				MGETHDR(op_err, MB_DONTWAIT, MT_DATA);
 				if (op_err) {
 					op_err->m_len = 0;
 					op_err->m_pkthdr.len = 0;
@@ -3117,7 +3117,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 #endif
 				if (op_err == NULL) {
 					/* Ok need to try to get an mbuf */
-					MGETHDR(op_err, M_DONTWAIT, MT_DATA);
+					MGETHDR(op_err, MB_DONTWAIT, MT_DATA);
 					if (op_err) {
 						op_err->m_len = 0;
 						op_err->m_pkthdr.len = 0;
@@ -3375,14 +3375,14 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		sctp_send_abort(init_pkt, iphlen, sh, init_chk->init.initiate_tag, op_err);
 		return;
 	}
-	MGETHDR(m, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 	if (m == NULL) {
 		/* No memory, INIT timer will re-attempt. */
 		if (op_err)
 			sctp_m_freem(op_err);
 		return;
 	}
-	MCLGET(m, M_DONTWAIT);
+	MCLGET(m, MB_DONTWAIT);
 	if ((m->m_flags & M_EXT) != M_EXT) {
 		/* Failed to get cluster buffer */
 		if (op_err)
@@ -4248,7 +4248,7 @@ sctp_msg_append(struct sctp_tcb *stcb,
 					dataout += n->m_len;
 				}
 			}
-			M_PREPEND(m, sizeof(struct sctp_paramhdr), M_DONTWAIT);
+			M_PREPEND(m, sizeof(struct sctp_paramhdr), MB_DONTWAIT);
 			if (m) {
 				struct sctp_paramhdr *ph;
 				m->m_len = sizeof(struct sctp_paramhdr) + dataout;
@@ -4478,7 +4478,7 @@ sctp_msg_append(struct sctp_tcb *stcb,
 			 * We can wait since this is called from the user
 			 * send side
 			 */
-			n->m_nextpkt = m_split(n, siz, M_WAIT);
+			n->m_nextpkt = m_split(n, siz, MB_WAIT);
 			if (n->m_nextpkt == NULL) {
 				error = EFAULT;
 				SOCKBUF_LOCK(&so->so_snd);
@@ -4700,12 +4700,12 @@ sctp_copy_mbufchain(struct mbuf *clonechain,
 #if defined(__FreeBSD__) || defined(__NetBSD__)
 	/* Supposedly m_copypacket is an optimization, use it if we can */
 	if (clonechain->m_flags & M_PKTHDR) {
-		appendchain = m_copypacket(clonechain, M_DONTWAIT);
+		appendchain = m_copypacket(clonechain, MB_DONTWAIT);
 		sctp_pegs[SCTP_CACHED_SRC]++;
 	} else
 		appendchain = m_copy(clonechain, 0, M_COPYALL);
 #elif defined(__APPLE__)
-	appendchain = sctp_m_copym(clonechain, 0, M_COPYALL, M_DONTWAIT);
+	appendchain = sctp_m_copym(clonechain, 0, M_COPYALL, MB_DONTWAIT);
 #else
 	appendchain = m_copy(clonechain, 0, M_COPYALL);
 #endif
@@ -4816,7 +4816,7 @@ sctp_copy_out_all(struct uio *uio, int len)
 	struct mbuf *ret, *at;
 	int left, willcpy, cancpy, error;
 
-	MGETHDR(ret, M_WAIT, MT_HEADER);
+	MGETHDR(ret, MB_WAIT, MT_HEADER);
 	if (ret == NULL) {
 		/* TSNH */
 		return (NULL);
@@ -4824,7 +4824,7 @@ sctp_copy_out_all(struct uio *uio, int len)
 	left = len;
 	ret->m_len = 0;
 	ret->m_pkthdr.len = len;
-	MCLGET(ret, M_WAIT);
+	MCLGET(ret, MB_WAIT);
 	if (ret == NULL) {
 		return (NULL);
 	}
@@ -4848,13 +4848,13 @@ sctp_copy_out_all(struct uio *uio, int len)
 		at->m_nextpkt = at->m_next = 0;
 		left -= willcpy;
 		if (left > 0) {
-			MGET(at->m_next, M_WAIT, MT_DATA);
+			MGET(at->m_next, MB_WAIT, MT_DATA);
 			if (at->m_next == NULL) {
 				goto err_out_now;
 			}
 			at = at->m_next;
 			at->m_len = 0;
-			MCLGET(at, M_WAIT);
+			MCLGET(at, MB_WAIT);
 			if (at == NULL) {
 				goto err_out_now;
 			}
@@ -4874,7 +4874,7 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 	int ret;
 	struct sctp_copy_all *ca;
 	MALLOC(ca, struct sctp_copy_all *,
-	       sizeof(struct sctp_copy_all), M_PCB, M_WAIT);
+	       sizeof(struct sctp_copy_all), M_PCB, MB_WAIT);
 	if (ca == NULL) {
 		m_freem(m);
 		return (ENOMEM);
@@ -5112,7 +5112,7 @@ sctp_move_to_outqueue(struct sctp_tcb *stcb,
 		nchk = TAILQ_NEXT(chk, sctp_next);
 		/* now put in the chunk header */
 		orig = chk->data;
-		M_PREPEND(chk->data, sizeof(struct sctp_data_chunk), M_DONTWAIT);
+		M_PREPEND(chk->data, sizeof(struct sctp_data_chunk), MB_DONTWAIT);
 		if (chk->data == NULL) {
 			/* HELP */
 			failed++;
@@ -5690,7 +5690,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 						 */
 						outchain->m_len = sizeof(struct sctphdr);
 					} else {
-						M_PREPEND(outchain, sizeof(struct sctphdr), M_DONTWAIT);
+						M_PREPEND(outchain, sizeof(struct sctphdr), MB_DONTWAIT);
 						if (outchain == NULL) {
 							/* no memory */
 							error = ENOBUFS;
@@ -5944,7 +5944,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 			if ((outchain->m_flags & M_PKTHDR) == 0) {
 				struct mbuf *t;
 
-				MGETHDR(t, M_DONTWAIT, MT_HEADER);
+				MGETHDR(t, MB_DONTWAIT, MT_HEADER);
 				if (t == NULL) {
 					sctp_m_freem(outchain);
 					return (ENOMEM);
@@ -5968,7 +5968,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 				MH_ALIGN(outchain, sizeof(struct sctphdr));
 				outchain->m_len = sizeof(struct sctphdr);
 			} else {
-				M_PREPEND(outchain, sizeof(struct sctphdr), M_DONTWAIT);
+				M_PREPEND(outchain, sizeof(struct sctphdr), MB_DONTWAIT);
 				if (outchain == NULL) {
 					/* out of mbufs */
 					error = ENOBUFS;
@@ -6092,7 +6092,7 @@ sctp_queue_op_err(struct sctp_tcb *stcb, struct mbuf *op_err)
 	}
 	sctppcbinfo.ipi_count_chunk++;
 	sctppcbinfo.ipi_gencnt_chunk++;
-	M_PREPEND(op_err, sizeof(struct sctp_chunkhdr), M_DONTWAIT);
+	M_PREPEND(op_err, sizeof(struct sctp_chunkhdr), MB_DONTWAIT);
 	if (op_err == NULL) {
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
 		sctppcbinfo.ipi_count_chunk--;
@@ -6159,7 +6159,7 @@ sctp_send_cookie_echo(struct mbuf *m,
 			if ((pad = (plen % 4))) {
 				plen += 4 - pad;
 			}
-			cookie = sctp_m_copym(m, at, plen, M_DONTWAIT);
+			cookie = sctp_m_copym(m, at, plen, MB_DONTWAIT);
 			if (cookie == NULL) {
 				/* No memory */
 				return (-2);
@@ -6181,7 +6181,7 @@ sctp_send_cookie_echo(struct mbuf *m,
 	/* now we MUST have a PKTHDR on it */
 	if ((cookie->m_flags & M_PKTHDR) != M_PKTHDR) {
 		/* we hope this happens rarely */
-		MGETHDR(mat, M_DONTWAIT, MT_HEADER);
+		MGETHDR(mat, MB_DONTWAIT, MT_HEADER);
 		if (mat == NULL) {
 			sctp_m_freem(cookie);
 			return (-4);
@@ -6234,7 +6234,7 @@ sctp_send_heartbeat_ack(struct sctp_tcb *stcb,
 		/* must have a net pointer */
 		return;
 
-	outchain = sctp_m_copym(m, offset, chk_length, M_DONTWAIT);
+	outchain = sctp_m_copym(m, offset, chk_length, MB_DONTWAIT);
 	if (outchain == NULL) {
 		/* gak out of memory */
 		return;
@@ -6245,7 +6245,7 @@ sctp_send_heartbeat_ack(struct sctp_tcb *stcb,
 	if ((outchain->m_flags & M_PKTHDR) != M_PKTHDR) {
 		/* should not happen but we are cautious. */
 		struct mbuf *tmp;
-		MGETHDR(tmp, M_DONTWAIT, MT_HEADER);
+		MGETHDR(tmp, MB_DONTWAIT, MT_HEADER);
 		if (tmp == NULL) {
 			return;
 		}
@@ -6292,7 +6292,7 @@ sctp_send_cookie_ack(struct sctp_tcb *stcb) {
 	struct sctp_tmit_chunk *chk;
 
 	cookie_ack = NULL;
-	MGETHDR(cookie_ack, M_DONTWAIT, MT_HEADER);
+	MGETHDR(cookie_ack, MB_DONTWAIT, MT_HEADER);
 	if (cookie_ack == NULL) {
 		/* no mbuf's */
 		return (-1);
@@ -6341,7 +6341,7 @@ sctp_send_shutdown_ack(struct sctp_tcb *stcb, struct sctp_nets *net)
 	struct sctp_tmit_chunk *chk;
 
 	m_shutdown_ack = NULL;
-	MGETHDR(m_shutdown_ack, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m_shutdown_ack, MB_DONTWAIT, MT_HEADER);
 	if (m_shutdown_ack == NULL) {
 		/* no mbuf's */
 		return (-1);
@@ -6386,7 +6386,7 @@ sctp_send_shutdown(struct sctp_tcb *stcb, struct sctp_nets *net)
 	struct sctp_tmit_chunk *chk;
 
 	m_shutdown = NULL;
-	MGETHDR(m_shutdown, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m_shutdown, MB_DONTWAIT, MT_HEADER);
 	if (m_shutdown == NULL) {
 		/* no mbuf's */
 		return (-1);
@@ -6491,7 +6491,7 @@ sctp_send_asconf_ack(struct sctp_tcb *stcb, uint32_t retrans)
 	 * use it if we can.
 	 */
 	if (stcb->asoc.last_asconf_ack_sent->m_flags & M_PKTHDR) {
-		m_ack = m_copypacket(stcb->asoc.last_asconf_ack_sent, M_DONTWAIT);
+		m_ack = m_copypacket(stcb->asoc.last_asconf_ack_sent, MB_DONTWAIT);
 		sctp_pegs[SCTP_CACHED_SRC]++;
 	} else
 		m_ack = m_copy(stcb->asoc.last_asconf_ack_sent, 0, M_COPYALL);
@@ -6652,7 +6652,7 @@ sctp_chunk_retransmission(struct sctp_inpcb *inp,
 			 */
 			m->m_len = sizeof(struct sctphdr);
 		} else {
-			M_PREPEND(m, sizeof(struct sctphdr), M_DONTWAIT);
+			M_PREPEND(m, sizeof(struct sctphdr), MB_DONTWAIT);
 			if (m == NULL) {
 				return (ENOBUFS);
 			}
@@ -6846,7 +6846,7 @@ sctp_chunk_retransmission(struct sctp_inpcb *inp,
 				 */
 				m->m_len = sizeof(struct sctphdr);
 			} else {
-				M_PREPEND(m, sizeof(struct sctphdr), M_DONTWAIT);
+				M_PREPEND(m, sizeof(struct sctphdr), MB_DONTWAIT);
 				if (m == NULL) {
 					return (ENOBUFS);
 				}
@@ -7479,7 +7479,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				MALLOC(asoc->strmout, struct sctp_stream_out *,
 				       asoc->streamoutcnt *
 				       sizeof(struct sctp_stream_out), M_PCB,
-				       M_WAIT);
+				       MB_WAIT);
 				for (i = 0; i < asoc->streamoutcnt; i++) {
 					/*
 					 * inbound side must be set to 0xffff,
@@ -7664,7 +7664,7 @@ send_forward_tsn(struct sctp_tcb *stcb,
 	sctppcbinfo.ipi_gencnt_chunk++;
 	chk->rec.chunk_id = SCTP_FORWARD_CUM_TSN;
 	chk->asoc = asoc;
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 		chk->whoTo->ref_count--;
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
@@ -7711,7 +7711,7 @@ send_forward_tsn(struct sctp_tcb *stcb,
 			/* Need a M_EXT, get one and move
 			 * fwdtsn to data area.
 			 */
-			MCLGET(chk->data, M_DONTWAIT);
+			MCLGET(chk->data, MB_DONTWAIT);
 		}
 		cnt_of_space = M_TRAILINGSPACE(chk->data);
 
@@ -7887,7 +7887,7 @@ sctp_send_sack(struct sctp_tcb *stcb)
 		a_chk->whoTo->ref_count++;
 
 	/* Ok now lets formulate a MBUF with our sack */
-	MGETHDR(a_chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(a_chk->data, MB_DONTWAIT, MT_DATA);
 	if ((a_chk->data == NULL) ||
 	    (a_chk->whoTo == NULL)) {
 		/* rats, no mbuf memory */
@@ -8008,7 +8008,7 @@ sctp_send_sack(struct sctp_tcb *stcb)
 
 	if ((space+SCTP_MIN_OVERHEAD) > MHLEN) {
 		/* We need a cluster */
-		MCLGET(a_chk->data, M_DONTWAIT);
+		MCLGET(a_chk->data, MB_DONTWAIT);
 		if ((a_chk->data->m_flags & M_EXT) != M_EXT) {
 			/* can't get a cluster
 			 * give up and try later.
@@ -8105,7 +8105,7 @@ sctp_send_abort_tcb(struct sctp_tcb *stcb, struct mbuf *operr)
 	struct sctp_abort_msg *abort_m;
 	int sz;
 	abort_m = NULL;
-	MGETHDR(m_abort, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m_abort, MB_DONTWAIT, MT_HEADER);
 	if (m_abort == NULL) {
 		/* no mbuf's */
 		return;
@@ -8149,7 +8149,7 @@ sctp_send_shutdown_complete(struct sctp_tcb *stcb,
 	struct sctp_shutdown_complete_msg *comp_cp;
 
 	m_shutdown_comp = NULL;
-	MGETHDR(m_shutdown_comp, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m_shutdown_comp, MB_DONTWAIT, MT_HEADER);
 	if (m_shutdown_comp == NULL) {
 		/* no mbuf's */
 		return (-1);
@@ -8188,7 +8188,7 @@ sctp_send_shutdown_complete2(struct mbuf *m, int iphlen, struct sctphdr *sh)
 	int offset_out;
 	struct sctp_shutdown_complete_msg *comp_cp;
 
-	MGETHDR(mout, M_DONTWAIT, MT_HEADER);
+	MGETHDR(mout, MB_DONTWAIT, MT_HEADER);
 	if (mout == NULL) {
 		/* no mbuf's */
 		return (-1);
@@ -8492,7 +8492,7 @@ sctp_send_hb(struct sctp_tcb *stcb, int user_req, struct sctp_nets *u_net)
 	chk->rec.chunk_id = SCTP_HEARTBEAT_REQUEST;
 	chk->asoc = &stcb->asoc;
 	chk->send_size = sizeof(struct sctp_heartbeat_chunk);
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
 		sctppcbinfo.ipi_count_chunk--;
@@ -8622,7 +8622,7 @@ sctp_send_ecn_echo(struct sctp_tcb *stcb, struct sctp_nets *net,
 	chk->rec.chunk_id = SCTP_ECN_ECHO;
 	chk->asoc = &stcb->asoc;
 	chk->send_size = sizeof(struct sctp_ecne_chunk);
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
 		sctppcbinfo.ipi_count_chunk--;
@@ -8696,7 +8696,7 @@ sctp_send_packet_dropped(struct sctp_tcb *stcb, struct sctp_nets *net,
 		chk->send_size = len = m->m_pkthdr.len - iphlen;
 	}
 	chk->asoc = &stcb->asoc;
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 	jump_out:
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
@@ -8708,7 +8708,7 @@ sctp_send_packet_dropped(struct sctp_tcb *stcb, struct sctp_nets *net,
 		return;
 	}
 	if ((chk->send_size+sizeof(struct sctp_pktdrop_chunk)+SCTP_MIN_OVERHEAD) > MHLEN) {
-		MCLGET(chk->data, M_DONTWAIT);
+		MCLGET(chk->data, MB_DONTWAIT);
 		if ((chk->data->m_flags & M_EXT) == 0) {
 			/* Give up */
 			sctp_m_freem(chk->data);
@@ -8805,7 +8805,7 @@ sctp_send_cwr(struct sctp_tcb *stcb, struct sctp_nets *net, uint32_t high_tsn)
 	chk->rec.chunk_id = SCTP_ECN_CWR;
 	chk->asoc = &stcb->asoc;
 	chk->send_size = sizeof(struct sctp_cwr_chunk);
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
 		sctppcbinfo.ipi_count_chunk--;
@@ -8878,7 +8878,7 @@ sctp_send_str_reset_ack(struct sctp_tcb *stcb,
 	chk->rec.chunk_id = SCTP_STREAM_RESET;
 	chk->asoc = &stcb->asoc;
 	chk->send_size = sizeof(struct sctp_stream_reset_resp) + (number_entries * sizeof(uint16_t));
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 	strresp_jump_out:
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
@@ -8892,7 +8892,7 @@ sctp_send_str_reset_ack(struct sctp_tcb *stcb,
 	chk->data->m_data += SCTP_MIN_OVERHEAD;
 	chk->data->m_pkthdr.len = chk->data->m_len = SCTP_SIZE32(chk->send_size);
 	if (M_TRAILINGSPACE(chk->data) < (int)SCTP_SIZE32(chk->send_size)) {
-		MCLGET(chk->data, M_DONTWAIT);
+		MCLGET(chk->data, MB_DONTWAIT);
 		if ((chk->data->m_flags & M_EXT) == 0) {
 			/* Give up */
 			sctp_m_freem(chk->data);
@@ -9033,7 +9033,7 @@ sctp_send_str_reset_req(struct sctp_tcb *stcb,
 	chk->rec.chunk_id = SCTP_STREAM_RESET;
 	chk->asoc = &stcb->asoc;
 	chk->send_size = sizeof(struct sctp_stream_reset_req) + (number_entrys * sizeof(uint16_t));
-	MGETHDR(chk->data, M_DONTWAIT, MT_DATA);
+	MGETHDR(chk->data, MB_DONTWAIT, MT_DATA);
 	if (chk->data == NULL) {
 	strreq_jump_out:
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
@@ -9047,7 +9047,7 @@ sctp_send_str_reset_req(struct sctp_tcb *stcb,
 	chk->data->m_data += SCTP_MIN_OVERHEAD;
 	chk->data->m_pkthdr.len = chk->data->m_len = SCTP_SIZE32(chk->send_size);
 	if (M_TRAILINGSPACE(chk->data) < (int)SCTP_SIZE32(chk->send_size)) {
-		MCLGET(chk->data, M_DONTWAIT);
+		MCLGET(chk->data, MB_DONTWAIT);
 		if ((chk->data->m_flags & M_EXT) == 0) {
 			/* Give up */
 			sctp_m_freem(chk->data);
@@ -9137,7 +9137,7 @@ sctp_send_abort(struct mbuf *m, int iphlen, struct sctphdr *sh, uint32_t vtag,
 			sctp_m_freem(err_cause);
 		return;
 	}
-	MGETHDR(mout, M_DONTWAIT, MT_HEADER);
+	MGETHDR(mout, MB_DONTWAIT, MT_HEADER);
 	if (mout == NULL) {
 		if (err_cause)
 			sctp_m_freem(err_cause);
@@ -9311,7 +9311,7 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 		m_freem(scm);
 		return;
 	}
-	M_PREPEND(scm, (sizeof(struct sctphdr) + sizeof(struct sctp_chunkhdr)), M_DONTWAIT);
+	M_PREPEND(scm, (sizeof(struct sctphdr) + sizeof(struct sctp_chunkhdr)), MB_DONTWAIT);
 	if (scm == NULL) {
 		/* can't send because we can't add a mbuf */
 		return;
@@ -9344,7 +9344,7 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 		/* V4 */
 		struct ip *out;
 		struct route ro;
-		M_PREPEND(scm, sizeof(struct ip), M_DONTWAIT);
+		M_PREPEND(scm, sizeof(struct ip), MB_DONTWAIT);
 		if (scm == NULL)
 			return;
 		bzero(&ro, sizeof ro);
@@ -9383,7 +9383,7 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 #endif
 		struct ip6_hdr *out6, *in6;
 
-		M_PREPEND(scm, sizeof(struct ip6_hdr), M_DONTWAIT);
+		M_PREPEND(scm, sizeof(struct ip6_hdr), MB_DONTWAIT);
 		if (scm == NULL)
 			return;
 		bzero(&ro, sizeof ro);
@@ -9440,7 +9440,7 @@ sctp_copy_one(struct mbuf *m, struct uio *uio, int cpsz, int resv_upfront, int *
 	}
 	m->m_len = 0;
 	if ((left+resv_upfront) > (int)MHLEN) {
-		MCLGET(m, M_WAIT);
+		MCLGET(m, MB_WAIT);
 		if (m == NULL) {
 			*mbcnt = 0;
 			return (ENOMEM);
@@ -9476,7 +9476,7 @@ sctp_copy_one(struct mbuf *m, struct uio *uio, int cpsz, int resv_upfront, int *
 		m->m_nextpkt = 0;
 		left -= willcpy;
 		if (left > 0) {
-			MGET(m->m_next, M_WAIT, MT_DATA);
+			MGET(m->m_next, MB_WAIT, MT_DATA);
 			if (m->m_next == NULL) {
 				*mbcnt = 0;
 				return (ENOMEM);
@@ -9485,7 +9485,7 @@ sctp_copy_one(struct mbuf *m, struct uio *uio, int cpsz, int resv_upfront, int *
 			m->m_len = 0;
 			*mbcnt += MSIZE;
 			if (left > (int)MHLEN) {
-				MCLGET(m, M_WAIT);
+				MCLGET(m, MB_WAIT);
 				if (m == NULL) {
 					*mbcnt = 0;
 					return (ENOMEM);
@@ -9680,7 +9680,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 			 * it is done that way in the sosend code so I guess
 			 * it is ok :-0
 			 */
- 			MGETHDR(mm, M_WAIT, MT_DATA);
+ 			MGETHDR(mm, MB_WAIT, MT_DATA);
 			if (mm) {
 				struct sctp_paramhdr *ph;
 
@@ -9691,7 +9691,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 						tot_demand = MCLBYTES;
 						tot_out = tot_demand - sizeof(struct sctp_paramhdr);
 					}
-					MCLGET(mm, M_WAIT);
+					MCLGET(mm, MB_WAIT);
 					if ((mm->m_flags & M_EXT) == 0) {
 						/* truncate further */
 						tot_demand = MHLEN;
@@ -9791,7 +9791,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 		sctppcbinfo.ipi_count_chunk++;
 		sctppcbinfo.ipi_gencnt_chunk++;
 		asoc->chunks_on_out_queue++;
-		MGETHDR(mm, M_WAIT, MT_DATA);
+		MGETHDR(mm, MB_WAIT, MT_DATA);
 		if (mm == NULL) {
 			error = ENOMEM;
 			goto clean_up;
@@ -9886,7 +9886,7 @@ clean_up:
 			sctppcbinfo.ipi_gencnt_chunk++;
 			*chk = template;
 			chk->whoTo->ref_count++;
-			MGETHDR(chk->data, M_WAIT, MT_DATA);
+			MGETHDR(chk->data, MB_WAIT, MT_DATA);
 			if (chk->data == NULL) {
 				error = ENOMEM;
 				goto temp_clean_up;
@@ -10287,7 +10287,7 @@ sctp_sosend(struct socket *so,
 					       struct sctp_stream_out *,
 					       asoc->streamoutcnt *
 					       sizeof(struct sctp_stream_out),
-					       M_PCB, M_WAIT);
+					       M_PCB, MB_WAIT);
 					for (i = 0; i < asoc->streamoutcnt; i++) {
 						/*
 						 * inbound side must be set to 0xffff,

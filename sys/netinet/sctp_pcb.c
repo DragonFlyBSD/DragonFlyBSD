@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2295,7 +2295,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 				) {
 				/* Left with Data unread */
 				struct mbuf *op_err;
-				MGET(op_err, M_DONTWAIT, MT_DATA);
+				MGET(op_err, MB_DONTWAIT, MT_DATA);
 				if (op_err) {
 					/* Fill in the user initiated abort */
 					struct sctp_paramhdr *ph;
@@ -2434,7 +2434,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		SCTP_TCB_LOCK(asoc);
 		if (SCTP_GET_STATE(&asoc->asoc) != SCTP_STATE_COOKIE_WAIT) {
 			struct mbuf *op_err;
-			MGET(op_err, M_DONTWAIT, MT_DATA);
+			MGET(op_err, MB_DONTWAIT, MT_DATA);
 			if (op_err) {
 				/* Fill in the user initiated abort */
 				struct sctp_paramhdr *ph;

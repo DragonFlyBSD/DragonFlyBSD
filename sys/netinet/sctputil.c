@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2067,7 +2067,7 @@ sctp_add_pad_tombuf(struct mbuf *m, int padlen)
 	} else {
 		/* Hard way we must grow the mbuf */
 		struct mbuf *tmp;
-		MGET(tmp, M_DONTWAIT, MT_DATA);
+		MGET(tmp, MB_DONTWAIT, MT_DATA);
 		if (tmp == NULL) {
 			/* Out of space GAK! we are in big trouble. */
 			return (ENOSPC);
@@ -2141,7 +2141,7 @@ sctp_notify_assoc_change(u_int32_t event, struct sctp_tcb *stcb,
 		/* event not enabled */
 		return;
 	}
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		/* no space left */
 		return;
@@ -2227,12 +2227,12 @@ sctp_notify_peer_addr_change(struct sctp_tcb *stcb, uint32_t state,
 		/* event not enabled */
 		return;
 
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		return;
 	m_notify->m_len = 0;
 
-	MCLGET(m_notify, M_DONTWAIT);
+	MCLGET(m_notify, MB_DONTWAIT);
 	if ((m_notify->m_flags & M_EXT) != M_EXT) {
 		sctp_m_freem(m_notify);
 		return;
@@ -2320,7 +2320,7 @@ sctp_notify_send_failed(struct sctp_tcb *stcb, u_int32_t error,
 		return;
 
 	length = sizeof(struct sctp_send_failed) + chk->send_size;
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		/* no space left */
 		return;
@@ -2418,7 +2418,7 @@ sctp_notify_adaption_layer(struct sctp_tcb *stcb,
 		/* event not enabled */
 		return;
 
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		/* no space left */
 		return;
@@ -2494,7 +2494,7 @@ sctp_notify_partial_delivery_indication(struct sctp_tcb *stcb,
 		/* event not enabled */
 		return;
 
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		/* no space left */
 		return;
@@ -2580,7 +2580,7 @@ sctp_notify_shutdown_event(struct sctp_tcb *stcb)
 		/* event not enabled */
 		return;
 
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		/* no space left */
 		return;
@@ -2656,14 +2656,14 @@ sctp_notify_stream_reset(struct sctp_tcb *stcb,
 		/* event not enabled */
 		return;
 
-	MGETHDR(m_notify, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_notify, MB_DONTWAIT, MT_DATA);
 	if (m_notify == NULL)
 		/* no space left */
 		return;
 	m_notify->m_len = 0;
 	len = sizeof(struct sctp_stream_reset_event) + (number_entries * sizeof(uint16_t));
 	if (len > M_TRAILINGSPACE(m_notify)) {
-		MCLGET(m_notify, M_WAIT);
+		MCLGET(m_notify, MB_WAIT);
 	}
 	if (m_notify == NULL)
 		/* no clusters */
@@ -3271,7 +3271,7 @@ sbappendaddr_nocheck(sb, asa, m0, control, tag, inp)
 	}
 	if (((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) == 0) ||
 	    ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)== 0)) {
-		MGETHDR(m, M_DONTWAIT, MT_SONAME);
+		MGETHDR(m, MB_DONTWAIT, MT_SONAME);
 		if (m == 0)
 			return (0);
 		m->m_len = 0;
@@ -3335,7 +3335,7 @@ sbappendaddr_nocheck(sb, asa, m0, control, tag, inp)
 		if (asa->sa_len > MHLEN)
 			return (0);
  try_again:
-		MGETHDR(m, M_DONTWAIT, MT_SONAME);
+		MGETHDR(m, MB_DONTWAIT, MT_SONAME);
 		if (m == 0)
 			return (0);
 		m->m_len = 0;
@@ -3414,7 +3414,7 @@ sbappendaddr_nocheck(sb, asa, m0, control, tag, inp)
 	    ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)== 0)) {
 		if (asa->sa_len > MHLEN)
 			return (0);
-		MGETHDR(m, M_DONTWAIT, MT_SONAME);
+		MGETHDR(m, MB_DONTWAIT, MT_SONAME);
 		if (m == 0)
 			return (0);
 		m->m_len = asa->sa_len;
@@ -3466,7 +3466,7 @@ sctp_generate_invmanparam(int err)
 	/* Return a MBUF with a invalid mandatory parameter */
 	struct mbuf *m;
 
-	MGET(m, M_DONTWAIT, MT_DATA);
+	MGET(m, MB_DONTWAIT, MT_DATA);
 	if (m) {
 		struct sctp_paramhdr *ph;
 		m->m_len = sizeof(struct sctp_paramhdr);
