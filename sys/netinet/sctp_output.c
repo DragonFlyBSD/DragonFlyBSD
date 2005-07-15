@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.3 2005/07/15 15:15:26 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.4 2005/07/15 17:19:28 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -64,6 +64,7 @@
 #ifdef INET6
 #include <sys/domain.h>
 #endif
+#include <sys/thread2.h>
 
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000)
 #include <sys/limits.h>
@@ -7214,18 +7215,13 @@ sctp_output(inp, m, addr, control, p, flags)
 	struct sctp_association *asoc;
 	int create_lock_applied = 0;
 	int queue_only, error = 0;
-	int s;
 	struct sctp_sndrcvinfo srcv;
 	int un_sent = 0;
 	int use_rcvinfo = 0;
 	t_inp = inp;
 	/*  struct route ro;*/
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	queue_only = 0;
 	ip_inp = (struct inpcb *)inp;
 	stcb = NULL;
@@ -7247,7 +7243,7 @@ sctp_output(inp, m, addr, control, p, flags)
 			control = NULL;
 		}
 		sctp_m_freem(m);
-		splx(s);
+		crit_exit();
 		return (EFAULT);
 	}
 	/* Can't allow a V6 address on a non-v6 socket */
@@ -7263,7 +7259,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				control = NULL;
 			}
 			sctp_m_freem(m);
-			splx(s);
+			crit_exit();
 			return (EFAULT);
 		}
 		create_lock_applied = 1;
@@ -7276,7 +7272,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				control = NULL;
 			}
 			sctp_m_freem(m);
-			splx(s);
+			crit_exit();
 			return (EINVAL);
 		}
 	}
@@ -7288,7 +7284,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				/* its a sendall */
 				sctppcbinfo.mbuf_track--;
 				sctp_m_freem(control);
-				splx(s);
+				crit_exit();
 				if (create_lock_applied) {
 					SCTP_ASOC_CREATE_UNLOCK(inp);
 					create_lock_applied = 0;
@@ -7311,7 +7307,7 @@ sctp_output(inp, m, addr, control, p, flags)
 						sctppcbinfo.mbuf_track--;
 						sctp_m_freem(control);
 						sctp_m_freem(m);
-						splx(s);
+						crit_exit();
 						return (ENOTCONN);
 					}
 					net = stcb->asoc.primary_destination;
@@ -7344,7 +7340,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				SCTP_TCB_LOCK(stcb);
 			SCTP_INP_RUNLOCK(inp);
 			if (stcb == NULL) {
-				splx(s);
+				crit_exit();
 				if (create_lock_applied) {
 					SCTP_ASOC_CREATE_UNLOCK(inp);
 					create_lock_applied = 0;
@@ -7391,7 +7387,7 @@ sctp_output(inp, m, addr, control, p, flags)
 			create_lock_applied = 0;
 		}
 		sctp_m_freem(m);
-		splx(s);
+		crit_exit();
 		return (ENOTCONN);
 	} else if ((stcb == NULL) &&
 		   (addr == NULL)) {
@@ -7405,7 +7401,7 @@ sctp_output(inp, m, addr, control, p, flags)
 			create_lock_applied = 0;
 		}
 		sctp_m_freem(m);
-		splx(s);
+		crit_exit();
 		return (ENOENT);
 	} else if (stcb == NULL) {
 		/* UDP mode, we must go ahead and start the INIT process */
@@ -7421,7 +7417,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				create_lock_applied = 0;
 			}
 			sctp_m_freem(m);
-			splx(s);
+			crit_exit();
 			return (ENOENT);
 		}
 		stcb = sctp_aloc_assoc(inp, addr, 1, &error, 0);
@@ -7436,7 +7432,7 @@ sctp_output(inp, m, addr, control, p, flags)
 				create_lock_applied = 0;
 			}
 			sctp_m_freem(m);
-			splx(s);
+			crit_exit();
 			return (error);
 		}
 		if (create_lock_applied) {
@@ -7536,7 +7532,7 @@ sctp_output(inp, m, addr, control, p, flags)
 					sctp_m_freem(m);
 				error = ECONNRESET;
 			}
-			splx(s);
+			crit_exit();
 			SCTP_TCB_UNLOCK(stcb);
 			return (error);
 		}
@@ -7576,7 +7572,7 @@ sctp_output(inp, m, addr, control, p, flags)
 	}
 	if ((error = sctp_msg_append(stcb, net, m, &srcv, flags))) {
 		SCTP_TCB_UNLOCK(stcb);
-		splx(s);
+		crit_exit();
 		return (error);
 	}
 	if (net->flight_size > net->cwnd) {
@@ -7630,7 +7626,7 @@ sctp_output(inp, m, addr, control, p, flags)
 	}
 #endif
 	SCTP_TCB_UNLOCK(stcb);
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -9523,7 +9519,6 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	 */
 	struct socket *so;
 	int error = 0;
-	int s;
 	int frag_size, mbcnt = 0, mbcnt_e = 0;
 	unsigned int sndlen;
 	unsigned int tot_demand;
@@ -9534,11 +9529,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	uint32_t my_vtag;
 	int resv_in_first;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	so = stcb->sctp_socket;
 	chk = NULL;
 	mm = NULL;
@@ -9554,7 +9545,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	if (sndlen > so->so_snd.sb_hiwat) {
 		/* It will NEVER fit */
 		error = EMSGSIZE;
-		splx(s);
+		crit_exit();
 		goto release;
 	}
 	/* Do I need to block? */
@@ -9623,23 +9614,23 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 				 * here for us
 				 */
  				error = inp->error_on_block;
-				splx(s);
+				crit_exit();
 				goto out_locked;
 			}
 			if (error) {
-				splx(s);
+				crit_exit();
 				goto out_locked;
 			}
 			/* did we encounter a socket error? */
 			if (so->so_error) {
 				error = so->so_error;
-				splx(s);
+				crit_exit();
 				goto out_locked;
 			}
 			error = sblock(&so->so_snd, M_WAITOK);
 			if (error) {
 				/* Can't aquire the lock */
-				splx(s);
+				crit_exit();
 				goto out_locked;
 			}
 #if defined(__FreeBSD__) && __FreeBSD_version >= 502115
@@ -9649,12 +9640,12 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 #endif
 				/* The socket is now set not to sendmore.. its gone */
 				error = EPIPE;
-				splx(s);
+				crit_exit();
 				goto release;
 			}
 			if (so->so_error) {
 				error = so->so_error;
-				splx(s);
+				crit_exit();
 				goto release;
 			}
 			if (asoc->peer_supports_prsctp) {
@@ -9722,10 +9713,10 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 						  SCTP_RESPONSE_TO_USER_REQ,
 						  mm);
 			mm = NULL;
-			splx(s);
+			crit_exit();
 			goto out_notlocked;
 		}
-		splx(s);
+		crit_exit();
 		goto release;
 	}
 
@@ -9736,14 +9727,14 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	    (asoc->state & SCTP_STATE_SHUTDOWN_PENDING)) {
 		/* got data while shutting down */
 		error = ECONNRESET;
-		splx(s);
+		crit_exit();
 		goto release;
  	}
  	/* Is the stream no. valid? */
 	if (srcv->sinfo_stream >= asoc->streamoutcnt) {
  		/* Invalid stream number */
 		error = EINVAL;
-		splx(s);
+		crit_exit();
 		goto release;
  	}
 	if (asoc->strmout == NULL) {
@@ -9754,19 +9745,19 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
  		}
 #endif
 		error = EFAULT;
-		splx(s);
+		crit_exit();
 		goto release;
 	}
 	if ((srcv->sinfo_flags & MSG_EOF) &&
 	    (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_UDPTYPE) &&
 	    (tot_out == 0)) {
-		splx(s);
+		crit_exit();
 		goto zap_by_it_now;
 	}
  	if (tot_out == 0) {
  		/* not allowed */
  		error = EMSGSIZE;
-		splx(s);
+		crit_exit();
 		goto release;
  	}
 	/* save off the tag */
@@ -9778,7 +9769,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	/* two choices here, it all fits in one chunk or
 	 * we need multiple chunks.
 	 */
-	splx(s);
+	crit_exit();
 	SOCKBUF_UNLOCK(&so->so_snd);
 	if (tot_out <= frag_size) {
 		/* no need to setup a template */
@@ -9822,17 +9813,13 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 		if (chk->flags & SCTP_PR_SCTP_BUFFER) {
 			asoc->sent_queue_cnt_removeable++;
 		}
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-		s = splsoftnet();
-#else
-		s = splnet();
-#endif
+		crit_enter();
 		if ((asoc->state == 0) ||
 		    (my_vtag != asoc->my_vtag) ||
 		    (so != inp->sctp_socket) ||
 		    (inp->sctp_socket == 0)) {
 			/* connection was aborted */
-			splx(s);
+			crit_exit();
 			error = ECONNRESET;
 			goto clean_up;
 		}
@@ -9846,7 +9833,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 			 */
 			sctp_insert_on_wheel(asoc, strq);
 		}
-		splx(s);
+		crit_exit();
 clean_up:
 		if (error) {
 			SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_chunk, chk);
@@ -9923,17 +9910,13 @@ clean_up:
 
 		/* now move it to the streams actual queue */
 		/* first stop protocol processing */
-#if defined(__NetBSD__) || defined(__OpenBSD__)
- 		s = splsoftnet();
-#else
- 		s = splnet();
-#endif
+ 		crit_enter();
 		if ((asoc->state == 0) ||
 		    (my_vtag != asoc->my_vtag) ||
 		    (so != inp->sctp_socket) ||
 		    (inp->sctp_socket == 0)) {
 			/* connection was aborted */
-			splx(s);
+			crit_exit();
 			error = ECONNRESET;
 			goto temp_clean_up;
 		}
@@ -9954,7 +9937,7 @@ clean_up:
 			sctp_insert_on_wheel(asoc, strq);
 		}
 		/* Ok now we can allow pping */
-		splx(s);
+		crit_exit();
 temp_clean_up:
 		if (error) {
 			SOCKBUF_LOCK(&so->so_snd);
@@ -9985,11 +9968,7 @@ zap_by_it_now:
 		       asoc->total_output_mbuf_queue_size,
 		       mbcnt);
 #endif
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	SOCKBUF_LOCK(&so->so_snd);
 	asoc->total_output_queue_size += dataout;
 	asoc->total_output_mbuf_queue_size += mbcnt;
@@ -10048,7 +10027,7 @@ zap_by_it_now:
 			asoc->state |= SCTP_STATE_SHUTDOWN_PENDING;
 		}
 	}
-	splx(s);
+	crit_exit();
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT2) {
 		printf("++total out:%d total_mbuf_out:%d\n",
@@ -10092,7 +10071,7 @@ sctp_sosend(struct socket *so,
 {
  	unsigned int sndlen;
 	int error, use_rcvinfo;
-	int s, queue_only = 0, queue_only_for_init=0;
+	int queue_only = 0, queue_only_for_init=0;
 	int un_sent = 0;
 	int now_filled=0;
 	struct sctp_inpcb *inp;
@@ -10123,17 +10102,13 @@ sctp_sosend(struct socket *so,
 		sndlen = top->m_pkthdr.len;
 
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 
 	if ((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) &&
 	    (inp->sctp_flags & SCTP_PCB_FLAGS_ACCEPTING)) {
 		/* The listner can NOT send */
 		error = EFAULT;
-		splx(s);
+		crit_exit();
 		goto out;
 	}
 	if (addr) {
@@ -10142,7 +10117,7 @@ sctp_sosend(struct socket *so,
 		    (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE)) {
 			/* Should I really unlock ? */
 			error = EFAULT;
-			splx(s);
+			crit_exit();
 			goto out;
 
 		}
@@ -10150,7 +10125,7 @@ sctp_sosend(struct socket *so,
 		if (((inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) == 0) &&
 		    (addr->sa_family == AF_INET6)) {
 			error = EINVAL;
-			splx(s);
+			crit_exit();
 			goto out;
 		}
 	}
@@ -10161,7 +10136,7 @@ sctp_sosend(struct socket *so,
 		if (stcb == NULL) {
 			SCTP_INP_RUNLOCK(inp);
 			error = ENOTCONN;
-			splx(s);
+			crit_exit();
 			goto out;
 		}
 		SCTP_TCB_LOCK(stcb);
@@ -10223,11 +10198,11 @@ sctp_sosend(struct socket *so,
 	if ((stcb == NULL) &&
 	    (inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE)) {
 		error = ENOTCONN;
-		splx(s);
+		crit_exit();
 		goto out;
 	} else if ((stcb == NULL) && (addr == NULL)) {
 		error = ENOENT;
-		splx(s);
+		crit_exit();
 		goto out;
 	} else if (stcb == NULL) {
 		/* UDP style, we must go ahead and start the INIT process */
@@ -10235,14 +10210,14 @@ sctp_sosend(struct socket *so,
 		    (srcv.sinfo_flags & MSG_ABORT)) {
 			/* User asks to abort a non-existant asoc */
 			error = ENOENT;
-			splx(s);
+			crit_exit();
 			goto out;
 		}
 		/* get an asoc/stcb struct */
 		stcb = sctp_aloc_assoc(inp, addr, 1, &error, 0);
 		if (stcb == NULL) {
 			/* Error is setup for us in the call */
-			splx(s);
+			crit_exit();
 			goto out;
 		}
 		if (create_lock_applied) {
@@ -10351,7 +10326,7 @@ sctp_sosend(struct socket *so,
 			;
 		} else {
 			error = ECONNRESET;
-			splx(s);
+			crit_exit();
 			goto out;
 		}
 	}
@@ -10378,7 +10353,7 @@ sctp_sosend(struct socket *so,
 		 * protocol processing until we are ready to
 		 * send/queue it.
 		 */
- 		splx(s);
+ 		crit_exit();
 		error = sctp_copy_it_in(inp, stcb, asoc, net, &srcv, uio, flags);
 		if (error)
 			goto out;
@@ -10387,7 +10362,7 @@ sctp_sosend(struct socket *so,
 		 * buffers, or use top to do a msg_append.
 		 */
  		error = sctp_msg_append(stcb, net, top, &srcv, flags);
- 		splx(s);
+ 		crit_exit();
 		if (error)
 			goto out;
 		/* zap the top since it is now being used */
@@ -10440,39 +10415,27 @@ sctp_sosend(struct socket *so,
 			printf("USR Send calls sctp_chunk_output\n");
 		}
 #endif
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-		s = splsoftnet();
-#else
-		s = splnet();
-#endif
+		crit_enter();
 		sctp_pegs[SCTP_OUTPUT_FRM_SND]++;
 		sctp_chunk_output(inp, stcb, 0);
-		splx(s);
+		crit_exit();
 	} else if ((queue_only == 0) &&
 		   (stcb->asoc.peers_rwnd == 0) &&
 		   (stcb->asoc.total_flight == 0)) {
 		/* We get to have a probe outstanding */
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-		s = splsoftnet();
-#else
-		s = splnet();
-#endif
+		crit_enter();
 		sctp_from_user_send = 1;
 		sctp_chunk_output(inp, stcb, 0);
 		sctp_from_user_send = 0;
-		splx(s);
+		crit_exit();
 
 	} else if (!TAILQ_EMPTY(&stcb->asoc.control_send_queue)) {
 		int num_out, reason, cwnd_full;
 		/* Here we do control only */
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-		s = splsoftnet();
-#else
-		s = splnet();
-#endif
+		crit_enter();
 		sctp_med_chunk_output(inp, stcb, &stcb->asoc, &num_out,
 				      &reason, 1, &cwnd_full, 1, &now, &now_filled);
-		splx(s);
+		crit_exit();
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {

@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.4 2005/07/15 17:19:28 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -64,6 +64,7 @@
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/callout.h>
@@ -588,19 +589,14 @@ void sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 void
 sctp_audit_log(u_int8_t ev, u_int8_t fd)
 {
-	int s;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	sctp_audit_data[sctp_audit_indx][0] = ev;
 	sctp_audit_data[sctp_audit_indx][1] = fd;
 	sctp_audit_indx++;
 	if (sctp_audit_indx >= SCTP_AUDIT_SIZE) {
 		sctp_audit_indx = 0;
 	}
-	splx(s);
+	crit_exit();
 }
 
 #endif
@@ -914,7 +910,7 @@ sctp_timeout_handler(void *t)
 	struct sctp_tcb *stcb;
 	struct sctp_nets *net;
 	struct sctp_timer *tmr;
-	int s, did_output, typ;
+	int did_output, typ;
 #if defined(__APPLE__)
 	boolean_t funnel_state;
 
@@ -922,11 +918,7 @@ sctp_timeout_handler(void *t)
 	funnel_state = thread_funnel_set(network_flock, TRUE);
 #endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	tmr = (struct sctp_timer *)t;
 	inp = (struct sctp_inpcb *)tmr->ep;
 	stcb = (struct sctp_tcb *)tmr->tcb;
@@ -946,7 +938,7 @@ sctp_timeout_handler(void *t)
 
 	SCTP_INP_WLOCK(inp);
 	if (inp->sctp_socket == 0) {
-		splx(s);
+		crit_exit();
 #if defined(__APPLE__)
 		/* release BSD kernel funnel/mutex */
 		(void) thread_funnel_set(network_flock, FALSE);
@@ -956,7 +948,7 @@ sctp_timeout_handler(void *t)
 	}
 	if (stcb) {
 		if (stcb->asoc.state == 0) {
-			splx(s);
+			crit_exit();
 #if defined(__APPLE__)
 			/* release BSD kernel funnel/mutex */
 			(void) thread_funnel_set(network_flock, FALSE);
@@ -972,7 +964,7 @@ sctp_timeout_handler(void *t)
 #endif /* SCTP_DEBUG */
 #ifndef __NetBSD__
 	if (!callout_active(&tmr->timer)) {
-		splx(s);
+		crit_exit();
 #if defined(__APPLE__)
 		/* release BSD kernel funnel/mutex */
 		(void) thread_funnel_set(network_flock, FALSE);
@@ -1197,7 +1189,7 @@ sctp_timeout_handler(void *t)
 	}
 #endif /* SCTP_DEBUG */
 
-	splx(s);
+	crit_exit();
 #if defined(__APPLE__)
 	/* release BSD kernel funnel/mutex */
 	(void) thread_funnel_set(network_flock, FALSE);

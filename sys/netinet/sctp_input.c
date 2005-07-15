@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.5 2005/07/15 15:39:48 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.6 2005/07/15 17:19:28 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -59,6 +59,7 @@
 #include <sys/kernel.h>
 #include <sys/errno.h>
 #include <sys/syslog.h>
+#include <sys/thread2.h>
 
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000)
 #include <sys/limits.h>
@@ -4086,7 +4087,6 @@ sctp_input(m, va_alist)
 #endif
 {
 	int iphlen;
-	int s;
 	u_int8_t ecn_bits;
 	struct ip *ip;
 	struct sctphdr *sh;
@@ -4383,15 +4383,11 @@ sctp_input(m, va_alist)
 	offset -= sizeof(struct sctp_chunkhdr);
 
 	ecn_bits = ip->ip_tos;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	sctp_common_input_processing(&m, iphlen, offset, length, sh, ch,
 	    inp, stcb, net, ecn_bits);
 	/* inp's ref-count reduced && stcb unlocked */
-	splx(s);
+	crit_exit();
 	if (m) {
 		sctp_m_freem(m);
 	}

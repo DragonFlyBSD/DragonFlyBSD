@@ -1,5 +1,5 @@
 /*	$KAME: sctp_asconf.c,v 1.23 2004/08/17 06:28:01 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.2 2005/07/15 15:15:26 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.3 2005/07/15 17:19:28 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -55,6 +55,7 @@
 #include <sys/socketvar.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -1805,7 +1806,6 @@ static void
 sctp_addr_mgmt_ep(struct sctp_inpcb *inp, struct ifaddr *ifa, uint16_t type)
 {
 	struct sctp_tcb *stcb;
-	int s;
 
 	SCTP_INP_WLOCK(inp);
 	/* make sure we're "allowed" to add this type of addr */
@@ -1879,18 +1879,14 @@ sctp_addr_mgmt_ep(struct sctp_inpcb *inp, struct ifaddr *ifa, uint16_t type)
 		}
 	}
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	/* process for all associations for this endpoint */
 	LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 		SCTP_TCB_LOCK(stcb);
 		sctp_addr_mgmt_assoc(inp, stcb, ifa, type);
 		SCTP_TCB_UNLOCK(stcb);
 	} /* for each stcb */
-	splx(s);
+	crit_exit();
 	SCTP_INP_WUNLOCK(inp);
 }
 
@@ -1901,7 +1897,6 @@ static void
 sctp_addr_mgmt_restrict_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 {
 	struct sctp_tcb *stcb;
-	int s;
 
 	/* is this endpoint bound to all? */
 	if ((inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) == 0) {
@@ -1912,11 +1907,7 @@ sctp_addr_mgmt_restrict_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 		return;
 	}
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	s = splsoftnet();
-#else
-	s = splnet();
-#endif
+	crit_enter();
 	SCTP_INP_RLOCK(inp);
 	/* process for all associations for this endpoint */
 	LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
@@ -1930,7 +1921,7 @@ sctp_addr_mgmt_restrict_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 		}
 #endif /* SCTP_DEBUG */
 	} /* for each stcb */
-	splx(s);
+	crit_exit();
 	SCTP_INP_RUNLOCK(inp);
 }
 
