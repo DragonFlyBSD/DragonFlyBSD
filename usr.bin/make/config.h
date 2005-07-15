@@ -38,7 +38,7 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.16 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.11 2005/05/05 09:04:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.12 2005/07/15 21:06:29 okumoto Exp $
  */
 
 #ifndef config_h_efe0765e
@@ -57,10 +57,6 @@
 #define	LIBRARIES
 
 /*
- * LIBSUFF
- *	Is the suffix used to denote libraries and is used by the Suff module
- *	to find the search path on which to seek any -l<xx> targets.
- *
  * RECHECK
  *	If defined, Make_Update will check a target for its current
  *	modification time after it has been re-made, setting it to the
@@ -71,7 +67,6 @@
  *	that don't have this problem, you should defined this. Under
  *	NFS you probably should not, unless you aren't exporting jobs.
  */
-#define	LIBSUFF	".a"
 #define	RECHECK
 
 /*
@@ -91,15 +86,5 @@
  *				# of ${VAR}
  */
 #define	SUNSHCMD
-
-#if !defined(__svr4__) && !defined(__SVR4) && !defined(__ELF__)
-# ifndef RANLIBMAG
-#  define RANLIBMAG "__.SYMDEF"
-# endif
-#else
-# ifndef RANLIBMAG
-#  define RANLIBMAG "/"
-# endif
-#endif
 
 #endif /* config_h_efe0765e */

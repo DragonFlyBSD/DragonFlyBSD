@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.62 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.63 2005/07/15 21:06:29 okumoto Exp $
  */
 
 /*-
@@ -108,6 +108,12 @@
 #include "targ.h"
 #include "util.h"
 #include "var.h"
+
+/**
+ * The suffix used to denote libraries and is used by the Suff module
+ * to find the search path on which to seek any -l<xx> targets.
+ */
+#define LIBSUFF ".a"
 
 /* Lst of suffixes */
 static Lst sufflist = Lst_Initializer(sufflist);
