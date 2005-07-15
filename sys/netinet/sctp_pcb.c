@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.4 2005/07/15 15:46:55 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2769,8 +2769,10 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	/* Init the timer structure */
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	callout_init(&net->rxt_timer.timer, 0);
+	callout_init(&net->pmtu_timer.timer, 0);
 #else
 	callout_init(&net->rxt_timer.timer);
+	callout_init(&net->pmtu_timer.timer);
 #endif
 
 	/* Now generate a route for this guy */
@@ -3098,12 +3100,14 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 	callout_init(&asoc->asconf_timer.timer, 0);
 	callout_init(&asoc->shut_guard_timer.timer, 0);
 	callout_init(&asoc->autoclose_timer.timer, 0);
+	callout_init(&asoc->delayed_event_timer.timer, 0);
 #else
 	callout_init(&asoc->hb_timer.timer);
 	callout_init(&asoc->dack_timer.timer);
 	callout_init(&asoc->asconf_timer.timer);
 	callout_init(&asoc->shut_guard_timer.timer);
 	callout_init(&asoc->autoclose_timer.timer);
+	callout_init(&asoc->delayed_event_timer.timer);
 #endif
 	LIST_INSERT_HEAD(&inp->sctp_asoc_list, stcb, sctp_tcblist);
 	/* now file the port under the hash as well */
