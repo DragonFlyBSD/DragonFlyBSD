@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.4 2005/07/15 15:34:03 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -597,6 +597,11 @@ SYSCTL_PROC(_net_inet_sctp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
  * sysctl definitions
  */
 #if defined(__FreeBSD__) || defined (__APPLE__) || defined(__DragonFly__)
+
+SYSCTL_DECL(_net_inet);
+
+SYSCTL_NODE(_net_inet, OID_AUTO, sctp, CTLFLAG_RD, 0,
+	"sctp values");
 
 SYSCTL_INT(_net_inet_sctp, OID_AUTO, maxdgram, CTLFLAG_RW,
 	   &sctp_sendspace, 0, "Maximum outgoing SCTP buffer size");
