@@ -1,5 +1,5 @@
 /*	$KAME: sctp_var.h,v 1.23 2004/10/27 07:57:49 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_var.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_var.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -149,7 +149,7 @@
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_net_inet_sctp);
 #endif
@@ -184,6 +184,10 @@ void sctp_fasttim(void);
 void	sctp_ctlinput __P((int, struct sockaddr *, void *));
 int	sctp_ctloutput __P((struct socket *, struct sockopt *));
 void	sctp_input __P((struct mbuf *, int));
+#elif defined(__DragonFly__)
+void	sctp_ctlinput __P((int, struct sockaddr *, void *));
+int	sctp_ctloutput __P((struct socket *, struct sockopt *));
+void	sctp_input __P((struct mbuf *, ... ));
 #else
 void*	sctp_ctlinput __P((int, struct sockaddr *, void *));
 int	sctp_ctloutput __P((int, struct socket *, int, int, struct mbuf **));
@@ -213,7 +217,7 @@ sctp_assoc_t sctp_getassocid(struct sockaddr *);
 
 
 int sctp_ingetaddr(struct socket *,
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		   struct sockaddr **
 #else
 		   struct mbuf *
@@ -221,20 +225,20 @@ int sctp_ingetaddr(struct socket *,
 );
 
 int sctp_peeraddr(struct socket *,
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		  struct sockaddr **
 #else
 		  struct mbuf *
 #endif
 );
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 int sctp_listen(struct socket *, struct thread *);
 #else
 int sctp_listen(struct socket *, struct proc *);
 #endif
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 int sctp_accept(struct socket *, struct sockaddr **);
 #else
 int sctp_accept(struct socket *, struct mbuf *);

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -33,7 +33,7 @@
 #if !(defined(__OpenBSD__) || defined (__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
@@ -75,7 +75,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <net/if_var.h>
 #endif
 
@@ -94,7 +94,7 @@
 #include <netinet6/scope6_var.h>
 #include <netinet6/nd6.h>
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #include <netinet6/in6_pcb.h>
 #elif defined(__OpenBSD__)
 #include <netinet/in_pcb.h>
@@ -106,7 +106,7 @@
 
 #include <net/net_osdep.h>
 
-#if defined(HAVE_NRL_INPCB) || defined(__FreeBSD__)
+#if defined(HAVE_NRL_INPCB) || defined(__FreeBSD__) || defined(__DragonFly__)
 #ifndef in6pcb
 #define in6pcb		inpcb
 #endif
@@ -1158,7 +1158,7 @@ sctp_ipv4_source_address_selection(struct sctp_inpcb *inp,
 		 * Need a route to cache.
 		 *
 		 */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		rtalloc_ign(ro, 0UL);
 #else
 		rtalloc(ro);
@@ -1904,7 +1904,7 @@ sctp_ipv6_source_address_selection(struct sctp_inpcb *inp,
 		to->sin6_scope_id = 0;
 #endif
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		rtalloc_ign(ro, 0UL);
 #else
 		rtalloc(ro);
@@ -2143,7 +2143,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		ip->ip_v = IPVERSION;
 		ip->ip_hl = (sizeof(struct ip) >> 2);
 		if (nofragment_flag) {
-#if defined(WITH_CONVERT_IP_OFF) || defined(__FreeBSD__)
+#if defined(WITH_CONVERT_IP_OFF) || defined(__FreeBSD__) || defined(__DragonFly__)
 #if defined( __OpenBSD__) || defined(__NetBSD__)
 			/* OpenBSD has WITH_CONVERT_IP_OFF defined?? */
 			ip->ip_off = htons(IP_DF);
@@ -2163,7 +2163,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		ip->ip_id = htons(ip_id++);
 #endif
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		ip->ip_ttl = inp->ip_inp.inp.inp_ip_ttl;
 #else
 		ip->ip_ttl = inp->inp_ip_ttl;
@@ -2176,7 +2176,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		if (stcb) {
 			if ((stcb->asoc.ecn_allowed) && ecn_ok) {
 				/* Enable ECN */
-#if defined(__FreeBSD__) || defined (__APPLE__)
+#if defined(__FreeBSD__) || defined (__APPLE__) || defined(__DragonFly__)
 				ip->ip_tos = (u_char)((inp->ip_inp.inp.inp_ip_tos & 0x000000fc) |
 						      sctp_get_ect(stcb, chk));
 #elif defined(__NetBSD__)
@@ -2188,7 +2188,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 #endif
 			} else {
 				/* No ECN */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 				ip->ip_tos = inp->ip_inp.inp.inp_ip_tos;
 #elif defined(__NetBSD__)
 				ip->ip_tos = inp->ip_inp.inp.inp_ip.ip_tos;
@@ -2198,7 +2198,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 			}
 		} else {
 			/* no association at all */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 			ip->ip_tos = inp->ip_inp.inp.inp_ip_tos;
 #else
 			ip->ip_tos = inp->inp_ip_tos;
@@ -2293,7 +2293,8 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		}
 		ret = ip_output(m, inp->ip_inp.inp.inp_options,
 				ro, o_flgs, inp->ip_inp.inp.inp_moptions
-#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000)
+#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) \
+    || defined(__DragonFly__)
 				, (struct inpcb *)NULL
 #endif
 #if defined(__NetBSD__)
@@ -2369,7 +2370,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 		sin6 = &tmp;
 
 		/* KAME hack: embed scopeid */
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 		if (in6_embedscope(&sin6->sin6_addr, sin6, NULL, NULL) != 0)
 #else
 		if (in6_embedscope(&sin6->sin6_addr, sin6) != 0)
@@ -2523,7 +2524,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 				 (struct socket *)inp->sctp_socket,
 #endif
 				 &ifp
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000)
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000) || defined(__DragonFly__)
 		    , NULL
 #endif
 			);
@@ -3448,7 +3449,7 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		stc.ipv6_addr_legal = 1;
 		/* Now look at the binding flag to see if V4 will be legal */
 		if (
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		    (in_inp->inp_flags & IN6P_IPV6_V6ONLY)
 #elif defined(__OpenBSD__)
 		    (0)	/* For openbsd we do dual bind only */
@@ -3567,7 +3568,7 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 				/* pull out the scope_id from incoming pkt */
 				(void)in6_recoverscope(sin6, &ip6->ip6_src,
 				    init_pkt->m_pkthdr.rcvif);
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 				in6_embedscope(&sin6->sin6_addr, sin6, NULL,
 				    NULL);
 #else
@@ -7199,7 +7200,7 @@ sctp_output(inp, m, addr, control, p, flags)
      struct mbuf *m;
      struct sockaddr *addr;
      struct mbuf *control;
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
      struct thread *p;
 #else
      struct proc *p;
@@ -8280,7 +8281,8 @@ sctp_send_shutdown_complete2(struct mbuf *m, int iphlen, struct sctphdr *sh)
 #endif
 		/* out it goes */
 		ip_output(mout, 0, &ro, IP_RAWOUTPUT, NULL
-#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000)  || defined(__NetBSD__)
+#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) \
+    || defined(__NetBSD__) || defined(__DragonFly__)
 		    , NULL
 #endif
 		    );
@@ -8306,7 +8308,7 @@ sctp_send_shutdown_complete2(struct mbuf *m, int iphlen, struct sctphdr *sh)
 #if defined(__NetBSD__)
 			   , NULL
 #endif
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000)
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000) || defined(__DragonFly__)
 			   , NULL
 #endif
 		    );
@@ -9248,7 +9250,8 @@ sctp_send_abort(struct mbuf *m, int iphlen, struct sctphdr *sh, uint32_t vtag,
 #endif
 		/* out it goes */
 		(void)ip_output(mout, 0, &ro, IP_RAWOUTPUT, NULL
-#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) || defined(__NetBSD__)
+#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) \
+    || defined(__NetBSD__) || defined(__DragonFly__)
 		    , NULL
 #endif
 		    );
@@ -9274,7 +9277,7 @@ sctp_send_abort(struct mbuf *m, int iphlen, struct sctphdr *sh, uint32_t vtag,
 #if defined(__NetBSD__)
 			, NULL
 #endif
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000)
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000) || defined(__DragonFly__)
 		    , NULL
 #endif
 		    );
@@ -9362,7 +9365,8 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 		out->ip_len = htons(scm->m_pkthdr.len);
 #endif
 		retcode = ip_output(scm, 0, &ro, IP_RAWOUTPUT, NULL
-#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) || defined(__NetBSD__)
+#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) \
+    || defined(__NetBSD__) || defined(__DragonFly__)
 		    , NULL
 #endif
 			);
@@ -9412,7 +9416,7 @@ sctp_send_operr_to(struct mbuf *m, int iphlen,
 #if defined(__NetBSD__)
 	    , NULL
 #endif
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000)
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 480000) || defined(__DragonFly__)
 	    , NULL
 #endif
 		);
@@ -10078,7 +10082,7 @@ sctp_sosend(struct socket *so,
 	    int flags
 #else
 	    int flags,
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 	    struct thread *p
 #else
 	    struct proc *p
@@ -10353,7 +10357,7 @@ sctp_sosend(struct socket *so,
 	}
 	/* Ok, we will attempt a msgsnd :> */
 	if (p)
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 		p->td_proc->p_stats->p_ru.ru_msgsnd++;
 #else
 	p->p_stats->p_ru.ru_msgsnd++;

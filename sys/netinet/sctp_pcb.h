@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.h,v 1.19 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 #ifndef __sctp_pcb_h__
 #define __sctp_pcb_h__
@@ -160,7 +160,7 @@ struct sctp_epinfo {
 	struct sctpiterators iteratorhead;
 
 	/* ep zone info */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 #if __FreeBSD_version >= 500000
 	struct uma_zone *ipi_zone_ep;
 	struct uma_zone *ipi_zone_asoc;
@@ -337,7 +337,7 @@ struct sctp_inpcb {
 	uint32_t sctp_vtag_first;
 	struct mbuf *pkt, *pkt_last, *sb_last_mpkt;
 	struct mbuf *control;
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 #ifndef INP_IPV6
 #define INP_IPV6	0x1
 #endif
@@ -602,7 +602,7 @@ struct sctp_nets *sctp_findnet(struct sctp_tcb *, struct sockaddr *);
 
 struct sctp_inpcb *sctp_pcb_findep(struct sockaddr *, int, int);
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 int sctp_inpcb_bind(struct socket *, struct sockaddr *, struct thread *);
 #else
 int sctp_inpcb_bind(struct socket *, struct sockaddr *, struct proc *);

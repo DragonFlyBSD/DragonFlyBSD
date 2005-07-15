@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -36,13 +36,13 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
-#ifndef SCTP_BASE_FREEBSD
+#if !(defined(SCTP_BASE_FREEBSD) || defined(__DragonFly__))
 #include "opt_mpath.h"
-#endif /* SCTP_BASE_FREEBSD */
+#endif /* SCTP_BASE_FREEBSD || __DragonFly__ */
 #endif /* FreeBSD */
 #if defined(__NetBSD__)
 #include "opt_inet.h"
@@ -65,7 +65,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/callout.h>
 #else
 #include <netinet/sctp_callout.h>	/* for callout_active() */
@@ -101,7 +101,7 @@
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__) || defined(__DragonFly_)
 #include <netinet6/in6_pcb.h>
 #elif defined(__OpenBSD__)
 #include <netinet/in_pcb.h>
@@ -3319,7 +3319,7 @@ sbappendaddr_nocheck(sb, asa, m0, control, tag, inp)
 	}
 	return (1);
 #endif
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	struct mbuf *m, *n, *nlast;
 	int cnt=0;
 

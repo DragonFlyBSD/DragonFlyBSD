@@ -1,5 +1,5 @@
 /*	$KAME: sctp_timer.c,v 1.28 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -32,7 +32,7 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
@@ -260,7 +260,7 @@ sctp_find_alternate_net(struct sctp_tcb *stcb,
 			struct sockaddr_in6 *sin6;
 			sin6 = (struct sockaddr_in6 *)&alt->ro._l_addr;
 			if (sin6->sin6_family == AF_INET6) {
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 				(void)in6_embedscope(&sin6->sin6_addr, sin6,
 						     NULL, NULL);
 #else
@@ -268,7 +268,7 @@ sctp_find_alternate_net(struct sctp_tcb *stcb,
 #endif
 			}
 #endif
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 			rtalloc_ign((struct route*)&alt->ro, 0UL);
 #else
 			rtalloc((struct route*)&alt->ro);

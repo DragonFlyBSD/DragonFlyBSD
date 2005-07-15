@@ -1,5 +1,5 @@
 /*	$KAME: sctp_peeloff.c,v 1.12 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003 Cisco Systems Inc,
@@ -32,7 +32,7 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_inet6.h"
 #include "opt_inet.h"
 #endif
@@ -191,7 +191,7 @@ sctp_get_peeloff(struct socket *head, caddr_t assoc_id, int *error)
 	newso->so_state &= ~SS_NBIO;
 	newso->so_state |= SS_ISCONNECTED;
 	/* We remove it right away */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	SOCK_LOCK(head);
 	TAILQ_REMOVE(&head->so_comp, newso, so_list);
 	head->so_qlen--;

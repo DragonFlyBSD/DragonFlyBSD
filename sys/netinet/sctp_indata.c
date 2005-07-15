@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -33,7 +33,7 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_inet6.h"
 #include "opt_inet.h"
 #endif

@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.h,v 1.14 2004/08/17 04:06:21 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 #ifndef __sctputil_h__
 #define __sctputil_h__
@@ -58,7 +58,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
  * size = size of each zone/pool element
  * number = number of elements in zone/pool
  */
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #if __FreeBSD_version >= 500000
 #include <vm/uma.h>
 #else
@@ -69,7 +69,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 #endif
 
 /* SCTP_ZONE_INIT: initialize the zone */
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #if __FreeBSD_version >= 500000
 #define UMA_ZFLAG_FULL	0x0020
 #define SCTP_ZONE_INIT(zone, name, size, number) { \
@@ -101,6 +101,9 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 #define SCTP_ZONE_GET(zone) \
 	zalloci(zone);
 #endif
+#elif defined(__DragonFly__)
+#define SCTP_ZONE_GET(zone) \
+		zalloc(zone);
 #elif defined(__APPLE__)
 #define SCTP_ZONE_GET(zone) \
 	zalloc(zone);
@@ -121,6 +124,9 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 #define SCTP_ZONE_FREE(zone, element) \
 	zfreei(zone, element);
 #endif
+#elif defined(__DragonFly__)
+#define SCTP_ZONE_FREE(zone, element) \
+	zfree(zone, element);
 #elif defined(__APPLE__)
 #define SCTP_ZONE_FREE(zone, element) \
 	zfree(zone, element);
@@ -251,7 +257,7 @@ void sctp_audit_log(u_int8_t, u_int8_t);
 
 #endif
 
-#ifdef SCTP_BASE_FREEBSD
+#if defined(SCTP_BASE_FREEBSD) || defined(__DragonFly__)
 /* Note: these are in <sys/time.h>, but not in kernel space */
 #define	timerclear(tvp)		(tvp)->tv_sec = (tvp)->tv_usec = 0
 #define	timerisset(tvp)		((tvp)->tv_sec || (tvp)->tv_usec)

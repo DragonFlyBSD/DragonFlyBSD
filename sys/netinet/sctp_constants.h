@@ -1,5 +1,5 @@
 /*	$KAME: sctp_constants.h,v 1.16 2004/08/17 04:06:16 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_constants.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_constants.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 #ifndef __sctp_constants_h__
 #define __sctp_constants_h__
@@ -802,7 +802,7 @@
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 #define SCTP_GETTIME_TIMEVAL(x)	(microuptime(x))
 #define SCTP_GETTIME_TIMESPEC(x) (nanouptime(x))
 #else

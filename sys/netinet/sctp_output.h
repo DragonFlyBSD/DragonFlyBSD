@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.h,v 1.13 2004/08/17 04:06:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 #ifndef __sctp_output_h__
 #define __sctp_output_h__
@@ -83,7 +83,7 @@ void sctp_toss_old_asconf(struct sctp_tcb *);
 
 void sctp_fix_ecn_echo(struct sctp_association *);
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 int sctp_output(struct sctp_inpcb *, struct mbuf *, struct sockaddr *,
     struct mbuf *, struct thread *, int);
 #else
@@ -141,7 +141,7 @@ sctp_sosend(struct socket *so,
     int flags
 #else
     int flags,
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
     struct thread *p
 #else
     struct proc *p

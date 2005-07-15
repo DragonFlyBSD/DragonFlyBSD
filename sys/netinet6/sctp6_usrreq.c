@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -35,7 +35,7 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_inet.h"
 #endif
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_inet6.h"
 #include "opt_inet.h"
 #endif
@@ -107,7 +107,7 @@
 
 extern struct protosw inetsw[];
 
-#if defined(HAVE_NRL_INPCB) || defined(__FreeBSD__)
+#if defined(HAVE_NRL_INPCB) || defined(__FreeBSD__) || defined(__DragonFly__)
 #ifndef in6pcb
 #define in6pcb		inpcb
 #endif
@@ -122,7 +122,7 @@ extern u_int32_t sctp_debug_on;
 
 static	int sctp6_detach __P((struct socket *so));
 
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 extern void in6_sin_2_v4mapsin6 (struct sockaddr_in *sin,
 				 struct sockaddr_in6 *sin6);
 extern void in6_sin6_2_sin (struct sockaddr_in *,
@@ -419,8 +419,9 @@ sctp_skip_csum:
 	    || (in6p->sctp_socket->so_options & SO_TIMESTAMP)
 #endif
 	    ) {
-#if defined(__FreeBSD__) || defined(__APPLE__)
-#if (defined(SCTP_BASE_FREEBSD) && __FreeBSD_version < 501113) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
+#if (defined(SCTP_BASE_FREEBSD) && __FreeBSD_version < 501113) || \
+    defined(__APPLE__) || defined(__DragonFly__)
 		ip6_savecontrol(in6p_ip, &opts, ip6, m);
 #elif __FreeBSD_version >= 440000 || (defined(SCTP_BASE_FREEBSD) && __FreeBSD_version >= 501113)
 		ip6_savecontrol(in6p_ip, m, &opts);
@@ -766,6 +767,8 @@ sctp6_abort(struct socket *so)
 static int
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 sctp6_attach(struct socket *so, int proto, struct thread *p)
+#elif defined(__DragonFly__)
+sctp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 #else
 sctp6_attach(struct socket *so, int proto, struct proc *p)
 #endif
@@ -796,7 +799,7 @@ sctp6_attach(struct socket *so, int proto, struct proc *p)
 	inp->sctp_flags |= SCTP_PCB_FLAGS_BOUND_V6;	/* I'm v6! */
 	inp6 = (struct in6pcb *)inp;
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	inp6->inp_vflag |= INP_IPV6;
 #else
 #if defined(__OpenBSD__)
@@ -820,7 +823,7 @@ sctp6_attach(struct socket *so, int proto, struct proc *p)
 	 * because the socket may be bound to an IPv6 wildcard address,
 	 * which may match an IPv4-mapped IPv6 address.
 	 */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	inp6->inp_ip_ttl = ip_defttl;
 #else
 	inp->inp_ip_ttl = ip_defttl;
@@ -834,7 +837,7 @@ sctp6_attach(struct socket *so, int proto, struct proc *p)
 }
 
 static int
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 sctp6_bind(struct socket *so, struct sockaddr *addr, struct thread *p)
 {
 #else
@@ -856,7 +859,7 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 		return EINVAL;
 
 	inp6 = (struct in6pcb *)inp;
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	inp6->inp_vflag &= ~INP_IPV4;
 	inp6->inp_vflag |= INP_IPV6;
 #else
@@ -879,7 +882,7 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 	     == 0) {
 		if (addr->sa_family == AF_INET) {
 			/* binding v4 addr to v6 socket, so reset flags */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 			inp6->inp_vflag |= INP_IPV4;
 			inp6->inp_vflag &= ~INP_IPV6;
 #else
@@ -896,7 +899,7 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 			sin6_p = (struct sockaddr_in6 *)addr;
 
 			if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr)) {
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 			  inp6->inp_vflag |= INP_IPV4;
 #else
 #if defined(__OpenBSD__)
@@ -909,7 +912,7 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 			else if (IN6_IS_ADDR_V4MAPPED(&sin6_p->sin6_addr)) {
 				struct sockaddr_in sin;
 				in6_sin6_2_sin(&sin, sin6_p);
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 				inp6->inp_vflag |= INP_IPV4;
 				inp6->inp_vflag &= ~INP_IPV6;
 #else
@@ -1076,7 +1079,7 @@ sctp6_disconnect(struct socket *so)
 }
 
 int
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 sctp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	  struct mbuf *control, struct thread *p);
 #else
@@ -1086,7 +1089,7 @@ sctp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 
 
 static int
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 sctp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	   struct mbuf *control, struct thread *p)
 {
@@ -1205,7 +1208,7 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 		inp->pkt_last = inp->pkt = m;
 	}
 	if (
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	    /* FreeBSD and MacOSX uses a flag passed */
 	    ((flags & PRUS_MORETOCOME) == 0)
 #elif defined(__NetBSD__)
@@ -1233,7 +1236,7 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 }
 
 static int
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 sctp6_connect(struct socket *so, struct sockaddr *addr, struct thread *p)
 {
 #else
@@ -1385,7 +1388,7 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 }
 
 static int
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 sctp6_getaddr(struct socket *so, struct sockaddr **addr)
 {
 	struct sockaddr_in6 *sin6;
@@ -1398,7 +1401,7 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 	/*
 	 * Do the malloc first in case it blocks.
 	 */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6, M_SONAME,
 	       M_WAITOK | M_ZERO);
 #else
@@ -1410,7 +1413,7 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (!inp) {
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		FREE(sin6, M_SONAME);
 #endif
 		return ECONNRESET;
@@ -1464,7 +1467,7 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 			}
 		}
 		if (!fnd) {
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 			FREE(sin6, M_SONAME);
 #endif
 			return ENOENT;
@@ -1476,14 +1479,14 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 		in6_recoverscope(sin6, &sin6->sin6_addr, NULL);
 	else
 		sin6->sin6_scope_id = 0;	/*XXX*/
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	(*addr) = (struct sockaddr *)sin6;
 #endif
 	return (0);
 }
 
 static int
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 sctp6_peeraddr(struct socket *so, struct sockaddr **addr)
 {
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)*addr;
@@ -1505,7 +1508,7 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 		/* UDP type and listeners will drop out here */
 		return (ENOTCONN);
 	}
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6, M_SONAME,
 	       M_WAITOK | M_ZERO);
 #else
@@ -1518,14 +1521,14 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	/* We must recapture incase we blocked */
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (!inp) {
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		FREE(sin6, M_SONAME);
 #endif
 		return ECONNRESET;
 	}
 	stcb = LIST_FIRST(&inp->sctp_asoc_list);
 	if (stcb == NULL) {
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		FREE(sin6, M_SONAME);
 #endif
 		return ECONNRESET;
@@ -1542,20 +1545,20 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	}
 	if (!fnd) {
 		/* No IPv4 address */
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		FREE(sin6, M_SONAME);
 #endif
 		return ENOENT;
 	}
 	in6_recoverscope(sin6, &sin6->sin6_addr, NULL);
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	*addr = (struct sockaddr *)sin6;
 #endif
 	return (0);
 }
 
 static int
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 sctp6_in6getaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct sockaddr *addr;
@@ -1584,7 +1587,7 @@ sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
 			splx(s);
 			return (error);
 		}
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		addr = *nam;
 #endif
 		/* if I'm V6ONLY, convert it to v4-mapped */
@@ -1600,15 +1603,15 @@ sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
 			struct sockaddr_in6 sin6;
 			in6_sin_2_v4mapsin6((struct sockaddr_in *)addr, &sin6);
 			memcpy(addr, &sin6, sizeof(struct sockaddr_in6));
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 			nam->m_len = sizeof(sin6);
 #endif
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 		} else {
 			nam->m_len = sizeof(struct sockaddr_in);
 #endif
 		}
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 	} else {
 		nam->m_len = sizeof(struct sockaddr_in6);
 #endif
@@ -1619,7 +1622,7 @@ sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
 
 
 static int
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 sctp6_getpeeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct sockaddr *addr = *nam;
@@ -1661,15 +1664,15 @@ sctp6_getpeeraddr(struct socket *so, struct mbuf *nam)
 			struct sockaddr_in6 sin6;
 			in6_sin_2_v4mapsin6((struct sockaddr_in *)addr, &sin6);
 			memcpy(addr, &sin6, sizeof(struct sockaddr_in6));
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 			nam->m_len = sizeof(sin6);
 #endif
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 		} else {
 			nam->m_len = sizeof(struct sockaddr_in);
 #endif
 		}
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 	} else {
 		nam->m_len = sizeof(struct sockaddr_in6);
 #endif
@@ -1678,7 +1681,7 @@ sctp6_getpeeraddr(struct socket *so, struct mbuf *nam)
 	return error;
 }
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 struct pr_usrreqs sctp6_usrreqs = {
 	sctp6_abort, sctp_accept, sctp6_attach, sctp6_bind,
 	sctp6_connect, pru_connect2_notsupp, in6_control,

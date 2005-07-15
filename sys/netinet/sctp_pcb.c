@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -35,7 +35,7 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
@@ -60,7 +60,7 @@
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 #include <sys/random.h>
 #endif
 #if defined(__NetBSD__)
@@ -99,7 +99,7 @@
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 #include <netinet6/scope6_var.h>
-#if defined(__FreeBSD__) || (__NetBSD__)
+#if defined(__FreeBSD__) || (__NetBSD__) || defined(__DragonFly__)
 #include <netinet6/in6_pcb.h>
 #elif defined(__OpenBSD__)
 #include <netinet/in_pcb.h>
@@ -814,7 +814,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 			/* got it */
 			if ((nam->sa_family == AF_INET) &&
 			    (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 			    (((struct inpcb *)inp)->inp_flags & IN6P_IPV6_V6ONLY)
 #else
 #if defined(__OpenBSD__)
@@ -1301,14 +1301,14 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 		to6->sin6_port = sh->dest_port;
 		/* Get the scopes in properly to the sin6 addr's */
 		(void)in6_recoverscope(to6, &to6->sin6_addr, NULL);
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 		(void)in6_embedscope(&to6->sin6_addr, to6, NULL, NULL);
 #else
 		(void)in6_embedscope(&to6->sin6_addr, to6);
 #endif
 
 		(void)in6_recoverscope(from6, &from6->sin6_addr, NULL);
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 		(void)in6_embedscope(&from6->sin6_addr, from6, NULL, NULL);
 #else
 		(void)in6_embedscope(&from6->sin6_addr, from6);
@@ -1517,7 +1517,7 @@ sctp_inpcb_alloc(struct socket *so)
 	}
 #endif /* IPSEC */
 	sctppcbinfo.ipi_count_ep++;
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	inp->ip_inp.inp.inp_gencnt = ++sctppcbinfo.ipi_gencnt_ep;
 	inp->ip_inp.inp.inp_ip_ttl = ip_defttl;
 #else
@@ -1585,6 +1585,7 @@ sctp_inpcb_alloc(struct socket *so)
 #else
 	callout_init(&inp->sctp_ep.signature_change.timer);
 #endif
+	printf("signature_change.timer has been initiated!\n");
 	inp->sctp_ep.signature_change.type = SCTP_TIMER_TYPE_NEWCOOKIE;
 
 	/* now init the actual endpoint default data */
@@ -1621,7 +1622,7 @@ sctp_inpcb_alloc(struct socket *so)
 	/* seed random number generator */
 	m->random_counter = 1;
 	m->store_at = SCTP_SIGNATURE_SIZE;
-#if defined(__FreeBSD__) && (__FreeBSD_version < 500000)
+#if (defined(__FreeBSD__) && (__FreeBSD_version < 500000)) || defined(__DragonFly__)
 	read_random_unlimited(m->random_numbers, sizeof(m->random_numbers));
 #elif defined(__APPLE__) || (__FreeBSD_version > 500000)
 	read_random(m->random_numbers, sizeof(m->random_numbers));
@@ -1808,7 +1809,7 @@ sctp_isport_inuse(struct sctp_inpcb *inp, uint16_t lport)
 	return (0);
 }
 
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 /*
  * Don't know why, but without this there is an unknown reference when
  * compiling NetBSD... hmm
@@ -1818,7 +1819,7 @@ extern void in6_sin6_2_sin (struct sockaddr_in *, struct sockaddr_in6 *sin6);
 
 
 int
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct thread *p)
 #else
 sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
@@ -1858,7 +1859,7 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 
 			/* IPV6_V6ONLY socket? */
 			if (
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 				(ip_inp->inp_flags & IN6P_IPV6_V6ONLY)
 #else
 #if defined(__OpenBSD__)
@@ -1893,7 +1894,7 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 			if (!IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
 				bindall = 0;
 				/* KAME hack: embed scopeid */
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 				if (in6_embedscope(&sin6->sin6_addr, sin6,
 				    ip_inp, NULL) != 0)
 					return (EINVAL);
@@ -2413,7 +2414,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		ip_freemoptions(ip_pcb->inp_moptions);
 		ip_pcb->inp_moptions = 0;
 	}
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 	inp->inp_vflag = 0;
 #else
 	ip_pcb->inp_vflag = 0;
@@ -2777,7 +2778,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	if (newaddr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *sin6;
 		sin6 = (struct sockaddr_in6 *)&net->ro._l_addr;
-#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__)
+#if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 		(void)in6_embedscope(&sin6->sin6_addr, sin6,
 		    &stcb->sctp_ep->ip_inp.inp, NULL);
 #else
@@ -2787,7 +2788,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 		sin6->sin6_scope_id = 0;
 #endif
 	}
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	rtalloc_ign((struct route *)&net->ro, 0UL);
 #else
 	rtalloc((struct route *)&net->ro);
@@ -2993,7 +2994,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 
 		if ((err = sctp_inpcb_bind(inp->sctp_socket,
 		    (struct sockaddr *)NULL,
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
 					   (struct thread *)NULL
 #else
 					   (struct proc *)NULL
@@ -3670,13 +3671,13 @@ sctp_destination_is_reachable(struct sctp_tcb *stcb, struct sockaddr *destaddr)
 	}
 	/* NOTE: all "scope" checks are done when local addresses are added */
 	if (destaddr->sa_family == AF_INET6) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 		answer = inp->inp_vflag & INP_IPV6;
 #else
 		answer = inp->ip_inp.inp.inp_vflag & INP_IPV6;
 #endif
 	} else if (destaddr->sa_family == AF_INET) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 		answer = inp->inp_vflag & INP_IPV4;
 #else
 		answer = inp->ip_inp.inp.inp_vflag & INP_IPV4;
@@ -3696,7 +3697,7 @@ sctp_update_ep_vflag(struct sctp_inpcb *inp) {
 	struct sctp_laddr *laddr;
 
 	/* first clear the flag */
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 	inp->inp_vflag = 0;
 #else
 	inp->ip_inp.inp.inp_vflag = 0;
@@ -3715,13 +3716,13 @@ sctp_update_ep_vflag(struct sctp_inpcb *inp) {
 			continue;
 		}
 		if (laddr->ifa->ifa_addr->sa_family == AF_INET6) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 			inp->inp_vflag |= INP_IPV6;
 #else
 			inp->ip_inp.inp.inp_vflag |= INP_IPV6;
 #endif
 		} else if (laddr->ifa->ifa_addr->sa_family == AF_INET) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 			inp->inp_vflag |= INP_IPV4;
 #else
 			inp->ip_inp.inp.inp_vflag |= INP_IPV4;
@@ -3769,13 +3770,13 @@ sctp_add_local_addr_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 		inp->laddr_count++;
 		/* update inp_vflag flags */
 		if (ifa->ifa_addr->sa_family == AF_INET6) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 			inp->inp_vflag |= INP_IPV6;
 #else
 			inp->ip_inp.inp.inp_vflag |= INP_IPV6;
 #endif
 		} else if (ifa->ifa_addr->sa_family == AF_INET) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
+#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 			inp->inp_vflag |= INP_IPV4;
 #else
 			inp->ip_inp.inp.inp_vflag |= INP_IPV4;
@@ -4082,12 +4083,12 @@ sctp_del_local_addr_assoc_sa(struct sctp_tcb *stcb, struct sockaddr *sa)
 
 static char sctp_pcb_initialized = 0;
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 /* sysctl */
 static int sctp_max_number_of_assoc = SCTP_MAX_NUM_OF_ASOC;
 static int sctp_scale_up_for_address = SCTP_SCALE_FOR_ADDR;
 
-#endif /* FreeBSD || APPLE */
+#endif /* FreeBSD || APPLE || DragonFly */
 
 #ifndef SCTP_TCBHASHSIZE
 #define SCTP_TCBHASHSIZE 1024
@@ -4107,7 +4108,7 @@ sctp_pcb_init()
 	int i;
 	int hashtblsize = SCTP_TCBHASHSIZE;
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	int sctp_chunkscale = SCTP_CHUNKQUEUE_SCALE;
 #endif
 
@@ -4231,7 +4232,8 @@ sctp_pcb_init()
 	/* mbuf tracker */
 	sctppcbinfo.mbuf_track = 0;
 	/* port stuff */
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__APPLE__) \
+    || defined(__DragonFly__)
 	sctppcbinfo.lastlow = ipport_firstauto;
 #else
 	sctppcbinfo.lastlow = anonportmin;

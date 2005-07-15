@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -33,7 +33,7 @@
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 #include "opt_ipsec.h"
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
@@ -4369,7 +4369,7 @@ sctp_input(m, va_alist)
 	/*
 	 * common chunk processing
 	 */
-#if defined(__FreeBSD__)  || defined(__APPLE__)
+#if defined(__FreeBSD__)  || defined(__APPLE__) || defined(__DragonFly__)
 	length = ip->ip_len + iphlen;
 #else
 	length = ip->ip_len - (ip->ip_hl << 2) + iphlen;

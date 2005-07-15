@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_var.h,v 1.6 2003/11/25 06:40:55 ono Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_var.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_var.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2004 Cisco Systems, Inc.
@@ -37,7 +37,7 @@
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
 
-#if defined(__FreeBSD__) || (__APPLE__)
+#if defined(__FreeBSD__) || (__APPLE__) || defined(__DragonFly__)
 SYSCTL_DECL(_net_inet6_sctp6);
 extern struct pr_usrreqs sctp6_usrreqs;
 int	sctp6_ctloutput __P((struct socket *, struct sockopt *));
@@ -50,7 +50,7 @@ int	sctp6_usrreq __P((struct socket *, int, struct mbuf *, struct mbuf *,
 int	sctp6_usrreq __P((struct socket *, int, struct mbuf *, struct mbuf *,
 			   struct mbuf *));
 #endif /* __NetBSD__ || __OpenBSD__ */
-#endif /* __FreeBSD__ */
+#endif /* __FreeBSD__ || __APPLE__ || __DragonFly__ */
 
 #if defined(__APPLE__)
 int	sctp6_input __P((struct mbuf **, int *));
