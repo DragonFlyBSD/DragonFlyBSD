@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.127 2005/07/15 21:27:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.128 2005/07/16 08:07:54 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -84,11 +84,11 @@
  *			output or do anything for the jobs, just kills them.
  *			It should only be called in an emergency, as it were.
  *
- *	Job_CheckCommands
+ *	JobCheckCommands
  *			Verify that the commands for a target are ok. Provide
  *			them if necessary and possible.
  *
- *	Job_Touch	Update a target without really updating it.
+ *	JobTouch	Update a target without really updating it.
  *
  *	Job_Wait	Wait for all currently-running jobs to finish.
  *
@@ -371,6 +371,8 @@ static void JobDoOutput(Job *, Boolean);
 static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static int Compat_RunCommand(char *, GNode *, GNode *);
+static void JobTouch(GNode *, Boolean);
+static Boolean JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
 
 static GNode	    *curTarg = NULL;
 
@@ -1150,7 +1152,7 @@ JobFinish(Job *job, int *status)
 }
 
 /**
- * Job_Touch
+ * JobTouch
  *	Touch the given target. Called by JobStart when the -t flag was
  *	given.  Prints messages unless told to be silent.
  *
@@ -1158,8 +1160,8 @@ JobFinish(Job *job, int *status)
  *	The data modification of the file is changed. In addition, if the
  *	file did not exist, it is created.
  */
-void
-Job_Touch(GNode *gn, Boolean silent)
+static void
+JobTouch(GNode *gn, Boolean silent)
 {
 	int	streamID;	/* ID of stream opened to do the touch */
 	struct utimbuf times;	/* Times for utime() call */
@@ -1215,7 +1217,7 @@ Job_Touch(GNode *gn, Boolean silent)
 }
 
 /**
- * Job_CheckCommands
+ * JobCheckCommands
  *	Make sure the given node has all the commands it needs.
  *
  * Results:
@@ -1226,7 +1228,7 @@ Job_Touch(GNode *gn, Boolean silent)
  *	if it needs them.
  */
 Boolean
-Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
+JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 {
 
 	if (OP_NOP(gn->type) && Lst_IsEmpty(&gn->commands) &&
@@ -1597,7 +1599,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	 * to migrate to the node.
 	 */
 	if (!compatMake && (job->flags & JOB_FIRST)) {
-		cmdsOK = Job_CheckCommands(gn, Error);
+		cmdsOK = JobCheckCommands(gn, Error);
 	} else {
 		cmdsOK = TRUE;
 	}
@@ -1729,7 +1731,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 		 * does no harm to keep working up the graph.
 		 */
 		job->cmdFILE = stdout;
-		Job_Touch(gn, job->flags & JOB_SILENT);
+		JobTouch(gn, job->flags & JOB_SILENT);
 		noExec = TRUE;
 	}
 
@@ -3010,7 +3012,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 			gn->type |= OP_SILENT;
 		}
 
-		if (Job_CheckCommands(gn, Fatal)) {
+		if (JobCheckCommands(gn, Fatal)) {
 			/*
 			 * Our commands are ok, but we still have to worry
 			 * about the -t flag...
@@ -3020,7 +3022,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 				Compat_RunCmds(gn, &gn->commands, ENDNode);
 				curTarg = NULL;
 			} else {
-				Job_Touch(gn, gn->type & OP_SILENT);
+				JobTouch(gn, gn->type & OP_SILENT);
 			}
 		} else {
 			gn->made = ERROR;

@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.34 2005/05/23 20:04:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.35 2005/07/16 08:07:54 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -57,8 +57,6 @@ struct Buffer;
 struct GNode;
 struct Lst;
 
-void Job_Touch(struct GNode *, Boolean);
-Boolean Job_CheckCommands(struct GNode *, void (*abortProc)(const char *, ...));
 void Job_CatchChildren(Boolean);
 void Job_CatchOutput(int flag);
 void Job_Make(struct GNode *);
