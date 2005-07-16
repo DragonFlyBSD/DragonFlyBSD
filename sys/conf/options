@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.34 2005/07/15 17:54:47 eirikn Exp $
+# $DragonFly: src/sys/conf/options,v 1.35 2005/07/16 18:27:01 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -413,6 +413,7 @@ INVARIANTS		opt_global.h
 SIMPLELOCK_DEBUG	opt_global.h
 VFS_BIO_DEBUG		opt_global.h
 DEBUG_INTERRUPTS	opt_global.h
+SOCKBUF_DEBUG		opt_global.h
 
 # These are VM related options
 VM_KMEM_SIZE		opt_vm.h
@@ -526,7 +527,7 @@ HIFN_NO_RNG		opt_hifn.h
 KTR				opt_global.h
 KTR_ALL				opt_ktr.h
 KTR_TOKENS			opt_ktr.h
-KTR_MALLOC			opt_ktr.h
+KTR_MEMORY			opt_ktr.h
 KTR_IPIQ			opt_ktr.h
 KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
