@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.18 2005/06/14 19:42:08 joerg Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.19 2005/07/16 17:08:13 dillon Exp $
  */
 
 /*
@@ -312,7 +312,7 @@ slclose(tp,flag)
 	struct sl_softc *sc;
 
 	ttyflush(tp, FREAD | FWRITE);
-	crit_exit();
+	crit_enter();
 
 	clist_free_cblocks(&tp->t_outq);
 	tp->t_line = 0;
