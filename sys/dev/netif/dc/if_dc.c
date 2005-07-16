@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.35 2005/06/20 15:10:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.36 2005/07/16 17:11:39 dillon Exp $
  */
 
 /*
@@ -149,6 +149,10 @@ static struct dc_type dc_devs[] = {
 		"ADMtek AL981 10/100BaseTX" },
 	{ DC_VENDORID_ADMTEK, DC_DEVICEID_AN985,
 		"ADMtek AN985 10/100BaseTX" },
+	{ DC_VENDORID_ADMTEK, DC_DEVICEID_ADM9511,
+		"ADMtek ADM9511 10/100BaseTX" },
+	{ DC_VENDORID_ADMTEK, DC_DEVICEID_ADM9513,
+		"ADMtek ADM9513 10/100BaseTX" },
 	{ DC_VENDORID_ASIX, DC_DEVICEID_AX88140A,
 		"ASIX AX88140A 10/100BaseTX" },
 	{ DC_VENDORID_ASIX, DC_DEVICEID_AX88140A,
@@ -1599,20 +1603,32 @@ static void dc_decode_leaf_sia(sc, l)
 	struct dc_mediainfo	*m;
 
 	m = malloc(sizeof(struct dc_mediainfo), M_DEVBUF, M_INTWAIT | M_ZERO);
-	if (l->dc_sia_code == DC_SIA_CODE_10BT)
+	switch (l->dc_sia_code & ~DC_SIA_CODE_EXT){
+	case DC_SIA_CODE_10BT:
 		m->dc_media = IFM_10_T;
+		break;
 
-	if (l->dc_sia_code == DC_SIA_CODE_10BT_FDX)
+	case DC_SIA_CODE_10BT_FDX:
 		m->dc_media = IFM_10_T|IFM_FDX;
+		break;
 
-	if (l->dc_sia_code == DC_SIA_CODE_10B2)
+	case DC_SIA_CODE_10B2:
 		m->dc_media = IFM_10_2;
+		break;
 
-	if (l->dc_sia_code == DC_SIA_CODE_10B5)
+	case DC_SIA_CODE_10B5:
 		m->dc_media = IFM_10_5;
-
+		break;
+	}
+	if (l->dc_sia_code & DC_SIA_CODE_EXT){
+		m->dc_gp_len = 2;
+		m->dc_gp_ptr = 
+		  (u_int8_t *)&l->dc_un.dc_sia_ext.dc_sia_gpio_ctl;
+	} else {
 	m->dc_gp_len = 2;
-	m->dc_gp_ptr = (u_int8_t *)&l->dc_sia_gpio_ctl;
+	m->dc_gp_ptr =
+		  (u_int8_t *)&l->dc_un.dc_sia_noext.dc_sia_gpio_ctl;
+	}
 
 	m->dc_next = sc->dc_mi;
 	sc->dc_mi = m;
@@ -1819,6 +1835,7 @@ static int dc_attach(dev)
 		sc->dc_type = DC_TYPE_DM9102;
 		sc->dc_flags |= DC_TX_COALESCE|DC_TX_INTR_ALWAYS;
 		sc->dc_flags |= DC_REDUCED_MII_POLL|DC_TX_STORENFWD;
+		sc->dc_flags |= DC_TX_ALIGN;
 		sc->dc_pmode = DC_PMODE_MII;
 		/* Increase the latency timer value. */
 		command = pci_read_config(dev, DC_PCI_CFLT, 4);
@@ -1841,7 +1858,7 @@ static int dc_attach(dev)
 		sc->dc_flags |= DC_TX_USE_TX_INTR;
 		sc->dc_flags |= DC_TX_ADMTEK_WAR;
 		sc->dc_pmode = DC_PMODE_MII;
-		dc_read_srom(sc, sc->dc_romwidth);
+	
 		break;
 	case DC_DEVICEID_98713:
 	case DC_DEVICEID_98713_CP:
@@ -1963,9 +1980,8 @@ static int dc_attach(dev)
 		break;
 	case DC_TYPE_AL981:
 	case DC_TYPE_AN985:
-		bcopy(&sc->dc_srom[DC_AL_EE_NODEADDR], (caddr_t)&eaddr,
-		    ETHER_ADDR_LEN);
-		dc_read_eeprom(sc, (caddr_t)&eaddr, DC_AL_EE_NODEADDR, 3, 0);
+		*(u_int32_t *)(&eaddr[0]) = CSR_READ_4(sc,DC_AL_PAR0);
+		*(u_int16_t *)(&eaddr[4]) = CSR_READ_4(sc,DC_AL_PAR1);
 		break;
 	case DC_TYPE_CONEXANT:
 		bcopy(sc->dc_srom + DC_CONEXANT_EE_NODEADDR, &eaddr, 6);
@@ -2956,7 +2972,8 @@ static void dc_start(ifp)
 			break;
 
 		if (sc->dc_flags & DC_TX_COALESCE &&
-		    m_head->m_next != NULL) {
+		    (m_head->m_next != NULL ||
+			sc->dc_flags & DC_TX_ALIGN)){
 			/*
 			 * Check first if coalescing allows us to queue
 			 * the packet. We don't want to loose it if

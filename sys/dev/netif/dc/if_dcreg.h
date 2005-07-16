@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.5 2005/05/31 07:46:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.6 2005/07/16 17:11:39 dillon Exp $
  */
 
 /*
@@ -728,6 +728,7 @@ struct dc_softc {
 #define DC_64BIT_HASH		0x00002000
 #define DC_TULIP_LEDS		0x00004000
 #define DC_TX_ONE		0x00008000
+#define DC_TX_ALIGN		0x00010000
 
 /*
  * register space access macros
@@ -835,6 +836,8 @@ struct dc_softc {
  */
 #define DC_DEVICEID_AL981	0x0981
 #define DC_DEVICEID_AN985	0x0985
+#define DC_DEVICEID_ADM9511	0x9511
+#define DC_DEVICEID_ADM9513	0x9513
 
 
 /*
@@ -1057,9 +1060,17 @@ struct dc_eblock_hdr {
 struct dc_eblock_sia {
 	struct dc_eblock_hdr	dc_sia_hdr;
 	u_int8_t		dc_sia_code;
+	union {
+	     struct dc_sia_ext {
 	u_int8_t		dc_sia_mediaspec[6]; /* CSR13, CSR14, CSR15 */
 	u_int8_t		dc_sia_gpio_ctl[2];
 	u_int8_t		dc_sia_gpio_dat[2];
+	      } dc_sia_ext;
+	     struct dc_sia_noext {
+		u_int8_t dc_sia_gpio_ctl[2];
+		u_int8_t dc_sia_gpio_dat[2];
+	      } dc_sia_noext;
+ 	} dc_un;
 };
 
 #define DC_SIA_CODE_10BT	0x00
