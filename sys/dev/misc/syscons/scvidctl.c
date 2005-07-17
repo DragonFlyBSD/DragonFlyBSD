@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.10 2005/06/11 00:26:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.11 2005/07/17 16:50:40 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -280,7 +280,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
      * We currently support the following graphic modes:
      *
      * - 4 bpp planar modes whose memory size does not exceed 64K
-     * - 15, 16, 24 and 32 bpp linear modes
+     * - 15, 16, 24 and 32 bpp direct modes with linear frame buffer
      */
 
     if (info.vi_mem_model == V_INFO_MM_PLANAR) {
@@ -295,7 +295,8 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 	if (info.vi_width * info.vi_height / 8 > info.vi_window_size)
 	    return ENODEV;
     } else if (info.vi_mem_model == V_INFO_MM_DIRECT) {
-	if ((info.vi_depth != 15) && (info.vi_depth != 16) &&
+	if (!(info.vi_flags & V_INFO_LINEAR) &&
+	    (info.vi_depth != 15) && (info.vi_depth != 16) &&
 	    (info.vi_depth != 24) && (info.vi_depth != 32))
 	    return ENODEV;
     } else
