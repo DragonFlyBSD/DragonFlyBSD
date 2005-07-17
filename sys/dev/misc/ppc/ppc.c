@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.8 2005/06/16 16:29:39 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.9 2005/07/17 02:41:10 swildner Exp $
  *
  */
 
@@ -1874,15 +1874,6 @@ ppc_probe(device_t dev)
 		}
 		bus_set_resource(dev, SYS_RES_IOPORT, 0, port,
 				 IO_LPTSIZE_EXTENDED);
-	}
-#endif
-#ifdef __alpha__
-	/*
-	 * There isn't a bios list on alpha. Put it in the usual place.
-	 */
-	if (error) {
-		bus_set_resource(dev, SYS_RES_IOPORT, 0, 0x3bc,
-				 IO_LPTSIZE_NORMAL);
 	}
 #endif
 
