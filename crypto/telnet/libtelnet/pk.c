@@ -28,7 +28,7 @@
  * 
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/pk.c,v 1.2.2.4 2002/08/24 07:28:35 nsayer Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.3 2005/01/11 13:22:41 joerg Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.4 2005/07/17 19:16:35 joerg Exp $
  */
 
 /* public key routines */
@@ -130,10 +130,13 @@ common_key(char *xsecret, char *xpublic, IdeaData *ideakey, DesData *deskey)
 
 	if ((ctx = BN_CTX_new()) == NULL)
 		errx(1, "could not create BN_CTX");
+	modulus = NULL;
 	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
 		errx(1, "could not convert modulus");
+	public = NULL;
 	if (BN_hex2bn(&public, xpublic) == NULL)
 		errx(1, "could not convert public");
+	secret = NULL;
 	if (BN_hex2bn(&secret, xsecret) == NULL)
 		errx(1, "could not convert secret");
 
@@ -195,7 +198,7 @@ genkeys(char *public, char *secret)
 	char *xkey;
 
 	BN_CTX *ctx;
-	BIGNUM *pk, *sk, *tmp, *base, *root, *modulus;
+	BIGNUM *pk, *sk, *tmp, *base, *root, *modulus = NULL;
 
 	pk = itobn(0);
 	sk = itobn(0);
