@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.25 2005/06/16 21:12:23 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.26 2005/07/17 03:49:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -800,7 +800,7 @@ xpt_schedule_dev_allocq(struct cam_eb *bus, struct cam_ed *dev)
 {
 	int retval;
 
-	if (dev->ccbq.devq_openings > 0) {
+	if (bus->sim->devq && dev->ccbq.devq_openings > 0) {
 		if ((dev->flags & CAM_DEV_RESIZE_QUEUE_NEEDED) != 0) {
 			cam_ccbq_resize(&dev->ccbq,
 					dev->ccbq.dev_openings
@@ -827,7 +827,7 @@ xpt_schedule_dev_sendq(struct cam_eb *bus, struct cam_ed *dev)
 {
 	int	retval;
 
-	if (dev->ccbq.dev_openings > 0) {
+	if (bus->sim->devq && dev->ccbq.dev_openings > 0) {
 		/*
 		 * The priority of a device waiting for controller
 		 * resources is that of the the highest priority CCB
@@ -3336,7 +3336,7 @@ xpt_polled_action(union ccb *start_ccb)
 	dev->ccbq.devq_openings--;
 	dev->ccbq.dev_openings--;	
 	
-	while((devq->send_openings <= 0 || dev->ccbq.dev_openings < 0)
+	while(((devq && devq->send_openings <= 0) || dev->ccbq.dev_openings < 0)
 	   && (--timeout > 0)) {
 		DELAY(1000);
 		(*(sim->sim_poll))(sim);
@@ -3465,8 +3465,11 @@ xpt_run_dev_allocq(struct cam_eb *bus)
 {
 	struct	cam_devq *devq;
 
+	if ((devq = bus->sim->devq) == NULL) {
+		CAM_DEBUG_PRINT(CAM_DEBUG_XPT, ("xpt_run_dev_allocq: NULL devq\n"));
+		return;
+	}
 	CAM_DEBUG_PRINT(CAM_DEBUG_XPT, ("xpt_run_dev_allocq\n"));
-	devq = bus->sim->devq;
 
 	CAM_DEBUG_PRINT(CAM_DEBUG_XPT,
 			("   qfrozen_cnt == 0x%x, entries == %d, "
@@ -3542,9 +3545,11 @@ xpt_run_dev_sendq(struct cam_eb *bus)
 {
 	struct	cam_devq *devq;
 
+	if ((devq = bus->sim->devq) == NULL) {
+		CAM_DEBUG_PRINT(CAM_DEBUG_XPT, ("xpt_run_dev_sendq: NULL devq\n"));
+		return;
+	}
 	CAM_DEBUG_PRINT(CAM_DEBUG_XPT, ("xpt_run_dev_sendq\n"));
-	
-	devq = bus->sim->devq;
 
 	crit_enter();
 	devq->send_queue.qfrozen_cnt++;
@@ -3940,15 +3945,17 @@ xpt_release_ccb(union ccb *free_ccb)
 	} else {
 		SLIST_INSERT_HEAD(&ccb_freeq, &free_ccb->ccb_h, xpt_links.sle);
 	}
-	bus->sim->devq->alloc_openings++;
-	bus->sim->devq->alloc_active--;
+	if (bus->sim->devq) {
+		bus->sim->devq->alloc_openings++;
+		bus->sim->devq->alloc_active--;
+	}
 	/* XXX Turn this into an inline function - xpt_run_device?? */
 	if ((device_is_alloc_queued(device) == 0)
 	 && (device->drvq.entries > 0)) {
 		xpt_schedule_dev_allocq(bus, device);
 	}
 	crit_exit();
-	if (dev_allocq_is_runnable(bus->sim->devq))
+	if (bus->sim->devq && dev_allocq_is_runnable(bus->sim->devq))
 		xpt_run_dev_allocq(bus);
 }
 
@@ -4322,6 +4329,8 @@ xpt_freeze_devq(struct cam_path *path, u_int count)
 u_int32_t
 xpt_freeze_simq(struct cam_sim *sim, u_int count)
 {
+	if (sim->devq == NULL)
+		return(count);
 	sim->devq->send_queue.qfrozen_cnt += count;
 	if (sim->devq->active_dev != NULL) {
 		struct ccb_hdr *ccbh;
@@ -4409,6 +4418,9 @@ void
 xpt_release_simq(struct cam_sim *sim, int run_queue)
 {
 	struct	camq *sendq;
+
+	if (sim->devq == NULL)
+		return;
 
 	sendq = &(sim->devq->send_queue);
 	crit_enter();
@@ -4598,6 +4610,8 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 	cam_status status;
 
 	/* Make space for us in the device queue on our bus */
+	if (bus->sim->devq == NULL)
+		return(NULL);
 	devq = bus->sim->devq;
 	status = cam_devq_resize(devq, devq->alloc_queue.array_size + 1);
 
@@ -6218,8 +6232,10 @@ camisr(cam_isrq_t *queue)
 
 			cam_ccbq_ccb_done(&dev->ccbq, (union ccb *)ccb_h);
 
-			ccb_h->path->bus->sim->devq->send_active--;
-			ccb_h->path->bus->sim->devq->send_openings++;
+			if (ccb_h->path->bus->sim->devq) {
+				ccb_h->path->bus->sim->devq->send_active--;
+				ccb_h->path->bus->sim->devq->send_openings++;
+			}
 			
 			if ((dev->flags & CAM_DEV_REL_ON_COMPLETE) != 0
 			 || ((dev->flags & CAM_DEV_REL_ON_QUEUE_EMPTY) != 0
