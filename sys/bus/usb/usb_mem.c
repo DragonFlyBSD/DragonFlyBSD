@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.5 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.6 2005/07/18 14:50:55 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -59,6 +59,8 @@
 #include <sys/bus.h>
 #endif
 #include <sys/queue.h>
+#include <sys/sysctl.h>
+#include <sys/ktr.h>
 
 #include <machine/bus.h>
 #include <machine/endian.h>
@@ -72,6 +74,24 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdivar.h>	/* just for usb_dma_t */
 #include <bus/usb/usb_mem.h>
+
+#define USBKTR_STRING   "ptr=%p bus=%p size=%d align=%d"
+#define USBKTR_ARG_SIZE (sizeof(void *) * 2 + sizeof(int) * 2)
+
+#if !defined(KTR_USB_MEMORY)
+#define KTR_USB_MEMORY	KTR_ALL
+#endif
+KTR_INFO_MASTER(usbmem);
+KTR_INFO(KTR_USB_MEMORY, usbmem, alloc_full, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, alloc_frag, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, free_full, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, free_frag, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, blkalloc, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, blkalloc2, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, blkfree, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+
+#define logmemory(name, ptr, bus, size, align)		\
+	KTR_LOG(usbmem_ ## name, ptr, bus, (int)size, (int)align);
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (usbdebug) logprintf x
@@ -140,6 +160,7 @@ usb_block_allocmem(bus_dma_tag_t tag, size_t size, size_t align,
 			*dmap = p;
 			DPRINTFN(6,("usb_block_allocmem: free list size=%lu\n",
 				    (u_long)p->size));
+			logmemory(blkalloc2, p, NULL, size, align);
 			return (USBD_NORMAL_COMPLETION);
 		}
 	}
@@ -147,6 +168,7 @@ usb_block_allocmem(bus_dma_tag_t tag, size_t size, size_t align,
 
 	DPRINTFN(6, ("usb_block_allocmem: no free\n"));
 	p = malloc(sizeof *p, M_USB, M_INTWAIT);
+	logmemory(blkalloc, p, NULL, size, align);
 
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	if (bus_dma_tag_create(tag, align, 0,
@@ -200,6 +222,7 @@ Static void
 usb_block_freemem(usb_dma_block_t *p)
 {
 	DPRINTFN(6, ("usb_block_freemem: size=%lu\n", (u_long)p->size));
+	logmemory(blkfree, p, NULL, p->size, p->align);
 	crit_enter();
 	LIST_INSERT_HEAD(&usb_blk_freelist, p, next);
 	usb_blk_nfree++;
@@ -228,6 +251,7 @@ usb_allocmem(usbd_bus_handle bus, size_t size, size_t align, usb_dma_t *p)
 			p->block->fullblock = 1;
 			p->offs = 0;
 			p->len = size;
+			logmemory(alloc_full, p, NULL, size, align);
 		}
 		return (err);
 	}
@@ -262,6 +286,7 @@ usb_allocmem(usbd_bus_handle bus, size_t size, size_t align, usb_dma_t *p)
 	p->len = USB_MEM_SMALL;
 	LIST_REMOVE(f, next);
 	crit_exit();
+	logmemory(alloc_frag, p, NULL, size, align);
 	DPRINTFN(5, ("usb_allocmem: use frag=%p size=%d\n", f, (int)size));
 	return (USBD_NORMAL_COMPLETION);
 }
@@ -274,8 +299,10 @@ usb_freemem(usbd_bus_handle bus, usb_dma_t *p)
 	if (p->block->fullblock) {
 		DPRINTFN(1, ("usb_freemem: large free\n"));
 		usb_block_freemem(p->block);
+		logmemory(free_full, p, bus, 0, 0);
 		return;
 	}
+	logmemory(free_frag, p, bus, 0, 0);
 	f = KERNADDR(p, 0);
 	f->block = p->block;
 	f->offs = p->offs;

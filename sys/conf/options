@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.35 2005/07/16 18:27:01 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.36 2005/07/18 14:52:57 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -528,6 +528,7 @@ KTR				opt_global.h
 KTR_ALL				opt_ktr.h
 KTR_TOKENS			opt_ktr.h
 KTR_MEMORY			opt_ktr.h
+KTR_USB_MEMORY			opt_ktr.h
 KTR_IPIQ			opt_ktr.h
 KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
