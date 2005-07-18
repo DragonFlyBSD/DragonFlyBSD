@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/ohci.c,v 1.141 2003/12/22 15:40:10 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci.c,v 1.11 2005/06/10 18:33:04 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci.c,v 1.12 2005/07/18 19:20:46 dillon Exp $
  */
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -637,24 +637,24 @@ ohci_alloc_sitd(ohci_softc_t *sc)
 	int i, offs;
 	usb_dma_t dma;
 
+	crit_enter();
 	if (sc->sc_freeitds == NULL) {
 		DPRINTFN(2, ("ohci_alloc_sitd: allocating chunk\n"));
-		err = usb_allocmem(&sc->sc_bus, OHCI_SITD_SIZE * OHCI_SITD_CHUNK,
-			  OHCI_ITD_ALIGN, &dma);
+		crit_exit();
+		err = usb_allocmem(&sc->sc_bus, 
+				   OHCI_SITD_SIZE * OHCI_SITD_CHUNK,
+				   OHCI_ITD_ALIGN, &dma);
 		if (err)
 			return (NULL);
 		crit_enter();
-		for(i = 0; i < OHCI_SITD_CHUNK; i++) {
+		for (i = 0; i < OHCI_SITD_CHUNK; i++) {
 			offs = i * OHCI_SITD_SIZE;
 			sitd = KERNADDR(&dma, offs);
 			sitd->physaddr = DMAADDR(&dma, offs);
 			sitd->nextitd = sc->sc_freeitds;
 			sc->sc_freeitds = sitd;
 		}
-		crit_exit();
 	}
-
-	crit_enter();
 	sitd = sc->sc_freeitds;
 	sc->sc_freeitds = sitd->nextitd;
 	memset(&sitd->itd, 0, sizeof(ohci_itd_t));
@@ -1003,11 +1003,41 @@ ohci_freex(struct usbd_bus *bus, usbd_xfer_handle xfer)
 	struct ohci_softc *sc = (struct ohci_softc *)bus;
 	struct ohci_xfer *oxfer = (struct ohci_xfer *)xfer;
 	ohci_soft_itd_t *sitd;
+	ohci_soft_itd_t **scanp;
+	struct ohci_pipe *opipe;
+	ohci_soft_ed_t *sed;
+	ohci_physaddr_t tdphys;
+	int neednewtail;
 
         if (oxfer->ohci_xfer_flags & OHCI_ISOC_DIRTY) {
-		for (sitd = xfer->hcpriv; sitd != NULL && sitd->xfer == xfer;
-		    sitd = sitd->nextitd)
+		crit_enter();
+		opipe = (struct ohci_pipe *)xfer->pipe;
+		KKASSERT(opipe != NULL);
+		sed = opipe->sed;
+
+		scanp = (ohci_soft_itd_t **)&xfer->hcpriv;
+		neednewtail = 0;
+		while ((sitd = *scanp) != NULL) {
+			if (sitd->xfer != xfer)
+				break;
+			if (opipe->tail.itd == sitd)
+				neednewtail = 1;
+			*scanp = sitd->nextitd;
+			sitd->nextitd = NULL;
 			ohci_free_sitd(sc, sitd);
+		}
+		if (neednewtail) {
+			sitd = ohci_alloc_sitd(sc);
+			if (sitd == NULL)
+				panic("cant alloc isoc");
+			opipe->tail.itd = sitd;
+			tdphys = sitd->physaddr;
+			sed->ed.ed_flags |= htole32(OHCI_ED_SKIP); /* Stop*/
+			sed->ed.ed_headp =
+			sed->ed.ed_tailp = htole32(tdphys);
+			sed->ed.ed_flags &= htole32(~OHCI_ED_SKIP); /* Start.*/
+		}
+		crit_exit();
 	}
 
 #ifdef DIAGNOSTIC
@@ -3253,6 +3283,7 @@ ohci_device_isoc_enter(usbd_xfer_handle xfer)
 	struct iso *iso = &opipe->u.iso;
 	struct ohci_xfer *oxfer = (struct ohci_xfer *)xfer;
 	ohci_soft_itd_t *sitd, *nsitd;
+	ohci_soft_itd_t **scanp;
 	ohci_physaddr_t buf, offs, noffs, bp0, tdphys;
 	int i, ncur, nframes;
 
@@ -3270,12 +3301,27 @@ ohci_device_isoc_enter(usbd_xfer_handle xfer)
 			    iso->next));
 	}
 
+	/*
+	 * Not sure what is going on here.  This appears to be trying to
+	 * free the previous xfer related to xfer, but why wouldn't
+	 * sitd->xfer always equal xfer during the scan ?
+	 */
 	if (xfer->hcpriv) {
-		for (sitd = xfer->hcpriv; sitd != NULL && sitd->xfer == xfer;
-		    sitd = sitd->nextitd)
-			ohci_free_sitd(sc, sitd); /* Free ITDs in prev xfer*/
+		int neednewtail = 0;
 
-		if (sitd == NULL) {
+		crit_enter();
+		scanp = (ohci_soft_itd_t **)&xfer->hcpriv;
+		while ((sitd = *scanp) != NULL) {
+			if (sitd->xfer != xfer)
+				break;
+			if (opipe->tail.itd == sitd)
+				neednewtail = 1;
+			*scanp = sitd->nextitd;
+			sitd->nextitd = NULL;
+			ohci_free_sitd(sc, sitd);
+		}
+		crit_exit();
+		if (neednewtail) {
 			sitd = ohci_alloc_sitd(sc);
 			if (sitd == NULL)
 				panic("cant alloc isoc");
@@ -3558,4 +3604,5 @@ ohci_device_isoc_close(usbd_pipe_handle pipe)
 	opipe->tail.itd->isdone = 1;
 #endif
 	ohci_free_sitd(sc, opipe->tail.itd);	/* Next `avail free' sitd.*/
+	opipe->tail.itd = NULL;
 }
