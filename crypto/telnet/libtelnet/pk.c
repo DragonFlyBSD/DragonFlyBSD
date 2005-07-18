@@ -28,7 +28,7 @@
  * 
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/pk.c,v 1.2.2.4 2002/08/24 07:28:35 nsayer Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.4 2005/07/17 19:16:35 joerg Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.5 2005/07/18 16:43:26 joerg Exp $
  */
 
 /* public key routines */
@@ -198,7 +198,7 @@ genkeys(char *public, char *secret)
 	char *xkey;
 
 	BN_CTX *ctx;
-	BIGNUM *pk, *sk, *tmp, *base, *root, *modulus = NULL;
+	BIGNUM *pk, *sk, *tmp, *base, *root, *modulus;
 
 	pk = itobn(0);
 	sk = itobn(0);
