@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.20 2005/06/16 17:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.21 2005/07/18 02:47:36 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -226,6 +226,13 @@ print_uptime()
 static void
 boot(int howto)
 {
+	/*
+	 * Get rid of any user scheduler baggage and then give
+	 * us a high priority.
+	 */
+	if (curthread->td_release)
+		curthread->td_release(curthread);
+	lwkt_setpri_self(TDPRI_MAX);
 
 	/* collect extra flags that shutdown_nice might have set */
 	howto |= shutdown_howto;
@@ -283,7 +290,7 @@ boot(int howto)
 			if (iter > 5 && bioops.io_sync)
 				(*bioops.io_sync)(NULL);
 			sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
-			DELAY(50000 * iter);
+			tsleep(boot, 0, "shutdn", hz * iter / 20 + 1);
 		}
 		printf("\n");
 		/*
@@ -317,7 +324,7 @@ boot(int howto)
 #ifdef DDB
 			Debugger("busy buffer problem");
 #endif /* DDB */
-			DELAY(5000000);	/* 5 seconds */
+			tsleep(boot, 0, "shutdn", hz * 5 + 1);
 		} else {
 			printf("done\n");
 			/*
@@ -326,7 +333,7 @@ boot(int howto)
 			if (panicstr == 0)
 				vfs_unmountall();
 		}
-		DELAY(100000);		/* wait for console output to finish */
+		tsleep(boot, 0, "shutdn", hz / 10 + 1);
 	}
 
 	print_uptime();
