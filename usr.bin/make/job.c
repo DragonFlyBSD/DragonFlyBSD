@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.131 2005/07/19 18:15:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.132 2005/07/19 18:16:02 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -366,7 +366,7 @@ static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
 static void JobRestartJobs(void);
-static int Compat_RunCommand(const char [], GNode *, GNode *);
+static int Compat_RunCommand(GNode *, const char [], GNode *);
 static void JobPassSig(int);
 static void JobTouch(GNode *, Boolean);
 static Boolean JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
@@ -640,7 +640,7 @@ Compat_RunCmds(GNode *gn, Lst *cmds, GNode *ENDNode)
 	LST_FOREACH(ln, cmds) {
 		char	*cmd = Lst_Datum(ln);
 
-		if (Compat_RunCommand(cmd, gn, ENDNode))
+		if (Compat_RunCommand(gn, cmd, ENDNode))
 			break;
 	}
 }
@@ -829,7 +829,7 @@ JobPrintCommand(char *cmd, Job *job)
 				 * but this one needs to be - use compat mode
 				 * just for it.
 				 */
-				Compat_RunCommand(cmd, job->node, NULL);
+				Compat_RunCommand(job->node, cmd, NULL);
 				return (0);
 			}
 			break;
@@ -2793,7 +2793,7 @@ CompatInterrupt(GNode *ENDNode)
  *	The node's 'made' field may be set to ERROR.
  */
 static int
-Compat_RunCommand(const char cmd[], GNode *gn, GNode *ENDNode)
+Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 {
 	struct Shell	*shell = commandShell;
 	ArgArray	aa;
