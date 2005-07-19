@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.59 2005/06/25 20:03:34 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.60 2005/07/19 19:25:43 dillon Exp $
  */
 
 /*
@@ -338,12 +338,18 @@ again:
  * NOTE!  We have to retrieve the fault address prior to obtaining the
  * MP lock because get_mplock() may switch out.  YYY cr2 really ought
  * to be retrieved by the assembly code, not here.
+ *
+ * XXX gd_trap_nesting_level currently prevents lwkt_switch() from panicing
+ * if an attempt is made to switch from a fast interrupt or IPI.  This is
+ * necessary to properly take fatal kernel traps on SMP machines if 
+ * get_mplock() has to block.
  */
 void
 trap(frame)
 	struct trapframe frame;
 {
-	struct thread *td = curthread;
+	struct globaldata *gd = mycpu;
+	struct thread *td = gd->gd_curthread;
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
@@ -353,13 +359,16 @@ trap(frame)
 #ifdef DDB
 	if (db_active) {
 		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
+		++gd->gd_trap_nesting_level;
 		get_mplock();
 		trap_fatal(&frame, eva);
+		--gd->gd_trap_nesting_level;
 		goto out2;
 	}
 #endif
 
 	eva = 0;
+	++gd->gd_trap_nesting_level;
 	if (frame.tf_trapno == T_PAGEFLT) {
 		/*
 		 * For some Cyrix CPUs, %cr2 is clobbered by interrupts.
@@ -378,6 +387,7 @@ trap(frame)
 	} else {
 		get_mplock();
 	}
+	--gd->gd_trap_nesting_level;
 	/*
 	 * MP lock is held at this point
 	 */

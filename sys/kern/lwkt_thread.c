@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.77 2005/07/19 19:08:05 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.78 2005/07/19 19:25:44 dillon Exp $
  */
 
 /*
@@ -459,11 +459,31 @@ lwkt_switch(void)
 #endif
 
     /*
-     * Switching from within a 'fast' (non thread switched) interrupt is
-     * illegal.
+     * Switching from within a 'fast' (non thread switched) interrupt or IPI
+     * is illegal.  However, we may have to do it anyway if we hit a fatal
+     * kernel trap or we have paniced.
+     *
+     * If this case occurs save and restore the interrupt nesting level.
      */
-    if (gd->gd_intr_nesting_level && panicstr == NULL) {
-	panic("lwkt_switch: cannot switch from within a fast interrupt, yet, td %p\n", td);
+    if (gd->gd_intr_nesting_level) {
+	int savegdnest;
+	int savegdtrap;
+
+	if (gd->gd_trap_nesting_level == 0 && panicstr == NULL) {
+	    panic("lwkt_switch: cannot switch from within "
+		  "a fast interrupt, yet, td %p\n", td);
+	} else {
+	    savegdnest = gd->gd_intr_nesting_level;
+	    savegdtrap = gd->gd_trap_nesting_level;
+	    gd->gd_intr_nesting_level = 0;
+	    gd->gd_trap_nesting_level = 0;
+	    printf("Warning: executing emergency switch from within a trap "
+		   "or interrupt or during a panic, thread %p\n", td);
+	    lwkt_switch();
+	    gd->gd_intr_nesting_level = savegdnest;
+	    gd->gd_trap_nesting_level = savegdtrap;
+	    return;
+	}
     }
 
     /*
