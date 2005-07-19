@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.130 2005/07/19 18:14:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.131 2005/07/19 18:15:29 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -670,6 +670,22 @@ JobPassSig(int signo)
 		KILL(job->pid, SIGCONT);
 	}
 
+#if defined(USE_PGRP)
+	/*
+	 * Why are we even catching these signals?
+	 * SIGTSTP, SIGTTOU, SIGTTIN, and SIGWINCH
+	 */
+	switch (signo) {
+	case SIGTSTP:
+	case SIGTTOU:
+	case SIGTTIN:
+	case SIGWINCH:
+		return;
+	default:
+		break;
+	}
+#endif
+
 	/*
 	 * Deal with proper cleanup based on the signal received. We only run
 	 * the .INTERRUPT target if the signal was in fact an interrupt.
@@ -677,59 +693,45 @@ JobPassSig(int signo)
 	 * command.
 	 *
 	 */
-	switch (signo) {
-	case SIGINT:
-	case SIGHUP:
-	case SIGTERM:
-	case SIGQUIT:
-		aborting = ABORT_INTERRUPT;
+	aborting = ABORT_INTERRUPT;
 
-		TAILQ_FOREACH(job, &jobs, link) {
-			if (!Targ_Precious(job->node)) {
-				char *file = (job->node->path == NULL ?
-				    job->node->name : job->node->path);
+	TAILQ_FOREACH(job, &jobs, link) {
+		if (!Targ_Precious(job->node)) {
+			char *file = (job->node->path == NULL ?
+			    job->node->name : job->node->path);
 
-				if (!noExecute && eunlink(file) != -1) {
-					Error("*** %s removed", file);
-				}
+			if (!noExecute && eunlink(file) != -1) {
+				Error("*** %s removed", file);
 			}
 		}
-
-		if ((signo == SIGINT) && !touchFlag) {
-			GNode	*interrupt;
-
-			interrupt = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
-			if (interrupt != NULL) {
-				ignoreErrors = FALSE;
-
-				JobStart(interrupt, JOB_IGNDOTS, (Job *)NULL);
-				while (nJobs) {
-					Job_CatchOutput(0);
-					Job_CatchChildren(!usePipes);
-				}
-			}
-		}
-
-		/*
-		 * Leave gracefully if SIGQUIT, rather than core dumping.
-		 */
-		if (signo == SIGQUIT) {
-			signo = SIGINT;
-		}
-
-		DEBUGF(JOB, ("JobPassSig passing signal %d to self.\n", signo));
-
-		signal(signo, SIG_DFL);
-		KILL(getpid(), signo);
-
-		break;
-	default:
-		/*
-		 * Why are we even catching these signals?
-		 * SIGTSTP, SIGTTOU, SIGTTIN, and SIGWINCH
-		 */
-		break;
 	}
+
+	if ((signo == SIGINT) && !touchFlag) {
+		GNode	*interrupt;
+
+		interrupt = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
+		if (interrupt != NULL) {
+			ignoreErrors = FALSE;
+
+			JobStart(interrupt, JOB_IGNDOTS, (Job *)NULL);
+			while (nJobs) {
+				Job_CatchOutput(0);
+				Job_CatchChildren(!usePipes);
+			}
+		}
+	}
+
+	/*
+	 * Leave gracefully if SIGQUIT, rather than core dumping.
+	 */
+	if (signo == SIGQUIT) {
+		signo = SIGINT;
+	}
+
+	DEBUGF(JOB, ("JobPassSig passing signal %d to self.\n", signo));
+
+	signal(signo, SIG_DFL);
+	KILL(getpid(), signo);
 }
 
 /**
