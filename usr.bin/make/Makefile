@@ -1,6 +1,8 @@
+.INTERRUPT:
+	echo Hey that hurt!
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.35 2005/07/15 21:27:29 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.36 2005/07/19 18:19:15 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}

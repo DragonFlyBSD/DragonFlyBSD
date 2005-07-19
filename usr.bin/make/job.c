@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.132 2005/07/19 18:16:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.133 2005/07/19 18:19:15 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2711,7 +2711,7 @@ Cmd_Exec(const char *cmd, const char **error)
  *	and .INTERRUPT: exists its commands are run.
  */
 static void
-CompatInterrupt(GNode *ENDNode)
+CompatInterrupt(void)
 {
 	GNode		*gn;
 	int		signo;
@@ -2750,7 +2750,7 @@ CompatInterrupt(GNode *ENDNode)
 	if (signo == SIGINT) {
 		gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
 		if (gn != NULL) {
-			Compat_RunCmds(gn, &gn->commands, ENDNode);
+			Compat_RunCmds(gn, &gn->commands, NULL);
 		}
 	}
 
@@ -2819,7 +2819,9 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 	Lst_Replace(cmdNode, cmdStart);
 
 	if ((gn->type & OP_SAVE_CMDS) && (gn != ENDNode)) {
-		Lst_AtEnd(&ENDNode->commands, cmdStart);
+		if (ENDNode != NULL) {
+			Lst_AtEnd(&ENDNode->commands, cmdStart);
+		}
 		return (0);
 	}
 
@@ -2962,9 +2964,10 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 
 		/*
 		 * The child is off and running. Now all we can do is wait...
+		 * Block until child has terminated, or a signal is received.
 		 */
 		while (ProcWait(&ps) < 0) {
-			CompatInterrupt(ENDNode);
+			CompatInterrupt();	/* check on the signal */
 		}
 
 		/*
@@ -2979,6 +2982,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 				printf("*** Error code %d", status);
 			}
 		} else if (WIFSTOPPED(ps.child_status)) {
+			/* can't happen since WUNTRACED isn't set */
 			status = WSTOPSIG(ps.child_status);
 		} else {
 			status = WTERMSIG(ps.child_status);
@@ -3094,12 +3098,12 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 			 * Our commands are ok, but we still have to worry
 			 * about the -t flag...
 			 */
-			if (!touchFlag) {
+			if (touchFlag) {
+				JobTouch(gn, gn->type & OP_SILENT);
+			} else {
 				curTarg = gn;
 				Compat_RunCmds(gn, &gn->commands, ENDNode);
 				curTarg = NULL;
-			} else {
-				JobTouch(gn, gn->type & OP_SILENT);
 			}
 		} else {
 			gn->made = ERROR;
@@ -3232,7 +3236,6 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 int
 Compat_Run(Lst *targs, Boolean queryFlag)
 {
-	GNode	*gn = NULL;	/* Current root target */
 	int	error_cnt;	/* Number of targets not remade due to errors */
 	GNode	*ENDNode;
 
@@ -3242,7 +3245,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	 * attached to it.
 	 */
 	if (queryFlag == FALSE) {
-		gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
+		GNode *gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
 			Compat_RunCmds(gn, &gn->commands, ENDNode);
 			if (gn->made == ERROR) {
@@ -3271,9 +3274,9 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	 */
 	error_cnt = 0;
 	while (!Lst_IsEmpty(targs)) {
-		gn = Lst_DeQueue(targs);
-		CompatMake(gn, gn, ENDNode, queryFlag);
+		GNode *gn = Lst_DeQueue(targs);
 
+		CompatMake(gn, gn, ENDNode, queryFlag);
 		if (gn->made == UPTODATE) {
 			printf("`%s' is up to date.\n", gn->name);
 		} else if (gn->made == ABORTED) {
@@ -3287,7 +3290,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	 * If the user has defined a .END target, run its commands.
 	 */
 	if (error_cnt == 0) {
-		Compat_RunCmds(gn, &ENDNode->commands, ENDNode);
+		Compat_RunCmds(ENDNode, &ENDNode->commands, NULL);
 	}
 
 	return (0);	/* Successful completion */
