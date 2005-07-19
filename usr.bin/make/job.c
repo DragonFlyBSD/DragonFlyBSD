@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.129 2005/07/19 18:14:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.130 2005/07/19 18:14:33 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -366,7 +366,7 @@ static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
 static void JobRestartJobs(void);
-static int Compat_RunCommand(char *, GNode *, GNode *);
+static int Compat_RunCommand(const char [], GNode *, GNode *);
 static void JobPassSig(int);
 static void JobTouch(GNode *, Boolean);
 static Boolean JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
@@ -2791,7 +2791,7 @@ CompatInterrupt(GNode *ENDNode)
  *	The node's 'made' field may be set to ERROR.
  */
 static int
-Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
+Compat_RunCommand(const char cmd[], GNode *gn, GNode *ENDNode)
 {
 	struct Shell	*shell = commandShell;
 	ArgArray	aa;
@@ -2803,39 +2803,42 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 	LstNode		*cmdNode;	/* Node where current cmd is located */
 	char		**av;		/* Argument vector for thing to exec */
 	ProcStuff	ps;
-
-	silent = gn->type & OP_SILENT;
-	errCheck = !(gn->type & OP_IGNORE);
-	doit = FALSE;
+	char		*line;
 
 	cmdNode = Lst_Member(&gn->commands, cmd);
-	cmdStart = Buf_Peel(Var_Subst(cmd, gn, FALSE));
 
-	if (*cmdStart == '\0') {
+	cmdStart = Buf_Peel(Var_Subst(cmd, gn, FALSE));
+	if (cmdStart[0] == '\0') {
 		free(cmdStart);
 		Error("%s expands to empty string", cmd);
 		return (0);
-	} else {
-		cmd = cmdStart;
 	}
+
 	Lst_Replace(cmdNode, cmdStart);
 
 	if ((gn->type & OP_SAVE_CMDS) && (gn != ENDNode)) {
 		Lst_AtEnd(&ENDNode->commands, cmdStart);
 		return (0);
-	} else if (strcmp(cmdStart, "...") == 0) {
+	}
+
+	if (strcmp(cmdStart, "...") == 0) {
 		gn->type |= OP_SAVE_CMDS;
 		return (0);
 	}
 
-	while (*cmd == '@' || *cmd == '-' || *cmd == '+') {
-		switch (*cmd) {
+	line = cmdStart;
+	silent = gn->type & OP_SILENT;
+	doit = FALSE;
+	errCheck = !(gn->type & OP_IGNORE);
 
-		  case '@':
+	while (*line == '@' || *line == '-' || *line == '+') {
+		switch (*line) {
+
+		case '@':
 			silent = DEBUG(LOUD) ? FALSE : TRUE;
 			break;
 
-		  case '-':
+		case '-':
 			errCheck = FALSE;
 			break;
 
@@ -2843,38 +2846,29 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 			doit = TRUE;
 			break;
 		}
-		cmd++;
+		line++;
 	}
 
-	while (isspace((unsigned char)*cmd))
-		cmd++;
+	while (isspace((unsigned char)*line))
+		line++;
 
-	/*
-	 * Print the command before echoing if we're not supposed to be quiet
-	 * for this one. We also print the command if -n given, but not if '+'.
-	 */
-	if (!silent || (noExecute && !doit)) {
-		printf("%s\n", cmd);
+	if (noExecute && doit == FALSE) {
+		/* Just print out the command */
+		printf("%s\n", line);
 		fflush(stdout);
-	}
-
-	/*
-	 * If we're not supposed to execute any commands, this is as far as
-	 * we go...
-	 */
-	if (!doit && noExecute) {
 		return (0);
 	}
 
-	if (shell->meta != NULL &&
-	    strpbrk(cmd, shell->meta) != NULL) {
+	if (silent == FALSE) {
 		/*
-		 * We found a "meta" character and need to pass the command
-		 * off to the shell.
+		 * Print the command before echoing if we're not supposed to
+		 * be quiet for this one.
 		 */
-		av = NULL;
+		printf("%s\n", line);
+		fflush(stdout);
+	}
 
-	} else {
+	if (shell->meta == NULL || strpbrk(line, shell->meta) == NULL) {
 		char **p;
 		char **sh_builtin = shell->builtins.argv + 1;
 
@@ -2882,7 +2876,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		 * Break the command into words to form an argument
 		 * vector we can execute.
 		 */
-		brk_string(&aa, cmd, TRUE);
+		brk_string(&aa, line, TRUE);
 		av = aa.argv + 1;
 
 		for (p = sh_builtin; *p != 0; p++) {
@@ -2896,6 +2890,12 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 				break;
 			}
 		}
+	} else {
+		/*
+		 * We found a "meta" character and need to pass the command
+		 * off to the shell.
+		 */
+		av = NULL;
 	}
 
 	ps.in = STDIN_FILENO;
@@ -2914,7 +2914,7 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		ps.argv = emalloc(4 * sizeof(char *));
 		ps.argv[0] = strdup(shell->path);
 		ps.argv[1] = strdup(errCheck ? "-ec" : "-c");
-		ps.argv[2] = strdup(cmd);
+		ps.argv[2] = strdup(line);
 		ps.argv[3] = NULL;
 		ps.argv_free = 1;
 	} else {
