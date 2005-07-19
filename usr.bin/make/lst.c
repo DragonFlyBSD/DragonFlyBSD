@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/lst.c,v 1.6 2005/05/19 17:10:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.c,v 1.7 2005/07/19 18:12:46 okumoto Exp $
  */
 
 /*-
@@ -289,7 +289,7 @@ Lst_Insert(Lst *list, LstNode *ln, void *d)
 }
 
 LstNode *
-Lst_Member(Lst *list, void *d)
+Lst_Member(Lst *list, const void *d)
 {
 	LstNode *lNode;
 

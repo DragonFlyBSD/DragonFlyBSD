@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.29 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.30 2005/07/19 18:12:46 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -141,7 +141,7 @@ void	Lst_Concat(Lst *, Lst *, int);
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum
  */
-LstNode		*Lst_Member(Lst *, void *);
+LstNode		*Lst_Member(Lst *, const void *);
 
 /* Loop through a list. Note, that you may not delete the list element. */
 #define	LST_FOREACH(PTR, LST)						\
