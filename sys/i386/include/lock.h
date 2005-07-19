@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/i386/include/Attic/lock.h,v 1.10 2004/11/20 20:50:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/lock.h,v 1.11 2005/07/19 19:08:04 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -196,7 +196,7 @@ void	cpu_get_initial_mplock(void);
 extern u_int	mp_lock;
 
 #define MP_LOCK_HELD()   (mp_lock == mycpu->gd_cpuid)
-#define ASSERT_MP_LOCK_HELD()   KKASSERT(MP_LOCK_HELD())
+#define ASSERT_MP_LOCK_HELD(td)   KASSERT(MP_LOCK_HELD(), ("MP_LOCK_HELD(): not held thread %p", td))
 
 static __inline void
 cpu_rel_mplock(void)
@@ -209,7 +209,7 @@ cpu_rel_mplock(void)
 #define get_mplock()
 #define try_mplock()	1
 #define rel_mplock()
-#define ASSERT_MP_LOCK_HELD()
+#define ASSERT_MP_LOCK_HELD(td)
 
 #endif	/* SMP */
 #endif  /* _KERNEL || _UTHREAD */

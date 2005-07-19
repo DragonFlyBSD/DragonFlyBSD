@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.13 2005/01/31 04:35:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.14 2005/07/19 19:08:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -623,7 +623,7 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 		return (EINVAL);
 
 	crit_enter();
-	ASSERT_MP_LOCK_HELD();
+	ASSERT_MP_LOCK_HELD(curthread);
 
 	vm86_setup_timer_fault();
 	vmf->vmf_trapno = intnum;
@@ -662,7 +662,7 @@ vm86_datacall(intnum, vmf, vmc)
 	int i, entry, retval;
 
 	crit_enter();
-	ASSERT_MP_LOCK_HELD();
+	ASSERT_MP_LOCK_HELD(curthread);
 
 	for (i = 0; i < vmc->npages; i++) {
 		page = vtophys(vmc->pmap[i].kva & PG_FRAME);

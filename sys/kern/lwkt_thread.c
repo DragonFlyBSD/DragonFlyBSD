@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.76 2005/07/07 20:28:26 hmp Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.77 2005/07/19 19:08:05 dillon Exp $
  */
 
 /*
@@ -576,26 +576,45 @@ again:
 	     * or if the target is holding tokens and we could not 
 	     * gain ownership of the tokens, continue looking for a
 	     * thread to schedule and spin instead of HLT if we can't.
+	     *
+	     * NOTE: the mpheld variable invalid after this conditional, it
+	     * can change due to both cpu_try_mplock() returning success
+	     * AND interactions in lwkt_chktokens() due to the fact that
+	     * we are trying to check the mpcount of a thread other then
+	     * the current thread.  Because of this, if the current thread
+	     * is not holding td_mpcount, an IPI indirectly run via
+	     * lwkt_chktokens() can obtain and release the MP lock and
+	     * cause the core MP lock to be released. 
 	     */
 	    if ((ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) ||
 		(ntd->td_toks && lwkt_chktokens(ntd) == 0)
 	    ) {
 		u_int32_t rqmask = gd->gd_runqmask;
+
+		mpheld = MP_LOCK_HELD();
+		ntd = NULL;
 		while (rqmask) {
 		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
 			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock()) {
-				/* spinning due to MP lock being held */
+			    /* spinning due to MP lock being held */
 #ifdef	INVARIANTS
-				++mplock_contention_count;
+			    ++mplock_contention_count;
 #endif
+			    /* mplock still not held, 'mpheld' still valid */
 			    continue;
 			}
-			mpheld = MP_LOCK_HELD();
+
+			/*
+			 * mpheld state invalid after chktokens call returns
+			 * failure, but the variable is only needed for
+			 * the loop.
+			 */
 			if (ntd->td_toks && !lwkt_chktokens(ntd)) {
-				/* spinning due to token contention */
+			    /* spinning due to token contention */
 #ifdef	INVARIANTS
-				++token_contention_count;
+			    ++token_contention_count;
 #endif
+			    mpheld = MP_LOCK_HELD();
 			    continue;
 			}
 			break;
@@ -608,6 +627,7 @@ again:
 		if (ntd == NULL) {
 		    ntd = &gd->gd_idlethread;
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
+		    KASSERT(ntd->td_mpcount == 0, ("Idlex thread %p was holding the BGL!", ntd));
 		} else {
 		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
@@ -628,6 +648,9 @@ again:
 	    ntd = &gd->gd_idlethread;
 	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
 		ntd->td_flags |= TDF_IDLE_NOHLT;
+#ifdef SMP
+	    KASSERT(ntd->td_mpcount == 0, ("Idley thread %p was holding the BGL!", ntd));
+#endif
 	}
     }
     KASSERT(ntd->td_pri >= TDPRI_CRIT,
@@ -643,7 +666,7 @@ again:
 	if (MP_LOCK_HELD())
 	    cpu_rel_mplock();
     } else {
-	ASSERT_MP_LOCK_HELD();
+	ASSERT_MP_LOCK_HELD(ntd);
     }
 #endif
     if (td != ntd) {
