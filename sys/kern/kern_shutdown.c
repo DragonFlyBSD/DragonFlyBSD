@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.21 2005/07/18 02:47:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.22 2005/07/19 19:53:53 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -129,6 +129,10 @@ watchdog_tickle_fn wdog_tickler = NULL;
 const char *panicstr;
 
 int dumping;				/* system is dumping */
+#ifdef SMP
+u_int panic_cpu_interlock;		/* panic interlock */
+globaldata_t panic_cpu_gd;		/* which cpu took the panic */
+#endif
 
 static void boot (int) __dead2;
 static void dumpsys (void);
@@ -594,6 +598,40 @@ panic(const char *fmt, ...)
 	__va_list ap;
 	static char buf[256];
 
+#ifdef SMP
+	/*
+	 * If a panic occurs on multiple cpus before the first is able to
+	 * halt the other cpus, only one cpu is allowed to take the panic.
+	 * Attempt to be verbose about this situation but if the printf() 
+	 * itself panics don't let us overrun the kernel stack.
+	 *
+	 * Be very nasty about descheduling our thread at the lowest
+	 * level possible in an attempt to freeze the thread without
+	 * inducing further panics.
+	 *
+	 * Bumping gd_trap_nesting_level will also bypass assertions in
+	 * lwkt_switch() and allow us to switch away even if we are a
+	 * FAST interrupt or IPI.
+	 */
+	if (atomic_poll_acquire_int(&panic_cpu_interlock)) {
+		panic_cpu_gd = mycpu;
+	} else if (panic_cpu_gd != mycpu) {
+		crit_enter();
+		++mycpu->gd_trap_nesting_level;
+		if (mycpu->gd_trap_nesting_level < 25) {
+			printf("SECONDARY PANIC ON CPU %d THREAD %p\n",
+				mycpu->gd_cpuid, curthread);
+		}
+		curthread->td_release = NULL;	/* be a grinch */
+		for (;;) {
+			lwkt_deschedule_self(curthread);
+			lwkt_switch();
+		}
+		/* NOT REACHED */
+		/* --mycpu->gd_trap_nesting_level */
+		/* crit_exit() */
+	}
+#endif
 	bootopt = RB_AUTOBOOT | RB_DUMP;
 	if (sync_on_panic == 0)
 		bootopt |= RB_NOSYNC;
