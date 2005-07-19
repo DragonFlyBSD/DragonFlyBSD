@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/proc.c,v 1.5 2005/07/02 10:46:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/proc.c,v 1.6 2005/07/19 18:14:15 okumoto Exp $
  */
 
 #include <unistd.h>
@@ -97,7 +97,7 @@ Proc_Exec(const ProcStuff *ps, struct Shell *shell)
 	    fcntl(STDERR_FILENO, F_GETFD) & (~FD_CLOEXEC));
 
 	if (ps->pgroup) {
-#ifdef USE_PGRP
+#if defined(USE_PGRP)
 		/*
 		 * Become a process group leader, so we can kill it and all
 		 * its descendants in one fell swoop, by killing its process

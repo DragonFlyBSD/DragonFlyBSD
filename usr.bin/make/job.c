@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.128 2005/07/16 08:07:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.129 2005/07/19 18:14:15 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -333,17 +333,14 @@ static int	fifoFd;		/* Fd of our job fifo */
 static char	fifoName[] = "/tmp/make_fifo_XXXXXXXXX";
 static int	fifoMaster;
 
-static sig_atomic_t interrupted;
-
-
-#if defined(USE_PGRP) && defined(SYSV)
-# define KILL(pid, sig)		killpg(-(pid), (sig))
-#else
-# if defined(USE_PGRP)
-#  define KILL(pid, sig)	killpg((pid), (sig))
+#if defined(USE_PGRP)
+# if defined(SYSV)
+#  define	KILL(pid, sig)		killpg(-(pid), (sig))
 # else
-#  define KILL(pid, sig)	kill((pid), (sig))
+#  define	KILL(pid, sig)		killpg((pid), (sig))
 # endif
+#else
+# define	KILL(pid, sig)		kill((pid), (sig))
 #endif
 
 /*
@@ -368,13 +365,25 @@ static sig_atomic_t interrupted;
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, Boolean);
-static void JobInterrupt(int, int);
 static void JobRestartJobs(void);
 static int Compat_RunCommand(char *, GNode *, GNode *);
+static void JobPassSig(int);
 static void JobTouch(GNode *, Boolean);
 static Boolean JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
 
 static GNode	    *curTarg = NULL;
+
+static volatile sig_atomic_t got_SIGINT;
+static volatile sig_atomic_t got_SIGHUP;
+static volatile sig_atomic_t got_SIGQUIT;
+static volatile sig_atomic_t got_SIGTERM;
+#if defined(USE_PGRP) 
+static volatile sig_atomic_t got_SIGTSTP;
+static volatile sig_atomic_t got_SIGTTOU;
+static volatile sig_atomic_t got_SIGTTIN;
+static volatile sig_atomic_t got_SIGWINCH;
+#endif
+
 
 /**
  * In lieu of a good way to prevent every possible looping in make(1), stop
@@ -404,72 +413,131 @@ check_make_level(void)
 }
 
 /**
- * Signal handler - set a variable and defer handling to the main code.
+ * Handle recept of a signal by setting a variable. The handling action is
+ * defered until the mainline code can safely handle it.
  */
 static void
-catchsignal(int signo)
+SigCatcher(int sig)
 {
-	interrupted = signo;
+	switch (sig) {
+	case SIGCHLD:
+		/* do nothing */
+		break;
+	case SIGINT:
+		got_SIGINT++;
+		break;
+	case SIGHUP:
+		got_SIGHUP++;
+		break;
+	case SIGQUIT:
+		got_SIGQUIT++;
+		break;
+	case SIGTERM:
+		got_SIGTERM++;
+		break;
+#if defined(USE_PGRP)
+	case SIGTSTP:
+		got_SIGTSTP++;
+		break;
+	case SIGTTOU:
+		got_SIGTTOU++;
+		break;
+	case SIGTTIN:
+		got_SIGTTIN++;
+		break;
+	case SIGWINCH:
+		got_SIGWINCH++;
+		break;
+#endif
+	default:
+		/* unexpected signal */
+		break;
+	}
 }
-
-static void
-catch_child(int sig __unused)
-{
-}
-
 
 /**
+ *
  */
+static void
+SigHandler(void)
+{
+	if (got_SIGINT) {
+		got_SIGINT = 0;
+		JobPassSig(SIGINT);
+	}
+	if (got_SIGHUP) {
+		got_SIGHUP = 0;
+		JobPassSig(SIGHUP);
+	}
+	if (got_SIGQUIT) {
+		got_SIGQUIT = 0;
+		JobPassSig(SIGQUIT);
+	}
+	if (got_SIGTERM) {
+		got_SIGTERM = 0;
+		JobPassSig(SIGTERM);
+	}
+#if defined(USE_PGRP)
+	if (got_SIGTSTP) {
+		got_SIGTSTP = 0;
+		JobPassSig(SIGTSTP);
+	}
+	if (got_SIGTTOU) {
+		got_SIGTTOU = 0;
+		JobPassSig(SIGTTOU);
+	}
+	if (got_SIGTTIN) {
+		got_SIGTTIN = 0;
+		JobPassSig(SIGTTIN);
+	}
+	if (got_SIGWINCH) {
+		got_SIGWINCH = 0;
+		JobPassSig(SIGWINCH);
+	}
+#endif
+}
+
 void
-Proc_Init()
+Sig_Init(Boolean compat)
 {
 	struct sigaction	sa;
 
-	check_make_level();
-
-#ifdef RLIMIT_NOFILE
-	{
-		struct rlimit		rl;
-
-		/*
-		 * get rid of resource limit on file descriptors
-		 */
-		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
-			err(2, "getrlimit");
-		}
-		rl.rlim_cur = rl.rlim_max;
-		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
-			err(2, "setrlimit");
-		}
-	}
+	got_SIGINT = 0;
+	got_SIGHUP = 0;
+	got_SIGQUIT = 0;
+	got_SIGTERM = 0;
+#if defined(USE_PGRP)
+	got_SIGTSTP = 0;
+	got_SIGTTOU = 0;
+	got_SIGTTIN = 0;
+	got_SIGWINCH = 0;
 #endif
 
-	/* Initialize signal flag */
-	interrupted = 0;
-
-	/*
-	 * Setup handler to catch SIGCHLD so that we get kicked out of
-	 * select() when we need to look at a child.  This is only known to
-	 * matter for the -j case (perhaps without -P).
-	 */
-	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = catch_child;
-	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-	sigaction(SIGCHLD, &sa, NULL);
+	if (compat == FALSE) {
+		/*
+		 * Setup handler to catch SIGCHLD so that we get kicked out
+		 * of select() when we need to look at a child.  This is only
+		 * known to matter for the -j case (perhaps without -P).
+		 */
+		sigemptyset(&sa.sa_mask);
+		sa.sa_handler = SigCatcher;
+		sa.sa_flags = SA_NOCLDSTOP;
+		sigaction(SIGCHLD, &sa, NULL);
+	}
 
 	/*
 	 * Catch the four signals that POSIX specifies if they aren't
 	 * ignored.
 	 */
 	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = catchsignal;
+	sa.sa_handler = SigCatcher;
 	sa.sa_flags = 0;
 
-	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
-		sigaction(SIGHUP, &sa, NULL);
-	}
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
 		sigaction(SIGINT, &sa, NULL);
+	}
+	if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
+		sigaction(SIGHUP, &sa, NULL);
 	}
 	if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
 		sigaction(SIGQUIT, &sa, NULL);
@@ -478,7 +546,7 @@ Proc_Init()
 		sigaction(SIGTERM, &sa, NULL);
 	}
 
-#ifdef USE_PGRP
+#if defined(USE_PGRP)
 	if (compat == FALSE) {
 		/*
 		 * There are additional signals that need to be caught and
@@ -504,27 +572,59 @@ Proc_Init()
 }
 
 /**
+ */
+void
+Proc_Init()
+{
+	check_make_level();
+
+#ifdef RLIMIT_NOFILE
+	{
+		struct rlimit		rl;
+
+		/*
+		 * get rid of resource limit on file descriptors
+		 */
+		if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "getrlimit");
+		}
+		rl.rlim_cur = rl.rlim_max;
+		if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
+			err(2, "setrlimit");
+		}
+	}
+#endif
+}
+
+/**
  * Wait for child process to terminate.
  */
-static void
+static int
 ProcWait(ProcStuff *ps)
 {
-	pid_t	pid;
-
 	/*
 	 * Wait for the process to exit.
 	 */
 	for (;;) {
+		pid_t	pid;
+
 		pid = waitpid(ps->child_pid, &ps->child_status, 0);
-		if (pid == -1 && errno != EINTR) {
-			Fatal("error in wait: %d", pid);
-			/* NOTREACHED */
-		}
 		if (pid == ps->child_pid) {
-			break;
-		}
-		if (interrupted) {
-			break;
+			/*
+			 * We finished waiting for the child.
+			 */
+			return (0);
+		} else {
+			if (errno == EINTR) {
+				/*
+				 * Return so we can handle the signal that
+				 * was delivered.
+				 */
+				return (-1);
+			} else {
+				Fatal("error in wait: %d", pid);
+				/* NOTREACHED */
+			}
 		}
 	}
 }
@@ -546,9 +646,7 @@ Compat_RunCmds(GNode *gn, Lst *cmds, GNode *ENDNode)
 }
 
 /**
- * JobPassSig
- *	Pass a signal on to all local jobs if
- *	USE_PGRP is defined, then die ourselves.
+ * Pass a signal on to all jobs.
  *
  * Side Effects:
  *	We die by the same signal.
@@ -557,18 +655,19 @@ static void
 JobPassSig(int signo)
 {
 	Job	*job;
-	sigset_t nmask, omask;
-	struct sigaction act;
-
-	sigemptyset(&nmask);
-	sigaddset(&nmask, signo);
-	sigprocmask(SIG_SETMASK, &nmask, &omask);
 
 	DEBUGF(JOB, ("JobPassSig(%d) called.\n", signo));
+
+	/*
+	 * Propagate signal to children and in addition, send SIGCONT
+	 * in case any of the children where suspended, so the the
+	 * signal will get delivered.
+	 */
 	TAILQ_FOREACH(job, &jobs, link) {
 		DEBUGF(JOB, ("JobPassSig passing signal %d to child %jd.\n",
 		    signo, (intmax_t)job->pid));
 		KILL(job->pid, signo);
+		KILL(job->pid, SIGCONT);
 	}
 
 	/*
@@ -576,49 +675,61 @@ JobPassSig(int signo)
 	 * the .INTERRUPT target if the signal was in fact an interrupt.
 	 * The other three termination signals are more of a "get out *now*"
 	 * command.
+	 *
 	 */
-	if (signo == SIGINT) {
-		JobInterrupt(TRUE, signo);
-	} else if (signo == SIGHUP || signo == SIGTERM || signo == SIGQUIT) {
-		JobInterrupt(FALSE, signo);
+	switch (signo) {
+	case SIGINT:
+	case SIGHUP:
+	case SIGTERM:
+	case SIGQUIT:
+		aborting = ABORT_INTERRUPT;
+
+		TAILQ_FOREACH(job, &jobs, link) {
+			if (!Targ_Precious(job->node)) {
+				char *file = (job->node->path == NULL ?
+				    job->node->name : job->node->path);
+
+				if (!noExecute && eunlink(file) != -1) {
+					Error("*** %s removed", file);
+				}
+			}
+		}
+
+		if ((signo == SIGINT) && !touchFlag) {
+			GNode	*interrupt;
+
+			interrupt = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
+			if (interrupt != NULL) {
+				ignoreErrors = FALSE;
+
+				JobStart(interrupt, JOB_IGNDOTS, (Job *)NULL);
+				while (nJobs) {
+					Job_CatchOutput(0);
+					Job_CatchChildren(!usePipes);
+				}
+			}
+		}
+
+		/*
+		 * Leave gracefully if SIGQUIT, rather than core dumping.
+		 */
+		if (signo == SIGQUIT) {
+			signo = SIGINT;
+		}
+
+		DEBUGF(JOB, ("JobPassSig passing signal %d to self.\n", signo));
+
+		signal(signo, SIG_DFL);
+		KILL(getpid(), signo);
+
+		break;
+	default:
+		/*
+		 * Why are we even catching these signals?
+		 * SIGTSTP, SIGTTOU, SIGTTIN, and SIGWINCH
+		 */
+		break;
 	}
-
-	/*
-	 * Leave gracefully if SIGQUIT, rather than core dumping.
-	 */
-	if (signo == SIGQUIT) {
-		signo = SIGINT;
-	}
-
-	/*
-	 * Send ourselves the signal now we've given the message to everyone
-	 * else. Note we block everything else possible while we're getting
-	 * the signal. This ensures that all our jobs get continued when we
-	 * wake up before we take any other signal.
-	 * XXX this comment seems wrong.
-	 */
-	act.sa_handler = SIG_DFL;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	sigaction(signo, &act, NULL);
-
-	DEBUGF(JOB, ("JobPassSig passing signal to self, mask = %x.\n",
-	    ~0 & ~(1 << (signo - 1))));
-
-	signal(signo, SIG_DFL);
-	KILL(getpid(), signo);
-
-	signo = SIGCONT;
-	TAILQ_FOREACH(job, &jobs, link) {
-		DEBUGF(JOB, ("JobPassSig passing signal %d to child %jd.\n",
-		    signo, (intmax_t)job->pid));
-		KILL(job->pid, signo);
-	}
-
-	sigprocmask(SIG_SETMASK, &omask, NULL);
-	sigprocmask(SIG_SETMASK, &omask, NULL);
-	act.sa_handler = JobPassSig;
-	sigaction(signo, &act, NULL);
 }
 
 /**
@@ -1564,10 +1675,6 @@ JobStart(GNode *gn, int flags, Job *previous)
 	LstNode	*ln;
 	char	tfile[sizeof(TMPPAT)];
 
-	if (interrupted) {
-		JobPassSig(interrupted);
-		return (JOB_ERROR);
-	}
 	if (previous == NULL) {
 		job = emalloc(sizeof(Job));
 		flags |= JOB_FIRST;
@@ -1927,8 +2034,7 @@ JobDoOutput(Job *job, Boolean finish)
 		 * block when the child process is stopped. In this case the
 		 * interrupt will unblock it (we don't use SA_RESTART).
 		 */
-		if (interrupted)
-			JobPassSig(interrupted);
+		SigHandler();
 
 		if (nRead < 0) {
 			DEBUGF(JOB, ("JobDoOutput(piperead)"));
@@ -2163,8 +2269,7 @@ Job_CatchChildren(Boolean block)
 
 		JobFinish(job, &status);
 	}
-	if (interrupted)
-		JobPassSig(interrupted);
+	SigHandler();
 }
 
 /**
@@ -2195,24 +2300,28 @@ Job_CatchOutput(int flag)
 		if (flag && jobFull && fifoFd >= 0)
 			FD_SET(fifoFd, &readfds);
 
-		nfds = select(FD_SETSIZE, &readfds, (fd_set *)NULL,
-		    (fd_set *)NULL, &timeout);
-		if (nfds <= 0) {
-			if (interrupted)
-				JobPassSig(interrupted);
+		nfds = select(FD_SETSIZE, &readfds, NULL, NULL, &timeout);
+		if (nfds == 0) {
+			/* timeout expired */
+			SigHandler();
 			return;
-		}
-		if (fifoFd >= 0 && FD_ISSET(fifoFd, &readfds)) {
-			if (--nfds <= 0)
-				return;
-		}
-		job = TAILQ_FIRST(&jobs);
-		while (nfds != 0 && job != NULL) {
-			if (FD_ISSET(job->inPipe, &readfds)) {
-				JobDoOutput(job, FALSE);
-				nfds--;
+		} else if (nfds < 0) {
+			/* must be EINTR */
+			SigHandler();
+			return;
+		} else {
+			if (fifoFd >= 0 && FD_ISSET(fifoFd, &readfds)) {
+				if (--nfds <= 0)
+					return;
 			}
-			job = TAILQ_NEXT(job, link);
+			job = TAILQ_FIRST(&jobs);
+			while (nfds != 0 && job != NULL) {
+				if (FD_ISSET(job->inPipe, &readfds)) {
+					JobDoOutput(job, FALSE);
+					nfds--;
+				}
+				job = TAILQ_NEXT(job, link);
+			}
 		}
 	}
 }
@@ -2380,58 +2489,6 @@ Job_Empty(void)
 }
 
 /**
- * JobInterrupt
- *	Handle the receipt of an interrupt.
- *
- * Side Effects:
- *	All children are killed. Another job will be started if the
- *	.INTERRUPT target was given.
- */
-static void
-JobInterrupt(int runINTERRUPT, int signo)
-{
-	Job	*job;		/* job descriptor in that element */
-	GNode	*interrupt;	/* the node describing the .INTERRUPT target */
-
-	aborting = ABORT_INTERRUPT;
-
-	TAILQ_FOREACH(job, &jobs, link) {
-		if (!Targ_Precious(job->node)) {
-			char *file = (job->node->path == NULL ?
-			    job->node->name : job->node->path);
-
-			if (!noExecute && eunlink(file) != -1) {
-				Error("*** %s removed", file);
-			}
-		}
-		if (job->pid) {
-			DEBUGF(JOB, ("JobInterrupt passing signal to child "
-			    "%jd.\n", (intmax_t)job->pid));
-			KILL(job->pid, signo);
-		}
-	}
-
-	if (runINTERRUPT && !touchFlag) {
-		/*
-		 * clear the interrupted flag because we would get an
-		 * infinite loop otherwise.
-		 */
-		interrupted = 0;
-
-		interrupt = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
-		if (interrupt != NULL) {
-			ignoreErrors = FALSE;
-
-			JobStart(interrupt, JOB_IGNDOTS, (Job *)NULL);
-			while (nJobs) {
-				Job_CatchOutput(0);
-				Job_CatchChildren(!usePipes);
-			}
-		}
-	}
-}
-
-/**
  * Job_Finish
  *	Do final processing such as the running of the commands
  *	attached to the .END target.
@@ -2488,7 +2545,7 @@ Job_Wait(void)
  * Job_AbortAll
  *	Abort all currently running jobs without handling output or anything.
  *	This function is to be called only in the event of a major
- *	error. Most definitely NOT to be called from JobInterrupt.
+ *	error.
  *
  * Side Effects:
  *	All children are killed, not just the firstborn
@@ -2643,32 +2700,39 @@ Cmd_Exec(const char *cmd, const char **error)
 }
 
 /**
- * CompatInterrupt
- *	Interrupt the creation of the current target and remove it if
- *	it ain't precious.
- *
- * Results:
- *	None.
+ * Handle interrupts during the creation of the target and remove
+ * it if it ain't precious.  The default handler for the signal is
+ * reinstalled, and the signal is raised again.
  *
  * Side Effects:
- *	The target is removed and the process exits. If .INTERRUPT exists,
- *	its commands are run first WITH INTERRUPTS IGNORED..
+ *	The target is removed and the process exits.  If the cause was SIGINT
+ *	and .INTERRUPT: exists its commands are run.
  */
 static void
-CompatInterrupt(int signo, GNode *ENDNode)
+CompatInterrupt(GNode *ENDNode)
 {
 	GNode		*gn;
-	sigset_t	nmask, omask;
+	int		signo;
 
-	sigemptyset(&nmask);
-	sigaddset(&nmask, SIGINT);
-	sigaddset(&nmask, SIGTERM);
-	sigaddset(&nmask, SIGHUP);
-	sigaddset(&nmask, SIGQUIT);
-	sigprocmask(SIG_SETMASK, &nmask, &omask);
+	if (got_SIGINT) {
+		got_SIGINT = 0;
+		signo = SIGINT;
 
-	/* prevent recursion in evaluation of .INTERRUPT */
-	interrupted = 0;
+	} else if (got_SIGHUP) {
+		got_SIGHUP = 0;
+		signo = SIGHUP;
+
+	} else if (got_SIGQUIT) {
+		got_SIGQUIT = 0;
+		signo = SIGQUIT;
+
+	} else if (got_SIGTERM) {
+		got_SIGTERM = 0;
+		signo = SIGTERM;
+
+	} else {
+		return;		/* no signal delivered */
+	}
 
 	if (curTarg != NULL && !Targ_Precious(curTarg)) {
 		const char *file = Var_Value(TARGET, curTarg);
@@ -2688,12 +2752,24 @@ CompatInterrupt(int signo, GNode *ENDNode)
 		}
 	}
 
-	sigprocmask(SIG_SETMASK, &omask, NULL);
+	if (signo == SIGQUIT) {
+		/*
+		 * We do not raise SIGQUIT, since on systems that create core
+		 * files upon receipt of SIGQUIT, the core from make would
+		 * conflict with a core file from the command that was
+		 * running when the SIGQUIT arrived.
+		 * 
+		 * This is true even on BSD systems that name the core file
+		 * after the program, since we might be calling make
+		 * recursively.
+		 */
+		exit(2);
+	}
 
-	if (signo == SIGQUIT)
-		exit(signo);
 	signal(signo, SIG_DFL);
 	kill(getpid(), signo);
+
+	/* NOTREACHED */
 }
 
 /**
@@ -2885,10 +2961,9 @@ Compat_RunCommand(char *cmd, GNode *gn, GNode *ENDNode)
 		/*
 		 * The child is off and running. Now all we can do is wait...
 		 */
-		ProcWait(&ps);
-
-		if (interrupted)
-			CompatInterrupt(interrupted, ENDNode);
+		while (ProcWait(&ps) < 0) {
+			CompatInterrupt(ENDNode);
+		}
 
 		/*
 		 * Decode and report the reason child exited, then

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.137 2005/07/13 20:41:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.138 2005/07/19 18:14:15 okumoto Exp $
  */
 
 /*
@@ -841,8 +841,10 @@ BuildStuff(CLI *cli)
 
 	/* Traverse the graph, checking on all the targets */
 	if (compatMake) {
+		Sig_Init(TRUE);
 		status = Compat_Run(&targs, cli->queryFlag);
 	} else {
+		Sig_Init(FALSE);
 		status = Make_Run(&targs, cli->queryFlag);
 	}
 
