@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/date/vary.c,v 1.8.2.2 2000/12/08 11:42:53 brian Exp $
- * $DragonFly: src/bin/date/vary.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
+ * $FreeBSD: src/bin/date/vary.c,v 1.16 2004/08/09 13:43:39 yar Exp $
+ * $DragonFly: src/bin/date/vary.c,v 1.4 2005/07/20 06:10:51 cpressey Exp $
  */
 
 #include <err.h>
@@ -148,6 +148,7 @@ adjyear(struct tm *t, char type, int val, int mk)
 static int
 adjmon(struct tm *t, char type, int val, int istext, int mk)
 {
+  int lmdays;
   if (val < 0)
     return 0;
 
@@ -194,6 +195,11 @@ adjmon(struct tm *t, char type, int val, int istext, int mk)
         return 0;
       t->tm_mon = --val;
   }
+
+  /* e.g., -v-1m on March, 31 is the last day of February in common sense */
+  lmdays = daysinmonth(t);
+  if (t->tm_mday > lmdays)
+    t->tm_mday = lmdays;
 
   return !mk || domktime(t, type) != -1;
 }
