@@ -37,13 +37,14 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.12 2004/12/14 23:59:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.13 2005/07/20 17:59:45 dillon Exp $
  */
 
 #include "opt_quota.h"
 #include "opt_ufs.h"
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/malloc.h>
@@ -125,6 +126,13 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 		ip->i_flag |= IN_MODIFIED;
 		UFS_UPDATE(vp, 0);
 	}
+#ifdef INVARIANTS
+	if (ip && (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))) {
+		printf("WARNING: INODE %ld flags %08x: modified inode being released!\n", (long)ip->i_number, (int)ip->i_flag);
+		ip->i_flag |= IN_MODIFIED;
+		UFS_UPDATE(vp, 0);
+	}
+#endif
 	/*
 	 * Remove the inode from its hash chain and purge namecache
 	 * data associated with the vnode.
