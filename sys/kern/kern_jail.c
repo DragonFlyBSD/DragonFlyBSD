@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.7 2005/01/31 22:29:59 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.8 2005/07/20 20:31:18 dillon Exp $
  *
  */
 
@@ -50,6 +50,11 @@ int	jail_sysvipc_allowed = 0;
 SYSCTL_INT(_jail, OID_AUTO, sysvipc_allowed, CTLFLAG_RW,
     &jail_sysvipc_allowed, 0,
     "Processes in jail can use System V IPC primitives");
+
+int    jail_chflags_allowed = 0;
+SYSCTL_INT(_jail, OID_AUTO, chflags_allowed, CTLFLAG_RW,
+    &jail_chflags_allowed, 0,
+    "Process in jail can set chflags(1)");
 
 int	lastprid = 0;
 int	prisoncount = 0;

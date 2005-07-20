@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.5 2005/01/31 22:29:59 joerg Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.6 2005/07/20 20:31:19 dillon Exp $
  *
  */
 
@@ -60,6 +60,7 @@ struct prison {
 extern int	jail_set_hostname_allowed;
 extern int	jail_socket_unixiproute_only;
 extern int	jail_sysvipc_allowed;
+extern int	jail_chflags_allowed;
 
 void	prison_hold(struct prison *);
 void	prison_free(struct prison *);
