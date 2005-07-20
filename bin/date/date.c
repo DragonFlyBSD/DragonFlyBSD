@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.11 2005/04/21 07:35:01 joerg Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.12 2005/07/20 19:35:50 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -166,6 +166,8 @@ main(int argc, char **argv)
 	vary_destroy(v);
 	strftime(buf, sizeof(buf), format, &lt);
 	printf("%s\n", buf);
+	if (fflush(stdout) != 0)
+		err(1, "stdout");
 	exit(retval);
 }
 
