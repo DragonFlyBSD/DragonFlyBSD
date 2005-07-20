@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.65 2005/07/20 04:33:42 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.66 2005/07/20 20:21:31 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -404,6 +404,7 @@ extern void lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *da
 extern void lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll);
 extern void lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll);
 extern void lwkt_cpusync_finish(lwkt_cpusync_t poll);
+extern void lwkt_smp_stopped(void);
 extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 

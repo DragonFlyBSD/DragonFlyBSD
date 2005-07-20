@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.79 2005/07/20 04:33:44 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.80 2005/07/20 20:21:28 dillon Exp $
  */
 
 /*
@@ -1375,5 +1375,29 @@ crit_panic(void)
 
     td->td_pri = 0;
     panic("td_pri is/would-go negative! %p %d", td, lpri);
+}
+
+/*
+ * Called from debugger/panic on cpus which have been stopped.  We must still
+ * process the IPIQ while stopped, even if we were stopped while in a critical
+ * section (XXX).
+ *
+ * If we are dumping also try to process any pending interrupts.  This may
+ * or may not work depending on the state of the cpu at the point it was
+ * stopped.
+ */
+void
+lwkt_smp_stopped(void)
+{
+    globaldata_t gd = mycpu;
+
+    crit_enter_gd(gd);
+    if (dumping) {
+	lwkt_process_ipiq();
+	splz();
+    } else {
+	lwkt_process_ipiq();
+    }
+    crit_exit_gd(gd);
 }
 

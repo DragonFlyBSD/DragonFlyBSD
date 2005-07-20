@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.19 2005/06/16 21:12:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.20 2005/07/20 20:21:27 dillon Exp $
  */
 
 
@@ -339,6 +339,7 @@ Xinvltlb:
  *
  *  - Signals its receipt.
  *  - Waits for permission to restart.
+ *  - Processing pending IPIQ events while waiting.
  *  - Signals its restart.
  */
 
@@ -371,9 +372,18 @@ Xcpustop:
 		
 	movl	PCPU(cpuid), %eax
 
+	/*
+	 * Indicate that we have stopped and loop waiting for permission
+	 * to start again.  We must still process IPI events while in a
+	 * stopped state.
+	 */
 	lock
 	btsl	%eax, stopped_cpus	/* stopped_cpus |= (1<<id) */
 1:
+	andl	$~RQF_IPIQ,PCPU(reqflags)
+	pushl	%eax
+	call	lwkt_smp_stopped
+	popl	%eax
 	btl	%eax, started_cpus	/* while (!(started_cpus & (1<<id))) */
 	jnc	1b
 
