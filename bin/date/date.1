@@ -33,10 +33,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)date.1	8.3 (Berkeley) 4/28/95
-.\" $FreeBSD: src/bin/date/date.1,v 1.34.2.15 2003/02/24 03:01:00 trhodes Exp $
-.\" $DragonFly: src/bin/date/date.1,v 1.3 2005/07/20 06:10:51 cpressey Exp $
+.\" $FreeBSD: src/bin/date/date.1,v 1.72 2005/02/13 22:25:09 ru Exp $
+.\" $DragonFly: src/bin/date/date.1,v 1.4 2005/07/20 20:05:46 cpressey Exp $
 .\"
-.Dd November 17, 1993
+.Dd August 9, 2004
 .Dt DATE 1
 .Os
 .Sh NAME
@@ -44,10 +44,8 @@
 .Nd display or set date and time
 .Sh SYNOPSIS
 .Nm
-.Op Fl jnu
-.Op Fl d Ar dst
+.Op Fl ju
 .Op Fl r Ar seconds
-.Op Fl t Ar minutes_west
 .Oo
 .Fl v
 .Sm off
@@ -56,15 +54,20 @@
 .Sm on
 .Oc
 .Ar ...
-.Oo
-.Fl f
-.Ar fmt date |
+.Op Cm + Ns Ar output_fmt
+.Nm
+.Op Fl jnu
 .Sm off
 .Op Oo Oo Oo Oo Ar cc Oc Ar yy Oc Ar mm Oc Ar dd Oc Ar HH
 .Ar MM Op Ar .ss
 .Sm on
-.Oc
-.Op Cm + Ns Ar format
+.Nm
+.Op Fl jnu
+.Fl f Ar input_fmt new_date
+.Op Cm + Ns Ar output_fmt
+.Nm
+.Op Fl d Ar dst
+.Op Fl t Ar minutes_west
 .Sh DESCRIPTION
 When invoked without arguments, the
 .Nm
@@ -95,12 +98,12 @@ is non-zero, future calls
 to
 .Xr gettimeofday 2
 will return a non-zero for
-.Fa tz_dsttime  .
+.Fa tz_dsttime .
 .It Fl f
 Use
-.Ar fmt
+.Ar input_fmt
 as the format string to parse the
-.Ar date
+.Ar new_date
 provided rather than using the default
 .Sm off
 .Oo Oo Oo Oo Oo
@@ -211,7 +214,7 @@ the clock goes back at 02:00 to 01:00, using
 .Fl v No +3H
 will be necessary to reach October 29, 2:30.
 .Pp
-When the date is adjusted to a specific value that doesn't actually exist
+When the date is adjusted to a specific value that does not actually exist
 (for example March 26, 1:30 BST 2000 in the Europe/London timezone),
 the date will be silently adjusted forwards in units of one hour until it
 reaches a valid time.
@@ -265,7 +268,7 @@ Century
 prepended to the abbreviated year.
 .It Ar yy
 Year in abbreviated form
-(e.g. 89 for 1989, 06 for 2006).
+(e.g., 89 for 1989, 06 for 2006).
 .It Ar mm
 Numeric month, a number from 1 to 12.
 .It Ar dd
@@ -283,6 +286,33 @@ Everything but the minutes is optional.
 .Pp
 Time changes for Daylight Saving Time, standard time, leap seconds,
 and leap years are handled automatically.
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm :
+.Bl -tag -width Ds
+.It Ev TZ
+The timezone to use when displaying dates.
+The normal format is a pathname relative to
+.Pa /usr/share/zoneinfo .
+For example, the command
+.Dq TZ=America/Los_Angeles date
+displays the current time in California.
+See
+.Xr environ 7
+for more information.
+.El
+.Sh FILES
+.Bl -tag -width /var/log/messages -compact
+.It Pa /var/log/wtmp
+record of date resets and time changes
+.It Pa /var/log/messages
+record of the user setting the time
+.El
+.Sh EXIT STATUS
+The
+.Nm
+utility exits 0 on success, 1 if unable to set the date, and 2
+if able to set the local date, but unable to set it globally.
 .Sh EXAMPLES
 The command:
 .Pp
@@ -302,7 +332,8 @@ will display:
 .Pp
 .Dl "Sun Jan  4 04:15:24 GMT 1998"
 .Pp
-where it is currently Mon Aug  4 04:15:24 BST 1997.
+where it is currently
+.Li "Mon Aug  4 04:15:24 BST 1997" .
 .Pp
 The command:
 .Pp
@@ -326,7 +357,8 @@ will display the last Friday of the month:
 .Pp
 .Dl "Fri Aug 29 04:31:11 BST 1997"
 .Pp
-where it is currently Mon Aug  4 04:31:11 BST 1997.
+where it is currently
+.Li "Mon Aug  4 04:31:11 BST 1997" .
 .Pp
 The command:
 .Pp
@@ -339,6 +371,9 @@ sets the date to
 .Pp
 may be used on one machine to print out the date
 suitable for setting on another.
+.Qq ( Li "+%m%d%H%M%Y.%S"
+for use on
+.Tn Linux . )
 .Pp
 The command:
 .Pp
@@ -347,45 +382,15 @@ The command:
 sets the time to
 .Li "2:32 PM" ,
 without modifying the date.
-.Sh ENVIRONMENT
-The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width Ds
-.It Ev TZ
-The timezone to use when displaying dates.
-The normal format is a pathname relative to
-.Pa /usr/share/zoneinfo .
-For example, the command
-.Dq TZ=America/Los_Angeles date
-displays the current time in California.
-See
-.Xr environ 7
-for more information.
-.El
-.Sh FILES
-.Bl -tag -width /var/log/messages -compact
-.It Pa /var/log/wtmp
-record of date resets and time changes
-.It Pa /var/log/messages
-record of the user setting the time
-.El
-.Sh SEE ALSO
-.Xr gettimeofday 2 ,
-.Xr strftime 3 ,
-.Xr strptime 3 ,
-.Xr utmp 5 ,
-.Xr timed 8
-.Rs
-.%T "TSP: The Time Synchronization Protocol for UNIX 4.3BSD"
-.%A R. Gusella
-.%A S. Zatti
-.Re
-.Sh DIAGNOSTICS
-The
-.Nm
-utility exits 0 on success, 1 if unable to set the date, and 2
-if able to set the local date, but unable to set it globally.
 .Pp
+Finally the command:
+.Pp
+.Dl "date -j -f ""%a %b %d %T %Z %Y"" ""`date`"" ""+%s"""
+.Pp
+can be used to parse the output from
+.Nm
+and express it in Epoch time.
+.Sh DIAGNOSTICS
 Occasionally, when
 .Xr timed 8
 synchronizes the time on many hosts, the setting of a new time value may
@@ -402,6 +407,17 @@ between
 and
 .Xr timed 8
 fails.
+.Sh SEE ALSO
+.Xr gettimeofday 2 ,
+.Xr strftime 3 ,
+.Xr strptime 3 ,
+.Xr utmp 5 ,
+.Xr timed 8
+.Rs
+.%T "TSP: The Time Synchronization Protocol for UNIX 4.3BSD"
+.%A R. Gusella
+.%A S. Zatti
+.Re
 .Sh STANDARDS
 The
 .Nm
