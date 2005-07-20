@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)netdate.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/bin/date/netdate.c,v 1.11.2.1 2001/05/12 17:14:22 fenner Exp $
- * $DragonFly: src/bin/date/netdate.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
+ * $FreeBSD: src/bin/date/netdate.c,v 1.18 2004/04/06 20:06:45 markm Exp $
+ * $DragonFly: src/bin/date/netdate.c,v 1.7 2005/07/20 06:25:20 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ netsettime(time_t tval)
 	char hostname[MAXHOSTNAMELEN];
 
 	if ((sp = getservbyname("timed", "udp")) == NULL) {
-		warnx("udp/timed: unknown service");
+		warnx("timed/udp: unknown service");
 		return (retval = 2);
 	}
 
