@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
- * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.12 2005/07/20 19:35:50 cpressey Exp $
+ * $FreeBSD: src/bin/date/date.c,v 1.47 2005/01/10 08:39:21 imp Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.13 2005/07/20 19:51:56 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -57,12 +57,12 @@
 #define	TM_YEAR_BASE	1900
 #endif
 
-time_t tval;
+static time_t tval;
 int retval;
 
-static void setthetime (const char *, const char *, int, int);
-static void badformat (void);
-static void usage (void);
+static void setthetime(const char *, const char *, int, int);
+static void badformat(void);
+static void usage(void);
 
 int
 main(int argc, char **argv)
@@ -87,7 +87,7 @@ main(int argc, char **argv)
 	jflag = nflag = 0;
 	set_timezone = 0;
 	while ((ch = getopt(argc, argv, "d:f:jnr:t:uv:")) != -1)
-		switch((char)ch) {
+		switch(ch) {
 		case 'd':		/* daylight savings time */
 			tz.tz_dsttime = strtol(optarg, &endptr, 10) ? 1 : 0;
 			if (endptr == optarg || *endptr != '\0')
