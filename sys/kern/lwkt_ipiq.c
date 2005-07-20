@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.13 2005/06/21 05:25:17 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.14 2005/07/20 20:14:33 dillon Exp $
  */
 
 /*
@@ -40,6 +40,8 @@
  */
 
 #ifdef _KERNEL
+
+#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -99,6 +101,10 @@ static __int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
 static __int64_t ipiq_passive;	/* passive IPI messages */
 static __int64_t ipiq_cscount;	/* number of cpu synchronizations */
 static int ipiq_optimized = 1;	/* XXX temporary sysctl */
+#ifdef PANIC_DEBUG
+static int	panic_ipiq_cpu = -1;
+static int	panic_ipiq_count = 100;
+#endif
 #endif
 
 #ifdef _KERNEL
@@ -110,6 +116,10 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_avoided, CTLFLAG_RW, &ipiq_avoided, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_passive, CTLFLAG_RW, &ipiq_passive, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, ipiq_optimized, CTLFLAG_RW, &ipiq_optimized, 0, "");
+#ifdef PANIC_DEBUG
+SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_cpu, CTLFLAG_RW, &panic_ipiq_cpu, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_count, CTLFLAG_RW, &panic_ipiq_count, 0, "");
+#endif
 
 #define IPIQ_STRING	"func=%p arg=%p scpu=%d dcpu=%d"
 #define IPIQ_ARG_SIZE	(sizeof(void *) * 2 + sizeof(int) * 2)
@@ -513,6 +523,21 @@ lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame)
 	copy_func(copy_arg, frame);
 	cpu_sfence();
 	ip->ip_xindex = ip->ip_rindex;
+
+#ifdef PANIC_DEBUG
+	/*
+	 * Simulate panics during the processing of an IPI
+	 */
+	if (mycpu->gd_cpuid == panic_ipiq_cpu && panic_ipiq_count) {
+		if (--panic_ipiq_count == 0) {
+#ifdef DDB
+			Debugger("PANIC_DEBUG");
+#else
+			panic("PANIC_DEBUG");
+#endif
+		}
+	}
+#endif
     }
 
     /*

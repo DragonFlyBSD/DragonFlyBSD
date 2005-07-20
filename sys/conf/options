@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.36 2005/07/18 14:52:57 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.37 2005/07/20 20:14:32 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -414,6 +414,7 @@ SIMPLELOCK_DEBUG	opt_global.h
 VFS_BIO_DEBUG		opt_global.h
 DEBUG_INTERRUPTS	opt_global.h
 SOCKBUF_DEBUG		opt_global.h
+PANIC_DEBUG		opt_global.h
 
 # These are VM related options
 VM_KMEM_SIZE		opt_vm.h
