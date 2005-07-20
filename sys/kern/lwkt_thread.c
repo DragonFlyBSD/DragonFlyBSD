@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.78 2005/07/19 19:25:44 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.79 2005/07/20 04:33:44 dillon Exp $
  */
 
 /*
@@ -477,8 +477,14 @@ lwkt_switch(void)
 	    savegdtrap = gd->gd_trap_nesting_level;
 	    gd->gd_intr_nesting_level = 0;
 	    gd->gd_trap_nesting_level = 0;
-	    printf("Warning: executing emergency switch from within a trap "
-		   "or interrupt or during a panic, thread %p\n", td);
+	    if ((td->td_flags & TDF_PANICWARN) == 0) {
+		td->td_flags |= TDF_PANICWARN;
+		printf("Warning: thread switch from interrupt or IPI, "
+			"thread %p (%s)\n", td, td->td_comm);
+#ifdef DDB
+		db_print_backtrace();
+#endif
+	    }
 	    lwkt_switch();
 	    gd->gd_intr_nesting_level = savegdnest;
 	    gd->gd_trap_nesting_level = savegdtrap;
