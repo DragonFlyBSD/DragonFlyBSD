@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.81 2005/07/21 01:16:30 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.82 2005/07/21 06:28:50 dillon Exp $
  */
 
 /*
@@ -598,6 +598,8 @@ again:
 	    }
 #ifdef SMP
 	    /*
+	     * THREAD SELECTION FOR AN SMP MACHINE BUILD
+	     *
 	     * If the target needs the MP lock and we couldn't get it,
 	     * or if the target is holding tokens and we could not 
 	     * gain ownership of the tokens, continue looking for a
@@ -653,7 +655,7 @@ again:
 		if (ntd == NULL) {
 		    ntd = &gd->gd_idlethread;
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
-		    KASSERT(ntd->td_mpcount == 0, ("Idlex thread %p was holding the BGL!", ntd));
+		    goto using_idle_thread;
 		} else {
 		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
@@ -663,6 +665,10 @@ again:
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 	    }
 #else
+	    /*
+	     * THREAD SELECTION FOR A UP MACHINE BUILD.  We don't have to
+	     * worry about tokens or the BGL.
+	     */
 	    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 #endif
@@ -675,7 +681,21 @@ again:
 	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
 		ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
-	    KASSERT(ntd->td_mpcount == 0, ("Idley thread %p was holding the BGL!", ntd));
+using_idle_thread:
+	    /*
+	     * The idle thread should not be holding the MP lock unless we
+	     * are trapping in the kernel or in a panic.  Since we select the
+	     * idle thread unconditionally when no other thread is available,
+	     * if the MP lock is desired during a panic or kernel trap, we
+	     * have to loop in the scheduler until we get it.
+	     */
+	    if (ntd->td_mpcount) {
+		mpheld = MP_LOCK_HELD();
+		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		    panic("Idle thread %p was holding the BGL!", ntd);
+		else if (mpheld == 0)
+		    goto again;
+	    }
 #endif
 	}
     }
@@ -955,8 +975,8 @@ lwkt_schedule(thread_t td)
 	    curthread->td_proc ? curthread->td_proc->p_pid : -1,
 	    curthread->td_proc ? curthread->td_proc->p_stat : -1,
 	    td,
-	    td->td_proc ? curthread->td_proc->p_pid : -1,
-	    td->td_proc ? curthread->td_proc->p_stat : -1
+	    td->td_proc ? td->td_proc->p_pid : -1,
+	    td->td_proc ? td->td_proc->p_stat : -1
 	);
 	panic("SCHED PANIC");
     }
