@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.86 2005/06/15 21:47:30 corecode Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.87 2005/07/21 15:55:38 liamfoy Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -195,7 +195,7 @@ rsync
 <TD>
 <a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">HTTP</a>, 
 <a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">FTP</a>, and 
-<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">rysnc</a>. (IPv4 and IPv6)
+<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">rsync</a> (IPv4 and IPv6)
 </TD>
 </TR>
 
@@ -269,12 +269,12 @@ rsync
 </TR>
 
 <TR>
-<TD>theshell.com (Phoenix Arizona, USA)</TD>
-<TD>Daily snapshots, official ISOs</TD>
+<TD>TheShell.com (Phoenix AZ, USA)</TD>
+<TD>Code, official ISOs</TD>
 <TD>
 <a href="http://theshell.com/pub/DragonFly/">HTTP</a>,
 <a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>, and
-<a href="rsync://rsync.theshell.com/pub/DragonFly/">rsync</a>
+<a href="rsync://rsync.theshell.com/pub/DragonFly/">rsync</a> (IPv4 and IPv6)
 </TD>
 </TR>
 
@@ -363,6 +363,15 @@ cvsup, cvsync, rsync, anoncvs
 <TD>Code</TD>
 <TD>
 cvsup, rsync, <a href="http://mirror.isp.net.au/cgi-bin/cvsweb.cgi/?cvsroot=dragonfly">cvsweb</a>
+</TD>
+</TR>
+
+<TR>
+<TD>TheShell.com (Phoenix, AZ, USA)</TD>
+<TD>Code</TD>
+<TD>
+<a href="http://cvsweb.theshell.com/">cvsweb</a>,
+cvsup, cvsync, rsync
 </TD>
 </TR>
 
