@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.3 2005/06/05 12:16:53 joerg Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.4 2005/07/21 21:33:26 joerg Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
@@ -48,7 +48,7 @@
 
 struct statvfs {
 	unsigned long	f_bsize;	/* file system block size */
-	unsigned long	f_frsize;	/* fundamental file system */
+	unsigned long	f_frsize;	/* fundamental file system block size */
 	fsblkcnt_t	f_blocks;	/* total number of blocks on fs */
 	fsblkcnt_t	f_bfree;	/* total number of free blocks */
 	fsblkcnt_t	f_bavail;	/* total number of available blocks */
@@ -74,9 +74,7 @@ struct statvfs {
 #define ST_RDONLY	0x1	/* fs is read-only */
 #define ST_NOSUID	0x2	/* fs does not support ST_ISUID or ST_ISGID */
 
-#if 0
 int	fstatvfs(int, struct statvfs *);
-int	statvfs(const char *__restrict, struct statvfs *__restrict);
-#endif
+int	statvfs(const char * __restrict, struct statvfs * __restrict);
 
 #endif /* _SYS_STATVFS_H_ */
