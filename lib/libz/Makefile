@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/lib/libz/Makefile,v 1.11.2.4 2003/02/01 13:33:12 sobomax Exp $
-# $DragonFly: src/lib/libz/Makefile,v 1.8 2005/07/06 15:02:06 corecode Exp $
+# $DragonFly: src/lib/libz/Makefile,v 1.9 2005/07/21 16:07:41 joerg Exp $
 #
 
 LIB=		z
@@ -8,11 +8,9 @@ MAN=		zlib.3
 WARNS?=		3
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2.2
+CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2
 
 .PATH: ${CONTRIBDIR}
-
-CLEANFILES+=	example.o example foo.gz minigzip.o minigzip
 
 SRCS=	adler32.c compress.c crc32.c deflate.c gzio.c infback.c
 SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zopen.c zutil.c
@@ -21,16 +19,5 @@ SRCS+=	${PATCHES}
 CFLAGS+= -I${.OBJDIR} -I${CONTRIBDIR}
 
 INCS=		zconf.h zlib.h
-
-minigzip:	all minigzip.o
-	$(CC) -o minigzip minigzip.o -L. -lz
-
-example:	all example.o
-	$(CC) -o example example.o -L. -lz
-
-test: example minigzip
-	(export LD_LIBRARY_PATH=. ; ./example )
-	(export LD_LIBRARY_PATH=. ; \
-		echo hello world | ./minigzip | ./minigzip -d )
 
 .include <bsd.lib.mk>

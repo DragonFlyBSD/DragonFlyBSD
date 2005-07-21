@@ -1,9 +1,9 @@
-# $DragonFly: src/lib/libz/Makefile.stand,v 1.3 2005/07/10 09:40:35 corecode Exp $
+# $DragonFly: src/lib/libz/Makefile.stand,v 1.4 2005/07/21 16:07:41 joerg Exp $
 
 # decompression functionality from libz for libstand
 
 # relative to lib/libstand
-ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2.2
+ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2
 .PATH: ${ZLIBDIR}
 
 CFLAGS+=-DHAVE_MEMCPY -I${ZLIBDIR}
