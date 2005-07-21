@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.80 2005/07/20 20:21:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.81 2005/07/21 01:16:30 dillon Exp $
  */
 
 /*
@@ -1377,6 +1377,8 @@ crit_panic(void)
     panic("td_pri is/would-go negative! %p %d", td, lpri);
 }
 
+#ifdef SMP
+
 /*
  * Called from debugger/panic on cpus which have been stopped.  We must still
  * process the IPIQ while stopped, even if we were stopped while in a critical
@@ -1401,3 +1403,4 @@ lwkt_smp_stopped(void)
     crit_exit_gd(gd);
 }
 
+#endif
