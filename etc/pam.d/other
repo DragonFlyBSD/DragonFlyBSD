@@ -1,0 +1,8 @@
+#
+# $DragonFly: src/etc/pam.d/other,v 1.1 2005/07/22 18:20:43 joerg Exp $
+#
+# PAM configuration for the "other" service
+#
+
+account		required	pam_unix.so			try_first_pass
+auth		required	pam_unix.so			try_first_pass

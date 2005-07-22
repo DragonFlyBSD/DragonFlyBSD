@@ -1,0 +1,7 @@
+#
+# $DragonFly: src/etc/pam.d/xserver,v 1.1 2005/07/22 18:20:43 joerg Exp $
+#
+# PAM configuration for the "xserver" service
+#
+
+auth		required	pam_permit.so

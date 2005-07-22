@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.75 2005/07/07 12:43:36 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.76 2005/07/22 18:20:43 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -26,7 +26,7 @@ BIN1=	amd.map auth.conf \
 	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
 	motd modems networks newsyslog.conf \
-	pam.conf pf.conf phones printcap profile \
+	pf.conf phones printcap profile \
 	remote \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys \
@@ -46,6 +46,8 @@ DIRS+=	secure/usr.bin/openssl
 BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
 DEFAULTS= rc.conf make.conf periodic.conf
+PAMD_CONF=	README convert.sh ftpd gdm imap login other pop3 sshd \
+	telnetd xdm xserver
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist BSD.x11.dist BSD.x11-4.dist
@@ -344,6 +346,8 @@ distribution:
 	    pwd_mkdb -p -d ${DESTDIR}/etc ${DESTDIR}/etc/master.passwd
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
+	cd ${.CURDIR}/pam.d; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+	    ${PAMD_CONF} ${DESTDIR}/etc/pam.d
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap

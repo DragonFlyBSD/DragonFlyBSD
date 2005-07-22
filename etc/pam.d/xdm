@@ -1,0 +1,11 @@
+#
+# $DragonFly: src/etc/pam.d/xdm,v 1.1 2005/07/22 18:20:43 joerg Exp $
+#
+# PAM configuration for the "xdm" service
+#
+
+account		required	pam_unix.so			try_first_pass
+session		required	pam_deny.so
+password	required	pam_deny.so
+auth		required	pam_unix.so
+#auth		sufficient	pam_krb5.so			try_first_pass
