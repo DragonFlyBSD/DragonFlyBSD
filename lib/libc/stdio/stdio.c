@@ -35,7 +35,7 @@
  *
  * @(#)stdio.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/stdio.c,v 1.9 2000/01/27 23:06:46 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,7 +43,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "un-namespace.h"
+
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Small standard I/O/seek/close functions.
@@ -55,12 +57,12 @@ __sread(void *cookie, char *buf, int n)
 	FILE *fp = cookie;
 	int ret;
 
-	ret = _read(fp->_file, buf, (size_t)n);
+	ret = _read(fp->pub._fileno, buf, (size_t)n);
 	/* if the read succeeded, update the current offset */
 	if (ret >= 0)
 		fp->_offset += ret;
 	else
-		fp->_flags &= ~__SOFF;	/* paranoia */
+		fp->pub._flags &= ~__SOFF;	/* paranoia */
 	return (ret);
 }
 
@@ -69,10 +71,10 @@ __swrite(void *cookie, char const *buf, int n)
 {
 	FILE *fp = cookie;
 
-	if (fp->_flags & __SAPP)
-		(void) lseek(fp->_file, (off_t)0, SEEK_END);
-	fp->_flags &= ~__SOFF;	/* in case FAPPEND mode is set */
-	return (_write(fp->_file, buf, (size_t)n));
+	if (fp->pub._flags & __SAPP)
+		(void) lseek(fp->pub._fileno, (off_t)0, SEEK_END);
+	fp->pub._flags &= ~__SOFF;	/* in case FAPPEND mode is set */
+	return (_write(fp->pub._fileno, buf, (size_t)n));
 }
 
 fpos_t
@@ -81,11 +83,11 @@ __sseek(void *cookie, fpos_t offset, int whence)
 	FILE *fp = cookie;
 	off_t ret;
 
-	ret = lseek(fp->_file, (off_t)offset, whence);
+	ret = lseek(fp->pub._fileno, (off_t)offset, whence);
 	if (ret == -1)
-		fp->_flags &= ~__SOFF;
+		fp->pub._flags &= ~__SOFF;
 	else {
-		fp->_flags |= __SOFF;
+		fp->pub._flags |= __SOFF;
 		fp->_offset = ret;
 	}
 	return (ret);
@@ -95,5 +97,5 @@ int
 __sclose(void *cookie)
 {
 
-	return (_close(((FILE *)cookie)->_file));
+	return (_close(((FILE *)cookie)->pub._fileno));
 }

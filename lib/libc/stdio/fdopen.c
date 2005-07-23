@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.3 2000/01/27 23:06:44 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  *
  * @(#)fdopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -46,7 +46,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include "un-namespace.h"
+
 #include "local.h"
+#include "priv_stdio.h"
 
 FILE *
 fdopen(int fd, const char *mode)
@@ -72,15 +74,15 @@ fdopen(int fd, const char *mode)
 
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
-	fp->_flags = flags;
+	fp->pub._flags = flags;
 	/*
 	 * If opened for appending, but underlying descriptor does not have
 	 * O_APPEND bit set, assert __SAPP so that __swrite() will lseek to
 	 * end before each write.
 	 */
 	if ((oflags & O_APPEND) && !(fdflags & O_APPEND))
-		fp->_flags |= __SAPP;
-	fp->_file = fd;
+		fp->pub._flags |= __SAPP;
+	fp->pub._fileno = fd;
 	fp->_cookie = fp;
 	fp->_read = __sread;
 	fp->_write = __swrite;

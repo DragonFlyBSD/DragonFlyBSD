@@ -15,7 +15,7 @@
  * `state' of FTP_t
  *
  * $FreeBSD: src/lib/libftpio/ftpio.c,v 1.33.2.4 2002/07/25 15:25:32 ume Exp $
- * $DragonFly: src/lib/libftpio/ftpio.c,v 1.7 2004/08/19 23:57:46 joerg Exp $
+ * $DragonFly: src/lib/libftpio/ftpio.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
  *
  */
 
@@ -94,16 +94,6 @@ int FtpTimedOut;
 
 /* FTP unhappy status codes */
 #define FTP_TIMED_OUT		421
-
-/*
- * XXX
- * gross!  evil!  bad!  We really need an access primitive for cookie in stdio
- * itself.
- * it's too convenient a hook to bury and it's already exported through funopen
- * as it is, so...
- * XXX
- */
-#define fcookie(fp)	((fp)->_cookie)
 
 /* Placeholder in case we want to do any pre-init stuff at some point */ 
 int
@@ -306,7 +296,6 @@ ftpLoginAf(const char *host, int af, const char *user, const char *passwd,
     fp = NULL;
     if (n && ftp_login_session(n, host, af, user, passwd, port, verbose) == SUCCESS) {
 	fp = funopen(n, ftp_read_method, ftp_write_method, NULL, ftp_close_method);	/* BSD 4.4 function! */
-	fp->_file = n->fd_ctrl;
     }
     if (retcode) {
 	if (!n)

@@ -35,7 +35,7 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.7 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/refill.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <errno.h>
@@ -43,6 +43,7 @@
 #include <stdlib.h>
 
 #include "local.h"
+#include "priv_stdio.h"
 
 static int lflush (FILE *);
 
@@ -50,7 +51,7 @@ static int
 lflush(FILE *fp)
 {
 
-	if ((fp->_flags & (__SLBF|__SWR)) == (__SLBF|__SWR))
+	if ((fp->pub._flags & (__SLBF|__SWR)) == (__SLBF|__SWR))
 		return (__sflush(fp));
 	return (0);
 }
@@ -67,28 +68,28 @@ __srefill(FILE *fp)
 	if (!__sdidinit)
 		__sinit();
 
-	fp->_r = 0;		/* largely a convenience for callers */
+	fp->pub._r = 0;		/* largely a convenience for callers */
 
 	/* SysV does not make this test; take it out for compatibility */
-	if (fp->_flags & __SEOF)
+	if (fp->pub._flags & __SEOF)
 		return (EOF);
 
 	/* if not already reading, have to be reading and writing */
-	if ((fp->_flags & __SRD) == 0) {
-		if ((fp->_flags & __SRW) == 0) {
+	if ((fp->pub._flags & __SRD) == 0) {
+		if ((fp->pub._flags & __SRW) == 0) {
 			errno = EBADF;
-			fp->_flags |= __SERR;
+			fp->pub._flags |= __SERR;
 			return (EOF);
 		}
 		/* switch to reading */
-		if (fp->_flags & __SWR) {
+		if (fp->pub._flags & __SWR) {
 			if (__sflush(fp))
 				return (EOF);
-			fp->_flags &= ~__SWR;
-			fp->_w = 0;
-			fp->_lbfsize = 0;
+			fp->pub._flags &= ~__SWR;
+			fp->pub._w = 0;
+			fp->pub._lbfsize = 0;
 		}
-		fp->_flags |= __SRD;
+		fp->pub._flags |= __SRD;
 	} else {
 		/*
 		 * We were reading.  If there is an ungetc buffer,
@@ -98,8 +99,8 @@ __srefill(FILE *fp)
 		 */
 		if (HASUB(fp)) {
 			FREEUB(fp);
-			if ((fp->_r = fp->_ur) != 0) {
-				fp->_p = fp->_extra->_up;
+			if ((fp->pub._r = fp->_ur) != 0) {
+				fp->pub._p = fp->_extra->_up;
 				return (0);
 			}
 		}
@@ -113,17 +114,17 @@ __srefill(FILE *fp)
 	 * flush all line buffered output files, per the ANSI C
 	 * standard.
 	 */
-	if (fp->_flags & (__SLBF|__SNBF))
+	if (fp->pub._flags & (__SLBF|__SNBF))
 		(void) _fwalk(lflush);
-	fp->_p = fp->_bf._base;
-	fp->_r = (*fp->_read)(fp->_cookie, (char *)fp->_p, fp->_bf._size);
-	fp->_flags &= ~__SMOD;	/* buffer contents are again pristine */
-	if (fp->_r <= 0) {
-		if (fp->_r == 0)
-			fp->_flags |= __SEOF;
+	fp->pub._p = fp->_bf._base;
+	fp->pub._r = (*fp->_read)(fp->_cookie, (char *)fp->pub._p, fp->_bf._size);
+	fp->pub._flags &= ~__SMOD;	/* buffer contents are again pristine */
+	if (fp->pub._r <= 0) {
+		if (fp->pub._r == 0)
+			fp->pub._flags |= __SEOF;
 		else {
-			fp->_r = 0;
-			fp->_flags |= __SERR;
+			fp->pub._r = 0;
+			fp->pub._flags |= __SERR;
 		}
 		return (EOF);
 	}

@@ -35,12 +35,14 @@
  *
  * @(#)wsetup.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wsetup.c,v 1.6 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/wsetup.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/wsetup.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Various output routines call wsetup to be sure it is safe to write,
@@ -57,18 +59,18 @@ __swsetup(FILE *fp)
 	/*
 	 * If we are not writing, we had better be reading and writing.
 	 */
-	if ((fp->_flags & __SWR) == 0) {
-		if ((fp->_flags & __SRW) == 0)
+	if ((fp->pub._flags & __SWR) == 0) {
+		if ((fp->pub._flags & __SRW) == 0)
 			return (EOF);
-		if (fp->_flags & __SRD) {
+		if (fp->pub._flags & __SRD) {
 			/* clobber any ungetc data */
 			if (HASUB(fp))
 				FREEUB(fp);
-			fp->_flags &= ~(__SRD|__SEOF);
-			fp->_r = 0;
-			fp->_p = fp->_bf._base;
+			fp->pub._flags &= ~(__SRD|__SEOF);
+			fp->pub._r = 0;
+			fp->pub._p = fp->_bf._base;
 		}
-		fp->_flags |= __SWR;
+		fp->pub._flags |= __SWR;
 	}
 
 	/*
@@ -76,15 +78,15 @@ __swsetup(FILE *fp)
 	 */
 	if (fp->_bf._base == NULL)
 		__smakebuf(fp);
-	if (fp->_flags & __SLBF) {
+	if (fp->pub._flags & __SLBF) {
 		/*
 		 * It is line buffered, so make _lbfsize be -_bufsize
 		 * for the putc() macro.  We will change _lbfsize back
 		 * to 0 whenever we turn off __SWR.
 		 */
-		fp->_w = 0;
-		fp->_lbfsize = -fp->_bf._size;
+		fp->pub._w = 0;
+		fp->pub._lbfsize = -fp->_bf._size;
 	} else
-		fp->_w = fp->_flags & __SNBF ? 0 : fp->_bf._size;
+		fp->pub._w = fp->pub._flags & __SNBF ? 0 : fp->_bf._size;
 	return (0);
 }

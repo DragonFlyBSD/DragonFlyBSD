@@ -27,7 +27,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/asprintf.c,v 1.6 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.5 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include <stdio.h>
@@ -36,6 +36,7 @@
 #include <stdarg.h>
 
 #include "local.h"
+#include "priv_stdio.h"
 
 int
 asprintf(char **str, char const *fmt, ...)
@@ -45,15 +46,15 @@ asprintf(char **str, char const *fmt, ...)
 	FILE f;
 	struct __sFILEX ext;
 
-	f._file = -1;
-	f._flags = __SWR | __SSTR | __SALC;
-	f._bf._base = f._p = (unsigned char *)malloc(128);
+	f.pub._fileno = -1;
+	f.pub._flags = __SWR | __SSTR | __SALC;
+	f._bf._base = f.pub._p = (unsigned char *)malloc(128);
 	if (f._bf._base == NULL) {
 		*str = NULL;
 		errno = ENOMEM;
 		return (-1);
 	}
-	f._bf._size = f._w = 127;		/* Leave room for the NUL */
+	f._bf._size = f.pub._w = 127;		/* Leave room for the NUL */
 	f._extra = &ext;
 	INITEXTRA(&f);
 	va_start(ap, fmt);
@@ -65,7 +66,7 @@ asprintf(char **str, char const *fmt, ...)
 		errno = ENOMEM;
 		return (-1);
 	}
-	*f._p = '\0';
+	*f.pub._p = '\0';
 	*str = (char *)f._bf._base;
 	return (ret);
 }

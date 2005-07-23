@@ -35,11 +35,13 @@
  *
  * @(#)wbuf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.6 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
+
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Write the given character into the (probably full) buffer for
@@ -60,7 +62,7 @@ __swbuf(int c, FILE *fp)
 	 * If we did not do this, a sufficient number of putc()
 	 * calls might wrap _w from negative to positive.
 	 */
-	fp->_w = fp->_lbfsize;
+	fp->pub._w = fp->pub._lbfsize;
 	if (cantwrite(fp))
 		return (EOF);
 	c = (unsigned char)c;
@@ -74,15 +76,15 @@ __swbuf(int c, FILE *fp)
 	 * guarantees that putc() will always call wbuf() by setting _w
 	 * to 0, so we need not do anything else.
 	 */
-	n = fp->_p - fp->_bf._base;
+	n = fp->pub._p - fp->_bf._base;
 	if (n >= fp->_bf._size) {
 		if (__fflush(fp))
 			return (EOF);
 		n = 0;
 	}
-	fp->_w--;
-	*fp->_p++ = c;
-	if (++n == fp->_bf._size || (fp->_flags & __SLBF && c == '\n'))
+	fp->pub._w--;
+	*fp->pub._p++ = c;
+	if (++n == fp->_bf._size || (fp->pub._flags & __SLBF && c == '\n'))
 		if (__fflush(fp))
 			return (EOF);
 	return (c);

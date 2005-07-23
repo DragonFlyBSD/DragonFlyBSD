@@ -35,7 +35,7 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.7 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -46,8 +46,10 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "un-namespace.h"
+
 #include "local.h"
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 #define	POS_ERR	(-(fpos_t)1)
 
@@ -108,7 +110,7 @@ _fseeko(FILE *fp, off_t offset, int whence)
 		 * we have to first find the current stream offset a la
 		 * ftell (see ftell for details).
 		 */
-		if (fp->_flags & __SOFF)
+		if (fp->pub._flags & __SOFF)
 			curoff = fp->_offset;
 		else {
 			curoff = (*seekfn)(fp->_cookie, (fpos_t)0, SEEK_CUR);
@@ -116,12 +118,12 @@ _fseeko(FILE *fp, off_t offset, int whence)
 				return (EOF);
 			}
 		}
-		if (fp->_flags & __SRD) {
-			curoff -= fp->_r;
+		if (fp->pub._flags & __SRD) {
+			curoff -= fp->pub._r;
 			if (HASUB(fp))
 				curoff -= fp->_ur;
-		} else if (fp->_flags & __SWR && fp->_p != NULL)
-			curoff += fp->_p - fp->_bf._base;
+		} else if (fp->pub._flags & __SWR && fp->pub._p != NULL)
+			curoff += fp->pub._p - fp->_bf._base;
 
 		offset += curoff;
 		whence = SEEK_SET;
@@ -149,17 +151,17 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 */
 	if (fp->_bf._base == NULL)
 		__smakebuf(fp);
-	if (fp->_flags & (__SWR | __SRW | __SNBF | __SNPT))
+	if (fp->pub._flags & (__SWR | __SRW | __SNBF | __SNPT))
 		goto dumb;
-	if ((fp->_flags & __SOPT) == 0) {
+	if ((fp->pub._flags & __SOPT) == 0) {
 		if (seekfn != __sseek ||
-		    fp->_file < 0 || _fstat(fp->_file, &st) ||
+		    fp->pub._fileno < 0 || _fstat(fp->pub._fileno, &st) ||
 		    (st.st_mode & S_IFMT) != S_IFREG) {
-			fp->_flags |= __SNPT;
+			fp->pub._flags |= __SNPT;
 			goto dumb;
 		}
 		fp->_blksize = st.st_blksize;
-		fp->_flags |= __SOPT;
+		fp->pub._flags |= __SOPT;
 	}
 
 	/*
@@ -169,20 +171,20 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	if (whence == SEEK_SET)
 		target = offset;
 	else {
-		if (_fstat(fp->_file, &st))
+		if (_fstat(fp->pub._fileno, &st))
 			goto dumb;
 		target = st.st_size + offset;
 	}
 
 	if (!havepos) {
-		if (fp->_flags & __SOFF)
+		if (fp->pub._flags & __SOFF)
 			curoff = fp->_offset;
 		else {
 			curoff = (*seekfn)(fp->_cookie, (fpos_t)0, SEEK_CUR);
 			if (curoff == POS_ERR)
 				goto dumb;
 		}
-		curoff -= fp->_r;
+		curoff -= fp->pub._r;
 		if (HASUB(fp))
 			curoff -= fp->_ur;
 	}
@@ -194,14 +196,14 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 * file offset for the first byte in the current input buffer.
 	 */
 	if (HASUB(fp)) {
-		curoff += fp->_r;	/* kill off ungetc */
+		curoff += fp->pub._r;	/* kill off ungetc */
 		n = fp->_extra->_up - fp->_bf._base;
 		curoff -= n;
 		n += fp->_ur;
 	} else {
-		n = fp->_p - fp->_bf._base;
+		n = fp->pub._p - fp->_bf._base;
 		curoff -= n;
-		n += fp->_r;
+		n += fp->pub._r;
 	}
 
 	/*
@@ -210,15 +212,15 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 * and return.  (If the buffer was modified, we have to
 	 * skip this; see fgetln.c.)
 	 */
-	if ((fp->_flags & __SMOD) == 0 &&
+	if ((fp->pub._flags & __SMOD) == 0 &&
 	    target >= curoff && target < curoff + n) {
 		int o = target - curoff;
 
-		fp->_p = fp->_bf._base + o;
-		fp->_r = n - o;
+		fp->pub._p = fp->_bf._base + o;
+		fp->pub._r = n - o;
 		if (HASUB(fp))
 			FREEUB(fp);
-		fp->_flags &= ~__SEOF;
+		fp->pub._flags &= ~__SEOF;
 		return (0);
 	}
 
@@ -233,17 +235,17 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	curoff = target & ~(fp->_blksize - 1);
 	if ((*seekfn)(fp->_cookie, curoff, SEEK_SET) == POS_ERR)
 		goto dumb;
-	fp->_r = 0;
-	fp->_p = fp->_bf._base;
+	fp->pub._r = 0;
+	fp->pub._p = fp->_bf._base;
 	if (HASUB(fp))
 		FREEUB(fp);
-	fp->_flags &= ~__SEOF;
+	fp->pub._flags &= ~__SEOF;
 	n = target - curoff;
 	if (n) {
-		if (__srefill(fp) || fp->_r < n)
+		if (__srefill(fp) || fp->pub._r < n)
 			goto dumb;
-		fp->_p += n;
-		fp->_r -= n;
+		fp->pub._p += n;
+		fp->pub._r -= n;
 	}
 	return (0);
 
@@ -259,9 +261,9 @@ dumb:
 	/* success: clear EOF indicator and discard ungetc() data */
 	if (HASUB(fp))
 		FREEUB(fp);
-	fp->_p = fp->_bf._base;
-	fp->_r = 0;
-	/* fp->_w = 0; */	/* unnecessary (I think...) */
-	fp->_flags &= ~__SEOF;
+	fp->pub._p = fp->_bf._base;
+	fp->pub._r = 0;
+	/* fp->pub._w = 0; */	/* unnecessary (I think...) */
+	fp->pub._flags &= ~__SEOF;
 	return (0);
 }

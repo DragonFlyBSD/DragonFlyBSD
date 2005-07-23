@@ -35,7 +35,7 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/stdio/vfscanf.c,v 1.35 2004/01/31 23:16:09 das Exp $
- * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.7 2005/04/21 16:36:35 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -50,6 +50,7 @@
 #include "collate.h"
 #include "libc_private.h"
 #include "local.h"
+#include "priv_stdio.h"
 
 #define FLOATING_POINT
 
@@ -152,8 +153,8 @@ __svfscanf(FILE *fp, char const *fmt0, va_list ap)
 		if (c == 0)
 			return (nassigned);
 		if (isspace(c)) {
-			while ((fp->_r > 0 || __srefill(fp) == 0) && isspace(*fp->_p))
-				nread++, fp->_r--, fp->_p++;
+			while ((fp->pub._r > 0 || __srefill(fp) == 0) && isspace(*fp->pub._p))
+				nread++, fp->pub._r--, fp->pub._p++;
 			continue;
 		}
 		if (c != '%')
@@ -168,11 +169,11 @@ again:		c = *fmt++;
 		switch (c) {
 		case '%':
 literal:
-			if (fp->_r <= 0 && __srefill(fp))
+			if (fp->pub._r <= 0 && __srefill(fp))
 				goto input_failure;
-			if (*fp->_p != c)
+			if (*fp->pub._p != c)
 				goto match_failure;
-			fp->_r--, fp->_p++;
+			fp->pub._r--, fp->pub._p++;
 			nread++;
 			continue;
 
@@ -308,7 +309,7 @@ literal:
 		/*
 		 * We have a conversion that requires input.
 		 */
-		if (fp->_r <= 0 && __srefill(fp))
+		if (fp->pub._r <= 0 && __srefill(fp))
 			goto input_failure;
 
 		/*
@@ -316,10 +317,10 @@ literal:
 		 * that suppress this.
 		 */
 		if ((flags & NOSKIP) == 0) {
-			while (isspace(*fp->_p)) {
+			while (isspace(*fp->pub._p)) {
 				nread++;
-				if (--fp->_r > 0)
-					fp->_p++;
+				if (--fp->pub._r > 0)
+					fp->pub._p++;
 				else if (__srefill(fp))
 					goto input_failure;
 			}
@@ -342,10 +343,10 @@ literal:
 			if (flags & SUPPRESS) {
 				size_t sum = 0;
 				for (;;) {
-					if ((n = fp->_r) < width) {
+					if ((n = fp->pub._r) < width) {
 						sum += n;
 						width -= n;
-						fp->_p += n;
+						fp->pub._p += n;
 						if (__srefill(fp)) {
 							if (sum == 0)
 							    goto input_failure;
@@ -353,8 +354,8 @@ literal:
 						}
 					} else {
 						sum += width;
-						fp->_r -= width;
-						fp->_p += width;
+						fp->pub._r -= width;
+						fp->pub._p += width;
 						break;
 					}
 				}
@@ -378,11 +379,11 @@ literal:
 			/* take only those things in the class */
 			if (flags & SUPPRESS) {
 				n = 0;
-				while (ccltab[*fp->_p]) {
-					n++, fp->_r--, fp->_p++;
+				while (ccltab[*fp->pub._p]) {
+					n++, fp->pub._r--, fp->pub._p++;
 					if (--width == 0)
 						break;
-					if (fp->_r <= 0 && __srefill(fp)) {
+					if (fp->pub._r <= 0 && __srefill(fp)) {
 						if (n == 0)
 							goto input_failure;
 						break;
@@ -392,12 +393,12 @@ literal:
 					goto match_failure;
 			} else {
 				p0 = p = va_arg(ap, char *);
-				while (ccltab[*fp->_p]) {
-					fp->_r--;
-					*p++ = *fp->_p++;
+				while (ccltab[*fp->pub._p]) {
+					fp->pub._r--;
+					*p++ = *fp->pub._p++;
 					if (--width == 0)
 						break;
-					if (fp->_r <= 0 && __srefill(fp)) {
+					if (fp->pub._r <= 0 && __srefill(fp)) {
 						if (p == p0)
 							goto input_failure;
 						break;
@@ -419,22 +420,22 @@ literal:
 				width = (size_t)~0;
 			if (flags & SUPPRESS) {
 				n = 0;
-				while (!isspace(*fp->_p)) {
-					n++, fp->_r--, fp->_p++;
+				while (!isspace(*fp->pub._p)) {
+					n++, fp->pub._r--, fp->pub._p++;
 					if (--width == 0)
 						break;
-					if (fp->_r <= 0 && __srefill(fp))
+					if (fp->pub._r <= 0 && __srefill(fp))
 						break;
 				}
 				nread += n;
 			} else {
 				p0 = p = va_arg(ap, char *);
-				while (!isspace(*fp->_p)) {
-					fp->_r--;
-					*p++ = *fp->_p++;
+				while (!isspace(*fp->pub._p)) {
+					fp->pub._r--;
+					*p++ = *fp->pub._p++;
 					if (--width == 0)
 						break;
-					if (fp->_r <= 0 && __srefill(fp))
+					if (fp->pub._r <= 0 && __srefill(fp))
 						break;
 				}
 				*p = 0;
@@ -457,7 +458,7 @@ literal:
 #endif
 			flags |= SIGNOK | NDIGITS | NZDIGITS;
 			for (p = buf; width; width--) {
-				c = *fp->_p;
+				c = *fp->pub._p;
 				/*
 				 * Switch on the character; `goto ok'
 				 * if we accept it as a part of number.
@@ -546,8 +547,8 @@ literal:
 				 * c is legal: store it and look at the next.
 				 */
 				*p++ = c;
-				if (--fp->_r > 0)
-					fp->_p++;
+				if (--fp->pub._r > 0)
+					fp->pub._p++;
 				else if (__srefill(fp))
 					break;		/* EOF */
 			}
@@ -603,7 +604,7 @@ literal:
 #endif
 			flags |= SIGNOK | NDIGITS | DPTOK | EXPOK;
 			for (p = buf; width; width--) {
-				c = *fp->_p;
+				c = *fp->pub._p;
 				/*
 				 * This code mimicks the integer conversion
 				 * code, but is much simpler.
@@ -642,8 +643,8 @@ literal:
 				break;
 		fok:
 				*p++ = c;
-				if (--fp->_r > 0)
-					fp->_p++;
+				if (--fp->pub._r > 0)
+					fp->pub._p++;
 				else if (__srefill(fp))
 					break;	/* EOF */
 			}

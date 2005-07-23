@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.3.2.1 2001/03/05 10:53:51 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  *
  * @(#)fopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -48,6 +48,7 @@
 #include "un-namespace.h"
 
 #include "local.h"
+#include "priv_stdio.h"
 
 FILE *
 fopen(const char *file, const char *mode)
@@ -61,11 +62,11 @@ fopen(const char *file, const char *mode)
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
 	if ((f = _open(file, oflags, DEFFILEMODE)) < 0) {
-		fp->_flags = 0;			/* release */
+		fp->pub._flags = 0;			/* release */
 		return (NULL);
 	}
-	fp->_file = f;
-	fp->_flags = flags;
+	fp->pub._fileno = f;
+	fp->pub._flags = flags;
 	fp->_cookie = fp;
 	fp->_read = __sread;
 	fp->_write = __swrite;

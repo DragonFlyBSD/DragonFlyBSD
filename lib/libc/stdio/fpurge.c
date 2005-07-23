@@ -35,7 +35,7 @@
  *
  * @(#)fpurge.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fpurge.c,v 1.7 1999/08/28 00:01:02 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fpurge.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fpurge.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,8 +43,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "un-namespace.h"
+
 #include "local.h"
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 /*
  * fpurge: like fflush, but without writing anything: leave the
@@ -55,15 +57,15 @@ fpurge(FILE *fp)
 {
 	int retval;
 	FLOCKFILE(fp);
-	if (!fp->_flags) {
+	if (!fp->pub._flags) {
 		errno = EBADF;
 		retval = EOF;
 	} else {
 		if (HASUB(fp))
 			FREEUB(fp);
-		fp->_p = fp->_bf._base;
-		fp->_r = 0;
-		fp->_w = fp->_flags & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
+		fp->pub._p = fp->_bf._base;
+		fp->pub._r = 0;
+		fp->pub._w = fp->pub._flags & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
 		retval = 0;
 	}
 	FUNLOCKFILE(fp);

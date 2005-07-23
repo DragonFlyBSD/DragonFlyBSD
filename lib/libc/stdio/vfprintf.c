@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.9 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.10 2005/07/23 20:23:06 joerg Exp $
  */
 
 /*
@@ -61,7 +61,7 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "fvwrite.h"
+#include "priv_stdio.h"
 
 /* Define FLOATING_POINT to get floating point. */
 #define	FLOATING_POINT
@@ -118,7 +118,6 @@ static char *	__ujtoa(uintmax_t, char *, int, int, char *, int,
 		     char, const char *);
 static char *	__ultoa(u_long, char *, int, int, char *, int,
 		     char, const char *);
-static char *	__uqtoa(u_quad_t, char *, int, int, char *);
 static void	__find_arguments(const char *, va_list, union arg **);
 static void	__grow_type_table(int, enum typeid **, int *);
 
@@ -154,23 +153,23 @@ __sbprintf(FILE *fp, const char *fmt, va_list ap)
 	unsigned char buf[BUFSIZ];
 
 	/* copy the important variables */
-	fake._flags = fp->_flags & ~__SNBF;
-	fake._file = fp->_file;
+	fake.pub._flags = fp->pub._flags & ~__SNBF;
+	fake.pub._fileno = fp->pub._fileno;
 	fake._cookie = fp->_cookie;
 	fake._write = fp->_write;
 	fake._extra = fp->_extra;
 
 	/* set up the buffer */
-	fake._bf._base = fake._p = buf;
-	fake._bf._size = fake._w = sizeof(buf);
-	fake._lbfsize = 0;	/* not actually used, but Just In Case */
+	fake._bf._base = fake.pub._p = buf;
+	fake._bf._size = fake.pub._w = sizeof(buf);
+	fake.pub._lbfsize = 0;	/* not actually used, but Just In Case */
 
 	/* do the work, then copy any error status */
 	ret = __vfprintf(&fake, fmt, ap);
 	if (ret >= 0 && __fflush(&fake))
 		ret = EOF;
-	if (fake._flags & __SERR)
-		fp->_flags |= __SERR;
+	if (fake.pub._flags & __SERR)
+		fp->pub._flags |= __SERR;
 	return (ret);
 }
 
@@ -545,8 +544,8 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	}
 
 	/* optimise fprintf(stderr) (and other unbuffered Unix files) */
-	if ((fp->_flags & (__SNBF|__SWR|__SRW)) == (__SNBF|__SWR) &&
-	    fp->_file >= 0) {
+	if ((fp->pub._flags & (__SNBF|__SWR|__SRW)) == (__SNBF|__SWR) &&
+	    fp->pub._fileno >= 0) {
 		return (__sbprintf(fp, fmt0, ap));
 	}
 

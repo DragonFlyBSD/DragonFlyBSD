@@ -35,14 +35,16 @@
  *
  * @(#)fputs.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fputs.c,v 1.7 1999/08/28 00:01:03 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fputs.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fputs.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
+#include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
 #include "un-namespace.h"
-#include "fvwrite.h"
+#include "priv_stdio.h"
+
 #include "libc_private.h"
 
 /*
@@ -55,7 +57,7 @@ fputs(const char *s, FILE *fp)
 	struct __suio uio;
 	struct __siov iov;
 
-	iov.iov_base = (void *)s;
+	iov.iov_base = __DECONST(char *, s);
 	iov.iov_len = uio.uio_resid = strlen(s);
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;

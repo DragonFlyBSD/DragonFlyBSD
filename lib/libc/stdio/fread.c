@@ -35,15 +35,17 @@
  *
  * @(#)fread.c	8.2 (Berkeley) 12/11/93
  * $FreeBSD: src/lib/libc/stdio/fread.c,v 1.7 1999/08/28 00:01:04 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fread.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fread.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
 #include <stdio.h>
 #include <string.h>
 #include "un-namespace.h"
+
 #include "local.h"
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 size_t
 fread(void *buf, size_t size, size_t count, FILE *fp)
@@ -61,13 +63,13 @@ fread(void *buf, size_t size, size_t count, FILE *fp)
 	if ((resid = count * size) == 0)
 		return (0);
 	FLOCKFILE(fp);
-	if (fp->_r < 0)
-		fp->_r = 0;
+	if (fp->pub._r < 0)
+		fp->pub._r = 0;
 	total = resid;
 	p = buf;
-	while (resid > (r = fp->_r)) {
-		(void)memcpy((void *)p, (void *)fp->_p, (size_t)r);
-		fp->_p += r;
+	while (resid > (r = fp->pub._r)) {
+		(void)memcpy((void *)p, (void *)fp->pub._p, (size_t)r);
+		fp->pub._p += r;
 		/* fp->_r = 0 ... done in __srefill */
 		p += r;
 		resid -= r;
@@ -77,9 +79,9 @@ fread(void *buf, size_t size, size_t count, FILE *fp)
 			return ((total - resid) / size);
 		}
 	}
-	(void)memcpy((void *)p, (void *)fp->_p, resid);
-	fp->_r -= resid;
-	fp->_p += resid;
+	(void)memcpy((void *)p, (void *)fp->pub._p, resid);
+	fp->pub._r -= resid;
+	fp->pub._p += resid;
 	FUNLOCKFILE(fp);
 	return (count);
 }

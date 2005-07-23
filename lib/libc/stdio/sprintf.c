@@ -35,13 +35,15 @@
  *
  * @(#)sprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sprintf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libc/stdio/sprintf.c,v 1.4 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/sprintf.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
+
 #include "local.h"
+#include "priv_stdio.h"
 
 int
 sprintf(char *str, char const *fmt, ...)
@@ -51,15 +53,15 @@ sprintf(char *str, char const *fmt, ...)
 	FILE f;
 	struct __sFILEX ext;
 
-	f._file = -1;
-	f._flags = __SWR | __SSTR;
-	f._bf._base = f._p = (unsigned char *)str;
-	f._bf._size = f._w = INT_MAX;
+	f.pub._fileno = -1;
+	f.pub._flags = __SWR | __SSTR;
+	f._bf._base = f.pub._p = (unsigned char *)str;
+	f._bf._size = f.pub._w = INT_MAX;
 	f._extra = &ext;
 	INITEXTRA(&f);
 	va_start(ap, fmt);
 	ret = __vfprintf(&f, fmt, ap);		/* Use unlocked __vfprintf */
 	va_end(ap);
-	*f._p = 0;
+	*f.pub._p = 0;
 	return (ret);
 }

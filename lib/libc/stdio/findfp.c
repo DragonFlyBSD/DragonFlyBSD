@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.7 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -49,16 +49,16 @@
 
 #include <libc_private.h>
 #include "local.h"
-#include "glue.h"
+#include "priv_stdio.h"
 
 int	__sdidinit;
 
 #define	NDYNAMIC 10		/* add ten more whenever necessary */
 
 #define	std(flags, file) \
-	{0,0,0,flags,file,{0},0,__sF+file,__sclose,__sread,__sseek,__swrite, \
-	 {0}, __sFX + file}
-/*	 p r w flags file _bf z  cookie      close    read    seek    write */
+	{{0,flags,file,0,0,0},{NULL, 0},__sF+file,__sclose,__sread,__sseek,__swrite, \
+	 {NULL,0}, __sFX + file, 0, {0,0,0}, {0}, {NULL,0}, 0,0 }
+/*	 p flags file r w _bf  cookie      close    read    seek    write */
 /*	_ub _extra */
 
 				/* the usual - (stdin + stdout + stderr) */
@@ -149,7 +149,7 @@ __sfp(void)
 	THREAD_LOCK();
 	for (g = &__sglue; g != NULL; g = g->next) {
 		for (fp = g->iobs, n = g->niobs; --n >= 0; fp++)
-			if (fp->_flags == 0)
+			if (fp->pub._flags == 0)
 				goto found;
 	}
 	THREAD_UNLOCK();	/* don't hold lock while malloc()ing. */
@@ -160,15 +160,15 @@ __sfp(void)
 	lastglue = g;		/* not atomic; only accessed when locked */
 	fp = g->iobs;
 found:
-	fp->_flags = 1;		/* reserve this slot; caller sets real flags */
+	fp->pub._flags = 1;	/* reserve this slot; caller sets real flags */
 	THREAD_UNLOCK();
-	fp->_p = NULL;		/* no current pointer */
-	fp->_w = 0;		/* nothing to read or write */
-	fp->_r = 0;
+	fp->pub._p = NULL;	/* no current pointer */
+	fp->pub._w = 0;		/* nothing to read or write */
+	fp->pub._r = 0;
 	fp->_bf._base = NULL;	/* no buffer */
 	fp->_bf._size = 0;
-	fp->_lbfsize = 0;	/* not line buffered */
-	fp->_file = -1;		/* no file */
+	fp->pub._lbfsize = 0;	/* not line buffered */
+	fp->pub._fileno = -1;	/* no file */
 /*	fp->_cookie = <any>; */	/* caller sets cookie, _read/_write etc */
 	fp->_ub._base = NULL;	/* no ungetc buffer */
 	fp->_ub._size = 0;
@@ -182,6 +182,8 @@ found:
  * XXX.  Force immediate allocation of internal memory.  Not used by stdio,
  * but documented historically for certain applications.  Bad applications.
  */
+void	f_prealloc(void);
+
 __warn_references(f_prealloc, 
 	"warning: this program uses f_prealloc(), which is not recommended.");
 

@@ -35,14 +35,14 @@
  *
  * @(#)fwalk.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fwalk.c,v 1.6.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fwalk.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fwalk.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include <sys/types.h>
 #include <machine/atomic.h>
 #include "local.h"
-#include "glue.h"
+#include "priv_stdio.h"
 
 int
 _fwalk(int (*function)(FILE *))
@@ -59,7 +59,7 @@ _fwalk(int (*function)(FILE *))
 	 */
 	for (g = &__sglue; g != NULL; g = g->next)
 		for (fp = g->iobs, n = g->niobs; --n >= 0; fp++)
-			if (fp->_flags != 0)
+			if (fp->pub._flags != 0)
 				ret |= (*function)(fp);
 	return (ret);
 }

@@ -35,15 +35,17 @@
  *
  * @(#)setvbuf.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/lib/libc/stdio/setvbuf.c,v 1.7 1999/08/28 00:01:16 peter Exp $
- * $DragonFly: src/lib/libc/stdio/setvbuf.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/setvbuf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "un-namespace.h"
+
 #include "local.h"
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 /*
  * Set one of the three kinds of buffering, optionally including
@@ -76,8 +78,8 @@ setvbuf(FILE *fp, char *buf, int mode, size_t size)
 	(void)__sflush(fp);
 	if (HASUB(fp))
 		FREEUB(fp);
-	fp->_r = fp->_lbfsize = 0;
-	flags = fp->_flags;
+	fp->pub._r = fp->pub._lbfsize = 0;
+	flags = fp->pub._flags;
 	if (flags & __SMBF)
 		free((void *)fp->_bf._base);
 	flags &= ~(__SLBF | __SNBF | __SMBF | __SOPT | __SNPT | __SEOF);
@@ -113,9 +115,9 @@ setvbuf(FILE *fp, char *buf, int mode, size_t size)
 		if (buf == NULL) {
 			/* No luck; switch to unbuffered I/O. */
 nbf:
-			fp->_flags = flags | __SNBF;
-			fp->_w = 0;
-			fp->_bf._base = fp->_p = fp->_nbuf;
+			fp->pub._flags = flags | __SNBF;
+			fp->pub._w = 0;
+			fp->_bf._base = fp->pub._p = fp->_nbuf;
 			fp->_bf._size = 1;
 			FUNLOCKFILE(fp);
 			return (ret);
@@ -138,8 +140,8 @@ nbf:
 	 */
 	if (mode == _IOLBF)
 		flags |= __SLBF;
-	fp->_flags = flags;
-	fp->_bf._base = fp->_p = (unsigned char *)buf;
+	fp->pub._flags = flags;
+	fp->_bf._base = fp->pub._p = (unsigned char *)buf;
 	fp->_bf._size = size;
 	/* fp->_lbfsize is still 0 */
 	if (flags & __SWR) {
@@ -148,13 +150,13 @@ nbf:
 		 * that __SNBF is impossible (it was handled earlier).
 		 */
 		if (flags & __SLBF) {
-			fp->_w = 0;
-			fp->_lbfsize = -fp->_bf._size;
+			fp->pub._w = 0;
+			fp->pub._lbfsize = -fp->_bf._size;
 		} else
-			fp->_w = size;
+			fp->pub._w = size;
 	} else {
 		/* begin/continue reading, or stay in intermediate state */
-		fp->_w = 0;
+		fp->pub._w = 0;
 	}
 	__cleanup = _cleanup;
 

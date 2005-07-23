@@ -35,7 +35,7 @@
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
  * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.5 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,8 +43,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "un-namespace.h"
+
 #include "local.h"
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 static int __submore (FILE *);
 
@@ -71,7 +73,7 @@ __submore(FILE *fp)
 		p += BUFSIZ - sizeof(fp->_ubuf);
 		for (i = sizeof(fp->_ubuf); --i >= 0;)
 			p[i] = fp->_ubuf[i];
-		fp->_p = p;
+		fp->pub._p = p;
 		return (0);
 	}
 	i = fp->_ub._size;
@@ -80,7 +82,7 @@ __submore(FILE *fp)
 		return (EOF);
 	/* no overlap (hence can use memcpy) because we doubled the size */
 	(void)memcpy((void *)(p + i), (void *)p, (size_t)i);
-	fp->_p = p + i;
+	fp->pub._p = p + i;
 	fp->_ub._base = p;
 	fp->_ub._size = i << 1;
 	return (0);
@@ -112,23 +114,23 @@ __ungetc(int c, FILE *fp)
 {
 	if (c == EOF)
 		return(EOF);
-	if ((fp->_flags & __SRD) == 0) {
+	if ((fp->pub._flags & __SRD) == 0) {
 		/*
 		 * Not already reading: no good unless reading-and-writing.
 		 * Otherwise, flush any current write stuff.
 		 */
-		if ((fp->_flags & __SRW) == 0) {
+		if ((fp->pub._flags & __SRW) == 0) {
 			return (EOF);
 		}
-		if (fp->_flags & __SWR) {
+		if (fp->pub._flags & __SWR) {
 			if (__sflush(fp)) {
 				return (EOF);
 			}
-			fp->_flags &= ~__SWR;
-			fp->_w = 0;
-			fp->_lbfsize = 0;
+			fp->pub._flags &= ~__SWR;
+			fp->pub._w = 0;
+			fp->pub._lbfsize = 0;
 		}
-		fp->_flags |= __SRD;
+		fp->pub._flags |= __SRD;
 	}
 	c = (unsigned char)c;
 
@@ -137,24 +139,24 @@ __ungetc(int c, FILE *fp)
 	 * This may require expanding the current ungetc buffer.
 	 */
 	if (HASUB(fp)) {
-		if (fp->_r >= fp->_ub._size && __submore(fp)) {
+		if (fp->pub._r >= fp->_ub._size && __submore(fp)) {
 			return (EOF);
 		}
-		*--fp->_p = c;
-		fp->_r++;
+		*--fp->pub._p = c;
+		fp->pub._r++;
 		return (c);
 	}
-	fp->_flags &= ~__SEOF;
+	fp->pub._flags &= ~__SEOF;
 
 	/*
 	 * If we can handle this by simply backing up, do so,
 	 * but never replace the original character.
 	 * (This makes sscanf() work when scanning `const' data.)
 	 */
-	if (fp->_bf._base != NULL && fp->_p > fp->_bf._base &&
-	    fp->_p[-1] == c) {
-		fp->_p--;
-		fp->_r++;
+	if (fp->_bf._base != NULL && fp->pub._p > fp->_bf._base &&
+	    fp->pub._p[-1] == c) {
+		fp->pub._p--;
+		fp->pub._r++;
 		return (c);
 	}
 
@@ -162,12 +164,12 @@ __ungetc(int c, FILE *fp)
 	 * Create an ungetc buffer.
 	 * Initially, we will use the `reserve' buffer.
 	 */
-	fp->_ur = fp->_r;
-	fp->_extra->_up = fp->_p;
+	fp->_ur = fp->pub._r;
+	fp->_extra->_up = fp->pub._p;
 	fp->_ub._base = fp->_ubuf;
 	fp->_ub._size = sizeof(fp->_ubuf);
 	fp->_ubuf[sizeof(fp->_ubuf) - 1] = c;
-	fp->_p = &fp->_ubuf[sizeof(fp->_ubuf) - 1];
-	fp->_r = 1;
+	fp->pub._p = &fp->_ubuf[sizeof(fp->_ubuf) - 1];
+	fp->pub._r = 1;
 	return (c);
 }

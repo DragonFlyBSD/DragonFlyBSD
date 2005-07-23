@@ -36,7 +36,7 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/local.h,v 1.6 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/local.h,v 1.7 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <sys/types.h> /* for off_t */
@@ -82,7 +82,7 @@ struct __sFILEX {
  * Return true iff the given FILE cannot be written now.
  */
 #define	cantwrite(fp) \
-	((((fp)->_flags & __SWR) == 0 || (fp)->_bf._base == NULL) && \
+	((((fp)->pub._flags & __SWR) == 0 || (fp)->_bf._base == NULL) && \
 	 __swsetup(fp))
 
 /*

@@ -35,13 +35,15 @@
  *
  * @(#)sscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.5 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+
 #include "local.h"
+#include "priv_stdio.h"
 
 static int eofread (void *, char *, int);
 
@@ -61,10 +63,10 @@ sscanf(const char *str, char const *fmt, ...)
 	FILE f;
 	struct __sFILEX ext;
 
-	f._file = -1;
-	f._flags = __SRD;
-	f._bf._base = f._p = (unsigned char *)str;
-	f._bf._size = f._r = strlen(str);
+	f.pub._fileno = -1;
+	f.pub._flags = __SRD;
+	f._bf._base = f.pub._p = (unsigned char *)str;
+	f._bf._size = f.pub._r = strlen(str);
 	f._read = eofread;
 	f._ub._base = NULL;
 	f._lb._base = NULL;

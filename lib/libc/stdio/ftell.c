@@ -35,7 +35,7 @@
  *
  * @(#)ftell.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/lib/libc/stdio/ftell.c,v 1.11 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libc/stdio/ftell.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/ftell.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,8 +43,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include "un-namespace.h"
+
 #include "local.h"
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 /*
  * standard ftell function.
@@ -79,7 +81,7 @@ ftello(FILE *fp)
 	 * Find offset of underlying I/O object, then
 	 * adjust for buffered bytes.
 	 */
-	if (fp->_flags & __SOFF)
+	if (fp->pub._flags & __SOFF)
 		pos = fp->_offset;
 	else {
 		pos = (*fp->_seek)(fp->_cookie, (fpos_t)0, SEEK_CUR);
@@ -88,22 +90,22 @@ ftello(FILE *fp)
 			return (pos);
 		}
 	}
-	if (fp->_flags & __SRD) {
+	if (fp->pub._flags & __SRD) {
 		/*
 		 * Reading.  Any unread characters (including
 		 * those from ungetc) cause the position to be
 		 * smaller than that in the underlying object.
 		 */
-		pos -= fp->_r;
+		pos -= fp->pub._r;
 		if (HASUB(fp))
 			pos -= fp->_ur;
-	} else if (fp->_flags & __SWR && fp->_p != NULL) {
+	} else if (fp->pub._flags & __SWR && fp->pub._p != NULL) {
 		/*
 		 * Writing.  Any buffered characters cause the
 		 * position to be greater than that in the
 		 * underlying object.
 		 */
-		pos += fp->_p - fp->_bf._base;
+		pos += fp->pub._p - fp->_bf._base;
 	}
 	FUNLOCKFILE(fp);
 	return (pos);

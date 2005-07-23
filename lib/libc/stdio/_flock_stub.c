@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.8 2005/05/11 12:45:57 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.9 2005/07/23 20:23:05 joerg Exp $
  *
  */
 
@@ -40,6 +40,7 @@
 #include "un-namespace.h"
 
 #include "local.h"
+#include "priv_stdio.h"
 
 void __flockfile(FILE *fp);
 void __flockfile_debug(FILE *fp, char *fname, int lineno);

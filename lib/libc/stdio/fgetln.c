@@ -35,13 +35,14 @@
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.5 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Expand the line buffer.  Return -1 on error.
@@ -50,7 +51,7 @@
  * so we add 1 here.
 #endif
  */
-int
+static int
 __slbexpand(FILE *fp, size_t newsize)
 {
 	void *p;
@@ -82,13 +83,13 @@ fgetln(FILE *fp, size_t *lenp)
 	size_t off;
 
 	/* make sure there is input */
-	if (fp->_r <= 0 && __srefill(fp)) {
+	if (fp->pub._r <= 0 && __srefill(fp)) {
 		*lenp = 0;
 		return (NULL);
 	}
 
 	/* look for a newline in the input */
-	if ((p = memchr((void *)fp->_p, '\n', (size_t)fp->_r)) != NULL) {
+	if ((p = memchr((void *)fp->pub._p, '\n', (size_t)fp->pub._r)) != NULL) {
 		char *ret;
 
 		/*
@@ -97,11 +98,11 @@ fgetln(FILE *fp, size_t *lenp)
 		 * the text.
 		 */
 		p++;		/* advance over it */
-		ret = (char *)fp->_p;
-		*lenp = len = p - fp->_p;
-		fp->_flags |= __SMOD;
-		fp->_r -= len;
-		fp->_p = p;
+		ret = (char *)fp->pub._p;
+		*lenp = len = p - fp->pub._p;
+		fp->pub._flags |= __SMOD;
+		fp->pub._r -= len;
+		fp->pub._p = p;
 		return (ret);
 	}
 
@@ -115,7 +116,7 @@ fgetln(FILE *fp, size_t *lenp)
 	 */
 #define OPTIMISTIC 80
 
-	for (len = fp->_r, off = 0;; len += fp->_r) {
+	for (len = fp->pub._r, off = 0;; len += fp->pub._r) {
 		size_t diff;
 
 		/*
@@ -125,24 +126,25 @@ fgetln(FILE *fp, size_t *lenp)
 		 */
 		if (__slbexpand(fp, len + OPTIMISTIC))
 			goto error;
-		(void)memcpy((void *)(fp->_lb._base + off), (void *)fp->_p,
+		(void)memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
 		    len - off);
 		off = len;
 		if (__srefill(fp))
 			break;	/* EOF or error: return partial line */
-		if ((p = memchr((void *)fp->_p, '\n', (size_t)fp->_r)) == NULL)
+		if ((p = memchr((void *)fp->pub._p, '\n', (size_t)fp->pub._r))
+		    == NULL)
 			continue;
 
 		/* got it: finish up the line (like code above) */
 		p++;
-		diff = p - fp->_p;
+		diff = p - fp->pub._p;
 		len += diff;
 		if (__slbexpand(fp, len))
 			goto error;
-		(void)memcpy((void *)(fp->_lb._base + off), (void *)fp->_p,
+		(void)memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
 		    diff);
-		fp->_r -= diff;
-		fp->_p = p;
+		fp->pub._r -= diff;
+		fp->pub._p = p;
 		break;
 	}
 	*lenp = len;

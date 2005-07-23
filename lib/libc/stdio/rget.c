@@ -35,11 +35,13 @@
  *
  * @(#)rget.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/rget.c,v 1.2.8.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/rget.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/rget.c,v 1.3 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
+
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Handle getc() when the buffer ran out:
@@ -50,8 +52,8 @@ int
 __srget(FILE *fp)
 {
 	if (__srefill(fp) == 0) {
-		fp->_r--;
-		return (*fp->_p++);
+		fp->pub._r--;
+		return (*fp->pub._p++);
 	}
 	return (EOF);
 }

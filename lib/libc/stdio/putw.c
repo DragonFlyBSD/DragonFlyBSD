@@ -35,13 +35,13 @@
  *
  * @(#)putw.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putw.c,v 1.7 1999/08/28 00:01:13 peter Exp $
- * $DragonFly: src/lib/libc/stdio/putw.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/putw.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
 #include <stdio.h>
 #include "un-namespace.h"
-#include "fvwrite.h"
+#include "priv_stdio.h"
 #include "libc_private.h"
 
 int

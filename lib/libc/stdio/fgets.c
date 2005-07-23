@@ -35,7 +35,7 @@
  *
  * @(#)fgets.c	8.2 (Berkeley) 12/22/93
  * $FreeBSD: src/lib/libc/stdio/fgets.c,v 1.9 1999/08/28 00:01:00 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,7 +43,9 @@
 #include <string.h>
 #include "un-namespace.h"
 #include "local.h"
+
 #include "libc_private.h"
+#include "priv_stdio.h"
 
 /*
  * Read at most n-1 characters from the given file.
@@ -67,7 +69,7 @@ fgets(char *buf, int n, FILE *fp)
 		/*
 		 * If the buffer is empty, refill it.
 		 */
-		if ((len = fp->_r) <= 0) {
+		if ((len = fp->pub._r) <= 0) {
 			if (__srefill(fp)) {
 				/* EOF/error: stop with partial or no line */
 				if (s == buf) {
@@ -76,9 +78,9 @@ fgets(char *buf, int n, FILE *fp)
 				}
 				break;
 			}
-			len = fp->_r;
+			len = fp->pub._r;
 		}
-		p = fp->_p;
+		p = fp->pub._p;
 
 		/*
 		 * Scan through at most n bytes of the current buffer,
@@ -91,15 +93,15 @@ fgets(char *buf, int n, FILE *fp)
 		t = memchr((void *)p, '\n', len);
 		if (t != NULL) {
 			len = ++t - p;
-			fp->_r -= len;
-			fp->_p = t;
+			fp->pub._r -= len;
+			fp->pub._p = t;
 			(void)memcpy((void *)s, (void *)p, len);
 			s[len] = 0;
 			FUNLOCKFILE(fp);
 			return (buf);
 		}
-		fp->_r -= len;
-		fp->_p += len;
+		fp->pub._r -= len;
+		fp->pub._p += len;
 		(void)memcpy((void *)s, (void *)p, len);
 		s += len;
 		n -= len;

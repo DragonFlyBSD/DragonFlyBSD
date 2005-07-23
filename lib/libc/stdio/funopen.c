@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/funopen.c,v 1.1.1.1.14.1 2001/03/05 10:57:52 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/funopen.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/funopen.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  *
  * @(#)funopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -43,13 +43,13 @@
 #include <errno.h>
 
 #include "local.h"
+#include "priv_stdio.h"
 
 FILE *
-funopen(cookie, readfn, writefn, seekfn, closefn)
-	const void *cookie;
-	int (*readfn)(), (*writefn)();
-	fpos_t (*seekfn)(void *cookie, fpos_t off, int whence);
-	int (*closefn)();
+funopen(const void *cookie, int (*readfn)(void *, char *, int),
+	int (*writefn)(void *, const char *, int),
+	fpos_t (*seekfn)(void *cookie, fpos_t off, int whence),
+	int (*closefn)(void *))
 {
 	FILE *fp;
 	int flags;
@@ -68,8 +68,8 @@ funopen(cookie, readfn, writefn, seekfn, closefn)
 	}
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
-	fp->_flags = flags;
-	fp->_file = -1;
+	fp->pub._flags = flags;
+	fp->pub._fileno = -1;
 	fp->_cookie = (void *)cookie;
 	fp->_read = readfn;
 	fp->_write = writefn;

@@ -1,12 +1,12 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 4/17/94
 # $FreeBSD: src/lib/libc/stdio/Makefile.inc,v 1.19.2.1 2001/04/25 10:04:11 ru Exp $
-# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.2 2003/06/17 04:26:45 dillon Exp $
+# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.3 2005/07/23 20:23:05 joerg Exp $
 
 # stdio sources
 .PATH: ${.CURDIR}/../libc/stdio
 
-SRCS+=	_flock_stub.c \
-	asprintf.c clrerr.c fclose.c fdopen.c feof.c ferror.c fflush.c \
+SRCS+=	__fpending.c _flock_stub.c \
+	asprintf.c clrerr.c fcookie.c fclose.c fdopen.c feof.c ferror.c fflush.c \
 	fgetc.c fgetln.c fgetpos.c fgets.c fileno.c findfp.c flags.c fopen.c \
 	fprintf.c fpurge.c fputc.c fputs.c fread.c freopen.c fscanf.c \
 	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwrite.c \

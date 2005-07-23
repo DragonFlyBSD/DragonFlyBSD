@@ -35,7 +35,7 @@
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
- * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.8 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.9 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,23 +43,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "un-namespace.h"
+
 #include "libc_private.h"
 #include "local.h"
+#include "priv_stdio.h"
 
 int
 fclose(FILE *fp)
 {
 	int r;
 
-	if (fp->_flags == 0) {	/* not open! */
+	if (fp->pub._flags == 0) {	/* not open! */
 		errno = EBADF;
 		return (EOF);
 	}
 	FLOCKFILE(fp);
-	r = fp->_flags & __SWR ? __sflush(fp) : 0;
+	r = fp->pub._flags & __SWR ? __sflush(fp) : 0;
 	if (fp->_close != NULL && (*fp->_close)(fp->_cookie) < 0)
 		r = EOF;
-	if (fp->_flags & __SMBF)
+	if (fp->pub._flags & __SMBF)
 		free((char *)fp->_bf._base);
 	if (HASUB(fp))
 		FREEUB(fp);
@@ -74,14 +76,14 @@ fclose(FILE *fp)
 	 * locking code.
 	 */
 	FUNLOCKFILE(fp);
-	fp->_file = -1;
-	fp->_r = fp->_w = 0;	/* Mess up if reaccessed. */
+	fp->pub._fileno = -1;
+	fp->pub._r = fp->pub._w = 0;	/* Mess up if reaccessed. */
 #if 0
 	if (fp->_lock != NULL) {
 		_pthread_mutex_destroy((pthread_mutex_t *)&fp->_lock);
 		fp->_lock = NULL;
 	}
 #endif
-	fp->_flags = 0;		/* Release this FILE for reuse. */
+	fp->pub._flags = 0;		/* Release this FILE for reuse. */
 	return (r);
 }

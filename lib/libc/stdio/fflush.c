@@ -35,7 +35,7 @@
  *
  * @(#)fflush.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fflush.c,v 1.7 1999/08/28 00:00:58 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,7 +43,9 @@
 #include <stdio.h>
 #include "un-namespace.h"
 #include "libc_private.h"
+
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Flush a single file, or (if fp is NULL) all files.
@@ -57,7 +59,7 @@ fflush(FILE *fp)
 	if (fp == NULL)
 		return (_fwalk(__sflush));
 	FLOCKFILE(fp);
-	if ((fp->_flags & (__SWR | __SRW)) == 0) {
+	if ((fp->pub._flags & (__SWR | __SRW)) == 0) {
 		errno = EBADF;
 		retval = EOF;
 	} else 
@@ -78,7 +80,7 @@ __fflush(FILE *fp)
 
 	if (fp == NULL)
 		return (_fwalk(__sflush));
-	if ((fp->_flags & (__SWR | __SRW)) == 0) {
+	if ((fp->pub._flags & (__SWR | __SRW)) == 0) {
 		errno = EBADF;
 		retval = EOF;
 	} else
@@ -92,26 +94,26 @@ __sflush(FILE *fp)
 	unsigned char *p;
 	int n, t;
 
-	t = fp->_flags;
+	t = fp->pub._flags;
 	if ((t & __SWR) == 0)
 		return (0);
 
 	if ((p = fp->_bf._base) == NULL)
 		return (0);
 
-	n = fp->_p - p;		/* write this much */
+	n = fp->pub._p - p;		/* write this much */
 
 	/*
 	 * Set these immediately to avoid problems with longjmp and to allow
 	 * exchange buffering (via setvbuf) in user write function.
 	 */
-	fp->_p = p;
-	fp->_w = t & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
+	fp->pub._p = p;
+	fp->pub._w = t & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
 
 	for (; n > 0; n -= t, p += t) {
 		t = (*fp->_write)(fp->_cookie, (char *)p, n);
 		if (t <= 0) {
-			fp->_flags |= __SERR;
+			fp->pub._flags |= __SERR;
 			return (EOF);
 		}
 	}

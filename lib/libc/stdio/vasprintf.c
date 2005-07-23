@@ -27,14 +27,16 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.5 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+
 #include "local.h"
+#include "priv_stdio.h"
 
 int
 vasprintf(char **str, const char *fmt, va_list ap)
@@ -43,19 +45,19 @@ vasprintf(char **str, const char *fmt, va_list ap)
 	FILE f;
 	struct __sFILEX ext;
 
-	f._file = -1;
-	f._flags = __SWR | __SSTR | __SALC;
-	f._bf._base = f._p = (unsigned char *)malloc(128);
+	f.pub._fileno = -1;
+	f.pub._flags = __SWR | __SSTR | __SALC;
+	f._bf._base = f.pub._p = (unsigned char *)malloc(128);
 	if (f._bf._base == NULL) {
 		*str = NULL;
 		errno = ENOMEM;
 		return (-1);
 	}
-	f._bf._size = f._w = 127;		/* Leave room for the NULL */
+	f._bf._size = f.pub._w = 127;		/* Leave room for the NULL */
 	f._extra = &ext;
 	INITEXTRA(&f);
 	ret = __vfprintf(&f, fmt, ap);
-	*f._p = '\0';
+	*f.pub._p = '\0';
 	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);
 	if (f._bf._base == NULL) {
 		errno = ENOMEM;

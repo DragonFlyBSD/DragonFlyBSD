@@ -35,7 +35,7 @@
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.7 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <errno.h>
@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "local.h"
-#include "fvwrite.h"
+#include "priv_stdio.h"
 
 /*
  * Write some memory regions.  Return zero on success, EOF on error.
@@ -70,7 +70,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 	}
 
 #define	MIN(a, b) ((a) < (b) ? (a) : (b))
-#define	COPY(n)	  (void)memcpy((void *)fp->_p, (void *)p, (size_t)(n))
+#define	COPY(n)	  (void)memcpy((void *)fp->pub._p, (void *)p, (size_t)(n))
 
 	iov = uio->uio_iov;
 	p = iov->iov_base;
@@ -83,7 +83,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 		len = iov->iov_len; \
 		iov++; \
 	}
-	if (fp->_flags & __SNBF) {
+	if (fp->pub._flags & __SNBF) {
 		/*
 		 * Unbuffered: write up to BUFSIZ bytes at a time.
 		 */
@@ -95,7 +95,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 			p += w;
 			len -= w;
 		} while ((uio->uio_resid -= w) != 0);
-	} else if ((fp->_flags & __SLBF) == 0) {
+	} else if ((fp->pub._flags & __SLBF) == 0) {
 		/*
 		 * Fully buffered: fill partially full buffer, if any,
 		 * and then flush.  If there is no partial buffer, write
@@ -109,37 +109,37 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 		 */
 		do {
 			GETIOV(;);
-			if ((fp->_flags & (__SALC | __SSTR)) ==
-			    (__SALC | __SSTR) && fp->_w < len) {
-				size_t blen = fp->_p - fp->_bf._base;
+			if ((fp->pub._flags & (__SALC | __SSTR)) ==
+			    (__SALC | __SSTR) && fp->pub._w < len) {
+				size_t blen = fp->pub._p - fp->_bf._base;
 
 				/*
 				 * Alloc an extra 128 bytes (+ 1 for NULL)
 				 * so we don't call realloc(3) so often.
 				 */
-				fp->_w = len + 128;
+				fp->pub._w = len + 128;
 				fp->_bf._size = blen + len + 128;
 				fp->_bf._base =
 				    reallocf(fp->_bf._base, fp->_bf._size + 1);
 				if (fp->_bf._base == NULL)
 					goto err;
-				fp->_p = fp->_bf._base + blen;
+				fp->pub._p = fp->_bf._base + blen;
 			}
-			w = fp->_w;
-			if (fp->_flags & __SSTR) {
+			w = fp->pub._w;
+			if (fp->pub._flags & __SSTR) {
 				if (len < w)
 					w = len;
 				if (w > 0) {
 					COPY(w);        /* copy MIN(fp->_w,len), */
-					fp->_w -= w;
-					fp->_p += w;
+					fp->pub._w -= w;
+					fp->pub._p += w;
 				}
 				w = len;	/* but pretend copied all */
-			} else if (fp->_p > fp->_bf._base && len > w) {
+			} else if (fp->pub._p > fp->_bf._base && len > w) {
 				/* fill and flush */
 				COPY(w);
 				/* fp->_w -= w; */ /* unneeded */
-				fp->_p += w;
+				fp->pub._p += w;
 				if (__fflush(fp))
 					goto err;
 			} else if (len >= (w = fp->_bf._size)) {
@@ -151,8 +151,8 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 				/* fill and done */
 				w = len;
 				COPY(w);
-				fp->_w -= w;
-				fp->_p += w;
+				fp->pub._w -= w;
+				fp->pub._p += w;
 			}
 			p += w;
 			len -= w;
@@ -175,11 +175,11 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 				nlknown = 1;
 			}
 			s = MIN(len, nldist);
-			w = fp->_w + fp->_bf._size;
-			if (fp->_p > fp->_bf._base && s > w) {
+			w = fp->pub._w + fp->_bf._size;
+			if (fp->pub._p > fp->_bf._base && s > w) {
 				COPY(w);
 				/* fp->_w -= w; */
-				fp->_p += w;
+				fp->pub._p += w;
 				if (__fflush(fp))
 					goto err;
 			} else if (s >= (w = fp->_bf._size)) {
@@ -189,8 +189,8 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 			} else {
 				w = s;
 				COPY(w);
-				fp->_w -= w;
-				fp->_p += w;
+				fp->pub._w -= w;
+				fp->pub._p += w;
 			}
 			if ((nldist -= w) == 0) {
 				/* copied the newline: flush and forget */
@@ -205,6 +205,6 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 	return (0);
 
 err:
-	fp->_flags |= __SERR;
+	fp->pub._flags |= __SERR;
 	return (EOF);
 }

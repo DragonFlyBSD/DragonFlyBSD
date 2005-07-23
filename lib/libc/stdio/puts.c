@@ -35,14 +35,15 @@
  *
  * @(#)puts.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/puts.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libc/stdio/puts.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/puts.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
+#include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
 #include "un-namespace.h"
-#include "fvwrite.h"
+#include "priv_stdio.h"
 #include "libc_private.h"
 
 /*
@@ -56,9 +57,9 @@ puts(char const *s)
 	struct __suio uio;
 	struct __siov iov[2];
 
-	iov[0].iov_base = (void *)s;
+	iov[0].iov_base = __DECONST(char *, s);
 	iov[0].iov_len = c;
-	iov[1].iov_base = "\n";
+	iov[1].iov_base = __DECONST(char *, "\n");
 	iov[1].iov_len = 1;
 	uio.uio_resid = c + 1;
 	uio.uio_iov = &iov[0];

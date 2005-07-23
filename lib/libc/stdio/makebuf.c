@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/makebuf.c,v 1.1.1.1.14.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/makebuf.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/makebuf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  *
  * @(#)makebuf.c	8.1 (Berkeley) 6/4/93
  */
@@ -45,8 +45,10 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "local.h"
 #include "un-namespace.h"
+
+#include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Allocate a file buffer, or switch to unbuffered I/O.
@@ -63,25 +65,25 @@ __smakebuf(FILE *fp)
 	size_t size;
 	int couldbetty;
 
-	if (fp->_flags & __SNBF) {
-		fp->_bf._base = fp->_p = fp->_nbuf;
+	if (fp->pub._flags & __SNBF) {
+		fp->_bf._base = fp->pub._p = fp->_nbuf;
 		fp->_bf._size = 1;
 		return;
 	}
 	flags = __swhatbuf(fp, &size, &couldbetty);
 	if ((p = malloc(size)) == NULL) {
-		fp->_flags |= __SNBF;
-		fp->_bf._base = fp->_p = fp->_nbuf;
+		fp->pub._flags |= __SNBF;
+		fp->_bf._base = fp->pub._p = fp->_nbuf;
 		fp->_bf._size = 1;
 		return;
 	}
 	__cleanup = _cleanup;
 	flags |= __SMBF;
-	fp->_bf._base = fp->_p = p;
+	fp->_bf._base = fp->pub._p = p;
 	fp->_bf._size = size;
-	if (couldbetty && isatty(fp->_file))
+	if (couldbetty && isatty(fp->pub._fileno))
 		flags |= __SLBF;
-	fp->_flags |= flags;
+	fp->pub._flags |= flags;
 }
 
 /*
@@ -92,7 +94,7 @@ __swhatbuf(FILE *fp, size_t *bufsize, int *couldbetty)
 {
 	struct stat st;
 
-	if (fp->_file < 0 || _fstat(fp->_file, &st) < 0) {
+	if (fp->pub._fileno < 0 || _fstat(fp->pub._fileno, &st) < 0) {
 		*couldbetty = 0;
 		*bufsize = BUFSIZ;
 		return (__SNPT);

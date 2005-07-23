@@ -35,7 +35,7 @@
  *
  * @(#)freopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.5.2.1 2001/03/05 10:54:53 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -47,8 +47,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "un-namespace.h"
+
 #include "libc_private.h"
 #include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Re-direct an existing, open (probably) file to some other file.
@@ -80,12 +82,12 @@ freopen(const char *file, const char *mode, FILE *fp)
 	 */
 	if (file == NULL) {
 		/* See comment below regarding freopen() of closed files. */
-		if (fp->_flags == 0) {
+		if (fp->pub._flags == 0) {
 			FUNLOCKFILE(fp);
 			errno = EINVAL;
 			return (NULL);
 		}
-		if ((dflags = fcntl(fp->_file, F_GETFL)) < 0) {
+		if ((dflags = _fcntl(fp->pub._fileno, F_GETFL)) < 0) {
 			sverrno = errno;
 			fclose(fp);
 			FUNLOCKFILE(fp);
@@ -102,7 +104,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 		if ((oflags ^ dflags) & O_APPEND) {
 			dflags &= ~O_APPEND;
 			dflags |= oflags & O_APPEND;
-			if (fcntl(fp->_file, F_SETFL, dflags) < 0) {
+			if (_fcntl(fp->pub._fileno, F_SETFL, dflags) < 0) {
 				sverrno = errno;
 				fclose(fp);
 				FUNLOCKFILE(fp);
@@ -111,7 +113,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 			}
 		}
 		if (oflags & O_TRUNC)
-			ftruncate(fp->_file, 0);
+			ftruncate(fp->pub._fileno, 0);
 		if (_fseeko(fp, 0, oflags & O_APPEND ? SEEK_END : SEEK_SET) < 0 &&
 		    errno != ESPIPE) {
 			sverrno = errno;
@@ -120,7 +122,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 			errno = sverrno;
 			return (NULL);
 		}
-		f = fp->_file;
+		f = fp->pub._fileno;
 		isopen = 0;
 		wantfd = -1;
 		goto finish;
@@ -134,17 +136,17 @@ freopen(const char *file, const char *mode, FILE *fp)
 	 * a descriptor, defer closing it; freopen("/dev/stdin", "r", stdin)
 	 * should work.  This is unnecessary if it was not a Unix file.
 	 */
-	if (fp->_flags == 0) {
-		fp->_flags = __SEOF;	/* hold on to it */
+	if (fp->pub._flags == 0) {
+		fp->pub._flags = __SEOF;	/* hold on to it */
 		isopen = 0;
 		wantfd = -1;
 	} else {
 		/* flush the stream; ANSI doesn't require this. */
-		if (fp->_flags & __SWR)
+		if (fp->pub._flags & __SWR)
 			(void) __sflush(fp);
 		/* if close is NULL, closing is a no-op, hence pointless */
 		isopen = fp->_close != NULL;
-		if ((wantfd = fp->_file) < 0 && isopen) {
+		if ((wantfd = fp->pub._fileno) < 0 && isopen) {
 			(void) (*fp->_close)(fp->_cookie);
 			isopen = 0;
 		}
@@ -170,14 +172,14 @@ finish:
 	 */
 	if (isopen)
 		(void) (*fp->_close)(fp->_cookie);
-	if (fp->_flags & __SMBF)
+	if (fp->pub._flags & __SMBF)
 		free((char *)fp->_bf._base);
-	fp->_w = 0;
-	fp->_r = 0;
-	fp->_p = NULL;
+	fp->pub._w = 0;
+	fp->pub._r = 0;
+	fp->pub._p = NULL;
 	fp->_bf._base = NULL;
 	fp->_bf._size = 0;
-	fp->_lbfsize = 0;
+	fp->pub._lbfsize = 0;
 	if (HASUB(fp))
 		FREEUB(fp);
 	fp->_ub._size = 0;
@@ -186,7 +188,7 @@ finish:
 	fp->_lb._size = 0;
 
 	if (f < 0) {			/* did not get it after all */
-		fp->_flags = 0;		/* set it free */
+		fp->pub._flags = 0;		/* set it free */
 		errno = sverrno;	/* restore in case _close clobbered */
 		FUNLOCKFILE(fp);
 		return (NULL);
@@ -204,8 +206,8 @@ finish:
 		}
 	}
 
-	fp->_flags = flags;
-	fp->_file = f;
+	fp->pub._flags = flags;
+	fp->pub._fileno = f;
 	fp->_cookie = fp;
 	fp->_read = __sread;
 	fp->_write = __swrite;

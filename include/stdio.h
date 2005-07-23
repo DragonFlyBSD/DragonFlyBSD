@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.7 2005/05/09 12:43:40 davidxu Exp $
+ * $DragonFly: src/include/stdio.h,v 1.8 2005/07/23 20:23:06 joerg Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -60,22 +60,6 @@ typedef __size_t	size_t;
 
 typedef	__off_t	fpos_t;
 
-#define	_FSTDIO			/* Define for new stdio with functions. */
-
-/*
- * NB: to fit things in six character monocase externals, the stdio
- * code uses the prefix `__s' for stdio objects, typically followed
- * by a three-character attempt at a mnemonic.
- */
-
-/* stdio buffers */
-struct __sbuf {
-	unsigned char *_base;
-	int	_size;
-};
-
-struct __sFILEX;
-
 /*
  * stdio state variables.
  *
@@ -94,46 +78,18 @@ struct __sFILEX;
  * _lbfsize is used only to make the inline line-buffered output stream
  * code as compact as possible.
  *
- * _ub, _up, and _ur are used when ungetc() pushes back more characters
- * than fit in the current _bf, or when ungetc() pushes back a character
- * that does not match the previous one in _bf.  When this happens,
- * _ub._base becomes non-nil (i.e., a stream has ungetc() data iff
- * _ub._base!=NULL) and _up and _ur save the current values of _p and _r.
- *
- * NB: see WARNING above before changing the layout of this structure!
+ * WARNING: Do not change the order of the fields in __FILE_public!
  */
-typedef	struct __sFILE {
-	unsigned char *_p;	/* current position in (some) buffer */
-	int	_r;		/* read space left for getc() */
-	int	_w;		/* write space left for putc() */
-	short	_flags;		/* flags, below; this FILE is free if 0 */
-	short	_file;		/* fileno, if Unix descriptor, else -1 */
-	struct	__sbuf _bf;	/* the buffer (at least 1 byte, if !NULL) */
-	int	_lbfsize;	/* 0 or -_bf._size, for inline putc */
+typedef struct __FILE FILE;
 
-	/* operations */
-	void	*_cookie;	/* cookie passed to io functions */
-	int	(*_close) (void *);
-	int	(*_read)  (void *, char *, int);
-	fpos_t	(*_seek)  (void *, fpos_t, int);
-	int	(*_write) (void *, const char *, int);
-
-	/* separate buffer for long sequences of ungetc() */
-	struct	__sbuf _ub;	/* ungetc buffer */
-	struct  __sFILEX *_extra;
-	int	_ur;		/* saved _r when _r is counting ungetc data */
-
-	/* tricks to meet minimum requirements even when malloc() fails */
-	unsigned char _ubuf[3];	/* guarantee an ungetc() buffer */
-	unsigned char _nbuf[1];	/* guarantee a getc() buffer */
-
-	/* separate buffer for fgetln() when line crosses buffer boundary */
-	struct	__sbuf _lb;	/* buffer for fgetln() */
-
-	/* Unix stdio files get aligned to block boundaries on fseek() */
-	int	_blksize;	/* stat.st_blksize (may be != _bf._size) */
-	fpos_t	_offset;	/* current lseek offset (see WARNING) */
-} FILE;
+struct __FILE_public {
+	unsigned char	*_p;	/* current position in (some) buffer */
+	int		_flags;		/* flags, below; this FILE is free if 0 */
+	int		_fileno;	/* fileno, if Unix descriptor, else -1 */
+	__ssize_t	_r;		/* read space left for getc() */
+	__ssize_t	_w;		/* write space left for putc() */
+	__ssize_t	_lbfsize;	/* 0 or -_bf._size, for inline putc */
+};
 
 __BEGIN_DECLS
 extern FILE *__stdinp, *__stdoutp, *__stderrp;
@@ -303,6 +259,7 @@ __END_DECLS
 __BEGIN_DECLS
 int	 asprintf (char **, const char *, ...) __printflike(2, 3);
 char	*ctermid_r (char *);
+void	*fcookie(FILE *);
 char	*fgetln (FILE *, size_t *);
 #if __GNUC__ == 2 && __GNUC_MINOR__ >= 7 || __GNUC__ >= 3
 #define	__ATTR_FORMAT_ARG	__attribute__((__format_arg__(2)))
@@ -310,6 +267,7 @@ char	*fgetln (FILE *, size_t *);
 #define	__ATTR_FORMAT_ARG
 #endif
 __const char *fmtcheck (const char *, const char *) __ATTR_FORMAT_ARG;
+__ssize_t __fpending(FILE *);
 int	 fpurge (FILE *);
 int	 fseeko (FILE *, __off_t, int);
 __off_t ftello (FILE *);
@@ -362,35 +320,62 @@ int	__swbuf (int, FILE *);
 __END_DECLS
 
 /*
- * The __sfoo macros are here so that we can
- * define function versions in the C library.
+ * The __sfoo functions are here so that we can
+ * define real function versions in the C library.
  */
-#define	__sgetc(p) (--(p)->_r < 0 ? __srget(p) : (int)(*(p)->_p++))
-#if defined(__GNUC__) && defined(__STDC__)
-static __inline int __sputc(int _c, FILE *_p) {
-	if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
+static __inline int
+__sgetc(FILE *_fp)
+{
+	struct __FILE_public *_p = (struct __FILE_public *)_fp;
+
+	if (--_p->_r < 0)
+		return (__srget(_fp));
+	else
+		return (*_p->_p++);
+}
+
+static __inline int
+__sputc(int _c, FILE *_fp)
+{
+	struct __FILE_public *_p = (struct __FILE_public *)_fp;
+
+	if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && _c != '\n'))
 		return (*_p->_p++ = _c);
 	else
-		return (__swbuf(_c, _p));
+		return (__swbuf(_c, _fp));
 }
-#else
-/*
- * This has been tuned to generate reasonable code on the vax using pcc.
- */
-#define	__sputc(c, p) \
-	(--(p)->_w < 0 ? \
-		(p)->_w >= (p)->_lbfsize ? \
-			(*(p)->_p = (c)), *(p)->_p != '\n' ? \
-				(int)*(p)->_p++ : \
-				__swbuf('\n', p) : \
-			__swbuf((int)(c), p) : \
-		(*(p)->_p = (c), (int)*(p)->_p++))
-#endif
 
-#define	__sfeof(p)	(((p)->_flags & __SEOF) != 0)
-#define	__sferror(p)	(((p)->_flags & __SERR) != 0)
-#define	__sclearerr(p)	((void)((p)->_flags &= ~(__SERR|__SEOF)))
-#define	__sfileno(p)	((p)->_file)
+static __inline int
+__sfeof(FILE *_fp)
+{
+	struct __FILE_public *_p = (struct __FILE_public *)_fp;
+
+	return ((_p->_flags & __SEOF) != 0);
+}
+
+static __inline int
+__sferror(FILE *_fp)
+{
+	struct __FILE_public *_p = (struct __FILE_public *)_fp;
+
+	return ((_p->_flags & __SERR) != 0);
+}
+
+static __inline void
+__sclearerr(FILE *_fp)
+{
+	struct __FILE_public *_p = (struct __FILE_public *)_fp;
+
+	_p->_flags &= ~(__SERR|__SEOF);
+}
+
+static __inline int
+__sfileno(FILE *_fp)
+{
+	struct __FILE_public *_p = (struct __FILE_public *)_fp;
+
+	return (_p->_fileno);
+}
 
 /*
  * See ISO/IEC 9945-1 ANSI/IEEE Std 1003.1 Second Edition 1996-07-12
