@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.46 2005/07/13 01:38:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.47 2005/07/23 23:26:50 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -811,26 +811,6 @@ fstat(struct fstat_args *uap)
 
 	if (error == 0)
 		error = copyout(&st, uap->sb, sizeof(st));
-	return (error);
-}
-
-/*
- * XXX: This is for source compatibility with NetBSD.  Probably doesn't
- * belong here.
- */
-int
-nfstat(struct nfstat_args *uap)
-{
-	struct stat st;
-	struct nstat nst;
-	int error;
-
-	error = kern_fstat(uap->fd, &st);
-
-	if (error == 0) {
-		cvtnstat(&st, &nst);
-		error = copyout(&nst, uap->sb, sizeof (nst));
-	}
 	return (error);
 }
 

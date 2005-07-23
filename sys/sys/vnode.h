@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.34 2005/07/14 12:38:46 hmp Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.35 2005/07/23 23:26:50 joerg Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -575,7 +575,6 @@ struct ostat;
 struct proc;
 struct thread;
 struct stat;
-struct nstat;
 struct ucred;
 struct uio;
 struct vattr;
@@ -589,7 +588,6 @@ int	v_associate_rdev(struct vnode *vp, dev_t dev);
 void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
-void	cvtnstat (struct stat *sb, struct nstat *nsb);
 struct vnode *allocvnode(int lktimeout, int lkflags);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);

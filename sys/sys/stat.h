@@ -37,7 +37,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.4 2005/07/23 23:26:50 joerg Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -105,36 +105,6 @@ struct stat {
 	int32_t	  st_lspare;
 	int64_t	  st_qspare[2];
 };
-
-#ifndef _POSIX_SOURCE
-struct nstat {
-	__dev_t	  st_dev;		/* inode's device */
-	ino_t	  st_ino;		/* inode's number */
-	u_int32_t st_mode;		/* inode protection mode */
-	u_int32_t st_nlink;		/* number of hard links */
-	uid_t	  st_uid;		/* user ID of the file's owner */
-	gid_t	  st_gid;		/* group ID of the file's group */
-	__dev_t	  st_rdev;		/* device type */
-#ifndef _POSIX_SOURCE
-	struct	timespec st_atimespec;	/* time of last access */
-	struct	timespec st_mtimespec;	/* time of last data modification */
-	struct	timespec st_ctimespec;	/* time of last file status change */
-#else
-	time_t	  st_atime;		/* time of last access */
-	long	  st_atimensec;		/* nsec of last access */
-	time_t	  st_mtime;		/* time of last data modification */
-	long	  st_mtimensec;		/* nsec of last data modification */
-	time_t	  st_ctime;		/* time of last file status change */
-	long	  st_ctimensec;		/* nsec of last file status change */
-#endif
-	off_t	  st_size;		/* file size, in bytes */
-	int64_t	  st_blocks;		/* blocks allocated for file */
-	u_int32_t st_blksize;		/* optimal blocksize for I/O */
-	u_int32_t st_flags;		/* user defined flags for file */
-	u_int32_t st_gen;		/* file generation number */
-	int64_t	  st_qspare[2];
-};
-#endif
 
 #undef __dev_t
 

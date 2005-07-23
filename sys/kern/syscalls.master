@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.23 2005/07/15 17:54:47 eirikn Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.24 2005/07/23 23:26:50 joerg Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -411,9 +411,9 @@
 275	NOPROTO BSD	{ int lchown(char *path, uid_t uid, gid_t gid); } netbsd_lchown lchown_args int
 276	STD	BSD	{ int lutimes(char *path, struct timeval *tptr); }
 277	NOPROTO	BSD	{ int msync(void *addr, size_t len, int flags); } netbsd_msync msync_args int
-278	STD	BSD	{ int nstat(char *path, struct nstat *ub); }
-279	STD	BSD	{ int nfstat(int fd, struct nstat *sb); }
-280	STD	BSD	{ int nlstat(char *path, struct nstat *ub); }
+278	OBSOL	BSD	{ int nstat(char *path, struct nstat *ub); }
+279	OBSOL	NOHIDE	{ int nfstat(int fd, struct nstat *sb); }
+280	OBSOL	NOHIDE	{ int nlstat(char *path, struct nstat *ub); }
 281	UNIMPL	NOHIDE	nosys
 282	UNIMPL	NOHIDE	nosys
 283	UNIMPL	NOHIDE	nosys

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.64 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.65 2005/07/23 23:26:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1936,96 +1936,6 @@ lstat(struct lstat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	return (error);
-}
-
-void
-cvtnstat(sb, nsb)
-	struct stat *sb;
-	struct nstat *nsb;
-{
-	nsb->st_dev = sb->st_dev;
-	nsb->st_ino = sb->st_ino;
-	nsb->st_mode = sb->st_mode;
-	nsb->st_nlink = sb->st_nlink;
-	nsb->st_uid = sb->st_uid;
-	nsb->st_gid = sb->st_gid;
-	nsb->st_rdev = sb->st_rdev;
-	nsb->st_atimespec = sb->st_atimespec;
-	nsb->st_mtimespec = sb->st_mtimespec;
-	nsb->st_ctimespec = sb->st_ctimespec;
-	nsb->st_size = sb->st_size;
-	nsb->st_blocks = sb->st_blocks;
-	nsb->st_blksize = sb->st_blksize;
-	nsb->st_flags = sb->st_flags;
-	nsb->st_gen = sb->st_gen;
-	nsb->st_qspare[0] = sb->st_qspare[0];
-	nsb->st_qspare[1] = sb->st_qspare[1];
-}
-
-/*
- * nstat_args(char *path, struct nstat *ub)
- */
-/* ARGSUSED */
-int
-nstat(struct nstat_args *uap)
-{
-	struct thread *td = curthread;
-	struct vnode *vp;
-	struct stat sb;
-	struct nstat nsb;
-	struct nlookupdata nd;
-	int error;
-
-	vp = NULL;
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
-	nlookup_done(&nd);
-	if (error == 0) {
-		error = vn_stat(vp, &sb, td);
-		vput(vp);
-		if (error == 0) {
-			cvtnstat(&sb, &nsb);
-			error = copyout(&nsb, uap->ub, sizeof(nsb));
-		}
-	}
-	return (error);
-}
-
-/*
- * lstat_args(char *path, struct stat *ub)
- *
- * Get file status; this version does not follow links.
- */
-/* ARGSUSED */
-int
-nlstat(struct nlstat_args *uap)
-{
-	struct thread *td = curthread;
-	struct vnode *vp;
-	struct stat sb;
-	struct nstat nsb;
-	struct nlookupdata nd;
-	int error;
-
-	vp = NULL;
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
-	nlookup_done(&nd);
-	if (error == 0) {
-		error = vn_stat(vp, &sb, td);
-		vput(vp);
-		if (error == 0) {
-			cvtnstat(&sb, &nsb);
-			error = copyout(&nsb, uap->ub, sizeof(nsb));
-		}
-	}
 	return (error);
 }
 
