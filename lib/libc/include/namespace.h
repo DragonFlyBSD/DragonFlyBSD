@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/include/namespace.h,v 1.1 2001/01/24 13:00:08 deischen Exp $
- * $DragonFly: src/lib/libc/include/namespace.h,v 1.1 2005/01/31 22:29:29 dillon Exp $
+ * $DragonFly: src/lib/libc/include/namespace.h,v 1.2 2005/07/23 14:16:13 joerg Exp $
  *
  */
 
@@ -71,6 +71,7 @@
 #define		pthread_mutexattr_destroy	_pthread_mutexattr_destroy
 #define		pthread_mutexattr_settype	_pthread_mutexattr_settype
 #define		pthread_once			_pthread_once
+#define		pthread_self			_pthread_self
 #define		pthread_setspecific		_pthread_setspecific
 #define		read				_read
 #define		readv				_readv
@@ -116,7 +117,6 @@
 #define		pthread_rwlock_wrlock		_pthread_rwlock_wrlock
 #define		pthread_rwlockattr_init		_pthread_rwlockattr_init
 #define		pthread_rwlockattr_destroy	_pthread_rwlockattr_destroy
-#define		pthread_self			_pthread_self
 #define		sched_yield			_sched_yield
 #define		sendfile			_sendfile
 #define		shutdown			_shutdown
