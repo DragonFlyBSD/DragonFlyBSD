@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.5 2004/02/24 18:07:11 joerg Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.6 2005/07/23 07:33:15 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -36,6 +36,7 @@ CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 #
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2
+CFLAGS+=	-fno-stack-protector
 .endif
 
 #
