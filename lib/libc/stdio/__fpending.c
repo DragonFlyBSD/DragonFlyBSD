@@ -31,15 +31,19 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdio/__fpending.c,v 1.1 2005/07/23 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/__fpending.c,v 1.2 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <stdio.h>
 
 #include "priv_stdio.h"
+#include "local.h"
 
 __ssize_t
 __fpending(FILE *fp)
 {
-	return(fp->pub._p - fp->_bf._base);
+	if (HASUB(fp))
+		return(fp->_up - fp->_bf._base);
+	else
+		return(fp->pub._p - fp->_bf._base);
 }

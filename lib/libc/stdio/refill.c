@@ -35,7 +35,7 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/refill.c,v 1.9 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <errno.h>
@@ -100,7 +100,7 @@ __srefill(FILE *fp)
 		if (HASUB(fp)) {
 			FREEUB(fp);
 			if ((fp->pub._r = fp->_ur) != 0) {
-				fp->pub._p = fp->_extra->_up;
+				fp->pub._p = fp->_up;
 				return (0);
 			}
 		}

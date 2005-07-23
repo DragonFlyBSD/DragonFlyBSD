@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.9 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -57,16 +57,13 @@ int	__sdidinit;
 
 #define	std(flags, file) \
 	{{0,flags,file,0,0,0},{NULL, 0},__sF+file,__sclose,__sread,__sseek,__swrite, \
-	 {NULL,0}, __sFX + file, 0, {0,0,0}, {0}, {NULL,0}, 0,0 }
+	 {NULL,0}, 0, {0,0,0}, {0}, {NULL,0}, 0,0, NULL, PTHREAD_MUTEX_INITIALIZER, NULL, 0 }
 /*	 p flags file r w _bf  cookie      close    read    seek    write */
-/*	_ub _extra */
+/*	_ub */
 
 				/* the usual - (stdin + stdout + stderr) */
 static FILE usual[FOPEN_MAX - 3];
-static struct __sFILEX usual_extra[FOPEN_MAX - 3];
 static struct glue uglue = { NULL, FOPEN_MAX - 3, usual };
-
-static struct __sFILEX __sFX[3];
 
 FILE __sF[3] = {
 	std(__SRD, STDIN_FILENO),		/* stdin */
@@ -109,24 +106,18 @@ moreglue(int n)
 {
 	struct glue *g;
 	static FILE empty;
-	static struct __sFILEX emptyx;
 	FILE *p;
-	struct __sFILEX *fx;
 
-	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE) +
-	    n * sizeof(struct __sFILEX));
+	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE));
 	if (g == NULL)
 		return (NULL);
 	p = (FILE *)ALIGN(g + 1);
-	fx = (struct __sFILEX *)&p[n];
 	g->next = NULL;
 	g->niobs = n;
 	g->iobs = p;
 	while (--n >= 0) {
 		*p = empty;
-		p->_extra = fx;
-		*p->_extra = emptyx;
-		p++, fx++;
+		p++;
 	}
 	return (g);
 }
@@ -174,6 +165,10 @@ found:
 	fp->_ub._size = 0;
 	fp->_lb._base = NULL;	/* no line buffer */
 	fp->_lb._size = 0;
+	fp->_up = NULL;
+	fp->fl_mutex = PTHREAD_MUTEX_INITIALIZER;
+	fp->fl_owner = NULL;
+	fp->fl_count = 0;
 	/* fp->_lock = NULL; */
 	return (fp);
 }
@@ -229,14 +224,8 @@ _cleanup(void)
 void
 __sinit(void)
 {
-	int	i;
-
 	THREAD_LOCK();
 	if (__sdidinit == 0) {
-		/* Set _extra for the usual suspects. */
-		for (i = 0; i < FOPEN_MAX - 3; i++)
-			usual[i]._extra = &usual_extra[i];
-
 		/* Make sure we clean up on exit. */
 		__cleanup = _cleanup;		/* conservative */
 		__sdidinit = 1;

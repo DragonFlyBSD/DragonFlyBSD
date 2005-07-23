@@ -35,7 +35,7 @@
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
  * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include "namespace.h"
@@ -165,7 +165,7 @@ __ungetc(int c, FILE *fp)
 	 * Initially, we will use the `reserve' buffer.
 	 */
 	fp->_ur = fp->pub._r;
-	fp->_extra->_up = fp->pub._p;
+	fp->_up = fp->pub._p;
 	fp->_ub._base = fp->_ubuf;
 	fp->_ub._size = sizeof(fp->_ubuf);
 	fp->_ubuf[sizeof(fp->_ubuf) - 1] = c;

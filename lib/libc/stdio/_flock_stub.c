@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.9 2005/07/23 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.10 2005/07/23 23:14:44 joerg Exp $
  *
  */
 
@@ -58,23 +58,21 @@ __weak_reference(__ftrylockfile, _ftrylockfile);
 __weak_reference(__funlockfile, funlockfile);
 __weak_reference(__funlockfile, _funlockfile);
 
-#define _lock _extra
-
 void
 __flockfile(FILE *fp)
 {
 	pthread_t curthread = _pthread_self();
 
-	if (fp->_lock->fl_owner == curthread)
-		fp->_lock->fl_count++;
+	if (fp->fl_owner == curthread)
+		fp->fl_count++;
 	else {
 		/*
 		 * Make sure this mutex is treated as a private
 		 * internal mutex:
 		 */
-		_pthread_mutex_lock(&fp->_lock->fl_mutex);
-		fp->_lock->fl_owner = curthread;
-		fp->_lock->fl_count = 1;
+		_pthread_mutex_lock(&fp->fl_mutex);
+		fp->fl_owner = curthread;
+		fp->fl_count = 1;
 	}
 }
 
@@ -90,15 +88,15 @@ __ftrylockfile(FILE *fp)
 	pthread_t curthread = _pthread_self();
 	int	ret = 0;
 
-	if (fp->_lock->fl_owner == curthread)
-		fp->_lock->fl_count++;
+	if (fp->fl_owner == curthread)
+		fp->fl_count++;
 	/*
 	 * Make sure this mutex is treated as a private
 	 * internal mutex:
 	 */
-	else if (_pthread_mutex_trylock(&fp->_lock->fl_mutex) == 0) {
-		fp->_lock->fl_owner = curthread;
-		fp->_lock->fl_count = 1;
+	else if (_pthread_mutex_trylock(&fp->fl_mutex) == 0) {
+		fp->fl_owner = curthread;
+		fp->fl_count = 1;
 	}
 	else
 		ret = -1;
@@ -113,26 +111,26 @@ __funlockfile(FILE *fp)
 	/*
 	 * Check if this file is owned by the current thread:
 	 */
-	if (fp->_lock->fl_owner == curthread) {
+	if (fp->fl_owner == curthread) {
 		/*
 		 * Check if this thread has locked the FILE
 		 * more than once:
 		 */
-		if (fp->_lock->fl_count > 1)
+		if (fp->fl_count > 1)
 			/*
 			 * Decrement the count of the number of
 			 * times the running thread has locked this
 			 * file:
 			 */
-			fp->_lock->fl_count--;
+			fp->fl_count--;
 		else {
 			/*
 			 * The running thread will release the
 			 * lock now:
 			 */
-			fp->_lock->fl_count = 0;
-			fp->_lock->fl_owner = NULL;
-			_pthread_mutex_unlock(&fp->_lock->fl_mutex);
+			fp->fl_count = 0;
+			fp->fl_owner = NULL;
+			_pthread_mutex_unlock(&fp->fl_mutex);
 		}
 	}
 }

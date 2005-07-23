@@ -35,7 +35,7 @@
  *
  * @(#)sscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <stdio.h>
@@ -61,7 +61,6 @@ sscanf(const char *str, char const *fmt, ...)
 	int ret;
 	va_list ap;
 	FILE f;
-	struct __sFILEX ext;
 
 	f.pub._fileno = -1;
 	f.pub._flags = __SRD;
@@ -70,8 +69,10 @@ sscanf(const char *str, char const *fmt, ...)
 	f._read = eofread;
 	f._ub._base = NULL;
 	f._lb._base = NULL;
-	f._extra = &ext;
-	INITEXTRA(&f);
+	f._up = NULL;
+	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
+	f.fl_owner = NULL;
+	f.fl_count = 0;
 	va_start(ap, fmt);
 	ret = __svfscanf(&f, fmt, ap);
 	va_end(ap);

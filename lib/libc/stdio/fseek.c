@@ -35,7 +35,7 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.9 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include "namespace.h"
@@ -197,7 +197,7 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 */
 	if (HASUB(fp)) {
 		curoff += fp->pub._r;	/* kill off ungetc */
-		n = fp->_extra->_up - fp->_bf._base;
+		n = fp->_up - fp->_bf._base;
 		curoff -= n;
 		n += fp->_ur;
 	} else {

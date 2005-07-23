@@ -36,11 +36,10 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/local.h,v 1.7 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/local.h,v 1.8 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <sys/types.h> /* for off_t */
-#include <pthread.h>
 
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>	/* __size_t */
@@ -70,14 +69,6 @@ extern int	__vfprintf(FILE *, const char *, __va_list);
 
 extern int	__sdidinit;
 
-/* hold a buncha junk that would grow the ABI */
-struct __sFILEX {
-	unsigned char	*_up;	/* saved _p when _p is doing ungetc data */
-	pthread_mutex_t	fl_mutex;	/* used for MT-safety */
-	pthread_t	fl_owner;	/* current owner */
-	int		fl_count;	/* recursive lock count */
-};
-
 /*
  * Return true iff the given FILE cannot be written now.
  */
@@ -104,11 +95,3 @@ struct __sFILEX {
 	free((char *)(fp)->_lb._base); \
 	(fp)->_lb._base = NULL; \
 }
-
-#define	INITEXTRA(fp) { \
-	(fp)->_extra->_up = NULL; \
-	(fp)->_extra->fl_mutex = PTHREAD_MUTEX_INITIALIZER; \
-	(fp)->_extra->fl_owner = NULL; \
-	(fp)->_extra->fl_count = 0; \
-}
-

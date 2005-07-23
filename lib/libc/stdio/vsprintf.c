@@ -35,7 +35,7 @@
  *
  * @(#)vsprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsprintf.c,v 1.6 1999/08/28 00:01:21 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vsprintf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vsprintf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <stdio.h>
@@ -50,14 +50,15 @@ vsprintf(char *str, const char *fmt, va_list ap)
 {
 	int ret;
 	FILE f;
-	struct __sFILEX ext;
 
 	f.pub._fileno = -1;
 	f.pub._flags = __SWR | __SSTR;
 	f._bf._base = f.pub._p = (unsigned char *)str;
 	f._bf._size = f.pub._w = INT_MAX;
-	f._extra = &ext;
-	INITEXTRA(&f);
+	f._up = NULL;
+	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
+	f.fl_owner = NULL;
+	f.fl_count = 0;
 	ret = __vfprintf(&f, fmt, ap);
 	*f.pub._p = 0;
 	return (ret);

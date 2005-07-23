@@ -35,7 +35,7 @@
  *
  * @(#)vsnprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.12.2.1 2002/09/23 06:58:17 maxim Exp $
- * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <limits.h>
@@ -52,7 +52,6 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 	int ret;
 	char dummy;
 	FILE f;
-	struct __sFILEX ext;
 
 	on = n;
 	if (n != 0)
@@ -68,8 +67,10 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 	f.pub._flags = __SWR | __SSTR;
 	f._bf._base = f.pub._p = (unsigned char *)str;
 	f._bf._size = f.pub._w = n;
-	f._extra = &ext;
-	INITEXTRA(&f);
+	f._up = NULL;
+	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
+	f.fl_owner = NULL;
+	f.fl_count = 0;
 	ret = __vfprintf(&f, fmt, ap);
 	if (on > 0)
 		*f.pub._p = '\0';

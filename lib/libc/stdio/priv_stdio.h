@@ -30,19 +30,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdio/priv_stdio.h,v 1.1 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/priv_stdio.h,v 1.2 2005/07/23 23:14:44 joerg Exp $
  */
 
 #ifndef _LIBC_PRIV_STDIO_H_
 #define _LIBC_PRIV_STDIO_H_
+
+#include <pthread.h>
 
 /* stdio buffers */
 struct __sbuf {
 	unsigned char *_base;
 	int	_size;
 };
-
-struct __sFILEX;
 
 /*
  * _ub, _up, and _ur are used when ungetc() pushes back more characters
@@ -65,7 +65,6 @@ struct __FILE {
 
 	/* separate buffer for long sequences of ungetc() */
 	struct	__sbuf _ub;	/* ungetc buffer */
-	struct  __sFILEX *_extra;
 	int	_ur;		/* saved _r when _r is counting ungetc data */
 
 	/* tricks to meet minimum requirements even when malloc() fails */
@@ -78,6 +77,11 @@ struct __FILE {
 	/* Unix stdio files get aligned to block boundaries on fseek() */
 	int	_blksize;	/* stat.st_blksize (may be != _bf._size) */
 	fpos_t	_offset;	/* current lseek offset (see WARNING) */
+
+	unsigned char	*_up;	/* saved _p when _p is doing ungetc data */
+	pthread_mutex_t	fl_mutex;	/* used for MT-safety */
+	pthread_t	fl_owner;	/* current owner */
+	int		fl_count;	/* recursive lock count */
 };
 
 /*

@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.10 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.11 2005/07/23 23:14:44 joerg Exp $
  */
 
 /*
@@ -157,7 +157,11 @@ __sbprintf(FILE *fp, const char *fmt, va_list ap)
 	fake.pub._fileno = fp->pub._fileno;
 	fake._cookie = fp->_cookie;
 	fake._write = fp->_write;
-	fake._extra = fp->_extra;
+
+	fake._up = fp->_up;
+	fake.fl_mutex = fp->fl_mutex;
+	fake.fl_owner = fp->fl_owner;
+	fake.fl_count = fp->fl_count;
 
 	/* set up the buffer */
 	fake._bf._base = fake.pub._p = buf;
