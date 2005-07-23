@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.26 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.27 2005/07/23 18:08:50 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -62,6 +62,7 @@
 #include <sys/conf.h>
 
 #include <sys/file.h>		/* XXX */
+#include <sys/jail.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -444,7 +445,13 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != ip->i_uid &&
 		    (error = suser_cred(cred, PRISON_ROOT)))
 			return (error);
-		if ((cred->cr_uid == 0) && (cred->cr_prison == NULL)) {
+		/*
+		 * Note that a root chflags becomes a user chflags when
+		 * we are jailed, unless the jail.chflags_allowed sysctl
+		 * is set.
+		 */
+		if (cred->cr_uid == 0 && 
+		    (!jailed(cred) || jail_chflags_allowed)) {
 			if ((ip->i_flags
 			    & (SF_NOUNLINK | SF_IMMUTABLE | SF_APPEND)) &&
 			    securelevel > 0)
