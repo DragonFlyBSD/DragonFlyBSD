@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.35 2005/07/15 17:54:47 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.36 2005/07/23 07:28:34 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -792,18 +792,18 @@ soreceive(so, psa, uio, mp0, controlp, flagsp)
 	struct mbuf **controlp;
 	int *flagsp;
 {
-	struct mbuf *m, **mp;
+	struct mbuf *m, *n, **mp;
+	struct mbuf *free_chain = NULL;
 	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
-	struct mbuf *nextrecord;
 	int moff, type = 0;
 	int orig_resid = uio->uio_resid;
 
 	mp = mp0;
 	if (psa)
-		*psa = 0;
+		*psa = NULL;
 	if (controlp)
-		*controlp = 0;
+		*controlp = NULL;
 	if (flagsp)
 		flags = *flagsp &~ MSG_EOR;
 	else
@@ -826,15 +826,15 @@ bad:
 		return (error);
 	}
 	if (mp)
-		*mp = (struct mbuf *)0;
+		*mp = NULL;
 	if (so->so_state & SS_ISCONFIRMING && uio->uio_resid)
 		so_pru_rcvd(so, 0);
 
 restart:
+	crit_enter();
 	error = sblock(&so->so_rcv, SBLOCKWAIT(flags));
 	if (error)
-		return (error);
-	crit_enter();
+		goto done;
 
 	m = so->so_rcv.sb_mb;
 	/*
@@ -848,12 +848,12 @@ restart:
 	 * we have to do the receive in sections, and thus risk returning
 	 * a short count if a timeout or signal occurs after we start.
 	 */
-	if (m == 0 || (((flags & MSG_DONTWAIT) == 0 &&
+	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
 	    so->so_rcv.sb_cc < uio->uio_resid) &&
 	    (so->so_rcv.sb_cc < so->so_rcv.sb_lowat ||
 	    ((flags & MSG_WAITALL) && uio->uio_resid <= so->so_rcv.sb_hiwat)) &&
 	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
-		KASSERT(m != 0 || !so->so_rcv.sb_cc, ("receive 1"));
+		KASSERT(m != NULL || !so->so_rcv.sb_cc, ("receive 1"));
 		if (so->so_error) {
 			if (m)
 				goto dontblock;
@@ -868,11 +868,12 @@ restart:
 			else
 				goto release;
 		}
-		for (; m; m = m->m_next)
+		for (; m; m = m->m_next) {
 			if (m->m_type == MT_OOBDATA  || (m->m_flags & M_EOR)) {
 				m = so->so_rcv.sb_mb;
 				goto dontblock;
 			}
+		}
 		if ((so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING)) == 0 &&
 		    (pr->pr_flags & PR_CONNREQUIRED)) {
 			error = ENOTCONN;
@@ -886,46 +887,53 @@ restart:
 		}
 		sbunlock(&so->so_rcv);
 		error = sbwait(&so->so_rcv);
-		crit_exit();
 		if (error)
-			return (error);
+			goto done;
+		crit_exit();
 		goto restart;
 	}
 dontblock:
 	if (uio->uio_td && uio->uio_td->td_proc)
 		uio->uio_td->td_proc->p_stats->p_ru.ru_msgrcv++;
-	nextrecord = m->m_nextpkt;
+
+	/*
+	 * note: m should be == sb_mb here.  Cache the next record while
+	 * cleaning up.  Note that calling m_free*() will break out critical
+	 * section.
+	 */
+	KKASSERT(m == so->so_rcv.sb_mb);
+
+	/*
+	 * Skip any address mbufs prepending the record.
+	 */
 	if (pr->pr_flags & PR_ADDR) {
 		KASSERT(m->m_type == MT_SONAME, ("receive 1a"));
 		orig_resid = 0;
 		if (psa)
 			*psa = dup_sockaddr(mtod(m, struct sockaddr *));
-		if (flags & MSG_PEEK) {
+		if (flags & MSG_PEEK)
 			m = m->m_next;
-		} else {
-			sbfree(&so->so_rcv, m);
-			m->m_nextpkt = NULL;
-			so->so_rcv.sb_mb = m_free(m);
-			m = so->so_rcv.sb_mb;
-		}
+		else
+			m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
 	}
+
+	/*
+	 * Skip any control mbufs prepending the record.
+	 */
 #ifdef SCTP
 	if (pr->pr_flags & PR_ADDR_OPT) {
 		/*
 		 * For SCTP we may be getting a
 		 * whole message OR a partial delivery.
 		 */
-		if (m->m_type == MT_SONAME) {
+		if (m && m->m_type == MT_SONAME) {
 			orig_resid = 0;
 			if (psa)
 				*psa = dup_sockaddr(mtod(m, struct sockaddr *));
-			if (flags & MSG_PEEK) {
+			if (flags & MSG_PEEK)
 				m = m->m_next;
-			} else {
-				sbfree(&so->so_rcv, m);
-				so->so_rcv.sb_mb = m_free(m);
-				m = so->so_rcv.sb_mb;
-			}
+			else
+				m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
 		}
 	}
 #endif /* SCTP */
@@ -933,36 +941,38 @@ dontblock:
 		if (flags & MSG_PEEK) {
 			if (controlp)
 				*controlp = m_copy(m, 0, m->m_len);
-			m = m->m_next;
+			m = m->m_next;	/* XXX race */
 		} else {
-			sbfree(&so->so_rcv, m);
-			m->m_nextpkt = NULL;
 			if (controlp) {
+				n = sbunlinkmbuf(&so->so_rcv, m, NULL);
 				if (pr->pr_domain->dom_externalize &&
 				    mtod(m, struct cmsghdr *)->cmsg_type ==
 				    SCM_RIGHTS)
 				   error = (*pr->pr_domain->dom_externalize)(m);
 				*controlp = m;
-				so->so_rcv.sb_mb = m->m_next;
-				m->m_next = NULL;
-				m = so->so_rcv.sb_mb;
+				m = n;
 			} else {
-				so->so_rcv.sb_mb = m_free(m);
-				m = so->so_rcv.sb_mb;
+				m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
 			}
 		}
-		if (controlp) {
+		if (controlp && *controlp) {
 			orig_resid = 0;
 			controlp = &(*controlp)->m_next;
 		}
 	}
+
+	/*
+	 * flag OOB data.
+	 */
 	if (m) {
-		if ((flags & MSG_PEEK) == 0)
-			m->m_nextpkt = nextrecord;
 		type = m->m_type;
 		if (type == MT_OOBDATA)
 			flags |= MSG_OOB;
 	}
+
+	/*
+	 * Copy to the UIO or mbuf return chain (*mp).
+	 */
 	moff = 0;
 	offset = 0;
 	while (m && uio->uio_resid > 0 && error == 0) {
@@ -988,14 +998,19 @@ dontblock:
 		 * we must note any additions to the sockbuf when we
 		 * block interrupts again.
 		 */
-		if (mp == 0) {
+		if (mp == NULL) {
 			crit_exit();
 			error = uiomove(mtod(m, caddr_t) + moff, (int)len, uio);
 			crit_enter();
 			if (error)
 				goto release;
-		} else
+		} else {
 			uio->uio_resid -= len;
+		}
+
+		/*
+		 * Eat the entire mbuf or just a piece of it
+		 */
 		if (len == m->m_len - moff) {
 			if (m->m_flags & M_EOR)
 				flags |= MSG_EOR;
@@ -1007,26 +1022,19 @@ dontblock:
 				m = m->m_next;
 				moff = 0;
 			} else {
-				nextrecord = m->m_nextpkt;
-				m->m_nextpkt = NULL;
-				sbfree(&so->so_rcv, m);
 				if (mp) {
+					n = sbunlinkmbuf(&so->so_rcv, m, NULL);
 					*mp = m;
 					mp = &m->m_next;
-					so->so_rcv.sb_mb = m = m->m_next;
-					*mp = (struct mbuf *)0;
+					m = n;
 				} else {
-					so->so_rcv.sb_mb = m = m_free(m);
+					m = sbunlinkmbuf(&so->so_rcv, m, &free_chain);
 				}
-				if (m)
-					m->m_nextpkt = nextrecord;
-				else
-					so->so_rcv.sb_lastmbuf = NULL;
 			}
 		} else {
-			if (flags & MSG_PEEK)
+			if (flags & MSG_PEEK) {
 				moff += len;
-			else {
+			} else {
 				if (mp)
 					*mp = m_copym(m, 0, len, MB_WAIT);
 				m->m_data += len;
@@ -1056,8 +1064,9 @@ dontblock:
 		 * with a short count but without error.
 		 * Keep sockbuf locked against other readers.
 		 */
-		while (flags & MSG_WAITALL && m == 0 && uio->uio_resid > 0 &&
-		    !sosendallatonce(so) && !nextrecord) {
+		while (flags & MSG_WAITALL && m == NULL && 
+		    uio->uio_resid > 0 && !sosendallatonce(so) && 
+		    so->so_rcv.sb_mb == NULL) {
 			if (so->so_error || so->so_state & SS_CANTRCVMORE)
 				break;
 			/*
@@ -1071,31 +1080,27 @@ dontblock:
 			error = sbwait(&so->so_rcv);
 			if (error) {
 				sbunlock(&so->so_rcv);
-				crit_exit();
-				return (0);
+				error = 0;
+				goto done;
 			}
 			m = so->so_rcv.sb_mb;
-			if (m)
-				nextrecord = m->m_nextpkt;
 		}
 	}
 
+	/*
+	 * If an atomic read was requested but unread data still remains
+	 * in the record, set MSG_TRUNC.
+	 */
 	if (m && pr->pr_flags & PR_ATOMIC)
 		flags |= MSG_TRUNC;
-	if (!(flags & MSG_PEEK)) {
-		if (m == NULL) {
-			so->so_rcv.sb_mb = nextrecord;
-			so->so_rcv.sb_lastmbuf = NULL;
-		} else {
-			if (pr->pr_flags & PR_ATOMIC)
-				sbdroprecord(&so->so_rcv);
-			else if (m->m_nextpkt == NULL) {
-				KASSERT(so->so_rcv.sb_mb == m,
-				    ("sb_mb %p != m %p", so->so_rcv.sb_mb, m));
-				so->so_rcv.sb_lastrecord = m;
-			}
-		}
-		if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
+
+	/*
+	 * Cleanup.  If an atomic read was requested drop any unread data.
+	 */
+	if ((flags & MSG_PEEK) == 0) {
+		if (m && (pr->pr_flags & PR_ATOMIC))
+			sbdroprecord(&so->so_rcv);
+		if ((pr->pr_flags & PR_WANTRCVD) && so->so_pcb)
 			so_pru_rcvd(so, flags);
 	}
 
@@ -1110,7 +1115,10 @@ dontblock:
 		*flagsp |= flags;
 release:
 	sbunlock(&so->so_rcv);
+done:
 	crit_exit();
+	if (free_chain)
+		m_freem(free_chain);
 	return (error);
 }
 

@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.21 2005/06/07 19:08:55 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.22 2005/07/23 07:28:34 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -479,22 +479,21 @@ sbappend(struct sockbuf *sb, struct mbuf *m)
 {
 	struct mbuf *n;
 
-	if (m == NULL)
-		return;
-	n = sb->sb_mb;
-	if (n) {
-		while (n->m_nextpkt)
-			n = n->m_nextpkt;
-		do {
-			if (n->m_flags & M_EOR) {
-				sbappendrecord(sb, m); /* XXXXXX!!!! */
-				return;
-			}
-		} while (n->m_next && (n = n->m_next));
+	if (m) {
+		n = sb->sb_mb;
+		if (n) {
+			while (n->m_nextpkt)
+				n = n->m_nextpkt;
+			do {
+				if (n->m_flags & M_EOR) {
+					/* XXXXXX!!!! */
+					sbappendrecord(sb, m);
+					return;
+				}
+			} while (n->m_next && (n = n->m_next));
+		}
+		sbcompress(sb, m, n);
 	}
-	sbcompress(sb, m, n);
-	if (n == NULL)
-		sb->sb_lastrecord = sb->sb_mb;
 }
 
 /*
@@ -511,29 +510,53 @@ sbappendstream(struct sockbuf *sb, struct mbuf *m)
 }
 
 #ifdef SOCKBUF_DEBUG
+
 void
-sbcheck(sb)
-	struct sockbuf *sb;
+_sbcheck(struct sockbuf *sb)
 {
 	struct mbuf *m;
-	struct mbuf *n = 0;
+	struct mbuf *n = NULL;
 	u_long len = 0, mbcnt = 0;
 
 	for (m = sb->sb_mb; m; m = n) {
 	    n = m->m_nextpkt;
+	    if (n == NULL && sb->sb_lastrecord != m) {
+		    printf("sockbuf %p mismatched lastrecord %p vs %p\n", sb, sb->sb_lastrecord, m);
+		    panic("sbcheck1");
+		
+	    }
 	    for (; m; m = m->m_next) {
 		len += m->m_len;
 		mbcnt += MSIZE;
 		if (m->m_flags & M_EXT) /*XXX*/ /* pretty sure this is bogus */
 			mbcnt += m->m_ext.ext_size;
+		if (n == NULL && m->m_next == NULL) {
+			if (sb->sb_lastmbuf != m) {
+				printf("sockbuf %p mismatched lastmbuf %p vs %p\n", sb, sb->sb_lastmbuf, m);
+				panic("sbcheck2");
+			}
+		}
+	    }
+	}
+	if (sb->sb_mb == NULL) {
+	    if (sb->sb_lastrecord != NULL) {
+		printf("sockbuf %p is empty, lastrecord not NULL: %p\n",
+			sb, sb->sb_lastrecord);
+		panic("sbcheck3");
+	    }
+	    if (sb->sb_lastmbuf != NULL) {
+		printf("sockbuf %p is empty, lastmbuf not NULL: %p\n",
+			sb, sb->sb_lastmbuf);
+		panic("sbcheck4");
 	    }
 	}
 	if (len != sb->sb_cc || mbcnt != sb->sb_mbcnt) {
-		printf("cc %ld != %ld || mbcnt %ld != %ld\n", len, sb->sb_cc,
-		    mbcnt, sb->sb_mbcnt);
-		panic("sbcheck");
+		printf("sockbuf %p cc %ld != %ld || mbcnt %ld != %ld\n",
+		    sb, len, sb->sb_cc, mbcnt, sb->sb_mbcnt);
+		panic("sbcheck5");
 	}
 }
+
 #endif
 
 /*
@@ -548,6 +571,8 @@ sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
 	if (m0 == NULL)
 		return;
 
+	sbcheck(sb);
+
 	/*
 	 * Break the first mbuf off from the rest of the mbuf chain.
 	 */
@@ -557,13 +582,15 @@ sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
 
 	/*
 	 * Insert the first mbuf of the m0 mbuf chain as the last record of
-	 * the sockbuf.  Note this permits zero length records!
+	 * the sockbuf.  Note this permits zero length records!  Keep the
+	 * sockbuf state consistent.
 	 */
 	if (sb->sb_mb == NULL)
 		sb->sb_mb = firstmbuf;
 	else
 		sb->sb_lastrecord->m_nextpkt = firstmbuf;
 	sb->sb_lastrecord = firstmbuf;	/* update hint for new last record */
+	sb->sb_lastmbuf = firstmbuf;	/* update hint for new last mbuf */
 
 	if ((firstmbuf->m_flags & M_EOR) && (secondmbuf != NULL)) {
 		/* propagate the EOR flag */
@@ -581,6 +608,7 @@ sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
 	sbcompress(sb, secondmbuf, firstmbuf);
 }
 
+#if 0
 /*
  * As above except that OOB data is inserted at the beginning of the sockbuf,
  * but after any other OOB data.
@@ -591,7 +619,7 @@ sbinsertoob(struct sockbuf *sb, struct mbuf *m0)
 	struct mbuf *m;
 	struct mbuf **mp;
 
-	if (m0 == 0)
+	if (m0 == NULL)
 		return;
 	for (mp = &sb->sb_mb; *mp ; mp = &((*mp)->m_nextpkt)) {
 	    m = *mp;
@@ -619,13 +647,14 @@ sbinsertoob(struct sockbuf *sb, struct mbuf *m0)
 		sb->sb_lastrecord = m0;
 
 	m = m0->m_next;
-	m0->m_next = 0;
+	m0->m_next = NULL;
 	if (m && (m0->m_flags & M_EOR)) {
 		m0->m_flags &= ~M_EOR;
 		m->m_flags |= M_EOR;
 	}
 	sbcompress(sb, m, m0);
 }
+#endif
 
 /*
  * Append address and data, and optionally, control (ancillary) data
@@ -644,6 +673,7 @@ sbappendaddr(sb, asa, m0, control)
 
 	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
 		panic("sbappendaddr");
+	sbcheck(sb);
 
 	if (m0)
 		space += m0->m_pkthdr.len;
@@ -657,8 +687,9 @@ sbappendaddr(sb, asa, m0, control)
 	if (asa->sa_len > MLEN)
 		return (0);
 	MGET(m, MB_DONTWAIT, MT_SONAME);
-	if (m == 0)
+	if (m == NULL)
 		return (0);
+	KKASSERT(m->m_nextpkt == NULL);
 	m->m_len = asa->sa_len;
 	bcopy(asa, mtod(m, caddr_t), asa->sa_len);
 	if (n)
@@ -674,6 +705,9 @@ sbappendaddr(sb, asa, m0, control)
 	else
 		sb->sb_lastrecord->m_nextpkt = m;
 	sb->sb_lastrecord = m;
+	while (m->m_next)
+		m = m->m_next;
+	sb->sb_lastmbuf = m;
 
 	return (1);
 }
@@ -689,6 +723,8 @@ sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
 	u_int length, cmbcnt, m0mbcnt;
 
 	KASSERT(control != NULL, ("sbappendcontrol"));
+	KKASSERT(control->m_nextpkt == NULL);
+	sbcheck(sb);
 
 	length = m_countm(control, &n, &cmbcnt) + m_countm(m0, NULL, &m0mbcnt);
 	if (length > sbspace(sb))
@@ -701,6 +737,7 @@ sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
 	else
 		sb->sb_lastrecord->m_nextpkt = control;
 	sb->sb_lastrecord = control;
+	sb->sb_lastmbuf = m0;
 
 	sb->sb_cc += length;
 	sb->sb_mbcnt += cmbcnt + m0mbcnt;
@@ -717,7 +754,9 @@ void
 sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 {
 	int eor = 0;
+	struct mbuf *free_chain = NULL;
 
+	sbcheck(sb);
 	while (m) {
 		struct mbuf *o;
 
@@ -726,12 +765,18 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 		 * Disregard empty mbufs as long as we don't encounter
 		 * an end-of-record or there is a trailing mbuf of
 		 * the same type to propagate the EOR flag to.
+		 *
+		 * Defer the m_free() call because it can block and break
+		 * the atomicy of the sockbuf.
 		 */
 		if (m->m_len == 0 &&
 		    (eor == 0 ||
 		     (((o = m->m_next) || (o = tailm)) &&
 		      o->m_type == m->m_type))) {
-			m = m_free(m);
+			o = m->m_next;
+			m->m_next = free_chain;
+			free_chain = m;
+			m = o;
 			continue;
 		}
 
@@ -745,7 +790,10 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 			      (unsigned)m->m_len);
 			tailm->m_len += m->m_len;
 			sb->sb_cc += m->m_len;		/* update sb counter */
-			m = m_free(m);
+			o = m->m_next;
+			m->m_next = free_chain;
+			free_chain = m;
+			m = o;
 			continue;
 		}
 
@@ -753,7 +801,8 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 		if (tailm == NULL) {
 			KASSERT(sb->sb_mb == NULL,
 				("sbcompress: sb_mb not NULL"));
-			sb->sb_mb = m;		/* put at front of sockbuf */
+			sb->sb_mb = m;		/* only mbuf in sockbuf */
+			sb->sb_lastrecord = m;	/* new last record */
 		} else {
 			tailm->m_next = m;	/* tack m on following tailm */
 		}
@@ -770,12 +819,23 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 		tailm->m_flags &= ~M_EOR;
 	}
 
+	/*
+	 * Propogate EOR to the last mbuf
+	 */
 	if (eor) {
 		if (tailm)
-			tailm->m_flags |= eor;	/* propagate EOR to last mbuf */
+			tailm->m_flags |= eor;
 		else
 			printf("semi-panic: sbcompress");
 	}
+
+	/*
+	 * Clean up any defered frees.
+	 */
+	while (free_chain)
+		free_chain = m_free(free_chain);
+
+	sbcheck(sb);
 }
 
 /*
@@ -812,19 +872,16 @@ sbdrop(sb, len)
 	int len;
 {
 	struct mbuf *m;
-	struct mbuf *nextpkt;
+	struct mbuf *free_chain = NULL;
 
+	sbcheck(sb);
+	crit_enter();
+
+	/*
+	 * Remove mbufs from multiple records until the count is exhausted.
+	 */
 	m = sb->sb_mb;
-	nextpkt = (m != NULL) ? m->m_nextpkt : NULL;
-	while (len > 0) {
-		if (m == NULL) {
-			if (nextpkt == NULL)
-				panic("sbdrop");
-			m = nextpkt;
-			nextpkt = m->m_nextpkt;
-			m->m_nextpkt = NULL;
-			continue;
-		}
+	while (m && len > 0) {
 		if (m->m_len > len) {
 			m->m_len -= len;
 			m->m_data += len;
@@ -832,41 +889,94 @@ sbdrop(sb, len)
 			break;
 		}
 		len -= m->m_len;
-		sbfree(sb, m);
-		m = m_free(m);
+		m = sbunlinkmbuf(sb, m, &free_chain);
+		if (m == NULL && len)
+			m = sb->sb_mb;
 	}
+
+	/*
+	 * Remove any trailing 0-length mbufs in the current record.  If
+	 * the last record for which data was removed is now empty, m will be
+	 * NULL.
+	 */
 	while (m && m->m_len == 0) {
-		sbfree(sb, m);
-		m = m_free(m);
+		m = sbunlinkmbuf(sb, m, &free_chain);
 	}
-	if (m != NULL) {
-		sb->sb_mb = m;
-		m->m_nextpkt = nextpkt;
-	} else {
-		sb->sb_mb = nextpkt;
-		sb->sb_lastmbuf = NULL;		/* invalidate hint */
-	}
+	crit_exit();
+	if (free_chain)
+		m_freem(free_chain);
+	sbcheck(sb);
 }
 
 /*
- * Drop a record off the front of a sockbuf
- * and move the next record to the front.
+ * Drop a record off the front of a sockbuf and move the next record
+ * to the front.
+ *
+ * Must be called while holding a critical section.
  */
 void
 sbdroprecord(sb)
 	struct sockbuf *sb;
 {
 	struct mbuf *m;
+	struct mbuf *n;
 
+	sbcheck(sb);
 	m = sb->sb_mb;
 	if (m) {
-		sb->sb_mb = m->m_nextpkt;
+		if ((sb->sb_mb = m->m_nextpkt) == NULL) {
+			sb->sb_lastrecord = NULL;
+			sb->sb_lastmbuf = NULL;
+		}
 		m->m_nextpkt = NULL;
-		do {
-			sbfree(sb, m);
-			m = m_free(m);
-		} while (m);
+		for (n = m; n; n = n->m_next)
+			sbfree(sb, n);
+		m_freem(m);
+		sbcheck(sb);
 	}
+}
+
+/*
+ * Drop the first mbuf off the sockbuf and move the next mbuf to the front.
+ * Currently only the head mbuf of the sockbuf may be dropped this way.
+ *
+ * The next mbuf in the same record as the mbuf being removed is returned
+ * or NULL if the record is exhausted.  Note that other records may remain
+ * in the sockbuf when NULL is returned.
+ *
+ * Must be called while holding a critical section.
+ */
+struct mbuf *
+sbunlinkmbuf(struct sockbuf *sb, struct mbuf *m, struct mbuf **free_chain)
+{
+	struct mbuf *n;
+
+	KKASSERT(sb->sb_mb == m);
+	sbfree(sb, m);
+	n = m->m_next;
+	if (n) {
+		sb->sb_mb = n;
+		if (sb->sb_lastrecord == m)
+			sb->sb_lastrecord = n;
+		KKASSERT(sb->sb_lastmbuf != m);
+		n->m_nextpkt = m->m_nextpkt;
+	} else {
+		sb->sb_mb = m->m_nextpkt;
+		if (sb->sb_lastrecord == m) {
+			KKASSERT(sb->sb_mb == NULL);
+			sb->sb_lastrecord = NULL;
+		}
+		if (sb->sb_mb == NULL)
+			sb->sb_lastmbuf = NULL;
+	}
+	m->m_nextpkt = NULL;
+	if (free_chain) {
+		m->m_next = *free_chain;
+		*free_chain = m;
+	} else {
+		m->m_next = NULL;
+	}
+	return(n);
 }
 
 /*

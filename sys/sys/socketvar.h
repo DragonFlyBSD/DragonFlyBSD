@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.19 2005/07/13 01:38:53 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.20 2005/07/23 07:28:36 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -179,6 +179,12 @@ struct	xsocket {
 /*
  * Macros for sockets and socket buffering.
  */
+
+#ifdef SOCKBUF_DEBUG
+#define sbcheck(sb)	_sbcheck(sb)
+#else
+#define sbcheck(sb)
+#endif
 
 /*
  * Do we need to notify the other side when I/O is possible?
@@ -337,12 +343,14 @@ int	sbappendcontrol (struct sockbuf *sb, struct mbuf *m0,
 	    struct mbuf *control);
 void	sbappendrecord (struct sockbuf *sb, struct mbuf *m0);
 void	sbappendstream (struct sockbuf *sb, struct mbuf *m);
-void	sbcheck (struct sockbuf *sb);
+void	_sbcheck (struct sockbuf *sb);
 void	sbcompress (struct sockbuf *sb, struct mbuf *m, struct mbuf *n);
 struct mbuf *
 	sbcreatecontrol (caddr_t p, int size, int type, int level);
 void	sbdrop (struct sockbuf *sb, int len);
 void	sbdroprecord (struct sockbuf *sb);
+struct mbuf *
+	sbunlinkmbuf (struct sockbuf *, struct mbuf *, struct mbuf **);
 void	sbflush (struct sockbuf *sb);
 void	sbinsertoob (struct sockbuf *sb, struct mbuf *m0);
 void	sbrelease (struct sockbuf *sb, struct socket *so);
