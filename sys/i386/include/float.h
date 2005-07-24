@@ -32,7 +32,7 @@
  *
  *	from: @(#)float.h	7.1 (Berkeley) 5/8/90
  * $FreeBSD: src/sys/i386/include/float.h,v 1.8 1999/08/28 00:44:11 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/float.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/float.h,v 1.3 2005/07/24 20:23:00 joerg Exp $
  */
 
 #ifndef _MACHINE_FLOAT_H_
@@ -70,4 +70,23 @@
 #define LDBL_MAX_EXP	DBL_MAX_EXP
 #define LDBL_MAX	DBL_MAX
 #define LDBL_MAX_10_EXP	DBL_MAX_10_EXP
+
+#define	__GDTOA_IEEE_8087	1
+#define	__GDTOA_F_QNAN		0xffc00000
+#define	__GDTOA_D_QNAN0		0x0
+#define	__GDTOA_D_QNAN1		0xfff80000
+#define	__GDTOA_LD_QNAN0	0x0
+#define	__GDTOA_LD_QNAN1	0xc0000000
+#define	__GDTOA_LD_QNAN2	0xffff
+#define	__GDTOA_LD_QNAN3	0x0
+#define	__GDTOA_LDUS_QNAN0	0x0
+#define	__GDTOA_LDUS_QNAN1	0x0
+#define	__GDTOA_LDUS_QNAN2	0x0
+#define	__GDTOA_LDUS_QNAN3	0xc000
+#define	__GDTOA_LDUS_QNAN4	0xffff
+
+/* #undef __GDTOA_INACCURATE_DIVIDE */
+/* #undef __GDTOA_ROUND_BIASED */
+/* #undef __GDTOA_SUDDEN_UNDERFLOW */
+
 #endif /* _MACHINE_FLOAT_H_ */
