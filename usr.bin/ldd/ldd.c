@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/ldd.c,v 1.18.2.7 2002/02/27 18:35:53 sobomax Exp $
- * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.4 2004/08/19 23:41:07 joerg Exp $
+ * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.5 2005/07/24 15:04:56 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -168,13 +168,7 @@ main(int argc, char **argv)
 				warnx("%s: not a dynamic executable", *argv);
 				file_ok = 0;
 			} else if (hdr.elf.e_type == ET_DYN) {
-				if (hdr.elf.e_ident[EI_OSABI] & ELFOSABI_FREEBSD) {
-					is_shlib = 1;
-				} else {
-					warnx("%s: not a FreeBSD ELF shared "
-					      "object", *argv);
-					file_ok = 0;
-				}
+				is_shlib = 1;
 			}
 		} else {
 			warnx("%s: not a dynamic executable", *argv);
