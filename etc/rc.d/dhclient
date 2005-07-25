@@ -2,11 +2,11 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.6 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.5 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.6 2005/07/25 01:29:03 joerg Exp $
 #
 
 # PROVIDE: dhclient
-# REQUIRE: network netif mountcritlocal
+# REQUIRE: netif mountcritlocal
 # BEFORE:  NETWORKING
 # KEYWORD: DragonFly
 #

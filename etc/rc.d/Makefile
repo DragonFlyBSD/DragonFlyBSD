@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.16 2001/01/14 15:37:22 minoura Exp $
 # $FreeBSD: src/etc/rc.d/Makefile,v 1.20 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Makefile,v 1.15 2005/05/24 02:51:49 rob Exp $
+# $DragonFly: src/etc/rc.d/Makefile,v 1.16 2005/07/25 01:29:03 joerg Exp $
 
 .include <bsd.own.mk>
 
@@ -16,7 +16,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	ldconfig local localdaemons lpd \
 	mixer motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
-	named netif netoptions network network1 network2 network3 \
+	named netif netoptions network1 network2 network3 \
 	network_ipv6 nfsclient nfsd nfslocking nfsserver nisdomain ntpd \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf.sh resident rndcontrol root route6d routed \
