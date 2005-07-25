@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.26 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.27 2005/07/25 17:25:51 hmp Exp $
  */
 
 
@@ -60,10 +60,8 @@
 
 extern struct vnodeopv_entry_desc hpfs_vnodeop_entries[];
 
-#if defined(__DragonFly__)
 MALLOC_DEFINE(M_HPFSMNT, "HPFS mount", "HPFS mount structure");
 MALLOC_DEFINE(M_HPFSNO, "HPFS node", "HPFS node structure");
-#endif
 
 static int	hpfs_root (struct mount *, struct vnode **);
 static int	hpfs_statfs (struct mount *, struct statfs *,
@@ -77,38 +75,17 @@ static int	hpfs_vptofh (struct vnode *, struct fid *);
 static int	hpfs_fhtovp (struct mount *, struct fid *,
 				 struct vnode **);
 
-#if !defined(__DragonFly__)
-static int	hpfs_quotactl (struct mount *, int, uid_t, caddr_t,
-				   struct proc *);
-static int	hpfs_start (struct mount *, int, struct proc *);
-static int	hpfs_sync (struct mount *, int, struct ucred *,
-			       struct proc *);
-#endif
 
-#if defined(__DragonFly__)
 struct sockaddr;
 static int	hpfs_mount (struct mount *, char *, caddr_t, struct thread *);
 static int	hpfs_init (struct vfsconf *);
 static int	hpfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
-#else /* defined(__NetBSD__) */
-static int	hpfs_mount (struct mount *, const char *, void *,
-				struct nlookupdata *, struct proc *);
-static void	hpfs_init (void);
-static int	hpfs_sysctl (int *, u_int, void *, size_t *, void *,
-				 size_t, struct proc *);
-static int	hpfs_checkexp (struct mount *, struct mbuf *,
-				   int *, struct ucred **);
-#endif
 
 /*ARGSUSED*/
 static int
 hpfs_checkexp(struct mount *mp,
-#if defined(__DragonFly__)
 	      struct sockaddr *nam,
-#else /* defined(__NetBSD__) */
-	      struct mbuf *nam,
-#endif
 	      int *exflagsp, struct ucred **credanonp)
 {
 	struct netcred *np;
@@ -126,29 +103,18 @@ hpfs_checkexp(struct mount *mp,
 	return (0);
 }
 
-#if defined(__DragonFly__)
 static int
 hpfs_init(struct vfsconf *vcp)
-#else /* defined(__NetBSD__) */
-static void
-hpfs_init(void)
-#endif
 {
 	dprintf(("hpfs_init():\n"));
 	
 	hpfs_hphashinit();
-#if defined(__DragonFly__)
 	return 0;
-#endif
 }
 
 static int
 hpfs_mount(struct mount *mp,
-#if defined(__DragonFly__)
 	   char *path, caddr_t data,
-#else /* defined(__NetBSD__) */
-	   const char *path, void *data,
-#endif
 	   struct thread *td)
 {
 	u_int		size;
@@ -209,19 +175,8 @@ hpfs_mount(struct mount *mp,
 	if (error)
 		goto error_1;
 
-#if defined(__DragonFly__)
 	if (!vn_isdisk(devvp, &error)) 
 		goto error_2;
-#else /* defined(__NetBSD__) */
-	if (devvp->v_type != VBLK) {
-		error = ENOTBLK;
-		goto error_2;
-	}
-	if (umajor(devvp->v_udev) >= nblkdev) {
-		error = ENXIO;
-		goto error_2;
-	}
-#endif
 
 	/*
 	 ********************
@@ -286,20 +241,14 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	if (error)
 		return (error);
 	ncount = count_udev(devvp->v_udev);
-#if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;
-#endif
 	if (ncount > 0)
 		return (EBUSY);
 
-#if defined(__DragonFly__)
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
 	VOP__UNLOCK(devvp, 0, td);
-#else
-	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
-#endif
 	if (error)
 		return (error);
 
@@ -374,13 +323,8 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 
 	vput(vp);
 
-#if defined(__DragonFly__)
 	mp->mnt_stat.f_fsid.val[0] = (long)dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
-#else
-	mp->mnt_stat.f_fsid.val[0] = (long)dev;
-	mp->mnt_stat.f_fsid.val[1] = makefstype(MOUNT_HPFS);
-#endif
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
 	dev->si_mountpoint = mp;
@@ -390,22 +334,11 @@ failed:
 	if (bp)
 		brelse (bp);
 	mp->mnt_data = (qaddr_t)NULL;
-#if defined(__DragonFly__)
 	dev->si_mountpoint = NULL;
-#else
-	devvp->v_specflags &= ~SI_MOUNTEDON;
-#endif
 	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	return (error);
 }
 
-#if !defined(__DragonFly__)
-static int
-hpfs_start(struct mount *mp, int flags, struct thread *td)
-{
-	return (0);
-}
-#endif
 
 static int
 hpfs_unmount(struct mount *mp, int mntflags, struct thread *td)
@@ -429,11 +362,7 @@ hpfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 		return (error);
 	}
 
-#if defined(__DragonFly__)
 	hpmp->hpm_devvp->v_rdev->si_mountpoint = NULL;
-#else
-	hpmp->hpm_devvp->v_specflags &= ~SI_MOUNTEDON;
-#endif
 
 	vinvalbuf(hpmp->hpm_devvp, V_SAVE, td, 0, 0);
 	error = VOP_CLOSE(hpmp->hpm_devvp, ronly ? FREAD : FREAD|FWRITE, td);
@@ -474,11 +403,7 @@ hpfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	dprintf(("hpfs_statfs(): HPFS%d.%d\n",
 		hpmp->hpm_su.su_hpfsver, hpmp->hpm_su.su_fnctver));
 
-#if defined(__DragonFly__)
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
-#else /* defined(__NetBSD__) */
-	sbp->f_type = 0;
-#endif
 	sbp->f_bsize = DEV_BSIZE;
 	sbp->f_iosize = DEV_BSIZE;
 	sbp->f_blocks = hpmp->hpm_su.su_btotal;
@@ -494,22 +419,6 @@ hpfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	return (0);
 }
 
-#if !defined(__DragonFly__)
-static int
-hpfs_sync(struct mount *mp, int waitfor, struct ucred *cred,
-	  struct thread *td)
-{
-	return (0);
-}
-
-static int
-hpfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
-	      struct thread *td)
-{
-	printf("hpfs_quotactl():\n");
-	return (EOPNOTSUPP);
-}
-#endif
 
 /*ARGSUSED*/
 static int
