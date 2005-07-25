@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mail/README,v 1.8.2.6 2002/05/22 17:01:32 gshapiro Exp $
-# $DragonFly: src/etc/mail/README,v 1.2 2003/06/17 04:24:47 dillon Exp $
+# $DragonFly: src/etc/mail/README,v 1.3 2005/07/25 00:24:31 gshapiro Exp $
 
 		Sendmail Processes
 
@@ -20,7 +20,7 @@ if both sendmail_enable and sendmail_submit_enable are set to "NO", you
 must do one of two things for command line submitted mail:
 
 1. Designate an alternative host for the submission agent to contact
-   by altering /etc/mail/freebsd.submit.mc (or setting SENDMAIL_SUBMIT_MC
+   by altering /etc/mail/dragonfly.submit.mc (or setting SENDMAIL_SUBMIT_MC
    in /etc/make.conf to an alternate .mc file) and using
    'make install-submit-cf' in /etc/mail/.  Change the FEATURE(msp) line
    to FEATURE(msp, hostname) where hostname is the fully qualified hostname

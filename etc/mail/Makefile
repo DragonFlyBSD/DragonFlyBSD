@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/etc/mail/Makefile,v 1.9.2.23 2003/02/12 03:57:52 gshapiro Exp $
-# $DragonFly: src/etc/mail/Makefile,v 1.2 2003/06/17 04:24:47 dillon Exp $
+# $DragonFly: src/etc/mail/Makefile,v 1.3 2005/07/25 00:24:31 gshapiro Exp $
 #
 # This Makefile provides an easy way to generate the configuration
 # file and database maps for the sendmail(8) daemon.
@@ -47,14 +47,17 @@
 #
 #		   SENDMAIL_MC=/etc/mail/myconfig.mc
 #
-# If '<HOSTNAME>.mc' does not exist, it is created using 'freebsd.mc'
+# If '<HOSTNAME>.mc' does not exist, it is created using 'dragonfly.mc'
 # as a template.
 #
-# It also uses 'freebsd.submit.mc' as the default mail submission .mc file.
-# This can be changed by defining SENDMAIL_SUBMIT_MC in /etc/make.conf,
-# e.g.:
+# It also uses '<HOSTNAME>.submit.mc' as the default mail submission .mc
+# file. This can be changed by defining SENDMAIL_SUBMIT_MC in
+# /etc/make.conf, e.g.:
 #
 #		   SENDMAIL_SUBMIT_MC=/etc/mail/mysubmit.mc
+#
+# If '<HOSTNAME>.submit.mc' does not exist, it is created using
+# 'dragonfly.submit.mc' as a template.
 # ------------------------------------------------------------------------
 #
 # The Makefile knows about the following maps:
@@ -67,10 +70,16 @@ SENDMAIL_MC!=           hostname
 SENDMAIL_MC:=           ${SENDMAIL_MC}.mc
 
 ${SENDMAIL_MC}:
-	cp freebsd.mc ${SENDMAIL_MC}
+	cp dragonfly.mc ${SENDMAIL_MC}
 .endif
 
-SENDMAIL_SUBMIT_MC?=	freebsd.submit.mc
+.ifndef SENDMAIL_SUBMIT_MC
+SENDMAIL_SUBMIT_MC!=	hostname
+SENDMAIL_SUBMIT_MC:=	${SENDMAIL_SUBMIT_MC}.submit.mc
+
+${SENDMAIL_SUBMIT_MC}:
+	cp dragonfly.submit.mc ${SENDMAIL_SUBMIT_MC}
+.endif
 
 INSTALL_CF=		${SENDMAIL_MC:R}.cf
 

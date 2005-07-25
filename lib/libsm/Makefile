@@ -1,14 +1,11 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.7 2005/07/07 11:49:55 corecode Exp $
+# $DragonFly: src/lib/libsm/Makefile,v 1.8 2005/07/25 00:24:31 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 .PATH:	${SENDMAIL_DIR}/libsm
 
-CFLAGS+= -I${SENDMAIL_DIR}/src -I${SENDMAIL_DIR}/include -I.
+CFLAGS+= -I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNETINET6 -DNEWDB -DNIS -DMAP_REGEX -DNOT_SENDMAIL
-
-#Define __FreeBSD__ as is needed when building with gcc3.
-CFLAGS+= -D__FreeBSD__
 
 # User customizations to the sendmail build environment
 CFLAGS+=${SENDMAIL_CFLAGS}
@@ -23,7 +20,7 @@ SRCS+=	assert.c debug.c errstring.c exc.c heap.c match.c rpool.c \
 	fwrite.c get.c makebuf.c put.c refill.c rewind.c setvbuf.c \
 	smstdio.c snprintf.c sscanf.c stdio.c strio.c ungetc.c \
 	vasprintf.c vfprintf.c vfscanf.c vprintf.c vsnprintf.c \
-	vsprintf.c vsscanf.c wbuf.c wsetup.c string.c stringf.c \
+	wbuf.c wsetup.c string.c stringf.c \
 	xtrap.c strto.c test.c path.c strcasecmp.c strrevcmp.c \
 	signal.c clock.c config.c shm.c mbdb.c strexit.c cf.c ldap.c \
 	niprop.c mpeix.c
@@ -32,6 +29,6 @@ CLEANFILES+=sm_os.h
 INTERNALLIB=		true
 
 sm_os.h:
-	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_dragonfly.h sm_os.h
 
 .include <bsd.lib.mk>

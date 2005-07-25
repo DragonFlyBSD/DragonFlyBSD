@@ -1,10 +1,10 @@
 # $FreeBSD: src/lib/libsmutil/Makefile,v 1.1.2.5 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsmutil/Makefile,v 1.4 2005/07/07 11:49:55 corecode Exp $
+# $DragonFly: src/lib/libsmutil/Makefile,v 1.5 2005/07/25 00:24:31 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 .PATH:	${SENDMAIL_DIR}/libsmutil
 
-CFLAGS+=-I${SENDMAIL_DIR}/src -I${SENDMAIL_DIR}/include -I.
+CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNEWDB -DNIS -DMAP_REGEX -DNOT_SENDMAIL
 
 # User customizations to the sendmail build environment
@@ -19,6 +19,6 @@ CLEANFILES+=sm_os.h
 INTERNALLIB=		true
 
 sm_os.h:
-	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_dragonfly.h sm_os.h
 
 .include <bsd.lib.mk>

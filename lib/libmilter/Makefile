@@ -1,10 +1,10 @@
 # $FreeBSD: src/lib/libmilter/Makefile,v 1.1.2.2 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libmilter/Makefile,v 1.4 2005/07/07 11:49:55 corecode Exp $
+# $DragonFly: src/lib/libmilter/Makefile,v 1.5 2005/07/25 00:24:31 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 .PATH:	${SENDMAIL_DIR}/libmilter ${SENDMAIL_DIR}/libsm
 
-CFLAGS+=-I${SENDMAIL_DIR}/src -I${SENDMAIL_DIR}/include -I.
+CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNETINET6 -DNOT_SENDMAIL -Dsm_snprintf=snprintf
 CFLAGS+=-D_THREAD_SAFE
 
@@ -22,6 +22,6 @@ SRCS+=	main.c engine.c listener.c handler.c comm.c smfi.c \
 CLEANFILES+=sm_os.h
 
 sm_os.h:
-	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_dragonfly.h sm_os.h
 
 .include <bsd.lib.mk>

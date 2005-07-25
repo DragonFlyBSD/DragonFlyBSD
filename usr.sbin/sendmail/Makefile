@@ -1,9 +1,9 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.9 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.10 2005/07/25 00:24:32 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
-SMDIR=	${SENDMAIL_DIR}/src
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
+SMDIR=	${SENDMAIL_DIR}/sendmail
 .PATH: ${SMDIR}
 
 BINDIR=	/usr/libexec/sendmail
@@ -13,9 +13,9 @@ MAN=	mailq.1 newaliases.1 aliases.5 sendmail.8
 SRCS=	alias.c arpadate.c bf.c collect.c conf.c control.c \
 	convtime.c daemon.c deliver.c domain.c envelope.c err.c headers.c \
 	macro.c main.c map.c mci.c milter.c mime.c parseaddr.c queue.c \
-	readcf.c recipient.c savemail.c sasl.c sfsasl.c shmticklib.c \
-	sm_resolve.c srvrsmtp.c stab.c stats.c sysexits.c timers.c \
-	tls.c trace.c udb.c usersmtp.c util.c version.c
+	ratectrl.c readcf.c recipient.c savemail.c sasl.c sfsasl.c \
+	shmticklib.c sm_resolve.c srvrsmtp.c stab.c stats.c sysexits.c \
+	timers.c tls.c trace.c udb.c usersmtp.c util.c version.c
 BINOWN=	root
 BINGRP=	smmsp
 .ifdef SENDMAIL_SET_USER_ID
@@ -33,9 +33,6 @@ MAPS=	-DMAP_REGEX -DDNSMAP
 
 CFLAGS+= -I${SMDIR} -I${SENDMAIL_DIR}/include -I.
 CFLAGS+= ${DBMDEF} ${NIS} -DMILTER -DNETINET6 -DTCPWRAPPERS ${MAPS}
-
-# Define __FreeBSD__ as is needed when building with gcc3.
-CFLAGS+=-D__FreeBSD__=4
 
 DPADD=	${LIBUTIL} ${LIBWRAP}
 LDADD=	-lutil -lwrap
@@ -64,7 +61,7 @@ CLEANFILES+=sm_os.h
 	!defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
 # STARTTLS support
 DISTRIBUTION=	crypto
-CFLAGS+=	-DSTARTTLS -D_FFR_TLS_1
+CFLAGS+=	-DSTARTTLS -D_FFR_TLS_1 -D_FFR_DEAL_WITH_ERROR_SSL
 LDADD+=		-lssl -lcrypto
 DPADD+=		${LIBSSL} ${LIBCRYPTO}
 .endif
@@ -76,6 +73,6 @@ LDADD+=${SENDMAIL_LDADD}
 LDFLAGS+=${SENDMAIL_LDFLAGS}
 
 sm_os.h:
-	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_dragonfly.h sm_os.h
 
 .include <bsd.prog.mk>

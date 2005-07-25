@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.8 2004/08/12 08:08:08 dillon Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.9 2005/07/25 00:24:31 gshapiro Exp $
 .\"
 .Dd November 3, 2000
 .Dt MAKE.CONF 5
@@ -554,7 +554,9 @@ Set to disable the installation of
 as an suid root program.
 .It Va SENDMAIL_MC
 .Pq Vt str
-The default m4 configuration file to use at install time.
+The default
+.Xr m4 1
+configuration file to use at install time.
 The value should include the full path to the
 .Pa .mc
 file, e.g.,
@@ -564,16 +566,11 @@ Use with caution as a make install will overwrite any existing
 Note that
 .Va SENDMAIL_CF
 is now deprecated.
-Avoid using a value of
-.Pa /etc/mail/sendmail.mc
-as a buildworld will create
-.Pa /etc/mail/sendmail.cf
-before installworld installs an updated
-.Xr sendmail 8
-binary.
 .It Va SENDMAIL_SUBMIT_MC
 .Pq Vt str
-The default m4 configuration file for mail submission
+The default
+.Xr m4 1
+configuration file for mail submission
 to use at install time.
 The value should include the full path to the
 .Pa .mc
@@ -581,13 +578,6 @@ file, e.g.,
 .Pa /etc/mail/mysubmit.mc .
 Use with caution as a make install will overwrite any existing
 .Pa /etc/mail/submit.cf .
-Avoid using a value of
-.Pa /etc/mail/submit.mc
-as a buildworld will create
-.Pa /etc/mail/submit.cf
-before installworld installs an updated
-.Xr sendmail 8
-binary.
 .It Va SENDMAIL_ADDITIONAL_MC
 .Pq Vt str
 Additional
@@ -600,16 +590,20 @@ The value should include the full path to the
 file(s), e.g.,
 .Pa /etc/mail/foo.mc
 .Pa /etc/mail/bar.mc .
-Avoid using a value of
-.Pa /etc/mail/sendmail.mc
-as a buildworld will create
-.Pa /etc/mail/sendmail.cf
-before installworld installs an updated
-.Xr sendmail 8
-binary.
+.It Va SENDMAIL_CF_DIR
+.Pq Vt str
+Override the default location for the
+.Xr m4 1
+configuration files used to build a
+.Pa .cf
+file from a
+.Pa .mc
+file.
 .It Va SENDMAIL_M4_FLAGS
 .Pq Vt str
-Flags passed to m4 when building a
+Flags passed to
+.Xr m4 1
+when building a
 .Pa .cf
 file from a
 .Pa .mc
@@ -651,7 +645,7 @@ and do not install
 .Pa /etc/mail/submit.{cf,mc} .
 Use of this flag is not recommended and the alternative advice in
 .Pa /etc/mail/README
-should be followed instead of at all possible.
+should be followed instead if at all possible.
 .It Va SENDMAIL_MAP_PERMS
 .Pq Vt str
 Mode to use when generating alias and map database files using

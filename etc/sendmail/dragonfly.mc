@@ -34,7 +34,7 @@ divert(-1)
 #
 
 #
-#  This is a generic configuration file for FreeBSD 4.X and later systems.
+#  This is a generic configuration file for DragonFlyBSD and later systems.
 #  If you want to customize it, copy it to a name appropriate for your
 #  environment and do the modifications there.
 #
@@ -44,9 +44,8 @@ divert(-1)
 #
 
 divert(0)
-VERSIONID(`$FreeBSD: src/etc/sendmail/freebsd.mc,v 1.10.2.18 2003/04/24 16:57:30 gshapiro Exp $')
-VERSIONID(`$DragonFly: src/etc/sendmail/Attic/freebsd.mc,v 1.2 2003/06/17 04:24:48 dillon Exp $')
-OSTYPE(freebsd4)
+VERSIONID(`$DragonFly: src/etc/sendmail/dragonfly.mc,v 1.1 2005/07/25 00:24:31 gshapiro Exp $')
+OSTYPE(dragonfly)
 DOMAIN(generic)
 
 FEATURE(access_db, `hash -o -T<TMPF> /etc/mail/access')
@@ -82,9 +81,9 @@ dnl /etc/mail/local-host-names and comment out the second line.
 dnl define(`confCW_FILE', `-o /etc/mail/sendmail.cw')
 define(`confCW_FILE', `-o /etc/mail/local-host-names')
 
-dnl Uncomment both of the following lines to listen on IPv6 as well as IPv4
-dnl DAEMON_OPTIONS(`Name=IPv4, Family=inet')
-dnl DAEMON_OPTIONS(`Name=IPv6, Family=inet6')
+dnl Enable both IPv4 and IPv6 (optional)
+DAEMON_OPTIONS(`Name=IPv4, Family=inet')
+DAEMON_OPTIONS(`Name=IPv6, Family=inet6, Modifiers=O')
 
 define(`confBIND_OPTS', `WorkAroundBrokenAAAA')
 define(`confNO_RCPT_ACTION', `add-to-undisclosed')

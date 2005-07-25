@@ -1,14 +1,14 @@
 #	@(#)Makefile	8.2 (Berkeley) 9/21/96
 # $FreeBSD: src/usr.sbin/praliases/Makefile,v 1.1.6.6 2002/03/25 21:31:46 gshapiro Exp $
-# $DragonFly: src/usr.sbin/praliases/Makefile,v 1.4 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/usr.sbin/praliases/Makefile,v 1.5 2005/07/25 00:24:32 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 .PATH:	${SENDMAIL_DIR}/praliases
 
 PROG=	praliases
 SRCS=	praliases.c
 MAN=	praliases.8
-CFLAGS+=-I${SENDMAIL_DIR}/src -I${SENDMAIL_DIR}/include -I.
+CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNEWDB -DNOT_SENDMAIL
 
 .if exists(${.OBJDIR}/../../lib/libsm)
@@ -45,6 +45,6 @@ LDADD+=${SENDMAIL_LDADD}
 LDFLAGS+=${SENDMAIL_LDFLAGS}
 
 sm_os.h:
-	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_freebsd.h sm_os.h
+	${LN} -sf ${SENDMAIL_DIR}/include/sm/os/sm_os_dragonfly.h sm_os.h
 
 .include <bsd.prog.mk>

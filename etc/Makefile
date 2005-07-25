@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.76 2005/07/22 18:20:43 joerg Exp $
+# $DragonFly: src/etc/Makefile,v 1.77 2005/07/25 00:24:31 gshapiro Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -108,6 +108,9 @@ upgrade_etc:	preupgrade
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
+.if !defined(NO_SENDMAIL)
+	cd ${.CURDIR}/sendmail; ${MAKE} upgrade
+.endif
 .if !defined(NO_I4B)
 	cd ${.CURDIR}/isdn; ${MAKE} install
 .endif

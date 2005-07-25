@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man8/rc.sendmail.8,v 1.1.2.2 2002/05/22 17:01:33 gshapiro Exp $
-.\" $DragonFly: src/share/man/man8/rc.sendmail.8,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man8/rc.sendmail.8,v 1.3 2005/07/25 00:24:32 gshapiro Exp $
 .\"
 .Dd March 30, 2002
 .Dt RC.SENDMAIL 8
@@ -94,7 +94,7 @@ and
 .Cm restart
 targets.
 .Sh RC.CONF VARIABLES
-The following variables effect the behavior of
+The following variables affect the behavior of
 .Nm .
 They are defined in
 .Pa /etc/defaults/rc.conf
@@ -104,32 +104,39 @@ and can be changed in
 .It Va sendmail_enable
 .Pq Vt str
 If set to
-.Dq YES ,
+.Dq Li YES ,
 run the
 .Xr sendmail 8
 daemon at system boot time.
 If set to
-.Dq NONE ,
-do not run any
+.Dq Li NO ,
+do not run a
 .Xr sendmail 8
-daemons at system boot time.
+daemon to listen for incoming network mail.
+This does not preclude a
+.Xr sendmail 8
+daemon listening on the SMTP port of the loopback interface.
+The
+.Dq Li NONE
+option is deprecated and should not be used.
+It will be removed in a future release.
 .It Va sendmail_flags
 .Pq Vt str
 If
 .Va sendmail_enable
 is set to
-.Dq YES ,
+.Dq Li YES ,
 these are the flags to pass to the
 .Xr sendmail 8
 daemon.
 .It Va sendmail_submit_enable
 .Pq Vt bool
 If set to
-.Dq YES
+.Dq Li YES
 and
 .Va sendmail_enable
 is set to
-.Dq NO ,
+.Dq Li NO ,
 run
 .Xr sendmail 8
 using
@@ -142,30 +149,30 @@ a localhost-only listening SMTP service required for running
 as a non-set-user-ID binary.
 Note that this does not work inside
 .Xr jail 2
-systems as jails do not allow binding to just the localhost interface.
+systems, as jails do not allow binding to just the localhost interface.
 .It Va sendmail_submit_flags
 .Pq Vt str
 If
 .Va sendmail_enable
 is set to
-.Dq NO
+.Dq Li NO
 and
 .Va sendmail_submit_enable
 is set to
-.Dq YES ,
+.Dq Li YES ,
 these are the flags to pass to the
 .Xr sendmail 8
 daemon.
 .It Va sendmail_outbound_enable
 .Pq Vt bool
 If set to
-.Dq YES
+.Dq Li YES
 and both
 .Va sendmail_enable
 and
 .Va sendmail_submit_enable
 are set to
-.Dq NO ,
+.Dq Li NO ,
 run
 .Xr sendmail 8
 using
@@ -181,31 +188,31 @@ If both
 and
 .Va sendmail_submit_enable
 are set to
-.Dq NO
+.Dq Li NO
 and
 .Va sendmail_outbound_enable
 is set to
-.Dq YES ,
+.Dq Li YES ,
 these are the flags to pass to the
 .Xr sendmail 8
 daemon.
 .It Va sendmail_msp_queue_enable
 .Pq Vt bool
 If set to
-.Dq YES ,
+.Dq Li YES ,
 start a client (MSP) queue runner
 .Xr sendmail 8
 daemon at system boot time.
 As of sendmail 8.12, a separate queue is used for command line
 submissions.
-The client queue runner assures that nothing is
+The client queue runner ensures that nothing is
 left behind in the submission queue.
 .It Va sendmail_msp_queue_flags
 .Pq Vt str
 If
 .Va sendmail_msp_queue_enable
 is set to
-.Dq YES ,
+.Dq Li YES ,
 these are the flags to pass to the
 .Xr sendmail 8
 daemon.
@@ -233,6 +240,18 @@ if (${sendmail_enable} != NONE &&
     ${sendmail_msp_queue_enable} == YES)
         start sendmail with ${sendmail_msp_queue_flags}
 endif
+.Ed
+.Pp
+To completely prevent any
+.Xr sendmail 8
+daemons from starting, you must
+set the following variables in
+.Pa /etc/rc.conf :
+.Bd -literal -offset indent
+sendmail_enable="NO"
+sendmail_submit_enable="NO"
+sendmail_outbound_enable="NO"
+sendmail_msp_queue_enable="NO"
 .Ed
 .Sh SEE ALSO
 .Xr rc.conf 5 ,
