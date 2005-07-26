@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.5 2005/06/27 11:28:54 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.6 2005/07/26 12:40:38 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -322,6 +322,7 @@ iwi_attach(device_t dev)
 	sc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
 	if (sc->mem == NULL) {
 		device_printf(dev, "could not allocate memory resource\n");
+		error = ENXIO;
 		goto fail;
 	}
 
@@ -333,20 +334,24 @@ iwi_attach(device_t dev)
 	    RF_SHAREABLE);
 	if (sc->irq == NULL) {
 		device_printf(dev, "could not allocate interrupt resource\n");
+		error = ENXIO;
 		goto fail;
 	}
 
-	if (iwi_reset(sc) != 0) {
+	error = iwi_reset(sc);
+	if (error != 0) {
 		device_printf(dev, "could not reset adapter\n");
 		goto fail;
 	}
 
-	if (iwi_start_fw_monitor_thread(sc) ) {
+	if (iwi_start_fw_monitor_thread(sc)) {
 		device_printf(dev, "could not start f/w reset thread\n");
+		error = ENXIO;
 		goto fail;
 	}
 
-	if (iwi_dma_alloc(sc) != 0) {
+	error = iwi_dma_alloc(sc);
+	if (error != 0) {
 		device_printf(dev, "could not allocate DMA resources\n");
 		goto fail;
 	}
@@ -434,16 +439,6 @@ iwi_attach(device_t dev)
 	sc->sc_txtap.wt_ihdr.it_present = htole32(IWI_TX_RADIOTAP_PRESENT);
 
 	/*
-	 * Hook our interrupt after all initialization is complete
-	 */
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-			       iwi_intr, sc, &sc->sc_ih, NULL);
-	if (error != 0) {
-		device_printf(dev, "could not set up interrupt\n");
-		goto fail;
-	}
-
-	/*
 	 * Add sysctl knobs
 	 * 
 	 * use -1 to indicate 'default / not set'
@@ -466,8 +461,9 @@ iwi_attach(device_t dev)
 				0, "");
 
 	if (sc->sysctl_tree == NULL) {
+		device_printf(dev, "sysctl add node failed\n");
 		error = EIO;
-		goto fail;
+		goto fail2;
 	}
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -537,10 +533,24 @@ iwi_attach(device_t dev)
 			iwi_sysctl_disable_multicast_decryption, "I",
 			 "Disable multicast decryption.");
 
+	/*
+	 * Hook our interrupt after all initialization is complete
+	 */
+	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
+			       iwi_intr, sc, &sc->sc_ih, NULL);
+	if (error != 0) {
+		device_printf(dev, "could not set up interrupt\n");
+		goto fail2;
+	}
+
 	return 0;
 
-fail:	iwi_detach(dev);
-	return ENXIO;
+fail2:
+	bpfdetach(ifp);
+	ieee80211_ifdetach(ifp);
+fail:
+	iwi_detach(dev);
+	return error;
 }
 
 static int
@@ -554,38 +564,40 @@ iwi_detach(device_t dev)
 	sc->flags |= IWI_FLAG_EXIT;
 	wakeup(IWI_FW_WAKE_MONITOR(sc)); /* Stop firmware monitor. */
 
-	(void) tsleep(IWI_FW_MON_EXIT(sc), 0, "iwiexi", 10 * hz );
+	tsleep(IWI_FW_MON_EXIT(sc), 0, "iwiexi", 10 * hz);
 
 	IWI_LOCK(sc);
 	IWI_IPLLOCK(sc);
 
-	iwi_stop(sc);
-	iwi_free_firmware(sc);
+	if (device_is_attached(dev)) {
+		iwi_stop(sc);
+		iwi_free_firmware(sc);
+		bpfdetach(ifp);
+		ieee80211_ifdetach(ifp);
+	}
 
-	if ( sc->sysctl_tree ) {
+	if (sc->sysctl_tree) {
 		crit_enter();
 		sysctl_ctx_free(&sc->sysctl_ctx);
 		crit_exit();
 		sc->sysctl_tree = 0;
 	}
 
+	if (sc->sc_ih != NULL)
+		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+
 	IWI_IPLUNLOCK(sc);
 	IWI_UNLOCK(sc);
 
-	bpfdetach(ifp);
-
-	ieee80211_ifdetach(ifp);
-
-	iwi_release(sc);
-
-	if (sc->irq != NULL) {
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+	if (sc->irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-	}
 
-	if (sc->mem != NULL)
+	if (sc->mem != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, IWI_PCI_BAR0,
 		    sc->mem);
+	}
+
+	iwi_release(sc);
 
 	IWI_LOCK_DESTROY(&(sc->sc_lock));
 	IWI_LOCK_DESTROY(&(sc->sc_intrlock));
