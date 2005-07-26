@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.24 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.25 2005/07/26 18:02:49 dillon Exp $
  */
 
 /*
@@ -4794,8 +4794,10 @@ clear_inodedeps(struct thread *td)
 		if ((inodedep = LIST_FIRST(inodedephd)) != NULL)
 			break;
 	}
-	if (inodedep == NULL)
+	if (inodedep == NULL) {
+		FREE_LOCK(&lk);
 		return;
+	}
 	/*
 	 * Ugly code to find mount point given pointer to superblock.
 	 */
