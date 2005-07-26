@@ -1,16 +1,6 @@
 # DragonFly BSD Tinderbox Configuration File
 #
-# If you would like a particular option tested by the Tinderbox system
-# at: http://ps.catpa.com/, please add it into this file.
-#
-# Feel free to add your *test*/*debug* options into this configuration
-# file.  Logs will be available for this configuration at:
-#
-#	http://ps.catpa.com/tinderbox/
-#
-# Tinderbox maintained by:	Hiten Pandya (hmp@leaf.dragonflybsd.org)
-#
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.16 2005/05/07 17:38:34 swildner Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.17 2005/07/26 00:29:38 hmp Exp $
 
 machine		i386
 cpu		I686_CPU
@@ -19,7 +9,7 @@ maxusers	0
 
 # ADD TEST OPTIONS HERE
 options		DDB
-options         DDB_UNATTENDED
+options		DDB_UNATTENDED
 options		INVARIANTS
 options		INVARIANT_SUPPORT
 
