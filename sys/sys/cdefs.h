@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.17 2005/04/24 09:56:31 asmodai Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.18 2005/07/26 16:45:04 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -345,6 +345,18 @@
  *
  * Our macros begin with two underscores to avoid namespace screwage.
  */
+
+/*
+ * If no special macro was specified, make the DragonFly extensions
+ * available. Also make them available when requested so.
+ */
+#if (!defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE) && \
+    !defined(_ANSI_SOURCE) && !defined(_C99_SOURCE)) || \
+    defined(_DRAGONFLY_SOURCE) || defined(_NETBSD_SOURCE)
+#define __DF_VISIBLE	1
+#else
+#define __DF_VISIBLE	0
+#endif
 
 #if defined(_POSIX_C_SOURCE)
 
