@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.25 2005/07/26 18:02:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.26 2005/07/26 20:53:58 dillon Exp $
  */
 
 /*
@@ -233,8 +233,8 @@ static struct bio_ops softdep_bioops = {
 #ifndef /* NOT */ DEBUG
 static struct lockit {
 } lk = { 0 };
-#define ACQUIRE_LOCK(lk)		crit_enter();
-#define FREE_LOCK(lk)			crit_exit();
+#define ACQUIRE_LOCK(lk)		crit_enter_id("softupdates");
+#define FREE_LOCK(lk)			crit_exit_id("softupdates");
 
 #else /* DEBUG */
 #define NOHOLDER	((struct thread *)-1)
@@ -266,7 +266,7 @@ acquire_lock(lk)
 		else
 			panic("softdep_lock: lock held by %p", holder);
 	}
-	crit_enter();
+	crit_enter_id("softupdates");
 	lk->lkt_held = curthread;
 	lockcnt++;
 }
@@ -279,7 +279,7 @@ free_lock(lk)
 	if (lk->lkt_held == NOHOLDER)
 		panic("softdep_unlock: lock not held");
 	lk->lkt_held = NOHOLDER;
-	crit_exit();
+	crit_exit_id("softupdates");
 }
 
 /*

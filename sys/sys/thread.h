@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.66 2005/07/20 20:21:31 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.67 2005/07/26 20:53:55 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -258,6 +258,13 @@ struct thread {
     struct thread *td_preempted; /* we preempted this thread */
     struct caps_kinfo *td_caps;	/* list of client and server registrations */
     lwkt_tokref_t td_toks;	/* tokens beneficially held */
+#ifdef DEBUG_CRIT_SECTIONS
+#define CRIT_DEBUG_ARRAY_SIZE   32
+#define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)
+    const char	*td_crit_debug_array[CRIT_DEBUG_ARRAY_SIZE];
+    int		td_crit_debug_index;
+    int		td_in_crit_report;	
+#endif
     struct md_thread td_mach;
 };
 

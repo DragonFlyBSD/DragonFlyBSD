@@ -1,14 +1,14 @@
 /*
  * SYS/THREAD2.H
  *
- *	Implements inline procedure support for the LWKT subsystem. 
+ * Implements inline procedure support for the LWKT subsystem. 
  *
- *	Generally speaking these routines only operate on threads associated
- *	with the current cpu.  For example, a higher priority thread pending
- *	on a different cpu will not be immediately scheduled by a yield() on
- *	this cpu.
+ * Generally speaking these routines only operate on threads associated
+ * with the current cpu.  For example, a higher priority thread pending
+ * on a different cpu will not be immediately scheduled by a yield() on
+ * this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.22 2005/07/16 17:09:15 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.23 2005/07/26 20:53:55 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -27,6 +27,76 @@
 #endif
 
 /*
+ * Critical section debugging
+ */
+#ifdef DEBUG_CRIT_SECTIONS
+#define __DEBUG_CRIT_ARG__		const char *id
+#define __DEBUG_CRIT_ADD_ARG__		, const char *id
+#define __DEBUG_CRIT_PASS_ARG__		, id
+#define __DEBUG_CRIT_ENTER(td)		_debug_crit_enter((td), id)
+#define __DEBUG_CRIT_EXIT(td)		_debug_crit_exit((td), id)
+#define crit_enter()			_crit_enter(__FUNCTION__)
+#define crit_enter_id(id)		_crit_enter(id)
+#define crit_enter_quick(curtd)		_crit_enter_quick((curtd), __FUNCTION__)
+#define crit_enter_gd(curgd)		_crit_enter_gd(curgd, __FUNCTION__)
+#define crit_exit()			_crit_exit(__FUNCTION__)
+#define crit_exit_id(id)		_crit_exit(id)
+#define crit_exit_quick(curtd)		_crit_exit_quick((curtd), __FUNCTION__)
+#define crit_exit_noyield(curtd)	_crit_exit_noyield((curtd),__FUNCTION__)
+#define crit_exit_gd(curgd)		_crit_exit_gd((curgd), __FUNCTION__)
+#else
+#define __DEBUG_CRIT_ARG__		void
+#define __DEBUG_CRIT_ADD_ARG__
+#define __DEBUG_CRIT_PASS_ARG__
+#define __DEBUG_CRIT_ENTER(td)
+#define __DEBUG_CRIT_EXIT(td)
+#define crit_enter()			_crit_enter()
+#define crit_enter_id(id)		_crit_enter()
+#define crit_enter_quick(curtd)		_crit_enter_quick(curtd)
+#define crit_enter_gd(curgd)		_crit_enter_gd(curgd)
+#define crit_exit()			_crit_exit()
+#define crit_exit_id(id)		_crit_exit()
+#define crit_exit_quick(curtd)		_crit_exit_quick(curtd)
+#define crit_exit_noyield(curtd)	_crit_exit_noyield(curtd)
+#define crit_exit_gd(curgd)		_crit_exit_gd(curgd)
+#endif
+
+/*
+ * Track crit_enter()/crit_exit() pairs and warn on mismatches.
+ */
+#ifdef DEBUG_CRIT_SECTIONS
+
+#include <sys/systm.h>
+
+static __inline void
+_debug_crit_enter(thread_t td, const char *id)
+{
+    int wi = td->td_crit_debug_index;
+
+    td->td_crit_debug_array[wi & CRIT_DEBUG_ARRAY_MASK] = id;
+    ++td->td_crit_debug_index;
+}
+
+static __inline void
+_debug_crit_exit(thread_t td, const char *id)
+{
+    const char *gid;
+    int wi;
+
+    wi = td->td_crit_debug_index - 1;
+    if ((gid = td->td_crit_debug_array[wi & CRIT_DEBUG_ARRAY_MASK]) != id) {
+	if (td->td_in_crit_report == 0) {
+	    td->td_in_crit_report = 1;
+	    printf("crit_exit(%s) expected id %s\n", id, gid);
+	    td->td_in_crit_report = 0;
+	}
+    }
+    --td->td_crit_debug_index;
+}
+
+#endif
+
+/*
  * Critical sections prevent preemption by raising a thread's priority
  * above the highest possible interrupting priority.  Additionally, the
  * current cpu will not be able to schedule a new thread but will instead
@@ -41,7 +111,7 @@
  */
 
 static __inline void
-crit_enter(void)
+_crit_enter(__DEBUG_CRIT_ARG__)
 {
     struct thread *td = curthread;
 
@@ -50,25 +120,28 @@ crit_enter(void)
 	crit_panic();
 #endif
     td->td_pri += TDPRI_CRIT;
+    __DEBUG_CRIT_ENTER(td);
     cpu_ccfence();
 }
 
 static __inline void
-crit_enter_quick(struct thread *curtd)
+_crit_enter_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
 {
     curtd->td_pri += TDPRI_CRIT;
+    __DEBUG_CRIT_ENTER(curtd);
     cpu_ccfence();
 }
 
 static __inline void
-crit_enter_gd(globaldata_t mygd)
+_crit_enter_gd(globaldata_t mygd __DEBUG_CRIT_ADD_ARG__)
 {
-    crit_enter_quick(mygd->gd_curthread);
+    _crit_enter_quick(mygd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
 }
 
 static __inline void
-crit_exit_noyield(struct thread *curtd)
+_crit_exit_noyield(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
 {
+    __DEBUG_CRIT_EXIT(curtd);
     curtd->td_pri -= TDPRI_CRIT;
 #ifdef INVARIANTS
     if (curtd->td_pri < 0)
@@ -78,10 +151,11 @@ crit_exit_noyield(struct thread *curtd)
 }
 
 static __inline void
-crit_exit(void)
+_crit_exit(__DEBUG_CRIT_ARG__)
 {
     thread_t td = curthread;
 
+    __DEBUG_CRIT_EXIT(td);
     td->td_pri -= TDPRI_CRIT;
 #ifdef INVARIANTS
     if (td->td_pri < 0)
@@ -93,10 +167,11 @@ crit_exit(void)
 }
 
 static __inline void
-crit_exit_quick(struct thread *curtd)
+_crit_exit_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
 {
     globaldata_t gd = curtd->td_gd;
 
+    __DEBUG_CRIT_EXIT(curtd);
     curtd->td_pri -= TDPRI_CRIT;
     cpu_ccfence();	/* prevent compiler reordering */
     if (gd->gd_reqflags && curtd->td_pri < TDPRI_CRIT)
@@ -104,9 +179,9 @@ crit_exit_quick(struct thread *curtd)
 }
 
 static __inline void
-crit_exit_gd(globaldata_t mygd)
+_crit_exit_gd(globaldata_t mygd __DEBUG_CRIT_ADD_ARG__)
 {
-    crit_exit_quick(mygd->gd_curthread);
+    _crit_exit_quick(mygd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
 }
 
 static __inline int
