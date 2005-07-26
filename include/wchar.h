@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.6 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/include/wchar.h,v 1.7 2005/07/26 16:45:58 joerg Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -163,8 +163,7 @@ unsigned long wcstoul(const wchar_t * __restrict, wchar_t ** __restrict, int);
 long 	wcstol(const wchar_t * __restrict, wchar_t ** __restrict, int);
 double	wcstod(const wchar_t * __restrict, wchar_t ** __restrict);
 
-#if defined(_ISOC99_SOURCE) || (__STDC_VERSION__ - 0) > 199901L || \
-    defined(_NETBSD_SOURCE)
+#if __ISO_C_VISIBLE >= 1999 || __DF_VISIBLE
 /* LONGLONG */
 long long wcstoll(const wchar_t * __restrict, wchar_t ** __restrict, int);
 /* LONGLONG */
