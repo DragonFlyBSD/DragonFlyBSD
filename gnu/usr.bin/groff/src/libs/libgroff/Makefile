@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.1.2.4 2003/02/14 15:22:14 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.3 2005/07/26 21:15:19 joerg Exp $
 
 LIB=		groff
 INTERNALLIB=	YES
@@ -9,7 +9,7 @@ SRCS=		assert.cc change_lf.cc cmap.cc color.cc cset.cc device.cc errarg.cc\
 		maxfilename.cc mksdir.cc nametoindex.cc new.cc paper.cc prime.cc\
 	 	progname.cc ptable.cc searchpath.cc string.cc strsave.cc\
 		tmpfile.cc tmpname.cc version.cc
-SRCS+=		getopt.c getopt1.c iftoa.c itoa.c matherr.c
+SRCS+=		getopt.c getopt1.c iftoa.c itoa.c
 CLEANFILES=	version.cc
 
 .include <bsd.lib.mk>

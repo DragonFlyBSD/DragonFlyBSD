@@ -1,6 +1,13 @@
-/*-
- * Copyright (c) 1991, 1993
+/*	$NetBSD: isinfl.c,v 1.5 2004/03/04 23:42:38 kleink Exp $	*/
+/*	$DragonFly: src/lib/libc/i386/gen/isinfl.c,v 1.1 2005/07/26 21:15:19 joerg Exp $ */
+
+/*
+ * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This software was developed by the Computer Systems Engineering group
+ * at Lawrence Berkeley Laboratory under DARPA contract BG 91-66 and
+ * contributed to Berkeley.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,11 +17,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -30,36 +33,24 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/i386/gen/isinf.c,v 1.6 1999/08/27 23:59:21 peter Exp $
- * $DragonFly: src/lib/libc/i386/gen/Attic/isinf.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * from: Header: isinf.c,v 1.1 91/07/08 19:03:34 torek Exp
  */
 
-#include <sys/types.h>
+#include <machine/ieee.h>
+#include <math.h>
 
+/*
+ * 7.12.3.3 isinf - test for infinity
+ *          IEEE 754 compatible 80-bit extended-precision Intel 386 version
+ */
 int
-isnan(d)
-	double d;
+__isinfl(long double x)
 {
-	struct IEEEdp {
-		u_int manl : 32;
-		u_int manh : 20;
-		u_int  exp : 11;
-		u_int sign :  1;
-	} *p = (struct IEEEdp *)&d;
+	union ieee_ext_u u;
 
-	return(p->exp == 2047 && (p->manh || p->manl));
-}
+	u.extu_ld = x;
 
-int
-isinf(d)
-	double d;
-{
-	struct IEEEdp {
-		u_int manl : 32;
-		u_int manh : 20;
-		u_int  exp : 11;
-		u_int sign :  1;
-	} *p = (struct IEEEdp *)&d;
-
-	return(p->exp == 2047 && !p->manh && !p->manl);
+	return (u.extu_ext.ext_exp == EXT_EXP_INFNAN &&
+	    (u.extu_ext.ext_int == 1 &&
+	     u.extu_ext.ext_frach == 0 && u.extu_ext.ext_fracl == 0));
 }

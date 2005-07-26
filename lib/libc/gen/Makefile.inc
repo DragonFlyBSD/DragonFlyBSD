@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.13 2005/05/03 07:29:04 joerg Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.14 2005/07/26 21:15:19 joerg Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -10,13 +10,16 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	clock.c closedir.c confstr.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c \
 	dlfcn.c drand48.c erand48.c err.c errlst.c \
-	exec.c fmtcheck.c fnmatch.c fstab.c ftok.c fts.c getbootfile.c getbsize.c \
+	exec.c fmtcheck.c fnmatch.c fpclassifyd.c fpclassifyf.c fstab.c \
+	ftok.c fts.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
 	gethostname.c getloadavg.c getlogin.c getmntinfo.c getnetgrent.c \
 	getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
-	initgroups.c isascii.c isatty.c isctype.c jrand48.c lcong48.c \
+	infinity.c infinityf.c initgroups.c isascii.c \
+	isatty.c isctype.c isfinited.c isfinitef.c isinfd.c isinff.c \
+	isnand.c isnanf.c jrand48.c lcong48.c \
 	lockf.c lrand48.c mrand48.c msgctl.c \
 	msgget.c msgrcv.c msgsnd.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
@@ -26,10 +29,10 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
 	setproctitle.c \
 	shmat.c shmctl.c shmdt.c shmget.c siginterrupt.c siglist.c signal.c \
-	sigsetops.c sigwait.c sleep.c srand48.c stringlist.c strtofflags.c \
-	sysconf.c sysctl.c sysctlbyname.c sysctlnametomib.c \
-	syslog.c telldir.c termios.c time.c times.c timezone.c \
-	tolower.c toupper.c ttyname.c ttyslot.c ualarm.c ulimit.c \
+	signbitd.c signbitf.c sigsetops.c sigwait.c sleep.c srand48.c \
+	stringlist.c strtofflags.c sysconf.c sysctl.c sysctlbyname.c \
+	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
+	timezone.c tolower.c toupper.c ttyname.c ttyslot.c ualarm.c ulimit.c \
 	uname.c unvis.c usleep.c utime.c valloc.c vis.c \
 	wait.c wait3.c waitpid.c
 
@@ -46,7 +49,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	confstr.3 ctermid.3 ctype.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
-	err.3 exec.3 fmtcheck.3 fnmatch.3 frexp.3 ftok.3 fts.3 \
+	err.3 exec.3 fmtcheck.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcwd.3 \
 	getdiskbyname.3 getdomainname.3 getfsent.3 \
 	getgrent.3 getgrouplist.3 gethostname.3 getloadavg.3 \
@@ -55,12 +58,12 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
 	glob.3 initgroups.3 isalnum.3 isalpha.3 isascii.3 isblank.3 \
 	iscntrl.3 isdigit.3 isgraph.3 islower.3 isprint.3 ispunct.3 \
-	isspace.3 isupper.3 isxdigit.3 isinf.3 \
+	isspace.3 isupper.3 isxdigit.3 isinf.3 isfinite.3 isnan.3 \
 	ldexp.3 lockf.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
 	nice.3 nlist.3 pause.3 popen.3 psignal.3 pwcache.3 \
 	raise.3 rand48.3 readpassphrase.3 rfork_thread.3 \
 	scandir.3 setjmp.3 setmode.3 setproctitle.3 shm_open.3 \
-	siginterrupt.3 signal.3 sigsetops.3 sleep.3 stringlist.3 \
+	siginterrupt.3 signal.3 signbit.3 sigsetops.3 sleep.3 stringlist.3 \
 	strtofflags.3 sysconf.3 sysctl.3 syslog.3 tcgetpgrp.3 \
 	tcsendbreak.3 tcsetattr.3 tcsetpgrp.3 time.3 times.3 timezone.3 \
 	toascii.3 tolower.3 toupper.3 ttyname.3 tzset.3 ualarm.3 \

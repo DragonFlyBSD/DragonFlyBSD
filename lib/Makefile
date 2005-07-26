@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.23 2005/07/15 18:14:53 eirikn Exp $
+# $DragonFly: src/lib/Makefile,v 1.24 2005/07/26 21:15:19 joerg Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -8,7 +8,6 @@
 # csu must be built before all shared libaries for ELF.
 # libcom_err must be built before libkrb and libpam.
 # libcrypt must be built before libkrb, libpam and libskey.
-# msun must be built before libg++ and libstdc++.
 # libmd must be built before libatm, libopie, libradius, libskey, and
 # libtacplus.
 # libncurses must be built before libdialog, libedit and libreadline.
@@ -20,7 +19,7 @@
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
-SUBDIR=	${_csu} csu/common libarchive libcom_err libcrypt msun libmd \
+SUBDIR=	${_csu} csu/common libarchive libcom_err libcrypt libm libmd \
 	libncurses libradius libskey libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} libbz2 libc ${_libc_r} libcalendar \
 	libcam libcompat libdevstat libdisk libedit libfetch libftpio \
