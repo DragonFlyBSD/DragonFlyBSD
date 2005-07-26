@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xstr.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/xstr/xstr.c,v 1.4.2.1 2002/11/16 01:01:21 tjr Exp $
- * $DragonFly: src/usr.bin/xstr/xstr.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/xstr/xstr.c,v 1.3 2005/07/26 20:17:31 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -366,7 +366,7 @@ flushsh(void)
 		return;
 	mesgwrit = fopen(strings, old ? "r+" : "w");
 	if (mesgwrit == NULL)
-		perror(strings), exit(4);
+		err(4, "%s", strings);
 	for (i = 0; i < BUCKETS; i++)
 		for (hp = bucket[i].hnext; hp != NULL; hp = hp->hnext) {
 			found(hp->hnew, hp->hpt, hp->hstr);
