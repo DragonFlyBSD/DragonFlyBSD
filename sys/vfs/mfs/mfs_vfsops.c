@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.22 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.23 2005/07/26 15:43:35 hmp Exp $
  */
 
 
@@ -106,20 +106,18 @@ static struct cdevsw mfs_cdevsw = {
  * mfs vfs operations.
  */
 static struct vfsops mfs_vfsops = {
-	mfs_mount,
-	mfs_start,
-	ffs_unmount,
-	ufs_root,
-	ufs_quotactl,
-	mfs_statfs,
-	ffs_sync,
-	ffs_vget,
-	ffs_fhtovp,
-	ufs_check_export,
-	ffs_vptofh,
-	mfs_init,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =     	mfs_mount,
+	.vfs_start =    	mfs_start,
+	.vfs_unmount =   	ffs_unmount,
+	.vfs_root =     	ufs_root,
+	.vfs_quotactl =  	ufs_quotactl,
+	.vfs_statfs =   	mfs_statfs,
+	.vfs_sync =     	ffs_sync,
+	.vfs_vget =      	ffs_vget,
+	.vfs_fhtovp =   	ffs_fhtovp,
+	.vfs_checkexp =  	ufs_check_export,
+	.vfs_vptofh =   	ffs_vptofh,
+	.vfs_init =     	mfs_init
 };
 
 VFS_SET(mfs_vfsops, mfs, 0);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.27 2005/04/19 17:54:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.28 2005/07/26 15:43:36 hmp Exp $
  */
 
 
@@ -937,20 +937,17 @@ ntfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 #if defined(__DragonFly__)
 static struct vfsops ntfs_vfsops = {
-	ntfs_mount,
-	vfs_stdstart,
-	ntfs_unmount,
-	ntfs_root,
-	vfs_stdquotactl,
-	ntfs_statfs,
-	vfs_stdsync,
-	ntfs_vget,
-	ntfs_fhtovp,
-	ntfs_checkexp,
-	ntfs_vptofh,
-	ntfs_init,
-	ntfs_nthash_uninit, /* see ntfs_ihash.c */
-	vfs_stdextattrctl,
+	.vfs_mount =    	ntfs_mount,
+	.vfs_unmount =   	ntfs_unmount,
+	.vfs_root =     	ntfs_root,
+	.vfs_statfs =   	ntfs_statfs,
+	.vfs_sync =      	vfs_stdsync,
+	.vfs_vget =     	ntfs_vget,
+	.vfs_fhtovp =   	ntfs_fhtovp,
+	.vfs_checkexp =   	ntfs_checkexp,
+	.vfs_vptofh =   	ntfs_vptofh,
+	.vfs_init =     	ntfs_init,
+	.vfs_uninit =   	ntfs_nthash_uninit /* see ntfs_ihash.c */
 };
 VFS_SET(ntfs_vfsops, ntfs, 0);
 #elif defined(__NetBSD__)

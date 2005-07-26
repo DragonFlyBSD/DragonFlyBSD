@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.20 2005/04/20 17:01:51 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.21 2005/07/26 15:43:35 hmp Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -373,32 +373,43 @@ struct nlookupdata;
 struct mbuf;
 #endif
 
-struct vfsops {
-	int	(*vfs_mount)	(struct mount *mp, char *path, caddr_t data,
+typedef int vfs_mount_t(struct mount *mp, char *path, caddr_t data,
 				    struct thread *td);
-	int	(*vfs_start)	(struct mount *mp, int flags,
+typedef int vfs_start_t(struct mount *mp, int flags, struct thread *td);
+typedef int vfs_unmount_t(struct mount *mp, int mntflags,
 				    struct thread *td);
-	int	(*vfs_unmount)	(struct mount *mp, int mntflags,
+typedef int vfs_root_t(struct mount *mp, struct vnode **vpp);
+typedef int vfs_quotactl_t(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 				    struct thread *td);
-	int	(*vfs_root)	(struct mount *mp, struct vnode **vpp);
-	int	(*vfs_quotactl)	(struct mount *mp, int cmds, uid_t uid,
-				    caddr_t arg, struct thread *td);
-	int	(*vfs_statfs)	(struct mount *mp, struct statfs *sbp,
+typedef int vfs_statfs_t(struct mount *mp, struct statfs *sbp,
 				    struct thread *td);
-	int	(*vfs_sync)	(struct mount *mp, int waitfor,
-				    struct thread *td);
-	int	(*vfs_vget)	(struct mount *mp, ino_t ino,
+typedef int vfs_sync_t(struct mount *mp, int waitfor, struct thread *td);
+typedef int vfs_vget_t(struct mount *mp, ino_t ino, struct vnode **vpp);
+typedef int vfs_fhtovp_t(struct mount *mp, struct fid *fhp,
 				    struct vnode **vpp);
-	int	(*vfs_fhtovp)	(struct mount *mp, struct fid *fhp,
-				    struct vnode **vpp);
-	int	(*vfs_checkexp) (struct mount *mp, struct sockaddr *nam,
+typedef int vfs_checkexp_t(struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp);
-	int	(*vfs_vptofh)	(struct vnode *vp, struct fid *fhp);
-	int	(*vfs_init)	(struct vfsconf *);
-	int	(*vfs_uninit)	(struct vfsconf *);
-	int	(*vfs_extattrctl) (struct mount *mp, int cmd,
-					const char *attrname, caddr_t arg,
-					struct thread *td);
+typedef int vfs_vptofh_t(struct vnode *vp, struct fid *fhp);
+typedef int vfs_init_t(struct vfsconf *);
+typedef int vfs_uninit_t(struct vfsconf *);
+typedef int vfs_extattrctl_t(struct mount *mp, int cmd,const char *attrname,
+	            caddr_t arg, struct thread *td);
+
+struct vfsops {
+	vfs_mount_t 	*vfs_mount;
+	vfs_start_t 	*vfs_start;
+	vfs_unmount_t 	*vfs_unmount;
+	vfs_root_t   	*vfs_root;
+	vfs_quotactl_t 	*vfs_quotactl;
+	vfs_statfs_t 	*vfs_statfs;
+	vfs_sync_t   	*vfs_sync;
+	vfs_vget_t  	*vfs_vget;
+	vfs_fhtovp_t 	*vfs_fhtovp;
+	vfs_checkexp_t 	*vfs_checkexp;
+	vfs_vptofh_t 	*vfs_vptofh;
+	vfs_init_t  	*vfs_init;
+	vfs_uninit_t 	*vfs_uninit;
+	vfs_extattrctl_t 	*vfs_extattrctl;
 };
 
 #define VFS_MOUNT(MP, PATH, DATA, P) \
@@ -504,24 +515,22 @@ extern	struct nfs_public nfs_pub;
  * kern/vfs_default.c, they should be used instead of making "dummy" 
  * functions or casting entries in the VFS op table to "enopnotsupp()".
  */ 
-int	vfs_stdmount (struct mount *mp, char *path, caddr_t data, 
-		struct nlookupdata *ndp, struct thread *p);
-int	vfs_stdstart (struct mount *mp, int flags, struct thread *p);
-int	vfs_stdunmount (struct mount *mp, int mntflags, struct thread *p);
-int	vfs_stdroot (struct mount *mp, struct vnode **vpp);
-int	vfs_stdquotactl (struct mount *mp, int cmds, uid_t uid,
-		caddr_t arg, struct thread *p);
-int	vfs_stdstatfs (struct mount *mp, struct statfs *sbp, struct thread *p);
-int	vfs_stdsync (struct mount *mp, int waitfor, struct thread *td);
-int	vfs_stdvget (struct mount *mp, ino_t ino, struct vnode **vpp);
-int	vfs_stdfhtovp (struct mount *mp, struct fid *fhp, struct vnode **vpp);
-int	vfs_stdcheckexp (struct mount *mp, struct sockaddr *nam,
-	   int *extflagsp, struct ucred **credanonp);
-int	vfs_stdvptofh (struct vnode *vp, struct fid *fhp);
-int	vfs_stdinit (struct vfsconf *);
-int	vfs_stduninit (struct vfsconf *);
-int	vfs_stdextattrctl (struct mount *mp, int cmd, const char *attrname,
-		caddr_t arg, struct thread *p);
+vfs_start_t 	vfs_stdstart;
+vfs_mount_t 	vfs_stdmount;
+vfs_unmount_t 	vfs_stdunmount;
+vfs_root_t  	vfs_stdroot;
+vfs_quotactl_t 	vfs_stdquotactl;
+vfs_statfs_t  	vfs_stdstatfs;
+vfs_sync_t   	vfs_stdsync;
+vfs_sync_t   	vfs_stdnosync;
+vfs_vget_t  	vfs_stdvget;
+vfs_fhtovp_t 	vfs_stdfhtovp;
+vfs_checkexp_t 	vfs_stdcheckexp;
+vfs_vptofh_t 	vfs_stdvptofh;
+vfs_init_t  	vfs_stdinit;
+vfs_uninit_t 	vfs_stduninit;
+vfs_extattrctl_t 	vfs_stdextattrctl;
+
 int     journal_mountctl(struct vop_mountctl_args *ap);
 void	journal_remove_all_journals(struct mount *mp, int flags);
 

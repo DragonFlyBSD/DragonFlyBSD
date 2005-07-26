@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.8 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.9 2005/07/26 15:43:35 hmp Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -295,6 +295,7 @@ vfs_register(struct vfsconf *vfc)
 {
 	struct sysctl_oid *oidp;
 	struct vfsconf *vfsp;
+	struct vfsops *vfsops = NULL;
 
 	vfsp = NULL;
 	if (vfsconf)
@@ -325,6 +326,77 @@ vfs_register(struct vfsconf *vfc)
 			oidp->oid_number = vfc->vfc_typenum;
 			sysctl_register_oid(oidp);
 		}
+	
+	/*
+	 * Initialise unused fields in the file system's vfsops vector.
+	 *
+	 * NOTE the file system should provide the mount and unmount ops
+	 * at the least.  In order for unmount to succeed, we also need
+	 * the file system to provide us with vfsops->vfs_root otherwise
+	 * the unmount(2) operation will not succeed.
+	 */
+	vfsops = vfc->vfc_vfsops;
+	KKASSERT(vfc->vfc_vfsops != NULL);
+	KKASSERT(vfsops->vfs_mount != NULL);
+	KKASSERT(vfsops->vfs_root != NULL);
+	KKASSERT(vfsops->vfs_unmount != NULL);
+
+	if (vfsops->vfs_root == NULL) {
+		/* return file system's root vnode */
+		vfsops->vfs_root = vfs_stdroot;
+	}
+	if (vfsops->vfs_start == NULL) {
+		/* 
+		 * Make file system operational before first use.  This
+		 * routine is called at mount-time for initialising MFS,
+		 * not used by other file systems.
+		 */
+		vfsops->vfs_start = vfs_stdstart;
+	}
+	if (vfsops->vfs_quotactl == NULL) {
+		/* quota control */
+		vfsops->vfs_quotactl = vfs_stdquotactl;
+	}
+	if (vfsops->vfs_statfs == NULL) {
+		/* return file system's status */
+		vfsops->vfs_statfs = vfs_stdstatfs;
+	}
+	if (vfsops->vfs_sync == NULL) {
+		/*
+		 * Flush dirty buffers.  File systems can use vfs_stdsync()
+		 * by explicitly setting it in the vfsops->vfs_sync vector
+		 * entry.
+		 */
+		vfsops->vfs_sync = vfs_stdnosync;
+	}
+	if (vfsops->vfs_vget == NULL) {
+		/* convert an inode number to a vnode */
+		vfsops->vfs_vget = vfs_stdvget;
+	}
+	if (vfsops->vfs_fhtovp == NULL) {
+		/* turn an NFS file handle into a vnode */
+		vfsops->vfs_fhtovp = vfs_stdfhtovp;
+	}
+	if (vfsops->vfs_checkexp == NULL) {
+		/* check if file system is exported */
+		vfsops->vfs_checkexp = vfs_stdcheckexp;
+	}
+	if (vfsops->vfs_vptofh == NULL) {
+		/* turn a vnode into an NFS file handle */
+		vfsops->vfs_vptofh = vfs_stdvptofh;
+	}
+	if (vfsops->vfs_init == NULL) {
+		/* file system specific initialisation */
+		vfsops->vfs_init = vfs_stdinit;
+	}
+	if (vfsops->vfs_uninit == NULL) {
+		/* file system specific uninitialisation */
+		vfsops->vfs_uninit = vfs_stduninit;
+	}
+	if (vfsops->vfs_extattrctl == NULL) {
+		/* extended attribute control */
+		vfsops->vfs_extattrctl = vfs_stdextattrctl;
+	}
 
 	/*
 	 * Call init function for this VFS...

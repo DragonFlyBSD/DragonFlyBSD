@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.8 2005/04/15 19:08:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.9 2005/07/26 15:43:35 hmp Exp $
  */
 
 #include "opt_quota.h"
@@ -65,12 +65,6 @@
 
 static int ext2_indirtrunc (struct inode *, daddr_t, daddr_t, daddr_t, int,
 	    long *);
-
-int
-ext2_init(struct vfsconf *vfsp)
-{
-	return (ufs_init(vfsp));
-}
 
 /*
  * Update the access, modified, and inode change times as specified by the

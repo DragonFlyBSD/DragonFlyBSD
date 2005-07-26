@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.26 2005/04/08 03:16:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.27 2005/07/26 15:43:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -80,20 +80,17 @@ static int cd9660_checkexp (struct mount *, struct sockaddr *,
 static int cd9660_vptofh (struct vnode *, struct fid *);
 
 static struct vfsops cd9660_vfsops = {
-	cd9660_mount,
-	vfs_stdstart,
-	cd9660_unmount,
-	cd9660_root,
-	vfs_stdquotactl,
-	cd9660_statfs,
-	vfs_stdsync,
-	cd9660_vget,
-	cd9660_fhtovp,
-	cd9660_checkexp,
-	cd9660_vptofh,
-	cd9660_init,
-	cd9660_uninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	cd9660_mount,
+	.vfs_unmount =  	cd9660_unmount,
+	.vfs_root =      	cd9660_root,
+	.vfs_statfs =   	cd9660_statfs,
+	.vfs_sync =     	vfs_stdsync,
+	.vfs_vget =     	cd9660_vget,
+	.vfs_fhtovp =   	cd9660_fhtovp,
+	.vfs_checkexp =  	cd9660_checkexp,
+	.vfs_vptofh =   	cd9660_vptofh,
+	.vfs_init =     	cd9660_init,
+	.vfs_uninit =    	cd9660_uninit,
 };
 VFS_SET(cd9660_vfsops, cd9660, VFCF_READONLY);
 MODULE_VERSION(cd9660, 1);

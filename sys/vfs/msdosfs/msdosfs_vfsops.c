@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.25 2005/04/15 19:08:19 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.26 2005/07/26 15:43:35 hmp Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -888,20 +888,16 @@ msdosfs_vptofh(struct vnode *vp, struct fid *fhp)
 }
 
 static struct vfsops msdosfs_vfsops = {
-	msdosfs_mount,
-	vfs_stdstart,
-	msdosfs_unmount,
-	msdosfs_root,
-	vfs_stdquotactl,
-	msdosfs_statfs,
-	msdosfs_sync,
-	vfs_stdvget,
-	msdosfs_fhtovp,
-	msdosfs_checkexp,
-	msdosfs_vptofh,
-	msdosfs_init,
-	msdosfs_uninit,
-	vfs_stdextattrctl,
+	.vfs_mount =     	msdosfs_mount,
+	.vfs_unmount =   	msdosfs_unmount,
+	.vfs_root =     	msdosfs_root,
+	.vfs_statfs =   	msdosfs_statfs,
+	.vfs_sync =     	msdosfs_sync,
+	.vfs_fhtovp =   	msdosfs_fhtovp,
+	.vfs_checkexp =  	msdosfs_checkexp,
+	.vfs_vptofh =   	msdosfs_vptofh,
+	.vfs_init =     	msdosfs_init,
+	.vfs_uninit =   	msdosfs_uninit
 };
 
 VFS_SET(msdosfs_vfsops, msdos, 0);

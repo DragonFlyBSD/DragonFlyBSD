@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.29 2005/06/06 15:35:06 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.30 2005/07/26 15:43:35 hmp Exp $
  */
 
 #include "opt_quota.h"
@@ -91,20 +91,18 @@ static int ext2_vptofh (struct vnode *, struct fid *);
 static MALLOC_DEFINE(M_EXT2NODE, "EXT2 node", "EXT2 vnode private part");
 
 static struct vfsops ext2fs_vfsops = {
-	ext2_mount,
-	ufs_start,		/* empty function */
-	ext2_unmount,
-	ufs_root,		/* root inode via vget */
-	ufs_quotactl,		/* does operations associated with quotas */
-	ext2_statfs,
-	ext2_sync,
-	ext2_vget,
-	ext2_fhtovp,
-	ufs_check_export,
-	ext2_vptofh,
-	ext2_init,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	ext2_mount,
+	.vfs_unmount =   	ext2_unmount,
+	.vfs_root =     	ufs_root,	/* root inode via vget */
+	.vfs_quotactl =   	ufs_quotactl,	/* quota operations */
+	.vfs_statfs =     	ext2_statfs,
+	.vfs_sync =     	ext2_sync,
+	.vfs_vget =      	ext2_vget,
+	.vfs_fhtovp =     	ext2_fhtovp,
+	.vfs_checkexp =    	ufs_check_export,
+	.vfs_vptofh =     	ext2_vptofh,
+	.vfs_init =     	ufs_init,
+	.vfs_uninit =    	ufs_uninit
 };
 
 VFS_SET(ext2fs_vfsops, ext2fs, 0);

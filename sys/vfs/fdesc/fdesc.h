@@ -36,7 +36,7 @@
  *	@(#)fdesc.h	8.5 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc.h,v 1.8.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc.h,v 1.4 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc.h,v 1.5 2005/07/26 15:43:35 hmp Exp $
  */
 
 #ifdef _KERNEL
@@ -64,6 +64,7 @@ struct fdescnode {
 #define	VTOFDESC(vp) ((struct fdescnode *)(vp)->v_data)
 
 extern int fdesc_init (struct vfsconf *);
+extern int fdesc_uninit (struct vfsconf *);
 extern int fdesc_root (struct mount *, struct vnode **);
 extern int fdesc_allocvp (fdntype, int, struct mount *, struct vnode **,
 			      struct thread *);

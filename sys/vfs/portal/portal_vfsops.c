@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.15 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.16 2005/07/26 15:43:36 hmp Exp $
  */
 
 /*
@@ -230,20 +230,11 @@ portal_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static struct vfsops portal_vfsops = {
-	portal_mount,
-	vfs_stdstart,
-	portal_unmount,
-	portal_root,
-	vfs_stdquotactl,
-	portal_statfs,
-	vfs_stdsync,
-	vfs_stdvget,
-	vfs_stdfhtovp,
-	vfs_stdcheckexp,
-	vfs_stdvptofh,
-	vfs_stdinit,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	portal_mount,
+	.vfs_unmount =  	portal_unmount,
+	.vfs_root =     	portal_root,
+	.vfs_statfs =   	portal_statfs,
+	.vfs_sync =     	vfs_stdsync
 };
 
 VFS_SET(portal_vfsops, portal, VFCF_SYNTHETIC);

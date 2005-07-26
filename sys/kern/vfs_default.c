@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.25 2004/12/29 02:40:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.26 2005/07/26 15:43:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1413,8 +1413,7 @@ vop_stdgetvobject(ap)
  * used to fill the vfs fucntion table to get reasonable default return values.
  */
 int 
-vfs_stdmount(struct mount *mp, char *path, caddr_t data,
-	struct nlookupdata *nd, struct thread *td)
+vfs_stdmount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	return (0);
 }
@@ -1460,6 +1459,12 @@ int
 vfs_stdsync(struct mount *mp, int waitfor, struct thread *td)
 {
 	return (0);
+}
+
+int
+vfs_stdnosync(struct mount *mp, int waitfor, struct thread *td)
+{
+	return (EOPNOTSUPP);
 }
 
 int	

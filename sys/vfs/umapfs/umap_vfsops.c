@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.16 2005/02/02 21:34:19 joerg Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.17 2005/07/26 15:43:36 hmp Exp $
  */
 
 /*
@@ -68,11 +68,8 @@ static int	umapfs_mount (struct mount *mp, char *path, caddr_t data,
 static int	umapfs_quotactl (struct mount *mp, int cmd, uid_t uid,
 				     caddr_t arg, struct thread *td);
 static int	umapfs_root (struct mount *mp, struct vnode **vpp);
-static int	umapfs_start (struct mount *mp, int flags, struct thread *td);
 static int	umapfs_statfs (struct mount *mp, struct statfs *sbp,
 				   struct thread *td);
-static int	umapfs_sync (struct mount *mp, int waitfor,
-				 struct thread *td);
 static int	umapfs_unmount (struct mount *mp, int mntflags,
 				    struct thread *td);
 static int	umapfs_vget (struct mount *mp, ino_t ino,
@@ -237,18 +234,6 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 }
 
 /*
- * VFS start.  Nothing needed here - the start routine
- * on the underlying filesystem will have been called
- * when that filesystem was mounted.
- */
-static int
-umapfs_start(struct mount *mp, int flags, struct thread *td)
-{
-	return (0);
-	/* return (VFS_START(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, flags, p)); */
-}
-
-/*
  * Free reference to umap layer
  */
 static int
@@ -352,15 +337,6 @@ umapfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static int
-umapfs_sync(struct mount *mp, int waitfor, struct thread *td)
-{
-	/*
-	 * XXX - Assumes no data cached at umap layer.
-	 */
-	return (0);
-}
-
-static int
 umapfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 
@@ -399,20 +375,18 @@ umapfs_extattrctl(struct mount *mp, int cmd, const char *attrname,
 
 
 static struct vfsops umap_vfsops = {
-	umapfs_mount,
-	umapfs_start,
-	umapfs_unmount,
-	umapfs_root,
-	umapfs_quotactl,
-	umapfs_statfs,
-	umapfs_sync,
-	umapfs_vget,
-	umapfs_fhtovp,
-	umapfs_checkexp,
-	umapfs_vptofh,
-	umapfs_init,
-	vfs_stduninit,
-	umapfs_extattrctl,
+	.vfs_mount =    	umapfs_mount,
+	.vfs_unmount =    	umapfs_unmount,
+	.vfs_root =    		umapfs_root,
+	.vfs_quotactl =    	umapfs_quotactl,
+	.vfs_statfs =    	umapfs_statfs,
+	.vfs_sync =    		vfs_stdsync,
+	.vfs_vget =    		umapfs_vget,
+	.vfs_fhtovp =    	umapfs_fhtovp,
+	.vfs_checkexp =    	umapfs_checkexp,
+	.vfs_vptofh =    	umapfs_vptofh,
+	.vfs_init =    		umapfs_init,
+	.vfs_extattrctl =   umapfs_extattrctl
 };
 
 VFS_SET(umap_vfsops, umap, VFCF_LOOPBACK);

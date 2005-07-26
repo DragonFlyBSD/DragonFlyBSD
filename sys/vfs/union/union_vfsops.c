@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.19 2005/02/02 21:34:19 joerg Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.20 2005/07/26 15:43:36 hmp Exp $
  */
 
 /*
@@ -447,20 +447,12 @@ union_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static struct vfsops union_vfsops = {
-	union_mount,
-	vfs_stdstart,	/* underlying start already done */
-	union_unmount,
-	union_root,
-	vfs_stdquotactl,
-	union_statfs,
-	vfs_stdsync,    /* XXX assumes no cached data on union level */
-	vfs_stdvget,
-	vfs_stdfhtovp,
-	vfs_stdcheckexp,
-	vfs_stdvptofh,
-	union_init,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =     	union_mount,
+	.vfs_unmount =     	union_unmount,
+	.vfs_root =     	union_root,
+	.vfs_statfs =     	union_statfs,
+	.vfs_sync =     	vfs_stdsync,
+	.vfs_init =     	union_init
 };
 
 VFS_SET(union_vfsops, union, VFCF_LOOPBACK);

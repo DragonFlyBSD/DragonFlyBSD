@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.12 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.13 2005/07/26 15:43:36 hmp Exp $
  */
 
 /* udf_vfsops.c */
@@ -110,20 +110,14 @@ static int udf_vptofh(struct vnode *, struct fid *);
 static int udf_find_partmaps(struct udf_mnt *, struct logvol_desc *);
 
 static struct vfsops udf_vfsops = {
-	udf_mount,
-	vfs_stdstart,
-	udf_unmount,
-	udf_root,
-	vfs_stdquotactl,
-	udf_statfs,
-	vfs_stdsync,
-	udf_vget,
-	udf_fhtovp,
-	vfs_stdcheckexp,
-	udf_vptofh,
-	vfs_stdinit,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	udf_mount,
+	.vfs_unmount =    	udf_unmount,
+	.vfs_root =    		udf_root,
+	.vfs_statfs =    	udf_statfs,
+	.vfs_sync =    		vfs_stdsync,
+	.vfs_vget =    		udf_vget,
+	.vfs_fhtovp =    	udf_fhtovp,
+	.vfs_vptofh =    	udf_vptofh
 };
 VFS_SET(udf_vfsops, udf, VFCF_READONLY);
 

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.18 2005/06/22 01:33:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.19 2005/07/26 15:43:35 hmp Exp $
  */
 
 /*
@@ -93,6 +93,13 @@ fdesc_init(struct vfsconf *vfsp)
 	return (0);
 }
 
+int
+fdesc_uninit(struct vfsconf *vfsp)
+{
+	if (fdhashtbl)
+		free(fdhashtbl, M_CACHE);
+	return (0);
+}
 int
 fdesc_allocvp(fdntype ftype, int ix, struct mount *mp, struct vnode **vpp,
 	      struct thread *td)

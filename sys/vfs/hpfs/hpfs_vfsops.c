@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.27 2005/07/25 17:25:51 hmp Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.28 2005/07/26 15:43:35 hmp Exp $
  */
 
 
@@ -553,20 +553,17 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 }
 
 static struct vfsops hpfs_vfsops = {
-	hpfs_mount,
-	vfs_stdstart,
-	hpfs_unmount,
-	hpfs_root,
-	vfs_stdquotactl,
-	hpfs_statfs,
-	vfs_stdsync,
-	hpfs_vget,
-	hpfs_fhtovp,
-	hpfs_checkexp,
-	hpfs_vptofh,
-	hpfs_init,
-	hpfs_hphash_uninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	hpfs_mount,
+	.vfs_unmount =  	hpfs_unmount,
+	.vfs_root =     	hpfs_root,
+	.vfs_statfs =   	hpfs_statfs,
+	.vfs_sync =     	vfs_stdsync,
+	.vfs_vget =     	hpfs_vget,
+	.vfs_fhtovp =   	hpfs_fhtovp,
+	.vfs_checkexp =  	hpfs_checkexp,
+	.vfs_vptofh =   	hpfs_vptofh,
+	.vfs_init =     	hpfs_init,
+	.vfs_uninit =   	hpfs_hphash_uninit
 };
 
 VFS_SET(hpfs_vfsops, hpfs, 0);

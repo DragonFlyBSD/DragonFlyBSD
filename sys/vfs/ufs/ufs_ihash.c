@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.15 2005/01/20 18:08:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.16 2005/07/26 15:43:36 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,18 @@ ufs_ihashinit(void)
 	lwkt_token_init(&ufs_ihash_token);
 }
 
+int
+ufs_uninit(struct vfsconf *vfc)
+{
+    lwkt_tokref ilock;
+    
+    lwkt_gettoken(&ilock, &ufs_ihash_token);
+    if (ihashtbl)
+		free(ihashtbl, M_UFSIHASH);
+    lwkt_reltoken(&ilock);
+
+    return (0);
+}
 /*
  * Use the device/inum pair to find the incore inode, and return a pointer
  * to it. If it is in core, return it, even if it is locked.

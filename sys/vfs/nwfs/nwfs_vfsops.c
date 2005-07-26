@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.18 2005/04/20 17:01:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.19 2005/07/26 15:43:36 hmp Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -70,9 +70,7 @@ SYSCTL_INT(_vfs_nwfs, OID_AUTO, version, CTLFLAG_RD, &nwfs_version, 0, "");
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, debuglevel, CTLFLAG_RW, &nwfs_debuglevel, 0, "");
 
 static int nwfs_mount(struct mount *, char *, caddr_t, struct thread *);
-static int nwfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int nwfs_root(struct mount *, struct vnode **);
-static int nwfs_start(struct mount *, int, struct thread *);
 static int nwfs_statfs(struct mount *, struct statfs *, struct thread *);
 static int nwfs_sync(struct mount *, int, struct thread *);
 static int nwfs_unmount(struct mount *, int, struct thread *);
@@ -80,20 +78,13 @@ static int nwfs_init(struct vfsconf *vfsp);
 static int nwfs_uninit(struct vfsconf *vfsp);
 
 static struct vfsops nwfs_vfsops = {
-	nwfs_mount,
-	nwfs_start,
-	nwfs_unmount,
-	nwfs_root,
-	nwfs_quotactl,
-	nwfs_statfs,
-	nwfs_sync,
-	vfs_stdvget,
-	vfs_stdfhtovp,		/* shouldn't happen */
-	vfs_stdcheckexp,
-	vfs_stdvptofh,		/* shouldn't happen */
-	nwfs_init,
-	nwfs_uninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	nwfs_mount,
+	.vfs_unmount =   	nwfs_unmount,
+	.vfs_root =     	nwfs_root,
+	.vfs_statfs =    	nwfs_statfs,
+	.vfs_sync =    		nwfs_sync,
+	.vfs_init =    		nwfs_init,
+	.vfs_uninit =    	nwfs_uninit
 };
 
 
@@ -366,29 +357,6 @@ nwfs_root(struct mount *mp, struct vnode **vpp)
 	}*/
 	*vpp = vp;
 	return (0);
-}
-
-/*
- * Vfs start routine, a no-op.
- */
-/* ARGSUSED */
-static int
-nwfs_start(struct mount *mp, int flags, struct thread *td)
-{
-	NCPVODEBUG("flags=%04x\n",flags);
-	return (0);
-}
-
-/*
- * Do operations associated with quotas, not supported
- */
-/* ARGSUSED */
-static int
-nwfs_quotactl(struct mount *mp, int cmd, uid_t uid, caddr_t arg,
-	      struct thread *td)
-{
-	NCPVODEBUG("return EOPNOTSUPP\n");
-	return (EOPNOTSUPP);
 }
 
 /*ARGSUSED*/

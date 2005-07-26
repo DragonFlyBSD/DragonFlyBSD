@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.10 2005/04/19 17:54:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.11 2005/07/26 15:43:36 hmp Exp $
  */
 
 #include "opt_quota.h"
@@ -55,17 +55,6 @@
 #include "ufs_extern.h"
 
 MALLOC_DEFINE(M_UFSMNT, "UFS mount", "UFS mount structure");
-/*
- * Make a filesystem operational.
- * Nothing to do at the moment.
- */
-/* ARGSUSED */
-int
-ufs_start(struct mount *mp, int flags, struct thread *td)
-{
-	return (0);
-}
-
 /*
  * Return the root of a filesystem.
  */

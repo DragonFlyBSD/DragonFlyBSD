@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.14 2005/06/22 01:33:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.15 2005/07/26 15:43:35 hmp Exp $
  */
 
 /*
@@ -204,20 +204,13 @@ fdesc_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static struct vfsops fdesc_vfsops = {
-	fdesc_mount,
-	vfs_stdstart,
-	fdesc_unmount,
-	fdesc_root,
-	vfs_stdquotactl,
-	fdesc_statfs,
-	vfs_stdsync,
-	vfs_stdvget,
-	vfs_stdfhtovp,
-	vfs_stdcheckexp,
-	vfs_stdvptofh,
-	fdesc_init,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	fdesc_mount,
+	.vfs_unmount =  	fdesc_unmount,
+	.vfs_root =     	fdesc_root,
+	.vfs_statfs =   	fdesc_statfs,
+	.vfs_sync =     	vfs_stdsync,
+	.vfs_init =     	fdesc_init,
+	.vfs_uninit =   	fdesc_uninit
 };
 
 VFS_SET(fdesc_vfsops, fdesc, VFCF_SYNTHETIC);

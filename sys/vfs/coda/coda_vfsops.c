@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.21 2005/04/19 17:54:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.22 2005/07/26 15:43:35 hmp Exp $
  * 
  */
 
@@ -520,20 +520,11 @@ devtomp_callback(struct mount *mp, void *data)
 }
 
 struct vfsops coda_vfsops = {
-    coda_mount,
-    vfs_stdstart,
-    coda_unmount,
-    coda_root,
-    vfs_stdquotactl,
-    coda_nb_statfs,
-    coda_sync,
-    vfs_stdvget,
-    vfs_stdfhtovp,
-    vfs_stdcheckexp,
-    vfs_stdvptofh,
-    vfs_stdinit,
-    vfs_stduninit,
-    vfs_stdextattrctl,
+    .vfs_mount =    	coda_mount,
+    .vfs_unmount =   	coda_unmount,
+    .vfs_root =     	coda_root,
+    .vfs_statfs =   	coda_nb_statfs,
+    .vfs_sync =     	coda_sync
 };
 
 VFS_SET(coda_vfsops, coda, VFCF_NETWORK);

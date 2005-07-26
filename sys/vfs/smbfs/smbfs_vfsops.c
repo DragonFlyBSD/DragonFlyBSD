@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.21 2005/06/06 15:35:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.22 2005/07/26 15:43:36 hmp Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -82,9 +82,7 @@ static MALLOC_DEFINE(M_SMBFSHASH, "SMBFS hash", "SMBFS hash table");
 
 
 static int smbfs_mount(struct mount *, char *, caddr_t, struct thread *);
-static int smbfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int smbfs_root(struct mount *, struct vnode **);
-static int smbfs_start(struct mount *, int, struct thread *);
 static int smbfs_statfs(struct mount *, struct statfs *, struct thread *);
 static int smbfs_sync(struct mount *, int, struct thread *);
 static int smbfs_unmount(struct mount *, int, struct thread *);
@@ -100,26 +98,13 @@ static int smbfs_vptofh(struct vnode *, struct fid *);
 #endif
 
 static struct vfsops smbfs_vfsops = {
-	smbfs_mount,
-	smbfs_start,
-	smbfs_unmount,
-	smbfs_root,
-	smbfs_quotactl,
-	smbfs_statfs,
-	smbfs_sync,
-#if defined(__DragonFly__) || __FreeBSD_version > 400008
-	vfs_stdvget,
-	vfs_stdfhtovp,		/* shouldn't happen */
-	vfs_stdcheckexp,
-	vfs_stdvptofh,		/* shouldn't happen */
-#else
-	smbfs_vget,
-	smbfs_fhtovp,
-	smbfs_vptofh,
-#endif
-	smbfs_init,
-	smbfs_uninit,
-	vfs_stdextattrctl
+	.vfs_mount =    	smbfs_mount,
+	.vfs_unmount =    	smbfs_unmount,
+	.vfs_root =    		smbfs_root,
+	.vfs_statfs =    	smbfs_statfs,
+	.vfs_sync =    		smbfs_sync,
+	.vfs_init =    		smbfs_init,
+	.vfs_uninit =    	smbfs_uninit
 };
 
 
@@ -336,29 +321,6 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 	smp->sm_root = np;
 	*vpp = vp;
 	return 0;
-}
-
-/*
- * Vfs start routine, a no-op.
- */
-/* ARGSUSED */
-static int
-smbfs_start(struct mount *mp, int flags, struct thread *td)
-{
-	SMBVDEBUG("flags=%04x\n", flags);
-	return 0;
-}
-
-/*
- * Do operations associated with quotas, not supported
- */
-/* ARGSUSED */
-static int
-smbfs_quotactl(struct mount *mp, int cmd, uid_t uid, caddr_t arg,
-		struct thread *td)
-{
-	SMBVDEBUG("return EOPNOTSUPP\n");
-	return EOPNOTSUPP;
 }
 
 /*ARGSUSED*/

@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.11 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.12 2005/07/26 15:43:36 hmp Exp $
  */
 
 /*
@@ -149,20 +149,11 @@ procfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static struct vfsops procfs_vfsops = {
-	procfs_mount,
-	vfs_stdstart,
-	procfs_unmount,
-	procfs_root,
-	vfs_stdquotactl,
-	procfs_statfs,
-	vfs_stdsync,
-	vfs_stdvget,
-	vfs_stdfhtovp,
-	vfs_stdcheckexp,
-	vfs_stdvptofh,
-	vfs_stdinit,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	procfs_mount,
+	.vfs_unmount =    	procfs_unmount,
+	.vfs_root =    		procfs_root,
+	.vfs_statfs =    	procfs_statfs,
+	.vfs_sync =    		vfs_stdsync
 };
 
 VFS_SET(procfs_vfsops, procfs, VFCF_SYNTHETIC);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.27 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.28 2005/07/26 15:43:35 hmp Exp $
  */
 
 #include "opt_bootp.h"
@@ -130,20 +130,13 @@ static int	nfs_sync ( struct mount *mp, int waitfor,
  * nfs vfs operations.
  */
 static struct vfsops nfs_vfsops = {
-	nfs_mount,
-	vfs_stdstart,
-	nfs_unmount,
-	nfs_root,
-	vfs_stdquotactl,
-	nfs_statfs,
-	nfs_sync,
-	vfs_stdvget,
-	vfs_stdfhtovp,		/* shouldn't happen */
-	vfs_stdcheckexp,
-	vfs_stdvptofh,		/* shouldn't happen */
-	nfs_init,
-	nfs_uninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	nfs_mount,
+	.vfs_unmount =  	nfs_unmount,
+	.vfs_root =     	nfs_root,
+	.vfs_statfs =    	nfs_statfs,
+	.vfs_sync =     	nfs_sync,
+	.vfs_init =     	nfs_init,
+	.vfs_uninit =    	nfs_uninit
 };
 VFS_SET(nfs_vfsops, nfs, VFCF_NETWORK);
 

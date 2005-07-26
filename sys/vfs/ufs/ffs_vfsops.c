@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.32 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.33 2005/07/26 15:43:36 hmp Exp $
  */
 
 #include "opt_quota.h"
@@ -71,20 +71,18 @@ static int	ffs_mount (struct mount *, char *, caddr_t, struct thread *);
 static int	ffs_init (struct vfsconf *);
 
 static struct vfsops ufs_vfsops = {
-	ffs_mount,
-	ufs_start,
-	ffs_unmount,
-	ufs_root,
-	ufs_quotactl,
-	ffs_statfs,
-	ffs_sync,
-	ffs_vget,
-	ffs_fhtovp,
-	ufs_check_export,
-	ffs_vptofh,
-	ffs_init,
-	vfs_stduninit,
-	vfs_stdextattrctl,
+	.vfs_mount =    	ffs_mount,
+	.vfs_unmount =    	ffs_unmount,
+	.vfs_root =    		ufs_root,
+	.vfs_quotactl =    	ufs_quotactl,
+	.vfs_statfs =    	ffs_statfs,
+	.vfs_sync =    		ffs_sync,
+	.vfs_vget =    		ffs_vget,
+	.vfs_fhtovp =    	ffs_fhtovp,
+	.vfs_checkexp =    	ufs_check_export,
+	.vfs_vptofh =    	ffs_vptofh,
+	.vfs_init =    		ffs_init,
+	.vfs_uninit =    	ufs_uninit
 };
 
 VFS_SET(ufs_vfsops, ufs, 0);
