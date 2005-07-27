@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.31 2005/06/14 17:16:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.32 2005/07/27 07:55:15 dillon Exp $
  */
 
 /*
@@ -1256,6 +1256,7 @@ vm_page_try_to_cache(vm_page_t m)
 	crit_enter();
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
+		crit_exit();
 		return(0);
 	}
 	vm_page_test_dirty(m);
