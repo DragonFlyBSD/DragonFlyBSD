@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libm/man/Makefile.inc,v 1.2 2005/07/27 14:31:11 joerg Exp $
+# $DragonFly: src/lib/libm/man/Makefile.inc,v 1.3 2005/07/27 18:26:28 drhodus Exp $
 
 .PATH:	${.CURDIR}/man
 
@@ -14,7 +14,7 @@ MLINKS+=	\
 	exp.3 log10.3 exp.3 log10f.3 exp.3 log1p.3 exp.3 pow.3 exp.3 powf.3 \
 	fabs.3 fabsf.3 floor.3 floorf.3 fmod.3 fmodf.3 hypot.3 hypotf.3 \
 	hypot.3 cabs.3 hypot.3 cabsf.3 ieee.3 copysign.3 ieee.3 copysignf.3 \
-	ieee.3 finite,3 ieee.3 finitef.3 ieee.3 ilogb.3 ieee.3 ilogbf.3 \
+	ieee.3 finite.3 ieee.3 finitef.3 ieee.3 ilogb.3 ieee.3 ilogbf.3 \
 	ieee.3 nextafter.3 ieee.3 nextafterf.3 ieee.3 remainder.3 \
 	ieee.3 remainderf.3 ieee.3 scalbn.3 ieee.3 scalbnf.3 \
 	ieee_test.3 logb.3 ieee_test.3 logbf.3 ieee_test.3 scalb.3 \
