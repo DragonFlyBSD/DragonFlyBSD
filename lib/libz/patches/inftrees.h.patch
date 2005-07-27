@@ -1,0 +1,32 @@
+$DragonFly: src/lib/libz/patches/Attic/inftrees.h.patch,v 1.1.2.1 2005/07/27 11:02:14 corecode Exp $
+Index: inftrees.h
+===================================================================
+RCS file: /home/dcvs/src/contrib/zlib-1.2.2/Attic/inftrees.h,v
+retrieving revision 1.1
+diff -u -r1.1 inftrees.h
+--- inftrees.h	23 Oct 2004 13:49:54 -0000	1.1
++++ inftrees.h	27 Jul 2005 10:54:54 -0000
+@@ -1,5 +1,5 @@
+ /* inftrees.h -- header to use inftrees.c
+- * Copyright (C) 1995-2003 Mark Adler
++ * Copyright (C) 1995-2005 Mark Adler
+  * For conditions of distribution and use, see copyright notice in zlib.h
+  */
+ 
+@@ -36,12 +36,12 @@
+  */
+ 
+ /* Maximum size of dynamic tree.  The maximum found in a long but non-
+-   exhaustive search was 1004 code structures (850 for length/literals
+-   and 154 for distances, the latter actually the result of an
++   exhaustive search was 1444 code structures (852 for length/literals
++   and 592 for distances, the latter actually the result of an
+    exhaustive search).  The true maximum is not known, but the value
+    below is more than safe. */
+-#define ENOUGH 1440
+-#define MAXD 154
++#define ENOUGH 2048
++#define MAXD 592
+ 
+ /* Type of code to build for inftable() */
+ typedef enum {
