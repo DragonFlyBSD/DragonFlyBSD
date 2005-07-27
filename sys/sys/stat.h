@@ -15,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.4 2005/07/23 23:26:50 joerg Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.5 2005/07/27 14:35:55 joerg Exp $
  */
 
 #ifndef _SYS_STAT_H_
