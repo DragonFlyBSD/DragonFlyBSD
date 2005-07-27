@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_anreg.h,v 1.1.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.6 2005/06/06 16:16:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.7 2005/07/27 21:56:32 joerg Exp $
  */
 
 #define AN_TIMEOUT	65536
@@ -497,6 +497,7 @@ int	an_probe		(device_t);
 void	an_shutdown		(device_t);
 void	an_resume		(device_t);
 int	an_attach		(struct an_softc *, device_t, int);
+int	an_detach		(device_t);
 void    an_stop		        (struct an_softc *);
 
 driver_intr_t	an_intr;

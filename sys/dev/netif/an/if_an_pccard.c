@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.10 2005/06/15 11:35:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.11 2005/07/27 21:56:32 joerg Exp $
  */
 
 /*
@@ -78,14 +78,13 @@
 static int  an_pccard_match(device_t);
 static int  an_pccard_probe(device_t);
 static int  an_pccard_attach(device_t);
-static int  an_pccard_detach(device_t);
 
 static device_method_t an_pccard_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		pccard_compat_probe),
 	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_shutdown,	an_shutdown),
-	DEVMETHOD(device_detach,	an_pccard_detach),
+	DEVMETHOD(device_detach,	an_detach),
 
 	/* Card interface */
 	DEVMETHOD(card_compat_match,	an_pccard_match),
@@ -125,21 +124,6 @@ an_pccard_match(device_t dev)
 		return (0);
 	}
 	return (ENXIO);
-}
-
-static int
-an_pccard_detach(device_t dev)
-{
-	struct an_softc		*sc = device_get_softc(dev);
-	struct ifnet		*ifp = &sc->arpcom.ac_if;
-
-	an_stop(sc);
-	ifmedia_removeall(&sc->an_ifmedia);
-	ifp->if_flags &= ~IFF_RUNNING;
-	ether_ifdetach(ifp);
-	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-	an_release_resources(dev);
-	return (0);
 }
 
 static int

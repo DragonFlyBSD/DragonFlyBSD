@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.26 2005/06/11 04:26:53 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.27 2005/07/27 21:56:32 joerg Exp $
  */
 
 /*
@@ -802,6 +802,23 @@ an_attach(sc, dev, flags)
 	ether_ifattach(ifp, sc->an_caps.an_oemaddr);
 
 	return(0);
+}
+
+int
+an_detach(device_t dev)
+{
+	struct an_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	crit_enter();
+	an_stop(sc);
+	ifmedia_removeall(&sc->an_ifmedia);
+	ether_ifdetach(ifp);
+	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
+	crit_exit();
+
+	an_release_resources(dev);
+	return 0;
 }
 
 static void
