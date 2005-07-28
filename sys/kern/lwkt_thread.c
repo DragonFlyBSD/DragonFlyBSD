@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.70 2004/10/13 18:42:34 eirikn Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.70.2.1 2005/07/28 23:41:42 dillon Exp $
  */
 
 /*
@@ -570,18 +570,27 @@ again:
 	     * or if the target is holding tokens and we could not 
 	     * gain ownership of the tokens, continue looking for a
 	     * thread to schedule and spin instead of HLT if we can't.
+	     *
+	     * Since the current thread may not be holding an mplock count,
+	     * the MP lock state can change after any failed call to
+	     * lwkt_chktokens() due to IPI interactions.
 	     */
 	    if ((ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) ||
 		(ntd->td_toks && lwkt_chktokens(ntd) == 0)
 	    ) {
 		u_int32_t rqmask = gd->gd_runqmask;
+
+		mpheld = MP_LOCK_HELD();
+		ntd = NULL;
 		while (rqmask) {
 		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
 			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock())
 			    continue;
-			mpheld = MP_LOCK_HELD();
-			if (ntd->td_toks && !lwkt_chktokens(ntd))
+			if (ntd->td_toks && !lwkt_chktokens(ntd)) {
+			    mpheld = MP_LOCK_HELD();
 			    continue;
+			}
+			mpheld = MP_LOCK_HELD();
 			break;
 		    }
 		    if (ntd)
