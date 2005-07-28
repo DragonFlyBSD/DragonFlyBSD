@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.8 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.8.2.1 2005/07/28 05:53:12 dillon Exp $
  */
 
 /*
@@ -364,8 +364,12 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
      * Note: xindex is only updated after we are sure the function has
      * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
      * function may send an IPI which may block/drain.
+     *
+     * Note: due to additional IPI operations that the callback function
+     * may make, it is possible for both rindex and windex to advance and
+     * thus for rindex to advance passed our cached windex.
      */
-    while ((ri = ip->ip_rindex) != wi) {
+    while (wi - (ri = ip->ip_rindex) > 0) {
 	ip->ip_rindex = ri + 1;
 	ri &= MAXCPUFIFO_MASK;
 	ip->ip_func[ri](ip->ip_arg[ri], frame);
