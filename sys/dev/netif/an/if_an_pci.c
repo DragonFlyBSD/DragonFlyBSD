@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.13 2005/07/27 21:56:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.14 2005/07/28 16:22:59 joerg Exp $
  */
 
 /*
@@ -79,6 +79,7 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -88,24 +89,23 @@
 struct an_type {
 	u_int16_t		an_vid;
 	u_int16_t		an_did;
-	char			*an_name;
+	const char		*an_name;
 };
 
-#define AIRONET_VENDORID	0x14B9
-#define AIRONET_DEVICEID_35x	0x0350
-#define AIRONET_DEVICEID_4500	0x4500
-#define AIRONET_DEVICEID_4800	0x4800
-#define AIRONET_DEVICEID_4xxx	0x0001
-#define AIRONET_DEVICEID_MPI350	0xA504
 #define AN_PCI_PLX_LOIO		0x14	/* PLX chip iobase */
 #define AN_PCI_LOIO		0x18	/* Aironet iobase */
 
-static struct an_type an_devs[] = {
-	{ AIRONET_VENDORID, AIRONET_DEVICEID_35x, "Cisco Aironet 350 Series" },
-	{ AIRONET_VENDORID, AIRONET_DEVICEID_4500, "Aironet PCI4500" },
-	{ AIRONET_VENDORID, AIRONET_DEVICEID_4800, "Aironet PCI4800" },
-	{ AIRONET_VENDORID, AIRONET_DEVICEID_4xxx, "Aironet PCI4500/PCI4800" },
-	{ AIRONET_VENDORID, AIRONET_DEVICEID_MPI350, "Cisco Aironet MPI350" },
+static const struct an_type an_devs[] = {
+	{ PCI_VENDOR_AIRONET, PCI_PRODUCT_AIRONET_350,
+	  "Cisco Aironet 350 Series" },
+	{ PCI_VENDOR_AIRONET, PCI_PRODUCT_AIRONET_PC4500,
+	  "Aironet PCI4500" },
+	{ PCI_VENDOR_AIRONET, PCI_PRODUCT_AIRONET_PC4800,
+	  "Aironet PCI4800" },
+	{ PCI_VENDOR_AIRONET, PCI_PRODUCT_AIRONET_PC4xxx,
+	  "Aironet PCI4500/PCI4800" },
+	{ PCI_VENDOR_AIRONET, PCI_PRODUCT_AIRONET_MPI350,
+	  "Cisco Aironet MPI350" },
 	{ 0, 0, NULL }
 };
 
@@ -117,17 +117,16 @@ static int an_resume_pci	(device_t);
 static int
 an_probe_pci(device_t dev)
 {
-	struct an_type		*t;
+	const struct an_type *t;
+	uint16_t vid, did;
 
-	t = an_devs;
-
-	while (t->an_name != NULL) {
-		if (pci_get_vendor(dev) == t->an_vid &&
-		    pci_get_device(dev) == t->an_did) {
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
+	for (t = an_devs; t->an_name != NULL; ++t) {
+		if (vid == t->an_vid && did == t->an_did) {
 			device_set_desc(dev, t->an_name);
 			return(0);
 		}
-		t++;
 	}
 	return(ENXIO);
 }
@@ -143,8 +142,8 @@ an_attach_pci(dev)
 	sc = device_get_softc(dev);
 	flags = device_get_flags(dev);
 
-	if (pci_get_vendor(dev) == AIRONET_VENDORID &&
-	    pci_get_device(dev) == AIRONET_DEVICEID_MPI350) {
+	if (pci_get_vendor(dev) == PCI_VENDOR_AIRONET &&
+	    pci_get_device(dev) == PCI_PRODUCT_AIRONET_MPI350) {
 		sc->mpi350 = 1;
 		sc->port_rid = PCIR_MAPS;
 	} else {
