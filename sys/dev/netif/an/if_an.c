@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.28 2005/07/28 16:33:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.29 2005/07/28 16:52:44 joerg Exp $
  */
 
 /*
@@ -314,7 +314,7 @@ an_probe(dev)
 	device_t		dev;
 {
         struct an_softc *sc = device_get_softc(dev);
-	struct an_ltv_ssidlist	ssid;
+	struct an_ltv_ssidlist_new ssid;
 	int	error;
 
 	bzero((char *)&ssid, sizeof(ssid));
@@ -339,13 +339,13 @@ an_probe(dev)
 	ssid.an_type = AN_RID_SSIDLIST;
 
         /* Make sure interrupts are disabled. */
+	sc->mpi350 = 0;
         CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
         CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), 0xFFFF);
 
 	if_initname(&sc->arpcom.ac_if, device_get_name(dev),
 		    device_get_unit(dev));
 	an_reset(sc);
-	/* No need for an_init_mpi350_desc since it will be done in attach */
 
 	if (an_cmd(sc, AN_CMD_READCFG, 0))
 		return(ENXIO);
@@ -354,7 +354,7 @@ an_probe(dev)
 		return(ENXIO);
 
 	/* See if the ssid matches what we expect ... but doesn't have to */
-	if (strcmp(ssid.an_ssid1, AN_DEF_SSID))
+	if (strcmp(ssid.an_entry[0].an_ssid, AN_DEF_SSID))
 		return(ENXIO);
 
 	return(0);
@@ -715,7 +715,7 @@ an_attach(sc, dev, flags)
 
 	/* Read ssid list */
 	sc->an_ssidlist.an_type = AN_RID_SSIDLIST;
-	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist);
+	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist_new);
 	if (an_read_record(sc, (struct an_ltv_gen *)&sc->an_ssidlist)) {
 		device_printf(dev, "read record failed\n");
 		return(EIO);
@@ -760,10 +760,11 @@ an_attach(sc, dev, flags)
 	bcopy(AN_DEFAULT_NODENAME, sc->an_config.an_nodename,
 	    sizeof(AN_DEFAULT_NODENAME) - 1);
 
-	bzero(sc->an_ssidlist.an_ssid1, sizeof(sc->an_ssidlist.an_ssid1));
-	bcopy(AN_DEFAULT_NETNAME, sc->an_ssidlist.an_ssid1,
-	    sizeof(AN_DEFAULT_NETNAME) - 1);
-	sc->an_ssidlist.an_ssid1_len = strlen(AN_DEFAULT_NETNAME);
+	bzero(sc->an_ssidlist.an_entry[0].an_ssid,
+	      sizeof(sc->an_ssidlist.an_entry[0].an_ssid));
+	bcopy(AN_DEFAULT_NETNAME, sc->an_ssidlist.an_entry[0].an_ssid,
+ 	      sizeof(AN_DEFAULT_NETNAME) - 1);
+	sc->an_ssidlist.an_entry[0].an_len = strlen(AN_DEFAULT_NETNAME);
 
 	sc->an_config.an_opmode =
 	    AN_OPMODE_INFRASTRUCTURE_STATION;
@@ -1079,7 +1080,7 @@ an_txeof(sc, status)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	if (!sc->mpi350) {
-		id = CSR_READ_2(sc, AN_TX_CMP_FID);
+		id = CSR_READ_2(sc, AN_TX_CMP_FID(sc->mpi350));
 
 		if (status & AN_EV_TX_EXC) {
 			ifp->if_oerrors++;
@@ -1095,13 +1096,18 @@ an_txeof(sc, status)
 
 		AN_INC(sc->an_rdata.an_tx_cons, AN_TX_RING_CNT);
 	} else { /* MPI 350 */
-		AN_INC(sc->an_rdata.an_tx_cons, AN_MAX_TX_DESC);
-		if (sc->an_rdata.an_tx_prod ==
-		    sc->an_rdata.an_tx_cons)
-			sc->an_rdata.an_tx_empty = 1;
+		id = CSR_READ_2(sc, AN_TX_CMP_FID(sc->mpi350));
+		if (!sc->an_rdata.an_tx_empty){
+			if (status & AN_EV_TX_EXC) {
+				ifp->if_oerrors++;
+			} else
+				ifp->if_opackets++;
+			AN_INC(sc->an_rdata.an_tx_cons, AN_MAX_TX_DESC);
+			if (sc->an_rdata.an_tx_prod ==
+			    sc->an_rdata.an_tx_cons)
+				sc->an_rdata.an_tx_empty = 1;
+		}
 	}
-
-	return;
 }
 
 /*
@@ -1159,11 +1165,10 @@ an_intr(xsc)
 	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
 
 	status = CSR_READ_2(sc, AN_EVENT_STAT(sc->mpi350));
-	CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), ~AN_INTRS);
+	CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), ~AN_INTRS(sc->mpi350));
 
-	if (status & AN_EV_AWAKE) {
-		CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_AWAKE);
-	}
+	if (status & AN_EV_MIC)
+		CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_MIC);
 
 	if (status & AN_EV_LINKSTAT) {
 		if (CSR_READ_2(sc, AN_LINKSTAT(sc->mpi350)) 
@@ -1177,6 +1182,11 @@ an_intr(xsc)
 	if (status & AN_EV_RX) {
 		an_rxeof(sc);
 		CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_RX);
+	}
+
+	if (sc->mpi350 && status & AN_EV_TX_CPY) {
+		an_txeof(sc, status);
+		CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_TX_CPY);
 	}
 
 	if (status & AN_EV_TX) {
@@ -1193,7 +1203,7 @@ an_intr(xsc)
 		CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_ALLOC);
 
 	/* Re-enable interrupts. */
-	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS);
+	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS(sc->mpi350));
 
 	if ((ifp->if_flags & IFF_UP) && !ifq_is_empty(&ifp->if_snd))
 		an_start(ifp);
@@ -1701,7 +1711,7 @@ an_setdef(sc, areq)
 {
 	struct ifnet		*ifp;
 	struct an_ltv_genconfig	*cfg;
-	struct an_ltv_ssidlist	*ssid;
+	struct an_ltv_ssidlist_new *ssid;
 	struct an_ltv_aplist	*ap;
 	struct an_ltv_gen	*sp;
 
@@ -1719,9 +1729,9 @@ an_setdef(sc, areq)
 			sizeof(struct an_ltv_genconfig));
 		break;
 	case AN_RID_SSIDLIST:
-		ssid = (struct an_ltv_ssidlist *)areq;
+		ssid = (struct an_ltv_ssidlist_new *)areq;
 		bcopy((char *)ssid, (char *)&sc->an_ssidlist,
-			sizeof(struct an_ltv_ssidlist));
+		      sizeof(struct an_ltv_ssidlist_new));
 		break;
 	case AN_RID_APLIST:
 		ap = (struct an_ltv_aplist *)areq;
@@ -1754,6 +1764,8 @@ an_setdef(sc, areq)
 	case AN_RID_WEP_PERM:
 	case AN_RID_LEAPUSERNAME:
 	case AN_RID_LEAPPASSWORD:
+		an_init(sc);
+
 		/* Disable the MAC. */
 		an_cmd(sc, AN_CMD_DISABLE, 0);
 
@@ -1831,7 +1843,7 @@ an_ioctl(ifp, command, data, cr)
 {
 	int			error = 0;
 	int			len;
-	int			i;
+	int			i, max;
 	struct an_softc		*sc;
 	struct ifreq		*ifr;
 	struct ieee80211req	*ireq;
@@ -1840,7 +1852,7 @@ an_ioctl(ifp, command, data, cr)
 	struct an_ltv_genconfig	*config;
 	struct an_ltv_key	*key;
 	struct an_ltv_status	*status;
-	struct an_ltv_ssidlist	*ssids;
+	struct an_ltv_ssidlist_new *ssids;
 	int			mode;
 	struct aironet_ioctl	l_ioctl;
 
@@ -1853,7 +1865,7 @@ an_ioctl(ifp, command, data, cr)
 	config = (struct an_ltv_genconfig *)&sc->areq;
 	key = (struct an_ltv_key *)&sc->areq;
 	status = (struct an_ltv_status *)&sc->areq;
-	ssids = (struct an_ltv_ssidlist *)&sc->areq;
+	ssids = (struct an_ltv_ssidlist_new *)&sc->areq;
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -1971,18 +1983,20 @@ an_ioctl(ifp, command, data, cr)
 					error = EINVAL;
 					break;
 				}
-				if (ireq->i_val == 0) {
-					len = ssids->an_ssid1_len;
-					tmpptr = ssids->an_ssid1;
-				} else if (ireq->i_val == 1) {
-					len = ssids->an_ssid2_len;
-					tmpptr = ssids->an_ssid2;
-				} else if (ireq->i_val == 2) {
-					len = ssids->an_ssid3_len;
-					tmpptr = ssids->an_ssid3;
-				} else {
+				max = (sc->areq.an_len - 4)
+				    / sizeof(struct an_ltv_ssid_entry);
+				if ( max > MAX_SSIDS ) {
+					printf("To many SSIDs only using "
+					    "%d of %d\n",
+					    MAX_SSIDS, max);
+					max = MAX_SSIDS;
+				}
+				if (ireq->i_val > max) {
 					error = EINVAL;
 					break;
+				} else {
+					len = ssids->an_entry[ireq->i_val].an_len;
+					tmpptr = ssids->an_entry[ireq->i_val].an_ssid;
 				}
 			} else {
 				error = EINVAL;
@@ -1999,7 +2013,22 @@ an_ioctl(ifp, command, data, cr)
 			    IEEE80211_NWID_LEN);
 			break;
 		case IEEE80211_IOC_NUMSSIDS:
-			ireq->i_val = 3;
+			sc->areq.an_len = sizeof(sc->areq);
+			sc->areq.an_type = AN_RID_SSIDLIST;
+			if (an_read_record(sc,
+			    (struct an_ltv_gen *)&sc->areq)) {
+				error = EINVAL;
+				break;
+			}
+			max = (sc->areq.an_len - 4)
+			    / sizeof(struct an_ltv_ssid_entry);
+			if (max > MAX_SSIDS) {
+				printf("To many SSIDs only using "
+				    "%d of %d\n",
+				    MAX_SSIDS, max);
+				max = MAX_SSIDS;
+			}
+			ireq->i_val = max;
 			break;
 		case IEEE80211_IOC_WEP:
 			sc->areq.an_type = AN_RID_ACTUALCFG;
@@ -2195,6 +2224,7 @@ an_ioctl(ifp, command, data, cr)
 		}
 		switch (ireq->i_type) {
 		case IEEE80211_IOC_SSID:
+			sc->areq.an_len = sizeof(sc->areq);
 			sc->areq.an_type = AN_RID_SSIDLIST;
 			if (an_read_record(sc,
 			    (struct an_ltv_gen *)&sc->areq)) {
@@ -2205,26 +2235,25 @@ an_ioctl(ifp, command, data, cr)
 				error = EINVAL;
 				break;
 			}
-			switch (ireq->i_val) {
-			case 0:
-				error = copyin(ireq->i_data,
-				    ssids->an_ssid1, ireq->i_len);
-				ssids->an_ssid1_len = ireq->i_len;
-				break;
-			case 1:
-				error = copyin(ireq->i_data,
-				    ssids->an_ssid2, ireq->i_len);
-				ssids->an_ssid2_len = ireq->i_len;
-				break;
-			case 2:
-				error = copyin(ireq->i_data,
-				    ssids->an_ssid3, ireq->i_len);
-				ssids->an_ssid3_len = ireq->i_len;
-				break;
-			default:
-				error = EINVAL;
-				break;
+			max = (sc->areq.an_len - 4)
+			    / sizeof(struct an_ltv_ssid_entry);
+			if (max > MAX_SSIDS) {
+				printf("To many SSIDs only using "
+				    "%d of %d\n",
+				    MAX_SSIDS, max);
+				max = MAX_SSIDS;
 			}
+			if (ireq->i_val > max) {
+				error = EINVAL;
+ 				break;
+			} else {
+ 				error = copyin(ireq->i_data,
+				    ssids->an_entry[ireq->i_val].an_ssid, 
+				    ireq->i_len);
+				ssids->an_entry[ireq->i_val].an_len 
+				    = ireq->i_len;
+ 				break;
+ 			}
 			break;
 		case IEEE80211_IOC_WEP:
 			switch (ireq->i_val) {
@@ -2469,7 +2498,7 @@ an_init(xsc)
 
 	/* Set the ssid list */
 	sc->an_ssidlist.an_type = AN_RID_SSIDLIST;
-	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist);
+	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist_new);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_ssidlist)) {
 		crit_exit();
 		if_printf(ifp, "failed to set ssid list\n");
@@ -2505,7 +2534,7 @@ an_init(xsc)
 		an_cmd(sc, AN_CMD_SET_MODE, 0xffff);
 
 	/* enable interrupts */
-	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS);
+	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS(sc->mpi350));
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -2526,7 +2555,6 @@ an_start(ifp)
 	int			id, idx, i;
 	unsigned char           txcontrol;
 	struct an_card_tx_desc an_tx_desc;
-	u_int8_t		*ptr;
 	u_int8_t		*buf;
 
 	sc = ifp->if_softc;
@@ -2594,6 +2622,11 @@ an_start(ifp)
 				if_printf(ifp, "xmit failed\n");
 
 			AN_INC(idx, AN_TX_RING_CNT);
+
+			/*
+			 * Set a timeout in case the chip goes out to lunch.
+			 */
+			ifp->if_timer = 5;
 		}
 	} else { /* MPI-350 */
 		while (sc->an_rdata.an_tx_empty ||
@@ -2643,21 +2676,28 @@ an_start(ifp)
 			an_tx_desc.an_len =  0x44 +
 				tx_frame_802_3.an_tx_802_3_payload_len;
 			an_tx_desc.an_phys = sc->an_tx_buffer[idx].an_dma_paddr;
-			ptr = (u_int8_t*)&an_tx_desc;
-			for (i = 0; i < sizeof(an_tx_desc); i++) {
-				CSR_MEM_AUX_WRITE_1(sc, AN_TX_DESC_OFFSET + i,
-						    ptr[i]);
-			}
+			for (i = 0; i < sizeof(an_tx_desc) / 4 ; i++) {
+				CSR_MEM_AUX_WRITE_4(sc, AN_TX_DESC_OFFSET
+				    /* zero for now */ 
+				    + (0 * sizeof(an_tx_desc))
+				    + (i * 4),
+				    ((u_int32_t*)&an_tx_desc)[i]);
+ 			}
 
 			BPF_MTAP(ifp, m0);
 
 			m_freem(m0);
 			m0 = NULL;
 
-			CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_ALLOC);
-
 			AN_INC(idx, AN_MAX_TX_DESC);
 			sc->an_rdata.an_tx_empty = 0;
+
+			CSR_WRITE_2(sc, AN_EVENT_ACK(sc->mpi350), AN_EV_ALLOC);
+
+			/*
+			 * Set a timeout in case the chip goes out to lunch.
+			 */
+			ifp->if_timer = 5;
 		}
 	}
 
@@ -2665,13 +2705,6 @@ an_start(ifp)
 		ifp->if_flags |= IFF_OACTIVE;
 
 	sc->an_rdata.an_tx_prod = idx;
-
-	/*
-	 * Set a timeout in case the chip goes out to lunch.
-	 */
-	ifp->if_timer = 5;
-
-	return;
 }
 
 void
@@ -2978,11 +3011,6 @@ an_media_change(ifp)
 	int otype = sc->an_config.an_opmode;
 	int orate = sc->an_tx_rate;
 
-	if ((sc->an_ifmedia.ifm_cur->ifm_media & IFM_IEEE80211_ADHOC) != 0)
-		sc->an_config.an_opmode = AN_OPMODE_IBSS_ADHOC;
-	else
-		sc->an_config.an_opmode = AN_OPMODE_INFRASTRUCTURE_STATION;
-
 	switch (IFM_SUBTYPE(sc->an_ifmedia.ifm_cur->ifm_media)) {
 	case IFM_IEEE80211_DS1:
 		sc->an_tx_rate = AN_RATE_1MBPS;
@@ -3016,6 +3044,11 @@ an_media_change(ifp)
 		sc->an_config.an_type = AN_RID_GENCONFIG;
 		sc->an_config.an_len = sizeof(struct an_ltv_genconfig);
 	}
+
+	if ((sc->an_ifmedia.ifm_cur->ifm_media & IFM_IEEE80211_ADHOC) != 0)
+		sc->an_config.an_opmode &= ~AN_OPMODE_INFRASTRUCTURE_STATION;
+	else
+		sc->an_config.an_opmode |= AN_OPMODE_INFRASTRUCTURE_STATION;
 
 	if (otype != sc->an_config.an_opmode ||
 	    orate != sc->an_tx_rate)
