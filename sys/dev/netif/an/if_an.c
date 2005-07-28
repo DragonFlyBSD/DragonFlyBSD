@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.31 2005/07/28 16:56:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.32 2005/07/28 16:57:09 joerg Exp $
  */
 
 /*
@@ -1810,7 +1810,6 @@ an_setdef(sc, areq)
 	default:
 		if_printf(ifp, "unknown RID: %x\n", areq->an_type);
 		return;
-		break;
 	}
 
 
