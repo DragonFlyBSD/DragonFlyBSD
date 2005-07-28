@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_aironet_ieee.h,v 1.1.2.7 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_aironet_ieee.h,v 1.3 2005/07/28 16:52:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_aironet_ieee.h,v 1.4 2005/07/28 16:55:17 joerg Exp $
  */
 
 #ifndef _IF_AIRONET_IEEE_H
@@ -337,7 +337,7 @@ struct an_ltv_genconfig {
 	u_int8_t		an_magic_packet_action;	/* 0x98 */
 	u_int8_t		an_magic_packet_ctl;	/* 0x99 */
 	u_int16_t		an_rsvd9;
-	u_int16_t		an_spare[13];
+	u_int16_t		an_spare[19];
 };
 
 #define AN_OPMODE_IBSS_ADHOC			0x0000
@@ -593,7 +593,7 @@ struct an_ltv_status {
 	u_int8_t		an_avg_noise_prev_min_db;       /* 0x7D */
 	u_int8_t		an_max_noise_prev_min_pc;       /* 0x7E */
 	u_int8_t		an_max_noise_prev_min_db;       /* 0x7F */
-	u_int16_t		an_spare[8];
+	u_int16_t		an_spare[18];
 };
 
 #define AN_STATUS_OPMODE_CONFIGURED		0x0001
