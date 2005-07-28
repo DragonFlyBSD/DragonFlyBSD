@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.18 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.19 2005/07/28 18:10:23 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -469,8 +469,15 @@ ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 	struct proc *p = td->td_proc;	/* XXX */
 	int error;
 
+	/*
+	 * Since multiple processes may be trying to ktrace, we must vref
+	 * the vnode to prevent it from being ripped out from under us in
+	 * case another process gets a write error while ktracing and removes
+	 * the reference from the proc.
+	 */
 	if (vp == NULL)
 		return;
+	vref(vp);
 	auio.uio_iov = &aiov[0];
 	auio.uio_offset = 0;
 	auio.uio_segflg = UIO_SYSSPACE;
@@ -496,6 +503,7 @@ ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 		error = VOP_WRITE(vp, uio, IO_UNIT | IO_APPEND, p->p_ucred);
 	}
 	VOP_UNLOCK(vp, 0, td);
+	vrele(vp);
 	if (!error)
 		return;
 	/*
