@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.27 2005/07/27 21:56:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.28 2005/07/28 16:33:25 joerg Exp $
  */
 
 /*
@@ -320,12 +320,12 @@ an_probe(dev)
 	bzero((char *)&ssid, sizeof(ssid));
 
 	error = an_alloc_port(dev, 0, AN_IOSIZ);
-	if (error != 0)
-		return (0);
+	if (error)
+		return (error);
 
 	/* can't do autoprobing */
 	if (rman_get_start(sc->port_res) == -1)
-		return(0);
+		return(ENXIO);
 
 	/*
 	 * We need to fake up a softc structure long enough
@@ -348,16 +348,16 @@ an_probe(dev)
 	/* No need for an_init_mpi350_desc since it will be done in attach */
 
 	if (an_cmd(sc, AN_CMD_READCFG, 0))
-		return(0);
+		return(ENXIO);
 
 	if (an_read_record(sc, (struct an_ltv_gen *)&ssid))
-		return(0);
+		return(ENXIO);
 
 	/* See if the ssid matches what we expect ... but doesn't have to */
 	if (strcmp(ssid.an_ssid1, AN_DEF_SSID))
-		return(0);
+		return(ENXIO);
 
-	return(AN_IOSIZ);
+	return(0);
 }
 
 /*

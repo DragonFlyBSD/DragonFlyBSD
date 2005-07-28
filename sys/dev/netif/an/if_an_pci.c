@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.14 2005/07/28 16:22:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.15 2005/07/28 16:33:25 joerg Exp $
  */
 
 /*
@@ -92,7 +92,6 @@ struct an_type {
 	const char		*an_name;
 };
 
-#define AN_PCI_PLX_LOIO		0x14	/* PLX chip iobase */
 #define AN_PCI_LOIO		0x18	/* Aironet iobase */
 
 static const struct an_type an_devs[] = {
@@ -135,9 +134,8 @@ static int
 an_attach_pci(dev)
 	device_t		dev;
 {
-	u_int32_t		command;
 	struct an_softc		*sc;
-	int 			flags, error = 0;
+	int 			flags, error;
 
 	sc = device_get_softc(dev);
 	flags = device_get_flags(dev);
@@ -147,19 +145,6 @@ an_attach_pci(dev)
 		sc->mpi350 = 1;
 		sc->port_rid = PCIR_MAPS;
 	} else {
-		/*
-		 * Map control/status registers.
-	 	 */
-		command = pci_read_config(dev, PCIR_COMMAND, 4);
-		command |= PCIM_CMD_PORTEN;
-		pci_write_config(dev, PCIR_COMMAND, command, 4);
-		command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-		if (!(command & PCIM_CMD_PORTEN)) {
-			device_printf(dev, "failed to enable I/O ports!\n");
-			error = ENXIO;
-			goto fail;
-		}
 		sc->port_rid = AN_PCI_LOIO;
 	}
 	error = an_alloc_port(dev, sc->port_rid, 1);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.11 2005/07/27 21:56:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.12 2005/07/28 16:33:25 joerg Exp $
  */
 
 /*
@@ -84,21 +84,21 @@ static int
 an_probe_isa(dev)
 	device_t		dev;
 {
-	int			error = 0;
+	int error;
 
 	error = ISA_PNP_PROBE(device_get_parent(dev), dev, an_ids);
 	if (error == ENXIO)
 		return(error);
 
 	error = an_probe(dev);
-	an_release_resources(dev);
-	if (error == 0)
-		return (ENXIO);
+	if (error)
+		goto back;
 
 	error = an_alloc_irq(dev, 0, 0);
-	an_release_resources(dev);
 	if (!error)
 		device_set_desc(dev, "Aironet ISA4500/ISA4800");
+back:
+	an_release_resources(dev);
 	return (error);
 }
 
