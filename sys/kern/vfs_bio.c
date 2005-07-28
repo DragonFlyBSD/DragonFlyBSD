@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.37 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.38 2005/07/28 18:15:09 dillon Exp $
  */
 
 /*
@@ -1034,6 +1034,10 @@ buf_dirty_count_severe(void)
 void
 brelse(struct buf * bp)
 {
+#ifdef INVARIANTS
+	int saved_flags = bp->b_flags;
+#endif
+
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
 	crit_enter();
@@ -1065,12 +1069,6 @@ brelse(struct buf * bp)
 			numdirtywakeup(lodirtybuffers);
 		}
 		bp->b_flags &= ~(B_DELWRI | B_CACHE | B_FREEBUF);
-		if ((bp->b_flags & B_VMIO) == 0) {
-			if (bp->b_bufsize)
-				allocbuf(bp, 0);
-			if (bp->b_vp)
-				brelvp(bp);
-		}
 	}
 
 	/*
@@ -1089,6 +1087,11 @@ brelse(struct buf * bp)
 		bp->b_flags &= ~B_RELBUF;
 	else if (vm_page_count_severe() && !(bp->b_xflags & BX_BKGRDINPROG))
 		bp->b_flags |= B_RELBUF;
+
+	/*
+	 * At this point destroying the buffer is governed by the B_INVAL 
+	 * or B_RELBUF flags.
+	 */
 
 	/*
 	 * VMIO buffer rundown.  It is not very necessary to keep a VMIO buffer
@@ -1112,7 +1115,9 @@ brelse(struct buf * bp)
 		 !vn_isdisk(bp->b_vp, NULL) &&
 		 (bp->b_flags & B_DELWRI))
 	    ) {
-
+		/*
+		 * Rundown for VMIO buffers which are not dirty NFS buffers.
+		 */
 		int i, j, resid;
 		vm_page_t m;
 		off_t foff;
@@ -1213,15 +1218,32 @@ brelse(struct buf * bp)
 			resid -= PAGE_SIZE - (foff & PAGE_MASK);
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 		}
-
 		if (bp->b_flags & (B_INVAL | B_RELBUF))
 			vfs_vmio_release(bp);
-
 	} else if (bp->b_flags & B_VMIO) {
-
+		/*
+		 * Rundown for VMIO buffers which are dirty NFS buffers.  Such
+		 * buffers contain tracking ranges for NFS and cannot normally
+		 * be released.  Due to the dirty check above this series of
+		 * conditionals, B_RELBUF probably will never be set in this
+		 * codepath.
+		 */
 		if (bp->b_flags & (B_INVAL | B_RELBUF))
 			vfs_vmio_release(bp);
-
+	} else {
+		/*
+		 * Rundown for non-VMIO buffers.
+		 */
+		if (bp->b_flags & (B_INVAL | B_RELBUF)) {
+#if 0
+			if (bp->b_vp)
+				printf("brelse bp %p %08x/%08lx: Warning, caught and fixed brelvp bug\n", bp, saved_flags, bp->b_flags);
+#endif
+			if (bp->b_bufsize)
+				allocbuf(bp, 0);
+			if (bp->b_vp)
+				brelvp(bp);
+		}
 	}
 			
 	if (bp->b_qindex != QUEUE_NONE)
@@ -1236,12 +1258,21 @@ brelse(struct buf * bp)
 		return;
 	}
 
-	/* enqueue */
+	/*
+	 * Figure out the correct queue to place the cleaned up buffer on.
+	 * Buffers placed in the EMPTY or EMPTYKVA had better already be
+	 * disassociated from their vnode.
+	 */
 
-	/* buffers with no memory */
 	if (bp->b_bufsize == 0) {
+		/*
+		 * Buffers with no memory.  Due to conditionals near the top
+		 * of brelse() such buffers should probably already be
+		 * marked B_INVAL and disassociated from their vnode.
+		 */
 		bp->b_flags |= B_INVAL;
 		bp->b_xflags &= ~BX_BKGRDWRITE;
+		KASSERT(bp->b_vp == NULL, ("bp1 %p flags %08x/%08lx vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 1");
 		if (bp->b_kvasize) {
@@ -1253,8 +1284,12 @@ brelse(struct buf * bp)
 		LIST_REMOVE(bp, b_hash);
 		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 		bp->b_dev = NODEV;
-	/* buffers with junk contents */
 	} else if (bp->b_flags & (B_ERROR | B_INVAL | B_NOCACHE | B_RELBUF)) {
+		/*
+		 * Buffers with junk contents.   Again these buffers had better
+		 * already be disassociated from their vnode.
+		 */
+		KASSERT(bp->b_vp == NULL, ("bp2 %p flags %08x/%08lx vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
 		bp->b_flags |= B_INVAL;
 		bp->b_xflags &= ~BX_BKGRDWRITE;
 		if (bp->b_xflags & BX_BKGRDINPROG)
@@ -1264,14 +1299,17 @@ brelse(struct buf * bp)
 		LIST_REMOVE(bp, b_hash);
 		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 		bp->b_dev = NODEV;
-
-	/* buffers that are locked */
 	} else if (bp->b_flags & B_LOCKED) {
+		/*
+		 * Buffers that are locked.
+		 */
 		bp->b_qindex = QUEUE_LOCKED;
 		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_LOCKED], bp, b_freelist);
-
-	/* remaining buffers */
 	} else {
+		/*
+		 * Remaining buffers.  These buffers are still associated with
+		 * their vnode.
+		 */
 		switch(bp->b_flags & (B_DELWRI|B_AGE)) {
 		case B_DELWRI | B_AGE:
 		    bp->b_qindex = QUEUE_DIRTY;
@@ -1305,7 +1343,6 @@ brelse(struct buf * bp)
 	 * We've already handled the B_INVAL case ( B_DELWRI will be clear
 	 * if B_INVAL is set ).
 	 */
-
 	if ((bp->b_flags & B_LOCKED) == 0 && !(bp->b_flags & B_DELWRI))
 		bufcountwakeup();
 
@@ -1382,9 +1419,12 @@ bqrelse(struct buf * bp)
 	if (bp->b_bufsize && !(bp->b_flags & B_DELWRI))
 		bufspacewakeup();
 
-	/* unlock */
-	BUF_UNLOCK(bp);
+	/*
+	 * Final cleanup and unlock.  Clear bits that are only used while a
+	 * buffer is actively locked.
+	 */
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF);
+	BUF_UNLOCK(bp);
 	crit_exit();
 }
 
@@ -1451,10 +1491,7 @@ gbincore(struct vnode * vp, daddr_t blkno)
 	struct bufhashhdr *bh;
 
 	bh = bufhash(vp, blkno);
-
-	/* Search hash chain */
 	LIST_FOREACH(bp, bh, b_hash) {
-		/* hit */
 		if (bp->b_vp == vp && bp->b_lblkno == blkno)
 			break;
 	}
@@ -1689,7 +1726,10 @@ restart:
 
 		/*
 		 * Start freeing the bp.  This is somewhat involved.  nbp
-		 * remains valid only for QUEUE_EMPTY[KVA] bp's.
+		 * remains valid only for QUEUE_EMPTY[KVA] bp's.  Buffers
+		 * on the clean list must be disassociated from their 
+		 * current vnode.  Buffers on the empty[kva] lists have
+		 * already been disassociated.
 		 */
 
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0)
@@ -1713,6 +1753,7 @@ restart:
 		 * valid after this operation.
 		 */
 
+		KASSERT(bp->b_vp == NULL, ("bp3 %p flags %08lx vnode %p qindex %d unexpectededly still associated!", bp, bp->b_flags, bp->b_vp, qindex));
 		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
 			(*bioops.io_deallocate)(bp);
 		if (bp->b_xflags & BX_BKGRDINPROG)
@@ -2360,7 +2401,8 @@ loop:
 
 		/*
 		 * Insert the buffer into the hash, so that it can
-		 * be found by incore.
+		 * be found by incore.  bgetvp() and bufhash()
+		 * must be synchronized with each other.
 		 */
 		bp->b_blkno = bp->b_lblkno = blkno;
 		bp->b_offset = offset;
