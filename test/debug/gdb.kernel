@@ -1,4 +1,4 @@
-# $DragonFly: src/test/debug/gdb.kernel,v 1.3 2005/04/04 14:19:10 joerg Exp $
+# $DragonFly: src/test/debug/gdb.kernel,v 1.4 2005/07/28 15:48:56 hmp Exp $
 #
 # Command file for the GNU Debugger, for kernel debugging.
 #
@@ -20,6 +20,38 @@ set history expansion on
 define pcomm
 	printf "%10s\n",$arg0->td_comm
 end
+
+define lsvfs
+	set $vfc = vfsconf->vfc_next
+	printf "Filesystem      Refs    Flags\n"
+	while ($vfc != 0)
+		printf "%-10s %6d       0x%08x\n", $vfc->vfc_name, \
+			$vfc->vfc_refcount, $vfc->vfc_flags
+		set $vfc = $vfc->vfc_next
+	end
+end
+
+define lsmount
+	set $mnt = (mountlist->tqh_first)
+	while ($mnt != 0)
+		print *$mnt
+		set $mnt = $mnt->mnt_list->tqe_next
+	end
+end
+
+define lsvfsops
+	set $vfc = vfsconf->vfc_next
+	while ($vfc != 0)
+		printf "Filesystem: %s, Refs: %d, Flags: 0x%08x\n", \
+			$vfc->vfc_name, $vfc->vfc_refcount, $vfc->vfc_flags
+		printf "VFS ops: \n"
+		set print pretty
+		print *$vfc->vfc_vfsops
+		set print pretty off
+		set $vfc = $vfc->vfc_next
+	end
+end
+
 
 define kldstat
 	set $kld = linker_files.tqh_first
@@ -80,6 +112,21 @@ define psax
 end
 
 # Documentation, usable within GDB using the 'help' command.
+document lsvfs
+Output list of loaded file systems, refcount, similar to the
+lsvfs(1) utility.
+end
+
+document lsmount
+Iterate the current list of mount structures loaded from the
+memory core, there should be one per loaded VFS.
+end
+
+document lsvfsops
+Display the VFS operations vector for each file system found in
+the memory core, preceded by a summarised header.
+end
+
 document kldstat
 Output list of loaded kernel modules in kldstat(1) style.
 end
