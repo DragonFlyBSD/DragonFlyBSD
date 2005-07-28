@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.30 2005/07/28 16:55:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.31 2005/07/28 16:56:37 joerg Exp $
  */
 
 /*
@@ -2638,6 +2638,9 @@ an_start(ifp)
 			ifp->if_timer = 5;
 		}
 	} else { /* MPI-350 */
+		/* Disable interrupts. */
+		CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
+
 		while (sc->an_rdata.an_tx_empty ||
 		    idx != sc->an_rdata.an_tx_cons) {
 			m0 = ifq_dequeue(&ifp->if_snd);
@@ -2708,6 +2711,9 @@ an_start(ifp)
 			 */
 			ifp->if_timer = 5;
 		}
+
+		/* Re-enable interrupts. */
+		CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS(sc->mpi350));
 	}
 
 	if (m0 != NULL)
