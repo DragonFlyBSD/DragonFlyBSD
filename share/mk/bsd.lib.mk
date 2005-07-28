@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.12 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.13 2005/07/28 19:19:46 joerg Exp $
 #
 
 .include <bsd.init.mk>
@@ -31,13 +31,9 @@ STRIP?=	-s
 .endif
 
 .include <bsd.libnames.mk>
-.if defined(USEGNUDIR)
-USELIBDIR?=${GCCLIBDIR}
-USESHLIBDIR?=${GCCSHLIBDIR}
-.else
-USELIBDIR?=${LIBDIR}
-USESHLIBDIR?=${SHLIBDIR}
-.endif
+
+TARGET_LIBDIR?=		${LIBDIR}
+TARGET_SHLIBDIR?=	${SHLIBDIR}
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
 # .So used for PIC object files
@@ -243,23 +239,23 @@ realinstall: _libinstall
 _libinstall:
 .if defined(LIB) && !empty(LIB) && !defined(NOINSTALLLIB)
 	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}.a ${DESTDIR}${USELIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}.a ${DESTDIR}${TARGET_LIBDIR}
 .endif
 .if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
 	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}_p.a ${DESTDIR}${USELIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}_p.a ${DESTDIR}${TARGET_LIBDIR}
 .endif
 .if defined(SHLIB_NAME)
 	${INSTALL} ${STRIP} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
 	    ${_INSTALLFLAGS} ${_SHLINSTALLFLAGS} \
-	    ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}
+	    ${SHLIB_NAME} ${DESTDIR}${TARGET_SHLIBDIR}
 .if defined(SHLIB_LINK)
-	${LN} -fs ${SHLIB_NAME} ${DESTDIR}${USESHLIBDIR}/${SHLIB_LINK}
+	${LN} -fs ${SHLIB_NAME} ${DESTDIR}${TARGET_SHLIBDIR}/${SHLIB_LINK}
 .endif
 .endif
 .if defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)
 	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}_pic.a ${DESTDIR}${USELIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}_pic.a ${DESTDIR}${TARGET_LIBDIR}
 .endif
 .endif # !defined(INTERNALLIB)
 
