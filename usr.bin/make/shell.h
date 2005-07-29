@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.13 2005/06/18 09:01:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.14 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
@@ -52,7 +52,7 @@
  * a case, errCheck becomes a printf template for echoing the command,
  * should echoing be on and ignErr becomes another printf template for
  * executing the command while ignoring the return status. If either of these
- * strings is empty when hasErrCtl is FALSE, the command will be executed
+ * strings is empty when hasErrCtl is false, the command will be executed
  * anyway as is and if it causes an error, so be it.
  */
 struct Shell {
@@ -66,7 +66,7 @@ struct Shell {
 	char	*path;		/* full path to the shell */
 
 	/* True if both echoOff and echoOn defined */
-	Boolean	hasEchoCtl;
+	bool	hasEchoCtl;
 
 	char	*echoOff;	/* command to turn off echo */
 	char	*echoOn;	/* command to turn it back on */
@@ -79,7 +79,7 @@ struct Shell {
 	char	*noPrint;
 
 	/* set if can control error checking for individual commands */
-	Boolean	hasErrCtl;
+	bool	hasErrCtl;
 
 	/* string to turn error checking on */
 	char	*errCheck;
@@ -93,13 +93,13 @@ struct Shell {
 	ArgArray builtins;	/* ordered list of shell builtins */
 	char	*meta;		/* shell meta characters */
 
-	Boolean	unsetenv;	/* unsetenv("ENV") before exec */
+	bool	unsetenv;	/* unsetenv("ENV") before exec */
 };
 
 extern struct Shell	*commandShell;
 
 void		Shell_Init(const char []);
-Boolean		Shell_Parse(const char []);
+bool		Shell_Parse(const char []);
 void		Shell_Dump(const struct Shell *);
 
 #endif /* shell_h_6002e3b8 */

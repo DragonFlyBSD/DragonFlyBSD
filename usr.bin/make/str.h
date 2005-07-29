@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.9 2005/05/24 09:27:34 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.10 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef str_h_44db59e6
@@ -61,7 +61,7 @@ void ArgArray_Init(ArgArray *);
 void ArgArray_Done(ArgArray *);
 
 char *str_concat(const char *, char, const char *);
-void brk_string(ArgArray *, const char [], Boolean);
+void brk_string(ArgArray *, const char [], bool);
 char *MAKEFLAGS_quote(const char *);
 void MAKEFLAGS_break(ArgArray *, const char []);
 int Str_Match(const char *, const char *);

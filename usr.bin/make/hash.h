@@ -38,7 +38,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.19 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.17 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.18 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef hash_h_f6312f46
@@ -96,7 +96,7 @@ typedef struct Hash_Search {
 void Hash_InitTable(Hash_Table *, int);
 void Hash_DeleteTable(Hash_Table *);
 Hash_Entry *Hash_FindEntry(const Hash_Table *, const char *);
-Hash_Entry *Hash_CreateEntry(Hash_Table *, const char *, Boolean *);
+Hash_Entry *Hash_CreateEntry(Hash_Table *, const char *, bool *);
 void Hash_DeleteEntry(Hash_Table *, Hash_Entry *);
 Hash_Entry *Hash_EnumFirst(const Hash_Table *, Hash_Search *);
 Hash_Entry *Hash_EnumNext(Hash_Search *);

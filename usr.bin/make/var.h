@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.38 2005/05/16 17:30:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.39 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -60,27 +60,27 @@ extern struct GNode	*VAR_CMD;
 extern char		var_Error[];
 
 /*
- * TRUE if environment should be searched for all variables before
+ * true if environment should be searched for all variables before
  * the global context
  */
-extern Boolean		checkEnvFirst;
+extern bool		checkEnvFirst;
 
 /* Do old-style variable substitution */
-extern Boolean		oldVars;
+extern bool		oldVars;
 
 void Var_Append(const char *, const char *, struct GNode *);
 void Var_Delete(const char *, struct GNode *);
 void Var_Dump(void);
-Boolean Var_Exists(const char *, struct GNode *);
+bool Var_Exists(const char *, struct GNode *);
 void Var_Init(char **);
 size_t Var_Match(const char [], struct GNode *);
-char *Var_Parse(const char *, struct GNode *, Boolean, size_t *, Boolean *);
-void Var_Print(struct Lst *, Boolean);
+char *Var_Parse(const char *, struct GNode *, bool, size_t *, bool *);
+void Var_Print(struct Lst *, bool);
 void Var_Set(const char *, const char *, struct GNode *);
 void Var_SetGlobal(const char *, const char *);
 void Var_SetEnv(const char *, struct GNode *);
-struct Buffer *Var_Subst(const char *, struct GNode *, Boolean);
-struct Buffer *Var_SubstOnly(const char *, const char *, Boolean);
+struct Buffer *Var_Subst(const char *, struct GNode *, bool);
+struct Buffer *Var_SubstOnly(const char *, const char *, bool);
 const char *Var_Value(const char [], struct GNode *);
 
 #endif /* var_h_9cccafce */

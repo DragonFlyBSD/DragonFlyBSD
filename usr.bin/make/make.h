@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.36 2005/06/22 22:03:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.37 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -68,11 +68,11 @@ enum {
 };
 
 int Make_TimeStamp(struct GNode *, struct GNode *);
-Boolean Make_OODate(struct GNode *);
+bool Make_OODate(struct GNode *);
 int Make_HandleUse(struct GNode *, struct GNode *);
 void Make_Update(struct GNode *);
 void Make_DoAllVar(struct GNode *);
-Boolean Make_Run(struct Lst *, Boolean);
+bool Make_Run(struct Lst *, bool);
 void Main_ParseArgLine(struct CLI *, const char [], int);
 int Main_ParseWarn(const char *, int);
 

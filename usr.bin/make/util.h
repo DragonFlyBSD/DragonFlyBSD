@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.13 2005/07/13 20:40:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.14 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -49,11 +49,11 @@
  * boolean argument to be an expression that isn't strictly 0 or 1 valued.
  */
 
-typedef int Boolean;
-#ifndef TRUE
-#define	TRUE	1
-#define	FALSE	0
-#endif /* TRUE */
+typedef int bool;
+#ifndef true
+#define	true	1
+#define	false	0
+#endif /* true */
 
 #define	CONCAT(a,b)	a##b
 

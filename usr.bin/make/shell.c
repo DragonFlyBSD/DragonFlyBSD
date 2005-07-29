@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.22 2005/06/18 09:01:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.23 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #include <string.h>
@@ -112,7 +112,7 @@ Shell_Dump(const struct Shell *sh)
  * In case of an error a message is printed and NULL is returned.
  */
 static struct Shell *
-ShellParseSpec(const char *spec, Boolean *fullSpec)
+ShellParseSpec(const char *spec, bool *fullSpec)
 {
 	ArgArray	aa;
 	struct Shell	*sh;
@@ -120,7 +120,7 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 	char		*keyw;
 	int		arg;
 
-	*fullSpec = FALSE;
+	*fullSpec = false;
 
 	sh = emalloc(sizeof(*sh));
 	memset(sh, 0, sizeof(*sh));
@@ -129,7 +129,7 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 	/*
 	 * Parse the specification by keyword but skip the first word
 	 */
-	brk_string(&aa, spec, TRUE);
+	brk_string(&aa, spec, true);
 
 	for (arg = 1; arg < aa.argc; arg++) {
 		/*
@@ -154,51 +154,51 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 		} else if (strcmp(keyw, "quiet") == 0) {
 			free(sh->echoOff);
 			sh->echoOff = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "echo") == 0) {
 			free(sh->echoOn);
 			sh->echoOn = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "filter") == 0) {
 			free(sh->noPrint);
 			sh->noPrint = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "echoFlag") == 0) {
 			free(sh->echo);
 			sh->echo = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "errFlag") == 0) {
 			free(sh->exit);
 			sh->exit = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "hasErrCtl") == 0) {
 			sh->hasErrCtl = (
 			    *eq == 'Y' || *eq == 'y' ||
 			    *eq == 'T' || *eq == 't');
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "check") == 0) {
 			free(sh->errCheck);
 			sh->errCheck = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "ignore") == 0) {
 			free(sh->ignErr);
 			sh->ignErr = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "builtins") == 0) {
 			ArgArray_Done(&sh->builtins);
-			brk_string(&sh->builtins, eq, TRUE);
+			brk_string(&sh->builtins, eq, true);
 			qsort(sh->builtins.argv + 1, sh->builtins.argc - 1,
 			    sizeof(char *), sort_builtins);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "meta") == 0) {
 			free(sh->meta);
 			sh->meta = estrdup(eq);
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else if (strcmp(keyw, "unsetenv") == 0) {
 			sh->unsetenv = (
 			    *eq == 'Y' || *eq == 'y' ||
 			    *eq == 'T' || *eq == 't');
-			*fullSpec = TRUE;
+			*fullSpec = true;
 		} else {
 			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
 			    "specification '%s'", keyw);
@@ -221,7 +221,7 @@ ShellParseSpec(const char *spec, Boolean *fullSpec)
 		}
 
 		if (sh->echoOn != NULL && sh->echoOff != NULL)
-			sh->hasEchoCtl = TRUE;
+			sh->hasEchoCtl = true;
 	}
 
 	return (sh);
@@ -261,11 +261,11 @@ ShellMatch(const char name[])
 		 */
 		shell->name		= strdup(name);
 		shell->path		= str_concat(shellDir, '/', name);
-		shell->hasEchoCtl	= TRUE;
+		shell->hasEchoCtl	= true;
 		shell->echoOff		= strdup("unset verbose");
 		shell->echoOn		= strdup("set verbose");
 		shell->noPrint		= strdup("unset verbose");
-		shell->hasErrCtl	= FALSE;
+		shell->hasErrCtl	= false;
 		shell->errCheck		= strdup("echo \"%s\"\n");
 		shell->ignErr		= strdup("csh -c \"%s || exit 0\"");
 		shell->echo		= strdup("v");
@@ -273,8 +273,8 @@ ShellMatch(const char name[])
 		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\@\n");
 		brk_string(&shell->builtins,
 		    "alias cd eval exec exit read set ulimit unalias "
-		    "umask unset wait", TRUE);
-		shell->unsetenv		= FALSE;
+		    "umask unset wait", true);
+		shell->unsetenv		= false;
 
 	} else if (strcmp(name, "sh") == 0) {
 		/*
@@ -284,16 +284,16 @@ ShellMatch(const char name[])
 
 		shell->name		= strdup(name);
 		shell->path		= str_concat(shellDir, '/', name);
-		shell->hasEchoCtl	= TRUE;
+		shell->hasEchoCtl	= true;
 		shell->echoOff		= strdup("set -");
 		shell->echoOn		= strdup("set -v");
 		shell->noPrint		= strdup("set -");
 #ifdef OLDBOURNESHELL
-		shell->hasErrCtl	= FALSE;
+		shell->hasErrCtl	= false;
 		shell->errCheck		= strdup("echo \"%s\"\n");
 		shell->ignErr		= strdup("sh -c '%s || exit 0'\n");
 #else
-		shell->hasErrCtl	= TRUE;
+		shell->hasErrCtl	= true;
 		shell->errCheck		= strdup("set -e");
 		shell->ignErr		= strdup("set +e");
 #endif
@@ -302,8 +302,8 @@ ShellMatch(const char name[])
 		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
 		brk_string(&shell->builtins,
 		    "alias cd eval exec exit read set ulimit unalias "
-		    "umask unset wait", TRUE);
-		shell->unsetenv		= FALSE;
+		    "umask unset wait", true);
+		shell->unsetenv		= false;
 
 	} else if (strcmp(name, "ksh") == 0) {
 		/*
@@ -313,11 +313,11 @@ ShellMatch(const char name[])
 		 */
 		shell->name		= strdup(name);
 		shell->path		= str_concat(shellDir, '/', name);
-		shell->hasEchoCtl	= TRUE;
+		shell->hasEchoCtl	= true;
 		shell->echoOff		= strdup("set -");
 		shell->echoOn		= strdup("set -v");
 		shell->noPrint		= strdup("set -");
-		shell->hasErrCtl	= TRUE;
+		shell->hasErrCtl	= true;
 		shell->errCheck		= strdup("set -e");
 		shell->ignErr		= strdup("set +e");
 		shell->echo		= strdup("v");
@@ -325,8 +325,8 @@ ShellMatch(const char name[])
 		shell->meta		= strdup("#=|^(){};&<>*?[]:$`\\\n");
 		brk_string(&shell->builtins,
 		    "alias cd eval exec exit read set ulimit unalias "
-		    "umask unset wait", TRUE);
-		shell->unsetenv		= TRUE;
+		    "umask unset wait", true);
+		shell->unsetenv		= true;
 
 	} else {
 		free(shell);
@@ -344,13 +344,13 @@ Shell_Init(const char shellname[])
 
 /**
  * Given the line following a .SHELL target, parse the
- * line as a shell specification. Returns FALSE if the
+ * line as a shell specification. Returns false if the
  * spec was incorrect.
  *
  * Parse a shell specification and set up commandShell.
  *
  * Results:
- *	TRUE if the specification was correct. FALSE otherwise.
+ *	true if the specification was correct. false otherwise.
  *
  * Side Effects:
  *	commandShell points to a Shell structure (either predefined or
@@ -374,13 +374,13 @@ Shell_Init(const char shellname[])
  *	    errFlag	    Flag to turn error checking on at the start
  *	    hasErrCtl	    True if shell has error checking control
  *	    check	    Command to turn on error checking if hasErrCtl
- *			    is TRUE or template of command to echo a command
+ *			    is true or template of command to echo a command
  *			    for which error checking is off if hasErrCtl is
- *			    FALSE.
+ *			    false.
  *	    ignore	    Command to turn off error checking if hasErrCtl
- *			    is TRUE or template of command to execute a
+ *			    is true or template of command to execute a
  *			    command so as to ignore any errors it returns if
- *			    hasErrCtl is FALSE.
+ *			    hasErrCtl is false.
  *	    builtins	    A space separated list of builtins. If one
  *			    of these builtins is detected when make wants
  *			    to execute a command line, the command line is
@@ -393,15 +393,15 @@ Shell_Init(const char shellname[])
  *			    Otherwise they are not passed when they contain
  *			    neither a meta character nor a builtin command.
  */
-Boolean
+bool
 Shell_Parse(const char line[])
 {
-	Boolean		fullSpec;
+	bool		fullSpec;
 	struct Shell	*sh;
 
 	/* parse the specification */
 	if ((sh = ShellParseSpec(line, &fullSpec)) == NULL)
-		return (FALSE);
+		return (false);
 
 	if (sh->path == NULL) {
 		struct Shell	*match;
@@ -414,18 +414,18 @@ Shell_Parse(const char line[])
 			Parse_Error(PARSE_FATAL,
 			    "Neither path nor name specified");
 			ShellFree(sh);
-			return (FALSE);
+			return (false);
 		}
 		if (fullSpec) {
 			Parse_Error(PARSE_FATAL, "No path specified");
 			ShellFree(sh);
-			return (FALSE);
+			return (false);
 		}
 		if ((match = ShellMatch(sh->name)) == NULL) {
 			Parse_Error(PARSE_FATAL, "%s: no matching shell",
 			    sh->name);
 			ShellFree(sh);
-			return (FALSE);
+			return (false);
 		}
 		ShellFree(sh);
 		sh = match;
@@ -433,7 +433,7 @@ Shell_Parse(const char line[])
 	} else {
 		/*
 		 * The user provided a path. If s/he gave nothing else
-		 * (fullSpec is FALSE), try and find a matching shell in the
+		 * (fullSpec is false), try and find a matching shell in the
 		 * ones we know of. Else we just take the specification at its
 		 * word and copy it to a new location. In either case, we need
 		 * to record the path the user gave for the shell.
@@ -454,7 +454,7 @@ Shell_Parse(const char line[])
 				Parse_Error(PARSE_FATAL,
 				    "%s: no matching shell", sh->name);
 				ShellFree(sh);
-				return (FALSE);
+				return (false);
 			}
 			free(match->path);
 			match->path = sh->path;
@@ -468,5 +468,5 @@ Shell_Parse(const char line[])
 	ShellFree(commandShell);
 	commandShell = sh;
 
-	return (TRUE);
+	return (true);
 }

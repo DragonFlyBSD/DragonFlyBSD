@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.46 2005/06/16 22:46:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.47 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*
@@ -107,54 +107,54 @@ typedef enum {
 	Err
 } Token;
 
-typedef Boolean CondProc(Parser *, int, char *);
+typedef bool CondProc(Parser *, int, char *);
 
 /*-
  * Structures to handle elegantly the different forms of #if's. The
  * last two fields are stored in condInvert and condDefProc, respectively.
  */
 static void CondPushBack(Token);
-static int CondGetArg(char **, char **, const char *, Boolean);
+static int CondGetArg(char **, char **, const char *, bool);
 static CondProc	CondDoDefined;
 static CondProc	CondDoMake;
 static CondProc	CondDoExists;
 static CondProc	CondDoTarget;
 static char *CondCvtArg(char *, double *);
-static Token CondToken(Parser *, Boolean);
-static Token CondT(Parser *, Boolean);
-static Token CondF(Parser *, Boolean);
-static Token CondE(Parser *, Boolean);
+static Token CondToken(Parser *, bool);
+static Token CondT(Parser *, bool);
+static Token CondF(Parser *, bool);
+static Token CondE(Parser *, bool);
 
 static const struct If {
-	Boolean	doNot;		/* TRUE if default function should be negated */
+	bool	doNot;		/* true if default function should be negated */
 	CondProc *defProc;	/* Default function to apply */
-	Boolean	isElse;		/* actually el<XXX> */
+	bool	isElse;		/* actually el<XXX> */
 } ifs[] = {
-	[COND_IF] =		{ FALSE,	CondDoDefined,	FALSE },
-	[COND_IFDEF] =		{ FALSE,	CondDoDefined,	FALSE },
-	[COND_IFNDEF] =		{ TRUE,		CondDoDefined,	FALSE },
-	[COND_IFMAKE] =		{ FALSE,	CondDoMake,	FALSE },
-	[COND_IFNMAKE] =	{ TRUE,		CondDoMake,	FALSE },
-	[COND_ELIF] =		{ FALSE,	CondDoDefined,	TRUE },
-	[COND_ELIFDEF] =	{ FALSE,	CondDoDefined,	TRUE },
-	[COND_ELIFNDEF] =	{ TRUE,		CondDoDefined,	TRUE },
-	[COND_ELIFMAKE] =	{ FALSE,	CondDoMake,	TRUE },
-	[COND_ELIFNMAKE] =	{ TRUE,		CondDoMake,	TRUE },
+	[COND_IF] =		{ false,	CondDoDefined,	false },
+	[COND_IFDEF] =		{ false,	CondDoDefined,	false },
+	[COND_IFNDEF] =		{ true,		CondDoDefined,	false },
+	[COND_IFMAKE] =		{ false,	CondDoMake,	false },
+	[COND_IFNMAKE] =	{ true,		CondDoMake,	false },
+	[COND_ELIF] =		{ false,	CondDoDefined,	true },
+	[COND_ELIFDEF] =	{ false,	CondDoDefined,	true },
+	[COND_ELIFNDEF] =	{ true,		CondDoDefined,	true },
+	[COND_ELIFMAKE] =	{ false,	CondDoMake,	true },
+	[COND_ELIFNMAKE] =	{ true,		CondDoMake,	true },
 };
 
-static Boolean	condInvert;	/* Invert the default function */
+static bool	condInvert;	/* Invert the default function */
 static CondProc	*condDefProc;	/* default function to apply */
 static char	*condExpr;	/* The expression to parse */
 static Token	condPushBack = None; /* Single push-back token in parsing */
 
 #define MAXIF	30	/* greatest depth of #if'ing */
 
-static Boolean	condStack[MAXIF];	/* Stack of conditionals's values */
+static bool	condStack[MAXIF];	/* Stack of conditionals's values */
 static int	condLineno[MAXIF];	/* Line numbers of the opening .if */
 static int	condTop = MAXIF;	/* Top-most conditional */
 static int	skipIfLevel = 0;	/* Depth of skipped conditionals */
 static int	skipIfLineno[MAXIF];	/* Line numbers of skipped .ifs */
-Boolean		skipLine = FALSE;	/* Whether the parse module is skipping
+bool		skipLine = false;	/* Whether the parse module is skipping
 					 * lines */
 
 /**
@@ -174,7 +174,7 @@ CondPushBack(Token t)
 
 /**
  * CondGetArg
- *	Find the argument of a built-in function.  parens is set to TRUE
+ *	Find the argument of a built-in function.  parens is set to true
  *	if the arguments are bounded by parens.
  *
  * Results:
@@ -185,7 +185,7 @@ CondPushBack(Token t)
  *	function call.
  */
 static int
-CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
+CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 {
 	char	*cp;
 	size_t	argLen;
@@ -234,9 +234,9 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
 			 */
 			char	*cp2;
 			size_t	len = 0;
-			Boolean	doFree;
+			bool	doFree;
 
-			cp2 = Var_Parse(cp, VAR_CMD, TRUE, &len, &doFree);
+			cp2 = Var_Parse(cp, VAR_CMD, true, &len, &doFree);
 
 			Buf_Append(buf, cp2);
 			if (doFree) {
@@ -251,7 +251,7 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
 
 	Buf_AddByte(buf, (Byte)'\0');
 	*argPtr = (char *)Buf_GetAll(buf, &argLen);
-	Buf_Destroy(buf, FALSE);
+	Buf_Destroy(buf, false);
 
 	while (*cp == ' ' || *cp == '\t') {
 		cp++;
@@ -276,19 +276,19 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
  *	Handle the 'defined' function for conditionals.
  *
  * Results:
- *	TRUE if the given variable is defined.
+ *	true if the given variable is defined.
  */
-static Boolean
+static bool
 CondDoDefined(Parser *parser __unused, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
-	Boolean	result;
+	bool	result;
 
 	arg[argLen] = '\0';
 	if (Var_Value(arg, VAR_CMD) != NULL) {
-		result = TRUE;
+		result = true;
 	} else {
-		result = FALSE;
+		result = false;
 	}
 	arg[argLen] = savec;
 	return (result);
@@ -299,20 +299,20 @@ CondDoDefined(Parser *parser __unused, int argLen, char *arg)
  *	Handle the 'make' function for conditionals.
  *
  * Results:
- *	TRUE if the given target is being made.
+ *	true if the given target is being made.
  */
-static Boolean
+static bool
 CondDoMake(Parser *parser, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
-	Boolean	result;
+	bool	result;
 	const LstNode *ln;
 
 	arg[argLen] = '\0';
-	result = FALSE;
+	result = false;
 	LST_FOREACH(ln, parser->create) {
 		if (Str_Match(Lst_Datum(ln), arg)) {
-			result = TRUE;
+			result = true;
 			break;
 		}
 	}
@@ -325,22 +325,22 @@ CondDoMake(Parser *parser, int argLen, char *arg)
  *	See if the given file exists.
  *
  * Results:
- *	TRUE if the file exists and FALSE if it does not.
+ *	true if the file exists and false if it does not.
  */
-static Boolean
+static bool
 CondDoExists(Parser *parser __unused, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
-	Boolean	result;
+	bool	result;
 	char	*path;
 
 	arg[argLen] = '\0';
 	path = Path_FindFile(arg, &dirSearchPath);
 	if (path != NULL) {
-		result = TRUE;
+		result = true;
 		free(path);
 	} else {
-		result = FALSE;
+		result = false;
 	}
 	arg[argLen] = savec;
 	return (result);
@@ -351,21 +351,21 @@ CondDoExists(Parser *parser __unused, int argLen, char *arg)
  *	See if the given node exists and is an actual target.
  *
  * Results:
- *	TRUE if the node exists as a target and FALSE if it does not.
+ *	true if the node exists as a target and false if it does not.
  */
-static Boolean
+static bool
 CondDoTarget(Parser *parser __unused, int argLen, char *arg)
 {
 	char	savec = arg[argLen];
-	Boolean	result;
+	bool	result;
 	GNode	*gn;
 
 	arg[argLen] = '\0';
 	gn = Targ_FindNode(arg, TARG_NOCREATE);
 	if ((gn != NULL) && !OP_NOP(gn->type)) {
-		result = TRUE;
+		result = true;
 	} else {
-		result = FALSE;
+		result = false;
 	}
 	arg[argLen] = savec;
 	return (result);
@@ -427,7 +427,7 @@ CondCvtArg(char *str, double *value)
  *	condPushback will be set back to None if it is used.
  */
 static Token
-CondToken(Parser *parser, Boolean doEval)
+CondToken(Parser *parser, bool doEval)
 {
 	Token	t;
 
@@ -478,7 +478,7 @@ CondToken(Parser *parser, Boolean doEval)
 			char		*rhs;
 			char		zero[] = "0";
 			size_t		varSpecLen = 0;
-			Boolean		doFree;
+			bool		doFree;
 
 			/*
 			 * Parse the variable spec and skip over it, saving
@@ -515,9 +515,9 @@ CondToken(Parser *parser, Boolean doEval)
 
 				Buf_AddByte(buf, (Byte)'\0');
 				lhs = (char *)Buf_GetAll(buf, &varSpecLen);
-				Buf_Destroy(buf, FALSE);
+				Buf_Destroy(buf, false);
 
-				doFree = TRUE;
+				doFree = true;
 			}
 
 			/*
@@ -595,7 +595,7 @@ CondToken(Parser *parser, Boolean doEval)
 
 					} else if (*cp == '$') {
 						size_t	len = 0;
-						Boolean	freeIt;
+						bool	freeIt;
 
 						cp2 = Var_Parse(cp, VAR_CMD,
 						     doEval, &len, &freeIt);
@@ -647,7 +647,7 @@ CondToken(Parser *parser, Boolean doEval)
 					goto do_string_compare;
 				if (*rhs == '$') {
 					size_t	len = 0;
-					Boolean	freeIt;
+					bool	freeIt;
 
 					string = Var_Parse(rhs, VAR_CMD, doEval,
 							   &len, &freeIt);
@@ -724,7 +724,7 @@ CondToken(Parser *parser, Boolean doEval)
 
 	default:{
 			CondProc *evalProc;
-			Boolean	invert = FALSE;
+			bool	invert = false;
 			char   *arg;
 			int	arglen;
 
@@ -737,7 +737,7 @@ CondToken(Parser *parser, Boolean doEval)
 				evalProc = CondDoDefined;
 				condExpr += 7;
 				arglen = CondGetArg(&condExpr, &arg,
-						    "defined", TRUE);
+						    "defined", true);
 				if (arglen == 0) {
 					condExpr -= 7;
 					goto use_default;
@@ -751,7 +751,7 @@ CondToken(Parser *parser, Boolean doEval)
 				evalProc = CondDoMake;
 				condExpr += 4;
 				arglen = CondGetArg(&condExpr, &arg,
-						    "make", TRUE);
+						    "make", true);
 				if (arglen == 0) {
 					condExpr -= 4;
 					goto use_default;
@@ -765,7 +765,7 @@ CondToken(Parser *parser, Boolean doEval)
 				evalProc = CondDoExists;
 				condExpr += 6;
 				arglen = CondGetArg(&condExpr, &arg,
-						    "exists", TRUE);
+						    "exists", true);
 				if (arglen == 0) {
 					condExpr -= 6;
 					goto use_default;
@@ -777,7 +777,7 @@ CondToken(Parser *parser, Boolean doEval)
 				 * empty.
 				 */
 				size_t	length;
-				Boolean	doFree;
+				bool	doFree;
 				char   *val;
 
 				condExpr += 5;
@@ -790,7 +790,7 @@ CondToken(Parser *parser, Boolean doEval)
 				if (condExpr[arglen] != '\0') {
 					length = 0;
 					val = Var_Parse(&condExpr[arglen - 1],
-					  VAR_CMD, FALSE, &length, &doFree);
+					  VAR_CMD, false, &length, &doFree);
 					if (val == var_Error) {
 						t = Err;
 					} else {
@@ -834,7 +834,7 @@ CondToken(Parser *parser, Boolean doEval)
 				evalProc = CondDoTarget;
 				condExpr += 6;
 				arglen = CondGetArg(&condExpr, &arg,
-						    "target", TRUE);
+						    "target", true);
 				if (arglen == 0) {
 					condExpr -= 6;
 					goto use_default;
@@ -846,17 +846,17 @@ CondToken(Parser *parser, Boolean doEval)
 				 * the end of the symbol by hand (the next
 				 * whitespace, closing paren or binary
 				 * operator) and set to invert the evaluation
-				 * function if condInvert is TRUE.
+				 * function if condInvert is true.
 				 */
 		use_default:
 				invert = condInvert;
 				evalProc = condDefProc;
-				arglen = CondGetArg(&condExpr, &arg, "", FALSE);
+				arglen = CondGetArg(&condExpr, &arg, "", false);
 			}
 
 			/*
 			 * Evaluate the argument using the set function. If
-			 * invert is TRUE, we invert the sense of the
+			 * invert is true, we invert the sense of the
 			 * function.
 			 */
 			t = (!doEval || evalProc(parser, arglen, arg) ?
@@ -884,7 +884,7 @@ CondToken(Parser *parser, Boolean doEval)
  *	Tokens are consumed.
  */
 static Token
-CondT(Parser *parser, Boolean doEval)
+CondT(Parser *parser, bool doEval)
 {
 	Token	t;
 
@@ -928,7 +928,7 @@ CondT(Parser *parser, Boolean doEval)
  *	Tokens are consumed.
  */
 static Token
-CondF(Parser *parser, Boolean doEval)
+CondF(Parser *parser, bool doEval)
 {
 	Token	l, o;
 
@@ -948,7 +948,7 @@ CondF(Parser *parser, Boolean doEval)
 			if (l == True) {
 				l = CondF(parser, doEval);
 			} else {
-				CondF(parser, FALSE);
+				CondF(parser, false);
 			}
 		} else {
 			/*
@@ -972,7 +972,7 @@ CondF(Parser *parser, Boolean doEval)
  *	Tokens are, of course, consumed.
  */
 static Token
-CondE(Parser *parser, Boolean doEval)
+CondE(Parser *parser, bool doEval)
 {
 	Token   l, o;
 
@@ -993,7 +993,7 @@ CondE(Parser *parser, Boolean doEval)
 			if (l == False) {
 				l = CondE(parser, doEval);
 			} else {
-				CondE(parser, FALSE);
+				CondE(parser, false);
 			}
 		} else {
 			/*
@@ -1014,7 +1014,7 @@ void
 Cond_If(Parser *parser, char *line, int code, int lineno)
 {
 	const struct If	*ifp;
-	Boolean value;
+	bool value;
 
 	ifp = &ifs[code];
 
@@ -1058,17 +1058,17 @@ Cond_If(Parser *parser, char *line, int code, int lineno)
 	condExpr = line;
 	condPushBack = None;
 
-	switch (CondE(parser, TRUE)) {
+	switch (CondE(parser, true)) {
 	  case True:
-		if (CondToken(parser, TRUE) != EndOfFile)
+		if (CondToken(parser, true) != EndOfFile)
 			goto err;
-		value = TRUE;
+		value = true;
 		break;
 
 	  case False:
-		if (CondToken(parser, TRUE) != EndOfFile)
+		if (CondToken(parser, true) != EndOfFile)
 			goto err;
-		value = FALSE;
+		value = false;
 		break;
 
 	  case Err:
@@ -1086,12 +1086,12 @@ Cond_If(Parser *parser, char *line, int code, int lineno)
 	} else if (skipIfLevel != 0 || condStack[condTop]) {
 		/*
 		 * If this is an else-type conditional, it should only take
-		 * effect if its corresponding if was evaluated and FALSE.
-		 * If its if was TRUE or skipped, we return COND_SKIP (and
+		 * effect if its corresponding if was evaluated and false.
+		 * If its if was true or skipped, we return COND_SKIP (and
 		 * start skipping in case we weren't already), leaving the
 		 * stack unmolested so later elif's don't screw up...
 		 */
-		skipLine = TRUE;
+		skipLine = true;
 		return;
 	}
 
@@ -1136,13 +1136,13 @@ Cond_Else(Parser *parser __unused, char *line __unused, int code __unused, int l
 	if (skipIfLevel != 0 || condStack[condTop]) {
 		/*
 		 * An else should only take effect if its corresponding if was
-		 * evaluated and FALSE.
-		 * If its if was TRUE or skipped, we return COND_SKIP (and
+		 * evaluated and false.
+		 * If its if was true or skipped, we return COND_SKIP (and
 		 * start skipping in case we weren't already), leaving the
 		 * stack unmolested so later elif's don't screw up...
 		 * XXX How does this work with two .else's?
 		 */
-		skipLine = TRUE;
+		skipLine = true;
 		return;
 	}
 
@@ -1186,7 +1186,7 @@ Cond_Endif(Parser *parser __unused, char *line __unused, int code __unused, int 
 	}
 
 	/* pop */
-	skipLine = FALSE;
+	skipLine = false;
 	condTop += 1;
 }
 

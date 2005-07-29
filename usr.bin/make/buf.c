@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.39 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.40 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*
@@ -193,7 +193,7 @@ Buf_Init(size_t size)
  *	is de-allocated.
  */
 void
-Buf_Destroy(Buffer *buf, Boolean freeData)
+Buf_Destroy(Buffer *buf, bool freeData)
 {
 
 	if (freeData)

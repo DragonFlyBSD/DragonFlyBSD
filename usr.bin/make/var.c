@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.214 2005/07/02 10:47:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.215 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /**
@@ -110,8 +110,8 @@ typedef struct VarParser {
 	const char	*const input;	/* pointer to input string */
 	const char	*ptr;		/* current parser pos in input str */
 	GNode		*ctxt;
-	Boolean		err;
-	Boolean		execute;
+	bool		err;
+	bool		execute;
 } VarParser;
 
 typedef struct Var {
@@ -146,9 +146,9 @@ typedef struct {
 #define	VAR_MATCH_END	0x10	/* Match at end of word */
 } VarPattern;
 
-typedef Boolean VarModifyProc(const char *, Boolean, struct Buffer *, void *);
+typedef bool VarModifyProc(const char *, bool, struct Buffer *, void *);
 
-static char *VarParse(VarParser *, Boolean *);
+static char *VarParse(VarParser *, bool *);
 
 /*
  * This is a harmless return value for Var_Parse that can be used by Var_Subst
@@ -184,8 +184,8 @@ static GNode	*VAR_ENV;	/* variables from the environment */
 GNode		*VAR_GLOBAL;	/* variables from the makefile */
 GNode		*VAR_CMD;	/* variables defined on the command-line */
 
-Boolean		oldVars;	/* variable substitution style */
-Boolean		checkEnvFirst;	/* -e flag */
+bool		oldVars;	/* variable substitution style */
+bool		checkEnvFirst;	/* -e flag */
 
 #define	OPEN_PAREN		'('
 #define	CLOSE_PAREN		')'
@@ -223,7 +223,7 @@ VarCreate(const char name[], const char value[], int flags)
  *		removed.
  */
 static void
-VarDestroy(Var *v, Boolean f)
+VarDestroy(Var *v, bool f)
 {
 
 	Buf_Destroy(v->val, f);
@@ -236,14 +236,14 @@ VarDestroy(Var *v, Boolean f)
  * buffer.
  *
  * Results:
- *	TRUE if characters were added to the buffer (a space needs to be
+ *	true if characters were added to the buffer (a space needs to be
  *	added to the buffer before the next word).
  *
  * Side Effects:
  *	The trimmed word is added to the buffer.
  */
-static Boolean
-VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
+static bool
+VarHead(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	char *slash;
 
@@ -263,7 +263,7 @@ VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 			Buf_AddByte(buf, (Byte)'.');
 		}
 	}
-	return (TRUE);
+	return (true);
 }
 
 /**
@@ -271,14 +271,14 @@ VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
  * buffer.
  *
  * Results:
- *	TRUE if characters were added to the buffer (a space needs to be
+ *	true if characters were added to the buffer (a space needs to be
  *	added to the buffer before the next word).
  *
  * Side Effects:
  *	The trimmed word is added to the buffer.
  */
-static Boolean
-VarTail(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
+static bool
+VarTail(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	const char *slash;
 
@@ -293,21 +293,21 @@ VarTail(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	} else {
 		Buf_Append(buf, word);
 	}
-	return (TRUE);
+	return (true);
 }
 
 /**
  * Place the suffix of the given word in the given buffer.
  *
  * Results:
- *	TRUE if characters were added to the buffer (a space needs to be
+ *	true if characters were added to the buffer (a space needs to be
  *	added to the buffer before the next word).
  *
  * Side Effects:
  *	The suffix from the word is placed in the buffer.
  */
-static Boolean
-VarSuffix(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
+static bool
+VarSuffix(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	const char *dot;
 
@@ -318,7 +318,7 @@ VarSuffix(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 		}
 		dot++;
 		Buf_Append(buf, dot);
-		addSpace = TRUE;
+		addSpace = true;
 	}
 	return (addSpace);
 }
@@ -328,14 +328,14 @@ VarSuffix(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
  * buffer.
  *
  * Results:
- *	TRUE if characters were added to the buffer (a space needs to be
+ *	true if characters were added to the buffer (a space needs to be
  *	added to the buffer before the next word).
  *
  * Side Effects:
  *	The trimmed word is added to the buffer.
  */
-static Boolean
-VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
+static bool
+VarRoot(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	char *dot;
 
@@ -349,7 +349,7 @@ VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	} else {
 		Buf_Append(buf, word);
 	}
-	return (TRUE);
+	return (true);
 }
 
 /**
@@ -359,21 +359,21 @@ VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
  * which the word must match.
  *
  * Results:
- *	TRUE if a space should be placed in the buffer before the next
+ *	true if a space should be placed in the buffer before the next
  *	word.
  *
  * Side Effects:
  *	The word may be copied to the buffer.
  */
-static Boolean
-VarMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
+static bool
+VarMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
 {
 
 	if (Str_Match(word, pattern)) {
 		if (addSpace) {
 			Buf_AddByte(buf, (Byte)' ');
 		}
-		addSpace = TRUE;
+		addSpace = true;
 		Buf_Append(buf, word);
 	}
 	return (addSpace);
@@ -386,14 +386,14 @@ VarMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
  * modifiers.  A space is added if requested.
  *
  * Results:
- *	TRUE if a space should be placed in the buffer before the next
+ *	true if a space should be placed in the buffer before the next
  *	word.
  *
  * Side Effects:
  *	The word may be copied to the buffer.
  */
-static Boolean
-VarSYSVMatch(const char *word, Boolean addSpace, Buffer *buf, void *patp)
+static bool
+VarSYSVMatch(const char *word, bool addSpace, Buffer *buf, void *patp)
 {
 	int		len;
 	const char	*ptr;
@@ -402,7 +402,7 @@ VarSYSVMatch(const char *word, Boolean addSpace, Buffer *buf, void *patp)
 	if (addSpace)
 		Buf_AddByte(buf, (Byte)' ');
 
-	addSpace = TRUE;
+	addSpace = true;
 
 	if ((ptr = Str_SYSVMatch(word, Buf_Data(pat->lhs), &len)) != NULL)
 		Str_SYSVSubst(buf, Buf_Data(pat->rhs), ptr, len);
@@ -419,21 +419,21 @@ VarSYSVMatch(const char *word, Boolean addSpace, Buffer *buf, void *patp)
  * space is added if requested.
  *
  * Results:
- *	TRUE if a space should be placed in the buffer before the next
+ *	true if a space should be placed in the buffer before the next
  *	word.
  *
  * Side Effects:
  *	The word may be copied to the buffer.
  */
-static Boolean
-VarNoMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
+static bool
+VarNoMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
 {
 
 	if (!Str_Match(word, pattern)) {
 		if (addSpace) {
 			Buf_AddByte(buf, (Byte)' ');
 		}
-		addSpace = TRUE;
+		addSpace = true;
 		Buf_Append(buf, word);
 	}
 	return (addSpace);
@@ -444,10 +444,10 @@ VarNoMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
  * result in the passed buffer.  A space is added if requested.
  *
  * Results:
- *	TRUE if a space is needed before more characters are added.
+ *	true if a space is needed before more characters are added.
  */
-static Boolean
-VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
+static bool
+VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 {
 	size_t		wordLen;	/* Length of word */
 	const char	*cp;		/* General pointer */
@@ -478,7 +478,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 					if (addSpace) {
 						Buf_AddByte(buf, (Byte)' ');
 					}
-					addSpace = TRUE;
+					addSpace = true;
 					Buf_AppendBuf(buf, pattern->rhs);
 				}
 
@@ -498,7 +498,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 					if (addSpace) {
 						Buf_AddByte(buf, (Byte)' ');
 					}
-					addSpace = TRUE;
+					addSpace = true;
 				}
 				Buf_AppendBuf(buf, pattern->rhs);
 				Buf_AddBytes(buf, wordLen -
@@ -534,7 +534,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 					if (addSpace) {
 						Buf_AddByte(buf, (Byte)' ');
 					}
-					addSpace = TRUE;
+					addSpace = true;
 				}
 				Buf_AppendRange(buf, word, cp);
 				Buf_AppendBuf(buf, pattern->rhs);
@@ -555,13 +555,13 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 			 * loop is done, any remaining part of the word (word
 			 * and wordLen are adjusted accordingly through the
 			 * loop) is copied straight into the buffer.
-			 * addSpace is set FALSE as soon as a space is added
+			 * addSpace is set false as soon as a space is added
 			 * to the buffer.
 			 */
-			Boolean done;
+			bool done;
 			size_t origSize;
 
-			done = FALSE;
+			done = false;
 			origSize = Buf_Size(buf);
 			while (!done) {
 				cp = strstr(word, Buf_Data(pattern->lhs));
@@ -569,7 +569,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 					if (addSpace && (((cp - word) +
 					    Buf_Size(pattern->rhs)) != 0)) {
 						Buf_AddByte(buf, (Byte)' ');
-						addSpace = FALSE;
+						addSpace = false;
 					}
 					Buf_AppendRange(buf, word, cp);
 					Buf_AppendBuf(buf, pattern->rhs);
@@ -578,10 +578,10 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 					word = cp + Buf_Size(pattern->lhs);
 					if (wordLen == 0 || (pattern->flags &
 					    VAR_SUB_GLOBAL) == 0) {
-						done = TRUE;
+						done = true;
 					}
 				} else {
-					done = TRUE;
+					done = true;
 				}
 			}
 			if (wordLen != 0) {
@@ -600,7 +600,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 		}
 		/*
 		 * Common code for anchored substitutions:
-		 * addSpace was set TRUE if characters were added to the buffer.
+		 * addSpace was set true if characters were added to the buffer.
 		 */
 		return (addSpace);
 	}
@@ -609,7 +609,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 		Buf_AddByte(buf, (Byte)' ');
 	}
 	Buf_AddBytes(buf, wordLen, (const Byte *)word);
-	return (TRUE);
+	return (true);
 }
 
 /**
@@ -637,10 +637,10 @@ VarREError(int err, regex_t *pat, const char *str)
  * result in the passed buffer.  A space is added if requested.
  *
  * Results:
- *	TRUE if a space is needed before more characters are added.
+ *	true if a space is needed before more characters are added.
  */
-static Boolean
-VarRESubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
+static bool
+VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 {
 	VarPattern	*pat;
 	int		xrv;
@@ -877,7 +877,7 @@ VarFindOnly(const char name[], GNode *ctxt)
 static Var *
 VarFindAny(const char name[], GNode *ctxt)
 {
-	Boolean	localCheckEnvFirst;
+	bool	localCheckEnvFirst;
 	LstNode	*ln;
 	Var	*var;
 
@@ -887,10 +887,10 @@ VarFindAny(const char name[], GNode *ctxt)
 	 * Note whether this is one of the specific variables we were told
 	 * through the -E flag to use environment-variable-override for.
 	 */
-	localCheckEnvFirst = FALSE;
+	localCheckEnvFirst = false;
 	LST_FOREACH(ln, &envFirstVars) {
 		if (strcmp(Lst_Datum(ln), name) == 0) {
-			localCheckEnvFirst = TRUE;
+			localCheckEnvFirst = true;
 			break;
 		}
 	}
@@ -957,7 +957,7 @@ Var_Delete(const char *name, GNode *ctxt)
 	DEBUGF(VAR, ("%s:delete %s\n", ctxt->name, name));
 	LST_FOREACH(ln, &ctxt->context) {
 		if (strcmp(((const Var *)Lst_Datum(ln))->name, name) == 0) {
-			VarDestroy(Lst_Datum(ln), TRUE);
+			VarDestroy(Lst_Datum(ln), true);
 			Lst_Remove(&ctxt->context, ln);
 			break;
 		}
@@ -1108,9 +1108,9 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
  * See if the given variable exists.
  *
  * Results:
- *	TRUE if it does, FALSE if it doesn't
+ *	true if it does, false if it doesn't
  */
-Boolean
+bool
 Var_Exists(const char *name, GNode *ctxt)
 {
 	Var	*v;
@@ -1120,10 +1120,10 @@ Var_Exists(const char *name, GNode *ctxt)
 	v = VarFindAny(n, ctxt);
 	if (v == NULL) {
 		free(n);
-		return (FALSE);
+		return (false);
 	} else {
 		free(n);
-		return (TRUE);
+		return (true);
 	}
 }
 
@@ -1162,15 +1162,15 @@ VarModify(const char *str, VarModifyProc *modProc, void *datum)
 	ArgArray	aa;
 	Buffer		*buf;		/* Buffer for the new string */
 	int		i;
-	Boolean		addSpace;	/*
-					 * TRUE if need to add a space to
+	bool		addSpace;	/*
+					 * true if need to add a space to
 					 * the buffer before adding the
 					 * trimmed word
 					 */
 
-	brk_string(&aa, str, FALSE);
+	brk_string(&aa, str, false);
 
-	addSpace = FALSE;
+	addSpace = false;
 	buf = Buf_Init(0);
 	for (i = 1; i < aa.argc; i++)
 		addSpace = (*modProc)(aa.argv[i], addSpace, buf, datum);
@@ -1196,7 +1196,7 @@ VarSortWords(const char *str, int (*cmp)(const void *, const void *))
 	Buffer		*buf;
 	int		i;
 
-	brk_string(&aa, str, FALSE);
+	brk_string(&aa, str, false);
 	qsort(aa.argv + 1, aa.argc - 1, sizeof(char *), cmp);
 
 	buf = Buf_Init(0);
@@ -1278,7 +1278,7 @@ VarGetPattern(VarParser *vp, int delim, int *flags, VarPattern *patt)
 					vp->execute
 				};
 				char   *rval;
-				Boolean rfree;
+				bool rfree;
 
 				/*
 				 * If unescaped dollar sign not
@@ -1301,7 +1301,7 @@ VarGetPattern(VarParser *vp, int delim, int *flags, VarPattern *patt)
 		}
 	}
 
-	Buf_Destroy(buf, TRUE);
+	Buf_Destroy(buf, true);
 	return (NULL);
 }
 
@@ -1550,7 +1550,7 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 	 */
 	char		endc;
 	VarPattern	patt;
-	Boolean		eqFound;
+	bool		eqFound;
 	int		cnt;
 	char		*newStr;
 	const char	*cp;
@@ -1563,12 +1563,12 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 	 * First we make a pass through the string trying to verify it is a
 	 * SYSV-make-style translation: it must be: <string1>=<string2>)
 	 */
-	eqFound = FALSE;
+	eqFound = false;
 	cp = vp->ptr;
 	cnt = 1;
 	while (*cp != '\0' && cnt) {
 		if (*cp == '=') {
-			eqFound = TRUE;
+			eqFound = true;
 			/* continue looking for endc */
 		} else if (*cp == endc)
 			cnt--;
@@ -1670,13 +1670,13 @@ Var_Quote(const char *str)
  * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
-ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freeResult)
+ParseModifier(VarParser *vp, char startc, Var *v, bool *freeResult)
 {
 	char	*value;
 	char	endc;
 
 	value = VarExpand(v, vp);
-	*freeResult = TRUE;
+	*freeResult = true;
 
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
@@ -1791,7 +1791,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freeResult)
 		}
 
 		value = newStr;
-		*freeResult = (value == var_Error) ? FALSE : TRUE;
+		*freeResult = (value == var_Error) ? false : true;
 
 		if (vp->ptr[0] == ':') {
 			vp->ptr++;	/* consume colon */
@@ -1802,7 +1802,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, Boolean *freeResult)
 }
 
 static char *
-ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
+ParseRestModifier(VarParser *vp, char startc, Buffer *buf, bool *freeResult)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1829,7 +1829,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 		if (*freeResult) {
 			free(value);
 		}
-		VarDestroy(v, TRUE);
+		VarDestroy(v, true);
 
 		consumed = vp->ptr - vp->input + 1;
 		/*
@@ -1848,7 +1848,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freeResult = TRUE;
+				*freeResult = true;
 				return (value);
 			}
 		}
@@ -1863,12 +1863,12 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freeResult = TRUE;
+				*freeResult = true;
 				return (value);
 			}
 		}
 
-		*freeResult = FALSE;
+		*freeResult = false;
 		return (vp->err ? var_Error : varNoError);
 	} else {
 		/*
@@ -1900,15 +1900,15 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 		if (*freeResult) {
 			free(value);
 		}
-		VarDestroy(v, TRUE);
+		VarDestroy(v, true);
 
-		*freeResult = FALSE;
+		*freeResult = false;
 		return (vp->err ? var_Error : varNoError);
 	}
 }
 
 static char *
-ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
+ParseRestEnd(VarParser *vp, Buffer *buf, bool *freeResult)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1920,7 +1920,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {
 		value = VarExpand(v, vp);
-		*freeResult = TRUE;
+		*freeResult = true;
 		return (value);
 	}
 
@@ -1943,7 +1943,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freeResult = TRUE;
+				*freeResult = true;
 				return (value);
 			}
 		}
@@ -1958,7 +1958,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 				strncpy(value, vp->input, consumed);
 				value[consumed] = '\0';
 
-				*freeResult = TRUE;
+				*freeResult = true;
 				return (value);
 			}
 		}
@@ -1992,13 +1992,13 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 					val = VarModify(val, VarTail, NULL);
 				}
 
-				*freeResult = TRUE;
+				*freeResult = true;
 				return (val);
 			}
 		}
 	}
 
-	*freeResult = FALSE;
+	*freeResult = false;
 	return (vp->err ? var_Error : varNoError);
 }
 
@@ -2006,7 +2006,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
  * Parse a multi letter variable name, and return it's value.
  */
 static char *
-VarParseLong(VarParser *vp, Boolean *freeResult)
+VarParseLong(VarParser *vp, bool *freeResult)
 {
 	Buffer		*buf;
 	char		startc;
@@ -2028,13 +2028,13 @@ VarParseLong(VarParser *vp, Boolean *freeResult)
 		if (*vp->ptr == endc) {
 			value = ParseRestEnd(vp, buf, freeResult);
 			vp->ptr++;	/* consume closing paren or brace */
-			Buf_Destroy(buf, TRUE);
+			Buf_Destroy(buf, true);
 			return (value);
 
 		} else if (*vp->ptr == ':') {
 			value = ParseRestModifier(vp, startc, buf, freeResult);
 			vp->ptr++;	/* consume closing paren or brace */
-			Buf_Destroy(buf, TRUE);
+			Buf_Destroy(buf, true);
 			return (value);
 
 		} else if (*vp->ptr == '$') {
@@ -2046,7 +2046,7 @@ VarParseLong(VarParser *vp, Boolean *freeResult)
 				vp->execute
 			};
 			char	*rval;
-			Boolean	rfree;
+			bool	rfree;
 
 			rval = VarParse(&subvp, &rfree);
 			if (rval == var_Error) {
@@ -2063,8 +2063,8 @@ VarParseLong(VarParser *vp, Boolean *freeResult)
 	}
 
 	/* If we did not find the end character, return var_Error */
-	Buf_Destroy(buf, TRUE);
-	*freeResult = FALSE;
+	Buf_Destroy(buf, true);
+	*freeResult = false;
 	return (var_Error);
 }
 
@@ -2072,7 +2072,7 @@ VarParseLong(VarParser *vp, Boolean *freeResult)
  * Parse a single letter variable name, and return it's value.
  */
 static char *
-VarParseShort(VarParser *vp, Boolean *freeResult)
+VarParseShort(VarParser *vp, bool *freeResult)
 {
 	char	vname[2];
 	Var	*v;
@@ -2086,7 +2086,7 @@ VarParseShort(VarParser *vp, Boolean *freeResult)
 	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {
 		value = VarExpand(v, vp);
-		*freeResult = TRUE;
+		*freeResult = true;
 		return (value);
 	}
 
@@ -2103,37 +2103,37 @@ VarParseShort(VarParser *vp, Boolean *freeResult)
 		/* XXX: It looks like $% and $! are reversed here */
 		switch (vname[0]) {
 		case '@':
-			*freeResult = TRUE;
+			*freeResult = true;
 			return (estrdup("$(.TARGET)"));
 		case '%':
-			*freeResult = TRUE;
+			*freeResult = true;
 			return (estrdup("$(.ARCHIVE)"));
 		case '*':
-			*freeResult = TRUE;
+			*freeResult = true;
 			return (estrdup("$(.PREFIX)"));
 		case '!':
-			*freeResult = TRUE;
+			*freeResult = true;
 			return (estrdup("$(.MEMBER)"));
 		default:
-			*freeResult = FALSE;
+			*freeResult = false;
 			return (vp->err ? var_Error : varNoError);
 		}
 	}
 
 	/* Variable name was not found. */
-	*freeResult = FALSE;
+	*freeResult = false;
 	return (vp->err ? var_Error : varNoError);
 }
 
 static char *
-VarParse(VarParser *vp, Boolean *freeResult)
+VarParse(VarParser *vp, bool *freeResult)
 {
 
 	vp->ptr++;	/* consume '$' or last letter of conditional */
 
 	if (vp->ptr[0] == '\0') {
 		/* Error, there is only a dollar sign in the input string. */
-		*freeResult = FALSE;
+		*freeResult = false;
 		return (vp->err ? var_Error : varNoError);
 
 	} else if (vp->ptr[0] == OPEN_PAREN || vp->ptr[0] == OPEN_BRACE) {
@@ -2157,19 +2157,19 @@ VarParse(VarParser *vp, Boolean *freeResult)
  *	is placed in the variable pointed to by consumed.  (for
  *	invalid specifications, this is just 2 to skip the '$' and
  *	the following letter, or 1 if '$' was the last character
- *	in the string).  A Boolean in *freeResult telling whether the
+ *	in the string).  A bool in *freeResult telling whether the
  *	returned string should be freed by the caller.
  */
 char *
-Var_Parse(const char input[], GNode *ctxt, Boolean err,
-	size_t *consumed, Boolean *freeResult)
+Var_Parse(const char input[], GNode *ctxt, bool err,
+	size_t *consumed, bool *freeResult)
 {
 	VarParser	vp = {
 		input,
 		input,
 		ctxt,
 		err,
-		TRUE
+		true
 	};
 	char		*value;
 
@@ -2195,11 +2195,11 @@ Var_Match(const char input[], GNode *ctxt)
 		input,
 		input,
 		ctxt,
-		FALSE,
-		FALSE
+		false,
+		false
 	};
 	char		*value;
-	Boolean		freeResult;
+	bool		freeResult;
 
 	value = VarParse(&vp, &freeResult);
 	if (freeResult) {
@@ -2258,7 +2258,7 @@ match_var(const char str[], const char var[])
 
 /**
  * Substitute for all variables in the given string in the given
- * context If err is TRUE, Parse_Error will be called when an
+ * context If err is true, Parse_Error will be called when an
  * undefined variable is encountered.
  *
  * Results:
@@ -2268,17 +2268,17 @@ match_var(const char str[], const char var[])
  *	None. The old string must be freed by the caller
  */
 Buffer *
-Var_Subst(const char *str, GNode *ctxt, Boolean err)
+Var_Subst(const char *str, GNode *ctxt, bool err)
 {
-	Boolean	errorReported;
+	bool	errorReported;
 	Buffer *buf;		/* Buffer for forming things */
 
 	/*
-	 * Set TRUE if an error has already been reported to prevent a
+	 * Set true if an error has already been reported to prevent a
 	 * plethora of messages when recursing. XXXHB this comment sounds
 	 * wrong.
 	 */
-	errorReported = FALSE;
+	errorReported = false;
 
 	buf = Buf_Init(0);
 	while (str[0] != '\0') {
@@ -2300,10 +2300,10 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 				str,
 				ctxt,
 				err,
-				TRUE
+				true
 			};
 			char	*rval;
-			Boolean	rfree;
+			bool	rfree;
 
 			rval = VarParse(&subvp, &rfree);
 
@@ -2335,7 +2335,7 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 						Parse_Error(PARSE_FATAL,
 							    "Undefined variable \"%.*s\"", subvp.ptr - subvp.input, str);
 					}
-					errorReported = TRUE;
+					errorReported = true;
 					str = subvp.ptr;
 				} else {
 					Buf_AddByte(buf, (Byte)str[0]);
@@ -2363,7 +2363,7 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
 
 /**
  * Substitute for all variables except if it is the same as 'var',
- * in the given string in the given context.  If err is TRUE,
+ * in the given string in the given context.  If err is true,
  * Parse_Error will be called when an undefined variable is
  * encountered.
  *
@@ -2374,18 +2374,18 @@ Var_Subst(const char *str, GNode *ctxt, Boolean err)
  *	None. The old string must be freed by the caller
  */
 Buffer *
-Var_SubstOnly(const char *var, const char *str, Boolean err)
+Var_SubstOnly(const char *var, const char *str, bool err)
 {
 	GNode *ctxt = VAR_GLOBAL;
-	Boolean	errorReported;
+	bool	errorReported;
 	Buffer	*buf;		/* Buffer for forming things */
 
 	/*
-	 * Set TRUE if an error has already been reported to prevent a
+	 * Set true if an error has already been reported to prevent a
 	 * plethora of messages when recursing. XXXHB this comment sounds
 	 * wrong.
 	 */
-	errorReported = FALSE;
+	errorReported = false;
 
 	buf = Buf_Init(0);
 	while (str[0] != '\0') {
@@ -2403,10 +2403,10 @@ Var_SubstOnly(const char *var, const char *str, Boolean err)
 					str,
 					ctxt,
 					err,
-					TRUE
+					true
 				};
 				char	*rval;
-				Boolean	rfree;
+				bool	rfree;
 
 				rval = VarParse(&subvp, &rfree);
 
@@ -2439,7 +2439,7 @@ Var_SubstOnly(const char *var, const char *str, Boolean err)
 							Parse_Error(PARSE_FATAL,
 								    "Undefined variable \"%.*s\"", subvp.ptr - subvp.input, str);
 						}
-						errorReported = TRUE;
+						errorReported = true;
 						str = subvp.ptr;
 					} else {
 						Buf_AddByte(buf, (Byte)str[0]);
@@ -2526,7 +2526,7 @@ Var_Dump(void)
  * the user.
  */
 void
-Var_Print(Lst *vlist, Boolean expandVars)
+Var_Print(Lst *vlist, bool expandVars)
 {
 	LstNode		*n;
 
@@ -2540,7 +2540,7 @@ Var_Print(Lst *vlist, Boolean expandVars)
 			v = emalloc(strlen(name) + 1 + 3);
 			sprintf(v, "${%s}", name);
 
-			value = Buf_Peel(Var_Subst(v, VAR_GLOBAL, FALSE));
+			value = Buf_Peel(Var_Subst(v, VAR_GLOBAL, false));
 			printf("%s\n", value);
 
 			free(v);

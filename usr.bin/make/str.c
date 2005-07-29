@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.40 2005/02/07 07:54:23 harti Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.37 2005/06/22 18:04:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.38 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -135,7 +135,7 @@ str_concat(const char s1[], char c, const char s2[])
  * are ignored.
  */
 void
-brk_string(ArgArray *aa, const char str[], Boolean expand)
+brk_string(ArgArray *aa, const char str[], bool expand)
 {
 	char	inquote;
 	char	*start;

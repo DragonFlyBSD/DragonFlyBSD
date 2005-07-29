@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.37 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.30 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.31 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*
@@ -61,13 +61,13 @@
  *			an error message is printed. Else, if a name doesn't
  *			exist, its node is created.
  *
- *	Targ_Ignore	Return TRUE if errors should be ignored when creating
+ *	Targ_Ignore	Return true if errors should be ignored when creating
  *			the given target.
  *
- *	Targ_Silent	Return TRUE if we should be silent when creating the
+ *	Targ_Silent	Return true if we should be silent when creating the
  *			given target.
  *
- *	Targ_Precious	Return TRUE if the target is precious and should not
+ *	Targ_Precious	Return true if the target is precious and should not
  *			be removed if we are interrupted.
  *
  * Debugging:
@@ -135,9 +135,9 @@ Targ_NewGN(const char *name)
 		gn->type = 0;
 	}
 	gn->unmade = 0;
-	gn->make = FALSE;
+	gn->make = false;
 	gn->made = UNMADE;
-	gn->childMade = FALSE;
+	gn->childMade = false;
 	gn->order = 0;
 	gn->mtime = gn->cmtime = 0;
 	Lst_Init(&gn->iParents);
@@ -170,7 +170,7 @@ Targ_FindNode(const char *name, int flags)
 {
 	GNode		*gn;	/* node in that element */
 	Hash_Entry	*he;	/* New or used hash entry for node */
-	Boolean		isNew;	/* Set TRUE if Hash_CreateEntry had to create */
+	bool		isNew;	/* Set true if Hash_CreateEntry had to create */
 				/* an entry for the node */
 
 	if (flags & TARG_CREATE) {
@@ -236,16 +236,16 @@ Targ_FindList(Lst *nodes, Lst *names, int flags)
  *	Return true if should ignore errors when creating gn
  *
  * Results:
- *	TRUE if should ignore errors
+ *	true if should ignore errors
  */
-Boolean
+bool
 Targ_Ignore(GNode *gn)
 {
 
 	if (ignoreErrors || (gn->type & OP_IGNORE)) {
-		return (TRUE);
+		return (true);
 	} else {
-		return (FALSE);
+		return (false);
 	}
 }
 
@@ -254,16 +254,16 @@ Targ_Ignore(GNode *gn)
  *	Return true if be silent when creating gn
  *
  * Results:
- *	TRUE if should be silent
+ *	true if should be silent
  */
-Boolean
+bool
 Targ_Silent(GNode *gn)
 {
 
 	if (beSilent || (gn->type & OP_SILENT)) {
-		return (TRUE);
+		return (true);
 	} else {
-		return (FALSE);
+		return (false);
 	}
 }
 
@@ -272,16 +272,16 @@ Targ_Silent(GNode *gn)
  *	See if the given target is precious
  *
  * Results:
- *	TRUE if it is precious. FALSE otherwise
+ *	true if it is precious. false otherwise
  */
-Boolean
+bool
 Targ_Precious(GNode *gn)
 {
 
 	if (allPrecious || (gn->type & (OP_PRECIOUS | OP_DOUBLEDEP))) {
-		return (TRUE);
+		return (true);
 	} else {
-		return (FALSE);
+		return (false);
 	}
 }
 

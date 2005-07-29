@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.134 2005/07/29 22:47:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.135 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -57,7 +57,7 @@
  *			This must be called reasonably frequently to keep the
  *			whole make going at a decent clip, since job table
  *			entries aren't removed until their process is caught
- *			this way. Its single argument is TRUE if the function
+ *			this way. Its single argument is true if the function
  *			should block waiting for a child to terminate.
  *
  *	Job_CatchOutput	Print any output our children have produced. Should
@@ -71,9 +71,9 @@
  *			before this function returns. Hence, the makefile must
  *			have been parsed before this function is called.
  *
- *	Job_Full	Return TRUE if the job table is filled.
+ *	Job_Full	Return true if the job table is filled.
  *
- *	Job_Empty	Return TRUE if the job table is completely empty.
+ *	Job_Empty	Return true if the job table is completely empty.
  *
  *	Job_Finish	Perform any final processing which needs doing. This
  *			includes the execution of any commands which have
@@ -303,8 +303,8 @@ static int	nJobs;		/* The number of children currently running */
 /* The structures that describe them */
 static struct JobList jobs = TAILQ_HEAD_INITIALIZER(jobs);
 
-static Boolean	jobFull;	/* Flag to tell when the job table is full. It
-				 * is set TRUE when (1) the total number of
+static bool	jobFull;	/* Flag to tell when the job table is full. It
+				 * is set true when (1) the total number of
 				 * running jobs equals the maximum allowed */
 static fd_set	outputs;	/* Set of descriptors of pipes connected to
 				 * the output channels of children */
@@ -364,12 +364,12 @@ static int	fifoMaster;
 
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
-static void JobDoOutput(Job *, Boolean);
+static void JobDoOutput(Job *, bool);
 static void JobRestartJobs(void);
 static int Compat_RunCommand(GNode *, const char [], GNode *);
 static void JobPassSig(int);
-static void JobTouch(GNode *, Boolean);
-static Boolean JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
+static void JobTouch(GNode *, bool);
+static bool JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
 
 static GNode	    *curTarg = NULL;
 
@@ -498,7 +498,7 @@ SigHandler(void)
 }
 
 void
-Sig_Init(Boolean compat)
+Sig_Init(bool compat)
 {
 	struct sigaction	sa;
 
@@ -513,7 +513,7 @@ Sig_Init(Boolean compat)
 	got_SIGWINCH = 0;
 #endif
 
-	if (compat == FALSE) {
+	if (compat == false) {
 		/*
 		 * Setup handler to catch SIGCHLD so that we get kicked out
 		 * of select() when we need to look at a child.  This is only
@@ -547,7 +547,7 @@ Sig_Init(Boolean compat)
 	}
 
 #if defined(USE_PGRP)
-	if (compat == FALSE) {
+	if (compat == false) {
 		/*
 		 * There are additional signals that need to be caught and
 		 * passed if either the export system wants to be told
@@ -715,7 +715,7 @@ JobPassSig(int signo)
 
 		interrupt = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
 		if (interrupt != NULL) {
-			ignoreErrors = FALSE;
+			ignoreErrors = false;
 
 			JobStart(interrupt, JOB_IGNDOTS, (Job *)NULL);
 			while (nJobs) {
@@ -767,12 +767,12 @@ static int
 JobPrintCommand(char *cmd, Job *job)
 {
 	struct Shell	*shell = job->shell;
-	Boolean	noSpecials;	/* true if we shouldn't worry about
+	bool	noSpecials;	/* true if we shouldn't worry about
 				 * inserting special commands into
 				 * the input stream. */
-	Boolean	shutUp = FALSE;	/* true if we put a no echo command
+	bool	shutUp = false;	/* true if we put a no echo command
 				 * into the command file */
-	Boolean	errOff = FALSE;	/* true if we turned error checking
+	bool	errOff = false;	/* true if we turned error checking
 				 * off before printing the command
 				 * and need to turn it back on */
 	const char *cmdTemplate;/* Template to use when printing the command */
@@ -804,7 +804,7 @@ JobPrintCommand(char *cmd, Job *job)
 	 */
 	cmdNode = Lst_Member(&job->node->commands, cmd);
 
-	cmd = Buf_Peel(Var_Subst(cmd, job->node, FALSE));
+	cmd = Buf_Peel(Var_Subst(cmd, job->node, false));
 	cmdStart = cmd;
 
 	Lst_Replace(cmdNode, cmdStart);
@@ -819,11 +819,11 @@ JobPrintCommand(char *cmd, Job *job)
 		switch (*cmd) {
 
 		  case '@':
-			shutUp = DEBUG(LOUD) ? FALSE : TRUE;
+			shutUp = DEBUG(LOUD) ? false : true;
 			break;
 
 		  case '-':
-			errOff = TRUE;
+			errOff = true;
 			break;
 
 		  case '+':
@@ -849,7 +849,7 @@ JobPrintCommand(char *cmd, Job *job)
 		    shell->hasEchoCtl) {
 			DBPRINTF("%s\n", shell->echoOff);
 		} else {
-			shutUp = FALSE;
+			shutUp = false;
 		}
 	}
 
@@ -890,7 +890,7 @@ JobPrintCommand(char *cmd, Job *job)
 				    shell->hasEchoCtl) {
 					DBPRINTF("%s\n", shell->echoOff);
 					DBPRINTF(shell->errCheck, cmd);
-					shutUp = TRUE;
+					shutUp = true;
 				}
 				cmdTemplate = shell->ignErr;
 				/*
@@ -898,12 +898,12 @@ JobPrintCommand(char *cmd, Job *job)
 				 * taken care of by the ignErr template, so
 				 * pretend error checking is still on.
 				*/
-				errOff = FALSE;
+				errOff = false;
 			} else {
-				errOff = FALSE;
+				errOff = false;
 			}
 		} else {
-			errOff = FALSE;
+			errOff = false;
 		}
 	}
 
@@ -918,7 +918,7 @@ JobPrintCommand(char *cmd, Job *job)
 		if (!shutUp && !(job->flags & JOB_SILENT) &&
 		    shell->hasEchoCtl) {
 			DBPRINTF("%s\n", shell->echoOff);
-			shutUp = TRUE;
+			shutUp = true;
 		}
 		DBPRINTF("%s\n", shell->errCheck);
 	}
@@ -944,11 +944,11 @@ JobClose(Job *job)
 		if (job->outPipe != job->inPipe) {
 			close(job->outPipe);
 		}
-		JobDoOutput(job, TRUE);
+		JobDoOutput(job, true);
 		close(job->inPipe);
 	} else {
 		close(job->outFd);
-		JobDoOutput(job, TRUE);
+		JobDoOutput(job, true);
 	}
 }
 
@@ -973,7 +973,7 @@ JobClose(Job *job)
 static void
 JobFinish(Job *job, int *status)
 {
-	Boolean	done;
+	bool	done;
 	LstNode	*ln;
 
 	if (WIFEXITED(*status)) {
@@ -985,13 +985,13 @@ JobFinish(Job *job, int *status)
 		 * print a message telling of the ignored error as
 		 * well as setting status.w_status to 0 so the next
 		 * command gets run. To do this, we set done to be
-		 * TRUE if in -B mode and the job exited non-zero.
+		 * true if in -B mode and the job exited non-zero.
 		 */
 		if (job_status == 0) {
-			done = FALSE;
+			done = false;
 		} else {
 			if (job->flags & JOB_IGNERR) {
-				done = TRUE;
+				done = true;
 			} else {
 				/*
 				 * If it exited non-zero and either we're
@@ -1002,7 +1002,7 @@ JobFinish(Job *job, int *status)
 				 * out the job's output before printing the
 				 * exit status...
 				 */
-				done = TRUE;
+				done = true;
 				if (job->cmdFILE != NULL &&
 				    job->cmdFILE != stdout) {
 					fclose(job->cmdFILE);
@@ -1015,7 +1015,7 @@ JobFinish(Job *job, int *status)
 			/*
 			 * No need to close things down or anything.
 			 */
-			done = FALSE;
+			done = false;
 		} else {
 			/*
 			 * If it exited non-zero and either we're
@@ -1031,13 +1031,13 @@ JobFinish(Job *job, int *status)
 			    job->cmdFILE != stdout) {
 				fclose(job->cmdFILE);
 			}
-			done = TRUE;
+			done = true;
 		}
 	} else {
 		/*
 		 * No need to close things down or anything.
 		 */
-		done = FALSE;
+		done = false;
 	}
 
 	if (WIFEXITED(*status)) {
@@ -1144,7 +1144,7 @@ JobFinish(Job *job, int *status)
 				DEBUGF(JOB, ("Process %jd is continuing locally.\n",
 					     (intmax_t) job->pid));
 				if (nJobs == maxJobs) {
-					jobFull = TRUE;
+					jobFull = true;
 					DEBUGF(JOB, ("Job queue is full.\n"));
 				}
 				fflush(out);
@@ -1199,10 +1199,10 @@ JobFinish(Job *job, int *status)
 	    Lst_Succ(job->node->compat_command) != NULL) {
 		switch (JobStart(job->node, job->flags & JOB_IGNDOTS, job)) {
 		  case JOB_RUNNING:
-			done = FALSE;
+			done = false;
 			break;
 		  case JOB_ERROR:
-			done = TRUE;
+			done = true;
 			W_SETEXITSTATUS(status, 1);
 			break;
 		  case JOB_FINISHED:
@@ -1214,13 +1214,13 @@ JobFinish(Job *job, int *status)
 			 * update so we can proceed up the graph when given
 			 * the -n flag..
 			 */
-			done = FALSE;
+			done = false;
 			break;
 		  default:
 			break;
 		}
 	} else {
-		done = TRUE;
+		done = true;
 	}
 
 	if (done && aborting != ABORT_ERROR &&
@@ -1234,7 +1234,7 @@ JobFinish(Job *job, int *status)
 		for (ln = job->tailCmds; ln != NULL; ln = LST_NEXT(ln)) {
 			Lst_AtEnd(&postCommands->commands,
 			    Buf_Peel(
-				Var_Subst(Lst_Datum(ln), job->node, FALSE)));
+				Var_Subst(Lst_Datum(ln), job->node, false)));
 		}
 
 		job->node->made = MADE;
@@ -1278,7 +1278,7 @@ JobFinish(Job *job, int *status)
  *	file did not exist, it is created.
  */
 static void
-JobTouch(GNode *gn, Boolean silent)
+JobTouch(GNode *gn, bool silent)
 {
 	int	streamID;	/* ID of stream opened to do the touch */
 	struct utimbuf times;	/* Times for utime() call */
@@ -1338,13 +1338,13 @@ JobTouch(GNode *gn, Boolean silent)
  *	Make sure the given node has all the commands it needs.
  *
  * Results:
- *	TRUE if the commands list is/was ok.
+ *	true if the commands list is/was ok.
  *
  * Side Effects:
  *	The node will have commands from the .DEFAULT rule added to it
  *	if it needs them.
  */
-Boolean
+bool
 JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 {
 
@@ -1388,7 +1388,7 @@ JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 				fprintf(stdout, "%s %s(continuing)\n",
 				    msg, gn->name);
 				fflush(stdout);
-				return (FALSE);
+				return (false);
 			} else {
 #if OLD_JOKE
 				if (strcmp(gn->name,"love") == 0)
@@ -1397,11 +1397,11 @@ JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 #endif
 					(*abortProc)("%s %s. Stop",
 					    msg, gn->name);
-				return (FALSE);
+				return (false);
 			}
 		}
 	}
-	return (TRUE);
+	return (true);
 }
 
 /**
@@ -1510,7 +1510,7 @@ JobExec(Job *job, char **argv)
 		nJobs += 1;
 		TAILQ_INSERT_TAIL(&jobs, job, link);
 		if (nJobs == maxJobs) {
-			jobFull = TRUE;
+			jobFull = true;
 		}
 	}
 }
@@ -1594,7 +1594,7 @@ JobRestart(Job *job)
 			 */
 			DEBUGF(JOB, ("holding\n"));
 			TAILQ_INSERT_HEAD(&stoppedJobs, job, link);
-			jobFull = TRUE;
+			jobFull = true;
 			DEBUGF(JOB, ("Job queue is full.\n"));
 			return;
 		} else {
@@ -1618,7 +1618,7 @@ JobRestart(Job *job)
 			 * (or the job must be run and maxJobs is 0), it's ok
 			 * to resume it.
 			 */
-			Boolean error;
+			bool error;
 			int status;
 
 			error = (KILL(job->pid, SIGCONT) != 0);
@@ -1650,7 +1650,7 @@ JobRestart(Job *job)
 			*/
 			DEBUGF(JOB, ("table full\n"));
 			TAILQ_INSERT_HEAD(&stoppedJobs, job, link);
-			jobFull = TRUE;
+			jobFull = true;
 			DEBUGF(JOB, ("Job queue is full.\n"));
 		}
 	}
@@ -1675,8 +1675,8 @@ JobStart(GNode *gn, int flags, Job *previous)
 {
 	Job	*job;		/* new job descriptor */
 	char	*argv[4];	/* Argument vector to shell */
-	Boolean	cmdsOK;		/* true if the nodes commands were all right */
-	Boolean	noExec;		/* Set true if we decide not to run the job */
+	bool	cmdsOK;		/* true if the nodes commands were all right */
+	bool	noExec;		/* Set true if we decide not to run the job */
 	int	tfd;		/* File descriptor for temp file */
 	LstNode	*ln;
 	char	tfile[sizeof(TMPPAT)];
@@ -1714,7 +1714,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	if (!compatMake && (job->flags & JOB_FIRST)) {
 		cmdsOK = JobCheckCommands(gn, Error);
 	} else {
-		cmdsOK = TRUE;
+		cmdsOK = true;
 	}
 
 	/*
@@ -1746,7 +1746,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 		 * Send the commands to the command file, flush all its
 		 * buffers then rewind and remove the thing.
 		 */
-		noExec = FALSE;
+		noExec = false;
 
 		/*
 		 * Used to be backwards; replace when start doing multiple
@@ -1770,7 +1770,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 
 			if (gn->compat_command == NULL ||
 			    JobPrintCommand(Lst_Datum(gn->compat_command), job))
-				noExec = TRUE;
+				noExec = true;
 
 			if (noExec && !(job->flags & JOB_FIRST)) {
 				/*
@@ -1803,7 +1803,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 			 * shell, is there?
 			 */
 			if (numCommands == 0) {
-				noExec = TRUE;
+				noExec = true;
 			}
 		}
 
@@ -1834,7 +1834,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 		/*
 		* Don't execute the shell, thank you.
 		*/
-		noExec = TRUE;
+		noExec = true;
 
 	} else {
 		/*
@@ -1845,7 +1845,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 		 */
 		job->cmdFILE = stdout;
 		JobTouch(gn, job->flags & JOB_SILENT);
-		noExec = TRUE;
+		noExec = true;
 	}
 
 	/*
@@ -1872,7 +1872,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 				    ln = LST_NEXT(ln)) {
 					Lst_AtEnd(&postCommands->commands,
 					    Buf_Peel(Var_Subst(Lst_Datum(ln),
-					    job->node, FALSE)));
+					    job->node, false)));
 				}
 				job->node->made = MADE;
 				Make_Update(job->node);
@@ -1926,7 +1926,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 		 * (.BEGIN, .INTERRUPT and .END) may be run even when the
 		 * limit has been reached (e.g. when maxJobs == 0).
 		 */
-		jobFull = TRUE;
+		jobFull = true;
 
 		DEBUGF(JOB, ("Can only run job locally.\n"));
 		job->flags |= JOB_RESTART;
@@ -1937,7 +1937,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 			 * If we're running this job as a special case
 			 * (see above), at least say the table is full.
 			 */
-			jobFull = TRUE;
+			jobFull = true;
 			DEBUGF(JOB, ("Local job queue is full.\n"));
 		}
 		JobExec(job, argv);
@@ -2014,10 +2014,10 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
  *	curPos may be shifted as may the contents of outBuf.
  */
 static void
-JobDoOutput(Job *job, Boolean finish)
+JobDoOutput(Job *job, bool finish)
 {
-	Boolean	gotNL = FALSE;	/* true if got a newline */
-	Boolean	fbuf;		/* true if our buffer filled up */
+	bool	gotNL = false;	/* true if got a newline */
+	bool	fbuf;		/* true if our buffer filled up */
 	int	nr;		/* number of bytes read */
 	int	i;		/* auxiliary index into outBuf */
 	int	max;		/* limit for i (end of current data) */
@@ -2030,8 +2030,8 @@ JobDoOutput(Job *job, Boolean finish)
 		 * Read as many bytes as will fit in the buffer.
 		 */
   end_loop:
-		gotNL = FALSE;
-		fbuf = FALSE;
+		gotNL = false;
+		fbuf = false;
 
 		nRead = read(job->inPipe, &job->outBuf[job->curPos],
 		    JOB_BUFSIZE - job->curPos);
@@ -2058,20 +2058,20 @@ JobDoOutput(Job *job, Boolean finish)
 		if (nr == 0 && job->curPos != 0) {
 			job->outBuf[job->curPos] = '\n';
 			nr = 1;
-			finish = FALSE;
+			finish = false;
 		} else if (nr == 0) {
-			finish = FALSE;
+			finish = false;
 		}
 
 		/*
 		 * Look for the last newline in the bytes we just got. If there
 		 * is one, break out of the loop with 'i' as its index and
-		 * gotNL set TRUE.
+		 * gotNL set true.
 		*/
 		max = job->curPos + nr;
 		for (i = job->curPos + nr - 1; i >= job->curPos; i--) {
 			if (job->outBuf[i] == '\n') {
-				gotNL = TRUE;
+				gotNL = true;
 				break;
 			} else if (job->outBuf[i] == '\0') {
 				/*
@@ -2088,7 +2088,7 @@ JobDoOutput(Job *job, Boolean finish)
 				 * If we've run out of buffer space, we have
 				 * no choice but to print the stuff. sigh.
 				 */
-				fbuf = TRUE;
+				fbuf = true;
 				i = job->curPos;
 			}
 		}
@@ -2109,7 +2109,7 @@ JobDoOutput(Job *job, Boolean finish)
 				char *cp;
 
 				cp = JobOutput(job, job->outBuf,
-				    &job->outBuf[i], FALSE);
+				    &job->outBuf[i], false);
 
 				/*
 				 * There's still more in that buffer. This time,
@@ -2148,7 +2148,7 @@ JobDoOutput(Job *job, Boolean finish)
 			 * eventually since the other end of the pipe is now
 			 * closed (we closed it explicitly and the child has
 			 * exited). When we do get an EOF, finish will be set
-			 * FALSE and we'll fall through and out.
+			 * false and we'll fall through and out.
 			 */
 			goto end_loop;
 		}
@@ -2178,7 +2178,7 @@ JobDoOutput(Job *job, Boolean finish)
 				if (endp[-1] == '\n') {
 					*--endp = '\0';
 				}
-				cp = JobOutput(job, inLine, endp, FALSE);
+				cp = JobOutput(job, inLine, endp, false);
 
 				/*
 				 * There's still more in that buffer. This time,
@@ -2212,7 +2212,7 @@ JobDoOutput(Job *job, Boolean finish)
  *	putting jobs on the stoppedJobs queue.
  */
 void
-Job_CatchChildren(Boolean block)
+Job_CatchChildren(bool block)
 {
 	pid_t	pid;	/* pid of dead child */
 	Job	*job;	/* job descriptor for dead child */
@@ -2264,12 +2264,12 @@ Job_CatchChildren(Boolean block)
 				write(fifoFd, "+", 1);
 				maxJobs--;
 				if (nJobs >= maxJobs)
-					jobFull = TRUE;
+					jobFull = true;
 				else
-					jobFull = FALSE;
+					jobFull = false;
 			} else {
 				DEBUGF(JOB, ("Job queue is no longer full.\n"));
-				jobFull = FALSE;
+				jobFull = false;
 			}
 		}
 
@@ -2323,7 +2323,7 @@ Job_CatchOutput(int flag)
 			job = TAILQ_FIRST(&jobs);
 			while (nfds != 0 && job != NULL) {
 				if (FD_ISSET(job->inPipe, &readfds)) {
-					JobDoOutput(job, FALSE);
+					JobDoOutput(job, false);
 					nfds--;
 				}
 				job = TAILQ_NEXT(job, link);
@@ -2381,7 +2381,7 @@ Job_Init(int maxproc)
 				write(fifoFd, "+", 1);
 			}
 			/* The master make does not get a magic token */
-			jobFull = TRUE;
+			jobFull = true;
 			maxJobs = 0;
 		}
 
@@ -2398,12 +2398,12 @@ Job_Init(int maxproc)
 		if (fifoFd >= 0) {
 			fcntl(fifoFd, F_SETFL, O_NONBLOCK);
 			maxJobs = 1;
-			jobFull = FALSE;
+			jobFull = false;
 		}
 	}
 	if (fifoFd <= 0) {
 		maxJobs = maxproc;
-		jobFull = FALSE;
+		jobFull = false;
 	} else {
 	}
 	nJobs = 0;
@@ -2443,9 +2443,9 @@ Job_Init(int maxproc)
  *	from starting up.
  *
  * Results:
- *	TRUE if the job table is full, FALSE otherwise
+ *	true if the job table is full, false otherwise
  */
-Boolean
+bool
 Job_Full(void)
 {
 	char c;
@@ -2457,7 +2457,7 @@ Job_Full(void)
 		i = read(fifoFd, &c, 1);
 		if (i > 0) {
 			maxJobs++;
-			jobFull = FALSE;
+			jobFull = false;
 		}
 	}
 	return (jobFull);
@@ -2471,9 +2471,9 @@ Job_Full(void)
  *	we want to restart as many jobs as we can.
  *
  * Results:
- *	TRUE if it is. FALSE if it ain't.
+ *	true if it is. false if it ain't.
  */
-Boolean
+bool
 Job_Empty(void)
 {
 
@@ -2483,14 +2483,14 @@ Job_Empty(void)
 			 * The job table is obviously not full if it has no
 			 * jobs in it...Try and restart the stopped jobs.
 			 */
-			jobFull = FALSE;
+			jobFull = false;
 			JobRestartJobs();
-			return (FALSE);
+			return (false);
 		} else {
-			return (TRUE);
+			return (true);
 		}
 	} else {
-		return (FALSE);
+		return (false);
 	}
 }
 
@@ -2802,9 +2802,9 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 	struct Shell	*shell = commandShell;
 	ArgArray	aa;
 	char		*cmdStart;	/* Start of expanded command */
-	Boolean		silent;		/* Don't print command */
-	Boolean		doit;		/* Execute even in -n */
-	Boolean		errCheck;	/* Check errors */
+	bool		silent;		/* Don't print command */
+	bool		doit;		/* Execute even in -n */
+	bool		errCheck;	/* Check errors */
 	int		status;		/* Description of child's death */
 	LstNode		*cmdNode;	/* Node where current cmd is located */
 	char		**av;		/* Argument vector for thing to exec */
@@ -2813,7 +2813,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 
 	cmdNode = Lst_Member(&gn->commands, cmd);
 
-	cmdStart = Buf_Peel(Var_Subst(cmd, gn, FALSE));
+	cmdStart = Buf_Peel(Var_Subst(cmd, gn, false));
 	if (cmdStart[0] == '\0') {
 		free(cmdStart);
 		Error("%s expands to empty string", cmd);
@@ -2836,22 +2836,22 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 
 	line = cmdStart;
 	silent = gn->type & OP_SILENT;
-	doit = FALSE;
+	doit = false;
 	errCheck = !(gn->type & OP_IGNORE);
 
 	while (*line == '@' || *line == '-' || *line == '+') {
 		switch (*line) {
 
 		case '@':
-			silent = DEBUG(LOUD) ? FALSE : TRUE;
+			silent = DEBUG(LOUD) ? false : true;
 			break;
 
 		case '-':
-			errCheck = FALSE;
+			errCheck = false;
 			break;
 
 		case '+':
-			doit = TRUE;
+			doit = true;
 			break;
 		}
 		line++;
@@ -2860,14 +2860,14 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 	while (isspace((unsigned char)*line))
 		line++;
 
-	if (noExecute && doit == FALSE) {
+	if (noExecute && doit == false) {
 		/* Just print out the command */
 		printf("%s\n", line);
 		fflush(stdout);
 		return (0);
 	}
 
-	if (silent == FALSE) {
+	if (silent == false) {
 		/*
 		 * Print the command before echoing if we're not supposed to
 		 * be quiet for this one.
@@ -2884,7 +2884,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 		 * Break the command into words to form an argument
 		 * vector we can execute.
 		 */
-		brk_string(&aa, line, TRUE);
+		brk_string(&aa, line, true);
 		av = aa.argv + 1;
 
 		for (p = sh_builtin; *p != 0; p++) {
@@ -3025,7 +3025,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
  *	If an error is detected and not being ignored, the process exits.
  */
 static int
-CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
+CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, bool queryFlag)
 {
 	LstNode	*ln;
 
@@ -3038,17 +3038,17 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 		 * transformations the suffix module thinks are necessary.
 		 * Once that's done, we can descend and make all our children.
 		 * If any of them has an error but the -k flag was given, our
-		 * 'make' field will be set FALSE again. This is our signal to
+		 * 'make' field will be set false again. This is our signal to
 		 * not attempt to do anything but abort our parent as well.
 		 */
-		gn->make = TRUE;
+		gn->make = true;
 		gn->made = BEINGMADE;
 		Suff_FindDeps(gn);
 		LST_FOREACH(ln, &gn->children)
 			CompatMake(Lst_Datum(ln), gn, ENDNode, queryFlag);
 		if (!gn->make) {
 			gn->made = ABORTED;
-			pgn->make = FALSE;
+			pgn->make = false;
 			return (0);
 		}
 
@@ -3184,12 +3184,12 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 			    Targ_FmtTime(gn->mtime)));
 #endif
 			if (!(gn->type & OP_EXEC)) {
-				pgn->childMade = TRUE;
+				pgn->childMade = true;
 				Make_TimeStamp(pgn, gn);
 			}
 
 		} else if (keepgoing) {
-			pgn->make = FALSE;
+			pgn->make = false;
 
 		} else {
 			printf("\n\nStop in %s.\n", Var_Value(".CURDIR", gn));
@@ -3200,7 +3200,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 		 * Already had an error when making this beastie. Tell the
 		 * parent to abort.
 		 */
-		pgn->make = FALSE;
+		pgn->make = false;
 	} else {
 		if (Lst_Member(&gn->iParents, pgn) != NULL) {
 			Var_Set(IMPSRC, Var_Value(TARGET, gn), pgn);
@@ -3209,11 +3209,11 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 		  case BEINGMADE:
 			Error("Graph cycles through %s\n", gn->name);
 			gn->made = ERROR;
-			pgn->make = FALSE;
+			pgn->make = false;
 			break;
 		  case MADE:
 			if ((gn->type & OP_EXEC) == 0) {
-			    pgn->childMade = TRUE;
+			    pgn->childMade = true;
 			    Make_TimeStamp(pgn, gn);
 			}
 			break;
@@ -3238,7 +3238,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
  *	 returns 0.  We will fix that bug eventually.
  */
 int
-Compat_Run(Lst *targs, Boolean queryFlag)
+Compat_Run(Lst *targs, bool queryFlag)
 {
 	int	error_cnt;	/* Number of targets not remade due to errors */
 	GNode	*ENDNode;
@@ -3248,7 +3248,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	 * If the user has defined a .BEGIN target, execute the commands
 	 * attached to it.
 	 */
-	if (queryFlag == FALSE) {
+	if (queryFlag == false) {
 		GNode *gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
 			Compat_RunCmds(gn, ENDNode);
@@ -3257,7 +3257,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 				/*
 				 * XXX
 				 * (queryFlag && outOfDate) ? 1 : 0 ->
-				 * (FALSE && TRUE) ? 1 : 0 ->
+				 * (false && true) ? 1 : 0 ->
 				 * 0 Successful completion?
 				 * XXX
 				 */

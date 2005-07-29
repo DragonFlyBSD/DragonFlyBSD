@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/GNode.h,v 1.6 2005/05/15 17:49:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/GNode.h,v 1.7 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef GNode_h_39503bf2
@@ -116,14 +116,14 @@ typedef struct GNode {
 #define	OP_DEPS_FOUND	0x02000000	/* Already processed by Suff_FindDeps */
 
 /*
- * OP_NOP will return TRUE if the node with the given type was not the
+ * OP_NOP will return true if the node with the given type was not the
  * object of a dependency operator
  */
 #define	OP_NOP(t)	(((t) & OP_OPMASK) == 0x00000000)
 
 	int	order;	/* Its wait weight */
 
-	Boolean	make;	/* TRUE if this target needs to be remade */
+	bool	make;	/* true if this target needs to be remade */
 
 	/* Set to reflect the state of processing on this node */
 	enum {
@@ -164,8 +164,8 @@ typedef struct GNode {
 		ENDCYCLE
 	} made;
 
-	/* TRUE if one of this target's children was made */
-	Boolean	childMade;
+	/* true if one of this target's children was made */
+	bool	childMade;
 
 	int	unmade;		/* The number of unmade children */
 	int	mtime;		/* Its modification time */

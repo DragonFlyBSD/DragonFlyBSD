@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.63 2005/07/15 21:06:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.64 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*-
@@ -64,7 +64,7 @@
  *	Suff_ClearSuffixes	Clear out all the suffixes and defined
  *				transformations.
  *
- *	Suff_IsTransform	Return TRUE if the passed string is the lhs
+ *	Suff_IsTransform	Return true if the passed string is the lhs
  *				of a transformation rule.
  *
  *	Suff_AddSuffix		Add the passed string as another known suffix.
@@ -402,14 +402,14 @@ Suff_ClearSuffixes(void)
  *	Parse a transformation string to find its two component suffixes.
  *
  * Results:
- *	TRUE if the string is a valid transformation and FALSE otherwise.
+ *	true if the string is a valid transformation and false otherwise.
  *
  * Side Effects:
  *	The passed pointers are overwritten.
  *
  *-----------------------------------------------------------------------
  */
-static Boolean
+static bool
 SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 {
 	LstNode	*srcLn;		/* element in suffix list of trans source*/
@@ -455,9 +455,9 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 				 */
 				*srcPtr = single;
 				*targPtr = suffNull;
-				return (TRUE);
+				return (true);
 			}
-			return (FALSE);
+			return (false);
 		}
 		str2 = str + src->nameLen;
 		if (*str2 == '\0') {
@@ -468,7 +468,7 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 			*targPtr = SuffSuffFind(str2);
 			if (*targPtr != NULL) {
 				*srcPtr = src;
-				return (TRUE);
+				return (true);
 			}
 		}
 		/* next one */
@@ -479,18 +479,18 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 /*-
  *-----------------------------------------------------------------------
  * Suff_IsTransform  --
- *	Return TRUE if the given string is a transformation rule
+ *	Return true if the given string is a transformation rule
  *
  *
  * Results:
- *	TRUE if the string is a concatenation of two known suffixes.
- *	FALSE otherwise
+ *	true if the string is a concatenation of two known suffixes.
+ *	false otherwise
  *
  * Side Effects:
  *	None
  *-----------------------------------------------------------------------
  */
-Boolean
+bool
 Suff_IsTransform(char *str)
 {
 	Suff	*src, *targ;
@@ -988,7 +988,7 @@ SuffRemoveSrc(Lst *l)
 			Lst_Remove(l, ln);
 			free(s);
 			t |= 1;
-			return (TRUE);
+			return (true);
 		}
 #ifdef DEBUG_SRC
 		else {
@@ -1161,7 +1161,7 @@ SuffExpandVariables(GNode *parent, GNode *child, Lst *members)
 	Lst_Init(members);
 
 	DEBUGF(SUFF, ("Expanding \"%s\"...", child->name));
-	buf = Var_Subst(child->name, parent, TRUE);
+	buf = Var_Subst(child->name, parent, true);
 	cp = Buf_Data(buf);
 
 	if (child->type & OP_ARCHV) {
@@ -1172,7 +1172,7 @@ SuffExpandVariables(GNode *parent, GNode *child, Lst *members)
 		 * parent's context.
 		 */
 		Arch_ParseArchive(&cp, members, parent);
-		Buf_Destroy(buf, TRUE);
+		Buf_Destroy(buf, true);
 		return;
 	}
 	/*
@@ -1208,9 +1208,9 @@ SuffExpandVariables(GNode *parent, GNode *child, Lst *members)
 			 */
 			char	*junk;
 			size_t	len = 0;
-			Boolean	doFree;
+			bool	doFree;
 
-			junk = Var_Parse(cp, parent, TRUE, &len, &doFree);
+			junk = Var_Parse(cp, parent, true, &len, &doFree);
 			if (junk != var_Error) {
 				cp += len - 1;
 			}
@@ -1234,7 +1234,7 @@ SuffExpandVariables(GNode *parent, GNode *child, Lst *members)
 		Lst_AtEnd(members, Targ_FindNode(start, TARG_CREATE));
 	}
 
-	Buf_Destroy(buf, TRUE);
+	Buf_Destroy(buf, true);
 }
 
 /*-
@@ -1391,7 +1391,7 @@ SuffExpandChildren(GNode *parent, LstNode *current)
  *	and suffixes.
  *
  * Results:
- *	TRUE if successful, FALSE if not.
+ *	true if successful, false if not.
  *
  * Side Effects:
  *	The source and target are linked and the commands from the
@@ -1402,7 +1402,7 @@ SuffExpandChildren(GNode *parent, LstNode *current)
  *
  *-----------------------------------------------------------------------
  */
-static Boolean
+static bool
 SuffApplyTransform(GNode *tGn, GNode *sGn, Suff *t, Suff *s)
 {
 	LstNode	*ln;	/* General node */
@@ -1453,9 +1453,9 @@ SuffApplyTransform(GNode *tGn, GNode *sGn, Suff *t, Suff *s)
 		/*
 		 * Not really such a transformation rule (can happen when we're
 		 * called to link an OP_MEMBER and OP_ARCHV node), so return
-		 * FALSE.
+		 * false.
 		 */
-		return (FALSE);
+		return (false);
 	}
 
 	DEBUGF(SUFF, ("\tapplying %s -> %s to \"%s\"\n",
@@ -1485,7 +1485,7 @@ SuffApplyTransform(GNode *tGn, GNode *sGn, Suff *t, Suff *s)
 	 */
 	Lst_AtEnd(&sGn->iParents, tGn);
 
-	return (TRUE);
+	return (true);
 }
 
 

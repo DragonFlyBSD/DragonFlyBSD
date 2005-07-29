@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.52 2005/07/29 22:45:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.53 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*-
@@ -53,7 +53,7 @@
  * The interface to this module is:
  *	Arch_ParseArchive	Given an archive specification, return a list
  *				of GNode's, one for each member in the spec.
- *				FALSE is returned if the specification is
+ *				false is returned if the specification is
  *				invalid for some reason.
  *
  *	Arch_Touch		Alter the modification time of the archive
@@ -172,8 +172,8 @@ struct arfile {
 #define	BSD_EXT1	"#1/"
 #define	BSD_EXT1LEN	3
 
-/* if this is TRUE make archive errors fatal */
-Boolean arch_fatal = TRUE;
+/* if this is true make archive errors fatal */
+bool arch_fatal = true;
 
 /**
  * ArchError
@@ -199,7 +199,7 @@ Boolean arch_fatal = TRUE;
  *	in which to expand variables.
  *
  * Results:
- *	TRUE if it was a valid specification. The linePtr is updated
+ *	true if it was a valid specification. The linePtr is updated
  *	to point to the first non-space after the archive spec. The
  *	nodes for the members are placed on the given list.
  *
@@ -208,7 +208,7 @@ Boolean arch_fatal = TRUE;
  *
  *-----------------------------------------------------------------------
  */
-Boolean
+bool
 Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 {
 	char	*cp;		/* Pointer into line */
@@ -217,12 +217,12 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 	char	*memName;	/* Member-part of specification */
 	char	*nameBuf;	/* temporary place for node name */
 	char	saveChar;	/* Ending delimiter of member-name */
-	Boolean	subLibName;	/* TRUE if libName should have/had
+	bool	subLibName;	/* true if libName should have/had
 				 * variable substitution performed on it */
 
 	libName = *linePtr;
 
-	subLibName = FALSE;
+	subLibName = false;
 
 	for (cp = libName; *cp != '(' && *cp != '\0'; cp++) {
 		if (*cp == '$') {
@@ -231,14 +231,14 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 			 * puppy so we can safely advance beyond it...
 			 */
 			size_t	length = 0;
-			Boolean	freeIt;
+			bool	freeIt;
 			char	*result;
 
-			result = Var_Parse(cp, ctxt, TRUE, &length, &freeIt);
+			result = Var_Parse(cp, ctxt, true, &length, &freeIt);
 			if (result == var_Error) {
-				return (FALSE);
+				return (false);
 			}
-			subLibName = TRUE;
+			subLibName = true;
 
 			if (freeIt) {
 				free(result);
@@ -249,7 +249,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 	*cp++ = '\0';
 	if (subLibName) {
-		libName = Buf_Peel(Var_Subst(libName, ctxt, TRUE));
+		libName = Buf_Peel(Var_Subst(libName, ctxt, true));
 	}
 
 	for (;;) {
@@ -260,9 +260,9 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 		 */
 
 		/*
-		 * TRUE if need to substitute in memName
+		 * true if need to substitute in memName
 		 */
-		Boolean	doSubst = FALSE;
+		bool	doSubst = false;
 
 		while (*cp != '\0' && *cp != ')' &&
 		    isspace((unsigned char)*cp)) {
@@ -279,15 +279,15 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 				 * beyond it...
 				 */
 				size_t	length = 0;
-				Boolean	freeIt;
+				bool	freeIt;
 				char	*result;
 
-				result = Var_Parse(cp, ctxt, TRUE,
+				result = Var_Parse(cp, ctxt, true,
 				    &length, &freeIt);
 				if (result == var_Error) {
-					return (FALSE);
+					return (false);
 				}
-				doSubst = TRUE;
+				doSubst = true;
 
 				if (freeIt) {
 					free(result);
@@ -307,7 +307,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 		if (*cp == '\0') {
 			printf("No closing parenthesis in archive "
 			    "specification\n");
-			return (FALSE);
+			return (false);
 		}
 
 		/*
@@ -346,7 +346,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 			 * The results are just placed at the end of the
 			 * nodeLst we're returning.
 			 */
-			buf1 = Var_Subst(memName, ctxt, TRUE);
+			buf1 = Var_Subst(memName, ctxt, true);
 			memName = Buf_Data(buf1);
 
 			sz = strlen(memName) + strlen(libName) + 3;
@@ -368,8 +368,8 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 				if (gn == NULL) {
 					free(buf);
-					Buf_Destroy(buf1, FALSE);
-					return (FALSE);
+					Buf_Destroy(buf1, false);
+					return (false);
 				}
 				gn->type |= OP_ARCHV;
 				Lst_AtEnd(nodeLst, (void *)gn);
@@ -377,16 +377,16 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 			    ctxt)) {
 				/*
 				 * Error in nested call -- free buffer and
-				 * return FALSE ourselves.
+				 * return false ourselves.
 				 */
 				free(buf);
-				Buf_Destroy(buf1, FALSE);
-				return (FALSE);
+				Buf_Destroy(buf1, false);
+				return (false);
 			}
 
 			/* Free buffer and continue with our work. */
 			free(buf);
-			Buf_Destroy(buf1, FALSE);
+			Buf_Destroy(buf1, false);
 
 		} else if (Dir_HasWildcards(memName)) {
 			Lst	members = Lst_Initializer(members);
@@ -412,7 +412,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 				if (gn == NULL) {
 					free(nameBuf);
 					/* XXXHB Lst_Destroy(&members) */
-					return (FALSE);
+					return (false);
 				}
 				/*
 				 * We've found the node, but have to make sure
@@ -434,7 +434,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 			gn = Targ_FindNode(nameBuf, TARG_CREATE);
 			free(nameBuf);
 			if (gn == NULL) {
-				return (FALSE);
+				return (false);
 			}
 			/*
 			 * We've found the node, but have to make sure the
@@ -470,7 +470,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 	} while (*cp != '\0' && isspace((unsigned char)*cp));
 
 	*linePtr = cp;
-	return (TRUE);
+	return (true);
 }
 
 /*
@@ -876,7 +876,7 @@ ArchFindMember(const char *archive, const char *member, const char *mode)
  *-----------------------------------------------------------------------
  */
 static int64_t
-ArchStatMember(const char *archive, const char *member, Boolean hash)
+ArchStatMember(const char *archive, const char *member, bool hash)
 {
 	struct arfile	*arf;
 	int64_t		ret;
@@ -1055,7 +1055,7 @@ Arch_MTime(GNode *gn)
 	int64_t	mtime;
 
 	mtime = ArchStatMember(
-	    Var_Value(ARCHIVE, gn), Var_Value(TARGET, gn), TRUE);
+	    Var_Value(ARCHIVE, gn), Var_Value(TARGET, gn), true);
 
 	if (mtime == INT_MIN) {
 		mtime = 0;
@@ -1188,26 +1188,26 @@ Arch_FindLib(GNode *gn, struct Path *path)
  *		  TOC.
  *
  * Results:
- *	TRUE if the library is out-of-date. FALSE otherwise.
+ *	true if the library is out-of-date. false otherwise.
  *
  * Side Effects:
  *	The library will be hashed if it hasn't been already.
  *
  *-----------------------------------------------------------------------
  */
-Boolean
+bool
 Arch_LibOODate(GNode *gn)
 {
 	int64_t	mtime;	/* The table-of-contents's mod time */
 
 	if (OP_NOP(gn->type) && Lst_IsEmpty(&gn->children)) {
-		return (FALSE);
+		return (false);
 	}
 	if (gn->mtime > now || gn->mtime < gn->cmtime) {
-		return (TRUE);
+		return (true);
 	}
 
-	mtime = ArchStatMember(gn->path, NULL, FALSE);
+	mtime = ArchStatMember(gn->path, NULL, false);
 	if (mtime == INT64_MIN) {
 		/*
 		 * Not found. A library w/o a table of contents is out-of-date
@@ -1215,7 +1215,7 @@ Arch_LibOODate(GNode *gn)
 		if (DEBUG(ARCH) || DEBUG(MAKE)) {
 			Debug("No TOC...");
 		}
-		return (TRUE);
+		return (true);
 	}
 
 	/* XXX choose one. */

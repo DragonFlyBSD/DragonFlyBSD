@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.13 2005/06/22 22:03:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.14 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -92,8 +92,8 @@ typedef void DirectiveHandler(Parser *, char *, int, int);
 #define	DPREFIX		"*D"	/* directory part of PREFIX */
 
 void Parse_Error(int, const char *, ...);
-Boolean Parse_AnyExport(void);
-Boolean Parse_IsVar(char *);
+bool Parse_AnyExport(void);
+bool Parse_IsVar(char *);
 void Parse_DoVar(char *, struct GNode *);
 void Parse_AddIncludeDir(char *);
 void Parse_File(Parser *, struct CLI *, const char [], FILE *);

@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.40 2005/07/29 22:45:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.41 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*-
@@ -50,7 +50,7 @@
  * The interface for this module is:
  *	Dir_Init	Initialize the module.
  *
- *	Dir_HasWildcards Returns TRUE if the name given it needs to
+ *	Dir_HasWildcards Returns true if the name given it needs to
  *			be wildcard-expanded.
  *
  *	Path_Expand	Given a pattern and a path, return a Lst of names
@@ -258,13 +258,13 @@ Dir_CurObj(const char curdir[], const char objdir[])
  *	See if the given name has any wildcard characters in it.
  *
  * Results:
- *	returns TRUE if the word should be expanded, FALSE otherwise
+ *	returns true if the word should be expanded, false otherwise
  *
  * Side Effects:
  *	none
  *-----------------------------------------------------------------------
  */
-Boolean
+bool
 Dir_HasWildcards(const char *name)
 {
 	const char *cp;
@@ -319,7 +319,7 @@ DirMatchFiles(const char *pattern, const Dir *p, Lst *expansions)
 {
 	Hash_Search search;	/* Index into the directory's table */
 	Hash_Entry *entry;	/* Current entry in the table */
-	Boolean isDot;		/* TRUE if the directory being searched is . */
+	bool isDot;		/* true if the directory being searched is . */
 
 	isDot = (*p->name == '.' && p->name[1] == '\0');
 
@@ -620,7 +620,7 @@ Path_FindFile(char *name, struct Path *path)
 	char *file;		/* the current filename to check */
 	const struct PathElement *pe;	/* current path member */
 	char *cp;		/* final component of the name */
-	Boolean hasSlash;	/* true if 'name' contains a / */
+	bool hasSlash;	/* true if 'name' contains a / */
 	struct stat stb;	/* Buffer for stat, if necessary */
 	Hash_Entry *entry;	/* Entry for mtimes table */
 
@@ -630,10 +630,10 @@ Path_FindFile(char *name, struct Path *path)
 	 */
 	cp = strrchr(name, '/');
 	if (cp != NULL) {
-		hasSlash = TRUE;
+		hasSlash = true;
 		cp += 1;
 	} else {
-		hasSlash = FALSE;
+		hasSlash = false;
 		cp = name;
 	}
 
@@ -735,7 +735,7 @@ Path_FindFile(char *name, struct Path *path)
 	}
 
 	if (*name != '/') {
-		Boolean	checkedDot = FALSE;
+		bool	checkedDot = false;
 
 		DEBUGF(DIR, ("failed. Trying subdirectories..."));
 		TAILQ_FOREACH(pe, path, link) {
@@ -747,7 +747,7 @@ Path_FindFile(char *name, struct Path *path)
 				 * on the thing.
 				 */
 				file = estrdup(name);
-				checkedDot = TRUE;
+				checkedDot = true;
 			}
 			DEBUGF(DIR, ("checking %s...", file));
 
@@ -779,7 +779,7 @@ Path_FindFile(char *name, struct Path *path)
 				DEBUGF(DIR, ("Caching %s for %s\n",
 				    Targ_FmtTime(stb.st_mtime), file));
 				entry = Hash_CreateEntry(&mtimes, file,
-				    (Boolean *)NULL);
+				    (bool *)NULL);
 				Hash_SetValue(entry,
 				    (void *)(long)stb.st_mtime);
 				nearmisses += 1;
@@ -842,7 +842,7 @@ Path_FindFile(char *name, struct Path *path)
 		DEBUGF(DIR, ("got it (in mtime cache)\n"));
 		return (estrdup(name));
 	} else if (stat(name, &stb) == 0) {
-		entry = Hash_CreateEntry(&mtimes, name, (Boolean *)NULL);
+		entry = Hash_CreateEntry(&mtimes, name, (bool *)NULL);
 		DEBUGF(DIR, ("Caching %s for %s\n",
 		    Targ_FmtTime(stb.st_mtime), name));
 		Hash_SetValue(entry, (void *)(long)stb.st_mtime);
@@ -992,7 +992,7 @@ Path_AddDir(struct Path *path, const char *name)
 		if (ISDOT(dp->d_name) || ISDOTDOT(dp->d_name))
 			continue;
 
-		Hash_CreateEntry(&d->files, dp->d_name, (Boolean *)NULL);
+		Hash_CreateEntry(&d->files, dp->d_name, (bool *)NULL);
 	}
 	closedir(dir);
 

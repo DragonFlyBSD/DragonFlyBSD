@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.24 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.18 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.19 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /* hash.c --
@@ -191,8 +191,8 @@ Hash_FindEntry(const Hash_Table *t, const char *key)
  *
  * Results:
  *	The return value is a pointer to the entry.  If *newPtr
- *	isn't NULL, then *newPtr is filled in with TRUE if a
- *	new entry was created, and FALSE if an entry already existed
+ *	isn't NULL, then *newPtr is filled in with true if a
+ *	new entry was created, and false if an entry already existed
  *	with the given key.
  *
  * Side Effects:
@@ -200,7 +200,7 @@ Hash_FindEntry(const Hash_Table *t, const char *key)
  *---------------------------------------------------------
  */
 Hash_Entry *
-Hash_CreateEntry(Hash_Table *t, const char *key, Boolean *newPtr)
+Hash_CreateEntry(Hash_Table *t, const char *key, bool *newPtr)
 {
 	Hash_Entry *e;
 	unsigned int h;
@@ -219,7 +219,7 @@ Hash_CreateEntry(Hash_Table *t, const char *key, Boolean *newPtr)
 	for (e = t->bucketPtr[h & t->mask]; e != NULL; e = e->next) {
 		if (e->namehash == h && strcmp(e->name, p) == 0) {
 			if (newPtr != NULL)
-				*newPtr = FALSE;
+				*newPtr = false;
 			return (e);
 		}
 	}
@@ -241,7 +241,7 @@ Hash_CreateEntry(Hash_Table *t, const char *key, Boolean *newPtr)
 	t->numEntries++;
 
 	if (newPtr != NULL)
-		*newPtr = TRUE;
+		*newPtr = true;
 	return (e);
 }
 

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.138 2005/07/19 18:14:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.139 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*
@@ -110,33 +110,33 @@ typedef struct CLI {
 	/** directories to search when looking for system includes */
 	struct Path	sysIncPath;
 
-	Boolean	expandVars;	/* fully expand printed variables */
-	Boolean	builtins;	/* -r flag */
-	Boolean	forceJobs;      /* -j argument given */
+	bool	expandVars;	/* fully expand printed variables */
+	bool	builtins;	/* -r flag */
+	bool	forceJobs;      /* -j argument given */
 
 	/**
 	 * -q flag:
-	 * TRUE if we aren't supposed to really make anything, just
+	 * true if we aren't supposed to really make anything, just
 	 * see if the targets are out-of-date
 	 */
-	Boolean		queryFlag;
+	bool		queryFlag;
 } CLI;
 
 /* (-E) vars to override from env */
 Lst envFirstVars = Lst_Initializer(envFirstVars);
 
-Boolean		allPrecious;	/* .PRECIOUS given on line by itself */
-Boolean		beSilent;	/* -s flag */
-Boolean		beVerbose;	/* -v flag */
-Boolean		compatMake;	/* -B argument */
-Boolean		debug;		/* -d flag */
-Boolean		ignoreErrors;	/* -i flag */
+bool		allPrecious;	/* .PRECIOUS given on line by itself */
+bool		beSilent;	/* -s flag */
+bool		beVerbose;	/* -v flag */
+bool		compatMake;	/* -B argument */
+bool		debug;		/* -d flag */
+bool		ignoreErrors;	/* -i flag */
 int		jobLimit;	/* -j argument */
-Boolean		jobsRunning;	/* TRUE if the jobs might be running */
-Boolean		keepgoing;	/* -k flag */
-Boolean		noExecute;	/* -n flag */
-Boolean		touchFlag;	/* -t flag */
-Boolean		usePipes;	/* !-P flag */
+bool		jobsRunning;	/* true if the jobs might be running */
+bool		keepgoing;	/* -k flag */
+bool		noExecute;	/* -n flag */
+bool		touchFlag;	/* -t flag */
+bool		usePipes;	/* !-P flag */
 uint32_t	warn_cmd;	/* command line warning flags */
 uint32_t	warn_flags;	/* actual warning flags */
 uint32_t	warn_nocmd;	/* command line no-warning flags */
@@ -187,9 +187,9 @@ MFLAGS_append(const char *flag, char *arg)
  * Open and parse the given makefile.
  *
  * Results:
- *	TRUE if ok. FALSE if couldn't open file.
+ *	true if ok. false if couldn't open file.
  */
-static Boolean
+static bool
 ReadMakefile(Parser *parser, CLI *cli, const char file[], const char curdir[], const char objdir[])
 {
 	char	path[MAXPATHLEN];
@@ -200,7 +200,7 @@ ReadMakefile(Parser *parser, CLI *cli, const char file[], const char curdir[], c
 	if (!strcmp(file, "-")) {
 		Parse_File(parser, cli, "(stdin)", stdin);
 		Var_SetGlobal("MAKEFILE", "");
-		return (TRUE);
+		return (true);
 	}
 
 	if (strcmp(curdir, objdir) == 0 || file[0] == '/') {
@@ -240,7 +240,7 @@ ReadMakefile(Parser *parser, CLI *cli, const char file[], const char curdir[], c
 			Var_SetGlobal("MAKEFILE", file);
 		Parse_File(parser, cli, path, stream);
 		fclose(stream);
-		return (TRUE);
+		return (true);
 	}
 
 	/* look in -I and system include directories. */
@@ -264,11 +264,11 @@ ReadMakefile(Parser *parser, CLI *cli, const char file[], const char curdir[], c
 				Var_SetGlobal("MAKEFILE", name);
 			Parse_File(parser, cli, name, stream);
 			fclose(stream);
-			return (TRUE);
+			return (true);
 		}
 	}
 
-	return (FALSE);	/* no makefile found */
+	return (false);	/* no makefile found */
 }
 
 /**
@@ -384,7 +384,7 @@ static void
 MainParseArgs(CLI *cli, int argc, char **argv)
 {
 	int c;
-	Boolean	found_dd = FALSE;
+	bool	found_dd = false;
 
 rearg:
 	optind = 1;	/* since we're called more than once */
@@ -392,7 +392,7 @@ rearg:
 #define OPTFLAGS "ABC:D:E:I:PSV:Xd:ef:ij:km:nqrstvx:"
 	for (;;) {
 		if ((optind < argc) && strcmp(argv[optind], "--") == 0) {
-			found_dd = TRUE;
+			found_dd = true;
 		}
 		if ((c = getopt(argc, argv, OPTFLAGS)) == -1) {
 			break;
@@ -400,7 +400,7 @@ rearg:
 		switch(c) {
 
 		case 'A':
-			arch_fatal = FALSE;
+			arch_fatal = false;
 			MFLAGS_append("-A", NULL);
 			break;
 		case 'C':
@@ -420,19 +420,19 @@ rearg:
 			MFLAGS_append("-V", optarg);
 			break;
 		case 'X':
-			cli->expandVars = FALSE;
+			cli->expandVars = false;
 			break;
 		case 'B':
-			compatMake = TRUE;
+			compatMake = true;
 			MFLAGS_append("-B", NULL);
 			unsetenv("MAKE_JOBS_FIFO");
 			break;
 		case 'P':
-			usePipes = FALSE;
+			usePipes = false;
 			MFLAGS_append("-P", NULL);
 			break;
 		case 'S':
-			keepgoing = FALSE;
+			keepgoing = false;
 			MFLAGS_append("-S", NULL);
 			break;
 		case 'd': {
@@ -496,20 +496,20 @@ rearg:
 			MFLAGS_append("-E", optarg);
 			break;
 		case 'e':
-			checkEnvFirst = TRUE;
+			checkEnvFirst = true;
 			MFLAGS_append("-e", NULL);
 			break;
 		case 'f':
 			Lst_AtEnd(&cli->makefiles, estrdup(optarg));
 			break;
 		case 'i':
-			ignoreErrors = TRUE;
+			ignoreErrors = true;
 			MFLAGS_append("-i", NULL);
 			break;
 		case 'j': {
 			char *endptr;
 
-			cli->forceJobs = TRUE;
+			cli->forceJobs = true;
 			jobLimit = strtol(optarg, &endptr, 10);
 			if (jobLimit <= 0 || *endptr != '\0') {
 				warnx("illegal number, -j argument -- %s",
@@ -520,7 +520,7 @@ rearg:
 			break;
 		}
 		case 'k':
-			keepgoing = TRUE;
+			keepgoing = true;
 			MFLAGS_append("-k", NULL);
 			break;
 		case 'm':
@@ -528,28 +528,28 @@ rearg:
 			MFLAGS_append("-m", optarg);
 			break;
 		case 'n':
-			noExecute = TRUE;
+			noExecute = true;
 			MFLAGS_append("-n", NULL);
 			break;
 		case 'q':
-			cli->queryFlag = TRUE;
+			cli->queryFlag = true;
 			/* Kind of nonsensical, wot? */
 			MFLAGS_append("-q", NULL);
 			break;
 		case 'r':
-			cli->builtins = FALSE;
+			cli->builtins = false;
 			MFLAGS_append("-r", NULL);
 			break;
 		case 's':
-			beSilent = TRUE;
+			beSilent = true;
 			MFLAGS_append("-s", NULL);
 			break;
 		case 't':
-			touchFlag = TRUE;
+			touchFlag = true;
 			MFLAGS_append("-t", NULL);
 			break;
 		case 'v':
-			beVerbose = TRUE;
+			beVerbose = true;
 			MFLAGS_append("-v", NULL);
 			break;
 		case 'x':
@@ -564,7 +564,7 @@ rearg:
 	argv += optind;
 	argc -= optind;
 
-	oldVars = TRUE;
+	oldVars = true;
 
 	/*
 	 * Parse the rest of the arguments.
@@ -634,7 +634,7 @@ Main_ParseArgLine(CLI *cli, const char line[], int mflags)
 	if (mflags) {
 		MAKEFLAGS_break(&aa, line);
 	} else {
-		brk_string(&aa, line, TRUE);
+		brk_string(&aa, line, true);
 	}
 	MainParseArgs(cli, aa.argc, aa.argv);
 	ArgArray_Done(&aa);
@@ -841,10 +841,10 @@ BuildStuff(CLI *cli)
 
 	/* Traverse the graph, checking on all the targets */
 	if (compatMake) {
-		Sig_Init(TRUE);
+		Sig_Init(true);
 		status = Compat_Run(&targs, cli->queryFlag);
 	} else {
-		Sig_Init(FALSE);
+		Sig_Init(false);
 		status = Make_Run(&targs, cli->queryFlag);
 	}
 
@@ -885,18 +885,18 @@ main(int argc, char **argv)
 	/*
 	 * Initialize program globals.
 	 */
-	beSilent = FALSE;		/* Print commands as executed */
-	ignoreErrors = FALSE;		/* Pay attention to non-zero returns */
-	noExecute = FALSE;		/* Execute all commands */
-	keepgoing = FALSE;		/* Stop on error */
-	allPrecious = FALSE;		/* Remove targets when interrupted */
-	touchFlag = FALSE;		/* Actually update targets */
-	usePipes = TRUE;		/* Catch child output in pipes */
+	beSilent = false;		/* Print commands as executed */
+	ignoreErrors = false;		/* Pay attention to non-zero returns */
+	noExecute = false;		/* Execute all commands */
+	keepgoing = false;		/* Stop on error */
+	allPrecious = false;		/* Remove targets when interrupted */
+	touchFlag = false;		/* Actually update targets */
+	usePipes = true;		/* Catch child output in pipes */
 	debug = 0;			/* No debug verbosity, please. */
-	jobsRunning = FALSE;
+	jobsRunning = false;
 
 	jobLimit = DEFMAXJOBS;
-	compatMake = FALSE;		/* No compat mode */
+	compatMake = false;		/* No compat mode */
 
 	/*
 	 * Initialize program flags.
@@ -907,10 +907,10 @@ main(int argc, char **argv)
 	TAILQ_INIT(&cli.parseIncPath);
 	TAILQ_INIT(&cli.sysIncPath);
 
-	cli.expandVars = TRUE;
-	cli.builtins = TRUE;		/* Read the built-in rules */
-	cli.queryFlag = FALSE;
-	cli.forceJobs = FALSE;
+	cli.expandVars = true;
+	cli.builtins = true;		/* Read the built-in rules */
+	cli.queryFlag = false;
+	cli.forceJobs = false;
 
 	/*
 	 * Initialize the various modules.
@@ -977,14 +977,14 @@ main(int argc, char **argv)
 	}
 
 	if (getenv("MAKE_JOBS_FIFO") != NULL)
-		cli.forceJobs = TRUE;
+		cli.forceJobs = true;
 
 	/*
 	 * Be compatible if user did not specify -j and did not explicitly
 	 * turned compatibility on
 	 */
-	if (compatMake == FALSE && cli.forceJobs == FALSE)
-		compatMake = TRUE;
+	if (compatMake == false && cli.forceJobs == false)
+		compatMake = true;
 
 	DEFAULT = NULL;
 	time(&now);
@@ -1015,7 +1015,7 @@ main(int argc, char **argv)
 	 * <directory>:<directory>:<directory>...
 	 */
 	if (Var_Exists("VPATH", VAR_CMD)) {
-		Buffer	*buf = Var_Subst("${VPATH}", VAR_CMD, FALSE);
+		Buffer	*buf = Var_Subst("${VPATH}", VAR_CMD, false);
 		char	*start = Buf_Data(buf);
 		char	*cp;
 
@@ -1023,7 +1023,7 @@ main(int argc, char **argv)
 			Path_AddDir(&dirSearchPath, cp);
 		}
 
-		Buf_Destroy(buf, TRUE);
+		Buf_Destroy(buf, true);
 	}
 
 	/*

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.14 2005/05/23 20:05:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.15 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef globals_h_1c1edb96
@@ -58,25 +58,25 @@ struct Path;
 extern struct Path dirSearchPath;
 
 extern int	jobLimit;	/* -j argument: maximum number of jobs */
-extern Boolean	jobsRunning;	/* True if jobs are running */
-extern Boolean	compatMake;	/* True if we are make compatible */
-extern Boolean	ignoreErrors;	/* True if should ignore all errors */
-extern Boolean	beSilent;	/* True if should print no commands */
-extern Boolean	beVerbose;	/* True if should print extra cruft */
-extern Boolean	noExecute;	/* True if should execute nothing */
-extern Boolean	allPrecious;	/* True if every target is precious */
+extern bool	jobsRunning;	/* True if jobs are running */
+extern bool	compatMake;	/* True if we are make compatible */
+extern bool	ignoreErrors;	/* True if should ignore all errors */
+extern bool	beSilent;	/* True if should print no commands */
+extern bool	beVerbose;	/* True if should print extra cruft */
+extern bool	noExecute;	/* True if should execute nothing */
+extern bool	allPrecious;	/* True if every target is precious */
 
 /* True if should continue on unaffected portions of the graph
  * when have an error in one portion */
-extern Boolean	keepgoing;
+extern bool	keepgoing;
 
-/* TRUE if targets should just be 'touched'if out of date. Set by the -t flag */
-extern Boolean	touchFlag;
+/* true if targets should just be 'touched'if out of date. Set by the -t flag */
+extern bool	touchFlag;
 
-/* TRUE if should capture the output of subshells by means of pipes.
+/* true if should capture the output of subshells by means of pipes.
  * Otherwise it is routed to temporary files from which it is retrieved
  * when the shell exits */
-extern Boolean	usePipes;
+extern bool	usePipes;
 
 /* List of specific variables for which the environment should be
  * searched before the global context */

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/cond.h,v 1.5 2005/05/23 20:04:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.h,v 1.6 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef cond_h_6e96ad7c
@@ -70,6 +70,6 @@ DirectiveHandler Cond_Else;
 DirectiveHandler Cond_Endif;
 DirectiveHandler Cond_End;
 
-extern Boolean skipLine;
+extern bool skipLine;
 
 #endif /* cond_h_6e96ad7c */

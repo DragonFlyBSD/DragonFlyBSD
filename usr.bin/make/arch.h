@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/arch.h,v 1.6 2005/05/19 17:10:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.h,v 1.7 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef arch_h_488adf7a
@@ -48,14 +48,14 @@ struct Lst;
 struct Path;
 
 /* archive errors are fatal */
-extern Boolean arch_fatal;
+extern bool arch_fatal;
 
-Boolean Arch_ParseArchive(char **, struct Lst *, struct GNode *);
+bool Arch_ParseArchive(char **, struct Lst *, struct GNode *);
 void Arch_Touch(struct GNode *);
 void Arch_TouchLib(struct GNode *);
 int Arch_MTime(struct GNode *);
 int Arch_MemMTime(struct GNode *);
 void Arch_FindLib(struct GNode *, struct Path *);
-Boolean Arch_LibOODate(struct GNode *);
+bool Arch_LibOODate(struct GNode *);
 
 #endif /* arch_h_488adf7a */

@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.30 2005/07/19 18:12:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.31 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -159,19 +159,19 @@ void		*Lst_DeQueue(Lst *);
 
 /*
  * LstValid (L) --
- *	Return TRUE if the list L is valid
+ *	Return true if the list L is valid
  */
-#define Lst_Valid(L)	(((L) == NULL) ? FALSE : TRUE)
+#define Lst_Valid(L)	(((L) == NULL) ? false : true)
 
 /*
  * LstNodeValid (LN, L) --
- *	Return TRUE if the LstNode LN is valid with respect to L
+ *	Return true if the LstNode LN is valid with respect to L
  */
-#define Lst_NodeValid(LN, L)	(((LN) == NULL) ? FALSE : TRUE)
+#define Lst_NodeValid(LN, L)	(((LN) == NULL) ? false : true)
 
 /*
  * Lst_IsEmpty(L) --
- *	TRUE if the list L is empty.
+ *	true if the list L is empty.
  */
 #define Lst_IsEmpty(L)	(!Lst_Valid(L) || (L)->firstPtr == NULL)
 

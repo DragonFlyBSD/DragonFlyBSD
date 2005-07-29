@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.31 2005/07/02 10:45:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.32 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*
@@ -47,8 +47,8 @@
  *
  * Interface:
  *	Make_Run	Initialize things for the module and recreate
- *			whatever needs recreating. Returns TRUE if
- *			work was (or would have been) done and FALSE
+ *			whatever needs recreating. Returns true if
+ *			work was (or would have been) done and false
  *			otherwise.
  *
  *	Make_Update	Update all parents of a given child. Performs
@@ -93,7 +93,7 @@ static Lst toBeMade = Lst_Initializer(toBeMade);
 
 /*
  * Number of nodes to be processed. If this is non-zero when Job_Empty()
- * returns TRUE, there's a cycle in the graph.
+ * returns true, there's a cycle in the graph.
  */
 static int numNodes;
 
@@ -129,16 +129,16 @@ Make_TimeStamp(GNode *pgn, GNode *cgn)
  *	will have been recreated.
  *
  * Results:
- *	TRUE if the node is out of date. FALSE otherwise.
+ *	true if the node is out of date. false otherwise.
  *
  * Side Effects:
  *	The mtime field of the node and the cmtime field of its parents
  *	will/may be changed.
  */
-Boolean
+bool
 Make_OODate(GNode *gn)
 {
-	Boolean	oodate;
+	bool	oodate;
 	LstNode	*ln;
 
 	/*
@@ -175,7 +175,7 @@ Make_OODate(GNode *gn)
 		 * no matter *what*.
 		 */
 		DEBUGF(MAKE, (".USE node..."));
-		oodate = FALSE;
+		oodate = false;
 
 	} else if (gn->type & OP_LIB) {
 		DEBUGF(MAKE, ("library..."));
@@ -207,7 +207,7 @@ Make_OODate(GNode *gn)
 		} else {
 			DEBUGF(MAKE, (".EXEC node..."));
 		}
-		oodate = TRUE;
+		oodate = true;
 
 	} else if ((gn->mtime < gn->cmtime) ||
 	    ((gn->cmtime == 0) &&
@@ -226,9 +226,9 @@ Make_OODate(GNode *gn)
 		} else {
 			DEBUGF(MAKE, (":: operator and no sources..."));
 		}
-		oodate = TRUE;
+		oodate = true;
 	} else
-		oodate = FALSE;
+		oodate = false;
 
 	/*
 	 * If the target isn't out-of-date, the parents need to know its
@@ -417,7 +417,7 @@ Make_Update(GNode *cgn)
 
 			if (!(cgn->type & (OP_EXEC | OP_USE))) {
 				if (cgn->made == MADE) {
-					pgn->childMade = TRUE;
+					pgn->childMade = true;
 					if (pgn->cmtime < cgn->mtime) {
 						pgn->cmtime = cgn->mtime;
 					}
@@ -574,7 +574,7 @@ Make_DoAllVar(GNode *gn)
  *	are filled.
  */
 static int
-MakeStartJobs(Boolean queryFlag)
+MakeStartJobs(bool queryFlag)
 {
 	GNode	*gn;
 
@@ -645,13 +645,13 @@ MakeStartJobs(Boolean queryFlag)
  *	already or not created due to an error in a lower level.
  *	Callback function for Make_Run via LST_FOREACH.  If gn->unmade is
  *	nonzero and that is meant to imply a cycle in the graph, then
- *	cycle is TRUE.
+ *	cycle is true.
  *
  * Side Effects:
  *	A message may be printed.
  */
 static void
-MakePrintStatus(GNode *gn, Boolean cycle)
+MakePrintStatus(GNode *gn, bool cycle)
 {
 	LstNode	*ln;
 
@@ -674,12 +674,12 @@ MakePrintStatus(GNode *gn, Boolean cycle)
 				Error("Graph cycles through `%s'", gn->name);
 				gn->made = ENDCYCLE;
 				LST_FOREACH(ln, &gn->children)
-					MakePrintStatus(Lst_Datum(ln), TRUE);
+					MakePrintStatus(Lst_Datum(ln), true);
 				gn->made = UNMADE;
 			} else if (gn->made != ENDCYCLE) {
 				gn->made = CYCLE;
 				LST_FOREACH(ln, &gn->children)
-					MakePrintStatus(Lst_Datum(ln), TRUE);
+					MakePrintStatus(Lst_Datum(ln), true);
 			}
 		} else {
 			printf("`%s' not remade because of errors.\n",
@@ -707,8 +707,8 @@ MakePrintStatus(GNode *gn, Boolean cycle)
  *	targets is set to 1. The toBeMade list is set to contain all the
  *	'leaves' of these subgraphs.
  */
-Boolean
-Make_Run(Lst *targs, Boolean queryFlag)
+bool
+Make_Run(Lst *targs, bool queryFlag)
 {
 	GNode	*gn;		/* a temporary pointer */
 	GNode	*cgn;
@@ -726,7 +726,7 @@ Make_Run(Lst *targs, Boolean queryFlag)
 	 */
 	if (!queryFlag) {
 		Job_Init(jobLimit);
-		jobsRunning = TRUE;
+		jobsRunning = true;
 	}
 
 	Lst_Init(&examine);
@@ -745,7 +745,7 @@ Make_Run(Lst *targs, Boolean queryFlag)
 		gn = Lst_DeQueue(&examine);
 
 		if (!gn->make) {
-			gn->make = TRUE;
+			gn->make = true;
 			numNodes++;
 
 			/*
@@ -777,7 +777,7 @@ Make_Run(Lst *targs, Boolean queryFlag)
 		 * the next loop... (we won't actually start any, of course,
 		 * this is just to see if any of the targets was out of date)
 		 */
-		return MakeStartJobs(TRUE);
+		return MakeStartJobs(true);
 	}
 
 	/*
@@ -787,7 +787,7 @@ Make_Run(Lst *targs, Boolean queryFlag)
 	 * routines in job.c upon the finishing of a job. So we fill
 	 * the Job table as much as we can before going into our loop.
 	 */
-	MakeStartJobs(FALSE);
+	MakeStartJobs(false);
 
 	/*
 	 * Main Loop: The idea here is that the ending of jobs will take
@@ -802,7 +802,7 @@ Make_Run(Lst *targs, Boolean queryFlag)
 	while (!Job_Empty()) {
 		Job_CatchOutput(!Lst_IsEmpty(&toBeMade));
 		Job_CatchChildren(!usePipes);
-		MakeStartJobs(FALSE);
+		MakeStartJobs(false);
 	}
 
 	errors = Job_Finish();

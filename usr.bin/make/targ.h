@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/targ.h,v 1.3 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.h,v 1.4 2005/07/29 22:48:41 okumoto Exp $
  */
 
 #ifndef targ_h_6ded1830
@@ -61,9 +61,9 @@ void Targ_Init(void);
 struct GNode *Targ_NewGN(const char *);
 struct GNode *Targ_FindNode(const char *, int);
 void Targ_FindList(struct Lst *, struct Lst *, int);
-Boolean Targ_Ignore(struct GNode *);
-Boolean Targ_Silent(struct GNode *);
-Boolean Targ_Precious(struct GNode *);
+bool Targ_Ignore(struct GNode *);
+bool Targ_Silent(struct GNode *);
+bool Targ_Precious(struct GNode *);
 void Targ_SetMain(struct GNode *);
 int Targ_PrintCmd(void *, void *);
 char *Targ_FmtTime(time_t);

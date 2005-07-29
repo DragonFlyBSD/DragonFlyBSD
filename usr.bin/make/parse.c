@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.91 2005/06/22 22:03:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.92 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*-
@@ -56,7 +56,7 @@
  *			already have been opened, and a function
  *			to call to read a character from the file.
  *
- *	Parse_IsVar	Returns TRUE if the given line is a
+ *	Parse_IsVar	Returns true if the given line is a
  *			variable assignment. Used by MainParseArgs
  *			to determine if an argument is a target
  *			or a variable assignment. Used internally
@@ -108,7 +108,7 @@
 static Lst targets = Lst_Initializer(targets);
 
 /* true if currently in a dependency line or its commands */
-static Boolean inLine;
+static bool inLine;
 
 static int fatals = 0;
 
@@ -241,29 +241,29 @@ static DirectiveHandler parse_endfor;
 static const struct directive {
 	const char		*name;
 	int			code;
-	Boolean			skip_flag;	/* execute even when skipped */
+	bool			skip_flag;	/* execute even when skipped */
 	DirectiveHandler	*func;
 } directives[] = {
 	/* DIRECTIVES-START-TAG */
-	{ "elif",	COND_ELIF,	TRUE,	Cond_If },
-	{ "elifdef",	COND_ELIFDEF,	TRUE,	Cond_If },
-	{ "elifmake",	COND_ELIFMAKE,	TRUE,	Cond_If },
-	{ "elifndef",	COND_ELIFNDEF,	TRUE,	Cond_If },
-	{ "elifnmake",	COND_ELIFNMAKE,	TRUE,	Cond_If },
-	{ "else",	COND_ELSE,	TRUE,	Cond_Else },
-	{ "endfor",	0,		FALSE,	parse_endfor },
-	{ "endif",	COND_ENDIF,	TRUE,	Cond_Endif },
-	{ "error",	1,		FALSE,	parse_message },
-	{ "for",	0,		FALSE,	parse_for },
-	{ "if",		COND_IF,	TRUE,	Cond_If },
-	{ "ifdef",	COND_IFDEF,	TRUE,	Cond_If },
-	{ "ifmake",	COND_IFMAKE,	TRUE,	Cond_If },
-	{ "ifndef",	COND_IFNDEF,	TRUE,	Cond_If },
-	{ "ifnmake",	COND_IFNMAKE,	TRUE,	Cond_If },
-	{ "include",	0,		FALSE,	parse_include },
-	{ "makeenv",	0,		FALSE,	parse_makeenv },
-	{ "undef",	0,		FALSE,	parse_undef },
-	{ "warning",	0,		FALSE,	parse_message },
+	{ "elif",	COND_ELIF,	true,	Cond_If },
+	{ "elifdef",	COND_ELIFDEF,	true,	Cond_If },
+	{ "elifmake",	COND_ELIFMAKE,	true,	Cond_If },
+	{ "elifndef",	COND_ELIFNDEF,	true,	Cond_If },
+	{ "elifnmake",	COND_ELIFNMAKE,	true,	Cond_If },
+	{ "else",	COND_ELSE,	true,	Cond_Else },
+	{ "endfor",	0,		false,	parse_endfor },
+	{ "endif",	COND_ENDIF,	true,	Cond_Endif },
+	{ "error",	1,		false,	parse_message },
+	{ "for",	0,		false,	parse_for },
+	{ "if",		COND_IF,	true,	Cond_If },
+	{ "ifdef",	COND_IFDEF,	true,	Cond_If },
+	{ "ifmake",	COND_IFMAKE,	true,	Cond_If },
+	{ "ifndef",	COND_IFNDEF,	true,	Cond_If },
+	{ "ifnmake",	COND_IFNMAKE,	true,	Cond_If },
+	{ "include",	0,		false,	parse_include },
+	{ "makeenv",	0,		false,	parse_makeenv },
+	{ "undef",	0,		false,	parse_undef },
+	{ "warning",	0,		false,	parse_message },
 	/* DIRECTIVES-END-TAG */
 };
 #define	NDIRECTS	(sizeof(directives) / sizeof(directives[0]))
@@ -404,7 +404,7 @@ parse_warn(const char line[])
 	ArgArray	aa;
 	int		i;
 
-	brk_string(&aa, line, TRUE);
+	brk_string(&aa, line, true);
 
 	for (i = 1; i < aa.argc; i++)
 		Main_ParseWarn(aa.argv[i], 0);
@@ -718,10 +718,10 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 				 * initial Var_Subst and we wouldn't be here.
 				 */
 				size_t	length = 0;
-				Boolean	freeIt;
+				bool	freeIt;
 				char	*result;
 
-				result = Var_Parse(cp, VAR_CMD, TRUE,
+				result = Var_Parse(cp, VAR_CMD, true,
 				    &length, &freeIt);
 
 				if (freeIt) {
@@ -769,8 +769,8 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 			 * file2.o file3.o)" are permissible. Arch_ParseArchive
 			 * will set 'line' to be the first non-blank after the
 			 * archive-spec. It creates/finds nodes for the members
-			 * and places them on the given list, returning TRUE
-			 * if all went well and FALSE if there was an error in
+			 * and places them on the given list, returning true
+			 * if all went well and false if there was an error in
 			 * the specification. On error, line should remain
 			 * untouched.
 			 */
@@ -962,11 +962,11 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 		 * target we allow on this line...
 		 */
 		if (specType != Not && specType != ExPath) {
-			Boolean warnFlag = FALSE;
+			bool warnFlag = false;
 
 			while (*cp != '!' && *cp != ':' && *cp) {
 				if (*cp != ' ' && *cp != '\t') {
-					warnFlag = TRUE;
+					warnFlag = true;
 				}
 				cp++;
 			}
@@ -1050,13 +1050,13 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 			Suff_ClearSuffixes();
 			break;
 		  case Precious:
-			allPrecious = TRUE;
+			allPrecious = true;
 			break;
 		  case Ignore:
-			ignoreErrors = TRUE;
+			ignoreErrors = true;
 			break;
 		  case Silent:
-			beSilent = TRUE;
+			beSilent = true;
 			break;
 		  case ExPath:
 			LST_FOREACH(ln, &paths)
@@ -1248,24 +1248,24 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 /*-
  *---------------------------------------------------------------------
  * Parse_IsVar  --
- *	Return TRUE if the passed line is a variable assignment. A variable
+ *	Return true if the passed line is a variable assignment. A variable
  *	assignment consists of a single word followed by optional whitespace
  *	followed by either a += or an = operator.
  *	This function is used both by the Parse_File function and main when
  *	parsing the command-line arguments.
  *
  * Results:
- *	TRUE if it is. FALSE if it ain't
+ *	true if it is. false if it ain't
  *
  * Side Effects:
  *	none
  *---------------------------------------------------------------------
  */
-Boolean
+bool
 Parse_IsVar(char *line)
 {
-	Boolean wasSpace = FALSE;	/* set TRUE if found a space */
-	Boolean haveName = FALSE;	/* Set TRUE if have a variable name */
+	bool wasSpace = false;	/* set true if found a space */
+	bool haveName = false;	/* Set true if have a variable name */
 
 	int level = 0;
 #define	ISEQOPERATOR(c) \
@@ -1283,7 +1283,7 @@ Parse_IsVar(char *line)
 			/*
 			 * end-of-line -- can't be a variable assignment.
 			 */
-			return (FALSE);
+			return (false);
 
 		  case ' ':
 		  case '\t':
@@ -1291,7 +1291,7 @@ Parse_IsVar(char *line)
 			 * there can be as much white space as desired so long
 			 * as there is only one word before the operator
 			*/
-			wasSpace = TRUE;
+			wasSpace = true;
 			break;
 
 		  case '(':
@@ -1311,7 +1311,7 @@ Parse_IsVar(char *line)
 					 * We must have a finished word
 					 */
 					if (level != 0)
-						return (FALSE);
+						return (false);
 
 					/*
 					 * When an = operator [+?!:] is found,
@@ -1332,11 +1332,11 @@ Parse_IsVar(char *line)
 				 * This is the start of another word, so not
 				 * assignment.
 				 */
-				return (FALSE);
+				return (false);
 
 			} else {
-				haveName = TRUE;
-				wasSpace = FALSE;
+				haveName = true;
+				wasSpace = false;
 			}
 			break;
 		}
@@ -1466,9 +1466,9 @@ Parse_DoVar(char *line, GNode *ctxt)
 		 *
 		 * And not get an error.
 		 */
-		Boolean oldOldVars = oldVars;
+		bool oldOldVars = oldVars;
 
-		oldVars = FALSE;
+		oldVars = false;
 
 		/*
 		 * make sure that we set the variable the first time to nothing
@@ -1477,7 +1477,7 @@ Parse_DoVar(char *line, GNode *ctxt)
 		if (!Var_Exists(line, ctxt))
 			Var_Set(line, "", ctxt);
 
-		cp = Buf_Peel(Var_Subst(cp, ctxt, FALSE));
+		cp = Buf_Peel(Var_Subst(cp, ctxt, false));
 
 		oldVars = oldOldVars;
 
@@ -1486,10 +1486,10 @@ Parse_DoVar(char *line, GNode *ctxt)
 
 	} else if (type == VAR_SHELL) {
 		/*
-		 * TRUE if the command needs to be freed, i.e.
+		 * true if the command needs to be freed, i.e.
 		 * if any variable expansion was performed
 		 */
-		Boolean	freeCmd = FALSE;
+		bool	freeCmd = false;
 		Buffer *buf;
 		const char *error;
 
@@ -1498,15 +1498,15 @@ Parse_DoVar(char *line, GNode *ctxt)
 			 * There's a dollar sign in the command, so perform
 			 * variable expansion on the whole thing. The
 			 * resulting string will need freeing when we're done,
-			 * so set freeCmd to TRUE.
+			 * so set freeCmd to true.
 			 */
-			cp = Buf_Peel(Var_Subst(cp, VAR_CMD, TRUE));
-			freeCmd = TRUE;
+			cp = Buf_Peel(Var_Subst(cp, VAR_CMD, true));
+			freeCmd = true;
 		}
 
 		buf = Cmd_Exec(cp, &error);
 		Var_Set(line, Buf_Data(buf), ctxt);
-		Buf_Destroy(buf, TRUE);
+		Buf_Destroy(buf, true);
 
 		if (error)
 			Parse_Error(PARSE_WARNING, error, cp);
@@ -1618,7 +1618,7 @@ ParseTraditionalInclude(Parser *parser, char *file)
 	 * Substitute for any variables in the file name before trying to
 	 * find the thing.
 	 */
-	file = Buf_Peel(Var_Subst(file, VAR_CMD, FALSE));
+	file = Buf_Peel(Var_Subst(file, VAR_CMD, false));
 
 	/*
 	 * Now we know the file's name, we attempt to find the durn thing.
@@ -1755,7 +1755,7 @@ ParseSkipLine(int skip, int keep_newline)
 		if (c == EOF) {
 			Parse_Error(PARSE_FATAL,
 			    "Unclosed conditional/for loop");
-			Buf_Destroy(buf, TRUE);
+			Buf_Destroy(buf, true);
 			return (NULL);
 		}
 
@@ -1764,7 +1764,7 @@ ParseSkipLine(int skip, int keep_newline)
 		line = Buf_Data(buf);
 	} while (skip == 1 && line[0] != '.');
 
-	Buf_Destroy(buf, FALSE);
+	Buf_Destroy(buf, false);
 	return (line);
 }
 
@@ -1791,25 +1791,25 @@ ParseReadLine(void)
 	Buffer	*buf;		/* Buffer for current line */
 	int	c;		/* the current character */
 	int	lastc;		/* The most-recent character */
-	Boolean	semiNL;		/* treat semi-colons as newlines */
-	Boolean	ignDepOp;	/* TRUE if should ignore dependency operators
+	bool	semiNL;		/* treat semi-colons as newlines */
+	bool	ignDepOp;	/* true if should ignore dependency operators
 				 * for the purposes of setting semiNL */
-	Boolean	ignComment;	/* TRUE if should ignore comments (in a
+	bool	ignComment;	/* true if should ignore comments (in a
 				 * shell command */
 	char	*line;		/* Result */
 	char	*ep;		/* to strip trailing blanks */
 
   again:
-	semiNL = FALSE;
-	ignDepOp = FALSE;
-	ignComment = FALSE;
+	semiNL = false;
+	ignDepOp = false;
+	ignComment = false;
 
 	lastc = '\0';
 
 	/*
 	 * Handle tab at the beginning of the line. A leading tab (shell
 	 * command) forces us to ignore comments and dependency operators and
-	 * treat semi-colons as semi-colons (by leaving semiNL FALSE).
+	 * treat semi-colons as semi-colons (by leaving semiNL false).
 	 * This also discards completely blank lines.
 	 */
 	for (;;) {
@@ -1823,7 +1823,7 @@ ParseReadLine(void)
 		}
 
 		if (c == '\t') {
-			ignComment = ignDepOp = TRUE;
+			ignComment = ignDepOp = true;
 			lastc = c;
 			break;
 		}
@@ -1846,7 +1846,7 @@ ParseReadLine(void)
 			 * replace them all by a single space. This is
 			 * done by storing the space over the backslash
 			 * and dropping through with the next nonspace.
-			 * If it is a semi-colon and semiNL is TRUE,
+			 * If it is a semi-colon and semiNL is true,
 			 * it will be recognized as a newline in the
 			 * code below this...
 			 */
@@ -1898,7 +1898,7 @@ ParseReadLine(void)
 				 * attention to dependency operators
 				 * after this.
 				 */
-				ignDepOp = TRUE;
+				ignDepOp = true;
 			} else if (lastc == ':' || lastc == '!') {
 				/*
 				 * Well, we've seen a dependency
@@ -1913,8 +1913,8 @@ ParseReadLine(void)
 				 * "foo : a:=b" will blow up, but who'd
 				 * write a line like that anyway?
 				 */
-				ignDepOp = TRUE;
-				semiNL = FALSE;
+				ignDepOp = true;
+				semiNL = false;
 			}
 			break;
 		  case '#':
@@ -1953,7 +1953,7 @@ ParseReadLine(void)
 				 * colon or an exclamation point.
 				 * Ergo...
 				 */
-				semiNL = TRUE;
+				semiNL = true;
 			}
 			break;
 
@@ -2011,7 +2011,7 @@ ParseReadLine(void)
  *	Nothing.
  *
  * Side Effects:
- *	inLine set FALSE. 'targets' list destroyed.
+ *	inLine set false. 'targets' list destroyed.
  *
  *-----------------------------------------------------------------------
  */
@@ -2026,7 +2026,7 @@ ParseFinishLine(void)
 				Suff_EndTransform(Lst_Datum(ln));
 		}
 		Lst_Destroy(&targets, ParseHasCommands);
-		inLine = FALSE;
+		inLine = false;
 	}
 }
 
@@ -2044,7 +2044,7 @@ parse_include(Parser *parser __unused, char *file, int code __unused, int lineno
 	char	*fullname;	/* full pathname of file */
 	char	endc;		/* the character which ends the file spec */
 	char	*cp;		/* current position in file spec */
-	Boolean	isSystem;	/* TRUE if makefile is a system makefile */
+	bool	isSystem;	/* true if makefile is a system makefile */
 	char	*prefEnd, *Fname;
 	char	*newName;
 
@@ -2067,10 +2067,10 @@ parse_include(Parser *parser __unused, char *file, int code __unused, int lineno
 	 * a system Makefile while double-quotes imply it's a user makefile
 	 */
 	if (*file == '<') {
-		isSystem = TRUE;
+		isSystem = true;
 		endc = '>';
 	} else {
-		isSystem = FALSE;
+		isSystem = false;
 		endc = '"';
 	}
 
@@ -2090,7 +2090,7 @@ parse_include(Parser *parser __unused, char *file, int code __unused, int lineno
 	 * Substitute for any variables in the file name before trying to
 	 * find the thing.
 	 */
-	file = Buf_Peel(Var_Subst(file, VAR_CMD, FALSE));
+	file = Buf_Peel(Var_Subst(file, VAR_CMD, false));
 
 	/*
 	 * Now we know the file's name and its search path, we attempt to
@@ -2190,7 +2190,7 @@ parse_message(Parser *parser __unused, char *line, int iserror, int lineno __unu
 	while (isspace((u_char)*line))
 		line++;
 
-	line = Buf_Peel(Var_Subst(line, VAR_GLOBAL, FALSE));
+	line = Buf_Peel(Var_Subst(line, VAR_GLOBAL, false));
 	Parse_Error(iserror ? PARSE_FATAL : PARSE_WARNING, "%s", line);
 	free(line);
 
@@ -2217,7 +2217,7 @@ parse_undef(Parser *parser __unused, char *line, int code __unused, int lineno _
 	}
 	*cp = '\0';
 
-	cp = Buf_Peel(Var_Subst(line, VAR_CMD, FALSE));
+	cp = Buf_Peel(Var_Subst(line, VAR_CMD, false));
 	Var_Delete(cp, VAR_GLOBAL);
 	free(cp);
 }
@@ -2239,7 +2239,7 @@ parse_makeenv(Parser *parser __unused, char *line, int code __unused, int lineno
 	}
 	*cp = '\0';
 
-	cp = Buf_Peel(Var_Subst(line, VAR_CMD, FALSE));
+	cp = Buf_Peel(Var_Subst(line, VAR_CMD, false));
 	Var_SetEnv(cp, VAR_GLOBAL);
 	free(cp);
 }
@@ -2293,9 +2293,9 @@ parse_endfor(Parser *parser __unused, char *line __unused, int code __unused, in
  *	and parse it.
  *
  * return:
- *	TRUE if line was a directive, FALSE otherwise.
+ *	true if line was a directive, false otherwise.
  */
-static Boolean
+static bool
 parse_directive(Parser *parser, char *line)
 {
 	char	*start;
@@ -2312,7 +2312,7 @@ parse_directive(Parser *parser, char *line)
 	}
 
 	if (!isalpha((u_char)*start)) {
-		return (FALSE);
+		return (false);
 	}
 
 	cp = start + 1;
@@ -2325,13 +2325,13 @@ parse_directive(Parser *parser, char *line)
 	    (size_t)(cp - start) != strlen(directives[dir].name) ||
 	    strncmp(start, directives[dir].name, cp - start) != 0) {
 		/* not actually matched */
-		return (FALSE);
+		return (false);
 	}
 
 	if (!skipLine || directives[dir].skip_flag)
 		(*directives[dir].func)(parser, cp, directives[dir].code,
 		    CURFILE->lineno);
-	return (TRUE);
+	return (true);
 }
 
 /**
@@ -2352,7 +2352,7 @@ Parse_File(Parser *parser, struct CLI *cli, const char name[], FILE *stream)
 	char	*cp;	/* pointer into the line */
 	char	*line;	/* the line we're working on */
 
-	inLine = FALSE;
+	inLine = false;
 	fatals = 0;
 
 	ParsePushInput(estrdup(name), stream, NULL, 0);
@@ -2450,7 +2450,7 @@ Parse_File(Parser *parser, struct CLI *cli, const char name[], FILE *stream)
 
 			ParseFinishLine();
 
-			cp = Buf_Peel(Var_Subst(line, VAR_CMD, TRUE));
+			cp = Buf_Peel(Var_Subst(line, VAR_CMD, true));
 
 			free(line);
 			line = cp;
@@ -2459,7 +2459,7 @@ Parse_File(Parser *parser, struct CLI *cli, const char name[], FILE *stream)
 			 * Need a non-circular list for the target nodes
 			 */
 			Lst_Destroy(&targets, NOFREE);
-			inLine = TRUE;
+			inLine = true;
 
 			ParseDoDependency(parser, cli, line);
 		}

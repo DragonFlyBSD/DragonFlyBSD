@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.42 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.43 2005/07/29 22:48:41 okumoto Exp $
  */
 
 /*-
@@ -85,10 +85,10 @@ static Lst	forLst;		/* List of items */
  *	The line pointer points just behind the for.
  *
  * Results:
- *	TRUE: Syntax ok.
- *	FALSE: Syntax error.
+ *	true: Syntax ok.
+ *	false: Syntax error.
  */
-Boolean
+bool
 For_For(char *line)
 {
 	char	*ptr;
@@ -116,11 +116,11 @@ For_For(char *line)
 	forVar = Buf_GetAll(buf, &varlen);
 
 	if (varlen == 0) {
-		Buf_Destroy(buf, TRUE);
+		Buf_Destroy(buf, true);
 		Parse_Error(PARSE_FATAL, "missing variable in for");
-		return (FALSE);
+		return (false);
 	}
-	Buf_Destroy(buf, FALSE);
+	Buf_Destroy(buf, false);
 
 	/*
 	 * Skip to 'in'.
@@ -135,7 +135,7 @@ For_For(char *line)
 		free(forVar);
 		Parse_Error(PARSE_FATAL, "missing `in' in for");
 		fprintf(stderr, "%s\n", ptr);
-		return (FALSE);
+		return (false);
 	}
 	ptr += 3;
 
@@ -148,7 +148,7 @@ For_For(char *line)
 	/*
 	 * Make a list with the remaining words
 	 */
-	sub = Buf_Peel(Var_Subst(ptr, VAR_CMD, FALSE));
+	sub = Buf_Peel(Var_Subst(ptr, VAR_CMD, false));
 	for (ptr = sub; *ptr != '\0' && isspace((u_char)*ptr); ptr++)
 		;
 
@@ -171,13 +171,13 @@ For_For(char *line)
 		Buf_AppendRange(buf, wrd, ptr);
 		Lst_AtFront(&forLst, Buf_Peel(buf));
 	} else {
-		Buf_Destroy(buf, TRUE);
+		Buf_Destroy(buf, true);
 	}
 	free(sub);
 
 	forBuf = Buf_Init(0);
 	forLevel++;
-	return (TRUE);
+	return (true);
 }
 
 /**
@@ -185,7 +185,7 @@ For_For(char *line)
  *	Eat a line of the .for body looking for embedded .for loops
  *	and the .endfor
  */
-Boolean
+bool
 For_Eval(char *line)
 {
 	char *ptr;
@@ -223,10 +223,10 @@ For_Eval(char *line)
 		 */
 		Buf_Append(forBuf, line);
 		Buf_AddByte(forBuf, (Byte)'\n');
-		return (TRUE);
+		return (true);
 	}
 
-	return (FALSE);
+	return (false);
 }
 
 /*-
@@ -269,7 +269,7 @@ For_Run(int lineno)
 		Var_Set(var, val, VAR_GLOBAL);
 
 		DEBUGF(FOR, ("--- %s = %s\n", var, val));
-		str = Buf_Peel(Var_SubstOnly(var, Buf_Data(buf), FALSE));
+		str = Buf_Peel(Var_SubstOnly(var, Buf_Data(buf), false));
 
 		Parse_FromString(str, lineno);
 		Var_Delete(var, VAR_GLOBAL);
@@ -277,5 +277,5 @@ For_Run(int lineno)
 
 	free(var);
 	Lst_Destroy(&values, free);
-	Buf_Destroy(buf, TRUE);
+	Buf_Destroy(buf, true);
 }
