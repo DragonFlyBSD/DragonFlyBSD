@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.39 2005/06/22 22:03:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.40 2005/07/29 22:45:44 okumoto Exp $
  */
 
 /*-
@@ -841,7 +841,7 @@ Path_FindFile(char *name, struct Path *path)
 	if (entry != NULL) {
 		DEBUGF(DIR, ("got it (in mtime cache)\n"));
 		return (estrdup(name));
-	} else if (stat (name, &stb) == 0) {
+	} else if (stat(name, &stb) == 0) {
 		entry = Hash_CreateEntry(&mtimes, name, (Boolean *)NULL);
 		DEBUGF(DIR, ("Caching %s for %s\n",
 		    Targ_FmtTime(stb.st_mtime), name));

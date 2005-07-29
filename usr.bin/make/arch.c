@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.51 2005/06/17 07:54:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.52 2005/07/29 22:45:44 okumoto Exp $
  */
 
 /*-
@@ -959,7 +959,7 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 	 */
 	he = Hash_FindEntry(&ar->members, member);
 	if (he != NULL)
-		return (*(int64_t *)Hash_GetValue (he));
+		return (*(int64_t *)Hash_GetValue(he));
 
 	if (member != NULL && strlen(member) > AR_NAMSIZ) {
 		/* Try truncated name */
