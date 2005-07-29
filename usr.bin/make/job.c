@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.133 2005/07/19 18:19:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.134 2005/07/29 22:47:01 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -631,16 +631,20 @@ ProcWait(ProcStuff *ps)
 
 /**
  * Execute the list of command associated with the node.
+ *
+ * @param save	Commands preceeded by "..." are save in this node to be
+ *		executed after the other rules are executed.
  */
 static void
-Compat_RunCmds(GNode *gn, Lst *cmds, GNode *ENDNode)
+Compat_RunCmds(GNode *gn, GNode *save)
 {
+	Lst	*cmds = &gn->commands;
 	LstNode	*ln;
 
 	LST_FOREACH(ln, cmds) {
 		char	*cmd = Lst_Datum(ln);
 
-		if (Compat_RunCommand(gn, cmd, ENDNode))
+		if (Compat_RunCommand(gn, cmd, save))
 			break;
 	}
 }
@@ -2750,7 +2754,7 @@ CompatInterrupt(void)
 	if (signo == SIGINT) {
 		gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
 		if (gn != NULL) {
-			Compat_RunCmds(gn, &gn->commands, NULL);
+			Compat_RunCmds(gn, NULL);
 		}
 	}
 
@@ -3102,7 +3106,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, Boolean queryFlag)
 				JobTouch(gn, gn->type & OP_SILENT);
 			} else {
 				curTarg = gn;
-				Compat_RunCmds(gn, &gn->commands, ENDNode);
+				Compat_RunCmds(gn, ENDNode);
 				curTarg = NULL;
 			}
 		} else {
@@ -3247,7 +3251,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	if (queryFlag == FALSE) {
 		GNode *gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
-			Compat_RunCmds(gn, &gn->commands, ENDNode);
+			Compat_RunCmds(gn, ENDNode);
 			if (gn->made == ERROR) {
 				printf("\n\nStop.\n");
 				/*
@@ -3290,7 +3294,7 @@ Compat_Run(Lst *targs, Boolean queryFlag)
 	 * If the user has defined a .END target, run its commands.
 	 */
 	if (error_cnt == 0) {
-		Compat_RunCmds(ENDNode, &ENDNode->commands, NULL);
+		Compat_RunCmds(ENDNode, NULL);
 	}
 
 	return (0);	/* Successful completion */
