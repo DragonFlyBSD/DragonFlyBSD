@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/pcx/splash_pcx.c,v 1.4 1999/08/28 00:47:39 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/pcx/splash_pcx.c,v 1.3 2003/08/15 08:32:32 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/pcx/splash_pcx.c,v 1.4 2005/07/29 21:17:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -45,11 +45,11 @@
 static int splash_mode = -1;
 static int splash_on = FALSE;
 
-static int pcx_start(video_adapter_t *adp);
-static int pcx_end(video_adapter_t *adp);
-static int pcx_splash(video_adapter_t *adp, int on);
-static int pcx_init(const char *data, int sdepth);
-static int pcx_draw(video_adapter_t *adp);
+static int pcx_start(video_adapter_t *);
+static int pcx_end(video_adapter_t *);
+static int pcx_splash(video_adapter_t *, int);
+static int pcx_init(const char *, int);
+static int pcx_draw(video_adapter_t *);
 
 static splash_decoder_t pcx_decoder = {
     "splash_pcx", pcx_start, pcx_end, pcx_splash, SPLASH_IMAGE,

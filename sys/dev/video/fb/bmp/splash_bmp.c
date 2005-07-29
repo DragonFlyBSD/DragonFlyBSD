@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.7 2005/03/13 01:53:56 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.8 2005/07/29 21:17:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -46,11 +46,11 @@
 static int splash_mode = -1;
 static int splash_on = FALSE;
 
-static int bmp_start(video_adapter_t *adp);
-static int bmp_end(video_adapter_t *adp);
-static int bmp_splash(video_adapter_t *adp, int on);
-static int bmp_Init(const char *data, int swidth, int sheight, int sdepth);
-static int bmp_Draw(video_adapter_t *adp);
+static int bmp_start(video_adapter_t *);
+static int bmp_end(video_adapter_t *);
+static int bmp_splash(video_adapter_t *, int);
+static int bmp_Init(const char *, int, int, int);
+static int bmp_Draw(video_adapter_t *);
 
 static splash_decoder_t bmp_decoder = {
     "splash_bmp", bmp_start, bmp_end, bmp_splash, SPLASH_IMAGE,

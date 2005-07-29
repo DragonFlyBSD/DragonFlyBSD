@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.13 2005/07/09 22:39:58 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.14 2005/07/29 21:17:08 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -427,63 +427,57 @@ static int		rows_offset = 1;
 #define BIOS_SADDRTOLADDR(p) ((((p) & 0xffff0000) >> 12) + ((p) & 0x0000ffff))
 
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-static void map_mode_table(u_char *map[], u_char *table, int max);
+static void map_mode_table(u_char **, u_char *, int);
 #endif
-static void clear_mode_map(video_adapter_t *adp, u_char *map[], int max,
-			   int color);
+static void clear_mode_map(video_adapter_t *, u_char **, int, int);
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-static int map_mode_num(int mode);
+static int map_mode_num(int);
 #endif
-static int map_gen_mode_num(int type, int color, int mode);
-static int map_bios_mode_num(int type, int color, int bios_mode);
-static u_char *get_mode_param(int mode);
+static int map_gen_mode_num(int, int, int);
+static int map_bios_mode_num(int, int, int);
+static u_char *get_mode_param(int);
 #ifndef VGA_NO_BIOS
-static void fill_adapter_param(int code, video_adapter_t *adp);
+static void fill_adapter_param(int, video_adapter_t *);
 #endif
-static int verify_adapter(video_adapter_t *adp);
-static void update_adapter_info(video_adapter_t *adp, video_info_t *info);
+static int verify_adapter(video_adapter_t *);
+static void update_adapter_info(video_adapter_t *, video_info_t *);
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
 #define COMP_IDENTICAL	0
 #define COMP_SIMILAR	1
 #define COMP_DIFFERENT	2
-static int comp_adpregs(u_char *buf1, u_char *buf2);
+static int comp_adpregs(u_char *, u_char *);
 #endif
 static int probe_adapters(void);
-static int set_line_length(video_adapter_t *adp, int pixel);
-static int set_display_start(video_adapter_t *adp, int x, int y);
+static int set_line_length(video_adapter_t *, int);
+static int set_display_start(video_adapter_t *, int, int);
 
 #ifndef VGA_NO_MODE_CHANGE
 #ifdef VGA_WIDTH90
-static void set_width90(adp_state_t *params);
+static void set_width90(adp_state_t *);
 #endif
 #endif /* !VGA_NO_MODE_CHANGE */
 
 #ifndef VGA_NO_FONT_LOADING
 #define PARAM_BUFSIZE	6
-static void set_font_mode(video_adapter_t *adp, u_char *buf);
-static void set_normal_mode(video_adapter_t *adp, u_char *buf);
+static void set_font_mode(video_adapter_t *, u_char *);
+static void set_normal_mode(video_adapter_t *, u_char *);
 #endif
 
 #ifndef VGA_NO_MODE_CHANGE
-static void filll_io(int val, vm_offset_t d, size_t size);
-static void planar_fill(video_adapter_t *adp, int val);
-static void packed_fill(video_adapter_t *adp, int val);
-static void direct_fill(video_adapter_t *adp, int val);
+static void filll_io(int, vm_offset_t, size_t);
+static void planar_fill(video_adapter_t *, int);
+static void packed_fill(video_adapter_t *, int);
+static void direct_fill(video_adapter_t *, int);
 #ifdef notyet
-static void planar_fill_rect(video_adapter_t *adp, int val, int x, int y,
-			     int cx, int cy);
-static void packed_fill_rect(video_adapter_t *adp, int val, int x, int y,
-			     int cx, int cy);
-static void direct_fill_rect16(video_adapter_t *adp, int val, int x, int y,
-			       int cx, int cy);
-static void direct_fill_rect24(video_adapter_t *adp, int val, int x, int y,
-			       int cx, int cy);
-static void direct_fill_rect32(video_adapter_t *adp, int val, int x, int y,
-			       int cx, int cy);
+static void planar_fill_rect(video_adapter_t *, int, int, int, int, int);
+static void packed_fill_rect(video_adapter_t *, int, int, int, int, int);
+static void direct_fill_rect16(video_adapter_t *, int, int, int, int, int);
+static void direct_fill_rect24(video_adapter_t *, int, int, int, int, int);
+static void direct_fill_rect32(video_adapter_t *, int, int, int, int, int);
 #endif /* notyet */
 #endif /* !VGA_NO_MODE_CHANGE */
 
-static void dump_buffer(u_char *buf, size_t len);
+static void dump_buffer(u_char *, size_t);
 
 #define	ISMAPPED(pa, width)				\
 	(((pa) <= (u_long)0x1000 - (width)) 		\
