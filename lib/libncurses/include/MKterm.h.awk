@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/include/MKterm.h.awk,v 1.2 2005/03/14 09:14:57 eirikn Exp $
+# $DragonFly: src/lib/libncurses/include/MKterm.h.awk,v 1.3 2005/07/29 14:20:11 joerg Exp $
 BEGIN		{
 		    print  "/****************************************************************************"
 		    print  " * Copyright (c) 1998-2001,2003 Free Software Foundation, Inc.              *"
@@ -83,7 +83,7 @@ BEGIN		{
 		    print  "#define HAVE_TCGETATTR 1/*default*/"
 		    print  ""
 		    print  "#undef  NCURSES_CONST"
-		    print  "#define NCURSES_CONST /*nothing*/"
+		    print  "#define NCURSES_CONST const"
 		    print  ""
 		    print  "#undef  NCURSES_XNAMES"
 		    print  "#define NCURSES_XNAMES 1"

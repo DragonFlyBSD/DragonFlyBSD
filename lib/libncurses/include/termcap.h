@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /* $Id: termcap.h.in,v 1.16 2001/03/24 21:53:27 tom Exp $ */
-/* $DragonFly: src/lib/libncurses/include/termcap.h,v 1.1 2005/03/12 19:13:54 eirikn Exp $ */
+/* $DragonFly: src/lib/libncurses/include/termcap.h,v 1.2 2005/07/29 14:20:11 joerg Exp $ */
 
 #ifndef NCURSES_TERMCAP_H_incl
 #define NCURSES_TERMCAP_H_incl	1
@@ -69,7 +69,7 @@ extern "C"
 #include <sys/types.h>
 
 #undef  NCURSES_CONST 
-#define NCURSES_CONST /*nothing*/ 
+#define NCURSES_CONST const
 
 #undef  NCURSES_OSPEED 
 #define NCURSES_OSPEED short 

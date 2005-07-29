@@ -33,7 +33,7 @@
  ****************************************************************************/
 
 /* $Id: curses.h.in,v 1.148 2004/01/14 23:50:12 tom Exp $ */
-/* $DragonFly: src/lib/libncurses/include/curses.head,v 1.1 2005/03/12 19:13:54 eirikn Exp $ */
+/* $DragonFly: src/lib/libncurses/include/curses.head,v 1.2 2005/07/29 14:20:11 joerg Exp $ */
 
 #ifndef __NCURSES_H
 #define __NCURSES_H
@@ -93,7 +93,7 @@
  * doing so makes it incompatible with other implementations of X/Open Curses.
  */
 #undef  NCURSES_CONST
-#define NCURSES_CONST /*nothing*/
+#define NCURSES_CONST const
 
 /*
  * The internal type used for color values
