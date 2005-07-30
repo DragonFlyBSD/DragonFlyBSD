@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.24 2005/07/23 23:26:50 joerg Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.25 2005/07/30 20:29:40 joerg Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -32,6 +32,10 @@
 #include <sys/param.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
+
+#ifdef COMPAT_43
+#include <emulation/43bsd/stat.h>
+#endif
 
 ; Reserved/unimplemented system calls in the range 0-150 inclusive
 ; are reserved for use in future Berkeley releases.

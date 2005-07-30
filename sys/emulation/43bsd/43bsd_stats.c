@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.3 2004/09/30 18:59:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.4 2005/07/30 20:29:40 joerg Exp $
  * 	from: DragonFly kern/kern_descrip.c,v 1.16
  *	from: DragonFly kern/vfs_syscalls.c,v 1.21
  *
@@ -56,6 +56,8 @@
 #include <sys/kern_syscall.h>
 #include <sys/namei.h>
 #include <sys/nlookup.h>
+
+#include <emulation/43bsd/stat.h>
 
 static int
 compat_43_copyout_stat(struct stat *st, struct ostat *uaddr)

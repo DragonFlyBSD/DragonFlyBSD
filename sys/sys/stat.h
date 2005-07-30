@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.5 2005/07/27 14:35:55 joerg Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.6 2005/07/30 20:29:40 joerg Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -52,26 +52,6 @@
 #else
 #define __dev_t	dev_t
 #endif
-
-#ifndef _POSIX_SOURCE
-struct ostat {
-	u_int16_t st_dev;		/* inode's device */
-	ino_t	  st_ino;		/* inode's number */
-	mode_t	  st_mode;		/* inode protection mode */
-	nlink_t	  st_nlink;		/* number of hard links */
-	u_int16_t st_uid;		/* user ID of the file's owner */
-	u_int16_t st_gid;		/* group ID of the file's group */
-	u_int16_t st_rdev;		/* device type */
-	int32_t	  st_size;		/* file size, in bytes */
-	struct	timespec st_atimespec;	/* time of last access */
-	struct	timespec st_mtimespec;	/* time of last data modification */
-	struct	timespec st_ctimespec;	/* time of last file status change */
-	int32_t	  st_blksize;		/* optimal blocksize for I/O */
-	int32_t	  st_blocks;		/* blocks allocated for file */
-	u_int32_t st_flags;		/* user defined flags for file */
-	u_int32_t st_gen;		/* file generation number */
-};
-#endif /* !_POSIX_SOURCE */
 
 struct stat {
 	__dev_t	  st_dev;		/* inode's device */
