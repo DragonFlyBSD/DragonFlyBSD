@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)wall.c	5.14 (Berkeley) 3/2/91
  * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
- * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.6 2005/05/31 19:11:04 liamfoy Exp $
+ * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.7 2005/07/30 16:44:12 liamfoy Exp $
  */
 
 /*
@@ -136,7 +136,7 @@ makemsg(const char *fname)
 	time_t now;
 	FILE *fp;
 	int fd;
-	char hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[64];
+	char hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[MAXPATHLEN];
 	const char *whom, *tty;
 
 	snprintf(tmpname, sizeof(tmpname), "%s/wall.XXXXXX", _PATH_TMP);
