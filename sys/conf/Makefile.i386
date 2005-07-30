@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.20 2005/04/20 20:27:04 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.21 2005/07/30 09:10:33 swildner Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -74,7 +74,7 @@ ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS}
 
 DEFINED_PROF=	${PROF}
 .if defined(PROF)
-CFLAGS+=	-malign-functions=4
+CFLAGS+=	-falign-functions=16
 .if ${PROFLEVEL} >= 2
 IDENT+=	-DGPROF4 -DGUPROF
 PROF+=	-mprofiler-epilogue

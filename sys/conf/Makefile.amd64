@@ -1,7 +1,7 @@
 # Makefile.amd64 -- with config changes.
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
-# $DragonFly: src/sys/conf/Attic/Makefile.amd64,v 1.5 2005/02/18 11:41:41 corecode Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.amd64,v 1.6 2005/07/30 09:10:33 swildner Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -67,7 +67,7 @@ ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS}
 
 DEFINED_PROF=	${PROF}
 .if defined(PROF)
-CFLAGS+=	-malign-functions=4
+CFLAGS+=	-falign-functions=16
 .if ${PROFLEVEL} >= 2
 IDENT+=	-DGPROF4 -DGUPROF
 PROF+=	-mprofiler-epilogue
