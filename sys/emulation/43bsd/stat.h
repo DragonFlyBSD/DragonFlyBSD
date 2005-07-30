@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/stat.h,v 1.1 2005/07/30 20:29:40 joerg Exp $
+ * $DragonFly: src/sys/emulation/43bsd/stat.h,v 1.2 2005/07/30 21:52:28 joerg Exp $
  */
 
 #ifndef _EMULATION_43BSD_STAT_H_
@@ -58,4 +58,4 @@ struct ostat {
 	u_int32_t st_gen;		/* file generation number */
 };
 
-#endif /* !_SYS_STAT_H_ */
+#endif /* !_EMULATION_43BSD_STAT_H_ */
