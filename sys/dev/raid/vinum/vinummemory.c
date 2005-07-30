@@ -35,7 +35,7 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.7 2005/06/13 22:21:39 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.8 2005/07/30 18:52:35 joerg Exp $
  */
 
 #include "vinumhdr.h"
@@ -142,7 +142,6 @@ static int mallocseq = 0;
 caddr_t
 MMalloc(int size, char *file, int line)
 {
-    int s;
     caddr_t result;
     int i;
 
