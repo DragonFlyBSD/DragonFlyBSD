@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tput.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/tput/tput.c,v 1.7.6.3 2002/08/17 14:52:50 tjr Exp $
- * $DragonFly: src/usr.bin/tput/tput.c,v 1.4 2005/02/04 20:00:25 cpressey Exp $
+ * $DragonFly: src/usr.bin/tput/tput.c,v 1.5 2005/07/30 11:53:52 liamfoy Exp $
  */
 
 #include <termios.h>
@@ -75,7 +75,7 @@ main(int argc, char **argv)
 	if (!term && !(term = getenv("TERM")))
 errx(2, "no terminal type specified and no TERM environmental variable.");
 	if (tgetent(tbuf, term) != 1)
-		err(2, "tgetent failure");
+		err(3, "tgetent failure");
 	for (exitval = 0; (p = *argv) != NULL; ++argv) {
 		switch (*p) {
 		case 'c':
@@ -200,5 +200,5 @@ static void
 usage(void)
 {
 	(void)fprintf(stderr, "usage: tput [-T term] attribute ...\n");
-	exit(1);
+	exit(2);
 }
