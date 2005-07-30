@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.14 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.15 2005/07/30 01:12:22 hmp Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -52,8 +52,6 @@
  * XIOs.  The DEV and BUF subsystems are a good example.
  *
  * TODO LIST:
- *	- Implement the FREEQ optimization that exists in the SFBUF code.
- *	- Allow allocation (aka mapping) based on an XIO instead of a pglist.
  *	- Overload XIOs representitive of smaller chunks of memory onto the
  *	  same KVA space to efficiently cache smaller mappings (filesystem
  *	  blocks / buffer cache related).
