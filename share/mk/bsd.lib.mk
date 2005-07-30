@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.13 2005/07/28 19:19:46 joerg Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.14 2005/07/30 13:59:45 joerg Exp $
 #
 
 .include <bsd.init.mk>
@@ -33,6 +33,8 @@ STRIP?=	-s
 .include <bsd.libnames.mk>
 
 TARGET_LIBDIR?=		${LIBDIR}
+TARGET_DEBUGLIBDIR?=	${DEBUGLIBDIR}
+TARGET_PROFLIBDIR?=	${PROFLIBDIR}
 TARGET_SHLIBDIR?=	${SHLIBDIR}
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
@@ -243,7 +245,7 @@ _libinstall:
 .endif
 .if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
 	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
-	    ${_INSTALLFLAGS} lib${LIB}_p.a ${DESTDIR}${TARGET_LIBDIR}
+	    ${_INSTALLFLAGS} lib${LIB}_p.a ${DESTDIR}${TARGET_PROFLIBDIR}/lib${LIB}.a
 .endif
 .if defined(SHLIB_NAME)
 	${INSTALL} ${STRIP} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \

@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.7 2005/05/11 19:46:49 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.8 2005/07/30 13:59:45 joerg Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -122,18 +122,19 @@ Boston, MA 02111-1307, USA.  */
 #define DFBSD_LIB_SPEC "							\
   %{pthread: %eThe -pthread option is only supported on DragonFly when gcc \
 is built with the --enable-threads configure-time option.}		\
-  %{!shared:								\
-    %{!pg: -lc}								\
-    %{pg:  -lc_p}							\
+  %{pg: -L/usr/lib/profiling}						\
+  %{g: -L/usr/lib/debug}						\
+  -L/usr/lib								\
+  -lc									\
   }"
 #else
 #define DFBSD_LIB_SPEC "						\
-  %{!shared:								\
-    %{!pg:								\
-      %{pthread:-lc_r} -lc}						\
-    %{pg:								\
-      %{pthread:-lc_r_p} -lc_p}						\
-  }"
+  %{pg: -L/usr/lib/profiling}						\
+  %{g: -L/usr/lib/debug}						\
+  -L/usr/lib								\
+  %{!shared: %{pthread:-lc_r}}						\
+  -lc									\
+  "
 #endif
 
 #define DFBSD_LINK_COMMAND_SPEC "\

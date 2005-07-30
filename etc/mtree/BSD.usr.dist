@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.38 2005/07/08 15:38:54 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.39 2005/07/30 13:59:45 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -15,11 +15,23 @@
     include
     ..
     lib
+        debug
+	..
 	gcc34
+	    debug
+	    ..
+	    profile
+	    ..
 	..
 	gcc40
+	    debug
+	    ..
+	    profile
+	    ..
 	..
 	i18n
+	..
+	profile
 	..
 	security
 	..

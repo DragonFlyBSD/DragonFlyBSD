@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.5 2005/03/25 11:42:36 y0netan1 Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.6 2005/07/30 13:59:45 joerg Exp $
 
 LIB=    ncurses
 
@@ -254,11 +254,11 @@ SYMLINKS+=libncurses.so ${SHLIBDIR}/libmytinfo.so
 SYMLINKS+=libncurses.so ${SHLIBDIR}/libtinfo.so
 .endif
 .if !defined(NOPROFILE)
-SYMLINKS+=libncurses_p.a ${LIBDIR}/libcurses_p.a
-SYMLINKS+=libncurses_p.a ${LIBDIR}/libtermcap_p.a
-SYMLINKS+=libncurses_p.a ${LIBDIR}/libtermlib_p.a
-SYMLINKS+=libncurses_p.a ${LIBDIR}/libmytinfo_p.a
-SYMLINKS+=libncurses_p.a ${LIBDIR}/libtinfo_p.a
+SYMLINKS+=libncurses.a ${PROFLIBDIR}/libcurses.a
+SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtermcap.a
+SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtermlib.a
+SYMLINKS+=libncurses.a ${PROFLIBDIR}/libmytinfo.a
+SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtinfo.aa
 .endif
 
 INCS=	term.h ${.CURDIR}/../include/termcap.h \
