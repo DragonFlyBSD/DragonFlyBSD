@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.17 2005/07/30 20:15:48 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.18 2005/07/31 01:27:50 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -76,7 +76,9 @@ MLINKS+=VOP_RDWR.9 VOP_WRITE.9
 MLINKS+=VOP_REMOVE.9 VOP_RMDIR.9
 MLINKS+=at_exit.9 rm_at_exit.9
 MLINKS+=at_fork.9 rm_at_fork.9
-MLINKS+=bufcache.9 bread.9 bufcache.9 bwrite.9 bufcache.9 bufinit.9
+MLINKS+=bufcache.9 bread.9
+MLINKS+=bufcache.9 bwrite.9
+MLINKS+=bufcache.9 bufinit.9
 MLINKS+=bus_alloc_resource.9 bus_alloc_resource_any.9
 MLINKS+=bus_dma.9 busdma.9
 MLINKS+=bus_dma.9 bus_dma_tag_create.9
