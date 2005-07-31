@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.bin/shlock/shlock.1,v 1.1 2005/07/31 09:13:48 asmodai Exp $
+.\" $DragonFly: src/usr.bin/shlock/shlock.1,v 1.2 2005/07/31 09:23:47 asmodai Exp $
 .\"
 .Dd July 24, 2005
 .Dt SHLOCK 1
@@ -58,6 +58,10 @@ The process id that will be written to file.
 .It Fl u
 Use UUCP style lock file format.
 .El
+.Sh DIAGNOSTICS
+The
+.Nm
+command exists with 0 on success or with >0 if there was a problem.
 .Sh HISTORY
 The
 .Nm
