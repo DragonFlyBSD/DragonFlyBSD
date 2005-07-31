@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.18 2005/07/31 01:27:50 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.19 2005/07/31 01:50:38 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
