@@ -1,7 +1,8 @@
 # Subversion control file for DragonFly 1.2.X-RELEASE
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_2,v 1.1.2.5 2005/07/07 17:56:38 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_2,v 1.1.2.6 2005/07/31 23:06:01 dillon Exp $
 0	-
 1	22Apr2005
 2	09May2005	TLS fix
 3	29Jun2005	Compiler, bootstrap, security, fork/^Z race, nfile limit, token, PF fixes.
 4	07Jul2005	wildcard expansion bug in /bin/sh, security issue in bzip2, core dumping to NFS mounts, updated leapseconds, bridging fix.
+5	31Jul2005	missing crit_exit()/splx() calls, softupdates fixes part 1/2, critical SMP IPI messaging fix, critical SMP token code fix, ktrace fix.
