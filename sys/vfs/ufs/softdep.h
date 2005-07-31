@@ -37,7 +37,7 @@
  *
  *	@(#)softdep.h	9.7 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/softdep.h,v 1.7.2.1 2000/06/22 19:27:42 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.4 2005/07/31 22:25:46 dillon Exp $
  */
 
 #include <sys/queue.h>
@@ -397,6 +397,7 @@ struct freefrag {
  */
 struct freeblks {
 	struct	worklist fb_list;	/* id_inowait or delayed worklist */
+#	define  fb_state fb_list.wk_state /* inode and dirty block state */
 	ino_t	fb_previousinum;	/* inode of previous owner of blocks */
 	struct	vnode *fb_devvp;	/* filesystem device vnode */
 	struct	fs *fb_fs;		/* addr of superblock */

@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.26 2005/07/26 20:53:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.27 2005/07/31 22:25:46 dillon Exp $
  */
 
 /*
@@ -1764,6 +1764,7 @@ softdep_setup_freeblocks(ip, length)
 		M_FREEBLKS, M_SOFTDEP_FLAGS);
 	bzero(freeblks, sizeof(struct freeblks));
 	freeblks->fb_list.wk_type = D_FREEBLKS;
+	freeblks->fb_state = ATTACHED;
 	freeblks->fb_uid = ip->i_uid;
 	freeblks->fb_previousinum = ip->i_number;
 	freeblks->fb_devvp = ip->i_devvp;
@@ -1841,6 +1842,20 @@ softdep_setup_freeblocks(ip, length)
 	} while (count > 0);
 	if (inodedep_lookup(fs, ip->i_number, 0, &inodedep) != 0)
 		(void)free_inodedep(inodedep);
+
+	if (delay) {
+		freeblks->fb_state |= DEPCOMPLETE;
+		/*
+		 * If the inode with zeroed block pointers is now on disk
+		 * we can start freeing blocks. Add freeblks to the worklist
+		 * instead of calling  handle_workitem_freeblocks directly as
+		 * it is more likely that additional IO is needed to complete
+		 * the request here than in the !delay case.
+		 */
+		if ((freeblks->fb_state & ALLCOMPLETE) == ALLCOMPLETE)
+			add_to_worklist(&freeblks->fb_list);
+	}
+
 	FREE_LOCK(&lk);
 	/*
 	 * If the inode has never been written to disk (delay == 0),
@@ -3602,6 +3617,10 @@ handle_written_inodeblock(inodedep, bp)
 			continue;
 
 		case D_FREEBLKS:
+			wk->wk_state |= COMPLETE;
+			if ((wk->wk_state  & ALLCOMPLETE) != ALLCOMPLETE)
+				continue;
+			/* -- fall through -- */
 		case D_FREEFRAG:
 		case D_DIRREM:
 			add_to_worklist(wk);
