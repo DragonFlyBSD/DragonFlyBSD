@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)chgrp.1	8.3 (Berkeley) 3/31/94
 .\" $FreeBSD: src/usr.sbin/chown/chgrp.1,v 1.9.2.3 2001/08/16 15:55:44 ru Exp $
-.\" $DragonFly: src/usr.sbin/chown/chgrp.1,v 1.3 2005/07/31 12:02:44 asmodai Exp $
+.\" $DragonFly: src/usr.sbin/chown/chgrp.1,v 1.4 2005/07/31 12:08:12 asmodai Exp $
 .\"
 .Dd March 31, 1994
 .Dt CHGRP 1
@@ -124,8 +124,10 @@ or be the super-user.
 In previous versions of this system, symbolic links did not have groups.
 .Pp
 The
+.Fl f
+and
 .Fl v
-option is non-standard and its use in scripts is not recommended.
+options are extensions to the standard.
 .Sh FILES
 .Bl -tag -width /etc/group -compact
 .It Pa /etc/group
