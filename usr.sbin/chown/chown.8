@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)chown.8	8.3 (Berkeley) 3/31/94
 .\" $FreeBSD: src/usr.sbin/chown/chown.8,v 1.10.2.7 2003/03/12 22:08:13 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/chown/chown.8,v 1.3 2004/11/25 19:45:30 liamfoy Exp $
+.\" $DragonFly: src/usr.sbin/chown/chown.8,v 1.4 2005/07/31 12:27:29 asmodai Exp $
 .\"
 .Dd November 24, 2004 
 .Dt CHOWN 8
@@ -41,7 +41,11 @@
 .Nd change file owner and group
 .Sh SYNOPSIS
 .Nm
-.Op Fl fhv
+.Op Fl fhvR
+.Ar owner Ns Op : Ns Ar group
+.Ar
+.Nm
+.Op Fl fv
 .Oo
 .Fl R
 .Op Fl H | Fl L | Fl P
@@ -49,7 +53,11 @@
 .Ar owner Ns Op : Ns Ar group
 .Ar
 .Nm
-.Op Fl fhv
+.Op Fl fhvR
+.No : Ns Ar group
+.Ar
+.Nm
+.Op Fl fv
 .Oo
 .Fl R
 .Op Fl H | Fl L | Fl P
@@ -161,9 +169,14 @@ option is non-standard and its use in scripts is not recommended.
 .Sh STANDARDS
 The
 .Nm
-utility is expected to be
+utility conforms to
 .St -p1003.2
-compliant.
+and
+.St -p1003.1-2004 .
+.Pp
+The
+.No : Ns Ar group
+use is an extension to the standard.
 .Sh HISTORY
 A
 .Nm
