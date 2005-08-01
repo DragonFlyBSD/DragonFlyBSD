@@ -1,12 +1,12 @@
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
-.\" by Maxime Labelle. 
-.\" 
+.\" by Maxime Labelle.
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 
+.\"
 .\" 1. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
@@ -30,13 +30,13 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.6 2005/05/30 00:54:46 swildner Exp $ 
+.\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.7 2005/08/01 01:49:18 swildner Exp $
 .Dd May 29, 2005
 .Dt BATTD 8
 .Os
 .Sh NAME
 .Nm battd
-.Nd Battery status monitoring daemon 
+.Nd Battery status monitoring daemon
 .Sh SYNOPSIS
 .Nm
 .Op Fl hEdT
@@ -51,7 +51,7 @@ The
 daemon monitors the status of the battery or batteries present in the system.
 The daemon will alert all users on the system and may execute a supplied
 command once a particular criteria has been met. The criterias are based
-on the percentage remaining, the time remaining and the status of the battery. 
+on the percentage remaining, the time remaining and the status of the battery.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -67,24 +67,24 @@ in debug mode.
 Execute
 .Ar command
 once condition has been met.
-.It Fl E 
+.It Fl E
 Execute command only once after a condition has been met.
 .It Fl f Ar device
-Specifies a different device path to be used. Default is 
+Specifies a different device path to be used. Default is
 .Ar /dev/apm .
-.It Fl h 
+.It Fl h
 Print
-.Nm 
+.Nm
 command line usage and exit.
 .It Fl p Ar percent
 Alert the user when the remaining battery life has reached approximately
 .Ar percent .
 .It Fl s Ar status
-Alert the user when the remaining battery has reached a given status. The status specified can either be 
+Alert the user when the remaining battery has reached a given status. The status specified can either be
 .Ar high
-, 
+,
 .Ar low
-or 
+or
 .Ar critical .
 .It Fl t Ar minutes
 Alert the user when the remaining battery time has reached approximately

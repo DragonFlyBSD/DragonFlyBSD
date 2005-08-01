@@ -1,14 +1,14 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.4 2005/06/02 16:20:51 dillon Exp $
-.\" 
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.5 2005/08/01 01:49:18 swildner Exp $
+.\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
-.\" 
+.\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
-.\" 
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 
+.\"
 .\" 1. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
 .\" 3. Neither the name of The DragonFly Project nor the names of its
 .\"    contributors may be used to endorse or promote products derived
 .\"    from this software without specific, prior written permission.
-.\" 
+.\"
 .\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 .\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -31,7 +31,7 @@
 .\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
-.\" 
+.\"
 .Dd April 26, 2005
 .Dt DNTPD 8
 .Os
@@ -53,7 +53,7 @@ The
 .Nm
 daemon will synchronize the system clock to one or more external NTP time
 sources.  By default an initial coarse offset correction will be made if
-time is off by greater than 2 minutes.  Additional sliding offset 
+time is off by greater than 2 minutes.  Additional sliding offset
 corrections will be made if necessary.  Once sufficient information is
 obtained,
 .Nm
@@ -85,7 +85,7 @@ and
 and logs to stderr instead of syslog.  The normal client code is run and
 time corrections will be made.
 .It Fl n
-No-update mode.  No actual update is made any time the client would 
+No-update mode.  No actual update is made any time the client would
 otherwise normally update the system frequency or offset.
 .It Fl q
 Quiet mode.  Implies a logging level of 0.
@@ -103,7 +103,7 @@ Test mode.  Implies
 .Fl n ,
 and
 .Fl f Ar /dev/null
-and logs to stderr instead of syslog.  A single linear regression is 
+and logs to stderr instead of syslog.  A single linear regression is
 accumulated at the nominal polling rate and reported until terminated.
 No time corrections are made.  This option is meant for testing only.
 Note that frequency corrections based on internet time sources typically
@@ -129,7 +129,7 @@ while the client is in aquisition mode.
 The default is 300 sconds (5 minutes).
 .It Fl L Ar maximum_poll
 Set the maximum polling interval, in seconds.  This is the interval used
-while the client is in maintainance mode, after it believes it has 
+while the client is in maintainance mode, after it believes it has
 stabilized the system's clock.
 The default is 1800 seconds (30 minutes).
 .It targets
@@ -147,17 +147,17 @@ time.  The two linear regressions are staggered so the second one is stable
 and can replace the first one once the first's sampling limit has been
 reached.
 The second linear regression is also capable of overriding the first if
-the target changes sufficiently to invalidate the first's correlation. 
+the target changes sufficiently to invalidate the first's correlation.
 .Pp
-The linear regression is a line-fitting algorithm which allows us to 
-calculate a running Y-intercept, slope, and correlation factor.  The 
+The linear regression is a line-fitting algorithm which allows us to
+calculate a running Y-intercept, slope, and correlation factor.  The
 Y-intercept is currently not used but can be an indication of a shift in
 the time source.  The slope basically gives us the drift rate which in
 turn allows us to correct the frequency.  The correlation gives us a
 quality indication, with 0 being the worst and +/- 1.0 being the best.
 .Pp
 A standard deviation is calculated for offset corrections.  A standard
-deviation gives us measure of the deviation from the mean of a set of 
+deviation gives us measure of the deviation from the mean of a set of
 samples.
 .Nm
 uses the sum(offset_error) and sum(offset_error^2) method to calculate
@@ -217,7 +217,7 @@ It will take up to 30 seconds for
 to make the initial coarse offset correction.  It can take anywhere from
 5 minutes to 3 hours for
 .Nm
-to make the initial frequency correction, depending on the time source. 
+to make the initial frequency correction, depending on the time source.
 Internet time sources require long delays between samples to get a high
 quality correlation in order to issue a frequency correction.
 .Pp
@@ -239,7 +239,7 @@ than four.
 An algorithm is needed to deal with time sources with packet-latency-based
 offset errors.
 .Pp
-The offset correction needs to be able to operate while a prior offset 
+The offset correction needs to be able to operate while a prior offset
 correction is still in-progress.
 .Pp
 We need to record the frequency correction in a file which is then read on

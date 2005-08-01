@@ -58,7 +58,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/KASSERT.9,v 1.1.2.4 2001/07/21 09:16:54 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/KASSERT.9,v 1.5 2005/04/03 19:50:39 swildner Exp $
+.\" $DragonFly: src/share/man/man9/KASSERT.9,v 1.6 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd May 10, 2004
 .Os
@@ -104,7 +104,7 @@ void
 vput(struct vnode *vp)
 {
 	struct thread *td = curthread;
-	
+
 	KASSERT(vp != NULL, ("vput: null vp"));
 	...
 }

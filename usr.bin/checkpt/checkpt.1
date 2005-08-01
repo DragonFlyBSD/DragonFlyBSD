@@ -1,6 +1,6 @@
-.\" 
+.\"
 .\" Copyright (c) 2003 Matthew Dillon, All Rights Reserved.
-.\" 
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
@@ -9,7 +9,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 
+.\"
 .\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 .\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 .\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -21,8 +21,8 @@
 .\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
-.\" 
-.\" $DragonFly: src/usr.bin/checkpt/checkpt.1,v 1.3 2005/02/26 11:10:35 asmodai Exp $
+.\"
+.\" $DragonFly: src/usr.bin/checkpt/checkpt.1,v 1.4 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd October 19, 2003
 .Dt CHECKPT 1
@@ -39,11 +39,11 @@ The
 utility will resume the checkpointed program from the specified checkpoint
 file.  Programs can be checkpointed using ^E.
 .Pp
-By default, only members of the wheel group can checkpoint a program. 
-The group can be changed with the sysctl kern.ckptgroup.  
-The checkpoint file template can be changed with the sysctl kern.ckptfile. 
+By default, only members of the wheel group can checkpoint a program.
+The group can be changed with the sysctl kern.ckptgroup.
+The checkpoint file template can be changed with the sysctl kern.ckptfile.
 .Pp
-The checkpointing utility is fairly primitive.  Only programs 
+The checkpointing utility is fairly primitive.  Only programs
 operating on normal files can be properly restored.  Programs which operate
 on devices, sockets, or pipes (including piped commands) cannot be completely.
 File descriptors 0, 1, and 2, are not saved and the restored program will

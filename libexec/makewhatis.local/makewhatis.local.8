@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/makewhatis/makewhatis.local.8,v 1.13 2002/07/14 15:12:00 charnier Exp $
-.\" $DragonFly: src/libexec/makewhatis.local/makewhatis.local.8,v 1.1 2004/03/25 18:05:49 joerg Exp $
+.\" $DragonFly: src/libexec/makewhatis.local/makewhatis.local.8,v 1.2 2005/08/01 01:49:16 swildner Exp $
 .Dd April 26, 1996
 .Dt MAKEWHATIS.LOCAL 8
 .Os
@@ -37,20 +37,20 @@
 .Nm /usr/libexec/catman.local
 .Op options
 .Ar directories ...
-.Sh DESCRIPTION 
+.Sh DESCRIPTION
 The
 .Nm
 utility starts
 .Xr makewhatis 8
 only for file systems physically mounted on the system
-where the 
+where the
 .Nm
 is being executed. Running makewhatis
-by 
+by
 .Pa periodic weekly
 for rw nfs-mounted /usr may kill
 your NFS server -- all NFS clients start makewhatis at the same time!
-So use this wrapper for 
+So use this wrapper for
 .Xr cron 8
 instead of calling makewhatis directly.
 The

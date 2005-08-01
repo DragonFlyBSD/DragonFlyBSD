@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.4 2005/03/08 20:29:55 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.5 2005/08/01 01:49:16 swildner Exp $
 .\"
 .Dd February 21, 2005
 .Dt UMTX 2
@@ -51,7 +51,7 @@ The
 .Fn umtx_sleep
 system call will put the calling process to sleep for
 .Fa timeout
-microseconds if the contents of the specified point matches 
+microseconds if the contents of the specified point matches
 the specified value.
 Specifying a timeout of 0 indicates an indefinite timeout.
 The comparison is not atomic with the sleep but is properly
@@ -95,7 +95,7 @@ it will return -1 and set
 as shown below.
 .Pp
 .Fn umtx_wakeup
-will generally return 0 unless the address is bad. 
+will generally return 0 unless the address is bad.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EBUSY
@@ -163,7 +163,7 @@ userland_get_mutex_contested(struct umtx *mtx)
 	    umtx_sleep(&mtx->lock, v, 0);
 	    /*
 	     * XXX note: if we are woken up here but do not proceed to
-	     * attempt to obtain the mutex, we should chain the 
+	     * attempt to obtain the mutex, we should chain the
 	     * umtx_wakeup() along.
 	     */
 	}
@@ -201,7 +201,7 @@ userland_rel_mutex(struct umtx *mtx)
 }
 .Ed
 .Sh SEE ALSO
-.Xr tls 2  
+.Xr tls 2
 .Sh HISTORY
 The
 .Fn umtx_sleep ,

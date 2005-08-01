@@ -12,19 +12,19 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.\" THIS SOFTWARE IS PROVIDED BY JEFF WHEELHOUSE ``AS IS'' AND ANY EXPRESS OR 
-.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+.\" THIS SOFTWARE IS PROVIDED BY JEFF WHEELHOUSE ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
 .\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN
-.\" NO EVENT SHALL JEFF WHEELHOUSE BE LIABLE FOR ANY DIRECT, INDIRECT, 
+.\" NO EVENT SHALL JEFF WHEELHOUSE BE LIABLE FOR ANY DIRECT, INDIRECT,
 .\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING BUT NOT
 .\" LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-.\" OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
-.\" LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+.\" OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+.\" LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 .\" NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $Id: clog.8,v 1.2 2001/10/02 04:41:21 jdw Exp $
-.\" $DragonFly: src/usr.sbin/clog/clog.8,v 1.2 2004/12/26 12:37:08 swildner Exp $
+.\" $DragonFly: src/usr.sbin/clog/clog.8,v 1.3 2005/08/01 01:49:18 swildner Exp $
 .\"
 .Dd October 1, 2001
 .Dt CLOG 8
@@ -49,19 +49,19 @@ Display the contents of the circular logfile
 then go into a loop waiting for
 new material to arrive.  This is essentially the same as using the
 .Fl f
-option of the 
+option of the
 .Xr tail 1
 command on a standard syslog file.
 .It Fl i
-Initialize 
+Initialize
 .Ar logfile
-rather than reading it.  This option requires the 
+rather than reading it.  This option requires the
 .Fl s
-option.  If 
+option.  If
 .Ar logfile
 already exists, it will be truncated and recreated by this command.
 .It Fl s
-This option specifies the size in bytes of the circular logfile that should 
+This option specifies the size in bytes of the circular logfile that should
 be created.  This option requires the
 .Fl i
 option.
@@ -69,21 +69,21 @@ option.
 .Sh ABOUT CIRCULAR LOGFILES
 The
 .Nm
-command supports circular logfiles for 
+command supports circular logfiles for
 .Xr syslogd 8 .
 A circular logfile differs from a standard syslog file in that is has a fixed
-size.  It does not grow, and does not need to be rotated.  When 
-.Xr syslogd 8 
+size.  It does not grow, and does not need to be rotated.  When
+.Xr syslogd 8
 reaches the end of a circular logfile, it simply begins again at the beginning,
-overwriting the oldest data.  The circular logfile also contains information 
-allowing 
+overwriting the oldest data.  The circular logfile also contains information
+allowing
 .Nm
 to establish what parts of the file are valid, and in what order they should
 be displayed.
 .Pp
 Circular logfiles are primarily useful for their ability to control the amount
-of storage devoted to logfiles.  This may be valuable when storage space is 
-at a premium or when the consequences of running out of storage space are 
+of storage devoted to logfiles.  This may be valuable when storage space is
+at a premium or when the consequences of running out of storage space are
 unacceptable.  Circular logfiles can safely be used on a memory disk (see
 .Xr md 4 ).
 .Pp

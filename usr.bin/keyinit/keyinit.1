@@ -1,6 +1,6 @@
 .\"	@(#)keyinit.1	1.0 (Bellcore) 7/20/93
 .\" $FreeBSD: src/usr.bin/keyinit/keyinit.1,v 1.8 2000/03/01 12:19:47 sheldonh Exp $
-.\" $DragonFly: src/usr.bin/keyinit/keyinit.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/keyinit/keyinit.1,v 1.3 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd July 20, 1993
 .Dt KEYINIT 1
@@ -11,7 +11,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl s
-.Op Ar userID 
+.Op Ar userID
 .Sh DESCRIPTION
 .Nm Keyinit
 initializes the system so you can use S/Key one-time passwords to
@@ -19,7 +19,7 @@ login.  The program will ask you to enter a secret pass phrase; enter a
 phrase of several words in response.
 After the S/Key database has been
 updated you can login using either your regular UNIX password or using
-S/Key one-time passwords. 
+S/Key one-time passwords.
 .Pp
 When logging in from another machine you can avoid typing a real
 password over the network, by typing your S/Key pass phrase to the
@@ -59,7 +59,7 @@ control of the parameters.  You can use
 .Nm
 .Fl s
 in combination with
-the 
+the
 .Nm key
 command to set the seed and count if you do not like the defaults.
 To do this run

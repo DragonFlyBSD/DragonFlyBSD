@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)psignal.3	8.2 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/gen/psignal.3,v 1.10.2.5 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/psignal.3,v 1.3 2003/10/14 23:13:05 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/psignal.3,v 1.4 2005/08/01 01:49:16 swildner Exp $
 .\"
 .Dd February 27, 1995
 .Dt PSIGNAL 3
@@ -109,7 +109,7 @@ Note that the defined variable
 .Dv NSIG
 will typically be the same as
 .Va sys_nsig ,
-but might be different due to newer or older kernels and newer or 
+but might be different due to newer or older kernels and newer or
 older libc libraries.  For maximum portability you must use
 .Va sys_nsig
 to limit-check the above arrays.  Additionally, you should check

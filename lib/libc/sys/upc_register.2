@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.5 2004/07/08 01:16:02 hmp Exp $
+.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.6 2005/08/01 01:49:16 swildner Exp $
 .\"
 .Dd November 20, 2003
 .Dt UPC_REGISTER 2
@@ -71,8 +71,8 @@ structure, push a minimal context (not even call-used), and pass the C
 function and data pointers to
 .Fa ctxfunc
 in registers.
-.Fa ctxfunc 
-will then proceed to save appropriate state, call the C function, and 
+.Fa ctxfunc
+will then proceed to save appropriate state, call the C function, and
 deal with cleanup.
 Cleanup typically involves an interlocking operation
 and a call to
@@ -83,7 +83,7 @@ pending upcalls atomically.
 will typically pop most of its state, set upcall->pending to 1,
 subtract
 .Dv LWKT_CRITPRI
-from upcall->crit_count, and call  
+from upcall->crit_count, and call
 .Fn upc_control "UPC_CONTROL_NEXT" "-1" "stack_pointer"
 which atomically handles any further pending upcalls and/or pops the
 original stack context supplied to
@@ -114,7 +114,7 @@ Through appropriate
 .Fn upc_control
 calls any process within this domain can generate an upcall on any other
 process within this domain, including itself.
-Each process typically 
+Each process typically
 installs a different (per-process) upcall data structure.
 .Pp
 The
@@ -181,7 +181,7 @@ deleted.
 If a particular
 .Fa upcid
 is specified, it will be deleted regardless of which process registered it.
-The upcall structural pointer registered with this or any other process is 
+The upcall structural pointer registered with this or any other process is
 not effected.
 .Ed
 .Pp
@@ -200,7 +200,7 @@ or
 is returned, or
 .Li -1
 if an error occurred (e.g.
-.Er ENOENT ).  
+.Er ENOENT ).
 If a
 .Fa upcid
 of -1 is specified, locate a pending upcall for the current process and return
@@ -223,17 +223,17 @@ struct upcall {
 };
 .Ed
 .Pp
-This is a user space structure a pointer to which is registered with the 
+This is a user space structure a pointer to which is registered with the
 kernel via
 .Fn upc_register
 \.
 The
 .Fa crit_count
 field prevents new upcalls from being dispatched.
-When an upcall is 
+When an upcall is
 dispatched the kernel automatically adds
 .Dv UPC_CRITADD
-to 
+to
 .Fa crit_count
 and sets
 .Fa pending
@@ -249,7 +249,7 @@ when the current upcall has completed.
 In particular, the context function
 must subtract
 .Va UPC_CRITADD
-from 
+from
 .Fa crit_count
 before restoring the original context or calling
 .Fn upc_control "UPC_CONTROL_NEXT" "..."
@@ -284,10 +284,10 @@ is non-zero, the routine will generally call
 to dispatch upcalls which were made pending while you were in the critical
 section.
 .Sh CONTEXT FUNCTION - IA32
-The context function is called with the stack pointer pointing at a 
+The context function is called with the stack pointer pointing at a
 kernel-constructed stack frame.
 Only a minimal number of registers are
-saved by the kernel. 
+saved by the kernel.
 .Pp
 .Bd -literal -offset indent -compact
 frame {
@@ -343,14 +343,14 @@ having the context code subtract down
 as per normal but not pre-set the
 .Fa pending
 field.  If it does this and
-.Fa pending 
+.Fa pending
 is 0, it is possible for the kernel to initiate another upcall before
 the context code has had a chance to pop its stack and restore the original
 user context.
 This is OK under controlled circumstances.
 On the other hand,
 if
-.Fa pending 
+.Fa pending
 is 1
 the context code knows there is another upcall pending and can call
 .Fn upc_control
@@ -412,7 +412,7 @@ cannot be found.
 .Sh HISTORY
 The
 .Fn upc_register
-and 
+and
 .Fn upc_control
 function calls
 appeared in

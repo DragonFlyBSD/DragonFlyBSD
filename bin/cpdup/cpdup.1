@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.7 2004/10/31 00:43:14 liamfoy Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.8 2005/08/01 01:49:16 swildner Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -33,15 +33,15 @@
 .Ar source_dir
 .Ar target_dir
 .Sh DESCRIPTION
-The 
+The
 .Nm
 utility makes an exact mirror copy of the source in the destination, creating
-and deleting files and directories as necessary.  UTimes, hardlinks, 
+and deleting files and directories as necessary.  UTimes, hardlinks,
 softlinks, devices, permissions, and flags are mirrored.  By default,
 .Nm
 asks for confirmation if any file or directory needs to be removed from
 the destination and does not copy files which it believes to have already
-been synchronized (by observing that the source and destination file's size 
+been synchronized (by observing that the source and destination file's size
 and mtimes match).
 .Nm
 does not cross mount points in either the source or the destination.
@@ -58,7 +58,7 @@ does not report its progress except when asking for confirmation.  A single
 .Fl v
 will only report modifications made to the destination.
 .Fl vv
-will report directories as they are being traversed as well as 
+will report directories as they are being traversed as well as
 modifications made to the destination.
 .Fl vvv
 will cause all files and directories to be reported whether or not
@@ -85,7 +85,7 @@ Do not remove any files, just overwrite/add.
 .It Fl m
 Generate and maintain an MD5 checkfile in each directory on the source
 and do an MD5 check on each file of the destination when the destination
-appears to be the same as the source.  If the check fails, 
+appears to be the same as the source.  If the check fails,
 .Nm
 the source is recopied to the destination.  When you specify a destination
 directory the MD5 checkfile is only updated as needed and may not be updated

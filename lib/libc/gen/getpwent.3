@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)getpwent.3	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/gen/getpwent.3,v 1.11.2.5 2002/02/01 15:51:16 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/getpwent.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getpwent.3,v 1.3 2005/08/01 01:49:16 swildner Exp $
 .\"
 .Dd September 20, 1994
 .Dt GETPWENT 3
@@ -149,7 +149,7 @@ functions use the YP maps
 .Dq Li passwd.byname
 and
 .Dq Li passwd.byuid ,
-respectively, if the requested password entry is not found in the 
+respectively, if the requested password entry is not found in the
 local database.  The
 .Fn getpwent
 function will step through the YP map

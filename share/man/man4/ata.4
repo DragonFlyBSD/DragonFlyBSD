@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ata.4,v 1.3.2.18 2002/10/16 13:40:51 fjoe Exp $
-.\" $DragonFly: src/share/man/man4/ata.4,v 1.3 2004/09/01 14:30:05 asmodai Exp $
+.\" $DragonFly: src/share/man/man4/ata.4,v 1.4 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd January 27, 2000
 .Dt ATA 4
@@ -176,9 +176,9 @@ at a later time when the system is up and running, see
 .Xr atacontrol 8 .
 .Pp
 The driver attempts to set the maximum performance transfer mode on your disk
-drives by selecting the highest possible DMA mode. However the 
+drives by selecting the highest possible DMA mode. However the
 .Nm
-driver sometimes issue the message 
+driver sometimes issue the message
 "DMA limited to UDMA33, non-ATA66 cable or device",
 if the cable is ATA66 (or above) compliant, it is because the other device
 on this channel states it can only accept upto UDMA2/ATA33 signals.

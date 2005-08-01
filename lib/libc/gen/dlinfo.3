@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dlinfo.3,v 1.3.2.1 2003/02/20 20:42:45 kan Exp $
-.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.3 2005/08/01 01:49:16 swildner Exp $
 .\"
 .Dd February 14, 2003
 .Os
@@ -86,7 +86,7 @@ describing shared object specified by
 argument.
 .Ft Link_map
 stuctures are maintained as double-linked list by
-.Xr ld.so 1 
+.Xr ld.so 1
 in same order as
 .Fn dlopen
 and
@@ -105,7 +105,7 @@ structure is defined in <link.h> and have following members:
   const char      *l_name;   /* Absolute Path to Library */
   const void      *l_ld;     /* Pointer to .dynamic in memory */
   struct link_map *l_next,   /* linked list of of mapped libs */
-                  *l_prev;     
+                  *l_prev;
 .Ed
 .Bl -tag -width Ds
 .It l_addr

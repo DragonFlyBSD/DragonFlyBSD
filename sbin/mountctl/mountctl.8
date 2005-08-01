@@ -1,13 +1,13 @@
 .\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
-.\" 
+.\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
-.\" 
-.\" 
+.\"
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 
+.\"
 .\" 1. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
 .\" 3. Neither the name of The DragonFly Project nor the names of its
 .\"    contributors may be used to endorse or promote products derived
 .\"    from this software without specific, prior written permission.
-.\" 
+.\"
 .\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 .\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.5 2005/07/13 02:00:19 dillon Exp $
+.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.6 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd January 8, 2005
 .Dt MOUNTCTL 8
@@ -87,7 +87,7 @@ or tag, including their current state of operation.
 will add a new journal to a mount point.  A mount may have any number of
 journals associated with it.  If no output path is specified the journal
 will be written to the standard output.  Options may be specified as
-described in the OPTION KEYWORDS section. 
+described in the OPTION KEYWORDS section.
 The tag is required and must be unique
 relative to any given mount, but you can use the same tag on multiple
 mount points if you wish (and control them all together by referencing that
@@ -193,25 +193,25 @@ option.
 .It Ar memfifo=size[k,m]
 Specify the size of the in-kernel memory FIFO used to buffer the journaling
 stream between processes doing filesystem operations and the worker thread
-writing out the journal.  Since the kernel has limited virtual memory 
+writing out the journal.  Since the kernel has limited virtual memory
 buffers larger then 4MB are not recommended.
 .It Ar swapfifo=size[k,m,g]
 Specify the size of the kernel-managed swap-backed FIFO used to buffer
 overflows.
 .It Ar path=filepath
-Specify where the journal's output stream should be directed.  
+Specify where the journal's output stream should be directed.
 Note that the
 .Fl w
-option is equivalent to specifying the path option.  Both should not be 
+option is equivalent to specifying the path option.  Both should not be
 specified.
 .It Ar fd=filedesc
 Specify where the journal's output stream should be directed by handing over
 a file desciptor.
 Use file descriptor 1 if you wish to output the journal to the current
-stdout. 
+stdout.
 Note that the
 .Fl w
-option is equivalent to specifying the path option.  Both should not be 
+option is equivalent to specifying the path option.  Both should not be
 specified.
 .It Ar freeze
 Freeze the worker thread.  This may cause the filesystem to stall once

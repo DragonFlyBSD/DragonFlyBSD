@@ -68,7 +68,7 @@
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
-.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.3 2004/07/16 05:04:36 hmp Exp $
+.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.4 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd March 17, 2004
 .Dt BUS_DMA 9
@@ -206,7 +206,7 @@ Callbacks are of the format:
 The
 .Fa callback_arg
 is the callback argument passed to dmamap load functions.
-The 
+The
 .Fa segs
 and
 .Fa nseg
@@ -225,7 +225,7 @@ the load of a
 .Vt bus_dmamap_t
 via
 .Fn bus_dmamap_load_uio
-or 
+or
 .Fn bus_dmamap_load_mbuf .
 .sp
 Callback2s are of the format:
@@ -348,7 +348,7 @@ DMA mapping associated with this tag.
 .It Fa nsegments
 Number of discontinuities (scatter/gather segments) allowed
 in a DMA mapped region.
-If there is no restriction, 
+If there is no restriction,
 .Dv BUS_SPACE_UNRESTRICTED
 may be specified.
 .It Fa maxsegsz
@@ -366,7 +366,7 @@ If sufficient resources are not available,
 is returned.
 .El
 .It Fa dmat
-Pointer to a bus_dma_tag_t where the resulting DMA tag will 
+Pointer to a bus_dma_tag_t where the resulting DMA tag will
 be stored.
 .El
 .Pp
@@ -601,7 +601,7 @@ returned via
 .Fa mapp .
 Arguments are as follows:
 .Bl -tag -width alignment -compact
-.It Fa dmat 
+.It Fa dmat
 DMA tag describing the constraints of the DMA mapping.
 .It Fa vaddr
 Pointer to a pointer that will hold the returned KVA mapping of
@@ -613,7 +613,7 @@ Flags are defined as follows:
 The routine can safely wait (sleep) for resources.
 .It Dv BUS_DMA_NOWAIT
 The routine is not allowed to wait for resources.
-If resources are not available, 
+If resources are not available,
 .Dv ENOMEM
 is returned.
 .It Dv BUS_DMA_COHERENT

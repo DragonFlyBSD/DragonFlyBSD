@@ -1,6 +1,6 @@
 .\"	from: @(#)key.1	1.0 (Bellcore) 12/2/91
 .\" $FreeBSD: src/usr.bin/key/key.1,v 1.5.2.2 2001/03/06 12:52:43 ru Exp $
-.\" $DragonFly: src/usr.bin/key/key.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/key/key.1,v 1.3 2005/08/01 01:49:17 swildner Exp $
 .\"
 .Dd December 2, 1991
 .Dt KEY 1
@@ -12,13 +12,13 @@
 .Nm
 .Op Fl n Ar count
 .Ar sequence
-.Ar key 
+.Ar key
 .Sh DESCRIPTION
 .Nm Key
-takes the optional count of the number of one time access 
+takes the optional count of the number of one time access
 passwords to print
-along with a (maximum) sequence number and key as command line arguments, 
-it prompts for the user's secret password, and produces both word 
+along with a (maximum) sequence number and key as command line arguments,
+it prompts for the user's secret password, and produces both word
 and hex format responses.
 .Pp
 The following option is available:
