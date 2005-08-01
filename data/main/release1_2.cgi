@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.6 2005/08/01 07:12:57 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.7 2005/08/01 15:01:40 dillon Exp $
 
 $TITLE(DragonFly - April 2005 Release 1.2.x Download)
 <h1>Obtaining DragonFly 1.2.x for your system</h1>
@@ -84,7 +84,8 @@ See the 'Download Site' list below for a list of download locations.
 <TD>1.2.5</TD>
 <TD>31-Jul-2005</TD>
 <TD>Numerous critical SMP fixes: critical section and spl code, 
-    IPI messaging, LWKT tokens, and a ktrace fix.</TD>
+    IPI messaging, LWKT tokens, and a ktrace fix.  Also a
+    security fix for a libz overflow.</TD>
 </TR>
 </TABLE>
 
