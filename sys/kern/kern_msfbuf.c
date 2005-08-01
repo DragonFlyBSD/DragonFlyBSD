@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.15 2005/07/30 01:12:22 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.16 2005/08/01 20:05:53 hmp Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -100,9 +100,9 @@ static int msf_buf_count = 256; /* magic value */
 SYSCTL_INT(_kern_ipc, OID_AUTO, msf_bufs, CTLFLAG_RD, &msf_buf_count,
 	0, "number of direct-copy buffers available");
 SYSCTL_INT(_kern_ipc, OID_AUTO, msf_hits, CTLFLAG_RD, &msf_buf_hits,
-	0, "number of direct-copy buffers available");
+	0, "direct-copy buffers cache hits");
 SYSCTL_INT(_kern_ipc, OID_AUTO, msf_misses, CTLFLAG_RD, &msf_buf_misses,
-	0, "number of direct-copy buffers available");
+	0, "direct-copy buffers cache misses");
 
 static void
 msf_buf_init(void *__dummy)
