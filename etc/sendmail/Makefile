@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.19 (Berkeley) 1/14/97
 # $FreeBSD: src/etc/sendmail/Makefile,v 1.31 2004/01/22 17:51:02 ru Exp $
-# $DragonFly: src/etc/sendmail/Makefile,v 1.4 2005/07/26 02:40:25 gshapiro Exp $
+# $DragonFly: src/etc/sendmail/Makefile,v 1.5 2005/08/01 22:03:15 corecode Exp $
 
 M4=		m4
 CHMOD=		chmod
@@ -63,7 +63,7 @@ ${mc:T:R}.cf: ${mc}
 
 all: ${ALL}
 
-distribution:
+distribution: dragonfly.cf dragonfly.submit.cf
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${.CURDIR}/dragonfly.mc dragonfly.cf ${DESTDIR}/etc/mail
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
