@@ -1,11 +1,6 @@
 /*-
- * Copyright (c) 2002-2003 Networks Associates Technology, Inc.
+ * Copyright 2001 Mark R V Murray
  * All rights reserved.
- *
- * This software was developed for the FreeBSD Project by ThinkSec AS and
- * Network Associates Laboratories, the Security Research Division of
- * Network Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
- * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -15,9 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote
- *    products derived from this software without specific prior written
- *    permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -31,63 +23,71 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $P4: //depot/projects/openpam/modules/pam_deny/pam_deny.c#10 $
+ * $FreeBSD: src/lib/libpam/modules/pam_deny/pam_deny.c,v 1.10 2005/06/10 06:16:13 des Exp $
+ * $DragonFly: src/lib/pam_module/pam_deny/pam_deny.c,v 1.1 2005/08/01 16:15:19 joerg Exp $
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
+#include <stddef.h>
 
-#include <sys/param.h>
+#define PAM_SM_AUTH
+#define PAM_SM_ACCOUNT
+#define PAM_SM_SESSION
+#define PAM_SM_PASSWORD
 
+#include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
 PAM_EXTERN int
-pam_sm_authenticate(pam_handle_t *pamh, int flags,
-	int argc, const char *argv[])
+pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
+    int argc __unused, const char *argv[] __unused)
 {
+	const char *user;
+	int r;
+
+	if ((r = pam_get_user(pamh, &user, NULL)) != PAM_SUCCESS)
+		return (r);
 
 	return (PAM_AUTH_ERR);
 }
 
 PAM_EXTERN int
-pam_sm_setcred(pam_handle_t *pamh, int flags,
-	int argc, const char *argv[])
+pam_sm_setcred(pam_handle_t *pamh __unused, int flags __unused,
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_CRED_ERR);
 }
 
 PAM_EXTERN int
-pam_sm_acct_mgmt(pam_handle_t *pamh, int flags,
-	int argc, const char *argv[])
+pam_sm_acct_mgmt(pam_handle_t *pamh __unused, int flags __unused,
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_AUTH_ERR);
 }
 
 PAM_EXTERN int
-pam_sm_open_session(pam_handle_t *pamh, int flags,
-	int argc, const char *argv[])
-{
-
-	return (PAM_SESSION_ERR);
-}
-
-PAM_EXTERN int
-pam_sm_close_session(pam_handle_t *pamh, int flags,
-	int argc, const char *argv[])
-{
-
-	return (PAM_SESSION_ERR);
-}
-
-PAM_EXTERN int
-pam_sm_chauthtok(pam_handle_t *pamh, int flags,
-	int argc, const char *argv[])
+pam_sm_chauthtok(pam_handle_t *pamh __unused, int flags __unused,
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_AUTHTOK_ERR);
+}
+
+PAM_EXTERN int
+pam_sm_open_session(pam_handle_t *pamh __unused, int flags __unused,
+    int argc __unused, const char *argv[] __unused)
+{
+
+	return (PAM_SESSION_ERR);
+}
+
+PAM_EXTERN int
+pam_sm_close_session(pam_handle_t *pamh __unused, int flags __unused,
+    int argc __unused, const char *argv[] __unused)
+{
+
+	return (PAM_SESSION_ERR);
 }
 
 PAM_MODULE_ENTRY("pam_deny");

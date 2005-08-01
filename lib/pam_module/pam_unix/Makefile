@@ -1,9 +1,9 @@
-# $DragonFly: src/lib/pam_module/pam_unix/Makefile,v 1.3 2005/07/28 19:25:41 joerg Exp $
+# $DragonFly: src/lib/pam_module/pam_unix/Makefile,v 1.4 2005/08/01 16:15:19 joerg Exp $
 
 LIB=	pam_unix
 SRCS=	pam_unix.c
-WARNS?=	2
-WARNS_NO_UNUSED_PARAMETERS=
+WARNS?=	6
+MAN=	pam_unix.8
 
 DPADD=	${LIBCRYPT}
 LDADD=	-lcrypt

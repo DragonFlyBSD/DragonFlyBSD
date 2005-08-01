@@ -1,10 +1,8 @@
-# $DragonFly: src/lib/pam_module/pam_permit/Makefile,v 1.1 2005/07/08 15:42:01 joerg Exp $
+# $DragonFly: src/lib/pam_module/pam_permit/Makefile,v 1.2 2005/08/01 16:15:19 joerg Exp $
 
 LIB=	pam_permit
 SRCS=	pam_permit.c
-WARNS?=	2
-WARNS_NO_UNUSED_PARAMETERS=
+WARNS?=	6
+MAN=	pam_permit.8
 
 .include <bsd.lib.mk>
-
-.PATH: ${OPENPAM_DIR}/modules/pam_permit
