@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/pw_scan.c,v 1.25 2004/01/18 21:33:25 charnier Exp $
- * $DragonFly: src/lib/libutil/pw_scan.c,v 1.1 2005/08/01 16:13:20 joerg Exp $
+ * $DragonFly: src/lib/libutil/pw_scan.c,v 1.2 2005/08/01 20:59:46 joerg Exp $
  */
 
 /*
@@ -44,12 +44,13 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <libutil.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <libutil.h>
 
 /*
  * Some software assumes that IDs are short.  We should emit warnings
