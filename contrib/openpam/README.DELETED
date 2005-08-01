@@ -27,11 +27,4 @@ lib/Makefile.in
 ltmain.sh
 misc
 missing
-modules/pam_deny/Makefile.am
-modules/pam_deny/Makefile.in
-modules/pam_permit/Makefile.am
-modules/pam_permit/Makefile.in
-modules/pam_unix/Makefile.am
-modules/pam_unix/Makefile.in
-modules/Makefile.am
-modules/Makefile.in
+modules
