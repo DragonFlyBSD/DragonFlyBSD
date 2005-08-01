@@ -24,13 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/libutil.h,v 1.6 2005/03/04 05:47:03 cpressey Exp $
+ * $DragonFly: src/lib/libutil/libutil.h,v 1.7 2005/08/01 16:13:20 joerg Exp $
  */
 
 #ifndef _LIBUTIL_H_
 #define	_LIBUTIL_H_
 
 #include <sys/cdefs.h>
+
+#ifdef _PWD_H_
+#define	_PWSCAN_MASTER	0x01
+#define	_PWSCAN_WARN	0x02
+#endif
 
 #define PROPERTY_MAX_NAME	64
 #define PROPERTY_MAX_VALUE	512
@@ -72,6 +77,22 @@ int	realhostname(char *, size_t, const struct in_addr *);
 int	realhostname_sa(char *, size_t, struct sockaddr *, int);
 #ifdef _STDIO_H_	/* avoid adding new includes */
 char   *fparseln(FILE *, size_t *, size_t *, const char[3], int);
+#endif
+
+#ifdef _PWD_H_
+int	__pw_scan(char *, struct passwd *, int);
+int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw, struct passwd *_old_pw);
+struct passwd *pw_dup(const struct passwd *_pw);
+int	pw_edit(int _notsetuid);
+int	pw_equal(const struct passwd *_pw1, const struct passwd *_pw2);
+void	pw_fini(void);
+int	pw_init(const char *_dir, const char *_master);
+char	*pw_make(const struct passwd *_pw);
+int	pw_mkdb(const char *_user);
+int	pw_lock(void);
+struct passwd *pw_scan(const char *_line, int _flags);
+const char *pw_tempname(void);
+int	pw_tmp(int _mfd);
 #endif
 __END_DECLS
 
