@@ -1,6 +1,6 @@
 # DragonFly BSD Tinderbox Configuration File
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.17 2005/07/26 00:29:38 hmp Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.18 2005/08/01 20:11:18 joerg Exp $
 
 machine		i386
 cpu		I686_CPU
@@ -32,6 +32,7 @@ options 	CD9660			#ISO 9660 Filesystem
 options 	CD9660_ROOT		#CD-ROM usable as root, CD9660 required
 options 	PROCFS			#Process filesystem
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
+options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 options 	SCSI_DELAY=15000	#Delay (in ms) before probing SCSI
 options 	UCONSOLE		#Allow users to grab the console
 options 	USERCONFIG		#boot -c editor

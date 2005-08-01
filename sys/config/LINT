@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.56 2005/06/20 17:59:33 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.57 2005/08/01 20:11:18 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -280,6 +280,11 @@ options 	MATH_EMULATE		#Support for x87 emulation
 # still relies on the 4.3 emulation.
 #
 options 	COMPAT_43
+
+#
+# Implement system calls compatible with DragonFly 1.2 and older.
+#
+options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 
 #
 # These three options provide support for System V Interface
