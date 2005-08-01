@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.5 2005/06/04 19:11:47 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.6 2005/08/01 07:12:57 dillon Exp $
 
-$TITLE(DragonFly - April 2005 Release 1.2.0 Download)
-<h1>Obtaining DragonFly 1.2.0 for your system</h1>
+$TITLE(DragonFly - April 2005 Release 1.2.x Download)
+<h1>Obtaining DragonFly 1.2.x for your system</h1>
 
 <h2>1.2.0 ISO Images for CDs</h2>
 
@@ -38,12 +38,57 @@ See the 'Download Site' list below for a list of download locations.
 
 </b><br /> </p>
 
-<h2>1.2.0 Release Errata</h2>
+<h2>1.2.x Release Errata</h2>
 <p>
-    (none at the moment)
+    DragonFly releases are meant to be stable, dependable entities.  We
+    backport compatible bug fixes from current development into release
+    branches but we do not generally backport new features. 
+    The release CD is always a '.0', e.g. 1.2.0.   The most common way to
+    track a release is to use cvsup to track the release sources and then
+    build and install a new world and kernel to keep your system updated.
 </p>
+<TABLE BORDER="1">
+<TR>
+<TH>Version</TH>
+<TH>Date</TH>
+<TH>Comments</TH>
+</TR>
+<TR>
+<TD>1.2.0</TD>
+<TD>08-Apr-2005</TD>
+<TD>RELEASE CD</TD>
+</TR>
+<TR>
+<TD>1.2.1</TD>
+<TD>22-Apr-2005</TD>
+<TD>(unspecified)</TD>
+</TR>
+<TR>
+<TD>1.2.2</TD>
+<TD>09-May-2005</TD>
+<TD>A kernel TLS support bug was fixed.</TD>
+</TR>
+<TR>
+<TD>1.2.3</TD>
+<TD>29-Jun-2005</TD>
+<TD>Compiler, bootstrap, security, fork/^Z race, nfile limit, token,
+    and packet filter fixes.</TD>
+</TR>
+<TR>
+<TD>1.2.4</TD>
+<TD>07-Jul-2005</TD>
+<TD>Wildcard expansion bug in /bin/sh, bzip2 security issue, 
+    core dumping to NFS mounts, updated leapseconds, bridging fixes.</TD>
+</TR>
+<TR>
+<TD>1.2.5</TD>
+<TD>31-Jul-2005</TD>
+<TD>Numerous critical SMP fixes: critical section and spl code, 
+    IPI messaging, LWKT tokens, and a ktrace fix.</TD>
+</TR>
+</TABLE>
 
-<h2>1.2.0 Release Sites</h2>
+<h2>1.2.x Release Sites</h2>
 
 <TABLE BORDER="1">
 <TR>
@@ -130,7 +175,7 @@ See the 'Download Site' list below for a list of download locations.
 <h1>Release Notes for DragonFly 1.2.0</h1>
 
 <p>
-1.2.0 is our second major DragonFly release and the first one which
+1.2.x is our second major DragonFly release and the first one which
 we have created a separate CVS branch for.  DragonFly's policy is to
 only commit bug fixes to release branches.
 </p>
