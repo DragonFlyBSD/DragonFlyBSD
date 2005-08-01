@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.12 2005/08/01 22:35:40 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.13 2005/08/01 22:50:45 joerg Exp $
  */
 
 /*
@@ -111,9 +111,9 @@ enum typeid {
 
 static int	__sprint(FILE *, struct __suio *);
 static int	__sbprintf(FILE *, const char *, va_list) __printflike(2, 0);
-static char *	__ujtoa(uintmax_t, char *, int, int, char *, int,
+static char *	__ujtoa(uintmax_t, char *, int, int, const char *, int,
 		     char, const char *);
-static char *	__ultoa(u_long, char *, int, int, char *, int,
+static char *	__ultoa(u_long, char *, int, int, const char *, int,
 		     char, const char *);
 static void	__find_arguments(const char *, va_list, union arg **);
 static void	__grow_type_table(int, enum typeid **, int *);
@@ -188,7 +188,7 @@ __sbprintf(FILE *fp, const char *fmt, va_list ap)
  * use the given digits.
  */
 static char *
-__ultoa(u_long val, char *endp, int base, int octzero, char *xdigs,
+__ultoa(u_long val, char *endp, int base, int octzero, const char *xdigs,
 	int needgrp, char thousep, const char *grp)
 {
 	char *cp = endp;
@@ -252,7 +252,7 @@ __ultoa(u_long val, char *endp, int base, int octzero, char *xdigs,
 
 	case 16:
 		do {
-			*--cp = xdigs[val & 15];
+			*--cp = xdigs[(size_t)val & 15];
 			val >>= 4;
 		} while (val);
 		break;
@@ -265,7 +265,7 @@ __ultoa(u_long val, char *endp, int base, int octzero, char *xdigs,
 
 /* Identical to __ultoa, but for intmax_t. */
 static char *
-__ujtoa(u_quad_t val, char *endp, int base, int octzero, char *xdigs,
+__ujtoa(u_quad_t val, char *endp, int base, int octzero, const char *xdigs,
 	int needgrp, char thousep, const char *grp)
 {
 	char *cp = endp;
@@ -324,7 +324,7 @@ __ujtoa(u_quad_t val, char *endp, int base, int octzero, char *xdigs,
 
 	case 16:
 		do {
-			*--cp = xdigs[val & 15];
+			*--cp = xdigs[(size_t)val & 15];
 			val >>= 4;
 		} while (val);
 		break;
@@ -353,7 +353,7 @@ vfprintf(FILE *fp, const char *fmt0, va_list ap)
 #include <math.h>
 #include "floatio.h"
 
-#define	BUF		((MAXEXP * 2) + MAXFRACT + 1)	/* + decimal point */
+#define	BUF		((MAXEXPDIG * 2) + MAXFRACT + 1) /* + decimal point */
 #define	DEFPREC		6
 
 static char *cvt (double, int, int, char *, int *, int, int *, char **);
@@ -420,7 +420,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	int realsz;		/* field size expanded by dprec, sign, etc */
 	int size;		/* size of converted field or string */
 	int prsize;             /* max size of printed field */
-	char *xdigs;		/* digits for [xX] conversion */
+	const char *xdigs;	/* digits for [xX] conversion */
 #define NIOV 8
 	struct __suio uio;	/* output information: summary */
 	struct __siov iov[NIOV];/* ... and individual io vectors */
@@ -1430,30 +1430,30 @@ cvt(double value, int ndigits, int flags, char *sign, int *decpt,
 }
 
 static int
-exponent(char *p0, int exp, int fmtch)
+exponent(char *p0, int expo, int fmtch)
 {
 	char *p, *t;
-	char expbuf[MAXEXP];
+	char expbuf[MAXEXPDIG];
 
 	p = p0;
 	*p++ = fmtch;
-	if (exp < 0) {
-		exp = -exp;
+	if (expo < 0) {
+		expo = -expo;
 		*p++ = '-';
 	}
 	else
 		*p++ = '+';
-	t = expbuf + MAXEXP;
-	if (exp > 9) {
+	t = expbuf + MAXEXPDIG;
+	if (expo > 9) {
 		do {
-			*--t = to_char(exp % 10);
-		} while ((exp /= 10) > 9);
-		*--t = to_char(exp);
-		for (; t < expbuf + MAXEXP; *p++ = *t++);
+			*--t = to_char(expo % 10);
+		} while ((expo /= 10) > 9);
+		*--t = to_char(expo);
+		for (; t < expbuf + MAXEXPDIG; *p++ = *t++);
 	}
 	else {
 		*p++ = '0';
-		*p++ = to_char(exp);
+		*p++ = to_char(expo);
 	}
 	return (p - p0);
 }
