@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.11 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.12 2005/08/01 22:35:40 joerg Exp $
  */
 
 /*
@@ -62,9 +62,6 @@
 #include "libc_private.h"
 #include "local.h"
 #include "priv_stdio.h"
-
-/* Define FLOATING_POINT to get floating point. */
-#define	FLOATING_POINT
 
 /* Borrowed from sys/systm.h, which is _KERNEL-only: */
 #define	CTASSERT(x)		_CTASSERT(x, __LINE__)
@@ -95,7 +92,7 @@ union arg {
 	ptrdiff_t		*pptrdiffarg;
 	size_t			*psizearg;
 	intmax_t		*pintmaxarg;
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 	double			 doublearg;
 	long double		 longdoublearg;
 #endif
@@ -352,7 +349,7 @@ vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	return (ret);
 }
 
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 #include <math.h>
 #include "floatio.h"
 
@@ -362,11 +359,11 @@ vfprintf(FILE *fp, const char *fmt0, va_list ap)
 static char *cvt (double, int, int, char *, int *, int, int *, char **);
 static int exponent (char *, int, int);
 
-#else /* no FLOATING_POINT */
+#else /* no NO_FLOATING_POINT */
 
 #define	BUF		136
 
-#endif /* FLOATING_POINT */
+#endif /* NO_FLOATING_POINT */
 
 #define STATIC_ARG_TBL_SIZE 8           /* Size of static argument table. */
 
@@ -406,7 +403,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	char sign;		/* sign prefix (' ', '+', '-', or \0) */
 	char thousands_sep;	/* locale specific thousands separator */
 	const char *grouping;	/* locale specific numeric grouping rules */
- #ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 	const char *decimal_point;	/* locale specific decimal point */
 	char softsign;		/* temporary negative sign for floats */
 	double _double;		/* double precision arguments %[eEfgG] */
@@ -538,7 +535,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 
 	thousands_sep = '\0';
 	grouping = NULL;
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 	dtoaresult = NULL;
 	decimal_point = localeconv()->decimal_point;
 #endif
@@ -662,7 +659,7 @@ reswitch:	switch (ch) {
                         }
 			width = n;
 			goto reswitch;
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 		case 'L':
 			flags |= LONGDBL;
 			goto rflag;
@@ -718,7 +715,7 @@ reswitch:	switch (ch) {
 			}
 			base = 10;
 			goto number;
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 #ifdef HEXFLOAT
 		case 'a':
 		case 'A':
@@ -803,7 +800,7 @@ fp_begin:		if (prec == -1)
 			if (softsign)
 				sign = '-';
 			break;
-#endif /* FLOATING_POINT */
+#endif /* NO_FLOATING_POINT */
 		case 'n':
 			/*
 			 * Assignment-like behavior is specified if the
@@ -988,7 +985,7 @@ number:			if ((dprec = prec) >= 0)
 		PAD(dprec - size, zeroes);
 
 		/* the string or number proper */
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 		if ((flags & FPT) == 0) {
 			PRINT(cp, size);
 		} else {	/* glue together f_p fragments */
@@ -1046,7 +1043,7 @@ number:			if ((dprec = prec) >= 0)
 done:
 	FLUSH();
 error:
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 	if (dtoaresult != NULL)
 		free(dtoaresult);
 #endif
@@ -1177,7 +1174,7 @@ reswitch:	switch (ch) {
 			}
 			width = n;
 			goto reswitch;
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 		case 'L':
 			flags |= LONGDBL;
 			goto rflag;
@@ -1218,7 +1215,7 @@ reswitch:	switch (ch) {
  		case 'i':
 			ADDSARG();
  			break;
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 #ifdef HEXFLOAT
 		case 'a':
 		case 'A':
@@ -1233,7 +1230,7 @@ reswitch:	switch (ch) {
 			else
 				ADDTYPE(T_DOUBLE);
 			break;
-#endif /* FLOATING_POINT */
+#endif /* NO_FLOATING_POINT */
 		case 'n':
 			if (flags & INTMAXT)
 				ADDTYPE(TP_INTMAXT);
@@ -1390,7 +1387,7 @@ __grow_type_table(int nextarg, enum typeid **typetable, int *tablesize)
 }
 
 
-#ifdef FLOATING_POINT
+#ifndef NO_FLOATING_POINT
 
 extern char *__dtoa (double, int, int, int *, int *, char **, char **);
 
@@ -1460,4 +1457,4 @@ exponent(char *p0, int exp, int fmtch)
 	}
 	return (p - p0);
 }
-#endif /* FLOATING_POINT */
+#endif /* NO_FLOATING_POINT */
