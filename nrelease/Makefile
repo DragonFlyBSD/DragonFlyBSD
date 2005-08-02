@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.38 2005/07/14 07:35:52 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.39 2005/08/02 17:57:14 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -18,6 +18,8 @@ PACKAGES_LOC?= ${PACKAGES}/All
 .else
 PACKAGES_LOC?= /usr/ports/packages/All
 .endif
+PACKAGE_SITES?=http://www.bsdinstaller.org/packages/ \
+	       http://cvs.bsdinstaller.org/packages/
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
@@ -107,7 +109,16 @@ fetchpkgs:
 	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
 		cd ${PACKAGES_LOC} && \
 		echo "fetching ${PKG}..." && \
-		fetch http://www.bsdinstaller.org/packages/${PKG}.tgz; \
+		for SITE in ${PACKAGE_SITES}; do \
+			if [ ! -f ${PKG}.tgz ]; then \
+				fetch $${SITE}${PKG}.tgz || \
+				    echo "Not available from $${SITE}"; \
+			fi; \
+		done; \
+		if [ ! -f ${PKG}.tgz ]; then \
+			echo "Couldn't retrieve ${PKG}.tgz!"; \
+			exit 1; \
+		fi; \
 	fi
 .endfor
 
