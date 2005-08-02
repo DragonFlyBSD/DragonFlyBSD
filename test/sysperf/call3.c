@@ -1,9 +1,9 @@
 /*
- * call1.c
+ * call3.c
  *
  * Test a standard function call to a function which does nothing much.
  *
- * $DragonFly: src/test/sysperf/call3.c,v 1.2 2004/03/20 02:04:28 dillon Exp $
+ * $DragonFly: src/test/sysperf/call3.c,v 1.3 2005/08/02 17:11:04 hmp Exp $
  */
 
 #include "blib.h"
