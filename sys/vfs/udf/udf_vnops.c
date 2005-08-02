@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.13 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.14 2005/08/02 13:03:55 joerg Exp $
  */
 
 /* udf_vnops.c */
@@ -44,6 +44,8 @@
 #include <sys/dirent.h>
 #include <sys/queue.h>
 #include <sys/unistd.h>
+
+#include <machine/inttypes.h>
 
 #include <vfs/udf/ecma167-udf.h>
 #include <vfs/udf/osta.h>
@@ -162,7 +164,7 @@ udf_hashrem(struct udf_node *node)
 	lwkt_gettoken(&hashlock, &udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
 	if (lh == NULL)
-		panic("hash entry is NULL, node->hash_id= %d\n", node->hash_id);
+		panic("hash entry is NULL, node->hash_id= %"PRId64"\n", node->hash_id);
 	LIST_REMOVE(node, le);
 	lwkt_reltoken(&hashlock);
 

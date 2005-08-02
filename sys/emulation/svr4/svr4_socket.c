@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.6 2004/08/02 13:22:32 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.7 2005/08/02 13:03:54 joerg Exp $
  */
 
 /*
@@ -54,6 +54,8 @@
 #include <sys/stat.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
+
+#include <machine/inttypes.h>
 
 #include "svr4.h"
 #include "svr4_types.h"
@@ -86,7 +88,7 @@ svr4_find_socket(td, fp, dev, ino)
 	void *cookie = ((struct socket *) fp->f_data)->so_emuldata;
 
 	if (!svr4_str_initialized) {
-		DPRINTF(("svr4_find_socket: uninitialized [%p,%d,%d]\n",
+		DPRINTF(("svr4_find_socket: uninitialized [%p,%d,%"PRId64"]\n",
 		    td, dev, ino));
 		TAILQ_INIT(&svr4_head);
 		svr4_str_initialized = 1;
@@ -94,7 +96,7 @@ svr4_find_socket(td, fp, dev, ino)
 	}
 
 
-	DPRINTF(("svr4_find_socket: [%p,%d,%d]: ", td, dev, ino));
+	DPRINTF(("svr4_find_socket: [%p,%d,%"PRId64"]: ", td, dev, ino));
 	TAILQ_FOREACH(e, &svr4_head, entries)
 		if (e->td == td && e->dev == dev && e->ino == ino) {
 #ifdef DIAGNOSTIC
@@ -146,7 +148,7 @@ svr4_add_socket(td, path, st)
 	e->sock.sun_len = len;
 
 	TAILQ_INSERT_HEAD(&svr4_head, e, entries);
-	DPRINTF(("svr4_add_socket: %s [%p,%d,%d]\n", e->sock.sun_path,
+	DPRINTF(("svr4_add_socket: %s [%p,%d,%"PRId64"]\n", e->sock.sun_path,
 		 td, e->dev, e->ino));
 	return 0;
 }

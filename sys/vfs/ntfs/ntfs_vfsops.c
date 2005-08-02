@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.28 2005/07/26 15:43:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.29 2005/08/02 13:03:55 joerg Exp $
  */
 
 
@@ -45,6 +45,8 @@
 #if defined(__NetBSD__)
 #include <sys/device.h>
 #endif
+
+#include <machine/inttypes.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -860,7 +862,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	if (!(flags & VG_DONTLOADIN) && !(ip->i_flag & IN_LOADED)) {
 		error = ntfs_loadntnode(ntmp, ip);
 		if(error) {
-			printf("ntfs_vget: CAN'T LOAD ATTRIBUTES FOR INO: %d\n",
+			printf("ntfs_vget: CAN'T LOAD ATTRIBUTES FOR INO: %"PRId64"\n",
 			       ip->i_number);
 			ntfs_ntput(ip);
 			return (error);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.28 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.29 2005/08/02 13:03:55 joerg Exp $
  */
 
 
@@ -39,6 +39,8 @@
 #include <sys/buf.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
+
+#include <machine/inttypes.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -530,7 +532,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 	error = bread(hpmp->hpm_devvp, ino, FNODESIZE, &bp);
 	if (error) {
-		printf("hpfs_vget: can't read ino %d\n",ino);
+		printf("hpfs_vget: can't read ino %"PRId64"\n",ino);
 		vx_put(vp);
 		return (error);
 	}

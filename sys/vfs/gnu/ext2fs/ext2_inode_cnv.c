@@ -20,7 +20,7 @@
  *
  *      Utah $Hdr$
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode_cnv.c,v 1.11 2000/01/01 17:39:21 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.4 2004/04/08 20:57:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.5 2005/08/02 13:03:55 joerg Exp $
  */
 
 /*
@@ -31,6 +31,8 @@
 #include <sys/lock.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
+
+#include <machine/inttypes.h>
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
@@ -82,7 +84,7 @@ ext2_print_dinode(struct dinode *di)
 void
 ext2_print_inode(struct inode *in)
 {
-	printf( "Inode: %5d", in->i_number);
+	printf( "Inode: %"PRId64, in->i_number);
 	ext2_print_dinode(&in->i_din);
 }
 

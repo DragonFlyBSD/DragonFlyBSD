@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $ 
  * $FreeBSD: src/sys/coda/coda.h,v 1.9 1999/12/29 04:54:30 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda.h,v 1.3 2005/08/02 13:03:55 joerg Exp $
  * 
  */
 
@@ -226,8 +226,8 @@ enum coda_vtype	{ C_VNON, C_VREG, C_VDIR, C_VBLK, C_VCHR, C_VLNK, C_VSOCK, C_VFI
 
 struct coda_vattr {
 	int     	va_type;	/* vnode type (for create) */
+	nlink_t		va_nlink;	/* number of references to file */
 	u_short		va_mode;	/* files access mode and type */
-	short		va_nlink;	/* number of references to file */
 	vuid_t		va_uid;		/* owner user id */
 	vgid_t		va_gid;		/* owner group id */
 	long		va_fileid;	/* file id */

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.12 2005/01/20 18:08:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.13 2005/08/02 13:03:55 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -47,6 +47,8 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+
+#include <machine/inttypes.h>
 
 #include "quota.h"
 #include "inode.h"
@@ -1601,7 +1603,7 @@ ffs_freefile(struct vnode *pvp, ino_t ino, int mode)
 	pip = VTOI(pvp);
 	fs = pip->i_fs;
 	if ((uint)ino >= fs->fs_ipg * fs->fs_ncg)
-		panic("ffs_vfree: range: dev = (%d,%d), ino = %d, fs = %s",
+		panic("ffs_vfree: range: dev = (%d,%d), ino = %"PRId64", fs = %s",
 		    major(pip->i_dev), minor(pip->i_dev), ino, fs->fs_fsmnt);
 	cg = ino_to_cg(fs, ino);
 	error = bread(pip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),

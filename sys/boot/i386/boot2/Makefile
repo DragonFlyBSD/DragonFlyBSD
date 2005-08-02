@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.14 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.15 2005/08/02 13:03:54 joerg Exp $
 
 PROG=		boot2
 NOMAN=
@@ -58,7 +58,8 @@ CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-I${.CURDIR}/../btx/lib -I. \
 	-Wall -Waggregate-return -Wbad-function-cast -Wcast-align \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
-	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
+	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings \
+	-D__BOOT2_HACK
 
 # -mrtd will produce bad code (missing stack pops) when combined with
 # gcc-3.4's (default on) unit-at-a-time optimization.  See the code

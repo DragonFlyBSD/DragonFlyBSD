@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.6 2005/07/30 20:29:40 joerg Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.7 2005/08/02 13:03:55 joerg Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -54,10 +54,11 @@
 #endif
 
 struct stat {
-	__dev_t	  st_dev;		/* inode's device */
 	ino_t	  st_ino;		/* inode's number */
-	mode_t	  st_mode;		/* inode protection mode */
 	nlink_t	  st_nlink;		/* number of hard links */
+	__dev_t	  st_dev;		/* inode's device */
+	mode_t	  st_mode;		/* inode protection mode */
+	uint16_t  st_padding1;
 	uid_t	  st_uid;		/* user ID of the file's owner */
 	gid_t	  st_gid;		/* group ID of the file's group */
 	__dev_t	  st_rdev;		/* device type */

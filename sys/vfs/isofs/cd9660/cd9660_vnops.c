@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.14 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.15 2005/08/02 13:03:55 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -551,12 +551,16 @@ cd9660_readdir(struct vop_readdir_args *ap)
 
 		switch (imp->iso_ftype) {
 		case ISO_FTYPE_RRIP:
+		{
+			ino_t cur_fileno = idp->current.d_fileno;	
 			cd9660_rrip_getname(ep,idp->current.d_name, &namelen,
-					   &idp->current.d_fileno,imp);
+					   &cur_fileno,imp);
+			idp->current.d_fileno = cur_fileno;
 			idp->current.d_namlen = (u_char)namelen;
 			if (idp->current.d_namlen)
 				error = iso_uiodir(idp,&idp->current,idp->curroff);
 			break;
+		}
 		default: /* ISO_FTYPE_DEFAULT || ISO_FTYPE_9660 || ISO_FTYPE_HIGH_SIERRA*/
 			strcpy(idp->current.d_name,"..");
 			if (idp->current.d_namlen == 1 && ep->name[0] == 0) {

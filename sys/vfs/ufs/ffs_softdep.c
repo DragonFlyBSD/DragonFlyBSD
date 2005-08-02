@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.27 2005/07/31 22:25:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.28 2005/08/02 13:03:55 joerg Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 #include <sys/vnode.h>
 #include <sys/conf.h>
 #include <sys/buf2.h>
+#include <machine/inttypes.h>
 #include "dir.h"
 #include "quota.h"
 #include "inode.h"
@@ -2660,7 +2661,7 @@ newdirrem(bp, dp, ip, isrmdir, prevdirremp)
 	}
 	if (dap->da_newinum != ip->i_number) {
 		FREE_LOCK(&lk);
-		panic("newdirrem: inum %d should be %d",
+		panic("newdirrem: inum %"PRId64" should be %"PRId64,
 		    ip->i_number, dap->da_newinum);
 	}
 	/*
@@ -3088,7 +3089,7 @@ initiate_write_filepage(pagedep, bp)
 			    ((char *)bp->b_data + dap->da_offset);
 			if (ep->d_ino != dap->da_newinum) {
 				FREE_LOCK(&lk);
-				panic("%s: dir inum %d != new %d",
+				panic("%s: dir inum %d != new %"PRId64,
 				    "initiate_write_filepage",
 				    ep->d_ino, dap->da_newinum);
 			}

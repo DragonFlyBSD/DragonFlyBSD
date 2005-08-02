@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.14 2004/07/02 15:26:26 joerg Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.15 2005/08/02 13:03:55 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,8 @@
 #include <sys/file.h>
 #include <sys/malloc.h>
 #include <sys/lock.h>
+
+#include <machine/inttypes.h>
 
 #if defined(__NetBSD__)
 #include <miscfs/specfs/specdev.h>
@@ -85,7 +87,7 @@ static signed int ntfs_toupper_usecount;
 int
 ntfs_ntvattrrele(struct ntvattr *vap)
 {
-	dprintf(("ntfs_ntvattrrele: ino: %d, type: 0x%x\n",
+	dprintf(("ntfs_ntvattrrele: ino: %"PRId64", type: 0x%x\n",
 		 vap->va_ip->i_number, vap->va_type));
 
 	ntfs_ntrele(vap->va_ip);
@@ -105,11 +107,11 @@ ntfs_findvattr(struct ntfsmount *ntmp, struct ntnode *ip,
 	struct ntvattr *vap;
 
 	if((ip->i_flag & IN_LOADED) == 0) {
-		dprintf(("ntfs_findvattr: node not loaded, ino: %d\n",
+		dprintf(("ntfs_findvattr: node not loaded, ino: %"PRId64"\n",
 		       ip->i_number));
 		error = ntfs_loadntnode(ntmp,ip);
 		if (error) {
-			printf("ntfs_findvattr: FAILED TO LOAD INO: %d\n",
+			printf("ntfs_findvattr: FAILED TO LOAD INO: %"PRId64"\n",
 			       ip->i_number);
 			return (error);
 		}
@@ -160,12 +162,12 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 
 	if (name) {
 		dprintf(("ntfs_ntvattrget: " \
-			 "ino: %d, type: 0x%x, name: %s, vcn: %d\n", \
+			 "ino: %"PRId64", type: 0x%x, name: %s, vcn: %d\n", \
 			 ip->i_number, type, name, (u_int32_t) vcn));
 		namelen = strlen(name);
 	} else {
 		dprintf(("ntfs_ntvattrget: " \
-			 "ino: %d, type: 0x%x, vcn: %d\n", \
+			 "ino: %"PRId64", type: 0x%x, vcn: %d\n", \
 			 ip->i_number, type, (u_int32_t) vcn));
 		name = "";
 		namelen = 0;
@@ -177,7 +179,7 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 
 	if (!lvap) {
 		dprintf(("ntfs_ntvattrget: UNEXISTED ATTRIBUTE: " \
-		       "ino: %d, type: 0x%x, name: %s, vcn: %d\n", \
+		       "ino: %"PRId64", type: 0x%x, name: %s, vcn: %d\n", \
 		       ip->i_number, type, name, (u_int32_t) vcn));
 		return (ENOENT);
 	}
@@ -236,7 +238,7 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 	error = ENOENT;
 
 	dprintf(("ntfs_ntvattrget: UNEXISTED ATTRIBUTE: " \
-	       "ino: %d, type: 0x%x, name: %.*s, vcn: %d\n", \
+	       "ino: %"PRId64", type: 0x%x, name: %.*s, vcn: %d\n", \
 	       ip->i_number, type, (int) namelen, name, (u_int32_t) vcn));
 out:
 	FREE(alpool, M_TEMP);
@@ -257,7 +259,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 	struct attr    *ap;
 	struct ntvattr *nvap;
 
-	dprintf(("ntfs_loadntnode: loading ino: %d\n",ip->i_number));
+	dprintf(("ntfs_loadntnode: loading ino: %"PRId64"\n",ip->i_number));
 
 	MALLOC(mfrp, struct filerec *, ntfs_bntob(ntmp->ntm_bpmftrec),
 	       M_TEMP, M_WAITOK);
@@ -296,12 +298,12 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 	error = ntfs_procfixups(ntmp, NTFS_FILEMAGIC, (caddr_t)mfrp,
 				ntfs_bntob(ntmp->ntm_bpmftrec));
 	if (error) {
-		printf("ntfs_loadntnode: BAD MFT RECORD %d\n",
-		       (u_int32_t) ip->i_number);
+		printf("ntfs_loadntnode: BAD MFT RECORD %"PRId64"\n",
+		       ip->i_number);
 		goto out;
 	}
 
-	dprintf(("ntfs_loadntnode: load attrs for ino: %d\n",ip->i_number));
+	dprintf(("ntfs_loadntnode: load attrs for ino: %"PRId64"\n",ip->i_number));
 	off = mfrp->fr_attroff;
 	ap = (struct attr *) ((caddr_t)mfrp + off);
 
@@ -319,7 +321,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 		ap = (struct attr *) ((caddr_t)mfrp + off);
 	}
 	if (error) {
-		printf("ntfs_loadntnode: failed to load attr ino: %d\n",
+		printf("ntfs_loadntnode: failed to load attr ino: %"PRId64"\n",
 		       ip->i_number);
 		goto out;
 	}
@@ -344,7 +346,7 @@ ntfs_ntget(struct ntnode *ip)
 {
 	lwkt_tokref ilock;
 
-	dprintf(("ntfs_ntget: get ntnode %d: %p, usecount: %d\n",
+	dprintf(("ntfs_ntget: get ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
 	ip->i_usecount++;	/* ZZZ */
@@ -421,7 +423,7 @@ ntfs_ntput(struct ntnode *ip)
 	struct ntvattr *vap;
 	lwkt_tokref ilock;
 
-	dprintf(("ntfs_ntput: rele ntnode %d: %p, usecount: %d\n",
+	dprintf(("ntfs_ntput: rele ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
 	lwkt_gettoken(&ilock, &ip->i_interlock);
@@ -429,7 +431,7 @@ ntfs_ntput(struct ntnode *ip)
 
 #ifdef DIAGNOSTIC
 	if (ip->i_usecount < 0) {
-		panic("ntfs_ntput: ino: %d usecount: %d \n",
+		panic("ntfs_ntput: ino: %"PRId64" usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
 	}
 #endif
@@ -439,7 +441,7 @@ ntfs_ntput(struct ntnode *ip)
 		return;
 	}
 
-	dprintf(("ntfs_ntput: deallocating ntnode: %d\n", ip->i_number));
+	dprintf(("ntfs_ntput: deallocating ntnode: %"PRId64"\n", ip->i_number));
 
 	if (ip->i_fnlist.lh_first)
 		panic("ntfs_ntput: ntnode has fnodes\n");
@@ -463,7 +465,7 @@ ntfs_ntref(struct ntnode *ip)
 {
 	ip->i_usecount++;
 
-	dprintf(("ntfs_ntref: ino %d, usecount: %d\n",
+	dprintf(("ntfs_ntref: ino %"PRId64", usecount: %d\n",
 		ip->i_number, ip->i_usecount));
 			
 }
@@ -476,14 +478,14 @@ ntfs_ntrele(struct ntnode *ip)
 {
 	lwkt_tokref ilock;
 
-	dprintf(("ntfs_ntrele: rele ntnode %d: %p, usecount: %d\n",
+	dprintf(("ntfs_ntrele: rele ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
 	lwkt_gettoken(&ilock, &ip->i_interlock);
 	ip->i_usecount--;
 
 	if (ip->i_usecount < 0) {
-		panic("ntfs_ntrele: ino: %d usecount: %d \n",
+		panic("ntfs_ntrele: ino: %"PRId64" usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
 	}
 	lwkt_reltoken(&ilock);
@@ -686,7 +688,7 @@ ntfs_fget(struct ntfsmount *ntmp, struct ntnode *ip, int attrtype,
 {
 	struct fnode *fp;
 
-	dprintf(("ntfs_fget: ino: %d, attrtype: 0x%x, attrname: %s\n",
+	dprintf(("ntfs_fget: ino: %"PRId64", attrtype: 0x%x, attrname: %s\n",
 		ip->i_number,attrtype, attrname?attrname:""));
 	*fpp = NULL;
 	for (fp = ip->i_fnlist.lh_first; fp != NULL; fp = fp->f_fnlist.le_next){
@@ -737,7 +739,7 @@ ntfs_frele(struct fnode *fp)
 {
 	struct ntnode *ip = FTONT(fp);
 
-	dprintf(("ntfs_frele: fnode: %p for %d: %p\n", fp, ip->i_number, ip));
+	dprintf(("ntfs_frele: fnode: %p for %"PRId64": %p\n", fp, ip->i_number, ip));
 
 	dprintf(("ntfs_frele: deallocating fnode\n"));
 	LIST_REMOVE(fp,f_fnlist);
@@ -1055,7 +1057,7 @@ ntfs_ntreaddir(struct ntfsmount *ntmp, struct fnode *fp,
 	int             error = ENOENT;
 	u_int32_t       aoff, cnum;
 
-	dprintf(("ntfs_ntreaddir: read ino: %d, num: %d\n", ip->i_number, num));
+	dprintf(("ntfs_ntreaddir: read ino: %"PRId64", num: %d\n", ip->i_number, num));
 	error = ntfs_ntget(ip);
 	if (error)
 		return (error);
@@ -1219,7 +1221,7 @@ ntfs_times(struct ntfsmount *ntmp, struct ntnode *ip, ntfs_times_t *tm)
 	struct ntvattr *vap;
 	int             error;
 
-	dprintf(("ntfs_times: ino: %d...\n", ip->i_number));
+	dprintf(("ntfs_times: ino: %"PRId64"...\n", ip->i_number));
 
 	error = ntfs_ntget(ip);
 	if (error)
@@ -1251,7 +1253,7 @@ ntfs_filesize(struct ntfsmount *ntmp, struct fnode *fp, u_int64_t *size,
 	u_int64_t       sz, bn;
 	int             error;
 
-	dprintf(("ntfs_filesize: ino: %d\n", ip->i_number));
+	dprintf(("ntfs_filesize: ino: %"PRId64"\n", ip->i_number));
 
 	error = ntfs_ntvattrget(ntmp, ip,
 		fp->f_attrtype, fp->f_attrname, 0, &vap);
@@ -1615,7 +1617,7 @@ ntfs_readattr(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t attrnum,
 	struct ntvattr *vap;
 	size_t          init;
 
-	ddprintf(("ntfs_readattr: reading %d: 0x%x, from %d size %d bytes\n",
+	ddprintf(("ntfs_readattr: reading %"PRId64": 0x%x, from %d size %d bytes\n",
 	       ip->i_number, attrnum, (u_int32_t) roff, (u_int32_t) rsize));
 
 	error = ntfs_ntvattrget(ntmp, ip, attrnum, attrname, 0, &vap);

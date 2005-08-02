@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 2/3/94
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
-# $DragonFly: src/lib/libc/Makefile,v 1.11 2005/05/03 15:49:17 joerg Exp $
+# $DragonFly: src/lib/libc/Makefile,v 1.12 2005/08/02 13:03:54 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -8,7 +8,7 @@
 # from CFLAGS below.  To remove these strings from just the system call
 # stubs, remove just -DSYSLIBC_RCS from CFLAGS.
 LIB=c
-SHLIB_MAJOR= 5
+SHLIB_MAJOR= 6
 CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/include
 AINC=	-I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags

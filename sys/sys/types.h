@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.10 2005/06/03 11:07:34 asmodai Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.11 2005/08/02 13:03:55 joerg Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -82,10 +82,14 @@ typedef	__uint32_t	gid_t;		/* group id */
 typedef __int64_t	id_t;		/* general id, can hold gid/pid/uid_t */
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 typedef	__uint16_t	in_port_t;
+#ifdef __BOOT2_HACK
 typedef	__uint32_t	ino_t;		/* inode number */
+#else
+typedef	__uint64_t	ino_t;		/* inode number */
+#endif
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 typedef	__uint16_t	mode_t;		/* permissions */
-typedef	__uint16_t	nlink_t;	/* link count */
+typedef	__uint32_t	nlink_t;	/* link count */
 typedef	__off_t		off_t;		/* file offset */
 typedef	__pid_t		pid_t;		/* process id */
 typedef	__pid_t		lwpid_t;	/* light weight process id */

@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.1 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.2 2005/08/02 13:03:55 joerg Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
@@ -111,8 +111,8 @@ enum vtagtype	{
  */
 struct vattr {
 	enum vtype	va_type;	/* vnode type (for create) */
+	nlink_t		va_nlink;	/* number of references to file */
 	u_short		va_mode;	/* files access mode and type */
-	short		va_nlink;	/* number of references to file */
 	uid_t		va_uid;		/* owner user id */
 	gid_t		va_gid;		/* owner group id */
 	udev_t		va_fsid;	/* file system id */

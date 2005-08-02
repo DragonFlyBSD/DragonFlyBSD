@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.25 2005/07/30 20:29:40 joerg Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.26 2005/08/02 13:03:55 joerg Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -36,6 +36,8 @@
 #ifdef COMPAT_43
 #include <emulation/43bsd/stat.h>
 #endif
+
+#include <emulation/dragonfly12/stat.h>
 
 ; Reserved/unimplemented system calls in the range 0-150 inclusive
 ; are reserved for use in future Berkeley releases.
@@ -291,9 +293,9 @@
 185	UNIMPL	BSD	lfs_markv
 186	UNIMPL	BSD	lfs_segclean
 187	UNIMPL	BSD	lfs_segwait
-188	STD	POSIX	{ int stat(char *path, struct stat *ub); }
-189	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
-190	STD	POSIX	{ int lstat(char *path, struct stat *ub); }
+188	COMPAT_DF12	POSIX	{ int stat(const char *path, struct dfbsd12_stat *ub); }
+189	COMPAT_DF12	POSIX	{ int fstat(int fd, struct dfbsd12_stat *sb); }
+190	COMPAT_DF12	POSIX	{ int lstat(const char *path, struct dfbsd12_stat *ub); }
 191	STD	POSIX	{ int pathconf(char *path, int name); }
 192	STD	POSIX	{ int fpathconf(int fd, int name); }
 193	UNIMPL	NOHIDE	nosys
@@ -437,7 +439,7 @@
 ; XXX 297 is 300 in NetBSD 
 297	STD	BSD	{ int fhstatfs(const struct fhandle *u_fhp, struct statfs *buf); }
 298	STD	BSD	{ int fhopen(const struct fhandle *u_fhp, int flags); }
-299	STD	BSD 	{ int fhstat(const struct fhandle *u_fhp, struct stat *sb); }
+299	COMPAT_DF12	POSIX 	{ int fhstat(const struct fhandle *u_fhp, struct dfbsd12_stat *sb); }
 ; syscall numbers for FreeBSD
 300	STD	BSD	{ int modnext(int modid); }
 301	STD	BSD	{ int modstat(int modid, struct module_stat* stat); }
@@ -642,4 +644,7 @@
 472	STD	BSD	{ int sys_set_tls_area(int which, struct tls_info *info, size_t infosize); }
 473	STD	BSD	{ int sys_get_tls_area(int which, struct tls_info *info, size_t infosize); }
 474	STD	BSD	{ int closefrom(int fd); }
-
+475	STD	POSIX	{ int stat(const char *path, struct stat *ub); }
+476	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
+477	STD	POSIX	{ int lstat(const char *path, struct stat *ub); }
+478	STD	BSD 	{ int fhstat(const struct fhandle *u_fhp, struct stat *sb); }

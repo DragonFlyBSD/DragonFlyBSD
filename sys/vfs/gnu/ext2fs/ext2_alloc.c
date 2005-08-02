@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.6 2004/04/08 20:57:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.7 2005/08/02 13:03:55 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -50,6 +50,8 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/syslog.h>
+
+#include <machine/inttypes.h>
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
@@ -501,7 +503,7 @@ ext2_vfree(struct vnode *pvp, ino_t ino, int mode)
 	pip = VTOI(pvp);
 	fs = pip->i_e2fs;
 	if ((u_int)ino > fs->s_inodes_per_group * fs->s_groups_count)
-		panic("ext2_vfree: range: dev = (%d, %d), ino = %d, fs = %s",
+		panic("ext2_vfree: range: dev = (%d, %d), ino = %"PRId64", fs = %s",
 		    major(pip->i_dev), minor(pip->i_dev), ino, fs->fs_fsmnt);
 
 /* ext2_debug("ext2_vfree (%d, %d) called\n", pip->i_number, mode);
