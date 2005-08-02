@@ -36,10 +36,11 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/local.h,v 1.8 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/local.h,v 1.9 2005/08/02 00:44:39 joerg Exp $
  */
 
 #include <sys/types.h> /* for off_t */
+#include <wchar.h> /* for wchar_t */
 
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>	/* __size_t */
@@ -50,6 +51,7 @@
  * in particular, macros and private variables.
  */
 
+extern int	__slbexpand(FILE *, size_t);
 extern int	__sflush (FILE *);
 extern FILE	*__sfp (void);
 extern int	__srefill (FILE *);
@@ -66,6 +68,9 @@ extern int	_fwalk (int (*)(FILE *));
 extern int	__swsetup (FILE *);
 extern int	__sflags (const char *, int *);
 extern int	__vfprintf(FILE *, const char *, __va_list);
+extern wint_t	__fgetwc_unlock(FILE *);
+extern wint_t	__fputwc_unlock(wchar_t, FILE *);
+extern int 	__vfwprintf_unlocked(FILE *, const wchar_t *, __va_list);
 
 extern int	__sdidinit;
 

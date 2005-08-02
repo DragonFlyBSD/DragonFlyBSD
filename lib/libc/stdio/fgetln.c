@@ -35,7 +35,7 @@
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.5 2005/07/23 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.6 2005/08/02 00:44:39 joerg Exp $
  */
 
 #include <stdio.h>
@@ -51,7 +51,7 @@
  * so we add 1 here.
 #endif
  */
-static int
+int
 __slbexpand(FILE *fp, size_t newsize)
 {
 	void *p;

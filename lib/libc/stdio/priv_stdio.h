@@ -30,13 +30,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdio/priv_stdio.h,v 1.2 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/priv_stdio.h,v 1.3 2005/08/02 00:44:39 joerg Exp $
  */
 
 #ifndef _LIBC_PRIV_STDIO_H_
 #define _LIBC_PRIV_STDIO_H_
 
 #include <pthread.h>
+
+#include "wcio.h"
 
 /* stdio buffers */
 struct __sbuf {
@@ -82,6 +84,8 @@ struct __FILE {
 	pthread_mutex_t	fl_mutex;	/* used for MT-safety */
 	pthread_t	fl_owner;	/* current owner */
 	int		fl_count;	/* recursive lock count */
+
+	struct wchar_io_data _wcio;
 };
 
 /*

@@ -1,26 +1,32 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 4/17/94
 # $FreeBSD: src/lib/libc/stdio/Makefile.inc,v 1.19.2.1 2001/04/25 10:04:11 ru Exp $
-# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.3 2005/07/23 20:23:05 joerg Exp $
+# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.4 2005/08/02 00:44:39 joerg Exp $
 
 # stdio sources
 .PATH: ${.CURDIR}/../libc/stdio
 
 SRCS+=	__fpending.c _flock_stub.c \
-	asprintf.c clrerr.c fcookie.c fclose.c fdopen.c feof.c ferror.c fflush.c \
-	fgetc.c fgetln.c fgetpos.c fgets.c fileno.c findfp.c flags.c fopen.c \
-	fprintf.c fpurge.c fputc.c fputs.c fread.c freopen.c fscanf.c \
-	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwrite.c \
-	getc.c getchar.c gets.c getw.c makebuf.c mktemp.c perror.c \
-	printf.c putc.c putchar.c puts.c putw.c refill.c remove.c rewind.c \
+	asprintf.c clrerr.c fclose.c fcookie.c fdopen.c feof.c ferror.c \
+	fflush.c fgetc.c fgetln.c fgetpos.c fgets.c fgetwc.c fgetwln.c \
+	fgetws.c fileno.c findfp.c flags.c fopen.c fprintf.c fpurge.c \
+	fputc.c fputs.c fputwc.c fputws.c fread.c freopen.c fscanf.c \
+	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwide.c \
+	fwprintf.c fwrite.c fwscanf.c getc.c getchar.c gets.c getw.c \
+	getwc.c getwchar.c makebuf.c mktemp.c perror.c printf.c putc.c \
+	putchar.c puts.c putw.c putwc.c putwchar.c refill.c remove.c rewind.c \
 	rget.c scanf.c setbuf.c setbuffer.c setvbuf.c snprintf.c sprintf.c \
-	sscanf.c stdio.c tempnam.c tmpfile.c tmpnam.c ungetc.c vasprintf.c \
-	vfprintf.c vfscanf.c vprintf.c vscanf.c vsnprintf.c vsprintf.c \
-	vsscanf.c wbuf.c wsetup.c
+	sscanf.c stdio.c swprintf.c swscanf.c tempnam.c tmpfile.c tmpnam.c \
+	ungetc.c ungetwc.c vasprintf.c vfprintf.c vfscanf.c vfwprintf.c \
+	vfwscanf.c vprintf.c vscanf.c vsnprintf.c vsprintf.c vsscanf.c \
+	vswprintf.c vswscanf.c vwprintf.c vwscanf.c wbuf.c wprintf.c \
+	wscanf.c wsetup.c
+
 
 .if ${LIB} == "c"
-MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fopen.3 fputs.3 \
-	fread.3 fseek.3 funopen.3 getc.3 mktemp.3 printf.3 putc.3 remove.3 \
-	scanf.3 setbuf.3 stdio.3 tmpnam.3 ungetc.3
+MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
+	fopen.3 fputs.3 fputws.3 fread.3 fseek.3 funopen.3 fwide.3 getc.3 \
+	getwc.3 mktemp.3 printf.3 putc.3 putwc.3 remove.3 \
+	scanf.3 setbuf.3 stdio.3 tmpnam.3 ungetc.3 ungetwc.3 wprintf.3 wscanf.3
 
 MLINKS+=ferror.3 clearerr.3 ferror.3 feof.3 ferror.3 fileno.3
 MLINKS+=fflush.3 fpurge.3

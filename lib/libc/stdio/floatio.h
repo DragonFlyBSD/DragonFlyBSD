@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)floatio.h	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/stdio/floatio.h,v 1.2 2005/08/02 00:44:39 joerg Exp $
  */
 
 /*
@@ -41,6 +42,6 @@
  */
 
 /* 11-bit exponent (VAX G floating point) is 308 decimal digits */
-#define	MAXEXP		308
+#define	MAXEXPDIG	308
 /* 128 bit fraction takes up 39 decimal digits; max reasonable precision */
 #define	MAXFRACT	39

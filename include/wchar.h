@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.7 2005/07/26 16:45:58 joerg Exp $ */
+/*	$DragonFly: src/include/wchar.h,v 1.8 2005/08/02 00:44:39 joerg Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -182,6 +182,25 @@ wint_t	putwc(wchar_t, FILE *);
 wint_t	putwchar(wchar_t);
 
 int	fwide(FILE *, int);
+
+wchar_t	*fgetwln(FILE * __restrict, size_t * __restrict);
+int	fwprintf(FILE * __restrict, const wchar_t * __restrict, ...);
+int	fwscanf(FILE * __restrict, const wchar_t * __restrict, ...);
+int	swprintf(wchar_t * __restrict, size_t n,
+		 const wchar_t * __restrict, ...);
+int	swscanf(const wchar_t * __restrict, const wchar_t * __restrict, ...);
+int	vfwprintf(FILE * __restrict, const wchar_t * __restrict, __va_list);
+int	vswprintf(wchar_t * __restrict, size_t, const wchar_t * __restrict,
+	      __va_list);
+int	vwprintf(const wchar_t * __restrict, __va_list);
+int	wprintf(const wchar_t * __restrict, ...);
+int	wscanf(const wchar_t * __restrict, ...);
+#if __ISO_C_VISIBLE >= 1999 || __DF_VISIBLE
+int	vfwscanf(FILE * __restrict, const wchar_t * __restrict, __va_list);
+int	vswscanf(const wchar_t * __restrict, const wchar_t * __restrict,
+		 __va_list);
+int	vwscanf(const wchar_t * __restrict, __va_list);
+#endif
 __END_DECLS
 
 #define getwc(f) fgetwc(f)
