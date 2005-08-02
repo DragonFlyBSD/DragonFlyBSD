@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.7 2005/02/15 20:31:29 cpressey Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.8 2005/08/02 16:27:48 cpressey Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -66,12 +66,12 @@
 #define	STATUS_ERROR	3
 
 enum listtype {
-	LT_USER,
-	LT_GROUP,
-	LT_TTY,
-	LT_PPID,
-	LT_PGRP,
-	LT_SID
+	LT_USER,		/* real or effective user:	uid_t */
+	LT_GROUP,		/* group:			gid_t */
+	LT_TTY,			/* tty:				dev_t */
+	LT_PPID,		/* parent pid:			pid_t */
+	LT_PGRP,		/* process group:		pid_t */
+	LT_SID			/* session id:			pid_t */
 };
 
 struct list {
@@ -114,6 +114,9 @@ void	grepact(struct kinfo_proc *, int);
 int	parse_pid(const char *, char **, struct list *, pid_t);
 void	makelist(struct listhead *, enum listtype, char *);
 
+/*
+ * pkill - list or signal selected processes based on regular expression.
+ */
 int
 main(int argc, char **argv)
 {
@@ -135,6 +138,9 @@ main(int argc, char **argv)
 		action = killact;
 		p = argv[1];
 
+		/*
+		 * For pkill only: parse the signal (number or name) to send.
+		 */
 		if (argc > 1 && p[0] == '-') {
 			p++;
 			i = (int)strtol(p, &q, 10);
@@ -293,6 +299,10 @@ main(int argc, char **argv)
 		regfree(&reg);
 	}
 
+	/*
+	 * Iterate through the list of processes, deselecting each one
+	 * if it fails to meet the established criteria.
+	 */
 	for (i = 0, kp = plist; i < nproc; i++, kp++) {
 		if ((kp->kp_proc.p_flag & P_SYSTEM) != 0)
 			continue;
@@ -433,15 +443,19 @@ usage(void)
 	exit(STATUS_ERROR);
 }
 
+/*
+ * Action callback to signal the given process (pkill).
+ */
 void
-killact(struct kinfo_proc *kp, int dummy)
+killact(struct kinfo_proc *kp, int dummy __unused)
 {
-	dummy = 0; /* unused */
-
 	if (kill(kp->kp_proc.p_pid, signum) == -1)
 		err(STATUS_ERROR, "signalling pid %d", (int)kp->kp_proc.p_pid);
 }
 
+/*
+ * Action callback to print the pid of the given process (pgrep).
+ */
 void
 grepact(struct kinfo_proc *kp, int printdelim)
 {
@@ -467,6 +481,9 @@ grepact(struct kinfo_proc *kp, int printdelim)
 
 }
 
+/*
+ * Parse a pid from the given string.  If zero, use a given default.
+ */
 int
 parse_pid(const char *string, char **p, struct list *li, pid_t default_pid)
 {
@@ -477,6 +494,10 @@ parse_pid(const char *string, char **p, struct list *li, pid_t default_pid)
 	return(**p == '\0');
 }
 
+/*
+ * Populate a list from a comma-seperated string of items.
+ * The possible valid values for each item depends on the type of list.
+ */
 void
 makelist(struct listhead *head, enum listtype type, char *src)
 {
