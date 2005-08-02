@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # installer - start installer frontend and backend as per pfi config.
-# $Id: installer,v 1.17 2005/02/06 02:53:44 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.8 2005/03/20 03:54:01 cpressey Exp $
+# $Id: installer,v 1.20 2005/04/13 03:32:16 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.9 2005/08/02 17:02:59 cpressey Exp $
 
 ### SUBS ###
 
@@ -10,8 +10,7 @@ background_backend()
 {
 	RENDEZVOUS=$1
 	TRANSPORT=$2
-	cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
-	/var/run/dfuibe_installer -r $RENDEZVOUS -t $TRANSPORT >/dev/null 2>&1
+	$pfi_backend -r $RENDEZVOUS -t $TRANSPORT >/dev/null 2>&1
 	RESULT=$?
 	case "$RESULT" in
 	0)
@@ -82,6 +81,10 @@ installer_start()
 	fi
 
 	case "X$pfi_frontend" in
+	Xqt)
+		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
+		RESULT=$?
+		;;
 	Xcgi)
 		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
 		RESULT=$?
