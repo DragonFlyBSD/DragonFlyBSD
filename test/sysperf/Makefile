@@ -1,10 +1,10 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.12 2005/08/03 13:29:45 hmp Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.13 2005/08/03 13:37:27 hmp Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 \
-	/tmp/call1 /tmp/call2 /tmp/call3 \
+	/tmp/call1 /tmp/call2 /tmp/call3 /tmp/cmp \
 	/tmp/mt2 \
 	/tmp/fork1 /tmp/pipe1 /tmp/pipe2 \
 	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
@@ -63,6 +63,9 @@ all:	$(TARGETS)
 
 /tmp/call3: call3.c blib.c
 	$(CC) $(CFLAGS) call3.c blib.c -o /tmp/call3
+
+/tmp/cmp: cmp.c blib.c
+	    $(CC) $(CFLAGS) cmp.c blib.c -o /tmp/cmp
 
 /tmp/mbw1: mbwtest.c
 	$(CC) -O mbwtest.c -o /tmp/mbw1
