@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.139 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.140 2005/08/03 18:34:39 okumoto Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ bool		allPrecious;	/* .PRECIOUS given on line by itself */
 bool		beSilent;	/* -s flag */
 bool		beVerbose;	/* -v flag */
 bool		compatMake;	/* -B argument */
-bool		debug;		/* -d flag */
+int		debug;		/* -d flag */
 bool		ignoreErrors;	/* -i flag */
 int		jobLimit;	/* -j argument */
 bool		jobsRunning;	/* true if the jobs might be running */
