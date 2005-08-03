@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.215 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.216 2005/08/03 23:20:35 okumoto Exp $
  */
 
 /**
@@ -1734,7 +1734,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, bool *freeResult)
 				Buffer		*buf;
 				buf = Buf_Init(MAKE_BSIZE);
 				for (cp = value; *cp; cp++)
-					Buf_AddByte(buf, (Byte)tolower(*cp));
+					Buf_AddByte(buf, (Byte)tolower((unsigned char)*cp));
 
 				newStr = Buf_Peel(buf);
 
@@ -1759,7 +1759,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, bool *freeResult)
 				Buffer		*buf;
 				buf = Buf_Init(MAKE_BSIZE);
 				for (cp = value; *cp; cp++)
-					Buf_AddByte(buf, (Byte)toupper(*cp));
+					Buf_AddByte(buf, (Byte)toupper((unsigned char)*cp));
 
 				newStr = Buf_Peel(buf);
 

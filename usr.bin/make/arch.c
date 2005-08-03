@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.53 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.54 2005/08/03 23:20:35 okumoto Exp $
  */
 
 /*-
@@ -705,7 +705,7 @@ ArchArchiveNext(struct arfile *ar)
 		have_long_name = 1;
 
 	} else if (strncmp(ar->sname, BSD_EXT1, BSD_EXT1LEN) == 0 &&
-	    isdigit(ar->sname[BSD_EXT1LEN])) {
+	    isdigit((unsigned char)ar->sname[BSD_EXT1LEN])) {
 		/* BSD4.4 extended name */
 		errno = 0;
 		offs = strtoul(ar->sname + BSD_EXT1LEN, &end, 10);

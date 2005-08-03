@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.92 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.93 2005/08/03 23:20:35 okumoto Exp $
  */
 
 /*-
@@ -750,7 +750,7 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 					p++;
 
 				/* Found the best match already. */
-				if (*p == '\0' || isspace(*p))
+				if (*p == '\0' || isspace((unsigned char)*p))
 					break;
 
 				p += strcspn(p, "!:");
