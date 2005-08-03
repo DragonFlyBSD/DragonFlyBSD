@@ -32,20 +32,17 @@
  *
  * @(#)extern.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/extern.c,v 1.2 1999/11/30 03:48:45 billf Exp $
- * $DragonFly: src/games/cribbage/extern.c,v 1.3 2005/03/02 16:14:03 eirikn Exp $
+ * $DragonFly: src/games/cribbage/extern.c,v 1.4 2005/08/03 13:31:00 eirikn Exp $
  */
 
-#include <curses.h>
-
-#include "deck.h"
 #include "cribbage.h"
 
-BOOLEAN	explain		= FALSE;	/* player mistakes explained */
-BOOLEAN	iwon		= FALSE;	/* if comp won last game */
-BOOLEAN	quiet		= FALSE;	/* if suppress random mess */
-BOOLEAN	rflag		= FALSE;	/* if all cuts random */
+bool	explain		= false;	/* player mistakes explained */
+bool	iwon		= false;	/* if comp won last game */
+bool	quiet		= false;	/* if suppress random mess */
+bool	rflag		= false;	/* if all cuts random */
 
-char	expl[128];			/* explanation */
+char	explstr[128];			/* explanation */
 
 int	cgames		= 0;		/* number games comp won */
 int	cscore		= 0;		/* comp score in this game */

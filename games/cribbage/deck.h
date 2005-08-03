@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)deck.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/cribbage/deck.h,v 1.2 2005/08/03 13:31:00 eirikn Exp $
  */
 
 /*
@@ -71,15 +72,7 @@
 #define		VAL(c)		( (c) < 9 ? (c)+1 : 10 )    /* val of rank */
 
 
-#ifndef TRUE
-#	define		TRUE		1
-#	define		FALSE		0
-#endif
-
 typedef		struct  {
 			int		rank;
 			int		suit;
 		}		CARD;
-
-typedef		char		BOOLEAN;
-

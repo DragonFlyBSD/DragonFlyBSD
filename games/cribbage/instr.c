@@ -32,40 +32,37 @@
  *
  * @(#)instr.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/instr.c,v 1.5 1999/12/12 03:04:15 billf Exp $
- * $DragonFly: src/games/cribbage/instr.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/cribbage/instr.c,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/errno.h>
 #include <sys/stat.h>
 
-#include <curses.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "deck.h"
 #include "cribbage.h"
 #include "pathnames.h"
 
 void
-instructions()
+instructions(void)
 {
 	struct stat sb;
 	union wait pstat;
 	pid_t pid;
-	char *pager, *path;
+	const char *pager, *path;
 
 	if (stat(_PATH_INSTR, &sb)) {
-		(void)fprintf(stderr, "cribbage: %s: %s.\n", _PATH_INSTR,
+		fprintf(stderr, "cribbage: %s: %s.\n", _PATH_INSTR,
 		    strerror(errno));
 		exit(1);
 	}
 	switch (pid = vfork()) {
 	case -1:
-		(void)fprintf(stderr, "cribbage: %s.\n", strerror(errno));
+		fprintf(stderr, "cribbage: %s.\n", strerror(errno));
 		exit(1);
 	case 0:
 		if (!(path = getenv("PAGER")))
@@ -73,8 +70,8 @@ instructions()
 		if ((pager = rindex(path, '/')) != NULL)
 			++pager;
 		pager = path;
-		execlp(path, pager, _PATH_INSTR, (char *)NULL);
-		(void)fprintf(stderr, "cribbage: %s.\n", strerror(errno));
+		execlp(path, pager, _PATH_INSTR, NULL);
+		fprintf(stderr, "cribbage: %s.\n", strerror(errno));
 		_exit(1);
 	default:
 		do {

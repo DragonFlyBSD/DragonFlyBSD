@@ -1,15 +1,16 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/cribbage/Makefile,v 1.7.2.5 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/cribbage/Makefile,v 1.2 2003/06/17 04:25:23 dillon Exp $
+# $DragonFly: src/games/cribbage/Makefile,v 1.3 2005/08/03 13:31:00 eirikn Exp $
 
 PROG=	cribbage
-DPADD=	${LIBCURSES} ${LIBTERMCAP} ${LIBCOMPAT}
-LDADD=	-lcurses -ltermcap -lcompat
+DPADD=	${LIBCURSES}
+LDADD=	-lcurses
 SRCS=	extern.c crib.c cards.c instr.c io.c score.c support.c
 FILES=	cribbage.n
 FILESNAME_cribbage.n=	cribbage.instr
 MAN=	cribbage.6
 HIDEGAME=hidegame
+WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/criblog)

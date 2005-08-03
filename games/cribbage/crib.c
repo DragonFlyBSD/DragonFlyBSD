@@ -33,27 +33,34 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)crib.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/crib.c,v 1.10 1999/12/12 03:04:14 billf Exp $
- * $DragonFly: src/games/cribbage/crib.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/cribbage/crib.c,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
-#include <curses.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 
-#include "deck.h"
 #include "cribbage.h"
 #include "cribcur.h"
 #include "pathnames.h"
 
+static bool	cut(bool, int);
+static int	deal(bool);
+static void	discard(bool);
+static void	game(void);
+static void	gamescore(void);
+static void	makeboard(void);
+static bool	peg(bool);
+static bool	playhand(bool);
+static void	prcrib(bool, bool);
+static void	prtable(int);
+static bool	scoreh(bool);
+
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	BOOLEAN playing;
+	bool playing;
 	FILE *f;
 	int ch;
 
@@ -65,22 +72,22 @@ main(argc, argv)
 	while ((ch = getopt(argc, argv, "eqr")) != -1)
 		switch (ch) {
 		case 'e':
-			explain = TRUE;
+			explain = true;
 			break;
 		case 'q':
-			quiet = TRUE;
+			quiet = true;
 			break;
 		case 'r':
-			rflag = TRUE;
+			rflag = true;
 			break;
 		case '?':
 		default:
-			(void) fprintf(stderr, "usage: cribbage [-eqr]\n");
+			fprintf(stderr, "usage: cribbage [-eqr]\n");
 			exit(1);
 		}
 
 	initscr();
-	(void)signal(SIGINT, rint);
+	signal(SIGINT, intr);
 	crmode();
 	noecho();
 
@@ -108,7 +115,7 @@ main(argc, argv)
 			msg("For cribbage rules, use \"man cribbage\"");
 		}
 	}
-	playing = TRUE;
+	playing = true;
 	do {
 		wclrtobot(Msgwin);
 		msg(quiet ? "L or S? " : "Long (to 121) or Short (to 61)? ");
@@ -122,25 +129,24 @@ main(argc, argv)
 	} while (playing);
 
 	if (f != NULL) {
-		(void)fprintf(f, "%s: won %5.5d, lost %5.5d\n",
+		fprintf(f, "%s: won %5.5d, lost %5.5d\n",
 		    getlogin(), cgames, pgames);
-		(void) fclose(f);
+		fclose(f);
 	}
 	bye();
 	if (!f) {
-		(void) fprintf(stderr, "\ncribbage: can't open %s.\n",
-		    _PATH_LOG);
+		fprintf(stderr, "\ncribbage: can't open %s.\n", _PATH_LOG);
 		exit(1);
 	}
-	exit(0);
+	return(0);
 }
 
 /*
  * makeboard:
  *	Print out the initial board on the screen
  */
-void
-makeboard()
+static void
+makeboard(void)
 {
 	mvaddstr(SCORE_Y + 0, SCORE_X,
 	    "+---------------------------------------+");
@@ -167,8 +173,8 @@ makeboard()
  * gamescore:
  *	Print out the current game score
  */
-void
-gamescore()
+static void
+gamescore(void)
 {
 
 	if (pgames || cgames) {
@@ -184,18 +190,17 @@ gamescore()
  *	Play one game up to glimit points.  Actually, we only ASK the
  *	player what card to turn.  We do a random one, anyway.
  */
-void
-game()
+static void
+game(void)
 {
 	int i, j;
-	BOOLEAN flag;
-	BOOLEAN compcrib;
+	bool flag, compcrib;
 
-	compcrib = FALSE;
+	compcrib = false;
 	makedeck(deck);
 	shuffle(deck);
 	if (gamecount == 0) {
-		flag = TRUE;
+		flag = true;
 		do {
 			if (!rflag) {			/* player cuts deck */
 				msg(quiet ? "Cut for crib? " :
@@ -207,10 +212,10 @@ game()
 				j = random() % CARDS;
 			} while (j == i);
 			addmsg(quiet ? "You cut " : "You cut the ");
-			msgcard(deck[i], FALSE);
+			msgcard(deck[i], false);
 			endmsg();
 			addmsg(quiet ? "I cut " : "I cut the ");
-			msgcard(deck[j], FALSE);
+			msgcard(deck[j], false);
 			endmsg();
 			flag = (deck[i].rank == deck[j].rank);
 			if (flag) {
@@ -234,7 +239,7 @@ game()
 	}
 
 	pscore = cscore = 0;
-	flag = TRUE;
+	flag = true;
 	do {
 		shuffle(deck);
 		flag = !playhand(compcrib);
@@ -253,7 +258,7 @@ game()
 				msg("YOU WON!");
 				++pgames;
 			}
-		iwon = FALSE;
+		iwon = false;
 	} else {
 		if (glimit - pscore > 60) {
 			msg("I DOUBLE SKUNKED YOU!");
@@ -266,7 +271,7 @@ game()
 				msg("I WON!");
 				++cgames;
 			}
-		iwon = TRUE;
+		iwon = true;
 	}
 	gamescore();
 }
@@ -275,9 +280,8 @@ game()
  * playhand:
  *	Do up one hand of the game
  */
-int
-playhand(mycrib)
-	BOOLEAN mycrib;
+static bool
+playhand(bool mycrib)
 {
 	int deckpos;
 
@@ -288,25 +292,24 @@ playhand(mycrib)
 	sorthand(chand, FULLHAND);
 	sorthand(phand, FULLHAND);
 	makeknown(chand, FULLHAND);
-	prhand(phand, FULLHAND, Playwin, FALSE);
+	prhand(phand, FULLHAND, Playwin, false);
 	discard(mycrib);
 	if (cut(mycrib, deckpos))
-		return TRUE;
+		return true;
 	if (peg(mycrib))
-		return TRUE;
+		return true;
 	werase(Tablewin);
 	wrefresh(Tablewin);
-	if (score(mycrib))
-		return TRUE;
-	return FALSE;
+	if (scoreh(mycrib))
+		return true;
+	return false;
 }
 
 /*
  * deal cards to both players from deck
  */
-int
-deal(mycrib)
-	BOOLEAN mycrib;
+static int
+deal(bool mycrib)
 {
 	int i, j;
 
@@ -325,27 +328,26 @@ deal(mycrib)
 /*
  * discard:
  *	Handle players discarding into the crib...
- * Note: we call cdiscard() after prining first message so player doesn't wait
+ * Note: we call cdiscard() after printing first message so player doesn't wait
  */
-void
-discard(mycrib)
-	BOOLEAN mycrib;
+static void
+discard(bool mycrib)
 {
-	char *prompt;
+	const char *prompt;
 	CARD crd;
 
-	prcrib(mycrib, TRUE);
+	prcrib(mycrib, true);
 	prompt = (quiet ? "Discard --> " : "Discard a card --> ");
 	cdiscard(mycrib);	/* puts best discard at end */
 	crd = phand[infrom(phand, FULLHAND, prompt)];
 	cremove(crd, phand, FULLHAND);
-	prhand(phand, FULLHAND, Playwin, FALSE);
+	prhand(phand, FULLHAND, Playwin, false);
 	crib[0] = crd;
 
 	/* Next four lines same as last four except for cdiscard(). */
 	crd = phand[infrom(phand, FULLHAND - 1, prompt)];
 	cremove(crd, phand, FULLHAND - 1);
-	prhand(phand, FULLHAND, Playwin, FALSE);
+	prhand(phand, FULLHAND, Playwin, false);
 	crib[1] = crd;
 	crib[2] = chand[4];
 	crib[3] = chand[5];
@@ -357,15 +359,13 @@ discard(mycrib)
  *	Cut the deck and set turnover.  Actually, we only ASK the
  *	player what card to turn.  We do a random one, anyway.
  */
-int
-cut(mycrib, pos)
-	BOOLEAN mycrib;
-	int  pos;
+static bool
+cut(bool mycrib, int pos)
 {
 	int i;
-	BOOLEAN win;
+	bool win;
 
-	win = FALSE;
+	win = false;
 	if (mycrib) {
 		if (!rflag) {	/* random cut */
 			msg(quiet ? "Cut the deck? " :
@@ -375,7 +375,7 @@ cut(mycrib, pos)
 		i = random() % (CARDS - pos);
 		turnover = deck[i + pos];
 		addmsg(quiet ? "You cut " : "You cut the ");
-		msgcard(turnover, FALSE);
+		msgcard(turnover, false);
 		endmsg();
 		if (turnover.rank == JACK) {
 			msg("I get two for his heels");
@@ -385,7 +385,7 @@ cut(mycrib, pos)
 		i = random() % (CARDS - pos) + pos;
 		turnover = deck[i];
 		addmsg(quiet ? "I cut " : "I cut the ");
-		msgcard(turnover, FALSE);
+		msgcard(turnover, false);
 		endmsg();
 		if (turnover.rank == JACK) {
 			msg("You get two for his heels");
@@ -393,7 +393,7 @@ cut(mycrib, pos)
 		}
 	}
 	makeknown(&turnover, 1);
-	prcrib(mycrib, FALSE);
+	prcrib(mycrib, false);
 	return (win);
 }
 
@@ -401,9 +401,8 @@ cut(mycrib, pos)
  * prcrib:
  *	Print out the turnover card with crib indicator
  */
-void
-prcrib(mycrib, blank)
-	BOOLEAN mycrib, blank;
+static void
+prcrib(bool mycrib, bool blank)
 {
 	int y, cardx;
 
@@ -431,15 +430,14 @@ prcrib(mycrib, blank)
 static CARD Table[14];
 static int Tcnt;
 
-int
-peg(mycrib)
-	BOOLEAN mycrib;
+static bool
+peg(bool mycrib)
 {
 	static CARD ch[CINHAND], ph[CINHAND];
 	int i, j, k;
 	int l;
 	int cnum, pnum, sum;
-	BOOLEAN myturn, mego, ugo, last, played;
+	bool myturn, mego, ugo, last, played;
 	CARD crd;
 
 	cnum = pnum = CINHAND;
@@ -449,18 +447,18 @@ peg(mycrib)
 	}
 	Tcnt = 0;		/* index to table of cards played */
 	sum = 0;		/* sum of cards played */
-	played = mego = ugo = FALSE;
+	played = mego = ugo = false;
 	myturn = !mycrib;
 	for (;;) {
-		last = TRUE;	/* enable last flag */
-		prhand(ph, pnum, Playwin, FALSE);
-		prhand(ch, cnum, Compwin, TRUE);
+		last = true;	/* enable last flag */
+		prhand(ph, pnum, Playwin, false);
+		prhand(ch, cnum, Compwin, true);
 		prtable(sum);
 		if (myturn) {	/* my tyrn to play */
 			if (!anymove(ch, cnum, sum)) {	/* if no card to play */
 				if (!mego && cnum) {	/* go for comp? */
 					msg("GO");
-					mego = TRUE;
+					mego = true;
 				}
 							/* can player move? */
 				if (anymove(ph, pnum, sum))
@@ -469,13 +467,13 @@ peg(mycrib)
 					msg(quiet ? "You get one" :
 					    "You get one point");
 					if (chkscr(&pscore, 1))
-						return TRUE;
+						return (true);
 					sum = 0;
-					mego = ugo = FALSE;
+					mego = ugo = false;
 					Tcnt = 0;
 				}
 			} else {
-				played = TRUE;
+				played = true;
 				j = -1;
 				k = 0;
 							/* maximize score */
@@ -495,10 +493,10 @@ peg(mycrib)
 				if (k > 0) {
 					addmsg(quiet ? "I get %d playing " :
 					    "I get %d points playing ", k);
-					msgcard(crd, FALSE);
+					msgcard(crd, false);
 					endmsg();
 					if (chkscr(&cscore, k))
-						return TRUE;
+						return (true);
 				}
 				myturn = !myturn;
 			}
@@ -506,7 +504,7 @@ peg(mycrib)
 			if (!anymove(ph, pnum, sum)) {	/* can player move? */
 				if (!ugo && pnum) {	/* go for player */
 					msg("You have a GO");
-					ugo = TRUE;
+					ugo = true;
 				}
 							/* can computer play? */
 				if (anymove(ch, cnum, sum))
@@ -516,20 +514,20 @@ peg(mycrib)
 					    "I get one point");
 					do_wait();
 					if (chkscr(&cscore, 1))
-						return TRUE;
+						return (true);
 					sum = 0;
-					mego = ugo = FALSE;
+					mego = ugo = false;
 					Tcnt = 0;
 				}
 			} else {			/* player plays */
-				played = FALSE;
+				played = false;
 				if (pnum == 1) {
 					crd = ph[0];
 					msg("You play your last card");
 				} else
 					for (;;) {
 						prhand(ph,
-						    pnum, Playwin, FALSE);
+						    pnum, Playwin, false);
 						crd = ph[infrom(ph,
 						    pnum, "Your play: ")];
 						if (sum + VAL(crd.rank) <= 31)
@@ -546,7 +544,7 @@ peg(mycrib)
 					msg(quiet ? "You got %d" :
 					    "You got %d points", i);
 					if (chkscr(&pscore, i))
-						return TRUE;
+						return (true);
 				}
 				myturn = !myturn;
 			}
@@ -555,15 +553,15 @@ peg(mycrib)
 			if (!myturn)
 				do_wait();
 			sum = 0;
-			mego = ugo = FALSE;
+			mego = ugo = false;
 			Tcnt = 0;
-			last = FALSE;			/* disable last flag */
+			last = false;			/* disable last flag */
 		}
 		if (!pnum && !cnum)
 			break;				/* both done */
 	}
-	prhand(ph, pnum, Playwin, FALSE);
-	prhand(ch, cnum, Compwin, TRUE);
+	prhand(ph, pnum, Playwin, false);
+	prhand(ch, cnum, Compwin, true);
 	prtable(sum);
 	if (last) {
 		if (played) {
@@ -571,54 +569,52 @@ peg(mycrib)
 			    "I get one point for last");
 			do_wait();
 			if (chkscr(&cscore, 1))
-				return TRUE;
+				return (true);
 		} else {
 			msg(quiet ? "You get one for last" :
 			    "You get one point for last");
 			if (chkscr(&pscore, 1))
-				return TRUE;
+				return (true);
 		}
 	}
-	return (FALSE);
+	return (false);
 }
 
 /*
  * prtable:
  *	Print out the table with the current score
  */
-void
-prtable(score)
-	int score;
+static void
+prtable(int score)
 {
-	prhand(Table, Tcnt, Tablewin, FALSE);
+	prhand(Table, Tcnt, Tablewin, false);
 	mvwprintw(Tablewin, (Tcnt + 2) * 2, Tcnt + 1, "%2d", score);
 	wrefresh(Tablewin);
 }
 
 /*
- * score:
+ * scoreh:
  *	Handle the scoring of the hands
  */
-int
-score(mycrib)
-	BOOLEAN mycrib;
+static bool
+scoreh(bool mycrib)
 {
 	sorthand(crib, CINHAND);
 	if (mycrib) {
 		if (plyrhand(phand, "hand"))
-			return (TRUE);
+			return (true);
 		if (comphand(chand, "hand"))
-			return (TRUE);
+			return (true);
 		do_wait();
 		if (comphand(crib, "crib"))
-			return (TRUE);
+			return (true);
 	} else {
 		if (comphand(chand, "hand"))
-			return (TRUE);
+			return (true);
 		if (plyrhand(phand, "hand"))
-			return (TRUE);
+			return (true);
 		if (plyrhand(crib, "crib"))
-			return (TRUE);
+			return (true);
 	}
-	return (FALSE);
+	return (false);
 }

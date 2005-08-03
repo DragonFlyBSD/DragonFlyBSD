@@ -31,8 +31,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)cribbage.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/cribbage/cribbage.h,v 1.2 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/cribbage/cribbage.h,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
+
+#include	<curses.h>
+
+#include	"deck.h"
 
 extern  CARD		deck[ CARDS ];		/* a deck */
 extern  CARD		phand[ FULLHAND ];	/* player's hand */
@@ -52,62 +56,39 @@ extern  int		cgames;			/* comp's games won */
 extern  int		gamecount;		/* # games played */
 extern	int		Lastscore[2];		/* previous score for each */
 
-extern  BOOLEAN		iwon;			/* if comp won last */
-extern  BOOLEAN		explain;		/* player mistakes explained */
-extern  BOOLEAN		rflag;			/* if all cuts random */
-extern  BOOLEAN		quiet;			/* if suppress random mess */
-extern	BOOLEAN		playing;		/* currently playing game */
+extern  bool		iwon;			/* if comp won last */
+extern  bool		explain;		/* player mistakes explained */
+extern  bool		rflag;			/* if all cuts random */
+extern  bool		quiet;			/* if suppress random mess */
 
-extern  char		expl[];			/* string for explanation */
+extern  char		explstr[];		/* string for explanation */
 
 void	 addmsg (const char *, ...);
-int	 adjust (CARD [], CARD);
-int	 anymove (CARD [], int, int);
-int	 anysumto (CARD [], int, int, int);
+int	 adjust (CARD []);
+bool	 anymove (CARD [], int, int);
 void	 bye (void);
 int	 cchose (CARD [], int, int);
-void	 cdiscard (BOOLEAN);
-int	 chkscr (int *, int);
-int	 comphand (CARD [], char *);
+void	 cdiscard (bool);
+bool	 chkscr (int *, int);
+bool	 comphand (CARD [], const char *);
 void	 cremove (CARD, CARD [], int);
-int	 cut (BOOLEAN, int);
-int	 deal (int);
-void	 discard (BOOLEAN);
 void	 do_wait (void);
 void	 endmsg (void);
-int	 eq (CARD, CARD);
-int	 fifteens (CARD [], int);
-void	 game (void);
-void	 gamescore (void);
 char	*getline (void);
 int	 getuchar (void);
-int	 incard (CARD *);
-int	 infrom (CARD [], int, char *);
+int	 infrom (CARD [], int, const char *);
 void	 instructions (void);
-int	 isone (CARD, CARD [], int);
-void	 makeboard (void);
+void     intr (int);
+bool	 isone (CARD, CARD [], int);
 void	 makedeck (CARD []);
 void	 makeknown (CARD [], int);
 void	 msg (const char *, ...);
-int	 msgcard (CARD, BOOLEAN);
-int	 msgcrd (CARD, BOOLEAN, char *, BOOLEAN);
-int	 number (int, int, char *);
-int	 numofval (CARD [], int, int);
-int	 pairuns (CARD [], int);
-int	 peg (BOOLEAN);
+bool	 msgcard (CARD, bool);
+int	 number (int, int, const char *);
 int	 pegscore (CARD, CARD [], int, int);
-int	 playhand (BOOLEAN);
-int	 plyrhand (CARD [], char *);
-void	 prcard (WINDOW *, int, int, CARD, BOOLEAN);
-void	 prcrib (BOOLEAN, BOOLEAN);
-void	 prhand (CARD [], int, WINDOW *, BOOLEAN);
-void	 printcard (WINDOW *, int, CARD, BOOLEAN);
-void	 prpeg (int, int, BOOLEAN);
-void	 prtable (int);
-int	 readchar (void);
-void	 rint (int);
-int	 score (BOOLEAN);
-int	 scorehand (CARD [], CARD, int, BOOLEAN, BOOLEAN);
+bool	 plyrhand (CARD [], const char *);
+void	 prcard (WINDOW *, int, int, CARD, bool);
+void	 prhand (CARD [], int, WINDOW *, bool);
+int	 scorehand (CARD [], CARD, int, bool, bool);
 void	 shuffle (CARD []);
 void	 sorthand (CARD [], int);
-void	 wait_for (int);

@@ -32,20 +32,16 @@
  *
  * @(#)io.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/io.c,v 1.5.2.2 2001/02/18 02:20:31 kris Exp $
- * $DragonFly: src/games/cribbage/io.c,v 1.3 2004/07/27 07:37:39 asmodai Exp $
+ * $DragonFly: src/games/cribbage/io.c,v 1.4 2005/08/03 13:31:00 eirikn Exp $
  */
 
 #include <ctype.h>
-#include <curses.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <unistd.h>
 
-#include <stdarg.h>
-
-#include "deck.h"
 #include "cribbage.h"
 #include "cribcur.h"
 
@@ -58,46 +54,47 @@
 
 char    linebuf[LINESIZE];
 
-char   *rankname[RANKS] = {
+const char *const rankname[RANKS] = {
 	"ACE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN",
 	"EIGHT", "NINE", "TEN", "JACK", "QUEEN", "KING"
 };
 
-char   *rankchar[RANKS] = {
+const char *const rankchar[RANKS] = {
 	"A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K"
 };
 
-char   *suitname[SUITS] = {"SPADES", "HEARTS", "DIAMONDS", "CLUBS"};
+const char *const suitname[SUITS] = {"SPADES", "HEARTS", "DIAMONDS", "CLUBS"};
 
-char   *suitchar[SUITS] = {"S", "H", "D", "C"};
+const char *const suitchar[SUITS] = {"S", "H", "D", "C"};
+
+static bool	incard(CARD *);
+static bool	msgcrd(CARD, bool, const char *, bool);
+static void	printcard(WINDOW *, int, CARD, bool);
+static int	readchar(void);
+static void	wait_for(int);
 
 /*
  * msgcard:
  *	Call msgcrd in one of two forms
  */
-int
-msgcard(c, brief)
-	CARD c;
-	BOOLEAN brief;
+bool
+msgcard(CARD c, bool brief)
 {
 	if (brief)
-		return (msgcrd(c, TRUE, NULL, TRUE));
+		return (msgcrd(c, true, NULL, true));
 	else
-		return (msgcrd(c, FALSE, " of ", FALSE));
+		return (msgcrd(c, false, " of ", false));
 }
 
 /*
  * msgcrd:
  *	Print the value of a card in ascii
  */
-int
-msgcrd(c, brfrank, mid, brfsuit)
-	CARD c;
-	BOOLEAN brfrank, brfsuit;
-	char *mid;
+static bool
+msgcrd(CARD c, bool brfrank, const char *mid, bool brfsuit)
 {
 	if (c.rank == EMPTY || c.suit == EMPTY)
-		return (FALSE);
+		return (false);
 	if (brfrank)
 		addmsg("%1.1s", rankchar[c.rank]);
 	else
@@ -108,19 +105,15 @@ msgcrd(c, brfrank, mid, brfsuit)
 		addmsg("%1.1s", suitchar[c.suit]);
 	else
 		addmsg("%s", suitname[c.suit]);
-	return (TRUE);
+	return (true);
 }
 
 /*
  * printcard:
  *	Print out a card.
  */
-void
-printcard(win, cardno, c, blank)
-	WINDOW *win;
-	int     cardno;
-	CARD    c;
-	BOOLEAN blank;
+static void
+printcard(WINDOW *win, int cardno, CARD c, bool blank)
 {
 	prcard(win, cardno * 2, cardno, c, blank);
 }
@@ -130,11 +123,7 @@ printcard(win, cardno, c, blank)
  *	Print out a card on the window at the specified location
  */
 void
-prcard(win, y, x, c, blank)
-	WINDOW *win;
-	int y, x;
-	CARD c;
-	BOOLEAN blank;
+prcard(WINDOW *win, int y, int x, CARD c, bool blank)
 {
 	if (c.rank == EMPTY)
 		return;
@@ -157,11 +146,7 @@ prcard(win, y, x, c, blank)
  *	Print a hand of n cards
  */
 void
-prhand(h, n, win, blank)
-	CARD h[];
-	int n;
-	WINDOW *win;
-	BOOLEAN blank;
+prhand(CARD h[], int n, WINDOW *win, bool blank)
 {
 	int i;
 
@@ -173,14 +158,11 @@ prhand(h, n, win, blank)
 
 /*
  * infrom:
- *	reads a card, supposedly in hand, accepting unambigous brief
+ *	reads a card, supposedly in hand, accepting unambiguous brief
  *	input, returns the index of the card found...
  */
 int
-infrom(hand, n, prompt)
-	CARD hand[];
-	int n;
-	char *prompt;
+infrom(CARD hand[], int n, const char *prompt)
 {
 	int i, j;
 	CARD crd;
@@ -232,16 +214,15 @@ infrom(hand, n, prompt)
  *	Inputs a card in any format.  It reads a line ending with a CR
  *	and then parses it.
  */
-int
-incard(crd)
-	CARD *crd;
+static bool
+incard(CARD *crd)
 {
 	int i;
 	int rnk, sut;
 	char *line, *p, *p1;
-	BOOLEAN retval;
+	bool retval;
 
-	retval = FALSE;
+	retval = false;
 	rnk = sut = EMPTY;
 	if (!(line = getline()))
 		goto gotit;
@@ -272,7 +253,7 @@ incard(crd)
 			}
 		}
 		if (sut != EMPTY)
-			retval = TRUE;
+			retval = true;
 		goto gotit;
 	}
 	rnk = EMPTY;
@@ -306,7 +287,7 @@ incard(crd)
 		}
 	}
 	if (sut != EMPTY)
-		retval = TRUE;
+		retval = true;
 gotit:
 	(*crd).rank = rnk;
 	(*crd).suit = sut;
@@ -318,7 +299,7 @@ gotit:
  *	Reads and converts to upper case
  */
 int
-getuchar()
+getuchar(void)
 {
 	int c;
 
@@ -335,9 +316,7 @@ getuchar()
  *	"hi" inclusive.
  */
 int
-number(lo, hi, prompt)
-	int lo, hi;
-	char *prompt;
+number(int lo, int hi, const char *prompt)
 {
 	char *p;
 	int sum;
@@ -386,7 +365,7 @@ msg(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void)vsprintf(&Msgbuf[Newpos], fmt, ap);
+	vsprintf(&Msgbuf[Newpos], fmt, ap);
 	va_end(ap);
 	endmsg();
 }
@@ -401,7 +380,7 @@ addmsg(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void)vsprintf(&Msgbuf[Newpos], fmt, ap);
+	vsprintf(&Msgbuf[Newpos], fmt, ap);
 	va_end(ap);
 }
 
@@ -412,7 +391,7 @@ addmsg(const char *fmt, ...)
 int     Lineno = 0;
 
 void
-endmsg()
+endmsg(void)
 {
 	static int lastline = 0;
 	int len;
@@ -461,11 +440,11 @@ endmsg()
  *	Wait for the user to type ' ' before doing anything else
  */
 void
-do_wait()
+do_wait(void)
 {
 	static char prompt[] = {'-', '-', 'M', 'o', 'r', 'e', '-', '-', '\0'};
 
-	if (Mpos + sizeof prompt < MSG_X)
+	if (Mpos + (int)sizeof(prompt) < MSG_X)
 		wmove(Msgwin, Lineno > 0 ? Lineno - 1 : MSG_Y - 1, Mpos);
 	else {
 		mvwaddch(Msgwin, Lineno, 0, ' ');
@@ -482,9 +461,8 @@ do_wait()
  * wait_for
  *	Sit around until the guy types the right key
  */
-void
-wait_for(ch)
-	int ch;
+static void
+wait_for(int ch)
 {
 	char c;
 
@@ -500,8 +478,8 @@ wait_for(ch)
  * readchar:
  *	Reads and returns a character, checking for gross input errors
  */
-int
-readchar()
+static int
+readchar(void)
 {
 	int cnt;
 	char c;
@@ -529,7 +507,7 @@ over:
  *	compressed to one space; a space is inserted before a ','
  */
 char *
-getline()
+getline(void)
 {
 	char *sp;
 	int c, oy, ox;
@@ -578,8 +556,7 @@ getline()
 }
 
 void
-rint(signo)
-	int signo;
+intr(__unused int signo)
 {
 	bye();
 	exit(1);
@@ -590,7 +567,7 @@ rint(signo)
  *	Leave the program, cleaning things up as we go.
  */
 void
-bye()
+bye(void)
 {
 	signal(SIGINT, SIG_IGN);
 	mvcur(0, COLS - 1, LINES - 1, 0);

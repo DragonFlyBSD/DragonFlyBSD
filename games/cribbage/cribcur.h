@@ -31,7 +31,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)cribcur.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/cribbage/cribcur.h,v 1.2 2005/08/03 13:31:00 eirikn Exp $
  */
+
+#include	<curses.h>
 
 # define	PLAY_Y		15	/* size of player's hand window */
 # define	PLAY_X		12

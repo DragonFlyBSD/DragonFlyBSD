@@ -32,24 +32,19 @@
  *
  * @(#)cards.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/cards.c,v 1.5 1999/11/30 03:48:44 billf Exp $
- * $DragonFly: src/games/cribbage/cards.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/cribbage/cards.c,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
-#include <curses.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
-#include "deck.h"
 #include "cribbage.h"
 
-
+static bool	eq(CARD, CARD);
 /*
  * Initialize a deck of cards to contain one of each type.
  */
 void
-makedeck(d)
-	CARD    d[];
+makedeck(CARD d[])
 {
 	int i, j, k;
 
@@ -67,8 +62,7 @@ makedeck(d)
  * see Knuth, vol. 2, page 125.
  */
 void
-shuffle(d)
-	CARD d[];
+shuffle(CARD d[])
 {
 	int j, k;
 	CARD c;
@@ -84,9 +78,8 @@ shuffle(d)
 /*
  * return true if the two cards are equal...
  */
-int
-eq(a, b)
-	CARD a, b;
+static bool
+eq(CARD a, CARD b)
 {
 	return ((a.rank == b.rank) && (a.suit == b.suit));
 }
@@ -94,26 +87,22 @@ eq(a, b)
 /*
  * isone returns TRUE if a is in the set of cards b
  */
-int
-isone(a, b, n)
-	CARD a, b[];
-	int n;
+bool
+isone(CARD a, CARD b[], int n)
 {
 	int i;
 
 	for (i = 0; i < n; i++)
 		if (eq(a, b[i]))
-			return (TRUE);
-	return (FALSE);
+			return (true);
+	return (false);
 }
 
 /*
  * remove the card a from the deck d of n cards
  */
 void
-cremove(a, d, n)
-	CARD a, d[];
-	int n;
+cremove(CARD a, CARD d[], int n)
 {
 	int i, j;
 
@@ -129,9 +118,7 @@ cremove(a, d, n)
  *	Sort a hand of n cards
  */
 void
-sorthand(h, n)
-	CARD h[];
-	int n;
+sorthand(CARD h[], int n)
 {
 	CARD *cp, *endp;
 	CARD c;
