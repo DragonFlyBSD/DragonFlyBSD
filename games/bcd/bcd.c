@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)bcd.c	8.2 (Berkeley) 3/20/94
  * $FreeBSD: src/games/bcd/bcd.c,v 1.8 1999/11/30 03:48:41 billf Exp $
- * $DragonFly: src/games/bcd/bcd.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/bcd/bcd.c,v 1.3 2005/08/03 13:26:19 eirikn Exp $
  */
 
 /*
@@ -73,7 +73,10 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <ctype.h>
+
+static void	printcard(char *);
 
 u_short holes[256] = {
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
@@ -116,9 +119,7 @@ u_short holes[256] = {
 #define	bit(w,i)	((w)&(1<<(i)))
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char cardline[80];
 
@@ -136,18 +137,17 @@ main(argc, argv)
 	} else
 		while (fgets(cardline, sizeof(cardline), stdin))
 			printcard(cardline);
-	exit(0);
+	return(0);
 }
 
 #define	COLUMNS	48
 
-printcard(str)
-	char *str;
+static void
+printcard(char *str)
 {
 	static char rowchars[] = "   123456789";
 	int i, row;
 	char *p;
-	char *index();
 
 	/* ruthlessly remove newlines and truncate at 48 characters. */
 	if ((p = index(str, '\n')))
@@ -174,7 +174,7 @@ printcard(str)
 	p = str;
 	putchar('/');
 	for (i = 1; *p; i++, p++)
-		if (holes[*p])
+		if (holes[(int)*p])
 			putchar(*p);
 		else
 			putchar(' ');
@@ -192,7 +192,7 @@ printcard(str)
 	for (row = 0; row <= 11; ++row) {
 		putchar('|');
 		for (i = 0, p = str; *p; i++, p++) {
-			if (bit(holes[*p], 11 - row))
+			if (bit(holes[(int)*p], 11 - row))
 				putchar(']');
 			else
 				putchar(rowchars[row]);
