@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_termcap.3x,v 1.18 2003/02/08 22:25:47 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_termcap.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $DragonFly: src/lib/libncurses/man/curs_termcap.3,v 1.2 2005/08/03 09:56:19 eirikn Exp $
 .TH curs_termcap 3X ""
 .ds n 5
 .SH NAME
@@ -49,11 +49,11 @@
 .br
 \fBint tgetent(char *bp, const char *name);\fR
 .br
-\fBint tgetflag(char *id);\fR
+\fBint tgetflag(const char *id);\fR
 .br
-\fBint tgetnum(char *id);\fR
+\fBint tgetnum(const char *id);\fR
 .br
-\fBchar *tgetstr(char *id, char **area);\fR
+\fBchar *tgetstr(const char *id, char **area);\fR
 .br
 \fBchar *tgoto(const char *cap, int col, int row);\fR
 .br

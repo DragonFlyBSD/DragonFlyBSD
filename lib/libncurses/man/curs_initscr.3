@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_initscr.3x,v 1.12 2003/05/10 20:33:49 jmc Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_initscr.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $DragonFly: src/lib/libncurses/man/curs_initscr.3,v 1.2 2005/08/03 09:56:19 eirikn Exp $
 .TH curs_initscr 3X ""
 .SH NAME
 \fBinitscr\fR,
@@ -45,7 +45,7 @@
 .br
 \fBbool isendwin(void);\fR
 .br
-\fBSCREEN *newterm(char *type, FILE *outfd, FILE *infd);\fR
+\fBSCREEN *newterm(const char *type, FILE *outfd, FILE *infd);\fR
 .br
 \fBSCREEN *set_term(SCREEN *new);\fR
 .br

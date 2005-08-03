@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_util.3x,v 1.12 2004/01/31 17:24:53 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_util.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $DragonFly: src/lib/libncurses/man/curs_util.3,v 1.2 2005/08/03 09:56:19 eirikn Exp $
 .TH curs_util 3X ""
 .SH NAME
 \fBdelay_output\fR,
@@ -43,11 +43,11 @@
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .sp
-\fBchar *unctrl(chtype c);\fR
+\fBconst char *unctrl(chtype c);\fR
 .br
 \fBchar *wunctrl(cchar_t *c);\fR
 .br
-\fBchar *keyname(int c);\fR
+\fBconst char *keyname(int c);\fR
 .br
 \fBchar *key_name(wchar_t w);\fR
 .br

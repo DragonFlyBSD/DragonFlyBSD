@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: curs_scanw.3x,v 1.12 2002/07/20 15:48:09 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_scanw.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $DragonFly: src/lib/libncurses/man/curs_scanw.3,v 1.2 2005/08/03 09:56:19 eirikn Exp $
 .TH curs_scanw 3X ""
 .SH NAME
 \fBscanw\fR,
@@ -38,17 +38,17 @@
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 
-\fBint scanw(char *fmt, ...);\fR
+\fBint scanw(const char *fmt, ...);\fR
 .br
-\fBint wscanw(WINDOW *win, char *fmt, ...);\fR
+\fBint wscanw(WINDOW *win, const char *fmt, ...);\fR
 .br
-\fBint mvscanw(int y, int x, char *fmt, ...);\fR
+\fBint mvscanw(int y, int x, const char *fmt, ...);\fR
 .br
-\fBint mvwscanw(WINDOW *win, int y, int x, char *fmt, ...);\fR
+\fBint mvwscanw(WINDOW *win, int y, int x, const char *fmt, ...);\fR
 .br
-\fBint vw_scanw(WINDOW *win, char *fmt, va_list varglist);\fR
+\fBint vw_scanw(WINDOW *win, const char *fmt, va_list varglist);\fR
 .br
-\fBint vwscanw(WINDOW *win, char *fmt, va_list varglist);\fR
+\fBint vwscanw(WINDOW *win, const char *fmt, va_list varglist);\fR
 .SH DESCRIPTION
 The \fBscanw\fR, \fBwscanw\fR and \fBmvscanw\fR routines are analogous to
 \fBscanf\fR [see \fBscanf\fR(3S)].  The effect of these routines is as though
