@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.14 2005/01/12 00:26:03 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.15 2005/08/03 23:33:45 dillon Exp $
  */
 
 /*
@@ -233,6 +233,7 @@ read_files(void)
 	struct opt *op;
 	char *wd, *this, *needs, *special, *depends, *clean, *warning;
 	char fname[MAXPATHLEN];
+	int nonoptional;
 	int nreqs, first = 1, configdep, isdup, std, filetype,
 	    imp_rule, no_obj, before_depend, mandatory;
 
@@ -315,24 +316,29 @@ next:
 	warning = NULL;
 	configdep = 0;
 	needs = NULL;
-	std = mandatory = 0;
+	std = mandatory = nonoptional = 0;
 	imp_rule = 0;
 	no_obj = 0;
 	before_depend = 0;
 	filetype = NORMAL;
-	if (strcmp(wd, "standard") == 0)
+	if (strcmp(wd, "standard") == 0) {
 		std = 1;
-	/*
-	 * If an entry is marked "mandatory", config will abort if it's
-	 * not called by a configuration line in the config file.  Apart
-	 * from this, the device is handled like one marked "optional".
-	 */
-	else if (strcmp(wd, "mandatory") == 0)
+	} else if (strcmp(wd, "mandatory") == 0) {
+		/*
+		 * If an entry is marked "mandatory", config will abort if 
+		 * it's not called by a configuration line in the config
+		 * file.  Apart from this, the device is handled like one
+		 * marked "optional".
+		 */
 		mandatory = 1;
-	else if (strcmp(wd, "optional") != 0) {
+	} else if (strcmp(wd, "nonoptional") == 0) {
+		nonoptional = 1;
+	} else if (strcmp(wd, "optional") == 0) {
+		/* don't need to do anything */
+	} else {
 		printf("%s: %s must be optional, mandatory or standard\n",
 		       fname, this);
-		printf("Your version of config(8) is out of sync with your kernel source.\n");
+		printf("Alternatively, your version of config(8) may be out of sync with your\nkernel source.\n");
 		exit(1);
 	}
 nextparam:
@@ -443,7 +449,7 @@ nextparam:
 		save_dp->d_next = dp;
 		goto nextparam;
 	}
-	for (op = opt; op != NULL; op = op->op_next)
+	for (op = opt; op != NULL; op = op->op_next) {
 		if (op->op_value == 0 && opteq(op->op_name, wd)) {
 			if (nreqs == 1) {
 				free(needs);
@@ -451,6 +457,12 @@ nextparam:
 			}
 			goto nextparam;
 		}
+	}
+	if (nonoptional) {
+		printf("%s: the option \"%s\" MUST be specified\n",
+			fname, wd);
+		exit(1);
+	}
 invis:
 	while ((wd = get_word(fp)) != 0)
 		;

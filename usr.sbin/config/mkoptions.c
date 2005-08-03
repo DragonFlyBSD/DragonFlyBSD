@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.15 2005/08/02 13:18:25 joerg Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.16 2005/08/03 23:33:45 dillon Exp $
  */
 
 /*
@@ -138,12 +138,6 @@ do_option(char *name)
 			op->op_ownfile++;
 		}
 	}
-
-	if (strcmp(name, "COMPAT_DF12") == 0 &&
-	    getenv("NO_COMPAT_DF12") == NULL &&
-	    (value == NULL || strcmp(value, "1") != 0))
-		errx(1, "options COMPAT_DF12 not specified, "
-		     "set NO_COMPAT_DF12 to ignore");
 
 	inf = fopen(file, "r");
 	if (inf == NULL) {
