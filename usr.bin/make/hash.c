@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.24 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.19 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.20 2005/08/03 21:43:08 okumoto Exp $
  */
 
 /* hash.c --
@@ -78,6 +78,12 @@ static void RebuildTable(Hash_Table *);
  *	reasonable default if the number requested is less than or
  *	equal to zero.  Hash tables will grow in size as needed.
  *
+ * Input:
+ *	t		Structure to to hold table.
+ *	numBuckets	How many buckets to create for starters. This
+ *			number is rounded up to a power of two.   If
+ *			<= 0, a reasonable default is chosen. The
+ *			table will grow in size later as needed.
  *
  * Results:
  *	None.
@@ -155,6 +161,10 @@ Hash_DeleteTable(Hash_Table *t)
  *
  *	Searches a hash table for an entry corresponding to key.
  *
+ * Input:
+ *	t		Hash table to search.
+ *	key		A hash key.
+ *
  * Results:
  *	The return value is a pointer to the entry for key,
  *	if key was present in the table.  If key was not
@@ -188,6 +198,12 @@ Hash_FindEntry(const Hash_Table *t, const char *key)
  *
  *	Searches a hash table for an entry corresponding to
  *	key.  If no entry is found, then one is created.
+ *
+ * Input:
+ *	t		Hash table to search.
+ *	key		A hash key.
+ *	newPtr		Filled in with true if new entry created,
+ *			FALSE otherwise.
  *
  * Results:
  *	The return value is a pointer to the entry.  If *newPtr
@@ -288,6 +304,10 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
  *	This procedure sets things up for a complete search
  *	of all entries recorded in the hash table.
  *
+ * Input:
+ *	t		Table to be searched.
+ *	searchPtr	Area in which to keep state about search.
+ *
  * Results:
  *	The return value is the address of the first entry in
  *	the hash table, or NULL if the table is empty.
@@ -314,6 +334,9 @@ Hash_EnumFirst(const Hash_Table *t, Hash_Search *searchPtr)
  *
  * Hash_EnumNext --
  *    This procedure returns successive entries in the hash table.
+ *
+ * Input:
+ *	searchPtr	Area used to keep state about search.
  *
  * Results:
  *    The return value is a pointer to the next HashEntry
