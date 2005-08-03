@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.19 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.20 2005/08/03 16:36:33 hmp Exp $
  */
 
 /*
@@ -450,7 +450,7 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 			bp = getpbuf(&vnode_pbuf_freecnt);
 
 			/* build a minimal buffer header */
-			bp->b_flags = B_READ | B_CALL;
+			bp->b_flags = B_READ;
 			bp->b_iodone = vnode_pager_iodone;
 			bp->b_data = (caddr_t) kva + i * bsize;
 			bp->b_blkno = fileaddr;
@@ -764,7 +764,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	pmap_qenter(kva, m, count);
 
 	/* build a minimal buffer header */
-	bp->b_flags = B_READ | B_CALL;
+	bp->b_flags = B_READ;
 	bp->b_iodone = vnode_pager_iodone;
 	/* B_PHYS is not set, but it is nice to fill this in */
 	bp->b_blkno = firstaddr;

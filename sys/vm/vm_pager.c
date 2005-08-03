@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.13 2005/08/03 04:59:53 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.14 2005/08/03 16:36:33 hmp Exp $
  */
 
 /*
@@ -495,7 +495,7 @@ getchainbuf(struct buf *bp, struct vnode *vp, int flags)
 	if (bp->b_chain.count > 4)
 		waitchainbuf(bp, 4, 0);
 
-	nbp->b_flags = B_CALL | (bp->b_flags & B_ORDERED) | flags;
+	nbp->b_flags = (bp->b_flags & B_ORDERED) | flags;
 	nbp->b_iodone = vm_pager_chain_iodone;
 
 	if (vp)

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.19 2005/06/03 21:56:23 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.20 2005/08/03 16:36:33 hmp Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1039,7 +1039,7 @@ ccdbuffer(cb, cs, bp, bn, addr, bcount)
 	 * Fill in the component buf structure.
 	 */
 	cbp = getccdbuf(NULL);
-	cbp->cb_buf.b_flags = bp->b_flags | B_CALL;
+	cbp->cb_buf.b_flags = bp->b_flags;
 	cbp->cb_buf.b_iodone = (void (*)(struct buf *))ccdiodone;
 	cbp->cb_buf.b_dev = ci->ci_dev;		/* XXX */
 	cbp->cb_buf.b_blkno = cbn + cboff + CCD_OFFSET;

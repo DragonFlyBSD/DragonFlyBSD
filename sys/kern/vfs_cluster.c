@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.13 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.14 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -243,7 +243,7 @@ single_block_read:
 			vfs_busy_pages(bp, 0);
 		}
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
-		if (bp->b_flags & (B_ASYNC|B_CALL))
+		if ((bp->b_flags & B_ASYNC) || bp->b_iodone != NULL)
 			BUF_KERNPROC(bp);
 		error = VOP_STRATEGY(vp, bp);
 	}
@@ -278,7 +278,7 @@ single_block_read:
 				vfs_busy_pages(rbp, 0);
 			}
 			rbp->b_flags &= ~(B_ERROR|B_INVAL);
-			if (rbp->b_flags & (B_ASYNC|B_CALL))
+			if ((rbp->b_flags & B_ASYNC) || rbp->b_iodone != NULL)
 				BUF_KERNPROC(rbp);
 			(void) VOP_STRATEGY(vp, rbp);
 		}
@@ -340,7 +340,7 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 	 */
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
 	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-	bp->b_flags = B_ASYNC | B_READ | B_CALL | B_CLUSTER | B_VMIO;
+	bp->b_flags = B_ASYNC | B_READ | B_CLUSTER | B_VMIO;
 	bp->b_iodone = cluster_callback;
 	bp->b_blkno = blkno;
 	bp->b_lblkno = lbn;
@@ -793,7 +793,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		 */
 		bp->b_data = (char *)((vm_offset_t)bp->b_data |
 		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-		bp->b_flags |= B_CALL | B_CLUSTER |
+		bp->b_flags |= B_CLUSTER |
 			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT | B_NOWDRAIN));
 		bp->b_iodone = cluster_callback;
 		pbgetvp(vp, bp);

@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.17 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.18 2005/08/03 16:36:33 hmp Exp $
  */
 
 /*
@@ -961,7 +961,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 
 	bp->b_bcount = cb->aio_nbytes;
 	bp->b_bufsize = cb->aio_nbytes;
-	bp->b_flags = B_PHYS | B_CALL | (cb->aio_lio_opcode == LIO_WRITE ?
+	bp->b_flags = B_PHYS | (cb->aio_lio_opcode == LIO_WRITE ?
 	    B_WRITE : B_READ);
 	bp->b_iodone = aio_physwakeup;
 	bp->b_saveaddr = bp->b_data;

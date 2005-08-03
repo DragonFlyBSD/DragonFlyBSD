@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.16 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.17 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1116,7 +1116,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 
 	pmap_qenter(kva, m + i, j - i);
 
-	bp->b_flags = B_READ | B_CALL;
+	bp->b_flags = B_READ;
 	bp->b_iodone = swp_pager_async_iodone;
 	bp->b_data = (caddr_t) kva;
 	bp->b_blkno = blk - (reqpage - i);
@@ -1350,10 +1350,9 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 
 		if (sync == TRUE) {
 			bp = getpbuf(&nsw_wcount_sync);
-			bp->b_flags = B_CALL;
 		} else {
 			bp = getpbuf(&nsw_wcount_async);
-			bp->b_flags = B_CALL | B_ASYNC;
+			bp->b_flags = B_ASYNC;
 		}
 		bp->b_spc = NULL;	/* not used, but NULL-out anyway */
 

@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.11 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -245,7 +245,6 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 		ic->ic_args[0].ia_long = (LABELSECTOR + labelsect -
 		    slicerel_secno) * ssp->dss_secsize;
 		ic->ic_args[1].ia_ptr = sp;
-		bp->b_flags |= B_CALL;
 		bp->b_iodone = dsiodone;
 		bp->b_iodone_chain = ic;
 		if (!(bp->b_flags & B_READ)) {
@@ -538,8 +537,7 @@ dsiodone(struct buf *bp)
 	char *msg;
 
 	ic = bp->b_iodone_chain;
-	bp->b_flags = (ic->ic_prev_flags & B_CALL)
-		      | (bp->b_flags & ~(B_CALL | B_DONE));
+	bp->b_flags = bp->b_flags & ~B_DONE;
 	bp->b_iodone = ic->ic_prev_iodone;
 	bp->b_iodone_chain = ic->ic_prev_iodone_chain;
 	if (!(bp->b_flags & B_READ)

@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.4 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include "vinumhdr.h"
@@ -385,7 +385,6 @@ complete_raid5_write(struct rqelement *rqe)
 		if ((rqe->b.b_flags & B_READ)		    /* this was a read */
 		&&((rqe->flags & XFR_BAD_SUBDISK) == 0)) {  /* and we can write this block */
 		    rqe->b.b_flags &= ~(B_READ | B_DONE);   /* we're writing now */
-		    rqe->b.b_flags |= B_CALL;		    /* call us when you're done */
 		    rqe->b.b_iodone = complete_rqe;	    /* by calling us here */
 		    rqe->flags &= ~XFR_PARITYOP;	    /* reset flags that brought us here */
 		    rqe->b.b_data = &ubp->b_data[rqe->useroffset << DEV_BSHIFT]; /* point to the user data */
@@ -425,7 +424,6 @@ complete_raid5_write(struct rqelement *rqe)
     /* Finally, write the parity block */
     rqe = &rqg->rqe[0];
     rqe->b.b_flags &= ~(B_READ | B_DONE);		    /* we're writing now */
-    rqe->b.b_flags |= B_CALL;				    /* tell us when you're done */
     rqe->b.b_iodone = complete_rqe;			    /* by calling us here */
     rqg->flags &= ~XFR_PARITYOP;			    /* reset flags that brought us here */
     rqe->b.b_bcount = rqe->buflen << DEV_BSHIFT;	    /* length to write */

@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.11 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -79,9 +79,9 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	for (i = 0; i < uio->uio_iovcnt; i++) {
 		while (uio->uio_iov[i].iov_len) {
 			if (uio->uio_rw == UIO_READ)
-				bp->b_flags = B_PHYS | B_CALL | B_READ;
+				bp->b_flags = B_PHYS | B_READ;
 			else 
-				bp->b_flags = B_PHYS | B_CALL | B_WRITE;
+				bp->b_flags = B_PHYS | B_WRITE;
 			bp->b_dev = dev;
 			bp->b_iodone = physwakeup;
 			bp->b_data = uio->uio_iov[i].iov_base;

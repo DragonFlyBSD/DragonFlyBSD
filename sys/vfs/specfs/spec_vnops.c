@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.25 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.26 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -694,7 +694,7 @@ spec_getpages(struct vop_getpages_args *ap)
 	pmap_qenter(kva, ap->a_m, pcount);
 
 	/* Build a minimal buffer header. */
-	bp->b_flags = B_READ | B_CALL;
+	bp->b_flags = B_READ;
 	bp->b_iodone = spec_getpages_iodone;
 
 	/* B_PHYS is not set, but it is nice to fill this in. */

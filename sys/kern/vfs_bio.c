@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.39 2005/08/03 04:59:53 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.40 2005/08/03 16:36:33 hmp Exp $
  */
 
 /*
@@ -716,7 +716,7 @@ bwrite(struct buf * bp)
 	    (bp->b_flags & B_ASYNC) &&
 	    !vm_page_count_severe() &&
 	    !buf_dirty_count_severe()) {
-		if (bp->b_flags & B_CALL)
+		if (bp->b_iodone)
 			panic("bwrite: need chained iodone");
 
 		/* get a new block */
@@ -728,7 +728,7 @@ bwrite(struct buf * bp)
 		newbp->b_blkno = bp->b_blkno;
 		newbp->b_offset = bp->b_offset;
 		newbp->b_iodone = vfs_backgroundwritedone;
-		newbp->b_flags |= B_ASYNC | B_CALL;
+		newbp->b_flags |= B_ASYNC;
 		newbp->b_flags &= ~B_INVAL;
 		bgetvp(bp->b_vp, newbp);
 
@@ -836,7 +836,7 @@ vfs_backgroundwritedone(struct buf *bp)
 	 * to avoid biodone doing a second vwakeup.
 	 */
 	bp->b_flags |= B_NOCACHE | B_READ;
-	bp->b_flags &= ~(B_CACHE | B_CALL | B_DONE);
+	bp->b_flags &= ~(B_CACHE | B_DONE);
 	bp->b_iodone = 0;
 	biodone(bp);
 }
@@ -2851,6 +2851,7 @@ biodone(struct buf *bp)
 
 	KASSERT(BUF_REFCNTNB(bp) > 0, ("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
 	KASSERT(!(bp->b_flags & B_DONE), ("biodone: bp %p already done", bp));
+	void (*b_iodone)(struct buf *);
 
 	bp->b_flags |= B_DONE;
 	bp->b_dev = NODEV;
@@ -2867,9 +2868,10 @@ biodone(struct buf *bp)
 	}
 
 	/* call optional completion function if requested */
-	if (bp->b_flags & B_CALL) {
-		bp->b_flags &= ~B_CALL;
-		(*bp->b_iodone) (bp);
+	if (bp->b_iodone != NULL) {
+		b_iodone = bp->b_iodone;
+		bp->b_iodone = NULL;
+		(*b_iodone) (bp);
 		crit_exit();
 		return;
 	}

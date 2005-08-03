@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.13 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.14 2005/08/03 16:36:33 hmp Exp $
  */
 
 #include "opt_ata.h"
@@ -550,7 +550,7 @@ arstrategy(struct buf *bp)
 	buf1->bp.b_caller1 = (void *)rdp;
 	buf1->bp.b_bcount = chunk * DEV_BSIZE;
 	buf1->bp.b_data = data;
-	buf1->bp.b_flags = bp->b_flags | B_CALL;
+	buf1->bp.b_flags = bp->b_flags;
 	buf1->bp.b_iodone = ar_done;
 	buf1->org = bp;
 
@@ -684,7 +684,7 @@ ar_done(struct buf *bp)
 		    else
 			buf->drive = buf->drive - rdp->width;
 		    buf->bp.b_dev = AD_SOFTC(rdp->disks[buf->drive])->dev;
-		    buf->bp.b_flags = buf->org->b_flags | B_CALL;
+		    buf->bp.b_flags = buf->org->b_flags;
 		    buf->bp.b_error = 0;
 		    AR_STRATEGY((struct buf *)buf);
 		    return;
@@ -1390,7 +1390,6 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
 	bp->b_iodone = (void *)wakeup;
     else
 	bp->b_iodone = ar_rw_done;
-    bp->b_flags = B_CALL;
     if (flags & AR_READ)
 	bp->b_flags |= B_READ;
     if (flags & AR_WRITE)
