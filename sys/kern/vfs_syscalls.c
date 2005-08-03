@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.65 2005/07/23 23:26:50 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.66 2005/08/03 04:59:53 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -3521,39 +3521,6 @@ extattr_delete_file(struct extattr_delete_file_args *uap)
 	nlookup_done(&nd);
 	return(error);
 }
-
-/*
- * print out statistics from the current status of the buffer pool
- * this can be toggeled by the system control option debug.syncprt
- */
-#ifdef DEBUG
-void
-vfs_bufstats(void)
-{
-        int i, j, count;
-        struct buf *bp;
-        struct bqueues *dp;
-        int counts[(MAXBSIZE / PAGE_SIZE) + 1];
-        static char *bname[3] = { "LOCKED", "LRU", "AGE" };
-
-        for (dp = bufqueues, i = 0; dp < &bufqueues[3]; dp++, i++) {
-                count = 0;
-                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
-                        counts[j] = 0;
-		crit_enter();
-                TAILQ_FOREACH(bp, dp, b_freelist) {
-                        counts[bp->b_bufsize/PAGE_SIZE]++;
-                        count++;
-                }
-		crit_exit();
-                printf("%s: total-%d", bname[i], count);
-                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
-                        if (counts[j] != 0)
-                                printf(", %d-%d", j * PAGE_SIZE, counts[j]);
-                printf("\n");
-        }
-}
-#endif
 
 static int
 chroot_visible_mnt(struct mount *mp, struct proc *p)

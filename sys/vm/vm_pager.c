@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.12 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.13 2005/08/03 04:59:53 hmp Exp $
  */
 
 /*
@@ -307,7 +307,7 @@ vm_pager_object_lookup(struct pagerlst *pg_list, void *handle)
 static void
 initpbuf(struct buf *bp)
 {
-	bp->b_qindex = QUEUE_NONE;
+	bp->b_qindex = 0; /* BQUEUE_NONE */
 	bp->b_data = (caddr_t) (MAXPHYS * (bp - swbuf)) + swapbkva;
 	bp->b_kvabase = bp->b_data;
 	bp->b_kvasize = MAXPHYS;

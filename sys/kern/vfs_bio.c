@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.38 2005/07/28 18:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.39 2005/08/03 04:59:53 hmp Exp $
  */
 
 /*
@@ -57,6 +57,20 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <vm/vm_page2.h>
+
+/*
+ * Buffer queues.
+ */
+#define BUFFER_QUEUES	6
+enum bufq_type {
+	BQUEUE_NONE,    	/* not on any queue */
+	BQUEUE_LOCKED,  	/* locked buffers */
+	BQUEUE_CLEAN,   	/* non-B_DELWRI buffers */
+	BQUEUE_DIRTY,   	/* B_DELWRI buffers */
+	BQUEUE_EMPTYKVA, 	/* empty buffer headers with KVA assignment */
+	BQUEUE_EMPTY    	/* empty buffer headers */
+};
+TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
 
@@ -168,7 +182,6 @@ SYSCTL_INT(_debug, OID_AUTO, dobkgrdwrite, CTLFLAG_RW, &dobkgrdwrite, 0,
 static int bufhashmask;
 static int bufhashshift;
 static LIST_HEAD(bufhashhdr, buf) *bufhashtbl, invalhash;
-struct bqueues bufqueues[BUFFER_QUEUES] = { { 0 } };
 char *buf_wmesg = BUF_WMESG;
 
 extern int vm_swap_size;
@@ -411,12 +424,12 @@ bufinit(void)
 		bzero(bp, sizeof *bp);
 		bp->b_flags = B_INVAL;	/* we're just an empty header */
 		bp->b_dev = NODEV;
-		bp->b_qindex = QUEUE_EMPTY;
+		bp->b_qindex = BQUEUE_EMPTY;
 		bp->b_xflags = 0;
 		xio_init(&bp->b_xio);
 		LIST_INIT(&bp->b_dep);
 		BUF_LOCKINIT(bp);
-		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_EMPTY], bp, b_freelist);
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_EMPTY], bp, b_freelist);
 		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 	}
 
@@ -532,11 +545,11 @@ bremfree(struct buf * bp)
 	crit_enter();
 	old_qindex = bp->b_qindex;
 
-	if (bp->b_qindex != QUEUE_NONE) {
+	if (bp->b_qindex != BQUEUE_NONE) {
 		KASSERT(BUF_REFCNTNB(bp) == 1, 
 				("bremfree: bp %p not locked",bp));
 		TAILQ_REMOVE(&bufqueues[bp->b_qindex], bp, b_freelist);
-		bp->b_qindex = QUEUE_NONE;
+		bp->b_qindex = BQUEUE_NONE;
 	} else {
 		if (BUF_REFCNTNB(bp) <= 1)
 			panic("bremfree: removing a buffer not on a queue");
@@ -549,10 +562,10 @@ bremfree(struct buf * bp)
 	 */
 	if ((bp->b_flags & B_INVAL) || (bp->b_flags & B_DELWRI) == 0) {
 		switch(old_qindex) {
-		case QUEUE_DIRTY:
-		case QUEUE_CLEAN:
-		case QUEUE_EMPTY:
-		case QUEUE_EMPTYKVA:
+		case BQUEUE_DIRTY:
+		case BQUEUE_CLEAN:
+		case BQUEUE_EMPTY:
+		case BQUEUE_EMPTYKVA:
 			--numfreebuffers;
 			break;
 		default:
@@ -914,12 +927,12 @@ bdwrite(struct buf *bp)
  *	count.
  *
  *	Must be called from a critical section.
- *	The buffer must be on QUEUE_NONE.
+ *	The buffer must be on BQUEUE_NONE.
  */
 void
 bdirty(struct buf *bp)
 {
-	KASSERT(bp->b_qindex == QUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
+	KASSERT(bp->b_qindex == BQUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
 	bp->b_flags &= ~(B_READ|B_RELBUF);
 
 	if ((bp->b_flags & B_DELWRI) == 0) {
@@ -940,7 +953,7 @@ bdirty(struct buf *bp)
  *	
  *	Must be called from a critical section.
  *
- *	The buffer is typically on QUEUE_NONE but there is one case in 
+ *	The buffer is typically on BQUEUE_NONE but there is one case in 
  *	brelse() that calls this function after placing the buffer on
  *	a different queue.
  */
@@ -1246,7 +1259,7 @@ brelse(struct buf * bp)
 		}
 	}
 			
-	if (bp->b_qindex != QUEUE_NONE)
+	if (bp->b_qindex != BQUEUE_NONE)
 		panic("brelse: free buffer onto another queue???");
 	if (BUF_REFCNTNB(bp) > 1) {
 		/* Temporary panic to verify exclusive locking */
@@ -1276,9 +1289,9 @@ brelse(struct buf * bp)
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 1");
 		if (bp->b_kvasize) {
-			bp->b_qindex = QUEUE_EMPTYKVA;
+			bp->b_qindex = BQUEUE_EMPTYKVA;
 		} else {
-			bp->b_qindex = QUEUE_EMPTY;
+			bp->b_qindex = BQUEUE_EMPTY;
 		}
 		TAILQ_INSERT_HEAD(&bufqueues[bp->b_qindex], bp, b_freelist);
 		LIST_REMOVE(bp, b_hash);
@@ -1294,8 +1307,8 @@ brelse(struct buf * bp)
 		bp->b_xflags &= ~BX_BKGRDWRITE;
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 2");
-		bp->b_qindex = QUEUE_CLEAN;
-		TAILQ_INSERT_HEAD(&bufqueues[QUEUE_CLEAN], bp, b_freelist);
+		bp->b_qindex = BQUEUE_CLEAN;
+		TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 		LIST_REMOVE(bp, b_hash);
 		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 		bp->b_dev = NODEV;
@@ -1303,8 +1316,8 @@ brelse(struct buf * bp)
 		/*
 		 * Buffers that are locked.
 		 */
-		bp->b_qindex = QUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_LOCKED], bp, b_freelist);
+		bp->b_qindex = BQUEUE_LOCKED;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
 	} else {
 		/*
 		 * Remaining buffers.  These buffers are still associated with
@@ -1312,20 +1325,20 @@ brelse(struct buf * bp)
 		 */
 		switch(bp->b_flags & (B_DELWRI|B_AGE)) {
 		case B_DELWRI | B_AGE:
-		    bp->b_qindex = QUEUE_DIRTY;
-		    TAILQ_INSERT_HEAD(&bufqueues[QUEUE_DIRTY], bp, b_freelist);
+		    bp->b_qindex = BQUEUE_DIRTY;
+		    TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
 		    break;
 		case B_DELWRI:
-		    bp->b_qindex = QUEUE_DIRTY;
-		    TAILQ_INSERT_TAIL(&bufqueues[QUEUE_DIRTY], bp, b_freelist);
+		    bp->b_qindex = BQUEUE_DIRTY;
+		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
 		    break;
 		case B_AGE:
-		    bp->b_qindex = QUEUE_CLEAN;
-		    TAILQ_INSERT_HEAD(&bufqueues[QUEUE_CLEAN], bp, b_freelist);
+		    bp->b_qindex = BQUEUE_CLEAN;
+		    TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 		    break;
 		default:
-		    bp->b_qindex = QUEUE_CLEAN;
-		    TAILQ_INSERT_TAIL(&bufqueues[QUEUE_CLEAN], bp, b_freelist);
+		    bp->b_qindex = BQUEUE_CLEAN;
+		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 		    break;
 		}
 	}
@@ -1377,7 +1390,7 @@ bqrelse(struct buf * bp)
 
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("bqrelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
-	if (bp->b_qindex != QUEUE_NONE)
+	if (bp->b_qindex != BQUEUE_NONE)
 		panic("bqrelse: free buffer onto another queue???");
 	if (BUF_REFCNTNB(bp) > 1) {
 		/* do not release to free list */
@@ -1388,12 +1401,12 @@ bqrelse(struct buf * bp)
 	}
 	if (bp->b_flags & B_LOCKED) {
 		bp->b_flags &= ~B_ERROR;
-		bp->b_qindex = QUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_LOCKED], bp, b_freelist);
+		bp->b_qindex = BQUEUE_LOCKED;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
 		/* buffers with stale but valid contents */
 	} else if (bp->b_flags & B_DELWRI) {
-		bp->b_qindex = QUEUE_DIRTY;
-		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_DIRTY], bp, b_freelist);
+		bp->b_qindex = BQUEUE_DIRTY;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
 	} else if (vm_page_count_severe()) {
 		/*
 		 * We are too low on memory, we have to try to free the
@@ -1404,8 +1417,8 @@ bqrelse(struct buf * bp)
 		brelse(bp);
 		return;
 	} else {
-		bp->b_qindex = QUEUE_CLEAN;
-		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_CLEAN], bp, b_freelist);
+		bp->b_qindex = BQUEUE_CLEAN;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 	}
 
 	if ((bp->b_flags & B_LOCKED) == 0 &&
@@ -1641,8 +1654,8 @@ restart:
 	 * However, there are a number of cases (defragging, reusing, ...)
 	 * where we cannot backup.
 	 */
-	nqindex = QUEUE_EMPTYKVA;
-	nbp = TAILQ_FIRST(&bufqueues[QUEUE_EMPTYKVA]);
+	nqindex = BQUEUE_EMPTYKVA;
+	nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTYKVA]);
 
 	if (nbp == NULL) {
 		/*
@@ -1652,8 +1665,8 @@ restart:
 		 * skip this step so we can allocate a new buffer.
 		 */
 		if (defrag || bufspace >= lobufspace) {
-			nqindex = QUEUE_CLEAN;
-			nbp = TAILQ_FIRST(&bufqueues[QUEUE_CLEAN]);
+			nqindex = BQUEUE_CLEAN;
+			nbp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN]);
 		}
 
 		/*
@@ -1664,8 +1677,8 @@ restart:
 		 */
 		if (nbp == NULL && defrag == 0 &&
 		    bufspace + maxsize < hibufspace) {
-			nqindex = QUEUE_EMPTY;
-			nbp = TAILQ_FIRST(&bufqueues[QUEUE_EMPTY]);
+			nqindex = BQUEUE_EMPTY;
+			nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTY]);
 		}
 	}
 
@@ -1683,17 +1696,17 @@ restart:
 		 */
 		if ((nbp = TAILQ_NEXT(bp, b_freelist)) == NULL) {
 			switch(qindex) {
-			case QUEUE_EMPTY:
-				nqindex = QUEUE_EMPTYKVA;
-				if ((nbp = TAILQ_FIRST(&bufqueues[QUEUE_EMPTYKVA])))
+			case BQUEUE_EMPTY:
+				nqindex = BQUEUE_EMPTYKVA;
+				if ((nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTYKVA])))
 					break;
 				/* fall through */
-			case QUEUE_EMPTYKVA:
-				nqindex = QUEUE_CLEAN;
-				if ((nbp = TAILQ_FIRST(&bufqueues[QUEUE_CLEAN])))
+			case BQUEUE_EMPTYKVA:
+				nqindex = BQUEUE_CLEAN;
+				if ((nbp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN])))
 					break;
 				/* fall through */
-			case QUEUE_CLEAN:
+			case BQUEUE_CLEAN:
 				/*
 				 * nbp is NULL. 
 				 */
@@ -1726,7 +1739,7 @@ restart:
 
 		/*
 		 * Start freeing the bp.  This is somewhat involved.  nbp
-		 * remains valid only for QUEUE_EMPTY[KVA] bp's.  Buffers
+		 * remains valid only for BQUEUE_EMPTY[KVA] bp's.  Buffers
 		 * on the clean list must be disassociated from their 
 		 * current vnode.  Buffers on the empty[kva] lists have
 		 * already been disassociated.
@@ -1736,7 +1749,7 @@ restart:
 			panic("getnewbuf: locked buf");
 		bremfree(bp);
 
-		if (qindex == QUEUE_CLEAN) {
+		if (qindex == BQUEUE_CLEAN) {
 			if (bp->b_flags & B_VMIO) {
 				bp->b_flags &= ~B_ASYNC;
 				vfs_vmio_release(bp);
@@ -1984,7 +1997,7 @@ flushbufqueues(void)
 	struct buf *bp;
 	int r = 0;
 
-	bp = TAILQ_FIRST(&bufqueues[QUEUE_DIRTY]);
+	bp = TAILQ_FIRST(&bufqueues[BQUEUE_DIRTY]);
 
 	while (bp) {
 		KASSERT((bp->b_flags & B_DELWRI), ("unexpected clean buffer %p", bp));
@@ -2002,12 +2015,12 @@ flushbufqueues(void)
 			    bioops.io_countdeps &&
 			    (bp->b_flags & B_DEFERRED) == 0 &&
 			    (*bioops.io_countdeps)(bp, 0)) {
-				TAILQ_REMOVE(&bufqueues[QUEUE_DIRTY],
+				TAILQ_REMOVE(&bufqueues[BQUEUE_DIRTY],
 				    bp, b_freelist);
-				TAILQ_INSERT_TAIL(&bufqueues[QUEUE_DIRTY],
+				TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY],
 				    bp, b_freelist);
 				bp->b_flags |= B_DEFERRED;
-				bp = TAILQ_FIRST(&bufqueues[QUEUE_DIRTY]);
+				bp = TAILQ_FIRST(&bufqueues[BQUEUE_DIRTY]);
 				continue;
 			}
 			vfs_bio_awrite(bp);
@@ -3470,6 +3483,39 @@ vunmapbuf(struct buf *bp)
 
 	bp->b_data = bp->b_saveaddr;
 }
+
+/*
+ * print out statistics from the current status of the buffer pool
+ * this can be toggeled by the system control option debug.syncprt
+ */
+#ifdef DEBUG
+void
+vfs_bufstats(void)
+{
+        int i, j, count;
+        struct buf *bp;
+        struct bqueues *dp;
+        int counts[(MAXBSIZE / PAGE_SIZE) + 1];
+        static char *bname[3] = { "LOCKED", "LRU", "AGE" };
+
+        for (dp = bufqueues, i = 0; dp < &bufqueues[3]; dp++, i++) {
+                count = 0;
+                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
+                        counts[j] = 0;
+		crit_enter();
+                TAILQ_FOREACH(bp, dp, b_freelist) {
+                        counts[bp->b_bufsize/PAGE_SIZE]++;
+                        count++;
+                }
+		crit_exit();
+                printf("%s: total-%d", bname[i], count);
+                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
+                        if (counts[j] != 0)
+                                printf(", %d-%d", j * PAGE_SIZE, counts[j]);
+                printf("\n");
+        }
+}
+#endif
 
 #include "opt_ddb.h"
 #ifdef DDB
