@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.30 2005/07/13 17:03:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.31 2005/08/03 16:01:11 hmp Exp $
  */
 
 /*
@@ -292,6 +292,7 @@ static devclass_t xl_devclass;
 DECLARE_DUMMY_MODULE(if_xl);
 MODULE_DEPEND(if_xl, miibus, 1, 1, 1);
 DRIVER_MODULE(if_xl, pci, xl_driver, xl_devclass, 0, 0);
+DRIVER_MODULE(if_xl, cardbus, xl_driver, xl_devclass, 0, 0);
 DRIVER_MODULE(miibus, xl, miibus_driver, miibus_devclass, 0, 0);
 
 static void
@@ -1289,14 +1290,18 @@ xl_attach(dev)
 		sc->xl_flags |= XL_FLAG_8BITROM;
 	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_556B)
 		sc->xl_flags |= XL_FLAG_NO_XCVR_PWR;
-
+	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575B ||
+	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_575C ||
+	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_656B ||
+	    pci_get_device(dev) == TC_DEVICEID_TORNADO_656C)
+		sc->xl_flags |= XL_FLAG_FUNCREG;
 	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575A ||
 	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_575B ||
 	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_575C ||
 	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_656B ||
 	    pci_get_device(dev) == TC_DEVICEID_TORNADO_656C)
-		sc->xl_flags |= XL_FLAG_FUNCREG | XL_FLAG_PHYOK |
-		    XL_FLAG_EEPROM_OFFSET_30 | XL_FLAG_8BITROM;
+		sc->xl_flags |= XL_FLAG_PHYOK | XL_FLAG_EEPROM_OFFSET_30 |
+		    XL_FLAG_8BITROM;
 	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_656)
 		sc->xl_flags |= XL_FLAG_FUNCREG | XL_FLAG_PHYOK;
 	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575B)
@@ -1388,7 +1393,7 @@ xl_attach(dev)
 		    RF_ACTIVE);
 
 		if (sc->xl_fres == NULL) {
-			device_printf(dev, "couldn't map ports/memory\n");
+			device_printf(dev, "couldn't map funcreg memory\n");
 			error = ENXIO;
 			goto fail;
 		}
