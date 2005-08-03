@@ -38,7 +38,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.19 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.18 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.19 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef hash_h_f6312f46
@@ -50,7 +50,7 @@
  *	which maintains hash tables.
  */
 
-#include "util.h"
+#include <stdbool.h>
 
 /*
  * The following defines one entry in the hash table.

@@ -35,13 +35,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/targ.h,v 1.4 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.h,v 1.5 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef targ_h_6ded1830
 #define	targ_h_6ded1830
 
 #include <time.h>
+#include <stdbool.h>
 
 /*
  * The TARG_ constants are used when calling the Targ_FindNode and

@@ -38,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.24 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.33 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.34 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef buf_h_a61a6812
@@ -50,8 +50,7 @@
  */
 
 #include <sys/types.h>
-
-#include "util.h"
+#include <stdbool.h>
 
 /*
  * There are several places where expandable buffers are used (parse.c and

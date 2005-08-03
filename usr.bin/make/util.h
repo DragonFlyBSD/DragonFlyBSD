@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.14 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.15 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -43,17 +43,6 @@
 
 #include <sys/types.h>
 #include <stdio.h>
-
-/*
- * A boolean type is defined as an integer, not an enum. This allows a
- * boolean argument to be an expression that isn't strictly 0 or 1 valued.
- */
-
-typedef int bool;
-#ifndef true
-#define	true	1
-#define	false	0
-#endif /* true */
 
 #define	CONCAT(a,b)	a##b
 

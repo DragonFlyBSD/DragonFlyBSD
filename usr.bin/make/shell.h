@@ -36,14 +36,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.14 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.15 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
 #define	shell_h_6002e3b8
 
+#include <stdbool.h>
+
 #include "str.h"
-#include "util.h"
 
 /**
  * Shell Specifications:

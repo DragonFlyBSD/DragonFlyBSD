@@ -35,13 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/for.h,v 1.5 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.h,v 1.6 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef for_h_9d770f33
 #define	for_h_9d770f33
 
-#include "util.h"
+#include <stdbool.h>
 
 bool For_For(char *);
 bool For_Eval(char *);

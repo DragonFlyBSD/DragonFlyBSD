@@ -35,13 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.10 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.11 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef str_h_44db59e6
 #define	str_h_44db59e6
 
-#include "util.h"
+#include <stdbool.h>
 
 struct Buffer;
 

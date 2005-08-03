@@ -35,15 +35,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.14 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.15 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
 #define	parse_h_470eeb9a
 
 #include <stdio.h>
-
-#include "util.h"
+#include <stdbool.h>
 
 struct GNode;
 struct Lst;

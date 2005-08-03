@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.31 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.32 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -49,7 +49,7 @@
  *	Header for using the list library
  */
 
-#include "util.h"
+#include <stdbool.h>
 
 /*
  * Structure of a list node.

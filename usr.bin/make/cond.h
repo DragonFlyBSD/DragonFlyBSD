@@ -35,11 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/cond.h,v 1.6 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.h,v 1.7 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef cond_h_6e96ad7c
 #define	cond_h_6e96ad7c
+
+#include <stdbool.h>
 
 #include "parse.h"
 

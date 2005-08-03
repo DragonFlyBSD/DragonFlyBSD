@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.37 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.38 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -48,7 +48,7 @@
  *	The global definitions for make
  */
 
-#include "util.h"
+#include <stdbool.h>
 
 /* buildworld needs this on FreeBSD */
 #ifndef __arysize

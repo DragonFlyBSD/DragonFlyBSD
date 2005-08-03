@@ -35,11 +35,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/suff.h,v 1.5 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.h,v 1.6 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef suff_h_2d5a821c
 #define	suff_h_2d5a821c
+
+#include <stdbool.h>
 
 struct GNode;
 struct Path;

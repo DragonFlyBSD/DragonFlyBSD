@@ -37,11 +37,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.39 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.40 2005/08/03 19:48:44 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
 #define	var_h_9cccafce
+
+#include <stdbool.h>
 
 struct Buffer;
 struct GNode;
