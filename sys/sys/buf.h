@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.14 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.15 2005/08/03 16:55:11 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -248,7 +248,7 @@ struct buf {
 #define B_NOWDRAIN	0x80000000	/* Avoid wdrain deadlock */
 
 /* Unused flag space. */
-#define	B_UNUSED0040	0x00000040
+#define	B_UNUSED40  	0x00000040
 #define	B_UNUSED1000000	0x01000000
 #define	B_UNUSED1000	0x00001000
 
