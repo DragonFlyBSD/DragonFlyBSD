@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.41 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.42 2005/08/03 22:00:16 okumoto Exp $
  */
 
 /*-
@@ -778,8 +778,7 @@ Path_FindFile(char *name, struct Path *path)
 				 */
 				DEBUGF(DIR, ("Caching %s for %s\n",
 				    Targ_FmtTime(stb.st_mtime), file));
-				entry = Hash_CreateEntry(&mtimes, file,
-				    (bool *)NULL);
+				entry = Hash_CreateEntry(&mtimes, file, NULL);
 				Hash_SetValue(entry,
 				    (void *)(long)stb.st_mtime);
 				nearmisses += 1;
@@ -842,7 +841,7 @@ Path_FindFile(char *name, struct Path *path)
 		DEBUGF(DIR, ("got it (in mtime cache)\n"));
 		return (estrdup(name));
 	} else if (stat(name, &stb) == 0) {
-		entry = Hash_CreateEntry(&mtimes, name, (bool *)NULL);
+		entry = Hash_CreateEntry(&mtimes, name, NULL);
 		DEBUGF(DIR, ("Caching %s for %s\n",
 		    Targ_FmtTime(stb.st_mtime), name));
 		Hash_SetValue(entry, (void *)(long)stb.st_mtime);
@@ -908,7 +907,7 @@ Dir_MTime(GNode *gn)
 			stb.st_mtime = 0;
 		}
 	}
-	if (fullName && gn->path == (char *)NULL)
+	if (fullName && gn->path == NULL)
 		gn->path = fullName;
 
 	gn->mtime = stb.st_mtime;
@@ -992,7 +991,7 @@ Path_AddDir(struct Path *path, const char *name)
 		if (ISDOT(dp->d_name) || ISDOTDOT(dp->d_name))
 			continue;
 
-		Hash_CreateEntry(&d->files, dp->d_name, (bool *)NULL);
+		Hash_CreateEntry(&d->files, dp->d_name, NULL);
 	}
 	closedir(dir);
 
