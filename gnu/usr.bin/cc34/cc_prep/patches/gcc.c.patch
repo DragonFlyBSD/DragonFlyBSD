@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.3 2005/08/02 21:15:12 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/gcc.c.patch,v 1.4 2005/08/03 03:12:00 joerg Exp $
 
 Index: gcc.c
 ===================================================================
@@ -6,8 +6,16 @@ RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/gcc.c,v
 retrieving revision 1.3
 diff -u -r1.3 gcc.c
 --- gcc.c	24 May 2005 06:29:31 -0000	1.3
-+++ gcc.c	2 Aug 2005 19:22:59 -0000
-@@ -1409,8 +1409,7 @@
++++ gcc.c	2 Aug 2005 22:25:59 -0000
+@@ -712,6 +712,7 @@
+ static const char *asm_spec = ASM_SPEC;
+ static const char *asm_final_spec = ASM_FINAL_SPEC;
+ static const char *link_spec = LINK_SPEC;
++static const char *pre_lib_spec = PRE_LIB_SPEC;
+ static const char *lib_spec = LIB_SPEC;
+ static const char *libgcc_spec = LIBGCC_SPEC;
+ static const char *endfile_spec = ENDFILE_SPEC;
+@@ -1409,8 +1410,7 @@
  static const char *md_startfile_prefix = MD_STARTFILE_PREFIX;
  static const char *md_startfile_prefix_1 = MD_STARTFILE_PREFIX_1;
  static const char *const standard_startfile_prefix = STANDARD_STARTFILE_PREFIX;
@@ -17,7 +25,15 @@ diff -u -r1.3 gcc.c
  
  static const char *const tooldir_base_prefix = TOOLDIR_BASE_PREFIX;
  static const char *tooldir_prefix;
-@@ -3219,8 +3218,6 @@
+@@ -1470,6 +1470,7 @@
+   INIT_STATIC_SPEC ("link_gcc_c_sequence",	&link_gcc_c_sequence_spec),
+   INIT_STATIC_SPEC ("endfile",			&endfile_spec),
+   INIT_STATIC_SPEC ("link",			&link_spec),
++  INIT_STATIC_SPEC ("pre_lib",			&pre_lib_spec),
+   INIT_STATIC_SPEC ("lib",			&lib_spec),
+   INIT_STATIC_SPEC ("libgcc",			&libgcc_spec),
+   INIT_STATIC_SPEC ("startfile",		&startfile_spec),
+@@ -3219,8 +3220,6 @@
        set_std_prefix (gcc_exec_prefix, len);
        add_prefix (&exec_prefixes, gcc_libexec_prefix, "GCC",
  		  PREFIX_PRIORITY_LAST, 0, NULL, 0);
@@ -26,7 +42,7 @@ diff -u -r1.3 gcc.c
      }
  
    /* COMPILER_PATH and LIBRARY_PATH have values
-@@ -3768,11 +3765,6 @@
+@@ -3768,11 +3767,6 @@
  	      PREFIX_PRIORITY_LAST, 2, warn_std_ptr, 0);
  #endif
  
@@ -38,7 +54,7 @@ diff -u -r1.3 gcc.c
    tooldir_prefix = concat (tooldir_base_prefix, spec_machine,
  			   dir_separator_str, NULL);
  
-@@ -3795,10 +3787,6 @@
+@@ -3795,10 +3789,6 @@
  		      concat (gcc_exec_tooldir_prefix, "bin",
  			      dir_separator_str, NULL),
  		      NULL, PREFIX_PRIORITY_LAST, 0, NULL, 0);
@@ -49,7 +65,7 @@ diff -u -r1.3 gcc.c
  	}
  
        tooldir_prefix = concat (standard_exec_prefix, spec_machine,
-@@ -3806,13 +3794,6 @@
+@@ -3806,13 +3796,6 @@
  			       dir_separator_str, tooldir_prefix, NULL);
      }
  
@@ -63,7 +79,7 @@ diff -u -r1.3 gcc.c
  #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
    /* If the normal TARGET_SYSTEM_ROOT is inside of $exec_prefix,
       then consider it to relocate with the rest of the GCC installation
-@@ -6037,11 +6018,6 @@
+@@ -6037,11 +6020,6 @@
    n_compilers = n_default_compilers;
  
    /* Read specs from a file if there is one.  */
@@ -75,7 +91,7 @@ diff -u -r1.3 gcc.c
    specs_file = find_a_file (&startfile_prefixes, "specs", R_OK, 0);
    /* Read the specs file unless it is a default one.  */
    if (specs_file != 0 && strcmp (specs_file, "specs"))
-@@ -6051,11 +6027,9 @@
+@@ -6051,11 +6029,9 @@
  
    /* We need to check standard_exec_prefix/just_machine_suffix/specs
       for any override of as, ld and libraries.  */
@@ -88,7 +104,7 @@ diff -u -r1.3 gcc.c
    strcat (specs_file, "specs");
    if (access (specs_file, R_OK) == 0)
      read_specs (specs_file, TRUE);
-@@ -6129,35 +6103,10 @@
+@@ -6129,35 +6105,10 @@
  	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix_1,
  			      "GCC", PREFIX_PRIORITY_LAST, 0, NULL, 1);
  
@@ -128,7 +144,7 @@ diff -u -r1.3 gcc.c
  #if 0 /* Can cause surprises, and one can use -B./ instead.  */
        add_prefix (&startfile_prefixes, "./", NULL,
  		  PREFIX_PRIORITY_LAST, 1, NULL, 0);
-@@ -6197,7 +6146,7 @@
+@@ -6197,7 +6148,7 @@
  
    if (print_search_dirs)
      {

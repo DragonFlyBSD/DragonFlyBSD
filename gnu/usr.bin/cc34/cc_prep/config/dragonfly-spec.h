@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.9 2005/07/30 17:10:24 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.10 2005/08/03 03:12:00 joerg Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -119,20 +119,36 @@ Boston, MA 02111-1307, USA.  */
    (simular to the default, except no -lg, and no -p).  */
 
 #ifdef DFBSD_NO_THREADS
-#define DFBSD_LIB_SPEC "							\
+#define DFBSD_LIB_SPEC "						\
   %{pthread: %eThe -pthread option is only supported on DragonFly when gcc \
 is built with the --enable-threads configure-time option.}		\
-  %{pg: -L/usr/lib/profiling}						\
-  %{g: -L/usr/lib/debug}						\
-  %{!shared: -lc}							\
+  %{!nostdlib{!nostartfiles{!nolibc: -lc}}}				\
   }"
 #else
 #define DFBSD_LIB_SPEC "						\
-  %{pg: -L/usr/lib/profiling}						\
-  %{g: -L/usr/lib/debug}						\
-  %{!shared: %{pthread:-lc_r} -lc}					\
+  %{!shared: %{pthread:-lc_r}} 						\
+  %{!nostdlib: %{!nostartfiles: %{!nolibc: -lc}}}			\
   "
 #endif
+
+#define LINK_LIBGCC_SPEC ""
+
+#define PRE_LIB_SPEC "							\
+  %{pg: -L"PREFIX2"/lib/gcc34/profiling 				\
+    %{!static: -rpath /usr/lib/gcc34/profiling 				\
+      -rpath-link "PREFIX2"/lib/gcc34/profiling}}			\
+  %{g: -L"PREFIX2"/lib/gcc34/debug 					\
+    %{!static: -rpath /usr/lib/gcc34/debug				\
+      -rpath-link "PREFIX2"/lib/gcc34/debug}}				\
+  -L"PREFIX2"/lib/gcc34							\
+  %{!static: -rpath /usr/lib/gcc34  -rpath-link "PREFIX2"/lib/gcc34} 	\
+  %{pg: -L"PREFIX2"/lib/profiling 					\
+    %{!static: -rpath /usr/lib/profiling				\
+      -rpath-link "PREFIX2"/lib/profiling}} 				\
+  %{g: -L"PREFIX2"/lib/debug 						\
+    %{!static: -rpath /usr/lib/debug -rpath-link "PREFIX2"/lib/debug}} 	\
+  %{!static: -rpath /usr/lib -rpath-link "PREFIX2"/lib} 		\
+  "
 
 #define DFBSD_LINK_COMMAND_SPEC "\
 %{!fsyntax-only:%{!c:%{!M:%{!MM:%{!E:%{!S:\
@@ -140,6 +156,7 @@ is built with the --enable-threads configure-time option.}		\
     %{s} %{t} %{u*} %{x} %{z} %{Z} %{!A:%{!nostdlib:%{!nostartfiles:%S}}}\
     %{static:} %{L*} %(link_libgcc) %o \
     %{fprofile-arcs|fprofile-generate: -lgcov}\
+    %{!nostdlib:%{!nodefaultlibs:%(pre_lib)}}\
     %{!nostdlib:%{!nodefaultlibs:%(link_gcc_c_sequence)}}\
     %{!A:%{!nostdlib:%{!nostartfiles:%E}}} %{T*} }}}}}}"
 
