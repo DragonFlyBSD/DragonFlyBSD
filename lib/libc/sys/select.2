@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)select.2	8.2 (Berkeley) 3/25/94
 .\" $FreeBSD: src/lib/libc/sys/select.2,v 1.14.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/select.2,v 1.4 2005/08/03 13:30:48 corecode Exp $
+.\" $DragonFly: src/lib/libc/sys/select.2,v 1.5 2005/08/03 16:07:39 corecode Exp $
 .\"
 .Dd March 25, 1994
 .Dt SELECT 2
@@ -127,10 +127,11 @@ and
 may be given as nil pointers if no descriptors are of interest.
 .Pp
 Even if no descriptors are of interest, the timeout works as described,
-effectively making
-.Fn select
-behave like
-.Xr nanosleep 2 .
+effectively putting the process into an interruptible sleep for the
+specified timeout.
+If
+.Fa timeout
+is nil, the process will block until a signal is received.
 .Sh RETURN VALUES
 .Fn Select
 returns the number of ready descriptors that are contained in
