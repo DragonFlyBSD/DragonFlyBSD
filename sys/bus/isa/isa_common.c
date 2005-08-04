@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.6 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.7 2005/08/04 15:38:58 drhodus Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -385,15 +385,20 @@ isa_assign_resources(device_t child)
 	struct isa_device *idev = DEVTOISA(child);
 	struct isa_config_entry *ice;
 	struct isa_config config;
+	char *reason = "Empty ISA id_configs";
 
 	bzero(&config, sizeof config);
 	TAILQ_FOREACH(ice, &idev->id_configs, ice_link) {
+		reason = "memory";
 		if (!isa_find_memory(child, &ice->ice_config, &config))
 			continue;
+		reason = "port";
 		if (!isa_find_port(child, &ice->ice_config, &config))
 			continue;
+		reason = "irq";
 		if (!isa_find_irq(child, &ice->ice_config, &config))
 			continue;
+		reason = "drq";
 		if (!isa_find_drq(child, &ice->ice_config, &config))
 			continue;
 
@@ -401,6 +406,7 @@ isa_assign_resources(device_t child)
 		 * A working configuration was found enable the device 
 		 * with this configuration.
 		 */
+		reason = "no callback";
 		if (idev->id_config_cb) {
 			idev->id_config_cb(idev->id_config_arg,
 					   &config, 1);
@@ -412,7 +418,7 @@ isa_assign_resources(device_t child)
 	 * Disable the device.
 	 */
 	bus_print_child_header(device_get_parent(child), child);
-	printf(" can't assign resources\n");
+	printf(" can't assign resources (%s)\n", reason);
 	if (bootverbose)
 	    isa_print_child(device_get_parent(child), child);
 	bzero(&config, sizeof config);
