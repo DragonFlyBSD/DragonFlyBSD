@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.6 2004/07/14 18:25:17 cpressey Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.7 2005/08/04 22:15:07 cpressey Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -410,6 +410,9 @@ Make
 .Ar slice
 the active slice.  Can occur anywhere in the config file, but only
 one must be present.
+If no
+.Cm a
+line is present, all slices of the disk are made inactive.
 .Pp
 Example: to make slice 1 the active slice:
 .Bd -literal -offset indent
