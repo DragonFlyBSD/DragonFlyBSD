@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.40 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.41 2005/08/04 15:37:20 drhodus Exp $
  */
 
 /*
@@ -2798,14 +2798,10 @@ biowait(struct buf * bp)
 {
 	crit_enter();
 	while ((bp->b_flags & B_DONE) == 0) {
-#if defined(NO_SCHEDULE_MODS)
-		tsleep(bp, 0, "biowait", 0);
-#else
 		if (bp->b_flags & B_READ)
 			tsleep(bp, 0, "biord", 0);
 		else
 			tsleep(bp, 0, "biowr", 0);
-#endif
 	}
 	crit_exit();
 	if (bp->b_flags & B_EINTR) {
