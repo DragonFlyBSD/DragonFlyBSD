@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/rup/rup.c,v 1.11.2.2 2001/07/02 23:43:04 mikeh Exp $
- * $DragonFly: src/usr.bin/rup/rup.c,v 1.4 2005/02/23 17:44:18 liamfoy Exp $
+ * $DragonFly: src/usr.bin/rup/rup.c,v 1.5 2005/08/04 18:21:25 liamfoy Exp $
  */
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -166,13 +166,13 @@ onehost(const char *host)
 	hp = gethostbyname(host);
 	if (hp == NULL) {
 		herror("rup");
-		return(-1);
+		return(1);
 	}
 
 	rstat_clnt = clnt_create(host, RSTATPROG, RSTATVERS_TIME, "udp");
 	if (rstat_clnt == NULL) {
 		clnt_pcreateerror(host);
-		return(-1);
+		return(1);
 	}
 
 	bzero(&host_stat, sizeof(host_stat));
@@ -181,7 +181,7 @@ onehost(const char *host)
 	if (clnt_call(rstat_clnt, RSTATPROC_STATS, xdr_void, NULL, (xdrproc_t)xdr_statstime, &host_stat, tv) != RPC_SUCCESS) {
 		clnt_perror(rstat_clnt, host);
 		clnt_destroy(rstat_clnt);
-		return(-1);
+		return(1);
 	}
 
 	addr.sin_addr.s_addr = *(int *)hp->h_addr;
@@ -213,8 +213,9 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int ch;
+	int ch, retval;
 
+	retval = 0;
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch (ch) {
 		default:
@@ -227,7 +228,7 @@ main(int argc, char *argv[])
 		allhosts();
 	else {
 		for (; optind < argc; optind++)
-			(void) onehost(argv[optind]);
+			retval += onehost(argv[optind]);
 	}
-	exit(0);
+	exit(retval ? 1 : 0);
 }
