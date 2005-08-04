@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.24 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.20 2005/08/03 21:43:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.21 2005/08/04 00:19:04 okumoto Exp $
  */
 
 /* hash.c --
@@ -74,9 +74,7 @@ static void RebuildTable(Hash_Table *);
  *
  * Hash_InitTable --
  *
- *	Set up the hash table t with a given number of buckets, or a
- *	reasonable default if the number requested is less than or
- *	equal to zero.  Hash tables will grow in size as needed.
+ *	This routine just sets up the hash table.
  *
  * Input:
  *	t		Structure to to hold table.
