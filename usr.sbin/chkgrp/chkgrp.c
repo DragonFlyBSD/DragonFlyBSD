@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/chkgrp/chkgrp.c,v 1.3.2.2 2001/07/12 22:57:35 mjacob Exp $
- * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.4 2005/05/01 23:39:40 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.5 2005/08/04 13:10:25 liamfoy Exp $
  */
 #include <sys/types.h>
 
@@ -110,7 +110,8 @@ main(int argc, char *argv[])
 		}
 
 		for (cp = f[0] ; *cp ; cp++) {
-			if (!isalnum(*cp) && *cp != '.' && *cp != '_' && *cp != '-') {
+			if (!isalnum(*cp) && *cp != '.' && *cp != '_' && *cp != '-' &&
+			        (cp > f[0] || *cp != '+')) {
 				warnx("%s: line %d: '%c' invalid character", gfn, n, *cp);
 				e++;
 			}
