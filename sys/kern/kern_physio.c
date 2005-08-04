@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.11 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.12 2005/08/04 21:08:35 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -27,14 +27,10 @@
 #include <sys/proc.h>
 #include <sys/uio.h>
 #include <sys/device.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-
-#include <machine/physio_proc.h>
-
-/* I have no idea what this is used for */
-struct physio_proc_head physio_proc_freet, physio_proc_busyt;
 
 static void
 physwakeup(struct buf *bp)

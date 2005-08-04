@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.10 2005/06/03 17:14:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.11 2005/08/04 21:08:35 hmp Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -38,53 +38,25 @@
 #include <sys/queue.h>
 #include <sys/thread2.h>
 
-struct physio_proc;
-TAILQ_HEAD(physio_proc_head, physio_proc);
-extern struct physio_proc_head physio_proc_freet, physio_proc_busyt;
-
-struct physio_proc {
-	TAILQ_ENTRY(physio_proc) pp_chain;
-	struct proc *pp_proc;
-};
-
-static __inline struct physio_proc *physio_proc_enter (struct buf *);
-static __inline void physio_proc_leave (struct physio_proc *);
+struct physio_proc { };
 
 static __inline struct physio_proc *
 physio_proc_enter(bp)
 	struct buf *bp;
 {
-	struct physio_proc *pp;
-
-	if (bp == NULL || (bp->b_flags & B_PHYS) == 0)
-		return NULL;	
-	if ((pp = TAILQ_FIRST(&physio_proc_freet)) == NULL)
-		return NULL;
-
-	crit_enter();
-	TAILQ_REMOVE(&physio_proc_freet, pp, pp_chain);
-#if !(defined(__DragonFly__) || defined(__FreeBSD__)) || \
-    (defined(__FreeBSD_version) && __FreeBSD_version < 400001)
-	pp->pp_proc = bp->b_proc;
-#endif
-	TAILQ_INSERT_TAIL(&physio_proc_busyt, pp, pp_chain);
-	crit_exit();
-	return pp;
+	return NULL;
 }
 
 static __inline void
 physio_proc_leave(pp)
 	struct physio_proc *pp;
 {
-	if (pp == NULL)
-		return;
-
-	crit_enter();
-	TAILQ_REMOVE(&physio_proc_busyt, pp, pp_chain);
-	TAILQ_INSERT_TAIL(&physio_proc_freet, pp, pp_chain);
-	pp->pp_proc = NULL;
-	crit_exit();
+	return;
 }
 
-void physio_proc_init (void);
+static __inline void
+physio_proc_init(void)
+{
+	return;
+}
 #endif /* _MACHINE_PHYSIO_PROC_H_ */
