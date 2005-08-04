@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.41 2005/08/04 15:37:20 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.42 2005/08/04 16:44:37 hmp Exp $
  */
 
 /*
@@ -426,6 +426,7 @@ bufinit(void)
 		bp->b_dev = NODEV;
 		bp->b_qindex = BQUEUE_EMPTY;
 		bp->b_xflags = 0;
+		bp->b_iodone = NULL;
 		xio_init(&bp->b_xio);
 		LIST_INIT(&bp->b_dep);
 		BUF_LOCKINIT(bp);
@@ -837,7 +838,7 @@ vfs_backgroundwritedone(struct buf *bp)
 	 */
 	bp->b_flags |= B_NOCACHE | B_READ;
 	bp->b_flags &= ~(B_CACHE | B_DONE);
-	bp->b_iodone = 0;
+	bp->b_iodone = NULL;
 	biodone(bp);
 }
 #endif
@@ -1788,7 +1789,7 @@ restart:
 		bp->b_vp = NULL;
 		bp->b_blkno = bp->b_lblkno = 0;
 		bp->b_offset = NOOFFSET;
-		bp->b_iodone = 0;
+		bp->b_iodone = NULL;
 		bp->b_error = 0;
 		bp->b_resid = 0;
 		bp->b_bcount = 0;
