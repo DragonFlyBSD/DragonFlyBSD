@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.15 2005/08/03 16:55:11 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.16 2005/08/04 16:28:30 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -222,11 +222,13 @@ struct buf {
 #define	B_DIRECT	0x00000008	/* direct I/O flag (pls free vmio) */
 #define	B_DEFERRED	0x00000010	/* Skipped over for cleaning */
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
+#define	B_UNUSED40  0x00000040 	/* Unused */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
 #define	B_FREEBUF	0x00000100	/* Instruct driver: free blocks */
 #define	B_DONE		0x00000200	/* I/O completed. */
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */
+#define	B_UNUSED1000	0x00001000	/* Unused */
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
 #define	B_NOCACHE	0x00008000	/* Do not cache block after use. */
@@ -239,6 +241,7 @@ struct buf {
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
 #define	B_WANT		0x00800000	/* Used by vm_pager.c */
 #define	B_WRITE		0x00000000	/* Write buffer (pseudo flag). */
+#define	B_UNUSED1000000	0x01000000	/* Unused */
 #define	B_XXX		0x02000000	/* Debugging flag. */
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */
 #define	B_ORDERED	0x08000000	/* Must guarantee I/O ordering */
@@ -246,11 +249,6 @@ struct buf {
 #define B_VMIO		0x20000000	/* VMIO flag */
 #define B_CLUSTER	0x40000000	/* pagein op, so swap() can count it */
 #define B_NOWDRAIN	0x80000000	/* Avoid wdrain deadlock */
-
-/* Unused flag space. */
-#define	B_UNUSED40  	0x00000040
-#define	B_UNUSED1000000	0x01000000
-#define	B_UNUSED1000	0x00001000
 
 #define PRINT_BUF_FLAGS "\20\40nowdrain\37cluster\36vmio\35ram\34ordered" \
 	"\33paging\32xxx\31writeinprog\30want\27relbuf\26dirty" \
