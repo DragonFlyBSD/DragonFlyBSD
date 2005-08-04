@@ -35,7 +35,7 @@
 
 /*
  * $FreeBSD: src/usr.bin/netstat/iso.c,v 1.4.2.2 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/iso.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/netstat/iso.c,v 1.4 2005/08/04 17:31:23 drhodus Exp $
  */
 /*******************************************************************************
 	          Copyright IBM Corporation 1987
@@ -211,7 +211,7 @@ void
 iso_protopr(u_long off, char *name, int af __unused)
 {
 	struct isopcb cb;
-	register struct isopcb *prev, *next;
+	struct isopcb *prev, *next;
 
 	if (off == 0) {
 		printf("%s control block: symbol not in namelist\n", name);
@@ -453,7 +453,7 @@ x25_protopr(u_long off, char *name, int af __unused)
 		"ACKWAIT",
 		"OPEN",
 	};
-	register struct isopcb *prev, *next;
+	struct isopcb *prev, *next;
 	struct x25_pcb xpcb;
 
 	if (off == 0) {
@@ -605,7 +605,7 @@ tprintstat(struct tp_stat *s, int indent)
 	fprintf(OUT,
 		"\t%*sM:L ( M mbuf chains of length L)\n", indent, " ");
 	{
-		register int j;
+		int j;
 
 		fprintf(OUT, "\t%*s%d: over 16\n", indent, " ",
 		s->ts_mb_len_distr[0]);
@@ -646,7 +646,7 @@ tprintstat(struct tp_stat *s, int indent)
 		"\t%*s%d tp 0 connection%s\n",  indent, " ",
 		s->ts_tp0_conn ,plural(s->ts_tp0_conn));
     {
-		register int j;
+		int j;
 		static char *name[]= {
 			"~LOCAL, PDN",
 			"~LOCAL,~PDN",
@@ -793,9 +793,9 @@ static char hexlist[] = "0123456789abcdef", obuf[128];
 static void
 hexprint(int n, char *buf, char *delim)
 {
-	register u_char *in = (u_char *)buf, *top = in + n;
-	register char *out = obuf;
-	register int i;
+	u_char *in = (u_char *)buf, *top = in + n;
+	char *out = obuf;
+	int i;
 
 	if (n == 0)
 		return;

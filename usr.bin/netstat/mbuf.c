@@ -32,7 +32,7 @@
  *
  * @(#)mbuf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/mbuf.c,v 1.17.2.3 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.4 2005/03/12 10:38:42 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.5 2005/08/04 17:31:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -68,7 +68,7 @@ void
 mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 {
 	u_long totmem, totpossible, totmbufs;
-	register int i;
+	int i;
 	struct mbstat mbstat;
 	struct mbtypenames *mp;
 	int name[3], nmbclusters, nmbufs, nmbtypes;

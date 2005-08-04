@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.9 2005/05/01 04:05:35 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.10 2005/08/04 17:31:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -328,7 +328,7 @@ int	af;		/* address family */
 int
 main(int argc, char **argv)
 {
-	register struct protox *tp = NULL;  /* for printing cblocks & stats */
+	struct protox *tp = NULL;  /* for printing cblocks & stats */
 	int ch;
 
 	af = AF_UNSPEC;
@@ -594,7 +594,7 @@ main(int argc, char **argv)
  * is not in the namelist, ignore this one.
  */
 static void
-printproto(register struct protox *tp, char *name)
+printproto(struct protox *tp, char *name)
 {
 	void (*pr)(u_long, char *, int);
 	u_long off;

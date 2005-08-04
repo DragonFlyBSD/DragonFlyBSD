@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.5 2004/11/09 09:10:55 joerg Exp $
+ * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.6 2005/08/04 17:31:23 drhodus Exp $
  *
  * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
@@ -814,7 +814,7 @@ void
 icmp6_stats(u_long off __unused, char *name, int af __unused)
 {
 	struct icmp6stat icmp6stat;
-	register int i, first;
+	int i, first;
 	int mib[4];
 	size_t len;
 
@@ -1070,7 +1070,7 @@ inet6print(struct in6_addr *in6, int port, char *proto, int numeric)
 char *
 inet6name(struct in6_addr *in6p)
 {
-	register char *cp;
+	char *cp;
 	static char line[50];
 	struct hostent *hp;
 	static char domain[MAXHOSTNAMELEN];

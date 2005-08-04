@@ -32,7 +32,7 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ns.c,v 1.1.1.1.14.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ns.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/ns.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ void
 nsprotopr(u_long off, char *name, int af __unused)
 {
 	struct nspcb cb;
-	register struct nspcb *prev, *next;
+	struct nspcb *prev, *next;
 	int isspp;
 
 	if (off == 0)
@@ -267,8 +267,8 @@ void
 nserr_stats(u_long off, char *name, int af __unused)
 {
 	struct ns_errstat ns_errstat;
-	register int j;
-	register int histoprint = 1;
+	int j;
+	int histoprint = 1;
 	int z;
 
 	if (off == 0)

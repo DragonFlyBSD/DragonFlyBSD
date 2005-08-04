@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)msgs.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
- * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.4 2005/02/02 06:39:09 cpressey Exp $
+ * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.5 2005/08/04 17:31:23 drhodus Exp $
  */
 
 /*
@@ -278,8 +278,8 @@ main(int argc, char **argv)
 		lastmsg = 0;
 
 		for (dp = readdir(dirp); dp != NULL; dp = readdir(dirp)){
-			register char *cp = dp->d_name;
-			register int i = 0;
+			char *cp = dp->d_name;
+			int i = 0;
 
 			if (dp->d_ino == 0)
 				continue;

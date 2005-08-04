@@ -28,14 +28,14 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/sym.c,v 2.19 95/03/04 16:11:04 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/sym.c,v 1.5 1999/10/27 07:56:47 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/sym.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/sym.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
 
 /* declare functions that have forward references */
 
-int hashfunct PROTO((register char[], int));
+int hashfunct PROTO((char[], int));
 
 
 struct hash_entry *ndtbl[NAME_TABLE_HASH_SIZE];
@@ -50,13 +50,13 @@ struct hash_entry *findsym();
  * -1 is returned if the symbol already exists, and the change not made.
  */
 
-int addsym(register char *sym, char *str_def, int int_def, hash_table table,
+int addsym(char *sym, char *str_def, int int_def, hash_table table,
            int table_size)
 	{
 	int hash_val = hashfunct( sym, table_size );
-	register struct hash_entry *sym_entry = table[hash_val];
-	register struct hash_entry *new_entry;
-	register struct hash_entry *successor;
+	struct hash_entry *sym_entry = table[hash_val];
+	struct hash_entry *new_entry;
+	struct hash_entry *successor;
 
 	while ( sym_entry )
 		{
@@ -122,14 +122,14 @@ int ccllookup(Char *ccltxt)
 
 /* findsym - find symbol in symbol table */
 
-struct hash_entry *findsym(register char *sym, hash_table table, int table_size)
+struct hash_entry *findsym(char *sym, hash_table table, int table_size)
 	{
 	static struct hash_entry empty_entry =
 		{
 		(struct hash_entry *) 0, (struct hash_entry *) 0,
 		(char *) 0, (char *) 0, 0,
 		} ;
-	register struct hash_entry *sym_entry =
+	struct hash_entry *sym_entry =
 		table[hashfunct( sym, table_size )];
 
 	while ( sym_entry )
@@ -145,10 +145,10 @@ struct hash_entry *findsym(register char *sym, hash_table table, int table_size)
 
 /* hashfunct - compute the hash value for "str" and hash size "hash_size" */
 
-int hashfunct(register char *str, int hash_size)
+int hashfunct(char *str, int hash_size)
 	{
-	register int hashval;
-	register int locstr;
+	int hashval;
+	int locstr;
 
 	hashval = 0;
 	locstr = 0;

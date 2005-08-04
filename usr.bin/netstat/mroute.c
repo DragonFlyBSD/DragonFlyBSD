@@ -37,7 +37,7 @@
  *	@(#)mroute.c	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/usr.bin/netstat/mroute.c,v 1.11.2.4 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mroute.c,v 1.4 2003/08/24 23:16:53 hsu Exp $
+ * $DragonFly: src/usr.bin/netstat/mroute.c,v 1.5 2005/08/04 17:31:23 drhodus Exp $
  */
 
 /*
@@ -72,11 +72,11 @@ mroutepr(u_long mfcaddr, u_long vifaddr)
 	struct mfc *mfctable[MFCTBLSIZ];
 	struct vif viftable[MAXVIFS];
 	struct mfc mfc, *m;
-	register struct vif *v;
-	register vifi_t vifi;
-	register int i;
-	register int banner_printed;
-	register int saved_numeric_addr;
+	struct vif *v;
+	vifi_t vifi;
+	int i;
+	int banner_printed;
+	int saved_numeric_addr;
 	vifi_t maxvif = 0;
 
 	if (mfcaddr == 0 || vifaddr == 0) {

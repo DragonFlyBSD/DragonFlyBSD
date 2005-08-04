@@ -1,6 +1,9 @@
 #ifndef lint
 static char const yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #endif
+/*
+ * $DragonFly: src/usr.bin/yacc/test/Attic/error.tab.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
+ */
 #include <stdlib.h>
 #define YYBYACC 1
 #define YYMAJOR 1
@@ -126,9 +129,9 @@ static int yygrowstack()
 int
 yyparse()
 {
-    register int yym, yyn, yystate;
+    int yym, yyn, yystate;
 #if YYDEBUG
-    register const char *yys;
+    const char *yys;
 
     if ((yys = getenv("YYDEBUG")))
     {

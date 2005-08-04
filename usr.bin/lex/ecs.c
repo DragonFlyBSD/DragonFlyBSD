@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/ecs.c,v 2.9 93/12/07 10:18:20 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/ecs.c,v 1.5 1999/10/27 07:56:43 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/ecs.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/ecs.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -142,7 +142,7 @@ void mkeccl(Char *ccls, int lenccl, int *fwd, int *bck, int llsiz,
 			{ /* look for the symbol in the character class */
 			for ( ; j < lenccl; ++j )
 				{
-				register int ccl_char;
+				int ccl_char;
 
 				if ( NUL_mapping && ccls[j] == 0 )
 					ccl_char = NUL_mapping;

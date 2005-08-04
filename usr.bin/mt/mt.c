@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mt.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/mt/mt.c,v 1.26.2.3 2002/11/08 11:35:57 joerg Exp $
- * $DragonFly: src/usr.bin/mt/mt.c,v 1.5 2004/01/22 03:22:53 rob Exp $
+ * $DragonFly: src/usr.bin/mt/mt.c,v 1.6 2005/08/04 17:31:23 drhodus Exp $
  */
 
 /*
@@ -138,7 +138,7 @@ void warn_eof(void);
 int
 main(int argc, char **argv)
 {
-	register struct commands *comp;
+	struct commands *comp;
 	struct mtget mt_status;
 	struct mtop mt_com;
 	int ch, len, mtfd;
@@ -386,9 +386,9 @@ struct tape_desc {
  * Interpret the status buffer returned
  */
 void
-status(register struct mtget *bp)
+status(struct mtget *bp)
 {
-	register struct tape_desc *mt;
+	struct tape_desc *mt;
 
 	for (mt = tapes;; mt++) {
 		if (mt->t_type == 0) {
@@ -417,10 +417,10 @@ status(register struct mtget *bp)
  * Print a register a la the %b format of the kernel's printf.
  */
 void
-printreg(char *s, register u_int v, register char *bits)
+printreg(char *s, u_int v, char *bits)
 {
-	register int i, any = 0;
-	register char c;
+	int i, any = 0;
+	char c;
 
 	if (bits && *bits == 8)
 		printf("%s=%o", s, v);

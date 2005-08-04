@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/gen.c,v 2.56 96/05/25 20:43:38 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/gen.c,v 1.5 1999/10/27 07:56:44 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/gen.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/gen.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -63,7 +63,7 @@ static char C_state_decl[] =
 
 void do_indent(void)
 	{
-	register int i = indent_level * 8;
+	int i = indent_level * 8;
 
 	while ( i >= 8 )
 		{
@@ -133,7 +133,7 @@ void gen_bu_action(void)
 
 void genctbl(void)
 	{
-	register int i;
+	int i;
 	int end_of_buffer_action = num_rules + 1;
 
 	/* Table of verify for transition and offset to next state. */
@@ -229,7 +229,7 @@ void genctbl(void)
 
 void genecs(void)
 	{
-	register int i, j;
+	int i, j;
 	int numrows;
 
 	out_str_dec( C_int_decl, "yy_ec", csize );
@@ -410,7 +410,7 @@ void gen_find_action(void)
 
 void genftbl(void)
 	{
-	register int i;
+	int i;
 	int end_of_buffer_action = num_rules + 1;
 
 	out_str_dec( long_align ? C_long_decl : C_short_decl,
@@ -420,7 +420,7 @@ void genftbl(void)
 
 	for ( i = 1; i <= lastdfa; ++i )
 		{
-		register int anum = dfaacc[i].dfaacc_state;
+		int anum = dfaacc[i].dfaacc_state;
 
 		mkdata( anum );
 
@@ -955,7 +955,7 @@ void gentabs(void)
 
 	for ( i = 1; i <= lastdfa; ++i )
 		{
-		register int d = def[i];
+		int d = def[i];
 
 		if ( base[i] == JAMSTATE )
 			base[i] = jambase;
@@ -1054,7 +1054,7 @@ void indent_puts(char *str)
 
 void make_tables(void)
 	{
-	register int i;
+	int i;
 	int did_eof_rule = false;
 
 	skelout();

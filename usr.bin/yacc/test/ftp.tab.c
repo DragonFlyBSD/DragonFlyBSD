@@ -22,6 +22,7 @@ static int yygrowstack();
 
 /*
  * @(#)ftpcmd.y	5.20.1.1 (Berkeley) 3/2/89
+ * $DragonFly: src/usr.bin/yacc/test/Attic/ftp.tab.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
  */
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -476,7 +477,7 @@ struct tab sitetab[] = {
 
 struct tab *
 lookup(p, cmd)
-	register struct tab *p;
+	struct tab *p;
 	char *cmd;
 {
 
@@ -494,10 +495,10 @@ lookup(p, cmd)
 char *
 getline(s, n, iop)
 	char *s;
-	register FILE *iop;
+	FILE *iop;
 {
 	register c;
-	register char *cs;
+	char *cs;
 
 	cs = s;
 /* tmpline may contain saved command from urgent mode interruption */
@@ -571,8 +572,8 @@ toolong()
 yylex()
 {
 	static int cpos, state;
-	register char *cp, *cp2;
-	register struct tab *p;
+	char *cp, *cp2;
+	struct tab *p;
 	int n;
 	char c, *strpbrk();
 	char *copy();
@@ -787,7 +788,7 @@ yylex()
 }
 
 upper(s)
-	register char *s;
+	char *s;
 {
 	while (*s != '\0') {
 		if (islower(*s))
@@ -814,8 +815,8 @@ help(ctab, s)
 	struct tab *ctab;
 	char *s;
 {
-	register struct tab *c;
-	register int width, NCMDS;
+	struct tab *c;
+	int width, NCMDS;
 	char *type;
 
 	if (ctab == sitetab)
@@ -832,7 +833,7 @@ help(ctab, s)
 	}
 	width = (width + 8) &~ 7;
 	if (s == 0) {
-		register int i, j, w;
+		int i, j, w;
 		int columns, lines;
 
 		lreply(214, "The following %scommands are recognized %s.",
@@ -889,7 +890,7 @@ char *filename;
 		break;}
 	case TYPE_A: {
 		FILE *fin;
-		register int c, count;
+		int c, count;
 		struct stat stbuf;
 		fin = fopen(filename, "r");
 		if (fin == NULL) {
@@ -953,9 +954,9 @@ static int yygrowstack()
 int
 yyparse()
 {
-    register int yym, yyn, yystate;
+    int yym, yyn, yystate;
 #if YYDEBUG
-    register const char *yys;
+    const char *yys;
 
     if ((yys = getenv("YYDEBUG")))
     {
@@ -1327,7 +1328,7 @@ break;
 case 28:
 #line 290 "ftp.y"
  {
-			register char *cp = (char *)yyvsp[-1];
+			char *cp = (char *)yyvsp[-1];
 
 			if (strncasecmp(cp, "SITE", 4) == 0) {
 				cp = (char *)yyvsp[-1] + 4;
@@ -1504,7 +1505,7 @@ case 44:
 					reply(550, "%s: not a plain file.",
 						(char *) yyvsp[-1]);
 				} else {
-					register struct tm *t;
+					struct tm *t;
 					struct tm *gmtime();
 					t = gmtime(&stbuf.st_mtime);
 					reply(213,
@@ -1552,7 +1553,7 @@ break;
 case 52:
 #line 504 "ftp.y"
  {
-			register char *a, *p;
+			char *a, *p;
 
 			a = (char *)&data_dest.sin_addr;
 			a[0] = yyvsp[-10]; a[1] = yyvsp[-8]; a[2] = yyvsp[-6]; a[3] = yyvsp[-4];
@@ -1692,7 +1693,7 @@ break;
 case 72:
 #line 622 "ftp.y"
  {
-		register int ret, dec, multby, digit;
+		int ret, dec, multby, digit;
 
 		/*
 		 * Convert a number that was read as decimal number

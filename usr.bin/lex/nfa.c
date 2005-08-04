@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/nfa.c,v 2.17 95/03/04 16:11:42 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/nfa.c,v 1.5 1999/10/27 07:56:46 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/nfa.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/nfa.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -313,7 +313,7 @@ int link_machines(int first, int last)
  * The "beginning" states are the epsilon closure of the first state
  */
 
-void mark_beginning_as_normal(register int mach)
+void mark_beginning_as_normal(int mach)
 	{
 	switch ( state_type[mach] )
 		{

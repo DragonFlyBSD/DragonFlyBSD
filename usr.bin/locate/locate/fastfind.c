@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/locate/fastfind.c,v 1.12.2.1 2001/02/22 13:28:52 wosch Exp $
- * $DragonFly: src/usr.bin/locate/locate/fastfind.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/locate/locate/fastfind.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
  */
 
 
@@ -47,9 +47,9 @@ statistic (fp, path_fcodes)
 	FILE *fp;               /* open database */
 	char *path_fcodes;  	/* for error message */
 {
-	register int lines, chars, size, big, zwerg;
-	register u_char *p, *s;
-	register int c;
+	int lines, chars, size, big, zwerg;
+	u_char *p, *s;
+	int c;
 	int count, umlaut;
 	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];
 
@@ -139,8 +139,8 @@ fastfind
 #endif /* MMAP */
 
 {
-	register u_char *p, *s, *patend, *q, *foundchar;
-	register int c, cc;
+	u_char *p, *s, *patend, *q, *foundchar;
+	int c, cc;
 	int count, found, globflag;
 	u_char *cutoff;
 	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];

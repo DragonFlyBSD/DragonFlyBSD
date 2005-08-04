@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/locate/util.c,v 1.6.2.1 2001/12/20 04:21:48 mikeh Exp $
- * $DragonFly: src/usr.bin/locate/locate/util.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/locate/locate/util.c,v 1.4 2005/08/04 17:31:23 drhodus Exp $
  */
 
 
@@ -154,7 +154,7 @@ char *
 patprep(name)
 	char *name;
 {
-	register char *endmark, *p, *subp;
+	char *endmark, *p, *subp;
 
 	subp = globfree;
 	*subp++ = '\0';   /* set first element to '\0' */
@@ -208,7 +208,7 @@ u_char *
 tolower_word(word)
 	u_char *word;
 {
-	register u_char *p;
+	u_char *p;
 
 	for(p = word; *p != '\0'; p++)
 		*p = TOLOWER(*p);
@@ -232,7 +232,7 @@ getwm(p)
 	caddr_t p;
 {
 	static char buf[INTSIZE];
-	register int i;
+	int i;
 
 	for (i = 0; i < INTSIZE; i++)
 		buf[i] = *p++;
@@ -260,7 +260,7 @@ int
 getwf(fp)
 	FILE *fp;
 {
-	register int word;
+	int word;
 
 	word = getw(fp);
 

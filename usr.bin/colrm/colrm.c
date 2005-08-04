@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colrm/colrm.c,v 1.7.2.1 2001/08/02 01:33:29 obrien Exp $
- * $DragonFly: src/usr.bin/colrm/colrm.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
+ * $DragonFly: src/usr.bin/colrm/colrm.c,v 1.5 2005/08/04 17:31:22 drhodus Exp $
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)colrm.c	8.2 (Berkeley) 5/4/95
@@ -55,8 +55,8 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	register u_long column, start, stop;
-	register int ch;
+	u_long column, start, stop;
+	int ch;
 	char *p;
 
 	while ((ch = getopt(argc, argv, "")) != -1)

@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/ccl.c,v 2.9 93/09/16 20:32:14 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/ccl.c,v 1.5 1999/10/27 07:56:43 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/ccl.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/ccl.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -117,7 +117,7 @@ void cclnegate(int cclp)
 
 void list_character_set(FILE *file, int *cset)
 	{
-	register int i;
+	int i;
 
 	putc( '[', file );
 
@@ -125,7 +125,7 @@ void list_character_set(FILE *file, int *cset)
 		{
 		if ( cset[i] )
 			{
-			register int start_char = i;
+			int start_char = i;
 
 			putc( ' ', file );
 

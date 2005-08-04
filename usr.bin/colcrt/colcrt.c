@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)colcrt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/colcrt/colcrt.c,v 1.5.2.4 2001/08/02 01:29:07 obrien Exp $
- * $DragonFly: src/usr.bin/colcrt/colcrt.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
+ * $DragonFly: src/usr.bin/colcrt/colcrt.c,v 1.5 2005/08/04 17:31:22 drhodus Exp $
  */
 
 #include <err.h>
@@ -198,8 +198,8 @@ int first;
 static void
 pflush(int ol)
 {
-	register int i;
-	register char *cp;
+	int i;
+	char *cp;
 	char lastomit;
 	int l;
 
@@ -232,7 +232,7 @@ pflush(int ol)
 static void
 move(int l, int m)
 {
-	register char *cp, *dp;
+	char *cp, *dp;
 
 	for (cp = page[l], dp = page[m]; *cp; cp++, dp++) {
 		switch (*cp) {

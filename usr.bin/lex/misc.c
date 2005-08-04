@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/misc.c,v 2.47 95/04/28 11:39:39 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/misc.c,v 1.5 1999/10/27 07:56:45 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/misc.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/misc.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -79,7 +79,7 @@ void add_action(char *new_text)
 
 void *allocate_array(int size, size_t element_size)
 	{
-	register void *mem;
+	void *mem;
 	size_t num_bytes = element_size * size;
 
 	mem = flex_alloc( num_bytes );
@@ -93,7 +93,7 @@ void *allocate_array(int size, size_t element_size)
 
 /* all_lower - true if a string is all lower-case */
 
-int all_lower(register char *str)
+int all_lower(char *str)
 	{
 	while ( *str )
 		{
@@ -108,7 +108,7 @@ int all_lower(register char *str)
 
 /* all_upper - true if a string is all upper-case */
 
-int all_upper(register char *str)
+int all_upper(char *str)
 	{
 	while ( *str )
 		{
@@ -138,7 +138,7 @@ int all_upper(register char *str)
 
 void bubble(int *v, int n)
 	{
-	register int i, j, k;
+	int i, j, k;
 
 	for ( i = n; i > 1; --i )
 		for ( j = 1; j < i; ++j )
@@ -172,7 +172,7 @@ void check_char(int c)
 
 /* clower - replace upper-case letter to lower-case */
 
-Char clower(register int c)
+Char clower(int c)
 	{
 	return (Char) ((isascii( c ) && isupper( c )) ? tolower( c ) : c);
 	}
@@ -180,10 +180,10 @@ Char clower(register int c)
 
 /* copy_string - returns a dynamically allocated copy of a string */
 
-char *copy_string(register const char *str)
+char *copy_string(const char *str)
 	{
-	register const char *c1;
-	register char *c2;
+	const char *c1;
+	char *c2;
 	char *copy;
 	unsigned int size;
 
@@ -208,9 +208,9 @@ char *copy_string(register const char *str)
  *    returns a dynamically allocated copy of a (potentially) unsigned string
  */
 
-Char *copy_unsigned_string(register Char *str)
+Char *copy_unsigned_string(Char *str)
 	{
-	register Char *c;
+	Char *c;
 	Char *copy;
 
 	/* find length */
@@ -620,7 +620,7 @@ void out_hex(const char *fmt, unsigned int x)
 
 void out_line_count(const char *str)
 	{
-	register int i;
+	int i;
 
 	for ( i = 0; str[i]; ++i )
 		if ( str[i] == '\n' )
@@ -671,7 +671,7 @@ void outn(const char *str)
  * The returned string is in static storage.
  */
 
-char *readable_form(register int c)
+char *readable_form(int c)
 	{
 	static char rform[10];
 
@@ -714,7 +714,7 @@ char *readable_form(register int c)
 
 void *reallocate_array(void *array, int size, size_t element_size)
 	{
-	register void *new_array;
+	void *new_array;
 	size_t num_bytes = element_size * size;
 
 	new_array = flex_realloc( array, num_bytes );
@@ -829,7 +829,7 @@ void *yy_flex_xmalloc(int size)
 
 void zero_out(char *region_ptr, size_t size_in_bytes )
 	{
-	register char *rp, *rp_end;
+	char *rp, *rp_end;
 
 	rp = region_ptr;
 	rp_end = region_ptr + size_in_bytes;

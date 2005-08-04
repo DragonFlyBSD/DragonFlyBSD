@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.18 2005/04/11 14:51:38 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.19 2005/08/04 17:31:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -868,7 +868,7 @@ inetprint(struct in_addr *in, int port, const char *proto, int numeric_port)
 char *
 inetname(struct in_addr *inp)
 {
-	register char *cp;
+	char *cp;
 	static char line[MAXHOSTNAMELEN];
 	struct hostent *hp;
 	struct netent *np;

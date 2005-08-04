@@ -28,7 +28,7 @@
 
 /* @(#) $Header: /home/daffy/u0/vern/flex/RCS/flexdef.h,v 2.53 95/04/20 11:17:36 vern Exp $ (LBL) */
 /* $FreeBSD: src/usr.bin/lex/flexdef.h,v 1.5 1999/10/27 07:56:44 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/flexdef.h,v 1.3 2005/02/20 17:34:11 asmodai Exp $ */
+/* $DragonFly: src/usr.bin/lex/flexdef.h,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include <stdio.h>
 #include <ctype.h>
@@ -791,10 +791,10 @@ extern void action_define PROTO(( char *defname, int value ));
 extern void add_action PROTO(( char *new_text ));
 
 /* True if a string is all lower case. */
-extern int all_lower PROTO((register char *));
+extern int all_lower PROTO((char *));
 
 /* True if a string is all upper case. */
-extern int all_upper PROTO((register char *));
+extern int all_upper PROTO((char *));
 
 /* Bubble sort an integer array. */
 extern void bubble PROTO((int [], int));
@@ -806,10 +806,10 @@ extern void check_char PROTO((int c));
 extern Char clower PROTO((int));
 
 /* Returns a dynamically allocated copy of a string. */
-extern char *copy_string PROTO((register const char *));
+extern char *copy_string PROTO((const char *));
 
 /* Returns a dynamically allocated copy of a (potentially) unsigned string. */
-extern Char *copy_unsigned_string PROTO((register Char *));
+extern Char *copy_unsigned_string PROTO((Char *));
 
 /* Shell sort a character array. */
 extern void cshell PROTO((Char [], int, int));
@@ -911,7 +911,7 @@ extern int link_machines PROTO((int, int));
 /* Mark each "beginning" state in a machine as being a "normal" (i.e.,
  * not trailing context associated) state.
  */
-extern void mark_beginning_as_normal PROTO((register int));
+extern void mark_beginning_as_normal PROTO((int));
 
 /* Make a machine that branches to two machines. */
 extern int mkbranch PROTO((int, int));
@@ -974,7 +974,7 @@ extern int yywrap PROTO((void));
 /* from file sym.c */
 
 /* Add symbol and definitions to symbol table. */
-extern int addsym PROTO((register char[], char*, int, hash_table, int));
+extern int addsym PROTO((char[], char*, int, hash_table, int));
 
 /* Save the text of a character class. */
 extern void cclinstal PROTO ((Char [], int));
@@ -983,7 +983,7 @@ extern void cclinstal PROTO ((Char [], int));
 extern int ccllookup PROTO((Char []));
 
 /* Find symbol in symbol table. */
-extern struct hash_entry *findsym PROTO((register char[], hash_table, int ));
+extern struct hash_entry *findsym PROTO((char[], hash_table, int ));
 
 extern void ndinstal PROTO((char[], Char[]));	/* install a name definition */
 extern Char *ndlookup PROTO((char[]));	/* lookup a name definition */

@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.7 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.8 2005/08/04 17:31:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -219,7 +219,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 #ifdef INET6
 		struct sockaddr_in6 *sin6;
 #endif
-		register char *cp;
+		char *cp;
 		int n, m;
 
 		network_layer = 0;
@@ -515,7 +515,7 @@ sidewaysintpr(unsigned interval, u_long off)
 	u_long firstifnet;
 	struct ifnethead ifnethead;
 	struct iftot *iftot, *ip, *ipn, *total, *sum, *interesting;
-	register int line;
+	int line;
 	int oldmask, first;
 	u_long interesting_off;
 

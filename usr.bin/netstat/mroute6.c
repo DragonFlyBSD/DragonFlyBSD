@@ -65,7 +65,7 @@
  *
  *	@(#)mroute.c	8.2 (Berkeley) 4/28/95
  *	$FreeBSD: src/usr.bin/netstat/mroute6.c,v 1.1.2.9 2002/07/09 04:05:20 suz Exp $
- *	$DragonFly: src/usr.bin/netstat/mroute6.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ *	$DragonFly: src/usr.bin/netstat/mroute6.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
  */
 
 #ifdef INET6
@@ -99,11 +99,11 @@ mroute6pr(u_long mfcaddr, u_long mifaddr)
 	struct mif6 mif6table[MAXMIFS];
 	struct mf6c mfc;
 	struct rtdetq rte, *rtep;
-	register struct mif6 *mifp;
-	register mifi_t mifi;
-	register int i;
-	register int banner_printed;
-	register int saved_numeric_addr;
+	struct mif6 *mifp;
+	mifi_t mifi;
+	int i;
+	int banner_printed;
+	int saved_numeric_addr;
 	mifi_t maxmif = 0;
 	long int waitings;
 

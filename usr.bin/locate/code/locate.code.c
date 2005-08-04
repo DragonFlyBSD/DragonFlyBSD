@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/code/locate.code.c,v 1.11.2.1 2001/03/04 08:46:46 kris Exp $
- * $DragonFly: src/usr.bin/locate/code/locate.code.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/locate/code/locate.code.c,v 1.4 2005/08/04 17:31:23 drhodus Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.code.c	8.1 (Berkeley) 6/6/93
@@ -120,10 +120,10 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	register u_char *cp, *oldpath, *path;
+	u_char *cp, *oldpath, *path;
 	int ch, code, count, diffcount, oldcount;
 	FILE *fp;
-	register int i, j;
+	int i, j;
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
@@ -253,7 +253,7 @@ int
 bgindex(bg)			/* Return location of bg in bigrams or -1. */
 	char *bg;
 {
-	register char bg0, bg1, *p;
+	char bg0, bg1, *p;
 
 	bg0 = bg[0];
 	bg1 = bg[1];
