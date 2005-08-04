@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)common.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/common.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libedit/common.c,v 1.4 2005/08/04 17:27:09 drhodus Exp $
  */
 
 /*
@@ -49,9 +49,7 @@
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_end_of_file(el, c)
-    EditLine *el;
-    int c;
+ed_end_of_file(EditLine *el, int c)
 {
     re_goto_bottom(el);
     *el->el_line.lastchar = '\0';
@@ -64,9 +62,7 @@ ed_end_of_file(el, c)
  *	Insert a character [bound to all insert keys]
  */
 protected el_action_t
-ed_insert(el, c)
-    EditLine *el;
-    int c;
+ed_insert(EditLine *el, int c)
 {
     int i;
 
@@ -125,9 +121,7 @@ ed_insert(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_delete_prev_word(el, c)
-    EditLine *el;
-    int c;
+ed_delete_prev_word(EditLine *el, int c)
 {
     char *cp, *p, *kp;
 
@@ -155,9 +149,7 @@ ed_delete_prev_word(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_delete_next_char(el, c)
-    EditLine *el;
-    int c;
+ed_delete_next_char(EditLine *el, int c)
 {
 #ifdef notdef /* XXX */
 #define EL el->el_line
@@ -204,9 +196,7 @@ fprintf(stderr, "\nD(b: %x(%s)  c: %x(%s) last: %x(%s) limit: %x(%s)\n",
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_kill_line(el, c)
-    EditLine *el;
-    int c;
+ed_kill_line(EditLine *el, int c)
 {
     char *kp, *cp;
 
@@ -226,9 +216,7 @@ ed_kill_line(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_move_to_end(el, c)
-    EditLine *el;
-    int c;
+ed_move_to_end(EditLine *el, int c)
 {
     el->el_line.cursor = el->el_line.lastchar;
     if (el->el_map.type == MAP_VI) {
@@ -250,9 +238,7 @@ ed_move_to_end(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_move_to_beg(el, c)
-    EditLine *el;
-    int c;
+ed_move_to_beg(EditLine *el, int c)
 {
     el->el_line.cursor = el->el_line.buffer;
 
@@ -275,9 +261,7 @@ ed_move_to_beg(el, c)
  *	[^T] [^T]
  */
 protected el_action_t
-ed_transpose_chars(el, c)
-    EditLine *el;
-    int c;
+ed_transpose_chars(EditLine *el, int c)
 {
     if (el->el_line.cursor < el->el_line.lastchar) {
 	if (el->el_line.lastchar <= &el->el_line.buffer[1])
@@ -303,9 +287,7 @@ ed_transpose_chars(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_next_char(el, c)
-    EditLine *el;
-    int c;
+ed_next_char(EditLine *el, int c)
 {
     if (el->el_line.cursor >= el->el_line.lastchar)
 	return CC_ERROR;
@@ -330,9 +312,7 @@ ed_next_char(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_prev_word(el, c)
-    EditLine *el;
-    int c;
+ed_prev_word(EditLine *el, int c)
 {
     if (el->el_line.cursor == el->el_line.buffer)
 	return CC_ERROR;
@@ -357,9 +337,7 @@ ed_prev_word(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_prev_char(el, c)
-    EditLine *el;
-    int c;
+ed_prev_char(EditLine *el, int c)
 {
     if (el->el_line.cursor > el->el_line.buffer) {
 	el->el_line.cursor -= el->el_state.argument;
@@ -384,9 +362,7 @@ ed_prev_char(el, c)
  *	[^V] [^V]
  */
 protected el_action_t
-ed_quoted_insert(el, c)
-    EditLine *el;
-    int c;
+ed_quoted_insert(EditLine *el, int c)
 {
     int     num;
     char    tc;
@@ -406,9 +382,7 @@ ed_quoted_insert(el, c)
  *	Adds to argument or enters a digit
  */
 protected el_action_t
-ed_digit(el, c)
-    EditLine *el;
-    int c;
+ed_digit(EditLine *el, int c)
 {
     if (!isdigit((unsigned char) c))
 	return CC_ERROR;
@@ -449,9 +423,7 @@ ed_digit(el, c)
  *	For ESC-n
  */
 protected el_action_t
-ed_argument_digit(el, c)
-    EditLine *el;
-    int c;
+ed_argument_digit(EditLine *el, int c)
 {
     if (!isdigit((unsigned char) c))
 	return CC_ERROR;
@@ -475,9 +447,7 @@ ed_argument_digit(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_unassigned(el, c)
-    EditLine *el;
-    int c;
+ed_unassigned(EditLine *el, int c)
 {
     term_beep(el);
     term__flush();
@@ -495,9 +465,7 @@ ed_unassigned(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_sigint(el, c)
-    EditLine *el;
-    int c;
+ed_tty_sigint(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -509,9 +477,7 @@ ed_tty_sigint(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_dsusp(el, c)
-    EditLine *el;
-    int c;
+ed_tty_dsusp(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -523,9 +489,7 @@ ed_tty_dsusp(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_flush_output(el, c)
-    EditLine *el;
-    int c;
+ed_tty_flush_output(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -537,9 +501,7 @@ ed_tty_flush_output(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_sigquit(el, c)
-    EditLine *el;
-    int c;
+ed_tty_sigquit(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -551,9 +513,7 @@ ed_tty_sigquit(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_sigtstp(el, c)
-    EditLine *el;
-    int c;
+ed_tty_sigtstp(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -565,9 +525,7 @@ ed_tty_sigtstp(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_stop_output(el, c)
-    EditLine *el;
-    int c;
+ed_tty_stop_output(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -579,9 +537,7 @@ ed_tty_stop_output(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_tty_start_output(el, c)
-    EditLine *el;
-    int c;
+ed_tty_start_output(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -593,9 +549,7 @@ ed_tty_start_output(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_newline(el, c)
-    EditLine *el;
-    int c;
+ed_newline(EditLine *el, int c)
 {
     re_goto_bottom(el);
     *el->el_line.lastchar++ = '\n';
@@ -612,9 +566,7 @@ ed_newline(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_delete_prev_char(el, c)
-    EditLine *el;
-    int c;
+ed_delete_prev_char(EditLine *el, int c)
 {
     if (el->el_line.cursor <= el->el_line.buffer)
 	return CC_ERROR;
@@ -633,9 +585,7 @@ ed_delete_prev_char(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_clear_screen(el, c)
-    EditLine *el;
-    int c;
+ed_clear_screen(EditLine *el, int c)
 {
     term_clear_screen(el);	/* clear the whole real screen */
     re_clear_display(el);		/* reset everything */
@@ -649,9 +599,7 @@ ed_clear_screen(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_redisplay(el, c)
-    EditLine *el;
-    int c;
+ed_redisplay(EditLine *el, int c)
 {
     return CC_REDISPLAY;
 }
@@ -663,9 +611,7 @@ ed_redisplay(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_start_over(el, c)
-    EditLine *el;
-    int c;
+ed_start_over(EditLine *el, int c)
 {
     ch_reset(el);
     return CC_REFRESH;
@@ -678,9 +624,7 @@ ed_start_over(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_sequence_lead_in(el, c)
-    EditLine *el;
-    int c;
+ed_sequence_lead_in(EditLine *el, int c)
 {
     return CC_NORM;
 }
@@ -692,9 +636,7 @@ ed_sequence_lead_in(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_prev_history(el, c)
-    EditLine *el;
-    int c;
+ed_prev_history(EditLine *el, int c)
 {
     char    beep = 0;
 
@@ -729,9 +671,7 @@ ed_prev_history(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_next_history(el, c)
-    EditLine *el;
-    int c;
+ed_next_history(EditLine *el, int c)
 {
     el->el_chared.c_undo.action = NOP;
     *el->el_line.lastchar = '\0';		/* just in case */
@@ -753,9 +693,7 @@ ed_next_history(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_search_prev_history(el, c)
-    EditLine *el;
-    int c;
+ed_search_prev_history(EditLine *el, int c)
 {
     const char *hp;
     int h;
@@ -825,9 +763,7 @@ ed_search_prev_history(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_search_next_history(el, c)
-    EditLine *el;
-    int c;
+ed_search_next_history(EditLine *el, int c)
 {
     const char *hp;
     int h;
@@ -882,9 +818,7 @@ ed_search_next_history(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_prev_line(el, c)
-    EditLine *el;
-    int c;
+ed_prev_line(EditLine *el, int c)
 {
     char *ptr;
     int nchars = c_hpos(el);
@@ -927,9 +861,7 @@ ed_prev_line(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_next_line(el, c)
-    EditLine *el;
-    int c;
+ed_next_line(EditLine *el, int c)
 {
     char *ptr;
     int nchars = c_hpos(el);
@@ -963,9 +895,7 @@ ed_next_line(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-ed_command(el, c)
-    EditLine *el;
-    int c;
+ed_command(EditLine *el, int c)
 {
     char tmpbuf[EL_BUFSIZ];
     int tmplen;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)chared.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/chared.c,v 1.5 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libedit/chared.c,v 1.6 2005/08/04 17:27:09 drhodus Exp $
  */
 
 /*
@@ -49,10 +49,7 @@
  *	Handle state for the vi undo command
  */
 protected void
-cv_undo(el, action, size, ptr)
-    EditLine *el;
-    int action, size;
-    char *ptr;
+cv_undo(EditLine *el, int action, int size, char *ptr)
 {
     c_undo_t *vu = &el->el_chared.c_undo;
     vu->action = action;
@@ -70,9 +67,7 @@ cv_undo(el, action, size, ptr)
  *	Insert num characters
  */
 protected void
-c_insert(el, num)
-    EditLine *el;
-    int num;
+c_insert(EditLine *el, int num)
 {
     char *cp;
 
@@ -92,9 +87,7 @@ c_insert(el, num)
  *	Delete num characters after the cursor
  */
 protected void
-c_delafter(el, num)
-    EditLine *el;
-    int num;
+c_delafter(EditLine *el, int num)
 {
 
     if (el->el_line.cursor + num > el->el_line.lastchar)
@@ -118,9 +111,7 @@ c_delafter(el, num)
  *	Delete num characters before the cursor
  */
 protected void
-c_delbefore(el, num)
-    EditLine *el;
-    int num;
+c_delbefore(EditLine *el, int num)
 {
 
     if (el->el_line.cursor - num < el->el_line.buffer)
@@ -144,8 +135,7 @@ c_delbefore(el, num)
  *	Return if p is part of a word according to emacs
  */
 protected int
-ce__isword(p)
-    int p;
+ce__isword(int p)
 {
     return isalpha((unsigned char) p) || isdigit((unsigned char) p) || strchr("*?_-.[]~=", p) != NULL;
 }
@@ -155,8 +145,7 @@ ce__isword(p)
  *	Return type of word for p according to vi
  */
 protected int
-cv__isword(p)
-    int p;
+cv__isword(int p)
 {
     if (isspace((unsigned char) p))
         return 0;
@@ -170,8 +159,7 @@ cv__isword(p)
  *	Return if p is part of a space-delimited word (!isspace)
  */
 protected int
-c___isword(p)
-    int p;
+c___isword(int p)
 {
     return !isspace((unsigned char) p);
 }
@@ -181,10 +169,7 @@ c___isword(p)
  *	Find the previous word
  */
 protected char *
-c__prev_word(p, low, n, wtest)
-    char *p, *low;
-    int n;
-    int (*wtest) (int);
+c__prev_word(char *p, char *low, int n, int (*wtest)(int))
 {
     p--;
 
@@ -208,10 +193,7 @@ c__prev_word(p, low, n, wtest)
  *	Find the next word
  */
 protected char *
-c__next_word(p, high, n, wtest)
-    char *p, *high;
-    int n;
-    int (*wtest) (int);
+c__next_word(char *p, char *high, int n, int (*wtest)(int))
 {
     while (n--) {
 	while ((p < high) && !(*wtest)((unsigned char) *p))
@@ -229,11 +211,7 @@ c__next_word(p, high, n, wtest)
  *	Find the next word vi style
  */
 protected char *
-cv_next_word(el, p, high, n, wtest)
-    EditLine *el;
-    char *p, *high;
-    int n;
-    int (*wtest) (int);
+cv_next_word(EditLine *el, char *p, char *high, int n, int (*wtest)(int))
 {
     int test;
 
@@ -262,11 +240,7 @@ cv_next_word(el, p, high, n, wtest)
  *	Find the previous word vi style
  */
 protected char *
-cv_prev_word(el, p, low, n, wtest)
-    EditLine *el;
-    char *p, *low;
-    int n;
-    int (*wtest) (int);
+cv_prev_word(EditLine *el, char *p, char *low, int n, int (*wtest)(int))
 {
     int test;
 
@@ -302,10 +276,11 @@ cv_prev_word(el, p, low, n, wtest)
  * 	Return p pointing to last char used.
  */
 protected char *
-c__number(p, num, dval)
-    char *p;	/* character position */
-    int *num;	/* Return value	*/
-    int dval;	/* dval is the number to subtract from like $-3 */
+c__number(
+    char *p,	/* character position */
+    int *num,	/* Return value	*/
+    int dval,	/* dval is the number to subtract from like $-3 */
+)
 {
     int i;
     int sign = 1;
@@ -333,8 +308,7 @@ c__number(p, num, dval)
  *	Finish vi delete action
  */
 protected void
-cv_delfini(el)
-    EditLine *el;
+cv_delfini(EditLine *el)
 {
     int size;
     int oaction;
@@ -388,9 +362,7 @@ cv_delfini(el)
  *	Go to the end of this word according to emacs
  */
 protected char *
-ce__endword(p, high, n)
-    char *p, *high;
-    int n;
+ce__endword(char *p, char *high, int n)
 {
     p++;
 
@@ -411,9 +383,7 @@ ce__endword(p, high, n)
  *	Go to the end of this word according to vi
  */
 protected char *
-cv__endword(p, high, n)
-    char *p, *high;
-    int n;
+cv__endword(char *p, char *high, int n)
 {
     p++;
 
@@ -437,8 +407,7 @@ cv__endword(p, high, n)
  *	Initialize the character editor
  */
 protected int
-ch_init(el)
-    EditLine *el;
+ch_init(EditLine *el)
 {
     el->el_line.buffer              = (char *)  el_malloc(EL_BUFSIZ);
     (void) memset(el->el_line.buffer, 0, EL_BUFSIZ);
@@ -481,8 +450,7 @@ ch_init(el)
  *	Reset the character editor
  */
 protected void
-ch_reset(el)
-    EditLine *el;
+ch_reset(EditLine *el)
 {
     el->el_line.cursor              = el->el_line.buffer;
     el->el_line.lastchar            = el->el_line.buffer;
@@ -516,8 +484,7 @@ ch_reset(el)
  *	Free the data structures used by the editor
  */
 protected void
-ch_end(el)
-    EditLine *el;
+ch_end(EditLine *el)
 {
     el_free((ptr_t) el->el_line.buffer);
     el->el_line.buffer = NULL;
@@ -536,9 +503,7 @@ ch_end(el)
  *	Insert string at cursorI
  */
 public int
-el_insertstr(el, s)
-    EditLine *el;
-    char   *s;
+el_insertstr(EditLine *el, char *s)
 {
     int len;
 
@@ -558,9 +523,7 @@ el_insertstr(el, s)
  *	Delete num characters before the cursor
  */
 public void
-el_deletestr(el, n)
-    EditLine *el;
-    int     n;
+el_deletestr(EditLine *el, int n)
 {
     if (n <= 0)
 	return;
@@ -578,9 +541,7 @@ el_deletestr(el, n)
  *	Get a string
  */
 protected int
-c_gets(el, buf)
-    EditLine *el;
-    char *buf;
+c_gets(EditLine *el, char *buf)
 {
     char ch;
     int len = 0;
@@ -633,8 +594,7 @@ c_gets(el, buf)
  *	Return the current horizontal position of the cursor
  */
 protected int
-c_hpos(el)
-    EditLine *el;
+c_hpos(EditLine *el)
 {
     char *ptr;
 

@@ -4,7 +4,7 @@
  * and possibly others.
  *
  * $FreeBSD: src/lib/libopie/opieextra.c,v 1.1.2.2 2002/07/15 14:17:08 des Exp $
- * $DragonFly: src/lib/libopie/opieextra.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libopie/opieextra.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -18,8 +18,7 @@
  *
  */
 int
-opie_haskey(username)
-char *username;
+opie_haskey(char *username)
 {
 	struct opie opie;
  
@@ -34,8 +33,7 @@ char *username;
  *
  */
 char *
-opie_keyinfo(username)
-char *username;
+opie_keyinfo(char *username)
 {
 	int i;
 	static char str[OPIE_CHALLENGE_MAX];
@@ -58,9 +56,7 @@ char *username;
  *
  */
 int
-opie_passverify(username, passwd)
-char *username;
-char *passwd;
+opie_passverify(char *username, char *passwd)
 {
 	int i;
 	struct opie opie;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ipx_ntoa.c
- * $DragonFly: src/lib/libipx/ipx_ntoa.c,v 1.4 2005/05/07 15:01:36 corecode Exp $
+ * $DragonFly: src/lib/libipx/ipx_ntoa.c,v 1.5 2005/08/04 17:27:09 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -42,8 +42,7 @@
 static char *spectHex(char *);
 
 char *
-ipx_ntoa(addr)
-	struct ipx_addr addr;
+ipx_ntoa(struct ipx_addr addr)
 {
 	static char obuf[40];
 	union { union ipx_net net_e; u_long long_e; } net;
@@ -79,8 +78,7 @@ ipx_ntoa(addr)
 }
 
 static char *
-spectHex(p0)
-	char *p0;
+spectHex(char *p0)
 {
 	int ok = 0;
 	int nonzero = 0;

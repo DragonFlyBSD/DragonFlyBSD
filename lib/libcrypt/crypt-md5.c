@@ -7,9 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libcrypt/crypt-md5.c,v 1.5.2.1 2001/05/24 12:20:02 markm Exp $
- * $DragonFly: src/lib/libcrypt/crypt-md5.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
- *
- * $FreeBSD: src/lib/libcrypt/crypt-md5.c,v 1.5.2.1 2001/05/24 12:20:02 markm Exp $
+ * $DragonFly: src/lib/libcrypt/crypt-md5.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
  */
 
 #include <unistd.h>
@@ -24,9 +22,7 @@
  */
 
 char *
-crypt_md5(pw, salt)
-	const char *pw;
-	const char *salt;
+crypt_md5(const char *pw, const char *salt)
 {
 	static char	*magic = "$1$";	/*
 					 * This string is magic for

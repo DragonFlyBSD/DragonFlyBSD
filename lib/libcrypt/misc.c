@@ -27,7 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcrypt/misc.c,v 1.1 1999/09/20 12:45:49 markm Exp $
- * $DragonFly: src/lib/libcrypt/misc.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libcrypt/misc.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
  *
  */
 
@@ -35,10 +35,7 @@ static unsigned char itoa64[] =		/* 0 ... 63 => ascii - 64 */
 	"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 void
-_crypt_to64(s, v, n)
-	char *s;
-	unsigned long v;
-	int n;
+_crypt_to64(char *s, unsigned long v, int n)
 {
 	while (--n >= 0) {
 		*s++ = itoa64[v&0x3f];

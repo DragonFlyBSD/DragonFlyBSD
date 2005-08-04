@@ -35,7 +35,7 @@
  *
  * @(#)el.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/lib/libedit/el.c,v 1.6.2.1 2000/05/22 06:07:00 imp Exp $
- * $DragonFly: src/lib/libedit/el.c,v 1.3 2004/07/27 11:22:34 asmodai Exp $
+ * $DragonFly: src/lib/libedit/el.c,v 1.4 2005/08/04 17:27:09 drhodus Exp $
  */
 
 /*
@@ -55,9 +55,7 @@
  *	Initialize editline and set default parameters.
  */
 public EditLine *
-el_init(prog, fin, fout)
-    const char *prog;
-    FILE *fin, *fout;
+el_init(const char *prog, FILE *fin, FILE *fout)
 {
     EditLine *el = (EditLine *) el_malloc(sizeof(EditLine));
 #ifdef DEBUG
@@ -109,8 +107,7 @@ el_init(prog, fin, fout)
  *	Clean up.
  */
 public void
-el_end(el)
-    EditLine *el;
+el_end(EditLine *el)
 {
     if (el == NULL)
 	return;
@@ -136,8 +133,7 @@ el_end(el)
  *	Reset the tty and the parser
  */
 public void
-el_reset(el)
-    EditLine *el;
+el_reset(EditLine *el)
 {
     tty_cookedmode(el);
     ch_reset(el);	/* XXX: Do we want that? */
@@ -251,8 +247,7 @@ el_set(EditLine *el, int op, ...)
  *	Return editing info
  */
 public const LineInfo *
-el_line(el)
-    EditLine *el;
+el_line(EditLine *el)
 {
     return (const LineInfo *) &el->el_line;
 }
@@ -263,9 +258,7 @@ static const char elpath[] = "/.editrc";
  *	Source a file
  */
 public int
-el_source(el, fname)
-    EditLine *el;
-    const char *fname;
+el_source(EditLine *el, const char *fname)
 {
     FILE *fp;
     size_t len;
@@ -301,8 +294,7 @@ el_source(el, fname)
  *	Called from program when terminal is resized
  */
 public void
-el_resize(el)
-    EditLine *el;
+el_resize(EditLine *el)
 {
     int lins, cols;
     sigset_t oset, nset;
@@ -318,9 +310,7 @@ el_resize(el)
 }
 
 public void
-el_data_set (el, data)
-    EditLine *el;
-    void *data;
+el_data_set(EditLine *el, void *data)
 {
     el->data = data;
 
@@ -328,8 +318,7 @@ el_data_set (el, data)
 }
 
 public void *
-el_data_get (el)
-    EditLine *el;
+el_data_get(EditLine *el)
 {
     if (el->data)
 	return (el->data);

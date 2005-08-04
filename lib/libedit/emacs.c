@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)emacs.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/emacs.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libedit/emacs.c,v 1.4 2005/08/04 17:27:09 drhodus Exp $
  */
 
 /*
@@ -49,9 +49,7 @@
  */
 protected el_action_t
 /*ARGSUSED*/
-em_delete_or_list(el, c)
-    EditLine *el;
-    int c;
+em_delete_or_list(EditLine *el, int c)
 {
     if (el->el_line.cursor == el->el_line.lastchar) {	/* if I'm at the end */
 	if (el->el_line.cursor == el->el_line.buffer) {	/* and the beginning */
@@ -80,9 +78,7 @@ em_delete_or_list(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_delete_next_word(el, c)
-    EditLine *el;
-    int c;
+em_delete_next_word(EditLine *el, int c)
 {
     char *cp, *p, *kp;
 
@@ -110,9 +106,7 @@ em_delete_next_word(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_yank(el, c)
-    EditLine *el;
-    int c;
+em_yank(EditLine *el, int c)
 {
     char *kp, *cp;
 
@@ -147,9 +141,7 @@ em_yank(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_kill_line(el, c)
-    EditLine *el;
-    int c;
+em_kill_line(EditLine *el, int c)
 {
     char *kp, *cp;
 
@@ -170,9 +162,7 @@ em_kill_line(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_kill_region(el, c)
-    EditLine *el;
-    int c;
+em_kill_region(EditLine *el, int c)
 {
     char *kp, *cp;
 
@@ -206,9 +196,7 @@ em_kill_region(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_copy_region(el, c)
-    EditLine *el;
-    int c;
+em_copy_region(EditLine *el, int c)
 {
     char *kp, *cp;
 
@@ -238,9 +226,7 @@ em_copy_region(el, c)
  *	Gosling emacs transpose chars [^T]
  */
 protected el_action_t
-em_gosmacs_traspose(el, c)
-    EditLine *el;
-    int c;
+em_gosmacs_traspose(EditLine *el, int c)
 {
 
     if (el->el_line.cursor > &el->el_line.buffer[1]) {
@@ -261,9 +247,7 @@ em_gosmacs_traspose(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_next_word(el, c)
-    EditLine *el;
-    int c;
+em_next_word(EditLine *el, int c)
 {
     if (el->el_line.cursor == el->el_line.lastchar)
 	return CC_ERROR;
@@ -287,9 +271,7 @@ em_next_word(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_upper_case(el, c)
-    EditLine *el;
-    int c;
+em_upper_case(EditLine *el, int c)
 {
     char   *cp, *ep;
 
@@ -313,9 +295,7 @@ em_upper_case(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_capitol_case(el, c)
-    EditLine *el;
-    int c;
+em_capitol_case(EditLine *el, int c)
 {
     char   *cp, *ep;
 
@@ -346,9 +326,7 @@ em_capitol_case(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_lower_case(el, c)
-    EditLine *el;
-    int c;
+em_lower_case(EditLine *el, int c)
 {
     char   *cp, *ep;
 
@@ -372,9 +350,7 @@ em_lower_case(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_set_mark(el, c)
-    EditLine *el;
-    int c;
+em_set_mark(EditLine *el, int c)
 {
     el->el_chared.c_kill.mark = el->el_line.cursor;
     return CC_NORM;
@@ -387,9 +363,7 @@ em_set_mark(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_exchange_mark(el, c)
-    EditLine *el;
-    int c;
+em_exchange_mark(EditLine *el, int c)
 {
     char *cp;
 
@@ -405,9 +379,7 @@ em_exchange_mark(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_universal_argument(el, c)
-    EditLine *el;
-    int c;
+em_universal_argument(EditLine *el, int c)
 {				/* multiply current argument by 4 */
     if (el->el_state.argument > 1000000)
 	return CC_ERROR;
@@ -422,9 +394,7 @@ em_universal_argument(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_meta_next(el, c)
-    EditLine *el;
-    int c;
+em_meta_next(EditLine *el, int c)
 {
     el->el_state.metanext = 1;
     return CC_ARGHACK;
@@ -436,9 +406,7 @@ em_meta_next(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_toggle_overwrite(el, c)
-    EditLine *el;
-    int c;
+em_toggle_overwrite(EditLine *el, int c)
 {
     el->el_state.inputmode =
 	(el->el_state.inputmode == MODE_INSERT) ? MODE_REPLACE : MODE_INSERT;
@@ -451,9 +419,7 @@ em_toggle_overwrite(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_copy_prev_word(el, c)
-    EditLine *el;
-    int c;
+em_copy_prev_word(EditLine *el, int c)
 {
     char *cp, *oldc, *dp;
 
@@ -480,9 +446,7 @@ em_copy_prev_word(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_inc_search_next(el, c)
-    EditLine *el;
-    int c;
+em_inc_search_next(EditLine *el, int c)
 {
     el->el_search.patlen = 0;
     return ce_inc_search(el, ED_SEARCH_NEXT_HISTORY);
@@ -494,9 +458,7 @@ em_inc_search_next(el, c)
  */
 protected el_action_t
 /*ARGSUSED*/
-em_inc_search_prev(el, c)
-    EditLine *el;
-    int c;
+em_inc_search_prev(EditLine *el, int c)
 {
     el->el_search.patlen = 0;
     return ce_inc_search(el, ED_SEARCH_PREV_HISTORY);

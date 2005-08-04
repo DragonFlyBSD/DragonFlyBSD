@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libipx/ipx_addr.c,v 1.2.8.1 2001/03/05 06:21:40 kris Exp $
- * $DragonFly: src/lib/libipx/ipx_addr.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libipx/ipx_addr.c,v 1.4 2005/08/04 17:27:09 drhodus Exp $
  *
  * @(#)ipx_addr.c
  */
@@ -49,8 +49,7 @@ static struct ipx_addr addr, zero_addr;
 static void Field(), cvtbase();
 
 struct ipx_addr 
-ipx_addr(name)
-	const char *name;
+ipx_addr(const char *name)
 {
 	char separator;
 	char *hostname, *socketname, *cp;
@@ -96,10 +95,7 @@ ipx_addr(name)
 }
 
 static void
-Field(buf, out, len)
-	char *buf;
-	u_char *out;
-	int len;
+Field(char *buf, u_char *out, int len)
 {
 	char *bp = buf;
 	int i, ibase, base16 = 0, base10 = 0, clen = 0;
@@ -200,13 +196,8 @@ Field(buf, out, len)
 }
 
 static void
-cvtbase(oldbase,newbase,input,inlen,result,reslen)
-	long oldbase;
-	int newbase;
-	int input[];
-	int inlen;
-	unsigned char result[];
-	int reslen;
+cvtbase(long oldbase, int newbase, int input[], int inlen,
+	unsigned char result[], int reslen)
 {
 	int d, e;
 	long sum;

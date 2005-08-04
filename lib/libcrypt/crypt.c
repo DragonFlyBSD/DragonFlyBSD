@@ -24,9 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcrypt/crypt.c,v 1.14.2.2 2001/05/24 12:20:02 markm Exp $
- * $DragonFly: src/lib/libcrypt/crypt.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
- *
- * $FreeBSD: src/lib/libcrypt/crypt.c,v 1.14.2.2 2001/05/24 12:20:02 markm Exp $
+ * $DragonFly: src/lib/libcrypt/crypt.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
  */
 
 #include <sys/types.h>
