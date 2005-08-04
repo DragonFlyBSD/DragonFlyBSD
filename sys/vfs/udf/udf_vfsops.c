@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.13 2005/07/26 15:43:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.14 2005/08/04 16:44:12 joerg Exp $
  */
 
 /* udf_vfsops.c */
@@ -78,7 +78,6 @@
 #include <sys/uio.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#include <sys/dirent.h>
 #include <sys/fcntl.h>
 #include <sys/module.h>
 #include <sys/kernel.h>
