@@ -38,7 +38,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.19 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.19 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.20 2005/08/04 00:21:50 okumoto Exp $
  */
 
 #ifndef hash_h_f6312f46
@@ -56,14 +56,18 @@
  * The following defines one entry in the hash table.
  */
 typedef struct Hash_Entry {
-	struct Hash_Entry *next;	/* Link entries within same bucket. */
-	void		*clientData;	/* Data associated with key. */
+	struct Hash_Entry *next;	/* Used to link together all the
+					 * entries associated with the same
+					 * bucket. */
+	void		*clientData;	/* Arbitrary piece of data associated
+					 * with key. */
 	unsigned	namehash;	/* hash value of key */
 	char		name[1];	/* key string */
 } Hash_Entry;
 
 typedef struct Hash_Table {
-	struct Hash_Entry **bucketPtr;	/* Buckets in the table */
+	struct Hash_Entry **bucketPtr;	/* Pointers to Hash_Entry, one
+					 * for each bucket in the table. */
 	int		size;		/* Actual size of array. */
 	int		numEntries;	/* Number of entries in the table. */
 	int		mask;		/* Used to select bits for hashing. */
@@ -75,7 +79,7 @@ typedef struct Hash_Table {
  */
 typedef struct Hash_Search {
 	const Hash_Table *tablePtr;	/* Table being searched. */
-	int		nextIndex;	/* Next bucket to check */
+	int		nextIndex;	/* Next bucket to check (after current).*/
 	Hash_Entry	*hashEntryPtr;	/* Next entry in current bucket */
 } Hash_Search;
 
