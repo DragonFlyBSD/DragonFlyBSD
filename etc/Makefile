@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.79 2005/08/05 10:13:43 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.80 2005/08/05 15:19:35 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -326,7 +326,7 @@ upgrade_etc:	preupgrade
 .for man in drivers.conf gbk ntp.conf ntp.keys
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/${man}.5.gz"
 .endfor
-.for man in ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace sysinstall
+.for man in ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace picobsd sysinstall
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
 .endfor
 	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-supfile

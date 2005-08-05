@@ -1,12 +1,11 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/man/man8/Makefile,v 1.13.2.12 2002/07/16 14:05:30 ru Exp $
-# $DragonFly: src/share/man/man8/Makefile,v 1.6 2005/06/17 23:10:11 swildner Exp $
+# $DragonFly: src/share/man/man8/Makefile,v 1.7 2005/08/05 15:19:35 swildner Exp $
 
 MAN=	adding_user.8 \
 	crash.8 \
 	diskless.8 \
 	intro.8 \
-	picobsd.8 \
 	rc.8 \
 	rc.sendmail.8 \
 	rc.subr.8 \
