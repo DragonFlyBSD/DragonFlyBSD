@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.78 2005/07/25 16:04:36 joerg Exp $
+# $DragonFly: src/etc/Makefile,v 1.79 2005/08/05 10:13:43 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -323,7 +323,7 @@ upgrade_etc:	preupgrade
 	    setrunelocale sgetrune sputrune
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz"
 .endfor
-.for man in gbk ntp.conf ntp.keys
+.for man in drivers.conf gbk ntp.conf ntp.keys
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/${man}.5.gz"
 .endfor
 .for man in ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace sysinstall
