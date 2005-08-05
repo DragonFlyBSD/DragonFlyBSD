@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.3 2004/03/11 12:28:59 hmp Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.4 2005/08/05 14:56:59 swildner Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -5879,7 +5879,7 @@ ifdef({LOCALRAD},{},{.Xr libradius 3 ,
 .Xr getty 8 ,
 .Xr inetd 8 ,
 .Xr init 8 ,
-.Xr isdn 8 ,
+.Xr isdnd 8 ,
 .Xr named 8 ,
 .Xr ping 8 ,
 .Xr pppctl 8 ,
