@@ -1,5 +1,5 @@
 .\" $OpenBSD: pfctl.8,v 1.110 2004/03/20 09:31:42 david Exp $
-.\" $DragonFly: src/usr.sbin/pfctl/pfctl.8,v 1.1 2004/09/21 21:25:28 joerg Exp $
+.\" $DragonFly: src/usr.sbin/pfctl/pfctl.8,v 1.2 2005/08/05 16:08:28 swildner Exp $
 .\"
 .\" Copyright (c) 2001 Kjell Wooding.  All rights reserved.
 .\"
@@ -73,9 +73,12 @@ supported.
 Translation rules are described in
 .Xr pf.conf 5 .
 .Pp
-When the variable pf is set to YES in
-.Xr rc.conf 8 ,
-the rule file specified with the variable pf_rules
+When the variable
+.Va pf_enable
+is set to YES in
+.Xr rc.conf 5 ,
+the rule file specified with the variable
+.Va pf_rules
 is loaded automatically by the
 .Xr rc 8
 scripts and the packet filter is enabled.
@@ -513,10 +516,10 @@ Packet filter rules file.
 .Xr pf 4 ,
 .Xr pf.conf 5 ,
 .Xr pf.os 5 ,
+.Xr rc.conf 5 ,
 .Xr sysctl.conf 5 ,
 .Xr ftp-proxy 8 ,
 .Xr rc 8 ,
-.Xr rc.conf 8 ,
 .Xr sysctl 8
 .Sh HISTORY
 The
