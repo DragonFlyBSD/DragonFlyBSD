@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)queue.3	8.2 (Berkeley) 1/24/94
 .\" $FreeBSD: src/share/man/man3/queue.3,v 1.15.2.7 2001/12/18 10:09:02 ru Exp $
-.\" $DragonFly: src/share/man/man3/queue.3,v 1.3 2004/08/12 15:07:42 joerg Exp $
+.\" $DragonFly: src/share/man/man3/queue.3,v 1.4 2005/08/05 21:49:22 swildner Exp $
 .\"
 .Dd January 24, 1994
 .Dt QUEUE 3
@@ -105,9 +105,9 @@
 .Nm CIRCLEQ_INSERT_BEFORE ,
 .Nm CIRCLEQ_INSERT_HEAD ,
 .Nm CIRCLEQ_INSERT_TAIL ,
-.Nm CIRCLE_LAST ,
-.Nm CIRCLE_NEXT ,
-.Nm CIRCLE_PREV ,
+.Nm CIRCLEQ_LAST ,
+.Nm CIRCLEQ_NEXT ,
+.Nm CIRCLEQ_PREV ,
 .Nm CIRCLEQ_REMOVE
 .Nd implementations of singly-linked lists, singly-linked tail queues,
 lists, tail queues, and circular queues
@@ -188,7 +188,7 @@ lists, tail queues, and circular queues
 .Fn CIRCLEQ_INSERT_TAIL "CIRCLEQ_HEAD *head" "TYPE *elm" "CIRCLEQ_ENTRY NAME"
 .Fn CIRCLEQ_LAST "CIRCLEQ_HEAD *head"
 .Fn CIRCLEQ_NEXT "TYPE *elm" "CIRCLEQ_ENTRY NAME"
-.Fn CIRCLE_PREV "TYPE *elm" "CIRCLEQ_ENTRY NAME"
+.Fn CIRCLEQ_PREV "TYPE *elm" "CIRCLEQ_ENTRY NAME"
 .Fn CIRCLEQ_REMOVE "CIRCLEQ_HEAD *head" "TYPE *elm" "CIRCLEQ_ENTRY NAME"
 .Sh DESCRIPTION
 These macros define and operate on five types of data structures:
