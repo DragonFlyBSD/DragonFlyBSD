@@ -38,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.24 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.34 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.35 2005/08/05 22:42:12 okumoto Exp $
  */
 
 #ifndef buf_h_a61a6812
@@ -66,26 +66,24 @@
 #define	BUF_DEF_SIZE	256	/* Default buffer size */
 #define	BUF_ADD_INC	256	/* Expansion increment when Adding */
 
-typedef char Byte;
-
 typedef struct Buffer {
 	size_t	size;	/* Current size of the buffer */
-	Byte	*buf;	/* The buffer itself */
-	Byte	*end;	/* Place to write to */
+	char	*buf;	/* The buffer itself */
+	char	*end;	/* Place to write to */
 } Buffer;
 
-void Buf_AddByte(Buffer *, Byte);
-void Buf_AddBytes(Buffer *, size_t, const Byte *);
+void Buf_AddByte(Buffer *, char);
+void Buf_AddBytes(Buffer *, size_t, const char []);
 void Buf_Append(Buffer *, const char []);
 void Buf_AppendBuf(Buffer *, const Buffer *);
-void Buf_AppendRange(Buffer *, const char [], const char *);
+void Buf_AppendRange(Buffer *, const char [], const char []);
 void Buf_Clear(Buffer *);
 char *Buf_Data(const Buffer *);
 void Buf_Destroy(Buffer *, bool);
-Byte *Buf_GetAll(Buffer *, size_t *);
+char *Buf_GetAll(Buffer *, size_t *);
 Buffer *Buf_Init(size_t);
 char *Buf_Peel(Buffer *);
-void Buf_ReplaceLastByte(Buffer *, Byte);
+void Buf_ReplaceLastByte(Buffer *, char);
 size_t Buf_Size(const Buffer *);
 void Buf_StripNewlines(Buffer *);
 

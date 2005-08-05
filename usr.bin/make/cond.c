@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.47 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.48 2005/08/05 22:42:12 okumoto Exp $
  */
 
 /*
@@ -244,12 +244,12 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 			}
 			cp += len;
 		} else {
-			Buf_AddByte(buf, (Byte)*cp);
+			Buf_AddByte(buf, *cp);
 			cp++;
 		}
 	}
 
-	Buf_AddByte(buf, (Byte)'\0');
+	Buf_AddByte(buf, '\0');
 	*argPtr = (char *)Buf_GetAll(buf, &argLen);
 	Buf_Destroy(buf, false);
 
@@ -511,9 +511,9 @@ CondToken(Parser *parser, bool doEval)
 				for (; *condExpr &&
 				     !isspace((unsigned char)*condExpr);
 				     condExpr++)
-					Buf_AddByte(buf, (Byte)*condExpr);
+					Buf_AddByte(buf, *condExpr);
 
-				Buf_AddByte(buf, (Byte)'\0');
+				Buf_AddByte(buf, '\0');
 				lhs = (char *)Buf_GetAll(buf, &varSpecLen);
 				Buf_Destroy(buf, false);
 
@@ -591,7 +591,7 @@ CondToken(Parser *parser, bool doEval)
 						 * if it exists.
 						 */
 						cp++;
-						Buf_AddByte(buf, (Byte)*cp);
+						Buf_AddByte(buf, *cp);
 
 					} else if (*cp == '$') {
 						size_t	len = 0;
@@ -606,11 +606,10 @@ CondToken(Parser *parser, bool doEval)
 							}
 							cp += len - 1;
 						} else {
-							Buf_AddByte(buf,
-							       (Byte)*cp);
+							Buf_AddByte(buf, *cp);
 						}
 					} else {
-						Buf_AddByte(buf, (Byte)*cp);
+						Buf_AddByte(buf, *cp);
 					}
 				}
 

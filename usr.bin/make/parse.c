@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.93 2005/08/03 23:20:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.94 2005/08/05 22:42:12 okumoto Exp $
  */
 
 /*-
@@ -1736,9 +1736,9 @@ ParseSkipLine(int skip, int keep_newline)
 			}
 			if (c == '\n') {
 				if (keep_newline)
-					Buf_AddByte(buf, (Byte)c);
+					Buf_AddByte(buf, c);
 				else
-					Buf_ReplaceLastByte(buf, (Byte)' ');
+					Buf_ReplaceLastByte(buf, ' ');
 				CURFILE->lineno++;
 
 				while ((c = ParseReadc()) == ' ' || c == '\t')
@@ -1748,7 +1748,7 @@ ParseSkipLine(int skip, int keep_newline)
 					break;
 			}
 
-			Buf_AddByte(buf, (Byte)c);
+			Buf_AddByte(buf, c);
 			lastc = c;
 		}
 
@@ -1760,7 +1760,7 @@ ParseSkipLine(int skip, int keep_newline)
 		}
 
 		CURFILE->lineno++;
-		Buf_AddByte(buf, (Byte)'\0');
+		Buf_AddByte(buf, '\0');
 		line = Buf_Data(buf);
 	} while (skip == 1 && line[0] != '.');
 
@@ -1966,16 +1966,16 @@ ParseReadLine(void)
 		 * lastc.
 		 */
 		if (lastc != '\0')
-			Buf_AddByte(buf, (Byte)lastc);
+			Buf_AddByte(buf, lastc);
 		lastc = c;
 	}
   line_read:
 	CURFILE->lineno++;
 
 	if (lastc != '\0') {
-		Buf_AddByte(buf, (Byte)lastc);
+		Buf_AddByte(buf, lastc);
 	}
-	Buf_AddByte(buf, (Byte)'\0');
+	Buf_AddByte(buf, '\0');
 	line = Buf_Peel(buf);
 
 	/*

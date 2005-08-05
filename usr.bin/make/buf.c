@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.40 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.41 2005/08/05 22:42:12 okumoto Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ BufExpand(Buffer *bp, size_t nb)
  * Add a single byte to the buffer.
  */
 inline void
-Buf_AddByte(Buffer *bp, Byte byte)
+Buf_AddByte(Buffer *bp, char byte)
 {
 
 	BufExpand(bp, 1);
@@ -113,7 +113,7 @@ Buf_AddByte(Buffer *bp, Byte byte)
  * Add bytes to the buffer.
  */
 void
-Buf_AddBytes(Buffer *bp, size_t len, const Byte *bytes)
+Buf_AddBytes(Buffer *bp, size_t len, const char bytes[])
 {
 	BufExpand(bp, len);
 
@@ -130,7 +130,7 @@ Buf_AddBytes(Buffer *bp, size_t len, const Byte *bytes)
  *
  * @return A pointer to the data.
  */
-Byte *
+char *
 Buf_GetAll(Buffer *bp, size_t *len)
 {
 
@@ -206,7 +206,7 @@ Buf_Destroy(Buffer *buf, bool freeData)
  * intially, then a new byte will be added.
  */
 void
-Buf_ReplaceLastByte(Buffer *bp, Byte byte)
+Buf_ReplaceLastByte(Buffer *bp, char byte)
 {
 
 	if (bp->end == bp->buf) {

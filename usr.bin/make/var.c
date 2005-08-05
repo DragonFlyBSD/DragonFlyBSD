@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.216 2005/08/03 23:20:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.217 2005/08/05 22:42:12 okumoto Exp $
  */
 
 /**
@@ -250,7 +250,7 @@ VarHead(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 	slash = strrchr(word, '/');
 	if (slash != NULL) {
 		if (addSpace) {
-			Buf_AddByte(buf, (Byte)' ');
+			Buf_AddByte(buf, ' ');
 		}
 		Buf_AppendRange(buf, word, slash);
 	} else {
@@ -260,7 +260,7 @@ VarHead(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 		if (addSpace) {
 			Buf_Append(buf, " .");
 		} else {
-			Buf_AddByte(buf, (Byte)'.');
+			Buf_AddByte(buf, '.');
 		}
 	}
 	return (true);
@@ -283,7 +283,7 @@ VarTail(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 	const char *slash;
 
 	if (addSpace) {
-		Buf_AddByte(buf, (Byte)' ');
+		Buf_AddByte(buf, ' ');
 	}
 
 	slash = strrchr(word, '/');
@@ -314,7 +314,7 @@ VarSuffix(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 	dot = strrchr(word, '.');
 	if (dot != NULL) {
 		if (addSpace) {
-			Buf_AddByte(buf, (Byte)' ');
+			Buf_AddByte(buf, ' ');
 		}
 		dot++;
 		Buf_Append(buf, dot);
@@ -340,7 +340,7 @@ VarRoot(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
 	char *dot;
 
 	if (addSpace) {
-		Buf_AddByte(buf, (Byte)' ');
+		Buf_AddByte(buf, ' ');
 	}
 
 	dot = strrchr(word, '.');
@@ -371,7 +371,7 @@ VarMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
 
 	if (Str_Match(word, pattern)) {
 		if (addSpace) {
-			Buf_AddByte(buf, (Byte)' ');
+			Buf_AddByte(buf, ' ');
 		}
 		addSpace = true;
 		Buf_Append(buf, word);
@@ -400,7 +400,7 @@ VarSYSVMatch(const char *word, bool addSpace, Buffer *buf, void *patp)
 	VarPattern	*pat = (VarPattern *)patp;
 
 	if (addSpace)
-		Buf_AddByte(buf, (Byte)' ');
+		Buf_AddByte(buf, ' ');
 
 	addSpace = true;
 
@@ -431,7 +431,7 @@ VarNoMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
 
 	if (!Str_Match(word, pattern)) {
 		if (addSpace) {
-			Buf_AddByte(buf, (Byte)' ');
+			Buf_AddByte(buf, ' ');
 		}
 		addSpace = true;
 		Buf_Append(buf, word);
@@ -476,7 +476,7 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 				 */
 				if (Buf_Size(pattern->rhs) != 0) {
 					if (addSpace) {
-						Buf_AddByte(buf, (Byte)' ');
+						Buf_AddByte(buf, ' ');
 					}
 					addSpace = true;
 					Buf_AppendBuf(buf, pattern->rhs);
@@ -496,7 +496,7 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 				if ((Buf_Size(pattern->rhs) + wordLen -
 				    Buf_Size(pattern->lhs)) != 0) {
 					if (addSpace) {
-						Buf_AddByte(buf, (Byte)' ');
+						Buf_AddByte(buf, ' ');
 					}
 					addSpace = true;
 				}
@@ -532,7 +532,7 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 				 */
 				if ((cp - word) + Buf_Size(pattern->rhs) != 0) {
 					if (addSpace) {
-						Buf_AddByte(buf, (Byte)' ');
+						Buf_AddByte(buf, ' ');
 					}
 					addSpace = true;
 				}
@@ -568,7 +568,7 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 				if (cp != NULL) {
 					if (addSpace && (((cp - word) +
 					    Buf_Size(pattern->rhs)) != 0)) {
-						Buf_AddByte(buf, (Byte)' ');
+						Buf_AddByte(buf, ' ');
 						addSpace = false;
 					}
 					Buf_AppendRange(buf, word, cp);
@@ -586,9 +586,9 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 			}
 			if (wordLen != 0) {
 				if (addSpace) {
-					Buf_AddByte(buf, (Byte)' ');
+					Buf_AddByte(buf, ' ');
 				}
-				Buf_AddBytes(buf, wordLen, (const Byte *)word);
+				Buf_AddBytes(buf, wordLen, word);
 			}
 
 			/*
@@ -606,9 +606,9 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 	}
   nosub:
 	if (addSpace) {
-		Buf_AddByte(buf, (Byte)' ');
+		Buf_AddByte(buf, ' ');
 	}
-	Buf_AddBytes(buf, wordLen, (const Byte *)word);
+	Buf_AddBytes(buf, wordLen, word);
 	return (true);
 }
 
@@ -651,7 +651,7 @@ VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 
 #define	MAYBE_ADD_SPACE()			\
 	if (addSpace && !added)			\
-		Buf_AddByte(buf, (Byte)' ');	\
+		Buf_AddByte(buf, ' ');	\
 	added = 1
 
 	added = 0;
@@ -671,14 +671,13 @@ VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 		pat->flags |= VAR_SUB_MATCHED;
 		if (pat->matches[0].rm_so > 0) {
 			MAYBE_ADD_SPACE();
-			Buf_AddBytes(buf, pat->matches[0].rm_so,
-			    (const Byte *)wp);
+			Buf_AddBytes(buf, pat->matches[0].rm_so, wp);
 		}
 
 		for (rp = Buf_Data(pat->rhs); *rp; rp++) {
 			if ((*rp == '\\') && ((rp[1] == '&') || (rp[1] == '\\'))) {
 				MAYBE_ADD_SPACE();
-				Buf_AddByte(buf, (Byte)rp[1]);
+				Buf_AddByte(buf, rp[1]);
 				rp++;
 
 			} else if ((*rp == '&') ||
@@ -721,12 +720,11 @@ VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 
 				if (sublen > 0) {
 					MAYBE_ADD_SPACE();
-					Buf_AddBytes(buf, sublen,
-					    (const Byte *)subbuf);
+					Buf_AddBytes(buf, sublen, subbuf);
 				}
 			} else {
 				MAYBE_ADD_SPACE();
-				Buf_AddByte(buf, (Byte)*rp);
+				Buf_AddByte(buf, *rp);
 			}
 		}
 		wp += pat->matches[0].rm_eo;
@@ -735,7 +733,7 @@ VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
 			if (pat->matches[0].rm_so == 0 &&
 			    pat->matches[0].rm_eo == 0) {
 				MAYBE_ADD_SPACE();
-				Buf_AddByte(buf, (Byte)*wp);
+				Buf_AddByte(buf, *wp);
 				wp++;
 			}
 			if (*wp)
@@ -1097,7 +1095,7 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
 	if (v == NULL) {
 		VarAdd(n, val, ctxt);
 	} else {
-		Buf_AddByte(v->val, (Byte)' ');
+		Buf_AddByte(v->val, ' ');
 		Buf_Append(v->val, val);
 		DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n, Buf_Data(v->val)));
 	}
@@ -1202,7 +1200,7 @@ VarSortWords(const char *str, int (*cmp)(const void *, const void *))
 	buf = Buf_Init(0);
 	for (i = 1; i < aa.argc; i++) {
 		Buf_Append(buf, aa.argv[i]);
-		Buf_AddByte(buf, (Byte)((i < aa.argc - 1) ? ' ' : '\0'));
+		Buf_AddByte(buf, ((i < aa.argc - 1) ? ' ' : '\0'));
 	}
 
 	ArgArray_Done(&aa);
@@ -1253,13 +1251,13 @@ VarGetPattern(VarParser *vp, int delim, int *flags, VarPattern *patt)
 		     (vp->ptr[1] == '$') ||
 		     (vp->ptr[1] == '&' && patt != NULL))) {
 			vp->ptr++;		/* consume backslash */
-			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			Buf_AddByte(buf, vp->ptr[0]);
 			vp->ptr++;
 
 		} else if (vp->ptr[0] == '$') {
 			if (vp->ptr[1] == delim) {
 				if (flags == NULL) {
-					Buf_AddByte(buf, (Byte)vp->ptr[0]);
+					Buf_AddByte(buf, vp->ptr[0]);
 					vp->ptr++;
 				} else {
 					/*
@@ -1296,7 +1294,7 @@ VarGetPattern(VarParser *vp, int delim, int *flags, VarPattern *patt)
 			Buf_AppendBuf(buf, patt->lhs);
 			vp->ptr++;
 		} else {
-			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			Buf_AddByte(buf, vp->ptr[0]);
 			vp->ptr++;
 		}
 	}
@@ -1636,8 +1634,8 @@ Var_Quote(const char *str)
 	buf = Buf_Init(MAKE_BSIZE);
 	for (; *str; str++) {
 		if (strchr(meta, *str) != NULL)
-			Buf_AddByte(buf, (Byte)'\\');
-		Buf_AddByte(buf, (Byte)*str);
+			Buf_AddByte(buf, '\\');
+		Buf_AddByte(buf, *str);
 	}
 
 	return (Buf_Peel(buf));
@@ -1734,7 +1732,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, bool *freeResult)
 				Buffer		*buf;
 				buf = Buf_Init(MAKE_BSIZE);
 				for (cp = value; *cp; cp++)
-					Buf_AddByte(buf, (Byte)tolower((unsigned char)*cp));
+					Buf_AddByte(buf, tolower((unsigned char)*cp));
 
 				newStr = Buf_Peel(buf);
 
@@ -1759,7 +1757,7 @@ ParseModifier(VarParser *vp, char startc, Var *v, bool *freeResult)
 				Buffer		*buf;
 				buf = Buf_Init(MAKE_BSIZE);
 				for (cp = value; *cp; cp++)
-					Buf_AddByte(buf, (Byte)toupper((unsigned char)*cp));
+					Buf_AddByte(buf, toupper((unsigned char)*cp));
 
 				newStr = Buf_Peel(buf);
 
@@ -2057,7 +2055,7 @@ VarParseLong(VarParser *vp, bool *freeResult)
 				free(rval);
 			vp->ptr = subvp.ptr;
 		} else {
-			Buf_AddByte(buf, (Byte)*vp->ptr);
+			Buf_AddByte(buf, *vp->ptr);
 			vp->ptr++;
 		}
 	}
@@ -2290,7 +2288,7 @@ Var_Subst(const char *str, GNode *ctxt, bool err)
 			 * buffer directly.
 			 */
 			str++;
-			Buf_AddByte(buf, (Byte)str[0]);
+			Buf_AddByte(buf, str[0]);
 			str++;
 
 		} else if (str[0] == '$') {
@@ -2338,7 +2336,7 @@ Var_Subst(const char *str, GNode *ctxt, bool err)
 					errorReported = true;
 					str = subvp.ptr;
 				} else {
-					Buf_AddByte(buf, (Byte)str[0]);
+					Buf_AddByte(buf, str[0]);
 					str++;
 				}
 			} else {
@@ -2353,7 +2351,7 @@ Var_Subst(const char *str, GNode *ctxt, bool err)
 				str = subvp.ptr;
 			}
 		} else {
-			Buf_AddByte(buf, (Byte)str[0]);
+			Buf_AddByte(buf, str[0]);
 			str++;
 		}
 	}
@@ -2442,7 +2440,7 @@ Var_SubstOnly(const char *var, const char *str, bool err)
 						errorReported = true;
 						str = subvp.ptr;
 					} else {
-						Buf_AddByte(buf, (Byte)str[0]);
+						Buf_AddByte(buf, str[0]);
 						str++;
 					}
 				} else {
@@ -2459,7 +2457,7 @@ Var_SubstOnly(const char *var, const char *str, bool err)
 				}
 			}
 		} else {
-			Buf_AddByte(buf, (Byte)str[0]);
+			Buf_AddByte(buf, str[0]);
 			str++;
 		}
 	}

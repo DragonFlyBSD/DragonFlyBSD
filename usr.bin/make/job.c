@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.136 2005/08/03 22:00:16 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.137 2005/08/05 22:42:12 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2684,7 +2684,7 @@ Cmd_Exec(const char *cmd, const char **error)
 
 			rcnt = read(fds[0], result, sizeof(result));
 			if (rcnt != -1)
-				Buf_AddBytes(buf, (size_t)rcnt, (Byte *)result);
+				Buf_AddBytes(buf, (size_t)rcnt, result);
 		} while (rcnt > 0 || (rcnt == -1 && errno == EINTR));
 
 		if (rcnt == -1)

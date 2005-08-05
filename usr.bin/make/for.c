@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.43 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.44 2005/08/05 22:42:12 okumoto Exp $
  */
 
 /*-
@@ -222,7 +222,7 @@ For_Eval(char *line)
 		 * Still in loop - append the line
 		 */
 		Buf_Append(forBuf, line);
-		Buf_AddByte(forBuf, (Byte)'\n');
+		Buf_AddByte(forBuf, '\n');
 		return (true);
 	}
 
