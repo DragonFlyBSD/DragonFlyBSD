@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pflog.4,v 1.7 2004/03/21 19:47:59 miod Exp $
-.\"	$DragonFly: src/share/man/man4/pflog.4,v 1.1 2005/03/24 01:15:59 corecode Exp $
+.\"	$DragonFly: src/share/man/man4/pflog.4,v 1.2 2005/08/05 15:35:52 swildner Exp $
 .\"
 .\" Copyright (c) 2001 Tobias Weingartner
 .\" All rights reserved.
@@ -40,7 +40,7 @@ the packet filter,
 .Xr pf 4 .
 Logged packets can easily be monitored in real
 time by invoking
-.Xr tcpdump 8
+.Xr tcpdump 1
 on the
 .Nm
 interface, or stored to disk using
@@ -74,13 +74,13 @@ struct pfloghdr {
 # tcpdump -n -e -ttt -i pflog0
 .Ed
 .Sh SEE ALSO
+.Xr tcpdump 1 ,
 .Xr inet 4 ,
 .Xr inet6 4 ,
 .Xr netintro 4 ,
 .Xr pf 4 ,
 .Xr ifconfig 8 ,
-.Xr pflogd 8 ,
-.Xr tcpdump 8
+.Xr pflogd 8
 .Sh HISTORY
 The
 .Nm

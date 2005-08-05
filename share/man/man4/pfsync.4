@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pfsync.4,v 1.14 2004/03/21 19:47:59 miod Exp $
-.\"	$DragonFly: src/share/man/man4/pfsync.4,v 1.1 2005/03/24 01:15:59 corecode Exp $
+.\"	$DragonFly: src/share/man/man4/pfsync.4,v 1.2 2005/08/05 15:35:52 swildner Exp $
 .\"
 .\" Copyright (c) 2002 Michael Shalayeff
 .\" All rights reserved.
@@ -39,7 +39,7 @@ interface is a pseudo-device which exposes certain changes to the state
 table used by
 .Xr pf 4 .
 State changes can be viewed by invoking
-.Xr tcpdump 8
+.Xr tcpdump 1
 on the
 .Nm
 interface.
@@ -130,6 +130,7 @@ only the necessary information.
 # tcpdump -s1500 -evtni pfsync0
 .Ed
 .Sh SEE ALSO
+.Xr tcpdump 1,
 .Xr bpf 4 ,
 .Xr inet 4 ,
 .Xr inet6 4 ,
@@ -137,8 +138,7 @@ only the necessary information.
 .Xr pf 4 ,
 .Xr pf.conf 5 ,
 .Xr protocols 5 ,
-.Xr ifconfig 8 ,
-.Xr tcpdump 8
+.Xr ifconfig 8
 .Sh HISTORY
 The
 .Nm
