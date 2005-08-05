@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.4 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.5 2005/08/05 22:35:10 swildner Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -1537,7 +1537,8 @@ A set of
 .Xr sysctl 8
 variables controls the behaviour of the firewall and
 associated modules (
-.Nm dummynet, bridge
+.Nm dummynet ,
+.Nm bridge
 ).
 These are shown below together with their default value
 (but always check with the
