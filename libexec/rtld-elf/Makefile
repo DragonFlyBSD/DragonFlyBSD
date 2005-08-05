@@ -1,5 +1,5 @@
 # $FreeBSD: src/libexec/rtld-elf/Makefile,v 1.10.2.6 2002/06/22 17:03:13 jdp Exp $
-# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.10 2005/05/11 19:58:19 dillon Exp $
+# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.11 2005/08/05 23:43:19 swildner Exp $
 
 PROG=		ld-elf.so.2
 SRCS=		rtld_start.S rtld.c lockdflt.c map_object.c malloc.c \
@@ -9,6 +9,7 @@ CFLAGS+=	-Wall -I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR} -D__thread=
 LDFLAGS+=	-nostdlib -e .rtld_start -Wl,--no-undefined
 INSTALLFLAGS=	-fschg -C -b
 MLINKS=		rtld.1 ld-elf.so.1.1
+MLINKS+=	rtld.1 ld-elf.so.2.1
 
 .if exists(${.CURDIR}/${MACHINE_ARCH}/Makefile.inc)
 .include "${.CURDIR}/${MACHINE_ARCH}/Makefile.inc"

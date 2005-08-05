@@ -1,6 +1,6 @@
 #       from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/db/man/Makefile.inc,v 1.8.2.2 2001/04/25 10:04:04 ru Exp $
-# $DragonFly: src/lib/libc/db/man/Makefile.inc,v 1.2 2003/06/17 04:26:41 dillon Exp $
+# $DragonFly: src/lib/libc/db/man/Makefile.inc,v 1.3 2005/08/05 23:43:19 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/db/man
 
@@ -10,7 +10,7 @@ MAN+=	btree.3 dbm.3 dbopen.3 hash.3 mpool.3 recno.3
 MLINKS+= dbm.3 dbm_clearerr.3
 MLINKS+= dbm.3 dbm_close.3
 MLINKS+= dbm.3 dbm_delete.3
-MLINKS+= dbm.3 dbm_dirnfo.3
+MLINKS+= dbm.3 dbm_dirfno.3
 MLINKS+= dbm.3 dbm_error.3
 MLINKS+= dbm.3 dbm_fetch.3
 MLINKS+= dbm.3 dbm_firstkey.3

@@ -1,11 +1,14 @@
 # $FreeBSD: src/lib/libvgl/Makefile,v 1.6.2.1 2001/04/25 10:04:43 ru Exp $
-# $DragonFly: src/lib/libvgl/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
+# $DragonFly: src/lib/libvgl/Makefile,v 1.4 2005/08/05 23:43:19 swildner Exp $
 LIB=	vgl
 CFLAGS+=-Wall -I${.CURDIR}
 SRCS=	main.c simple.c bitmap.c text.c mouse.c keyboard.c
 INCS=	vgl.h
 MAN=	vgl.3
-MLINKS+=	vgl.3 VGLBitmapCopy.3 \
+MLINKS+=	vgl.3 VGLBitmapAllocateBits.3 \
+		vgl.3 VGLBitmapCopy.3 \
+		vgl.3 VGLBitmapCreate.3 \
+		vgl.3 VGLBitmapDestroy.3 \
 		vgl.3 VGLBitmapPutChar.3 \
 		vgl.3 VGLBitmapString.3 \
 		vgl.3 VGLBlankDisplay.3 \
@@ -16,7 +19,11 @@ MLINKS+=	vgl.3 VGLBitmapCopy.3 \
 		vgl.3 VGLEnd.3 \
 		vgl.3 VGLFilledBox.3 \
 		vgl.3 VGLFilledEllipse.3 \
+		vgl.3 VGLGetXY.3 \
 		vgl.3 VGLInit.3 \
+		vgl.3 VGLKeyboardEnd.3 \
+		vgl.3 VGLKeyboardGetCh.3 \
+		vgl.3 VGLKeyboardInit.3 \
 		vgl.3 VGLLine.3 \
 		vgl.3 VGLMouseInit.3 \
 		vgl.3 VGLMouseMode.3 \
@@ -27,6 +34,8 @@ MLINKS+=	vgl.3 VGLBitmapCopy.3 \
 		vgl.3 VGLSetBorder.3 \
 		vgl.3 VGLSetPalette.3 \
 		vgl.3 VGLSetPaletteIndex.3 \
+		vgl.3 VGLSetVScreenSize.3 \
+		vgl.3 VGLSetXY.3 \
 		vgl.3 VGLTextSetFontFile.3
 
 .include <bsd.lib.mk>

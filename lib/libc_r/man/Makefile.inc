@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc_r/man/Makefile.inc,v 1.11.2.5 2003/05/27 18:18:01 jdp Exp $
-# $DragonFly: src/lib/libc_r/man/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
+# $DragonFly: src/lib/libc_r/man/Makefile.inc,v 1.3 2005/08/05 23:43:19 swildner Exp $
 
 # POSIX thread man files
 
@@ -73,6 +73,7 @@ MLINKS+= \
 	pthread_attr.3 pthread_attr_getschedparam.3 \
 	pthread_attr.3 pthread_attr_getschedpolicy.3 \
 	pthread_attr.3 pthread_attr_getscope.3 \
+	pthread_attr.3 pthread_attr_getstack.3 \
 	pthread_attr.3 pthread_attr_getstackaddr.3 \
 	pthread_attr.3 pthread_attr_getstacksize.3 \
 	pthread_attr.3 pthread_attr_init.3 \
@@ -81,6 +82,7 @@ MLINKS+= \
 	pthread_attr.3 pthread_attr_setschedparam.3 \
 	pthread_attr.3 pthread_attr_setschedpolicy.3 \
 	pthread_attr.3 pthread_attr_setscope.3 \
+	pthread_attr.3 pthread_attr_setstack.3 \
 	pthread_attr.3 pthread_attr_setstackaddr.3 \
 	pthread_attr.3 pthread_attr_setstacksize.3 \
 	pthread_getconcurrency.3 pthread_setconcurrency.3 \

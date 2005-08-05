@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.80 2005/08/05 15:19:35 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.81 2005/08/05 23:43:19 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -320,7 +320,8 @@ upgrade_etc:	preupgrade
 .endfor
 .for man in dft_fgbg dllockinit dynamic_fieldinfo fgetrune fputrune fungetrune \
 	    mbmb mbrrune mbrune menu_attribs multibyte rune setinvalidrune \
-	    setrunelocale sgetrune sputrune
+	    setrunelocale sgetrune sputrune archive_entry_gname_w \
+	    archive_entry_uname_w dbm_dirnfo
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz"
 .endfor
 .for man in drivers.conf gbk ntp.conf ntp.keys
@@ -329,6 +330,7 @@ upgrade_etc:	preupgrade
 .for man in ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace picobsd sysinstall
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
 .endfor
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_xxx.9.gz"
 	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-supfile
 	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-stable-supfile
 	rm -f ${DESTDIR}/usr/share/nls/*/.cat

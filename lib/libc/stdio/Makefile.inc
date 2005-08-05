@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 4/17/94
 # $FreeBSD: src/lib/libc/stdio/Makefile.inc,v 1.19.2.1 2001/04/25 10:04:11 ru Exp $
-# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.4 2005/08/02 00:44:39 joerg Exp $
+# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.5 2005/08/05 23:43:19 swildner Exp $
 
 # stdio sources
 .PATH: ${.CURDIR}/../libc/stdio
@@ -38,6 +38,7 @@ MLINKS+=fseek.3 fgetpos.3 fseek.3 fseeko.3 fseek.3 fsetpos.3 fseek.3 ftell.3 \
 	fseek.3 ftello.3 fseek.3 rewind.3
 MLINKS+=funopen.3 fropen.3 funopen.3 fwopen.3
 MLINKS+=getc.3 fgetc.3 getc.3 getchar.3 getc.3 getw.3
+MLINKS+=getwc.3 fgetwc.3 getwc.3 getwchar.3
 MLINKS+=mktemp.3 mkdtemp.3 mktemp.3 mkstemp.3 mktemp.3 mkstemps.3
 MLINKS+=printf.3 asprintf.3 printf.3 fprintf.3 \
 	printf.3 snprintf.3 printf.3 sprintf.3 \
@@ -45,8 +46,13 @@ MLINKS+=printf.3 asprintf.3 printf.3 fprintf.3 \
 	printf.3 vfprintf.3 printf.3 vprintf.3 printf.3 vsnprintf.3 \
 	printf.3 vsprintf.3
 MLINKS+=putc.3 fputc.3 putc.3 putchar.3 putc.3 putw.3
+MLINKS+=putwc.3 fputwc.3 putwc.3 putwchar.3
 MLINKS+=scanf.3 fscanf.3 scanf.3 sscanf.3 scanf.3 vfscanf.3 scanf.3 vscanf.3 \
 	scanf.3 vsscanf.3
 MLINKS+=setbuf.3 setbuffer.3 setbuf.3 setlinebuf.3 setbuf.3 setvbuf.3
 MLINKS+=tmpnam.3 tempnam.3 tmpnam.3 tmpfile.3
+MLINKS+=wprintf.3 fwprintf.3 wprintf.3 swprintf.3 wprintf.3 vwprintf.3 \
+	wprintf.3 vfwprintf.3 wprintf.3 vswprintf.3
+MLINKS+=wscanf.3 fwscanf.3 wscanf.3 swscanf.3 wscanf.3 vfwscanf.3 \
+	wscanf.3 vswscanf.3 wscanf.3 vwscanf.3
 .endif

@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.2 (Berkeley) 9/5/93
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
-# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.3 2004/09/23 06:33:04 simokawa Exp $
+# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.4 2005/08/05 23:43:19 swildner Exp $
 
 # machine-independent net sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/net ${.CURDIR}/../libc/net
@@ -42,6 +42,8 @@ MLINKS+=byteorder.3 htonl.3 byteorder.3 htons.3 byteorder.3 ntohl.3 \
 	byteorder.3 ntohs.3
 MLINKS+=ethers.3 ether_aton.3 ethers.3 ether_hostton.3 ethers.3 ether_line.3 \
 	ethers.3 ether_ntoa.3 ethers.3 ether_ntohost.3
+MLINKS+=eui64.3 eui64_aton.3 eui64.3 eui64_hostton.3 eui64.3 eui64_ntoa.3 \
+	eui64.3 eui64_ntohost.3
 MLINKS+=getaddrinfo.3 freeaddrinfo.3 getaddrinfo.3 gai_strerror.3
 MLINKS+=gethostbyname.3 endhostent.3 gethostbyname.3 gethostbyaddr.3 \
 	gethostbyname.3 gethostbyname2.3 gethostbyname.3 gethostent.3 \

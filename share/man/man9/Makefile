@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.19 2005/07/31 01:50:38 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.20 2005/08/05 23:43:19 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -74,8 +74,15 @@ MLINKS+=VOP_OPENCLOSE.9 VOP_OPEN.9
 MLINKS+=VOP_RDWR.9 VOP_READ.9
 MLINKS+=VOP_RDWR.9 VOP_WRITE.9
 MLINKS+=VOP_REMOVE.9 VOP_RMDIR.9
+MLINKS+=accept_filter.9 accept_filt_add.9
+MLINKS+=accept_filter.9 accept_filt_del.9
+MLINKS+=accept_filter.9 accept_filt_generic_mod_event.9
+MLINKS+=accept_filter.9 accept_filt_get.9
 MLINKS+=at_exit.9 rm_at_exit.9
 MLINKS+=at_fork.9 rm_at_fork.9
+MLINKS+=bios.9 bios32.9
+MLINKS+=bios.9 bios32_SDlookup.9
+MLINKS+=bios.9 bios_sigsearch.9
 MLINKS+=bufcache.9 bread.9
 MLINKS+=bufcache.9 bwrite.9
 MLINKS+=bufcache.9 bufinit.9
@@ -96,6 +103,7 @@ MLINKS+=copy.9 copyin.9 copy.9 copyinstr.9 copy.9 copyout.9 copy.9 copystr.9
 MLINKS+=devstat.9 devicestat.9 devstat.9 devstat_add_entry.9
 MLINKS+=devstat.9 devstat_remove_entry.9 devstat.9 devstat_start_transaction.9
 MLINKS+=devstat.9 devstat_end_transaction.9
+MLINKS+=devstat.9 devstat_end_transaction_buf.9
 MLINKS+=fetch.9 fubyte.9 fetch.9 fuswintr.9 fetch.9 fusword.9 fetch.9 fuword.9
 MLINKS+=hash.9 hashinit.9 hash.9 phashinit.9
 MLINKS+=ieee80211.9 ieee80211_attach.9 \
@@ -150,6 +158,7 @@ MLINKS+=make_dev.9 destroy_dev.9
 MLINKS+=malloc.9 FREE.9 malloc.9 MALLOC.9 malloc.9 free.9
 MLINKS+=malloc.9 realloc.9 malloc.9 reallocf.9
 MLINKS+=mi_switch.9 cpu_switch.9
+MLINKS+=namei.9 NDINIT.9
 MLINKS+=pci.9 pci_read_config.9 pci.9 pci_write_config.9
 MLINKS+=pci.9 pci_enable_busmaster.9 pci.9 pci_disable_busmaster.9
 MLINKS+=pci.9 pci_enable_io.9 pci.9 pci_disable_io.9
@@ -164,6 +173,7 @@ MLINKS+=rman.9 rman_fini.9
 MLINKS+=rman.9 rman_fini.9
 MLINKS+=rman.9 rman_get_bushandle.9
 MLINKS+=rman.9 rman_get_bustag.9
+MLINKS+=rman.9 rman_get_device.9
 MLINKS+=rman.9 rman_get_end.9
 MLINKS+=rman.9 rman_get_flags.9
 #MLINKS+=rman.9 rman_get_rid.9
@@ -189,7 +199,8 @@ MLINKS+=spl.9 splbio.9 spl.9 splclock.9 spl.9 splhigh.9 spl.9 splimp.9
 MLINKS+=spl.9 splnet.9 spl.9 splsoftclock.9 spl.9 splsofttty.9
 MLINKS+=spl.9 splstatclock.9 spl.9 spltty.9 spl.9 splvm.9 spl.9 splx.9
 MLINKS+=store.9 subyte.9 store.9 suswintr.9 store.9 susword.9 store.9 suword.9
-MLINKS+=suser.9 suser_xxx.9
+MLINKS+=suser.9 suser_cred.9
+MLINKS+=suser.9 suser_proc.9
 MLINKS+=time.9 boottime.9 time.9 mono_time.9 time.9 runtime.9
 MLINKS+=timeout.9 untimeout.9
 MLINKS+=timeout.9 callout_handle_init.9 timeout.9 callout_init.9
@@ -213,6 +224,14 @@ MLINKS+=devclass_add_driver.9 devclass_delete_driver.9
 MLINKS+=devclass_add_driver.9 devclass_find_driver.9
 MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
 MLINKS+=bus_generic_read_ivar.9 bus_generic_write_ivar.9
+
+MLINKS+=ktr.9 CTR0.9
+MLINKS+=ktr.9 CTR1.9
+MLINKS+=ktr.9 CTR2.9
+MLINKS+=ktr.9 CTR3.9
+MLINKS+=ktr.9 CTR4.9
+MLINKS+=ktr.9 CTR5.9
+MLINKS+=ktr.9 CTR6.9
 
 MLINKS+=lock.9 lockcount.9
 MLINKS+=lock.9 lockcountnb.9
@@ -256,6 +275,10 @@ MLINKS+=sbuf.9 sbuf_finish.9
 MLINKS+=sbuf.9 sbuf_data.9
 MLINKS+=sbuf.9 sbuf_len.9
 MLINKS+=sbuf.9 sbuf_delete.9
+MLINKS+=sbuf.9 sbuf_bcat.9
+MLINKS+=sbuf.9 sbuf_bcopyin.9
+MLINKS+=sbuf.9 sbuf_bcpy.9
+MLINKS+=sbuf.9 sbuf_copyin.9
 
 MLINKS+=zone.9 zalloc.9
 MLINKS+=zone.9 zfree.9

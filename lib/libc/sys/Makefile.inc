@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.15 2005/07/21 21:33:26 joerg Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.16 2005/08/05 23:43:19 swildner Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -142,6 +142,7 @@ MLINKS+=stat.2 fstat.2 stat.2 lstat.2
 MLINKS+=statfs.2 fstatfs.2
 MLINKS+=syscall.2 __syscall.2
 MLINKS+=truncate.2 ftruncate.2
+MLINKS+=upc_register.2 upc_control.2
 MLINKS+=utimes.2 futimes.2 utimes.2 lutimes.2
 MLINKS+=wait.2 wait3.2 wait.2 wait4.2 wait.2 waitpid.2
 MLINKS+=write.2 pwrite.2 write.2 writev.2

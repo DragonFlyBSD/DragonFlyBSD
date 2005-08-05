@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/rpc/Makefile.inc,v 1.17.2.2 2001/04/25 10:04:08 ru Exp $
-# $DragonFly: src/lib/libc/rpc/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
+# $DragonFly: src/lib/libc/rpc/Makefile.inc,v 1.3 2005/08/05 23:43:19 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/rpc ${.CURDIR}/.
 
@@ -43,10 +43,15 @@ MAN+=	bindresvport.3 des_crypt.3 getrpcent.3 getrpcport.3 publickey.3 rpc.3 \
 MAN+=	publickey.5 rpc.5
 
 MLINKS+=	bindresvport.3 bindresvport_sa.3 \
+		des_crypt.3 cbc_crypt.3 \
+		des_crypt.3 des_setparity.3 \
+		des_crypt.3 ecb_crypt.3 \
 		getrpcent.3 endrpcent.3 \
 		getrpcent.3 getrpcbyname.3 \
 		getrpcent.3 getrpcbynumber.3 \
 		getrpcent.3 setrpcent.3 \
+		publickey.3 getpublickey.3 \
+		publickey.3 getsecretkey.3 \
 		rpc.3 auth_destroy.3 \
 		rpc.3 authnone_create.3 \
 		rpc.3 authunix_create.3 \
