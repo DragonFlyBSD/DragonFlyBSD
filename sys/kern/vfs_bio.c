@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.42 2005/08/04 16:44:37 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.43 2005/08/05 04:54:42 hmp Exp $
  */
 
 /*
@@ -120,48 +120,54 @@ static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;
 
-SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffers, CTLFLAG_RD,
-	&numdirtybuffers, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, lodirtybuffers, CTLFLAG_RW,
-	&lodirtybuffers, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, hidirtybuffers, CTLFLAG_RW,
-	&hidirtybuffers, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, numfreebuffers, CTLFLAG_RD,
-	&numfreebuffers, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, lofreebuffers, CTLFLAG_RW,
-	&lofreebuffers, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, hifreebuffers, CTLFLAG_RW,
-	&hifreebuffers, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD,
-	&runningbufspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW,
-	&lorunningspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW,
-	&hirunningspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD,
-	&maxbufspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD,
-	&hibufspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, lobufspace, CTLFLAG_RD,
-	&lobufspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, bufspace, CTLFLAG_RD,
-	&bufspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RW,
-	&maxbufmallocspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, bufmallocspace, CTLFLAG_RD,
-	&bufmallocspace, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RW,
-	&getnewbufcalls, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, getnewbufrestarts, CTLFLAG_RW,
-	&getnewbufrestarts, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, vmiodirenable, CTLFLAG_RW,
-	&vmiodirenable, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, bufdefragcnt, CTLFLAG_RW,
-	&bufdefragcnt, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RW,
-	&buffreekvacnt, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RW,
-	&bufreusecnt, 0, "");
+/*
+ * Sysctls for operational control of the buffer cache.
+ */
+SYSCTL_INT(_vfs, OID_AUTO, lodirtybuffers, CTLFLAG_RW, &lodirtybuffers, 0,
+	"Number of dirty buffers to flush before bufdaemon becomes inactive");
+SYSCTL_INT(_vfs, OID_AUTO, hidirtybuffers, CTLFLAG_RW, &hidirtybuffers, 0,
+	"High water mark used to trigger explicit flushing of dirty buffers");
+SYSCTL_INT(_vfs, OID_AUTO, lofreebuffers, CTLFLAG_RW, &lofreebuffers, 0,
+	"Low watermark for calculating special reserve in low-memory situations");
+SYSCTL_INT(_vfs, OID_AUTO, hifreebuffers, CTLFLAG_RW, &hifreebuffers, 0,
+	"High watermark for calculating special reserve in low-memory situations");
+SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
+	"Minimum amount of buffer space required for active I/O");
+SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
+	"Maximum amount of buffer space to usable for active I/O");
+SYSCTL_INT(_vfs, OID_AUTO, vmiodirenable, CTLFLAG_RW, &vmiodirenable, 0,
+	"Use the VM system for performing directory writes");
+/*
+ * Sysctls determining current state of the buffer cache.
+ */
+SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffers, CTLFLAG_RD, &numdirtybuffers, 0,
+	"Pending number of dirty buffers");
+SYSCTL_INT(_vfs, OID_AUTO, numfreebuffers, CTLFLAG_RD, &numfreebuffers, 0,
+	"Number of free buffers on the buffer cache free list");
+SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
+	"Amount of I/O bytes currently in progress due to asynchronous writes");
+SYSCTL_INT(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
+	"Hard limit on maximum amount of memory usable for buffer space");
+SYSCTL_INT(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD, &hibufspace, 0,
+	"Soft limit on maximum amount of memory usable for buffer space");
+SYSCTL_INT(_vfs, OID_AUTO, lobufspace, CTLFLAG_RD, &lobufspace, 0,
+	"Minimum amount of memory to reserve for system buffer space");
+SYSCTL_INT(_vfs, OID_AUTO, bufspace, CTLFLAG_RD, &bufspace, 0,
+	"Amount of memory available for buffers");
+SYSCTL_INT(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RD, &maxbufmallocspace,
+	0, "Maximum amount of memory reserved for buffers using malloc-scheme");
+SYSCTL_INT(_vfs, OID_AUTO, bufmallocspace, CTLFLAG_RD, &bufmallocspace, 0,
+	"Amount of memory left for buffers using malloc-scheme");
+SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
+	"New buffer header acquisition requests");
+SYSCTL_INT(_vfs, OID_AUTO, getnewbufrestarts, CTLFLAG_RD, &getnewbufrestarts,
+	0, "New buffer header acquisition restarts");
+SYSCTL_INT(_vfs, OID_AUTO, bufdefragcnt, CTLFLAG_RD, &bufdefragcnt, 0,
+	"Amount of time buffer acquisition restarted due to fragmented buffer map");
+SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RD, &buffreekvacnt, 0,
+	"Amount of time KVA space was deallocated in an arbitrary buffer");
+SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RD, &bufreusecnt, 0,
+	"Amount of time buffer re-use operations were successful");
 
 #if 0
 /*
@@ -237,7 +243,7 @@ bufhash(struct vnode *vnp, daddr_t bn)
 }
 
 /*
- *	numdirtywakeup:
+ * numdirtywakeup:
  *
  *	If someone is blocked due to there being too many dirty buffers,
  *	and numdirtybuffers is now reasonable, wake them up.
@@ -255,7 +261,7 @@ numdirtywakeup(int level)
 }
 
 /*
- *	bufspacewakeup:
+ * bufspacewakeup:
  *
  *	Called when buffer space is potentially available for recovery.
  *	getnewbuf() will block on this flag when it is unable to free 
@@ -278,7 +284,9 @@ bufspacewakeup(void)
 }
 
 /*
- * runningbufwakeup() - in-progress I/O accounting.
+ * runningbufwakeup:
+ *
+ *	Accounting for I/O in progress.
  *
  */
 static __inline void
@@ -295,7 +303,7 @@ runningbufwakeup(struct buf *bp)
 }
 
 /*
- *	bufcountwakeup:
+ * bufcountwakeup:
  *
  *	Called when a buffer has been added to one of the free queues to
  *	account for the buffer and to wakeup anyone waiting for free buffers.
@@ -316,7 +324,7 @@ bufcountwakeup(void)
 }
 
 /*
- *	waitrunningbufspace()
+ * waitrunningbufspace()
  *
  *	runningbufspace is a measure of the amount of I/O currently
  *	running.  This routine is used in async-write situations to
@@ -344,7 +352,7 @@ waitrunningbufspace(void)
 }
 
 /*
- *	vfs_buf_test_cache:
+ * vfs_buf_test_cache:
  *
  *	Called when a buffer is extended.  This function clears the B_CACHE
  *	bit if the newly extended portion of the buffer does not contain
@@ -363,6 +371,16 @@ vfs_buf_test_cache(struct buf *bp,
 	}
 }
 
+/*
+ * bd_wakeup:
+ *
+ *	Wake up the buffer daemon if the number of outstanding dirty buffers
+ *	is above specified threshold 'dirtybuflevel'.
+ *
+ *	The buffer daemon is explicitly woken up when (a) the pending number
+ *	of dirty buffers exceeds the recovery and stall mid-point value,
+ *	(b) during bwillwrite() or (c) buf freelist was exhausted.
+ */
 static __inline__
 void
 bd_wakeup(int dirtybuflevel)
@@ -374,7 +392,9 @@ bd_wakeup(int dirtybuflevel)
 }
 
 /*
- * bd_speedup - speedup the buffer cache flushing code
+ * bd_speedup:
+ *
+ *	Speed up the buffer cache flushing process.
  */
 
 static __inline__
@@ -385,7 +405,9 @@ bd_speedup(void)
 }
 
 /*
- * Initialize buffer headers and related structures. 
+ * bufhashinit:
+ *
+ *	Initialize buffer headers and related structures. 
  */
 
 caddr_t
@@ -401,6 +423,12 @@ bufhashinit(caddr_t vaddr)
 	return(vaddr);
 }
 
+/*
+ * bufinit:
+ *
+ *	Load time initialisation of the buffer cache, called from machine
+ *	dependant initialization code. 
+ */
 void
 bufinit(void)
 {
@@ -504,7 +532,9 @@ bufinit(void)
 }
 
 /*
- * bfreekva() - free the kva allocation for a buffer.
+ * bfreekva:
+ *
+ *	Free the KVA allocation for buffer 'bp'.
  *
  *	Must be called from a critical section as this is the only locking for
  *	buffer_map.
@@ -534,7 +564,7 @@ bfreekva(struct buf * bp)
 }
 
 /*
- *	bremfree:
+ * bremfree:
  *
  *	Remove the buffer from the appropriate free list.
  */
@@ -578,10 +608,12 @@ bremfree(struct buf * bp)
 
 
 /*
- * Get a buffer with the specified data.  Look in the cache first.  We
- * must clear B_ERROR and B_INVAL prior to initiating I/O.  If B_CACHE
- * is set, the buffer is valid and we do not have to do anything ( see
- * getblk() ).
+ * bread:
+ *
+ *	Get a buffer with the specified data.  Look in the cache first.  We
+ *	must clear B_ERROR and B_INVAL prior to initiating I/O.  If B_CACHE
+ *	is set, the buffer is valid and we do not have to do anything ( see
+ *	getblk() ).
  */
 int
 bread(struct vnode * vp, daddr_t blkno, int size, struct buf ** bpp)
@@ -604,10 +636,12 @@ bread(struct vnode * vp, daddr_t blkno, int size, struct buf ** bpp)
 }
 
 /*
- * Operates like bread, but also starts asynchronous I/O on
- * read-ahead blocks.  We must clear B_ERROR and B_INVAL prior
- * to initiating I/O . If B_CACHE is set, the buffer is valid 
- * and we do not have to do anything.
+ * breadn:
+ *
+ *	Operates like bread, but also starts asynchronous I/O on
+ *	read-ahead blocks.  We must clear B_ERROR and B_INVAL prior
+ *	to initiating I/O . If B_CACHE is set, the buffer is valid 
+ *	and we do not have to do anything.
  */
 int
 breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
@@ -651,15 +685,17 @@ breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
 }
 
 /*
- * Write, release buffer on completion.  (Done by iodone
- * if async).  Do not bother writing anything if the buffer
- * is invalid.
+ * bwrite:
  *
- * Note that we set B_CACHE here, indicating that buffer is
- * fully valid and thus cacheable.  This is true even of NFS
- * now so we set it generally.  This could be set either here 
- * or in biodone() since the I/O is synchronous.  We put it
- * here.
+ *	Write, release buffer on completion.  (Done by iodone
+ *	if async).  Do not bother writing anything if the buffer
+ *	is invalid.
+ *
+ *	Note that we set B_CACHE here, indicating that buffer is
+ *	fully valid and thus cacheable.  This is true even of NFS
+ *	now so we set it generally.  This could be set either here 
+ *	or in biodone() since the I/O is synchronous.  We put it
+ *	here.
  */
 int
 bwrite(struct buf * bp)
@@ -844,13 +880,15 @@ vfs_backgroundwritedone(struct buf *bp)
 #endif
 
 /*
- * Delayed write. (Buffer is marked dirty).  Do not bother writing
- * anything if the buffer is marked invalid.
+ * bdwrite:
  *
- * Note that since the buffer must be completely valid, we can safely
- * set B_CACHE.  In fact, we have to set B_CACHE here rather then in
- * biodone() in order to prevent getblk from writing the buffer
- * out synchronously.
+ *	Delayed write. (Buffer is marked dirty).  Do not bother writing
+ *	anything if the buffer is marked invalid.
+ *
+ *	Note that since the buffer must be completely valid, we can safely
+ *	set B_CACHE.  In fact, we have to set B_CACHE here rather then in
+ *	biodone() in order to prevent getblk from writing the buffer
+ *	out synchronously.
  */
 void
 bdwrite(struct buf *bp)
@@ -912,7 +950,7 @@ bdwrite(struct buf *bp)
 }
 
 /*
- *	bdirty:
+ * bdirty:
  *
  *	Turn buffer into delayed write request.  We must clear B_READ and
  *	B_RELBUF, and we must set B_DELWRI.  We reassign the buffer to 
@@ -945,7 +983,7 @@ bdirty(struct buf *bp)
 }
 
 /*
- *	bundirty:
+ * bundirty:
  *
  *	Clear B_DELWRI for buffer.
  *
@@ -975,7 +1013,7 @@ bundirty(struct buf *bp)
 }
 
 /*
- *	bawrite:
+ * bawrite:
  *
  *	Asynchronous write.  Start output on a buffer, but do not wait for
  *	it to complete.  The buffer is released when the output completes.
@@ -991,7 +1029,7 @@ bawrite(struct buf * bp)
 }
 
 /*
- *	bowrite:
+ * bowrite:
  *
  *	Ordered write.  Start output on a buffer, and flag it so that the 
  *	device will write it in the order it was queued.  The buffer is 
@@ -1006,7 +1044,7 @@ bowrite(struct buf * bp)
 }
 
 /*
- *	bwillwrite:
+ * bwillwrite:
  *
  *	Called prior to the locking of any vnodes when we are expecting to
  *	write.  We do not want to starve the buffer cache with too many
@@ -1030,7 +1068,9 @@ bwillwrite(void)
 }
 
 /*
- * Return true if we have too many dirty buffers.
+ * buf_dirty_count_severe:
+ *
+ *	Return true if we have too many dirty buffers.
  */
 int
 buf_dirty_count_severe(void)
@@ -1039,7 +1079,7 @@ buf_dirty_count_severe(void)
 }
 
 /*
- *	brelse:
+ * brelse:
  *
  *	Release a busy buffer and, if requested, free its resources.  The
  *	buffer will be stashed in the appropriate bufqueue[] allowing it
@@ -1374,15 +1414,17 @@ brelse(struct buf * bp)
 }
 
 /*
- * Release a buffer back to the appropriate queue but do not try to free
- * it.  The buffer is expected to be used again soon.
+ * bqrelse:
  *
- * bqrelse() is used by bdwrite() to requeue a delayed write, and used by
- * biodone() to requeue an async I/O on completion.  It is also used when
- * known good buffers need to be requeued but we think we may need the data
- * again soon.
+ *	Release a buffer back to the appropriate queue but do not try to free
+ *	it.  The buffer is expected to be used again soon.
  *
- * XXX we should be able to leave the B_RELBUF hint set on completion.
+ *	bqrelse() is used by bdwrite() to requeue a delayed write, and used by
+ *	biodone() to requeue an async I/O on completion.  It is also used when
+ *	known good buffers need to be requeued but we think we may need the data
+ *	again soon.
+ *
+ *	XXX we should be able to leave the B_RELBUF hint set on completion.
  */
 void
 bqrelse(struct buf * bp)
@@ -1442,6 +1484,19 @@ bqrelse(struct buf * bp)
 	crit_exit();
 }
 
+/*
+ * vfs_vmio_release:
+ *
+ *	Return backing pages held by the buffer 'bp' back to the VM system
+ *	if possible.  The pages are freed if they are no longer valid or
+ *	attempt to free if it was used for direct I/O otherwise they are
+ *	sent to the page cache.
+ *
+ *	Pages that were marked busy are left alone and skipped.
+ *
+ *	The KVA mapping (b_data) for the underlying pages is removed by
+ *	this function.
+ */
 static void
 vfs_vmio_release(struct buf *bp)
 {
@@ -1472,7 +1527,8 @@ vfs_vmio_release(struct buf *bp)
 			 * no valid data.  We also free the page if the
 			 * buffer was used for direct I/O.
 			 */
-			if ((bp->b_flags & B_ASYNC) == 0 && !m->valid && m->hold_count == 0) {
+			if ((bp->b_flags & B_ASYNC) == 0 && !m->valid &&
+					m->hold_count == 0) {
 				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
 				vm_page_free(m);
@@ -1496,7 +1552,9 @@ vfs_vmio_release(struct buf *bp)
 }
 
 /*
- * Check to see if a block is currently memory resident.
+ * gbincore:
+ *
+ *	Check to see if a block is currently memory resident.
  */
 struct buf *
 gbincore(struct vnode * vp, daddr_t blkno)
@@ -1513,7 +1571,7 @@ gbincore(struct vnode * vp, daddr_t blkno)
 }
 
 /*
- *	vfs_bio_awrite:
+ * vfs_bio_awrite:
  *
  *	Implement clustered async writes for clearing out B_DELWRI buffers.
  *	This is much better then the old way of writing only one buffer at
@@ -1603,7 +1661,7 @@ vfs_bio_awrite(struct buf * bp)
 }
 
 /*
- *	getnewbuf:
+ * getnewbuf:
  *
  *	Find and initialize a new buffer header, freeing up existing buffers 
  *	in the bufqueues as necessary.  The new buffer is returned locked.
@@ -1878,7 +1936,7 @@ restart:
 				    vm_map_min(buffer_map), maxsize,
 				    maxsize, &addr)) {
 				/*
-				 * Uh oh.  Buffer map is to fragmented.  We
+				 * Uh oh.  Buffer map is too fragmented.  We
 				 * must defragment the map.
 				 */
 				vm_map_unlock(buffer_map);
@@ -1909,9 +1967,9 @@ restart:
 }
 
 /*
- *	buf_daemon:
+ * buf_daemon:
  *
- *	buffer flushing daemon.  Buffers are normally flushed by the
+ *	Buffer flushing daemon.  Buffers are normally flushed by the
  *	update daemon but if it cannot keep up this process starts to
  *	take the load in an attempt to prevent getnewbuf() from blocking.
  */
@@ -1985,7 +2043,7 @@ buf_daemon()
 }
 
 /*
- *	flushbufqueues:
+ * flushbufqueues:
  *
  *	Try to flush a buffer in the dirty queue.  We must be careful to
  *	free up B_INVAL buffers instead of write them, which NFS is 
@@ -2034,7 +2092,9 @@ flushbufqueues(void)
 }
 
 /*
- * Check to see if a block is currently memory resident.
+ * incore:
+ *
+ *	Check to see if a block is currently resident in memory.
  */
 struct buf *
 incore(struct vnode * vp, daddr_t blkno)
@@ -2048,13 +2108,15 @@ incore(struct vnode * vp, daddr_t blkno)
 }
 
 /*
- * Returns true if no I/O is needed to access the associated VM object.
- * This is like incore except it also hunts around in the VM system for
- * the data.
+ * inmem:
  *
- * Note that we ignore vm_page_free() races from interrupts against our
- * lookup, since if the caller is not protected our return value will not
- * be any more valid then otherwise once we exit the critical section.
+ *	Returns true if no I/O is needed to access the associated VM object.
+ *	This is like incore except it also hunts around in the VM system for
+ *	the data.
+ *
+ *	Note that we ignore vm_page_free() races from interrupts against our
+ *	lookup, since if the caller is not protected our return value will not
+ *	be any more valid then otherwise once we exit the critical section.
  */
 int
 inmem(struct vnode * vp, daddr_t blkno)
@@ -2091,7 +2153,7 @@ inmem(struct vnode * vp, daddr_t blkno)
 }
 
 /*
- *	vfs_setdirty:
+ * vfs_setdirty:
  *
  *	Sets the dirty range for a buffer based on the status of the dirty
  *	bits in the pages comprising the buffer.
@@ -2183,7 +2245,7 @@ vfs_setdirty(struct buf *bp)
 }
 
 /*
- *	getblk:
+ * getblk:
  *
  *	Get a block given a specified block and offset into a file/device.
  *	The buffers B_DONE bit will be cleared on return, making it almost
@@ -2270,7 +2332,7 @@ loop:
 
 		/*
 		 * The buffer is locked.  B_CACHE is cleared if the buffer is 
-		 * invalid.  Ohterwise, for a non-VMIO buffer, B_CACHE is set
+		 * invalid.  Otherwise, for a non-VMIO buffer, B_CACHE is set
 		 * and for a VMIO buffer B_CACHE is adjusted according to the
 		 * backing VM cache.
 		 */
@@ -2452,11 +2514,13 @@ loop:
 }
 
 /*
- * Get an empty, disassociated buffer of given size.  The buffer is initially
- * set to B_INVAL.
+ * geteblk:
  *
- * critical section protection is not required for the allocbuf() call
- * because races are impossible here.
+ *	Get an empty, disassociated buffer of given size.  The buffer is
+ *	initially set to B_INVAL.
+ *
+ *	critical section protection is not required for the allocbuf()
+ *	call because races are impossible here.
  */
 struct buf *
 geteblk(int size)
@@ -2477,21 +2541,23 @@ geteblk(int size)
 
 
 /*
- * This code constitutes the buffer memory from either anonymous system
- * memory (in the case of non-VMIO operations) or from an associated
- * VM object (in the case of VMIO operations).  This code is able to
- * resize a buffer up or down.
+ * allocbuf:
  *
- * Note that this code is tricky, and has many complications to resolve
- * deadlock or inconsistant data situations.  Tread lightly!!! 
- * There are B_CACHE and B_DELWRI interactions that must be dealt with by 
- * the caller.  Calling this code willy nilly can result in the loss of data.
+ *	This code constitutes the buffer memory from either anonymous system
+ *	memory (in the case of non-VMIO operations) or from an associated
+ *	VM object (in the case of VMIO operations).  This code is able to
+ *	resize a buffer up or down.
  *
- * allocbuf() only adjusts B_CACHE for VMIO buffers.  getblk() deals with
- * B_CACHE for the non-VMIO case.
+ *	Note that this code is tricky, and has many complications to resolve
+ *	deadlock or inconsistant data situations.  Tread lightly!!! 
+ *	There are B_CACHE and B_DELWRI interactions that must be dealt with by 
+ *	the caller.  Calling this code willy nilly can result in the loss of data.
  *
- * This routine does not need to be called from a critical section but you
- * must own the buffer.
+ *	allocbuf() only adjusts B_CACHE for VMIO buffers.  getblk() deals with
+ *	B_CACHE for the non-VMIO case.
+ *
+ *	This routine does not need to be called from a critical section but you
+ *	must own the buffer.
  */
 int
 allocbuf(struct buf *bp, int size)
@@ -2729,7 +2795,7 @@ allocbuf(struct buf *bp, int size)
 			 * Step 2.  We've loaded the pages into the buffer,
 			 * we have to figure out if we can still have B_CACHE
 			 * set.  Note that B_CACHE is set according to the
-			 * byte-granular range ( bcount and size ), new the
+			 * byte-granular range ( bcount and size ), not the
 			 * aligned range ( newbsize ).
 			 *
 			 * The VM test is against m->valid, which is DEV_BSIZE
@@ -2788,11 +2854,11 @@ allocbuf(struct buf *bp, int size)
 }
 
 /*
- *	biowait:
+ * biowait:
  *
  *	Wait for buffer I/O completion, returning error status.  The buffer
- *	is left locked and B_DONE on return.  B_EINTR is converted into a EINTR
- *	error and cleared.
+ *	is left locked and B_DONE on return.  B_EINTR is converted into an
+ *	EINTR error and cleared.
  */
 int
 biowait(struct buf * bp)
@@ -2817,7 +2883,7 @@ biowait(struct buf * bp)
 }
 
 /*
- *	biodone:
+ * biodone:
  *
  *	Finish I/O on a buffer, optionally calling a completion function.
  *	This is usually called from an interrupt so process blocking is
@@ -3016,9 +3082,11 @@ biodone(struct buf *bp)
 }
 
 /*
- * This routine is called in lieu of iodone in the case of
- * incomplete I/O.  This keeps the busy status for pages
- * consistant.
+ * vfs_unbusy_pages:
+ *
+ *	This routine is called in lieu of iodone in the case of
+ *	incomplete I/O.  This keeps the busy status for pages
+ *	consistant.
  */
 void
 vfs_unbusy_pages(struct buf *bp)
@@ -3096,16 +3164,18 @@ vfs_page_set_valid(struct buf *bp, vm_ooffset_t off, int pageno, vm_page_t m)
 }
 
 /*
- * This routine is called before a device strategy routine.
- * It is used to tell the VM system that paging I/O is in
- * progress, and treat the pages associated with the buffer
- * almost as being PG_BUSY.  Also the object paging_in_progress
- * flag is handled to make sure that the object doesn't become
- * inconsistant.
+ * vfs_busy_pages:
  *
- * Since I/O has not been initiated yet, certain buffer flags
- * such as B_ERROR or B_INVAL may be in an inconsistant state
- * and should be ignored.
+ *	This routine is called before a device strategy routine.
+ *	It is used to tell the VM system that paging I/O is in
+ *	progress, and treat the pages associated with the buffer
+ *	almost as being PG_BUSY.  Also the object 'paging_in_progress'
+ *	flag is handled to make sure that the object doesn't become
+ *	inconsistant.
+ *
+ *	Since I/O has not been initiated yet, certain buffer flags
+ *	such as B_ERROR or B_INVAL may be in an inconsistant state
+ *	and should be ignored.
  */
 void
 vfs_busy_pages(struct buf *bp, int clear_modify)
@@ -3188,12 +3258,14 @@ retry:
 }
 
 /*
- * Tell the VM system that the pages associated with this buffer
- * are clean.  This is used for delayed writes where the data is
- * going to go to disk eventually without additional VM intevention.
+ * vfs_clean_pages:
+ *	
+ *	Tell the VM system that the pages associated with this buffer
+ *	are clean.  This is used for delayed writes where the data is
+ *	going to go to disk eventually without additional VM intevention.
  *
- * Note that while we only really need to clean through to b_bcount, we
- * just go ahead and clean through to b_bufsize.
+ *	Note that while we only really need to clean through to b_bcount, we
+ *	just go ahead and clean through to b_bufsize.
  */
 static void
 vfs_clean_pages(struct buf *bp)
@@ -3221,7 +3293,7 @@ vfs_clean_pages(struct buf *bp)
 }
 
 /*
- *	vfs_bio_set_validclean:
+ * vfs_bio_set_validclean:
  *
  *	Set the range within the buffer to valid and clean.  The range is 
  *	relative to the beginning of the buffer, b_offset.  Note that b_offset
@@ -3259,9 +3331,9 @@ vfs_bio_set_validclean(struct buf *bp, int base, int size)
 }
 
 /*
- *	vfs_bio_clrbuf:
+ * vfs_bio_clrbuf:
  *
- *	clear a buffer.  This routine essentially fakes an I/O, so we need
+ *	Clear a buffer.  This routine essentially fakes an I/O, so we need
  *	to clear B_ERROR and B_INVAL.
  *
  *	Note that while we only theoretically need to clear through b_bcount,
@@ -3321,9 +3393,16 @@ vfs_bio_clrbuf(struct buf *bp)
 }
 
 /*
- * vm_hold_load_pages and vm_hold_unload pages get pages into
- * a buffers address space.  The pages are anonymous and are
- * not associated with a file object.
+ * vm_hold_load_pages:
+ *
+ *	Load pages into the buffer's address space.  The pages are
+ *	allocated from the kernel object in order to reduce interference
+ *	with the any VM paging I/O activity.  The range of loaded
+ *	pages will be wired.
+ *
+ *	If a page cannot be allocated, the 'pagedaemon' is woken up to
+ *	retrieve the full range (to - from) of pages.
+ *
  */
 void
 vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
@@ -3341,7 +3420,7 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 tryagain:
 
 		/*
-		 * note: must allocate system pages since blocking here
+		 * Note: must allocate system pages since blocking here
 		 * could intefere with paging I/O, no matter which
 		 * process we are.
 		 */
@@ -3363,6 +3442,14 @@ tryagain:
 	bp->b_xio.xio_npages = index;
 }
 
+/*
+ * vm_hold_free_pages:
+ *
+ *	Return pages associated with the buffer back to the VM system.
+ *
+ *	The range of pages underlying the buffer's address space will
+ *	be unmapped and un-wired.
+ */
 void
 vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 {
@@ -3392,11 +3479,13 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 }
 
 /*
- * Map an IO request into kernel virtual address space.
+ * vmapbuf:
  *
- * All requests are (re)mapped into kernel VA space.
- * Notice that we use b_bufsize for the size of the buffer
- * to be mapped.  b_bcount might be modified by the driver.
+ *	Map an IO request into kernel virtual address space.
+ *
+ *	All requests are (re)mapped into kernel VA space.
+ *	Notice that we use b_bufsize for the size of the buffer
+ *	to be mapped.  b_bcount might be modified by the driver.
  */
 int
 vmapbuf(struct buf *bp)
@@ -3460,8 +3549,10 @@ retry:
 }
 
 /*
- * Free the io map PTEs associated with this IO operation.
- * We also invalidate the TLB entries and restore the original b_addr.
+ * vunmapbuf:
+ *
+ *	Free the io map PTEs associated with this IO operation.
+ *	We also invalidate the TLB entries and restore the original b_addr.
  */
 void
 vunmapbuf(struct buf *bp)
