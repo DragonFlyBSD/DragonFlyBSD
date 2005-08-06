@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.137 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.138 2005/08/06 21:47:59 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2831,7 +2831,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 
 	if (strcmp(cmdStart, "...") == 0) {
 		gn->type |= OP_SAVE_CMDS;
-		return (0);
+		return (0);	/* any further commands are deferred */
 	}
 
 	line = cmdStart;
@@ -3241,9 +3241,10 @@ int
 Compat_Run(Lst *targs, bool queryFlag)
 {
 	int	error_cnt;	/* Number of targets not remade due to errors */
-	GNode	*ENDNode;
+	GNode	*deferred;
 
-	ENDNode = Targ_FindNode(".END", TARG_CREATE);
+	deferred = Targ_NewGN("Deferred");
+
 	/*
 	 * If the user has defined a .BEGIN target, execute the commands
 	 * attached to it.
@@ -3251,17 +3252,10 @@ Compat_Run(Lst *targs, bool queryFlag)
 	if (queryFlag == false) {
 		GNode *gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
 		if (gn != NULL) {
-			Compat_RunCmds(gn, ENDNode);
+			Compat_RunCmds(gn, deferred);
 			if (gn->made == ERROR) {
 				printf("\n\nStop.\n");
-				/*
-				 * XXX
-				 * (queryFlag && outOfDate) ? 1 : 0 ->
-				 * (false && true) ? 1 : 0 ->
-				 * 0 Successful completion?
-				 * XXX
-				 */
-				return (0);
+				return (1);	/* Failed .BEGIN target */
 			}
 		}
 	}
@@ -3280,7 +3274,7 @@ Compat_Run(Lst *targs, bool queryFlag)
 	while (!Lst_IsEmpty(targs)) {
 		GNode *gn = Lst_DeQueue(targs);
 
-		CompatMake(gn, gn, ENDNode, queryFlag);
+		CompatMake(gn, gn, deferred, queryFlag);
 		if (gn->made == UPTODATE) {
 			printf("`%s' is up to date.\n", gn->name);
 		} else if (gn->made == ABORTED) {
@@ -3290,11 +3284,29 @@ Compat_Run(Lst *targs, bool queryFlag)
 		}
 	}
 
-	/*
-	 * If the user has defined a .END target, run its commands.
-	 */
-	if (error_cnt == 0) {
-		Compat_RunCmds(ENDNode, NULL);
+	if ((error_cnt == 0) && (queryFlag == false)) {
+		GNode *gn;
+
+		/*
+		 * If the user has deferred commands using "..." run them.
+		 */
+		Compat_RunCmds(deferred, NULL);
+		if (deferred->made == ERROR) {
+			printf("\n\nStop.\n");
+			return (1);	/* Failed "deferred" target */
+		}
+
+		/*
+		 * If the user has defined a .END target, run its commands.
+		 */
+		gn = Targ_FindNode(".END", TARG_NOCREATE);
+		if (gn != NULL) {
+			Compat_RunCmds(gn, NULL);
+			if (gn->made == ERROR) {
+				printf("\n\nStop.\n");
+				return (1);	/* Failed .END target */
+			}
+		}
 	}
 
 	return (0);	/* Successful completion */
