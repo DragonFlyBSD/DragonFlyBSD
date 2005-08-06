@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.22 2005/08/06 12:42:42 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.23 2005/08/06 13:20:56 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -24,7 +24,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	ieee80211_node.9 ieee80211_output.9 ieee80211_proto.9 \
 	ieee80211_radiotap.9 \
 	ifnet.9 inittodr.9 intro.9 kernacc.9 ktr.9 lock.9 \
-	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
+	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 \
 	nlookup.9 \
 	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 \
@@ -256,6 +256,7 @@ MLINKS+=nlookup.9 nlookup_mp.9
 MLINKS+=nlookup.9 nreadsymlink.9
 MLINKS+=nlookup.9 naccess.9
 MLINKS+=nlookup.9 naccess_va.9
+MLINKS+=nlookup.9 namei.9
 
 MLINKS+=sysctl_add_oid.9 sysctl_remove_oid.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_OID.9
