@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.14 2005/04/23 19:46:42 joerg Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.15 2005/08/06 17:57:59 joerg Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -176,6 +176,9 @@ struct sysctl_ctx_entry {
 };
 
 TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
+
+#define	SYSCTL_NODE_CHILDREN(parent, name) \
+	sysctl_##parent##_##name##_children
 
 /* This constructs a "raw" MIB oid. */
 #define SYSCTL_OID(parent, nbr, name, kind, a1, a2, handler, fmt, descr) \
