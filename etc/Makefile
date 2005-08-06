@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.81 2005/08/05 23:43:19 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.82 2005/08/06 11:36:13 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -331,6 +331,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
 .endfor
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_xxx.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/NDINIT.9.gz"
 	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-supfile
 	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-stable-supfile
 	rm -f ${DESTDIR}/usr/share/nls/*/.cat
