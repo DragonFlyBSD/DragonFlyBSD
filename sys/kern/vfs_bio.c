@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.44 2005/08/07 03:17:37 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.45 2005/08/07 03:28:50 hmp Exp $
  */
 
 /*
@@ -107,8 +107,6 @@ vm_page_t bogus_page;
 int vmiodirenable = TRUE;
 int runningbufspace;
 struct lwkt_token buftimetoken;  /* Interlock on setting prio and timo */
-
-static vm_offset_t bogus_offset;
 
 static int bufspace, maxbufspace,
 	bufmallocspace, maxbufmallocspace, lobufspace, hibufspace;
@@ -435,6 +433,7 @@ void
 bufinit(void)
 {
 	struct buf *bp;
+	vm_offset_t bogus_offset;
 	int i;
 
 	TAILQ_INIT(&bswlist);
