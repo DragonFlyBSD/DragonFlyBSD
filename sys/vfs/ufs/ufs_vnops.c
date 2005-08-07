@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.28 2005/08/07 17:08:38 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.29 2005/08/07 19:16:15 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -1666,7 +1666,6 @@ ufs_readdir(struct vop_readdir_args *ap)
 		for (dp = (struct direct *)dirbuf; 
 		    !error && uio->uio_resid > 0 && dp < edp; ) {
 			dstdp.d_fileno = dp->d_ino;
-			dstdp.d_type = dp->d_type;
 #if BYTE_ORDER == LITTLE_ENDIAN
 			if (OFSFMT(ap->a_vp)) {
 				dstdp.d_namlen = dp->d_type;
