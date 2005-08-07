@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.8 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.9 2005/08/07 22:11:53 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@ SYSCTL_NODE(, CTL_NET,	  net,    CTLFLAG_RW, 0,
 SYSCTL_NODE(, CTL_DEBUG,  debug,  CTLFLAG_RW, 0,
 	"Debugging");
 SYSCTL_NODE(_debug, OID_AUTO,  sizeof,  CTLFLAG_RW, 0,
-	"Sizeof various things");
+	"Size of various kernel data structures");
 SYSCTL_NODE(, CTL_HW,	  hw,     CTLFLAG_RW, 0,
 	"hardware");
 SYSCTL_NODE(, CTL_MACHDEP, machdep, CTLFLAG_RW, 0,
