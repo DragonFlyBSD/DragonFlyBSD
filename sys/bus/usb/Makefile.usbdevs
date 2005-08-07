@@ -1,7 +1,7 @@
 # The files usbdevs.h and usbdevs_data.h are generated from usbdevs
 #
 # $FreeBSD: src/sys/dev/usb/Makefile.usbdevs,v 1.2 2000/03/15 22:13:50 n_hibma Exp $
-# $DragonFly: src/sys/bus/usb/Attic/Makefile.usbdevs,v 1.2 2003/12/30 01:01:44 dillon Exp $
+# $DragonFly: src/sys/bus/usb/Attic/Makefile.usbdevs,v 1.3 2005/08/07 22:43:17 joerg Exp $
 
 AWK=	awk
 UNAME=	uname
@@ -15,7 +15,10 @@ all:
 	@echo "Only the 'regen' target may be used to regenerate the"
 	@echo "usbdevs.h and usbdevs_data.h header files"
 
-regen:	usbdevs devlist2h.awk
-	/bin/rm -f ${.CURDIR}/usbdevs.h ${.CURDIR}/usbdevs_data.h
-	cd ${.CURDIR} && ${AWK} -v type=USB -v os=`${UNAME} -s` -f devlist2h.awk usbdevs
+regen:	usbdevs.h usbdevs_data.h
 
+usbdevs.h: usbdevs devlist2h.awk
+	cd ${.CURDIR} && ${AWK} -v type=USB -v os=`${UNAME} -s` -f devlist2h.awk usbdevs -h
+
+usbdevs_data.h: usbdevs devlist2h.awk
+	cd ${.CURDIR} && ${AWK} -v type=USB -v os=`${UNAME} -s` -f devlist2h.awk usbdevs -d
