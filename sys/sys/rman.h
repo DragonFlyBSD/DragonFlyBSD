@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.7 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.8 2005/08/07 00:31:31 joerg Exp $
  */
 
 #ifndef _SYS_RMAN_H_
@@ -108,6 +108,7 @@ uint32_t rman_make_alignment_flags(uint32_t size);
 #define rman_get_start(r)	((r)->r_start)
 #define rman_get_end(r)		((r)->r_end)
 #define rman_get_device(r)	((r)->r_dev)
+#define rman_set_device(r,dev)	((r)->r_dev = (dev))
 #define rman_get_size(r)	((r)->r_end - (r)->r_start + 1)
 #define rman_get_flags(r)	((r)->r_flags)
 #define	rman_set_virtual(r,v)	((r)->r_virtual = (v))
