@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.11 2005/08/04 21:08:35 hmp Exp $	*/
+/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.12 2005/08/07 15:43:02 joerg Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -41,15 +41,13 @@
 struct physio_proc { };
 
 static __inline struct physio_proc *
-physio_proc_enter(bp)
-	struct buf *bp;
+physio_proc_enter(struct buf *bp)
 {
 	return NULL;
 }
 
 static __inline void
-physio_proc_leave(pp)
-	struct physio_proc *pp;
+physio_proc_leave(struct physio_proc *pp)
 {
 	return;
 }
