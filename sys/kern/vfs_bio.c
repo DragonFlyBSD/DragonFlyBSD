@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.43 2005/08/05 04:54:42 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.44 2005/08/07 03:17:37 hmp Exp $
  */
 
 /*
@@ -168,6 +168,8 @@ SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RD, &buffreekvacnt, 0,
 	"Amount of time KVA space was deallocated in an arbitrary buffer");
 SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RD, &bufreusecnt, 0,
 	"Amount of time buffer re-use operations were successful");
+SYSCTL_INT(_debug_sizeof, OID_AUTO, buf, CTLFLAG_RD, 0, sizeof(struct buf),
+	"sizeof(struct buf)");
 
 #if 0
 /*

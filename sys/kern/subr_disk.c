@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.15 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.16 2005/08/07 03:17:37 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -510,8 +510,6 @@ diskpsize(dev_t dev)
 	}
 #endif
 }
-
-SYSCTL_DECL(_debug_sizeof);
 
 SYSCTL_INT(_debug_sizeof, OID_AUTO, disklabel, CTLFLAG_RD, 
     0, sizeof(struct disklabel), "sizeof(struct disklabel)");
