@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $
- * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.14 2004/12/18 06:22:47 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.15 2005/08/07 21:49:15 joerg Exp $
  * $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $
  */
 
@@ -1185,6 +1185,7 @@ product JRC AH_J3001V_J3002V	0x0001	AirH\"PHONE AH-J3001V/J3002V
 product JVC GR_DX95		0x000a	GR-DX95
 
 /* JVC products */
+product JVC MP_PRX1		0x3008	MP-PRX1 Ethernet
 product JVC MP_XP7250_WL	0x3009  MP-XP7250 Builtin WLAN
 
 /* JRC products */
