@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.18 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.22 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.23 2005/08/07 08:16:52 okumoto Exp $
  */
 
 #ifndef dir_h_6002e3b8
@@ -46,8 +46,6 @@
 
 #include <sys/queue.h>
 #include <stdbool.h>
-
-#include "hash.h"
 
 struct GNode;
 struct Lst;
