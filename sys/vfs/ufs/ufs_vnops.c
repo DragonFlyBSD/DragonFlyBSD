@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.27 2005/07/23 18:08:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.28 2005/08/07 17:08:38 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -134,6 +134,8 @@ union _qcvt {
 }
 #define VN_KNOTE(vp, b) \
 	KNOTE(&vp->v_pollinfo.vpi_selinfo.si_note, (b))
+
+#define OFSFMT(vp)		((vp)->v_mount->mnt_maxsymlinklen <= 0)
 
 /*
  * A virgin directory (no blushing please).
@@ -1623,99 +1625,108 @@ int
 ufs_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
-	int error;
-	size_t count, lost;
-	off_t off;
+	int count, error;
 
-	if (ap->a_ncookies != NULL)
-		/*
-		 * Ensure that the block is aligned.  The caller can use
-		 * the cookies to determine where in the block to start.
-		 */
-		uio->uio_offset &= ~(DIRBLKSIZ - 1);
-	off = uio->uio_offset;
+	struct direct *edp, *dp;
+	int ncookies;
+	struct dirent dstdp;
+	struct uio auio;
+	struct iovec aiov;
+	caddr_t dirbuf;
+	int readcnt;
+	off_t startoffset = uio->uio_offset;
+
 	count = uio->uio_resid;
-	/* Make sure we don't return partial entries. */
-	if (count <= ((uio->uio_offset + count) & (DIRBLKSIZ -1)))
-		return (EINVAL);
+	/*
+	 * Avoid complications for partial directory entries by adjusting
+	 * the i/o to end at a block boundary.  Don't give up (like the old ufs
+	 * does) if the initial adjustment gives a negative count, since
+	 * many callers don't supply a large enough buffer.  The correct
+	 * size is a little larger than DIRBLKSIZ to allow for expansion
+	 * of directory entries, but some callers just use 512.
+	 */
 	count -= (uio->uio_offset + count) & (DIRBLKSIZ -1);
-	lost = uio->uio_resid - count;
-	uio->uio_resid = count;
-	uio->uio_iov->iov_len = count;
-#	if (BYTE_ORDER == LITTLE_ENDIAN)
-		if (ap->a_vp->v_mount->mnt_maxsymlinklen > 0) {
-			error = VOP_READ(ap->a_vp, uio, 0, ap->a_cred);
-		} else {
-			struct dirent *dp, *edp;
-			struct uio auio;
-			struct iovec aiov;
-			caddr_t dirbuf;
-			int readcnt;
-			u_char tmp;
+	if (count <= 0)
+		count += DIRBLKSIZ;
 
-			auio = *uio;
-			auio.uio_iov = &aiov;
-			auio.uio_iovcnt = 1;
-			auio.uio_segflg = UIO_SYSSPACE;
-			aiov.iov_len = count;
-			MALLOC(dirbuf, caddr_t, count, M_TEMP, M_WAITOK);
-			aiov.iov_base = dirbuf;
-			error = VOP_READ(ap->a_vp, &auio, 0, ap->a_cred);
-			if (error == 0) {
-				readcnt = count - auio.uio_resid;
-				edp = (struct dirent *)&dirbuf[readcnt];
-				for (dp = (struct dirent *)dirbuf; dp < edp; ) {
-					tmp = dp->d_namlen;
-					dp->d_namlen = dp->d_type;
-					dp->d_type = tmp;
-					if (dp->d_reclen > 0) {
-						dp = (struct dirent *)
-						    ((char *)dp + dp->d_reclen);
-					} else {
-						error = EIO;
-						break;
-					}
-				}
-				if (dp >= edp)
-					error = uiomove(dirbuf, readcnt, uio);
+	auio = *uio;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_resid = count;
+	auio.uio_segflg = UIO_SYSSPACE;
+	aiov.iov_len = count;
+	MALLOC(dirbuf, caddr_t, count, M_TEMP, M_WAITOK);
+	aiov.iov_base = dirbuf;
+	error = VOP_READ(ap->a_vp, &auio, 0, ap->a_cred);
+	if (error == 0) {
+		readcnt = count - auio.uio_resid;
+		edp = (struct direct *)&dirbuf[readcnt];
+		ncookies = 0;
+		bzero(&dstdp, offsetof(struct dirent, d_name));
+		for (dp = (struct direct *)dirbuf; 
+		    !error && uio->uio_resid > 0 && dp < edp; ) {
+			dstdp.d_fileno = dp->d_ino;
+			dstdp.d_type = dp->d_type;
+#if BYTE_ORDER == LITTLE_ENDIAN
+			if (OFSFMT(ap->a_vp)) {
+				dstdp.d_namlen = dp->d_type;
+				dstdp.d_type = dp->d_namlen;
+			} else
+#endif
+			{
+				dstdp.d_namlen = dp->d_namlen;
+				dstdp.d_type = dp->d_type;
 			}
-			FREE(dirbuf, M_TEMP);
-		}
-#	else
-		error = VOP_READ(ap->a_vp, uio, 0, ap->a_cred);
-#	endif
-	if (!error && ap->a_ncookies != NULL) {
-		struct dirent* dpStart;
-		struct dirent* dpEnd;
-		struct dirent* dp;
-		int ncookies;
-		u_long *cookies;
-		u_long *cookiep;
+			dstdp.d_reclen = GENERIC_DIRSIZ(&dstdp);
+			bcopy(dp->d_name, dstdp.d_name, dstdp.d_namlen);
+			bzero(dstdp.d_name + dstdp.d_namlen,
+			    dstdp.d_reclen - offsetof(struct dirent, d_name) -
+			    dstdp.d_namlen);
 
-		if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
-			panic("ufs_readdir: unexpected uio from NFS server");
-		dpStart = (struct dirent *)
-		     (uio->uio_iov->iov_base - (uio->uio_offset - off));
-		dpEnd = (struct dirent *) uio->uio_iov->iov_base;
-		for (dp = dpStart, ncookies = 0;
-		     dp < dpEnd;
-		     dp = (struct dirent *)((caddr_t) dp + dp->d_reclen))
-			ncookies++;
-		MALLOC(cookies, u_long *, ncookies * sizeof(u_long), M_TEMP,
-		    M_WAITOK);
-		for (dp = dpStart, cookiep = cookies;
-		     dp < dpEnd;
-		     dp = (struct dirent *)((caddr_t) dp + dp->d_reclen)) {
-			off += dp->d_reclen;
-			*cookiep++ = (u_long) off;
+			if (dp->d_reclen > 0) {
+				if(dstdp.d_reclen <= uio->uio_resid) {
+					/* advance dp */
+					dp = (struct direct *)
+					    ((char *)dp + dp->d_reclen); 
+					error = 
+					  uiomove((caddr_t)&dstdp,
+						  dstdp.d_reclen, uio);
+					if (!error)
+						ncookies++;
+				} else
+					break;
+			} else {
+				error = EIO;
+				break;
+			}
 		}
-		*ap->a_ncookies = ncookies;
-		*ap->a_cookies = cookies;
+		/* we need to correct uio_offset */
+		uio->uio_offset = startoffset + (caddr_t)dp - dirbuf;
+
+		if (!error && ap->a_ncookies != NULL) {
+			u_long *cookiep, *cookies, *ecookies;
+			off_t off;
+
+			if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
+				panic("ufs_readdir: unexpected uio from NFS server");
+			MALLOC(cookies, u_long *, ncookies * sizeof(u_long), M_TEMP,
+			       M_WAITOK);
+			off = startoffset;
+			for (dp = (struct direct *)dirbuf,
+			     cookiep = cookies, ecookies = cookies + ncookies;
+			     cookiep < ecookies;
+			     dp = (struct direct *)((caddr_t) dp + dp->d_reclen)) {
+				off += dp->d_reclen;
+				*cookiep++ = (u_long) off;
+			}
+			*ap->a_ncookies = ncookies;
+			*ap->a_cookies = cookies;
+		}
 	}
-	uio->uio_resid += lost;
+	FREE(dirbuf, M_TEMP);
 	if (ap->a_eofflag)
-	    *ap->a_eofflag = VTOI(ap->a_vp)->i_size <= uio->uio_offset;
-	return (error);
+		*ap->a_eofflag = VTOI(ap->a_vp)->i_size <= uio->uio_offset;
+        return (error);
 }
 
 /*
