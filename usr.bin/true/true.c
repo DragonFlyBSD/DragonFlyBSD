@@ -33,8 +33,10 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)true.c	8.1 (Berkeley) 6/9/93
  *
- * $DragonFly: src/usr.bin/true/true.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/true/true.c,v 1.4 2005/08/08 18:14:31 joerg Exp $
  */
+
+#include <stdlib.h>
 
 int
 main(void)
