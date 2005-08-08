@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.4 2005/06/27 02:27:10 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.5 2005/08/08 01:47:21 y0netan1 Exp $
  */
 
 #include "opt_pci.h"
@@ -700,7 +700,7 @@ isab_probe(device_t dev)
 	return ENXIO;
 }
 
-static int
+int
 isab_attach(device_t dev)
 {
 	chipset_attach(dev, device_get_unit(dev));
