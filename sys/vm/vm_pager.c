@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.14 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.15 2005/08/08 16:53:12 hmp Exp $
  */
 
 /*
@@ -181,11 +181,17 @@ int pager_map_size = PAGER_MAP_SIZE;
 vm_map_t pager_map;
 static int bswneeded;
 static vm_offset_t swapbkva;		/* swap buffers kva */
+static TAILQ_HEAD(swqueue, buf) bswlist;
 
 void
 vm_pager_init(void)
 {
 	struct pagerops **pgops;
+
+	/*
+	 * Initialize the swap buffer list.
+	 */
+	TAILQ_INIT(&bswlist);
 
 	/*
 	 * Initialize known pagers

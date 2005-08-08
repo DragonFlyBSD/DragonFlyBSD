@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.17 2005/08/08 01:25:31 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.18 2005/08/08 16:53:12 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -334,7 +334,6 @@ extern char	*buffers;		/* The buffer contents. */
 extern int	bufpages;		/* Number of memory pages in the buffer pool. */
 extern struct	buf *swbuf;		/* Swap I/O buffer headers. */
 extern int	nswbuf;			/* Number of swap I/O buffer headers. */
-extern TAILQ_HEAD(swqueue, buf) bswlist;
 
 struct uio;
 

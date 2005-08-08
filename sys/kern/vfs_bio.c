@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.46 2005/08/08 01:25:31 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.47 2005/08/08 16:53:11 hmp Exp $
  */
 
 /*
@@ -77,7 +77,6 @@ static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
 struct	bio_ops bioops;		/* I/O operation notification */
 
 struct buf *buf;		/* buffer header pool */
-struct swqueue bswlist;
 
 static void vm_hold_free_pages(struct buf * bp, vm_offset_t from,
 		vm_offset_t to);
@@ -436,7 +435,6 @@ bufinit(void)
 	vm_offset_t bogus_offset;
 	int i;
 
-	TAILQ_INIT(&bswlist);
 	LIST_INIT(&invalhash);
 	lwkt_token_init(&buftimetoken);
 
