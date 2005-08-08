@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.138 2005/08/06 21:47:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.139 2005/08/08 17:33:17 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1347,61 +1347,72 @@ JobTouch(GNode *gn, bool silent)
 bool
 JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 {
+	const char *msg = "make: don't know how to make";
 
-	if (OP_NOP(gn->type) && Lst_IsEmpty(&gn->commands) &&
-	    (gn->type & OP_LIB) == 0) {
-		/*
-		 * No commands. Look for .DEFAULT rule from which we might infer
-		 * commands.
-		 */
-		if (DEFAULT != NULL && !Lst_IsEmpty(&DEFAULT->commands)) {
-			/*
-			 * Make only looks for a .DEFAULT if the node was
-			 * never the target of an operator, so that's what we
-			 * do too. If a .DEFAULT was given, we substitute its
-			 * commands for gn's commands and set the IMPSRC
-			 * variable to be the target's name The DEFAULT node
-			 * acts like a transformation rule, in that gn also
-			 * inherits any attributes or sources attached to
-			 * .DEFAULT itself.
-			 */
-			Make_HandleUse(DEFAULT, gn);
-			Var_Set(IMPSRC, Var_Value(TARGET, gn), gn);
-
-		} else if (Dir_MTime(gn) == 0) {
-			/*
-			 * The node wasn't the target of an operator we have
-			 * no .DEFAULT rule to go on and the target doesn't
-			 * already exist. There's nothing more we can do for
-			 * this branch. If the -k flag wasn't given, we stop
-			 * in our tracks, otherwise we just don't update
-			 * this node's parents so they never get examined.
-			 */
-			static const char msg[] =
-			    "make: don't know how to make";
-
-			if (gn->type & OP_OPTIONAL) {
-				fprintf(stdout, "%s %s(ignored)\n",
-				    msg, gn->name);
-				fflush(stdout);
-			} else if (keepgoing) {
-				fprintf(stdout, "%s %s(continuing)\n",
-				    msg, gn->name);
-				fflush(stdout);
-				return (false);
-			} else {
-#if OLD_JOKE
-				if (strcmp(gn->name,"love") == 0)
-					(*abortProc)("Not war.");
-				else
-#endif
-					(*abortProc)("%s %s. Stop",
-					    msg, gn->name);
-				return (false);
-			}
-		}
+	if (!OP_NOP(gn->type)) {
+		return (true);		/* this node does nothing */
 	}
-	return (true);
+
+	if (!Lst_IsEmpty(&gn->commands)) {
+		return (true);		/* this node has no commands */
+	}
+
+	if ((gn->type & OP_LIB) == 0) {
+		return (true);
+	}
+
+	/*
+	 * No commands. Look for .DEFAULT rule from which we might infer
+	 * commands.
+	 */
+	if (DEFAULT != NULL && !Lst_IsEmpty(&DEFAULT->commands)) {
+		/*
+		 * Make only looks for a .DEFAULT if the node was
+		 * never the target of an operator, so that's what we
+		 * do too. If a .DEFAULT was given, we substitute its
+		 * commands for gn's commands and set the IMPSRC
+		 * variable to be the target's name The DEFAULT node
+		 * acts like a transformation rule, in that gn also
+		 * inherits any attributes or sources attached to
+		 * .DEFAULT itself.
+		 */
+		Make_HandleUse(DEFAULT, gn);
+		Var_Set(IMPSRC, Var_Value(TARGET, gn), gn);
+		return (true);
+	}
+
+	if (Dir_MTime(gn) != 0) {
+		return (true);
+	}
+
+	/*
+	 * The node wasn't the target of an operator we have
+	 * no .DEFAULT rule to go on and the target doesn't
+	 * already exist. There's nothing more we can do for
+	 * this branch. If the -k flag wasn't given, we stop
+	 * in our tracks, otherwise we just don't update
+	 * this node's parents so they never get examined.
+	 */
+	if (gn->type & OP_OPTIONAL) {
+		fprintf(stdout, "%s %s(ignored)\n", msg, gn->name);
+		fflush(stdout);
+		return (true);
+	}
+
+	if (keepgoing) {
+		fprintf(stdout, "%s %s(continuing)\n", msg, gn->name);
+		fflush(stdout);
+		return (false);
+	}
+
+#if OLD_JOKE
+	if (strcmp(gn->name,"love") == 0)
+		(*abortProc)("Not war.");
+	else
+#endif
+		(*abortProc)("%s %s. Stop", msg, gn->name);
+
+	return (false);
 }
 
 /**
