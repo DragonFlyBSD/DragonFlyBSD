@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/newfs/fscopy.c,v 1.6 2005/01/08 19:39:40 cpressey Exp $
+ * $DragonFly: src/sbin/newfs/fscopy.c,v 1.7 2005/08/08 17:06:18 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -156,13 +156,10 @@ FSCopy(fsnode_t *phlinks, const char *path)
 		}
 		pscan = &node->fs_Base;
 		while ((den = readdir(dir)) != NULL) {
-		    if (den->d_namlen == 1 && den->d_name[0] == '.')
+		    if (strcmp(den->d_name, ".") == 0)
 			continue;
-		    if (den->d_namlen == 2 && den->d_name[0] == '.' &&
-			den->d_name[1] == '.'
-		    ) {
+		    if (strcmp(den->d_name, "..") == 0)
 			continue;
-		    }
 		    scan = FSCopy(phlinks, den->d_name);
 		    if (scan) {
 			*pscan = scan;
