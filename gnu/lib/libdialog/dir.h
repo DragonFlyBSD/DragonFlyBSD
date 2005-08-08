@@ -13,14 +13,15 @@
  * the author assume any responsibility for damages incurred with
  * its use.
  *
+ * $DragonFly: src/gnu/lib/libdialog/dir.h,v 1.2 2005/08/08 13:38:49 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/dirent.h>
+#include <limits.h>
 
 typedef struct DirList {             /* structure to hold the directory entries */
-    char        filename[MAXNAMLEN]; /* together with the stat-info per file */
+    char        filename[NAME_MAX]; /* together with the stat-info per file */
     struct stat filestatus;          /* filename, or the name to which it points */
     int         link;                /* is it a link ? */
     char        *linkname;           /* the name of the file the link points to */
