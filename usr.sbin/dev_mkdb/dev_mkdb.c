@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dev_mkdb.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.4.2.1 2001/11/25 18:34:09 iedowse Exp $
- * $DragonFly: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.5 2004/03/20 17:46:47 cpressey Exp $
+ * $DragonFly: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.6 2005/08/08 16:49:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <kvm.h>
+#include <limits.h>
 #include <nlist.h>
 #include <paths.h>
 #include <stdio.h>
@@ -66,8 +67,8 @@ main(int argc, char **argv)
 	DB *db;
 	DBT data, key;
 	int ch, fflag;
-	u_char buf[MAXNAMLEN + 1];
-	char dbtmp[MAXPATHLEN + 1], dbname[MAXPATHLEN + 1];
+	u_char buf[NAME_MAX + 1];
+	char dbtmp[NAME_MAX + 1], dbname[NAME_MAX + 1];
 	const char *dirname;
 
 	fflag = 0;
@@ -136,9 +137,9 @@ main(int argc, char **argv)
 		 * Create the data; nul terminate the name so caller doesn't
 		 * have to.
 		 */
-		bcopy(dp->d_name, buf, dp->d_namlen);
-		buf[dp->d_namlen] = '\0';
-		data.size = dp->d_namlen + 1;
+		data.size = strlcpy(buf, dp->d_name, sizeof(buf)) + 1;
+		if (data.size > sizeof(buf))
+			err(1, "file name too long");
 		if ((db->put)(db, &key, &data, 0))
 			err(1, "dbput %s", dbtmp);
 	}
