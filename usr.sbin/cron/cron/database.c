@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/database.c,v 1.8 1999/08/28 01:15:50 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.6 2005/08/08 18:36:28 joerg Exp $
  */
 
 /* vix 26jan87 [RCS has the log]
@@ -99,8 +99,7 @@ load_database(cron_db *old_db)
 	}
 
 	while (NULL != (dp = readdir(dir))) {
-		char	fname[MAXNAMLEN+1],
-			tabname[MAXNAMLEN+1];
+		char	fname[NAME_MAX + 1], tabname[NAME_MAX + 1];
 
 		/* avoid file names beginning with ".".  this is good
 		 * because we would otherwise waste two guaranteed calls
@@ -110,8 +109,7 @@ load_database(cron_db *old_db)
 		if (dp->d_name[0] == '.')
 			continue;
 
-		strncpy(fname, dp->d_name, sizeof(fname));
-		fname[sizeof(fname)-1] = '\0';
+		strlcpy(fname, dp->d_name, sizeof(fname));
 		snprintf(tabname, sizeof tabname, CRON_TAB(fname));
 
 		process_crontab(fname, fname, tabname,
