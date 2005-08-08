@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.14 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.15 2005/08/08 02:01:31 joerg Exp $
  */
 
 /* udf_vnops.c */
@@ -483,7 +483,7 @@ udf_transname(char *cs0string, char *destname, int len, struct udf_mnt *udfmp)
 
 	/* Convert 16-bit Unicode to destname */
 	/* allocate a buffer big enough to hold an 8->16 bit expansion */
-	transname = malloc(MAXNAMLEN * sizeof(unicode_t), M_TEMP, M_WAITOK | M_ZERO);
+	transname = malloc(NAME_MAX * sizeof(unicode_t), M_TEMP, M_WAITOK | M_ZERO);
 
 	if ((unilen = udf_UncompressUnicode(len, cs0string, transname)) == -1) {
 		printf("udf: Unicode translation failed\n");
@@ -516,7 +516,7 @@ udf_cmpname(char *cs0string, char *cmpname, int cs0len, int cmplen, struct udf_m
 
 	/* This is overkill, but not worth creating a new zone */
 	
-	transname = malloc(MAXNAMLEN * sizeof(unicode_t), M_TEMP,
+	transname = malloc(NAME_MAX * sizeof(unicode_t), M_TEMP,
 			   M_WAITOK | M_ZERO);
 
 	cs0len = udf_transname(cs0string, transname, cs0len, udfmp);
