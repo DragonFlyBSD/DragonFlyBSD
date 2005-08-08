@@ -32,14 +32,14 @@
  *
  * @(#)ttymsg.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/usr.bin/wall/ttymsg.c,v 1.4.2.3 2001/10/18 08:08:17 des Exp $
- * $DragonFly: src/usr.bin/wall/ttymsg.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/wall/ttymsg.c,v 1.3 2005/08/08 16:39:17 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
@@ -62,7 +62,7 @@ ttymsg(struct iovec *iov, int iovcnt, const char *line, int tmout)
 	struct iovec localiov[7];
 	ssize_t left, wret;
 	int cnt, fd;
-	static char device[MAXNAMLEN] = _PATH_DEV;
+	static char device[PATH_MAX] = _PATH_DEV;
 	static char errbuf[1024];
 	int forked;
 
