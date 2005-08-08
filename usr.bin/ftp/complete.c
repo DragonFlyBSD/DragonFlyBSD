@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/complete.c,v 1.5.2.1 2001/11/25 18:28:06 iedowse Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/complete.c,v 1.3 2003/10/04 20:36:44 hmp Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/complete.c,v 1.4 2005/08/08 16:43:33 joerg Exp $	*/
 /*	$NetBSD: complete.c,v 1.11 1997/09/13 09:05:53 lukem Exp $	*/
 
 /*-
@@ -192,9 +192,7 @@ complete_local(char *word, int list)
 	for (dp = readdir(dd); dp != NULL; dp = readdir(dd)) {
 		if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
 			continue;
-		if (strlen(file) > dp->d_namlen)
-			continue;
-		if (strncmp(file, dp->d_name, strlen(file)) == 0) {
+		if (strcmp(file, dp->d_name) == 0) {
 			char *tcp;
 
 			tcp = strdup(dp->d_name);
