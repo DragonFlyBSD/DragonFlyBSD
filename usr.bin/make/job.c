@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.139 2005/08/08 17:33:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.140 2005/08/08 20:52:45 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -3035,7 +3035,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
  * Side Effects:
  *	If an error is detected and not being ignored, the process exits.
  */
-static int
+static void
 CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, bool queryFlag)
 {
 	LstNode	*ln;
@@ -3060,7 +3060,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, bool queryFlag)
 		if (!gn->make) {
 			gn->made = ABORTED;
 			pgn->make = false;
-			return (0);
+			return;
 		}
 
 		if (Lst_Member(&gn->iParents, pgn) != NULL) {
@@ -3077,7 +3077,7 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, bool queryFlag)
 		if (!Make_OODate(gn)) {
 			gn->made = UPTODATE;
 			DEBUGF(MAKE, ("up-to-date.\n"));
-			return (0);
+			return;
 		} else {
 			DEBUGF(MAKE, ("out-of-date.\n"));
 		}
@@ -3237,8 +3237,6 @@ CompatMake(GNode *gn, GNode *pgn, GNode *ENDNode, bool queryFlag)
 			break;
 		}
 	}
-
-	return (0);
 }
 
 /**
