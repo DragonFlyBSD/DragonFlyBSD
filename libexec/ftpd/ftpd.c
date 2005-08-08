@@ -37,7 +37,7 @@
 #if 0
 static const char rcsid[] =
   "$FreeBSD: src/libexec/ftpd/ftpd.c,v 1.62.2.48 2003/02/14 12:42:42 yar Exp $";
-  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.5 2004/09/20 00:58:36 dillon Exp $";
+  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.6 2005/08/08 16:17:04 joerg Exp $";
 #endif /* not lint */
 
 /*
@@ -3045,10 +3045,9 @@ send_file_list(whichf)
 				goto out;
 			}
 
-			if (dir->d_name[0] == '.' && dir->d_namlen == 1)
+			if (strcmp(dir->d_name, ".") == 0)
 				continue;
-			if (dir->d_name[0] == '.' && dir->d_name[1] == '.' &&
-			    dir->d_namlen == 2)
+			if (strcmp(dir->d_name, "..") == 0)
 				continue;
 
 			snprintf(nbuf, sizeof(nbuf), 
