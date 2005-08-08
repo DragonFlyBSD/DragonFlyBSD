@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_init.c,v 1.20 1999/10/29 18:09:29 phk Exp $
- * $DragonFly: src/sys/vm/vm_init.c,v 1.8 2005/06/14 17:16:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_init.c,v 1.9 2005/08/08 17:14:33 hmp Exp $
  */
 
 /*
@@ -91,8 +91,6 @@ SYSINIT(vm_mem, SI_SUB_VM, SI_ORDER_FIRST, vm_mem_init, NULL)
 /*
  *	vm_init initializes the virtual memory system.
  *	This is done only by the first cpu up.
- *
- *	The start and end address of physical memory is passed in.
  */
 
 /* ARGSUSED*/
