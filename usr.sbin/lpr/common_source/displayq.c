@@ -32,16 +32,16 @@
  *
  * @(#)displayq.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/displayq.c,v 1.15.2.8 2001/08/30 09:27:41 kris Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.5 2005/08/08 18:58:56 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,8 +69,8 @@
 extern uid_t	uid, euid;
 
 static int	col;		/* column on screen */
-static char	current[MAXNAMLEN+1];	/* current file being printed */
-static char	file[MAXNAMLEN+1];	/* print file name */
+static char	current[NAME_MAX+1];	/* current file being printed */
+static char	file[NAME_MAX+1];	/* print file name */
 static int	first;		/* first file in ``files'' column? */
 static int	garbage;	/* # of garbage cf files */
 static int	lflag;		/* long output option */

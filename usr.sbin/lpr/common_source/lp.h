@@ -32,10 +32,11 @@
  *
  * 	From: @(#)lp.h	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/lp.h,v 1.9.2.12 2002/07/14 23:56:40 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/lp.h,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/lp.h,v 1.3 2005/08/08 18:58:56 joerg Exp $
  */
 
 #include <sys/queue.h>
+#include <limits.h>
 #include <time.h>
 #include <netdb.h>
 
@@ -191,7 +192,7 @@ struct jobqueue {
 	time_t	job_time;		/* last-mod time of cf-file */
 	int	job_matched;		/* used by match_jobspec() */
 	int	job_processed;		/* set to zero by getq() */
-	char	job_cfname[MAXNAMLEN+1];	/* control file name */
+	char	job_cfname[NAME_MAX+1];	/* control file name */
 };
 
 /* lpr/lpd generates readable timestamps for logfiles, etc.  Have all those

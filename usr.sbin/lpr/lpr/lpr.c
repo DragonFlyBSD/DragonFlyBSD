@@ -39,7 +39,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: lpr.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.5 2005/08/08 18:58:56 joerg Exp $
  */
 
 /*
@@ -58,6 +58,7 @@
 #include <fcntl.h>
 #include <a.out.h>
 #include <err.h>
+#include <inttypes.h>
 #include <locale.h>
 #include <signal.h>
 #include <syslog.h>
@@ -376,8 +377,8 @@ main(int argc, char *argv[])
 			continue;	/* file unreasonable */
 
 		if (sflag && (cp = linked(arg)) != NULL) {
-			snprintf(buf, sizeof(buf), "%d %d", statb.st_dev,
-				 statb.st_ino);
+			snprintf(buf, sizeof(buf), "%d %"PRId64, statb.st_dev,
+				 (uint64_t)statb.st_ino);
 			card('S', buf);
 			if (format == 'p')
 				card('T', title ? title : arg);

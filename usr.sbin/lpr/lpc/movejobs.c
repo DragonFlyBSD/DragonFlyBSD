@@ -32,7 +32,7 @@
  * ------+---------+---------+---------+---------+---------+---------+---------*
  *
  * $FreeBSD: src/usr.sbin/lpr/lpc/movejobs.c,v 1.1.2.1 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/movejobs.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/movejobs.c,v 1.3 2005/08/08 18:58:56 joerg Exp $
  */
 
 /*
@@ -46,7 +46,6 @@
 #include <sys/stat.h>
 
 #include <ctype.h>
-#include <dirent.h>	/* just for MAXNAMLEN, for job_cfname in lp.h! */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
