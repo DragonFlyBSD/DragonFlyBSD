@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.9 2005/06/09 20:55:05 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.10 2005/08/08 01:25:31 hmp Exp $
  */
 
 #include <sys/thread2.h>
@@ -145,7 +145,7 @@ struct aac_command
 	struct aac_fib		*cm_fib;	/* FIB associated with this
 						 * command */
 	u_int32_t		cm_fibphys;	/* bus address of the FIB */
-	struct bio		*cm_data;	/* pointer to data in kernel
+	struct buf		*cm_data;	/* pointer to data in kernel
 						 * space */
 	u_int32_t		cm_datalen;	/* data length */
 	bus_dmamap_t		cm_datamap;	/* DMA map for bio data */
@@ -330,7 +330,7 @@ struct aac_softc
 	TAILQ_HEAD(,aac_command) aac_busy;
 	TAILQ_HEAD(,aac_command) aac_complete;	/* commands which have been
 						 * returned by the controller */
-	struct bio_queue_head	aac_bioq;
+	struct buf_queue_head	aac_bioq;
 	struct aac_queue_table	*aac_queues;
 	struct aac_queue_entry	*aac_qentries[AAC_QUEUE_COUNT];
 
@@ -390,8 +390,8 @@ extern int		aac_suspend(device_t dev);
 extern int		aac_resume(device_t dev);
 extern void		aac_intr(void *arg);
 extern devclass_t	aac_devclass;
-extern void		aac_submit_bio(struct bio *bp);
-extern void		aac_biodone(struct bio *bp);
+extern void		aac_submit_bio(struct buf *bp);
+extern void		aac_biodone(struct buf *bp);
 extern int		aac_dump_enqueue(struct aac_disk *ad, u_int32_t lba,
 					 void *data, int nblks);
 extern void		aac_dump_complete(struct aac_softc *sc);
@@ -557,7 +557,7 @@ aac_initq_bio(struct aac_softc *sc)
 }
 
 static __inline void
-aac_enqueue_bio(struct aac_softc *sc, struct bio *bp)
+aac_enqueue_bio(struct aac_softc *sc, struct buf *bp)
 {
 	crit_enter();
 	bioq_insert_tail(&sc->aac_bioq, bp);
@@ -565,10 +565,10 @@ aac_enqueue_bio(struct aac_softc *sc, struct bio *bp)
 	crit_exit();
 }
 
-static __inline struct bio *
+static __inline struct buf *
 aac_dequeue_bio(struct aac_softc *sc)
 {
-	struct bio *bp;
+	struct buf *bp;
 
 	crit_enter();
 	if ((bp = bioq_first(&sc->aac_bioq)) != NULL) {

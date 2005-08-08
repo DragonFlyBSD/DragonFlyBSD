@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aac/aac_compat.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
- * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.5 2004/07/17 01:45:37 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.6 2005/08/08 01:25:31 hmp Exp $
  */
 /*
  * Backwards compatibility support.
@@ -35,32 +35,17 @@
  * Handle the new/old bio/buf changeover
  */
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500003		/* old buf style */
+#ifdef __DragonFly__
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/buf2.h>
-#define FREEBSD_4
-#define bio					buf
 #define bioq_init(x)				bufq_init(x)
-#define bioq_insert_tail(x, y)			bufq_insert_tail(x, y)
+#define bioq_insert_tail(x, y)		bufq_insert_tail(x, y)
 #define bioq_remove(x, y)			bufq_remove(x, y)
 #define bioq_first(x)				bufq_first(x)
 #define bio_queue_head				buf_queue_head
-#define bio_bcount				b_bcount
-#define bio_blkno				b_blkno
-#define bio_caller1				b_caller1
-#define bio_data				b_data
-#define bio_dev					b_dev
-#define bio_driver1				b_driver1
-#define bio_error				b_error
-#define bio_flags				b_flags
-#define bio_pblkno				b_pblkno
-#define bio_resid				b_resid
+#define	FREEBSD_4
 #define BIO_ERROR				B_ERROR
 #define devstat_end_transaction_bio(x, y)      devstat_end_transaction_buf(x, y)
 #define BIO_IS_READ(x)				((x)->b_flags & B_READ)
-
-#else					/* new bio style */
-#include <sys/bio.h>
-#define BIO_IS_READ(x)				((x)->bio_cmd == BIO_READ)
 #endif

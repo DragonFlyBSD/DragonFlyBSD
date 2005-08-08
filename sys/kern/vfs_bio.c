@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.45 2005/08/07 03:28:50 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.46 2005/08/08 01:25:31 hmp Exp $
  */
 
 /*
@@ -451,6 +451,7 @@ bufinit(void)
 	for (i = 0; i < nbuf; i++) {
 		bp = &buf[i];
 		bzero(bp, sizeof *bp);
+		bp->b_bio.bio_buf = bp; /* back pointer (temporary) */
 		bp->b_flags = B_INVAL;	/* we're just an empty header */
 		bp->b_dev = NODEV;
 		bp->b_qindex = BQUEUE_EMPTY;
@@ -2915,7 +2916,7 @@ biodone(struct buf *bp)
 
 	KASSERT(BUF_REFCNTNB(bp) > 0, ("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
 	KASSERT(!(bp->b_flags & B_DONE), ("biodone: bp %p already done", bp));
-	void (*b_iodone)(struct buf *);
+	biodone_t *biodone_func;
 
 	bp->b_flags |= B_DONE;
 	bp->b_dev = NODEV;
@@ -2933,9 +2934,9 @@ biodone(struct buf *bp)
 
 	/* call optional completion function if requested */
 	if (bp->b_iodone != NULL) {
-		b_iodone = bp->b_iodone;
+		biodone_func = bp->b_iodone;
 		bp->b_iodone = NULL;
-		(*b_iodone) (bp);
+		(*biodone_func) (bp);
 		crit_exit();
 		return;
 	}

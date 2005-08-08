@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.9 2004/06/02 19:31:02 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.10 2005/08/08 01:25:31 hmp Exp $
  */
 
 #include "opt_aac.h"
@@ -183,25 +183,25 @@ aac_disk_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle an I/O request.
  */
 static void
-aac_disk_strategy(struct bio *bp)
+aac_disk_strategy(struct buf *bp)
 {
 	struct aac_disk	*sc;
 
 	debug_called(4);
 
-	sc = (struct aac_disk *)bp->bio_dev->si_drv1;
+	sc = (struct aac_disk *)bp->b_dev->si_drv1;
 
 	/* bogus disk? */
 	if (sc == NULL) {
-		bp->bio_flags |= BIO_ERROR;
-		bp->bio_error = EINVAL;
+		bp->b_flags |= B_ERROR;
+		bp->b_error = EINVAL;
 		biodone(bp);
 		return;
 	}
 
 	/* do-nothing operation? */
-	if (bp->bio_bcount == 0) {
-		bp->bio_resid = bp->bio_bcount;
+	if (bp->b_bcount == 0) {
+		bp->b_resid = bp->b_bcount;
 		biodone(bp);
 		return;
 	}
@@ -294,24 +294,24 @@ retry:
  * Handle completion of an I/O request.
  */
 void
-aac_biodone(struct bio *bp)
+aac_biodone(struct buf *bp)
 {
 	struct aac_disk	*sc;
 	int blkno;
 
 	debug_called(4);
 
-	sc = (struct aac_disk *)bp->bio_dev->si_drv1;
+	sc = (struct aac_disk *)bp->b_dev->si_drv1;
 
 	devstat_end_transaction_bio(&sc->ad_stats, bp);
-	if (bp->bio_flags & BIO_ERROR) {
+	if (bp->b_flags & BIO_ERROR) {
 		blkno = (sc->ad_label.d_nsectors) ? 0 : -1;
 #if defined(__FreeBSD__) && __FreeBSD_version > 500005
 		diskerr(bp, bp->b_dev,
 			(char *)bp->bio_driver1, blkno, &sc->ad_label);
 #else
 		diskerr(bp, bp->b_dev,
-			(char *)bp->bio_driver1, 0, blkno, &sc->ad_label);
+			(char *)bp->b_driver1, 0, blkno, &sc->ad_label);
 #endif
 	}
 	biodone(bp);

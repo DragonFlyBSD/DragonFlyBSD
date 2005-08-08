@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.16 2005/08/04 16:28:30 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.17 2005/08/08 01:25:31 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -58,6 +58,10 @@
 #endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
+#endif
+
+#ifndef _SYS_BIO_H_
+#include <sys/bio.h>
 #endif
 
 struct buf;
@@ -118,34 +122,25 @@ struct buf {
 	LIST_ENTRY(buf) b_hash;		/* Hash chain. */
 	RB_ENTRY(buf) b_rbnode;		/* Red-Black node in vnode RB tree */
 	TAILQ_ENTRY(buf) b_freelist;	/* Free list position if not active. */
-	TAILQ_ENTRY(buf) b_act;		/* Device driver queue when active. *new* */
+	TAILQ_ENTRY(buf) b_act;		/* driver queue when active. *new* */
+	struct bio b_bio;       	/* Underlying I/O */
 	long	b_flags;		/* B_* flags. */
 	unsigned short b_qindex;	/* buffer queue index */
 	unsigned char b_xflags;		/* extra flags */
 	struct lock b_lock;		/* Buffer lock */
-	int	b_error;		/* Errno value. */
 	long	b_bufsize;		/* Allocated buffer size. */
 	long	b_runningbufspace;	/* when I/O is running, pipelining */
 	long	b_bcount;		/* Valid bytes in buffer. */
-	long	b_resid;		/* Remaining I/O. */
-	dev_t	b_dev;			/* Device associated with buffer. */
 	caddr_t	b_data;			/* Memory, superblocks, indirect etc. */
 	caddr_t	b_kvabase;		/* base kva for buffer */
 	int	b_kvasize;		/* size of kva for buffer */
-	daddr_t	b_lblkno;		/* Logical block number. */
-	daddr_t	b_blkno;		/* Underlying physical block number. */
 	off_t	b_offset;		/* Offset into file */
-					/* Function to call upon completion. */
-	void	(*b_iodone) (struct buf *);
 					/* For nested b_iodone's. */
 	struct	iodone_chain *b_iodone_chain;
 	struct	vnode *b_vp;		/* Device vnode. */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
-	daddr_t	b_pblkno;               /* physical block number */
 	void	*b_saveaddr;		/* Original b_addr for physio. */
-	void	*b_driver1;		/* for private use by the driver */
-	void	*b_caller1;		/* for private use by the caller */
 	union	pager_info {
 		void	*pg_spc;
 		int	pg_reqpage;
@@ -162,7 +157,16 @@ struct buf {
 	} b_chain;
 };
 
-#define b_spc	b_pager.pg_spc
+#define	b_dev   	b_bio.bio_dev
+#define	b_resid 	b_bio.bio_resid
+#define	b_error 	b_bio.bio_error
+#define	b_lblkno	b_bio.bio_lblkno
+#define	b_blkno  	b_bio.bio_blkno
+#define	b_pblkno	b_bio.bio_pblkno
+#define	b_driver1	b_bio.bio_driver_ctx
+#define	b_caller1	b_bio.bio_caller_ctx
+#define	b_iodone 	b_bio.bio_done
+#define	b_spc   	b_pager.pg_spc
 
 /*
  * These flags are kept in b_flags.
