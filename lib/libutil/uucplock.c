@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/uucplock.c,v 1.12.2.1 2000/10/09 20:20:52 brian Exp $
- * $DragonFly: src/lib/libutil/uucplock.c,v 1.4 2005/03/04 06:06:57 cpressey Exp $
+ * $DragonFly: src/lib/libutil/uucplock.c,v 1.5 2005/08/08 13:00:12 joerg Exp $
  *
  * @(#)uucplock.c	8.1 (Berkeley) 6/6/93
  */
@@ -41,6 +41,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <limits.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
@@ -71,8 +72,8 @@ uu_lock(const char *tty_name)
 {
 	int fd, tmpfd, i;
 	pid_t pid, pid_old;
-	char lckname[sizeof(_PATH_UUCPLOCK) + MAXNAMLEN],
-	     lcktmpname[sizeof(_PATH_UUCPLOCK) + MAXNAMLEN];
+	char lckname[PATH_MAX],
+	     lcktmpname[PATH_MAX];
 	int err, uuerr;
 
 	pid = getpid();
@@ -132,7 +133,7 @@ int
 uu_lock_txfr(const char *tty_name, pid_t pid)
 {
 	int fd, err;
-	char lckname[sizeof(_PATH_UUCPLOCK) + MAXNAMLEN];
+	char lckname[PATH_MAX];
 
 	snprintf(lckname, sizeof(lckname), _PATH_UUCPLOCK LOCKFMT, tty_name);
 
@@ -152,7 +153,7 @@ uu_lock_txfr(const char *tty_name, pid_t pid)
 int
 uu_unlock(const char *tty_name)
 {
-	char tbuf[sizeof(_PATH_UUCPLOCK) + MAXNAMLEN];
+	char tbuf[PATH_MAX];
 
 	(void)snprintf(tbuf, sizeof(tbuf), _PATH_UUCPLOCK LOCKFMT, tty_name);
 	return unlink(tbuf);
