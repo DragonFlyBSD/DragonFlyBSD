@@ -38,12 +38,13 @@
  * $FreeBSD: src/games/fortune/fortune/fortune.c,v 1.18.2.1 2001/07/02 00:35:27 dd Exp $
  */
 /* $FreeBSD: src/games/fortune/fortune/fortune.c,v 1.18.2.1 2001/07/02 00:35:27 dd Exp $ */
-/* $DragonFly: src/games/fortune/fortune/fortune.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $ */
+/* $DragonFly: src/games/fortune/fortune/fortune.c,v 1.4 2005/08/08 15:25:42 joerg Exp $ */
 
 # include	<sys/param.h>
 # include	<sys/stat.h>
 
 # include	<dirent.h>
+# include	<err.h>
 # include	<fcntl.h>
 # include	<assert.h>
 # include	<unistd.h>
@@ -710,9 +711,8 @@ FILEDESC	*fp;
 	DPRINTF(1, (stderr, "adding dir \"%s\"\n", fp->path));
 	fp->num_children = 0;
 	while ((dirent = readdir(dir)) != NULL) {
-		if (dirent->d_namlen == 0)
-			continue;
-		name = copy(dirent->d_name, dirent->d_namlen);
+		if ((name = strdup(dirent->d_name)) == NULL)
+			err(1, "strdup failed");
 		if (add_file(NO_PROB, name, fp->path, &fp->child, &tailp, fp))
 			fp->num_children++;
 		else
