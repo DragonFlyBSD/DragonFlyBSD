@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.6 2005/06/07 00:52:34 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.7 2005/08/09 16:23:13 dillon Exp $
  */
 
 
@@ -37,8 +37,11 @@
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/types.h>
+#include <sys/thread.h>
+#include <sys/thread2.h>
 #include <sys/queue.h>
 #include <sys/buf.h>
+#include <sys/buf2.h>
 #include <sys/malloc.h>
 #include <sys/time.h>
 
@@ -70,12 +73,13 @@ MALLOC_DECLARE(M_IPSBUF);
 #define IPS_MAX_SG_LEN			(sizeof(ips_sg_element_t) * IPS_MAX_SG_ELEMENTS)
 #define IPS_NVRAM_PAGE_SIZE		128
 /* various flags */
-#define IPS_NOWAIT_FLAG			1
+#define IPS_STATIC_FLAG			1
 
 /* states for the card to be in */
 #define IPS_DEV_OPEN			0x01
 #define IPS_TIMEOUT			0x02 /* command time out, need reset */
 #define IPS_OFFLINE			0x04 /* can't reset card/card failure */
+#define IPS_STATIC_BUSY			0x08 /* static command slot in use */
 
 /* max number of commands set to something low for now */
 #define IPS_MAX_CMD_NUM			128
@@ -234,9 +238,6 @@ MALLOC_DECLARE(M_IPSBUF);
 #define ips_write_4(sc,offset,value)	bus_space_write_4(sc->bustag, sc->bushandle, offset, value)
 
 #define ips_read_request(iobuf)		((iobuf)->b_flags & B_READ)
-
-/* this is ugly.  It zeros the end elements in an ips_command_t struct starting with the status element */
-#define clear_ips_command(command)	bzero(&((command)->status), (unsigned long)(&(command)[1])-(unsigned long)&((command)->status))
 
 #define COMMAND_ERROR(status)		(((status)->fields.basic_status & 0x0f) >= IPS_MIN_ERROR)
 
@@ -413,13 +414,15 @@ typedef struct ips_command {
 	bus_dmamap_t		command_dmamap;
 	void			*command_buffer;
 	u_int32_t		command_phys_addr;	/*WARNING! must be changed if 64bit addressing ever used*/
-	ips_cmd_status_t	status;
-	SLIST_ENTRY(ips_command)	next;
 	bus_dma_tag_t		data_dmatag;
 	bus_dmamap_t		data_dmamap;
+	/* members below are zero'd when handed out */
+	ips_cmd_status_t	status;
+	SLIST_ENTRY(ips_command)	next;
 	void			*data_buffer;
 	void			*arg;
 	void			(*callback)(struct ips_command *command);
+	int			completed;
 } ips_command_t;
 
 typedef struct ips_wait_list {
@@ -455,14 +458,18 @@ typedef struct ips_softc {
 	u_int8_t		next_drive;
 	u_int8_t		max_cmds;
 	volatile u_int8_t	used_commands;
-	ips_command_t		commandarray[IPS_MAX_CMD_NUM];
+	ips_command_t		*commandarray;
+	ips_command_t		*staticcmd;
 	SLIST_HEAD(command_list, ips_command) free_cmd_list;
-	STAILQ_HEAD(command_wait_list,ips_wait_list)  cmd_wait_list;
 	int			(*ips_adapter_reinit)(struct ips_softc *sc,
 						       int force);
 	void			(*ips_adapter_intr)(void *sc);
 	void			(*ips_issue_cmd)(ips_command_t *command);
+	void			(*ips_poll_cmd)(ips_command_t *command);
 	ips_copper_queue_t	*copper_queue;
+
+	struct lwkt_rwlock	queue_lock;
+	struct buf_queue_head   queue;
 } ips_softc_t;
 
 /* function defines from ips_ioctl.c */
@@ -473,7 +480,7 @@ extern void ipsd_finish(struct bio *iobuf);
 
 /* function defines from ips_commands.c */
 extern int ips_flush_cache(ips_softc_t *sc);
-extern void ips_start_io_request(ips_softc_t *sc, struct bio *iobuf);
+extern void ips_start_io_request(ips_softc_t *sc);
 extern int ips_get_drive_info(ips_softc_t *sc);
 extern int ips_get_adapter_info(ips_softc_t *sc);
 extern int ips_ffdc_reset(ips_softc_t *sc);
@@ -481,17 +488,20 @@ extern int ips_update_nvram(ips_softc_t *sc);
 extern int ips_clear_adapter(ips_softc_t *sc);
 
 /* function defines from ips.c */
-extern int ips_get_free_cmd(ips_softc_t *sc, int (*callback)(ips_command_t *),
-				void *data, unsigned long flags);
+extern int ips_get_free_cmd(ips_softc_t *sc, ips_command_t **command,
+			    unsigned long flags);
 extern void ips_insert_free_cmd(ips_softc_t *sc, ips_command_t *command);
 extern int ips_adapter_init(ips_softc_t *sc);
 extern int ips_morpheus_reinit(ips_softc_t *sc, int force);
 extern int ips_adapter_free(ips_softc_t *sc);
 extern void ips_morpheus_intr(void *sc);
 extern void ips_issue_morpheus_cmd(ips_command_t *command);
+extern void ips_morpheus_poll(ips_command_t *command);
 extern int ips_copperhead_reinit(ips_softc_t *sc, int force);
 extern void ips_copperhead_intr(void *sc);
 extern void ips_issue_copperhead_cmd(ips_command_t *command);
+extern void ips_copperhead_poll(ips_command_t *command);
+int ips_timed_wait(ips_command_t *, const char *, int);
 
 #define IPS_CDEV_MAJOR 175
 #define IPSD_CDEV_MAJOR 176

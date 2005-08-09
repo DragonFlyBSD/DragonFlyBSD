@@ -25,11 +25,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_ioctl.c,v 1.5 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.4 2004/09/06 16:39:47 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.5 2005/08/09 16:23:13 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
 #include <dev/raid/ips/ips_ioctl.h>
+#include <sys/thread2.h>
 
 static void
 ips_ioctl_finish(ips_command_t *command)
@@ -98,6 +99,7 @@ static int
 ips_ioctl_cmd(ips_softc_t *sc, ips_ioctl_t *ioctl_cmd,
     ips_user_request *user_request)
 {
+	ips_command_t *command;
 	int error = EINVAL;
 
 	if (bus_dma_tag_create(
@@ -124,16 +126,22 @@ ips_ioctl_cmd(ips_softc_t *sc, ips_ioctl_t *ioctl_cmd,
 	    ioctl_cmd->datasize))
 		goto exit;
 	ioctl_cmd->status.value = 0xffffffff;
-	if ((error = ips_get_free_cmd(sc, ips_ioctl_start, ioctl_cmd, 0)) > 0) {
+	lwkt_exlock(&sc->queue_lock, __func__);
+	if ((error = ips_get_free_cmd(sc, &command, 0)) > 0) {
 		error = ENOMEM;
+		lwkt_exunlock(&sc->queue_lock);
 		goto exit;
 	}
+	command->arg = ioctl_cmd;
+	ips_ioctl_start(command);
 	while (ioctl_cmd->status.value == 0xffffffff)
 		tsleep(ioctl_cmd, 0, "ips", hz / 10);
 	if (COMMAND_ERROR(&ioctl_cmd->status))
 		error = EIO;
 	else
 		error = 0;
+	lwkt_exunlock(&sc->queue_lock);
+
 	if (copyout(ioctl_cmd->data_buffer, user_request->data_buffer,
 	    ioctl_cmd->datasize))
 		error = EINVAL;

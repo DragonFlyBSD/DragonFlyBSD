@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.12 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.13 2005/08/09 16:23:13 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -40,15 +40,17 @@ static struct ips_pci_product {
 	int (*ips_adapter_reinit)(struct ips_softc *, int);
 	void (*ips_adapter_intr)(void *);
 	void (*ips_issue_cmd)(ips_command_t *);
+	void (*ips_poll_cmd)(ips_command_t *);
 } ips_pci_products[] = {
 	{ IPS_VENDOR_ID, IPS_MORPHEUS_DEVICE_ID, "IBM ServeRAID Adapter",
-	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd },
+	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd,
+	  ips_morpheus_poll },
 	{ IPS_VENDOR_ID, IPS_COPPERHEAD_DEVICE_ID, "IBM ServeRAID Adapter",
-	  ips_copperhead_reinit, ips_copperhead_intr,
-	  ips_issue_copperhead_cmd },
+	  ips_copperhead_reinit, ips_copperhead_intr, ips_issue_copperhead_cmd,
+	  ips_copperhead_poll },
 	{ IPS_VENDOR_ID_ADAPTEC, IPS_MARCO_DEVICE_ID,
 	  "Adaptec ServeRAID Adapter", ips_morpheus_reinit, ips_morpheus_intr,
-	  ips_issue_morpheus_cmd },
+	  ips_issue_morpheus_cmd, ips_morpheus_poll },
 	{ 0, 0, NULL }
 };
 
@@ -66,6 +68,7 @@ ips_pci_probe(device_t dev)
 			sc->ips_adapter_reinit = pp->ips_adapter_reinit;
 			sc->ips_adapter_intr = pp->ips_adapter_intr;
 			sc->ips_issue_cmd = pp->ips_issue_cmd;
+			sc->ips_poll_cmd = pp->ips_poll_cmd;
 			device_set_desc(dev, pp->desc);
 			return (0);
 		}
@@ -151,6 +154,8 @@ ips_pci_attach(device_t dev)
 	sc->ips_ich.ich_func = ips_intrhook;
 	sc->ips_ich.ich_arg = sc;
 	sc->ips_ich.ich_desc = "ips";
+	lwkt_rwlock_init(&sc->queue_lock);
+	bufq_init(&sc->queue);
 	if (config_intrhook_establish(&sc->ips_ich) != 0) {
 		printf("IPS can't establish configuration hook\n");
 		goto error;

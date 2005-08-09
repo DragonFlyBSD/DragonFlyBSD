@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.5 2004/10/06 02:12:31 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.6 2005/08/09 16:23:13 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -33,9 +33,21 @@
 #include <dev/raid/ips/ips_disk.h>
 #include <sys/stat.h>
 
+#include <vm/vm.h>
+#include <vm/pmap.h>
+#include <machine/md_var.h>
+
 static int ipsd_probe(device_t dev);
 static int ipsd_attach(device_t dev);
 static int ipsd_detach(device_t dev);
+
+static int ipsd_dump_helper(dev_t dev, u_int count, u_int blkno, u_int secsize);
+#if 0
+static int ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset, size_t length);
+static void ipsd_dump_map_sg(void *arg, bus_dma_segment_t *segs, int nsegs,
+			     int error);
+static void ipsd_dump_block_complete(ips_command_t *command);
+#endif
 
 static disk_open_t ipsd_open;
 static disk_close_t ipsd_close;
@@ -52,6 +64,7 @@ static struct cdevsw ipsd_cdevsw = {
 	.old_strategy	= ipsd_strategy,
 	.old_read	= physread,
 	.old_write	= physwrite,
+	.old_dump	= ipsd_dump_helper,
 };
 
 static device_method_t ipsd_methods[] = {
@@ -110,6 +123,7 @@ ipsd_finish(struct bio *iobuf)
 		iobuf->bio_resid = 0;
 	devstat_end_transaction_buf(&dsc->stats, iobuf);
 	biodone(iobuf);
+	ips_start_io_request(dsc->sc);
 }
 
 
@@ -122,7 +136,10 @@ ipsd_strategy(struct bio *iobuf)
 	DEVICE_PRINTF(8, dsc->dev, "in strategy\n");
 	iobuf->bio_driver1 = (void *)(uintptr_t)dsc->sc->drives[dsc->disk_number].drivenum;
 	devstat_start_transaction(&dsc->stats);
-	ips_start_io_request(dsc->sc, iobuf);
+	lwkt_exlock(&dsc->sc->queue_lock, __func__);
+	bufq_insert_tail(&dsc->sc->queue, iobuf);
+	ips_start_io_request(dsc->sc);
+	lwkt_exunlock(&dsc->sc->queue_lock);
 }
 
 static int
@@ -195,3 +212,162 @@ ipsd_detach(device_t dev)
 	return 0;
 }
 
+static int
+ipsd_dump_helper(dev_t dev, u_int count, u_int blkno, u_int secsize)
+{
+	printf("dump support for IPS not yet working, will not dump\n");
+	return (ENODEV);
+
+#if 0
+	long blkcnt;
+	caddr_t va;
+	vm_offset_t addr, a;
+	int dumppages = MAXDUMPPGS;
+	int i;
+
+	addr = 0;
+	blkcnt = howmany(PAGE_SIZE, secsize);
+	while (count > 0) {
+		va = NULL;
+		if (count / blkcnt < dumppages)
+			dumppages = count / blkcnt;
+		for (i = 0; i < dumppages; i++) {
+			a = addr + (i * PAGE_SIZE);
+			if (!is_physical_memory(a))
+				a = 0;
+			va = pmap_kenter_temporary(trunc_page(a), i);
+		}
+
+		ipsd_dump(dev, va, 0, blkno, PAGE_SIZE * dumppages);
+		if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
+			return (EINTR);
+		blkno += blkcnt * dumppages;
+		count -= blkcnt * dumppages;
+		addr += PAGE_SIZE * dumppages;
+	}
+	return (0);
+#endif
+}
+
+#if 0
+
+static int
+ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset,
+          size_t length)
+{
+	dev_t dev = arg;
+	ips_softc_t *sc;
+	ips_command_t *command;
+	ips_io_cmd *command_struct;
+	ipsdisk_softc_t *dsc;
+	off_t off;
+	uint8_t *va;
+	int len;
+	int error = 0;
+
+	dsc = dev->si_drv1;
+	if (dsc == NULL)
+		return (EINVAL);
+	sc = dsc->sc;
+
+	if (ips_get_free_cmd(sc, &command, 0) != 0) {
+		printf("ipsd: failed to get cmd for dump\n");
+		return (ENOMEM);
+	}
+
+	command->data_dmatag = sc->sg_dmatag;
+	command->callback = ipsd_dump_block_complete;
+
+	command_struct = (ips_io_cmd *)command->command_buffer;
+	command_struct->id = command->id;
+	command_struct->drivenum = sc->drives[dsc->disk_number].drivenum;
+
+	off = offset;
+	va = virtual;
+
+	while (length > 0) {
+		len = length > IPS_MAX_IO_SIZE ? IPS_MAX_IO_SIZE : length;
+		command_struct->lba = off / IPS_BLKSIZE;
+		if (bus_dmamap_load(command->data_dmatag, command->data_dmamap,
+		    va, len, ipsd_dump_map_sg, command, 0) != 0) {
+			error = EIO;
+			break;
+		}
+		if (COMMAND_ERROR(&command->status)) {
+			error = EIO;
+			break;
+		}
+
+		length -= len;
+		off += len;
+		va += len;
+	}
+	ips_insert_free_cmd(command->sc, command);
+	return(error);
+}
+
+static void
+ipsd_dump_map_sg(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
+{
+	ips_softc_t *sc;
+	ips_command_t *command;
+	ips_sg_element_t *sg_list;
+	ips_io_cmd *command_struct;
+	int i, length;
+
+	command = (ips_command_t *)arg;
+	sc = command->sc;
+	length = 0;
+
+	if (error) {
+		printf("ipsd_dump_map_sg: error %d\n", error);
+		command->status.value = IPS_ERROR_STATUS;
+		return;
+	}
+
+	command_struct = (ips_io_cmd *)command->command_buffer;
+
+	if (nsegs != 1) {
+		command_struct->segnum = nsegs;
+		sg_list = (ips_sg_element_t *)((uint8_t *)
+		    command->command_buffer + IPS_COMMAND_LEN);
+		for (i = 0; i < nsegs; i++) {
+			sg_list[i].addr = segs[i].ds_addr;
+			sg_list[i].len = segs[i].ds_len;
+			length += segs[i].ds_len;
+		}
+		command_struct->buffaddr =
+		    (uint32_t)command->command_phys_addr + IPS_COMMAND_LEN;
+		command_struct->command = IPS_SG_WRITE_CMD;
+	} else {
+		command_struct->buffaddr = segs[0].ds_addr;
+		length = segs[0].ds_len;
+		command_struct->segnum = 0;
+		command_struct->command = IPS_WRITE_CMD;
+	}
+
+	length = (length + IPS_BLKSIZE - 1) / IPS_BLKSIZE;
+	command_struct->length = length;
+	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
+	    BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
+	    BUS_DMASYNC_PREWRITE);
+
+	sc->ips_issue_cmd(command);
+	sc->ips_poll_cmd(command);
+	return;
+}
+
+static void
+ipsd_dump_block_complete(ips_command_t *command)
+{
+	if (COMMAND_ERROR(&command->status)) {
+		printf("ipsd_dump completion error= 0x%x\n",
+		       command->status.value);
+	}
+	bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
+	    BUS_DMASYNC_POSTWRITE);
+	bus_dmamap_unload(command->data_dmatag, command->data_dmamap);
+}
+
+#endif
