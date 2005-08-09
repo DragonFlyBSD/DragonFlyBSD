@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.15 2004/11/12 00:09:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.16 2005/08/09 18:14:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/device.h>
 #include <sys/file2.h>
@@ -210,7 +211,7 @@ bsd_to_linux_ftype(const char *fstypename)
 }
 
 static int
-statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf)
+statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf, l_int namelen)
 {
 	struct l_statfs linux_statfs;
 	int error;
@@ -224,7 +225,7 @@ statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf)
 	linux_statfs.f_files = statfs->f_files;
 	linux_statfs.f_fsid.val[0] = statfs->f_fsid.val[0];
 	linux_statfs.f_fsid.val[1] = statfs->f_fsid.val[1];
-	linux_statfs.f_namelen = MAXNAMLEN; /* Bogus */
+	linux_statfs.f_namelen = namelen;
 
 	error = copyout(&linux_statfs, buf, sizeof(linux_statfs));
 	return (error);
@@ -236,7 +237,7 @@ linux_statfs(struct linux_statfs_args *args)
 	struct statfs statfs;
 	struct nlookupdata nd;
 	char *path;
-	int error;
+	int error, namelen;
 
 	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
 	if (error)
@@ -248,9 +249,13 @@ linux_statfs(struct linux_statfs_args *args)
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_statfs(&nd, &statfs);
+	if (nd.nl_ncp->nc_vp != NULL)
+		error = vn_get_namelen(nd.nl_ncp->nc_vp, &namelen);
+	else
+		error = EINVAL;
 	nlookup_done(&nd);
 	if (error == 0)
-		error = statfs_copyout(&statfs, args->buf);
+		error = statfs_copyout(&statfs, args->buf, (l_int)namelen);
 	linux_free_path(&path);
 	return (error);
 }
@@ -258,8 +263,10 @@ linux_statfs(struct linux_statfs_args *args)
 int
 linux_fstatfs(struct linux_fstatfs_args *args)
 {
+	struct proc *p = curthread->td_proc;
+	struct file *fp;
 	struct statfs statfs;
-	int error;
+	int error, namelen;
 
 #ifdef DEBUG
 	if (ldebug(fstatfs))
@@ -268,7 +275,11 @@ linux_fstatfs(struct linux_fstatfs_args *args)
 	error = kern_fstatfs(args->fd, &statfs);
 
 	if (error == 0)
-		error = statfs_copyout(&statfs, args->buf);
+		error = getvnode(p->p_fd, args->fd, &fp);
+	if (error == 0)
+		error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
+	if (error == 0)
+		error = statfs_copyout(&statfs, args->buf, (l_int)namelen);
 	return (error);
 }
 
