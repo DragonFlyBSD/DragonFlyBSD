@@ -22,9 +22,10 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/common/ufsread.c,v 1.12 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/ufsread.c,v 1.1 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/ufsread.c,v 1.2 2005/08/09 19:19:08 joerg Exp $
  */
 
+#include <vfs/ufs/dir.h>
 #include "dinode.h"
 #include "fs.h"
 #ifdef __i386__
@@ -72,7 +73,7 @@ static __inline__ int
 fsfind(const char *name, ino_t * ino)
 {
 	char buf[DEV_BSIZE];
-	struct dirent *d;
+	struct direct *d;
 	char *s;
 	ssize_t n;
 
