@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)msgs.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
- * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.5 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.6 2005/08/09 20:05:55 joerg Exp $
  */
 
 /*
@@ -282,8 +282,6 @@ main(int argc, char **argv)
 			int i = 0;
 
 			if (dp->d_ino == 0)
-				continue;
-			if (dp->d_namlen == 0)
 				continue;
 
 			if (clean)
