@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.27 2005/08/09 18:26:27 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.28 2005/08/09 18:48:43 joerg Exp $
  */
 
 /*
@@ -105,9 +105,9 @@ static int svr4_setinfo	(struct proc *, int, svr4_siginfo_t *);
 struct svr4_hrtcntl_args;
 static int svr4_hrtcntl	(struct svr4_hrtcntl_args *, register_t *);
 static void bsd_statfs_to_svr4_statvfs (const struct statfs *,
-    struct svr4_statvfs *);
+    struct svr4_statvfs *, int);
 static void bsd_statfs_to_svr4_statvfs64 (const struct statfs *,
-    struct svr4_statvfs64 *);
+    struct svr4_statvfs64 *, int);
 static struct proc *svr4_pfind (pid_t pid);
 
 /* BOGUS noop */
@@ -1343,9 +1343,8 @@ loop:
 
 
 static void
-bsd_statfs_to_svr4_statvfs(bfs, sfs)
-	const struct statfs *bfs;
-	struct svr4_statvfs *sfs;
+bsd_statfs_to_svr4_statvfs(const struct statfs *bfs, struct svr4_statvfs *sfs,
+    int namelen)
 {
 	sfs->f_bsize = bfs->f_iosize; /* XXX */
 	sfs->f_frsize = bfs->f_bsize;
@@ -1362,16 +1361,15 @@ bsd_statfs_to_svr4_statvfs(bfs, sfs)
 		sfs->f_flag |= SVR4_ST_RDONLY;
 	if (bfs->f_flags & MNT_NOSUID)
 		sfs->f_flag |= SVR4_ST_NOSUID;
-	sfs->f_namemax = MAXNAMLEN;
+	sfs->f_namemax = namelen;
 	memcpy(sfs->f_fstr, bfs->f_fstypename, sizeof(sfs->f_fstr)); /* XXX */
 	memset(sfs->f_filler, 0, sizeof(sfs->f_filler));
 }
 
 
 static void
-bsd_statfs_to_svr4_statvfs64(bfs, sfs)
-	const struct statfs *bfs;
-	struct svr4_statvfs64 *sfs;
+bsd_statfs_to_svr4_statvfs64(const struct statfs *bfs,
+    struct svr4_statvfs64 *sfs, int namelen)
 {
 	sfs->f_bsize = bfs->f_iosize; /* XXX */
 	sfs->f_frsize = bfs->f_bsize;
@@ -1388,7 +1386,7 @@ bsd_statfs_to_svr4_statvfs64(bfs, sfs)
 		sfs->f_flag |= SVR4_ST_RDONLY;
 	if (bfs->f_flags & MNT_NOSUID)
 		sfs->f_flag |= SVR4_ST_NOSUID;
-	sfs->f_namemax = MAXNAMLEN;
+	sfs->f_namemax = namelen;
 	memcpy(sfs->f_fstr, bfs->f_fstypename, sizeof(sfs->f_fstr)); /* XXX */
 	memset(sfs->f_filler, 0, sizeof(sfs->f_filler));
 }
@@ -1400,14 +1398,20 @@ svr4_sys_statvfs(struct svr4_sys_statvfs_args *uap)
 	struct nlookupdata nd;
 	struct svr4_statvfs sfs;
 	struct statfs bfs;
-	int error;
+	int error, namelen;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_statfs(&nd, &bfs);
+	if (error == 0) {
+		if (nd.nl_ncp->nc_vp != NULL)
+			error = vn_get_namelen(nd.nl_ncp->nc_vp, &namelen);
+		else
+			error = EINVAL;
+	}
 	nlookup_done(&nd);
 	if (error == 0) {
-		bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
+		bsd_statfs_to_svr4_statvfs(&bfs, &sfs, namelen);
 		error = copyout(&sfs, uap->fs, sizeof(*uap->fs));
 	}
 
@@ -1420,12 +1424,18 @@ svr4_sys_fstatvfs(struct svr4_sys_fstatvfs_args *uap)
 {
 	struct svr4_statvfs sfs;
 	struct statfs bfs;
-	int error;
+	struct proc *p = curthread->td_proc;
+	struct file *fp;
+	int error, namelen;
 
 	error = kern_fstatfs(uap->fd, &bfs);
 
+	if (error == 0)
+		error = getvnode(p->p_fd, uap->fd, &fp);
+	if (error == 0)
+		error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
 	if (error == 0) {
-		bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
+		bsd_statfs_to_svr4_statvfs(&bfs, &sfs, namelen);
 		error = copyout(&bfs, uap->fs, sizeof(*uap->fs));
 	}
 
@@ -1439,14 +1449,20 @@ svr4_sys_statvfs64(struct svr4_sys_statvfs64_args *uap)
 	struct nlookupdata nd;
 	struct svr4_statvfs64 sfs;
 	struct statfs bfs;
-	int error;
+	int error, namelen;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_statfs(&nd, &bfs);
+	if (error == 0) {
+		if (nd.nl_ncp->nc_vp != NULL)
+			error = vn_get_namelen(nd.nl_ncp->nc_vp, &namelen);
+		else
+			error = EINVAL;
+	}
 	nlookup_done(&nd);
 	if (error == 0) {
-		bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
+		bsd_statfs_to_svr4_statvfs64(&bfs, &sfs, namelen);
 		error = copyout(&sfs, uap->fs, sizeof(*uap->fs));
 	}
 
@@ -1459,12 +1475,18 @@ svr4_sys_fstatvfs64(struct svr4_sys_fstatvfs64_args *uap)
 {
 	struct svr4_statvfs64 sfs;
 	struct statfs bfs;
-	int error;
+	struct proc *p = curthread->td_proc;
+	struct file *fp;
+	int error, namelen;
 
 	error = kern_fstatfs(uap->fd, &bfs);
 
+	if (error == 0)
+		error = getvnode(p->p_fd, uap->fd, &fp);
+	if (error == 0)
+		error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
 	if (error == 0) {
-		bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
+		bsd_statfs_to_svr4_statvfs64(&bfs, &sfs, namelen);
 		error = copyout(&bfs, uap->fs, sizeof(*uap->fs));
 	}
 
