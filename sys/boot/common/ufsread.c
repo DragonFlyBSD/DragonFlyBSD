@@ -22,7 +22,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/common/ufsread.c,v 1.12 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/ufsread.c,v 1.2 2005/08/09 19:19:08 joerg Exp $
+ * $DragonFly: src/sys/boot/common/ufsread.c,v 1.3 2005/08/09 23:10:11 dillon Exp $
  */
 
 #include <vfs/ufs/dir.h>
@@ -84,7 +84,7 @@ fsfind(const char *name, ino_t * ino)
 			if (ls)
 				printf("%s ", d->d_name);
 			else if (!strcmp(name, d->d_name)) {
-				*ino = d->d_fileno;
+				*ino = d->d_ino;
 				return d->d_type;
 			}
 			s += d->d_reclen;
