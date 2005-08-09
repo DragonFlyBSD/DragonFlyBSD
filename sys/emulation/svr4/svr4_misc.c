@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.26 2004/11/12 00:09:22 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.27 2005/08/09 18:26:27 joerg Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/dirent.h>
+#include <sys/kern_syscall.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/nlookup.h>
@@ -50,6 +51,7 @@
 #include <sys/kernel.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
+#include <sys/nlookup.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
@@ -1395,110 +1397,78 @@ bsd_statfs_to_svr4_statvfs64(bfs, sfs)
 int
 svr4_sys_statvfs(struct svr4_sys_statvfs_args *uap)
 {
-	struct statfs_args	fs_args;
-	caddr_t sg = stackgap_init();
-	struct statfs *fs = stackgap_alloc(&sg, sizeof(struct statfs));
-	struct statfs bfs;
+	struct nlookupdata nd;
 	struct svr4_statvfs sfs;
+	struct statfs bfs;
 	int error;
 
-	CHECKALTEXIST(&sg, SCARG(uap, path));
-	SCARG(&fs_args, path) = SCARG(uap, path);
-	SCARG(&fs_args, buf) = fs;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_statfs(&nd, &bfs);
+	nlookup_done(&nd);
+	if (error == 0) {
+		bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
+		error = copyout(&sfs, uap->fs, sizeof(*uap->fs));
+	}
 
-	if ((error = statfs(&fs_args)) != 0)
-		return error;
-
-	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
-		return error;
-
-	uap->sysmsg_result = fs_args.sysmsg_result;
-
-	bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
-
-	return copyout(&sfs, SCARG(uap, fs), sizeof(sfs));
+	return (error);
 }
 
 
 int
 svr4_sys_fstatvfs(struct svr4_sys_fstatvfs_args *uap)
 {
-	struct fstatfs_args	fs_args;
-	caddr_t sg = stackgap_init();
-	struct statfs *fs = stackgap_alloc(&sg, sizeof(struct statfs));
-	struct statfs bfs;
 	struct svr4_statvfs sfs;
+	struct statfs bfs;
 	int error;
 
-	SCARG(&fs_args, fd) = SCARG(uap, fd);
-	SCARG(&fs_args, buf) = fs;
+	error = kern_fstatfs(uap->fd, &bfs);
 
-	if ((error = fstatfs(&fs_args)) != 0)
-		return error;
+	if (error == 0) {
+		bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
+		error = copyout(&bfs, uap->fs, sizeof(*uap->fs));
+	}
 
-	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
-		return error;
-
-	uap->sysmsg_result = fs_args.sysmsg_result;
-
-	bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
-
-	return copyout(&sfs, SCARG(uap, fs), sizeof(sfs));
+	return (error);
 }
 
 
 int
 svr4_sys_statvfs64(struct svr4_sys_statvfs64_args *uap)
 {
-	struct statfs_args	fs_args;
-	caddr_t sg = stackgap_init();
-	struct statfs *fs = stackgap_alloc(&sg, sizeof(struct statfs));
-	struct statfs bfs;
+	struct nlookupdata nd;
 	struct svr4_statvfs64 sfs;
+	struct statfs bfs;
 	int error;
 
-	CHECKALTEXIST(&sg, SCARG(uap, path));
-	SCARG(&fs_args, path) = SCARG(uap, path);
-	SCARG(&fs_args, buf) = fs;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_statfs(&nd, &bfs);
+	nlookup_done(&nd);
+	if (error == 0) {
+		bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
+		error = copyout(&sfs, uap->fs, sizeof(*uap->fs));
+	}
 
-	if ((error = statfs(&fs_args)) != 0)
-		return error;
-
-	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
-		return error;
-
-	uap->sysmsg_result = fs_args.sysmsg_result;
-
-	bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
-
-	return copyout(&sfs, SCARG(uap, fs), sizeof(sfs));
+	return (error);
 }
 
 
 int
 svr4_sys_fstatvfs64(struct svr4_sys_fstatvfs64_args *uap)
 {
-	struct fstatfs_args	fs_args;
-	caddr_t sg = stackgap_init();
-	struct statfs *fs = stackgap_alloc(&sg, sizeof(struct statfs));
-	struct statfs bfs;
 	struct svr4_statvfs64 sfs;
+	struct statfs bfs;
 	int error;
 
-	SCARG(&fs_args, fd) = SCARG(uap, fd);
-	SCARG(&fs_args, buf) = fs;
+	error = kern_fstatfs(uap->fd, &bfs);
 
-	if ((error = fstatfs(&fs_args)) != 0)
-		return error;
+	if (error == 0) {
+		bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
+		error = copyout(&bfs, uap->fs, sizeof(*uap->fs));
+	}
 
-	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
-		return error;
-
-	uap->sysmsg_result = fs_args.sysmsg_result;
-
-	bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
-
-	return copyout(&sfs, SCARG(uap, fs), sizeof(sfs));
+	return (error);
 }
 
 int
