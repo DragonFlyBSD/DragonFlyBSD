@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.57 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.58 2005/08/09 16:53:34 joerg Exp $
  */
 
 /*
@@ -64,6 +64,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/unistd.h>
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 
@@ -1996,3 +1997,15 @@ assert_vop_unlocked(struct vnode *vp, const char *str)
 }
 
 #endif
+
+int
+vn_get_namelen(struct vnode *vp, int *namelen)
+{
+	int error, retval[2];
+
+	error = VOP_PATHCONF(vp, _PC_NAME_MAX, retval);
+	if (error)
+		return (error);
+	*namelen = *retval;
+	return (0);
+}

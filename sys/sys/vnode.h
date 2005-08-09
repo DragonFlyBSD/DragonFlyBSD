@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.36 2005/07/27 15:56:18 joerg Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.37 2005/08/09 16:53:34 joerg Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -630,6 +630,7 @@ int	debug_vn_lock (struct vnode *vp, int flags, struct thread *td,
 #define vn_lock(vp,flags,p) debug_vn_lock(vp,flags,p,__FILE__,__LINE__)
 #endif
 
+int	vn_get_namelen(struct vnode *, int *);
 void	vn_setspecops (struct file *fp);
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf);
 int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
