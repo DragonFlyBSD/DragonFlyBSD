@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.18 2005/08/08 16:53:12 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.19 2005/08/09 05:11:42 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -86,10 +86,10 @@ extern struct bio_ops {
 	void	(*io_start) (struct buf *);
 	void	(*io_complete) (struct buf *);
 	void	(*io_deallocate) (struct buf *);
-	int	(*io_fsync) (struct vnode *);
-	int	(*io_sync) (struct mount *);
+	int 	(*io_fsync) (struct vnode *);
+	int 	(*io_sync) (struct mount *);
 	void	(*io_movedeps) (struct buf *, struct buf *);
-	int	(*io_countdeps) (struct buf *, int);
+	int 	(*io_countdeps) (struct buf *, int);
 } bioops;
 
 struct iodone_chain {
@@ -99,7 +99,7 @@ struct iodone_chain {
 	struct {
 		long	ia_long;
 		void	*ia_ptr;
-	}	ic_args[5];
+	} ic_args[5];
 };
 
 /*
@@ -226,7 +226,7 @@ struct buf {
 #define	B_DIRECT	0x00000008	/* direct I/O flag (pls free vmio) */
 #define	B_DEFERRED	0x00000010	/* Skipped over for cleaning */
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
-#define	B_UNUSED40  0x00000040 	/* Unused */
+#define	B_UNUSED40 	0x00000040 	/* Unused */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
 #define	B_FREEBUF	0x00000100	/* Instruct driver: free blocks */
 #define	B_DONE		0x00000200	/* I/O completed. */
