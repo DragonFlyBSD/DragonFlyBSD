@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.4 2005/07/06 05:59:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.5 2005/08/09 02:49:49 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -98,7 +98,7 @@ read_check(struct file *fp, void *buf, size_t nbyte)
 	size_t nread;
 	int error;
 
-        PRINTF(("reading %d bytes\n", nbyte));
+	PRINTF(("reading %d bytes\n", nbyte));
 	error = fp_read(fp, buf, nbyte, &nread, 1);
 	if (error) {
                 PRINTF(("read failed - %d", error));
@@ -421,7 +421,8 @@ mmap_phdr(struct file *fp, Elf_Phdr *phdr)
 	if ((error = fp_mmap(addr, len, prot, flags, fp, pos, &addr)) != 0) {
 		PRINTF(("mmap failed: %d\n", error);	   );
 	}
-	PRINTF(("map @%08x-%08x fileoff %08x-%08x\n", (int)addr, (int)((char *)addr + len), (int)pos, (int)(pos + len)));
+	PRINTF(("map @%08x-%08x fileoff %08x-%08x\n", (int)addr,
+		   (int)((char *)addr + len), (int)pos, (int)(pos + len)));
 	TRACE_EXIT;
 	return error;
 }
