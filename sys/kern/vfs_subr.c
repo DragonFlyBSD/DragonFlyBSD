@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.58 2005/08/09 16:53:34 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.59 2005/08/09 19:26:59 joerg Exp $
  */
 
 /*
@@ -1705,10 +1705,15 @@ vfs_setpublicfs(struct mount *mp, struct netexport *nep,
 	 * If an indexfile was specified, pull it in.
 	 */
 	if (argp->ex_indexfile != NULL) {
-		MALLOC(nfs_pub.np_index, char *, MAXNAMLEN + 1, M_TEMP,
+		int namelen;
+
+		error = vn_get_namelen(rvp, &namelen);
+		if (error)
+			return (error);
+		MALLOC(nfs_pub.np_index, char *, namelen, M_TEMP,
 		    M_WAITOK);
 		error = copyinstr(argp->ex_indexfile, nfs_pub.np_index,
-		    MAXNAMLEN, (size_t *)0);
+		    namelen, (size_t *)0);
 		if (!error) {
 			/*
 			 * Check for illegal filenames.
