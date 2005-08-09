@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.94 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.95 2005/08/09 23:34:07 okumoto Exp $
  */
 
 /*-
@@ -1063,7 +1063,7 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 			Path_Clear(Lst_Datum(ln));
 			break;
 		  case Posix:
-			Var_Set("%POSIX", "1003.2", VAR_GLOBAL);
+			Var_SetGlobal("%POSIX", "1003.2");
 			break;
 		  default:
 			break;

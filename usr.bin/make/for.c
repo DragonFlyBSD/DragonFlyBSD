@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.44 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.45 2005/08/09 23:34:07 okumoto Exp $
  */
 
 /*-
@@ -266,7 +266,7 @@ For_Run(int lineno)
 
 	LST_FOREACH(ln, &values) {
 		val = Lst_Datum(ln);
-		Var_Set(var, val, VAR_GLOBAL);
+		Var_SetGlobal(var, val);
 
 		DEBUGF(FOR, ("--- %s = %s\n", var, val));
 		str = Buf_Peel(Var_SubstOnly(var, Buf_Data(buf), false));

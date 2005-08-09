@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.64 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.65 2005/08/09 23:34:07 okumoto Exp $
  */
 
 /*-
@@ -790,11 +790,11 @@ Suff_DoPaths(void)
 	}
 
 	ptr = Path_MakeFlags("-I", &inIncludes);
-	Var_Set(".INCLUDES", ptr, VAR_GLOBAL);
+	Var_SetGlobal(".INCLUDES", ptr);
 	free(ptr);
 
 	ptr = Path_MakeFlags("-L", &inLibs);
-	Var_Set(".LIBS", ptr, VAR_GLOBAL);
+	Var_SetGlobal(".LIBS", ptr);
 	free(ptr);
 
 	Path_Clear(&inIncludes);
