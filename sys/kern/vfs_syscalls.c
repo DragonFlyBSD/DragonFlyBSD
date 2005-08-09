@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.66 2005/08/03 04:59:53 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.67 2005/08/09 20:14:16 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -2799,7 +2799,8 @@ rmdir(struct rmdir_args *uap)
 }
 
 int
-kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res)
+kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
+    enum uio_seg direction)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -2823,7 +2824,7 @@ unionread:
 	auio.uio_iov = &aiov;
 	auio.uio_iovcnt = 1;
 	auio.uio_rw = UIO_READ;
-	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_segflg = direction;
 	auio.uio_td = td;
 	auio.uio_resid = count;
 	/* vn_lock(vp, LK_SHARED | LK_RETRY, td); */
@@ -2872,7 +2873,7 @@ getdirentries(struct getdirentries_args *uap)
 	int error;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, &base,
-	    &uap->sysmsg_result);
+	    &uap->sysmsg_result, UIO_USERSPACE);
 
 	if (error == 0)
 		error = copyout(&base, uap->basep, sizeof(*uap->basep));
@@ -2888,7 +2889,7 @@ getdents(struct getdents_args *uap)
 	int error;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, NULL,
-	    &uap->sysmsg_result);
+	    &uap->sysmsg_result, UIO_USERSPACE);
 
 	return (error);
 }

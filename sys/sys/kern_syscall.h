@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.27 2005/04/08 08:31:06 joerg Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.28 2005/08/09 20:14:16 joerg Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -34,6 +34,8 @@
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
 #endif
+
+#include <sys/uio.h>
 
 enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;
@@ -130,7 +132,8 @@ int kern_chroot(struct namecache *ncp);
 int kern_fstatfs(int fd, struct statfs *buf);
 int kern_ftruncate(int fd, off_t length);
 int kern_futimes(int fd, struct timeval *tptr);
-int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res);
+int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
+		       enum uio_seg);
 int kern_link(struct nlookupdata *nd, struct nlookupdata *linknd);
 int kern_lseek(int fd, off_t offset, int whence, off_t *res);
 int kern_mountctl(const char *path, int op, struct file *fp,
