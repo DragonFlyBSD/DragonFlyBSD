@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.16 2004/11/12 00:09:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.17 2005/08/10 16:58:54 joerg Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -142,12 +142,11 @@ ext2_readdir(struct vop_readdir_args *ap)
 
 	struct ext2_dir_entry_2 *edp, *dp;
 	int ncookies;
-	struct dirent dstdp;
 	struct uio auio;
 	struct iovec aiov;
 	caddr_t dirbuf;
 	int DIRBLKSIZ = VTOI(ap->a_vp)->i_e2fs->s_blocksize;
-	int readcnt;
+	int readcnt, retval;
 	off_t startoffset = uio->uio_offset;
 
 	count = uio->uio_resid;
@@ -181,7 +180,6 @@ ext2_readdir(struct vop_readdir_args *ap)
 		readcnt = count - auio.uio_resid;
 		edp = (struct ext2_dir_entry_2 *)&dirbuf[readcnt];
 		ncookies = 0;
-		bzero(&dstdp, offsetof(struct dirent, d_name));
 		for (dp = (struct ext2_dir_entry_2 *)dirbuf; 
 		    !error && uio->uio_resid > 0 && dp < edp; ) {
 			/*-
@@ -200,31 +198,19 @@ ext2_readdir(struct vop_readdir_args *ap)
 			 * because ext2fs uses a machine-dependent disk
 			 * layout.
 			 */
-			dstdp.d_fileno = dp->inode;
-			dstdp.d_type = FTTODT(dp->file_type);
-			dstdp.d_namlen = dp->name_len;
-			dstdp.d_reclen = GENERIC_DIRSIZ(&dstdp);
-			bcopy(dp->name, dstdp.d_name, dstdp.d_namlen);
-			bzero(dstdp.d_name + dstdp.d_namlen,
-			    dstdp.d_reclen - offsetof(struct dirent, d_name) -
-			    dstdp.d_namlen);
-
-			if (dp->rec_len > 0) {
-				if(dstdp.d_reclen <= uio->uio_resid) {
-					/* advance dp */
-					dp = (struct ext2_dir_entry_2 *)
-					    ((char *)dp + dp->rec_len); 
-					error = 
-					  uiomove((caddr_t)&dstdp,
-						  dstdp.d_reclen, uio);
-					if (!error)
-						ncookies++;
-				} else
-					break;
-			} else {
+			if (dp->rec_len <= 0) {
 				error = EIO;
 				break;
 			}
+			retval = vop_write_dirent(&error, uio, dp->inode,
+			    FTTODT(dp->file_type), dp->name_len, dp->name);
+
+			if (retval)
+				break;
+			/* advance dp */
+			dp = (struct ext2_dir_entry_2 *)((char *)dp + dp->rec_len); 
+			if (!error)
+				ncookies++;
 		}
 		/* we need to correct uio_offset */
 		uio->uio_offset = startoffset + (caddr_t)dp - dirbuf;
