@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.140 2005/08/08 20:52:45 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.141 2005/08/10 16:50:36 swildner Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1357,7 +1357,7 @@ JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 		return (true);		/* this node has no commands */
 	}
 
-	if ((gn->type & OP_LIB) == 0) {
+	if (gn->type & OP_LIB) {
 		return (true);
 	}
 
