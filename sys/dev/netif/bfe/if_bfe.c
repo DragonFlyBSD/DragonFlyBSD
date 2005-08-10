@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.19 2005/08/10 13:31:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.20 2005/08/10 13:36:14 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -859,6 +859,7 @@ static void
 bfe_set_rx_mode(struct bfe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+ 	struct ifmultiaddr  *ifma;
 	uint32_t val;
 	int i = 0;
 
@@ -877,6 +878,18 @@ bfe_set_rx_mode(struct bfe_softc *sc)
 
 	CSR_WRITE_4(sc, BFE_CAM_CTRL, 0);
 	bfe_cam_write(sc, sc->arpcom.ac_enaddr, i++);
+
+ 	if (ifp->if_flags & IFF_ALLMULTI) {
+ 		val |= BFE_RXCONF_ALLMULTI;
+ 	} else {
+ 		val &= ~BFE_RXCONF_ALLMULTI;
+		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+ 			if (ifma->ifma_addr->sa_family != AF_LINK)
+ 				continue;
+ 			bfe_cam_write(sc,
+ 			    LLADDR((struct sockaddr_dl *)ifma->ifma_addr), i++);
+ 		}
+ 	}
 
 	CSR_WRITE_4(sc, BFE_RXCONF, val);
 	BFE_OR(sc, BFE_CAM_CTRL, BFE_CAM_ENABLE);
