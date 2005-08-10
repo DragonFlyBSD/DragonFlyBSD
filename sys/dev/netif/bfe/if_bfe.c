@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.20 2005/08/10 13:36:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.21 2005/08/10 13:38:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -749,7 +749,12 @@ bfe_chip_reset(struct bfe_softc *sc)
 		DELAY(100);
 	}
 
-	BFE_OR(sc, BFE_MAC_CTRL, BFE_CTRL_CRC32_ENAB);
+	/* Enable CRC32 generation and set proper LED modes */
+	BFE_OR(sc, BFE_MAC_CTRL, BFE_CTRL_CRC32_ENAB | BFE_CTRL_LED);
+
+	/* Reset or clear powerdown control bit  */
+	BFE_AND(sc, BFE_MAC_CTRL, ~BFE_CTRL_PDOWN);
+
 	CSR_WRITE_4(sc, BFE_RCV_LAZY, ((1 << BFE_LAZY_FC_SHIFT) & 
 				BFE_LAZY_FC_MASK));
 
@@ -851,7 +856,7 @@ bfe_cam_write(struct bfe_softc *sc, u_char *data, int index)
 			(((uint32_t) data[1])));
 	CSR_WRITE_4(sc, BFE_CAM_DATA_HI, val);
 	CSR_WRITE_4(sc, BFE_CAM_CTRL, (BFE_CAM_WRITE |
-		    (index << BFE_CAM_INDEX_SHIFT)));
+		    ((uint32_t)index << BFE_CAM_INDEX_SHIFT)));
 	bfe_wait_bit(sc, BFE_CAM_CTRL, BFE_CAM_BUSY, 10000, 1);
 }
 
