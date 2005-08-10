@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.8 2005/08/02 00:44:39 joerg Exp $ */
+/*	$DragonFly: src/include/wchar.h,v 1.9 2005/08/10 13:42:28 joerg Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -133,6 +133,8 @@ int	wcscmp(const wchar_t *, const wchar_t *);
 int	wcscoll(const wchar_t *, const wchar_t *);
 wchar_t	*wcscpy(wchar_t * __restrict, const wchar_t * __restrict);
 size_t	wcscspn(const wchar_t *, const wchar_t *);
+size_t	wcsftime(wchar_t * __restrict, size_t, const wchar_t * __restrict,
+		 const struct tm * __restrict);
 size_t	wcslen(const wchar_t *);
 wchar_t	*wcsncat(wchar_t * __restrict, const wchar_t * __restrict, size_t);
 int	wcsncmp(const wchar_t *, const wchar_t *, size_t);
