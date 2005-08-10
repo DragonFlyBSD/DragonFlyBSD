@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.29 2005/08/07 19:16:15 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.30 2005/08/10 16:46:17 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -1629,11 +1629,10 @@ ufs_readdir(struct vop_readdir_args *ap)
 
 	struct direct *edp, *dp;
 	int ncookies;
-	struct dirent dstdp;
 	struct uio auio;
 	struct iovec aiov;
 	caddr_t dirbuf;
-	int readcnt;
+	int readcnt, retval;
 	off_t startoffset = uio->uio_offset;
 
 	count = uio->uio_resid;
@@ -1662,42 +1661,31 @@ ufs_readdir(struct vop_readdir_args *ap)
 		readcnt = count - auio.uio_resid;
 		edp = (struct direct *)&dirbuf[readcnt];
 		ncookies = 0;
-		bzero(&dstdp, offsetof(struct dirent, d_name));
 		for (dp = (struct direct *)dirbuf; 
 		    !error && uio->uio_resid > 0 && dp < edp; ) {
-			dstdp.d_fileno = dp->d_ino;
-#if BYTE_ORDER == LITTLE_ENDIAN
-			if (OFSFMT(ap->a_vp)) {
-				dstdp.d_namlen = dp->d_type;
-				dstdp.d_type = dp->d_namlen;
-			} else
-#endif
-			{
-				dstdp.d_namlen = dp->d_namlen;
-				dstdp.d_type = dp->d_type;
-			}
-			dstdp.d_reclen = GENERIC_DIRSIZ(&dstdp);
-			bcopy(dp->d_name, dstdp.d_name, dstdp.d_namlen);
-			bzero(dstdp.d_name + dstdp.d_namlen,
-			    dstdp.d_reclen - offsetof(struct dirent, d_name) -
-			    dstdp.d_namlen);
-
-			if (dp->d_reclen > 0) {
-				if(dstdp.d_reclen <= uio->uio_resid) {
-					/* advance dp */
-					dp = (struct direct *)
-					    ((char *)dp + dp->d_reclen); 
-					error = 
-					  uiomove((caddr_t)&dstdp,
-						  dstdp.d_reclen, uio);
-					if (!error)
-						ncookies++;
-				} else
-					break;
-			} else {
+			if (dp->d_reclen <= 0) {
 				error = EIO;
 				break;
 			}
+#if BYTE_ORDER == LITTLE_ENDIAN
+			if (OFSFMT(ap->a_vp)) {
+				retval = vop_write_dirent(&error, uio,
+				    dp->d_ino, dp->d_namlen, dp->d_type,
+				    dp->d_name);
+			} else
+#endif
+			{
+				retval = vop_write_dirent(&error, uio,
+				    dp->d_ino, dp->d_type, dp->d_namlen,
+				    dp->d_name);
+			}
+
+			if (retval)
+				break;
+			/* advance dp */
+			dp = (struct direct *)((char *)dp + dp->d_reclen); 
+			if (!error)
+				ncookies++;
 		}
 		/* we need to correct uio_offset */
 		uio->uio_offset = startoffset + (caddr_t)dp - dirbuf;
