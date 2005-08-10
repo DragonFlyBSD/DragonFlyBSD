@@ -11,7 +11,7 @@
  * ====================================================
  *
  * $NetBSD: math.h,v 1.40 2005/02/03 04:39:32 perry Exp $
- * $DragonFly: src/include/math.h,v 1.5 2005/07/26 21:15:19 joerg Exp $
+ * $DragonFly: src/include/math.h,v 1.6 2005/08/10 13:40:54 joerg Exp $
  */
 
 /*
@@ -22,6 +22,14 @@
 #define _MATH_H_
 
 #include <sys/cdefs.h>
+
+#if __GNUC_PREREQ__(3, 3) || (defined(__INTEL_COMPILER) && __INTEL_COMPILER >= 800)
+#define	__MATH_BUILTIN_CONSTANTS
+#endif
+
+#if __GNUC_PREREQ__(3, 0) && !defined(__INTEL_COMPILER)
+#define	__MATH_BUILTIN_RELOPS
+#endif
 
 union __float_u {
 	unsigned char __dummy[sizeof(float)];
@@ -61,7 +69,11 @@ union __long_double_u {
  */
 /* 7.12#3 HUGE_VAL, HUGELF, HUGE_VALL */
 extern __const union __double_u __infinity;
-#define HUGE_VAL	__infinity.__val
+#ifdef __MATH_BUILTIN_CONSTANTS
+#define	HUGE_VAL	__builtin_huge_val()
+#else
+#define	HUGE_VAL	__infinity.__val
+#endif
 
 /*
  * ISO C99
@@ -69,20 +81,28 @@ extern __const union __double_u __infinity;
 #if __ISO_C_VISIBLE >= 1999
 /* 7.12#3 HUGE_VAL, HUGELF, HUGE_VALL */
 extern __const union __float_u __infinityf;
+#ifdef __MATH_BUILTIN_CONSTANTS
+#define	HUGE_VALF	__builtin_huge_valf()
+#else
 #define	HUGE_VALF	__infinityf.__val
+#endif
 
 extern __const union __long_double_u __infinityl;
 #define	HUGE_VALL	__infinityl.__val
 
 /* 7.12#4 INFINITY */
-#ifdef __INFINITY
+#ifdef __MATH_BUILTIN_CONSTANTS
+#define	INFINITE	__builtin_inf()
+#elif defined(__INFINITY)
 #define	INFINITY	__INFINITY	/* float constant which overflows */
 #else
 #define	INFINITY	HUGE_VALF	/* positive infinity */
 #endif /* __INFINITY */
 
 /* 7.12#5 NAN: a quiet NaN, if supported */
-#ifdef __HAVE_NANF
+#ifdef __MATH_BUILTIN_CONSTANTS
+#define	NAN		__builtin_nan("")
+#elif defined(__HAVE_NANF)
 extern __const union __float_u __nanf;
 #define	NAN		__nanf.__val
 #endif /* __HAVE_NANF */
@@ -310,6 +330,25 @@ float	nextafterf(float, float);
 #else
 #define	isnan(__x)	__fpmacro_unary_floating(isnan, __x)
 #endif
+
+/* 7.12.14 Comparision macros */
+#ifdef __MATH_BUILTIN_RELOPS
+#define	isgreater(x, y)		__builtin_isgreater((x), (y))
+#define	isgreaterequal(x, y)	__builtin_isgreaterequal((x), (y))
+#define	isless(x, y)		__builtin_isless((x), (y))
+#define	islessequal(x, y)	__builtin_islessequal((x), (y))
+#define	islessgreater(x, y)	__builtin_islessgreater((x), (y))
+#define	isunordered(x, y)	__builtin_isunordered((x), (y))
+#else
+#define	isgreater(x, y)		(!isunordered((x), (y)) && (x) > (y))
+#define	isgreaterequal(x, y)	(!isunordered((x), (y)) && (x) >= (y))
+#define	isless(x, y)		(!isunordered((x), (y)) && (x) < (y))
+#define	islessequal(x, y)	(!isunordered((x), (y)) && (x) <= (y))
+#define	islessgreater(x, y)	(!isunordered((x), (y)) && \
+					((x) > (y) || (y) > (x)))
+#define	isunordered(x, y)	(isnan(x) || isnan(y))
+#endif /* __MATH_BUILTIN_RELOPS */
+
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
 #if __DF_VISIBLE
