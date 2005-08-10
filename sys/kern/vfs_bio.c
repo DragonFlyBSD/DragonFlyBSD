@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.47 2005/08/08 16:53:11 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.48 2005/08/10 01:11:19 hmp Exp $
  */
 
 /*
@@ -123,11 +123,11 @@ static int getnewbufrestarts;
 SYSCTL_INT(_vfs, OID_AUTO, lodirtybuffers, CTLFLAG_RW, &lodirtybuffers, 0,
 	"Number of dirty buffers to flush before bufdaemon becomes inactive");
 SYSCTL_INT(_vfs, OID_AUTO, hidirtybuffers, CTLFLAG_RW, &hidirtybuffers, 0,
-	"High water mark used to trigger explicit flushing of dirty buffers");
+	"High watermark used to trigger explicit flushing of dirty buffers");
 SYSCTL_INT(_vfs, OID_AUTO, lofreebuffers, CTLFLAG_RW, &lofreebuffers, 0,
-	"Low watermark for calculating special reserve in low-memory situations");
+	"Low watermark for special reserve in low-memory situations");
 SYSCTL_INT(_vfs, OID_AUTO, hifreebuffers, CTLFLAG_RW, &hifreebuffers, 0,
-	"High watermark for calculating special reserve in low-memory situations");
+	"High watermark for special reserve in low-memory situations");
 SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
 SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
@@ -142,7 +142,7 @@ SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffers, CTLFLAG_RD, &numdirtybuffers, 0,
 SYSCTL_INT(_vfs, OID_AUTO, numfreebuffers, CTLFLAG_RD, &numfreebuffers, 0,
 	"Number of free buffers on the buffer cache free list");
 SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
-	"Amount of I/O bytes currently in progress due to asynchronous writes");
+	"I/O bytes currently in progress due to asynchronous writes");
 SYSCTL_INT(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
 	"Hard limit on maximum amount of memory usable for buffer space");
 SYSCTL_INT(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD, &hibufspace, 0,
@@ -152,7 +152,7 @@ SYSCTL_INT(_vfs, OID_AUTO, lobufspace, CTLFLAG_RD, &lobufspace, 0,
 SYSCTL_INT(_vfs, OID_AUTO, bufspace, CTLFLAG_RD, &bufspace, 0,
 	"Amount of memory available for buffers");
 SYSCTL_INT(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RD, &maxbufmallocspace,
-	0, "Maximum amount of memory reserved for buffers using malloc-scheme");
+	0, "Maximum amount of memory reserved for buffers using malloc");
 SYSCTL_INT(_vfs, OID_AUTO, bufmallocspace, CTLFLAG_RD, &bufmallocspace, 0,
 	"Amount of memory left for buffers using malloc-scheme");
 SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
@@ -160,7 +160,7 @@ SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
 SYSCTL_INT(_vfs, OID_AUTO, getnewbufrestarts, CTLFLAG_RD, &getnewbufrestarts,
 	0, "New buffer header acquisition restarts");
 SYSCTL_INT(_vfs, OID_AUTO, bufdefragcnt, CTLFLAG_RD, &bufdefragcnt, 0,
-	"Amount of time buffer acquisition restarted due to fragmented buffer map");
+	"Buffer acquisition restarts due to fragmented buffer map");
 SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RD, &buffreekvacnt, 0,
 	"Amount of time KVA space was deallocated in an arbitrary buffer");
 SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RD, &bufreusecnt, 0,
