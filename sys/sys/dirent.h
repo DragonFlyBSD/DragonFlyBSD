@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.3 (Berkeley) 8/10/94
  * $FreeBSD: src/sys/sys/dirent.h,v 1.11 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/dirent.h,v 1.3 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/dirent.h,v 1.4 2005/08/10 17:08:49 joerg Exp $
  */
 
 #ifndef	_SYS_DIRENT_H_
@@ -96,6 +96,8 @@ struct dirent {
 
 #ifdef _KERNEL
 #define	GENERIC_DIRSIZ(dp)	_GENERIC_DIRSIZ(dp)
+#define	_DIRENT_NEXT(dp)	\
+    ((struct dirent *)((uint8_t *)(dp) + (dp)->d_reclen))
 #endif
 
 #endif /* !_SYS_DIRENT_H_ */
