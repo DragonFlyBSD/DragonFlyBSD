@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.20 2005/06/14 17:16:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.21 2005/08/10 17:53:58 hmp Exp $
  */
 
 /*
@@ -561,7 +561,9 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 static __inline void
 _vm_page_dirty(vm_page_t m, const char *info)
 {
+#ifdef INVARIANTS
 	int pqtype = m->queue - m->pc;
+#endif
 	KASSERT(pqtype != PQ_CACHE && pqtype != PQ_FREE,
 		("vm_page_dirty: page in free/cache queue!"));
 	m->dirty = VM_PAGE_BITS_ALL;
