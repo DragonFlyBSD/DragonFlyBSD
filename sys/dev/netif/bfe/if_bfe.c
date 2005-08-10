@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.21 2005/08/10 13:38:35 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.22 2005/08/10 15:08:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -395,7 +395,10 @@ bfe_attach(device_t dev)
 	ifp->if_watchdog = bfe_watchdog;
 	ifp->if_init = bfe_init;
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_baudrate = 10000000;
+	ifp->if_baudrate = 100000000;
+	ifp->if_capabilities |= IFCAP_VLAN_MTU;
+	ifp->if_capenable |= IFCAP_VLAN_MTU;
+	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 	ifq_set_maxlen(&ifp->if_snd, BFE_TX_QLEN);
 	ifq_set_ready(&ifp->if_snd);
 
