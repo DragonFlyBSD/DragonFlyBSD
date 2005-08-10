@@ -1672,6 +1672,8 @@ static bool cp_parser_declares_only_class_p
   (cp_parser *);
 static bool cp_parser_friend_p
   (tree);
+static bool cp_parser_typedef_p
+  (tree);
 static cp_token *cp_parser_require
   (cp_parser *, enum cpp_ttype, const char *);
 static cp_token *cp_parser_require_keyword
@@ -6523,6 +6525,13 @@ cp_parser_simple_declaration (cp_parser* parser,
       /* Give up.  */
       goto done;
     }
+  
+  /* If we have seen at least one decl-specifier, and the next token
+     is not a parenthesis, then we must be looking at a declaration.
+     (After "int (" we might be looking at a functional cast.)  */
+  if (decl_specifiers
+      && cp_lexer_next_token_is_not (parser->lexer, CPP_OPEN_PAREN))
+    cp_parser_commit_to_tentative_parse (parser);
 
   /* Keep going until we hit the `;' at the end of the simple
      declaration.  */
@@ -6576,7 +6585,12 @@ cp_parser_simple_declaration (cp_parser* parser,
       /* Anything else is an error.  */
       else
 	{
-	  cp_parser_error (parser, "expected `,' or `;'");
+	  /* If we have already issued an error message we don't need
+	     to issue another one.  */
+	  if (decl != error_mark_node
+	      || (cp_parser_parsing_tentatively (parser)
+		  && !cp_parser_committed_to_tentative_parse (parser)))
+	    cp_parser_error (parser, "expected `,' or `;'");
 	  /* Skip tokens until we reach the end of the statement.  */
 	  cp_parser_skip_to_end_of_statement (parser);
 	  /* If the next token is now a `;', consume it.  */
@@ -7802,9 +7816,15 @@ cp_parser_type_parameter (cp_parser* parser)
 	if (cp_lexer_next_token_is_not (parser->lexer, CPP_EQ)
 	    && cp_lexer_next_token_is_not (parser->lexer, CPP_GREATER)
 	    && cp_lexer_next_token_is_not (parser->lexer, CPP_COMMA))
-	  identifier = cp_parser_identifier (parser);
+	  {
+	    identifier = cp_parser_identifier (parser);
+	    /* Treat invalid names as if the parameter were nameless. */
+	    if (identifier == error_mark_node)
+	      identifier = NULL_TREE;
+	  }
 	else
 	  identifier = NULL_TREE;
+
 	/* Create the template parameter.  */
 	parameter = finish_template_template_parm (class_type_node,
 						   identifier);
@@ -7846,15 +7866,13 @@ cp_parser_type_parameter (cp_parser* parser)
 
 	/* Create the combined representation of the parameter and the
 	   default argument.  */
-	parameter =  build_tree_list (default_argument, parameter);
+	parameter = build_tree_list (default_argument, parameter);
       }
       break;
 
     default:
-      /* Anything else is an error.  */
-      cp_parser_error (parser,
-		       "expected `class', `typename', or `template'");
-      parameter = error_mark_node;
+      abort ();
+      break;
     }
   
   return parameter;
@@ -10069,7 +10087,7 @@ cp_parser_init_declarator (cp_parser* parser,
       && token->type != CPP_COMMA
       && token->type != CPP_SEMICOLON)
     {
-      cp_parser_error (parser, "expected init-declarator");
+      cp_parser_error (parser, "expected initializer");
       return error_mark_node;
     }
 
@@ -13639,7 +13657,10 @@ cp_parser_label_declaration (cp_parser* parser)
 
       /* Look for an identifier.  */
       identifier = cp_parser_identifier (parser);
-      /* Declare it as a lobel.  */
+      /* If we failed, stop.  */
+      if (identifier == error_mark_node)
+	break;
+      /* Declare it as a label.  */
       finish_label_decl (identifier);
       /* If the next token is a `;', stop.  */
       if (cp_lexer_next_token_is (parser->lexer, CPP_SEMICOLON))
@@ -14508,6 +14529,12 @@ cp_parser_single_declaration (cp_parser* parser,
   tree attributes;
   bool function_definition_p = false;
 
+  /* This function is only used when processing a template
+     declaration.  */
+  if (innermost_scope_kind () != sk_template_parms
+      && innermost_scope_kind () != sk_template_spec)
+    abort ();
+
   /* Defer access checks until we know what is being declared.  */
   push_deferring_access_checks (dk_deferred);
 
@@ -14520,6 +14547,14 @@ cp_parser_single_declaration (cp_parser* parser,
 				    &declares_class_or_enum);
   if (friend_p)
     *friend_p = cp_parser_friend_p (decl_specifiers);
+
+  /* There are no template typedefs.  */
+  if (cp_parser_typedef_p (decl_specifiers))
+    {
+      error ("template declaration of `typedef'");
+      decl = error_mark_node;
+    }
+
   /* Gather up the access checks that occurred the
      decl-specifier-seq.  */
   stop_deferring_access_checks ();
@@ -14536,8 +14571,6 @@ cp_parser_single_declaration (cp_parser* parser,
 	    decl = error_mark_node;
 	}
     }
-  else
-    decl = NULL_TREE;
   /* If it's not a template class, try for a template function.  If
      the next token is a `;', then this declaration does not declare
      anything.  But, if there were errors in the decl-specifiers, then
@@ -14563,7 +14596,8 @@ cp_parser_single_declaration (cp_parser* parser,
   parser->object_scope = NULL_TREE;
   /* Look for a trailing `;' after the declaration.  */
   if (!function_definition_p
-      && !cp_parser_require (parser, CPP_SEMICOLON, "`;'"))
+      && (decl == error_mark_node
+	  || !cp_parser_require (parser, CPP_SEMICOLON, "`;'")))
     cp_parser_skip_to_end_of_block_or_statement (parser);
 
   return decl;
@@ -14768,9 +14802,10 @@ cp_parser_late_parsing_for_member (cp_parser* parser, tree member_function)
       tokens = DECL_PENDING_INLINE_INFO (member_function);
       DECL_PENDING_INLINE_INFO (member_function) = NULL;
       DECL_PENDING_INLINE_P (member_function) = 0;
-      /* If this was an inline function in a local class, enter the scope
-	 of the containing function.  */
-      function_scope = decl_function_context (member_function);
+      
+      /* If this is a local class, enter the scope of the containing
+	 function.  */
+      function_scope = current_function_decl;
       if (function_scope)
 	push_function_context_to (function_scope);
       
@@ -14851,33 +14886,49 @@ cp_parser_late_parsing_default_args (cp_parser *parser, tree fn)
        parameters;
        parameters = TREE_CHAIN (parameters))
     {
-      if (!TREE_PURPOSE (parameters)
-	  || TREE_CODE (TREE_PURPOSE (parameters)) != DEFAULT_ARG)
+      tree default_arg = TREE_PURPOSE (parameters);
+      tree parsed_arg;
+
+      if (!default_arg)
+	continue;
+
+      if (TREE_CODE (default_arg) != DEFAULT_ARG)
+	/* This can happen for a friend declaration for a function
+	   already declared with default arguments.  */
 	continue;
   
-       /* Save away the current lexer.  */
+      /* Save away the current lexer.  */
       saved_lexer = parser->lexer;
-       /* Create a new one, using the tokens we have saved.  */
-      tokens =  DEFARG_TOKENS (TREE_PURPOSE (parameters));
+      /* Create a new one, using the tokens we have saved.  */
+      tokens =  DEFARG_TOKENS (default_arg);
       parser->lexer = cp_lexer_new_from_tokens (tokens);
 
-       /* Set the current source position to be the location of the
-     	  first token in the default argument.  */
+      /* Set the current source position to be the location of the
+         first token in the default argument.  */
       cp_lexer_peek_token (parser->lexer);
 
-       /* Local variable names (and the `this' keyword) may not appear
-     	  in a default argument.  */
+      /* Local variable names (and the `this' keyword) may not appear
+     	 in a default argument.  */
       saved_local_variables_forbidden_p = parser->local_variables_forbidden_p;
       parser->local_variables_forbidden_p = true;
-       /* Parse the assignment-expression.  */
+      
+      /* Parse the assignment-expression.  */
       if (DECL_FRIEND_CONTEXT (fn))
 	push_nested_class (DECL_FRIEND_CONTEXT (fn));
       else if (DECL_CLASS_SCOPE_P (fn))
 	push_nested_class (DECL_CONTEXT (fn));
-      TREE_PURPOSE (parameters) = cp_parser_assignment_expression (parser);
+      parsed_arg = cp_parser_assignment_expression (parser);
       if (DECL_FRIEND_CONTEXT (fn) || DECL_CLASS_SCOPE_P (fn))
 	pop_nested_class ();
-
+      
+      TREE_PURPOSE (parameters) = parsed_arg;
+      
+      /* Update any instantiations we've already created.  */
+      for (default_arg = TREE_CHAIN (default_arg);
+	   default_arg;
+	   default_arg = TREE_CHAIN (default_arg))
+	TREE_PURPOSE (TREE_PURPOSE (default_arg)) = parsed_arg;
+     
       /* If the token stream has not been completely used up, then
 	 there was extra junk after the end of the default
 	 argument.  */
@@ -15011,6 +15062,27 @@ cp_parser_friend_p (tree decl_specifiers)
 
   return false;
 }
+
+/* DECL_SPECIFIERS is the representation of a decl-specifier-seq.
+   Returns TRUE iff `typedef' appears among the DECL_SPECIFIERS.  */
+
+static bool
+cp_parser_typedef_p (tree decl_specifiers)
+{
+  while (decl_specifiers)
+    {
+      /* See if this decl-specifier is `typedef'.  */
+      if (TREE_CODE (TREE_VALUE (decl_specifiers)) == IDENTIFIER_NODE
+	  && C_RID_CODE (TREE_VALUE (decl_specifiers)) == RID_TYPEDEF)
+	return true;
+
+      /* Go on to the next decl-specifier.  */
+      decl_specifiers = TREE_CHAIN (decl_specifiers);
+    }
+
+  return false;
+}
+
 
 /* If the next token is of the indicated TYPE, consume it.  Otherwise,
    issue an error message indicating that TOKEN_DESC was expected.

@@ -76,6 +76,8 @@
 ./gcc/config/gnu.h
 ./gcc/config/gofast.h
 ./gcc/config/h8300
+./gcc/config/host-linux.c
+./gcc/config/host-solaris.c
 ./gcc/config/i370
 ./gcc/config/i386/beos-elf.h
 ./gcc/config/i386/crtdll.h
@@ -231,6 +233,8 @@
 ./gcc/config/vxworks.h
 ./gcc/config/windiss.h
 ./gcc/config/x-interix
+./gcc/config/x-linux
+./gcc/config/x-solaris
 ./gcc/config/xtensa
 ./gcc/configure
 ./gcc/configure.ac
@@ -324,6 +328,7 @@
 ./libf2c/libF77/configure
 ./libf2c/libF77/configure.in
 ./libf2c/libF77/dtime_.c
+./libf2c/libF77/etime_.c
 ./libf2c/libF77/f2ch.add
 ./libf2c/libF77/makefile.netlib
 ./libf2c/libI77/Makefile.in
