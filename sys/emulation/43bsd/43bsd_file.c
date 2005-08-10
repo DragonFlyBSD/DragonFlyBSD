@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.7 2004/11/12 00:09:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.8 2005/08/10 17:11:45 joerg Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -113,115 +113,77 @@ otruncate(struct otruncate_args *uap)
 	return (error);
 }
 
+#define	PADDED_SIZE(x)	\
+	((sizeof(struct odirent) + (x) + 1 + 3) & ~3)
+#define	MAX_NAMELEN	255
+
+struct odirent {
+	uint32_t	od_fileno;
+	uint16_t	od_reclen;
+	uint8_t		od_type;
+	uint8_t		od_namlen;
+	char		od_name[];
+};
+
 int
 ogetdirentries(struct ogetdirentries_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct vnode *vp;
-	struct file *fp;
-	struct uio auio, kuio;
-	struct iovec aiov, kiov;
-	struct dirent *dp, *edp;
-	caddr_t dirbuf;
-	int error, eofflag, readcnt;
-	long loff;
+	int error, bytes_transfered;
+	char *buf, *outbuf;
+	size_t len;
+	struct dirent *ndp;
+	struct odirent *destdp;
+	long base;
 
-	/* XXX arbitrary sanity limit on `count'. */
-	if (uap->count > 64 * 1024)
-		return (EINVAL);
-	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
-		return (error);
-	if ((fp->f_flag & FREAD) == 0)
-		return (EBADF);
-	vp = (struct vnode *)fp->f_data;
-unionread:
-	if (vp->v_type != VDIR)
-		return (EINVAL);
-	aiov.iov_base = uap->buf;
-	aiov.iov_len = uap->count;
-	auio.uio_iov = &aiov;
-	auio.uio_iovcnt = 1;
-	auio.uio_rw = UIO_READ;
-	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_td = td;
-	auio.uio_resid = uap->count;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	loff = auio.uio_offset = fp->f_offset;
-#	if (BYTE_ORDER != LITTLE_ENDIAN)
-		if (vp->v_mount->mnt_maxsymlinklen <= 0) {
-			error = VOP_READDIR(vp, &auio, fp->f_cred, &eofflag,
-			    NULL, NULL);
-			fp->f_offset = auio.uio_offset;
-		} else
-#	endif
-	{
-		kuio = auio;
-		kuio.uio_iov = &kiov;
-		kuio.uio_segflg = UIO_SYSSPACE;
-		kiov.iov_len = uap->count;
-		MALLOC(dirbuf, caddr_t, uap->count, M_TEMP, M_WAITOK);
-		kiov.iov_base = dirbuf;
-		error = VOP_READDIR(vp, &kuio, fp->f_cred, &eofflag,
-			    NULL, NULL);
-		fp->f_offset = kuio.uio_offset;
-		if (error == 0) {
-			readcnt = uap->count - kuio.uio_resid;
-			edp = (struct dirent *)&dirbuf[readcnt];
-			for (dp = (struct dirent *)dirbuf; dp < edp; ) {
-#				if (BYTE_ORDER == LITTLE_ENDIAN)
-					/*
-					 * The expected low byte of
-					 * dp->d_namlen is our dp->d_type.
-					 * The high MBZ byte of dp->d_namlen
-					 * is our dp->d_namlen.
-					 */
-					dp->d_type = dp->d_namlen;
-					dp->d_namlen = 0;
-#				else
-					/*
-					 * The dp->d_type is the high byte
-					 * of the expected dp->d_namlen,
-					 * so must be zero'ed.
-					 */
-					dp->d_type = 0;
-#				endif
-				if (dp->d_reclen > 0) {
-					dp = (struct dirent *)
-					    ((char *)dp + dp->d_reclen);
-				} else {
-					error = EIO;
-					break;
-				}
-			}
-			if (dp >= edp)
-				error = uiomove(dirbuf, readcnt, &auio);
-		}
-		FREE(dirbuf, M_TEMP);
+	if (uap->count > 16384)
+		len = 16384;
+	else
+		len = uap->count;
+
+	buf = malloc(len, M_TEMP, M_WAITOK);
+
+	error = kern_getdirentries(uap->fd, buf, len,
+	    &base, &bytes_transfered, UIO_SYSSPACE);
+
+	if (error) {
+		free(buf, M_TEMP);
+		return(error);
 	}
-	VOP_UNLOCK(vp, 0, td);
-	if (error)
-		return (error);
-	if (uap->count == auio.uio_resid) {
-		if (union_dircheckp) {
-			error = union_dircheckp(td, &vp, fp);
-			if (error == -1)
-				goto unionread;
-			if (error)
-				return (error);
-		}
-		if ((vp->v_flag & VROOT) &&
-		    (vp->v_mount->mnt_flag & MNT_UNION)) {
-			struct vnode *tvp = vp;
-			vp = vp->v_mount->mnt_vnodecovered;
-			vref(vp);
-			fp->f_data = (caddr_t) vp;
-			fp->f_offset = 0;
-			vrele(tvp);
-			goto unionread;
-		}
+
+	ndp = (struct dirent *)buf;
+	outbuf = uap->buf;
+	destdp = malloc(PADDED_SIZE(MAX_NAMELEN), M_TEMP, M_WAITOK);
+
+	for (; (char *)ndp < buf + bytes_transfered; ndp = _DIRENT_NEXT(ndp)) {
+		if ((char *)_DIRENT_NEXT(ndp) > buf + bytes_transfered)
+			break;
+		if (ndp->d_namlen > MAX_NAMELEN)
+			continue;
+		destdp->od_fileno = ndp->d_fileno;
+#if BYTE_ORDER == LITTLE_ENDIAN
+		destdp->od_type = ndp->d_namlen;
+		destdp->od_namlen = ndp->d_type;
+#else
+		destdp->od_type = ndp->d_type;
+		destdp->od_namlen = ndp->d_namlen;
+#endif
+		destdp->od_reclen = PADDED_SIZE(destdp->od_namlen);
+		if (destdp->od_reclen > len)
+			break; /* XXX can not happen */
+		bcopy(ndp->d_name, destdp->od_name, destdp->od_namlen);
+		bzero(destdp->od_name + destdp->od_namlen,
+		    PADDED_SIZE(destdp->od_namlen) - sizeof(*destdp) -
+		    destdp->od_namlen);
+		error = copyout(destdp, outbuf,
+		    PADDED_SIZE(destdp->od_namlen));
+		if (error)
+			break;
+		outbuf += PADDED_SIZE(destdp->od_namlen);
+		len -= PADDED_SIZE(destdp->od_namlen);
 	}
-	error = copyout(&loff, uap->basep, sizeof(long));
-	uap->sysmsg_result = uap->count - auio.uio_resid;
-	return (error);
+
+	free(destdp, M_TEMP);
+	free(buf, M_TEMP);
+	uap->sysmsg_result = outbuf - uap->buf;
+	return (0);
 }
