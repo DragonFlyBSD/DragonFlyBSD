@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.15 2005/08/08 02:01:31 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.16 2005/08/10 18:02:00 joerg Exp $
  */
 
 /* udf_vnops.c */
@@ -539,25 +539,6 @@ struct udf_uiodir {
 	int eofflag;
 };
 
-static int
-udf_uiodir(struct udf_uiodir *uiodir, int de_size, struct uio *uio, long cookie)
-{
-	if (uiodir->cookies != NULL) {
-		if (++uiodir->acookies > uiodir->ncookies) {
-			uiodir->eofflag = 0;
-			return (-1);
-		}
-		*uiodir->cookies++ = cookie;
-	}
-
-	if (uio->uio_resid < de_size) {
-		uiodir->eofflag = 0;
-		return(-1);
-	}
-
-	return(uiomove((caddr_t)uiodir->dirent, de_size, uio));
-}
-
 static struct udf_dirstream *
 udf_opendir(struct udf_node *node, int offset, int fsize, struct udf_mnt *udfmp)
 {
@@ -705,7 +686,6 @@ udf_readdir(struct vop_readdir_args *a)
 {
 	struct vnode *vp;
 	struct uio *uio;
-	struct dirent dir;
 	struct udf_node *node;
 	struct udf_mnt *udfmp;
 	struct fileid_desc *fid;
@@ -714,6 +694,7 @@ udf_readdir(struct vop_readdir_args *a)
 	u_long *cookies = NULL;
 	int ncookies;
 	int error = 0;
+	char *name;
 
 	vp = a->a_vp;
 	uio = a->a_uio;
@@ -742,6 +723,8 @@ udf_readdir(struct vop_readdir_args *a)
 	ds = udf_opendir(node, uio->uio_offset, node->fentry->inf_len,
 			 node->udfmp);
 
+	name = malloc(NAME_MAX, M_TEMP, M_WAITOK);
+
 	while ((fid = udf_getfid(ds)) != NULL) {
 
 		/* XXX Should we return an error on a bad fid? */
@@ -760,34 +743,60 @@ udf_readdir(struct vop_readdir_args *a)
 			 * used for the cookies since the offset here is
 			 * usually zero, and NFS doesn't like that value
 			 */
-			dir.d_fileno = node->hash_id;
-			dir.d_type = DT_DIR;
-			dir.d_name[0] = '.';
-			dir.d_namlen = 1;
-			dir.d_reclen = GENERIC_DIRSIZ(&dir);
-			uiodir.dirent = &dir;
-			error = udf_uiodir(&uiodir, dir.d_reclen, uio, 1);
-			if (error)
+			if (uiodir.cookies != NULL) {
+				if (++uiodir.acookies > uiodir.ncookies) {
+					uiodir.eofflag = 0;
+					break;
+				}
+				*uiodir.cookies++ = 1;
+			}
+			if (vop_write_dirent(&error, uio, node->hash_id, DT_DIR,
+					     1, ".")) {
+				uiodir.eofflag = 0;
 				break;
-
-			dir.d_fileno = udf_getid(&fid->icb);
-			dir.d_type = DT_DIR;
-			dir.d_name[0] = '.';
-			dir.d_name[1] = '.';
-			dir.d_namlen = 2;
-			dir.d_reclen = GENERIC_DIRSIZ(&dir);
-			uiodir.dirent = &dir;
-			error = udf_uiodir(&uiodir, dir.d_reclen, uio, 2);
+			}
+			if (error) {
+				uiodir.eofflag = 0;
+				break;
+			}
+			if (uiodir.cookies != NULL) {
+				if (++uiodir.acookies > uiodir.ncookies) {
+					uiodir.eofflag = 0;
+					break;
+				}
+				*uiodir.cookies++ = 2;
+			}
+			if (vop_write_dirent(&error, uio, udf_getid(&fid->icb),
+					     DT_DIR, 2, "..")) {
+				uiodir.eofflag = 0;
+				break;
+			}
+			if (error) {
+				uiodir.eofflag = 0;
+				break;
+			}
 		} else {
-			dir.d_namlen = udf_transname(&fid->data[fid->l_iu],
-			    &dir.d_name[0], fid->l_fi, udfmp);
-			dir.d_fileno = udf_getid(&fid->icb);
-			dir.d_type = (fid->file_char & UDF_FILE_CHAR_DIR) ?
+			uint8_t d_type = (fid->file_char & UDF_FILE_CHAR_DIR) ?
 			    DT_DIR : DT_UNKNOWN;
-			dir.d_reclen = GENERIC_DIRSIZ(&dir);
-			uiodir.dirent = &dir;
-			error = udf_uiodir(&uiodir, dir.d_reclen, uio,
-			    ds->this_off);
+			uint16_t namelen = udf_transname(&fid->data[fid->l_iu],
+			    name, fid->l_fi, udfmp);
+
+			if (uiodir.cookies != NULL) {
+				if (++uiodir.acookies > uiodir.ncookies) {
+					uiodir.eofflag = 0;
+					break;
+				}
+				*uiodir.cookies++ = ds->this_off;
+			}
+			if (vop_write_dirent(&error, uio, udf_getid(&fid->icb),
+					 d_type, namelen, name)) {
+				uiodir.eofflag = 0;
+				break;
+			}
+			if (error) {
+				uiodir.eofflag = 0;
+				break;
+			}
 		}
 		if (error) {
 			printf("uiomove returned %d\n", error);
@@ -795,6 +804,8 @@ udf_readdir(struct vop_readdir_args *a)
 		}
 
 	}
+
+	free(name, M_TEMP);
 
 	/* tell the calling layer whether we need to be called again */
 	*a->a_eofflag = uiodir.eofflag;
