@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/name6.c,v 1.6 2005/04/27 16:46:12 joerg Exp $	*/
+/*	$DragonFly: src/lib/libc/net/name6.c,v 1.7 2005/08/10 00:43:37 dillon Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*
@@ -1152,12 +1152,10 @@ getanswer(answer, anslen, qname, qtype, template, errp)
 		DNS_FATAL((*name_ok)(bp));
 		cp += n;			/* name */
 		BOUNDS_CHECK(cp, 3 * INT16SZ + INT32SZ);
-		NS_GET16(type, cp);
- 		cp += INT16SZ;			/* type */
-		NS_GET16(class, cp);
- 		cp += INT16SZ + INT32SZ;	/* class, TTL */
-		NS_GET16(n, cp);
-		cp += INT16SZ;			/* len */
+		NS_GET16(type, cp);		/* type */
+		NS_GET16(class, cp);		/* class */
+ 		cp += INT32SZ;			/* skip TTL */
+		NS_GET16(n, cp);		/* len */
 		BOUNDS_CHECK(cp, n);
 		erdata = cp + n;
 		DNS_ASSERT(class == C_IN);
