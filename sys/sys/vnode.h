@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.37 2005/08/09 16:53:34 joerg Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.38 2005/08/10 14:28:34 joerg Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -667,6 +667,8 @@ int	vop_panic (struct vop_generic_args *ap);
 int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
 int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
 int	vop_stdgetvobject (struct vop_getvobject_args *ap);
+int	vop_write_dirent(int *, struct uio *, ino_t, uint8_t, uint16_t,
+			 const char *);
 
 int	vop_compat_nresolve(struct vop_nresolve_args *ap);
 int	vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap);
