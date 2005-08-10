@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.22 2005/08/10 15:08:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.23 2005/08/10 15:18:52 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1309,13 +1309,13 @@ bfe_start(struct ifnet *ifp)
 {
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
-	int idx;
+	int idx, need_trans;
 
 	crit_enter();
 
 	/* 
-	 * not much point trying to send if the link is down or we have nothing to
-	 * send
+	 * Not much point trying to send if the link is down
+	 * or we have nothing to send.
 	 */
 	if (!sc->bfe_link) {
 		crit_exit();
@@ -1329,26 +1329,33 @@ bfe_start(struct ifnet *ifp)
 
 	idx = sc->bfe_tx_prod;
 
+	need_trans = 0;
 	while (sc->bfe_tx_ring[idx].bfe_mbuf == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		/* 
-		 * Pack the data into the tx ring.  If we dont have enough room, let
-		 * the chip drain the ring
+		 * Pack the data into the tx ring.  If we don't have
+		 * enough room, let the chip drain the ring.
 		 */
 		if (bfe_encap(sc, m_head, &idx)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
 		BPF_MTAP(ifp, m_head);
+	}
+
+	if (!need_trans) {
+		crit_exit();
+		return;
 	}
 
 	sc->bfe_tx_prod = idx;
