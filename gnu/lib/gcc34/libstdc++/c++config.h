@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/lib/gcc34/libstdc++/c++config.h,v 1.1 2004/06/14 22:27:52 joerg Exp $ */
+/* $DragonFly: src/gnu/lib/gcc34/libstdc++/c++config.h,v 1.2 2005/08/10 14:09:16 joerg Exp $ */
 
 // Predefined symbols and macros -*- C++ -*-
 
@@ -37,7 +37,7 @@
 #include <bits/os_defines.h>
 
 // The current version of the C++ library in compressed ISO date format.
-#define __GLIBCXX__ 20040604
+#define __GLIBCXX__ 20050802
 
 // Allow use of "export template." This is currently not a feature
 // that g++ supports.
@@ -116,7 +116,7 @@ namespace std
 /* #undef _GLIBCXX_USE_LONG_DOUBLE */
 
 // Define if C99 math functions (like fpclassify) should be exposed.
-/* #undef _GLIBCXX_USE_C99_MATH */
+#define _GLIBCXX_USE_C99_MATH 1
 
 // Define if C99 features such as lldiv_t, llabs, lldiv should be exposed.
 /* #undef _GLIBCXX_USE_C99 */
@@ -131,7 +131,7 @@ namespace std
 /* #undef _GLIBCXX_CONCEPT_CHECKS */
 
 // Define to use symbol versioning in the shared library.
-#define _GLIBCXX_SYMVER 1
+/* #undef _GLIBCXX_SYMVER */
 
 // Define symbol versioning in assember directives. If symbol
 // versioning is beigng used, and the assembler supports this kind of
@@ -146,6 +146,9 @@ namespace std
 
 // Define if LFS support is available.
 /* #undef _GLIBCXX_USE_LFS */
+
+// Define if a fully dynamic basic_string is wanted.
+/* #undef _GLIBCXX_FULLY_DYNAMIC_STRING */
 
 // Define if NLS translations are to be used.
 /* #undef _GLIBCXX_USE_NLS */
@@ -290,7 +293,7 @@ namespace std
 /* #undef _GLIBCXX_HAVE_ATANL */
 
 /* Define to 1 if you have the `btowc' function. */
-/* #undef _GLIBCXX_HAVE_BTOWC */
+#define _GLIBCXX_HAVE_BTOWC 1
 
 /* Define to 1 if you have the `ceilf' function. */
 #define _GLIBCXX_HAVE_CEILF 1
@@ -335,10 +338,10 @@ namespace std
 /* #undef _GLIBCXX_HAVE_FABSL */
 
 /* Define to 1 if you have the `fgetwc' function. */
-/* #undef _GLIBCXX_HAVE_FGETWC */
+#define _GLIBCXX_HAVE_FGETWC 1
 
 /* Define to 1 if you have the `fgetws' function. */
-/* #undef _GLIBCXX_HAVE_FGETWS */
+#define _GLIBCXX_HAVE_FGETWS 1
 
 /* Define to 1 if you have the `finite' function. */
 #define _GLIBCXX_HAVE_FINITE 1
@@ -368,10 +371,10 @@ namespace std
 /* #undef _GLIBCXX_HAVE_FPCLASS */
 
 /* Define to 1 if you have the `fputwc' function. */
-/* #undef _GLIBCXX_HAVE_FPUTWC */
+#define _GLIBCXX_HAVE_FPUTWC 1
 
 /* Define to 1 if you have the `fputws' function. */
-/* #undef _GLIBCXX_HAVE_FPUTWS */
+#define _GLIBCXX_HAVE_FPUTWS 1
 
 /* Define to 1 if you have the <fp.h> header file. */
 /* #undef _GLIBCXX_HAVE_FP_H */
@@ -383,13 +386,13 @@ namespace std
 /* #undef _GLIBCXX_HAVE_FREXPL */
 
 /* Define to 1 if you have the `fwide' function. */
-/* #undef _GLIBCXX_HAVE_FWIDE */
+#define _GLIBCXX_HAVE_FWIDE 1
 
 /* Define to 1 if you have the `fwprintf' function. */
-/* #undef _GLIBCXX_HAVE_FWPRINTF */
+#define _GLIBCXX_HAVE_FWPRINTF 1
 
 /* Define to 1 if you have the `fwscanf' function. */
-/* #undef _GLIBCXX_HAVE_FWSCANF */
+#define _GLIBCXX_HAVE_FWSCANF 1
 
 /* Define to 1 if you have the <gconv.h> header file. */
 /* #undef _GLIBCXX_HAVE_GCONV_H */
@@ -398,10 +401,10 @@ namespace std
 #define _GLIBCXX_HAVE_GETPAGESIZE 1
 
 /* Define to 1 if you have the `getwc' function. */
-/* #undef _GLIBCXX_HAVE_GETWC */
+#define _GLIBCXX_HAVE_GETWC 1
 
 /* Define to 1 if you have the `getwchar' function. */
-/* #undef _GLIBCXX_HAVE_GETWCHAR */
+#define _GLIBCXX_HAVE_GETWCHAR 1
 
 /* Define to 1 if you have the `hypot' function. */
 #define _GLIBCXX_HAVE_HYPOT 1
@@ -428,7 +431,7 @@ namespace std
 #define _GLIBCXX_HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `isinf' function. */
-#define _GLIBCXX_HAVE_ISINF 1
+/* #undef _GLIBCXX_HAVE_ISINF */
 
 /* Define to 1 if you have the `isinff' function. */
 /* #undef _GLIBCXX_HAVE_ISINFF */
@@ -437,16 +440,16 @@ namespace std
 /* #undef _GLIBCXX_HAVE_ISINFL */
 
 /* Define to 1 if you have the `isnan' function. */
-#define _GLIBCXX_HAVE_ISNAN 1
+/* #undef _GLIBCXX_HAVE_ISNAN */
 
 /* Define to 1 if you have the `isnanf' function. */
-#define _GLIBCXX_HAVE_ISNANF 1
+/* #undef _GLIBCXX_HAVE_ISNANF */
 
 /* Define to 1 if you have the `isnanl' function. */
 /* #undef _GLIBCXX_HAVE_ISNANL */
 
 /* Define to 1 if you have the `iswblank' function. */
-/* #undef _GLIBCXX_HAVE_ISWBLANK */
+#define _GLIBCXX_HAVE_ISWBLANK 1
 
 /* Define to 1 if you have the `ldexpf' function. */
 #define _GLIBCXX_HAVE_LDEXPF 1
@@ -497,16 +500,16 @@ namespace std
 #define _GLIBCXX_HAVE_MACHINE_PARAM_H 1
 
 /* Define to 1 if you have the `mbrlen' function. */
-/* #undef _GLIBCXX_HAVE_MBRLEN */
+#define _GLIBCXX_HAVE_MBRLEN 1
 
 /* Define to 1 if you have the `mbrtowc' function. */
-/* #undef _GLIBCXX_HAVE_MBRTOWC */
+#define _GLIBCXX_HAVE_MBRTOWC 1
 
 /* Define to 1 if you have the `mbsinit' function. */
-/* #undef _GLIBCXX_HAVE_MBSINIT */
+#define _GLIBCXX_HAVE_MBSINIT 1
 
 /* Define to 1 if you have the `mbsrtowcs' function. */
-/* #undef _GLIBCXX_HAVE_MBSRTOWCS */
+#define _GLIBCXX_HAVE_MBSRTOWCS 1
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define _GLIBCXX_HAVE_MEMORY_H 1
@@ -533,10 +536,10 @@ namespace std
 /* #undef _GLIBCXX_HAVE_POWL */
 
 /* Define to 1 if you have the `putwc' function. */
-/* #undef _GLIBCXX_HAVE_PUTWC */
+#define _GLIBCXX_HAVE_PUTWC 1
 
 /* Define to 1 if you have the `putwchar' function. */
-/* #undef _GLIBCXX_HAVE_PUTWCHAR */
+#define _GLIBCXX_HAVE_PUTWCHAR 1
 
 /* Define to 1 if you have the `qfpclass' function. */
 /* #undef _GLIBCXX_HAVE_QFPCLASS */
@@ -593,10 +596,10 @@ namespace std
 /* #undef _GLIBCXX_HAVE_STRTOLD */
 
 /* Define to 1 if you have the `swprintf' function. */
-/* #undef _GLIBCXX_HAVE_SWPRINTF */
+#define _GLIBCXX_HAVE_SWPRINTF 1
 
 /* Define to 1 if you have the `swscanf' function. */
-/* #undef _GLIBCXX_HAVE_SWSCANF */
+#define _GLIBCXX_HAVE_SWSCANF 1
 
 /* Define to 1 if you have the <sys/filio.h> header file. */
 #define _GLIBCXX_HAVE_SYS_FILIO_H 1
@@ -641,34 +644,34 @@ namespace std
 /* #undef _GLIBCXX_HAVE_TANL */
 
 /* Define to 1 if you have the `ungetwc' function. */
-/* #undef _GLIBCXX_HAVE_UNGETWC */
+#define _GLIBCXX_HAVE_UNGETWC 1
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #define _GLIBCXX_HAVE_UNISTD_H 1
 
 /* Define to 1 if you have the `vfwprintf' function. */
-/* #undef _GLIBCXX_HAVE_VFWPRINTF */
+#define _GLIBCXX_HAVE_VFWPRINTF 1
 
 /* Define to 1 if you have the `vfwscanf' function. */
-/* #undef _GLIBCXX_HAVE_VFWSCANF */
+#define _GLIBCXX_HAVE_VFWSCANF 1
 
 /* Define to 1 if you have the `vswprintf' function. */
-/* #undef _GLIBCXX_HAVE_VSWPRINTF */
+#define _GLIBCXX_HAVE_VSWPRINTF 1
 
 /* Define to 1 if you have the `vswscanf' function. */
-/* #undef _GLIBCXX_HAVE_VSWSCANF */
+#define _GLIBCXX_HAVE_VSWSCANF 1
 
 /* Define to 1 if you have the `vwprintf' function. */
-/* #undef _GLIBCXX_HAVE_VWPRINTF */
+#define _GLIBCXX_HAVE_VWPRINTF 1
 
 /* Define to 1 if you have the `vwscanf' function. */
-/* #undef _GLIBCXX_HAVE_VWSCANF */
+#define _GLIBCXX_HAVE_VWSCANF 1
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #define _GLIBCXX_HAVE_WCHAR_H 1
 
 /* Define to 1 if you have the `wcrtomb' function. */
-/* #undef _GLIBCXX_HAVE_WCRTOMB */
+#define _GLIBCXX_HAVE_WCRTOMB 1
 
 /* Define to 1 if you have the `wcscat' function. */
 #define _GLIBCXX_HAVE_WCSCAT 1
@@ -680,7 +683,7 @@ namespace std
 #define _GLIBCXX_HAVE_WCSCMP 1
 
 /* Define to 1 if you have the `wcscoll' function. */
-/* #undef _GLIBCXX_HAVE_WCSCOLL */
+#define _GLIBCXX_HAVE_WCSCOLL 1
 
 /* Define to 1 if you have the `wcscpy' function. */
 #define _GLIBCXX_HAVE_WCSCPY 1
@@ -689,7 +692,7 @@ namespace std
 #define _GLIBCXX_HAVE_WCSCSPN 1
 
 /* Define to 1 if you have the `wcsftime' function. */
-/* #undef _GLIBCXX_HAVE_WCSFTIME */
+#define _GLIBCXX_HAVE_WCSFTIME 1
 
 /* Define to 1 if you have the `wcslen' function. */
 #define _GLIBCXX_HAVE_WCSLEN 1
@@ -710,7 +713,7 @@ namespace std
 #define _GLIBCXX_HAVE_WCSRCHR 1
 
 /* Define to 1 if you have the `wcsrtombs' function. */
-/* #undef _GLIBCXX_HAVE_WCSRTOMBS */
+#define _GLIBCXX_HAVE_WCSRTOMBS 1
 
 /* Define to 1 if you have the `wcsspn' function. */
 #define _GLIBCXX_HAVE_WCSSPN 1
@@ -719,7 +722,7 @@ namespace std
 #define _GLIBCXX_HAVE_WCSSTR 1
 
 /* Define to 1 if you have the `wcstod' function. */
-/* #undef _GLIBCXX_HAVE_WCSTOD */
+#define _GLIBCXX_HAVE_WCSTOD 1
 
 /* Define to 1 if you have the `wcstof' function. */
 /* #undef _GLIBCXX_HAVE_WCSTOF */
@@ -728,16 +731,16 @@ namespace std
 /* #undef _GLIBCXX_HAVE_WCSTOK */
 
 /* Define to 1 if you have the `wcstol' function. */
-/* #undef _GLIBCXX_HAVE_WCSTOL */
+#define _GLIBCXX_HAVE_WCSTOL 1
 
 /* Define to 1 if you have the `wcstoul' function. */
-/* #undef _GLIBCXX_HAVE_WCSTOUL */
+#define _GLIBCXX_HAVE_WCSTOUL 1
 
 /* Define to 1 if you have the `wcsxfrm' function. */
-/* #undef _GLIBCXX_HAVE_WCSXFRM */
+#define _GLIBCXX_HAVE_WCSXFRM 1
 
 /* Define to 1 if you have the `wctob' function. */
-/* #undef _GLIBCXX_HAVE_WCTOB */
+#define _GLIBCXX_HAVE_WCTOB 1
 
 /* Define to 1 if you have the <wctype.h> header file. */
 #define _GLIBCXX_HAVE_WCTYPE_H 1
@@ -758,10 +761,10 @@ namespace std
 #define _GLIBCXX_HAVE_WMEMSET 1
 
 /* Define to 1 if you have the `wprintf' function. */
-/* #undef _GLIBCXX_HAVE_WPRINTF */
+#define _GLIBCXX_HAVE_WPRINTF 1
 
 /* Define to 1 if you have the `wscanf' function. */
-/* #undef _GLIBCXX_HAVE_WSCANF */
+#define _GLIBCXX_HAVE_WSCANF 1
 
 /* Define to 1 if you have the `_acosf' function. */
 /* #undef _GLIBCXX_HAVE__ACOSF */
@@ -956,7 +959,7 @@ namespace std
 /* #undef _GLIBCXX_HAVE___SIGNBIT */
 
 /* Define to 1 if you have the `__signbitf' function. */
-/* #undef _GLIBCXX_HAVE___SIGNBITF */
+#define _GLIBCXX_HAVE___SIGNBITF 1
 
 /* Define to 1 if you have the `__signbitl' function. */
 /* #undef _GLIBCXX_HAVE___SIGNBITL */
