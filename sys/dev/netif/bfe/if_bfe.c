@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.18 2005/07/01 12:39:54 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.19 2005/08/10 13:31:03 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,6 @@ static struct bfe_type bfe_devs[] = {
 static int	bfe_probe(device_t);
 static int	bfe_attach(device_t);
 static int	bfe_detach(device_t);
-static void	bfe_release_resources(struct bfe_softc *);
 static void	bfe_intr(void *);
 static void	bfe_start(struct ifnet *);
 static int	bfe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -129,6 +128,7 @@ static void	bfe_chip_halt(struct bfe_softc *);
 static void	bfe_core_reset(struct bfe_softc *);
 static void	bfe_core_disable(struct bfe_softc *);
 static int	bfe_dma_alloc(device_t);
+static void	bfe_dma_free(struct bfe_softc *);
 static void	bfe_dma_map_desc(void *, bus_dma_segment_t *, int, int);
 static void	bfe_dma_map(void *, bus_dma_segment_t *, int, int);
 static void	bfe_cam_write(struct bfe_softc *, u_char *, int);
@@ -177,7 +177,7 @@ bfe_probe(device_t dev)
 
 	for (t = bfe_devs; t->bfe_name != NULL; t++) {
 		if (vendor == t->bfe_vid && product == t->bfe_did) {
-			device_set_desc_copy(dev, t->bfe_name);
+			device_set_desc(dev, t->bfe_name);
 			return(0);
 		}
 	}
@@ -189,7 +189,7 @@ static int
 bfe_dma_alloc(device_t dev)
 {
 	struct bfe_softc *sc;
-	int error, i;
+	int error, i, tx_pos, rx_pos;
 
 	sc = device_get_softc(dev);
 
@@ -206,10 +206,9 @@ bfe_dma_alloc(device_t dev)
 			&sc->bfe_parent_tag);
 
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
-		return(ENOMEM);
+		device_printf(dev, "could not allocate parent dma tag\n");
+		return(error);
 	}
-		
 
 	/* tag for TX ring */
 	error = bus_dma_tag_create(sc->bfe_parent_tag, BFE_TX_LIST_SIZE,
@@ -218,8 +217,8 @@ bfe_dma_alloc(device_t dev)
 			BUS_SPACE_MAXSIZE_32BIT, 0, &sc->bfe_tx_tag);
 
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
-		return(ENOMEM);
+		device_printf(dev, "could not allocate dma tag for TX list\n");
+		return(error);
 	}
 
 	/* tag for RX ring */
@@ -229,8 +228,8 @@ bfe_dma_alloc(device_t dev)
 			BUS_SPACE_MAXSIZE_32BIT, 0, &sc->bfe_rx_tag);
 
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
-		return(ENOMEM);
+		device_printf(dev, "could not allocate dma tag for RX list\n");
+		return(error);
 	}
 
 	/* tag for mbufs */
@@ -240,25 +239,30 @@ bfe_dma_alloc(device_t dev)
 			&sc->bfe_tag);
 
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
-		return(ENOMEM);
+		device_printf(dev, "could not allocate dma tag for mbufs\n");
+		return(error);
 	}
+
+	rx_pos = tx_pos = 0;
 
 	/* pre allocate dmamaps for RX list */
 	for (i = 0; i < BFE_RX_LIST_CNT; i++) {
 		error = bus_dmamap_create(sc->bfe_tag, 0, &sc->bfe_rx_ring[i].bfe_map);
 		if (error) {
+			rx_pos = i;
 			device_printf(dev, "cannot create DMA map for RX\n");
-			return(ENOMEM);
+			goto ring_fail;
 		}
 	}
+	rx_pos = BFE_RX_LIST_CNT;
 
 	/* pre allocate dmamaps for TX list */
 	for (i = 0; i < BFE_TX_LIST_CNT; i++) {
 		error = bus_dmamap_create(sc->bfe_tag, 0, &sc->bfe_tx_ring[i].bfe_map);
 		if (error) {
+			tx_pos = i;
 			device_printf(dev, "cannot create DMA map for TX\n");
-			return(ENOMEM);
+			goto ring_fail;
 		}
 	}
 
@@ -266,34 +270,53 @@ bfe_dma_alloc(device_t dev)
 	error = bus_dmamem_alloc(sc->bfe_rx_tag, (void *)&sc->bfe_rx_list,
 				 BUS_DMA_WAITOK, &sc->bfe_rx_map);
 
-	if (error)
-		return(ENOMEM);
+	if (error) {
+		device_printf(dev, "cannot allocate DMA mem for RX\n");
+		return(error);
+	}
 
 	bzero(sc->bfe_rx_list, BFE_RX_LIST_SIZE);
 	error = bus_dmamap_load(sc->bfe_rx_tag, sc->bfe_rx_map,
 				sc->bfe_rx_list, sizeof(struct bfe_desc),
 				bfe_dma_map, &sc->bfe_rx_dma, 0);
 
-	if (error)
-		return(ENOMEM);
+	if (error) {
+		device_printf(dev, "cannot load DMA map for RX\n");
+		return(error);
+	}
 
 	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREREAD);
 
+	/* Alloc dma for tx ring */
 	error = bus_dmamem_alloc(sc->bfe_tx_tag, (void *)&sc->bfe_tx_list, 
 				 BUS_DMA_WAITOK, &sc->bfe_tx_map);
-	if (error) 
-		return(ENOMEM);
+	if (error) {
+		device_printf(dev, "cannot allocate DMA mem for TX\n");
+		return(error);
+	}
 
 	error = bus_dmamap_load(sc->bfe_tx_tag, sc->bfe_tx_map, 
 				sc->bfe_tx_list, sizeof(struct bfe_desc), 
 				bfe_dma_map, &sc->bfe_tx_dma, 0);
-	if (error)
-		return(ENOMEM);
+	if (error) {
+		device_printf(dev, "cannot load DMA map for TX\n");
+		return(error);
+	}
 
 	bzero(sc->bfe_tx_list, BFE_TX_LIST_SIZE);
 	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREREAD);
 
 	return(0);
+
+ring_fail:
+	for (i = 0; i < rx_pos; ++i)
+		bus_dmamap_destroy(sc->bfe_tag, sc->bfe_rx_ring[i].bfe_map);
+	for (i = 0; i < tx_pos; ++i)
+		bus_dmamap_destroy(sc->bfe_tag, sc->bfe_tx_ring[i].bfe_map);
+
+	bus_dma_tag_destroy(sc->bfe_tag);
+	sc->bfe_tag = NULL;
+	return error;
 }
 
 static int
@@ -339,8 +362,7 @@ bfe_attach(device_t dev)
 	    RF_ACTIVE);
 	if (sc->bfe_res == NULL) {
 		device_printf(dev, "couldn't map memory\n");
-		error = ENXIO;
-		goto fail;
+		return ENXIO;
 	}
 
 	sc->bfe_btag = rman_get_bustag(sc->bfe_res);
@@ -357,10 +379,9 @@ bfe_attach(device_t dev)
 		goto fail;
 	}
 
-	if (bfe_dma_alloc(dev)) {
+	error = bfe_dma_alloc(dev);
+	if (error != 0) {
 		device_printf(dev, "failed to allocate DMA resources\n");
-		bfe_release_resources(sc);
-		error = ENXIO;
 		goto fail;
 	}
 
@@ -400,13 +421,12 @@ bfe_attach(device_t dev)
 
 	if (error) {
 		ether_ifdetach(ifp);
-		bfe_release_resources(sc);
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
+	return 0;
 fail:
-	if (error)
-		bfe_release_resources(sc);
+	bfe_detach(dev);
 	return(error);
 }
 
@@ -421,18 +441,26 @@ bfe_detach(device_t dev)
 	if (device_is_attached(dev)) {
 		bfe_stop(sc);
 		ether_ifdetach(ifp);
+		bfe_chip_reset(sc);
 	}
-
-	bfe_chip_reset(sc);
-
 	if (sc->bfe_miibus != NULL)
 		device_delete_child(dev, sc->bfe_miibus);
 	bus_generic_detach(dev);
 
-	bfe_release_resources(sc);
+	if (sc->bfe_intrhand != NULL)
+		bus_teardown_intr(dev, sc->bfe_irq, sc->bfe_intrhand);
 
 	crit_exit();
 
+	if (sc->bfe_irq != NULL)
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bfe_irq);
+
+	if (sc->bfe_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, BFE_PCI_MEMLO,
+				     sc->bfe_res);
+	}
+
+	bfe_dma_free(sc);
 	return(0);
 }
 
@@ -496,8 +524,6 @@ bfe_tx_ring_free(struct bfe_softc *sc)
 			sc->bfe_tx_ring[i].bfe_mbuf = NULL;
 			bus_dmamap_unload(sc->bfe_tag,
 					  sc->bfe_tx_ring[i].bfe_map);
-			bus_dmamap_destroy(sc->bfe_tag,
-					   sc->bfe_tx_ring[i].bfe_map);
 		}
 	bzero(sc->bfe_tx_list, BFE_TX_LIST_SIZE);
 	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREREAD);
@@ -514,8 +540,6 @@ bfe_rx_ring_free(struct bfe_softc *sc)
 			sc->bfe_rx_ring[i].bfe_mbuf = NULL;
 			bus_dmamap_unload(sc->bfe_tag,
 					  sc->bfe_rx_ring[i].bfe_map);
-			bus_dmamap_destroy(sc->bfe_tag,
-					   sc->bfe_rx_ring[i].bfe_map);
 		}
 	bzero(sc->bfe_rx_list, BFE_RX_LIST_SIZE);
 	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREREAD);
@@ -569,7 +593,7 @@ bfe_list_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
 	r = &sc->bfe_rx_ring[c];
 	bus_dmamap_load(sc->bfe_tag, r->bfe_map, mtod(m, void *), 
 			MCLBYTES, bfe_dma_map_desc, d, 0);
-	bus_dmamap_sync(sc->bfe_tag, r->bfe_map, BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(sc->bfe_tag, r->bfe_map, BUS_DMASYNC_PREREAD);
 
 	ctrl = ETHER_MAX_LEN + 32;
 
@@ -878,47 +902,50 @@ bfe_dma_map_desc(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 }
 
 static void
-bfe_release_resources(struct bfe_softc *sc)
+bfe_dma_free(struct bfe_softc *sc)
 {
-	device_t dev;
-	int i;
-
-	dev = sc->bfe_dev;
-
-	if (sc->bfe_intrhand != NULL)
-		bus_teardown_intr(dev, sc->bfe_irq, sc->bfe_intrhand);
-
-	if (sc->bfe_irq != NULL)
-		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bfe_irq);
-
-	if (sc->bfe_res != NULL)
-		bus_release_resource(dev, SYS_RES_MEMORY, 0x10, sc->bfe_res);
-
 	if (sc->bfe_tx_tag != NULL) {
 		bus_dmamap_unload(sc->bfe_tx_tag, sc->bfe_tx_map);
-		bus_dmamem_free(sc->bfe_tx_tag, sc->bfe_tx_list, sc->bfe_tx_map);
+		if (sc->bfe_tx_list != NULL) {
+			bus_dmamem_free(sc->bfe_tx_tag, sc->bfe_tx_list,
+					sc->bfe_tx_map);
+			sc->bfe_tx_list = NULL;
+		}
 		bus_dma_tag_destroy(sc->bfe_tx_tag);
 		sc->bfe_tx_tag = NULL;
 	}
 
 	if (sc->bfe_rx_tag != NULL) {
 		bus_dmamap_unload(sc->bfe_rx_tag, sc->bfe_rx_map);
-		bus_dmamem_free(sc->bfe_rx_tag, sc->bfe_rx_list, sc->bfe_rx_map);
+		if (sc->bfe_rx_list != NULL) {
+			bus_dmamem_free(sc->bfe_rx_tag, sc->bfe_rx_list,
+					sc->bfe_rx_map);
+			sc->bfe_rx_list = NULL;
+		}
 		bus_dma_tag_destroy(sc->bfe_rx_tag);
 		sc->bfe_rx_tag = NULL;
 	}
 
 	if (sc->bfe_tag != NULL) {
+		int i;
+
 		for (i = 0; i < BFE_TX_LIST_CNT; i++) {
 			bus_dmamap_destroy(sc->bfe_tag,
 					   sc->bfe_tx_ring[i].bfe_map);
 		}
+		for (i = 0; i < BFE_RX_LIST_CNT; i++) {
+			bus_dmamap_destroy(sc->bfe_tag,
+					   sc->bfe_rx_ring[i].bfe_map);
+		}
+
 		bus_dma_tag_destroy(sc->bfe_tag);
 		sc->bfe_tag = NULL;
 	}
 
-	if (sc->bfe_parent_tag != NULL)
+	if (sc->bfe_parent_tag != NULL) {
 		bus_dma_tag_destroy(sc->bfe_parent_tag);
+		sc->bfe_parent_tag = NULL;
+	}
 }
 
 static void
