@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.8 2005/07/15 17:30:16 eirikn Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.9 2005/08/11 03:20:36 corecode Exp $
  */
 
 /*
@@ -315,7 +315,7 @@ cbb_find_res(struct cbb_softc *sc, int type, int rid)
 	return (NULL);
 }
 
-static void
+static int
 cbb_insert_res(struct cbb_softc *sc, struct resource *res, int type,
     int rid)
 {
@@ -326,12 +326,13 @@ cbb_insert_res(struct cbb_softc *sc, struct resource *res, int type,
 	 * it later.
 	 */
 	rle = malloc(sizeof(struct cbb_reslist), M_DEVBUF, M_NOWAIT);
-	if (!res)
-		panic("cbb_cardbus_alloc_resource: can't record entry!");
+	if (rle == NULL)
+		return (ENOMEM);
 	rle->res = res;
 	rle->type = type;
 	rle->rid = rid;
 	SLIST_INSERT_HEAD(&sc->rl, rle, link);
+	return (0);
 }
 
 static void
@@ -1512,7 +1513,11 @@ cbb_cardbus_alloc_resource(device_t brdev, device_t child, int type,
 		printf("cbb alloc res fail\n");
 		return (NULL);
 	}
-	cbb_insert_res(sc, res, type, *rid);
+	if (cbb_insert_res(sc, res, type, *rid)) {
+		BUS_RELEASE_RESOURCE(device_get_parent(brdev), child, type,
+				     rid, res);
+		return (NULL);
+	}
 	if (flags & RF_ACTIVE)
 		if (bus_activate_resource(child, type, *rid, res) != 0) {
 			bus_release_resource(child, type, *rid, res);
@@ -1690,7 +1695,11 @@ cbb_pcic_alloc_resource(device_t brdev, device_t child, int type, int *rid,
 	    start, end, count, flags & ~RF_ACTIVE);
 	if (res == NULL)
 		return (NULL);
-	cbb_insert_res(sc, res, type, *rid);
+	if (cbb_insert_res(sc, res, type, *rid)) {
+		BUS_RELEASE_RESOURCE(device_get_parent(brdev), child, type,
+				     rid, res);
+		return (NULL);
+	}
 	if (flags & RF_ACTIVE) {
 		if (bus_activate_resource(child, type, *rid, res) != 0) {
 			bus_release_resource(child, type, *rid, res);
