@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.6 2005/06/26 22:03:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.7 2005/08/11 03:22:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -445,7 +445,7 @@ ndis_attach(dev)
 	}
 
 	sc->ndis_txarray = malloc(sizeof(ndis_packet *) *
-	    sc->ndis_maxpkts, M_DEVBUF, M_NOWAIT|M_ZERO);
+	    sc->ndis_maxpkts, M_DEVBUF, M_WAITOK|M_ZERO);
 
 	sc->ndis_txpending = sc->ndis_maxpkts;
 
@@ -1689,6 +1689,8 @@ ndis_get_assoc(sc, assoc)
 	}
 
 	bl = malloc(len, M_TEMP, M_NOWAIT|M_ZERO);
+	if (bl == NULL)
+		return (ENOMEM);
 	error = ndis_get_info(sc, OID_802_11_BSSID_LIST, bl, &len);
 	if (error) {
 		free(bl, M_TEMP);
