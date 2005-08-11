@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.5 2004/10/07 01:32:03 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.6 2005/08/11 03:11:59 corecode Exp $
  */
 
 /*
@@ -143,7 +143,7 @@ cblock_free(struct cblock *cblockp)
 /*
  * Allocate some cblocks for the cfreelist queue.
  *
- * This routine my  block, but still must be called in a critical section
+ * This routine may block, but still must be called in a critical section
  */
 static void
 cblock_alloc_cblocks(int number)
