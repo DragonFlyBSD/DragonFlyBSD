@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.6 2005/07/15 17:19:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.7 2005/08/11 03:16:14 corecode Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -2746,9 +2746,12 @@ sctp_handle_stream_reset_response(struct sctp_tcb *stcb,
  				 * goes by. This is a short cut.
  				 */
  				FREE(stcb->asoc.pending_reply, M_PCB);
+				stcb->asoc.pending_reply = NULL;
  			}
  			MALLOC(stcb->asoc.pending_reply, struct sctp_stream_reset_response *, param_length,
  			       M_PCB, M_NOWAIT);
+			if (stcb->asoc.pending_reply == NULL)
+				return;		/* XXX */
  			memcpy(stcb->asoc.pending_reply, resp, param_length);
  		}
 
