@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.19 2005/06/03 19:56:08 eirikn Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.20 2005/08/11 03:19:39 corecode Exp $
  */
 
 /*
@@ -567,7 +567,8 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	inp->in6p_cksum = -1;
 	MALLOC(inp->in6p_icmp6filt, struct icmp6_filter *,
 	       sizeof(struct icmp6_filter), M_PCB, M_NOWAIT);
-	ICMP6_FILTER_SETPASSALL(inp->in6p_icmp6filt);
+	if (inp->in6p_icmp6filt != NULL)
+		ICMP6_FILTER_SETPASSALL(inp->in6p_icmp6filt);
 	return 0;
 }
 
