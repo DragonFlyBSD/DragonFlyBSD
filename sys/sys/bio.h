@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/bio.h,v 1.1 2005/08/08 01:25:31 hmp Exp $
+ * $DragonFly: src/sys/sys/bio.h,v 1.2 2005/08/12 00:17:26 hmp Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -47,7 +47,6 @@ typedef void biodone_t(struct buf *);
 struct bio {
 	LIST_ENTRY(bio)	bio_chain;	/* Chaining. */
 	struct buf	*bio_buf;   	/* High-level buffer back-pointer. */
-	daddr_t	bio_lblkno;     	/* Logical block number. */
 	daddr_t	bio_blkno;      	/* Underlying physical block number. */
 	daddr_t	bio_pblkno;      	/* Physical block number. */
 	dev_t 	bio_dev;        	/* Device associated to this I/O. */

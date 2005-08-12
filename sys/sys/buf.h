@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.19 2005/08/09 05:11:42 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.20 2005/08/12 00:17:26 hmp Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -134,6 +134,7 @@ struct buf {
 	caddr_t	b_data;			/* Memory, superblocks, indirect etc. */
 	caddr_t	b_kvabase;		/* base kva for buffer */
 	int	b_kvasize;		/* size of kva for buffer */
+	daddr_t	b_lblkno;		/* Logical block number. */
 	off_t	b_offset;		/* Offset into file */
 					/* For nested b_iodone's. */
 	struct	iodone_chain *b_iodone_chain;
@@ -160,7 +161,6 @@ struct buf {
 #define	b_dev   	b_bio.bio_dev
 #define	b_resid 	b_bio.bio_resid
 #define	b_error 	b_bio.bio_error
-#define	b_lblkno	b_bio.bio_lblkno
 #define	b_blkno  	b_bio.bio_blkno
 #define	b_pblkno	b_bio.bio_pblkno
 #define	b_driver1	b_bio.bio_driver_ctx
