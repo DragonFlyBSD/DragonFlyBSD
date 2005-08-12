@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/amd64/include/Attic/pmap.h,v 1.2 2004/02/14 20:34:26 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/pmap.h,v 1.3 2005/08/12 00:25:10 hmp Exp $
  */
 #ifndef _MACHINE_PMAP_H_
 #define	_MACHINE_PMAP_H_
@@ -234,11 +234,6 @@ typedef struct pv_entry {
 	TAILQ_ENTRY(pv_entry)	pv_plist;
 	vm_page_t	pv_ptem;	/* VM page for pte */
 } *pv_entry_t;
-
-#define	PV_ENTRY_NULL	((pv_entry_t) 0)
-
-#define	PV_CI		0x01	/* all entries must be cache inhibited */
-#define	PV_PTPAGE	0x02	/* entry maps a page table page */
 
 #ifdef	_KERNEL
 
