@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.34 2005/08/12 11:12:02 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.35 2005/08/12 15:01:04 liamfoy Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -60,6 +60,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
 <td valign="top">Sun Grid Engine</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:reed 'at' reedmedia 'dot' net">Jeremy C. Reed</a></td>
+<td valign="top">Pkgsrc/Documentation (commit access)</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
