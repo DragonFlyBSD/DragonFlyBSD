@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.33 2005/04/08 09:39:52 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.34 2005/08/12 11:12:02 liamfoy Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -52,6 +52,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:davidxu 'at' dragonflybsd 'dot' org">David Xu</a></td>
 <td valign="top">1:1 Threading library (commit access)</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:demizu 'at' dragonflybsd 'dot' org">Noritoshi Demizu</a></td>
+<td valign="top">Networking (commit access)</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
