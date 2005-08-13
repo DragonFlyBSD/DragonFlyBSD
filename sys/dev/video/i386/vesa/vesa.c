@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.11 2005/07/10 13:06:18 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.12 2005/08/13 16:43:34 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -652,8 +652,6 @@ vesa_bios_init(void)
 		printf("VESA: information block\n");
 		dump_buffer(buf, 64);
 	}
-	if (vesa_adp_info->v_flags & V_NONVGA)
-		return 1;
 	if (vesa_adp_info->v_version < 0x0102) {
 		printf("VESA: VBE version %d.%d is not supported; "
 		       "version 1.2 or later is required.\n",
