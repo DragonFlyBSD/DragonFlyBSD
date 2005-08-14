@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.61 2005/08/11 09:27:00 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.62 2005/08/14 18:38:27 dillon Exp $
  */
 
 /*
@@ -2016,11 +2016,13 @@ vn_get_namelen(struct vnode *vp, int *namelen)
 }
 
 int
-vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type, uint16_t d_namlen,
-    const char *d_name)
+vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type, 
+		uint16_t d_namlen, const char *d_name)
 {
 	struct dirent d;
 	struct dirent *dp = &d;
+
+	KKASSERT(d_namlen <= MAXNAMLEN);
 
 	dp->d_namlen = d_namlen;
 	dp->d_reclen = GENERIC_DIRSIZ(dp);
