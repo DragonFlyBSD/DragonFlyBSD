@@ -1,6 +1,5 @@
 #
-# $DragonFly: doc/share/mk/doc.project.mk,v 1.1.1.1 2004/04/02 09:36:36 hmp Exp $
-# $DragonFly: doc/share/mk/doc.project.mk,v 1.1.1.1 2004/04/02 09:36:36 hmp Exp $
+# $DragonFly: doc/share/mk/doc.project.mk,v 1.2 2005/08/14 08:04:56 asmodai Exp $
 #
 # This file includes the other makefiles, which contain enough
 # knowledge to perform their duties without the system make files.

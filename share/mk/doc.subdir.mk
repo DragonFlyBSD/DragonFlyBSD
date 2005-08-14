@@ -1,8 +1,7 @@
 # Taken from:
 #	Id: bsd.subdir.mk,v 1.27 1999/03/21 06:43:40 bde
 #
-# $DragonFly: doc/share/mk/doc.subdir.mk,v 1.1.1.1 2004/04/02 09:36:36 hmp Exp $
-# $DragonFly: doc/share/mk/doc.subdir.mk,v 1.1.1.1 2004/04/02 09:36:36 hmp Exp $
+# $DragonFly: doc/share/mk/doc.subdir.mk,v 1.2 2005/08/14 08:04:56 asmodai Exp $
 #
 # This include file <doc.subdir.mk> contains the default targets
 # for building subdirectories in the FreeBSD Documentation Project.

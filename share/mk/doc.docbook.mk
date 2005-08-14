@@ -1,6 +1,5 @@
 #
-# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.1.1.1 2004/04/02 09:36:34 hmp Exp $
-# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.1.1.1 2004/04/02 09:36:34 hmp Exp $
+# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.2 2005/08/14 08:04:56 asmodai Exp $
 #
 # This include file <doc.docbook.mk> handles building and installing of
 # DocBook documentation in the DragonFlyBSD Documentation Project.
