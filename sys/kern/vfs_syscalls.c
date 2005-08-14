@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.67 2005/08/09 20:14:16 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.68 2005/08/14 18:41:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2617,7 +2617,9 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	}
 
 	/*
-	 * relock the source ncp
+	 * relock the source ncp.  NOTE AFTER RELOCKING: the source ncp
+	 * may have become invalid while it was unlocked, nc_vp and nc_mount
+	 * could be NULL.
 	 */
 	if (cache_lock_nonblock(fromnd->nl_ncp) == 0) {
 		cache_resolve(fromnd->nl_ncp, fromnd->nl_cred);
@@ -2647,6 +2649,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 * Both the source and target must be within the same filesystem and
 	 * in the same filesystem as their parent directories within the
 	 * namecache topology.
+	 *
+	 * NOTE: fromnd's nc_mount or nc_vp could be NULL.
 	 */
 	mp = fncpd->nc_mount;
 	if (mp != tncpd->nc_mount || mp != fromnd->nl_ncp->nc_mount ||
@@ -2659,9 +2663,14 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	/*
 	 * If the target exists and either the source or target is a directory,
 	 * then both must be directories.
+	 *
+	 * Due to relocking of the source, fromnd->nl_ncp->nc_vp might have
+	 * become NULL.
 	 */
 	if (tond->nl_ncp->nc_vp) {
-		if (fromnd->nl_ncp->nc_vp->v_type == VDIR) {
+		if (fromnd->nl_ncp->nc_vp == NULL) {
+			error = ENOENT;
+		} else if (fromnd->nl_ncp->nc_vp->v_type == VDIR) {
 			if (tond->nl_ncp->nc_vp->v_type != VDIR)
 				error = ENOTDIR;
 		} else if (tond->nl_ncp->nc_vp->v_type == VDIR) {
