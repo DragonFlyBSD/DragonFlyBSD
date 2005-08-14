@@ -20,8 +20,7 @@
      lexicographical order by the entity (i.e., the dots used in place of
      special characters should not be expanded when comparing).
 
-     $DragonFly: doc/share/sgml/man-refs.ent,v 1.3 2004/08/25 20:42:15 justin Exp $
-     $DragonFly: doc/share/sgml/man-refs.ent,v 1.3 2004/08/25 20:42:15 justin Exp $
+     $DragonFly: doc/share/sgml/man-refs.ent,v 1.4 2005/08/14 09:18:30 asmodai Exp $
 -->
 
 <!ENTITY man...1 "<citerefentry/<refentrytitle/[/<manvolnum/1//">

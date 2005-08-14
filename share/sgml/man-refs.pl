@@ -1,6 +1,5 @@
 #!/usr/bin/perl -w
-# $DragonFly: doc/share/sgml/man-refs.pl,v 1.1.1.1 2004/04/02 09:37:08 hmp Exp $
-# $DragonFly: doc/share/sgml/man-refs.pl,v 1.1.1.1 2004/04/02 09:37:08 hmp Exp $
+# $DragonFly: doc/share/sgml/man-refs.pl,v 1.2 2005/08/14 09:18:30 asmodai Exp $
 
 use strict;
 

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<!-- $DragonFly: doc/share/sgml/transtable-master.xsl,v 1.2 2004/04/08 18:25:51 justin Exp $ -->
-<!-- $DragonFly: doc/share/sgml/transtable-master.xsl,v 1.2 2004/04/08 18:25:51 justin Exp $ -->
+<!-- $DragonFly: doc/share/sgml/transtable-master.xsl,v 1.3 2005/08/14 09:18:30 asmodai Exp $ -->
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 

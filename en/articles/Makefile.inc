@@ -1,6 +1,5 @@
 # 
-# $DragonFly: doc/en/articles/Makefile.inc,v 1.1.1.1 2004/04/02 09:35:45 hmp Exp $
-# $DragonFly: doc/en/articles/Makefile.inc,v 1.1.1.1 2004/04/02 09:35:45 hmp Exp $
+# $DragonFly: doc/en/articles/Makefile.inc,v 1.2 2005/08/14 09:18:30 asmodai Exp $
 #
 
 DESTDIR?=	${DOCDIR}/en/articles/${.CURDIR:T}
