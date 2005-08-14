@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.13 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.14 2005/08/14 18:53:42 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1301,7 +1301,8 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	struct cg *cgp;
 	struct buf *bp;
 	uint8_t *inosused;
-	int error, len, map, i;
+	uint8_t map;
+	int error, len, arraysize, i;
 	int icheckmiss;
 	ufs_daddr_t ibase;
 
@@ -1338,15 +1339,21 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	/*
 	 * Scan the inode bitmap starting at irotor, be sure to handle
 	 * the edge case by going back to the beginning of the array.
-	 * Note that 'len' can go negative.  Start the scan at bit 0 to
-	 * simplify the code.
+	 *
+	 * If the number of inodes is not byte-aligned, the unused bits
+	 * should be set to 1.  This will be sanity checked in gotit.  Note
+	 * that we have to be sure not to overlap the beginning and end
+	 * when irotor is in the middle of a byte as this will cause the
+	 * same bitmap byte to be checked twice.  To solve this problem we
+	 * just convert everything to a byte index for the loop.
 	 */
-	ipref = (cgp->cg_irotor % fs->fs_ipg) & ~7;
-	map = inosused[ipref >> 3];
-	len = fs->fs_ipg;
+	ipref = (cgp->cg_irotor % fs->fs_ipg) >> 3;	/* byte index */
+	len = (fs->fs_ipg + 7) >> 3;			/* byte size */
+	arraysize = len;
 
 	while (len > 0) {
-		if (map != (1 << NBBY) - 1) {
+		map = inosused[ipref];
+		if (map != 255) {
 			for (i = 0; i < NBBY; ++i) {
 				/*
 				 * If we find a free bit we have to make sure
@@ -1358,9 +1365,8 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 				 * quick-check up above.
 				 */
 				if ((map & (1 << i)) == 0) {
-					KKASSERT(ipref + i < fs->fs_ipg);
-					if (ufs_ihashcheck(ip->i_dev, ibase + ipref + i) == 0) {
-						ipref += i;
+					if (ufs_ihashcheck(ip->i_dev, ibase + (ipref << 3) + i) == 0) {
+						ipref = (ipref << 3) + i;
 						cgp->cg_irotor = (ipref + 1) % fs->fs_ipg;
 						goto gotit;
 					}
@@ -1370,18 +1376,12 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 		}
 
 		/*
-		 * Setup for the next byte.  If we hit the edge make sure to
-		 * adjust the remaining length only by the number of bits in
-		 * the last byte.
+		 * Setup for the next byte, start at the beginning again if
+		 * we hit the end of the array.
 		 */
-		ipref += NBBY;
-		if (ipref >= fs->fs_ipg) {
+		if (++ipref == arraysize)
 			ipref = 0;
-			len -= fs->fs_ipg & 7;
-		} else {
-			len -= NBBY;
-		}
-		map = inosused[ipref >> 3];
+		--len;
 	}
 	if (icheckmiss == cgp->cg_cs.cs_nifree) {
 		brelse(bp);
@@ -1391,7 +1391,12 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	panic("ffs_nodealloccg: block not in map, icheckmiss/nfree %d/%d",
 		icheckmiss, cgp->cg_cs.cs_nifree);
 	/* NOTREACHED */
+
+	/*
+	 * ipref is a bit index as of the gotit label.
+	 */
 gotit:
+	KKASSERT(ipref >= 0 && ipref < fs->fs_ipg);
 	if (icheckmiss) {
 		printf("Warning: inode free race avoided %d times\n",
 			icheckmiss);
