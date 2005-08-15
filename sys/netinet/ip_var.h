@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.16 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.17 2005/08/15 16:46:21 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -158,9 +158,7 @@ struct route;
 struct sockopt;
 struct lwkt_port;
 
-#ifndef RANDOM_IP_ID
 extern u_short	ip_id;				/* ip packet ctr, for ids */
-#endif
 extern int	ip_defttl;			/* default IP ttl */
 extern int	ipforwarding;			/* ip forwarding */
 extern struct route ipforward_rt;		/* ip forwarding cached route */
@@ -195,10 +193,7 @@ void	 ip_slowtimo(void);
 struct mbuf *
 	 ip_srcroute(void);
 void	 ip_stripoptions(struct mbuf *);
-#ifdef RANDOM_IP_ID
-u_int16_t	
-	 ip_randomid(void);
-#endif
+u_int16_t ip_randomid(void);
 int	rip_ctloutput(struct socket *, struct sockopt *);
 void	rip_ctlinput(int, struct sockaddr *, void *);
 void	rip_init(void);
@@ -222,6 +217,18 @@ extern struct pr_usrreqs div_usrreqs;
 extern	struct pfil_head inet_pfil_hook;
 
 void	in_delayed_cksum(struct mbuf *m);
+
+static __inline uint16_t ip_newid(void);
+extern int ip_do_randomid;
+
+static __inline uint16_t
+ip_newid(void)
+{
+    if (ip_do_randomid)
+	return ip_randomid();
+    else
+	return htons(ip_id++);
+}
 
 #endif /* _KERNEL */
 

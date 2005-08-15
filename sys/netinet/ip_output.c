@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.31 2005/06/17 19:12:20 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.32 2005/08/15 16:46:21 dillon Exp $
  */
 
 #define _IP_VHL
@@ -38,7 +38,6 @@
 #include "opt_ipdivert.h"
 #include "opt_ipfilter.h"
 #include "opt_ipsec.h"
-#include "opt_random_ip_id.h"
 #include "opt_mbuf_stress_test.h"
 
 #include <sys/param.h>
@@ -210,11 +209,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	if (!(flags & (IP_FORWARDING|IP_RAWOUTPUT))) {
 		ip->ip_vhl = IP_MAKE_VHL(IPVERSION, hlen >> 2);
 		ip->ip_off &= IP_DF;
-#ifdef RANDOM_IP_ID
-		ip->ip_id = ip_randomid();
-#else
-		ip->ip_id = htons(ip_id++);
-#endif
+		ip->ip_id = ip_newid();
 		ipstat.ips_localout++;
 	} else {
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;

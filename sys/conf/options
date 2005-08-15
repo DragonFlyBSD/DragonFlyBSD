@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.39 2005/08/01 20:11:18 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.40 2005/08/15 16:46:17 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -314,7 +314,6 @@ NS			opt_ns.h
 PPP_BSDCOMP		opt_ppp.h
 PPP_DEFLATE		opt_ppp.h
 PPP_FILTER		opt_ppp.h
-RANDOM_IP_ID
 SLIP_IFF_OPTS		opt_slip.h
 TCPDEBUG
 TCP_DROP_SYNFIN		opt_tcp_input.h

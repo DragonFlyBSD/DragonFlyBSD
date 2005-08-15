@@ -35,7 +35,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_id.c,v 1.1.2.1 2001/07/19 06:37:26 kris Exp $
- * $DragonFly: src/sys/netinet/ip_id.c,v 1.4 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_id.c,v 1.5 2005/08/15 16:46:21 dillon Exp $
  */
 
 /*
@@ -58,13 +58,11 @@
  * This avoids reuse issues caused by reseeding.
  */
 
-#include "opt_random_ip_id.h"
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/random.h>
 
-#ifdef RANDOM_IP_ID
 #define RU_OUT  180		/* Time after wich will be reseeded */
 #define RU_MAX	30000		/* Uniq cycle, avoid blackjack prediction */
 #define RU_GEN	2		/* Starting generator */
@@ -207,5 +205,3 @@ ip_randomid(void)
 
 	return (ru_seed ^ pmod(ru_g,ru_seed2 ^ ru_x,RU_N)) | ru_msb;
 }
-
-#endif /* RANDOM_IP_ID */

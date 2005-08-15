@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.57 2005/08/01 20:11:18 joerg Exp $
+# $DragonFly: src/sys/config/LINT,v 1.58 2005/08/15 16:46:19 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -625,13 +625,6 @@ device		pflog
 # functions.  See the mbuf(9) manpage for a list of available
 # test cases.
 options         MBUF_STRESS_TEST
-
-# RANDOM_IP_ID causes the ID field in IP packets to be randomized
-# instead of incremented by 1 with each packet generated.  This
-# option closes a minor information leak which allows remote
-# observers to determine the rate of packet generation on the
-# machine by watching the counter.
-options 	RANDOM_IP_ID
 
 # Statically link in accept filters
 options                ACCEPT_FILTER_DATA

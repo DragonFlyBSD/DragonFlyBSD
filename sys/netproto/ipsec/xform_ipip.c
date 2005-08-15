@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.11 2005/06/10 23:59:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.12 2005/08/15 16:46:22 dillon Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -42,7 +42,6 @@
  */
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_random_ip_id.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -450,11 +449,7 @@ ipip_output(
 		ipo->ip_src = saidx->src.sin.sin_addr;
 		ipo->ip_dst = saidx->dst.sin.sin_addr;
 
-#ifdef RANDOM_IP_ID
-		ipo->ip_id = ip_randomid();
-#else
-		ipo->ip_id = htons(ip_id++);
-#endif
+		ipo->ip_id = ip_newid();
 
 		/* If the inner protocol is IP... */
 		if (tp == IPVERSION) {

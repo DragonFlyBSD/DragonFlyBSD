@@ -32,12 +32,11 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.22 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.23 2005/08/15 16:46:21 dillon Exp $
  */
 
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
-#include "opt_random_ip_id.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -297,11 +296,7 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 			return EINVAL;
 		}
 		if (ip->ip_id == 0)
-#ifdef RANDOM_IP_ID
-			ip->ip_id = ip_randomid();
-#else
-			ip->ip_id = htons(ip_id++);
-#endif
+			ip->ip_id = ip_newid();
 		/* XXX prevent ip_output from overwriting header fields */
 		flags |= IP_RAWOUTPUT;
 		ipstat.ips_rawout++;

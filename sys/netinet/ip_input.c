@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.55 2005/06/17 19:12:20 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.56 2005/08/15 16:46:21 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -94,7 +94,6 @@
 #include "opt_ipfilter.h"
 #include "opt_ipstealth.h"
 #include "opt_ipsec.h"
-#include "opt_random_ip_id.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -196,6 +195,10 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, sendsourcequench, CTLFLAG_RW,
     &ip_sendsourcequench, 0,
     "Enable the transmission of source quench packets");
 
+int ip_do_randomid = 0;
+SYSCTL_INT(_net_inet_ip, OID_AUTO, random_id, CTLFLAG_RW,
+    &ip_do_randomid, 0,
+    "Assign random ip_id values");	
 /*
  * XXX - Setting ip_checkinterface mostly implements the receive side of
  * the Strong ES model described in RFC 1122, but since the routing table
@@ -370,9 +373,7 @@ ip_init(void)
 	maxnipq = nmbclusters / 32;
 	maxfragsperpacket = 16;
 
-#ifndef RANDOM_IP_ID
 	ip_id = time_second & 0xffff;
-#endif
 	ipintrq.ifq_maxlen = ipqmaxlen;
 
 	/*
