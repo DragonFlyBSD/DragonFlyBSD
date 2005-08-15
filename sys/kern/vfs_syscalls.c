@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.68 2005/08/14 18:41:13 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.69 2005/08/15 07:26:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2694,9 +2694,21 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 
 	cache_drop(fncpd);
 	cache_drop(tncpd);
-	if (error)
-		return (error);
-	error = VOP_NRENAME(fromnd->nl_ncp, tond->nl_ncp, tond->nl_cred);
+
+	/*
+	 * Even though the namespaces are different, they may still represent
+	 * hardlinks to the same file.  The filesystem might have a hard time
+	 * with this so we issue a NREMOVE of the source instead of a NRENAME
+	 * when we detect the situation.
+	 */
+	if (error == 0) {
+		if (fromnd->nl_ncp->nc_vp == tond->nl_ncp->nc_vp) {
+			error = VOP_NREMOVE(fromnd->nl_ncp, fromnd->nl_cred);
+		} else {
+			error = VOP_NRENAME(fromnd->nl_ncp, tond->nl_ncp, 
+					    tond->nl_cred);
+		}
+	}
 	return (error);
 }
 
