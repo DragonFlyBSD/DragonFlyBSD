@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.19 2005/08/15 13:49:55 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.20 2005/08/15 16:50:51 joerg Exp $
  */
 
 /*
@@ -64,6 +64,8 @@
 #include "linprocfs.h"
 #include <sys/pioctl.h>
 
+#include <machine/limits.h>
+
 extern struct vnode *procfs_findtextvp (struct proc *);
 
 static int	linprocfs_access (struct vop_access_args *);
@@ -80,6 +82,9 @@ static int	linprocfs_readdir (struct vop_readdir_args *);
 static int	linprocfs_readlink (struct vop_readlink_args *);
 static int	linprocfs_reclaim (struct vop_reclaim_args *);
 static int	linprocfs_setattr (struct vop_setattr_args *);
+
+static int	linprocfs_readdir_proc(struct vop_readdir_args *);
+static int	linprocfs_readdir_root(struct vop_readdir_args *);
 
 /*
  * This is a list of the valid names in the
@@ -778,41 +783,21 @@ linprocfs_validfile(p)
  *
  * We generate just one directory entry at a time, as it would probably
  * not pay off to buffer several entries locally to save uiomove calls.
+ *
+ * linprocfs_readdir(struct vnode *a_vp, struct uio *a_uio,
+ *		     struct ucred *a_cred, int *a_eofflag,
+ *		     int *a_ncookies, u_long **a_cookies)
  */
 static int
-linprocfs_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		int *a_ncookies;
-		u_long **a_cookies;
-	} */ *ap;
+linprocfs_readdir(struct vop_readdir_args *ap)
 {
-	struct uio *uio = ap->a_uio;
-	struct dirent d;
-	struct dirent *dp = &d;
 	struct pfsnode *pfs;
-	int count, error, i, off;
-	static u_int delen;
+	int error;
 
-	if (!delen) {
-
-		d.d_namlen = PROCFS_NAMELEN;
-		delen = GENERIC_DIRSIZ(&d);
-	}
-
-	pfs = VTOPFS(ap->a_vp);
-
-	off = (int)uio->uio_offset;
-	if (off != uio->uio_offset || off < 0 || 
-	    off % delen != 0 || uio->uio_resid < delen)
+	if (ap->a_uio->uio_offset < 0)
 		return (EINVAL);
 
-	error = 0;
-	count = 0;
-	i = off / delen;
+	pfs = VTOPFS(ap->a_vp);
 
 	switch (pfs->pfs_type) {
 	/*
@@ -820,33 +805,9 @@ linprocfs_readdir(ap)
 	 * all that is needed to is copy out all the entries
 	 * from the procent[] table (top of this file).
 	 */
-	case Pproc: {
-		struct proc *p;
-		struct proc_target *pt;
-
-		p = PFIND(pfs->pfs_pid);
-		if (p == NULL)
-			break;
-		if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
-			break;
-
-		for (pt = &proc_targets[i];
-		     uio->uio_resid >= delen && i < nproc_targets; pt++, i++) {
-			if (pt->pt_valid && (*pt->pt_valid)(p) == 0)
-				continue;
-
-			dp->d_reclen = delen;
-			dp->d_fileno = PROCFS_FILENO(pfs->pfs_pid, pt->pt_pfstype);
-			dp->d_namlen = pt->pt_namlen;
-			bcopy(pt->pt_name, dp->d_name, pt->pt_namlen + 1);
-			dp->d_type = pt->pt_type;
-
-			if ((error = uiomove((caddr_t)dp, delen, uio)) != 0)
-				break;
-		}
-
-	    	break;
-	    }
+	case Pproc:
+		error = linprocfs_readdir_proc(ap);
+		break;
 
 	/*
 	 * this is for the root of the procfs filesystem
@@ -854,112 +815,172 @@ linprocfs_readdir(ap)
 	 * followed by an entry for each process on allproc
 	 */
 
-	case Proot: {
-		int pcnt = 0;
-		struct proc *p = allproc.lh_first;
-
-		for (; p && uio->uio_resid >= delen; i++, pcnt++) {
-			bzero((char *) dp, delen);
-			dp->d_reclen = delen;
-
-			switch (i) {
-			case 0:		/* `.' */
-			case 1:		/* `..' */
-				dp->d_fileno = PROCFS_FILENO(0, Proot);
-				dp->d_namlen = i + 1;
-				bcopy("..", dp->d_name, dp->d_namlen);
-				dp->d_name[i + 1] = '\0';
-				dp->d_type = DT_DIR;
-				break;
-
-			case 2:
-				dp->d_fileno = PROCFS_FILENO(0, Pself);
-				dp->d_namlen = 4;
-				bcopy("self", dp->d_name, 5);
-				dp->d_type = DT_LNK;
-				break;
-
-			case 3:
-				dp->d_fileno = PROCFS_FILENO(0, Pmeminfo);
-				dp->d_namlen = 7;
-				bcopy("meminfo", dp->d_name, 8);
-				dp->d_type = DT_REG;
-				break;
-
-			case 4:
-				dp->d_fileno = PROCFS_FILENO(0, Pcpuinfo);
-				dp->d_namlen = 7;
-				bcopy("cpuinfo", dp->d_name, 8);
-				dp->d_type = DT_REG;
-				break;
-
-			case 5:
-				dp->d_fileno = PROCFS_FILENO(0, Pstat);
-				dp->d_namlen = 4;
-				bcopy("stat", dp->d_name, 5);
-				dp->d_type = DT_REG;
-				break;
-			    
-			case 6:
-				dp->d_fileno = PROCFS_FILENO(0, Puptime);
-				dp->d_namlen = 6;
-				bcopy("uptime", dp->d_name, 7);
-				dp->d_type = DT_REG;
-				break;
-
-			case 7:
-				dp->d_fileno = PROCFS_FILENO(0, Pversion);
-				dp->d_namlen = 7;
-				bcopy("version", dp->d_name, 8);
-				dp->d_type = DT_REG;
-				break;
-
-			case 8:
-				dp->d_fileno = PROCFS_FILENO(0, Ploadavg);
-				dp->d_namlen = 7;
-				bcopy("loadavg", dp->d_name, 8);
-				dp->d_type = DT_REG;
-				break;
-
-
-			default:
-				while (pcnt < i) {
-					p = p->p_list.le_next;
-					if (!p)
-						goto done;
-					if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
-						continue;
-					pcnt++;
-				}
-				while (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
-					p = p->p_list.le_next;
-					if (!p)
-						goto done;
-				}
-				dp->d_fileno = PROCFS_FILENO(p->p_pid, Pproc);
-				dp->d_namlen = sprintf(dp->d_name, "%ld",
-				    (long)p->p_pid);
-				dp->d_type = DT_DIR;
-				p = p->p_list.le_next;
-				break;
-			}
-
-			if ((error = uiomove((caddr_t)dp, delen, uio)) != 0)
-				break;
-		}
-	done:
+	case Proot:
+		error = linprocfs_readdir_root(ap);
 		break;
-
-	    }
 
 	default:
 		error = ENOTDIR;
 		break;
 	}
 
-	uio->uio_offset = i * delen;
-
 	return (error);
+}
+
+static int
+linprocfs_readdir_proc(struct vop_readdir_args *ap)
+{
+	struct pfsnode *pfs;
+	int error, i, retval;
+	struct proc *p;
+	struct proc_target *pt;
+	struct uio *uio = ap->a_uio;
+
+	if (uio->uio_offset > INT_MAX)
+		return(EINVAL);
+
+	pfs = VTOPFS(ap->a_vp);
+	p = PFIND(pfs->pfs_pid);
+	if (p == NULL)
+		return(0);
+	if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
+		return(0);
+
+	error = 0;
+	i = uio->uio_offset;
+
+	for (pt = &proc_targets[i];
+	     !error && uio->uio_resid > 0 && i < nproc_targets; pt++, i++) {
+		if (pt->pt_valid && (*pt->pt_valid)(p) == 0)
+			continue;
+
+		retval = vop_write_dirent(&error, uio,
+		    PROCFS_FILENO(pfs->pfs_pid, pt->pt_pfstype), pt->pt_type,
+		    pt->pt_namlen, pt->pt_name);
+		if (retval)
+			break;
+	}
+
+	uio->uio_offset = i;
+
+	return(error);
+}
+
+static int
+linprocfs_readdir_root(struct vop_readdir_args *ap)
+{
+	int error, i, pcnt = 0, retval;
+	struct uio *uio = ap->a_uio;
+	struct proc *p = LIST_FIRST(&allproc);
+	ino_t d_ino;
+	const char *d_name;
+	char d_name_pid[20];
+	size_t d_namlen;
+	uint8_t d_type;
+
+	if (uio->uio_offset > INT_MAX)
+		return(EINVAL);
+
+	error = 0;
+	i = uio->uio_offset;
+
+
+	for (; p && uio->uio_resid > 0 && !error; i++, pcnt++) {
+		switch (i) {
+		case 0:		/* `.' */
+			d_ino = PROCFS_FILENO(0, Proot);
+			d_name = ".";
+			d_namlen = 1;
+			d_type = DT_DIR;
+			break;
+		case 1:		/* `..' */
+			d_ino = PROCFS_FILENO(0, Proot);
+			d_name = "..";
+			d_namlen = 2;
+			d_type = DT_DIR;
+			break;
+
+		case 2:
+			d_ino = PROCFS_FILENO(0, Proot);
+			d_namlen = 4;
+			d_name = "self";
+			d_type = DT_LNK;
+			break;
+
+		case 3:
+			d_ino = PROCFS_FILENO(0, Pmeminfo);
+			d_namlen = 7;
+			d_name = "meminfo";
+			d_type = DT_REG;
+			break;
+
+		case 4:
+			d_ino = PROCFS_FILENO(0, Pcpuinfo);
+			d_namlen = 7;
+			d_name = "cpuinfo";
+			d_type = DT_REG;
+			break;
+
+		case 5:
+			d_ino = PROCFS_FILENO(0, Pstat);
+			d_namlen = 4;
+			d_name = "stat";
+			d_type = DT_REG;
+			break;
+			    
+		case 6:
+			d_ino = PROCFS_FILENO(0, Puptime);
+			d_namlen = 6;
+			d_name = "uptime";
+			d_type = DT_REG;
+			break;
+
+		case 7:
+			d_ino = PROCFS_FILENO(0, Pversion);
+			d_namlen = 7;
+			d_name = "version";
+			d_type = DT_REG;
+			break;
+
+		case 8:
+			d_ino = PROCFS_FILENO(0, Ploadavg);
+			d_namlen = 7;
+			d_name = "loadavg";
+			d_type = DT_REG;
+			break;
+
+		default:
+			while (pcnt < i) {
+				p = LIST_NEXT(p, p_list);
+				if (!p)
+					goto done;
+				if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
+					continue;
+				pcnt++;
+			}
+			while (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
+				p = LIST_NEXT(p, p_list);
+				if (!p)
+					goto done;
+			}
+			d_ino = PROCFS_FILENO(p->p_pid, Pproc);
+			d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
+			    "%ld", (long)p->p_pid);
+			d_name = d_name_pid;
+			d_type = DT_DIR;
+			p = LIST_NEXT(p, p_list);
+			break;
+		}
+
+		retval = vop_write_dirent(&error, uio,
+		    d_ino, d_type, d_namlen, d_name);
+		if (retval)
+			break;
+ 	}
+ 
+done:
+	uio->uio_offset = i;
+	return(error);
 }
 
 /*
