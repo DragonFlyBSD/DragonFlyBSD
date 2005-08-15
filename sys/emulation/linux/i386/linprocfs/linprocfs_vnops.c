@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.18 2004/10/12 19:20:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.19 2005/08/15 13:49:55 joerg Exp $
  */
 
 /*
@@ -852,15 +852,9 @@ linprocfs_readdir(ap)
 	 * this is for the root of the procfs filesystem
 	 * what is needed is a special entry for "self"
 	 * followed by an entry for each process on allproc
-#ifdef PROCFS_ZOMBIE
-	 * and zombproc.
-#endif
 	 */
 
 	case Proot: {
-#ifdef PROCFS_ZOMBIE
-		int doingzomb = 0;
-#endif
 		int pcnt = 0;
 		struct proc *p = allproc.lh_first;
 
@@ -954,15 +948,6 @@ linprocfs_readdir(ap)
 				break;
 		}
 	done:
-
-#ifdef PROCFS_ZOMBIE
-		if (p == 0 && doingzomb == 0) {
-			doingzomb = 1;
-			p = zombproc.lh_first;
-			goto again;
-		}
-#endif
-
 		break;
 
 	    }
