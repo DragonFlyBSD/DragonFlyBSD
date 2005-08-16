@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.20 2005/08/15 16:50:51 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.21 2005/08/16 16:10:34 joerg Exp $
  */
 
 /*
@@ -716,6 +716,13 @@ linprocfs_lookup(ap)
 		if (p == 0)
 			break;
 
+		if (!PRISON_CHECK(ap->a_cnp->cn_cred, p->p_ucred))
+			break;
+
+		if (ps_showallprocs == 0 && ap->a_cnp->cn_cred->cr_uid != 0 &&
+		    ap->a_cnp->cn_cred->cr_uid != p->p_ucred->cr_uid)
+			break;
+
 		error = linprocfs_allocvp(dvp->v_mount, vpp, pid, Pproc);
 		goto out;
 
@@ -727,6 +734,13 @@ linprocfs_lookup(ap)
 
 		p = PFIND(pfs->pfs_pid);
 		if (p == 0)
+			break;
+
+		if (!PRISON_CHECK(ap->a_cnp->cn_cred, p->p_ucred))
+			break;
+
+		if (ps_showallprocs == 0 && ap->a_cnp->cn_cred->cr_uid != 0 &&
+		    ap->a_cnp->cn_cred->cr_uid != p->p_ucred->cr_uid)
 			break;
 
 		for (pt = proc_targets, i = 0; i < nproc_targets; pt++, i++) {
@@ -794,7 +808,7 @@ linprocfs_readdir(struct vop_readdir_args *ap)
 	struct pfsnode *pfs;
 	int error;
 
-	if (ap->a_uio->uio_offset < 0)
+	if (ap->a_uio->uio_offset < 0 || ap->a_uio->uio_offset > INT_MAX)
 		return (EINVAL);
 
 	pfs = VTOPFS(ap->a_vp);
@@ -836,9 +850,6 @@ linprocfs_readdir_proc(struct vop_readdir_args *ap)
 	struct proc_target *pt;
 	struct uio *uio = ap->a_uio;
 
-	if (uio->uio_offset > INT_MAX)
-		return(EINVAL);
-
 	pfs = VTOPFS(ap->a_vp);
 	p = PFIND(pfs->pfs_pid);
 	if (p == NULL)
@@ -869,7 +880,7 @@ linprocfs_readdir_proc(struct vop_readdir_args *ap)
 static int
 linprocfs_readdir_root(struct vop_readdir_args *ap)
 {
-	int error, i, pcnt = 0, retval;
+	int error, i, pcnt, retval;
 	struct uio *uio = ap->a_uio;
 	struct proc *p = LIST_FIRST(&allproc);
 	ino_t d_ino;
@@ -878,12 +889,9 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 	size_t d_namlen;
 	uint8_t d_type;
 
-	if (uio->uio_offset > INT_MAX)
-		return(EINVAL);
-
 	error = 0;
 	i = uio->uio_offset;
-
+	pcnt = 0;
 
 	for (; p && uio->uio_resid > 0 && !error; i++, pcnt++) {
 		switch (i) {
@@ -962,6 +970,14 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 				p = LIST_NEXT(p, p_list);
 				if (!p)
 					goto done;
+			}
+			if (ps_showallprocs == 0 && 
+			    ap->a_cred->cr_uid != 0 &&
+			    ap->a_cred->cr_uid != p->p_ucred->cr_uid) {
+				p = LIST_NEXT(p, p_list);
+				if (!p)
+					goto done;
+				continue;
 			}
 			d_ino = PROCFS_FILENO(p->p_pid, Pproc);
 			d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
