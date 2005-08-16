@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.19 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.20 2005/08/16 22:40:03 joerg Exp $
  */
 
 /*
@@ -59,6 +59,8 @@
 #include <sys/stat.h>
 #include <sys/vnode.h>
 #include <sys/file2.h>
+
+#include <machine/limits.h>
 
 #include "fdesc.h"
 
@@ -414,9 +416,9 @@ fdesc_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct filedesc *fdp;
-	struct dirent d;
-	struct dirent *dp = &d;
-	int error, i, off, fcnt;
+	int error, i, fcnt;
+	size_t namelen;
+	char name[20]; /* enough for %d */
 
 	/*
 	 * We don't allow exporting fdesc mounts, and currently local
@@ -428,53 +430,55 @@ fdesc_readdir(struct vop_readdir_args *ap)
 	if (VTOFDESC(ap->a_vp)->fd_type != Froot)
 		panic("fdesc_readdir: not dir");
 
-	off = (int)uio->uio_offset;
-	if (off != uio->uio_offset || off < 0 || (u_int)off % UIO_MX != 0 ||
-	    uio->uio_resid < UIO_MX)
-		return (EINVAL);
-	i = (u_int)off / UIO_MX;
+	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX ||
+	    uio->uio_resid < 0)
+		return(EINVAL);
+	i = uio->uio_offset;
 	KKASSERT(uio->uio_td->td_proc);
 	fdp = uio->uio_td->td_proc->p_fd;
 	error = 0;
 
 	fcnt = i - 2;		/* The first two nodes are `.' and `..' */
 
-	while (i < fdp->fd_nfiles + 2 && uio->uio_resid >= UIO_MX) {
+	while (fcnt < fdp->fd_nfiles && uio->uio_resid > 0 && !error) {
 		switch (i) {
 		case 0:	/* `.' */
+			if (vop_write_dirent(&error, uio, FD_ROOT + i, DT_DIR,
+					 1, "."))
+				goto done;
+			if (error)
+				return (error);
+			break;
 		case 1: /* `..' */
-			bzero((caddr_t)dp, UIO_MX);
-
-			dp->d_fileno = i + FD_ROOT;
-			dp->d_namlen = i + 1;
-			dp->d_reclen = UIO_MX;
-			bcopy("..", dp->d_name, dp->d_namlen);
-			dp->d_name[i + 1] = '\0';
-			dp->d_type = DT_DIR;
+			if (vop_write_dirent(&error, uio, FD_ROOT + i, DT_DIR,
+					     2, ".."))
+				goto done;
+			if (error)
+				return (error);
 			break;
 		default:
-			if (fdp->fd_files[fcnt].fp == NULL)
-				goto done;
+			if (fdp->fd_files[fcnt].fp == NULL) {
+				fcnt++;
+				continue;
+			}
 
-			bzero((caddr_t) dp, UIO_MX);
-			dp->d_namlen = sprintf(dp->d_name, "%d", fcnt);
-			dp->d_reclen = UIO_MX;
-			dp->d_type = DT_UNKNOWN;
-			dp->d_fileno = i + FD_DESC;
+			namelen = snprintf(name, sizeof(name), "%d", fcnt);
+			if (vop_write_dirent(&error, uio, FD_ROOT + i,
+					     DT_UNKNOWN, namelen, name))
+				goto done;
+			if (error)
+				return (error);
 			break;
 		}
-		/*
-		 * And ship to userland
-		 */
-		error = uiomove((caddr_t) dp, UIO_MX, uio);
-		if (error)
-			break;
 		i++;
 		fcnt++;
 	}
 
 done:
-	uio->uio_offset = i * UIO_MX;
+	if (i >= 2)
+		uio->uio_offset = fcnt + 2;
+	else
+		uio->uio_offset = i;
 	return (error);
 }
 
