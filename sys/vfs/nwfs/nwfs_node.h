@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.h,v 1.3.2.2 2000/10/25 02:28:42 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.h,v 1.3 2003/06/25 03:56:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.h,v 1.4 2005/08/16 16:27:41 joerg Exp $
  */
 #ifndef _NWFS_NODE_H_
 #define _NWFS_NODE_H_
@@ -92,14 +92,14 @@ int  nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
 	struct nwnode **npp);
 int  nwfs_inactive(struct vop_inactive_args *);
 int  nwfs_reclaim(struct vop_reclaim_args *);
-int nwfs_nget(struct mount *mp, ncpfid fid, struct nw_entry_info *fap,
+int nwfs_nget(struct mount *mp, ncpfid fid, const struct nw_entry_info *fap,
     struct vnode *dvp, struct vnode **vpp);
 
 int  nwfs_getpages(struct vop_getpages_args *);
 int  nwfs_putpages(struct vop_putpages_args *);
 int  nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred);
 int  nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred, int ioflag);
-void nwfs_attr_cacheenter(struct vnode *vp, struct nw_entry_info *fi);
+void nwfs_attr_cacheenter(struct vnode *vp, const struct nw_entry_info *fi);
 int  nwfs_attr_cachelookup(struct vnode *vp,struct vattr *va);
 
 #define nwfs_attr_cacheremove(vp)	VTONW(vp)->n_atime = 0

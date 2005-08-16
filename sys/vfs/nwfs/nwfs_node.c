@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.17 2004/12/17 00:18:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.18 2005/08/16 16:27:41 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -277,7 +277,7 @@ nwfs_inactive(struct vop_inactive_args *ap)
  * nwfs_attr_cacheenter: unpack np.i to va structure
  */
 void
-nwfs_attr_cacheenter(struct vnode *vp, struct nw_entry_info *fi)
+nwfs_attr_cacheenter(struct vnode *vp, const struct nw_entry_info *fi)
 {
 	struct nwnode *np = VTONW(vp);
 	struct nwmount *nmp = VTONWFS(vp);

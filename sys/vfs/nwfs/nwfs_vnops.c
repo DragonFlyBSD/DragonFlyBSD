@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.21 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.22 2005/08/16 16:27:41 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -776,7 +776,7 @@ nwfs_bmap(struct vop_bmap_args *ap)
 }
 
 int
-nwfs_nget(struct mount *mp, ncpfid fid, struct nw_entry_info *fap,
+nwfs_nget(struct mount *mp, ncpfid fid, const struct nw_entry_info *fap,
 	  struct vnode *dvp, struct vnode **vpp)
 {
 	int error;
