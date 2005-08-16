@@ -1,7 +1,7 @@
 # Makefile.amd64 -- with config changes.
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
-# $DragonFly: src/sys/conf/Attic/Makefile.amd64,v 1.6 2005/07/30 09:10:33 swildner Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.amd64,v 1.7 2005/08/16 10:31:35 y0netan1 Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -51,9 +51,8 @@ INCLUDES+= -I/usr/include
 
 # This hack lets us use the Intel ACPICA code without spamming a new
 # include path into 100+ source files.
-INCLUDES+= -I$S/contrib/dev/acpica
-
-
+.include "$S/conf/acpi.mk"
+INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 
 # This hack lets us use the ipfilter code without spamming a new
 # include path into 100+ source files.

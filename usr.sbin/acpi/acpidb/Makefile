@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/acpi/acpidb/Makefile,v 1.5 2004/05/25 02:56:55 njl Exp $
-# $DragonFly: src/usr.sbin/acpi/acpidb/Makefile,v 1.2 2005/03/12 14:33:40 y0netan1 Exp $
+# $DragonFly: src/usr.sbin/acpi/acpidb/Makefile,v 1.3 2005/08/16 10:31:35 y0netan1 Exp $
 
 PROG=	acpidb
 SRCS+=	acpidb.c
@@ -36,8 +36,8 @@ SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	utmisc.c utobject.c utxface.c
 
 .include <bsd.init.mk>
-.if ${SYSACPICA_VERSION} >= 20041203
-CONTRIBDIR= ${SYSACPICA_DIR}
+.if ${ACPICA_VERSION} >= 20041203
+CONTRIBDIR= ${SYSDIR}/${ACPICA_DIR}
 SRCS+=	osunixxf.c.patch
 .endif
 MAN=	acpidb.8

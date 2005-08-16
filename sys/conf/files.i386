@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.32 2005/06/20 20:37:23 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.33 2005/08/16 10:31:35 y0netan1 Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -93,13 +93,25 @@ dev/disk/advansys/adv_isa.c		optional	adv isa
 dev/disk/aic/aic_isa.c		optional	aic isa
 dev/netif/ar/if_ar_isa.c		optional	ar isa
 dev/serial/dgb/dgm.c			optional	dgm
-i386/acpica/OsdEnvironment.c   optional        acpica
-i386/acpica/acpi_machdep.c     optional        acpica
-i386/acpica/acpi_wakeup.c      optional        acpica
-acpi_wakecode.h                        optional        acpica                  \
-       dependency      "$S/i386/acpica/acpi_wakecode.S"                \
-       compile-with    "${MAKE} -f $S/i386/acpica/Makefile MAKESRCPATH=$S/i386/acpica" \
-       no-obj no-implicit-rule before-depend                           \
+
+${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
+${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
+${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
+${OSACPI_MD_DIR}/acpi_toshiba.c		optional        acpi_toshiba acpi
+acpi.h					optional	acpi		\
+	dependency	"$S/${ACPICA_DIR}/include/acpi.h"		\
+	compile-with	"cp $S/${ACPICA_DIR}/include/acpi.h ${.OBJDIR}/"	\
+	no-obj no-implicit-rule before-depend				\
+	clean		"acpi.h"
+platform/acenv.h			optional	acpi		\
+	dependency	"$S/${ACPICA_DIR}/include/platform/acenv.h"	\
+	compile-with	"mkdir -p ${.OBJDIR}/platform; cat ${.ALLSRC} | sed -e 's/__FreeBSD__/__DragonFly__/' -e 's/acfreebsd.h/acdragonfly.h/' > ${.TARGET}" \
+	no-obj no-implicit-rule before-depend				\
+	clean		"acenv.h"
+acpi_wakecode.h				optional        acpi		\
+	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
+	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \
+       no-obj no-implicit-rule before-depend				\
        clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
 #
 
@@ -250,7 +262,7 @@ i386/isa/npx.c				mandatory	npx
 bus/iicbus/i386/pcf.c			optional	pcf
 bus/pci/i386/pci_cfgreg.c		optional	pci
 bus/pci/i386/pcibus.c			optional	pci
-i386/isa/pmtimer.c			optional	acpica pmtimer
+i386/isa/pmtimer.c			optional	acpi pmtimer
 # XXX drhodus
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc

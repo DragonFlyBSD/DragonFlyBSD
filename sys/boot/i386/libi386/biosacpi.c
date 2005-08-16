@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosacpi.c,v 1.7 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biosacpi.c,v 1.3 2005/04/15 17:55:49 joerg Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biosacpi.c,v 1.4 2005/08/16 10:31:35 y0netan1 Exp $
  */
 
 #include <stand.h>
 #include <machine/stdarg.h>
 #include <bootstrap.h>
 
-#include "acfreebsd.h"
+#include "acdragonfly.h"
 #include "acconfig.h"
 #define ACPI_SYSTEM_XFACE
 #include "actypes.h"
