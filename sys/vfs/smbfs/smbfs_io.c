@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.17 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.18 2005/08/16 21:37:54 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -45,6 +45,8 @@
 #include <sys/dirent.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
+
+#include  <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -76,48 +78,48 @@ static int smbfs_fastlookup = 1;
 SYSCTL_DECL(_vfs_smbfs);
 SYSCTL_INT(_vfs_smbfs, OID_AUTO, fastlookup, CTLFLAG_RW, &smbfs_fastlookup, 0, "");
 
-
-#define DE_SIZE	(sizeof(struct dirent))
-
 static int
 smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 {
-	struct dirent de;
 	struct smb_cred scred;
 	struct smbfs_fctx *ctx;
 	struct vnode *newvp;
 	struct smbnode *np = VTOSMB(vp);
-	int error/*, *eofflag = ap->a_eofflag*/;
-	long offset, limit;
+	int error, i, offset, retval/*, *eofflag = ap->a_eofflag*/;
 
 	np = VTOSMB(vp);
 	SMBVDEBUG("dirname='%s'\n", np->n_name);
 	smb_makescred(&scred, uio->uio_td, cred);
-	offset = uio->uio_offset / DE_SIZE; 	/* offset in the directory */
-	limit = uio->uio_resid / DE_SIZE;
-	if (uio->uio_resid < DE_SIZE || uio->uio_offset < 0)
-		return EINVAL;
-	while (limit && offset < 2) {
-		limit--;
-		bzero((caddr_t)&de, DE_SIZE);
-		de.d_reclen = DE_SIZE;
-		de.d_fileno = (offset == 0) ? np->n_ino :
-		    (np->n_parent ? VTOSMB(np->n_parent)->n_ino : 2);
-		if (de.d_fileno == 0)
-			de.d_fileno = 0x7ffffffd + offset;
-		de.d_namlen = offset + 1;
-		de.d_name[0] = '.';
-		de.d_name[1] = '.';
-		de.d_name[offset + 1] = '\0';
-		de.d_type = DT_DIR;
-		error = uiomove((caddr_t)&de, DE_SIZE, uio);
+
+	if (uio->uio_resid < 0 || uio->uio_offset < 0 ||
+	    uio->uio_offset > INT_MAX)
+		return(EINVAL);
+
+	error = 0;
+	i = 0;
+	offset = uio->uio_offset;
+
+	if (uio->uio_resid > 0 && offset < 1) {
+		if (vop_write_dirent(&error, uio, np->n_ino, DT_DIR, 1, "."))
+			goto done;
 		if (error)
-			return error;
-		offset++;
-		uio->uio_offset += DE_SIZE;
+			goto done;
+		i++;
 	}
-	if (limit == 0)
-		return 0;
+
+	if (uio->uio_resid > 0 && offset < 2) {
+		if (vop_write_dirent(&error, uio,
+		    np->n_parent ? VTOSMB(np->n_parent)->n_ino : 2,
+		    DT_DIR, 2, ".."))
+			goto done;
+		if (error)
+			goto done;
+		i++;
+	}
+
+	if (uio->uio_resid == 0)
+		goto done;
+
 	if (offset != np->n_dirofs || np->n_dirseq == NULL) {
 		SMBVDEBUG("Reopening search %ld:%ld\n", offset, np->n_dirofs);
 		if (np->n_dirseq) {
@@ -144,31 +146,29 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		}
 	}
 	error = 0;
-	for (; limit; limit--, offset++) {
-		error = smbfs_findnext(ctx, limit, &scred);
+	for (; uio->uio_resid > 0 && !error; i++) {
+		error = smbfs_findnext(ctx, uio->uio_resid / sizeof(struct dirent) + 1, &scred);
 		if (error)
 			break;
 		np->n_dirofs++;
-		bzero((caddr_t)&de, DE_SIZE);
-		de.d_reclen = DE_SIZE;
-		de.d_fileno = ctx->f_attr.fa_ino;
-		de.d_type = (ctx->f_attr.fa_attr & SMB_FA_DIR) ? DT_DIR : DT_REG;
-		de.d_namlen = ctx->f_nmlen;
-		bcopy(ctx->f_name, de.d_name, de.d_namlen);
-		de.d_name[de.d_namlen] = '\0';
-		if (smbfs_fastlookup) {
+
+		retval = vop_write_dirent(&error, uio, ctx->f_attr.fa_ino,
+		    (ctx->f_attr.fa_attr & SMB_FA_DIR) ? DT_DIR : DT_REG,
+		    ctx->f_nmlen, ctx->f_name);
+		if (retval)
+			break;
+		if (smbfs_fastlookup && !error) {
 			error = smbfs_nget(vp->v_mount, vp, ctx->f_name,
 			    ctx->f_nmlen, &ctx->f_attr, &newvp);
 			if (!error)
 				vput(newvp);
 		}
-		error = uiomove((caddr_t)&de, DE_SIZE, uio);
-		if (error)
-			break;
 	}
 	if (error == ENOENT)
 		error = 0;
-	uio->uio_offset = offset * DE_SIZE;
+
+done:
+	uio->uio_offset = i;
 	return error;
 }
 
