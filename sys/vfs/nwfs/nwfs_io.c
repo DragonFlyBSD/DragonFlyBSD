@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.16 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.17 2005/08/16 19:16:39 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -59,6 +59,8 @@
 
 #include <sys/thread2.h>
 
+#include <machine/limits.h>
+
 #include "nwfs.h"
 #include "nwfs_node.h"
 #include "nwfs_subr.h"
@@ -71,7 +73,6 @@ SYSCTL_INT(_vfs_nwfs, OID_AUTO, fastlookup, CTLFLAG_RW, &nwfs_fastlookup, 0, "")
 
 extern int nwfs_pbuf_freecnt;
 
-#define DE_SIZE	(sizeof(struct dirent))
 #define	NWFS_RWCACHE
 
 static int
@@ -79,19 +80,22 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 {
 	struct nwmount *nmp = VTONWFS(vp);
 	int error, count, i;
-	struct dirent dp;
 	struct nwnode *np = VTONW(vp);
 	struct nw_entry_info fattr;
 	struct vnode *newvp;
 	ncpfid fid;
+	ino_t d_ino;
+	size_t d_namlen;
+	const char *d_name;
+	uint8_t d_type;
 
 	np = VTONW(vp);
 	NCPVNDEBUG("dirname='%s'\n",np->n_name);
-	if (uio->uio_resid < DE_SIZE || (uio->uio_offset < 0))
+	if (uio->uio_resid < 0 || uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return (EINVAL);
 	error = 0;
 	count = 0;
-	i = uio->uio_offset / DE_SIZE; /* offset in directory */
+	i = uio->uio_offset; /* offset in directory */
 	if (i == 0) {
 		error = ncp_initsearch(vp, uio->uio_td, cred);
 		if (error) {
@@ -100,28 +104,32 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		}
 	}
 
-	for (; uio->uio_resid >= DE_SIZE; i++) {
-		bzero((char *) &dp, DE_SIZE);
-		dp.d_reclen = DE_SIZE;
+	for (; !error && uio->uio_resid > 0; i++) {
 		switch (i) {
 		    case 0:		/* `.' */
+			d_ino = np->n_fid.f_id;
+			if (d_ino == 0)
+				d_ino = NWFS_ROOT_INO;
+			d_namlen = 1;
+			d_name = ".";
+			d_type = DT_DIR;
+			break;
 		    case 1:		/* `..' */
-			dp.d_fileno = (i == 0) ? np->n_fid.f_id : np->n_parent.f_id;
-			if (!dp.d_fileno) dp.d_fileno = NWFS_ROOT_INO;
-			dp.d_namlen = i + 1;
-			dp.d_name[0] = '.';
-			dp.d_name[1] = '.';
-			dp.d_name[i + 1] = '\0';
-			dp.d_type = DT_DIR;
+			d_ino = np->n_parent.f_id;
+			if (d_ino == 0)
+				d_ino = NWFS_ROOT_INO;
+			d_namlen = 2;
+			d_name = "..";
+			d_type = DT_DIR;
 			break;
 		    default:
 			error = ncp_search_for_file_or_subdir(nmp, &np->n_seq, &fattr, uio->uio_td, cred);
-			if (error && error < 0x80) break;
-			dp.d_fileno = fattr.dirEntNum;
-			dp.d_type = (fattr.attributes & aDIR) ? DT_DIR : DT_REG;
-			dp.d_namlen = fattr.nameLen;
-			bcopy(fattr.entryName, dp.d_name, dp.d_namlen);
-			dp.d_name[dp.d_namlen] = '\0';
+			if (error && error < 0x80)
+				goto done;
+			d_ino = fattr.dirEntNum;
+			d_type = (fattr.attributes & aDIR) ? DT_DIR : DT_REG;
+			d_namlen = fattr.nameLen;
+			d_name = fattr.entryName;
 #if 0
 			if (error && eofflag) {
 			/*	*eofflag = 1;*/
@@ -144,11 +152,11 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		    error = 0;
 		    break;
 		}
-		if ((error = uiomove((caddr_t)&dp, DE_SIZE, uio)))
+		if (vop_write_dirent(&error, uio, d_ino, d_type, d_namlen, d_name))
 			break;
 	}
-
-	uio->uio_offset = i * DE_SIZE;
+done:
+	uio->uio_offset = i;
 	return (error);
 }
 
