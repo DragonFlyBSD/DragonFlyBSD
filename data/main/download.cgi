@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.87 2005/07/21 15:55:38 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.88 2005/08/17 15:39:59 corecode Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -256,6 +256,14 @@ rsync
 <TD>
 <a href="http://dragonflybsd.cs.pu.edu.tw/">HTTP</a>,
 <a href="ftp://dragonflybsd.cs.pu.edu.tw/DragonFLYBSD">FTP</a>
+</TD>
+</TR>
+
+<TR>
+<TD>Japan Advanced Institute of Science and Technology (JAIST) (Ishikawa, Japan)</TD>
+<TD>Daily snapshots, official ISOs</TD>
+<a href="http://ftp.jaist.ac.jp/pub/DragonFly/">HTTP</a>,
+<a href="ftp://ftp.jaist.ac.jp/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
 
