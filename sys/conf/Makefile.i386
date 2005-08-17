@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.22 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.23 2005/08/17 02:51:45 y0netan1 Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -29,6 +29,9 @@
 # Can be overridden by makeoptions or /etc/make.conf
 KERNEL?=	kernel
 STD8X16FONT?=	iso
+
+# build this target if none is specified on the command line
+.MAIN:	all
 
 .if !defined(S)
 .if exists(./@/.)
