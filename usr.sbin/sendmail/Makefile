@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.10 2005/07/25 00:24:32 gshapiro Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.11 2005/08/17 02:47:06 gshapiro Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 SMDIR=	${SENDMAIL_DIR}/sendmail
@@ -10,6 +10,8 @@ BINDIR=	/usr/libexec/sendmail
 
 PROG=	sendmail
 MAN=	mailq.1 newaliases.1 aliases.5 sendmail.8 
+MLINKS+=sendmail.8 hoststat.8
+MLINKS+=sendmail.8 purgestat.8
 SRCS=	alias.c arpadate.c bf.c collect.c conf.c control.c \
 	convtime.c daemon.c deliver.c domain.c envelope.c err.c headers.c \
 	macro.c main.c map.c mci.c milter.c mime.c parseaddr.c queue.c \
