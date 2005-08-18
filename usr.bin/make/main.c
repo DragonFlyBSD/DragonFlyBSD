@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.140 2005/08/03 18:34:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.141 2005/08/18 07:58:30 okumoto Exp $
  */
 
 /*
@@ -1004,8 +1004,10 @@ main(int argc, char **argv)
 		const char *p;
 
 		p = Var_Value(".MAKEFLAGS", VAR_GLOBAL);
-		if (p != NULL && *p != '\0')
-			setenv("MAKEFLAGS", p, 1);
+		if (p != NULL && *p != '\0') {
+			if (setenv("MAKEFLAGS", p, 1) == -1)
+				Punt("setenv: MAKEFLAGS: can't allocate memory");
+		}
 	}
 
 	/*

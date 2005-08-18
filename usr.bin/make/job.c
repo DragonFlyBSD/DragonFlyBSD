@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.141 2005/08/10 16:50:36 swildner Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.142 2005/08/18 07:58:30 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -408,7 +408,8 @@ check_make_level(void)
 	} else {
 		char new_value[32];
 		sprintf(new_value, "%d", level + 1);
-		setenv(MKLVL_ENVVAR, new_value, 1);
+		if (setenv(MKLVL_ENVVAR, new_value, 1) == -1)
+			Punt("setenv: %s: can't allocate memory", MKLVL_ENVVAR);
 	}
 }
 
@@ -2387,7 +2388,8 @@ Job_Init(int maxproc)
 			fifoMaster = 1;
 			fcntl(fifoFd, F_SETFL, O_NONBLOCK);
 			env = fifoName;
-			setenv("MAKE_JOBS_FIFO", env, 1);
+			if (setenv("MAKE_JOBS_FIFO", env, 1) == -1)
+				Punt("setenv: MAKE_JOBS_FIFO: can't allocate memory");
 			while (maxproc-- > 0) {
 				write(fifoFd, "+", 1);
 			}

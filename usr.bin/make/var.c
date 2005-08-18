@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.217 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.218 2005/08/18 07:58:30 okumoto Exp $
  */
 
 /**
@@ -998,7 +998,8 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 			 * are automatically exported to the
 			 * environment (as per POSIX standard)
 			 */
-			setenv(n, val, 1);
+			if (setenv(n, val, 1) == -1)
+				Punt( "setenv: %s: can't allocate memory", n);
 		}
 	} else {
 		Buf_Clear(v->val);
@@ -1010,7 +1011,8 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 			 * are automatically exported to the
 			 * environment (as per POSIX standard)
 			 */
-			setenv(n, val, 1);
+			if (setenv(n, val, 1) == -1)
+				Punt( "setenv: %s: can't allocate memory", n);
 		}
 
 	}
@@ -1054,12 +1056,14 @@ Var_SetEnv(const char *name, GNode *ctxt)
 	if (v == NULL) {
 		Lst_AtFront(&VAR_ENV->context,
 		    VarCreate(name, NULL, VAR_TO_ENV));
-		setenv(name, "", 1);
+		if (setenv(name, "", 1) == -1)
+			Punt( "setenv: %s: can't allocate memory", name);
 		Error("Warning: .EXPORTVAR: set on undefined variable %s", name);
 	} else {
 		if ((v->flags & VAR_TO_ENV) == 0) {
 			v->flags |= VAR_TO_ENV;
-			setenv(v->name, Buf_Data(v->val), 1);
+			if (setenv(v->name, Buf_Data(v->val), 1) == -1)
+				Punt( "setenv: %s: can't allocate memory", v->name);	
 		}
 	}
 }
