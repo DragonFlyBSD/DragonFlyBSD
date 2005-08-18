@@ -3,7 +3,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/flex.skl,v 1.4 1999/10/27 07:56:44 obrien Exp $
- * $DragonFly: src/usr.bin/lex/flex.skl,v 1.4 2005/03/02 07:09:38 joerg Exp $
+ * $DragonFly: src/usr.bin/lex/flex.skl,v 1.5 2005/08/18 17:11:09 joerg Exp $
  */
 
 #define FLEX_SCANNER
@@ -27,7 +27,8 @@
 
 #include <stdlib.h>
 %+
-class istream;
+#include <iosfwd>
+using namespace std;
 %*
 #include <unistd.h>
 
