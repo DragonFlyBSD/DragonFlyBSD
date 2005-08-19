@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.10 2005/05/25 12:18:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.11 2005/08/19 14:40:03 joerg Exp $
  */
 
 /*
@@ -170,6 +170,9 @@
 #define BGE_PCI_MSI_ADDR_LO		0x60
 #define BGE_PCI_MSI_DATA		0x64
 
+#define BGE_PCIE_MSI_CAPID		0xD0
+#define BGE_PCIE_MSI_CAPID_VAL		0x10
+
 /*
  * PCI registers specific to the BCM570x family.
  */
@@ -234,6 +237,9 @@
 #define BGE_CHIPID_BCM5705_A1		0x30010000
 #define BGE_CHIPID_BCM5705_A2		0x30020000
 #define BGE_CHIPID_BCM5705_A3		0x30030000
+#define BGE_CHIPID_BCM5750_A0		0x40000000
+#define BGE_CHIPID_BCM5750_A1		0x40010000
+#define BGE_CHIPID_BCM5714_A0		0x50000000
 
 /* shorthand one */
 #define BGE_ASICREV(x)			((x) >> 28)
@@ -242,6 +248,8 @@
 #define BGE_ASICREV_BCM5703		0x01
 #define BGE_ASICREV_BCM5704		0x02
 #define BGE_ASICREV_BCM5705		0x03
+#define BGE_ASICREV_BCM5750		0x04
+#define BGE_ASICREV_BCM5714		0x05
 
 /* chip revisions */
 #define BGE_CHIPREV(x)			((x) >> 24)
@@ -1802,9 +1810,7 @@ struct bge_status_block {
 /*
  * strange Broadcom PCI IDs
  */
-#define BCOM_DEVICEID_BCM5702X		0x16C6
-#define BCOM_DEVICEID_BCM5703X		0x16C7
-#define BCOM_DEVICEID_BCM5788		0x169C
+#define BCOM_DEVICEID_BCM5714C		0x1668
 
 /*
  * Offset of MAC address inside EEPROM.
@@ -2186,6 +2192,7 @@ struct bge_softc {
 	uint8_t			bge_asicrev;
 	uint8_t			bge_chiprev;
 	uint8_t			bge_no_3_led;
+	uint8_t			bge_pcie;
 	struct bge_ring_data	*bge_rdata;	/* rings */
 	struct bge_chain_data	bge_cdata;	/* mbufs */
 	uint16_t		bge_tx_saved_considx;
