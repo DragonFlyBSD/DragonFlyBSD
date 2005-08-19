@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.42 2005/08/19 14:40:03 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.43 2005/08/19 14:41:07 joerg Exp $
  *
  */
 
@@ -2066,7 +2066,10 @@ bge_intr(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t status;
+ 	uint32_t status, statusword;
+
+	/* XXX */
+	statusword = loadandclear(&sc->bge_rdata->bge_status_block.bge_status);
 
 #ifdef notdef
 	/* Avoid this for now -- checking this register is expensive. */
@@ -2103,13 +2106,7 @@ bge_intr(void *xsc)
 			    BRGPHY_INTRS);
 		}
 	} else {
-		if ((sc->bge_rdata->bge_status_block.bge_status &
-		    BGE_STATFLAG_UPDATED) &&
-		    (sc->bge_rdata->bge_status_block.bge_status &
-		    BGE_STATFLAG_LINKSTATE_CHANGED)) {
-			sc->bge_rdata->bge_status_block.bge_status &=
-				~(BGE_STATFLAG_UPDATED|
-				BGE_STATFLAG_LINKSTATE_CHANGED);
+		if (statusword & BGE_STATFLAG_LINKSTATE_CHANGED) {
 			/*
 			 * Sometimes PCS encoding errors are detected in
 			 * TBI mode (on fiber NICs), and for some reason
