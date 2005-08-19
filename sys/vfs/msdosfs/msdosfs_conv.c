@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.5 2004/04/17 00:30:17 cpressey Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.6 2005/08/19 14:02:39 joerg Exp $ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-
@@ -834,11 +834,11 @@ winChkName(const u_char *un, int unlen, struct winentry *wep, int chksum,
  * Returns the checksum or -1 if impossible
  */
 int
-win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded,
+win2unixfn(struct winentry *wep, char *d_name, uint16_t *d_namlen, int chksum, int table_loaded,
 	   u_int16_t *u2w)
 {
 	u_int8_t *cp;
-	u_int8_t *np, *ep = dp->d_name + WIN_MAXLEN;
+	u_int8_t *np, *ep = d_name + WIN_MAXLEN;
 	u_int16_t code;
 	int i;
 
@@ -854,7 +854,7 @@ win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded
 		/*
 		 * This works even though d_namlen is one byte!
 		 */
-		dp->d_namlen = (wep->weCnt&WIN_CNT) * WIN_CHARS;
+		*d_namlen = (wep->weCnt&WIN_CNT) * WIN_CHARS;
 	} else if (chksum != wep->weChksum)
 		chksum = -1;
 	if (chksum == -1)
@@ -864,7 +864,7 @@ win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded
 	 * Offset of this entry
 	 */
 	i = ((wep->weCnt&WIN_CNT) - 1) * WIN_CHARS;
-	np = (u_int8_t *)dp->d_name + i;
+	np = (u_int8_t *)d_name + i;
 
 	/*
 	 * Convert the name parts
@@ -874,7 +874,7 @@ win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded
 		switch (code) {
 		case 0:
 			*np = '\0';
-			dp->d_namlen -= sizeof(wep->wePart2)/2
+			*d_namlen -= sizeof(wep->wePart2)/2
 			    + sizeof(wep->wePart3)/2 + i + 1;
 			return chksum;
 		case '/':
@@ -906,7 +906,7 @@ win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded
 		switch (code) {
 		case 0:
 			*np = '\0';
-			dp->d_namlen -= sizeof(wep->wePart3)/2 + i + 1;
+			*d_namlen -= sizeof(wep->wePart3)/2 + i + 1;
 			return chksum;
 		case '/':
 			*np = '\0';
@@ -937,7 +937,7 @@ win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded
 		switch (code) {
 		case 0:
 			*np = '\0';
-			dp->d_namlen -= i + 1;
+			*d_namlen -= i + 1;
 			return chksum;
 		case '/':
 			*np = '\0';

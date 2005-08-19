@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.24 2005/04/15 19:08:19 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.25 2005/08/19 14:02:39 joerg Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1523,7 +1523,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	int blsize;
 	long on;
 	u_long cn;
-	u_long fileno;
 	u_long dirsperblk;
 	long bias = 0;
 	daddr_t bn, lbn;
@@ -1531,12 +1530,16 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	struct denode *dep = VTODE(ap->a_vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
 	struct direntry *dentp;
-	struct dirent dirbuf;
 	struct uio *uio = ap->a_uio;
 	u_long *cookies = NULL;
 	int ncookies = 0;
 	off_t offset, off;
 	int chksum = -1;
+	ino_t d_ino;
+	uint16_t d_namlen;
+	uint8_t d_type;
+	char *d_name_storage = NULL;
+	char *d_name;
 
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_readdir(): vp %p, uio %p, cred %p, eofflagp %p\n",
@@ -1551,11 +1554,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	 */
 	if ((dep->de_Attributes & ATTR_DIRECTORY) == 0)
 		return (ENOTDIR);
-
-	/*
-	 * To be safe, initialize dirbuf
-	 */
-	bzero(dirbuf.d_name, sizeof(dirbuf.d_name));
 
 	/*
 	 * If the user buffer is smaller than the size of one dos directory
@@ -1592,30 +1590,25 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 #endif
 		bias = 2 * sizeof(struct direntry);
 		if (offset < bias) {
-			for (n = (int)offset / sizeof(struct direntry);
-			     n < 2; n++) {
+			for (n = (int)offset / sizeof(struct direntry); n < 2;
+			     n++) {
 				if (FAT32(pmp))
-					dirbuf.d_fileno = cntobn(pmp,
-								 pmp->pm_rootdirblk)
-							  * dirsperblk;
+					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
+					    * dirsperblk;
 				else
-					dirbuf.d_fileno = 1;
-				dirbuf.d_type = DT_DIR;
-				switch (n) {
-				case 0:
-					dirbuf.d_namlen = 1;
-					strcpy(dirbuf.d_name, ".");
-					break;
-				case 1:
-					dirbuf.d_namlen = 2;
-					strcpy(dirbuf.d_name, "..");
+					d_ino = 1;
+				d_type = DT_DIR;
+				if (n == 0) {
+					d_namlen = 1;
+					d_name = ".";
+				} else /* if (n == 1) */{
+					d_namlen = 2;
+					d_name = "..";
 					break;
 				}
-				dirbuf.d_reclen = GENERIC_DIRSIZ(&dirbuf);
-				if (uio->uio_resid < dirbuf.d_reclen)
+				if (vop_write_dirent(&error, uio, d_ino, d_type,
+				    d_namlen, d_name))
 					goto out;
-				error = uiomove((caddr_t) &dirbuf,
-						dirbuf.d_reclen, uio);
 				if (error)
 					goto out;
 				offset += sizeof(struct direntry);
@@ -1629,7 +1622,9 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		}
 	}
 
+	d_name_storage = malloc(WIN_MAXLEN, M_TEMP, M_WAITOK);
 	off = offset;
+
 	while (uio->uio_resid > 0) {
 		lbn = de_cluster(pmp, offset - bias);
 		on = (offset - bias) & pmp->pm_crbomask;
@@ -1644,6 +1639,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		error = bread(pmp->pm_devvp, bn, blsize, &bp);
 		if (error) {
 			brelse(bp);
+			free(d_name_storage, M_TEMP);
 			return (error);
 		}
 		n = min(n, blsize - bp->b_resid);
@@ -1659,6 +1655,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			printf("rd: dentp %08x prev %08x crnt %08x deName %02x attr %02x\n",
 			    dentp, prev, crnt, dentp->deName[0], dentp->deAttributes);
 #endif
+			d_name = d_name_storage;
 			/*
 			 * If this is an unused entry, we can stop.
 			 */
@@ -1681,7 +1678,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				if (pmp->pm_flags & MSDOSFSMNT_SHORTNAME)
 					continue;
 				chksum = win2unixfn((struct winentry *)dentp,
-					&dirbuf, chksum,
+					d_name, &d_namlen, chksum,
 					pmp->pm_flags & MSDOSFSMNT_U2WTABLE,
 					pmp->pm_u2w);
 				continue;
@@ -1695,33 +1692,30 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				continue;
 			}
 			/*
-			 * This computation of d_fileno must match
+			 * This computation of d_ino must match
 			 * the computation of va_fileid in
 			 * msdosfs_getattr.
 			 */
 			if (dentp->deAttributes & ATTR_DIRECTORY) {
-				fileno = getushort(dentp->deStartCluster);
+				d_ino = getushort(dentp->deStartCluster);
 				if (FAT32(pmp))
-					fileno |= getushort(dentp->deHighClust) << 16;
+					d_ino |= getushort(dentp->deHighClust) << 16;
 				/* if this is the root directory */
-				if (fileno == MSDOSFSROOT)
-					if (FAT32(pmp))
-						fileno = cntobn(pmp,
-								pmp->pm_rootdirblk)
-							 * dirsperblk;
-					else
-						fileno = 1;
+				if (d_ino != MSDOSFSROOT)
+					d_ino = cntobn(pmp, d_ino) * dirsperblk;
+				else if (FAT32(pmp))
+					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
+					    * dirsperblk;
 				else
-					fileno = cntobn(pmp, fileno) * dirsperblk;
-				dirbuf.d_fileno = fileno;
-				dirbuf.d_type = DT_DIR;
+					d_ino = 1;
+				d_type = DT_DIR;
 			} else {
-				dirbuf.d_fileno = offset / sizeof(struct direntry);
-				dirbuf.d_type = DT_REG;
+				d_ino = offset / sizeof(struct direntry);
+				d_type = DT_REG;
 			}
-			if (chksum != winChksum(dentp->deName))
-				dirbuf.d_namlen = dos2unixfn(dentp->deName,
-				    (u_char *)dirbuf.d_name,
+			if (chksum != winChksum(dentp->deName)) {
+				d_namlen = dos2unixfn(dentp->deName,
+				    (u_char *)d_name,
 				    dentp->deLowerCase |
 					((pmp->pm_flags & MSDOSFSMNT_SHORTNAME) ?
 					(LCASE_BASE | LCASE_EXT) : 0),
@@ -1729,20 +1723,18 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				    pmp->pm_d2u,
 				    pmp->pm_flags & MSDOSFSMNT_ULTABLE,
 				    pmp->pm_ul);
-			else
-				dirbuf.d_name[dirbuf.d_namlen] = 0;
+			}
 			chksum = -1;
-			dirbuf.d_reclen = GENERIC_DIRSIZ(&dirbuf);
-			if (uio->uio_resid < dirbuf.d_reclen) {
+			if (vop_write_dirent(&error, uio, d_ino, d_type,
+			    d_namlen, d_name)) {
 				brelse(bp);
 				goto out;
 			}
-			error = uiomove((caddr_t) &dirbuf,
-					dirbuf.d_reclen, uio);
 			if (error) {
 				brelse(bp);
 				goto out;
 			}
+
 			if (cookies) {
 				*cookies++ = offset + sizeof(struct direntry);
 				if (--ncookies <= 0) {
@@ -1755,6 +1747,9 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		brelse(bp);
 	}
 out:
+	if (d_name_storage != NULL)
+		free(d_name_storage, M_TEMP);
+
 	/* Subtract unused cookies */
 	if (ap->a_ncookies)
 		*ap->a_ncookies -= ncookies;

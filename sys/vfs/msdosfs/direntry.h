@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/direntry.h,v 1.15 1999/12/29 04:54:52 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/direntry.h,v 1.3 2003/08/20 09:56:32 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/direntry.h,v 1.4 2005/08/19 14:02:39 joerg Exp $ */
 /*	$NetBSD: direntry.h,v 1.14 1997/11/17 15:36:32 ws Exp $	*/
 
 /*-
@@ -137,7 +137,7 @@ int dos2unixfn (u_char dn[11], u_char *un, int lower, int d2u_loaded, u_int8_t *
 int unix2dosfn (const u_char *un, u_char dn[12], int unlen, u_int gen, int u2d_loaded, u_int8_t *u2d, int lu_loaded, u_int8_t *lu);
 int unix2winfn (const u_char *un, int unlen, struct winentry *wep, int cnt, int chksum, int table_loaded, u_int16_t *u2w);
 int winChkName (const u_char *un, int unlen, struct winentry *wep, int chksum, int u2w_loaded, u_int16_t *u2w, int ul_loaded, u_int8_t *ul);
-int win2unixfn (struct winentry *wep, struct dirent *dp, int chksum, int table_loaded, u_int16_t *u2w);
+int win2unixfn (struct winentry *wep, char *d_name, uint16_t *d_namlen, int chksum, int table_loaded, u_int16_t *u2w);
 u_int8_t winChksum (u_int8_t *name);
 int winSlotCnt (const u_char *un, int unlen);
 int winLenFixup (const u_char *un, int unlen);
