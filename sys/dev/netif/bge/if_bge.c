@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.43 2005/08/19 14:41:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.44 2005/08/19 14:42:19 joerg Exp $
  *
  */
 
@@ -1851,6 +1851,10 @@ bge_reset(struct bge_softc *sc)
 	pci_write_config(dev, BGE_PCI_CMD, command, 4);
 	bge_writereg_ind(sc, BGE_MISC_CFG, (65 << 1));
 
+	/* Enable memory arbiter. */
+	if (sc->bge_asicrev != BGE_ASICREV_BCM5705)
+		CSR_WRITE_4(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE);
+
 	/*
 	 * Prevent PXE restart: write a magic number to the
 	 * general communications memory at 0xB50.
@@ -1887,11 +1891,6 @@ bge_reset(struct bge_softc *sc)
 			break;
 		DELAY(10);
 	}
-
-	/* Enable memory arbiter. */
-	if (sc->bge_asicrev != BGE_ASICREV_BCM5705 &&
-	    sc->bge_asicrev != BGE_ASICREV_BCM5750)
-		CSR_WRITE_4(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE);
 
 	/* Fix up byte swapping */
 	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_MODECTL_BYTESWAP_NONFRAME|
