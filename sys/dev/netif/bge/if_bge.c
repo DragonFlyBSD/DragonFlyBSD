@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.44 2005/08/19 14:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.45 2005/08/19 14:43:30 joerg Exp $
  *
  */
 
@@ -2065,7 +2065,7 @@ bge_intr(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
- 	uint32_t status, statusword;
+ 	uint32_t status, statusword, mimode;
 
 	/* XXX */
 	statusword = loadandclear(&sc->bge_rdata->bge_status_block.bge_status);
@@ -2117,10 +2117,19 @@ bge_intr(void *xsc)
 			 * that sometimes appear on fiber NICs during
 			 * periods of heavy traffic. (There should be no
 			 * effect on copper NICs.)
+			 *
+			 * If we do have a copper NIC (bge_tbi == 0) then
+			 * check that the AUTOPOLL bit is set before
+			 * processing the event as a real link change.
+			 * Turning AUTOPOLL on and off in the MII read/write
+			 * functions will often trigger a link status
+			 * interrupt for no reason.
 			 */
 			status = CSR_READ_4(sc, BGE_MAC_STS);
-			if (!(status & (BGE_MACSTAT_PORT_DECODE_ERROR|
-			    BGE_MACSTAT_MI_COMPLETE))) {
+			mimode = CSR_READ_4(sc, BGE_MI_MODE);
+			if (!(status & (BGE_MACSTAT_PORT_DECODE_ERROR |
+					BGE_MACSTAT_MI_COMPLETE)) &&
+			    (!sc->bge_tbi && (mimode & BGE_MIMODE_AUTOPOLL))) {
 				sc->bge_link = 0;
 				callout_stop(&sc->bge_stat_timer);
 				bge_tick(sc);
