@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.10 2005/07/01 12:38:56 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.11 2005/08/19 14:36:21 joerg Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.10 2005/07/01 12:38:33 joerg Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.11 2005/08/19 14:35:53 joerg Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2309,6 +2309,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5702X 10/100/1000 Ethernet",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702_ALT,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5702 10/100/1000 Ethernet",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702FE,
 	    0,
 	    "Broadcom Corporation",
@@ -2351,16 +2357,40 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5705 10/100/1000 Ethernet",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705K,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5705K 10/100/1000 Ethetnet",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705M,
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5705M 10/100/1000 Ethernet",
 	},
 	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705_ALT,
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705M_ALT,
 	    0,
 	    "Broadcom Corporation",
-	    "BCM5705 10/100/1000 Ethernet",
+	    "BCM5705M 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5721,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5721 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5750,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5750 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5750M,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5750M 10/100/1000 Ethernet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5751,
@@ -2369,10 +2399,28 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5751 10/100/1000 Ethernet",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5751M,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5751M 10/100/1000 Ethernet",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5782,
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5782 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5788,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5788 10/100/1000 Enternet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5789,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5789 10/100/1000 Enternet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5901,
