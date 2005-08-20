@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.23 2005/04/15 19:08:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.24 2005/08/20 13:26:58 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -68,8 +68,8 @@
 #include "hpfs_subr.h"
 #include "hpfs_ioctl.h"
 
-static int	hpfs_de_uiomove (struct hpfsmount *, struct hpfsdirent *,
-				     struct uio *);
+static int	hpfs_de_uiomove (int *, struct hpfsmount *,
+				 struct hpfsdirent *, struct uio *);
 static int	hpfs_ioctl (struct vop_ioctl_args *ap);
 static int	hpfs_read (struct vop_read_args *);
 static int	hpfs_write (struct vop_write_args *ap);
@@ -827,11 +827,11 @@ hpfs_close(struct vop_close_args *ap)
 }
 
 static int
-hpfs_de_uiomove(struct hpfsmount *hpmp, struct hpfsdirent *dep,
+hpfs_de_uiomove(int *error, struct hpfsmount *hpmp, struct hpfsdirent *dep,
 		struct uio *uio)
 {
-	struct dirent cde;
-	int i, error;
+	char convname[MAXNAMLEN + 1];
+	int i, success;
 
 	dprintf(("[no: 0x%x, size: %d, name: %2d:%.*s, flag: 0x%x] ",
 		dep->de_fnode, dep->de_size, dep->de_namelen,
@@ -839,27 +839,17 @@ hpfs_de_uiomove(struct hpfsmount *hpmp, struct hpfsdirent *dep,
 
 	/*strncpy(cde.d_name, dep->de_name, dep->de_namelen);*/
 	for (i=0; i<dep->de_namelen; i++) 
-		cde.d_name[i] = hpfs_d2u(hpmp, dep->de_name[i]);
+		convname[i] = hpfs_d2u(hpmp, dep->de_name[i]);
+	convname[dep->de_namelen] = '\0';
 
-	cde.d_name[dep->de_namelen] = '\0';
-	cde.d_namlen = dep->de_namelen;
-	cde.d_fileno = dep->de_fnode;
-	cde.d_type = (dep->de_flag & DE_DIR) ? DT_DIR : DT_REG;
-	cde.d_reclen = sizeof(struct dirent);
+	success = vop_write_dirent(error, uio, dep->de_fnode,
+			(dep->de_flag & DE_DIR) ? DT_DIR : DT_REG,
+			dep->de_namelen, convname);
 
-	error = uiomove((char *)&cde, sizeof(struct dirent), uio);
-	if (error)
-		return (error);
-	
 	dprintf(("[0x%x] ", uio->uio_resid));
-	return (error);
+	return (success);
 }
 
-
-static struct dirent hpfs_de_dot =
-	{ 0, sizeof(struct dirent), DT_DIR, 1, "." };
-static struct dirent hpfs_de_dotdot =
-	{ 0, sizeof(struct dirent), DT_DIR, 2, ".." };
 
 /*
  * hpfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
@@ -884,34 +874,42 @@ hpfs_readdir(struct vop_readdir_args *ap)
 
 	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%x): ",hp->h_no,(u_int32_t)uio->uio_offset,uio->uio_resid));
 
+	/*
+	 * As we need to fake up . and .., and the remaining directory structure
+	 * can't be expressed in one off_t as well, we just increment uio_offset
+	 * by 1 for each entry.
+	 *
+	 * num is the entry we need to start reporting
+	 * cnum is the current entry
+	 */
 	off = uio->uio_offset;
-
-	if( uio->uio_offset < sizeof(struct dirent) ) {
-		dprintf((". faked, "));
-		hpfs_de_dot.d_fileno = hp->h_no;
-		error = uiomove((char *)&hpfs_de_dot,sizeof(struct dirent),uio);
-		if(error) {
-			return (error);
-		}
-
-		ncookies ++;
-	}
-
-	if( uio->uio_offset < 2 * sizeof(struct dirent) ) {
-		dprintf((".. faked, "));
-		hpfs_de_dotdot.d_fileno = hp->h_fn.fn_parent;
-
-		error = uiomove((char *)&hpfs_de_dotdot, sizeof(struct dirent),
-				uio);
-		if(error) {
-			return (error);
-		}
-
-		ncookies ++;
-	}
-
-	num = uio->uio_offset / sizeof(struct dirent) - 2;
+	num = uio->uio_offset;
 	cnum = 0;
+
+	if (num != off)		/* Wraparound */
+		return (EINVAL);
+
+	if( num <= cnum ) {
+		dprintf((". faked, "));
+		if (vop_write_dirent(&error, uio, hp->h_no, DT_DIR, 1, "."))
+			return (0);
+		if(error)
+			return (error);
+
+		ncookies ++;
+	}
+	cnum++;
+
+	if( num <= cnum ) {
+		dprintf((".. faked, "));
+		if (vop_write_dirent(&error, uio, hp->h_fn.fn_parent, DT_DIR, 2, ".."))
+			goto readdone;
+		if(error)
+			return (error);
+
+		ncookies ++;
+	}
+	cnum++;
 
 	lsn = ((alleaf_t *)hp->h_fn.fn_abd)->al_lsn;
 
@@ -951,24 +949,16 @@ dive:
 
 			if (!(dep->de_flag & DE_SPECIAL)) {
 				if (num <= cnum) {
-					if (uio->uio_resid < sizeof(struct dirent)) {
+					if (hpfs_de_uiomove(&error, hpmp, dep, uio)) {
 						brelse(bp);
 						dprintf(("[resid] "));
 						goto readdone;
 					}
-
-					error = hpfs_de_uiomove(hpmp, dep, uio);
 					if (error) {
 						brelse (bp);
 						return (error);
 					}
 					ncookies++;
-
-					if (uio->uio_resid < sizeof(struct dirent)) {
-						brelse(bp);
-						dprintf(("[resid] "));
-						goto readdone;
-					}
 				}
 				cnum++;
 			}
@@ -993,24 +983,16 @@ dive:
 
 		if (!(dep->de_flag & DE_SPECIAL)) {
 			if (num <= cnum) {
-				if (uio->uio_resid < sizeof(struct dirent)) {
+				if (hpfs_de_uiomove(&error, hpmp, dep, uio)) {
 					brelse(bp);
 					dprintf(("[resid] "));
 					goto readdone;
 				}
-
-				error = hpfs_de_uiomove(hpmp, dep, uio);
 				if (error) {
 					brelse (bp);
 					return (error);
 				}
 				ncookies++;
-				
-				if (uio->uio_resid < sizeof(struct dirent)) {
-					brelse(bp);
-					dprintf(("[resid] "));
-					goto readdone;
-				}
 			}
 			cnum++;
 		}
@@ -1044,10 +1026,9 @@ blockdone:
 	}
 
 readdone:
+	uio->uio_offset = cnum;
 	dprintf(("[readdone]\n"));
 	if (!error && ap->a_ncookies != NULL) {
-		struct dirent* dpStart;
-		struct dirent* dp;
 #if defined(__DragonFly__)
 		u_long *cookies;
 		u_long *cookiep;
@@ -1059,9 +1040,6 @@ readdone:
 		dprintf(("%d cookies, ",ncookies));
 		if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
 			panic("hpfs_readdir: unexpected uio from NFS server");
-		dpStart = (struct dirent *)
-		     ((caddr_t)uio->uio_iov->iov_base -
-			 (uio->uio_offset - off));
 #if defined(__DragonFly__)
 		MALLOC(cookies, u_long *, ncookies * sizeof(u_long),
 		       M_TEMP, M_WAITOK);
@@ -1069,12 +1047,9 @@ readdone:
 		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
 		       M_TEMP, M_WAITOK);
 #endif
-		for (dp = dpStart, cookiep = cookies, i=0;
-		     i < ncookies;
-		     dp = (struct dirent *)((caddr_t) dp + dp->d_reclen), i++) {
-			off += dp->d_reclen;
-			*cookiep++ = (u_int) off;
-		}
+		for (cookiep = cookies, i=0; i < ncookies; i++)
+			*cookiep++ = (u_int)++off;
+
 		*ap->a_ncookies = ncookies;
 		*ap->a_cookies = cookies;
 	}
