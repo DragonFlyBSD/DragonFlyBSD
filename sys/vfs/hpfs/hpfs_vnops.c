@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.24 2005/08/20 13:26:58 corecode Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.25 2005/08/20 18:37:21 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,8 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include <sys/dirent.h>
+
+#include <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -830,7 +832,7 @@ static int
 hpfs_de_uiomove(int *error, struct hpfsmount *hpmp, struct hpfsdirent *dep,
 		struct uio *uio)
 {
-	char convname[MAXNAMLEN + 1];
+	char convname[HPFS_MAXFILENAME + 1];
 	int i, success;
 
 	dprintf(("[no: 0x%x, size: %d, name: %2d:%.*s, flag: 0x%x] ",
@@ -864,7 +866,6 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	struct uio *uio = ap->a_uio;
 	int ncookies = 0, i, num, cnum;
 	int error = 0;
-	off_t off;
 	struct buf *bp;
 	struct dirblk *dp;
 	struct hpfsdirent *dep;
@@ -875,19 +876,13 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%x): ",hp->h_no,(u_int32_t)uio->uio_offset,uio->uio_resid));
 
 	/*
-	 * As we need to fake up . and .., and the remaining directory structure
-	 * can't be expressed in one off_t as well, we just increment uio_offset
-	 * by 1 for each entry.
-	 *
 	 * num is the entry we need to start reporting
 	 * cnum is the current entry
 	 */
-	off = uio->uio_offset;
+	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
+		return(EINVAL);
 	num = uio->uio_offset;
 	cnum = 0;
-
-	if (num != off)		/* Wraparound */
-		return (EINVAL);
 
 	if( num <= cnum ) {
 		dprintf((". faked, "));
@@ -1048,7 +1043,7 @@ readdone:
 		       M_TEMP, M_WAITOK);
 #endif
 		for (cookiep = cookies, i=0; i < ncookies; i++)
-			*cookiep++ = (u_int)++off;
+			*cookiep++ = (u_int)++num;
 
 		*ap->a_ncookies = ncookies;
 		*ap->a_cookies = cookies;
