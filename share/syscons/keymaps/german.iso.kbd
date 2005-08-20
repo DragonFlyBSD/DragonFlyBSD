@@ -1,11 +1,11 @@
 # $FreeBSD: src/share/syscons/keymaps/german.iso.kbd,v 1.14.2.1 2000/07/18 00:47:52 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/german.iso.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
+# $DragonFly: src/share/syscons/keymaps/german.iso.kbd,v 1.3 2005/08/20 19:22:37 swildner Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state
 # ------------------------------------------------------------------
   000   nop    nop    nop    nop    nop    nop    nop    nop     O
-  001   esc    esc    esc    esc    esc    esc    debug  esc     O
+  001   esc    esc    esc    esc    esc    esc    debug  panic   O
   002   '1'    '!'    nop    nop    '1'    '!'    nop    nop     O
   003   '2'    '"'    nop    nop    178    178    nop    nop     O
   004   '3'    167    nop    nop    179    179    nop    nop     O

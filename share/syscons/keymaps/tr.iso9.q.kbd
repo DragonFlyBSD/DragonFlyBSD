@@ -1,7 +1,7 @@
 # Turkish ISO-8859-9 keymap by Evren Yurtesen (09-12-1999)
 #
 # $FreeBSD: src/share/syscons/keymaps/tr.iso9.q.kbd,v 1.1.2.1 2000/08/30 11:06:49 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/tr.iso9.q.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
+# $DragonFly: src/share/syscons/keymaps/tr.iso9.q.kbd,v 1.3 2005/08/20 19:22:37 swildner Exp $
 #
 # For suggestions and corrections please contact with me.
 #
@@ -20,7 +20,7 @@
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state
 # ------------------------------------------------------------------
   000   nop    nop    nop    nop    nop    nop    nop    nop     O
-  001   esc    esc    esc    esc    esc    esc    debug  esc     O
+  001   esc    esc    esc    esc    esc    esc    debug  panic   O
   002   '1'    '!'    nop    nop    '>'    nop    nop    nop     O
   003   '2'    '''    nul    nul    '£'    nop    nul    nul     O
   004   '3'    '^'    nop    nop    '#'    nop    nop    nop     O

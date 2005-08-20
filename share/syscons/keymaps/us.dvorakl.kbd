@@ -1,13 +1,13 @@
 # A left handed Dvorak keyboard for US English
 #
 # $FreeBSD: src/share/syscons/keymaps/us.dvorakl.kbd,v 1.3.2.1 2000/07/18 00:47:53 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/us.dvorakl.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
+# $DragonFly: src/share/syscons/keymaps/us.dvorakl.kbd,v 1.3 2005/08/20 19:22:37 swildner Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state
 # ------------------------------------------------------------------
   000   nop    nop    nop    nop    nop    nop    nop    nop     O
-  001   esc    esc    esc    esc    esc    esc    debug  esc     O
+  001   esc    esc    esc    esc    esc    esc    debug  panic   O
   002   '['    '{'    esc    esc    '['    '{'    esc    esc     O
   003   ']'    '}'    gs     gs     ']'    '}'    gs     gs      O
   004   '/'    '?'    nop    nop    '/'    '?'    nop    nop     O

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdtables.h,v 1.47.2.1 2000/03/19 08:07:09 nyan Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbdtables.h,v 1.3 2005/08/20 18:51:28 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbdtables.h,v 1.4 2005/08/20 19:22:37 swildner Exp $
  */
 
 #ifndef KBD_DFLT_KEYMAP
@@ -44,7 +44,7 @@ static keymap_t key_map = { 0x6d, {
  * ---------------------------------------------------------------------------
  */
 /*00*/{{  NOP,   NOP,   NOP,   NOP,   NOP,   NOP,   NOP,   NOP, }, 0xFF,0x00 },
-/*01*/{{ 0x1B,  0x1B,  0x1B,  0x1B,  0x1B,  0x1B,   DBG,  0x1B, }, 0x02,0x00 },
+/*01*/{{ 0x1B,  0x1B,  0x1B,  0x1B,  0x1B,  0x1B,   DBG,   PNC, }, 0x03,0x00 },
 /*02*/{{  '1',   '!',   NOP,   NOP,   '1',   '!',   NOP,   NOP, }, 0x33,0x00 },
 /*03*/{{  '2',   '@',  0x00,  0x00,   '2',   '@',  0x00,  0x00, }, 0x00,0x00 },
 /*04*/{{  '3',   '#',   NOP,   NOP,   '3',   '#',   NOP,   NOP, }, 0x33,0x00 },

@@ -1,11 +1,11 @@
 # $FreeBSD: src/share/syscons/keymaps/ru.koi8-r.shift.kbd,v 1.11.2.1 2000/07/18 00:47:52 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/ru.koi8-r.shift.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
+# $DragonFly: src/share/syscons/keymaps/ru.koi8-r.shift.kbd,v 1.3 2005/08/20 19:22:37 swildner Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state
 # ------------------------------------------------------------------
   000   nop    nop    nop    nop    nop    nop    nop    nop     O
-  001   esc    esc    nop    nop    155    155    debug  nop     O
+  001   esc    esc    nop    nop    155    155    debug  panic   O
   002   '1'    '!'    nop    nop    177    161    nop    nop     O
   003   '2'    '@'    nul    nul    178    192    128    128     O
   004   '3'    '#'    nop    nop    179    163    nop    nop     O
@@ -133,7 +133,7 @@
   126   nop    nop    nop    nop    nop    nop    nop    nop     O
   127   nop    nop    nop    nop    nop    nop    nop    nop     O
   128   nop    nop    nop    nop    nop    nop    nop    nop     O
-  129   esc    esc    nop    nop    155    155    debug  nop     O
+  129   esc    esc    nop    nop    155    155    debug  panic   O
   130   '1'    '!'    nop    nop    177    161    nop    nop     O
   131   '2'    '"'    nul    nul    178    192    128    128     O
   132   '3'    '''    nop    nop    179    163    nop    nop     O
