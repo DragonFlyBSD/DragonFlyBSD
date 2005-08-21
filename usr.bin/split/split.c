@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)split.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/split/split.c,v 1.6.2.2 2002/07/25 12:46:36 tjr Exp $
- * $DragonFly: src/usr.bin/split/split.c,v 1.4 2003/10/25 14:14:52 hmp Exp $
+ * $DragonFly: src/usr.bin/split/split.c,v 1.5 2005/08/21 18:58:34 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -327,16 +327,8 @@ newfile(void)
 		if ((maxfiles *= 26) <= 0)
 			errx(EX_USAGE, "suffix is too long (max %ld)", i);
 
-	/*
-	 * Hack to increase max files; original code wandered through
-	 * magic characters.
-	 */
-	if (fnum == maxfiles) {
-		if (!defname || fname[0] == 'z')
-			errx(EX_DATAERR, "too many files");
-		++fname[0];
-		fnum = 0;
-	}
+	if (fnum == maxfiles)
+		errx(EX_DATAERR, "too many files");
 
 	/* Generate suffix of sufflen letters */
 	tfnum = fnum;
