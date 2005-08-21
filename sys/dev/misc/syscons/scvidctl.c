@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.11 2005/07/17 16:50:40 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.12 2005/08/21 19:11:28 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -54,6 +54,7 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     video_info_t info;
     u_char *font;
     int prev_ysize;
+    int new_ysize;
     int error;
 
     if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info))
@@ -108,9 +109,12 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     }
 
     /* set up scp */
+    new_ysize = 0;
 #ifndef SC_NO_HISTORY
-    if (scp->history != NULL)
+    if (scp->history != NULL) {
 	sc_hist_save(scp);
+	new_ysize = sc_vtb_rows(scp->history); 
+    }
 #endif
     prev_ysize = scp->ysize;
     /*
@@ -136,7 +140,7 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     sc_alloc_cut_buffer(scp, FALSE);
 #endif
 #ifndef SC_NO_HISTORY
-    sc_alloc_history_buffer(scp, 0, prev_ysize, FALSE);
+    sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
 #endif
     crit_exit();
 
@@ -232,6 +236,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     video_info_t info;
     u_char *font;
     int prev_ysize;
+    int new_ysize;
     int error;
 
     if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info))
@@ -322,9 +327,12 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 #endif
 
     /* set up scp */
+    new_ysize = 0;
 #ifndef SC_NO_HISTORY
-    if (scp->history != NULL)
+    if (scp->history != NULL) {
 	sc_hist_save(scp);
+	new_ysize = sc_vtb_rows(scp->history);
+    }
 #endif
     prev_ysize = scp->ysize;
     scp->status |= (UNKNOWN_MODE | PIXEL_MODE | MOUSE_HIDDEN);
@@ -343,7 +351,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     sc_alloc_cut_buffer(scp, FALSE);
 #endif
 #ifndef SC_NO_HISTORY
-    sc_alloc_history_buffer(scp, 0, prev_ysize, FALSE);
+    sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
 #endif
     crit_exit();
 
