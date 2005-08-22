@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.59 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.60 2005/08/22 22:05:48 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1670,6 +1670,9 @@ options 	AHD_REG_PRETTY_PRINT
 # based on the Broadcom BCM570x familiy of controllers, including the
 # 3Com 3c996-T, the Netgear GA302T, the SysKonnect SK-9D21 and SK-9D41,
 # and the embedded gigE NICs on Dell PowerEdge 2550 servers.
+#
+# options BGE_FAKE_AUTONEG is needed for some IBM blade servers with the
+# DNL switch module. Auto negotiation is broken those configurations.
 #
 # The `ncr' device provides support for the NCR 53C810 and 53C825
 # self-contained SCSI host adapters.
