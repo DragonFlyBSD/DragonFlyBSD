@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.45 2005/08/19 14:43:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.46 2005/08/22 18:29:52 joerg Exp $
  *
  */
 
@@ -71,6 +71,8 @@
  * result, this driver does not implement any support for the mini RX
  * ring.
  */
+
+#include "opt_bge.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1679,6 +1681,7 @@ bge_attach(device_t dev)
 		    IFM_ETHER|IFM_1000_SX|IFM_FDX, 0, NULL);
 		ifmedia_add(&sc->bge_ifmedia, IFM_ETHER|IFM_AUTO, 0, NULL);
 		ifmedia_set(&sc->bge_ifmedia, IFM_ETHER|IFM_AUTO);
+		sc->bge_ifmedia.ifm_media = sc->bge_ifmedia.ifm_cur->ifm_media;
 	} else {
 		/*
 		 * Do transceiver setup.
@@ -1897,6 +1900,19 @@ bge_reset(struct bge_softc *sc)
 	    BGE_MODECTL_BYTESWAP_DATA);
 
 	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
+
+	/*
+	 * The 5704 in TBI mode apparently needs some special
+	 * adjustment to insure the SERDES drive level is set
+	 * to 1.2V.
+	 */
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5704 && sc->bge_tbi) {
+		uint32_t serdescfg;
+
+		serdescfg = CSR_READ_4(sc, BGE_SERDES_CFG);
+		serdescfg = (serdescfg & ~0xFFF) | 0x880;
+		CSR_WRITE_4(sc, BGE_SERDES_CFG, serdescfg);
+	}
 
 	/* XXX: Broadcom Linux driver. */
 	if (sc->bge_pcie && sc->bge_chipid != BGE_CHIPID_BCM5750_A0) {
@@ -2192,6 +2208,10 @@ bge_tick(void *xsc)
 		if (CSR_READ_4(sc, BGE_MAC_STS) &
 		    BGE_MACSTAT_TBI_PCS_SYNCHED) {
 			sc->bge_link++;
+			if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
+				BGE_CLRBIT(sc, BGE_MAC_MODE,
+					   BGE_MACMODE_TBI_SEND_CFGS);
+			}
 			CSR_WRITE_4(sc, BGE_MAC_STS, 0xFFFFFFFF);
 			if_printf(ifp, "gigabit link up\n");
 			if (!ifq_is_empty(&ifp->if_snd))
@@ -2530,6 +2550,26 @@ bge_ifmedia_upd(struct ifnet *ifp)
 			return(EINVAL);
 		switch(IFM_SUBTYPE(ifm->ifm_media)) {
 		case IFM_AUTO:
+#ifndef BGE_FAKE_AUTONEG
+			/*
+			 * The BCM5704 ASIC appears to have a special
+			 * mechanism for programming the autoneg
+			 * advertisement registers in TBI mode.
+			 */
+			if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
+				uint32_t sgdig;
+
+				CSR_WRITE_4(sc, BGE_TX_TBI_AUTONEG, 0);
+				sgdig = CSR_READ_4(sc, BGE_SGDIG_CFG);
+				sgdig |= BGE_SGDIGCFG_AUTO |
+					 BGE_SGDIGCFG_PAUSE_CAP |
+					 BGE_SGDIGCFG_ASYM_PAUSE;
+				CSR_WRITE_4(sc, BGE_SGDIG_CFG,
+					    sgdig | BGE_SGDIGCFG_SEND);
+				DELAY(5);
+				CSR_WRITE_4(sc, BGE_SGDIG_CFG, sgdig);
+			}
+#endif	/* !BEG_FAKE_AUTONEG */
 			break;
 		case IFM_1000_SX:
 			if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX) {
