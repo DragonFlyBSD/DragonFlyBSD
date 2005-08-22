@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.25 2005/08/20 18:37:21 joerg Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.26 2005/08/22 16:53:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -876,6 +876,10 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%x): ",hp->h_no,(u_int32_t)uio->uio_offset,uio->uio_resid));
 
 	/*
+	 * As we need to fake up . and .., and the remaining directory structure
+	 * can't be expressed in one off_t as well, we just increment uio_offset
+	 * by 1 for each entry.
+	 *
 	 * num is the entry we need to start reporting
 	 * cnum is the current entry
 	 */
