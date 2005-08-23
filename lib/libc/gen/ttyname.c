@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.9 2005/08/23 17:14:15 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.10 2005/08/23 17:44:24 dillon Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -54,7 +54,7 @@
 #include <db.h>
 #include "libc_private.h"
 
-static char static_buf[PATH_MAX] = _PATH_DEV;
+static char static_buf[TTY_PATH_MAX] = _PATH_DEV;
 static char *oldttyname __P((int, struct stat *));
 static char *ttyname_threaded(int fd);
 static char *ttyname_unthreaded(int fd);
@@ -173,7 +173,7 @@ ttyname_unthreaded(int fd)
 		key.data = &bkey;
 		key.size = sizeof(bkey);
 		if (!(db->get)(db, &key, &data, 0) &&
-		    (sizeof(_PATH_DEV) + data.size - 1< PATH_MAX)) {
+		    (sizeof(_PATH_DEV) + data.size - 1 < sizeof(static_buf))) {
 			bcopy(data.data,
 			    static_buf + sizeof(_PATH_DEV) - 1, data.size);
 			(void)(db->close)(db);
@@ -199,7 +199,7 @@ oldttyname(fd, sb)
 	while ( (dirp = readdir(dp)) ) {
 		if (dirp->d_fileno != sb->st_ino)
 			continue;
-		if (sizeof(_PATH_DEV) + dirp->d_namlen >= PATH_MAX)
+		if (sizeof(_PATH_DEV) + dirp->d_namlen >= sizeof(static_buf))
 			continue;
 		bcopy(dirp->d_name, static_buf + sizeof(_PATH_DEV) - 1,
 		    dirp->d_namlen + 1);

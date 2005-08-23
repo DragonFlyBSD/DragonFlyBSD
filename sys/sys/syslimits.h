@@ -32,7 +32,7 @@
  *
  *	@(#)syslimits.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslimits.h,v 1.9 1999/08/28 00:52:03 peter Exp $
- * $DragonFly: src/sys/sys/syslimits.h,v 1.3 2004/11/09 17:52:45 joerg Exp $
+ * $DragonFly: src/sys/sys/syslimits.h,v 1.4 2005/08/23 17:44:22 dillon Exp $
  */
 
 #ifndef _SYS_SYSLIMITS_H_
@@ -50,6 +50,7 @@
 #ifndef OPEN_MAX
 #define	OPEN_MAX		   64	/* max open files per process */
 #endif
+#define TTY_PATH_MAX		  256	/* max tty pathname */
 #define	PATH_MAX		 1024	/* max bytes in pathname */
 #define	PIPE_BUF		  512	/* max bytes for atomic pipe writes */
 #define	IOV_MAX			 1024	/* max elements in i/o vector */
