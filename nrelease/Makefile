@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.39 2005/08/02 17:57:14 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.40 2005/08/23 21:33:29 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -160,6 +160,17 @@ customizeiso:
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
 	rm -rf ${ISOROOT}/usr/local/share/pristine
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
+.for UPGRADE_ITEM in Makefile			\
+		     etc.${MACHINE_ARCH} 	\
+		     isdn/Makefile		\
+		     rc.d/Makefile		\
+		     periodic/Makefile		\
+		     periodic/daily/Makefile	\
+		     periodic/security/Makefile	\
+		     periodic/weekly/Makefile	\
+		     periodic/monthly/Makefile
+	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
+.endfor
 
 pkgcleaniso:
 	rm -f ${ISOROOT}/tmp/chrootscript
