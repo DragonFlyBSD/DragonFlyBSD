@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.85 2005/08/23 21:13:35 cpressey Exp $
+# $DragonFly: src/etc/Makefile,v 1.86 2005/08/23 21:25:26 cpressey Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -14,9 +14,13 @@ BINUPDATE= apmd.conf fbtab gettytab network.subr \
 	rc rc.firewall6 \
 	rc.sendmail rc.shutdown \
 	rc.subr rpc services \
-	etc.${MACHINE_ARCH}/disktab \
-	${.CURDIR}/../usr.bin/mail/misc/mail.rc \
+	etc.${MACHINE_ARCH}/disktab
+.if defined(BINARY_UPGRADE) # location of these depends on upgrade method
+BINUPDATE+=mail.rc locate.rc
+.else
+BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 	${.CURDIR}/../usr.bin/locate/locate/locate.rc
+.endif
 
 # Initial distribution files are installed read-write (644)
 #
@@ -29,8 +33,12 @@ BIN1=	amd.map auth.conf \
 	pf.conf phones printcap profile \
 	remote \
 	shells sysctl.conf syslog.conf usbd.conf \
-	etc.${MACHINE_ARCH}/ttys \
-	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
+	etc.${MACHINE_ARCH}/ttys
+.if defined(BINARY_UPGRADE) # location of these depends on upgrade method
+BIN1+=	manpath.config
+.else
+BIN1+=	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
+.endif
 
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
@@ -101,7 +109,9 @@ preupgrade:
 		pw -V ${DESTDIR}/etc groupadd _ntp -g 65
 
 upgrade_etc:	preupgrade
+.if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/../share/mk; ${MAKE} install
+.endif
 	cd ${UPGRADE_SRCDIR}; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${BINUPDATE} ${DESTDIR}/etc; \
@@ -122,12 +132,15 @@ upgrade_etc:	preupgrade
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
 .endif
 .endfor
+.if !defined(BINARY_UPGRADE) # XXX not yet handled by binary upgrade
 .if !defined(NO_SENDMAIL)
 	cd ${UPGRADE_SRCDIR}/sendmail; ${MAKE} upgrade
+.endif
 .endif
 .if !defined(NO_I4B)
 	cd ${UPGRADE_SRCDIR}/isdn; ${MAKE} install
 .endif
+.if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
 	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
@@ -135,12 +148,15 @@ upgrade_etc:	preupgrade
 	cd ${DESTDIR}/dev; sh MAKEDEV all
 .endif
 .endif
+.endif
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
+.if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
 .if !defined(NOMAN)
 	cd ${UPGRADE_SRCDIR}/../share/man; ${MAKE} makedb
+.endif
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
