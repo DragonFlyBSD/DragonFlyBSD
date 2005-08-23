@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.83 2005/08/23 20:42:44 cpressey Exp $
+# $DragonFly: src/etc/Makefile,v 1.84 2005/08/23 21:00:39 cpressey Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -70,6 +70,9 @@ FREEBSD=COPYRIGHT
 # from /usr/lib.
 COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat; ls
 
+# Use this directory as the source for new configuration files when upgrading
+UPGRADE_SRCDIR?=${.CURDIR}
+
 distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
 
@@ -98,43 +101,43 @@ preupgrade:
 		pw -V ${DESTDIR}/etc groupadd _ntp -g 65
 
 upgrade_etc:	preupgrade
-	cd ${.CURDIR}/../share/mk; ${MAKE} install
-	cd ${.CURDIR}; \
+	cd ${UPGRADE_SRCDIR}/../share/mk; ${MAKE} install
+	cd ${UPGRADE_SRCDIR}; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${BINUPDATE} ${DESTDIR}/etc; \
 	    cap_mkdb ${DESTDIR}/etc/login.conf; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${BIN2} ${DESTDIR}/etc;
-	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	cd ${UPGRADE_SRCDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
-	cd ${.CURDIR}/periodic; ${MAKE} install
-	cd ${.CURDIR}/rc.d; ${MAKE} install 
-	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
-	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
+	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
+	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
+	cd ${UPGRADE_SRCDIR}/../share/termcap; ${MAKE} etc-termcap
+	cd ${UPGRADE_SRCDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
 .for pamconf in README convert.sh
 .if !exists(${DESTDIR}/etc/pam.d/${pamconf})
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${.CURDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
 .endif
 .endfor
 .if !defined(NO_SENDMAIL)
-	cd ${.CURDIR}/sendmail; ${MAKE} upgrade
+	cd ${UPGRADE_SRCDIR}/sendmail; ${MAKE} upgrade
 .endif
 .if !defined(NO_I4B)
-	cd ${.CURDIR}/isdn; ${MAKE} install
+	cd ${UPGRADE_SRCDIR}/isdn; ${MAKE} install
 .endif
 .if !defined(NO_MAKEDEV)
-	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
+	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
 .if !defined(NO_MAKEDEV_RUN)
 	cd ${DESTDIR}/dev; sh MAKEDEV all
 .endif
 .endif
-	cd ${.CURDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
-	cd ${.CURDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
 .if !defined(NOMAN)
-	cd ${.CURDIR}/../share/man; ${MAKE} makedb
+	cd ${UPGRADE_SRCDIR}/../share/man; ${MAKE} makedb
 .endif
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
