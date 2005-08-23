@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.29 2005/02/01 10:50:36 harti Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.39 2005/08/07 08:16:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.40 2005/08/23 21:03:02 okumoto Exp $
  */
 
 #ifndef make_h_a91074b9
@@ -55,10 +55,11 @@
 #define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
 #endif
 
-struct GNode;
-struct Lst;
 struct Buffer;
 struct CLI;
+struct GNode;
+struct Lst;
+struct Shell;
 
 /*
  * Warning flags
