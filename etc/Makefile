@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.82 2005/08/06 11:36:13 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.83 2005/08/23 20:42:44 cpressey Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -75,24 +75,27 @@ distribute:
 
 preupgrade:
 .if !defined(NO_SENDMAIL)
-	(pw groupshow smmsp -q > /dev/null) || \
-		pw groupadd smmsp -g 25
-	(pw usershow smmsp -q > /dev/null) || \
-		pw useradd smmsp -u 25 -c "Sendmail Submission User" \
+	(pw -V ${DESTDIR}/etc groupshow smmsp -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc groupadd smmsp -g 25
+	(pw -V ${DESTDIR}/etc usershow smmsp -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc useradd smmsp -u 25 \
+		   -c "Sendmail Submission User" \
 		   -d /var/spool/clientmqueue -s /sbin/nologin
 .endif
-	(pw usershow _pflogd -q > /dev/null) || \
-		pw useradd _pflogd -u 64 -c "pflogd privsep user" \
+	(pw -V ${DESTDIR}/etc usershow _pflogd -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc useradd _pflogd -u 64 \
+		   -c "pflogd privsep user" \
 		   -d /var/empty -s /sbin/nologin
-	(pw usershow _ntp -q > /dev/null) || \
-		pw useradd _ntp -u 65 -c "ntpd privsep user" \
+	(pw -V ${DESTDIR}/etc usershow _ntp -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc useradd _ntp -u 65 \
+		   -c "ntpd privsep user" \
 		   -d /var/empty -s /sbin/nologin
-	(pw groupshow authpf -q > /dev/null) || \
-		pw groupadd authpf -g 63
-	(pw groupshow _pflogd -q > /dev/null) || \
-		pw groupadd _pflogd -g 64
-	(pw groupshow _ntp -q > /dev/null) || \
-		pw groupadd _ntp -g 65
+	(pw -V ${DESTDIR}/etc groupshow authpf -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc groupadd authpf -g 63
+	(pw -V ${DESTDIR}/etc groupshow _pflogd -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc groupadd _pflogd -g 64
+	(pw -V ${DESTDIR}/etc groupshow _ntp -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc groupadd _ntp -g 65
 
 upgrade_etc:	preupgrade
 	cd ${.CURDIR}/../share/mk; ${MAKE} install
