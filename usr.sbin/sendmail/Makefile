@@ -1,10 +1,13 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.11 2005/08/17 02:47:06 gshapiro Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.12 2005/08/23 15:28:06 joerg Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 SMDIR=	${SENDMAIL_DIR}/sendmail
 .PATH: ${SMDIR}
+
+CONTRIBDIR=	${SMDIR}
+PATCHES=	mci.c.patch
 
 BINDIR=	/usr/libexec/sendmail
 
@@ -17,7 +20,7 @@ SRCS=	alias.c arpadate.c bf.c collect.c conf.c control.c \
 	macro.c main.c map.c mci.c milter.c mime.c parseaddr.c queue.c \
 	ratectrl.c readcf.c recipient.c savemail.c sasl.c sfsasl.c \
 	shmticklib.c sm_resolve.c srvrsmtp.c stab.c stats.c sysexits.c \
-	timers.c tls.c trace.c udb.c usersmtp.c util.c version.c
+	timers.c tls.c trace.c udb.c usersmtp.c util.c version.c ${PATCHES}
 BINOWN=	root
 BINGRP=	smmsp
 .ifdef SENDMAIL_SET_USER_ID

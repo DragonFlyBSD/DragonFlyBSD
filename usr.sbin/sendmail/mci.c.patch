@@ -1,0 +1,47 @@
+$DragonFly: src/usr.sbin/sendmail/mci.c.patch,v 1.1 2005/08/23 15:28:06 joerg Exp $
+
+Index: mci.c
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/sendmail-8.13.4/sendmail/mci.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 mci.c
+--- mci.c	6 Jun 2005 04:25:22 -0000	1.1.1.1
++++ mci.c	23 Aug 2005 15:04:54 -0000
+@@ -1125,7 +1125,7 @@
+ 		size_t len;
+ 		char *newptr;
+ 		struct dirent *e;
+-		char newpath[MAXPATHLEN];
++		char newpath[PATH_MAX];
+ 
+ 		if ((d = opendir(pathname)) == NULL)
+ 		{
+@@ -1134,7 +1134,7 @@
+ 					pathname, sm_errstring(errno));
+ 			return -1;
+ 		}
+-		len = sizeof(newpath) - MAXNAMLEN - 3;
++		len = sizeof(newpath) - 2; /* enough space for '/' and NUL */
+ 		if (sm_strlcpy(newpath, pathname, len) >= len)
+ 		{
+ 			if (tTd(56, 2))
+@@ -1144,6 +1144,7 @@
+ 		}
+ 		newptr = newpath + strlen(newpath);
+ 		*newptr++ = '/';
++		len = sizeof(newpath) - (newptr - newpath);
+ 
+ 		/*
+ 		**  repeat until no file has been removed
+@@ -1160,9 +1161,8 @@
+ 				if (e->d_name[0] == '.')
+ 					continue;
+ 
+-				(void) sm_strlcpy(newptr, e->d_name,
+-					       sizeof newpath -
+-					       (newptr - newpath));
++				if (sm_strlcpy(newptr, e->d_name, len) >= len)
++					continue;
+ 
+ 				if (StopRequest)
+ 					stop_sendmail();
