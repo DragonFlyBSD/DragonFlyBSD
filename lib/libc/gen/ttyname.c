@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.7 2005/08/23 12:06:48 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.8 2005/08/23 12:09:24 joerg Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -135,7 +135,7 @@ ttyname_threaded(int fd)
 
 	/* Must have thread specific data field to put data */
 	if ((buf = _pthread_getspecific(ttyname_key)) == NULL) {
-		if ((buf = malloc(sizeof(_PATH_DEV) + MAXNAMLEN)) != NULL) {
+		if ((buf = malloc(PATH_MAX) != NULL) {
 			if (_pthread_setspecific(ttyname_key, buf) != 0) {
 				free(buf);
 				return (NULL);
@@ -144,7 +144,7 @@ ttyname_threaded(int fd)
 			return (NULL);
 		}
 	}
-	return (ttyname_r(fd, buf, sizeof(_PATH_DEV) + MAXNAMLEN));
+	return (ttyname_r(fd, buf, PATH_MAX));
 }
 
 static char *
