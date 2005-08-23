@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
  * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
- * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.8 2005/01/05 00:33:50 cpressey Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.9 2005/08/23 21:22:11 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@ struct hs {
 	int	hs_nusers;
 } *hs;
 struct	whod awhod;
-#define LEFTEARTH(h)		(now - (h)->hs_wd->wd_recvtime > 4*24*60*60)
+#define LEFTEARTH(h)		(now - (h) > 4*24*60*60)
 #define	ISDOWN(h)		(now - (h)->hs_wd->wd_recvtime > 11 * 60)
 #define	WHDRSIZE	(sizeof (awhod) - sizeof (awhod.wd_we))
 
@@ -129,6 +129,8 @@ main(int argc, char *argv[])
 
 		if (cc < WHDRSIZE)
 			continue;
+		if (LEFTEARTH(((struct whod *)buf)->wd_recvtime))
+			continue;
 		if (nhosts == hspace) {
 			if ((hs =
 			    realloc(hs, (hspace += 40) * sizeof(*hs))) == NULL)
@@ -158,8 +160,6 @@ main(int argc, char *argv[])
 	qsort(hs, nhosts, sizeof(hs[0]), cmp);
 	for (i = 0; i < nhosts; i++) {
 		hsp = &hs[i];
-		if (LEFTEARTH(hsp))
-			continue;
 		if (ISDOWN(hsp)) {
 			(void)printf("%-12.12s%s\n", hsp->hs_wd->wd_hostname,
 			    interval(now - hsp->hs_wd->wd_recvtime, "down"));
