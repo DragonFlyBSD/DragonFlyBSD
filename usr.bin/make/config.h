@@ -38,7 +38,7 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.16 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.12 2005/07/15 21:06:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.13 2005/08/24 00:09:02 okumoto Exp $
  */
 
 #ifndef config_h_efe0765e
@@ -72,11 +72,8 @@
 /*
  * SYSVINCLUDE
  *	Recognize system V like include directives [include "filename"]
- * SYSVVARSUB
- *	Recognize system V like ${VAR:x=y} variable substitutions
  */
 #define	SYSVINCLUDE
-#define	SYSVVARSUB
 
 /*
  * SUNSHCMD

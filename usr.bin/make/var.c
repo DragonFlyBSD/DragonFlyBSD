@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.218 2005/08/18 07:58:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.219 2005/08/24 00:09:02 okumoto Exp $
  */
 
 /**
@@ -379,7 +379,6 @@ VarMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
 	return (addSpace);
 }
 
-#ifdef SYSVVARSUB
 /**
  * Place the word in the buffer if it matches the given pattern.
  * Callback function for VarModify to implement the System V %
@@ -411,7 +410,6 @@ VarSYSVMatch(const char *word, bool addSpace, Buffer *buf, void *patp)
 
 	return (addSpace);
 }
-#endif
 
 /**
  * Place the word in the buffer if it doesn't match the given pattern.
@@ -1545,7 +1543,6 @@ modifier_C(VarParser *vp, char value[], Var *v)
 static char *
 sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 {
-#ifdef SYSVVARSUB
 	/*
 	 * This can either be a bogus modifier or a System-V substitution
 	 * command.
@@ -1605,9 +1602,7 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 
 		free(patt.lhs);
 		free(patt.rhs);
-	} else
-#endif
-	{
+	} else {
 		Error("Unknown modifier '%c'\n", *vp->ptr);
 		vp->ptr++;
 		while (*vp->ptr != '\0') {
