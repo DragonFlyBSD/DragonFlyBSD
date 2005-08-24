@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.19 2005/08/24 20:28:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.20 2005/08/24 21:14:21 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -2040,7 +2040,7 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
      * with a link count > 1.  The undo code needs to locate the inode and
      * regenerate the hardlink.
      */
-    if (jrflags & JRUNDO_FILEDATA) {
+    if ((jrflags & JRUNDO_FILEDATA) && attr.va_type == VREG) {
 	if (attr.va_size != VNOVAL) {
 	    if (bytes == -1)
 		bytes = attr.va_size - off;
@@ -2051,6 +2051,28 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
 	} else {
 	    error = EINVAL;
 	}
+    }
+    if ((jrflags & JRUNDO_FILEDATA) && attr.va_type == VLNK) {
+	struct iovec aiov;
+	struct uio auio;
+	char *buf;
+
+	buf = malloc(PATH_MAX, M_JOURNAL, M_WAITOK);
+	aiov.iov_base = buf;
+	aiov.iov_len = PATH_MAX;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_offset = 0;
+	auio.uio_rw = UIO_READ;
+	auio.uio_segflg = UIO_SYSSPACE;
+	auio.uio_td = curthread;
+	auio.uio_resid = PATH_MAX;
+	error = VOP_READLINK(vp, &auio, proc0.p_ucred);
+	if (error == 0) {
+		jrecord_leaf(jrec, JLEAF_SYMLINKDATA, buf, 
+				PATH_MAX - auio.uio_resid);
+	}
+	free(buf, M_JOURNAL);
     }
 done:
     if (error)
