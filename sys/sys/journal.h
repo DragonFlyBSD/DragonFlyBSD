@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.6 2005/07/13 01:58:23 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.7 2005/08/24 20:28:33 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -289,6 +289,7 @@ struct journal_subrecord {
 #define JLEAF_UDEV		0x041B
 #define JLEAF_FILEREV		0x041C
 #define JLEAF_VTYPE		0x041D
+#define JLEAF_ERROR		0x041E
 
 /*
  * Low level journal data file structures

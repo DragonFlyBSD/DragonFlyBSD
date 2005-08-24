@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.9 2005/07/13 01:58:23 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.10 2005/08/24 20:28:33 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -157,6 +157,7 @@ struct journal {
 	struct thread	rthread;
 };
 
+
 /*
  * The jrecord structure is used to build a journaling transaction.  Since
  * a single journaling transaction might encompass very large buffers it 
@@ -176,7 +177,17 @@ struct jrecord {
 	int		pushptrgood;
 	int		residual;
 	int		residual_align;
+
+	/*
+	 * These fields are not used by the jrecord routines.  They may
+	 * be used by higher level routines to manage multiple jrecords.
+	 * See the jreclist_*() functions.
+	 */
+	TAILQ_ENTRY(jrecord) user_entry;
+	void *user_save;
 };
+
+TAILQ_HEAD(jrecord_list, jrecord);
 
 #endif
 #endif
