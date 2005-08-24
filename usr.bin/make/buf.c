@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.41 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.42 2005/08/24 00:08:05 okumoto Exp $
  */
 
 /*
@@ -62,7 +62,6 @@
 inline size_t
 Buf_Size(const Buffer *buf)
 {
-
 	return (buf->end - buf->buf);
 }
 
@@ -74,7 +73,6 @@ Buf_Size(const Buffer *buf)
 inline char *
 Buf_Data(const Buffer *bp)
 {
-
 	return (bp->buf);
 }
 
@@ -101,7 +99,6 @@ BufExpand(Buffer *bp, size_t nb)
 inline void
 Buf_AddByte(Buffer *bp, char byte)
 {
-
 	BufExpand(bp, 1);
 
 	*bp->end = byte;
@@ -133,11 +130,10 @@ Buf_AddBytes(Buffer *bp, size_t len, const char bytes[])
 char *
 Buf_GetAll(Buffer *bp, size_t *len)
 {
-
 	if (len != NULL)
 		*len = Buf_Size(bp);
 
-	return (bp->buf);
+	return (Buf_Data(bp));
 }
 
 /**
@@ -195,7 +191,6 @@ Buf_Init(size_t size)
 void
 Buf_Destroy(Buffer *buf, bool freeData)
 {
-
 	if (freeData)
 		free(buf->buf);
 	free(buf);
@@ -208,7 +203,6 @@ Buf_Destroy(Buffer *buf, bool freeData)
 void
 Buf_ReplaceLastByte(Buffer *bp, char byte)
 {
-
 	if (bp->end == bp->buf) {
 		Buf_AddByte(bp, byte);
 	} else {
@@ -222,7 +216,6 @@ Buf_ReplaceLastByte(Buffer *bp, char byte)
 void
 Buf_Append(Buffer *bp, const char str[])
 {
-
 	Buf_AddBytes(bp, strlen(str), str);
 }
 
@@ -232,7 +225,6 @@ Buf_Append(Buffer *bp, const char str[])
 void
 Buf_AppendBuf(Buffer *bp, const Buffer *buf)
 {
-
 	Buf_AddBytes(bp, Buf_Size(buf), buf->buf);
 }
 
@@ -242,7 +234,6 @@ Buf_AppendBuf(Buffer *bp, const Buffer *buf)
 void
 Buf_AppendRange(Buffer *bp, const char str[], const char *end)
 {
-
 	Buf_AddBytes(bp, end - str, str);
 }
 
@@ -283,7 +274,6 @@ Buf_StripNewlines(Buffer *bp)
 void
 Buf_Clear(Buffer *bp)
 {
-
 	bp->end = bp->buf;
 	*bp->end = '\0';
 }
