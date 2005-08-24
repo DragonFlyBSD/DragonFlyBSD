@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.142 2005/08/18 07:58:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.143 2005/08/24 00:09:29 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -362,6 +362,8 @@ static int	fifoMaster;
 #define	W_SETTERMSIG(st, val) W_SETMASKED(st, val, WTERMSIG)
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
+typedef void AbortProc(const char [], ...);
+
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);
 static void JobDoOutput(Job *, bool);
@@ -369,7 +371,7 @@ static void JobRestartJobs(void);
 static int Compat_RunCommand(GNode *, const char [], GNode *);
 static void JobPassSig(int);
 static void JobTouch(GNode *, bool);
-static bool JobCheckCommands(GNode *, void (*abortProc)(const char *, ...));
+static bool JobCheckCommands(GNode *, AbortProc *);
 
 static GNode	    *curTarg = NULL;
 
@@ -1346,7 +1348,7 @@ JobTouch(GNode *gn, bool silent)
  *	if it needs them.
  */
 bool
-JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
+JobCheckCommands(GNode *gn, AbortProc *abortProc)
 {
 	const char *msg = "make: don't know how to make";
 
@@ -1408,10 +1410,10 @@ JobCheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 
 #if OLD_JOKE
 	if (strcmp(gn->name,"love") == 0)
-		(*abortProc)("Not war.");
+		abortProc("Not war.");
 	else
 #endif
-		(*abortProc)("%s %s. Stop", msg, gn->name);
+		abortProc("%s %s. Stop", msg, gn->name);
 
 	return (false);
 }
