@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#15 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.14.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.6 2005/06/03 16:57:13 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.7 2005/08/25 23:37:35 dillon Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -303,13 +303,13 @@ ahc_lockinit(struct ahc_softc *ahc)
 static __inline void
 ahc_lock(struct ahc_softc *ahc, unsigned long *flags __unused)
 {
-	crit_enter();
+	crit_enter_id("ahc");
 }
 
 static __inline void
 ahc_unlock(struct ahc_softc *ahc, unsigned long *flags __unused)
 {
-	crit_exit();
+	crit_exit_id("ahc");
 }
 
 /* Lock held during command compeletion to the upper layer */
