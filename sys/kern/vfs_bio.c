@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.48 2005/08/10 01:11:19 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.49 2005/08/25 20:11:18 hmp Exp $
  */
 
 /*
@@ -2579,15 +2579,12 @@ allocbuf(struct buf *bp, int size)
 		 * mess with B_CACHE.
 		 */
 		mbsize = (size + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
-#if !defined(NO_B_MALLOC)
 		if (bp->b_flags & B_MALLOC)
 			newbsize = mbsize;
 		else
-#endif
 			newbsize = round_page(size);
 
 		if (newbsize < bp->b_bufsize) {
-#if !defined(NO_B_MALLOC)
 			/*
 			 * malloced buffers are not shrunk
 			 */
@@ -2607,13 +2604,11 @@ allocbuf(struct buf *bp, int size)
 				}
 				return 1;
 			}		
-#endif
 			vm_hold_free_pages(
 			    bp,
 			    (vm_offset_t) bp->b_data + newbsize,
 			    (vm_offset_t) bp->b_data + bp->b_bufsize);
 		} else if (newbsize > bp->b_bufsize) {
-#if !defined(NO_B_MALLOC)
 			/*
 			 * We only use malloced memory on the first allocation.
 			 * and revert to page-allocated memory when the buffer
@@ -2630,10 +2625,8 @@ allocbuf(struct buf *bp, int size)
 				bufmallocspace += mbsize;
 				return 1;
 			}
-#endif
 			origbuf = NULL;
 			origbufsize = 0;
-#if !defined(NO_B_MALLOC)
 			/*
 			 * If the buffer is growing on its other-than-first allocation,
 			 * then we revert to the page-allocation scheme.
@@ -2650,17 +2643,14 @@ allocbuf(struct buf *bp, int size)
 				bp->b_flags &= ~B_MALLOC;
 				newbsize = round_page(newbsize);
 			}
-#endif
 			vm_hold_load_pages(
 			    bp,
 			    (vm_offset_t) bp->b_data + bp->b_bufsize,
 			    (vm_offset_t) bp->b_data + newbsize);
-#if !defined(NO_B_MALLOC)
 			if (origbuf) {
 				bcopy(origbuf, bp->b_data, origbufsize);
 				free(origbuf, M_BIOBUF);
 			}
-#endif
 		}
 	} else {
 		vm_page_t m;
@@ -2670,10 +2660,8 @@ allocbuf(struct buf *bp, int size)
 		desiredpages = (size == 0) ? 0 :
 			num_pages((bp->b_offset & PAGE_MASK) + newbsize);
 
-#if !defined(NO_B_MALLOC)
 		if (bp->b_flags & B_MALLOC)
 			panic("allocbuf: VMIO buffer can't be malloced");
-#endif
 		/*
 		 * Set B_CACHE initially if buffer is 0 length or will become
 		 * 0-length.
@@ -3181,6 +3169,7 @@ void
 vfs_busy_pages(struct buf *bp, int clear_modify)
 {
 	int i, bogus;
+	struct proc *p = curthread->td_proc;
 
 	if (bp->b_flags & B_VMIO) {
 		struct vnode *vp = bp->b_vp;
@@ -3245,15 +3234,11 @@ retry:
 	 * This is the easiest place to put the process accounting for the I/O
 	 * for now.
 	 */
-	{
-		struct proc *p;
-
-		if ((p = curthread->td_proc) != NULL) {
-			if (bp->b_flags & B_READ)
-				p->p_stats->p_ru.ru_inblock++;
-			else
-				p->p_stats->p_ru.ru_oublock++;
-		}
+	if (p != NULL) {
+		if (bp->b_flags & B_READ)
+			p->p_stats->p_ru.ru_inblock++;
+		else
+			p->p_stats->p_ru.ru_oublock++;
 	}
 }
 
