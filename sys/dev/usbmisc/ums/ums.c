@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.14 2005/06/02 20:40:59 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.15 2005/08/25 18:48:19 drhodus Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ struct ums_softc {
 #define UMS_Z		0x01	/* z direction available */
 #define UMS_SPUR_BUT_UP	0x02	/* spurious button up events */
 	int nbuttons;
-#define MAX_BUTTONS	7	/* chosen because sc_buttons is u_char */
+#define MAX_BUTTONS	31	/* must not exceed size of sc_buttons */
 
 	u_char		qbuf[QUEUE_BUFSIZE];	/* must be divisable by 3&4 */
 	u_char		dummy[100];	/* XXX just for safety and for now */
