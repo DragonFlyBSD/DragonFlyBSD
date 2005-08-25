@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.54 2005/04/19 17:54:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.55 2005/08/25 18:34:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,6 +112,7 @@ MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
 static LIST_HEAD(nchashhead, namecache) *nchashtbl;	/* Hash Table */
 static struct namecache_list	ncneglist;		/* instead of vnode */
+static int64_t last_fsmid;				/* node change id */
 
 /*
  * ncvp_debug - debug cache_fromvp().  This is used by the NFS server
@@ -294,6 +295,7 @@ cache_alloc(int nlen)
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;
+	ncp->nc_fsmid = ++last_fsmid;
 	TAILQ_INIT(&ncp->nc_list);
 	cache_lock(ncp);
 	return(ncp);
@@ -820,6 +822,39 @@ again:
 		error = ENOENT;
 	*vpp = vp;
 	return(error);
+}
+
+void
+cache_update_fsmid(struct namecache *ncp)
+{
+	struct vnode *vp;
+	struct namecache *scan;
+	int64_t fsmid = ++last_fsmid;
+
+	if ((vp = ncp->nc_vp) != NULL) {
+		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+			for (scan = ncp; scan; scan = scan->nc_parent)
+				scan->nc_fsmid = fsmid;
+		}
+	} else {
+		while (ncp) {
+			ncp->nc_fsmid = fsmid;
+			ncp = ncp->nc_parent;
+		}
+	}
+}
+
+void
+cache_update_fsmid_vp(struct vnode *vp)
+{
+	struct namecache *ncp;
+	struct namecache *scan;
+	int64_t fsmid = ++last_fsmid;
+
+	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+		for (scan = ncp; scan; scan = scan->nc_parent)
+			scan->nc_fsmid = fsmid;
+	}
 }
 
 /*

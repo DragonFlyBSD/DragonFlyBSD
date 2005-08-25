@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.13 2004/12/29 02:40:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.14 2005/08/25 18:34:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -474,6 +474,8 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_setattr);
+	if (error == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -510,6 +512,8 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_write);
+	if (error == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -875,6 +879,8 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
 	ap.a_bp = bp;
 
 	DO_OPS(ops, error, &ap, vop_strategy);
+	if (error == 0 && (bp->b_flags & B_READ) == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -1001,6 +1007,8 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_offset = offset;
 
 	DO_OPS(ops, error, &ap, vop_putpages);
+	if (error == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -1033,6 +1041,8 @@ vop_bwrite(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
 	ap.a_bp = bp;
 
 	DO_OPS(ops, error, &ap, vop_bwrite);
+	if (error == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -1071,6 +1081,8 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_setacl);
+	if (error == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -1128,6 +1140,8 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_setextattr);
+	if (error == 0)
+		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -1264,6 +1278,8 @@ vop_ncreate(struct vop_ops *ops, struct namecache *ncp,
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_ncreate);
+	if (error == 0 && *vpp)
+		cache_update_fsmid_vp(*vpp);
 	return(error);
 }
 
@@ -1290,6 +1306,8 @@ vop_nmkdir(struct vop_ops *ops, struct namecache *ncp,
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_nmkdir);
+	if (error == 0 && *vpp)
+		cache_update_fsmid_vp(*vpp);
 	return(error);
 }
 
@@ -1316,6 +1334,8 @@ vop_nmknod(struct vop_ops *ops, struct namecache *ncp,
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_nmknod);
+	if (error == 0 && *vpp)
+		cache_update_fsmid_vp(*vpp);
 	return(error);
 }
 
@@ -1342,6 +1362,8 @@ vop_nlink(struct vop_ops *ops, struct namecache *ncp,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nlink);
+	if (error == 0)
+		cache_update_fsmid(ncp);
 	return(error);
 }
 
@@ -1371,6 +1393,8 @@ vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
 	ap.a_target = target;
 
 	DO_OPS(ops, error, &ap, vop_nsymlink);
+	if (error == 0)
+		cache_update_fsmid(ncp);
 	return(error);
 }
 
@@ -1395,6 +1419,8 @@ vop_nwhiteout(struct vop_ops *ops, struct namecache *ncp,
 	ap.a_flags = flags;
 
 	DO_OPS(ops, error, &ap, vop_nwhiteout);
+	if (error == 0)
+		cache_update_fsmid(ncp);
 	return(error);
 }
 
@@ -1417,6 +1443,8 @@ vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nremove);
+	if (error == 0)
+		cache_update_fsmid(ncp);
 	return(error);
 }
 
@@ -1439,6 +1467,8 @@ vop_nrmdir(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrmdir);
+	if (error == 0)
+		cache_update_fsmid(ncp);
 	return(error);
 }
 
@@ -1466,6 +1496,10 @@ vop_nrename(struct vop_ops *ops, struct namecache *fncp,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrename);
+	if (error == 0) {
+		cache_update_fsmid(fncp);
+		cache_update_fsmid(tncp);
+	}
 	return(error);
 }
 

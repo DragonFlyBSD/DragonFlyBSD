@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.69 2005/08/15 07:26:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.70 2005/08/25 18:34:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1891,6 +1891,17 @@ again:
 			goto again;
 		}
 	}
+
+	/*
+	 * The fsmid can be used to detect that something has changed
+	 * at or below the specified file/dir in the filesystem.  At
+	 * a minimum the fsmid is synthesized by the kernel via the 
+	 * namecache and requires an open descriptor for deterministic
+	 * operation.  Filesystems supporting fsmid may store it in the
+	 * inode, but this is not a requirement.
+	 */
+	st->st_fsmid = nd->nl_ncp->nc_fsmid;
+
 	vput(vp);
 	return (error);
 }

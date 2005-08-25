@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.30 2005/07/13 01:38:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.31 2005/08/25 18:34:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -722,6 +722,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 {
 	struct vattr vattr;
 	struct vattr *vap;
+	struct namecache *ncp;
 	int error;
 	u_short mode;
 	dev_t dev;
@@ -735,8 +736,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 	 * Zero the spare stat fields
 	 */
 	sb->st_lspare = 0;
-	sb->st_qspare[0] = 0;
-	sb->st_qspare[1] = 0;
+	sb->st_qspare = 0;
 
 	/*
 	 * Copy from vattr table
@@ -846,6 +846,16 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 #else
 	sb->st_blocks = vap->va_bytes / S_BLKSIZE;
 #endif
+
+	/*
+	 * Set the fsmid from the namecache.  Use the first available
+	 * namecache record.
+	 */
+	if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL)
+		sb->st_fsmid = ncp->nc_fsmid;
+	else
+		sb->st_fsmid = 0;
+
 	return (0);
 }
 

@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.19 2005/02/12 18:56:47 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.20 2005/08/25 18:34:17 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -113,6 +113,7 @@ struct namecache {
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
     struct mount *nc_mount;		/* associated mount for vopops */
+    int64_t	nc_fsmid;		/* filesystem modified id */
 };
 
 typedef struct namecache *namecache_t;
@@ -172,6 +173,9 @@ int	cache_vget(struct namecache *, struct ucred *, int, struct vnode **);
 int	cache_vref(struct namecache *, struct ucred *, struct vnode **);
 struct namecache *cache_fromdvp(struct vnode *, struct ucred *, int);
 int	cache_fullpath(struct proc *, struct namecache *, char **, char **);
+void	cache_update_fsmid(struct namecache *);
+void	cache_update_fsmid_vp(struct vnode *);
+
 
 #endif
 

@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.7 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.8 2005/08/25 18:34:17 dillon Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -53,6 +53,14 @@
 #define __dev_t	dev_t
 #endif
 
+/*
+ * stat structure notes:
+ *
+ * (1) st_fsmid (DragonFly only).  This is a DragonFly supported field that
+ *     is incremented if the represented file or directory changes or, for
+ *     directories, if any change is made within the directory or any sub-
+ *     directory, recursively.
+ */
 struct stat {
 	ino_t	  st_ino;		/* inode's number */
 	nlink_t	  st_nlink;		/* number of hard links */
@@ -80,8 +88,11 @@ struct stat {
 	u_int32_t st_flags;		/* user defined flags for file */
 	u_int32_t st_gen;		/* file generation number */
 	int32_t	  st_lspare;
-	int64_t	  st_qspare[2];
+	int64_t   st_fsmid;		/* recursive change detect */
+	int64_t	  st_qspare;
 };
+
+#define _ST_FSMID_PRESENT_
 
 #undef __dev_t
 
