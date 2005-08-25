@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.23 2005/08/25 01:14:55 corecode Exp $
  *
  */
 
@@ -53,6 +53,7 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include <sys/dirent.h>
+#include <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -573,49 +574,64 @@ ntfs_readdir(struct vop_readdir_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
 	int i, error = 0;
-	u_int32_t faked = 0, num;
+	u_int32_t faked = 0, num, off;
 	int ncookies = 0;
-	struct dirent cde;
-	off_t off;
+	char convname[NTFS_MAXFILENAME + 1];
 
 	dprintf(("ntfs_readdir %d off: %d resid: %d\n",ip->i_number,(u_int32_t)uio->uio_offset,uio->uio_resid));
 
-	off = uio->uio_offset;
+	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
+		return (EINVAL);
+
+	/*
+	 * uio->uio_offset carries the number of the entry
+	 * where we should start returning dirents.
+	 *
+	 * We fake up "." if we're not reading the FS root
+	 * and we always fake up "..".
+	 *
+	 * off contains the entry we are starting at,
+	 * num increments while we are reading.
+	 */
+
+	off = num = uio->uio_offset;
+	faked = (ip->i_number == NTFS_ROOTINO) ? 1 : 2;
 
 	/* Simulate . in every dir except ROOT */
-	if( ip->i_number != NTFS_ROOTINO ) {
-		struct dirent dot = { NTFS_ROOTINO,
-				sizeof(struct dirent), DT_DIR, 1, "." };
+	if (ip->i_number != NTFS_ROOTINO && num == 0) {
+		if (vop_write_dirent(&error, uio, ip->i_number,
+		    DT_DIR, 1, "."))
+			return (0);
+		if (error)
+			return (error);
 
-		if( uio->uio_offset < sizeof(struct dirent) ) {
-			dot.d_fileno = ip->i_number;
-			error = uiomove((char *)&dot,sizeof(struct dirent),uio);
-			if(error)
-				return (error);
-
-			ncookies ++;
-		}
+		num++;
+		ncookies++;
 	}
 
 	/* Simulate .. in every dir including ROOT */
-	if( uio->uio_offset < 2 * sizeof(struct dirent) ) {
-		struct dirent dotdot = { NTFS_ROOTINO,
-				sizeof(struct dirent), DT_DIR, 2, ".." };
-
-		error = uiomove((char *)&dotdot,sizeof(struct dirent),uio);
+	if (num == faked - 1) {
+		/* XXX NTFS_ROOTINO seems to be wrong here */
+		if (vop_write_dirent(&error, uio, NTFS_ROOTINO,
+		    DT_DIR, 2, ".."))
+			goto readdone;
 		if(error)
 			return (error);
 
-		ncookies ++;
+		num++;
+		ncookies++;
 	}
 
-	faked = (ip->i_number == NTFS_ROOTINO) ? 1 : 2;
-	num = uio->uio_offset / sizeof(struct dirent) - faked;
-
-	while( uio->uio_resid >= sizeof(struct dirent) ) {
+	for (;;) {
 		struct attr_indexentry *iep;
 
-		error = ntfs_ntreaddir(ntmp, fp, num, &iep);
+		/*
+		 * num is the number of the entry we will return,
+		 * but ntfs_ntreaddir takes the entry number of the
+		 * ntfs directory listing, so subtract the faked
+		 * . and .. entries.
+		 */
+		error = ntfs_ntreaddir(ntmp, fp, num - faked, &iep);
 
 		if(error)
 			return (error);
@@ -623,26 +639,28 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		if( NULL == iep )
 			break;
 
-		for(; !(iep->ie_flag & NTFS_IEFLAG_LAST) && (uio->uio_resid >= sizeof(struct dirent));
+		for (; !(iep->ie_flag & NTFS_IEFLAG_LAST);
 			iep = NTFS_NEXTREC(iep, struct attr_indexentry *))
 		{
 			if(!ntfs_isnamepermitted(ntmp,iep))
 				continue;
 
-			for(i=0; i<iep->ie_fnamelen; i++) {
-				cde.d_name[i] = NTFS_U28(iep->ie_fname[i]);
-			}
-			cde.d_name[i] = '\0';
-			dprintf(("ntfs_readdir: elem: %d, fname:[%s] type: %d, flag: %d, ",
-				num, cde.d_name, iep->ie_fnametype,
-				iep->ie_flag));
-			cde.d_namlen = iep->ie_fnamelen;
-			cde.d_fileno = iep->ie_number;
-			cde.d_type = (iep->ie_fflag & NTFS_FFLAG_DIR) ? DT_DIR : DT_REG;
-			cde.d_reclen = sizeof(struct dirent);
-			dprintf(("%s\n", (cde.d_type == DT_DIR) ? "dir":"reg"));
+			for (i=0; i < iep->ie_fnamelen; i++)
+				convname[i] = NTFS_U28(iep->ie_fname[i]);
+			convname[i] = '\0';
 
-			error = uiomove((char *)&cde, sizeof(struct dirent), uio);
+			if (vop_write_dirent(&error, uio, iep->ie_number,
+			    (iep->ie_fflag & NTFS_FFLAG_DIR) ? DT_DIR : DT_REG,
+			    iep->ie_fnamelen, convname))
+				goto readdone;
+
+			dprintf(("ntfs_readdir: elem: %d, fname:[%s] type: %d, "
+				 "flag: %d, %s\n",
+				 ncookies, convname, iep->ie_fnametype,
+				 iep->ie_flag,
+				 (iep->ie_fflag & NTFS_FFLAG_DIR) ?
+					"dir" : "reg"));
+
 			if(error)
 				return (error);
 
@@ -651,14 +669,15 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		}
 	}
 
+readdone:
+	uio->uio_offset = num;
+
 	dprintf(("ntfs_readdir: %d entries (%d bytes) read\n",
 		ncookies,(u_int)(uio->uio_offset - off)));
 	dprintf(("ntfs_readdir: off: %d resid: %d\n",
 		(u_int32_t)uio->uio_offset,uio->uio_resid));
 
 	if (!error && ap->a_ncookies != NULL) {
-		struct dirent* dpStart;
-		struct dirent* dp;
 #if defined(__DragonFly__)
 		u_long *cookies;
 		u_long *cookiep;
@@ -670,9 +689,6 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		ddprintf(("ntfs_readdir: %d cookies\n",ncookies));
 		if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
 			panic("ntfs_readdir: unexpected uio from NFS server");
-		dpStart = (struct dirent *)
-		     ((caddr_t)uio->uio_iov->iov_base -
-			 (uio->uio_offset - off));
 #if defined(__DragonFly__)
 		MALLOC(cookies, u_long *, ncookies * sizeof(u_long),
 		       M_TEMP, M_WAITOK);
@@ -680,12 +696,10 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
 		       M_TEMP, M_WAITOK);
 #endif
-		for (dp = dpStart, cookiep = cookies, i=0;
-		     i < ncookies;
-		     dp = (struct dirent *)((caddr_t) dp + dp->d_reclen), i++) {
-			off += dp->d_reclen;
-			*cookiep++ = (u_int) off;
-		}
+		cookiep = cookies;
+		while (off < num)
+			*cookiep++ = ++off;
+
 		*ap->a_ncookies = ncookies;
 		*ap->a_cookies = cookies;
 	}
