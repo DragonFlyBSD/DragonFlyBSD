@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/chkgrp/chkgrp.c,v 1.3.2.2 2001/07/12 22:57:35 mjacob Exp $
- * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.5 2005/08/04 13:10:25 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/chkgrp/chkgrp.c,v 1.6 2005/08/25 17:09:32 liamfoy Exp $
  */
 #include <sys/types.h>
 
@@ -40,6 +40,7 @@
 #define DEFAULTGFILE "/etc/group"
 
 static void     usage(void);
+static char empty[] = { 0 };
 
 static void
 usage(void)
@@ -109,6 +110,13 @@ main(int argc, char *argv[])
 			line[i++] = 0;
 		}
 
+                if (k < 4) {
+                        warnx("%s: line %d: missing field(s)", gfn, n);
+			for ( ; k < 4; k++)
+				f[k] = empty; 
+                        e++;
+                }
+
 		for (cp = f[0] ; *cp ; cp++) {
 			if (!isalnum(*cp) && *cp != '.' && *cp != '_' && *cp != '-' &&
 			        (cp > f[0] || *cp != '+')) {
@@ -122,11 +130,6 @@ main(int argc, char *argv[])
 				warnx("%s: line %d: '%c' invalid character", gfn, n, *cp);
 				e++;
 			}
-		}
-
-		if (k < 4) {
-			warnx("%s: line %d: missing field(s)", gfn, n);
-			e++;
 		}
 
 		/* check if fourth field ended with a colon */
