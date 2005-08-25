@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.25 2005/08/19 14:02:39 joerg Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.26 2005/08/25 00:55:22 corecode Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1604,7 +1604,6 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				} else /* if (n == 1) */{
 					d_namlen = 2;
 					d_name = "..";
-					break;
 				}
 				if (vop_write_dirent(&error, uio, d_ino, d_type,
 				    d_namlen, d_name))
