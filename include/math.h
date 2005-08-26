@@ -11,7 +11,7 @@
  * ====================================================
  *
  * $NetBSD: math.h,v 1.40 2005/02/03 04:39:32 perry Exp $
- * $DragonFly: src/include/math.h,v 1.6 2005/08/10 13:40:54 joerg Exp $
+ * $DragonFly: src/include/math.h,v 1.7 2005/08/26 20:44:25 joerg Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ extern __const union __long_double_u __infinityl;
 
 /* 7.12#4 INFINITY */
 #ifdef __MATH_BUILTIN_CONSTANTS
-#define	INFINITE	__builtin_inf()
+#define	INFINITY	__builtin_inf()
 #elif defined(__INFINITY)
 #define	INFINITY	__INFINITY	/* float constant which overflows */
 #else
