@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.24 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.25 2005/08/26 14:26:45 hmp Exp $
  */
 
 #include "opt_ata.h"
@@ -382,6 +382,10 @@ addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
     return 0;
 }
 
+/*
+ * Critical section is held when this function is called
+ * by ata_start().
+ */
 void
 ad_start(struct ata_device *atadev)
 {
