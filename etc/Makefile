@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.86 2005/08/23 21:25:26 cpressey Exp $
+# $DragonFly: src/etc/Makefile,v 1.87 2005/08/26 15:25:59 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -127,11 +127,6 @@ upgrade_etc:	preupgrade
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
 	rm -f ${DESTDIR}/etc/rmt
 	${LN} -s ${BINDIR}/rmt ${DESTDIR}/etc/rmt
-.for pamconf in README convert.sh
-.if !exists(${DESTDIR}/etc/pam.d/${pamconf})
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
-.endif
-.endfor
 .if !defined(BINARY_UPGRADE) # XXX not yet handled by binary upgrade
 .if !defined(NO_SENDMAIL)
 	cd ${UPGRADE_SRCDIR}/sendmail; ${MAKE} upgrade
@@ -151,6 +146,11 @@ upgrade_etc:	preupgrade
 .endif
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
+.for pamconf in README convert.sh
+.if !exists(${DESTDIR}/etc/pam.d/${pamconf})
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
+.endif
+.endfor
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
