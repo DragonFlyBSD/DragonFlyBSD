@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.16 2005/08/07 03:17:37 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.17 2005/08/26 12:45:53 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -118,6 +118,11 @@ static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
  * Our port layer will be responsible for assigning pblkno and handling
  * high level partition operations, then forwarding the requests to the
  * raw device.
+ *
+ * The disk_create() function clones the provided rawsw for creating a
+ * managed disk device.  In addition, the cdevsw intercept port is
+ * changed to disk_putport, which is used to transform requests for the
+ * managed disk device.
  *
  * The raw device (based on rawsw) is returned to the caller, NOT the
  * slice and unit managed cdev.  The caller typically sets various

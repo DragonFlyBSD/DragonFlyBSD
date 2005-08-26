@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.11 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.12 2005/08/26 12:45:53 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -131,6 +131,11 @@ clone_label(struct disklabel *lp)
  *	o Split buffers that are too big for the device.
  *	o Check for overflow.
  *	o Finish cleaning this up.
+ *
+ * This function returns 1 on success, 0 if transfer equates
+ * to EOF (end of disk) or -1 on failure.  The appropriate 
+ * 'errno' value is also set in bp->b_error and bp->b_flags
+ * is marked with B_ERROR.
  */
 int
 dscheck(struct buf *bp, struct diskslices *ssp)
