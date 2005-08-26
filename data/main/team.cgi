@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.35 2005/08/12 15:01:04 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.36 2005/08/26 15:42:46 liamfoy Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -112,6 +112,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <tr><td valign="top"><a href="mailto:hmp 'at' backplane 'dot' com">Hiten Pandya</a> </td>
 <td valign="top">Anything and Everything
 (commit access)</td></tr>
+
+<tr><td valign="top"><a href="mailto:gshapiro 'at' dragonflybsd 'dot' org">Gregory Neil Shapiro</a> </td>
+<td valign="top">Sendmail (commit access)</td>
+</tr>
 
 <tr><td valign="top"><a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
 <td valign="top">Janitorial work, Installer
