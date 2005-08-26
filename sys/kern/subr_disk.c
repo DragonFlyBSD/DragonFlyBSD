@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.17 2005/08/26 12:45:53 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.18 2005/08/26 13:02:07 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -253,7 +253,8 @@ sysctl_disks(SYSCTL_HANDLER_ARGS)
 		} else {
 			first = 0;
 		}
-		error = SYSCTL_OUT(req, disk->d_rawdev->si_name, strlen(disk->d_rawdev->si_name));
+		error = SYSCTL_OUT(req, disk->d_rawdev->si_name,
+				   strlen(disk->d_rawdev->si_name));
 		if (error)
 			return error;
 	}
