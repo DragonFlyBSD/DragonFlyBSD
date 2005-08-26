@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/string/Makefile.inc,v 1.19.2.5 2001/12/25 00:36:53 ache Exp $
-# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.3 2004/02/02 05:43:15 dillon Exp $
+# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.4 2005/08/26 22:03:26 joerg Exp $
 
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
 
@@ -15,7 +15,7 @@ MISRCS+=bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 	strpbrk.c strrchr.c strsep.c strsignal.c strspn.c strstr.c strtok.c \
 	strxfrm.c swab.c wcscat.c wcschr.c wcscmp.c wcscpy.c wcscspn.c \
 	wcslcat.c wcslcpy.c wcslen.c wcsncat.c wcsncmp.c wcsncpy.c wcspbrk.c \
-	wcsrchr.c wcsspn.c wcsstr.c wmemchr.c wmemcmp.c wmemcpy.c \
+	wcsrchr.c wcsspn.c wcsstr.c wcswidth.c wmemchr.c wmemcmp.c wmemcpy.c \
 	wmemmove.c wmemset.c
 
 # machine-dependent string sources
