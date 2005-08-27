@@ -1,7 +1,7 @@
 /*
- * $NetBSD: ehcivar.h,v 1.12 2001/12/31 12:16:57 augustss Exp $
+ * $NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.1 2003/04/14 14:04:07 ticso Exp $
- * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.4 2005/08/27 12:59:13 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.5 2005/08/27 13:59:55 asmodai Exp $
  */
 
 /*
@@ -56,6 +56,7 @@ typedef struct ehci_soft_qh {
 	struct ehci_soft_qh *next;
 	struct ehci_soft_qtd *sqtd;
 	ehci_physaddr_t physaddr;
+	int islot;
 } ehci_soft_qh_t;
 #define EHCI_SQH_SIZE ((sizeof (struct ehci_soft_qh) + EHCI_QH_ALIGN - 1) / EHCI_QH_ALIGN * EHCI_QH_ALIGN)
 #define EHCI_SQH_CHUNK (EHCI_PAGE_SIZE / EHCI_SQH_SIZE)
@@ -71,6 +72,19 @@ struct ehci_xfer {
 #endif
 };
 #define EXFER(xfer) ((struct ehci_xfer *)(xfer))
+
+/* Information about an entry in the interrupt list. */
+struct ehci_soft_islot {
+	ehci_soft_qh_t *sqh;	/* Queue Head. */
+};
+
+#define EHCI_FRAMELIST_MAXCOUNT	1024
+#define EHCI_IPOLLRATES		8 /* Poll rates (1ms, 2, 4, 8 .. 128) */
+#define EHCI_INTRQHS		((1 << EHCI_IPOLLRATES) - 1)
+#define EHCI_MAX_POLLRATE	(1 << (EHCI_IPOLLRATES - 1))
+#define EHCI_IQHIDX(lev, pos) \
+	((((pos) & ((1 << (lev)) - 1)) | (1 << (lev))) - 1)
+#define EHCI_ILEV_IVAL(lev)	(1 << (lev))
 
 
 #define EHCI_HASH_SIZE 128
@@ -93,6 +107,7 @@ typedef struct ehci_softc {
 	int sc_id_vendor;		/* vendor ID for root hub */
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
+	u_int32_t sc_cmd;		/* shadow of cmd reg during suspend */
 	void *sc_powerhook;		/* cookie from power hook */
 	void *sc_shutdownhook;		/* cookie from shutdown hook */
 #endif
@@ -102,7 +117,11 @@ typedef struct ehci_softc {
 	struct usbd_bus *sc_comps[EHCI_COMPANION_MAX];
 
 	usb_dma_t sc_fldma;
+	ehci_link_t *sc_flist;
 	u_int sc_flsize;
+	u_int sc_rand;			/* XXX need proper intr scheduling */
+
+	struct ehci_soft_islot sc_islots[EHCI_INTRQHS];
 
 	LIST_HEAD(, ehci_xfer) sc_intrhead;
 
@@ -127,9 +146,13 @@ typedef struct ehci_softc {
 
 	usb_callout_t sc_tmo_pcd;
 
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 	device_ptr_t sc_child;		/* /dev/usb# device */
-
+#endif
 	char sc_dying;
+#if defined(__NetBSD__)
+	struct usb_dma_reserve sc_dma_reserve;
+#endif
 } ehci_softc_t;
 
 #define EREAD1(sc, a) bus_space_read_1((sc)->iot, (sc)->ioh, (a))
