@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.1 2003/04/14 14:04:07 ticso Exp $
- * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.5 2005/08/27 13:59:55 asmodai Exp $
+ * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.2 2004/08/01 18:47:42 iedowse Exp $
+ * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.6 2005/08/27 14:03:23 asmodai Exp $
  */
 
 /*
