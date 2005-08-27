@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.9 2005/08/11 03:20:36 corecode Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.10 2005/08/27 10:20:27 corecode Exp $
  */
 
 /*
@@ -1515,7 +1515,7 @@ cbb_cardbus_alloc_resource(device_t brdev, device_t child, int type,
 	}
 	if (cbb_insert_res(sc, res, type, *rid)) {
 		BUS_RELEASE_RESOURCE(device_get_parent(brdev), child, type,
-				     rid, res);
+				     *rid, res);
 		return (NULL);
 	}
 	if (flags & RF_ACTIVE)
@@ -1697,7 +1697,7 @@ cbb_pcic_alloc_resource(device_t brdev, device_t child, int type, int *rid,
 		return (NULL);
 	if (cbb_insert_res(sc, res, type, *rid)) {
 		BUS_RELEASE_RESOURCE(device_get_parent(brdev), child, type,
-				     rid, res);
+				     *rid, res);
 		return (NULL);
 	}
 	if (flags & RF_ACTIVE) {
