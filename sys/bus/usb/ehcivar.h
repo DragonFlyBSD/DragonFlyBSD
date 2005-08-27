@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehcivar.h,v 1.12 2001/12/31 12:16:57 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.1 2003/04/14 14:04:07 ticso Exp $
- * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.3 2005/06/10 18:21:11 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.4 2005/08/27 12:59:13 asmodai Exp $
  */
 
 /*
@@ -89,7 +89,7 @@ typedef struct ehci_softc {
 #endif
 	u_int sc_offs;			/* offset to operational regs */
 
-	char sc_vendor[16];		/* vendor string for root hub */
+	char sc_vendor[32];		/* vendor string for root hub */
 	int sc_id_vendor;		/* vendor ID for root hub */
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
