@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.21 2005/08/10 17:53:58 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.22 2005/08/27 00:56:57 dillon Exp $
  */
 
 /*
@@ -78,7 +78,9 @@
 
 #include <vm/pmap.h>
 #include <machine/atomic.h>
+#ifdef _KERNEL
 #include <sys/thread2.h>
+#endif
 
 /*
  *	Management of resident (logical) pages.
