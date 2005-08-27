@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.55 2005/08/25 18:34:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.56 2005/08/27 00:36:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1001,15 +1001,11 @@ cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 	struct vattr vat;
 	struct iovec iov;
 	struct uio uio;
-	u_long *cookies;
-	off_t baseoff;
-	int ncookies;
 	int blksize;
 	int eofflag;
+	int bytes;
 	char *rbuf;
 	int error;
-	int xoff;
-	int i;
 
 	vat.va_blocksize = 0;
 	if ((error = VOP_GETATTR(dvp, &vat, curthread)) != 0)
@@ -1025,9 +1021,7 @@ cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 
 	eofflag = 0;
 	uio.uio_offset = 0;
-	cookies = NULL;
 again:
-	baseoff = uio.uio_offset;
 	iov.iov_base = rbuf;
 	iov.iov_len = blksize;
 	uio.uio_iov = &iov;
@@ -1037,36 +1031,28 @@ again:
 	uio.uio_rw = UIO_READ;
 	uio.uio_td = curthread;
 
-	if (cookies) {
-		free(cookies, M_TEMP);
-		cookies = NULL;
-	}
 	if (ncvp_debug >= 2)
-		printf("cache_inefficient_scan: readdir @ %08x\n", (int)baseoff);
-	error = VOP_READDIR(pvp, &uio, cred, &eofflag, &ncookies, &cookies);
-	if (error == 0 && cookies == NULL)
-		error = EPERM;
+		printf("cache_inefficient_scan: readdir @ %08x\n", (int)uio.uio_offset);
+	error = VOP_READDIR(pvp, &uio, cred, &eofflag, NULL, NULL);
 	if (error == 0) {
-		for (i = 0; i < ncookies; ++i) {
-			xoff = (int)(cookies[i] - (u_long)baseoff);
-			/*
-			 * UFS plays a little trick to skip the first entry
-			 * in a directory ("."), by assigning the cookie to
-			 * dpoff + dp->d_reclen in the loop.  This causes
-			 * the last cookie to be assigned to the data-end of
-			 * the directory.  XXX
-			 */
-			if (xoff == blksize)
-				break;
-			KKASSERT(xoff >= 0 && xoff <= blksize);
-			den = (struct dirent *)(rbuf + xoff);
-			if (ncvp_debug >= 2)
+		den = (struct dirent *)rbuf;
+		bytes = blksize - uio.uio_resid;
+
+		while (bytes > 0) {
+			if (ncvp_debug >= 2) {
 				printf("cache_inefficient_scan: %*.*s\n",
-					den->d_namlen, den->d_namlen, den->d_name);
+					den->d_namlen, den->d_namlen, 
+					den->d_name);
+			}
 			if (den->d_type != DT_WHT &&
 			    den->d_fileno == vat.va_fileid) {
-				if (ncvp_debug)
-					printf("cache_inefficient_scan: MATCHED inode %ld path %s/%*.*s\n", vat.va_fileid, ncp->nc_name, den->d_namlen, den->d_namlen, den->d_name);
+				if (ncvp_debug) {
+					printf("cache_inefficient_scan: "
+					       "MATCHED inode %ld path %s/%*.*s\n",
+					       vat.va_fileid, ncp->nc_name,
+					       den->d_namlen, den->d_namlen,
+					       den->d_name);
+				}
 				nlc.nlc_nameptr = den->d_name;
 				nlc.nlc_namelen = den->d_namlen;
 				VOP_UNLOCK(pvp, 0, curthread);
@@ -1074,13 +1060,11 @@ again:
 				KKASSERT(rncp != NULL);
 				break;
 			}
+			bytes -= den->d_reclen;
+			den = (void *)((char *)den + den->d_reclen);
 		}
 		if (rncp == NULL && eofflag == 0 && uio.uio_resid != blksize)
 			goto again;
-	}
-	if (cookies) {
-		free(cookies, M_TEMP);
-		cookies = NULL;
 	}
 	if (rncp) {
 		vrele(pvp);
