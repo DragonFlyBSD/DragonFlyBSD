@@ -1,8 +1,8 @@
 /*
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
- * $NetBSD: usb_port.h,v 1.54 2002/03/28 21:49:19 ichiro Exp $
+ * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.12 2005/01/23 20:21:30 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.13 2005/08/27 19:00:49 asmodai Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -61,6 +61,15 @@
 
 #include "opt_usbverbose.h"
 
+#if defined(_KERNEL)
+#include <sys/mallocvar.h>
+
+MALLOC_DECLARE(M_USB);
+MALLOC_DECLARE(M_USBDEV);
+MALLOC_DECLARE(M_USBHC);
+
+#endif
+
 #define USB_USE_SOFTINTR
 
 #ifdef USB_DEBUG
@@ -96,7 +105,7 @@ typedef struct callout usb_callout_t;
 #define usb_kthread_create1	kthread_create1
 #define usb_kthread_create	kthread_create
 
-typedef int usb_malloc_type;
+typedef struct malloc_type *usb_malloc_type;
 
 #define Ether_ifattach ether_ifattach
 #define IF_INPUT(ifp, m) (*(ifp)->if_input)((ifp), (m))
@@ -157,7 +166,8 @@ int __CONCAT(dname,_detach)(struct device *self, int flags)
 	sc = __CONCAT(dname,_cd).cd_devs[unit]
 
 #define USB_DO_ATTACH(dev, bdev, parent, args, print, sub) \
-	(config_found_sm(parent, args, print, sub))
+	(config_found_sm_loc(parent, (args)->port == 0 ? "usb" : "uhub", \
+			     NULL, args, print, sub))
 
 #elif defined(__OpenBSD__)
 /*
@@ -204,6 +214,8 @@ typedef struct proc *usb_proc_ptr;
 #define usb_kthread_create1	kthread_create
 #define usb_kthread_create	kthread_create_deferred
 
+#define usb_lockmgr(lk, mode, ptr) lockmgr(lk, mode, ptr, curproc)
+
 #define	config_pending_incr()
 #define	config_pending_decr()
 
@@ -216,7 +228,6 @@ typedef int usb_malloc_type;
 #define	usbpoll			usbselect
 #define	uhidpoll		uhidselect
 #define	ugenpoll		ugenselect
-#define	uriopoll		urioselect
 #define uscannerpoll		uscannerselect
 
 #define powerhook_establish(fn, sc) (fn)
@@ -388,6 +399,8 @@ typedef struct callout usb_callout_t;
 #define usb_callout_init(h)     callout_init(&(h))
 #define usb_callout(h, t, f, d) callout_reset(&(h), (t), (f), (d))
 #define usb_uncallout(h, f, d)  callout_stop(&(h))
+
+#define usb_lockmgr lockmgr
 
 #define	ETHER_ALIGN		2
 
