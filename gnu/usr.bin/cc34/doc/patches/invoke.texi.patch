@@ -1,12 +1,12 @@
-$DragonFly: src/gnu/usr.bin/cc34/doc/patches/invoke.texi.patch,v 1.1 2004/12/21 13:10:48 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/doc/patches/invoke.texi.patch,v 1.2 2005/08/27 21:03:52 joerg Exp $
 
 Index: invoke.texi
 ===================================================================
 RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/doc/invoke.texi,v
-retrieving revision 1.2
-diff -u -r1.2 invoke.texi
---- invoke.texi	20 Dec 2004 19:23:25 -0000	1.2
-+++ invoke.texi	20 Dec 2004 20:57:46 -0000
+retrieving revision 1.4
+diff -u -r1.4 invoke.texi
+--- invoke.texi	10 Aug 2005 15:50:46 -0000	1.4
++++ invoke.texi	27 Aug 2005 16:44:10 -0000
 @@ -183,7 +183,8 @@
  -fno-optional-diags  -fpermissive @gol
  -frepo  -fno-rtti  -fstats  -ftemplate-depth-@var{n} @gol
@@ -17,7 +17,20 @@ diff -u -r1.2 invoke.texi
  -Wnon-virtual-dtor  -Wreorder @gol
  -Weffc++  -Wno-deprecated @gol
  -Wno-non-template-friend  -Wold-style-cast @gol
-@@ -675,7 +676,8 @@
+@@ -227,7 +228,7 @@
+ -Wno-multichar  -Wnonnull  -Wpacked  -Wpadded @gol
+ -Wparentheses  -Wpointer-arith  -Wredundant-decls @gol
+ -Wreturn-type  -Wsequence-point  -Wshadow @gol
+--Wsign-compare  -Wstrict-aliasing @gol
++-Wsign-compare  -Wstack-protector  -Wstrict-aliasing @gol
+ -Wswitch  -Wswitch-default  -Wswitch-enum @gol
+ -Wsystem-headers  -Wtrigraphs  -Wundef  -Wuninitialized @gol
+ -Wunknown-pragmas  -Wunreachable-code @gol
+@@ -675,10 +676,12 @@
+ -fshort-double  -fshort-wchar @gol
+ -fverbose-asm  -fpack-struct  -fstack-check @gol
+ -fstack-limit-register=@var{reg}  -fstack-limit-symbol=@var{sym} @gol
++-fstack-protector  -fstack-protector-all @gol
  -fargument-alias  -fargument-noalias @gol
  -fargument-noalias-global  -fleading-underscore @gol
  -ftls-model=@var{model} @gol
@@ -27,7 +40,7 @@ diff -u -r1.2 invoke.texi
  @end table
  
  @menu
-@@ -1434,6 +1436,20 @@
+@@ -1437,6 +1440,20 @@
  destructors, but will only work if your C library supports
  @code{__cxa_atexit}.
  
@@ -48,7 +61,43 @@ diff -u -r1.2 invoke.texi
  @item -fno-weak
  @opindex fno-weak
  Do not use weak symbol support, even if it is provided by the linker.
-@@ -11225,6 +11241,54 @@
+@@ -2986,6 +3003,10 @@
+ complex; GCC will refuse to optimize programs when the optimization
+ itself is likely to take inordinate amounts of time.
+ 
++@item -Wstack-protector
++@opindex Wstack-protector
++Warn when not issuing stack smashing protection for some reason.
++
+ @item -Werror
+ @opindex Werror
+ Make all warnings into errors.
+@@ -11232,6 +11253,24 @@
+ @option{-Wl,--defsym,__stack_limit=0x7ffe0000} to enforce a stack limit
+ of 128KB@.  Note that this may only work with the GNU linker.
+ 
++@item -fstack-protector
++@item -fstack-protector-all
++@opindex fstack-protector
++@opindex fstack-protector-all
++@opindex fno-stack-protector
++Generate code to protect an application from a stack smashing
++attack. The features are (1) the insertion of random value next to the
++frame pointer to detect the integrity of the stack, (2) the reordering
++of local variables to place buffers after pointers to avoid the
++corruption of pointers that could be used to further corrupt arbitrary
++memory locations, (3) the copying of pointers in function arguments to
++an area preceding local variable buffers to prevent the corruption of
++pointers that could be used to further corrupt arbitrary memory
++locations, and the (4) omission of instrumentation code from some
++functions to decrease the performance overhead.  If the integrity
++would be broken, the program is aborted.  If stack-protector-all is
++specified, instrumentation codes are generated at every functions.
++
+ @cindex aliasing of parameters
+ @cindex parameters, aliased
+ @item -fargument-alias
+@@ -11271,6 +11310,54 @@
  
  The default without @option{-fpic} is @code{initial-exec}; with
  @option{-fpic} the default is @code{global-dynamic}.

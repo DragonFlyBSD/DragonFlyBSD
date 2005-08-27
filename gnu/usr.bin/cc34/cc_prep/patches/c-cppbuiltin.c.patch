@@ -1,0 +1,22 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/c-cppbuiltin.c.patch,v 1.1 2005/08/27 21:03:51 joerg Exp $
+
+Index: c-cppbuiltin.c
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/c-cppbuiltin.c,v
+retrieving revision 1.1
+diff -u -r1.1 c-cppbuiltin.c
+--- c-cppbuiltin.c	20 Jun 2004 02:14:48 -0000	1.1
++++ c-cppbuiltin.c	27 Aug 2005 16:40:43 -0000
+@@ -408,6 +408,12 @@
+   if (c_dialect_objc () && flag_next_runtime)
+     cpp_define (pfile, "__NEXT_RUNTIME__");
+ 
++  /* Make the choice of the stack protector runtime visible to source code.  */
++  if (flag_propolice_protection)
++    cpp_define (pfile, "__SSP__=1");
++  if (flag_stack_protection)
++    cpp_define (pfile, "__SSP_ALL__=2");
++
+   /* A straightforward target hook doesn't work, because of problems
+      linking that hook's body when part of non-C front ends.  */
+ # define preprocessing_asm_p() (cpp_get_options (pfile)->lang == CLK_ASM)

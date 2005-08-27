@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/function.c.patch,v 1.4 2005/05/24 06:29:33 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/function.c.patch,v 1.5 2005/08/27 21:03:51 joerg Exp $
 
 ===================================================================
 RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/function.c,v
@@ -69,7 +69,24 @@ diff -u -r1.2 function.c
  	      p->next = temp_slots;
  	      temp_slots = p;
  
-@@ -771,6 +783,7 @@
+@@ -757,6 +769,16 @@
+ 	 way the frame grows.  We include the extra space if and only if it
+ 	 is above this slot.  */
+ #ifdef FRAME_GROWS_DOWNWARD
++      /* The stack protector can share a character buffer with another buffer
++	 in the different block only when the size of the first is bigger
++	 than the second. p->size is used for this comparison.
++	 But, in some situation, p->size is bigger than the actual size.
++	 So, we should change p->size with its aligned size.  */
++      if (flag_propolice_protection
++	  && char_array
++	  && (frame_offset_old - frame_offset >
++	      CEIL_ROUND (size, align / BITS_PER_UNIT)))
++	frame_offset_old = frame_offset + CEIL_ROUND (size, align / BITS_PER_UNIT);
+       p->size = frame_offset_old - frame_offset;
+ #else
+       p->size = size;
+@@ -771,6 +793,7 @@
        p->full_size = frame_offset - frame_offset_old;
  #endif
        p->address = 0;
@@ -77,7 +94,7 @@ diff -u -r1.2 function.c
        p->next = temp_slots;
        temp_slots = p;
      }
-@@ -935,14 +948,16 @@
+@@ -935,14 +958,16 @@
  	    int delete_q = 0;
  	    if (! q->in_use && GET_MODE (q->slot) == BLKmode)
  	      {
@@ -96,7 +113,7 @@ diff -u -r1.2 function.c
  		  {
  		    /* P comes after Q; combine P into Q.  */
  		    q->size += p->size;
-@@ -3955,7 +3973,8 @@
+@@ -3949,7 +3974,8 @@
  		 constant with that register.  */
  	      temp = gen_reg_rtx (Pmode);
  	      XEXP (x, 0) = new;
@@ -106,3 +123,17 @@ diff -u -r1.2 function.c
  		emit_insn_before (gen_move_insn (temp, new_offset), object);
  	      else
  		{
+@@ -6172,7 +6198,12 @@
+ 
+   /* Recreate the block tree from the note nesting.  */
+   reorder_blocks_1 (get_insns (), block, &block_stack);
+-  BLOCK_SUBBLOCKS (block) = blocks_nreverse (BLOCK_SUBBLOCKS (block));
++
++  /* In propolice-protection mode, disable to change the order of SUBBLOCKS
++     by the reason that the order is reversed from its 
++     declaration sequence.  */
++  if (! flag_propolice_protection)
++    BLOCK_SUBBLOCKS (block) = blocks_nreverse (BLOCK_SUBBLOCKS (block));
+ 
+   /* Remove deleted blocks from the block fragment chains.  */
+   reorder_fix_fragments (block);

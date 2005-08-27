@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/integrate.c.patch,v 1.3 2004/12/21 13:10:48 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/integrate.c.patch,v 1.4 2005/08/27 21:03:51 joerg Exp $
 
 ===================================================================
 RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gcc-3.4/gcc/integrate.c,v
@@ -6,22 +6,25 @@ retrieving revision 1.1
 diff -u -r1.1 integrate.c
 --- integrate.c	20 Jun 2004 02:14:49 -0000	1.1
 +++ integrate.c	20 Dec 2004 20:48:11 -0000
-@@ -393,6 +393,10 @@
+@@ -393,6 +393,11 @@
    /* These args would always appear unused, if not for this.  */
    TREE_USED (copy) = 1;
  
-+  /* The inlined variable is marked as INLINE not to sweep by propolice */
++  /* The inlined variable is marked as INLINE not to change the location
++     by stack protector.  */
 +  if (flag_propolice_protection && TREE_CODE (copy) == VAR_DECL)
 +    DECL_COPIED (copy) = 1;
 +
    /* Set the context for the new declaration.  */
    if (!DECL_CONTEXT (decl))
      /* Globals stay global.  */
-@@ -1970,6 +1974,10 @@
+@@ -1970,6 +1975,12 @@
  
  	      seq = get_insns ();
  	      end_sequence ();
 +#ifdef ARGS_GROWS_DOWNWARD
++	      /* Mark this pointer as the top of the argument
++		 block. The pointer minus one is in the block.  */
 +	      if (flag_propolice_protection && GET_CODE (seq) == SET)
 +		RTX_INTEGRATED_P (SET_SRC (seq)) = 1;
 +#endif

@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/protector.c,v 1.1 2004/06/19 10:34:17 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/protector.c,v 1.2 2005/08/27 21:03:51 joerg Exp $ */
 /* RTL buffer overflow protection function for GNU C compiler
    Copyright (C) 2003 Free Software Foundation, Inc.
 
@@ -68,7 +68,13 @@ static int current_function_defines_short_string;
 static int current_function_has_variable_string;
 static int current_function_defines_vsized_array;
 static int current_function_is_inlinable;
+
+/* Nonzero if search_string_def finds the variable which contains an array.  */
 static int is_array;
+
+/* Nonzero if search_string_def finds a byte-pointer variable,
+   which may be assigned to alloca output.  */
+static int may_have_alloca_pointer;
 
 static rtx guard_area, _guard;
 static rtx function_first_insn, prologue_insert_point;
@@ -277,12 +283,15 @@ search_string_from_argsandvars (int caller)
   current_function_defines_short_string = FALSE;
   current_function_has_variable_string = FALSE;
   current_function_defines_vsized_array = FALSE;
+  may_have_alloca_pointer = FALSE;
 
   /* Search a string variable from local variables.  */
   blocks = DECL_INITIAL (current_function_decl);
   string_p = search_string_from_local_vars (blocks);
 
-  if (! current_function_defines_vsized_array && current_function_calls_alloca)
+  if (! current_function_defines_vsized_array
+      && may_have_alloca_pointer
+      && current_function_calls_alloca)
     {
       current_function_has_variable_string = TRUE;
       return TRUE;
@@ -433,6 +442,14 @@ search_string_def (tree type)
       break;
 	
     case POINTER_TYPE:
+      /* Check if pointer variables, which may be a pointer assigned 
+	 by alloca function call, are declared.  */
+      if (TYPE_MAIN_VARIANT (TREE_TYPE(type)) == char_type_node
+	  || TYPE_MAIN_VARIANT (TREE_TYPE(type)) == signed_char_type_node
+	  || TYPE_MAIN_VARIANT (TREE_TYPE(type)) == unsigned_char_type_node)
+	may_have_alloca_pointer = TRUE;
+      break;
+
     case REFERENCE_TYPE:
     case OFFSET_TYPE:
     default:
@@ -938,7 +955,6 @@ arrange_var_order (tree block)
 	  if (! DECL_EXTERNAL (types) && ! TREE_STATIC (types)
 	      && TREE_CODE (types) == VAR_DECL
 	      && ! DECL_ARTIFICIAL (types)
-	      /* && ! DECL_COPIED (types): gcc3.4 can sweep inlined string.  */
 	      && DECL_RTL_SET_P (types)
 	      && GET_CODE (DECL_RTL (types)) == MEM
 	      && GET_MODE (DECL_RTL (types)) == BLKmode
@@ -2278,6 +2294,8 @@ push_frame_of_insns (rtx insn, HOST_WIDE_INT push_size, HOST_WIDE_INT boundary)
 		/* Copy the various flags, and other information.  */
 		memcpy (insn, first, sizeof (struct rtx_def) - sizeof (rtunion));
 		PATTERN (insn) = PATTERN (first);
+		INSN_CODE (insn) = INSN_CODE (first);
+		LOG_LINKS (insn) = LOG_LINKS (first);
 		REG_NOTES (insn) = REG_NOTES (first);
 
 		/* then remove the first insn of splitted insns.  */
