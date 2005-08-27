@@ -35,18 +35,24 @@
  *
  * @(#)ferror.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/ferror.c,v 1.6 1999/08/28 00:00:57 peter Exp $
- * $DragonFly: src/lib/libc/stdio/ferror.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/ferror.c,v 1.4 2005/08/27 21:35:01 joerg Exp $
  */
 
 #include <stdio.h>
 
 /*
- * A subroutine version of the macro ferror.
+ * A subroutine version of the macros ferror and ferror_unlocked.
  */
-#undef ferror
+#undef ferror_unlocked
 
 int
 ferror(FILE *fp)
+{
+	return (__sferror(fp));
+}
+
+int
+ferror_unlocked(FILE *fp)
 {
 	return (__sferror(fp));
 }

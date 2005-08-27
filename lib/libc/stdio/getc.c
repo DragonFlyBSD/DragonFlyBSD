@@ -35,13 +35,15 @@
  *
  * @(#)getc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/getc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/getc.c,v 1.3 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/getc.c,v 1.4 2005/08/27 21:35:01 joerg Exp $
  */
 
 #include "namespace.h"
 #include <stdio.h>
 #include "un-namespace.h"
 #include "libc_private.h"
+
+#undef getc_unlocked
 
 int
 getc(FILE *fp)
@@ -51,4 +53,10 @@ getc(FILE *fp)
 	retval = __sgetc(fp);
 	FUNLOCKFILE(fp);
 	return (retval);
+}
+
+int
+getc_unlocked(FILE *fp)
+{
+	return(__sgetc(fp));
 }

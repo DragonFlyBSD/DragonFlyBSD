@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.10 2005/08/27 21:32:24 joerg Exp $
+ * $DragonFly: src/include/stdio.h,v 1.11 2005/08/27 21:35:01 joerg Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -165,7 +165,9 @@ __BEGIN_DECLS
 void	 clearerr(FILE *);
 int	 fclose(FILE *);
 int	 feof(FILE *);
+int	 feof_unlocked(FILE *);
 int	 ferror(FILE *);
+int	 ferror_unlocked(FILE *);
 int	 fflush(FILE *);
 int	 fgetc(FILE *);
 int	 fgetpos(FILE *, fpos_t *);
@@ -182,7 +184,9 @@ int	 fsetpos(FILE *, const fpos_t *);
 long	 ftell(FILE *);
 size_t	 fwrite(const void *, size_t, size_t, FILE *);
 int	 getc(FILE *);
+int	 getc_unlocked(FILE *);
 int	 getchar(void);
+int	 getchar_unlocked(void);
 char	*gets(char *);
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 extern __const int sys_nerr;		/* perror(3) external variables */
@@ -191,7 +195,9 @@ extern __const char *__const sys_errlist[];
 void	 perror(const char *);
 int	 printf(const char *, ...);
 int	 putc(int, FILE *);
+int	 putc_unlocked(int, FILE *);
 int	 putchar(int);
+int	 putchar_unlocked(int);
 int	 puts(const char *);
 int	 remove(const char *);
 int	 rename(const char *, const char *);
@@ -222,6 +228,7 @@ __BEGIN_DECLS
 char	*ctermid(char *);
 FILE	*fdopen(int, const char *);
 int	 fileno(FILE *);
+int	 fileno_unlocked(FILE *);
 int	 ftrylockfile(FILE *);
 void	 flockfile(FILE *);
 void	 funlockfile(FILE *);

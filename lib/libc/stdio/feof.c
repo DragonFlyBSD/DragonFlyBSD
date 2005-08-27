@@ -35,19 +35,25 @@
  *
  * @(#)feof.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/feof.c,v 1.6 1999/08/28 00:00:57 peter Exp $
- * $DragonFly: src/lib/libc/stdio/feof.c,v 1.5 2004/06/09 23:35:45 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/feof.c,v 1.6 2005/08/27 21:35:01 joerg Exp $
  */
 
 #include <stdio.h>
 #include "libc_private.h"
 
 /*
- * A subroutine version of the macro feof.
+ * A subroutine version of the macros feof and feof_unlocked.
  */
-#undef feof
+#undef feof_unlocked
 
 int
 feof(FILE *fp)
+{
+	return(__sfeof(fp));
+}
+
+int
+feof_unlocked(FILE *fp)
 {
 	return(__sfeof(fp));
 }

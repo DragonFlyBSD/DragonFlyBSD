@@ -35,7 +35,7 @@
  *
  * @(#)putc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putc.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libc/stdio/putc.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/putc.c,v 1.6 2005/08/27 21:35:01 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,13 +43,13 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 
+#undef putc_unlocked
+
 /*
  * putc has traditionally been a macro in <stdio.h>.  That is no
  * longer true because POSIX requires it to be thread-safe.  POSIX
  * does define putc_unlocked() which is defined as a macro and is
  * probably what you want to use instead.
- *
- * #undef putc
  */
 int
 putc(int c, FILE *fp)
@@ -59,4 +59,9 @@ putc(int c, FILE *fp)
 	retval = __sputc(c, fp);
 	FUNLOCKFILE(fp);
 	return (retval);
+}
+
+int putc_unlocked(int c, FILE *fp)
+{
+	return(__sputc(c, fp));
 }
