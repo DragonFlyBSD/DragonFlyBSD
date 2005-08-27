@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.9 2005/08/27 14:56:52 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.10 2005/08/27 15:09:38 asmodai Exp $
  */
 
 /*
@@ -761,8 +761,8 @@ ehci_idone(struct ehci_xfer *ex)
 
 		status = nstatus;
 		/* halt is ok if descriptor is last, and complete */
-		if(sqtd->qtd.qtd_next == EHCI_NULL
-		   && EHCI_QTD_GET_BYTES(status) == 0)
+		if(sqtd->qtd.qtd_next == EHCI_NULL &&
+		   EHCI_QTD_GET_BYTES(status) == 0)
 			status &= ~EHCI_QTD_HALTED;
 		if (EHCI_QTD_GET_PID(status) !=	EHCI_QTD_PID_SETUP)
 			actlen += sqtd->len - EHCI_QTD_GET_BYTES(status);
