@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehcireg.h,v 1.17 2004/06/23 06:45:56 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehcireg.h,v 1.1 2003/04/14 14:04:07 ticso Exp $
- * $DragonFly: src/sys/bus/usb/ehcireg.h,v 1.3 2004/07/08 03:47:09 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehcireg.h,v 1.4 2005/08/27 14:56:52 asmodai Exp $
  */
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -238,6 +238,7 @@ typedef struct {
 #define	EHCI_QTD_SET_TOGGLE(x)	((x) << 31)
 #define EHCI_QTD_TOGGLE_MASK	0x80000000
 	ehci_physaddr_t	qtd_buffer[EHCI_QTD_NBUFFERS];
+	ehci_physaddr_t	qtd_buffer_hi[EHCI_QTD_NBUFFERS];
 } ehci_qtd_t;
 #define EHCI_QTD_ALIGN 32
 

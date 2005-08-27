@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.8 2005/06/10 18:21:11 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.9 2005/08/27 14:56:52 asmodai Exp $
  */
 
 /*
@@ -760,6 +760,10 @@ ehci_idone(struct ehci_xfer *ex)
 			break;
 
 		status = nstatus;
+		/* halt is ok if descriptor is last, and complete */
+		if(sqtd->qtd.qtd_next == EHCI_NULL
+		   && EHCI_QTD_GET_BYTES(status) == 0)
+			status &= ~EHCI_QTD_HALTED;
 		if (EHCI_QTD_GET_PID(status) !=	EHCI_QTD_PID_SETUP)
 			actlen += sqtd->len - EHCI_QTD_GET_BYTES(status);
 	}
@@ -2217,6 +2221,7 @@ printf("status=%08x toggle=%d\n", epipe->sqh->qh.qh_qtd.qtd_status,
 			if (i != 0) /* use offset only in first buffer */
 				a = EHCI_PAGE(a);
 			cur->qtd.qtd_buffer[i] = htole32(a);
+			cur->qtd.qtd_buffer_hi[i] = 0;
 #ifdef DIAGNOSTIC
 			if (i >= EHCI_QTD_NBUFFERS) {
 				printf("ehci_alloc_sqtd_chain: i=%d\n", i);
@@ -2596,6 +2601,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	    EHCI_QTD_SET_BYTES(sizeof *req)
 	    );
 	setup->qtd.qtd_buffer[0] = htole32(DMAADDR(&epipe->u.ctl.reqdma, 0));
+	setup->qtd.qtd_buffer_hi[0] = 0;
 	setup->nextqtd = next;
 	setup->qtd.qtd_next = setup->qtd.qtd_altnext = htole32(next->physaddr);
 	setup->xfer = xfer;
@@ -2609,6 +2615,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	    EHCI_QTD_IOC
 	    );
 	stat->qtd.qtd_buffer[0] = 0; /* XXX not needed? */
+	stat->qtd.qtd_buffer_hi[0] = 0; /* XXX not needed? */
 	stat->nextqtd = NULL;
 	stat->qtd.qtd_next = stat->qtd.qtd_altnext = EHCI_NULL;
 	stat->xfer = xfer;
