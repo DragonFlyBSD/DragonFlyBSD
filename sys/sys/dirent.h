@@ -32,15 +32,11 @@
  *
  *	@(#)dirent.h	8.3 (Berkeley) 8/10/94
  * $FreeBSD: src/sys/sys/dirent.h,v 1.11 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/dirent.h,v 1.4 2005/08/10 17:08:49 joerg Exp $
+ * $DragonFly: src/sys/sys/dirent.h,v 1.5 2005/08/27 20:23:05 joerg Exp $
  */
 
 #ifndef	_SYS_DIRENT_H_
 #define	_SYS_DIRENT_H_
-
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
-#endif
 
 /*
  * The dirent structure defines the format of directory entries returned by
@@ -48,23 +44,40 @@
  *
  * A directory entry has a struct dirent at the front of it, containing its
  * inode number, the length of the entry, and the length of the name
- * contained in the entry.  These are followed by the name padded to a 4
+ * contained in the entry.  These are followed by the name padded to a 8
  * byte boundary with null bytes.  All names are guaranteed null terminated.
- * The maximum length of a name in a directory is MAXNAMLEN.
  */
 
+/*
+ * XXX Temporary bandaids to keep changes small:
+ * XXX - for userland programs which don't specify any C or POSIX options,
+ * XXX   keep the old d_fileno and map d_ino via macro.  Everything else gets
+ * XXX   the POSIX d_ino and only that.
+ * XXX - d_name is declared with the current maximum directory entry length,
+ * XXX   instead of being incomplete. Code must allocate space for the
+ * XXX   directory itself.
+ */
+
+#include <sys/cdefs.h>
+#include <sys/types.h>
+
 struct dirent {
-	__uint32_t d_fileno;		/* file number of entry */
-	__uint16_t d_reclen;		/* length of this record */
-	__uint8_t  d_type; 		/* file type, see below */
-	__uint8_t  d_namlen;		/* length of string in d_name */
-#ifdef _POSIX_SOURCE
-	char	d_name[255 + 1];	/* name must be no longer than this */
+#if defined(_KERNEL) || !defined(__BSD_VISIBLE)
+	ino_t		d_ino;		/* file number of entry */
 #else
-#define	MAXNAMLEN	255
-	char	d_name[MAXNAMLEN + 1];	/* name must be no longer than this */
+	ino_t		d_fileno;	/* file number of entry */
 #endif
+	uint16_t	d_namlen;	/* strlen(d_name) */
+	uint8_t		d_type;		/* file type, see blow */
+	uint8_t		d_unused1;	/* padding, reserved */
+	uint32_t	d_unused2;	/* reserved */
+	char		d_name[255 + 1];
+					/* name, NUL-terminated */
 };
+
+#if !defined(_KERNEL) && defined(__BSD_VISIBLE)
+#define	d_ino		d_fileno
+#endif
 
 /*
  * File types
@@ -80,24 +93,20 @@ struct dirent {
 #define	DT_WHT		14
 
 /*
- * Convert between stat structure types and directory types.
- */
-#define	IFTODT(mode)	(((mode) & 0170000) >> 12)
-#define	DTTOIF(dirtype)	((dirtype) << 12)
-
-/*
- * The _GENERIC_DIRSIZ macro gives the minimum record length which will hold
+ * The _DIRENT_DIRSIZ macro gives the minimum record length which will hold
  * the directory entry.  This requires the amount of space in struct direct
  * without the d_name field, plus enough space for the name with a terminating
- * null byte (dp->d_namlen+1), rounded up to a 4 byte boundary.
+ * null byte (dp->d_namlen+1), rounded up to an 8 byte boundary.
+ *
+ * The _DIRENT_MINSIZ macro gives space needed for the directory entry without
+ * the padding _DIRENT_DIRSIZ adds at the end.
  */
-#define	_GENERIC_DIRSIZ(dp) \
-    ((sizeof (struct dirent) - (MAXNAMLEN+1)) + (((dp)->d_namlen+1 + 3) &~ 3))
-
-#ifdef _KERNEL
-#define	GENERIC_DIRSIZ(dp)	_GENERIC_DIRSIZ(dp)
-#define	_DIRENT_NEXT(dp)	\
-    ((struct dirent *)((uint8_t *)(dp) + (dp)->d_reclen))
-#endif
+#define	_DIRENT_MINSIZ(dp) \
+	(__offsetof(struct dirent, d_name) + (dp)->d_namlen + 1)
+#define	_DIRENT_RECLEN(namelen) \
+	((__offsetof(struct dirent, d_name) + (namelen) + 1 + 7) & ~7)
+#define	_DIRENT_DIRSIZ(dp)	_DIRENT_RECLEN((dp)->d_namlen)
+#define	_DIRENT_NEXT(dp) \
+	((struct dirent *)((uint8_t *)(dp) + _DIRENT_DIRSIZ(dp)))
 
 #endif /* !_SYS_DIRENT_H_ */

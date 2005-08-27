@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.24 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.25 2005/08/27 20:23:06 joerg Exp $
  */
 
 /*
@@ -2984,10 +2984,10 @@ again:
 	 * increase.
 	 */
 	while (cpos < cend && ncookies > 0 &&
-		(dp->d_fileno == 0 || dp->d_type == DT_WHT ||
+		(dp->d_ino == 0 || dp->d_type == DT_WHT ||
 		 ((u_quad_t)(*cookiep)) <= toff)) {
-		cpos += dp->d_reclen;
-		dp = (struct dirent *)cpos;
+		dp = _DIRENT_NEXT(dp);
+		cpos = (char *)dp;
 		cookiep++;
 		ncookies--;
 	}
@@ -3010,7 +3010,7 @@ again:
 
 	/* Loop through the records and build reply */
 	while (cpos < cend && ncookies > 0) {
-		if (dp->d_fileno != 0 && dp->d_type != DT_WHT) {
+		if (dp->d_ino != 0 && dp->d_type != DT_WHT) {
 			nlen = dp->d_namlen;
 			rem = nfsm_rndup(nlen) - nlen;
 			len += (4 * NFSX_UNSIGNED + nlen + rem);
@@ -3033,7 +3033,7 @@ again:
 				bp += NFSX_UNSIGNED;
 			}
 			nfsm_clget;
-			*tl = txdr_unsigned(dp->d_fileno);
+			*tl = txdr_unsigned(dp->d_ino);
 			bp += NFSX_UNSIGNED;
 			nfsm_clget;
 			*tl = txdr_unsigned(nlen);
@@ -3068,8 +3068,8 @@ again:
 			*tl = txdr_unsigned(*cookiep);
 			bp += NFSX_UNSIGNED;
 		}
-		cpos += dp->d_reclen;
-		dp = (struct dirent *)cpos;
+		dp = _DIRENT_NEXT(dp);
+		cpos = (char *)dp;
 		cookiep++;
 		ncookies--;
 	}
@@ -3257,10 +3257,10 @@ again:
 	 * increase.
 	 */
 	while (cpos < cend && ncookies > 0 &&
-		(dp->d_fileno == 0 || dp->d_type == DT_WHT ||
+		(dp->d_ino == 0 || dp->d_type == DT_WHT ||
 		 ((u_quad_t)(*cookiep)) <= toff)) {
-		cpos += dp->d_reclen;
-		dp = (struct dirent *)cpos;
+		dp = _DIRENT_NEXT(dp);
+		cpos = (char *)dp;
 		cookiep++;
 		ncookies--;
 	}
@@ -3274,7 +3274,7 @@ again:
 	 * Probe one of the directory entries to see if the filesystem
 	 * supports VGET.
 	 */
-	if (VFS_VGET(vp->v_mount, dp->d_fileno, &nvp) == EOPNOTSUPP) {
+	if (VFS_VGET(vp->v_mount, dp->d_ino, &nvp) == EOPNOTSUPP) {
 		error = NFSERR_NOTSUPP;
 		vrele(vp);
 		vp = NULL;
@@ -3301,7 +3301,7 @@ again:
 
 	/* Loop through the records and build reply */
 	while (cpos < cend && ncookies > 0) {
-		if (dp->d_fileno != 0 && dp->d_type != DT_WHT) {
+		if (dp->d_ino != 0 && dp->d_type != DT_WHT) {
 			nlen = dp->d_namlen;
 			rem = nfsm_rndup(nlen)-nlen;
 
@@ -3309,7 +3309,7 @@ again:
 			 * For readdir_and_lookup get the vnode using
 			 * the file number.
 			 */
-			if (VFS_VGET(vp->v_mount, dp->d_fileno, &nvp))
+			if (VFS_VGET(vp->v_mount, dp->d_ino, &nvp))
 				goto invalid;
 			bzero((caddr_t)nfhp, NFSX_V3FH);
 			nfhp->fh_fsid =
@@ -3360,7 +3360,7 @@ again:
 			*tl = 0;
 			bp += NFSX_UNSIGNED;
 			nfsm_clget;
-			*tl = txdr_unsigned(dp->d_fileno);
+			*tl = txdr_unsigned(dp->d_ino);
 			bp += NFSX_UNSIGNED;
 			nfsm_clget;
 			*tl = txdr_unsigned(nlen);
@@ -3404,8 +3404,8 @@ again:
 			}
 		}
 invalid:
-		cpos += dp->d_reclen;
-		dp = (struct dirent *)cpos;
+		dp = _DIRENT_NEXT(dp);
+		cpos = (char *)dp;
 		cookiep++;
 		ncookies--;
 	}

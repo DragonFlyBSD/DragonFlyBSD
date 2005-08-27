@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.23 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.24 2005/08/27 20:23:06 joerg Exp $
  */
 
 
@@ -679,16 +679,35 @@ again:
 		break;
 	    };
 
-	    if (n > 0) {
-		    error = uiomove(bp->b_data + on, (int)n, uio);
-	    }
 	    switch (vp->v_type) {
 	    case VREG:
+		if (n > 0)
+		    error = uiomove(bp->b_data + on, (int)n, uio);
 		break;
 	    case VLNK:
+		if (n > 0)
+		    error = uiomove(bp->b_data + on, (int)n, uio);
 		n = 0;
 		break;
 	    case VDIR:
+		if (n > 0) {
+		    off_t old_off = uio->uio_offset;
+		    caddr_t cpos, epos;
+		    struct nfs_dirent *dp;
+
+		    cpos = bp->b_data + on;
+		    epos = bp->b_data + on + n;
+		    while (cpos < epos && error == 0 && uio->uio_resid > 0) {
+			    dp = (struct nfs_dirent *)cpos;
+			    if (vop_write_dirent(&error, uio, dp->nfs_ino,
+				dp->nfs_type, dp->nfs_namlen, dp->nfs_name))
+				    break;
+			    cpos += dp->nfs_reclen;
+		    }
+		    n = 0;
+		    if (error == 0)
+			    uio->uio_offset = old_off + cpos - bp->b_data - on;
+		}
 		/*
 		 * Invalidate buffer if caching is disabled, forcing a
 		 * re-read from the remote later.

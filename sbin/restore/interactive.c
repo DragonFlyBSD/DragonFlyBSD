@@ -32,21 +32,22 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.8 2005/08/27 20:23:05 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <vfs/ufs/dinode.h>
-#include <vfs/ufs/dir.h>
-#include <protocols/dumprestore.h>
-
+#include <dirent.h>
 #include <setjmp.h>
 #include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <protocols/dumprestore.h>
 
 #include "restore.h"
 #include "extern.h"
@@ -694,14 +695,16 @@ formatf(register struct afile *list, int nentry)
  * First have to get definition of a dirent.
  */
 #undef DIRBLKSIZ
-#include <dirent.h>
-#undef d_ino
 
 struct dirent *
 glob_readdir(RST_DIR *dirp)
 {
+	static union {
+		uint8_t storage[_DIRENT_RECLEN(NAME_MAX)];
+		struct dirent aligment;
+	} adirent;
 	struct direct *dp;
-	static struct dirent adirent;
+	struct dirent *adp;
 
 	while ((dp = rst_readdir(dirp)) != NULL) {
 		if (!vflag && dp->d_ino == WINO)
@@ -711,10 +714,11 @@ glob_readdir(RST_DIR *dirp)
 	}
 	if (dp == NULL)
 		return (NULL);
-	adirent.d_fileno = dp->d_ino;
-	adirent.d_namlen = dp->d_namlen;
-	memmove(adirent.d_name, dp->d_name, dp->d_namlen + 1);
-	return (&adirent);
+	adp = (struct dirent *)&adirent;
+	adp->d_ino = dp->d_ino;
+	adp->d_namlen = dp->d_namlen;
+	strcpy(adp->d_name, dp->d_name);
+	return (adp);
 }
 
 /*

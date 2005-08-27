@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.56 2005/08/27 00:36:43 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.57 2005/08/27 20:23:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1045,7 +1045,7 @@ again:
 					den->d_name);
 			}
 			if (den->d_type != DT_WHT &&
-			    den->d_fileno == vat.va_fileid) {
+			    den->d_ino == vat.va_fileid) {
 				if (ncvp_debug) {
 					printf("cache_inefficient_scan: "
 					       "MATCHED inode %ld path %s/%*.*s\n",
@@ -1060,8 +1060,8 @@ again:
 				KKASSERT(rncp != NULL);
 				break;
 			}
-			bytes -= den->d_reclen;
-			den = (void *)((char *)den + den->d_reclen);
+			bytes -= _DIRENT_DIRSIZ(den);
+			den = _DIRENT_NEXT(den);
 		}
 		if (rncp == NULL && eofflag == 0 && uio.uio_resid != blksize)
 			goto again;

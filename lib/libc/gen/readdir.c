@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.5 2005/08/02 16:26:30 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.6 2005/08/27 20:23:05 joerg Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
@@ -68,12 +68,9 @@ _readdir_unlocked(dirp)
 				return (NULL);
 		}
 		dp = (struct dirent *)(dirp->dd_buf + dirp->dd_loc);
-		if ((long)dp & 03L)	/* bogus pointer check */
+		if (_DIRENT_DIRSIZ(dp) > dirp->dd_len + 1 - dirp->dd_loc)
 			return (NULL);
-		if (dp->d_reclen <= 0 ||
-		    dp->d_reclen > dirp->dd_len + 1 - dirp->dd_loc)
-			return (NULL);
-		dirp->dd_loc += dp->d_reclen;
+		dirp->dd_loc += _DIRENT_DIRSIZ(dp);
 		if (dp->d_ino == 0)
 			continue;
 		if (dp->d_type == DT_WHT && (dirp->dd_flags & DTF_HIDEW))
@@ -88,13 +85,12 @@ readdir(dirp)
 {
 	struct dirent	*dp;
 
-	if (__isthreaded) {
+	if (__isthreaded)
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
-		dp = _readdir_unlocked(dirp);
+	dp = _readdir_unlocked(dirp);
+	if (__isthreaded)
 		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
-	}
-	else
-		dp = _readdir_unlocked(dirp);
+
 	return (dp);
 }
 
@@ -109,14 +105,12 @@ readdir_r(dirp, entry, result)
 
 	saved_errno = errno;
 	errno = 0;
-	if (__isthreaded) {
+	if (__isthreaded)
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
-		if ((dp = _readdir_unlocked(dirp)) != NULL)
-			memcpy(entry, dp, _GENERIC_DIRSIZ(dp));
+	if ((dp = _readdir_unlocked(dirp)) != NULL)
+		memcpy(entry, dp, _DIRENT_MINSIZ(dp));
+	if (__isthreaded)
 		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
-	}
-	else if ((dp = _readdir_unlocked(dirp)) != NULL)
-		memcpy(entry, dp, _GENERIC_DIRSIZ(dp));
 
 	if (errno != 0) {
 		if (dp == NULL) {

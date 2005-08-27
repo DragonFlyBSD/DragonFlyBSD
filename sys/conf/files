@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.102 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/sys/conf/files,v 1.103 2005/08/27 20:23:05 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1310,6 +1310,7 @@ emulation/43bsd/43bsd_exit.c		optional compat_43
 emulation/43bsd/43bsd_resource.c	optional compat_43
 emulation/43bsd/43bsd_hostinfo.c	optional compat_43
 emulation/43bsd/43bsd_vm.c		optional compat_43
+emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
 emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
 
 # OS ACPI MI code

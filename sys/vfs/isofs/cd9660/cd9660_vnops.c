@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.15 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.16 2005/08/27 20:23:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -338,13 +338,19 @@ cd9660_read(struct vop_read_args *ap)
 	return (error);
 }
 
+/* struct dirent + enough space for the maximum supported size */
+struct iso_dirent {
+	struct dirent de;
+	char de_name[_DIRENT_RECLEN(NAME_MAX) - sizeof(struct dirent)];
+};
+
 /*
  * Structure for reading directories
  */
 struct isoreaddir {
-	struct dirent saveent;
-	struct dirent assocent;
-	struct dirent current;
+	struct iso_dirent saveent;
+	struct iso_dirent assocent;
+	struct iso_dirent current;
 	off_t saveoff;
 	off_t assocoff;
 	off_t curroff;
@@ -361,9 +367,8 @@ iso_uiodir(struct isoreaddir *idp, struct dirent *dp, off_t off)
 	int error;
 
 	dp->d_name[dp->d_namlen] = 0;
-	dp->d_reclen = GENERIC_DIRSIZ(dp);
 
-	if (idp->uio->uio_resid < dp->d_reclen) {
+	if (idp->uio->uio_resid < _DIRENT_DIRSIZ(dp)) {
 		idp->eofflag = 0;
 		return (-1);
 	}
@@ -378,7 +383,7 @@ iso_uiodir(struct isoreaddir *idp, struct dirent *dp, off_t off)
 		--idp->ncookies;
 	}
 
-	if ((error = uiomove((caddr_t) dp,dp->d_reclen,idp->uio)) != 0)
+	if ((error = uiomove((caddr_t) dp,_DIRENT_DIRSIZ(dp),idp->uio)) != 0)
 		return (error);
 	idp->uio_off = off;
 	return (0);
@@ -392,43 +397,42 @@ iso_shipdir(struct isoreaddir *idp)
 	int error;
 	char *cname, *sname;
 
-	cl = idp->current.d_namlen;
-	cname = idp->current.d_name;
+	cl = idp->current.de.d_namlen;
+	cname = idp->current.de.d_name;
 assoc = (cl > 1) && (*cname == ASSOCCHAR);
 	if (assoc) {
 		cl--;
 		cname++;
 	}
 
-	dp = &idp->saveent;
+	dp = &idp->saveent.de;
 	sname = dp->d_name;
 	if (!(sl = dp->d_namlen)) {
-		dp = &idp->assocent;
+		dp = &idp->assocent.de;
 		sname = dp->d_name + 1;
 		sl = dp->d_namlen - 1;
 	}
 	if (sl > 0) {
 		if (sl != cl
 		    || bcmp(sname,cname,sl)) {
-			if (idp->assocent.d_namlen) {
-				if ((error = iso_uiodir(idp,&idp->assocent,idp->assocoff)) != 0)
+			if (idp->assocent.de.d_namlen) {
+				if ((error = iso_uiodir(idp,&idp->assocent.de,idp->assocoff)) != 0)
 					return (error);
-				idp->assocent.d_namlen = 0;
+				idp->assocent.de.d_namlen = 0;
 			}
-			if (idp->saveent.d_namlen) {
-				if ((error = iso_uiodir(idp,&idp->saveent,idp->saveoff)) != 0)
+			if (idp->saveent.de.d_namlen) {
+				if ((error = iso_uiodir(idp,&idp->saveent.de,idp->saveoff)) != 0)
 					return (error);
-				idp->saveent.d_namlen = 0;
+				idp->saveent.de.d_namlen = 0;
 			}
 		}
 	}
-	idp->current.d_reclen = GENERIC_DIRSIZ(&idp->current);
 	if (assoc) {
 		idp->assocoff = idp->curroff;
-		bcopy(&idp->current,&idp->assocent,idp->current.d_reclen);
+		bcopy(&idp->current,&idp->assocent,_DIRENT_DIRSIZ(&idp->current.de));
 	} else {
 		idp->saveoff = idp->curroff;
-		bcopy(&idp->current,&idp->saveent,idp->current.d_reclen);
+		bcopy(&idp->current,&idp->saveent,_DIRENT_DIRSIZ(&idp->current.de));
 	}
 	return (0);
 }
@@ -463,13 +467,14 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	bmask = imp->im_bmask;
 
 	MALLOC(idp, struct isoreaddir *, sizeof(*idp), M_TEMP, M_WAITOK);
-	idp->saveent.d_namlen = idp->assocent.d_namlen = 0;
+	idp->saveent.de.d_namlen = idp->assocent.de.d_namlen = 0;
 	/*
 	 * XXX
 	 * Is it worth trying to figure out the type?
 	 */
-	idp->saveent.d_type = idp->assocent.d_type = idp->current.d_type =
-	    DT_UNKNOWN;
+	idp->saveent.de.d_type = DT_UNKNOWN;
+	idp->assocent.de.d_type = DT_UNKNOWN;
+	idp->current.de.d_type = DT_UNKNOWN;
 	idp->uio = uio;
 	if (ap->a_ncookies == NULL) {
 		idp->cookies = NULL;
@@ -533,18 +538,18 @@ cd9660_readdir(struct vop_readdir_args *ap)
 			break;
 		}
 
-		idp->current.d_namlen = isonum_711(ep->name_len);
+		idp->current.de.d_namlen = isonum_711(ep->name_len);
 
-		if (reclen < ISO_DIRECTORY_RECORD_SIZE + idp->current.d_namlen) {
+		if (reclen < ISO_DIRECTORY_RECORD_SIZE + idp->current.de.d_namlen) {
 			error = EINVAL;
 			/* illegal entry, stop */
 			break;
 		}
 
 		if (isonum_711(ep->flags)&2)
-			idp->current.d_fileno = isodirino(ep, imp);
+			idp->current.de.d_ino = isodirino(ep, imp);
 		else
-			idp->current.d_fileno = dbtob(bp->b_blkno) +
+			idp->current.de.d_ino = dbtob(bp->b_blkno) +
 				entryoffsetinblock;
 
 		idp->curroff += reclen;
@@ -552,34 +557,34 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		switch (imp->iso_ftype) {
 		case ISO_FTYPE_RRIP:
 		{
-			ino_t cur_fileno = idp->current.d_fileno;	
-			cd9660_rrip_getname(ep,idp->current.d_name, &namelen,
+			ino_t cur_fileno = idp->current.de.d_ino;	
+			cd9660_rrip_getname(ep,idp->current.de.d_name, &namelen,
 					   &cur_fileno,imp);
-			idp->current.d_fileno = cur_fileno;
-			idp->current.d_namlen = (u_char)namelen;
-			if (idp->current.d_namlen)
-				error = iso_uiodir(idp,&idp->current,idp->curroff);
+			idp->current.de.d_ino = cur_fileno;
+			idp->current.de.d_namlen = namelen;
+			if (idp->current.de.d_namlen)
+				error = iso_uiodir(idp,&idp->current.de,idp->curroff);
 			break;
 		}
 		default: /* ISO_FTYPE_DEFAULT || ISO_FTYPE_9660 || ISO_FTYPE_HIGH_SIERRA*/
-			strcpy(idp->current.d_name,"..");
-			if (idp->current.d_namlen == 1 && ep->name[0] == 0) {
-				idp->current.d_namlen = 1;
-				error = iso_uiodir(idp,&idp->current,idp->curroff);
-			} else if (idp->current.d_namlen == 1 && ep->name[0] == 1) {
-				idp->current.d_namlen = 2;
-				error = iso_uiodir(idp,&idp->current,idp->curroff);
+			strcpy(idp->current.de.d_name,"..");
+			if (idp->current.de.d_namlen == 1 && ep->name[0] == 0) {
+				idp->current.de.d_namlen = 1;
+				error = iso_uiodir(idp,&idp->current.de,idp->curroff);
+			} else if (idp->current.de.d_namlen == 1 && ep->name[0] == 1) {
+				idp->current.de.d_namlen = 2;
+				error = iso_uiodir(idp,&idp->current.de,idp->curroff);
 			} else {
-				isofntrans(ep->name,idp->current.d_namlen,
-					   idp->current.d_name, &namelen,
+				isofntrans(ep->name,idp->current.de.d_namlen,
+					   idp->current.de.d_name, &namelen,
 					   imp->iso_ftype == ISO_FTYPE_9660,
 					   isonum_711(ep->flags)&4,
 					   imp->joliet_level);
-				idp->current.d_namlen = (u_char)namelen;
+				idp->current.de.d_namlen = namelen;
 				if (imp->iso_ftype == ISO_FTYPE_DEFAULT)
 					error = iso_shipdir(idp);
 				else
-					error = iso_uiodir(idp,&idp->current,idp->curroff);
+					error = iso_uiodir(idp,&idp->current.de,idp->curroff);
 			}
 		}
 		if (error)
@@ -589,7 +594,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	}
 
 	if (!error && imp->iso_ftype == ISO_FTYPE_DEFAULT) {
-		idp->current.d_namlen = 0;
+		idp->current.de.d_namlen = 0;
 		error = iso_shipdir(idp);
 	}
 	if (error < 0)

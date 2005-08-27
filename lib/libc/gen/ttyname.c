@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.11 2005/08/23 17:46:28 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.12 2005/08/27 20:23:05 joerg Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -100,7 +100,7 @@ ttyname_r(int fd, char *buf, size_t len)
 	if ((dp = opendir(_PATH_DEV)) != NULL) {
 		memcpy(buf, _PATH_DEV, sizeof(_PATH_DEV));
 		for (rval = NULL; (dirp = readdir(dp)) != NULL;) {
-			if (dirp->d_fileno != sb.st_ino)
+			if (dirp->d_ino != sb.st_ino)
 				continue;
 			minlen = (len - (sizeof(_PATH_DEV) - 1)) < (dirp->d_namlen + 1) ?
 				(len - (sizeof(_PATH_DEV) - 1)) : (dirp->d_namlen + 1);
@@ -197,7 +197,7 @@ oldttyname(fd, sb)
 		return (NULL);
 
 	while ( (dirp = readdir(dp)) ) {
-		if (dirp->d_fileno != sb->st_ino)
+		if (dirp->d_ino != sb->st_ino)
 			continue;
 		if (sizeof(_PATH_DEV) + dirp->d_namlen >= sizeof(static_buf))
 			continue;

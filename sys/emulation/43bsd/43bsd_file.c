@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.8 2005/08/10 17:11:45 joerg Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.9 2005/08/27 20:23:05 joerg Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -159,7 +159,7 @@ ogetdirentries(struct ogetdirentries_args *uap)
 			break;
 		if (ndp->d_namlen > MAX_NAMELEN)
 			continue;
-		destdp->od_fileno = ndp->d_fileno;
+		destdp->od_fileno = ndp->d_ino;
 #if BYTE_ORDER == LITTLE_ENDIAN
 		destdp->od_type = ndp->d_namlen;
 		destdp->od_namlen = ndp->d_type;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
-/* $DragonFly: src/lib/libstand/ufs.c,v 1.5 2005/03/13 15:10:03 swildner Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.6 2005/08/27 20:23:05 joerg Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-
@@ -70,10 +70,12 @@
 
 #include <sys/param.h>
 #include <sys/time.h>
+
+#include "stand.h"
+
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/dir.h>
 #include <vfs/ufs/fs.h>
-#include "stand.h"
 #include "string.h"
 
 static int	ufs_open(const char *path, struct open_file *f);

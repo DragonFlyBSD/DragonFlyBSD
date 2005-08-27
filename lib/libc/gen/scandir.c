@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/scandir.c,v 1.5.6.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/scandir.c,v 1.6 2005/04/26 08:54:59 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/scandir.c,v 1.7 2005/08/27 20:23:05 joerg Exp $
  *
  * @(#)scandir.c	8.3 (Berkeley) 1/2/94
  */
@@ -51,17 +51,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "un-namespace.h"
-
-/*
- * The DIRSIZ macro is the minimum record length which will hold the directory
- * entry.  This requires the amount of space in struct dirent without the
- * d_name field, plus enough space for the name and a terminating nul byte
- * (dp->d_namlen + 1), rounded up to a 4 byte boundary.
- */
-#undef DIRSIZ
-#define DIRSIZ(dp)							\
-	((sizeof(struct dirent) - sizeof(dp)->d_name) +			\
-	    (((dp)->d_namlen + 1 + 3) &~ 3))
 
 int
 scandir(const char *dirname, struct dirent ***namelist,
@@ -95,12 +84,11 @@ scandir(const char *dirname, struct dirent ***namelist,
 		/*
 		 * Make a minimum size copy of the data
 		 */
-		p = (struct dirent *)malloc(DIRSIZ(d));
+		p = (struct dirent *)malloc(_DIRENT_DIRSIZ(d));
 		if (p == NULL)
 			goto fail;
-		p->d_fileno = d->d_fileno;
+		p->d_ino = d->d_ino;
 		p->d_type = d->d_type;
-		p->d_reclen = d->d_reclen;
 		p->d_namlen = d->d_namlen;
 		bcopy(d->d_name, p->d_name, p->d_namlen + 1);
 		/*

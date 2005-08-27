@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.23 2005/08/23 16:37:06 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.24 2005/08/27 20:23:05 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -326,8 +326,8 @@ again:
 		 */
 		while (len > 0 && ncookies > 0 && *cookiep <= off) {
 			bdp = (struct dirent *) inp;
-			len -= bdp->d_reclen;
-			inp += bdp->d_reclen;
+			len -= _DIRENT_DIRSIZ(bdp);
+			inp += _DIRENT_DIRSIZ(bdp);
 			cookiep++;
 			ncookies--;
 		}
@@ -337,13 +337,13 @@ again:
 		if (cookiep && ncookies == 0)
 			break;
 		bdp = (struct dirent *) inp;
-		reclen = bdp->d_reclen;
+		reclen = _DIRENT_DIRSIZ(bdp);
 		if (reclen & 3) {
 			error = EFAULT;
 			goto out;
 		}
 
-		if (bdp->d_fileno == 0) {
+		if (bdp->d_ino == 0) {
 			inp += reclen;
 			if (cookiep) {
 				off = *cookiep++;
@@ -366,14 +366,14 @@ again:
 
 		if (justone) {
 			/* readdir(2) case. */
-			linux_dirent.d_ino = (l_long)bdp->d_fileno;
+			linux_dirent.d_ino = (l_long)bdp->d_ino;
 			linux_dirent.d_off = (l_off_t)linuxreclen;
 			linux_dirent.d_reclen = (l_ushort)bdp->d_namlen;
 			strcpy(linux_dirent.d_name, bdp->d_name);
 			error = copyout(&linux_dirent, outp, linuxreclen);
 		} else {
 			if (is64bit) {
-				linux_dirent64.d_ino = bdp->d_fileno;
+				linux_dirent64.d_ino = bdp->d_ino;
 				linux_dirent64.d_off = (cookiep)
 				    ? (l_off_t)*cookiep
 				    : (l_off_t)(off + reclen);
@@ -384,7 +384,7 @@ again:
 				error = copyout(&linux_dirent64, outp,
 				    linuxreclen);
 			} else {
-				linux_dirent.d_ino = bdp->d_fileno;
+				linux_dirent.d_ino = bdp->d_ino;
 				linux_dirent.d_off = (cookiep)
 				    ? (l_off_t)*cookiep
 				    : (l_off_t)(off + reclen);

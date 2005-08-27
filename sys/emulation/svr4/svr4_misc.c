@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.28 2005/08/09 18:48:43 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.29 2005/08/27 20:23:05 joerg Exp $
  */
 
 /*
@@ -330,8 +330,8 @@ again:
 		 */
 		while (len > 0 && ncookies > 0 && *cookiep <= off) {
 			bdp = (struct dirent *) inp;
-			len -= bdp->d_reclen;
-			inp += bdp->d_reclen;
+			len -= _DIRENT_DIRSIZ(bdp);
+			inp += _DIRENT_DIRSIZ(bdp);
 			cookiep++;
 			ncookies--;
 		}
@@ -341,14 +341,14 @@ again:
 		if (cookiep && ncookies == 0)
 			break;
 		bdp = (struct dirent *) inp;
-		reclen = bdp->d_reclen;
+		reclen = _DIRENT_DIRSIZ(bdp);
 		if (reclen & 3) {
 			DPRINTF(("svr4_readdir: reclen=%d\n", reclen));
 			error = EFAULT;
 			goto out;
 		}
   
-		if (bdp->d_fileno == 0) {
+		if (bdp->d_ino == 0) {
 	    		inp += reclen;
 			if (cookiep) {
 				off = *cookiep++;
@@ -363,7 +363,7 @@ again:
 			outp++;
 			break;
 		}
-		svr4_dirent.d_ino = (long) bdp->d_fileno;
+		svr4_dirent.d_ino = (long) bdp->d_ino;
 		if (justone) {
 			/*
 			 * old svr4-style readdir usage.
@@ -471,7 +471,7 @@ again:
 
 	for (cookie = cookiebuf; len > 0; len -= reclen) {
 		bdp = (struct dirent *)inp;
-		reclen = bdp->d_reclen;
+		reclen = _DIRENT_DIRSIZ(bdp);
 		if (reclen & 3)
 			panic("svr4_sys_getdents64: bad reclen");
 		off = *cookie++;	/* each entry points to the next */
@@ -480,7 +480,7 @@ again:
 			error = EINVAL;
 			goto out;
 		}
-		if (bdp->d_fileno == 0) {
+		if (bdp->d_ino == 0) {
 			inp += reclen;	/* it is a hole; squish it out */
 			continue;
 		}
@@ -495,7 +495,7 @@ again:
 		 * we have to worry about touching user memory outside of
 		 * the copyout() call).
 		 */
-		idb.d_ino = (svr4_ino_t)bdp->d_fileno;
+		idb.d_ino = (svr4_ino_t)bdp->d_ino;
 		idb.d_off = (svr4_off_t)off;
 		idb.d_reclen = (u_short)svr4_reclen;
 		strcpy(idb.d_name, bdp->d_name);

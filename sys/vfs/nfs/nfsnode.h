@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.13 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.14 2005/08/27 20:23:06 joerg Exp $
  */
 
 
@@ -57,6 +57,20 @@ struct sillyrename {
 	struct	vnode *s_dvp;
 	long	s_namlen;
 	char	s_name[20];
+};
+
+/*
+ * Entries of directories in the buffer cache.
+ */
+struct nfs_dirent {
+	ino_t		nfs_ino;	/* file number of entry */
+	uint16_t	nfs_namlen;	/* strlen(d_name) */
+	uint16_t	nfs_reclen;	/* total record length */
+	uint8_t		nfs_type;	/* file type */
+	uint8_t		nfs_padding1;
+	uint8_t		nfs_padding2;
+	uint8_t		nfs_padding3;
+	char		nfs_name[];	/* name, NUL-terminated */
 };
 
 /*

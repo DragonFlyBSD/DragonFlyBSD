@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.10 2004/10/12 19:20:36 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.11 2005/08/27 20:23:05 joerg Exp $
  */
 
 /*
@@ -370,8 +370,8 @@ again:
 		 * has been compacted).
 		 */
 		while (len > 0 && ncookies > 0 && *cookiep <= off) {
-			len -= BSD_DIRENT(inp)->d_reclen;
-			inp += BSD_DIRENT(inp)->d_reclen;
+			len -= _DIRENT_DIRSIZ(BSD_DIRENT(inp));
+			inp += _DIRENT_DIRSIZ(BSD_DIRENT(inp));
 			cookiep++;
 			ncookies--;
 		}
@@ -380,13 +380,13 @@ again:
 	for (; len > 0; len -= reclen) {
 		if (cookiep && ncookies == 0)
 			break;
-		reclen = BSD_DIRENT(inp)->d_reclen;
+		reclen = _DIRENT_DIRSIZ(BSD_DIRENT(inp));
 		if (reclen & 3) {
 		        printf("ibcs2_getdents: reclen=%d\n", reclen);
 		        error = EFAULT;
 			goto out;
 		}
-		if (BSD_DIRENT(inp)->d_fileno == 0) {
+		if (BSD_DIRENT(inp)->d_ino == 0) {
 			inp += reclen;	/* it is a hole; squish it out */
 			if (cookiep) {
 				off = *cookiep++;
@@ -405,7 +405,7 @@ again:
 		 * we have to worry about touching user memory outside of
 		 * the copyout() call).
 		 */
-		idb.d_ino = (ibcs2_ino_t)BSD_DIRENT(inp)->d_fileno;
+		idb.d_ino = (ibcs2_ino_t)BSD_DIRENT(inp)->d_ino;
 		idb.d_off = (ibcs2_off_t)off;
 		idb.d_reclen = (u_short)IBCS2_RECLEN(reclen);
 		if ((error = copyout((caddr_t)&idb, outp, 10)) != 0 ||
@@ -521,8 +521,8 @@ again:
 		 * has been compacted).
 		 */
 		while (len > 0 && ncookies > 0 && *cookiep <= off) {
-			len -= BSD_DIRENT(inp)->d_reclen;
-			inp += BSD_DIRENT(inp)->d_reclen;
+			len -= _DIRENT_DIRSIZ(BSD_DIRENT(inp));
+			inp += _DIRENT_DIRSIZ(BSD_DIRENT(inp));
 			cookiep++;
 			ncookies--;
 		}
@@ -531,13 +531,13 @@ again:
 	for (; len > 0 && resid > 0; len -= reclen) {
 		if (cookiep && ncookies == 0)
 			break;
-		reclen = BSD_DIRENT(inp)->d_reclen;
+		reclen = _DIRENT_DIRSIZ(BSD_DIRENT(inp));
 		if (reclen & 3) {
 		        printf("ibcs2_read: reclen=%d\n", reclen);
 		        error = EFAULT;
 			goto out;
 		}
-		if (BSD_DIRENT(inp)->d_fileno == 0) {
+		if (BSD_DIRENT(inp)->d_ino == 0) {
 			inp += reclen;	/* it is a hole; squish it out */
 			if (cookiep) {
 				off = *cookiep++;
@@ -559,8 +559,8 @@ again:
 		 * TODO: if length(filename) > 14, then break filename into
 		 * multiple entries and set inode = 0xffff except last
 		 */
-		idb.ino = (BSD_DIRENT(inp)->d_fileno > 0xfffe) ? 0xfffe :
-			BSD_DIRENT(inp)->d_fileno;
+		idb.ino = (BSD_DIRENT(inp)->d_ino > 0xfffe) ? 0xfffe :
+			BSD_DIRENT(inp)->d_ino;
 		(void)copystr(BSD_DIRENT(inp)->d_name, idb.name, 14, &size);
 		bzero(idb.name + size, 14 - size);
 		if ((error = copyout(&idb, outp, sizeof(struct ibcs2_direct))) != 0)

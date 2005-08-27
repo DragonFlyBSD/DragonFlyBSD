@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.18 2005/08/16 21:37:54 joerg Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.19 2005/08/27 20:23:06 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -147,7 +147,11 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 	}
 	error = 0;
 	for (; uio->uio_resid > 0 && !error; i++) {
-		error = smbfs_findnext(ctx, uio->uio_resid / sizeof(struct dirent) + 1, &scred);
+		/*
+		 * Overestimate the size of a record a bit, doesn't really
+		 * hurt to be wrong here.
+		 */
+		error = smbfs_findnext(ctx, uio->uio_resid / _DIRENT_RECLEN(255) + 1, &scred);
 		if (error)
 			break;
 		np->n_dirofs++;

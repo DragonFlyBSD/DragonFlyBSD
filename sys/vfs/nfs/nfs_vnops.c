@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.41 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.42 2005/08/27 20:23:06 joerg Exp $
  */
 
 
@@ -72,6 +72,9 @@
 #include <sys/buf2.h>
 
 #include <vfs/fifofs/fifo.h>
+#include <vfs/ufs/dir.h>
+
+#undef DIRBLKSIZ
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -246,7 +249,6 @@ extern nfstype nfsv3_type[9];
 struct thread *nfs_iodwant[NFS_MAXASYNCDAEMON];
 struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
 int nfs_numasync = 0;
-#define	DIRHDSIZ	(sizeof (struct dirent) - (MAXNAMLEN + 1))
 
 SYSCTL_DECL(_vfs_nfs);
 
@@ -2178,7 +2180,7 @@ int
 nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 {
 	int len, left;
-	struct dirent *dp = NULL;
+	struct nfs_dirent *dp = NULL;
 	u_int32_t *tl;
 	caddr_t cp;
 	int32_t t1, t2;
@@ -2266,29 +2268,29 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 			if (tlen == len)
 				tlen += 4;	/* To ensure null termination */
 			left = DIRBLKSIZ - blksiz;
-			if ((tlen + DIRHDSIZ) > left) {
-				dp->d_reclen += left;
+			if ((tlen + sizeof(struct nfs_dirent)) > left) {
+				dp->nfs_reclen += left;
 				uiop->uio_iov->iov_base += left;
 				uiop->uio_iov->iov_len -= left;
 				uiop->uio_offset += left;
 				uiop->uio_resid -= left;
 				blksiz = 0;
 			}
-			if ((tlen + DIRHDSIZ) > uiop->uio_resid)
+			if ((tlen + sizeof(struct nfs_dirent)) > uiop->uio_resid)
 				bigenough = 0;
 			if (bigenough) {
-				dp = (struct dirent *)uiop->uio_iov->iov_base;
-				dp->d_fileno = (int)fileno;
-				dp->d_namlen = len;
-				dp->d_reclen = tlen + DIRHDSIZ;
-				dp->d_type = DT_UNKNOWN;
-				blksiz += dp->d_reclen;
+				dp = (struct nfs_dirent *)uiop->uio_iov->iov_base;
+				dp->nfs_ino = fileno;
+				dp->nfs_namlen = len;
+				dp->nfs_reclen = tlen + sizeof(struct nfs_dirent);
+				dp->nfs_type = DT_UNKNOWN;
+				blksiz += dp->nfs_reclen;
 				if (blksiz == DIRBLKSIZ)
 					blksiz = 0;
-				uiop->uio_offset += DIRHDSIZ;
-				uiop->uio_resid -= DIRHDSIZ;
-				uiop->uio_iov->iov_base += DIRHDSIZ;
-				uiop->uio_iov->iov_len -= DIRHDSIZ;
+				uiop->uio_offset += sizeof(struct nfs_dirent);
+				uiop->uio_resid -= sizeof(struct nfs_dirent);
+				uiop->uio_iov->iov_base += sizeof(struct nfs_dirent);
+				uiop->uio_iov->iov_len -= sizeof(struct nfs_dirent);
 				nfsm_mtouio(uiop, len);
 				cp = uiop->uio_iov->iov_base;
 				tlen -= len;
@@ -2331,7 +2333,7 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 	 */
 	if (blksiz > 0) {
 		left = DIRBLKSIZ - blksiz;
-		dp->d_reclen += left;
+		dp->nfs_reclen += left;
 		uiop->uio_iov->iov_base += left;
 		uiop->uio_iov->iov_len -= left;
 		uiop->uio_offset += left;
@@ -2361,7 +2363,7 @@ int
 nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 {
 	int len, left;
-	struct dirent *dp;
+	struct nfs_dirent *dp;
 	u_int32_t *tl;
 	caddr_t cp;
 	int32_t t1, t2;
@@ -2381,7 +2383,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 	struct nlcomponent nlc;
 
 #ifndef nolint
-	dp = (struct dirent *)0;
+	dp = NULL;
 #endif
 #ifndef DIAGNOSTIC
 	if (uiop->uio_iovcnt != 1 || (uiop->uio_offset & (DIRBLKSIZ - 1)) ||
@@ -2450,29 +2452,29 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 			if (tlen == len)
 				tlen += 4;	/* To ensure null termination*/
 			left = DIRBLKSIZ - blksiz;
-			if ((tlen + DIRHDSIZ) > left) {
-				dp->d_reclen += left;
+			if ((tlen + sizeof(struct nfs_dirent)) > left) {
+				dp->nfs_reclen += left;
 				uiop->uio_iov->iov_base += left;
 				uiop->uio_iov->iov_len -= left;
 				uiop->uio_offset += left;
 				uiop->uio_resid -= left;
 				blksiz = 0;
 			}
-			if ((tlen + DIRHDSIZ) > uiop->uio_resid)
+			if ((tlen + sizeof(struct nfs_dirent)) > uiop->uio_resid)
 				bigenough = 0;
 			if (bigenough) {
-				dp = (struct dirent *)uiop->uio_iov->iov_base;
-				dp->d_fileno = (int)fileno;
-				dp->d_namlen = len;
-				dp->d_reclen = tlen + DIRHDSIZ;
-				dp->d_type = DT_UNKNOWN;
-				blksiz += dp->d_reclen;
+				dp = (struct nfs_dirent *)uiop->uio_iov->iov_base;
+				dp->nfs_ino = fileno;
+				dp->nfs_namlen = len;
+				dp->nfs_reclen = tlen + sizeof(struct nfs_dirent);
+				dp->nfs_type = DT_UNKNOWN;
+				blksiz += dp->nfs_reclen;
 				if (blksiz == DIRBLKSIZ)
 					blksiz = 0;
-				uiop->uio_offset += DIRHDSIZ;
-				uiop->uio_resid -= DIRHDSIZ;
-				uiop->uio_iov->iov_base += DIRHDSIZ;
-				uiop->uio_iov->iov_len -= DIRHDSIZ;
+				uiop->uio_offset += sizeof(struct nfs_dirent);
+				uiop->uio_resid -= sizeof(struct nfs_dirent);
+				uiop->uio_iov->iov_base += sizeof(struct nfs_dirent);
+				uiop->uio_iov->iov_len -= sizeof(struct nfs_dirent);
 				nlc.nlc_nameptr = uiop->uio_iov->iov_base;
 				nlc.nlc_namelen = len;
 				nfsm_mtouio(uiop, len);
@@ -2527,7 +2529,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				nfsm_loadattr(newvp, (struct vattr *)0);
 				dpos = dpossav2;
 				md = mdsav2;
-				dp->d_type =
+				dp->nfs_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
 				if (dncp) {
 				    printf("NFS/READDIRPLUS, ENTER %*.*s\n",
@@ -2575,7 +2577,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 	 */
 	if (blksiz > 0) {
 		left = DIRBLKSIZ - blksiz;
-		dp->d_reclen += left;
+		dp->nfs_reclen += left;
 		uiop->uio_iov->iov_base += left;
 		uiop->uio_iov->iov_len -= left;
 		uiop->uio_offset += left;

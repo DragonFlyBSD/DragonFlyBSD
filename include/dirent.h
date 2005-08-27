@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.4 2005/01/31 22:28:58 dillon Exp $
+ * $DragonFly: src/include/dirent.h,v 1.5 2005/08/27 20:23:05 joerg Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -47,8 +47,6 @@
 #ifdef _POSIX_SOURCE
 typedef void *	DIR;
 #else
-
-#define	d_ino		d_fileno	/* backward compatibility */
 
 /* definitions for library routines operating on directories. */
 #define	DIRBLKSIZ	1024

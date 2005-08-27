@@ -30,7 +30,7 @@
  *
  * $NetBSD: cd9660.c,v 1.5 1997/06/26 19:11:33 drochner Exp $
  * $FreeBSD: src/lib/libstand/cd9660.c,v 1.4.2.4 2001/12/21 22:17:44 jhb Exp $
- * $DragonFly: src/lib/libstand/cd9660.c,v 1.4 2003/12/01 08:52:20 dillon Exp $
+ * $DragonFly: src/lib/libstand/cd9660.c,v 1.5 2005/08/27 20:23:05 joerg Exp $
  */
 
 /*
@@ -546,11 +546,9 @@ again:
 			}
 		}
 	}
-	reclen = sizeof(struct dirent) - (MAXNAMLEN+1) + namelen + 1;
-	reclen = (reclen + 3) & ~3;
+	reclen = _DIRENT_RECLEN(namelen);
 
-	d->d_fileno = isonum_733(ep->extent);
-	d->d_reclen = reclen;
+	d->d_ino = isonum_733(ep->extent);
 	if (isonum_711(ep->flags) & 2)
 		d->d_type = DT_DIR;
 	else

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.62 2005/08/14 18:38:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.63 2005/08/27 20:23:05 joerg Exp $
  */
 
 /*
@@ -2019,23 +2019,23 @@ int
 vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type, 
 		uint16_t d_namlen, const char *d_name)
 {
-	struct dirent d;
-	struct dirent *dp = &d;
+	struct dirent *dp;
+	size_t len;
 
-	KKASSERT(d_namlen <= MAXNAMLEN);
-
-	dp->d_namlen = d_namlen;
-	dp->d_reclen = GENERIC_DIRSIZ(dp);
-	if (dp->d_reclen > uio->uio_resid)
+	len = _DIRENT_RECLEN(d_namlen);
+	if (len > uio->uio_resid)
 		return(1);
 
-	dp->d_fileno = d_ino;
+	dp = malloc(len, M_TEMP, M_WAITOK | M_ZERO);
+
+	dp->d_ino = d_ino;
+	dp->d_namlen = d_namlen;
 	dp->d_type = d_type;
 	bcopy(d_name, dp->d_name, d_namlen);
-	bzero(dp->d_name + dp->d_namlen,
-	    dp->d_reclen - offsetof(struct dirent, d_name) - dp->d_namlen);
 
-	*error = uiomove((caddr_t)dp, dp->d_reclen, uio);
+	*error = uiomove((caddr_t)dp, len, uio);
+
+	free(dp, M_TEMP);
 
 	return(0);
 }
