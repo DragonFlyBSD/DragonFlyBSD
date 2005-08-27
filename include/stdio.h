@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.9 2005/08/27 21:13:28 joerg Exp $
+ * $DragonFly: src/include/stdio.h,v 1.10 2005/08/27 21:32:24 joerg Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -267,7 +267,7 @@ char	*fgetln(FILE *, size_t *);
 #define	__ATTR_FORMAT_ARG
 #endif
 const char *fmtcheck(const char *, const char *) __ATTR_FORMAT_ARG;
-ssize_t	 __fpending(FILE *);
+__ssize_t __fpending(FILE *);
 int	 fpurge(FILE *);
 int	 fseeko(FILE *, __off_t, int);
 __off_t	 ftello(FILE *);
