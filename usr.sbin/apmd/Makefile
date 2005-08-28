@@ -1,11 +1,11 @@
 # $FreeBSD: src/usr.sbin/apmd/Makefile,v 1.2.2.2 2001/04/25 12:09:18 ru Exp $
-# $DragonFly: src/usr.sbin/apmd/Makefile,v 1.2 2003/06/17 04:29:52 dillon Exp $
+# $DragonFly: src/usr.sbin/apmd/Makefile,v 1.3 2005/08/28 20:55:07 liamfoy Exp $
 
 PROG=	apmd
 SRCS=	apmd.c apmdlex.l apmdparse.y y.tab.h
 
-DPADD=	${LIBL}
-LDADD=	-ll
+DPADD=	${LIBL} ${LIBUTIL}
+LDADD=	-ll -lutil
 
 MAN=	apmd.8
 

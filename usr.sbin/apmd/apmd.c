@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.c,v 1.3.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.5 2005/08/28 20:55:07 liamfoy Exp $
  */
 
 #include <assert.h>
@@ -35,6 +35,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libutil.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
@@ -55,7 +56,6 @@ extern int	yyparse(void);
 int		debug_level = 0;
 int		verbose = 0;
 const char	*apmd_configfile = APMD_CONFIGFILE;
-const char	*apmd_pidfile = APMD_PIDFILE;
 int             apmctl_fd = -1, apmnorm_fd = -1;
 
 /*
@@ -426,20 +426,6 @@ restart(void)
 }
 
 /*
- * write pid file
- */
-static void
-write_pid(void)
-{
-	FILE *fp = fopen(apmd_pidfile, "w");
-
-	if (fp) {
-		fprintf(fp, "%d\n", getpid());
-		fclose(fp);
-	}
-}
-
-/*
  * handle signals
  */
 static int signal_fd[2];
@@ -686,7 +672,7 @@ main(int ac, char* av[])
 	}
 
 	restart();
-	write_pid();
+	pidfile(getprogname());
 	event_loop();
  	exit(EXIT_SUCCESS);
 }

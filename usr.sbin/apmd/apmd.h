@@ -27,13 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.h,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.4 2004/11/25 01:20:33 joerg Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.5 2005/08/28 20:55:07 liamfoy Exp $
  */
 
 #define APMD_CONFIGFILE		"/etc/apmd.conf"
 #define APM_CTL_DEVICEFILE	"/dev/apmctl"
 #define APM_NORM_DEVICEFILE	"/dev/apm"
-#define APMD_PIDFILE		"/var/run/apmd.pid"
 #define NICE_INCR		-20
 
 enum {
