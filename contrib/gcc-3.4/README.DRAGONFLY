@@ -19,7 +19,7 @@
 	MD5 (gcc-g77-3.4-20050809.tar.bz2) = 829d1c326e6891681b0140d8f0f1e934
 	MD5 (gcc-objc-3.4-20050809.tar.bz2) = 6d5afaa643c7880fe6c106201e1b8d44
 
-    UPGRADE PROCDURE:
+    UPGRADE PROCEDURE:
 
 	* download a new gcc-3.4.X dist greater then 3.4.4.
 
