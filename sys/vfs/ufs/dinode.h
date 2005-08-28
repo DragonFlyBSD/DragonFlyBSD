@@ -37,11 +37,13 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.4 2005/08/28 04:34:44 dillon Exp $
  */
 
 #ifndef _UFS_UFS_DINODE_H_
 #define _UFS_UFS_DINODE_H_
+
+typedef __uint32_t	ufs1_ino_t;
 
 /*
  * The root inode is the root of the filesystem.  Inode 0 can't be used for
