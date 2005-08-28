@@ -23,7 +23,6 @@ djgpp/
 doc/Makefile.am
 doc/Makefile.in
 doc/epsf.tex
-doc/fdl.texi
 doc/pdfcolor.tex
 doc/texinfo.tex
 doc/txi-cs.tex
