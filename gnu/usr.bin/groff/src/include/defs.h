@@ -1,5 +1,5 @@
-/* $FreeBSD: src/gnu/usr.bin/groff/src/include/defs.h,v 1.4.2.1 2001/04/26 17:08:27 ru Exp $ */
-/* $DragonFly: src/gnu/usr.bin/groff/src/include/defs.h,v 1.2 2003/06/17 04:25:46 dillon Exp $ */
+/* $FreeBSD: src/gnu/usr.bin/groff/src/include/defs.h,v 1.4 2001/04/17 12:37:07 ru Exp $ */
+/* $DragonFly: src/gnu/usr.bin/groff/src/include/defs.h,v 1.3 2005/08/28 06:53:55 asmodai Exp $ */
 
 #define PROG_PREFIX ""
 #define DEVICE "ps"
