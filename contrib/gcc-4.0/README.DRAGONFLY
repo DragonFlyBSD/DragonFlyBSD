@@ -17,7 +17,7 @@
 	MD5 (gcc-4.0.0.tar.bz2) = 55ee7df1b29f719138ec063c57b89db6
 
 
-    UPGRADE PROCDURE:
+    UPGRADE PROCEDURE:
 
 	* download a new gcc-4.0.X dist greater then 4.0.0.
 
