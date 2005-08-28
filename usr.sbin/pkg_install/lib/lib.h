@@ -17,7 +17,7 @@
  * Include and define various things wanted by the library routines.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/lib/lib.h,v 1.55 2005/01/04 16:18:55 paul Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.5 2005/03/08 19:11:30 joerg Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.6 2005/08/28 16:56:12 corecode Exp $
  */
 
 #ifndef _INST_LIB_LIB_H_
@@ -25,11 +25,13 @@
 
 /* Includes */
 #include <sys/param.h>
+#include <sys/cdefs.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/queue.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <err.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,7 +64,7 @@
 /* just in case we change the environment variable name */
 #define PKG_DBDIR	"PKG_DBDIR"
 /* macro to get name of directory where we put logging information */
-#define LOG_DIR		(getenv(PKG_DBDIR) ? getenv(PKG_DBDIR) : DEF_LOG_DIR)
+#define LOG_DIR		fake_chroot(getenv(PKG_DBDIR) ? getenv(PKG_DBDIR) : DEF_LOG_DIR)
 
 /* The names of our "special" files */
 #define CONTENTS_FNAME		"+CONTENTS"
@@ -151,6 +153,20 @@ char		*make_playpen(char *, off_t);
 char		*where_playpen(void);
 void		leave_playpen(void);
 off_t		min_free(const char *);
+
+__inline static char *
+fake_chroot(const char *p)
+{
+	char *ret;
+
+	if (strcmp(p, ".") == 0 || getenv("PKG_FAKEROOT") == NULL)
+		return (strdup(p));
+
+	if (asprintf(&ret, "%s/%s", getenv("PKG_FAKEROOT"), p) < 0)
+		err(1, "asprintf: %s/%s", getenv("PKG_FAKEROOT"), p);
+
+	return ret;
+}
 
 /* String */
 char 		*get_dash_string(char **);

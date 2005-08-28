@@ -17,7 +17,7 @@
  * This is the main body of the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.77 2004/07/28 16:03:13 stefanf Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.5 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.6 2005/08/28 16:56:12 corecode Exp $
  */
 
 #include <err.h>
@@ -163,16 +163,17 @@ pkg_do(char *pkg)
 		    printf("Doing in-place extraction for %s\n", pkg_fullname);
 		p = find_plist(&Plist, PLIST_CWD);
 		if (p) {
-		    if (!isdir(p->name) && !Fake) {
+		    char *dn = fake_chroot(p->name);
+		    if (!isdir(dn) && !Fake) {
 			if (Verbose)
 			    printf("Desired prefix of %s does not exist, creating..\n", p->name);
-			vsystem("/bin/mkdir -p %s", p->name);
-			if (chdir(p->name) == -1) {
-			    warn("unable to change directory to '%s'", p->name);
+			vsystem("/bin/mkdir -p %s", dn);
+			if (chdir(dn) == -1) {
+			    warn("unable to change directory to '%s'", dn);
 			    goto bomb;
 			}
 		    }
-		    where_to = p->name;
+		    where_to = dn;
 		    inPlace = 1;
 		}
 		else {
@@ -417,15 +418,19 @@ pkg_do(char *pkg)
 	extract_plist(".", &Plist);
 
     if (!Fake && fexists(MTREE_FNAME)) {
+	char *dn;
+
 	if (Verbose)
 	    printf("Running mtree for %s..\n", Plist.name);
 	p = find_plist(&Plist, PLIST_CWD);
+	dn = fake_chroot(p ? p->name : "/");
 	if (Verbose)
-	    printf("mtree -U -f %s -d -e -p %s >%s\n", MTREE_FNAME, p ? p->name : "/", _PATH_DEVNULL);
+	    printf("mtree -U -f %s -d -e -p %s >%s\n", MTREE_FNAME, dn, _PATH_DEVNULL);
 	if (!Fake) {
-	    if (vsystem("/usr/sbin/mtree -U -f %s -d -e -p %s >%s", MTREE_FNAME, p ? p->name : "/", _PATH_DEVNULL))
+	    if (vsystem("/usr/sbin/mtree -U -f %s -d -e -p %s >%s", MTREE_FNAME, dn, _PATH_DEVNULL))
 		warnx("mtree returned a non-zero status - continuing");
 	}
+	free(dn);
     }
 
     /* Run the installation script one last time? */

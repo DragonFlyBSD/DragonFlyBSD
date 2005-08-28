@@ -17,7 +17,7 @@
  * General packing list routines.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/lib/plist.c,v 1.48 2004/07/28 07:19:15 kan Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.4 2004/07/30 04:46:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.5 2005/08/28 16:56:12 corecode Exp $
  */
 
 #include "lib.h"
@@ -409,6 +409,7 @@ int
 delete_package(Boolean ign_err, Boolean nukedirs, Package *pkg)
 {
     PackingList p;
+    char *dn = NULL;
     const char *Where = ".", *last_file = "";
     Boolean fail = SUCCESS;
     Boolean preserve;
@@ -426,7 +427,9 @@ delete_package(Boolean ign_err, Boolean nukedirs, Package *pkg)
 	    break;
 
 	case PLIST_CWD:
-	    Where = p->name;
+	    if (dn != NULL)
+		    free(dn);
+	    Where = dn = fake_chroot(p->name);
 	    if (Verbose)
 		printf("Change working directory to %s\n", Where);
 	    break;
@@ -519,6 +522,7 @@ delete_package(Boolean ign_err, Boolean nukedirs, Package *pkg)
 	    break;
 	}
     }
+    free(dn);
     return fail;
 }
 

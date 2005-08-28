@@ -17,7 +17,7 @@
  * This is the package extraction code for the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/extract.c,v 1.42 2004/07/28 07:19:15 kan Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.5 2005/08/28 16:56:12 corecode Exp $
  */
 
 #include <ctype.h>
@@ -55,6 +55,7 @@ rollback(const char *name, const char *home, PackingList start, PackingList stop
     PackingList q;
     char try[FILENAME_MAX], bup[FILENAME_MAX];
     const char *dir;
+    char *dn = NULL;
 
     dir = home;
     for (q = start; q != stop; q = q->next) {
@@ -69,11 +70,13 @@ rollback(const char *name, const char *home, PackingList start, PackingList stop
 	}
 	else if (q->type == PLIST_CWD) {
 	    if (strcmp(q->name, "."))
-		dir = q->name;
+		dir = dn = fake_chroot(q->name);
 	    else
 		dir = home;
 	}
     }
+
+    free(dn);
 }
 
 #define add_char(buf, len, pos, ch) do {\
@@ -104,6 +107,7 @@ extract_plist(const char *home, Package *pkg)
     PackingList p = pkg->head;
     char *last_file;
     char *where_args, *perm_args, *last_chdir;
+    char *dn = NULL;
     int maxargs, where_count = 0, perm_count = 0, add_count;
     Boolean preserve;
 
@@ -211,19 +215,27 @@ extract_plist(const char *home, Package *pkg)
 	    break;
 
 	case PLIST_CWD:
+	    {
+	    char *dn2 = fake_chroot(p->name);
+
 	    if (Verbose)
-		printf("extract: CWD to %s\n", p->name);
+		printf("extract: CWD to %s\n", dn2);
 	    PUSHOUT(Directory);
-	    if (strcmp(p->name, ".")) {
-		if (!Fake && make_hierarchy(p->name) == FAIL) {
+	    if (strcmp(dn2, ".")) {
+		if (!Fake && make_hierarchy(dn2) == FAIL) {
 		    cleanup(0);
-		    errx(2, "%s: unable to cwd to '%s'", __func__, p->name);
+		    errx(2, "%s: unable to cwd to '%s'", __func__, dn2);
 		}
-		Directory = p->name;
+		if (dn != NULL)
+			free(dn);
+		Directory = dn = dn2;
 	    }
-	    else
+	    else {
 		Directory = (char *)home;
+		free(dn2);
+	    }
 	    break;
+	    }
 
 	case PLIST_CMD:
 	    if ((strstr(p->name, "%B") || strstr(p->name, "%F") ||
