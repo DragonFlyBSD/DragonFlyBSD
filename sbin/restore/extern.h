@@ -32,11 +32,11 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/restore/extern.h,v 1.5 1999/08/28 00:14:05 peter Exp $
- * $DragonFly: src/sbin/restore/extern.h,v 1.3 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/extern.h,v 1.4 2005/08/28 04:35:14 dillon Exp $
  */
 
-struct entry	*addentry(char *, ino_t, int);
-long		 addfile(char *, ino_t, int);
+struct entry	*addentry(char *, ufs1_ino_t, int);
+long		 addfile(char *, ufs1_ino_t, int);
 int		 addwhiteout(char *);
 void		 badentry(struct entry *, char *);
 void	 	 canon(char *, char *, int);
@@ -45,10 +45,10 @@ void		 closemt(void);
 void		 createfiles(void);
 void		 createleaves(char *);
 void		 createlinks(void);
-long		 deletefile(char *, ino_t, int);
-void		 deleteino(ino_t);
+long		 deletefile(char *, ufs1_ino_t, int);
+void		 deleteino(ufs1_ino_t);
 void		 delwhiteout(struct entry *);
-ino_t		 dirlookup(const char *);
+ufs1_ino_t	 dirlookup(const char *);
 void 	 	 done(int) __dead2;
 void		 dumpsymtable(char *, long);
 void	 	 extractdirs(int);
@@ -57,24 +57,24 @@ void		 findunreflinks(void);
 char		*flagvalues(struct entry *);
 void		 freeentry(struct entry *);
 void		 freename(char *);
-int	 	 genliteraldir(char *, ino_t);
+int	 	 genliteraldir(char *, ufs1_ino_t);
 char		*gentempname(struct entry *);
 void		 getfile(void (*)(char *, long), void (*)(char *, long));
 void		 getvol(long);
 void		 initsymtable(char *);
-int	 	 inodetype(ino_t);
+int	 	 inodetype(ufs1_ino_t);
 int		 linkit(char *, char *, int);
-struct entry	*lookupino(ino_t);
+struct entry	*lookupino(ufs1_ino_t);
 struct entry	*lookupname(char *);
-long		 listfile(char *, ino_t, int);
-ino_t		 lowerbnd(ino_t);
+long		 listfile(char *, ufs1_ino_t, int);
+ufs1_ino_t	 lowerbnd(ufs1_ino_t);
 void		 mktempname(struct entry *);
 void		 moveentry(struct entry *, char *);
 void		 msg(const char *, ...);
 char		*myname(struct entry *);
 void		 newnode(struct entry *);
 void		 newtapebuf(long);
-long		 nodeupdates(char *, ino_t, int);
+long		 nodeupdates(char *, ufs1_ino_t, int);
 void	 	 onintr(int);
 void		 panic(const char *, ...);
 void		 pathcheck(char *);
@@ -98,9 +98,9 @@ void	 	 skipdirs(void);
 void		 skipfile(void);
 void		 skipmaps(void);
 void		 swabst(u_char *, u_char *);
-void	 	 treescan(char *, ino_t, long (*)(char *, ino_t, int));
-ino_t		 upperbnd(ino_t);
-long		 verifyfile(char *, ino_t, int);
+void	 	 treescan(char *, ufs1_ino_t, long (*)(char *, ufs1_ino_t, int));
+ufs1_ino_t	 upperbnd(ufs1_ino_t);
+long		 verifyfile(char *, ufs1_ino_t, int);
 void		 xtrnull(char *, long);
 
 /* From ../dump/dumprmt.c */

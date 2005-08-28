@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/utilities.c,v 1.8.2.2 2001/07/30 10:30:08 dd Exp $
- * $DragonFly: src/sbin/restore/utilities.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/utilities.c,v 1.6 2005/08/28 04:35:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -279,8 +279,8 @@ delwhiteout(register struct entry *ep)
 /*
  * find lowest number file (above "start") that needs to be extracted
  */
-ino_t
-lowerbnd(ino_t start)
+ufs1_ino_t
+lowerbnd(ufs1_ino_t start)
 {
 	register struct entry *ep;
 
@@ -297,8 +297,8 @@ lowerbnd(ino_t start)
 /*
  * find highest number file (below "start") that needs to be extracted
  */
-ino_t
-upperbnd(ino_t start)
+ufs1_ino_t
+upperbnd(ufs1_ino_t start)
 {
 	register struct entry *ep;
 
@@ -365,11 +365,11 @@ flagvalues(register struct entry *ep)
 /*
  * Check to see if a name is on a dump tape.
  */
-ino_t
+ufs1_ino_t
 dirlookup(const char *name)
 {
 	struct direct *dp;
-	ino_t ino;
+	ufs1_ino_t ino;
 
 	ino = ((dp = pathsearch(name)) == NULL) ? 0 : dp->d_ino;
 

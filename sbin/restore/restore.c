@@ -32,7 +32,7 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.6 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.7 2005/08/28 04:35:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -52,7 +52,7 @@ static char *keyval(int);
  * List entries on the tape.
  */
 long
-listfile(char *name, ino_t ino, int type)
+listfile(char *name, ufs1_ino_t ino, int type)
 {
 	long descend = hflag ? GOOD : FAIL;
 
@@ -68,7 +68,7 @@ listfile(char *name, ino_t ino, int type)
  * Request that new entries be extracted.
  */
 long
-addfile(char *name, ino_t ino, int type)
+addfile(char *name, ufs1_ino_t ino, int type)
 {
 	register struct entry *ep;
 	long descend = hflag ? GOOD : FAIL;
@@ -109,7 +109,7 @@ addfile(char *name, ino_t ino, int type)
  */
 /* ARGSUSED */
 long
-deletefile(char *name, ino_t ino, int type)
+deletefile(char *name, ufs1_ino_t ino, int type)
 {
 	long descend = hflag ? GOOD : FAIL;
 	struct entry *ep;
@@ -150,7 +150,7 @@ void
 removeoldleaves(void)
 {
 	register struct entry *ep, *nextep;
-	register ino_t i, mydirino;
+	register ufs1_ino_t i, mydirino;
 
 	vprintf(stdout, "Mark entries to be removed.\n");
 	if ((ep = lookupino(WINO))) {
@@ -200,7 +200,7 @@ removeoldleaves(void)
  *	Renames are done at the same time.
  */
 long
-nodeupdates(char *name, ino_t ino, int type)
+nodeupdates(char *name, ufs1_ino_t ino, int type)
 {
 	register struct entry *ep, *np, *ip;
 	long descend = GOOD;
@@ -510,7 +510,7 @@ void
 findunreflinks(void)
 {
 	register struct entry *ep, *np;
-	register ino_t i;
+	register ufs1_ino_t i;
 
 	vprintf(stdout, "Find unreferenced names.\n");
 	for (i = ROOTINO; i < maxino; i++) {
@@ -587,7 +587,7 @@ void
 createleaves(char *symtabfile)
 {
 	register struct entry *ep;
-	ino_t first;
+	ufs1_ino_t first;
 	long curvol;
 
 	if (command == 'R') {
@@ -665,7 +665,7 @@ createleaves(char *symtabfile)
 void
 createfiles(void)
 {
-	register ino_t first, next, last;
+	register ufs1_ino_t first, next, last;
 	register struct entry *ep;
 	long curvol;
 
@@ -762,7 +762,7 @@ void
 createlinks(void)
 {
 	register struct entry *np, *ep;
-	register ino_t i;
+	register ufs1_ino_t i;
 	char name[BUFSIZ];
 
 	if ((ep = lookupino(WINO))) {
@@ -802,7 +802,7 @@ void
 checkrestore(void)
 {
 	register struct entry *ep;
-	register ino_t i;
+	register ufs1_ino_t i;
 
 	vprintf(stdout, "Check the symbol table.\n");
 	for (i = WINO; i < maxino; i++) {
@@ -821,7 +821,7 @@ checkrestore(void)
  * A paranoid check that things are as they should be.
  */
 long
-verifyfile(char *name, ino_t ino, int type)
+verifyfile(char *name, ufs1_ino_t ino, int type)
 {
 	struct entry *np, *ep;
 	long descend = GOOD;

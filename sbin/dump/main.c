@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.12 2005/04/13 16:07:15 joerg Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.13 2005/08/28 04:35:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ int
 main(int argc, char **argv)
 {
 	struct stat sb;
-	ino_t ino;
+	ufs1_ino_t ino;
 	int dirty;
 	struct dinode *dp;
 	struct	fstab *dt;
@@ -98,7 +98,7 @@ main(int argc, char **argv)
 	int ch;
 	int i, anydirskipped, bflag = 0, Tflag = 0, honorlevel = 1;
 	int just_estimate = 0;
-	ino_t maxino;
+	ufs1_ino_t maxino;
 
 	spcl.c_date = 0;
 	time((time_t *)&spcl.c_date);

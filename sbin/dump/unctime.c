@@ -32,10 +32,12 @@
  *
  * @(#)unctime.c	8.2 (Berkeley) 6/14/94
  * $FreeBSD: src/sbin/dump/unctime.c,v 1.3.2.1 2001/09/19 09:29:39 ru Exp $
- * $DragonFly: src/sbin/dump/unctime.c,v 1.5 2005/04/13 15:21:36 joerg Exp $
+ * $DragonFly: src/sbin/dump/unctime.c,v 1.6 2005/08/28 04:35:12 dillon Exp $
  */
 
+#include <sys/types.h>
 #include <time.h>
+#include <vfs/ufs/dinode.h>
 
 #include "dump.h"
 

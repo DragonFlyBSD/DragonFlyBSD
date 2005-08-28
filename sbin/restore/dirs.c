@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.8 2005/08/28 04:35:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@
 #define INOHASH(val) (val % HASHSIZE)
 struct inotab {
 	struct	inotab *t_next;
-	ino_t	t_ino;
+	ufs1_ino_t	t_ino;
 	int32_t	t_seekpt;
 	int32_t	t_size;
 };
@@ -77,7 +77,7 @@ static struct inotab *inotab[HASHSIZE];
  * Information retained about directories.
  */
 struct modeinfo {
-	ino_t ino;
+	ufs1_ino_t ino;
 	struct timeval timep[2];
 	mode_t mode;
 	uid_t uid;
@@ -116,16 +116,16 @@ struct odirect {
 	char	d_name[ODIRSIZ];
 };
 
-static struct inotab	*allocinotab(ino_t, struct dinode *, long);
+static struct inotab	*allocinotab(ufs1_ino_t, struct dinode *, long);
 static void		 dcvt(struct odirect *, struct direct *);
 static void		 flushent(void);
-static struct inotab	*inotablookup(ino_t);
+static struct inotab	*inotablookup(ufs1_ino_t);
 static RST_DIR		*opendirfile(const char *);
 static void		 putdir(char *, long);
 static void		 putent(struct direct *);
 static void		 rst_seekdir(RST_DIR *, long, long);
 static long		 rst_telldir(RST_DIR *);
-static struct direct	*searchdir(ino_t, char *);
+static struct direct	*searchdir(ufs1_ino_t, char *);
 
 /*
  *	Extract directory contents, building up a directory structure
@@ -219,7 +219,7 @@ skipdirs(void)
  *	pname and pass them off to be processed.
  */
 void
-treescan(char *pname, ino_t ino, long (*todo) (char *, ino_t, int))
+treescan(char *pname, ufs1_ino_t ino, long (*todo) (char *, ufs1_ino_t, int))
 {
 	register struct inotab *itp;
 	register struct direct *dp;
@@ -285,7 +285,7 @@ treescan(char *pname, ino_t ino, long (*todo) (char *, ino_t, int))
 struct direct *
 pathsearch(const char *pathname)
 {
-	ino_t ino;
+	ufs1_ino_t ino;
 	struct direct *dp;
 	char *path, *name, buffer[MAXPATHLEN];
 
@@ -308,7 +308,7 @@ pathsearch(const char *pathname)
  * Return its inode number if found, zero if it does not exist.
  */
 static struct direct *
-searchdir(ino_t inum, char *name)
+searchdir(ufs1_ino_t inum, char *name)
 {
 	register struct direct *dp;
 	register struct inotab *itp;
@@ -509,7 +509,7 @@ rst_opendir(const char *name)
 {
 	struct inotab *itp;
 	RST_DIR *dirp;
-	ino_t ino;
+	ufs1_ino_t ino;
 
 	if ((ino = dirlookup(name)) > 0 &&
 	    (itp = inotablookup(ino)) != NULL) {
@@ -630,7 +630,7 @@ setdirmodes(int flags)
  * Generate a literal copy of a directory.
  */
 int
-genliteraldir(char *name, ino_t ino)
+genliteraldir(char *name, ufs1_ino_t ino)
 {
 	register struct inotab *itp;
 	int ofile, dp, i, size;
@@ -673,7 +673,7 @@ genliteraldir(char *name, ino_t ino)
  * Determine the type of an inode
  */
 int
-inodetype(ino_t ino)
+inodetype(ufs1_ino_t ino)
 {
 	struct inotab *itp;
 
@@ -688,7 +688,7 @@ inodetype(ino_t ino)
  * If requested, save its pertinent mode, owner, and time info.
  */
 static struct inotab *
-allocinotab(ino_t ino, struct dinode *dip, long seekpt)
+allocinotab(ufs1_ino_t ino, struct dinode *dip, long seekpt)
 {
 	register struct inotab	*itp;
 	struct modeinfo node;
@@ -719,7 +719,7 @@ allocinotab(ino_t ino, struct dinode *dip, long seekpt)
  * Look up an inode in the table of directories
  */
 static struct inotab *
-inotablookup(ino_t ino)
+inotablookup(ufs1_ino_t ino)
 {
 	register struct inotab *itp;
 

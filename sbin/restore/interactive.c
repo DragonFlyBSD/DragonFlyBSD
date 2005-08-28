@@ -32,7 +32,7 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.8 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.9 2005/08/28 04:35:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,7 @@ static char *nextarg = NULL;
  * Structure and routines associated with listing directories.
  */
 struct afile {
-	ino_t	fnum;		/* inode number of file */
+	ufs1_ino_t fnum;	/* inode number of file */
 	char	*fname;		/* file name */
 	short	len;		/* name length */
 	char	prefix;		/* prefix character */
@@ -94,7 +94,7 @@ void
 runcmdshell(void)
 {
 	register struct entry *np;
-	ino_t ino;
+	ufs1_ino_t ino;
 	struct arglist arglist;
 	char curdir[MAXPATHLEN];
 	char name[MAXPATHLEN];

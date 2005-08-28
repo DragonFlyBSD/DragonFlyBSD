@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.10 2005/04/14 10:17:23 y0netan1 Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.11 2005/08/28 04:35:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ int	uflag;		/* update flag */
 int	diskfd;		/* disk file descriptor */
 int	tapefd;		/* tape file descriptor */
 int	pipeout;	/* true => output to standard output */
-ino_t	curino;		/* current inumber; used globally */
+ufs1_ino_t curino;	/* current inumber; used globally */
 int	newtape;	/* new tape flag */
 long	tapesize;	/* estimated tape size, blocks */
 long	tsize;		/* tape size in 0.1" units */
@@ -113,16 +113,16 @@ time_t	unctime(const char *);
 /* mapping rouintes */
 struct	dinode;
 long	blockest(struct dinode *);
-int	mapfiles(ino_t maxino, long *);
-int	mapdirs(ino_t maxino, long *);
+int	mapfiles(ufs1_ino_t maxino, long *);
+int	mapdirs(ufs1_ino_t maxino, long *);
 
 /* file dumping routines */
-void	blksout(daddr_t *, int, ino_t);
+void	blksout(daddr_t *, int, ufs1_ino_t);
 void	bread(daddr_t, char *, int);
 ssize_t cread(int, void *, size_t, off_t);
-void	dumpino(struct dinode *, ino_t);
-void	dumpmap(const char *, int, ino_t);
-void	writeheader(ino_t);
+void	dumpino(struct dinode *, ufs1_ino_t);
+void	dumpmap(const char *, int, ufs1_ino_t);
+void	writeheader(ufs1_ino_t);
 
 /* tape writing routines */
 int	alloctape(void);
@@ -137,7 +137,7 @@ void	dumpabort(int);
 void	getfstab(void);
 
 char	*rawname(char *);
-struct	dinode *getino(ino_t);
+struct	dinode *getino(ufs1_ino_t);
 
 /* rdump routines */
 #if defined(RDUMP) || defined(RRESTORE)

@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.9 2005/04/13 15:45:37 joerg Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.10 2005/08/28 04:35:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <utmp.h>
+
+#include <vfs/ufs/dinode.h>
 
 #include "dump.h"
 #include "pathnames.h"

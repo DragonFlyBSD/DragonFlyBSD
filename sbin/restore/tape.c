@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.8 2005/08/28 04:35:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1147,7 +1147,7 @@ good:
 static void
 accthdr(struct s_spcl *header)
 {
-	static ino_t previno = 0x7fffffff;
+	static ufs1_ino_t previno = 0x7fffffff;
 	static int prevtype;
 	static long predict;
 	long blks, i;

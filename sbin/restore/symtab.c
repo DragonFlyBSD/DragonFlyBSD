@@ -32,7 +32,7 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.6 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/symtab.c,v 1.7 2005/08/28 04:35:14 dillon Exp $
  */
 
 /*
@@ -70,7 +70,7 @@
 static struct entry **entry;
 static long entrytblsize;
 
-static void		 addino(ino_t, struct entry *);
+static void		 addino(ufs1_ino_t, struct entry *);
 static struct entry	*lookupparent(char *);
 static void		 removeentry(struct entry *);
 
@@ -78,7 +78,7 @@ static void		 removeentry(struct entry *);
  * Look up an entry by inode number
  */
 struct entry *
-lookupino(ino_t inum)
+lookupino(ufs1_ino_t inum)
 {
 	register struct entry *ep;
 
@@ -94,7 +94,7 @@ lookupino(ino_t inum)
  * Add an entry into the entry table
  */
 static void
-addino(ino_t inum, struct entry *np)
+addino(ufs1_ino_t inum, struct entry *np)
 {
 	struct entry **epp;
 
@@ -114,7 +114,7 @@ addino(ino_t inum, struct entry *np)
  * Delete an entry from the entry table
  */
 void
-deleteino(ino_t inum)
+deleteino(ufs1_ino_t inum)
 {
 	register struct entry *next;
 	struct entry **prev;
@@ -215,7 +215,7 @@ static struct entry *freelist = NULL;
  * add an entry to the symbol table
  */
 struct entry *
-addentry(char *name, ino_t inum, int type)
+addentry(char *name, ufs1_ino_t inum, int type)
 {
 	register struct entry *np, *ep;
 
@@ -266,7 +266,7 @@ void
 freeentry(register struct entry *ep)
 {
 	register struct entry *np;
-	ino_t inum;
+	ufs1_ino_t inum;
 
 	if (ep->e_flags != REMOVED)
 		badentry(ep, "not marked REMOVED");
@@ -425,7 +425,7 @@ struct symtableheader {
 	int32_t	entrytblsize;
 	time_t	dumptime;
 	time_t	dumpdate;
-	ino_t	maxino;
+	ufs1_ino_t maxino;
 	int32_t	ntrec;
 };
 
@@ -436,7 +436,7 @@ void
 dumpsymtable(char *filename, long checkpt)
 {
 	register struct entry *ep, *tep;
-	register ino_t i;
+	register ufs1_ino_t i;
 	struct entry temp, *tentry;
 	long mynum = 1, stroff = 0;
 	FILE *fd;

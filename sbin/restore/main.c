@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/restore/main.c,v 1.10.2.3 2001/10/02 08:30:17 cjc Exp $
- * $DragonFly: src/sbin/restore/main.c,v 1.6 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/restore/main.c,v 1.7 2005/08/28 04:35:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,7 @@ long	volno = 0;
 long	ntrec;
 char	*dumpmap;
 char	*usedinomap;
-ino_t	maxino;
+ufs1_ino_t maxino;
 time_t	dumptime;
 time_t	dumpdate;
 FILE 	*terminal;
@@ -74,7 +74,7 @@ int
 main(int argc, char **argv)
 {
 	int ch;
-	ino_t ino;
+	ufs1_ino_t ino;
 	char *inputdev;
 	char *symtbl = "./restoresymtable";
 	char *p, name[MAXPATHLEN];

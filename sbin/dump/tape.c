@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.13 2005/04/13 16:07:15 joerg Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.14 2005/08/28 04:35:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -630,7 +630,7 @@ restore_check_point:
 		spcl.c_volume++;
 		spcl.c_type = TS_TAPE;
 		spcl.c_flags |= DR_NEWHEADER;
-		writeheader((ino_t)slp->inode);
+		writeheader((ufs1_ino_t)slp->inode);
 		spcl.c_flags &=~ DR_NEWHEADER;
 		if (tapeno > 1)
 			msg("Volume %d begins with blocks from inode %d\n",
