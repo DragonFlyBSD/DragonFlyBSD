@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.9 2005/06/15 21:29:21 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.10 2005/08/28 20:15:38 liamfoy Exp $
  *
  * Dedicated to my grandfather Peter Foy. Goodnight... 
  */
@@ -46,6 +46,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -350,6 +351,7 @@ main(int argc, char **argv)
 #endif
 		if (daemon(0, 0) == -1)
 			err(1, "daemon failed");
+		pidfile(getprogname());
 #ifdef DEBUG
 	}
 #endif
