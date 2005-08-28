@@ -16,7 +16,7 @@
 	http://developer.intel.com/technology/iapc/acpi/downloads/acpica-unix-20050309.tar.gz
 	MD5 (acpica-unix-20050309.tar.gz) = 862cdc50e58eeda3f8bc4050bffd90a4
 
-    UPGRADE PROCDURE:
+    UPGRADE PROCEDURE:
 
 	* download a new acpica-unix distribution
 
