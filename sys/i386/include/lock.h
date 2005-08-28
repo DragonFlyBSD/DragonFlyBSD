@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/i386/include/Attic/lock.h,v 1.11 2005/07/19 19:08:04 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/lock.h,v 1.12 2005/08/28 15:27:05 hsu Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -140,11 +140,11 @@
  * Spinlock functions (UP and SMP).  Under UP a spinlock still serves
  * to disable/restore interrupts even if it doesn't spin.
  */
-struct spinlock {
+struct spinlock_deprecated {
 	volatile int	opaque;
 };
 
-typedef struct spinlock *spinlock_t;
+typedef struct spinlock_deprecated *spinlock_t;
 
 void	mpintr_lock(void);	/* disables int / spinlock combo */
 void	mpintr_unlock(void);
@@ -157,15 +157,10 @@ void	clock_unlock(void);
 void	cons_lock(void);	/* disables int / spinlock combo */
 void	cons_unlock(void);
 
-extern struct spinlock smp_rv_spinlock;
+extern struct spinlock_deprecated smp_rv_spinlock;
 
-void	spin_lock(spinlock_t lock);
-void	spin_lock_np(spinlock_t lock);
-void	spin_unlock(spinlock_t lock);
-void	spin_unlock_np(spinlock_t lock);
-#if 0
-void	spin_lock_init(spinlock_t lock);
-#endif
+void	spin_lock_deprecated(spinlock_t lock);
+void	spin_unlock_deprecated(spinlock_t lock);
 
 /*
  * Inline version of spinlock routines -- overrides assembly.  Only unlock

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.13 2005/05/26 09:10:08 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.14 2005/08/28 15:27:05 hsu Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -138,10 +138,19 @@ ATOMIC_ASM(subtract, long,  "subl %1,%0",  v)
 
 #if defined(KLD_MODULE)
 
+extern int atomic_swap_int(volatile int *addr, int value);
 extern int atomic_poll_acquire_int(volatile u_int *p);
 extern void atomic_poll_release_int(volatile u_int *p);
 
 #else
+
+static __inline int
+atomic_swap_int(volatile int *addr, int value)
+{
+	__asm __volatile("xchgl %0, %1" :
+	    "=r" (value), "=m" (*addr) : "0" (value) : "memory");
+	return (value);
+}
 
 static __inline
 int

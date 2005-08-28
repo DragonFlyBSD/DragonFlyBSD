@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.13 2005/06/03 23:57:31 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.14 2005/08/28 15:27:05 hsu Exp $
  */
 
 /*
@@ -179,7 +179,7 @@ cpu_lfence(void)
 }
 
 /*
- * cpu_lfence() ensures strong write ordering for writes issued prior
+ * cpu_sfence() ensures strong write ordering for writes issued prior
  * to the instruction verses writes issued afterwords.  Writes are
  * ordered on intel cpus so we do not actually have to do anything.
  */
@@ -367,6 +367,12 @@ cpu_invltlb(void)
 #if defined(SWTCH_OPTIM_STATS)
 	++tlb_flush_count;
 #endif
+}
+
+static __inline void
+cpu_nop(void)
+{
+	__asm __volatile("rep; nop");
 }
 
 #endif	/* _KERNEL */

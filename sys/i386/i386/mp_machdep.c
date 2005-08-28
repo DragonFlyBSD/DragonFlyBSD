@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.36 2005/06/03 23:57:30 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.37 2005/08/28 15:27:05 hsu Exp $
  */
 
 #include "opt_cpu.h"
@@ -2503,7 +2503,7 @@ smp_rendezvous(void (* setup_func)(void *),
 	       void *arg)
 {
 	/* obtain rendezvous lock.  This disables interrupts */
-	spin_lock(&smp_rv_spinlock);	/* XXX sleep here? NOWAIT flag? */
+	spin_lock_deprecated(&smp_rv_spinlock);	/* XXX sleep here? NOWAIT flag? */
 
 	/* set static function pointers */
 	smp_rv_setup_func = setup_func;
@@ -2529,7 +2529,7 @@ smp_rendezvous(void (* setup_func)(void *),
 	smp_rendezvous_action();
 
 	/* release lock */
-	spin_unlock(&smp_rv_spinlock);
+	spin_unlock_deprecated(&smp_rv_spinlock);
 }
 
 void

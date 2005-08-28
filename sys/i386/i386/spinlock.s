@@ -22,7 +22,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/simplelock.s,v 1.11.2.2 2003/02/04 20:55:28 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/spinlock.s,v 1.1 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/spinlock.s,v 1.2 2005/08/28 15:27:05 hsu Exp $
  */
 
 #include <machine/asmacros.h>			/* miscellaneous macros */
@@ -36,12 +36,12 @@
  *
  * NOTE: for UP the spinlock routines still disable/restore interrupts
  */
-ENTRY(spin_lock)
+ENTRY(spin_lock_deprecated)
 	movl	4(%esp),%edx
 	SPIN_LOCK((%edx))		/* note: %eax, %ecx tromped */
 	ret
 
-ENTRY(spin_unlock)
+ENTRY(spin_unlock_deprecated)
 	movl	4(%esp),%edx
 	SPIN_UNLOCK((%edx))		/* note: %eax, %ecx tromped */
 	ret

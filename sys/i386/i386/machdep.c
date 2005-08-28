@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.76 2005/06/25 20:03:34 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.77 2005/08/28 15:27:05 hsu Exp $
  */
 
 #include "use_apm.h"
@@ -2726,31 +2726,31 @@ outb(u_int port, u_char data)
  */
 
 /* critical region around IO APIC, apic_imen */
-struct spinlock	imen_spinlock;
+struct spinlock_deprecated imen_spinlock;
 
 /* Make FAST_INTR() routines sequential */
-struct spinlock	fast_intr_spinlock;
+struct spinlock_deprecated fast_intr_spinlock;
 
 /* critical region for old style disable_intr/enable_intr */
-struct spinlock	mpintr_spinlock;
+struct spinlock_deprecated mpintr_spinlock;
 
 /* critical region around INTR() routines */
-struct spinlock	intr_spinlock;
+struct spinlock_deprecated intr_spinlock;
 
 /* lock region used by kernel profiling */
-struct spinlock	mcount_spinlock;
+struct spinlock_deprecated mcount_spinlock;
 
 /* locks com (tty) data/hardware accesses: a FASTINTR() */
-struct spinlock	com_spinlock;
+struct spinlock_deprecated com_spinlock;
 
 /* locks kernel printfs */
-struct spinlock	cons_spinlock;
+struct spinlock_deprecated cons_spinlock;
 
 /* lock regions around the clock hardware */
-struct spinlock	clock_spinlock;
+struct spinlock_deprecated clock_spinlock;
 
 /* lock around the MP rendezvous */
-struct spinlock smp_rv_spinlock;
+struct spinlock_deprecated smp_rv_spinlock;
 
 static void
 init_locks(void)
