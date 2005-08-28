@@ -18,7 +18,7 @@
  * This is the info module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.47 2004/10/18 05:34:54 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.5 2005/03/08 19:11:30 joerg Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.6 2005/08/28 17:19:16 corecode Exp $
  */
 
 #include "lib.h"
@@ -216,7 +216,10 @@ main(int argc, char **argv)
     if (Flags & SHOW_PTREV) {
 	if (!Quiet)
 	    printf("Package tools revision: ");
-	printf("%d\n", PKG_INSTALL_VERSION);
+	printf("%d", PKG_INSTALL_VERSION);
+	if (Verbose && PKG_INSTALL_VERSTR && PKG_INSTALL_VERSTR[0])
+		printf(" (%s)", PKG_INSTALL_VERSTR);
+	printf("\n");
 	exit(0);
     }
 

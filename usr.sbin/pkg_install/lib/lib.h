@@ -17,7 +17,7 @@
  * Include and define various things wanted by the library routines.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/lib/lib.h,v 1.55 2005/01/04 16:18:55 paul Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.6 2005/08/28 16:56:12 corecode Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.7 2005/08/28 17:19:16 corecode Exp $
  */
 
 #ifndef _INST_LIB_LIB_H_
@@ -97,6 +97,7 @@
  * functionality used by bsd.port.mk is changed, added or removed
  */
 #define PKG_INSTALL_VERSION	20040629
+#define PKG_INSTALL_VERSTR	"fakeroot"
 
 #define PKG_WRAPCONF_FNAME	"/var/db/pkg_install.conf"
 #define main(argc, argv)	real_main(argc, argv)
