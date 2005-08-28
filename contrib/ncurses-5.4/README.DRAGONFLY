@@ -19,7 +19,7 @@
     local files.  The only additional files added to this directory
     are README.DRAGONFLY and README.DELETED. 
 
-    UPGRADE PROCDURE:
+    UPGRADE PROCEDURE:
 
 	* download a new ncurses-5.X dist greater then 5.4
 
