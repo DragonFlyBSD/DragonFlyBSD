@@ -1,10 +1,10 @@
 # $FreeBSD: src/gnu/usr.bin/texinfo/makeinfo/Makefile,v 1.13.2.2 2002/08/07 16:53:37 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/makeinfo/Makefile,v 1.2 2003/06/17 04:25:49 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/texinfo/makeinfo/Makefile,v 1.3 2005/08/28 12:25:05 asmodai Exp $
 
 PROG=	makeinfo
-SRCS=	cmds.c docbook.c defun.c files.c footnote.c html.c \
+SRCS=	cmds.c defun.c files.c float.c footnote.c html.c \
 	index.c insertion.c lang.c macro.c makeinfo.c multi.c \
-	node.c sectioning.c toc.c xml.c
+	node.c sectioning.c toc.c xml.c xref.c
 
 DPADD=	${LIBTXI}
 LDADD=	${LIBTXI}
