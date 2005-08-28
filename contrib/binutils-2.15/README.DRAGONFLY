@@ -17,7 +17,7 @@
 	http://ftp.gnu.org/gnu/binutils/binutils-2.15.tar.gz
 	MD5 (binutils-2.15.tar.gz) = ba665d0ddcc88313384b79e293ecbbab
 
-    UPGRADE PROCDURE:
+    UPGRADE PROCEDURE:
 
 	* download a new binutils > 2.15.0 from a gnu download site.
 
