@@ -132,3 +132,4 @@ stamp-h.in
 test-groff.in
 tmac/Makefile.sub
 tmac/TODO
+tmac/mdoc.local
