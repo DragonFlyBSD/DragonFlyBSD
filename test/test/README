@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.39 2005/08/11 01:08:08 demizu Exp $
+$DragonFly: src/test/test/README,v 1.40 2005/08/28 04:25:23 sephe Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -11,3 +11,4 @@ $DragonFly: src/test/test/README,v 1.39 2005/08/11 01:08:08 demizu Exp $
 blah
 Hello from Marysville, Washington, USA!
 Good morning!
+blah
