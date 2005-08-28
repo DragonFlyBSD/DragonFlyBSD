@@ -1,7 +1,8 @@
 # Subversion control for DragonFly 1.3.X-DEVELOPMENT
-# $DragonFly: src/sys/conf/Attic/subvers-DEVELOPMENT_1_3,v 1.4 2005/08/02 13:06:36 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-DEVELOPMENT_1_3,v 1.5 2005/08/28 07:04:32 dillon Exp $
 0	-
 1	09May2005	With TLS fix
 2	31May2005	With ELF ABI tag support
 3	31Jul2005	Many major bug fixes (softupdates, tokens, ipi messaging, etc)
-4	02Aug2005	Large filesystem stat
+4	02Aug2005	Large filesystem stat, 64 bit inodes
+5	28Aug2005	dirent structural changes, propolice fixes, lots of bug fixes.
