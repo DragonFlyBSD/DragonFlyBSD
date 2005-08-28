@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.6 2005/04/06 18:40:25 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.7 2005/08/28 23:35:35 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -242,8 +242,6 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	printf(" VMOUNT");
     if (vn.v_flag & VOBJDIRTY)
 	printf(" VOBJDIRTY");
-    if (vn.v_flag & VPLACEMARKER)
-	printf(" VPLACEMARKER");
 
     printf("\n");
 
