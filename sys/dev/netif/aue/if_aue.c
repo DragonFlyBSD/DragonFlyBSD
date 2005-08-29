@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.25 2005/07/25 12:46:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.26 2005/08/29 10:19:51 sephe Exp $
  */
 
 /*
@@ -629,8 +629,6 @@ USB_ATTACH(aue)
 	usb_interface_descriptor_t	*id;
 	usb_endpoint_descriptor_t	*ed;
 	int			i;
-
-	bzero(sc, sizeof(struct aue_softc));
 
 	usbd_devinfo(uaa->device, 0, devinfo);
 

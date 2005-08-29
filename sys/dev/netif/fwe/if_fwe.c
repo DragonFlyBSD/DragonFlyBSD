@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.18 2005/06/14 17:05:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.19 2005/08/29 10:19:52 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -159,7 +159,6 @@ fwe_attach(device_t dev)
 
 	fwe = ((struct fwe_softc *)device_get_softc(dev));
 
-	bzero(fwe, sizeof(struct fwe_softc));
 	/* XXX */
 	fwe->stream_ch = stream_ch;
 	fwe->dma_ch = -1;

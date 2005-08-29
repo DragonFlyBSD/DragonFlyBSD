@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.12 2005/06/13 14:00:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.13 2005/08/29 10:19:52 sephe Exp $
  */
 
 /*
@@ -202,7 +202,6 @@ lp_probe(device_t dev)
 	uintptr_t irq;
 
 	lp = DEVTOSOFTC(dev);
-	bzero(lp, sizeof(struct lp_data));
 
 	/* retrieve the ppbus irq */
 	BUS_READ_IVAR(ppbus, dev, PPBUS_IVAR_IRQ, &irq);

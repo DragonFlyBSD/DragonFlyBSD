@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.21 2005/06/13 10:20:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.22 2005/08/29 10:19:52 sephe Exp $
  */
 
 /*
@@ -673,7 +673,6 @@ static int sf_attach(dev)
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
-	bzero(sc, sizeof(struct sf_softc));
 
 	/*
 	 * Handle power management nonsense.

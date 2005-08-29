@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_isa.c,v 1.46.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_isa.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_isa.c,v 1.4 2005/08/29 10:19:52 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -122,7 +122,6 @@ sr_isa_probe (device_t device)
 		return (error);
 
 	hc = device_get_softc(device);
-	bzero(hc, sizeof(struct sr_hardc));
 
 	if (sr_allocate_ioport(device, 0, SRC_IO_SIZ)) {
 		return (ENXIO);

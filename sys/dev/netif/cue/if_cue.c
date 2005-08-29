@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.21 2005/05/25 11:59:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.22 2005/08/29 10:19:51 sephe Exp $
  */
 
 /*
@@ -429,7 +429,6 @@ USB_ATTACH(cue)
 	usb_endpoint_descriptor_t	*ed;
 	int			i;
 
-	bzero(sc, sizeof(struct cue_softc));
 	sc->cue_iface = uaa->iface;
 	sc->cue_udev = uaa->device;
 	callout_init(&sc->cue_stat_timer);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_isa.c,v 1.1.2.5 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/Attic/if_sbni_isa.c,v 1.6 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/Attic/if_sbni_isa.c,v 1.7 2005/08/29 10:19:52 sephe Exp $
  */
 
 
@@ -85,7 +85,6 @@ sbni_probe_isa(device_t dev)
 		return (error);
 
 	sc = device_get_softc(dev);
-	bzero(sc, sizeof(struct sbni_softc));
 
  	sc->io_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->io_rid,
 					0ul, ~0ul, SBNI_PORTS, RF_ACTIVE);

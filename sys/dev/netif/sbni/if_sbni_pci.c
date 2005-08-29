@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.6 2005/05/24 20:59:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.7 2005/08/29 10:19:52 sephe Exp $
  */
 
  
@@ -84,7 +84,7 @@ sbni_pci_probe(device_t dev)
 		return (ENXIO);
 
 	sc = device_get_softc(dev);
-	bzero(sc, sizeof(struct sbni_softc));
+
 	if (pci_get_subdevice(dev) == 2) {
 		ports <<= 1;
 		sc->slave_sc = malloc(sizeof(struct sbni_softc),

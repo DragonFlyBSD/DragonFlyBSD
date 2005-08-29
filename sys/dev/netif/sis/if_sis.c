@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.24 2005/06/12 17:19:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.25 2005/08/29 10:19:52 sephe Exp $
  */
 
 /*
@@ -963,7 +963,6 @@ sis_attach(device_t dev)
 
 	error = waittime = 0;
 	sc = device_get_softc(dev);
-	bzero(sc, sizeof(struct sis_softc));
 
 	if (pci_get_device(dev) == SIS_DEVICEID_900)
 		sc->sis_type = SIS_TYPE_900;

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_pci.c,v 1.15.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.4 2005/08/29 10:19:52 sephe Exp $
  */
 
 
@@ -109,7 +109,6 @@ sr_pci_attach(device_t device)
 	struct sr_hardc *hc;
 
 	hc = (struct sr_hardc *)device_get_softc(device);
-	bzero(hc, sizeof(struct sr_hardc));
 
 	if (sr_allocate_plx_memory(device, 0x10, 1))
 		goto errexit;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.26 2005/06/14 14:19:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.27 2005/08/29 10:19:52 sephe Exp $
  */
 
 /*
@@ -218,7 +218,6 @@ epic_attach(dev)
 	sc = device_get_softc(dev);
 
 	/* Preinitialize softc structure */
-	bzero(sc, sizeof(epic_softc_t));		
 	sc->dev = dev;
 	callout_init(&sc->tx_stat_timer);
 

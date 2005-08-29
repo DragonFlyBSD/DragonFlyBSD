@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.35 2005/06/09 02:03:38 hsu Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.36 2005/08/29 10:19:52 sephe Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -289,8 +289,6 @@ em_attach(device_t dev)
 	INIT_DEBUGOUT("em_attach: begin");
 
 	adapter = device_get_softc(dev);
-
-	bzero(adapter, sizeof(struct adapter));
 
 	lwkt_serialize_init(&adapter->serializer);
 

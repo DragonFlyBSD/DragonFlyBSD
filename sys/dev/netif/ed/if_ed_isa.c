@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.9 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.10 2005/08/29 10:19:51 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -69,8 +69,6 @@ ed_isa_probe(dev)
 	struct ed_softc *sc = device_get_softc(dev);
 	int flags = device_get_flags(dev);
 	int error = 0;
-
-	bzero(sc, sizeof(struct ed_softc));
 
 	/* Check isapnp ids */
 	error = ISA_PNP_PROBE(device_get_parent(dev), dev, ed_ids);

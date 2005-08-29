@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.11 2005/06/13 20:51:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.12 2005/08/29 10:19:51 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -438,7 +438,6 @@ USB_ATTACH(axe)
 	usb_endpoint_descriptor_t	*ed;
 	int			i;
 
-	bzero(sc, sizeof(struct axe_softc));
 	sc->axe_udev = uaa->device;
 	callout_init(&sc->axe_stat_timer);
 
