@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.20 2005/07/20 20:21:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.21 2005/08/29 21:08:06 dillon Exp $
  */
 
 
@@ -522,29 +522,6 @@ MCOUNT_LABEL(bintr)
 	FAST_UNPEND(23,fastunpend23)
 MCOUNT_LABEL(eintr)
 
-	/*
-	 * Executed by a CPU when it receives a RENDEZVOUS IPI from another CPU.
-	 *
-	 * - Calls the generic rendezvous action function.
-	 */
-	.text
-	SUPERALIGN_TEXT
-	.globl	Xrendezvous
-Xrendezvous:
-	PUSH_FRAME
-	movl	$KDSEL, %eax
-	mov	%ax, %ds		/* use KERNEL data segment */
-	mov	%ax, %es
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
-
-	call	smp_rendezvous_action
-
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
-	POP_FRAME
-	iret
-	
-	
 	.data
 
 #ifdef COUNT_XINVLTLB_HITS

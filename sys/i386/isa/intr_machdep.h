@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.15 2005/06/16 21:12:47 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.16 2005/08/29 21:08:06 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -122,7 +122,7 @@
 #define XUNUSED113_OFFSET	(ICU_OFFSET + 113)
 
 /* inter-CPU rendezvous */
-#define XRENDEZVOUS_OFFSET	(ICU_OFFSET + 114)
+#define XUNUSED114_OFFSET	(ICU_OFFSET + 114)
 
 /* IPIQ rendezvous */
 #define XIPIQ_OFFSET		(ICU_OFFSET + 115)
@@ -199,8 +199,7 @@ inthand_t
 	Xforward_irq,	/* Forward irq to cpu holding ISR lock */
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
 	Xspuriousint,	/* handle APIC "spurious INTs" */
-	Xipiq,		/* handle lwkt_send_ipiq() requests */
-	Xrendezvous;	/* handle CPU rendezvous */
+	Xipiq;		/* handle lwkt_send_ipiq() requests */
 
 #ifdef TEST_TEST1
 inthand_t

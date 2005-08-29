@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/i686_mem.c,v 1.8.2.4 2002/09/24 08:12:51 mdodd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.3 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.4 2005/08/29 21:08:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,6 +32,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/memrange.h>
+#include <sys/thread.h>
 
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
@@ -88,6 +89,9 @@ static int			i686_mrt2mtrr(int flags, int oldval);
 static int			i686_mtrrconflict(int flag1, int flag2);
 static void			i686_mrstore(struct mem_range_softc *sc);
 static void			i686_mrstoreone(void *arg);
+#ifdef SMP
+static void			i686_mrstoreone_cpusync(struct lwkt_cpusync *cmd);
+#endif
 static struct mem_range_desc	*i686_mtrrfixsearch(struct mem_range_softc *sc,
 						    u_int64_t addr);
 static int			i686_mrsetlow(struct mem_range_softc *sc,
@@ -267,13 +271,23 @@ i686_mrstore(struct mem_range_softc *sc)
      * The "proper" solution involves a generalised locking gate
      * implementation, not ready yet.
      */
-    smp_rendezvous(NULL, i686_mrstoreone, NULL, (void *)sc);
+    lwkt_cpusync_simple(-1, i686_mrstoreone_cpusync, sc);
 #else
     mpintr_lock();			/* doesn't have to be mpintr YYY */
     i686_mrstoreone((void *)sc);
     mpintr_unlock();
 #endif
 }
+
+#ifdef SMP
+
+static void
+i686_mrstoreone_cpusync(struct lwkt_cpusync *cmd)
+{
+    i686_mrstoreone(cmd->cs_data);
+}
+
+#endif
 
 /*
  * Update the current CPU's MTRRs with those represented in the

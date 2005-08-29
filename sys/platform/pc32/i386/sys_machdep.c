@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.18 2005/06/03 17:14:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.19 2005/08/29 21:08:02 dillon Exp $
  *
  */
 
@@ -253,6 +253,13 @@ set_user_TLS(void)
 		gdt[off + i].sd = td->td_tls[i];
 }
 
+static
+void
+set_user_ldt_cpusync(struct lwkt_cpusync *cmd)
+{
+	set_user_ldt(cmd->cs_data);
+}
+
 /*
  * Update the GDT entry pointing to the LDT to point to the LDT of the
  * current process.  Used by assembly, do not staticize.
@@ -432,7 +439,7 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 		 * using the shared ldt and only signal those.
 		 */
 #ifdef SMP
-		smp_rendezvous(NULL, (void (*)(void *))set_user_ldt, NULL, pcb);
+		lwkt_cpusync_simple(-1, set_user_ldt_cpusync, pcb);
 #else
 		set_user_ldt(pcb);
 #endif

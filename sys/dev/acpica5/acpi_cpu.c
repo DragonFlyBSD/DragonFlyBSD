@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.9 2005/06/28 07:15:38 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.10 2005/08/29 21:07:59 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -372,7 +372,6 @@ acpi_cpu_shutdown(device_t dev)
 
     /* Signal and wait for all processors to exit acpi_cpu_idle(). */
 #ifdef SMP
-    /*smp_rendezvous(NULL, NULL, NULL, NULL);*/
     KKASSERT(0);	/* XXX use rendezvous */
 #endif
     DELAY(1);

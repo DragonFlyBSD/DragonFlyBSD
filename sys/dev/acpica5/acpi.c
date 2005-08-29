@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.11 2005/06/04 14:25:45 corecode Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.12 2005/08/29 21:07:59 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -1204,11 +1204,7 @@ acpi_shutdown_final(void *arg, int howto)
 	    return;
 	}
 	printf("Powering system off using ACPI\n");
-#ifdef notyet
-	smp_rendezvous(NULL, acpi_shutdown_poweroff, NULL, NULL);
-#else
 	acpi_shutdown_poweroff(NULL);
-#endif /* notyet */
     } else {
 	printf("Shutting down ACPI\n");
 	AcpiTerminate();

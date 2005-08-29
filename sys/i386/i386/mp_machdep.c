@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.37 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.38 2005/08/29 21:08:02 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -577,10 +577,6 @@ mp_enable(u_int boot_addr)
 	setidt(XIPIQ_OFFSET, Xipiq,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	
-	/* install an inter-CPU IPI for all-CPU rendezvous */
-	setidt(XRENDEZVOUS_OFFSET, Xrendezvous,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-
 	/* install an inter-CPU IPI for CPU stop/restart */
 	setidt(XCPUSTOP_OFFSET, Xcpustop,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -2456,81 +2452,6 @@ set_lapic_isrloc(int intr, int vector)
 	apic_isrbit_location[intr].bit = (1<<(vector & 31));
 }
 #endif
-
-/*
- * XXX DEPRECATED
- *
- * All-CPU rendezvous.  CPUs are signalled, all execute the setup function 
- * (if specified), rendezvous, execute the action function (if specified),
- * rendezvous again, execute the teardown function (if specified), and then
- * resume.
- *
- * Note that the supplied external functions _must_ be reentrant and aware
- * that they are running in parallel and in an unknown lock context.
- */
-static void (*smp_rv_setup_func)(void *arg);
-static void (*smp_rv_action_func)(void *arg);
-static void (*smp_rv_teardown_func)(void *arg);
-static void *smp_rv_func_arg;
-static volatile int smp_rv_waiters[2];
-
-void
-smp_rendezvous_action(void)
-{
-	/* setup function */
-	if (smp_rv_setup_func != NULL)
-		smp_rv_setup_func(smp_rv_func_arg);
-	/* spin on entry rendezvous */
-	atomic_add_int(&smp_rv_waiters[0], 1);
-	while (smp_rv_waiters[0] < ncpus)
-		;
-	/* action function */
-	if (smp_rv_action_func != NULL)
-		smp_rv_action_func(smp_rv_func_arg);
-	/* spin on exit rendezvous */
-	atomic_add_int(&smp_rv_waiters[1], 1);
-	while (smp_rv_waiters[1] < ncpus)
-		;
-	/* teardown function */
-	if (smp_rv_teardown_func != NULL)
-		smp_rv_teardown_func(smp_rv_func_arg);
-}
-
-void
-smp_rendezvous(void (* setup_func)(void *), 
-	       void (* action_func)(void *),
-	       void (* teardown_func)(void *),
-	       void *arg)
-{
-	/* obtain rendezvous lock.  This disables interrupts */
-	spin_lock_deprecated(&smp_rv_spinlock);	/* XXX sleep here? NOWAIT flag? */
-
-	/* set static function pointers */
-	smp_rv_setup_func = setup_func;
-	smp_rv_action_func = action_func;
-	smp_rv_teardown_func = teardown_func;
-	smp_rv_func_arg = arg;
-	smp_rv_waiters[0] = 0;
-	smp_rv_waiters[1] = 0;
-
-	/*
-	 * Signal other processors which will enter the IPI with interrupts
-	 * disabled.  We cannot safely use broadcast IPIs if some of our
-	 * cpus failed to start.
-	 */
-	if (smp_startup_mask == smp_active_mask) {
-		all_but_self_ipi(XRENDEZVOUS_OFFSET);
-	} else {
-		selected_apic_ipi(smp_active_mask, XRENDEZVOUS_OFFSET,
-			APIC_DELMODE_FIXED);
-	}
-
-	/* call executor function */
-	smp_rendezvous_action();
-
-	/* release lock */
-	spin_unlock_deprecated(&smp_rv_spinlock);
-}
 
 void
 cpu_send_ipiq(int dcpu)

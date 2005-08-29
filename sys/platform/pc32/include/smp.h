@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.12 2005/06/27 18:37:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.13 2005/08/29 21:08:04 dillon Exp $
  *
  */
 
@@ -112,11 +112,6 @@ void	forward_signal		(struct proc *);
 #ifdef	APIC_INTR_REORDER
 void	set_lapic_isrloc	(int, int);
 #endif /* APIC_INTR_REORDER */
-void	smp_rendezvous_action	(void);
-void	smp_rendezvous		(void (*)(void *), 
-				     void (*)(void *),
-				     void (*)(void *),
-				     void *arg);
 
 /* global data in mpapic.c */
 extern volatile lapic_t		lapic;
