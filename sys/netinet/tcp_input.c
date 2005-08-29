@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.60 2005/05/10 15:48:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.61 2005/08/29 10:04:01 demizu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -3108,7 +3108,10 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
 	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 		tp->snd_nxt = old_snd_nxt;
 	/* partial window deflation */
-	tp->snd_cwnd = ocwnd - acked + tp->t_maxseg;
+	if (ocwnd > acked)
+		tp->snd_cwnd = ocwnd - acked + tp->t_maxseg;
+	else
+		tp->snd_cwnd = tp->t_maxseg;
 }
 
 /*
