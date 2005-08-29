@@ -38,7 +38,7 @@
 # From src/sys/kern/makeobjops.pl,v 1.8 2001/11/16 02:02:42 joe Exp
 #
 # $FreeBSD: src/sys/tools/makeobjops.awk,v 1.3 2003/10/16 13:29:26 dfr Exp $
-# $DragonFly: src/sys/tools/makeobjops.awk,v 1.4 2004/04/14 18:28:29 joerg Exp $
+# $DragonFly: src/sys/tools/makeobjops.awk,v 1.5 2005/08/29 16:03:31 hsu Exp $
 
 #
 #   Script to produce kobj front-end sugar.
@@ -316,7 +316,7 @@ function handle_method (static)
 	printh("\tkobjop_t _m;");
 	if (!static)
 		firstvar = "((kobj_t)" firstvar ")";
-	printh("\tKOBJOPLOOKUP(" firstvar "->ops," mname ");");
+	printh("\tKOBJOPLOOKUP(" firstvar "->ops, " mname ");");
 	retrn =  (ret != "void") ? "return " : "";
 	printh("\t" retrn "((" mname "_t *) _m)(" varname_list ");");
 	printh("}\n");
