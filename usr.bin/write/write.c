@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)write.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/write/write.c,v 1.12 1999/08/28 01:07:48 peter Exp $
- * $DragonFly: src/usr.bin/write/write.c,v 1.6 2005/04/13 15:44:03 liamfoy Exp $
+ * $DragonFly: src/usr.bin/write/write.c,v 1.7 2005/08/30 22:02:36 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -242,7 +242,7 @@ do_write(const char *tty, const char *mytty, uid_t myuid, int *mymsgok)
 	time_t now;
 	char path[MAXPATHLEN], host[MAXHOSTNAMELEN], line[512];
 
-	/* Determine our login name before the we reopen() stdout */
+	/* Determine our login name before we reopen() stdout */
 	if ((login = getlogin()) == NULL) {
 		if ((pwd = getpwuid(myuid)))
 			login = pwd->pw_name;
