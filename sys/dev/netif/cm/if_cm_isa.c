@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.9 2005/08/29 10:19:51 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.10 2005/08/30 10:16:33 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -61,14 +61,9 @@ static int
 cm_isa_probe(dev)
 	device_t dev;
 {
-	struct cm_softc *sc = device_get_softc(dev);
 	int error;
 
 	error = cm_probe(dev);
-	if (error == 0)
-		goto end;
-
-end:
 	if (error == 0)
 		error = cm_alloc_irq(dev, 0);
 
