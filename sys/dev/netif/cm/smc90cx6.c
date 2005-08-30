@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.15 2005/06/13 21:38:12 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.16 2005/08/30 09:53:52 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -312,7 +312,7 @@ cm_attach(dev)
 	cm_stop(sc);
 
 	ifp->if_softc = sc;
-	if_initname(ifp, "cm", device_get_unit(dev));
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_start = cm_start;
 	ifp->if_ioctl = cm_ioctl;
 	ifp->if_watchdog  = cm_watchdog;
@@ -335,8 +335,8 @@ cm_attach(dev)
 	callout_init(&sc->sc_recon_ch, 0);
 #endif
 
-	printf("%s: link addr 0x%02x (%d)\n",
-	       ifp->if_xname, linkaddress, linkaddress);
+	/* XXX laddr should be announced in arc_ifattach() */
+	if_printf(ifp, "link addr 0x%02x (%d)\n", linkaddress, linkaddress);
 	return 0;
 }
 
@@ -376,7 +376,7 @@ cm_reset(sc)
 	ifp = &sc->sc_arccom.ac_if;
 
 #ifdef CM_DEBUG
-	printf("%s: reset\n", ifp->if_xname);
+	if_printf(ifp, "reset\n");
 #endif
 	/* stop and restart hardware */
 
@@ -388,8 +388,8 @@ cm_reset(sc)
 	linkaddress = GETMEM(CMMACOFF);
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 2)
-	printf("%s: reset: card reset, link addr = 0x%02x (%d)\n",
-	    ifp->if_xname, linkaddress, linkaddress);
+	if_printf(ifp, "reset: card reset, link addr = 0x%02x (%d)\n",
+		  linkaddress, linkaddress);
 #endif
 
 	/* tell the routing level about the (possibly changed) link address */
@@ -402,14 +402,13 @@ cm_reset(sc)
 	PUTREG(CMCMD, CM_CONF(CONF_LONG));
 
 #ifdef CM_DEBUG
-	printf("%s: reset: chip configured, status=0x%02x\n",
-	    ifp->if_xname, GETREG(CMSTAT));
+	if_printf(ifp, "reset: chip configured, status=0x%02x\n",
+		  GETREG(CMSTAT));
 #endif
 	PUTREG(CMCMD, CM_CLR(CLR_POR|CLR_RECONFIG));
 
 #ifdef CM_DEBUG
-	printf("%s: reset: bits cleared, status=0x%02x\n",
-	    ifp->if_xname, GETREG(CMSTAT));
+	if_printf(ifp, "reset: bits cleared, status=0x%02x\n", GETREG(CMSTAT));
 #endif
 
 	sc->sc_reconcount_excessive = ARC_EXCESSIVE_RECONS;
@@ -424,8 +423,8 @@ cm_reset(sc)
 	PUTREG(CMSTAT, sc->sc_intmask);
 
 #ifdef CM_DEBUG
-	printf("%s: reset: started receiver, status=0x%02x\n",
-	    ifp->if_xname, GETREG(CMSTAT));
+	if_printf(ifp, "reset: started receiver, status=0x%02x\n",
+		  GETREG(CMSTAT));
 #endif
 
 	/* and init transmitter status */
@@ -477,7 +476,7 @@ cm_start(ifp)
 #endif
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 3)
-	printf("%s: start(%p)\n", ifp->if_xname, ifp);
+	if_printf(ifp, "start(%p)\n", ifp);
 #endif
 
 	crit_enter();
@@ -503,8 +502,8 @@ cm_start(ifp)
 #ifdef CM_DEBUG
 	if (m->m_len < ARC_HDRLEN)
 		m = m_pullup(m, ARC_HDRLEN);/* gcc does structure padding */
-	printf("%s: start: filling %d from %d to %d type %d\n",
-	    ifp->if_xname, buffer, mtod(m, u_char *)[0],
+	if_printf(ifp, "start: filling %d from %d to %d type %d\n",
+	    buffer, mtod(m, u_char *)[0],
 	    mtod(m, u_char *)[1], mtod(m, u_char *)[2]);
 #else
 	if (m->m_len < 2)
@@ -572,8 +571,8 @@ cm_start(ifp)
 		ifp->if_flags |= IFF_OACTIVE;
 	} else {
 #ifdef CM_DEBUG
-		printf("%s: start: starting transmitter on buffer %d\n",
-		    ifp->if_xname, buffer);
+		if_printf(ifp, "start: starting transmitter on buffer %d\n",
+			  buffer);
 #endif
 		/* Transmitter was off, start it */
 		sc->sc_tx_act = buffer;
@@ -696,8 +695,7 @@ cleanup:
 		PUTREG(CMSTAT, sc->sc_intmask);
 
 #ifdef CM_DEBUG
-		printf("%s: srint: restarted rx on buf %d\n",
-		    ifp->if_xname, buffer);
+		if_printf(ifp, "srint: restarted rx on buf %d\n", buffer);
 #endif
 	}
 	crit_exit();
@@ -761,8 +759,8 @@ cm_tint(sc, isr)
 		ifp->if_timer = ARCTIMEOUT;
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 1)
-		printf("%s: tint: starting tx on buffer %d, status 0x%02x\n",
-		    ifp->if_xname, buffer, GETREG(CMSTAT));
+		if_printf(ifp, "tint: starting tx on buffer %d, "
+			  "status 0x%02x\n", buffer, GETREG(CMSTAT));
 #endif
 	} else {
 		/* have to disable TX interrupt */
@@ -772,8 +770,8 @@ cm_tint(sc, isr)
 		ifp->if_timer = 0;
 
 #ifdef CM_DEBUG
-		printf("%s: tint: no more buffers to send, status 0x%02x\n",
-		    ifp->if_xname, GETREG(CMSTAT));
+		if_printf(ifp, "tint: no more buffers to send, status 0x%02x\n",
+			  GETREG(CMSTAT));
 #endif
 	}
 
@@ -808,8 +806,8 @@ cmintr(arg)
 	do {
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 1)
-		printf("%s: intr: status 0x%02x, intmask 0x%02x\n",
-		    ifp->if_xname, isr, sc->sc_intmask);
+		if_printf(ifp, "intr: status 0x%02x, intmask 0x%02x\n",
+			  isr, sc->sc_intmask);
 #endif
 
 		if (maskedisr & CM_POR) {
@@ -862,8 +860,8 @@ cmintr(arg)
 
 		if (maskedisr & CM_RI) {
 #if defined(CM_DEBUG) && (CM_DEBUG > 1)
-			printf("%s: intr: hard rint, act %d\n",
-			    ifp->if_xname, sc->sc_rx_act);
+			if_printf(ifp, "intr: hard rint, act %d\n",
+				  sc->sc_rx_act);
 #endif
 
 			buffer = sc->sc_rx_act;
@@ -898,9 +896,8 @@ cmintr(arg)
 					/* in RX intr, so mask is ok for RX */
 
 #ifdef CM_DEBUG
-					printf("%s: strt rx for buf %d, "
+					if_printf(ifp, "strt rx for buf %d, "
 					    "stat 0x%02x\n",
-					    ifp->if_xname,
 					    sc->sc_rx_act, GETREG(CMSTAT));
 #endif
 				}
@@ -924,8 +921,8 @@ cmintr(arg)
 		maskedisr = isr & sc->sc_intmask;
 	} while (maskedisr);
 #if defined(CM_DEBUG) && (CM_DEBUG > 1)
-	printf("%s: intr (exit): status 0x%02x, intmask 0x%02x\n",
-	    ifp->if_xname, isr, sc->sc_intmask);
+	if_printf(ifp, "intr (exit): status 0x%02x, intmask 0x%02x\n",
+		  isr, sc->sc_intmask);
 #endif
 }
 
@@ -965,8 +962,7 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	crit_enter();
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 2)
-	printf("%s: ioctl() called, cmd = 0x%lx\n",
-	    ifp->if_xname, command);
+	if_printf(ifp, "ioctl() called, cmd = 0x%lx\n", command);
 #endif
 
 	switch (command) {
