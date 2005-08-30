@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/which/which.c,v 1.5 2002/06/30 06:02:39 tjr Exp $");
- * $DragonFly: src/usr.bin/which/which.c,v 1.2 2005/03/03 17:09:58 liamfoy Exp $
+ * $DragonFly: src/usr.bin/which/which.c,v 1.3 2005/08/30 22:42:15 liamfoy Exp $
  */
 
 #include <sys/stat.h>
@@ -50,10 +50,6 @@ main(int argc, char **argv)
 
        status = EXIT_SUCCESS;
 
-       /* If called without args, die silently to conform */
-       if (argc < 2)
-               exit(EXIT_FAILURE);
-
        while ((opt = getopt(argc, argv, "as")) != -1) {
                switch (opt) {
                case 'a':
@@ -71,15 +67,15 @@ main(int argc, char **argv)
        argv += optind;
        argc -= optind;
 
+       if (argc == 0)
+	     usage();
+	
        if ((p = getenv("PATH")) == NULL)
                exit(EXIT_FAILURE);
        pathlen = strlen(p) + 1;
        path = malloc(pathlen);
        if (path == NULL)
                err(EXIT_FAILURE, "malloc failed");
-
-       if (argc == 0)
-               status = EXIT_FAILURE;
 
        while (argc > 0) {
                memcpy(path, p, pathlen);
@@ -98,7 +94,8 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-       errx(EXIT_FAILURE, "usage: which [-as] program ...");
+       fprintf(stderr, "usage: which [-as] program ...\n");
+       exit(EXIT_FAILURE);
 }
 
 static int
