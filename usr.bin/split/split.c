@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)split.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/split/split.c,v 1.6.2.2 2002/07/25 12:46:36 tjr Exp $
- * $DragonFly: src/usr.bin/split/split.c,v 1.5 2005/08/21 18:58:34 liamfoy Exp $
+ * $DragonFly: src/usr.bin/split/split.c,v 1.6 2005/08/30 21:19:13 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ main(int argc, char **argv)
 	int ch;
 	char *ep, *p;
 
-	while ((ch = getopt(argc, argv, "-0123456789a:b:l:p:")) != -1)
+	while ((ch = getopt(argc, argv, "0123456789a:b:l:p:")) != -1)
 		switch (ch) {
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
@@ -94,11 +94,6 @@ main(int argc, char **argv)
 					errx(EX_USAGE,
 					    "%s: illegal line count", optarg);
 			}
-			break;
-		case '-':		/* Undocumented: historic stdin flag. */
-			if (ifd != -1)
-				usage();
-			ifd = 0;
 			break;
 		case 'a':		/* Suffix length */
 			if ((sufflen = strtol(optarg, &ep, 10)) <= 0 || *ep)
@@ -138,14 +133,14 @@ main(int argc, char **argv)
 	argv += optind;
 	argc -= optind;
 
-	if (*argv != NULL)
-		if (ifd == -1) {		/* Input file. */
-			if (strcmp(*argv, "-") == 0)
-				ifd = STDIN_FILENO;
-			else if ((ifd = open(*argv, O_RDONLY, 0)) < 0)
-				err(EX_NOINPUT, "%s", *argv);
-			++argv;
-		}
+	if (*argv != NULL) {
+		if (strcmp(*argv, "-") == 0)
+			ifd = STDIN_FILENO;
+		else if ((ifd = open(*argv, O_RDONLY, 0)) < 0)
+			err(EX_NOINPUT, "%s", *argv);
+		++argv;
+	}
+
 	if (*argv != NULL)			/* File name prefix. */
 		if (strlcpy(fname, *argv++, sizeof(fname)) >= sizeof(fname))
 			errx(EX_USAGE, "file name prefix is too long");
