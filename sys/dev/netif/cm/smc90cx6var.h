@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6var.h,v 1.5 2000/03/23 07:01:32 thorpej Exp $	*/
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6var.h,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6var.h,v 1.4 2004/01/06 03:17:22 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6var.h,v 1.5 2005/08/30 12:33:49 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -71,8 +71,6 @@ struct cm_softc {
 	struct resource *irq_res;	/* resource for irq */
 	void *	irq_handle;		/* handle for irq handler */
 
-	void	*sc_rxcookie;		/* softcallback cookies */
-	void	*sc_txcookie;
 	struct callout sc_recon_ch;
 	u_long	sc_recontime;		/* seconds only, I'm lazy */
 	u_long	sc_reconcount;		/* for the above */

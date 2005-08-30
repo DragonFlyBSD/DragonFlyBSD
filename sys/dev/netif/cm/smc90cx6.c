@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.16 2005/08/30 09:53:52 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.17 2005/08/30 12:33:49 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -43,7 +43,6 @@
  * compatibility mode) boards
  */
 
-/* #define CMSOFTCOPY */
 #define CMRETRANSMIT /**/
 /* #define CM_DEBUG */
 
@@ -61,10 +60,6 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
-
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-#include <machine/clock.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -323,17 +318,7 @@ cm_attach(dev)
 
 	arc_ifattach(ifp, linkaddress);
 
-#ifdef CMSOFTCOPY
-	sc->sc_rxcookie = softintr_establish(IPL_SOFTNET, cm_srint, sc);
-	sc->sc_txcookie = softintr_establish(IPL_SOFTNET,
-		(void (*) (void *))cm_start, ifp);
-#endif
-
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	callout_init(&sc->sc_recon_ch);
-#else
-	callout_init(&sc->sc_recon_ch, 0);
-#endif
 
 	/* XXX laddr should be announced in arc_ifattach() */
 	if_printf(ifp, "link addr 0x%02x (%d)\n", linkaddress, linkaddress);
@@ -775,14 +760,8 @@ cm_tint(sc, isr)
 #endif
 	}
 
-	/* XXXX TODO */
-#ifdef CMSOFTCOPY
-	/* schedule soft int to fill a new buffer for us */
-	softintr_schedule(sc->sc_txcookie);
-#else
 	/* call it directly */
 	cm_start(ifp);
-#endif
 }
 
 /*
@@ -902,16 +881,8 @@ cmintr(arg)
 #endif
 				}
 
-#ifdef CMSOFTCOPY
-				/*
-				 * this one starts a soft int to copy out
-				 * of the hw
-				 */
-				softintr_schedule(sc->sc_rxcookie);
-#else
 				/* this one does the copy here */
 				cm_srint(sc);
-#endif
 			}
 		}
 		if (maskedisr & CM_TA) {
