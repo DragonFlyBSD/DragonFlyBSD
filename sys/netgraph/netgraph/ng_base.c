@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.15 2005/06/02 22:11:46 swildner Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.16 2005/08/30 13:25:07 y0netan1 Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -88,6 +88,8 @@ static int	ng_generic_msg(node_p here, struct ng_mesg *msg,
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
 static int	ngintr(struct netmsg *);
+static int	ng_load_module(const char *);
+static int	ng_unload_module(const char *);
 
 /* Our own netgraph malloc type */
 MALLOC_DEFINE(M_NETGRAPH, "netgraph", "netgraph structures and ctrl messages");
@@ -302,6 +304,50 @@ static const struct ng_cmdlist ng_generic_cmds[] = {
 			Node routines
 ************************************************************************/
 
+static int
+ng_load_module(const char *name)
+{
+	char *path, filename[NG_TYPELEN + 4];
+	linker_file_t lf;
+	int error;
+
+	/* linker_* API won't work without a process context */
+	if (curproc == NULL)
+		return (ENXIO);
+
+	/* Not found, try to load it as a loadable module */
+	snprintf(filename, sizeof(filename), "ng_%s.ko", name);
+	if ((path = linker_search_path(filename)) == NULL)
+		return (ENXIO);
+	error = linker_load_file(path, &lf);
+	FREE(path, M_LINKER);
+	if (error == 0)
+		lf->userrefs++;		/* pretend kldload'ed */
+	return (error);
+}
+
+static int
+ng_unload_module(const char *name)
+{
+	char filename[NG_TYPELEN + 4];
+	linker_file_t lf;
+	int error;
+
+	/* linker_* API won't work without a process context */
+	if (curproc == NULL)
+		return (ENXIO);
+
+	/* Not found, try to load it as a loadable module */
+	snprintf(filename, sizeof(filename), "ng_%s.ko", name);
+	if ((lf = linker_find_file_by_name(filename)) == NULL)
+		return (ENXIO);
+	error = linker_file_unload(lf);
+
+	if (error == 0)
+		lf->userrefs--;		/* pretend kldunload'ed */
+	return (error);
+}
+
 /*
  * Instantiate a node of the requested type
  */
@@ -317,25 +363,8 @@ ng_make_node(const char *typename, node_p *nodepp)
 	}
 
 	/* Locate the node type */
-	if ((type = ng_findtype(typename)) == NULL) {
-		char *path, filename[NG_TYPELEN + 4];
-		linker_file_t lf;
-		int error;
-
-		/* Not found, try to load it as a loadable module */
-		snprintf(filename, sizeof(filename), "ng_%s.ko", typename);
-		if ((path = linker_search_path(filename)) == NULL)
-			return (ENXIO);
-		error = linker_load_file(path, &lf);
-		FREE(path, M_LINKER);
-		if (error != 0)
-			return (error);
-		lf->userrefs++;		/* pretend loaded by the syscall */
-
-		/* Try again, as now the type should have linked itself in */
-		if ((type = ng_findtype(typename)) == NULL)
-			return (ENXIO);
-	}
+	if ((type = ng_findtype(typename)) == NULL)
+		return (ENXIO);
 
 	/* Call the constructor */
 	if (type->constructor != NULL)
@@ -911,6 +940,17 @@ ng_mkpeer(node_p node, const char *name, const char *name2, char *type)
 
 	if ((error = ng_add_hook(node, name, &hook)))
 		return (error);
+
+	/* make sure we have the module needed */
+	if (ng_findtype(type) == NULL) {
+		/* Not found, try to load it as a loadable module */
+		error = ng_load_module(type);
+		if (error != 0) {
+			printf("required netgraph module ng_%s not loaded\n",
+			    type);
+			return (error);
+		}
+	}
 	if ((error = ng_make_node(type, &node2))) {
 		ng_destroy_hook(hook);
 		return (error);
@@ -1782,11 +1822,17 @@ ngb_mod_event(module_t mod, int event, void *data)
 	case MOD_LOAD:
 		/* Register line discipline */
 		crit_enter();
+		error = ng_load_module("ksocket");
+		if (error != 0) {
+			crit_exit();
+			break;
+		}
 		netisr_register(NETISR_NETGRAPH, cpu0_portfn, ngintr);
 		error = 0;
 		crit_exit();
 		break;
 	case MOD_UNLOAD:
+		ng_unload_module("ksocket");
 		/* You cant unload it because an interface may be using it.  */
 		error = EBUSY;
 		break;
