@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wall.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/usr.bin/wall/wall.c,v 1.13.2.6 2001/10/18 08:08:17 des Exp $
- * $DragonFly: src/usr.bin/wall/wall.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/wall/wall.c,v 1.4 2005/08/31 16:27:53 liamfoy Exp $
  */
 
 /*
@@ -62,8 +62,6 @@
 
 static void makemsg(char *);
 static void usage(void);
-
-#define	IGNOREUSER	"sleeper"
 
 struct wallgroup {
 	struct wallgroup *next;
@@ -131,8 +129,7 @@ main(int argc, char *argv[])
 	iov.iov_len = mbufsize;
 	/* NOSTRICT */
 	while (fread((char *)&utmp, sizeof(utmp), 1, fp) == 1) {
-		if (!utmp.ut_name[0] ||
-		    !strncmp(utmp.ut_name, IGNOREUSER, sizeof(utmp.ut_name)))
+		if (!utmp.ut_name[0])
 			continue;
 		if (grouplist) {
 			ingroup = 0;
@@ -183,7 +180,7 @@ makemsg(char *fname)
 	time_t now;
 	FILE *fp;
 	int fd;
-	char *p, *tty, hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[64];
+	char *p, *tty, hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[MAXPATHLEN];
 	const char *whom;
 	gid_t egid;
 
