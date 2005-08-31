@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.40 2005/08/23 21:33:29 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.41 2005/08/31 02:38:34 corecode Exp $
 #
 
 ISODIR ?= /usr/release
@@ -172,6 +172,21 @@ customizeiso:
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 
+PKG_VERSTR!=	pkg_info -vP
+.if !empty(PKG_VERSTR:M*fakeroot*)
+
+pkgcleaniso:
+.for PKG in ${REL_PACKAGES}
+	-PKG_FAKEROOT=${ISOROOT:Q} pkg_delete -f ${PKG}
+.endfor
+
+pkgaddiso:
+.for PKG in ${REL_PACKAGES}
+	-PKG_FAKEROOT=${ISOROOT:Q} pkg_add ${PACKAGES_LOC}/${PKG}.tgz
+.endfor
+
+.else	# pkgtools don't know fakeroot
+
 pkgcleaniso:
 	rm -f ${ISOROOT}/tmp/chrootscript
 	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
@@ -202,6 +217,8 @@ pkgaddiso:
 .for PKG in ${REL_PACKAGES}
 	rm -f ${ISOROOT}/tmp/${PKG}.tgz
 .endfor
+
+.endif	# pkgtools fakeroot
 
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
