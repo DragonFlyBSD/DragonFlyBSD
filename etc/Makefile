@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.88 2005/08/31 16:17:52 cpressey Exp $
+# $DragonFly: src/etc/Makefile,v 1.89 2005/08/31 22:55:28 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -375,6 +375,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/netinet/ipprotosw.h
 	rm -f ${DESTDIR}/usr/include/rune.h
 	rm -f ${DESTDIR}/usr/include/runetype.h
+	rm -f ${DESTDIR}/modules/if_snc.ko
 	ldconfig -R
 
 distribution:
