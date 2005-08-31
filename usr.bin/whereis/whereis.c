@@ -22,7 +22,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/whereis/whereis.c,v 1.12 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.2 2004/07/23 06:24:27 hmp Exp $
+ * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.3 2005/08/31 16:45:51 liamfoy Exp $
  */
 
 /*
@@ -102,10 +102,9 @@ usage(void)
 void
 scanopts(int argc, char **argv)
 {
-	int c, i, opt_f;
+	int c, i;
 	ccharp **dirlist;
 
-	opt_f = 0;
 	while ((c = getopt(argc, argv, "BMSabfmqsux")) != -1)
 		switch (c) {
 		case 'B':
