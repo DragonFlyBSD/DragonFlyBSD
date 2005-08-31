@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.16 2005/06/26 04:36:35 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.17 2005/08/31 17:20:18 liamfoy Exp $
  */
 
 
@@ -344,18 +344,14 @@ get_system_info(struct system_info *si)
 	static int swapfree = 0;
 	static int bufspace = 0;
 
-	if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0)) {
-		perror("sysctlbyname: vm.vmstats");
-		exit(1);
-	}
-	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
-		perror("sysctlbyname: vm.vmmeter");
-		exit(1);
-	}
-	if (kinfo_get_vfs_bufspace(&bufspace)) {
-		perror("kinfo_get_vfs_bufspace");
-		exit(1);
-	}
+	if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0))
+		err(1, "sysctlbyname: vm.vmstats");
+
+	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0))
+		err(1, "sysctlbyname: vm.vmmeter");
+
+	if (kinfo_get_vfs_bufspace(&bufspace))
+		err(1, "kinfo_get_vfs_bufspace");
 
 	/* convert memory stats to Kbytes */
 	memory_stats[0] = pagetok(vms.v_active_count);
