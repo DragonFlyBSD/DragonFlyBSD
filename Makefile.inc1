@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.59 2005/03/13 19:05:23 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.59.2.1 2005/08/31 19:08:05 corecode Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -218,7 +218,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 
 BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 		-DNOHTML -DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
-		-DNO_WERROR
+		-DNO_WERROR -DNO_NLS
 
 # build-tool stage
 #
