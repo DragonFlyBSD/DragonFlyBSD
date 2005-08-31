@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.57 2005/08/31 22:18:46 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.58 2005/08/31 22:21:23 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1112,11 +1112,11 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		if (msg->nm_hasnexthop)
 			msg->nm_nexthop = *args.next_hop;  /* structure copy */
 
-		    msg->nm_mbuf = m;
-		    ip = mtod(m, struct ip *);
-		    ip->ip_len = ntohs(ip->ip_len);
-		    ip->ip_off = ntohs(ip->ip_off);
-		    lwkt_sendmsg(port, &msg->nm_lmsg);
+		msg->nm_mbuf = m;
+		ip = mtod(m, struct ip *);
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
+		lwkt_sendmsg(port, &msg->nm_lmsg);
 	} else {
 		transport_processing_oncpu(m, hlen, ip, args.next_hop);
 	}
