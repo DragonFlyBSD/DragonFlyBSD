@@ -1,5 +1,5 @@
 /*	$NetBSD: src/usr.bin/gencat/gencat.c,v 1.19 2004/01/05 23:23:34 jmmv Exp $	*/
-/*	$DragonFly: src/usr.bin/gencat/gencat.c,v 1.3 2005/04/21 16:36:35 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/gencat/gencat.c,v 1.4 2005/08/31 18:11:05 swildner Exp $ */
 
 /*
  * Copyright (c) 1996 The NetBSD Foundation, Inc.
@@ -151,7 +151,6 @@ main(argc, argv)
 
 	while ((c = getopt(argc, argv, "")) != -1) {
 		switch (c) {
-		case '?':
 		default:
 			usage();
 			/* NOTREACHED */
