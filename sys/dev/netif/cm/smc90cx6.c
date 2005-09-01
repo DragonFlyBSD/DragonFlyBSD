@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.17 2005/08/30 12:33:49 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.18 2005/09/01 09:17:19 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -276,8 +276,6 @@ cm_attach(dev)
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 	u_int8_t linkaddress;
 
-	crit_enter();
-
 	/*
 	 * read the arcnet address from the board
 	 */
@@ -298,8 +296,7 @@ cm_attach(dev)
 	PUTREG(CMCMD, CM_CLR(CLR_POR|CLR_RECONFIG));
 	sc->sc_recontime = sc->sc_reconcount = 0;
 
-	/* and reenable kernel int level */
-	crit_exit();
+	callout_init(&sc->sc_recon_ch);
 
 	/*
 	 * set interface to stopped condition (reset)
@@ -317,8 +314,6 @@ cm_attach(dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;
 
 	arc_ifattach(ifp, linkaddress);
-
-	callout_init(&sc->sc_recon_ch);
 
 	/* XXX laddr should be announced in arc_ifattach() */
 	if_printf(ifp, "link addr 0x%02x (%d)\n", linkaddress, linkaddress);
@@ -429,6 +424,8 @@ void
 cm_stop(sc)
 	struct cm_softc *sc;
 {
+	struct ifnet *ifp = &sc->sc_arccom.ac_if;
+
 	/* Stop the interrupts */
 	PUTREG(CMSTAT, 0);
 
@@ -436,7 +433,10 @@ cm_stop(sc)
 	GETREG(CMRESET);
 
 	/* Stop watchdog timer */
-	sc->sc_arccom.ac_if.if_timer = 0;
+	ifp->if_timer = 0;
+
+	callout_stop(&sc->sc_recon_ch);
+	ifp->if_flags &= ~IFF_RUNNING;
 }
 
 /*
@@ -945,7 +945,6 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			 * then stop it.
 			 */
 			cm_stop(sc);
-			ifp->if_flags &= ~IFF_RUNNING;
 		} else if ((ifp->if_flags & IFF_UP) != 0 &&
 			   (ifp->if_flags & IFF_RUNNING) == 0) {
 			/*
