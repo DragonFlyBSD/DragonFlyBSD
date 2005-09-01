@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.5 2005/09/01 00:18:24 swildner Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.6 2005/09/01 00:40:51 swildner Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.5 2005/09/01 00:18:24 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.6 2005/09/01 00:40:51 swildner Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -523,22 +523,13 @@ sbc_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	struct sbc_softc *scp;
 	int *alloced, rid_max, alloced_max;
 	struct resource **res;
-#ifdef PC98
-	int i;
-#endif
 
 	scp = device_get_softc(bus);
 	switch (type) {
 	case SYS_RES_IOPORT:
 		alloced = scp->io_alloced;
 		res = scp->io;
-#ifdef PC98
-		rid_max = 0;
-		for (i = 0; i < IO_MAX; i++)
-			rid_max += io_range[i];
-#else
 		rid_max = IO_MAX - 1;
-#endif
 		alloced_max = 1;
 		break;
 	case SYS_RES_DRQ:
@@ -639,23 +630,9 @@ alloc_resource(struct sbc_softc *scp)
 
 	for (i = 0 ; i < IO_MAX ; i++) {
 		if (scp->io[i] == NULL) {
-#ifdef PC98
-			scp->io_rid[i] = i > 0 ?
-				scp->io_rid[i - 1] + io_range[i - 1] : 0;
-			scp->io[i] = isa_alloc_resourcev(scp->dev,
-							 SYS_RES_IOPORT,
-							 &scp->io_rid[i],
-							 sb_iat[i],
-							 io_range[i],
-							 RF_ACTIVE);
-			if (scp->io[i] != NULL)
-				isa_load_resourcev(scp->io[i], sb_iat[i],
-						   io_range[i]);
-#else
 			scp->io_rid[i] = i;
 			scp->io[i] = bus_alloc_resource(scp->dev, SYS_RES_IOPORT, &scp->io_rid[i],
 							0, ~0, io_range[i], RF_ACTIVE);
-#endif
 			if (i == 0 && scp->io[i] == NULL)
 				return (1);
 			scp->io_alloced[i] = 0;
