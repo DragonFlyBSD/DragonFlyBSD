@@ -1,5 +1,7 @@
-# $FreeBSD: src/gnu/usr.bin/groff/tmac/Makefile,v 1.21.2.8 2003/02/14 15:22:14 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/tmac/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/tmac/Makefile,v 1.42 2003/09/08 17:46:33 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/tmac/Makefile,v 1.3 2005/09/01 20:47:14 asmodai Exp $
+
+.include "../Makefile.inc"
 
 TMACOWN?=	${BINOWN}
 TMACGRP?=	${BINGRP}
@@ -14,33 +16,40 @@ MLINKS+=	groff_man.7 man.7
 MLINKS+=	groff_me.7 me.7
 MLINKS+=	groff_mdoc.7 mdoc.7 groff_mdoc.7 mdoc.samples.7
 
-CLEANFILES=	${MAN} ${MDOCFILES:S/$/-s/} ${STRIPFILES:S/$/-s/} ${SPECIALFILES:S/$/-s/}
+PATCHES!=       echo ${.CURDIR}/patches/*.patch
+CONTRIBDIR=     ${DIST_DIR}
+
+SRCS=		${PATCHES}
+CLEANFILES=	${MAN} ${MDOCFILES:S/$/-s/} ${STRIPFILES:S/$/-s/} ${SPECIALFILES:S/$/-s/} ${NORMALFILES:S/$/-s/}
 
 NORMALFILES=	mandoc.tmac andoc.tmac an-old.tmac \
 		me.tmac \
 		mdoc.tmac \
 		pic.tmac \
 		a4.tmac \
+		papersize.tmac \
 		ec.tmac \
 		safer.tmac \
 		trace.tmac \
 		ps.tmac psold.tmac pspic.tmac psatk.tmac \
 		dvi.tmac \
 		tty.tmac tty-char.tmac \
-		latin1.tmac cp1047.tmac \
+		latin1.tmac latin2.tmac latin5.tmac latin9.tmac cp1047.tmac \
 		X.tmac Xps.tmac \
 		lj4.tmac \
 		lbp.tmac \
-		html.tmac www.tmac \
+		html.tmac html-end.tmac \
+		europs.tmac \
+		composite.tmac \
 		eqnrc \
 		troffrc troffrc-end \
-		hyphen.us
-SPECIALFILES=	an.tmac man.tmac s.tmac ms.tmac
+		hyphen.us hyphenex.us
+SPECIALFILES=	an.tmac man.tmac s.tmac ms.tmac www.tmac
 STRIPFILES=	e.tmac doc.tmac mdoc.local
 MDOCFILES=	doc-common doc-ditroff doc-nroff doc-syms \
-		ru.KOI8-R
+		fr.ISO8859-1 ru.KOI8-R
 
-all: ${MDOCFILES:S/$/-s/} ${STRIPFILES:S/$/-s/} ${SPECIALFILES:S/$/-s/}
+all: ${MDOCFILES:S/$/-s/} ${STRIPFILES:S/$/-s/} ${SPECIALFILES:S/$/-s/} ${NORMALFILES:S/$/-s/}
 
 .for f in ${MDOCFILES} ${STRIPFILES}
 $f-s: $f
@@ -51,18 +60,21 @@ $f-s: $f
 $f-s: $f
 	sed -e "s;@TMAC_AN_PREFIX@;${tmac_an_prefix};g" \
 	    -e "s;@TMAC_S_PREFIX@;${tmac_s_prefix};g" \
+	    -e "s;@PNMTOPS_NOSETPAGE@;pnmtops;g" \
 		${.ALLSRC} > ${.TARGET}
 .endfor
 
+.for f in ${NORMALFILES}
+$f-s: $f
+	cp ${.ALLSRC} ${.TARGET}
+.endfor
+
 beforeinstall:
-	cd ${DIST_DIR}; \
-	    ${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
-	    ${NORMALFILES} ${DESTDIR}${TMACDIR}
 	cd ${.CURDIR}; \
 	    ${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
-	    hyphen.ru ${DESTDIR}${TMACDIR}
+	    koi8-r.tmac hyphen.ru ${DESTDIR}${TMACDIR}
 	cd ${.OBJDIR}
-.for f in ${STRIPFILES} ${SPECIALFILES}
+.for f in ${STRIPFILES} ${SPECIALFILES} ${NORMALFILES}
 	${INSTALL} -o ${TMACOWN} -g ${TMACGRP} -m ${TMACMODE} \
 	    $f-s ${DESTDIR}${TMACDIR}/$f
 .endfor

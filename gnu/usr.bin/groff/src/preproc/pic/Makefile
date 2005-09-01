@@ -1,14 +1,14 @@
-# $FreeBSD: src/gnu/usr.bin/groff/src/preproc/pic/Makefile,v 1.1.2.2 2002/07/19 08:34:10 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/preproc/pic/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/src/preproc/pic/Makefile,v 1.4 2003/05/01 13:22:20 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/preproc/pic/Makefile,v 1.3 2005/09/01 20:47:13 asmodai Exp $
 
 PROG_CXX=	pic
-SRCS=		lex.cc main.cc object.cc pic.cc pic_tab.h \
-		common.cc troff.cc tex.cc
+SRCS=		lex.cpp main.cpp object.cpp pic.cpp pic_tab.h \
+		common.cpp troff.cpp tex.cpp
 CFLAGS+=	-I${DIST_DIR} -I.
 DPADD=		${LIBGROFF} ${LIBM}
 LDADD=		${LIBGROFF} -lm
-CLEANFILES=	${MAN} pic.cc pic_tab.h y.tab.c y.tab.h
+CLEANFILES=	${MAN} pic.cpp pic_tab.h y.tab.c y.tab.h
 
-pic_tab.h: pic.cc
+pic_tab.h: pic.cpp
 
 .include <bsd.prog.mk>

@@ -1,21 +1,27 @@
-# $FreeBSD: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.1.2.4 2003/02/14 15:22:14 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.3 2005/07/26 21:15:19 joerg Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.8 2004/10/24 15:32:29 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.4 2005/09/01 20:47:13 asmodai Exp $
+
+PATCHES!=       echo ${.CURDIR}/patches/*.patch
+CONTRIBDIR=     ${DIST_DIR}
 
 LIB=		groff
-INTERNALLIB=	YES
-SRCS=		assert.cc change_lf.cc cmap.cc color.cc cset.cc device.cc errarg.cc\
-		error.cc fatal.cc filename.cc font.cc fontfile.cc geometry.cc\
-		htmlhint.cc invalid.cc lf.cc lineno.cc macropath.cc\
-		maxfilename.cc mksdir.cc nametoindex.cc new.cc paper.cc prime.cc\
-	 	progname.cc ptable.cc searchpath.cc string.cc strsave.cc\
-		tmpfile.cc tmpname.cc version.cc
-SRCS+=		getopt.c getopt1.c iftoa.c itoa.c
-CLEANFILES=	version.cc
+INTERNALLIB=
+SRCS=		assert.cpp change_lf.cpp cmap.cpp color.cpp cset.cpp device.cpp\
+		errarg.cpp error.cpp fatal.cpp filename.cpp font.cpp\
+		fontfile.cpp geometry.cpp glyphuni.cpp htmlhint.cpp invalid.cpp\
+		lf.cpp lineno.cpp macropath.cpp maxfilename.cpp mksdir.cpp\
+		nametoindex.cpp new.cpp paper.cpp prime.cpp ptable.cpp\
+		searchpath.cpp string.cpp strsave.cpp tmpfile.cpp\
+		searchpath.cpp string.cpp strsave.cpp symbol.cpp tmpfile.cpp\
+		tmpname.cpp unicode.cpp uniglyph.cpp uniuni.cpp version.cpp
+SRCS+=		iftoa.c itoa.c matherr.c progname.c quotearg.c spawnvp.c
+SRCS+=		${PATCHES}
+CLEANFILES=	version.cpp
 
 .include <bsd.lib.mk>
 
-version.cc: ${GROFF_DIST}/VERSION ${GROFF_DIST}/REVISION
-	@${ECHO} Making version.cc
+version.cpp: ${GROFF_DIST}/VERSION ${GROFF_DIST}/REVISION
+	@${ECHO} Making version.cpp
 	@echo const char \*version_string = \"`cat ${GROFF_DIST}/VERSION`\"\; >$@
 	@echo const char \*revision_string = \"`cat ${GROFF_DIST}/REVISION`\"\; >>$@
 	@echo extern \"C\" const char \*Version_string = \"`cat ${GROFF_DIST}/VERSION`.`cat ${GROFF_DIST}/REVISION`\"\; | \

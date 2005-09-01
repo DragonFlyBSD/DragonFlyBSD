@@ -1,5 +1,5 @@
-# $FreeBSD: src/gnu/usr.bin/groff/man/Makefile,v 1.5.8.4 2003/02/14 15:22:13 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/man/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/man/Makefile,v 1.9 2002/10/11 08:58:14 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/man/Makefile,v 1.3 2005/09/01 20:47:12 asmodai Exp $
 
 MAN=		groff_font.5 groff_out.5 groff_tmac.5
 MLINKS=		groff_tmac.5 tmac.5

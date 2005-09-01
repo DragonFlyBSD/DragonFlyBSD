@@ -1,8 +1,8 @@
-# $FreeBSD: src/gnu/usr.bin/groff/src/utils/indxbib/Makefile,v 1.1.2.5 2002/08/07 16:31:44 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/utils/indxbib/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/src/utils/indxbib/Makefile,v 1.7 2003/05/01 13:22:21 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/utils/indxbib/Makefile,v 1.3 2005/09/01 20:47:14 asmodai Exp $
 
 PROG_CXX=	indxbib
-SRCS=		indxbib.cc signal.c
+SRCS=		indxbib.cpp signal.c
 DPADD=		${LIBBIB} ${LIBGROFF} ${LIBM}
 LDADD=		${LIBBIB} ${LIBGROFF} -lm
 CLEANFILES=	${MAN}

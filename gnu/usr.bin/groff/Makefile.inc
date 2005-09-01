@@ -1,5 +1,5 @@
-# $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.3.6.2 2003/02/14 15:22:12 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.11 2005/06/10 07:06:07 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.3 2005/09/01 20:47:11 asmodai Exp $
 
 BINDIR?=	/usr/bin
 SHELL=		/bin/sh
@@ -66,16 +66,9 @@ indexname=Ind
 ########################################################################
 # Libraries
 
-# Bad assumption, if one exists they all exist
-.if exists(${.OBJDIR}/${TOPREL}/src/libs/libgroff)
 LIBGROFF=	${.OBJDIR}/${TOPREL}/src/libs/libgroff/libgroff.a
 LIBDRIVER=	${.OBJDIR}/${TOPREL}/src/libs/libdriver/libdriver.a
 LIBBIB=		${.OBJDIR}/${TOPREL}/src/libs/libbib/libbib.a
-.else
-LIBGROFF=	${.CURDIR}/${TOPREL}/src/libs/libgroff/libgroff.a
-LIBDRIVER=	${.CURDIR}/${TOPREL}/src/libs/libdriver/libdriver.a
-LIBBIB=		${.CURDIR}/${TOPREL}/src/libs/libbib/libbib.a
-.endif
 
 CFLAGS+=	-DHAVE_CONFIG_H
 CFLAGS+=	-I${GROFF_DIST}/src/include -I${.CURDIR}/${TOPREL}/src/include
@@ -83,13 +76,13 @@ CXXFLAGS+=	-fno-rtti -fno-exceptions
 
 .y.o:
 	$(YACC) $(YFLAGS) $(.IMPSRC)
-	mv -f y.tab.c $(.PREFIX).cc
+	mv -f y.tab.c $(.PREFIX).cpp
 	mv -f y.tab.h $(.PREFIX)_tab.h
-	${CXX} ${CXXFLAGS} -c $(.PREFIX).cc -o ${.TARGET}
+	${CXX} ${CXXFLAGS} -c $(.PREFIX).cpp -o ${.TARGET}
 
-.y.cc:
+.y.cpp:
 	$(YACC) $(YFLAGS) $(.IMPSRC)
-	mv -f y.tab.c $(.PREFIX).cc
+	mv -f y.tab.c $(.PREFIX).cpp
 	mv -f y.tab.h $(.PREFIX)_tab.h
 
 .SUFFIXES: .man .1 .2 .3 .4 .5 .6 .7 .8
@@ -126,7 +119,7 @@ revision=`sed -e 's/^0$$//' -e 's/^[1-9].*$$/.&/' $(GROFF_DIST)/REVISION`
 	-e "s;@VERSION@;$(version)$(revision);g" \
 	-e "s;@MDATE@;`$(SHELL) ${GROFF_DIST}/mdate.sh $<`;g" \
 	-e "s;@g@;$(g);g" \
-	-e "s;@G@;`echo $(g) | tr [a-z] [A-Z]`;g" \
+	-e "s;@G@;`echo $(g) | LC_ALL=C tr a-z A-Z`;g" \
 	$< >$@
 
 .SUFFIXES: .sh .pl
@@ -134,12 +127,15 @@ revision=`sed -e 's/^0$$//' -e 's/^[1-9].*$$/.&/' $(GROFF_DIST)/REVISION`
 .sh .pl:
 	@${ECHO} Making ${.TARGET} from ${.IMPSRC}
 	@sed -e "s|@BINDIR@|${BINDIR}|g" \
+	     -e "s;@FONTDIR@;$(fontdir);g" \
+	     -e "s|@GROFF_BIN_PATH_SETUP@|GROFF_RUNTIME=\"\$${GROFF_BIN_PATH=${BINDIR}}:\"|g" \
+	     -e "s|@SEP@|:|g" \
 	     -e "s|@VERSION@|$(version)$(revision)|" \
 	     -e "s|@g@|$(g)|g" \
 	     ${.IMPSRC} >${.TARGET}
 
 TOPREL?=	..
-GROFF_DIST=	${.CURDIR}/${TOPREL}/../../../contrib/groff
+GROFF_DIST=	${.CURDIR}/${TOPREL}/../../../contrib/groff-1.19
 DIST_SUBDIR?=	${.CURDIR:T}
 DIST_DIR=	${GROFF_DIST}/${DIST_SUBDIR}
 .PATH: ${DIST_DIR}

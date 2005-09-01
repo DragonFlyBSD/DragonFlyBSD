@@ -1,5 +1,5 @@
-# $FreeBSD: src/gnu/usr.bin/groff/font/devX100/Makefile,v 1.1.2.1 2001/04/26 17:08:02 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/font/devX100/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/font/devX100/Makefile,v 1.2 2004/12/21 08:46:51 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/font/devX100/Makefile,v 1.3 2005/09/01 20:47:12 asmodai Exp $
 
 NOOBJ=
 

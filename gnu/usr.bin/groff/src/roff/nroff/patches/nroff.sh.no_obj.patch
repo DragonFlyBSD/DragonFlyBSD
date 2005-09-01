@@ -1,0 +1,47 @@
+$DragonFly: src/gnu/usr.bin/groff/src/roff/nroff/patches/nroff.sh.no_obj.patch,v 1.1 2005/09/01 20:47:14 asmodai Exp $
+
+--- nroff.sh	2005-08-31 14:28:07.000000000 +0200
++++ nroff.sh	2005-08-31 15:39:06.000000000 +0200
+@@ -8,18 +8,22 @@
+ case "`exec 2>/dev/null ; locale charmap`" in
+   UTF-8)
+     T=-Tutf8 ;;
+-  ISO-8859-1)
++  ISO*8859-1 | ISO*8859-15)
+     T=-Tlatin1 ;;
+   IBM-1047)
+     T=-Tcp1047 ;;
++  KOI8-R)
++    T=-Tkoi8-r ;;
+   *)
+     case "${LC_ALL-${LC_CTYPE-${LANG}}}" in
+       *.UTF-8)
+         T=-Tutf8 ;;
+-      iso_8859_1 | *.ISO-8859-1)
++      iso_8859_1 | *.ISO*8859-1 | *.ISO*8859-15)
+         T=-Tlatin1 ;;
+       *.IBM-1047)
+         T=-Tcp1047 ;;
++      *.KOI8-R)
++        T=-Tkoi8-r ;;
+       *)
+         case "$LESSCHARSET" in
+           utf-8)
+@@ -28,6 +32,8 @@
+             T=-Tlatin1 ;;
+           cp1047)
+             T=-Tcp1047 ;;
++          koi8-r)
++            T=-Tkoi8-r ;;
+           *)
+             T=-Tascii ;;
+           esac ;;
+@@ -52,7 +58,7 @@
+       exit 1 ;;
+     -[iptSUC] | -[dmrno]*)
+       opts="$opts $1" ;;
+-    -Tascii | -Tlatin1 | -Tutf8 | -Tcp1047)
++    -Tascii | -Tlatin1 | -Tutf8 | -Tcp1047 | -Tkoi8-r)
+       T=$1 ;;
+     -T*)
+       # ignore other devices

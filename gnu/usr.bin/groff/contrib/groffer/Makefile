@@ -1,5 +1,5 @@
-# $FreeBSD: src/gnu/usr.bin/groff/contrib/groffer/Makefile,v 1.1.4.1 2003/02/14 15:22:12 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/contrib/groffer/Attic/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/contrib/groffer/Makefile,v 1.1 2002/10/11 08:58:13 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/contrib/groffer/Attic/Makefile,v 1.3 2005/09/01 20:47:12 asmodai Exp $
 
 SCRIPTS=	groffer
 MAN=		groffer.1

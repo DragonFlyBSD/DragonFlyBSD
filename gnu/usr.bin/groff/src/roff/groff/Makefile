@@ -1,8 +1,8 @@
-# $FreeBSD: src/gnu/usr.bin/groff/src/roff/groff/Makefile,v 1.1.2.2 2002/07/19 08:34:10 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/roff/groff/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/src/roff/groff/Makefile,v 1.7 2003/05/01 13:22:20 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/roff/groff/Makefile,v 1.3 2005/09/01 20:47:14 asmodai Exp $
 
 PROG_CXX=	groff
-SRCS=		groff.cc pipeline.c
+SRCS=		groff.cpp pipeline.c
 DPADD=		${LIBGROFF} ${LIBM}
 LDADD=		${LIBGROFF} -lm
 CLEANFILES=	${MAN}
