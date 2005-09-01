@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.7 2005/01/01 23:02:42 cpressey Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.8 2005/09/01 22:19:26 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -322,7 +322,7 @@ linkchk(FTSENT *p)
 	struct links_entry *le, **new_buckets;
 	struct stat *st;
 	size_t i, new_size;
-	int count, hash;
+	int hash;
 
 	st = p->fts_statp;
 
@@ -340,7 +340,6 @@ linkchk(FTSENT *p)
 	if (number_entries > number_buckets * 10 && !stop_allocating) {
 		new_size = number_buckets * 2;
 		new_buckets = malloc(new_size * sizeof(struct links_entry *));
-		count = 0;
 
 		/* Try releasing the free list to see if that helps. */
 		if (new_buckets == NULL && free_list != NULL) {
