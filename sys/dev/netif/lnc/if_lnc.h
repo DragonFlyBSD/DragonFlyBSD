@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_lnc.h,v 1.14.2.1 2000/06/18 08:03:51 gj Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.h,v 1.3 2005/09/01 00:18:24 swildner Exp $
  */
 
 #include <i386/isa/ic/Am7990.h>
@@ -79,20 +79,6 @@
 /* DEPCA specific defines */
 #define DEPCA_ADDR_ROM_SIZE 32
 
-#ifdef PC98
-/* C-NET(98)S port addresses */
-#define CNET98S_RDP    0x400     /* Register Data Port */
-#define CNET98S_RAP    0x402     /* Register Address Port */
-#define CNET98S_RESET  0x404
-#define CNET98S_IDP    0x406
-#define CNET98S_EEPROM 0x40e
-/*
- * XXX - The I/O address range is fragmented in the C-NET(98)S.
- *       This is the number of regs at iobase.
- */
-#define CNET98S_IOSIZE    16     /* # of i/o addresses used. */
-#endif
-
 /* Chip types */
 #define LANCE           1        /* Am7990   */
 #define C_LANCE         2        /* Am79C90  */
@@ -126,7 +112,6 @@
 #define BICC            1
 #define NE2100          2
 #define DEPCA           3
-#define CNET98S         4	/* PC-98 */
 
 /* mem_mode values */
 #define DMA_FIXED       1

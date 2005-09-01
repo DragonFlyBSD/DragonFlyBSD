@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.19.2.12 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.4 2005/06/10 23:06:58 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.5 2005/09/01 00:18:24 swildner Exp $
  */
 
 #include <dev/sound/chip.h>
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.4 2005/06/10 23:06:58 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.5 2005/09/01 00:18:24 swildner Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -92,20 +92,6 @@ static int release_resource(struct sbc_softc *scp);
 static devclass_t sbc_devclass;
 
 static int io_range[3] = {0x10, 0x2, 0x4};
-
-#ifdef PC98 /* I/O address table for PC98 */
-static bus_addr_t pcm_iat[] = {
-	0x000, 0x100, 0x200, 0x300, 0x400, 0x500, 0x600, 0x700,
-	0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00
-};
-static bus_addr_t midi_iat[] = {
-	0x000, 0x100
-};
-static bus_addr_t opl_iat[] = {
-	0x000, 0x100, 0x200, 0x300
-};
-static bus_addr_t *sb_iat[] = { pcm_iat, midi_iat, opl_iat };
-#endif
 
 static int sb_rd(struct resource *io, int reg);
 static void sb_wr(struct resource *io, int reg, u_int8_t val);
@@ -282,17 +268,9 @@ sbc_probe(device_t dev)
 		int rid = 0, ver;
 	    	struct resource *io;
 
-#ifdef PC98
-		io = isa_alloc_resourcev(dev, SYS_RES_IOPORT, &rid,
-					 pcm_iat, 16, RF_ACTIVE);
-#else
 		io = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
 		  		    	0, ~0, 16, RF_ACTIVE);
-#endif
 		if (!io) goto bad;
-#ifdef PC98
-		isa_load_resourcev(io, pcm_iat, 16);
-#endif
     		if (sb_reset_dsp(io)) goto bad2;
 		ver = sb_identify_board(io);
 		if (ver == 0) goto bad2;
@@ -384,20 +362,6 @@ sbc_attach(device_t dev)
 		/* soft irq/dma configuration */
 		x = -1;
 		irq = rman_get_start(scp->irq[0]);
-#ifdef PC98
-		/* SB16 in PC98 use different IRQ table */
-		if	(irq == 3) x = 1;
-		else if (irq == 5) x = 8;
-		else if (irq == 10) x = 2;
-		else if (irq == 12) x = 4;
-		if (x == -1) {
-			err = "bad irq (3/5/10/12 valid)";
-			goto bad;
-		}
-		else sb_setmixer(scp->io[0], IRQ_NR, x);
-		/* SB16 in PC98 use different dma setting */
-		sb_setmixer(scp->io[0], DMA_NR, dh == 0 ? 1 : 2);
-#else
 		if      (irq == 5) x = 2;
 		else if (irq == 7) x = 4;
 		else if (irq == 9) x = 1;
@@ -408,7 +372,6 @@ sbc_attach(device_t dev)
 		}
 		else sb_setmixer(scp->io[0], IRQ_NR, x);
 		sb_setmixer(scp->io[0], DMA_NR, (1 << dh) | (1 << dl));
-#endif
 		if (bootverbose) {
 			device_printf(dev, "setting card to irq %d, drq %d", irq, dl);
 			if (dl != dh) printf(", %d", dh);

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.6 2005/09/01 00:18:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -74,10 +74,6 @@ const char * ep_isa_match_id (u_int32_t, struct isa_ident *);
 #define ISA_ID_3C509_COMBO 0x506d5094
 #define ISA_ID_3C509_TPO   0x506d5095
 #define ISA_ID_3C509_TPC   0x506d5098
-#ifdef PC98
-#define ISA_ID_3C569B_COMBO 0x506d5694
-#define ISA_ID_3C569B_TPO   0x506d5695
-#endif
 
 static struct isa_ident ep_isa_devs[] = {
 	{ ISA_ID_3C509_TP,	"3Com 3C509-TP EtherLink III" },
@@ -85,10 +81,6 @@ static struct isa_ident ep_isa_devs[] = {
 	{ ISA_ID_3C509_COMBO,	"3Com 3C509-Combo EtherLink III" },
 	{ ISA_ID_3C509_TPO,	"3Com 3C509-TPO EtherLink III" },
 	{ ISA_ID_3C509_TPC,	"3Com 3C509-TPC EtherLink III" },
-#ifdef PC98
-	{ ISA_ID_3C569B_COMBO,	"3Com 3C569B-J-Combo EtherLink III" },
-	{ ISA_ID_3C569B_TPO,	"3Com 3C569B-J-TPO EtherLink III" },
-#endif
 	{ 0,			NULL },
 };
 
@@ -229,11 +221,7 @@ ep_isa_identify (driver_t *driver, device_t parent)
 
 		/* Retreive IOPORT */
 		data = get_eeprom_data(ELINK_ID_PORT, EEPROM_ADDR_CFG);
-#ifdef PC98
-		ioport = (((data & 0x1f) * 0x100) + 0x40d0);
-#else
 		ioport = (((data & 0x1f) << 4) + 0x200);
-#endif
 
 		/* Test for an adapter with PnP support. */
 		data = get_eeprom_data(ELINK_ID_PORT, EEPROM_CAP);

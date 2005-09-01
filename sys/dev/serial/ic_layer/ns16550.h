@@ -32,7 +32,7 @@
  *
  *	from: @(#)ns16550.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/dev/ic/ns16550.h,v 1.14 2003/09/16 14:21:17 bde Exp $
- * $DragonFly: src/sys/dev/serial/ic_layer/ns16550.h,v 1.3 2003/11/10 06:12:07 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/ic_layer/ns16550.h,v 1.4 2005/09/01 00:18:24 swildner Exp $
  */
 
 /*
@@ -183,14 +183,3 @@
 #define	com_ttl		4	/* transmitter trigger level (R/W) */
 #define	com_rtl		5	/* receiver trigger level (R/W) */
 /* ... */
-
-#ifdef PC98
-/* Hardware extension mode register for RSB-2000/3000. */
-#define	com_emr		com_msr
-#define	EMR_EXBUFF	0x04
-#define	EMR_CTSFLW	0x08
-#define	EMR_DSRFLW	0x10
-#define	EMR_RTSFLW	0x20
-#define	EMR_DTRFLW	0x40
-#define	EMR_EFMODE	0x80
-#endif

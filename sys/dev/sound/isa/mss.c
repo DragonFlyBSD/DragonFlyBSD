@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.48.2.11 2002/12/24 21:17:41 semenu Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.5 2005/06/10 23:06:58 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.6 2005/09/01 00:18:24 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.5 2005/06/10 23:06:58 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.6 2005/09/01 00:18:24 swildner Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -1300,11 +1300,7 @@ mss_probe(device_t dev)
 		     	rman_get_start(mss->io_base), tmpx));
 		goto no;
     	}
-#ifdef PC98
-    	if (irq > 12) {
-#else
     	if (irq > 11) {
-#endif
 		printf("MSS: Bad IRQ %d\n", irq);
 		goto no;
     	}
@@ -1351,7 +1347,6 @@ mss_detect(device_t dev, struct mss_info *mss)
     	name = "AD1848";
     	mss->bd_id = MD_AD1848; /* AD1848 or CS4248 */
 
-#ifndef PC98
 	if (opti_detect(dev, mss)) {
 		switch (mss->bd_id) {
 			case MD_OPTI924:
@@ -1364,7 +1359,6 @@ mss_detect(device_t dev, struct mss_info *mss)
 		printf("Found OPTi device %s\n", name);
 		if (opti_init(dev, mss) == 0) goto gotit;
 	}
-#endif
 
    	/*
      	* Check that the I/O address is in use.
@@ -1650,10 +1644,6 @@ ymf_test(device_t dev, struct mss_info *mss)
 		if (!j) {
 	    		bus_release_resource(dev, SYS_RES_IOPORT,
 			 		     mss->conf_rid, mss->conf_base);
-#ifdef PC98
-			/* PC98 need this. I don't know reason why. */
-			bus_delete_resource(dev, SYS_RES_IOPORT, mss->conf_rid);
-#endif
 	    		mss->conf_base = 0;
 	    		continue;
 		}
@@ -1677,23 +1667,16 @@ mss_doattach(device_t dev, struct mss_info *mss)
 	rdma = rman_get_start(mss->drq2);
     	if (flags & DV_F_TRUE_MSS) {
 		/* has IRQ/DMA registers, set IRQ and DMA addr */
-#ifdef PC98 /* CS423[12] in PC98 can use IRQ3,5,10,12 */
-		static char     interrupt_bits[13] =
-	        {-1, -1, -1, 0x08, -1, 0x10, -1, -1, -1, -1, 0x18, -1, 0x20};
-#else
 		static char     interrupt_bits[12] =
 	    	{-1, -1, -1, -1, -1, 0x28, -1, 0x08, -1, 0x10, 0x18, 0x20};
-#endif
 		static char     pdma_bits[4] =  {1, 2, -1, 3};
 		static char	valid_rdma[4] = {1, 0, -1, 0};
 		char		bits;
 
 		if (!mss->irq || (bits = interrupt_bits[rman_get_start(mss->irq)]) == -1)
 			goto no;
-#ifndef PC98 /* CS423[12] in PC98 don't support this. */
 		io_wr(mss, 0, bits | 0x40);	/* config port */
 		if ((io_rd(mss, 3) & 0x40) == 0) device_printf(dev, "IRQ Conflict?\n");
-#endif
 		/* Write IRQ+DMA setup */
 		if (pdma_bits[pdma] == -1) goto no;
 		bits |= pdma_bits[pdma];

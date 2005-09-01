@@ -27,14 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/elink.h,v 1.6 1999/08/28 00:44:41 peter Exp $
- * $DragonFly: src/sys/dev/netif/elink_layer/elink.h,v 1.3 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/elink_layer/elink.h,v 1.4 2005/09/01 00:18:24 swildner Exp $
  */
 
-#ifdef PC98
-#define	ELINK_ID_PORT	0x71d0
-#else
 #define	ELINK_ID_PORT	0x110
-#endif
 #define	ELINK_RESET	0xc0
 
 #define	ELINK_507_POLY	0xe7

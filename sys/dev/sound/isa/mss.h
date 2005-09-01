@@ -191,20 +191,12 @@ mixer_ent mix_devices[32][2] = {
 MIX_NONE(SOUND_MIXER_VOLUME),
 MIX_NONE(SOUND_MIXER_BASS),
 MIX_NONE(SOUND_MIXER_TREBLE),
-#ifdef PC98	/* PC98's synth is assigned to AUX#2 */
-MIX_ENT(SOUND_MIXER_SYNTH,	 4, 1, 0, 5,	 5, 1, 0, 5),
-#else		/* AT386's synth is assigned to AUX#1 */
 MIX_ENT(SOUND_MIXER_SYNTH,	 2, 1, 0, 5,	 3, 1, 0, 5),
-#endif
 MIX_ENT(SOUND_MIXER_PCM,	 6, 1, 0, 6,	 7, 1, 0, 6),
 MIX_ENT(SOUND_MIXER_SPEAKER,	26, 1, 0, 4,	 0, 0, 0, 0),
 MIX_ENT(SOUND_MIXER_LINE,	18, 1, 0, 5,	19, 1, 0, 5),
 MIX_ENT(SOUND_MIXER_MIC,	 0, 0, 5, 1,	 1, 0, 5, 1),
-#ifdef PC98	/* PC98's cd-audio is assigned to AUX#1 */
-MIX_ENT(SOUND_MIXER_CD,	 	 2, 1, 0, 5,	 3, 1, 0, 5),
-#else		/* AT386's cd-audio is assigned to AUX#2 */
 MIX_ENT(SOUND_MIXER_CD,	 	 4, 1, 0, 5,	 5, 1, 0, 5),
-#endif
 MIX_ENT(SOUND_MIXER_IMIX,	13, 1, 2, 6,	 0, 0, 0, 0),
 MIX_NONE(SOUND_MIXER_ALTPCM),
 MIX_NONE(SOUND_MIXER_RECLEV),
@@ -304,7 +296,7 @@ MIX_NONE(SOUND_MIXER_LINE3),
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.h,v 1.7.2.6 2002/04/22 15:49:31 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.h,v 1.3 2005/09/01 00:18:24 swildner Exp $
  */
 
 /*

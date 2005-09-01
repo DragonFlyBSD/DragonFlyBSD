@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.5 2005/06/16 21:12:22 dillon Exp $
+ * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.6 2005/09/01 00:18:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -238,11 +238,4 @@ ASSYM(BC32SEL, GSEL(GBIOSCODE32_SEL, SEL_KPL));
 ASSYM(GPROC0_SEL, GPROC0_SEL);
 #if 0
 ASSYM(VM86_FRAMESIZE, sizeof(struct vm86frame));
-#endif
-
-#ifdef PC98
-#include <machine/bus.h>
-
-ASSYM(BUS_SPACE_HANDLE_BASE, offsetof(struct bus_space_handle, bsh_base));
-ASSYM(BUS_SPACE_HANDLE_IAT, offsetof(struct bus_space_handle, bsh_iat));
 #endif
