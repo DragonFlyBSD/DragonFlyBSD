@@ -70,7 +70,7 @@
  *	$Id: g711conv.c,v 1.5 1999/12/13 21:25:24 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.4.2.1 2001/08/01 17:45:02 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.4 2005/09/01 19:08:38 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -188,7 +188,7 @@ main(int argc, char **argv)
 	int opt_R = 0;	
 	unsigned char uc;
 	
-	while ((c = getopt(argc, argv, "aurPR?")) != -1)
+	while ((c = getopt(argc, argv, "aurPR")) != -1)
 	{
 		switch(c)
 		{
@@ -212,7 +212,6 @@ main(int argc, char **argv)
 				opt_P = 1;
 				break;
 
-			case '?':
 			default:
 				usage();
 				break;

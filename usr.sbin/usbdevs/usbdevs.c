@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $
  * $FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.8 2002/04/22 13:44:47 des Exp $
- * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.5 2004/02/10 02:59:44 rob Exp $
+ * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.6 2005/09/01 19:08:38 swildner Exp $
  */
 
 /*
@@ -180,7 +180,7 @@ main(int argc, char **argv)
 	int addr = 0;
 	int ncont;
 
-	while ((ch = getopt(argc, argv, "a:df:v?")) != -1) {
+	while ((ch = getopt(argc, argv, "a:df:v")) != -1) {
 		switch(ch) {
 		case 'a':
 			addr = atoi(optarg);
@@ -194,7 +194,6 @@ main(int argc, char **argv)
 		case 'v':
 			verbose = 1;
 			break;
-		case '?':
 		default:
 			usage();
 		}

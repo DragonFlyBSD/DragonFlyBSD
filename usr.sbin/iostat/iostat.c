@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/iostat/iostat.c,v 1.17.2.2 2001/07/19 04:15:42 kris Exp $
- * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.6 2005/01/02 02:40:20 cpressey Exp $
+ * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.7 2005/09/01 19:08:38 swildner Exp $
  */
 /*
  * Parts of this program are derived from the original FreeBSD iostat
@@ -139,7 +139,7 @@ usage(void)
 	 * This isn't mentioned in the man page, or the usage statement,
 	 * but it is supported.
 	 */
-	fprintf(stderr, "usage: iostat [-CdhIKoT?] [-c count]"
+	fprintf(stderr, "usage: iostat [-CdhIKoT] [-c count]"
 		" [-n devs]\n"
 		"\t      [-t type,if,pass] [-w wait] [drives]\n");
 }
@@ -164,7 +164,7 @@ main(int argc, char **argv)
 	matches = NULL;
 	maxshowdevs = 3;
 
-	while ((c = getopt(argc, argv, "c:CdhIKM:n:N:ot:Tw:?")) != -1) {
+	while ((c = getopt(argc, argv, "c:CdhIKM:n:N:ot:Tw:")) != -1) {
 		switch(c) {
 			case 'c':
 				cflag++;
