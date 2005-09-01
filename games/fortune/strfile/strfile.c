@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
- * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.4 2005/09/01 22:45:35 liamfoy Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strfile.c   8.1 (Berkeley) 5/31/93
@@ -138,9 +138,8 @@ void	usage (void);
  *	CHUNKSIZE blocks; if the latter, we just write each pointer,
  *	and then seek back to the beginning to write in the table.
  */
-int main(ac, av)
-int	ac;
-char	**av;
+int
+main(int ac, char **av)
 {
 	char		*sp, dc;
 	FILE		*inf, *outf;
@@ -255,9 +254,8 @@ char	**av;
 /*
  *	This routine evaluates arguments from the command line
  */
-void getargs(argc, argv)
-int	argc;
-char	**argv;
+void
+getargs(int argc, char **argv)
 {
 	int	ch;
 
@@ -309,7 +307,8 @@ char	**argv;
 	}
 }
 
-void usage()
+void
+usage(void)
 {
 	(void) fprintf(stderr,
 	    "strfile [-Ciorsx] [-c char] sourcefile [datafile]\n");
@@ -320,9 +319,8 @@ void usage()
  * add_offset:
  *	Add an offset to the list, or write it out, as appropriate.
  */
-void add_offset(fp, off)
-FILE	*fp;
-long    off;
+void
+add_offset(FILE *fp, long off)
 {
 	long net;
 
@@ -340,7 +338,8 @@ long    off;
  * do_order:
  *	Order the strings alphabetically (possibly ignoring case).
  */
-void do_order()
+void
+do_order(void)
 {
 	int	i;
 	long   *lp;
@@ -359,8 +358,8 @@ void do_order()
 	Tbl.str_flags |= STR_ORDERED;
 }
 
-static int collate_range_cmp (c1, c2)
-	int c1, c2;
+static int
+collate_range_cmp (int c1, int c2)
 {
 	static char s1[2], s2[2];
 	int ret;
@@ -380,8 +379,8 @@ static int collate_range_cmp (c1, c2)
  * cmp_str:
  *	Compare two strings in the file
  */
-int cmp_str(s1, s2)
-const void	*s1, *s2;
+int
+cmp_str(const void *s1, const void  *s2)
 {
 	const STR	*p1, *p2;
 	int	c1, c2;
@@ -436,7 +435,8 @@ const void	*s1, *s2;
  *	not to randomize across delimiter boundaries.  All
  *	randomization is done within each block.
  */
-void randomize()
+void
+randomize(void)
 {
 	int	cnt, i;
 	long   tmp;

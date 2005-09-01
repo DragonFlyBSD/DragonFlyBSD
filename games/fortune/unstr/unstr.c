@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $
- * $DragonFly: src/games/fortune/unstr/unstr.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/fortune/unstr/unstr.c,v 1.3 2005/09/01 22:45:35 liamfoy Exp $
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)unstr.c     8.1 (Berkeley) 5/31/93
@@ -57,6 +57,7 @@
 # include	<sys/param.h>
 # include	<stdio.h>
 # include	<ctype.h>
+# include	<stdlib.h>
 # include       <string.h>
 # include	"strfile.h"
 
@@ -69,9 +70,8 @@ FILE	*Inf, *Dataf;
 void getargs(), order_unstr();
 
 /* ARGSUSED */
-int main(ac, av)
-int	ac;
-char	**av;
+int
+main(int ac, char **av)
 {
 	static STRFILE	tbl;		/* description table */
 
@@ -101,8 +101,8 @@ char	**av;
 	exit(0);
 }
 
-void getargs(av)
-char	*av[];
+void
+getargs(char *av[])
 {
 	if (!*++av) {
 		(void) fprintf(stderr, "usage: unstr datafile\n");
@@ -113,8 +113,8 @@ char	*av[];
 	(void) strcat(Datafile, ".dat");
 }
 
-void order_unstr(tbl)
-STRFILE	*tbl;
+void
+order_unstr(STRFILE *tbl)
 {
 	int	i;
 	char	*sp;
