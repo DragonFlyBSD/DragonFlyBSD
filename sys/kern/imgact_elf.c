@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.31 2005/07/04 16:02:58 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.32 2005/09/02 07:16:58 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -907,18 +907,18 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 	/*
 	 * XXX fixme.
 	 */
-	fp->f_data = (caddr_t)vp;
+	fp->f_type = DTYPE_VNODE;
 	fp->f_flag = O_CREAT|O_WRONLY|O_NOFOLLOW;
 	fp->f_ops = &vnode_fileops;
-	fp->f_type = DTYPE_VNODE;
+	fp->f_data = vp;
 	VOP_UNLOCK(vp, 0, p->p_thread);
 	
 	error = generic_elf_coredump(p, fp, limit);
 
-	fp->f_data = NULL;
+	fp->f_type = 0;
 	fp->f_flag = 0;
 	fp->f_ops = &badfileops;
-	fp->f_type = 0;
+	fp->f_data = NULL;
 	fdrop(fp, p->p_thread);
 	return (error);
 }

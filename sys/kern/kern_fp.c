@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.11 2005/07/13 01:38:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.12 2005/09/02 07:16:58 hsu Exp $
  */
 
 /*
@@ -181,10 +181,10 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     fp = *fpp;
     if ((flags & O_ROOTCRED) == 0 && td->td_proc)
 	fsetcred(fp, td->td_proc->p_ucred);
-    fp->f_data = (caddr_t)vp;
+    fp->f_type = DTYPE_VNODE;
     fp->f_flag = flags;
     fp->f_ops = &vnode_fileops;
-    fp->f_type = DTYPE_VNODE;
+    fp->f_data = vp;
 
     error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp, td);
     if (error)

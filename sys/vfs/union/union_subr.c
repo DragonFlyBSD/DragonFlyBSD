@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.18 2004/12/17 00:18:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.19 2005/09/02 07:16:58 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1270,7 +1270,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 				return (error);
 			}
 			VOP_UNLOCK(lvp, 0, td);
-			fp->f_data = (caddr_t) lvp;
+			fp->f_data = lvp;
 			fp->f_offset = 0;
 			error = vn_close(*vp, FREAD, td);
 			if (error)

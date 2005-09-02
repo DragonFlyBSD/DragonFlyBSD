@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.18 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.19 2005/09/02 07:16:58 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -339,13 +339,13 @@ fifo_ioctl(struct vop_ioctl_args *ap)
 	if (ap->a_command == FIONBIO)
 		return (0);
 	if (ap->a_fflag & FREAD) {
-		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_readsock;
+		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
 		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_td);
 		if (error)
 			return (error);
 	}
 	if (ap->a_fflag & FWRITE) {
-		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_writesock;
+		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
 		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_td);
 		if (error)
 			return (error);
@@ -462,7 +462,7 @@ fifo_poll(struct vop_poll_args *ap)
 			events |= POLLINIGNEOF;
 		}
 		
-		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_readsock;
+		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
 		if (filetmp.f_data)
 			revents |= soo_poll(&filetmp, events, ap->a_cred,
 			    ap->a_td);
@@ -476,7 +476,7 @@ fifo_poll(struct vop_poll_args *ap)
 	}
 	events = ap->a_events & (POLLOUT | POLLWRNORM | POLLWRBAND);
 	if (events) {
-		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_writesock;
+		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
 		if (filetmp.f_data)
 			revents |= soo_poll(&filetmp, events, ap->a_cred,
 			    ap->a_td);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.31 2005/08/25 18:34:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.32 2005/09/02 07:16:58 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -274,10 +274,10 @@ again:
 	 * f_ncp inherits nl_ncp .
 	 */
 	if (fp) {
-		fp->f_data = (caddr_t)vp;
+		fp->f_type = (vp->v_type == VFIFO ? DTYPE_FIFO : DTYPE_VNODE);
 		fp->f_flag = fmode & FMASK;
 		fp->f_ops = &vnode_fileops;
-		fp->f_type = (vp->v_type == VFIFO ? DTYPE_FIFO : DTYPE_VNODE);
+		fp->f_data = vp;
 		if (vp->v_type == VDIR) {
 			fp->f_ncp = nd->nl_ncp;
 			nd->nl_ncp = NULL;

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.14 2005/07/13 01:38:53 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.15 2005/09/02 07:16:58 hsu Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -107,7 +107,7 @@ struct file {
 				 * offset of next expected read or write
 				 */
 	off_t	f_offset;
-	caddr_t	f_data;		/* vnode or socket */
+	void   *f_data;		/* vnode, pipe, socket, or kqueue */
 	int	f_count;	/* reference count */
 	int	f_msgcount;	/* reference count from message queue */
 	struct namecache *f_ncp; /* ncp (required for directories) */

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.57 2005/07/15 17:54:47 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.58 2005/09/02 07:16:58 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -121,10 +121,10 @@ kern_socket(int domain, int type, int protocol, int *res)
 			fdrop(fp, td);
 		}
 	} else {
-		fp->f_data = (caddr_t)so;
-		fp->f_flag = FREAD|FWRITE;
-		fp->f_ops = &socketops;
 		fp->f_type = DTYPE_SOCKET;
+		fp->f_flag = FREAD | FWRITE;
+		fp->f_ops = &socketops;
+		fp->f_data = so;
 		*res = fd;
 	}
 	fdrop(fp, td);
@@ -311,10 +311,10 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);
 
-	nfp->f_data = (caddr_t)so;
+	nfp->f_type = DTYPE_SOCKET;
 	nfp->f_flag = fflag;
 	nfp->f_ops = &socketops;
-	nfp->f_type = DTYPE_SOCKET;
+	nfp->f_data = so;
 	/* Sync socket nonblocking/async state with file flags */
 	tmp = fflag & FNONBLOCK;
 	(void) fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, td);
@@ -505,11 +505,11 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	if (error)
 		goto free2;
 	sv[0] = fd;
-	fp1->f_data = (caddr_t)so1;
+	fp1->f_data = so1;
 	error = falloc(p, &fp2, &fd);
 	if (error)
 		goto free3;
-	fp2->f_data = (caddr_t)so2;
+	fp2->f_data = so2;
 	sv[1] = fd;
 	error = soconnect2(so1, so2);
 	if (error)
@@ -522,9 +522,9 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 		 if (error)
 			goto free4;
 	}
+	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
 	fp1->f_flag = fp2->f_flag = FREAD|FWRITE;
 	fp1->f_ops = fp2->f_ops = &socketops;
-	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
 	fdrop(fp1, td);
 	fdrop(fp2, td);
 	return (error);
@@ -1741,10 +1741,10 @@ sctp_peeloff(struct sctp_peeloff_args *uap)
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);
 
-	nfp->f_data = (caddr_t)so;
+	nfp->f_type = DTYPE_SOCKET;
 	nfp->f_flag = fflag;
 	nfp->f_ops = &socketops;
-	nfp->f_type = DTYPE_SOCKET;
+	nfp->f_data = so;
 
 noconnection:
 	/*

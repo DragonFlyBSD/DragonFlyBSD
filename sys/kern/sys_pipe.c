@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.31 2005/07/13 01:38:50 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.32 2005/09/02 07:16:58 hsu Exp $
  */
 
 /*
@@ -261,10 +261,10 @@ pipe(struct pipe_args *uap)
 	 * to avoid races against processes which manage to dup() the read
 	 * side while we are blocked trying to allocate the write side.
 	 */
-	rf->f_flag = FREAD | FWRITE;
 	rf->f_type = DTYPE_PIPE;
-	rf->f_data = (caddr_t)rpipe;
+	rf->f_flag = FREAD | FWRITE;
 	rf->f_ops = &pipeops;
+	rf->f_data = rpipe;
 	error = falloc(p, &wf, &fd2);
 	if (error) {
 		if (fdp->fd_files[fd1].fp == rf) {
@@ -276,10 +276,10 @@ pipe(struct pipe_args *uap)
 		pipeclose(wpipe);
 		return (error);
 	}
-	wf->f_flag = FREAD | FWRITE;
 	wf->f_type = DTYPE_PIPE;
-	wf->f_data = (caddr_t)wpipe;
+	wf->f_flag = FREAD | FWRITE;
 	wf->f_ops = &pipeops;
+	wf->f_data = wpipe;
 	uap->sysmsg_fds[1] = fd2;
 
 	rpipe->pipe_peer = wpipe;

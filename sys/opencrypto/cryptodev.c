@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.11 2005/07/13 01:38:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.12 2005/09/02 07:16:58 hsu Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -730,10 +730,10 @@ cryptoioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			FREE(fcr, M_XDATA);
 			return (error);
 		}
-		f->f_flag = FREAD | FWRITE;
 		f->f_type = DTYPE_CRYPTO;
+		f->f_flag = FREAD | FWRITE;
 		f->f_ops = &cryptofops;
-		f->f_data = (caddr_t) fcr;
+		f->f_data = fcr;
 		*(u_int32_t *)data = fd;
 		fdrop(f, td);
 		break;

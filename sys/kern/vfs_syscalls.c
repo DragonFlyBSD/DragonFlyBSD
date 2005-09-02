@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.70 2005/08/25 18:34:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.71 2005/09/02 07:16:58 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -2880,7 +2880,7 @@ unionread:
 			struct vnode *tvp = vp;
 			vp = vp->v_mount->mnt_vnodecovered;
 			vref(vp);
-			fp->f_data = (caddr_t)vp;
+			fp->f_data = vp;
 			fp->f_offset = 0;
 			vrele(tvp);
 			goto unionread;
@@ -3150,10 +3150,10 @@ fhopen(struct fhopen_args *uap)
 		goto bad;
 	fp = nfp;
 
-	fp->f_data = (caddr_t)vp;
+	fp->f_type = DTYPE_VNODE;
 	fp->f_flag = fmode & FMASK;
 	fp->f_ops = &vnode_fileops;
-	fp->f_type = DTYPE_VNODE;
+	fp->f_data = vp;
 
 	error = VOP_OPEN(vp, fmode, p->p_ucred, fp, td);
 	if (error) {
