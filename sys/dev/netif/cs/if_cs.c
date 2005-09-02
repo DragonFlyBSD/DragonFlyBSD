@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.18 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.19 2005/09/02 08:14:36 sephe Exp $
  */
 
 /*
@@ -90,7 +90,7 @@ static void	cs_xmit_buf(struct cs_softc*);
 static int	cs_get_packet(struct cs_softc*);
 static void	cs_setmode(struct cs_softc*);
 
-static int	get_eeprom_data(struct cs_softc *sc, int, int, int *);
+static int	get_eeprom_data(device_t, int, int, int *);
 static int	get_eeprom_cksum(int, int, int *);
 static int	wait_eeprom_ready( struct cs_softc *);
 static void	control_dc_dc(struct cs_softc *, int );
@@ -105,12 +105,15 @@ devclass_t cs_devclass;
 DECLARE_DUMMY_MODULE(if_cs);
 
 static int
-get_eeprom_data( struct cs_softc *sc, int off, int len, int *buffer)
+get_eeprom_data(device_t dev, int off, int len, int *buffer)
 {
+	struct cs_softc *sc;
 	int i;
 
+	sc = device_get_softc(dev);
+
 #ifdef CS_DEBUG
-	printf(CS_NAME":EEPROM data from %x for %x:\n", off,len);
+	device_printf(dev, "EEPROM data from %x for %x:\n", off, len);
 #endif
 
 	for (i=0;i<len;i++) {
@@ -178,9 +181,8 @@ cs_duplex_auto(struct cs_softc *sc)
                     RE_NEG_NOW | ALLOW_FDX | AUTO_NEG_ENABLE );
         for (i=0; cs_readreg(sc->nic_addr,PP_AutoNegST)&AUTO_NEG_BUSY; i++) {
                 if (i > 40000) {
-                        printf("%s: full/half duplex "
-                               "auto negotiation timeout\n",
-                               sc->arpcom.ac_if.if_xname);
+			if_printf(&sc->arpcom.ac_if, "full/half duplex "
+				  "auto negotiation timeout\n");
 			error = ETIMEDOUT;
                         break;
                 }
@@ -198,8 +200,7 @@ enable_tp(struct cs_softc *sc)
 	DELAY( 150000 );
 
 	if ((cs_readreg(sc->nic_addr, PP_LineST) & LINK_OK)==0) {
-		printf("%s: failed to enable TP\n",
-		    sc->arpcom.ac_if.if_xname);
+		if_printf(&sc->arpcom.ac_if, "failed to enable TP\n");
                 return EINVAL;
 	}
 
@@ -268,8 +269,7 @@ enable_aui(struct cs_softc *sc)
 		(sc->line_ctl & ~AUTO_AUI_10BASET) | AUI_ONLY);
 
 	if (!send_test_pkt(sc)) {
-		printf("%s failed to enable AUI\n",
-		    sc->arpcom.ac_if.if_xname);
+		if_printf(&sc->arpcom.ac_if, "failed to enable AUI\n");
 		return EINVAL;
         }
         return 0;
@@ -286,7 +286,7 @@ enable_bnc(struct cs_softc *sc)
 		(sc->line_ctl & ~AUTO_AUI_10BASET) | AUI_ONLY);
 
 	if (!send_test_pkt(sc)) {
-		printf("%s failed to enable BNC\n", sc->arpcom.ac_if.if_xname);
+		if_printf(&sc->arpcom.ac_if, "failed to enable BNC\n");
 		return EINVAL;
         }
         return 0;
@@ -365,7 +365,8 @@ cs_cs89x0_probe(device_t dev)
 	if((cs_readreg(iobase, PP_SelfST) & EEPROM_PRESENT) == 0) {
 		device_printf(dev, "No EEPROM, assuming defaults.\n");
 	} else {
-		if (get_eeprom_data(sc,START_EEPROM_DATA,CHKSUM_LEN, eeprom_buff)<0) {
+		if (get_eeprom_data(dev, START_EEPROM_DATA, CHKSUM_LEN,
+				    eeprom_buff)<0) {
 			device_printf(dev, "EEPROM read failed, "
 				"assuming defaults.\n");
 		} else {
@@ -470,7 +471,7 @@ cs_cs89x0_probe(device_t dev)
         if (drq>0)
 		cs_writereg(iobase, pp_isadma, drq);
 	else {
-		printf("%s: incorrect drq\n", sc->arpcom.ac_if.if_xname);
+		device_printf(dev, "incorrect drq\n");
 		return 0;
 	}
         */
@@ -587,10 +588,10 @@ cs_attach(device_t dev)
         int media=0;
 	struct ifnet *ifp = &(sc->arpcom.ac_if);
 
-	cs_stop( sc );
+	cs_stop(sc);
 
 	ifp->if_softc=sc;
-	if_initname(ifp, "cs", device_get_unit(dev));
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_start=cs_start;
 	ifp->if_ioctl=cs_ioctl;
 	ifp->if_watchdog=cs_watchdog;
@@ -662,7 +663,7 @@ cs_attach(device_t dev)
 	case A_CNF_MEDIA_10B_T: media = IFM_ETHER|IFM_10_T; break;
 	case A_CNF_MEDIA_10B_2: media = IFM_ETHER|IFM_10_2; break;
 	case A_CNF_MEDIA_AUI:   media = IFM_ETHER|IFM_10_5; break;
-	default: printf("%s: adapter has no media\n", ifp->if_xname);
+	default: device_printf(dev, "adapter has no media\n");
 	}
 	ifmedia_set(&sc->media, media);
 	cs_mediaset(sc, media);
@@ -773,13 +774,12 @@ cs_get_packet(struct cs_softc *sc)
 	length = inw(iobase + RX_FRAME_PORT);
 
 #ifdef CS_DEBUG
-	printf("%s: rcvd: stat %x, len %d\n",
-		ifp->if_xname, status, length);
+	if_printf(ifp, "rcvd: stat %x, len %d\n", status, length);
 #endif
 
 	if (!(status & RX_OK)) {
 #ifdef CS_DEBUG
-		printf"%s: bad pkt stat %x\n", ifp->if_xname, status);
+		if_printf(ifp, "bad pkt stat %x\n", status);
 #endif
 		ifp->if_ierrors++;
 		return -1;
@@ -837,13 +837,13 @@ csintr(void *arg)
 	int status;
 
 #ifdef CS_DEBUG
-	printf("%s: Interrupt.\n", ifp->xname);
+	if_printf(ifp, "Interrupt.\n");
 #endif
 
 	while ((status=cs_readword(sc->nic_addr, ISQ_PORT))) {
 
 #ifdef CS_DEBUG
-		printf("%s:from ISQ: %04x\n", ifp->if_xname, status );
+		if_printf(ifp, "from ISQ: %04x\n", status);
 #endif
 
 		switch (status & ISQ_EVENT_MASK) {
@@ -1077,7 +1077,7 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 	int error=0;
 
 #ifdef CS_DEBUG
-	printf("%s: ioctl(%lx)\n",sc->arpcom.ac_if.if_xname, command);
+	if_printf(ifp, "ioctl(%lx)\n", command);
 #endif
 
 	crit_enter();
@@ -1207,7 +1207,7 @@ cs_mediaset(struct cs_softc *sc, int media)
 		    ~(SERIAL_RX_ON | SERIAL_TX_ON));
 
 #ifdef CS_DEBUG
-	printf("%s: cs_setmedia(%x)\n",sc->arpcom.ac_if.if_xname, media);
+	if_printf(&sc->arpcom.ac_if, "cs_setmedia(%x)\n", media);
 #endif
 
 	switch (IFM_SUBTYPE(media)) {

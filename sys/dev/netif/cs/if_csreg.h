@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_csreg.h,v 1.3.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_csreg.h,v 1.3 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_csreg.h,v 1.4 2005/09/02 08:14:36 sephe Exp $
  */
 
 #define CS_89x0_IO_PORTS	0x0020
@@ -515,9 +515,6 @@
 #define	CS_DUPLEX_AUTO		0
 #define CS_DUPLEX_FULL		1
 #define CS_DUPLEX_HALF		2
-
-/* Device name */
-#define CS_NAME			"cs"
 
 #define cs_readreg(iobase, portno) \
 	(outw((iobase) + ADD_PORT, (portno)), \
