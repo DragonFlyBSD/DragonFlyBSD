@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.19 2005/09/02 08:14:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.20 2005/09/02 12:51:00 sephe Exp $
  */
 
 /*
@@ -80,6 +80,7 @@ static void	cs_start(struct ifnet *);
 static void	cs_stop(struct cs_softc *);
 static void	cs_reset(struct cs_softc *);
 static void	cs_watchdog(struct ifnet *);
+static void	csintr(void *);
 
 static int	cs_mediachange(struct ifnet *);
 static void	cs_mediastatus(struct ifnet *, struct ifmediareq *);
@@ -585,8 +586,27 @@ int
 cs_attach(device_t dev)
 {
         struct cs_softc *sc = device_get_softc(dev);
-        int media=0;
+        int media = 0, error;
 	struct ifnet *ifp = &(sc->arpcom.ac_if);
+
+	/*
+	 * Initialize the media structures.
+	 */
+	ifmedia_init(&sc->media, 0, cs_mediachange, cs_mediastatus);
+
+	KASSERT(sc->port_used > 0 || sc->mem_used > 0,
+		("%s: either I/O port or I/O memory should be used",
+		 device_get_nameunit(dev)));
+	if (sc->port_used > 0)
+		cs_alloc_port(dev, sc->port_rid, sc->port_used);
+	if (sc->mem_used > 0)
+		cs_alloc_memory(dev, sc->mem_rid, sc->mem_used);
+
+	error = cs_alloc_irq(dev, sc->irq_rid, 0);
+	if (error) {
+		device_printf(dev, "Couldn't allocate irq");
+		goto bad;
+	}
 
 	cs_stop(sc);
 
@@ -598,45 +618,28 @@ cs_attach(device_t dev)
 	ifp->if_init=cs_init;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
+
+#if 0
 	/*
 	 *  MIB DATA
 	 */
-	/*
-	 * XXX: Ugly comments here
-	 *
-	 
 	ifp->if_linkmib=&sc->mibdata;
 	ifp->if_linkmiblen=sizeof sc->mibdata;
-	 */
+#endif
 
 	ifp->if_flags=(IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST );
 
+#if 0
 	/*
 	 * this code still in progress (DMA support)
-	 *
-
+	 */
 	sc->recv_ring=malloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_WAITOK);
-	if (sc->recv_ring == NULL) {
-		log(LOG_ERR,
-		    "%s: Couldn't allocate memory for NIC\n", ifp->if_xname);
-		return(0);
-	}
 	if ((sc->recv_ring-(sc->recv_ring & 0x1FFFF))
 	    < (128*1024-CS_DMA_BUFFER_SIZE))
 	    sc->recv_ring+=16*1024;
-	 */
+#endif
 
 	sc->buffer=malloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_WAITOK);
-	if (sc->buffer == NULL) {
-		printf("%s: Couldn't allocate memory for NIC\n",
-		    ifp->if_xname);
-		return(0);
-	}
-
-	/*
-	 * Initialize the media structures.
-	 */
-	ifmedia_init(&sc->media, 0, cs_mediachange, cs_mediastatus);
 
 	if (sc->adapter_cnf & A_CNF_10B_T) {
 		ifmedia_add(&sc->media, IFM_ETHER|IFM_10_T, 0, NULL);
@@ -670,7 +673,54 @@ cs_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
-	return (0);
+	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+			       csintr, sc, &sc->irq_handle, NULL);
+	if (error) {
+		device_printf(dev, "Couldn't set up irq");
+		ether_ifdetach(ifp);
+		goto bad;
+	}
+
+	return 0;
+
+bad:
+	cs_detach(dev);
+	return error;
+}
+
+int
+cs_detach(device_t dev)
+{
+	struct cs_softc *sc = device_get_softc(dev);
+
+	crit_enter();
+
+	if (device_is_attached(dev)) {
+		cs_stop(sc);
+		ether_ifdetach(&sc->arpcom.ac_if);
+	}
+
+	if (sc->irq_handle != NULL)
+		bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
+
+	crit_exit();
+
+#if 0
+	/*
+	 * this code still in progress (DMA support)
+	 */
+	if (sc->recv_ring != NULL)
+		free(sc->recv_ring, M_DEVBUF);
+#endif
+
+	if (sc->buffer != NULL)
+		free(sc->buffer, M_DEVBUF);
+
+	cs_release_resources(dev);
+
+	ifmedia_removeall(&sc->media);
+
+	return 0;
 }
 
 /*
@@ -829,7 +879,7 @@ cs_get_packet(struct cs_softc *sc)
 /*
  * Handle interrupts
  */
-void
+static void
 csintr(void *arg)
 {
 	struct cs_softc *sc = (struct cs_softc*) arg;

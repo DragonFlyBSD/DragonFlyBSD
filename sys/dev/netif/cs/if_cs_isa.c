@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_isa.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.6 2005/09/02 09:43:01 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.7 2005/09/02 12:51:00 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,6 @@
 #include "if_csvar.h"
 
 static int		cs_isa_probe	(device_t);
-static int		cs_isa_attach	(device_t);
 
 static struct isa_pnp_id cs_ids[] = {
 	{ 0x4060630e, NULL },		/* CSC6040 */
@@ -78,35 +77,11 @@ cs_isa_probe(device_t dev)
         return (error);
 }
 
-static int
-cs_isa_attach(device_t dev)
-{
-        struct cs_softc *sc = device_get_softc(dev);
-        int error;
-        
-        if (sc->port_used > 0)
-                cs_alloc_port(dev, sc->port_rid, sc->port_used);
-        if (sc->mem_used)
-                cs_alloc_memory(dev, sc->mem_rid, sc->mem_used);
-        cs_alloc_irq(dev, sc->irq_rid, 0);
-                
-        error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
-			       csintr, sc, &sc->irq_handle, NULL);
-        if (error) {
-                cs_release_resources(dev);
-                return (error);
-        }              
-
-        return (cs_attach(dev));
-}
-
 static device_method_t cs_isa_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		cs_isa_probe),
-	DEVMETHOD(device_attach,	cs_isa_attach),
-#ifdef CS_HAS_DETACH
+	DEVMETHOD(device_attach,	cs_attach),
 	DEVMETHOD(device_detach,	cs_detach),
-#endif
 
 	{ 0, 0 }
 };
