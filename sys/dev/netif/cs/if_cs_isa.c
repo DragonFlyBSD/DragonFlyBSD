@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_isa.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.5 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.6 2005/09/02 09:43:01 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -67,15 +67,10 @@ cs_isa_probe(device_t dev)
 	error = ISA_PNP_PROBE(device_get_parent(dev), dev, cs_ids);
 
 	/* If the card had a PnP ID that didn't match any we know about */
-	if (error == ENXIO)
-                goto end;
-
-        /* If we had some other problem. */
         if (!(error == 0 || error == ENOENT))
-                goto end;
+		return error;
 
 	error = cs_cs89x0_probe(dev);
-end:
 	if (error == 0)
                 error = cs_alloc_irq(dev, 0, 0);
 
