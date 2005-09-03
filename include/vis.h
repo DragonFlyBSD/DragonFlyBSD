@@ -31,15 +31,18 @@
  * SUCH DAMAGE.
  *
  *	@(#)vis.h	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/include/vis.h,v 1.6.2.1 2000/08/17 08:25:53 jhb Exp $
- * $DragonFly: src/include/vis.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $FreeBSD: src/include/vis.h,v 1.11 2003/10/30 10:40:49 phk Exp $
+ * $DragonFly: src/include/vis.h,v 1.5 2005/09/03 15:29:02 joerg Exp $
  */
 
 #ifndef _VIS_H_
 #define	_VIS_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
+
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
+typedef __size_t	size_t;
 #endif
 
 /*
@@ -63,6 +66,7 @@
  */
 #define	VIS_NOSLASH	0x40	/* inhibit printing '\' */
 #define	VIS_HTTPSTYLE	0x80	/* http-style escape % HEX HEX */
+#define	VIS_GLOB	0x100	/* encode glob(3) magics */
 
 /*
  * unvis return codes
@@ -81,11 +85,12 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-char	*vis (char *, int, int, int);
-int	strvis (char *, const char *, int);
-int	strvisx (char *, const char *, __size_t, int);
-int	strunvis (char *, const char *);
-int	unvis (char *, int, int *, int);
+char	*vis(char *, int, int, int);
+int	strvis(char *, const char *, int);
+int	strvisx(char *, const char *, size_t, int);
+int	strunvis(char *, const char *);
+int	strunvisx(char *, const char *, int);
+int	unvis(char *, int, int *, int);
 __END_DECLS
 
 #endif /* !_VIS_H_ */

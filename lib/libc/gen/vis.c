@@ -30,10 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/vis.c,v 1.5.8.2 2001/03/05 09:44:34 obrien Exp $
- * $DragonFly: src/lib/libc/gen/vis.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
- *
- * @(#)vis.c	8.1 (Berkeley) 7/19/93
+ * $FreeBSD: src/lib/libc/gen/vis.c,v 1.13 2003/10/30 12:41:50 phk Exp $
+ * $DragonFly: src/lib/libc/gen/vis.c,v 1.4 2005/09/03 15:29:02 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -70,7 +68,10 @@ vis(dst, c, flag, nextc)
 		}
 	}
 
-	if (isgraph(c) ||
+	if ((flag & VIS_GLOB) &&
+	    (c == '*' || c == '?' || c == '[' || c == '#'))
+		;
+	else if (isgraph(c) ||
 	   ((flag & VIS_SP) == 0 && c == ' ') ||
 	   ((flag & VIS_TAB) == 0 && c == '\t') ||
 	   ((flag & VIS_NL) == 0 && c == '\n') ||
@@ -96,11 +97,7 @@ vis(dst, c, flag, nextc)
 			*dst++ = '\\';
 			*dst++ = 'b';
 			goto done;
-#if __STDC__
 		case '\a':
-#else
-		case '\007':
-#endif
 			*dst++ = '\\';
 			*dst++ = 'a';
 			goto done;
@@ -130,7 +127,7 @@ vis(dst, c, flag, nextc)
 			goto done;
 		}
 	}
-	if (((c & 0177) == ' ') || (flag & VIS_OCTAL)) {
+	if (((c & 0177) == ' ') || isgraph(c) || (flag & VIS_OCTAL)) {
 		*dst++ = '\\';
 		*dst++ = ((u_char)c >> 6 & 07) + '0';
 		*dst++ = ((u_char)c >> 3 & 07) + '0';
@@ -162,7 +159,7 @@ done:
  * strvis, strvisx - visually encode characters from src into dst
  *
  *	Dst must be 4 times the size of src to account for possible
- *	expansion.  The length of dst, not including the trailing NULL,
+ *	expansion.  The length of dst, not including the trailing NUL,
  *	is returned.
  *
  *	Strvisx encodes exactly len bytes from src into dst.
