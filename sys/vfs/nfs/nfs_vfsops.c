@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.29 2005/09/03 17:56:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.30 2005/09/03 23:43:59 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -445,56 +445,45 @@ nfs_mountroot(mp)
 	while (mycpu->gd_time_seconds == 0)
 		tsleep(mycpu, 0, "arpkludge", 10);
 
-	if (nfs_diskless_valid==1) 
+	/*
+	 * The boot code may have passed us a diskless structure.
+	 */
+	if (nfs_diskless_valid == 1) 
 		nfs_convert_diskless();
 
-	printf("nfs_mountroot: interface %s ip %s\n",
-		nd->myif.ifra_name, inet_ntoa(((struct sockaddr_in *)&nd->myif.ifra_addr)->sin_addr));
+#define SINP(sockaddr)	((struct sockaddr_in *)(sockaddr))
+	printf("nfs_mountroot: interface %s ip %s",
+		nd->myif.ifra_name, 
+		inet_ntoa(SINP(&nd->myif.ifra_addr)->sin_addr));
+	printf(" bcast %s", 
+		inet_ntoa(SINP(&nd->myif.ifra_broadaddr)->sin_addr));
+	printf(" mask %s\n", 
+		inet_ntoa(SINP(&nd->myif.ifra_mask)->sin_addr));
+#undef SINP
 
 	/*
 	 * XXX splnet, so networks will receive...
 	 */
 	crit_enter();
 
-#ifdef notyet
-	/* Set up swap credentials. */
-	proc0.p_ucred->cr_uid = ntohl(nd->swap_ucred.cr_uid);
-	proc0.p_ucred->cr_gid = ntohl(nd->swap_ucred.cr_gid);
-	if ((proc0.p_ucred->cr_ngroups = ntohs(nd->swap_ucred.cr_ngroups)) >
-		NGROUPS)
-		proc0.p_ucred->cr_ngroups = NGROUPS;
-	for (i = 0; i < proc0.p_ucred->cr_ngroups; i++)
-	    proc0.p_ucred->cr_groups[i] = ntohl(nd->swap_ucred.cr_groups[i]);
-#endif
-
 	/*
-	 * Do enough of ifconfig(8) so that the critical net interface can
-	 * talk to the server.
+	 * BOOTP does not necessarily have to be compiled into the kernel
+	 * for an NFS root to work.  If we inherited the network 
+	 * configuration for PXEBOOT then pxe_setup_nfsdiskless() has figured
+	 * out our interface for us and all we need to do is ifconfig the
+	 * interface.  We only do this if the interface has not already been
+	 * ifconfig'd by e.g. BOOTP.
 	 */
 	error = socreate(nd->myif.ifra_addr.sa_family, &so, SOCK_DGRAM, 0, td);
-	if (error)
+	if (error) {
 		panic("nfs_mountroot: socreate(%04x): %d",
 			nd->myif.ifra_addr.sa_family, error);
-
-#if 0 /* XXX Bad idea */
-	/*
-	 * We might not have been told the right interface, so we pass
-	 * over the first ten interfaces of the same kind, until we get
-	 * one of them configured.
-	 */
-
-	for (i = strlen(nd->myif.ifra_name) - 1;
-		nd->myif.ifra_name[i] >= '0' &&
-		nd->myif.ifra_name[i] <= '9';
-		nd->myif.ifra_name[i] ++) {
-		error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, td);
-		if(!error)
-			break;
 	}
-#endif
+
 	error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, td);
 	if (error)
 		panic("nfs_mountroot: SIOCAIFADDR: %d", error);
+
 	soclose(so);
 
 	/*
