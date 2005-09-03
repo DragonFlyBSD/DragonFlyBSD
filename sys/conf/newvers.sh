@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.14 2005/06/08 22:14:37 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.15 2005/09/03 11:45:01 corecode Exp $
 
 tag="\$Name:  $"
 
@@ -58,6 +58,10 @@ fi
 if [ "X${BRANCH}" = "XHEAD" ]; then
     BRANCH="DEVELOPMENT_1_3"
 fi
+if [ "X${BRANCH}" = "XPreview" ]; then
+    BRANCH="PREVIEW_1_3"
+    SHORTTAG="DEVELOPMENT_1_3"
+fi
 
 # This case occurs if the $Name:  $ field has not been expanded.
 #
@@ -69,7 +73,9 @@ TYPE="DragonFly"
 
 # The SHORTTAG is inclusive of the BLAH_X_Y version (if any)
 #
-SHORTTAG=${BRANCH}
+if [ -z "${SHORTTAG}" ]; then
+    SHORTTAG=${BRANCH}
+fi
 
 # Figure out the revision and subversion, if any.  If the tag is in 
 # the form NAME_X_Y the revision is extracted from X and Y and the branch
