@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/pxe.c,v 1.20 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/pxe.c,v 1.5 2004/08/20 00:47:37 joerg Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/pxe.c,v 1.6 2005/09/03 22:16:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -296,8 +296,9 @@ pxe_open(struct open_file *f, ...)
 			bcopy(&rootpath[i], &temp[0], strlen(&rootpath[i])+1);
 			bcopy(&temp[0], &rootpath[0], strlen(&rootpath[i])+1);
 		}
-		printf("pxe_open: server addr: %s\n", inet_ntoa(rootip));
-		printf("pxe_open: server path: %s\n", rootpath);
+		printf("pxe_open: ip address : %s\n", inet_ntoa(myip));
+		printf("pxe_open: ip netmask : %s\n", intoa(netmask));
+		printf("pxe_open: nfs root mount: %s:%s\n", inet_ntoa(rootip), rootpath);
 		printf("pxe_open: gateway ip:  %s\n", inet_ntoa(gateip));
 
 		setenv("boot.netif.ip", inet_ntoa(myip), 1);
