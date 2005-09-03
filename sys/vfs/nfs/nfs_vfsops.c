@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.28 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.29 2005/09/03 17:56:24 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -446,7 +446,10 @@ nfs_mountroot(mp)
 		tsleep(mycpu, 0, "arpkludge", 10);
 
 	if (nfs_diskless_valid==1) 
-	  nfs_convert_diskless();
+		nfs_convert_diskless();
+
+	printf("nfs_mountroot: interface %s ip %s\n",
+		nd->myif.ifra_name, inet_ntoa(((struct sockaddr_in *)&nd->myif.ifra_addr)->sin_addr));
 
 	/*
 	 * XXX splnet, so networks will receive...
@@ -504,12 +507,14 @@ nfs_mountroot(mp)
 		sin = mask;
 		sin.sin_family = AF_INET;
 		sin.sin_len = sizeof(sin);
+		printf("nfs_mountroot: gateway %s\n",
+			inet_ntoa(nd->mygateway.sin_addr));
 		error = rtrequest(RTM_ADD, (struct sockaddr *)&sin,
 		    (struct sockaddr *)&nd->mygateway,
 		    (struct sockaddr *)&mask,
 		    RTF_UP | RTF_GATEWAY, (struct rtentry **)0);
 		if (error)
-			panic("nfs_mountroot: RTM_ADD: %d", error);
+			printf("nfs_mountroot: unable to set gateway, error %d, continuing anyway\n", error);
 	}
 
 	/*
@@ -528,6 +533,7 @@ nfs_mountroot(mp)
 			mp->mnt_vfc->vfc_refcount--;
 			free(swap_mp, M_MOUNT);
 		}
+		crit_exit();
 		return (error);
 	}
 
@@ -549,8 +555,10 @@ nfs_mountroot(mp)
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		printf("NFS SWAP: %s\n",buf);
 		if ((error = nfs_mountdiskless(buf, "/swap", 0,
-		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0)
+		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0) {
+			crit_exit();
 			return (error);
+		}
 		vfs_unbusy(swap_mp, td);
 
 		VTONFS(vp)->n_size = VTONFS(vp)->n_vattr.va_size = 
@@ -581,6 +589,7 @@ nfs_mountroot(mp)
 		if (hostname[i] == '\0')
 			break;
 	inittodr(ntohl(nd->root_time));
+	crit_exit();
 	return (0);
 }
 
