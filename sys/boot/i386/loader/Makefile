@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.10 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.11 2005/09/03 23:52:49 dillon Exp $
 #
 
 PROG=		loader
@@ -21,11 +21,8 @@ SRCS=		main.c conf.c
 
 CFLAGS+=	-ffreestanding
 # Enable PXE TFTP or NFS support, not both.
-.if defined(LOADER_TFTP_SUPPORT)
-CFLAGS+=	-DLOADER_TFTP_SUPPORT
-.else
+#CFLAGS+=	-DLOADER_TFTP_SUPPORT
 CFLAGS+=	-DLOADER_NFS_SUPPORT
-.endif
 
 # Enable PnP and ISA-PnP code.
 HAVE_PNP=	yes

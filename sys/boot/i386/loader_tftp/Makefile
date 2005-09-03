@@ -1,8 +1,9 @@
-# $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/loader/Makefile,v 1.11 2005/09/03 23:52:49 dillon Exp $
+# Works like the normal loader except the kernel, modules, and other loader
+# files are loaded via TFTP instead of NFS.
 #
+# $DragonFly: src/sys/boot/i386/loader_tftp/Attic/Makefile,v 1.1 2005/09/03 23:52:50 dillon Exp $
 
-PROG=		loader
+PROG=		loader_tftp
 STRIP=
 NEWVERSWHAT=	"bootstrap loader" i386
 BINDIR?=	/boot
@@ -16,13 +17,13 @@ INSTALLFLAGS=	-b
 #
 ORG= 0x0
 
+.PATH:		${.CURDIR}/../loader
 # architecture-specific loader code
 SRCS=		main.c conf.c
 
 CFLAGS+=	-ffreestanding
-# Enable PXE TFTP or NFS support, not both.
-#CFLAGS+=	-DLOADER_TFTP_SUPPORT
-CFLAGS+=	-DLOADER_NFS_SUPPORT
+CFLAGS+=	-DLOADER_TFTP_SUPPORT
+#CFLAGS+=	-DLOADER_NFS_SUPPORT
 
 # Enable PnP and ISA-PnP code.
 HAVE_PNP=	yes

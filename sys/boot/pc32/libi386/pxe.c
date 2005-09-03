@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/pxe.c,v 1.20 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/pxe.c,v 1.6 2005/09/03 22:16:24 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/pxe.c,v 1.7 2005/09/03 23:52:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -286,9 +286,10 @@ pxe_open(struct open_file *f, ...)
 		if (!rootpath[1])
 			strcpy(rootpath, PXENFSROOTPATH);
 
-		for (i = 0; rootpath[i] != '\0' && i < FNAME_SIZE; i++)
+		for (i = 0; rootpath[i] != '\0' && i < FNAME_SIZE; i++) {
 			if (rootpath[i] == ':')
 				break;
+		}
 		if (i && i != FNAME_SIZE && rootpath[i] == ':') {
 			rootpath[i++] = '\0';
 			if (inet_addr(&rootpath[0]) != INADDR_NONE)
@@ -406,7 +407,10 @@ pxe_perror(int err)
 
 /*
  * Reach inside the libstand NFS code and dig out an NFS handle
- * for the root filesystem.
+ * for the root filesystem.  If there is no nfs handle but a NFS root
+ * path was dynamically requested (not just as a default), then try
+ * to get the handle.  This occurs if we are compiled for TFTP operation
+ * but still want to pass an NFS root to the kernel.
  */
 struct nfs_iodesc {
 	struct	iodesc	*iodesc;
@@ -424,12 +428,23 @@ pxe_setnfshandle(char *rootpath)
 	char	buf[2 * NFS_FHSIZE + 3], *cp;
 
 	fh = &nfs_root_node.fh[0];
-	buf[0] = 'X';
-	cp = &buf[1];
-	for (i = 0; i < NFS_FHSIZE; i++, cp += 2)
-		sprintf(cp, "%02x", fh[i]);
-	sprintf(cp, "X");
-	setenv("boot.nfsroot.nfshandle", buf, 1);
+
+	/*
+	 * If no file handle exists but a root path was dynamically
+	 * requested, try to get a good handle.
+	 */
+	for (i = 0; i < NFS_FHSIZE; ++i) {
+		if (fh[i])
+			break;
+	}
+	if (i != NFS_FHSIZE) {
+		buf[0] = 'X';
+		cp = &buf[1];
+		for (i = 0; i < NFS_FHSIZE; i++, cp += 2)
+			sprintf(cp, "%02x", fh[i]);
+		sprintf(cp, "X");
+		setenv("boot.nfsroot.nfshandle", buf, 1);
+	}
 }
 
 void

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/conf.c,v 1.24 2003/08/25 23:28:32 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/loader/conf.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/conf.c,v 1.4 2005/09/03 23:52:49 dillon Exp $
  */
 
 #include <stand.h>
@@ -41,10 +41,6 @@
  *
  * XXX as libi386 and biosboot merge, some of these can become linker sets.
  */
-
-#if defined(LOADER_NFS_SUPPORT) && defined(LOADER_TFTP_SUPPORT)
-#error "Cannot have both tftp and nfs support yet."
-#endif
 
 /* Exported for libstand */
 struct devsw *devsw[] = {
@@ -68,11 +64,11 @@ struct fs_ops *file_system[] = {
 #ifdef LOADER_BZIP2_SUPPORT
     &bzipfs_fsops,
 #endif
-#ifdef LOADER_NFS_SUPPORT 
-    &nfs_fsops,
-#endif
 #ifdef LOADER_TFTP_SUPPORT
     &tftp_fsops,
+#endif
+#ifdef LOADER_NFS_SUPPORT 
+    &nfs_fsops,
 #endif
     NULL
 };

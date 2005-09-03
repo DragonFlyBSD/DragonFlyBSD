@@ -23,16 +23,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/i386/pxeldr/pxeboot.8,v 1.7 2002/12/12 17:25:59 ru Exp $
-.\" $DragonFly: src/sys/boot/pc32/pxeldr/pxeboot.8,v 1.4 2005/09/03 23:52:51 dillon Exp $
+.\" $DragonFly: src/sys/boot/pc32/pxeldr_tftp/pxeboot_tftp.8,v 1.1 2005/09/03 23:52:53 dillon Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
 .Dd May 1, 2000
-.Dt PXEBOOT 8
+.Dt PXEBOOT_TFTP 8
 .Os
 .Sh NAME
-.Nm pxeboot
-.Nd Preboot Execution Environment (PXE) bootloader
+.Nm pxeboot_tftp
+.Nd Preboot Execution Environment (PXE) bootloader using TFTP
 .Sh DESCRIPTION
 The
 .Nm
@@ -44,8 +44,7 @@ PXE is a form of smart boot ROM, built into Intel EtherExpress Pro/100 and
 PXE supports DHCP configuration and provides low-level NIC access services.
 The
 .Nm
-bootloader retrieves the kernel, modules,
-and other files either via NFS over UDP.
+bootloader retrieves the kernel, modules, and other files via TFTP.
 In combination with a NFS-mounted root file system,
 .Nm
 allows for easy,
@@ -69,7 +68,7 @@ default-lease-time 120;
 max-lease-time 120;
 
 subnet 10.0.0.0 netmask 255.255.255.0 {
-       filename "pxeboot";
+       filename "pxeboot_tftp";
        range 10.0.0.10 10.0.0.254;
 }
 
@@ -106,7 +105,7 @@ Management (WfM) systems, see
 .Li http://developer.intel.com/ial/wfm/ .
 .Sh SEE ALSO
 .Xr loader 8 ,
-.Xr pxeldr_tftp 8 
+.Xr pxeldr 8
 .Sh HISTORY
 The
 .Nm
