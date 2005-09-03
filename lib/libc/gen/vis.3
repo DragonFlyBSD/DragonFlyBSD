@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)vis.3	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/gen/vis.3,v 1.27 2005/01/15 11:40:33 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/vis.3,v 1.3 2005/09/03 15:29:02 joerg Exp $
+.\" $DragonFly: src/lib/libc/gen/vis.3,v 1.4 2005/09/03 16:25:42 joerg Exp $
 .\"
 .Dd March 21, 2004
 .Dt VIS 3
@@ -47,6 +47,8 @@
 .Fn vis "char *dst" "int c" "int flag" "int nextc"
 .Ft int
 .Fn strvis "char *dst" "const char *src" "int flag"
+.Ft int
+.Fn strnvis "char *dst" "const char *src" "size_t len" "int flag"
 .Ft int
 .Fn strvisx "char *dst" "const char *src" "size_t len" "int flag"
 .Sh DESCRIPTION
@@ -82,7 +84,8 @@ is only used when selecting the
 encoding format (explained below).
 .Pp
 The
-.Fn strvis
+.Fn strvis ,
+.Fn strnvis
 and
 .Fn strvisx
 functions copy into
@@ -96,6 +99,16 @@ function encodes characters from
 .Fa src
 up to the
 first
+.Dv NUL .
+The
+.Fn strnvis
+function works like
+.Fn strvis ,
+but writes at most
+.Fa len - 1
+characters to
+.Fa dst
+and terminates the string with
 .Dv NUL .
 The
 .Fn strvisx

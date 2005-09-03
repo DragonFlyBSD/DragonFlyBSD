@@ -31,13 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/vis.c,v 1.13 2003/10/30 12:41:50 phk Exp $
- * $DragonFly: src/lib/libc/gen/vis.c,v 1.4 2005/09/03 15:29:02 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/vis.c,v 1.5 2005/09/03 16:25:42 joerg Exp $
  */
 
 #include <sys/types.h>
-#include <limits.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <vis.h>
 
 #define	isoctal(c)	(((u_char)(c)) >= '0' && ((u_char)(c)) <= '7')
@@ -177,6 +178,35 @@ strvis(dst, src, flag)
 	for (start = dst; (c = *src); )
 		dst = vis(dst, c, flag, *++src);
 	*dst = '\0';
+	return (dst - start);
+}
+
+int
+strnvis(char *dst, const char *src, size_t len, int flag)
+{
+	char *start, *end;
+	char buf[5];
+	int c, i;
+
+	i = 0;
+	start = dst;
+	end = start + len -1;
+	for (; (c = *src) != '\0';) {
+		i = vis(buf, c, flag, *++src) - buf;
+		if (start + i > end) {
+			--src;
+			break;
+		}
+		memcpy(dst, buf, i);
+	        dst += i;
+	}
+        if (len > 0)
+		*dst = '\0';
+	if (dst + i > end) {
+		/* adjust return value for truncation */
+		while ((c = *src) != '\0')
+			dst += vis(buf, c, flag, *++src) - buf;
+	}
 	return (dst - start);
 }
 
