@@ -1,7 +1,7 @@
 # Works like the normal loader except the kernel, modules, and other loader
 # files are loaded via TFTP instead of NFS.
 #
-# $DragonFly: src/sys/boot/pc32/loader_tftp/Makefile,v 1.1 2005/09/03 23:52:50 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/loader_tftp/Makefile,v 1.2 2005/09/04 12:20:46 swildner Exp $
 
 PROG=		loader_tftp
 STRIP=
@@ -115,7 +115,7 @@ FILESDIR_loader.conf=	/boot/defaults
 FILESDIR_loader-bootp.conf=	/boot/defaults
 
 .if !exists(${DESTDIR}/boot/loader.rc)
-FILES+=	${.CURDIR}/loader.rc
+FILES+=	${.CURDIR}/../loader/loader.rc
 .endif
 
 .include "../Makefile.inc"
