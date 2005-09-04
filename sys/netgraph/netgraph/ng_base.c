@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.17 2005/08/30 14:22:05 y0netan1 Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.18 2005/09/04 06:58:24 y0netan1 Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -57,6 +57,7 @@
 #include <sys/mbuf.h>
 #include <sys/ctype.h>
 #include <sys/sysctl.h>
+#include <sys/vnode.h>
 #include <machine/limits.h>
 
 #include <sys/thread2.h>
@@ -305,14 +306,28 @@ static const struct ng_cmdlist ng_generic_cmds[] = {
 ************************************************************************/
 
 static int
+linker_api_available(void)
+{
+	/* linker_* API won't work without a process context */
+	if (curproc == NULL)
+		return 0;
+	/*
+	 * nlookup_init() relies on namei_zone to be initialized,
+	 * but it's not when the netgraph module is loaded during boot.
+	 */
+	if (namei_zone == NULL)
+		return 0;
+	return 1;
+}
+
+static int
 ng_load_module(const char *name)
 {
 	char *path, filename[NG_TYPELEN + 4];
 	linker_file_t lf;
 	int error;
 
-	/* linker_* API won't work without a process context */
-	if (curproc == NULL)
+	if (!linker_api_available())
 		return (ENXIO);
 
 	/* Not found, try to load it as a loadable module */
@@ -333,8 +348,7 @@ ng_unload_module(const char *name)
 	linker_file_t lf;
 	int error;
 
-	/* linker_* API won't work without a process context */
-	if (curproc == NULL)
+	if (!linker_api_available())
 		return (ENXIO);
 
 	/* Not found, try to load it as a loadable module */
