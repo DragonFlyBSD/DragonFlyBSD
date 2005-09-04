@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.31 2005/09/04 01:29:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.32 2005/09/04 04:06:28 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -642,7 +642,9 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 #endif
 
 	if ((error = mountnfs(args, mp, nam, which, path, vpp)) != 0) {
+#if defined(BOOTP) || defined(NFS_ROOT)
 haderror:
+#endif
 		printf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp, td);
