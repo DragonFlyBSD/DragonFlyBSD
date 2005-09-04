@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.14 2005/09/04 04:46:12 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.15 2005/09/04 05:16:59 dillon Exp $
  */
 
 /*
@@ -54,15 +54,11 @@
  * TODO:
  * 1) hold off explorations by companion controllers until ehci has started.
  *
- * 2) The EHCI driver lacks support for interrupt isochronous transfers, so
+ * 2) The EHCI driver lacks support for isochronous transfers, so
  *    devices using them don't work.
- *    Interrupt transfers are not difficult, it's just not done.
  *
- * 3) The meaty part to implement is the support for USB 2.0 hubs.
- *    They are quite compolicated since the need to be able to do
- *    "transaction translation", i.e., converting to/from USB 2 and USB 1.
- *    So the hub driver needs to handle and schedule these things, to
- *    assign place in frame where different devices get to go. See chapter
+ * 3) The hub driver needs to handle and schedule the transaction translator,
+ *    to assign place in frame where different devices get to go. See chapter
  *    on hubs in USB 2.0 for details.
  *
  * 4) command failures are not recovered correctly
@@ -337,6 +333,7 @@ ehci_init(ehci_softc_t *sc)
 	u_int i;
 	usbd_status err;
 	ehci_soft_qh_t *sqh;
+	u_int ncomp;
 
 	DPRINTF(("ehci_init: start\n"));
 #ifdef USB_DEBUG
@@ -352,11 +349,13 @@ ehci_init(ehci_softc_t *sc)
 	sparams = EREAD4(sc, EHCI_HCSPARAMS);
 	DPRINTF(("ehci_init: sparams=0x%x\n", sparams));
 	sc->sc_npcomp = EHCI_HCS_N_PCC(sparams);
-	if (EHCI_HCS_N_CC(sparams) != sc->sc_ncomp) {
+	ncomp = EHCI_HCS_N_CC(sparams);
+	if (ncomp != sc->sc_ncomp) {
 		printf("%s: wrong number of companions (%d != %d)\n",
 		       USBDEVNAME(sc->sc_bus.bdev),
-		       EHCI_HCS_N_CC(sparams), sc->sc_ncomp);
-		return (USBD_IOERROR);
+		       ncomp, sc->sc_ncomp);
+		if (ncomp < sc->sc_ncomp)
+			sc->sc_ncomp = ncomp;
 	}
 	if (sc->sc_ncomp > 0) {
 		printf("%s: companion controller%s, %d port%s each:",
@@ -820,12 +819,11 @@ ehci_idone(struct ehci_xfer *ex)
 void
 ehci_waitintr(ehci_softc_t *sc, usbd_xfer_handle xfer)
 {
-	int timo = xfer->timeout;
-	int usecs;
+	int timo;
 	u_int32_t intrs;
 
 	xfer->status = USBD_IN_PROGRESS;
-	for (usecs = timo * 1000000 / hz; usecs > 0; usecs -= 1000) {
+	for (timo = xfer->timeout; timo >= 0; timo--) {
 		usb_delay_ms(&sc->sc_bus, 1);
 		if (sc->sc_dying)
 			break;
