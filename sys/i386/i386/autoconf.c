@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.17 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.18 2005/09/04 01:28:59 dillon Exp $
  */
 
 /*
@@ -520,9 +520,13 @@ match_done:
 		return;
 	}
 	nd->root_saddr.sin_port = htons(NFS_PORT);
+
+	/*
+	 * A tftp-only loader may pass NFS path information without a 
+	 * root handle.  Generate a warning but continue configuring.
+	 */
 	if (decode_nfshandle("boot.nfsroot.nfshandle", &nd->root_fh[0]) == 0) {
-		printf("PXE: no NFS handle\n");
-		return;
+		printf("PXE: Warning, no NFS handle passed from loader\n");
 	}
 	if ((cp = getenv("boot.nfsroot.path")) != NULL)
 		strncpy(nd->root_hostnam, cp, MNAMELEN - 1);

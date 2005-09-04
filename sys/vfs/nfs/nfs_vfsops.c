@@ -35,10 +35,11 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.30 2005/09/03 23:43:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.31 2005/09/04 01:29:00 dillon Exp $
  */
 
 #include "opt_bootp.h"
+#include "opt_nfsroot.h"
 
 #include <sys/param.h>
 #include <sys/sockio.h>
@@ -72,6 +73,7 @@
 #include "nfsm_subs.h"
 #include "nfsdiskless.h"
 #include "nqnfs.h"
+#include "nfsmountrpc.h"
 
 extern int	nfs_mountroot(struct mount *mp);
 extern void	bootpc_init(void);
@@ -248,13 +250,23 @@ nfs_convert_oargs(args, oargs)
 static void
 nfs_convert_diskless()
 {
+	int i;
+
 	bcopy(&nfs_diskless.myif, &nfsv3_diskless.myif,
 		sizeof(struct ifaliasreq));
 	bcopy(&nfs_diskless.mygateway, &nfsv3_diskless.mygateway,
 		sizeof(struct sockaddr_in));
 	nfs_convert_oargs(&nfsv3_diskless.swap_args,&nfs_diskless.swap_args);
-	nfsv3_diskless.swap_fhsize = NFSX_V2FH;
+
 	bcopy(nfs_diskless.swap_fh,nfsv3_diskless.swap_fh,NFSX_V2FH);
+	nfsv3_diskless.swap_fhsize = NFSX_V2FH;
+	for (i = NFSX_V2FH - 1; i >= 0; --i) {
+		if (nfs_diskless.swap_fh[i])
+			break;
+	}
+	if (i < 0)
+		nfsv3_diskless.swap_fhsize = 0;
+
 	bcopy(&nfs_diskless.swap_saddr,&nfsv3_diskless.swap_saddr,
 		sizeof(struct sockaddr_in));
 	bcopy(nfs_diskless.swap_hostnam,nfsv3_diskless.swap_hostnam, MNAMELEN);
@@ -262,8 +274,16 @@ nfs_convert_diskless()
 	bcopy(&nfs_diskless.swap_ucred, &nfsv3_diskless.swap_ucred,
 		sizeof(struct ucred));
 	nfs_convert_oargs(&nfsv3_diskless.root_args,&nfs_diskless.root_args);
-	nfsv3_diskless.root_fhsize = NFSX_V2FH;
+
 	bcopy(nfs_diskless.root_fh,nfsv3_diskless.root_fh,NFSX_V2FH);
+	nfsv3_diskless.root_fhsize = NFSX_V2FH;
+	for (i = NFSX_V2FH - 1; i >= 0; --i) {
+		if (nfs_diskless.root_fh[i])
+			break;
+	}
+	if (i < 0)
+		nfsv3_diskless.root_fhsize = 0;
+
 	bcopy(&nfs_diskless.root_saddr,&nfsv3_diskless.root_saddr,
 		sizeof(struct sockaddr_in));
 	bcopy(nfs_diskless.root_hostnam,nfsv3_diskless.root_hostnam, MNAMELEN);
@@ -592,8 +612,8 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 {
 	struct mount *mp;
 	struct sockaddr *nam;
-	int error;
 	int didalloc = 0;
+	int error;
 
 	mp = *mpp;
 
@@ -604,11 +624,25 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 		}
 		didalloc = 1;
 	}
-
 	mp->mnt_kern_flag = 0;
 	mp->mnt_flag = mountflag;
 	nam = dup_sockaddr((struct sockaddr *)sin);
+
+#if defined(BOOTP) || defined(NFS_ROOT)
+	if (args->fhsize == 0) {
+		printf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
+		args->fhsize = 0;
+		error = md_mount(sin, which, args->fh, &args->fhsize, args, td);
+		if (error) {
+			printf("failed.\n");
+			goto haderror;
+		}
+		printf("success!\n");
+	}
+#endif
+
 	if ((error = mountnfs(args, mp, nam, which, path, vpp)) != 0) {
+haderror:
 		printf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp, td);
@@ -880,7 +914,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	}
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;
-	if (argp->flags & NFSMNT_NQNFS)
+	if (argp->flags & NFSMNT_NQNFS) {
 		/*
 		 * We have to set mnt_maxsymlink to a non-zero value so
 		 * that COMPAT_43 routines will know that we are setting
@@ -888,6 +922,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		 * unsuspecting binaries).
 		 */
 		mp->mnt_maxsymlinklen = 1;
+	}
 
 	/*
 	 * V2 can only handle 32 bit filesizes.  A 4GB-1 limit may be too

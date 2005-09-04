@@ -1,6 +1,3 @@
-/* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.10 2004/06/21 05:58:01 dillon Exp $	*/
-
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
  * Copyright (c) 1992 Regents of the University of California.
@@ -38,9 +35,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * based on:
- *      nfs/krpc_subr.c
- *	$NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
+ * nfs/krpc_subr.c
+ * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
+ * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.11 2005/09/04 01:29:00 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -71,7 +69,7 @@
 #include "nfsdiskless.h"
 #include "krpc.h"
 #include "xdr_subs.h"
-
+#include "nfsmountrpc.h"
 
 #define BOOTP_MIN_LEN		300	/* Minimum size of bootp udp packet */
 
@@ -220,19 +218,7 @@ SYSCTL_STRING(_kern, OID_AUTO, bootp_cookie, CTLFLAG_RD,
 	bootp_cookie, 0, "Cookie (T134) supplied by bootp server");
 
 /* mountd RPC */
-static int md_mount(struct sockaddr_in *mdsin, char *path,
-		    u_char *fhp, int *fhsizep,
-		    struct nfs_args *args,struct thread *td);
-static int md_lookup_swap(struct sockaddr_in *mdsin,char *path,
-			  u_char *fhp, int *fhsizep,
-			  struct nfs_args *args,
-			  struct thread *td);
-static int setfs(struct sockaddr_in *addr, char *path, char *p);
 static int getdec(char **ptr);
-static char *substr(char *a,char *b);
-static void mountopts(struct nfs_args *args, char *p);
-static int xdr_opaque_decode(struct mbuf **ptr, u_char *buf, int len);
-static int xdr_int_decode(struct mbuf **ptr, int *iptr);
 static void print_in_addr(struct in_addr addr);
 static void print_sin_addr(struct sockaddr_in *addr);
 static void clear_sinaddr(struct sockaddr_in *sin);
@@ -1167,150 +1153,6 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 	return 0;
 }
 
-
-static int
-setfs(struct sockaddr_in *addr, char *path, char *p)
-{
-	unsigned int ip;
-	int val;
-	
-	ip = 0;
-	if (((val = getdec(&p)) < 0) || (val > 255))
-		return 0;
-	ip = val << 24;
-	if (*p != '.')
-		return 0;
-	p++;
-	if (((val = getdec(&p)) < 0) || (val > 255))
-		return 0;
-	ip |= (val << 16);
-	if (*p != '.')
-		return 0;
-	p++;
-	if (((val = getdec(&p)) < 0) || (val > 255))
-		return 0;
-	ip |= (val << 8);
-	if (*p != '.')
-		return 0;
-	p++;
-	if (((val = getdec(&p)) < 0) || (val > 255))
-		return 0;
-	ip |= val;
-	if (*p != ':')
-		return 0;
-	p++;
-	
-	addr->sin_addr.s_addr = htonl(ip);
-	addr->sin_len = sizeof(struct sockaddr_in);
-	addr->sin_family = AF_INET;
-	
-	strncpy(path, p, MNAMELEN - 1);
-	return 1;
-}
-
-
-static int
-getdec(char **ptr)
-{
-	char *p;
-	int ret;
-
-	p = *ptr;
-	ret = 0;
-	if ((*p < '0') || (*p > '9'))
-		return -1;
-	while ((*p >= '0') && (*p <= '9')) {
-		ret = ret * 10 + (*p - '0');
-		p++;
-	}
-	*ptr = p;
-	return ret;
-}
-
-
-static char *
-substr(char *a, char *b)
-{
-	char *loc1;
-	char *loc2;
-	
-        while (*a != '\0') {
-                loc1 = a;
-                loc2 = b;
-                while (*loc1 == *loc2++) {
-                        if (*loc1 == '\0')
-				return 0;
-                        loc1++;
-                        if (*loc2 == '\0')
-				return loc1;
-                }
-		a++;
-        }
-        return 0;
-}
-
-
-static void
-mountopts(struct nfs_args *args, char *p)
-{
-	char *tmp;
-	
-	args->version = NFS_ARGSVERSION;
-	args->rsize = 8192;
-	args->wsize = 8192;
-	args->flags = NFSMNT_RSIZE | NFSMNT_WSIZE | NFSMNT_RESVPORT;
-	args->sotype = SOCK_DGRAM;
-	if (p == NULL)
-		return;
-	if ((tmp = (char *)substr(p, "rsize=")))
-		args->rsize = getdec(&tmp);
-	if ((tmp = (char *)substr(p, "wsize=")))
-		args->wsize = getdec(&tmp);
-	if ((tmp = (char *)substr(p, "intr")))
-		args->flags |= NFSMNT_INT;
-	if ((tmp = (char *)substr(p, "soft")))
-		args->flags |= NFSMNT_SOFT;
-	if ((tmp = (char *)substr(p, "noconn")))
-		args->flags |= NFSMNT_NOCONN;
-	if ((tmp = (char *)substr(p, "tcp")))
-		args->sotype = SOCK_STREAM;
-}
-
-
-static int
-xdr_opaque_decode(struct mbuf **mptr, u_char *buf, int len)
-{
-	struct mbuf *m;
-	int alignedlen;
-	
-	m = *mptr;
-	alignedlen = ( len + 3 ) & ~3;
-	
-	if (m->m_len < alignedlen) {
-		m = m_pullup(m, alignedlen);
-		if (m == NULL) {
-			*mptr = NULL;
-			return EBADRPC;
-		}
-	}
-	bcopy(mtod(m, u_char *), buf, len);
-	m_adj(m, alignedlen);
-	*mptr = m;
-	return 0;
-}
-
-
-static int
-xdr_int_decode(struct mbuf **mptr, int *iptr)
-{
-	u_int32_t i;
-	if (xdr_opaque_decode(mptr, (u_char *) &i, sizeof(u_int32_t)) != 0)
-		return EBADRPC;
-	*iptr = fxdr_unsigned(u_int32_t, i);
-	return 0;
-}
-
-
 static void
 print_sin_addr(struct sockaddr_in *sin)
 {
@@ -1851,203 +1693,3 @@ out:
 	free(gctx, M_TEMP);
 }
 
-
-/*
- * RPC: mountd/mount
- * Given a server pathname, get an NFS file handle.
- * Also, sets sin->sin_port to the NFS service port.
- */
-static int
-md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
-	 char *path,
-	 u_char *fhp,
-	 int *fhsizep,
-	 struct nfs_args *args,
-	 struct thread *td)
-{
-	struct mbuf *m;
-	int error;
-	int authunixok;
-	int authcount;
-	int authver;
-	
-#ifdef BOOTP_NFSV3
-	/* First try NFS v3 */
-	/* Get port number for MOUNTD. */
-	error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER3,
-			     &mdsin->sin_port, td);
-	if (error == 0) {
-		m = xdr_string_encode(path, strlen(path));
-		
-		/* Do RPC to mountd. */
-		error = krpc_call(mdsin, RPCPROG_MNT, RPCMNT_VER3,
-				  RPCMNT_MOUNT, &m, NULL, td);
-	}
-	if (error == 0) {
-		args->flags |= NFSMNT_NFSV3;
-	} else {
-#endif
-		/* Fallback to NFS v2 */
-		
-		/* Get port number for MOUNTD. */
-		error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER1,
-				     &mdsin->sin_port, td);
-		if (error != 0)
-			return error;
-		
-		m = xdr_string_encode(path, strlen(path));
-		
-		/* Do RPC to mountd. */
-		error = krpc_call(mdsin, RPCPROG_MNT, RPCMNT_VER1,
-				  RPCMNT_MOUNT, &m, NULL, td);
-		if (error != 0)
-			return error;	/* message already freed */
-		
-#ifdef BOOTP_NFSV3
-	}
-#endif
-
-	if (xdr_int_decode(&m, &error) != 0 || error != 0)
-		goto bad;
-	
-	if ((args->flags & NFSMNT_NFSV3) != 0) {
-		if (xdr_int_decode(&m, fhsizep) != 0 ||
-		    *fhsizep > NFSX_V3FHMAX ||
-		    *fhsizep <= 0)
-			goto bad;
-	} else
-		*fhsizep = NFSX_V2FH;
-
-	if (xdr_opaque_decode(&m, fhp, *fhsizep) != 0)
-		goto bad;
-
-	if (args->flags & NFSMNT_NFSV3) {
-		if (xdr_int_decode(&m, &authcount) != 0)
-			goto bad;
-		authunixok = 0;
-		if (authcount < 0 || authcount > 100)
-			goto bad;
-		while (authcount > 0) {
-			if (xdr_int_decode(&m, &authver) != 0)
-				goto bad;
-			if (authver == RPCAUTH_UNIX)
-				authunixok = 1;
-			authcount--;
-		}
-		if (authunixok == 0)
-			goto bad;
-	}
-	  
-	/* Set port number for NFS use. */
-	error = krpc_portmap(mdsin, NFS_PROG,
-			     (args->flags &
-			      NFSMNT_NFSV3) ? NFS_VER3 : NFS_VER2,
-			     &mdsin->sin_port, td);
-	
-	goto out;
-	
-bad:
-	error = EBADRPC;
-	
-out:
-	m_freem(m);
-	return error;
-}
-
-
-static int
-md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
-	       char *path,
-	       u_char *fhp,
-	       int *fhsizep,
-	       struct nfs_args *args,
-	       struct thread *td)
-{
-	struct mbuf *m;
-	int error;
-	int size = -1;
-	int attribs_present;
-	int status;
-	union {
-		u_int32_t v2[17];
-		u_int32_t v3[21];
-	} fattribs;
-	
-	m = m_get(MB_WAIT,MT_DATA);
-	if (m == NULL)
-	  	return ENOBUFS;
-	
-	if ((args->flags & NFSMNT_NFSV3) != 0) {
-		*mtod(m, u_int32_t *) = txdr_unsigned(*fhsizep);
-		bcopy(fhp, mtod(m, u_char *) + sizeof(u_int32_t), *fhsizep);
-		m->m_len = *fhsizep + sizeof(u_int32_t);
-	} else {
-		bcopy(fhp, mtod(m, u_char *), NFSX_V2FH);
-		m->m_len = NFSX_V2FH;
-	}
-	
-	m->m_next = xdr_string_encode(path, strlen(path));
-	if (m->m_next == NULL) {
-		error = ENOBUFS;
-		goto out;
-	}
-
-	/* Do RPC to nfsd. */
-	if ((args->flags & NFSMNT_NFSV3) != 0)
-		error = krpc_call(mdsin, NFS_PROG, NFS_VER3,
-				  NFSPROC_LOOKUP, &m, NULL, td);
-	else
-		error = krpc_call(mdsin, NFS_PROG, NFS_VER2,
-				  NFSV2PROC_LOOKUP, &m, NULL, td);
-	if (error != 0)
-		return error;	/* message already freed */
-
-	if (xdr_int_decode(&m, &status) != 0)
-		goto bad;
-	if (status != 0) {
-		error = ENOENT;
-		goto out;
-	}
-	
-	if ((args->flags & NFSMNT_NFSV3) != 0) {
-		if (xdr_int_decode(&m, fhsizep) != 0 ||
-		    *fhsizep > NFSX_V3FHMAX ||
-		    *fhsizep <= 0)
-			goto bad;
-	} else
-		*fhsizep = NFSX_V2FH;
-	
-	if (xdr_opaque_decode(&m, fhp, *fhsizep) != 0)
-		goto bad;
-	
-	if ((args->flags & NFSMNT_NFSV3) != 0) {
-		if (xdr_int_decode(&m, &attribs_present) != 0)
-			goto bad;
-		if (attribs_present != 0) {
-			if (xdr_opaque_decode(&m, (u_char *) &fattribs.v3,
-					      sizeof(u_int32_t) * 21) != 0)
-				goto bad;
-			size = fxdr_unsigned(u_int32_t, fattribs.v3[6]);
-		}
-	} else {
-		if (xdr_opaque_decode(&m,(u_char *) &fattribs.v2,
-				      sizeof(u_int32_t) * 17) != 0)
-			goto bad;
-		size = fxdr_unsigned(u_int32_t, fattribs.v2[5]);
-	}
-	  
-	if (nfsv3_diskless.swap_nblks == 0 && size != -1) {
-		nfsv3_diskless.swap_nblks = size / 1024;
-		printf("md_lookup_swap: Swap size is %d KB\n",
-		       nfsv3_diskless.swap_nblks);
-	}
-	
-	goto out;
-	
-bad:
-	error = EBADRPC;
-	
-out:
-	m_freem(m);
-	return error;
-}
