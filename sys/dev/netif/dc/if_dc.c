@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.36 2005/07/16 17:11:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.37 2005/09/04 23:19:12 swildner Exp $
  */
 
 /*
@@ -321,8 +321,8 @@ DRIVER_MODULE(miibus, dc, miibus_driver, miibus_devclass, 0, 0);
 #define SIO_SET(x)	DC_SETBIT(sc, DC_SIO, (x))
 #define SIO_CLR(x)	DC_CLRBIT(sc, DC_SIO, (x))
 
-static void dc_delay(sc)
-	struct dc_softc		*sc;
+static void
+dc_delay(struct dc_softc *sc)
 {
 	int			idx;
 
@@ -330,8 +330,8 @@ static void dc_delay(sc)
 		CSR_READ_4(sc, DC_BUSCTL);
 }
 
-static void dc_eeprom_width(sc)
-	struct dc_softc		*sc;
+static void
+dc_eeprom_width(struct dc_softc *sc)
 {
 	int i;
 
@@ -394,8 +394,8 @@ static void dc_eeprom_width(sc)
 	dc_eeprom_idle(sc);
 }
 
-static void dc_eeprom_idle(sc)
-	struct dc_softc		*sc;
+static void
+dc_eeprom_idle(struct dc_softc *sc)
 {
 	int		i;
 
@@ -427,9 +427,8 @@ static void dc_eeprom_idle(sc)
 /*
  * Send a read command and address to the EEPROM, check for ACK.
  */
-static void dc_eeprom_putbyte(sc, addr)
-	struct dc_softc		*sc;
-	int			addr;
+static void
+dc_eeprom_putbyte(struct dc_softc *sc, int addr)
 {
 	int		d, i;
 
@@ -470,10 +469,8 @@ static void dc_eeprom_putbyte(sc, addr)
  * The PNIC 82c168/82c169 has its own non-standard way to read
  * the EEPROM.
  */
-static void dc_eeprom_getword_pnic(sc, addr, dest)
-	struct dc_softc		*sc;
-	int			addr;
-	u_int16_t		*dest;
+static void
+dc_eeprom_getword_pnic(struct dc_softc *sc, int addr, u_int16_t *dest)
 {
 	int		i;
 	u_int32_t		r;
@@ -495,10 +492,8 @@ static void dc_eeprom_getword_pnic(sc, addr, dest)
 /*
  * Read a word of data stored in the EEPROM at address 'addr.'
  */
-static void dc_eeprom_getword(sc, addr, dest)
-	struct dc_softc		*sc;
-	int			addr;
-	u_int16_t		*dest;
+static void
+dc_eeprom_getword(struct dc_softc *sc, int addr, u_int16_t *dest)
 {
 	int		i;
 	u_int16_t		word = 0;
@@ -545,12 +540,8 @@ static void dc_eeprom_getword(sc, addr, dest)
 /*
  * Read a sequence of words from the EEPROM.
  */
-static void dc_read_eeprom(sc, dest, off, cnt, swap)
-	struct dc_softc		*sc;
-	caddr_t			dest;
-	int			off;
-	int			cnt;
-	int			swap;
+static void
+dc_read_eeprom(struct dc_softc *sc, caddr_t dest, int off, int cnt, int swap)
 {
 	int			i;
 	u_int16_t		word = 0, *ptr;
@@ -577,9 +568,8 @@ static void dc_read_eeprom(sc, dest, off, cnt, swap)
 /*
  * Write a bit to the MII bus.
  */
-static void dc_mii_writebit(sc, bit)
-	struct dc_softc		*sc;
-	int			bit;
+static void
+dc_mii_writebit(struct dc_softc *sc, int bit)
 {
 	if (bit)
 		CSR_WRITE_4(sc, DC_SIO,
@@ -596,8 +586,8 @@ static void dc_mii_writebit(sc, bit)
 /*
  * Read a bit from the MII bus.
  */
-static int dc_mii_readbit(sc)
-	struct dc_softc		*sc;
+static int
+dc_mii_readbit(struct dc_softc *sc)
 {
 	CSR_WRITE_4(sc, DC_SIO, DC_SIO_ROMCTL_READ|DC_SIO_MII_DIR);
 	CSR_READ_4(sc, DC_SIO);
@@ -612,8 +602,8 @@ static int dc_mii_readbit(sc)
 /*
  * Sync the PHYs by setting data bit and strobing the clock 32 times.
  */
-static void dc_mii_sync(sc)
-	struct dc_softc		*sc;
+static void
+dc_mii_sync(struct dc_softc *sc)
 {
 	int		i;
 
@@ -628,10 +618,8 @@ static void dc_mii_sync(sc)
 /*
  * Clock a series of bits through the MII.
  */
-static void dc_mii_send(sc, bits, cnt)
-	struct dc_softc		*sc;
-	u_int32_t		bits;
-	int			cnt;
+static void
+dc_mii_send(struct dc_softc *sc, u_int32_t bits, int cnt)
 {
 	int			i;
 
@@ -642,10 +630,8 @@ static void dc_mii_send(sc, bits, cnt)
 /*
  * Read an PHY register through the MII.
  */
-static int dc_mii_readreg(sc, frame)
-	struct dc_softc		*sc;
-	struct dc_mii_frame	*frame;
-	
+static int
+dc_mii_readreg(struct dc_softc *sc, struct dc_mii_frame *frame)
 {
 	int ack, i;
 
@@ -714,10 +700,8 @@ fail:
 /*
  * Write to a PHY register through the MII.
  */
-static int dc_mii_writereg(sc, frame)
-	struct dc_softc		*sc;
-	struct dc_mii_frame	*frame;
-	
+static int
+dc_mii_writereg(struct dc_softc *sc, struct dc_mii_frame *frame)
 {
 	crit_enter();
 
@@ -750,9 +734,8 @@ static int dc_mii_writereg(sc, frame)
 	return(0);
 }
 
-static int dc_miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+static int
+dc_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct dc_mii_frame	frame;
 	struct dc_softc		*sc;
@@ -873,9 +856,8 @@ static int dc_miibus_readreg(dev, phy, reg)
 	return(frame.mii_data);
 }
 
-static int dc_miibus_writereg(dev, phy, reg, data)
-	device_t		dev;
-	int			phy, reg, data;
+static int
+dc_miibus_writereg(device_t dev, int phy, int reg, int data)
 {
 	struct dc_softc		*sc;
 	struct dc_mii_frame	frame;
@@ -949,8 +931,8 @@ static int dc_miibus_writereg(dev, phy, reg, data)
 	return(0);
 }
 
-static void dc_miibus_statchg(dev)
-	device_t		dev;
+static void
+dc_miibus_statchg(device_t dev)
 {
 	struct dc_softc		*sc;
 	struct mii_data		*mii;
@@ -982,8 +964,8 @@ static void dc_miibus_statchg(dev)
  * the driver has to just 'know' about the additional mode and deal
  * with it itself. *sigh*
  */
-static void dc_miibus_mediainit(dev)
-	device_t		dev;
+static void
+dc_miibus_mediainit(device_t dev)
 {
 	struct dc_softc		*sc;
 	struct mii_data		*mii;
@@ -1033,8 +1015,8 @@ dc_crc_mask(struct dc_softc *sc)
  * frames. We also sneak the broadcast address into the hash filter since
  * we need that too.
  */
-void dc_setfilt_21143(sc)
-	struct dc_softc		*sc;
+void
+dc_setfilt_21143(struct dc_softc *sc)
 {
 	struct dc_desc		*sframe;
 	u_int32_t		h, crc_mask, *sp;
@@ -1105,8 +1087,8 @@ void dc_setfilt_21143(sc)
 	return;
 }
 
-void dc_setfilt_admtek(sc)
-	struct dc_softc		*sc;
+void
+dc_setfilt_admtek(struct dc_softc *sc)
 {
 	struct ifnet		*ifp;
 	int			h = 0;
@@ -1172,8 +1154,8 @@ void dc_setfilt_admtek(sc)
 	return;
 }
 
-void dc_setfilt_asix(sc)
-	struct dc_softc		*sc;
+void
+dc_setfilt_asix(struct dc_softc *sc)
 {
 	struct ifnet		*ifp;
 	int			h = 0;
@@ -1245,8 +1227,8 @@ void dc_setfilt_asix(sc)
 	return;
 }
 
-static void dc_setfilt(sc)
-	struct dc_softc		*sc;
+static void
+dc_setfilt(struct dc_softc *sc)
 {
 	if (DC_IS_INTEL(sc) || DC_IS_MACRONIX(sc) || DC_IS_PNIC(sc) ||
 	    DC_IS_PNICII(sc) || DC_IS_DAVICOM(sc) || DC_IS_CONEXANT(sc))
@@ -1266,9 +1248,8 @@ static void dc_setfilt(sc)
  * 'full-duplex' and '100Mbps' bits in the netconfig register, we
  * first have to put the transmit and/or receive logic in the idle state.
  */
-static void dc_setcfg(sc, media)
-	struct dc_softc		*sc;
-	int			media;
+static void
+dc_setcfg(struct dc_softc *sc, int media)
 {
 	int			i, restart = 0;
 	u_int32_t		isr;
@@ -1416,8 +1397,8 @@ static void dc_setcfg(sc, media)
 	return;
 }
 
-static void dc_reset(sc)
-	struct dc_softc		*sc;
+static void
+dc_reset(struct dc_softc *sc)
 {
 	int		i;
 
@@ -1460,8 +1441,8 @@ static void dc_reset(sc)
         return;
 }
 
-static struct dc_type *dc_devtype(dev)
-	device_t		dev;
+static struct dc_type 
+*dc_devtype(device_t dev)
 {
 	struct dc_type		*t;
 	u_int32_t		rev;
@@ -1511,8 +1492,8 @@ static struct dc_type *dc_devtype(dev)
  * chips and the 98725, as well as the ASIX and ADMtek chips. In some
  * cases, the exact chip revision affects driver behavior.
  */
-static int dc_probe(dev)
-	device_t		dev;
+static int
+dc_probe(device_t dev)
 {
 	struct dc_type		*t;
 
@@ -1526,8 +1507,8 @@ static int dc_probe(dev)
 	return(ENXIO);
 }
 
-static void dc_acpi(dev)
-	device_t		dev;
+static void
+dc_acpi(device_t dev)
 {
 	u_int32_t		r, cptr;
 
@@ -1563,9 +1544,8 @@ static void dc_acpi(dev)
 	}
 }
 
-static void dc_apply_fixup(sc, media)
-	struct dc_softc		*sc;
-	int			media;
+static void
+dc_apply_fixup(struct dc_softc *sc, int media)
 {
 	struct dc_mediainfo	*m;
 	u_int8_t		*p;
@@ -1596,9 +1576,8 @@ static void dc_apply_fixup(sc, media)
 	return;
 }
 
-static void dc_decode_leaf_sia(sc, l)
-	struct dc_softc		*sc;
-	struct dc_eblock_sia	*l;
+static void
+dc_decode_leaf_sia(struct dc_softc *sc, struct dc_eblock_sia *l)
 {
 	struct dc_mediainfo	*m;
 
@@ -1638,9 +1617,8 @@ static void dc_decode_leaf_sia(sc, l)
 	return;
 }
 
-static void dc_decode_leaf_sym(sc, l)
-	struct dc_softc		*sc;
-	struct dc_eblock_sym	*l;
+static void
+dc_decode_leaf_sym(struct dc_softc *sc, struct dc_eblock_sym *l)
 {
 	struct dc_mediainfo	*m;
 
@@ -1662,9 +1640,8 @@ static void dc_decode_leaf_sym(sc, l)
 	return;
 }
 
-static void dc_decode_leaf_mii(sc, l)
-	struct dc_softc		*sc;
-	struct dc_eblock_mii	*l;
+static void
+dc_decode_leaf_mii(struct dc_softc *sc, struct dc_eblock_mii *l)
 {
 	u_int8_t		*p;
 	struct dc_mediainfo	*m;
@@ -1688,9 +1665,8 @@ static void dc_decode_leaf_mii(sc, l)
 	return;
 }
 
-static void dc_read_srom(sc, bits)
-	struct dc_softc		*sc;
-	int			bits;
+static void
+dc_read_srom(struct dc_softc *sc, int bits)
 {
 	int size;
 
@@ -1699,8 +1675,8 @@ static void dc_read_srom(sc, bits)
 	dc_read_eeprom(sc, (caddr_t)sc->dc_srom, 0, (size / 2), 0);
 }
 
-static void dc_parse_21143_srom(sc)
-	struct dc_softc		*sc;
+static void
+dc_parse_21143_srom(struct dc_softc *sc)
 {
 	struct dc_leaf_hdr	*lhdr;
 	struct dc_eblock_hdr	*hdr;
@@ -1763,8 +1739,8 @@ static void dc_parse_21143_srom(sc)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-static int dc_attach(dev)
-	device_t		dev;
+static int
+dc_attach(device_t dev)
 {
 	int			tmp = 0;
 	u_char			eaddr[ETHER_ADDR_LEN];
@@ -2089,8 +2065,8 @@ fail:
 	return(error);
 }
 
-static int dc_detach(dev)
-	device_t		dev;
+static int
+dc_detach(device_t dev)
 {
 	struct dc_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -2137,8 +2113,8 @@ static int dc_detach(dev)
 /*
  * Initialize the transmit descriptors.
  */
-static int dc_list_tx_init(sc)
-	struct dc_softc		*sc;
+static int
+dc_list_tx_init(struct dc_softc *sc)
 {
 	struct dc_chain_data	*cd;
 	struct dc_list_data	*ld;
@@ -2170,8 +2146,8 @@ static int dc_list_tx_init(sc)
  * we arrange the descriptors in a closed ring, so that the last descriptor
  * points back to the first.
  */
-static int dc_list_rx_init(sc)
-	struct dc_softc		*sc;
+static int
+dc_list_rx_init(struct dc_softc *sc)
 {
 	struct dc_chain_data	*cd;
 	struct dc_list_data	*ld;
@@ -2200,10 +2176,8 @@ static int dc_list_rx_init(sc)
 /*
  * Initialize an RX descriptor and attach an MBUF cluster.
  */
-static int dc_newbuf(sc, i, m)
-	struct dc_softc		*sc;
-	int			i;
-	struct mbuf		*m;
+static int
+dc_newbuf(struct dc_softc *sc, int i, struct mbuf *m)
 {
 	struct mbuf		*m_new = NULL;
 	struct dc_desc		*c;
@@ -2292,9 +2266,8 @@ static int dc_newbuf(sc, i, m)
  */
 
 #define DC_WHOLEFRAME	(DC_RXSTAT_FIRSTFRAG|DC_RXSTAT_LASTFRAG)
-static void dc_pnic_rx_bug_war(sc, idx)
-	struct dc_softc		*sc;
-	int			idx;
+static void
+dc_pnic_rx_bug_war(struct dc_softc *sc, int idx)
 {
 	struct dc_desc		*cur_rx;
 	struct dc_desc		*c = NULL;
@@ -2361,8 +2334,8 @@ static void dc_pnic_rx_bug_war(sc, idx)
  * should still be getting RX DONE interrupts to drive the search
  * for new packets in the RX ring, so we should catch up eventually.
  */
-static int dc_rx_resync(sc)
-	struct dc_softc		*sc;
+static int
+dc_rx_resync(struct dc_softc *sc)
 {
 	int			i, pos;
 	struct dc_desc		*cur_rx;
@@ -2390,8 +2363,8 @@ static int dc_rx_resync(sc)
  * A frame has been uploaded: pass the resulting mbuf chain up to
  * the higher level protocols.
  */
-static void dc_rxeof(sc)
-	struct dc_softc		*sc;
+static void
+dc_rxeof(struct dc_softc *sc)
 {
         struct mbuf		*m;
         struct ifnet		*ifp;
@@ -2505,8 +2478,7 @@ static void dc_rxeof(sc)
  */
 
 static void
-dc_txeof(sc)
-	struct dc_softc		*sc;
+dc_txeof(struct dc_softc *sc)
 {
 	struct dc_desc		*cur_tx = NULL;
 	struct ifnet		*ifp;
@@ -2606,8 +2578,8 @@ dc_txeof(sc)
 	return;
 }
 
-static void dc_tick(xsc)
-	void			*xsc;
+static void
+dc_tick(void *xsc)
 {
 	struct dc_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -2685,8 +2657,8 @@ static void dc_tick(xsc)
  * A transmit underrun has occurred.  Back off the transmit threshold,
  * or switch to store and forward mode if we have to.
  */
-static void dc_tx_underrun(sc)
-	struct dc_softc		*sc;
+static void
+dc_tx_underrun(struct dc_softc *sc)
 {
 	u_int32_t		isr;
 	int			i;
@@ -2795,8 +2767,8 @@ dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 }
 #endif /* DEVICE_POLLING */
 
-static void dc_intr(arg)
-	void			*arg;
+static void
+dc_intr(void *arg)
 {
 	struct dc_softc		*sc;
 	struct ifnet		*ifp;
@@ -2881,10 +2853,8 @@ static void dc_intr(arg)
  * Encapsulate an mbuf chain in a descriptor by coupling the mbuf data
  * pointers to the fragment pointers.
  */
-static int dc_encap(sc, m_head, txidx)
-	struct dc_softc		*sc;
-	struct mbuf		*m_head;
-	u_int32_t		*txidx;
+static int
+dc_encap(struct dc_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
 {
 	struct dc_desc		*f = NULL;
 	struct mbuf		*m;
@@ -2948,8 +2918,8 @@ static int dc_encap(sc, m_head, txidx)
  * physical addresses.
  */
 
-static void dc_start(ifp)
-	struct ifnet		*ifp;
+static void
+dc_start(struct ifnet *ifp)
 {
 	struct dc_softc		*sc;
 	struct mbuf *m_head = NULL, *m_new;
@@ -3040,8 +3010,8 @@ static void dc_start(ifp)
 	return;
 }
 
-static void dc_init(xsc)
-	void			*xsc;
+static void
+dc_init(void *xsc)
 {
 	struct dc_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
@@ -3211,8 +3181,8 @@ static void dc_init(xsc)
 /*
  * Set media options.
  */
-static int dc_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+static int
+dc_ifmedia_upd(struct ifnet *ifp)
 {
 	struct dc_softc		*sc;
 	struct mii_data		*mii;
@@ -3235,9 +3205,8 @@ static int dc_ifmedia_upd(ifp)
 /*
  * Report current media status.
  */
-static void dc_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+static void
+dc_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct dc_softc		*sc;
 	struct mii_data		*mii;
@@ -3260,11 +3229,8 @@ static void dc_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int dc_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct ucred		*cr;
+static int
+dc_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct dc_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
@@ -3312,8 +3278,8 @@ static int dc_ioctl(ifp, command, data, cr)
 	return(error);
 }
 
-static void dc_watchdog(ifp)
-	struct ifnet		*ifp;
+static void
+dc_watchdog(struct ifnet *ifp)
 {
 	struct dc_softc		*sc;
 
@@ -3336,8 +3302,8 @@ static void dc_watchdog(ifp)
  * Stop the adapter and free any mbufs allocated to the
  * RX and TX lists.
  */
-static void dc_stop(sc)
-	struct dc_softc		*sc;
+static void
+dc_stop(struct dc_softc *sc)
 {
 	int		i;
 	struct ifnet		*ifp;
@@ -3394,8 +3360,8 @@ static void dc_stop(sc)
  * Stop all chip I/O so that the kernel's probe routines don't
  * get confused by errant DMAs when rebooting.
  */
-static void dc_shutdown(dev)
-	device_t		dev;
+static void
+dc_shutdown(device_t dev)
 {
 	struct dc_softc		*sc;
 
@@ -3411,8 +3377,8 @@ static void dc_shutdown(dev)
  * settings in case the BIOS doesn't restore them properly on
  * resume.
  */
-static int dc_suspend(dev)
-	device_t		dev;
+static int
+dc_suspend(device_t dev)
 {
 	struct dc_softc	*sc = device_get_softc(dev);
 	int i;
@@ -3439,8 +3405,8 @@ static int dc_suspend(dev)
  * doesn't, re-enable busmastering, and restart the interface if
  * appropriate.
  */
-static int dc_resume(dev)
-	device_t		dev;
+static int
+dc_resume(device_t dev)
 {
 	struct dc_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
