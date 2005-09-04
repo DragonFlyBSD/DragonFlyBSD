@@ -4,7 +4,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/scaffold.c,v 1.2.2.1 2000/07/18 08:34:55 ume Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/scaffold.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/scaffold.c,v 1.3 2005/09/04 01:53:07 sephe Exp $
   */
 
 #ifndef lint
@@ -29,7 +29,7 @@ static char sccs_id[] = "@(#) scaffold.c 1.6 97/03/21 19:27:24";
 #endif
 
 #ifndef INET6
-extern char *malloc();
+#include <stdlib.h>
 #endif
 
 /* Application-specific. */
@@ -234,16 +234,6 @@ void    clean_exit(request)
 struct request_info *request;
 {
     exit(0);
-}
-
-/* dummy function  to intercept the real rfc931() */
-
-/* ARGSUSED */
-
-void    rfc931(request)
-struct request_info *request;
-{
-    strcpy(request->user, unknown);
 }
 
 /* check_path - examine accessibility */

@@ -4,8 +4,13 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpd.h,v 1.2 2000/02/03 10:26:59 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.2 2003/06/17 04:24:06 dillon Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.3 2005/09/04 01:53:07 sephe Exp $
   */
+
+#ifndef _LIBWRAP_TCPD_H
+#define _LIBWRAP_TCPD_H
+
+#include <sys/cdefs.h>
 
 /* Structure to describe one communications endpoint. */
 
@@ -32,10 +37,12 @@ struct request_info {
     char    pid[10];			/* access via eval_pid(request) */
     struct host_info client[1];		/* client endpoint info */
     struct host_info server[1];		/* server endpoint info */
-    void  (*sink) ();			/* datagram sink function or 0 */
-    void  (*hostname) ();		/* address to printable hostname */
-    void  (*hostaddr) ();		/* address to printable address */
-    void  (*cleanup) ();		/* cleanup function or 0 */
+    void  (*sink) (int);		/* datagram sink function or 0 */
+    void  (*hostname)			/* address to printable hostname */
+	  (struct host_info *);
+    void  (*hostaddr)			/* address to printable address */
+	  (struct host_info *);
+    void  (*cleanup) (void);		/* cleanup function or 0 */
     struct netconfig *config;		/* netdir handle */
 };
 
@@ -58,8 +65,10 @@ struct request_info {
 #define STRING_UNKNOWN	"unknown"	/* lookup failed */
 #define STRING_PARANOID	"paranoid"	/* hostname conflict */
 
+__BEGIN_DECLS
 extern char unknown[];
 extern char paranoid[];
+__END_DECLS
 
 #define HOSTNAME_KNOWN(s) (STR_NE((s),unknown) && STR_NE((s),paranoid))
 
@@ -67,21 +76,22 @@ extern char paranoid[];
 
 /* Global functions. */
 
+__BEGIN_DECLS
 #if defined(TLI) || defined(PTX) || defined(TLI_SEQUENT)
 extern void fromhost();			/* get/validate client host info */
 #else
 #define fromhost sock_host		/* no TLI support needed */
 #endif
 
-extern int hosts_access();		/* access control */
-extern void shell_cmd();		/* execute shell command */
-extern char *percent_x();		/* do %<char> expansion */
-extern void rfc931();			/* client name from RFC 931 daemon */
-extern void clean_exit();		/* clean up and exit */
-extern void refuse();			/* clean up and exit */
-extern char *xgets();			/* fgets() on steroids */
-extern char *split_at();		/* strchr() and split */
-extern unsigned long dot_quad_addr();	/* restricted inet_addr() */
+int		hosts_access(struct request_info *);/* access control */
+void		shell_cmd(char *);		/* execute shell command */
+char		*percent_x(char *, int, char *, struct request_info *);/* do %<char> expansion */
+void		rfc931(struct sockaddr *, struct sockaddr *, char *);/* client name from RFC 931 daemon */
+void		clean_exit(struct request_info *);/* clean up and exit */
+void		refuse(struct request_info *);	/* clean up and exit */
+char		*xgets(char *, int, FILE *);	/* fgets() on steroids */
+char		*split_at(char *, int);		/* strchr() and split */
+unsigned long	dot_quad_addr(char *);		/* restricted inet_addr() */
 
 /* Global variables. */
 
@@ -98,13 +108,8 @@ extern int resident;			/* > 0 if resident process */
   * attributes. Each attribute has its own key.
   */
 
-#ifdef __STDC__
-extern struct request_info *request_init(struct request_info *,...);
-extern struct request_info *request_set(struct request_info *,...);
-#else
-extern struct request_info *request_init();	/* initialize request */
-extern struct request_info *request_set();	/* update request structure */
-#endif
+struct request_info	*request_init(struct request_info *,...);/* initialize request */
+struct request_info	*request_set(struct request_info *,...);/* update request structure */
 
 #define RQ_FILE		1		/* file descriptor */
 #define RQ_DAEMON	2		/* server process (argv[0]) */
@@ -124,20 +129,20 @@ extern struct request_info *request_set();	/* update request structure */
   * host_info structures serve as caches for the lookup results.
   */
 
-extern char *eval_user();		/* client user */
-extern char *eval_hostname();		/* printable hostname */
-extern char *eval_hostaddr();		/* printable host address */
-extern char *eval_hostinfo();		/* host name or address */
-extern char *eval_client();		/* whatever is available */
-extern char *eval_server();		/* whatever is available */
+char	*eval_user(struct request_info *);	/* client user */
+char	*eval_hostname(struct host_info *);	/* printable hostname */
+char	*eval_hostaddr(struct host_info *);	/* printable host address */
+char	*eval_hostinfo(struct host_info *);	/* host name or address */
+char	*eval_client(struct request_info *);	/* whatever is available */
+char	*eval_server(struct request_info *);	/* whatever is available */
 #define eval_daemon(r)	((r)->daemon)	/* daemon process name */
 #define eval_pid(r)	((r)->pid)	/* process id */
 
 /* Socket-specific methods, including DNS hostname lookups. */
 
-extern void sock_host();		/* look up endpoint addresses */
-extern void sock_hostname();		/* translate address to hostname */
-extern void sock_hostaddr();		/* address to printable address */
+void	sock_host(struct request_info *);	/* look up endpoint addresses */
+void	sock_hostname(struct host_info *);	/* translate address to hostname */
+void	sock_hostaddr(struct host_info *);	/* address to printable address */
 #define sock_methods(r) \
 	{ (r)->hostname = sock_hostname; (r)->hostaddr = sock_hostaddr; }
 
@@ -153,19 +158,17 @@ extern void tli_host();			/* look up endpoint addresses etc. */
   * everyone would have to include <setjmp.h>.
   */
 
-#ifdef __STDC__
-extern void tcpd_warn(char *, ...);	/* report problem and proceed */
-extern void tcpd_jump(char *, ...);	/* report problem and jump */
-#else
-extern void tcpd_warn();
-extern void tcpd_jump();
-#endif
+void	tcpd_warn(char *, ...) __printflike(1, 2);	/* report problem and proceed */
+void	tcpd_jump(char *, ...) __printflike(1, 2);	/* report problem and jump */
+__END_DECLS
 
 struct tcpd_context {
     char   *file;			/* current file */
     int     line;			/* current line */
 };
+__BEGIN_DECLS
 extern struct tcpd_context tcpd_context;
+__END_DECLS
 
  /*
   * While processing access control rules, error conditions are handled by
@@ -185,7 +188,8 @@ extern struct tcpd_context tcpd_context;
   * behavior.
   */
 
-extern void process_options();		/* execute options */
+__BEGIN_DECLS
+void	process_options(char *, struct request_info *);	/* execute options */
 extern int dry_run;			/* verification flag */
 
 /* Bug workarounds. */
@@ -224,3 +228,6 @@ extern char *fix_strtok();
 #define strtok	my_strtok
 extern char *my_strtok();
 #endif
+__END_DECLS
+
+#endif	/* !_LIBWRAP_TCPD_H */
