@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)showmount.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/usr.bin/showmount/showmount.c,v 1.8 1999/08/28 01:05:43 peter Exp $
- * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.4 2005/06/01 18:25:45 liamfoy Exp $
+ * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.5 2005/09/05 04:22:07 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -90,7 +90,7 @@ void print_dump(struct mountlist *);
 static void usage(void);
 int xdr_mntdump(XDR *, struct mountlist **);
 int xdr_exports(XDR *, struct exportslist **);
-int tcp_callrpc(char *host,
+int tcp_callrpc(const char *host,
                 int prognum, int versnum, int procnum,
                 xdrproc_t inproc, char *in,
                 xdrproc_t outproc, char *out);
@@ -109,7 +109,7 @@ main(int argc, char **argv)
 	struct grouplist *grp;
 	int rpcs = 0, mntvers = 1;
 	char ch;
-	char *host;
+	const char *host;
 	int estat;
 
 	while ((ch = getopt(argc, argv, "ade3")) != -1)
@@ -206,8 +206,8 @@ main(int argc, char **argv)
  */
 
 int 
-tcp_callrpc(char *host, int prognum, int versnum, int procnum, xdrproc_t inproc,
-            char *in, xdrproc_t outproc, char *out)
+tcp_callrpc(const char *host, int prognum, int versnum, int procnum,
+	    xdrproc_t inproc, char *in, xdrproc_t outproc, char *out)
 {
 	struct hostent *hp;
 	struct sockaddr_in server_addr;
@@ -266,7 +266,7 @@ xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 {
 	struct mountlist *mp;
 	struct mountlist *tp;
-	struct mountlist **otp;
+	struct mountlist **otp = NULL;
 	int val, val2;
 	int bool;
 	char *strp;
@@ -301,7 +301,7 @@ xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 				case ALL:
 					if (val == 0) {
 						if (val2 == 0) {
-							free((caddr_t)mp);
+							free(mp);
 							goto next;
 						}
 						val = val2;
@@ -309,14 +309,14 @@ xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 					break;
 				case DIRS:
 					if (val2 == 0) {
-						free((caddr_t)mp);
+						free(mp);
 						goto next;
 					}
 					val = val2;
 					break;
 				default:
 					if (val == 0) {
-						free((caddr_t)mp);
+						free(mp);
 						goto next;
 					}
 					break;
@@ -395,7 +395,6 @@ usage(void)
 void
 print_dump(struct mountlist *mp)
 {
-
 	if (mp == NULL)
 		return;
 	if (mp->ml_left)
