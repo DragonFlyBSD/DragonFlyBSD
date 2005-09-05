@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/ruserpass.c,v 1.9 1999/08/28 01:01:34 peter Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ruserpass.c,v 1.3 2003/10/04 20:36:45 hmp Exp $	*/
-/*	$NetBSD: ruserpass.c,v 1.14.2.1 1997/11/18 01:02:05 mellon Exp $	*/
-
 /*
  * Copyright (c) 1985, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -37,6 +33,7 @@
  * @(#)ruserpass.c	8.4 (Berkeley) 4/27/95
  * $NetBSD: ruserpass.c,v 1.14.2.1 1997/11/18 01:02:05 mellon Exp $
  * $FreeBSD: src/usr.bin/ftp/ruserpass.c,v 1.9 1999/08/28 01:01:34 peter Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/ruserpass.c,v 1.4 2005/09/05 04:02:43 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -93,7 +90,7 @@ ruserpass(const char *host, char **aname, char **apass, char **aacct)
 	if (hdir == NULL)
 		hdir = ".";
 	if (strlen(hdir) + sizeof(".netrc") < sizeof(buf)) {
-		(void)snprintf(buf, sizeof buf, "%s/.netrc", hdir);
+		snprintf(buf, sizeof buf, "%s/.netrc", hdir);
 	} else {
 		warnx("%s/.netrc: %s", hdir, strerror(ENAMETOOLONG));
 		return (0);
@@ -184,7 +181,7 @@ next:
 			break;
 		case MACDEF:
 			if (proxy) {
-				(void)fclose(cfile);
+				fclose(cfile);
 				return (0);
 			}
 			while ((c=getc(cfile)) != EOF)
@@ -255,10 +252,10 @@ next:
 		goto done;
 	}
 done:
-	(void)fclose(cfile);
+	fclose(cfile);
 	return (0);
 bad:
-	(void)fclose(cfile);
+	fclose(cfile);
 	return (-1);
 }
 

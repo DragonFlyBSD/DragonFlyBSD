@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/util.c,v 1.12.2.4 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/util.c,v 1.3 2003/10/04 20:36:45 hmp Exp $	*/
-/*	$NetBSD: util.c,v 1.16.2.1 1997/11/18 01:02:33 mellon Exp $	*/
-
 /*
  * Copyright (c) 1985, 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -36,6 +32,7 @@
  *
  * $NetBSD: util.c,v 1.16.2.1 1997/11/18 01:02:33 mellon Exp $
  * $FreeBSD: src/usr.bin/ftp/util.c,v 1.12.2.4 2002/08/27 09:55:08 yar Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/util.c,v 1.4 2005/09/05 04:02:43 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -86,7 +83,7 @@ setpeer(int argc, char **argv)
 		return;
 	}
 	if (argc < 2)
-		(void)another(&argc, &argv, "to");
+		another(&argc, &argv, "to");
 	if (argc < 2 || argc > 3) {
 		printf("usage: %s host-name [port]\n", argv[0]);
 		code = -1;
@@ -122,14 +119,14 @@ setpeer(int argc, char **argv)
 		/*
 		 * Set up defaults for FTP.
 		 */
-		(void)strcpy(typename, "ascii"), type = TYPE_A;
+		strcpy(typename, "ascii"), type = TYPE_A;
 		curtype = TYPE_A;
-		(void)strcpy(formname, "non-print"), form = FORM_N;
-		(void)strcpy(modename, "stream"), mode = MODE_S;
-		(void)strcpy(structname, "file"), stru = STRU_F;
-		(void)strcpy(bytename, "8"), bytesize = 8;
+		strcpy(formname, "non-print"), form = FORM_N;
+		strcpy(modename, "stream"), mode = MODE_S;
+		strcpy(structname, "file"), stru = STRU_F;
+		strcpy(bytename, "8"), bytesize = 8;
 		if (autologin)
-			(void)login(argv[1], NULL, NULL);
+			login(argv[1], NULL, NULL);
 
 		overbose = verbose;
 		if (debug == 0)
@@ -163,7 +160,7 @@ setpeer(int argc, char **argv)
 			 * for text files unless changed by the user.
 			 */
 			type = 0;
-			(void)strcpy(typename, "binary");
+			strcpy(typename, "binary");
 			if (overbose)
 			    printf("Using %s mode to transfer files.\n",
 				typename);
@@ -277,7 +274,7 @@ login(const char *host, char *user, char *pass)
 	connected = -1;
 	for (n = 0; n < macnum; ++n) {
 		if (!strcmp("init", macros[n].mac_name)) {
-			(void)strcpy(line, "$init");
+			strcpy(line, "$init");
 			makeargv();
 			domacro(margc, margv);
 			break;
@@ -335,7 +332,7 @@ remglob(char **argv, int doswitch, char **errbuf)
                         args = NULL;
                 else {
                         if (ftemp) {
-                                (void)fclose(ftemp);
+                                fclose(ftemp);
                                 ftemp = NULL;
                         }
                 }
@@ -349,7 +346,7 @@ remglob(char **argv, int doswitch, char **errbuf)
                 return (cp);
         }
         if (ftemp == NULL) {
-                (void)snprintf(temp, sizeof(temp), "%s/%s", tmpdir, TMPFILE);
+                snprintf(temp, sizeof(temp), "%s/%s", tmpdir, TMPFILE);
                 if ((fd = mkstemp(temp)) < 0) {
                         warn("unable to create temporary file %s", temp);
                         return (NULL);
@@ -372,7 +369,7 @@ remglob(char **argv, int doswitch, char **errbuf)
                 verbose = oldverbose;
 		hash = oldhash;
                 ftemp = fopen(temp, "r");
-                (void)unlink(temp);
+                unlink(temp);
                 if (ftemp == NULL) {
 			if (errbuf == NULL)
 				puts("can't find list of remote files, oops.");
@@ -383,7 +380,7 @@ remglob(char **argv, int doswitch, char **errbuf)
                 }
         }
         if (fgets(buf, sizeof(buf), ftemp) == NULL) {
-                (void)fclose(ftemp);
+                fclose(ftemp);
 		ftemp = NULL;
                 return (NULL);
         }
@@ -400,7 +397,7 @@ confirm(const char *cmd, const char *file)
 	if (!interactive || confirmrest)
 		return (1);
 	printf("%s %s? ", cmd, file);
-	(void)fflush(stdout);
+	fflush(stdout);
 	if (fgets(line, sizeof(line), stdin) == NULL)
 		return (0);
 	switch (tolower((unsigned char)*line)) {
@@ -593,11 +590,11 @@ progressmeter(int flag)
 	len = 0;
 
 	if (flag == -1) {
-		(void)gettimeofday(&start, (struct timezone *)0);
+		gettimeofday(&start, (struct timezone *)0);
 		lastupdate = start;
 		lastsize = restart_point;
 	}
-	(void)gettimeofday(&now, (struct timezone *)0);
+	gettimeofday(&now, (struct timezone *)0);
 	if (!progress || filesize <= 0)
 		return;
 	cursize = bytes + restart_point;
@@ -666,14 +663,14 @@ progressmeter(int flag)
 			    "%02d:%02d ETA", i / 60, i % 60);
 		}
 	}
-	(void)write(STDOUT_FILENO, buf, len);
+	write(STDOUT_FILENO, buf, len);
 
 	if (flag == -1) {
-		(void)signal(SIGALRM, updateprogressmeter);
+		signal(SIGALRM, updateprogressmeter);
 		alarmtimer(1);		/* set alarm timer for 1 Hz */
 	} else if (flag == 1) {
 		alarmtimer(0);
-		(void)putchar('\n');
+		putchar('\n');
 	}
 	fflush(stdout);
 }
@@ -698,7 +695,7 @@ ptransfer(int siginfo)
 	if (!verbose && !siginfo)
 		return;
 
-	(void)gettimeofday(&now, (struct timezone *)0);
+	gettimeofday(&now, (struct timezone *)0);
 	timersub(&now, &start, &td);
 	elapsed = td.tv_sec + (td.tv_usec / 1000000.0);
 	bs = bytes / (elapsed == 0.0 ? 1 : elapsed);
@@ -721,7 +718,7 @@ ptransfer(int siginfo)
 		    "  ETA: %02d:%02d:%02d\n", hh, remaining / 60,
 		    remaining % 60);
 	}
-	(void)write(siginfo ? STDERR_FILENO : STDOUT_FILENO, buf, len);
+	write(siginfo ? STDERR_FILENO : STDOUT_FILENO, buf, len);
 }
 
 /*
@@ -759,7 +756,7 @@ list_vertical(StringList *sl)
 			w = strlen(p);
 			while (w < width) {
 				w = (w + 8) &~ 7;
-				(void)putchar('\t');
+				putchar('\t');
 			}
 		}
 	}

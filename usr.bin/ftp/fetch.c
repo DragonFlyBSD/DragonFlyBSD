@@ -1,5 +1,3 @@
-/*	$NetBSD: fetch.c,v 1.16.2.1 1997/11/18 01:00:22 mellon Exp $	*/
-
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -37,7 +35,7 @@
  *
  * $NetBSD: fetch.c,v 1.16.2.1 1997/11/18 01:00:22 mellon Exp $
  * $FreeBSD: src/usr.bin/ftp/fetch.c,v 1.12.2.6 2002/10/19 12:50:26 roam Exp $
- * $DragonFly: src/usr.bin/ftp/Attic/fetch.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/fetch.c,v 1.4 2005/09/05 04:02:43 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -108,13 +106,6 @@ url_get(const char *origline, const char *proxyenv)
 	proxy = NULL;
 	isftpurl = 0;
 	res0 = NULL;
-
-#ifdef __GNUC__			/* XXX: to shut up gcc warnings */
-	(void)&savefile;
-	(void)&proxy;
-	(void)&res0;
-#endif
-
 	line = strdup(origline);
 	if (line == NULL)
 		errx(1, "Can't allocate memory to parse URL");
@@ -238,7 +229,7 @@ url_get(const char *origline, const char *proxyenv)
 	      {
 		res = res->ai_next;
 		if (res) {
-			(void)close(s);
+			close(s);
 			continue;
 		}
 		getnameinfo(bindres->ai_addr, bindres->ai_addrlen,
@@ -253,7 +244,7 @@ url_get(const char *origline, const char *proxyenv)
 	if (connect(s, res->ai_addr, res->ai_addrlen) < 0) {
 		res = res->ai_next;
 		if (res) {
-			(void)close(s);
+			close(s);
 			continue;
 		}
 		warn("Can't connect to %s", host);
@@ -359,7 +350,7 @@ url_get(const char *origline, const char *proxyenv)
 	oldintr = NULL;
 	if (setjmp(httpabort)) {
 		if (oldintr)
-			(void)signal(SIGINT, oldintr);
+			signal(SIGINT, oldintr);
 		goto cleanup_url_get;
 	}
 	oldintr = signal(SIGINT, aborthttp);
@@ -382,17 +373,17 @@ url_get(const char *origline, const char *proxyenv)
 		}
 		if (hash && !progress) {
 			while (bytes >= hashbytes) {
-				(void)putchar('#');
+				putchar('#');
 				hashbytes += mark;
 			}
-			(void)fflush(stdout);
+			fflush(stdout);
 		}
 	}
 	if (hash && !progress && bytes > 0) {
 		if (bytes < mark)
-			(void)putchar('#');
-		(void)putchar('\n');
-		(void)fflush(stdout);
+			putchar('#');
+		putchar('\n');
+		fflush(stdout);
 	}
 	if (len != 0) {
 		warn("Reading from socket");
@@ -401,7 +392,7 @@ url_get(const char *origline, const char *proxyenv)
 	progressmeter(1);
 	if (verbose)
 		puts("Successfully retrieved file.");
-	(void)signal(SIGINT, oldintr);
+	signal(SIGINT, oldintr);
 
 	close(s);
 	close(out);
@@ -435,10 +426,9 @@ cleanup_url_get:
 void
 aborthttp(int notused)
 {
-
 	alarmtimer(0);
 	puts("\nhttp fetch aborted.");
-	(void)fflush(stdout);
+	fflush(stdout);
 	longjmp(httpabort, 1);
 }
 
@@ -476,8 +466,8 @@ auto_fetch(int argc, char **argv)
 			disconnect(0, NULL);
 		return (argpos + 1);
 	}
-	(void)signal(SIGINT, (sig_t)intr);
-	(void)signal(SIGPIPE, (sig_t)lostpeer);
+	signal(SIGINT, (sig_t)intr);
+	signal(SIGPIPE, (sig_t)lostpeer);
 
 	ftpproxy = getenv(FTP_PROXY);
 	httpproxy = getenv(HTTP_PROXY);
@@ -598,7 +588,7 @@ parsed_url:
 		if (strcmp(host, lasthost) != 0) {
 			int oautologin;
 
-			(void)strcpy(lasthost, host);
+			strcpy(lasthost, host);
 			if (connected)
 				disconnect(0, NULL);
 			xargv[0] = __progname;

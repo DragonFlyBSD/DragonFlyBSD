@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/complete.c,v 1.5.2.1 2001/11/25 18:28:06 iedowse Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/complete.c,v 1.4 2005/08/08 16:43:33 joerg Exp $	*/
-/*	$NetBSD: complete.c,v 1.11 1997/09/13 09:05:53 lukem Exp $	*/
-
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -39,6 +35,7 @@
  *
  * $NetBSD: complete.c,v 1.11 1997/09/13 09:05:53 lukem Exp $
  * $FreeBSD: src/usr.bin/ftp/complete.c,v 1.5.2.1 2001/11/25 18:28:06 iedowse Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/complete.c,v 1.5 2005/09/05 04:02:43 swildner Exp $
  */
 
 #ifndef SMALL
@@ -112,7 +109,7 @@ complete_ambiguous(char *word, int list, StringList *words)
 				matchlen = j;
 		}
 		if (matchlen > wordlen) {
-			(void)strncpy(insertstr, lastmatch, matchlen);
+			strncpy(insertstr, lastmatch, matchlen);
 			insertstr[matchlen] = '\0';
 			if (el_insertstr(el, insertstr + wordlen) == -1)
 				return (CC_ERROR);
@@ -178,7 +175,7 @@ complete_local(char *word, int list)
 			dir[0] = '/';
 			dir[1] = '\0';
 		} else {
-			(void)strncpy(dir, word, file - word);
+			strncpy(dir, word, file - word);
 			dir[file - word] = '\0';
 		}
 		file++;
@@ -232,7 +229,7 @@ complete_remote(char *word, int list)
 		cp = file;
 		while (*cp == '/' && cp > word)
 			cp--;
-		(void)strncpy(dir, word, cp - word + 1);
+		strncpy(dir, word, cp - word + 1);
 		dir[cp - word + 1] = '\0';
 		file++;
 	}
@@ -269,7 +266,7 @@ complete_remote(char *word, int list)
 			printf("\n%s\n", emesg);
 			return (CC_REDISPLAY);
 		}
-		(void)strcpy(lastdir, dir);
+		strcpy(lastdir, dir);
 		dirchange = 0;
 	}
 
@@ -304,7 +301,7 @@ complete(EditLine *el, int ch)
 	len = lf->lastchar - lf->buffer;
 	if (len >= sizeof(line))
 		return (CC_ERROR);
-	(void)strncpy(line, lf->buffer, len);
+	strncpy(line, lf->buffer, len);
 	line[len] = '\0';
 	cursor_pos = line + (lf->cursor - lf->buffer);
 	lastc_argc = cursor_argc;	/* remember last cursor pos */
@@ -320,7 +317,7 @@ complete(EditLine *el, int ch)
 	    && strncmp(word, margv[cursor_argc], cursor_argo) == 0)
 		dolist = 1;
 	else
-	    (void)strncpy(word, margv[cursor_argc], cursor_argo);
+	    strncpy(word, margv[cursor_argc], cursor_argo);
 	word[cursor_argo] = '\0';
 
 	if (cursor_argc == 0)

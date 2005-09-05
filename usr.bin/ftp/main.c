@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/main.c,v 1.25.2.4 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/main.c,v 1.3 2003/10/04 20:36:45 hmp Exp $	*/
-/*	$NetBSD: main.c,v 1.26 1997/10/14 16:31:22 christos Exp $	*/
-
 /*
  * Copyright (c) 1985, 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -38,6 +34,7 @@
  * @(#)main.c	8.6 (Berkeley) 10/9/94
  * $NetBSD: main.c,v 1.26 1997/10/14 16:31:22 christos Exp $
  * $FreeBSD: src/usr.bin/ftp/main.c,v 1.25.2.4 2002/08/27 09:55:08 yar Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/main.c,v 1.4 2005/09/05 04:02:43 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -76,7 +73,7 @@ main(int argc, char **argv)
 	int dumbterm;
 	char *src_addr = NULL;
 
-	(void) setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	ftpport = "ftp";
 	httpport = "http";
@@ -251,16 +248,11 @@ main(int argc, char **argv)
 		pw = getpwuid(getuid());
 	if (pw != NULL) {
 		home = homedir;
-		(void)strcpy(home, pw->pw_dir);
+		strcpy(home, pw->pw_dir);
 	}
 
 	setttywidth(0);
-	(void)signal(SIGWINCH, setttywidth);
-
-#ifdef __GNUC__			/* XXX: to shut up gcc warnings */
-	(void)&argc;
-	(void)&argv;
-#endif
+	signal(SIGWINCH, setttywidth);
 
 	if (argc > 0) {
 		if (strchr(argv[0], ':') != NULL && ! isipv6addr(argv[0])) {
@@ -271,13 +263,10 @@ main(int argc, char **argv)
 		} else {
 			char *xargv[4], **xargp = xargv;
 
-#ifdef __GNUC__			/* XXX: to shut up gcc warnings */
-			(void)&xargp;
-#endif
 			if (setjmp(toplevel))
 				exit(0);
-			(void)signal(SIGINT, (sig_t)intr);
-			(void)signal(SIGPIPE, (sig_t)lostpeer);
+			signal(SIGINT, (sig_t)intr);
+			signal(SIGPIPE, (sig_t)lostpeer);
 			*xargp++ = __progname;
 			*xargp++ = argv[0];		/* host */
 			if (argc > 1)
@@ -291,8 +280,8 @@ main(int argc, char **argv)
 #endif /* !SMALL */
 	top = setjmp(toplevel) == 0;
 	if (top) {
-		(void)signal(SIGINT, (sig_t)intr);
-		(void)signal(SIGPIPE, (sig_t)lostpeer);
+		signal(SIGINT, (sig_t)intr);
+		signal(SIGPIPE, (sig_t)lostpeer);
 	}
 	for (;;) {
 		cmdscanner(top);
@@ -303,7 +292,6 @@ main(int argc, char **argv)
 void
 intr(void)
 {
-
 	alarmtimer(0);
 	longjmp(toplevel, 1);
 }
@@ -311,17 +299,16 @@ intr(void)
 void
 lostpeer(void)
 {
-
 	alarmtimer(0);
 	if (connected) {
 		if (cout != NULL) {
-			(void)shutdown(fileno(cout), 1+1);
-			(void)fclose(cout);
+			shutdown(fileno(cout), 1+1);
+			fclose(cout);
 			cout = NULL;
 		}
 		if (data >= 0) {
-			(void)shutdown(data, 1+1);
-			(void)close(data);
+			shutdown(data, 1+1);
+			close(data);
 			data = -1;
 		}
 		connected = 0;
@@ -329,8 +316,8 @@ lostpeer(void)
 	pswitch(1);
 	if (connected) {
 		if (cout != NULL) {
-			(void)shutdown(fileno(cout), 1+1);
-			(void)fclose(cout);
+			shutdown(fileno(cout), 1+1);
+			fclose(cout);
 			cout = NULL;
 		}
 		connected = 0;
@@ -362,14 +349,14 @@ cmdscanner(int top)
 	    && !editing
 #endif /* !SMALL */
 	    )
-		(void)putchar('\n');
+		putchar('\n');
 	for (;;) {
 #ifndef SMALL
 		if (!editing) {
 #endif /* !SMALL */
 			if (fromatty) {
 				fputs(prompt(), stdout);
-				(void)fflush(stdout);
+				fflush(stdout);
 			}
 			if (fgets(line, sizeof(line), stdin) == NULL)
 				quit(0, 0);
@@ -433,12 +420,12 @@ cmdscanner(int top)
 		confirmrest = 0;
 		(*c->c_handler)(margc, margv);
 		if (bell && c->c_bell)
-			(void)putchar('\007');
+			putchar('\007');
 		if (c->c_handler != help)
 			break;
 	}
-	(void)signal(SIGINT, (sig_t)intr);
-	(void)signal(SIGPIPE, (sig_t)lostpeer);
+	signal(SIGINT, (sig_t)intr);
+	signal(SIGPIPE, (sig_t)lostpeer);
 }
 
 struct cmd *
@@ -692,7 +679,7 @@ help(int argc, char **argv)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: %s [-46adeginptUvV] [-P port] [-s src_addr] [host [port]]\n"
 	    "       %s host:path[/]\n"
 	    "       %s ftp://host[:port]/path[/]\n"

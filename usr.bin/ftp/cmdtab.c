@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/cmdtab.c,v 1.7.2.2 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/cmdtab.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
-/*	$NetBSD: cmdtab.c,v 1.17 1997/08/18 10:20:17 lukem Exp $	*/
-
 /*
  * Copyright (c) 1985, 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -37,6 +33,7 @@
  * @(#)cmdtab.c	8.4 (Berkeley) 10/9/94
  * $NetBSD: cmdtab.c,v 1.17 1997/08/18 10:20:17 lukem Exp $
  * $FreeBSD: src/usr.bin/ftp/cmdtab.c,v 1.7.2.2 2002/08/27 09:55:08 yar Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/cmdtab.c,v 1.3 2005/09/05 04:02:43 swildner Exp $
  */
 
 #include <sys/cdefs.h>

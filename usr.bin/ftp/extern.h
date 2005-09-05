@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/extern.h,v 1.10.2.3 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/extern.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $	*/
-/*	$NetBSD: extern.h,v 1.17.2.1 1997/11/18 00:59:50 mellon Exp $	*/
-
 /*-
  * Copyright (c) 1994 The Regents of the University of California.
  * All rights reserved.
@@ -35,6 +31,9 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.3 (Berkeley) 10/9/94
+ * $NetBSD: extern.h,v 1.17.2.1 1997/11/18 00:59:50 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/extern.h,v 1.10.2.3 2002/08/27 09:55:08 yar Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/extern.h,v 1.5 2005/09/05 04:02:43 swildner Exp $
  */
 
 void    abort_remote(FILE *);

@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/ftp_var.h,v 1.11.2.2 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.4 2005/05/07 22:34:51 corecode Exp $	*/
-/*	$NetBSD: ftp_var.h,v 1.20.2.1 1997/11/18 01:01:37 mellon Exp $	*/
-
 /*
  * Copyright (c) 1985, 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -35,6 +31,9 @@
  * SUCH DAMAGE.
  *
  *	@(#)ftp_var.h	8.4 (Berkeley) 10/9/94
+ * $NetBSD: ftp_var.h,v 1.20.2.1 1997/11/18 01:01:37 mellon Exp $
+ * $FreeBSD: src/usr.bin/ftp/ftp_var.h,v 1.11.2.2 2002/08/27 09:55:08 yar Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.5 2005/09/05 04:02:43 swildner Exp $
  */
 
 /*

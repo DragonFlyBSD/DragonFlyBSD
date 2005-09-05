@@ -1,7 +1,3 @@
-/* $FreeBSD: src/usr.bin/ftp/domacro.c,v 1.6 1999/08/28 01:01:31 peter Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/domacro.c,v 1.3 2003/10/04 20:36:44 hmp Exp $	*/
-/*	$NetBSD: domacro.c,v 1.10 1997/07/20 09:45:45 lukem Exp $	*/
-
 /*
  * Copyright (c) 1985, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -37,6 +33,7 @@
  * @(#)domacro.c	8.3 (Berkeley) 4/2/94
  * $NetBSD: domacro.c,v 1.10 1997/07/20 09:45:45 lukem Exp $
  * $FreeBSD: src/usr.bin/ftp/domacro.c,v 1.6 1999/08/28 01:01:31 peter Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/domacro.c,v 1.4 2005/09/05 04:02:43 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -70,7 +67,7 @@ domacro(int argc, char **argv)
 		code = -1;
 		return;
 	}
-	(void)strcpy(line2, line);
+	strcpy(line2, line);
 TOP:
 	cp1 = macros[i].mac_start;
 	while (cp1 != macros[i].mac_end) {
@@ -91,7 +88,7 @@ TOP:
 				    }
 				    cp1--;
 				    if (argc - 2 >= j) {
-					(void)strcpy(cp2, argv[j+1]);
+					strcpy(cp2, argv[j+1]);
 					cp2 += strlen(argv[j+1]);
 				    }
 				    break;
@@ -100,7 +97,7 @@ TOP:
 					loopflg = 1;
 					cp1++;
 					if (count < argc) {
-					   (void)strcpy(cp2, argv[count]);
+					   strcpy(cp2, argv[count]);
 					   cp2 += strlen(argv[count]);
 					}
 					break;
@@ -134,9 +131,9 @@ TOP:
 				puts(line);
 			(*c->c_handler)(margc, margv);
 			if (bell && c->c_bell) {
-				(void)putchar('\007');
+				putchar('\007');
 			}
-			(void)strcpy(line, line2);
+			strcpy(line, line2);
 			makeargv();
 			argc = margc;
 			argv = margv;
