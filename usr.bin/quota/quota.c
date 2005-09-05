@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $
- * $DragonFly: src/usr.bin/quota/quota.c,v 1.5 2005/03/18 00:57:10 joerg Exp $
+ * $DragonFly: src/usr.bin/quota/quota.c,v 1.6 2005/09/05 02:43:10 swildner Exp $
  */
 
 /*
@@ -78,23 +78,21 @@ struct quotause {
 };
 #define	FOUND	0x01
 
-static const char *timeprt(time_t seconds);
-static struct quotause *getprivs(long id, int quotatype);
+static const char *timeprt(time_t);
+static struct quotause *getprivs(long, int);
 static void usage(void);
-static void showuid(u_long uid);
-static void showgid(u_long gid);
-static int alldigits(char *s);
-static void showusrname(char *name);
-static void showgrpname(char *name);
-static void showquotas(int type, u_long id, const char *name);
-static void heading(int type, u_long id, const char *name, const char *tag);
-static int ufshasquota(struct fstab *fs, int type, char **qfnamep);
-static int getufsquota(struct fstab *fs, struct quotause *qup, long id,
-	int quotatype);
-static int getnfsquota(struct statfs *fst, struct quotause *qup, long id,
-	int quotatype);
-static int callaurpc(char *host, int prognum, int versnum, int procnum, 
-	xdrproc_t inproc, char *in, xdrproc_t outproc, char *out);
+static void showuid(u_long);
+static void showgid(u_long);
+static int alldigits(char *);
+static void showusrname(char *);
+static void showgrpname(char *);
+static void showquotas(int, u_long, const char *);
+static void heading(int, u_long, const char *, const char *);
+static int ufshasquota(struct fstab *, int, char **);
+static int getufsquota(struct fstab *, struct quotause *, long, int);
+static int getnfsquota(struct statfs *, struct quotause *, long, int);
+static int callaurpc(char *, int, int, int, xdrproc_t, char *, xdrproc_t,
+	char *);
 
 int	lflag;
 int	qflag;
@@ -521,7 +519,7 @@ ufshasquota(struct fstab *fs, int type, char **qfnamep)
 		*qfnamep = cp;
 		return (1);
 	}
-	(void) sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
+	sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
 	*qfnamep = buf;
 	return (1);
 }
@@ -541,14 +539,14 @@ getufsquota(struct fstab *fs, struct quotause *qup, long id, int quotatype)
 			warn("%s", qfpathname);
 			return (0);
 		}
-		(void) lseek(fd, (off_t)(id * sizeof(struct dqblk)), L_SET);
+		lseek(fd, (off_t)(id * sizeof(struct dqblk)), L_SET);
 		switch (read(fd, &qup->dqblk, sizeof(struct dqblk))) {
 		case 0:				/* EOF */
 			/*
 			 * Convert implicit 0 quota (EOF)
 			 * into an explicit one (zero'ed dqblk)
 			 */
-			bzero((caddr_t)&qup->dqblk, sizeof(struct dqblk));
+			bzero(&qup->dqblk, sizeof(struct dqblk));
 			break;
 		case sizeof(struct dqblk):	/* OK */
 			break;
