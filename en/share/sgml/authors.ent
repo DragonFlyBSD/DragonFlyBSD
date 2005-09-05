@@ -1,7 +1,7 @@
 <!--
      Names and email address of contributing authors and CVS committers.
      Entity names for committers should be the same as their login names on
-     freefall.FreeBSD.org.
+     leaf.dragonflybsd.org.
 
      Use these entities when referencing people.
 
@@ -9,7 +9,7 @@
 
      NOTE:  Make use of `foo at bar.com' e-mail format!!
 
-     $DragonFly: doc/en/share/sgml/authors.ent,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+     $DragonFly: doc/en/share/sgml/authors.ent,v 1.2 2005/09/05 21:15:08 reed Exp $
 -->
 
 <!ENTITY a.asmodai "Jeroen Ruigrok van der Werven <email>asmodai at dragonflybsd.org</email>">
