@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.7 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.8 2005/09/06 22:33:00 dillon Exp $
  */
 
 #include "jscan.h"
@@ -101,7 +101,7 @@ jopen_prefix(const char *prefix, enum jdirection direction, int rw)
 	    if (strncmp(den->d_name, basename, baselen) == 0 && 
 		den->d_name[baselen] == '.'
 	    ) {
-		seq = strtoul(den->d_name + baselen + 1, &ptr, 10);
+		seq = strtoul(den->d_name + baselen + 1, &ptr, 16);
 		if (*ptr == 0 && seq != ULONG_MAX) {
 		    if (seq_beg == (unsigned int)-1 || seq_beg > seq)
 			seq_beg = seq;
@@ -140,7 +140,8 @@ jopen_prefix(const char *prefix, enum jdirection direction, int rw)
 	jf->jf_seq_end = seq_end;
 	jf->jf_open_flags = rw ? (O_RDWR|O_CREAT) : O_RDONLY;
 	jreset(jf, seq_end, JD_BACKWARDS);
-	fprintf(stderr, "Open prefix set %u-%u\n", seq_beg, seq_end);
+	if (verbose_opt)
+	    fprintf(stderr, "Open prefix set %08x-%08x\n", seq_beg, seq_end);
 	if (jread(jf, &jd, JD_BACKWARDS) == 0) {
 	    jf->jf_last_transid = jd->jd_transid;
 	    jfree(jf, jd);
@@ -241,10 +242,12 @@ jread(struct jfile *jf, struct jdata **jdp, enum jdirection direction)
     struct journal_rawrecend tail;
     struct journal_rawrecend *tailp;
     struct jdata *jd;
+    struct stat st;
     char *filename;
     int allocsize;
     int recsize;
     int search;
+    int error;
     int n;
 
     /*
@@ -280,7 +283,8 @@ top:
 		jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
 	    search = 0;
 	}
-	fprintf(stderr, "Open %s fd %d\n", filename, jf->jf_fd);
+	if (verbose_opt > 1)
+	    fprintf(stderr, "Open %s fd %d\n", filename, jf->jf_fd);
 	free(filename);
     }
 
@@ -296,12 +300,13 @@ top:
 	search = 0;
     }
 
+    error = 0;
     if (jf->jf_direction == JD_FORWARDS) {
 	/*
 	 * Scan the journal forwards.  Note that the file pointer might not
 	 * be seekable.
 	 */
-	while (jreadbuf(jf, &head, sizeof(head)) == sizeof(head)) {
+	while ((error = jreadbuf(jf, &head, sizeof(head))) == sizeof(head)) {
 	    if (head.begmagic != JREC_BEGMAGIC) {
 		if (search == 0)
 		    jf_warn(jf, "bad beginmagic, searching for new record");
@@ -364,7 +369,7 @@ top:
 	 * Scan the journal backwards.  Note that jread()'s reverse-seek and
 	 * read.  The data read will be forward ordered, however.
 	 */
-	while (jreadbuf(jf, &tail, sizeof(tail)) == sizeof(tail)) {
+	while ((error = jreadbuf(jf, &tail, sizeof(tail))) == sizeof(tail)) {
 	    if (tail.endmagic != JREC_ENDMAGIC) {
 		if (search == 0)
 		    jf_warn(jf, "bad endmagic, searching for new record");
@@ -426,21 +431,65 @@ top:
     /*
      * If reading in prefix mode and there is no more data, close the 
      * current descriptor, adjust the sequence number, and loop.
+     *
+     * If we hit the end of the sequence space and were asked to loop,
+     * check for the next sequence number and adjust jf_seq_end.  Leave
+     * the current descriptor open so we do not loose track of its seek
+     * position, and also to catch a race where another jscan may have
+     * written more data to the current sequence number before rolling
+     * the next sequence number.
      */
-    if (jf->jf_prefix) {
-	close(jf->jf_fd);
-	jf->jf_fd = -1;
+    if (error == 0 && jf->jf_prefix) {
 	if (jf->jf_direction == JD_FORWARDS) {
 	    if (jf->jf_seq < jf->jf_seq_end) {
 		++jf->jf_seq;
+		if (verbose_opt)
+		    fprintf(stderr, "jread: roll to seq %08x\n", jf->jf_seq);
+		if (jf->jf_fd >= 0) {
+		    close(jf->jf_fd);
+		    jf->jf_fd = -1;
+		}
+		goto top;
+	    }
+	    if (jmodes & JMODEF_LOOP_FOREVER) {
+		asprintf(&filename, "%s.%08x", jf->jf_prefix, jf->jf_seq + 1);
+		if (stat(filename, &st) == 0) {
+		    ++jf->jf_seq_end;
+		    if (verbose_opt)
+			fprintf(stderr, "jread: roll seq_end to %08x\n",
+					 jf->jf_seq_end);
+		} else {
+		    sleep(5);
+		}
 		goto top;
 	    }
 	} else {
 	    if (jf->jf_seq > jf->jf_seq_beg) {
 		--jf->jf_seq;
+		if (verbose_opt)
+		    fprintf(stderr, "jread: roll to seq %08x\n", jf->jf_seq);
+		if (jf->jf_fd >= 0) {
+		    close(jf->jf_fd);
+		    jf->jf_fd = -1;
+		}
 		goto top;
 	    }
 	}
+    }
+
+    /*
+     * If we hit EOF and were asked to loop forever on the input, leave
+     * the current descriptor open, sleep, and loop.
+     *
+     * We have already handled the prefix case.  This feature only works
+     * when doing forward scans and the input is not a pipe.
+     */
+    if (error == 0 && (jmodes & JMODEF_LOOP_FOREVER) &&
+	!(jmodes & JMODEF_INPUT_PIPE) && jf->jf_direction == JD_FORWARDS &&
+	jf->jf_prefix == NULL
+    ) {
+	sleep(5);
+	goto top;
     }
 
     /*
@@ -557,10 +606,18 @@ jseek(struct jfile *jf, int64_t transid, enum jdirection direction)
      * we find the file most likely to contain the transaction id.
      */
     if (jf->jf_prefix) {
-	for (seq = jf->jf_seq_end; seq >= jf->jf_seq_beg; --seq) {
+	if (verbose_opt > 2) {
+	    fprintf(stderr, "jseek prefix set %s %08x-%08x\n", jf->jf_prefix,
+		    jf->jf_seq_beg, jf->jf_seq_end);
+	}
+	for (seq = jf->jf_seq_end; seq != jf->jf_seq_beg - 1; --seq) {
 	    jreset(jf, seq, JD_FORWARDS);
+	    if (verbose_opt > 2)
+		fprintf(stderr, "try seq %08x\n", seq);
 	    if (jread(jf, &jd, JD_FORWARDS) == 0) {
 		transid_beg = jd->jd_transid;
+		if (verbose_opt > 2)
+		    fprintf(stderr, "transid %016llx\n", jd->jd_transid);
 		jfree(jf, jd);
 		if (transid_beg == transid) {
 		    jreset(jf, seq, JD_FORWARDS);
@@ -570,6 +627,11 @@ jseek(struct jfile *jf, int64_t transid, enum jdirection direction)
 		    break;
 	    }
 	}
+	if (seq == jf->jf_seq_beg - 1) {
+	    seq = jf->jf_seq_beg;
+	}
+	if (verbose_opt > 1)
+	    fprintf(stderr, "jseek input prefix set to seq %08x\n", seq);
     }
 
     /*
@@ -601,7 +663,12 @@ jseek(struct jfile *jf, int64_t transid, enum jdirection direction)
 	if (transid_end < transid) {
 	    if (jread(jf, &jd, JD_FORWARDS) == 0)
 		jfree(jf, jd);
+	    break;
 	}
+    }
+    if (verbose_opt) {
+	fprintf(stderr, "jseek %s to seq %08x offset 0x%08llx\n",
+		jf->jf_prefix, jf->jf_seq, jf->jf_pos);
     }
 }
 
@@ -633,11 +700,13 @@ jalign(struct jfile *jf)
 {
     char dummy[16];
     int bytes;
+    int n;
 
     if ((int)jf->jf_pos & 15) {
 	if (jf->jf_direction == JD_FORWARDS) {
 	    bytes = 16 - ((int)jf->jf_pos & 15);
-	    jf->jf_pos += jreadbuf(jf, dummy, bytes);
+	    if ((n = jreadbuf(jf, dummy, bytes)) > 0)
+		jf->jf_pos += n;
 	} else {
 	    jf->jf_pos = jf->jf_pos & ~(off_t)15;
 	}
@@ -661,8 +730,11 @@ jreadbuf(struct jfile *jf, void *buf, int bytes)
     if (jf->jf_direction == JD_FORWARDS) {
 	while (ttl != bytes) {
 	    n = read(jf->jf_fd, (char *)buf + ttl, bytes - ttl);
-	    if (n <= 0)
+	    if (n <= 0) {
+		if (n < 0 && ttl == 0)
+		    ttl = -errno;
 		break;
+	    }
 	    ttl += n;
 	}
     } else {
@@ -671,8 +743,11 @@ jreadbuf(struct jfile *jf, void *buf, int bytes)
 	    lseek(jf->jf_fd, jf->jf_pos, 0);
 	    while (ttl != bytes) {
 		n = read(jf->jf_fd, (char *)buf + ttl, bytes - ttl);
-		if (n <= 0)
+		if (n <= 0) {
+		    if (n < 0 && ttl == 0)
+			ttl = -errno;
 		    break;
+		}
 		ttl += n;
 	    }
 	}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.7 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.8 2005/09/06 22:33:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -139,6 +139,7 @@ struct jhash {
 #define JMODEF_OUTPUT			0x00000100
 #define JMODEF_OUTPUT_FULL		0x00000200
 #define JMODEF_MEMORY_TRACKING		0x00000400
+#define JMODEF_LOOP_FOREVER		0x00000800
 
 #define JMODEF_OUTPUT_TRANSID_GOOD	0x00010000
 #define JMODEF_RECORD_TRANSID_GOOD	0x00020000

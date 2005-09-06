@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jstream.c,v 1.6 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jstream.c,v 1.7 2005/09/06 22:33:00 dillon Exp $
  */
 
 #include "jscan.h"
@@ -221,6 +221,8 @@ jsreadp(struct jstream *js, off_t off, const void **bufp,
 		free(js->js_alloc_buf);
 	    js->js_alloc_buf = malloc(bytes);
 	    js->js_alloc_size = bytes;
+	    if (js->js_alloc_buf == NULL)
+		fprintf(stderr, "attempt to allocate %d bytes failed\n", bytes);
 	    assert(js->js_alloc_buf != NULL);
 	}
 	error = jsread(js, off, js->js_alloc_buf, bytes);

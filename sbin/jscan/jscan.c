@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.6 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.7 2005/09/06 22:33:00 dillon Exp $
  */
 
 #include "jscan.h"
@@ -83,7 +83,7 @@ main(int ac, char **av)
     int error;
     int ch;
 
-    while ((ch = getopt(ac, av, "2dm:o:s:uvw:D:O:W:F")) != -1) {
+    while ((ch = getopt(ac, av, "2dfm:o:s:uvw:D:O:W:F")) != -1) {
 	switch(ch) {
 	case '2':
 	    jmodes |= JMODEF_INPUT_FULL;
@@ -112,6 +112,9 @@ main(int ac, char **av)
 	    break;
 	case 'd':
 	    jmodes |= JMODEF_DEBUG;
+	    break;
+	case 'f':
+	    jmodes |= JMODEF_LOOP_FOREVER;
 	    break;
 	case 'v':
 	    ++verbose_opt;
@@ -251,6 +254,20 @@ main(int ac, char **av)
 	transid = record_transid;
     if ((jmodes & JMODEF_TRANSID_GOOD_MASK) == 0)
 	transid = 0;
+    if (verbose_opt) {
+	if (jmodes & JMODEF_OUTPUT) {
+	    fprintf(stderr, "Starting transid for OUTPUT: %016llx\n",
+		    output_transid);
+	}
+	if (jmodes & JMODEF_MIRROR) {
+	    fprintf(stderr, "Starting transid for MIRROR: %016llx\n",
+		    mirror_transid);
+	}
+	if (jmodes & JMODEF_RECORD) {
+	    fprintf(stderr, "Starting transid for RECORD: %016llx\n",
+		    record_transid);
+	}
+    }
 
     /*
      * Now it gets more difficult.  If we are recording then the input
@@ -344,6 +361,11 @@ main(int ac, char **av)
     exit(error ? 1 : 0);
 }
 
+/*
+ * When we have multiple commands and are writing to a prefix set, we can
+ * 'background' the output and/or mirroring command and have the background
+ * processes feed off the prefix set the foreground process is writing to.
+ */
 static
 void
 fork_subprocess(struct jfile *jftoclose,
@@ -355,7 +377,8 @@ fork_subprocess(struct jfile *jftoclose,
     struct jfile *jf;
 
     if ((pid = fork()) == 0) {
-	jmodes &= ~JMODEF_DEBUG;
+	jmodes &= ~(JMODEF_DEBUG | JMODEF_INPUT_PIPE);
+	jmodes |= JMODEF_LOOP_FOREVER;	/* keep checking for new input */
 	jclose(jftoclose);
 	jf = jopen_prefix(input_prefix, jdirection, 0);
 	jmodes |= JMODEF_INPUT_PREFIX;

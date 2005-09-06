@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.7 2005/09/06 18:43:52 dillon Exp $
+.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.8 2005/09/06 22:33:00 dillon Exp $
 .\"
 .Dd March 6, 2005
 .Dt JSCAN 8
@@ -41,7 +41,7 @@
 .Nd journal file processing program
 .Sh SYNOPSIS
 .Nm
-.Fl 2duvF
+.Fl 2dfuvF
 .Op Fl c Ar count[k,m,g,t]
 .Op Fl D Ar directory
 .Op Fl m Ar mirror_transid_file/none
@@ -72,6 +72,14 @@ can be.
 Display the contents of the journaling file or stream in a human readable
 format on stderr.  Note that stdout is used only for
 .Fl o .
+.It Fl f
+.Nm
+will sleep for 5 seconds and loop when it hits EOF on file or prefix
+set input rather then exit.  This option is typically used when running
+on an input file or prefix set which is live (being written to by
+another
+.Nm
+instance).
 .It Fl D Ar directory
 Specify the base directory for the mirroring option.
 .It Fl m Ar mirror_transid_file/none

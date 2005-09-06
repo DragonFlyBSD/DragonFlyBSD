@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.5 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.6 2005/09/06 22:33:00 dillon Exp $
  */
 
 #include "jscan.h"
@@ -65,7 +65,8 @@ dump_debug_stream(struct jstream *js)
 	jsread(js, 0, &head, sizeof(head));
 
 	sid = head.streamid & JREC_STREAMID_MASK;
-	printf("STREAM %04x {\n", (int)(u_int16_t)head.streamid);
+	printf("STREAM %04x %016llx {\n", (int)(u_int16_t)head.streamid,
+		head.transid);
 	if (sid >= JREC_STREAMID_JMIN && sid < JREC_STREAMID_JMAX) {
 	    off_t off = sizeof(head);
 
