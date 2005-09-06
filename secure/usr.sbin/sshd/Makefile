@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.10 2005/07/14 18:29:48 joerg Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.11 2005/09/06 10:51:17 joerg Exp $
 #
 
 PROG=	sshd
@@ -25,7 +25,7 @@ CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
 	-DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
 
 SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
-	loginrec.c.patch monitor.c.patch auth-pam.c.patch \
+	loginrec.c.patch monitor.c.patch \
 	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch 
 
 SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch
