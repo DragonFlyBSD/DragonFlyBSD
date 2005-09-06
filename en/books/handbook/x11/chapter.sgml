@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.5 2005/06/28 15:13:03 reed Exp $
+     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.6 2005/09/06 17:36:31 reed Exp $
 -->
 
 <chapter id="x11">
@@ -963,7 +963,7 @@ EndSection</programlisting>
       <screen>ttyv8   "/usr/X11R6/bin/xdm -nodaemon"  xterm   off secure</screen>
 
       <para>By default this entry is disabled; in order to enable it
-        change field 5 from <literal>off</literal> to
+        change the fifth field from <literal>off</literal> to
         <literal>on</literal> and restart &man.init.8; using the
         directions in <xref linkend="term-hup">.  The first field, the
         name of the terminal this program will manage, is
