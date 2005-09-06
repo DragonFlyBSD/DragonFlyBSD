@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.8 2005/09/06 06:42:39 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.9 2005/09/06 23:55:02 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -97,11 +97,12 @@
  * The journal_rawrecbeg structure MUST be a multiple of 16 bytes.
  * The journal_rawrecend structure MUST be a multiple of 8 bytes.
  *
- * NOTE: PAD RECORD SPECIAL CASE.  Pad records are 16 bytes and have the
+ * NOTE: PAD RECORD SPECIAL CASE.  Pad records can be 16 bytes and have the
  * rawrecend structure overlayed on the sequence number field of the 
  * rawrecbeg structure.  This is necessary because stream records are
  * 16 byte aligned, not 24 byte aligned, and dead space is not allowed.
- * So the pad record must fit into any dead space.
+ * So the pad record must fit into any dead space.  THEREFORE, THE TRANSID
+ * FIELD FOR A PAD RECORD MUST BE IGNORED.
  */
 struct journal_rawrecbeg {
 	u_int16_t begmagic;	/* recovery scan, endianess detection */
@@ -159,7 +160,7 @@ struct journal_ackrecord {
 #define JREC_STREAMID_JMAX	0x2000	/* (one past the highest allowed id) */
 
 #define JREC_DEFAULTSIZE	64	/* reasonable initial reservation */
-#define JREC_MINRECSIZE		32	/* (after alignment) */
+#define JREC_MINRECSIZE		16	/* (after alignment) */
 #define	JREC_MAXRECSIZE		(128*1024*1024)
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.20 2005/08/24 21:14:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.21 2005/09/06 23:55:04 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -857,7 +857,7 @@ journal_build_pad(struct journal_rawrecbeg *rawp, int recsize, int64_t transid)
     rawp->recsize = recsize;	/* must be 16-byte aligned */
     rawp->transid = transid;
     /*
-     * WARNING, rendp may overlap rawp->seqno.  This is necessary to
+     * WARNING, rendp may overlap rawp->transid.  This is necessary to
      * allow PAD records to fit in 16 bytes.  Use cpu_ccfence() to
      * hopefully cause the compiler to not make any assumptions.
      */
