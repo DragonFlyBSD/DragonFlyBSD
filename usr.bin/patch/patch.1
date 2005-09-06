@@ -1,5 +1,5 @@
 .\"	$OpenBSD: patch.1,v 1.17 2003/10/31 20:20:45 millert Exp $
-.\"	$DragonFly: src/usr.bin/patch/patch.1,v 1.5 2005/09/06 00:20:09 swildner Exp $
+.\"	$DragonFly: src/usr.bin/patch/patch.1,v 1.6 2005/09/06 00:43:16 swildner Exp $
 .\"
 .\" Copyright 1986, Larry Wall
 .\"
@@ -359,6 +359,9 @@ If
 cannot find a place to install that hunk of the patch, it will put the hunk
 out to a reject file, which normally is the name of the output file plus
 .Qq .rej .
+(Note that the rejected hunk will come out in context diff form whether the
+input patch was a context diff or a normal diff.
+If the input was a normal diff, many of the contexts will simply be null.)
 The line numbers on the hunks in the reject file may be different than
 in the patch file: they reflect the approximate location patch thinks the
 failed hunks belong in the new file rather than the old one.
