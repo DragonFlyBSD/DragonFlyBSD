@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ports/chapter.sgml,v 1.218 2004/05/06 11:37:25 den Exp $
-     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.3 2004/10/12 00:59:36 justin Exp $
+     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.4 2005/09/06 00:28:14 reed Exp $
 -->
 
 <chapter id="ports">
@@ -230,7 +230,7 @@
     </itemizedlist>
 
     <para>To keep track of updated ports, subscribe to the
-      &a.ports; and the &a.ports-bugs;.  It's also useful to watch the 
+      &a.freebsd.ports; and the &a.freebsd.ports-bugs;.  It's also useful to watch the 
       &a.bugs.name as errors with ports on DragonFly should be reported 
       there.</para>
 

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mail/chapter.sgml,v 1.117 2004/04/25 09:07:34 blackend Exp $
-     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.5 2005/06/27 23:26:19 reed Exp $
+     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.6 2005/09/06 00:28:13 reed Exp $
 -->
 
 <chapter id="mail">
@@ -970,7 +970,7 @@ to /etc/mail/sendmail.cf.</programlisting>
 
 	<para>A further refinement of the situation is as follows:</para>
 
-	<para>Message stolen from the &a.isp;.</para>
+	<para>Message stolen from the &a.freebsd.isp;.</para>
 
 	<programlisting>&gt; we provide the secondary MX for a customer. The customer connects to
 &gt; our services several times a day automatically to get the mails to

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.4 2005/06/27 23:49:01 reed Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.5 2005/09/06 00:28:13 reed Exp $
 -->
 
 <chapter id="linuxemu">
@@ -3216,7 +3216,7 @@ options SHMMAXPGS=393216
 
     <para>If you are curious as to how the Linux binary compatibility
       works, this is the section you want to read.  Most of what follows
-      is based heavily on an email written to &a.chat; by Terry Lambert
+      is based heavily on an email written to &a.freebsd.chat; by Terry Lambert
       <email>tlambert@primenet.com</email> (Message ID:
       <literal>&lt;199906020108.SAA07001@usr09.primenet.com&gt;</literal>).</para>
 

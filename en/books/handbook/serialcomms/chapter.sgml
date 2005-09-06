@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/serialcomms/chapter.sgml,v 1.88 2004/06/06 18:17:07 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.3 2004/08/02 18:47:46 justin Exp $
+     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.4 2005/09/06 00:28:14 reed Exp $
 -->
 
 <chapter id="serialcomms">
@@ -1563,7 +1563,7 @@ AT&amp;B2&amp;W</programlisting>
 	<para>If you have gone over everything several times and it still does
 	  not work, take a break and come back to it later.  If it still does
 	  not work, perhaps you can send an electronic mail message to the
-	  &a.questions; describing your modem and your problem, and the good
+	  &a.users; describing your modem and your problem, and the good
 	  folks on the list will try to help.</para>
       </sect3>
     </sect2>

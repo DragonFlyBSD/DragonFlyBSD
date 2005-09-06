@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.8 2005/06/30 01:59:41 reed Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.9 2005/09/06 00:28:13 reed Exp $
 -->
 
 <chapter id="config-tuning">
@@ -2757,7 +2757,7 @@ debug.acpi.level="ACPI_LV_ERROR"</programlisting>
 
       <itemizedlist>
 	<listitem>
-	  <para>The FreeBSD &a.acpi; (This is FreeBSD-specific; posting 
+	  <para>The &a.freebsd.acpi; (This is FreeBSD-specific; posting 
 	  &os; questions here may not generate much of an answer.)</para>
 	</listitem>
 

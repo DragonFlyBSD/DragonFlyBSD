@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.5 2005/06/30 02:14:18 reed Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.6 2005/09/06 00:28:14 reed Exp $
 -->
 
 <chapter id="multimedia">
@@ -1559,7 +1559,7 @@ bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
 	really supported by the &man.bktr.4; driver and if you used the right
 	configuration options.  For more support and various questions
 	about your TV card you may want to contact and use the
-	archives of the &a.multimedia.name; mailing list.</para>
+	archives of the &a.freebsd.multimedia.name; mailing list.</para>
     </sect2>
   </sect1>
 </chapter>
