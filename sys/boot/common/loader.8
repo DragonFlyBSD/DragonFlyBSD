@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.8 2005/02/20 16:31:53 swildner Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.9 2005/09/06 02:34:20 sephe Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -424,15 +424,6 @@ are also accepted and indicate kilobytes, megabytes and gigabytes
 respectively.
 An invalid suffix will result in the variable being ignored by the
 kernel.
-.It Va hw.pci.enable_io_modes
-Enable PCI resources which are left off by some BIOSes or are not
-enabled correctly by the device driver.
-Tunable value set to ON (1) by default, but this may cause problems
-with some peripherals.
-.It Va hw.pci.allow_unsupported_io_range
-Allow the PCI bridge to pass through an unsupported memory range
-assigned by the BIOS.
-Tunable value set to OFF (0) by default.
 .It Va kern.maxusers
 Set the size of a number of statically allocated system tables; see
 .Xr tuning 7
