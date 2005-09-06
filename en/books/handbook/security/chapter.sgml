@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/security/chapter.sgml,v 1.206 2004/06/09 14:13:35 brueffer Exp $
-     $DragonFly: doc/en/books/handbook/security/chapter.sgml,v 1.3 2005/06/30 02:09:02 reed Exp $
+     $DragonFly: doc/en/books/handbook/security/chapter.sgml,v 1.4 2005/09/06 17:35:53 reed Exp $
 -->
 
 <chapter id="security">
@@ -899,7 +899,7 @@
 	<varname>rtexpire</varname> and <varname>rtminexpire</varname>
 	via &man.sysctl.8;.  Never set either parameter to zero (unless
 	you want to crash the machine).  Setting both
-	parameters to 2 seconds should be sufficient to protect the route
+	parameters to two seconds should be sufficient to protect the route
 	table from attack.</para>
     </sect2>
 
@@ -1066,7 +1066,7 @@
 
     <para>The secret password does not have anything to do with your &unix;
       password; they can be the same but this is not recommended.  S/Key
-      and OPIE secret passwords are not limited to 8 characters like old
+      and OPIE secret passwords are not limited to eight characters like old
       &unix; passwords<footnote><para>Under &os; the standard login
       password may be up to 128 characters in length.</para></footnote>,
       they can be as long as you like.  Passwords of six or
