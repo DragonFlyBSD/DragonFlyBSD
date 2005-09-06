@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.38 2005/09/06 08:06:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.39 2005/09/06 13:23:36 sephe Exp $
  */
 
 /*
@@ -2597,10 +2597,11 @@ dc_tick(void *xsc)
 		} else {
 			r = CSR_READ_4(sc, DC_ISR);
 			if ((r & DC_ISR_RX_STATE) == DC_RXSTATE_WAIT &&
-			    sc->dc_cdata.dc_tx_cnt == 0)
+			    sc->dc_cdata.dc_tx_cnt == 0) {
 				mii_tick(mii);
 				if (!(mii->mii_media_status & IFM_ACTIVE))
 					sc->dc_link = 0;
+			}
 		}
 	} else
 		mii_tick(mii);
