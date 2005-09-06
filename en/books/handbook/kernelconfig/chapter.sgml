@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/kernelconfig/chapter.sgml,v 1.132 2004/05/20 14:40:08 simon Exp $
-     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.4 2005/06/28 01:29:21 reed Exp $
+     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.5 2005/09/06 17:33:34 reed Exp $
 -->
 
 <chapter id="kernelconfig">
@@ -600,7 +600,7 @@ options          CD9660_ROOT  #CD-ROM usable as root, CD9660 required</programli
     <para>This causes the kernel to pause for 15 seconds before probing
       each SCSI device in your system.  If you only have IDE hard drives,
       you can ignore this, otherwise you will probably want to lower this
-      number, perhaps to 5 seconds, to speed up booting.  Of course, if
+      number, perhaps to five seconds (5000 ms), to speed up booting.  Of course, if
       you do this, and &os; has trouble recognizing your SCSI devices,
       you will have to raise it back up.</para>
 
