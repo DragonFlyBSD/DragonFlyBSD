@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.3 2005/07/05 00:26:03 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.4 2005/09/06 06:42:44 dillon Exp $
  */
 
 #include "jscan.h"
@@ -39,13 +39,15 @@
 static void dump_debug_stream(struct jstream *js);
 static int dump_debug_subrecord(struct jstream *js, off_t *off, 
 				off_t recsize, int level);
+static int dump_debug_payload(int16_t rectype, struct jstream *js, off_t off, 
+				 int recsize, int level);
 
 void
-dump_debug(struct jfile *jf)
+dump_debug(struct jfile *jf, struct jdata *jd, int64_t transid)
 {
     struct jstream *js;
 
-    while ((js = jscan_stream(jf)) != NULL) {
+    if ((js = jaddrecord(jf, jd)) != NULL) {
 	dump_debug_stream(js);
 	jscan_dispose(js);
     }
@@ -152,7 +154,7 @@ dump_debug_subrecord(struct jstream *js, off_t *off, off_t recsize, int level)
     return(error);
 }
 
-int
+static int
 dump_debug_payload(int16_t rectype, struct jstream *js, off_t off, 
 	     int recsize, int level)
 {

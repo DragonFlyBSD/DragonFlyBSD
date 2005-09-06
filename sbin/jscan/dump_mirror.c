@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.4 2005/07/05 06:20:07 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.5 2005/09/06 06:42:44 dillon Exp $
  */
 
 #include "jscan.h"
@@ -46,11 +46,11 @@ static int dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 static int dump_mirror_rebuild(u_int16_t rectype, struct jstream *js, struct jattr *jattr);
 
 void
-dump_mirror(struct jfile *jf)
+dump_mirror(struct jfile *jf, struct jdata *jd, int64_t transid)
 {
     struct jstream *js;
 
-    while ((js = jscan_stream(jf)) != NULL) {
+    if ((js = jaddrecord(jf, jd)) != NULL) {
 	dump_mirror_stream(js);
 	jscan_dispose(js);
     }
@@ -67,10 +67,6 @@ dump_mirror_stream(struct jstream *js)
 	jsread(js, 0, &head, sizeof(head));
 
 	sid = head.streamid & JREC_STREAMID_MASK;
-	if (debug_opt) {
-	    printf("STREAM %04x DATA (%lld) {\n",
-		(int)(u_int16_t)head.streamid, js->js_normalized_total);
-	}
 	if (sid >= JREC_STREAMID_JMIN && sid < JREC_STREAMID_JMAX) {
 	    off_t off = sizeof(head);
 	    dump_mirror_toprecord(js, &off, js->js_normalized_total -
@@ -79,32 +75,18 @@ dump_mirror_stream(struct jstream *js)
 	} else {
 	    switch(head.streamid & JREC_STREAMID_MASK) {
 	    case JREC_STREAMID_SYNCPT & JREC_STREAMID_MASK:
-		if (debug_opt)
-		    printf("    SYNCPT\n");
 		break;
 	    case JREC_STREAMID_PAD & JREC_STREAMID_MASK:
-		if (debug_opt)
-		    printf("    PAD\n");
 		break;
 	    case JREC_STREAMID_DISCONT & JREC_STREAMID_MASK:
-		if (debug_opt)
-		    printf("    DISCONT\n");
 		break;
 	    case JREC_STREAMID_ANNOTATE & JREC_STREAMID_MASK:
-		if (debug_opt)
-		    printf("    ANNOTATION\n");
 		break;
 	    default:
-		if (debug_opt)
-		    printf("    UNKNOWN\n");
 		break;
 	    }
 	}
 	umask(save_umask);
-	if (debug_opt) {
-	    printf("}\n");
-	    fflush(stdout);
-	}
 }
 
 static int
@@ -124,12 +106,6 @@ dump_mirror_toprecord(struct jstream *js, off_t *off, off_t recsize, int level)
     while (recsize > 0) {
 	if ((error = jsread(js, base, &sub, sizeof(sub))) != 0)
 	    break;
-	if (debug_opt) {
-	    printf("%*.*s", level * 4, level * 4, "");
-	    printf("@%lld ", base);
-	    printf("RECORD %s [%04x/%d]", type_to_name(sub.rectype), 
-		   (int)(u_int16_t)sub.rectype, sub.recsize);
-	}
 	if (sub.recsize == -1) {
 	    if ((sub.rectype & JMASK_NESTED) == 0) {
 		printf("Record size of -1 only works for nested records\n");
@@ -143,30 +119,13 @@ dump_mirror_toprecord(struct jstream *js, off_t *off, off_t recsize, int level)
 	    subsize = (sub.recsize + 7) & ~7;
 	}
 	if (sub.rectype & JMASK_NESTED) {
-	    if (debug_opt)
-		printf(" {\n");
 	    *off = base + sizeof(sub);
 	    error = dump_mirror_subrecord(js, off,
 					  payload, level + 1, &jattr);
-	    if (debug_opt)
-		printf("%*.*s}\n", level * 4, level * 4, "");
 	} else if (sub.rectype & JMASK_SUBRECORD) {
-	    if (debug_opt) {
-		printf(" DATA (%d)", payload);
-		error = dump_debug_payload(sub.rectype, js, base + sizeof(sub), payload, level);
-	    }
 	    *off = base + sizeof(sub) + payload;
-	    if (debug_opt)
-		printf("\n");
 	} else if ((sub.rectype & JTYPE_MASK) == JLEAF_PAD) {
-	    if (debug_opt) {
-		if (payload)
-		    printf(" DATA (%d)", payload);
-		printf("\n");
-	    }
 	} else {
-	    if (debug_opt)
-		printf("[%d bytes of unknown content]\n", payload);
 	}
 	dump_mirror_rebuild(sub.rectype, js, &jattr);
 	jattr_reset(&jattr);
@@ -209,12 +168,6 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 	if ((error = jsread(js, base, &sub, sizeof(sub))) != 0)
 	    break;
 	rectype = sub.rectype & JTYPE_MASK;
-	if (debug_opt) {
-	    printf("%*.*s", level * 4, level * 4, "");
-	    printf("@%lld ", base);
-	    printf("SRECORD %s [%04x/%d]", type_to_name(sub.rectype), 
-		   (int)(u_int16_t)sub.rectype, sub.recsize);
-	}
 	if (sub.recsize == -1) {
 	    payload = 0x7FFFFFFF;
 	    subsize = 0x7FFFFFFF;
@@ -223,9 +176,6 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 	    subsize = (sub.recsize + 7) & ~7;
 	}
 	if (sub.rectype & JMASK_NESTED) {
-	    if (debug_opt)
-		printf(" {\n");
-
 	    /*
 	     * Only recurse through vattr records.  XXX currently assuming
 	     * only on VATTR subrecord.
@@ -238,28 +188,12 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 		error = dump_mirror_subrecord(js, off, 
 					      payload, level + 1, NULL);
 	    }
-	    if (debug_opt)
-		printf("%*.*s}\n", level * 4, level * 4, "");
 	} else if (sub.rectype & JMASK_SUBRECORD) {
-	    if (debug_opt) {
-		printf(" DATA (%d)", payload);
-		dump_debug_payload(sub.rectype, js, base + sizeof(sub), 
-				   payload, level);
-	    }
 	    error = dump_mirror_payload(sub.rectype, js, base + sizeof(sub),
 				       payload, level, jattr);
 	    *off = base + sizeof(sub) + payload;
-	    if (debug_opt)
-		printf("\n");
 	} else if ((sub.rectype & JTYPE_MASK) == JLEAF_PAD) {
-	    if (debug_opt) {
-		if (payload)
-		    printf(" DATA (%d)", payload);
-		printf("\n");
-	    }
 	} else {
-	    if (debug_opt)
-		printf("[%d bytes of unknown content]\n", sub.recsize);
 	}
 	if (error)
 	    break;

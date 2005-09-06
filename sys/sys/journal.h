@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.7 2005/08/24 20:28:33 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.8 2005/09/06 06:42:39 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -159,6 +159,8 @@ struct journal_ackrecord {
 #define JREC_STREAMID_JMAX	0x2000	/* (one past the highest allowed id) */
 
 #define JREC_DEFAULTSIZE	64	/* reasonable initial reservation */
+#define JREC_MINRECSIZE		32	/* (after alignment) */
+#define	JREC_MAXRECSIZE		(128*1024*1024)
 
 /*
  * Each logical journaling stream typically represents a transaction...

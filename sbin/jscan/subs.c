@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.6 2005/07/06 06:21:05 dillon Exp $
+ * $DragonFly: src/sbin/jscan/subs.c,v 1.7 2005/09/06 06:42:44 dillon Exp $
  */
 
 #include "jscan.h"
@@ -352,5 +352,23 @@ dupdatapath(const void *buf, int bytes)
 	++scan;
     }
     return(res);
+}
+
+void
+get_transid_from_file(const char *path, int64_t *transid, int flags)
+{
+    int n;
+    int fd;
+    char buf[32];
+
+    *transid = 0;
+    if ((fd = open(path, O_RDONLY)) >= 0) {
+	n = read(fd, buf, sizeof(buf) - 1);
+	if (n >= 0)
+	    buf[n] = 0;
+	*transid = strtoull(buf, NULL, 16);
+	jmodes |= flags;
+	close(fd);
+    }
 }
 

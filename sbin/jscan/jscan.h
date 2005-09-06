@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.5 2005/07/06 06:06:44 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.6 2005/09/06 06:42:44 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 #include <time.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -51,30 +52,36 @@
 #include <assert.h>
 #include "jattr.h"
 
-enum jdirection { JF_FORWARDS, JF_BACKWARDS};
+struct jdata;
+
+enum jdirection { JD_FORWARDS, JD_BACKWARDS };
 
 struct jfile {
     off_t		jf_pos;		/* current seek position */
-    off_t		jf_setpt;	/* saved seek position */
-    struct jdata	*jf_saved;	/* saved data */
-    FILE		*jf_fp;
-    enum jdirection	jf_direction;
+    int			jf_fd;
     int			jf_error;
-    int			jf_flags;
+    enum jdirection	jf_direction;
+    int			jf_open_flags;
+    struct jdata	*jf_data;
+    char		*jf_prefix;	/* prefix: name */
+    unsigned int	jf_seq_beg;	/* prefix: sequence space */
+    unsigned int	jf_seq_end;	/* prefix: sequence space */
+    unsigned int	jf_seq;		/* prefix: current sequence number */
 };
 
 #define JF_FULL_DUPLEX	0x0001
 
 struct jdata {
     struct jdata	*jd_next;
-    int			jd_size;
-    off_t		jd_pos;
+    int64_t		jd_transid;	/* transaction id from header */
+    int			jd_alloc;	/* allocated bytes */
+    int			jd_size;	/* data bytes */
+    int			jd_refs;	/* ref count */
     char		jd_data[4];	/* must be last field */
 };
 
 struct jstream {
     struct jstream	*js_next;	/* linked list / same transaction */
-    int			js_size;	/* amount of data, in bytes */
     char		*js_alloc_buf;
     int			js_alloc_size;
 
@@ -92,8 +99,9 @@ struct jstream {
      * chain.
      */
     struct jstream	*js_cache;
-
-    char		js_data[4];	/* variable length (original data) */
+    struct jfile	*js_jfile;
+    struct jdata	*js_jdata;
+    struct journal_rawrecbeg *js_head;
 };
 
 struct jhash {
@@ -106,7 +114,31 @@ struct jhash {
 #define JHASH_SIZE	1024
 #define JHASH_MASK	(JHASH_SIZE - 1)
 
-extern int debug_opt;
+#define JMODEF_DEBUG			0x00000001
+#define JMODEF_MIRROR			0x00000002
+#define JMODEF_UNUSED0004		0x00000004
+#define JMODEF_RECORD			0x00000008
+#define JMODEF_RECORD_TMP		0x00000010
+#define JMODEF_INPUT_FULL		0x00000020
+#define JMODEF_INPUT_PIPE		0x00000040
+#define JMODEF_INPUT_PREFIX		0x00000080
+#define JMODEF_OUTPUT			0x00000100
+#define JMODEF_OUTPUT_FULL		0x00000200
+#define JMODEF_MEMORY_TRACKING		0x00000400
+
+#define JMODEF_OUTPUT_TRANSID_GOOD	0x00010000
+#define JMODEF_RECORD_TRANSID_GOOD	0x00020000
+#define JMODEF_MIRROR_TRANSID_GOOD	0x00040000
+#define JMODEF_TRANSID_GOOD_MASK	(JMODEF_OUTPUT_TRANSID_GOOD|\
+					 JMODEF_RECORD_TRANSID_GOOD|\
+					 JMODEF_MIRROR_TRANSID_GOOD)
+#define JMODEF_COMMAND_MASK	(JMODEF_RECORD|JMODEF_MIRROR|JMODEF_DEBUG|\
+				 JMODEF_OUTPUT)
+
+extern int jmodes;
+extern int fsync_opt;
+extern off_t record_size;
+extern off_t trans_count;
 
 const char *type_to_name(int16_t rectype);
 void stringout(FILE *fp, char c, int exact);
@@ -115,29 +147,30 @@ int64_t buf_to_int64(const void *buf, int bytes);
 void *dupdata(const void *buf, int bytes);
 char *dupdatastr(const void *buf, int bytes);
 char *dupdatapath(const void *buf, int bytes);
+void get_transid_from_file(const char *path, int64_t *transid, int flags);
 
-
-struct jstream *jscan_stream(struct jfile *jf);
-void jscan_dispose(struct jstream *js);
-struct jfile *jopen_stream(const char *path, enum jdirection jdir, int flags);
-struct jfile *jopen_fp(FILE *fp, enum jdirection jdir, int flags);
-void jclose_stream(struct jfile *jf);
-void jalign(struct jfile *jf);
-int jread(struct jfile *jf, void *buf, int bytes);
-int jwrite(struct jfile *jf, void *buf, int bytes);
-void jset(struct jfile *jf);
-void jreturn(struct jfile *jf);
-void jflush(struct jfile *jf);
+struct jfile *jopen_fd(int fd, enum jdirection direction);
+struct jfile *jopen_prefix(const char *prefix, enum jdirection direction, int rw);
+void jclose(struct jfile *jf);
+int jread(struct jfile *jf, struct jdata **jdp, enum jdirection direction);
+int jwrite(struct jfile *jf, struct jdata *jd);
+void jseek(struct jfile *jf, int64_t transid, enum jdirection direction);
+struct jdata *jref(struct jdata *jd);
+void jfree(struct jfile *jf, struct jdata *jd);
 void jf_warn(struct jfile *jf, const char *ctl, ...);
 
-void dump_debug(struct jfile *jf);
-void dump_mirror(struct jfile *jf);
-int dump_debug_payload(int16_t rectype, struct jstream *js, off_t off,
-		       int recsize, int level);
+struct jstream *jaddrecord(struct jfile *jf, struct jdata *jd);
+void jscan_dispose(struct jstream *js);
+
+void dump_debug(struct jfile *jf, struct jdata *jd, int64_t transid);
+void dump_mirror(struct jfile *jf, struct jdata *jd, int64_t transid);
+void dump_record(struct jfile *jf, struct jdata *jd, int64_t transid);
+void dump_output(struct jfile *jf, struct jdata *jd, int64_t transid);
+
+int jrecord_init(const char *record_prefix);
 
 int jsreadany(struct jstream *js, off_t off, const void **bufp);
 int jsreadp(struct jstream *js, off_t off, const void **bufp, int bytes);
 int jsread(struct jstream *js, off_t off, void *buf, int bytes);
 int jsreadcallback(struct jstream *js, ssize_t (*func)(int, const void *, size_t), int fd, off_t off, int bytes);
-
 
