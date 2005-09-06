@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/printing/chapter.sgml,v 1.83 2004/06/13 02:31:21 murray Exp $
-     $DragonFly: doc/en/books/handbook/printing/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
+     $DragonFly: doc/en/books/handbook/printing/chapter.sgml,v 1.3 2005/09/06 17:35:13 reed Exp $
 -->
 
 <chapter id="printing">
@@ -351,7 +351,7 @@
 	  <indexterm><primary>PostScript</primary></indexterm>
 
 	  <para>Two-way communication to the printer over a parallel
-	    port is generally done 1 of two ways.  The first method
+	    port is generally done one of two ways.  The first method
 	    uses a custom built printer driver for &os; that speaks
 	    the proprietary language used by the printer.  This is
 	    common with inkjet printers and can be used for reporting
