@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.13 2004/11/12 00:09:04 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.14 2005/09/06 01:21:26 hmp Exp $
  */
 
 /*
@@ -313,6 +313,13 @@ vnstrategy(struct buf *bp)
 	bp->b_resid = bp->b_bcount;
 
 	IFOPT(vn, VN_LABELS) {
+	    	/*
+		 * The vnode device is using disk/slice label support.
+		 *
+		 * The dscheck() function is called for validating the
+		 * slices that exist ON the vnode device itself, and
+		 * translate the "slice-relative" block number, again.
+		 */
 		if (vn->sc_slices != NULL && dscheck(bp, vn->sc_slices) <= 0) {
 			bp->b_flags |= B_INVAL;
 			biodone(bp);

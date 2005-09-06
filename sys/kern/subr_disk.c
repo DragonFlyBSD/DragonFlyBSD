@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.18 2005/08/26 13:02:07 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.19 2005/09/06 01:21:26 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -466,6 +466,11 @@ diskstrategy(struct buf *bp)
 	}
 	KKASSERT(bp->b_dev->si_disk == dp);
 
+	/*
+	 * The dscheck() function will also transform the slice relative
+	 * block number i.e. bp->b_blkno into a block number that can be
+	 * passed directly to the underlying raw device.
+	 */
 	if (dscheck(bp, dp->d_slice) <= 0) {
 		biodone(bp);
 		return;
