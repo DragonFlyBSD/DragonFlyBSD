@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.9 2005/07/25 00:24:31 gshapiro Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.10 2005/09/06 18:55:39 dillon Exp $
 .\"
 .Dd November 3, 2000
 .Dt MAKE.CONF 5
@@ -36,8 +36,7 @@ The file
 .Nm
 contains settings that control the compilation of the
 .Dx
-sources
-and ported applications.
+sources.
 The file
 .Nm
 is generally created by the system administrator when the values need
@@ -47,13 +46,10 @@ The purpose of
 .Nm
 is not to run commands or perform compilation actions
 directly.
-Instead, it is included by the
-various makefiles in
+Instead, it is included by the various makefiles in
 .Pa /usr/src
-and
-.Pa /usr/ports
-which conditionalize their
-internal actions according to the settings found there.
+which conditionalize their internal actions according to the settings
+found there.
 .Pp
 The
 .Pa /etc/make.conf
@@ -64,12 +60,11 @@ Options need only be specified in
 .Pa /etc/make.conf
 when the system administrator wishes to override these defaults.
 .Pp
-The build procedures occur in four broad areas: the world, the kernel,
-documentations and ports.
+The build procedures occur in three areas: world, kernel, and
+documentation.
 Variables set in
 .Nm
-may be applicable during builds in one, two, or all four of these
-areas.
+may be applicable during builds in one, two, or all of these areas.
 They may be specified for a particular build via the
 .Fl D
 option of
@@ -77,46 +72,24 @@ option of
 .Pp
 The following lists provide a name and short description for each
 variable you can use during the indicated builds.
-The values of
-variables flagged as
+The values of variables flagged as
 .Vt bool
-are ignored; the variable being
-set at all (even to
+are ignored; the variable being set at all (even to
 .Dq Li FALSE
 or
 .Dq Li NO )
-causes it to
-be treated as if it were set.
+causes it to be treated as if it were set.
 .Pp
 The following list provides a name and short description for variables
 that are used for all builds, or are used by the
 .Pa makefiles
 for things other than builds.
 .Bl -tag -width Ar
-.It Va CFLAGS
-.Pq Vt str
-Controls the compiler setting when compiling C code.
-Optimization levels above
-.Fl O
-.Pq Fl O2 , No ...
-are not supported.
-.Va BDECFLAGS
-is provided as a set of
-.Xr gcc 1
-settings suggested by
-.An "Bruce Evans" Aq bde@FreeBSD.org
-for developing and testing changes.
-They can be used, if set, by:
-.Pp
-.Bd -literal -offset indent
-CFLAGS+=${BDECFLAGS}
-.Ed
 .It Va CPUTYPE
 .Pq Vt str
-Controls which processor should be targeted for generated
-code.  This controls processor-specific optimizations in
-certain code (currently only OpenSSL) as well as modifying
-the value of
+Controls which processor should be targeted for generated code.
+This controls processor-specific optimizations in certain code
+(currently only OpenSSL) as well as modifying the value of
 .Va CFLAGS
 and
 .Va COPTFLAGS
@@ -135,32 +108,44 @@ variables, respectively.  Refer to
 for a list of recognized
 .Va CPUTYPE
 options.
+.It Va CCVER
+.Pq Vt str
+Controls which GCC version to use by default.  It should be set as
+CCVER?= so as not to interfere with overrides from userland. We
+currently recommend that an override NOT be set in
+.Pa /etc/make.conf .
+Currently accepted values are cc34 and cc40 (experimental).
+.It Va CFLAGS
+.Pq Vt str
+Controls the compiler setting when compiling C code.
+Optimization levels above
+.Fl O
+.Pq Fl O2 , No ...
+are not supported.
+.Va BDECFLAGS
+is provided as a set of
+.Xr gcc 1
+settings suggested by
+.An "Bruce Evans" Aq bde@FreeBSD.org
+for developing and testing changes.
+They can be used, if set, by:
+.Pp
+.Bd -literal -offset indent
+CFLAGS+=${BDECFLAGS}
+.Ed
 .It Va NO_CPU_CFLAGS
 .Pq Vt str
 Setting this variable will prevent CPU specific compiler flags
 from being automatically added to
 .Va CFLAGS
 during compile time.
-.It Va NO_CPU_COPTFLAGS
-.Pq Vt str
-Setting this variable will prevent CPU specific compiler flags
-from being automatically added to
-.Va COPTFLAGS
-during compile time.
-.It Va CVS_UPDATE
-.Pq Vt bool
-Set this to use
-.Xr cvs 1
-to update your ports with
-.Dq Li "make update" .
 .It Va CXXFLAGS
 .Pq Vt str
 Controls the compiler settings when compiling C++ code.
 .Va CXXFLAGS
 is initially set to the value of
 .Va CFLAGS .
-If you want to
-add to the
+If you want to add to the
 .Va CXXFLAGS
 value, use
 .Dq Li +=
@@ -169,15 +154,13 @@ instead of
 .It Va INSTALL
 .Pq Vt str
 the default install command.
-To have commands compared before doing
-the install, use
+To have components compared before doing the install, use
 .Bd -literal -offset indent
 INSTALL="install -C"
 .Ed
 .It Va LOCAL_DIRS
 .Pq Vt str
-List any directories that should be entered when doing
-make's in
+List any directories that should be entered when running make
 .Pa /usr/src
 in this variable.
 .It Va MAKE_SHELL
@@ -193,6 +176,9 @@ all currently supported.
 .Bd -literal -offset indent
 MAKE_SHELL?=sh
 .Ed
+.It Va MODULES_OVERRIDE
+.Pq Vt str
+Set to a list of modules to build instead of all of them.
 .It Va MTREE_FOLLOWS_SYMLINKS
 .Pq Vt str
 Set this to
@@ -204,10 +190,13 @@ to follow symlinks.
 .Pq Vt bool
 Set this to not update the doc tree during
 .Dq Li "make update" .
-.It Va NO_PORTSUPDATE
-.Pq Vt bool
-Set this to not update the ports tree during
-.Dq Li "make update" .
+.It Va STRIP
+.Pq Vt str
+Set this to the flag to pass the
+.Xr strip 1
+command.
+If set to a blank value, components will be installed with debugging
+symbols.
 .It Va SUP_UPDATE
 .Pq Vt bool
 Set this to use
@@ -256,14 +245,6 @@ to use when doing a
 .Dq Li "make update" .
 This defaults to
 .Pa /usr/share/examples/cvsup/secure\-supfile .
-.It Va PORTSSUPFILE
-.Pq Vt str
-The ports
-.Ar supfile
-to use when doing a
-.Dq Li "make update" .
-This defaults to
-.Pa /usr/share/examples/cvsup/ports\-supfile .
 .It Va DOCSUPFILE
 .Pq Vt str
 The documentation
@@ -273,7 +254,9 @@ to use when doing a
 This defaults to
 .Pa /usr/share/examples/cvsup/doc\-supfile .
 .It Va WARNS_WERROR
-Causes -Werror to be added to
+Causes
+.Fl Werror
+to be added to
 .Va CFLAGS
 when WARNS is in effect.
 .El
@@ -337,9 +320,16 @@ This allows pxeboot to load a custom BOOTP diskless kernel yet
 still mount the server's
 .Pa /
 rather than load the server's kernel.
-.It Va MODULES_OVERRIDE
+.It Va NO_CPU_COPTFLAGS
 .Pq Vt str
-Set to a list of modules to build instead of all of them.
+Setting this variable will prevent CPU specific compiler flags
+from being automatically added to
+.Va COPTFLAGS
+during compile time.
+.It Va NO_KERNELCLEAN
+.Pq Vt bool
+Set this to skip the clean target when using
+.Dq Li "${MAKE} buildkernel" .
 .It Va NO_KERNELCONFIG
 .Pq Vt bool
 Set this to skip running
@@ -360,90 +350,48 @@ Set to not build modules with the kernel.
 The following list provides a name and short description for variables
 that are used during the world build:
 .Bl -tag -width Ar
-.It Va COMPAT1X
-.Pq Vt bool
-Set to install the
-.Fx
-1 compatibility libraries.
-.It Va COMPAT20
-.Pq Vt bool
-Set to install the
-.Fx 2.0
-compatibility libraries.
-.It Va COMPAT21
-.Pq Vt bool
-Set to install the
-.Fx 2.1
-compatibility libraries.
-.It Va COMPAT22
-.Pq Vt bool
-Set to install the
-.Fx 2.2
-compatibility libraries.
-.It Va COMPAT3X
-.Pq Vt bool
-Set to install the
-.Fx
-3
-compatibility libraries.
-.It Va COMPAT4X
-.Pq Vt bool
-Set to install the
-.Fx
-4
-compatibility libraries.
-.It Va ENABLE_SUIDPERL
-.Pq Vt bool
-Set to enable the installation of an suid
-.Xr perl 1
-binary.
-.It Va FETCH_CMD
-.Pq Vt str
-Command to use to fetch files.
-Normally
-.Xr fetch 1 .
-.It Va KRB5_HOME
-.Pq Vt str
-If you want to install the MIT Kerberos5 port somewhere other than
-.Pa /usr/local ,
-define this.  This is also used to tell ssh1 that kerberos is needed.
-.It Va MAKE_IDEA
-.Pq Vt bool
-Set to build the IDEA encryption code.
-This code is patented in the USA and many European countries.
-It is
-.Em "YOUR RESPONSIBILITY"
-to determine if you can legally use IDEA.
-.It Va MAKE_KERBEROS5
-.Pq Vt bool
-Set this to build Kerberos5 (KTH Heimdal).
-.Em WARNING !
-This is still experimental code.
-If you need stable Kerberos5, use the
-port(s).
 .It Va ENABLE_SUID_K5SU
 .Pq Vt bool
-Set this if you wish to use the k5su utility.  Otherwise, it will be
-installed without the set-user-ID bit set.
+Set this if you wish to use the k5su utility.
+Otherwise, it will be installed without the set-user-ID bit set.
+This is only relevant if
+.Va WANT_KERBEROS
+is defined.
 .It Va ENABLE_SUID_SSH
 .Pq Vt bool
 Set this to install
 .Xr ssh 1
 with the setuid bit turned on.
+.It Va FETCH_ENV
+.Pq Vt str
+If you're behind a firewall and need FTP or HTTP proxy services for
+.Xr fetch 1 ,
+the following examples provide the necessary syntax.
+.Pp
+.Bd -literal -offset indent
+FETCH_ENV=FTP_PROXY=ftp://10.0.0.1:21
+FETCH_ENV=FTP_PROXY=http://10.0.0.1:80
+.Ed
 .It Va MODULES_WITH_WORLD
 .Pq Vt bool
 Set to build modules with the system instead of the kernel.
-.It Va NO_CVS
-.Pq Vt bool
-Set to not build CVS.
 .It Va NO_BIND
 .Pq Vt bool
 Set to not build BIND.
+.It Va NO_CRYPT
+.Pq Vt bool
+Set to not build crypto code.
+.It Va NO_CVS
+.Pq Vt bool
+Set to not build CVS.
 .It Va NO_FORTRAN
 .Pq Vt bool
 Set to not build
 .Xr g77 1
 and related libraries.
+.It Va NO_GAMES
+.Pq Vt bool
+Set to not build games.
 .It Va NO_GDB
 .Pq Vt bool
 Set to not build
@@ -454,6 +402,12 @@ Set to not build isdn4bsd package.
 .It Va NO_IPFILTER
 .Pq Vt bool
 Set to not build IP Filter package.
+.It Va NO_LIBC_R
+.Pq Vt bool
+Set to not build
+.Nm libc_r
+(reentrant version of
+.Nm libc ) .
 .It Va NO_LPR
 .Pq Vt bool
 Set to not build
@@ -464,9 +418,6 @@ and related programs.
 Set to not build the
 .Xr mailwrapper 8
 MTA selector.
-.It Va NOMAN
-.Pq Vt bool
-Set to not build manual pages
 .It Va NO_MAKEDEV
 .Pq Vt bool
 Set to avoid running
@@ -489,6 +440,9 @@ Set to not build OpenSSL (implies
 Set to not build
 .Xr sendmail 8
 and related programs.
+.It Va NO_SHARE
+.Pq Vt bool
+Set to not enter the share subdirectory.
 .It Va NO_SHAREDOCS
 .Pq Vt bool
 Set to not build the
@@ -509,49 +463,32 @@ Set this to run
 .Dq Li "${MAKE} clean"
 instead of
 .Dq Li "${MAKE} cleandir" .
-.It Va NOCRYPT
+.It Va NOFSCHG
 .Pq Vt bool
-Set to not build any crypto code.
-.It Va NOGAMES
-.Pq Vt bool
-Set to not build games.
+Set to not install certain components with flag fschg.
+This is useful in a jailed environment.
 .It Va NOINFO
 .Pq Vt bool
 Set to not make or install
 .Xr info 5
 files.
-.It Va NOLIBC_R
+.It Va NOINFOCOMPRESS
 .Pq Vt bool
-Set to not build
-.Nm libc_r
-(reentrant version of
-.Nm libc ) .
+Set to not compress the info pages.
+.It Va NOMAN
+.Pq Vt bool
+Set to not build manual pages
 .It Va NOMANCOMPRESS
 .Pq Vt bool
-Set to install man pages uncompressed.
-.It Va NOPERL
-.Pq Vt bool
-Set to avoid building
-.Xr perl 1 .
+Set to not compress the manual pages.
 .It Va NOPROFILE
 .Pq Vt bool
 Set to avoid compiling profiled libraries.
-.It Va NOSHARE
-.Pq Vt bool
-Set to not build in the
-.Pa share
-subdir.
-.It Va PERL_THREADED
-.Pq Vt bool
-Set to enable the building and installation of
-.Xr perl 1
-with thread
-support.
 .It Va PPP_NOSUID
 .Pq Vt bool
 Set to disable the installation of
 .Xr ppp 8
-as an suid root program.
+with the set-user-ID bit on.
 .It Va SENDMAIL_MC
 .Pq Vt str
 The default
@@ -659,18 +596,26 @@ to match the number of local users.  The table size should be a prime number
 approximately twice as large as the number of lines in
 .Pa /etc/passwd .
 The default number is 20011.
+.It Va WANT_GCC40
+.Pq Vt bool
+Set to build the experimental version of GCC (4.0).
+.It Va WANT_IDEA 
+.Pq Vt bool
+Set to build the IDEA encryption code.
+This code is patented in the USA and many European countries.
+It is
+.Em "YOUR RESPONSIBILITY"
+to determine if you can legally use IDEA.
+.It Va WANT_KERBEROS 
+.Pq Vt bool
+Set this to build Kerberos5 (KTH Heimdal).
+.Em WARNING !
+This is still experimental code.
 .El
 .Pp
 The following list provides a name and short description for variables
 that are used when building documentation.
 .Bl -tag -width Ar
-.It Va DISTDIR
-.Pq Vt str
-Where distfiles are kept.
-Normally, this is
-.Pa distfiles
-in
-.Va PORTSDIR .
 .It Va DOC_LANG
 .Pq Vt str
 The list of languages and encodings to build and install.
@@ -684,209 +629,6 @@ for simple printers or
 .Dq Li ps
 for postscript or graphics printers with a ghostscript
 filter.
-.El
-.Pp
-The following list provides a name and short description for variables
-that are used when building ports:
-.Bl -tag -width Ar
-.It Va FORCE_PKG_REGISTER
-.Pq Vt bool
-Set this to override any existing package registration.
-.It Va HAVE_MOTIF
-.Pq Vt bool
-Set this if you have Motif on your system.
-.It Va KRB5_HOME
-.Pq Vt str
-Set this if you want to install the MIT Kerberos5 port somewhere
-other than
-.Pa /usr/local .
-.It Va LOCALBASE
-.Pq Vt str
-Set this to the base directory that non\-X ports should be
-installed in.
-It provides the default for
-.Va PREFIX
-when building in
-.Pa /usr/ports .
-.It Va MASTER_SITE_AFTERSTEP
-.Pq Vt str
-Set this to change the master site for AfterStep ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_BACKUP
-.Pq Vt str
-Controls the site location that ports check for distfiles if the
-locations listed in their
-.Pa Makefile
-do not work.
-The last part of the path must be
-.Dq Li /${DIST_SUBDIR}/ .
-.It Va MASTER_SITE_COMP_SOURCES
-.Pq Vt str
-Controls the master site location for
-.Pa comp.sources
-ports.
-The
-last part of the path must be
-.Dq Li %SUBDIR%/
-.It Va MASTER_SITE_GNOME
-.Pq Vt str
-Controls the master site location for GNOME ports.
-The
-last part of the path must be
-.Dq Li /%SUBDIR%/
-.It Va MASTER_SITE_GNU
-.Pq Vt str
-Controls the master site location for GNU ports.
-The
-last part of the path must be
-.Dq Li /%SUBDIR%/
-.It Va MASTER_SITE_KDE
-.Pq Vt str
-Controls the master site location for KDE ports.
-The
-last part of the path must be
-.Dq Li /%SUBDIR%/
-.It Va MASTER_SITE_FREEBSD
-.Pq Vt bool
-If set, go to the master
-.Fx
-site for all files.
-.It Va MASTER_SITE_MOZILLA
-.Pq Vt str
-Controls the master site location for Mozilla ports.
-The
-last part of the path must be
-.Dq Li /%SUBDIR%/
-.It Va MASTER_SITE_OVERRIDE
-.Pq Vt str
-If set, this site is checked before the sites listed in the ports
-.Pa Makefile .
-You can have it check the backup site first by like so:
-.Bd -literal -offset indent
-MASTER_SITE_OVERRIDE?=	${MASTER_SITE_BACKUP}
-.Ed
-.It Va MASTER_SITE_PERL_CPAN
-.Pq Vt str
-Controls the master site location for Perl ports.
-The
-last part of the path must be
-.Bd -literal -offset indent
-/%SUBDIR%/
-.Ed
-.It Va MASTER_SORT_REGEX
-.Pq Vt str
-Set this to control the sort order for mirror sets.
-To set it to
-prefer mirrors in the
-.Pa .jp
-domain, use:
-.Bd -literal -offset indent
-MASTER_SORT_REGEX?=	^file: ^ftp://ftp\.FreeBSD\.org/pub/FreeBSD/ports/local-distfiles/ ://[^/]*\.jp/ ://[^/]*\.jp\.
-.Ed
-.Pp
-Users of other ccTLD domains should change the
-.Dq Li jp
-to the
-appropriate domain.
-.It Va MASTER_SITE_RINGSERVER
-.Pq Vt str
-Controls the master site location for Ringserver ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_RUBY
-.Pq Vt str
-Controls the master site location for Ruby ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_SUNSITE
-.Pq Vt str
-Controls the master site location for Sunsite ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_TCLTK
-.Pq Vt str
-Controls the master site location for Tcl and Tk ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_TEX_CTAN
-.Pq Vt str
-Controls the master site location for TeX ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_WINDOWMAKER
-.Pq Vt str
-Controls the master site location for WindowMaker ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_XCONTRIB
-.Pq Vt str
-Controls the master site location for contributed X ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_XEMACS
-.Pq Vt str
-Controls the master site location for Xemacs ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MASTER_SITE_XFREE
-.Pq Vt str
-Controls the master site location for XFree ports.
-The last
-part of the path must be
-.Dq Li /%SUBDIR%/ .
-.It Va MOTIFLIB
-.Pq Vt str
-Location of
-.Pa libXm.a
-and
-.Pa libXm.so .
-.It Va MOTIF_STATIC
-.Pq Vt bool
-Set this if you want ports that use Motif to be built so they
-can be run on systems without the Motif shared libraries.
-.It Va NOCLEANDEPENDS
-.Pq Vt bool
-Set this to prevent
-.Dq Li "make clean"
-from cleaning the ports that the one being cleaned depends on.
-.It Va NOPORTDOCS
-.Pq Vt bool
-Set this to disable installing additional documentation with ports.
-.It Va PACKAGES
-.Pq Vt str
-Used only for the package target; the directory for the package tree.
-.It Va PATCH_SITES
-.Pq Vt str
-Primary location(s) for the distribution of patch files.
-.It Va PORTSDIR
-.Pq Vt str
-The location of the ports tree.
-.It Va USA_RESIDENT
-.Pq Vt bool
-Set this if you are a resident of the USA so that ports that
-need to can attempt to comply with U.S. export regulations.
-.It Va WITHOUT_X11
-.Pq Vt bool
-Set this so that ports that can be built with or without X11
-support will build without X11 support by default.
-.It Va WRKDIRPREFIX
-.Pq Vt str
-Where to create temporary files used when building ports.
-.It Va X11BASE
-.Pq Vt str
-Should be set to where the X11 distribution has been
-installed if it is installed anywhere other than
-.Pa /usr/X11R6 .
 .El
 .Sh FILES
 .Bl -tag -width /etc/defaults/make.conf -compact
@@ -910,8 +652,7 @@ The
 file appeared sometime before
 .Fx 4.0 .
 .Sh AUTHORS
-This
-manual page was written by
+This manual page was written by
 .An Mike W. Meyer Aq mwm@mired.org .
 .Sh BUGS
 This manual page may occasionally be out of date with respect to

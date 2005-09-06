@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libssh/Makefile,v 1.2.2.7 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/lib/libssh/Makefile,v 1.6 2005/09/06 10:51:17 joerg Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile,v 1.7 2005/09/06 18:55:30 dillon Exp $
 
 LIB=	ssh
 SHLIB_MAJOR= 4
@@ -16,7 +16,7 @@ SRCS+=	bsd-misc.c entropy.c
 # FreeBSD additions
 SRCS+=	version.c
 
-.if defined(MAKE_KERBEROS5)
+.if defined(WANT_KERBEROS)
 CFLAGS+= -DKRB5 -DHEIMDAL
 .endif
 

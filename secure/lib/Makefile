@@ -1,8 +1,8 @@
 # $FreeBSD: src/secure/lib/Makefile,v 1.19.2.5 2003/04/04 21:33:15 ru Exp $
-# $DragonFly: src/secure/lib/Makefile,v 1.3 2003/08/05 07:45:42 asmodai Exp $
+# $DragonFly: src/secure/lib/Makefile,v 1.4 2005/09/06 18:55:27 dillon Exp $
 
 SUBDIR= libcipher
-.if !defined(NOCRYPT) && !defined(NO_OPENSSL) && !defined(MAKE_KERBEROS5)
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(WANT_KERBEROS)
 SUBDIR+=libtelnet
 .endif
 .if !defined(NO_OPENSSL)

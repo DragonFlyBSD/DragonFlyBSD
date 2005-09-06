@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libfetch/Makefile,v 1.14.2.5 2003/01/09 11:50:32 des Exp $
-# $DragonFly: src/lib/libfetch/Makefile,v 1.7 2005/04/21 13:42:33 joerg Exp $
+# $DragonFly: src/lib/libfetch/Makefile,v 1.8 2005/09/06 18:55:21 dillon Exp $
 
 LIB=		fetch
 WARNS?=		6
@@ -11,7 +11,7 @@ INCS=		fetch.h
 MAN=		fetch.3
 CLEANFILES=	ftperr.h httperr.h
 
-.if !defined(NOCRYPT) && !defined(NO_OPENSSL)
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
 CFLAGS+=	-DWITH_SSL
 DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lssl -lcrypto

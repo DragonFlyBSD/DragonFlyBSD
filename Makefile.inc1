@@ -1,26 +1,8 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.78 2005/09/05 15:36:34 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.79 2005/09/06 18:55:15 dillon Exp $
 #
-# Make command line options:
-#	-DMAKE_KERBEROS5 to build Kerberos5
-#	-DNOCLEANDIR run ${MAKE} clean, instead of ${MAKE} cleandir
-#	-DNOCLEAN do not clean at all
-#	-DNOCRYPT will prevent building of crypt versions
-#	-DNOMAN do not build the manual pages
-#	-DNOPROFILE do not build profiled libraries
-#	-DNOGAMES do not go into games subdir
-#	-DNOSHARE do not go into share subdir
-#	-DNOINFO do not make or install info files
-#	-DNOLIBC_R do not build libc_r.
-#	-DNO_FORTRAN do not build g77 and related libraries.
-#	-DNO_KERNELCONFIG do not run config in ${MAKE} buildkernel
-#	-DNO_KERNELCLEAN do not run ${MAKE} clean in ${MAKE} buildkernel
-#	-DNO_KERNELDEPEND do not run ${MAKE} depend in ${MAKE} buildkernel
-#	-DNO_PORTSUPDATE do not update ports in ${MAKE} update
-#	-DNO_DOCUPDATE do not update doc in ${MAKE} update
-#	LOCAL_DIRS="list of dirs" to add additional dirs to the SUBDIR list
-#	TARGET_ARCH="arch" to crossbuild world to a different arch
+# Build-time options are documented in make.conf(5).
 #
 # The intended user-driven targets are:
 #
@@ -66,14 +48,14 @@ SUBDIR+= nrelease
 .if exists(${.CURDIR}/bin)
 SUBDIR+= bin
 .endif
-.if exists(${.CURDIR}/games) && !defined(NOGAMES)
+.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
 SUBDIR+= games
 .endif
 .if exists(${.CURDIR}/gnu)
 SUBDIR+= gnu
 .endif
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
-    !defined(NOCRYPT) && !defined(NO_OPENSSL) && defined(MAKE_KERBEROS5)
+    !defined(NO_CRYPT) && !defined(NO_OPENSSL) && defined(WANT_KERBEROS)
 SUBDIR+= kerberos5
 .endif
 .if exists(${.CURDIR}/libexec)
@@ -82,10 +64,10 @@ SUBDIR+= libexec
 .if exists(${.CURDIR}/sbin)
 SUBDIR+= sbin
 .endif
-.if exists(${.CURDIR}/secure) && !defined(NOCRYPT)
+.if exists(${.CURDIR}/secure) && !defined(NO_CRYPT)
 SUBDIR+= secure
 .endif
-.if exists(${.CURDIR}/share) && !defined(NOSHARE)
+.if exists(${.CURDIR}/share) && !defined(NO_SHARE)
 SUBDIR+= share
 .endif
 .if exists(${.CURDIR}/sys)
@@ -217,8 +199,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNOHTML -DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
-		-DNO_WERROR
+		-DNOINFO -DNOMAN -DNOPROFILE -DNOSHARED -DNO_WERROR
 
 # build-tool stage
 #
@@ -762,7 +743,7 @@ installmost:
 # rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
 #		envs are not compatible with older objformat binaries.
 #
-.if exists(${.CURDIR}/games) && !defined(NOGAMES)
+.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
 _strfile=	games/fortune/strfile
 .endif
 
@@ -801,11 +782,11 @@ bootstrap-tools:
 # XXX we may be able to remove or consolidate this into bootstrap-tools
 # now that we have the native helper (.nx/.no) infrastructure.
 #
-.if exists(${.CURDIR}/games) && !defined(NOGAMES)
+.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
 _games=	games/adventure games/hack games/phantasia
 .endif
 
-.if exists(${.CURDIR}/share) && !defined(NOSHARE)
+.if exists(${.CURDIR}/share) && !defined(NO_SHARE)
 _share=	share/syscons/scrnmaps
 .endif
 
@@ -822,7 +803,7 @@ _fortran= gnu/usr.bin/cc34/f771
 .endif
 
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
-    !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
+    !defined(NO_CRYPT) && defined(WANT_KERBEROS)
 _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
     kerberos5/lib/libasn1 kerberos5/lib/libhdb kerberos5/lib/libsl
 .endif
@@ -909,7 +890,7 @@ _prebuild_libs+=	lib/libutil
 
 _generic_libs=	gnu/lib
 
-.if !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
+.if !defined(NO_CRYPT) && defined(WANT_KERBEROS)
 _prebuild_libs+=	kerberos5/tools
 _prebuild_libs+=	kerberos5/lib/libasn1
 _prebuild_libs+=	kerberos5/lib/libgssapi
@@ -927,7 +908,7 @@ lib/libskey__L: lib/libcrypt__L lib/libmd__L
 
 _generic_libs+=	lib
 
-.if !defined(NOCRYPT)
+.if !defined(NO_CRYPT)
 .if !defined(NO_OPENSSL)
 _prebuild_libs+=	secure/lib/libcrypto secure/lib/libssl
 .if !defined(NO_OPENSSH)

@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.8 2005/07/07 12:18:28 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.9 2005/09/06 18:55:28 dillon Exp $
 
 OSSLVERSION=	0.9.8
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
@@ -9,7 +9,7 @@ CFLAGS+=	-DTERMIOS -DANSI_SOURCE
 CFLAGS+=	-I${LCRYPTO_SRC} -I${LCRYPTO_SRC}/crypto \
 		-I${LCRYPTO_SRC}/crypto/engine -I${.OBJDIR}
 
-.if !defined(MAKE_IDEA) || ${MAKE_IDEA} != YES
+.if !defined(WANT_IDEA)
 CFLAGS+=	-DOPENSSL_NO_IDEA
 .else
 _idea_h=	idea/idea.h
@@ -85,7 +85,7 @@ openssl/opensslconf.h: openssl/.dummy ../../lib/libcrypto/opensslconf-${MACHINE_
 	cp ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 
 openssl/evp.h: openssl/.dummy ${LCRYPTO_SRC}/crypto/evp/evp.h
-.if !defined(MAKE_IDEA) || ${MAKE_IDEA} != YES
+.if !defined(WANT_IDEA)
 	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.ALLSRC:Nopenssl/.dummy} > ${.TARGET}
 .else
 	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}

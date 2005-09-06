@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/Makefile.inc,v 1.13.2.5 2002/07/03 22:13:19 des Exp $
-# $DragonFly: src/secure/Makefile.inc,v 1.3 2004/07/31 19:03:00 geekgod Exp $
+# $DragonFly: src/secure/Makefile.inc,v 1.4 2005/09/06 18:55:25 dillon Exp $
 
 DISTRIBUTION?=crypto
 
@@ -16,6 +16,6 @@ CRYPTOBJDIR=	${.CURDIR}/../../lib/libcrypt/obj
 CRYPTOBJDIR=	${.CURDIR}/../../lib/libcrypt
 .endif
 
-.if !defined(MAKE_IDEA) || ${MAKE_IDEA} != YES
+.if !defined(WANT_IDEA)
 CFLAGS+= -DNO_IDEA
 .endif

@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/lib/libcrypt/Makefile,v 1.24.2.4 2001/07/16 03:28:26 peter Exp $
-# $DragonFly: src/lib/libcrypt/Makefile,v 1.5 2005/06/27 20:27:36 dillon Exp $
+# $DragonFly: src/lib/libcrypt/Makefile,v 1.6 2005/09/06 18:55:19 dillon Exp $
 #
 
 SHLIB_MAJOR=	3
@@ -15,7 +15,7 @@ CFLAGS+=	-DLIBC_SCCS -Wall
 CFLAGS+=	-D_CTYPE_H_DISABLE_MACROS_ 
 # Pull in the crypt-des.c source, assuming it is present.
 .if exists(${.CURDIR}/../../secure/lib/libcrypt/crypt-des.c) && \
-    !defined(NOCRYPT)
+    !defined(NO_CRYPT)
 .PATH:		${.CURDIR}/../../secure/lib/libcrypt
 SRCS+=		crypt-des.c crypt-blowfish.c blowfish.c
 CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH

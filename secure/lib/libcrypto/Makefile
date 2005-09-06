@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.6 2005/07/07 12:18:28 corecode Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.7 2005/09/06 18:55:28 dillon Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	4
@@ -117,7 +117,7 @@ SRCS+=	bio_b64.c bio_enc.c bio_md.c bio_ok.c c_all.c c_allc.c c_alld.c \
 SRCS+=	hmac.c
 
 # idea
-.if defined(MAKE_IDEA) && ${MAKE_IDEA} == YES
+.if defined(WANT_IDEA)
 SRCS+=	i_cbc.c i_cfb64.c i_ecb.c i_ofb64.c i_skey.c
 .endif
 
@@ -223,7 +223,7 @@ INCSDIR=	${INCLUDEDIR}/openssl
 
 .include <bsd.lib.mk>
 
-.if defined(MAKE_IDEA) && ${MAKE_IDEA} == YES
+.if defined(WANT_IDEA)
 _ideapath=	${LCRYPTO_SRC}/crypto/idea
 .endif
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.11 2005/09/06 10:51:17 joerg Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.12 2005/09/06 18:55:35 dillon Exp $
 #
 
 PROG=	sshd
@@ -30,7 +30,7 @@ SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
 
 SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch
 
-.if defined(MAKE_KERBEROS5)
+.if defined(WANT_KERBEROS)
 DISTRIBUTION=krb5
 CFLAGS+= -DKRB5 -DHEIMDAL
 SRCS+=	auth-krb5.c

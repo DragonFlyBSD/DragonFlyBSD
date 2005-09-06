@@ -1,6 +1,6 @@
 # $Whistle: Makefile,v 1.5 1999/01/24 06:48:37 archie Exp $
 # $FreeBSD: src/sys/modules/netgraph/Makefile,v 1.8.2.8 2002/08/20 23:48:15 archie Exp $
-# $DragonFly: src/sys/netgraph/Makefile,v 1.2 2003/06/17 04:28:45 dillon Exp $
+# $DragonFly: src/sys/netgraph/Makefile,v 1.3 2005/09/06 18:55:41 dillon Exp $
 
 SUBDIR=	UI \
 	async \
@@ -29,7 +29,7 @@ SUBDIR=	UI \
 	tty \
 	vjc
 
-.if !defined(NOCRYPT) && exists(${.CURDIR}/../../crypto/rc4/rc4.c)
+.if !defined(NO_CRYPT) && exists(${.CURDIR}/../../crypto/rc4/rc4.c)
 SUBDIR+=	mppc
 .endif
 

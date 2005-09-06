@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.25.2.6 2002/07/05 11:30:32 fenner Exp $
-# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.4 2004/05/15 12:29:42 eirikn Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.5 2005/09/06 18:55:50 dillon Exp $
 
 
 TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.8.3
@@ -45,7 +45,7 @@ CFLAGS+=	-DLBL_ALIGN
 
 DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
-.if exists(../../../secure) && !defined(NOCRYPT) && !defined(NO_OPENSSL) && \
+.if exists(../../../secure) && !defined(NO_CRYPT) && !defined(NO_OPENSSL) && \
 	!defined(RELEASE_CRUNCH)
 DISTRIBUTION=crypto
 DPADD+= ${LIBCRYPTO}

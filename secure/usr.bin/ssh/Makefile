@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/ssh/Makefile,v 1.4.2.8 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.6 2005/07/07 12:43:36 corecode Exp $
+# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.7 2005/09/06 18:55:34 dillon Exp $
 #
 
 PROG=	ssh
@@ -13,7 +13,7 @@ SRCS+=	readconf.c.patch ssh.c.patch ${.CURDIR}/../../usr.sbin/sshd/myproposal.h.
 SRCS+=	ssh.1.no_obj.patch ssh_config.5.no_obj.patch
 SRCS+=	channels.c kex.c uidswap.c monitor_fdpass.c
 
-.if defined(MAKE_KERBEROS5)
+.if defined(WANT_KERBEROS)
 DISTRIBUTION=krb5
 CFLAGS+= -DKRB5 -DHEIMDAL
 LDADD+=	 -lkrb5 -lasn1 -lcom_err -lmd -L${.OBJDIR}/../../../kerberos5/lib/libroken -lroken -lcrypt
