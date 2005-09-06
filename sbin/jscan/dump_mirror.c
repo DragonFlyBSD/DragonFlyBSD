@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.5 2005/09/06 06:42:44 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.6 2005/09/06 18:43:52 dillon Exp $
  */
 
 #include "jscan.h"
@@ -46,13 +46,16 @@ static int dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 static int dump_mirror_rebuild(u_int16_t rectype, struct jstream *js, struct jattr *jattr);
 
 void
-dump_mirror(struct jfile *jf, struct jdata *jd, int64_t transid)
+dump_mirror(struct jsession *ss, struct jdata *jd)
 {
     struct jstream *js;
 
-    if ((js = jaddrecord(jf, jd)) != NULL) {
-	dump_mirror_stream(js);
-	jscan_dispose(js);
+    if (jd->jd_transid > ss->ss_transid) {
+	if ((js = jaddrecord(ss, jd)) != NULL) {
+	    dump_mirror_stream(js);
+	    jscan_dispose(js);
+	}
+	jsession_update_transid(ss, jd->jd_transid);
     }
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jstream.c,v 1.5 2005/09/06 06:42:44 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jstream.c,v 1.6 2005/09/06 18:43:52 dillon Exp $
  */
 
 #include "jscan.h"
@@ -50,7 +50,7 @@ static void jnormalize(struct jstream *js);
  * separately since it might not fit into memory.
  */
 struct jstream *
-jaddrecord(struct jfile *jf, struct jdata *jd)
+jaddrecord(struct jsession *ss, struct jdata *jd)
 {
     struct journal_rawrecbeg *head;
     struct jstream *js;
@@ -61,7 +61,7 @@ jaddrecord(struct jfile *jf, struct jdata *jd)
     bzero(js, sizeof(struct jstream));
     js->js_jdata = jref(jd);
     js->js_head = (void *)jd->jd_data;
-    js->js_jfile = jf;
+    js->js_session = ss;
     head = js->js_head;
 
     /*
@@ -81,8 +81,11 @@ jaddrecord(struct jfile *jf, struct jdata *jd)
      */
     jhp = &JHashAry[head->streamid & JHASH_MASK];
     while ((jh = *jhp) != NULL) {
-	if (((jh->jh_transid ^ head->streamid) & JREC_STREAMID_MASK) == 0)
+	if (jh->jh_session == ss &&
+	   ((jh->jh_transid ^ head->streamid) & JREC_STREAMID_MASK) == 0
+	) {
 	    break;
+	}
 	jhp = &jh->jh_hash;
     }
     if (jh == NULL) {
@@ -92,6 +95,7 @@ jaddrecord(struct jfile *jf, struct jdata *jd)
 	jh->jh_first = js;
 	jh->jh_last = js;
 	jh->jh_transid = head->streamid;
+	jh->jh_session = ss;
 	return (NULL);
     }
 
@@ -99,7 +103,7 @@ jaddrecord(struct jfile *jf, struct jdata *jd)
      * Emplace the stream segment
      */
     jh->jh_transid |= head->streamid & JREC_STREAMCTL_MASK;
-    if (jf->jf_direction == JD_FORWARDS) {
+    if (js->js_session->ss_jfin->jf_direction == JD_FORWARDS) {
 	jh->jh_last->js_next = js;
 	jh->jh_last = js;
     } else {
@@ -166,7 +170,7 @@ jscan_dispose(struct jstream *js)
 
     while (js) {
 	jnext = js->js_next;
-	jfree(js->js_jfile, js->js_jdata);
+	jfree(js->js_session->ss_jfin, js->js_jdata);
 	js->js_jdata = NULL;
 	free(js);
 	js = jnext;

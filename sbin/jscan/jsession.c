@@ -31,19 +31,49 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_record.c,v 1.2 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jsession.c,v 1.1 2005/09/06 18:43:52 dillon Exp $
  */
 
 #include "jscan.h"
 
 void
-dump_record(struct jsession *ss, struct jdata *jd)
+jsession_init(struct jsession *ss, struct jfile *jfin,
+	      const  char *transid_file, int64_t transid)
 {
-    if (jd->jd_transid > ss->ss_transid && 
-	jd->jd_transid > ss->ss_jfout->jf_last_transid
-    ) {
-	jwrite(ss->ss_jfout, jd);
-	jsession_update_transid(ss, jd->jd_transid);
+    bzero(ss, sizeof(*ss));
+    ss->ss_jfin = jfin;
+    ss->ss_transid = transid;
+    ss->ss_transid_file = transid_file;
+    ss->ss_transid_fd = -1;
+}
+
+void
+jsession_update_transid(struct jsession *ss __unused, int64_t transid)
+{
+    char buf[32];
+
+    if (ss->ss_transid_file) {
+	if (ss->ss_transid_fd < 0) {
+	    ss->ss_transid_fd = open(ss->ss_transid_file, O_RDWR|O_CREAT, 0666);
+	}
+	if (ss->ss_transid_fd < 0) {
+	    fprintf(stderr, "Cannot open/create %s\n", ss->ss_transid_file);
+	    exit(1);
+	}
+	snprintf(buf, sizeof(buf), "%016llx\n", transid);
+	lseek(ss->ss_transid_fd, 0L, 0);
+	write(ss->ss_transid_fd, buf, strlen(buf));
+	if (fsync_opt > 1)
+	    fsync(ss->ss_transid_fd);
     }
+}
+
+void
+jsession_term(struct jsession *ss)
+{
+   if (ss->ss_transid_fd >= 0) {
+	close(ss->ss_transid_fd);
+	ss->ss_transid_fd = -1;
+   }
 }
 

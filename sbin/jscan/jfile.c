@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.6 2005/09/06 06:42:44 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.7 2005/09/06 18:43:52 dillon Exp $
  */
 
 #include "jscan.h"
@@ -39,6 +39,8 @@
 
 static void jalign(struct jfile *jf);
 static int jreadbuf(struct jfile *jf, void *buf, int bytes);
+static void jreset(struct jfile *jf, unsigned int seq, 
+		   enum jdirection direction);
 
 /*
  * Open a file descriptor for journal record access. 
@@ -53,6 +55,7 @@ jopen_fd(int fd, enum jdirection direction)
     jf = malloc(sizeof(struct jfile));
     bzero(jf, sizeof(struct jfile));
     jf->jf_fd = fd;
+    jf->jf_write_fd = -1;
     jf->jf_open_flags = O_RDONLY;
     if (direction == JD_BACKWARDS) {
 	jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
@@ -70,6 +73,7 @@ struct jfile *
 jopen_prefix(const char *prefix, enum jdirection direction, int rw)
 {
     struct jfile *jf;
+    struct jdata *jd;
     unsigned int seq_beg = -1;
     unsigned int seq_end = -1;
     unsigned int seq;
@@ -98,7 +102,7 @@ jopen_prefix(const char *prefix, enum jdirection direction, int rw)
 		den->d_name[baselen] == '.'
 	    ) {
 		seq = strtoul(den->d_name + baselen + 1, &ptr, 10);
-		if (*ptr == 0 && seq > 0) {
+		if (*ptr == 0 && seq != ULONG_MAX) {
 		    if (seq_beg == (unsigned int)-1 || seq_beg > seq)
 			seq_beg = seq;
 		    if (seq_end == (unsigned int)-1 || seq_end < seq)
@@ -130,17 +134,21 @@ jopen_prefix(const char *prefix, enum jdirection direction, int rw)
 	jf = malloc(sizeof(struct jfile));
 	bzero(jf, sizeof(struct jfile));
 	jf->jf_fd = -1;
+	jf->jf_write_fd = -1;
 	jf->jf_prefix = strdup(prefix);
 	jf->jf_seq_beg = seq_beg;
 	jf->jf_seq_end = seq_end;
-	jf->jf_pos = -1;
-	if (direction == JD_BACKWARDS) {
-	    jf->jf_seq = jf->jf_seq_end;
-	} else {
-	    jf->jf_seq = jf->jf_seq_beg;
-	}
-	jf->jf_direction = direction;
 	jf->jf_open_flags = rw ? (O_RDWR|O_CREAT) : O_RDONLY;
+	jreset(jf, seq_end, JD_BACKWARDS);
+	fprintf(stderr, "Open prefix set %u-%u\n", seq_beg, seq_end);
+	if (jread(jf, &jd, JD_BACKWARDS) == 0) {
+	    jf->jf_last_transid = jd->jd_transid;
+	    jfree(jf, jd);
+	}
+	if (direction == JD_BACKWARDS)
+	    jreset(jf, jf->jf_seq_end, direction);
+	else
+	    jreset(jf, jf->jf_seq_beg, direction);
     } else {
 	jf = NULL;
     }
@@ -197,8 +205,14 @@ jrecord_init(const char *prefix)
 void
 jclose(struct jfile *jf)
 {
-    close(jf->jf_fd);
-    jf->jf_fd = -1;
+    if (jf->jf_fd >= 0) {
+	close(jf->jf_fd);
+	jf->jf_fd = -1;
+    }
+    if (jf->jf_write_fd >= 0) {
+	close(jf->jf_write_fd);
+	jf->jf_write_fd = -1;
+    }
     free(jf);
 }
 
@@ -342,8 +356,6 @@ top:
 	    jd->jd_alloc = allocsize;
 	    jd->jd_size = recsize;
 	    jd->jd_refs = 1;
-	    jd->jd_next = jf->jf_data;
-	    jf->jf_data = jd;
 	    *jdp = jd;
 	    return(0);
 	}
@@ -406,8 +418,6 @@ top:
 	    jd->jd_alloc = allocsize;
 	    jd->jd_size = recsize;
 	    jd->jd_refs = 1;
-	    jd->jd_next = jf->jf_data;
-	    jf->jf_data = jd;
 	    *jdp = jd;
 	    return(0);
 	}
@@ -444,13 +454,56 @@ top:
  * Write a record out.  If this is a prefix set and the file would
  * exceed record_size, we rotate into a new sequence number.
  */
-int
+void
 jwrite(struct jfile *jf, struct jdata *jd)
 {
+    struct stat st;
+    char *path;
     int n;
 
-    n = write(jf->jf_fd, jd->jd_data, jd->jd_size);
-    return(n);
+    assert(jf->jf_prefix);
+
+again:
+    /*
+     * Open/create a new file in the prefix set
+     */
+    if (jf->jf_write_fd < 0) {
+	asprintf(&path, "%s.%08x", jf->jf_prefix, jf->jf_seq_end);
+	jf->jf_write_fd = open(path, O_RDWR|O_CREAT, 0666);
+	if (jf->jf_write_fd < 0 || fstat(jf->jf_write_fd, &st) != 0) {
+	    fprintf(stderr, "Unable to open/create %s\n", path);
+	    exit(1);
+	}
+	jf->jf_write_pos = st.st_size;
+	lseek(jf->jf_write_fd, jf->jf_write_pos, 0);
+	free(path);
+    }
+
+    /*
+     * Each file must contain at least one raw record, even if it exceeds
+     * the user-requested record-size.  Apart from that, we cycle to the next
+     * file when its size would exceed the user-specified 
+     */
+    if (jf->jf_write_pos > 0 && 
+	jf->jf_write_pos + jd->jd_size > prefix_file_size
+    ) {
+	close(jf->jf_write_fd);
+	jf->jf_write_fd = -1;
+	++jf->jf_seq_end;
+	goto again;
+    }
+
+    /*
+     * Terminate if a failure occurs (for now).
+     */
+    n = write(jf->jf_write_fd, jd->jd_data, jd->jd_size);
+    if (n != jd->jd_size) {
+	ftruncate(jf->jf_write_fd, jf->jf_write_pos);
+	fprintf(stderr, "jwrite: failed %s\n", strerror(errno));
+	exit(1);
+    }
+    jf->jf_write_pos += n;
+    jf->jf_last_transid = jd->jd_transid;
 }
 
 /*
@@ -496,7 +549,7 @@ jseek(struct jfile *jf, int64_t transid, enum jdirection direction)
 {
     int64_t transid_beg;
     int64_t transid_end;
-    unsigned int seq;
+    unsigned int seq = (unsigned int)-1;
     struct jdata *jd;
 
     /*
@@ -563,17 +616,10 @@ jref(struct jdata *jd)
 }
 
 void
-jfree(struct jfile *jf, struct jdata *jd)
+jfree(struct jfile *jf __unused, struct jdata *jd)
 {
-    struct jdata **jdp;
-
-    if (--jd->jd_refs == 0){
-	for (jdp = &jf->jf_data; *jdp != jd; jdp = &(*jdp)->jd_next) {
-	    assert(*jdp != NULL);
-	}
-	*jdp = jd->jd_next;
+    if (--jd->jd_refs == 0)
 	free(jd);
-    }
 }
 
 /*
