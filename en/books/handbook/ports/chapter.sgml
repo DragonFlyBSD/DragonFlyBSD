@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ports/chapter.sgml,v 1.218 2004/05/06 11:37:25 den Exp $
-     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.4 2005/09/06 00:28:14 reed Exp $
+     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.5 2005/09/06 17:34:23 reed Exp $
 -->
 
 <chapter id="ports">
@@ -575,7 +575,7 @@ docbook                     =
 	</step>
 	
 	<step>
-	  <para>Running these 2 commands later will download and apply all
+	  <para>Running these two commands later will download and apply all
 	    the recent changes to your ports and dfports collections.  
 	  </para>
 	</step>
