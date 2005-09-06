@@ -6,11 +6,11 @@
      the name of the outermost element in the entity.  Examples would
      be "bookinfo.legalnotice", and "bookinfo.preface".
 
-     $DragonFly: doc/en/share/sgml/bookinfo.ent,v 1.2 2005/08/14 08:15:11 asmodai Exp $
+     $DragonFly: doc/en/share/sgml/bookinfo.ent,v 1.3 2005/09/06 02:06:17 reed Exp $
 -->
 
 <!ENTITY bookinfo.legalnotice SYSTEM "legalnotice.sgml">
 
 <!ENTITY bookinfo.trademarks SYSTEM "trademarks.sgml">
 
-<!ENTITY bookinfo.freebsd-glossary SYSTEM "glossary/freebsd-glossary.sgml">
+<!ENTITY bookinfo.dragonfly-glossary SYSTEM "glossary/dragonfly-glossary.sgml">
