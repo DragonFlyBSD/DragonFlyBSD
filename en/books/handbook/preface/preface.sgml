@@ -1,6 +1,6 @@
 <!--
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/preface/preface.sgml,v 1.19 2003/11/05 10:36:55 ceri Exp $
-     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.4 2005/06/28 01:40:02 reed Exp $
+     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.5 2005/09/06 17:27:39 reed Exp $
 -->
 
 <preface id="book-preface">
@@ -79,7 +79,7 @@
       <term><emphasis><xref linkend="x11">, The X Window System</emphasis></term>
       <listitem>
 	<para>Describes the X Window System in general and using
-	<application>&xfree86;</application> on &os; in particular.  Also describes common
+	<application>&xfree86;</application> and <application>&xorg;</application> on &os; in particular.  Also describes common
 	desktop environments such as <application>KDE</application> and <application>GNOME</application>.</para>
       </listitem>
     </varlistentry>
