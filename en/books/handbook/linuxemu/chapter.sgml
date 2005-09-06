@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.5 2005/09/06 00:28:13 reed Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.6 2005/09/06 17:34:03 reed Exp $
 -->
 
 <chapter id="linuxemu">
@@ -1552,7 +1552,7 @@ export PATH</programlisting>
 	<title>&sap.r3; 4.6B, &oracle; 8.0.5</title>
 
       <para>The following off-the-shelf hardware was used: a dual processor
-	board with 2 800&nbsp;MHz &pentium;&nbsp;III processors, &adaptec; 29160 Ultra160
+	board with two 800&nbsp;MHz &pentium;&nbsp;III processors, &adaptec; 29160 Ultra160
 	SCSI adapter (for accessing a 40/80&nbsp;GB DLT tape drive and CDROM),
 	&mylex; &acceleraid; (2 channels, firmware 6.00-1-00 with 32&nbsp;MB RAM).
 	To the &mylex; RAID controller are attached two 17&nbsp;GB hard disks
