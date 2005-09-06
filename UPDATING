@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.14 2005/06/09 19:39:18 joerg Exp $
+$DragonFly: src/UPDATING,v 1.15 2005/09/06 10:56:05 joerg Exp $
 
 Updating Information for DragonFly users.
 
@@ -17,6 +17,11 @@ mailing list with the details.
 The compatiblity shims for the build environment have been removed, you
 have to update to DragonFly 1.2 release branch first.
 
+The default PAM configuration has moved from /etc/pam.conf to /etc/pam.d/.
+The existing configuration can be converted using /etc/pam.d/convert.sh.
+Entries in /etc/pam.d/ override entries in /etc/pam.conf. In addition
+the pam_skey.so module was retired, you have to remove it manually from
+your configuration, when you convert it.
 
 > Required user and group IDs when upgrading from either FreeBSD or DragonFly
 ---------------------
