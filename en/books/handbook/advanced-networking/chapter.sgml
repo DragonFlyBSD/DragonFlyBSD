@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.7 2005/09/06 00:28:13 reed Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.8 2005/09/06 17:29:38 reed Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -3353,8 +3353,8 @@ ISDN BRI line</literallayout>
       </example>
 
       <para>One large advantage of most routers/bridges is that they allow you
-	to have 2 <emphasis>separate independent</emphasis> PPP connections to
-	2 separate sites at the <emphasis>same</emphasis> time.  This is not
+	to have two <emphasis>separate independent</emphasis> PPP connections to
+	two separate sites at the <emphasis>same</emphasis> time.  This is not
 	supported on most TA's, except for specific (usually expensive) models
 	that
 	have two serial ports.  Do not confuse this with channel bonding, MPP,
