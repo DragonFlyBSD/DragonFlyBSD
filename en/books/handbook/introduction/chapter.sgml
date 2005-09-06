@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.7 2005/06/28 02:30:30 reed Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.8 2005/09/06 17:26:58 reed Exp $
 -->
 
 <chapter id="introduction">
@@ -155,8 +155,8 @@
 	
 	<listitem>
 	  <para>Thousands of <emphasis>ready-to-run</emphasis>
-	    applications are available from the FreeBSD
-	    <emphasis>ports</emphasis> and <emphasis>packages</emphasis>
+	    applications are available from the &pkgsrc;
+	    <emphasis>packages</emphasis>
 	    collection.  Why search the net when you can find it all right
 	    here?</para>
 	</listitem>
@@ -353,9 +353,10 @@
 	<listitem>
 	  <para><emphasis>X Window workstation:</emphasis> &os; is a
 	    fine choice for an inexpensive X terminal solution, either
-	    using the freely available &xfree86; server or one of the
+	    using the freely available &xfree86; or &xorg; servers or one of the
 	    excellent commercial servers provided by <ulink
 	    url="http://www.xig.com">Xi Graphics</ulink>.  Unlike an
+<!-- reed: todo: check if xig should be here -->
 	    X terminal, &os; allows many applications to be run
 	    locally if desired, thus relieving the burden on a central
 	    server.  &os; can even boot <quote>diskless</quote>, making
