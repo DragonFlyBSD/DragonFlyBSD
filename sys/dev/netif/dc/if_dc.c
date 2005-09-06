@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.37 2005/09/04 23:19:12 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.38 2005/09/06 08:06:13 sephe Exp $
  */
 
 /*
@@ -1510,37 +1510,26 @@ dc_probe(device_t dev)
 static void
 dc_acpi(device_t dev)
 {
-	u_int32_t		r, cptr;
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
+		uint32_t iobase, membase, irq;
+		struct dc_softc *sc;
 
-	/* Find the location of the capabilities block */
-	cptr = pci_read_config(dev, DC_PCI_CCAP, 4) & 0xFF;
+		/* Save important PCI config data. */
+		iobase = pci_read_config(dev, DC_PCI_CFBIO, 4);
+		membase = pci_read_config(dev, DC_PCI_CFBMA, 4);
+		irq = pci_read_config(dev, DC_PCI_CFIT, 4);
 
-	r = pci_read_config(dev, cptr, 4) & 0xFF;
-	if (r == 0x01) {
+		sc = device_get_softc(dev);
+		/* Reset the power state. */
+		if_printf(&sc->arpcom.ac_if,
+			  "chip is in D%d power mode "
+			  "-- setting to D0\n", pci_get_powerstate(dev));
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
-		r = pci_read_config(dev, cptr + 4, 4);
-		if (r & DC_PSTATE_D3) {
-			u_int32_t		iobase, membase, irq;
-			struct dc_softc		*sc;
-
-			/* Save important PCI config data. */
-			iobase = pci_read_config(dev, DC_PCI_CFBIO, 4);
-			membase = pci_read_config(dev, DC_PCI_CFBMA, 4);
-			irq = pci_read_config(dev, DC_PCI_CFIT, 4);
-
-			sc = device_get_softc(dev);
-			/* Reset the power state. */
-			if_printf(&sc->arpcom.ac_if,
-				  "chip is in D%d power mode "
-				  "-- setting to D0\n", r & DC_PSTATE_D3);
-			r &= 0xFFFFFFFC;
-			pci_write_config(dev, cptr + 4, r, 4);
-
-			/* Restore PCI config data. */
-			pci_write_config(dev, DC_PCI_CFBIO, iobase, 4);
-			pci_write_config(dev, DC_PCI_CFBMA, membase, 4);
-			pci_write_config(dev, DC_PCI_CFIT, irq, 4);
-		}
+		/* Restore PCI config data. */
+		pci_write_config(dev, DC_PCI_CFBIO, iobase, 4);
+		pci_write_config(dev, DC_PCI_CFBMA, membase, 4);
+		pci_write_config(dev, DC_PCI_CFIT, irq, 4);
 	}
 }
 

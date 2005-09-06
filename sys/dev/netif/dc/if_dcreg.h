@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.6 2005/07/16 17:11:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.7 2005/09/06 08:06:13 sephe Exp $
  */
 
 /*
@@ -981,11 +981,6 @@ struct dc_softc {
 #define DC_CPMC_STATE		0x00000003
 #define DC_CPMC_PME_ENB		0x00000100
 #define DC_CPMC_PME_STS		0x00008000
-
-#define DC_PSTATE_D0		0x0
-#define DC_PSTATE_D1		0x1
-#define DC_PSTATE_D2		0x2
-#define DC_PSTATE_D3		0x3
 
 /* Device specific region */
 /* Configuration and driver area */
