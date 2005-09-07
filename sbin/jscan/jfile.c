@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.8 2005/09/06 22:33:00 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.9 2005/09/07 02:34:37 dillon Exp $
  */
 
 #include "jscan.h"
@@ -233,6 +233,10 @@ jclose(struct jfile *jf)
  * of returned JS's may be different (not exactly reversed) when scanning a
  * journal backwards verses forwards.  Since parallel operations are 
  * theoretically non-conflicting, this should not present a problem.
+ *
+ * PAD RECORD SPECIAL CASE.  Pad records can be 16 bytes long, which means
+ * that that rawrecend overlaps the transid field of the rawrecbeg.  Because
+ * the transid is garbage, we must skip and cannot return pad records.
  */
 int
 jread(struct jfile *jf, struct jdata **jdp, enum jdirection direction)
@@ -354,6 +358,14 @@ top:
 	    }
 
 	    /*
+	     * Skip pad records.
+	     */
+	    if (head.streamid == JREC_STREAMID_PAD) {
+		free(jd);
+		continue;
+	    }
+
+	    /*
 	     * note: recsize is aligned (the actual record size),
 	     * head.recsize is unaligned (the actual payload size).
 	     */
@@ -411,6 +423,14 @@ top:
 		    jf_warn(jf, "bad begmagic, searching for new record");
 		search = 1;
 		jalign(jf);
+		free(jd);
+		continue;
+	    }
+
+	    /*
+	     * Skip pad records.
+	     */
+	    if (head.streamid == JREC_STREAMID_PAD) {
 		free(jd);
 		continue;
 	    }
@@ -700,13 +720,11 @@ jalign(struct jfile *jf)
 {
     char dummy[16];
     int bytes;
-    int n;
 
     if ((int)jf->jf_pos & 15) {
 	if (jf->jf_direction == JD_FORWARDS) {
 	    bytes = 16 - ((int)jf->jf_pos & 15);
-	    if ((n = jreadbuf(jf, dummy, bytes)) > 0)
-		jf->jf_pos += n;
+	    jreadbuf(jf, dummy, bytes);
 	} else {
 	    jf->jf_pos = jf->jf_pos & ~(off_t)15;
 	}
@@ -736,6 +754,7 @@ jreadbuf(struct jfile *jf, void *buf, int bytes)
 		break;
 	    }
 	    ttl += n;
+	    jf->jf_pos += n;
 	}
     } else {
 	if (jf->jf_pos >= bytes) {
