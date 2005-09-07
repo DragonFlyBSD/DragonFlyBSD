@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.9 2005/09/06 23:55:02 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.10 2005/09/07 19:04:16 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -241,6 +241,7 @@ struct journal_subrecord {
 #define JTYPE_DISASSOCIATE	0x0003
 #define JTYPE_UNDO		(JMASK_NESTED|0x0004)
 #define JTYPE_AUDIT		(JMASK_NESTED|0x0005)
+#define JTYPE_REDO		(JMASK_NESTED|0x0006)
 
 #define JTYPE_SETATTR		(JMASK_NESTED|0x0010)
 #define JTYPE_WRITE		(JMASK_NESTED|0x0011)

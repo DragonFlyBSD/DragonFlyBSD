@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.21 2005/09/06 23:55:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.22 2005/09/07 19:04:18 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -175,12 +175,14 @@ static int journal_nrename(struct vop_nrename_args *ap);
 #define JRUNDO_GEN	0x00000200
 #define JRUNDO_FLAGS	0x00000400
 #define JRUNDO_UDEV	0x00000800
+#define JRUNDO_NLINK	0x00001000
 #define JRUNDO_FILEDATA	0x00010000
 #define JRUNDO_GETVP	0x00020000
 #define JRUNDO_CONDLINK	0x00040000	/* write file data if link count 1 */
 #define JRUNDO_VATTR	(JRUNDO_SIZE|JRUNDO_UID|JRUNDO_GID|JRUNDO_FSID|\
 			 JRUNDO_MODES|JRUNDO_INUM|JRUNDO_ATIME|JRUNDO_MTIME|\
-			 JRUNDO_CTIME|JRUNDO_GEN|JRUNDO_FLAGS|JRUNDO_UDEV)
+			 JRUNDO_CTIME|JRUNDO_GEN|JRUNDO_FLAGS|JRUNDO_UDEV|\
+			 JRUNDO_NLINK)
 #define JRUNDO_ALL	(JRUNDO_VATTR|JRUNDO_FILEDATA)
 
 static struct vnodeopv_entry_desc journal_vnodeop_entries[] = {
@@ -2004,6 +2006,8 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
     if (jrflags & JRUNDO_VATTR) {
 	save2 = jrecord_push(jrec, JTYPE_VATTR);
 	jrecord_leaf(jrec, JLEAF_VTYPE, &attr.va_type, sizeof(attr.va_type));
+	if ((jrflags & JRUNDO_NLINK) && attr.va_nlink != VNOVAL)
+	    jrecord_leaf(jrec, JLEAF_NLINK, &attr.va_nlink, sizeof(attr.va_nlink));
 	if ((jrflags & JRUNDO_SIZE) && attr.va_size != VNOVAL)
 	    jrecord_leaf(jrec, JLEAF_SIZE, &attr.va_size, sizeof(attr.va_size));
 	if ((jrflags & JRUNDO_UID) && attr.va_uid != VNOVAL)
@@ -2123,6 +2127,7 @@ journal_setattr(struct vop_setattr_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2134,7 +2139,9 @@ journal_setattr(struct vop_setattr_args *ap)
 	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
 	    jrecord_write_cred(jrec, ap->a_td, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_vattr(jrec, ap->a_vap);
+	    jrecord_pop(jrec, save);
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2154,6 +2161,7 @@ journal_write(struct vop_write_args *ap)
     struct mount *mp;
     struct uio uio_copy;
     struct iovec uio_one_iovec;
+    void *save;
     int error;
 
     /*
@@ -2208,7 +2216,9 @@ journal_write(struct vop_write_args *ap)
 	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_uio(jrec, JLEAF_FILEDATA, &uio_copy);
+	    jrecord_pop(jrec, save);
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2256,6 +2266,7 @@ journal_putpages(struct vop_putpages_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2270,8 +2281,10 @@ journal_putpages(struct vop_putpages_args *ap)
     if (error == 0 && ap->a_count > 0) {
 	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_pagelist(jrec, JLEAF_FILEDATA, ap->a_m, ap->a_rtvals, 
 				   btoc(ap->a_count), ap->a_offset);
+	    jrecord_pop(jrec, save);
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2302,7 +2315,11 @@ journal_setacl(struct vop_setacl_args *ap)
 #endif
 	    jrecord_write_cred(jrec, ap->a_td, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
+#if 0
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    /* XXX type, aclp */
+	    jrecord_pop(jrec, save);
+#endif
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2320,6 +2337,7 @@ journal_setextattr(struct vop_setextattr_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2334,7 +2352,9 @@ journal_setextattr(struct vop_setextattr_args *ap)
 	    jrecord_write_cred(jrec, ap->a_td, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 	    jrecord_leaf(jrec, JLEAF_ATTRNAME, ap->a_name, strlen(ap->a_name));
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_uio(jrec, JLEAF_FILEDATA, ap->a_uio);
+	    jrecord_pop(jrec, save);
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2352,6 +2372,7 @@ journal_ncreate(struct vop_ncreate_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2363,7 +2384,9 @@ journal_ncreate(struct vop_ncreate_args *ap)
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	    if (*ap->a_vpp)
 		jrecord_write_vnode_ref(jrec, *ap->a_vpp);
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_vattr(jrec, ap->a_vap);
+	    jrecord_pop(jrec, save);
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2381,6 +2404,7 @@ journal_nmknod(struct vop_nmknod_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2390,7 +2414,9 @@ journal_nmknod(struct vop_nmknod_args *ap)
 	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_vattr(jrec, ap->a_vap);
+	    jrecord_pop(jrec, save);
 	    if (*ap->a_vpp)
 		jrecord_write_vnode_ref(jrec, *ap->a_vpp);
 	}
@@ -2410,6 +2436,7 @@ journal_nlink(struct vop_nlink_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2422,7 +2449,9 @@ journal_nlink(struct vop_nlink_args *ap)
 	    /* XXX PATH to VP and inode number */
 	    /* XXX this call may not record the correct path when
 	     * multiple paths are available */
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_vnode_link(jrec, ap->a_vp, ap->a_ncp);
+	    jrecord_pop(jrec, save);
 	}
     }
     jreclist_done(&jreclist, error);
@@ -2440,6 +2469,7 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
     struct jrecord jreccache;
     struct jrecord *jrec;
     struct mount *mp;
+    void *save;
     int error;
 
     mp = ap->a_head.a_ops->vv_mount;
@@ -2449,8 +2479,10 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
 	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
+	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_leaf(jrec, JLEAF_SYMLINKDATA,
 			ap->a_target, strlen(ap->a_target));
+	    jrecord_pop(jrec, save);
 	    if (*ap->a_vpp)
 		jrecord_write_vnode_ref(jrec, *ap->a_vpp);
 	}
