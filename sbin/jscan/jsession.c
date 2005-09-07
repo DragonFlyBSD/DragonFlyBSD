@@ -31,17 +31,19 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jsession.c,v 1.1 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jsession.c,v 1.2 2005/09/07 07:20:23 dillon Exp $
  */
 
 #include "jscan.h"
 
 void
 jsession_init(struct jsession *ss, struct jfile *jfin,
-	      const  char *transid_file, int64_t transid)
+	      enum jdirection direction,
+	      const char *transid_file, int64_t transid)
 {
     bzero(ss, sizeof(*ss));
     ss->ss_jfin = jfin;
+    ss->ss_direction = direction;
     ss->ss_transid = transid;
     ss->ss_transid_file = transid_file;
     ss->ss_transid_fd = -1;

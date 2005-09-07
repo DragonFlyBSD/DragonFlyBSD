@@ -31,16 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jfile.c,v 1.9 2005/09/07 02:34:37 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jfile.c,v 1.10 2005/09/07 07:20:23 dillon Exp $
  */
 
 #include "jscan.h"
 #include <dirent.h>
 
-static void jalign(struct jfile *jf);
-static int jreadbuf(struct jfile *jf, void *buf, int bytes);
-static void jreset(struct jfile *jf, unsigned int seq, 
-		   enum jdirection direction);
+static void jalign(struct jfile *jf, enum jdirection direction);
+static int jreadbuf(struct jfile *jf, enum jdirection direction,
+		    void *buf, int bytes);
 
 /*
  * Open a file descriptor for journal record access. 
@@ -48,7 +47,7 @@ static void jreset(struct jfile *jf, unsigned int seq,
  * NOTE: only seekable descriptors are supported for backwards scans.
  */
 struct jfile *
-jopen_fd(int fd, enum jdirection direction)
+jopen_fd(int fd)
 {
     struct jfile *jf;
 
@@ -57,10 +56,7 @@ jopen_fd(int fd, enum jdirection direction)
     jf->jf_fd = fd;
     jf->jf_write_fd = -1;
     jf->jf_open_flags = O_RDONLY;
-    if (direction == JD_BACKWARDS) {
-	jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
-    }
-    jf->jf_direction = direction;
+    jf->jf_pos = 0;
     return(jf);
 }
 
@@ -70,7 +66,7 @@ jopen_fd(int fd, enum jdirection direction)
  * the sequence number is initialized to the beginning or end of the set.
  */
 struct jfile *
-jopen_prefix(const char *prefix, enum jdirection direction, int rw)
+jopen_prefix(const char *prefix, int rw)
 {
     struct jfile *jf;
     struct jdata *jd;
@@ -136,20 +132,16 @@ jopen_prefix(const char *prefix, enum jdirection direction, int rw)
 	jf->jf_fd = -1;
 	jf->jf_write_fd = -1;
 	jf->jf_prefix = strdup(prefix);
+	jf->jf_seq = seq_beg;
 	jf->jf_seq_beg = seq_beg;
 	jf->jf_seq_end = seq_end;
 	jf->jf_open_flags = rw ? (O_RDWR|O_CREAT) : O_RDONLY;
-	jreset(jf, seq_end, JD_BACKWARDS);
 	if (verbose_opt)
 	    fprintf(stderr, "Open prefix set %08x-%08x\n", seq_beg, seq_end);
-	if (jread(jf, &jd, JD_BACKWARDS) == 0) {
+	if ((jd = jread(jf, NULL, JD_BACKWARDS)) != NULL) {
 	    jf->jf_last_transid = jd->jd_transid;
 	    jfree(jf, jd);
 	}
-	if (direction == JD_BACKWARDS)
-	    jreset(jf, jf->jf_seq_end, direction);
-	else
-	    jreset(jf, jf->jf_seq_beg, direction);
     } else {
 	jf = NULL;
     }
@@ -172,7 +164,7 @@ jrecord_init(const char *prefix)
      * Determine whether we already have a prefix set or whether we need
      * to create one.
      */
-    jf = jopen_prefix(prefix, 0, 0);
+    jf = jopen_prefix(prefix, 0);
     hasseqspace = 0;
     if (jf) {
 	if (jf->jf_seq_beg != (unsigned int)-1)
@@ -218,34 +210,21 @@ jclose(struct jfile *jf)
 }
 
 /*
- * Locate the next (or previous) complete virtual stream transaction given a
- * file descriptor and direction.  Keep track of partial stream records as
- * a side effect.
- *
- * Note that a transaction might represent a huge I/O operation, resulting
- * in an overall node structure that spans gigabytes, but individual
- * subrecord leaf nodes are limited in size and we depend on this to simplify
- * the handling of leaf records. 
- *
- * A transaction may cover several raw records.  The jstream collection for
- * a transaction is only returned when the entire transaction has been
- * successfully scanned.  Due to the interleaving of transactions the ordering
- * of returned JS's may be different (not exactly reversed) when scanning a
- * journal backwards verses forwards.  Since parallel operations are 
- * theoretically non-conflicting, this should not present a problem.
+ * Locate the next (or previous) raw record given a jfile, current record,
+ * and direction.  If the current record is NULL then the first or last
+ * record for the current sequence number is returned.
  *
  * PAD RECORD SPECIAL CASE.  Pad records can be 16 bytes long, which means
  * that that rawrecend overlaps the transid field of the rawrecbeg.  Because
  * the transid is garbage, we must skip and cannot return pad records.
  */
-int
-jread(struct jfile *jf, struct jdata **jdp, enum jdirection direction)
+struct jdata *
+jread(struct jfile *jf, struct jdata *jd, enum jdirection direction)
 {
     struct journal_rawrecbeg head;
     struct journal_rawrecbeg *headp;
     struct journal_rawrecend tail;
     struct journal_rawrecend *tailp;
-    struct jdata *jd;
     struct stat st;
     char *filename;
     int allocsize;
@@ -254,42 +233,109 @@ jread(struct jfile *jf, struct jdata **jdp, enum jdirection direction)
     int error;
     int n;
 
-    /*
-     * If changing direction on an open descriptor we have to fixup jf_pos.
-     * When reading backwards the actual file seek position does not match
-     * jf_pos.
-     *
-     * If you read forwards then read backwards, or read backwords then
-     * read forwards, you will get the same record.
-     */
-    if (jf->jf_direction != direction) {
-	if (jf->jf_fd >= 0) {
-	    if (direction == JD_FORWARDS) {
-		lseek(jf->jf_fd, jf->jf_pos, 0);
+    if (jd) {
+	/*
+	 * Handle the next/previous record case.  If running in the forwards
+	 * direction we position the file just after jd.  If running in the
+	 * backwards direction we position the file at the base of jd so
+	 * the backwards read gets the previous record.
+	 *
+	 * In prefix mode we have to get the right descriptor open and
+	 * position the file, since the fall through code resets to the
+	 * beginning or end if it has to open a descriptor.
+	 */
+	assert(direction != JD_SEQFIRST && direction != JD_SEQLAST);
+	if (jf->jf_prefix) {
+	    if (jf->jf_fd >= 0 && jf->jf_seq != jd->jd_seq) {
+		close(jf->jf_fd);
+		jf->jf_fd = -1;
+	    }
+	    jf->jf_seq = jd->jd_seq;
+	    if (jf->jf_fd < 0) {
+		asprintf(&filename, "%s.%08x", jf->jf_prefix, jf->jf_seq);
+		jf->jf_fd = open(filename, O_RDONLY);
+		if (verbose_opt > 1)
+		    fprintf(stderr, "Open %s fd %d\n", filename, jf->jf_fd);
+		free(filename);
 	    }
 	}
-	jf->jf_direction = direction;
+	if ((jmodes & JMODEF_INPUT_PIPE) == 0) {
+	    if (direction == JD_FORWARDS) {
+		jf->jf_pos = jd->jd_pos + jd->jd_size;
+		lseek(jf->jf_fd, jf->jf_pos, 0);
+	    } else {
+		jf->jf_pos = jd->jd_pos;
+		/* lseek(jf->jf_fd, jf->jf_pos, 0); not needed */
+	    }
+	} else {
+	    assert(direction == JD_FORWARDS && jf->jf_prefix == NULL);
+	    assert(jf->jf_pos == jd->jd_pos + jd->jd_size);
+	}
+	jfree(jf, jd);
+    } else {
+	/*
+	 * Handle the first/last record case.  In the prefix case we only
+	 * need to set jf_seq and close the file handle and fall through.
+	 * The SEQ modes maintain the current jf_seq (kinda a hack).
+	 */
+	if (jf->jf_prefix) {
+	    if (jf->jf_fd >= 0) {
+		close(jf->jf_fd);
+		jf->jf_fd = -1;
+	    }
+	    switch(direction) {
+	    case JD_FORWARDS:
+		jf->jf_seq = jf->jf_seq_beg;
+		break;
+	    case JD_BACKWARDS:
+		jf->jf_seq = jf->jf_seq_end;
+		break;
+	    case JD_SEQFIRST:
+		direction = JD_FORWARDS;
+		break;
+	    case JD_SEQLAST:
+		direction = JD_BACKWARDS;
+		break;
+	    }
+	} else if ((jmodes & JMODEF_INPUT_PIPE) == 0) {
+	    switch(direction) {
+	    case JD_SEQFIRST:
+		direction = JD_FORWARDS;
+		/* fall through */
+	    case JD_FORWARDS:
+		jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_SET);
+		break;
+	    case JD_SEQLAST:
+		direction = JD_BACKWARDS;
+		/* fall through */
+	    case JD_BACKWARDS:
+		jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
+		break;
+	    }
+	} else {
+	    if (direction == JD_SEQFIRST)
+		direction = JD_FORWARDS;
+	    assert(jf->jf_pos == 0 && direction == JD_FORWARDS);
+	}
     }
 
 top:
     /*
-     * If reading in prefix mode and we have no descriptor, open
-     * a new descriptor based on the current sequence number.  If
-     * this fails we will fall all the way through to the end which will
-     * setup the next sequence number and loop.
+     * If we are doing a prefix scan and the descriptor is not open,
+     * open the file based on jf_seq and position it to the beginning
+     * or end based on the direction.  This is how we iterate through
+     * the prefix set.
      */
-    if (jf->jf_fd == -1 && jf->jf_prefix) {
+    if (jf->jf_fd < 0) {
 	asprintf(&filename, "%s.%08x", jf->jf_prefix, jf->jf_seq);
-	if ((jf->jf_fd = open(filename, O_RDONLY)) >= 0) {
-	    if (jf->jf_direction == JD_FORWARDS)
-		jf->jf_pos = 0;
-	    else
-		jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
-	    search = 0;
-	}
+	jf->jf_fd = open(filename, O_RDONLY);
 	if (verbose_opt > 1)
 	    fprintf(stderr, "Open %s fd %d\n", filename, jf->jf_fd);
 	free(filename);
+	if (direction == JD_FORWARDS)
+	    jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_SET);
+	else
+	    jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
     }
 
     /*
@@ -298,24 +344,24 @@ top:
      */
     if (jf->jf_pos & 15) {
 	jf_warn(jf, "realigning bad offset and entering search mode");
-	jalign(jf);
+	jalign(jf, direction);
 	search = 1;
     } else {
 	search = 0;
     }
 
     error = 0;
-    if (jf->jf_direction == JD_FORWARDS) {
+    if (direction == JD_FORWARDS) {
 	/*
 	 * Scan the journal forwards.  Note that the file pointer might not
 	 * be seekable.
 	 */
-	while ((error = jreadbuf(jf, &head, sizeof(head))) == sizeof(head)) {
+	while ((error = jreadbuf(jf, direction, &head, sizeof(head))) == sizeof(head)) {
 	    if (head.begmagic != JREC_BEGMAGIC) {
 		if (search == 0)
 		    jf_warn(jf, "bad beginmagic, searching for new record");
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		continue;
 	    }
 
@@ -328,7 +374,7 @@ top:
 		if (search == 0)
 		    jf_warn(jf, "bad recordsize: %d\n", recsize);
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		continue;
 	    }
 	    allocsize = offsetof(struct jdata, jd_data[recsize]);
@@ -336,13 +382,13 @@ top:
 	    jd = malloc(allocsize);
 	    bzero(jd, offsetof(struct jdata, jd_data[0]));
 	    bcopy(&head, jd->jd_data, sizeof(head));
-	    n = jreadbuf(jf, jd->jd_data + sizeof(head), 
+	    n = jreadbuf(jf, direction, jd->jd_data + sizeof(head), 
 			 recsize - sizeof(head));
 	    if (n != (int)(recsize - sizeof(head))) {
 		if (search == 0)
 		    jf_warn(jf, "Incomplete stream record\n");
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		free(jd);
 		continue;
 	    }
@@ -352,7 +398,7 @@ top:
 		if (search == 0)
 		    jf_warn(jf, "bad endmagic, searching for new record");
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		free(jd);
 		continue;
 	    }
@@ -372,21 +418,22 @@ top:
 	    jd->jd_transid = head.transid;
 	    jd->jd_alloc = allocsize;
 	    jd->jd_size = recsize;
+	    jd->jd_seq = jf->jf_seq;
+	    jd->jd_pos = jf->jf_pos - recsize;
 	    jd->jd_refs = 1;
-	    *jdp = jd;
-	    return(0);
+	    return(jd);
 	}
     } else {
 	/*
 	 * Scan the journal backwards.  Note that jread()'s reverse-seek and
 	 * read.  The data read will be forward ordered, however.
 	 */
-	while ((error = jreadbuf(jf, &tail, sizeof(tail))) == sizeof(tail)) {
+	while ((error = jreadbuf(jf, direction, &tail, sizeof(tail))) == sizeof(tail)) {
 	    if (tail.endmagic != JREC_ENDMAGIC) {
 		if (search == 0)
 		    jf_warn(jf, "bad endmagic, searching for new record");
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		continue;
 	    }
 
@@ -399,7 +446,7 @@ top:
 		if (search == 0)
 		    jf_warn(jf, "bad recordsize: %d\n", recsize);
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		continue;
 	    }
 	    allocsize = offsetof(struct jdata, jd_data[recsize]);
@@ -407,12 +454,12 @@ top:
 	    jd = malloc(allocsize);
 	    bzero(jd, offsetof(struct jdata, jd_data[0]));
 	    bcopy(&tail, jd->jd_data + recsize - sizeof(tail), sizeof(tail));
-	    n = jreadbuf(jf, jd->jd_data, recsize - sizeof(tail));
+	    n = jreadbuf(jf, direction, jd->jd_data, recsize - sizeof(tail));
 	    if (n != (int)(recsize - sizeof(tail))) {
 		if (search == 0)
 		    jf_warn(jf, "Incomplete stream record\n");
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		free(jd);
 		continue;
 	    }
@@ -422,7 +469,7 @@ top:
 		if (search == 0)
 		    jf_warn(jf, "bad begmagic, searching for new record");
 		search = 1;
-		jalign(jf);
+		jalign(jf, direction);
 		free(jd);
 		continue;
 	    }
@@ -442,9 +489,10 @@ top:
 	    jd->jd_transid = headp->transid;
 	    jd->jd_alloc = allocsize;
 	    jd->jd_size = recsize;
+	    jd->jd_seq = jf->jf_seq;
+	    jd->jd_pos = jf->jf_pos;
 	    jd->jd_refs = 1;
-	    *jdp = jd;
-	    return(0);
+	    return(jd);
 	}
     }
 
@@ -460,7 +508,7 @@ top:
      * the next sequence number.
      */
     if (error == 0 && jf->jf_prefix) {
-	if (jf->jf_direction == JD_FORWARDS) {
+	if (direction == JD_FORWARDS) {
 	    if (jf->jf_seq < jf->jf_seq_end) {
 		++jf->jf_seq;
 		if (verbose_opt)
@@ -504,9 +552,10 @@ top:
      * We have already handled the prefix case.  This feature only works
      * when doing forward scans and the input is not a pipe.
      */
-    if (error == 0 && (jmodes & JMODEF_LOOP_FOREVER) &&
-	!(jmodes & JMODEF_INPUT_PIPE) && jf->jf_direction == JD_FORWARDS &&
-	jf->jf_prefix == NULL
+    if (error == 0 && jf->jf_prefix == NULL &&
+	(jmodes & JMODEF_LOOP_FOREVER) &&
+	!(jmodes & JMODEF_INPUT_PIPE) && 
+	direction == JD_FORWARDS
     ) {
 	sleep(5);
 	goto top;
@@ -515,8 +564,7 @@ top:
     /*
      * Otherwise there are no more records and we are done.
      */
-    *jdp = NULL;
-    return(-1);
+    return(NULL);
 }
 
 /*
@@ -576,120 +624,100 @@ again:
 }
 
 /*
- * Reset the direction and seek us to the beginning or end
- * of the currenet file.  In prefix mode we might as well
- * just let jsread() do it since it might have to do it 
- * anyway.
- */
-static void
-jreset(struct jfile *jf, unsigned int seq, enum jdirection direction)
-{
-    if (jf->jf_prefix) {
-	if (jf->jf_fd >= 0) {
-	    close(jf->jf_fd);
-	    jf->jf_fd = -1;
-	}
-	jf->jf_pos = -1;
-	jf->jf_seq = seq;
-    } else {
-	if (direction) {
-	    jf->jf_pos = lseek(jf->jf_fd, 0L, 0);
-	} else {
-	    jf->jf_pos = lseek(jf->jf_fd, 0L, SEEK_END);
-	}
-    }
-    jf->jf_direction = direction;
-}
-
-/*
- * Position the file such that the next jread() in the specified
- * direction will read the record for the specified transaction id.
- * If the transaction id does not exist the jseek will position the
- * file at the next higher (if reading forwards) or lower (if reading
- * backwards) transaction id.
+ * Attempt to locate and return the record specified by the transid.  The
+ * returned record may be inexact.
  *
- * jseek is not required to be exact.  It is allowed to position the
- * file at any point <= the transid (forwards) or >= the transid
- * (backwards).  However, the more off jseek is, the more scanning
- * the code will have to do to position itself properly.
+ * If scanning forwards this function guarentees that no record prior
+ * to the returned record is >= transid.
+ *
+ * If scanning backwards this function guarentees that no record after
+ * the returned record is <= transid.
  */
-void
+struct jdata *
 jseek(struct jfile *jf, int64_t transid, enum jdirection direction)
 {
-    int64_t transid_beg;
-    int64_t transid_end;
-    unsigned int seq = (unsigned int)-1;
-    struct jdata *jd;
+    unsigned int seq;
+    struct jdata *jd = NULL;
 
     /*
-     * If we have a prefix set search the sequence space backwards until
-     * we find the file most likely to contain the transaction id.
+     * If the input is a pipe we can't seek.
      */
+    if (jmodes & JMODEF_INPUT_PIPE) {
+	assert(direction == JD_FORWARDS);
+	return (jread(jf, NULL, direction));
+    }
+
     if (jf->jf_prefix) {
+	/*
+	 * If we have a prefix set search the sequence space backwards until
+	 * we find the file most likely to contain the transaction id.
+	 */
 	if (verbose_opt > 2) {
 	    fprintf(stderr, "jseek prefix set %s %08x-%08x\n", jf->jf_prefix,
 		    jf->jf_seq_beg, jf->jf_seq_end);
 	}
+	jd = NULL;
 	for (seq = jf->jf_seq_end; seq != jf->jf_seq_beg - 1; --seq) {
-	    jreset(jf, seq, JD_FORWARDS);
 	    if (verbose_opt > 2)
 		fprintf(stderr, "try seq %08x\n", seq);
-	    if (jread(jf, &jd, JD_FORWARDS) == 0) {
-		transid_beg = jd->jd_transid;
-		if (verbose_opt > 2)
-		    fprintf(stderr, "transid %016llx\n", jd->jd_transid);
-		jfree(jf, jd);
-		if (transid_beg == transid) {
-		    jreset(jf, seq, JD_FORWARDS);
+	    jf->jf_seq = seq;
+	    if ((jd = jread(jf, NULL, JD_SEQFIRST)) != NULL) {
+		if (jd->jd_transid == transid)
+		    return(jd);
+		if (jd->jd_transid < transid) {
+		    jfree(jf, jd);
 		    break;
 		}
-		if (transid_beg < transid)
-		    break;
+		jfree(jf, jd);
 	    }
 	}
+
+	/*
+	 * if transid is less the first file in the sequence space we
+	 * return NULL if scanning backwards, indicating no records are
+	 * available, or the first record in the sequence space if we
+	 * are scanning forwards.
+	 */
 	if (seq == jf->jf_seq_beg - 1) {
-	    seq = jf->jf_seq_beg;
+	    if (direction == JD_BACKWARDS)
+		return(NULL);
+	    else
+		return(jread(jf, NULL, JD_FORWARDS));
 	}
 	if (verbose_opt > 1)
 	    fprintf(stderr, "jseek input prefix set to seq %08x\n", seq);
     }
 
     /*
-     * Position us within the current file.
+     * Position us to the end of the current record, then scan backwards
+     * looking for the requested transid.
      */
-    jreset(jf, seq, JD_BACKWARDS);
-    while (jread(jf, &jd, JD_BACKWARDS) == 0) {
-	transid_end = jd->jd_transid;
-	jfree(jf, jd);
-
-	/*
-	 * If we are at the sequence number the next forward read
-	 * will re-read the record since we were going backwards.  If
-	 * the caller wants to go backwards we have to go forwards one
-	 * record so the caller gets the transid record when it does
-	 * its first backwards read.  Confused yet?
-	 *
-	 * If we are at a smaller sequence number we need to read forwards
-	 * by one so the next forwards read gets the first record > transid,
-	 * or the next backwards read gets the first record < transid.
-	 */
-	if (transid_end == transid) {
-	    if (direction == JD_BACKWARDS) {
-		if (jread(jf, &jd, JD_FORWARDS) == 0)
-		    jfree(jf, jd);
+    jd = jread(jf, NULL, JD_SEQLAST);
+    while (jd != NULL) {
+	if (jd->jd_transid <= transid) {
+	    if (jd->jd_transid < transid) {
+		if (direction == JD_FORWARDS)
+		    jd =jread(jf, jd, JD_FORWARDS);
 	    }
-	    break;
+	    if (verbose_opt > 1) {
+		fprintf(stderr, "jseek returning seq %08x offset 0x%08llx\n",
+			jd->jd_seq, jd->jd_pos);
+	    }
+	    return(jd);
 	}
-	if (transid_end < transid) {
-	    if (jread(jf, &jd, JD_FORWARDS) == 0)
-		jfree(jf, jd);
-	    break;
-	}
+	jd = jread(jf, jd, JD_BACKWARDS);
     }
-    if (verbose_opt) {
-	fprintf(stderr, "jseek %s to seq %08x offset 0x%08llx\n",
-		jf->jf_prefix, jf->jf_seq, jf->jf_pos);
-    }
+
+    /*
+     * We scanned the whole file with no luck, all the transid's are
+     * greater then the requested transid.  If the intended read 
+     * direction is backwards there are no records and we return NULL.
+     * If it is forwards we return the first record.
+     */
+    if (direction == JD_BACKWARDS)
+	return(NULL);
+    else
+	return(jread(jf, NULL, JD_FORWARDS));
 }
 
 /*
@@ -716,15 +744,15 @@ jfree(struct jfile *jf __unused, struct jdata *jd)
  * seek position with the file seek position for forward scans.
  */
 static void
-jalign(struct jfile *jf)
+jalign(struct jfile *jf, enum jdirection direction)
 {
     char dummy[16];
     int bytes;
 
     if ((int)jf->jf_pos & 15) {
-	if (jf->jf_direction == JD_FORWARDS) {
+	if (direction == JD_FORWARDS) {
 	    bytes = 16 - ((int)jf->jf_pos & 15);
-	    jreadbuf(jf, dummy, bytes);
+	    jreadbuf(jf, direction, dummy, bytes);
 	} else {
 	    jf->jf_pos = jf->jf_pos & ~(off_t)15;
 	}
@@ -737,7 +765,7 @@ jalign(struct jfile *jf)
  * not match jf_pos in the reverse direction case.
  */
 static int
-jreadbuf(struct jfile *jf, void *buf, int bytes)
+jreadbuf(struct jfile *jf, enum jdirection direction, void *buf, int bytes)
 {
     int ttl = 0;
     int n;
@@ -745,7 +773,7 @@ jreadbuf(struct jfile *jf, void *buf, int bytes)
     if (jf->jf_fd < 0)
 	return(0);
 
-    if (jf->jf_direction == JD_FORWARDS) {
+    if (direction == JD_FORWARDS) {
 	while (ttl != bytes) {
 	    n = read(jf->jf_fd, (char *)buf + ttl, bytes - ttl);
 	    if (n <= 0) {

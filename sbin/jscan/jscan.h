@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.8 2005/09/06 22:33:00 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.9 2005/09/07 07:20:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -54,7 +54,7 @@
 
 struct jdata;
 
-enum jdirection { JD_FORWARDS, JD_BACKWARDS };
+enum jdirection { JD_FORWARDS, JD_BACKWARDS, JD_SEQFIRST, JD_SEQLAST };
 
 struct jfile {
     off_t		jf_pos;		/* current seek position */
@@ -62,7 +62,6 @@ struct jfile {
     int			jf_write_fd;	/* appending */
     off_t		jf_write_pos;	/* append position */
     int			jf_error;
-    enum jdirection	jf_direction;
     int			jf_open_flags;
     char		*jf_prefix;	/* prefix: name */
     unsigned int	jf_seq_beg;	/* prefix: sequence space */
@@ -77,6 +76,7 @@ struct jfile {
 struct jsession {
     struct jfile	*ss_jfin;
     struct jfile	*ss_jfout;
+    enum jdirection	ss_direction;
     const char		*ss_mirror_directory;
     const char		*ss_transid_file;
     int			ss_transid_fd;
@@ -90,6 +90,8 @@ struct jdata {
     int			jd_alloc;	/* allocated bytes */
     int			jd_size;	/* data bytes */
     int			jd_refs;	/* ref count */
+    unsigned int	jd_seq;		/* location data */
+    off_t		jd_pos;		/* location data */
     char		jd_data[4];	/* must be last field */
 };
 
@@ -166,16 +168,19 @@ char *dupdatapath(const void *buf, int bytes);
 void get_transid_from_file(const char *path, int64_t *transid, int flags);
 
 void jsession_init(struct jsession *ss, struct jfile *jfin, 
+		   enum jdirection direction,
 		   const char *transid_file, int64_t transid);
 void jsession_update_transid(struct jsession *ss, int64_t transid);
 void jsession_term(struct jsession *ss);
 
-struct jfile *jopen_fd(int fd, enum jdirection direction);
-struct jfile *jopen_prefix(const char *prefix, enum jdirection direction, int rw);
+struct jfile *jopen_fd(int fd);
+struct jfile *jopen_prefix(const char *prefix, int rw);
 void jclose(struct jfile *jf);
-int jread(struct jfile *jf, struct jdata **jdp, enum jdirection direction);
+struct jdata *jread(struct jfile *jf, struct jdata *jd, 
+		    enum jdirection direction);
+struct jdata *jseek(struct jfile *jf, int64_t transid,
+		    enum jdirection direction);
 void jwrite(struct jfile *jf, struct jdata *jd);
-void jseek(struct jfile *jf, int64_t transid, enum jdirection direction);
 struct jdata *jref(struct jdata *jd);
 void jfree(struct jfile *jf, struct jdata *jd);
 void jf_warn(struct jfile *jf, const char *ctl, ...);

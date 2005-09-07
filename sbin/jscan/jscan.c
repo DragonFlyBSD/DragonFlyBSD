@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.7 2005/09/06 22:33:00 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.8 2005/09/07 07:20:23 dillon Exp $
  */
 
 #include "jscan.h"
@@ -80,10 +80,9 @@ main(int ac, char **av)
     struct stat st;
     struct jfile *jf;
     struct jdata *jd;
-    int error;
     int ch;
 
-    while ((ch = getopt(ac, av, "2dfm:o:s:uvw:D:O:W:F")) != -1) {
+    while ((ch = getopt(ac, av, "2c:dfm:o:s:uvw:D:O:W:F")) != -1) {
 	switch(ch) {
 	case '2':
 	    jmodes |= JMODEF_INPUT_FULL;
@@ -210,17 +209,17 @@ main(int ac, char **av)
 		usage(av[0]);
 	    }
 	}
-	jf = jopen_fd(input_fd, jdirection);
+	jf = jopen_fd(input_fd);
     } else if (stat(av[optind], &st) == 0 && S_ISREG(st.st_mode)) {
 	input_prefix = av[optind];
 	if ((input_fd = open(av[optind], O_RDONLY)) != NULL) {
-	    jf = jopen_fd(input_fd, jdirection);
+	    jf = jopen_fd(input_fd);
 	} else {
 	    jf = NULL;
 	}
     } else {
 	input_prefix = av[optind];
-	jf = jopen_prefix(input_prefix, jdirection, 0);
+	jf = jopen_prefix(input_prefix, 0);
 	jmodes |= JMODEF_INPUT_PREFIX;
     }
     if (jf == NULL) {
@@ -337,28 +336,37 @@ main(int ac, char **av)
      * seek back.
      */
     if ((jmodes & JMODEF_TRANSID_GOOD_MASK) && !(jmodes & JMODEF_INPUT_PIPE))
-	jseek(jf, transid, jdirection);
+	jd = jseek(jf, transid, jdirection);
+    else
+	jd = jread(jf, NULL, jdirection);
     jmodes |= JMODEF_MEMORY_TRACKING;
 
-    jsession_init(&jsdebug, jf, NULL, 0);
-    jsession_init(&jsoutput, jf, output_transid_file, output_transid);
-    jsession_init(&jsmirror, jf, mirror_transid_file, mirror_transid);
+    jsession_init(&jsdebug, jf, jdirection,
+		  NULL, 0);
+    jsession_init(&jsoutput, jf, jdirection, 
+		  output_transid_file, output_transid);
+    jsession_init(&jsmirror, jf, jdirection,
+		  mirror_transid_file, mirror_transid);
     jsmirror.ss_mirror_directory = mirror_directory;
 
-    while ((error = jread(jf, &jd, jdirection)) == 0) {
+    while (jd != NULL) {
 	if (jmodes & JMODEF_DEBUG)
 	    dump_debug(&jsdebug, jd);
 	if (jmodes & JMODEF_OUTPUT)
 	    dump_output(&jsoutput, jd);
 	if (jmodes & JMODEF_MIRROR)
 	    dump_mirror(&jsmirror, jd);
-	jfree(jf, jd);
+	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	    jfree(jf, jd);
+	    break;
+	}
+	jd = jread(jf, jd, jdirection);
     }
     jclose(jf);
     jsession_term(&jsdebug);
     jsession_term(&jsoutput);
     jsession_term(&jsmirror);
-    exit(error ? 1 : 0);
+    return(0);
 }
 
 /*
@@ -380,7 +388,7 @@ fork_subprocess(struct jfile *jftoclose,
 	jmodes &= ~(JMODEF_DEBUG | JMODEF_INPUT_PIPE);
 	jmodes |= JMODEF_LOOP_FOREVER;	/* keep checking for new input */
 	jclose(jftoclose);
-	jf = jopen_prefix(input_prefix, jdirection, 0);
+	jf = jopen_prefix(input_prefix, 0);
 	jmodes |= JMODEF_INPUT_PREFIX;
 	func(jf, transid_file, info, transid);
 	jclose(jf);
@@ -399,17 +407,27 @@ jscan_do_output(struct jfile *jf, const char *output_transid_file, const char *d
     struct jsession jsdebug;
     struct jsession jsoutput;
 
-    jsession_init(&jsdebug, jf, NULL, 0);
-    jsession_init(&jsoutput, jf, output_transid_file, transid);
+    jsession_init(&jsdebug, jf, jdirection,
+		  NULL, 0);
+    jsession_init(&jsoutput, jf, jdirection,
+		  output_transid_file, transid);
 
     if ((jmodes & JMODEF_OUTPUT_TRANSID_GOOD) && !(jmodes & JMODEF_INPUT_PIPE))
-	jseek(jf, transid, jdirection);
-    while (jread(jf, &jd, jdirection) == 0) {
+	jd = jseek(jf, transid, jdirection);
+    else
+	jd = jread(jf, NULL, jdirection);
+    while (jd != NULL) {
 	if (jmodes & JMODEF_DEBUG)
 	    dump_debug(&jsdebug, jd);
 	dump_output(&jsoutput, jd);
-	jfree(jf, jd);
+	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	    jfree(jf, jd);
+	    break;
+	}
+	jd = jread(jf, jd, jdirection);
     }
+    jsession_term(&jsdebug);
+    jsession_term(&jsoutput);
 }
 
 static
@@ -420,18 +438,28 @@ jscan_do_mirror(struct jfile *jf, const char *mirror_transid_file, const char *m
     struct jsession jsmirror;
     struct jdata *jd;
 
-    jsession_init(&jsdebug, jf, NULL, 0);
-    jsession_init(&jsmirror, jf, mirror_transid_file, transid);
+    jsession_init(&jsdebug, jf, jdirection,
+		  NULL, 0);
+    jsession_init(&jsmirror, jf, jdirection,
+		  mirror_transid_file, transid);
     jsmirror.ss_mirror_directory = mirror_directory;
 
     if ((jmodes & JMODEF_MIRROR_TRANSID_GOOD) && !(jmodes & JMODEF_INPUT_PIPE))
-	jseek(jf, transid, jdirection);
-    while (jread(jf, &jd, jdirection) == 0) {
+	jd = jseek(jf, transid, jdirection);
+    else
+	jd = jread(jf, NULL, jdirection);
+    while (jd != NULL) {
 	if (jmodes & JMODEF_DEBUG)
 	    dump_debug(&jsdebug, jd);
 	dump_mirror(&jsmirror, jd);
-	jfree(jf, jd);
+	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	    jfree(jf, jd);
+	    break;
+	}
+	jd = jread(jf, jd, jdirection);
     }
+    jsession_term(&jsdebug);
+    jsession_term(&jsmirror);
 }
 
 static
@@ -442,38 +470,56 @@ jscan_do_record(struct jfile *jfin, const char *record_transid_file, const char 
     struct jsession jsrecord;
     struct jdata *jd;
 
-    jsession_init(&jsdebug, jfin, NULL, 0);
-    jsession_init(&jsrecord, jfin, record_transid_file, transid);
+    jsession_init(&jsdebug, jfin, jdirection,
+		  NULL, 0);
+    jsession_init(&jsrecord, jfin, jdirection,
+		  record_transid_file, transid);
 
     assert(jdirection == JD_FORWARDS);
-    jsrecord.ss_jfout = jopen_prefix(prefix, JD_FORWARDS, 1);
+    jsrecord.ss_jfout = jopen_prefix(prefix, 1);
     if (jsrecord.ss_jfout == NULL) {
 	fprintf(stderr, "Unable to open prefix set for writing: %s\n", prefix);
 	exit(1);
     }
     if ((jmodes & JMODEF_RECORD_TRANSID_GOOD) && !(jmodes & JMODEF_INPUT_PIPE))
-	jseek(jfin, transid, jdirection);
-    while (jread(jfin, &jd, jdirection) == 0) {
+	jd = jseek(jfin, transid, jdirection);
+    else
+	jd = jread(jfin, NULL, jdirection);
+    while (jd != NULL) {
 	if (jmodes & JMODEF_DEBUG)
 	    dump_debug(&jsdebug, jd);
 	dump_record(&jsrecord, jd);
-	jfree(jfin, jd);
+	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	    jfree(jfin, jd);
+	    break;
+	}
+	jd = jread(jfin, jd, jdirection);
     }
     jclose(jsrecord.ss_jfout);
+    jsrecord.ss_jfout = NULL;
+    jsession_term(&jsdebug);
+    jsession_term(&jsrecord);
 }
 
 static
 void
-jscan_do_debug(struct jfile *jfin, const char *dummy1 __unused,
+jscan_do_debug(struct jfile *jf, const char *dummy1 __unused,
 	       const char *dummy __unused, int64_t transid __unused)
 {
     struct jsession jsdebug;
     struct jdata *jd;
 
-    jsession_init(&jsdebug, jfin, NULL, 0);
-    while (jread(jfin, &jd, jdirection) == 0) {
+    jsession_init(&jsdebug, jf, jdirection,
+		  NULL, 0);
+    jd = NULL;
+    while ((jd = jread(jf, jd, jdirection)) != NULL) {
 	dump_debug(&jsdebug, jd);
+	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	    jfree(jf, jd);
+	    break;
+	}
     }
+    jsession_term(&jsdebug);
 }
 
 static void
