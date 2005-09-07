@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.40 2005/09/07 03:04:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.41 2005/09/07 07:50:16 swildner Exp $
  */
 
 /*
@@ -1442,8 +1442,8 @@ dc_reset(struct dc_softc *sc)
         return;
 }
 
-static struct dc_type 
-*dc_devtype(device_t dev)
+static struct dc_type *
+dc_devtype(device_t dev)
 {
 	struct dc_type		*t;
 	u_int32_t		rev;
