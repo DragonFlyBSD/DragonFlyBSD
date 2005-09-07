@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.9 2005/09/07 07:20:23 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.h,v 1.10 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -171,6 +171,7 @@ void jsession_init(struct jsession *ss, struct jfile *jfin,
 		   enum jdirection direction,
 		   const char *transid_file, int64_t transid);
 void jsession_update_transid(struct jsession *ss, int64_t transid);
+int jsession_check(struct jsession *ss, struct jdata *jd);
 void jsession_term(struct jsession *ss);
 
 struct jfile *jopen_fd(int fd);

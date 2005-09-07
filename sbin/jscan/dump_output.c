@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_output.c,v 1.2 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_output.c,v 1.3 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
@@ -39,7 +39,5 @@
 void
 dump_output(struct jsession *ss, struct jdata *jd)
 {
-    if (jd->jd_transid > ss->ss_transid) {
-	jsession_update_transid(ss, jd->jd_transid);
-    }
+    jsession_update_transid(ss, jd->jd_transid);
 }

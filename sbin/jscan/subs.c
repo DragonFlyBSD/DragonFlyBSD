@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.7 2005/09/06 06:42:44 dillon Exp $
+ * $DragonFly: src/sbin/jscan/subs.c,v 1.8 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
@@ -68,6 +68,9 @@ type_to_name(int16_t rectype)
 	break;
     case JTYPE_UNDO:
 	str = "UNDO";
+	break;
+    case JTYPE_REDO:
+	str = "REDO";
 	break;
     case JTYPE_AUDIT:
 	str = "AUDIT";

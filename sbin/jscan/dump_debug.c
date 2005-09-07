@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.6 2005/09/06 22:33:00 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_debug.c,v 1.7 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
@@ -47,13 +47,11 @@ dump_debug(struct jsession *ss, struct jdata *jd)
 {
     struct jstream *js;
 
-    if (jd->jd_transid > ss->ss_transid) {
-	if ((js = jaddrecord(ss, jd)) != NULL) {
-	    dump_debug_stream(js);
-	    jscan_dispose(js);
-	}
-	jsession_update_transid(ss, jd->jd_transid);
+    if ((js = jaddrecord(ss, jd)) != NULL) {
+	dump_debug_stream(js);
+	jscan_dispose(js);
     }
+    jsession_update_transid(ss, jd->jd_transid);
 }
 
 static void

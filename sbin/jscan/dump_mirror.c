@@ -31,36 +31,42 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.6 2005/09/06 18:43:52 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.7 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
+#include <sys/vfscache.h>
 
-static void dump_mirror_stream(struct jstream *js);
-static int dump_mirror_toprecord(struct jstream *js, off_t *off, 
-				 off_t recsize, int level);
-static int dump_mirror_subrecord(struct jstream *js, off_t *off, 
-				 off_t recsize, int level, struct jattr *jattr);
+static void dump_mirror_stream(struct jsession *ss, struct jstream *js);
+static int dump_mirror_toprecord(struct jsession *ss, struct jstream *js,
+				 off_t *off, off_t recsize, int level);
+static int dump_mirror_subrecord(enum jdirection direction, struct jstream *js,
+				 off_t *off, off_t recsize, int level,
+				 struct jattr *jattr);
 static int dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 				 int recsize, int level, struct jattr *jattr);
-static int dump_mirror_rebuild(u_int16_t rectype, struct jstream *js, struct jattr *jattr);
+static int dump_mirror_rebuild_redo(u_int16_t rectype, 
+				    struct jstream *js, struct jattr *jattr);
+static int dump_mirror_rebuild_undo(u_int16_t rectype,
+				    struct jstream *js, struct jattr *jattr);
+static void undo_recreate(const char *filename, 
+				    struct jstream *js, struct jattr *jattr);
+static void dosetattr(const char *filename, int fd, struct jattr *jattr);
 
 void
 dump_mirror(struct jsession *ss, struct jdata *jd)
 {
     struct jstream *js;
 
-    if (jd->jd_transid > ss->ss_transid) {
-	if ((js = jaddrecord(ss, jd)) != NULL) {
-	    dump_mirror_stream(js);
-	    jscan_dispose(js);
-	}
-	jsession_update_transid(ss, jd->jd_transid);
+    if ((js = jaddrecord(ss, jd)) != NULL) {
+	dump_mirror_stream(ss, js);
+	jscan_dispose(js);
     }
+    jsession_update_transid(ss, jd->jd_transid);
 }
 
 static void
-dump_mirror_stream(struct jstream *js)
+dump_mirror_stream(struct jsession *ss, struct jstream *js)
 {
 	struct journal_rawrecbeg head;
 	int16_t sid;
@@ -72,8 +78,9 @@ dump_mirror_stream(struct jstream *js)
 	sid = head.streamid & JREC_STREAMID_MASK;
 	if (sid >= JREC_STREAMID_JMIN && sid < JREC_STREAMID_JMAX) {
 	    off_t off = sizeof(head);
-	    dump_mirror_toprecord(js, &off, js->js_normalized_total -
-				  sizeof(struct journal_rawrecbeg), 
+	    dump_mirror_toprecord(ss, js, &off,
+				  js->js_normalized_total -
+				      sizeof(struct journal_rawrecbeg), 
 				  1);
 	} else {
 	    switch(head.streamid & JREC_STREAMID_MASK) {
@@ -92,8 +99,13 @@ dump_mirror_stream(struct jstream *js)
 	umask(save_umask);
 }
 
+/*
+ * Execute a meta-transaction, e.g. something like 'WRITE'.  Meta-transactions
+ * are almost universally nested.
+ */
 static int
-dump_mirror_toprecord(struct jstream *js, off_t *off, off_t recsize, int level)
+dump_mirror_toprecord(struct jsession *ss, struct jstream *js,
+		      off_t *off, off_t recsize, int level)
 {
     struct journal_subrecord sub;
     struct jattr jattr;
@@ -123,14 +135,17 @@ dump_mirror_toprecord(struct jstream *js, off_t *off, off_t recsize, int level)
 	}
 	if (sub.rectype & JMASK_NESTED) {
 	    *off = base + sizeof(sub);
-	    error = dump_mirror_subrecord(js, off,
+	    error = dump_mirror_subrecord(ss->ss_direction, js, off,
 					  payload, level + 1, &jattr);
 	} else if (sub.rectype & JMASK_SUBRECORD) {
 	    *off = base + sizeof(sub) + payload;
 	} else if ((sub.rectype & JTYPE_MASK) == JLEAF_PAD) {
 	} else {
 	}
-	dump_mirror_rebuild(sub.rectype, js, &jattr);
+	if (ss->ss_direction == JD_FORWARDS)
+	    dump_mirror_rebuild_redo(sub.rectype, js, &jattr);
+	else
+	    dump_mirror_rebuild_undo(sub.rectype, js, &jattr);
 	jattr_reset(&jattr);
 	if (error)
 	    break;
@@ -155,14 +170,24 @@ dump_mirror_toprecord(struct jstream *js, off_t *off, off_t recsize, int level)
     return(error);
 }
 
+/*
+ * Parse a meta-transaction's nested records.  The highest subrecord layer
+ * starts at layer = 2 (the top layer specifying the command is layer = 1).
+ *
+ * The nested subrecord contains informational records containing primarily
+ * namespace data, and further subrecords containing nested
+ * audit, undo, and redo data.
+ */
 static int
-dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
+dump_mirror_subrecord(enum jdirection direction, struct jstream *js,
+		      off_t *off, off_t recsize, int level,
 		      struct jattr *jattr)
 {
     struct journal_subrecord sub;
     int payload;
     int subsize;
     int error;
+    int skip;
     u_int16_t rectype;
     off_t base = *off;
 
@@ -170,7 +195,7 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
     while (recsize > 0) {
 	if ((error = jsread(js, base, &sub, sizeof(sub))) != 0)
 	    break;
-	rectype = sub.rectype & JTYPE_MASK;
+	rectype = sub.rectype & JTYPE_MASK;	/* includes the nested bit */
 	if (sub.recsize == -1) {
 	    payload = 0x7FFFFFFF;
 	    subsize = 0x7FFFFFFF;
@@ -178,29 +203,65 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 	    payload = sub.recsize - sizeof(sub);
 	    subsize = (sub.recsize + 7) & ~7;
 	}
-	if (sub.rectype & JMASK_NESTED) {
+
+	skip = 1;
+	*off = base + sizeof(sub);
+
+	switch(rectype) {
+	case JTYPE_REDO:	/* NESTED */
 	    /*
-	     * Only recurse through vattr records.  XXX currently assuming
-	     * only on VATTR subrecord.
+	     * Process redo information when scanning forwards.
 	     */
-	    *off = base + sizeof(sub);
-	    if (payload && rectype == JTYPE_VATTR) {
-		error = dump_mirror_subrecord(js, off, 
-					      payload, level + 1, jattr);
-	    } else {
-		error = dump_mirror_subrecord(js, off, 
-					      payload, level + 1, NULL);
+	    if (direction == JD_FORWARDS) {
+		error = dump_mirror_subrecord(direction, js, off, payload,
+					      level + 1, jattr);
+		skip = 0;
 	    }
-	} else if (sub.rectype & JMASK_SUBRECORD) {
-	    error = dump_mirror_payload(sub.rectype, js, base + sizeof(sub),
-				       payload, level, jattr);
-	    *off = base + sizeof(sub) + payload;
-	} else if ((sub.rectype & JTYPE_MASK) == JLEAF_PAD) {
-	} else {
+	    break;
+	case JTYPE_UNDO:	/* NESTED */
+	    /*
+	     * Process undo information when scanning backwards.
+	     */
+	    if (direction == JD_BACKWARDS) {
+		error = dump_mirror_subrecord(direction, js, off, payload,
+					      level + 1, jattr);
+		skip = 0;
+	    }
+	    break;
+	case JTYPE_CRED:	/* NESTED */
+	    /*
+	     * Ignore audit information
+	     */
+	    break;
+	default:		/* NESTED or non-NESTED */
+	    /*
+	     * Execute these.  Nested records might contain attribute
+	     * information under an UNDO or REDO parent, for example.
+	     */
+	    if (rectype & JMASK_NESTED) {
+		error = dump_mirror_subrecord(direction, js, off, payload,
+					      level + 1, jattr);
+		skip = 0;
+	    } else if (rectype & JMASK_SUBRECORD) {
+		error = dump_mirror_payload(sub.rectype, js, *off, payload,
+					    level, jattr);
+	    }
+	    break;
 	}
 	if (error)
 	    break;
+
+	/*
+	 * skip only applies to nested subrecords.  If the record size
+	 * is unknown the record MUST be a nested record, and if we have
+	 * not processed it we must recurse to figure out the actual size.
+	 */
 	if (sub.recsize == -1) {
+	    assert(sub.rectype & JMASK_NESTED);
+	    if (skip) {
+		error = dump_mirror_subrecord(direction, js, off, payload,
+					      level + 1, NULL);
+	    }
 	    recsize -= ((*off + 7) & ~7) - base;
 	    base = (*off + 7) & ~7;
 	} else {
@@ -209,6 +270,8 @@ dump_mirror_subrecord(struct jstream *js, off_t *off, off_t recsize, int level,
 	    recsize -= subsize;
 	    base += subsize;
 	}
+	if (error)
+	    break;
 	if (sub.rectype & JMASK_LAST)
 	    break;
     }
@@ -345,13 +408,18 @@ dump_mirror_payload(int16_t rectype, struct jstream *js, off_t off,
 }
 
 static int
-dump_mirror_rebuild(u_int16_t rectype, struct jstream *js, struct jattr *jattr)
+dump_mirror_rebuild_redo(u_int16_t rectype, struct jstream *js,
+			struct jattr *jattr)
 {
     struct jattr_data *data;
     int error = 0;
     int fd;
 
-again:
+    if (verbose_opt > 2) {
+	fprintf(stderr, "REDO %04x %s %s\n", 
+		js->js_head->streamid, type_to_name(rectype),
+		jattr->pathref ? jattr->pathref : jattr->path1);
+    }
     switch(rectype) {
     case JTYPE_SETATTR:
 	if (jattr->pathref) {
@@ -390,13 +458,13 @@ again:
 	 */
 	if (jattr->path1 && jattr->modes != (mode_t)-1) {
 	    if ((fd = open(jattr->path1, O_CREAT, jattr->modes)) >= 0) {
+		dosetattr(jattr->path1, fd, jattr);
 		close(fd);
-		rectype = JTYPE_SETATTR;
-		goto again;
 	    }
 	}
 	break;
     case JTYPE_MKNOD:
+	/* XXX */
 	break;
     case JTYPE_LINK:
 	if (jattr->pathref && jattr->path1) {
@@ -432,5 +500,183 @@ again:
 	break;
     }
     return(error);
+}
+
+/*
+ * UNDO function using parsed primary data and parsed UNDO data.  This
+ * must typically
+ */
+static int
+dump_mirror_rebuild_undo(u_int16_t rectype, struct jstream *js,
+			struct jattr *jattr)
+{
+    struct jattr_data *data;
+    int error = 0;
+    int fd;
+
+    if (verbose_opt > 2) {
+	fprintf(stderr, "UNDO %04x %s %s\n", 
+		js->js_head->streamid, type_to_name(rectype),
+		jattr->pathref ? jattr->pathref : jattr->path1);
+    }
+    switch(rectype) {
+    case JTYPE_SETATTR:
+	if (jattr->pathref)
+	    dosetattr(jattr->pathref, -1, jattr);
+	break;
+    case JTYPE_WRITE:
+    case JTYPE_PUTPAGES:
+	if (jattr->pathref && jattr->seekpos != -1) {
+	    if ((fd = open(jattr->pathref, O_RDWR)) >= 0) {
+		lseek(fd, jattr->seekpos, 0);
+		for (data = &jattr->data; data; data = data->next) {
+		    if (data->bytes)
+			jsreadcallback(js, write, fd, data->off, data->bytes);
+		}
+		close(fd);
+	    }
+	}
+	if (jattr->size != -1)
+	    truncate(jattr->pathref, jattr->size);
+	break;
+    case JTYPE_SETACL:
+	break;
+    case JTYPE_SETEXTATTR:
+	break;
+    case JTYPE_CREATE:
+	/*
+	 * note: both path1 and pathref will exist.
+	 */
+	if (jattr->path1)
+	    remove(jattr->path1);
+	break;
+    case JTYPE_MKNOD:
+	if (jattr->path1)
+	    remove(jattr->path1);
+	break;
+    case JTYPE_LINK:
+	if (jattr->path1) {
+	    undo_recreate(jattr->path1, js, jattr);
+	}
+	break;
+    case JTYPE_SYMLINK:
+	if (jattr->symlinkdata && jattr->path1) {
+	    undo_recreate(jattr->path1, js, jattr);
+	}
+	break;
+    case JTYPE_WHITEOUT:
+	/* XXX */
+	break;
+    case JTYPE_REMOVE:
+	if (jattr->path1) {
+	    undo_recreate(jattr->path1, js, jattr);
+	}
+	break;
+    case JTYPE_MKDIR:
+	if (jattr->path1) {
+	    rmdir(jattr->path1);
+	}
+	break;
+    case JTYPE_RMDIR:
+	if (jattr->path1 && jattr->modes != (mode_t)-1) {
+	    mkdir(jattr->path1, jattr->modes);
+	}
+	break;
+    case JTYPE_RENAME:
+	if (jattr->path2) {
+	    undo_recreate(jattr->path2, js, jattr);
+	}
+	break;
+    }
+    return(error);
+}
+
+/*
+ * This is a helper function for undoing operations which completely destroy
+ * the file that had existed previously.  The caller will clean up the
+ * attributes (including file truncations/extensions) after the fact.
+ */
+static
+void
+undo_recreate(const char *filename, struct jstream *js, struct jattr *jattr)
+{
+    struct jattr_data *data;
+    int fd;
+
+    if (verbose_opt > 2)
+	fprintf(stderr, "RECREATE %s (type %d)\n", filename, jattr->vtype);
+
+    remove(filename);
+    switch(jattr->vtype) {
+    case VREG:
+	if (jattr->size != -1) {
+	    if ((fd = open(filename, O_RDWR|O_CREAT|O_TRUNC, 0600)) >= 0) {
+		if (jattr->seekpos != -1) {
+		    lseek(fd, jattr->seekpos, 0);
+		    for (data = &jattr->data; data; data = data->next) {
+			if (data->bytes)
+			    jsreadcallback(js, write, fd, data->off, data->bytes);
+		    }
+		}
+		dosetattr(filename, fd, jattr);
+		close(fd);
+	    }
+	}
+	break;
+    case VDIR:
+	mkdir(filename, 0600);
+	dosetattr(filename, -1, jattr);
+	break;
+    case VBLK:
+    case VCHR:
+	if (jattr->udev) {
+	    mknod(filename, S_IFBLK|0666, jattr->udev);
+	    dosetattr(filename, -1, jattr);
+	}
+	break;
+    case VLNK:
+	if (jattr->symlinkdata) {
+	    symlink(jattr->symlinkdata, filename);
+	    dosetattr(filename, -1, jattr);
+	}
+	break;
+    default:
+	break;
+    }
+}
+
+static
+void
+dosetattr(const char *filename, int fd, struct jattr *jattr)
+{
+    if (fd >= 0) {
+	if (jattr->uid != (uid_t)-1 && jattr->gid != (gid_t)-1)
+	    fchown(fd, jattr->uid, jattr->gid);
+	else if (jattr->uid != (uid_t)-1)
+	    fchown(fd, jattr->uid, -1);
+	else if (jattr->gid != (gid_t)-1)
+	    fchown(fd, -1, jattr->gid);
+
+	if (jattr->modes != (mode_t)-1)
+	    fchmod(fd, jattr->modes);
+	if (jattr->fflags != -1)
+	    fchflags(fd, jattr->fflags);
+	if (jattr->size != -1)
+	    ftruncate(fd, jattr->size);
+    } else {
+	if (jattr->uid != (uid_t)-1 && jattr->gid != (gid_t)-1)
+	    lchown(filename, jattr->uid, jattr->gid);
+	else if (jattr->uid != (uid_t)-1)
+	    lchown(filename, jattr->uid, -1);
+	else if (jattr->gid != (gid_t)-1)
+	    lchown(filename, -1, jattr->gid);
+
+	if (jattr->modes != (mode_t)-1)
+	    lchmod(filename, jattr->modes);
+	if (jattr->fflags != -1)
+	    chflags(filename, jattr->fflags);
+	if (jattr->size != -1)
+	    truncate(filename, jattr->size);
+    }
 }
 

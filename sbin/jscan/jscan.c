@@ -31,11 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.8 2005/09/07 07:20:23 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.9 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
 
+static int donecheck(enum jdirection direction, struct jdata *jd,
+		     int64_t transid);
 static void usage(const char *av0);
 
 int jmodes;
@@ -350,13 +352,13 @@ main(int ac, char **av)
     jsmirror.ss_mirror_directory = mirror_directory;
 
     while (jd != NULL) {
-	if (jmodes & JMODEF_DEBUG)
+	if ((jmodes & JMODEF_DEBUG) && jsession_check(&jsdebug, jd))
 	    dump_debug(&jsdebug, jd);
-	if (jmodes & JMODEF_OUTPUT)
+	if ((jmodes & JMODEF_OUTPUT) && jsession_check(&jsoutput, jd))
 	    dump_output(&jsoutput, jd);
-	if (jmodes & JMODEF_MIRROR)
+	if ((jmodes & JMODEF_MIRROR) && jsession_check(&jsmirror, jd))
 	    dump_mirror(&jsmirror, jd);
-	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	if (donecheck(jdirection, jd, transid)) {
 	    jfree(jf, jd);
 	    break;
 	}
@@ -366,6 +368,23 @@ main(int ac, char **av)
     jsession_term(&jsdebug);
     jsession_term(&jsoutput);
     jsession_term(&jsmirror);
+    return(0);
+}
+
+/*
+ * Returns one if we need to break out of our scanning loop, zero otherwise.
+ */
+static
+int
+donecheck(enum jdirection direction, struct jdata *jd, int64_t transid)
+{
+    if (direction == JD_FORWARDS) {
+	if (jd->jd_transid > transid && trans_count && --trans_count == 0)
+	    return(1);
+    } else {
+	if (jd->jd_transid <= transid && trans_count && --trans_count == 0)
+	    return(1);
+    }
     return(0);
 }
 
@@ -417,10 +436,11 @@ jscan_do_output(struct jfile *jf, const char *output_transid_file, const char *d
     else
 	jd = jread(jf, NULL, jdirection);
     while (jd != NULL) {
-	if (jmodes & JMODEF_DEBUG)
+	if ((jmodes & JMODEF_DEBUG) && jsession_check(&jsdebug, jd))
 	    dump_debug(&jsdebug, jd);
-	dump_output(&jsoutput, jd);
-	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	if (jsession_check(&jsoutput, jd))
+	    dump_output(&jsoutput, jd);
+	if (donecheck(jdirection, jd, transid)) {
 	    jfree(jf, jd);
 	    break;
 	}
@@ -449,10 +469,11 @@ jscan_do_mirror(struct jfile *jf, const char *mirror_transid_file, const char *m
     else
 	jd = jread(jf, NULL, jdirection);
     while (jd != NULL) {
-	if (jmodes & JMODEF_DEBUG)
+	if ((jmodes & JMODEF_DEBUG) && jsession_check(&jsdebug, jd))
 	    dump_debug(&jsdebug, jd);
-	dump_mirror(&jsmirror, jd);
-	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	if (jsession_check(&jsmirror, jd))
+	    dump_mirror(&jsmirror, jd);
+	if (donecheck(jdirection, jd, transid)) {
 	    jfree(jf, jd);
 	    break;
 	}
@@ -486,10 +507,11 @@ jscan_do_record(struct jfile *jfin, const char *record_transid_file, const char 
     else
 	jd = jread(jfin, NULL, jdirection);
     while (jd != NULL) {
-	if (jmodes & JMODEF_DEBUG)
+	if ((jmodes & JMODEF_DEBUG) && jsession_check(&jsdebug, jd))
 	    dump_debug(&jsdebug, jd);
-	dump_record(&jsrecord, jd);
-	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	if (jsession_check(&jsrecord, jd))
+	    dump_record(&jsrecord, jd);
+	if (donecheck(jdirection, jd, transid)) {
 	    jfree(jfin, jd);
 	    break;
 	}
@@ -513,8 +535,9 @@ jscan_do_debug(struct jfile *jf, const char *dummy1 __unused,
 		  NULL, 0);
     jd = NULL;
     while ((jd = jread(jf, jd, jdirection)) != NULL) {
-	dump_debug(&jsdebug, jd);
-	if (jd->jd_transid > transid && trans_count && --trans_count == 0) {
+	if (jsession_check(&jsdebug, jd))
+	    dump_debug(&jsdebug, jd);
+	if (donecheck(jdirection, jd, transid)) {
 	    jfree(jf, jd);
 	    break;
 	}

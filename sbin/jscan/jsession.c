@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jsession.c,v 1.2 2005/09/07 07:20:23 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jsession.c,v 1.3 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
@@ -49,6 +49,12 @@ jsession_init(struct jsession *ss, struct jfile *jfin,
     ss->ss_transid_fd = -1;
 }
 
+/*
+ * Update the last-processed transid.  If operating in the reverse 
+ * direction we have to write out transid - 1 so the next reverse
+ * processing operation does not re-execute the transid just executed
+ * and so the next forward processing operation does.
+ */
 void
 jsession_update_transid(struct jsession *ss __unused, int64_t transid)
 {
@@ -62,12 +68,31 @@ jsession_update_transid(struct jsession *ss __unused, int64_t transid)
 	    fprintf(stderr, "Cannot open/create %s\n", ss->ss_transid_file);
 	    exit(1);
 	}
-	snprintf(buf, sizeof(buf), "%016llx\n", transid);
+	if (ss->ss_direction == JD_FORWARDS)
+	    snprintf(buf, sizeof(buf), "%016llx\n", transid);
+	else
+	    snprintf(buf, sizeof(buf), "%016llx\n", transid - 1);
 	lseek(ss->ss_transid_fd, 0L, 0);
 	write(ss->ss_transid_fd, buf, strlen(buf));
 	if (fsync_opt > 1)
 	    fsync(ss->ss_transid_fd);
     }
+}
+
+/*
+ * Returns non-zero if the data can be dumped into the specified session.
+ */
+int
+jsession_check(struct jsession *ss, struct jdata *jd)
+{
+    if (ss->ss_direction == JD_FORWARDS) {
+	if (jd->jd_transid > ss->ss_transid)
+	    return(1);
+    } else {
+	if (jd->jd_transid <= ss->ss_transid)
+	    return(1);
+    }
+    return(0);
 }
 
 void
