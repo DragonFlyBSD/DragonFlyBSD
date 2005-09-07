@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.39 2005/09/06 13:23:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.40 2005/09/07 03:04:58 sephe Exp $
  */
 
 /*
@@ -1263,8 +1263,9 @@ dc_setcfg(struct dc_softc *sc, int media)
 
 		for (i = 0; i < DC_TIMEOUT; i++) {
 			isr = CSR_READ_4(sc, DC_ISR);
-			if (isr & DC_ISR_TX_IDLE ||
-			    (isr & DC_ISR_RX_STATE) == DC_RXSTATE_STOPPED)
+			if ((isr & DC_ISR_TX_IDLE) &&
+			    ((isr & DC_ISR_RX_STATE) == DC_RXSTATE_STOPPED ||
+			     (isr & DC_ISR_RX_STATE) == DC_RXSTATE_WAIT))
 				break;
 			DELAY(10);
 		}
