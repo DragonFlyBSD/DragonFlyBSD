@@ -1,5 +1,7 @@
-# $DragonFly: src/secure/lib/libssh/Makefile.etc,v 1.1 2005/07/07 12:43:36 corecode Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile.etc,v 1.2 2005/09/08 13:14:30 corecode Exp $
 #
+
+.include "../../Makefile.ssh.common"
 
 FILES=		${SSHDIR}/moduli
 FILESDIR=	/etc/ssh
@@ -7,5 +9,10 @@ FILESOWN=	${BINOWN}
 FILESGRP=	${BINGRP}
 FILESMODE=	644
 
-.include "../../Makefile.ssh.common"
+# make confuses the text file `moduli' with a binary which needs
+# to be created from `moduli.c'.  Override this implicit rule by an
+# explicit do-nothing.
+${SSHDIR}/moduli:
+	@true
+
 .include <bsd.prog.mk>
