@@ -1,0 +1,20 @@
+$DragonFly: src/gnu/usr.bin/groff/tmac/patches/Attic/s.tmac.no_obj.patch,v 1.1 2005/09/08 11:28:39 asmodai Exp $
+
+--- s.tmac.orig	2005-09-08 13:21:48.000000000 +0200
++++ s.tmac	2005-09-08 13:22:23.000000000 +0200
+@@ -873,7 +873,6 @@
+ .ds*end!\\n[\\n[.ev]:ds-type]
+ .nr \\n[.ev]:ds-type 0
+ ..
+-.als De DE
+ .de ds@auto-end
+ .if \\n[\\n[.ev]:ds-type] \{\
+ .	@error automatically terminating display
+@@ -951,7 +950,6 @@
+ .	nr \\n[.ev]:ds-type 3
+ .\}
+ ..
+-.als Ds DS
+ .de ds@need
+ .if '\\n(.z'' \{\
+ .	while \\n[.t]<=(\\$1)&(\\n[nl]>\\n[pg@header-bottom]) \{\
