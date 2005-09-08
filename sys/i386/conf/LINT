@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.60 2005/08/22 22:05:48 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.61 2005/09/08 22:09:01 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2529,6 +2529,10 @@ device		uftdi
 # and the SMC 2202USB. Also works with the ADMtek AN986 Pegasus
 # eval board.
 device		aue
+#
+# ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
+# LinkSys USB200M and various other adapters.
+device		axe
 #
 # CATC USB-EL1201A USB ethernet. Supports the CATC Netmate
 # and Netmate II, and the Belkin F5U111.

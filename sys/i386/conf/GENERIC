@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.25 2005/08/01 20:11:18 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.26 2005/09/08 22:09:01 swildner Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -261,6 +261,7 @@ device		uscanner	# Scanners
 device		urio		# Diamond Rio MP3 Player
 # USB Ethernet, requires mii
 device		aue		# ADMtek USB ethernet
+device		axe		# ASIX Electronics USB Ethernet
 device		cue		# CATC USB ethernet
 device		kue		# Kawasaki LSI USB ethernet
 
