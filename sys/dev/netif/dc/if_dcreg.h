@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.7 2005/09/06 08:06:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.8 2005/09/08 10:26:20 sephe Exp $
  */
 
 /*
@@ -472,9 +472,9 @@ struct dc_mediainfo {
 
 
 struct dc_type {
-	u_int16_t		dc_vid;
-	u_int16_t		dc_did;
-	char			*dc_name;
+	uint16_t		dc_vid;
+	uint16_t		dc_did;
+	const char		*dc_name;
 };
 
 struct dc_mii_frame {
@@ -682,7 +682,7 @@ struct dc_softc {
 	void			*dc_intrhand;
 	struct resource		*dc_irq;
 	struct resource		*dc_res;
-	struct dc_type		*dc_info;	/* adapter info */
+	const struct dc_type	*dc_info;	/* adapter info */
 	device_t		dc_miibus;
 	u_int8_t		dc_type;
 	u_int8_t		dc_pmode;

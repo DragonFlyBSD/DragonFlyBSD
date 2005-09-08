@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.41 2005/09/07 07:50:16 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.42 2005/09/08 10:26:20 sephe Exp $
  */
 
 /*
@@ -134,7 +134,7 @@
 /*
  * Various supported device vendors/types and their names.
  */
-static struct dc_type dc_devs[] = {
+static const struct dc_type dc_devs[] = {
 	{ DC_VENDORID_DEC, DC_DEVICEID_21143,
 		"Intel 21143 10/100BaseTX" },
 	{ DC_VENDORID_DAVICOM, DC_DEVICEID_DM9009,
@@ -196,7 +196,7 @@ static int dc_detach		(device_t);
 static int dc_suspend		(device_t);
 static int dc_resume		(device_t);
 static void dc_acpi		(device_t);
-static struct dc_type *dc_devtype	(device_t);
+static const struct dc_type *dc_devtype	(device_t);
 static int dc_newbuf		(struct dc_softc *, int, struct mbuf *);
 static int dc_encap		(struct dc_softc *, struct mbuf *,
 					u_int32_t *);
@@ -1442,10 +1442,10 @@ dc_reset(struct dc_softc *sc)
         return;
 }
 
-static struct dc_type *
+static const struct dc_type *
 dc_devtype(device_t dev)
 {
-	struct dc_type		*t;
+	const struct dc_type	*t;
 	u_int32_t		rev;
 
 	t = dc_devs;
@@ -1496,11 +1496,14 @@ dc_devtype(device_t dev)
 static int
 dc_probe(device_t dev)
 {
-	struct dc_type		*t;
+	const struct dc_type *t;
 
 	t = dc_devtype(dev);
-
 	if (t != NULL) {
+		struct dc_softc *sc = device_get_softc(dev);
+
+		/* Need this info to decide on a chip type. */
+		sc->dc_info = t;
 		device_set_desc(dev, t->dc_name);
 		return(0);
 	}
@@ -1779,8 +1782,6 @@ dc_attach(device_t dev)
 		goto fail;
 	}
 	
-	/* Need this info to decide on a chip type. */
-	sc->dc_info = dc_devtype(dev);
 	revision = pci_get_revid(dev);
 
 	/* Get the eeprom width, but PNIC has diff eeprom */
@@ -1817,6 +1818,8 @@ dc_attach(device_t dev)
 		dc_read_srom(sc, sc->dc_romwidth);
 		break;
 	case DC_DEVICEID_AN985:
+	case DC_DEVICEID_ADM9511:
+	case DC_DEVICEID_ADM9513:
 	case DC_DEVICEID_EN2242:
 	case DC_DEVICEID_3CSOHOB:
 		sc->dc_type = DC_TYPE_AN985;
@@ -1824,7 +1827,6 @@ dc_attach(device_t dev)
 		sc->dc_flags |= DC_TX_USE_TX_INTR;
 		sc->dc_flags |= DC_TX_ADMTEK_WAR;
 		sc->dc_pmode = DC_PMODE_MII;
-	
 		break;
 	case DC_DEVICEID_98713:
 	case DC_DEVICEID_98713_CP:
