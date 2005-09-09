@@ -16,7 +16,7 @@ for more details.
 
 You should have received a copy of the GNU General Public License along
 with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
+Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 
 /*
 TODO
@@ -145,6 +145,7 @@ public:
   byte get_byte();
   uint16 get_uint16();
   uint32 get_uint32();
+  uint32 get_uint32(char *orig);
   void seek(uint32 n);
 private:
   unsigned char *buf_;
@@ -157,6 +158,7 @@ struct entry {
   uint16 type;
   uint32 count;
   uint32 value;
+  char orig_value[4];
   entry() : present(0) { }
 };
 
@@ -463,6 +465,22 @@ File::get_uint32()
   return n;
 }
 
+uint32
+File::get_uint32(char *orig)
+{
+  if (end_ - ptr_ < 4)
+    fatal("unexpected end of file");
+  unsigned char v = *ptr_++;
+  uint32 n = v;
+  orig[0] = v;
+  for (int i = 1; i < 4; i++) {
+    v = *ptr_++;
+    orig[i] = v;
+    n += v << i*8;
+  }
+  return n;
+}
+
 static void
 read_tags(File &f)
 {
@@ -481,7 +499,7 @@ read_tags(File &f)
     p->present = 1;
     p->type = f.get_uint16();
     p->count = f.get_uint32();
-    p->value = f.get_uint32();
+    p->value = f.get_uint32(p->orig_value);
   }
 }
 
@@ -547,8 +565,9 @@ output_font_name(File &f)
     while (--n)
       *p++ = f.get_byte();
   }
-  else			// value contains the string
-    sprintf(font_name, "%.*s", count, (char*)(tag_info(font_name_tag).value));
+  else			// orig_value contains the string
+    sprintf(font_name, "%.*s",
+	    count, tag_info(font_name_tag).orig_value);
 
   // remove any trailing space
   p = font_name + count - 1;
@@ -717,13 +736,17 @@ read_and_output_pcltypeface(File &f)
 {
   printf("pcltypeface ");
   require_tag(typeface_tag);
-  f.seek(tag_info(typeface_tag).value);
-  for (uint32 i = 0; i < tag_info(typeface_tag).count; i++) {
-    unsigned char c = f.get_byte();
-    if (c == '\0')
-      break;
-    putchar(c);
+  if (tag_info(typeface_tag).count > 4) {
+    f.seek(tag_info(typeface_tag).value);
+    for (uint32 i = 0; i < tag_info(typeface_tag).count; i++) {
+      unsigned char c = f.get_byte();
+      if (c == '\0')
+	break;
+      putchar(c);
+    }
   }
+  else
+    printf("%.4s", tag_info(typeface_tag).orig_value);
   printf("\n");
 }
 
@@ -1168,7 +1191,7 @@ dump_ascii(File &f, tag_type t)
       printf("%c", f.get_byte());
   }
   else
-    printf("%.4s", (char*)(tag_info(t).value));
+    printf("%.4s", tag_info(t).orig_value);
   putchar('"');
 }
 

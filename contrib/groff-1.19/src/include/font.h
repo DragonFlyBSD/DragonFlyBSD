@@ -17,7 +17,7 @@ for more details.
 
 You should have received a copy of the GNU General Public License along
 with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
+Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 
 typedef void (*FONT_COMMAND_HANDLER)(const char *, const char *,
 				     const char *, int);
@@ -54,10 +54,11 @@ public:
   const char *get_special_device_encoding(int index);
   const char *get_name();
   const char *get_internal_name();
+  const char *get_image_generator();
 
   static int scan_papersize(const char *, const char **, double *, double *);
 
-  static font *load_font(const char *, int *not_found = 0);
+  static font *load_font(const char *, int * = 0, int = 0);
   static void command_line_font_dir(const char *path);
   static FILE *open_file(const char *name, char **pathp);
   static int load_desc();
@@ -77,8 +78,10 @@ public:
   static int spare2;
   static int sizescale;
   static int tcommand;
+  static int unscaled_charwidths;
   static int pass_filenames;
   static int use_charnames_in_special;
+  static const char *image_generator;
 
   static const char **font_name_table;
   static const char **style_table;
@@ -117,5 +120,5 @@ private:
 					   const char *file, int lineno);
 protected:
   font(const char *);
-  int load(int *not_found = 0);
+  int load(int * = 0, int = 0);
 };
