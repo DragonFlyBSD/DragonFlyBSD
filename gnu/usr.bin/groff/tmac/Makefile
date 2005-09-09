@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/tmac/Makefile,v 1.42 2003/09/08 17:46:33 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/tmac/Makefile,v 1.3 2005/09/01 20:47:14 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/groff/tmac/Makefile,v 1.4 2005/09/09 14:11:04 asmodai Exp $
 
 .include "../Makefile.inc"
 
@@ -35,10 +35,12 @@ NORMALFILES=	mandoc.tmac andoc.tmac an-old.tmac \
 		dvi.tmac \
 		tty.tmac tty-char.tmac \
 		latin1.tmac latin2.tmac latin5.tmac latin9.tmac cp1047.tmac \
+		unicode.tmac \
 		X.tmac Xps.tmac \
 		lj4.tmac \
 		lbp.tmac \
 		html.tmac html-end.tmac \
+		devtag.tmac \
 		europs.tmac \
 		composite.tmac \
 		eqnrc \

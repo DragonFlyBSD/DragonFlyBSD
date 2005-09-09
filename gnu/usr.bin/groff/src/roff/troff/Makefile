@@ -1,9 +1,9 @@
 # $FreeBSD: src/gnu/usr.bin/groff/src/roff/troff/Makefile,v 1.4 2003/05/01 13:22:20 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/roff/troff/Makefile,v 1.3 2005/09/01 20:47:14 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/roff/troff/Makefile,v 1.4 2005/09/09 14:11:04 asmodai Exp $
 
 PROG_CXX=	troff
-SRCS=		column.cpp dictionary.cpp div.cpp env.cpp input.cpp node.cpp \
-		number.cpp reg.cpp majorminor.cpp
+SRCS=		column.cpp dictionary.cpp div.cpp env.cpp input.cpp mtsm.cpp\
+		node.cpp number.cpp reg.cpp majorminor.cpp
 DPADD=		${LIBGROFF} ${LIBM}
 LDADD=		${LIBGROFF} -lm
 CLEANFILES=	majorminor.cpp ${MAN}

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.8 2004/10/24 15:32:29 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.4 2005/09/01 20:47:13 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.5 2005/09/09 14:11:04 asmodai Exp $
 
 PATCHES!=       echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=     ${DIST_DIR}
@@ -8,12 +8,12 @@ LIB=		groff
 INTERNALLIB=
 SRCS=		assert.cpp change_lf.cpp cmap.cpp color.cpp cset.cpp device.cpp\
 		errarg.cpp error.cpp fatal.cpp filename.cpp font.cpp\
-		fontfile.cpp geometry.cpp glyphuni.cpp htmlhint.cpp invalid.cpp\
-		lf.cpp lineno.cpp macropath.cpp maxfilename.cpp mksdir.cpp\
-		nametoindex.cpp new.cpp paper.cpp prime.cpp ptable.cpp\
-		searchpath.cpp string.cpp strsave.cpp tmpfile.cpp\
-		searchpath.cpp string.cpp strsave.cpp symbol.cpp tmpfile.cpp\
-		tmpname.cpp unicode.cpp uniglyph.cpp uniuni.cpp version.cpp
+		fontfile.cpp geometry.cpp glyphuni.cpp htmlhint.cpp hypot.cpp\
+		invalid.cpp lf.cpp lineno.cpp macropath.cpp maxfilename.cpp\
+		mksdir.cpp nametoindex.cpp new.cpp paper.cpp prime.cpp\
+		ptable.cpp searchpath.cpp string.cpp strsave.cpp symbol.cpp\
+		tmpfile.cpp tmpname.cpp unicode.cpp uniglyph.cpp uniuni.cpp\
+		version.cpp
 SRCS+=		iftoa.c itoa.c matherr.c progname.c quotearg.c spawnvp.c
 SRCS+=		${PATCHES}
 CLEANFILES=	version.cpp

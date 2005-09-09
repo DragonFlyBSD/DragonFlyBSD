@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2.2.19 2003/03/25 10:20:12 murray Exp $
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.6 2005/09/08 11:06:07 asmodai Exp $
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.7 2005/09/09 14:11:04 asmodai Exp $
 .\"
 .\"     %beginstrip%
 .
@@ -68,13 +68,8 @@
 .as doc-str-St--isoC-tcor1      " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^90\*[doc-str-St], Technical Corrigendum 1\*[Rq])
 .ds doc-str-St--isoC-tcor2      \*[doc-Tn-font-size]ISO/IEC\*[doc-str-St] 9899/TCOR2:1995
 .as doc-str-St--isoC-tcor2      " (\*[Lq]\*[doc-Tn-font-size]ISO\~C\^90\*[doc-str-St], Technical Corrigendum 2\*[Rq])
-.ds doc-str-St--xns5.2d2.0      \*[doc-Tn-font-size]X/Open\*[doc-str-St] Networking Services Issue\~5.2 Draft\~2.0
-.as doc-str-St--xns5.2d2.0      " (\*[Lq]\*[doc-Tn-font-size]XNS\*[doc-str-St]\^5.2D2.0\*[Rq])
 .ds doc-str-St--ieee1275-94     \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1275-1994
 .as doc-str-St--ieee1275-94     " (\*[Lq]\*[doc-Tn-font-size]Open Firmware\*[doc-str-St]\*[Rq])
-.\" These will be in next groff release (after 1.19.1).
-.ds doc-str-St--p1003.1-2004    \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1003.1-2004
-.as doc-str-St--p1003.1-2004    " (\*[Lq]\)\*[Px]\*[doc-str-St].1\*[Rq])
 .
 .
 .\" Default .Os value
@@ -105,12 +100,7 @@
 .ds doc-operating-system-FreeBSD-7.0  7.0
 .
 .\" NetBSD releases not found in doc-common.
-.ds doc-operating-system-NetBSD-1.6.1 1.6.1
-.ds doc-operating-system-NetBSD-1.6.2 1.6.2
 .ds doc-operating-system-NetBSD-1.6.3 1.6.3
-.ds doc-operating-system-NetBSD-2.0   2.0
-.ds doc-operating-system-NetBSD-2.0.1 2.0.1
-.ds doc-operating-system-NetBSD-2.0.2 2.0.2
 .ds doc-operating-system-NetBSD-3.0   3.0
 .ds doc-operating-system-NetBSD-4.0   4.0
 .
