@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.14 2005/09/09 13:59:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.15 2005/09/09 14:15:06 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -809,7 +809,8 @@ axe_encap(struct axe_softc *sc, struct mbuf *m, int idx)
 	c->axe_mbuf = m;
 
 	usbd_setup_xfer(c->axe_xfer, sc->axe_ep[AXE_ENDPT_TX],
-	    c, c->axe_buf, m->m_pkthdr.len, 0, 10000, axe_txeof);
+	    c, c->axe_buf, m->m_pkthdr.len, USBD_FORCE_SHORT_XFER,
+	    10000, axe_txeof);
 
 	/* Transmit */
 	err = usbd_transfer(c->axe_xfer);
