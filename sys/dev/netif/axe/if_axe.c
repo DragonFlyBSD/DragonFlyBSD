@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.13 2005/09/09 13:32:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.14 2005/09/09 13:59:27 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -1064,8 +1064,6 @@ axe_stop(struct axe_softc *sc)
 
 	crit_enter();
 
-	axe_reset(sc);
-
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
@@ -1113,6 +1111,8 @@ axe_stop(struct axe_softc *sc)
 		}
 		sc->axe_ep[AXE_ENDPT_INTR] = NULL;
 	}
+
+	axe_reset(sc);
 
 	/* Free RX resources. */
 	for (i = 0; i < AXE_RX_LIST_CNT; i++) {
