@@ -1,5 +1,6 @@
 // -*- C -*-
-/* Copyright (C) 1994, 2000, 2001, 2003, 2004 Free Software Foundation, Inc.
+/* Copyright (C) 1994, 2000, 2001, 2003, 2004, 2005
+   Free Software Foundation, Inc.
      Written by Francisco Andrés Verdú <pandres@dragonet.es>
 
 groff is free software; you can redistribute it and/or modify it under
@@ -14,7 +15,7 @@ for more details.
 
 You should have received a copy of the GNU General Public License along
 with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
+Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 
 /*  This file contains a set of utility functions to use canon CAPSL printers
  *  (lbp-4 and lbp-8 series printers) */
@@ -28,14 +29,15 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
 static FILE *lbpoutput = NULL;
 static FILE *vdmoutput = NULL;
 
+
 static inline void 
 lbpinit(FILE *outfile)
 {
 	lbpoutput = outfile;
-};
+}
 
 
-static inline void 
+static void 
 lbpprintf(const char *format, ... )
 { /* Taken from cjet */
   va_list stuff;
@@ -43,68 +45,78 @@ lbpprintf(const char *format, ... )
   va_start(stuff, format);
   vfprintf(lbpoutput, format, stuff);
   va_end(stuff);
-};
+}
+
 
 static inline void
 lbpputs(const char *data)
 {
 	fputs(data,lbpoutput);
-};
+}
+
 
 static inline void
 lbpputc(unsigned char c)
 {
 	fputc(c,lbpoutput);
-};
+}
 
 
 static inline void 
 lbpsavestatus(int idx )
 {
 	fprintf(lbpoutput,"\033[%d%%y",idx);
-};
+}
+
 
 static inline void 
 lbprestorestatus(int idx )
 {
 	fprintf(lbpoutput,"\033[%d%cz",idx ,'%');
-};
+}
+
 
 static inline void 
 lbpsavepos(int idx)
 {
 	fprintf(lbpoutput,"\033[1;%d;0x",idx);
-};
+}
+
 
 static inline void 
 lbprestorepos(int idx)
 {
 	fprintf(lbpoutput,"\033[0;%d;0x",idx);
-};
+}
+
 
 static inline void 
 lbprestoreposx(int idx)
 {
 	fprintf(lbpoutput,"\033[0;%d;1x",idx);
-};
+}
+
 
 static inline void 
 lbpmoverel(int despl, char direction)
 {
 	fprintf(lbpoutput,"\033[%d%c",despl,direction);
-};
+}
+
 
 static inline void 
 lbplinerel(int width,int despl,char direction )
 {
 	fprintf(lbpoutput,"\033[%d;0;9{\033[%d%c\033[9}",width,despl,direction);
-};
+}
+
 
 static inline void 
 lbpmoveabs(int x, int y)
 {
 	fprintf(lbpoutput,"\033[%d;%df",y,x);
-};
+}
+
 
 static inline void
 lbplineto(int x,int y, int width )
@@ -112,7 +124,8 @@ lbplineto(int x,int y, int width )
 	fprintf(lbpoutput,"\033[%d;0;9{",width);
 	lbpmoveabs(x,y);
 	fprintf(lbpoutput,"\033[9}\n");
-};
+}
+
 
 static inline void
 lbpruleabs(int x, int y, int hsize, int vsize)
@@ -121,9 +134,11 @@ lbpruleabs(int x, int y, int hsize, int vsize)
 	fprintf(lbpoutput,"\033[0;9;000s");
 	lbpmoveabs(x+hsize,y+vsize);
 	fprintf(lbpoutput,"\033[9r");
-};
+}
 
-static inline void vdmprintf(const char *format, ... );
+
+static void vdmprintf(const char *format, ... );
+
 
 static inline char *
 vdmnum(int num,char *result)
@@ -147,7 +162,8 @@ vdmnum(int num,char *result)
   *p++ = b3;
   *p = 0x00; /* End of the resulting string */
   return result;
-};
+}
+
 
 static inline void
 vdmorigin(int newx, int newy)
@@ -155,7 +171,7 @@ vdmorigin(int newx, int newy)
    char nx[4],ny[4];
 
 	vdmprintf("}\"%s%s\x1e",vdmnum(newx,nx),vdmnum(newy,ny));
-}; /* vdmorigin */
+}
 
 
 static inline FILE *
@@ -170,15 +186,17 @@ vdminit(FILE *vdmfile)
 		  vdmnum(-3,scale),vdmnum(1,size),vdmnum(1,lineend));
   return vdmoutput;
   
-};
+}
+
 
 static inline void
 vdmend()
 {
 	vdmprintf("}p\x1e");
-};
+}
 
-static inline void 
+
+static void 
 vdmprintf(const char *format, ... )
 { /* Taken from cjet */
   va_list stuff;
@@ -187,7 +205,8 @@ vdmprintf(const char *format, ... )
   va_start(stuff, format);
   vfprintf(vdmoutput, format, stuff);
   va_end(stuff);
-};
+}
+
 
 static inline void
 vdmsetfillmode(int pattern,int perimeter, int inverted)
@@ -200,7 +219,8 @@ vdmsetfillmode(int pattern,int perimeter, int inverted)
    	vdmprintf("I%s%s%s%s%s\x1e",vdmnum(pattern,patt),\
 		vdmnum(perimeter,perim),vdmnum(0,rot),
 		vdmnum(0,espejo),vdmnum(inverted,inv));
-};
+}
+
 
 static inline void
 vdmcircle(int centerx, int centery, int radius)
@@ -209,7 +229,8 @@ vdmcircle(int centerx, int centery, int radius)
   
 	vdmprintf("5%s%s%s\x1e",vdmnum(centerx,x),vdmnum(centery,y),\
 			vdmnum(radius,rad));
-};
+}
+
 
 static inline void
 vdmaarc(int centerx, int centery, int radius,int startangle,int angle,int style,int arcopen)
@@ -220,7 +241,8 @@ vdmaarc(int centerx, int centery, int radius,int startangle,int angle,int style,
 		vdmnum(centerx,x),vdmnum(centery,y),\
 		vdmnum(radius,rad),vdmnum(startangle,stx),vdmnum(angle,sty),\
 		vdmnum(style,styl));
-};
+}
+
 
 static inline void
 vdmvarc(int centerx, int centery,int radius, int startx, int starty, int endx, int endy,\
@@ -232,7 +254,8 @@ vdmvarc(int centerx, int centery,int radius, int startx, int starty, int endx, i
 		vdmnum(centerx,x),vdmnum(centery,y),\
 		vdmnum(radius,rad),vdmnum(startx,stx),vdmnum(starty,sty),\
 		vdmnum(endx,enx),vdmnum(endy,eny),vdmnum(style,styl));
-};
+}
+
 
 static inline void
 vdmellipse(int centerx, int centery, int radiusx, int radiusy,int rotation)
@@ -242,7 +265,8 @@ vdmellipse(int centerx, int centery, int radiusx, int radiusy,int rotation)
 	vdmprintf("}7%s%s%s%s%s\x1e\n",vdmnum(centerx,x),vdmnum(centery,y),\
 			vdmnum(radiusx,radx),vdmnum(radiusy,rady),\
 			vdmnum(rotation,rotat));
-};
+}
+
 
 static inline void
 vdmsetlinetype(int lintype)
@@ -251,7 +275,8 @@ vdmsetlinetype(int lintype)
 
   vdmprintf("E1%s%s\x1e",vdmnum(lintype,ltyp),vdmnum(1,expfact));
   
-};
+}
+
 
 static inline void
 vdmsetlinestyle(int lintype, int pattern,int unionstyle)
@@ -265,7 +290,8 @@ vdmsetlinestyle(int lintype, int pattern,int unionstyle)
 		vdmnum(pattern,patt),vdmnum(0,rot),
 		vdmnum(0,espejo),vdmnum(0,in));
 	vdmprintf("}F%s",vdmnum(unionstyle,rot));
-};
+}
+
 
 static inline void
 vdmlinewidth(int width)
@@ -273,7 +299,8 @@ vdmlinewidth(int width)
   char wh[4];
 
   	vdmprintf("F1%s\x1e",vdmnum(width,wh));
-};
+}
+
 
 static inline void
 vdmrectangle(int origx, int origy,int dstx, int dsty)
@@ -282,7 +309,8 @@ vdmrectangle(int origx, int origy,int dstx, int dsty)
 
   vdmprintf("}:%s%s%s%s\x1e\n",vdmnum(origx,xcoord),vdmnum(dstx,sdstx),\
 		  vdmnum(origy,ycoord),vdmnum(dsty,sdsty));
-}; /* polyline */
+}
+
 
 static inline void
 vdmpolyline(int numpoints, int *points)
@@ -296,10 +324,11 @@ vdmpolyline(int numpoints, int *points)
   for (i = 1; i < numpoints ; i++) {
 	  vdmprintf("%s%s",vdmnum(*p,xcoord),vdmnum(*(p+1),ycoord));
 	  p += 2;
-  }; /* for */
+  } /* for */
   vdmprintf("\x1e\n");
-}; /* polyline */
+}
 	 
+
 static inline void
 vdmpolygon(int numpoints, int *points)
 {
@@ -312,10 +341,10 @@ vdmpolygon(int numpoints, int *points)
   for (i = 1; i < numpoints ; i++) {
 	  vdmprintf("%s%s",vdmnum(*p,xcoord),vdmnum(*(p+1),ycoord));
 	  p += 2;
-  }; /* for */
+  } /* for */
   vdmprintf("\x1e\n");
 
-}; /* vdmpolygon */
+}
 
 
 /************************************************************************
@@ -325,7 +354,7 @@ static inline int
 vdminited()
 {
 	return (vdmoutput != NULL);
-}; /* vdminited */
+}
 
 
 static inline void
@@ -340,7 +369,8 @@ vdmline(int startx, int starty, int sizex, int sizey)
 
   vdmpolyline(2,points);
 
-};
+}
+
 
 /*#define         THRESHOLD       .05    */ /* inch */
 #define         THRESHOLD       1     /* points (1/300 inch) */
@@ -354,7 +384,7 @@ splinerel(double px,double py,int flush)
   char xcoord[4],ycoord[4];
   double npend ;
 
-  if (flush == -1) {lx = (int)px; ly = (int)py; return;};
+  if (flush == -1) {lx = (int)px; ly = (int)py; return;}
 
   if (flush == 0) {
   dxnew = (int)px -lx;
@@ -366,7 +396,7 @@ splinerel(double px,double py,int flush)
 	  despx = dxnew; 
 	  if ((sg == sigpend) && (dy == 0)){
 		  return;
-	  };
+	  }
 	dy = 0;
   }
   else {
@@ -377,9 +407,9 @@ splinerel(double px,double py,int flush)
   	else
   	{ sigpend = sg;
     	pend = npend;
-  	}; /* else (( npend == pend) && ... */
-  }; /* else (if (dynew == 0)) */
-  }; /* if (!flush ) */
+  	} /* else (( npend == pend) && ... */
+  } /* else (if (dynew == 0)) */
+  } /* if (!flush ) */
 
   /* if we've changed direction we must draw the line */
 /*  fprintf(stderr," (%d) %.2f,%.2f\n",flush,(float)px,(float)py);*/
@@ -390,7 +420,7 @@ splinerel(double px,double py,int flush)
   if (flush) {
   	dxnew = dy = despx = despy = 0;
 	return;
-  }; /* if (flush) */
+  } /* if (flush) */
   dxnew -= despx;
   dynew -= despy;
   if ((dxnew != 0) || (dynew != 0)) vdmprintf("%s%s",vdmnum(dxnew,xcoord),\
@@ -401,7 +431,8 @@ splinerel(double px,double py,int flush)
   lx = (int)px; ly = (int)py; 
   dxnew = dy = despx = despy = 0;
   
-}; /* splinerel */
+}
+
 
 /**********************************************************************
  *  The following code to draw splines is adapted from the transfig package
@@ -436,8 +467,9 @@ quadratic_spline(double a_1, double b_1, double a_2, double b_2, \
 	    quadratic_spline(x_mid, y_mid,
 			     ((a_2+3.0*a_3)/4.0), ((b_2+3.0*b_3)/4.0),
 			     ((a_3+x_4)/2.0), ((b_3+y_4)/2.0), x_4, y_4);
-	};
-}; /* quadratic_spline */
+	}
+}
+
 
 #define XCOORD(i) numbers[(2*i)]
 #define YCOORD(i) numbers[(2*i)+1]
@@ -508,7 +540,7 @@ vdmspline(int numpoints, int o_x, int o_y, int *numbers)
 /*	    fprintf(tfp, "PA%.4f,%.4f;PU;\n", x_1, y_1);*/
 
 
-}; /* vdmspline */
+}
 	
 
 #endif

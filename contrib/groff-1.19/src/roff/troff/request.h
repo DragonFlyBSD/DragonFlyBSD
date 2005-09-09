@@ -17,7 +17,7 @@ for more details.
 
 You should have received a copy of the GNU General Public License along
 with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
+Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 
 typedef void (*REQUEST_FUNCP)();
 
@@ -45,15 +45,17 @@ class macro_header;
 struct node;
 
 class macro : public request_or_macro {
-  macro_header *p;
   const char *filename;		// where was it defined?
   int lineno;
   int len;
   int empty_macro;
+  int is_a_diversion;
 public:
+  macro_header *p;
   macro();
   ~macro();
   macro(const macro &);
+  macro(int);
   macro &operator=(const macro &);
   void append(unsigned char);
   void append(node *);
@@ -67,6 +69,7 @@ public:
   macro *to_macro();
   void print_size();
   int empty();
+  int is_diversion();
   friend class string_iterator;
   friend void chop_macro();
   friend void substring_request();
