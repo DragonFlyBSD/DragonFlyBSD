@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.58 2005/03/23 08:02:46 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.58.2.1 2005/09/09 01:08:18 demizu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1073,7 +1073,7 @@ after_listen:
 	 * XXX this is tradtitional behavior, may need to be cleaned up.
 	 */
 	tcp_dooptions(&to, optp, optlen, (thflags & TH_SYN) != 0);
-	if (thflags & TH_SYN) {
+	if (tp->t_state == TCPS_SYN_SENT && (thflags & TH_SYN)) {
 		if (to.to_flags & TOF_SCALE) {
 			tp->t_flags |= TF_RCVD_SCALE;
 			tp->requested_s_scale = to.to_requested_s_scale;
@@ -1790,10 +1790,25 @@ trimthenstep6:
 	/*
 	 * If last ACK falls within this segment's sequence numbers,
 	 * record its timestamp.
-	 * NOTE that the test is modified according to the latest
-	 * proposal of the tcplw@cray.com list (Braden 1993/04/26).
+	 * NOTE:
+	 * 1) That the test incorporates suggestions from the latest
+	 *    proposal of the tcplw@cray.com list (Braden 1993/04/26).
+	 * 2) That updating only on newer timestamps interferes with
+	 *    our earlier PAWS tests, so this check should be solely
+	 *    predicated on the sequence space of this segment.
+	 * 3) That we modify the segment boundary check to be
+	 *        Last.ACK.Sent <= SEG.SEQ + SEG.LEN
+	 *    instead of RFC1323's
+	 *        Last.ACK.Sent < SEG.SEQ + SEG.LEN,
+	 *    This modified check allows us to overcome RFC1323's
+	 *    limitations as described in Stevens TCP/IP Illustrated
+	 *    Vol. 2 p.869. In such cases, we can still calculate the
+	 *    RTT correctly when RCV.NXT == Last.ACK.Sent.
 	 */
-	if ((to.to_flags & TOF_TS) && SEQ_LEQ(th->th_seq, tp->last_ack_sent)) {
+	if ((to.to_flags & TOF_TS) && SEQ_LEQ(th->th_seq, tp->last_ack_sent) &&
+	    SEQ_LEQ(tp->last_ack_sent, (th->th_seq + tlen
+					+ ((thflags & TH_SYN) != 0)
+					+ ((thflags & TH_FIN) != 0)))) {
 		tp->ts_recent_age = ticks;
 		tp->ts_recent = to.to_tsval;
 	}
@@ -2660,6 +2675,12 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			to->to_tsval = ntohl(to->to_tsval);
 			bcopy(cp + 6, &to->to_tsecr, sizeof to->to_tsecr);
 			to->to_tsecr = ntohl(to->to_tsecr);
+			/*
+			 * If echoed timestamp is later than the current time,
+			 * fall back to non RFC1323 RTT calculation.
+			 */
+			if (to->to_tsecr != 0 && TSTMP_GT(to->to_tsecr, ticks))
+				to->to_tsecr = 0;
 			break;
 		case TCPOPT_CC:
 			if (optlen != TCPOLEN_CC)
