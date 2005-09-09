@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.15 2005/09/09 14:15:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.16 2005/09/09 14:20:48 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -143,7 +143,6 @@ Static int axe_ifmedia_upd(struct ifnet *);
 Static void axe_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
 Static void axe_setmulti(struct axe_softc *);
-Static uint32_t axe_mchash(const uint8_t *);
 
 Static device_method_t axe_methods[] = {
 	/* Device interface */
@@ -330,29 +329,6 @@ axe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
         return;
 }
 
-Static uint32_t
-axe_mchash(const uint8_t *addr)
-{
-	uint32_t crc, carry;
-	int idx, bit;
-	uint8_t data;
-
-	/* Compute CRC for the address value. */
-	crc = 0xFFFFFFFF; /* initial value */
-
-	for (idx = 0; idx < 6; idx++) {
-		for (data = *addr++, bit = 0; bit < 8; bit++, data >>= 1) {
-			carry = ((crc & 0x80000000) ? 1 : 0) ^ (data & 0x01);
-			crc <<= 1;
-			if (carry)
-				crc = (crc ^ 0x04c11db6) | carry;
-		}
-	}
-
-	/* return the filter bit position */
-	return((crc >> 26) & 0x0000003F);
-}
-
 Static void
 axe_setmulti(struct axe_softc *sc)
 {
@@ -377,7 +353,11 @@ axe_setmulti(struct axe_softc *sc)
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = axe_mchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = ether_crc32_be(
+			LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+			ETHER_ADDR_LEN);
+		/* the filter bit position */
+		h = (h >> 26) & 0x0000003F;
 		hashtbl[h / 8] |= 1 << (h % 8);
 	}
 
