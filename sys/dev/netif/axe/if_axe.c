@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.16 2005/09/09 14:20:48 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.17 2005/09/10 11:51:36 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -228,7 +228,7 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	}
 
 	if (sc->axe_phyaddrs[1] != AXE_NOPHY && phy != sc->axe_phyaddrs[1]) {
-		crit_Exit();
+		crit_exit();
 		return (0);
 	}
 #endif
