@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.38 2005/08/29 21:08:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.39 2005/09/10 06:46:05 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -415,6 +415,8 @@ mp_announce(void)
  * WARNING!  We must ensure that the cpu is sufficiently initialized to
  * be able to use to the FP for our optimized bzero/bcopy code before
  * we enter more mainstream C code.
+ *
+ * WARNING! %fs is not set up on entry.  This routine sets up %fs.
  */
 void
 init_secondary(void)
@@ -1980,9 +1982,10 @@ start_all_aps(u_int boot_addr)
 	/* set up temporary P==V mapping for AP boot */
 	/* XXX this is a hack, we should boot the AP on its own stack/PTD */
 	kptbase = (uintptr_t)(void *)KPTphys;
-	for (x = 0; x < NKPT; x++)
+	for (x = 0; x < NKPT; x++) {
 		PTD[x] = (pd_entry_t)(PG_V | PG_RW |
 		    ((kptbase + x * PAGE_SIZE) & PG_FRAME));
+	}
 	cpu_invltlb();
 
 	/* start each AP */
@@ -2425,7 +2428,7 @@ ap_finish(void)
 {
 	mp_finish = 1;
 	if (bootverbose)
-		printf("Finish MP startup");
+		printf("Finish MP startup\n");
 	rel_mplock();
 	while (smp_active_mask != smp_startup_mask)
 		cpu_lfence();
