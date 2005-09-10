@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.31 2005/06/16 21:12:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.32 2005/09/10 06:48:08 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -96,7 +96,7 @@
 
 static inthand2_t isa_strayintr;
 #if defined(FAST_HI) && defined(APIC_IO)
-static inthand2_t isa_wrongintr;
+void do_wrongintr(int intr);
 #endif
 static void	init_i8259(void);
 
@@ -162,6 +162,22 @@ static inthand_t *slowintr[ICU_LEN] = {
 	&IDTVEC(intr20), &IDTVEC(intr21), &IDTVEC(intr22), &IDTVEC(intr23),
 #endif /* APIC_IO */
 };
+
+#if defined(APIC_IO)
+
+static inthand_t *wrongintr[ICU_LEN] = {
+	&IDTVEC(wrongintr0), &IDTVEC(wrongintr1), &IDTVEC(wrongintr2),
+	&IDTVEC(wrongintr3), &IDTVEC(wrongintr4), &IDTVEC(wrongintr5),
+	&IDTVEC(wrongintr6), &IDTVEC(wrongintr7), &IDTVEC(wrongintr8),
+	&IDTVEC(wrongintr9), &IDTVEC(wrongintr10), &IDTVEC(wrongintr11),
+	&IDTVEC(wrongintr12), &IDTVEC(wrongintr13), &IDTVEC(wrongintr14),
+	&IDTVEC(wrongintr15),
+	&IDTVEC(wrongintr16), &IDTVEC(wrongintr17), &IDTVEC(wrongintr18),
+	&IDTVEC(wrongintr19), &IDTVEC(wrongintr20), &IDTVEC(wrongintr21),
+	&IDTVEC(wrongintr22), &IDTVEC(wrongintr23)
+};
+
+#endif /* APIC_IO */
 
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)
@@ -231,7 +247,6 @@ icu_reinit()
                if(intr_handler[i] != isa_strayintr)
                        INTREN(1<<i);
 }
-
 
 /*
  * Fill in default interrupt table (in case of spurious interrupt
@@ -311,25 +326,18 @@ isa_strayintr(void *vcookiep)
 #if defined(FAST_HI) && defined(APIC_IO)
 
 /*
- * This occurs if we mis-programmed the APIC and its vector is still
+ * This occurs if we've mis-programmed the APIC and its vector is still
  * pointing to the slow vector even when we thought we reprogrammed it
  * to the high vector.  This can occur when interrupts are improperly
  * routed by the APIC.  The unit data is opaque so we have to try to
  * find it in the unit array.
  */
-static void
-isa_wrongintr(void *vcookiep)
+void
+do_wrongintr(int intr)
 {
-	int intr;
-
-	for (intr = 0; intr < ICU_LEN*2; ++intr) {
-		if (intr_unit[intr] == vcookiep)
-			break;
-	}
-	if (intr == ICU_LEN*2) {
-		log(LOG_ERR, "stray unknown irq (APIC misprogrammed)\n");
-	} else if (intrcnt[1 + intr] <= 5) {
-		log(LOG_ERR, "stray irq ~%d (APIC misprogrammed)\n", intr);
+	if (intrcnt[1 + intr] <= 5) {
+		log(LOG_ERR, "stray irq ~%d on cpu %d (APIC misprogrammed)\n",
+		    intr, mycpu->gd_cpuid);
 	} else if (intrcnt[1 + intr] == 6) {
 		log(LOG_CRIT,
 		    "too many stray irq ~%d's; not logging any more\n", intr);
@@ -442,7 +450,7 @@ icu_setup(int intr, inthand2_t *handler, void *arg, int flags)
 		 * the IO apic is not properly reprogrammed.
 		 */
 		vector = TPR_SLOW_INTS + intr;
-		setidt(vector, isa_wrongintr,
+		setidt(vector, wrongintr[intr],
 		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 		vector = TPR_FAST_INTS + intr;
 		setidt(vector, fastintr[intr],

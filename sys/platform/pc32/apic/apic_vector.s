@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.21 2005/08/29 21:08:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.22 2005/09/10 06:48:08 dillon Exp $
  */
 
 
@@ -287,6 +287,26 @@ IDTVEC(vec_name) ;							\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
 
+/*
+ * Wrong interrupt call handlers.  We program these into APIC vectors
+ * that should otherwise never occur.  For example, we program the SLOW
+ * vector for irq N with this when we program the FAST vector with the
+ * real interrupt.
+ *
+ * XXX for now all we can do is EOI it.  We can't call do_wrongintr
+ * (yet) because we could be in a critical section.
+ */
+#define WRONGINTR(irq_num,vec_name)					\
+	.text ;								\
+	SUPERALIGN_TEXT	 ;						\
+IDTVEC(vec_name) ;							\
+	PUSH_FRAME ;							\
+	movl	$0, lapic_eoi ;	/* End Of Interrupt to APIC */		\
+	/*pushl	$irq_num ;*/						\
+	/*call	do_wrongintr ;*/					\
+	/*addl	$4,%esp ;*/						\
+	POP_FRAME ;							\
+	iret  ;								\
 
 /*
  * Handle "spurious INTerrupts".
@@ -520,6 +540,31 @@ MCOUNT_LABEL(bintr)
 	FAST_UNPEND(21,fastunpend21)
 	FAST_UNPEND(22,fastunpend22)
 	FAST_UNPEND(23,fastunpend23)
+
+	WRONGINTR(0,wrongintr0)
+	WRONGINTR(1,wrongintr1)
+	WRONGINTR(2,wrongintr2)
+	WRONGINTR(3,wrongintr3)
+	WRONGINTR(4,wrongintr4)
+	WRONGINTR(5,wrongintr5)
+	WRONGINTR(6,wrongintr6)
+	WRONGINTR(7,wrongintr7)
+	WRONGINTR(8,wrongintr8)
+	WRONGINTR(9,wrongintr9)
+	WRONGINTR(10,wrongintr10)
+	WRONGINTR(11,wrongintr11)
+	WRONGINTR(12,wrongintr12)
+	WRONGINTR(13,wrongintr13)
+	WRONGINTR(14,wrongintr14)
+	WRONGINTR(15,wrongintr15)
+	WRONGINTR(16,wrongintr16)
+	WRONGINTR(17,wrongintr17)
+	WRONGINTR(18,wrongintr18)
+	WRONGINTR(19,wrongintr19)
+	WRONGINTR(20,wrongintr20)
+	WRONGINTR(21,wrongintr21)
+	WRONGINTR(22,wrongintr22)
+	WRONGINTR(23,wrongintr23)
 MCOUNT_LABEL(eintr)
 
 	.data

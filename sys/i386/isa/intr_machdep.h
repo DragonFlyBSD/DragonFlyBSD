@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.16 2005/08/29 21:08:06 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.17 2005/09/10 06:48:08 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -160,11 +160,24 @@ inthand_t
 	IDTVEC(fastintr10), IDTVEC(fastintr11),
 	IDTVEC(fastintr12), IDTVEC(fastintr13),
 	IDTVEC(fastintr14), IDTVEC(fastintr15);
+#if defined(APIC_IO)
+inthand_t
+	IDTVEC(fastintr16), IDTVEC(fastintr17),
+	IDTVEC(fastintr18), IDTVEC(fastintr19),
+	IDTVEC(fastintr20), IDTVEC(fastintr21),
+	IDTVEC(fastintr22), IDTVEC(fastintr23);
+#endif
+
 inthand_t
 	IDTVEC(intr0), IDTVEC(intr1), IDTVEC(intr2), IDTVEC(intr3),
 	IDTVEC(intr4), IDTVEC(intr5), IDTVEC(intr6), IDTVEC(intr7),
 	IDTVEC(intr8), IDTVEC(intr9), IDTVEC(intr10), IDTVEC(intr11),
 	IDTVEC(intr12), IDTVEC(intr13), IDTVEC(intr14), IDTVEC(intr15);
+#if defined(APIC_IO)
+inthand_t
+	IDTVEC(intr16), IDTVEC(intr17), IDTVEC(intr18), IDTVEC(intr19),
+	IDTVEC(intr20), IDTVEC(intr21), IDTVEC(intr22), IDTVEC(intr23);
+#endif
 
 unpendhand_t
 	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
@@ -175,21 +188,28 @@ unpendhand_t
 	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
 	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
 	IDTVEC(fastunpend14), IDTVEC(fastunpend15);
-
 #if defined(APIC_IO)
-inthand_t
-	IDTVEC(fastintr16), IDTVEC(fastintr17),
-	IDTVEC(fastintr18), IDTVEC(fastintr19),
-	IDTVEC(fastintr20), IDTVEC(fastintr21),
-	IDTVEC(fastintr22), IDTVEC(fastintr23);
-inthand_t
-	IDTVEC(intr16), IDTVEC(intr17), IDTVEC(intr18), IDTVEC(intr19),
-	IDTVEC(intr20), IDTVEC(intr21), IDTVEC(intr22), IDTVEC(intr23);
 unpendhand_t
 	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
 	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
 	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
 	IDTVEC(fastunpend22), IDTVEC(fastunpend23);
+#endif
+
+#if defined(APIC_IO)
+inthand_t
+	IDTVEC(wrongintr0), IDTVEC(wrongintr1),
+	IDTVEC(wrongintr2), IDTVEC(wrongintr3),
+	IDTVEC(wrongintr4), IDTVEC(wrongintr5),
+	IDTVEC(wrongintr6), IDTVEC(wrongintr7),
+	IDTVEC(wrongintr8), IDTVEC(wrongintr9),
+	IDTVEC(wrongintr10), IDTVEC(wrongintr11),
+	IDTVEC(wrongintr12), IDTVEC(wrongintr13),
+	IDTVEC(wrongintr14), IDTVEC(wrongintr15),
+	IDTVEC(wrongintr16), IDTVEC(wrongintr17),
+	IDTVEC(wrongintr18), IDTVEC(wrongintr19),
+	IDTVEC(wrongintr20), IDTVEC(wrongintr21),
+	IDTVEC(wrongintr22), IDTVEC(wrongintr23);
 #endif
 
 #if defined(SMP)
