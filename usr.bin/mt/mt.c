@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mt.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/mt/mt.c,v 1.26.2.3 2002/11/08 11:35:57 joerg Exp $
- * $DragonFly: src/usr.bin/mt/mt.c,v 1.6 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/mt/mt.c,v 1.7 2005/09/10 21:03:27 swildner Exp $
  */
 
 /*
@@ -321,23 +321,9 @@ main(int argc, char **argv)
 	/* NOTREACHED */
 }
 
-#ifdef vax
-#include <vax/mba/mtreg.h>
-#include <vax/mba/htreg.h>
-
-#include <vax/uba/utreg.h>
-#include <vax/uba/tmreg.h>
-#undef b_repcnt		/* argh */
-#include <vax/uba/tsreg.h>
-#endif
-
 #ifdef sun
 #include <sundev/tmreg.h>
 #include <sundev/arreg.h>
-#endif
-
-#ifdef tahoe
-#include <tahoe/vba/cyreg.h>
 #endif
 
 #if defined(__DragonFly__) && defined(__i386__)
@@ -350,19 +336,9 @@ struct tape_desc {
 	char	*t_dsbits;	/* "drive status" register */
 	char	*t_erbits;	/* "error" register */
 } tapes[] = {
-#ifdef vax
-	{ MT_ISTS,	"ts11",		0,		TSXS0_BITS },
-	{ MT_ISHT,	"tm03",		HTDS_BITS,	HTER_BITS },
-	{ MT_ISTM,	"tm11",		0,		TMER_BITS },
-	{ MT_ISMT,	"tu78",		MTDS_BITS,	0 },
-	{ MT_ISUT,	"tu45",		UTDS_BITS,	UTER_BITS },
-#endif
 #ifdef sun
 	{ MT_ISCPC,	"TapeMaster",	TMS_BITS,	0 },
 	{ MT_ISAR,	"Archive",	ARCH_CTRL_BITS,	ARCH_BITS },
-#endif
-#ifdef tahoe
-	{ MT_ISCY,	"cipher",	CYS_BITS,	CYCW_BITS },
 #endif
 #if defined (__DragonFly__)
 	/*
