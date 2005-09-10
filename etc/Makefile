@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.91 2005/09/10 10:14:10 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.92 2005/09/10 10:41:40 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -338,12 +338,15 @@ upgrade_etc:	preupgrade
 .endif
 	rm -f ${DESTDIR}/usr/share/info/cpp2.info.gz
 	rm -f ${DESTDIR}/usr/share/info/gcc2.info.gz
+	rm -f ${DESTDIR}/usr/sbin/ibcs2
+	rm -f ${DESTDIR}/usr/sbin/linux
 	rm -f ${DESTDIR}/usr/sbin/ntp-genkeys
 	rm -f ${DESTDIR}/usr/sbin/ntpdc
 	rm -f ${DESTDIR}/usr/sbin/ntptime
 	rm -f ${DESTDIR}/usr/sbin/ntptimeset
 	rm -f ${DESTDIR}/usr/sbin/ntptrace
 	rm -f ${DESTDIR}/usr/sbin/scriptdump
+	rm -f ${DESTDIR}/usr/sbin/svr4
 	rm -f ${DESTDIR}/usr/bin/gdbreplay
 	rm -f ${DESTDIR}/usr/bin/gperf
 	rm -f ${DESTDIR}/usr/bin/joy
@@ -363,8 +366,8 @@ upgrade_etc:	preupgrade
 .for man in drivers.conf gbk ntp.conf ntp.keys
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/${man}.5.gz"
 .endfor
-.for man in joy ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace picobsd \
-	    sysinstall
+.for man in ibcs2 joy linux ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace \
+	    picobsd svr4 sysinstall
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
 .endfor
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_xxx.9.gz"
