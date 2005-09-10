@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.12 2005/01/06 03:21:00 cpressey Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.13 2005/09/10 21:01:20 swildner Exp $
  */
 
 /*
@@ -573,19 +573,6 @@ havelabel:
 	sbsize = lp->d_sbsize;
 #endif
 	oldpartition = *pp;
-#ifdef tahoe
-	realsectorsize = sectorsize;
-	if (sectorsize != DEV_BSIZE) {		/* XXX */
-		int secperblk = DEV_BSIZE / sectorsize;
-
-		sectorsize = DEV_BSIZE;
-		nsectors /= secperblk;
-		nphyssectors /= secperblk;
-		secpercyl /= secperblk;
-		fssize /= secperblk;
-		pp->p_size /= secperblk;
-	}
-#else
 	realsectorsize = sectorsize;
 	if (sectorsize != DEV_BSIZE) {		/* XXX */
 		int secperblk = sectorsize / DEV_BSIZE;
@@ -597,7 +584,6 @@ havelabel:
 		fssize *= secperblk;
 		pp->p_size *= secperblk;
 	}
-#endif
 	if (mfs) {
 		mfs_mtpt = argv[1];
 		if (
@@ -608,13 +594,8 @@ havelabel:
 		}
 	}
 	mkfs(pp, special, fsi, fso, (Cflag && mfs) ? argv[1] : NULL);
-#ifdef tahoe
-	if (realsectorsize != DEV_BSIZE)
-		pp->p_size *= DEV_BSIZE / realsectorsize;
-#else
 	if (realsectorsize != DEV_BSIZE)
 		pp->p_size /= realsectorsize /DEV_BSIZE;
-#endif
 	if (!Nflag && bcmp(pp, &oldpartition, sizeof(oldpartition)))
 		rewritelabel(special, fso, lp);
 	if (!Nflag)

@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.19 2005/09/06 01:21:26 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.20 2005/09/10 21:01:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -836,9 +836,6 @@ diskerr(struct buf *bp, dev_t dev, char *what, int pri,
 		    (long)(bp->b_blkno + (bp->b_bcount - 1) / DEV_BSIZE));
 	}
 	if (lp && (blkdone >= 0 || bp->b_bcount <= lp->d_secsize)) {
-#ifdef tahoe
-		sn *= DEV_BSIZE / lp->d_secsize;		/* XXX */
-#endif
 		sn += lp->d_partitions[part].p_offset;
 		/*
 		 * XXX should add slice offset and not print the slice,
