@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.11 2005/09/11 13:03:16 sephe Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.12 2005/09/11 13:33:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1855,14 +1855,12 @@ ahatimeout(void *arg)
 	ccb = accb->ccb;
 	aha = (struct aha_softc *)ccb->ccb_h.ccb_aha_ptr;
 	xpt_print_path(ccb->ccb_h.path);
-	/* XXX */
 	printf("CCB %p - timed out\n", (void *)accb);
 
 	crit_enter();
 
 	if ((accb->flags & ACCB_ACTIVE) == 0) {
 		xpt_print_path(ccb->ccb_h.path);
-		/* XXX */
 		printf("CCB %p - timed out CCB already completed\n",
 		       (void *)accb);
 		crit_exit();
