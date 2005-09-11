@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_isa.c,v 1.17.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.5 2005/09/11 13:03:16 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -121,7 +121,7 @@ aha_isa_probe(device_t dev)
 			continue;
 
 		/* Allocate a softc for use during probing */
-		aha = aha_alloc(device_get_unit(dev), rman_get_bustag(port_res),
+		aha = aha_alloc(dev, rman_get_bustag(port_res),
 		    rman_get_bushandle(port_res));
 
 		if (aha == NULL) {
@@ -207,6 +207,7 @@ aha_isa_attach(device_t dev)
 	int		 error;
 
 	aha = *sc;
+	aha->dev = dev;
 	aha->portrid = 0;
 	aha->port = bus_alloc_resource(dev, SYS_RES_IOPORT, &aha->portrid,
 	    0, ~0, AHA_NREGS, RF_ACTIVE);

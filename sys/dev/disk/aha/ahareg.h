@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/ahareg.h,v 1.8.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/ahareg.h,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/ahareg.h,v 1.4 2005/09/11 13:03:16 sephe Exp $
  */
 
 #ifndef _AHAREG_H_
@@ -373,7 +373,6 @@ struct aha_softc {
 	u_int			 num_ccbs;	/* Number of CCBs malloc'd */
 	u_int			 max_ccbs;	/* Maximum allocatable CCBs */
 	u_int			 max_sg;
-	u_int			 unit;
 	u_int			 scsi_id;
 	u_int32_t		 extended_trans	  :1,
 				 diff_bus	  :1,
@@ -399,13 +398,14 @@ struct aha_softc {
 	struct resource		*drq;
 	int			 drqrid;
 	void			**ih;
+	device_t		dev;
 };
 
 extern struct aha_softc *aha_softcs[];	/* XXX Config should handle this */
 extern u_long aha_unit;
 
 #define AHA_TEMP_UNIT 0xFF		/* Unit for probes */
-struct aha_softc*	aha_alloc(int, bus_space_tag_t, bus_space_handle_t);
+struct aha_softc*	aha_alloc(device_t, bus_space_tag_t, bus_space_handle_t);
 int			aha_attach(struct aha_softc *);
 int			aha_cmd(struct aha_softc *, aha_op_t, u_int8_t *,
 			    u_int, u_int8_t *, u_int, u_int);
