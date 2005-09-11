@@ -347,6 +347,9 @@ main (int argc, char **argv)
 {
   int argno;
 
+  /* Unlock the stdio streams.  */
+  unlock_std_streams ();
+
   gcc_init_libintl ();
 
   argno = process_args (argc, argv);
@@ -364,12 +367,12 @@ main (int argc, char **argv)
 }
 
 static void
-fnotice (FILE *file, const char *msgid, ...)
+fnotice (FILE *file, const char *cmsgid, ...)
 {
   va_list ap;
 
-  va_start (ap, msgid);
-  vfprintf (file, _(msgid), ap);
+  va_start (ap, cmsgid);
+  vfprintf (file, _(cmsgid), ap);
   va_end (ap);
 }
 

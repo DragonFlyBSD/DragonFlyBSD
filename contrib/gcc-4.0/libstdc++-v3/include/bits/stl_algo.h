@@ -1,6 +1,6 @@
 // Algorithm implementation -*- C++ -*-
 
-// Copyright (C) 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+// Copyright (C) 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -413,9 +413,8 @@ namespace std
     {
       // concept requirements
       __glibcxx_function_requires(_InputIteratorConcept<_InputIterator>)
-      __glibcxx_function_requires(_EqualityComparableConcept<
-	    typename iterator_traits<_InputIterator>::value_type >)
-      __glibcxx_function_requires(_EqualityComparableConcept<_Tp>)
+      __glibcxx_function_requires(_EqualOpConcept<
+	typename iterator_traits<_InputIterator>::value_type, _Tp>)
       __glibcxx_requires_valid_range(__first, __last);
       typename iterator_traits<_InputIterator>::difference_type __n = 0;
       for ( ; __first != __last; ++__first)
@@ -627,9 +626,8 @@ namespace std
     {
       // concept requirements
       __glibcxx_function_requires(_ForwardIteratorConcept<_ForwardIterator>)
-      __glibcxx_function_requires(_EqualityComparableConcept<
-	    typename iterator_traits<_ForwardIterator>::value_type>)
-      __glibcxx_function_requires(_EqualityComparableConcept<_Tp>)
+      __glibcxx_function_requires(_EqualOpConcept<
+	typename iterator_traits<_ForwardIterator>::value_type, _Tp>)
       __glibcxx_requires_valid_range(__first, __last);
 
       if (__count <= 0)
@@ -1637,7 +1635,7 @@ namespace std
 
       for (_Distance __i = 0; __i < __d; __i++)
 	{
-	  const _ValueType __tmp = *__first;
+	  _ValueType __tmp = *__first;
 	  _RandomAccessIterator __p = __first;
 
 	  if (__k < __l)
@@ -1736,7 +1734,8 @@ namespace std
       __glibcxx_requires_valid_range(__first, __middle);
       __glibcxx_requires_valid_range(__middle, __last);
 
-      return std::copy(__first, __middle, copy(__middle, __last, __result));
+      return std::copy(__first, __middle,
+                       std::copy(__middle, __last, __result));
     }
 
   /**
@@ -2211,10 +2210,10 @@ namespace std
     __final_insertion_sort(_RandomAccessIterator __first,
 			   _RandomAccessIterator __last)
     {
-      if (__last - __first > _S_threshold)
+      if (__last - __first > int(_S_threshold))
 	{
-	  std::__insertion_sort(__first, __first + _S_threshold);
-	  std::__unguarded_insertion_sort(__first + _S_threshold, __last);
+	  std::__insertion_sort(__first, __first + int(_S_threshold));
+	  std::__unguarded_insertion_sort(__first + int(_S_threshold), __last);
 	}
       else
 	std::__insertion_sort(__first, __last);
@@ -2230,10 +2229,10 @@ namespace std
     __final_insertion_sort(_RandomAccessIterator __first,
 			   _RandomAccessIterator __last, _Compare __comp)
     {
-      if (__last - __first > _S_threshold)
+      if (__last - __first > int(_S_threshold))
 	{
-	  std::__insertion_sort(__first, __first + _S_threshold, __comp);
-	  std::__unguarded_insertion_sort(__first + _S_threshold, __last,
+	  std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+	  std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
 					  __comp);
 	}
       else
@@ -2480,7 +2479,7 @@ namespace std
       typedef typename iterator_traits<_RandomAccessIterator>::value_type
 	_ValueType;
 
-      while (__last - __first > _S_threshold)
+      while (__last - __first > int(_S_threshold))
 	{
 	  if (__depth_limit == 0)
 	    {
@@ -2516,7 +2515,7 @@ namespace std
       typedef typename iterator_traits<_RandomAccessIterator>::value_type
 	_ValueType;
 
-      while (__last - __first > _S_threshold)
+      while (__last - __first > int(_S_threshold))
 	{
 	  if (__depth_limit == 0)
 	    {

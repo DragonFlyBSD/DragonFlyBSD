@@ -4035,7 +4035,7 @@ build_op_delete_call (enum tree_code code, tree addr, tree size,
   if (placement)
     return NULL_TREE;
 
-  error ("no suitable %<operator %s> for %qT",
+  error ("no suitable %<operator %s%> for %qT",
 	 operator_name_info[(int)code].name, type);
   return error_mark_node;
 }
@@ -6084,10 +6084,9 @@ joust (struct z_candidate *cand1, struct z_candidate *cand2, bool warn)
   
   if (cand1->template_decl && cand2->template_decl)
     {
-      winner = more_specialized
+      winner = more_specialized_fn
         (TI_TEMPLATE (cand1->template_decl),
          TI_TEMPLATE (cand2->template_decl),
-         DEDUCE_ORDER,
          /* Tell the deduction code how many real function arguments
 	    we saw, not counting the implicit 'this' argument.  But,
 	    add_function_candidate() suppresses the "this" argument

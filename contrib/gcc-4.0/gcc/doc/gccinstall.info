@@ -1,5 +1,5 @@
-This is doc/gccinstall.info, produced by makeinfo version 4.7 from
-/scratch/mitchell/gcc-releases/gcc-4.0.0/gcc-4.0.0/gcc/doc/install.texi.
+This is doc/gccinstall.info, produced by makeinfo version 4.8 from
+/scratch/mitchell/gcc-releases/gcc-4.0.1/gcc-4.0.1/gcc/doc/install.texi.
 
    Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
 1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
@@ -207,7 +207,7 @@ automake versions 1.9.3
      a directory to a newer version, please update all the directories
      using an older 1.9.x to the latest released version.
 
-gettext version 0.12 (or later)
+gettext version 0.14.5 (or later)
      Needed to regenerate `gcc.pot'.
 
 gperf version 2.7.2 (or later)
@@ -879,13 +879,14 @@ option.
      LANGN you can issue the following command in the `gcc' directory
      of your GCC source tree:
           grep language= */config-lang.in
-     Currently, you can use any of the following: `ada', `c', `c++',
-     `f77', `f95', `java', `objc', `obj-c++'.  Building the Ada
-     compiler has special requirements, see below.
-     If you do not pass this flag, all languages available in the `gcc'
-     sub-tree will be configured.  Re-defining `LANGUAGES' when calling
-     `make bootstrap' *does not* work anymore, as those language
-     sub-directories might not have been configured!
+     Currently, you can use any of the following: `all', `ada', `c',
+     `c++', `f95', `java', `objc', `treelang'.  Building the Ada
+     compiler has special requirements, see below.  If you do not pass
+     this flag, or specify the option `all', then all default languages
+     available in the `gcc' sub-tree will be configured.  Ada and
+     treelang are not default languages; the rest are.  Re-defining
+     `LANGUAGES' when calling `make bootstrap' *does not* work anymore,
+     as those language sub-directories might not have been configured!
 
 `--disable-libada'
      Specify that the run-time libraries and tools used by GNAT should
@@ -1731,8 +1732,8 @@ can also buy printed manuals from the Free Software Foundation, though
 such manuals may not be for the most recent version of GCC.
 
    If you would like to generate online HTML documentation, do `cd
-OBJDIR; make html' and HTML will be generated for the manuals in
-`OBJDIR/HTML'.
+OBJDIR; make html' and HTML will be generated for the gcc manuals in
+`OBJDIR/gcc/HTML'.
 
 
 File: gccinstall.info,  Node: Binaries,  Next: Specific,  Prev: Installing GCC,  Up: Top
@@ -1967,6 +1968,15 @@ tools can also be obtained from:
        Error: register required
 
    indicates that you should upgrade to a newer version of the binutils.
+
+Blackfin
+========
+
+The Blackfin processor, an Analog Devices DSP.  *Note Blackfin Options:
+(gcc)Blackfin Options,
+
+   More information, and a version of binutils with support for this
+processor, is available at `http://blackfin.uclinux.org'
 
 c4x
 ===
@@ -2342,6 +2352,16 @@ utilities) can be found in Support Level Supplement OSS658A, the "GNU
 Development Tools" package.  See the SCO web and ftp sites for details.
 That package also contains the currently "officially supported" version
 of GCC, version 2.95.3.  It is useful for bootstrapping this version.
+
+i?86-*-solaris2.10
+==================
+
+Use this for Solaris 10 or later on x86 and x86-64 systems.  This
+configuration is supported by GCC 4.0 and later versions only.
+
+   It is recommended that you configure GCC to use the GNU assembler in
+`/usr/sfw/bin/gas' but the Sun linker, using the options `--with-gnu-as
+--with-as=/usr/sfw/bin/gas --without-gnu-ld --with-ld=/usr/ccs/bin/ld'.
 
 i?86-*-udk
 ==========
@@ -2927,11 +2947,12 @@ by the Sun compiler.  This is Sun bug 4974440.  This is fixed with
 patch 112760-07.
 
    GCC 3.4 changed the default debugging format from STABS to DWARF-2
-for 32-bit code on Solaris 7 and later.  If you are using the Sun
-assembler, this change apparently runs afoul of Sun bug 4910101, for
-which (as of 2004-05-23) there is no fix.  A symptom of the problem is
-that you cannot compile C++ programs like `groff' 1.19.1 without
-getting messages similar to the following:
+for 32-bit code on Solaris 7 and later.  If you use the Sun assembler,
+this change apparently runs afoul of Sun bug 4910101 (which is
+referenced as a x86-only problem by Sun, probably because they do not
+use DWARF-2).  A symptom of the problem is that you cannot compile C++
+programs like `groff' 1.19.1 without getting messages similar to the
+following:
 
      ld: warning: relocation error: R_SPARC_UA32: ...
        external symbolic relocation against non-allocatable section
@@ -2987,6 +3008,15 @@ shared version of libgcc.  A typical error message is:
        symbol <unknown>:  offset 0xffffffff7ec133e7 is non-aligned.
 
    This bug has been fixed in the final 5.0 version of the assembler.
+
+   A similar problem was reported for version Sun WorkShop 6 99/08/18
+of the Sun assembler, which causes a bootstrap failure with GCC 4.0.0:
+
+     ld: fatal: relocation error: R_SPARC_DISP32:
+       file .libs/libstdc++.lax/libsupc++convenience.a/vterminate.o:
+         symbol <unknown>: offset 0xfccd33ad is non-aligned
+
+   This bug has been fixed in more recent revisions of the assembler.
 
 sparc-*-linux*
 ==============
@@ -3803,82 +3833,84 @@ Tag Table:
 Node: Top1924
 Node: Installing GCC2482
 Node: Prerequisites3997
-Node: Downloading the source10600
-Node: Configuration12281
-Ref: with-gnu-as25110
-Ref: with-as26297
-Ref: with-gnu-ld27302
-Node: Building50722
-Node: Testing61084
-Node: Final install68962
-Node: Binaries73817
-Node: Specific75630
-Ref: alpha-x-x75917
-Ref: alpha-dec-osf76406
-Ref: alphaev5-cray-unicosmk79983
-Ref: arc-x-elf80930
-Ref: arm-x-elf81030
-Ref: xscale-x-x81051
-Ref: arm-x-coff81287
-Ref: arm-x-aout81489
-Ref: avr81611
-Ref: c4x82291
-Ref: cris82889
-Ref: dos83871
-Ref: x-x-freebsd84194
-Ref: h8300-hms86577
-Ref: hppa-hp-hpux86929
-Ref: hppa-hp-hpux1088869
-Ref: hppa-hp-hpux1189926
-Ref: x-x-linux-gnu96781
-Ref: ix86-x-linuxaout96973
-Ref: ix86-x-linux97132
-Ref: ix86-x-sco3.2v597445
-Ref: ix86-x-udk99614
-Ref: ia64-x-linux100978
-Ref: ia64-x-hpux101748
-Ref: x-ibm-aix102303
-Ref: ip2k-x-elf108159
-Ref: iq2000-x-elf108390
-Ref: m32r-x-elf108530
-Ref: m6811-elf108632
-Ref: m6812-elf108782
-Ref: m68k-hp-hpux108932
-Ref: mips-x-x110671
-Ref: mips-sgi-irix5112340
-Ref: mips-sgi-irix6113288
-Ref: powerpc-x-x115980
-Ref: powerpc-x-darwin116125
-Ref: powerpc-x-elf116714
-Ref: powerpc-x-linux-gnu116833
-Ref: powerpc-x-netbsd116935
-Ref: powerpc-x-eabisim117131
-Ref: powerpc-x-eabi117257
-Ref: powerpcle-x-elf117333
-Ref: powerpcle-x-eabisim117463
-Ref: powerpcle-x-eabi117596
-Ref: s390-x-linux117679
-Ref: s390x-x-linux117751
-Ref: s390x-ibm-tpf117838
-Ref: x-x-solaris2117969
-Ref: sparc-sun-solaris2121552
-Ref: sparc-sun-solaris2.7124500
-Ref: sparc-x-linux126571
-Ref: sparc64-x-solaris2126796
-Ref: sparcv9-x-solaris2127172
-Ref: x-x-sysv127257
-Ref: vax-dec-ultrix128218
-Ref: x-x-vxworks128370
-Ref: x86_64-x-x129892
-Ref: xtensa-x-elf130220
-Ref: xtensa-x-linux130889
-Ref: windows131227
-Ref: os2131551
-Ref: older131874
-Ref: elf_targets133999
-Node: Old134257
-Node: Configurations137394
-Node: GNU Free Documentation License141376
-Node: Concept Index163782
+Node: Downloading the source10602
+Node: Configuration12283
+Ref: with-gnu-as25112
+Ref: with-as26299
+Ref: with-gnu-ld27304
+Node: Building50832
+Node: Testing61194
+Node: Final install69072
+Node: Binaries73935
+Node: Specific75748
+Ref: alpha-x-x76035
+Ref: alpha-dec-osf76524
+Ref: alphaev5-cray-unicosmk80101
+Ref: arc-x-elf81048
+Ref: arm-x-elf81148
+Ref: xscale-x-x81169
+Ref: arm-x-coff81405
+Ref: arm-x-aout81607
+Ref: avr81729
+Ref: bfin82409
+Ref: c4x82651
+Ref: cris83249
+Ref: dos84231
+Ref: x-x-freebsd84554
+Ref: h8300-hms86937
+Ref: hppa-hp-hpux87289
+Ref: hppa-hp-hpux1089229
+Ref: hppa-hp-hpux1190286
+Ref: x-x-linux-gnu97141
+Ref: ix86-x-linuxaout97333
+Ref: ix86-x-linux97492
+Ref: ix86-x-sco32v597805
+Ref: ix86-x-solaris21099974
+Ref: ix86-x-udk100360
+Ref: ia64-x-linux101724
+Ref: ia64-x-hpux102494
+Ref: x-ibm-aix103049
+Ref: ip2k-x-elf108905
+Ref: iq2000-x-elf109136
+Ref: m32r-x-elf109276
+Ref: m6811-elf109378
+Ref: m6812-elf109528
+Ref: m68k-hp-hpux109678
+Ref: mips-x-x111417
+Ref: mips-sgi-irix5113086
+Ref: mips-sgi-irix6114034
+Ref: powerpc-x-x116726
+Ref: powerpc-x-darwin116871
+Ref: powerpc-x-elf117460
+Ref: powerpc-x-linux-gnu117579
+Ref: powerpc-x-netbsd117681
+Ref: powerpc-x-eabisim117877
+Ref: powerpc-x-eabi118003
+Ref: powerpcle-x-elf118079
+Ref: powerpcle-x-eabisim118209
+Ref: powerpcle-x-eabi118342
+Ref: s390-x-linux118425
+Ref: s390x-x-linux118497
+Ref: s390x-ibm-tpf118584
+Ref: x-x-solaris2118715
+Ref: sparc-sun-solaris2122298
+Ref: sparc-sun-solaris27125287
+Ref: sparc-x-linux127751
+Ref: sparc64-x-solaris2127976
+Ref: sparcv9-x-solaris2128352
+Ref: x-x-sysv128437
+Ref: vax-dec-ultrix129398
+Ref: x-x-vxworks129550
+Ref: x86-64-x-x131072
+Ref: xtensa-x-elf131400
+Ref: xtensa-x-linux132069
+Ref: windows132407
+Ref: os2132731
+Ref: older133054
+Ref: elf135179
+Node: Old135437
+Node: Configurations138574
+Node: GNU Free Documentation License142556
+Node: Concept Index164962
 
 End Tag Table

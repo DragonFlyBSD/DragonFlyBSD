@@ -64,7 +64,8 @@ int in_sizeof;
 /* The level of nesting inside "typeof".  */
 int in_typeof;
 
-struct c_label_context *label_context_stack;
+struct c_label_context_se *label_context_stack_se;
+struct c_label_context_vm *label_context_stack_vm;
 
 /* Nonzero if we've already printed a "missing braces around initializer"
    message within this initializer.  */
@@ -1248,10 +1249,18 @@ decl_constant_value (tree decl)
 static tree
 decl_constant_value_for_broken_optimization (tree decl)
 {
+  tree ret;
+
   if (pedantic || DECL_MODE (decl) == BLKmode)
     return decl;
-  else
-    return decl_constant_value (decl);
+
+  ret = decl_constant_value (decl);
+  /* Avoid unwanted tree sharing between the initializer and current
+     function's body where the tree can be modified e.g. by the
+     gimplifier.  */
+  if (ret != decl && TREE_STATIC (decl))
+    ret = unshare_expr (ret);
+  return ret;
 }
 
 
@@ -2805,20 +2814,20 @@ readonly_error (tree arg, enum lvalue_use use)
       if (TYPE_READONLY (TREE_TYPE (TREE_OPERAND (arg, 0))))
 	readonly_error (TREE_OPERAND (arg, 0), use);
       else
-	error (READONLY_MSG (N_("assignment of read-only member %qs"),
-			     N_("increment of read-only member %qs"),
-			     N_("decrement of read-only member %qs")),
+	error (READONLY_MSG (G_("assignment of read-only member %qs"),
+			     G_("increment of read-only member %qs"),
+			     G_("decrement of read-only member %qs")),
 	       IDENTIFIER_POINTER (DECL_NAME (TREE_OPERAND (arg, 1))));
     }
   else if (TREE_CODE (arg) == VAR_DECL)
-    error (READONLY_MSG (N_("assignment of read-only variable %qs"),
-			 N_("increment of read-only variable %qs"),
-			 N_("decrement of read-only variable %qs")),
+    error (READONLY_MSG (G_("assignment of read-only variable %qs"),
+			 G_("increment of read-only variable %qs"),
+			 G_("decrement of read-only variable %qs")),
 	   IDENTIFIER_POINTER (DECL_NAME (arg)));
   else
-    error (READONLY_MSG (N_("assignment of read-only location"),
-			 N_("increment of read-only location"),
-			 N_("decrement of read-only location")));
+    error (READONLY_MSG (G_("assignment of read-only location"),
+			 G_("increment of read-only location"),
+			 G_("decrement of read-only location")));
 }
 
 /* Mark EXP saying that we need to be able to take the
@@ -3072,10 +3081,18 @@ build_compound_expr (tree expr1, tree expr2)
       /* The left-hand operand of a comma expression is like an expression
          statement: with -Wextra or -Wunused, we should warn if it doesn't have
 	 any side-effects, unless it was explicitly cast to (void).  */
-      if (warn_unused_value
-           && !(TREE_CODE (expr1) == CONVERT_EXPR
-                && VOID_TYPE_P (TREE_TYPE (expr1))))
-        warning ("left-hand operand of comma expression has no effect");
+      if (warn_unused_value)
+	{
+	  if (VOID_TYPE_P (TREE_TYPE (expr1))
+	      && TREE_CODE (expr1) == CONVERT_EXPR)
+	    ; /* (void) a, b */
+	  else if (VOID_TYPE_P (TREE_TYPE (expr1))
+		   && TREE_CODE (expr1) == COMPOUND_EXPR
+		   && TREE_CODE (TREE_OPERAND (expr1, 1)) == CONVERT_EXPR)
+	    ; /* (void) a, (void) b, c */
+	  else
+	    warning ("left-hand operand of comma expression has no effect");
+	}
     }
 
   /* With -Wunused, we should also warn if the left-hand operand does have
@@ -3645,26 +3662,26 @@ convert_for_assignment (tree type, tree rhs, enum impl_conv errtype,
 		     function where an ordinary one is wanted, but not
 		     vice-versa.  */
 		  if (TYPE_QUALS (ttl) & ~TYPE_QUALS (ttr))
-		    WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE "
+		    WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE "
 					    "makes qualified function "
 					    "pointer from unqualified"),
-					 N_("assignment makes qualified "
+					 G_("assignment makes qualified "
 					    "function pointer from "
 					    "unqualified"),
-					 N_("initialization makes qualified "
+					 G_("initialization makes qualified "
 					    "function pointer from "
 					    "unqualified"),
-					 N_("return makes qualified function "
+					 G_("return makes qualified function "
 					    "pointer from unqualified"));
 		}
 	      else if (TYPE_QUALS (ttr) & ~TYPE_QUALS (ttl))
-		WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE discards "
+		WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE discards "
 					"qualifiers from pointer target type"),
-				     N_("assignment discards qualifiers "
+				     G_("assignment discards qualifiers "
 					"from pointer target type"),
-				     N_("initialization discards qualifiers "
+				     G_("initialization discards qualifiers "
 					"from pointer target type"),
-				     N_("return discards qualifiers from "
+				     G_("return discards qualifiers from "
 					"pointer target type"));
 	    }
 
@@ -3713,14 +3730,14 @@ convert_for_assignment (tree type, tree rhs, enum impl_conv errtype,
 		      which are not ANSI null ptr constants.  */
 		   && (!integer_zerop (rhs) || TREE_CODE (rhs) == NOP_EXPR)
 		   && TREE_CODE (ttl) == FUNCTION_TYPE)))
-	    WARN_FOR_ASSIGNMENT (N_("ISO C forbids passing argument %d of "
+	    WARN_FOR_ASSIGNMENT (G_("ISO C forbids passing argument %d of "
 				    "%qE between function pointer "
 				    "and %<void *%>"),
-				 N_("ISO C forbids assignment between "
+				 G_("ISO C forbids assignment between "
 				    "function pointer and %<void *%>"),
-				 N_("ISO C forbids initialization between "
+				 G_("ISO C forbids initialization between "
 				    "function pointer and %<void *%>"),
-				 N_("ISO C forbids return between function "
+				 G_("ISO C forbids return between function "
 				    "pointer and %<void *%>"));
 	  /* Const and volatile mean something different for function types,
 	     so the usual warnings are not appropriate.  */
@@ -3728,13 +3745,13 @@ convert_for_assignment (tree type, tree rhs, enum impl_conv errtype,
 		   && TREE_CODE (ttl) != FUNCTION_TYPE)
 	    {
 	      if (TYPE_QUALS (ttr) & ~TYPE_QUALS (ttl))
-		WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE discards "
+		WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE discards "
 					"qualifiers from pointer target type"),
-				     N_("assignment discards qualifiers "
+				     G_("assignment discards qualifiers "
 					"from pointer target type"),
-				     N_("initialization discards qualifiers "
+				     G_("initialization discards qualifiers "
 					"from pointer target type"),
-				     N_("return discards qualifiers from "
+				     G_("return discards qualifiers from "
 					"pointer target type"));
 	      /* If this is not a case of ignoring a mismatch in signedness,
 		 no warning.  */
@@ -3743,13 +3760,13 @@ convert_for_assignment (tree type, tree rhs, enum impl_conv errtype,
 		;
 	      /* If there is a mismatch, do warn.  */
 	      else if (warn_pointer_sign)
-		WARN_FOR_ASSIGNMENT (N_("pointer targets in passing argument "
+		WARN_FOR_ASSIGNMENT (G_("pointer targets in passing argument "
 					"%d of %qE differ in signedness"),
-				     N_("pointer targets in assignment "
+				     G_("pointer targets in assignment "
 					"differ in signedness"),
-				     N_("pointer targets in initialization "
+				     G_("pointer targets in initialization "
 					"differ in signedness"),
-				     N_("pointer targets in return differ "
+				     G_("pointer targets in return differ "
 					"in signedness"));
 	    }
 	  else if (TREE_CODE (ttl) == FUNCTION_TYPE
@@ -3760,24 +3777,24 @@ convert_for_assignment (tree type, tree rhs, enum impl_conv errtype,
 		 it is okay to use a const or volatile function
 		 where an ordinary one is wanted, but not vice-versa.  */
 	      if (TYPE_QUALS (ttl) & ~TYPE_QUALS (ttr))
-		WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE makes "
+		WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE makes "
 					"qualified function pointer "
 					"from unqualified"),
-				     N_("assignment makes qualified function "
+				     G_("assignment makes qualified function "
 					"pointer from unqualified"),
-				     N_("initialization makes qualified "
+				     G_("initialization makes qualified "
 					"function pointer from unqualified"),
-				     N_("return makes qualified function "
+				     G_("return makes qualified function "
 					"pointer from unqualified"));
 	    }
 	}
       else
-	WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE from "
+	WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE from "
 				"incompatible pointer type"),
-			     N_("assignment from incompatible pointer type"),
-			     N_("initialization from incompatible "
+			     G_("assignment from incompatible pointer type"),
+			     G_("initialization from incompatible "
 				"pointer type"),
-			     N_("return from incompatible pointer type"));
+			     G_("return from incompatible pointer type"));
       return convert (type, rhs);
     }
   else if (codel == POINTER_TYPE && coder == ARRAY_TYPE)
@@ -3798,26 +3815,26 @@ convert_for_assignment (tree type, tree rhs, enum impl_conv errtype,
 	    && TREE_CODE (TREE_TYPE (rhs)) == INTEGER_TYPE
 	    && TREE_CODE (TREE_OPERAND (rhs, 0)) == INTEGER_CST
 	    && integer_zerop (TREE_OPERAND (rhs, 0))))
-	WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE makes "
+	WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE makes "
 				"pointer from integer without a cast"),
-			     N_("assignment makes pointer from integer "
+			     G_("assignment makes pointer from integer "
 				"without a cast"),
-			     N_("initialization makes pointer from "
+			     G_("initialization makes pointer from "
 				"integer without a cast"),
-			     N_("return makes pointer from integer "
+			     G_("return makes pointer from integer "
 				"without a cast"));
 
       return convert (type, rhs);
     }
   else if (codel == INTEGER_TYPE && coder == POINTER_TYPE)
     {
-      WARN_FOR_ASSIGNMENT (N_("passing argument %d of %qE makes integer "
+      WARN_FOR_ASSIGNMENT (G_("passing argument %d of %qE makes integer "
 			      "from pointer without a cast"),
-			   N_("assignment makes integer from pointer "
+			   G_("assignment makes integer from pointer "
 			      "without a cast"),
-			   N_("initialization makes integer from pointer "
+			   G_("initialization makes integer from pointer "
 			      "without a cast"),
-			   N_("return makes integer from pointer "
+			   G_("return makes integer from pointer "
 			      "without a cast"));
       return convert (type, rhs);
     }
@@ -4757,19 +4774,27 @@ push_init_level (int implicit)
   tree value = NULL_TREE;
 
   /* If we've exhausted any levels that didn't have braces,
-     pop them now.  */
-  while (constructor_stack->implicit)
+     pop them now.  If implicit == 1, this will have been done in
+     process_init_element; do not repeat it here because in the case
+     of excess initializers for an empty aggregate this leads to an
+     infinite cycle of popping a level and immediately recreating
+     it.  */
+  if (implicit != 1)
     {
-      if ((TREE_CODE (constructor_type) == RECORD_TYPE
-	   || TREE_CODE (constructor_type) == UNION_TYPE)
-	  && constructor_fields == 0)
-	process_init_element (pop_init_level (1));
-      else if (TREE_CODE (constructor_type) == ARRAY_TYPE
-	       && constructor_max_index
-	       && tree_int_cst_lt (constructor_max_index, constructor_index))
-	process_init_element (pop_init_level (1));
-      else
-	break;
+      while (constructor_stack->implicit)
+	{
+	  if ((TREE_CODE (constructor_type) == RECORD_TYPE
+	       || TREE_CODE (constructor_type) == UNION_TYPE)
+	      && constructor_fields == 0)
+	    process_init_element (pop_init_level (1));
+	  else if (TREE_CODE (constructor_type) == ARRAY_TYPE
+		   && constructor_max_index
+		   && tree_int_cst_lt (constructor_max_index,
+				       constructor_index))
+	    process_init_element (pop_init_level (1));
+	  else
+	    break;
+	}
     }
 
   /* Unless this is an explicit brace, we need to preserve previous
@@ -6487,15 +6512,33 @@ c_finish_goto_label (tree label)
       return NULL_TREE;
     }
 
+  if (C_DECL_UNJUMPABLE_VM (decl))
+    {
+      error ("jump into scope of identifier with variably modified type");
+      return NULL_TREE;
+    }
+
   if (!C_DECL_UNDEFINABLE_STMT_EXPR (decl))
     {
       /* No jump from outside this statement expression context, so
 	 record that there is a jump from within this context.  */
       struct c_label_list *nlist;
       nlist = XOBNEW (&parser_obstack, struct c_label_list);
-      nlist->next = label_context_stack->labels_used;
+      nlist->next = label_context_stack_se->labels_used;
       nlist->label = decl;
-      label_context_stack->labels_used = nlist;
+      label_context_stack_se->labels_used = nlist;
+    }
+
+  if (!C_DECL_UNDEFINABLE_VM (decl))
+    {
+      /* No jump from outside this context context of identifiers with
+	 variably modified type, so record that there is a jump from
+	 within this context.  */
+      struct c_label_list *nlist;
+      nlist = XOBNEW (&parser_obstack, struct c_label_list);
+      nlist->next = label_context_stack_vm->labels_used;
+      nlist->label = decl;
+      label_context_stack_vm->labels_used = nlist;
     }
 
   TREE_USED (decl) = 1;
@@ -6629,6 +6672,11 @@ struct c_switch {
      appear.  */
   unsigned int blocked_stmt_expr;
 
+  /* Scope of outermost declarations of identifiers with variably
+     modified type within this switch statement; if nonzero, case and
+     default labels may not appear.  */
+  unsigned int blocked_vm;
+
   /* The next node on the stack.  */
   struct c_switch *next;
 };
@@ -6684,6 +6732,7 @@ c_start_case (tree exp)
   cs->orig_type = orig_type;
   cs->cases = splay_tree_new (case_compare, NULL, NULL);
   cs->blocked_stmt_expr = 0;
+  cs->blocked_vm = 0;
   cs->next = c_switch_stack;
   c_switch_stack = cs;
 
@@ -6697,7 +6746,8 @@ do_case (tree low_value, tree high_value)
 {
   tree label = NULL_TREE;
 
-  if (c_switch_stack && !c_switch_stack->blocked_stmt_expr)
+  if (c_switch_stack && !c_switch_stack->blocked_stmt_expr
+      && !c_switch_stack->blocked_vm)
     {
       label = c_add_case_label (c_switch_stack->cases,
 				SWITCH_STMT_COND (c_switch_stack->switch_stmt),
@@ -6714,6 +6764,15 @@ do_case (tree low_value, tree high_value)
       else
 	error ("%<default%> label in statement expression not containing "
 	       "enclosing switch statement");
+    }
+  else if (c_switch_stack && c_switch_stack->blocked_vm)
+    {
+      if (low_value)
+	error ("case label in scope of identifier with variably modified "
+	       "type not containing enclosing switch statement");
+      else
+	error ("%<default%> label in scope of identifier with variably "
+	       "modified type not containing enclosing switch statement");
     }
   else if (low_value)
     error ("case label not within a switch statement");
@@ -6732,6 +6791,9 @@ c_finish_case (tree body)
 
   SWITCH_STMT_BODY (cs->switch_stmt) = body;
 
+  /* We must not be within a statement expression nested in the switch
+     at this point; we might, however, be within the scope of an
+     identifier with variably modified type nested in the switch.  */
   gcc_assert (!cs->blocked_stmt_expr);
 
   /* Emit warnings as needed.  */
@@ -7000,7 +7062,7 @@ tree
 c_begin_stmt_expr (void)
 {
   tree ret;
-  struct c_label_context *nstack;
+  struct c_label_context_se *nstack;
   struct c_label_list *glist;
 
   /* We must force a BLOCK for this level so that, if it is not expanded
@@ -7013,17 +7075,17 @@ c_begin_stmt_expr (void)
       c_switch_stack->blocked_stmt_expr++;
       gcc_assert (c_switch_stack->blocked_stmt_expr != 0);
     }
-  for (glist = label_context_stack->labels_used;
+  for (glist = label_context_stack_se->labels_used;
        glist != NULL;
        glist = glist->next)
     {
       C_DECL_UNDEFINABLE_STMT_EXPR (glist->label) = 1;
     }
-  nstack = XOBNEW (&parser_obstack, struct c_label_context);
+  nstack = XOBNEW (&parser_obstack, struct c_label_context_se);
   nstack->labels_def = NULL;
   nstack->labels_used = NULL;
-  nstack->next = label_context_stack;
-  label_context_stack = nstack;
+  nstack->next = label_context_stack_se;
+  label_context_stack_se = nstack;
 
   /* Mark the current statement list as belonging to a statement list.  */
   STATEMENT_LIST_STMT_EXPR (ret) = 1;
@@ -7046,7 +7108,7 @@ c_finish_stmt_expr (tree body)
     }
   /* It is no longer possible to jump to labels defined within this
      statement expression.  */
-  for (dlist = label_context_stack->labels_def;
+  for (dlist = label_context_stack_se->labels_def;
        dlist != NULL;
        dlist = dlist->next)
     {
@@ -7054,7 +7116,7 @@ c_finish_stmt_expr (tree body)
     }
   /* It is again possible to define labels with a goto just outside
      this statement expression.  */
-  for (glist = label_context_stack->next->labels_used;
+  for (glist = label_context_stack_se->next->labels_used;
        glist != NULL;
        glist = glist->next)
     {
@@ -7062,10 +7124,11 @@ c_finish_stmt_expr (tree body)
       glist_prev = glist;
     }
   if (glist_prev != NULL)
-    glist_prev->next = label_context_stack->labels_used;
+    glist_prev->next = label_context_stack_se->labels_used;
   else
-    label_context_stack->next->labels_used = label_context_stack->labels_used;
-  label_context_stack = label_context_stack->next;
+    label_context_stack_se->next->labels_used
+      = label_context_stack_se->labels_used;
+  label_context_stack_se = label_context_stack_se->next;
 
   /* Locate the last statement in BODY.  See c_end_compound_stmt
      about always returning a BIND_EXPR.  */
@@ -7135,6 +7198,75 @@ c_finish_stmt_expr (tree body)
   SET_EXPR_LOCUS (*last_p, EXPR_LOCUS (last));
 
   return build4 (TARGET_EXPR, type, tmp, body, NULL_TREE, NULL_TREE);
+}
+
+/* Begin the scope of an identifier of variably modified type, scope
+   number SCOPE.  Jumping from outside this scope to inside it is not
+   permitted.  */
+
+void
+c_begin_vm_scope (unsigned int scope)
+{
+  struct c_label_context_vm *nstack;
+  struct c_label_list *glist;
+
+  gcc_assert (scope > 0);
+  if (c_switch_stack && !c_switch_stack->blocked_vm)
+    c_switch_stack->blocked_vm = scope;
+  for (glist = label_context_stack_vm->labels_used;
+       glist != NULL;
+       glist = glist->next)
+    {
+      C_DECL_UNDEFINABLE_VM (glist->label) = 1;
+    }
+  nstack = XOBNEW (&parser_obstack, struct c_label_context_vm);
+  nstack->labels_def = NULL;
+  nstack->labels_used = NULL;
+  nstack->scope = scope;
+  nstack->next = label_context_stack_vm;
+  label_context_stack_vm = nstack;
+}
+
+/* End a scope which may contain identifiers of variably modified
+   type, scope number SCOPE.  */
+
+void
+c_end_vm_scope (unsigned int scope)
+{
+  if (label_context_stack_vm == NULL)
+    return;
+  if (c_switch_stack && c_switch_stack->blocked_vm == scope)
+    c_switch_stack->blocked_vm = 0;
+  /* We may have a number of nested scopes of identifiers with
+     variably modified type, all at this depth.  Pop each in turn.  */
+  while (label_context_stack_vm->scope == scope)
+    {
+      struct c_label_list *dlist, *glist, *glist_prev = NULL;
+
+      /* It is no longer possible to jump to labels defined within this
+	 scope.  */
+      for (dlist = label_context_stack_vm->labels_def;
+	   dlist != NULL;
+	   dlist = dlist->next)
+	{
+	  C_DECL_UNJUMPABLE_VM (dlist->label) = 1;
+	}
+      /* It is again possible to define labels with a goto just outside
+	 this scope.  */
+      for (glist = label_context_stack_vm->next->labels_used;
+	   glist != NULL;
+	   glist = glist->next)
+	{
+	  C_DECL_UNDEFINABLE_VM (glist->label) = 0;
+	  glist_prev = glist;
+	}
+      if (glist_prev != NULL)
+	glist_prev->next = label_context_stack_vm->labels_used;
+      else
+	label_context_stack_vm->next->labels_used
+	  = label_context_stack_vm->labels_used;
+      label_context_stack_vm = label_context_stack_vm->next;
+    }
 }
 
 /* Begin and end compound statements.  This is as simple as pushing

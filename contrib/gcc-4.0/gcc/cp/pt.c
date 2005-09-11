@@ -3132,6 +3132,13 @@ push_template_decl_real (tree decl, int is_friend)
       tmpl = pushdecl_namespace_level (tmpl);
       if (tmpl == error_mark_node)
 	return error_mark_node;
+
+      /* Hide template friend classes that haven't been declared yet.  */
+      if (is_friend && TREE_CODE (decl) == TYPE_DECL)
+	{
+	  DECL_ANTICIPATED (tmpl) = 1;
+	  DECL_FRIEND_P (tmpl) = 1;
+	}
     }
 
   if (primary)
@@ -3219,10 +3226,9 @@ redeclare_class_template (tree type, tree parms)
   if (TREE_VEC_LENGTH (parms) != TREE_VEC_LENGTH (tmpl_parms))
     {
       cp_error_at ("previous declaration %qD", tmpl);
-      error ("used %d template parameter%s instead of %d",
-		TREE_VEC_LENGTH (tmpl_parms), 
-		TREE_VEC_LENGTH (tmpl_parms) == 1 ? "" : "s",
-		TREE_VEC_LENGTH (parms));
+      error ("used %d template parameter(s) instead of %d",
+	     TREE_VEC_LENGTH (tmpl_parms), 
+	     TREE_VEC_LENGTH (parms));
       return;
     }
 
@@ -4582,7 +4588,7 @@ lookup_template_class (tree d1,
 
 	  /* A local class.  Make sure the decl gets registered properly.  */
 	  if (context == current_function_decl)
-	    pushtag (DECL_NAME (template), t, 0);
+	    pushtag (DECL_NAME (template), t, /*tag_scope=*/ts_current);
 	}
 
       /* If we called start_enum or pushtag above, this information
@@ -5640,7 +5646,7 @@ instantiate_class_template (tree type)
 		     tsubst_enum.  */
 		  if (name)
 		    SET_IDENTIFIER_TYPE_VALUE (name, newtag);
-		  pushtag (name, newtag, /*globalize=*/0);
+		  pushtag (name, newtag, /*tag_scope=*/ts_current);
 		}
 	    }
 	  else if (TREE_CODE (t) == FUNCTION_DECL 
@@ -6464,8 +6470,7 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
 	      clone_function_decl (r, /*update_method_vec_p=*/0);
 	  }
 	else if (IDENTIFIER_OPNAME_P (DECL_NAME (r)))
-	  grok_op_properties (r, DECL_FRIEND_P (r),
-			      (complain & tf_error) != 0);
+	  grok_op_properties (r, (complain & tf_error) != 0);
 
 	if (DECL_FRIEND_P (t) && DECL_FRIEND_CONTEXT (t))
 	  SET_DECL_FRIEND_CONTEXT (r,
@@ -9039,11 +9044,6 @@ instantiate_template (tree tmpl, tree targ_ptr, tsubst_flags_t complain)
      as in [temp.expl.spec], or when taking the address of a function
      template, as in [temp.deduct.funcaddr]. 
 
-   DEDUCE_ORDER:
-     We are deducing arguments when calculating the partial
-     ordering between specializations of function or class
-     templates, as in [temp.func.order] and [temp.class.order].
-
    LEN is the number of parms to consider before returning success, or -1
    for all.  This is used in partial ordering to avoid comparing parms for
    which no actual argument was passed, since they are not considered in
@@ -9191,28 +9191,6 @@ maybe_adjust_types_for_deduction (unification_kind_t strict,
       /* There is nothing to do in this case.  */
       return 0;
 
-    case DEDUCE_ORDER:
-      /* DR 214. [temp.func.order] is underspecified, and leads to no
-         ordering between things like `T *' and `T const &' for `U *'.
-         The former has T=U and the latter T=U*. The former looks more
-         specialized and John Spicer considers it well-formed (the EDG
-         compiler accepts it).
-
-         John also confirms that deduction should proceed as in a function
-         call. Which implies the usual ARG and PARM conversions as DEDUCE_CALL.
-         However, in ordering, ARG can have REFERENCE_TYPE, but no argument
-         to an actual call can have such a type.
-         
-         If both ARG and PARM are REFERENCE_TYPE, we change neither.
-         If only ARG is a REFERENCE_TYPE, we look through that and then
-         proceed as with DEDUCE_CALL (which could further convert it).  */
-      if (TREE_CODE (*arg) == REFERENCE_TYPE)
-        {
-          if (TREE_CODE (*parm) == REFERENCE_TYPE)
-            return 0;
-          *arg = TREE_TYPE (*arg);
-        }
-      break;
     default:
       gcc_unreachable ();
     }
@@ -9308,10 +9286,6 @@ type_unification_real (tree tparms,
       sub_strict = UNIFY_ALLOW_NONE;
       break;
     
-    case DEDUCE_ORDER:
-      sub_strict = UNIFY_ALLOW_NONE;
-      break;
-      
     default:
       gcc_unreachable ();
     }
@@ -9354,7 +9328,7 @@ type_unification_real (tree tparms,
 	  else
 	    type = arg;
 
-	  if (strict == DEDUCE_EXACT || strict == DEDUCE_ORDER)
+	  if (strict == DEDUCE_EXACT)
 	    {
 	      if (same_type_p (parm, type))
 		continue;
@@ -10401,36 +10375,164 @@ mark_decl_instantiated (tree result, int extern_p)
 
 /* Given two function templates PAT1 and PAT2, return:
 
-   DEDUCE should be DEDUCE_EXACT or DEDUCE_ORDER.
-   
    1 if PAT1 is more specialized than PAT2 as described in [temp.func.order].
    -1 if PAT2 is more specialized than PAT1.
    0 if neither is more specialized.
 
-   LEN is passed through to fn_type_unification.  */
+   LEN indicates the number of parameters we should consider
+   (defaulted parameters should not be considered).
+
+   The 1998 std underspecified function template partial ordering, and
+   DR214 addresses the issue.  We take pairs of arguments, one from
+   each of the templates, and deduce them against eachother.  One of
+   the templates will be more specialized if all the *other*
+   template's arguments deduce against its arguments and at least one
+   of its arguments *does* *not* deduce against the other template's
+   corresponding argument.  Deduction is done as for class templates.
+   The arguments used in deduction have reference and top level cv
+   qualifiers removed.  Iff both arguments were originally reference
+   types *and* deduction succeeds in both directions, the template
+   with the more cv-qualified argument wins for that pairing (if
+   neither is more cv-qualified, they both are equal).  Unlike regular
+   deduction, after all the arguments have been deduced in this way,
+   we do *not* verify the deduced template argument values can be
+   substituted into non-deduced contexts, nor do we have to verify
+   that all template arguments have been deduced.  */
    
 int
-more_specialized (tree pat1, tree pat2, int deduce, int len)
+more_specialized_fn (tree pat1, tree pat2, int len)
 {
-  tree targs;
-  int winner = 0;
+  tree decl1 = DECL_TEMPLATE_RESULT (pat1);
+  tree decl2 = DECL_TEMPLATE_RESULT (pat2);
+  tree targs1 = make_tree_vec (DECL_NTPARMS (pat1));
+  tree targs2 = make_tree_vec (DECL_NTPARMS (pat2));
+  tree tparms1 = DECL_INNERMOST_TEMPLATE_PARMS (pat1);
+  tree tparms2 = DECL_INNERMOST_TEMPLATE_PARMS (pat2);
+  tree args1 = TYPE_ARG_TYPES (TREE_TYPE (decl1));
+  tree args2 = TYPE_ARG_TYPES (TREE_TYPE (decl2));
+  int better1 = 0;
+  int better2 = 0;
 
-  /* If template argument deduction succeeds, we substitute the
-     resulting arguments into non-deduced contexts.  While doing that,
-     we must be aware that we may encounter dependent types.  */
-  ++processing_template_decl;
-  targs = get_bindings_real (pat1, DECL_TEMPLATE_RESULT (pat2),
-                             NULL_TREE, 0, deduce, len);
-  if (targs)
-    --winner;
+  /* If only one is a member function, they are unordered.  */
+  if (DECL_FUNCTION_MEMBER_P (decl1) != DECL_FUNCTION_MEMBER_P (decl2))
+    return 0;
+  
+  /* Don't consider 'this' parameter.  */
+  if (DECL_NONSTATIC_MEMBER_FUNCTION_P (decl1))
+    args1 = TREE_CHAIN (args1);
+  if (DECL_NONSTATIC_MEMBER_FUNCTION_P (decl2))
+    args2 = TREE_CHAIN (args2);
 
-  targs = get_bindings_real (pat2, DECL_TEMPLATE_RESULT (pat1),
-                             NULL_TREE, 0, deduce, len);
-  if (targs)
-    ++winner;
-  --processing_template_decl;
+  /* If only one is a conversion operator, they are unordered.  */
+  if (DECL_CONV_FN_P (decl1) != DECL_CONV_FN_P (decl2))
+    return 0;
+  
+  /* Consider the return type for a conversion function */
+  if (DECL_CONV_FN_P (decl1))
+    {
+      args1 = tree_cons (NULL_TREE, TREE_TYPE (TREE_TYPE (decl1)), args1);
+      args2 = tree_cons (NULL_TREE, TREE_TYPE (TREE_TYPE (decl2)), args2);
+      len++;
+    }
+  
+  processing_template_decl++;
+  
+  while (len--)
+    {
+      tree arg1 = TREE_VALUE (args1);
+      tree arg2 = TREE_VALUE (args2);
+      int deduce1, deduce2;
+      int quals1 = -1;
+      int quals2 = -1;
 
-  return winner;
+      if (TREE_CODE (arg1) == REFERENCE_TYPE)
+	{
+	  arg1 = TREE_TYPE (arg1);
+	  quals1 = cp_type_quals (arg1);
+	}
+      
+      if (TREE_CODE (arg2) == REFERENCE_TYPE)
+	{
+	  arg2 = TREE_TYPE (arg2);
+	  quals2 = cp_type_quals (arg2);
+	}
+
+      if ((quals1 < 0) != (quals2 < 0))
+	{
+	  /* Only of the args is a reference, see if we should apply
+	     array/function pointer decay to it.  This is not part of
+	     DR214, but is, IMHO, consistent with the deduction rules
+	     for the function call itself, and with our earlier
+	     implementation of the underspecified partial ordering
+	     rules.  (nathan).  */
+	  if (quals1 >= 0)
+	    {
+	      switch (TREE_CODE (arg1))
+		{
+		case ARRAY_TYPE:
+		  arg1 = TREE_TYPE (arg1);
+		  /* FALLTHROUGH. */
+		case FUNCTION_TYPE:
+		  arg1 = build_pointer_type (arg1);
+		  break;
+		  
+		default:
+		  break;
+		}
+	    }
+	  else
+	    {
+	      switch (TREE_CODE (arg2))
+		{
+		case ARRAY_TYPE:
+		  arg2 = TREE_TYPE (arg2);
+		  /* FALLTHROUGH. */
+		case FUNCTION_TYPE:
+		  arg2 = build_pointer_type (arg2);
+		  break;
+		  
+		default:
+		  break;
+		}
+	    }
+	}
+      
+      arg1 = TYPE_MAIN_VARIANT (arg1);
+      arg2 = TYPE_MAIN_VARIANT (arg2);
+      
+      deduce1 = !unify (tparms1, targs1, arg1, arg2, UNIFY_ALLOW_NONE);
+      deduce2 = !unify (tparms2, targs2, arg2, arg1, UNIFY_ALLOW_NONE);
+
+      if (!deduce1)
+	better2 = -1;
+      if (!deduce2)
+	better1 = -1;
+      if (better1 < 0 && better2 < 0)
+	/* We've failed to deduce something in either direction.
+	   These must be unordered.  */
+	break;
+      
+      if (deduce1 && deduce2 && quals1 >= 0 && quals2 >= 0)
+	{
+	  /* Deduces in both directions, see if quals can
+	     disambiguate.  Pretend the worse one failed to deduce. */
+	  if ((quals1 & quals2) == quals2)
+	    deduce1 = 0;
+	  if ((quals1 & quals2) == quals1)
+	    deduce2 = 0;
+	}
+      if (deduce1 && !deduce2 && !better2)
+	better2 = 1;
+      if (deduce2 && !deduce1 && !better1)
+	better1 = 1;
+      
+      args1 = TREE_CHAIN (args1);
+      args2 = TREE_CHAIN (args2);
+    }
+
+  processing_template_decl--;
+
+  return (better1 > 0) - (better2 > 0);
 }
 
 /* Given two class template specialization list nodes PAT1 and PAT2, return:
@@ -10594,37 +10696,56 @@ tree
 most_specialized_instantiation (tree instantiations)
 {
   tree fn, champ;
-  int fate;
 
   if (!instantiations)
     return NULL_TREE;
-
+  
+  ++processing_template_decl;
+  
   champ = instantiations;
   for (fn = TREE_CHAIN (instantiations); fn; fn = TREE_CHAIN (fn))
     {
-      fate = more_specialized (TREE_VALUE (champ), TREE_VALUE (fn),
-                               DEDUCE_EXACT, -1);
-      if (fate == 1)
-	;
-      else
+      int fate = 0;
+      
+      if (get_bindings_real (TREE_VALUE (champ),
+			     DECL_TEMPLATE_RESULT (TREE_VALUE (fn)),
+			     NULL_TREE, 0, DEDUCE_EXACT, -1))
+	fate--;
+
+      if (get_bindings_real (TREE_VALUE (fn),
+			     DECL_TEMPLATE_RESULT (TREE_VALUE (champ)),
+			     NULL_TREE, 0, DEDUCE_EXACT, -1))
+	fate++;
+      
+      if (fate != 1)
 	{
-	  if (fate == 0)
-	    {
-	      fn = TREE_CHAIN (fn);
-	      if (! fn)
-		return error_mark_node;
-	    }
+	  if (!fate)
+	    /* Equally specialized, move to next function.  If there
+	       is no next function, nothing's most specialized.  */
+	    fn = TREE_CHAIN (fn);
 	  champ = fn;
 	}
     }
-
-  for (fn = instantiations; fn && fn != champ; fn = TREE_CHAIN (fn))
-    {
-      fate = more_specialized (TREE_VALUE (champ), TREE_VALUE (fn),
-                               DEDUCE_EXACT, -1);
-      if (fate != 1)
-	return error_mark_node;
-    }
+  
+  if (champ)
+    /* Now verify that champ is better than everything earlier in the
+       instantiation list.  */
+    for (fn = instantiations; fn != champ; fn = TREE_CHAIN (fn))
+      if (get_bindings_real (TREE_VALUE (champ),
+			     DECL_TEMPLATE_RESULT (TREE_VALUE (fn)),
+			     NULL_TREE, 0, DEDUCE_EXACT, -1)
+	  || !get_bindings_real (TREE_VALUE (fn),
+				 DECL_TEMPLATE_RESULT (TREE_VALUE (champ)),
+				 NULL_TREE, 0, DEDUCE_EXACT, -1))
+	{
+	  champ = NULL_TREE;
+	  break;
+	}
+  
+  processing_template_decl--;
+  
+  if (!champ)
+    return error_mark_node;
 
   return TREE_PURPOSE (champ) ? TREE_PURPOSE (champ) : TREE_VALUE (champ);
 }
@@ -12399,10 +12520,7 @@ build_non_dependent_expr (tree expr)
      types.  */
   inner_expr = (TREE_CODE (expr) == ADDR_EXPR ? 
 		TREE_OPERAND (expr, 0) : expr);
-  if (TREE_CODE (inner_expr) == OVERLOAD 
-      || TREE_CODE (inner_expr) == FUNCTION_DECL
-      || TREE_CODE (inner_expr) == TEMPLATE_DECL
-      || TREE_CODE (inner_expr) == TEMPLATE_ID_EXPR
+  if (is_overloaded_fn (inner_expr)
       || TREE_CODE (inner_expr) == OFFSET_REF)
     return expr;
   /* There is no need to return a proxy for a variable.  */

@@ -2354,14 +2354,23 @@ get_member_function_from_ptrfunc (tree *instance_ptrptr, tree function)
 	  gcc_unreachable ();
 	}
 
-      /* Convert down to the right base before using the instance.  First
-         use the type...  */
+      /* Convert down to the right base before using the instance.  A
+	 special case is that in a pointer to member of class C, C may
+	 be incomplete.  In that case, the function will of course be
+	 a member of C, and no conversion is required.  In fact,
+	 lookup_base will fail in that case, because incomplete
+	 classes do not have BINFOs.  */ 
       basetype = TYPE_METHOD_BASETYPE (TREE_TYPE (fntype));
-      basetype = lookup_base (TREE_TYPE (TREE_TYPE (instance_ptr)),
-			      basetype, ba_check, NULL);
-      instance_ptr = build_base_path (PLUS_EXPR, instance_ptr, basetype, 1);
-      if (instance_ptr == error_mark_node)
-	return error_mark_node;
+      if (!same_type_ignoring_top_level_qualifiers_p 
+	  (basetype, TREE_TYPE (TREE_TYPE (instance_ptr))))
+	{
+	  basetype = lookup_base (TREE_TYPE (TREE_TYPE (instance_ptr)),
+				  basetype, ba_check, NULL);
+	  instance_ptr = build_base_path (PLUS_EXPR, instance_ptr, basetype, 
+					  1);
+	  if (instance_ptr == error_mark_node)
+	    return error_mark_node;
+	}
       /* ...and then the delta in the PMF.  */
       instance_ptr = build2 (PLUS_EXPR, TREE_TYPE (instance_ptr),
 			     instance_ptr, delta);
@@ -5535,7 +5544,9 @@ get_delta_difference (tree from, tree to,
     error ("   in pointer to member function conversion");
   else if (!binfo)
     {
-      if (!allow_inverse_p)
+      if (!binfo && same_type_ignoring_top_level_qualifiers_p (from, to))
+	/* Pointer to member of incomplete class is permitted*/;
+      else if (!allow_inverse_p)
 	{
 	  error_not_base_type (from, to);
 	  error ("   in pointer to member conversion");
@@ -6427,11 +6438,6 @@ casts_away_constness_r (tree *t1, tree *t2)
      and pointers to members (conv.qual), the "member" aspect of a
      pointer to member level is ignored when determining if a const
      cv-qualifier has been cast away.  */
-  if (TYPE_PTRMEM_P (*t1))
-    *t1 = build_pointer_type (TYPE_PTRMEM_POINTED_TO_TYPE (*t1));
-  if (TYPE_PTRMEM_P (*t2))
-    *t2 = build_pointer_type (TYPE_PTRMEM_POINTED_TO_TYPE (*t2));
-
   /* [expr.const.cast]
 
      For  two  pointer types:
@@ -6449,9 +6455,8 @@ casts_away_constness_r (tree *t1, tree *t2)
      to
 
             Tcv2,(M-K+1) * cv2,(M-K+2) * ... cv2,M *.  */
-
-  if (TREE_CODE (*t1) != POINTER_TYPE
-      || TREE_CODE (*t2) != POINTER_TYPE)
+  if ((!TYPE_PTR_P (*t1) && !TYPE_PTRMEM_P (*t1))
+      || (!TYPE_PTR_P (*t2) && !TYPE_PTRMEM_P (*t2)))
     {
       *t1 = cp_build_qualified_type (void_type_node,
 				     cp_type_quals (*t1));
@@ -6462,8 +6467,16 @@ casts_away_constness_r (tree *t1, tree *t2)
   
   quals1 = cp_type_quals (*t1);
   quals2 = cp_type_quals (*t2);
-  *t1 = TREE_TYPE (*t1);
-  *t2 = TREE_TYPE (*t2);
+
+  if (TYPE_PTRMEM_P (*t1))
+    *t1 = TYPE_PTRMEM_POINTED_TO_TYPE (*t1);
+  else
+    *t1 = TREE_TYPE (*t1);
+  if (TYPE_PTRMEM_P (*t2))
+    *t2 = TYPE_PTRMEM_POINTED_TO_TYPE (*t2);
+  else
+    *t2 = TREE_TYPE (*t2);
+
   casts_away_constness_r (t1, t2);
   *t1 = build_pointer_type (*t1);
   *t2 = build_pointer_type (*t2);
