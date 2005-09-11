@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/if_ef/Makefile,v 1.2.2.2 2001/04/25 11:24:03 ru Exp $
-# $DragonFly: src/sys/net/ef/Makefile,v 1.3 2005/02/18 11:41:42 corecode Exp $
+# $DragonFly: src/sys/net/ef/Makefile,v 1.4 2005/09/11 10:52:56 swildner Exp $
 
 .PATH:  ${.CURDIR}/../../net
 
@@ -34,11 +34,5 @@ opt_ef.h:
 	echo "#define ${frame} 1" >> opt_ef.h
 .endif
 .endfor
-
-load: all
-	/sbin/kldload ${.OBJDIR}/${KMOD}
-
-unload:
-	-/sbin/kldunload ${KMOD}
 
 .include <bsd.kmod.mk>

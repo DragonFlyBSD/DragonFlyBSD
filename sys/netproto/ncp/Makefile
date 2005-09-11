@@ -1,5 +1,5 @@
 #	$FreeBSD: src/sys/modules/ncp/Makefile,v 1.3 1999/12/12 21:15:51 peter Exp $
-#	$DragonFly: src/sys/netproto/ncp/Makefile,v 1.3 2005/02/18 11:41:42 corecode Exp $
+#	$DragonFly: src/sys/netproto/ncp/Makefile,v 1.4 2005/09/11 10:52:56 swildner Exp $
 
 .PATH:	${.CURDIR}/../../netncp
 
@@ -32,12 +32,6 @@ opt_ipx.h:
 .if ${NCP_IPX} > 0
 	echo "#define IPX 1" > ${.TARGET}
 .endif
-
-load: ${KMOD}.ko
-	kldload ${.OBJDIR}/${KMOD}.ko
-
-unload:
-	@-kldunload ${KMOD}
 
 deinstall:
 	rm -f ${DESTDIR}/modules/ncp.ko
