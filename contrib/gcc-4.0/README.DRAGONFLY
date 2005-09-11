@@ -1,10 +1,10 @@
 
-			GCC-4.0.0 AS USED BY DRAGONFLY
+			GCC-4.0.1 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the gnu 
-    gcc-4.0.0 distribution.  The entire distribution is 235MB but
-    we really only need around 39MB of it.  No files have been moved
-    or modified from their extracted position.
+    gcc-4.0.1 distribution.  The basis are the `core' and `g++' parts,
+    which are 110MB together, but we really only need 33MB of those.
+    No files have been moved or modified from their extracted position.
 
     DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
     HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES, OF THE GNU
@@ -14,12 +14,13 @@
     on the distribution.  The only additional files added to this directory
     are README.DRAGONFLY and README.DELETED. 
 
-	MD5 (gcc-4.0.0.tar.bz2) = 55ee7df1b29f719138ec063c57b89db6
-
+SHA1 (gcc-core-4.0.1.tar.bz2) = 6d7a1b8a7af9bfd0b8325af9723e0ae78b38ce74
+SHA1 (gcc-g++-4.0.1.tar.bz2) = 9248682ad592e5c98303b90463c87993c0e7829a
 
     UPGRADE PROCEDURE:
 
-	* download a new gcc-4.0.X dist greater then 4.0.0.
+	* download a new gcc-4.0.X dist greater then 4.0.1, notably the
+	  `core' and `g++' sets.  The complete set is not needed!
 
 	* extract the archive into this directory, overlaying the
 	  existing files.
