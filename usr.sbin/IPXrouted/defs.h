@@ -35,7 +35,7 @@
  *	@(#)defs.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/defs.h,v 1.8 1999/08/28 01:15:01 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/defs.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/defs.h,v 1.3 2005/09/11 11:35:38 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -43,11 +43,8 @@
 
 #include <net/route.h>
 #include <netipx/ipx.h>
-#if defined(vax) || defined(pdp11)
-#define xnnet(x) ((u_long) (x)->rip_dst[1] << 16 | (u_long) (x)->rip_dst[0] )
-#else
+
 #define xnnet(x) ((u_long) (x)->rip_dst[0] << 16 | (u_long) (x)->rip_dst[1] )
-#endif
 
 #include <stdio.h>
 #include <string.h>
