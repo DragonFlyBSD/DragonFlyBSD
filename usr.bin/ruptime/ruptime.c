@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
  * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
- * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.9 2005/08/23 21:22:11 liamfoy Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.10 2005/09/11 23:32:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -132,8 +132,8 @@ main(int argc, char *argv[])
 		if (LEFTEARTH(((struct whod *)buf)->wd_recvtime))
 			continue;
 		if (nhosts == hspace) {
-			if ((hs =
-			    realloc(hs, (hspace += 40) * sizeof(*hs))) == NULL)
+			hspace += 40;
+			if ((hs = realloc(hs, hspace * sizeof(*hs))) == NULL)
 				err(1, NULL);
 			hsp = hs + nhosts;
 		}
