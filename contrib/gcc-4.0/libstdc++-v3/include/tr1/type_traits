@@ -366,14 +366,11 @@ namespace tr1
 
   template<typename _Tp>
     struct has_trivial_copy
-    : public integral_constant<bool, (is_pod<_Tp>::value 
-				      && !is_volatile<_Tp>::value)> { };
+    : public integral_constant<bool, is_pod<_Tp>::value> { };
 
   template<typename _Tp>
     struct has_trivial_assign
-    : public integral_constant<bool, (is_pod<_Tp>::value
-				      && !is_const<_Tp>::value
-				      && !is_volatile<_Tp>::value)> { };
+    : public integral_constant<bool, is_pod<_Tp>::value> { };
 
   template<typename _Tp>
     struct has_trivial_destructor
@@ -385,14 +382,11 @@ namespace tr1
 
   template<typename _Tp>
     struct has_nothrow_copy
-    : public integral_constant<bool, (is_pod<_Tp>::value 
-				      && !is_volatile<_Tp>::value)> { };
+    : public integral_constant<bool, is_pod<_Tp>::value> { };
 
   template<typename _Tp>
     struct has_nothrow_assign
-    : public integral_constant<bool, (is_pod<_Tp>::value
-				      && !is_const<_Tp>::value
-				      && !is_volatile<_Tp>::value)> { };
+    : public integral_constant<bool, is_pod<_Tp>::value> { };
 
   template<typename>
     struct has_virtual_destructor
@@ -507,7 +501,8 @@ namespace tr1
     };
 
   template<typename _From, typename _To,
-	   bool = (is_function<_To>::value || is_array<_To>::value
+	   bool = (is_void<_From>::value || is_void<_To>::value
+		   || is_function<_To>::value || is_array<_To>::value
 		   // This special case is here only to avoid warnings.		   
 		   || (is_floating_point<typename
 		       remove_reference<_From>::type>::value
@@ -521,7 +516,9 @@ namespace tr1
 
   template<typename _From, typename _To>
     struct __is_convertible_helper<_From, _To, true>
-    { static const bool __value = __is_int_or_cref<_To>::__value; };
+    { static const bool __value = (is_void<_To>::value
+				   || (__is_int_or_cref<_To>::__value
+				       && !is_void<_From>::value)); };
 
   template<typename _From, typename _To>
     struct is_convertible

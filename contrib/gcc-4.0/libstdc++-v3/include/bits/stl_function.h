@@ -1,6 +1,6 @@
 // Functor implementations -*- C++ -*-
 
-// Copyright (C) 2001, 2002, 2004 Free Software Foundation, Inc.
+// Copyright (C) 2001, 2002, 2004, 2005 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -88,7 +88,7 @@ namespace std
    *  \endcode
    *  The addition and negation functions will be inlined directly.
    *
-   *  The standard functiors are derived from structs named @c unary_function
+   *  The standard functors are derived from structs named @c unary_function
    *  and @c binary_function.  These two classes contain nothing but typedefs,
    *  to aid in generic (template) programming.  If you write your own
    *  functors, you might consider doing the same.
@@ -360,7 +360,7 @@ namespace std
   /** @defgroup s20_3_6_binder Binder Classes
    *  Binders turn functions/functors with two arguments into functors with
    *  a single argument, storing an argument to be applied later.  For
-   *  example, an variable @c B of type @c binder1st is constructed from a
+   *  example, a variable @c B of type @c binder1st is constructed from a
    *  functor @c f and an argument @c x.  Later, B's @c operator() is called
    *  with a single argument @c y.  The return value is the value of @c f(x,y).
    *  @c B can be "called" with various arguments (y1, y2, ...) and will in

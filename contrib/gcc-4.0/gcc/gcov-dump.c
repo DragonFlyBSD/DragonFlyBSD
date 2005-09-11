@@ -77,6 +77,9 @@ main (int argc ATTRIBUTE_UNUSED, char **argv)
 {
   int opt;
 
+  /* Unlock the stdio streams.  */
+  unlock_std_streams ();
+
   while ((opt = getopt_long (argc, argv, "hlpv", options, NULL)) != -1)
     {
       switch (opt)
