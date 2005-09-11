@@ -1,10 +1,6 @@
-# $DragonFly: src/gnu/usr.bin/cc40/cc1plus/Attic/Makefile,v 1.1 2005/06/05 22:43:20 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc40/cc1plus/Attic/Makefile,v 1.2 2005/09/11 13:09:08 corecode Exp $
 
 GCC_LANG_DIR=	gcc/cp
-
-.include "../Makefile.inc"
-.include "../cc_tools/Makefile.tools"
-.include "../Makefile.langs"
 
 CONTRIBDIR=	${GCCDIR}/gcc/cp
 
@@ -38,3 +34,6 @@ LDADD+=	-L../libbackend -lbackend -L../libcpp -lcpp
 CFLAGS+= -I. -I${CONTRIBDIR}
 
 .include <bsd.prog.mk>
+
+.include "../cc_tools/Makefile.tools"
+.include "../Makefile.langs"

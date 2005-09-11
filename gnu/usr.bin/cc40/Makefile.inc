@@ -1,4 +1,7 @@
-# $DragonFly: src/gnu/usr.bin/cc40/Attic/Makefile.inc,v 1.1 2005/06/05 22:43:19 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc40/Attic/Makefile.inc,v 1.2 2005/09/11 13:09:08 corecode Exp $
+
+.if !target(__<cc.Makefile.inc>__)
+__<cc.Makefile.inc>__:
 
 BINDIR?=	/usr/libexec/gcc40
 .include "../Makefile.inc"
@@ -37,4 +40,6 @@ MD_FILE=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.md
 
 .if !defined(GCC_NO_LIBERTY)
 LDADD+=	-L../libiberty -liberty
+.endif
+
 .endif

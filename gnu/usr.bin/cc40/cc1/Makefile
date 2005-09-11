@@ -1,8 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc40/cc1/Attic/Makefile,v 1.1 2005/06/05 22:43:20 corecode Exp $
-
-.include "../Makefile.inc"
-.include "../cc_tools/Makefile.tools"
-.include "../Makefile.langs"
+# $DragonFly: src/gnu/usr.bin/cc40/cc1/Attic/Makefile,v 1.2 2005/09/11 13:09:08 corecode Exp $
 
 CFLAGS+=	-DTARGET_MACHINE=\"${target}\" -DHOST_MACHINE=\"${target}\"
 
@@ -30,3 +26,6 @@ LDADD+=	-L../libbackend -lbackend -L../libcpp -lcpp
 CFLAGS+= -I.
 
 .include <bsd.prog.mk>
+
+.include "../cc_tools/Makefile.tools"
+.include "../Makefile.langs"

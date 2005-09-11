@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc40/libstdc++/Attic/Makefile,v 1.1 2005/06/05 22:43:21 corecode Exp $
+# $DragonFly: src/gnu/lib/gcc40/libstdc++/Attic/Makefile,v 1.2 2005/09/11 13:09:09 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -33,7 +33,7 @@ GCC_NO_LIBERTY=	#
 
 # libstdc++ sources (libstdc++/src/Makefile.in, do not reorder)
 SRCS+=	bitmap_allocator.cc pool_allocator.cc mt_allocator.cc \
-	codecvt.cc complex_io.cc ctype.cc debug.cc debug_list.cc \
+	codecvt.cc compatibility.cc complex_io.cc ctype.cc debug.cc debug_list.cc \
 	functexcept.cc globals_locale.cc globals_io.cc ios.cc ios_failure.cc \
 	ios_init.cc ios_locale.cc limits.cc list.cc locale.cc locale_init.cc \
 	locale_facets.cc localename.cc stdexcept.cc strstream-fixed.cc tree.cc \
