@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.29 2005/06/01 17:43:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.30 2005/09/12 19:01:45 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -441,7 +441,7 @@ static void
 kern_adjtime_common(void)
 {
 	if ((ntp_delta >= 0 && ntp_delta < ntp_default_tick_delta) ||
-	    (ntp_delta < 0 && ntp_delta > ntp_default_tick_delta))
+	    (ntp_delta < 0 && ntp_delta > -ntp_default_tick_delta))
 		ntp_tick_delta = ntp_delta;
 	else if (ntp_delta > ntp_big_delta)
 		ntp_tick_delta = 10 * ntp_default_tick_delta;
