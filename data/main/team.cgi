@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.36 2005/08/26 15:42:46 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.37 2005/09/12 10:42:24 swildner Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -55,6 +55,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top"><a href="mailto:demizu 'at' dragonflybsd 'dot' org">Noritoshi Demizu</a></td>
+<td valign="top">Networking (commit access)</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:sepherosa 'at' gmail 'dot' com">Sepherosa Ziehau</a></td>
 <td valign="top">Networking (commit access)</td>
 </tr>
 
