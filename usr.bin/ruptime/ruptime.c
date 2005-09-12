@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
  * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
- * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.10 2005/09/11 23:32:08 joerg Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.11 2005/09/12 14:35:51 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -54,10 +54,11 @@ struct hs {
 	struct	whod *hs_wd;
 	int	hs_nusers;
 } *hs;
-struct	whod awhod;
-#define LEFTEARTH(h)		(now - (h) > 4*24*60*60)
-#define	ISDOWN(h)		(now - (h)->hs_wd->wd_recvtime > 11 * 60)
-#define	WHDRSIZE	(sizeof (awhod) - sizeof (awhod.wd_we))
+
+#define LEFTEARTH(h)	(now - (h) > 4*24*60*60)
+#define ISDOWN(h)	(now - (h)->hs_wd->wd_recvtime > 11 * 60)
+#define WHDRSIZE	(sizeof(struct whod) - \
+			    sizeof(((struct whod *)NULL)->wd_we))
 
 size_t nhosts;
 time_t now;
