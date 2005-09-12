@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.22 2005/07/07 20:28:26 hmp Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.23 2005/09/12 21:48:22 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -84,9 +84,6 @@
 #include <machine/cpu.h>
 
 #endif
-
-#define	MAKE_TOKENS_SPIN
-/* #define MAKE_TOKENS_YIELD */
 
 #ifndef LWKT_NUM_POOL_TOKENS
 #define LWKT_NUM_POOL_TOKENS	1024	/* power of 2 */
@@ -299,6 +296,14 @@ _lwkt_gettokref(lwkt_tokref_t ref)
      * If we are preempting another thread which owns the token we have to
      * yield to get out from the preemption because we cannot obtain a token
      * owned by the thread we are preempting.
+     *
+     * If we are preempting another thread and do not own the token,
+     * we must yield to get out from the preemption because we cannot
+     * safely call lwkt_drain_token_requests() and give away tokens
+     * that the thread we preempted might own.
+     *
+     * The act of yielding performs a thread switch and we will own all
+     * tokens on our td_toks list when it switches back to us and returns.
      */
     if (td->td_preempted) {
 	while ((td = td->td_preempted) != NULL) {
@@ -306,22 +311,35 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 		if (scan->tr_tok == tok) {
 		    lwkt_yield();
 		    KKASSERT(tok->t_cpu == gd);
-		    goto breakout;
+		    return;
 		}
 	    }
 	}
-breakout: ;
 	td = gd->gd_curthread;	/* our thread, again */
+	if (tok->t_cpu != gd) {
+	    lwkt_yield();
+	    KKASSERT(tok->t_cpu == gd);
+	}
+	return;
     }
 
     /*
-     * If our cpu does not own the token then (currently) spin while we
-     * await it.  XXX we should yield here but some testing is required
-     * before we do so, there could be some interlock issues with e.g.
-     * softupdates before we can yield.  ZZZ
+     * If we are not preempting another thread we can safely give
+     * away tokens while we busy loop.
+     *
+     * Currently tokens acquired by mainline threads are not assumed to
+     * break the big giant lock, so we have to spin when acquiring them.
+     * It would be nice to be able to yield here instead but we could
+     * run up against unexpected problems with e.g. softupdates or other
+     * subsystems.  It's safest to spin.  XXX
+     *
+     * XXX we should use some sort of time-slot synchronization and delay
+     * for these giveaways (with each cpu given a different timeslot) to
+     * avoid livelocks.
      */
 #ifdef SMP
     if (tok->t_cpu != gd) {
+#define	MAKE_TOKENS_SPIN
 #if defined(MAKE_TOKENS_SPIN)
 	int x = 40000000;
 	int y = 10;
@@ -340,10 +358,8 @@ breakout: ;
 	    splz();
 	}
 	crit_exit();
-#elif defined(MAKE_TOKENS_YIELD)
-	lwkt_yield();
 #else
-#error MAKE_TOKENS_XXX ?
+	lwkt_yield();
 #endif
 	KKASSERT(tok->t_cpu == gd);
     }
@@ -525,10 +541,8 @@ lwkt_reltoken(lwkt_tokref *_ref)
 #endif
 	splz();
 	crit_exit();
-#elif defined(MAKE_TOKENS_YIELD)
-	lwkt_yield();
 #else
-#error MAKE_TOKENS_XXX ?
+	lwkt_yield();
 #endif
     }
     KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1);
