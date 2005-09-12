@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.31 2005/06/16 21:12:47 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.32 2005/09/12 21:32:03 joerg Exp $
  */
 
 /*
@@ -54,6 +54,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/eventhandler.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -759,6 +760,8 @@ startrtclock()
 			printf("TSC clock: %u Hz (Method B)\n", tsc_freq);
 #endif
 	}
+
+	EVENTHANDLER_REGISTER(shutdown_final, resettodr, NULL, SHUTDOWN_PRI_LAST);
 
 #if !defined(SMP)
 	/*
