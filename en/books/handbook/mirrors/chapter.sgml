@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mirrors/chapter.sgml,v 1.340 2004/04/24 17:41:22 hrs Exp $
-     $DragonFly: doc/en/books/handbook/mirrors/chapter.sgml,v 1.3 2005/06/27 23:32:57 reed Exp $
+     $DragonFly: doc/en/books/handbook/mirrors/chapter.sgml,v 1.4 2005/09/12 19:23:28 reed Exp $
 -->
 
 <appendix id="mirrors">
@@ -689,11 +689,23 @@ doc/zh_*</screen>
 
     <variablelist>
       <varlistentry>
-	<!-- reed: todo: is this correct? -->
-	<term>RELENG_1_0_RELEASE</term>
+	<term>HEAD</term>
 
 	<listitem>
-	  <para>&os; 1.0</para>
+	  <para>The latest bleeding-edge &os; code. Be warned that
+	      this is considered unstable and possibly may not build or compile
+  	      at any time.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>DragonFly_Preview</term>
+
+	<listitem>
+	  <para>A "preview" of the latest bleeding-edge &os; code.
+	  The main purpose of the Preview tag is to support those
+	  users who want a fairly recent snapshot at a "reasonably stable"
+	  point in development.  Under normal conditions, one should
+	  consider syncing Preview at least once a month.</para>
 	</listitem>
       </varlistentry>
       <varlistentry>
