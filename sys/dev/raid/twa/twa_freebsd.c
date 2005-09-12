@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.7 2005/06/10 17:10:26 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.8 2005/09/12 21:38:32 dillon Exp $
  */
 
 /*
@@ -806,12 +806,18 @@ twa_map_request(struct twa_request *tr)
 		 * through, and bounce the rest, so as to make sure that we
 		 * always get back sg elements that are 512-byte multiples
 		 * in size.
+		 *
+		 * DragonFly's malloc only guarentees X alignment when X is
+		 * a power of 2, otherwise we would have to use contigalloc,
+		 * which is nasty.  Use malloc.
 		 */
 		if (((vm_offset_t)tr->tr_data % 512) || (tr->tr_length % 512)) {
 			tr->tr_flags |= TWA_CMD_DATA_COPY_NEEDED;
 			tr->tr_real_data = tr->tr_data; /* save original data pointer */
 			tr->tr_real_length = tr->tr_length; /* save original data length */
-			tr->tr_length = (tr->tr_length + 511) & ~511;
+			tr->tr_length = 512;
+			while (tr->tr_length < tr->tr_real_length)
+				tr->tr_length <<= 1;
 			tr->tr_data = malloc(tr->tr_length, TWA_MALLOC_CLASS, M_INTWAIT);
 		}
 	
