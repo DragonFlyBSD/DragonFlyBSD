@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.6 2005/04/26 23:50:23 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.7 2005/09/13 18:13:11 dillon Exp $
  */
 
 #include "defs.h"
@@ -176,7 +176,7 @@ sysntp_correct_course_offset(double offset)
 	if (no_update_opt == 0 && settimeofday(&tv, NULL) < 0) {
 	    logerr("settimeofday");
 	} else {
-	    logdebug(1, "issuing COURSE offset adjustment: %7.6f, ",
+	    logdebug(1, "issuing COARSE offset adjustment: %7.6f, ",
 		    offset);
 	    t = tv.tv_sec;
 	    tp = localtime(&t);
