@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.20 2005/08/25 18:34:17 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.21 2005/09/14 01:13:22 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -142,7 +142,6 @@ typedef struct namecache *namecache_t;
 
 #ifdef _KERNEL
 
-struct vop_lookup_args;
 struct componentname;
 struct nlcomponent;
 struct mount;

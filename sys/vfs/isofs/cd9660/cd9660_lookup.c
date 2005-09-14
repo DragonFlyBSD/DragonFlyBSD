@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.15 2004/11/12 00:09:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.16 2005/09/14 01:13:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@
  *		 struct componentname *a_cnp)
  */
 int
-cd9660_lookup(struct vop_lookup_args *ap)
+cd9660_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	globaldata_t gd = mycpu;

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.27 2005/09/03 08:01:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.28 2005/09/14 01:13:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,16 +81,16 @@ struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
 	{ &vop_advlock_desc,		(vnodeopv_entry_t) spec_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) spec_bmap },
 	{ &vop_close_desc,		(vnodeopv_entry_t) spec_close },
-	{ &vop_create_desc,		vop_panic },
+	{ &vop_old_create_desc,		vop_panic },
 	{ &vop_freeblks_desc,		(vnodeopv_entry_t) spec_freeblks },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) spec_fsync },
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) spec_getpages },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) spec_inactive },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) spec_ioctl },
 	{ &vop_lease_desc,		vop_null },
-	{ &vop_link_desc,		vop_panic },
-	{ &vop_mkdir_desc,		vop_panic },
-	{ &vop_mknod_desc,		vop_panic },
+	{ &vop_old_link_desc,		vop_panic },
+	{ &vop_old_mkdir_desc,		vop_panic },
+	{ &vop_old_mknod_desc,		vop_panic },
 	{ &vop_open_desc,		(vnodeopv_entry_t) spec_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
 	{ &vop_poll_desc,		(vnodeopv_entry_t) spec_poll },
@@ -101,12 +101,12 @@ struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
 	{ &vop_readlink_desc,		vop_panic },
 	{ &vop_reallocblks_desc,	vop_panic },
 	{ &vop_reclaim_desc,		vop_null },
-	{ &vop_remove_desc,		vop_panic },
-	{ &vop_rename_desc,		vop_panic },
-	{ &vop_rmdir_desc,		vop_panic },
+	{ &vop_old_remove_desc,		vop_panic },
+	{ &vop_old_rename_desc,		vop_panic },
+	{ &vop_old_rmdir_desc,		vop_panic },
 	{ &vop_setattr_desc,		vop_ebadf },
 	{ &vop_strategy_desc,		(vnodeopv_entry_t) spec_strategy },
-	{ &vop_symlink_desc,		vop_panic },
+	{ &vop_old_symlink_desc,	vop_panic },
 	{ &vop_write_desc,		(vnodeopv_entry_t) spec_write },
 	{ NULL, NULL }
 };

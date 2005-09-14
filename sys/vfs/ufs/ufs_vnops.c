@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.30 2005/08/10 16:46:17 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.31 2005/09/14 01:13:48 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -83,26 +83,26 @@ static int ufs_advlock (struct vop_advlock_args *);
 static int ufs_chmod (struct vnode *, int, struct ucred *, struct thread *);
 static int ufs_chown (struct vnode *, uid_t, gid_t, struct ucred *, struct thread *);
 static int ufs_close (struct vop_close_args *);
-static int ufs_create (struct vop_create_args *);
+static int ufs_create (struct vop_old_create_args *);
 static int ufs_getattr (struct vop_getattr_args *);
-static int ufs_link (struct vop_link_args *);
+static int ufs_link (struct vop_old_link_args *);
 static int ufs_makeinode (int mode, struct vnode *, struct vnode **, struct componentname *);
 static int ufs_missingop (struct vop_generic_args *ap);
-static int ufs_mkdir (struct vop_mkdir_args *);
-static int ufs_mknod (struct vop_mknod_args *);
+static int ufs_mkdir (struct vop_old_mkdir_args *);
+static int ufs_mknod (struct vop_old_mknod_args *);
 static int ufs_mmap (struct vop_mmap_args *);
 static int ufs_open (struct vop_open_args *);
 static int ufs_pathconf (struct vop_pathconf_args *);
 static int ufs_print (struct vop_print_args *);
 static int ufs_readdir (struct vop_readdir_args *);
 static int ufs_readlink (struct vop_readlink_args *);
-static int ufs_remove (struct vop_remove_args *);
-static int ufs_rename (struct vop_rename_args *);
-static int ufs_rmdir (struct vop_rmdir_args *);
+static int ufs_remove (struct vop_old_remove_args *);
+static int ufs_rename (struct vop_old_rename_args *);
+static int ufs_rmdir (struct vop_old_rmdir_args *);
 static int ufs_setattr (struct vop_setattr_args *);
 static int ufs_strategy (struct vop_strategy_args *);
-static int ufs_symlink (struct vop_symlink_args *);
-static int ufs_whiteout (struct vop_whiteout_args *);
+static int ufs_symlink (struct vop_old_symlink_args *);
+static int ufs_whiteout (struct vop_old_whiteout_args *);
 static int ufsfifo_close (struct vop_close_args *);
 static int ufsfifo_kqfilter (struct vop_kqfilter_args *);
 static int ufsfifo_read (struct vop_read_args *);
@@ -189,7 +189,7 @@ ufs_itimes(struct vnode *vp)
  */
 static
 int
-ufs_create(struct vop_create_args *ap)
+ufs_create(struct vop_old_create_args *ap)
 {
 	int error;
 
@@ -211,7 +211,7 @@ ufs_create(struct vop_create_args *ap)
 /* ARGSUSED */
 static
 int
-ufs_mknod(struct vop_mknod_args *ap)
+ufs_mknod(struct vop_old_mknod_args *ap)
 {
 	struct vattr *vap = ap->a_vap;
 	struct vnode **vpp = ap->a_vpp;
@@ -688,7 +688,7 @@ ufs_mmap(struct vop_mmap_args *ap)
  */
 static
 int
-ufs_remove(struct vop_remove_args *ap)
+ufs_remove(struct vop_old_remove_args *ap)
 {
 	struct inode *ip;
 	struct vnode *vp = ap->a_vp;
@@ -716,7 +716,7 @@ out:
  */
 static
 int
-ufs_link(struct vop_link_args *ap)
+ufs_link(struct vop_old_link_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -776,7 +776,7 @@ out2:
  */
 static
 int
-ufs_whiteout(struct vop_whiteout_args *ap)
+ufs_whiteout(struct vop_old_whiteout_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct componentname *cnp = ap->a_cnp;
@@ -850,7 +850,7 @@ ufs_whiteout(struct vop_whiteout_args *ap)
  */
 static
 int
-ufs_rename(struct vop_rename_args *ap)
+ufs_rename(struct vop_old_rename_args *ap)
 {
 	struct vnode *tvp = ap->a_tvp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -1287,7 +1287,7 @@ out:
  */
 static
 int
-ufs_mkdir(struct vop_mkdir_args *ap)
+ufs_mkdir(struct vop_old_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -1485,7 +1485,7 @@ out:
  */
 static
 int
-ufs_rmdir(struct vop_rmdir_args *ap)
+ufs_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -1581,7 +1581,7 @@ out:
  */
 static
 int
-ufs_symlink(struct vop_symlink_args *ap)
+ufs_symlink(struct vop_old_symlink_args *ap)
 {
 	struct vnode *vp, **vpp = ap->a_vpp;
 	struct inode *ip;
@@ -2278,16 +2278,16 @@ static struct vnodeopv_entry_desc ufs_vnodeop_entries[] = {
 	{ &vop_access_desc,		(vnodeopv_entry_t) ufs_access },
 	{ &vop_advlock_desc,		(vnodeopv_entry_t) ufs_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) ufs_bmap },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) ufs_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) ufs_lookup },
 	{ &vop_close_desc,		(vnodeopv_entry_t) ufs_close },
-	{ &vop_create_desc,		(vnodeopv_entry_t) ufs_create },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) ufs_create },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) ufs_getattr },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) ufs_inactive },
 	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_link_desc,		(vnodeopv_entry_t) ufs_link },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) ufs_link },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) ufs_mkdir },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) ufs_mknod },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) ufs_mkdir },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) ufs_mknod },
 	{ &vop_mmap_desc,		(vnodeopv_entry_t) ufs_mmap },
 	{ &vop_open_desc,		(vnodeopv_entry_t) ufs_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) ufs_pathconf },
@@ -2297,14 +2297,14 @@ static struct vnodeopv_entry_desc ufs_vnodeop_entries[] = {
 	{ &vop_readdir_desc,		(vnodeopv_entry_t) ufs_readdir },
 	{ &vop_readlink_desc,		(vnodeopv_entry_t) ufs_readlink },
 	{ &vop_reclaim_desc,		(vnodeopv_entry_t) ufs_reclaim },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) ufs_remove },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) ufs_rename },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) ufs_rmdir },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) ufs_remove },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) ufs_rename },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) ufs_rmdir },
 	{ &vop_setattr_desc,		(vnodeopv_entry_t) ufs_setattr },
 	{ &vop_strategy_desc,		(vnodeopv_entry_t) ufs_strategy },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) ufs_symlink },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) ufs_symlink },
 	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_whiteout_desc,		(vnodeopv_entry_t) ufs_whiteout },
+	{ &vop_old_whiteout_desc,	(vnodeopv_entry_t) ufs_whiteout },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ufs_vnodeop_opv_desc =

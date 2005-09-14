@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.12 2004/12/29 02:40:03 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.13 2005/09/14 01:13:22 dillon Exp $
  */
 
 /*
@@ -94,14 +94,14 @@ struct vop_islocked_args {
 	struct thread *a_td;
 };
 
-struct vop_lookup_args {
+struct vop_old_lookup_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
 	struct componentname *a_cnp;
 };
 
-struct vop_create_args {
+struct vop_old_create_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
@@ -109,14 +109,14 @@ struct vop_create_args {
 	struct vattr *a_vap;
 };
 
-struct vop_whiteout_args {
+struct vop_old_whiteout_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct componentname *a_cnp;
 	int a_flags;
 };
 
-struct vop_mknod_args {
+struct vop_old_mknod_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
@@ -232,21 +232,21 @@ struct vop_fsync_args {
 	struct thread *a_td;
 };
 
-struct vop_remove_args {
+struct vop_old_remove_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
 };
 
-struct vop_link_args {
+struct vop_old_link_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_tdvp;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
 };
 
-struct vop_rename_args {
+struct vop_old_rename_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_fdvp;
 	struct vnode *a_fvp;
@@ -256,7 +256,7 @@ struct vop_rename_args {
 	struct componentname *a_tcnp;
 };
 
-struct vop_mkdir_args {
+struct vop_old_mkdir_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
@@ -264,14 +264,14 @@ struct vop_mkdir_args {
 	struct vattr *a_vap;
 };
 
-struct vop_rmdir_args {
+struct vop_old_rmdir_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
 };
 
-struct vop_symlink_args {
+struct vop_old_symlink_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
@@ -587,11 +587,11 @@ struct vop_ops {
 #define vop_ops_first_field	vop_default
 	int	(*vop_default)(struct vop_generic_args *);
 	int	(*vop_islocked)(struct vop_islocked_args *);
-	int	(*vop_lookup)(struct vop_lookup_args *);
+	int	(*vop_old_lookup)(struct vop_old_lookup_args *);
 	int	(*vop_unused03)(void *);
-	int	(*vop_create)(struct vop_create_args *);
-	int	(*vop_whiteout)(struct vop_whiteout_args *);
-	int	(*vop_mknod)(struct vop_mknod_args *);
+	int	(*vop_old_create)(struct vop_old_create_args *);
+	int	(*vop_old_whiteout)(struct vop_old_whiteout_args *);
+	int	(*vop_old_mknod)(struct vop_old_mknod_args *);
 	int	(*vop_open)(struct vop_open_args *);
 	int	(*vop_close)(struct vop_close_args *);
 	int	(*vop_access)(struct vop_access_args *);
@@ -606,12 +606,12 @@ struct vop_ops {
 	int	(*vop_revoke)(struct vop_revoke_args *);
 	int	(*vop_mmap)(struct vop_mmap_args *);
 	int	(*vop_fsync)(struct vop_fsync_args *);
-	int	(*vop_remove)(struct vop_remove_args *);
-	int	(*vop_link)(struct vop_link_args *);
-	int	(*vop_rename)(struct vop_rename_args *);
-	int	(*vop_mkdir)(struct vop_mkdir_args *);
-	int	(*vop_rmdir)(struct vop_rmdir_args *);
-	int	(*vop_symlink)(struct vop_symlink_args *);
+	int	(*vop_old_remove)(struct vop_old_remove_args *);
+	int	(*vop_old_link)(struct vop_old_link_args *);
+	int	(*vop_old_rename)(struct vop_old_rename_args *);
+	int	(*vop_old_mkdir)(struct vop_old_mkdir_args *);
+	int	(*vop_old_rmdir)(struct vop_old_rmdir_args *);
+	int	(*vop_old_symlink)(struct vop_old_symlink_args *);
 	int	(*vop_readdir)(struct vop_readdir_args *);
 	int	(*vop_readlink)(struct vop_readlink_args *);
 	int	(*vop_inactive)(struct vop_inactive_args *);
@@ -677,10 +677,10 @@ union vop_args_union {
 	struct vop_generic_args vu_head;
 	struct vop_generic_args vu_default;
 	struct vop_islocked_args vu_islocked;
-	struct vop_lookup_args vu_lookup;
-	struct vop_create_args vu_create;
-	struct vop_whiteout_args vu_whiteout;
-	struct vop_mknod_args vu_mknod;
+	struct vop_old_lookup_args vu_lookup;
+	struct vop_old_create_args vu_create;
+	struct vop_old_whiteout_args vu_whiteout;
+	struct vop_old_mknod_args vu_mknod;
 	struct vop_open_args vu_open;
 	struct vop_close_args vu_close;
 	struct vop_access_args vu_access;
@@ -695,12 +695,12 @@ union vop_args_union {
 	struct vop_revoke_args vu_revoke;
 	struct vop_mmap_args vu_mmap;
 	struct vop_fsync_args vu_fsync;
-	struct vop_remove_args vu_remove;
-	struct vop_link_args vu_link;
-	struct vop_rename_args vu_rename;
-	struct vop_mkdir_args vu_mkdir;
-	struct vop_rmdir_args vu_rmdir;
-	struct vop_symlink_args vu_symlink;
+	struct vop_old_remove_args vu_remove;
+	struct vop_old_link_args vu_link;
+	struct vop_old_rename_args vu_rename;
+	struct vop_old_mkdir_args vu_mkdir;
+	struct vop_old_rmdir_args vu_rmdir;
+	struct vop_old_symlink_args vu_symlink;
 	struct vop_readdir_args vu_readdir;
 	struct vop_readlink_args vu_readlink;
 	struct vop_inactive_args vu_inactive;
@@ -752,14 +752,14 @@ union vop_args_union {
  * in a message and dispatch it to the correct thread.
  */
 int vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_lookup(struct vop_ops *ops, struct vnode *dvp, 
+int vop_old_lookup(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp);
-int vop_create(struct vop_ops *ops, struct vnode *dvp,
+int vop_old_create(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
-int vop_whiteout(struct vop_ops *ops, struct vnode *dvp, 
+int vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp, 
 		struct componentname *cnp, int flags);
-int vop_mknod(struct vop_ops *ops, struct vnode *dvp, 
+int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
@@ -789,20 +789,20 @@ int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred, struct thread *td);
 int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor,
 		struct thread *td);
-int vop_remove(struct vop_ops *ops, struct vnode *dvp,
+int vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
-int vop_link(struct vop_ops *ops, struct vnode *tdvp,
+int vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
 		struct vnode *vp, struct componentname *cnp);
-int vop_rename(struct vop_ops *ops, struct vnode *fdvp,
+int vop_old_rename(struct vop_ops *ops, struct vnode *fdvp,
 		struct vnode *fvp, struct componentname *fcnp,
 		struct vnode *tdvp, struct vnode *tvp,
 		struct componentname *tcnp);
-int vop_mkdir(struct vop_ops *ops, struct vnode *dvp,
+int vop_old_mkdir(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
-int vop_rmdir(struct vop_ops *ops, struct vnode *dvp,
+int vop_old_rmdir(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
-int vop_symlink(struct vop_ops *ops, struct vnode *dvp,
+int vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap, char *target);
 int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
@@ -890,10 +890,10 @@ int vop_vnoperate_ap(struct vop_generic_args *ap);
 int vop_cache_operate_ap(struct vop_generic_args *ap);
 int vop_journal_operate_ap(struct vop_generic_args *ap);
 int vop_islocked_ap(struct vop_islocked_args *ap);
-int vop_lookup_ap(struct vop_lookup_args *ap);
-int vop_create_ap(struct vop_create_args *ap);
-int vop_whiteout_ap(struct vop_whiteout_args *ap);
-int vop_mknod_ap(struct vop_mknod_args *ap);
+int vop_old_lookup_ap(struct vop_old_lookup_args *ap);
+int vop_old_create_ap(struct vop_old_create_args *ap);
+int vop_old_whiteout_ap(struct vop_old_whiteout_args *ap);
+int vop_old_mknod_ap(struct vop_old_mknod_args *ap);
 int vop_open_ap(struct vop_open_args *ap);
 int vop_close_ap(struct vop_close_args *ap);
 int vop_access_ap(struct vop_access_args *ap);
@@ -908,12 +908,12 @@ int vop_kqfilter_ap(struct vop_kqfilter_args *ap);
 int vop_revoke_ap(struct vop_revoke_args *ap);
 int vop_mmap_ap(struct vop_mmap_args *ap);
 int vop_fsync_ap(struct vop_fsync_args *ap);
-int vop_remove_ap(struct vop_remove_args *ap);
-int vop_link_ap(struct vop_link_args *ap);
-int vop_rename_ap(struct vop_rename_args *ap);
-int vop_mkdir_ap(struct vop_mkdir_args *ap);
-int vop_rmdir_ap(struct vop_rmdir_args *ap);
-int vop_symlink_ap(struct vop_symlink_args *ap);
+int vop_old_remove_ap(struct vop_old_remove_args *ap);
+int vop_old_link_ap(struct vop_old_link_args *ap);
+int vop_old_rename_ap(struct vop_old_rename_args *ap);
+int vop_old_mkdir_ap(struct vop_old_mkdir_args *ap);
+int vop_old_rmdir_ap(struct vop_old_rmdir_args *ap);
+int vop_old_symlink_ap(struct vop_old_symlink_args *ap);
 int vop_readdir_ap(struct vop_readdir_args *ap);
 int vop_readlink_ap(struct vop_readlink_args *ap);
 int vop_inactive_ap(struct vop_inactive_args *ap);
@@ -960,10 +960,10 @@ int vop_nrename_ap(struct vop_nrename_args *ap);
  */
 extern struct vnodeop_desc vop_default_desc;
 extern struct vnodeop_desc vop_islocked_desc;
-extern struct vnodeop_desc vop_lookup_desc;
-extern struct vnodeop_desc vop_create_desc;
-extern struct vnodeop_desc vop_whiteout_desc;
-extern struct vnodeop_desc vop_mknod_desc;
+extern struct vnodeop_desc vop_old_lookup_desc;
+extern struct vnodeop_desc vop_old_create_desc;
+extern struct vnodeop_desc vop_old_whiteout_desc;
+extern struct vnodeop_desc vop_old_mknod_desc;
 extern struct vnodeop_desc vop_open_desc;
 extern struct vnodeop_desc vop_close_desc;
 extern struct vnodeop_desc vop_access_desc;
@@ -978,12 +978,12 @@ extern struct vnodeop_desc vop_kqfilter_desc;
 extern struct vnodeop_desc vop_revoke_desc;
 extern struct vnodeop_desc vop_mmap_desc;
 extern struct vnodeop_desc vop_fsync_desc;
-extern struct vnodeop_desc vop_remove_desc;
-extern struct vnodeop_desc vop_link_desc;
-extern struct vnodeop_desc vop_rename_desc;
-extern struct vnodeop_desc vop_mkdir_desc;
-extern struct vnodeop_desc vop_rmdir_desc;
-extern struct vnodeop_desc vop_symlink_desc;
+extern struct vnodeop_desc vop_old_remove_desc;
+extern struct vnodeop_desc vop_old_link_desc;
+extern struct vnodeop_desc vop_old_rename_desc;
+extern struct vnodeop_desc vop_old_mkdir_desc;
+extern struct vnodeop_desc vop_old_rmdir_desc;
+extern struct vnodeop_desc vop_old_symlink_desc;
 extern struct vnodeop_desc vop_readdir_desc;
 extern struct vnodeop_desc vop_readlink_desc;
 extern struct vnodeop_desc vop_inactive_desc;
@@ -1119,25 +1119,25 @@ extern struct vnodeop_desc vop_nrename_desc;
  * the VFS's.
  */
 #define VOP_OLD_LOOKUP(dvp, vpp, cnp)			\
-	vop_lookup(*(dvp)->v_ops, dvp, vpp, cnp)
+	vop_old_lookup(*(dvp)->v_ops, dvp, vpp, cnp)
 #define VOP_OLD_CREATE(dvp, vpp, cnp, vap)		\
-	vop_create(*(dvp)->v_ops, dvp, vpp, cnp, vap)
+	vop_old_create(*(dvp)->v_ops, dvp, vpp, cnp, vap)
 #define VOP_OLD_MKDIR(dvp, vpp, cnp, vap)		\
-	vop_mkdir(*(dvp)->v_ops, dvp, vpp, cnp, vap)
+	vop_old_mkdir(*(dvp)->v_ops, dvp, vpp, cnp, vap)
 #define VOP_OLD_MKNOD(dvp, vpp, cnp, vap)		\
-	vop_mknod(*(dvp)->v_ops, dvp, vpp, cnp, vap)
+	vop_old_mknod(*(dvp)->v_ops, dvp, vpp, cnp, vap)
 #define VOP_OLD_LINK(tdvp, vp, cnp)			\
-	vop_link(*(tdvp)->v_ops, tdvp, vp, cnp)
+	vop_old_link(*(tdvp)->v_ops, tdvp, vp, cnp)
 #define VOP_OLD_SYMLINK(dvp, vpp, cnp, vap, target)	\
-	vop_symlink(*(dvp)->v_ops, dvp, vpp, cnp, vap, target)
+	vop_old_symlink(*(dvp)->v_ops, dvp, vpp, cnp, vap, target)
 #define VOP_OLD_WHITEOUT(dvp, cnp, flags)		\
-	vop_whiteout(*(dvp)->v_ops, dvp, cnp, flags)
+	vop_old_whiteout(*(dvp)->v_ops, dvp, cnp, flags)
 #define VOP_OLD_RENAME(fdvp, fvp, fcnp, tdvp, tvp, tcnp) \
-	vop_rename(*(fdvp)->v_ops, fdvp, fvp, fcnp, tdvp, tvp, tcnp)
+	vop_old_rename(*(fdvp)->v_ops, fdvp, fvp, fcnp, tdvp, tvp, tcnp)
 #define VOP_OLD_RMDIR(dvp, vp, cnp)			\
-	vop_rmdir(*(dvp)->v_ops, dvp, vp, cnp)
+	vop_old_rmdir(*(dvp)->v_ops, dvp, vp, cnp)
 #define VOP_OLD_REMOVE(dvp, vp, cnp)			\
-	vop_remove(*(dvp)->v_ops, dvp, vp, cnp)
+	vop_old_remove(*(dvp)->v_ops, dvp, vp, cnp)
 
 /*
  * 'NEW' VOP calls.  These calls use namespaces as an operational basis

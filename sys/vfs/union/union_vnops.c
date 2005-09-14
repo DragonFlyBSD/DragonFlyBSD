@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.20 2005/04/19 17:54:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.21 2005/09/14 01:13:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,20 +72,20 @@ static int	union_access (struct vop_access_args *ap);
 static int	union_advlock (struct vop_advlock_args *ap);
 static int	union_bmap (struct vop_bmap_args *ap);
 static int	union_close (struct vop_close_args *ap);
-static int	union_create (struct vop_create_args *ap);
+static int	union_create (struct vop_old_create_args *ap);
 static int	union_fsync (struct vop_fsync_args *ap);
 static int	union_getattr (struct vop_getattr_args *ap);
 static int	union_inactive (struct vop_inactive_args *ap);
 static int	union_ioctl (struct vop_ioctl_args *ap);
 static int	union_lease (struct vop_lease_args *ap);
-static int	union_link (struct vop_link_args *ap);
+static int	union_link (struct vop_old_link_args *ap);
 static int	union_lock (struct vop_lock_args *ap);
-static int	union_lookup (struct vop_lookup_args *ap);
+static int	union_lookup (struct vop_old_lookup_args *ap);
 static int	union_lookup1 (struct vnode *udvp, struct vnode **dvp,
 				   struct vnode **vpp,
 				   struct componentname *cnp);
-static int	union_mkdir (struct vop_mkdir_args *ap);
-static int	union_mknod (struct vop_mknod_args *ap);
+static int	union_mkdir (struct vop_old_mkdir_args *ap);
+static int	union_mknod (struct vop_old_mknod_args *ap);
 static int	union_mmap (struct vop_mmap_args *ap);
 static int	union_open (struct vop_open_args *ap);
 static int	union_pathconf (struct vop_pathconf_args *ap);
@@ -94,18 +94,18 @@ static int	union_read (struct vop_read_args *ap);
 static int	union_readdir (struct vop_readdir_args *ap);
 static int	union_readlink (struct vop_readlink_args *ap);
 static int	union_reclaim (struct vop_reclaim_args *ap);
-static int	union_remove (struct vop_remove_args *ap);
-static int	union_rename (struct vop_rename_args *ap);
+static int	union_remove (struct vop_old_remove_args *ap);
+static int	union_rename (struct vop_old_rename_args *ap);
 static int	union_revoke (struct vop_revoke_args *ap);
-static int	union_rmdir (struct vop_rmdir_args *ap);
+static int	union_rmdir (struct vop_old_rmdir_args *ap);
 static int	union_poll (struct vop_poll_args *ap);
 static int	union_setattr (struct vop_setattr_args *ap);
 static int	union_strategy (struct vop_strategy_args *ap);
 static int	union_getpages (struct vop_getpages_args *ap);
 static int	union_putpages (struct vop_putpages_args *ap);
-static int	union_symlink (struct vop_symlink_args *ap);
+static int	union_symlink (struct vop_old_symlink_args *ap);
 static int	union_unlock (struct vop_unlock_args *ap);
-static int	union_whiteout (struct vop_whiteout_args *ap);
+static int	union_whiteout (struct vop_old_whiteout_args *ap);
 static int	union_write (struct vop_read_args *ap);
 
 static __inline
@@ -280,7 +280,7 @@ union_lookup1(struct vnode *udvp, struct vnode **pdvp, struct vnode **vpp,
  *		struct vnode **a_vpp, struct componentname *a_cnp)
  */
 static int
-union_lookup(struct vop_lookup_args *ap)
+union_lookup(struct vop_old_lookup_args *ap)
 {
 	int error;
 	int uerror, lerror;
@@ -624,7 +624,7 @@ out:
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-union_create(struct vop_create_args *ap)
+union_create(struct vop_old_create_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -655,7 +655,7 @@ union_create(struct vop_create_args *ap)
  *		  int a_flags)
  */
 static int
-union_whiteout(struct vop_whiteout_args *ap)
+union_whiteout(struct vop_old_whiteout_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -679,7 +679,7 @@ union_whiteout(struct vop_whiteout_args *ap)
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-union_mknod(struct vop_mknod_args *ap)
+union_mknod(struct vop_old_mknod_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -1218,7 +1218,7 @@ union_fsync(struct vop_fsync_args *ap)
  *		struct componentname *a_cnp)
  */
 static int
-union_remove(struct vop_remove_args *ap)
+union_remove(struct vop_old_remove_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct union_node *un = VTOUNION(ap->a_vp);
@@ -1261,7 +1261,7 @@ union_remove(struct vop_remove_args *ap)
  *	      struct componentname *a_cnp)
  */
 static int
-union_link(struct vop_link_args *ap)
+union_link(struct vop_old_link_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct thread *td = cnp->cn_td;
@@ -1329,7 +1329,7 @@ union_link(struct vop_link_args *ap)
  *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-union_rename(struct vop_rename_args *ap)
+union_rename(struct vop_old_rename_args *ap)
 {
 	int error;
 	struct vnode *fdvp = ap->a_fdvp;
@@ -1490,7 +1490,7 @@ bad:
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-union_mkdir(struct vop_mkdir_args *ap)
+union_mkdir(struct vop_old_mkdir_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -1520,7 +1520,7 @@ union_mkdir(struct vop_mkdir_args *ap)
  *		struct componentname *a_cnp)
  */
 static int
-union_rmdir(struct vop_rmdir_args *ap)
+union_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct union_node *un = VTOUNION(ap->a_vp);
@@ -1558,7 +1558,7 @@ union_rmdir(struct vop_rmdir_args *ap)
  *		char *a_target)
  */
 static int
-union_symlink(struct vop_symlink_args *ap)
+union_symlink(struct vop_old_symlink_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -1865,7 +1865,7 @@ struct vnodeopv_entry_desc union_vnodeop_entries[] = {
 	{ &vop_advlock_desc,		(vnodeopv_entry_t) union_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) union_bmap },
 	{ &vop_close_desc,		(vnodeopv_entry_t) union_close },
-	{ &vop_create_desc,		(vnodeopv_entry_t) union_create },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) union_create },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) union_fsync },
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) union_getpages },
 	{ &vop_putpages_desc,		(vnodeopv_entry_t) union_putpages },
@@ -1874,11 +1874,11 @@ struct vnodeopv_entry_desc union_vnodeop_entries[] = {
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) union_ioctl },
 	{ &vop_islocked_desc,		vop_stdislocked },
 	{ &vop_lease_desc,		(vnodeopv_entry_t) union_lease },
-	{ &vop_link_desc,		(vnodeopv_entry_t) union_link },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) union_link },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) union_lock },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) union_lookup },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) union_mkdir },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) union_mknod },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) union_lookup },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) union_mkdir },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) union_mknod },
 	{ &vop_mmap_desc,		(vnodeopv_entry_t) union_mmap },
 	{ &vop_open_desc,		(vnodeopv_entry_t) union_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) union_pathconf },
@@ -1888,15 +1888,15 @@ struct vnodeopv_entry_desc union_vnodeop_entries[] = {
 	{ &vop_readdir_desc,		(vnodeopv_entry_t) union_readdir },
 	{ &vop_readlink_desc,		(vnodeopv_entry_t) union_readlink },
 	{ &vop_reclaim_desc,		(vnodeopv_entry_t) union_reclaim },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) union_remove },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) union_rename },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) union_remove },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) union_rename },
 	{ &vop_revoke_desc,		(vnodeopv_entry_t) union_revoke },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) union_rmdir },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) union_rmdir },
 	{ &vop_setattr_desc,		(vnodeopv_entry_t) union_setattr },
 	{ &vop_strategy_desc,		(vnodeopv_entry_t) union_strategy },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) union_symlink },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) union_symlink },
 	{ &vop_unlock_desc,		(vnodeopv_entry_t) union_unlock },
-	{ &vop_whiteout_desc,		(vnodeopv_entry_t) union_whiteout },
+	{ &vop_old_whiteout_desc,	(vnodeopv_entry_t) union_whiteout },
 	{ &vop_write_desc,		(vnodeopv_entry_t) union_write },
 	{ NULL, NULL }
 };

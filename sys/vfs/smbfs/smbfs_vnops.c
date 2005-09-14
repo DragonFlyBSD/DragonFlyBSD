@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.23 2005/06/06 15:35:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.24 2005/09/14 01:13:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -61,8 +61,8 @@
 /*
  * Prototypes for SMBFS vnode operations
  */
-static int smbfs_create(struct vop_create_args *);
-static int smbfs_mknod(struct vop_mknod_args *);
+static int smbfs_create(struct vop_old_create_args *);
+static int smbfs_mknod(struct vop_old_mknod_args *);
 static int smbfs_open(struct vop_open_args *);
 static int smbfs_closel(struct vop_close_args *);
 static int smbfs_access(struct vop_access_args *);
@@ -71,13 +71,13 @@ static int smbfs_setattr(struct vop_setattr_args *);
 static int smbfs_read(struct vop_read_args *);
 static int smbfs_write(struct vop_write_args *);
 static int smbfs_fsync(struct vop_fsync_args *);
-static int smbfs_remove(struct vop_remove_args *);
-static int smbfs_link(struct vop_link_args *);
-static int smbfs_lookup(struct vop_lookup_args *);
-static int smbfs_rename(struct vop_rename_args *);
-static int smbfs_mkdir(struct vop_mkdir_args *);
-static int smbfs_rmdir(struct vop_rmdir_args *);
-static int smbfs_symlink(struct vop_symlink_args *);
+static int smbfs_remove(struct vop_old_remove_args *);
+static int smbfs_link(struct vop_old_link_args *);
+static int smbfs_lookup(struct vop_old_lookup_args *);
+static int smbfs_rename(struct vop_old_rename_args *);
+static int smbfs_mkdir(struct vop_old_mkdir_args *);
+static int smbfs_rmdir(struct vop_old_rmdir_args *);
+static int smbfs_symlink(struct vop_old_symlink_args *);
 static int smbfs_readdir(struct vop_readdir_args *);
 static int smbfs_bmap(struct vop_bmap_args *);
 static int smbfs_strategy(struct vop_strategy_args *);
@@ -92,18 +92,18 @@ struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
 	{ &vop_advlock_desc,		(vnodeopv_entry_t) smbfs_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) smbfs_bmap },
 	{ &vop_close_desc,		(vnodeopv_entry_t) smbfs_closel },
-	{ &vop_create_desc,		(vnodeopv_entry_t) smbfs_create },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) smbfs_create },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) smbfs_fsync },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) smbfs_getattr },
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) smbfs_getpages },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) smbfs_inactive },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) smbfs_ioctl },
 	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_link_desc,		(vnodeopv_entry_t) smbfs_link },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) smbfs_link },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) smbfs_lookup },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) smbfs_mkdir },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) smbfs_mknod },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) smbfs_lookup },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) smbfs_mkdir },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) smbfs_mknod },
 	{ &vop_open_desc,		(vnodeopv_entry_t) smbfs_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) smbfs_pathconf },
 	{ &vop_print_desc,		(vnodeopv_entry_t) smbfs_print },
@@ -111,12 +111,12 @@ struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
 	{ &vop_read_desc,		(vnodeopv_entry_t) smbfs_read },
 	{ &vop_readdir_desc,		(vnodeopv_entry_t) smbfs_readdir },
 	{ &vop_reclaim_desc,		(vnodeopv_entry_t) smbfs_reclaim },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) smbfs_remove },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) smbfs_rename },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) smbfs_rmdir },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) smbfs_remove },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) smbfs_rename },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) smbfs_rmdir },
 	{ &vop_setattr_desc,		(vnodeopv_entry_t) smbfs_setattr },
 	{ &vop_strategy_desc,		(vnodeopv_entry_t) smbfs_strategy },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) smbfs_symlink },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) smbfs_symlink },
 	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
 	{ &vop_write_desc,		(vnodeopv_entry_t) smbfs_write },
 	{ &vop_getextattr_desc, 	(vnodeopv_entry_t) smbfs_getextattr },
@@ -466,7 +466,7 @@ smbfs_write(struct vop_write_args *ap)
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-smbfs_create(struct vop_create_args *ap)
+smbfs_create(struct vop_old_create_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -508,7 +508,7 @@ smbfs_create(struct vop_create_args *ap)
  *		struct vnode *a_vp, struct componentname *a_cnp)
  */
 static int
-smbfs_remove(struct vop_remove_args *ap)
+smbfs_remove(struct vop_old_remove_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 /*	struct vnode *dvp = ap->a_dvp;*/
@@ -532,7 +532,7 @@ smbfs_remove(struct vop_remove_args *ap)
  *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-smbfs_rename(struct vop_rename_args *ap)
+smbfs_rename(struct vop_old_rename_args *ap)
 {
 	struct vnode *fvp = ap->a_fvp;
 	struct vnode *tvp = ap->a_tvp;
@@ -615,7 +615,7 @@ out:
  *	      struct componentname *a_cnp)
  */
 static int
-smbfs_link(struct vop_link_args *ap)
+smbfs_link(struct vop_old_link_args *ap)
 {
 	return EOPNOTSUPP;
 }
@@ -629,13 +629,13 @@ smbfs_link(struct vop_link_args *ap)
  *		 char *a_target)
  */
 static int
-smbfs_symlink(struct vop_symlink_args *ap)
+smbfs_symlink(struct vop_old_symlink_args *ap)
 {
 	return EOPNOTSUPP;
 }
 
 static int
-smbfs_mknod(struct vop_mknod_args *ap)
+smbfs_mknod(struct vop_old_mknod_args *ap)
 {
 	return EOPNOTSUPP;
 }
@@ -645,7 +645,7 @@ smbfs_mknod(struct vop_mknod_args *ap)
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-smbfs_mkdir(struct vop_mkdir_args *ap)
+smbfs_mkdir(struct vop_old_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 /*	struct vattr *vap = ap->a_vap;*/
@@ -685,7 +685,7 @@ smbfs_mkdir(struct vop_mkdir_args *ap)
  *		struct componentname *a_cnp)
  */
 static int
-smbfs_rmdir(struct vop_rmdir_args *ap)
+smbfs_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -1014,7 +1014,7 @@ smbfs_pathcheck(struct smbmount *smp, const char *name, int nmlen, int nameiop)
  *		struct vnode **a_vpp, struct componentname *a_cnp)
  */
 int
-smbfs_lookup(struct vop_lookup_args *ap)
+smbfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct thread *td = cnp->cn_td;

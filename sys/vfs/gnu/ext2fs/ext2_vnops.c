@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.22 2005/06/06 15:35:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.23 2005/09/14 01:13:35 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -86,14 +86,14 @@ static int ext2_makeinode (int mode, struct vnode *, struct vnode **, struct com
 static int ext2_fsync (struct vop_fsync_args *);
 static int ext2_read (struct vop_read_args *);
 static int ext2_write (struct vop_write_args *);
-static int ext2_remove (struct vop_remove_args *);
-static int ext2_link (struct vop_link_args *);
-static int ext2_rename (struct vop_rename_args *);
-static int ext2_mkdir (struct vop_mkdir_args *);
-static int ext2_rmdir (struct vop_rmdir_args *);
-static int ext2_create (struct vop_create_args *);
-static int ext2_mknod (struct vop_mknod_args *);
-static int ext2_symlink (struct vop_symlink_args *);
+static int ext2_remove (struct vop_old_remove_args *);
+static int ext2_link (struct vop_old_link_args *);
+static int ext2_rename (struct vop_old_rename_args *);
+static int ext2_mkdir (struct vop_old_mkdir_args *);
+static int ext2_rmdir (struct vop_old_rmdir_args *);
+static int ext2_create (struct vop_old_create_args *);
+static int ext2_mknod (struct vop_old_mknod_args *);
+static int ext2_symlink (struct vop_old_symlink_args *);
 static int ext2_getpages (struct vop_getpages_args *);
 static int ext2_putpages (struct vop_putpages_args *);
 
@@ -102,19 +102,19 @@ struct vnodeopv_entry_desc ext2_vnodeop_entries[] = {
 	{ &vop_default_desc,		(vnodeopv_entry_t) ufs_vnoperate },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) ext2_fsync },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) ext2_inactive },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) ext2_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) ext2_lookup },
 	{ &vop_read_desc,		(vnodeopv_entry_t) ext2_read },
 	{ &vop_readdir_desc,		(vnodeopv_entry_t) ext2_readdir },
 	{ &vop_reallocblks_desc,	(vnodeopv_entry_t) ext2_reallocblks },
 	{ &vop_write_desc,		(vnodeopv_entry_t) ext2_write },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) ext2_remove },
-	{ &vop_link_desc,		(vnodeopv_entry_t) ext2_link },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) ext2_rename },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) ext2_mkdir },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) ext2_rmdir },
-	{ &vop_create_desc,		(vnodeopv_entry_t) ext2_create },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) ext2_mknod },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) ext2_symlink },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) ext2_remove },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) ext2_link },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) ext2_rename },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) ext2_mkdir },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) ext2_rmdir },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) ext2_create },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) ext2_mknod },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) ext2_symlink },
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) ext2_getpages },
 	{ &vop_putpages_desc,		(vnodeopv_entry_t) ext2_putpages },
 	{ NULL, NULL }
@@ -158,7 +158,7 @@ static struct dirtemplate omastertemplate = {
  *	       struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-ext2_create(struct vop_create_args *ap)
+ext2_create(struct vop_old_create_args *ap)
 {
 	int error;
 
@@ -258,7 +258,7 @@ ext2_fsync_bp(struct buf *bp, void *data)
  */
 /* ARGSUSED */
 static int
-ext2_mknod(struct vop_mknod_args *ap)
+ext2_mknod(struct vop_old_mknod_args *ap)
 {
 	struct vattr *vap = ap->a_vap;
 	struct vnode **vpp = ap->a_vpp;
@@ -301,7 +301,7 @@ ext2_mknod(struct vop_mknod_args *ap)
  *	       struct componentname *a_cnp)
  */
 static int
-ext2_remove(struct vop_remove_args *ap)
+ext2_remove(struct vop_old_remove_args *ap)
 {
 	struct inode *ip;
 	struct vnode *vp = ap->a_vp;
@@ -330,7 +330,7 @@ out:
  *	     struct componentname *a_cnp)
  */
 static int
-ext2_link(struct vop_link_args *ap)
+ext2_link(struct vop_old_link_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -380,7 +380,7 @@ out2:
  *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-ext2_rename(struct vop_rename_args *ap)
+ext2_rename(struct vop_old_rename_args *ap)
 {
 	struct vnode *tvp = ap->a_tvp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -826,7 +826,7 @@ out:
  *	      struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-ext2_mkdir(struct vop_mkdir_args *ap)
+ext2_mkdir(struct vop_old_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -990,7 +990,7 @@ out:
  *	      struct componentname *a_cnp)
  */
 static int
-ext2_rmdir(struct vop_rmdir_args *ap)
+ext2_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -1056,7 +1056,7 @@ out:
  *		char *a_target)
  */
 static int
-ext2_symlink(struct vop_symlink_args *ap)
+ext2_symlink(struct vop_old_symlink_args *ap)
 {
 	struct vnode *vp, **vpp = ap->a_vpp;
 	struct inode *ip;

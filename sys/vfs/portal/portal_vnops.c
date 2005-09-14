@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.22 2005/06/22 01:33:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.23 2005/09/14 01:13:43 dillon Exp $
  */
 
 /*
@@ -74,7 +74,7 @@ static void	portal_closefd (struct thread *td, int fd);
 static int	portal_connect (struct socket *so, struct socket *so2);
 static int	portal_getattr (struct vop_getattr_args *ap);
 static int	portal_inactive (struct vop_inactive_args *ap);
-static int	portal_lookup (struct vop_lookup_args *ap);
+static int	portal_lookup (struct vop_old_lookup_args *ap);
 static int	portal_open (struct vop_open_args *ap);
 static int	portal_print (struct vop_print_args *ap);
 static int	portal_readdir (struct vop_readdir_args *ap);
@@ -105,7 +105,7 @@ portal_closefd(struct thread *td, int fd)
  *		 struct componentname *a_cnp)
  */
 static int
-portal_lookup(struct vop_lookup_args *ap)
+portal_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode **vpp = ap->a_vpp;
@@ -573,7 +573,7 @@ struct vnodeopv_entry_desc portal_vnodeop_entries[] = {
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) portal_badop },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) portal_getattr },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) portal_inactive },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) portal_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) portal_lookup },
 	{ &vop_open_desc,		(vnodeopv_entry_t) portal_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
 	{ &vop_print_desc,		(vnodeopv_entry_t) portal_print },

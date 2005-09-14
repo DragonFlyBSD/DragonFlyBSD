@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.17 2005/02/02 21:34:19 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.18 2005/09/14 01:13:48 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -110,7 +110,7 @@ SYSCTL_INT(_debug, OID_AUTO, dircheck, CTLFLAG_RW, &dirchk, 0, "");
  *	      struct componentname *a_cnp)
  */
 int
-ufs_lookup(struct vop_lookup_args *ap)
+ufs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	struct inode *dp;	/* inode for directory being searched */

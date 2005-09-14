@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.12 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.13 2005/09/14 01:13:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@ static int	dead_badop (void);
 static int	dead_bmap (struct vop_bmap_args *);
 static int	dead_ioctl (struct vop_ioctl_args *);
 static int	dead_lock (struct vop_lock_args *);
-static int	dead_lookup (struct vop_lookup_args *);
+static int	dead_lookup (struct vop_old_lookup_args *);
 static int	dead_open (struct vop_open_args *);
 static int	dead_poll (struct vop_poll_args *);
 static int	dead_print (struct vop_print_args *);
@@ -63,15 +63,15 @@ static struct vnodeopv_entry_desc dead_vnodeop_entries[] = {
 	{ &vop_access_desc,		vop_ebadf },
 	{ &vop_advlock_desc,		vop_ebadf },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) dead_bmap },
-	{ &vop_create_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_getattr_desc,		vop_ebadf },
 	{ &vop_inactive_desc,		vop_null },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) dead_ioctl },
-	{ &vop_link_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) dead_lock },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) dead_lookup },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) dead_badop },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) dead_lookup },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_mmap_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_open_desc,		(vnodeopv_entry_t) dead_open },
 	{ &vop_pathconf_desc,		vop_ebadf },	/* per pathconf(2) */
@@ -81,11 +81,11 @@ static struct vnodeopv_entry_desc dead_vnodeop_entries[] = {
 	{ &vop_readdir_desc,		vop_ebadf },
 	{ &vop_readlink_desc,		vop_ebadf },
 	{ &vop_reclaim_desc,		vop_null },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) dead_badop },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) dead_badop },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_setattr_desc,		vop_ebadf },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) dead_badop },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) dead_badop },
 	{ &vop_write_desc,		(vnodeopv_entry_t) dead_write },
 	{ NULL, NULL }
 };
@@ -102,7 +102,7 @@ VNODEOP_SET(dead_vnodeop_opv_desc);
  */
 /* ARGSUSED */
 static int
-dead_lookup(struct vop_lookup_args *ap)
+dead_lookup(struct vop_old_lookup_args *ap)
 {
 	*ap->a_vpp = NULL;
 	return (ENOTDIR);

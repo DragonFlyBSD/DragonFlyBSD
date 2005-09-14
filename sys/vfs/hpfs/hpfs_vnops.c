@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.26 2005/08/22 16:53:26 corecode Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.27 2005/09/14 01:13:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -85,9 +85,9 @@ static int	hpfs_access (struct vop_access_args *ap);
 static int	hpfs_open (struct vop_open_args *ap);
 static int	hpfs_close (struct vop_close_args *ap);
 static int	hpfs_readdir (struct vop_readdir_args *ap);
-static int	hpfs_lookup (struct vop_lookup_args *ap);
-static int	hpfs_create (struct vop_create_args *);
-static int	hpfs_remove (struct vop_remove_args *);
+static int	hpfs_lookup (struct vop_old_lookup_args *ap);
+static int	hpfs_create (struct vop_old_create_args *);
+static int	hpfs_remove (struct vop_old_remove_args *);
 static int	hpfs_bmap (struct vop_bmap_args *ap);
 #if defined(__DragonFly__)
 static int	hpfs_getpages (struct vop_getpages_args *ap);
@@ -1061,7 +1061,7 @@ readdone:
  *		struct componentname *a_cnp)
  */
 int
-hpfs_lookup(struct vop_lookup_args *ap)
+hpfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct hpfsnode *dhp = VTOHP(dvp);
@@ -1181,7 +1181,7 @@ hpfs_lookup(struct vop_lookup_args *ap)
  *		struct componentname *a_cnp)
  */
 int
-hpfs_remove(struct vop_remove_args *ap)
+hpfs_remove(struct vop_old_remove_args *ap)
 {
 	int error;
 
@@ -1200,7 +1200,7 @@ hpfs_remove(struct vop_remove_args *ap)
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 int
-hpfs_create(struct vop_create_args *ap)
+hpfs_create(struct vop_old_create_args *ap)
 {
 	int error;
 
@@ -1263,12 +1263,12 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_inactive_desc, (vnodeopv_entry_t)hpfs_inactive },
 	{ &vop_reclaim_desc, (vnodeopv_entry_t)hpfs_reclaim },
 	{ &vop_print_desc, (vnodeopv_entry_t)hpfs_print },
-	{ &vop_create_desc, (vnodeopv_entry_t)hpfs_create },
-	{ &vop_remove_desc, (vnodeopv_entry_t)hpfs_remove },
+	{ &vop_old_create_desc, (vnodeopv_entry_t)hpfs_create },
+	{ &vop_old_remove_desc, (vnodeopv_entry_t)hpfs_remove },
 	{ &vop_islocked_desc, vop_stdislocked },
 	{ &vop_unlock_desc, vop_stdunlock },
 	{ &vop_lock_desc, vop_stdlock },
-	{ &vop_lookup_desc, (vnodeopv_entry_t)hpfs_lookup },
+	{ &vop_old_lookup_desc, (vnodeopv_entry_t)hpfs_lookup },
 	{ &vop_access_desc, (vnodeopv_entry_t)hpfs_access },
 	{ &vop_close_desc, (vnodeopv_entry_t)hpfs_close },
 	{ &vop_open_desc, (vnodeopv_entry_t)hpfs_open },
@@ -1289,9 +1289,9 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 #else /* defined(__NetBSD__) */
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_default_desc, (vnodeopv_entry_t) genfs_badop },	/* XXX */
-	{ &vop_lookup_desc, (vnodeopv_entry_t) hpfs_lookup },	/* lookup */
-	{ &vop_create_desc, genfs_eopnotsupp },		/* create */
-	{ &vop_mknod_desc, genfs_eopnotsupp },		/* mknod */
+	{ &vop_old_lookup_desc, (vnodeopv_entry_t) hpfs_lookup }, /* lookup */
+	{ &vop_old_create_desc, genfs_eopnotsupp },		/* create */
+	{ &vop_old_mknod_desc, genfs_eopnotsupp },		/* mknod */
 	{ &vop_open_desc, (vnodeopv_entry_t) hpfs_open },	/* open */
 	{ &vop_close_desc,(vnodeopv_entry_t) hpfs_close },	/* close */
 	{ &vop_access_desc, (vnodeopv_entry_t) hpfs_access },	/* access */
@@ -1307,12 +1307,12 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_mmap_desc, genfs_eopnotsupp },		/* mmap */
 	{ &vop_fsync_desc, genfs_fsync },		/* fsync */
 	{ &vop_seek_desc, genfs_seek },			/* seek */
-	{ &vop_remove_desc, genfs_eopnotsupp },		/* remove */
-	{ &vop_link_desc, genfs_eopnotsupp },		/* link */
-	{ &vop_rename_desc, genfs_eopnotsupp },		/* rename */
-	{ &vop_mkdir_desc, genfs_eopnotsupp },		/* mkdir */
-	{ &vop_rmdir_desc, genfs_eopnotsupp },		/* rmdir */
-	{ &vop_symlink_desc, genfs_eopnotsupp },	/* symlink */
+	{ &vop_old_remove_desc, genfs_eopnotsupp },	/* remove */
+	{ &vop_old_link_desc, genfs_eopnotsupp },	/* link */
+	{ &vop_old_rename_desc, genfs_eopnotsupp },	/* rename */
+	{ &vop_old_mkdir_desc, genfs_eopnotsupp },	/* mkdir */
+	{ &vop_old_rmdir_desc, genfs_eopnotsupp },	/* rmdir */
+	{ &vop_old_symlink_desc, genfs_eopnotsupp },	/* symlink */
 	{ &vop_readdir_desc, (vnodeopv_entry_t) hpfs_readdir },	/* readdir */
 	{ &vop_readlink_desc, genfs_eopnotsupp },	/* readlink */
 	{ &vop_abortop_desc, genfs_abortop },		/* abortop */

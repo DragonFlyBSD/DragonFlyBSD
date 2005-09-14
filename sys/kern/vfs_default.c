@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.26 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.27 2005/09/14 01:13:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 
-static int	vop_nolookup (struct vop_lookup_args *);
+static int	vop_nolookup (struct vop_old_lookup_args *);
 static int	vop_nostrategy (struct vop_strategy_args *);
 
 /*
@@ -87,7 +87,7 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_lease_desc,		vop_null },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_mmap_desc,		vop_einval },
-	{ &vop_lookup_desc,		(void *) vop_nolookup },
+	{ &vop_old_lookup_desc,		(void *) vop_nolookup },
 	{ &vop_open_desc,		vop_null },
 	{ &vop_pathconf_desc,		vop_einval },
 	{ &vop_poll_desc,		(void *) vop_nopoll },
@@ -170,7 +170,7 @@ vop_panic(struct vop_generic_args *ap)
  * XXX OLD API ROUTINE!  WHEN ALL VFSs HAVE BEEN CLEANED UP THIS PROCEDURE
  * WILL BE REMOVED.  This procedure exists for all VFSs which have not
  * yet implemented VOP_NRESOLVE().  It converts VOP_NRESOLVE() into a 
- * vop_lookup() and does appropriate translations.
+ * vop_old_lookup() and does appropriate translations.
  *
  * Resolve a ncp for VFSs which do not support the VOP.  Eventually all
  * VFSs will support this VOP and this routine can be removed, since
@@ -226,10 +226,10 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 	cnp.cn_td = curthread; /* XXX */
 
 	/*
-	 * vop_lookup() always returns vp locked.  dvp may or may not be
+	 * vop_old_lookup() always returns vp locked.  dvp may or may not be
 	 * left locked depending on CNP_PDIRUNLOCK.
 	 */
-	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0)
 		VOP_UNLOCK(vp, 0, curthread);
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
@@ -298,10 +298,10 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	cnp.cn_td = curthread; /* XXX */
 
 	/*
-	 * vop_lookup() always returns vp locked.  dvp may or may not be
+	 * vop_old_lookup() always returns vp locked.  dvp may or may not be
 	 * left locked depending on CNP_PDIRUNLOCK.
 	 */
-	error = vop_lookup(ap->a_head.a_ops, ap->a_dvp, ap->a_vpp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, ap->a_dvp, ap->a_vpp, &cnp);
 	if (error == 0)
 		VOP_UNLOCK(*ap->a_vpp, 0, curthread);
 	if (cnp.cn_flags & CNP_PDIRUNLOCK)
@@ -348,7 +348,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
@@ -362,7 +362,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 	cnp.cn_td = td;
 	*ap->a_vpp = NULL;
 
-	error = vop_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
 
 	/*
 	 * EJUSTRETURN should be returned for this case, which means that
@@ -431,7 +431,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
@@ -445,7 +445,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 	cnp.cn_td = td;
 	*ap->a_vpp = NULL;
 
-	error = vop_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
 
 	/*
 	 * EJUSTRETURN should be returned for this case, which means that
@@ -514,7 +514,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
@@ -528,7 +528,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 	cnp.cn_td = td;
 	*ap->a_vpp = NULL;
 
-	error = vop_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
 
 	/*
 	 * EJUSTRETURN should be returned for this case, which means that
@@ -596,7 +596,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
@@ -610,7 +610,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	cnp.cn_td = td;
 
 	tvp = NULL;
-	error = vop_lookup(ap->a_head.a_ops, dvp, &tvp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, &tvp, &cnp);
 
 	/*
 	 * EJUSTRETURN should be returned for this case, which means that
@@ -670,7 +670,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
@@ -684,7 +684,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 	cnp.cn_td = td;
 
 	vp = NULL;
-	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 
 	/*
 	 * EJUSTRETURN should be returned for this case, which means that
@@ -756,7 +756,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * directory inode.  We expect a return code of EJUSTRETURN for
 	 * the CREATE case.  The cnp must simulated a saved-name situation.
@@ -784,7 +784,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 		cnp.cn_flags |= CNP_DOWHITEOUT;
 		/* fall through */
 	case NAMEI_CREATE:
-		error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+		error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 		if (error == EJUSTRETURN) {
 			KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 			VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
@@ -846,7 +846,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to delete the entry in the
 	 * directory inode.  We expect a return code of 0 for the DELETE
 	 * case (meaning that a vp has been found).  The cnp must simulated
@@ -865,7 +865,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 	 * current directory.
 	 */
 	vp = NULL;
-	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0 && vp->v_type == VDIR)
 		error = EPERM;
 	if (error == 0) {
@@ -922,7 +922,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to delete the entry in the
 	 * directory inode.  We expect a return code of 0 for the DELETE
 	 * case (meaning that a vp has been found).  The cnp must simulated
@@ -941,7 +941,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 	 * current directory.
 	 */
 	vp = NULL;
-	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0 && vp->v_type != VDIR)
 		error = ENOTDIR;
 	if (error == 0 && vp == dvp)
@@ -1033,13 +1033,13 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	fcnp.cn_td = td;
 
 	/*
-	 * note: vop_lookup (i.e. VOP_OLD_LOOKUP) always returns a locked
+	 * note: vop_old_lookup (i.e. VOP_OLD_LOOKUP) always returns a locked
 	 * fvp.
 	 */
 	fvp = NULL;
-	error = vop_lookup(ap->a_head.a_ops, fdvp, &fvp, &fcnp);
+	error = vop_old_lookup(ap->a_head.a_ops, fdvp, &fvp, &fcnp);
 	if (error == 0 && (fvp->v_flag & VROOT)) {
-		vput(fvp);	/* as if vop_lookup had failed */
+		vput(fvp);	/* as if vop_old_lookup had failed */
 		error = EBUSY;
 	}
 	if ((fcnp.cn_flags & CNP_PDIRUNLOCK) == 0) {
@@ -1080,7 +1080,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	}
 
 	/*
-	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * Setup the cnp for a traditional vop_old_lookup() call.  The lookup
 	 * caches all information required to create the entry in the
 	 * target directory inode.
 	 */
@@ -1093,7 +1093,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	tcnp.cn_td = td;
 
 	tvp = NULL;
-	error = vop_lookup(ap->a_head.a_ops, tdvp, &tvp, &tcnp);
+	error = vop_old_lookup(ap->a_head.a_ops, tdvp, &tvp, &tcnp);
 
 	if (error == EJUSTRETURN) {
 		/*
@@ -1130,7 +1130,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 
 static int
 vop_nolookup(ap)
-	struct vop_lookup_args /* {
+	struct vop_old_lookup_args /* {
 		struct vnode *a_dvp;
 		struct vnode **a_vpp;
 		struct componentname *a_cnp;

@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.17 2005/08/10 16:58:54 joerg Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.18 2005/09/14 01:13:35 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -275,7 +275,7 @@ ext2_readdir(struct vop_readdir_args *ap)
  *	       struct componentname *a_cnp)
  */
 int
-ext2_lookup(struct vop_lookup_args *ap)
+ext2_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	struct inode *dp;	/* inode for directory being searched */

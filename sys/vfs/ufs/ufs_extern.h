@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.12 2005/07/26 15:43:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.13 2005/09/14 01:13:48 dillon Exp $
  */
 
 #ifndef _UFS_UFS_EXTERN_H_
@@ -50,7 +50,7 @@ struct ufid;
 struct vfsconf;
 struct vnode;
 struct vop_bmap_args;
-struct vop_lookup_args;
+struct vop_old_lookup_args;
 struct vop_generic_args;
 struct vop_inactive_args;
 struct vop_reclaim_args;
@@ -88,7 +88,7 @@ int	 ufs_inactive(struct vop_inactive_args *);
 int	 ufs_init(struct vfsconf *);
 int	 ufs_uninit(struct vfsconf *);
 void	 ufs_itimes(struct vnode *vp);
-int	 ufs_lookup(struct vop_lookup_args *);
+int	 ufs_lookup(struct vop_old_lookup_args *);
 int	 ufs_reclaim(struct vop_reclaim_args *);
 int	 ufs_root(struct mount *, struct vnode **);
 int	 ufs_start(struct mount *, int, struct thread *);

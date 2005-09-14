@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.22 2005/08/16 16:27:41 joerg Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.23 2005/09/14 01:13:42 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -60,8 +60,8 @@
 /*
  * Prototypes for NWFS vnode operations
  */
-static int nwfs_create(struct vop_create_args *);
-static int nwfs_mknod(struct vop_mknod_args *);
+static int nwfs_create(struct vop_old_create_args *);
+static int nwfs_mknod(struct vop_old_mknod_args *);
 static int nwfs_open(struct vop_open_args *);
 static int nwfs_close(struct vop_close_args *);
 static int nwfs_access(struct vop_access_args *);
@@ -70,13 +70,13 @@ static int nwfs_setattr(struct vop_setattr_args *);
 static int nwfs_read(struct vop_read_args *);
 static int nwfs_write(struct vop_write_args *);
 static int nwfs_fsync(struct vop_fsync_args *);
-static int nwfs_remove(struct vop_remove_args *);
-static int nwfs_link(struct vop_link_args *);
-static int nwfs_lookup(struct vop_lookup_args *);
-static int nwfs_rename(struct vop_rename_args *);
-static int nwfs_mkdir(struct vop_mkdir_args *);
-static int nwfs_rmdir(struct vop_rmdir_args *);
-static int nwfs_symlink(struct vop_symlink_args *);
+static int nwfs_remove(struct vop_old_remove_args *);
+static int nwfs_link(struct vop_old_link_args *);
+static int nwfs_lookup(struct vop_old_lookup_args *);
+static int nwfs_rename(struct vop_old_rename_args *);
+static int nwfs_mkdir(struct vop_old_mkdir_args *);
+static int nwfs_rmdir(struct vop_old_rmdir_args *);
+static int nwfs_symlink(struct vop_old_symlink_args *);
 static int nwfs_readdir(struct vop_readdir_args *);
 static int nwfs_bmap(struct vop_bmap_args *);
 static int nwfs_strategy(struct vop_strategy_args *);
@@ -90,7 +90,7 @@ struct vnodeopv_entry_desc nwfs_vnodeop_entries[] = {
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) nwfs_bmap },
 	{ &vop_open_desc,		(vnodeopv_entry_t) nwfs_open },
 	{ &vop_close_desc,		(vnodeopv_entry_t) nwfs_close },
-	{ &vop_create_desc,		(vnodeopv_entry_t) nwfs_create },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) nwfs_create },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) nwfs_fsync },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) nwfs_getattr },
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) nwfs_getpages },
@@ -98,22 +98,22 @@ struct vnodeopv_entry_desc nwfs_vnodeop_entries[] = {
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) nwfs_ioctl },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) nwfs_inactive },
 	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_link_desc,		(vnodeopv_entry_t) nwfs_link },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) nwfs_link },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) nwfs_lookup },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) nwfs_mkdir },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) nwfs_mknod },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) nwfs_lookup },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) nwfs_mkdir },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) nwfs_mknod },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) nwfs_pathconf },
 	{ &vop_print_desc,		(vnodeopv_entry_t) nwfs_print },
 	{ &vop_read_desc,		(vnodeopv_entry_t) nwfs_read },
 	{ &vop_readdir_desc,		(vnodeopv_entry_t) nwfs_readdir },
 	{ &vop_reclaim_desc,		(vnodeopv_entry_t) nwfs_reclaim },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) nwfs_remove },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) nwfs_rename },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) nwfs_rmdir },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) nwfs_remove },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) nwfs_rename },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) nwfs_rmdir },
 	{ &vop_setattr_desc,		(vnodeopv_entry_t) nwfs_setattr },
 	{ &vop_strategy_desc,		(vnodeopv_entry_t) nwfs_strategy },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) nwfs_symlink },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) nwfs_symlink },
 	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
 	{ &vop_write_desc,		(vnodeopv_entry_t) nwfs_write },
 	{ NULL, NULL }
@@ -390,7 +390,7 @@ nwfs_write(struct vop_write_args *ap)
  *		struct componentname *a_cnpl, struct vattr *a_vap)
  */
 static int
-nwfs_create(struct vop_create_args *ap)
+nwfs_create(struct vop_old_create_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -441,7 +441,7 @@ nwfs_create(struct vop_create_args *ap)
  *		struct vnode *a_vp, struct componentname *a_cnp)
  */
 static int
-nwfs_remove(struct vop_remove_args *ap)
+nwfs_remove(struct vop_old_remove_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -473,7 +473,7 @@ nwfs_remove(struct vop_remove_args *ap)
  *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-nwfs_rename(struct vop_rename_args *ap)
+nwfs_rename(struct vop_old_rename_args *ap)
 {
 	struct vnode *fvp = ap->a_fvp;
 	struct vnode *tvp = ap->a_tvp;
@@ -552,7 +552,7 @@ out:
  *	     struct componentname *a_cnp)
  */
 static int
-nwfs_link(struct vop_link_args *ap)
+nwfs_link(struct vop_old_link_args *ap)
 {
 	return EOPNOTSUPP;
 }
@@ -566,12 +566,12 @@ nwfs_link(struct vop_link_args *ap)
  *		char *a_target)
  */
 static int
-nwfs_symlink(struct vop_symlink_args *ap)
+nwfs_symlink(struct vop_old_symlink_args *ap)
 {
 	return (EOPNOTSUPP);
 }
 
-static int nwfs_mknod(struct vop_mknod_args *ap)
+static int nwfs_mknod(struct vop_old_mknod_args *ap)
 {
 	return (EOPNOTSUPP);
 }
@@ -583,7 +583,7 @@ static int nwfs_mknod(struct vop_mknod_args *ap)
  *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-nwfs_mkdir(struct vop_mkdir_args *ap)
+nwfs_mkdir(struct vop_old_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 /*	struct vattr *vap = ap->a_vap;*/
@@ -630,7 +630,7 @@ nwfs_mkdir(struct vop_mkdir_args *ap)
  *	      struct componentname *a_cnp)
  */
 static int
-nwfs_rmdir(struct vop_rmdir_args *ap)
+nwfs_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -819,7 +819,7 @@ nwfs_nget(struct mount *mp, ncpfid fid, const struct nw_entry_info *fap,
  *		struct vnode **a_vpp, struct componentname *a_cnp)
  */
 int
-nwfs_lookup(struct vop_lookup_args *ap)
+nwfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode *dvp = ap->a_dvp;

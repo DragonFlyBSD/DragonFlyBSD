@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.14 2005/08/25 18:34:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.15 2005/09/14 01:13:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -213,10 +213,10 @@
 
 VNODEOP_DESC_INIT_SIMPLE(default);
 VNODEOP_DESC_INIT_VP(islocked);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(lookup);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(create);
-VNODEOP_DESC_INIT_DVP_CNP(whiteout);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(mknod);
+VNODEOP_DESC_INIT_DVP_VPP_CNP(old_lookup);
+VNODEOP_DESC_INIT_DVP_VPP_CNP(old_create);
+VNODEOP_DESC_INIT_DVP_CNP(old_whiteout);
+VNODEOP_DESC_INIT_DVP_VPP_CNP(old_mknod);
 VNODEOP_DESC_INIT_VP_CRED(open);
 VNODEOP_DESC_INIT_VP(close);
 VNODEOP_DESC_INIT_VP_CRED(access);
@@ -231,29 +231,29 @@ VNODEOP_DESC_INIT_VP(kqfilter);
 VNODEOP_DESC_INIT_VP(revoke);
 VNODEOP_DESC_INIT_VP_CRED(mmap);
 VNODEOP_DESC_INIT_VP(fsync);
-VNODEOP_DESC_INIT_DVP_VP_CNP(remove);
-VNODEOP_DESC_INIT_TDVP_VP_CNP(link);
+VNODEOP_DESC_INIT_DVP_VP_CNP(old_remove);
+VNODEOP_DESC_INIT_TDVP_VP_CNP(old_link);
 
-static int VOFFNAME(rename)[] = { 
-	__offsetof(VARGSSTRUCT(rename), a_fdvp),
-	__offsetof(VARGSSTRUCT(rename), a_fvp),
-	__offsetof(VARGSSTRUCT(rename), a_tdvp),
-	__offsetof(VARGSSTRUCT(rename), a_tvp),
+static int VOFFNAME(old_rename)[] = { 
+	__offsetof(VARGSSTRUCT(old_rename), a_fdvp),
+	__offsetof(VARGSSTRUCT(old_rename), a_fvp),
+	__offsetof(VARGSSTRUCT(old_rename), a_tdvp),
+	__offsetof(VARGSSTRUCT(old_rename), a_tvp),
 	VDESC_NO_OFFSET
 };
-VNODEOP_DESC_INIT(rename, 
+VNODEOP_DESC_INIT(old_rename, 
 	VDESC_VP0_WILLRELE|VDESC_VP1_WILLRELE|
 	 VDESC_VP2_WILLRELE|VDESC_VP3_WILLRELE|
 	 VDESC_VP2_WILLUNLOCK|VDESC_VP3_WILLUNLOCK, /* tdvp and tvp */
-	VOFFNAME(rename),
+	VOFFNAME(old_rename),
 	VDESC_NO_OFFSET,
 	VDESC_NO_OFFSET,
 	VDESC_NO_OFFSET,
-	__offsetof(VARGSSTRUCT(rename), a_fcnp));
+	__offsetof(VARGSSTRUCT(old_rename), a_fcnp));
 
-VNODEOP_DESC_INIT_DVP_VPP_CNP(mkdir);
-VNODEOP_DESC_INIT_DVP_VP_CNP(rmdir);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(symlink);
+VNODEOP_DESC_INIT_DVP_VPP_CNP(old_mkdir);
+VNODEOP_DESC_INIT_DVP_VP_CNP(old_rmdir);
+VNODEOP_DESC_INIT_DVP_VPP_CNP(old_symlink);
 VNODEOP_DESC_INIT_VP_CRED(readdir);
 VNODEOP_DESC_INIT_VP_CRED(readlink);
 VNODEOP_DESC_INIT_VP(inactive);
@@ -302,6 +302,10 @@ VNODEOP_DESC_INIT_NCP2_CRED(nrename);
  *
  * These procedures are called directly from the kernel and/or fileops 
  * code to perform file/device operations on the system.
+ *
+ * NOTE: The old namespace api functions such as vop_rename() are no longer
+ * available for general use and have been renamed to vop_old_*().  Only 
+ * the code in vfs_default.c is allowed to call those ops.
  */
 
 int
@@ -320,72 +324,72 @@ vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_lookup(struct vop_ops *ops, struct vnode *dvp,
+vop_old_lookup(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp)
 {
-	struct vop_lookup_args ap;
+	struct vop_old_lookup_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_lookup_desc;
+	ap.a_head.a_desc = &vop_old_lookup_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 
-	DO_OPS(ops, error, &ap, vop_lookup);
+	DO_OPS(ops, error, &ap, vop_old_lookup);
 	return(error);
 }
 
 int
-vop_create(struct vop_ops *ops, struct vnode *dvp,
+vop_old_create(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
-	struct vop_create_args ap;
+	struct vop_old_create_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_create_desc;
+	ap.a_head.a_desc = &vop_old_create_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
-	DO_OPS(ops, error, &ap, vop_create);
+	DO_OPS(ops, error, &ap, vop_old_create);
 	return(error);
 }
 
 int
-vop_whiteout(struct vop_ops *ops, struct vnode *dvp,
+vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp,
 	struct componentname *cnp, int flags)
 {
-	struct vop_whiteout_args ap;
+	struct vop_old_whiteout_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_whiteout_desc;
+	ap.a_head.a_desc = &vop_old_whiteout_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_cnp = cnp;
 	ap.a_flags = flags;
 
-	DO_OPS(ops, error, &ap, vop_whiteout);
+	DO_OPS(ops, error, &ap, vop_old_whiteout);
 	return(error);
 }
 
 int
-vop_mknod(struct vop_ops *ops, struct vnode *dvp, 
+vop_old_mknod(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
-	struct vop_mknod_args ap;
+	struct vop_old_mknod_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_mknod_desc;
+	ap.a_head.a_desc = &vop_old_mknod_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
-	DO_OPS(ops, error, &ap, vop_mknod);
+	DO_OPS(ops, error, &ap, vop_old_mknod);
 	return(error);
 }
 
@@ -639,48 +643,48 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, struct thread *td)
 }
 
 int
-vop_remove(struct vop_ops *ops, struct vnode *dvp, 
+vop_old_remove(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
-	struct vop_remove_args ap;
+	struct vop_old_remove_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_remove_desc;
+	ap.a_head.a_desc = &vop_old_remove_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
-	DO_OPS(ops, error, &ap, vop_remove);
+	DO_OPS(ops, error, &ap, vop_old_remove);
 	return(error);
 }
 
 int
-vop_link(struct vop_ops *ops, struct vnode *tdvp, 
+vop_old_link(struct vop_ops *ops, struct vnode *tdvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
-	struct vop_link_args ap;
+	struct vop_old_link_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_link_desc;
+	ap.a_head.a_desc = &vop_old_link_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_tdvp = tdvp;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
-	DO_OPS(ops, error, &ap, vop_link);
+	DO_OPS(ops, error, &ap, vop_old_link);
 	return(error);
 }
 
 int
-vop_rename(struct vop_ops *ops, 
+vop_old_rename(struct vop_ops *ops, 
 	   struct vnode *fdvp, struct vnode *fvp, struct componentname *fcnp,
 	   struct vnode *tdvp, struct vnode *tvp, struct componentname *tcnp)
 {
-	struct vop_rename_args ap;
+	struct vop_old_rename_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_rename_desc;
+	ap.a_head.a_desc = &vop_old_rename_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_fdvp = fdvp;
 	ap.a_fvp = fvp;
@@ -689,54 +693,54 @@ vop_rename(struct vop_ops *ops,
 	ap.a_tvp = tvp;
 	ap.a_tcnp = tcnp;
 
-	DO_OPS(ops, error, &ap, vop_rename);
+	DO_OPS(ops, error, &ap, vop_old_rename);
 	return(error);
 }
 
 int
-vop_mkdir(struct vop_ops *ops, struct vnode *dvp, 
+vop_old_mkdir(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
-	struct vop_mkdir_args ap;
+	struct vop_old_mkdir_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_mkdir_desc;
+	ap.a_head.a_desc = &vop_old_mkdir_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
-	DO_OPS(ops, error, &ap, vop_mkdir);
+	DO_OPS(ops, error, &ap, vop_old_mkdir);
 	return(error);
 }
 
 int
-vop_rmdir(struct vop_ops *ops, struct vnode *dvp, 
+vop_old_rmdir(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
-	struct vop_rmdir_args ap;
+	struct vop_old_rmdir_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_rmdir_desc;
+	ap.a_head.a_desc = &vop_old_rmdir_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
-	DO_OPS(ops, error, &ap, vop_rmdir);
+	DO_OPS(ops, error, &ap, vop_old_rmdir);
 	return(error);
 }
 
 int
-vop_symlink(struct vop_ops *ops, struct vnode *dvp,
+vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp,
 	struct vattr *vap, char *target)
 {
-	struct vop_symlink_args ap;
+	struct vop_old_symlink_args ap;
 	int error;
 
-	ap.a_head.a_desc = &vop_symlink_desc;
+	ap.a_head.a_desc = &vop_old_symlink_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
@@ -744,7 +748,7 @@ vop_symlink(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vap = vap;
 	ap.a_target = target;
 
-	DO_OPS(ops, error, &ap, vop_symlink);
+	DO_OPS(ops, error, &ap, vop_old_symlink);
 	return(error);
 }
 
@@ -1571,42 +1575,6 @@ vop_islocked_ap(struct vop_islocked_args *ap)
 }
 
 int
-vop_lookup_ap(struct vop_lookup_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_lookup);
-	return(error);
-}
-
-int
-vop_create_ap(struct vop_create_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_create);
-	return(error);
-}
-
-int
-vop_whiteout_ap(struct vop_whiteout_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_whiteout);
-	return(error);
-}
-
-int
-vop_mknod_ap(struct vop_mknod_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_mknod);
-	return(error);
-}
-
-int
 vop_open_ap(struct vop_open_args *ap)
 {
 	int error;
@@ -1729,60 +1697,6 @@ vop_fsync_ap(struct vop_fsync_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_fsync);
-	return(error);
-}
-
-int
-vop_remove_ap(struct vop_remove_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_remove);
-	return(error);
-}
-
-int
-vop_link_ap(struct vop_link_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_link);
-	return(error);
-}
-
-int
-vop_rename_ap(struct vop_rename_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_rename);
-	return(error);
-}
-
-int
-vop_mkdir_ap(struct vop_mkdir_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_mkdir);
-	return(error);
-}
-
-int
-vop_rmdir_ap(struct vop_rmdir_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_rmdir);
-	return(error);
-}
-
-int
-vop_symlink_ap(struct vop_symlink_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_symlink);
 	return(error);
 }
 

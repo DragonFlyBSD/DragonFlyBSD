@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.13 2004/11/12 00:09:36 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.14 2005/09/14 01:13:38 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -82,7 +82,7 @@
  *		  struct componentname *a_cnp)
  */
 int
-msdosfs_lookup(struct vop_lookup_args *ap)
+msdosfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *vdp = ap->a_dvp;
 	struct vnode **vpp = ap->a_vpp;

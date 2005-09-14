@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.20 2005/08/16 22:40:03 joerg Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.21 2005/09/14 01:13:33 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static u_long fdhash;
 
 static int	fdesc_getattr (struct vop_getattr_args *ap);
 static int	fdesc_inactive (struct vop_inactive_args *ap);
-static int	fdesc_lookup (struct vop_lookup_args *ap);
+static int	fdesc_lookup (struct vop_old_lookup_args *ap);
 static int	fdesc_open (struct vop_open_args *ap);
 static int	fdesc_print (struct vop_print_args *ap);
 static int	fdesc_readdir (struct vop_readdir_args *ap);
@@ -171,7 +171,7 @@ out:
  *		struct componentname *a_cnp)
  */
 static int
-fdesc_lookup(struct vop_lookup_args *ap)
+fdesc_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct thread *td = cnp->cn_td;
@@ -542,7 +542,7 @@ struct vnodeopv_entry_desc fdesc_vnodeop_entries[] = {
 	{ &vop_access_desc,		vop_null },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) fdesc_getattr },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) fdesc_inactive },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) fdesc_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) fdesc_lookup },
 	{ &vop_open_desc,		(vnodeopv_entry_t) fdesc_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
 	{ &vop_poll_desc,		(vnodeopv_entry_t) fdesc_poll },

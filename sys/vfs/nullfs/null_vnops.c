@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.23 2005/09/14 01:13:41 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -132,7 +132,7 @@
  * "mount_null /usr/include /dev/layer/null".
  * Changing directory to /dev/layer/null will assign
  * the root null-node (which was created when the null layer was mounted).
- * Now consider opening "sys".  A vop_lookup would be
+ * Now consider opening "sys".  A vop_old_lookup would be
  * done on the root null-node.  This operation would bypass through
  * to the lower layer which would return a vnode representing
  * the UFS "sys".  Null_bypass then builds a null-node
@@ -207,11 +207,11 @@ static int	null_getvobject(struct vop_getvobject_args *ap);
 static int	null_inactive(struct vop_inactive_args *ap);
 static int	null_islocked(struct vop_islocked_args *ap);
 static int	null_lock(struct vop_lock_args *ap);
-static int	null_lookup(struct vop_lookup_args *ap);
+static int	null_lookup(struct vop_old_lookup_args *ap);
 static int	null_open(struct vop_open_args *ap);
 static int	null_print(struct vop_print_args *ap);
 static int	null_reclaim(struct vop_reclaim_args *ap);
-static int	null_rename(struct vop_rename_args *ap);
+static int	null_rename(struct vop_old_rename_args *ap);
 static int	null_setattr(struct vop_setattr_args *ap);
 static int	null_unlock(struct vop_unlock_args *ap);
 
@@ -383,7 +383,7 @@ null_bypass(struct vop_generic_args *ap)
  *		struct componentname *a_cnp)
  */
 static int
-null_lookup(struct vop_lookup_args *ap)
+null_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode *dvp = ap->a_dvp;
@@ -638,7 +638,7 @@ null_open(struct vop_open_args *ap)
  *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-null_rename(struct vop_rename_args *ap)
+null_rename(struct vop_old_rename_args *ap)
 {
 	struct vnode *tdvp = ap->a_tdvp;
 	struct vnode *fvp = ap->a_fvp;
@@ -944,11 +944,11 @@ struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) null_inactive },
 	{ &vop_islocked_desc,		(vnodeopv_entry_t) null_islocked },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) null_lock },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) null_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) null_lookup },
 	{ &vop_open_desc,		(vnodeopv_entry_t) null_open },
 	{ &vop_print_desc,		(vnodeopv_entry_t) null_print },
 	{ &vop_reclaim_desc,		(vnodeopv_entry_t) null_reclaim },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) null_rename },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) null_rename },
 	{ &vop_setattr_desc,		(vnodeopv_entry_t) null_setattr },
 	{ &vop_unlock_desc,		(vnodeopv_entry_t) null_unlock },
 	{ &vop_revoke_desc,		(vnodeopv_entry_t) null_revoke },

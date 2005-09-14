@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.24 2005/08/16 16:09:05 joerg Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.25 2005/09/14 01:13:44 dillon Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ static int	procfs_close (struct vop_close_args *);
 static int	procfs_getattr (struct vop_getattr_args *);
 static int	procfs_inactive (struct vop_inactive_args *);
 static int	procfs_ioctl (struct vop_ioctl_args *);
-static int	procfs_lookup (struct vop_lookup_args *);
+static int	procfs_lookup (struct vop_old_lookup_args *);
 static int	procfs_open (struct vop_open_args *);
 static int	procfs_print (struct vop_print_args *);
 static int	procfs_readdir (struct vop_readdir_args *);
@@ -665,7 +665,7 @@ found:
  *		 struct componentname *a_cnp)
  */
 static int
-procfs_lookup(struct vop_lookup_args *ap)
+procfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode **vpp = ap->a_vpp;
@@ -1021,13 +1021,13 @@ struct vnodeopv_entry_desc procfs_vnodeop_entries[] = {
 	{ &vop_advlock_desc,		(vnodeopv_entry_t) procfs_badop },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) procfs_bmap },
 	{ &vop_close_desc,		(vnodeopv_entry_t) procfs_close },
-	{ &vop_create_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_create_desc,		(vnodeopv_entry_t) procfs_badop },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) procfs_getattr },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) procfs_inactive },
-	{ &vop_link_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) procfs_lookup },
-	{ &vop_mkdir_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_mknod_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_link_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) procfs_lookup },
+	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) procfs_badop },
 	{ &vop_open_desc,		(vnodeopv_entry_t) procfs_open },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
 	{ &vop_print_desc,		(vnodeopv_entry_t) procfs_print },
@@ -1035,11 +1035,11 @@ struct vnodeopv_entry_desc procfs_vnodeop_entries[] = {
 	{ &vop_readdir_desc,		(vnodeopv_entry_t) procfs_readdir },
 	{ &vop_readlink_desc,		(vnodeopv_entry_t) procfs_readlink },
 	{ &vop_reclaim_desc,		(vnodeopv_entry_t) procfs_reclaim },
-	{ &vop_remove_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_rename_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_rmdir_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_remove_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_rename_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) procfs_badop },
 	{ &vop_setattr_desc,		(vnodeopv_entry_t) procfs_setattr },
-	{ &vop_symlink_desc,		(vnodeopv_entry_t) procfs_badop },
+	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) procfs_badop },
 	{ &vop_write_desc,		(vnodeopv_entry_t) procfs_rw },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) procfs_ioctl },
 	{ NULL, NULL }

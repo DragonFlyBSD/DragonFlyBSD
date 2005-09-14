@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.16 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.17 2005/09/14 01:13:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -856,7 +856,7 @@ struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
 	{ &vop_access_desc,		(vnodeopv_entry_t) cd9660_access },
 	{ &vop_advlock_desc,            (vnodeopv_entry_t) cd9660_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) cd9660_bmap },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) cd9660_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) cd9660_lookup },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) cd9660_getattr },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) cd9660_inactive },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) cd9660_ioctl },

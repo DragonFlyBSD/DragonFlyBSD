@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.23 2005/08/25 01:14:55 corecode Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.24 2005/09/14 01:13:40 dillon Exp $
  *
  */
 
@@ -92,7 +92,7 @@ static int	ntfs_access (struct vop_access_args *ap);
 static int	ntfs_open (struct vop_open_args *ap);
 static int	ntfs_close (struct vop_close_args *ap);
 static int	ntfs_readdir (struct vop_readdir_args *ap);
-static int	ntfs_lookup (struct vop_lookup_args *ap);
+static int	ntfs_lookup (struct vop_old_lookup_args *ap);
 static int	ntfs_bmap (struct vop_bmap_args *ap);
 #if defined(__DragonFly__)
 static int	ntfs_getpages (struct vop_getpages_args *ap);
@@ -715,7 +715,7 @@ readdone:
  *		struct componentname *a_cnp)
  */
 int
-ntfs_lookup(struct vop_lookup_args *ap)
+ntfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct ntnode *dip = VTONT(dvp);
@@ -862,7 +862,7 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_islocked_desc,	(vnodeopv_entry_t)vop_stdislocked },
 	{ &vop_unlock_desc,	(vnodeopv_entry_t)vop_stdunlock },
 	{ &vop_lock_desc,	(vnodeopv_entry_t)vop_stdlock },
-	{ &vop_lookup_desc,	(vnodeopv_entry_t)ntfs_lookup },
+	{ &vop_old_lookup_desc,	(vnodeopv_entry_t)ntfs_lookup },
 
 	{ &vop_access_desc,	(vnodeopv_entry_t)ntfs_access },
 	{ &vop_close_desc,	(vnodeopv_entry_t)ntfs_close },

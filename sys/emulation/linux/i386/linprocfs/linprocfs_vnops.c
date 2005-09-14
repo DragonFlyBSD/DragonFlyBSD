@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.21 2005/08/16 16:10:34 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.22 2005/09/14 01:13:19 dillon Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ static int	linprocfs_close (struct vop_close_args *);
 static int	linprocfs_getattr (struct vop_getattr_args *);
 static int	linprocfs_inactive (struct vop_inactive_args *);
 static int	linprocfs_ioctl (struct vop_ioctl_args *);
-static int	linprocfs_lookup (struct vop_lookup_args *);
+static int	linprocfs_lookup (struct vop_old_lookup_args *);
 static int	linprocfs_open (struct vop_open_args *);
 static int	linprocfs_print (struct vop_print_args *);
 static int	linprocfs_readdir (struct vop_readdir_args *);
@@ -640,7 +640,7 @@ found:
  */
 static int
 linprocfs_lookup(ap)
-	struct vop_lookup_args /* {
+	struct vop_old_lookup_args /* {
 		struct vnode * a_dvp;
 		struct vnode ** a_vpp;
 		struct componentname * a_cnp;
@@ -1076,13 +1076,13 @@ struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
 	{ &vop_advlock_desc,		(void *) linprocfs_badop },
 	{ &vop_bmap_desc,		(void *) linprocfs_bmap },
 	{ &vop_close_desc,		(void *) linprocfs_close },
-	{ &vop_create_desc,		(void *) linprocfs_badop },
+	{ &vop_old_create_desc,		(void *) linprocfs_badop },
 	{ &vop_getattr_desc,		(void *) linprocfs_getattr },
 	{ &vop_inactive_desc,		(void *) linprocfs_inactive },
-	{ &vop_link_desc,		(void *) linprocfs_badop },
-	{ &vop_lookup_desc,		(void *) linprocfs_lookup },
-	{ &vop_mkdir_desc,		(void *) linprocfs_badop },
-	{ &vop_mknod_desc,		(void *) linprocfs_badop },
+	{ &vop_old_link_desc,		(void *) linprocfs_badop },
+	{ &vop_old_lookup_desc,		(void *) linprocfs_lookup },
+	{ &vop_old_mkdir_desc,		(void *) linprocfs_badop },
+	{ &vop_old_mknod_desc,		(void *) linprocfs_badop },
 	{ &vop_open_desc,		(void *) linprocfs_open },
 	{ &vop_pathconf_desc,		(void *) vop_stdpathconf },
 	{ &vop_print_desc,		(void *) linprocfs_print },
@@ -1090,11 +1090,11 @@ struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
 	{ &vop_readdir_desc,		(void *) linprocfs_readdir },
 	{ &vop_readlink_desc,		(void *) linprocfs_readlink },
 	{ &vop_reclaim_desc,		(void *) linprocfs_reclaim },
-	{ &vop_remove_desc,		(void *) linprocfs_badop },
-	{ &vop_rename_desc,		(void *) linprocfs_badop },
-	{ &vop_rmdir_desc,		(void *) linprocfs_badop },
+	{ &vop_old_remove_desc,		(void *) linprocfs_badop },
+	{ &vop_old_rename_desc,		(void *) linprocfs_badop },
+	{ &vop_old_rmdir_desc,		(void *) linprocfs_badop },
 	{ &vop_setattr_desc,		(void *) linprocfs_setattr },
-	{ &vop_symlink_desc,		(void *) linprocfs_badop },
+	{ &vop_old_symlink_desc,	(void *) linprocfs_badop },
 	{ &vop_write_desc,		(void *) linprocfs_rw },
 	{ &vop_ioctl_desc,		(void *) linprocfs_ioctl },
 	{ NULL, NULL }

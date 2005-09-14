@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.16 2005/08/10 18:02:00 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.17 2005/09/14 01:13:47 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -61,7 +61,7 @@ static int udf_readdir(struct vop_readdir_args *);
 static int udf_readlink(struct vop_readlink_args *ap);
 static int udf_strategy(struct vop_strategy_args *);
 static int udf_bmap(struct vop_bmap_args *);
-static int udf_lookup(struct vop_lookup_args *);
+static int udf_lookup(struct vop_old_lookup_args *);
 static int udf_reclaim(struct vop_reclaim_args *);
 static int udf_readatoffset(struct udf_node *, int *, int, struct buf **, uint8_t **);
 static int udf_bmap_internal(struct udf_node *, uint32_t, daddr_t *, uint32_t *);
@@ -70,7 +70,7 @@ struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(vnodeopv_entry_t) udf_access },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) udf_bmap },
-	{ &vop_lookup_desc,		(vnodeopv_entry_t) udf_lookup },
+	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) udf_lookup },
 	{ &vop_getattr_desc,		(vnodeopv_entry_t) udf_getattr },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) udf_ioctl },
 	{ &vop_pathconf_desc,		(vnodeopv_entry_t) udf_pathconf },
@@ -909,7 +909,7 @@ udf_bmap(struct vop_bmap_args *a)
  * The all powerful VOP_LOOKUP().
  */
 static int
-udf_lookup(struct vop_lookup_args *a)
+udf_lookup(struct vop_old_lookup_args *a)
 {
 	struct vnode *dvp;
 	struct vnode *tdp = NULL;

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.26 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.27 2005/09/14 01:13:23 dillon Exp $
  * 
  */
 
@@ -112,9 +112,9 @@ static int coda_lockdebug = 0;
 
 struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
     { &vop_default_desc, (vnodeopv_entry_t)coda_vop_error },
-    { &vop_lookup_desc, (vnodeopv_entry_t)coda_lookup },	/* lookup */
-    { &vop_create_desc, (vnodeopv_entry_t)coda_create },	/* create */
-    { &vop_mknod_desc, (vnodeopv_entry_t)coda_vop_error },	/* mknod */
+    { &vop_old_lookup_desc, (vnodeopv_entry_t)coda_lookup },	/* lookup */
+    { &vop_old_create_desc, (vnodeopv_entry_t)coda_create },	/* create */
+    { &vop_old_mknod_desc, (vnodeopv_entry_t)coda_vop_error },	/* mknod */
     { &vop_open_desc, (vnodeopv_entry_t)coda_open },		/* open */
     { &vop_close_desc, (vnodeopv_entry_t)coda_close },		/* close */
     { &vop_access_desc, (vnodeopv_entry_t)coda_access },	/* access */
@@ -125,12 +125,12 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
     { &vop_ioctl_desc, (vnodeopv_entry_t)coda_ioctl },		/* ioctl */
     { &vop_mmap_desc, (vnodeopv_entry_t)coda_vop_error },	/* mmap */
     { &vop_fsync_desc, (vnodeopv_entry_t)coda_fsync },		/* fsync */
-    { &vop_remove_desc, (vnodeopv_entry_t)coda_remove },	/* remove */
-    { &vop_link_desc, (vnodeopv_entry_t)coda_link },		/* link */
-    { &vop_rename_desc, (vnodeopv_entry_t)coda_rename },	/* rename */
-    { &vop_mkdir_desc, (vnodeopv_entry_t)coda_mkdir },		/* mkdir */
-    { &vop_rmdir_desc, (vnodeopv_entry_t)coda_rmdir },		/* rmdir */
-    { &vop_symlink_desc, (vnodeopv_entry_t)coda_symlink },	/* symlink */
+    { &vop_old_remove_desc, (vnodeopv_entry_t)coda_remove },	/* remove */
+    { &vop_old_link_desc, (vnodeopv_entry_t)coda_link },	/* link */
+    { &vop_old_rename_desc, (vnodeopv_entry_t)coda_rename },	/* rename */
+    { &vop_old_mkdir_desc, (vnodeopv_entry_t)coda_mkdir },	/* mkdir */
+    { &vop_old_rmdir_desc, (vnodeopv_entry_t)coda_rmdir },	/* rmdir */
+    { &vop_old_symlink_desc, (vnodeopv_entry_t)coda_symlink },	/* symlink */
     { &vop_readdir_desc, (vnodeopv_entry_t)coda_readdir },	/* readdir */
     { &vop_readlink_desc, (vnodeopv_entry_t)coda_readlink },	/* readlink */
     { &vop_inactive_desc, (vnodeopv_entry_t)coda_inactive },	/* inactive */
@@ -145,12 +145,12 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
     { &vop_advlock_desc, (vnodeopv_entry_t)coda_vop_nop },	/* advlock */
     { &vop_bwrite_desc, (vnodeopv_entry_t)coda_vop_error },	/* bwrite */
     { &vop_lease_desc, (vnodeopv_entry_t)coda_vop_nop },	/* lease */
-    { &vop_poll_desc, vop_stdpoll },		/* poll */
+    { &vop_poll_desc, (vnodeopv_entry_t)vop_stdpoll },		/* poll */
     { &vop_getpages_desc, (vnodeopv_entry_t)coda_fbsd_getpages }, /* pager intf.*/
     { &vop_putpages_desc, (vnodeopv_entry_t)coda_fbsd_putpages }, /* pager intf.*/
-    { &vop_createvobject_desc,      vop_stdcreatevobject },
-    { &vop_destroyvobject_desc,     vop_stddestroyvobject },
-    { &vop_getvobject_desc,         vop_stdgetvobject },
+    { &vop_createvobject_desc,      (vnodeopv_entry_t)vop_stdcreatevobject },
+    { &vop_destroyvobject_desc,     (vnodeopv_entry_t)vop_stddestroyvobject },
+    { &vop_getvobject_desc,         (vnodeopv_entry_t)vop_stdgetvobject },
 
 #if	0
 
@@ -163,8 +163,8 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
 
     missing
     { &vop_reallocblks_desc,	(vnodeopv_entry_t) ufs_missingop },
-    { &vop_lookup_desc,		(vnodeopv_entry_t) ufs_lookup },
-    { &vop_whiteout_desc,	(vnodeopv_entry_t) ufs_whiteout },
+    { &vop_old_lookup_desc,	(vnodeopv_entry_t) ufs_lookup },
+    { &vop_old_whiteout_desc,	(vnodeopv_entry_t) ufs_whiteout },
 #endif
     { NULL, NULL }
 };
@@ -926,7 +926,7 @@ int
 coda_lookup(void *v)
 {
 /* true args */
-    struct vop_lookup_args *ap = v;
+    struct vop_old_lookup_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);
     struct vnode **vpp = ap->a_vpp;
@@ -1069,7 +1069,7 @@ int
 coda_create(void *v)
 {
 /* true args */
-    struct vop_create_args *ap = v;
+    struct vop_old_create_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);
     struct vattr *va = ap->a_vap;
@@ -1149,7 +1149,7 @@ int
 coda_remove(void *v)
 {
 /* true args */
-    struct vop_remove_args *ap = v;
+    struct vop_old_remove_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *cp = VTOC(dvp);
     struct componentname  *cnp = ap->a_cnp;
@@ -1208,7 +1208,7 @@ int
 coda_link(void *v)
 {
 /* true args */
-    struct vop_link_args *ap = v;
+    struct vop_old_link_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct vnode *tdvp = ap->a_tdvp;
@@ -1260,7 +1260,7 @@ int
 coda_rename(void *v)
 {
 /* true args */
-    struct vop_rename_args *ap = v;
+    struct vop_old_rename_args *ap = v;
     struct vnode *odvp = ap->a_fdvp;
     struct cnode *odcp = VTOC(odvp);
     struct componentname  *fcnp = ap->a_fcnp;
@@ -1351,7 +1351,7 @@ int
 coda_mkdir(void *v)
 {
 /* true args */
-    struct vop_mkdir_args *ap = v;
+    struct vop_old_mkdir_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);	
     struct componentname  *cnp = ap->a_cnp;
@@ -1421,7 +1421,7 @@ int
 coda_rmdir(void *v)
 {
 /* true args */
-    struct vop_rmdir_args *ap = v;
+    struct vop_old_rmdir_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);
     struct componentname  *cnp = ap->a_cnp;
@@ -1469,7 +1469,7 @@ int
 coda_symlink(void *v)
 {
 /* true args */
-    struct vop_symlink_args *ap = v;
+    struct vop_old_symlink_args *ap = v;
     struct vnode *tdvp = ap->a_dvp;
     struct cnode *tdcp = VTOC(tdvp);	
     struct componentname *cnp = ap->a_cnp;
@@ -1525,7 +1525,7 @@ coda_symlink(void *v)
     tdcp->c_flags &= ~C_VATTR;
 
     if (error == 0)
-	error = VOP_LOOKUP(tdvp, vpp, cnp);
+	error = VOP_OLD_LOOKUP(tdvp, vpp, cnp);
 
  exit:    
     CODADEBUG(CODA_SYMLINK, myprintf(("in symlink result %d\n",error)); )

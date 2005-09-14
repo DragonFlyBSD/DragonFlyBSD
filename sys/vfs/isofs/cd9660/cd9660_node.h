@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.6 2004/11/12 00:09:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.7 2005/09/14 01:13:37 dillon Exp $
  */
 
 #include <sys/lockf.h>
@@ -103,14 +103,14 @@ MALLOC_DECLARE(M_ISOFSNODE);
 
 struct buf;
 struct vop_bmap_args;
-struct vop_lookup_args;
+struct vop_old_lookup_args;
 struct vop_inactive_args;
 struct vop_reclaim_args;
 
 /*
  * Prototypes for ISOFS vnode operations
  */
-int cd9660_lookup (struct vop_lookup_args *);
+int cd9660_lookup (struct vop_old_lookup_args *);
 int cd9660_inactive (struct vop_inactive_args *);
 int cd9660_reclaim (struct vop_reclaim_args *);
 int cd9660_bmap (struct vop_bmap_args *);
