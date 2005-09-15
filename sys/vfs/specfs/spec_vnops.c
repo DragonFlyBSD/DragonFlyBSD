@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.23 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.23.2.1 2005/09/15 18:54:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -585,6 +585,8 @@ spec_bmap(struct vop_bmap_args *ap)
  *
  * spec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
  *	      struct thread *a_td)
+ *
+ * NOTE: the vnode may or may not be locked on call.
  */
 /* ARGSUSED */
 static int
@@ -594,6 +596,7 @@ spec_close(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 	dev_t dev = vp->v_rdev;
 	int error;
+	int needrelock;
 
 	/*
 	 * Hack: a tty device that is a controlling terminal
@@ -627,7 +630,14 @@ spec_close(struct vop_close_args *ap)
 	if (dev && ((vp->v_flag & VRECLAIMED) ||
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
 	    (vcount(vp) <= 1 && vp->v_opencount == 1))) {
+		needrelock = 0;
+		if (VOP_ISLOCKED(vp, ap->a_td)) {
+			needrelock = 1;
+			VOP_UNLOCK(vp, 0, ap->a_td);
+		}
 		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td);
+		if (needrelock)
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 	} else {
 		error = 0;
 	}
