@@ -4,13 +4,14 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpd.h,v 1.2 2000/02/03 10:26:59 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.3 2005/09/04 01:53:07 sephe Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.4 2005/09/15 04:34:52 sephe Exp $
   */
 
 #ifndef _LIBWRAP_TCPD_H
 #define _LIBWRAP_TCPD_H
 
 #include <sys/cdefs.h>
+#include <stdio.h>
 
 /* Structure to describe one communications endpoint. */
 
@@ -158,8 +159,8 @@ extern void tli_host();			/* look up endpoint addresses etc. */
   * everyone would have to include <setjmp.h>.
   */
 
-void	tcpd_warn(char *, ...) __printflike(1, 2);	/* report problem and proceed */
-void	tcpd_jump(char *, ...) __printflike(1, 2);	/* report problem and jump */
+void	tcpd_warn(const char *, ...) __printflike(1, 2);/* report problem and proceed */
+void	tcpd_jump(const char *, ...) __printflike(1, 2);/* report problem and jump */
 __END_DECLS
 
 struct tcpd_context {
