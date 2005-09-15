@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.11.2.2 2005/09/15 18:46:31 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.11.2.3 2005/09/15 19:09:44 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -451,10 +451,8 @@ lwkt_reltoken(lwkt_tokref *_ref)
 #endif
 	splz();
 	crit_exit();
-#elif defined(MAKE_TOKENS_YIELD)
-	lwkt_yield();
 #else
-#error MAKE_TOKENS_XXX ?
+	lwkt_yield();
 #endif
     }
 }
