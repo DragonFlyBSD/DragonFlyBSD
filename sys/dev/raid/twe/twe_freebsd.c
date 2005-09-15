@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.12 2005/02/04 02:55:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.12.2.1 2005/09/15 18:44:15 dillon Exp $
  */
 
 /*
@@ -1028,11 +1028,16 @@ twe_map_request(struct twe_request *tr)
 
 	/* 
 	 * Data must be 512-byte aligned; allocate a fixup buffer if it's not.
+	 *
+	 * DragonFly's malloc only guarentees alignment for requests which
+	 * are power-of-2 sized.
 	 */
 	if (((vm_offset_t)tr->tr_data % TWE_ALIGNMENT) != 0) {
 	    int aligned_size;
 
-	    aligned_size = (tr->tr_length + TWE_ALIGNMASK) & ~TWE_ALIGNMASK;
+	    aligned_size = TWE_ALIGNMENT;
+	    while (aligned_size < tr->tr_length)
+		aligned_size <<= 1;
 	    /* save pointer to 'real' data */
 	    tr->tr_realdata = tr->tr_data;
 	    tr->tr_flags |= TWE_CMD_ALIGNBUF;
