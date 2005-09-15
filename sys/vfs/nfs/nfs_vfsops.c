@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.25 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.25.2.1 2005/09/15 18:51:31 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -436,6 +436,7 @@ nfs_mountroot(mp)
 	struct vnode *vp;
 	struct thread *td = curthread;		/* XXX */
 	int error, i;
+	int s;
 	u_long l;
 	char buf[128];
 
@@ -456,7 +457,7 @@ nfs_mountroot(mp)
 	/*
 	 * XXX splnet, so networks will receive...
 	 */
-	splnet();
+	s = splnet();
 
 #ifdef notyet
 	/* Set up swap credentials. */
@@ -533,6 +534,7 @@ nfs_mountroot(mp)
 			mp->mnt_vfc->vfc_refcount--;
 			free(swap_mp, M_MOUNT);
 		}
+		splx(s);
 		return (error);
 	}
 
@@ -554,8 +556,10 @@ nfs_mountroot(mp)
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		printf("NFS SWAP: %s\n",buf);
 		if ((error = nfs_mountdiskless(buf, "/swap", 0,
-		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0)
+		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0) {
+			splx(s);
 			return (error);
+		}
 		vfs_unbusy(swap_mp, td);
 
 		VTONFS(vp)->n_size = VTONFS(vp)->n_vattr.va_size = 
@@ -586,6 +590,7 @@ nfs_mountroot(mp)
 		if (hostname[i] == '\0')
 			break;
 	inittodr(ntohl(nd->root_time));
+	splx(s);
 	return (0);
 }
 
