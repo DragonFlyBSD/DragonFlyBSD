@@ -7,33 +7,28 @@
   * tcpd_jump() reports a problem and jumps.
   * 
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+  *
+  * @(#) diag.c 1.1 94/12/28 17:42:20
+  * $DragonFly: src/contrib/tcp_wrappers/diag.c,v 1.2 2005/09/15 04:33:04 sephe Exp $
   */
-
-#ifndef lint
-static char sccsid[] = "@(#) diag.c 1.1 94/12/28 17:42:20";
-#endif
 
 /* System libraries */
 
 #include <syslog.h>
-#include <stdio.h>
 #include <setjmp.h>
+#include <stdarg.h>
 
 /* Local stuff */
 
 #include "tcpd.h"
-#include "mystdarg.h"
 
 struct tcpd_context tcpd_context;
 jmp_buf tcpd_buf;
 
 /* tcpd_diag - centralize error reporter */
 
-static void tcpd_diag(severity, tag, format, ap)
-int     severity;
-char   *tag;
-char   *format;
-va_list ap;
+static void
+tcpd_diag(int severity, const char *tag, const char *format, va_list ap)
 {
     char    fmt[BUFSIZ];
 
@@ -47,23 +42,25 @@ va_list ap;
 
 /* tcpd_warn - report problem of some sort and proceed */
 
-void    VARARGS(tcpd_warn, char *, format)
+void
+tcpd_warn(const char *format, ...)
 {
     va_list ap;
 
-    VASTART(ap, char *, format);
+    va_start(ap, format);
     tcpd_diag(LOG_ERR, "warning", format, ap);
-    VAEND(ap);
+    va_end(ap);
 }
 
 /* tcpd_jump - report serious problem and jump */
 
-void    VARARGS(tcpd_jump, char *, format)
+void
+tcpd_jump(const char *format, ...)
 {
     va_list ap;
 
-    VASTART(ap, char *, format);
+    va_start(ap, format);
     tcpd_diag(LOG_ERR, "error", format, ap);
-    VAEND(ap);
+    va_end(ap);
     longjmp(tcpd_buf, AC_ERROR);
 }
