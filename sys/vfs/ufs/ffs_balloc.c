@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.11 2004/08/24 16:32:11 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.11.2.1 2005/09/15 18:56:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,14 +68,15 @@ ffs_balloc(struct vop_balloc_args *ap)
 	int flags;
 	struct fs *fs;
 	ufs_daddr_t nb;
-	struct buf *bp, *nbp;
+	struct buf *bp, *nbp, *dbp;
 	struct vnode *vp;
 	struct indir indirs[NIADDR + 2];
 	ufs_daddr_t newb, *bap, pref;
 	int deallocated, osize, nsize, num, i, error;
 	ufs_daddr_t *allocib, *blkp, *allocblk, allociblk[NIADDR + 1];
-	int unwindidx = -1;
 	struct thread *td = curthread;	/* XXX */
+	int unwindidx;
+	int seqcount;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
@@ -206,17 +207,38 @@ ffs_balloc(struct vop_balloc_args *ap)
 		panic ("ffs_balloc: ufs_bmaparray returned indirect block");
 #endif
 	/*
-	 * Fetch the first indirect block allocating if necessary.
+	 * Get a handle on the data block buffer before working through 
+	 * indirect blocks to avoid a deadlock between the VM system holding
+	 * a locked VM page and issuing a BMAP (which tries to lock the
+	 * indirect blocks), and the filesystem holding a locked indirect
+	 * block and then trying to read a data block (which tries to lock
+	 * the underlying VM pages).
+	 */
+	dbp = getblk(vp, lbn, fs->fs_bsize, 0, 0);
+
+	/*
+	 * Setup undo history
+	 */
+	allocib = NULL;
+	allocblk = allociblk;
+	unwindidx = -1;
+
+	/*
+	 * Fetch the first indirect block directly from the inode, allocating
+	 * one if necessary. 
 	 */
 	--num;
 	nb = ip->i_ib[indirs[0].in_off];
-	allocib = NULL;
-	allocblk = allociblk;
 	if (nb == 0) {
 		pref = ffs_blkpref(ip, lbn, 0, (ufs_daddr_t *)0);
+		/*
+		 * If the filesystem has run out of space we can skip the
+		 * full fsync/undo of the main [fail] case since no undo
+		 * history has been built yet.  Hence the goto fail2.
+		 */
 	        if ((error = ffs_alloc(ip, lbn, pref, (int)fs->fs_bsize,
 		    cred, &newb)) != 0)
-			return (error);
+			goto fail2;
 		nb = newb;
 		*allocblk++ = nb;
 		bp = getblk(vp, indirs[1].in_lbn, fs->fs_bsize, 0, 0);
@@ -240,6 +262,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		*allocib = nb;
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
+
 	/*
 	 * Fetch through the indirect blocks, allocating as necessary.
 	 */
@@ -299,8 +322,18 @@ ffs_balloc(struct vop_balloc_args *ap)
 			bdwrite(bp);
 		}
 	}
+
 	/*
-	 * Get the data block, allocating if necessary.
+	 * Get the data block, allocating if necessary.  We have already
+	 * called getblk() on the data block buffer, dbp.  If we have to
+	 * allocate it and B_CLRBUF has been set the inference is an intention
+	 * to zero out the related disk blocks, so we do not have to issue
+	 * a read.  Instead we simply call vfs_bio_clrbuf().  If B_CLRBUF is
+	 * not set the caller intends to overwrite the entire contents of the
+	 * buffer and we don't waste time trying to clean up the contents.
+	 *
+	 * bp references the current indirect block.  When allocating, 
+	 * the block must be updated.
 	 */
 	if (nb == 0) {
 		pref = ffs_blkpref(ip, lbn, indirs[i].in_off, &bap[0]);
@@ -312,13 +345,12 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 		nb = newb;
 		*allocblk++ = nb;
-		nbp = getblk(vp, lbn, fs->fs_bsize, 0, 0);
-		nbp->b_blkno = fsbtodb(fs, nb);
+		dbp->b_blkno = fsbtodb(fs, nb);
 		if (flags & B_CLRBUF)
-			vfs_bio_clrbuf(nbp);
+			vfs_bio_clrbuf(dbp);
 		if (DOINGSOFTDEP(vp))
 			softdep_setup_allocindir_page(ip, lbn, bp,
-			    indirs[i].in_off, nb, 0, nbp);
+			    indirs[i].in_off, nb, 0, dbp);
 		bap[indirs[i].in_off] = nb;
 		/*
 		 * If required, write synchronously, otherwise use
@@ -331,35 +363,54 @@ ffs_balloc(struct vop_balloc_args *ap)
 				bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		}
-		*ap->a_bpp = nbp;
+		*ap->a_bpp = dbp;
 		return (0);
 	}
 	brelse(bp);
+
 	/*
-	 * If requested clear invalid portions of the buffer.  If we 
-	 * have to do a read-before-write (typical if B_CLRBUF is set),
-	 * try to do some read-ahead in the sequential case to reduce
-	 * the number of I/O transactions.
+	 * At this point all related indirect blocks have been allocated
+	 * if necessary and released.  bp is no longer valid.  dbp holds
+	 * our getblk()'d data block.
+	 *
+	 * XXX we previously performed a cluster_read operation here.
 	 */
 	if (flags & B_CLRBUF) {
-		int seqcount = (flags & B_SEQMASK) >> B_SEQSHIFT;
-		if (seqcount &&
-		    (vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			error = cluster_read(vp, ip->i_size, lbn,
-				    (int)fs->fs_bsize, 
-				    MAXBSIZE, seqcount, &nbp);
+		/*
+		 * If B_CLRBUF is set we must validate the invalid portions
+		 * of the buffer.  This typically requires a read-before-
+		 * write.  The strategy call will fill in b_blkno in that
+		 * case.
+		 *
+		 * If we hit this case we do a cluster read if possible
+		 * since nearby data blocks are likely to be accessed soon
+		 * too.
+		 */
+		if ((dbp->b_flags & B_CACHE) == 0) {
+			bqrelse(dbp);
+			seqcount = (flags & B_SEQMASK) >> B_SEQSHIFT;
+			if (seqcount &&
+			    (vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
+				error = cluster_read(vp, ip->i_size, lbn,
+					    (int)fs->fs_bsize, 
+					    MAXBSIZE, seqcount, &dbp);
+			} else {
+				error = bread(vp, lbn, (int)fs->fs_bsize, &dbp);
+			}
+			if (error)
+				goto fail;
 		} else {
-			error = bread(vp, lbn, (int)fs->fs_bsize, &nbp);
-		}
-		if (error) {
-			brelse(nbp);
-			goto fail;
+			dbp->b_blkno = fsbtodb(fs, nb);
 		}
 	} else {
-		nbp = getblk(vp, lbn, fs->fs_bsize, 0, 0);
-		nbp->b_blkno = fsbtodb(fs, nb);
+		/*
+		 * If B_CLRBUF is not set the caller intends to overwrite
+		 * the entire contents of the buffer.  We can simply set
+		 * b_blkno and we are done.
+		 */
+		dbp->b_blkno = fsbtodb(fs, nb);
 	}
-	*ap->a_bpp = nbp;
+	*ap->a_bpp = dbp;
 	return (0);
 fail:
 	/*
@@ -410,5 +461,12 @@ fail:
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
 	(void) VOP_FSYNC(vp, MNT_WAIT, td);
+
+	/*
+	 * Cleanup the data block we getblk()'d before returning.
+	 */
+fail2:
+	brelse(dbp);
 	return (error);
 }
+
