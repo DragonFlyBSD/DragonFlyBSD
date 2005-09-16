@@ -29,13 +29,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.1 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.2 2005/09/16 21:50:12 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/types.h>
 #include <machine/atomic.h>
 #include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 
 #define	BACKOFF_INITIAL	1
 #define	BACKOFF_LIMIT	256

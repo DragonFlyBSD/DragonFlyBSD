@@ -29,20 +29,87 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock.h,v 1.3 2005/09/16 21:50:13 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.1 2005/09/16 21:50:13 dillon Exp $
  */
 
-#ifndef _SYS_SPINLOCK_H_
-#define _SYS_SPINLOCK_H_
+#ifndef _SYS_SPINLOCK2_H_
+#define _SYS_SPINLOCK2_H_
 
-/*
- * Note that the spinlock structure is retained whether we are SMP or not,
- * so structures using embedded spinlocks do not change size for SMP vs UP
- * builds.
- */
-struct spinlock {
-	volatile int lock;	/* 0 = unlocked, 1 = locked */
-};
+#include <sys/thread2.h>
+#include <machine/atomic.h>
+#include <machine/cpufunc.h>
+
+#ifdef SMP
+
+static __inline boolean_t
+spin_trylock(struct spinlock *mtx)
+{
+	if (atomic_swap_int(&mtx->lock, 1) == 0)
+		return (TRUE);
+	return (FALSE);
+}
+
+extern void spin_lock_contested(struct spinlock *mtx);
+
+static __inline void
+spin_lock(struct spinlock *mtx)
+{
+	if (atomic_swap_int(&mtx->lock, 1) != 0)
+		spin_lock_contested(mtx);	/* slow path */
+}
+
+static __inline void
+spin_unlock(struct spinlock *mtx)
+{
+	cpu_sfence();
+	mtx->lock = 0;		/* non-bus-locked lock release */
+}
+
+static __inline boolean_t
+spin_is_locked(struct spinlock *mtx)
+{
+	return (mtx->lock);
+}
+
+static __inline void
+spin_init(struct spinlock *mtx)
+{
+        mtx->lock = 0;
+}
+
+#else	/* SMP */
+
+static __inline boolean_t
+spin_trylock(struct spinlock *mtx)
+{
+	return (TRUE);
+}
+
+static __inline boolean_t
+spin_is_locked(struct spinlock *mtx)
+{
+	return (FALSE);
+}
+
+static __inline void	spin_lock(struct spinlock *mtx) { }
+static __inline void	spin_unlock(struct spinlock *mtx) { }
+static __inline void	spin_init(struct spinlock *mtx) { }
+
+#endif	/* SMP */
+
+static __inline void
+spin_lock_crit(struct spinlock *mtx)
+{
+	crit_enter();
+	spin_lock(mtx);
+}
+
+static __inline void
+spin_unlock_crit(struct spinlock *mtx)
+{
+	spin_unlock(mtx);
+	crit_exit();
+}
 
 #endif
 
