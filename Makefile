@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.14 2005/07/20 17:55:13 dillon Exp $
+# $DragonFly: src/Makefile,v 1.15 2005/09/16 18:50:15 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -187,10 +187,10 @@ upgrade_etc:
 # Convenient targets for use by the CVS repository meister.  
 #
 update_preview_tag:     iamoncrater
-	cvs rtag -a -F DragonFly_Preview src
+	cvs -d /cvs rtag -a -F DragonFly_Preview src
 
 update_release1_2_slip_tag:     iamoncrater
-	cvs rtag -a -F -rDragonFly_RELEASE_1_2 DragonFly_RELEASE_1_2_Slip src
+	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_2 DragonFly_RELEASE_1_2_Slip src
 
 iamoncrater:
 	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
