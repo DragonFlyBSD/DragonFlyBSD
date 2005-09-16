@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.7 2005/01/21 11:09:40 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.7.2.1 2005/09/16 04:34:13 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -117,21 +117,19 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
 
     if (*dname == 's') {				    /* slice */
 	if (((dname[1] < '1') || (dname[1] > '4'))	    /* invalid slice */
-	||((dname[2] < 'a') || (dname[2] > 'h')))	    /* or invalid partition */
+	||((dname[2] < 'a') || (dname[2] > 'p')))	    /* or invalid partition */
 	    return ENODEV;
-	devminor = ((unit & 31) << 3)			    /* unit */
-	+(dname[2] - 'a')				    /* partition */
-	+((dname[1] - '0' + 1) << 16)			    /* slice */
-	+((unit & ~31) << 16);				    /* high-order unit bits */
+	devminor = dkmakeminor(unit, dname[1] - '0' + 1, (dname[2] - 'a'));
     } else {						    /* compatibility partition */
-	if ((*dname < 'a') || (*dname > 'h'))		    /* or invalid partition */
+	if ((*dname < 'a') || (*dname > 'p'))		    /* or invalid partition */
 	    return ENODEV;
-	devminor = (*dname - 'a')			    /* partition */
-	+((unit & 31) << 3)				    /* unit */
-	+((unit & ~31) << 16);				    /* high-order unit bits */
+	devminor = dkmakeminor(unit, 0, (dname[0] - 'a'));
     }
 
-    if ((devminor & 7) == 2)				    /* partition c */
+    /*
+     * Disallow partition c
+     */
+    if ((((devminor >> 17) & 0x08) | (devminor & 7)) == 2)
 	return ENOTTY;					    /* not buying that */
 
     drive->dev = udev2dev(makeudev(devmajor, devminor), 0);
@@ -854,56 +852,87 @@ vinum_scandisk(char *devicename[], int drives)
 	char part;					    /* UNIX partition */
 	int slice;
 	int founddrive;					    /* flag when we find a vinum drive */
+	int has_slice = 0;
+	int has_part = 0;
+	char *tmp;
 
 	founddrive = 0;					    /* no vinum drive found yet on this spindle */
-	/* first try the partition table */
-	for (slice = 1; slice < 5; slice++)
-	    for (part = 'a'; part < 'i'; part++) {
-		if (part != 'c') {			    /* don't do the c partition */
-		    snprintf(partname,
-			DRIVENAMELEN,
-			"%ss%d%c",
-			devicename[driveno],
-			slice,
-			part);
-		    drive = check_drive(partname);	    /* try to open it */
-		    if ((drive->lasterror != 0)		    /* didn't work, */
+
+	/*
+	 * If the device path contains a slice we do not try to tack on
+	 * another slice.  If the device path has a partition we only check
+	 * that partition.
+	 */
+	if ((tmp = rindex(devicename[driveno], '/')) == NULL)
+	    tmp = devicename[driveno];
+	while (*tmp && (*tmp < '0' || *tmp > '9'))
+	    ++tmp;
+	while (*tmp && *tmp >= '0' && *tmp <= '9')
+	    ++tmp;
+	if (*tmp == 's')
+	    has_slice = strtol(tmp + 1, &tmp, 0);
+	if (*tmp >= 'a' && *tmp <= 'p')
+	    has_part = *tmp;
+
+	/*
+	 * Scan slices if no slice was specified, only if no partition was
+	 * specified.
+	 */
+	if (has_slice == 0 && has_part == 0)
+	for (slice = 1; slice < 5; slice++) {
+	    if (has_slice && slice != has_slice)
+		continue;
+
+	    for (part = 'a'; part <= 'p'; part++) {
+		if (has_part && part != has_part)
+		    continue;
+		if (part == 'c')
+		    continue;
+		snprintf(partname, DRIVENAMELEN,
+			"%ss%d%c", devicename[driveno], slice, part);
+		drive = check_drive(partname);	    /* try to open it */
+		if ((drive->lasterror != 0)		    /* didn't work, */
 		    ||(drive->state != drive_up))
-			free_drive(drive);		    /* get rid of it */
-		    else if (drive->flags & VF_CONFIGURED)  /* already read this config, */
-			log(LOG_WARNING,
-			    "vinum: already read config from %s\n", /* say so */
-			    drive->label.name);
-		    else {
-			drivelist[gooddrives] = drive->driveno;	/* keep the drive index */
-			drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
-			gooddrives++;
-			founddrive++;
-		    }
+		    free_drive(drive);		    /* get rid of it */
+		else if (drive->flags & VF_CONFIGURED)  /* already read this config, */
+		    log(LOG_WARNING,
+			"vinum: already read config from %s\n", /* say so */
+			drive->label.name);
+		else {
+		    drivelist[gooddrives] = drive->driveno;	/* keep the drive index */
+		    drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
+		    gooddrives++;
+		    founddrive++;
 		}
 	    }
-	if (founddrive == 0) {				    /* didn't find anything, */
-	    for (part = 'a'; part < 'i'; part++)	    /* try the compatibility partition */
-		if (part != 'c') {			    /* don't do the c partition */
-		    snprintf(partname,			    /* /dev/sd0a */
-			DRIVENAMELEN,
-			"%s%c",
-			devicename[driveno],
-			part);
-		    drive = check_drive(partname);	    /* try to open it */
-		    if ((drive->lasterror != 0)		    /* didn't work, */
-		    ||(drive->state != drive_up))
-			free_drive(drive);		    /* get rid of it */
-		    else if (drive->flags & VF_CONFIGURED)  /* already read this config, */
-			log(LOG_WARNING,
-			    "vinum: already read config from %s\n", /* say so */
-			    drive->label.name);
-		    else {
-			drivelist[gooddrives] = drive->driveno;	/* keep the drive index */
-			drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
-			gooddrives++;
-		    }
+	}
+	if (founddrive == 0 && has_slice == 0) {	    /* didn't find anything, */
+	    for (part = 'a'; part <= 'p'; part++) {	    /* try the compatibility partition */
+		if (has_part && has_part != part)
+		    continue;
+		if (part == 'c')
+		    continue;
+		if (has_part) {
+		    snprintf(partname, DRIVENAMELEN,
+			    "%s", devicename[driveno]);
+		} else {
+		    snprintf(partname, DRIVENAMELEN,
+			    "%s%c", devicename[driveno], part);
 		}
+		drive = check_drive(partname);	    /* try to open it */
+		if ((drive->lasterror != 0)		    /* didn't work, */
+		||(drive->state != drive_up))
+		    free_drive(drive);		    /* get rid of it */
+		else if (drive->flags & VF_CONFIGURED)  /* already read this config, */
+		    log(LOG_WARNING,
+			"vinum: already read config from %s\n", /* say so */
+			drive->label.name);
+		else {
+		    drivelist[gooddrives] = drive->driveno;	/* keep the drive index */
+		    drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
+		    gooddrives++;
+		}
+	    }
 	}
     }
 
