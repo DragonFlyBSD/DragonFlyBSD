@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.4 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.5 2005/09/16 04:33:14 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -392,6 +392,7 @@ complete_raid5_write(struct rqelement *rqe)
 		    rqe->b.b_bufsize = rqe->b.b_bcount;	    /* don't claim more */
 		    rqe->b.b_resid = rqe->b.b_bcount;	    /* nothing transferred */
 		    rqe->b.b_blkno += rqe->dataoffset;	    /* point to the correct block */
+		    rqe->b.b_dev = DRIVE[rqe->driveno].dev;
 		    rqg->active++;			    /* another active request */
 		    drive = &DRIVE[rqe->driveno];	    /* drive to access */
 
@@ -429,6 +430,7 @@ complete_raid5_write(struct rqelement *rqe)
     rqe->b.b_bcount = rqe->buflen << DEV_BSHIFT;	    /* length to write */
     rqe->b.b_bufsize = rqe->b.b_bcount;			    /* don't claim we have more */
     rqe->b.b_resid = rqe->b.b_bcount;			    /* nothing transferred */
+    rqe->b.b_dev = DRIVE[rqe->driveno].dev;
     rqg->active++;					    /* another active request */
     drive = &DRIVE[rqe->driveno];			    /* drive to access */
 

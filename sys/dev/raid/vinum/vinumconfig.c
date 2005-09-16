@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.6 2004/07/02 15:47:56 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.7 2005/09/16 04:33:14 dillon Exp $
  */
 
 #define STATIC static
@@ -1168,7 +1168,7 @@ config_subdisk(int update)
 	    parameter++;				    /* skip the keyword */
 	    if ((strlen(token[parameter]) != 1)
 		|| (token[parameter][0] < 'a')
-		|| (token[parameter][0] > 'h'))
+		|| (token[parameter][0] > 'p'))
 		throw_rude_remark(EINVAL,
 		    "%s: invalid partition %c",
 		    sd->name,
