@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock.h,v 1.1 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/sys/spinlock.h,v 1.2 2005/09/16 20:55:44 dillon Exp $
  */
 
 #ifndef _SPINLOCK_H_
@@ -41,11 +41,16 @@
 #include <machine/cpufunc.h>
 #endif
 
-#ifdef SMP
-
+/*
+ * Note that the spinlock structure is retained whether we are SMP or not,
+ * so structures using embedded spinlocks do not change size for SMP vs UP
+ * builds.
+ */
 struct spinlock {
 	volatile int lock;	/* 0 = unlocked, 1 = locked */
 };
+
+#ifdef SMP
 
 static __inline boolean_t
 spin_trylock(struct spinlock *mtx)
@@ -84,16 +89,6 @@ spin_init(struct spinlock *mtx)
 }
 
 #else	/* SMP */
-
-/*
- * Non-MP case optimized at compile-time.
- */
-
-struct spinlock {
-#ifndef __GNUC__			/* GCC allows 0-sized structures */
-	volatile int lock;
-#endif
-};
 
 static __inline boolean_t
 spin_trylock(struct spinlock *mtx)
