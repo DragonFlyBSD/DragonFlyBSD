@@ -37,7 +37,7 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.4 2005/08/28 04:34:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.5 2005/09/17 07:43:12 dillon Exp $
  */
 
 #ifndef _UFS_UFS_DINODE_H_
@@ -93,7 +93,10 @@ struct dinode {
 	int32_t		di_gen;		/* 108: Generation number. */
 	uint32_t	di_uid;		/* 112: File owner. */
 	uint32_t	di_gid;		/* 116: File group. */
-	int32_t		di_spare[2];	/* 120: Reserved; currently unused */
+	union {				/* 120: File hierarchy modified */
+	    int32_t	spare[2];	/*	(used by ext2fs) */
+	    int64_t	fsmid;		/*	(used by dragonfly) */
+	} di_v;
 };
 
 /*
@@ -108,6 +111,8 @@ struct dinode {
 #define	di_ouid		di_u.oldids[0]
 #define	di_rdev		di_db[0]
 #define	di_shortlink	di_db
+#define di_spare	di_v.spare	/* ext2fs */
+#define di_fsmid	di_v.fsmid
 #define	MAXSYMLINKLEN	((NDADDR + NIADDR) * sizeof(ufs_daddr_t))
 
 /* File permissions. */

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.18 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.19 2005/09/17 07:43:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@ static struct vnodeopv_entry_desc mfs_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc mfs_vnodeop_opv_desc =
-	{ &mfs_vnode_vops, mfs_vnodeop_entries };
+	{ &mfs_vnode_vops, mfs_vnodeop_entries, 0 };
 
 VNODEOP_SET(mfs_vnodeop_opv_desc);
 

@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.20 2005/09/14 01:13:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.21 2005/09/17 07:43:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -123,7 +123,7 @@ static struct vnodeopv_entry_desc fifo_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc fifo_vnodeop_opv_desc =
-	{ &fifo_vnode_vops, fifo_vnodeop_entries };
+	{ &fifo_vnode_vops, fifo_vnodeop_entries, 0 };
 
 VNODEOP_SET(fifo_vnodeop_opv_desc);
 

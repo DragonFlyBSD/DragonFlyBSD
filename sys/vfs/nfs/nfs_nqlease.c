@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.26 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.27 2005/09/17 07:43:12 dillon Exp $
  */
 
 
@@ -994,6 +994,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 	struct nfsreq myrep;
 	struct nfsuid *nuidp, *nnuidp;
 	int error = 0, vpid;
+	int retdummy;
 
 	/*
 	 * First initialize some variables
@@ -1063,7 +1064,8 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 					if (np->n_flag & NQNFSEVICTED) {
 						if (vp->v_type == VDIR)
 							nfs_invaldir(vp);
-						cache_inval_vp(vp, 0);
+						retdummy = 0;
+						cache_inval_vp(vp, 0, &retdummy);
 						(void) nfs_vinvalbuf(vp,
 						       V_SAVE, td, 0);
 						np->n_flag &= ~NQNFSEVICTED;

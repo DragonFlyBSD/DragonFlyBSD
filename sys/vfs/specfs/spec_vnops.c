@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.28 2005/09/14 01:13:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.29 2005/09/17 07:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc spec_vnodeop_opv_desc =
-	{ &spec_vnode_vops, spec_vnodeop_entries };
+	{ &spec_vnode_vops, spec_vnodeop_entries, 0 };
 VNODEOP_SET(spec_vnodeop_opv_desc);
 
 extern int dev_ref_debug;

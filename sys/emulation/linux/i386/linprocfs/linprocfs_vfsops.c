@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.9 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.10 2005/09/17 07:42:58 dillon Exp $
  */
 
 /*
@@ -92,7 +92,8 @@ linprocfs_mount(mp, path, data, td)
 	mp->mnt_data = 0;
 	vfs_getnewfsid(mp);
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, linprocfs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
+			 linprocfs_vnodeop_entries, 0);
 
 	size = sizeof("linprocfs") - 1;
 	bcopy("linprocfs", mp->mnt_stat.f_mntfromname, size);

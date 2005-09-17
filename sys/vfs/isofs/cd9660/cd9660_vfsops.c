@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.27 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.28 2005/09/17 07:43:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -508,9 +508,12 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		supbp = NULL;
 	}
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, cd9660_vnodeop_entries);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, cd9660_specop_entries);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, cd9660_fifoop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
+			 cd9660_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, 
+			 cd9660_specop_entries, 0);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops,
+			 cd9660_fifoop_entries, 0);
 
 	return 0;
 out:

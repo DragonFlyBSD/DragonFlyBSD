@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.20 2005/07/26 15:43:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.21 2005/09/17 07:43:12 dillon Exp $
  */
 
 /*
@@ -269,7 +269,8 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	(void) copyinstr(args.target, cp, len - 1, &size);
 	bzero(cp + size, len - size);
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, union_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops,
+			 union_vnodeop_entries, 0);
 
 	(void)union_statfs(mp, &mp->mnt_stat, td);
 

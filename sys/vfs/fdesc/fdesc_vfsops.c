@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.15 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.16 2005/09/17 07:43:03 dillon Exp $
  */
 
 /*
@@ -87,7 +87,8 @@ fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	if (mp->mnt_flag & MNT_UPDATE)
 		return (EOPNOTSUPP);
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, fdesc_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
+			 fdesc_vnodeop_entries, 0);
 
 	error = fdesc_allocvp(Froot, FD_ROOT, mp, &rvp, td);
 	if (error)

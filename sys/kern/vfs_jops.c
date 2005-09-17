@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.22 2005/09/07 19:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.23 2005/09/17 07:43:00 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -294,7 +294,8 @@ journal_mountctl(struct vop_mountctl_args *ap)
 static int
 journal_attach(struct mount *mp)
 {
-    vfs_add_vnodeops(mp, &mp->mnt_vn_journal_ops, journal_vnodeop_entries);
+    vfs_add_vnodeops(mp, &mp->mnt_vn_journal_ops, 
+		     journal_vnodeop_entries, 0);
     return(0);
 }
 

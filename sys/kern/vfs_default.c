@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.27 2005/09/14 01:13:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.28 2005/09/17 07:43:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,7 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 };
 
 static struct vnodeopv_desc default_vnodeop_opv_desc =
-        { &default_vnode_vops, default_vnodeop_entries };
+        { &default_vnode_vops, default_vnodeop_entries, 0 };
 
 VNODEOP_SET(default_vnodeop_opv_desc);
 

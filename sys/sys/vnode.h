@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.38 2005/08/10 14:28:34 joerg Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.39 2005/09/17 07:43:01 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -459,6 +459,7 @@ struct vnodeopv_entry_desc {
 struct vnodeopv_desc {
 	struct vop_ops **opv_desc_vector;	    /* vect to allocate/fill*/
 	struct vnodeopv_entry_desc *opv_desc_ops;   /* null terminated list */
+	int opv_flags;
 };
 
 struct vnodeopv_node {
@@ -601,7 +602,7 @@ int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
 void	vfs_add_vnodeops_sysinit (const void *);
 void	vfs_rm_vnodeops_sysinit (const void *);
 void	vfs_add_vnodeops(struct mount *, struct vop_ops **,
-			struct vnodeopv_entry_desc *);
+			struct vnodeopv_entry_desc *, int);
 void	vfs_rm_vnodeops(struct vop_ops **);
 int	vflush (struct mount *mp, int rootrefs, int flags);
 int	vmntvnodescan(struct mount *mp, int flags,

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.29 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.30 2005/09/17 07:43:12 dillon Exp $
  */
 
 
@@ -498,7 +498,8 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		(ntmp->ntm_flag & NTFS_MFLAG_ALLNAMES)?" allnames,":"",
 		ntmp->ntm_uid, ntmp->ntm_gid, ntmp->ntm_mode));
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ntfs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
+			 ntfs_vnodeop_entries, 0);
 
 	/*
 	 * We read in some system nodes to do not allow 

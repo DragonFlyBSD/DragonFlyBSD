@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.9 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.10 2005/09/17 07:43:00 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -109,7 +109,8 @@ vfs_add_vnodeops_sysinit(const void *data)
 {
 	const struct vnodeopv_desc *vdesc = data;
 
-	vfs_add_vnodeops(NULL, vdesc->opv_desc_vector, vdesc->opv_desc_ops);
+	vfs_add_vnodeops(NULL, vdesc->opv_desc_vector, 
+			 vdesc->opv_desc_ops, vdesc->opv_flags);
 }
 
 /*
@@ -125,7 +126,7 @@ vfs_rm_vnodeops_sysinit(const void *data)
 
 void
 vfs_add_vnodeops(struct mount *mp, struct vop_ops **vops_pp,
-		struct vnodeopv_entry_desc *descs)
+		struct vnodeopv_entry_desc *descs, int flags)
 {
 	struct vnodeopv_node *node;
 	struct vop_ops *ops;
@@ -139,9 +140,21 @@ vfs_add_vnodeops(struct mount *mp, struct vop_ops **vops_pp,
 	node->ops = ops;
 	node->descs = descs;
 	ops->vv_mount = mp;
+	ops->vv_flags |= flags;
+
+	/*
+	 * Journal and coherency ops inherit normal ops flags
+	 */
+	if (vops_pp == &mp->mnt_vn_coherency_ops && mp->mnt_vn_norm_ops)
+	    ops->vv_flags |= mp->mnt_vn_norm_ops->vv_flags;
+	if (vops_pp == &mp->mnt_vn_journal_ops && mp->mnt_vn_norm_ops)
+	    ops->vv_flags |= mp->mnt_vn_norm_ops->vv_flags;
+
 	++ops->vv_refs;
 	TAILQ_INSERT_TAIL(&vnodeopv_list, node, entry);
+
 	vfs_recalc_vnodeops();
+
 	if (mp) {
 		if (mp->mnt_vn_coherency_ops)
 			mp->mnt_vn_use_ops = mp->mnt_vn_coherency_ops;

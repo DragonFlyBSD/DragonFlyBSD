@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.18 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.19 2005/09/17 07:43:12 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -166,7 +166,7 @@ static struct vnodeopv_entry_desc swapdev_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc swapdev_vnodeop_opv_desc =
-	{ &swapdev_vnode_vops, swapdev_vnodeop_entries };
+	{ &swapdev_vnode_vops, swapdev_vnodeop_entries, 0 };
 
 VNODEOP_SET(swapdev_vnodeop_opv_desc);
 

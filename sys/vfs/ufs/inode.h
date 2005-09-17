@@ -37,7 +37,7 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.9 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.10 2005/09/17 07:43:12 dillon Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
@@ -134,6 +134,7 @@ struct inode {
 #define	i_shortlink	i_din.di_shortlink
 #define	i_size		i_din.di_size
 #define	i_uid		i_din.di_uid
+#define i_fsmid		i_din.di_fsmid
 
 #endif
 

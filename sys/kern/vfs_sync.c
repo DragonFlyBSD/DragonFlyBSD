@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.6 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.7 2005/09/17 07:43:00 dillon Exp $
  */
 
 /*
@@ -321,7 +321,7 @@ static struct vnodeopv_entry_desc sync_vnodeop_entries[] = {
 };
 
 static struct vnodeopv_desc sync_vnodeop_opv_desc =
-	{ &sync_vnode_vops, sync_vnodeop_entries };
+	{ &sync_vnode_vops, sync_vnodeop_entries, 0 };
 
 VNODEOP_SET(sync_vnodeop_opv_desc);
 

@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.2 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.3 2005/09/17 07:43:01 dillon Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
@@ -129,6 +129,7 @@ struct vattr {
 	u_quad_t	va_filerev;	/* file modification number */
 	u_int		va_vaflags;	/* operations flags, see below */
 	long		va_spare;	/* remain quad aligned */
+	int64_t		va_fsmid;	/* filesystem modification id */
 };
 
 /*

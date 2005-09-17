@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.15 2005/09/14 01:13:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.16 2005/09/17 07:43:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -451,6 +451,7 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	struct thread *td)
 {
 	struct vop_getattr_args ap;
+	struct namecache *ncp;
 	int error;
 
 	ap.a_head.a_desc = &vop_getattr_desc;
@@ -460,6 +461,15 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_getattr);
+	if ((ops->vv_flags & VVF_SUPPORTS_FSMID) == 0) {
+		if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
+			if (ncp->nc_flag & NCF_FSMID) {
+				ncp->nc_flag &= ~NCF_FSMID;
+				++ncp->nc_fsmid;
+			}
+			vap->va_fsmid = ncp->nc_fsmid;
+		}
+	}
 	return(error);
 }
 
@@ -805,7 +815,7 @@ vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
+vop_reclaim(struct vop_ops *ops, struct vnode *vp, int retflags, struct thread *td)
 {
 	struct vop_reclaim_args ap;
 	int error;
@@ -814,6 +824,7 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_td = td;
+	ap.a_retflags = retflags;	/* return to filesystem inode */
 
 	DO_OPS(ops, error, &ap, vop_reclaim);
 	return(error);

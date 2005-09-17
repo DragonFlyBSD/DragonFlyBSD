@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.13 2005/09/14 01:13:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.14 2005/09/17 07:43:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ static struct vnodeopv_entry_desc dead_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc dead_vnodeop_opv_desc =
-	{ &dead_vnode_vops, dead_vnodeop_entries };
+	{ &dead_vnode_vops, dead_vnodeop_entries, 0 };
 
 VNODEOP_SET(dead_vnodeop_opv_desc);
 

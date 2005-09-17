@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.21 2005/09/14 01:13:22 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.22 2005/09/17 07:43:01 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -132,6 +132,7 @@ typedef struct namecache *namecache_t;
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
+#define NCF_FSMID	0x0800	/* FSMID updated */
 
 /*
  * cache_inval[_vp]() flags
@@ -155,7 +156,7 @@ void	cache_setunresolved(struct namecache *ncp);
 struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
 struct namecache *cache_allocroot(struct mount *mp, struct vnode *vp);
 int	cache_inval(struct namecache *ncp, int flags);
-int	cache_inval_vp(struct vnode *vp, int flags);
+int	cache_inval_vp(struct vnode *vp, int flags, int *retflags);
 void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
 
 int	cache_resolve(struct namecache *ncp, struct ucred *cred);
@@ -174,7 +175,7 @@ struct namecache *cache_fromdvp(struct vnode *, struct ucred *, int);
 int	cache_fullpath(struct proc *, struct namecache *, char **, char **);
 void	cache_update_fsmid(struct namecache *);
 void	cache_update_fsmid_vp(struct vnode *);
-
+int	cache_check_fsmid_vp(struct vnode *, int64_t *);
 
 #endif
 

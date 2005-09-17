@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.14 2005/08/04 16:44:12 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.15 2005/09/17 07:43:12 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -361,7 +361,8 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 		goto bail;
 	} 
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, udf_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
+			 udf_vnodeop_entries, 0);
 
 	/*
 	 * Find the file entry for the root directory.

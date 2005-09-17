@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.33 2005/07/26 15:43:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.34 2005/09/17 07:43:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -764,9 +764,9 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		fs->fs_clean = 0;
 		(void) ffs_sbupdate(ump, MNT_WAIT);
 	}
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ffs_vnodeop_entries);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, ffs_specop_entries);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, ffs_fifoop_entries); 
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ffs_vnodeop_entries, VVF_SUPPORTS_FSMID);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, ffs_specop_entries, VVF_SUPPORTS_FSMID);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, ffs_fifoop_entries, VVF_SUPPORTS_FSMID); 
 
 	return (0);
 out:

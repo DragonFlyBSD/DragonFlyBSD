@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.32 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.33 2005/09/17 07:43:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -846,16 +846,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 #else
 	sb->st_blocks = vap->va_bytes / S_BLKSIZE;
 #endif
-
-	/*
-	 * Set the fsmid from the namecache.  Use the first available
-	 * namecache record.
-	 */
-	if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL)
-		sb->st_fsmid = ncp->nc_fsmid;
-	else
-		sb->st_fsmid = 0;
-
+	sb->st_fsmid = vap->va_fsmid;
 	return (0);
 }
 

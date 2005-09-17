@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.57 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.58 2005/09/17 07:42:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,6 @@ MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
 static LIST_HEAD(nchashhead, namecache) *nchashtbl;	/* Hash Table */
 static struct namecache_list	ncneglist;		/* instead of vnode */
-static int64_t last_fsmid;				/* node change id */
 
 /*
  * ncvp_debug - debug cache_fromvp().  This is used by the NFS server
@@ -295,7 +294,7 @@ cache_alloc(int nlen)
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;
-	ncp->nc_fsmid = ++last_fsmid;
+	ncp->nc_fsmid = 1;
 	TAILQ_INIT(&ncp->nc_list);
 	cache_lock(ncp);
 	return(ncp);
@@ -666,7 +665,7 @@ cache_inval(struct namecache *ncp, int flags)
  * any time if not locked, even if held.
  */
 int
-cache_inval_vp(struct vnode *vp, int flags)
+cache_inval_vp(struct vnode *vp, int flags, int *retflags)
 {
 	struct namecache *ncp;
 	struct namecache *next;
@@ -688,6 +687,7 @@ restart:
 				cache_drop(next);
 			goto restart;
 		}
+		*retflags |= ncp->nc_flag & NCF_FSMID;
 		cache_inval(ncp, flags);
 		cache_put(ncp);		/* also releases reference */
 		ncp = next;
@@ -824,21 +824,24 @@ again:
 	return(error);
 }
 
+/*
+ * Recursively set the FSMID update flag for namecache nodes leading
+ * to root.  This will cause the next getattr to increment the fsmid.
+ */
 void
 cache_update_fsmid(struct namecache *ncp)
 {
 	struct vnode *vp;
 	struct namecache *scan;
-	int64_t fsmid = ++last_fsmid;
 
 	if ((vp = ncp->nc_vp) != NULL) {
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
 			for (scan = ncp; scan; scan = scan->nc_parent)
-				scan->nc_fsmid = fsmid;
+				scan->nc_flag |= NCF_FSMID;
 		}
 	} else {
 		while (ncp) {
-			ncp->nc_fsmid = fsmid;
+			ncp->nc_flag |= NCF_FSMID;
 			ncp = ncp->nc_parent;
 		}
 	}
@@ -849,12 +852,38 @@ cache_update_fsmid_vp(struct vnode *vp)
 {
 	struct namecache *ncp;
 	struct namecache *scan;
-	int64_t fsmid = ++last_fsmid;
 
 	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
 		for (scan = ncp; scan; scan = scan->nc_parent)
-			scan->nc_fsmid = fsmid;
+			scan->nc_flag |= NCF_FSMID;
 	}
+}
+
+/*
+ * If getattr is called on a vnode (e.g. a stat call), the filesystem
+ * may call this routine to determine if the namecache has the hierarchical
+ * change flag set, requiring the fsmid to be updated.
+ *
+ * Since 0 indicates no support, make sure the filesystem fsmid is at least
+ * 1.
+ */
+int
+cache_check_fsmid_vp(struct vnode *vp, int64_t *fsmid)
+{
+	struct namecache *ncp;
+	int changed = 0;
+
+	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+		if (ncp->nc_flag & NCF_FSMID) {
+			ncp->nc_flag &= ~NCF_FSMID;
+			changed = 1;
+		}
+	}
+	if (*fsmid == 0)
+		++*fsmid;
+	if (changed)
+		++*fsmid;
+	return(changed);
 }
 
 /*
@@ -1666,13 +1695,17 @@ vfs_cache_setroot(struct vnode *nvp, struct namecache *ncp)
  * XXX: v_id wraparound.  The period of resistance can be extended
  * XXX: by incrementing each vnodes v_id individually instead of
  * XXX: using the global v_id.
+ *
+ * Does not support NCP_FSMID accumulation on invalidation (retflags is
+ * not used).
  */
 void
 cache_purge(struct vnode *vp)
 {
 	static u_long nextid;
+	int retflags = 0;
 
-	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN);
+	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN, &retflags);
 
 	/*
 	 * Calculate a new unique id for ".." handling

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.63 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.64 2005/09/17 07:43:00 dillon Exp $
  */
 
 /*
@@ -256,6 +256,7 @@ vattr_null(struct vattr *vap)
 	vap->va_flags = VNOVAL;
 	vap->va_gen = VNOVAL;
 	vap->va_vaflags = 0;
+	vap->va_fsmid = VNOVAL;
 }
 
 /*
@@ -1063,6 +1064,7 @@ void
 vclean(struct vnode *vp, int flags, struct thread *td)
 {
 	int active;
+	int retflags = 0;
 
 	/*
 	 * If the vnode has already been reclaimed we have nothing to do.
@@ -1074,7 +1076,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	/*
 	 * Scrap the vfs cache
 	 */
-	while (cache_inval_vp(vp, 0) != 0) {
+	while (cache_inval_vp(vp, 0, &retflags) != 0) {
 		printf("Warning: vnode %p clean/cache_resolution race detected\n", vp);
 		tsleep(vp, 0, "vclninv", 2);
 	}
@@ -1115,7 +1117,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	/*
 	 * Reclaim the vnode.
 	 */
-	if (VOP_RECLAIM(vp, td))
+	if (VOP_RECLAIM(vp, retflags, td))
 		panic("vclean: cannot reclaim");
 
 	/*

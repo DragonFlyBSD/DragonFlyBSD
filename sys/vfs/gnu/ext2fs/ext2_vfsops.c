@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.30 2005/07/26 15:43:35 hmp Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.31 2005/09/17 07:43:06 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -691,9 +691,12 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 		ump->um_quotas[i] = NULLVP; 
 	dev->si_mountpoint = mp;
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ext2_vnodeop_entries);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, ext2_specop_entries);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, ext2_fifoop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
+			 ext2_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops,
+			 ext2_specop_entries, 0);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops,
+			 ext2_fifoop_entries, 0);
 
 	if (ronly == 0) 
 		ext2_sbupdate(ump, MNT_WAIT);

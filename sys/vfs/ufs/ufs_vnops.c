@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.31 2005/09/14 01:13:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.32 2005/09/17 07:43:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -388,6 +388,17 @@ ufs_getattr(struct vop_getattr_args *ap)
 	struct inode *ip = VTOI(vp);
 	struct vattr *vap = ap->a_vap;
 
+	/*
+	 * This may cause i_fsmid to be updated even if no change (0)
+	 * is returned, but we should only write out the inode if non-zero
+	 * is returned and if the mount is read-write.
+	 */
+	if (cache_check_fsmid_vp(vp, &ip->i_fsmid) &&
+	    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0
+	) {
+		ip->i_flag |= IN_LAZYMOD;
+	}
+
 	ufs_itimes(vp);
 	/*
 	 * Copy from inode table
@@ -413,6 +424,7 @@ ufs_getattr(struct vop_getattr_args *ap)
 	vap->va_bytes = dbtob((u_quad_t)ip->i_blocks);
 	vap->va_type = IFTOVT(ip->i_mode);
 	vap->va_filerev = ip->i_modrev;
+	vap->va_fsmid = ip->i_fsmid;
 	return (0);
 }
 
@@ -2308,7 +2320,7 @@ static struct vnodeopv_entry_desc ufs_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ufs_vnodeop_opv_desc =
-	{ &ufs_vnode_vops, ufs_vnodeop_entries };
+	{ &ufs_vnode_vops, ufs_vnodeop_entries, VVF_SUPPORTS_FSMID };
 
 static struct vop_ops *ufs_spec_vops;
 static struct vnodeopv_entry_desc ufs_specop_entries[] = {
@@ -2329,7 +2341,7 @@ static struct vnodeopv_entry_desc ufs_specop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ufs_specop_opv_desc =
-	{ &ufs_spec_vops, ufs_specop_entries };
+	{ &ufs_spec_vops, ufs_specop_entries, VVF_SUPPORTS_FSMID };
 
 static struct vop_ops *ufs_fifo_vops;
 static struct vnodeopv_entry_desc ufs_fifoop_entries[] = {
@@ -2351,7 +2363,7 @@ static struct vnodeopv_entry_desc ufs_fifoop_entries[] = {
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ufs_fifoop_opv_desc =
-	{ &ufs_fifo_vops, ufs_fifoop_entries };
+	{ &ufs_fifo_vops, ufs_fifoop_entries, VVF_SUPPORTS_FSMID };
 
 VNODEOP_SET(ufs_vnodeop_opv_desc);
 VNODEOP_SET(ufs_specop_opv_desc);
