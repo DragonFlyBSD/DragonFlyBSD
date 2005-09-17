@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.141 2005/08/18 07:58:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.142 2005/09/17 11:07:23 okumoto Exp $
  */
 
 /*
@@ -874,6 +874,7 @@ main(int argc, char **argv)
 {
 	CLI		cli;
 	Parser		parser;
+	Shell		*shell;
 	int		status;		/* exit status */
 	char		curdir[MAXPATHLEN];	/* startup directory */
 	char		objdir[MAXPATHLEN];	/* where we chdir'ed to */
@@ -912,11 +913,13 @@ main(int argc, char **argv)
 	cli.queryFlag = false;
 	cli.forceJobs = false;
 
+	shell = Shell_Match(DEFSHELLNAME);
+
 	/*
 	 * Initialize the various modules.
 	 */
 	Proc_Init();
-	Shell_Init(DEFSHELLNAME);
+	commandShell = shell;
 	Targ_Init();
 	Suff_Init();
 	Dir_Init();

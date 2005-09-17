@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/parse.h,v 1.15 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.h,v 1.16 2005/09/17 11:07:23 okumoto Exp $
  */
 
 #ifndef parse_h_470eeb9a
@@ -44,9 +44,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+struct CLI;
 struct GNode;
 struct Lst;
-struct CLI;
 
 typedef struct Parser {
 	/**

@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.23 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.24 2005/09/17 11:07:23 okumoto Exp $
  */
 
 #include <string.h>
@@ -57,17 +57,15 @@ struct Shell	*commandShell = NULL;
 static int
 sort_builtins(const void *p1, const void *p2)
 {
-
 	return (strcmp(*(const char* const*)p1, *(const char* const*)p2));
 }
 
 /**
  * Free a shell structure and all associated strings.
  */
-static void
-ShellFree(struct Shell *sh)
+void
+Shell_Destroy(Shell *sh)
 {
-
 	if (sh != NULL) {
 		free(sh->name);
 		free(sh->path);
@@ -88,7 +86,7 @@ ShellFree(struct Shell *sh)
  * Dump a shell specification to stderr.
  */
 void
-Shell_Dump(const struct Shell *sh)
+Shell_Dump(const Shell *sh)
 {
 	int i;
 
@@ -110,12 +108,49 @@ Shell_Dump(const struct Shell *sh)
 /**
  * Parse a shell specification line and return the new Shell structure.
  * In case of an error a message is printed and NULL is returned.
+ *
+ * Notes:
+ *	A shell specification consists of a .SHELL target, with dependency
+ *	operator, followed by a series of blank-separated words. Double
+ *	quotes can be used to use blanks in words. A backslash escapes
+ *	anything (most notably a double-quote and a space) and
+ *	provides the functionality it does in C. Each word consists of
+ *	keyword and value separated by an equal sign. There should be no
+ *	unnecessary spaces in the word. The keywords are as follows:
+ *	    name	    Name of shell.
+ *	    path	    Location of shell. Overrides "name" if given
+ *	    quiet	    Command to turn off echoing.
+ *	    echo	    Command to turn echoing on
+ *	    filter	    Result of turning off echoing that shouldn't be
+ *			    printed.
+ *	    echoFlag	    Flag to turn echoing on at the start
+ *	    errFlag	    Flag to turn error checking on at the start
+ *	    hasErrCtl	    True if shell has error checking control
+ *	    check	    Command to turn on error checking if hasErrCtl
+ *			    is true or template of command to echo a command
+ *			    for which error checking is off if hasErrCtl is
+ *			    false.
+ *	    ignore	    Command to turn off error checking if hasErrCtl
+ *			    is true or template of command to execute a
+ *			    command so as to ignore any errors it returns if
+ *			    hasErrCtl is false.
+ *	    builtins	    A space separated list of builtins. If one
+ *			    of these builtins is detected when make wants
+ *			    to execute a command line, the command line is
+ *			    handed to the shell. Otherwise make may try to
+ *			    execute the command directly. If this list is empty
+ *			    it is assumed, that the command must always be
+ *			    handed over to the shell.
+ *	    meta	    The shell meta characters. If this is not specified
+ *			    or empty, commands are alway passed to the shell.
+ *			    Otherwise they are not passed when they contain
+ *			    neither a meta character nor a builtin command.
  */
-static struct Shell *
-ShellParseSpec(const char *spec, bool *fullSpec)
+static Shell *
+ShellParseSpec(const char spec[], bool *fullSpec)
 {
 	ArgArray	aa;
-	struct Shell	*sh;
+	Shell		*sh;
 	char		*eq;
 	char		*keyw;
 	int		arg;
@@ -140,7 +175,7 @@ ShellParseSpec(const char *spec, bool *fullSpec)
 			Parse_Error(PARSE_FATAL, "missing '=' in shell "
 			    "specification keyword '%s'", keyw);
 			ArgArray_Done(&aa);
-			ShellFree(sh);
+			Shell_Destroy(sh);
 			return (NULL);
 		}
 		*eq++ = '\0';
@@ -203,7 +238,7 @@ ShellParseSpec(const char *spec, bool *fullSpec)
 			Parse_Error(PARSE_FATAL, "unknown keyword in shell "
 			    "specification '%s'", keyw);
 			ArgArray_Done(&aa);
-			ShellFree(sh);
+			Shell_Destroy(sh);
 			return (NULL);
 		}
 	}
@@ -216,7 +251,7 @@ ShellParseSpec(const char *spec, bool *fullSpec)
 		if ((sh->echoOn != NULL) ^ (sh->echoOff != NULL)) {
 			Parse_Error(PARSE_FATAL, "Shell must have either both "
 			    "echoOff and echoOn or none of them");
-			ShellFree(sh);
+			Shell_Destroy(sh);
 			return (NULL);
 		}
 
@@ -245,13 +280,13 @@ ShellParseSpec(const char *spec, bool *fullSpec)
  *	A pointer to a Shell structure, or NULL if no shell with
  *	the given name is found.
  */
-static struct Shell *
-ShellMatch(const char name[])
+Shell *
+Shell_Match(const char name[])
 {
-	struct Shell	*shell;
+	Shell		*shell;
 	const char	*shellDir = PATH_DEFSHELLDIR;
 
-	shell = emalloc(sizeof(struct Shell));
+	shell = emalloc(sizeof(Shell));
 
 	if (strcmp(name, "csh") == 0) {
 		/*
@@ -336,75 +371,25 @@ ShellMatch(const char name[])
 	return (shell);
 }
 
-void
-Shell_Init(const char shellname[])
-{
-	commandShell = ShellMatch(shellname);
-}
-
 /**
- * Given the line following a .SHELL target, parse the
- * line as a shell specification. Returns false if the
- * spec was incorrect.
- *
- * Parse a shell specification and set up commandShell.
+ * Given the line following a .SHELL target, parse it as a shell
+ * specification.
  *
  * Results:
- *	true if the specification was correct. false otherwise.
- *
- * Side Effects:
- *	commandShell points to a Shell structure (either predefined or
- *	created from the shell spec)
- *
- * Notes:
- *	A shell specification consists of a .SHELL target, with dependency
- *	operator, followed by a series of blank-separated words. Double
- *	quotes can be used to use blanks in words. A backslash escapes
- *	anything (most notably a double-quote and a space) and
- *	provides the functionality it does in C. Each word consists of
- *	keyword and value separated by an equal sign. There should be no
- *	unnecessary spaces in the word. The keywords are as follows:
- *	    name	    Name of shell.
- *	    path	    Location of shell. Overrides "name" if given
- *	    quiet	    Command to turn off echoing.
- *	    echo	    Command to turn echoing on
- *	    filter	    Result of turning off echoing that shouldn't be
- *			    printed.
- *	    echoFlag	    Flag to turn echoing on at the start
- *	    errFlag	    Flag to turn error checking on at the start
- *	    hasErrCtl	    True if shell has error checking control
- *	    check	    Command to turn on error checking if hasErrCtl
- *			    is true or template of command to echo a command
- *			    for which error checking is off if hasErrCtl is
- *			    false.
- *	    ignore	    Command to turn off error checking if hasErrCtl
- *			    is true or template of command to execute a
- *			    command so as to ignore any errors it returns if
- *			    hasErrCtl is false.
- *	    builtins	    A space separated list of builtins. If one
- *			    of these builtins is detected when make wants
- *			    to execute a command line, the command line is
- *			    handed to the shell. Otherwise make may try to
- *			    execute the command directly. If this list is empty
- *			    it is assumed, that the command must always be
- *			    handed over to the shell.
- *	    meta	    The shell meta characters. If this is not specified
- *			    or empty, commands are alway passed to the shell.
- *			    Otherwise they are not passed when they contain
- *			    neither a meta character nor a builtin command.
+ *	A pointer to a Shell structure, or NULL if no the spec was invalid.
  */
-bool
+Shell *
 Shell_Parse(const char line[])
 {
-	bool		fullSpec;
-	struct Shell	*sh;
+	bool	fullSpec;
+	Shell	*sh;
 
 	/* parse the specification */
 	if ((sh = ShellParseSpec(line, &fullSpec)) == NULL)
-		return (false);
+		return (NULL);
 
 	if (sh->path == NULL) {
-		struct Shell	*match;
+		Shell	*match;
 		/*
 		 * If no path was given, the user wants one of the pre-defined
 		 * shells, yes? So we find the one s/he wants with the help of
@@ -413,24 +398,27 @@ Shell_Parse(const char line[])
 		if (sh->name == NULL) {
 			Parse_Error(PARSE_FATAL,
 			    "Neither path nor name specified");
-			ShellFree(sh);
-			return (false);
+			Shell_Destroy(sh);
+			return (NULL);
 		}
 		if (fullSpec) {
 			Parse_Error(PARSE_FATAL, "No path specified");
-			ShellFree(sh);
-			return (false);
+			Shell_Destroy(sh);
+			return (NULL);
 		}
-		if ((match = ShellMatch(sh->name)) == NULL) {
+		if ((match = Shell_Match(sh->name)) == NULL) {
 			Parse_Error(PARSE_FATAL, "%s: no matching shell",
 			    sh->name);
-			ShellFree(sh);
-			return (false);
+			Shell_Destroy(sh);
+			return (NULL);
 		}
-		ShellFree(sh);
-		sh = match;
+
+		Shell_Destroy(sh);
+		return (match);
 
 	} else {
+		Shell	*match;
+
 		/*
 		 * The user provided a path. If s/he gave nothing else
 		 * (fullSpec is false), try and find a matching shell in the
@@ -446,27 +434,21 @@ Shell_Parse(const char line[])
 				sh->name = estrdup(sh->name + 1);
 			}
 		}
-
-		if (!fullSpec) {
-			struct Shell	*match;
-
-			if ((match = ShellMatch(sh->name)) == NULL) {
-				Parse_Error(PARSE_FATAL,
-				    "%s: no matching shell", sh->name);
-				ShellFree(sh);
-				return (false);
-			}
-			free(match->path);
-			match->path = sh->path;
-			sh->path = NULL;
-			ShellFree(sh);
-			sh = match;
+		if (fullSpec) {
+			return (sh);
 		}
+		if ((match = Shell_Match(sh->name)) == NULL) {
+			Parse_Error(PARSE_FATAL,
+			    "%s: no matching shell", sh->name);
+			Shell_Destroy(sh);
+			return (NULL);
+		}
+
+		free(match->path);
+		match->path = sh->path;
+		sh->path = NULL;
+
+		Shell_Destroy(sh);
+		return (match);
 	}
-
-	/* Release the old shell and set the new shell */
-	ShellFree(commandShell);
-	commandShell = sh;
-
-	return (true);
 }

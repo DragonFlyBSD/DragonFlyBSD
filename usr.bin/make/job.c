@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.143 2005/08/24 00:09:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.144 2005/09/17 11:07:23 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2636,7 +2636,7 @@ JobRestartJobs(void)
 Buffer *
 Cmd_Exec(const char *cmd, const char **error)
 {
-	struct Shell	*shell = commandShell;
+	Shell	*shell = commandShell;
 	int	fds[2];	/* Pipe streams */
 	Buffer	*buf;	/* buffer to store the result */
 	ssize_t	rcnt;
@@ -2814,7 +2814,7 @@ CompatInterrupt(void)
 static int
 Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 {
-	struct Shell	*shell = commandShell;
+	Shell		*shell = commandShell;
 	ArgArray	aa;
 	char		*cmdStart;	/* Start of expanded command */
 	bool		silent;		/* Don't print command */

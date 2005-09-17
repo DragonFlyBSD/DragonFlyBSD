@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.95 2005/08/09 23:34:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.96 2005/09/17 11:07:23 okumoto Exp $
  */
 
 /*-
@@ -1083,11 +1083,14 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 		*line = '\0';
 
 	} else if (specType == ExShell) {
-		if (!Shell_Parse(line)) {
+		Shell	*shell;
+
+		if ((shell = Shell_Parse(line)) == NULL) {
 			Parse_Error(PARSE_FATAL,
 			    "improper shell specification");
 			return;
 		}
+		commandShell = shell;
 		*line = '\0';
 
 	} else if (specType == NotParallel || specType == SingleShell) {

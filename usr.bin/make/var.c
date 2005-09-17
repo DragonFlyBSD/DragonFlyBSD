@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.219 2005/08/24 00:09:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.220 2005/09/17 11:07:23 okumoto Exp $
  */
 
 /**
@@ -2486,9 +2486,10 @@ Var_Init(char **env)
 		char		*tmp = estrdup(*ptr);
 		const char	*name = tmp;
 		char		*sep = strchr(name, '=');
-		const char	*value = sep + 1;
 
 		if (sep != NULL) {
+			const char	*value = sep + 1;
+
 			*sep = '\0';
 			VarAdd(name, value, VAR_ENV);
 		}

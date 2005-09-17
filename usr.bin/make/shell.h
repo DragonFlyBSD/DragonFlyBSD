@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.h,v 1.15 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.h,v 1.16 2005/09/17 11:07:23 okumoto Exp $
  */
 
 #ifndef shell_h_6002e3b8
@@ -56,7 +56,7 @@
  * strings is empty when hasErrCtl is false, the command will be executed
  * anyway as is and if it causes an error, so be it.
  */
-struct Shell {
+typedef struct Shell {
 	/*
 	 * the name of the shell. For Bourne and C shells, this is used
 	 * only to find the shell description when used as the single
@@ -95,12 +95,13 @@ struct Shell {
 	char	*meta;		/* shell meta characters */
 
 	bool	unsetenv;	/* unsetenv("ENV") before exec */
-};
+} Shell;
 
-extern struct Shell	*commandShell;
+extern Shell	*commandShell;
 
-void		Shell_Init(const char []);
-bool		Shell_Parse(const char []);
-void		Shell_Dump(const struct Shell *);
+Shell	*Shell_Match(const char []);
+Shell	*Shell_Parse(const char []);
+void	Shell_Destroy(Shell *);
+void	Shell_Dump(const struct Shell *);
 
 #endif /* shell_h_6002e3b8 */
