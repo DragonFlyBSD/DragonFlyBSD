@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.7 2005/09/17 07:08:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -84,6 +84,7 @@ int termwidth = 80;		/* default terminal width */
 /* flags */
        int f_accesstime;	/* use time of last access */
        int f_flags;		/* show flags associated with a file */
+       int f_fsmid;		/* show FSMID associated with a file */
        int f_humanval;		/* show human-readable file sizes */
        int f_inode;		/* print inode */
 static int f_kblocks;		/* print size in kilobytes */
@@ -157,7 +158,7 @@ main(int argc, char *argv[])
 		f_listdot = 1;
 
 	fts_options = FTS_PHYSICAL;
- 	while ((ch = getopt(argc, argv, "1ABCFGHLPRTWabcdfghiklmnopqrstuwx")) 
+ 	while ((ch = getopt(argc, argv, "1ABCFGHLPRTWabcdfghiklmnopqrstuwxy")) 
 	    != -1) {
 		switch (ch) {
 		/*
@@ -186,6 +187,11 @@ main(int argc, char *argv[])
 			f_sortacross = 1;
 			f_longform = 0;
 			f_singlecol = 0;
+			break;
+		case 'y':
+#ifdef _ST_FSMID_PRESENT_
+			f_fsmid = 1;
+#endif
 			break;
 		/* The -c and -u options override each other. */
 		case 'c':
@@ -495,11 +501,12 @@ display(FTSENT *p, FTSENT *list)
 	int bcfile, maxflags;
 	gid_t maxgroup;
 	uid_t maxuser;
-	size_t flen, ulen, glen;
+	size_t fsmidlen, flen, ulen, glen;
 	char *initmax;
 	int entries, needstats;
 	const char *user, *group;
 	char *flags;
+	int64_t fsmid;
 	char buf[STRBUF_SIZEOF(u_quad_t) + 1];
 	char ngroup[STRBUF_SIZEOF(uid_t) + 1];
 	char nuser[STRBUF_SIZEOF(gid_t) + 1];
@@ -664,11 +671,23 @@ display(FTSENT *p, FTSENT *list)
 					flen = strlen(flags);
 					if (flen > (size_t)maxflags)
 						maxflags = flen;
-				} else
+				} else {
 					flen = 0;
+				}
+#ifdef _ST_FSMID_PRESENT_
+				if (f_fsmid) {
+					fsmid = sp->st_fsmid;
+					fsmidlen = 18;
+				} else {
+					fsmid = 0;
+					fsmidlen = 0;
+				} 
+#else
+				fsmidlen = 0;
+#endif
 
 				if ((np = malloc(sizeof(NAMES) +
-				    ulen + glen + flen + 3)) == NULL)
+				    ulen + glen + flen + fsmidlen + 4)) == NULL)
 					err(1, NULL);
 
 				np->user = &np->data[0];
@@ -685,6 +704,13 @@ display(FTSENT *p, FTSENT *list)
 					strcpy(np->flags, flags);
 					free(flags);
 				}
+#ifdef _ST_FSMID_PRESENT_
+				if (f_fsmid) {
+					np->fsmid = np->data + ulen + glen + flen + 3;
+					snprintf(np->fsmid, fsmidlen + 1,  
+						 "%016llx", fsmid);
+				}
+#endif
 				cur->fts_pointer = np;
 			}
 		}

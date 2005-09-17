@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.7 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.8 2005/09/17 07:08:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -176,6 +176,8 @@ printlong(DISPLAY *dp)
 		printf("%s %*u %-*s  %-*s  ", buf, dp->s_nlink,
 		    sp->st_nlink, dp->s_user, np->user, dp->s_group,
 		    np->group);
+		if (f_fsmid)
+			printf("%s ", np->fsmid);
 		if (f_flags)
 			printf("%-*s ", dp->s_flags, np->flags);
 		if (S_ISCHR(sp->st_mode) || S_ISBLK(sp->st_mode))

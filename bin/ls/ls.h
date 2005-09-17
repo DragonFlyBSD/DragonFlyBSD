@@ -36,7 +36,7 @@
  *
  *	from: @(#)ls.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/ls.h,v 1.11.2.4 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/ls.h,v 1.3 2004/09/26 15:53:25 asmodai Exp $
+ * $DragonFly: src/bin/ls/ls.h,v 1.4 2005/09/17 07:08:43 dillon Exp $
  */
 
 #define NO_PRINT	1
@@ -46,6 +46,7 @@ extern int termwidth;
 
 extern int f_accesstime;	/* use time of last access */
 extern int f_flags;		/* show flags associated with a file */
+extern int f_fsmid;		/* show FSMID associated with a file */
 extern int f_humanval;		/* show human-readable file sizes */
 extern int f_inode;		/* print inode */
 extern int f_longform;		/* long listing format */
@@ -71,6 +72,7 @@ typedef struct {
 	int maxlen;
 	u_int s_block;
 	u_int s_flags;
+	u_int s_fsmid;
 	u_int s_group;
 	u_int s_inode;
 	u_int s_nlink;
@@ -82,5 +84,6 @@ typedef struct {
 	char *user;
 	char *group;
 	char *flags;
+	char *fsmid;
 	char data[1];
 } NAMES;
