@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.58 2005/09/17 07:42:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.59 2005/09/17 08:29:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -534,6 +534,9 @@ cache_settimeout(struct namecache *ncp, int nticks)
  * avoid complex namespace operations.  This disconnects a directory vnode
  * from its namecache and can cause the OLDAPI and NEWAPI to get out of
  * sync.
+ *
+ * NOTE: NCF_FSMID must be cleared so a refurbishment of the ncp, such as
+ * in a create, properly propogates flag up the chain.
  */
 void
 cache_setunresolved(struct namecache *ncp)
@@ -542,7 +545,8 @@ cache_setunresolved(struct namecache *ncp)
 
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		ncp->nc_flag |= NCF_UNRESOLVED;
-		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK);
+		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK|
+				  NCF_FSMID);
 		ncp->nc_timeout = 0;
 		ncp->nc_error = ENOTCONN;
 		++numunres;
@@ -826,7 +830,22 @@ again:
 
 /*
  * Recursively set the FSMID update flag for namecache nodes leading
- * to root.  This will cause the next getattr to increment the fsmid.
+ * to root.  This will cause the next getattr or reclaim to increment the
+ * fsmid and mark the inode for lazy updating.
+ *
+ * Stop recursing when we hit a node whos NCF_FSMID flag is already set.
+ * This makes FSMIDs work in an Einsteinian fashion - where the observation
+ * effects the result.  In this case a program monitoring a higher level
+ * node will have detected some prior change and started its scan (clearing
+ * NCF_FSMID in higher level nodes), but since it has not yet observed the
+ * node where we find NCF_FSMID still set, we can safely make the related
+ * modification without interfering with the theorized program.
+ *
+ * This also means that FSMIDs cannot represent time-domain quantities
+ * in a hierarchical sense.  But the main reason for doing it this way
+ * is to reduce the amount of recursion that occurs in the critical path
+ * when e.g. a program is writing to a file that sits deep in a directory
+ * hierarchy.
  */
 void
 cache_update_fsmid(struct namecache *ncp)
@@ -836,11 +855,14 @@ cache_update_fsmid(struct namecache *ncp)
 
 	if ((vp = ncp->nc_vp) != NULL) {
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			for (scan = ncp; scan; scan = scan->nc_parent)
+			for (scan = ncp; scan; scan = scan->nc_parent) {
+				if (scan->nc_flag & NCF_FSMID)
+					break;
 				scan->nc_flag |= NCF_FSMID;
+			}
 		}
 	} else {
-		while (ncp) {
+		while (ncp && (ncp->nc_flag & NCF_FSMID) == 0) {
 			ncp->nc_flag |= NCF_FSMID;
 			ncp = ncp->nc_parent;
 		}
@@ -854,8 +876,11 @@ cache_update_fsmid_vp(struct vnode *vp)
 	struct namecache *scan;
 
 	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-		for (scan = ncp; scan; scan = scan->nc_parent)
+		for (scan = ncp; scan; scan = scan->nc_parent) {
+			if (scan->nc_flag & NCF_FSMID)
+				break;
 			scan->nc_flag |= NCF_FSMID;
+		}
 	}
 }
 
