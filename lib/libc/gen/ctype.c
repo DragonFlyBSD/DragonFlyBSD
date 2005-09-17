@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/gen/ctype_.c,v 1.16 2003/08/07 16:42:46 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/ctype.c,v 1.4 2005/05/09 16:05:54 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/gen/ctype.c,v 1.5 2005/09/17 14:39:44 joerg Exp $ */
 
 /*
  * Copyright (c) 1989 The Regents of the University of California.
@@ -40,6 +40,18 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
+
+#define	_U	_CTYPEMASK_U
+#define	_L	_CTYPEMASK_L
+#define	_D	_CTYPEMASK_D
+#define	_S	_CTYPEMASK_S
+#define	_P	_CTYPEMASK_P
+#define	_C	_CTYPEMASK_C
+#define	_X	_CTYPEMASK_X
+#define	_B	_CTYPEMASK_B
+#define	_A	_CTYPEMASK_A
+#define	_G	_CTYPEMASK_G
+#define	_R	_CTYPEMASK_R
 
 const uint16_t __libc_C_ctype_[1 + _CTYPE_NUM_CHARS] = {
 	0,

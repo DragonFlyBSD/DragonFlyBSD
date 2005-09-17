@@ -33,7 +33,7 @@
  *
  *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
  *	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $
- *	$DragonFly: src/include/ctype.h,v 1.15 2005/07/07 07:20:11 dillon Exp $
+ *	$DragonFly: src/include/ctype.h,v 1.16 2005/09/17 14:39:44 joerg Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -42,17 +42,17 @@
 #include <sys/cdefs.h>
 #include <machine/stdint.h>
 
-#define	_U	0x0001
-#define	_L	0x0002
-#define	_D	0x0004
-#define	_S	0x0008
-#define	_P	0x0010
-#define	_C	0x0020
-#define	_X	0x0040
-#define	_B	0x0080
-#define	_A	0x0100
-#define	_G	0x0200
-#define	_R	0x0400
+#define	_CTYPEMASK_U	0x0001
+#define	_CTYPEMASK_L	0x0002
+#define	_CTYPEMASK_D	0x0004
+#define	_CTYPEMASK_S	0x0008
+#define	_CTYPEMASK_P	0x0010
+#define	_CTYPEMASK_C	0x0020
+#define	_CTYPEMASK_X	0x0040
+#define	_CTYPEMASK_B	0x0080
+#define	_CTYPEMASK_A	0x0100
+#define	_CTYPEMASK_G	0x0200
+#define	_CTYPEMASK_R	0x0400
 
 extern const __uint16_t	*__libc_ctype_;
 extern const __int16_t	*__libc_tolower_tab_;
@@ -120,17 +120,17 @@ __libc_ctype_convert(const __int16_t *array, int c)
 #undef _CTYPE_NUM_CHARS
 #endif
 
-#define	isdigit(c)	__libc_ctype_index(_D, c)
-#define	islower(c)	__libc_ctype_index(_L, c)
-#define	isspace(c)	__libc_ctype_index(_S, c)
-#define	ispunct(c)	__libc_ctype_index(_P, c)
-#define	isupper(c)	__libc_ctype_index(_U, c)
-#define	isalpha(c)	__libc_ctype_index(_A, c)
-#define	isxdigit(c)	__libc_ctype_index(_X, c)
-#define	isalnum(c)	__libc_ctype_index(_A|_D, c)
-#define	isprint(c)	__libc_ctype_index(_R, c)
-#define	isgraph(c)	__libc_ctype_index(_G, c)
-#define	iscntrl(c)	__libc_ctype_index(_C, c)
+#define	isdigit(c)	__libc_ctype_index(_CTYPEMASK_D, c)
+#define	islower(c)	__libc_ctype_index(_CTYPEMASK_L, c)
+#define	isspace(c)	__libc_ctype_index(_CTYPEMASK_S, c)
+#define	ispunct(c)	__libc_ctype_index(_CTYPEMASK_P, c)
+#define	isupper(c)	__libc_ctype_index(_CTYPEMASK_U, c)
+#define	isalpha(c)	__libc_ctype_index(_CTYPEMASK_A, c)
+#define	isxdigit(c)	__libc_ctype_index(_CTYPEMASK_X, c)
+#define	isalnum(c)	__libc_ctype_index(_CTYPEMASK_A|_CTYPEMASK_D, c)
+#define	isprint(c)	__libc_ctype_index(_CTYPEMASK_R, c)
+#define	isgraph(c)	__libc_ctype_index(_CTYPEMASK_G, c)
+#define	iscntrl(c)	__libc_ctype_index(_CTYPEMASK_C, c)
 #define	tolower(c)	__libc_ctype_convert(__libc_tolower_tab_, c)
 #define	toupper(c)	__libc_ctype_convert(__libc_toupper_tab_, c)
 
@@ -143,7 +143,7 @@ __libc_ctype_convert(const __int16_t *array, int c)
 
 #if __ISO_C_VISIBLE >= 1999 || __POSIX_VISIBLE >= 200112L || \
     __XSI_VISIBLE >= 600
-#define isblank(c)	__libc_ctype_index(_B, c)
+#define isblank(c)	__libc_ctype_index(_CTYPEMASK_B, c)
 #endif
 
 #endif /* !_CTYPE_H_DISABLE_MACROS_ */
