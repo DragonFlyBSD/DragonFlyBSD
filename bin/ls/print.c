@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
- * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.10 2005/09/18 10:47:59 asmodai Exp $
+ * $FreeBSD: src/bin/ls/print.c,v 1.63 2002/11/06 01:18:12 tjr Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.11 2005/09/18 11:07:38 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -540,10 +540,9 @@ parsecolors(const char *cs)
 			if (c[j] >= '0' && c[j] <= '7') {
 				colors[i].num[j] = c[j] - '0';
 				if (!legacy_warn) {
-					fprintf(stderr,
-					    "warn: LSCOLORS should use "
-					    "characters a-h instead of 0-9 ("
-					    "see the manual page)\n");
+					warnx("LSCOLORS should use "
+					      "characters a-h instead of 0-9 ("
+					      "see the manual page)\n");
 				}
 				legacy_warn = 1;
 			} else if (c[j] >= 'a' && c[j] <= 'h')
@@ -554,9 +553,8 @@ parsecolors(const char *cs)
 			} else if (tolower((unsigned char)c[j] == 'x'))
 				colors[i].num[j] = -1;
 			else {
-				fprintf(stderr,
-				    "error: invalid character '%c' in LSCOLORS"
-				    " env var\n", c[j]);
+				warnx("invalid character '%c' in LSCOLORS"
+				      " env var\n", c[j]);
 				colors[i].num[j] = -1;
 			}
 		}
