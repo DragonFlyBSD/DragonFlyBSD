@@ -1,6 +1,6 @@
 /*	$OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $	*/
-/*	$FreeBSD: src/lib/libc/gen/dirname.c,v 1.1.2.2 2001/07/23 10:13:04 dd Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.6 2005/04/28 13:45:42 joerg Exp $	*/
+/*	$FreeBSD: src/lib/libc/gen/dirname.c,v 1.7 2002/12/30 01:41:14 marcel Exp $	*/
+/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.7 2005/09/18 13:33:52 asmodai Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -33,18 +33,25 @@
 
 #include <errno.h>
 #include <libgen.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 
 char *
 dirname(const char *path)
 {
-	static char bname[MAXPATHLEN];
+	static char *bname;
 	const char *endp;
+
+	if (bname == NULL) {
+		bname = (char *)malloc(MAXPATHLEN);
+		if (bname == NULL)
+			return(NULL);
+	}
 
 	/* Empty or NULL string gets treated as "." */
 	if (path == NULL || *path == '\0') {
-		strlcpy(bname, ".", sizeof(bname));
+		strlcpy(bname, ".", MAXPATHLEN);
 		return(bname);
 	}
 
@@ -59,7 +66,7 @@ dirname(const char *path)
 
 	/* Either the dir is "/" or there are no slashes */
 	if (endp == path) {
-		strlcpy(bname, *endp == '/' ? "/" : ".", sizeof(bname));
+		strlcpy(bname, *endp == '/' ? "/" : ".", MAXPATHLEN);
 		return(bname);
 	}
 
@@ -67,7 +74,7 @@ dirname(const char *path)
 		endp--;
 	} while (endp > path && *endp == '/');
 
-	if (endp + 2 > path + sizeof(bname)) {
+	if (endp + 2 > path + MAXPATHLEN) {
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
