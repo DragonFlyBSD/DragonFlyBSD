@@ -26,7 +26,7 @@
  *
  * $OpenBSD: basename.c,v 1.4 1999/05/30 17:10:30 espie Exp $
  * $FreeBSD: src/lib/libc/gen/basename.c,v 1.6 2002/12/21 07:12:35 bbraun Exp $
- * $DragonFly: src/lib/libc/gen/basename.c,v 1.6 2005/09/18 13:21:13 asmodai Exp $
+ * $DragonFly: src/lib/libc/gen/basename.c,v 1.7 2005/09/18 14:00:14 asmodai Exp $
  */
 
 #include <errno.h>
@@ -69,7 +69,7 @@ basename(const char *path)
 	while (startp > path && *(startp - 1) != '/')
 		startp--;
 
-	if (strlcpy(bname, startp, (endp - startp) + 2) >= MAXPATHLEN) {
+	if (strlcpy(bname, startp, (endp - startp) + 2) > MAXPATHLEN) {
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
