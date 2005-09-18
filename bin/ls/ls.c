@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.65 2002/08/25 13:01:45 charnier Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.11 2005/09/18 16:37:56 asmodai Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.12 2005/09/18 16:43:40 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 #include <errno.h>
 #include <fts.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <locale.h>
 #include <pwd.h>
