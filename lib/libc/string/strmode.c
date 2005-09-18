@@ -32,7 +32,7 @@
  *
  * @(#)strmode.c	8.3 (Berkeley) 8/15/94
  * $FreeBSD: src/lib/libc/string/strmode.c,v 1.1.1.2.6.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strmode.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/strmode.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -40,9 +40,7 @@
 #include <string.h>
 
 void
-strmode(mode, p)
-	mode_t mode;
-	char *p;
+strmode(mode_t mode, char *p)
 {
 	 /* print type */
 	switch (mode & S_IFMT) {

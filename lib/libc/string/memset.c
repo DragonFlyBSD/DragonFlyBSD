@@ -35,7 +35,7 @@
  *
  * @(#)memset.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memset.c,v 1.4.2.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/memset.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/memset.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -52,19 +52,14 @@
 #define	WIDEVAL	0
 
 void
-bzero(dst0, length)
-	void *dst0;
-	size_t length;
+bzero(void *dst0, size_t length)
 #else
 #define	RETURN	return (dst0)
 #define	VAL	c0
 #define	WIDEVAL	c
 
 void *
-memset(dst0, c0, length)
-	void *dst0;
-	int c0;
-	size_t length;
+memset(void *dst0, int c0, size_t length)
 #endif
 {
 	size_t t;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/string/strxfrm.c,v 1.11.2.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strxfrm.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strxfrm.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -33,10 +33,7 @@
 #include "collate.h"
 
 size_t
-strxfrm(dest, src, len)
-	char *dest;
-	const char *src;
-	size_t len;
+strxfrm(char *dest, const char *src, size_t len)
 {
 	int prim, sec, l;
 	size_t slen;

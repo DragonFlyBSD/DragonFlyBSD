@@ -35,16 +35,13 @@
  *
  * @(#)swab.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/swab.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/swab.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/swab.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <string.h>
 
 void
-swab(from, to, len)
-	const void *from;
-	void *to;
-	size_t len;
+swab(const void *from, void *to, size_t len)
 {
 	unsigned long temp;
 	int n;

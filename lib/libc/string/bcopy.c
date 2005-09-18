@@ -35,7 +35,7 @@
  *
  * @(#)bcopy.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/bcopy.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/bcopy.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/bcopy.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
  
 #include <sys/cdefs.h>
@@ -57,19 +57,16 @@ typedef	int word;		/* "word" used for optimal copy speed */
  */
 #ifdef MEMCOPY
 void *
-memcpy(dst0, src0, length)
+memcpy(void *dst0, const void *src0, size_t length)
 #else
 #ifdef MEMMOVE
 void *
-memmove(dst0, src0, length)
+memmove(void *dst0, const void *src0, size_t length)
 #else
 void
-bcopy(src0, dst0, length)
+bcopy(const void *src0, void *dst0, size_t length)
 #endif
 #endif
-	void *dst0;
-	const void *src0;
-	size_t length;
 {
 	char *dst = dst0;
 	const char *src = src0;

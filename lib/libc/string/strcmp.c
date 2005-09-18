@@ -35,7 +35,7 @@
  *
  * @(#)strcmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strcmp.c,v 1.2.8.1 2001/07/09 23:30:05 obrien Exp $
- * $DragonFly: src/lib/libc/string/strcmp.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/strcmp.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
@@ -45,8 +45,7 @@
  * Compare strings.
  */
 int
-strcmp(s1, s2)
-	const char *s1, *s2;
+strcmp(const char *s1, const char *s2)
 {
 	while (*s1 == *s2++)
 		if (*s1++ == 0)

@@ -32,7 +32,7 @@
  *
  * @(#)index.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/index.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/index.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/index.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
@@ -41,11 +41,10 @@
 
 char *
 #ifdef STRCHR
-strchr(p, ch)
+strchr(const char *p, int ch)
 #else
-index(p, ch)
+index(const char *p, int ch)
 #endif
-	const char *p, ch;
 {
 	for (;; ++p) {
 		if (*p == ch)

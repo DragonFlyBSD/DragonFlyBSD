@@ -32,7 +32,7 @@
  *
  * @(#)strdup.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strdup.c,v 1.2.14.1 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/lib/libc/string/strdup.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strdup.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <stddef.h>
@@ -40,8 +40,7 @@
 #include <string.h>
 
 char *
-strdup(str)
-	const char *str;
+strdup(const char *str)
 {
 	size_t len;
 	char *copy;

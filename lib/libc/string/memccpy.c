@@ -32,18 +32,14 @@
  *
  * @(#)memccpy.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memccpy.c,v 1.2.12.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/memccpy.c,v 1.4 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/memccpy.c,v 1.5 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
 #include <string.h>
 
 void *
-memccpy(t, f, c, n)
-	void *t;
-	const void *f;
-	int c;
-	size_t n;
+memccpy(void *t, const void *f, int c, size_t n)
 {
 
 	if (n) {

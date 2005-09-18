@@ -27,16 +27,14 @@
  *
  * $NetBSD: wcsspn.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wcsspn.c,v 1.3.2.2 2001/11/27 13:39:22 des Exp $
- * $DragonFly: src/lib/libc/string/wcsspn.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wcsspn.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <assert.h>
 #include <wchar.h>
 
 size_t
-wcsspn(s, set)
-	const wchar_t *s;
-	const wchar_t *set;
+wcsspn(const wchar_t *s, const wchar_t *set)
 {
 	const wchar_t *p;
 	const wchar_t *q;

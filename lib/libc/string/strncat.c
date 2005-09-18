@@ -35,7 +35,7 @@
  *
  * @(#)strncat.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strncat.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strncat.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/strncat.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
@@ -46,10 +46,7 @@
  * are written at dst (at most n+1 bytes being appended).  Return dst.
  */
 char *
-strncat(dst, src, n)
-	char *dst;
-	const char *src;
-	size_t n;
+strncat(char *dst, const char *src, size_t n)
 {
 	if (n != 0) {
 		char *d = dst;

@@ -26,17 +26,14 @@
  * citrus Id: wcsncat.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
  * $NetBSD: wcsncat.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wcsncat.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/lib/libc/string/wcsncat.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wcsncat.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <assert.h>
 #include <wchar.h>
 
 wchar_t *
-wcsncat(s1, s2, n)
-	wchar_t *s1;
-	const wchar_t *s2;
-	size_t n;
+wcsncat(wchar_t *s1, const wchar_t *s2, size_t n)
 {
 	wchar_t *p;
 	wchar_t *q;

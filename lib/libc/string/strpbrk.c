@@ -32,7 +32,7 @@
  *
  * @(#)strpbrk.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strpbrk.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strpbrk.c,v 1.4 2005/04/28 13:25:12 joerg Exp $
+ * $DragonFly: src/lib/libc/string/strpbrk.c,v 1.5 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -42,7 +42,7 @@
  * Find the first occurrence in s1 of a character in s2 (excluding NUL).
  */
 char *
-strpbrk(const char *s1, const char*s2)
+strpbrk(const char *s1, const char *s2)
 {
 	const char *scanp;
 	int c, sc;

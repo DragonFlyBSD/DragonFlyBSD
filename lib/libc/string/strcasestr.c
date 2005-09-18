@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/string/strcasestr.c,v 1.2.2.1 2001/12/25 00:36:53 ache Exp $
- * $DragonFly: src/lib/libc/string/strcasestr.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/string/strcasestr.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <ctype.h>
@@ -44,8 +44,7 @@
  * Find the first occurrence of find in s, ignore case.
  */
 char *
-strcasestr(s, find)
-	const char *s, *find;
+strcasestr(const char *s, const char *find)
 {
 	char c, sc;
 	size_t len;

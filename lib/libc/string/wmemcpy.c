@@ -26,7 +26,7 @@
  * citrus Id: wmemcpy.c,v 1.2 2000/12/20 14:08:31 itojun Exp
  * $NetBSD: wmemcpy.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wmemcpy.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/lib/libc/string/wmemcpy.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wmemcpy.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <assert.h>
@@ -34,10 +34,7 @@
 #include <wchar.h>
 
 wchar_t *
-wmemcpy(d, s, n)
-	wchar_t *d;
-	const wchar_t *s;
-	size_t n;
+wmemcpy(wchar_t *d, const wchar_t *s, size_t n)
 {
 
 	return (wchar_t *)memcpy(d, s, n * sizeof(wchar_t));

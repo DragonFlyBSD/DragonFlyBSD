@@ -27,16 +27,14 @@
  *
  * $NetBSD: wcscpy.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wcscpy.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/lib/libc/string/wcscpy.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wcscpy.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <assert.h>
 #include <wchar.h>
 
 wchar_t *
-wcscpy(s1, s2)
-	wchar_t *s1;
-	const wchar_t *s2;
+wcscpy(wchar_t *s1, const wchar_t *s2)
 {
 	wchar_t *p;
 	const wchar_t *q;

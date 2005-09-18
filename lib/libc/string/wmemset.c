@@ -26,17 +26,14 @@
  * citrus Id: wmemset.c,v 1.2 2000/12/20 14:08:31 itojun Exp
  * $NetBSD: wmemset.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
  * $FreeBSD: src/lib/libc/string/wmemset.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/lib/libc/string/wmemset.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/wmemset.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <assert.h>
 #include <wchar.h>
 
 wchar_t	*
-wmemset(s, c, n)
-	wchar_t *s;
-	wchar_t c;
-	size_t n;
+wmemset(wchar_t *s, wchar_t c, size_t n)
 {
 	size_t i;
 	wchar_t *p;
