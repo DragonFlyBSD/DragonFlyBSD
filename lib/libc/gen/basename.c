@@ -25,24 +25,31 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: basename.c,v 1.4 1999/05/30 17:10:30 espie Exp $
- * $FreeBSD: src/lib/libc/gen/basename.c,v 1.1.2.2 2001/07/23 10:13:04 dd Exp $
- * $DragonFly: src/lib/libc/gen/basename.c,v 1.4 2005/04/26 14:27:13 joerg Exp $
+ * $FreeBSD: src/lib/libc/gen/basename.c,v 1.6 2002/12/21 07:12:35 bbraun Exp $
+ * $DragonFly: src/lib/libc/gen/basename.c,v 1.5 2005/09/18 11:57:33 asmodai Exp $
  */
 
 #include <errno.h>
 #include <libgen.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 
 char *
 basename(const char *path)
 {
-	static char bname[MAXPATHLEN];
+	static char *bname = NULL;
 	const char *endp, *startp;
+
+	if (bname == NULL) {
+		bname = (char *)malloc(MAXPATHLEN);
+		if (bname == NULL)
+			return(NULL);
+	}
 
 	/* Empty or NULL string gets treated as "." */
 	if (path == NULL || *path == '\0') {
-		strlcpy(bname, ".", sizeof(bname));
+		strlcpy(bname, ".", MAXPATHLEN);
 		return(bname);
 	}
 
@@ -53,7 +60,7 @@ basename(const char *path)
 
 	/* All slashes becomes "/" */
 	if (endp == path && *endp == '/') {
-		strlcpy(bname, "/", sizeof(bname));
+		strlcpy(bname, "/", MAXPATHLEN);
 		return(bname);
 	}
 
@@ -62,7 +69,7 @@ basename(const char *path)
 	while (startp > path && *(startp - 1) != '/')
 		startp--;
 
-	if (strlcpy(bname, startp, sizeof(bname)) >= sizeof(bname)) {
+	if (strlcpy(bname, startp, MAXPATHLEN) >= MAXPATHLEN) {
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
