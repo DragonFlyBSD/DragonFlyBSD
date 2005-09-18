@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
- * $FreeBSD: src/bin/ls/print.c,v 1.63 2002/11/06 01:18:12 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.13 2005/09/18 18:01:49 asmodai Exp $
+ * $FreeBSD: src/bin/ls/print.c,v 1.71 2004/05/02 11:25:37 tjr Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.14 2005/09/18 18:35:23 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,7 @@ printname(const char *name)
 	else if (f_nonprint)
 		return prn_printable(name);
 	else
-		return printf("%s", name);
+		return prn_normal(name);
 }
 
 void
@@ -221,6 +221,7 @@ printstream(const DISPLAY *dp)
 	for (p = dp->list, chcnt = 0; p; p = p->fts_link) {
 		if (p->fts_number == NO_PRINT)
 			continue;
+		/* XXX strlen does not take octal escapes into account. */
 		if (strlen(p->fts_name) + chcnt +
 		    (p->fts_link ? 2 : 0) >= (unsigned)termwidth) {
 			putchar('\n');

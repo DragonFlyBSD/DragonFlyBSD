@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)util.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/ls/util.c,v 1.33 2004/04/06 20:06:47 markm Exp $
- * $DragonFly: src/bin/ls/util.c,v 1.6 2005/09/18 11:31:08 asmodai Exp $
+ * $FreeBSD: src/bin/ls/util.c,v 1.35 2004/05/03 11:48:55 tjr Exp $
+ * $DragonFly: src/bin/ls/util.c,v 1.7 2005/09/18 18:35:23 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -40,25 +40,82 @@
 #include <ctype.h>
 #include <err.h>
 #include <fts.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #include "ls.h"
 #include "extern.h"
 
 int
+prn_normal(const char *s)
+{
+	mbstate_t mbs;
+	wchar_t wc;
+	int i, n;
+	size_t clen;
+
+	memset(&mbs, 0, sizeof(mbs));
+	n = 0;
+	while ((clen = mbrtowc(&wc, s, MB_LEN_MAX, &mbs)) != 0) {
+		if (clen == (size_t)-2) {
+			n += printf("%s", s);
+			break;
+		}
+		if (clen == (size_t)-1) {
+			memset(&mbs, 0, sizeof(mbs));
+			putchar((unsigned char)*s);
+			s++;
+			n++;
+			continue;
+		}
+		for (i = 0; i < (int)clen; i++)
+			putchar((unsigned char)s[i]);
+		s += clen;
+		if (iswprint(wc))
+			n += wcwidth(wc);
+	}
+	return (n);
+}
+
+int
 prn_printable(const char *s)
 {
-	char c;
-	int n;
+	mbstate_t mbs;
+	wchar_t wc;
+	int i, n;
+	size_t clen;
 
-	for (n = 0; (c = *s) != '\0'; ++s, ++n)
-		if (isprint((unsigned char)c))
-			putchar(c);
-		else
+	memset(&mbs, 0, sizeof(mbs));
+	n = 0;
+	while ((clen = mbrtowc(&wc, s, MB_LEN_MAX, &mbs)) != 0) {
+		if (clen == (size_t)-1) {
 			putchar('?');
-	return n;
+			s++;
+			n++;
+			memset(&mbs, 0, sizeof(mbs));
+			continue;
+		}
+		if (clen == (size_t)-2) {
+			putchar('?');
+			n++;
+			break;
+		}
+		if (!iswprint(wc)) {
+			putchar('?');
+			s += clen;
+			n++;
+			continue;
+		}
+		for (i = 0; i < (int)clen; i++)
+			putchar((unsigned char)s[i]);
+		s += clen;
+		n += wcwidth(wc);
+	}
+	return (n);
 }
 
 /*
@@ -77,70 +134,83 @@ prn_printable(const char *s)
 size_t
 len_octal(const char *s, int len)
 {
-	size_t r = 0;
+	mbstate_t mbs;
+	wchar_t wc;
+	size_t clen, r;
 
-	while (len--)
-		if (isprint((unsigned const char)*s++)) r++; else r += 4;
-	return r;
+	memset(&mbs, 0, sizeof(mbs));
+	r = 0;
+	while (len != 0 && (clen = mbrtowc(&wc, s, len, &mbs)) != 0) {
+		if (clen == (size_t)-1) {
+			r += 4;
+			s++;
+			len--;
+			memset(&mbs, 0, sizeof(mbs));
+			continue;
+		}
+		if (clen == (size_t)-2) {
+			r += 4 * len;
+			break;
+		}
+		if (iswprint(wc))
+			r++;
+		else
+			r += 4 * clen;
+		s += clen;
+	}
+	return (r);
 }
 
 int
 prn_octal(const char *s)
 {
-        unsigned char ch;
-	int len = 0;
-	
-        while ((ch = (unsigned char)*s++)) {
-	        if (isprint(ch) && (ch != '\"') && (ch != '\\'))
-		        putchar(ch), len++;
-	        else if (f_octal_escape) {
-	                putchar('\\');
-		        switch (ch) {
-			case '\\':
-			        putchar('\\');
-				break;
-			case '\"':
-			        putchar('"');
-				break;
-			case '\a':
-			        putchar('a');
-				break;
-			case '\b':
-			        putchar('b');
-				break;
-			case '\f':
-			        putchar('f');
-				break;
-			case '\n':
-			        putchar('n');
-				break;
-			case '\r':
-			        putchar('r');
-				break;
-			case '\t':
-			        putchar('t');
-				break;
-			case '\v':
-			        putchar('v');
-				break;
- 		        default:
+	static const char esc[] = "\\\\\"\"\aa\bb\ff\nn\rr\tt\vv";
+	const char *p;
+	mbstate_t mbs;
+	wchar_t wc;
+	size_t clen;
+	unsigned char ch;
+	int goodchar, i, len, prtlen;
+
+	memset(&mbs, 0, sizeof(mbs));
+	len = 0;
+	while ((clen = mbrtowc(&wc, s, MB_LEN_MAX, &mbs)) != 0) {
+		goodchar = clen != (size_t)-1 && clen != (size_t)-2;
+		if (goodchar && iswprint(wc) && wc != L'\"' && wc != L'\\') {
+			 for (i = 0; i < (int)clen; i++)
+				 putchar((unsigned char)s[i]);
+			 len += wcwidth(wc);
+		} else if (goodchar && f_octal_escape && wc >= 0 &&
+		    wc <= (wchar_t)UCHAR_MAX &&
+		    (p = strchr(esc, (char)wc)) != NULL) {
+			putchar('\\');
+			putchar(p[1]);
+			len += 2;
+		} else {
+			if (goodchar)
+				prtlen = clen;
+			else if (clen == (size_t)-1)
+				prtlen = 1;
+			else
+				prtlen = strlen(s);
+			for (i = 0; i < prtlen; i++) {
+				ch = (unsigned char)s[i];
+				putchar('\\');
 		                putchar('0' + (ch >> 6));
 		                putchar('0' + ((ch >> 3) & 7));
 		                putchar('0' + (ch & 7));
-		                len += 2;
-			        break;
+		                len += 4;
 		        }
-		        len += 2;
-	        }
-		else {
-			putchar('\\');
-	                putchar('0' + (ch >> 6));
-	                putchar('0' + ((ch >> 3) & 7));
-	                putchar('0' + (ch & 7));
-	                len += 4;
 		}
+		if (clen == (size_t)-2)
+			break;
+		if (clen == (size_t)-1) {
+			memset(&mbs, 0, sizeof(mbs));
+			s++;
+		} else
+			s += clen;
 	}
-	return len;
+	return (len);
 }
 
 void
