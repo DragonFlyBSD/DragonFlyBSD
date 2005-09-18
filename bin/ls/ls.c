@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.65 2002/08/25 13:01:45 charnier Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.10 2005/09/18 11:43:47 asmodai Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.11 2005/09/18 16:37:56 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -66,8 +66,22 @@
  */
 #define	STRBUF_SIZEOF(t)	(1 + CHAR_BIT * sizeof(t) / 3 + 1)
 
+/*
+ * MAKENINES(n) turns n into (10**n)-1.  This is useful for converting a width
+ * into a number that wide in decimal.
+ * XXX: Overflows are not considered.
+ */
+#define MAKENINES(n)							\
+	do {								\
+		intmax_t i;						\
+									\
+		/* Use a loop as all values of n are small. */		\
+		for (i = 1; n > 0; i *= 10)				\
+			n--;						\
+		n = i - 1;						\
+	} while(0)
+
 static void	 display(FTSENT *, FTSENT *);
-static u_quad_t	 makenines(u_long);
 static int	 mastercmp(const FTSENT **, const FTSENT **);
 static void	 traverse(int, char **, int);
 
@@ -587,10 +601,10 @@ display(FTSENT *p, FTSENT *list)
 		default:
 			break;
 		}
-		maxinode = makenines(maxinode);
-		maxblock = makenines(maxblock);
-		maxnlink = makenines(maxnlink);
-		maxsize = makenines(maxsize);
+		MAKENINES(maxinode);
+		MAKENINES(maxblock);
+		MAKENINES(maxnlink);
+		MAKENINES(maxsize);
 		free(jinitmax);
 	}
 	bcfile = 0;
@@ -771,23 +785,4 @@ mastercmp(const FTSENT **a, const FTSENT **b)
 			return (-1);
 	}
 	return (sortfcn(*a, *b));
-}
-
-/*
- * Makenines() returns (10**n)-1.  This is useful for converting a width
- * into a number that wide in decimal.
- */
-static u_quad_t
-makenines(u_long n)
-{
-	u_long i;
-	u_quad_t reg;
-
-	reg = 1;
-	/* Use a loop instead of pow(), since all values of n are small. */
-	for (i = 0; i < n; i++)
-		reg *= 10;
-	reg--;
-
-	return reg;
 }
