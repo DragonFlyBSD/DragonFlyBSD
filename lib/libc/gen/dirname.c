@@ -26,7 +26,7 @@
  *
  * $OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $
  * $FreeBSD: src/lib/libc/gen/dirname.c,v 1.7 2002/12/30 01:41:14 marcel Exp $
- * $DragonFly: src/lib/libc/gen/dirname.c,v 1.8 2005/09/18 13:36:11 asmodai Exp $
+ * $DragonFly: src/lib/libc/gen/dirname.c,v 1.9 2005/09/18 15:15:06 asmodai Exp $
  */
 
 #include <errno.h>
@@ -72,11 +72,9 @@ dirname(const char *path)
 		endp--;
 	} while (endp > path && *endp == '/');
 
-	if (endp + 2 > path + MAXPATHLEN) {
+	if (strlcpy(bname, path, (endp - path) + 2) > MAXPATHLEN) { 
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
-	memcpy(bname, path, endp - path + 1);
-	bname[endp - path + 1] = '\0';
 	return(bname);
 }
