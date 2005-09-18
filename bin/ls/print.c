@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.63 2002/11/06 01:18:12 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.11 2005/09/18 11:07:38 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.12 2005/09/18 11:36:08 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@
 #include "extern.h"
 
 static int	printaname(FTSENT *, u_long, u_long);
-static void	printlink(FTSENT *);
+static void	printlink(const FTSENT *);
 static void	printtime(time_t);
 static int	printtype(u_int);
 static void	printsize(size_t, off_t);
@@ -87,7 +87,7 @@ typedef enum {
 } unit_t;
 static unit_t unit_adjust(off_t *);
 
-static int unitp[] = {NONE, KILO, MEGA, GIGA, TERA, PETA};
+static unit_t unitp[] = {NONE, KILO, MEGA, GIGA, TERA, PETA};
 
 #ifdef COLORLS
 /* Most of these are taken from <sys/stat.h> */
@@ -573,7 +573,7 @@ colorquit(int sig)
 #endif /* COLORLS */
 
 static void
-printlink(FTSENT *p)
+printlink(const FTSENT *p)
 {
 	int lnklen;
 	char name[MAXPATHLEN + 1];
@@ -621,13 +621,13 @@ unit_adjust(off_t *val)
 {
 	double abval;
 	unit_t unit;
-	unsigned int unit_sz;
+	u_int unit_sz;
 
 	abval = fabs((double)*val);
 
-	unit_sz = abval ? ilogb(abval) / 10 : 0;
+	unit_sz = abval ? (u_int)ilogb(abval) / 10 : 0;
 
-	if (unit_sz >= UNIT_MAX) {
+	if (unit_sz >= (u_int)UNIT_MAX) {
 		unit = NONE;
 	} else {
 		unit = unitp[unit_sz];
