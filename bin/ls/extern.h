@@ -27,8 +27,8 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/bin/ls/extern.h,v 1.7.2.6 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/extern.h,v 1.4 2005/09/18 10:39:35 asmodai Exp $
+ * $FreeBSD: src/bin/ls/extern.h,v 1.22 2004/04/06 20:06:47 markm Exp $
+ * $DragonFly: src/bin/ls/extern.h,v 1.5 2005/09/18 11:32:19 asmodai Exp $
  */
 
 int	 acccmp(const FTSENT *, const FTSENT *);
