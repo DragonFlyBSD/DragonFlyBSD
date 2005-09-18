@@ -30,8 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/basename/basename.c,v 1.3.6.2 2001/08/02 00:59:28 obrien Exp $
- * $DragonFly: src/usr.bin/basename/basename.c,v 1.4 2005/09/18 09:45:26 asmodai Exp $
+ * $FreeBSD: src/usr.bin/basename/basename.c,v 1.15 2004/07/15 06:15:10 tjr Exp $
+ * $DragonFly: src/usr.bin/basename/basename.c,v 1.5 2005/09/18 10:12:55 asmodai Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)basename.c	8.4 (Berkeley) 5/4/95
@@ -39,18 +39,28 @@
 
 #include <err.h>
 #include <libgen.h>
+#include <limits.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
+void stripsuffix(char *, const char *, size_t);
 void usage(void);
 
 int
 main(int argc, char **argv)
 {
-	char *p, *q;
+	char *p, *suffix;
+	size_t suffixlen;
 	int ch;
+
+	setlocale(LC_ALL, "");
+	
+	suffix = 0;
+	suffixlen = NULL;
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
@@ -70,11 +80,33 @@ main(int argc, char **argv)
 	}
 	if ((p = basename(argv[0])) == NULL)
 		err(1, "%s", argv[0]);
-	if (*++argv && (q = strchr(p, '\0') - strlen(*argv)) > p &&
-	    strcmp(*argv, q) == 0)
-			*q = '\0';
+	stripsuffix(p, suffix, suffixlen);
 	(void)printf("%s\n", p);
 	exit(0);
+}
+
+void
+stripsuffix(char *p, const char *suffix, size_t suffixlen)
+{
+	char *q, *r;
+	mbstate_t mbs;
+	size_t n;
+
+	if (suffixlen && (q = strchr(p, '\0') - suffixlen) > p &&
+	    strcmp(suffix, q) == 0) {
+		/* Ensure that the match occurred on a character boundary. */
+		memset(&mbs, 0, sizeof(mbs));
+		for (r = p; r < q; r += n) {
+			n = mbrlen(r, MB_LEN_MAX, &mbs);
+			if (n == (size_t)-1 || n == (size_t)-2) {
+				memset(&mbs, 0, sizeof(mbs));
+				n = 1;
+			}
+		}
+		/* Chop off the suffix. */
+		if (q == r)
+			*q = '\0';
+	}
 }
 
 void
