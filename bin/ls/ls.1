@@ -12,10 +12,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgment:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -33,10 +29,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
-.\" $FreeBSD: src/bin/ls/ls.1,v 1.33.2.21 2003/05/07 23:56:14 trhodes Exp $
-.\" $DragonFly: src/bin/ls/ls.1,v 1.4 2005/09/18 11:31:08 asmodai Exp $
+.\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
+.\" $DragonFly: src/bin/ls/ls.1,v 1.5 2005/09/18 18:55:20 asmodai Exp $
 .\"
-.Dd July 8, 2002
+.Dd January 11, 2005
 .Dt LS 1
 .Os
 .Sh NAME
@@ -184,12 +180,22 @@ option is specified, print the file size allocation in kilobytes,
 not blocks.
 This option overrides the environment variable
 .Ev BLOCKSIZE .
+Note that
+.Fl k
+is mutually exclusive to
+.Fl h ,
+and later
+.Fl k
+will nullify earlier
+.Fl h .
 .It Fl l
 (The lowercase letter
 .Dq ell . )
 List in long format.
 (See below.)
-If the output is to a terminal, a total sum for all the file
+A total sum (in blocks, see the
+.Fl s
+option for the block size unit) for all the file
 sizes is output on a line before the long listing.
 .It Fl m
 Stream output format; list files across the page, separated by commas.
@@ -217,7 +223,7 @@ lexicographical order or the oldest entries first.
 .It Fl s
 Display the number of file system blocks actually used by each file, in units
 of 512 bytes, where partial units are rounded up to the next integer value.
-If the output is to a terminal, a total sum for all the file
+A total sum for all the file
 sizes is output on a line before the listing.
 The environment variable
 .Ev BLOCKSIZE
@@ -335,7 +341,7 @@ linked-to file is preceded by
 The file mode printed under the
 .Fl l
 option consists of the
-entry type, owner permissions, and group permissions.
+entry type and the permissions.
 The entry type character describes the type of file, as
 follows:
 .Pp
@@ -419,23 +425,6 @@ or
 .Xr sticky 8 . )
 .El
 .El
-.Sh EXAMPLES
-The following is how to do an
-.Nm
-listing sorted by size (and shows why
-.Nm
-does not need a separate option for this):
-.Pp
-.Dl "ls -l | sort -n +4"
-.Pp
-Additionally, the
-.Fl r
-flag to
-.Xr sort 1
-may be used
-to get the results sorted from largest to smallest (a reverse sort).
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
@@ -472,12 +461,12 @@ variable must be set to
 .Dq Li xterm-color .
 Other terminal types may require similar adjustments.
 Colorization
-is silently disabled if the output isn't directed to a terminal
+is silently disabled if the output is not directed to a terminal
 unless the
 .Ev CLICOLOR_FORCE
 variable is defined.
 .It Ev CLICOLOR_FORCE
-Color sequences are normally disabled if the output isn't directed to
+Color sequences are normally disabled if the output is not directed to
 a terminal.
 This can be overridden by setting this flag.
 The
@@ -592,7 +581,7 @@ directory writable to others, without sticky bit
 .Pp
 The default is
 .Qq "exfxcxdxbxegedabagacad" ,
-i.e. blue foreground and
+i.e., blue foreground and
 default background for regular directories, black foreground and red
 background for setuid executables, etc.
 .It Ev LS_COLWIDTHS
@@ -615,6 +604,21 @@ See
 .Xr environ 7
 for more information.
 .El
+.Sh EXAMPLES
+The following is how to do an
+.Nm
+listing sorted by size (and shows why
+.Nm
+does not need a separate option for this):
+.Pp
+.Dl "ls -l | sort -n +4"
+.Pp
+Additionally, the
+.Fl r
+flag to
+.Xr sort 1
+may be used
+to get the results sorted from largest to smallest (a reverse sort).
 .Sh COMPATIBILITY
 The group field is now automatically included in the long listing for
 files in order to be compatible with the
@@ -629,7 +633,12 @@ specification.
 .Xr symlink 7 ,
 .Xr sticky 8
 .Sh STANDARDS
-The
+With the exception of options
+.Fl g ,
+.Fl n
+and
+.Fl o ,
+the
 .Nm
 utility conforms to
 .St -p1003.1-2001 .
