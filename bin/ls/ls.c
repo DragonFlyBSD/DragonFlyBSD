@@ -31,8 +31,8 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/ls/ls.c,v 1.63 2002/07/10 20:44:54 dillon Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.9 2005/09/18 11:40:09 asmodai Exp $
+ * $FreeBSD: src/bin/ls/ls.c,v 1.65 2002/08/25 13:01:45 charnier Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.10 2005/09/18 11:43:47 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -557,33 +557,33 @@ display(FTSENT *p, FTSENT *list)
 		switch (ninitmax) {
 		case 0:
 			maxinode = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 1:
 			maxblock = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 2:
 			maxnlink = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 3:
 			maxuser = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 4:
 			maxgroup = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 5:
 			maxflags = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 6:
 			maxsize = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 7:
 			maxlen = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 #ifdef COLORLS
 			if (!f_color)
 #endif
 				f_notabs = 0;
-			/* fall through */
+			/* FALLTHROUGH */
 		default:
 			break;
 		}
