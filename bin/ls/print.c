@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.9 2005/09/18 10:39:35 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.10 2005/09/18 10:47:59 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -518,7 +518,7 @@ parsecolors(const char *cs)
 {
 	int i;
 	int j;
-	int len;
+	size_t len;
 	char c[2];
 	short legacy_warn = 0;
 
@@ -528,7 +528,7 @@ parsecolors(const char *cs)
 	for (i = 0; i < C_NUMCOLORS; i++) {
 		colors[i].bold = 0;
 
-		if (len <= 2 * i) {
+		if (len <= 2 * (size_t)i) {
 			c[0] = defcolors[2 * i];
 			c[1] = defcolors[2 * i + 1];
 		} else {
