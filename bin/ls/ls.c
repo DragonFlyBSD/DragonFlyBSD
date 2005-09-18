@@ -31,8 +31,8 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.8 2005/09/18 10:39:35 asmodai Exp $
+ * $FreeBSD: src/bin/ls/ls.c,v 1.63 2002/07/10 20:44:54 dillon Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.9 2005/09/18 11:40:09 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -426,7 +426,7 @@ traverse(int argc, char *argv[], int options)
 
 	if ((ftsp =
 	    fts_open(argv, options, f_nosort ? NULL : mastercmp)) == NULL)
-		err(1, NULL);
+		err(1, "fts_open");
 
 	display(NULL, fts_children(ftsp, 0));
 	if (f_listdir)
@@ -531,7 +531,7 @@ display(FTSENT *p, FTSENT *list)
 		/* Fill-in "::" as "0:0:0" for the sake of scanf. */
 		jinitmax = initmax2 = malloc(strlen(initmax) * 2 + 2);
 		if (jinitmax == NULL)
-			err(1, NULL);
+			err(1, "malloc");
 		if (*initmax == ':')
 			strcpy(initmax2, "0:"), initmax2 += 2;
 		else
@@ -663,7 +663,7 @@ display(FTSENT *p, FTSENT *list)
 						flags = strdup("-");
 					}
 					if (flags == NULL)
-						err(1, NULL);
+						err(1, "flagstostr");
 					flen = strlen(flags);
 					if (flen > (size_t)maxflags)
 						maxflags = flen;
@@ -684,7 +684,7 @@ display(FTSENT *p, FTSENT *list)
 
 				if ((np = malloc(sizeof(NAMES) +
 				    ulen + glen + flen + fsmidlen + 4)) == NULL)
-					err(1, NULL);
+					err(1, "malloc");
 
 				np->user = &np->data[0];
 				strcpy(np->user, user);
