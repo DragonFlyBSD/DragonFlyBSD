@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.65 2002/08/25 13:01:45 charnier Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.12 2005/09/18 16:43:40 asmodai Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.13 2005/09/18 16:59:54 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -82,7 +82,7 @@
 		n = i - 1;						\
 	} while(0)
 
-static void	 display(FTSENT *, FTSENT *);
+static void	 display(const FTSENT *, FTSENT *);
 static int	 mastercmp(const FTSENT **, const FTSENT **);
 static void	 traverse(int, char **, int);
 
@@ -501,14 +501,17 @@ traverse(int argc, char *argv[], int options)
  * points to the parent directory of the display list.
  */
 static void
-display(FTSENT *p, FTSENT *list)
+display(const FTSENT *p, FTSENT *list)
 {
 	struct stat *sp;
 	DISPLAY d;
 	FTSENT *cur;
 	NAMES *np;
 	off_t maxsize;
-	u_long btotal, maxblock, maxinode, maxlen, maxnlink;
+	u_long btotal, maxlen;
+	int64_t maxblock;
+	ino_t maxinode;
+	nlink_t maxnlink;
 	int bcfile, maxflags;
 	gid_t maxgroup;
 	uid_t maxuser;
@@ -544,9 +547,10 @@ display(FTSENT *p, FTSENT *list)
 		int ninitmax;
 
 		/* Fill-in "::" as "0:0:0" for the sake of scanf. */
-		jinitmax = initmax2 = malloc(strlen(initmax) * 2 + 2);
+		jinitmax = malloc(strlen(initmax) * 2 + 2);
 		if (jinitmax == NULL)
 			err(1, "malloc");
+		initmax2 = jinitmax;
 		if (*initmax == ':')
 			strcpy(initmax2, "0:"), initmax2 += 2;
 		else
@@ -565,7 +569,7 @@ display(FTSENT *p, FTSENT *list)
 			strcpy(initmax2, "0");
 
 		ninitmax = sscanf(jinitmax,
-		    " %lu : %lu : %lu : %i : %i : %i : %llu : %lu ",
+		    " %llu : %lli : %u : %i : %i : %i : %llu : %lu ",
 		    &maxinode, &maxblock, &maxnlink, &maxuser,
 		    &maxgroup, &maxflags, &maxsize, &maxlen);
 		f_notabs = 1;
@@ -737,13 +741,13 @@ display(FTSENT *p, FTSENT *list)
 	if (needstats) {
 		d.bcfile = bcfile;
 		d.btotal = btotal;
-		snprintf(buf, sizeof(buf), "%lu", maxblock);
+		snprintf(buf, sizeof(buf), "%lli", maxblock);
 		d.s_block = strlen(buf);
 		d.s_flags = maxflags;
 		d.s_group = maxgroup;
-		snprintf(buf, sizeof(buf), "%lu", maxinode);
+		snprintf(buf, sizeof(buf), "%llu", maxinode);
 		d.s_inode = strlen(buf);
-		snprintf(buf, sizeof(buf), "%lu", maxnlink);
+		snprintf(buf, sizeof(buf), "%u", maxnlink);
 		d.s_nlink = strlen(buf);
 		snprintf(buf, sizeof(buf), "%llu", maxsize);
 		d.s_size = strlen(buf);
