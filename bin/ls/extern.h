@@ -28,7 +28,7 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/extern.h,v 1.22 2004/04/06 20:06:47 markm Exp $
- * $DragonFly: src/bin/ls/extern.h,v 1.5 2005/09/18 11:32:19 asmodai Exp $
+ * $DragonFly: src/bin/ls/extern.h,v 1.6 2005/09/18 18:01:49 asmodai Exp $
  */
 
 int	 acccmp(const FTSENT *, const FTSENT *);
@@ -40,11 +40,11 @@ int	 revnamecmp(const FTSENT *, const FTSENT *);
 int	 statcmp(const FTSENT *, const FTSENT *);
 int	 revstatcmp(const FTSENT *, const FTSENT *);
 
-void	 printcol(DISPLAY *);
-void	 printlong(DISPLAY *);
+void	 printcol(const DISPLAY *);
+void	 printlong(const DISPLAY *);
 int	 printname(const char *);
-void	 printscol(DISPLAY *);
-void	 printstream(DISPLAY *);
+void	 printscol(const DISPLAY *);
+void	 printstream(const DISPLAY *);
 void	 usage(void);
 size_t	 len_octal(const char *, int);
 int	 prn_octal(const char *);

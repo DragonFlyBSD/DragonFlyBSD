@@ -31,8 +31,8 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/ls/ls.c,v 1.65 2002/08/25 13:01:45 charnier Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.13 2005/09/18 16:59:54 asmodai Exp $
+ * $FreeBSD: src/bin/ls/ls.c,v 1.78 2004/06/08 09:30:10 das Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.14 2005/09/18 18:01:49 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -86,7 +86,7 @@ static void	 display(const FTSENT *, FTSENT *);
 static int	 mastercmp(const FTSENT **, const FTSENT **);
 static void	 traverse(int, char **, int);
 
-static void (*printfcn)(DISPLAY *);
+static void (*printfcn)(const DISPLAY *);
 static int (*sortfcn)(const FTSENT *, const FTSENT *);
 
 long blocksize;			/* block size units */
@@ -258,6 +258,7 @@ main(int argc, char *argv[])
 			f_inode = 1;
 			break;
 		case 'k':
+			f_humanval = 0;
 			f_kblocks = 1;
 			break;
 		case 'm':
@@ -443,7 +444,13 @@ traverse(int argc, char *argv[], int options)
 	    fts_open(argv, options, f_nosort ? NULL : mastercmp)) == NULL)
 		err(1, "fts_open");
 
-	display(NULL, fts_children(ftsp, 0));
+	/*
+	 * We ignore errors from fts_children here since they will be
+	 * replicated and signalled on the next call to fts_read() below.
+	 */
+	chp = fts_children(ftsp, 0);
+	if (chp != NULL)
+		display(NULL, chp);
 	if (f_listdir)
 		return;
 
@@ -524,16 +531,6 @@ display(const FTSENT *p, FTSENT *list)
 	char buf[STRBUF_SIZEOF(u_quad_t) + 1];
 	char ngroup[STRBUF_SIZEOF(uid_t) + 1];
 	char nuser[STRBUF_SIZEOF(gid_t) + 1];
-
-	/*
-	 * If list is NULL there are two possibilities: that the parent
-	 * directory p has no children, or that fts_children() returned an
-	 * error.  We ignore the error case since it will be replicated
-	 * on the next call to fts_read() on the post-order visit to the
-	 * directory p, and will be signaled in traverse().
-	 */
-	if (list == NULL)
-		return;
 
 	needstats = f_inode || f_longform || f_size;
 	flen = 0;
@@ -732,7 +729,13 @@ display(const FTSENT *p, FTSENT *list)
 		++entries;
 	}
 
-	if (!entries)
+	/*
+	 * If there are no entries to display, we normally stop right
+	 * here.  However, we must continue if we have to display the
+	 * total block count.  In this case, we display the total only
+	 * on the second (p != NULL) pass.
+	 */
+	if (!entries && (!(f_longform || f_size) || p == NULL))
 		return;
 
 	d.list = list;

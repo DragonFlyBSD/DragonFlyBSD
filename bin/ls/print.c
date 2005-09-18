@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.63 2002/11/06 01:18:12 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.12 2005/09/18 11:36:08 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.13 2005/09/18 18:01:49 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@
 #include "ls.h"
 #include "extern.h"
 
-static int	printaname(FTSENT *, u_long, u_long);
+static int	printaname(const FTSENT *, u_long, u_long);
 static void	printlink(const FTSENT *);
 static void	printtime(time_t);
 static int	printtype(u_int);
@@ -118,7 +118,7 @@ static struct {
 #endif
 
 void
-printscol(DISPLAY *dp)
+printscol(const DISPLAY *dp)
 {
 	FTSENT *p;
 
@@ -145,7 +145,7 @@ printname(const char *name)
 }
 
 void
-printlong(DISPLAY *dp)
+printlong(const DISPLAY *dp)
 {
 	struct stat *sp;
 	FTSENT *p;
@@ -213,7 +213,7 @@ printlong(DISPLAY *dp)
 }
 
 void
-printstream(DISPLAY *dp)
+printstream(const DISPLAY *dp)
 {
 	FTSENT *p;
 	int chcnt;
@@ -237,7 +237,7 @@ printstream(DISPLAY *dp)
 }
 		
 void
-printcol(DISPLAY *dp)
+printcol(const DISPLAY *dp)
 {
 	static FTSENT **array;
 	static int lastentries = -1;
@@ -334,7 +334,7 @@ printcol(DISPLAY *dp)
  * return # of characters printed, no trailing characters.
  */
 static int
-printaname(FTSENT *p, u_long inodefield, u_long sizefield)
+printaname(const FTSENT *p, u_long inodefield, u_long sizefield)
 {
 	struct stat *sp;
 	int chcnt;
@@ -439,7 +439,7 @@ putch(int c)
 static int
 writech(int c)
 {
-	char tmp = c;
+	char tmp = (char)c;
 
 	write(STDOUT_FILENO, &tmp, 1);
 	return 0;
@@ -500,6 +500,7 @@ colortype(mode_t mode)
 	case S_IFCHR:
 		printcolor(C_CHR);
 		return (1);
+	default:;
 	}
 	if (mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
 		if (mode & S_ISUID)
