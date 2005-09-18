@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)util.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/ls/util.c,v 1.20.2.5 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/util.c,v 1.5 2005/09/18 10:39:35 asmodai Exp $
+ * $FreeBSD: src/bin/ls/util.c,v 1.33 2004/04/06 20:06:47 markm Exp $
+ * $DragonFly: src/bin/ls/util.c,v 1.6 2005/09/18 11:31:08 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -148,9 +148,9 @@ usage(void)
 {
 	fprintf(stderr,
 #ifdef COLORLS
-	"usage: ls [-ABCFGHLPRTWabcdfghiklmnoqrstuwx1]"
+	"usage: ls [-ABCFGHLPRTWabcdfghiklmnoqrstuwxy1]"
 #else
-	"usage: ls [-ABCFHLPRTWabcdfghiklmnoqrstuwx1]"
+	"usage: ls [-ABCFHLPRTWabcdfghiklmnoqrstuwxy1]"
 #endif
 		      " [file ...]\n");
 	exit(1);
