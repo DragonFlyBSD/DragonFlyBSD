@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,7 +31,7 @@
  *
  * @(#)util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/util.c,v 1.20.2.5 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/util.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/ls/util.c,v 1.5 2005/09/18 10:39:35 asmodai Exp $
  */
 
 #include <sys/types.h>

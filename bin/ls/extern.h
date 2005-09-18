@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -32,7 +28,7 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/extern.h,v 1.7.2.6 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/extern.h,v 1.3 2005/09/18 10:37:50 asmodai Exp $
+ * $DragonFly: src/bin/ls/extern.h,v 1.4 2005/09/18 10:39:35 asmodai Exp $
  */
 
 int	 acccmp(const FTSENT *, const FTSENT *);
