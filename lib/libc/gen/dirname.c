@@ -1,7 +1,3 @@
-/*	$OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $	*/
-/*	$FreeBSD: src/lib/libc/gen/dirname.c,v 1.7 2002/12/30 01:41:14 marcel Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.7 2005/09/18 13:33:52 asmodai Exp $	*/
-
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
  * All rights reserved.
@@ -29,6 +25,8 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $
+ * $FreeBSD: src/lib/libc/gen/dirname.c,v 1.7 2002/12/30 01:41:14 marcel Exp $
+ * $DragonFly: src/lib/libc/gen/dirname.c,v 1.8 2005/09/18 13:36:11 asmodai Exp $
  */
 
 #include <errno.h>
