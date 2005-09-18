@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/basename/basename.c,v 1.3.6.2 2001/08/02 00:59:28 obrien Exp $
- * $DragonFly: src/usr.bin/basename/basename.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/basename/basename.c,v 1.4 2005/09/18 09:45:26 asmodai Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)basename.c	8.4 (Berkeley) 5/4/95
@@ -44,7 +44,6 @@
 #include <string.h>
 #include <unistd.h>
 
-int main(int, char **);
 void usage(void);
 
 int
