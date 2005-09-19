@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.71 2004/05/02 11:25:37 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.14 2005/09/18 18:35:23 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.15 2005/09/19 10:06:39 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -155,8 +155,10 @@ printlong(const DISPLAY *dp)
 	int color_printed = 0;
 #endif
 
-	if (dp->list->fts_level != FTS_ROOTLEVEL && (f_longform || f_size))
+	if ((dp->list == NULL || dp->list->fts_level != FTS_ROOTLEVEL) &&
+	    (f_longform || f_size)) {
 		printf("total %lu\n", howmany(dp->btotal, blocksize));
+	}
 
 	for (p = dp->list; p; p = p->fts_link) {
 		if (IS_NOPRINT(p))
@@ -298,8 +300,10 @@ printcol(const DISPLAY *dp)
 	if (num % numcols)
 		++numrows;
 
-	if (dp->list->fts_level != FTS_ROOTLEVEL && (f_longform || f_size))
+	if ((dp->list == NULL || dp->list->fts_level != FTS_ROOTLEVEL) &&
+	    (f_longform || f_size)) {
 		printf("total %lu\n", howmany(dp->btotal, blocksize));
+	}
 
 	/* counter if f_sortacross, else case-by-case */
 	base = 0;
