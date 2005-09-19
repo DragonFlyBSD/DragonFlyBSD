@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
- * $FreeBSD: src/bin/ls/print.c,v 1.71 2004/05/02 11:25:37 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.15 2005/09/19 10:06:39 asmodai Exp $
+ * $FreeBSD: src/bin/ls/print.c,v 1.73 2004/06/08 09:27:42 das Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.16 2005/09/19 10:14:29 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -40,8 +40,8 @@
 #include <err.h>
 #include <errno.h>
 #include <fts.h>
-#include <math.h>
 #include <langinfo.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,27 +67,6 @@ static int	colortype(mode_t);
 #endif
 
 #define	IS_NOPRINT(p)	((p)->fts_number == NO_PRINT)
-
-#define KILO_SZ(n) (n)
-#define MEGA_SZ(n) ((n) * (n))
-#define GIGA_SZ(n) ((n) * (n) * (n))
-#define TERA_SZ(n) ((n) * (n) * (n) * (n))
-#define PETA_SZ(n) ((n) * (n) * (n) * (n) * (n))
-
-#define KILO_2_SZ (KILO_SZ(1024ULL))
-#define MEGA_2_SZ (MEGA_SZ(1024ULL))
-#define GIGA_2_SZ (GIGA_SZ(1024ULL))
-#define TERA_2_SZ (TERA_SZ(1024ULL))
-#define PETA_2_SZ (PETA_SZ(1024ULL))
-
-static unsigned long long vals_base2[] = {1, KILO_2_SZ, MEGA_2_SZ, GIGA_2_SZ, TERA_2_SZ, PETA_2_SZ};
-
-typedef enum {
-	NONE, KILO, MEGA, GIGA, TERA, PETA, UNIT_MAX
-} unit_t;
-static unit_t unit_adjust(off_t *);
-
-static unit_t unitp[] = {NONE, KILO, MEGA, GIGA, TERA, PETA};
 
 #ifdef COLORLS
 /* Most of these are taken from <sys/stat.h> */
@@ -602,43 +581,12 @@ printlink(const FTSENT *p)
 static void
 printsize(size_t width, off_t bytes)
 {
-	unit_t unit;
-
 	if (f_humanval) {
-		unit = unit_adjust(&bytes);
+		char buf[5];
 
-		if (bytes == 0)
-			printf("%*s ", width, "0B");
-		else
-			printf("%*lld%c ", width - 1, bytes,
-			    "BKMGTPE"[unit]);
+		humanize_number(buf, sizeof(buf), (int64_t)bytes, "",
+				HN_AUTOSCALE, HN_B | HN_NOSPACE | HN_DECIMAL);
+		(void)printf("%5s ", buf);
 	} else
 		printf("%*lld ", width, bytes);
-}
-
-/*
- * Output in "human-readable" format.  Uses 3 digits max and puts
- * unit suffixes at the end.  Makes output compact and easy to read,
- * especially on huge disks.
- *
- */
-static unit_t
-unit_adjust(off_t *val)
-{
-	double abval;
-	unit_t unit;
-	u_int unit_sz;
-
-	abval = fabs((double)*val);
-
-	unit_sz = abval ? (u_int)ilogb(abval) / 10 : 0;
-
-	if (unit_sz >= (u_int)UNIT_MAX) {
-		unit = NONE;
-	} else {
-		unit = unitp[unit_sz];
-		*val /= (double)vals_base2[unit_sz];
-	}
-
-	return (unit);
 }
