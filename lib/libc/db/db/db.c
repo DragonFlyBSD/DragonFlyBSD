@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -31,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)db.c	8.4 (Berkeley) 2/21/94
- * $DragonFly: src/lib/libc/db/db/db.c,v 1.3 2005/04/25 08:25:23 joerg Exp $
+ * $DragonFly: src/lib/libc/db/db/db.c,v 1.4 2005/09/19 09:02:02 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -44,7 +40,7 @@
 #include <db.h>
 
 DB *
-dbopen(const char *fname, int flags, int mode, DBTYPE type, const void *openinfo)
+dbopen(const char *fname, int flags, mode_t mode, DBTYPE type, const void *openinfo)
 {
 
 #define	DB_FLAGS	(DB_LOCK | DB_SHMEM | DB_TXN)
@@ -56,13 +52,13 @@ dbopen(const char *fname, int flags, int mode, DBTYPE type, const void *openinfo
 		switch (type) {
 		case DB_BTREE:
 			return (__bt_open(fname, flags & USE_OPEN_FLAGS,
-			    mode, openinfo, flags & DB_FLAGS));
+			    mode, openinfo, (int)flags & DB_FLAGS));
 		case DB_HASH:
 			return (__hash_open(fname, flags & USE_OPEN_FLAGS,
-			    mode, openinfo, flags & DB_FLAGS));
+			    mode, openinfo, (int)flags & DB_FLAGS));
 		case DB_RECNO:
 			return (__rec_open(fname, flags & USE_OPEN_FLAGS,
-			    mode, openinfo, flags & DB_FLAGS));
+			    mode, openinfo, (int)flags & DB_FLAGS));
 		}
 	errno = EINVAL;
 	return (NULL);
