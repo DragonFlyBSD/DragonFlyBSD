@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_open.c,v 1.7.2.1 2000/11/02 10:30:07 kris Exp $
- * $DragonFly: src/lib/libc/db/btree/bt_open.c,v 1.4 2005/01/31 22:29:07 dillon Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_open.c,v 1.5 2005/09/19 09:20:37 asmodai Exp $
  *
  * @(#)bt_open.c	8.10 (Berkeley) 8/17/94
  */

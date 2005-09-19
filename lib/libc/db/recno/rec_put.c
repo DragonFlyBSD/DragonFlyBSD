@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,7 +28,7 @@
  *
  * @(#)rec_put.c	8.7 (Berkeley) 8/18/94
  * $FreeBSD: src/lib/libc/db/recno/rec_put.c,v 1.4.6.1 2001/01/02 05:13:25 peter Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.3 2005/09/19 09:20:37 asmodai Exp $
  */
 
 #include <sys/types.h>
