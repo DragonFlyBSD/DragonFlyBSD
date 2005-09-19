@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.105 2005/09/04 01:28:57 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.106 2005/09/19 02:53:27 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -268,6 +268,7 @@ dev/netif/mii_layer/xmphy.c		optional miibus
 dev/netif/mii_layer/lxtphy.c	optional miibus
 dev/netif/mii_layer/qsphy.c		optional miibus
 dev/netif/mii_layer/acphy.c		optional miibus
+dev/netif/mii_layer/ruephy.c	optional miibus
 dev/netif/mii_layer/miibus_if.m		optional miibus
 dev/raid/mlx/mlx_disk.c		optional mlx
 dev/raid/mlx/mlx_pci.c		optional mlx
@@ -1022,6 +1023,7 @@ dev/netif/pcn/if_pcn.c		optional pcn
 dev/netif/mn/if_mn.c		optional mn
 dev/netif/re/if_re.c		optional re
 dev/netif/rl/if_rl.c		optional rl
+dev/netif/rue/if_rue.c		optional rue
 dev/netif/sf/if_sf.c		optional sf
 dev/netif/sis/if_sis.c		optional sis
 dev/netif/sk/if_sk.c		optional sk

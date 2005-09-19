@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.61 2005/09/08 22:09:01 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.62 2005/09/19 02:53:27 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2544,6 +2544,12 @@ device		cue
 # the Netgear EA101, the D-Link DSB-650, the SMC 2102USB
 # and 2104USB, and the Corega USB-T.
 device		kue
+#
+# RealTek 8150 based USB ethernet device:
+#   Melco LUA-KTX
+#   GREEN HOUSE GH-USB100B
+#   Billionton ThumbLAN USBKR2-100B
+device		rue
 
 # debugging options for the USB subsystem
 #

@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.26 2005/09/08 22:09:01 swildner Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.27 2005/09/19 02:53:27 sephe Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -264,6 +264,7 @@ device		aue		# ADMtek USB ethernet
 device		axe		# ASIX Electronics USB Ethernet
 device		cue		# CATC USB ethernet
 device		kue		# Kawasaki LSI USB ethernet
+device		rue		# RealTek 8150 based USB ethernet
 
 # FireWire support
 device		firewire	# FireWire bus code
