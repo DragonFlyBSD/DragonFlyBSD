@@ -32,7 +32,7 @@
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/string.h,v 1.6.2.3 2001/12/25 00:36:57 ache Exp $
- * $DragonFly: src/include/string.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
+ * $DragonFly: src/include/string.h,v 1.6 2005/09/19 21:20:33 asmodai Exp $
  */
 
 #ifndef _STRING_H_
@@ -92,7 +92,7 @@ char	*strdup (const char *);
 int	 strerror_r (int, char *, size_t);
 size_t strlcat (char *, const char *, size_t);
 size_t strlcpy (char *, const char *, size_t);
-void	 strmode (int, char *);
+void	 strmode (mode_t, char *);
 int	 strncasecmp (const char *, const char *, size_t);
 char	*strnstr (const char *, const char *, size_t);
 char	*strsep (char **, const char *);
