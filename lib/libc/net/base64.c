@@ -38,10 +38,11 @@
  * DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE, EVEN
  * IF IBM IS APPRISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
 
 /*
  * $FreeBSD: src/lib/libc/net/base64.c,v 1.4 1999/11/04 04:30:43 ache Exp $
- * $DragonFly: src/lib/libc/net/base64.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/base64.c,v 1.3 2005/09/19 09:25:15 asmodai Exp $
  */
 
 #include <sys/types.h>
