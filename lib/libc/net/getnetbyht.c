@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,7 +28,7 @@
  *
  * @(#)getnetent.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getnetbyht.c,v 1.7.2.1 2002/07/07 11:34:42 robert Exp $
- * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
  */
 
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro

@@ -12,11 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -55,7 +51,7 @@
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $
  * $FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.27.2.5 2002/11/02 18:54:57 ume Exp $
- * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
  */
 
 #include <sys/types.h>
