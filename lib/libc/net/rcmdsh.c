@@ -1,4 +1,4 @@
-/*	$OpenBSD: rcmdsh.c,v 1.5 1998/04/25 16:23:58 millert Exp $	*/
+/*	$OpenBSD: rcmdsh.c,v 1.7 2002/03/12 00:05:44 millert Exp $	*/
 
 /*
  * Copyright (c) 2001, MagniComp
@@ -28,7 +28,7 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.3.2.2 2002/04/22 17:38:53 ume Exp $
- * $DragonFly: src/lib/libc/net/rcmdsh.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/rcmdsh.c,v 1.3 2005/09/19 09:44:30 asmodai Exp $
  */
 
 /*
@@ -64,7 +64,8 @@ rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
 	const char *locuser, *remuser, *cmd, *rshprog;
 {
 	struct addrinfo hints, *res;
-	int cpid, sp[2], error;
+	int sp[2], error;
+	pid_t cpid;
 	char *p;
 	struct passwd *pw;
 	char num[8];
