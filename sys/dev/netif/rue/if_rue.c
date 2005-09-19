@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.1 2005/09/19 02:53:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.2 2005/09/19 04:22:15 sephe Exp $
  */
 
 /*
@@ -1405,8 +1405,10 @@ rue_stop(struct rue_softc *sc)
 	}
 
 #ifdef RUE_INTR_PIPE
-	free(sc->rue_cdata.rue_ibuf, M_USBDEV);
-	sc->rue_cdata.rue_ibuf = NULL;
+	if (sc->rue_cdata.rue_ibuf != NULL) {
+		free(sc->rue_cdata.rue_ibuf, M_USBDEV);
+		sc->rue_cdata.rue_ibuf = NULL;
+	}
 #endif
 
 	sc->rue_link = 0;
