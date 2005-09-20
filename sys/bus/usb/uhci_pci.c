@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uhci_pci.c,v 1.51 2003/11/28 05:28:29 imp Exp $
- * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.5 2005/05/24 20:58:54 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.6 2005/09/20 09:06:58 sephe Exp $
  */
 
 /* Universal Host Controller Interface
@@ -326,14 +326,6 @@ uhci_pci_attach(device_t self)
 		break;
 	}
 
-	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
-	    (driver_intr_t *) uhci_intr, sc, &sc->ih, NULL);
-	if (err) {
-		device_printf(self, "Could not setup irq, %d\n", err);
-		sc->ih = NULL;
-		uhci_pci_detach(self);
-		return ENXIO;
-	}
 	/*
 	 * Set the PIRQD enable bit and switch off all the others. We don't
 	 * want legacy support to interfere with us XXX Does this also mean
@@ -356,6 +348,16 @@ uhci_pci_attach(device_t self)
 		uhci_pci_detach(self);
 		return EIO;
 	}
+
+	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
+	    (driver_intr_t *) uhci_intr, sc, &sc->ih, NULL);
+	if (err) {
+		device_printf(self, "Could not setup irq, %d\n", err);
+		sc->ih = NULL;
+		uhci_pci_detach(self);
+		return ENXIO;
+	}
+
 	return 0;		/* success */
 }
 
