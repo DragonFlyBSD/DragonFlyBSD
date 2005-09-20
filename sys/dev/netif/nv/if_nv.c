@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.15 2005/06/15 11:35:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.16 2005/09/20 01:51:08 dillon Exp $
  */
 
 /*
@@ -217,6 +217,14 @@ static struct nv_type nv_devs[] = {
                 "NVIDIA nForce MCP6 Networking Adapter"},
         {NVIDIA_VENDORID, NFORCE_MCPNET7_DEVICEID,
                 "NVIDIA nForce MCP7 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET8_DEVICEID,
+		"NVIDIA nForce MCP8 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET9_DEVICEID,
+		"NVIDIA nForce MCP9 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET10_DEVICEID,
+		"NVIDIA nForce MCP10 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET11_DEVICEID,
+		"NVIDIA nForce MCP11 Networking Adapter"},
         {0, 0, NULL}
 };
 
@@ -287,12 +295,15 @@ nv_attach(device_t dev)
 	OS_API         *osapi;
 	ADAPTER_OPEN_PARAMS OpenParams;
 	int             error = 0, i, rid;
+	u_int32_t	unit;
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_attach - entry\n");
 
 	sc = device_get_softc(dev);
+	unit = device_get_unit(dev);
 
 	sc->dev = dev;
+	sc->unit = unit;
 	callout_init(&sc->nv_stat_timer);
 
 	/* Preinitialize data structures */
@@ -465,6 +476,13 @@ nv_attach(device_t dev)
 	sc->adapterdata.ulModeRegTxReadCompleteEnable = 1;
 	sc->hwapi->pfnSetCommonData(sc->hwapi->pADCX, &sc->adapterdata);
 
+	sc->hwapi->pfnInit(sc->hwapi->pADCX, 
+				   0, /* force speed */ 
+				   0, /* force full duplex */
+				   0, /* force mode */
+				   0, /* force async mode */
+				   &sc->linkup);
+
 	/* MAC is loaded backwards into h/w reg */
 	sc->hwapi->pfnGetNodeAddress(sc->hwapi->pADCX, sc->original_mac_addr);
 	for (i = 0; i < 6; i++) {
@@ -622,6 +640,14 @@ nv_init(void *xsc)
 	/* Update interface parameters */
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
+
+	/* 
+	 * Reset watchdog and ring queue indexes.  XXX if the interface
+	 * is reset with pending tx packets queued to the actual device,
+	 * the mbufs are currently lost.
+	 */
+	ifp->if_timer = 0;
+	sc->pending_txs = 0;
 
 	callout_reset(&sc->nv_stat_timer, hz, nv_tick, sc);
 
@@ -886,6 +912,7 @@ nv_ifstart(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			bus_dmamap_unload(sc->mtag, buf->map);
 			buf->mbuf = NULL;
+			m_freem(m0);	/* XXX requeue */
 			return;
 
 		default:
@@ -1210,7 +1237,8 @@ nv_watchdog(struct ifnet *ifp)
 {
 	struct nv_softc *sc = ifp->if_softc;
 
-	device_printf(sc->dev, "device timeout (%d)\n", sc->pending_txs);
+	device_printf(sc->dev, "device timeout (%d) flags %d\n",
+			sc->pending_txs, ifp->if_flags & IFF_OACTIVE);
 
 	sc->tx_errors++;
 
@@ -1453,9 +1481,15 @@ nv_ospackettx(PNV_VOID ctx, PNV_VOID id, NV_UINT32 success)
 	m_freem(buf->mbuf);
 	buf->mbuf = NULL;
 
-	if (!ifq_is_empty(&ifp->if_snd) && sc->pending_txs < TX_RING_SIZE)
-		nv_ifstart(ifp);
-
+	/*
+	 * Make sure we are clear to go if we previously stalled due
+	 * to a full ring.
+	 */
+	if (sc->pending_txs < TX_RING_SIZE) {
+		ifp->if_flags &= ~IFF_OACTIVE;
+		if (!ifq_is_empty(&ifp->if_snd))
+			nv_ifstart(ifp);
+	}
 fail:
 	NV_UNLOCK(sc);
 

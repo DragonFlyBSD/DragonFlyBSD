@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_nvreg.h,v 1.6 2004/08/12 14:00:05 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.7 2005/06/13 19:21:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.8 2005/09/20 01:51:08 dillon Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -52,15 +52,20 @@
 #define NFORCE_MCPNET5_DEVICEID 0x008C
 #define NFORCE_MCPNET6_DEVICEID 0x00E6
 #define NFORCE_MCPNET7_DEVICEID 0x00DF
+#define NFORCE_MCPNET8_DEVICEID 0x0056
+#define NFORCE_MCPNET9_DEVICEID 0x0057
+#define NFORCE_MCPNET10_DEVICEID 0x0037
+#define NFORCE_MCPNET11_DEVICEID 0x0038
 
 #define NV_RID		0x10
 
 #define TX_RING_SIZE 64
 #define RX_RING_SIZE 64
-
 #define NV_MAX_FRAGS 63
+
 #define	FCS_LEN 4
 
+#define NV_DEBUG		0x0000
 #define NV_DEBUG_INIT		0x0001
 #define NV_DEBUG_RUNNING	0x0002
 #define NV_DEBUG_DEINIT 	0x0004
@@ -71,8 +76,6 @@
 #define NV_DEBUG_BROKEN		0x0080
 #define NV_DEBUG_MII		0x0100
 #define NV_DEBUG_ALL		0xFFFF
-
-#define NV_DEBUG		0x0000
 
 #if NV_DEBUG
 #define DEBUGOUT(level, fmt, args...) if (NV_DEBUG & level) \
@@ -124,6 +127,7 @@ struct nv_softc {
 		
 	device_t miibus;
 	device_t dev;
+	u_int32_t unit;
 	struct callout	nv_stat_timer;
 
 	void *sc_ih;
@@ -177,6 +181,10 @@ struct nv_type {
 #define NV_UNLOCK(_sc)		crit_exit()
 #define NV_OSLOCK(_sc)		crit_enter()
 #define NV_OSUNLOCK(_sc)	crit_exit()
+
+#define IF_Kbps(x)	((x) * 1000)		/* kilobits/sec. */
+#define IF_Mbps(x)	(IF_Kbps((x) * 1000))	/* megabits/sec. */
+#define ETHER_ALIGN	2
 
 extern int ADAPTER_ReadPhy (PVOID pContext, ULONG ulPhyAddr, ULONG ulReg, ULONG *pulVal);
 extern int ADAPTER_WritePhy (PVOID pContext, ULONG ulPhyAddr, ULONG ulReg, ULONG ulVal);
