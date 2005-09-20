@@ -32,11 +32,15 @@
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/string.h,v 1.6.2.3 2001/12/25 00:36:57 ache Exp $
- * $DragonFly: src/include/string.h,v 1.6 2005/09/19 21:20:33 asmodai Exp $
+ * $DragonFly: src/include/string.h,v 1.7 2005/09/20 08:42:51 asmodai Exp $
  */
 
 #ifndef _STRING_H_
 #define	_STRING_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
