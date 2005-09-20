@@ -35,20 +35,20 @@
  *
  * @(#)memchr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memchr.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/memchr.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $DragonFly: src/lib/libc/string/memchr.c,v 1.5 2005/09/20 15:00:45 asmodai Exp $
  */
 
 #include <sys/cdefs.h>
 #include <string.h>
 
 void *
-memchr(const void *s, unsigned char c, size_t n)
+memchr(const void *s, int c, size_t n)
 {
 	if (n != 0) {
 		const unsigned char *p = s;
 
 		do {
-			if (*p++ == c)
+			if (*p++ == (unsigned char)c)
 				return ((void *)(p - 1));
 		} while (--n != 0);
 	}
