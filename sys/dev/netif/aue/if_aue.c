@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.26 2005/08/29 10:19:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.27 2005/09/20 07:17:37 sephe Exp $
  */
 
 /*
@@ -1479,8 +1479,10 @@ aue_stop(struct aue_softc *sc)
 	}
 
 #ifdef AUE_INTR_PIPE
-	free(sc->aue_cdata.aue_ibuf, M_USBDEV);
-	sc->aue_cdata.aue_ibuf = NULL;
+	if (sc->aue_cdata.aue_ibuf != NULL) {
+		free(sc->aue_cdata.aue_ibuf, M_USBDEV);
+		sc->aue_cdata.aue_ibuf = NULL;
+	}
 #endif
 
 	sc->aue_link = 0;
