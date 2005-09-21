@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.26 2005/06/20 15:10:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.27 2005/09/21 21:03:10 hsu Exp $
  */
 
 /*
@@ -332,35 +332,15 @@ le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
     total_len -= ETHER_HDR_LEN;
     len1 -= ETHER_HDR_LEN;
 
-    MGETHDR(m, MB_DONTWAIT, MT_DATA);
+    m = m_getl(total_len + LE_XTRA, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
     if (m == NULL) {
 	sc->le_if.if_ierrors++;
 	return;
     }
-    m->m_pkthdr.len = total_len;
     m->m_pkthdr.rcvif = &sc->le_if;
-    if (total_len + LE_XTRA > MHLEN /* >= MINCLSIZE */) {
-	MCLGET(m, MB_DONTWAIT);
-	if ((m->m_flags & M_EXT) == 0) {
-	    m_free(m);
-	    sc->le_if.if_ierrors++;
-	    return;
-	}
-    } else if (total_len + LE_XTRA > MHLEN && MINCLSIZE == (MHLEN+MLEN)) {
-	MGET(m->m_next, MB_DONTWAIT, MT_DATA);
-	if (m->m_next == NULL) {
-	    m_free(m);
-	    sc->le_if.if_ierrors++;
-	    return;
-	}
-	m->m_next->m_len = total_len - MHLEN - LE_XTRA;
-	len1 = total_len = MHLEN - LE_XTRA;
-	bcopy(&seg1[MHLEN-LE_XTRA], mtod(m->m_next, caddr_t), m->m_next->m_len);
-    } else if (total_len + LE_XTRA > MHLEN) {
-	panic("le_input: pkt of unknown length");
-    }
     m->m_data += LE_XTRA;
-    m->m_len = total_len;
+    m->m_len = m->m_pkthdr.len = total_len;
+
     bcopy(seg1, mtod(m, caddr_t), len1);
     if (seg2 != NULL)
 	bcopy(seg2, mtod(m, caddr_t) + len1, total_len - len1);
