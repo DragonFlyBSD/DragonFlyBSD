@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.2 2003/09/10 00:40:39 ken Exp $
- * $DragonFly: src/sys/sys/taskqueue.h,v 1.5 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/taskqueue.h,v 1.6 2005/09/21 18:58:55 hsu Exp $
  */
 
 #ifndef _SYS_TASKQUEUE_H_
@@ -114,9 +114,9 @@ struct __hack
 TASKQUEUE_DECLARE(swi);
 
 /*
- * This queue is serviced by a kernel thread.  To enqueue a task, call
- * taskqueue_enqueue(taskqueue_thread, &task).
+ * This queue is serviced by a per-cpu kernel thread.  To enqueue a task, call
+ * taskqueue_enqueue(taskqueue_thread[mycpuid], &task).
  */
-TASKQUEUE_DECLARE(thread);
+extern struct taskqueue *taskqueue_thread[];
 
 #endif /* !_SYS_TASKQUEUE_H_ */

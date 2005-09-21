@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.7 2005/06/16 21:12:19 dillon Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.8 2005/09/21 18:58:55 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,7 @@
 #include <sys/kernel.h>
 #include <sys/taskqueue.h>
 #include <sys/interrupt.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/kthread.h>
 #include <sys/thread2.h>
@@ -42,7 +43,6 @@
 MALLOC_DEFINE(M_TASKQUEUE, "taskqueue", "Task Queues");
 
 static STAILQ_HEAD(taskqueue_list, taskqueue) taskqueue_queues;
-static struct thread *taskqueue_thread_td;
 
 struct taskqueue {
 	STAILQ_ENTRY(taskqueue)	tq_link;
@@ -202,14 +202,17 @@ taskqueue_swi_run(void *arg)
 	taskqueue_run(taskqueue_swi);
 }
 
+TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
+		 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq"));
+
 static void
 taskqueue_kthread(void *arg)
 {
 	for (;;) {
-		taskqueue_run(taskqueue_thread);
+		taskqueue_run(taskqueue_thread[mycpuid]);
 		crit_enter();
-		if (STAILQ_EMPTY(&taskqueue_thread->tq_queue))
-			tsleep(&taskqueue_thread, 0, "tqthr", 0);
+		if (STAILQ_EMPTY(&taskqueue_thread[mycpuid]->tq_queue))
+			tsleep(taskqueue_thread[mycpuid], 0, "tqthr", 0);
 		crit_exit();
 	}
 }
@@ -217,11 +220,23 @@ taskqueue_kthread(void *arg)
 static void
 taskqueue_thread_enqueue(void *context)
 {
-	wakeup(&taskqueue_thread);
+	wakeup(taskqueue_thread[mycpuid]);
 }
 
-TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
-		 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq"));
-TASKQUEUE_DEFINE(thread, taskqueue_thread_enqueue, 0,
-		 kthread_create(taskqueue_kthread, NULL,
-		 &taskqueue_thread_td, "taskqueue"));
+struct taskqueue *taskqueue_thread[MAXCPU];
+static struct thread *taskqueue_thread_td[MAXCPU];
+
+static void
+taskqueue_init(void)
+{
+	int cpu;
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		taskqueue_thread[cpu] = taskqueue_create("thread", M_INTWAIT,
+		    taskqueue_thread_enqueue, NULL);
+		kthread_create(taskqueue_kthread, NULL,
+		    &taskqueue_thread_td[cpu], "taskqueue");
+	}
+}
+
+SYSINIT(taskqueueinit, SI_SUB_CONFIGURE, SI_ORDER_SECOND, taskqueue_init, NULL);

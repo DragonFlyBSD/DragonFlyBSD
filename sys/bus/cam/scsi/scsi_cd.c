@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.18 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.19 2005/09/21 18:58:55 hsu Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -1856,7 +1856,8 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 			 * Create our sysctl variables, now that we know
 			 * we have successfully attached.
 			 */
-			taskqueue_enqueue(taskqueue_thread,&softc->sysctl_task);
+			taskqueue_enqueue(taskqueue_thread[mycpuid],
+			    &softc->sysctl_task);
 		}
 		softc->state = CD_STATE_NORMAL;		
 		/*

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.24 2005/06/02 21:12:45 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.25 2005/09/21 18:58:55 hsu Exp $
  */
 
 #ifdef _KERNEL
@@ -1712,7 +1712,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			 * Create our sysctl variables, now that we know
 			 * we have successfully attached.
 			 */
-			taskqueue_enqueue(taskqueue_thread,&softc->sysctl_task);
+			taskqueue_enqueue(taskqueue_thread[mycpuid],
+			    &softc->sysctl_task);
 		}
 		softc->state = DA_STATE_NORMAL;		
 		/*
