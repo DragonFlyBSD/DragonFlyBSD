@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.7 2005/08/01 15:01:40 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.8 2005/09/21 18:13:24 justin Exp $
 
 $TITLE(DragonFly - April 2005 Release 1.2.x Download)
 <h1>Obtaining DragonFly 1.2.x for your system</h1>
@@ -88,6 +88,11 @@ See the 'Download Site' list below for a list of download locations.
     security fix for a libz overflow.</TD>
 </TR>
 </TABLE>
+
+<p>
+A <a href="http://leaf.dragonflybsd.org/releaseinfo/DragonFly_RELEASE_1_2.txt">detailed commit history</a> is available.
+</p>
+
 
 <h2>1.2.x Release Sites</h2>
 
