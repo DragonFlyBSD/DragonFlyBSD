@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.17 2004/10/26 04:33:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.18 2005/09/21 19:48:05 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -30,6 +30,7 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+#include <sys/spinlock2.h>		/* XXX */
 
 static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
@@ -45,28 +46,19 @@ static void *zget(vm_zone_t z);
 
 /*
  * Return an item from the specified zone.   This function is interrupt/MP
- * thread safe, but might block.
+ * thread safe and is non-blocking for ZONE_INTERRUPT zones.
  */
 void *
 zalloc(vm_zone_t z)
 {
 	void *item;
-	lwkt_tokref ilock;
 
 #ifdef INVARIANTS
 	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
-	lwkt_gettoken(&ilock, &z->zlock);
-	if (z->zfreecnt <= z->zfreemin) {
-		item = zget(z);
-		/*
-		 * PANICFAIL allows the caller to assume that the zalloc()
-		 * will always succeed.  If it doesn't, we panic here.
-		 */
-		if (item == NULL && (z->zflags & ZONE_PANICFAIL))
-			panic("zalloc(%s) failed", z->zname);
-	} else {
+	spin_lock_crit(&z->zlock);
+	if (z->zfreecnt > z->zfreemin) {
 		item = z->zitems;
 #ifdef INVARIANTS
 		KASSERT(item != NULL, ("zitems unexpectedly NULL"));
@@ -77,21 +69,29 @@ zalloc(vm_zone_t z)
 		z->zitems = ((void **) item)[0];
 		z->zfreecnt--;
 		z->znalloc++;
+		spin_unlock_crit(&z->zlock);
+	} else {
+		spin_unlock_crit(&z->zlock);
+		item = zget(z);
+		/*
+		 * PANICFAIL allows the caller to assume that the zalloc()
+		 * will always succeed.  If it doesn't, we panic here.
+		 */
+		if (item == NULL && (z->zflags & ZONE_PANICFAIL))
+			panic("zalloc(%s) failed", z->zname);
 	}
-	lwkt_reltoken(&ilock);
 	return item;
 }
 
 /*
  * Free an item to the specified zone.   This function is interrupt/MP
- * thread safe, but might block.
+ * thread safe and is non-blocking.
  */
 void
 zfree(vm_zone_t z, void *item)
 {
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &z->zlock);
+	spin_lock_crit(&z->zlock);
 	((void **) item)[0] = z->zitems;
 #ifdef INVARIANTS
 	if (((void **) item)[1] == (void *) ZENTRY_FREE)
@@ -100,7 +100,7 @@ zfree(vm_zone_t z, void *item)
 #endif
 	z->zitems = item;
 	z->zfreecnt++;
-	lwkt_reltoken(&ilock);
+	spin_unlock_crit(&z->zlock);
 }
 
 /*
@@ -154,7 +154,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
-		lwkt_token_init(&z->zlock);
+		spin_init(&z->zlock);
 		z->zfreecnt = 0;
 		z->ztotal = 0;
 		z->zmax = 0;
@@ -176,7 +176,6 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	 * vm_map_entry_reserve().
 	 */
 	if (z->zflags & ZONE_INTERRUPT) {
-
 		totsize = round_page(z->zsize * nentries);
 		zone_kmem_kvaspace += totsize;
 
@@ -211,6 +210,17 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		z->zalloc = zalloc;
 	else
 		z->zalloc = 1;
+
+	/*
+	 * Populate the interrrupt zone at creation time rather than
+	 * on first allocation, as this is a potentially long operation.
+	 */
+	if (z->zflags & ZONE_INTERRUPT) {
+		void *buf;
+
+		buf = zget(z);
+		zfree(z, buf);
+	}
 
 	return 1;
 }
@@ -259,7 +269,7 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zpagecount = 0;
 	z->zalloc = 0;
 	z->znalloc = 0;
-	lwkt_token_init(&z->zlock);
+	spin_init(&z->zlock);
 
 	bzero(item, nitems * z->zsize);
 	z->zitems = NULL;
@@ -327,7 +337,7 @@ zget(vm_zone_t z)
 
 			zkva = z->zkva + z->zpagecount * PAGE_SIZE;
 			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m)); /* YYY */
-			bzero((caddr_t) zkva, PAGE_SIZE);
+			bzero((void *)zkva, PAGE_SIZE);
 			z->zpagecount++;
 			zone_kmem_pages++;
 			vmstats.v_wire_count++;
@@ -347,7 +357,7 @@ zget(vm_zone_t z)
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
-			zone_kern_pages += z->zalloc;
+			zone_kern_pages += z->zalloc;	/* not MP-safe XXX */
 			bzero(item, nbytes);
 		} else {
 			nbytes = 0;
@@ -363,15 +373,16 @@ zget(vm_zone_t z)
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
-			zone_kern_pages += z->zalloc;
+			zone_kern_pages += z->zalloc;	/* not MP-safe XXX */
 			bzero(item, nbytes);
 		} else {
 			nbytes = 0;
 		}
 		nitems = nbytes / z->zsize;
 	}
-	z->ztotal += nitems;
 
+	spin_lock_crit(&z->zlock);
+	z->ztotal += nitems;
 	/*
 	 * Save one for immediate allocation
 	 */
@@ -400,6 +411,7 @@ zget(vm_zone_t z)
 	} else {
 		item = NULL;
 	}
+	spin_unlock_crit(&z->zlock);
 
 	/*
 	 * A special zone may have used a kernel-reserved vm_map_entry.  If

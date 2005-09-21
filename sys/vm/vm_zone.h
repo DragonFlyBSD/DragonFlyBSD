@@ -12,11 +12,10 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.6 2004/10/26 04:33:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.h,v 1.7 2005/09/21 19:48:05 hsu Exp $
  */
 
 #ifndef _SYS_ZONE_H
-
 #define _SYS_ZONE_H
 
 #define ZONE_INTERRUPT 0x0001	/* If you need to allocate at int time */
@@ -25,14 +24,11 @@
 #define ZONE_BOOT      0x0010	/* Internal flag used by zbootinit */
 #define ZONE_USE_RESERVE 0x0020	/* use reserve memory if necessary */
 
-#ifndef _SYS_THREAD_H_
+#include <sys/spinlock.h>
 #include <sys/thread.h>
-#endif
-
-#include	<machine/lock.h>
 
 typedef struct vm_zone {
-	struct lwkt_token zlock;	/* lock for data structure */
+	struct spinlock zlock;		/* lock for data structure */
 	void		*zitems;	/* linked list of items */
 	int		zfreecnt;	/* free entries */
 	int		zfreemin;	/* minimum number of free entries */
@@ -62,4 +58,4 @@ void		zfree (vm_zone_t z, void *item);
 void		zbootinit (vm_zone_t z, char *name, int size, void *item,
 			       int nitems);
 
-#endif /* _SYS_ZONE_H */
+#endif
