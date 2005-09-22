@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/basename/basename.c,v 1.15 2004/07/15 06:15:10 tjr Exp $
- * $DragonFly: src/usr.bin/basename/basename.c,v 1.6 2005/09/22 23:44:55 corecode Exp $
+ * $DragonFly: src/usr.bin/basename/basename.c,v 1.7 2005/09/22 23:47:14 corecode Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)basename.c	8.4 (Berkeley) 5/4/95
@@ -62,12 +62,13 @@ main(int argc, char **argv)
 	suffix = NULL;
 	suffixlen = 0;
 
-	while ((ch = getopt(argc, argv, "")) != -1)
+	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch(ch) {
 		case '?':
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -85,8 +86,8 @@ main(int argc, char **argv)
 		suffixlen = strlen(argv[1]);
 	}
 	stripsuffix(p, suffix, suffixlen);
-	(void)printf("%s\n", p);
-	exit(0);
+	printf("%s\n", p);
+	return (0);
 }
 
 void
@@ -117,6 +118,6 @@ void
 usage(void)
 {
 
-	(void)fprintf(stderr, "usage: basename string [suffix]\n");
+	fprintf(stderr, "usage: basename string [suffix]\n");
 	exit(1);
 }
