@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.58 2005/08/31 22:21:23 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.59 2005/09/22 06:45:01 demizu Exp $
  */
 
 #define	_IP_VHL
@@ -1233,6 +1233,7 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 		m->m_nextpkt = nq;
 		ipstat.ips_fragdropped++;
 		fp->ipq_nfrags--;
+		q->m_nextpkt = NULL;
 		m_freem(q);
 	}
 
@@ -1368,6 +1369,7 @@ ip_freef(struct ipq *fp)
 	while (fp->ipq_frags) {
 		q = fp->ipq_frags;
 		fp->ipq_frags = q->m_nextpkt;
+		q->m_nextpkt = NULL;
 		m_freem(q);
 	}
 	remque(fp);
