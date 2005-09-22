@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.144 2005/09/17 11:07:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.145 2005/09/22 09:13:38 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -386,6 +386,7 @@ static volatile sig_atomic_t got_SIGTTIN;
 static volatile sig_atomic_t got_SIGWINCH;
 #endif
 
+Shell	*commandShell = NULL;
 
 /**
  * In lieu of a good way to prevent every possible looping in make(1), stop

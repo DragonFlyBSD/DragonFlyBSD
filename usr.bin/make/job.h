@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.30 2005/02/01 10:50:35 harti Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.39 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.40 2005/09/22 09:13:38 okumoto Exp $
  */
 
 #ifndef job_h_4678dfd1
@@ -68,6 +68,8 @@ void Job_AbortAll(void);
 
 void Proc_Init(void);
 void Sig_Init(bool);
+
+extern struct Shell	*commandShell;
 
 struct Buffer *Cmd_Exec(const char *, const char **);
 

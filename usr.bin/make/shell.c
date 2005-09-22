@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/shell.c,v 1.24 2005/09/17 11:07:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/shell.c,v 1.25 2005/09/22 09:13:38 okumoto Exp $
  */
 
 #include <string.h>
@@ -48,8 +48,6 @@
 #include "shell.h"
 #include "str.h"
 #include "util.h"
-
-struct Shell	*commandShell = NULL;
 
 /**
  * Helper function for sorting the builtin list alphabetically.
