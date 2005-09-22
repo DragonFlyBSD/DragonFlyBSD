@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.6 2005/07/30 13:59:45 joerg Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.7 2005/09/22 11:14:44 asmodai Exp $
 
 LIB=    ncurses
 
@@ -20,6 +20,7 @@ ncurses_def.h:
 curses.h:
 	cat ${.CURDIR}/../include/curses.head >$@
 	${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
+	cat ${NCURSESDIR}/include/curses.wide >>$@
 	cat ${NCURSESDIR}/include/curses.tail >>$@
 term.h:
 	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > $@

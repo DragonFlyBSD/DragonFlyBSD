@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libmenu/Makefile,v 1.3 2005/03/14 15:15:13 joerg Exp $
+# $DragonFly: src/lib/libncurses/libmenu/Makefile,v 1.4 2005/09/22 11:14:44 asmodai Exp $
 
 LIB=    menu
 
@@ -17,6 +17,7 @@ ncurses_def.h:
 curses.h:
 	cat ${.CURDIR}/../include/curses.head >$@
 	${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
+	cat ${NCURSESDIR}/include/curses.wide >>$@
 	cat ${NCURSESDIR}/include/curses.tail >>$@
 
 CLEANFILES=     curses.h ncurses_def.h

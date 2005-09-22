@@ -33,7 +33,7 @@
  ****************************************************************************/
 
 /* $Id: curses.h.in,v 1.148 2004/01/14 23:50:12 tom Exp $ */
-/* $DragonFly: src/lib/libncurses/include/curses.head,v 1.2 2005/07/29 14:20:11 joerg Exp $ */
+/* $DragonFly: src/lib/libncurses/include/curses.head,v 1.3 2005/09/22 11:14:44 asmodai Exp $ */
 
 #ifndef __NCURSES_H
 #define __NCURSES_H
@@ -113,7 +113,7 @@
  * of the header incompatible.
  */
 #undef	NCURSES_CH_T
-#define NCURSES_CH_T chtype
+#define NCURSES_CH_T cchar_t
 
 typedef unsigned long chtype;
 
@@ -312,16 +312,16 @@ typedef	chtype	attr_t;		/* ...must be at least as wide as chtype */
 #include <libutf8.h>
 #endif
 
-#if 0
+#if 1
 #include <wchar.h>		/* ...to get mbstate_t, etc. */
 #endif
 
 #if 0
-typedef unsigned short wchar_t;
+typedef unsigned short wchar_t1;
 #endif
 
 #if 0
-typedef unsigned int wint_t;
+typedef unsigned int wint_t1;
 #endif
 
 #define CCHARW_MAX	5

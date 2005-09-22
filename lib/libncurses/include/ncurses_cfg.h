@@ -43,12 +43,15 @@
  *	http://invisible-island.net/autoconf/
  *	ftp://invisible-island.net/autoconf/
  */
-/* $DragonFly: src/lib/libncurses/include/ncurses_cfg.h,v 1.1 2005/03/12 19:13:54 eirikn Exp $ */
+/* $DragonFly: src/lib/libncurses/include/ncurses_cfg.h,v 1.2 2005/09/22 11:14:44 asmodai Exp $ */
 #ifndef NC_CONFIG_H
 #define NC_CONFIG_H
 
-#define SYSTEM_NAME "dragonfly1.1"
+#define SYSTEM_NAME "dragonfly1.3.6"
 #define CC_HAS_PROTOS 1
+#ifdef __cplusplus
+#include <stdlib.h>
+#endif
 #define HAVE_LONG_FILE_NAMES 1
 #define MIXEDCASE_FILENAMES 1
 #define USE_SYSMOUSE 1
@@ -75,6 +78,16 @@
 #define USE_ROOT_ENVIRON 1
 #define USE_ASSUMED_COLOR 1
 #define USE_HASHMAP 1
+#define USE_WIDEC_SUPPORT 1
+#define HAVE_PUTWC 1
+#define HAVE_BTOWC 1
+#define HAVE_WCTOB 1
+#define HAVE_MBTOWC 1
+#define HAVE_WCTOMB 1
+#define HAVE_MBLEN 1
+#define HAVE_MBRLEN 1
+#define HAVE_MBRTOWC 1
+#define NEED_WCHAR_H 1
 #define GCC_SCANF 1
 #define GCC_PRINTF 1
 #define GCC_UNUSED __attribute__((unused))
@@ -135,10 +148,8 @@
 #define HAVE_WORKING_POLL 1
 #define HAVE_TYPEINFO 1
 #define ETIP_NEEDS_MATH_H 1
-#define CPP_HAS_PARAM_INIT 1
-#define HAVE_STRSTREAM_H 1
 #define CPP_HAS_VSCAN_FUNC 1
-#define USE_STRSTREAM_VSCAN 1
+#define USE_STDIO_VSCAN 1
 #define HAVE_SLK_COLOR 1
 #define HAVE_PANEL_H 1
 #define HAVE_LIBPANEL 1
