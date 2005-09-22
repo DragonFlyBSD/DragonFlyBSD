@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.9 2005/08/10 13:42:28 joerg Exp $ */
+/*	$DragonFly: src/include/wchar.h,v 1.10 2005/09/22 23:50:10 corecode Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -117,6 +117,8 @@ typedef __size_t	size_t;
 #ifndef WEOF
 #define	WEOF 	((wint_t)(-1))
 #endif
+
+struct tm;
 
 __BEGIN_DECLS
 wint_t	btowc(int);
