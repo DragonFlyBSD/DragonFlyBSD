@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.14 2005/07/03 00:51:44 corecode Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.15 2005/09/22 01:49:44 corecode Exp $
  */
 
 #include <sys/stat.h>
@@ -443,8 +443,23 @@ err:	eval = 1;
 static int
 check(const char *path, const char *name, struct stat *sp)
 {
-	int ch, first;
+	static int perm_answer = -1;
+	struct choice {
+		int ch;
+		const char *str;
+		int res;
+		int perm;
+	} *choice, choices[] = {
+		{ 'y', "yes"   , 1, 0 },
+		{ 'n', "no"    , 0, 0 },
+		{ 'a', "always", 1, 1 },
+		{ 'v', "never" , 0, 1 },
+		{ 0, NULL, 0, 0 }
+	};
 	char modep[15], *flagsp;
+
+	if (perm_answer != -1)
+		return (perm_answer);
 
 	/* Check -i first. */
 	if (iflag)
@@ -477,10 +492,33 @@ check(const char *path, const char *name, struct stat *sp)
 	}
 	fflush(stderr);
 
-	first = ch = getchar();
-	while (ch != '\n' && ch != EOF)
-		ch = getchar();
-	return (first == 'y' || first == 'Y');
+	for (;;) {
+		size_t len;
+		char *answer;
+
+		answer = fgetln(stdin, &len);
+		/* clearerr(stdin); */
+		if (answer == NULL)
+			return (0);
+		if (answer[len - 1] == '\n')
+			len--;
+		if (len == 0)
+			continue;
+
+		for (choice = choices; choice->str != NULL; choice++) {
+			if (len == 1 && choice->ch == answer[0])
+				goto valid_choice;
+			if (strncasecmp(answer, choice->str, len) == 0)
+				goto valid_choice;
+		}
+
+		fprintf(stderr, "invalid answer, try again (y/n/a/v): ");
+	}
+
+valid_choice:
+	if (choice->perm)
+		perm_answer = choice->res;
+	return (choice->res);
 }
 
 static int
