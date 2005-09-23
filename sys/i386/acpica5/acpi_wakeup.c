@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.7 2005/02/15 20:06:50 joerg Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.8 2005/09/23 02:22:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -277,6 +277,7 @@ acpi_sleep_machdep(struct acpi_softc *sc, int state)
 #if 0
 		initializecpu();
 #endif
+		icu_reinit();
 		cpu_enable_intr();
 
 		if (bootverbose) {
