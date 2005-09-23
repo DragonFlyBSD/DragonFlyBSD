@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.15 2005/06/20 17:43:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.16 2005/09/23 02:28:50 y0netan1 Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -46,6 +46,7 @@ extern	int	(*copyin_vector) (const void *udaddr, void *kaddr,
 				      size_t len);
 extern	int	(*copyout_vector) (const void *kaddr, void *udaddr,
 				       size_t len);
+extern	void	(*cpu_idle_hook)(void);
 extern	u_int	cpu_exthigh;
 extern	u_int	cpu_feature;
 extern	u_int	cpu_fxsr;

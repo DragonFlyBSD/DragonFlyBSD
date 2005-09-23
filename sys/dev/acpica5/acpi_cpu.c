@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.10 2005/08/29 21:07:59 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.11 2005/09/23 02:28:50 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -43,6 +43,7 @@
 #include <machine/atomic.h>
 #include <machine/bus.h>
 #include <machine/globaldata.h>
+#include <machine/md_var.h>
 #include <machine/smp.h>
 #include <sys/rman.h>
 
@@ -372,7 +373,8 @@ acpi_cpu_shutdown(device_t dev)
 
     /* Signal and wait for all processors to exit acpi_cpu_idle(). */
 #ifdef SMP
-    KKASSERT(0);	/* XXX use rendezvous */
+    if (mycpu->gd_cpuid == 0)
+	lwkt_cpusync_simple(0, NULL, NULL);
 #endif
     DELAY(1);
 
@@ -782,9 +784,6 @@ acpi_cpu_startup_throttling()
 	   "currently %d.%d%%\n", CPU_MAX_SPEED, CPU_SPEED_PRINTABLE(1),
 	   CPU_SPEED_PRINTABLE(cpu_throttle_state));
 }
-
-/* XXX: not here */
-extern void (*cpu_idle_hook)(void);
 
 static void
 acpi_cpu_startup_cx()

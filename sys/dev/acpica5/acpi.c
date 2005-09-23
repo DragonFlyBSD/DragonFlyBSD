@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.13 2005/09/17 23:53:47 dillon Exp $
+ *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.14 2005/09/23 02:28:50 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -60,8 +60,6 @@
 #include <acnamesp.h>
 
 MALLOC_DEFINE(M_ACPIDEV, "acpidev", "ACPI devices");
-extern void cpu_idle_default_hook(void);
-extern void (*cpu_idle_hook)(void);
 
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
@@ -624,6 +622,8 @@ acpi_attach(device_t dev)
 static int
 acpi_shutdown(device_t dev)
 {
+    /* Allow children to shutdown first. */
+    bus_generic_shutdown(dev);
 
     /* Disable all wake GPEs not appropriate for reboot/poweroff. */
     acpi_wake_limit_walk(ACPI_STATE_S5);
@@ -1209,7 +1209,6 @@ acpi_shutdown_final(void *arg, int howto)
 	acpi_shutdown_poweroff(NULL);
     } else {
 	printf("Shutting down ACPI\n");
-	cpu_idle_hook = cpu_idle_default_hook;
 	AcpiTerminate();
     }
 }
