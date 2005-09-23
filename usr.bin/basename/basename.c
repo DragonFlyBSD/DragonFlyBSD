@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/basename/basename.c,v 1.15 2004/07/15 06:15:10 tjr Exp $
- * $DragonFly: src/usr.bin/basename/basename.c,v 1.7 2005/09/22 23:47:14 corecode Exp $
+ * $DragonFly: src/usr.bin/basename/basename.c,v 1.8 2005/09/23 07:03:11 asmodai Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)basename.c	8.4 (Berkeley) 5/4/95
@@ -59,8 +59,8 @@ main(int argc, char **argv)
 
 	setlocale(LC_ALL, "");
 
-	suffix = NULL;
-	suffixlen = 0;
+	suffix = 0;
+	suffixlen = NULL;
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch(ch) {
