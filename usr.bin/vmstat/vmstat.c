@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.16 2005/02/14 13:18:39 joerg Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.17 2005/09/23 18:51:34 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -70,37 +70,37 @@
 
 static struct nlist namelist[] = {
 #define	X_BOOTTIME	0
-	{ "_boottime" },
+	{ "_boottime",	0, 0, 0, 0 },
 #define X_NCHSTATS	1
-	{ "_nchstats" },
+	{ "_nchstats",	0, 0, 0, 0 },
 #define	X_INTRNAMES	2
-	{ "_intrnames" },
+	{ "_intrnames",	0, 0, 0, 0 },
 #define	X_EINTRNAMES	3
-	{ "_eintrnames" },
+	{ "_eintrnames",0, 0, 0, 0 },
 #define	X_INTRCNT	4
-	{ "_intrcnt" },
+	{ "_intrcnt",	0, 0, 0, 0 },
 #define	X_EINTRCNT	5
-	{ "_eintrcnt" },
+	{ "_eintrcnt",	0, 0, 0, 0 },
 #define	X_KMEMSTATISTICS	6
-	{ "_kmemstatistics" },
+	{ "_kmemstatistics",	0, 0, 0, 0 },
 #define	X_ZLIST		7
-	{ "_zlist" },
+	{ "_zlist",	0, 0, 0, 0 },
 #ifdef notyet
 #define	X_DEFICIT	8
-	{ "_deficit" },
+	{ "_deficit",	0, 0, 0, 0 },
 #define	X_FORKSTAT	9
-	{ "_forkstat" },
+	{ "_forkstat",	0, 0, 0, 0 },
 #define X_REC		10
-	{ "_rectime" },
+	{ "_rectime",	0, 0, 0, 0 },
 #define X_PGIN		11
-	{ "_pgintime" },
+	{ "_pgintime",	0, 0, 0, 0 },
 #define	X_XSTATS	12
-	{ "_xstats" },
+	{ "_xstats",	0, 0, 0, 0 },
 #define X_END		13
 #else
 #define X_END		8
 #endif
-	{ "" },
+	{ "", 0, 0, 0, 0 },
 };
 
 struct statinfo cur, last;
@@ -138,13 +138,13 @@ static void dointr(void);
 static void domem(void);
 static void dosum(void);
 static void dozmem(void);
-static void dovmstat(u_int interval, int reps);
-static void kread(int nlx, void *addr, size_t size);
+static void dovmstat(u_int, int);
+static void kread(int, void *, size_t);
 static void usage(void);
-static char **getdrivedata(char **argv);
+static char **getdrivedata(char **);
 static long getuptime(void);
-static void needhdr(int signo);
-static long pct(long top, long bot);
+static void needhdr(int);
+static long pct(long, long);
 
 #ifdef notyet
 static void dotimes(void); /* Not implemented */
@@ -216,7 +216,6 @@ main(int argc, char **argv)
 		case 'z':
 			todo |= ZMEMSTAT;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -755,8 +754,7 @@ dointr(void)
 
 #define	MAX_KMSTATS	200
 
-static
-long
+static long
 cpuagg(long *ary)
 {
     int i;
