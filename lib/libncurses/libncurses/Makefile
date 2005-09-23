@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.7 2005/09/22 11:14:44 asmodai Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.8 2005/09/23 09:42:17 asmodai Exp $
 
 LIB=    ncurses
 
@@ -8,8 +8,9 @@ NCURSESBASEDIR=${NCURSESDIR}/ncurses/base
 NCURSESSERIALDIR=${NCURSESDIR}/ncurses/tty
 NCURSESTINFODIR=${NCURSESDIR}/ncurses/tinfo
 NCURSESTRACEDIR=${NCURSESDIR}/ncurses/trace
+NCURSESWCHARDIR=${NCURSESDIR}/ncurses/widechar
 .PATH: ${NCURSESBASEDIR} ${NCURSESSERIALDIR} ${NCURSESTINFODIR} \
-	${NCURSESTRACEDIR} ${.OBJDIR} ${NCURSESDIR}/include/
+	${NCURSESTRACEDIR} ${NCURSESWCHARDIR} ${.OBJDIR} ${NCURSESDIR}/include/
 
 CFLAGS+= 	-I${NCURSESDIR}/ncurses/
 CFLAGS+=	-DTRACE
@@ -225,6 +226,28 @@ SRCS+=	\
 	trace_xnames.c \
 	varargs.c \
 	visbuf.c \
+
+# Widechar
+SRCS+=	\
+	charable.c \
+	lib_add_wch.c \
+	lib_box_set.c \
+	lib_cchar.c \
+	lib_erasewchar.c \
+	lib_get_wch.c \
+	lib_get_wstr.c \
+	lib_hline_set.c \
+	lib_in_wch.c \
+	lib_in_wchnstr.c \
+	lib_ins_wch.c \
+	lib_inwstr.c \
+	lib_pecho_wchar.c \
+	lib_slk_wset.c \
+	lib_unget_wch.c \
+	lib_vid_attr.c \
+	lib_vline_set.c \
+	lib_wacs.c \
+	lib_wunctrl.c
 
 # Generated
 SRCS+=	\
