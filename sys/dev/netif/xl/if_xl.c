@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.31 2005/08/03 16:01:11 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.32 2005/09/24 03:50:30 sephe Exp $
  */
 
 /*
@@ -1412,8 +1412,6 @@ xl_attach(dev)
 		goto fail;
 	}
 
-	sc->xl_flags |= XL_FLAG_ATTACH_MAPPED;
-
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
@@ -1448,7 +1446,7 @@ xl_attach(dev)
 	}
 
 	error = bus_dmamem_alloc(sc->xl_ldata.xl_rx_tag,
-	    (void **)&sc->xl_ldata.xl_rx_list, BUS_DMA_NOWAIT,
+	    (void **)&sc->xl_ldata.xl_rx_list, BUS_DMA_WAITOK | BUS_DMA_ZERO,
 	    &sc->xl_ldata.xl_rx_dmamap);
 	if (error) {
 		device_printf(dev, "no memory for rx list buffers!\n");
@@ -1460,7 +1458,7 @@ xl_attach(dev)
 	error = bus_dmamap_load(sc->xl_ldata.xl_rx_tag,
 	    sc->xl_ldata.xl_rx_dmamap, sc->xl_ldata.xl_rx_list,
 	    XL_RX_LIST_SZ, xl_dma_map_addr,
-	    &sc->xl_ldata.xl_rx_dmaaddr, BUS_DMA_NOWAIT);
+	    &sc->xl_ldata.xl_rx_dmaaddr, BUS_DMA_WAITOK);
 	if (error) {
 		device_printf(dev, "cannot get dma address of the rx ring!\n");
 		bus_dmamem_free(sc->xl_ldata.xl_rx_tag, sc->xl_ldata.xl_rx_list,
@@ -1480,7 +1478,7 @@ xl_attach(dev)
 	}
 
 	error = bus_dmamem_alloc(sc->xl_ldata.xl_tx_tag,
-	    (void **)&sc->xl_ldata.xl_tx_list, BUS_DMA_NOWAIT,
+	    (void **)&sc->xl_ldata.xl_tx_list, BUS_DMA_WAITOK | BUS_DMA_ZERO,
 	    &sc->xl_ldata.xl_tx_dmamap);
 	if (error) {
 		device_printf(dev, "no memory for list buffers!\n");
@@ -1492,7 +1490,7 @@ xl_attach(dev)
 	error = bus_dmamap_load(sc->xl_ldata.xl_tx_tag,
 	    sc->xl_ldata.xl_tx_dmamap, sc->xl_ldata.xl_tx_list,
 	    XL_TX_LIST_SZ, xl_dma_map_addr,
-	    &sc->xl_ldata.xl_tx_dmaaddr, BUS_DMA_NOWAIT);
+	    &sc->xl_ldata.xl_tx_dmaaddr, BUS_DMA_WAITOK);
 	if (error) {
 		device_printf(dev, "cannot get dma address of the tx ring!\n");
 		bus_dmamem_free(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_list,
@@ -1514,13 +1512,12 @@ xl_attach(dev)
 		goto fail;
 	}
 
-	bzero(sc->xl_ldata.xl_tx_list, XL_TX_LIST_SZ);
-	bzero(sc->xl_ldata.xl_rx_list, XL_RX_LIST_SZ);
-
 	/* We need a spare DMA map for the RX ring. */
 	error = bus_dmamap_create(sc->xl_mtag, 0, &sc->xl_tmpmap);
-	if (error)
+	if (error) {
+		device_printf(dev, "failed to create mbuf dma map\n");
 		goto fail;
+	}
 
 	/*
 	 * Figure out the card type. 3c905B adapters have the
@@ -1587,10 +1584,11 @@ xl_attach(dev)
 		if (bootverbose)
 			if_printf(ifp, "found MII/AUTO\n");
 		xl_setcfg(sc);
-		if (mii_phy_probe(dev, &sc->xl_miibus,
-		    xl_ifmedia_upd, xl_ifmedia_sts)) {
+
+		error = mii_phy_probe(dev, &sc->xl_miibus,
+				      xl_ifmedia_upd, xl_ifmedia_sts);
+		if (error) {
 			if_printf(ifp, "no PHY found!\n");
-			error = ENXIO;
 			goto fail;
 		}
 
@@ -1719,11 +1717,11 @@ done:
 		goto fail;
 	}
 
-fail:
-	if (error)
-		xl_detach(dev);
+	return 0;
 
-	return(error);
+fail:
+	xl_detach(dev);
+	return error;
 }
 
 /*
@@ -1745,7 +1743,7 @@ xl_detach(dev)
 	ifp = &sc->arpcom.ac_if;
 
 	if (sc->xl_flags & XL_FLAG_USE_MMIO) {
-		rid = XL_PCI_LOMEM;  
+		rid = XL_PCI_LOMEM;
 		res = SYS_RES_MEMORY;
 	} else {
 		rid = XL_PCI_LOIO;   
@@ -1754,17 +1752,12 @@ xl_detach(dev)
 
 	crit_enter();
 
-	/*
-	 * Only try to communicate with the device if we were able to map
-	 * the ports.  This flag is set before ether_ifattach() so it also
-	 * governs our call to ether_ifdetach().
-	 */
-	if (sc->xl_flags & XL_FLAG_ATTACH_MAPPED) {
+	if (device_is_attached(dev)) {
 		xl_reset(sc);
 		xl_stop(sc);
 		ether_ifdetach(ifp);
 	}
-	
+
 	if (sc->xl_miibus)
 		device_delete_child(dev, sc->xl_miibus);
 	bus_generic_detach(dev);
