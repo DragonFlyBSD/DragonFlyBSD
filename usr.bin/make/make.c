@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.33 2005/02/04 12:38:57 harti Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.32 2005/07/29 22:48:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.33 2005/09/24 07:27:26 okumoto Exp $
  */
 
 /*
@@ -548,10 +548,10 @@ Make_DoAllVar(GNode *gn)
 		}
 	}
 
-	if (!Var_Exists (OODATE, gn)) {
+	if (Var_Value(OODATE, gn) == NULL) {
 		Var_Set(OODATE, "", gn);
 	}
-	if (!Var_Exists (ALLSRC, gn)) {
+	if (Var_Value(ALLSRC, gn) == NULL) {
 		Var_Set(ALLSRC, "", gn);
 	}
 

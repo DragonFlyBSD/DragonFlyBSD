@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.96 2005/09/17 11:07:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.97 2005/09/24 07:27:26 okumoto Exp $
  */
 
 /*-
@@ -1413,7 +1413,7 @@ Parse_DoVar(char *line, GNode *ctxt)
 		 * If the variable already has a value, we don't do anything.
 		 */
 		*opc = '\0';
-		if (Var_Exists(line, ctxt)) {
+		if (Var_Value(line, ctxt) != NULL) {
 			return;
 		} else {
 			type = VAR_NORMAL;
@@ -1477,7 +1477,7 @@ Parse_DoVar(char *line, GNode *ctxt)
 		 * make sure that we set the variable the first time to nothing
 		 * so that it gets substituted!
 		 */
-		if (!Var_Exists(line, ctxt))
+		if (Var_Value(line, ctxt) == NULL)
 			Var_Set(line, "", ctxt);
 
 		cp = Buf_Peel(Var_Subst(cp, ctxt, false));

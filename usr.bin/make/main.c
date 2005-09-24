@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.142 2005/09/17 11:07:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.143 2005/09/24 07:27:26 okumoto Exp $
  */
 
 /*
@@ -1019,7 +1019,7 @@ main(int argc, char **argv)
 	 * variable's value is in the same format as the PATH envariable, i.e.
 	 * <directory>:<directory>:<directory>...
 	 */
-	if (Var_Exists("VPATH", VAR_CMD)) {
+	if (Var_Value("VPATH", VAR_CMD) != NULL) {
 		Buffer	*buf = Var_Subst("${VPATH}", VAR_CMD, false);
 		char	*start = Buf_Data(buf);
 		char	*cp;

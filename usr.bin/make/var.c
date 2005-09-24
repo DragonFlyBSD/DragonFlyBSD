@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.221 2005/09/24 07:25:56 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.222 2005/09/24 07:27:26 okumoto Exp $
  */
 
 /**
@@ -56,8 +56,6 @@
  *			exist already -- it will be created if it doesn't.
  *			A space is placed between the old value and the
  *			new one.
- *
- *	Var_Exists	See if a variable exists.
  *
  *	Var_Value	Return the value of a variable in a context or
  *			NULL if the variable is undefined.
@@ -1102,29 +1100,6 @@ Var_Append(const char name[], const char val[], GNode *ctxt)
 		DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n, Buf_Data(v->val)));
 	}
 	free(n);
-}
-
-/**
- * See if the given variable exists.
- *
- * Results:
- *	true if it does, false if it doesn't
- */
-bool
-Var_Exists(const char name[], GNode *ctxt)
-{
-	Var	*v;
-	char	*n;
-
-	n = VarPossiblyExpand(name, ctxt);
-	v = VarFindAny(n, ctxt);
-	if (v == NULL) {
-		free(n);
-		return (false);
-	} else {
-		free(n);
-		return (true);
-	}
 }
 
 /**
