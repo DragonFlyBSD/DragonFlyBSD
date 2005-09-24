@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.220 2005/09/17 11:07:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.221 2005/09/24 07:25:56 okumoto Exp $
  */
 
 /**
@@ -146,7 +146,7 @@ typedef struct {
 #define	VAR_MATCH_END	0x10	/* Match at end of word */
 } VarPattern;
 
-typedef bool VarModifyProc(const char *, bool, struct Buffer *, void *);
+typedef bool VarModifyProc(const char [], bool, struct Buffer *, void *);
 
 static char *VarParse(VarParser *, bool *);
 
@@ -243,7 +243,7 @@ VarDestroy(Var *v, bool f)
  *	The trimmed word is added to the buffer.
  */
 static bool
-VarHead(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
+VarHead(const char word[], bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	char *slash;
 
@@ -278,7 +278,7 @@ VarHead(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
  *	The trimmed word is added to the buffer.
  */
 static bool
-VarTail(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
+VarTail(const char word[], bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	const char *slash;
 
@@ -307,7 +307,7 @@ VarTail(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
  *	The suffix from the word is placed in the buffer.
  */
 static bool
-VarSuffix(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
+VarSuffix(const char word[], bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	const char *dot;
 
@@ -335,7 +335,7 @@ VarSuffix(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
  *	The trimmed word is added to the buffer.
  */
 static bool
-VarRoot(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
+VarRoot(const char word[], bool addSpace, Buffer *buf, void *dummy __unused)
 {
 	char *dot;
 
@@ -366,7 +366,7 @@ VarRoot(const char *word, bool addSpace, Buffer *buf, void *dummy __unused)
  *	The word may be copied to the buffer.
  */
 static bool
-VarMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
+VarMatch(const char word[], bool addSpace, Buffer *buf, void *pattern)
 {
 
 	if (Str_Match(word, pattern)) {
@@ -392,7 +392,7 @@ VarMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
  *	The word may be copied to the buffer.
  */
 static bool
-VarSYSVMatch(const char *word, bool addSpace, Buffer *buf, void *patp)
+VarSYSVMatch(const char word[], bool addSpace, Buffer *buf, void *patp)
 {
 	int		len;
 	const char	*ptr;
@@ -424,7 +424,7 @@ VarSYSVMatch(const char *word, bool addSpace, Buffer *buf, void *patp)
  *	The word may be copied to the buffer.
  */
 static bool
-VarNoMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
+VarNoMatch(const char word[], bool addSpace, Buffer *buf, void *pattern)
 {
 
 	if (!Str_Match(word, pattern)) {
@@ -445,7 +445,7 @@ VarNoMatch(const char *word, bool addSpace, Buffer *buf, void *pattern)
  *	true if a space is needed before more characters are added.
  */
 static bool
-VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
+VarSubstitute(const char word[], bool addSpace, Buffer *buf, void *patternp)
 {
 	size_t		wordLen;	/* Length of word */
 	const char	*cp;		/* General pointer */
@@ -617,7 +617,7 @@ VarSubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
  *	An error gets printed.
  */
 static void
-VarREError(int err, regex_t *pat, const char *str)
+VarREError(int err, regex_t *pat, const char str[])
 {
 	char   *errbuf;
 	int     errlen;
@@ -638,7 +638,7 @@ VarREError(int err, regex_t *pat, const char *str)
  *	true if a space is needed before more characters are added.
  */
 static bool
-VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
+VarRESubstitute(const char word[], bool addSpace, Buffer *buf, void *patternp)
 {
 	VarPattern	*pat;
 	int		xrv;
@@ -761,7 +761,7 @@ VarRESubstitute(const char *word, bool addSpace, Buffer *buf, void *patternp)
  * Find a variable in a variable list.
  */
 static Var *
-VarLookup(Lst *vlist, const char *name)
+VarLookup(Lst *vlist, const char name[])
 {
 	LstNode	*ln;
 
@@ -778,7 +778,7 @@ VarLookup(Lst *vlist, const char *name)
  *	The contents of name, possibly expanded.
  */
 static char *
-VarPossiblyExpand(const char *name, GNode *ctxt)
+VarPossiblyExpand(const char name[], GNode *ctxt)
 {
 	Buffer	*buf;
 
@@ -932,7 +932,7 @@ VarFindAny(const char name[], GNode *ctxt)
  *	safely be freed.
  */
 static void
-VarAdd(const char *name, const char *val, GNode *ctxt)
+VarAdd(const char name[], const char val[], GNode *ctxt)
 {
 
 	Lst_AtFront(&ctxt->context, VarCreate(name, val, 0));
@@ -946,7 +946,7 @@ VarAdd(const char *name, const char *val, GNode *ctxt)
  *	The Var structure is removed and freed.
  */
 void
-Var_Delete(const char *name, GNode *ctxt)
+Var_Delete(const char name[], GNode *ctxt)
 {
 	LstNode *ln;
 
@@ -976,7 +976,7 @@ Var_Delete(const char *name, GNode *ctxt)
  *	set, say, $(@) or $(<).
  */
 void
-Var_Set(const char *name, const char *val, GNode *ctxt)
+Var_Set(const char name[], const char val[], GNode *ctxt)
 {
 	Var    *v;
 	char   *n;
@@ -1034,7 +1034,7 @@ Var_SetGlobal(const char name[], const char value[])
  * Set the VAR_TO_ENV flag on a variable
  */
 void
-Var_SetEnv(const char *name, GNode *ctxt)
+Var_SetEnv(const char name[], GNode *ctxt)
 {
 	Var    *v;
 
@@ -1083,7 +1083,7 @@ Var_SetEnv(const char *name, GNode *ctxt)
  *	a big win and must be tolerated.
  */
 void
-Var_Append(const char *name, const char *val, GNode *ctxt)
+Var_Append(const char name[], const char val[], GNode *ctxt)
 {
 	Var	*v;
 	char	*n;
@@ -1111,7 +1111,7 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
  *	true if it does, false if it doesn't
  */
 bool
-Var_Exists(const char *name, GNode *ctxt)
+Var_Exists(const char name[], GNode *ctxt)
 {
 	Var	*v;
 	char	*n;
@@ -1157,7 +1157,7 @@ Var_Value(const char name[], GNode *ctxt)
  *	A string of all the words modified appropriately.
  */
 static char *
-VarModify(const char *str, VarModifyProc *modProc, void *datum)
+VarModify(const char str[], VarModifyProc *modProc, void *datum)
 {
 	ArgArray	aa;
 	Buffer		*buf;		/* Buffer for the new string */
@@ -1190,7 +1190,7 @@ VarModify(const char *str, VarModifyProc *modProc, void *datum)
  *	A string containing the words sorted
  */
 static char *
-VarSortWords(const char *str, int (*cmp)(const void *, const void *))
+VarSortWords(const char str[], int (*cmp)(const void *, const void *))
 {
 	ArgArray	aa;
 	Buffer		*buf;
@@ -1624,7 +1624,7 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
  *	The quoted string
  */
 static char *
-Var_Quote(const char *str)
+Var_Quote(const char str[])
 {
 	Buffer *buf;
 	/* This should cover most shells :-( */
@@ -2265,7 +2265,7 @@ match_var(const char str[], const char var[])
  *	None. The old string must be freed by the caller
  */
 Buffer *
-Var_Subst(const char *str, GNode *ctxt, bool err)
+Var_Subst(const char str[], GNode *ctxt, bool err)
 {
 	bool	errorReported;
 	Buffer *buf;		/* Buffer for forming things */
@@ -2371,7 +2371,7 @@ Var_Subst(const char *str, GNode *ctxt, bool err)
  *	None. The old string must be freed by the caller
  */
 Buffer *
-Var_SubstOnly(const char *var, const char *str, bool err)
+Var_SubstOnly(const char var[], const char str[], bool err)
 {
 	GNode *ctxt = VAR_GLOBAL;
 	bool	errorReported;
