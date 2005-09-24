@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/lib/libwrap/Makefile,v 1.5.2.3 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libwrap/Makefile,v 1.4 2005/04/21 13:42:34 joerg Exp $
+# $DragonFly: src/lib/libwrap/Makefile,v 1.5 2005/09/24 02:50:47 sephe Exp $
 #
 
 LIB=	wrap
@@ -20,9 +20,8 @@ CFLAGS+=-DFACILITY=LOG_AUTH -DHOSTS_ACCESS -DNETGROUP -DDAEMON_UMASK=022 \
 CFLAGS+=-DINET6
 .endif
 
-SRCS=	clean_exit.c diag.c eval.c fix_options.c fromhost.c \
-	hosts_access.c hosts_ctl.c misc.c myvsyslog.c options.c \
-	percent_m.c percent_x.c refuse.c rfc931.c shell_cmd.c \
-	socket.c tli.c update.c workarounds.c libvars.c
+SRCS+=	clean_exit.c diag.c eval.c fix_options.c hosts_access.c	\
+	hosts_ctl.c misc.c options.c percent_m.c percent_x.c	\
+	refuse.c rfc931.c shell_cmd.c socket.c update.c libvars.c
 
 .include <bsd.lib.mk>
