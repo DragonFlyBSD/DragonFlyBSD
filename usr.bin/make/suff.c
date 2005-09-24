@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.65 2005/08/09 23:34:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.66 2005/09/24 07:37:01 okumoto Exp $
  */
 
 /*-
@@ -1515,8 +1515,8 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 	 * The node is an archive(member) pair. so we must find a
 	 * suffix for both of them.
 	 */
-	eoarch = strchr(gn->name, '(');
-	eoname = strchr(eoarch, ')');
+	eoarch = strchr(gn->name, OPEN_PAREN);
+	eoname = strchr(eoarch, CLOSE_PAREN);
 
 	*eoname = '\0';	  /* Nuke parentheses during suffix search */
 	*eoarch = '\0';	  /* So a suffix can be found */
@@ -1597,8 +1597,8 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 	 * Replace the opening and closing parens now we've no need
 	 * of the separate pieces.
 	 */
-	*eoarch = '(';
-	*eoname = ')';
+	*eoarch = OPEN_PAREN;
+	*eoname = CLOSE_PAREN;
 
 	/*
 	 * Pretend gn appeared to the left of a dependency operator so

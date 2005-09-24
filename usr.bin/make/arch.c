@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.54 2005/08/03 23:20:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.55 2005/09/24 07:37:01 okumoto Exp $
  */
 
 /*-
@@ -224,7 +224,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 	subLibName = false;
 
-	for (cp = libName; *cp != '(' && *cp != '\0'; cp++) {
+	for (cp = libName; *cp != OPEN_PAREN && *cp != '\0'; cp++) {
 		if (*cp == '$') {
 			/*
 			 * Variable spec, so call the Var module to parse the
@@ -264,13 +264,13 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 		 */
 		bool	doSubst = false;
 
-		while (*cp != '\0' && *cp != ')' &&
+		while (*cp != '\0' && *cp != CLOSE_PAREN &&
 		    isspace((unsigned char)*cp)) {
 			cp++;
 		}
 
 		memName = cp;
-		while (*cp != '\0' && *cp != ')' &&
+		while (*cp != '\0' && *cp != CLOSE_PAREN &&
 		    !isspace((unsigned char)*cp)) {
 			if (*cp == '$') {
 				/*
@@ -463,7 +463,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 	/*
 	 * We promised the pointer would be set up at the next non-space, so
 	 * we must advance cp there before setting *linePtr... (note that on
-	 * entrance to the loop, cp is guaranteed to point at a ')')
+	 * entrance to the loop, cp is guaranteed to point at a CLOSE_PAREN)
 	 */
 	do {
 		cp++;
@@ -1098,8 +1098,8 @@ Arch_MemMTime(GNode *gn)
 			 * parents in case some other parent requires this
 			 * child to exist...
 			 */
-			nameStart = strchr(pgn->name, '(') + 1;
-			nameEnd = strchr(nameStart, ')');
+			nameStart = strchr(pgn->name, OPEN_PAREN) + 1;
+			nameEnd = strchr(nameStart, CLOSE_PAREN);
 
 			if (pgn->make && strncmp(nameStart, gn->name,
 			    nameEnd - nameStart) == 0) {

@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.48 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.49 2005/09/24 07:37:01 okumoto Exp $
  */
 
 /*
@@ -193,10 +193,10 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 
 	cp = *linePtr;
 	if (parens) {
-		while (*cp != '(' && *cp != '\0') {
+		while (*cp != OPEN_PAREN && *cp != '\0') {
 			cp++;
 		}
-		if (*cp == '(') {
+		if (*cp == OPEN_PAREN) {
 			cp++;
 		}
 	}
@@ -256,7 +256,7 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 	while (*cp == ' ' || *cp == '\t') {
 		cp++;
 	}
-	if (parens && *cp != ')') {
+	if (parens && *cp != CLOSE_PAREN) {
 		Parse_Error(PARSE_WARNING,
 		    "Missing closing parenthesis for %s()", func);
 		return (0);
@@ -442,11 +442,11 @@ CondToken(Parser *parser, bool doEval)
 	}
 
 	switch (*condExpr) {
-	case '(':
+	case OPEN_PAREN:
 		t = LParen;
 		condExpr++;
 		break;
-	case ')':
+	case CLOSE_PAREN:
 		t = RParen;
 		condExpr++;
 		break;
@@ -628,7 +628,7 @@ CondToken(Parser *parser, bool doEval)
 				}
 				free(string);
 				if (rhs == condExpr) {
-					if (*cp == '\0' || (!qt && *cp == ')'))
+					if (*cp == '\0' || (!qt && *cp == CLOSE_PAREN))
 						condExpr = cp;
 					else
 						condExpr = cp + 1;
@@ -782,7 +782,7 @@ CondToken(Parser *parser, bool doEval)
 				condExpr += 5;
 
 				for (arglen = 0;
-				     condExpr[arglen] != '(' &&
+				     condExpr[arglen] != OPEN_PAREN &&
 				     condExpr[arglen] != '\0'; arglen += 1)
 					continue;
 

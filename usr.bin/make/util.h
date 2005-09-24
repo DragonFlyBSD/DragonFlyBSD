@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.15 2005/08/03 19:48:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.16 2005/09/24 07:37:01 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -45,6 +45,11 @@
 #include <stdio.h>
 
 #define	CONCAT(a,b)	a##b
+
+#define	OPEN_PAREN		'('
+#define	CLOSE_PAREN		')'
+#define	OPEN_BRACE		'{'
+#define	CLOSE_BRACE		'}'
 
 struct flag2str {
 	u_int		flag;

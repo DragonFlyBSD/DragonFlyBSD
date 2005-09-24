@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.97 2005/09/24 07:27:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.98 2005/09/24 07:37:01 okumoto Exp $
  */
 
 /*-
@@ -706,7 +706,7 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 
 	do {
 		for (cp = line;
-		    *cp && !isspace((unsigned char)*cp) && *cp != '(';
+		    *cp && !isspace((unsigned char)*cp) && *cp != OPEN_PAREN;
 		    cp++) {
 			if (*cp == '$') {
 				/*
@@ -761,7 +761,7 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 			}
 			continue;
 		}
-		if (*cp == '(') {
+		if (*cp == OPEN_PAREN) {
 			/*
 			 * Archives must be handled specially to make sure the
 			 * OP_ARCHV flag is set in their 'type' field, for one
@@ -1181,7 +1181,7 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 			 * parentheses in them) and handle them accordingly.
 			 */
 			while (*cp && !isspace((unsigned char)*cp)) {
-				if (*cp == '(' && cp > line && cp[-1] != '$') {
+				if (*cp == OPEN_PAREN && cp > line && cp[-1] != '$') {
 					/*
 					 * Only stop for a left parenthesis if
 					 * it isn't at the start of a word
@@ -1195,7 +1195,7 @@ ParseDoDependency(Parser *parser, struct CLI *cli, char line[])
 				}
 			}
 
-			if (*cp == '(') {
+			if (*cp == OPEN_PAREN) {
 				GNode	  *gnp;
 
 				/* list of archive source names after exp. */
@@ -1297,13 +1297,13 @@ Parse_IsVar(char *line)
 			wasSpace = true;
 			break;
 
-		  case '(':
-		  case '{':
+		  case OPEN_PAREN:
+		  case OPEN_BRACE:
 			level++;
 			break;
 
-		  case '}':
-		  case ')':
+		  case CLOSE_BRACE:
+		  case CLOSE_PAREN:
 			level--;
 			break;
 

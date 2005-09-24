@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.222 2005/09/24 07:27:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.223 2005/09/24 07:37:01 okumoto Exp $
  */
 
 /**
@@ -184,11 +184,6 @@ GNode		*VAR_CMD;	/* variables defined on the command-line */
 
 bool		oldVars;	/* variable substitution style */
 bool		checkEnvFirst;	/* -e flag */
-
-#define	OPEN_PAREN		'('
-#define	CLOSE_PAREN		')'
-#define	OPEN_BRACE		'{'
-#define	CLOSE_BRACE		'}'
 
 /**
  * Create a Var object.
