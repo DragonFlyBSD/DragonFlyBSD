@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.223 2005/09/24 07:37:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.224 2005/09/24 07:37:38 okumoto Exp $
  */
 
 /**
@@ -1776,7 +1776,8 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, bool *freeResult)
 	Var		*v;
 	char		*value;
 
-	vname = Buf_GetAll(buf, &vlen);
+	vname = Buf_Data(buf);
+	vlen = Buf_Size(buf);
 
 	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {
@@ -1882,7 +1883,8 @@ ParseRestEnd(VarParser *vp, Buffer *buf, bool *freeResult)
 	Var		*v;
 	char		*value;
 
-	vname = Buf_GetAll(buf, &vlen);
+	vname = Buf_Data(buf);
+	vlen = Buf_Size(buf);
 
 	v = VarFindAny(vname, vp->ctxt);
 	if (v != NULL) {

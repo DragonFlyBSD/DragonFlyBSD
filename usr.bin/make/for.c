@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.45 2005/08/09 23:34:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.46 2005/09/24 07:37:38 okumoto Exp $
  */
 
 /*-
@@ -113,7 +113,8 @@ For_For(char *line)
 
 	buf = Buf_Init(0);
 	Buf_AppendRange(buf, wrd, ptr);
-	forVar = Buf_GetAll(buf, &varlen);
+	forVar = Buf_Data(buf);
+	varlen = Buf_Size(buf);
 
 	if (varlen == 0) {
 		Buf_Destroy(buf, true);

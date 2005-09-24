@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.49 2005/09/24 07:37:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.50 2005/09/24 07:37:38 okumoto Exp $
  */
 
 /*
@@ -250,7 +250,8 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 	}
 
 	Buf_AddByte(buf, '\0');
-	*argPtr = (char *)Buf_GetAll(buf, &argLen);
+	*argPtr = Buf_Data(buf);
+	argLen = Buf_Size(buf);
 	Buf_Destroy(buf, false);
 
 	while (*cp == ' ' || *cp == '\t') {
@@ -260,6 +261,7 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 		Parse_Error(PARSE_WARNING,
 		    "Missing closing parenthesis for %s()", func);
 		return (0);
+		/* XXX memory leak of argPtr? */
 	} else if (parens) {
 		/*
 		 * Advance pointer past close parenthesis.
@@ -514,7 +516,7 @@ CondToken(Parser *parser, bool doEval)
 					Buf_AddByte(buf, *condExpr);
 
 				Buf_AddByte(buf, '\0');
-				lhs = (char *)Buf_GetAll(buf, &varSpecLen);
+				lhs = Buf_Data(buf);
 				Buf_Destroy(buf, false);
 
 				doFree = true;

@@ -38,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.24 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.35 2005/08/05 22:42:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.36 2005/09/24 07:37:38 okumoto Exp $
  */
 
 #ifndef buf_h_a61a6812
@@ -80,7 +80,6 @@ void Buf_AppendRange(Buffer *, const char [], const char []);
 void Buf_Clear(Buffer *);
 char *Buf_Data(const Buffer *);
 void Buf_Destroy(Buffer *, bool);
-char *Buf_GetAll(Buffer *, size_t *);
 Buffer *Buf_Init(size_t);
 char *Buf_Peel(Buffer *);
 void Buf_ReplaceLastByte(Buffer *, char);

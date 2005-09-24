@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.42 2005/08/24 00:08:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.43 2005/09/24 07:37:38 okumoto Exp $
  */
 
 /*
@@ -117,23 +117,6 @@ Buf_AddBytes(Buffer *bp, size_t len, const char bytes[])
 	memcpy(bp->end, bytes, len);
 	bp->end += len;
 	*bp->end = '\0';
-}
-
-/**
- * Get a reference to the internal buffer.
- *
- * @param len   Pointer to where we return the number of bytes in
- *		the internal buffer.
- *
- * @return A pointer to the data.
- */
-char *
-Buf_GetAll(Buffer *bp, size_t *len)
-{
-	if (len != NULL)
-		*len = Buf_Size(bp);
-
-	return (Buf_Data(bp));
 }
 
 /**
