@@ -4,7 +4,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpd.h,v 1.2 2000/02/03 10:26:59 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.4 2005/09/15 04:34:52 sephe Exp $
+  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.5 2005/09/24 02:34:11 sephe Exp $
   */
 
 #ifndef _LIBWRAP_TCPD_H
@@ -78,13 +78,10 @@ __END_DECLS
 /* Global functions. */
 
 __BEGIN_DECLS
-#if defined(TLI) || defined(PTX) || defined(TLI_SEQUENT)
-extern void fromhost();			/* get/validate client host info */
-#else
-#define fromhost sock_host		/* no TLI support needed */
-#endif
+#define fromhost sock_host
 
 int		hosts_access(struct request_info *);/* access control */
+int		hosts_ctl(char *, char *, char *, char *);/* limited interface to the hosts_access() routine */
 void		shell_cmd(char *);		/* execute shell command */
 char		*percent_x(char *, int, char *, struct request_info *);/* do %<char> expansion */
 void		rfc931(struct sockaddr *, struct sockaddr *, char *);/* client name from RFC 931 daemon */
@@ -147,12 +144,6 @@ void	sock_hostaddr(struct host_info *);	/* address to printable address */
 #define sock_methods(r) \
 	{ (r)->hostname = sock_hostname; (r)->hostaddr = sock_hostaddr; }
 
-/* The System V Transport-Level Interface (TLI) interface. */
-
-#if defined(TLI) || defined(PTX) || defined(TLI_SEQUENT)
-extern void tli_host();			/* look up endpoint addresses etc. */
-#endif
-
  /*
   * Problem reporting interface. Additional file/line context is reported
   * when available. The jump buffer (tcpd_buf) is not declared here, or
@@ -182,6 +173,7 @@ __END_DECLS
 #define AC_DENY		(-1)		/* deny_access */
 #define AC_ERROR	AC_DENY		/* XXX */
 
+__BEGIN_DECLS
  /*
   * In verification mode an option function should just say what it would do,
   * instead of really doing it. An option function that would not return
@@ -189,46 +181,10 @@ __END_DECLS
   * behavior.
   */
 
-__BEGIN_DECLS
 void	process_options(char *, struct request_info *);	/* execute options */
+void	fix_options(struct request_info *);		/* get rid of IP-level socket options */
+
 extern int dry_run;			/* verification flag */
-
-/* Bug workarounds. */
-
-#ifdef INET_ADDR_BUG			/* inet_addr() returns struct */
-#define inet_addr fix_inet_addr
-extern long fix_inet_addr();
-#endif
-
-#ifdef BROKEN_FGETS			/* partial reads from sockets */
-#define fgets fix_fgets
-extern char *fix_fgets();
-#endif
-
-#ifdef RECVFROM_BUG			/* no address family info */
-#define recvfrom fix_recvfrom
-extern int fix_recvfrom();
-#endif
-
-#ifdef GETPEERNAME_BUG			/* claims success with UDP */
-#define getpeername fix_getpeername
-extern int fix_getpeername();
-#endif
-
-#ifdef SOLARIS_24_GETHOSTBYNAME_BUG	/* lists addresses as aliases */
-#define gethostbyname fix_gethostbyname
-extern struct hostent *fix_gethostbyname();
-#endif
-
-#ifdef USE_STRSEP			/* libc calls strtok() */
-#define strtok	fix_strtok
-extern char *fix_strtok();
-#endif
-
-#ifdef LIBC_CALLS_STRTOK		/* libc calls strtok() */
-#define strtok	my_strtok
-extern char *my_strtok();
-#endif
 __END_DECLS
 
 #endif	/* !_LIBWRAP_TCPD_H */
