@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.50 2005/09/24 07:37:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.51 2005/09/24 07:38:03 okumoto Exp $
  */
 
 /*
@@ -249,28 +249,33 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, bool parens)
 		}
 	}
 
+	while (*cp == ' ' || *cp == '\t') {
+		cp++;
+	}
+
 	Buf_AddByte(buf, '\0');
 	*argPtr = Buf_Data(buf);
 	argLen = Buf_Size(buf);
 	Buf_Destroy(buf, false);
 
-	while (*cp == ' ' || *cp == '\t') {
-		cp++;
+	if (parens) {
+		if (*cp == CLOSE_PAREN) {
+			/*
+			 * Advance pointer past close parenthesis.
+			 */
+			cp++;
+			*linePtr = cp;
+			return (argLen);
+		} else {
+			Parse_Error(PARSE_WARNING,
+			    "Missing closing parenthesis for %s()", func);
+			return (0);
+			/* XXX memory leak of argPtr? */
+		}
+	} else {
+		*linePtr = cp;
+		return (argLen);
 	}
-	if (parens && *cp != CLOSE_PAREN) {
-		Parse_Error(PARSE_WARNING,
-		    "Missing closing parenthesis for %s()", func);
-		return (0);
-		/* XXX memory leak of argPtr? */
-	} else if (parens) {
-		/*
-		 * Advance pointer past close parenthesis.
-		 */
-		cp++;
-	}
-
-	*linePtr = cp;
-	return (argLen);
 }
 
 /**
