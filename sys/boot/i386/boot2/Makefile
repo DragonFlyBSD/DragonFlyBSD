@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.15 2005/08/02 13:03:54 joerg Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.16 2005/09/25 12:43:58 asmodai Exp $
 
 PROG=		boot2
 NOMAN=
@@ -122,7 +122,7 @@ boot2.h: boot1.out bootasmdef.nx
 boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
 	btxld -v -E ${ORG2} -f bin -b ${BTX}/btx/btx -l boot2.ldr \
 		-o boot2.ld -P 1 boot2.bin
-	@ls -l boot2.ld | awk '{ x = 7680 - $$5; \
+	@stat boot2.ld | awk '{ x = 7680 - $$8; \
 		print x " bytes available"; if (x < 0) exit 1 }'
 	dd if=boot2.ld of=${.TARGET} obs=7680 conv=osync 2>/dev/null
 
