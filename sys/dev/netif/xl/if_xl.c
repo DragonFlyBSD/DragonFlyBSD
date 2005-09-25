@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.32 2005/09/24 03:50:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.33 2005/09/25 05:33:32 sephe Exp $
  */
 
 /*
@@ -1535,6 +1535,10 @@ xl_attach(dev)
 		sc->xl_type = XL_TYPE_905B;
 	else
 		sc->xl_type = XL_TYPE_90X;
+	if (bootverbose) {
+		device_printf(dev, "type %s\n",
+			      sc->xl_type == XL_TYPE_905B ? "90XB" : "90X");
+	}
 
 	ifp->if_softc = sc;
 	ifp->if_mtu = ETHERMTU;
@@ -2094,29 +2098,30 @@ again:
 		(*ifp->if_input)(ifp, m);
 	}
 
-	/*
-	 * Handle the 'end of channel' condition. When the upload
-	 * engine hits the end of the RX ring, it will stall. This
-	 * is our cue to flush the RX ring, reload the uplist pointer
-	 * register and unstall the engine.
-	 * XXX This is actually a little goofy. With the ThunderLAN
-	 * chip, you get an interrupt when the receiver hits the end
-	 * of the receive ring, which tells you exactly when you
-	 * you need to reload the ring pointer. Here we have to
-	 * fake it. I'm mad at myself for not being clever enough
-	 * to avoid the use of a goto here.
-	 */
-	if (CSR_READ_4(sc, XL_UPLIST_PTR) == 0 ||
-		CSR_READ_4(sc, XL_UPLIST_STATUS) & XL_PKTSTAT_UP_STALLED) {
-		CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_UP_STALL);
-		xl_wait(sc);
-		CSR_WRITE_4(sc, XL_UPLIST_PTR, sc->xl_ldata.xl_rx_dmaaddr);
-		sc->xl_cdata.xl_rx_head = &sc->xl_cdata.xl_rx_chain[0];
-		CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_UP_UNSTALL);
-		goto again;
+	if (sc->xl_type != XL_TYPE_905B) {
+		/*
+		 * Handle the 'end of channel' condition. When the upload
+		 * engine hits the end of the RX ring, it will stall. This
+		 * is our cue to flush the RX ring, reload the uplist pointer
+		 * register and unstall the engine.
+		 * XXX This is actually a little goofy. With the ThunderLAN
+		 * chip, you get an interrupt when the receiver hits the end
+		 * of the receive ring, which tells you exactly when you
+		 * you need to reload the ring pointer. Here we have to
+		 * fake it. I'm mad at myself for not being clever enough
+		 * to avoid the use of a goto here.
+		 */
+		if (CSR_READ_4(sc, XL_UPLIST_PTR) == 0 ||
+		    CSR_READ_4(sc, XL_UPLIST_STATUS) & XL_PKTSTAT_UP_STALLED) {
+			CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_UP_STALL);
+			xl_wait(sc);
+			CSR_WRITE_4(sc, XL_UPLIST_PTR,
+				    sc->xl_ldata.xl_rx_dmaaddr);
+			sc->xl_cdata.xl_rx_head = &sc->xl_cdata.xl_rx_chain[0];
+			CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_UP_UNSTALL);
+			goto again;
+		}
 	}
-
-	return;
 }
 
 /*
@@ -2553,8 +2558,6 @@ xl_start(ifp)
 	 */
 	cur_tx->xl_ptr->xl_status = htole32(le32toh(cur_tx->xl_ptr->xl_status) |
 	    XL_TXSTAT_DL_INTR);
-	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
-	    BUS_DMASYNC_PREWRITE);
 
 	/*
 	 * Queue the packets. If the TX channel is clear, update
@@ -2575,6 +2578,9 @@ xl_start(ifp)
 		sc->xl_cdata.xl_tx_head = start_tx;
 		sc->xl_cdata.xl_tx_tail = cur_tx;
 	}
+	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
+	    BUS_DMASYNC_PREWRITE);
+
 	if (!CSR_READ_4(sc, XL_DOWNLIST_PTR))
 		CSR_WRITE_4(sc, XL_DOWNLIST_PTR, start_tx->xl_phys);
 
@@ -2603,8 +2609,6 @@ xl_start(ifp)
 	 * we may as well take advantage of it. :)
 	 */
 	xl_rxeof(sc);
-
-	return;
 }
 
 static void
@@ -2674,19 +2678,18 @@ xl_start_90xB(ifp)
 	 */
 	cur_tx->xl_ptr->xl_status = htole32(le32toh(cur_tx->xl_ptr->xl_status) |
 	    XL_TXSTAT_DL_INTR);
-	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
-	    BUS_DMASYNC_PREWRITE);
 
 	/* Start transmission */
 	sc->xl_cdata.xl_tx_prod = idx;
 	start_tx->xl_prev->xl_ptr->xl_next = htole32(start_tx->xl_phys);
 
+	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
+	    BUS_DMASYNC_PREWRITE);
+
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	return;
 }
 
 static void
@@ -2836,8 +2839,12 @@ xl_init(xsc)
 
 
 	if (sc->xl_type == XL_TYPE_905B) {
-		/* Set polling interval */
+		/* Set UP polling interval */
+		CSR_WRITE_1(sc, XL_UP_POLL, 64);
+
+		/* Set DN polling interval */
 		CSR_WRITE_1(sc, XL_DOWN_POLL, 64);
+
 		/* Load the address of the TX list */
 		CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_DOWN_STALL);
 		xl_wait(sc);
