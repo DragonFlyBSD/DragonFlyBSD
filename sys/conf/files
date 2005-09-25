@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.107 2005/09/20 11:48:23 asmodai Exp $
+# $DragonFly: src/sys/conf/files,v 1.108 2005/09/25 16:05:36 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -246,6 +246,7 @@ dev/disk/ispfw/ispfw.c	optional ispfw
 dev/raid/iir/iir.c		optional iir
 dev/raid/iir/iir_ctrl.c	optional iir
 dev/raid/iir/iir_pci.c	optional iir pci
+dev/netif/iwi/if_iwi.c	optional iwi
 dev/netif/lge/if_lge.c	optional lge
 dev/disk/md/md.c		optional md
 dev/netif/mii_layer/mii.c		optional miibus
