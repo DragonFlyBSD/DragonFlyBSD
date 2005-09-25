@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.94 2005/09/25 13:06:49 asmodai Exp $
+# $DragonFly: src/etc/Makefile,v 1.95 2005/09/25 15:30:26 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -76,8 +76,7 @@ FREEBSD=COPYRIGHT
 
 # List of libraries in /usr/lib/compat that might have to be removed
 # from /usr/lib.
-COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat && if [ -f "`echo *.so.*`" ]; then\
-	echo *.so.*; fi
+COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat && find . -name '*.so.*'
 
 # Use this directory as the source for new configuration files when upgrading
 UPGRADE_SRCDIR?=${.CURDIR}
