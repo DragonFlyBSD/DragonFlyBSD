@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/compat/i386/Makefile,v 1.4 2005/07/10 09:18:12 corecode Exp $
+# $DragonFly: src/lib/compat/i386/Makefile,v 1.5 2005/09/25 12:52:44 asmodai Exp $
 #
 
 FILESDIR=    ${LIBCOMPATDIR}
@@ -22,7 +22,7 @@ FILESMODE_ld-elf.so.1=	555
 FILESDIR_ld-elf.so.1=	/usr/libexec
 
 .for lib in ${COMPAT_LIBS}
-LATEST_${lib}!=	cd ${.CURDIR}; ls -d ${lib}.* | tail -1
+LATEST_${lib}!=	cd ${.CURDIR}; echo ${lib}.* | tr " " "\n" | tail -1
 FILES+=	${lib}
 CLEANFILES+=	${lib}
 ${lib}: ${LATEST_${lib}}
