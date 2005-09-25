@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.80 2005/09/25 12:43:58 asmodai Exp $
+# $DragonFly: src/Makefile.inc1,v 1.81 2005/09/25 13:07:24 asmodai Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -752,7 +752,7 @@ bootstrap-tools:
 .for _tool in ${_strfile} \
     usr.bin/patch \
     bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \
-    bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh bin/ls \
+    bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
     bin/hostname bin/kill \
     usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
     usr.bin/m4 usr.bin/rpcgen usr.bin/make usr.bin/awk usr.bin/stat \
