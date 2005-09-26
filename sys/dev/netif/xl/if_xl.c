@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.33 2005/09/25 05:33:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.34 2005/09/26 06:25:10 sephe Exp $
  */
 
 /*
@@ -2821,6 +2821,11 @@ xl_init(xsc)
 	else
 		xl_setmulti(sc);
 
+	if (sc->xl_type == XL_TYPE_905B) {
+		/* Set UP polling interval */
+		CSR_WRITE_1(sc, XL_UP_POLL, 64);
+	}
+
 	/*
 	 * Load the address of the RX list. We have to
 	 * stall the upload engine before we can manipulate
@@ -2839,9 +2844,6 @@ xl_init(xsc)
 
 
 	if (sc->xl_type == XL_TYPE_905B) {
-		/* Set UP polling interval */
-		CSR_WRITE_1(sc, XL_UP_POLL, 64);
-
 		/* Set DN polling interval */
 		CSR_WRITE_1(sc, XL_DOWN_POLL, 64);
 
