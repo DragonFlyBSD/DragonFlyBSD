@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc40/doc/Attic/Makefile,v 1.1 2005/06/05 22:43:21 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc40/doc/Attic/Makefile,v 1.2 2005/09/26 03:01:46 y0netan1 Exp $
 
 .include "../Makefile.inc"
 
@@ -40,7 +40,7 @@ CLEANFILES+=	${_i}.info
 
 cpp.info: cpp.texi fdl.texi gcc-common.texi cppenv.texi cppopts.texi
 
-cppinternals.info: cppinternals.texi
+cppinternals.info: cppinternals.texi gcc-common.texi
 
 gcc.info: gcc.texi gcc-common.texi frontends.texi standards.texi invoke.texi \
 	  extend.texi md.texi objc.texi gcov.texi trouble.texi bugreport.texi \
