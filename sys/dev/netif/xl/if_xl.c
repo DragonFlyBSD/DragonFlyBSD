@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.34 2005/09/26 06:25:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.35 2005/09/27 02:41:29 sephe Exp $
  */
 
 /*
@@ -240,8 +240,8 @@ static void xl_setmulti		(struct xl_softc *);
 static void xl_setmulti_hash	(struct xl_softc *);
 static void xl_reset		(struct xl_softc *);
 static int xl_list_rx_init	(struct xl_softc *);
-static int xl_list_tx_init	(struct xl_softc *);
-static int xl_list_tx_init_90xB	(struct xl_softc *);
+static void xl_list_tx_init	(struct xl_softc *);
+static void xl_list_tx_init_90xB(struct xl_softc *);
 static void xl_wait		(struct xl_softc *);
 static void xl_mediacheck	(struct xl_softc *);
 static void xl_choose_xcvr	(struct xl_softc *, int);
@@ -250,6 +250,10 @@ static void xl_dma_map_rxbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
 						int);
 static void xl_dma_map_txbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
 						int);
+
+static int xl_dma_alloc		(device_t);
+static void xl_dma_free		(device_t);
+
 #ifdef notdef
 static void xl_testpacket	(struct xl_softc *);
 #endif
@@ -1429,95 +1433,9 @@ xl_attach(dev)
 
 	callout_init(&sc->xl_stat_timer);
 
-	/*
-	 * Now allocate a tag for the DMA descriptor lists and a chunk
-	 * of DMA-able memory based on the tag.  Also obtain the DMA
-	 * addresses of the RX and TX ring, which we'll need later.
-	 * All of our lists are allocated as a contiguous block
-	 * of memory.
-	 */
-	error = bus_dma_tag_create(NULL, 8, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    XL_RX_LIST_SZ, 1, XL_RX_LIST_SZ, 0, 
-	    &sc->xl_ldata.xl_rx_tag);
-	if (error) {
-		device_printf(dev, "failed to allocate rx dma tag\n");
+	error = xl_dma_alloc(dev);
+	if (error)
 		goto fail;
-	}
-
-	error = bus_dmamem_alloc(sc->xl_ldata.xl_rx_tag,
-	    (void **)&sc->xl_ldata.xl_rx_list, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-	    &sc->xl_ldata.xl_rx_dmamap);
-	if (error) {
-		device_printf(dev, "no memory for rx list buffers!\n");
-		bus_dma_tag_destroy(sc->xl_ldata.xl_rx_tag);
-		sc->xl_ldata.xl_rx_tag = NULL;
-		goto fail;
-	}
-
-	error = bus_dmamap_load(sc->xl_ldata.xl_rx_tag,
-	    sc->xl_ldata.xl_rx_dmamap, sc->xl_ldata.xl_rx_list,
-	    XL_RX_LIST_SZ, xl_dma_map_addr,
-	    &sc->xl_ldata.xl_rx_dmaaddr, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "cannot get dma address of the rx ring!\n");
-		bus_dmamem_free(sc->xl_ldata.xl_rx_tag, sc->xl_ldata.xl_rx_list,
-		    sc->xl_ldata.xl_rx_dmamap);
-		bus_dma_tag_destroy(sc->xl_ldata.xl_rx_tag);
-		sc->xl_ldata.xl_rx_tag = NULL;
-		goto fail;
-	}
-
-	error = bus_dma_tag_create(NULL, 8, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    XL_TX_LIST_SZ, 1, XL_TX_LIST_SZ, 0, 
-	    &sc->xl_ldata.xl_tx_tag);
-	if (error) {
-		device_printf(dev, "failed to allocate tx dma tag\n");
-		goto fail;
-	}
-
-	error = bus_dmamem_alloc(sc->xl_ldata.xl_tx_tag,
-	    (void **)&sc->xl_ldata.xl_tx_list, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-	    &sc->xl_ldata.xl_tx_dmamap);
-	if (error) {
-		device_printf(dev, "no memory for list buffers!\n");
-		bus_dma_tag_destroy(sc->xl_ldata.xl_tx_tag);
-		sc->xl_ldata.xl_tx_tag = NULL;
-		goto fail;
-	}
-
-	error = bus_dmamap_load(sc->xl_ldata.xl_tx_tag,
-	    sc->xl_ldata.xl_tx_dmamap, sc->xl_ldata.xl_tx_list,
-	    XL_TX_LIST_SZ, xl_dma_map_addr,
-	    &sc->xl_ldata.xl_tx_dmaaddr, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "cannot get dma address of the tx ring!\n");
-		bus_dmamem_free(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_list,
-		    sc->xl_ldata.xl_tx_dmamap);
-		bus_dma_tag_destroy(sc->xl_ldata.xl_tx_tag);
-		sc->xl_ldata.xl_tx_tag = NULL;
-		goto fail;
-	}
-
-	/*
-	 * Allocate a DMA tag for the mapping of mbufs.
-	 */
-	error = bus_dma_tag_create(NULL, 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    MCLBYTES * XL_MAXFRAGS, XL_MAXFRAGS, MCLBYTES, 0,
-	    &sc->xl_mtag);
-	if (error) {
-		device_printf(dev, "failed to allocate mbuf dma tag\n");
-		goto fail;
-	}
-
-	/* We need a spare DMA map for the RX ring. */
-	error = bus_dmamap_create(sc->xl_mtag, 0, &sc->xl_tmpmap);
-	if (error) {
-		device_printf(dev, "failed to create mbuf dma map\n");
-		goto fail;
-	}
 
 	/*
 	 * Figure out the card type. 3c905B adapters have the
@@ -1780,47 +1698,213 @@ xl_detach(dev)
 	if (sc->xl_res)
 		bus_release_resource(dev, res, rid, sc->xl_res);
 
+	xl_dma_free(dev);
+
+	return(0);
+}
+
+static int
+xl_dma_alloc(device_t dev)
+{
+	struct xl_softc *sc;
+	struct xl_chain_data *cd;
+	struct xl_list_data *ld;
+	int i, error;
+
+	sc = device_get_softc(dev);
+	cd = &sc->xl_cdata;
+	ld = &sc->xl_ldata;
+
+	/*
+	 * Now allocate a tag for the DMA descriptor lists and a chunk
+	 * of DMA-able memory based on the tag.  Also obtain the DMA
+	 * addresses of the RX and TX ring, which we'll need later.
+	 * All of our lists are allocated as a contiguous block
+	 * of memory.
+	 */
+	error = bus_dma_tag_create(NULL, 8, 0,
+				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   XL_RX_LIST_SZ, 1, XL_RX_LIST_SZ,
+				   0, &ld->xl_rx_tag);
+	if (error) {
+		device_printf(dev, "failed to allocate rx dma tag\n");
+		return error;
+	}
+
+	error = bus_dmamem_alloc(ld->xl_rx_tag, (void **)&ld->xl_rx_list,
+				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
+				 &ld->xl_rx_dmamap);
+	if (error) {
+		device_printf(dev, "no memory for rx list buffers!\n");
+		bus_dma_tag_destroy(ld->xl_rx_tag);
+		ld->xl_rx_tag = NULL;
+		return error;
+	}
+
+	error = bus_dmamap_load(ld->xl_rx_tag, ld->xl_rx_dmamap,
+				ld->xl_rx_list, XL_RX_LIST_SZ,
+				xl_dma_map_addr, &ld->xl_rx_dmaaddr,
+				BUS_DMA_WAITOK);
+	if (error) {
+		device_printf(dev, "cannot get dma address of the rx ring!\n");
+		bus_dmamem_free(ld->xl_rx_tag, ld->xl_rx_list,
+				ld->xl_rx_dmamap);
+		bus_dma_tag_destroy(ld->xl_rx_tag);
+		ld->xl_rx_tag = NULL;
+		return error;
+	}
+
+	error = bus_dma_tag_create(NULL, 8, 0,
+				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   XL_TX_LIST_SZ, 1, XL_TX_LIST_SZ,
+				   0, &ld->xl_tx_tag);
+	if (error) {
+		device_printf(dev, "failed to allocate tx dma tag\n");
+		return error;
+	}
+
+	error = bus_dmamem_alloc(ld->xl_tx_tag, (void **)&ld->xl_tx_list,
+				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
+				 &ld->xl_tx_dmamap);
+	if (error) {
+		device_printf(dev, "no memory for list buffers!\n");
+		bus_dma_tag_destroy(ld->xl_tx_tag);
+		ld->xl_tx_tag = NULL;
+		return error;
+	}
+
+	error = bus_dmamap_load(ld->xl_tx_tag, ld->xl_tx_dmamap,
+				ld->xl_tx_list, XL_TX_LIST_SZ,
+				xl_dma_map_addr, &ld->xl_tx_dmaaddr,
+				BUS_DMA_WAITOK);
+	if (error) {
+		device_printf(dev, "cannot get dma address of the tx ring!\n");
+		bus_dmamem_free(ld->xl_tx_tag, ld->xl_tx_list,
+				ld->xl_tx_dmamap);
+		bus_dma_tag_destroy(ld->xl_tx_tag);
+		ld->xl_tx_tag = NULL;
+		return error;
+	}
+
+	/*
+	 * Allocate a DMA tag for the mapping of mbufs.
+	 */
+	error = bus_dma_tag_create(NULL, 1, 0,
+				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   MCLBYTES * XL_MAXFRAGS, XL_MAXFRAGS,
+				   MCLBYTES, 0, &sc->xl_mtag);
+	if (error) {
+		device_printf(dev, "failed to allocate mbuf dma tag\n");
+		return error;
+	}
+
+	/*
+	 * Allocate a spare DMA map for the RX ring.
+	 */
+	error = bus_dmamap_create(sc->xl_mtag, 0, &sc->xl_tmpmap);
+	if (error) {
+		device_printf(dev, "failed to create mbuf dma map\n");
+		bus_dma_tag_destroy(sc->xl_mtag);
+		sc->xl_mtag = NULL;
+		return error;
+	}
+
+	for (i = 0; i < XL_RX_LIST_CNT; i++) {
+		error = bus_dmamap_create(sc->xl_mtag, 0,
+					  &cd->xl_rx_chain[i].xl_map);
+		if (error) {
+			device_printf(dev, "failed to create %dth "
+				      "rx descriptor dma map!\n", i);
+			return error;
+		}
+		cd->xl_rx_chain[i].xl_ptr = &ld->xl_rx_list[i];
+	}
+
+	for (i = 0; i < XL_TX_LIST_CNT; i++) {
+		error = bus_dmamap_create(sc->xl_mtag, 0,
+					  &cd->xl_tx_chain[i].xl_map);
+		if (error) {
+			device_printf(dev, "failed to create %dth "
+				      "tx descriptor dma map!\n", i);
+			return error;
+		}
+		cd->xl_tx_chain[i].xl_ptr = &ld->xl_tx_list[i];
+	}
+	return 0;
+}
+
+static void
+xl_dma_free(device_t dev)
+{
+	struct xl_softc *sc;
+	struct xl_chain_data *cd;
+	struct xl_list_data *ld;
+	int i;
+
+	sc = device_get_softc(dev);
+	cd = &sc->xl_cdata;
+	ld = &sc->xl_ldata;
+
+	for (i = 0; i < XL_RX_LIST_CNT; ++i) {
+		if (cd->xl_rx_chain[i].xl_ptr != NULL) {
+			if (cd->xl_rx_chain[i].xl_mbuf != NULL) {
+				bus_dmamap_unload(sc->xl_mtag,
+						  cd->xl_rx_chain[i].xl_map);
+				m_free(cd->xl_rx_chain[i].xl_mbuf);
+			}
+			bus_dmamap_destroy(sc->xl_mtag,
+					   cd->xl_rx_chain[i].xl_map);
+		}
+	}
+
+	for (i = 0; i < XL_TX_LIST_CNT; ++i) {
+		if (cd->xl_tx_chain[i].xl_ptr != NULL) {
+			if (cd->xl_tx_chain[i].xl_mbuf != NULL) {
+				bus_dmamap_unload(sc->xl_mtag,
+						  cd->xl_tx_chain[i].xl_map);
+				m_free(cd->xl_tx_chain[i].xl_mbuf);
+			}
+			bus_dmamap_destroy(sc->xl_mtag,
+					   cd->xl_tx_chain[i].xl_map);
+		}
+	}
+
+	if (ld->xl_rx_tag) {
+		bus_dmamap_unload(ld->xl_rx_tag, ld->xl_rx_dmamap);
+		bus_dmamem_free(ld->xl_rx_tag, ld->xl_rx_list,
+				ld->xl_rx_dmamap);
+		bus_dma_tag_destroy(ld->xl_rx_tag);
+	}
+
+	if (ld->xl_tx_tag) {
+		bus_dmamap_unload(ld->xl_tx_tag, ld->xl_tx_dmamap);
+		bus_dmamem_free(ld->xl_tx_tag, ld->xl_tx_list,
+				ld->xl_tx_dmamap);
+		bus_dma_tag_destroy(ld->xl_tx_tag);
+	}
+
 	if (sc->xl_mtag) {
 		bus_dmamap_destroy(sc->xl_mtag, sc->xl_tmpmap);
 		bus_dma_tag_destroy(sc->xl_mtag);
 	}
-	if (sc->xl_ldata.xl_rx_tag) {
-		bus_dmamap_unload(sc->xl_ldata.xl_rx_tag,
-		    sc->xl_ldata.xl_rx_dmamap);
-		bus_dmamem_free(sc->xl_ldata.xl_rx_tag, sc->xl_ldata.xl_rx_list,
-		    sc->xl_ldata.xl_rx_dmamap);
-		bus_dma_tag_destroy(sc->xl_ldata.xl_rx_tag);
-	}
-	if (sc->xl_ldata.xl_tx_tag) {
-		bus_dmamap_unload(sc->xl_ldata.xl_tx_tag,
-		    sc->xl_ldata.xl_tx_dmamap);
-		bus_dmamem_free(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_list,
-		    sc->xl_ldata.xl_tx_dmamap);
-		bus_dma_tag_destroy(sc->xl_ldata.xl_tx_tag);
-	}
-
-	return(0);
 }
 
 /*
  * Initialize the transmit descriptors.
  */
-static int
-xl_list_tx_init(sc)
-	struct xl_softc		*sc;
+static void
+xl_list_tx_init(struct xl_softc *sc)
 {
 	struct xl_chain_data	*cd;
 	struct xl_list_data	*ld;
-	int			error, i;
+	int			i;
 
 	cd = &sc->xl_cdata;
 	ld = &sc->xl_ldata;
 	for (i = 0; i < XL_TX_LIST_CNT; i++) {
-		cd->xl_tx_chain[i].xl_ptr = &ld->xl_tx_list[i];
-		error = bus_dmamap_create(sc->xl_mtag, 0,
-		    &cd->xl_tx_chain[i].xl_map);
-		if (error)
-			return(error);
 		cd->xl_tx_chain[i].xl_phys = ld->xl_tx_dmaaddr +
 		    i * sizeof(struct xl_list);
 		if (i == (XL_TX_LIST_CNT - 1))
@@ -1833,28 +1917,21 @@ xl_list_tx_init(sc)
 	cd->xl_tx_tail = cd->xl_tx_head = NULL;
 
 	bus_dmamap_sync(ld->xl_tx_tag, ld->xl_tx_dmamap, BUS_DMASYNC_PREWRITE);
-	return(0);
 }
 
 /*
  * Initialize the transmit descriptors.
  */
-static int
-xl_list_tx_init_90xB(sc)
-	struct xl_softc		*sc;
+static void
+xl_list_tx_init_90xB(struct xl_softc *sc)
 {
 	struct xl_chain_data	*cd;
 	struct xl_list_data	*ld;
-	int			error, i;
+	int			i;
 
 	cd = &sc->xl_cdata;
 	ld = &sc->xl_ldata;
 	for (i = 0; i < XL_TX_LIST_CNT; i++) {
-		cd->xl_tx_chain[i].xl_ptr = &ld->xl_tx_list[i];
-		error = bus_dmamap_create(sc->xl_mtag, 0,
-		    &cd->xl_tx_chain[i].xl_map);
-		if (error)
-			return(error);
 		cd->xl_tx_chain[i].xl_phys = ld->xl_tx_dmaaddr +
 		    i * sizeof(struct xl_list);
 		if (i == (XL_TX_LIST_CNT - 1))
@@ -1877,7 +1954,6 @@ xl_list_tx_init_90xB(sc)
 	cd->xl_tx_cnt = 0;
 
 	bus_dmamap_sync(ld->xl_tx_tag, ld->xl_tx_dmamap, BUS_DMASYNC_PREWRITE);
-	return(0);
 }
 
 /*
@@ -1898,11 +1974,6 @@ xl_list_rx_init(sc)
 	ld = &sc->xl_ldata;
 
 	for (i = 0; i < XL_RX_LIST_CNT; i++) {
-		cd->xl_rx_chain[i].xl_ptr = &ld->xl_rx_list[i];
-		error = bus_dmamap_create(sc->xl_mtag, 0,
-		    &cd->xl_rx_chain[i].xl_map);
-		if (error)
-			return(error);
 		error = xl_newbuf(sc, &cd->xl_rx_chain[i]);
 		if (error)
 			return(error);
@@ -1928,11 +1999,9 @@ xl_list_rx_init(sc)
  * the old DMA map untouched so that it can be reused.
  */
 static int
-xl_newbuf(sc, c)
-	struct xl_softc		*sc;
-	struct xl_chain_onefrag	*c;
+xl_newbuf(struct xl_softc *sc, struct xl_chain_onefrag *c)
 {
-	struct mbuf		*m_new = NULL;
+	struct mbuf		*m_new;
 	bus_dmamap_t		map;
 	int			error;
 	u_int32_t		baddr;
@@ -2749,16 +2818,9 @@ xl_init(xsc)
 
 	/* Init TX descriptors. */
 	if (sc->xl_type == XL_TYPE_905B)
-		error = xl_list_tx_init_90xB(sc);
+		xl_list_tx_init_90xB(sc);
 	else
-		error = xl_list_tx_init(sc);
-	if (error) {
-		if_printf(ifp, "initialization of the tx ring failed (%d)\n",
-			  error);
-		xl_stop(sc);
-		crit_exit();
-		return;
-	}
+		xl_list_tx_init(sc);
 
 	/*
 	 * Set the TX freethresh value.
@@ -3171,7 +3233,8 @@ xl_stop(sc)
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ACK|XL_STAT_INTLATCH);
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_STAT_ENB|0);
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB|0);
-	if (sc->xl_flags & XL_FLAG_FUNCREG) bus_space_write_4 (sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
+	if (sc->xl_flags & XL_FLAG_FUNCREG)
+		bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
 
 	/* Stop the stats updater. */
 	callout_stop(&sc->xl_stat_timer);
@@ -3183,21 +3246,18 @@ xl_stop(sc)
 		if (sc->xl_cdata.xl_rx_chain[i].xl_mbuf != NULL) {
 			bus_dmamap_unload(sc->xl_mtag,
 			    sc->xl_cdata.xl_rx_chain[i].xl_map);
-			bus_dmamap_destroy(sc->xl_mtag,
-			    sc->xl_cdata.xl_rx_chain[i].xl_map);
 			m_freem(sc->xl_cdata.xl_rx_chain[i].xl_mbuf);
 			sc->xl_cdata.xl_rx_chain[i].xl_mbuf = NULL;
 		}
 	}
 	bzero(sc->xl_ldata.xl_rx_list, XL_RX_LIST_SZ);
+
 	/*
 	 * Free the TX list buffers.
 	 */
 	for (i = 0; i < XL_TX_LIST_CNT; i++) {
 		if (sc->xl_cdata.xl_tx_chain[i].xl_mbuf != NULL) {
 			bus_dmamap_unload(sc->xl_mtag,
-			    sc->xl_cdata.xl_tx_chain[i].xl_map);
-			bus_dmamap_destroy(sc->xl_mtag,
 			    sc->xl_cdata.xl_tx_chain[i].xl_map);
 			m_freem(sc->xl_cdata.xl_tx_chain[i].xl_mbuf);
 			sc->xl_cdata.xl_tx_chain[i].xl_mbuf = NULL;
@@ -3206,8 +3266,6 @@ xl_stop(sc)
 	bzero(sc->xl_ldata.xl_tx_list, XL_TX_LIST_SZ);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	return;
 }
 
 /*

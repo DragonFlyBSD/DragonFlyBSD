@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xlreg.h,v 1.25.2.8 2003/08/10 21:55:57 silby Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.7 2005/09/24 03:50:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.8 2005/09/27 02:41:29 sephe Exp $
  */
 
 #define XL_EE_READ	0x0080	/* read, 5 bit address */
@@ -472,7 +472,7 @@ struct xl_chain {
 	struct xl_list		*xl_ptr;
 	struct mbuf		*xl_mbuf;
 	struct xl_chain		*xl_next;
-	struct xl_chain		*xl_prev;
+	struct xl_chain		*xl_prev;	/* 3c90xB only */
 	u_int32_t		xl_phys;
 	bus_dmamap_t		xl_map;
 };
