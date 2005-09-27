@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.1 2005/06/30 16:38:49 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.2 2005/09/27 18:03:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -327,8 +327,18 @@ bsd4_setrunqueue(struct proc *p)
 	 * Note: gd is the gd of the TARGET thread's cpu, not our cpu.
 	 */
 	gd = p->p_thread->td_gd;
-	p->p_slptime = 0;
 
+	/*
+	 * Because recalculate is only called once or twice for long sleeps,
+	 * not every second forever while the process is sleeping, we have 
+	 * to manually call it to resynchronize p_cpbase on wakeup or it
+	 * will wrap if the process was sleeping long enough (e.g. ~10 min
+	 * with the ACPI timer) and really mess up the nticks calculation.
+	 */
+	if (p->p_slptime) {
+	    bsd4_recalculate_estcpu(p);
+	    p->p_slptime = 0;
+	}
 	/*
 	 * We have not been released, make sure that we are not the currently
 	 * designated process.
