@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.35 2005/09/27 02:41:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.36 2005/09/27 03:12:55 sephe Exp $
  */
 
 /*
@@ -1938,15 +1938,15 @@ xl_list_tx_init_90xB(struct xl_softc *sc)
 			cd->xl_tx_chain[i].xl_next = &cd->xl_tx_chain[0];
 		else
 			cd->xl_tx_chain[i].xl_next = &cd->xl_tx_chain[i + 1];
-		if (i == 0)
+		if (i == 0) {
 			cd->xl_tx_chain[i].xl_prev =
 			    &cd->xl_tx_chain[XL_TX_LIST_CNT - 1];
-		else
+		} else {
 			cd->xl_tx_chain[i].xl_prev =
 			    &cd->xl_tx_chain[i - 1];
+		}
 	}
 
-	bzero(ld->xl_tx_list, XL_TX_LIST_SZ);
 	ld->xl_tx_list[0].xl_status = htole32(XL_TXSTAT_EMPTY);
 
 	cd->xl_tx_prod = 1;
