@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.25 2005/08/29 10:19:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.26 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -1829,6 +1829,7 @@ sis_start(struct ifnet *ifp)
 	struct sis_softc *sc;
 	struct mbuf *m_head = NULL;
 	uint32_t idx;
+	int need_trans;
 
 	sc = ifp->if_softc;
 
@@ -1840,6 +1841,7 @@ sis_start(struct ifnet *ifp)
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
+	need_trans = 0;
 	while(sc->sis_ldata.sis_tx_list[idx].sis_mbuf == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -1850,6 +1852,7 @@ sis_start(struct ifnet *ifp)
 			break;
 		}
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
@@ -1857,6 +1860,9 @@ sis_start(struct ifnet *ifp)
 		 */
 		BPF_MTAP(ifp, m_head);
 	}
+
+	if (!need_trans)
+		return;
 
 	/* Transmit */
 	sc->sis_cdata.sis_tx_prod = idx;

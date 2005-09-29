@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.22 2005/06/20 15:10:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.23 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -1012,6 +1012,7 @@ static void pcn_start(ifp)
 	struct pcn_softc	*sc;
 	struct mbuf		*m_head = NULL;
 	u_int32_t		idx;
+	int need_trans;
 
 	sc = ifp->if_softc;
 
@@ -1023,6 +1024,7 @@ static void pcn_start(ifp)
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
+	need_trans = 0;
 	while(sc->pcn_cdata.pcn_tx_chain[idx] == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -1033,9 +1035,13 @@ static void pcn_start(ifp)
 			break;
 		}
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);
 	}
+
+	if (!need_trans)
+		return;
 
 	/* Transmit */
 	sc->pcn_cdata.pcn_tx_prod = idx;
@@ -1045,8 +1051,6 @@ static void pcn_start(ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	return;
 }
 
 void pcn_setfilt(ifp)

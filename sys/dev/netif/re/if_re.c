@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.14 2005/06/09 20:04:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.15 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -1808,12 +1808,13 @@ re_start(struct ifnet *ifp)
 {
 	struct re_softc	*sc = ifp->if_softc;
 	struct mbuf *m_head = NULL, *m_head2;
-	int called_defrag, idx;
+	int called_defrag, idx, need_trans;
 
 	crit_enter();
 
 	idx = sc->re_ldata.re_tx_prodidx;
 
+	need_trans = 0;
 	while (sc->re_ldata.re_tx_mbuf[idx] == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -1831,12 +1832,18 @@ re_start(struct ifnet *ifp)
 		m_head2 = ifq_dequeue(&ifp->if_snd);
 		if (called_defrag)
 			m_freem(m_head2);
+		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
 		BPF_MTAP(ifp, m_head);
+	}
+
+	if (!need_trans) {
+		crit_exit();
+		return;
 	}
 
 	/* Flush the TX descriptors */
@@ -2144,6 +2151,9 @@ re_watchdog(struct ifnet *ifp)
 	re_rxeof(sc);
 
 	re_init(sc);
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		ifp->if_start(ifp);
 
 	crit_exit();
 }

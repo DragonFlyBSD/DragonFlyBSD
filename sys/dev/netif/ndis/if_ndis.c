@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.7 2005/08/11 03:22:57 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.8 2005/09/29 12:52:51 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1246,6 +1246,11 @@ ndis_start(ifp)
 
 		if (sc->ndis_txidx == 0)
 			break;
+	}
+
+	if (pcnt == 0) {
+		NDIS_UNLOCK(sc);
+		return;
 	}
 
 	if (sc->ndis_txpending == 0)

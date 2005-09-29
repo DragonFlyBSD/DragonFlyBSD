@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.46 2005/08/22 18:29:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.47 2005/09/29 12:52:51 sephe Exp $
  *
  */
 
@@ -2376,6 +2376,7 @@ bge_start(struct ifnet *ifp)
 	struct bge_softc *sc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx = 0;
+	int need_trans;
 
 	sc = ifp->if_softc;
 
@@ -2384,6 +2385,7 @@ bge_start(struct ifnet *ifp)
 
 	prodidx = CSR_READ_4(sc, BGE_MBX_TX_HOST_PROD0_LO);
 
+	need_trans = 0;
 	while(sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -2416,9 +2418,13 @@ bge_start(struct ifnet *ifp)
 			break;
 		}
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);
 	}
+
+	if (!need_trans)
+		return;
 
 	/* Transmit */
 	CSR_WRITE_4(sc, BGE_MBX_TX_HOST_PROD0_LO, prodidx);
@@ -2730,6 +2736,9 @@ bge_watchdog(struct ifnet *ifp)
 	bge_init(sc);
 
 	ifp->if_oerrors++;
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		ifp->if_start(ifp);
 }
 
 /*

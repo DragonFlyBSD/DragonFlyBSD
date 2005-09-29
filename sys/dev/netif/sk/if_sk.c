@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.36 2005/06/14 11:27:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.37 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -1616,9 +1616,11 @@ sk_start(struct ifnet *ifp)
         struct sk_softc *sc = sc_if->sk_softc;
         struct mbuf *m_head = NULL;
         uint32_t idx;
+	int need_trans;
 
 	idx = sc_if->sk_cdata.sk_tx_prod;
 
+	need_trans = 0;
 	while(sc_if->sk_cdata.sk_tx_chain[idx].sk_mbuf == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -1634,9 +1636,13 @@ sk_start(struct ifnet *ifp)
 			break;
 		}
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);
 	}
+
+	if (!need_trans)
+		return;
 
 	/* Transmit */
 	sc_if->sk_cdata.sk_tx_prod = idx;
@@ -1656,6 +1662,9 @@ sk_watchdog(struct ifnet *ifp)
 
 	printf("sk%d: watchdog timeout\n", sc_if->sk_unit);
 	sk_init(sc_if);
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		ifp->if_start(ifp);
 }
 
 static void

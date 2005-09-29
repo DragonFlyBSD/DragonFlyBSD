@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.42 2005/09/08 10:26:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.43 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -2916,7 +2916,7 @@ dc_start(struct ifnet *ifp)
 {
 	struct dc_softc		*sc;
 	struct mbuf *m_head = NULL, *m_new;
-	int did_defrag, idx;
+	int did_defrag, idx, need_trans;
 
 	sc = ifp->if_softc;
 
@@ -2928,6 +2928,7 @@ dc_start(struct ifnet *ifp)
 
 	idx = sc->dc_cdata.dc_tx_prod;
 
+	need_trans = 0;
 	while(sc->dc_cdata.dc_tx_chain[idx] == NULL) {
 		did_defrag = 0;
 		m_head = ifq_poll(&ifp->if_snd);
@@ -2977,6 +2978,7 @@ dc_start(struct ifnet *ifp)
 		m_new = ifq_dequeue(&ifp->if_snd);
 		if (did_defrag)
 			m_freem(m_new);
+		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
@@ -2990,6 +2992,9 @@ dc_start(struct ifnet *ifp)
 		}
 	}
 
+	if (!need_trans)
+		return;
+
 	/* Transmit */
 	sc->dc_cdata.dc_tx_prod = idx;
 	if (!(sc->dc_flags & DC_TX_POLL))
@@ -2999,8 +3004,6 @@ dc_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	return;
 }
 
 static void

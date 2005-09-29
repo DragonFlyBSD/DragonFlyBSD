@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.29 2005/06/14 15:08:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.30 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -1106,6 +1106,7 @@ lge_start(struct ifnet *ifp)
 	struct lge_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t idx;
+	int need_timer;
 
 	if (!sc->lge_link)
 		return;
@@ -1115,6 +1116,7 @@ lge_start(struct ifnet *ifp)
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
+	need_timer = 0;
 	while(sc->lge_ldata->lge_tx_list[idx].lge_mbuf == NULL) {
 		if (CSR_READ_1(sc, LGE_TXCMDFREE_8BIT) == 0)
 			break;
@@ -1128,9 +1130,13 @@ lge_start(struct ifnet *ifp)
 			break;
 		}
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_timer = 1;
 
 		BPF_MTAP(ifp, m_head);
 	}
+
+	if (!need_timer)
+		return;
 
 	sc->lge_cdata.lge_tx_prod = idx;
 

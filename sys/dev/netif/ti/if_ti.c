@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.34 2005/06/14 14:19:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.35 2005/09/29 12:52:51 sephe Exp $
  */
 
 /*
@@ -1911,9 +1911,11 @@ ti_start(struct ifnet *ifp)
 	struct ti_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 	uint32_t prodidx = 0;
+	int need_trans;
 
 	prodidx = CSR_READ_4(sc, TI_MB_SENDPROD_IDX);
 
+	need_trans = 0;
 	while(sc->ti_cdata.ti_tx_chain[prodidx] == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -1945,10 +1947,14 @@ ti_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-
 		m_head = ifq_dequeue(&ifp->if_snd);
+		need_trans = 1;
+
 		BPF_MTAP(ifp, m_head);
 	}
+
+	if (!need_trans)
+		return;
 
 	/* Transmit */
 	CSR_WRITE_4(sc, TI_MB_SENDPROD_IDX, prodidx);
@@ -2252,6 +2258,9 @@ ti_watchdog(struct ifnet *ifp)
 	ti_init(sc);
 
 	ifp->if_oerrors++;
+
+	if (!ifq_is_empty(&ifp->if_snd))
+		ifp->if_start(ifp);
 }
 
 /*
