@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.8 2004/09/13 16:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.9 2005/09/29 20:43:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,6 +99,11 @@ static int      log_console_output = 1;
 TUNABLE_INT("kern.log_console_output", &log_console_output);
 SYSCTL_INT(_kern, OID_AUTO, log_console_output, CTLFLAG_RW,
     &log_console_output, 0, "");
+
+static int unprivileged_read_msgbuf = 1;
+SYSCTL_INT(_kern, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
+    &unprivileged_read_msgbuf, 0,
+    "Unprivileged processes may read the kernel message buffer");
 
 /*
  * Warn that a system table is full.
@@ -868,10 +873,26 @@ msgbufinit(void *ptr, size_t size)
 }
 
 /* Sysctls for accessing/clearing the msgbuf */
+
 static int
 sysctl_kern_msgbuf(SYSCTL_HANDLER_ARGS)
 {
+	struct ucred *cred;
 	int error;
+
+	/*
+	 * Only wheel or root can access the message log.
+	 */
+	if (unprivileged_read_msgbuf == 0) {
+		KKASSERT(req->td->td_proc);
+		cred = req->td->td_proc->p_ucred;
+
+		if ((cred->cr_prison || groupmember(0, cred) == 0) &&
+		    suser(req->td) != 0
+		) {
+			return (EPERM);
+		}
+	}
 
 	/*
 	 * Unwind the buffer, so that it's linear (possibly starting with
