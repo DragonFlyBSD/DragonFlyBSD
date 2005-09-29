@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.72 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.73 2005/09/29 20:59:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1569,6 +1569,57 @@ mkfifo(struct mkfifo_args *uap)
 	return (error);
 }
 
+static int hardlink_check_uid = 0;
+SYSCTL_INT(_kern, OID_AUTO, hardlink_check_uid, CTLFLAG_RW,
+    &hardlink_check_uid, 0, 
+    "Unprivileged processes cannot create hard links to files owned by other "
+    "users");
+static int hardlink_check_gid = 0;
+SYSCTL_INT(_kern, OID_AUTO, hardlink_check_gid, CTLFLAG_RW,
+    &hardlink_check_gid, 0,
+    "Unprivileged processes cannot create hard links to files owned by other "
+    "groups");
+
+static int
+can_hardlink(struct vnode *vp, struct thread *td, struct ucred *cred)
+{
+	struct vattr va;
+	int error;
+
+	/*
+	 * Shortcut if disabled
+	 */
+	if (hardlink_check_uid == 0 && hardlink_check_gid == 0)
+		return (0);
+
+	/*
+	 * root cred can always hardlink
+	 */
+	if (suser_cred(cred, PRISON_ROOT) == 0)
+		return (0);
+
+	/*
+	 * Otherwise only if the originating file is owned by the
+	 * same user or group.  Note that any group is allowed if
+	 * the file is owned by the caller.
+	 */
+	error = VOP_GETATTR(vp, &va, td);
+	if (error != 0)
+		return (error);
+	
+	if (hardlink_check_uid) {
+		if (cred->cr_uid != va.va_uid)
+			return (EPERM);
+	}
+	
+	if (hardlink_check_gid) {
+		if (cred->cr_uid != va.va_uid && !groupmember(va.va_gid, cred))
+			return (EPERM);
+	}
+
+	return (0);
+}
+
 int
 kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 {
@@ -1613,7 +1664,9 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	/*
 	 * Finally run the new API VOP.
 	 */
-	error = VOP_NLINK(linknd->nl_ncp, vp, linknd->nl_cred);
+	error = can_hardlink(vp, td, td->td_proc->p_ucred);
+	if (error == 0)
+		error = VOP_NLINK(linknd->nl_ncp, vp, linknd->nl_cred);
 	vput(vp);
 	return (error);
 }
