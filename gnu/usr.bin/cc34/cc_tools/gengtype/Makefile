@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/gengtype/Makefile,v 1.2 2004/06/20 00:20:28 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/gengtype/Makefile,v 1.3 2005/10/01 12:40:33 corecode Exp $
 
 .include "../Makefile.inc"
 .include "../../Makefile.langs"
@@ -11,25 +11,6 @@ SRCS+=	safe-ctype.c xexit.c xmalloc.c xmemdup.c xstrdup.c
 LDADD=	-ly
 
 CLEANFILES+=	gtyp-gen.h
-
-# from gcc/Makefile
-srcdir= ${GCCDIR}/gcc
-
-host_xm_file_list=	${SPREPDIR}/dragonfly-native.h
-host_xm_file_list+=	${GCCDIR}/include/ansidecl.h
-HASHTAB_H   = ${GCCDIR}/include/hashtab.h
-SPLAY_TREE_H= ${GCCDIR}//include/splay-tree.h
-
-# XXX move this
-# platform specific files
-tm_file_list=	$(srcdir)/config/i386/i386.h $(srcdir)/config/i386/unix.h
-tm_file_list+=	$(srcdir)/config/i386/att.h $(srcdir)/config/dbxelf.h
-tm_file_list+=	$(srcdir)/config/elfos.h ${SPREPDIR}/config/dragonfly-spec.h
-tm_file_list+=	${SPREPDIR}/config/dragonfly.h ${SPREPDIR}/config/i386/dragonfly.h
-tm_file_list+=	$(srcdir)/defaults.h
-out_file=	$(srcdir)/config/i386/i386.c
-
-GTFILES_SRCDIR = $(srcdir)
 
 gtyp-gen.h: Makefile ../../Makefile.langs
 	echo "/* This file is machine generated.  Do not edit.  */" > gtyp-gen.h

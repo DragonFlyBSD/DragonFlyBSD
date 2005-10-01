@@ -1,0 +1,4 @@
+# $DragonFly: src/gnu/usr.bin/gdb/libopcodes/Makefile.amd64,v 1.1 2005/10/01 12:40:33 corecode Exp $
+
+SRCS+=		i386-dis.c
+CFLAGS+=	-DARCH_i386

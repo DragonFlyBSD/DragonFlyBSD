@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.3 2004/06/22 16:40:32 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.4 2005/10/01 12:40:33 corecode Exp $
 
 BINDIR?=	/usr/libexec/gcc34
 .include "../Makefile.inc"
@@ -10,7 +10,7 @@ STOPDIR=	${.CURDIR}/${TOP_PREFIX}/..
 TOOLDIR=	${OTOPDIR}/cc_tools
 SRC_TOOLDIR=	${STOPDIR}/cc_tools
 
-CFLAGS+=	-I${OTOPDIR}/cc_prep -I${STOPDIR}/cc_prep
+CFLAGS+=	-I${OTOPDIR}/cc_prep -I${STOPDIR}/cc_prep -I${STOPDIR}/cc_prep/config
 CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/gcc/config -I${GCCDIR}/include
 
 CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H

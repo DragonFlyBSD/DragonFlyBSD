@@ -1,6 +1,20 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile.amd64,v 1.1 2004/12/20 13:14:45 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile.amd64,v 1.2 2005/10/01 12:40:32 corecode Exp $
+
+BFD_ARCH_SIZE?=64
+BFD_DEFAULT_TARGET_SIZE?=64
+
+SRCS+=	elf64-x86-64.c elf64-target.h elf64-gen.c elf64.c
+VECS+=	bfd_elf64_x86_64_vec
+
+DEFAULT_VECTOR?= bfd_elf64_x86_64_vec
+
+TARGMATCH+=	{ "elf64-amd64-dragonfly*", &bfd_elf64_x86_64_vec },
+TARGMATCH+=	{ "amd64-*-dragonfly*", &bfd_elf64_x86_64_vec },
+TARGMATCH+=	{ "x86_64-*-dragonfly*", &bfd_elf64_x86_64_vec },
+
+CLEANFILES+=	elf64-target.h
+
+elf64-target.h:	elfxx-target.h
+	sed -e s/NN/64/g ${.ALLSRC} > ${.TARGET}
 
 .include "${.CURDIR}/Makefile.i386"
-
-DEFAULT_VECTOR=	bfd_elf64_x86_64_vec
-

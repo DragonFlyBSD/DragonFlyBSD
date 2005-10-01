@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile,v 1.1 2004/12/20 13:14:45 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile,v 1.2 2005/10/01 12:40:32 corecode Exp $
 
 .include "../Makefile.inc0"
 
@@ -26,6 +26,7 @@ CLEANFILES+=	bfd.h bfdver.h config.h elf32-i386-fbsd.c targmatch.h
 CFLAGS+= -I${BINUTILSDISTDIR}/bfd -I${BINUTILSDISTDIR}/include -I.
 .endif
 
+# XXX broken
 SELARCH=
 .if ${BINUTIL_ARCH} == "amd64"
 SELARCH= &bfd_i386_arch
@@ -42,27 +43,25 @@ CFLAGS+= -DSELECT_ARCHITECTURES="${SELARCH}"
 
 SELVEC=
 .for _v in ${VECS}
+CFLAGS+= -DHAVE_${_v}
 .if ${SELVEC} == ""
 SELVEC+= &${_v}
 .else
 SELVEC+= ,&${_v}
 .endif
 .endfor
+.if defined(DEFAULT_VECTOR)
+CFLAGS+= -DDEFAULT_VECTOR=${DEFAULT_VECTOR}
+.endif
 CFLAGS+= -DSELECT_VECS="${SELVEC}"
 
 # Used to do keyword replacement in bfd-X.h
 #
 .if ${MACHINE_ARCH} == "i386"
-BFD_DEFAULT_TARGET_SIZE?=32
-BFD_ARCH_SIZE?=32
-BFD_DEFAULT_TARGET_SIZE?=32
 BFD_HOST_64BIT_LONG?=0
 BFD_HOST_64_BIT?=long long
 BFD_HOST_U_64_BIT?=unsigned long long
 .else
-BFD_DEFAULT_TARGET_SIZE?=64
-BFD_ARCH_SIZE?=64
-BFD_DEFAULT_TARGET_SIZE?=64
 BFD_HOST_64BIT_LONG?=1
 BFD_HOST_64_BIT?=long long
 BFD_HOST_U_64_BIT?=unsigned long long
@@ -88,9 +87,12 @@ bfdver.h: ${SRCDIR}/bfd/version.h
 	    < ${SRCDIR}/bfd/version.h > bfdver.h.new
 	mv -f bfdver.h.new bfdver.h
 
-targmatch.h: targmatch.sed config.bfd dfly_targmatch.h
+# match targets defined in the assembler's targ-env.h with an output vector.
+# XXX i386-*-dragonfly and amd64-*-dragonfly are obsolete, but not quite
+# removed from the binutils build yet.
+targmatch.h: targmatch.sed config.bfd
 	sed -f ${.ALLSRC:M*.sed} ${.ALLSRC:M*.bfd} > ${.TARGET}.new
-	cat ${.CURDIR}/dfly_targmatch.h >> ${.TARGET}.new
+	echo ${TARGMATCH:Q} >> ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
 	
 config.h: config.h.template

@@ -1,8 +1,58 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.tgt,v 1.3 2005/08/10 15:50:47 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.tgt,v 1.4 2005/10/01 12:40:33 corecode Exp $
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 
 version=	3.4.5
 target=		${TARGET_ARCH}-just-dragonflybsd
 
-GCC_CPU?=	i386
+GCC_CPU?=	${TARGET_ARCH}
+.if ${TARGET_ARCH} == "amd64"
+GCC_CPU=	i386
+.endif
+
+# from gcc/Makefile
+srcdir= ${GCCDIR}/gcc
+
+host_xm_file_list=	${STOPDIR}/cc_prep/dragonfly-native.h
+host_xm_file_list+=	${GCCDIR}/include/ansidecl.h
+HASHTAB_H   = ${GCCDIR}/include/hashtab.h
+SPLAY_TREE_H= ${GCCDIR}/include/splay-tree.h
+
+out_file=	$(srcdir)/config/${GCC_CPU}/${GCC_CPU}.c
+
+GTFILES_SRCDIR = $(srcdir)
+
+TARGET_INC=	# empty
+.if ${TARGET_ARCH} == "amd64"
+TARGET_INC+=	i386/biarch64.h
+.endif
+TARGET_INC+=	${GCC_CPU}/${GCC_CPU}.h
+.if ${TARGET_ARCH} == "i386" || ${TARGET_ARCH} == "amd64"
+TARGET_INC+=	${GCC_CPU}/unix.h
+TARGET_INC+=	${GCC_CPU}/att.h
+.endif
+TARGET_INC+=	dbxelf.h
+TARGET_INC+=	elfos.h
+#TARGET_INC+=	dragonfly-native.h
+TARGET_INC+=	dragonfly-spec.h
+TARGET_INC+=	dragonfly.h
+TARGET_INC+=	${GCC_CPU}/dragonfly.h
+.if ${TARGET_ARCH} == "amd64"
+TARGET_INC+=	${GCC_CPU}/x86-64.h
+TARGET_INC+=	${GCC_CPU}/dragonfly64.h
+.endif
+TARGET_INC+=	defaults.h
+
+#
+# Use TARGET_INC as a template and build a list of target specific
+# include files for gengtype to scan
+#
+tm_file_list=	${STOPDIR}/cc_prep/dragonfly-native.h
+
+.for H in ${TARGET_INC}
+.for D in ${GCCDIR}/gcc/config ${GCCDIR}/gcc ${STOPDIR}/cc_prep/config ${STOPDIR}/cc_prep
+.if exists($D/$H)
+tm_file_list+=	$D/$H
+.endif
+.endfor
+.endfor

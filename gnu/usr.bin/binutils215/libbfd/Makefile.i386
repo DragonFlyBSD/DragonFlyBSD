@@ -1,28 +1,24 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile.i386,v 1.2 2005/06/01 18:07:10 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile.i386,v 1.3 2005/10/01 12:40:32 corecode Exp $
+
+BFD_ARCH_SIZE?=32
+BFD_DEFAULT_TARGET_SIZE?=32
 
 # see main Makefile
 SRCS+=	cpu-i386.c 
 SRCS+=  elf32-i386.c elf32-target.h elf32.c elflink.c
-SRCS+=	elf64-x86-64.c elf64-target.h elf64-gen.c elf64.c
 VECS+=	bfd_elf32_i386_vec
-VECS+=	bfd_elf64_x86_64_vec
-.if ${TARGET_ARCH} == "i386"
-CFLAGS+= -DDEFAULT_VECTOR=bfd_elf32_i386_vec
-.endif
-CFLAGS+= -DHAVE_bfd_elf32_i386_vec
+
+DEFAULT_VECTOR?= bfd_elf32_i386_vec
+
+TARGMATCH+=	{ "elf32-i386-dragonfly*", &bfd_elf32_i386_vec },
+TARGMATCH+=	{ "i386-*-dragonfly*", &bfd_elf32_i386_vec },
 
 .if	defined(BINUTILSDISTDIR) && exists(${BINUTILSDISTDIR})
 SRCS+=	pe-i386.c pei-i386.c
 VECS+=	i386pe_vec i386pei_vec
-CFLAGS+= -DHAVE_i386pe_vec -DHAVE_i386pei_vec
 .endif
 
 CLEANFILES+=	elf32-target.h
 
 elf32-target.h:	elfxx-target.h
 	sed -e s/NN/32/g ${.ALLSRC} > ${.TARGET}
-
-CLEANFILES+=	elf64-target.h
-
-elf64-target.h:	elfxx-target.h
-	sed -e s/NN/64/g ${.ALLSRC} > ${.TARGET}

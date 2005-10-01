@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/amd64/include/Attic/stdint.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/stdint.h,v 1.2 2005/10/01 12:40:33 corecode Exp $
  */
 
 #ifndef _MACHINE_STDINT_H_
@@ -66,15 +66,6 @@ typedef	unsigned int __attribute__((__mode__(__DI__)))	__uint64_t;
 typedef	long		__int64_t;
 typedef	unsigned long	__uint64_t;
 #endif
-
-/*
- * mbstate_t is an opaque object to keep conversion state, during multibyte
- * stream conversions.  The content must not be referenced by user programs.
- */
-typedef union {
-	char            __mbstate8[128];
-	__int64_t       _mbstateL;              /* for alignment */
-} __mbstate_t;
 
 /*
  * Standard type definitions.
