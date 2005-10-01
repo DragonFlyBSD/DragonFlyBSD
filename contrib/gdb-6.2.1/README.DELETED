@@ -349,8 +349,6 @@ gdb/alphafbsd-tdep.c
 gdb/alphanbsd-tdep.c
 gdb/amd64-linux-nat.c
 gdb/amd64-linux-tdep.c
-gdb/amd64-nat.c
-gdb/amd64-nat.h
 gdb/amd64nbsd-nat.c
 gdb/amd64nbsd-tdep.c
 gdb/amd64obsd-nat.c
