@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_edvar.h,v 1.16 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.6 2004/09/14 23:01:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.7 2005/10/01 06:36:11 sephe Exp $
  */
 
 #ifndef SYS_DEV_NETIF_ED_EDVAR_H
@@ -199,7 +199,7 @@ int	ed_alloc_irq		(device_t, int, int);
 
 int	ed_probe_generic8390	(struct ed_softc *);
 int	ed_probe_WD80x3		(device_t, int, int);
-int	ed_probe_WD80x3_generic	(device_t, int, unsigned short *[]);
+int	ed_probe_WD80x3_generic	(device_t, int, u_short *[]);
 int	ed_probe_3Com		(device_t, int, int);
 int	ed_probe_SIC		(device_t, int, int);
 int	ed_probe_Novell		(device_t, int, int);
@@ -208,10 +208,8 @@ int	ed_probe_HP_pclanp	(device_t, int, int);
 
 int	ed_attach		(device_t);
 void	ed_stop			(struct ed_softc *);
-void	ed_pio_readmem		(struct ed_softc *, int, unsigned char *,
-				     unsigned short);
-void	ed_pio_writemem		(struct ed_softc *, char *,
-				     unsigned short, unsigned short);
+void	ed_pio_readmem		(struct ed_softc *, int, u_char *, u_short);
+void	ed_pio_writemem		(struct ed_softc *, char *, u_short, u_short);
 #ifndef ED_NO_MIIBUS
 int	ed_miibus_readreg	(device_t, int, int);
 void	ed_miibus_writereg	(device_t, int, int, int);

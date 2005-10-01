@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.11 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.12 2005/10/01 06:36:11 sephe Exp $
  */
 
 #include "opt_ed.h"
@@ -295,7 +295,7 @@ ax88190_geteprom(struct ed_softc *sc)
 	int prom[16],i;
 	u_char tmp;
 	struct {
-		unsigned char offset, value;
+		u_char offset, value;
 	} pg_seq[] = {
 		{ED_P0_CR, ED_CR_RD2|ED_CR_STP},	/* Select Page0 */
 		{ED_P0_DCR, 0x01},
@@ -442,8 +442,7 @@ ed_pccard_ax88190(device_t dev)
     ed_asic_inb(sc, ED_DLINK_MIIBUS) & ~(x))
 
 static void
-ed_pccard_dlink_mii_reset(sc)
-	struct ed_softc *sc;
+ed_pccard_dlink_mii_reset(struct ed_softc *sc)
 {
 	ed_asic_outb(sc, ED_DLINK_MIIBUS, 0);
 	DELAY(10);
@@ -458,10 +457,7 @@ ed_pccard_dlink_mii_reset(sc)
 }
 
 static void
-ed_pccard_dlink_mii_writebits(sc, val, nbits)
-	struct ed_softc *sc;
-	u_int val;
-	int nbits;
+ed_pccard_dlink_mii_writebits(struct ed_softc *sc, u_int val, int nbits)
 {
 	int i;
 
@@ -481,9 +477,7 @@ ed_pccard_dlink_mii_writebits(sc, val, nbits)
 }
 
 static u_int
-ed_pccard_dlink_mii_readbits(sc, nbits)
-	struct ed_softc *sc;
-	int nbits;
+ed_pccard_dlink_mii_readbits(struct ed_softc *sc, int nbits)
 {
 	int i;
 	u_int val = 0;
