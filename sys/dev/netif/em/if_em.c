@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.36 2005/08/29 10:19:52 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.37 2005/10/02 13:19:55 sephe Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -1242,11 +1242,12 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	 */
 	if (adapter->hw.mac_type == em_82547 &&
 	    adapter->link_duplex == HALF_DUPLEX) {
-		em_82547_move_tail(adapter);
+		em_82547_move_tail_serialized(adapter);
 	} else {
 		E1000_WRITE_REG(&adapter->hw, TDT, i);
 		if (adapter->hw.mac_type == em_82547) {
-			em_82547_update_fifo_head(adapter, m_head->m_pkthdr.len);
+			em_82547_update_fifo_head(adapter,
+						  m_head->m_pkthdr.len);
 		}
 	}
 
