@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.16 2005/09/20 01:51:08 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.17 2005/10/02 10:01:05 sephe Exp $
  */
 
 /*
@@ -871,7 +871,6 @@ nv_ifstart(struct ifnet *ifp)
 				sc->tx_errors++;
 				continue;
 			}
-			m_freem(m0);
 			m0 = m;
 
 			error = bus_dmamap_load_mbuf(sc->mtag, buf->map, m,
