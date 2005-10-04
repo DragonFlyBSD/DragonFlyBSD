@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.37 2005/10/02 13:19:55 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.38 2005/10/04 02:06:46 sephe Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -1236,6 +1236,9 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	 */
 	current_tx_desc->lower.data |= htole32(E1000_TXD_CMD_EOP);
 
+	bus_dmamap_sync(adapter->txdma.dma_tag, adapter->txdma.dma_map,
+			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+
 	/* 
 	 * Advance the Transmit Descriptor Tail (Tdt), this tells the E1000
 	 * that this frame is available to transmit.
@@ -2109,6 +2112,9 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 	tx_buffer = &adapter->tx_buffer_area[i];
 	tx_desc = &adapter->tx_desc_base[i];
 
+	bus_dmamap_sync(adapter->txdma.dma_tag, adapter->txdma.dma_map,
+			BUS_DMASYNC_POSTREAD);
+
 	while(tx_desc->upper.fields.status & E1000_TXD_STAT_DD) {
 		tx_desc->upper.data = 0;
 		num_avail++;                        
@@ -2130,6 +2136,9 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 		tx_buffer = &adapter->tx_buffer_area[i];
 		tx_desc = &adapter->tx_desc_base[i];
 	}
+
+	bus_dmamap_sync(adapter->txdma.dma_tag, adapter->txdma.dma_map,
+			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
 	adapter->oldest_used_tx_desc = i;
 
@@ -2254,6 +2263,9 @@ em_allocate_receive_structures(struct adapter *adapter)
 			return(error);
 		}
 	}
+
+	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
+			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
 	return(0);
 
@@ -2434,6 +2446,9 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 	i = adapter->next_rx_desc_to_check;
 	current_desc = &adapter->rx_desc_base[i];
 
+	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
+			BUS_DMASYNC_POSTREAD);
+
 	if (!((current_desc->status) & E1000_RXD_STAT_DD)) {
 #ifdef DBG_STATS
 		adapter->no_pkts_avail++;
@@ -2557,6 +2572,10 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 		} else
 			current_desc++;
 	}
+
+	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
+			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+
 	adapter->next_rx_desc_to_check = i;
 }
 
