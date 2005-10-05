@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.6 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.7 2005/10/05 15:38:40 dillon Exp $
 .\"
 .Dd January 8, 2005
 .Dt MOUNTCTL 8
@@ -46,16 +46,16 @@
 .Nm
 .Fl a
 .Op Fl 2
-.Op Fl w Ar output_path
-.Op Fl x Ar filedesc
+.Op Fl w/W Ar output_path
+.Op Fl x/X Ar filedesc
 .Op Fl o Ar option
 .Op Fl o Ar option ...
 .Ar mountpt:tag
 .Nm
 .Fl r
 .Op Fl 2
-.Op Fl w Ar output_path
-.Op Fl x Ar filedesc
+.Op Fl w/W Ar output_path
+.Op Fl x/X Ar filedesc
 .Ar mountpt:tag
 .Nm
 .Fl d
@@ -158,7 +158,12 @@ if
 .Fl a
 or
 .Fl d
-are not specified.
+are not specified.  The target file must not reside on the same
+filesystem being journaled.
+.It Fl W Ar output_path
+Same as
+.Fl w
+but overrides target safety checks.
 .It Fl x Ar filedesc
 Change a journal's stream descriptor to the specified file descriptor number.
 This option implies
@@ -167,7 +172,12 @@ if
 .Fl a
 or
 .Fl d
-are not specified.
+are not specified.  The target file must not reside on the same
+filesystem being journaled.
+.It Fl X Ar filedesc
+Same as
+.Fl x
+but overrides target safety checks.
 .El
 .Sh OPTION KEYWORDS
 Options keywords may be comma delimited without whitespace within a single

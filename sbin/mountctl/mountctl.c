@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.6 2005/07/13 02:00:19 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.7 2005/10/05 15:38:41 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -79,6 +79,7 @@ static int abort_opt;
 static int flush_opt;
 static int reversable_opt;
 static int twoway_opt;
+static int output_safety_override_opt;
 static int64_t memfifo_opt;
 static int64_t swapfifo_opt;
 
@@ -100,7 +101,7 @@ main(int ac, char **av)
     const char *mountpt = NULL;
     char *tmp;
 
-    while ((ch = getopt(ac, av, "2adflmo:rw:x:ACFSZ")) != -1) {
+    while ((ch = getopt(ac, av, "2adflmo:rw:x:ACFSW:X:Z")) != -1) {
 	switch(ch) {
 	case '2':
 	    twoway_opt = 1;
@@ -146,10 +147,16 @@ main(int ac, char **av)
 		usage();
 	    }
 	    break;
+	case 'W':
+	    output_safety_override_opt = 1;
+	    /* fall through */
 	case 'w':
 	    wopt = optarg;
 	    mimplied = 1;
 	    break;
+	case 'X':
+	    output_safety_override_opt = 1;
+	    /* fall through */
 	case 'x':
 	    xopt = optarg;
 	    mimplied = 1;
@@ -325,7 +332,9 @@ parse_option_keyword(const char *opt, const char **wopt, const char **xopt)
 	/*
 	 * Parse supported options
 	 */
-	if (strcmp(name, "reversable") == 0) {
+	if (strcmp(name, "undo") == 0) {
+	    reversable_opt = negate;
+	} else if (strcmp(name, "reversable") == 0) {
 	    reversable_opt = negate;
 	} else if (strcmp(name, "twoway") == 0) {
 	    twoway_opt = negate;
@@ -471,7 +480,8 @@ mountctl_add(const char *keyword, const char *mountpt, int fd)
      * mount point.  This isn't a perfect test, but it should catch most
      * foot shooting.
      */
-    if (fstat(fd, &st1) == 0 && S_ISREG(st1.st_mode) &&
+    if (output_safety_override_opt == 0 &&
+	fstat(fd, &st1) == 0 && S_ISREG(st1.st_mode) &&
 	stat(mountpt, &st2) == 0 && st1.st_dev == st2.st_dev
     ) {
 	fprintf(stderr, "%s:%s failed to add, the journal cannot be on the "
