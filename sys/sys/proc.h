@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.61 2005/06/27 18:37:59 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.62 2005/10/05 21:53:41 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -130,6 +130,57 @@ struct	pargs {
 
 struct jail;
 
+struct lwp {
+#ifdef notyet
+	TAILQ_ENTRY(lwp) lwp_procq;	/* run/sleep queue. */
+#endif
+	LIST_ENTRY(lwp) lwp_list;	/* List of all threads in the proc. */
+
+	struct proc	*lwp_proc;	/* Link to our proc. */
+
+	int		lwp_tid;	/* Our thread id . */
+
+	struct pstats	*lwp_stats;	/* Accounting/statistics (PROC ONLY). */
+	int		lwp_flag;	/* P_* flags. */
+	char		lwp_stat;	/* S* process status. */
+
+#define lwp_startzero	lwp_dupfd
+	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */
+
+	/*
+	 * Scheduling.
+	 */
+	sysclock_t	lwp_cpticks;	/* cpu used in sched clock ticks */
+	sysclock_t	lwp_cpbase;	/* Measurement base */
+	fixpt_t		lwp_pctcpu;	/* %cpu for this process */
+	u_int		lwp_swtime;	/* Time swapped in or out. */
+	u_int		lwp_slptime;	/* Time since last blocked. */
+
+	int		lwp_traceflag;	/* Kernel trace points. */
+
+	union usched_data lwp_usdata;	/* User scheduler specific */
+#define lwp_endzero	lwp_startcopy
+
+#define lwp_startcopy	lwp_siglist
+	sigset_t	lwp_siglist;	/* Signals arrived but not delivered. */
+	sigset_t	lwp_oldsigmask;	/* saved mask from before sigpause */
+	sigset_t	lwp_sigmask;	/* Current signal mask. */
+	stack_t		lwp_sigstk;	/* sp & on stack state variable */
+
+	struct rtprio	lwp_rtprio;	/* Realtime priority. */
+#define	lwp_endcopy	lwp_md
+
+#ifdef notyet
+	struct user	*lwp_addr;	/* XXX Really struct user? */
+#endif
+	struct mdproc	lwp_md;		/* Any machine-dependent fields. */
+
+	struct thread	*lwp_thread;	/* backpointer to proc's thread */
+	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
+	TAILQ_HEAD(, sysmsg) lwp_sysmsgq; /* Recorded asynch system calls */
+	int		 lwp_nsysmsg;	/* Number of asynch messages running */
+};
+
 struct	proc {
 	TAILQ_ENTRY(proc) p_procq;	/* run/sleep queue. */
 	LIST_ENTRY(proc) p_list;	/* List of all processes. */
@@ -137,11 +188,11 @@ struct	proc {
 	/* substructures: */
 	struct ucred	*p_ucred;	/* Process owner's identity. */
 	struct filedesc	*p_fd;		/* Ptr to open files structure. */
-	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node */
-	struct pstats	*p_stats;	/* Accounting/statistics (PROC ONLY). */
+	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node XXX lwp */
+#define p_stats p_lwp.lwp_stats
 	struct plimit	*p_limit;	/* Process limits. */
 	void		*p_pad0;
-	struct	procsig *p_procsig;
+	struct	procsig	*p_procsig;
 #define p_sigacts	p_procsig->ps_sigacts
 #define p_sigignore	p_procsig->ps_sigignore
 #define p_sigcatch	p_procsig->ps_sigcatch
@@ -164,20 +215,21 @@ struct	proc {
 #define	p_startzero	p_oppid
 
 	pid_t		p_oppid;	/* Save parent pid during ptrace. XXX */
-	int		p_dupfd;	/* Sideways return value from fdopen. XXX */
+#define p_dupfd p_lwp.lwp_dupfd
 
 	struct vmspace	*p_vmspace;	/* Address space. */
 
-	/*
-	 * Scheduling.
-	 */
-	sysclock_t	p_cpticks;	/* cpu used in sched clock ticks */
-	sysclock_t	p_cpbase;	/* Measurement base */
-	fixpt_t		p_pctcpu;	/* %cpu for this process */
-	u_int		p_swtime;	/* Time swapped in or out. */
-	u_int		p_slptime;	/* Time since last blocked. */
+#define p_cpticks p_lwp.lwp_cpticks
+#define p_cpbase p_lwp.lwp_cpbase
+#define p_pctcpu p_lwp.lwp_pctcpu
+#define p_swtime p_lwp.lwp_swtime
+#define p_slptime p_lwp.lwp_slptime
 
 	struct itimerval p_realtimer;	/* Alarm timer. */
+#ifdef notyet
+	struct itimerval p_timer[3];	/* Virtual-time timers. */
+	struct uprof	p_prof;		/* Profiling arguments. */
+#endif
 
 	int		p_traceflag;	/* Kernel trace points. */
 	struct vnode	*p_tracep;	/* Trace to vnode. */
@@ -186,7 +238,7 @@ struct	proc {
 
 	struct vnode	*p_textvp;	/* Vnode of executable. */
 
-	union usched_data p_usdata;	/* User scheduler specific */
+#define p_usdata p_lwp.lwp_usdata
 	
 	unsigned int	p_stops;	/* procfs event bitmask */
 	unsigned int	p_stype;	/* procfs stop event type */
@@ -195,19 +247,27 @@ struct	proc {
 	char		p_pad2[2];	/* padding for alignment */
 	struct		sigiolst p_sigiolst;	/* list of sigio sources */
 	int		p_sigparent;	/* signal to parent on exit */
-	sigset_t	p_oldsigmask;	/* saved mask from before sigpause */
+#define p_oldsigmask p_lwp.lwp_oldsigmask
 	int		p_sig;		/* for core dump/debugger XXX */
         u_long		p_code;		/* for core dump/debugger XXX */
 	struct klist	p_klist;	/* knotes attached to this process */
+
+#ifdef notyet
+	struct timeval	p_start;	/* start time for a process */
+#endif
 
 /* End area that is zeroed on creation. */
 #define	p_endzero	p_startcopy
 
 /* The following fields are all copied upon creation in fork. */
-#define	p_startcopy	p_sigmask
+#define	p_startcopy	p_lock
 
-	sigset_t	p_sigmask;	/* Current signal mask. */
-	stack_t		p_sigstk;	/* sp & on stack state variable */
+#define p_sigmask p_lwp.lwp_sigmask
+#define p_sigstk p_lwp.lwp_sigstk
+
+#ifdef notyet
+	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
+#endif
 	char		p_lock;		/* Process lock (prevent swap) count. */
 	char		p_nice;		/* Process "nice" value. */
 	char		p_pad3[2];
@@ -220,25 +280,30 @@ struct	proc {
 	struct pargs	*p_args;
 /* End area that is copied on creation. */
 #define	p_endcopy	p_addr
-	struct user	*p_addr;	/* Kernel virtual addr of u-area (PROC ONLY) */
-	struct mdproc	p_md;		/* Any machine-dependent fields. */
+	struct user	*p_addr;	/* Kernel virtual addr of u-area (PROC ONLY) XXX lwp */
+#define p_md p_lwp.lwp_md
 
 	u_short		p_xstat;	/* Exit status or last stop signal */
 	u_short		p_acflag;	/* Accounting flags. */
 	struct		rusage *p_ru;	/* Exit information. XXX */
 
-	int		p_nthreads;	/* number of threads (only in leader) */
+	int		p_nthreads;	/* Number of threads in this process. */
+	int		p_nstopped;	/* Number of stopped threads. */
+	int		p_lasttid;	/* Last tid used. */
+	LIST_HEAD(, lwp) p_lwps;	/* List of threads in this process. */
 	void		*p_aioinfo;	/* ASYNC I/O info */
-	int		p_wakeup;	/* thread id */
-	struct proc	*p_peers;	
-	struct proc	*p_leader;
+	int		p_wakeup;	/* thread id XXX lwp */
+	struct proc	*p_peers;	/* XXX lwp */
+	struct proc	*p_leader;	/* XXX lwp */
 	void		*p_emuldata;	/* process-specific emulator state */
-	struct thread	*p_thread;	/* backpointer to proc's thread */
-	struct upcall 	*p_upcall;	/* REGISTERED USERLAND POINTER! */
+#define p_thread p_lwp.lwp_thread
+#define p_upcall p_lwp.lwp_upcall
 	struct usched	*p_usched;	/* Userland scheduling control */
 	int		p_numposixlocks; /* number of POSIX locks */
-	TAILQ_HEAD(, sysmsg) p_sysmsgq; /* Recorded asynch system calls */
-	int		 p_num_sysmsg;	/* Number of asynch messages running */
+#define p_sysmsgq p_lwp.lwp_sysmsgq
+#define p_num_sysmsg p_lwp.lwp_nsysmsg
+
+	struct lwp	p_lwp;		/* Embedded lwp XXX */
 };
 
 #if defined(_KERNEL)

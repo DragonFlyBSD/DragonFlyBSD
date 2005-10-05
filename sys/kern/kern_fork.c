@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.36 2005/06/27 18:37:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.37 2005/10/05 21:53:41 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -277,7 +277,7 @@ fork1(struct proc *p1, int flags, struct proc **procp)
 	newproc = zalloc(proc_zone);
 
 	/*
-	 * Setup linkage for kernel based threading
+	 * Setup linkage for kernel based threading XXX lwp
 	 */
 	if ((flags & RFTHREAD) != 0) {
 		newproc->p_peers = p1->p_peers;
@@ -291,6 +291,13 @@ fork1(struct proc *p1, int flags, struct proc **procp)
 	newproc->p_wakeup = 0;
 	newproc->p_vmspace = NULL;
 	TAILQ_INIT(&newproc->p_sysmsgq);
+	LIST_INIT(&newproc->p_lwps);
+
+	/* XXX lwp */
+	LIST_INSERT_HEAD(&newproc->p_lwps, &newproc->p_lwp, lwp_list);
+	newproc->p_lwp.lwp_tid = 0;
+	newproc->p_lwp.lwp_flag = -1;
+	newproc->p_lwp.lwp_stat = -1;
 
 	/*
 	 * Find an unused process ID.  We remember a range of unused IDs
@@ -359,8 +366,14 @@ again:
 	 */
 	bzero(&p2->p_startzero,
 	    (unsigned) ((caddr_t)&p2->p_endzero - (caddr_t)&p2->p_startzero));
+	bzero(&p2->p_lwp.lwp_startzero,
+	    (unsigned) ((caddr_t)&p2->p_lwp.lwp_endzero -
+			(caddr_t)&p2->p_lwp.lwp_startzero));
 	bcopy(&p1->p_startcopy, &p2->p_startcopy,
 	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
+	bcopy(&p1->p_lwp.lwp_startcopy, &p2->p_lwp.lwp_startcopy,
+	    (unsigned) ((caddr_t)&p2->p_lwp.lwp_endcopy -
+			(caddr_t)&p2->p_lwp.lwp_startcopy));
 
 	p2->p_aioinfo = NULL;
 

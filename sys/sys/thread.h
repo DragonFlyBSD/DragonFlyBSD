@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.67 2005/07/26 20:53:55 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.68 2005/10/05 21:53:41 corecode Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -30,6 +30,7 @@
 #endif
 
 struct globaldata;
+struct lwp;
 struct proc;
 struct thread;
 struct lwkt_queue;
@@ -222,6 +223,7 @@ struct thread {
     TAILQ_ENTRY(thread) td_threadq;
     TAILQ_ENTRY(thread) td_allq;
     lwkt_port	td_msgport;	/* built-in message port for replies */
+    struct lwp	*td_lwp;	/* (optional) associated lwp */
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     struct globaldata *td_gd;	/* associated with this cpu */

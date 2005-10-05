@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.77 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.78 2005/10/05 21:53:41 corecode Exp $
  */
 
 #include "use_apm.h"
@@ -1870,6 +1870,7 @@ init386(int first)
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
+	thread0.td_lwp = &proc0.p_lwp;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	safepri = TDPRI_MAX;
 
