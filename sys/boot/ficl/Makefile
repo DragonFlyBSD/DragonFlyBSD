@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ficl/Makefile,v 1.35 2003/06/30 19:08:49 ru Exp $
-# $DragonFly: src/sys/boot/ficl/Makefile,v 1.8 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/sys/boot/ficl/Makefile,v 1.9 2005/10/05 15:39:46 dillon Exp $
 #
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
@@ -18,6 +18,8 @@ CLEANFILES=	softcore.c testmain testmain.o
 CFLAGS+=	-ffreestanding
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2	# Do not use fp regs
+CFLAGS+=	-mno-sse3				# in integer code
 .endif
 .if HAVE_PNP
 CFLAGS+=	-DHAVE_PNP
