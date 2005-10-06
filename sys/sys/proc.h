@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.62 2005/10/05 21:53:41 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.63 2005/10/06 20:01:29 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -141,8 +141,10 @@ struct lwp {
 	int		lwp_tid;	/* Our thread id . */
 
 	struct pstats	*lwp_stats;	/* Accounting/statistics (PROC ONLY). */
+#ifdef notyet
 	int		lwp_flag;	/* P_* flags. */
 	char		lwp_stat;	/* S* process status. */
+#endif
 
 #define lwp_startzero	lwp_dupfd
 	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */

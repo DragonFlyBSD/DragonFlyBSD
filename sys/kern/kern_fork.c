@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.38 2005/10/06 11:04:37 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.39 2005/10/06 20:01:29 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -297,8 +297,6 @@ fork1(struct proc *p1, int flags, struct proc **procp)
 	LIST_INSERT_HEAD(&newproc->p_lwps, &newproc->p_lwp, lwp_list);
 	newproc->p_lwp.lwp_proc = newproc;
 	newproc->p_lwp.lwp_tid = 0;
-	newproc->p_lwp.lwp_flag = -1;
-	newproc->p_lwp.lwp_stat = -1;
 
 	/*
 	 * Find an unused process ID.  We remember a range of unused IDs
