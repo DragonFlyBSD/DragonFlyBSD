@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.78 2005/10/05 21:53:41 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.79 2005/10/07 21:55:15 corecode Exp $
  */
 
 #include "use_apm.h"
@@ -420,29 +420,31 @@ sendsig(catcher, sig, mask, code)
 	sigset_t *mask;
 	u_long code;
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
 	struct sigacts *psp = p->p_sigacts;
 	struct sigframe sf, *sfp;
 	int oonstack;
 
-	regs = p->p_md.md_regs;
-	oonstack = (p->p_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
+	regs = lp->lwp_md.md_regs;
+	oonstack = (lp->lwp_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
 
 	/* save user context */
 	bzero(&sf, sizeof(struct sigframe));
 	sf.sf_uc.uc_sigmask = *mask;
-	sf.sf_uc.uc_stack = p->p_sigstk;
+	sf.sf_uc.uc_stack = lp->lwp_sigstk;
 	sf.sf_uc.uc_mcontext.mc_onstack = oonstack;
 	sf.sf_uc.uc_mcontext.mc_gs = rgs();
 	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_fs, sizeof(struct trapframe));
 
 	/* Allocate and validate space for the signal handler context. */
+	/* XXX lwp flags */
         if ((p->p_flag & P_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
-		sfp = (struct sigframe *)(p->p_sigstk.ss_sp +
-		    p->p_sigstk.ss_size - sizeof(struct sigframe));
-		p->p_sigstk.ss_flags |= SS_ONSTACK;
+		sfp = (struct sigframe *)(lp->lwp_sigstk.ss_sp +
+		    lp->lwp_sigstk.ss_size - sizeof(struct sigframe));
+		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	}
 	else
 		sfp = (struct sigframe *)regs->tf_esp - 1;
@@ -456,7 +458,7 @@ sendsig(catcher, sig, mask, code)
 	/* Build the argument list for the signal handler. */
 	sf.sf_signum = sig;
 	sf.sf_ucontext = (register_t)&sfp->sf_uc;
-	if (SIGISMEMBER(p->p_sigacts->ps_siginfo, sig)) {
+	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
 		/* Signal handler installed with SA_SIGINFO. */
 		sf.sf_siginfo = (register_t)&sfp->sf_si;
 		sf.sf_ahu.sf_action = (__siginfohandler_t *)catcher;
@@ -480,7 +482,7 @@ sendsig(catcher, sig, mask, code)
 	 */
 	if (regs->tf_eflags & PSL_VM) {
 		struct trapframe_vm86 *tf = (struct trapframe_vm86 *)regs;
-		struct vm86_kernel *vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
+		struct vm86_kernel *vm86 = &lp->lwp_thread->td_pcb->pcb_ext->ext_vm86;
 
 		sf.sf_uc.uc_mcontext.mc_gs = tf->tf_vm86_gs;
 		sf.sf_uc.uc_mcontext.mc_fs = tf->tf_vm86_fs;
@@ -540,7 +542,7 @@ sendsig(catcher, sig, mask, code)
 int
 sigreturn(struct sigreturn_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;
 	ucontext_t *ucp;
 	int cs, eflags;
@@ -550,7 +552,7 @@ sigreturn(struct sigreturn_args *uap)
 	if (!useracc((caddr_t)ucp, sizeof(ucontext_t), VM_PROT_READ))
 		return (EFAULT);
 
-	regs = p->p_md.md_regs;
+	regs = lp->lwp_md.md_regs;
 	eflags = ucp->uc_mcontext.mc_eflags;
 
 	if (eflags & PSL_VM) {
@@ -561,15 +563,15 @@ sigreturn(struct sigreturn_args *uap)
 		 * if pcb_ext == 0 or vm86_inited == 0, the user hasn't
 		 * set up the vm86 area, and we can't enter vm86 mode.
 		 */
-		if (p->p_thread->td_pcb->pcb_ext == 0)
+		if (lp->lwp_thread->td_pcb->pcb_ext == 0)
 			return (EINVAL);
-		vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
+		vm86 = &lp->lwp_thread->td_pcb->pcb_ext->ext_vm86;
 		if (vm86->vm86_inited == 0)
 			return (EINVAL);
 
 		/* go back to user mode if both flags are set */
 		if ((eflags & PSL_VIP) && (eflags & PSL_VIF))
-			trapsignal(p, SIGBUS, 0);
+			trapsignal(lp->lwp_proc, SIGBUS, 0);
 
 		if (vm86->vm86_has_vme) {
 			eflags = (tf->tf_eflags & ~VME_USERCHANGE) |
@@ -614,19 +616,19 @@ sigreturn(struct sigreturn_args *uap)
 		cs = ucp->uc_mcontext.mc_cs;
 		if (!CS_SECURE(cs)) {
 			printf("sigreturn: cs = 0x%x\n", cs);
-			trapsignal(p, SIGBUS, T_PROTFLT);
+			trapsignal(lp->lwp_proc, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
 		bcopy(&ucp->uc_mcontext.mc_fs, regs, sizeof(struct trapframe));
 	}
 
 	if (ucp->uc_mcontext.mc_onstack & 1)
-		p->p_sigstk.ss_flags |= SS_ONSTACK;
+		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	else
-		p->p_sigstk.ss_flags &= ~SS_ONSTACK;
+		lp->lwp_sigstk.ss_flags &= ~SS_ONSTACK;
 
-	p->p_sigmask = ucp->uc_sigmask;
-	SIG_CANTMASK(p->p_sigmask);
+	lp->lwp_sigmask = ucp->uc_sigmask;
+	SIG_CANTMASK(lp->lwp_sigmask);
 	return(EJUSTRETURN);
 }
 
@@ -646,7 +648,7 @@ struct upc_frame {
 void
 sendupcall(struct vmupcall *vu, int morepending)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;
 	struct upcall upcall;
 	struct upc_frame upc_frame;
@@ -655,7 +657,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	/*
 	 * Get the upcall data structure
 	 */
-	if (copyin(p->p_upcall, &upcall, sizeof(upcall)) ||
+	if (copyin(lp->lwp_upcall, &upcall, sizeof(upcall)) ||
 	    copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int))
 	) {
 		vu->vu_pending = 0;
@@ -671,7 +673,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	if (upcall.upc_pending || crit_count >= vu->vu_pending) {
 		if (upcall.upc_pending < vu->vu_pending) {
 			upcall.upc_pending = vu->vu_pending;
-			copyout(&upcall.upc_pending, &p->p_upcall->upc_pending,
+			copyout(&upcall.upc_pending, &lp->lwp_upcall->upc_pending,
 				sizeof(upcall.upc_pending));
 		}
 		return;
@@ -688,7 +690,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	vu->vu_pending = 0;
 	upcall.upc_pending = morepending;
 	crit_count += TDPRI_CRIT;
-	copyout(&upcall.upc_pending, &p->p_upcall->upc_pending, 
+	copyout(&upcall.upc_pending, &lp->lwp_upcall->upc_pending, 
 		sizeof(upcall.upc_pending));
 	copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff,
 		sizeof(int));
@@ -696,7 +698,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	/*
 	 * Construct a stack frame and issue the upcall
 	 */
-	regs = p->p_md.md_regs;
+	regs = lp->lwp_md.md_regs;
 	upc_frame.eax = regs->tf_eax;
 	upc_frame.ecx = regs->tf_ecx;
 	upc_frame.edx = regs->tf_edx;
@@ -708,7 +710,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	} else {
 		regs->tf_eax = (register_t)vu->vu_func;
 		regs->tf_ecx = (register_t)vu->vu_data;
-		regs->tf_edx = (register_t)p->p_upcall;
+		regs->tf_edx = (register_t)lp->lwp_upcall;
 		regs->tf_eip = (register_t)vu->vu_ctx;
 		regs->tf_esp -= sizeof(upc_frame);
 	}
@@ -726,23 +728,22 @@ int
 fetchupcall (struct vmupcall *vu, int morepending, void *rsp)
 {
 	struct upc_frame upc_frame;
-	struct proc *p;
+	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;
 	int error;
 	struct upcall upcall;
 	int crit_count;
 
-	p = curproc;
-	regs = p->p_md.md_regs;
+	regs = lp->lwp_md.md_regs;
 
-	error = copyout(&morepending, &p->p_upcall->upc_pending, sizeof(int));
+	error = copyout(&morepending, &lp->lwp_upcall->upc_pending, sizeof(int));
 	if (error == 0) {
 	    if (vu) {
 		/*
 		 * This jumps us to the next ready context.
 		 */
 		vu->vu_pending = 0;
-		error = copyin(p->p_upcall, &upcall, sizeof(upcall));
+		error = copyin(lp->lwp_upcall, &upcall, sizeof(upcall));
 		crit_count = 0;
 		if (error == 0)
 			error = copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int));
@@ -751,7 +752,7 @@ fetchupcall (struct vmupcall *vu, int morepending, void *rsp)
 			error = copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff, sizeof(int));
 		regs->tf_eax = (register_t)vu->vu_func;
 		regs->tf_ecx = (register_t)vu->vu_data;
-		regs->tf_edx = (register_t)p->p_upcall;
+		regs->tf_edx = (register_t)lp->lwp_upcall;
 		regs->tf_eip = (register_t)vu->vu_ctx;
 		regs->tf_esp = (register_t)rsp;
 	    } else {
@@ -1865,7 +1866,10 @@ init386(int first)
 	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, &gd->mi);
 	lwkt_set_comm(&thread0, "thread0");
 	proc0.p_addr = (void *)thread0.td_kstack;
-	proc0.p_thread = &thread0;
+	LIST_INIT(&proc0.p_lwps);
+	LIST_INSERT_HEAD(&proc0.p_lwps, &proc0.p_lwp, lwp_list);
+	proc0.p_lwp.lwp_thread = &thread0;
+	proc0.p_lwp.lwp_proc = &proc0;
 	proc0.p_usched = &usched_bsd4;
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
@@ -2015,7 +2019,7 @@ init386(int first)
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = (int)IdlePTD;	/* should already be setup */
 	thread0.td_pcb->pcb_ext = 0;
-	proc0.p_md.md_regs = &proc0_tf;
+	proc0.p_lwp.lwp_md.md_regs = &proc0_tf;
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.19 2005/08/29 21:08:02 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.20 2005/10/07 21:55:15 corecode Exp $
  *
  */
 
@@ -71,12 +71,12 @@
 
 
 
-static int i386_get_ldt	(struct proc *, char *, int *);
-static int i386_set_ldt	(struct proc *, char *, int *);
-static int i386_get_ioperm	(struct proc *, char *);
-static int i386_set_ioperm	(struct proc *, char *);
+static int i386_get_ldt(struct lwp *, char *, int *);
+static int i386_set_ldt(struct lwp *, char *, int *);
+static int i386_get_ioperm(struct lwp *, char *);
+static int i386_set_ioperm(struct lwp *, char *);
 static int check_descs(union descriptor *, int);
-int i386_extend_pcb	(struct proc *);
+int i386_extend_pcb(struct lwp *);
 
 /*
  * sysarch_args(int op, char *params)
@@ -85,24 +85,24 @@ int i386_extend_pcb	(struct proc *);
 int
 sysarch(struct sysarch_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	int error = 0;
 
 	switch(uap->op) {
 	case I386_GET_LDT:
-		error = i386_get_ldt(p, uap->parms, &uap->sysmsg_result);
+		error = i386_get_ldt(lp, uap->parms, &uap->sysmsg_result);
 		break;
 	case I386_SET_LDT:
-		error = i386_set_ldt(p, uap->parms, &uap->sysmsg_result);
+		error = i386_set_ldt(lp, uap->parms, &uap->sysmsg_result);
 		break;
 	case I386_GET_IOPERM:
-		error = i386_get_ioperm(p, uap->parms);
+		error = i386_get_ioperm(lp, uap->parms);
 		break;
 	case I386_SET_IOPERM:
-		error = i386_set_ioperm(p, uap->parms);
+		error = i386_set_ioperm(lp, uap->parms);
 		break;
 	case I386_VM86:
-		error = vm86_sysarch(p, uap->parms);
+		error = vm86_sysarch(lp, uap->parms);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -112,7 +112,7 @@ sysarch(struct sysarch_args *uap)
 }
 
 int
-i386_extend_pcb(struct proc *p)
+i386_extend_pcb(struct lwp *lp)
 {
 	int i, offset;
 	u_long *addr;
@@ -131,9 +131,9 @@ i386_extend_pcb(struct proc *p)
 	ext = (struct pcb_ext *)kmem_alloc(kernel_map, ctob(IOPAGES+1));
 	if (ext == 0)
 		return (ENOMEM);
-	p->p_thread->td_pcb->pcb_ext = ext;
+	lp->lwp_thread->td_pcb->pcb_ext = ext;
 	bzero(ext, sizeof(struct pcb_ext)); 
-	ext->ext_tss.tss_esp0 = (unsigned)((char *)p->p_thread->td_pcb - 16);
+	ext->ext_tss.tss_esp0 = (unsigned)((char *)lp->lwp_thread->td_pcb - 16);
 	ext->ext_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL);
 	/*
 	 * The last byte of the i/o map must be followed by an 0xff byte.
@@ -161,7 +161,7 @@ i386_extend_pcb(struct proc *p)
 }
 
 static int
-i386_set_ioperm(struct proc *p, char *args)
+i386_set_ioperm(struct lwp *lp, char *args)
 {
 	int i, error;
 	struct i386_ioperm_args ua;
@@ -170,7 +170,7 @@ i386_set_ioperm(struct proc *p, char *args)
 	if ((error = copyin(args, &ua, sizeof(struct i386_ioperm_args))) != 0)
 		return (error);
 
-	if ((error = suser_cred(p->p_ucred, 0)) != 0)
+	if ((error = suser_cred(lp->lwp_proc->p_ucred, 0)) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);
@@ -181,10 +181,10 @@ i386_set_ioperm(struct proc *p, char *args)
 	 * cause confusion.  This probably requires a global 'usage registry'.
 	 */
 
-	if (p->p_thread->td_pcb->pcb_ext == 0)
-		if ((error = i386_extend_pcb(p)) != 0)
+	if (lp->lwp_thread->td_pcb->pcb_ext == 0)
+		if ((error = i386_extend_pcb(lp)) != 0)
 			return (error);
-	iomap = (char *)p->p_thread->td_pcb->pcb_ext->ext_iomap;
+	iomap = (char *)lp->lwp_thread->td_pcb->pcb_ext->ext_iomap;
 
 	if (ua.start + ua.length > IOPAGES * PAGE_SIZE * NBBY)
 		return (EINVAL);
@@ -199,7 +199,7 @@ i386_set_ioperm(struct proc *p, char *args)
 }
 
 static int
-i386_get_ioperm(struct proc *p, char *args)
+i386_get_ioperm(struct lwp *lp, char *args)
 {
 	int i, state, error;
 	struct i386_ioperm_args ua;
@@ -210,12 +210,12 @@ i386_get_ioperm(struct proc *p, char *args)
 	if (ua.start >= IOPAGES * PAGE_SIZE * NBBY)
 		return (EINVAL);
 
-	if (p->p_thread->td_pcb->pcb_ext == 0) {
+	if (lp->lwp_thread->td_pcb->pcb_ext == 0) {
 		ua.length = 0;
 		goto done;
 	}
 
-	iomap = (char *)p->p_thread->td_pcb->pcb_ext->ext_iomap;
+	iomap = (char *)lp->lwp_thread->td_pcb->pcb_ext->ext_iomap;
 
 	i = ua.start;
 	state = (iomap[i >> 3] >> (i & 7)) & 1;
@@ -344,10 +344,10 @@ user_ldt_free(struct pcb *pcb)
 }
 
 static int
-i386_get_ldt(struct proc *p, char *args, int *res)
+i386_get_ldt(struct lwp *lwp, char *args, int *res)
 {
 	int error = 0;
-	struct pcb *pcb = p->p_thread->td_pcb;
+	struct pcb *pcb = lwp->lwp_thread->td_pcb;
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
 	unsigned int nldt, num;
 	union descriptor *lp;
@@ -390,11 +390,11 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 }
 
 static int
-i386_set_ldt(struct proc *p, char *args, int *res)
+i386_set_ldt(struct lwp *lp, char *args, int *res)
 {
 	int error = 0;
 	int largest_ld;
-	struct pcb *pcb = p->p_thread->td_pcb;
+	struct pcb *pcb = lp->lwp_thread->td_pcb;
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
 	union descriptor *descs;
 	int descs_size;

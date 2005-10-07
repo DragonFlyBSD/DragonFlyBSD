@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.14 2005/07/19 19:08:03 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.15 2005/10/07 21:55:15 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -720,7 +720,7 @@ vm86_getptr(vmc, kva, sel, off)
 }
 	
 int
-vm86_sysarch(struct proc *p, char *args)
+vm86_sysarch(struct lwp *lp, char *args)
 {
 	int error = 0;
 	struct i386_vm86_args ua;
@@ -729,10 +729,10 @@ vm86_sysarch(struct proc *p, char *args)
 	if ((error = copyin(args, &ua, sizeof(struct i386_vm86_args))) != 0)
 		return (error);
 
-	if (p->p_thread->td_pcb->pcb_ext == 0)
-		if ((error = i386_extend_pcb(p)) != 0)
+	if (lp->lwp_thread->td_pcb->pcb_ext == 0)
+		if ((error = i386_extend_pcb(lp)) != 0)
 			return (error);
-	vm86 = &p->p_thread->td_pcb->pcb_ext->ext_vm86;
+	vm86 = &lp->lwp_thread->td_pcb->pcb_ext->ext_vm86;
 
 	switch (ua.sub_op) {
 	case VM86_INIT: {
@@ -778,7 +778,7 @@ vm86_sysarch(struct proc *p, char *args)
 	case VM86_INTCALL: {
 		struct vm86_intcall_args sa;
 
-		if ((error = suser_cred(p->p_ucred, 0)))
+		if ((error = suser_cred(lp->lwp_proc->p_ucred, 0)))
 			return (error);
 		if ((error = copyin(ua.sub_args, &sa, sizeof(sa))))
 			return (error);
