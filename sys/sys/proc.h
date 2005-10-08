@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.64 2005/10/08 12:24:26 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.65 2005/10/08 14:31:26 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -260,17 +260,15 @@ struct	proc {
 #define	p_endzero	p_startcopy
 
 /* The following fields are all copied upon creation in fork. */
-#define	p_startcopy	p_lock
+#define	p_startcopy	p_comm
 
 #define p_sigmask p_lwp.lwp_sigmask
 #define p_sigstk p_lwp.lwp_sigstk
 
-#ifdef notyet
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
-#endif
 	char		p_lock;		/* Process lock (prevent swap) count. */
 	char		p_nice;		/* Process "nice" value. */
-	char		p_pad3[2];
+	char		p_pad3;
 
 	struct pgrp	*p_pgrp;	/* Pointer to process group. */
 
@@ -310,7 +308,6 @@ struct	proc {
 #if defined(_KERNEL)
 #define p_wchan		p_thread->td_wchan
 #define p_wmesg		p_thread->td_wmesg
-#define	p_comm		p_thread->td_comm
 #define	p_session	p_pgrp->pg_session
 #define	p_pgid		p_pgrp->pg_id
 #endif

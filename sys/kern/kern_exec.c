@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.33 2005/06/22 19:40:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.34 2005/10/08 14:31:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -338,6 +338,7 @@ interpret:
 	len = min(nd->nl_ncp->nc_nlen, MAXCOMLEN);
 	bcopy(nd->nl_ncp->nc_name, p->p_comm, len);
 	p->p_comm[len] = 0;
+	bcopy(p->p_comm, p->p_lwp.lwp_thread->td_comm, MAXCOMLEN+1);
 
 	/*
 	 * mark as execed, wakeup the process that vforked (if any) and tell

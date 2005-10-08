@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
-/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.7 2003/08/26 21:09:02 rob Exp $ */
+/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.8 2005/10/08 14:31:26 corecode Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*
@@ -89,7 +89,8 @@ sysv_nosys(char *s)
 	struct proc *p = td->td_proc;
 
 	log(LOG_ERR, "cmd %s pid %d tried to use non-present %s\n",
-			td->td_comm, (p ? p->p_pid : -1), s);
+			(p ? p->p_comm : td->td_comm),
+			(p ? p->p_pid : -1), s);
 }
 
 #if !defined(SYSVSEM)
