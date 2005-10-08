@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.14 2004/12/18 06:22:48 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.15 2005/10/08 11:34:25 corecode Exp $
  */
 
 /*
@@ -118,6 +118,9 @@
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_da.h>
+#include <bus/cam/scsi/scsi_cd.h>
+#include <bus/cam/scsi/scsi_ch.h>
+#include <dev/disk/ata/atapi-all.h>
 
 #include <bus/cam/cam_periph.h>
 
@@ -2956,6 +2959,27 @@ umass_atapi_transform(struct umass_softc *sc, unsigned char *cmd, int cmdlen,
 	case SYNCHRONIZE_CACHE:
 	case MODE_SELECT_10:
 	case MODE_SENSE_10:
+	case READ_BUFFER:
+	case READ_SUBCHANNEL:
+	case READ_TOC:
+	case READ_HEADER:
+	case PLAY_MSF:
+	case PLAY_TRACK:
+	case PLAY_TRACK_REL:
+	case PAUSE:
+	case ATAPI_READ_DISK_INFO:
+	case ATAPI_READ_TRACK_INFO:
+	case ATAPI_SEND_OPC_INFO:
+	case ATAPI_READ_MASTER_CUE:
+	case ATAPI_CLOSE_TRACK:
+	case ATAPI_READ_BUFFER_CAPACITY:
+	case ATAPI_SEND_CUE_SHEET:
+	case ATAPI_BLANK:
+	case PLAY_12:
+	case EXCHANGE_MEDIUM:
+	case READ_DVD_STRUCTURE:
+	case SET_CD_SPEED:
+	case 0xe5: /* READ_TRACK_INFO_PHILIPS */
 		memcpy(*rcmd, cmd, cmdlen);
 		return 1;
 
