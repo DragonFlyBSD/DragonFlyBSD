@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.81 2005/09/25 13:07:24 asmodai Exp $
+# $DragonFly: src/Makefile.inc1,v 1.82 2005/10/08 10:47:36 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -199,7 +199,8 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNOINFO -DNOMAN -DNOPROFILE -DNOSHARED -DNO_WERROR
+		-DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
+		-DNO_WERROR -DNO_NLS
 
 # build-tool stage
 #
@@ -210,7 +211,7 @@ TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNO_FORTRAN
+		-DNO_FORTRAN -DNOSHARED
 
 # cross-tool stage
 #
@@ -228,7 +229,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		PATH=${BTOOLSPATH}:${PATH}
 
 XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
-		-DBOOTSTRAPPING
+		-DBOOTSTRAPPING -DNOSHARED
 
 # world stage, note the strict path and note that TOOLS_PREFIX is left
 # unset and USRDATA_PREFIX (which defaults to TOOLS_PREFIX) is set to empty,
@@ -806,10 +807,6 @@ _fortran= gnu/usr.bin/cc34/f771
     !defined(NO_CRYPT) && defined(WANT_KERBEROS)
 _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
     kerberos5/lib/libasn1 kerberos5/lib/libhdb kerberos5/lib/libsl
-.endif
-
-.if defined(RELEASEDIR)
-_sysinstall= release/sysinstall
 .endif
 
 build-tools:
