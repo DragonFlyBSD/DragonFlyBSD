@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.5 2005/09/06 10:11:53 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.6 2005/10/08 10:00:10 swildner Exp $
 .\"
-.Dd November 4, 2000
+.Dd October 8, 2005
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -56,17 +56,19 @@ installing third party applications.
 The
 .Xr make 1
 command is used in each of these directories to build and install the
-things in that directory. Issuing the make command in any directory or
+things in that directory. Issuing the
+.Xr make 1
+command in any directory or
 subdirectory of those directories has the same effect as issuing the
 same command in all subdirectories of that directory. With no target
 specified, the things in that directory are just built. The following
 list provides the names and actions for other targets:
-.Bl -tag -width Ar
-.It Ar clean
+.Bl -tag -width ".Cm install"
+.It Cm clean
 Removes any files created during the build process.
-.It Ar install
+.It Cm install
 Installs the results of the build for this directory.
-.It Ar update
+.It Cm update
 Gets updated sources as configured in
 .Pa /etc/make.conf .
 .El
@@ -74,37 +76,58 @@ Gets updated sources as configured in
 The other
 .Pa /usr/src
 make targets are:
-.Bl -tag -width Ar
-.It Ar buildworld
-Rebuild everything but the kernel, configure files in
-.Pa /etc ,
-and release.
-.It Ar installworld
+.Bl -tag -width ".Cm reinstallkernel"
+.It Cm buildworld
+Rebuild everything but the kernel.
+.It Cm quickworld
+Same as
+.Cm buildworld ,
+but skip bootstrap, build and cross-build tool steps.
+This target can be used for incremental upgrades once a full build of the
+world has been done with
+.Cm buildworld .
+.It Cm realquickworld
+Same as
+.Cm quickworld ,
+but also skip the depend step.
+.It Cm crossworld
+Just do the bootstrap, build and cross-build steps.
+.It Cm installworld
 Install everything built by
-.Dq buildworld .
-.It Ar world
-buildworld + installworld.
-.It Ar buildkernel
+.Cm buildworld .
+.It Cm world
+.Cm buildworld +
+.Cm installworld .
+.It Cm buildkernel
 Rebuild the kernel and the kernel-modules.
-.It Ar installkernel
+.It Cm nativekernel
+Rebuild the kernel and the kernel-modules using native tools.
+.It Cm quickkernel
+Same as
+.Cm buildkernel ,
+but skip the depend step and do not clean out the
+obj modules. This target can be used for incremental upgrades once a full
+build of the kernel has been done with
+.Cm buildkernel .
+.It Cm installkernel
 Install the kernel and the kernel-modules.
-.It Ar reinstallkernel
+.It Cm reinstallkernel
 Reinstall the kernel and the kernel-modules.
-.It Ar upgrade
-Upgrade a.out (2.2.x/3.0) system to the new ELF way
-.It Ar most
+.It Cm kernel
+.Cm buildkernel +
+.Cm installkernel .
+.It Cm preupgrade
+Perform certain upgrades that have to be done before
+.Cm installworld .
+.Cm installworld
+will complain if they have not been done.
+.It Cm upgrade
+Upgrade the files in /etc and also setup the rest of the system for
+the version of DragonFly just installed.
+.It Cm most
 Build user commands, no libraries or include files.
-.It Ar installmost
+.It Cm installmost
 Install user commands, no libraries or include files.
-.It Ar aout-to-elf
-Upgrade an system from a.out to elf format.
-.It Ar aout-to-elf-build
-Build everything required to upgrade a system from a.out to elf format.
-.It Ar aout-to-elf-install
-Install everything built by aout-to-elf-build.
-.It Ar move-aout-libs
-Move the a.out libraries into an aout sub-directory of each elf
-library sub-directory.
 .El
 .Pp
 For more information about the ports build process, see
@@ -114,19 +137,15 @@ For more information about the ports build process, see
 .It Va TARGET_ARCH
 The target machine processor architecture.
 This is analogous to the
-.Dq "uname -p"
+.Dq Nm uname Fl p
 output.
-Set this to cross-build for a different architecture.
+.\"Set this to cross-build for a different architecture.
 .It Va TARGET
 The target hardware platform.
 This is analogous to the
-.Dq "uname -m"
+.Dq Nm uname Fl m
 output.
-This is necessary to cross-build some target architectures.
-For example, cross-building for PC98 machines requires
-.Va "TARGET_ARCH=i386"
-and
-.Va "TARGET=pc98" .
+.\"This is necessary to cross-build some target architectures.
 .It Va NO_WERROR
 If defined, warnings will not cause the build to halt, even if the
 makefile says otherwise.
@@ -135,12 +154,12 @@ The directory hierarchy where the resulting binaries will be
 installed.
 .El
 .Sh FILES
-.Bl -tag -width ".Pa /usr/share/examples/etc/make.conf" -compact
+.Bl -tag -width ".Pa /usr/src/share/doc/Makefile" -compact
 .It Pa /etc/make.conf
+.It Pa /etc/defaults/make.conf
 .It Pa /usr/src/share/doc/Makefile
 .It Pa /usr/ports/Mk/bsd.port.mk
 .It Pa /usr/ports/Mk/bsd.sites.mk
-.It Pa /usr/share/examples/etc/defaults/make.conf
 .It Pa /usr/src/Makefile
 .It Pa /usr/src/Makefile.inc1
 .El
@@ -167,9 +186,9 @@ can be set to the name of the kernel to build;
 in this case the
 .Dq KERNCONF=FOO
 part of the
-.Dq buildkernel
+.Cm buildkernel
 and
-.Dq installkernel
+.Cm installkernel
 commands can be omitted.
 .Pp
 After running these commands a system reboot is required,
@@ -179,14 +198,6 @@ otherwise many programs which have been rebuilt
 .Nm top ,
 etc)
 may not work with the old kernel which is still running.
-.Pp
-The following sequence of commands can be used to cross-build the
-system for the Alpha architecture on an i386 host:
-.Bd -literal -offset indent
-cd /usr/src
-make TARGET_ARCH=alpha buildworld
-make TARGET_ARCH=alpha DESTDIR=/clients/axp installworld
-.Ed
 .Sh SEE ALSO
 .Xr cc 1 ,
 .Xr install 1 ,
@@ -194,7 +205,7 @@ make TARGET_ARCH=alpha DESTDIR=/clients/axp installworld
 .Xr make.conf 5 ,
 .Xr ports 7 ,
 .Xr release 7 ,
-.Xr mergemaster 8 ,
+.Xr config 8 ,
 .Xr reboot 8 ,
 .Xr shutdown 8
 .Sh AUTHORS
