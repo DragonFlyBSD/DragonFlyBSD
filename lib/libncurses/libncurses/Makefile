@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.8 2005/09/23 09:42:17 asmodai Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.9 2005/10/08 11:30:45 corecode Exp $
 
 LIB=    ncurses
 
@@ -10,7 +10,8 @@ NCURSESTINFODIR=${NCURSESDIR}/ncurses/tinfo
 NCURSESTRACEDIR=${NCURSESDIR}/ncurses/trace
 NCURSESWCHARDIR=${NCURSESDIR}/ncurses/widechar
 .PATH: ${NCURSESBASEDIR} ${NCURSESSERIALDIR} ${NCURSESTINFODIR} \
-	${NCURSESTRACEDIR} ${NCURSESWCHARDIR} ${.OBJDIR} ${NCURSESDIR}/include/
+	${NCURSESTRACEDIR} ${NCURSESWCHARDIR} ${.OBJDIR} ${.CURDIR}/../include \
+	${NCURSESDIR}/include/
 
 CFLAGS+= 	-I${NCURSESDIR}/ncurses/
 CFLAGS+=	-DTRACE
@@ -18,12 +19,12 @@ CFLAGS+=	-DTRACE
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 ncurses_def.h:
 	${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
-curses.h:
+curses.h: curses.head curses.tail
 	cat ${.CURDIR}/../include/curses.head >$@
 	${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
 	cat ${NCURSESDIR}/include/curses.wide >>$@
 	cat ${NCURSESDIR}/include/curses.tail >>$@
-term.h:
+term.h: MKterm.h.awk ncurses_cfg.h
 	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > $@
 	${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h $@
 hashsize.h:
