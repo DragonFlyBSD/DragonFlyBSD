@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.obj.mk,v 1.30.2.10 2003/02/15 05:36:25 kris Exp $
-# $DragonFly: src/share/mk/bsd.obj.mk,v 1.4 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/mk/bsd.obj.mk,v 1.5 2005/10/08 11:31:29 corecode Exp $
 #
 # The include file <bsd.obj.mk> handles creating the 'obj' directory
 # and cleaning up object files, etc.
@@ -111,11 +111,14 @@ whereobj:
 
 cleanobj:
 .if ${CANONICALOBJDIR} != ${.CURDIR} && exists(${CANONICALOBJDIR}/)
-	@rm -rf ${CANONICALOBJDIR}
+	rm -rf ${CANONICALOBJDIR}
 .else
 	@cd ${.CURDIR} && ${MAKE} clean cleandepend
 .endif
-	@if [ -L ${.CURDIR}/obj ]; then rm -f ${.CURDIR}/obj; fi
+	@if [ -L ${.CURDIR}/obj ]; then \
+	  echo rm -f ${.CURDIR}/obj; \
+	  rm -f ${.CURDIR}/obj; \
+	fi
 
 .if !target(clean)
 clean:
