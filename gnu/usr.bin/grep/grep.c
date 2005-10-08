@@ -20,7 +20,7 @@
 /* Builtin decompression 1997 by Wolfram Schneider <wosch@FreeBSD.org>.  */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/grep.c,v 1.20.2.1 2000/06/13 07:17:27 ru Exp $ */
-/* $DragonFly: src/gnu/usr.bin/grep/grep.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/grep.c,v 1.3 2005/10/08 11:28:23 corecode Exp $ */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -67,7 +67,7 @@ static int filename_mask;
 
 /* Short options.  */
 static char const short_options[] =
-"0123456789A:B:C::EFGHIRUVX:abcd:e:f:hiLlnqrsuvwxyZz";
+"0123456789A:B:C::EFGHIORUVX:abcd:e:f:hiLlnqrsuvwxyZz";
 
 /* Non-boolean long options that have no corresponding short equivalents.  */
 enum
@@ -106,6 +106,7 @@ static struct option long_options[] =
   {"null", no_argument, NULL, 'Z'},
 #endif
   {"null-data", no_argument, NULL, 'z'},
+  {"only-files", no_argument, NULL, 'O'},
   {"quiet", no_argument, NULL, 'q'},
   {"recursive", no_argument, NULL, 'r'},
   {"regexp", required_argument, NULL, 'e'},
@@ -139,6 +140,9 @@ static enum
     RECURSE_DIRECTORIES,
     SKIP_DIRECTORIES
   } directories;
+
+/* How to dir/device/links. */
+static int only_files;
 
 static int  ck_atoi PARAMS ((char const *, int *));
 static void usage PARAMS ((int)) __attribute__((noreturn));
@@ -832,6 +836,22 @@ grepfile (char const *file, struct stats *stats)
     }
   else
     {
+      if (only_files)
+	{
+	  if (stat(file, &stats->stat) != 0)
+	    return 1;
+	  if (S_ISDIR(stats->stat.st_mode))
+	    {
+	      if (directories != RECURSE_DIRECTORIES)
+		return 1;
+	      if (lstat(file, &stats->stat) != 0)
+		return 1;
+	      if (!S_ISDIR(stats->stat.st_mode))
+		return 1;
+	    }
+	  else if (!S_ISREG(stats->stat.st_mode))
+	    return 1;
+	}
       while ((desc = open (file, O_RDONLY)) < 0 && errno == EINTR)
 	continue;
 
@@ -841,12 +861,6 @@ grepfile (char const *file, struct stats *stats)
 	    
 	  if (is_EISDIR (e, file) && directories == RECURSE_DIRECTORIES)
 	    {
-	      if (stat (file, &stats->stat) != 0)
-		{
-		  error (file, errno);
-		  return 1;
-		}
-
 	      return grepdir (file, stats);
 	    }
 	      
@@ -1026,6 +1040,9 @@ Output control:\n\
   -d, --directories=ACTION  how to handle directories\n\
                             ACTION is 'read', 'recurse', or 'skip'.\n\
   -r, --recursive           equivalent to --directories=recurse.\n\
+  -O, --only-files          Ignore special files, except symlinks.\n\
+                            When recursing into directories, ignore\n\
+                            symlinked directories as well.\n\
   -L, --files-without-match only print FILE names containing no match\n\
   -l, --files-with-matches  only print FILE names containing matches\n\
   -c, --count               only print a count of matching lines per FILE\n\
@@ -1288,6 +1305,9 @@ main (int argc, char **argv)
 	break;
       case 'I':
 	binary_files = WITHOUT_MATCH_BINARY_FILES;
+	break;
+      case 'O':
+	only_files = 1;
 	break;
       case 'U':
 #if O_BINARY

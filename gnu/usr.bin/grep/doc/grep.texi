@@ -1,3 +1,5 @@
+@c $DragonFly: src/gnu/usr.bin/grep/doc/grep.texi,v 1.2 2005/10/08 11:28:23 corecode Exp $
+
 \input texinfo  @c -*-texinfo-*-
 @c %**start of header
 @setfilename grep.info
@@ -233,7 +235,7 @@ Select only those matches that exactly match the whole line.
 
 @end table
 
-@section @sc{gnu} Extensions
+@section (@sc{gnu}) Extensions
 
 @table @samp
 
@@ -380,6 +382,15 @@ characters are letters, digits, and the underscore.
 For each directory mentioned in the command line, read and process all
 files in that directory, recursively.  This is the same as the @samp{-d
 recurse} option.
+
+@item -O
+@itemx --only-files
+@opindex -O
+@opindex --only-files
+@cindex ignoring special files
+@cindex ignoring symlinked directories
+Ignore all special files, except for symlinks.
+When recursing into directories, ignore symlinked directories as well.
 
 @item -y
 @opindex -y
