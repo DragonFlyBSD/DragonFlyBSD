@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.15 2005/09/10 20:17:27 swildner Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.16 2005/10/08 11:29:20 corecode Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -71,8 +71,6 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	valloc.3 vis.3
 
 MLINKS+=arc4random.3 arc4random_addrandom.3 arc4random.3 arc4random_stir.3
-MLINKS+=crypt.3 des_cipher.3 crypt.3 des_setkey.3 crypt.3 encrypt.3 \
-	crypt.3 setkey.3
 MLINKS+=ctermid.3 ctermid_r.3
 MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
