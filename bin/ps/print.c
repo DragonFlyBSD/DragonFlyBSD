@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.22 2005/06/29 01:25:10 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.23 2005/10/08 19:46:50 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -349,22 +349,18 @@ started(const KINFO *k, const struct varent *vent)
 	if (use_ampm < 0)
 		use_ampm = (*nl_langinfo(T_FMT_AMPM) != '\0');
 
-	if (KI_THREAD(k)->td_proc != NULL) {
-		then = k->ki_u.u_start.tv_sec;
-	} else {
-		then = KI_THREAD(k)->td_start.tv_sec;
-		if (then < btime.tv_sec) {
-			then = btime.tv_sec;
-		}
+	then = k->ki_u.u_start.tv_sec;
+	if (then < btime.tv_sec) {
+		then = btime.tv_sec;
 	}
 
 	tp = localtime(&then);
 	if (!now)
 		time(&now);
-	if (now - k->ki_u.u_start.tv_sec < 24 * 3600) {
+	if (now - then < 24 * 3600) {
 		strftime(buf, sizeof(buf) - 1,
 		use_ampm ? "%l:%M%p" : "%k:%M  ", tp);
-	} else if (now - k->ki_u.u_start.tv_sec < 7 * 86400) {
+	} else if (now - then < 7 * 86400) {
 		strftime(buf, sizeof(buf) - 1,
 		use_ampm ? "%a%I%p" : "%a%H  ", tp);
 	} else

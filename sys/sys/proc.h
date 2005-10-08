@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.65 2005/10/08 14:31:26 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.66 2005/10/08 19:46:51 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -252,9 +252,7 @@ struct	proc {
         u_long		p_code;		/* for core dump/debugger XXX */
 	struct klist	p_klist;	/* knotes attached to this process */
 
-#ifdef notyet
 	struct timeval	p_start;	/* start time for a process */
-#endif
 
 /* End area that is zeroed on creation. */
 #define	p_endzero	p_startcopy

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.39 2005/10/06 20:01:29 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.40 2005/10/08 19:46:50 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -570,7 +570,7 @@ again:
 	 * Set the start time.  Note that the process is not runnable.  The
 	 * caller is responsible for making it runnable.
 	 */
-	microtime(&p2->p_thread->td_start);
+	microtime(&p2->p_start);
 	p2->p_acflag = AFORK;
 
 	/*
