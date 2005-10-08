@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.11 2005/10/08 12:24:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -356,7 +356,7 @@ profil(struct profil_args *uap)
 		stopprofclock(p);
 		return (0);
 	}
-	upp = &p->p_stats->p_prof;
+	upp = &p->p_prof;
 
 	/* Block profile interrupts while changing state. */
 	crit_enter();
@@ -402,7 +402,7 @@ addupc_intr(struct proc *p, u_long pc, u_int ticks)
 
 	if (ticks == 0)
 		return;
-	prof = &p->p_stats->p_prof;
+	prof = &p->p_prof;
 	if (pc < prof->pr_off ||
 	    (i = PC_TO_INDEX(pc, prof)) >= prof->pr_size)
 		return;			/* out of range; ignore */
@@ -431,7 +431,7 @@ addupc_task(struct proc *p, u_long pc, u_int ticks)
 	if ((p->p_flag & P_PROFIL) == 0 || ticks == 0)
 		return;
 
-	prof = &p->p_stats->p_prof;
+	prof = &p->p_prof;
 	if (pc < prof->pr_off ||
 	    (i = PC_TO_INDEX(pc, prof)) >= prof->pr_size)
 		return;

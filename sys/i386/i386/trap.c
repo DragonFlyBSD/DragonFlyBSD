@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.60 2005/07/19 19:25:43 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.61 2005/10/08 12:24:26 corecode Exp $
  */
 
 /*
@@ -486,8 +486,8 @@ restart:
 			if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
 				atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
 					    RQF_AST_OWEUPC);
-				addupc_task(p, p->p_stats->p_prof.pr_addr,
-					    p->p_stats->p_prof.pr_ticks);
+				addupc_task(p, p->p_prof.pr_addr,
+					    p->p_prof.pr_ticks);
 			}
 			goto out;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.30 2005/09/12 19:01:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.31 2005/10/08 12:24:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -702,7 +702,7 @@ getitimer(struct getitimer_args *uap)
 				timevalsub(&aitv.it_value, &ctv);
 		}
 	} else {
-		aitv = p->p_stats->p_timer[uap->which];
+		aitv = p->p_timer[uap->which];
 	}
 	crit_exit();
 	return (copyout((caddr_t)&aitv, (caddr_t)uap->itv,
@@ -747,7 +747,7 @@ setitimer(struct setitimer_args *uap)
 		timevaladd(&aitv.it_value, &ctv);
 		p->p_realtimer = aitv;
 	} else {
-		p->p_stats->p_timer[uap->which] = aitv;
+		p->p_timer[uap->which] = aitv;
 	}
 	crit_exit();
 	return (0);

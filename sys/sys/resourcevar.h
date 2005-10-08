@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.10 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.11 2005/10/08 12:24:26 corecode Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -52,16 +52,15 @@
 struct pstats {
 	struct	rusage p_ru;		/* stats for this proc */
 	struct	rusage p_cru;		/* sum of stats for reaped children */
-	struct	itimerval p_timer[3];	/* virtual-time timers */
+};
 
-	struct uprof {			/* profile arguments */
-		caddr_t	pr_base;	/* buffer base */
-		u_long	pr_size;	/* buffer size */
-		u_long	pr_off;		/* pc offset */
-		u_long	pr_scale;	/* pc scaling */
-		u_long	pr_addr;	/* temp storage for addr until AST */
-		u_long	pr_ticks;	/* temp storage for ticks until AST */
-	} p_prof;
+struct uprof {			/* profile arguments */
+	caddr_t	pr_base;	/* buffer base */
+	u_long	pr_size;	/* buffer size */
+	u_long	pr_off;		/* pc offset */
+	u_long	pr_scale;	/* pc scaling */
+	u_long	pr_addr;	/* temp storage for addr until AST */
+	u_long	pr_ticks;	/* temp storage for ticks until AST */
 };
 
 /*

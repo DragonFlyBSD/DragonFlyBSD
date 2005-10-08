@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.45 2005/06/29 01:25:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.46 2005/10/08 12:24:26 corecode Exp $
  */
 
 #include "opt_ntp.h"
@@ -503,11 +503,11 @@ hardclock(systimer_t info, struct intrframe *frame)
 	if ((p = curproc) != NULL && try_mplock()) {
 		pstats = p->p_stats;
 		if (frame && CLKF_USERMODE(frame) &&
-		    timevalisset(&pstats->p_timer[ITIMER_VIRTUAL].it_value) &&
-		    itimerdecr(&pstats->p_timer[ITIMER_VIRTUAL], tick) == 0)
+		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
+		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], tick) == 0)
 			psignal(p, SIGVTALRM);
-		if (timevalisset(&pstats->p_timer[ITIMER_PROF].it_value) &&
-		    itimerdecr(&pstats->p_timer[ITIMER_PROF], tick) == 0)
+		if (timevalisset(&p->p_timer[ITIMER_PROF].it_value) &&
+		    itimerdecr(&p->p_timer[ITIMER_PROF], tick) == 0)
 			psignal(p, SIGPROF);
 		rel_mplock();
 	}

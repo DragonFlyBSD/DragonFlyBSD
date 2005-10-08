@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.63 2005/10/06 20:01:29 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.64 2005/10/08 12:24:26 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -60,6 +60,7 @@
 #include <sys/thread.h>
 #include <sys/varsym.h>
 #include <sys/upcall.h>
+#include <sys/resourcevar.h>
 #ifdef _KERNEL
 #include <sys/globaldata.h>
 #endif
@@ -228,10 +229,7 @@ struct	proc {
 #define p_slptime p_lwp.lwp_slptime
 
 	struct itimerval p_realtimer;	/* Alarm timer. */
-#ifdef notyet
 	struct itimerval p_timer[3];	/* Virtual-time timers. */
-	struct uprof	p_prof;		/* Profiling arguments. */
-#endif
 
 	int		p_traceflag;	/* Kernel trace points. */
 	struct vnode	*p_tracep;	/* Trace to vnode. */
@@ -278,6 +276,7 @@ struct	proc {
 
 	struct sysentvec *p_sysent;	/* System call dispatch information. */
 
+	struct uprof	p_prof;		/* Profiling arguments. */
 	struct rtprio	p_rtprio;	/* Realtime priority. */
 	struct pargs	*p_args;
 /* End area that is copied on creation. */
