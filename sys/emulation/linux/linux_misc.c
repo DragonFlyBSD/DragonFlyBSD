@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.24 2005/06/10 23:27:01 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.25 2005/10/08 11:41:11 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -76,6 +76,7 @@
 
 #include <emulation/posix4/sched.h>
 
+#include <emulation/linux/linux_sysproto.h>
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
 #include "linux_mib.h"
@@ -1343,3 +1344,9 @@ linux_getsid(struct linux_getsid_args *args)
 	return(error);
 }
 
+int
+linux_nosys(struct nosys_args *args)
+{
+	/* XXX */
+	return (ENOSYS);
+}
