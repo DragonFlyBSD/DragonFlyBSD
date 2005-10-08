@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.8 2005/07/20 20:31:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.9 2005/10/08 11:43:02 corecode Exp $
  *
  */
 
@@ -91,7 +91,7 @@ kern_jail_attach(int jid)
  * jail_args(syscallarg(struct jail *) jail)
  */
 int
-jail(struct jail_args *uap) 
+jail(struct jail_args *uap)
 {
 	struct prison *pr, *tpr;
 	struct jail j;
@@ -110,7 +110,7 @@ jail(struct jail_args *uap)
 	MALLOC(pr, struct prison *, sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
 
 	error = copyinstr(j.hostname, &pr->pr_host, sizeof pr->pr_host, 0);
-	if (error) 
+	if (error)
 		goto bail;
 	error = nlookup_init(&nd, j.path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error)
@@ -185,12 +185,12 @@ prison_ip(struct thread *td, int flag, u_int32_t *ip)
 		return (0);
 	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
 		return (0);
-	if (flag) 
+	if (flag)
 		tmp = *ip;
 	else
 		tmp = ntohl(*ip);
 	if (tmp == INADDR_ANY) {
-		if (flag) 
+		if (flag)
 			*ip = pr->pr_ip;
 		else
 			*ip = htonl(pr->pr_ip);
@@ -292,7 +292,7 @@ retry:
 		goto retry;
 	}
 	count = prisoncount;
-	
+
 	LIST_FOREACH(pr, &allprison, pr_list) {
 		char *fullpath, *freepath;
 		xp->pr_version = KINFO_PRISON_VERSION;
