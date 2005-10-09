@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.67 2005/10/09 18:07:55 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.68 2005/10/09 20:12:34 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -293,7 +293,6 @@ struct	proc {
 	struct proc	*p_leader;	/* XXX lwp */
 	void		*p_emuldata;	/* process-specific emulator state */
 #define p_thread p_lwp.lwp_thread
-#define p_upcall p_lwp.lwp_upcall
 	struct usched	*p_usched;	/* Userland scheduling control */
 	int		p_numposixlocks; /* number of POSIX locks */
 #define p_sysmsgq p_lwp.lwp_sysmsgq

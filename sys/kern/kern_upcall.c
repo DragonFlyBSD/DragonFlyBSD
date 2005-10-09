@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.6 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.7 2005/10/09 20:12:34 corecode Exp $
  */
 
 /*
@@ -65,8 +65,8 @@ MALLOC_DEFINE(M_UPCALL, "upcalls", "upcall registration structures");
 static void
 sigupcall_remote(void *arg)
 {
- 	struct proc *p = arg;
-	if (p == lwkt_preempted_proc())
+ 	struct lwp *lp = arg;
+	if (lp->lwp_proc == lwkt_preempted_proc())
 		sigupcall();
 }
 
@@ -83,8 +83,8 @@ sigupcall_remote(void *arg)
 int
 upc_register(struct upc_register_args *uap)
 {
-    struct proc *p = curproc;
-    struct vmspace *vm = p->p_vmspace;
+    struct lwp *lp = curthread->td_lwp;
+    struct vmspace *vm = curproc->p_vmspace;
     struct vmupcall *vu;
 
     if (vm->vm_upccount >= UPCALL_MAXCOUNT)
@@ -94,8 +94,8 @@ upc_register(struct upc_register_args *uap)
     vu->vu_ctx = uap->ctxfunc;
     vu->vu_func = uap->func;
     vu->vu_data = uap->data;
-    vu->vu_proc = p;
-    p->p_upcall = uap->upc;
+    vu->vu_lwp = lp;
+    lp->lwp_upcall = uap->upc;
 
     if (vm->vm_upcalls != NULL)
 	vu->vu_id = vm->vm_upcalls->vu_id + 1;
@@ -116,9 +116,9 @@ upc_register(struct upc_register_args *uap)
 int
 upc_control(struct upc_control_args *uap)
 {
-    struct proc *p = curproc;
-    struct proc *targp;
-    struct vmspace *vms = p->p_vmspace;
+    struct lwp *lp = curthread->td_lwp;
+    struct lwp *targlp;
+    struct vmspace *vms = curproc->p_vmspace;
     struct vmupcall *vu;
     struct vmupcall *vu_send;
     struct vmupcall **vupp;
@@ -138,18 +138,18 @@ upc_control(struct upc_control_args *uap)
 	error = (uap->upcid == -1) ? 0 : ENOENT;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_proc == p)
+		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_lwp == lp)
 	    ) {
 		if (vu->vu_pending < (int)uap->data)
 		    vu->vu_pending = (int)uap->data;
 		error = 0;
-		targp = vu->vu_proc;
-		targp->p_flag |= P_UPCALLPEND;
-		if (targp->p_flag & P_UPCALLWAIT)
-		    wakeup(&targp->p_upcall);
+		targlp = vu->vu_lwp;
+		targlp->lwp_proc->p_flag |= P_UPCALLPEND;	/* XXX lwp flags */
+		if (targlp->lwp_proc->p_flag & P_UPCALLWAIT)
+		    wakeup(&targlp->lwp_upcall);
 #ifdef SMP
-		if (targp->p_thread->td_gd != mycpu)
-		    lwkt_send_ipiq(targp->p_thread->td_gd, sigupcall_remote, targp);
+		if (targlp->lwp_thread->td_gd != mycpu)
+		    lwkt_send_ipiq(targlp->lwp_thread->td_gd, sigupcall_remote, targlp);
 		else
 		    sigupcall();
 #else
@@ -181,7 +181,7 @@ upc_control(struct upc_control_args *uap)
 	 */
 	vu_send = NULL;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
-	    if (vu->vu_proc == p && vu->vu_pending) {
+	    if (vu->vu_lwp == lp && vu->vu_pending) {
 		if (vu_send)
 		    break;
 		vu_send = vu;
@@ -203,7 +203,7 @@ upc_control(struct upc_control_args *uap)
 	vupp = &vms->vm_upcalls;
 	while ((vu = *vupp) != NULL) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_proc == p)
+		(uap->upcid == -1 && vu->vu_lwp == lp)
 	    ) {
 		*vupp = vu->vu_next;
 		error = 0;
@@ -228,7 +228,7 @@ upc_control(struct upc_control_args *uap)
 	error = (uap->upcid == -1) ? 0 : ENOENT;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_proc == p)
+		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_lwp == lp)
 	    ) {
 		error = 0;
 		if (uap->upcid == -1)
@@ -241,9 +241,9 @@ upc_control(struct upc_control_args *uap)
 	    }
 	}
 	if (uap->cmd == UPC_CONTROL_WAIT && vu == NULL) {
-	    p->p_flag |= P_UPCALLWAIT;
-	    tsleep(&p->p_upcall, PCATCH, "wupcall", 0);
-	    p->p_flag &= ~P_UPCALLWAIT;
+	    lp->lwp_proc->p_flag |= P_UPCALLWAIT;	/* XXX lwp flags */
+	    tsleep(&lp->lwp_upcall, PCATCH, "wupcall", 0);
+	    lp->lwp_proc->p_flag &= ~P_UPCALLWAIT;	/* XXX lwp flags */
 	}
 	break;
     default:
@@ -254,14 +254,14 @@ upc_control(struct upc_control_args *uap)
 }
 
 void
-upc_release(struct vmspace *vm, struct proc *p)
+upc_release(struct vmspace *vm, struct lwp *lp)
 {
     struct vmupcall **vupp;
     struct vmupcall *vu;
 
     vupp = &vm->vm_upcalls;
     while ((vu = *vupp) != NULL) {
-	if (vu->vu_proc == p) {
+	if (vu->vu_lwp == lp) {
 	    *vupp = vu->vu_next;
 	    free(vu, M_UPCALL);
 	    --vm->vm_upccount;
@@ -276,14 +276,14 @@ upc_release(struct vmspace *vm, struct proc *p)
  * the highest priority upcall first.
  */
 void
-postupcall(struct proc *p)
+postupcall(struct lwp *lp)
 {
-    struct vmspace *vm = p->p_vmspace;
+    struct vmspace *vm = lp->lwp_proc->p_vmspace;
     struct vmupcall *vu;
     struct vmupcall *vu_send = NULL;
 
     for (vu = vm->vm_upcalls; vu; vu = vu->vu_next) {
-	if (vu->vu_proc == p && vu->vu_pending) {
+	if (vu->vu_lwp == lp && vu->vu_pending) {
 	    if (vu_send) {
 		sendupcall(vu, 1);
 		return;

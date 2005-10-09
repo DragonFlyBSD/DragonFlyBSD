@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.44 2005/09/11 11:34:53 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.45 2005/10/09 20:12:34 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -212,7 +212,7 @@ exit1(int rv)
 	 * Release upcalls associated with this process
 	 */
 	if (vm->vm_upcalls)
-		upc_release(vm, p);
+		upc_release(vm, &p->p_lwp);
 
 	/*
 	 * Release user portion of address space.

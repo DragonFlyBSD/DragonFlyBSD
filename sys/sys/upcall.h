@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/upcall.h,v 1.8 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.9 2005/10/09 20:12:34 corecode Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
@@ -65,8 +65,8 @@ struct upcall {
 
 struct vmspace;
 
-void upc_release(struct vmspace *vm, struct proc *p);
-void postupcall(struct proc *p);
+void upc_release(struct vmspace *vm, struct lwp *lp);
+void postupcall(struct lwp *lp);
 
 #else
 /*

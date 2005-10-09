@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.15 2005/01/20 18:00:38 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.16 2005/10/09 20:12:34 corecode Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ struct vmupcall {
 	void		*vu_func;	/* user upcall function */
 	void		*vu_data;	/* user data */
 	void		*vu_ctx;	/* user context function */
-	struct proc	*vu_proc;	/* process that registered upcall */
+	struct lwp	*vu_lwp;	/* process that registered upcall */
 	int		vu_id;		/* upcall identifier */
 	int		vu_pending;	/* upcall request pending */
 };

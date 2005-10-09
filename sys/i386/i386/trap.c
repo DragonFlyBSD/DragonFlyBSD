@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.61 2005/10/08 12:24:26 corecode Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.62 2005/10/09 20:12:34 corecode Exp $
  */
 
 /*
@@ -219,7 +219,7 @@ userret(struct proc *p, struct trapframe *frame, int sticks)
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
 		p->p_flag &= ~P_UPCALLPEND;
-		postupcall(p);
+		postupcall(&p->p_lwp);
 	}
 
 	/*
