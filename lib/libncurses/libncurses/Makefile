@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.9 2005/10/08 11:30:45 corecode Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.10 2005/10/09 14:44:04 corecode Exp $
 
 LIB=    ncurses
 
@@ -34,9 +34,8 @@ parametrized.h:
 init_keytry.h: make_keys keys.list
 	./make_keys keys.list > $@
 
-make_keys: make_keys.c
+make_keys: ${NCURSESTINFODIR}/make_keys.c names.c ncurses_def.h
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
-make_keys.c: names.c ncurses_def.h
 
 keys.list:
 	${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
