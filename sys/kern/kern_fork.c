@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.41 2005/10/09 14:50:21 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.42 2005/10/09 21:38:04 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -290,7 +290,7 @@ fork1(struct proc *p1, int flags, struct proc **procp)
 
 	newproc->p_wakeup = 0;
 	newproc->p_vmspace = NULL;
-	TAILQ_INIT(&newproc->p_sysmsgq);
+	TAILQ_INIT(&newproc->p_lwp.lwp_sysmsgq);
 	LIST_INIT(&newproc->p_lwps);
 
 	/* XXX lwp */

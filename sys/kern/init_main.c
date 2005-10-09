@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.46 2005/10/08 19:46:50 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.47 2005/10/09 21:38:04 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -274,9 +274,11 @@ proc0_init(void *dummy __unused)
 {
 	struct filedesc	*fdp;
 	struct proc *p;
+	struct lwp *lp;
 	unsigned i;
 
 	p = &proc0;
+	lp = &proc0.p_lwp;	/* XXX lwp to be: lwp0 */
 
 	/*
 	 * Initialize process and pgrp structures.
@@ -307,7 +309,7 @@ proc0_init(void *dummy __unused)
 	session0.s_leader = p;
 
 	p->p_sysent = &aout_sysvec;
-	TAILQ_INIT(&p->p_sysmsgq);
+	TAILQ_INIT(&lp->lwp_sysmsgq);
 
 	p->p_flag = P_INMEM | P_SYSTEM;
 	p->p_stat = SRUN;
@@ -319,6 +321,7 @@ proc0_init(void *dummy __unused)
 	p->p_leader = p;
 
 	bcopy("swapper", p->p_comm, sizeof ("swapper"));
+	bcopy("swapper", thread0.td_comm, sizeof ("swapper"));
 
 	/* Create credentials. */
 	p->p_ucred = crget();

@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.6 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.7 2005/10/09 21:38:04 corecode Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -41,11 +41,11 @@ struct sysmsg {
 	} sm;
 };
 
-struct proc;
+struct lwp;
 union sysunion;
 
-struct sysmsg *sysmsg_wait(struct proc *p, struct sysmsg *sysmsg, int nonblock);
-void sysmsg_rundown(struct proc *p, int doabort);
+struct sysmsg *sysmsg_wait(struct lwp *lp, struct sysmsg *sysmsg, int nonblock);
+void sysmsg_rundown(struct lwp *lp, int doabort);
 
 #endif
 

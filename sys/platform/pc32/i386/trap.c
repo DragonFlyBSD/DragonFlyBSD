@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.62 2005/10/09 20:12:34 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.63 2005/10/09 21:38:04 corecode Exp $
  */
 
 /*
@@ -210,8 +210,9 @@ userenter(struct thread *curtd)
  * truncated to an integer.
  */
 static void
-userret(struct proc *p, struct trapframe *frame, int sticks)
+userret(struct lwp *lp, struct trapframe *frame, int sticks)
 {
+	struct proc *p = lp->lwp_proc;
 	int sig;
 
 	/*
@@ -219,7 +220,7 @@ userret(struct proc *p, struct trapframe *frame, int sticks)
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
 		p->p_flag &= ~P_UPCALLPEND;
-		postupcall(&p->p_lwp);
+		postupcall(lp);
 	}
 
 	/*
@@ -250,9 +251,10 @@ userret(struct proc *p, struct trapframe *frame, int sticks)
  * to usermode.  We also handle both LWKT and USER reschedule requests.
  */
 static __inline void
-userexit(struct proc *p)
+userexit(struct lwp *lp)
 {
-	struct thread *td = p->p_thread;
+	struct proc *p = lp->lwp_proc;
+	struct thread *td = lp->lwp_thread;
 	globaldata_t gd = td->td_gd;
 
 #if 0
@@ -350,6 +352,7 @@ trap(frame)
 {
 	struct globaldata *gd = mycpu;
 	struct thread *td = gd->gd_curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
@@ -462,7 +465,7 @@ restart:
 		userenter(td);
 
 		sticks = (int)td->td_sticks;
-		p->p_md.md_regs = &frame;
+		lp->lwp_md.md_regs = &frame;
 
 		switch (type) {
 		case T_PRIVINFLT:	/* privileged instruction fault */
@@ -809,8 +812,8 @@ out:
         if (ISPL(frame.tf_cs) == SEL_UPL)
 		KASSERT(td->td_mpcount == 1, ("badmpcount trap from %p", (void *)frame.tf_eip));
 #endif
-	userret(p, &frame, sticks);
-	userexit(p);
+	userret(lp, &frame, sticks);
+	userexit(lp);
 out2:
 #ifdef SMP
 	KKASSERT(td->td_mpcount > 0);
@@ -1224,6 +1227,7 @@ syscall2(struct trapframe frame)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	caddr_t params;
 	struct sysent *callp;
 	register_t orig_tf_eflags;
@@ -1249,7 +1253,7 @@ syscall2(struct trapframe frame)
 
 	sticks = (int)td->td_sticks;
 
-	p->p_md.md_regs = &frame;
+	lp->lwp_md.md_regs = &frame;
 	params = (caddr_t)frame.tf_esp + sizeof(int);
 	code = frame.tf_eax;
 	orig_tf_eflags = frame.tf_eflags;
@@ -1347,6 +1351,7 @@ syscall2(struct trapframe frame)
 		 * if this is a child returning from fork syscall.
 		 */
 		p = curproc;
+		lp = curthread->td_lwp;
 		frame.tf_eax = args.sysmsg_fds[0];
 		frame.tf_edx = args.sysmsg_fds[1];
 		frame.tf_eflags &= ~PSL_C;
@@ -1386,7 +1391,7 @@ bad:
 	/*
 	 * Handle reschedule and other end-of-syscall issues
 	 */
-	userret(p, &frame, sticks);
+	userret(lp, &frame, sticks);
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
@@ -1401,7 +1406,7 @@ bad:
 	 */
 	STOPEVENT(p, S_SCX, code);
 
-	userexit(p);
+	userexit(lp);
 #ifdef SMP
 	/*
 	 * Release the MP lock if we had to get it
@@ -1434,6 +1439,7 @@ sendsys2(struct trapframe frame)
 	struct globaldata *gd;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	register_t orig_tf_eflags;
 	struct sysent *callp;
 	union sysunion *sysun = NULL;
@@ -1465,7 +1471,7 @@ sendsys2(struct trapframe frame)
 	userenter(td);
 	sticks = td->td_sticks;
 
-	p->p_md.md_regs = &frame;
+	lp->lwp_md.md_regs = &frame;
 	orig_tf_eflags = frame.tf_eflags;
 	result = 0;
 
@@ -1516,7 +1522,7 @@ sendsys2(struct trapframe frame)
 		if (error) {
 			goto bad1;
 		}
-		if (max_sysmsg > 0 && p->p_num_sysmsg >= max_sysmsg) {
+		if (max_sysmsg > 0 && lp->lwp_nsysmsg >= max_sysmsg) {
 			error = E2BIG;
 			goto bad1;
 		}
@@ -1606,8 +1612,8 @@ bad1:
 		 * we can safely manipulate it in parallel with the async
 		 * operation.
 		 */
-		TAILQ_INSERT_TAIL(&p->p_sysmsgq, &sysun->sysmsg, msgq);
-		p->p_num_sysmsg++;
+		TAILQ_INSERT_TAIL(&lp->lwp_sysmsgq, &sysun->sysmsg, msgq);
+		lp->lwp_nsysmsg++;
 		error = (int)&sysun->sysmsg;
 	}
 	else {
@@ -1627,7 +1633,7 @@ bad2:
 	/*
 	 * Handle reschedule and other end-of-syscall issues
 	 */
-	userret(p, &frame, sticks);
+	userret(lp, &frame, sticks);
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
@@ -1642,7 +1648,7 @@ bad2:
 	 */
 	STOPEVENT(p, S_SCX, code);
 
-	userexit(p);
+	userexit(lp);
 #ifdef SMP
 	/*
 	 * Release the MP lock if we had to get it
@@ -1661,6 +1667,7 @@ waitsys2(struct trapframe frame)
 	struct globaldata *gd;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	union sysunion *sysun = NULL;
 	lwkt_msg_t umsg;
 	register_t orig_tf_eflags;
@@ -1689,16 +1696,16 @@ waitsys2(struct trapframe frame)
 	userenter(td);
 	sticks = td->td_sticks;
 
-	p->p_md.md_regs = &frame;
+	lp->lwp_md.md_regs = &frame;
 	orig_tf_eflags = frame.tf_eflags;
 	result = 0;
 
 	if (frame.tf_ecx) {
 		struct sysmsg *ptr;
 		int found = 0;
-		TAILQ_FOREACH(ptr, &p->p_sysmsgq, msgq) {
+		TAILQ_FOREACH(ptr, &lp->lwp_sysmsgq, msgq) {
 			if ((void *)ptr == (void *)frame.tf_ecx) {
-				sysun = (void *)sysmsg_wait(p,
+				sysun = (void *)sysmsg_wait(lp,
 				             (void *)frame.tf_ecx, 1);
 				found = 1;
 				break;
@@ -1717,10 +1724,10 @@ waitsys2(struct trapframe frame)
 	else {
 		switch(frame.tf_edx) {
 		case 0:
-			sysun = (void *)sysmsg_wait(p, NULL, 0);
+			sysun = (void *)sysmsg_wait(lp, NULL, 0);
 			break;
 		case -1:
-			sysun = (void *)sysmsg_wait(p, NULL, 1);
+			sysun = (void *)sysmsg_wait(lp, NULL, 1);
 			break;
 		default:
 			error = ENOSYS;
@@ -1756,7 +1763,7 @@ bad:
 	/*
 	 * Handle reschedule and other end-of-syscall issues
 	 */
-	userret(p, &frame, sticks);
+	userret(lp, &frame, sticks);
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
@@ -1771,7 +1778,7 @@ bad:
 	 */
 	STOPEVENT(p, S_SCX, code);
 
-	userexit(p);
+	userexit(lp);
 #ifdef SMP
 	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p",
 	        (void *)frame.tf_eip));
@@ -1790,6 +1797,12 @@ fork_return(p, frame)
 	struct proc *p;
 	struct trapframe frame;
 {
+	struct lwp *lp;
+
+	KKASSERT(p->p_nthreads == 1);
+
+	lp = LIST_FIRST(&p->p_lwps);
+
 	frame.tf_eax = 0;		/* Child returns zero */
 	frame.tf_eflags &= ~PSL_C;	/* success */
 	frame.tf_edx = 1;
@@ -1804,17 +1817,17 @@ fork_return(p, frame)
 	 * released when the thread goes to sleep.
 	 */
 	lwkt_setpri_self(TDPRI_USER_NORM);
-	userenter(p->p_thread);
-	userret(p, &frame, 0);
+	userenter(lp->lwp_thread);
+	userret(lp, &frame, 0);
 #ifdef KTRACE
-	if (KTRPOINT(p->p_thread, KTR_SYSRET))
+	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))
 		ktrsysret(p->p_tracep, SYS_fork, 0, 0);
 #endif
 	p->p_flag |= P_PASSIVE_ACQ;
-	userexit(p);
+	userexit(lp);
 	p->p_flag &= ~P_PASSIVE_ACQ;
 #ifdef SMP
-	KKASSERT(p->p_thread->td_mpcount == 1);
+	KKASSERT(lp->lwp_thread->td_mpcount == 1);
 	rel_mplock();
 #endif
 }

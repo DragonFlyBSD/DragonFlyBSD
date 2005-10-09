@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.4 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.5 2005/10/09 21:38:04 corecode Exp $
  */
 
 /*
@@ -97,16 +97,16 @@ SYSCTL_INT(_kern, OID_AUTO, max_sysmsg, CTLFLAG_RW, &max_sysmsg, 0,
  * NOTE: proc must be curproc.
  */
 struct sysmsg *
-sysmsg_wait(struct proc *p, struct sysmsg *sysmsg, int nonblock)
+sysmsg_wait(struct lwp *lp, struct sysmsg *sysmsg, int nonblock)
 {
-	thread_t td = p->p_thread;
+	thread_t td = lp->lwp_thread;
 
 	/*
 	 * Get the next finished system call or the specified system call,
 	 * blocking until it is finished (if requested).
 	 */
 	if (sysmsg == NULL) {
-		if (TAILQ_FIRST(&p->p_sysmsgq) == NULL)
+		if (TAILQ_FIRST(&lp->lwp_sysmsgq) == NULL)
 			return(NULL);
 		if (nonblock) {
 			if ((sysmsg = lwkt_getport(&td->td_msgport)) == NULL)
@@ -123,8 +123,8 @@ sysmsg_wait(struct proc *p, struct sysmsg *sysmsg, int nonblock)
 	/*
 	 * sysmsg is not NULL here
 	 */
-	TAILQ_REMOVE(&p->p_sysmsgq, sysmsg, msgq);
-	p->p_num_sysmsg--;
+	TAILQ_REMOVE(&lp->lwp_sysmsgq, sysmsg, msgq);
+	lp->lwp_nsysmsg--;
 	return(sysmsg);
 }
 
@@ -133,15 +133,15 @@ sysmsg_wait(struct proc *p, struct sysmsg *sysmsg, int nonblock)
  * if requested (XXX).
  */
 void
-sysmsg_rundown(struct proc *p, int doabort)
+sysmsg_rundown(struct lwp *lp, int doabort)
 {
 	struct sysmsg *sysmsg;
-	thread_t td = p->p_thread;
+	thread_t td = lp->lwp_thread;
 	globaldata_t gd = td->td_gd;
 
-	while (TAILQ_FIRST(&p->p_sysmsgq) != NULL) {
+	while (TAILQ_FIRST(&lp->lwp_sysmsgq) != NULL) {
 		printf("WAITSYSMSG\n");
-		sysmsg = sysmsg_wait(p, NULL, 0);
+		sysmsg = sysmsg_wait(lp, NULL, 0);
 		printf("WAITSYSMSG %p\n", sysmsg);
 		KKASSERT(sysmsg != NULL);
 		/* XXX don't bother with pending copyouts */

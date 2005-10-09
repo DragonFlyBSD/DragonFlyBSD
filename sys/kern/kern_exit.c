@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.45 2005/10/09 20:12:34 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.46 2005/10/09 21:38:04 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -115,6 +115,7 @@ void
 exit1(int rv)
 {
 	struct proc *p = curproc;
+	struct lwp *lp;
 	struct proc *q, *nq;
 	struct vmspace *vm;
 	struct vnode *vtmp;
@@ -126,8 +127,10 @@ exit1(int rv)
 		panic("Going nowhere without my init!");
 	}
 
-	sysmsg_rundown(p, 1);
-	caps_exit(p->p_thread);
+	lp = &p->p_lwp;		/* XXX lwp kill other threads */
+
+	sysmsg_rundown(lp, 1);
+	caps_exit(lp->lwp_thread);
 	aio_proc_rundown(p);
 
 	/* are we a task leader? */
