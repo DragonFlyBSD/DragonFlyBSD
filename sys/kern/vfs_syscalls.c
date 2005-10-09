@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.73 2005/09/29 20:59:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.74 2005/10/09 18:07:55 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -1271,6 +1271,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	struct filedesc *fdp = p->p_fd;
 	int cmode, flags;
 	struct file *nfp;
@@ -1293,7 +1294,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * file descriptor to be duplicated rather then doing the open
 	 * itself.
 	 */
-	p->p_dupfd = -1;
+	lp->lwp_dupfd = -1;
 
 	/*
 	 * Call vn_open() to do the lookup and assign the vnode to the 
@@ -1314,9 +1315,9 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		 * which represents the fd_files[] assignment.  We must still
 		 * drop our reference.
 		 */
-		if ((error == ENODEV || error == ENXIO) && p->p_dupfd >= 0) {
+		if ((error == ENODEV || error == ENXIO) && lp->lwp_dupfd >= 0) {
 			if (fsetfd(p, fp, &indx) == 0) {
-				error = dupfdopen(fdp, indx, p->p_dupfd, flags, error);
+				error = dupfdopen(fdp, indx, lp->lwp_dupfd, flags, error);
 				if (error == 0) {
 					*res = indx;
 					fdrop(fp, td);	/* our ref */
@@ -1351,7 +1352,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * If no error occurs the vp will have been assigned to the file
 	 * pointer.
 	 */
-	p->p_dupfd = 0;
+	lp->lwp_dupfd = 0;
 
 	/*
 	 * There should be 2 references on the file, one from the descriptor

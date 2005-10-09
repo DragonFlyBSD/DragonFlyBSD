@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.47 2005/07/23 23:26:50 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.48 2005/10/09 18:07:55 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -1717,17 +1717,17 @@ flock(struct flock_args *uap)
 static int
 fdopen(dev_t dev, int mode, int type, struct thread *td)
 {
-	KKASSERT(td->td_proc != NULL);
+	KKASSERT(td->td_lwp != NULL);
 
 	/*
-	 * XXX Kludge: set curproc->p_dupfd to contain the value of the
+	 * XXX Kludge: set curlwp->lwp_dupfd to contain the value of the
 	 * the file descriptor being sought for duplication. The error
 	 * return ensures that the vnode for this device will be released
 	 * by vn_open. Open will detect this special error and take the
 	 * actions in dupfdopen below. Other callers of vn_open or VOP_OPEN
 	 * will simply report the error.
 	 */
-	td->td_proc->p_dupfd = minor(dev);
+	td->td_lwp->lwp_dupfd = minor(dev);
 	return (ENODEV);
 }
 

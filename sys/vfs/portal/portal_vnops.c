@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.23 2005/09/14 01:13:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.24 2005/10/09 18:07:55 corecode Exp $
  */
 
 /*
@@ -236,7 +236,7 @@ portal_open(struct vop_open_args *ap)
 	 * by testing whether the p_dupfd has been set.
 	 */
 	KKASSERT(td->td_proc);
-	if (td->td_proc->p_dupfd >= 0)
+	if (td->td_lwp->lwp_dupfd >= 0)
 		return (ENODEV);
 
 	pt = VTOPORTAL(vp);
@@ -413,7 +413,7 @@ portal_open(struct vop_open_args *ap)
 	 * special error code (ENXIO) which causes magic things to
 	 * happen in vn_open.  The whole concept is, well, hmmm.
 	 */
-	td->td_proc->p_dupfd = fd;
+	td->td_lwp->lwp_dupfd = fd;
 	error = ENXIO;
 
 bad:;

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.21 2005/09/14 01:13:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.22 2005/10/09 18:07:55 corecode Exp $
  */
 
 /*
@@ -246,22 +246,22 @@ static int
 fdesc_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct proc *p = ap->a_td->td_proc;
+	struct lwp *lp = ap->a_td->td_proc;
 
-	KKASSERT(p);
+	KKASSERT(lp);
 
 	if (VTOFDESC(vp)->fd_type == Froot)
 		return (0);
 
 	/*
-	 * XXX Kludge: set p->p_dupfd to contain the value of the the file
+	 * XXX Kludge: set lp->lwp_dupfd to contain the value of the the file
 	 * descriptor being sought for duplication. The error return ensures
 	 * that the vnode for this device will be released by vn_open. Open
 	 * will detect this special error and take the actions in dupfdopen.
 	 * Other callers of vn_open or VOP_OPEN will simply report the
 	 * error.
 	 */
-	p->p_dupfd = VTOFDESC(vp)->fd_fd;	/* XXX */
+	lp->lwp_dupfd = VTOFDESC(vp)->fd_fd;	/* XXX */
 	return (ENODEV);
 }
 

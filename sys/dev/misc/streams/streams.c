@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.20 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.21 2005/10/09 18:07:55 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -182,6 +182,7 @@ static  int
 streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 {
 	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	int type, protocol;
 	int fd;
 	struct file *fp;
@@ -191,7 +192,7 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 
 	KKASSERT(p != NULL);
 	
-	if (p->p_dupfd >= 0)
+	if (lp->lwp_dupfd >= 0)
 	  return ENODEV;
 
 	switch (minor(dev)) {
@@ -258,7 +259,7 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	fp->f_data = so;
 	(void)svr4_stream_get(fp);
 	fdrop(fp, td);
-	p->p_dupfd = fd;
+	lp->lwp_dupfd = fd;
 	return ENXIO;
 }
 
@@ -281,11 +282,11 @@ svr4_ptm_alloc(struct thread *td)
 	static char ptyname[] = "/dev/ptyXX";
 	static char ttyletters[] = "pqrstuwxyzPQRST";
 	static char ttynumbers[] = "0123456789abcdef";
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 	struct nlookupdata nd;
 	int error, fd, l = 0, n = 0;
 
-	KKASSERT(p);
+	KKASSERT(lp);
 
 	for (;;) {
 		ptyname[8] = ttyletters[l];
@@ -301,7 +302,7 @@ svr4_ptm_alloc(struct thread *td)
 		case ENXIO:
 			return error;
 		case 0:
-			p->p_dupfd = fd;
+			lp->lwp_dupfd = fd;
 			return ENXIO;
 		default:
 			if (ttynumbers[++n] == '\0') {
