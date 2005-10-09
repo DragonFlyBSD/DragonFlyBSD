@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nice.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/nice/nice.c,v 1.4.2.1 2002/06/18 08:40:28 tjr Exp $
- * $DragonFly: src/usr.bin/nice/nice.c,v 1.5 2005/02/07 18:00:46 liamfoy Exp $
+ * $DragonFly: src/usr.bin/nice/nice.c,v 1.6 2005/10/09 15:09:02 liamfoy Exp $
  */
 
 #include <sys/time.h>
@@ -45,6 +45,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define	DEFNICE	10
@@ -90,7 +91,7 @@ main(int argc, char **argv)
 	else if (setpriority(PRIO_PROCESS, 0, (int)niceness))
 		warn("setpriority");
 	execvp(*argv, argv);
-	err(errno == ENOENT ? 127 : 126, "%s", *argv);
+	err(errno == ENOENT || errno == ENOTDIR ? 127 : 126, "%s", *argv);
 }
 
 static void
