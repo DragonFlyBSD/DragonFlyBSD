@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.4 2005/05/07 09:29:46 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.5 2005/10/10 13:45:57 davidxu Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -151,7 +151,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 
 	/* Initialise hooks in the thread structure: */
 	if (new_thread->attr.suspend == THR_CREATE_SUSPENDED)
-		new_thread->flags = THR_FLAGS_SUSPENDED;
+		new_thread->flags = THR_FLAGS_NEED_SUSPEND;
 	new_thread->state = PS_RUNNING;
 	/*
 	 * Thread created by thr_create() inherits currrent thread
