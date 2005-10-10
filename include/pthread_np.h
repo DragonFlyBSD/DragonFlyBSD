@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread_np.h,v 1.7.2.4 2003/01/10 15:41:17 fjoe Exp $
- * $DragonFly: src/include/pthread_np.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/pthread_np.h,v 1.4 2005/10/10 13:53:57 davidxu Exp $
  */
 #ifndef _PTHREAD_NP_H_
 #define _PTHREAD_NP_H_
@@ -58,6 +58,7 @@ void pthread_suspend_all_np (void);
 int pthread_suspend_np (pthread_t);
 int pthread_switch_add_np (pthread_switch_routine_t);
 int pthread_switch_delete_np (pthread_switch_routine_t);
+int pthread_timedjoin_np (pthread_t, void **, const struct timespec *);
 __END_DECLS
 
 #endif
