@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2004/09/26 06:50:14 deischen Exp $
-# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.4 2005/05/07 09:29:46 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.5 2005/10/10 13:46:53 davidxu Exp $
 
 LIBTHREAD_1_0 {
 global:
@@ -152,6 +152,7 @@ global:
 	_pthread_switch_add_np;
 	_pthread_switch_delete_np;
 	_pthread_testcancel;
+	_pthread_timedjoin_np;
 	_pthread_yield;
 	_raise;
 	_sem_close;
@@ -248,6 +249,7 @@ global:
 	pthread_getschedparam;
 	pthread_getspecific;
 	pthread_join;
+	pthread_timedjoin_np;
 	pthread_key_create;
 	pthread_key_delete;
 	pthread_kill;
