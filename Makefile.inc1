@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.83 2005/10/08 10:50:53 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.84 2005/10/11 13:31:05 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -111,7 +111,9 @@ SUPFLAGS?=	-g -L 2 -P -
 SUPFLAGS+=	-h ${SUPHOST}
 .endif
 
-NOCLEAN?= ${NO_CLEAN}
+.if defined(NO_CLEAN)
+NOCLEAN=	# defined
+.endif
 
 # Object directory base in primary make.  Note that when we rerun make
 # from inside this file we change MAKEOBJDIRPREFIX to the appropriate
