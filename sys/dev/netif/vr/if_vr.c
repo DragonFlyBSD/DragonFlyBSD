@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.33 2005/06/21 12:35:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.34 2005/10/11 18:23:17 dillon Exp $
  */
 
 /*
@@ -788,6 +788,7 @@ vr_attach(device_t dev)
 	    vr_ifmedia_upd, vr_ifmedia_sts)) {
 		if_printf(ifp, "MII without any phy!\n");
 		error = ENXIO;
+		crit_exit();
 		goto fail;
 	}
 	crit_exit();
