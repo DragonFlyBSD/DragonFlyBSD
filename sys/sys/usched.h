@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.5 2005/06/29 01:25:06 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.6 2005/10/11 09:59:56 corecode Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -20,16 +20,16 @@ struct usched {
     TAILQ_ENTRY(usched) entry;
     const char *name;
     const char *desc;
-    void (*acquire_curproc)(struct proc *);
-    void (*release_curproc)(struct proc *);
+    void (*acquire_curproc)(struct lwp *);
+    void (*release_curproc)(struct lwp *);
     void (*select_curproc)(struct globaldata *);
-    void (*setrunqueue)(struct proc *);
-    void (*remrunqueue)(struct proc *);
-    void (*schedulerclock)(struct proc *, sysclock_t, sysclock_t);
-    void (*recalculate)(struct proc *);
-    void (*resetpriority)(struct proc *);
-    void (*heuristic_forking)(struct proc *, struct proc *);
-    void (*heuristic_exiting)(struct proc *, struct proc *);
+    void (*setrunqueue)(struct lwp *);
+    void (*remrunqueue)(struct lwp *);
+    void (*schedulerclock)(struct lwp *, sysclock_t, sysclock_t);
+    void (*recalculate)(struct lwp *);
+    void (*resetpriority)(struct lwp *);
+    void (*heuristic_forking)(struct lwp *, struct lwp *);
+    void (*heuristic_exiting)(struct lwp *, struct lwp *);
 };
 
 union usched_data {

@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.34 2005/10/08 19:46:51 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.35 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_vm.h"
@@ -533,7 +533,7 @@ swapout(struct proc *p)
 	p->p_flag &= ~P_INMEM;
 	p->p_flag |= P_SWAPPING;
 	if (p->p_flag & P_ONRUNQ)
-		p->p_usched->remrunqueue(p);
+		p->p_usched->remrunqueue(&p->p_lwp);
 	crit_exit();
 
 	pmap_swapout_proc(p);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.63 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.64 2005/10/11 09:59:56 corecode Exp $
  */
 
 /*
@@ -182,11 +182,11 @@ extern int max_sysmsg;
 static void
 passive_release(struct thread *td)
 {
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 
 	td->td_release = NULL;
 	lwkt_setpri_self(TDPRI_KERN_USER);
-	p->p_usched->release_curproc(p);
+	lp->lwp_proc->p_usched->release_curproc(lp);
 }
 
 /*
@@ -253,7 +253,6 @@ userret(struct lwp *lp, struct trapframe *frame, int sticks)
 static __inline void
 userexit(struct lwp *lp)
 {
-	struct proc *p = lp->lwp_proc;
 	struct thread *td = lp->lwp_thread;
 	globaldata_t gd = td->td_gd;
 
@@ -264,7 +263,7 @@ userexit(struct lwp *lp)
 	 * be chosen again if it has a considerably better priority.
 	 */
 	if (user_resched_wanted())
-		p->p_usched->release_curproc(p);
+		lp->lwp_proc->p_usched->release_curproc(lp);
 #endif
 
 again:
@@ -286,9 +285,9 @@ again:
 	 * to figure out which is the best of [ existing, waking-up ]
 	 * threads.
 	 */
-	if (p != gd->gd_uschedcp) {
+	if (lp != gd->gd_uschedcp) {
 		++slow_release;
-		p->p_usched->acquire_curproc(p);
+		lp->lwp_proc->p_usched->acquire_curproc(lp);
 		/* We may have switched cpus on acquisition */
 		gd = td->td_gd;
 	} else {
@@ -320,8 +319,8 @@ again:
 	 * is pending the trap will be re-entered.
 	 */
 	if (user_resched_wanted()) {
-		p->p_usched->select_curproc(gd);
-		if (p != gd->gd_uschedcp) {
+		lp->lwp_proc->p_usched->select_curproc(gd);
+		if (lp != gd->gd_uschedcp) {
 			lwkt_setpri_self(TDPRI_KERN_USER);
 			goto again;
 		}

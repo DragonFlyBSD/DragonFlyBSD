@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.46 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.47 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -396,7 +396,7 @@ exit1(int rv)
 	 * Release the current user process designation on the process so
 	 * the userland scheduler can work in someone else.
 	 */
-	p->p_usched->release_curproc(p);
+	p->p_usched->release_curproc(lp);
 
 	/*
 	 * Finally, call machine-dependent code to release the remaining
@@ -490,7 +490,7 @@ loop:
 			lwkt_wait_free(p->p_thread);
 
 			/* scheduling hook for heuristic */
-			p->p_usched->heuristic_exiting(q, p);
+			p->p_usched->heuristic_exiting(td->td_lwp, &p->p_lwp);
 
 			/* Take care of our return values. */
 			*res = p->p_pid;

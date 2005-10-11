@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.37 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.38 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -769,6 +769,7 @@ trapsignal(struct proc *p, int sig, u_long code)
 void
 psignal(struct proc *p, int sig)
 {
+	struct lwp *lp = &p->p_lwp;
 	int prop;
 	sig_t action;
 
@@ -963,7 +964,7 @@ psignal(struct proc *p, int sig)
 		 * the new signal.  YYY needs cleanup.
 		 */
 #ifdef SMP
-		if (p == lwkt_preempted_proc()) {
+		if (lp == lwkt_preempted_proc()) {
 			signotify();
 		} else if (p->p_stat == SRUN) {
 			struct thread *td = p->p_thread;
@@ -973,12 +974,12 @@ psignal(struct proc *p, int sig)
 			    p->p_pid, p->p_stat, p->p_flag));
 
 			if (td->td_gd != mycpu)
-				lwkt_send_ipiq(td->td_gd, signotify_remote, p);
+				lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
 			else if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
 				lwkt_schedule(td);
 		}
 #else
-		if (p == lwkt_preempted_proc()) {
+		if (lp == lwkt_preempted_proc()) {
 			signotify();
 		} else if (p->p_stat == SRUN) {
 			struct thread *td = p->p_thread;
@@ -1010,12 +1011,12 @@ out:
 static void
 signotify_remote(void *arg)
 {
-	struct proc *p = arg;
+	struct lwp *lp = arg;
 
-	if (p == lwkt_preempted_proc()) {
+	if (lp == lwkt_preempted_proc()) {
 		signotify();
 	} else {
-		struct thread *td = p->p_thread;
+		struct thread *td = lp->lwp_thread;
 		if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
 			lwkt_schedule(td);
 	}

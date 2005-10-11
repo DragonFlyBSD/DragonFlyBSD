@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.47 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.48 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_init_path.h"
@@ -456,10 +456,15 @@ start_init(void *dummy)
 	char *var, *path, *next, *s;
 	char *ucp, **uap, *arg0, *arg1;
 	struct proc *p;
+	struct lwp *lp;
 	struct mount *mp;
 	struct vnode *vp;
 
 	p = curproc;
+
+	KKASSERT(p->p_nthreads == 1);
+
+	lp = LIST_FIRST(&p->p_lwps);
 
 	/* Get the vnode for '/'.  Set p->p_fd->fd_cdir to reference it. */
 	mp = mountlist_boot_getfirst();
@@ -568,8 +573,8 @@ start_init(void *dummy)
 		 * release it.
 		 */
 		if ((error = execve(&args)) == 0) {
-			if (p->p_thread->td_gd->gd_uschedcp != p)
-				p->p_usched->acquire_curproc(p);
+			if (lp->lwp_thread->td_gd->gd_uschedcp != lp)
+				lp->lwp_proc->p_usched->acquire_curproc(lp);
 			rel_mplock();
 			return;
 		}
@@ -594,7 +599,7 @@ create_init(const void *udata __unused)
 	int error;
 
 	crit_enter();
-	error = fork1(&proc0, RFFDG | RFPROC, &initproc);
+	error = fork1(&proc0.p_lwp, RFFDG | RFPROC, &initproc);
 	if (error)
 		panic("cannot fork init: %d", error);
 	initproc->p_flag |= P_INMEM | P_SYSTEM;
@@ -609,7 +614,7 @@ SYSINIT(init,SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
 static void
 kick_init(const void *udata __unused)
 {
-	start_forked_proc(&proc0, initproc);
+	start_forked_proc(&proc0.p_lwp, initproc);
 }
 SYSINIT(kickinit,SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
 

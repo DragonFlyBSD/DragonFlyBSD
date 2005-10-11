@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.42 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.43 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -89,13 +89,13 @@ int forksleep; /* Place for fork1() to sleep on. */
 int
 fork(struct fork_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
 	int error;
 
-	error = fork1(p, RFFDG | RFPROC, &p2);
+	error = fork1(lp, RFFDG | RFPROC, &p2);
 	if (error == 0) {
-		start_forked_proc(p, p2);
+		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
 	}
@@ -106,13 +106,13 @@ fork(struct fork_args *uap)
 int
 vfork(struct vfork_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
 	int error;
 
-	error = fork1(p, RFFDG | RFPROC | RFPPWAIT | RFMEM, &p2);
+	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM, &p2);
 	if (error == 0) {
-		start_forked_proc(p, p2);
+		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
 	}
@@ -133,17 +133,17 @@ vfork(struct vfork_args *uap)
 int
 rfork(struct rfork_args *uap)
 {
-	struct proc *p = curproc;
+	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
 	int error;
 
 	if ((uap->flags & RFKERNELONLY) != 0)
 		return (EINVAL);
 
-	error = fork1(p, uap->flags, &p2);
+	error = fork1(lp, uap->flags, &p2);
 	if (error == 0) {
 		if (p2)
-			start_forked_proc(p, p2);
+			start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
 		uap->sysmsg_fds[1] = 0;
 	}
@@ -187,9 +187,11 @@ SYSCTL_PROC(_kern, OID_AUTO, randompid, CTLTYPE_INT|CTLFLAG_RW,
     0, 0, sysctl_kern_randompid, "I", "Random PID modulus");
 
 int
-fork1(struct proc *p1, int flags, struct proc **procp)
+fork1(struct lwp *lp1, int flags, struct proc **procp)
 {
+	struct proc *p1 = lp1->lwp_proc;
 	struct proc *p2, *pptr;
+	struct lwp *lp2;
 	uid_t uid;
 	struct proc *newproc;
 	int ok;
@@ -294,9 +296,10 @@ fork1(struct proc *p1, int flags, struct proc **procp)
 	LIST_INIT(&newproc->p_lwps);
 
 	/* XXX lwp */
-	LIST_INSERT_HEAD(&newproc->p_lwps, &newproc->p_lwp, lwp_list);
-	newproc->p_lwp.lwp_proc = newproc;
-	newproc->p_lwp.lwp_tid = 0;
+	lp2 = &newproc->p_lwp;
+	lp2->lwp_proc = newproc;
+	lp2->lwp_tid = 0;
+	LIST_INSERT_HEAD(&newproc->p_lwps, lp2, lwp_list);
 	newproc->p_nthreads = 1;
 
 	/*
@@ -366,14 +369,14 @@ again:
 	 */
 	bzero(&p2->p_startzero,
 	    (unsigned) ((caddr_t)&p2->p_endzero - (caddr_t)&p2->p_startzero));
-	bzero(&p2->p_lwp.lwp_startzero,
-	    (unsigned) ((caddr_t)&p2->p_lwp.lwp_endzero -
-			(caddr_t)&p2->p_lwp.lwp_startzero));
+	bzero(&lp2->lwp_startzero,
+	    (unsigned) ((caddr_t)&lp2->lwp_endzero -
+			(caddr_t)&lp2->lwp_startzero));
 	bcopy(&p1->p_startcopy, &p2->p_startcopy,
 	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
-	bcopy(&p1->p_lwp.lwp_startcopy, &p2->p_lwp.lwp_startcopy,
-	    (unsigned) ((caddr_t)&p2->p_lwp.lwp_endcopy -
-			(caddr_t)&p2->p_lwp.lwp_startcopy));
+	bcopy(&p1->p_lwp.lwp_startcopy, &lp2->lwp_startcopy,
+	    (unsigned) ((caddr_t)&lp2->lwp_endcopy -
+			(caddr_t)&lp2->lwp_startcopy));
 
 	p2->p_aioinfo = NULL;
 
@@ -527,9 +530,9 @@ again:
 	 * timeout).
 	 */
 	p2->p_usched = p1->p_usched;
-	p2->p_cpbase = mycpu->gd_schedclock.time - 
+	lp2->lwp_cpbase = mycpu->gd_schedclock.time -
 			mycpu->gd_schedclock.periodic;
-	p2->p_usched->heuristic_forking(p1, p2);
+	p2->p_usched->heuristic_forking(&p1->p_lwp, lp2);
 
 	/*
 	 * This begins the section where we must prevent the parent
@@ -637,8 +640,14 @@ rm_at_fork(forklist_fn function)
  * as setting the fork handler, has been completed.
  */
 void
-start_forked_proc(struct proc *p1, struct proc *p2)
+start_forked_proc(struct lwp *lp1, struct proc *p2)
 {
+	struct lwp *lp2;
+
+	KKASSERT(p2 != NULL && p2->p_nthreads == 1);
+
+	lp2 = LIST_FIRST(&p2->p_lwps);
+
 	/*
 	 * Move from SIDL to RUN queue, and activate the process's thread.
 	 * Activation of the thread effectively makes the process "a"
@@ -648,18 +657,18 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 * code so we just schedule the LWKT thread and let the trampoline
 	 * deal with the userland scheduler on return to userland.
 	 */
-	KASSERT(p2 && p2->p_stat == SIDL,
+	KASSERT(p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));
-	p2->p_usched->resetpriority(p2);
+	p2->p_usched->resetpriority(lp2);
 	crit_enter();
 	p2->p_stat = SRUN;
-	p2->p_usched->setrunqueue(p2);
+	p2->p_usched->setrunqueue(lp2);
 	crit_exit();
 
 	/*
 	 * Now can be swapped.
 	 */
-	PRELE(p1);
+	PRELE(lp1->lwp_proc);
 
 	/*
 	 * Preserve synchronization semantics of vfork.  If waiting for
@@ -667,6 +676,5 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 * proc (in case of exit).
 	 */
 	while (p2->p_flag & P_PPWAIT)
-		tsleep(p1, 0, "ppwait", 0);
+		tsleep(lp1->lwp_proc, 0, "ppwait", 0);
 }
-

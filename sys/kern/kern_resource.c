@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.22 2005/06/25 20:03:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.23 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_compat.h"
@@ -204,7 +204,7 @@ donice(struct proc *chgp, int n)
 	if (n < chgp->p_nice && suser_cred(cr, 0))
 		return (EACCES);
 	chgp->p_nice = n;
-	chgp->p_usched->resetpriority(chgp);
+	chgp->p_usched->resetpriority(&chgp->p_lwp);
 	return (0);
 }
 

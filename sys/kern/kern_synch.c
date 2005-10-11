@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.47 2005/06/27 18:37:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.48 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -172,7 +172,7 @@ schedcpu(void *arg)
 		 * less then 2 seconds.  The schedulers understand this.
 		 */
 		if (p->p_slptime <= 1) {
-			p->p_usched->recalculate(p);
+			p->p_usched->recalculate(&p->p_lwp);
 		} else {
 			p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
 		}
@@ -187,17 +187,17 @@ schedcpu(void *arg)
  * a period of one second.
  */
 void
-updatepcpu(struct proc *p, int cpticks, int ttlticks)
+updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
 {
 	fixpt_t acc;
 	int remticks;
 
 	acc = (cpticks << FSHIFT) / ttlticks;
 	if (ttlticks >= ESTCPUFREQ) {
-		p->p_pctcpu = acc;
+		lp->lwp_pctcpu = acc;
 	} else {
 		remticks = ESTCPUFREQ - ttlticks;
-		p->p_pctcpu = (acc * ttlticks + p->p_pctcpu * remticks) /
+		lp->lwp_pctcpu = (acc * ttlticks + lp->lwp_pctcpu * remticks) /
 				ESTCPUFREQ;
 	}
 }
@@ -284,7 +284,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	if (p) {
 		if (flags & PNORESCHED)
 			td->td_flags |= TDF_NORESCHED;
-		p->p_usched->release_curproc(p);
+		p->p_usched->release_curproc(&p->p_lwp);
 		p->p_slptime = 0;
 	}
 	lwkt_deschedule_self(td);
@@ -609,7 +609,7 @@ clrrunnable(struct proc *p, int stat)
 {
 	crit_enter_quick(p->p_thread);
 	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ))
-		p->p_usched->remrunqueue(p);
+		p->p_usched->remrunqueue(&p->p_lwp);
 	p->p_stat = stat;
 	crit_exit_quick(p->p_thread);
 }

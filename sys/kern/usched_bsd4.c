@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.2 2005/09/27 18:03:32 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.3 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -75,25 +75,25 @@
 
 #define ESTCPULIM(v)	min((v), ESTCPUMAX)
 
-TAILQ_HEAD(rq, proc);
+TAILQ_HEAD(rq, lwp);
 
-#define p_priority	p_usdata.bsd4.priority
-#define p_rqindex	p_usdata.bsd4.rqindex
-#define p_origcpu	p_usdata.bsd4.origcpu
-#define p_estcpu	p_usdata.bsd4.estcpu
+#define lwp_priority	lwp_usdata.bsd4.priority
+#define lwp_rqindex	lwp_usdata.bsd4.rqindex
+#define lwp_origcpu	lwp_usdata.bsd4.origcpu
+#define lwp_estcpu	lwp_usdata.bsd4.estcpu
 
-static void bsd4_acquire_curproc(struct proc *p);
-static void bsd4_release_curproc(struct proc *p);
+static void bsd4_acquire_curproc(struct lwp *lp);
+static void bsd4_release_curproc(struct lwp *lp);
 static void bsd4_select_curproc(globaldata_t gd);
-static void bsd4_setrunqueue(struct proc *p);
-static void bsd4_remrunqueue(struct proc *p);
-static void bsd4_schedulerclock(struct proc *p, sysclock_t period,
+static void bsd4_setrunqueue(struct lwp *lp);
+static void bsd4_remrunqueue(struct lwp *lp);
+static void bsd4_schedulerclock(struct lwp *lp, sysclock_t period,
 				sysclock_t cpstamp);
-static void bsd4_resetpriority(struct proc *p);
-static void bsd4_forking(struct proc *pp, struct proc *p);
-static void bsd4_exiting(struct proc *pp, struct proc *p);
+static void bsd4_resetpriority(struct lwp *lp);
+static void bsd4_forking(struct lwp *plp, struct lwp *lp);
+static void bsd4_exiting(struct lwp *plp, struct lwp *lp);
 
-static void bsd4_recalculate_estcpu(struct proc *p);
+static void bsd4_recalculate_estcpu(struct lwp *lp);
 
 struct usched usched_bsd4 = {
 	{ NULL },
@@ -195,10 +195,10 @@ SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
  * bounce between processes trying to acquire the current process designation.
  */
 static
-struct proc *
-chooseproc(struct proc *chkp)
+struct lwp *
+chooseproc(struct lwp *chklp)
 {
-	struct proc *p;
+	struct lwp *lp;
 	struct rq *q;
 	u_int32_t *which;
 	u_int32_t pri;
@@ -218,45 +218,45 @@ chooseproc(struct proc *chkp)
 	} else {
 		return NULL;
 	}
-	p = TAILQ_FIRST(q);
-	KASSERT(p, ("chooseproc: no proc on busy queue"));
+	lp = TAILQ_FIRST(q);
+	KASSERT(lp, ("chooseproc: no lwp on busy queue"));
 
 	/*
-	 * If the passed process <chkp> is reasonably close to the selected
-	 * processed <p>, return NULL (indicating that <chkp> should be kept).
+	 * If the passed lwp <chklp> is reasonably close to the selected
+	 * lwp <lp>, return NULL (indicating that <chklp> should be kept).
 	 * 
-	 * Note that we must error on the side of <chkp> to avoid bouncing
+	 * Note that we must error on the side of <chklp> to avoid bouncing
 	 * between threads in the acquire code.
 	 */
-	if (chkp) {
-		if (chkp->p_priority < p->p_priority + PPQ)
+	if (chklp) {
+		if (chklp->lwp_priority < lp->lwp_priority + PPQ)
 			return(NULL);
 	}
 
 #ifdef SMP
 	/*
-	 * If the chosen process does not reside on this cpu spend a few
+	 * If the chosen lwp does not reside on this cpu spend a few
 	 * cycles looking for a better candidate at the same priority level.
 	 * This is a fallback check, setrunqueue() tries to wakeup the
 	 * correct cpu and is our front-line affinity.
 	 */
-	if (p->p_thread->td_gd != mycpu &&
-	    (chkp = TAILQ_NEXT(p, p_procq)) != NULL
+	if (lp->lwp_thread->td_gd != mycpu &&
+	    (chklp = TAILQ_NEXT(lp, lwp_procq)) != NULL
 	) {
-		if (chkp->p_thread->td_gd == mycpu) {
+		if (chklp->lwp_thread->td_gd == mycpu) {
 			++choose_affinity;
-			p = chkp;
+			lp = chklp;
 		}
 	}
 #endif
 
-	TAILQ_REMOVE(q, p, p_procq);
+	TAILQ_REMOVE(q, lp, lwp_procq);
 	--runqcount;
 	if (TAILQ_EMPTY(q))
 		*which &= ~(1 << pri);
-	KASSERT((p->p_flag & P_ONRUNQ) != 0, ("not on runq6!"));
-	p->p_flag &= ~P_ONRUNQ;
-	return p;
+	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) != 0, ("not on runq6!"));
+	lp->lwp_proc->p_flag &= ~P_ONRUNQ;
+	return lp;
 }
 
 #ifdef SMP
@@ -305,7 +305,7 @@ need_user_resched_remote(void *dummy)
  * This must be called at splhigh().
  */
 static void
-bsd4_setrunqueue(struct proc *p)
+bsd4_setrunqueue(struct lwp *lp)
 {
 	struct rq *q;
 	struct globaldata *gd;
@@ -318,15 +318,16 @@ bsd4_setrunqueue(struct proc *p)
 #endif
 
 	crit_enter();
-	KASSERT(p->p_stat == SRUN, ("setrunqueue: proc not SRUN"));
-	KASSERT((p->p_flag & P_ONRUNQ) == 0,
-	    ("process %d already on runq! flag %08x", p->p_pid, p->p_flag));
-	KKASSERT((p->p_thread->td_flags & TDF_RUNQ) == 0);
+	KASSERT(lp->lwp_proc->p_stat == SRUN, ("setrunqueue: proc not SRUN"));
+	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0,
+	    ("lwp %d/%d already on runq! flag %08x", lp->lwp_proc->p_pid,
+	     lp->lwp_tid, lp->lwp_proc->p_flag));
+	KKASSERT((lp->lwp_thread->td_flags & TDF_RUNQ) == 0);
 
 	/*
 	 * Note: gd is the gd of the TARGET thread's cpu, not our cpu.
 	 */
-	gd = p->p_thread->td_gd;
+	gd = lp->lwp_thread->td_gd;
 
 	/*
 	 * Because recalculate is only called once or twice for long sleeps,
@@ -335,15 +336,15 @@ bsd4_setrunqueue(struct proc *p)
 	 * will wrap if the process was sleeping long enough (e.g. ~10 min
 	 * with the ACPI timer) and really mess up the nticks calculation.
 	 */
-	if (p->p_slptime) {
-	    bsd4_recalculate_estcpu(p);
-	    p->p_slptime = 0;
+	if (lp->lwp_slptime) {
+	    bsd4_recalculate_estcpu(lp);
+	    lp->lwp_slptime = 0;
 	}
 	/*
 	 * We have not been released, make sure that we are not the currently
 	 * designated process.
 	 */
-	KKASSERT(gd->gd_uschedcp != p);
+	KKASSERT(gd->gd_uschedcp != lp);
 
 	/*
 	 * Check cpu affinity.  The associated thread is stable at the
@@ -357,9 +358,9 @@ bsd4_setrunqueue(struct proc *p)
 
 	if ((curprocmask & (1 << cpuid)) == 0) {
 		curprocmask |= 1 << cpuid;
-		gd->gd_uschedcp = p;
-		gd->gd_upri = p->p_priority;
-		lwkt_schedule(p->p_thread);
+		gd->gd_uschedcp = lp;
+		gd->gd_upri = lp->lwp_priority;
+		lwkt_schedule(lp->lwp_thread);
 		/* CANNOT TOUCH PROC OR TD AFTER SCHEDULE CALL TO REMOTE CPU */
 		crit_exit();
 #ifdef SMP
@@ -375,20 +376,20 @@ bsd4_setrunqueue(struct proc *p)
 	 * action by the target cpu.
 	 */
 	++runqcount;
-	p->p_flag |= P_ONRUNQ;
-	if (p->p_rtprio.type == RTP_PRIO_NORMAL) {
-		pri = (p->p_priority & PRIMASK) / PPQ;
+	lp->lwp_proc->p_flag |= P_ONRUNQ;
+	if (lp->lwp_rtprio.type == RTP_PRIO_NORMAL) {
+		pri = (lp->lwp_priority & PRIMASK) / PPQ;
 		q = &queues[pri];
 		queuebits |= 1 << pri;
 		needresched = (queuebits & ((1 << pri) - 1));
-	} else if (p->p_rtprio.type == RTP_PRIO_REALTIME ||
-		   p->p_rtprio.type == RTP_PRIO_FIFO) {
-		pri = (u_int8_t)p->p_rtprio.prio;
+	} else if (lp->lwp_rtprio.type == RTP_PRIO_REALTIME ||
+		   lp->lwp_rtprio.type == RTP_PRIO_FIFO) {
+		pri = (u_int8_t)lp->lwp_rtprio.prio;
 		q = &rtqueues[pri];
 		rtqueuebits |= 1 << pri;
 		needresched = (rtqueuebits & ((1 << pri) - 1));
-	} else if (p->p_rtprio.type == RTP_PRIO_IDLE) {
-		pri = (u_int8_t)p->p_rtprio.prio;
+	} else if (lp->lwp_rtprio.type == RTP_PRIO_IDLE) {
+		pri = (u_int8_t)lp->lwp_rtprio.prio;
 		q = &idqueues[pri];
 		idqueuebits |= 1 << pri;
 		needresched = (idqueuebits & ((1 << pri) - 1));
@@ -397,8 +398,8 @@ bsd4_setrunqueue(struct proc *p)
 		panic("setrunqueue: invalid rtprio type");
 	}
 	KKASSERT(pri < 32);
-	p->p_rqindex = pri;		/* remember the queue index */
-	TAILQ_INSERT_TAIL(q, p, p_procq);
+	lp->lwp_rqindex = pri;		/* remember the queue index */
+	TAILQ_INSERT_TAIL(q, lp, lwp_procq);
 
 #ifdef SMP
 	/*
@@ -417,21 +418,21 @@ bsd4_setrunqueue(struct proc *p)
 	 * another cpu's gd_upri to avoid sending ipiq storms).
 	 */
 	if (gd == mycpu) {
-		if ((p->p_thread->td_flags & TDF_NORESCHED) == 0) {
-			if (p->p_priority < gd->gd_upri - PPQ) {
-				gd->gd_upri = p->p_priority;
+		if ((lp->lwp_thread->td_flags & TDF_NORESCHED) == 0) {
+			if (lp->lwp_priority < gd->gd_upri - PPQ) {
+				gd->gd_upri = lp->lwp_priority;
 				gd->gd_rrcount = 0;
 				need_user_resched();
 				--count;
-			} else if (gd->gd_uschedcp == p && needresched) {
+			} else if (gd->gd_uschedcp == lp && needresched) {
 				gd->gd_rrcount = 0;
 				need_user_resched();
 				--count;
 			}
 		}
 	} else if (remote_resched) {
-		if (p->p_priority < gd->gd_upri - PPQ) {
-			gd->gd_upri = p->p_priority;
+		if (lp->lwp_priority < gd->gd_upri - PPQ) {
+			gd->gd_upri = lp->lwp_priority;
 			lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
 			--count;
 			++remote_resched_affinity;
@@ -444,9 +445,10 @@ bsd4_setrunqueue(struct proc *p)
 	 */
 	if (count &&
 	    (mask = ~curprocmask & rdyprocmask & mycpu->gd_other_cpus) != 0 &&
-	    (p->p_flag & P_PASSIVE_ACQ) == 0) {
+	    (lp->lwp_proc->p_flag & P_PASSIVE_ACQ) == 0) {
 		if (!mask)
-			printf("PROC %d nocpu to schedule it on\n", p->p_pid);
+			printf("lwp %d/%d nocpu to schedule it on\n",
+			       lp->lwp_proc->p_pid, lp->lwp_tid);
 		while (mask && count) {
 			cpuid = bsfl(mask);
 			KKASSERT((curprocmask & (1 << cpuid)) == 0);
@@ -484,20 +486,20 @@ bsd4_setrunqueue(struct proc *p)
 		if (rdyprocmask & (1 << cpuid)) {
 			gd = globaldata_find(cpuid);
 
-			if (p->p_priority < gd->gd_upri - PPQ) {
-				gd->gd_upri = p->p_priority;
+			if (lp->lwp_priority < gd->gd_upri - PPQ) {
+				gd->gd_upri = lp->lwp_priority;
 				lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
 				++remote_resched_nonaffinity;
 			}
 		}
 	}
 #else
-	if ((p->p_thread->td_flags & TDF_NORESCHED) == 0) {
-		if (p->p_priority < gd->gd_upri - PPQ) {
-			gd->gd_upri = p->p_priority;
+	if ((lp->lwp_thread->td_flags & TDF_NORESCHED) == 0) {
+		if (lp->lwp_priority < gd->gd_upri - PPQ) {
+			gd->gd_upri = lp->lwp_priority;
 			gd->gd_rrcount = 0;
 			need_user_resched();
-		} else if (gd->gd_uschedcp == p && needresched) {
+		} else if (gd->gd_uschedcp == lp && needresched) {
 			gd->gd_rrcount = 0;
 			need_user_resched();
 		}
@@ -518,32 +520,32 @@ bsd4_setrunqueue(struct proc *p)
  * This must be called at splhigh().
  */
 static void
-bsd4_remrunqueue(struct proc *p)
+bsd4_remrunqueue(struct lwp *lp)
 {
 	struct rq *q;
 	u_int32_t *which;
 	u_int8_t pri;
 
 	crit_enter();
-	KASSERT((p->p_flag & P_ONRUNQ) != 0, ("not on runq4!"));
-	p->p_flag &= ~P_ONRUNQ;
+	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) != 0, ("not on runq4!"));
+	lp->lwp_proc->p_flag &= ~P_ONRUNQ;
 	--runqcount;
 	KKASSERT(runqcount >= 0);
-	pri = p->p_rqindex;
-	if (p->p_rtprio.type == RTP_PRIO_NORMAL) {
+	pri = lp->lwp_rqindex;
+	if (lp->lwp_rtprio.type == RTP_PRIO_NORMAL) {
 		q = &queues[pri];
 		which = &queuebits;
-	} else if (p->p_rtprio.type == RTP_PRIO_REALTIME ||
-		   p->p_rtprio.type == RTP_PRIO_FIFO) {
+	} else if (lp->lwp_rtprio.type == RTP_PRIO_REALTIME ||
+		   lp->lwp_rtprio.type == RTP_PRIO_FIFO) {
 		q = &rtqueues[pri];
 		which = &rtqueuebits;
-	} else if (p->p_rtprio.type == RTP_PRIO_IDLE) {
+	} else if (lp->lwp_rtprio.type == RTP_PRIO_IDLE) {
 		q = &idqueues[pri];
 		which = &idqueuebits;
 	} else {
 		panic("remrunqueue: invalid rtprio type");
 	}
-	TAILQ_REMOVE(q, p, p_procq);
+	TAILQ_REMOVE(q, lp, lwp_procq);
 	if (TAILQ_EMPTY(q)) {
 		KASSERT((*which & (1 << pri)) != 0,
 			("remrunqueue: remove from empty queue"));
@@ -558,7 +560,7 @@ bsd4_remrunqueue(struct proc *p)
  */
 static
 void
-bsd4_schedulerclock(struct proc *p, sysclock_t period, sysclock_t cpstamp)
+bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 {
 	globaldata_t gd = mycpu;
 
@@ -576,19 +578,19 @@ bsd4_schedulerclock(struct proc *p, sysclock_t period, sysclock_t cpstamp)
 	 * push the process into another scheduling queue.  It typically
 	 * takes 4 ticks to bump the queue.
 	 */
-	p->p_estcpu = ESTCPULIM(p->p_estcpu + ESTCPUINCR);
+	lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUINCR);
 
 	/*
 	 * Reducing p_origcpu over time causes more of our estcpu to be
 	 * returned to the parent when we exit.  This is a small tweak
 	 * for the batch detection heuristic.
 	 */
-	if (p->p_origcpu)
-		--p->p_origcpu;
+	if (lp->lwp_origcpu)
+		--lp->lwp_origcpu;
 
 	/* XXX optimize, avoid lock if no reset is required */
 	if (try_mplock()) {
-		bsd4_resetpriority(p);
+		bsd4_resetpriority(lp);
 		rel_mplock();
 	}
 }
@@ -610,20 +612,20 @@ bsd4_schedulerclock(struct proc *p, sysclock_t period, sysclock_t cpstamp)
  * useable.
  */
 static void
-bsd4_release_curproc(struct proc *p)
+bsd4_release_curproc(struct lwp *lp)
 {
 	int cpuid;
 	globaldata_t gd = mycpu;
 
-	KKASSERT(p->p_thread->td_gd == gd);
+	KKASSERT(lp->lwp_thread->td_gd == gd);
 	crit_enter();
 	cpuid = gd->gd_cpuid;
 
-	if (gd->gd_uschedcp == p) {
+	if (gd->gd_uschedcp == lp) {
 		if (try_mplock()) {
 			/* 
 			 * YYY when the MP lock is not assumed (see else) we
-			 * will have to check that gd_uschedcp is still == p
+			 * will have to check that gd_uschedcp is still == lp
 			 * after acquisition of the MP lock
 			 */
 			gd->gd_uschedcp = NULL;
@@ -660,7 +662,7 @@ static
 void
 bsd4_select_curproc(globaldata_t gd)
 {
-	struct proc *np;
+	struct lwp *nlp;
 	int cpuid = gd->gd_cpuid;
 	void *old;
 
@@ -675,18 +677,18 @@ bsd4_select_curproc(globaldata_t gd)
 	 * We do not clear the user resched request here,
 	 * we need to test it later when we re-acquire.
 	 *
-	 * NOTE: chooseproc returns NULL if the chosen proc
+	 * NOTE: chooseproc returns NULL if the chosen lwp
 	 * is gd_uschedcp. XXX needs cleanup.
 	 */
 	old = gd->gd_uschedcp;
-	if ((np = chooseproc(gd->gd_uschedcp)) != NULL) {
+	if ((nlp = chooseproc(gd->gd_uschedcp)) != NULL) {
 		curprocmask |= 1 << cpuid;
-		gd->gd_upri = np->p_priority;
-		gd->gd_uschedcp = np;
-		lwkt_acquire(np->p_thread);
-		lwkt_schedule(np->p_thread);
+		gd->gd_upri = nlp->lwp_priority;
+		gd->gd_uschedcp = nlp;
+		lwkt_acquire(nlp->lwp_thread);
+		lwkt_schedule(nlp->lwp_thread);
 	} else if (gd->gd_uschedcp) {
-		gd->gd_upri = gd->gd_uschedcp->p_priority;
+		gd->gd_upri = gd->gd_uschedcp->lwp_priority;
 		KKASSERT(curprocmask & (1 << cpuid));
 	} else if (runqcount && (rdyprocmask & (1 << cpuid))) {
 		/*gd->gd_uschedcp = NULL;*/
@@ -702,35 +704,35 @@ bsd4_select_curproc(globaldata_t gd)
 /*
  * Acquire the current process designation on the CURRENT process only.
  * This function is called at kernel-user priority (not userland priority)
- * when curproc does not match gd_uschedcp.
+ * when curlwp does not match gd_uschedcp.
  *
  * Basically we recalculate our estcpu to hopefully give us a more
- * favorable disposition, setrunqueue, then wait for the curproc
+ * favorable disposition, setrunqueue, then wait for the curlwp
  * designation to be handed to us (if the setrunqueue didn't do it).
  */
 static void
-bsd4_acquire_curproc(struct proc *p)
+bsd4_acquire_curproc(struct lwp *lp)
 {
 	globaldata_t gd = mycpu;
 
 	crit_enter();
-	++p->p_stats->p_ru.ru_nivcsw;
+	++lp->lwp_stats->p_ru.ru_nivcsw;
 
 	/*
 	 * Loop until we become the current process.  
 	 */
 	do {
-		KKASSERT(p == gd->gd_curthread->td_proc);
-		bsd4_recalculate_estcpu(p);
+		KKASSERT(lp == gd->gd_curthread->td_lwp);
+		bsd4_recalculate_estcpu(lp);
 		lwkt_deschedule_self(gd->gd_curthread);
-		bsd4_setrunqueue(p);
+		bsd4_setrunqueue(lp);
 		lwkt_switch();
 
 		/*
 		 * WE MAY HAVE BEEN MIGRATED TO ANOTHER CPU, RELOAD GD.
 		 */
 		gd = mycpu;
-	} while (gd->gd_uschedcp != p);
+	} while (gd->gd_uschedcp != lp);
 
 	crit_exit();
 
@@ -738,7 +740,7 @@ bsd4_acquire_curproc(struct proc *p)
 	 * That's it.  Cleanup, we are done.  The caller can return to
 	 * user mode now.
 	 */
-	KKASSERT((p->p_flag & P_ONRUNQ) == 0);
+	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
 }
 
 /*
@@ -747,7 +749,7 @@ bsd4_acquire_curproc(struct proc *p)
  * than that of the current process.
  */
 static void
-bsd4_resetpriority(struct proc *p)
+bsd4_resetpriority(struct lwp *lp)
 {
 	int newpriority;
 	int opq;
@@ -756,17 +758,17 @@ bsd4_resetpriority(struct proc *p)
 	/*
 	 * Set p_priority for general process comparisons
 	 */
-	switch(p->p_rtprio.type) {
+	switch(lp->lwp_rtprio.type) {
 	case RTP_PRIO_REALTIME:
-		p->p_priority = PRIBASE_REALTIME + p->p_rtprio.prio;
+		lp->lwp_priority = PRIBASE_REALTIME + lp->lwp_rtprio.prio;
 		return;
 	case RTP_PRIO_NORMAL:
 		break;
 	case RTP_PRIO_IDLE:
-		p->p_priority = PRIBASE_IDLE + p->p_rtprio.prio;
+		lp->lwp_priority = PRIBASE_IDLE + lp->lwp_rtprio.prio;
 		return;
 	case RTP_PRIO_THREAD:
-		p->p_priority = PRIBASE_THREAD + p->p_rtprio.prio;
+		lp->lwp_priority = PRIBASE_THREAD + lp->lwp_rtprio.prio;
 		return;
 	}
 
@@ -784,29 +786,29 @@ bsd4_resetpriority(struct proc *p)
 	 * estcpu range into the priority range so the actual PPQ value
 	 * is incorrect, but it's still a reasonable way to think about it.
 	 */
-	newpriority = (p->p_nice - PRIO_MIN) * PPQ / NICEPPQ;
-	newpriority += p->p_estcpu * PPQ / ESTCPUPPQ;
+	newpriority = (lp->lwp_proc->p_nice - PRIO_MIN) * PPQ / NICEPPQ;
+	newpriority += lp->lwp_estcpu * PPQ / ESTCPUPPQ;
 	newpriority = newpriority * MAXPRI /
 		    (PRIO_RANGE * PPQ / NICEPPQ + ESTCPUMAX * PPQ / ESTCPUPPQ);
 	newpriority = MIN(newpriority, MAXPRI - 1);	/* sanity */
 	newpriority = MAX(newpriority, 0);		/* sanity */
 	npq = newpriority / PPQ;
 	crit_enter();
-	opq = (p->p_priority & PRIMASK) / PPQ;
-	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ) && opq != npq) {
+	opq = (lp->lwp_priority & PRIMASK) / PPQ;
+	if (lp->lwp_proc->p_stat == SRUN && (lp->lwp_proc->p_flag & P_ONRUNQ) && opq != npq) {
 		/*
 		 * We have to move the process to another queue
 		 */
-		bsd4_remrunqueue(p);
-		p->p_priority = PRIBASE_NORMAL + newpriority;
-		bsd4_setrunqueue(p);
+		bsd4_remrunqueue(lp);
+		lp->lwp_priority = PRIBASE_NORMAL + newpriority;
+		bsd4_setrunqueue(lp);
 	} else {
 		/*
 		 * We can just adjust the priority and it will be picked
 		 * up later.
 		 */
-		KKASSERT(opq == npq || (p->p_flag & P_ONRUNQ) == 0);
-		p->p_priority = PRIBASE_NORMAL + newpriority;
+		KKASSERT(opq == npq || (lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
+		lp->lwp_priority = PRIBASE_NORMAL + newpriority;
 	}
 	crit_exit();
 }
@@ -821,13 +823,14 @@ bsd4_resetpriority(struct proc *p)
  *
  * Interactive processes will decay the boosted estcpu quickly while batch
  * processes will tend to compound it.
+ * XXX lwp should be "spawning" instead of "forking"
  */
 static void
-bsd4_forking(struct proc *pp, struct proc *p)
+bsd4_forking(struct lwp *plp, struct lwp *lp)
 {
-	p->p_estcpu = ESTCPULIM(pp->p_estcpu + ESTCPUPPQ);
-	p->p_origcpu = p->p_estcpu;
-	pp->p_estcpu = ESTCPULIM(pp->p_estcpu + ESTCPUPPQ);
+	lp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ);
+	lp->lwp_origcpu = lp->lwp_estcpu;
+	plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ);
 }
 
 /*
@@ -835,14 +838,14 @@ bsd4_forking(struct proc *pp, struct proc *p)
  * back to the parent.
  */
 static void
-bsd4_exiting(struct proc *pp, struct proc *p)
+bsd4_exiting(struct lwp *plp, struct lwp *lp)
 {
 	int delta;
 
-	if (pp->p_pid != 1) {
-		delta = p->p_estcpu - p->p_origcpu;
+	if (plp->lwp_proc->p_pid != 1) {
+		delta = lp->lwp_estcpu - lp->lwp_origcpu;
 		if (delta > 0)
-			pp->p_estcpu = ESTCPULIM(pp->p_estcpu + delta);
+			plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + delta);
 	}
 }
 
@@ -863,7 +866,7 @@ bsd4_exiting(struct proc *pp, struct proc *p)
  */
 static
 void 
-bsd4_recalculate_estcpu(struct proc *p)
+bsd4_recalculate_estcpu(struct lwp *lp)
 {
 	globaldata_t gd = mycpu;
 	sysclock_t cpbase;
@@ -881,15 +884,15 @@ bsd4_recalculate_estcpu(struct proc *p)
 	 */
 	cpbase = gd->gd_schedclock.time - gd->gd_schedclock.periodic;
 
-	if (p->p_slptime > 1) {
+	if (lp->lwp_slptime > 1) {
 		/*
 		 * Too much time has passed, do a coarse correction.
 		 */
-		p->p_estcpu = p->p_estcpu >> 1;
-		bsd4_resetpriority(p);
-		p->p_cpbase = cpbase;
-		p->p_cpticks = 0;
-	} else if (p->p_cpbase != cpbase) {
+		lp->lwp_estcpu = lp->lwp_estcpu >> 1;
+		bsd4_resetpriority(lp);
+		lp->lwp_cpbase = cpbase;
+		lp->lwp_cpticks = 0;
+	} else if (lp->lwp_cpbase != cpbase) {
 		/*
 		 * Adjust estcpu if we are in a different tick.  Don't waste
 		 * time if we are in the same tick. 
@@ -897,15 +900,15 @@ bsd4_recalculate_estcpu(struct proc *p)
 		 * First calculate the number of ticks in the measurement
 		 * interval.
 		 */
-		nticks = (cpbase - p->p_cpbase) / gd->gd_schedclock.periodic;
-		updatepcpu(p, p->p_cpticks, nticks);
+		nticks = (cpbase - lp->lwp_cpbase) / gd->gd_schedclock.periodic;
+		updatepcpu(lp, lp->lwp_cpticks, nticks);
 
-		if ((nleft = nticks - p->p_cpticks) < 0)
+		if ((nleft = nticks - lp->lwp_cpticks) < 0)
 			nleft = 0;
-		if (usched_debug == p->p_pid) {
-			printf("pid %d estcpu %d cpticks %d nticks %d nleft %d",
-				p->p_pid, p->p_estcpu,
-				p->p_cpticks, nticks, nleft);
+		if (usched_debug == lp->lwp_proc->p_pid) {
+			printf("pid %d tid %d estcpu %d cpticks %d nticks %d nleft %d",
+				lp->lwp_proc->p_pid, lp->lwp_tid, lp->lwp_estcpu,
+				lp->lwp_cpticks, nticks, nleft);
 		}
 
 		/*
@@ -915,24 +918,24 @@ bsd4_recalculate_estcpu(struct proc *p)
 		if ((loadfac = runqcount) < 2)
 			loadfac = 2;
 		ndecay = nleft * usched_bsd4_decay * 2 * 
-			(PRIO_MAX * 2 - p->p_nice) / (loadfac * PRIO_MAX * 2);
+			(PRIO_MAX * 2 - lp->lwp_proc->p_nice) / (loadfac * PRIO_MAX * 2);
 
 		/*
 		 * Adjust p_estcpu.  Handle a border case where batch jobs
 		 * can get stalled long enough to decay to zero when they
 		 * shouldn't.
 		 */
-		if (p->p_estcpu > ndecay * 2)
-			p->p_estcpu -= ndecay;
+		if (lp->lwp_estcpu > ndecay * 2)
+			lp->lwp_estcpu -= ndecay;
 		else
-			p->p_estcpu >>= 1;
+			lp->lwp_estcpu >>= 1;
 
-		if (usched_debug == p->p_pid)
-			printf(" ndecay %d estcpu %d\n", ndecay, p->p_estcpu);
+		if (usched_debug == lp->lwp_proc->p_pid)
+			printf(" ndecay %d estcpu %d\n", ndecay, lp->lwp_estcpu);
 
-		bsd4_resetpriority(p);
-		p->p_cpbase = cpbase;
-		p->p_cpticks = 0;
+		bsd4_resetpriority(lp);
+		lp->lwp_cpbase = cpbase;
+		lp->lwp_cpticks = 0;
 	}
 }
 
@@ -955,17 +958,17 @@ sched_thread(void *dummy)
 
     get_mplock();			/* hold the MP lock */
     for (;;) {
-	struct proc *np;
+	struct lwp *nlp;
 
 	lwkt_deschedule_self(gd->gd_curthread);	/* interlock */
 	rdyprocmask |= cpumask;
 	crit_enter_quick(gd->gd_curthread);
-	if ((curprocmask & cpumask) == 0 && (np = chooseproc(NULL)) != NULL) {
+	if ((curprocmask & cpumask) == 0 && (nlp = chooseproc(NULL)) != NULL) {
 	    curprocmask |= cpumask;
-	    gd->gd_upri = np->p_priority;
-	    gd->gd_uschedcp = np;
-	    lwkt_acquire(np->p_thread);
-	    lwkt_schedule(np->p_thread);
+	    gd->gd_upri = nlp->lwp_priority;
+	    gd->gd_uschedcp = nlp;
+	    lwkt_acquire(nlp->lwp_thread);
+	    lwkt_schedule(nlp->lwp_thread);
 	}
 	crit_exit_quick(gd->gd_curthread);
 	lwkt_switch();

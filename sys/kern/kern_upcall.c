@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.7 2005/10/09 20:12:34 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.8 2005/10/11 09:59:56 corecode Exp $
  */
 
 /*
@@ -66,7 +66,7 @@ static void
 sigupcall_remote(void *arg)
 {
  	struct lwp *lp = arg;
-	if (lp->lwp_proc == lwkt_preempted_proc())
+	if (lp == lwkt_preempted_proc())
 		sigupcall();
 }
 

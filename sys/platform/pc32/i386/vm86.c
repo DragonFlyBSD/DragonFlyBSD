@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.15 2005/10/07 21:55:15 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.16 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@
 #include <bus/isa/rtc.h>
 #include <i386/isa/timerreg.h>
 
-extern int i386_extend_pcb	(struct proc *);
+extern int i386_extend_pcb	(struct lwp *);
 extern int vm86pa;
 extern struct pcb *vm86pcb;
 

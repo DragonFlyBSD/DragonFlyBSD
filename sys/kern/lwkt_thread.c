@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.82 2005/07/21 06:28:50 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.83 2005/10/11 09:59:56 corecode Exp $
  */
 
 /*
@@ -1236,13 +1236,13 @@ lwkt_setcpu_remote(void *arg)
 }
 #endif
 
-struct proc *
+struct lwp *
 lwkt_preempted_proc(void)
 {
     thread_t td = curthread;
     while (td->td_preempted)
 	td = td->td_preempted;
-    return(td->td_proc);
+    return(td->td_lwp);
 }
 
 /*

@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.46 2005/10/08 12:24:26 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.47 2005/10/11 09:59:56 corecode Exp $
  */
 
 #include "opt_ntp.h"
@@ -634,28 +634,33 @@ statclock(systimer_t info, struct intrframe *frame)
 static void
 schedclock(systimer_t info, struct intrframe *frame)
 {
-	struct proc *p;
+	struct lwp *lp;
 	struct pstats *pstats;
 	struct rusage *ru;
 	struct vmspace *vm;
 	long rss;
 
-	if ((p = lwkt_preempted_proc()) != NULL) {
+	if ((lp = lwkt_preempted_proc()) != NULL) {
 		/*
 		 * Account for cpu time used and hit the scheduler.  Note
 		 * that this call MUST BE MP SAFE, and the BGL IS NOT HELD
 		 * HERE.
 		 */
-		++p->p_cpticks;
-                p->p_usched->schedulerclock(p, info->periodic, info->time);
+		++lp->lwp_cpticks;
+		/*
+		 * XXX I think accessing lwp_proc's p_usched is
+		 * reasonably MP safe.  This needs to be revisited
+		 * when we have pluggable schedulers.
+		 */
+		lp->lwp_proc->p_usched->schedulerclock(lp, info->periodic, info->time);
 	}
-	if ((p = curproc) != NULL) {
+	if ((lp = curthread->td_lwp) != NULL) {
 		/*
 		 * Update resource usage integrals and maximums.
 		 */
-		if ((pstats = p->p_stats) != NULL &&
+		if ((pstats = lp->lwp_stats) != NULL &&
 		    (ru = &pstats->p_ru) != NULL &&
-		    (vm = p->p_vmspace) != NULL) {
+		    (vm = lp->lwp_proc->p_vmspace) != NULL) {
 			ru->ru_ixrss += pgtok(vm->vm_tsize);
 			ru->ru_idrss += pgtok(vm->vm_dsize);
 			ru->ru_isrss += pgtok(vm->vm_ssize);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.13 2005/04/25 22:26:22 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.14 2005/10/11 09:59:56 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -108,9 +108,10 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	    db_printf("cpu %d tdrunqmask %08x curthread %p reqflags %04x\n",
 		    gd->gd_cpuid, gd->gd_runqmask,
 		    gd->gd_curthread, gd->gd_reqflags);
-	    db_printf("       uschedcp %p (%d) upri %d\n",
+	    db_printf("       uschedcp %p (%d/%d) upri %d\n",
 		    gd->gd_uschedcp,
-		    (gd->gd_uschedcp ? gd->gd_uschedcp->p_pid : -1),
+		    (gd->gd_uschedcp ? gd->gd_uschedcp->lwp_proc->p_pid : -1),
+		    (gd->gd_uschedcp ? gd->gd_uschedcp->lwp_tid : -1),
 		    gd->gd_upri);
 	    if (gd->gd_curthread && gd->gd_curthread->td_preempted) {
 		    db_printf("       PREEMPTING THREAD %p\n",
@@ -195,12 +196,13 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	}
 	if (db_more(&nl) < 0)
 	    return;
-	db_printf("CURCPU %d CURTHREAD %p (%d) USCHEDCP %p (%d) UPRI %d\n",
+	db_printf("CURCPU %d CURTHREAD %p (%d) USCHEDCP %p (%d/%d) UPRI %d\n",
 	    mycpu->gd_cpuid,
 	    curthread,
 	    (curthread->td_proc ? curthread->td_proc->p_pid : -1),
 	    mycpu->gd_uschedcp,
-	    (mycpu->gd_uschedcp ? mycpu->gd_uschedcp->p_pid : -1),
+	    (mycpu->gd_uschedcp ? mycpu->gd_uschedcp->lwp_proc->p_pid : -1),
+	    (mycpu->gd_uschedcp ? mycpu->gd_uschedcp->lwp_tid : -1),
 	    mycpu->gd_upri);
 	db_dump_td_tokens(curthread);
 }

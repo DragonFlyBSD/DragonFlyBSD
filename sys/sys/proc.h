@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.69 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.70 2005/10/11 09:59:56 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -132,9 +132,7 @@ struct	pargs {
 struct jail;
 
 struct lwp {
-#ifdef notyet
 	TAILQ_ENTRY(lwp) lwp_procq;	/* run/sleep queue. */
-#endif
 	LIST_ENTRY(lwp) lwp_list;	/* List of all threads in the proc. */
 
 	struct proc	*lwp_proc;	/* Link to our proc. */
@@ -185,7 +183,6 @@ struct lwp {
 };
 
 struct	proc {
-	TAILQ_ENTRY(proc) p_procq;	/* run/sleep queue. */
 	LIST_ENTRY(proc) p_list;	/* List of all processes. */
 
 	/* substructures: */
@@ -450,7 +447,7 @@ extern struct vm_zone *proc_zone;
 
 int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
 void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
-void	updatepcpu(struct proc *, int, int);
+void	updatepcpu(struct lwp *, int, int);
 int	inferior (struct proc *p);
 int	leavepgrp (struct proc *p);
 void	sess_hold(struct session *sp);
@@ -475,8 +472,8 @@ void	exit1 (int) __dead2;
 void	cpu_fork (struct proc *, struct proc *, int);
 void	cpu_set_fork_handler (struct proc *, void (*)(void *), void *);
 void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func, void *arg);
-int	fork1 (struct proc *, int, struct proc **);
-void	start_forked_proc (struct proc *, struct proc *);
+int	fork1 (struct lwp *, int, struct proc **);
+void	start_forked_proc (struct lwp *, struct proc *);
 int	trace_req (struct proc *);
 void	cpu_proc_wait (struct proc *);
 void	cpu_thread_wait (struct thread *);
