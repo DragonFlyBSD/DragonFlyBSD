@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.47 2005/09/29 12:52:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.48 2005/10/12 17:35:51 dillon Exp $
  *
  */
 
@@ -1720,7 +1720,7 @@ bge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, ether_addr);
 
-	error = bus_setup_intr(dev, sc->bge_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->bge_irq, 0,
 			       bge_intr, sc, &sc->bge_intrhand, NULL);
 	if (error) {
 		ether_ifdetach(ifp);

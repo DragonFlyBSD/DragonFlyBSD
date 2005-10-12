@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.9 2005/07/17 02:41:10 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.10 2005/10/12 17:35:50 dillon Exp $
  *
  */
 
@@ -1991,7 +1991,7 @@ ppc_attach(device_t dev)
 	/* register the ppc interrupt handler as default */
 	if (ppc->res_irq) {
 		/* default to the tty mask for registration */	/* XXX */
-		if (BUS_SETUP_INTR(parent, dev, ppc->res_irq, INTR_TYPE_TTY,
+		if (BUS_SETUP_INTR(parent, dev, ppc->res_irq, 0,
 				   ppcintr, dev,
 				   &ppc->intr_cookie, NULL) == 0) {
 			/* remember the ppcintr is registered */
@@ -2144,7 +2144,7 @@ ppc_teardown_intr(device_t bus, device_t child, struct resource *r, void *ih)
 	/* default to the tty mask for registration */		/* XXX */
 	if (ppc->ppc_irq &&
 		!(error = BUS_SETUP_INTR(parent, bus, ppc->res_irq,
-					 INTR_TYPE_TTY, ppcintr, bus,
+					 0, ppcintr, bus,
 					 &ppc->intr_cookie, NULL))
 	) {
 		/* remember the ppcintr is registered */

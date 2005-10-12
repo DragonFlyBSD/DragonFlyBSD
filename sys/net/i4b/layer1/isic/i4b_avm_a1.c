@@ -36,7 +36,7 @@
  *	------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_avm_a1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.5 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:25:23 2001]
  *
@@ -255,7 +255,7 @@ isic_probe_avma1(device_t dev)
 	sc->sc_irq = rman_get_start(sc->sc_resources.irq);
 
 	/* register interupt routine */
-	bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+	bus_setup_intr(dev, sc->sc_resources.irq, 0,
 			(void(*)(void *))(isicintr),
 			sc, &ih, NULL);
 

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.7 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.8 2005/10/12 17:35:51 dillon Exp $
  */
 
 /*-
@@ -241,14 +241,14 @@ puc_pci_attach(device_t dev)
 	sc->irqrid = rid;
 #ifdef PUC_FASTINTR
 	irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-				   INTR_TYPE_TTY | INTR_FAST, puc_intr, sc,
+				   INTR_FAST, puc_intr, sc,
 				   &sc->intr_cookie, NULL);
 #else
 	irq_setup = ENXIO;
 #endif
 	if (irq_setup != 0)
 		irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-					   INTR_TYPE_TTY, puc_intr, sc,
+					   0, puc_intr, sc,
 					   &sc->intr_cookie, NULL);
 	if (irq_setup != 0)
 		return (ENXIO);

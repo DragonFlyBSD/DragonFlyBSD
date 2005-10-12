@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.7 2005/06/06 21:48:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.8 2005/10/12 17:35:50 dillon Exp $	*/
 /*	$NecBSD: nsp_pisa.c,v 1.4 1999/04/15 01:35:54 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -224,7 +224,7 @@ nsp_pccard_attach(DEVPORT_PDEVICE dev)
 		return(error);
 	}
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_CAM,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       nsp_pccard_intr, (void *)sc,
 			       &sc->nsp_intrhand, NULL);
 	if (error) {

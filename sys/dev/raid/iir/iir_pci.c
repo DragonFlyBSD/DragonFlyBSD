@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_pci.c,v 1.3.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.4 2005/05/24 20:59:04 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.5 2005/10/12 17:35:54 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -337,8 +337,7 @@ iir_pci_attach(device_t dev)
     iir_attach(gdt);
 
     /* associate interrupt handler */
-    error = bus_setup_intr(dev, irq, INTR_TYPE_CAM, 
-			   iir_intr, gdt, &ih, NULL);
+    error = bus_setup_intr(dev, irq, 0, iir_intr, gdt, &ih, NULL);
     if (error) {
         device_printf(dev, "Unable to register interrupt handler\n");
         error = ENXIO;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.10 2005/06/13 19:05:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.11 2005/10/12 17:35:52 dillon Exp $
  */
 
 /*
@@ -441,7 +441,7 @@ owi_generic_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->irq, 0,
 			       wi_intr, sc, &sc->wi_intrhand, NULL);
 	if (error) {
 		ether_ifdetach(ifp);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.28 2005/06/20 15:10:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.29 2005/10/12 17:35:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -994,7 +994,7 @@ static int ste_attach(dev)
          */
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
  
-	error = bus_setup_intr(dev, sc->ste_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->ste_irq, 0,
 			       ste_intr, sc, &sc->ste_intrhand, NULL);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

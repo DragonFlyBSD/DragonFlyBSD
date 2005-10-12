@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.19 2005/06/20 15:10:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.20 2005/10/12 17:35:51 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -744,7 +744,7 @@ fe_attach (device_t dev)
 	int flags = device_get_flags(dev);
 	int b, error;
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       fe_intr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		fe_release_resource(dev);

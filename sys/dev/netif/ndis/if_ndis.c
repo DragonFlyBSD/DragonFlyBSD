@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.8 2005/09/29 12:52:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.9 2005/10/12 17:35:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -381,7 +381,7 @@ ndis_attach(dev)
 	 * init routine may trigger an interrupt.
 	 */
 
-	error = bus_setup_intr(dev, sc->ndis_irq, INTR_TYPE_NET | INTR_MPSAFE,
+	error = bus_setup_intr(dev, sc->ndis_irq, INTR_MPSAFE,
 			       ndis_intr, sc,
 			       &sc->ndis_intrhand, NULL);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.18 2005/10/12 01:09:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.19 2005/10/12 17:35:52 dillon Exp $
  */
 
 /*
@@ -530,7 +530,7 @@ nv_attach(device_t dev)
 	ether_ifattach(ifp, sc->sc_macaddr);
 
 	/* Activate our interrupt handler. - attach last to avoid lock */
-	error = bus_setup_intr(sc->dev, sc->irq, INTR_TYPE_NET,
+	error = bus_setup_intr(sc->dev, sc->irq, 0,
 			       nv_intr, sc, &sc->sc_ih, &sc->serializer);
 	if (error) {
 		ether_ifdetach(ifp);

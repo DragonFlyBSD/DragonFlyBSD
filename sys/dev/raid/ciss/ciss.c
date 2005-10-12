@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.15 2005/06/09 20:55:05 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.16 2005/10/12 17:35:54 dillon Exp $
  */
 
 /*
@@ -586,7 +586,7 @@ ciss_init_pci(struct ciss_softc *sc)
 	return(ENXIO);
     }
     error = bus_setup_intr(sc->ciss_dev, sc->ciss_irq_resource, 
-			   INTR_TYPE_CAM, ciss_intr, sc,
+			   0, ciss_intr, sc,
 			   &sc->ciss_intr, NULL);
     if (error) {
 	ciss_printf(sc, "can't set up interrupt\n");

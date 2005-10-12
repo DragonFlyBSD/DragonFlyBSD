@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.11 2005/09/01 09:17:19 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.12 2005/10/12 17:35:51 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -86,7 +86,7 @@ cm_isa_attach(dev)
 	if (error)
 		return error;
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       cmintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		arc_ifdetach(&sc->sc_arccom.ac_if);

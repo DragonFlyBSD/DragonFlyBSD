@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.23 2005/07/07 15:15:24 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.24 2005/10/12 17:35:53 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -555,7 +555,7 @@ wlattach(device_t dev)
 	printf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
     printf("\n");                                       /* 2.4 Gz       */
 
-    error = bus_setup_intr(dev, sc->res_irq, INTR_TYPE_NET,
+    error = bus_setup_intr(dev, sc->res_irq, 0,
 			   wlintr, sc, &sc->intr_handle, NULL);
     if (error) {
 	device_printf(dev, "setup irq fail!\n");

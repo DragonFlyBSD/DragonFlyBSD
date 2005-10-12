@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.5 2005/06/10 23:06:58 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 #include <alpha/isa/isavar.h>
 #endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.5 2005/06/10 23:06:58 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.6 2005/10/12 17:35:55 dillon Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e
@@ -322,8 +322,7 @@ gusc_attach(device_t dev)
 	}
 
 	if (scp->irq != NULL) {
-		bus_setup_intr(dev, scp->irq, INTR_TYPE_AV, gusc_intr, scp,
-			       &ih, NULL);
+		bus_setup_intr(dev, scp->irq, 0, gusc_intr, scp, &ih, NULL);
 	}
 	bus_generic_attach(dev);
 

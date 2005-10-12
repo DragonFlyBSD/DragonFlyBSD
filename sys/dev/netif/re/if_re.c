@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.15 2005/09/29 12:52:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.16 2005/10/12 17:35:52 dillon Exp $
  */
 
 /*
@@ -1169,7 +1169,7 @@ re_attach(device_t dev)
 	}
 
 	/* Hook interrupt last to avoid having to lock softc */
-	error = bus_setup_intr(dev, sc->re_irq, INTR_TYPE_NET, re_intr, sc,
+	error = bus_setup_intr(dev, sc->re_irq, 0, re_intr, sc,
 			       &sc->re_intrhand, NULL);
 
 	if (error) {

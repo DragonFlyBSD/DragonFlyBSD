@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.35 2005/10/12 10:28:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.36 2005/10/12 17:35:53 dillon Exp $
  */
 
 /*
@@ -793,7 +793,7 @@ vr_attach(device_t dev)
 	/* Call MI attach routine. */
 	ether_ifattach(ifp, eaddr);
 
-	error = bus_setup_intr(dev, sc->vr_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->vr_irq, 0,
 			       vr_intr, sc, &sc->vr_intrhand, NULL);
 
 	if (error) {

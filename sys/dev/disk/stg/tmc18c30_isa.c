@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.7 2005/06/06 21:48:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.8 2005/10/12 17:35:50 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -191,7 +191,7 @@ stg_isa_attach(device_t dev)
 		return(error);
 	}
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_CAM,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       stg_isa_intr, (void *)sc,
 			       &sc->stg_intrhand, NULL);
 	if (error) {

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.10 2005/08/27 10:20:27 corecode Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.11 2005/10/12 17:35:54 dillon Exp $
  */
 
 /*
@@ -651,7 +651,7 @@ cbb_attach(device_t brdev)
 		goto err;
 	}
 
-	if (bus_setup_intr(brdev, sc->irq_res, INTR_TYPE_NET, cbb_intr, sc,
+	if (bus_setup_intr(brdev, sc->irq_res, 0, cbb_intr, sc,
 			   &sc->intrhand, NULL)) {
 		device_printf(brdev, "couldn't establish interrupt");
 		goto err;
@@ -1921,7 +1921,7 @@ cbb_resume(device_t self)
 	cbb_set(sc, CBB_SOCKET_EVENT, tmp);
 
 	/* re-establish the interrupt. */
-	if (bus_setup_intr(self, sc->irq_res, INTR_TYPE_NET, cbb_intr, sc,
+	if (bus_setup_intr(self, sc->irq_res, 0, cbb_intr, sc,
 	    &sc->intrhand, NULL)) {
 		device_printf(self, "couldn't re-establish interrupt");
 		bus_release_resource(self, SYS_RES_IRQ, 0, sc->irq_res);

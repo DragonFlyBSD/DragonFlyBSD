@@ -38,7 +38,7 @@
  *	--------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 14:01:04 2001]
  *
@@ -322,7 +322,7 @@ isic_pnp_attach(device_t dev)
 	else
 	{
 		/* setup intr routine */
-		bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+		bus_setup_intr(dev, sc->sc_resources.irq, 0,
 				(void(*)(void*))isicintr,
 				sc, &ih, NULL);
 		return 0;

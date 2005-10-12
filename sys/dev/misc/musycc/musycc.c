@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.6 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.7 2005/10/12 17:35:50 dillon Exp $
  *
  *
  *
@@ -1483,7 +1483,7 @@ musycc_attach(device_t self)
 		return(ENXIO);
 	}
 
-	error = bus_setup_intr(self, csc->irq[f], INTR_TYPE_NET,
+	error = bus_setup_intr(self, csc->irq[f], 0,
 			       (f == 0 ? musycc_intr0 : musycc_intr1), csc,
 			       &csc->intrhand[f], NULL);
 

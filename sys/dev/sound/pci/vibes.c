@@ -28,7 +28,7 @@
  * muting.
  * 
  * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.4.2.6 2002/04/22 15:49:33 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.5 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,7 +39,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.5 2005/05/24 20:59:04 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.6 2005/10/12 17:35:55 dillon Exp $");
 
 /* ------------------------------------------------------------------------- */
 /* Constants */
@@ -767,7 +767,7 @@ sv_attach(device_t dev) {
         sc->irq   = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqid,
 				       0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
         if (!sc->irq ||
-	    bus_setup_intr(dev, sc->irq, INTR_TYPE_AV, sv_intr, sc, &sc->ih, NULL)) {
+	    bus_setup_intr(dev, sc->irq, 0, sv_intr, sc, &sc->ih, NULL)) {
                 device_printf(dev, "sv_attach: Unable to map interrupt\n");
                 goto fail;
         }

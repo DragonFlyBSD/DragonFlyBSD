@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.8 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.9 2005/10/12 17:35:55 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -518,7 +518,7 @@ avm_pnp_attach(device_t dev)
 
 	/* not needed */
 	sc->sc_irq = rman_get_start(sc->sc_resources.irq);
-	bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+	bus_setup_intr(dev, sc->sc_resources.irq, 0,
 		       (void(*)(void*))avm_pnp_intr, sc,
 		       &ih, NULL);
 	sc->sc_unit = unit;

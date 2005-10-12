@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.35 2005/06/15 11:15:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.36 2005/10/12 17:35:52 dillon Exp $
  */
 
 /*
@@ -670,7 +670,7 @@ fxp_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, FXP_NTXCB - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->irq, 0,
 			       fxp_intr, sc, &sc->ih, NULL);
 	if (error) {
 		ether_ifdetach(ifp);

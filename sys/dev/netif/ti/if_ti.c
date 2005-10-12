@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.35 2005/09/29 12:52:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.36 2005/10/12 17:35:53 dillon Exp $
  */
 
 /*
@@ -1555,7 +1555,7 @@ ti_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr);
 
-	error = bus_setup_intr(dev, sc->ti_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->ti_irq, 0,
 			       ti_intr, sc, &sc->ti_intrhand, NULL);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

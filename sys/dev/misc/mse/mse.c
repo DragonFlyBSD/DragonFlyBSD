@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.13 2005/06/16 16:39:54 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.14 2005/10/12 17:35:50 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -351,7 +351,7 @@ mse_attach(dev)
 	sc->sc_ioh = rman_get_bushandle(sc->sc_port);
 
 	if (BUS_SETUP_INTR(device_get_parent(dev), dev, sc->sc_intr,
-			   INTR_TYPE_TTY, mseintr, sc, &sc->sc_ih, NULL)) {
+			   0, mseintr, sc, &sc->sc_ih, NULL)) {
 		bus_release_resource(dev, SYS_RES_IOPORT, rid, sc->sc_port);
 		bus_release_resource(dev, SYS_RES_IRQ, rid, sc->sc_intr);
 		return ENXIO;

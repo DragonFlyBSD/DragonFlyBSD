@@ -28,7 +28,7 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.5.2.2 2001/10/24 14:17:20 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.5 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
  *
  *      last edit-date: [Wed Oct 24 16:15:26 2001]
  *
@@ -356,7 +356,7 @@ isic_probe_Epcc16(device_t dev)
 	}
 
 	/* register interupt routine */
-	bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+	bus_setup_intr(dev, sc->sc_resources.irq, 0,
 			(void(*)(void *))(isicintr),
 			sc, &ih, NULL);
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdInterrupt.c,v 1.17 2004/04/14 03:41:06 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdInterrupt.c,v 1.5 2005/06/04 14:25:45 corecode Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdInterrupt.c,v 1.6 2005/10/12 17:35:49 dillon Exp $
  */
 
 /*
@@ -94,8 +94,8 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
 	device_printf(sc->acpi_dev, "could not allocate interrupt\n");
 	goto error;
     }
-    if (bus_setup_intr(sc->acpi_dev, sc->acpi_irq, INTR_TYPE_MISC,
-	InterruptWrapper, Context, &sc->acpi_irq_handle, NULL)) {
+    if (bus_setup_intr(sc->acpi_dev, sc->acpi_irq, 0,
+		    InterruptWrapper, Context, &sc->acpi_irq_handle, NULL)) {
 	device_printf(sc->acpi_dev, "could not set up interrupt\n");
 	goto error;
     }

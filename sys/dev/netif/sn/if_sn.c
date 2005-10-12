@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.21 2005/06/20 15:10:41 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.22 2005/10/12 17:35:53 dillon Exp $
  */
 
 /*
@@ -1221,7 +1221,7 @@ sn_activate(device_t dev)
 		sn_deactivate(dev);
 		return ENOMEM;
 	}
-	err = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET, sn_intr, sc,
+	err = bus_setup_intr(dev, sc->irq_res, 0, sn_intr, sc,
 			     &sc->intrhand, NULL);
 	if (err) {
 		sn_deactivate(dev);

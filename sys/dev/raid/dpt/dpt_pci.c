@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_pci.c,v 1.17.2.2 2000/08/26 22:21:21 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_pci.c,v 1.5 2005/06/10 15:46:31 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/dpt/dpt_pci.c,v 1.6 2005/10/12 17:35:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -167,7 +167,7 @@ dpt_pci_attach (device_t dev)
 
 	crit_exit();
 
-	error = bus_setup_intr(dev, irq, INTR_TYPE_CAM, dpt_intr, dpt, 
+	error = bus_setup_intr(dev, irq, 0, dpt_intr, dpt, 
 			       &ih, NULL);
 	if (error) {
 		device_printf(dev, "Unable to register interrupt handler\n");

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.43 2005/09/29 12:52:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.44 2005/10/12 17:35:51 dillon Exp $
  */
 
 /*
@@ -2042,7 +2042,7 @@ dc_attach(device_t dev)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-	error = bus_setup_intr(dev, sc->dc_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->dc_irq, 0,
 			       dc_intr, sc, &sc->dc_intrhand, NULL);
 	if (error) {
 		ether_ifdetach(ifp);

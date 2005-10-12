@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.10 2005/06/06 21:48:15 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.11 2005/10/12 17:35:49 dillon Exp $
  */
 /*
  * Ported from:
@@ -1148,7 +1148,7 @@ adw_attach(struct adw_softc *adw)
 	error = 0;
 	crit_enter();
 	/* Hook up our interrupt handler */
-	if ((error = bus_setup_intr(adw->device, adw->irq, INTR_TYPE_CAM,
+	if ((error = bus_setup_intr(adw->device, adw->irq, 0,
 				    adw_intr, adw, &adw->ih, NULL)) != 0) {
 		device_printf(adw->device, "bus_setup_intr() failed: %d\n",
 			      error);

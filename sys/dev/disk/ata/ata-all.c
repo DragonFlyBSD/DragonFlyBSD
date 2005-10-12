@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.26 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.27 2005/10/12 17:35:50 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -200,7 +200,7 @@ ata_attach(device_t dev)
 	ata_printf(ch, -1, "unable to allocate interrupt\n");
 	return ENXIO;
     }
-    if ((error = bus_setup_intr(dev, ch->r_irq, INTR_TYPE_BIO,
+    if ((error = bus_setup_intr(dev, ch->r_irq, 0,
 				ata_intr, ch, &ch->ih, NULL))) {
 	ata_printf(ch, -1, "unable to setup interrupt\n");
 	return error;

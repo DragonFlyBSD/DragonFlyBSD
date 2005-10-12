@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.37 2005/09/29 12:52:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.38 2005/10/12 17:35:53 dillon Exp $
  */
 
 /*
@@ -1411,7 +1411,7 @@ skc_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->sk_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->sk_irq, 0,
 			       sk_intr, sc,
 			       &sc->sk_intrhand, NULL);
 

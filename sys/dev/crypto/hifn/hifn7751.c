@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.9 2005/06/02 21:40:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.10 2005/10/12 17:35:49 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -426,7 +426,7 @@ hifn_attach(device_t dev)
 	 * NB: Network code assumes we are blocked with splimp()
 	 *     so make sure the IRQ is marked appropriately.
 	 */
-	if (bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET,
+	if (bus_setup_intr(dev, sc->sc_irq, 0,
 			   hifn_intr, sc,
 			   &sc->sc_intrhand, NULL)) {
 		device_printf(dev, "could not setup interrupt\n");

@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.22 2005/06/06 22:51:54 corecode Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.23 2005/10/12 17:35:50 dillon Exp $
  *
  */
 
@@ -798,7 +798,7 @@ fdc_attach(device_t dev)
 		return error;
 	}
 	error = BUS_SETUP_INTR(device_get_parent(dev), dev, fdc->res_irq,
-			       INTR_TYPE_BIO, fdc_intr, fdc,
+			       0, fdc_intr, fdc,
 			       &fdc->fdc_intr, NULL);
 	if (error) {
 		device_printf(dev, "cannot setup interrupt\n");

@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.7 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.8 2005/10/12 17:35:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -249,7 +249,7 @@ iavc_pci_attach(device_t dev)
 
     /* setup the interrupt */
 
-    error = bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+    error = bus_setup_intr(dev, sc->sc_resources.irq, 0,
 			  (void(*)(void*))iavc_pci_intr,
 			  sc, &ih, NULL);
     if (error) {

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.19 2005/06/15 11:35:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.20 2005/10/12 17:35:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -370,7 +370,7 @@ gx_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, gx->arpcom.ac_enaddr);
 
-	error = bus_setup_intr(dev, gx->gx_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, gx->gx_irq, 0,
 			       gx_intr, gx, &gx->gx_intrhand, NULL);
 	if (error) {
 		ether_ifdetach(ifp);

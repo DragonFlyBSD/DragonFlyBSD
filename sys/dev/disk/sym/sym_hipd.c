@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.15 2005/06/16 21:12:30 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.16 2005/10/12 17:35:50 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -9605,7 +9605,7 @@ int sym_cam_attach(hcb_p np)
 	 *  Establish our interrupt handler.
 	 */
 #ifdef FreeBSD_Bus_Io_Abstraction
-	err = bus_setup_intr(np->device, np->irq_res, INTR_TYPE_CAM,
+	err = bus_setup_intr(np->device, np->irq_res, 0,
 			     sym_intr, np, &np->intr, NULL);
 	if (err) {
 		device_printf(np->device, "bus_setup_intr() failed: %d\n",

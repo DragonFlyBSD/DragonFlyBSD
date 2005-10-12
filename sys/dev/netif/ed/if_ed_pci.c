@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.34 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.8 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.9 2005/10/12 17:35:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +95,7 @@ ed_pci_attach(device_t dev)
                 return (error);
         }
 
-        error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+        error = bus_setup_intr(dev, sc->irq_res, 0,
                                edintr, sc, &sc->irq_handle, NULL);
         if (error) {
                 ed_release_resources(dev);

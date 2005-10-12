@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.8 2005/06/03 16:57:13 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.9 2005/10/12 17:35:50 dillon Exp $
  */
 
 /*
@@ -2381,7 +2381,7 @@ amd_attach(device_t dev)
 	irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
 				    RF_SHAREABLE | RF_ACTIVE);
 	if (irqres == NULL ||
-	    bus_setup_intr(dev, irqres, INTR_TYPE_CAM, amd_intr, amd, &ih, NULL)
+	    bus_setup_intr(dev, irqres, 0, amd_intr, amd, &ih, NULL)
 	) {
 		if (bootverbose)
 			printf("amd%d: unable to register interrupt handler!\n",

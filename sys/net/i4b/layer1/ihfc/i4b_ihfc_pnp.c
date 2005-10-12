@@ -36,7 +36,7 @@
  *      $Id: i4b_ihfc_pnp.c,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.6 2005/06/15 11:56:03 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_pnp.c,v 1.7 2005/10/12 17:35:55 dillon Exp $
  *     
  *---------------------------------------------------------------------------*/
 
@@ -213,7 +213,7 @@ ihfc_pnp_probe(device_t dev)
 				/* setup interrupt routine now to avoid stray	*
 				 * interrupts.					*/
 
-				bus_setup_intr(dev, S_IRQ, INTR_TYPE_NET, 
+				bus_setup_intr(dev, S_IRQ, 0, 
 					       (void(*)(void*))HFC_INTR, sc,
 					       &dummy, NULL);
 
@@ -306,7 +306,7 @@ ihfc_isa_probe(device_t dev)
 		/* setup interrupt routine now to avoid stray	*
 		 * interrupts.					*/
 
-		bus_setup_intr(dev, S_IRQ, INTR_TYPE_NET, (void(*)(void*))
+		bus_setup_intr(dev, S_IRQ, 0, (void(*)(void*))
 			       HFC_INTR, sc, &dummy, NULL);
 
 		flag = 1;

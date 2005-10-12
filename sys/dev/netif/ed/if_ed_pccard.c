@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.12 2005/10/01 06:36:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.13 2005/10/12 17:35:51 dillon Exp $
  */
 
 #include "opt_ed.h"
@@ -258,7 +258,7 @@ ed_pccard_attach(device_t dev)
 		ed_alloc_memory(dev, sc->mem_rid, sc->mem_used);
 	ed_alloc_irq(dev, sc->irq_rid, 0);
 		
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       edintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		printf("setup intr failed %d \n", error);

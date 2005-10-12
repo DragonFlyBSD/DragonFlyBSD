@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.9 2005/05/24 20:59:00 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.10 2005/10/12 17:35:51 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -284,7 +284,7 @@ ppiopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 		if (ppi->intr_resource) {
 			/* register our interrupt handler */
 			BUS_SETUP_INTR(device_get_parent(ppidev), ppidev,
-				       ppi->intr_resource, INTR_TYPE_TTY,
+				       ppi->intr_resource, 0,
 				       ppiintr, dev, 
 				       &ppi->intr_cookie, NULL);
 		}

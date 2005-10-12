@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.13 2005/08/09 16:23:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.14 2005/10/12 17:35:54 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -129,7 +129,7 @@ ips_pci_attach(device_t dev)
 		device_printf(dev, "irq allocation failed\n");
 		goto error;
 	}
-	error = bus_setup_intr(dev, sc->irqres, INTR_TYPE_BIO,
+	error = bus_setup_intr(dev, sc->irqres, 0,
 			       sc->ips_adapter_intr, sc, 
 			       &sc->irqcookie, NULL);
 	if (error) {

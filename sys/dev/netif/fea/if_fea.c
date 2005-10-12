@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.8 2005/05/24 20:59:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.9 2005/10/12 17:35:52 dillon Exp $
  */
 
 /*
@@ -217,7 +217,7 @@ pdq_eisa_attach (dev)
 		goto bad;
 	}
 
-	if (bus_setup_intr(dev, irq, INTR_TYPE_NET, pdq_eisa_intr, dev, &ih, NULL)) {
+	if (bus_setup_intr(dev, irq, 0, pdq_eisa_intr, dev, &ih, NULL)) {
 		goto bad;
 	}
 

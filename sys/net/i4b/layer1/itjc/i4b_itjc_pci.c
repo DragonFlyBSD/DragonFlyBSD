@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.13 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.14 2005/10/12 17:35:55 dillon Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1583,7 +1583,7 @@ itjc_attach(device_t dev)
 
 	++res_init_level;
 
-	error = bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->sc_resources.irq, 0,
 			       itjc_intr, sc, &ih, NULL);
 
 	if (error)

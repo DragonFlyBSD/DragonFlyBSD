@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.11 2005/06/06 21:48:15 eirikn Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.12 2005/10/12 17:35:50 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3766,7 +3766,7 @@ ncr_attach (device_t dev)
 		device_printf(dev,
 			      "interruptless mode: reduced performance.\n");
 	} else {
-		bus_setup_intr(dev, np->irq_res, INTR_TYPE_CAM,
+		bus_setup_intr(dev, np->irq_res, 0,
 			       ncr_intr, np, &np->irq_handle, NULL);
 	}
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_pci.c,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.5 2005/06/10 17:10:26 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_pci.c,v 1.6 2005/10/12 17:35:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ mly_pci_attach(device_t dev)
 	mly_printf(sc, "can't allocate interrupt\n");
 	goto fail;
     }
-    error = bus_setup_intr(sc->mly_dev, sc->mly_irq, INTR_TYPE_CAM, 
+    error = bus_setup_intr(sc->mly_dev, sc->mly_irq, 0, 
 			   mly_pci_intr, sc, &sc->mly_intr, NULL);
     if (error) {
 	mly_printf(sc, "can't set up interrupt\n");

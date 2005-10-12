@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.6 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.7 2005/10/12 17:35:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,8 +141,7 @@ iop_attach(struct iop_softc *sc)
 	}
     }
     /* setup and enable interrupts */
-    bus_setup_intr(sc->dev, sc->r_irq, INTR_TYPE_BIO, iop_intr, sc,
-		   &sc->handle, NULL);
+    bus_setup_intr(sc->dev, sc->r_irq, 0, iop_intr, sc, &sc->handle, NULL);
     sc->reg->oqueue_intr_mask = 0x0;
 }
 

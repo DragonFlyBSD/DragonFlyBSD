@@ -45,7 +45,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_isa.c,v 1.14.2.5 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.4 2005/05/24 20:58:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.5 2005/10/12 17:35:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -322,7 +322,7 @@ adv_isa_probe(device_t dev)
 		irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
 					    RF_ACTIVE);
 		if (irqres == NULL ||
-		    bus_setup_intr(dev, irqres, INTR_TYPE_CAM, adv_intr, adv,
+		    bus_setup_intr(dev, irqres, 0, adv_intr, adv,
 				   &ih, NULL)) {
 			bus_dmamap_unload(overrun_dmat, overrun_dmamap);
 			bus_dmamem_free(overrun_dmat, overrun_buf,

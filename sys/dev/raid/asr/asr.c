@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.21 2005/06/16 21:12:38 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.22 2005/10/12 17:35:54 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -2531,7 +2531,7 @@ asr_pci_map_int (
         if (sc->ha_irq_res == (struct resource *)NULL) {
                 return (0);
         }
-	error = bus_setup_intr(tag, sc->ha_irq_res, INTR_TYPE_CAM,
+	error = bus_setup_intr(tag, sc->ha_irq_res, 0,
 			      (driver_intr_t *)asr_intr, (void *)sc, 
 			      &(sc->ha_intr), NULL);
 	if (error) {

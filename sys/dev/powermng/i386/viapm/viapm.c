@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.7 2005/06/03 23:10:23 joerg Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.8 2005/10/12 17:35:54 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -344,7 +344,7 @@ viapm_pro_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, viapm->irqres, INTR_TYPE_MISC,
+	error = bus_setup_intr(dev, viapm->irqres, 0,
 			       (driver_intr_t *) viasmb_intr, viapm, 
 			       &viapm->irqih, NULL);
 	if (error) {

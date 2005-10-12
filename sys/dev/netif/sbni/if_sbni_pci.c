@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.7 2005/08/29 10:19:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.8 2005/10/12 17:35:53 dillon Exp $
  */
 
  
@@ -137,7 +137,7 @@ sbni_pci_attach(device_t dev)
 
 	if (sc->irq_res) {
 		printf(" irq %ld\n", rman_get_start(sc->irq_res));
-		error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+		error = bus_setup_intr(dev, sc->irq_res, 0,
 				       sbni_intr, sc, 
 				       &sc->irq_handle, NULL);
 		if (error) {

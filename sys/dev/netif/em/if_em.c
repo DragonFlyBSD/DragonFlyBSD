@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.38 2005/10/04 02:06:46 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.39 2005/10/12 17:35:51 dillon Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -517,7 +517,7 @@ em_attach(device_t dev)
         else
 		adapter->pcix_82544 = FALSE;
 
-	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_TYPE_MISC,
+	error = bus_setup_intr(dev, adapter->res_interrupt, 0,
 			   (void (*)(void *)) em_intr, adapter,
 			   &adapter->int_handler_tag, &adapter->serializer);
 	if (error) {

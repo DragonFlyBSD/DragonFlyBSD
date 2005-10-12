@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.16 2005/06/13 20:36:45 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.17 2005/10/12 17:35:51 dillon Exp $
  */
 
 /*
@@ -270,7 +270,7 @@ ar_attach(device_t device)
 	arc_init(hc);
 
 	error = BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
-			       INTR_TYPE_NET, arintr, hc,
+			       0, arintr, hc,
 			       &hc->intr_cookie, NULL);
 	if (error)
 		return (1);

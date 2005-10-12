@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.26 2005/07/13 17:46:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.27 2005/10/12 17:35:54 dillon Exp $
  */
 
 /*
@@ -316,7 +316,7 @@ xe_attach (device_t dev)
   /* Attach the interface */
   ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr);
 
-  err = bus_setup_intr(dev, scp->irq_res, INTR_TYPE_NET, xe_intr, scp,
+  err = bus_setup_intr(dev, scp->irq_res, 0, xe_intr, scp,
 		       &scp->intrhand, NULL);
   if (err) {
     ether_ifdetach(&scp->arpcom.ac_if);

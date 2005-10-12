@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.10 2005/06/03 16:57:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.11 2005/10/12 17:35:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -365,7 +365,7 @@ ahbattach(device_t dev)
 		goto error_exit;
 
 	/* Enable our interrupt */
-	bus_setup_intr(dev, irq, INTR_TYPE_CAM, ahbintr, ahb, &ih, NULL);
+	bus_setup_intr(dev, irq, 0, ahbintr, ahb, &ih, NULL);
 	return (0);
 
 error_exit:

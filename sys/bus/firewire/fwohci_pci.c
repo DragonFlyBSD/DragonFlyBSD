@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.18 2005/06/02 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.19 2005/10/12 17:35:45 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -323,18 +323,18 @@ fwohci_pci_attach(device_t self)
 
 	err = bus_setup_intr(self, sc->irq_res,
 #if FWOHCI_TASKQUEUE
-			INTR_TYPE_NET | INTR_MPSAFE,
+			INTR_MPSAFE,
 #else
-			INTR_TYPE_NET,
+			0,
 #endif
 		     (driver_intr_t *) fwohci_intr, sc, &sc->ih, NULL);
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 	/* XXX splcam() should mask this irq for sbp.c*/
-	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_CAM,
+	err = bus_setup_intr(self, sc->irq_res, 0,
 		     (driver_intr_t *) fwohci_dummy_intr, sc,
 		     &sc->ih_cam, NULL);
 	/* XXX splbio() should mask this irq for physio()/fwmem_strategy() */
-	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_BIO,
+	err = bus_setup_intr(self, sc->irq_res, 0,
 		     (driver_intr_t *) fwohci_dummy_intr, sc,
 		     &sc->ih_bio, NULL);
 #endif

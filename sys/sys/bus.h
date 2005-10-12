@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.14 2005/05/24 20:58:44 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.15 2005/10/12 17:35:44 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -47,29 +47,13 @@ typedef struct devclass		*devclass_t;
 typedef void driver_intr_t(void*);
 
 /*
- * We define this in terms of bits because some devices may belong
- * to multiple classes (and therefore need to be included in
- * multiple interrupt masks, which is what this really serves to
- * indicate.  Buses which do interrupt remapping will want to
- * change their type to reflect what sort of devices are underneath.
+ * Interrupt features mask.  Note that DragonFly no longer implements
+ * INTR_TYPE_* flags.
  */
-enum intr_type {
-    INTR_TYPE_TTY = 1,
-    INTR_TYPE_BIO = 2,
-    INTR_TYPE_NET = 4,
-    INTR_TYPE_CAM = 8,
-    INTR_TYPE_MISC = 16,
-    INTR_TYPE_CLK = 32,
-    INTR_TYPE_AV = 64,
-    INTR_FAST = 128,
-    INTR_EXCL = 256,
-    INTR_MPSAFE = 512,
-    INTR_ENTROPY = 1024
-};
-
-#define INTR_TYPE_MASK	(INTR_TYPE_TTY|INTR_TYPE_BIO|INTR_TYPE_NET|\
-			 INTR_TYPE_CAM|INTR_TYPE_MISC|INTR_TYPE_CLK|\
-			 INTR_TYPE_AV)
+#define	INTR_FAST	0x0080
+#define	INTR_EXCL	0x0100
+#define	INTR_MPSAFE	0x0200
+#define	INTR_ENTROPY	0x0400
 
 enum intr_trigger {
     INTR_TRIGGER_CONFORM = 0,

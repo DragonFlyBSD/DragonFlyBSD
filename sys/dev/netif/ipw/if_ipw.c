@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.8 2005/06/13 22:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.9 2005/10/12 17:35:52 dillon Exp $
  */
 
 /*-
@@ -358,7 +358,7 @@ ipw_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete
 	 */
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
+	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       ipw_intr, sc, &sc->sc_ih, NULL);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");

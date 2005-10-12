@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.30 2005/06/20 15:10:41 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.31 2005/10/12 17:35:53 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -314,7 +314,7 @@ txp_attach(dev)
 
 	ether_ifattach(ifp, enaddr);
 
-	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->sc_irq, 0,
 			       txp_intr, sc, &sc->sc_intrhand, NULL);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

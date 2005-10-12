@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb_pci.c,v 1.1.2.3 2002/10/20 14:57:19 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.6 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.7 2005/10/12 17:35:54 dillon Exp $
  */
 
 /*
@@ -184,8 +184,7 @@ ichsmb_pci_attach(device_t dev)
 	}
 
 	/* Set up interrupt handler */
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_MISC,
-			       ichsmb_device_intr, sc,
+	error = bus_setup_intr(dev, sc->irq_res, 0, ichsmb_device_intr, sc,
 			       &sc->irq_handle, NULL);
 	if (error != 0) {
 		log(LOG_ERR, "%s: can't setup irq\n", device_get_nameunit(dev));

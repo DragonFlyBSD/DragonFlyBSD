@@ -28,7 +28,7 @@
  *	==================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.6.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.5 2005/05/24 20:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:09:28 2001]
  *
@@ -325,7 +325,7 @@ eqs1p_pci_attach(device_t dev)
 		return(ENXIO);
 	}
 
-	if (bus_setup_intr(dev, sc->sc_resources.irq, INTR_TYPE_NET,
+	if (bus_setup_intr(dev, sc->sc_resources.irq, 0,
 				(void(*)(void*))isicintr,
 				sc, &ih, NULL))
 	{

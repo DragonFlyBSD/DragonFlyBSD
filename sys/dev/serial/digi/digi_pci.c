@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi_pci.c,v 1.9 2003/08/24 17:46:03 obrien Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.2 2005/05/24 20:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.3 2005/10/12 17:35:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,8 +188,7 @@ digi_pci_attach(device_t dev)
 		device_printf(dev, "couldn't map interrupt\n");
 		return (ENXIO);
 	}
-	retVal = bus_setup_intr(dev, sc->res.irq, INTR_TYPE_TTY,
-				digiintr, sc,
+	retVal = bus_setup_intr(dev, sc->res.irq, 0, digiintr, sc,
 				&sc->res.irqHandler, NULL);
 #else
 	DLOG(DIGIDB_IRQ, (sc->dev, "Interrupt support compiled out\n"));

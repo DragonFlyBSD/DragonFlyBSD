@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.8 2005/06/16 15:53:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.9 2005/10/12 17:35:50 dillon Exp $
  */
 
 /*
@@ -3251,7 +3251,7 @@ trm_attach(device_t pci_config_id)
 	    ~0, 1, RF_SHAREABLE | RF_ACTIVE);
     	if (pACB->irq == NULL ||
 	    bus_setup_intr(pci_config_id, pACB->irq, 
-			   INTR_TYPE_CAM, trm_Interrupt, pACB,
+			   0, trm_Interrupt, pACB,
 			   &pACB->ih, NULL)) {
 		printf("trm%d: register Interrupt handler error!\n", unit);
 		goto bad;

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_isa.c,v 1.12 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.5 2005/06/13 22:55:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.6 2005/10/12 17:35:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -243,7 +243,7 @@ lnc_isa_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->irqres, INTR_TYPE_NET, lncintr,
+	error = bus_setup_intr(dev, sc->irqres, 0, lncintr,
 	            	       sc, &sc->intrhand, NULL);
 	if (error) {
 		device_printf(dev, "Failed to setup irq handler\n");

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.23 2005/08/10 15:18:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.24 2005/10/12 17:35:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -419,7 +419,7 @@ bfe_attach(device_t dev)
 	/*
 	 * Hook interrupt last to avoid having to lock softc
 	 */
-	error = bus_setup_intr(dev, sc->bfe_irq, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->bfe_irq, 0,
 			       bfe_intr, sc, &sc->bfe_intrhand, NULL);
 
 	if (error) {

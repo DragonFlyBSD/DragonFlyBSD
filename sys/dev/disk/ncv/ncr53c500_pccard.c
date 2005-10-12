@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.9 2005/06/10 15:29:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.10 2005/10/12 17:35:50 dillon Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -264,7 +264,7 @@ ncv_pccard_attach(DEVPORT_PDEVICE dev)
 		return(error);
 	}
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_CAM,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       ncv_pccard_intr, (void *)sc,
 			       &sc->ncv_intrhand, NULL);
 	if (error) {

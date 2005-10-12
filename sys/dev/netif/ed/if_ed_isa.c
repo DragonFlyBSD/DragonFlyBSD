@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.11 2005/10/01 06:36:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.12 2005/10/12 17:35:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,7 +129,7 @@ ed_isa_attach(device_t dev)
 
 	ed_alloc_irq(dev, sc->irq_rid, 0);
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_TYPE_NET,
+	error = bus_setup_intr(dev, sc->irq_res, 0,
 			       edintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		ed_release_resources(dev);

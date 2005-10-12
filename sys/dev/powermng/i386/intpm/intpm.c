@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.8 2005/06/10 23:29:31 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.9 2005/10/12 17:35:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -706,7 +706,7 @@ intpm_attach(device_t dev)
 		  device_printf(dev,"could not allocate irq");
 		  return ENOMEM;
 		}
-		error = bus_setup_intr(dev, res, INTR_TYPE_MISC,
+		error = bus_setup_intr(dev, res, 0,
 				       (driver_intr_t *)intpm_intr, sciic,
 				       &ih, NULL);
                 if(error){

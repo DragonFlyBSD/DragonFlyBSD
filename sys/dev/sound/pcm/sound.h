@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.6 2005/06/10 23:07:01 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.7 2005/10/12 17:35:55 dillon Exp $
  */
 
 /*
@@ -81,14 +81,6 @@
 #endif
 
 #define SND_DYNSYSCTL
-
-#ifndef	INTR_MPSAFE
-#define	INTR_TYPE_AV	INTR_TYPE_TTY
-#endif
-
-#ifndef	INTR_MPSAFE
-#define	INTR_MPSAFE	0
-#endif
 
 struct pcm_channel;
 struct pcm_feeder;

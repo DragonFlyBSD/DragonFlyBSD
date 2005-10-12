@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.9 2005/07/07 15:15:24 joerg Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.10 2005/10/12 17:35:47 dillon Exp $
  */
 
 #include "use_vt.h"
@@ -87,7 +87,7 @@ static struct old_isa_driver old_drivers[] = {
 
 /* Sensitive NET */
 #if NRDP > 0
-	{ INTR_TYPE_NET, &rdpdriver },
+	{ 0, &rdpdriver },
 #endif
 
 /* Sensitive CAM */
@@ -95,78 +95,79 @@ static struct old_isa_driver old_drivers[] = {
 /* TTY */
 
 #if NVT > 0
-	{ INTR_TYPE_TTY, &vtdriver },
+	{ 0, &vtdriver },
 #endif
 #if NGP > 0
-	{ INTR_TYPE_TTY, &gpdriver },
+	{ 0, &gpdriver },
 #endif
 #if NGSC > 0
-	{ INTR_TYPE_TTY, &gscdriver },
+	{ 0, &gscdriver },
 #endif
 #if NCY > 0
-	{ INTR_TYPE_TTY | INTR_FAST, &cydriver },
+	{ INTR_FAST, &cydriver },
 #endif
 #if NDGB > 0
-	{ INTR_TYPE_TTY, &dgbdriver },
+	{ 0, &dgbdriver },
 #endif
 #if NLABPC > 0
-	{ INTR_TYPE_TTY, &labpcdriver },
+	{ 0, &labpcdriver },
 #endif
 #if NRC > 0
-	{ INTR_TYPE_TTY, &rcdriver },
+	{ 0, &rcdriver },
 #endif
 #if NRP > 0
-	{ INTR_TYPE_TTY, &rpdriver },
+	{ 0, &rpdriver },
 #endif
 #if NTW > 0
-	{ INTR_TYPE_TTY, &twdriver },
+	{ 0, &twdriver },
 #endif
 #if NASC > 0
-	{ INTR_TYPE_TTY, &ascdriver },
+	{ 0, &ascdriver },
 #endif
 #if NSTL > 0
-	{ INTR_TYPE_TTY, &stldriver },
+	{ 0, &stldriver },
 #endif
 #if NSTLI > 0
-	{ INTR_TYPE_TTY, &stlidriver },
+	{ 0, &stlidriver },
 #endif
 #if NLORAN > 0
-	{ INTR_TYPE_TTY | INTR_FAST, &lorandriver },
+	{ INTR_FAST, &lorandriver },
 #endif
 
 /* BIO */
 
 #if NMCD > 0
-	{ INTR_TYPE_BIO, &mcddriver },
+	{ 0, &mcddriver },
 #endif
 #if NSCD > 0
-	{ INTR_TYPE_BIO, &scddriver },
+	{ 0, &scddriver },
 #endif
 #if NWT > 0
-	{ INTR_TYPE_BIO, &wtdriver },
+	{ 0, &wtdriver },
 #endif
 
 /* NET */
 
 #if NLE > 0
-	{ INTR_TYPE_NET, &ledriver },
+	{ 0, &ledriver },
 #endif
 #if NCX > 0
-	{ INTR_TYPE_NET, &cxdriver },
+	{ 0, &cxdriver },
 #endif
 #if NEL > 0
-	{ INTR_TYPE_NET, &eldriver },
+	{ 0, &eldriver },
 #endif
 
 /* MISC */
 
 #if NCTX > 0
-	{ INTR_TYPE_MISC, &ctxdriver },
+	{ 0, &ctxdriver },
 #endif
 #if NSPIGOT > 0
-	{ INTR_TYPE_MISC, &spigotdriver },
+	{ 0, &spigotdriver },
 #endif
 
 };
 
 #define old_drivers_count (sizeof(old_drivers) / sizeof(old_drivers[0]))
+
