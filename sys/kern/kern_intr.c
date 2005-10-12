@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.22 2005/06/16 21:12:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.23 2005/10/12 17:39:49 dillon Exp $
  *
  */
 
@@ -55,12 +55,6 @@ static thread_t ithreads[NHWI+NSWI];
 static struct thread ithread_ary[NHWI+NSWI];
 static struct random_softc irandom_ary[NHWI+NSWI];
 static int irunning[NHWI+NSWI];
-static u_int ill_count[NHWI+NSWI];	/* interrupt livelock counter */
-static u_int ill_ticks[NHWI+NSWI];	/* track elapsed to calculate freq */
-static u_int ill_delta[NHWI+NSWI];	/* track elapsed to calculate freq */
-static int ill_state[NHWI+NSWI];	/* current state */
-static struct systimer ill_timer[NHWI+NSWI];	/* enforced freq. timer */
-static struct systimer ill_rtimer[NHWI+NSWI];	/* recovery timer */
 
 #define LIVELOCK_NONE		0
 #define LIVELOCK_LIMITED	1
@@ -245,6 +239,10 @@ ithread_livelock_wakeup(systimer_t info)
 	lwkt_schedule(td);
 }
 
+/*
+ * This is run from a periodic SYSTIMER.  It resets the
+ */
+
 
 /*
  * Interrupt threads run this as their main loop.
@@ -276,6 +274,12 @@ ithread_handler(void *arg)
     intrec_t *nrec;
     struct random_softc *sc = &irandom_ary[intr];
     globaldata_t gd = mycpu;
+    struct systimer ill_timer;	/* enforced freq. timer */
+    struct systimer ill_rtimer;	/* recovery timer */
+    u_int ill_count = 0;	/* interrupt livelock counter */
+    u_int ill_ticks = 0;	/* track elapsed to calculate freq */
+    u_int ill_delta = 0;	/* track elapsed to calculate freq */
+    int ill_state = 0;		/* current state */
 
     /*
      * The loop must be entered with one critical section held.
@@ -322,59 +326,58 @@ ithread_handler(void *arg)
 	 * prevent other interrupts from occuring so we cannot use ticks.
 	 */
 	cputicks = sys_cputimer->count();
-	++ill_count[intr];
-	bticks = cputicks - ill_ticks[intr];
-	ill_ticks[intr] = cputicks;
+	++ill_count;
+	bticks = cputicks - ill_ticks;
+	ill_ticks = cputicks;
 	if (bticks > sys_cputimer->freq)
 	    bticks = sys_cputimer->freq;
 
-	switch(ill_state[intr]) {
+	switch(ill_state) {
 	case LIVELOCK_NONE:
-	    ill_delta[intr] += bticks;
-	    if (ill_delta[intr] < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
+	    ill_delta += bticks;
+	    if (ill_delta < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
 		break;
-	    freq = (int64_t)ill_count[intr] * sys_cputimer->freq / 
-		   ill_delta[intr];
-	    ill_delta[intr] = 0;
-	    ill_count[intr] = 0;
+	    freq = (int64_t)ill_count * sys_cputimer->freq / 
+		   ill_delta;
+	    ill_delta = 0;
+	    ill_count = 0;
 	    if (freq < livelock_limit)
 		break;
 	    printf("intr %d at %d hz, livelocked! limiting at %d hz\n",
 		intr, freq, livelock_fallback);
-	    ill_state[intr] = LIVELOCK_LIMITED;
+	    ill_state = LIVELOCK_LIMITED;
 	    bticks = 0;
 	    /* force periodic check to avoid stale removal (if ints stop) */
-	    systimer_init_periodic(&ill_rtimer[intr], ithread_livelock_wakeup,
-				(void *)intr, 1);
+	    systimer_init_periodic(&ill_rtimer, ithread_livelock_wakeup,
+				    (void *)intr, 1);
 	    /* fall through */
 	case LIVELOCK_LIMITED:
 	    /*
 	     * Delay (us) before rearming the interrupt
 	     */
-	    systimer_init_oneshot(&ill_timer[intr], ithread_livelock_wakeup,
+	    systimer_init_oneshot(&ill_timer, ithread_livelock_wakeup,
 				(void *)intr, 1 + 1000000 / livelock_fallback);
 	    lwkt_deschedule_self(curthread);
 	    lwkt_switch();
 
 	    /* in case we were woken up by something else */
-	    systimer_del(&ill_timer[intr]);
+	    systimer_del(&ill_timer);
 
 	    /*
 	     * Calculate interrupt rate (note that due to our delay it
 	     * will not exceed livelock_fallback).
 	     */
-	    ill_delta[intr] += bticks;
-	    if (ill_delta[intr] < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
+	    ill_delta += bticks;
+	    if (ill_delta < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
 		break;
-	    freq = (int64_t)ill_count[intr] * sys_cputimer->freq / 
-		   ill_delta[intr];
-	    ill_delta[intr] = 0;
-	    ill_count[intr] = 0;
+	    freq = (int64_t)ill_count * sys_cputimer->freq / ill_delta;
+	    ill_delta = 0;
+	    ill_count = 0;
 	    if (freq < (livelock_fallback >> 1)) {
 		printf("intr %d at %d hz, removing livelock limit\n",
 			intr, freq);
-		ill_state[intr] = LIVELOCK_NONE;
-		systimer_del(&ill_rtimer[intr]);
+		ill_state = LIVELOCK_NONE;
+		systimer_del(&ill_rtimer);
 	    }
 	    break;
 	}
