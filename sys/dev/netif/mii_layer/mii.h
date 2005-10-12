@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.h,v 1.2 1999/08/28 00:42:14 peter Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.h,v 1.3 2005/10/12 00:57:41 dillon Exp $
  */
 
 #ifndef _DEV_MII_MII_H_
@@ -53,16 +53,28 @@
 #define	MII_COMMAND_WRITE	0x01
 #define	MII_COMMAND_ACK		0x02
 
+/*
+ * MII registers are bits
+ *
+ * note 1: Most adapters seem to have adopted these bits for GigE support,
+ *	   but they have not been verified against any standard.  
+ *	   Theoretically the speed select will extend to 10GigE as well.
+ *
+ *	   The netgear GigE switch reports both the bits I have labeled
+ *	   ANLPAR_1000 and ANLPAR_1000_FD, but it is unclear what they mean
+ *	   other then probably being related to GigE.
+ */
 #define	MII_BMCR	0x00 	/* Basic mode control register (rw) */
 #define	BMCR_RESET	0x8000	/* reset */
 #define	BMCR_LOOP	0x4000	/* loopback */
-#define	BMCR_S100	0x2000	/* speed (10/100) select */
+#define	BMCR_S100	0x2000	/* speed (10/100) select (low bit) */
 #define	BMCR_AUTOEN	0x1000	/* autonegotiation enable */
 #define	BMCR_PDOWN	0x0800	/* power down */
 #define	BMCR_ISO	0x0400	/* isolate */
 #define	BMCR_STARTNEG	0x0200	/* restart autonegotiation */
 #define	BMCR_FDX	0x0100	/* Set duplex mode */
 #define	BMCR_CTEST	0x0080	/* collision test */
+#define BMCR_S1000	0x0040	/* speed select (high bit) (note 1) */
 
 #define	MII_BMSR	0x01	/* Basic mode status register (ro) */
 #define	BMSR_100T4	0x8000	/* 100 base T4 capable */
@@ -70,6 +82,7 @@
 #define	BMSR_100TXHDX	0x2000	/* 100 base Tx half duplex capable */
 #define	BMSR_10TFDX	0x1000	/* 10 base T full duplex capable */
 #define	BMSR_10THDX	0x0800	/* 10 base T half duplex capable */
+#define	BMSR_1000	0x0100	/* 1000baseT extended status present */
 #define	BMSR_ACOMP	0x0020	/* Autonegotiation complete */
 #define	BMSR_RFAULT	0x0010	/* Link partner fault */
 #define	BMSR_ANEG	0x0008	/* Autonegotiation capable */
@@ -78,13 +91,7 @@
 #define	BMSR_EXT	0x0001	/* Extended capability */
 
 #define	BMSR_MEDIAMASK	(BMSR_100T4|BMSR_100TXFDX|BMSR_100TXHDX|BMSR_10TFDX| \
-			 BMSR_10THDX|BMSR_ANEG)
-
-/*
- * Convert BMSR media capabilities to ANAR bits for autonegotiation.
- * Note the shift chopps off the BMSR_ANEG bit.
- */
-#define	BMSR_MEDIA_TO_ANAR(x)	(((x) & BMSR_MEDIAMASK) >> 6)
+			 BMSR_10THDX|BMSR_1000|BMSR_ANEG)
 
 #define	MII_PHYIDR1	0x02	/* ID register 1 (ro) */
 
@@ -101,6 +108,8 @@
 #define ANAR_NP		0x8000	/* Next page (ro) */
 #define	ANAR_ACK	0x4000	/* link partner abilities acknowledged (ro) */
 #define ANAR_RF		0x2000	/* remote fault (ro) */
+#define ANAR_1000_FD	0x0800	/* local device supports GigE/FD (note 1) */
+#define ANAR_1000	0x0400	/* local device supports GigE    (note 1) */
 #define ANAR_T4		0x0200	/* local device supports 100bT4 */
 #define ANAR_TX_FD	0x0100	/* local device supports 100bTx FD */
 #define ANAR_TX		0x0080	/* local device supports 100bTx */
@@ -112,6 +121,8 @@
 #define ANLPAR_NP	0x8000	/* Next page (ro) */
 #define	ANLPAR_ACK	0x4000	/* link partner accepted ACK (ro) */
 #define ANLPAR_RF	0x2000	/* remote fault (ro) */
+#define ANLPAR_1000_FD	0x0800	/* link partner supports GigE/FD (note 1) */
+#define ANLPAR_1000	0x0400	/* link partner supports GigE    (note 1) */
 #define ANLPAR_T4	0x0200	/* link partner supports 100bT4 */
 #define ANLPAR_TX_FD	0x0100	/* link partner supports 100bTx FD */
 #define ANLPAR_TX	0x0080	/* link partner supports 100bTx */

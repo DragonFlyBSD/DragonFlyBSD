@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.6 2005/06/13 22:18:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.7 2005/10/12 00:57:41 dillon Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ mii_phy_auto(mii, waitfor)
 
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
 		PHY_WRITE(mii, MII_ANAR,
-		    BMSR_MEDIA_TO_ANAR(mii->mii_capabilities) | ANAR_CSMA);
+		    mii_bmsr_media_to_anar(mii->mii_capabilities) | ANAR_CSMA);
 		PHY_WRITE(mii, MII_BMCR, BMCR_AUTOEN | BMCR_STARTNEG);
 	}
 
@@ -185,6 +185,12 @@ mii_anar(media)
 	int rv;
 
 	switch (media & (IFM_TMASK|IFM_NMASK|IFM_FDX)) {
+	case IFM_ETHER|IFM_1000_T:
+		rv = ANAR_1000|ANAR_CSMA;
+		break;
+	case IFM_ETHER|IFM_1000_T|IFM_FDX:
+		rv = ANAR_1000_FD|ANAR_CSMA;
+		break;
 	case IFM_ETHER|IFM_10_T:
 		rv = ANAR_10|ANAR_CSMA;
 		break;
@@ -272,6 +278,11 @@ mii_add_media(mii, bmsr, instance)
 		    BMCR_S100);
 		PRINT("100baseT4");
 	}
+	if (bmsr & BMSR_1000) {
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, instance),
+		    BMCR_S1000);
+		PRINT("1000baseT-FDX");
+	}
 	if (bmsr & BMSR_ANEG) {
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, instance),
 		    BMCR_AUTOEN);
@@ -280,3 +291,24 @@ mii_add_media(mii, bmsr, instance)
 #undef ADD
 #undef PRINT
 }
+
+int
+mii_bmsr_media_to_anar(int bmsr)
+{
+ 	int res = 0;
+
+	if (bmsr & BMSR_100T4)
+		res |= ANAR_T4;
+	if (bmsr & BMSR_100TXFDX)
+		res |= ANAR_TX_FD;
+	if (bmsr & BMSR_100TXHDX)
+		res |= ANAR_TX;
+	if (bmsr & BMSR_10TFDX)
+		res |= ANAR_10_FD;
+	if (bmsr & BMSR_10THDX)
+		res |= ANAR_10;
+	if (bmsr & BMSR_1000)
+		res |= ANAR_1000_FD;
+	return (res);
+}
+
