@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.17 2005/10/02 10:01:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.18 2005/10/12 01:09:31 dillon Exp $
  */
 
 /*
@@ -106,6 +106,7 @@
 #include <machine/clock.h>	/* for DELAY */
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/serialize.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -123,18 +124,24 @@ static int      nv_probe(device_t);
 static int      nv_attach(device_t);
 static int      nv_detach(device_t);
 static void     nv_init(void *);
+static void	nv_init_serialized(struct nv_softc *);
 static void     nv_stop(struct nv_softc *);
+static void	nv_stop_serialized(struct nv_softc *);
 static void     nv_shutdown(device_t);
 static int      nv_init_rings(struct nv_softc *);
 static void     nv_free_rings(struct nv_softc *);
 
 static void     nv_ifstart(struct ifnet *);
+static void     nv_ifstart_serialized(struct ifnet *);
 static int      nv_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void     nv_intr(void *);
 static void     nv_tick(void *);
 static void     nv_setmulti(struct nv_softc *);
 static void     nv_watchdog(struct ifnet *);
 static void     nv_update_stats(struct nv_softc *);
+#ifdef DEVICE_POLLING
+static void	nv_poll(struct ifnet *, enum poll_cmd, int);
+#endif
 
 static int      nv_ifmedia_upd(struct ifnet *);
 static void     nv_ifmedia_sts(struct ifnet *, struct ifmediareq *);
@@ -304,6 +311,7 @@ nv_attach(device_t dev)
 
 	sc->dev = dev;
 	sc->unit = unit;
+	lwkt_serialize_init(&sc->serializer);
 	callout_init(&sc->nv_stat_timer);
 
 	/* Preinitialize data structures */
@@ -494,8 +502,7 @@ nv_attach(device_t dev)
 	DEBUGOUT(NV_DEBUG_INIT, "nv: do mii_phy_probe\n");
 
 	/* Probe device for MII interface to PHY */
-	if (mii_phy_probe(dev, &sc->miibus,
-			  nv_ifmedia_upd, nv_ifmedia_sts)) {
+	if (mii_phy_probe(dev, &sc->miibus, nv_ifmedia_upd, nv_ifmedia_sts)) {
 		device_printf(dev, "MII without any phy!\n");
 		error = ENXIO;
 		goto fail;
@@ -507,6 +514,9 @@ nv_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = nv_ioctl;
 	ifp->if_start = nv_ifstart;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = nv_poll;
+#endif
 	ifp->if_watchdog = nv_watchdog;
 	ifp->if_timer = 0;
 	ifp->if_init = nv_init;
@@ -521,7 +531,7 @@ nv_attach(device_t dev)
 
 	/* Activate our interrupt handler. - attach last to avoid lock */
 	error = bus_setup_intr(sc->dev, sc->irq, INTR_TYPE_NET,
-			       nv_intr, sc, &sc->sc_ih, NULL);
+			       nv_intr, sc, &sc->sc_ih, &sc->serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(sc->dev, "couldn't set up interrupt handler\n");
@@ -543,15 +553,17 @@ nv_detach(device_t dev)
 	struct nv_softc *sc = device_get_softc(dev);
 	struct ifnet   *ifp;
 
-	NV_LOCK(sc);
+	lwkt_serialize_enter(&sc->serializer);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: nv_detach - entry\n");
 
 	ifp = &sc->arpcom.ac_if;
 
 	if (device_is_attached(dev)) {
-		nv_stop(sc);
+		nv_stop_serialized(sc);
+		lwkt_serialize_exit(&sc->serializer);
 		ether_ifdetach(ifp);
+		lwkt_serialize_enter(&sc->serializer);
 	}
 
 	if (sc->miibus)
@@ -588,22 +600,29 @@ nv_detach(device_t dev)
 	if (sc->rtag)
 		bus_dma_tag_destroy(sc->rtag);
 
-	NV_UNLOCK(sc);
+	lwkt_serialize_exit(&sc->serializer);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: nv_detach - exit\n");
 
 	return (0);
 }
 
-/* Initialise interface and start it "RUNNING" */
 static void
 nv_init(void *xsc)
 {
 	struct nv_softc *sc = xsc;
+
+	lwkt_serialize_enter(&sc->serializer);
+	nv_init_serialized(sc);
+	lwkt_serialize_exit(&sc->serializer);
+}
+
+/* Initialise interface and start it "RUNNING" */
+static void
+nv_init_serialized(struct nv_softc *sc)
+{
 	struct ifnet   *ifp;
 	int             error;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_init - entry (%d)\n", sc->linkup);
 
@@ -611,9 +630,9 @@ nv_init(void *xsc)
 
 	/* Do nothing if already running */
 	if (ifp->if_flags & IFF_RUNNING)
-		goto fail;
+		return;
 
-	nv_stop(sc);
+	nv_stop_serialized(sc);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: do pfnInit\n");
 	/* Setup Hardware interface and allocate memory structures */
@@ -626,11 +645,11 @@ nv_init(void *xsc)
 
 	if (error) {
 		device_printf(sc->dev, "failed to start NVIDIA Hardware interface\n");
-		goto fail;
+		return;
 	}
 	/* Set the MAC address */
 	sc->hwapi->pfnSetNodeAddress(sc->hwapi->pADCX, sc->sc_macaddr);
-	sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
+
 	sc->hwapi->pfnStart(sc->hwapi->pADCX);
 
 	/* Setup multicast filter */
@@ -640,6 +659,24 @@ nv_init(void *xsc)
 	/* Update interface parameters */
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
+
+	/*
+	 * Enable the interrupt.  Currently the nvidia API does not support
+	 * polling, if we do not call pfnEnableInterrupts() we cannot
+	 * issue the nvidia callback to process interrupts.  Call the
+	 * interrupt service routine in case the interrupt got stuck during
+	 * a reset, renegotiation, or timeout.
+	 */
+#if 1
+	lwkt_serialize_handler_enable(&sc->serializer);
+	sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
+#else
+	if ((ifp->if_flags & IFF_POLLING) == 0) {
+		lwkt_serialize_handler_enable(&sc->serializer);
+		sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
+	}
+#endif
+	nv_intr(sc);
 
 	/* 
 	 * Reset watchdog and ring queue indexes.  XXX if the interface
@@ -652,20 +689,69 @@ nv_init(void *xsc)
 	callout_reset(&sc->nv_stat_timer, hz, nv_tick, sc);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_init - exit\n");
+}
 
-fail:
-	NV_UNLOCK(sc);
+#ifdef DEVICE_POLLING
 
-	return;
+static void
+nv_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+{
+	struct nv_softc *sc = ifp->if_softc;
+
+	lwkt_serialize_enter(&sc->serializer);
+
+	switch(cmd) {
+	case POLL_REGISTER:
+		/*
+		 * We must disable the hardware interrupt on the device
+		 * as well as ensure that any interrupt queued prior to
+		 * this point does not execute the handler function.
+		 *
+		 * NOTE!  The nvidia API does not support polling with
+		 * interrupts disabled, so we have to leave them turned on
+		 * unfortunately.
+		 */
+#if 0
+		sc->hwapi->pfnDisableInterrupts(sc->hwapi->pADCX);
+		lwkt_serialize_handler_disable(&sc->serializer);
+#endif
+		break;
+	case POLL_DEREGISTER:
+#if 0
+		lwkt_serialize_handler_enable(&sc->serializer);
+		sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
+#endif
+		break;
+	case POLL_AND_CHECK_STATUS:
+		/* fall through */
+	case POLL_ONLY:
+		if (ifp->if_flags & IFF_RUNNING) {
+			nv_intr(sc);
+		}
+		if (ifp->if_flags & IFF_RUNNING) {
+			if (!ifq_is_empty(&ifp->if_snd))
+				nv_ifstart_serialized(ifp);
+		}
+		break;
+	}
+	lwkt_serialize_exit(&sc->serializer);
+}
+
+#endif
+
+static void
+nv_stop(struct nv_softc *sc)
+{
+	lwkt_serialize_enter(&sc->serializer);
+	nv_stop_serialized(sc);
+	lwkt_serialize_exit(&sc->serializer);
 }
 
 /* Stop interface activity ie. not "RUNNING" */
 static void
-nv_stop(struct nv_softc *sc)
+nv_stop_serialized(struct nv_softc *sc)
 {
 	struct ifnet   *ifp;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_stop - entry\n");
 
@@ -675,9 +761,16 @@ nv_stop(struct nv_softc *sc)
 	/* Cancel tick timer */
 	callout_stop(&sc->nv_stat_timer);
 
-	/* Stop hardware activity */
+	/*
+	 * Stop hardware activity.  The serializer handler disablement call
+	 * prevents any interrupt scheduled prior to this call from calling
+	 * the handler.
+	 */
 	sc->hwapi->pfnDisableInterrupts(sc->hwapi->pADCX);
+	lwkt_serialize_handler_disable(&sc->serializer);
+
 	sc->hwapi->pfnStop(sc->hwapi->pADCX, 0);
+	sc->hwapi->pfnClearTxDesc(sc->hwapi->pADCX);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: do pfnDeinit\n");
 	/* Shutdown interface and deallocate memory buffers */
@@ -691,10 +784,6 @@ nv_stop(struct nv_softc *sc)
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_stop - exit\n");
-
-	NV_UNLOCK(sc);
-
-	return;
 }
 
 /* Shutdown interface for unload/reboot */
@@ -716,8 +805,6 @@ static int
 nv_init_rings(struct nv_softc *sc)
 {
 	int             error, i;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_init_rings - entry\n");
 
@@ -778,8 +865,6 @@ nv_init_rings(struct nv_softc *sc)
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_init_rings - exit\n");
 
 fail:
-	NV_UNLOCK(sc);
-
 	return (error);
 }
 
@@ -788,8 +873,6 @@ static void
 nv_free_rings(struct nv_softc *sc)
 {
 	int             i;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: nv_free_rings - entry\n");
 
@@ -818,13 +901,22 @@ nv_free_rings(struct nv_softc *sc)
 	}
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: nv_free_rings - exit\n");
-
-	NV_UNLOCK(sc);
 }
 
 /* Main loop for sending packets from OS to interface */
+
 static void
 nv_ifstart(struct ifnet *ifp)
+{
+	struct nv_softc *sc = ifp->if_softc;
+
+	lwkt_serialize_enter(&sc->serializer);
+	nv_ifstart_serialized(ifp);
+	lwkt_serialize_exit(&sc->serializer);
+}
+
+static void
+nv_ifstart_serialized(struct ifnet *ifp)
 {
 	struct nv_softc *sc = ifp->if_softc;
 	struct nv_map_buffer *buf;
@@ -836,7 +928,7 @@ nv_ifstart(struct ifnet *ifp)
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_ifstart - entry\n");
 
 	/* If link is down/busy or queue is empty do nothing */
-	if (ifp->if_flags & IFF_OACTIVE || ifq_is_empty(&ifp->if_snd))
+	if ((ifp->if_flags & IFF_OACTIVE) || ifq_is_empty(&ifp->if_snd))
 		return;
 
 	/* Transmit queued packets until sent or TX ring is full */
@@ -943,7 +1035,7 @@ nv_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int             error = 0;
 
-	NV_LOCK(sc);
+	lwkt_serialize_enter(&sc->serializer);
 
 	DEBUGOUT(NV_DEBUG_IOCTL, "nv: nv_ioctl - entry\n");
 
@@ -954,8 +1046,8 @@ nv_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			break;
 		if (ifr->ifr_mtu + ifp->if_hdrlen <= MAX_PACKET_SIZE_1518) {
 			ifp->if_mtu = ifr->ifr_mtu;
-			nv_stop(sc);
-			nv_init(sc);
+			nv_stop_serialized(sc);
+			nv_init_serialized(sc);
 		} else
 			error = EINVAL;
 		break;
@@ -964,12 +1056,12 @@ nv_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		/* Setup interface flags */
 		if (ifp->if_flags & IFF_UP) {
 			if ((ifp->if_flags & IFF_RUNNING) == 0) {
-				nv_init(sc);
+				nv_init_serialized(sc);
 				break;
 			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING) {
-				nv_stop(sc);
+				nv_stop_serialized(sc);
 				break;
 			}
 		}
@@ -994,18 +1086,23 @@ nv_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	default:
 		/* Everything else we forward to generic ether ioctl */
+		lwkt_serialize_exit(&sc->serializer);
 		error = ether_ioctl(ifp, command, data);
+		lwkt_serialize_enter(&sc->serializer);
 		break;
 	}
 
 	DEBUGOUT(NV_DEBUG_IOCTL, "nv: nv_ioctl - exit\n");
 
-	NV_UNLOCK(sc);
+	lwkt_serialize_exit(&sc->serializer);
 
 	return (error);
 }
 
-/* Interrupt service routine */
+/*
+ * Interrupt service routine.  The serializer has already been entered
+ * since we installed it in our bus_setup_intr() call.
+ */
 static void
 nv_intr(void *arg)
 {
@@ -1014,28 +1111,38 @@ nv_intr(void *arg)
 
 	DEBUGOUT(NV_DEBUG_INTERRUPT, "nv: nv_intr - entry\n");
 
-	if (!ifp->if_flags & IFF_UP) {
-		nv_stop(sc);
-		return;
-	}
-	/* Handle interrupt event */
+	/*
+	 * Handle an interrupt event.  Unfortunately the nvidia API
+	 * does not support interrupt disablement when polling, so we
+	 * have to re-enable after the query masks them off.
+	 */
 	if (sc->hwapi->pfnQueryInterrupt(sc->hwapi->pADCX)) {
 		sc->hwapi->pfnHandleInterrupt(sc->hwapi->pADCX);
+#if 1
+		lwkt_serialize_handler_enable(&sc->serializer);
 		sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
+#else
+		if ((ifp->if_flags & IFF_POLLING) == 0) {
+			lwkt_serialize_handler_enable(&sc->serializer);
+			sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
+		}
+#endif
 	}
 	if (!ifq_is_empty(&ifp->if_snd))
-		nv_ifstart(ifp);
+		nv_ifstart_serialized(ifp);
 
 	/* If no pending packets we don't need a timeout */
 	if (sc->pending_txs == 0)
 		sc->sc_if.if_timer = 0;
 
 	DEBUGOUT(NV_DEBUG_INTERRUPT, "nv: nv_intr - exit\n");
-
-	return;
 }
 
-/* Setup multicast filters */
+/*
+ * Setup multicast filters 
+ *
+ * Serialized on call
+ */
 static void
 nv_setmulti(struct nv_softc *sc)
 {
@@ -1045,8 +1152,6 @@ nv_setmulti(struct nv_softc *sc)
 	int             i;
 	u_int8_t        oraddr[6];
 	u_int8_t        andaddr[6];
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_setmulti - entry\n");
 
@@ -1063,7 +1168,6 @@ nv_setmulti(struct nv_softc *sc)
 		/* Accept all packets */
 		hwfilter.ulFilterFlags |= ACCEPT_ALL_PACKETS;
 		sc->hwapi->pfnSetPacketFilter(sc->hwapi->pADCX, &hwfilter);
-		NV_UNLOCK(sc);
 		return;
 	}
 	/* Setup multicast filter */
@@ -1088,14 +1192,14 @@ nv_setmulti(struct nv_softc *sc)
 	/* Send filter to NVIDIA API */
 	sc->hwapi->pfnSetPacketFilter(sc->hwapi->pADCX, &hwfilter);
 
-	NV_UNLOCK(sc);
-
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_setmulti - exit\n");
-
-	return;
 }
 
-/* Change the current media/mediaopts */
+/*
+ * Change the current media/mediaopts
+ *
+ * Serialized on call
+ */
 static int
 nv_ifmedia_upd(struct ifnet *ifp)
 {
@@ -1118,7 +1222,11 @@ nv_ifmedia_upd(struct ifnet *ifp)
 	return (0);
 }
 
-/* Update current miibus PHY status of media */
+/*
+ * Update current miibus PHY status of media 
+ *
+ * Serialized on call
+ */
 static void
 nv_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
@@ -1133,8 +1241,6 @@ nv_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 
 	ifmr->ifm_active = mii->mii_media_active;
 	ifmr->ifm_status = mii->mii_media_status;
-
-	return;
 }
 
 /* miibus tick timer - maintain link status */
@@ -1145,7 +1251,7 @@ nv_tick(void *xsc)
 	struct mii_data *mii;
 	struct ifnet   *ifp;
 
-	NV_LOCK(sc);
+	lwkt_serialize_enter(&sc->serializer);
 
 	ifp = &sc->sc_if;
 	nv_update_stats(sc);
@@ -1153,16 +1259,13 @@ nv_tick(void *xsc)
 	mii = device_get_softc(sc->miibus);
 	mii_tick(mii);
 
-	if (mii->mii_media_status & IFM_ACTIVE &&
+	if ((mii->mii_media_status & IFM_ACTIVE) &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		if (!ifq_is_empty(&ifp->if_snd))
-			nv_ifstart(ifp);
+			nv_ifstart_serialized(ifp);
 	}
 	callout_reset(&sc->nv_stat_timer, hz, nv_tick, sc);
-
-	NV_UNLOCK(sc);
-
-	return;
+	lwkt_serialize_exit(&sc->serializer);
 }
 
 /* Update ifnet data structure with collected interface stats from API */
@@ -1171,8 +1274,6 @@ nv_update_stats(struct nv_softc *sc)
 {
 	struct ifnet   *ifp = &sc->sc_if;
 	ADAPTER_STATS   stats;
-
-	NV_LOCK(sc);
 
 	if (sc->hwapi) {
 		sc->hwapi->pfnGetStatistics(sc->hwapi->pADCX, &stats);
@@ -1194,9 +1295,6 @@ nv_update_stats(struct nv_softc *sc)
 
 		ifp->if_collisions = stats.ulLateCollisionErrors;
 	}
-	NV_UNLOCK(sc);
-
-	return;
 }
 
 /* miibus Read PHY register wrapper - calls Nvidia API entry point */
@@ -1226,8 +1324,6 @@ nv_miibus_writereg(device_t dev, int phy, int reg, int data)
 	ADAPTER_WritePhy(sc->hwapi->pADCX, phy, reg, (ulong)data);
 
 	DEBUGOUT(NV_DEBUG_MII, "nv: nv_miibus_writereg - exit\n");
-
-	return;
 }
 
 /* Watchdog timer to prevent PHY lockups */
@@ -1236,19 +1332,21 @@ nv_watchdog(struct ifnet *ifp)
 {
 	struct nv_softc *sc = ifp->if_softc;
 
+	lwkt_serialize_enter(&sc->serializer);
+
 	device_printf(sc->dev, "device timeout (%d) flags %d\n",
 			sc->pending_txs, ifp->if_flags & IFF_OACTIVE);
 
 	sc->tx_errors++;
 
-	nv_stop(sc);
+	nv_stop_serialized(sc);
 	ifp->if_flags &= ~IFF_RUNNING;
-	nv_init(sc);
+	nv_init_serialized(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		nv_ifstart(ifp);
+		nv_ifstart_serialized(ifp);
 
-	return;
+	lwkt_serialize_exit(&sc->serializer);
 }
 
 /* --- Start of NVOSAPI interface --- */
@@ -1364,7 +1462,11 @@ nv_osclear(PNV_VOID ctx, PNV_VOID mem, NV_SINT32 length)
 static NV_SINT32
 nv_osdelay(PNV_VOID ctx, NV_UINT32 usec)
 {
-	DELAY(usec);
+	if (usec >= 1000000 / hz) {
+	    tsleep(nv_osdelay, 0, "nvdelay", (usec * hz / 1000000) + 1);
+	} else {
+	    DELAY(usec);
+	}
 	return (1);
 }
 
@@ -1376,8 +1478,6 @@ nv_osallocrxbuf(PNV_VOID ctx, PMEMORY_BLOCK mem, PNV_VOID *id)
 	struct nv_rx_desc *desc;
 	struct nv_map_buffer *buf;
 	int             error;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_osallocrxbuf\n");
 
@@ -1417,11 +1517,8 @@ nv_osallocrxbuf(PNV_VOID ctx, PMEMORY_BLOCK mem, PNV_VOID *id)
 	mem->uiLength = desc->buflength;
 	*id = (void *)desc;
 
-	NV_UNLOCK(sc);
 	return (1);
-
 fail:
-	NV_UNLOCK(sc);
 	return (0);
 }
 
@@ -1433,8 +1530,6 @@ nv_osfreerxbuf(PNV_VOID ctx, PMEMORY_BLOCK mem, PNV_VOID id)
 	struct nv_softc *sc = ctx;
 	struct nv_rx_desc *desc;
 	struct nv_map_buffer *buf;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_osfreerxbuf\n");
 
@@ -1449,8 +1544,6 @@ nv_osfreerxbuf(PNV_VOID ctx, PMEMORY_BLOCK mem, PNV_VOID id)
 	sc->pending_rxs--;
 	buf->mbuf = NULL;
 
-	NV_UNLOCK(sc);
-
 	return (1);
 }
 
@@ -1462,8 +1555,6 @@ nv_ospackettx(PNV_VOID ctx, PNV_VOID id, NV_UINT32 success)
 	struct nv_map_buffer *buf;
 	struct nv_tx_desc *desc = (struct nv_tx_desc *) id;
 	struct ifnet   *ifp;
-
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_ospackettx\n");
 
@@ -1490,8 +1581,6 @@ nv_ospackettx(PNV_VOID ctx, PNV_VOID id, NV_UINT32 success)
 			nv_ifstart(ifp);
 	}
 fail:
-	NV_UNLOCK(sc);
-
 	return (1);
 }
 
@@ -1506,7 +1595,6 @@ nv_ospacketrx(PNV_VOID ctx, PNV_VOID data, NV_UINT32 success,
 	struct nv_rx_desc *desc;
 	struct nv_map_buffer *buf;
 	ADAPTER_READ_DATA *readdata;
-	NV_LOCK(sc);
 
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_ospacketrx\n");
 
@@ -1543,8 +1631,6 @@ nv_ospacketrx(PNV_VOID ctx, PNV_VOID data, NV_UINT32 success,
 
 	sc->cur_rx = desc - sc->rx_desc;
 	sc->pending_rxs--;
-
-	NV_UNLOCK(sc);
 
 	return (1);
 }
@@ -1607,13 +1693,18 @@ nv_osinittimer(PNV_VOID ctx, PNV_VOID timer, PTIMER_FUNC func, PNV_VOID paramete
 	return (1);
 }
 
-/* Set the timer to go off */
+/* 
+ * Set the timer to go off 
+ *
+ * XXX what the hell are the units for 'delay' ?  They sure aren't ticks!
+ */
 static NV_SINT32
 nv_ossettimer(PNV_VOID ctx, PNV_VOID timer, NV_UINT32 delay)
 {
 	struct nv_softc *sc = ctx;
 
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_ossettimer\n");
+	printf("nv_ossettimer %d\n", (int)delay);
 
 	callout_reset(&sc->ostimer, delay, sc->ostimer_func,
 		      sc->ostimer_params);

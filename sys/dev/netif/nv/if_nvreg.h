@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_nvreg.h,v 1.6 2004/08/12 14:00:05 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.8 2005/09/20 01:51:08 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.9 2005/10/12 01:09:31 dillon Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -122,6 +122,8 @@ struct nv_softc {
 	struct resource *res;
 	struct resource *irq;
 
+	struct lwkt_serialize serializer;
+
 	ADAPTER_API *hwapi;
 	OS_API osapi;
 		
@@ -177,8 +179,6 @@ struct nv_type {
 #define sc_if arpcom.ac_if
 #define sc_macaddr arpcom.ac_enaddr
 
-#define NV_LOCK(_sc)		crit_enter()
-#define NV_UNLOCK(_sc)		crit_exit()
 #define NV_OSLOCK(_sc)		crit_enter()
 #define NV_OSUNLOCK(_sc)	crit_exit()
 
