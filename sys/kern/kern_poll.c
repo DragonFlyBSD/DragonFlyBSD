@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.18 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.19 2005/10/13 00:45:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,11 +42,13 @@
 #include <net/netisr.h>			/* for NETISR_POLL		*/
 
 /* the two netisr handlers */
+static int sysctl_pollhz(SYSCTL_HANDLER_ARGS);
+static int sysctl_polling(SYSCTL_HANDLER_ARGS);
 static int netisr_poll(struct netmsg *);
 static int netisr_pollmore(struct netmsg *);
+static void pollclock(systimer_t, struct intrframe *);
 
 void init_device_poll(void);		/* init routine			*/
-void hardclock_device_poll(void);	/* hook from hardclock		*/
 
 /*
  * Polling support for [network] device drivers.
@@ -98,6 +100,11 @@ void hardclock_device_poll(void);	/* hook from hardclock		*/
 #define MIN_POLL_BURST_MAX	10
 #define MAX_POLL_BURST_MAX	1000
 
+#ifndef DEVICE_POLLING_FREQ_MAX
+#define DEVICE_POLLING_FREQ_MAX		30000
+#endif
+#define DEVICE_POLLING_FREQ_DEFAULT	2000
+
 SYSCTL_NODE(_kern, OID_AUTO, polling, CTLFLAG_RW, 0,
 	"Device polling parameters");
 
@@ -141,9 +148,10 @@ static u_int32_t poll_handlers; /* next free entry in pr[]. */
 SYSCTL_UINT(_kern_polling, OID_AUTO, handlers, CTLFLAG_RD,
 	&poll_handlers, 0, "Number of registered poll handlers");
 
-static int polling = 0;		/* global polling enable */
-SYSCTL_UINT(_kern_polling, OID_AUTO, enable, CTLFLAG_RW,
-	&polling, 0, "Polling enabled");
+static int polling_enabled = 0;		/* global polling enable */
+TUNABLE_INT("kern.polling.polling", &polling_enabled);
+SYSCTL_PROC(_kern_polling, OID_AUTO, polling, CTLTYPE_INT | CTLFLAG_RW,
+	0, 0, sysctl_polling, "I", "Polling enabled");
 
 static u_int32_t phase;
 SYSCTL_UINT(_kern_polling, OID_AUTO, phase, CTLFLAG_RW,
@@ -157,6 +165,10 @@ static u_int32_t stalled;
 SYSCTL_UINT(_kern_polling, OID_AUTO, stalled, CTLFLAG_RW,
 	&stalled, 0, "potential stalls");
 
+static int pollhz = DEVICE_POLLING_FREQ_DEFAULT;
+TUNABLE_INT("kern.polling.pollhz", &pollhz);
+SYSCTL_PROC(_kern_polling, OID_AUTO, pollhz, CTLTYPE_INT | CTLFLAG_RW,
+	    0, 0, sysctl_pollhz, "I", "Device polling frequency");
 
 #define POLL_LIST_LEN  128
 struct pollrec {
@@ -164,6 +176,7 @@ struct pollrec {
 };
 
 static struct pollrec pr[POLL_LIST_LEN];
+static struct systimer gd0_pollclock;
 
 /*
  * register relevant netisr. Called from kern_clock.c:
@@ -173,6 +186,54 @@ init_device_poll(void)
 {
 	netisr_register(NETISR_POLL, cpu0_portfn, netisr_poll);
 	netisr_register(NETISR_POLLMORE, cpu0_portfn, netisr_pollmore);
+	systimer_init_periodic_nq(&gd0_pollclock, pollclock, NULL, 
+				  polling_enabled ? pollhz : 1);
+}
+
+/*
+ * Set the polling frequency
+ */
+static int
+sysctl_pollhz(SYSCTL_HANDLER_ARGS)
+{
+	int error, phz;
+
+	phz = pollhz;
+	error = sysctl_handle_int(oidp, &phz, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (phz <= 0)
+		return EINVAL;
+	else if (phz > DEVICE_POLLING_FREQ_MAX)
+		phz = DEVICE_POLLING_FREQ_MAX;
+
+	crit_enter();
+	pollhz = phz;
+	if (polling_enabled)
+		gd0_pollclock.periodic = sys_cputimer->fromhz(phz);
+	crit_exit();
+	return 0;
+}
+
+/*
+ * Master enable.  If polling is disabled, cut the polling systimer 
+ * frequency to 1hz.
+ */
+static int
+sysctl_polling(SYSCTL_HANDLER_ARGS)
+{
+	int error, enabled;
+
+	enabled = polling_enabled;
+	error = sysctl_handle_int(oidp, &enabled, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	polling_enabled = enabled;
+	if (polling_enabled)
+		gd0_pollclock.periodic = sys_cputimer->fromhz(pollhz);
+	else
+		gd0_pollclock.periodic = sys_cputimer->fromhz(1);
+	return 0;
 }
 
 /*
@@ -190,8 +251,8 @@ init_device_poll(void)
  *
  * WARNING! called from fastint or IPI, the MP lock might not be held.
  */
-void
-hardclock_device_poll(void)
+static void
+pollclock(systimer_t info __unused, struct intrframe *frame __unused)
 {
 	static struct timeval prev_t, t;
 	int delta;
@@ -352,7 +413,7 @@ netisr_poll(struct netmsg *msg)
 		residual_burst : poll_each_burst;
 	residual_burst -= cycles;
 
-	if (polling) {
+	if (polling_enabled) {
 		for (i = 0 ; i < poll_handlers ; i++) {
 			struct pollrec *p = &pr[i];
 			if ((p->ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING)) == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
@@ -393,7 +454,7 @@ ether_poll_register(struct ifnet *ifp)
 {
 	int rc;
 
-	if (polling == 0) /* polling disabled, cannot register */
+	if (polling_enabled == 0) /* polling disabled, cannot register */
 		return 0;
 	if ((ifp->if_flags & IFF_UP) == 0)	/* must be up		*/
 		return 0;
@@ -484,8 +545,8 @@ ether_poll_deregister(struct ifnet *ifp)
 void
 emergency_poll_enable(const char *name)
 {
-	if (polling == 0) {
-		polling = 1;
+	if (polling_enabled == 0) {
+		polling_enabled = 1;
 		printf("%s forced polling on\n", name);
 	}
 }

@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.48 2005/10/12 05:17:38 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.49 2005/10/13 00:45:36 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -102,48 +102,8 @@
 #endif
 
 #ifdef DEVICE_POLLING
-#ifndef DEVICE_POLLING_FREQ_MAX
-#define DEVICE_POLLING_FREQ_MAX		20000
-#endif
-#define DEVICE_POLLING_FREQ_DEFAULT	1000
-
 extern void init_device_poll(void);
-extern void hardclock_device_poll(void);
-
-static int sysctl_pollhz(SYSCTL_HANDLER_ARGS);
-
-static struct systimer gd0_pollclock;
-static int pollhz = DEVICE_POLLING_FREQ_DEFAULT;
-
-TUNABLE_INT("kern.polling.pollhz", &pollhz);
-SYSCTL_DECL(_kern_polling);
-SYSCTL_PROC(_kern_polling, OID_AUTO, pollhz, CTLTYPE_INT | CTLFLAG_RW,
-	    0, 0, sysctl_pollhz, "I", "Device polling frequency");
-
-static int
-sysctl_pollhz(SYSCTL_HANDLER_ARGS)
-{
-	int error, phz;
-
-	crit_enter();
-	phz = pollhz;
-	crit_exit();
-
-	error = sysctl_handle_int(oidp, &phz, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (phz <= 0)
-		return EINVAL;
-	else if (phz > DEVICE_POLLING_FREQ_MAX)
-		phz = DEVICE_POLLING_FREQ_MAX;
-
-	crit_enter();
-	pollhz = phz;
-	gd0_pollclock.periodic = sys_cputimer->fromhz(phz);
-	crit_exit();
-	return 0;
-}
-#endif /* DEVICE_POLLING */
+#endif
 
 static void initclocks (void *dummy);
 SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
@@ -233,9 +193,6 @@ SYSCTL_PROC(_kern, OID_AUTO, basetime, CTLTYPE_STRUCT|CTLFLAG_RD, 0, 0,
 static void hardclock(systimer_t info, struct intrframe *frame);
 static void statclock(systimer_t info, struct intrframe *frame);
 static void schedclock(systimer_t info, struct intrframe *frame);
-#ifdef DEVICE_POLLING
-static void pollclock(systimer_t info, struct intrframe *frame);
-#endif
 static void getnanotime_nbt(struct timespec *nbt, struct timespec *tsp);
 
 int	ticks;			/* system master ticks at hz */
@@ -281,15 +238,6 @@ initclocks_pcpu(void)
 	if (gd->gd_cpuid == 0) {
 	    gd->gd_time_seconds = 1;
 	    gd->gd_cpuclock_base = sys_cputimer->count();
-
-#ifdef DEVICE_POLLING
-	    if (pollhz <= 0)
-		pollhz = DEVICE_POLLING_FREQ_DEFAULT;
-	    else if (pollhz > DEVICE_POLLING_FREQ_MAX)
-		pollhz = DEVICE_POLLING_FREQ_MAX;
-
-	    systimer_init_periodic_nq(&gd0_pollclock, pollclock, NULL, pollhz);
-#endif
 	} else {
 	    /* XXX */
 	    gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
@@ -717,14 +665,6 @@ schedclock(systimer_t info, struct intrframe *frame)
 		}
 	}
 }
-
-#ifdef DEVICE_POLLING
-static void
-pollclock(systimer_t info __unused, struct intrframe *frame __unused)
-{
-	hardclock_device_poll();	/* mpsafe, short and quick */
-}
-#endif
 
 /*
  * Compute number of ticks for the specified amount of time.  The 
