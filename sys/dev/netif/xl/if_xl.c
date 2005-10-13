@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.37 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.38 2005/10/13 10:22:07 sephe Exp $
  */
 
 /*
@@ -300,10 +300,7 @@ DRIVER_MODULE(if_xl, cardbus, xl_driver, xl_devclass, 0, 0);
 DRIVER_MODULE(miibus, xl, miibus_driver, miibus_devclass, 0, 0);
 
 static void
-xl_dma_map_addr(arg, segs, nseg, error)
-	void *arg;
-	bus_dma_segment_t *segs;
-	int nseg, error;
+xl_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	u_int32_t *paddr;
 	
@@ -312,12 +309,8 @@ xl_dma_map_addr(arg, segs, nseg, error)
 }
 
 static void
-xl_dma_map_rxbuf(arg, segs, nseg, mapsize, error)
-	void *arg;
-	bus_dma_segment_t *segs;
-	int nseg;
-	bus_size_t mapsize;
-	int error;
+xl_dma_map_rxbuf(void *arg, bus_dma_segment_t *segs, int nseg,
+    bus_size_t mapsize, int error)
 {
 	u_int32_t *paddr;
 
@@ -329,12 +322,8 @@ xl_dma_map_rxbuf(arg, segs, nseg, mapsize, error)
 }
 
 static void
-xl_dma_map_txbuf(arg, segs, nseg, mapsize, error)
-	void *arg;
-	bus_dma_segment_t *segs;
-	int nseg;
-	bus_size_t mapsize;
-	int error;
+xl_dma_map_txbuf(void *arg, bus_dma_segment_t *segs, int nseg,
+    bus_size_t mapsize, int error)
 {
 	struct xl_list *l;
 	int i, total_len;
@@ -367,8 +356,7 @@ xl_dma_map_txbuf(arg, segs, nseg, mapsize, error)
  * to make it a function.
  */
 static void
-xl_wait(sc)
-	struct xl_softc		*sc;
+xl_wait(struct xl_softc *sc)
 {
 	int		i;
 
@@ -404,8 +392,7 @@ xl_wait(sc)
  * Sync the PHYs by setting data bit and strobing the clock 32 times.
  */
 static void
-xl_mii_sync(sc)
-	struct xl_softc		*sc;
+xl_mii_sync(struct xl_softc *sc)
 {
 	int		i;
 
@@ -428,10 +415,7 @@ xl_mii_sync(sc)
  * Clock a series of bits through the MII.
  */
 static void
-xl_mii_send(sc, bits, cnt)
-	struct xl_softc		*sc;
-	u_int32_t		bits;
-	int			cnt;
+xl_mii_send(struct xl_softc *sc, u_int32_t bits, int cnt)
 {
 	int			i;
 
@@ -453,10 +437,7 @@ xl_mii_send(sc, bits, cnt)
  * Read an PHY register through the MII.
  */
 static int
-xl_mii_readreg(sc, frame)
-	struct xl_softc		*sc;
-	struct xl_mii_frame	*frame;
-	
+xl_mii_readreg(struct xl_softc *sc, struct xl_mii_frame *frame)
 {
 	int			i, ack;
 
@@ -541,10 +522,7 @@ fail:
  * Write to a PHY register through the MII.
  */
 static int
-xl_mii_writereg(sc, frame)
-	struct xl_softc		*sc;
-	struct xl_mii_frame	*frame;
-	
+xl_mii_writereg(struct xl_softc *sc, struct xl_mii_frame *frame)
 {
 	crit_enter();
 
@@ -590,9 +568,7 @@ xl_mii_writereg(sc, frame)
 }
 
 static int
-xl_miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+xl_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct xl_softc		*sc;
 	struct xl_mii_frame	frame;
@@ -619,9 +595,7 @@ xl_miibus_readreg(dev, phy, reg)
 }
 
 static int
-xl_miibus_writereg(dev, phy, reg, data)
-	device_t		dev;
-	int			phy, reg, data;
+xl_miibus_writereg(device_t dev, int phy, int reg, int data)
 {
 	struct xl_softc		*sc;
 	struct xl_mii_frame	frame;
@@ -643,8 +617,7 @@ xl_miibus_writereg(dev, phy, reg, data)
 }
 
 static void
-xl_miibus_statchg(dev)
-	device_t		dev;
+xl_miibus_statchg(device_t dev)
 {
         struct xl_softc		*sc;
         struct mii_data		*mii;
@@ -677,8 +650,7 @@ xl_miibus_statchg(dev)
  * extra media.
  */
 static void
-xl_miibus_mediainit(dev)
-	device_t		dev;
+xl_miibus_mediainit(device_t dev)
 {
         struct xl_softc		*sc;
         struct mii_data		*mii;
@@ -722,8 +694,7 @@ xl_miibus_mediainit(dev)
  * it a command.
  */
 static int
-xl_eeprom_wait(sc)
-	struct xl_softc		*sc;
+xl_eeprom_wait(struct xl_softc *sc)
 {
 	int			i;
 
@@ -747,12 +718,7 @@ xl_eeprom_wait(sc)
  * data is stored in the EEPROM in network byte order.
  */
 static int
-xl_read_eeprom(sc, dest, off, cnt, swap)
-	struct xl_softc		*sc;
-	caddr_t			dest;
-	int			off;
-	int			cnt;
-	int			swap;
+xl_read_eeprom(struct xl_softc *sc, caddr_t dest, int off, int cnt, int swap)
 {
 	int			err = 0, i;
 	u_int16_t		word = 0, *ptr;
@@ -796,8 +762,7 @@ xl_read_eeprom(sc, dest, off, cnt, swap)
  * is to enable reception of all multicast frames.
  */
 static void
-xl_setmulti(sc)
-	struct xl_softc		*sc;
+xl_setmulti(struct xl_softc *sc)
 {
 	struct ifnet		*ifp;
 	struct ifmultiaddr	*ifma;
@@ -832,8 +797,7 @@ xl_setmulti(sc)
  * 3c905B adapters have a hash filter that we can program.
  */
 static void
-xl_setmulti_hash(sc)
-	struct xl_softc		*sc;
+xl_setmulti_hash(struct xl_softc *sc)
 {
 	struct ifnet		*ifp;
 	int			h = 0, i;
@@ -894,8 +858,7 @@ xl_setmulti_hash(sc)
 
 #ifdef notdef
 static void
-xl_testpacket(sc)
-	struct xl_softc		*sc;
+xl_testpacket(struct xl_softc *sc)
 {
 	struct mbuf		*m;
 	struct ifnet		*ifp;
@@ -924,8 +887,7 @@ xl_testpacket(sc)
 #endif
 
 static void
-xl_setcfg(sc)
-	struct xl_softc		*sc;
+xl_setcfg(struct xl_softc *sc)
 {
 	u_int32_t		icfg;
 
@@ -945,9 +907,7 @@ xl_setcfg(sc)
 }
 
 static void
-xl_setmode(sc, media)
-	struct xl_softc		*sc;
-	int			media;
+xl_setmode(struct xl_softc *sc, int media)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_int32_t		icfg;
@@ -1040,8 +1000,7 @@ xl_setmode(sc, media)
 }
 
 static void
-xl_reset(sc)
-	struct xl_softc		*sc;
+xl_reset(struct xl_softc *sc)
 {
 	int		i;
 
@@ -1131,8 +1090,7 @@ xl_probe(device_t dev)
  * possible manufacturing defect with his adapter/system/whatever.
  */
 static void
-xl_mediacheck(sc)
-	struct xl_softc		*sc;
+xl_mediacheck(struct xl_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
@@ -1171,9 +1129,7 @@ xl_mediacheck(sc)
 }
 
 static void
-xl_choose_xcvr(sc, verbose)
-	struct xl_softc		*sc;
-	int			verbose;
+xl_choose_xcvr(struct xl_softc *sc, int verbose)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_int16_t		devid;
@@ -1267,8 +1223,7 @@ xl_choose_xcvr(sc, verbose)
  * setup and ethernet/BPF attach.
  */
 static int
-xl_attach(dev)
-	device_t		dev;
+xl_attach(device_t dev)
 {
 	u_char			eaddr[ETHER_ADDR_LEN];
 	u_int16_t		xcvr[2];
@@ -1654,8 +1609,7 @@ fail:
  * allocated.
  */
 static int
-xl_detach(dev)
-	device_t		dev;
+xl_detach(device_t dev)
 {
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
@@ -1962,8 +1916,7 @@ xl_list_tx_init_90xB(struct xl_softc *sc)
  * points back to the first.
  */
 static int
-xl_list_rx_init(sc)
-	struct xl_softc		*sc;
+xl_list_rx_init(struct xl_softc *sc)
 {
 	struct xl_chain_data	*cd;
 	struct xl_list_data	*ld;
@@ -2037,8 +1990,7 @@ xl_newbuf(struct xl_softc *sc, struct xl_chain_onefrag *c)
 }
 
 static int
-xl_rx_resync(sc)
-	struct xl_softc		*sc;
+xl_rx_resync(struct xl_softc *sc)
 {
 	struct xl_chain_onefrag	*pos;
 	int			i;
@@ -2064,8 +2016,7 @@ xl_rx_resync(sc)
  * the higher level protocols.
  */
 static void
-xl_rxeof(sc)
-	struct xl_softc		*sc;
+xl_rxeof(struct xl_softc *sc)
 {
         struct mbuf		*m;
         struct ifnet		*ifp;
@@ -2198,8 +2149,7 @@ again:
  * the list buffers.
  */
 static void
-xl_txeof(sc)
-	struct xl_softc		*sc;
+xl_txeof(struct xl_softc *sc)
 {
 	struct xl_chain		*cur_tx;
 	struct ifnet		*ifp;
@@ -2252,8 +2202,7 @@ xl_txeof(sc)
 }
 
 static void
-xl_txeof_90xB(sc)
-	struct xl_softc		*sc;
+xl_txeof_90xB(struct xl_softc *sc)
 {
 	struct xl_chain		*cur_tx = NULL;
 	struct ifnet		*ifp;
@@ -2301,8 +2250,7 @@ xl_txeof_90xB(sc)
  * so this is really TX error handler.
  */
 static void
-xl_txeoc(sc)
-	struct xl_softc		*sc;
+xl_txeoc(struct xl_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_int8_t		txstat;
@@ -2364,8 +2312,7 @@ xl_txeoc(sc)
 }
 
 static void
-xl_intr(arg)
-	void			*arg;
+xl_intr(void *arg)
 {
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
@@ -2421,8 +2368,7 @@ xl_intr(arg)
 }
 
 static void
-xl_stats_update(xsc)
-	void			*xsc;
+xl_stats_update(void *xsc)
 {
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
@@ -2477,10 +2423,7 @@ xl_stats_update(xsc)
  * pointers to the fragment pointers.
  */
 static int
-xl_encap(sc, c, m_head)
-	struct xl_softc		*sc;
-	struct xl_chain		*c;
-	struct mbuf		*m_head;
+xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
 {
 	int			error;
 	u_int32_t		status;
@@ -2556,8 +2499,7 @@ xl_encap(sc, c, m_head)
  * physical addresses.
  */
 static void
-xl_start(ifp)
-	struct ifnet		*ifp;
+xl_start(struct ifnet *ifp)
 {
 	struct xl_softc		*sc;
 	struct mbuf		*m_head = NULL;
@@ -2681,8 +2623,7 @@ xl_start(ifp)
 }
 
 static void
-xl_start_90xB(ifp)
-	struct ifnet		*ifp;
+xl_start_90xB(struct ifnet *ifp)
 {
 	struct xl_softc		*sc;
 	struct mbuf		*m_head = NULL;
@@ -2762,8 +2703,7 @@ xl_start_90xB(ifp)
 }
 
 static void
-xl_init(xsc)
-	void			*xsc;
+xl_init(void *xsc)
 {
 	struct xl_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
@@ -2990,8 +2930,7 @@ xl_init(xsc)
  * Set media options.
  */
 static int
-xl_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+xl_ifmedia_upd(struct ifnet *ifp)
 {
 	struct xl_softc		*sc;
 	struct ifmedia		*ifm = NULL;
@@ -3031,9 +2970,7 @@ xl_ifmedia_upd(ifp)
  * Report current media status.
  */
 static void
-xl_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+xl_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct xl_softc		*sc;
 	u_int32_t		icfg;
@@ -3096,11 +3033,7 @@ xl_ifmedia_sts(ifp, ifmr)
 }
 
 static int
-xl_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct ucred		*cr;
+xl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct xl_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
@@ -3175,8 +3108,7 @@ xl_ioctl(ifp, command, data, cr)
 }
 
 static void
-xl_watchdog(ifp)
-	struct ifnet		*ifp;
+xl_watchdog(struct ifnet *ifp)
 {
 	struct xl_softc		*sc;
 	u_int16_t		status = 0;
@@ -3205,8 +3137,7 @@ xl_watchdog(ifp)
  * RX and TX lists.
  */
 static void
-xl_stop(sc)
-	struct xl_softc		*sc;
+xl_stop(struct xl_softc *sc)
 {
 	int		i;
 	struct ifnet		*ifp;
@@ -3273,8 +3204,7 @@ xl_stop(sc)
  * get confused by errant DMAs when rebooting.
  */
 static void
-xl_shutdown(dev)
-	device_t		dev;
+xl_shutdown(device_t dev)
 {
 	struct xl_softc		*sc;
 
@@ -3287,8 +3217,7 @@ xl_shutdown(dev)
 }
 
 static int
-xl_suspend(dev)
-	device_t		dev;
+xl_suspend(device_t dev)
 {
 	struct xl_softc *sc = device_get_softc(dev);
 
@@ -3302,8 +3231,7 @@ xl_suspend(dev)
 }
 
 static int
-xl_resume(dev)
-	device_t		dev;
+xl_resume(device_t dev)
 {
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
