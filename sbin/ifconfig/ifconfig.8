@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.85 2004/07/27 09:51:49 yar Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.7 2005/04/25 17:33:26 swildner Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.8 2005/10/13 10:57:50 swildner Exp $
 .\"
 .Dd July 26, 2004
 .Dt IFCONFIG 8
@@ -234,6 +234,14 @@ Enable driver dependent debugging code; usually, this turns on
 extra console error logging.
 .It Fl debug
 Disable driver dependent debugging code.
+.It Cm polling
+Enable
+.Xr polling 4
+for the interface.
+.It Fl polling
+Disable
+.Xr polling 4
+for the interface.
 .It Cm promisc
 Put interface into permanently promiscuous mode.
 .It Fl promisc
