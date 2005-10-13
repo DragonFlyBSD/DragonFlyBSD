@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.5 2005/09/12 21:40:24 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.6 2005/10/13 00:02:22 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -109,7 +109,8 @@ lwkt_serialize_handler_enable(lwkt_serialize_t s)
 }
 
 void
-lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *), void *arg)
+lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *), 
+			    void *arg, void *frame)
 {
     /*
      * note: a return value of 0 indicates that the interrupt handler is 
@@ -118,10 +119,32 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *), void *arg)
     if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
 	atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
-	    func(arg);
+	    func(arg, frame);
 	atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
     }
 }
+
+/*
+ * Similar to handler_call but does not block.  Returns 0 on success, 
+ * and 1 on failure.
+ */
+int
+lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
+			   void *arg, void *frame)
+{
+    /*
+     * note: a return value of 0 indicates that the interrupt handler is 
+     * enabled.
+     */
+    if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
+	if (atomic_intr_cond_try(&s->interlock) == 0) {
+	    func(arg, frame);
+	    return(0);
+	}
+    }
+    return(1);
+}
+
 
 /*
  * Helper functions

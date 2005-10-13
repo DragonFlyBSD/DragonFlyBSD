@@ -32,7 +32,7 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_device.h,v 1.68 2000/01/29 18:01:10 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.6 2003/11/22 19:48:32 asmodai Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.7 2005/10/13 00:02:28 dillon Exp $
  */
 
 #ifndef _I386_ISA_ISA_DEVICE_H_
@@ -63,12 +63,7 @@ struct isa_device {
 	int	id_drq;		/* DMA request */
 	caddr_t id_maddr;	/* physical i/o memory address on bus (if any)*/
 	int	id_msize;	/* size of i/o memory */
-	union {
-		inthand2_t *id_i;
-		ointhand2_t *id_oi;
-	} id_iu;		/* interrupt interface routine */
-#define	id_intr		id_iu.id_i
-#define	id_ointr	id_iu.id_oi
+	inthand2_t *id_intr;
 	int	id_unit;	/* unit number */
 	int	id_flags;	/* flags */
 	int	id_enabled;	/* is device enabled */

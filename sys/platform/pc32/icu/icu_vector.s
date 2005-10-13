@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.18 2005/06/16 21:12:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.19 2005/10/13 00:02:47 dillon Exp $
  */
 
 #define ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
@@ -84,10 +84,13 @@
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
 
 #define UNMASK_IRQ(icu, irq_num)					\
+	cmpl	$0,%eax ;						\
+	jnz	8f ;							\
 	movb	imen + IRQ_BYTE(irq_num),%al ;				\
 	andb	$~IRQ_BIT(irq_num),%al ;				\
 	movb	%al,imen + IRQ_BYTE(irq_num) ;				\
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
+8: ;									\
 	
 /*
  * Fast interrupt call handlers run in the following sequence:
@@ -123,24 +126,17 @@ IDTVEC(vec_name) ; 							\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	incl	PCPU(intr_nesting_level) ;				\
-	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
-	pushl	intr_unit + (irq_num) * 4 ;				\
-	call	*intr_handler + (irq_num) * 4 ;				\
+	pushl	$irq_num ;						\
+	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
 	addl	$4,%esp ;						\
-	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	decl	PCPU(intr_nesting_level) ;				\
-	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
-	movl	intr_countp + (irq_num) * 4,%eax ;			\
-	incl	(%eax) ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
 
 /*
- * Restart fast interrupt held up by critical section or cpl.
+ * Restart fast interrupt held up by critical section.
  *
  *	- Push a dummy trap frame as required by doreti.
  *	- The interrupt source is already masked.
@@ -159,12 +155,9 @@ IDTVEC(vec_name) ;							\
 	pushl	%ebp ;							\
 	movl	%esp,%ebp ;						\
 	PUSH_DUMMY ;							\
-	pushl	intr_unit + (irq_num) * 4 ;				\
-	call	*intr_handler + (irq_num) * 4 ;				\
+	pushl	$irq_num ;						\
+	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
 	addl	$4, %esp ;						\
-	incl	PCPU(cnt)+V_INTR ;					\
-	movl	intr_countp + (irq_num) * 4, %eax ;			\
-	incl	(%eax) ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
 	POP_DUMMY ;							\
 	popl %ebp ;							\
@@ -219,9 +212,6 @@ IDTVEC(vec_name) ; 							\
 	pushl	$irq_num ;						\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
-	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
-	movl	intr_countp + (irq_num) * 4,%eax ;			\
-	incl	(%eax) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
@@ -238,6 +228,7 @@ IDTVEC(vec_name) ; 							\
 IDTVEC(vec_name) ;							\
 	pushl %ebp ;	 /* frame for ddb backtrace */			\
 	movl	%esp, %ebp ;						\
+	subl	%eax, %eax ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
 	popl %ebp ;							\
 	ret ;								\

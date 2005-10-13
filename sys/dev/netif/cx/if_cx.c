@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.16 2005/06/13 21:53:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.17 2005/10/13 00:02:36 dillon Exp $
  *
  */
 #undef DEBUG
@@ -61,7 +61,7 @@ static int cxattach (struct isa_device *id);
 static void cxput (cx_chan_t *c, char b);
 static void cxsend (cx_chan_t *c);
 static void cxrinth (cx_chan_t *c);
-static ointhand2_t cxintr;
+static inthand2_t cxintr;
 static int cxtinth (cx_chan_t *c);
 
 #ifdef DEBUG
@@ -234,7 +234,7 @@ cxattach (struct isa_device *id)
 	int i;
 	struct sppp *sp;
 
-	id->id_ointr = cxintr;
+	id->id_intr = cxintr;
 
 	/* Initialize the board structure. */
 	cx_init (b, unit, iobase, ffs(irq)-1, drq);
@@ -698,8 +698,9 @@ cxtinth (cx_chan_t *c)
 }
 
 static void
-cxintr (int bnum)
+cxintr (void *arg)
 {
+	int bnum = (int)arg;
 	cx_board_t *b = cxboard + bnum;
 	while (! (inw (BSR(b->port)) & BSR_NOINTR)) {
 		/* Acknowledge the interrupt to enter the interrupt context. */

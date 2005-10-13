@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.14 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.15 2005/10/13 00:02:46 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -182,6 +182,13 @@ atomic_poll_release_int(volatile u_int *p)
  *				acquired state.  Returns 0 if it not
  *				acquired, non-zero if it is.
  *
+ * atomic_intr_cond_try(P)
+ *				Increment the request counter and attempt to
+ *				set bit 31 to acquire the interlock.  If
+ *				we are unable to set bit 31 the request
+ *				counter is decremented and we return -1,
+ *				otherwise we return 0.
+ *
  * atomic_intr_cond_enter(P, func, arg)
  *				Increment the request counter and attempt to
  *				set bit 31 to acquire the interlock.  If
@@ -228,6 +235,7 @@ int atomic_intr_handler_disable(atomic_intr_t *p);
 void atomic_intr_handler_enable(atomic_intr_t *p);
 int atomic_intr_handler_is_enabled(atomic_intr_t *p);
 int atomic_intr_cond_test(atomic_intr_t *p);
+int atomic_intr_cond_try(atomic_intr_t *p);
 void atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg);
 void atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg);
 
@@ -284,6 +292,29 @@ atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
 			 : "r"(func), "m"(arg) \
 			 : "ax", "cx", "dx");
 }
+
+/*
+ * Attempt to enter the interrupt condition variable.  Returns zero on
+ * success, 1 on failure.
+ */
+static __inline
+int
+atomic_intr_cond_try(atomic_intr_t *p)
+{
+	int ret;
+
+	__asm __volatile(MPLOCKED "incl %0; " \
+			 "1: ;" \
+			 "subl %%eax,%%eax; " \
+			 MPLOCKED "btsl $31,%0; jnc 2f; " \
+			 MPLOCKED "decl %0; " \
+			 "movl $1,%%eax;" \
+			 "2: ;" \
+			 : "+m" (*p), "=a"(ret) \
+			 : : "cx", "dx");
+	return (ret);
+}
+
 
 static __inline
 int

@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.32 2005/09/12 21:32:03 joerg Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.33 2005/10/13 00:02:47 dillon Exp $
  */
 
 /*
@@ -96,7 +96,6 @@
 #include <i386/isa/intr_machdep.h>
 /* The interrupt triggered by the 8254 (timer) chip */
 int apic_8254_intr;
-static u_long read_intr_count (int vec);
 static void setup_8254_mixed_mode (void);
 #endif
 static void i8254_restore(void);
@@ -163,7 +162,7 @@ static struct cputimer	i8254_cputimer = {
  * pending.
  */
 static void
-clkintr(struct intrframe frame)
+clkintr(void *dummy, void *frame_arg)
 {
 	static sysclock_t timer1_count;
 	struct globaldata *gd = mycpu;
@@ -188,7 +187,7 @@ clkintr(struct intrframe frame)
 	    if (gscan != gd) {
 		lwkt_send_ipiq(gscan, (ipifunc_t)systimer_intr, &timer1_count);
 	    } else {
-		systimer_intr(&timer1_count, &frame);
+		systimer_intr(&timer1_count, frame_arg);
 	    }
 	}
 }
@@ -245,11 +244,11 @@ release_timer2()
  * in the statistics, but the stat clock will no longer stop.
  */
 static void
-rtcintr(struct intrframe frame)
+rtcintr(void *dummy, void *frame)
 {
 	while (rtcin(RTC_INTR) & RTCIR_PERIOD)
 		;
-		/* statclock(&frame); no longer used */
+		/* statclock(frame); no longer used */
 }
 
 #include "opt_ddb.h"
@@ -936,7 +935,7 @@ cpu_initclocks()
 	int diag;
 #ifdef APIC_IO
 	int apic_8254_trial;
-	struct intrec *clkdesc;
+	void *clkdesc;
 #endif /* APIC_IO */
 
 	if (statclock_disable) {
@@ -970,13 +969,13 @@ cpu_initclocks()
 			panic("APIC_IO: Cannot route 8254 interrupt to CPU");
 	}
 
-	clkdesc = inthand_add("clk", apic_8254_intr, (inthand2_t *)clkintr,
+	clkdesc = inthand_add("clk", apic_8254_intr, clkintr,
 			      NULL, INTR_EXCL | INTR_FAST, NULL);
 	INTREN(1 << apic_8254_intr);
 	
 #else /* APIC_IO */
 
-	inthand_add("clk", 0, (inthand2_t *)clkintr, NULL,
+	inthand_add("clk", 0, clkintr, NULL,
 		    INTR_EXCL | INTR_FAST, NULL);
 	INTREN(IRQ0);
 
@@ -1011,7 +1010,9 @@ cpu_initclocks()
 #ifdef APIC_IO
 	if (apic_8254_trial) {
 		sysclock_t base;
-		int lastcnt = read_intr_count(apic_8254_intr);
+		long lastcnt;
+
+		lastcnt = get_interrupt_counter(apic_8254_intr);
 
 		/*
 		 * XXX this assumes the 8254 is the cpu timer.  Force an
@@ -1023,7 +1024,7 @@ cpu_initclocks()
 		base = sys_cputimer->count();
 		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 			;	/* nothing */
-		if (read_intr_count(apic_8254_intr) - lastcnt == 0) {
+		if (get_interrupt_counter(apic_8254_intr) - lastcnt == 0) {
 			/* 
 			 * The MP table is broken.
 			 * The 8254 was not connected to the specified pin
@@ -1051,7 +1052,7 @@ cpu_initclocks()
 			apic_8254_intr = apic_irq(0, 0);
 			setup_8254_mixed_mode();
 			inthand_add("clk", apic_8254_intr,
-				    (inthand2_t *)clkintr,
+				    clkintr,
 				    NULL,
 				    INTR_EXCL | INTR_FAST, NULL);
 			INTREN(1 << apic_8254_intr);
@@ -1073,15 +1074,6 @@ cpu_initclocks()
 }
 
 #ifdef APIC_IO
-static u_long
-read_intr_count(int vec)
-{
-	u_long *up;
-	up = intr_countp[vec];
-	if (up)
-		return *up;
-	return 0UL;
-}
 
 static void 
 setup_8254_mixed_mode()

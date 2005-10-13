@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.15 2005/06/16 21:12:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.16 2005/10/13 00:02:41 dillon Exp $
  *
  */
 
@@ -175,7 +175,7 @@ static int rc_rcsrt[16] = {
 };
 
 /* Static prototypes */
-static ointhand2_t rcintr;
+static inthand2_t rcintr;
 static void rc_hwreset          (int, int, unsigned int);
 static int  rc_test             (int, int);
 static void rc_discard_output   (struct rc_chans *);
@@ -236,7 +236,7 @@ rcattach(dvp)
 	static int              rc_started = 0;
 	struct tty              *tp;
 
-	dvp->id_ointr = rcintr;
+	dvp->id_intr = rcintr;
 
 	/* Thorooughly test the device */
 	if (rcb->rcb_probed != RC_PROBED)
@@ -271,7 +271,7 @@ rcattach(dvp)
 	rcb->rcb_probed = RC_ATTACHED;
 	if (!rc_started) {
 		cdevsw_add(&rc_cdevsw, -1, rcb->rcb_unit);
-		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll");
+		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll", NULL);
 		callout_init(&rc_wakeup_ch);
 		rc_wakeup(NULL);
 		rc_started = 1;
@@ -281,9 +281,9 @@ rcattach(dvp)
 
 /* RC interrupt handling */
 static void
-rcintr(unit)
-	int             unit;
+rcintr(void *arg, void *frame)
 {
+	int unit = (int)arg;
 	struct rc_softc        *rcb = &rc_softc[unit];
 	struct rc_chans        *rc;
 	int                    nec, resid;
@@ -561,7 +561,7 @@ out:
 
 /* Handle delayed events. */
 void 
-rcpoll(void *dummy)
+rcpoll(void *dummy, void *frame)
 {
 	struct rc_chans *rc;
 	struct rc_softc *rcb;
@@ -1421,7 +1421,7 @@ rc_wakeup(chan)
 {
 	if (rc_scheduled_event != 0) {
 		crit_enter();
-		rcpoll(NULL);
+		rcpoll(NULL, NULL);
 		crit_exit();
 	}
 	callout_reset(&rc_wakeup_ch, 1, rc_wakeup, NULL);

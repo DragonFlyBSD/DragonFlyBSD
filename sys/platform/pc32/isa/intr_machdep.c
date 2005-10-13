@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.32 2005/09/10 06:48:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.33 2005/10/13 00:02:47 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -94,29 +94,9 @@
 
 #define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
-static inthand2_t isa_strayintr;
-#if defined(FAST_HI) && defined(APIC_IO)
-void do_wrongintr(int intr);
-#endif
 static void	init_i8259(void);
-
-void	*intr_unit[ICU_LEN*2];
-u_long	*intr_countp[ICU_LEN*2];
-inthand2_t *intr_handler[ICU_LEN*2] = {
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
-};
-
-static struct md_intr_info {
-    int		irq;
-    int		mihandler_installed;
-} intr_info[ICU_LEN*2];
+static int	icu_unset(int intr);
+static int	icu_setup(int intr, int flags);
 
 static inthand_t *fastintr[ICU_LEN] = {
 	&IDTVEC(fastintr0), &IDTVEC(fastintr1),
@@ -240,12 +220,13 @@ isa_nmi(cd)
 void
 icu_reinit()
 {
-       int i;
+	int i;
 
-       init_i8259();
-       for(i=0;i<ICU_LEN;i++)
-               if(intr_handler[i] != isa_strayintr)
-                       INTREN(1<<i);
+	init_i8259();
+	for (i = 0; i < ICU_LEN; ++i) {
+		if (count_registered_ints(i))
+			INTREN(1 << i);
+	}
 }
 
 /*
@@ -259,7 +240,7 @@ isa_defaultirq()
 
 	/* icu vectors */
 	for (i = 0; i < ICU_LEN; i++)
-		icu_unset(i, isa_strayintr);
+		icu_unset(i);
 	init_i8259();
 }
 
@@ -291,61 +272,6 @@ init_i8259(void)
 	outb(IO_ICU2, 0x0a);		/* default to IRR on read */
 }
 
-/*
- * Caught a stray interrupt, notify
- */
-static void
-isa_strayintr(void *vcookiep)
-{
-	int intr = (void **)vcookiep - &intr_unit[0];
-
-	/* DON'T BOTHER FOR NOW! */
-	/* for some reason, we get bursts of intr #7, even if not enabled! */
-	/*
-	 * Well the reason you got bursts of intr #7 is because someone
-	 * raised an interrupt line and dropped it before the 8259 could
-	 * prioritize it.  This is documented in the intel data book.  This
-	 * means you have BAD hardware!  I have changed this so that only
-	 * the first 5 get logged, then it quits logging them, and puts
-	 * out a special message. rgrimes 3/25/1993
-	 */
-	/*
-	 * XXX TODO print a different message for #7 if it is for a
-	 * glitch.  Glitches can be distinguished from real #7's by
-	 * testing that the in-service bit is _not_ set.  The test
-	 * must be done before sending an EOI so it can't be done if
-	 * we are using AUTO_EOI_1.
-	 */
-	if (intrcnt[1 + intr] <= 5)
-		log(LOG_ERR, "stray irq %d\n", intr);
-	if (intrcnt[1 + intr] == 5)
-		log(LOG_CRIT,
-		    "too many stray irq %d's; not logging any more\n", intr);
-}
-
-#if defined(FAST_HI) && defined(APIC_IO)
-
-/*
- * This occurs if we've mis-programmed the APIC and its vector is still
- * pointing to the slow vector even when we thought we reprogrammed it
- * to the high vector.  This can occur when interrupts are improperly
- * routed by the APIC.  The unit data is opaque so we have to try to
- * find it in the unit array.
- */
-void
-do_wrongintr(int intr)
-{
-	if (intrcnt[1 + intr] <= 5) {
-		log(LOG_ERR, "stray irq ~%d on cpu %d (APIC misprogrammed)\n",
-		    intr, mycpu->gd_cpuid);
-	} else if (intrcnt[1 + intr] == 6) {
-		log(LOG_CRIT,
-		    "too many stray irq ~%d's; not logging any more\n", intr);
-	}
-}
-
-#endif
-
 #if NISA > 0
 /*
  * Return a bitmap of the current interrupt requests.  This is 8259-specific
@@ -363,61 +289,9 @@ isa_irq_pending(void)
 }
 #endif
 
-static void
-update_intrname(int intr, char *name)
-{
-	char buf[32];
-	char *cp;
-	int name_index, off, strayintr;
-
-	/*
-	 * Initialise strings for bitbucket and stray interrupt counters.
-	 * These have statically allocated indices 0 and 1 through ICU_LEN.
-	 */
-	if (intrnames[0] == '\0') {
-		off = sprintf(intrnames, "???") + 1;
-		for (strayintr = 0; strayintr < ICU_LEN; strayintr++)
-			off += sprintf(intrnames + off, "stray irq%d",
-			    strayintr) + 1;
-	}
-
-	if (name == NULL)
-		name = "???";
-	if (snprintf(buf, sizeof(buf), "%s irq%d", name, intr) >= sizeof(buf))
-		goto use_bitbucket;
-
-	/*
-	 * Search for `buf' in `intrnames'.  In the usual case when it is
-	 * not found, append it to the end if there is enough space (the \0
-	 * terminator for the previous string, if any, becomes a separator).
-	 */
-	for (cp = intrnames, name_index = 0;
-	    cp != eintrnames && name_index < NR_INTRNAMES;
-	    cp += strlen(cp) + 1, name_index++) {
-		if (*cp == '\0') {
-			if (strlen(buf) >= eintrnames - cp)
-				break;
-			strcpy(cp, buf);
-			goto found;
-		}
-		if (strcmp(cp, buf) == 0)
-			goto found;
-	}
-
-use_bitbucket:
-	printf("update_intrname: counting %s irq%d as %s\n", name, intr,
-	    intrnames);
-	name_index = 0;
-found:
-	intr_countp[intr] = &intrcnt[name_index];
-}
-
-/*
- * NOTE!  intr_handler[] is only used for FAST interrupts, the *vector.s
- * code ignores it for normal interrupts.
- */
+static
 int
-icu_setup(int intr, inthand2_t *handler, void *arg, int flags)
+icu_setup(int intr, int flags)
 {
 #if defined(FAST_HI) && defined(APIC_IO)
 	int		select;		/* the select register is 8 bits */
@@ -432,17 +306,9 @@ icu_setup(int intr, inthand2_t *handler, void *arg, int flags)
 	if ((u_int)intr >= ICU_LEN || intr == ICU_SLAVEID)
 #endif /* APIC_IO */
 		return (EINVAL);
-	if (intr_handler[intr] != isa_strayintr)
-		return (EBUSY);
 
 	ef = read_eflags();
 	cpu_disable_intr();	/* YYY */
-	intr_handler[intr] = handler;
-	intr_unit[intr] = arg;
-#if 0
-	/* YYY  fast ints supported and mp protected but ... */
-	flags &= ~INTR_FAST;
-#endif
 #if defined(FAST_HI) && defined(APIC_IO)
 	if (flags & INTR_FAST) {
 		/*
@@ -493,25 +359,15 @@ icu_setup(int intr, inthand2_t *handler, void *arg, int flags)
 	return (0);
 }
 
-int
-icu_unset(intr, handler)
-	int	intr;
-	inthand2_t *handler;
+static int
+icu_unset(int intr)
 {
 	u_long	ef;
 
-	if ((u_int)intr >= ICU_LEN || handler != intr_handler[intr]) {
-		printf("icu_unset: invalid handler %d %p/%p\n", intr, handler, 
-		    (((u_int)intr >= ICU_LEN) ? (void *)-1 : intr_handler[intr]));
-		return (EINVAL);
-	}
-
+	KKASSERT((u_int)intr < ICU_LEN);
 	INTRDIS(1 << intr);
 	ef = read_eflags();
 	cpu_disable_intr();	/* YYY */
-	intr_countp[intr] = &intrcnt[1 + intr];
-	intr_handler[intr] = isa_strayintr;
-	intr_unit[intr] = &intr_unit[intr];
 #ifdef FAST_HI_XXX
 	/* XXX how do I re-create dvp here? */
 	setidt(flags & INTR_FAST ? TPR_FAST_INTS + intr : TPR_SLOW_INTS + intr,
@@ -559,151 +415,6 @@ icu_unset(intr, handler)
  *
  */
 
-typedef struct intrec {
-	inthand2_t      *handler;
-	void            *argument;
-	struct intrec   *next;
-	char            *name;
-	int             intr;
-	int             flags;
-	lwkt_serialize_t serializer;
-	volatile int	in_handler;
-} intrec;
-
-static intrec *intreclist_head[ICU_LEN];
-
-/*
- * The interrupt multiplexer calls each of the handlers in turn.  A handler
- * is called only if we can successfully obtain the interlock, meaning
- * (1) we aren't recursed and (2) the handler has not been disabled via
- * inthand_disabled().
- *
- * XXX the IPL is currently raised as necessary for the handler.  However,
- * IPLs are not MP safe so the IPL code will be removed when the device
- * drivers, BIO, and VM no longer depend on it.
- */
-static void
-intr_mux(void *arg)
-{
-	intrec **pp;
-	intrec *p;
-
-	for (pp = arg; (p = *pp) != NULL; pp = &p->next) {
-		if (p->serializer) {
-			/*
-			 * New handler dispatch method.  Only the serializer
-			 * is used to interlock access.  Note that this
-			 * API includes a handler disablement feature.
-			 */
-			lwkt_serialize_handler_call(p->serializer,
-						    p->handler, p->argument);
-		} else {
-			/*
-			 * Old handlers may expect multiple interrupt
-			 * sources to be masked.  We must use a critical
-			 * section.
-			 */
-			crit_enter();
-			p->handler(p->argument);
-			crit_exit();
-		}
-	}
-}
-
-/*
- * Add an interrupt handler to the linked list hung off of intreclist_head[irq]
- * and install a shared interrupt multiplex handler.  Install an interrupt
- * thread for each interrupt (though FAST interrupts will not use it).
- * The preemption procedure checks the CPL.  lwkt_preempt() will check
- * relative thread priorities for us as long as we properly pass through
- * critpri.
- *
- * The interrupt thread has already been put on the run queue, so if we cannot
- * preempt we should force a reschedule.
- *
- * This preemption check routine is currently empty, but will be used in the
- * future to pre-check interrupts for preemptability to avoid the
- * inefficiencies of having to instantly block.  We used to do a CPL check
- * here (otherwise the interrupt thread could preempt even when it wasn't
- * supposed to), but with CPLs gone we no longer have to do this.
- */
-static void
-cpu_intr_preempt(struct thread *td, int critpri)
-{
-	lwkt_preempt(td, critpri);
-}
-
-static int
-add_intrdesc(intrec *idesc)
-{
-	int irq = idesc->intr;
-	intrec *head;
-	intrec **headp;
-
-	/*
-	 * There are two ways to enter intr_mux().  (1) via the scheduled
-	 * interrupt thread or (2) directly.   The thread mechanism is the
-	 * normal mechanism used by SLOW interrupts, while the direct method
-	 * is used by FAST interrupts.
-	 *
-	 * We need to create an interrupt thread if none exists.
-	 */
-	if (intr_info[irq].mihandler_installed == 0) {
-		struct thread *td;
-
-		intr_info[irq].mihandler_installed = 1;
-		intr_info[irq].irq = irq;
-		td = register_int(irq, intr_mux, &intreclist_head[irq], idesc->name);
-		td->td_info.intdata = &intr_info[irq];
-		td->td_preemptable = cpu_intr_preempt;
-		printf("installed MI handler for int %d\n", irq);
-	}
-
-	headp = &intreclist_head[irq];
-	head = *headp;
-
-	/*
-	 * Check exclusion
-	 */
-	if (head) {
-		if ((idesc->flags & INTR_EXCL) || (head->flags & INTR_EXCL)) {
-			printf("\tdevice combination doesn't support "
-			       "shared irq%d\n", irq);
-			return (-1);
-		}
-		if ((idesc->flags & INTR_FAST) || (head->flags & INTR_FAST)) {
-			printf("\tdevice combination doesn't support "
-			       "multiple FAST interrupts on IRQ%d\n", irq);
-		}
-	}
-
-	/*
-	 * Always install intr_mux as the hard handler so it can deal with
-	 * individual enablement on handlers.
-	 */
-	if (head == NULL) {
-		if (icu_setup(irq, idesc->handler, idesc->argument, idesc->flags) != 0)
-			return (-1);
-		update_intrname(irq, idesc->name);
-	} else if (head->next == NULL) {
-		icu_unset(irq, head->handler);
-		if (icu_setup(irq, intr_mux, &intreclist_head[irq], 0) != 0)
-			return (-1);
-		if (bootverbose && head->next == NULL)
-			printf("\tusing shared irq%d.\n", irq);
-		update_intrname(irq, "mux");
-	}
-
-	/*
-	 * Append to the end of the chain.
-	 */
-	while (*headp != NULL)
-		headp = &(*headp)->next;
-	*headp = idesc;
-
-	return (0);
-}
-
 /*
  * Create and activate an interrupt handler descriptor data structure.
  *
@@ -722,52 +433,48 @@ add_intrdesc(intrec *idesc)
  * drivers.  It is subject to change without notice.
  */
 
-intrec *
+void *
 inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 	     int flags, lwkt_serialize_t serializer)
 {
-	intrec *idesc;
-	int errcode = -1;
+	int errcode = 0;
+	void *id;
 
 	if ((unsigned)irq >= ICU_LEN) {
 		printf("create_intr: requested irq%d too high, limit is %d\n",
 		       irq, ICU_LEN -1);
 		return (NULL);
 	}
+	/*
+	 * Register the interrupt, then setup the ICU
+	 */
+	id = register_int(irq, handler, arg, name, serializer, flags);
 
-	idesc = malloc(sizeof *idesc, M_DEVBUF, M_WAITOK | M_ZERO);
-	if (idesc == NULL)
-		return NULL;
-
-	if (name == NULL)
-		name = "???";
-	idesc->name = malloc(strlen(name) + 1, M_DEVBUF, M_WAITOK);
-	if (idesc->name == NULL) {
-		free(idesc, M_DEVBUF);
-		return NULL;
+	if (id == NULL) {
+		printf("Unable to install handler for %s\n", name);
+		printf("\tdevice combination not supported on irq %d\n", irq);
+		return(NULL);
 	}
-	strcpy(idesc->name, name);
-
-	idesc->handler  = handler;
-	idesc->argument = arg;
-	idesc->intr     = irq;
-	idesc->flags    = flags;
-	idesc->serializer = serializer;
 
 	crit_enter();
-	errcode = add_intrdesc(idesc);
+	if (count_registered_ints(irq) == 1) {
+		if (icu_setup(irq, flags))
+			errcode = -1;
+	}
 	crit_exit();
 
+	/*
+	 * Cleanup
+	 */
 	if (errcode != 0) {
-		if (bootverbose)
-			printf("\tintr_connect(irq%d) failed, result=%d\n", 
+		if (bootverbose) {
+			printf("\tinthand_add(irq%d) failed, result=%d\n", 
 			       irq, errcode);
-		free(idesc->name, M_DEVBUF);
-		free(idesc, M_DEVBUF);
-		idesc = NULL;
+		}
+		unregister_int(id);
+		id = NULL;
 	}
-
-	return (idesc);
+	return (id);
 }
 
 /*
@@ -778,57 +485,19 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
  * to the system. Make sure, the handler is not actively used anymore, before.
  */
 int
-inthand_remove(intrec *idesc)
+inthand_remove(void *id)
 {
-	intrec **hook, *head;
 	int irq;
 
-	if (idesc == NULL)
-		return (-1);
+	if (id == NULL)
+		return(-1);
 
-	irq = idesc->intr;
 	crit_enter();
-
-	/*
-	 * Find and remove the interrupt descriptor.
-	 */
-	hook = &intreclist_head[irq];
-	while (*hook != idesc) {
-		if (*hook == NULL) {
-			crit_exit();
-			return(-1);
-		}
-		hook = &(*hook)->next;
-	}
-	*hook = idesc->next;
-
-	/*
-	 * If the list is now empty, revert the hard vector to the spurious
-	 * interrupt.
-	 */
-	head = intreclist_head[irq];
-	if (head == NULL) {
-		/*
-		 * No more interrupts on this irq
-		 */
-		icu_unset(irq, idesc->handler);
-		update_intrname(irq, NULL);
-	} else if (head->next) {
-		/*
-		 * This irq is still shared (has at least two handlers)
-		 * (the name should already be set to "mux").
-		 */
-	} else {
-		/*
-		 * This irq is no longer shared
-		 */
-		icu_unset(irq, intr_mux);
-		icu_setup(irq, head->handler, head->argument, head->flags);
-		update_intrname(irq, head->name);
+	irq = get_registered_intr(id);
+	if (unregister_int(id) == 0) {
+		icu_unset(irq);
 	}
 	crit_exit();
-	free(idesc, M_DEVBUF);
-
 	return (0);
 }
 

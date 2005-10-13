@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.9 2005/06/16 21:12:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.10 2005/10/13 00:02:48 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -112,7 +112,7 @@ MALLOC_DEFINE(M_CRYPTO_DATA, "crypto", "crypto session records");
  *
  * This scheme is not intended for SMP machines.
  */ 
-static	void cryptointr(void *dummy);	/* swi thread to dispatch ops */
+static inthand2_t cryptointr;
 static	void cryptoret(void);		/* kernel thread for callbacks*/
 static	struct thread *cryptothread;
 static	void crypto_destroy(void);
@@ -128,6 +128,8 @@ static	int crypto_timing = 0;
 SYSCTL_INT(_debug, OID_AUTO, crypto_timing, CTLFLAG_RW,
 	   &crypto_timing, 0, "Enable/disable crypto timing support");
 #endif
+
+static void *crypto_int_id;
 
 static int
 crypto_init(void)
@@ -156,7 +158,8 @@ crypto_init(void)
 	TAILQ_INIT(&crp_ret_q);
 	TAILQ_INIT(&crp_ret_kq);
 
-	register_swi(SWI_CRYPTO, cryptointr, NULL, "swi_crypto");
+	crypto_int_id = register_swi(SWI_CRYPTO, cryptointr, NULL, 
+					"swi_crypto", NULL);
 	error = kthread_create((void (*)(void *)) cryptoret, NULL,
 		    &cryptothread, "cryptoret");
 	if (error) {
@@ -173,7 +176,7 @@ crypto_destroy(void)
 	/* XXX no wait to reclaim zones */
 	if (crypto_drivers != NULL)
 		free(crypto_drivers, M_CRYPTO_DATA);
-	unregister_swi(SWI_CRYPTO, cryptointr);
+	unregister_swi(crypto_int_id);
 }
 
 /*
@@ -985,7 +988,7 @@ out:
  * Software interrupt thread to dispatch crypto requests.
  */
 static void
-cryptointr(void *dummy)
+cryptointr(void *dummy, void *frame)
 {
 	struct cryptop *crp, *submit;
 	struct cryptkop *krp;

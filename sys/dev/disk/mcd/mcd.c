@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.12 2005/06/06 22:51:54 corecode Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.13 2005/10/13 00:02:30 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -170,7 +170,7 @@ static	int	mcd_send(int unit, int cmd,int nretrys);
 static	void	hsg2msf(int hsg, bcd_t *msf);
 static  int     msf2hsg(bcd_t *msf, int relative);
 static	int	mcd_volinfo(int unit);
-static	ointhand2_t	mcdintr;
+static	inthand2_t	mcdintr;
 static	int	mcd_waitrdy(int port,int dly);
 static	timeout_t mcd_timeout;
 static 	void	mcd_doread(int state, struct mcd_mbx *mbxin);
@@ -248,7 +248,7 @@ int mcd_attach(struct isa_device *dev)
 	int	unit = dev->id_unit;
 	struct mcd_data *cd = mcd_data + unit;
 
-	dev->id_ointr = mcdintr;
+	dev->id_intr = mcdintr;
 	cd->iobase = dev->id_iobase;
 	cd->flags |= MCDINIT;
 	callout_init(&cd->callout);
@@ -963,8 +963,7 @@ mcd_volinfo(int unit)
 }
 
 static void
-mcdintr(unit)
-	int unit;
+mcdintr(void *dummy)
 {
 	MCD_TRACE("stray interrupt\n");
 }

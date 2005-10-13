@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.36 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.37 2005/10/13 00:02:44 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -576,7 +576,7 @@ vm_page_zero_idle()
 }
 
 static void
-swi_vm(void *arg)
+swi_vm(void *arg, void *frame)
 {
 	if (busdma_swi_pending != 0)
 		busdma_swi();
@@ -585,7 +585,7 @@ swi_vm(void *arg)
 static void
 swi_vm_setup(void *arg)
 {
-	register_swi(SWI_VM, swi_vm, NULL, "swi_vm");
+	register_swi(SWI_VM, swi_vm, NULL, "swi_vm", NULL);
 }
 
 SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_vm_setup, NULL);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.12 2005/06/11 00:27:09 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.13 2005/10/13 00:02:35 dillon Exp $
  *
  */
 
@@ -280,7 +280,7 @@ static void twdelayn(int n);
 static void twsetuptimes(int *a);
 static int wait_for_zero(struct tw_sc *sc);
 static int twputpkt(struct tw_sc *sc, u_char *p);
-static ointhand2_t twintr;
+static inthand2_t twintr;
 static int twgetbytes(struct tw_sc *sc, u_char *p, int cnt);
 static timeout_t twabortrcv;
 static int twsend(struct tw_sc *sc, int h, int k, int cnt);
@@ -398,7 +398,7 @@ static int twattach(idp)
   struct tw_sc *sc;
   int	unit;
 
-  idp->id_ointr = twintr;
+  idp->id_intr = twintr;
   sc = &tw_sc[unit = idp->id_unit];
   sc->sc_port = idp->id_iobase;
   sc->sc_state = 0;
@@ -918,9 +918,9 @@ tw_is_within(int value, int expected, int tolerance)
  * reconstruct the transmission without having to poll.
  */
 
-static void twintr(unit)
-int unit;
+static void twintr(void *arg)
 {
+  int unit = (int)arg;
   struct tw_sc *sc = &tw_sc[unit];
   int port;
   int newphase;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.17 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.18 2005/10/13 00:02:44 dillon Exp $
  */
 
 /*
@@ -523,8 +523,13 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 	if (error)
 		return (error);
 
+	/*
+	 * XXX cast the interrupt handler function to an inthand2_t.  The
+	 * difference is that an additional frame argument is passed which
+	 * we do not currently want to expose the BUS subsystem to.
+	 */
 	*cookiep = inthand_add(device_get_nameunit(child), irq->r_start,
-	    ihand, arg, icflags, serializer);
+	    (inthand2_t *)ihand, arg, icflags, serializer);
 	if (*cookiep == NULL)
 		error = EINVAL;	/* XXX ??? */
 

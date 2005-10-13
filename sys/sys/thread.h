@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.69 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.70 2005/10/13 00:02:23 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -234,9 +234,6 @@ struct thread {
     int		td_wdomain;	/* domain for wchan address (typ 0) */
     void	(*td_preemptable)(struct thread *td, int critpri);
     void	(*td_release)(struct thread *td);
-    union {
-	struct md_intr_info *intdata;
-    } td_info;
     char	*td_kstack;	/* kernel stack */
     int		td_kstack_size;	/* size of kernel stack */
     char	*td_sp;		/* kernel stack pointer for LWKT restore */

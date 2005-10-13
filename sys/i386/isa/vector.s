@@ -1,34 +1,13 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.6 2005/02/27 12:44:43 asmodai Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.7 2005/10/13 00:02:47 dillon Exp $
  */
 
 #include "opt_auto_eoi.h"
 
 #include <i386/isa/icu.h>
 #include <bus/isa/i386/isa.h>
-
-	.data
-	ALIGN_DATA
-
-/*
- * Interrupt counters and names for export to vmstat(8) and friends.
- *
- * XXX this doesn't really belong here; everything except the labels
- * for the endpointers is almost machine-independent.
- */
-#define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
-
-	.globl	intrcnt, eintrcnt
-intrcnt:
-	.space	NR_INTRNAMES * 4
-eintrcnt:
-
-	.globl	intrnames, eintrnames
-intrnames:
-	.space	NR_INTRNAMES * 16
-eintrnames:
 
 	.text
 

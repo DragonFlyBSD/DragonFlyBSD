@@ -8,7 +8,7 @@
  * required.  Unlike tokens this serialization is not safe from deadlocks
  * nor is it recursive, and care must be taken when using it. 
  *
- * $DragonFly: src/sys/sys/serialize.h,v 1.1 2005/05/24 20:58:44 dillon Exp $
+ * $DragonFly: src/sys/sys/serialize.h,v 1.2 2005/10/13 00:02:23 dillon Exp $
  */
 
 #ifndef _SYS_SERIALIZE_H_
@@ -32,6 +32,7 @@ void lwkt_serialize_enter(lwkt_serialize_t);
 void lwkt_serialize_exit(lwkt_serialize_t);
 void lwkt_serialize_handler_disable(lwkt_serialize_t);
 void lwkt_serialize_handler_enable(lwkt_serialize_t);
-void lwkt_serialize_handler_call(lwkt_serialize_t, void (*)(void *), void *);
+void lwkt_serialize_handler_call(lwkt_serialize_t, void (*)(void *, void *), void *, void *);
+int lwkt_serialize_handler_try(lwkt_serialize_t, void (*)(void *, void *), void *, void *);
 
 #endif

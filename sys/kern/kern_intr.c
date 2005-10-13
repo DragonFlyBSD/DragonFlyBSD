@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.23 2005/10/12 17:39:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.24 2005/10/13 00:02:22 dillon Exp $
  *
  */
 
@@ -37,8 +37,11 @@
 #include <sys/proc.h>
 #include <sys/thread2.h>
 #include <sys/random.h>
+#include <sys/serialize.h>
+#include <sys/bus.h>
 
 #include <machine/ipl.h>
+#include <machine/frame.h>
 
 #include <sys/interrupt.h>
 
@@ -46,15 +49,24 @@ typedef struct intrec {
     struct intrec *next;
     inthand2_t	*handler;
     void	*argument;
-    const char	*name;
+    char	*name;
     int		intr;
-} intrec_t;
+    int		intr_flags;
+    struct lwkt_serialize *serializer;
+} *intrec_t;
 
-static intrec_t	*intlists[NHWI+NSWI];
-static thread_t ithreads[NHWI+NSWI];
-static struct thread ithread_ary[NHWI+NSWI];
-static struct random_softc irandom_ary[NHWI+NSWI];
-static int irunning[NHWI+NSWI];
+struct intr_info {
+	intrec_t	i_reclist;
+	struct thread	i_thread;
+	struct random_softc i_random;
+	int		i_running;
+	long		i_count;
+	int		i_fast;
+	int		i_slow;
+	int		i_valid_thread;
+} intr_info_ary[NHWI + NSWI];
+
+int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
 
 #define LIVELOCK_NONE		0
 #define LIVELOCK_LIMITED	1
@@ -71,48 +83,64 @@ static void ithread_handler(void *arg);
 /*
  * Register an SWI or INTerrupt handler.
  */
-thread_t
-register_swi(int intr, inthand2_t *handler, void *arg, const char *name)
+void *
+register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
+		struct lwkt_serialize *serializer)
 {
     if (intr < NHWI || intr >= NHWI + NSWI)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name));
+    return(register_int(intr, handler, arg, name, serializer, 0));
 }
 
-thread_t
-register_int(int intr, inthand2_t *handler, void *arg, const char *name)
+void *
+register_int(int intr, inthand2_t *handler, void *arg, const char *name,
+		struct lwkt_serialize *serializer, int intr_flags)
 {
-    intrec_t **list;
-    intrec_t *rec;
-    thread_t td;
+    struct intr_info *info;
+    struct intrec **list;
+    intrec_t rec;
 
     if (intr < 0 || intr >= NHWI + NSWI)
 	panic("register_int: bad intr %d", intr);
+    if (name == NULL)
+	name = "???";
+    info = &intr_info_ary[intr];
 
-    rec = malloc(sizeof(intrec_t), M_DEVBUF, M_NOWAIT);
-    if (rec == NULL)
-	panic("register_swi: malloc failed");
+    rec = malloc(sizeof(struct intrec), M_DEVBUF, M_INTWAIT);
+    rec->name = malloc(strlen(name) + 1, M_DEVBUF, M_INTWAIT);
+    strcpy(rec->name, name);
+
     rec->handler = handler;
     rec->argument = arg;
-    rec->name = name;
     rec->intr = intr;
+    rec->intr_flags = intr_flags;
     rec->next = NULL;
+    rec->serializer = serializer;
 
-    list = &intlists[intr];
+    list = &info->i_reclist;
+
+    /*
+     * Keep track of how many fast and slow interrupts we have.
+     */
+    if (intr_flags & INTR_FAST)
+	++info->i_fast;
+    else
+	++info->i_slow;
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
      * state.
      */
-    if ((td = ithreads[intr]) == NULL) {
-	lwkt_create((void *)ithread_handler, (void *)intr, &ithreads[intr],
-	    &ithread_ary[intr], TDF_STOPREQ|TDF_INTTHREAD, -1, 
+    if (info->i_valid_thread == 0) {
+	info->i_valid_thread = 1;
+	lwkt_create((void *)ithread_handler, (void *)intr, NULL,
+	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD, -1, 
 	    "ithread %d", intr);
-	td = ithreads[intr];
 	if (intr >= NHWI && intr < NHWI + NSWI)
-	    lwkt_setpri(td, TDPRI_SOFT_NORM);
+	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);
 	else
-	    lwkt_setpri(td, TDPRI_INT_MED);
+	    lwkt_setpri(&info->i_thread, TDPRI_INT_MED);
+	info->i_thread.td_preemptable = lwkt_preempt;
     }
 
     /*
@@ -123,74 +151,150 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 	list = &(*list)->next;
     *list = rec;
     crit_exit();
-    return(td);
+    return(rec);
 }
 
-void
-unregister_swi(int intr, inthand2_t *handler)
+int
+unregister_swi(void *id)
 {
-    if (intr < NHWI || intr >= NHWI + NSWI)
-	panic("register_swi: bad intr %d", intr);
-    unregister_int(intr, handler);
+    return(unregister_int(id));
 }
 
-void
-unregister_int(int intr, inthand2_t handler)
+int
+unregister_int(void *id)
 {
-    intrec_t **list;
-    intrec_t *rec;
+    struct intr_info *info;
+    struct intrec **list;
+    intrec_t rec;
+    int intr;
+
+    intr = ((intrec_t)id)->intr;
 
     if (intr < 0 || intr > NHWI + NSWI)
 	panic("register_int: bad intr %d", intr);
-    list = &intlists[intr];
+
+    info = &intr_info_ary[intr];
+
+    /*
+     * Remove the interrupt descriptor
+     */
     crit_enter();
+    list = &info->i_reclist;
     while ((rec = *list) != NULL) {
-	if (rec->handler == (void *)handler) {
+	if (rec == id) {
 	    *list = rec->next;
 	    break;
 	}
 	list = &rec->next;
     }
     crit_exit();
+
+    /*
+     * Free it, adjust interrupt type counts
+     */
     if (rec != NULL) {
+	if (rec->intr_flags & INTR_FAST)
+	    --info->i_fast;
+	else
+	    --info->i_slow;
+	free(rec->name, M_DEVBUF);
 	free(rec, M_DEVBUF);
     } else {
-	printf("warning: unregister_int: int %d handler %p not found\n",
-	    intr, handler);
+	printf("warning: unregister_int: int %d handler for %s not found\n",
+		intr, ((intrec_t)id)->name);
     }
+
+    /*
+     * Return the number of interrupt vectors still registered on this intr
+     */
+    return(info->i_fast + info->i_slow);
 }
+
+int
+get_registered_intr(void *id)
+{
+    return(((intrec_t)id)->intr);
+}
+
+const char *
+get_registered_name(int intr)
+{
+    intrec_t rec;
+
+    if (intr < 0 || intr > NHWI + NSWI)
+	panic("register_int: bad intr %d", intr);
+
+    if ((rec = intr_info_ary[intr].i_reclist) == NULL)
+	return(NULL);
+    else if (rec->next)
+	return("mux");
+    else
+	return(rec->name);
+}
+
+int
+count_registered_ints(int intr)
+{
+    struct intr_info *info;
+
+    if (intr < 0 || intr > NHWI + NSWI)
+	panic("register_int: bad intr %d", intr);
+    info = &intr_info_ary[intr];
+    return(info->i_fast + info->i_slow);
+}
+
+long
+get_interrupt_counter(int intr)
+{
+    struct intr_info *info;
+
+    if (intr < 0 || intr > NHWI + NSWI)
+	panic("register_int: bad intr %d", intr);
+    info = &intr_info_ary[intr];
+    return(info->i_count);
+}
+
 
 void
 swi_setpriority(int intr, int pri)
 {
-    struct thread *td;
+    struct intr_info *info;
 
     if (intr < NHWI || intr >= NHWI + NSWI)
 	panic("register_swi: bad intr %d", intr);
-    if ((td = ithreads[intr]) != NULL)
-	lwkt_setpri(td, pri);
+    info = &intr_info_ary[intr];
+    if (info->i_valid_thread)
+	lwkt_setpri(&info->i_thread, pri);
 }
 
 void
 register_randintr(int intr)
 {
-    struct random_softc *sc = &irandom_ary[intr];
-    sc->sc_intr = intr;
-    sc->sc_enabled = 1;
+    struct intr_info *info;
+
+    if (intr < NHWI || intr >= NHWI + NSWI)
+	panic("register_swi: bad intr %d", intr);
+    info = &intr_info_ary[intr];
+    info->i_random.sc_intr = intr;
+    info->i_random.sc_enabled = 1;
 }
 
 void
 unregister_randintr(int intr)
 {
-    struct random_softc *sc = &irandom_ary[intr];
-    sc->sc_enabled = 0;
+    struct intr_info *info;
+
+    if (intr < NHWI || intr >= NHWI + NSWI)
+	panic("register_swi: bad intr %d", intr);
+    info = &intr_info_ary[intr];
+    info->i_random.sc_enabled = 0;
 }
 
 /*
  * Dispatch an interrupt.  If there's nothing to do we have a stray
  * interrupt and can just return, leaving the interrupt masked.
  *
- * We need to schedule the interrupt and set its irunning[] bit.  If
+ * We need to schedule the interrupt and set its i_running bit.  If
  * we are not on the interrupt thread's cpu we have to send a message
  * to the correct cpu that will issue the desired action (interlocking
  * with the interrupt thread's critical section).
@@ -207,17 +311,22 @@ sched_ithd_remote(void *arg)
 void
 sched_ithd(int intr)
 {
-    thread_t td;
+    struct intr_info *info;
 
-    if ((td = ithreads[intr]) != NULL) {
-	if (intlists[intr] == NULL) {
+    info = &intr_info_ary[intr];
+
+    ++info->i_count;
+    if (info->i_valid_thread) {
+	if (info->i_reclist == NULL) {
 	    printf("sched_ithd: stray interrupt %d\n", intr);
 	} else {
-	    if (td->td_gd == mycpu) {
-		irunning[intr] = 1;
-		lwkt_schedule(td);	/* preemption handled internally */
+	    if (info->i_thread.td_gd == mycpu) {
+		info->i_running = 1;
+		/* preemption handled internally */
+		lwkt_schedule(&info->i_thread);
 	    } else {
-		lwkt_send_ipiq(td->td_gd, sched_ithd_remote, (void *)intr);
+		lwkt_send_ipiq(info->i_thread.td_gd, 
+				sched_ithd_remote, (void *)intr);
 	    }
 	}
     } else {
@@ -230,18 +339,145 @@ sched_ithd(int intr)
  * might not be held).
  */
 static void
-ithread_livelock_wakeup(systimer_t info)
+ithread_livelock_wakeup(systimer_t st)
 {
-    int intr = (int)info->data;
-    thread_t td;
+    struct intr_info *info;
 
-    if ((td = ithreads[intr]) != NULL)
-	lwkt_schedule(td);
+    info = &intr_info_ary[(int)st->data];
+    if (info->i_valid_thread)
+	lwkt_schedule(&info->i_thread);
 }
 
 /*
- * This is run from a periodic SYSTIMER.  It resets the
+ * This function is called drectly from the ICU or APIC vector code assembly
+ * to process an interrupt.  The critical section and interrupt deferral
+ * checks have already been done but the function is entered WITHOUT
+ * a critical section held.  The BGL may or may not be held.
+ *
+ * Must return non-zero if we do not want the vector code to re-enable
+ * the interrupt (which we don't if we have to schedule the interrupt)
  */
+int ithread_fast_handler(struct intrframe frame);
+
+int
+ithread_fast_handler(struct intrframe frame)
+{
+    int intr;
+    struct intr_info *info;
+    struct intrec **list;
+    int must_schedule;
+#ifdef SMP
+    int got_mplock;
+#endif
+    intrec_t rec, next_rec;
+    globaldata_t gd;
+
+    intr = frame.if_vec;
+    gd = mycpu;
+
+    info = &intr_info_ary[intr];
+
+    /*
+     * If we are not processing any FAST interrupts, just schedule the thing.
+     * (since we aren't in a critical section, this can result in a
+     * preemption)
+     */
+    if (info->i_fast == 0) {
+	sched_ithd(intr);
+	return(1);
+    }
+
+    /*
+     * This should not normally occur since interrupts ought to be 
+     * masked if the ithread has been scheduled or is running.
+     */
+    if (info->i_running)
+	return(1);
+
+    /*
+     * Bump the interrupt nesting level to process any FAST interrupts.
+     * Obtain the MP lock as necessary.  If the MP lock cannot be obtained,
+     * schedule the interrupt thread to deal with the issue instead.
+     *
+     * To reduce overhead, just leave the MP lock held once it has been
+     * obtained.
+     */
+    crit_enter_gd(gd);
+    ++gd->gd_intr_nesting_level;
+    ++gd->gd_cnt.v_intr;
+    must_schedule = info->i_slow;
+#ifdef SMP
+    got_mplock = 0;
+#endif
+
+    list = &info->i_reclist;
+    for (rec = *list; rec; rec = next_rec) {
+	next_rec = rec->next;	/* rec may be invalid after call */
+
+	if (rec->intr_flags & INTR_FAST) {
+#ifdef SMP
+	    if ((rec->intr_flags & INTR_MPSAFE) == 0 && got_mplock == 0) {
+		if (try_mplock() == 0) {
+		    /*
+		     * XXX forward to the cpu holding the MP lock
+		     */
+		    must_schedule = 1;
+		    break;
+		}
+		got_mplock = 1;
+	    }
+#endif
+	    if (rec->serializer) {
+		must_schedule += lwkt_serialize_handler_try(
+					rec->serializer, rec->handler,
+					rec->argument, &frame);
+	    } else {
+		rec->handler(rec->argument, &frame);
+	    }
+	}
+    }
+
+    /*
+     * Cleanup
+     */
+    --gd->gd_intr_nesting_level;
+#ifdef SMP
+    if (got_mplock)
+	rel_mplock();
+#endif
+    crit_exit_gd(gd);
+
+    /*
+     * If we had a problem, schedule the thread to catch the missed
+     * records (it will just re-run all of them).  A return value of 0
+     * indicates that all handlers have been run and the interrupt can
+     * be re-enabled, and a non-zero return indicates that the interrupt
+     * thread controls re-enablement.
+     */
+    if (must_schedule)
+	sched_ithd(intr);
+    else
+	++info->i_count;
+    return(must_schedule);
+}
+
+#if 0
+
+6: ;                                                                    \
+        /* could not get the MP lock, forward the interrupt */          \
+        movl    mp_lock, %eax ;          /* check race */               \
+        cmpl    $MP_FREE_LOCK,%eax ;                                    \
+        je      2b ;                                                    \
+        incl    PCPU(cnt)+V_FORWARDED_INTS ;                            \
+        subl    $12,%esp ;                                              \
+        movl    $irq_num,8(%esp) ;                                      \
+        movl    $forward_fastint_remote,4(%esp) ;                       \
+        movl    %eax,(%esp) ;                                           \
+        call    lwkt_send_ipiq_bycpu ;                                  \
+        addl    $12,%esp ;                                              \
+        jmp     5f ;                   
+
+#endif
 
 
 /*
@@ -250,14 +486,14 @@ ithread_livelock_wakeup(systimer_t info)
  * The handler begins execution outside a critical section and with the BGL
  * held.
  *
- * The irunning state starts at 0.  When an interrupt occurs, the hardware
+ * The i_running state starts at 0.  When an interrupt occurs, the hardware
  * interrupt is disabled and sched_ithd() The HW interrupt remains disabled
  * until all routines have run.  We then call ithread_done() to reenable 
  * the HW interrupt and deschedule us until the next interrupt. 
  *
- * We are responsible for atomically checking irunning[] and ithread_done()
+ * We are responsible for atomically checking i_running and ithread_done()
  * is responsible for atomically checking for platform-specific delayed
- * interrupts.  irunning[] for our irq is only set in the context of our cpu,
+ * interrupts.  i_running for our irq is only set in the context of our cpu,
  * so a critical section is a sufficient interlock.
  */
 #define LIVELOCK_TIMEFRAME(freq)	((freq) >> 2)	/* 1/4 second */
@@ -265,14 +501,13 @@ ithread_livelock_wakeup(systimer_t info)
 static void
 ithread_handler(void *arg)
 {
-    int intr = (int)arg;
-    int freq;
-    u_int bticks;
+    struct intr_info *info;
     u_int cputicks;
-    intrec_t **list = &intlists[intr];
-    intrec_t *rec;
-    intrec_t *nrec;
-    struct random_softc *sc = &irandom_ary[intr];
+    u_int bticks;
+    int intr;
+    int freq;
+    struct intrec **list;
+    intrec_t rec, nrec;
     globaldata_t gd = mycpu;
     struct systimer ill_timer;	/* enforced freq. timer */
     struct systimer ill_rtimer;	/* recovery timer */
@@ -280,6 +515,11 @@ ithread_handler(void *arg)
     u_int ill_ticks = 0;	/* track elapsed to calculate freq */
     u_int ill_delta = 0;	/* track elapsed to calculate freq */
     int ill_state = 0;		/* current state */
+
+    intr = (int)arg;
+    info = &intr_info_ary[intr];
+    list = &info->i_reclist;
+    gd = mycpu;
 
     /*
      * The loop must be entered with one critical section held.
@@ -291,15 +531,21 @@ ithread_handler(void *arg)
 	 * We can get woken up by the livelock periodic code too, run the 
 	 * handlers only if there is a real interrupt pending.  XXX
 	 *
-	 * Clear irunning[] prior to running the handlers to interlock
+	 * Clear i_running prior to running the handlers to interlock
 	 * again new events occuring during processing of existing events.
 	 *
-	 * For now run each handler in a critical section.
+	 * Run each handler in a critical section.  Note that we run both
+	 * FAST and SLOW designated service routines.
 	 */
-	irunning[intr] = 0;
+	info->i_running = 0;
 	for (rec = *list; rec; rec = nrec) {
 	    nrec = rec->next;
-	    rec->handler(rec->argument);
+	    if (rec->serializer) {
+		lwkt_serialize_handler_call(rec->serializer,
+					rec->handler, rec->argument, NULL);
+	    } else {
+		rec->handler(rec->argument, NULL);
+	    }
 	}
 
 	/*
@@ -314,7 +560,7 @@ ithread_handler(void *arg)
 	 * This is our interrupt hook to add rate randomness to the random
 	 * number generator.
 	 */
-	if (sc->sc_enabled)
+	if (info->i_random.sc_enabled)
 	    add_interrupt_randomness(intr);
 
 	/*
@@ -383,13 +629,13 @@ ithread_handler(void *arg)
 	}
 
 	/*
-	 * There are two races here.  irunning[] is set by sched_ithd()
+	 * There are two races here.  i_running is set by sched_ithd()
 	 * in the context of our cpu and is critical-section safe.  We
 	 * are responsible for checking it.  ipending is not critical
 	 * section safe and must be handled by the platform specific
 	 * ithread_done() routine.
 	 */
-	if (irunning[intr] == 0)
+	if (info->i_running == 0)
 	    ithread_done(intr);
 	/* must be in critical section on loop */
     }
@@ -405,12 +651,36 @@ ithread_handler(void *arg)
  * We do not know the length of intrcnt and intrnames at compile time, so
  * calculate things at run time.
  */
+
 static int
 sysctl_intrnames(SYSCTL_HANDLER_ARGS)
 {
-	return (sysctl_handle_opaque(oidp, intrnames, eintrnames - intrnames, 
-	    req));
+    struct intr_info *info;
+    intrec_t rec;
+    int error = 0;
+    int len;
+    int intr;
+    char buf[64];
+
+    for (intr = 0; error == 0 && intr < NHWI + NSWI; ++intr) {
+	info = &intr_info_ary[intr];
+
+	len = 0;
+	buf[0] = 0;
+	for (rec = info->i_reclist; rec; rec = rec->next) {
+	    snprintf(buf + len, sizeof(buf) - len, "%s%s", 
+		(len ? "/" : ""), rec->name);
+	    len += strlen(buf + len);
+	}
+	if (len == 0) {
+	    snprintf(buf, sizeof(buf), "irq%d", intr);
+	    len = strlen(buf);
+	}
+	error = SYSCTL_OUT(req, buf, len + 1);
+    }
+    return (error);
 }
+
 
 SYSCTL_PROC(_hw, OID_AUTO, intrnames, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrnames, "", "Interrupt Names");
@@ -418,9 +688,20 @@ SYSCTL_PROC(_hw, OID_AUTO, intrnames, CTLTYPE_OPAQUE | CTLFLAG_RD,
 static int
 sysctl_intrcnt(SYSCTL_HANDLER_ARGS)
 {
-	return (sysctl_handle_opaque(oidp, intrcnt, 
-	    (char *)eintrcnt - (char *)intrcnt, req));
+    struct intr_info *info;
+    int error = 0;
+    int intr;
+
+    for (intr = 0; intr < NHWI + NSWI; ++intr) {
+	info = &intr_info_ary[intr];
+
+	error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
+	if (error)
+		break;
+    }
+    return(error);
 }
 
 SYSCTL_PROC(_hw, OID_AUTO, intrcnt, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrcnt, "", "Interrupt Counts");
+

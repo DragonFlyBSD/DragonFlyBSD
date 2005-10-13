@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.27 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.28 2005/10/13 00:02:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -200,7 +200,13 @@ ata_attach(device_t dev)
 	ata_printf(ch, -1, "unable to allocate interrupt\n");
 	return ENXIO;
     }
-    if ((error = bus_setup_intr(dev, ch->r_irq, 0,
+
+    /*
+     * Traditional ata registers are sensitive to when they can be accessed
+     * in the face of e.g. ongoing DMA.  Do not allow the interrupt to be
+     * polled.
+     */
+    if ((error = bus_setup_intr(dev, ch->r_irq, INTR_NOPOLL,
 				ata_intr, ch, &ch->ih, NULL))) {
 	ata_printf(ch, -1, "unable to setup interrupt\n");
 	return error;

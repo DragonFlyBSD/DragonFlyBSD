@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.17 2005/06/16 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.18 2005/10/13 00:02:40 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -331,7 +331,7 @@ struct com_s {
 
 /* PCI driver entry point. */
 int	cyattach_common		(cy_addr cy_iobase, int cy_align);
-ointhand2_t	siointr;
+inthand2_t	siointr;
 
 static	int	cy_units	(cy_addr cy_iobase, int cy_align);
 static	int	sioattach	(struct isa_device *dev);
@@ -518,7 +518,7 @@ sioattach(isdp)
 		printf("cy%d: attached as cy%d\n", isdp->id_unit, adapter);
 		isdp->id_unit = adapter;	/* XXX */
 	}
-	isdp->id_ointr = siointr;
+	isdp->id_intr = siointr;
 	/* isdp->id_ri_flags |= RI_FAST; XXX unimplemented - use newbus! */
 	return (1);
 }
@@ -620,7 +620,7 @@ cyattach_common(cy_iobase, cy_align)
 
 	if (!sio_registered) {
 		callout_init(&sio_timeout_handle);
-		register_swi(SWI_TTY, siopoll, NULL, "cy");
+		register_swi(SWI_TTY, siopoll, NULL, "cy", NULL);
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
@@ -1074,9 +1074,9 @@ sioinput(com)
 }
 
 void
-siointr(unit)
-	int	unit;
+siointr(void *arg)
 {
+	int 	unit = (int)arg;
 	int	baseu;
 	int	cy_align;
 	cy_addr	cy_iobase;
@@ -1715,7 +1715,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 }
 
 static void
-siopoll(void *data)
+siopoll(void *data, void *frame)
 {
 	int		unit;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.30 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.31 2005/10/13 00:02:42 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1199,7 +1199,7 @@ determined_type: ;
 	printf("\n");
 
 	if (!sio_registered) {
-		register_swi(SWI_TTY, siopoll, NULL ,"swi_siopoll");
+		register_swi(SWI_TTY, siopoll, NULL ,"swi_siopoll", NULL);
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
@@ -2136,7 +2136,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 }
 
 static void
-siopoll(void *dummy)
+siopoll(void *dummy, void *frame)
 {
 	int		unit;
 

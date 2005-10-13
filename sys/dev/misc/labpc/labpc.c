@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.12 2005/06/16 16:04:28 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.13 2005/10/13 00:02:32 dillon Exp $
  *
  */
 
@@ -308,7 +308,7 @@ static struct cdevsw labpc_cdevsw = {
 	/* psize */	nopsize
 };
 
-static ointhand2_t labpcintr;
+static inthand2_t labpcintr;
 static void start(struct ctlr *ctlr);
 
 static void
@@ -480,7 +480,7 @@ labpcattach(struct isa_device *dev)
 {
 	struct ctlr *ctlr = labpcs[dev->id_unit];
 
-	dev->id_ointr = labpcintr;
+	dev->id_intr = labpcintr;
 	callout_init(&ctlr->ch);
 	ctlr->sample_us = (1000000.0 / (double)LABPC_DEFAULT_HERTZ) + .50;
 	reset(ctlr);
@@ -696,8 +696,10 @@ static void ad_intr(struct ctlr *ctlr)
 	}
 }
 
-static void labpcintr(int unit)
+static void
+labpcintr(void *arg)
 {
+	int unit = (int)arg;
 	struct ctlr *ctlr = labpcs[unit];
 	(*ctlr->intr)(ctlr);
 }

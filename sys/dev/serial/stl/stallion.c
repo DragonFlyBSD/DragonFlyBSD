@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.14 2005/06/16 21:12:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.15 2005/10/13 00:02:43 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -512,7 +512,7 @@ static int	stl_getbrdstats(caddr_t data);
 static int	stl_getportstats(stlport_t *portp, caddr_t data);
 static int	stl_clrportstats(stlport_t *portp, caddr_t data);
 static stlport_t *stl_getport(int brdnr, int panelnr, int portnr);
-static ointhand2_t	stlintr;
+static inthand2_t stlintr;
 
 #if NPCI > 0
 static const char *stlpciprobe(pcici_t tag, pcidi_t type);
@@ -853,7 +853,7 @@ static int stlattach(struct isa_device *idp)
 		idp->id_unit, idp->id_iobase);
 #endif
 
-/*	idp->id_ointr = stlintr; */
+/*	idp->id_intr = stlintr; */
 
 	brdp = malloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
@@ -1760,10 +1760,11 @@ static void stl_flush(stlport_t *portp, int flag)
  *      are vectored through here.
  */
 
-void stlintr(int unit)
+void stlintr(void *arg)
 {
         stlbrd_t        *brdp;
         int             i;
+	int		unit = (int)arg;
 
 #if STLDEBUG
         printf("stlintr(unit=%d)\n", unit);
@@ -1784,7 +1785,7 @@ void stlintr(int unit)
 
 static void stlpciintr(void *arg)
 {
-	stlintr(0);
+	stlintr((void *)0);
 }
 
 #endif

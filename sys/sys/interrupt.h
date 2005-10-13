@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.10 2005/06/16 21:12:21 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.11 2005/10/13 00:02:23 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -32,29 +32,34 @@
 
 #define MAX_INTS	32
 
-typedef void inthand2_t (void *);
-typedef void ointhand2_t (int);
+typedef void inthand2_t (void *, void *);
 
 #ifdef _KERNEL
 
+struct intrframe;
 struct thread;
-struct thread *register_swi(int intr, inthand2_t *handler, void *arg,
-			    const char *name);
-struct thread *register_int(int intr, inthand2_t *handler, void *arg,
-			    const char *name);
+struct lwkt_serialize;
+void *register_swi(int intr, inthand2_t *handler, void *arg,
+			    const char *name, 
+			    struct lwkt_serialize *serializer);
+void *register_int(int intr, inthand2_t *handler, void *arg,
+			    const char *name, 
+			    struct lwkt_serialize *serializer, int flags);
+int get_registered_intr(void *id);
+long get_interrupt_counter(int intr);
+int count_registered_ints(int intr);
+const char *get_registered_name(int intr);
+
 void register_randintr(int intr);
 
 void swi_setpriority(int intr, int pri);
-void unregister_swi(int intr, inthand2_t *handler);
-void unregister_int(int intr, inthand2_t *handler);
+int unregister_swi(void *id);
+int unregister_int(void *id);
 void unregister_randintr(int intr);
 void ithread_done(int intr);	/* procedure defined in MD */
 void sched_ithd(int intr);	/* procedure called from MD */
 
-/* Counts and names for statistics (defined in MD code). */
-extern u_long	eintrcnt[];	/* end of intrcnt[] */
 extern char	eintrnames[];	/* end of intrnames[] */
-extern u_long	intrcnt[];	/* counts for for each device and stray */
 extern char	intrnames[];	/* string table containing device names */
 
 #endif

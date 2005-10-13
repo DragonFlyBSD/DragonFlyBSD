@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/apic_vector.s,v 1.22 2005/09/10 06:48:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/apic_vector.s,v 1.23 2005/10/13 00:02:47 dillon Exp $
  */
 
 
@@ -117,6 +117,8 @@
  * Test to see if the source is currntly masked, clear if so.
  */
 #define UNMASK_IRQ(irq_num)					\
+	cmpl	$0,%eax ;						\
+	jnz	8f ;							\
 	IMASK_LOCK ;				/* into critical reg */	\
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	je	7f ;			/* bit clear, not masked */	\
@@ -129,6 +131,7 @@
 	movl	%eax,IOAPIC_WINDOW(%ecx) ;	/* new value */		\
 7: ;									\
 	IMASK_UNLOCK ;							\
+8: ;									\
 
 /*
  * Fast interrupt call handlers run in the following sequence:
@@ -164,40 +167,15 @@ IDTVEC(vec_name) ;							\
 	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
-	/* try to get the MP lock */					\
-	call	try_mplock ;						\
-	testl	%eax,%eax ;						\
-	jz	6f ;							\
 	/* clear pending bit, run handler */				\
-	incl	PCPU(intr_nesting_level) ;				\
-	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
-	pushl	intr_unit + (irq_num) * 4 ;				\
-	call	*intr_handler + (irq_num) * 4 ; /* do the work ASAP */ 	\
+	pushl	$irq_num ;						\
+	call	ithread_fast_handler ;	 /* returns 0 to unmask */	\
 	addl	$4, %esp ;						\
-	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	incl	PCPU(cnt)+V_INTR ;	/* book-keeping make per cpu YYY */ \
-	movl	intr_countp + (irq_num) * 4, %eax ;			\
-	incl	(%eax) ;						\
-	decl	PCPU(intr_nesting_level) ;				\
-	call	rel_mplock ;						\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
-6: ;									\
-	/* could not get the MP lock, forward the interrupt */		\
-	movl	mp_lock, %eax ;		 /* check race */		\
-	cmpl	$MP_FREE_LOCK,%eax ;					\
-	je	2b ;							\
-	incl	PCPU(cnt)+V_FORWARDED_INTS ;				\
-	subl	$12,%esp ;						\
-	movl	$irq_num,8(%esp) ;					\
-	movl	$forward_fastint_remote,4(%esp) ;			\
-	movl	%eax,(%esp) ;						\
-	call	lwkt_send_ipiq_bycpu ;					\
-	addl	$12,%esp ;						\
-	jmp	5f ;							\
 
 /*
  * Restart fast interrupt held up by critical section or cpl.
@@ -222,12 +200,9 @@ IDTVEC(vec_name) ;							\
 	pushl	%ebp ;							\
 	movl	%esp,%ebp ;						\
 	PUSH_DUMMY ;							\
-	pushl	intr_unit + (irq_num) * 4 ;				\
-	call	*intr_handler + (irq_num) * 4 ; /* do the work ASAP */ 	\
+	pushl	$irq_num ;						\
+	call	ithread_fast_handler ;  /* returns 0 to unmask */	\
 	addl	$4, %esp ;						\
-	incl	PCPU(cnt)+V_INTR ;	/* book-keeping make per cpu YYY */ \
-	movl	intr_countp + (irq_num) * 4, %eax ;			\
-	incl	(%eax) ;						\
 	UNMASK_IRQ(irq_num) ;						\
 	POP_DUMMY ;							\
 	popl %ebp ;							\
@@ -280,9 +255,6 @@ IDTVEC(vec_name) ;							\
 	pushl	$irq_num ;						\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
-	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
-	movl	intr_countp + (irq_num) * 4,%eax ;			\
-	incl	(%eax) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
