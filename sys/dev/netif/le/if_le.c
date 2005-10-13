@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.28 2005/10/13 00:02:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.29 2005/10/13 08:50:33 sephe Exp $
  */
 
 /*
@@ -214,7 +214,7 @@ struct le_softc {
 
 static int le_probe(struct isa_device *dvp);
 static int le_attach(struct isa_device *dvp);
-static inthand2_t le_intr;
+static void le_intr(void *);
 static int le_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		    struct ucred *cr);
 static void le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
@@ -286,7 +286,7 @@ le_attach(struct isa_device *dvp)
     struct le_softc *sc = &le_softc[dvp->id_unit];
     struct ifnet *ifp = &sc->le_if;
 
-    dvp->id_intr = le_intr;
+    dvp->id_intr = (inthand2_t *)le_intr;
     ifp->if_softc = sc;
     ifp->if_mtu = ETHERMTU;
 

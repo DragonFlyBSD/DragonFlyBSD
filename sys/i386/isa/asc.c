@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.10 2005/10/13 00:02:47 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.11 2005/10/13 08:50:33 sephe Exp $
  */
 
 #include "use_asc.h"
@@ -177,7 +177,7 @@ static int ascprobe (struct isa_device *isdp);
 static int ascattach(struct isa_device *isdp);
 struct isa_driver ascdriver = { ascprobe, ascattach, "asc" };
 
-static inthand2_t	ascintr;
+static void		ascintr(void *);
 
 static d_open_t		ascopen;
 static d_close_t	ascclose;
@@ -453,7 +453,7 @@ ascattach(struct isa_device *isdp)
   int unit = isdp->id_unit;
   struct asc_unit *scu = unittab + unit;
 
-  isdp->id_intr = ascintr;
+  isdp->id_intr = (inthand2_t *)ascintr;
   scu->flags |= FLAG_DEBUG;
   printf("asc%d: [GI1904/Trust Ami-Scan Grey/Color]\n", unit);
 
@@ -499,9 +499,9 @@ ascattach(struct isa_device *isdp)
 static void
 ascintr(void *arg)
 {
+    int unit = (int)arg;
     struct asc_unit *scu = unittab + unit;
     int chan_bit = 0x01 << scu->dma_num;
-    int unit = (int)arg;
 
     scu->icnt++;
     /* ignore stray interrupts... */

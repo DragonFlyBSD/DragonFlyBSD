@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.15 2005/10/13 00:02:43 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.16 2005/10/13 08:50:33 sephe Exp $
  */
 
 /*****************************************************************************/
@@ -512,7 +512,7 @@ static int	stl_getbrdstats(caddr_t data);
 static int	stl_getportstats(stlport_t *portp, caddr_t data);
 static int	stl_clrportstats(stlport_t *portp, caddr_t data);
 static stlport_t *stl_getport(int brdnr, int panelnr, int portnr);
-static inthand2_t stlintr;
+static void	stlintr(void *);
 
 #if NPCI > 0
 static const char *stlpciprobe(pcici_t tag, pcidi_t type);
@@ -853,7 +853,7 @@ static int stlattach(struct isa_device *idp)
 		idp->id_unit, idp->id_iobase);
 #endif
 
-/*	idp->id_intr = stlintr; */
+/*	idp->id_intr = (inthand2_t *)stlintr; */
 
 	brdp = malloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 

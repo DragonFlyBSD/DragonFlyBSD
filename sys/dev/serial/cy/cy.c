@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.18 2005/10/13 00:02:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.19 2005/10/13 08:50:33 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -331,7 +331,7 @@ struct com_s {
 
 /* PCI driver entry point. */
 int	cyattach_common		(cy_addr cy_iobase, int cy_align);
-inthand2_t	siointr;
+void	siointr(void *);
 
 static	int	cy_units	(cy_addr cy_iobase, int cy_align);
 static	int	sioattach	(struct isa_device *dev);
@@ -518,7 +518,7 @@ sioattach(isdp)
 		printf("cy%d: attached as cy%d\n", isdp->id_unit, adapter);
 		isdp->id_unit = adapter;	/* XXX */
 	}
-	isdp->id_intr = siointr;
+	isdp->id_intr = (inthand2_t *)siointr;
 	/* isdp->id_ri_flags |= RI_FAST; XXX unimplemented - use newbus! */
 	return (1);
 }

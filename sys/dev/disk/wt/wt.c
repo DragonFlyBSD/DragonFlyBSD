@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.11 2005/10/13 00:02:31 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.12 2005/10/13 08:50:33 sephe Exp $
  *
  */
 
@@ -170,7 +170,7 @@ static void wtclock (wtinfo_t *t);
 static int wtreset (wtinfo_t *t);
 static int wtsense (wtinfo_t *t, int verb, int ignor);
 static int wtstatus (wtinfo_t *t);
-static inthand2_t wtintr;
+static void wtintr(void *);
 static void wtrewind (wtinfo_t *t);
 static int wtreadfm (wtinfo_t *t);
 static int wtwritefm (wtinfo_t *t);
@@ -257,7 +257,7 @@ wtattach (struct isa_device *id)
 {
 	wtinfo_t *t = wttab + id->id_unit;
 
-	id->id_intr = wtintr;
+	id->id_intr = (inthand2_t *)wtintr;
 	if (t->type == ARCHIVE) {
 		printf ("wt%d: type <Archive>\n", t->unit);
 		outb (t->RDMAPORT, 0);          /* reset dma */
@@ -864,7 +864,7 @@ wtimer (void *xt)
 	crit_enter();
 	if ((inb (t->STATPORT) & (t->BUSY | t->NOEXCEP)) != (t->BUSY | t->NOEXCEP)) {
 		TRACE (("wtimer() -- "));
-		wtintr (t->unit);
+		wtintr ((void *)t->unit);
 	}
 	crit_exit();
 

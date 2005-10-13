@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.10 2005/10/13 00:02:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.11 2005/10/13 08:50:33 sephe Exp $
  *
  */
 
@@ -115,7 +115,7 @@ static struct cdevsw spigot_cdevsw = {
 	/* psize */	nopsize
 };
 
-static inthand2_t	spigintr;
+static void	spigintr(void *);
 
 static int
 spigot_probe(struct isa_device *devp)
@@ -144,7 +144,7 @@ spigot_attach(struct isa_device *devp)
 	int	unit;
 	struct	spigot_softc	*ss= &spigot_softc[unit = devp->id_unit];
 
-	devp->id_intr = spigintr;
+	devp->id_intr = (inthand2_t *)spigintr;
 	ss->maddr = kvtop(devp->id_maddr);
 	ss->irq = devp->id_irq;
 	cdevsw_add(&spigot_cdevsw, -1, unit);

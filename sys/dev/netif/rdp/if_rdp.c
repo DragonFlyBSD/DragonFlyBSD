@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.17 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.18 2005/10/13 08:50:33 sephe Exp $
  */
 
 /*
@@ -183,7 +183,7 @@ static int rdp_ioctl(struct ifnet *, IOCTL_CMD_T, caddr_t, struct ucred *);
 static void rdp_start(struct ifnet *);
 static void rdp_reset(struct ifnet *);
 static void rdp_watchdog(struct ifnet *);
-static void rdpintr(int);
+static void rdpintr(void *);
 
 /*
  * REDP private functions.
@@ -592,7 +592,7 @@ rdp_attach(struct isa_device *isa_dev)
 	struct rdp_softc *sc = &rdp_softc[unit];
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	isa_dev->id_ointr = rdpintr;
+	isa_dev->id_intr = (inthand2_t *)rdpintr;
 
 	/*
 	 * Reset interface
@@ -868,8 +868,9 @@ rdp_ioctl(struct ifnet *ifp, IOCTL_CMD_T command, caddr_t data,
  * External interrupt service routine.
  */
 void 
-rdpintr(int unit)
+rdpintr(void *arg)
 {
+	int unit = (int)arg;
 	struct rdp_softc *sc = rdp_softc + unit;
 	struct ifnet *ifp = (struct ifnet *)sc;
 	u_char isr, tsr, rsr, colls;

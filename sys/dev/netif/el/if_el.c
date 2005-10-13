@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.17 2005/10/13 00:02:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.18 2005/10/13 08:50:33 sephe Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -75,7 +75,7 @@ static void el_watchdog(struct ifnet *);
 
 static void el_stop(void *);
 static int el_xmit(struct el_softc *,int);
-static inthand2_t elintr;
+static void elintr(void *);
 static __inline void elread(struct el_softc *,caddr_t,int);
 static struct mbuf *elget(caddr_t,int,struct ifnet *);
 static __inline void el_hardreset(void *);
@@ -176,7 +176,7 @@ el_attach(struct isa_device *idev)
 	dprintf(("Attaching el%d...\n",idev->id_unit));
 
 	/* Get things pointing to the right places. */
-	idev->id_intr = elintr;
+	idev->id_intr = (inthand2_t *)elintr;
 	sc = &el_softc[idev->id_unit];
 	ifp = &sc->arpcom.ac_if;
 	base = sc->el_base;

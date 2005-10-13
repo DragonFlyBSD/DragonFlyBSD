@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.13 2005/10/13 00:02:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.14 2005/10/13 08:50:33 sephe Exp $
  *
  */
 
@@ -280,7 +280,7 @@ static void twdelayn(int n);
 static void twsetuptimes(int *a);
 static int wait_for_zero(struct tw_sc *sc);
 static int twputpkt(struct tw_sc *sc, u_char *p);
-static inthand2_t twintr;
+static void twintr(void *);
 static int twgetbytes(struct tw_sc *sc, u_char *p, int cnt);
 static timeout_t twabortrcv;
 static int twsend(struct tw_sc *sc, int h, int k, int cnt);
@@ -398,7 +398,7 @@ static int twattach(idp)
   struct tw_sc *sc;
   int	unit;
 
-  idp->id_intr = twintr;
+  idp->id_intr = (inthand2_t *)twintr;
   sc = &tw_sc[unit = idp->id_unit];
   sc->sc_port = idp->id_iobase;
   sc->sc_state = 0;
