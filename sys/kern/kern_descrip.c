@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.48 2005/10/09 18:07:55 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.49 2005/10/13 00:06:28 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1111,7 +1111,7 @@ fsetfd(struct proc *p, struct file *fp, int *resultfd)
 		p->p_fd->fd_files[fd].fp = fp;
 	}
 	*resultfd = fd;
-	return (0);
+	return (error);
 }
 
 void
