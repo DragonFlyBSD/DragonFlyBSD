@@ -1,8 +1,8 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.1.2.4 2003/04/14 08:58:02 maxim Exp $
-.\" $DragonFly: src/share/man/man4/polling.4,v 1.5 2004/07/07 11:38:59 joerg Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.6 2005/10/13 11:05:10 swildner Exp $
 .\"
-.Dd February 15, 2002
+.Dd October 13, 2005
 .Dt POLLING 4
 .Os
 .Sh NAME
@@ -10,7 +10,6 @@
 .Nd device polling support
 .Sh SYNOPSIS
 .Cd "options DEVICE_POLLING"
-.Cd "options HZ=1000"
 .Sh DESCRIPTION
 Typically, devices generate interrupts when they need attention
 from the CPU.  Device polling
@@ -61,7 +60,12 @@ is enabled with a
 .Xr sysctl 8
 variable
 .Va kern.polling.enable
-whereas the percentage of CPU cycles reserved to userland processes is
+whereas the polling frequency is controlled by the
+.Xr sysctl 8
+variable
+.Va kern.polling.pollhz
+whose range is 1 to 30000 (2000 is the default value).
+The percentage of CPU cycles reserved to userland processes is
 controlled by the
 .Xr sysctl 8
 variable
@@ -95,11 +99,13 @@ As of this writing, the
 .Xr fwe 4 ,
 .Xr fxp 4 ,
 .Xr nge 4 ,
+.Xr nv 4 ,
 .Xr re 4 ,
 .Xr rl 4 ,
-.Xr sis 4
+.Xr sis 4 ,
+.Xr vr 4 ,
 and
-.Xr vr 4
+.Xr wi 4
 devices are supported, with other in the works.
 The modifications are rather straightforward, consisting in
 the extraction of the inner part of the interrupt service routine
@@ -111,10 +117,12 @@ See the
 conditionally compiled sections of the devices mentioned above
 for more details.
 .Pp
-Because in the worst case devices are only polled on
-clock interrupts, in order to reduce the latency in processing
-packets, it is advisable to increase the frequency of the clock
-to at least 1000 HZ.
+In order to reduce the latency in processing packets,
+it is advisable to set the
+.Xr sysctl 8
+variable
+.Va kern.polling.pollhz
+to at least 1000.
 .Sh HISTORY
 Device polling was introduced in February 2002 by
 .An Luigi Rizzo Aq luigi@iet.unipi.it .
