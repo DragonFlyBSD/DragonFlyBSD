@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.24 2005/10/13 00:02:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.25 2005/10/13 06:13:24 dillon Exp $
  *
  */
 
@@ -272,8 +272,8 @@ register_randintr(int intr)
 {
     struct intr_info *info;
 
-    if (intr < NHWI || intr >= NHWI + NSWI)
-	panic("register_swi: bad intr %d", intr);
+    if ((unsigned int)intr >= NHWI + NSWI)
+	panic("register_randintr: bad intr %d", intr);
     info = &intr_info_ary[intr];
     info->i_random.sc_intr = intr;
     info->i_random.sc_enabled = 1;
