@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.8 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.9 2005/10/13 00:04:48 dillon Exp $
  */
 
 /*
@@ -148,21 +148,13 @@ static struct nlist namelist[] = {
 	{ "_bufspace" },
 #define	X_NCHSTATS	1
 	{ "_nchstats" },
-#define	X_INTRNAMES	2
-	{ "_intrnames" },
-#define	X_EINTRNAMES	3
-	{ "_eintrnames" },
-#define	X_INTRCNT	4
-	{ "_intrcnt" },
-#define	X_EINTRCNT	5
-	{ "_eintrcnt" },
-#define	X_DESIREDVNODES	6
+#define	X_DESIREDVNODES	2
 	{ "_desiredvnodes" },
-#define	X_NUMVNODES	7
+#define	X_NUMVNODES	3
 	{ "_numvnodes" },
-#define	X_FREEVNODES	8
+#define	X_FREEVNODES	4
 	{ "_freevnodes" },
-#define X_NUMDIRTYBUFFERS 9
+#define X_NUMDIRTYBUFFERS 5
 	{ "_numdirtybuffers" },
 	{ "" },
 };
@@ -198,8 +190,10 @@ static struct nlist namelist[] = {
 int
 initkre(void)
 {
-	char *intrnamebuf, *cp;
-	int i;
+	char *intrnamebuf;
+	size_t bytes;
+	size_t b;
+	size_t i;
 
 	if (namelist[0].n_type == 0) {
 		if (kvm_nlist(kd, namelist)) {
@@ -228,28 +222,25 @@ initkre(void)
 		return(0);
 
 	if (nintr == 0) {
-		nintr = (namelist[X_EINTRCNT].n_value -
-			namelist[X_INTRCNT].n_value) / sizeof (long);
-		intrloc = calloc(nintr, sizeof (long));
-		intrname = calloc(nintr, sizeof (long));
-		intrnamebuf = malloc(namelist[X_EINTRNAMES].n_value -
-			namelist[X_INTRNAMES].n_value);
-		if (intrnamebuf == 0 || intrname == 0 || intrloc == 0) {
-			error("Out of memory\n");
-			if (intrnamebuf)
-				free(intrnamebuf);
-			if (intrname)
-				free(intrname);
-			if (intrloc)
-				free(intrloc);
+		if (sysctlbyname("hw.intrnames", NULL, &bytes, NULL, 0) == 0) {
+			intrnamebuf = malloc(bytes);
+			sysctlbyname("hw.intrnames", intrnamebuf, &bytes, 
+					NULL, 0);
+			for (i = 0; i < bytes; ++i) {
+			    if (intrnamebuf[i] == 0)
+				++nintr;
+			}
+			intrname = malloc(nintr * sizeof(char *));
+			intrloc = malloc(nintr * sizeof(*intrloc));
 			nintr = 0;
-			return(0);
-		}
-		NREAD(X_INTRNAMES, intrnamebuf, NVAL(X_EINTRNAMES) -
-			NVAL(X_INTRNAMES));
-		for (cp = intrnamebuf, i = 0; i < nintr; i++) {
-			intrname[i] = cp;
-			cp += strlen(cp) + 1;
+			for (b = i = 0; i < bytes; ++i) {
+			    if (intrnamebuf[i] == 0) {
+				intrname[nintr] = intrnamebuf + b;
+				intrloc[nintr] = 0;
+				b = i + 1;
+				++nintr;
+			    }
+			}
 		}
 		nextintsrow = INTSROW + 2;
 		allocinfo(&s);
@@ -758,8 +749,12 @@ getinfo(struct Info *s, enum state st)
 	NREAD(X_DESIREDVNODES, &s->desiredvnodes, sizeof(s->desiredvnodes));
 	NREAD(X_NUMVNODES, &s->numvnodes, LONG);
 	NREAD(X_FREEVNODES, &s->freevnodes, LONG);
-	NREAD(X_INTRCNT, s->intrcnt, nintr * LONG);
 	NREAD(X_NUMDIRTYBUFFERS, &s->numdirtybuffers, sizeof(s->numdirtybuffers));
+
+	if (nintr) {
+		size = nintr * sizeof(s->intrcnt[0]);
+		sysctlbyname("hw.intrcnt", s->intrcnt, &size, NULL, 0);
+	}
 	size = sizeof(s->Total);
 	if (sysctlbyname("vm.vmtotal", &s->Total, &size, NULL, 0) < 0) {
 		error("Can't get kernel info: %s\n", strerror(errno));
@@ -809,7 +804,6 @@ getinfo(struct Info *s, enum state st)
 static void
 allocinfo(struct Info *s)
 {
-
 	s->intrcnt = (long *) calloc(nintr, sizeof(long));
 	if (s->intrcnt == NULL)
 		errx(2, "out of memory");
