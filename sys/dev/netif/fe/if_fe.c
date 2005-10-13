@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.20 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.21 2005/10/13 08:10:18 sephe Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -147,7 +147,7 @@ static struct fe_filter const fe_filter_all     = { FE_FILTER_ALL };
 
 /* Standard driver entry points.  These can be static.  */
 static void		fe_init		(void *);
-static inthand2_t	fe_intr;
+static void		fe_intr		(void *);
 static int		fe_ioctl	(struct ifnet *, u_long, caddr_t,
 					 struct ucred *);
 static void		fe_start	(struct ifnet *);

@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.21 2005/10/13 00:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.22 2005/10/13 08:10:18 sephe Exp $
  */
 
 /*
@@ -164,7 +164,7 @@ struct ie_softc;
 
 static int	ieprobe(struct isa_device * dvp);
 static int	ieattach(struct isa_device * dvp);
-static inthand2_t	ieintr;
+static void	ieintr(void *);
 static int	sl_probe(struct isa_device * dvp);
 static int	el_probe(struct isa_device * dvp);
 static int	ni_probe(struct isa_device * dvp);
@@ -781,7 +781,7 @@ ieattach(struct isa_device *dvp)
 	struct ifnet *ifp = &ie->arpcom.ac_if;
 	size_t	allocsize;
 
-	dvp->id_intr = ieintr;
+	dvp->id_intr = (inthand2_t *)ieintr;
 
 	/*
 	 * based on the amount of memory we have, allocate our tx and rx
