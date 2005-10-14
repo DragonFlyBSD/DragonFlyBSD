@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.29 2005/10/14 21:04:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.30 2005/10/14 23:45:59 dillon Exp $
  */
 
 /*
@@ -2096,6 +2096,15 @@ check_inode_unwritten(inodedep)
 	    TAILQ_FIRST(&inodedep->id_newinoupdt) != NULL ||
 	    inodedep->id_nlinkdelta != 0)
 		return (0);
+
+	/*
+	 * Another process might be in initiate_write_inodeblock
+	 * trying to allocate memory without holding "Softdep Lock".
+	 */
+	if ((inodedep->id_state & IOSTARTED) != 0 &&
+	    inodedep->id_savedino == NULL)
+		return(0);
+
 	inodedep->id_state |= ALLCOMPLETE;
 	LIST_REMOVE(inodedep, id_deps);
 	inodedep->id_buf = NULL;
@@ -2964,6 +2973,20 @@ handle_workitem_freefile(freefile)
 }
 
 /*
+ * Helper function which unlinks marker element from work list and returns
+ * the next element on the list.
+ */
+static __inline struct worklist *
+markernext(struct worklist *marker)
+{
+	struct worklist *next;
+
+	next = LIST_NEXT(marker, wk_list);
+	LIST_REMOVE(marker, wk_list);
+	return next;
+}
+
+/*
  * Disk writes.
  * 
  * The dependency structures constructed above are most actively used when file
@@ -2989,7 +3012,8 @@ static void
 softdep_disk_io_initiation(bp)
 	struct buf *bp;		/* structure describing disk write to occur */
 {
-	struct worklist *wk, *nextwk;
+	struct worklist *wk;
+	struct worklist marker;
 	struct indirdep *indirdep;
 
 	/*
@@ -2998,11 +3022,15 @@ softdep_disk_io_initiation(bp)
 	 */
 	if (bp->b_flags & B_READ)
 		panic("softdep_disk_io_initiation: read");
+
+	marker.wk_type = D_LAST + 1;	/* Not a normal workitem */
+	
 	/*
 	 * Do any necessary pre-I/O processing.
 	 */
-	for (wk = LIST_FIRST(&bp->b_dep); wk; wk = nextwk) {
-		nextwk = LIST_NEXT(wk, wk_list);
+	for (wk = LIST_FIRST(&bp->b_dep); wk; wk = markernext(&marker)) {
+		LIST_INSERT_AFTER(wk, &marker, wk_list);
+
 		switch (wk->wk_type) {
 
 		case D_PAGEDEP:
@@ -3119,6 +3147,7 @@ initiate_write_inodeblock(inodedep, bp)
 {
 	struct allocdirect *adp, *lastadp;
 	struct dinode *dp;
+	struct dinode *sip;
 	struct fs *fs;
 	ufs_lbn_t prevlbn = 0;
 	int i, deplist;
@@ -3136,10 +3165,12 @@ initiate_write_inodeblock(inodedep, bp)
 	if ((inodedep->id_state & DEPCOMPLETE) == 0) {
 		if (inodedep->id_savedino != NULL)
 			panic("initiate_write_inodeblock: already doing I/O");
-		MALLOC(inodedep->id_savedino, struct dinode *,
+		MALLOC(sip, struct dinode *,
 		    sizeof(struct dinode), M_INODEDEP, M_SOFTDEP_FLAGS);
+		inodedep->id_savedino = sip;
 		*inodedep->id_savedino = *dp;
 		bzero((caddr_t)dp, sizeof(struct dinode));
+		dp->di_gen = inodedep->id_savedino->di_gen;
 		return;
 	}
 	/*
