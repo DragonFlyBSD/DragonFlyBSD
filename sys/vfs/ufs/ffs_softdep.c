@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.28 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.29 2005/10/14 21:04:13 dillon Exp $
  */
 
 /*
@@ -2919,6 +2919,8 @@ handle_workitem_remove(dirrem)
 	}
 	WORKLIST_INSERT(&inodedep->id_inowait, &dirrem->dm_list);
 	FREE_LOCK(&lk);
+	ip->i_flag |= IN_CHANGE;
+	ffs_update(vp, 0);
 	vput(vp);
 }
 
