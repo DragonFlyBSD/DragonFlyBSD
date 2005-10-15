@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.34 2005/10/15 03:22:59 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.35 2005/10/15 21:03:24 dillon Exp $
  */
 
 /*
@@ -99,6 +99,7 @@ int apic_8254_intr;
 static void setup_8254_mixed_mode (void);
 #endif
 static void i8254_restore(void);
+static void resettodr_on_shutdown(void *arg __unused);
 
 /*
  * 32-bit time_t's can't reach leap years before 1904 or after 2036, so we
@@ -132,6 +133,7 @@ static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
 static	u_int	tsc_present;
+static  int	rtc_loaded;
 
 static int i8254_cputimer_div;
 
@@ -760,7 +762,7 @@ startrtclock()
 #endif
 	}
 
-	EVENTHANDLER_REGISTER(shutdown_final, resettodr, NULL, SHUTDOWN_PRI_LAST);
+	EVENTHANDLER_REGISTER(shutdown_final, resettodr_on_shutdown, NULL, SHUTDOWN_PRI_LAST);
 
 #if !defined(SMP)
 	/*
@@ -785,6 +787,18 @@ startrtclock()
 #endif /* NAPM > 0 */
 
 #endif /* !defined(SMP) */
+}
+
+/*
+ * Sync the time of day back to the RTC on shutdown, but only if
+ * we have already loaded it and have not crashed.
+ */
+static void
+resettodr_on_shutdown(void *arg __unused)
+{
+ 	if (rtc_loaded && panicstr == NULL) {
+		resettodr();
+	}
 }
 
 /*
@@ -855,6 +869,7 @@ inittodr(time_t base)
 		ts.tv_nsec = 0;
 		set_timeofday(&ts);
 	}
+	rtc_loaded = 1;
 	crit_exit();
 	return;
 
