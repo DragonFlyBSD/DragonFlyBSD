@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.8 2004/08/25 01:53:38 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.9 2005/10/15 19:09:17 swildner Exp $
  */
 
 /*-
@@ -78,7 +78,7 @@ struct hlink {
     char name[2048];
     struct hlink *next;
     struct hlink *prev;
-    int nlinked;
+    nlink_t nlinked;
 };
 
 struct hlink *hltable[HASHF];
