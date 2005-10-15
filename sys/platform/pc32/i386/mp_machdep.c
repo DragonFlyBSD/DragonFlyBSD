@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.39 2005/09/10 06:46:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.40 2005/10/15 19:55:16 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -66,6 +66,8 @@
 #include <i386/isa/icu.h>		/* IPIs */
 #include <i386/isa/intr_machdep.h>	/* IPIs */
 #endif	/* APIC_IO */
+
+#define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
 
 #if defined(TEST_DEFAULT_CONFIG)
 #define MPFPS_MPFB1	TEST_DEFAULT_CONFIG
@@ -856,7 +858,7 @@ mptable_pass2(void)
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(ioapic, volatile ioapic_t **, sizeof(ioapic_t *) * mp_napics,
 	    M_DEVBUF, M_WAITOK);
-	MALLOC(io_apic_ints, io_int *, sizeof(io_int) * (nintrs + 1),
+	MALLOC(io_apic_ints, io_int *, sizeof(io_int) * (nintrs + FIXUP_EXTRA_APIC_INTS),
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(bus_data, bus_datum *, sizeof(bus_datum) * mp_nbusses,
 	    M_DEVBUF, M_WAITOK);
@@ -1074,7 +1076,9 @@ revoke_apic_irq(int irq)
 	}
 }
 
-
+/*
+ * Allocate an IRQ 
+ */
 static void
 allocate_apic_irq(int intr)
 {
@@ -1203,6 +1207,21 @@ io_apic_id_acceptable(int apic, int id)
 	return 1;		/* ID is acceptable for IO APIC */
 }
 
+static
+io_int *
+io_apic_find_int_entry(int apic, int pin)
+{
+	int     x;
+
+	/* search each of the possible INTerrupt sources */
+	for (x = 0; x < nintrs; ++x) {
+		if ((apic == ID_TO_IO(io_apic_ints[x].dst_apic_id)) &&
+		    (pin == io_apic_ints[x].dst_apic_int))
+			return (&io_apic_ints[x]);
+	}
+	return NULL;
+}
+
 
 /*
  * parse an Intel MP specification table
@@ -1218,6 +1237,7 @@ fix_mp_table(void)
 	int	apic;		/* IO APIC unit number */
 	int     freeid;		/* Free physical APIC ID */
 	int	physid;		/* Current physical IO APIC ID */
+	io_int *io14;
 
 	/*
 	 * Fix mis-numbering of the PCI bus and its INT entries if the BIOS
@@ -1323,6 +1343,24 @@ fix_mp_table(void)
 				io_apic_ints[x].int_vector = 0xff;
 				break;
 			}
+	}
+
+	/*
+	 * Fix missing IRQ 15 when IRQ 14 is an ISA interrupt.  IDE
+	 * controllers universally come in pairs.  If IRQ 14 is specified
+	 * as an ISA interrupt, then IRQ 15 had better be too.
+	 *
+	 * [ Shuttle XPC / AMD Athlon X2 ]
+	 *	The MPTable is missing an entry for IRQ 15.  Note that the
+	 *	ACPI table has an entry for both 14 and 15.
+	 */
+	if (apic_int_type(0, 14) == 0 && apic_int_type(0, 15) == -1) {
+		printf("APIC_IO: MP table broken: IRQ 15 not ISA when IRQ 14 is!\n");
+		io14 = io_apic_find_int_entry(0, 14);
+		io_apic_ints[nintrs] = *io14;
+		io_apic_ints[nintrs].src_bus_irq = 15;
+		io_apic_ints[nintrs].dst_apic_int = 15;
+		nintrs++;
 	}
 }
 
@@ -1566,11 +1604,11 @@ pci_apic_irq(int pciBus, int pciDevice, int pciInt)
 
 	--pciInt;					/* zero based */
 
-	for (intr = 0; intr < nintrs; ++intr)		/* check each record */
+	for (intr = 0; intr < nintrs; ++intr) {		/* check each record */
 		if ((INTTYPE(intr) == 0)		/* standard INT */
 		    && (SRCBUSID(intr) == pciBus)
 		    && (SRCBUSDEVICE(intr) == pciDevice)
-		    && (SRCBUSLINE(intr) == pciInt))	/* a candidate IRQ */
+		    && (SRCBUSLINE(intr) == pciInt)) {	/* a candidate IRQ */
 			if (apic_int_is_bus_type(intr, PCI)) {
 				if (INTIRQ(intr) == 0xff)
 					allocate_apic_irq(intr);
@@ -1578,6 +1616,8 @@ pci_apic_irq(int pciBus, int pciDevice, int pciInt)
 					return -1;	/* unassigned */
 				return INTIRQ(intr);	/* exact match */
 			}
+		}
+	}
 
 	return -1;					/* NOT found */
 }
@@ -1754,32 +1794,36 @@ apic_int_type(int apic, int pin)
 	int     x;
 
 	/* search each of the possible INTerrupt sources */
-	for (x = 0; x < nintrs; ++x)
+	for (x = 0; x < nintrs; ++x) {
 		if ((apic == ID_TO_IO(io_apic_ints[x].dst_apic_id)) &&
 		    (pin == io_apic_ints[x].dst_apic_int))
 			return (io_apic_ints[x].int_type);
-
+	}
 	return -1;		/* NOT found */
 }
 
+/*
+ * Return the IRQ associated with an APIC pin
+ */
 int 
 apic_irq(int apic, int pin)
 {
 	int x;
 	int res;
 
-	for (x = 0; x < nintrs; ++x)
+	for (x = 0; x < nintrs; ++x) {
 		if ((apic == ID_TO_IO(io_apic_ints[x].dst_apic_id)) &&
 		    (pin == io_apic_ints[x].dst_apic_int)) {
 			res = io_apic_ints[x].int_vector;
 			if (res == 0xff)
 				return -1;
 			if (apic != int_to_apicintpin[res].ioapic)
-				panic("apic_irq: inconsistent table");
+				panic("apic_irq: inconsistent table %d/%d", apic, int_to_apicintpin[res].ioapic);
 			if (pin != int_to_apicintpin[res].int_pin)
 				panic("apic_irq inconsistent table (2)");
 			return res;
 		}
+	}
 	return -1;
 }
 
