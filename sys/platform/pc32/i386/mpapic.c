@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mpapic.c,v 1.8 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mpapic.c,v 1.9 2005/10/15 18:50:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -254,9 +254,10 @@ io_apic_setup_intpin(int apic, int pin)
 	}
 	
 	/* program the appropriate registers */
-	if (apic != 0 || pin != irq)
+	if (bootverbose) {
 		printf("IOAPIC #%d intpin %d -> irq %d\n",
 		       apic, pin, irq);
+	}
 	vector = NRSVIDT + irq;			/* IDT vec */
 	imen_lock();
 	io_apic_write(apic, select, flags | vector);
