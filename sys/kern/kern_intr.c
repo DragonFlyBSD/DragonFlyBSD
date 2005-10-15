@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.25 2005/10/13 06:13:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.26 2005/10/15 03:23:01 dillon Exp $
  *
  */
 
@@ -66,7 +66,18 @@ struct intr_info {
 	int		i_valid_thread;
 } intr_info_ary[NHWI + NSWI];
 
+#define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
+
+static int sysctl_emergency_freq(SYSCTL_HANDLER_ARGS);
+static int sysctl_emergency_enable(SYSCTL_HANDLER_ARGS);
+static void emergency_intr_timer_callback(systimer_t, struct intrframe *);
+static void ithread_handler(void *arg);
+static void ithread_emergency(void *arg);
+
 int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
+
+static struct systimer emergency_intr_timer;
+static struct thread emergency_intr_thread;
 
 #define LIVELOCK_NONE		0
 #define LIVELOCK_LIMITED	1
@@ -78,7 +89,61 @@ SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
 SYSCTL_INT(_kern, OID_AUTO, livelock_fallback,
         CTLFLAG_RW, &livelock_fallback, 0, "Livelock interrupt fallback rate");
 
-static void ithread_handler(void *arg);
+static int emergency_intr_enable = 0;	/* emergency interrupt polling */
+TUNABLE_INT("kern.emergency_intr_enable", &emergency_intr_enable);
+SYSCTL_PROC(_kern, OID_AUTO, emergency_intr_enable, CTLTYPE_INT | CTLFLAG_RW,
+        0, 0, sysctl_emergency_enable, "I", "Emergency Interrupt Poll Enable");
+
+static int emergency_intr_freq = 10;	/* emergency polling frequency */
+TUNABLE_INT("kern.emergency_intr_freq", &emergency_intr_freq);
+SYSCTL_PROC(_kern, OID_AUTO, emergency_intr_freq, CTLTYPE_INT | CTLFLAG_RW,
+        0, 0, sysctl_emergency_freq, "I", "Emergency Interrupt Poll Frequency");
+
+/*
+ * Sysctl support routines
+ */
+static int
+sysctl_emergency_enable(SYSCTL_HANDLER_ARGS)
+{
+	int error, enabled;
+
+	enabled = emergency_intr_enable;
+	error = sysctl_handle_int(oidp, &enabled, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	emergency_intr_enable = enabled;
+	if (emergency_intr_enable) {
+		emergency_intr_timer.periodic = 
+			sys_cputimer->fromhz(emergency_intr_freq);
+	} else {
+		emergency_intr_timer.periodic = sys_cputimer->fromhz(1);
+	}
+	return 0;
+}
+
+static int
+sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
+{
+        int error, phz;
+
+        phz = emergency_intr_freq;
+        error = sysctl_handle_int(oidp, &phz, 0, req);
+        if (error || req->newptr == NULL)
+                return error;
+        if (phz <= 0)
+                return EINVAL;
+        else if (phz > EMERGENCY_INTR_POLLING_FREQ_MAX)
+                phz = EMERGENCY_INTR_POLLING_FREQ_MAX;
+
+        emergency_intr_freq = phz;
+	if (emergency_intr_enable) {
+		emergency_intr_timer.periodic = 
+			sys_cputimer->fromhz(emergency_intr_freq);
+	} else {
+		emergency_intr_timer.periodic = sys_cputimer->fromhz(1);
+	}
+        return 0;
+}
 
 /*
  * Register an SWI or INTerrupt handler.
@@ -126,6 +191,19 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	++info->i_fast;
     else
 	++info->i_slow;
+
+    /*
+     * Create an emergency polling thread and set up a systimer to wake
+     * it up.
+     */
+    if (emergency_intr_thread.td_kstack == NULL) {
+	lwkt_create(ithread_emergency, NULL, NULL,
+		    &emergency_intr_thread, TDF_STOPREQ|TDF_INTTHREAD, -1,
+		    "ithread emerg");
+	systimer_init_periodic_nq(&emergency_intr_timer,
+		    emergency_intr_timer_callback, &emergency_intr_thread, 
+		    (emergency_intr_enable ? emergency_intr_freq : 1));
+    }
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
@@ -640,6 +718,60 @@ ithread_handler(void *arg)
 	/* must be in critical section on loop */
     }
     /* not reached */
+}
+
+/*
+ * Emergency interrupt polling thread.  The thread begins execution
+ * outside a critical section with the BGL held.
+ *
+ * If emergency interrupt polling is enabled, this thread will 
+ * execute all system interrupts not marked INTR_NOPOLL at the
+ * specified polling frequency.
+ *
+ * WARNING!  This thread runs *ALL* interrupt service routines that
+ * are not marked INTR_NOPOLL, which basically means everything except
+ * the 8254 clock interrupt and the ATA interrupt.  It has very high
+ * overhead and should only be used in situations where the machine
+ * cannot otherwise be made to work.  Due to the severe performance
+ * degredation, it should not be enabled on production machines.
+ */
+static void
+ithread_emergency(void *arg __unused)
+{
+    struct intr_info *info;
+    intrec_t rec, nrec;
+    int intr;
+
+    for (;;) {
+	for (intr = 0; intr < NHWI + NSWI; ++intr) {
+	    info = &intr_info_ary[intr];
+	    for (rec = info->i_reclist; rec; rec = nrec) {
+		if ((rec->intr_flags & INTR_NOPOLL) == 0) {
+		    if (rec->serializer) {
+			lwkt_serialize_handler_call(rec->serializer,
+						rec->handler, rec->argument, NULL);
+		    } else {
+			rec->handler(rec->argument, NULL);
+		    }
+		}
+		nrec = rec->next;
+	    }
+	}
+	lwkt_deschedule_self(curthread);
+	lwkt_switch();
+    }
+}
+
+/*
+ * Systimer callback - schedule the emergency interrupt poll thread
+ * 		       if emergency polling is enabled.
+ */
+static
+void
+emergency_intr_timer_callback(systimer_t info, struct intrframe *frame __unused)
+{
+    if (emergency_intr_enable)
+	lwkt_schedule(info->data);
 }
 
 /* 
