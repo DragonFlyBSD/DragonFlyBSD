@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.8 2005/10/16 18:48:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,32 @@ ffs_fragacct(struct fs *fs, int fragmap, int32_t fraglist[], int cnt)
 	int field, subfield;
 	int siz, pos;
 
+	/*
+	 * inblk represents a bitmap of fragment sizes which may be
+	 * contained in the data 'fragmap'.  e.g. if a fragment of size
+	 * 1 is available, bit 0 would be set.  inblk is shifted left
+	 * by one so we do not have to calculate (1 << (siz - 1)).
+	 *
+	 * fragment represents the data pattern we are trying to decipher,
+	 * we shift it left by one to align it with the 'around' and 'inside'
+	 * masks.
+	 *
+	 * around represents the bits around the subfield and is a mask.
+	 * inside represents what we must match within the mask, it is
+	 * basically the mask with the first and last bit set to 0, allowing
+	 * us to represent a whole fragment.
+	 *
+	 * When we find a match we bump our position by the size of the
+	 * matching fragment, then bump the position again:
+	 *
+	 * 010101010 fragmap (shifted left by 1)
+	 *       111 around mask
+	 *       010 inside mask
+	 *      111     (shifted by siz)
+	 *	010
+	 *     111	(shifted again)
+	 *     010
+	 */
 	inblk = (int)(fragtbl[fs->fs_frag][fragmap]) << 1;
 	fragmap <<= 1;
 	for (siz = 1; siz < fs->fs_frag; siz++) {

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.14 2005/08/14 18:53:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.15 2005/10/16 18:48:36 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -910,6 +910,7 @@ ffs_fragextend(struct inode *ip, int cg, long bprev, int osize, int nsize)
 		/* cannot extend across a block boundary */
 		return (0);
 	}
+	KKASSERT(blknum(fs, bprev) == blknum(fs, bprev + frags - 1));
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
 		(int)fs->fs_cgsize, &bp);
 	if (error) {
@@ -925,20 +926,33 @@ ffs_fragextend(struct inode *ip, int cg, long bprev, int osize, int nsize)
 	cgp->cg_time = time_second;
 	bno = dtogd(fs, bprev);
 	blksfree = cg_blksfree(cgp);
-	for (i = numfrags(fs, osize); i < frags; i++)
+	for (i = numfrags(fs, osize); i < frags; i++) {
 		if (isclr(blksfree, bno + i)) {
 			brelse(bp);
 			return (0);
 		}
+	}
+
 	/*
 	 * the current fragment can be extended
 	 * deduct the count on fragment being extended into
 	 * increase the count on the remaining fragment (if any)
 	 * allocate the extended piece
+	 *
+	 * ---oooooooooonnnnnnn111----
+	 *    [-----frags-----]
+	 *    ^                       ^
+	 *    bbase                   fs_frag
 	 */
-	for (i = frags; i < fs->fs_frag - bbase; i++)
+	for (i = frags; i < fs->fs_frag - bbase; i++) {
 		if (isclr(blksfree, bno + i))
 			break;
+	}
+
+	/*
+	 * Size of original free frag is [i - numfrags(fs, osize)]
+	 * Size of remaining free frag is [i - frags]
+	 */
 	cgp->cg_frsum[i - numfrags(fs, osize)]--;
 	if (i != frags)
 		cgp->cg_frsum[i - frags]++;
@@ -995,19 +1009,20 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 		return (bno);
 	}
 	/*
-	 * check to see if any fragments are already available
-	 * allocsiz is the size which will be allocated, hacking
-	 * it down to a smaller size if necessary
+	 * Check to see if any fragments of sufficient size are already
+	 * available.  Fit the data into a larger fragment if necessary,
+	 * before allocating a whole new block.
 	 */
 	blksfree = cg_blksfree(cgp);
 	frags = numfrags(fs, size);
-	for (allocsiz = frags; allocsiz < fs->fs_frag; allocsiz++)
+	for (allocsiz = frags; allocsiz < fs->fs_frag; allocsiz++) {
 		if (cgp->cg_frsum[allocsiz] != 0)
 			break;
+	}
 	if (allocsiz == fs->fs_frag) {
 		/*
-		 * no fragments were available, so a block will be
-		 * allocated, and hacked up
+		 * No fragments were available, allocate a whole block and
+		 * cut the requested fragment (of size frags) out of it.
 		 */
 		if (cgp->cg_cs.cs_nbfree == 0) {
 			brelse(bp);
@@ -1017,6 +1032,13 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 		bpref = dtogd(fs, bno);
 		for (i = frags; i < fs->fs_frag; i++)
 			setbit(blksfree, bpref + i);
+
+		/*
+		 * Calculate the number of free frags still remaining after
+		 * we have cut out the requested allocation.  Indicate that
+		 * a fragment of that size is now available for future
+		 * allocation.
+		 */
 		i = fs->fs_frag - frags;
 		cgp->cg_cs.cs_nffree += i;
 		fs->fs_cstotal.cs_nffree += i;
@@ -1026,6 +1048,12 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 		bdwrite(bp);
 		return (bno);
 	}
+
+	/*
+	 * cg_frsum[] has told us that a free fragment of allocsiz size is
+	 * available.  Find it, then clear the bitmap bits associated with
+	 * the size we want.
+	 */
 	bno = ffs_mapsearch(fs, cgp, bpref, allocsiz);
 	if (bno < 0) {
 		brelse(bp);
@@ -1037,6 +1065,12 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 	fs->fs_cstotal.cs_nffree -= frags;
 	fs->fs_cs(fs, cg).cs_nffree -= frags;
 	fs->fs_fmod = 1;
+
+	/*
+	 * Account for the allocation.  The original searched size that we
+	 * found is no longer available.  If we cut out a smaller piece then
+	 * a smaller fragment is now available.
+	 */
 	cgp->cg_frsum[allocsiz]--;
 	if (frags != allocsiz)
 		cgp->cg_frsum[allocsiz - frags]++;
@@ -1258,16 +1292,18 @@ ffs_clusteralloc(struct inode *ip, int cg, ufs_daddr_t bpref, int len)
 	 * Allocate the cluster that we have found.
 	 */
 	blksfree = cg_blksfree(cgp);
-	for (i = 1; i <= len; i++)
+	for (i = 1; i <= len; i++) {
 		if (!ffs_isblock(fs, blksfree, got - run + i))
 			panic("ffs_clusteralloc: map mismatch");
+	}
 	bno = cg * fs->fs_fpg + blkstofrags(fs, got - run + 1);
 	if (dtog(fs, bno) != cg)
 		panic("ffs_clusteralloc: allocated out of group");
 	len = blkstofrags(fs, len);
-	for (i = 0; i < len; i += fs->fs_frag)
+	for (i = 0; i < len; i += fs->fs_frag) {
 		if ((got = ffs_alloccgblk(ip, bp, bno + i)) != bno + i)
 			panic("ffs_clusteralloc: lost block");
+	}
 	bdwrite(bp);
 	return (bno);
 
@@ -1452,6 +1488,10 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		ffs_fserr(fs, ip->i_uid, "bad block");
 		return;
 	}
+
+	/*
+	 * Load the cylinder group
+	 */
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
 		(int)fs->fs_cgsize, &bp);
 	if (error) {
@@ -1467,7 +1507,11 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 	cgp->cg_time = time_second;
 	bno = dtogd(fs, bno);
 	blksfree = cg_blksfree(cgp);
+
 	if (size == fs->fs_bsize) {
+		/*
+		 * Free a whole block
+		 */
 		blkno = fragstoblks(fs, bno);
 		if (!ffs_isfreeblock(fs, blksfree, blkno)) {
 			printf("dev = %s, block = %ld, fs = %s\n",
@@ -1483,15 +1527,28 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		cg_blks(fs, cgp, i)[cbtorpos(fs, bno)]++;
 		cg_blktot(cgp)[i]++;
 	} else {
-		bbase = bno - fragnum(fs, bno);
 		/*
-		 * decrement the counts associated with the old frags
+		 * Free a fragment within a block.
+		 *
+		 * bno is the starting block number of the fragment being
+		 * freed.
+		 *
+		 * bbase is the starting block number for the filesystem
+		 * block containing the fragment.
+		 *
+		 * blk is the current bitmap for the fragments within the
+		 * filesystem block containing the fragment.
+		 *
+		 * frags is the number of fragments being freed
+		 *
+		 * Call ffs_fragacct() to account for the removal of all
+		 * current fragments, then adjust the bitmap to free the
+		 * requested fragment, and finally call ffs_fragacct() again
+		 * to regenerate the accounting.
 		 */
+		bbase = bno - fragnum(fs, bno);
 		blk = blkmap(fs, blksfree, bbase);
 		ffs_fragacct(fs, blk, cgp->cg_frsum, -1);
-		/*
-		 * deallocate the fragment
-		 */
 		frags = numfrags(fs, size);
 		for (i = 0; i < frags; i++) {
 			if (isset(blksfree, bno + i)) {
@@ -1505,13 +1562,15 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		cgp->cg_cs.cs_nffree += i;
 		fs->fs_cstotal.cs_nffree += i;
 		fs->fs_cs(fs, cg).cs_nffree += i;
+
 		/*
-		 * add back in counts associated with the new frags
+		 * Add back in counts associated with the new frags
 		 */
 		blk = blkmap(fs, blksfree, bbase);
 		ffs_fragacct(fs, blk, cgp->cg_frsum, 1);
+
 		/*
-		 * if a complete block has been reassembled, account for it
+		 * If a complete block has been reassembled, account for it
 		 */
 		blkno = fragstoblks(fs, bbase);
 		if (ffs_isblock(fs, blksfree, blkno)) {
@@ -1664,7 +1723,7 @@ ffs_mapsearch(struct fs *fs, struct cg *cgp, ufs_daddr_t bpref, int allocsiz)
 
 	/*
 	 * find the fragment by searching through the free block
-	 * map for an appropriate bit pattern
+	 * map for an appropriate bit pattern.
 	 */
 	if (bpref)
 		start = dtogd(fs, bpref) / NBBY;
@@ -1676,7 +1735,7 @@ ffs_mapsearch(struct fs *fs, struct cg *cgp, ufs_daddr_t bpref, int allocsiz)
 		(u_char *)fragtbl[fs->fs_frag],
 		(u_char)(1 << (allocsiz - 1 + (fs->fs_frag % NBBY))));
 	if (loc == 0) {
-		len = start + 1;
+		len = start + 1;	/* XXX why overlap here? */
 		start = 0;
 		loc = scanc((uint)len, (u_char *)&blksfree[0],
 			(u_char *)fragtbl[fs->fs_frag],
