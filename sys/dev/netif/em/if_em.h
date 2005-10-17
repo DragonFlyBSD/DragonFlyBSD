@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.10 2005/05/25 01:44:21 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.11 2005/10/17 06:18:36 sephe Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -333,7 +333,7 @@ struct adapter {
 	struct arpcom   interface_data;
 	struct em_hw    hw;
 
-	/* FreeBSD operating-system-specific structures */
+	/* Operating-system-specific structures */
 	struct lwkt_serialize serializer;
 	struct em_osdep osdep;
 	struct device   *dev;
@@ -398,8 +398,6 @@ struct adapter {
 	struct mbuf        *fmp;
 	struct mbuf        *lmp;
 
-	u_int16_t          tx_fifo_head;
-
 	struct sysctl_ctx_list sysctl_ctx;
         struct sysctl_oid *sysctl_tree;
 
@@ -411,8 +409,20 @@ struct adapter {
 	unsigned long   no_tx_desc_avail2;
 	unsigned long	no_tx_map_avail;
 	unsigned long	no_tx_dma_setup;
-	u_int64_t       tx_fifo_reset;
-	u_int64_t       tx_fifo_wrk;
+
+	/* Used in for 82547 10Mb Half workaround */
+	u_int32_t	tx_fifo_size;
+	u_int32_t	tx_fifo_head;
+	u_int32_t	tx_fifo_head_addr;
+	u_int64_t	tx_fifo_reset_cnt;
+	u_int64_t	tx_fifo_wrk_cnt;
+	u_int32_t	tx_head_addr;
+
+#define EM_PBA_BYTES_SHIFT	0xA
+#define EM_TX_HEAD_ADDR_SHIFT	7
+#define EM_PBA_TX_MASK		0xFFFF0000
+#define EM_FIFO_HDR		0x10
+#define EM_82547_PKT_THRESH	0x3e0
  
  	/* For 82544 PCIX Workaround */
  	boolean_t pcix_82544;
@@ -421,9 +431,8 @@ struct adapter {
 #ifdef DBG_STATS
 	unsigned long   no_pkts_avail;
 	unsigned long   clean_tx_interrupts;
-
 #endif
 	struct em_hw_stats stats;
 };
 
-#endif                                                  /* _EM_H_DEFINED_ */
+#endif	/* !_EM_H_DEFINED_ */

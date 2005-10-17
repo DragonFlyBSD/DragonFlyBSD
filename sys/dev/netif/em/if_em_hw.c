@@ -32,7 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.c,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.6 2004/05/11 14:00:20 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.7 2005/10/17 06:18:36 sephe Exp $*/
 /* if_em_hw.c
  * Shared functions for accessing and configuring the MAC
  */
@@ -72,6 +72,7 @@ static void em_release_eeprom(struct em_hw *hw);
 static void em_standby_eeprom(struct em_hw *hw);
 static int32_t em_id_led_init(struct em_hw * hw);
 static int32_t em_set_vco_speed(struct em_hw *hw);
+static int32_t em_set_phy_mode(struct em_hw *hw);
 
 /* IGP cable length table */
 static const
@@ -257,6 +258,7 @@ em_set_mac_type(struct em_hw *hw)
         break;
     case E1000_DEV_ID_82541ER:
     case E1000_DEV_ID_82541GI:
+    case E1000_DEV_ID_82541GI_LF:
     case E1000_DEV_ID_82541GI_MOBILE:
         hw->mac_type = em_82541_rev_2;
         break;
@@ -906,6 +908,23 @@ em_setup_copper_link(struct em_hw *hw)
     }
     DEBUGOUT1("Phy ID = %x \n", hw->phy_id);
 
+    /* Set PHY to class A mode (if necessary) */
+    if ((ret_val = em_set_phy_mode(hw)))
+        return ret_val;
+
+    if((hw->mac_type == em_82545_rev_3) ||
+       (hw->mac_type == em_82546_rev_3)) {
+        ret_val = em_read_phy_reg(hw, M88E1000_PHY_SPEC_CTRL, &phy_data);
+        if (ret_val)
+            return ret_val;
+
+        phy_data |= 0x00000008;
+
+        ret_val = em_write_phy_reg(hw, M88E1000_PHY_SPEC_CTRL, phy_data);
+        if (ret_val)
+            return ret_val;
+    }
+
     if(hw->mac_type <= em_82543 ||
        hw->mac_type == em_82541 || hw->mac_type == em_82547 ||
        hw->mac_type == em_82541_rev_2 || hw->mac_type == em_82547_rev_2)
@@ -1544,26 +1563,6 @@ em_phy_force_speed_duplex(struct em_hw *hw)
         if((ret_val = em_write_phy_reg(hw, M88E1000_PHY_SPEC_CTRL,
                                           phy_data)))
             return ret_val;
-
-        /* Polarity reversal workaround for forced 10F/10H links. */
-        if(hw->mac_type <= em_82544 &&
-           (hw->forced_speed_duplex == em_10_full ||
-            hw->forced_speed_duplex == em_10_half)) {
-            if((ret_val = em_write_phy_reg(hw, M88E1000_PHY_PAGE_SELECT,
-                                              0x0019)))
-                return ret_val;
-            if((ret_val = em_write_phy_reg(hw, M88E1000_PHY_GEN_CONTROL,
-                                              0x8F0F)))
-                return ret_val;
-            /* IEEE requirement is 150ms */
-            msec_delay(200);
-            if((ret_val = em_write_phy_reg(hw, M88E1000_PHY_PAGE_SELECT,
-                                              0x0019)))
-                return ret_val;
-            if((ret_val = em_write_phy_reg(hw, M88E1000_PHY_GEN_CONTROL,
-                                              0x8F00)))
-                return ret_val;
-        }
     }
     return E1000_SUCCESS;
 }
@@ -1940,7 +1939,7 @@ em_config_fc_after_link_up(struct em_hw *hw)
 int32_t
 em_check_for_link(struct em_hw *hw)
 {
-    uint32_t rxcw;
+    uint32_t rxcw = 0;
     uint32_t ctrl;
     uint32_t status;
     uint32_t rctl;
@@ -1950,16 +1949,23 @@ em_check_for_link(struct em_hw *hw)
 
     DEBUGFUNC("em_check_for_link");
 
+    ctrl = E1000_READ_REG(hw, CTRL);
+    status = E1000_READ_REG(hw, STATUS);
+
     /* On adapters with a MAC newer than 82544, SW Defineable pin 1 will be
      * set when the optics detect a signal. On older adapters, it will be
      * cleared when there is a signal.  This applies to fiber media only.
      */
-    if(hw->media_type == em_media_type_fiber)
-        signal = (hw->mac_type > em_82544) ? E1000_CTRL_SWDPIN1 : 0;
+    if((hw->media_type == em_media_type_fiber) ||
+       (hw->media_type == em_media_type_internal_serdes)) {
+        rxcw = E1000_READ_REG(hw, RXCW);
 
-    ctrl = E1000_READ_REG(hw, CTRL);
-    status = E1000_READ_REG(hw, STATUS);
-    rxcw = E1000_READ_REG(hw, RXCW);
+        if(hw->media_type == em_media_type_fiber) {
+            signal = (hw->mac_type > em_82544) ? E1000_CTRL_SWDPIN1 : 0;
+            if(status & E1000_STATUS_LU)
+                hw->get_link_status = FALSE;
+        }
+    }
 
     /* If we have a copper PHY then we only want to go out to the PHY
      * registers to see if Auto-Neg has completed and/or if our link
@@ -2186,7 +2192,7 @@ em_get_speed_and_duplex(struct em_hw *hw,
         if(!(phy_data & NWAY_ER_LP_NWAY_CAPS))
             *duplex = HALF_DUPLEX;
         else {
-            if((ret_val == em_read_phy_reg(hw, PHY_LP_ABILITY, &phy_data)))
+            if((ret_val = em_read_phy_reg(hw, PHY_LP_ABILITY, &phy_data)))
                 return ret_val;
             if((*speed == SPEED_100 && !(phy_data & NWAY_LPAR_100TX_FD_CAPS)) ||
                (*speed == SPEED_10 && !(phy_data & NWAY_LPAR_10T_FD_CAPS)))
@@ -2907,6 +2913,12 @@ em_validate_mdi_setting(struct em_hw *hw)
 {
     DEBUGFUNC("em_validate_mdi_settings");
 
+#ifdef RK_SV
+    /* Don't disable MDI-X for 82570/1 */
+    if(hw->phy_type == em_phy_igp_2)
+        return E1000_SUCCESS;
+#endif
+
     if(!hw->autoneg && (hw->mdix == 0 || hw->mdix == 3)) {
         DEBUGOUT("Invalid MDI setting detected\n");
         hw->mdix = 1;
@@ -3351,6 +3363,7 @@ em_spi_eeprom_ready(struct em_hw *hw)
         usec_delay(5);
         retry_count += 5;
 
+        em_standby_eeprom(hw);
     } while(retry_count < EEPROM_MAX_RETRY_SPI);
 
     /* ATMEL SPI write time could vary from 0-20mSec on 3.3V devices (and
@@ -4887,7 +4900,45 @@ em_config_dsp_after_link_change(struct em_hw *hw,
             if((ret_val = em_write_phy_reg(hw, 0x0000,
                                               IGP01E1000_IEEE_RESTART_AUTONEG)))
                 return ret_val;
-        hw->ffe_config_state = em_ffe_config_enabled;
+            hw->ffe_config_state = em_ffe_config_enabled;
+        }
+    }
+    return E1000_SUCCESS;
+}
+
+ /*****************************************************************************
+ * Set PHY to class A mode
+ * Assumes the following operations will follow to enable the new class mode.
+ *  1. Do a PHY soft reset
+ *  2. Restart auto-negotiation or force link.
+ *
+ * hw - Struct containing variables accessed by shared code
+ ****************************************************************************/
+static int32_t
+em_set_phy_mode(struct em_hw *hw)
+{
+    int32_t ret_val;
+    uint16_t eeprom_data;
+
+    DEBUGFUNC("em_set_phy_mode");
+
+    if((hw->mac_type == em_82545_rev_3) &&
+       (hw->media_type == em_media_type_copper)) {
+        ret_val = em_read_eeprom(hw, EEPROM_PHY_CLASS_WORD, 1, &eeprom_data);
+        if(ret_val)
+            return ret_val;
+
+        if((eeprom_data != EEPROM_RESERVED_WORD) &&
+           (eeprom_data & EEPROM_PHY_CLASS_A)) {
+            ret_val = em_write_phy_reg(hw, M88E1000_PHY_PAGE_SELECT, 0x000B);
+            if(ret_val)
+                return ret_val;
+
+            ret_val = em_write_phy_reg(hw, M88E1000_PHY_GEN_CONTROL, 0x8104);
+            if(ret_val)
+                return ret_val;
+
+            hw->phy_reset_disable = FALSE;
         }
     }
     return E1000_SUCCESS;
