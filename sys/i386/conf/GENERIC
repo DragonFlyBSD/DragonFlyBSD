@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.27 2005/09/19 02:53:27 sephe Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.28 2005/10/17 06:31:23 sephe Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -34,6 +34,7 @@ options 	PROCFS			#Process filesystem
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
 options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 options 	SCSI_DELAY=15000	#Delay (in ms) before probing SCSI
+options		DEVICE_POLLING
 options 	UCONSOLE		#Allow users to grab the console
 options 	USERCONFIG		#boot -c editor
 options 	VISUAL_USERCONFIG	#visual boot -c editor
