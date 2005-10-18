@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.63 2005/09/20 11:55:42 asmodai Exp $
+# $DragonFly: src/sys/config/LINT,v 1.64 2005/10/18 15:31:10 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -690,15 +690,18 @@ device		hfa			#FORE PCA-200E ATM PCI
 # accurate scheduling of the CPU time between kernel network processing
 # and other activities. The drawback is a moderate (up to 1/HZ seconds)
 # potential increase in response times.
-# It is strongly recommended to use HZ=1000 or 2000 with DEVICE_POLLING
-# to achieve smoother behaviour.
-# Additionally, you can enable/disable polling at runtime with the
-# sysctl variable kern.polling.enable (defaults off), and select
-# the CPU fraction reserved to userland with the sysctl variable
-# kern.polling.user_frac (default 50, range 0..100).
 #
-# Only the "dc" "fxp" and "sis" devices support this mode of operation at
-# the time of this writing.
+# Additionally, you can enable/disable polling at runtime with the
+# sysctl variable kern.polling.enable (defaults off), set polling
+# frequency with the sysctl variable kern.polling.pollhz (default 2000,
+# range 1..30000) and select the CPU fraction reserved to userland with
+# the sysctl variable kern.polling.user_frac (default 50, range 0..100).
+#
+# It is strongly recommended to set the sysctl variable kern.polling.pollhz
+# to 1000 or 2000 as to achieve smoother behaviour.
+#
+# Only the "dc" "em" "fwe" "fxp" "nge" "nv" "re" "rl" "sis" "vr" and "wi"
+# devices support this mode of operation at the time of this writing.
  
 options         DEVICE_POLLING
 
