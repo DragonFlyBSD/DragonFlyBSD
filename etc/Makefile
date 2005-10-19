@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.95 2005/09/25 15:30:26 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.96 2005/10/19 05:18:36 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -124,10 +124,9 @@ upgrade_etc:	preupgrade
 	mkdir -p ${DESTDIR}/etc/rc.d
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
 	# "../share/termcap/make etc-termap" expanded inline here:
-	${LN} -fs ${BINDIR}/misc/termcap ${DESTDIR}/etc/termcap
+	${LN} -fs ${DESTDIR}/usr/share/misc/termcap ${DESTDIR}/etc/termcap
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
-	rm -f ${DESTDIR}/etc/rmt
-	${LN} -s ${BINDIR}/rmt ${DESTDIR}/etc/rmt
+	${LN} -fs ${DESTDIR}/usr/sbin/rmt ${DESTDIR}/etc/rmt
 .if !defined(BINARY_UPGRADE) # XXX not yet handled by binary upgrade
 .if !defined(NO_SENDMAIL)
 	cd ${UPGRADE_SRCDIR}/sendmail; ${MAKE} upgrade
