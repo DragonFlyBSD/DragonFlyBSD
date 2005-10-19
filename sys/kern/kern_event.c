@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.17 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.18 2005/10/19 07:51:42 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@ MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
 static int	kqueue_scan(struct file *fp, int maxevents,
 		    struct kevent *ulistp, const struct timespec *timeout,
-		    struct proc *p, int *res);
+		    struct thread *td, int *res);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags, struct thread *td);
 static int	kqueue_write(struct file *fp, struct uio *uio,
@@ -452,7 +452,7 @@ kevent(struct kevent_args *uap)
 		goto done;
 	}
 
-	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, p, &uap->sysmsg_result);
+	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, td, &uap->sysmsg_result);
 done:
 	if (fp != NULL)
 		fdrop(fp, p->p_thread);
@@ -591,9 +591,8 @@ done:
 
 static int
 kqueue_scan(struct file *fp, int maxevents, struct kevent *ulistp,
-	const struct timespec *tsp, struct proc *p, int *res)
+	const struct timespec *tsp, struct thread *td, int *res)
 {
-	struct thread *td = p->p_thread;
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 	struct kevent *kevp;
 	struct timeval atv, rtv, ttv;
