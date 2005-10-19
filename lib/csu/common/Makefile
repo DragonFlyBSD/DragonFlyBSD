@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/csu/common/Attic/Makefile,v 1.1 2004/06/14 18:56:12 joerg Exp $
+# $DragonFly: src/lib/csu/common/Attic/Makefile,v 1.2 2005/10/19 16:54:25 joerg Exp $
 
 .if exists(${.CURDIR}/../${MACHINE_ARCH}/Makefile.inc)
 .include "${.CURDIR}/../${MACHINE_ARCH}/Makefile.inc"
@@ -13,6 +13,7 @@ CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-DDWARF2_EH
 CFLAGS+=	-DJCR
 CFLAGS+=	-DDSO_HANDLE
+CFLAGS+=	-fPIC
 
 # crtbrand.c is included by the architecture specific crt1.c
 SRCS+=		crtbegin.c crtend.c
