@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.19 2005/10/13 00:45:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.20 2005/10/20 15:54:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -149,8 +149,8 @@ SYSCTL_UINT(_kern_polling, OID_AUTO, handlers, CTLFLAG_RD,
 	&poll_handlers, 0, "Number of registered poll handlers");
 
 static int polling_enabled = 0;		/* global polling enable */
-TUNABLE_INT("kern.polling.polling", &polling_enabled);
-SYSCTL_PROC(_kern_polling, OID_AUTO, polling, CTLTYPE_INT | CTLFLAG_RW,
+TUNABLE_INT("kern.polling.enable", &polling_enabled);
+SYSCTL_PROC(_kern_polling, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
 	0, 0, sysctl_polling, "I", "Polling enabled");
 
 static u_int32_t phase;
