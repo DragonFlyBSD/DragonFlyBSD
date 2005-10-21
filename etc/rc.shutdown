@@ -24,8 +24,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/rc.shutdown,v 1.4.2.13 2001/12/19 14:40:28 roam Exp $
-# $DragonFly: src/etc/rc.shutdown,v 1.2 2003/06/17 04:24:45 dillon Exp $
+# $FreeBSD: src/etc/rc.shutdown,v 1.25 2003/07/08 02:52:14 mtm Exp $
+# $DragonFly: src/etc/rc.shutdown,v 1.3 2005/10/21 17:41:20 swildner Exp $
 #
 
 # Site-specific closing actions for daemons run by init on shutdown,
@@ -44,68 +44,60 @@ HOME=/
 PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin
 export HOME PATH
 
-# If there is a global system configuration file, suck it in.
+. /etc/rc.subr
+
+load_rc_config 'XXX'
+
+# reverse_list list
+#	print the list in reverse order
 #
-if [ -r /etc/defaults/rc.conf ]; then
-	. /etc/defaults/rc.conf
-	source_rc_confs
-elif [ -r /etc/rc.conf ]; then
-	. /etc/rc.conf
+reverse_list()
+{
+	_revlist=
+	for _revfile in $*; do
+		_revlist="$_revfile${script_name_sep}$_revlist"
+	done
+	echo $_revlist
+}
+
+# If requested, start a watchdog timer in the background which
+# will terminate rc.shutdown if rc.shutdown doesn't complete
+# within the specified time.
+#
+_rcshutdown_watchdog=
+if [ -n "$rcshutdown_timeout" ]; then
+	debug "Initiating watchdog timer."
+	sleep $rcshutdown_timeout && ( 
+		_msg="$rcshutdown_timeout second watchdog" \
+		    " timeout expired. Shutdown terminated."
+		logger -t rc.shutdown "$_msg"
+		echo "$_msg"
+		date
+		kill -KILL $$ >/dev/null 2>&1
+	) &
+	_rcshutdown_watchdog=$!
 fi
 
-# Check if /var/db/mounttab is clean.
-case $1 in
-reboot)
-	if [ -f /var/db/mounttab ]; then
-		rpc.umntall
-	fi
-	;;
-esac
+# Determine the shutdown order of the /etc/rc.d scripts,
+# and perform the operation
+# XXX - rcorder(8) with multiple -k switches works as a logical OR,
+#       so, we can't do this: rcorder -k shutdown -k FreeBSD.
+#
+files=`eval grep -l \'^# KEYWORD:.*DragonFly\' \`rcorder -k shutdown /etc/rc.d/* 2>/dev/null\``
 
-echo -n 'Shutting down daemon processes:'
+for _rc_elem in `reverse_list $files`; do
+	debug "run_rc_script $_rc_elem stop"
+	run_rc_script $_rc_elem stop
+done
 
-# for each valid dir in $local_startup, search for init scripts matching *.sh
-case ${local_startup} in
-[Nn][Oo] | '')
-	;;
-*)
-	slist=""
-	if [ -z "${script_name_sep}" ]; then
-		script_name_sep=" "
-	fi
-	for dir in ${local_startup}; do
-		if [ -d "${dir}" ]; then
-			for script in ${dir}/*.sh; do
-				slist="${script}${script_name_sep}${slist}"
-			done
-		fi
-	done
-	script_save_sep="$IFS"
-	IFS="${script_name_sep}"
-	for script in ${slist}; do
-		if [ -x "${script}" ]; then
-			(set -T
-			trap 'exit 1' 2
-			${script} stop)
-		fi
-	done
-	IFS="${script_save_sep}"
-	echo '.'
-	;;
-esac
+# Terminate the background watchdog timer (if it is running)
+#
+if [ -n "$_rcshutdown_watchdog" ]; then
+	kill -TERM $_rcshutdown_watchdog >/dev/null 2>&1
+fi
 
 # Insert other shutdown procedures here
 
-# Saving firewall state tables should be done last
-echo -n 'Saving firewall state tables:'
-
-# Save IP-filter state tables
-case ${ipfs_enable} in
-[Yy][Ee][Ss])
-	echo -n ' ipfs'
-	${ipfs_program:-/sbin/ipfs} -W ${ipfs_flags}
-	;;
-esac
 
 echo '.'
 exit 0
