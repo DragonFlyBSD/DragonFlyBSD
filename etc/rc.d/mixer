@@ -1,12 +1,12 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/mixer,v 1.6 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/mixer,v 1.7 2005/10/21 17:44:37 swildner Exp $
 #
 
 # PROVIDE: mixer
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly
+# KEYWORD: DragonFly shutdown
 
 . /etc/rc.subr
 
