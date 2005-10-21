@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.38 2005/10/13 10:22:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.39 2005/10/21 06:42:43 sephe Exp $
  */
 
 /*
@@ -207,12 +207,13 @@ static int xl_newbuf		(struct xl_softc *, struct xl_chain_onefrag *);
 static void xl_stats_update	(void *);
 static int xl_encap		(struct xl_softc *, struct xl_chain *,
 						struct mbuf *);
-static void xl_rxeof		(struct xl_softc *);
+static void xl_rxeof		(struct xl_softc *, int);
 static int xl_rx_resync		(struct xl_softc *);
 static void xl_txeof		(struct xl_softc *);
 static void xl_txeof_90xB	(struct xl_softc *);
 static void xl_txeoc		(struct xl_softc *);
 static void xl_intr		(void *);
+static void xl_start_body	(struct ifnet *, int);
 static void xl_start		(struct ifnet *);
 static void xl_start_90xB	(struct ifnet *);
 static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
@@ -223,6 +224,10 @@ static void xl_watchdog		(struct ifnet *);
 static void xl_shutdown		(device_t);
 static int xl_suspend		(device_t); 
 static int xl_resume		(device_t);
+#ifdef DEVICE_POLLING
+static void xl_poll		(struct ifnet *, enum poll_cmd, int);
+#endif
+static void xl_enable_intrs	(struct xl_softc *, uint16_t);
 
 static int xl_ifmedia_upd	(struct ifnet *);
 static void xl_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
@@ -298,6 +303,15 @@ MODULE_DEPEND(if_xl, miibus, 1, 1, 1);
 DRIVER_MODULE(if_xl, pci, xl_driver, xl_devclass, 0, 0);
 DRIVER_MODULE(if_xl, cardbus, xl_driver, xl_devclass, 0, 0);
 DRIVER_MODULE(miibus, xl, miibus_driver, miibus_devclass, 0, 0);
+
+static void
+xl_enable_intrs(struct xl_softc *sc, uint16_t intrs)
+{
+	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ACK | 0xFF);
+	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB | intrs);
+	if (sc->xl_flags & XL_FLAG_FUNCREG)
+		bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
+}
 
 static void
 xl_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
@@ -1426,6 +1440,9 @@ xl_attach(device_t dev)
 	}
 	ifp->if_watchdog = xl_watchdog;
 	ifp->if_init = xl_init;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = xl_poll;
+#endif
 	ifp->if_baudrate = 10000000;
 	ifq_set_maxlen(&ifp->if_snd, XL_TX_LIST_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
@@ -2016,7 +2033,7 @@ xl_rx_resync(struct xl_softc *sc)
  * the higher level protocols.
  */
 static void
-xl_rxeof(struct xl_softc *sc)
+xl_rxeof(struct xl_softc *sc, int count)
 {
         struct mbuf		*m;
         struct ifnet		*ifp;
@@ -2031,6 +2048,10 @@ again:
 	bus_dmamap_sync(sc->xl_ldata.xl_rx_tag, sc->xl_ldata.xl_rx_dmamap,
 	    BUS_DMASYNC_POSTREAD);
 	while((rxstat = le32toh(sc->xl_cdata.xl_rx_head->xl_ptr->xl_status))) {
+#ifdef DEVICE_POLLING
+		if (count >= 0 && count-- == 0)
+			break;
+#endif
 		cur_rx = sc->xl_cdata.xl_rx_head;
 		sc->xl_cdata.xl_rx_head = cur_rx->xl_next;
 		total_len = rxstat & XL_RXSTAT_LENMASK;
@@ -2311,6 +2332,67 @@ xl_txeoc(struct xl_softc *sc)
 	return;
 }
 
+#ifdef DEVICE_POLLING
+
+static void
+xl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+{
+	struct xl_softc *sc = ifp->if_softc;
+
+	switch (cmd) {
+	case POLL_REGISTER:
+		xl_enable_intrs(sc, 0);
+		break;
+	case POLL_DEREGISTER:
+		xl_enable_intrs(sc, XL_INTRS);
+		break;
+	case POLL_ONLY:
+	case POLL_AND_CHECK_STATUS:
+		xl_rxeof(sc, count);
+		if (sc->xl_type == XL_TYPE_905B)
+			xl_txeof_90xB(sc);
+		else
+			xl_txeof(sc);
+
+		if (!ifq_is_empty(&ifp->if_snd)) {
+			if (sc->xl_type == XL_TYPE_905B)
+				xl_start_90xB(ifp);
+			else
+				xl_start_body(ifp, 0);
+		}
+
+		if (cmd == POLL_AND_CHECK_STATUS) {
+			uint16_t status;
+
+			/* XXX copy & pasted from xl_intr() */
+			status = CSR_READ_2(sc, XL_STATUS);
+			if ((status & XL_INTRS) && status != 0xFFFF) {
+				CSR_WRITE_2(sc, XL_COMMAND,
+				    XL_CMD_INTR_ACK | (status & XL_INTRS));
+
+				if (status & XL_STAT_TX_COMPLETE) {
+					ifp->if_oerrors++;
+					xl_txeoc(sc);
+				}
+
+				if (status & XL_STAT_ADFAIL) {
+					xl_reset(sc);
+					xl_init(sc);
+				}
+
+				if (status & XL_STAT_STATSOFLOW) {
+					sc->xl_stats_no_timeout = 1;
+					xl_stats_update(sc);
+					sc->xl_stats_no_timeout = 0;
+				}
+			}
+		}
+		break;
+	}
+}
+
+#endif	/* DEVICE_POLLING */
+
 static void
 xl_intr(void *arg)
 {
@@ -2321,7 +2403,8 @@ xl_intr(void *arg)
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
 
-	while((status = CSR_READ_2(sc, XL_STATUS)) & XL_INTRS && status != 0xFFFF) {
+	while(((status = CSR_READ_2(sc, XL_STATUS)) & XL_INTRS) &&
+	      status != 0xFFFF) {
 
 		CSR_WRITE_2(sc, XL_COMMAND,
 		    XL_CMD_INTR_ACK|(status & XL_INTRS));
@@ -2330,10 +2413,10 @@ xl_intr(void *arg)
 			int			curpkts;
 
 			curpkts = ifp->if_ipackets;
-			xl_rxeof(sc);
+			xl_rxeof(sc, -1);
 			if (curpkts == ifp->if_ipackets) {
 				while (xl_rx_resync(sc))
-					xl_rxeof(sc);
+					xl_rxeof(sc, -1);
 			}
 		}
 
@@ -2492,6 +2575,12 @@ xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
 	return(0);
 }
 
+static void
+xl_start(struct ifnet *ifp)
+{
+	xl_start_body(ifp, 1);
+}
+
 /*
  * Main transmit routine. To avoid having to do mbuf copies, we put pointers
  * to the mbuf data regions directly in the transmit lists. We also save a
@@ -2499,7 +2588,7 @@ xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
  * physical addresses.
  */
 static void
-xl_start(struct ifnet *ifp)
+xl_start_body(struct ifnet *ifp, int proc_rx)
 {
 	struct xl_softc		*sc;
 	struct mbuf		*m_head = NULL;
@@ -2556,9 +2645,8 @@ xl_start(struct ifnet *ifp)
 	/*
 	 * If there are no packets queued, bail.
 	 */
-	if (cur_tx == NULL) {
+	if (cur_tx == NULL)
 		return;
-	}
 
 	/*
 	 * Place the request for the upload interrupt
@@ -2604,22 +2692,24 @@ xl_start(struct ifnet *ifp)
 	 */
 	ifp->if_timer = 5;
 
-	/*
-	 * XXX Under certain conditions, usually on slower machines
-	 * where interrupts may be dropped, it's possible for the
-	 * adapter to chew up all the buffers in the receive ring
-	 * and stall, without us being able to do anything about it.
-	 * To guard against this, we need to make a pass over the
-	 * RX queue to make sure there aren't any packets pending.
-	 * Doing it here means we can flush the receive ring at the
-	 * same time the chip is DMAing the transmit descriptors we
-	 * just gave it.
- 	 *
-	 * 3Com goes to some lengths to emphasize the Parallel Tasking (tm)
-	 * nature of their chips in all their marketing literature;
-	 * we may as well take advantage of it. :)
-	 */
-	xl_rxeof(sc);
+	if (proc_rx) {
+		/*
+		 * XXX Under certain conditions, usually on slower machines
+		 * where interrupts may be dropped, it's possible for the
+		 * adapter to chew up all the buffers in the receive ring
+		 * and stall, without us being able to do anything about it.
+		 * To guard against this, we need to make a pass over the
+		 * RX queue to make sure there aren't any packets pending.
+		 * Doing it here means we can flush the receive ring at the
+		 * same time the chip is DMAing the transmit descriptors we
+		 * just gave it.
+		 *
+		 * 3Com goes to some lengths to emphasize the Parallel
+		 * Tasking (tm) nature of their chips in all their marketing
+		 * literature;  we may as well take advantage of it. :)
+		 */
+		xl_rxeof(sc, -1);
+	}
 }
 
 static void
@@ -2633,9 +2723,8 @@ xl_start_90xB(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if (ifp->if_flags & IFF_OACTIVE)
 		return;
-	}
 
 	idx = sc->xl_cdata.xl_tx_prod;
 	start_tx = &sc->xl_cdata.xl_tx_chain[idx];
@@ -2675,9 +2764,8 @@ xl_start_90xB(struct ifnet *ifp)
 	/*
 	 * If there are no packets queued, bail.
 	 */
-	if (cur_tx == NULL) {
+	if (cur_tx == NULL)
 		return;
-	}
 
 	/*
 	 * Place the request for the upload interrupt
@@ -2844,7 +2932,6 @@ xl_init(void *xsc)
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_UP_UNSTALL);
 	xl_wait(sc);
 
-
 	if (sc->xl_type == XL_TYPE_905B) {
 		/* Set DN polling interval */
 		CSR_WRITE_1(sc, XL_DOWN_POLL, 64);
@@ -2875,9 +2962,9 @@ xl_init(void *xsc)
 	 * register.
 	 */
 	
-	if (sc->xl_type == XL_TYPE_905B) 
+	if (sc->xl_type == XL_TYPE_905B) {
 		CSR_WRITE_2(sc, XL_W3_MAXPKTSIZE, XL_PACKET_SIZE);
-	else {
+	} else {
 		u_int8_t macctl;
 		macctl = CSR_READ_1(sc, XL_W3_MAC_CTRL);
 		macctl |= XL_MACCTRL_ALLOW_LARGE_PACK;
@@ -2896,11 +2983,14 @@ xl_init(void *xsc)
 	/*
 	 * Enable interrupts.
 	 */
-	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ACK|0xFF);
-	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_STAT_ENB|XL_INTRS);
-	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB|XL_INTRS);
-	if (sc->xl_flags & XL_FLAG_FUNCREG)
-	    bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
+	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_STAT_ENB | XL_INTRS);
+#ifdef DEVICE_POLLING
+	/* Do not enable interrupt if polling(4) is enabled */
+	if ((ifp->if_flags & IFF_POLLING) != 0)
+		xl_enable_intrs(sc, 0);
+	else
+#endif
+	xl_enable_intrs(sc, XL_INTRS);
 
 	/* Set the RX early threshold */
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_RX_SET_THRESH|(XL_PACKET_SIZE >>2));
@@ -3124,7 +3214,7 @@ xl_watchdog(struct ifnet *ifp)
 		if_printf(ifp, "no carrier - transceiver cable problem?\n");
 	xl_txeoc(sc);
 	xl_txeof(sc);
-	xl_rxeof(sc);
+	xl_rxeof(sc, -1);
 	xl_reset(sc);
 	xl_init(sc);
 
