@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.17 2005/09/23 18:51:34 swildner Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.18 2005/10/22 04:06:53 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -73,32 +73,24 @@ static struct nlist namelist[] = {
 	{ "_boottime",	0, 0, 0, 0 },
 #define X_NCHSTATS	1
 	{ "_nchstats",	0, 0, 0, 0 },
-#define	X_INTRNAMES	2
-	{ "_intrnames",	0, 0, 0, 0 },
-#define	X_EINTRNAMES	3
-	{ "_eintrnames",0, 0, 0, 0 },
-#define	X_INTRCNT	4
-	{ "_intrcnt",	0, 0, 0, 0 },
-#define	X_EINTRCNT	5
-	{ "_eintrcnt",	0, 0, 0, 0 },
-#define	X_KMEMSTATISTICS	6
+#define	X_KMEMSTATISTICS	2
 	{ "_kmemstatistics",	0, 0, 0, 0 },
-#define	X_ZLIST		7
+#define	X_ZLIST		3
 	{ "_zlist",	0, 0, 0, 0 },
 #ifdef notyet
-#define	X_DEFICIT	8
+#define	X_DEFICIT	4
 	{ "_deficit",	0, 0, 0, 0 },
-#define	X_FORKSTAT	9
+#define	X_FORKSTAT	5
 	{ "_forkstat",	0, 0, 0, 0 },
-#define X_REC		10
+#define X_REC		6
 	{ "_rectime",	0, 0, 0, 0 },
-#define X_PGIN		11
+#define X_PGIN		7
 	{ "_pgintime",	0, 0, 0, 0 },
-#define	X_XSTATS	12
+#define	X_XSTATS	8
 	{ "_xstats",	0, 0, 0, 0 },
-#define X_END		13
+#define X_END		9
 #else
-#define X_END		8
+#define X_END		4
 #endif
 	{ "", 0, 0, 0, 0 },
 };
@@ -724,24 +716,28 @@ dointr(void)
 {
 	u_long *intrcnt, uptime;
 	u_int64_t inttotal;
-	int nintr, inamlen;
+	size_t nintr, inamlen, i, size;
 	char *intrname;
 
 	uptime = getuptime();
-	nintr = namelist[X_EINTRCNT].n_value - namelist[X_INTRCNT].n_value;
-	inamlen =
-	    namelist[X_EINTRNAMES].n_value - namelist[X_INTRNAMES].n_value;
-	intrcnt = malloc((size_t)nintr);
-	intrname = malloc((size_t)inamlen);
-	if (intrcnt == NULL || intrname == NULL)
-		errx(1, "malloc");
-	kread(X_INTRCNT, intrcnt, (size_t)nintr);
-	kread(X_INTRNAMES, intrname, (size_t)inamlen);
+	if (sysctlbyname("hw.intrnames", NULL, &inamlen, NULL, 0) != 0)
+		errx(1, "sysctlbyname");
+	intrname = malloc(inamlen);
+	if (intrname == NULL)
+		err(1, "malloc");
+	sysctlbyname("hw.intrnames", intrname, &inamlen, NULL, 0);
+	for (nintr = 0, i = 0; i < inamlen; ++i)
+		if (intrname[i] == 0)
+			nintr++;
+	size = nintr * sizeof(*intrcnt);
+	intrcnt = malloc(size);
+	if (intrcnt == NULL)
+		err(1, "malloc");
+	sysctlbyname("hw.intrcnt", intrcnt, &size, NULL, 0);
 	printf("interrupt                   total       rate\n");
 	inttotal = 0;
-	nintr /= sizeof(long);
-	while (--nintr >= 0) {
-		if (intrname[0] || *intrcnt) {
+	while (nintr-- > 0) {
+		if (*intrcnt) {
 		    printf("%-12s %20lu %10lu\n", intrname,
 			    *intrcnt, *intrcnt / uptime);
 		}
