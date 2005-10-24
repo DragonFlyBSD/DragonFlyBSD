@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.18 2004/10/12 19:29:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.19 2005/10/24 20:02:09 dillon Exp $
  */
 
 /*
@@ -242,6 +242,15 @@ RetryFault:
 	if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
 		panic("vm_fault: fault on nofault entry, addr: %lx",
 		    (u_long)vaddr);
+	}
+
+	/*
+	 * A system map entry may return a NULL object.  No object means
+	 * no pager means an unrecoverable kernel fault.
+	 */
+	if (fs.first_object == NULL) {
+		panic("vm_fault: unrecoverable fault at %p in entry %p",
+			(void *)vaddr, fs.entry);
 	}
 
 	/*
