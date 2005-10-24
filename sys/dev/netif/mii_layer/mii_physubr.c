@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.8 2005/10/24 15:55:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.9 2005/10/24 16:55:40 dillon Exp $
  */
 
 /*
@@ -66,9 +66,11 @@
 void	mii_phy_auto_timeout (void *);
 
 void
-mii_softc_init(struct mii_softc *mii)
+mii_softc_init(struct mii_softc *mii, struct mii_attach_args *ma)
 {
 	callout_init(&mii->mii_auto_ch);
+	mii->mii_phy = ma->mii_phyno;
+	mii->mii_flags |= ma->mii_flags;
 }
 
 int

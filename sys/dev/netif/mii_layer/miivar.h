@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.8 2005/10/24 16:45:19 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.9 2005/10/24 16:55:40 dillon Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_
@@ -181,7 +181,7 @@ int	mii_phy_probe (device_t, device_t *,
 	    ifm_change_cb_t, ifm_stat_cb_t);
 void	mii_add_media (struct mii_softc *, int);
 int	mii_bmsr_media_to_anar(struct mii_softc *);
-void	mii_softc_init (struct mii_softc *);
+void	mii_softc_init (struct mii_softc *, struct mii_attach_args *);
 
 int	mii_media_from_bmcr (int);
 

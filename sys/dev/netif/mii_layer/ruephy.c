@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ruephy.c,v 1.1.4.1 2003/07/30 13:57:35 akiyama Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.2 2005/10/24 15:55:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.3 2005/10/24 16:55:40 dillon Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ ruephy_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
-	mii_softc_init(sc);
+	mii_softc_init(sc, ma);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 
@@ -127,7 +127,6 @@ ruephy_attach(device_t dev)
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);
 
 	sc->mii_inst = mii->mii_instance;
-	sc->mii_phy = ma->mii_phyno;
 	sc->mii_service = ruephy_service;
 	sc->mii_pdata = mii;
 	mii->mii_instance++;

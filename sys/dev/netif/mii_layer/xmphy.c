@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.6 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $
  */
 
 /*
@@ -119,13 +119,12 @@ static int xmphy_attach(dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
-	mii_softc_init(sc);
+	mii_softc_init(sc, ma);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);
 
 	sc->mii_inst = mii->mii_instance;
-	sc->mii_phy = ma->mii_phyno;
 	sc->mii_service = xmphy_service;
 	sc->mii_pdata = mii;
 
