@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.6 2005/10/24 15:55:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.7 2005/10/24 16:45:19 dillon Exp $
  */
 
 /*
@@ -91,10 +91,6 @@
 
 #include "miibus_if.h"
 
-static int ukphy_probe		(device_t);
-static int ukphy_attach		(device_t);
-static int ukphy_detach		(device_t);
-
 static device_method_t ukphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		ukphy_probe),
@@ -116,9 +112,8 @@ DRIVER_MODULE(ukphy, miibus, ukphy_driver, ukphy_devclass, 0, 0);
 
 int	ukphy_service (struct mii_softc *, struct mii_data *, int);
 
-static int
-ukphy_probe(dev)
-	device_t		dev;
+int
+ukphy_probe(device_t dev)
 {
 
 	/*
@@ -128,9 +123,8 @@ ukphy_probe(dev)
 	return (-100);
 }
 
-static int
-ukphy_attach(dev)
-	device_t		dev;
+int
+ukphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -155,6 +149,7 @@ ukphy_attach(dev)
 
 	mii->mii_instance++;
 
+	sc->mii_flags |= ma->mii_flags;
 	sc->mii_flags |= MIIF_NOISOLATE;
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
@@ -183,8 +178,8 @@ ukphy_attach(dev)
 	return(0);
 }
 
-static int ukphy_detach(dev)
-	device_t		dev;
+int
+ukphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;

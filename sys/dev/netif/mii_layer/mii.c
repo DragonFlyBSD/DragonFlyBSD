@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.6 2004/04/07 05:45:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.7 2005/10/24 16:45:19 dillon Exp $
  */
 
 /*
@@ -111,6 +111,7 @@ int miibus_probe(dev)
 	mii = device_get_softc(dev);
 	parent = device_get_parent(dev);
 	LIST_INIT(&mii->mii_phys);
+	bzero(&ma, sizeof(ma));
 
 	for (ma.mii_phyno = 0; ma.mii_phyno < MII_NPHY; ma.mii_phyno++) {
 		/*
@@ -139,8 +140,8 @@ int miibus_probe(dev)
 		ma.mii_capmask = capmask;
 
 		args = malloc(sizeof(struct mii_attach_args),
-		    M_DEVBUF, M_INTWAIT);
-		bcopy((char *)&ma, (char *)args, sizeof(ma));
+			      M_DEVBUF, M_INTWAIT);
+		*args = ma;
 		child = device_add_child(dev, NULL, -1);
 		device_set_ivars(child, args);
 	}

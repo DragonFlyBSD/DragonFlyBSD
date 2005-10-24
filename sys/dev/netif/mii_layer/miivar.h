@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.7 2005/10/24 15:55:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.8 2005/10/24 16:45:19 dillon Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_
@@ -154,6 +154,7 @@ struct mii_attach_args {
 	int mii_id1;			/* PHY ID register 1 */
 	int mii_id2;			/* PHY ID register 2 */
 	int mii_capmask;		/* capability mask from BMSR */
+	int mii_flags;			/* inherited by mii_softc->mii_flags */
 };
 typedef struct mii_attach_args mii_attach_args_t;
 
@@ -189,6 +190,10 @@ void	mii_phy_auto_stop (struct mii_softc *);
 void	mii_phy_reset (struct mii_softc *);
 
 void	ukphy_status (struct mii_softc *);
+int	ukphy_probe (device_t);
+int	ukphy_attach (device_t);
+int	ukphy_detach (device_t);
+
 #endif /* _KERNEL */
 
 #endif /* _DEV_MII_MIIVAR_H_ */
