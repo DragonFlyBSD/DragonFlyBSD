@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.9 2005/09/06 02:34:20 sephe Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.10 2005/10/24 18:01:30 dillon Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -424,6 +424,17 @@ are also accepted and indicate kilobytes, megabytes and gigabytes
 respectively.
 An invalid suffix will result in the variable being ignored by the
 kernel.
+.It Va kern.emergency_intr_enable
+Setting this to 1 enables emergency interrupt polling.  All interrupt
+handlers are executed periodically.  This mode is very expensive and should
+only be used to get a system accessible when interrupt routing is
+otherwise broken.  It is primarly used by kernel developers to debug new
+systems.
+.It Va kern.emergency_intr_freq
+Set the polling rate for the emergency interrupt polling code.  The
+default is 10 (hz) to dissuade casual use.  If you are doing real work
+with emergency interrupt polling mode enabled, it is recommended
+that you use a frequency between 100hz and 300hz.
 .It Va kern.maxusers
 Set the size of a number of statically allocated system tables; see
 .Xr tuning 7
