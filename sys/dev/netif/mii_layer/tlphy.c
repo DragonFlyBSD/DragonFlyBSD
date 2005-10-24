@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.6 2005/10/24 15:55:32 dillon Exp $
  */
 
 /*
@@ -216,8 +216,7 @@ static int tlphy_attach(dev)
 
 	if (sc->sc_mii.mii_capabilities & BMSR_MEDIAMASK) {
 		printf("%s", sep);
-		mii_add_media(mii, sc->sc_mii.mii_capabilities,
-		    sc->sc_mii.mii_inst);
+		mii_add_media(&sc->sc_mii, sc->sc_mii.mii_capabilities);
 	}
 
 	printf("\n");

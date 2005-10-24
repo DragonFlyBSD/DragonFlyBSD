@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.6 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.7 2005/10/24 15:55:32 dillon Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ static int pnphy_attach(dev)
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(mii, sc->mii_capabilities, sc->mii_inst);
+		mii_add_media(sc, sc->mii_capabilities);
 	printf("\n");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
 	    BMCR_ISO);

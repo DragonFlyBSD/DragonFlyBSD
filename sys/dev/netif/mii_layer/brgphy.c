@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.8 2005/10/12 00:57:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.9 2005/10/24 15:55:32 dillon Exp $
  */
 
 /*
@@ -186,8 +186,7 @@ brgphy_attach(dev)
 	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
 	if (sc->mii_capabilities & BMSR_MEDIAMASK)
-		mii_add_media(mii, (sc->mii_capabilities & ~BMSR_ANEG),
-		    sc->mii_inst);
+		mii_add_media(sc, (sc->mii_capabilities & ~BMSR_ANEG));
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
 	    BRGPHY_BMCR_FDX);
 	PRINT(", 1000baseTX");
@@ -464,7 +463,7 @@ brgphy_mii_phy_auto(mii)
 	ktcr = PHY_READ(mii, BRGPHY_MII_1000CTL);
 	DELAY(1000);
 	PHY_WRITE(mii, BRGPHY_MII_ANAR,
-	    mii_bmsr_media_to_anar(mii->mii_capabilities) | ANAR_CSMA);
+		    mii_bmsr_media_to_anar(mii) | ANAR_CSMA);
 	DELAY(1000);
 	PHY_WRITE(mii, BRGPHY_MII_BMCR,
 	    BRGPHY_BMCR_AUTOEN | BRGPHY_BMCR_STARTNEG);

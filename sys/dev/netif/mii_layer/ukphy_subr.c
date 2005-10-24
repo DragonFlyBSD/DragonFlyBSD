@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy_subr.c,v 1.2.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy_subr.c,v 1.4 2005/10/12 00:57:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy_subr.c,v 1.5 2005/10/24 15:55:32 dillon Exp $
  */
 
 /*
@@ -100,22 +100,26 @@ ukphy_status(phy)
 		}
 
 		anlpar = PHY_READ(phy, MII_ANAR) & PHY_READ(phy, MII_ANLPAR);
-		if (anlpar & ANLPAR_1000_FD)
+		if ((phy->mii_flags & MIIF_IS_1000X) && 
+		    (anlpar & ANLPAR_1000_FD))  {
 			mii->mii_media_active |= IFM_1000_T|IFM_FDX;
-		else if (anlpar & ANLPAR_1000)
+		} else if ((phy->mii_flags & MIIF_IS_1000X) &&
+		    (anlpar & ANLPAR_1000)) {
 			mii->mii_media_active |= IFM_1000_T;
-		else if (anlpar & ANLPAR_T4)
+		} else if (anlpar & ANLPAR_T4) {
 			mii->mii_media_active |= IFM_100_T4;
-		else if (anlpar & ANLPAR_TX_FD)
+		} else if (anlpar & ANLPAR_TX_FD) {
 			mii->mii_media_active |= IFM_100_TX|IFM_FDX;
-		else if (anlpar & ANLPAR_TX)
+		} else if (anlpar & ANLPAR_TX) {
 			mii->mii_media_active |= IFM_100_TX;
-		else if (anlpar & ANLPAR_10_FD)
+		} else if (anlpar & ANLPAR_10_FD) {
 			mii->mii_media_active |= IFM_10_T|IFM_FDX;
-		else if (anlpar & ANLPAR_10)
+		} else if (anlpar & ANLPAR_10) {
 			mii->mii_media_active |= IFM_10_T;
-		else
+		} else {
 			mii->mii_media_active |= IFM_NONE;
-	} else
+		}
+	} else {
 		mii->mii_media_active = mii_media_from_bmcr(bmcr);
+	}
 }

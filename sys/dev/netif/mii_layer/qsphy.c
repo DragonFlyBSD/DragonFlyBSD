@@ -38,7 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/qsphy.c,v 1.1.2.2 2002/10/21 21:21:42 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.6 2005/10/24 15:55:32 dillon Exp $
  */
  
 /*
@@ -165,8 +165,7 @@ static int qsphy_attach(dev)
 	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
 	if (sc->mii_capabilities & BMSR_MEDIAMASK)
-		mii_add_media(mii, sc->mii_capabilities,
-		    sc->mii_inst);
+		mii_add_media(sc, sc->mii_capabilities);
 	printf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);

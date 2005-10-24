@@ -38,7 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/lxtphy.c,v 1.1.2.1 2001/06/08 19:58:33 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.6 2005/10/24 15:55:32 dillon Exp $
  */
  
 /*
@@ -178,8 +178,7 @@ static int lxtphy_attach(dev)
 #undef ADD
 
 	if (sc->mii_capabilities & BMSR_MEDIAMASK)
-		mii_add_media(mii, sc->mii_capabilities,
-		    sc->mii_inst);
+		mii_add_media(sc, sc->mii_capabilities);
 	printf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);

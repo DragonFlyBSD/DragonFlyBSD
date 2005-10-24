@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.7 2005/10/12 00:57:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.8 2005/10/24 15:55:32 dillon Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ mii_phy_auto(mii, waitfor)
 
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
 		PHY_WRITE(mii, MII_ANAR,
-		    mii_bmsr_media_to_anar(mii->mii_capabilities) | ANAR_CSMA);
+			  mii_bmsr_media_to_anar(mii) | ANAR_CSMA);
 		PHY_WRITE(mii, MII_BMCR, BMCR_AUTOEN | BMCR_STARTNEG);
 	}
 
@@ -239,10 +239,10 @@ mii_media_from_bmcr(bmcr)
  * of media names.  Does not print a newline.
  */
 void
-mii_add_media(mii, bmsr, instance)
-	struct mii_data *mii;
-	int bmsr, instance;
+mii_add_media(struct mii_softc *sc, int bmsr)
 {
+	struct mii_data *mii = sc->mii_pdata;
+	int instance = sc->mii_inst;
 	const char *sep = "";
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
@@ -278,10 +278,12 @@ mii_add_media(mii, bmsr, instance)
 		    BMCR_S100);
 		PRINT("100baseT4");
 	}
-	if (bmsr & BMSR_1000) {
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, instance),
-		    BMCR_S1000);
-		PRINT("1000baseT-FDX");
+	if (sc->mii_flags & MIIF_IS_1000X) {
+		if (bmsr & BMSR_1000) {
+			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX,
+			    instance), BMCR_S1000);
+			PRINT("1000baseT-FDX");
+		}
 	}
 	if (bmsr & BMSR_ANEG) {
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, instance),
@@ -293,8 +295,9 @@ mii_add_media(mii, bmsr, instance)
 }
 
 int
-mii_bmsr_media_to_anar(int bmsr)
+mii_bmsr_media_to_anar(struct mii_softc *mii)
 {
+	int bmsr = mii->mii_capabilities;
  	int res = 0;
 
 	if (bmsr & BMSR_100T4)
@@ -307,8 +310,10 @@ mii_bmsr_media_to_anar(int bmsr)
 		res |= ANAR_10_FD;
 	if (bmsr & BMSR_10THDX)
 		res |= ANAR_10;
-	if (bmsr & BMSR_1000)
-		res |= ANAR_1000_FD;
+	if (mii->mii_flags & MIIF_IS_1000X) {
+		if (bmsr & BMSR_1000)
+			res |= ANAR_1000_FD;
+	}
 	return (res);
 }
 

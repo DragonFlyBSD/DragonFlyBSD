@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/dcphy.c,v 1.2.2.2 2000/10/14 00:44:40 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/dcphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/dcphy.c,v 1.6 2005/10/24 15:55:32 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/mii/dcphy.c,v 1.2.2.2 2000/10/14 00:44:40 wpaul Exp $
  */
@@ -196,7 +196,7 @@ static int dcphy_attach(dev)
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(mii, sc->mii_capabilities, sc->mii_inst);
+		mii_add_media(sc, sc->mii_capabilities);
 	printf("\n");
 #undef ADD
 
