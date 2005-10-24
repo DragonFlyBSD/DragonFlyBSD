@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutexattr.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutexattr.c,v 1.2 2005/10/24 23:58:01 davidxu Exp $
  */
 
 /*
@@ -165,4 +165,30 @@ _pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
 		ret = 0;
 	}
 	return(ret);
+}
+
+int
+_pthread_mutexattr_getpshared(const pthread_mutexattr_t *attr,
+	int *pshared)
+{
+
+	if (attr == NULL || *attr == NULL)
+		return (EINVAL);
+
+	*pshared = PTHREAD_PROCESS_PRIVATE;
+	return (0);
+}
+
+int
+_pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared)
+{
+
+	if (attr == NULL || *attr == NULL)
+		return (EINVAL);
+
+	/* Only PTHREAD_PROCESS_PRIVATE is supported. */
+	if (pshared != PTHREAD_PROCESS_PRIVATE)
+		return (EINVAL);
+
+	return (0);
 }
