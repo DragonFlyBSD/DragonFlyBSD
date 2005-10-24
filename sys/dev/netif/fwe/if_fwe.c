@@ -32,10 +32,11 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.19 2005/08/29 10:19:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.20 2005/10/24 08:06:15 sephe Exp $
  */
 
 #include "opt_inet.h"
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/conf.h>

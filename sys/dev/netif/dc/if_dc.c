@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.44 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.45 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -87,6 +87,8 @@
  * the cards I've seen use an MII transceiver, probably because the
  * AX88140A doesn't support internal NWAY.
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

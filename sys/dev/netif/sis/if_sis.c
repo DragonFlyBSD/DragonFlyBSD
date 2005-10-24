@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.27 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.28 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -57,6 +57,8 @@
  * The only downside to this chipset is that RX descriptors must be
  * longword aligned.
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

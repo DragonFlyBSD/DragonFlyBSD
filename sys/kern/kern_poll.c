@@ -25,8 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.20 2005/10/20 15:54:55 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.21 2005/10/24 08:06:16 sephe Exp $
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.41 2005/08/22 18:29:52 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.42 2005/10/24 08:06:16 sephe Exp $
 #
 #        On the handling of kernel options
 #
@@ -513,7 +513,7 @@ PCFCLOCK_VERBOSE	opt_pcfclock.h
 PCFCLOCK_MAX_RETRIES	opt_pcfclock.h
 
 # Polling device handling
-DEVICE_POLLING		opt_global.h
+DEVICE_POLLING		opt_polling.h
 
 # options for ubsec driver
 UBSEC_DEBUG		opt_ubsec.h

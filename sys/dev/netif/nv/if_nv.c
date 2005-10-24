@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.19 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.20 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -73,6 +73,8 @@
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

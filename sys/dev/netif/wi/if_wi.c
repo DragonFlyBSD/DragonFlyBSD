@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.30 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.31 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -66,6 +66,8 @@
 
 #define WI_HERMES_AUTOINC_WAR	/* Work around data write autoinc bug. */
 #define WI_HERMES_STATS_WAR	/* Work around stats counter bug. */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>

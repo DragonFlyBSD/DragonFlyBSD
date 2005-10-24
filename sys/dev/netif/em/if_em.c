@@ -34,7 +34,9 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.40 2005/10/17 06:18:36 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.41 2005/10/24 08:06:15 sephe Exp $*/
+
+#include "opt_polling.h"
 
 #include <dev/netif/em/if_em.h>
 #include <net/ifq_var.h>

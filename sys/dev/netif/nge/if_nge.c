@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.31 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.32 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -87,6 +87,8 @@
  * To work around the latter problem, TX checksum offload is disabled
  * if the user selects an MTU larger than 8152 (8170 - 18).
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

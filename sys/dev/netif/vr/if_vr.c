@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.36 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.37 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -59,6 +59,8 @@
  * at longword boundaries, so we have to do a buffer copy before
  * transmission.
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

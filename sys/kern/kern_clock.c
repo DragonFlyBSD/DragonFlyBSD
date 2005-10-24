@@ -70,10 +70,11 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.49 2005/10/13 00:45:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.50 2005/10/24 08:06:16 sephe Exp $
  */
 
 #include "opt_ntp.h"
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

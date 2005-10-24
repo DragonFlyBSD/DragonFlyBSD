@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.30 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.31 2005/10/24 08:06:16 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -104,6 +104,16 @@ struct	ifqueue {
 	int	ifq_maxlen;
 	int	ifq_drops;
 };
+
+/*
+ * Note of DEVICE_POLLING
+ * 1) Any file(*.c) that depends on DEVICE_POLLING supports in this
+ *    file should include opt_polling.h at its beginning.
+ * 2) When struct changes, which are conditioned by DEVICE_POLLING,
+ *    are to be introduced, please keep the struct's size and layout
+ *    same, no matter whether DEVICE_POLLING is defined or not.
+ *    See ifnet.if_poll and ifnet.if_poll_unused for example.
+ */
 
 #ifdef DEVICE_POLLING
 enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,

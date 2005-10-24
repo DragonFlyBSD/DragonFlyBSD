@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.39 2005/10/21 06:42:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.40 2005/10/24 08:06:16 sephe Exp $
  */
 
 /*
@@ -98,6 +98,8 @@
  * support the PCI "boomerang" chips even though they work with the
  * "vortex" driver in order to obtain better performance.
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

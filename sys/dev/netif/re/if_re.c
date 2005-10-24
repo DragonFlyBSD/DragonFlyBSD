@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.16 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.17 2005/10/24 08:06:15 sephe Exp $
  */
 
 /*
@@ -110,6 +110,8 @@
  * jumbo frames larger than 7.5K, so the max MTU possible with this
  * driver is 7500 bytes.
  */
+
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>

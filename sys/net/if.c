@@ -32,12 +32,13 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.40 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.41 2005/10/24 08:06:16 sephe Exp $
  */
 
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
+#include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/malloc.h>
