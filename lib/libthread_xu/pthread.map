@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2004/09/26 06:50:14 deischen Exp $
-# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.6 2005/10/12 23:53:52 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.7 2005/10/24 23:59:21 davidxu Exp $
 
 LIBTHREAD_1_0 {
 global:
@@ -110,11 +110,13 @@ global:
 	_pthread_mutexattr_getkind_np;
 	_pthread_mutexattr_getprioceiling;
 	_pthread_mutexattr_getprotocol;
+	_pthread_mutexattr_getpshared;
 	_pthread_mutexattr_gettype;
 	_pthread_mutexattr_init;
 	_pthread_mutexattr_setkind_np;
 	_pthread_mutexattr_setprioceiling;
 	_pthread_mutexattr_setprotocol;
+	_pthread_mutexattr_setpshared;
 	_pthread_mutexattr_settype;
 	_pthread_once;
 	_pthread_resume_all_np;
@@ -266,11 +268,13 @@ global:
 	pthread_mutexattr_getkind_np;
 	pthread_mutexattr_getprioceiling;
 	pthread_mutexattr_getprotocol;
+	pthread_mutexattr_getpshared;
 	pthread_mutexattr_gettype;
 	pthread_mutexattr_init;
 	pthread_mutexattr_setkind_np;
 	pthread_mutexattr_setprioceiling;
 	pthread_mutexattr_setprotocol;
+	pthread_mutexattr_setpshared;
 	pthread_mutexattr_settype;
 	pthread_once;
 	pthread_resume_all_np;
