@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.6 2005/02/28 12:57:43 joerg Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.7 2005/10/24 19:59:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -334,6 +334,15 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 			_kvm_err(kd, 0, "invalid address (%x)", kva);
 			return (-1);
 		}
+
+		/*
+		 * Try to pre-fault the user memory to reduce instances of
+		 * races within the kernel.  XXX workaround for kernel bug
+		 * where kernel does a sanity check, but user faults during
+		 * the copy can block and race against another kernel entity
+		 * unmapping the memory in question.
+		 */
+		bzero(buf, len);
 		cc = read(kd->vmfd, buf, len);
 		if (cc < 0) {
 			_kvm_syserr(kd, 0, "kvm_read");
@@ -356,6 +365,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 				_kvm_syserr(kd, 0, _PATH_MEM);
 				break;
 			}
+			bzero(cp, cc);
 			cc = read(kd->pmfd, cp, cc);
 			if (cc < 0) {
 				_kvm_syserr(kd, kd->program, "kvm_read");
