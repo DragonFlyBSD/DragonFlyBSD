@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.50 2005/10/24 17:14:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.51 2005/10/24 20:12:11 dillon Exp $
  */
 
 /*
@@ -2339,6 +2339,7 @@ loop:
 		 */
 		if (bp->b_vp != vp || bp->b_lblkno != blkno) {
 			printf("Warning buffer %p (vp %p lblkno %d) was recycled\n", bp, vp, (int)blkno);
+			BUF_UNLOCK(bp);
 			goto loop;
 		}
 
