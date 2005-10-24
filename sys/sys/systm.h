@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.31 2005/06/16 21:12:21 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.32 2005/10/24 21:57:54 eirikn Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -301,6 +301,7 @@ void	wakeup (void *chan);
 void	wakeup_one (void *chan);
 void	wakeup_domain (void *chan, int domain);
 void	wakeup_domain_one (void *chan, int domain);
+void	wakeup_oncpu (void *, int, int);
 
 /*
  * Common `dev_t' stuff are declared here to avoid #include poisoning

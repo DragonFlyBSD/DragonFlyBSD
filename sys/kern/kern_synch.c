@@ -37,13 +37,14 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.48 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.49 2005/10/24 21:57:55 eirikn Exp $
  */
 
 #include "opt_ktrace.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/signalvar.h>
@@ -51,6 +52,8 @@
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
+#include <sys/msgport.h>
+#include <sys/msgport2.h>
 #ifdef KTRACE
 #include <sys/uio.h>
 #include <sys/ktrace.h>
@@ -209,8 +212,43 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
  * of 2.  Shift right by 8, i.e. drop the bottom 256 worth.
  */
 #define TABLESIZE	128
-static TAILQ_HEAD(slpquehead, thread) slpque[TABLESIZE];
+static TAILQ_HEAD(slpquehead, thread) slpque[MAXCPU][TABLESIZE];
 #define LOOKUP(x)	(((intptr_t)(x) >> 8) & (TABLESIZE - 1))
+
+static void _wakeup_oncpu(void *, int, int);
+static void unsleep_oncpu(struct thread *);
+#ifdef SMP
+static int _wakeup_handler(struct lwkt_msg *);
+void wakeup_service_loop(void *);
+
+lwkt_port wakeup_afree_rport;
+struct thread wakeup_cpu[MAXCPU];
+
+struct msg_wakeup {
+	struct lwkt_msg wu_lmsg;
+	/* unsleep */
+	struct thread *wu_td;
+	/* wakeup */
+	void *wu_ident;
+	int wu_domain;
+	int wu_count;
+};
+
+void
+wakeup_service_loop(void *arg)
+{
+	struct msg_wakeup *msg;
+
+	while ((msg = lwkt_waitport(&curthread->td_msgport, NULL)))
+		msg->wu_lmsg.ms_cmd.cm_func(&msg->wu_lmsg);
+}
+
+static void
+wakeup_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+	free(msg, M_LWKTMSG);
+}
+#endif
 
 /*
  * General scheduler initialization.  We force a reschedule 25 times
@@ -219,12 +257,22 @@ static TAILQ_HEAD(slpquehead, thread) slpque[TABLESIZE];
 void
 sleepinit(void)
 {
-	int i;
+	int i, j;
 
 	sched_quantum = (hz + 24) / 25;
 	hogticks = 2 * sched_quantum;
-	for (i = 0; i < TABLESIZE; i++)
-		TAILQ_INIT(&slpque[i]);
+	for (i = 0; i < ncpus; i++) {
+		for (j = 0; j < TABLESIZE; j++)
+			TAILQ_INIT(&slpque[i][j]);
+#ifdef SMP
+		lwkt_create(wakeup_service_loop, NULL, NULL, &wakeup_cpu[i],
+			    0, i, "wakeup_cpu %d", i);
+#endif
+	}
+#ifdef SMP
+	lwkt_initport(&wakeup_afree_rport, NULL);
+	wakeup_afree_rport.mp_replyport = wakeup_autofree_reply;
+#endif
 }
 
 /*
@@ -288,7 +336,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		p->p_slptime = 0;
 	}
 	lwkt_deschedule_self(td);
-	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
+	TAILQ_INSERT_TAIL(&slpque[mycpu->gd_cpuid][id], td, td_threadq);
 	if (timo) {
 		callout_init(&thandle);
 		callout_reset(&thandle, timo, endtsleep, td);
@@ -393,25 +441,99 @@ endtsleep(void *arg)
 	crit_exit();
 }
 
+void
+unsleep_oncpu(struct thread *td)
+{
+	crit_enter();
+	if (td->td_wchan) {
+		TAILQ_REMOVE(&slpque[td->td_gd->gd_cpuid][LOOKUP(td->td_wchan)], td, td_threadq);
+		td->td_wchan = NULL;
+	}
+	crit_exit();
+}
+
+#ifdef SMP
+static int
+unsleep_handler(struct lwkt_msg *msg)
+{
+	struct msg_wakeup *msg1 = (struct msg_wakeup *)msg;
+
+	unsleep_oncpu(msg1->wu_td);
+	lwkt_replymsg(&msg1->wu_lmsg, 0);
+	return (EASYNC);
+}
+#endif
+
 /*
  * Remove a process from its wait queue
  */
 void
 unsleep(struct thread *td)
 {
-	crit_enter();
-	if (td->td_wchan) {
-		TAILQ_REMOVE(&slpque[LOOKUP(td->td_wchan)], td, td_threadq);
-		td->td_wchan = NULL;
+#ifdef SMP
+	struct msg_wakeup *msg;
+
+	if (td->td_gd->gd_cpuid == mycpu->gd_cpuid) {
+		unsleep_oncpu(td);
+		return;
 	}
-	crit_exit();
+	msg = malloc(sizeof(struct msg_wakeup), M_LWKTMSG, M_INTWAIT);
+	lwkt_initmsg(&msg->wu_lmsg, &wakeup_afree_rport, 0,
+		     lwkt_cmd_func(unsleep_handler),
+		     lwkt_cmd_op_none);
+	msg->wu_td = td;
+
+	lwkt_sendmsg(&wakeup_cpu[td->td_gd->gd_cpuid].td_msgport, &msg->wu_lmsg);
+#else
+	unsleep_oncpu(td);
+#endif
 }
+
+static void
+_wakeup(void *ident, int domain, int count)
+{
+#ifdef SMP
+	int i;
+
+	for (i = 0; i < ncpus; i++) {
+		struct msg_wakeup *msg;
+
+		if (i == mycpu->gd_cpuid) {
+			_wakeup_oncpu(ident, domain, count);
+			continue;
+		}
+		msg = malloc(sizeof(struct msg_wakeup), M_LWKTMSG, M_INTWAIT);
+		lwkt_initmsg(&msg->wu_lmsg, &wakeup_afree_rport, 0,
+			     lwkt_cmd_func(_wakeup_handler),
+			     lwkt_cmd_op_none);
+		msg->wu_ident = ident;
+		msg->wu_domain = domain;
+		msg->wu_count = count;
+		
+		lwkt_sendmsg(&wakeup_cpu[i].td_msgport, &msg->wu_lmsg);
+	}
+#else
+	_wakeup_oncpu(ident, domain, count);
+#endif
+}
+
+#ifdef SMP
+static int
+_wakeup_handler(struct lwkt_msg *msg)
+{
+	struct msg_wakeup *msg1 = (struct msg_wakeup *)msg;
+
+	_wakeup_oncpu(msg1->wu_ident, msg1->wu_domain, msg1->wu_count);
+	lwkt_replymsg(&msg1->wu_lmsg, 0);
+	return (EASYNC);
+}
+#endif
 
 /*
  * Make all processes sleeping on the specified identifier runnable.
  */
 static void
-_wakeup(void *ident, int domain, int count)
+_wakeup_oncpu(void *ident, int domain, int count)
 {
 	struct slpquehead *qp;
 	struct thread *td;
@@ -420,7 +542,7 @@ _wakeup(void *ident, int domain, int count)
 	int id = LOOKUP(ident);
 
 	crit_enter();
-	qp = &slpque[id];
+	qp = &slpque[mycpu->gd_cpuid][id];
 restart:
 	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
 		ntd = TAILQ_NEXT(td, td_threadq);
@@ -451,6 +573,12 @@ restart:
 		}
 	}
 	crit_exit();
+}
+
+void
+wakeup_oncpu(void *ident, int domain, int count)
+{
+	_wakeup_oncpu(ident, domain, count);
 }
 
 void
