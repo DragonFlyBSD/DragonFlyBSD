@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.49 2005/08/25 20:11:18 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.50 2005/10/24 17:14:04 dillon Exp $
  */
 
 /*
@@ -2318,16 +2318,37 @@ loop:
 
 	if ((bp = gbincore(vp, blkno))) {
 		/*
-		 * Buffer is in-core.  If the buffer is not busy, it must
-		 * be on a queue.
+		 * The buffer was found in the cache, but we need to lock it.
+		 * Even with LK_NOWAIT the lockmgr may break our critical
+		 * section, so double-check the validity of the buffer
+		 * once the lock has been obtained.
 		 */
-
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
 			if (BUF_TIMELOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL,
 			    "getblk", slpflag, slptimeo) == ENOLCK)
 				goto loop;
 			crit_exit();
 			return (struct buf *) NULL;
+		}
+
+		/*
+		 * Once the buffer has been locked, make sure we didn't race
+		 * a buffer recyclement.  Buffers that are no longer hashed
+		 * will have b_vp == NULL, so this takes care of that check
+		 * as well.
+		 */
+		if (bp->b_vp != vp || bp->b_lblkno != blkno) {
+			printf("Warning buffer %p (vp %p lblkno %d) was recycled\n", bp, vp, (int)blkno);
+			goto loop;
+		}
+
+		/*
+		 * Make sure that B_INVAL buffers do not have a cached
+		 * block number translation.
+		 */
+		if ((bp->b_flags & B_INVAL) && (bp->b_blkno != bp->b_lblkno)) {
+			printf("Warning invalid buffer %p (vp %p lblkno %d) did not have cleared b_blkno cache\n", bp, vp, (int)blkno);
+			bp->b_blkno = bp->b_lblkno;
 		}
 
 		/*
