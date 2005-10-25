@@ -28,7 +28,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.4 2005/10/25 12:14:52 davidxu Exp $
  */
 
 /*
@@ -100,6 +100,7 @@ extern int __pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds,
 extern unsigned int __sleep(unsigned int);
 extern int __system(const char *);
 extern int __tcdrain(int);
+extern int __usleep(unsigned int);
 extern pid_t __wait(int *);
 extern pid_t __sys_wait4(pid_t, int *, int, struct rusage *);
 extern pid_t __waitpid(pid_t, int *, int);
@@ -521,6 +522,22 @@ _tcdrain(int fd)
 	ret = __tcdrain(fd);
 	_thr_cancel_leave(curthread, oldcancel);
 
+	return (ret);
+}
+
+__weak_reference(___usleep, usleep);
+
+int
+___usleep(unsigned int useconds)
+{
+	struct pthread *curthread = tls_get_curthread();
+	int		oldcancel;
+	int		ret;
+
+	oldcancel = _thr_cancel_enter(curthread);
+	ret = __usleep(useconds);
+	_thr_cancel_leave(curthread, oldcancel);
+	
 	return (ret);
 }
 

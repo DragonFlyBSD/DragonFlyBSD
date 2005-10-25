@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2004/09/26 06:50:14 deischen Exp $
-# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.7 2005/10/24 23:59:21 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.8 2005/10/25 12:14:52 davidxu Exp $
 
 LIBTHREAD_1_0 {
 global:
@@ -343,6 +343,7 @@ global:
 	sleep;
 	system;
 	tcdrain;
+	usleep;
 	vfork;
 	wait;
 	wait4;
