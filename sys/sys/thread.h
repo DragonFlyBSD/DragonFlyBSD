@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.70 2005/10/13 00:02:23 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.71 2005/10/25 17:26:58 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -152,15 +152,17 @@ typedef struct lwkt_wait {
  * is called with both the data and an interrupt frame, but the ipi function
  * that is registered might only declare a data argument.
  */
-typedef void (*ipifunc_t)(void *arg);
-typedef void (*ipifunc2_t)(void *arg, struct intrframe *frame);
+typedef void (*ipifunc1_t)(void *arg);
+typedef void (*ipifunc2_t)(void *arg, int arg2);
+typedef void (*ipifunc3_t)(void *arg, int arg2, struct intrframe *frame);
 
 typedef struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
     int		ip_xindex;      /* written by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
-    ipifunc2_t	ip_func[MAXCPUFIFO];
-    void	*ip_arg[MAXCPUFIFO];
+    ipifunc3_t	ip_func[MAXCPUFIFO];
+    void	*ip_arg1[MAXCPUFIFO];
+    int		ip_arg2[MAXCPUFIFO];
     u_int	ip_npoll;	/* synchronization to avoid excess IPIs */
 } lwkt_ipiq;
 
@@ -394,23 +396,35 @@ extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
 extern int  lwkt_checkpri_self(void);
 extern void lwkt_setcpu_self(struct globaldata *rgd);
-extern int  lwkt_send_ipiq(struct globaldata *targ, ipifunc_t func, void *arg);
-extern int  lwkt_send_ipiq_passive(struct globaldata *targ, ipifunc_t func, void *arg);
-extern int  lwkt_send_ipiq_nowait(struct globaldata *targ, ipifunc_t func, void *arg);
-extern int  lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg);
-extern int  lwkt_send_ipiq_mask(cpumask_t mask, ipifunc_t func, void *arg);
+
+#ifdef SMP
+
+extern int  lwkt_send_ipiq3(struct globaldata *targ, ipifunc3_t func, 
+				void *arg1, int arg2);
+extern int  lwkt_send_ipiq3_passive(struct globaldata *targ, ipifunc3_t func,
+				void *arg1, int arg2);
+extern int  lwkt_send_ipiq3_nowait(struct globaldata *targ, ipifunc3_t func,
+				void *arg1, int arg2);
+extern int  lwkt_send_ipiq3_bycpu(int dcpu, ipifunc3_t func, 
+				void *arg1, int arg2);
+extern int  lwkt_send_ipiq3_mask(cpumask_t mask, ipifunc3_t func,
+				void *arg1, int arg2);
 extern void lwkt_wait_ipiq(struct globaldata *targ, int seq);
 extern int  lwkt_seq_ipiq(struct globaldata *targ);
 extern void lwkt_process_ipiq(void);
 #ifdef _KERNEL
 extern void lwkt_process_ipiq_frame(struct intrframe frame);
 #endif
+extern void lwkt_smp_stopped(void);
+
+#endif /* SMP */
+
 extern void lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *data);
 extern void lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *data);
 extern void lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll);
 extern void lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll);
 extern void lwkt_cpusync_finish(lwkt_cpusync_t poll);
-extern void lwkt_smp_stopped(void);
+
 extern void crit_panic(void);
 extern struct lwp *lwkt_preempted_proc(void);
 

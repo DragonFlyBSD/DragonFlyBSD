@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.33 2005/07/13 16:04:00 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.34 2005/10/25 17:26:54 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -94,8 +94,11 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
  *				MESSAGE FUNCTIONS			*
  ************************************************************************/
 
+#ifdef SMP
 static void lwkt_replyport_remote(lwkt_msg_t msg);
 static void lwkt_putport_remote(lwkt_msg_t msg);
+static void lwkt_abortmsg_remote(lwkt_msg_t msg);
+#endif
 
 /*
  * lwkt_sendmsg()
@@ -308,9 +311,15 @@ _lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg, int force)
 		lwkt_schedule(td);
 	} 
     } else {
-	lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_replyport_remote, msg);
+#ifdef SMP
+	lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_replyport_remote, msg);
+#else
+	panic("lwkt_replyport: thread %p has bad gd pointer", td);
+#endif
     }
 }
+
+#ifdef SMP
 
 /*
  * This function completes reply processing for the default case in the
@@ -322,6 +331,8 @@ lwkt_replyport_remote(lwkt_msg_t msg)
 {
     _lwkt_replyport(msg->ms_reply_port, msg, 1);
 }
+
+#endif
 
 /*
  * This function is called in the context of the target to reply a message.
@@ -404,9 +415,15 @@ _lwkt_putport(lwkt_port_t port, lwkt_msg_t msg, int force)
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(td);
     } else {
-	lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_putport_remote, msg);
+#ifdef SMP
+	lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_putport_remote, msg);
+#else
+	panic("lwkt_putport: thread %p has bad gd pointer", td);
+#endif
     }
 }
+
+#ifdef SMP
 
 static
 void
@@ -428,6 +445,8 @@ lwkt_putport_remote(lwkt_msg_t msg)
 #endif
     _lwkt_putport(msg->ms_target_port, msg, 1);
 }
+
+#endif
 
 int
 lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg)
@@ -481,7 +500,6 @@ lwkt_forwardmsg(lwkt_port_t port, lwkt_msg_t msg)
  *	NOTE!  Since an aborted message is requeued all message processing
  *	loops should check the MSGF_ABORTED flag.
  */
-static void lwkt_abortmsg_remote(lwkt_msg_t msg);
 
 void
 lwkt_abortmsg(lwkt_msg_t msg)
@@ -525,13 +543,19 @@ lwkt_abortmsg(lwkt_msg_t msg)
 	 */
 	td = port->mp_td;
 	if (td && td->td_gd != mycpu) {
-	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_abortmsg_remote, msg);
+#ifdef SMP
+	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_abortmsg_remote, msg);
+#else
+	    panic("lwkt_abortmsg: thread %p has bad gd pointer", td);
+#endif
 	} else {
 	    port->mp_abortport(port, msg);
 	}
     }
     crit_exit();
 }
+
+#ifdef SMP
 
 static
 void
@@ -547,11 +571,13 @@ lwkt_abortmsg_remote(lwkt_msg_t msg)
     cpu_ccfence();	/* don't let the compiler reload ms_*_port */
     td = port->mp_td;
     if (td->td_gd != mycpu) {
-	lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_abortmsg_remote, msg);
+	lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_abortmsg_remote, msg);
     } else {
 	port->mp_abortport(port, msg);
     }
 }
+
+#endif
 
 /*
  * The mp_abortport function is called when the abort has finally caught up

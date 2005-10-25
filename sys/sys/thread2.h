@@ -8,7 +8,7 @@
  * on a different cpu will not be immediately scheduled by a yield() on
  * this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.23 2005/07/26 20:53:55 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.24 2005/10/25 17:26:58 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -224,6 +224,79 @@ lwkt_getpri_self(void)
 {
     return(lwkt_getpri(curthread));
 }
+
+#ifdef SMP
+
+/*
+ * IPIQ messaging wrappers.  IPIQ remote functions are passed three arguments:
+ * a void * pointer, an integer, and a pointer to the trap frame (or NULL if
+ * the trap frame is not known).  However, we wish to provide opaque 
+ * interfaces for simpler callbacks... the basic IPI messaging function as
+ * used by the kernel takes a single argument.
+ */
+static __inline int
+lwkt_send_ipiq(globaldata_t target, ipifunc1_t func, void *arg)
+{
+    return(lwkt_send_ipiq3(target, (ipifunc3_t)func, arg, 0));
+}
+
+static __inline int
+lwkt_send_ipiq2(globaldata_t target, ipifunc1_t func, void *arg1, int arg2)
+{
+    return(lwkt_send_ipiq3(target, (ipifunc3_t)func, arg1, arg2));
+}
+
+static __inline int
+lwkt_send_ipiq_mask(u_int32_t mask, ipifunc1_t func, void *arg)
+{
+    return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg, 0));
+}
+
+static __inline int
+lwkt_send_ipiq2_mask(u_int32_t mask, ipifunc1_t func, void *arg1, int arg2)
+{
+    return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg1, arg2));
+}
+
+static __inline int
+lwkt_send_ipiq_nowait(globaldata_t target, ipifunc1_t func, void *arg)
+{
+    return(lwkt_send_ipiq3_nowait(target, (ipifunc3_t)func, arg, 0));
+}
+
+static __inline int
+lwkt_send_ipiq2_nowait(globaldata_t target, ipifunc1_t func, 
+		       void *arg1, int arg2)
+{
+    return(lwkt_send_ipiq3_nowait(target, (ipifunc3_t)func, arg1, arg2));
+}
+
+static __inline int
+lwkt_send_ipiq_passive(globaldata_t target, ipifunc1_t func, void *arg)
+{
+    return(lwkt_send_ipiq3_passive(target, (ipifunc3_t)func, arg, 0));
+}
+
+static __inline int
+lwkt_send_ipiq2_passive(globaldata_t target, ipifunc1_t func, 
+		       void *arg1, int arg2)
+{
+    return(lwkt_send_ipiq3_passive(target, (ipifunc3_t)func, arg1, arg2));
+}
+
+static __inline int
+lwkt_send_ipiq_bycpu(int dcpu, ipifunc1_t func, void *arg)
+{
+    return(lwkt_send_ipiq3_bycpu(dcpu, (ipifunc3_t)func, arg, 0));
+}
+
+static __inline int
+lwkt_send_ipiq2_bycpu(int dcpu, ipifunc2_t func, void *arg1, int arg2)
+{
+    return(lwkt_send_ipiq3_bycpu(dcpu, (ipifunc3_t)func, arg1, arg2));
+}
+
+#endif
 
 #endif
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.26 2005/10/15 03:23:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.27 2005/10/25 17:26:54 dillon Exp $
  *
  */
 
@@ -380,11 +380,15 @@ unregister_randintr(int intr)
  * We are NOT in a critical section, which will allow the scheduled
  * interrupt to preempt us.  The MP lock might *NOT* be held here.
  */
+#ifdef SMP
+
 static void
 sched_ithd_remote(void *arg)
 {
     sched_ithd((int)arg);
 }
+
+#endif
 
 void
 sched_ithd(int intr)
@@ -398,6 +402,7 @@ sched_ithd(int intr)
 	if (info->i_reclist == NULL) {
 	    printf("sched_ithd: stray interrupt %d\n", intr);
 	} else {
+#ifdef SMP
 	    if (info->i_thread.td_gd == mycpu) {
 		info->i_running = 1;
 		/* preemption handled internally */
@@ -406,6 +411,11 @@ sched_ithd(int intr)
 		lwkt_send_ipiq(info->i_thread.td_gd, 
 				sched_ithd_remote, (void *)intr);
 	    }
+#else
+	    info->i_running = 1;
+	    /* preemption handled internally */
+	    lwkt_schedule(&info->i_thread);
+#endif
 	}
     } else {
 	printf("sched_ithd: stray interrupt %d\n", intr);

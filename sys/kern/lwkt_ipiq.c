@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.15 2005/07/23 07:17:42 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.16 2005/10/25 17:26:54 dillon Exp $
  */
 
 /*
@@ -142,7 +142,8 @@ KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
 
 #ifdef SMP
 
-static int lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame);
+static int lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
+				  struct intrframe *frame);
 static void lwkt_cpusync_remote1(lwkt_cpusync_t poll);
 static void lwkt_cpusync_remote2(lwkt_cpusync_t poll);
 
@@ -165,7 +166,7 @@ static void lwkt_cpusync_remote2(lwkt_cpusync_t poll);
  * Need not be called from a critical section.
  */
 int
-lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
+lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 {
     lwkt_ipiq_t ip;
     int windex;
@@ -174,7 +175,7 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
     logipiq(send_norm, func, arg, gd, target);
 
     if (target == gd) {
-	func(arg);
+	func(arg1, arg2, NULL);
 	return(0);
     } 
     crit_enter();
@@ -209,8 +210,9 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
      * Queue the new message
      */
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
-    ip->ip_func[windex] = (ipifunc2_t)func;
-    ip->ip_arg[windex] = arg;
+    ip->ip_func[windex] = func;
+    ip->ip_arg1[windex] = arg1;
+    ip->ip_arg2[windex] = arg2;
     cpu_sfence();
     ++ip->ip_windex;
     --gd->gd_intr_nesting_level;
@@ -241,7 +243,8 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
  * Need not be called from a critical section.
  */
 int
-lwkt_send_ipiq_passive(globaldata_t target, ipifunc_t func, void *arg)
+lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
+			void *arg1, int arg2)
 {
     lwkt_ipiq_t ip;
     int windex;
@@ -282,8 +285,9 @@ lwkt_send_ipiq_passive(globaldata_t target, ipifunc_t func, void *arg)
      * Queue the new message
      */
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
-    ip->ip_func[windex] = (ipifunc2_t)func;
-    ip->ip_arg[windex] = arg;
+    ip->ip_func[windex] = func;
+    ip->ip_arg1[windex] = arg1;
+    ip->ip_arg2[windex] = arg2;
     cpu_sfence();
     ++ip->ip_windex;
     --gd->gd_intr_nesting_level;
@@ -303,7 +307,8 @@ lwkt_send_ipiq_passive(globaldata_t target, ipifunc_t func, void *arg)
  * when we've gotten rid of the other general IPIs.
  */
 int
-lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
+lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func, 
+		       void *arg1, int arg2)
 {
     lwkt_ipiq_t ip;
     int windex;
@@ -312,7 +317,7 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
     logipiq(send_nbio, func, arg, gd, target);
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     if (target == gd) {
-	func(arg);
+	func(arg1, arg2, NULL);
 	return(0);
     } 
     ++ipiq_count;
@@ -323,8 +328,9 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
 	return(ENOENT);
     }
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
-    ip->ip_func[windex] = (ipifunc2_t)func;
-    ip->ip_arg[windex] = arg;
+    ip->ip_func[windex] = func;
+    ip->ip_arg1[windex] = arg1;
+    ip->ip_arg2[windex] = arg2;
     cpu_sfence();
     ++ip->ip_windex;
 
@@ -346,9 +352,9 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc_t func, void *arg)
  * deprecated, used only by fast int forwarding.
  */
 int
-lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg)
+lwkt_send_ipiq3_bycpu(int dcpu, ipifunc3_t func, void *arg1, int arg2)
 {
-    return(lwkt_send_ipiq(globaldata_find(dcpu), func, arg));
+    return(lwkt_send_ipiq3(globaldata_find(dcpu), func, arg1, arg2));
 }
 
 /*
@@ -356,7 +362,7 @@ lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg)
  * The message will not be sent to stopped cpus.
  */
 int
-lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
+lwkt_send_ipiq3_mask(u_int32_t mask, ipifunc3_t func, void *arg1, int arg2)
 {
     int cpuid;
     int count = 0;
@@ -364,7 +370,7 @@ lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
     mask &= ~stopped_cpus;
     while (mask) {
 	cpuid = bsfl(mask);
-	lwkt_send_ipiq(globaldata_find(cpuid), func, arg);
+	lwkt_send_ipiq3(globaldata_find(cpuid), func, arg1, arg2);
 	mask &= ~(1 << cpuid);
 	++count;
     }
@@ -446,13 +452,13 @@ again:
 	    sgd = globaldata_find(n);
 	    ip = sgd->gd_ipiq;
 	    if (ip != NULL) {
-		while (lwkt_process_ipiq1(sgd, &ip[gd->gd_cpuid], NULL))
+		while (lwkt_process_ipiq_core(sgd, &ip[gd->gd_cpuid], NULL))
 		    ;
 	    }
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq1(gd, &gd->gd_cpusyncq, NULL)) {
+	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, NULL)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
 	    need_ipiq();
@@ -475,13 +481,13 @@ again:
 	    sgd = globaldata_find(n);
 	    ip = sgd->gd_ipiq;
 	    if (ip != NULL) {
-		while (lwkt_process_ipiq1(sgd, &ip[gd->gd_cpuid], &frame))
+		while (lwkt_process_ipiq_core(sgd, &ip[gd->gd_cpuid], &frame))
 		    ;
 	    }
 	}
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
-	if (lwkt_process_ipiq1(gd, &gd->gd_cpusyncq, &frame)) {
+	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, &frame)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
 	    need_ipiq();
@@ -491,12 +497,14 @@ again:
 #endif
 
 static int
-lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame)
+lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
+		       struct intrframe *frame)
 {
     int ri;
     int wi;
-    void (*copy_func)(void *data, struct intrframe *frame);
-    void *copy_arg;
+    ipifunc3_t copy_func;
+    void *copy_arg1;
+    int copy_arg2;
 
     /*
      * Obtain the current write index, which is modified by a remote cpu.
@@ -519,12 +527,13 @@ lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame)
     while (wi - (ri = ip->ip_rindex) > 0) {
 	ri &= MAXCPUFIFO_MASK;
 	copy_func = ip->ip_func[ri];
-	copy_arg = ip->ip_arg[ri];
+	copy_arg1 = ip->ip_arg1[ri];
+	copy_arg2 = ip->ip_arg2[ri];
 	cpu_mfence();
 	++ip->ip_rindex;
 	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) == ((ri + 1) & MAXCPUFIFO_MASK));
-	logipiq(receive, copy_func, copy_arg, sgd, mycpu);
-	copy_func(copy_arg, frame);
+	logipiq(receive, copy_func, copy_arg1, sgd, mycpu);
+	copy_func(copy_arg1, copy_arg2, frame);
 	cpu_sfence();
 	ip->ip_xindex = ip->ip_rindex;
 
@@ -552,25 +561,6 @@ lwkt_process_ipiq1(globaldata_t sgd, lwkt_ipiq_t ip, struct intrframe *frame)
      */
     atomic_poll_release_int(&ip->ip_npoll);
     return(wi != ip->ip_windex);
-}
-
-#else
-
-/*
- * !SMP dummy routines
- */
-
-int
-lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
-{
-    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", target->gd_cpuid, func, arg);
-    return(0); /* NOT REACHED */
-}
-
-void
-lwkt_wait_ipiq(globaldata_t target, int seq)
-{
-    panic("lwkt_wait_ipiq: UP box! (%d,%d)", target->gd_cpuid, seq);
 }
 
 #endif
@@ -653,7 +643,7 @@ lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
 #ifdef SMP
     poll->cs_maxcount = lwkt_send_ipiq_mask(
 		mask & gd->gd_other_cpus & smp_active_mask,
-		(ipifunc_t)lwkt_cpusync_remote1, poll);
+		(ipifunc1_t)lwkt_cpusync_remote1, poll);
 #endif
     if (mask & gd->gd_cpumask) {
 	if (poll->cs_run_func)
@@ -685,7 +675,7 @@ lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
 #ifdef SMP
     count = lwkt_send_ipiq_mask(
 		mask & gd->gd_other_cpus & smp_active_mask,
-		(ipifunc_t)lwkt_cpusync_remote1, poll);
+		(ipifunc1_t)lwkt_cpusync_remote1, poll);
 #endif
     if (mask & gd->gd_cpumask) {
 	if (poll->cs_run_func)
@@ -787,8 +777,9 @@ lwkt_cpusync_remote2(lwkt_cpusync_t poll)
 
 	ip = &gd->gd_cpusyncq;
 	wi = ip->ip_windex & MAXCPUFIFO_MASK;
-	ip->ip_func[wi] = (ipifunc2_t)lwkt_cpusync_remote2;
-	ip->ip_arg[wi] = poll;
+	ip->ip_func[wi] = (ipifunc3_t)(ipifunc1_t)lwkt_cpusync_remote2;
+	ip->ip_arg1[wi] = poll;
+	ip->ip_arg2[wi] = 0;
 	cpu_sfence();
 	++ip->ip_windex;
     }

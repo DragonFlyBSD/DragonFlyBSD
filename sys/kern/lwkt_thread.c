@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.83 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.84 2005/10/25 17:26:54 dillon Exp $
  */
 
 /*
@@ -1021,14 +1021,18 @@ lwkt_schedule(thread_t td)
 		    _lwkt_enqueue(td);
 		    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 		} else {
-		    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
+		    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
 		}
 #else
 		_lwkt_enqueue(td);
 		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 #endif
 	    } else {
-		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc_t)lwkt_schedule, td);
+#ifdef SMP
+		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc1_t)lwkt_schedule, td);
+#else
+		panic("bad token %p", &w->wa_token);
+#endif
 	    }
 	} else {
 	    /*
@@ -1042,7 +1046,7 @@ lwkt_schedule(thread_t td)
 		_lwkt_enqueue(td);
 		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 	    } else {
-		lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
+		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
 	    }
 #else
 	    _lwkt_enqueue(td);
@@ -1093,15 +1097,19 @@ void
 lwkt_deschedule(thread_t td)
 {
     crit_enter();
+#ifdef SMP
     if (td == curthread) {
 	_lwkt_dequeue(td);
     } else {
 	if (td->td_gd == mycpu) {
 	    _lwkt_dequeue(td);
 	} else {
-	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_deschedule, td);
+	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_deschedule, td);
 	}
     }
+#else
+    _lwkt_dequeue(td);
+#endif
     crit_exit();
 }
 
@@ -1200,7 +1208,7 @@ lwkt_setcpu_self(globaldata_t rgd)
 	lwkt_deschedule_self(td);
 	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq); /* protected by BGL */
 	TAILQ_INSERT_TAIL(&rgd->gd_tdallq, td, td_allq); /* protected by BGL */
-	lwkt_send_ipiq(rgd, (ipifunc_t)lwkt_setcpu_remote, td);
+	lwkt_send_ipiq(rgd, (ipifunc1_t)lwkt_setcpu_remote, td);
 	lwkt_switch();
 	/* we are now on the target cpu */
 	crit_exit_quick(td);
@@ -1302,11 +1310,15 @@ lwkt_signal(lwkt_wait_t w, int count)
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	td->td_wait = NULL;
 	td->td_wmesg = NULL;
+#ifdef SMP
 	if (td->td_gd == mycpu) {
 	    _lwkt_enqueue(td);
 	} else {
-	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
+	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
 	}
+#else
+	_lwkt_enqueue(td);
+#endif
     }
     crit_exit();
     lwkt_reltoken(&ilock);

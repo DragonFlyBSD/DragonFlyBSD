@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.35 2005/10/15 21:03:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.36 2005/10/25 17:26:21 dillon Exp $
  */
 
 /*
@@ -168,8 +168,10 @@ clkintr(void *dummy, void *frame_arg)
 {
 	static sysclock_t timer1_count;
 	struct globaldata *gd = mycpu;
+#ifdef SMP
 	struct globaldata *gscan;
 	int n;
+#endif
 
 	/*
 	 * SWSTROBE mode is a one-shot, the timer is no longer running
@@ -182,16 +184,22 @@ clkintr(void *dummy, void *frame_arg)
 	 * usually *ALL* of them.  We need a better way to do this.
 	 */
 	timer1_count = sys_cputimer->count();
+#ifdef SMP
 	for (n = 0; n < ncpus; ++n) {
 	    gscan = globaldata_find(n);
 	    if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
 		continue;
 	    if (gscan != gd) {
-		lwkt_send_ipiq(gscan, (ipifunc_t)systimer_intr, &timer1_count);
+		lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr, 
+				&timer1_count, 0);
 	    } else {
-		systimer_intr(&timer1_count, frame_arg);
+		systimer_intr(&timer1_count, 0, frame_arg);
 	    }
 	}
+#else
+	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
+	    systimer_intr(&timer1_count, 0, frame_arg);
+#endif
 }
 
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.7 2005/06/01 17:43:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.8 2005/10/25 17:26:54 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
  * hardclock, statclock, and other finely-timed routines.
  */
 void
-systimer_intr(sysclock_t *timep, struct intrframe *frame)
+systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 {
     globaldata_t gd = mycpu;
     sysclock_t time = *timep;
@@ -154,8 +154,12 @@ systimer_add(systimer_t info)
 	info->flags = (info->flags | SYSTF_ONQUEUE) & ~SYSTF_IPIRUNNING;
 	info->queue = &gd->gd_systimerq;
     } else {
+#ifdef SMP
 	info->flags |= SYSTF_IPIRUNNING;
-	lwkt_send_ipiq(info->gd, (ipifunc_t)systimer_add, info);
+	lwkt_send_ipiq(info->gd, (ipifunc1_t)systimer_add, info);
+#else
+	panic("systimer_add: bad gd in info %p", info);
+#endif
     }
     crit_exit();
 }
