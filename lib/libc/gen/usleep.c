@@ -32,7 +32,7 @@
  *
  * @(#)usleep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/usleep.c,v 1.25 2000/01/27 23:06:22 jasone Exp $
- * $DragonFly: src/lib/libc/gen/usleep.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/usleep.c,v 1.4 2005/10/25 12:14:15 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -41,8 +41,7 @@
 #include "un-namespace.h"
 
 int
-usleep(useconds)
-	unsigned int useconds;
+__usleep(unsigned int useconds)
 {
 	struct timespec time_to_sleep;
 
@@ -50,3 +49,6 @@ usleep(useconds)
 	time_to_sleep.tv_sec = useconds / 1000000;
 	return (_nanosleep(&time_to_sleep, NULL));
 }
+
+__weak_reference(__usleep, usleep);
+__weak_reference(__usleep, _usleep);
