@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.15 2005/10/16 18:48:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.16 2005/10/26 17:15:03 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -357,7 +357,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	struct cluster_save *buflist;
 	ufs_daddr_t start_lbn, end_lbn, soff, newblk, blkno;
 	struct indir start_ap[NIADDR + 1], end_ap[NIADDR + 1], *idp;
-	int i, len, start_lvl, end_lvl, pref, ssize;
+	int i, len, slen, start_lvl, end_lvl, pref, ssize;
 
 	if (doreallocblks == 0)
 		return (ENOSPC);
@@ -396,11 +396,13 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	    ufs_getlbns(vp, end_lbn, end_ap, &end_lvl))
 		return (ENOSPC);
 	/*
-	 * Get the starting offset and block map for the first block.
+	 * Get the starting offset and block map for the first block and
+	 * the number of blocks that will fit into sbap starting at soff.
 	 */
 	if (start_lvl == 0) {
 		sbap = &ip->i_db[0];
 		soff = start_lbn;
+		slen = NDADDR - soff;
 	} else {
 		idp = &start_ap[start_lvl - 1];
 		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, &sbp)) {
@@ -409,6 +411,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		}
 		sbap = (ufs_daddr_t *)sbp->b_data;
 		soff = idp->in_off;
+		slen = fs->fs_nindir - soff;
 	}
 	/*
 	 * Find the preferred location for the cluster.
@@ -428,6 +431,18 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, &ebp))
 			goto fail;
 		ebap = (ufs_daddr_t *)ebp->b_data;
+	}
+
+	/*
+	 * Make sure we aren't spanning more then two blockmaps.  ssize is
+	 * our calculation of the span we have to scan in the first blockmap,
+	 * while slen is our calculation of the number of entries available
+	 * in the first blockmap (from soff).
+	 */
+	if (ssize > slen) {
+		panic("ffs_reallocblks: range spans more then two blockmaps!"
+			" start_lbn %ld len %d (%d/%d)",
+			(long)start_lbn, len, slen, ssize);
 	}
 	/*
 	 * Search the block map looking for an allocation of the desired size.
