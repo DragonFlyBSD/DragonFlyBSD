@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.28 2005/10/26 00:55:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.29 2005/10/26 01:16:04 dillon Exp $
  *
  */
 
@@ -657,8 +657,14 @@ ithread_handler(void *arg)
 	 * applies to certain types of interrupts (typ level interrupts).
 	 * This can result in the interrupt retriggering, but the retrigger
 	 * will not be processed until we cycle our critical section.
+	 *
+	 * Only unmask interrupts while handlers are installed.  It is
+	 * possible to hit a situation where no handlers are installed
+	 * due to a device driver livelocking and then tearing down its
+	 * interrupt on close (the parallel bus being a good example).
 	 */
-	ithread_unmask(intr);
+	if (*list)
+	    ithread_unmask(intr);
 
 	/*
 	 * Do a quick exit/enter to catch any higher-priority interrupt
