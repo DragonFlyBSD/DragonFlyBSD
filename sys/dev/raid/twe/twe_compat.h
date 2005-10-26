@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.5 2004/04/07 22:18:00 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.11 2005/08/22 21:16:20 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.12 2005/10/26 14:19:08 sephe Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -154,7 +154,10 @@
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500003
 # include <machine/clock.h>
+
+#ifndef __DragonFly__
 # define INTR_ENTROPY			0
+#endif
 
 # include <sys/buf.h>			/* old buf style */
 # include <sys/buf2.h>  		/* bufq stuff */
