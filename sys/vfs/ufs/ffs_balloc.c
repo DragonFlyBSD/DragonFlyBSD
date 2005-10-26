@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.12 2005/08/28 23:23:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.13 2005/10/26 17:13:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,6 +90,14 @@ ffs_balloc(struct vop_balloc_args *ap)
 		return (EFBIG);
 	cred = ap->a_cred;
 	flags = ap->a_flags;
+
+	/*
+	 * The vnode must be locked for us to be able to safely mess
+	 * around with the inode.
+	 */
+	if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
+		panic("ffs_balloc: vnode %p not exclusively locked!", vp);
+	}
 
 	/*
 	 * If the next write will extend the file into a new block,
