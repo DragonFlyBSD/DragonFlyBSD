@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.11 2005/10/13 00:02:23 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.12 2005/10/26 00:55:20 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -56,7 +56,7 @@ void swi_setpriority(int intr, int pri);
 int unregister_swi(void *id);
 int unregister_int(void *id);
 void unregister_randintr(int intr);
-void ithread_done(int intr);	/* procedure defined in MD */
+void ithread_unmask(int intr);	/* procedure defined in MD */
 void sched_ithd(int intr);	/* procedure called from MD */
 
 extern char	eintrnames[];	/* end of intrnames[] */

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.27 2005/10/25 17:26:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.28 2005/10/26 00:55:19 dillon Exp $
  *
  */
 
@@ -63,7 +63,7 @@ struct intr_info {
 	long		i_count;
 	int		i_fast;
 	int		i_slow;
-	int		i_valid_thread;
+	int		i_state;
 } intr_info_ary[NHWI + NSWI];
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
@@ -79,15 +79,16 @@ int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
 static struct systimer emergency_intr_timer;
 static struct thread emergency_intr_thread;
 
-#define LIVELOCK_NONE		0
-#define LIVELOCK_LIMITED	1
+#define ISTATE_NOTHREAD		0
+#define ISTATE_NORMAL		1
+#define ISTATE_LIVELOCKED	2
 
 static int livelock_limit = 50000;
-static int livelock_fallback = 20000;
+static int livelock_lowater = 20000;
 SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
         CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
-SYSCTL_INT(_kern, OID_AUTO, livelock_fallback,
-        CTLFLAG_RW, &livelock_fallback, 0, "Livelock interrupt fallback rate");
+SYSCTL_INT(_kern, OID_AUTO, livelock_lowater,
+        CTLFLAG_RW, &livelock_lowater, 0, "Livelock low-water mark restore");
 
 static int emergency_intr_enable = 0;	/* emergency interrupt polling */
 TUNABLE_INT("kern.emergency_intr_enable", &emergency_intr_enable);
@@ -209,8 +210,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      * Create an interrupt thread if necessary, leave it in an unscheduled
      * state.
      */
-    if (info->i_valid_thread == 0) {
-	info->i_valid_thread = 1;
+    if (info->i_state == ISTATE_NOTHREAD) {
+	info->i_state = ISTATE_NORMAL;
 	lwkt_create((void *)ithread_handler, (void *)intr, NULL,
 	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD, -1, 
 	    "ithread %d", intr);
@@ -341,7 +342,7 @@ swi_setpriority(int intr, int pri)
     if (intr < NHWI || intr >= NHWI + NSWI)
 	panic("register_swi: bad intr %d", intr);
     info = &intr_info_ary[intr];
-    if (info->i_valid_thread)
+    if (info->i_state != ISTATE_NOTHREAD)
 	lwkt_setpri(&info->i_thread, pri);
 }
 
@@ -375,7 +376,11 @@ unregister_randintr(int intr)
  * We need to schedule the interrupt and set its i_running bit.  If
  * we are not on the interrupt thread's cpu we have to send a message
  * to the correct cpu that will issue the desired action (interlocking
- * with the interrupt thread's critical section).
+ * with the interrupt thread's critical section).  We do NOT attempt to
+ * reschedule interrupts whos i_running bit is already set because
+ * this would prematurely wakeup a livelock-limited interrupt thread.
+ *
+ * i_running is only tested/set on the same cpu as the interrupt thread.
  *
  * We are NOT in a critical section, which will allow the scheduled
  * interrupt to preempt us.  The MP lock might *NOT* be held here.
@@ -398,23 +403,27 @@ sched_ithd(int intr)
     info = &intr_info_ary[intr];
 
     ++info->i_count;
-    if (info->i_valid_thread) {
+    if (info->i_state != ISTATE_NOTHREAD) {
 	if (info->i_reclist == NULL) {
 	    printf("sched_ithd: stray interrupt %d\n", intr);
 	} else {
 #ifdef SMP
 	    if (info->i_thread.td_gd == mycpu) {
-		info->i_running = 1;
-		/* preemption handled internally */
-		lwkt_schedule(&info->i_thread);
+		if (info->i_running == 0) {
+		    info->i_running = 1;
+		    if (info->i_state != ISTATE_LIVELOCKED)
+			lwkt_schedule(&info->i_thread); /* MIGHT PREEMPT */
+		}
 	    } else {
 		lwkt_send_ipiq(info->i_thread.td_gd, 
 				sched_ithd_remote, (void *)intr);
 	    }
 #else
-	    info->i_running = 1;
-	    /* preemption handled internally */
-	    lwkt_schedule(&info->i_thread);
+	    if (info->i_running == 0) {
+		info->i_running = 1;
+		if (info->i_state != ISTATE_LIVELOCKED)
+		    lwkt_schedule(&info->i_thread); /* MIGHT PREEMPT */
+	    }
 #endif
 	}
     } else {
@@ -432,7 +441,7 @@ ithread_livelock_wakeup(systimer_t st)
     struct intr_info *info;
 
     info = &intr_info_ary[(int)st->data];
-    if (info->i_valid_thread)
+    if (info->i_state != ISTATE_NOTHREAD)
 	lwkt_schedule(&info->i_thread);
 }
 
@@ -590,20 +599,19 @@ static void
 ithread_handler(void *arg)
 {
     struct intr_info *info;
-    u_int cputicks;
-    u_int bticks;
+    int use_limit;
+    int lticks;
+    int lcount;
     int intr;
-    int freq;
     struct intrec **list;
     intrec_t rec, nrec;
-    globaldata_t gd = mycpu;
+    globaldata_t gd;
     struct systimer ill_timer;	/* enforced freq. timer */
-    struct systimer ill_rtimer;	/* recovery timer */
-    u_int ill_count = 0;	/* interrupt livelock counter */
-    u_int ill_ticks = 0;	/* track elapsed to calculate freq */
-    u_int ill_delta = 0;	/* track elapsed to calculate freq */
-    int ill_state = 0;		/* current state */
+    u_int ill_count;		/* interrupt livelock counter */
 
+    ill_count = 0;
+    lticks = ticks;
+    lcount = 0;
     intr = (int)arg;
     info = &intr_info_ary[intr];
     list = &info->i_reclist;
@@ -616,33 +624,26 @@ ithread_handler(void *arg)
 
     for (;;) {
 	/*
-	 * We can get woken up by the livelock periodic code too, run the 
-	 * handlers only if there is a real interrupt pending.  XXX
+	 * If an interrupt is pending, clear i_running and execute the
+	 * handlers.  Note that certain types of interrupts can re-trigger
+	 * and set i_running again.
 	 *
-	 * Clear i_running prior to running the handlers to interlock
-	 * again new events occuring during processing of existing events.
-	 *
-	 * Run each handler in a critical section.  Note that we run both
+	 * Each handler is run in a critical section.  Note that we run both
 	 * FAST and SLOW designated service routines.
 	 */
-	info->i_running = 0;
-	for (rec = *list; rec; rec = nrec) {
-	    nrec = rec->next;
-	    if (rec->serializer) {
-		lwkt_serialize_handler_call(rec->serializer,
-					rec->handler, rec->argument, NULL);
-	    } else {
-		rec->handler(rec->argument, NULL);
+	if (info->i_running) {
+	    ++ill_count;
+	    info->i_running = 0;
+	    for (rec = *list; rec; rec = nrec) {
+		nrec = rec->next;
+		if (rec->serializer) {
+		    lwkt_serialize_handler_call(rec->serializer, rec->handler,
+						rec->argument, NULL);
+		} else {
+		    rec->handler(rec->argument, NULL);
+		}
 	    }
 	}
-
-	/*
-	 * Do a quick exit/enter to catch any higher-priority
-	 * interrupt sources and so user/system/interrupt statistics
-	 * work for interrupt threads.
-	 */
-	crit_exit_gd(gd);
-	crit_enter_gd(gd);
 
 	/*
 	 * This is our interrupt hook to add rate randomness to the random
@@ -652,80 +653,91 @@ ithread_handler(void *arg)
 	    add_interrupt_randomness(intr);
 
 	/*
-	 * This is our livelock test.  If we hit the rate limit we
-	 * limit ourselves to X interrupts/sec until the rate
-	 * falls below 50% of that value, then we unlimit again.
-	 *
-	 * XXX calling cputimer_count() is expensive but a livelock may
-	 * prevent other interrupts from occuring so we cannot use ticks.
+	 * Unmask the interrupt to allow it to trigger again.  This only
+	 * applies to certain types of interrupts (typ level interrupts).
+	 * This can result in the interrupt retriggering, but the retrigger
+	 * will not be processed until we cycle our critical section.
 	 */
-	cputicks = sys_cputimer->count();
-	++ill_count;
-	bticks = cputicks - ill_ticks;
-	ill_ticks = cputicks;
-	if (bticks > sys_cputimer->freq)
-	    bticks = sys_cputimer->freq;
+	ithread_unmask(intr);
 
-	switch(ill_state) {
-	case LIVELOCK_NONE:
-	    ill_delta += bticks;
-	    if (ill_delta < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
-		break;
-	    freq = (int64_t)ill_count * sys_cputimer->freq / 
-		   ill_delta;
-	    ill_delta = 0;
-	    ill_count = 0;
-	    if (freq < livelock_limit)
-		break;
-	    printf("intr %d at %d hz, livelocked! limiting at %d hz\n",
-		intr, freq, livelock_fallback);
-	    ill_state = LIVELOCK_LIMITED;
-	    bticks = 0;
-	    /* force periodic check to avoid stale removal (if ints stop) */
-	    systimer_init_periodic(&ill_rtimer, ithread_livelock_wakeup,
-				    (void *)intr, 1);
-	    /* fall through */
-	case LIVELOCK_LIMITED:
+	/*
+	 * Do a quick exit/enter to catch any higher-priority interrupt
+	 * sources, such as the statclock, so thread time accounting
+	 * will still work.  This may also cause an interrupt to re-trigger.
+	 */
+	crit_exit_gd(gd);
+	crit_enter_gd(gd);
+
+	/*
+	 * LIVELOCK STATE MACHINE
+	 */
+	switch(info->i_state) {
+	case ISTATE_NORMAL:
 	    /*
-	     * Delay (us) before rearming the interrupt
+	     * Calculate a running average every tick.
 	     */
-	    systimer_init_oneshot(&ill_timer, ithread_livelock_wakeup,
-				(void *)intr, 1 + 1000000 / livelock_fallback);
-	    lwkt_deschedule_self(curthread);
+	    if (lticks != ticks) {
+		lticks = ticks;
+		ill_count -= ill_count / hz;
+	    }
+
+	    /*
+	     * If we did not exceed the frequency limit, we are done.  
+	     * If the interrupt has not retriggered we deschedule ourselves.
+	     */
+	    if (ill_count <= livelock_limit) {
+		if (info->i_running == 0) {
+		    lwkt_deschedule_self(gd->gd_curthread);
+		    lwkt_switch();
+		}
+		break;
+	    }
+
+	    /*
+	     * Otherwise we are livelocked.  Set up a periodic systimer
+	     * to wake the thread up at the limit frequency.
+	     */
+	    printf("intr %d at %d > %d hz, livelocked limit engaged!\n",
+		   intr, livelock_limit, ill_count);
+	    info->i_state = ISTATE_LIVELOCKED;
+	    if ((use_limit = livelock_limit) < 100)
+		use_limit = 100;
+	    else if (use_limit > 500000)
+		use_limit = 500000;
+	    systimer_init_periodic(&ill_timer, ithread_livelock_wakeup,
+				   (void *)intr, use_limit);
+	    lcount = 0;
+	    /* fall through */
+	case ISTATE_LIVELOCKED:
+	    /*
+	     * Wait for our periodic timer to go off.  Since the interrupt
+	     * has re-armed it can still set i_running, but it will not
+	     * reschedule us while we are in a livelocked state.
+	     */
+	    lwkt_deschedule_self(gd->gd_curthread);
 	    lwkt_switch();
 
-	    /* in case we were woken up by something else */
-	    systimer_del(&ill_timer);
-
 	    /*
-	     * Calculate interrupt rate (note that due to our delay it
-	     * will not exceed livelock_fallback).
+	     * Check to see if the livelock condition no longer applies.
+	     * The interrupt must be able to operate normally for one
+	     * full second before we restore normal operation.
 	     */
-	    ill_delta += bticks;
-	    if (ill_delta < LIVELOCK_TIMEFRAME(sys_cputimer->freq))
-		break;
-	    freq = (int64_t)ill_count * sys_cputimer->freq / ill_delta;
-	    ill_delta = 0;
-	    ill_count = 0;
-	    if (freq < (livelock_fallback >> 1)) {
-		printf("intr %d at %d hz, removing livelock limit\n",
-			intr, freq);
-		ill_state = LIVELOCK_NONE;
-		systimer_del(&ill_rtimer);
+	    if (lticks != ticks) {
+		lticks = ticks;
+		if (ill_count < livelock_lowater) {
+		    if (++lcount >= hz) {
+			info->i_state = ISTATE_NORMAL;
+			systimer_del(&ill_timer);
+			printf("intr %d at %d < %d hz, livelock removed\n",
+			       intr, ill_count, livelock_lowater);
+		    }
+		} else {
+		    lcount = 0;
+		}
+		ill_count -= ill_count / hz;
 	    }
 	    break;
 	}
-
-	/*
-	 * There are two races here.  i_running is set by sched_ithd()
-	 * in the context of our cpu and is critical-section safe.  We
-	 * are responsible for checking it.  ipending is not critical
-	 * section safe and must be handled by the platform specific
-	 * ithread_done() routine.
-	 */
-	if (info->i_running == 0)
-	    ithread_done(intr);
-	/* must be in critical section on loop */
     }
     /* not reached */
 }

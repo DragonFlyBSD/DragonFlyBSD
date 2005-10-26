@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.33 2005/10/13 00:02:47 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.34 2005/10/26 00:55:16 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -511,6 +511,16 @@ inthand_remove(void *id)
  *	See kern/kern_intr.c for more information.
  */
 void
+ithread_unmask(int irq)
+{
+    int mask = 1 << irq;
+
+    INTREN(mask);
+}
+
+#if 0
+
+void
 ithread_done(int irq)
 {
     struct mdglobaldata *gd = mdcpu;
@@ -530,6 +540,8 @@ ithread_done(int irq)
 	lwkt_switch();
     }
 }
+
+#endif
 
 #ifdef SMP
 /*
