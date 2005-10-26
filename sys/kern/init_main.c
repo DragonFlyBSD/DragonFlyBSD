@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.48 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.49 2005/10/26 00:47:17 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -316,6 +316,7 @@ proc0_init(void *dummy __unused)
 	p->p_nice = NZERO;
 	p->p_rtprio.type = RTP_PRIO_NORMAL;
 	p->p_rtprio.prio = 0;
+	p->p_lwp.lwp_rtprio = p->p_rtprio;
 
 	p->p_peers = 0;
 	p->p_leader = p;
