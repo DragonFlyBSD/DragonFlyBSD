@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.7 2005/06/02 20:40:37 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.8 2005/10/26 17:12:32 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -441,8 +441,8 @@ ppbus_teardown_intr(device_t bus, device_t child, struct resource *r, void *ih)
 			(ppbdev->intr_resource != r))
 		return (EINVAL);
 
-	ppbdev->intr_cookie = 0;
-	ppbdev->intr_resource = 0;
+	ppbdev->intr_cookie = NULL;
+	ppbdev->intr_resource = NULL;
 
 	/* pass unregistration to the upper layer */
 	return (BUS_TEARDOWN_INTR(device_get_parent(bus), child, r, ih));
@@ -512,11 +512,14 @@ ppb_release_bus(device_t bus, device_t dev)
 	struct ppb_data *ppb = DEVTOSOFTC(bus);
 	struct ppb_device *ppbdev = (struct ppb_device *)device_get_ivars(dev);
 
-	if (ppbdev->intr_resource != 0)
+	if (ppbdev->intr_resource && ppbdev->intr_cookie) {
 		/* force interrupt handler unregistration when the ppbus is released */
 		if ((error = BUS_TEARDOWN_INTR(bus, dev, ppbdev->intr_resource,
 					       ppbdev->intr_cookie)))
 			return (error);
+		ppbdev->intr_cookie = NULL;
+		ppbdev->intr_resource = NULL;
+	}
 
 	crit_enter();
 	if (ppb->ppb_owner != dev) {
