@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.h,v 1.22.2.10 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.5 2004/09/18 18:33:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.6 2005/10/26 13:59:41 sephe Exp $
  */
 
 /* ATAPI misc defines */
@@ -119,6 +119,9 @@
 #define ATAPI_MECH_STATUS		0xbd	/* get changer status */
 #define ATAPI_READ_CD			0xbe	/* read data */
 #define ATAPI_POLL_DSC			0xff	/* poll DSC status bit */
+
+struct atapi_request;
+struct ata_channel;
 
 /* ATAPI request sense structure */   
 struct atapi_reqsense {
