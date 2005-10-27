@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.16 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.17 2005/10/27 13:33:19 sephe Exp $
  */
 
 /*****************************************************************************/
@@ -1764,10 +1764,9 @@ void stlintr(void *arg)
 {
         stlbrd_t        *brdp;
         int             i;
-	int		unit = (int)arg;
 
 #if STLDEBUG
-        printf("stlintr(unit=%d)\n", unit);
+	printf("stlintr(unit=%d)\n", (int)arg);
 #endif
 
         for (i = 0; (i < stl_nrbrds); i++) {

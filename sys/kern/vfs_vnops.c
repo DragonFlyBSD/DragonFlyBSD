@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.33 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.34 2005/10/27 13:33:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -722,7 +722,6 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 {
 	struct vattr vattr;
 	struct vattr *vap;
-	struct namecache *ncp;
 	int error;
 	u_short mode;
 	dev_t dev;

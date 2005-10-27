@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.12 2005/06/16 16:06:40 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.13 2005/10/27 13:33:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -534,7 +534,7 @@ spicpoll(dev_t dev, int events, struct thread *td)
 	struct spic_softc *sc;
 	struct proc *p;
 	struct proc *p1;
-	int revents = 0, s;
+	int revents = 0;
 
 	p = td->td_proc;
 	KKASSERT(p);
