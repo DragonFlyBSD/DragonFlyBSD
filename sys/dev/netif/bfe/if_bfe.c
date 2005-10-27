@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.24 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.25 2005/10/27 03:51:55 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -196,8 +196,8 @@ bfe_dma_alloc(device_t dev)
 	/* parent tag */
 	error = bus_dma_tag_create(NULL,  /* parent */
 			PAGE_SIZE, 0,             /* alignment, boundary */
-			BUS_SPACE_MAXADDR,        /* lowaddr */      
-			BUS_SPACE_MAXADDR_32BIT,  /* highaddr */
+			BUS_SPACE_MAXADDR_32BIT,  /* lowaddr */      
+			BUS_SPACE_MAXADDR,        /* highaddr */
 			NULL, NULL,               /* filter, filterarg */
 			MAXBSIZE,                 /* maxsize */
 			BUS_SPACE_UNRESTRICTED,   /* num of segments */
