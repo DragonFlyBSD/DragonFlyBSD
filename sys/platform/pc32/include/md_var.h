@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.16 2005/09/23 02:28:50 y0netan1 Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.17 2005/10/27 03:15:47 sephe Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -62,7 +62,7 @@ extern	char	sigcode[];
 extern	int	szsigcode;
 
 typedef void alias_for_inthand_t (u_int cs, u_int ef, u_int esp, u_int ss);
-struct	proc;
+struct	lwp;
 struct	reg;
 struct	fpreg;
 struct  dbreg;
@@ -93,9 +93,9 @@ void	doreti_popl_es_fault (void) __asm(__STRING(doreti_popl_es_fault));
 void	doreti_popl_fs (void) __asm(__STRING(doreti_popl_fs));
 void	doreti_popl_fs_fault (void) __asm(__STRING(doreti_popl_fs_fault));
 void	enable_sse (void);
-int	fill_fpregs (struct proc *, struct fpreg *);
-int	fill_regs (struct proc *p, struct reg *regs);
-int	fill_dbregs (struct proc *p, struct dbreg *dbregs);
+int	fill_fpregs (struct lwp *, struct fpreg *);
+int	fill_regs (struct lwp *lp, struct reg *regs);
+int	fill_dbregs (struct lwp *lp, struct dbreg *dbregs);
 void	fillw (int /*u_short*/ pat, void *base, size_t cnt);
 #if 0
 void	i486_bzero (volatile void *buf, size_t len);

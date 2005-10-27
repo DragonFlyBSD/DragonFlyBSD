@@ -35,7 +35,7 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
- * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.4 2005/10/27 03:15:47 sephe Exp $
  */
 
 #ifndef _MACHINE_REG_H_
@@ -141,13 +141,17 @@ struct dbreg {
 
 
 #ifdef _KERNEL
+
+struct proc;
+struct lwp;
+
 /*
  * XXX these interfaces are MI, so they should be declared in a MI place.
  */
-int	set_fpregs (struct proc *, struct fpreg *);
-int	set_regs (struct proc *p, struct reg *regs);
+int	set_fpregs (struct lwp *, struct fpreg *);
+int	set_regs (struct lwp *lp, struct reg *regs);
 void	setregs (struct proc *, u_long, u_long, u_long);
-int	set_dbregs (struct proc *p, struct dbreg *dbregs);
+int	set_dbregs (struct lwp *lp, struct dbreg *dbregs);
 #endif
 
 #endif /* !_MACHINE_REG_H_ */

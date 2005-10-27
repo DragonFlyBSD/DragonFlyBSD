@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.79 2005/10/07 21:55:15 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.80 2005/10/27 03:15:47 sephe Exp $
  */
 
 #include "use_apm.h"
@@ -2108,10 +2108,9 @@ ptrace_set_pc(p, addr)
 }
 
 int
-ptrace_single_step(p)
-	struct proc *p;
+ptrace_single_step(struct lwp *lp)
 {
-	p->p_md.md_regs->tf_eflags |= PSL_T;
+	lp->lwp_md.md_regs->tf_eflags |= PSL_T;
 	return (0);
 }
 
@@ -2175,14 +2174,12 @@ int ptrace_write_u(p, off, data)
 }
 
 int
-fill_regs(p, regs)
-	struct proc *p;
-	struct reg *regs;
+fill_regs(struct lwp *lp, struct reg *regs)
 {
 	struct pcb *pcb;
 	struct trapframe *tp;
 
-	tp = p->p_md.md_regs;
+	tp = lp->lwp_md.md_regs;
 	regs->r_fs = tp->tf_fs;
 	regs->r_es = tp->tf_es;
 	regs->r_ds = tp->tf_ds;
@@ -2198,20 +2195,18 @@ fill_regs(p, regs)
 	regs->r_eflags = tp->tf_eflags;
 	regs->r_esp = tp->tf_esp;
 	regs->r_ss = tp->tf_ss;
-	pcb = p->p_thread->td_pcb;
+	pcb = lp->lwp_thread->td_pcb;
 	regs->r_gs = pcb->pcb_gs;
 	return (0);
 }
 
 int
-set_regs(p, regs)
-	struct proc *p;
-	struct reg *regs;
+set_regs(struct lwp *lp, struct reg *regs)
 {
 	struct pcb *pcb;
 	struct trapframe *tp;
 
-	tp = p->p_md.md_regs;
+	tp = lp->lwp_md.md_regs;
 	if (!EFL_SECURE(regs->r_eflags, tp->tf_eflags) ||
 	    !CS_SECURE(regs->r_cs))
 		return (EINVAL);
@@ -2230,7 +2225,7 @@ set_regs(p, regs)
 	tp->tf_eflags = regs->r_eflags;
 	tp->tf_esp = regs->r_esp;
 	tp->tf_ss = regs->r_ss;
-	pcb = p->p_thread->td_pcb;
+	pcb = lp->lwp_thread->td_pcb;
 	pcb->pcb_gs = regs->r_gs;
 	return (0);
 }
@@ -2290,45 +2285,37 @@ set_fpregs_xmm(sv_87, sv_xmm)
 #endif /* CPU_DISABLE_SSE */
 
 int
-fill_fpregs(p, fpregs)
-	struct proc *p;
-	struct fpreg *fpregs;
+fill_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
-		fill_fpregs_xmm(&p->p_thread->td_pcb->pcb_save.sv_xmm,
-						(struct save87 *)fpregs);
+		fill_fpregs_xmm(&lp->lwp_thread->td_pcb->pcb_save.sv_xmm,
+				(struct save87 *)fpregs);
 		return (0);
 	}
 #endif /* CPU_DISABLE_SSE */
-	bcopy(&p->p_thread->td_pcb->pcb_save.sv_87, fpregs, sizeof *fpregs);
+	bcopy(&lp->lwp_thread->td_pcb->pcb_save.sv_87, fpregs, sizeof *fpregs);
 	return (0);
 }
 
 int
-set_fpregs(p, fpregs)
-	struct proc *p;
-	struct fpreg *fpregs;
+set_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		set_fpregs_xmm((struct save87 *)fpregs,
-				       &p->p_thread->td_pcb->pcb_save.sv_xmm);
+			       &lp->lwp_thread->td_pcb->pcb_save.sv_xmm);
 		return (0);
 	}
 #endif /* CPU_DISABLE_SSE */
-	bcopy(fpregs, &p->p_thread->td_pcb->pcb_save.sv_87, sizeof *fpregs);
+	bcopy(fpregs, &lp->lwp_thread->td_pcb->pcb_save.sv_87, sizeof *fpregs);
 	return (0);
 }
 
 int
-fill_dbregs(p, dbregs)
-	struct proc *p;
-	struct dbreg *dbregs;
+fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
-	struct pcb *pcb;
-
-        if (p == NULL) {
+        if (lp == NULL) {
                 dbregs->dr0 = rdr0();
                 dbregs->dr1 = rdr1();
                 dbregs->dr2 = rdr2();
@@ -2337,9 +2324,10 @@ fill_dbregs(p, dbregs)
                 dbregs->dr5 = rdr5();
                 dbregs->dr6 = rdr6();
                 dbregs->dr7 = rdr7();
-        }
-        else {
-                pcb = p->p_thread->td_pcb;
+        } else {
+		struct pcb *pcb;
+
+                pcb = lp->lwp_thread->td_pcb;
                 dbregs->dr0 = pcb->pcb_dr0;
                 dbregs->dr1 = pcb->pcb_dr1;
                 dbregs->dr2 = pcb->pcb_dr2;
@@ -2353,15 +2341,9 @@ fill_dbregs(p, dbregs)
 }
 
 int
-set_dbregs(p, dbregs)
-	struct proc *p;
-	struct dbreg *dbregs;
+set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
-	struct pcb *pcb;
-	int i;
-	u_int32_t mask1, mask2;
-
-	if (p == NULL) {
+	if (lp == NULL) {
 		load_dr0(dbregs->dr0);
 		load_dr1(dbregs->dr1);
 		load_dr2(dbregs->dr2);
@@ -2370,8 +2352,12 @@ set_dbregs(p, dbregs)
 		load_dr5(dbregs->dr5);
 		load_dr6(dbregs->dr6);
 		load_dr7(dbregs->dr7);
-	}
-	else {
+	} else {
+		struct pcb *pcb;
+		struct ucred *ucred;
+		int i;
+		uint32_t mask1, mask2;
+
 		/*
 		 * Don't let an illegal value for dr7 get set.	Specifically,
 		 * check for undefined settings.  Setting these bit patterns
@@ -2383,8 +2369,9 @@ set_dbregs(p, dbregs)
 			if ((dbregs->dr7 & mask1) == mask2)
 				return (EINVAL);
 		
-		pcb = p->p_thread->td_pcb;
-		
+		pcb = lp->lwp_thread->td_pcb;
+		ucred = lp->lwp_proc->p_ucred;
+
 		/*
 		 * Don't let a process set a breakpoint that is not within the
 		 * process's address space.  If a process could do this, it
@@ -2399,40 +2386,40 @@ set_dbregs(p, dbregs)
 		 * ... wouldn't that still cause a breakpoint to be generated
 		 * from within kernel mode?
 		 */
-		
-		if (suser_cred(p->p_ucred, 0) != 0) {
+
+		if (suser_cred(ucred, 0) != 0) {
 			if (dbregs->dr7 & 0x3) {
 				/* dr0 is enabled */
 				if (dbregs->dr0 >= VM_MAXUSER_ADDRESS)
 					return (EINVAL);
 			}
-			
+
 			if (dbregs->dr7 & (0x3<<2)) {
 				/* dr1 is enabled */
 				if (dbregs->dr1 >= VM_MAXUSER_ADDRESS)
 					return (EINVAL);
 			}
-			
+
 			if (dbregs->dr7 & (0x3<<4)) {
 				/* dr2 is enabled */
 				if (dbregs->dr2 >= VM_MAXUSER_ADDRESS)
 					return (EINVAL);
 			}
-			
+
 			if (dbregs->dr7 & (0x3<<6)) {
 				/* dr3 is enabled */
 				if (dbregs->dr3 >= VM_MAXUSER_ADDRESS)
 					return (EINVAL);
 			}
 		}
-		
+
 		pcb->pcb_dr0 = dbregs->dr0;
 		pcb->pcb_dr1 = dbregs->dr1;
 		pcb->pcb_dr2 = dbregs->dr2;
 		pcb->pcb_dr3 = dbregs->dr3;
 		pcb->pcb_dr6 = dbregs->dr6;
 		pcb->pcb_dr7 = dbregs->dr7;
-		
+
 		pcb->pcb_flags |= PCB_DBREGS;
 	}
 

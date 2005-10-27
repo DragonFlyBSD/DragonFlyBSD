@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/procfs_machdep.c,v 1.3 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/procfs_machdep.c,v 1.4 2005/10/27 03:15:47 sephe Exp $
  */
 
 /*
@@ -88,7 +88,7 @@ procfs_read_regs(p, regs)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (fill_regs(p, regs));
+	return (fill_regs(&p->p_lwp, regs));
 }
 
 int
@@ -98,7 +98,7 @@ procfs_write_regs(p, regs)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (set_regs(p, regs));
+	return (set_regs(&p->p_lwp, regs));
 }
 
 int
@@ -108,7 +108,7 @@ procfs_read_dbregs(p, dbregs)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (fill_dbregs(p, dbregs));
+	return (fill_dbregs(&p->p_lwp, dbregs));
 }
 
 int
@@ -118,7 +118,7 @@ procfs_write_dbregs(p, dbregs)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (set_dbregs(p, dbregs));
+	return (set_dbregs(&p->p_lwp, dbregs));
 }
 
 /*
@@ -133,7 +133,7 @@ procfs_read_fpregs(p, fpregs)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (fill_fpregs(p, fpregs));
+	return (fill_fpregs(&p->p_lwp, fpregs));
 }
 
 int
@@ -143,7 +143,7 @@ procfs_write_fpregs(p, fpregs)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (set_fpregs(p, fpregs));
+	return (set_fpregs(&p->p_lwp, fpregs));
 }
 
 int
@@ -152,5 +152,5 @@ procfs_sstep(p)
 {
 	if ((p->p_flag & P_INMEM) == 0)
 		return (EIO);
-	return (ptrace_single_step(p));
+	return (ptrace_single_step(&p->p_lwp));
 }

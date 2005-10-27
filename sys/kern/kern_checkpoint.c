@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.5 2005/08/09 02:49:49 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.6 2005/10/27 03:15:47 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -301,9 +301,9 @@ elf_loadnotes(struct proc *p, prpsinfo_t *psinfo, prstatus_t *status,
 		error = EINVAL;
 		goto done;
 	}
-	if ((error = set_regs(p, &status->pr_reg)) != 0)
+	if ((error = set_regs(&p->p_lwp, &status->pr_reg)) != 0)
 		goto done;
-	error = set_fpregs(p, fpregset);
+	error = set_fpregs(&p->p_lwp, fpregset);
 	strlcpy(p->p_comm, psinfo->pr_fname, sizeof(p->p_comm));
 	/* XXX psinfo->pr_psargs not yet implemented */
  done:	

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.32 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.33 2005/10/27 03:15:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1225,9 +1225,9 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	status->pr_osreldate = osreldate;
 	status->pr_cursig = p->p_sig;
 	status->pr_pid = p->p_pid;
-	fill_regs(p, &status->pr_reg);
+	fill_regs(&p->p_lwp, &status->pr_reg);
 
-	fill_fpregs(p, fpregset);
+	fill_fpregs(&p->p_lwp, fpregset);
 
 	psinfo->pr_version = PRPSINFO_VERSION;
 	psinfo->pr_psinfosz = sizeof(prpsinfo_t);
