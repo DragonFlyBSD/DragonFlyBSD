@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.11 2005/09/04 01:29:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.12 2005/10/27 14:03:56 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -218,7 +218,6 @@ SYSCTL_STRING(_kern, OID_AUTO, bootp_cookie, CTLFLAG_RD,
 	bootp_cookie, 0, "Cookie (T134) supplied by bootp server");
 
 /* mountd RPC */
-static int getdec(char **ptr);
 static void print_in_addr(struct in_addr addr);
 static void print_sin_addr(struct sockaddr_in *addr);
 static void clear_sinaddr(struct sockaddr_in *sin);
