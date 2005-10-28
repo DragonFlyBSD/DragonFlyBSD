@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.5 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.6 2005/10/28 16:01:04 liamfoy Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1419,7 +1419,7 @@ pf_send_icmp(struct mbuf *m, u_int8_t type, u_int8_t code, sa_family_t af,
 	switch (af) {
 #ifdef INET
 	case AF_INET:
-		icmp_error(m0, type, code, 0, (void *)NULL);
+		icmp_error(m0, type, code, 0, 0);
 		break;
 #endif /* INET */
 #ifdef INET6
@@ -4983,7 +4983,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		ipstat.ips_cantfrag++;
 		if (r->rt != PF_DUPTO) {
 			icmp_error(m0, ICMP_UNREACH, ICMP_UNREACH_NEEDFRAG, 0,
-			    ifp);
+			    ifp->if_mtu);
 			goto done;
 		} else
 			goto bad;
