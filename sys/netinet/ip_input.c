@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.59 2005/09/22 06:45:01 demizu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.60 2005/10/28 15:56:47 liamfoy Exp $
  */
 
 #define	_IP_VHL
@@ -1701,7 +1701,7 @@ dropit:
 	}
 	return (0);
 bad:
-	icmp_error(m, type, code, 0, NULL);
+	icmp_error(m, type, code, 0, 0);
 	ipstat.ips_badoptions++;
 	return (1);
 }
@@ -1874,15 +1874,11 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	struct ip *ip = mtod(m, struct ip *);
 	struct sockaddr_in *ipforward_rtaddr;
 	struct rtentry *rt;
-	int error, type = 0, code = 0;
+	int error, type = 0, code = 0, destmtu = 0;
 	struct mbuf *mcopy;
 	n_long dest;
 	struct in_addr pkt_dst;
-	struct ifnet *destifp;
 	struct m_hdr tag;
-#if defined(IPSEC) || defined(FAST_IPSEC)
-	struct ifnet dummyifp;
-#endif
 
 	dest = INADDR_ANY;
 	/*
@@ -1903,7 +1899,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		return;
 	}
 	if (!ipstealth && ip->ip_ttl <= IPTTLDEC) {
-		icmp_error(m, ICMP_TIMXCEED, ICMP_TIMXCEED_INTRANS, dest, NULL);
+		icmp_error(m, ICMP_TIMXCEED, ICMP_TIMXCEED_INTRANS, dest, 0);
 		return;
 	}
 
@@ -1919,8 +1915,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		ipforward_rtaddr->sin_addr = pkt_dst;
 		rtalloc_ign(&ipforward_rt, RTF_PRCLONING);
 		if (ipforward_rt.ro_rt == NULL) {
-			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest,
-				   NULL);
+			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest, 0);
 			return;
 		}
 	}
@@ -2028,7 +2023,6 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	/*
 	 * Send ICMP message.
 	 */
-	destifp = NULL;
 
 	switch (error) {
 
@@ -2067,7 +2061,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 						    &ipsecerror);
 
 			if (sp == NULL)
-				destifp = ipforward_rt.ro_rt->rt_ifp;
+				destmtu = ipforward_rt.ro_rt->rt_ifp->if_mtu;
 			else {
 				/* count IPsec header size */
 				ipsechdr = ipsec4_hdrsiz(mcopy,
@@ -2078,21 +2072,15 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 				 * find the correct route for outer IPv4
 				 * header, compute tunnel MTU.
 				 *
-				 * XXX BUG ALERT
-				 * The "dummyifp" code relies upon the fact
-				 * that icmp_error() touches only ifp->if_mtu.
 				 */
-				/*XXX*/
-				destifp = NULL;
 				if (sp->req != NULL && sp->req->sav != NULL &&
 				    sp->req->sav->sah != NULL) {
 					ro = &sp->req->sav->sah->sa_route;
 					if (ro->ro_rt != NULL &&
 					    ro->ro_rt->rt_ifp != NULL) {
-						dummyifp.if_mtu =
+						destmtu =
 						    ro->ro_rt->rt_ifp->if_mtu;
-						dummyifp.if_mtu -= ipsechdr;
-						destifp = &dummyifp;
+						destmtu -= ipsechdr;
 					}
 				}
 
@@ -2118,7 +2106,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 						   &ipsecerror);
 
 			if (sp == NULL)
-				destifp = ipforward_rt.ro_rt->rt_ifp;
+				destmtu = ipforward_rt.ro_rt->rt_ifp->if_mtu;
 			else {
 				/* count IPsec header size */
 				ipsechdr = ipsec4_hdrsiz(mcopy,
@@ -2128,23 +2116,17 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 				/*
 				 * find the correct route for outer IPv4
 				 * header, compute tunnel MTU.
-				 *
-				 * XXX BUG ALERT
-				 * The "dummyifp" code relies upon the fact
-				 * that icmp_error() touches only ifp->if_mtu.
 				 */
-				/*XXX*/
-				destifp = NULL;
+
 				if (sp->req != NULL &&
 				    sp->req->sav != NULL &&
 				    sp->req->sav->sah != NULL) {
 					ro = &sp->req->sav->sah->sa_route;
 					if (ro->ro_rt != NULL &&
 					    ro->ro_rt->rt_ifp != NULL) {
-						dummyifp.if_mtu =
+						destmtu =
 						    ro->ro_rt->rt_ifp->if_mtu;
-						dummyifp.if_mtu -= ipsechdr;
-						destifp = &dummyifp;
+						destmtu -= ipsechdr;
 					}
 				}
 
@@ -2153,7 +2135,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		}
 #else /* !IPSEC && !FAST_IPSEC */
 		if (ipforward_rt.ro_rt != NULL)
-			destifp = ipforward_rt.ro_rt->rt_ifp;
+			destmtu = ipforward_rt.ro_rt->rt_ifp->if_mtu;
 #endif /*IPSEC*/
 		ipstat.ips_cantfrag++;
 		break;
@@ -2180,7 +2162,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		m_freem(mcopy);
 		return;
 	}
-	icmp_error(mcopy, type, code, dest, destifp);
+	icmp_error(mcopy, type, code, dest, destmtu);
 }
 
 void

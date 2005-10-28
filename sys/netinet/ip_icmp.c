@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.23 2005/08/11 20:47:30 liamfoy Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.24 2005/10/28 15:56:47 liamfoy Exp $
  */
 
 #include "opt_ipsec.h"
@@ -140,11 +140,11 @@ extern	struct protosw inetsw[];
  * in response to bad packet ip.
  */
 void
-icmp_error(n, type, code, dest, destifp)
+icmp_error(n, type, code, dest, destmtu)
 	struct mbuf *n;
 	int type, code;
 	n_long dest;
-	struct ifnet *destifp;
+	int destmtu;
 {
 	struct ip *oip = mtod(n, struct ip *), *nip;
 	unsigned oiplen = IP_VHL_HL(oip->ip_vhl) << 2;
@@ -205,8 +205,8 @@ icmp_error(n, type, code, dest, destifp)
 			icp->icmp_pptr = code;
 			code = 0;
 		} else if (type == ICMP_UNREACH &&
-			code == ICMP_UNREACH_NEEDFRAG && destifp) {
-			icp->icmp_nextmtu = htons(destifp->if_mtu);
+			code == ICMP_UNREACH_NEEDFRAG && destmtu) {
+			icp->icmp_nextmtu = htons(destmtu);
 		}
 	}
 
