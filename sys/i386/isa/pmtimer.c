@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/sys/i386/isa/Attic/pmtimer.c,v 1.4 2005/06/04 03:22:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/pmtimer.c,v 1.5 2005/10/28 03:25:57 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -48,22 +48,6 @@ static devclass_t pmtimer_devclass;
 static struct isa_pnp_id pmtimer_ids[] = {
 	{0}
 };
-
-static void
-pmtimer_identify(driver_t *driver, device_t parent)
-{
-	device_t child;
-
-	/*
-	 * Only add a child if one doesn't exist already.
-	 */
-	child = devclass_get_device(pmtimer_devclass, 0);
-	if (child == NULL) {
-		child = BUS_ADD_CHILD(parent, 0, "pmtimer", 0);
-		if (child == NULL)
-			panic("pmtimer_identify");
-	}
-}
 
 static int
 pmtimer_probe(device_t dev)
@@ -115,9 +99,14 @@ pmtimer_resume(device_t dev)
 	return (0);
 }
 
+/*
+ * Because pmtimer is a static device that always exists under any attached
+ * isa device, and not scanned by the isa device, we need an identify
+ * function to install the device.
+ */
 static device_method_t pmtimer_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_identify,	pmtimer_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		pmtimer_probe),
 	DEVMETHOD(device_attach,	bus_generic_attach),
 	DEVMETHOD(device_suspend,	pmtimer_suspend),

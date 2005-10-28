@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.6 2005/06/12 20:55:14 swildner Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.7 2005/10/28 03:25:35 dillon Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -762,11 +762,17 @@ pnp_isolation_protocol(device_t parent)
  * may be called more than once ?
  *
  */
-
-static void
+static int
 pnp_identify(driver_t *driver, device_t parent)
 {
 	int num_pnp_devs;
+
+	/*
+	 * We do not support rescanning PNP devices, just return
+	 * success (leave the previously scanned devices intact).
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
 
 #if 0
 	if (pnp_ldn_overrides[0].csn == 0) {
@@ -786,8 +792,13 @@ pnp_identify(driver_t *driver, device_t parent)
 		if (num_pnp_devs)
 			break;
 	}
+	return (num_pnp_devs ? 0 : ENXIO);
 }
 
+/*
+ * This causes pnp_identify() to be called for any attached ISA bus in
+ * the system.
+ */
 static device_method_t pnp_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	pnp_identify),

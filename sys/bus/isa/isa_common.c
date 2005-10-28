@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.7 2005/08/04 15:38:58 drhodus Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.8 2005/10/28 03:25:35 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -440,8 +440,11 @@ isa_probe_children(device_t dev)
 
 	/*
 	 * Create all the children by calling driver's identify methods.
+	 * Since this routine is called long after the ISA bus had been
+	 * attached, yet never probed, we have to call a hack function that
+	 * temporarily sets the bus back to DS_ALIVE to run the probe.
 	 */
-	bus_generic_probe(dev);
+	bus_generic_probe_hack(dev);
 
 	if (device_get_children(dev, &children, &nchildren))
 		return;

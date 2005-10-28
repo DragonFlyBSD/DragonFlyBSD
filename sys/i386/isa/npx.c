@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.25 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.26 2005/10/28 03:25:57 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -142,7 +142,6 @@ typedef u_char bool_t;
 
 static	int	npx_attach	(device_t dev);
 	void	npx_intr	(void *);
-static	void	npx_identify	(driver_t *driver, device_t parent);
 static	int	npx_probe	(device_t dev);
 static	int	npx_probe1	(device_t dev);
 static	void	fpusave		(union savefpu *);
@@ -208,19 +207,6 @@ __asm("								\n\
 	iret							\n\
 ");
 #endif /* SMP */
-
-/*
- * Identify routine.  Create a connection point on our parent for probing.
- */
-static void
-npx_identify(driver_t *driver, device_t parent)
-{
-	device_t child;
-
-	child = BUS_ADD_CHILD(parent, 0, "npx", 0);
-	if (child == NULL)
-		panic("npx_identify");
-}
 
 /*
  * Probe routine.  Initialize cr0 to give correct behaviour for [f]wait
@@ -977,9 +963,14 @@ fpurstor(union savefpu *addr)
 		frstor(addr);
 }
 
+/*
+ * Because npx is a static device that always exists under nexus,
+ * and is not scanned by the nexus device, we need an identify
+ * function to install the device.
+ */
 static device_method_t npx_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_identify,	npx_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		npx_probe),
 	DEVMETHOD(device_attach,	npx_attach),
 	DEVMETHOD(device_detach,	bus_generic_detach),

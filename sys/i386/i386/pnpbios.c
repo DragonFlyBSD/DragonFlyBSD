@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/i386/Attic/pnpbios.c,v 1.2 2004/10/14 03:05:52 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pnpbios.c,v 1.3 2005/10/28 03:25:57 dillon Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ pnpbios_set_config(void *arg, struct isa_config *config, int enable)
 /*
  * Quiz the PnP BIOS, build a list of PNP IDs and resource data.
  */
-static void
+static int
 pnpbios_identify(driver_t *driver, device_t parent)
 {
     struct PnPBIOS_table	*pt = PnPBIOStable;
@@ -110,14 +110,20 @@ pnpbios_identify(driver_t *driver, device_t parent)
     uint32_t			*devid, *compid;
     int				idx, left;
     device_t			dev;
+
+    /*
+     * Umm, we aren't going to rescan the PnP BIOS to look for new additions.
+     */
+    if (device_get_state(parent) == DS_ATTACHED)
+	return (0);
         
     /* no PnP BIOS information */
     if (pt == NULL)
-	return;
+	return (ENXIO);
 
     /* ACPI already active */
     if (devclass_get_softc(devclass_find("ACPI"), 0) != NULL)
-	return;
+	return (ENXIO);
     
     bzero(&args, sizeof(args));
     args.seg.code16.base = BIOS_PADDRTOVADDR(pt->pmentrybase);
@@ -236,6 +242,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
 	    printf("\n");
 	}
     }
+    return (0);
 }
 
 static device_method_t pnpbios_methods[] = {

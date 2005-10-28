@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.14 2005/09/23 02:28:50 y0netan1 Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.15 2005/10/28 03:25:37 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -103,7 +103,7 @@ static struct acpi_quirks acpi_quirks_table[] = {
 };
 
 static int	acpi_modevent(struct module *mod, int event, void *junk);
-static void	acpi_identify(driver_t *driver, device_t parent);
+static int	acpi_identify(driver_t *driver, device_t parent);
 static int	acpi_probe(device_t dev);
 static int	acpi_attach(device_t dev);
 static int	acpi_shutdown(device_t dev);
@@ -304,35 +304,42 @@ acpi_Startup(void)
 /*
  * Detect ACPI, perform early initialisation
  */
-static void
+static int
 acpi_identify(driver_t *driver, device_t parent)
 {
     device_t	child;
 
+    /*
+     * No sense rescanning an ACPI 'bus'.
+     */
+    if (device_get_state(parent) == DS_ATTACHED)
+	return(0);
+
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     if (!cold)
-	return_VOID;
+	return (ENXIO);
 
     /* Check that we haven't been disabled with a hint. */
     if (resource_disabled("acpi", 0))
-	return_VOID;
+	return (ENXIO);
 
     /* Make sure we're not being doubly invoked. */
     if (device_find_child(parent, "acpi", 0) != NULL)
-	return_VOID;
+	return (ENXIO);
 
     /* Initialize ACPI-CA. */
     if (ACPI_FAILURE(acpi_Startup()))
-	return_VOID;
+	return (ENXIO);
 
     snprintf(acpi_ca_version, sizeof(acpi_ca_version), "%#x", ACPI_CA_VERSION);
 
     /* Attach the actual ACPI device. */
     if ((child = BUS_ADD_CHILD(parent, 0, "acpi", 0)) == NULL) {
 	device_printf(parent, "ACPI: could not attach\n");
-	return_VOID;
+	return (ENXIO);
     }
+    return (0);
 }
 
 /*

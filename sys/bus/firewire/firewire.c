@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.11 2005/06/02 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.12 2005/10/28 03:25:33 dillon Exp $
  *
  */
 
@@ -90,7 +90,6 @@ MALLOC_DEFINE(M_FWXFER, "fw_xfer", "XFER/FireWire");
 
 devclass_t firewire_devclass;
 
-static void firewire_identify	(driver_t *, device_t);
 static int firewire_probe	(device_t);
 static int firewire_attach      (device_t);
 static int firewire_detach      (device_t);
@@ -114,9 +113,13 @@ struct fw_xfer *asyreqq (struct firewire_comm *, u_int8_t, u_int8_t, u_int8_t,
 	u_int32_t, u_int32_t, void (*)(struct fw_xfer *));
 static int fw_bmr (struct firewire_comm *);
 
+/*
+ * note: bus_generic_identify() will automatically install a "firewire"
+ * device under any attached fwohci device.
+ */
 static device_method_t firewire_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_identify,	firewire_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		firewire_probe),
 	DEVMETHOD(device_attach,	firewire_attach),
 	DEVMETHOD(device_detach,	firewire_detach),
@@ -318,12 +321,6 @@ fw_asystart(struct fw_xfer *xfer)
 	if (xfer->mbuf == NULL)
 		xfer->q->start(fc);
 	return;
-}
-
-static void
-firewire_identify(driver_t *driver, device_t parent)
-{
-	BUS_ADD_CHILD(parent, 0, "firewire", -1);
 }
 
 static int
@@ -2227,6 +2224,10 @@ fw_modevent(module_t mode, int type, void *data)
 	return (err);
 }
 
+/*
+ * This causes the firewire identify to be called for any attached fwohci
+ * device in the system.
+ */
 DECLARE_DUMMY_MODULE(firewire);
 DRIVER_MODULE(firewire,fwohci,firewire_driver,firewire_devclass,fw_modevent,0);
 MODULE_VERSION(firewire, 1);

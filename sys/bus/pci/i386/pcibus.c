@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.12 2005/04/20 10:51:24 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.13 2005/10/28 03:25:36 dillon Exp $
  *
  */
 
@@ -290,7 +290,7 @@ nexus_pcib_is_host_bridge(int bus, int slot, int func,
  * Scan the first pci bus for host-pci bridges and add pcib instances
  * to the nexus for each bridge.
  */
-static void
+static int
 nexus_pcib_identify(driver_t *driver, device_t parent)
 {
 	int bus, slot, func;
@@ -301,16 +301,24 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 	device_t child;
 	devclass_t pci_devclass;
 
+	/*
+	 * XXX currently do not support rescanning the pci bus
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+
 	if (pci_cfgregopen() == 0)
-		return;
+		return (ENXIO);
+
 	/*
 	 * Check to see if we haven't already had a PCI bus added
 	 * via some other means. If we have, bail since otherwise
 	 * we're going to end up duplicating it.
 	 */
 	if ((pci_devclass = devclass_find("pci")) &&
-	    devclass_get_device(pci_devclass,0))
-		return;
+	    devclass_get_device(pci_devclass,0)) {
+		return (ENXIO);
+	}
 	
 	bus = 0;
  retry:
@@ -400,6 +408,7 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 		child = BUS_ADD_CHILD(parent, 100, "pcib", 0);
 		nexus_set_pcibus(child, 0);
 	}
+	return (0);
 }
 
 static int
@@ -491,6 +500,10 @@ static device_method_t nexus_pcib_methods[] = {
 	{ 0, 0 }
 };
 
+/*
+ * This causes nexus_pcib_identify() to automatically be called when
+ * nexus is attaching.  
+ */
 static driver_t nexus_pcib_driver = {
 	"pcib",
 	nexus_pcib_methods,

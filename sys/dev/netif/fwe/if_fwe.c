@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.20 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.21 2005/10/28 03:25:53 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -129,12 +129,6 @@ fwe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 }
 
 #endif
-
-static void
-fwe_identify(driver_t *driver, device_t parent)
-{
-	BUS_ADD_CHILD(parent, 0, "fwe", device_get_unit(parent));
-}
 
 static int
 fwe_probe(device_t dev)
@@ -574,9 +568,14 @@ fwe_as_input(struct fw_xferq *xferq)
 
 static devclass_t fwe_devclass;
 
+/*
+ * Because fwe is a static device that always exists under any attached
+ * firewire device, and not scanned by the firewire device, we need an 
+ * identify function to install the device.
+ */
 static device_method_t fwe_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	fwe_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify_sameunit),
 	DEVMETHOD(device_probe,		fwe_probe),
 	DEVMETHOD(device_attach,	fwe_attach),
 	DEVMETHOD(device_detach,	fwe_detach),

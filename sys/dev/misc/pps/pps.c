@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.13 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.14 2005/10/28 03:25:50 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -78,13 +78,6 @@ static struct cdevsw pps_cdevsw = {
 	/* dump */	nodump,
 	/* psize */	nopsize
 };
-
-static void
-ppsidentify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, PPS_NAME, 0);
-}
 
 static int
 ppsprobe(device_t ppsdev)
@@ -204,9 +197,13 @@ ppsioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 	return (pps_ioctl(cmd, data, &sc->pps));
 }
 
+/*
+ * Becuase pps is a static device under any attached ppbus, and not scanned
+ * by the ppbus, we need an identify function to create the device.
+ */
 static device_method_t pps_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	ppsidentify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		ppsprobe),
 	DEVMETHOD(device_attach,	ppsattach),
 

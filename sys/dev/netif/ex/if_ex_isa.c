@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.8 2005/10/12 17:35:51 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.9 2005/10/28 03:25:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 #include "if_exvar.h"
 
 /* Bus Front End Functions */
-static void	ex_isa_identify	(driver_t *, device_t);
+static int	ex_isa_identify	(driver_t *, device_t);
 static int	ex_isa_probe	(device_t);
 static int	ex_isa_attach	(device_t);
 
@@ -62,6 +62,9 @@ static	void	ex_pnp_wakeup	(void *);
 SYSINIT(ex_pnpwakeup, SI_SUB_CPU, SI_ORDER_ANY, ex_pnp_wakeup, NULL);
 #endif
 
+/*
+ * We need an identify function to 'probe' the ISA bus.
+ */
 static device_method_t ex_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	ex_isa_identify),
@@ -115,7 +118,7 @@ ex_pnp_wakeup (void * dummy)
 /*
  * Non-destructive identify.
  */
-static void
+static int
 ex_isa_identify (driver_t *driver, device_t parent)
 {
 	device_t	child;
@@ -123,11 +126,19 @@ ex_isa_identify (driver_t *driver, device_t parent)
 	u_char 		enaddr[6];
 	u_int		irq;
 	int		tmp;
+	int		count;
 	const char *	desc;
+
+	/*
+	 * Rescanning ISA I/O ports is not supported.
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
 
 	if (bootverbose)
 		printf("ex_isa_identify()\n");
 
+	count = 0;
 	for (ioport = 0x200; ioport < 0x3a0; ioport += 0x10) {
 
 		/* No board found at address */
@@ -171,12 +182,12 @@ ex_isa_identify (driver_t *driver, device_t parent)
 		device_set_driver(child, driver);
 		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1);
 		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EX_IOSIZE);
+		++count;
 
 		if (bootverbose)
 			printf("ex: Adding board at 0x%03x, irq %d\n", ioport, irq);
 	}
-
-	return;
+	return (count ? 0 : ENXIO);
 }
 
 static int

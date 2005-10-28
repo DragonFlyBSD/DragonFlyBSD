@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.16 2005/10/13 00:02:23 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.17 2005/10/28 03:25:57 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -160,7 +160,6 @@ int	resource_list_print_type(struct resource_list *rl,
  * The root bus, to which all top-level busses are attached.
  */
 extern device_t root_bus;
-extern devclass_t root_devclass;
 void	root_bus_configure(void);
 
 /*
@@ -190,7 +189,10 @@ void	bus_generic_enable_intr(device_t dev, device_t child, void *cookie);
 int	bus_print_child_header(device_t dev, device_t child);
 int	bus_print_child_footer(device_t dev, device_t child);
 int	bus_generic_print_child(device_t dev, device_t child);
+int	bus_generic_identify(driver_t *driver, device_t parent);
+int	bus_generic_identify_sameunit(driver_t *driver, device_t parent);
 int	bus_generic_probe(device_t dev);
+int	bus_generic_probe_hack(device_t dev);
 int	bus_generic_read_ivar(device_t dev, device_t child, int which,
 			      uintptr_t *result);
 int	bus_generic_release_resource(device_t bus, device_t child,

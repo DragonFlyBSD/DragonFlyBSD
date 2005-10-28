@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/orm.c,v 1.1.2.1 2001/06/19 05:48:29 imp Exp $
- *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.3 2003/08/07 21:16:57 dillon Exp $
+ *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.4 2005/10/28 03:25:47 dillon Exp $
  */
 
 /*
@@ -78,7 +78,7 @@ orm_attach(device_t dev)
 	return (0);
 }
 
-static void
+static int
 orm_identify(driver_t* driver, device_t parent)
 {
 	bus_space_handle_t	bh;
@@ -91,6 +91,15 @@ orm_identify(driver_t* driver, device_t parent)
 	struct orm_softc	*sc;
 	u_int8_t		buf[3];
 
+	/*
+	 * rescanning the isa bus, do nothing
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+
+	/*
+	 * Otherwise see if it exists
+	 */
 	child = BUS_ADD_CHILD(parent, ISA_ORDER_SENSITIVE, "orm", -1);
 	device_set_driver(child, driver);
 	isa_set_logicalid(child, ORM_ID);
@@ -146,12 +155,18 @@ orm_identify(driver_t* driver, device_t parent)
 		chunk += rom_size;
 	}
 
-	if (sc->rnum == 0)
+	/*
+	 * note: sc becomes invalid after we delete the child.
+	 */
+	if (sc->rnum == 0) {
 		device_delete_child(parent, child);
-	else if (sc->rnum == 1)
+		return (ENXIO);
+	}
+	if (sc->rnum == 1)
 		device_set_desc(child, "Option ROM");
 	else
 		device_set_desc(child, "Option ROMs");
+	return (0);
 }
 
 static int

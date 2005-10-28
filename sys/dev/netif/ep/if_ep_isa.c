@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.7 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.8 2005/10/28 03:25:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@
 
 static u_int16_t	get_eeprom_data	(int, int);
 
-static void		ep_isa_identify	(driver_t *, device_t);
+static int		ep_isa_identify	(driver_t *, device_t);
 static int		ep_isa_probe	(device_t);
 static int		ep_isa_attach	(device_t);
 
@@ -146,7 +146,7 @@ ep_isa_match_id (id, isa_devs)
 	return (NULL);
 }
 
-static void
+static int
 ep_isa_identify (driver_t *driver, device_t parent)
 {
 	int		tag = EP_LAST_TAG;
@@ -160,6 +160,15 @@ ep_isa_identify (driver_t *driver, device_t parent)
 	u_int32_t	isa_id;
 	device_t	child;
 
+	/*
+	 * Rescans not currently supported.
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+
+	/*
+	 * Check for the existance of the EISA bus.
+	 */
 	outb(ELINK_ID_PORT, 0);
 	outb(ELINK_ID_PORT, 0);
 	elink_idseq(ELINK_509_POLY);
@@ -266,8 +275,7 @@ ep_isa_identify (driver_t *driver, device_t parent)
 
 		found++;
 	}
-
-	return;
+	return (found ? 0 : ENXIO);
 }
 
 static int

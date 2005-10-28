@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.27 2005/06/27 12:24:46 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.28 2005/10/28 03:25:57 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -156,6 +156,7 @@ int
 devclass_add_driver(devclass_t dc, driver_t *driver)
 {
 	driverlink_t dl;
+	device_t dev;
 	int i;
 
 	PDEBUG(("%s", DRIVERNAME(driver)));
@@ -181,11 +182,20 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 	TAILQ_INSERT_TAIL(&dc->drivers, dl, link);
 
 	/*
-	 * Call BUS_DRIVER_ADDED for any existing busses in this class.
+	 * Call BUS_DRIVER_ADDED for any existing busses in this class,
+	 * but only if the bus has already been attached (otherwise we
+	 * might probe too early).
+	 *
+	 * This is what will cause a newly loaded module to be associated
+	 * with hardware.  bus_generic_driver_added() is typically what ends
+	 * up being called.
 	 */
-	for (i = 0; i < dc->maxunit; i++)
-		if (dc->devices[i])
-			BUS_DRIVER_ADDED(dc->devices[i], driver);
+	for (i = 0; i < dc->maxunit; i++) {
+		if ((dev = dc->devices[i]) != NULL) {
+			if (dev->state == DS_ATTACHED)
+				BUS_DRIVER_ADDED(dev, driver);
+		}
+	}
 
 	return(0);
 }
@@ -1783,6 +1793,34 @@ resource_list_print_type(struct resource_list *rl, const char *name, int type,
 }
 
 /*
+ * Generic driver/device identify functions.  These will install a device
+ * rendezvous point under the parent using the same name as the driver
+ * name, which will at a later time be probed and attached.
+ *
+ * These functions are used when the parent does not 'scan' its bus for
+ * matching devices, or for the particular devices using these functions,
+ * or when the device is a pseudo or synthesized device (such as can be
+ * found under firewire and ppbus).
+ */
+int
+bus_generic_identify(driver_t *driver, device_t parent)
+{
+	if (parent->state == DS_ATTACHED)
+		return (0);
+	BUS_ADD_CHILD(parent, 0, driver->name, -1);
+	return (0);
+}
+
+int
+bus_generic_identify_sameunit(driver_t *driver, device_t parent)
+{
+	if (parent->state == DS_ATTACHED)
+		return (0);
+	BUS_ADD_CHILD(parent, 0, driver->name, device_get_unit(parent));
+	return (0);
+}
+
+/*
  * Call DEVICE_IDENTIFY for each driver.
  */
 int
@@ -1791,10 +1829,31 @@ bus_generic_probe(device_t dev)
 	devclass_t dc = dev->devclass;
 	driverlink_t dl;
 
-	TAILQ_FOREACH(dl, &dc->drivers, link)
+	TAILQ_FOREACH(dl, &dc->drivers, link) {
 		DEVICE_IDENTIFY(dl->driver, dev);
+	}
 
 	return(0);
+}
+
+/*
+ * This is an aweful hack due to the isa bus and autoconf code not
+ * probing the ISA devices until after everything else has configured.
+ * The ISA bus did a dummy attach long ago so we have to set it back
+ * to an earlier state so the probe thinks its the initial probe and
+ * not a bus rescan.
+ *
+ * XXX remove by properly defering the ISA bus scan.
+ */
+int
+bus_generic_probe_hack(device_t dev)
+{
+	if (dev->state == DS_ATTACHED) {
+		dev->state = DS_ALIVE;
+		bus_generic_probe(dev);
+		dev->state = DS_ATTACHED;
+	}
+	return (0);
 }
 
 int
@@ -1802,8 +1861,9 @@ bus_generic_attach(device_t dev)
 {
 	device_t child;
 
-	TAILQ_FOREACH(child, &dev->children, link)
+	TAILQ_FOREACH(child, &dev->children, link) {
 		device_probe_and_attach(child);
+	}
 
 	return(0);
 }
@@ -1927,9 +1987,10 @@ bus_generic_driver_added(device_t dev, driver_t *driver)
 	device_t child;
 
 	DEVICE_IDENTIFY(driver, dev);
-	TAILQ_FOREACH(child, &dev->children, link)
+	TAILQ_FOREACH(child, &dev->children, link) {
 		if (child->state == DS_NOTPRESENT)
 			device_probe_and_attach(child);
+	}
 }
 
 int
@@ -2308,6 +2369,7 @@ static kobj_method_t root_methods[] = {
 	KOBJMETHOD(device_resume,	bus_generic_resume),
 
 	/* Bus interface */
+	KOBJMETHOD(bus_add_child,	device_add_child_ordered),
 	KOBJMETHOD(bus_print_child,	root_print_child),
 	KOBJMETHOD(bus_read_ivar,	bus_generic_read_ivar),
 	KOBJMETHOD(bus_write_ivar,	bus_generic_write_ivar),
@@ -2335,7 +2397,7 @@ root_bus_module_handler(module_t mod, int what, void* arg)
 		root_bus->desc = "System root bus";
 		kobj_init((kobj_t) root_bus, (kobj_class_t) &root_driver);
 		root_bus->driver = &root_driver;
-		root_bus->state = DS_ATTACHED;
+		root_bus->state = DS_ALIVE;
 		root_devclass = devclass_find_internal("root", NULL, FALSE);
 		return(0);
 
@@ -2361,8 +2423,19 @@ root_bus_configure(void)
 
 	PDEBUG(("."));
 
-	TAILQ_FOREACH(dev, &root_bus->children, link)
+	/*
+	 * handle device_identify based device attachments to the root_bus
+	 * (typically nexus).
+	 */
+	bus_generic_probe(root_bus);
+
+	/*
+	 * Probe and attach the devices under root_bus.
+	 */
+	TAILQ_FOREACH(dev, &root_bus->children, link) {
 		device_probe_and_attach(dev);
+	}
+	root_bus->state = DS_ATTACHED;
 }
 
 int

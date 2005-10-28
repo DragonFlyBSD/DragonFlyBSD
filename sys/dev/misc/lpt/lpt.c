@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.13 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.14 2005/10/28 03:25:46 dillon Exp $
  */
 
 /*
@@ -345,13 +345,6 @@ end_probe:
 	lpt_release_ppbus(dev);
 
 	return (status);
-}
-
-static void
-lpt_identify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, LPT_NAME, 0);
 }
 
 /*
@@ -968,9 +961,14 @@ lptioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *p)
 	return(error);
 }
 
+/*
+ * Because lpt is a static device that always exists under a ppbus device,
+ * and not scanned by the ppbus device, we need an identify function to
+ * install its device.
+ */
 static device_method_t lpt_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	lpt_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		lpt_probe),
 	DEVMETHOD(device_attach,	lpt_attach),
 
@@ -984,3 +982,4 @@ static driver_t lpt_driver = {
 };
 
 DRIVER_MODULE(lpt, ppbus, lpt_driver, lpt_devclass, 0, 0);
+

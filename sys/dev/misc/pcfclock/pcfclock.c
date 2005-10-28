@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.7 2004/05/19 22:52:43 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.8 2005/10/28 03:25:48 dillon Exp $
  *
  */
 
@@ -124,13 +124,6 @@ static struct cdevsw pcfclock_cdevsw = {
 	 
 #define PCFCLOCK_CMD_TIME 0		/* send current time */
 #define PCFCLOCK_CMD_COPY 7 	/* copy received signal to PC */
-
-static void
-pcfclock_identify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, PCFCLOCK_NAME, 0);
-}
 
 static int
 pcfclock_probe(device_t dev)
@@ -331,9 +324,14 @@ pcfclock_read(dev_t dev, struct uio *uio, int ioflag)
 	return (error);
 }
 
+/*
+ * Because pcfclock is a static device that always exists under any
+ * attached ppbus, and not scanned by the ppbus, we need an identify function
+ * to create the device.
+ */
 static device_method_t pcfclock_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	pcfclock_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		pcfclock_probe),
 	DEVMETHOD(device_attach,	pcfclock_attach),
 
@@ -347,3 +345,4 @@ static driver_t pcfclock_driver = {
 };
 
 DRIVER_MODULE(pcfclock, ppbus, pcfclock_driver, pcfclock_devclass, 0, 0);
+

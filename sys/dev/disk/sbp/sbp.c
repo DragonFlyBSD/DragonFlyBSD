@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.14 2005/06/02 20:40:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.15 2005/10/28 03:25:41 dillon Exp $
  *
  */
 
@@ -309,17 +309,6 @@ static char *orb_status1_serial_bus_error[] = {
 	/* E */ "Type error",
 	/* F */ "Address error"
 };
-
-static void
-sbp_identify(driver_t *driver, device_t parent)
-{
-	device_t child;
-SBP_DEBUG(0)
-	printf("sbp_identify\n");
-END_DEBUG
-
-	child = BUS_ADD_CHILD(parent, 0, "sbp", device_get_unit(parent));
-}
 
 /*
  * sbp_probe()
@@ -2762,9 +2751,16 @@ sbp_abort_all_ocbs(struct sbp_dev *sdev, int status)
 
 static devclass_t sbp_devclass;
 
+/*
+ * Because sbp is a static device that always exists under any attached
+ * firewire device, and not scanned by the firewire device, we need an 
+ * identify function to install the device.  For our sanity we want
+ * the sbp device to have the same unit number as the fireweire device.
+ */
+
 static device_method_t sbp_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	sbp_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify_sameunit),
 	DEVMETHOD(device_probe,		sbp_probe),
 	DEVMETHOD(device_attach,	sbp_attach),
 	DEVMETHOD(device_detach,	sbp_detach),

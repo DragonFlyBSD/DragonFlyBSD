@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.5 2005/06/09 19:14:11 eirikn Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.6 2005/10/28 03:25:37 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -82,7 +82,7 @@ static struct cputimer acpi_cputimer = {
 	0, 0, 0
 };
 
-static void	acpi_timer_identify(driver_t *driver, device_t parent);
+static int	acpi_timer_identify(driver_t *driver, device_t parent);
 static int	acpi_timer_probe(device_t dev);
 static int	acpi_timer_attach(device_t dev);
 static int	acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS);
@@ -118,7 +118,7 @@ acpi_timer_read()
  * Locate the ACPI timer using the FADT, set up and allocate the I/O resources
  * we will be using.
  */
-static void
+static int
 acpi_timer_identify(driver_t *driver, device_t parent)
 {
     device_t	dev;
@@ -126,14 +126,20 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     u_long	rlen, rstart;
     int		i, j, rid, rtype;
 
+    /*
+     * Just try once, do nothing if the 'acpi' bus is rescanned.
+     */
+    if (device_get_state(parent) == DS_ATTACHED)
+	return (0);
+
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     if (acpi_disabled("timer") || AcpiGbl_FADT == NULL)
-	return_VOID;
+	return (ENXIO);
 
     if ((dev = BUS_ADD_CHILD(parent, 0, "acpi_timer", 0)) == NULL) {
 	device_printf(parent, "could not add acpi_timer0\n");
-	return_VOID;
+	return (ENXIO);
     }
     acpi_timer_dev = dev;
 
@@ -147,7 +153,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     if (acpi_timer_reg == NULL) {
 	device_printf(dev, "couldn't allocate I/O resource (%s 0x%lx)\n",
 		      rtype == SYS_RES_IOPORT ? "port" : "mem", rstart);
-	return_VOID;
+	return (ENXIO);
     }
     acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
     acpi_timer_bst = rman_get_bustag(acpi_timer_reg);
@@ -183,7 +189,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 
     cputimer_register(&acpi_cputimer);
     cputimer_select(&acpi_cputimer, 0);
-    return_VOID;
+    return (0);
 }
 
 static int

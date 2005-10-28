@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.5 2005/06/16 15:53:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.6 2005/10/28 03:25:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,13 +88,6 @@ static void	vpo_poll(struct cam_sim *sim);
 static void	vpo_cam_rescan_callback(struct cam_periph *periph,
 					union ccb *ccb);
 static void	vpo_cam_rescan(struct vpo_data *vpo);
-
-static void
-vpo_identify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, "vpo", 0);
-}
 
 /*
  * vpo_probe()
@@ -448,14 +441,17 @@ vpo_poll(struct cam_sim *sim)
 	return;
 }
 
+/*
+ * Always create a "vpo" device under ppbus.  Use device_identify to
+ * create the static entry for any attached ppbus.
+ */
 static devclass_t vpo_devclass;
 
 static device_method_t vpo_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	vpo_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		vpo_probe),
 	DEVMETHOD(device_attach,	vpo_attach),
-
 	{ 0, 0 }
 };
 
@@ -465,3 +461,4 @@ static driver_t vpo_driver = {
 	sizeof(struct vpo_data),
 };
 DRIVER_MODULE(vpo, ppbus, vpo_driver, vpo_devclass, 0, 0);
+

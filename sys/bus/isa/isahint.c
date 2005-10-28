@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.4 2005/10/28 03:25:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,11 +83,19 @@ isahint_add_device(device_t parent, const char *name, int unit)
 		device_disable(child);
 }
 
-static void
+static int
 isahint_identify(driver_t *driver, device_t parent)
 {
 	int i;
 	static char buf[] = "isaXXX";
+
+	/*
+	 * If the parent bus is already attached we are being called to
+	 * rescan.  We do not suppot rescanning the hints, just return
+	 * success.
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return(0);
 
 	/*
 	 * Add all devices configured to be attached to parent.
@@ -115,6 +123,7 @@ isahint_identify(driver_t *driver, device_t parent)
 				   resource_query_name(i),
 				   resource_query_unit(i));
 	}
+	return(0);
 }
 
 static device_method_t isahint_methods[] = {
@@ -130,6 +139,10 @@ static driver_t isahint_driver = {
 	1,			/* no softc */
 };
 
+/*
+ * This will cause the identify routine to be called for any isa bus
+ * attached to the system.
+ */
 static devclass_t hint_devclass;
 
 DRIVER_MODULE(isahint, isa, isahint_driver, hint_devclass, 0, 0);

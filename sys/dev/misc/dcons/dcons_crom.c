@@ -33,7 +33,7 @@
  * 
  * $Id: dcons_crom.c,v 1.8 2003/10/23 15:47:21 simokawa Exp $
  * $FreeBSD: src/sys/dev/dcons/dcons_crom.c,v 1.5 2004/10/13 05:38:42 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.2 2004/10/25 13:53:26 simokawa Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_crom.c,v 1.3 2005/10/28 03:25:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,12 +86,6 @@ struct dcons_crom_softc {
 	bus_dmamap_t dma_map;
 	bus_addr_t bus_addr;
 };
-
-static void
-dcons_crom_identify(driver_t *driver, device_t parent)
-{
-	BUS_ADD_CHILD(parent, 0, "dcons_crom", device_get_unit(parent));
-}
 
 static int
 dcons_crom_probe(device_t dev)
@@ -224,11 +218,17 @@ dcons_crom_detach(device_t dev)
 	return 0;
 }
 
+/*
+ * Because dcons_crom is a static device that always exists under any attached
+ * firewire device, and not scanned by the firewire device, we need an 
+ * identify function to install the device.  For our sanity we want
+ * the sbp device to have the same unit number as the fireweire device.
+ */
 static devclass_t dcons_crom_devclass;
 
 static device_method_t dcons_crom_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	dcons_crom_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify_sameunit),
 	DEVMETHOD(device_probe,		dcons_crom_probe),
 	DEVMETHOD(device_attach,	dcons_crom_attach),
 	DEVMETHOD(device_detach,	dcons_crom_detach),

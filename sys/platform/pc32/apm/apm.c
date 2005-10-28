@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.11 2005/06/03 17:12:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.12 2005/10/28 03:25:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -802,19 +802,6 @@ apm_not_halt_cpu(void)
 /* device driver definitions */
 
 /*
- * Create "connection point"
- */
-static void
-apm_identify(driver_t *driver, device_t parent)
-{
-	device_t child;
-
-	child = BUS_ADD_CHILD(parent, 0, "apm", 0);
-	if (child == NULL)
-		panic("apm_identify");
-}
-
-/*
  * probe for APM BIOS
  */
 static int
@@ -1370,9 +1357,14 @@ apmpoll(dev_t dev, int events, d_thread_t *td)
 	return (revents);
 }
 
+/*
+ * Because apm is a static device that always exists under any attached
+ * isa device, and not scanned by the isa device, we need an identify
+ * function to install the device so we can probe for it.
+ */
 static device_method_t apm_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_identify,	apm_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		apm_probe),
 	DEVMETHOD(device_attach,	apm_attach),
 
@@ -1388,3 +1380,4 @@ static driver_t apm_driver = {
 static devclass_t apm_devclass;
 
 DRIVER_MODULE(apm, nexus, apm_driver, apm_devclass, 0, 0);
+

@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.14 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.15 2005/10/28 03:25:54 dillon Exp $
  */
 
 /*
@@ -184,12 +184,6 @@ static void lp_intr(void *);
 
 static devclass_t lp_devclass;
 
-static void
-lp_identify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, "plip", 0);
-}
 /*
  * lpprobe()
  */
@@ -745,9 +739,14 @@ lpoutput (struct ifnet *ifp, struct mbuf *m,
     return 0;
 }
 
+/*
+ * Because plip is a static device that always exists under any attached
+ * ppbus device, and not scanned by the ppbus device, we need an identify
+ * function to install the device.
+ */
 static device_method_t lp_methods[] = {
   	/* device interface */
-	DEVMETHOD(device_identify,	lp_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		lp_probe),
 	DEVMETHOD(device_attach,	lp_attach),
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/lpbb.c,v 1.11.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/lpbb/lpbb.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpbb/lpbb.c,v 1.4 2005/10/28 03:25:45 dillon Exp $
  *
  */
 
@@ -53,13 +53,6 @@
 #include "iicbb_if.h"
 
 static int lpbb_detect(device_t dev);
-
-static void
-lpbb_identify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, "lpbb", 0);
-}
 
 static int
 lpbb_probe(device_t dev)
@@ -204,11 +197,16 @@ lpbb_getdataline(device_t dev)
 	return (getSDA(ppbus));
 }
 
+/*
+ * Because lpbb is a static device that always exists under any attached
+ * ppbus device, and not scanned by the ppbus device, we need an identify
+ * function to install the device.
+ */
 static devclass_t lpbb_devclass;
 
 static device_method_t lpbb_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	lpbb_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		lpbb_probe),
 	DEVMETHOD(device_attach,	lpbb_attach),
 

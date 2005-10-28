@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.18 2005/10/13 00:02:44 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.19 2005/10/28 03:25:57 dillon Exp $
  */
 
 /*
@@ -76,7 +76,6 @@ struct nexus_device {
 
 static struct rman irq_rman, drq_rman, port_rman, mem_rman;
 
-static void nexus_identify(driver_t *, device_t);
 static	int nexus_probe(device_t);
 static	int nexus_attach(device_t);
 static	int nexus_print_all_resources(device_t dev);
@@ -102,9 +101,13 @@ static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long);
 static	int nexus_get_resource(device_t, device_t, int, int, u_long *, u_long *);
 static void nexus_delete_resource(device_t, device_t, int, int);
 
+/*
+ * The device_identify method will cause nexus to automatically associate
+ * and attach to the root bus.
+ */
 static device_method_t nexus_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_identify,	nexus_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		nexus_probe),
 	DEVMETHOD(device_attach,	nexus_attach),
 	DEVMETHOD(device_detach,	bus_generic_detach),
@@ -138,17 +141,6 @@ static driver_t nexus_driver = {
 static devclass_t nexus_devclass;
 
 DRIVER_MODULE(nexus, root, nexus_driver, nexus_devclass, 0, 0);
-
-static void
-nexus_identify(driver_t *driver, device_t parent)
-{
-        /*
-         * Add child device with order of 1 so it gets probed
-         * after ACPI (which is at order 0.
-         */
-        if (BUS_ADD_CHILD(parent, 1, "legacy", 0) == NULL)
-                panic("legacy: could not attach");
-}
 
 static int
 nexus_probe(device_t dev)

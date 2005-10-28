@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/device_if.m,v 1.7.2.1 2001/07/24 09:49:41 dd Exp $
-# $DragonFly: src/sys/kern/device_if.m,v 1.3 2003/11/17 00:54:40 asmodai Exp $
+# $DragonFly: src/sys/kern/device_if.m,v 1.4 2005/10/28 03:25:57 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -79,9 +79,20 @@ METHOD int probe {
 };
 
 #
-# Called by a parent bus to add new devices to the bus.
+# Called by a parent bus to add new devices to the bus.  The driver
+# should check parent->state to determine whether this is an initial
+# identification scan on the bus, or whether it is a rescan.  If
+# parent->state == DS_ATTACHED then the identify call is a re-scan.
 #
-STATICMETHOD void identify {
+# Return 0 on success, 0 on rescan, or an error on the initial scan if no
+# devices were added to the bus.  Using generic_bus_identify() will
+# simply call BUS_ADD_CHILD using the driver name.
+#
+# Standard matching devices do not usually have an identify function, whereas
+# busses or any entity which needs to create static device entries under
+# the bus will.
+#
+STATICMETHOD int identify {
 	driver_t *driver;
 	device_t parent;
 };

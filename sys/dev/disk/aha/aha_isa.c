@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_isa.c,v 1.17.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.7 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.8 2005/10/28 03:25:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -317,17 +317,11 @@ aha_isa_detach(device_t dev)
 	return (0);
 }
 
-static void
-aha_isa_identify(driver_t *driver, device_t parent)
-{
-}
-
 static device_method_t aha_isa_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		aha_isa_probe),
 	DEVMETHOD(device_attach,	aha_isa_attach),
 	DEVMETHOD(device_detach,	aha_isa_detach),
-	DEVMETHOD(device_identify,	aha_isa_identify),
 
 	{ 0, 0 }
 };

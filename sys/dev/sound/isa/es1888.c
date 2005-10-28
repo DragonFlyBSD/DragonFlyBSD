@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/es1888.c,v 1.5.2.5 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.3 2005/10/28 03:25:55 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.3 2005/10/28 03:25:55 dillon Exp $");
 
 #ifdef __alpha__
 static int
@@ -112,12 +112,18 @@ es1888_set_port(u_int32_t port)
 }
 #endif
 
-static void
+static int
 es1888_identify(driver_t *driver, device_t parent)
 {
-/*
- * Only use this on alpha since PNPBIOS is a better solution on x86.
- */
+	/*
+	 * We do not suppot rescans
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+
+	/*
+	 * Only use this on alpha since PNPBIOS is a better solution on x86.
+	 */
 #ifdef __alpha__
 	u_int32_t lo, hi;
 	device_t dev;
@@ -130,11 +136,11 @@ es1888_identify(driver_t *driver, device_t parent)
 	 * Check identification bytes for es1888.
 	 */
 	if (es1888_dspwr(0x220, 0xe7))
-		return;
+		return (ENXIO);
 	hi = es1888_get_byte(0x220);
 	lo = es1888_get_byte(0x220);
 	if (hi != 0x68 || (lo & 0xf0) != 0x80)
-		return;
+		return (ENXIO);
 
 	/*
 	 * Program irq and drq.
@@ -144,7 +150,7 @@ es1888_identify(driver_t *driver, device_t parent)
 	    || es1888_dspwr(0x220, 0x14) /* enable irq 5 */
 	    || es1888_dspwr(0x220, 0xb2) /* write register b1 */
 	    || es1888_dspwr(0x220, 0x18)) /* enable drq 1 */
-		return;
+		return (ENXIO);
 
 	/*
 	 * Create the device and program its resources.
@@ -155,6 +161,9 @@ es1888_identify(driver_t *driver, device_t parent)
 	bus_set_resource(dev, SYS_RES_DRQ, 0, 1, 1);
 	isa_set_vendorid(dev, PNP_EISAID("ESS1888"));
 	isa_set_logicalid(dev, PNP_EISAID("ESS1888"));
+	return (0);
+#else
+	return (ENXIO);
 #endif
 }
 

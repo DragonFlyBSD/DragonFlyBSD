@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.10 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.11 2005/10/28 03:25:49 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -137,13 +137,6 @@ ppi_disable_intr(device_t ppidev)
 }
 
 #endif /* PERIPH_1284 */
-
-static void
-ppi_identify(driver_t *driver, device_t parent)
-{
-
-	BUS_ADD_CHILD(parent, 0, "ppi", 0);
-}
 
 /*
  * ppi_probe()
@@ -569,9 +562,14 @@ ppiioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 	return (error);
 }
 
+/*
+ * Because ppi is a static device under any attached ppbuf, and not
+ * scanned by the ppbuf, we need an identify function to create the
+ * device.
+ */
 static device_method_t ppi_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	ppi_identify),
+	DEVMETHOD(device_identify,	bus_generic_identify),
 	DEVMETHOD(device_probe,		ppi_probe),
 	DEVMETHOD(device_attach,	ppi_attach),
 

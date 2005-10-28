@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.18 2005/09/04 01:28:59 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.19 2005/10/28 03:25:57 dillon Exp $
  */
 
 /*
@@ -114,8 +114,6 @@ SYSINIT(configure3, SI_SUB_CONFIGURE, SI_ORDER_ANY, configure_final, NULL);
 dev_t	rootdev = NODEV;
 dev_t	dumpdev = NODEV;
 
-device_t nexus_dev;
-
 /*
  * Determine i/o configuration for a machine.
  */
@@ -154,10 +152,13 @@ configure(dummy)
 	INTREN(IRQ_SLAVE);
 #endif /* APIC_IO */
 
-	/* nexus0 is the top of the i386 device tree */
-	device_add_child(root_bus, "nexus", 0);
-
-	/* initialize new bus architecture */
+	/*
+	 * This will configure all devices, generally starting with the
+	 * nexus (i386/i386/nexus.c).  The nexus ISA code explicitly
+	 * dummies up the attach in order to delay legacy initialization
+	 * until after all other busses/subsystems have had a chance
+	 * at those resources.
+	 */
 	root_bus_configure();
 
 #if NISA > 0
