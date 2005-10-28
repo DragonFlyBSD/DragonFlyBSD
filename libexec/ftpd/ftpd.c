@@ -37,7 +37,7 @@
 #if 0
 static const char rcsid[] =
   "$FreeBSD: src/libexec/ftpd/ftpd.c,v 1.62.2.48 2003/02/14 12:42:42 yar Exp $";
-  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.6 2005/08/08 16:17:04 joerg Exp $";
+  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.7 2005/10/28 18:06:57 joerg Exp $";
 #endif /* not lint */
 
 /*
@@ -303,7 +303,7 @@ main(argc, argv, envp)
 
 
 	while ((ch = getopt(argc, argv,
-	                    "46a:AdDEhlmMoOp:P:rRSt:T:u:UvW")) != -1) {
+	                    "46a:AdDEH:hlmMoOp:P:rRSt:T:u:UvW")) != -1) {
 		switch (ch) {
 		case '4':
 			enable_v4 = 1;
@@ -337,6 +337,10 @@ main(argc, argv, envp)
 
 		case 'h':
 			hostinfo = 0;
+			break;
+
+		case 'H':
+			hostname = optarg;
 			break;
 
 		case 'l':
@@ -644,10 +648,12 @@ main(argc, argv, envp)
 		/* reply(220,) must follow */
 	}
 #ifndef VIRTUAL_HOSTING
-	if ((hostname = malloc(MAXHOSTNAMELEN)) == NULL)
-		fatalerror("Ran out of memory.");
-	(void) gethostname(hostname, MAXHOSTNAMELEN - 1);
-	hostname[MAXHOSTNAMELEN - 1] = '\0';
+	if (hostname == NULL) {
+		if ((hostname = malloc(MAXHOSTNAMELEN)) == NULL)
+			fatalerror("Ran out of memory.");
+		gethostname(hostname, MAXHOSTNAMELEN - 1);
+		hostname[MAXHOSTNAMELEN - 1] = '\0';
+	}
 #endif
 	if (hostinfo)
 		reply(220, "%s FTP server (%s) ready.", hostname, version);
@@ -689,7 +695,6 @@ inithosts()
 	size_t len;
 	FILE *fp;
 	char *cp, *mp, *line;
-	char *hostname;
 	char *vhost, *anonuser, *statfile, *welcome, *loginmsg;
 	struct ftphost *hrp, *lhrp;
 	struct addrinfo hints, *res, *ai;
@@ -697,11 +702,13 @@ inithosts()
 	/*
 	 * Fill in the default host information
 	 */
-	if ((hostname = malloc(MAXHOSTNAMELEN)) == NULL)
-		fatalerror("Ran out of memory.");
-	if (gethostname(hostname, MAXHOSTNAMELEN) < 0)
-		hostname[0] = '\0';
-	hostname[MAXHOSTNAMELEN - 1] = '\0';
+	if (hostname == NULL) {
+		if ((hostname = malloc(MAXHOSTNAMELEN)) == NULL)
+			fatalerror("Ran out of memory.");
+		if (gethostname(hostname, MAXHOSTNAMELEN) < 0)
+			hostname[0] = '\0';
+		hostname[MAXHOSTNAMELEN - 1] = '\0';
+	}
 	if ((hrp = malloc(sizeof(struct ftphost))) == NULL)
 		fatalerror("Ran out of memory.");
 	hrp->hostname = hostname;

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ftpd.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/libexec/ftpd/ftpd.8,v 1.31.2.18 2003/02/11 14:28:28 yar Exp $
-.\" $DragonFly: src/libexec/ftpd/ftpd.8,v 1.2 2003/06/17 04:27:07 dillon Exp $
+.\" $DragonFly: src/libexec/ftpd/ftpd.8,v 1.3 2005/10/28 18:06:57 joerg Exp $
 .\"
 .Dd January 27, 2000
 .Dt FTPD 8
@@ -44,6 +44,7 @@
 .Op Fl 46AdDEhmMoOrRSUvW
 .Op Fl l Op Fl l
 .Op Fl a Ar address
+.Op Fl H Ar host
 .Op Fl p Ar file
 .Op Fl P Ar port
 .Op Fl t Ar timeout
@@ -111,6 +112,11 @@ This is useful for servers behind older firewalls.
 .It Fl h
 Disable printing host-specific information, such as the
 server software version or hostname, in server messages.
+.It Fl H
+Advertise the hostname as
+.Ar host
+instead of using the value of
+.Xr gethostname 3 .
 .It Fl l
 Each successful and failed
 .Xr ftp 1
