@@ -33,13 +33,12 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined.h,v 1.4 2005/03/15 02:32:57 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined.h,v 1.5 2005/10/29 12:05:27 swildner Exp $*
  */
 /*========================================================================*
  *				Mined.h					  *
  *========================================================================*/
 
-#define _PROTOTYPE(a, b)	a b
 #define INTEL	1
 #define CHIP	INTEL
 #define ASSUME_CONS25
@@ -63,11 +62,11 @@ extern char *CE, *VS, *SO, *SE, *CL, *AL, *CM;
 #else
 #define YMAX		24		/* Maximum y coordinate starting at 0 */
 /* Escape sequences. */
-extern char *enter_string;	/* String printed on entering mined */
-extern char *rev_video;		/* String for starting reverse video */
-extern char *normal_video;	/* String for leaving reverse video */
-extern char *rev_scroll;	/* String for reverse scrolling */
-extern char *pos_string;	/* Absolute cursor positioning */
+extern const char *enter_string;	/* String printed on entering mined */
+extern const char *rev_video;		/* String for starting reverse video */
+extern const char *normal_video;	/* String for leaving reverse video */
+extern const char *rev_scroll;		/* String for reverse scrolling */
+extern const char *pos_string;		/* Absolute cursor positioning */
 #define X_PLUS	' '		/* To be added to x for cursor sequence */
 #define Y_PLUS	' '		/* To be added to y for cursor sequence */
 #endif /* UNIX */
@@ -159,7 +158,7 @@ typedef struct Line LINE;
  */
 struct regex {
   union {
-  	char *err_mess;
+  	const char *err_mess;
   	int *expression;
   } result;
   char status;
@@ -201,7 +200,7 @@ extern FLAG loading;			/* Set if we're loading a file */
 extern int out_count;			/* Index in output buffer */
 extern char file_name[LINE_LEN];	/* Name of file in use */
 extern char text_buffer[MAX_CHARS];	/* Buffer for modifying text */
-extern char *blank_line;		/* Clear line to end */
+extern const char *blank_line;		/* Clear line to end */
 
 extern char yank_file[];		/* Temp file for buffer */
 extern FLAG yank_status;		/* Status of yank_file */
@@ -215,7 +214,7 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
 /*
  * Print character on terminal
  */
-#define putchar(c)			(void) write_char(STD_OUT, (c))
+#define putchar(c)			write_char(STD_OUT, (c))
 
 /*
  * Ring bell on terminal
@@ -225,12 +224,12 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
 /*
  * Print string on terminal
  */
-#define string_print(str)		(void) writeline(STD_OUT, (str))
+#define string_print(str)		writeline(STD_OUT, (str))
 
 /*
  * Flush output buffer
  */
-#define flush()				(void) flush_buffer(STD_OUT)
+#define flush()				flush_buffer(STD_OUT)
 
 /*
  * Convert cnt to nearest tab position
@@ -262,13 +261,11 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
 /*
  * Functions handling status_line. ON means in reverse video.
  */
-#define status_line(str1, str2)	(void) bottom_line(ON, (str1), \
-						    (str2), NIL_PTR, FALSE)
-#define error(str1, str2)	(void) bottom_line(ON, (str1), \
-						    (str2), NIL_PTR, FALSE)
+#define status_line(str1, str2)	bottom_line(ON, (str1), (str2), NIL_PTR, FALSE)
+#define error(str1, str2)	bottom_line(ON, (str1), (str2), NIL_PTR, FALSE)
 #define get_string(str1,str2, fl) bottom_line(ON, (str1), NIL_PTR, (str2), fl)
-#define clear_status()		(void) bottom_line(OFF, NIL_PTR, NIL_PTR, \
-						    NIL_PTR, FALSE)
+#define clear_status()		bottom_line(OFF, NIL_PTR, NIL_PTR,	\
+					    NIL_PTR, FALSE)
 
 /*
  * Print info about current file and buffer.
@@ -285,133 +282,124 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
 
 /* mined1.c */
 
-_PROTOTYPE(void FS, (void));
-_PROTOTYPE(void VI, (void));
-_PROTOTYPE(int WT, (void));
-_PROTOTYPE(void XWT, (void));
-_PROTOTYPE(void SH, (void));
-_PROTOTYPE(LINE *proceed, (LINE *line, int count ));
-_PROTOTYPE(int bottom_line, (FLAG revfl, char *s1, char *s2, char *inbuf, FLAG statfl ));
-_PROTOTYPE(int count_chars, (LINE *line ));
-_PROTOTYPE(void move, (int new_x, char *new_address, int new_y ));
-_PROTOTYPE(int find_x, (LINE *line, char *address ));
-_PROTOTYPE(char *find_address, (LINE *line, int x_coord, int *old_x ));
-_PROTOTYPE(int length_of, (char *string ));
-_PROTOTYPE(void copy_string, (char *to, char *from ));
-_PROTOTYPE(void reset, (LINE *head_line, int screen_y ));
-_PROTOTYPE(void set_cursor, (int nx, int ny ));
-_PROTOTYPE(void open_device, (void));
-_PROTOTYPE(int getchar, (void));
-_PROTOTYPE(void display, (int x_coord, int y_coord, LINE *line, int count ));
-_PROTOTYPE(int write_char, (int fd, int c ));
-_PROTOTYPE(int writeline, (int fd, char *text ));
-_PROTOTYPE(void put_line, (LINE *line, int offset, FLAG clear_line ));
-_PROTOTYPE(int flush_buffer, (int fd ));
-_PROTOTYPE(void bad_write, (int fd ));
-_PROTOTYPE(void catch, (int sig ));
-_PROTOTYPE(void abort_mined, (void));
-_PROTOTYPE(void raw_mode, (FLAG state ));
-_PROTOTYPE(void panic, (char *message ));
-_PROTOTYPE(char *alloc, (int bytes ));
-_PROTOTYPE(void free_space, (char *p ));
-/*
-#ifdef UNIX
-_PROTOTYPE(void (*key_map [128]), (void));
-#else
-_PROTOTYPE(void (*key_map [256]), (void));
-#endif
-*/
-_PROTOTYPE(void initialize, (void));
-_PROTOTYPE(char *basename, (char *path ));
-_PROTOTYPE(void load_file, (char *file ));
-_PROTOTYPE(int get_line, (int fd, char *buffer ));
-_PROTOTYPE(LINE *install_line, (char *buffer, int length ));
-_PROTOTYPE(int main, (int argc, char *argv []));
-_PROTOTYPE(void RD, (void));
-_PROTOTYPE(void I, (void));
-_PROTOTYPE(void XT, (void));
-_PROTOTYPE(void ESC, (void));
-_PROTOTYPE(int ask_save, (void));
-_PROTOTYPE(int line_number, (void));
-_PROTOTYPE(void file_status, (char *message, long count, char *file, int lines,
-						 FLAG writefl, FLAG changed ));
-#if __STDC__
-void build_string(char *buf, char *fmt, ...);
-#else
-void build_string();
-#endif
-_PROTOTYPE(char *num_out, (long number ));
-_PROTOTYPE(int get_number, (char *message, int *result ));
-_PROTOTYPE(int input, (char *inbuf, FLAG clearfl ));
-_PROTOTYPE(int get_file, (char *message, char *file ));
-_PROTOTYPE(int _getchar, (void));
-_PROTOTYPE(void _flush, (void));
-_PROTOTYPE(void _putchar, (int c ));
-_PROTOTYPE(void get_term, (void));
+void	 FS(int);
+void	 VI(int);
+int	 WT(void);
+void	 XWT(int);
+void	 SH(int);
+LINE	*proceed(LINE *line, int count);
+int	 bottom_line(FLAG revfl, const char *s1, const char *s2, char *inbuf, FLAG statfl);
+int	 count_chars(LINE *line);
+void	 move(int new_x, char *new_address, int new_y);
+int	 find_x(LINE *line, char *address);
+char	*find_address(LINE *line, int x_coord, int *old_x);
+int	 length_of(char *string);
+void	 copy_string(char *to, const char *from);
+void	 reset(LINE *head_line, int screen_y);
+void	 set_cursor(int nx, int ny);
+void	 open_device(void);
+int	 getchar(void);
+void	 display(int x_coord, int y_coord, LINE *line, int count);
+int	 write_char(int fd, char c);
+int	 writeline(int fd, const char *text);
+void	 put_line(LINE *line, int offset, FLAG clear_line);
+int	 flush_buffer(int fd);
+void	 bad_write(int fd);
+void	 catch(int sig);
+void	 abort_mined(void);
+void	 raw_mode(FLAG state);
+void	 panic(const char *message);
+char	*alloc(int bytes);
+void	 free_space(char *p);
+void	 initialize(void);
+char	*basename(char *path);
+void	 load_file(const char *file);
+int	 get_line(int fd, char *buffer);
+LINE	*install_line(const char *buffer, int length);
+void	 RD(int);
+void	 I(int);
+void	 XT(int);
+void	 ESC(int);
+int	 ask_save(void);
+int	 line_number(void);
+void	 file_status(const char *message, long count, char *file, int lines,
+		     FLAG writefl, FLAG changed);
+void	 build_string(char *buf, const char *fmt, ...);
+char	*num_out(long number);
+int	 get_number(const char *message, int *result);
+int	 input(char *inbuf, FLAG clearfl);
+int	 get_file(const char *message, char *file);
+int	 _getchar(void);
+void	 _flush(void);
+void	 _putchar(int c);
+void	 get_term(void);
 
 /* mined2.c */
 
-_PROTOTYPE(void UP, (void));
-_PROTOTYPE(void DN, (void));
-_PROTOTYPE(void LF, (void));
-_PROTOTYPE(void RT, (void));
-_PROTOTYPE(void HIGH, (void));
-_PROTOTYPE(void LOW, (void));
-_PROTOTYPE(void BL, (void));
-_PROTOTYPE(void EL, (void));
-_PROTOTYPE(void GOTO, (void));
-_PROTOTYPE(void HLP, (void));
-_PROTOTYPE(void ST, (void));
-_PROTOTYPE(void PD, (void));
-_PROTOTYPE(void PU, (void));
-_PROTOTYPE(void HO, (void));
-_PROTOTYPE(void EF, (void));
-_PROTOTYPE(void SU, (void));
-_PROTOTYPE(void SD, (void));
-_PROTOTYPE(int forward_scroll, (void));
-_PROTOTYPE(int reverse_scroll, (void));
-_PROTOTYPE(void MP, (void));
-_PROTOTYPE(void move_previous_word, (FLAG remove ));
-_PROTOTYPE(void MN, (void));
-_PROTOTYPE(void move_next_word, (FLAG remove ));
-_PROTOTYPE(void DCC, (void));
-_PROTOTYPE(void DPC, (void));
-_PROTOTYPE(void DLN, (void));
-_PROTOTYPE(void DNW, (void));
-_PROTOTYPE(void DPW, (void));
-_PROTOTYPE(void S, (int character ));
-_PROTOTYPE(void CTL, (void));
-_PROTOTYPE(void LIB, (void));
-_PROTOTYPE(LINE *line_insert, (LINE *line, char *string, int len ));
-_PROTOTYPE(int insert, (LINE *line, char *location, char *string ));
-_PROTOTYPE(LINE *line_delete, (LINE *line ));
-_PROTOTYPE(void delete, (LINE *start_line, char *start_textp, LINE *end_line, char *end_textp ));
-_PROTOTYPE(void PT, (void));
-_PROTOTYPE(void IF, (void));
-_PROTOTYPE(void file_insert, (int fd, FLAG old_pos ));
-_PROTOTYPE(void WB, (void));
-_PROTOTYPE(void MA, (void));
-_PROTOTYPE(void YA, (void));
-_PROTOTYPE(void DT, (void));
-_PROTOTYPE(void set_up, (FLAG remove ));
-_PROTOTYPE(FLAG checkmark, (void));
-_PROTOTYPE(int legal, (void));
-_PROTOTYPE(void yank, (LINE *start_line, char *start_textp, LINE *end_line, char *end_textp, FLAG remove ));
-_PROTOTYPE(int scratch_file, (FLAG mode ));
-_PROTOTYPE(void SF, (void));
-_PROTOTYPE(void SR, (void));
-_PROTOTYPE(REGEX *get_expression, (char *message ));
-_PROTOTYPE(void GR, (void));
-_PROTOTYPE(void LR, (void));
-_PROTOTYPE(void change, (char *message, FLAG file ));
-_PROTOTYPE(char *substitute, (LINE *line, REGEX *program, char *replacement ));
-_PROTOTYPE(void search, (char *message, FLAG method ));
-_PROTOTYPE(int find_y, (LINE *match_line ));
-_PROTOTYPE(void finished, (REGEX *program, int *last_exp ));
-_PROTOTYPE(void compile, (char *pattern, REGEX *program ));
-_PROTOTYPE(LINE *match, (REGEX *program, char *string, FLAG method ));
-_PROTOTYPE(int line_check, (REGEX *program, char *string, FLAG method ));
-_PROTOTYPE(int check_string, (REGEX *program, char *string, int *expression ));
-_PROTOTYPE(int star, (REGEX *program, char *end_position, char *string, int *expression ));
-_PROTOTYPE(int in_list, (int *list, int c, int list_length, int opcode ));
-_PROTOTYPE(void dummy_line, (void));
+void	 UP(int);
+void	 DN(int);
+void	 LF(int);
+void	 RT(int);
+void	 HIGH(int);
+void	 LOW(int);
+void	 BL(int);
+void	 EL(int);
+void	 GOTO(int);
+void	 HLP(int);
+void	 ST(int);
+void	 PD(int);
+void	 PU(int);
+void	 HO(int);
+void	 EF(int);
+void	 SU(int);
+void	 SD(int);
+int	 forward_scroll(void);
+int	 reverse_scroll(void);
+void	 MP(int);
+void	 move_previous_word(FLAG remove);
+void	 MN(int);
+void	 move_next_word(FLAG remove);
+void	 DCC(int);
+void	 DPC(int);
+void	 DLN(int);
+void	 DNW(int);
+void	 DPW(int);
+void	 S(int character);
+void	 CTL(int);
+void	 LIB(int);
+LINE	*line_insert(LINE *line, const char *string, int len);
+int	 insert(LINE *line, char *location, char *string);
+LINE	*line_delete(LINE *line);
+void	 delete(LINE *start_line, char *start_textp,
+		LINE *end_line, char *end_textp);
+void	 PT(int);
+void	 IF(int);
+void	 file_insert(int fd, FLAG old_pos);
+void	 WB(int);
+void	 MA(int);
+void	 YA(int);
+void	 DT(int);
+void	 set_up(FLAG remove);
+FLAG	 checkmark(void);
+int	 legal(void);
+void	 yank(LINE *start_line, char *start_textp,
+	      LINE *end_line, char *end_textp, FLAG remove);
+int	 scratch_file(FLAG mode);
+void	 SF(int);
+void	 SR(int);
+REGEX	*get_expression(const char *message);
+void	 GR(int);
+void	 LR(int);
+void	 change(const char *message, FLAG file);
+char	*substitute(LINE *line, REGEX *program, char *replacement);
+void	 search(const char *message, FLAG method);
+int	 find_y(LINE *match_line);
+void	 finished(REGEX *program, int *last_exp);
+void	 compile(char *pattern, REGEX *program);
+LINE	*match(REGEX *program, char *string, FLAG method);
+int	 line_check(REGEX *program, char *string, FLAG method);
+int	 check_string(REGEX *program, char *string, int *expression);
+int	 star(REGEX *program, char *end_position, char *string,
+	      int *expression);
+int	 in_list(int *list, char c, int list_length, int opcode);
+void	 dummy_line(void);
