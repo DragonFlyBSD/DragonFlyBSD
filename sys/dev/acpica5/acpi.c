@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.15 2005/10/28 03:25:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.16 2005/10/30 04:20:49 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -140,7 +140,9 @@ static ACPI_STATUS acpi_wake_limit(ACPI_HANDLE h, UINT32 level, void *context,
 		    void **status);
 static int	acpi_wake_limit_walk(int sstate);
 static int	acpi_wake_sysctl_walk(device_t dev);
+#ifdef dfly_notyet
 static int	acpi_wake_set_sysctl(SYSCTL_HANDLER_ARGS);
+#endif
 static void	acpi_system_eventhandler_sleep(void *arg, int state);
 static void	acpi_system_eventhandler_wakeup(void *arg, int state);
 static int	acpi_supported_sleep_state_sysctl(SYSCTL_HANDLER_ARGS);
@@ -2003,6 +2005,7 @@ acpi_wake_sysctl_walk(device_t dev)
     return (0);
 }
 
+#ifdef dfly_notyet
 /* Enable or disable wake from userland. */
 static int
 acpi_wake_set_sysctl(SYSCTL_HANDLER_ARGS)
@@ -2021,6 +2024,7 @@ acpi_wake_set_sysctl(SYSCTL_HANDLER_ARGS)
 
     return (acpi_wake_set_enable(dev, enable));
 }
+#endif /* dfly_notyet */
 
 /* Parse a device's _PRW into a structure. */
 static int

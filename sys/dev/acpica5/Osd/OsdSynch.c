@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.5 2005/06/04 14:25:45 corecode Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.6 2005/10/30 04:20:49 y0netan1 Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
 #if __FreeBSD_version >= 500000
     mtx_destroy(&as->as_mtx);
 #endif
-    free(Handle, M_ACPISEM);
+    free(as, M_ACPISEM);
 #endif /* !ACPI_NO_SEMAPHORES */
 
     return_ACPI_STATUS (AE_OK);
