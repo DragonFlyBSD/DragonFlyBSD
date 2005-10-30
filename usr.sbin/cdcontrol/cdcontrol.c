@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.7 2005/02/15 20:23:24 cpressey Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.8 2005/10/30 23:00:57 swildner Exp $
  */
 
 #include <sys/cdio.h>
@@ -178,8 +178,8 @@ usage(void)
 	exit (1);
 }
 
-char
-*use_cdrom_instead(const char *old_envvar)
+char *
+use_cdrom_instead(const char *old_envvar)
 {
 	char *device;
 
@@ -771,8 +771,8 @@ next_prev(char *arg, int cmd)
 	return (play_track (trk, 1, n, 1));
 }
 
-const char
-*strstatus(int sts)
+const char *
+strstatus(int sts)
 {
 	switch (sts) {
 	case ASTS_INVALID:	return ("invalid");
@@ -1189,8 +1189,8 @@ input(int *cmd)
 	return (p);
 }
 
-char
-*parse(char *buf, int *cmd)
+char *
+parse(char *buf, int *cmd)
 {
 	struct cmdtab *c;
 	char *p;

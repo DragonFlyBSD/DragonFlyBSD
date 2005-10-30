@@ -24,7 +24,7 @@
  *			   University of Maryland at College Park
  *
  * $FreeBSD: src/usr.sbin/crunch/crunchgen/crunchgen.c,v 1.12.2.10 2002/04/14 20:55:21 luigi Exp $
- * $DragonFly: src/usr.sbin/crunch/crunchgen/crunchgen.c,v 1.3 2003/11/16 14:10:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchgen/crunchgen.c,v 1.4 2005/10/30 23:00:57 swildner Exp $
  */
 /*
  * ========================================================================
@@ -538,8 +538,8 @@ add_special(int argc, char **argv)
 }
 
 
-prog_t
-*find_prog(char *str)
+prog_t *
+find_prog(char *str)
 {
 	prog_t *p;
 
@@ -893,8 +893,8 @@ gen_output_cfile(void)
 }
 
 
-char
-*genident(char *str)
+char *
+genident(char *str)
 {
 	char *n, *s, *d;
 
@@ -918,8 +918,8 @@ char
 }
 
 
-char
-*dir_search(char *progname)
+char *
+dir_search(char *progname)
 {
 	char path[MAXPATHLEN];
 	strlst_t *dir;

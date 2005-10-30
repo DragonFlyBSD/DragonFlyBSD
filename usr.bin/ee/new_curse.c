@@ -38,7 +38,7 @@
  |	All are rights reserved.
  |
  | $FreeBSD: src/usr.bin/ee/new_curse.c,v 1.4.2.1 2001/06/10 11:06:06 sobomax Exp $
- | $DragonFly: src/usr.bin/ee/new_curse.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
+ | $DragonFly: src/usr.bin/ee/new_curse.c,v 1.4 2005/10/30 23:00:57 swildner Exp $
  |
  */
 
@@ -1480,8 +1480,8 @@ Screenalloc(int columns)
 lines, cols: number of lines and columns to be in window
 start_l, start_c: starting line and column to be in window
 */
-WINDOW
-*newwin(int lines, int cols, int start_l, int start_c)
+WINDOW *
+newwin(int lines, int cols, int start_l, int start_c)
 {
 	WINDOW *Ntemp;
 	struct _line *temp_screen;

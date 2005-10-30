@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.5 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.6 2005/10/30 23:00:56 swildner Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -103,8 +103,8 @@ static int wait_for_kbd_ack(atkbdc_softc_t *kbdc);
 static int wait_for_aux_data(atkbdc_softc_t *kbdc);
 static int wait_for_aux_ack(atkbdc_softc_t *kbdc);
 
-atkbdc_softc_t
-*atkbdc_get_softc(int unit)
+atkbdc_softc_t *
+atkbdc_get_softc(int unit)
 {
 	atkbdc_softc_t *sc;
 

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.14 2005/07/29 21:17:08 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.15 2005/10/30 23:00:56 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -712,8 +712,8 @@ map_bios_mode_num(int type, int color, int bios_mode)
 }
 
 /* look up a parameter table entry */
-static u_char 
-*get_mode_param(int mode)
+static u_char *
+get_mode_param(int mode)
 {
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
     if (mode >= V_MODE_MAP_SIZE)

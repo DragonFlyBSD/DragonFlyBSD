@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.30.2.2 2001/06/08 18:27:32 sobomax Exp $
- * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.5 2005/10/30 23:00:57 swildner Exp $
  */
 
 #include <ctype.h>
@@ -958,8 +958,8 @@ set_history(char *opt)
 		warn("setting history buffer size");
 }
 
-static char
-*get_kbd_type_name(int type)
+static char *
+get_kbd_type_name(int type)
 {
 	static struct {
 		int type;

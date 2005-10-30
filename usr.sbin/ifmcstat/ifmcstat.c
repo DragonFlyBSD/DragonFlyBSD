@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.7 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.8 2005/10/30 23:00:57 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -82,8 +82,8 @@ struct multi6_kludge {
 };
 #endif
 
-const char 
-*inet6_n2a(struct in6_addr *p)
+const char *
+inet6_n2a(struct in6_addr *p)
 {
 	static char buf[NI_MAXHOST];
 	struct sockaddr_in6 sin6;
@@ -149,8 +149,8 @@ main(int argc __unused, char **argv __unused)
 	/*NOTREACHED*/
 }
 
-char
-*ifname(struct ifnet *ifp)
+char *
+ifname(struct ifnet *ifp)
 {
 	static char buf[BUFSIZ];
 	struct ifnet ifnet;

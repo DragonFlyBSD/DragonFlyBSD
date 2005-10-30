@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/ems.c,v 1.3.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/ems.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
+ * $DragonFly: src/usr.bin/doscmd/ems.c,v 1.4 2005/10/30 23:00:57 swildner Exp $
  */
 
 /* 
@@ -1193,8 +1193,8 @@ map_page(u_long pagenum, u_char position, short handle, int unmaponly)
  * memory over 1MB and it may not may to addresses under 1kB, because there
  * is the VM86 interrupt table.
  */
-static void 
-*get_valid_pointer(u_short seg, u_short offs, u_long size)
+static void *
+get_valid_pointer(u_short seg, u_short offs, u_long size)
 {
     u_long addr;
     addr = MAKEPTR(seg, offs);
@@ -1206,8 +1206,8 @@ static void
 }
 
 /* Malloc a new handle */
-static EMS_handle
-*get_new_handle(long npages)
+static EMS_handle *
+get_new_handle(long npages)
 {
     EMS_handle *ehp;
     size_t dynsize = sizeof(EMS_handle) + sizeof(short) * npages;

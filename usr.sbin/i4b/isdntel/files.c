@@ -30,7 +30,7 @@
  *      $Id: files.c,v 1.8 1999/12/13 21:25:26 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntel/files.c,v 1.6.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntel/files.c,v 1.5 2004/03/26 00:30:12 cpressey Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntel/files.c,v 1.6 2005/10/30 23:00:57 swildner Exp $
  *
  *      last edit-date: [Mon Dec 13 21:54:06 1999]
  *
@@ -42,9 +42,9 @@
  *	create a doubly linked list in sorted order, return pointer to new
  *	first element of list
  *---------------------------------------------------------------------------*/
-struct onefile 
-*store(struct onefile *new,			/* new entry to store into list */
-       struct onefile *top)			/* current first entry in list */
+struct onefile *
+store(struct onefile *new,			/* new entry to store into list */
+      struct onefile *top)			/* current first entry in list */
 {
 	struct onefile *old, *p;
 

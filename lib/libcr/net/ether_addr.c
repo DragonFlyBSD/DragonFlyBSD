@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/lib/libc/net/ether_addr.c,v 1.10.2.5 2002/04/08 08:01:50 ru Exp $
- * $DragonFly: src/lib/libcr/net/Attic/ether_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/ether_addr.c,v 1.3 2005/10/30 23:00:56 swildner Exp $
  */
 
 #include <stdio.h>
@@ -111,8 +111,8 @@ ether_addr *ether_aton(a)
  * Convert a binary representation of an ethernet address to
  * an ASCII string.
  */
-char
-*ether_ntoa(n)
+char *
+ether_ntoa(n)
 	const struct ether_addr *n;
 {
         int i;

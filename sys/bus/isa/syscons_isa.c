@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.6 2005/04/19 18:05:02 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.7 2005/10/30 23:00:56 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -104,8 +104,8 @@ sc_max_unit(void)
 	return devclass_get_maxunit(sc_devclass);
 }
 
-sc_softc_t
-*sc_get_softc(int unit, int flags)
+sc_softc_t *
+sc_get_softc(int unit, int flags)
 {
 	sc_softc_t *sc;
 
@@ -129,8 +129,8 @@ sc_softc_t
 	return sc;
 }
 
-sc_softc_t
-*sc_find_softc(struct video_adapter *adp, struct keyboard *kbd)
+sc_softc_t *
+sc_find_softc(struct video_adapter *adp, struct keyboard *kbd)
 {
 	sc_softc_t *sc;
 	int units;

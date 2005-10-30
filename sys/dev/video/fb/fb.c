@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.12 2005/07/10 00:52:24 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.13 2005/10/30 23:00:56 swildner Exp $
  */
 
 #include "opt_fb.h"
@@ -190,8 +190,8 @@ vid_unregister(video_adapter_t *adp)
 }
 
 /* Get video I/O function table */
-video_switch_t
-*vid_get_switch(char *name)
+video_switch_t *
+vid_get_switch(char *name)
 {
 	const video_driver_t **list;
 	const video_driver_t *p;
@@ -268,8 +268,8 @@ vid_release(video_adapter_t *adp, void *id)
 }
 
 /* Get a video adapter structure */
-video_adapter_t
-*vid_get_adapter(int index)
+video_adapter_t *
+vid_get_adapter(int index)
 {
 	if ((index < 0) || (index >= adapters))
 		return NULL;
@@ -589,8 +589,8 @@ int genfbmmap(genfb_softc_t *sc, video_adapter_t *adp, vm_offset_t offset,
 
 #endif /* FB_INSTALL_CDEV */
 
-static char
-*adapter_name(int type)
+static char *
+adapter_name(int type)
 {
     static struct {
 	int type;
