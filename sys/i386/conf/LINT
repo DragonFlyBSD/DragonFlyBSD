@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.64 2005/10/18 15:31:10 sephe Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.65 2005/10/30 04:05:09 y0netan1 Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2603,6 +2603,7 @@ options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
 options		UBSEC_RNDTEST	# enable rndtest support
 
 device		acpi		# basic ACPI support
+device		pmtimer		# adjust the system clock after resume
 
 # DRM options:
 # mgadrm:    AGP Matrox G200, G400, G450, G550

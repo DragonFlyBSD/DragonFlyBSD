@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.33 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.34 2005/10/30 04:05:09 y0netan1 Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -262,7 +262,7 @@ i386/isa/npx.c				mandatory	npx
 bus/iicbus/i386/pcf.c			optional	pcf
 bus/pci/i386/pci_cfgreg.c		optional	pci
 bus/pci/i386/pcibus.c			optional	pci
-i386/isa/pmtimer.c			optional	acpi pmtimer
+i386/isa/pmtimer.c			optional	pmtimer acpi
 # XXX drhodus
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc
