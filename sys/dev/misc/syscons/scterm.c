@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm.c,v 1.2 2000/01/29 15:08:46 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm.c,v 1.4 2003/11/10 06:12:06 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm.c,v 1.5 2005/10/30 10:07:10 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -84,8 +84,8 @@ sc_term_remove(sc_term_sw_t *sw)
 	return 0;
 }
 
-sc_term_sw_t
-*sc_term_match(char *name)
+sc_term_sw_t *
+sc_term_match(char *name)
 {
 	sc_term_sw_t **list;
 	sc_term_sw_t *p;
@@ -110,8 +110,8 @@ sc_term_sw_t
 	return NULL;
 }
 
-sc_term_sw_t
-*sc_term_match_by_number(int index)
+sc_term_sw_t *
+sc_term_match_by_number(int index)
 {
 	sc_term_sw_t *p;
 

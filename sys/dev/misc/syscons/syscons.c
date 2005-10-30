@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.22 2005/06/11 00:26:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.23 2005/10/30 10:07:10 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -257,8 +257,8 @@ sckbdprobe(int unit, int flags, int cons)
     return (kbd_find_keyboard("*", unit) >= 0);
 }
 
-static char
-*adapter_name(video_adapter_t *adp)
+static char *
+adapter_name(video_adapter_t *adp)
 {
     static struct {
 	int type;
@@ -2753,8 +2753,8 @@ sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard)
 #endif
 }
 
-static scr_stat
-*alloc_scp(sc_softc_t *sc, int vty)
+static scr_stat *
+alloc_scp(sc_softc_t *sc, int vty)
 {
     scr_stat *scp;
 

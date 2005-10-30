@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.12 2005/08/21 19:11:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.13 2005/10/30 10:07:10 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -657,8 +657,8 @@ sc_render_remove(sc_renderer_t *rndr)
 	return EBUSY;	/* XXX */
 }
 
-sc_rndr_sw_t
-*sc_render_match(scr_stat *scp, char *name, int mode)
+sc_rndr_sw_t *
+sc_render_match(scr_stat *scp, char *name, int mode)
 {
 	const sc_renderer_t **list;
 	const sc_renderer_t *p;
