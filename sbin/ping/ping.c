@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping/ping.c,v 1.52.2.13 2002/10/29 10:23:21 maxim Exp $
- * $DragonFly: src/sbin/ping/ping.c,v 1.5 2005/02/13 02:11:26 swildner Exp $
+ * $DragonFly: src/sbin/ping/ping.c,v 1.6 2005/10/30 12:53:41 swildner Exp $
  */
 
 /*
@@ -595,11 +595,11 @@ main(int argc, char **argv)
         }
 
 	bzero(&msg, sizeof(msg));
-	msg.msg_name = (caddr_t)&from;
+	msg.msg_name = &from;
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 #ifdef SO_TIMESTAMP
-	msg.msg_control = (caddr_t)ctrl;
+	msg.msg_control = ctrl;
 #endif
 	iov.iov_base = packet;
 	iov.iov_len = packlen;
