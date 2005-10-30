@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.4 2005/10/28 03:25:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isahint.c,v 1.5 2005/10/30 04:41:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@ isahint_add_device(device_t parent, const char *name, int unit)
 	else
 		order = ISA_ORDER_SPECULATIVE;
 
-	child = BUS_ADD_CHILD(parent, order, name, unit);
+	child = BUS_ADD_CHILD(parent, parent, order, name, unit);
 	if (child == 0)
 		return;
 

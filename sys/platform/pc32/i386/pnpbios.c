@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/i386/pnpbios.c,v 1.3 2005/10/28 03:25:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pnpbios.c,v 1.4 2005/10/30 04:41:15 dillon Exp $
  */
 
 /*
@@ -177,7 +177,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
 	    continue;
 
 	/* Add the device and parse its resources */
-	dev = BUS_ADD_CHILD(parent, ISA_ORDER_PNP, NULL, -1);
+	dev = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP, NULL, -1);
 	isa_set_vendorid(dev, pd->devid);
 	isa_set_logicalid(dev, pd->devid);
 

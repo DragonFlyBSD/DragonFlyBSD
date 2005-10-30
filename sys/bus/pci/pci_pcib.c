@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.4 2005/01/17 20:24:46 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.5 2005/10/30 04:41:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,8 @@
 #include "pcib_if.h"
 #include "pcib_private.h"
 
+static devclass_t pcib_devclass;
+
 /*
  * Attach a pci bus device to a motherboard or pci-to-pci bridge bus.
  * Due to probe recursion it is possible for pci-to-pci bridges (such as
@@ -56,8 +58,17 @@
  *
  * Bridges will cause recursions or duplicate attach attempts.  If
  * we have already attached this bus we don't do it again!
+ *
+ * NOTE THE DEVICE TOPOLOGY!	
+ *
+ *	[pcibX]->[pciX]->[pciX.Y]
+ *			 [pcibZ]
+ *
+ * When attaching a new bus device note that the PCI methods are
+ * based in the parent device, but the device ivars for those methods
+ * are based in our sub-device.  The PCI accessor functions all assume
+ * you are passing-in the sub-device.
  */
-
 void
 pcib_attach_common(device_t dev)
 {
@@ -174,8 +185,12 @@ pcib_attach_common(device_t dev)
      */
 }
 
-static const char*
-pcib_match(device_t dev)
+/*
+ * Called with the bridge candidate, which is under a PCI slot device.
+ * Note that the ivars are stored in the candidate.
+ */
+static const char *
+pci_match_bridge(device_t dev)
 {
 	switch (pci_get_devid(dev)) {
 	/* Intel -- vendor 0x8086 */
@@ -259,17 +274,26 @@ pcib_match(device_t dev)
 	};
 
 	if (pci_get_class(dev) == PCIC_BRIDGE
-	    && pci_get_subclass(dev) == PCIS_BRIDGE_PCI)
+	    && pci_get_subclass(dev) == PCIS_BRIDGE_PCI) {
 		return pci_bridge_type(dev);
+	}
 
 	return NULL;
 }
 
-static int pcib_probe(device_t dev)
+/*
+ * bus/pci/i386/pcibus.c added "pcib" devices under "pci" (slot) devices,
+ * causing us to probe and attach here.
+ *
+ * Note that the parent "pci" device has stored ivars in our device.  We
+ * are both a "pci" device and potentially a "pcib" device.
+ */
+static int
+pcib_probe(device_t dev)
 {
 	const char *desc;
 
-	desc = pcib_match(dev);
+	desc = pci_match_bridge(dev);
 	if (desc) {
 		device_set_desc_copy(dev, desc);
 		return -1000;
@@ -278,6 +302,11 @@ static int pcib_probe(device_t dev)
 	return ENXIO;
 }
 
+/*
+ * Note that the "pci" device ivars are stored in the ivar data field
+ * for our device.  The "pcib" device ivars are stored in the softc
+ * structure.
+ */
 int
 pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
@@ -308,16 +337,30 @@ int
 pcib_attach(device_t dev)
 {
 	struct pcib_softc *sc;
-	device_t child;
 
 	pcib_attach_common(dev);
 	sc = device_get_softc(dev);
 	/*chipset_attach(dev, device_get_unit(dev));*/
 
+	/*
+	 * The pcib unit is not really under our control because
+	 * we have are not (XXX) using the identify interface to
+	 * assign the bridge driver, instead letting subr_bus do
+	 * it via the probe mechanism.  However, we *do* directly
+	 * create the "pci" children and we can control the unit
+	 * number we assign for those.  We assign the secondary bus
+	 * id as the unit number.
+	 */
 	if (sc->secbus != 0) {
-		child = device_add_child(dev, "pci", sc->secbus);
-		if (child != NULL)
-		    return bus_generic_attach(dev);
+		if (devclass_find_unit("pci", sc->secbus)) {
+			device_printf(dev, "Duplicate secondary bus %d, "
+					   "cannot attach bridge\n",
+					   sc->secbus);
+
+		} else {
+			device_add_child(dev, "pci", sc->secbus);
+			bus_generic_attach(dev);
+		}
 	} 
 	return 0;
 }
@@ -478,11 +521,10 @@ pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	return (bus_generic_alloc_resource(dev, child, type, rid, start, end, count, flags));
 }
 
-
 int
 pcib_maxslots(device_t dev)
 {
-	return 31;
+	return (31);
 }
 
 u_int32_t
@@ -492,6 +534,11 @@ pcib_read_config(device_t dev, int b, int s, int f,
 	/*
 	 * Pass through to the next ppb up the chain (i.e. our
 	 * grandparent).
+	 *
+	 * [pcibX]->[pciX]->[pciX.Y]
+	 *                  [pcibY]
+	 *   ^
+	 * getting back to this point.
 	 */
 	return PCIB_READ_CONFIG(device_get_parent(device_get_parent(dev)),
 				b, s, f, reg, width);
@@ -511,6 +558,9 @@ pcib_write_config(device_t dev, int b, int s, int f,
 
 /*
  * Route an interrupt across a PCI bridge.
+ *
+ * pcib - is the pci bridge device
+ * dev  - is the device
  */
 int
 pcib_route_interrupt(device_t pcib, device_t dev, int pin)
@@ -518,8 +568,6 @@ pcib_route_interrupt(device_t pcib, device_t dev, int pin)
 	device_t	bus;
 	int		parent_intpin;
 	int		intnum;
-
-	device_printf(pcib, "Hi!\n");
 
 	/*	
 	 *
@@ -660,7 +708,5 @@ static driver_t pcib_driver = {
 	pcib_methods,
 	sizeof(struct pcib_softc)
 };
-
-devclass_t pcib_devclass;
 
 DRIVER_MODULE(pcib, pci, pcib_driver, pcib_devclass, 0, 0);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.8 2005/10/28 03:25:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.9 2005/10/30 04:41:09 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -525,7 +525,7 @@ isa_probe_children(device_t dev)
  * Add a new child with default ivars.
  */
 static device_t
-isa_add_child(device_t dev, int order, const char *name, int unit)
+isa_add_child(device_t bus, device_t parent, int order, const char *name, int unit)
 {
 	device_t child;
 	struct	isa_device *idev;
@@ -535,7 +535,7 @@ isa_add_child(device_t dev, int order, const char *name, int unit)
 	resource_list_init(&idev->id_resources);
 	TAILQ_INIT(&idev->id_configs);
 
-	child = device_add_child_ordered(dev, order, name, unit);
+	child = device_add_child_ordered(parent, order, name, unit);
  	device_set_ivars(child, idev);
 
 	return child;

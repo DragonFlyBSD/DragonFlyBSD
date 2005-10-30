@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.8 2005/10/28 03:25:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.9 2005/10/30 04:41:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -262,7 +262,8 @@ ep_isa_identify (driver_t *driver, device_t parent)
 			continue;
 		}
 
-		child = BUS_ADD_CHILD(parent, ISA_ORDER_SPECULATIVE, "ep", -1);
+		child = BUS_ADD_CHILD(parent, parent,
+				      ISA_ORDER_SPECULATIVE, "ep", -1);
 		device_set_desc_copy(child, desc);
 		device_set_driver(child, driver);
 		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1);

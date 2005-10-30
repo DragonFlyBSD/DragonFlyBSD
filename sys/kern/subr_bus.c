@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.28 2005/10/28 03:25:57 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.29 2005/10/30 04:41:15 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -150,6 +150,16 @@ devclass_t
 devclass_find(const char *classname)
 {
 	return(devclass_find_internal(classname, NULL, FALSE));
+}
+
+device_t
+devclass_find_unit(const char *classname, int unit)
+{
+	devclass_t dc;
+
+	if ((dc = devclass_find(classname)) != NULL)
+	    return(devclass_get_device(dc, unit));
+	return (NULL);
 }
 
 int
@@ -1807,7 +1817,7 @@ bus_generic_identify(driver_t *driver, device_t parent)
 {
 	if (parent->state == DS_ATTACHED)
 		return (0);
-	BUS_ADD_CHILD(parent, 0, driver->name, -1);
+	BUS_ADD_CHILD(parent, parent, 0, driver->name, -1);
 	return (0);
 }
 
@@ -1816,7 +1826,7 @@ bus_generic_identify_sameunit(driver_t *driver, device_t parent)
 {
 	if (parent->state == DS_ATTACHED)
 		return (0);
-	BUS_ADD_CHILD(parent, 0, driver->name, device_get_unit(parent));
+	BUS_ADD_CHILD(parent, parent, 0, driver->name, device_get_unit(parent));
 	return (0);
 }
 
@@ -1950,6 +1960,18 @@ bus_print_child_footer(device_t dev, device_t child)
 	return(printf(" on %s\n", device_get_nameunit(dev)));
 }
 
+device_t
+bus_generic_add_child(device_t dev, device_t child, int order,
+		      const char *name, int unit)
+{
+	if (dev->parent)
+		dev = BUS_ADD_CHILD(dev->parent, child, order, name, unit);
+	else
+		dev = device_add_child_ordered(child, order, name, unit);
+	return(dev);
+		
+}
+
 int
 bus_generic_print_child(device_t dev, device_t child)
 {
@@ -1965,20 +1987,38 @@ int
 bus_generic_read_ivar(device_t dev, device_t child, int index, 
 		      uintptr_t * result)
 {
-    return(ENOENT);
+	int error;
+
+	if (dev->parent)
+		error = BUS_READ_IVAR(dev->parent, child, index, result);
+	else
+		error = ENOENT;
+	return (error);
 }
 
 int
 bus_generic_write_ivar(device_t dev, device_t child, int index, 
 		       uintptr_t value)
 {
-    return(ENOENT);
+	int error;
+
+	if (dev->parent)
+		error = BUS_WRITE_IVAR(dev->parent, child, index, value);
+	else
+		error = ENOENT;
+	return (error);
 }
 
 struct resource_list *
 bus_generic_get_resource_list(device_t dev, device_t child)
 {
-    return(NULL);
+	struct resource_list *rl;
+
+	if (dev->parent)
+		rl = BUS_GET_RESOURCE_LIST(dev->parent, child);
+	else
+		rl = NULL;
+	return (rl);
 }
 
 void
@@ -2033,6 +2073,17 @@ bus_generic_enable_intr(device_t dev, device_t child, void *cookie)
 		BUS_ENABLE_INTR(dev->parent, child, cookie);
 }
 
+int
+bus_generic_config_intr(device_t dev, int irq, enum intr_trigger trig,
+    enum intr_polarity pol)
+{
+	/* Propagate up the bus hierarchy until someone handles it. */
+	if (dev->parent)
+		return(BUS_CONFIG_INTR(dev->parent, irq, trig, pol));
+	else
+		return(EINVAL);
+}
+
 struct resource *
 bus_generic_alloc_resource(device_t dev, device_t child, int type, int *rid,
 			   u_long start, u_long end, u_long count, u_int flags)
@@ -2080,14 +2131,38 @@ bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 }
 
 int
-bus_generic_config_intr(device_t dev, int irq, enum intr_trigger trig,
-    enum intr_polarity pol)
+bus_generic_get_resource(device_t dev, device_t child, int type, int rid,
+			 u_long *startp, u_long *countp)
 {
-	/* Propagate up the bus hierarchy until someone handles it. */
+	int error;
+
+	error = ENOENT;
+	if (dev->parent) {
+		error = BUS_GET_RESOURCE(dev->parent, child, type, rid, 
+					 startp, countp);
+	}
+	return (error);
+}
+
+int
+bus_generic_set_resource(device_t dev, device_t child, int type, int rid,
+			u_long start, u_long count)
+{
+	int error;
+
+	error = EINVAL;
+	if (dev->parent) {
+		error = BUS_SET_RESOURCE(dev->parent, child, type, rid, 
+					 start, count);
+	}
+	return (error);
+}
+
+void
+bus_generic_delete_resource(device_t dev, device_t child, int type, int rid)
+{
 	if (dev->parent)
-		return(BUS_CONFIG_INTR(dev->parent, irq, trig, pol));
-	else
-		return(EINVAL);
+		BUS_DELETE_RESOURCE(dev, child, type, rid);
 }
 
 int
@@ -2369,7 +2444,7 @@ static kobj_method_t root_methods[] = {
 	KOBJMETHOD(device_resume,	bus_generic_resume),
 
 	/* Bus interface */
-	KOBJMETHOD(bus_add_child,	device_add_child_ordered),
+	KOBJMETHOD(bus_add_child,	bus_generic_add_child),
 	KOBJMETHOD(bus_print_child,	root_print_child),
 	KOBJMETHOD(bus_read_ivar,	bus_generic_read_ivar),
 	KOBJMETHOD(bus_write_ivar,	bus_generic_write_ivar),

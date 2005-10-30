@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.9 2005/06/16 21:12:25 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.10 2005/10/30 04:41:10 dillon Exp $
  *
  */
 
@@ -139,6 +139,7 @@ typedef struct {
 } pcih2cfgregs;
 
 extern u_int32_t pci_numdevs;
+extern const char *pcib_owner;  /* arbitrate who owns the pci device arch */
 
 /* Only if the prerequisites are present */
 #if defined(_SYS_BUS_H_) && defined(_SYS_PCIIO_H_)
@@ -198,6 +199,10 @@ enum pci_device_ivars {
 
 /*
  * Simplified accessors for pci devices
+ *
+ * The PCI device passed in actually represents a PCI function number 
+ * for the current slot.  The parent of dev is the "pci" slot device.
+ * Each function number has its own set of ivars.
  */
 #define PCI_ACCESSOR(A, B, T)						\
 									\
@@ -311,8 +316,12 @@ pci_get_powerstate(device_t dev)
 
 /*
  * Ivars for pci bridges.
+ *
+ * Whereas PCI devices are arranged [pciX]->[pciX.Y] with the pci driver
+ * functions in [pciX] but the individual ivars in [pciX.Y], PCI bridges
+ * are installed in [pciX.Y] and store their ivars in a softc.  This
+ * is why the accessor functions for a bridge do not call device_get_parent().
  */
-
 /*typedef enum pci_device_ivars pcib_device_ivars;*/
 enum pcib_device_ivars {
 	PCIB_IVAR_BUS,
@@ -323,14 +332,14 @@ enum pcib_device_ivars {
 static __inline T pcib_get_ ## A(device_t dev)				 \
 {									 \
 	uintptr_t v;							 \
-	BUS_READ_IVAR(device_get_parent(dev), dev, PCIB_IVAR_ ## B, &v); \
+	BUS_READ_IVAR(dev, dev, PCIB_IVAR_ ## B, &v); \
 	return (T) v;							 \
 }									 \
 									 \
 static __inline void pcib_set_ ## A(device_t dev, T t)			 \
 {									 \
 	uintptr_t v = (uintptr_t) t;						 \
-	BUS_WRITE_IVAR(device_get_parent(dev), dev, PCIB_IVAR_ ## B, v); \
+	BUS_WRITE_IVAR(dev, dev, PCIB_IVAR_ ## B, v); \
 }
 
 PCIB_ACCESSOR(bus,		BUS,		u_int32_t)

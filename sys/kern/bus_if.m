@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.7 2005/05/24 20:58:41 dillon Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.8 2005/10/30 04:41:15 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -124,8 +124,13 @@ METHOD void driver_added {
 # device instances. If place is non-NULL, the new device will be
 # added after the last existing child with the same order.
 #
+# bus is an entity which may iterate up through the bus heirarchy
+# while parent is the parent device under which the child should be
+# added.
+#
 METHOD device_t add_child {
-	device_t dev;
+	device_t bus;
+	device_t parent;
 	int order;
 	const char *name;
 	int unit;

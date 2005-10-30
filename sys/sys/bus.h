@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.17 2005/10/28 03:25:57 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.18 2005/10/30 04:41:15 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -193,10 +193,17 @@ int	bus_generic_identify(driver_t *driver, device_t parent);
 int	bus_generic_identify_sameunit(driver_t *driver, device_t parent);
 int	bus_generic_probe(device_t dev);
 int	bus_generic_probe_hack(device_t dev);
+device_t bus_generic_add_child(device_t, device_t, int, const char *, int);
 int	bus_generic_read_ivar(device_t dev, device_t child, int which,
 			      uintptr_t *result);
 int	bus_generic_release_resource(device_t bus, device_t child,
 				     int type, int rid, struct resource *r);
+int	bus_generic_get_resource(device_t dev, device_t child, int type, 
+				     int rid, u_long *startp, u_long *countp);
+int	bus_generic_set_resource(device_t dev, device_t child, int type,
+				     int rid, u_long start, u_long count);
+void	bus_generic_delete_resource(device_t dev, device_t child, 
+				     int type, int rid);
 int	bus_generic_resume(device_t dev);
 int	bus_generic_setup_intr(device_t dev, device_t child,
 			       struct resource *irq, int flags,
@@ -308,6 +315,7 @@ int	devclass_add_driver(devclass_t dc, kobj_class_t driver);
 int	devclass_delete_driver(devclass_t dc, kobj_class_t driver);
 devclass_t	devclass_create(const char *classname);
 devclass_t	devclass_find(const char *classname);
+device_t	devclass_find_unit(const char *classname, int unit);
 kobj_class_t	devclass_find_driver(devclass_t dc, const char *classname);
 const char 	*devclass_get_name(devclass_t dc);
 device_t	devclass_get_device(devclass_t dc, int unit);

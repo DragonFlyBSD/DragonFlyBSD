@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/es1888.c,v 1.5.2.5 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.3 2005/10/28 03:25:55 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.4 2005/10/30 04:41:15 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/isa/sb.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.3 2005/10/28 03:25:55 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/Attic/es1888.c,v 1.4 2005/10/30 04:41:15 dillon Exp $");
 
 #ifdef __alpha__
 static int
@@ -155,7 +155,7 @@ es1888_identify(driver_t *driver, device_t parent)
 	/*
 	 * Create the device and program its resources.
 	 */
-	dev = BUS_ADD_CHILD(parent, ISA_ORDER_PNP, NULL, -1);
+	dev = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP, NULL, -1);
 	bus_set_resource(dev, SYS_RES_IOPORT, 0, 0x220, 0x10);
 	bus_set_resource(dev, SYS_RES_IRQ, 0, 5, 1);
 	bus_set_resource(dev, SYS_RES_DRQ, 0, 1, 1);

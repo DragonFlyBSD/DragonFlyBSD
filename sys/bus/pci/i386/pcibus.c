@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.13 2005/10/28 03:25:36 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.14 2005/10/30 04:41:12 dillon Exp $
  *
  */
 
@@ -44,36 +44,13 @@
 
 #include "pcib_if.h"
 
-static int
-nexus_pcib_maxslots(device_t dev)
-{
-	return 31;
-}
+static u_int32_t nexus_pcib_read_config(device_t, int, int, int, int, int);
 
 /*
- * Read configuration space register.
+ * Figure out if a PCI entity is a host bridge, return its name or NULL.
  */
-static u_int32_t
-nexus_pcib_read_config(device_t dev, int bus, int slot, int func,
-		       int reg, int bytes)
-{
-	return (pci_cfgregread(bus, slot, func, reg, bytes));
-}
-
-/*
- * Write configuration space register.
- */
-static void
-nexus_pcib_write_config(device_t dev, int bus, int slot, int func,
-			int reg, u_int32_t data, int bytes)
-{
-	pci_cfgregwrite(bus, slot, func, reg, data, bytes);
-}
-
-static devclass_t	pcib_devclass;
-
 static const char *
-nexus_pcib_is_host_bridge(int bus, int slot, int func,
+nexus_legacypci_is_host_bridge(int bus, int slot, int func,
 			  u_int32_t id, u_int8_t class, u_int8_t subclass,
 			  u_int8_t *busnum)
 {
@@ -287,22 +264,20 @@ nexus_pcib_is_host_bridge(int bus, int slot, int func,
 }
 
 /*
- * Scan the first pci bus for host-pci bridges and add pcib instances
- * to the nexus for each bridge.
+ * Identify the existance of the first pci bus and install a child to
+ * nexus if we find it.  Use an order of 1 so it gets probed after
+ * any ACPI device installed under nexus.  To avoid boot-time confusion,
+ * we do not install any 'pcib' devices at this time.
+ *
+ * The identify method coupled with the driver spec of the same name
+ * automatically installs it under the nexus.
  */
 static int
-nexus_pcib_identify(driver_t *driver, device_t parent)
+nexus_legacypci_identify(driver_t *driver, device_t parent)
 {
-	int bus, slot, func;
-	u_int8_t  hdrtype;
-	int found = 0;
-	int pcifunchigh;
-	int found824xx = 0;
-	device_t child;
-	devclass_t pci_devclass;
-
 	/*
-	 * XXX currently do not support rescanning the pci bus
+	 * Basically a static device, there's no point reinstalling it
+	 * on rescan.
 	 */
 	if (device_get_state(parent) == DS_ATTACHED)
 		return (0);
@@ -310,16 +285,41 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 	if (pci_cfgregopen() == 0)
 		return (ENXIO);
 
+	BUS_ADD_CHILD(parent, parent, 100, "legacypci", 0);
+	return (0);
+}
+
+/*
+ * Scan the first pci bus for host-pci bridges and add pcib instances
+ * to the nexus for each bridge.
+ */
+static int
+nexus_legacypci_probe(device_t dev)
+{
+	int bus, slot, func;
+	u_int8_t  hdrtype;
+	int found = 0;
+	int pcifunchigh;
+	int found824xx = 0;
+	device_t child;
+
 	/*
-	 * Check to see if we haven't already had a PCI bus added
-	 * via some other means. If we have, bail since otherwise
-	 * we're going to end up duplicating it.
+	 * Do not install any pci busses ('pcib' devices) if the PCI
+	 * subsystem has already been claimed by someone else.
 	 */
-	if ((pci_devclass = devclass_find("pci")) &&
-	    devclass_get_device(pci_devclass,0)) {
+	if (pcib_owner != NULL) {
+		device_printf(dev, "PCI subsystem owned by %s, skipping scan\n",
+			      pcib_owner);
 		return (ENXIO);
 	}
-	
+	pcib_owner = "legacypci";
+
+	if (pci_cfgregopen() == 0)
+		return (ENXIO);
+
+	/*
+	 * Scan away!
+	 */
 	bus = 0;
  retry:
 	for (slot = 0; slot <= PCI_SLOTMAX; slot++) {
@@ -351,7 +351,7 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 			subclass = nexus_pcib_read_config(0, bus, slot, func,
 							  PCIR_SUBCLASS, 1);
 
-			s = nexus_pcib_is_host_bridge(bus, slot, func,
+			s = nexus_legacypci_is_host_bridge(bus, slot, func,
 						      id, class, subclass,
 						      &busnum);
 			if (s == NULL)
@@ -362,11 +362,12 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 			 * been seen. Eg: hybrid 32 and 64 bit host
 			 * bridges to the same logical bus.
 			 */
-			if (device_get_children(parent, &devs, &ndevs) == 0) {
+			if (device_get_children(dev, &devs, &ndevs) == 0) {
 				for (i = 0; s != NULL && i < ndevs; i++) {
 					if (strcmp(device_get_name(devs[i]),
 					    "pcib") != 0)
 						continue;
+					printf("compare %d\n", nexus_get_pcibus(devs[i]));
 					if (nexus_get_pcibus(devs[i]) == busnum)
 						s = NULL;
 				}
@@ -376,12 +377,10 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 			if (s == NULL)
 				continue;
 			/*
-			 * Add at priority 100+busnum to make sure we
-			 * go after any motherboard resources.  This also
-			 * causes us to scan the pci bridges in bus order,
-			 * for debug output sanity.
+			 * Add at priority 100+busnum to keep the scanning
+			 * order sane in the boot dmesg output.
 			 */
-			child = BUS_ADD_CHILD(parent, 100 + busnum,
+			child = BUS_ADD_CHILD(dev, dev, 100 + busnum, 
 					      "pcib", busnum);
 			device_set_desc(child, s);
 			nexus_set_pcibus(child, busnum);
@@ -396,70 +395,127 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 		goto retry;
 	}
 
+#if 0
+	/*
+	 * Now that we have installed the main PCI bridges, go
+	 * probe and attach each one.
+	 */
+	bus_generic_attach(dev);
+#endif
+
 	/*
 	 * Make sure we add at least one bridge since some old
 	 * hardware doesn't actually have a host-pci bridge device.
 	 * Note that pci_cfgregopen() thinks we have PCI devices..
 	 */
 	if (!found) {
-		if (bootverbose)
-			printf(
-	"nexus_pcib_identify: no bridge found, adding pcib0 anyway\n");
-		child = BUS_ADD_CHILD(parent, 100, "pcib", 0);
+		if (bootverbose) {
+			printf("nexus_pcib_identify: no bridge found, "
+			       "adding pcib0 anyway\n");
+		}
+		child = BUS_ADD_CHILD(dev, dev, 100, "pcib", 0);
 		nexus_set_pcibus(child, 0);
 	}
 	return (0);
 }
 
 static int
+nexus_legacypci_attach(device_t dev)
+{
+	bus_generic_attach(dev);
+	return (0);
+}
+
+static device_method_t legacypci_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_identify,	nexus_legacypci_identify),
+	DEVMETHOD(device_probe,		nexus_legacypci_probe),
+	DEVMETHOD(device_attach,	nexus_legacypci_attach),
+	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	bus_generic_resume),
+
+	/*
+	 * Bus interface - propogate through to the nexus.  Note that
+	 * this means devices under us will have nexus ivars.
+	 */
+	DEVMETHOD(bus_add_child,	bus_generic_add_child),
+	DEVMETHOD(bus_print_child,	bus_generic_print_child),
+	DEVMETHOD(bus_read_ivar,	bus_generic_read_ivar),
+	DEVMETHOD(bus_write_ivar,	bus_generic_write_ivar),
+	DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
+	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
+	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
+	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
+	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
+	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+        DEVMETHOD(bus_set_resource,     bus_generic_set_resource),
+        DEVMETHOD(bus_get_resource,     bus_generic_get_resource),
+        DEVMETHOD(bus_delete_resource,  bus_generic_delete_resource),
+	{ 0, 0 }
+};
+
+static driver_t legacypci_driver = {
+	"legacypci",
+	legacypci_methods,
+	1,
+};
+
+static devclass_t legacypci_devclass;
+
+DRIVER_MODULE(legacypci, nexus, legacypci_driver, legacypci_devclass, 0, 0);
+
+/*
+ * Legacypci Host-Bridge PCI BUS support.  The underlying pcib devices
+ * will only exist if we actually control the PCI bus.  The actual PCI
+ * bus driver is attached in our attach routine.
+ *
+ * There is no identify function because the legacypci placeholder will
+ * have already scanned and added PCIB devices for the host-bridges found.
+ */
+static int
+nexus_pcib_maxslots(device_t dev)
+{
+	return 31;
+}
+
+/*
+ * Read configuration space register.
+ */
+static u_int32_t
+nexus_pcib_read_config(device_t dev, int bus, int slot, int func,
+		       int reg, int bytes)
+{
+	return (pci_cfgregread(bus, slot, func, reg, bytes));
+}
+
+/*
+ * Write configuration space register.
+ */
+static void
+nexus_pcib_write_config(device_t dev, int bus, int slot, int func,
+			int reg, u_int32_t data, int bytes)
+{
+	pci_cfgregwrite(bus, slot, func, reg, data, bytes);
+}
+
+/*
+ * Stack a pci device on top of the pci bridge bus device.
+ */
+static int
 nexus_pcib_probe(device_t dev)
 {
-	devclass_t pci_devclass;
-
-	if (pci_cfgregopen() == 0)
-		return (ENXIO);
-	/*
-	 * Check to see if we haven't already had a PCI bus added
-	 * via some other means.  If we have, bail since otherwise
-	 * we're going to end up duplicating it.
-	 */
-	if ((pci_devclass = devclass_find("pci")) && 
-		devclass_get_device(pci_devclass, device_get_unit(dev)))
-		return (ENXIO);
-
+	BUS_ADD_CHILD(dev, dev, 0, "pci", device_get_unit(dev));
 	return (0);
 }
 
 static int
 nexus_pcib_attach(device_t dev)
 {
-	device_t child;
+	int error;
 
-	child = device_add_child(dev, "pci", device_get_unit(dev));
-
-	return (bus_generic_attach(dev));
-}
-
-static int
-nexus_pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
-{
-	switch (which) {
-	case  PCIB_IVAR_BUS:
-		*result = nexus_get_pcibus(dev);
-		return (0);
-	}
-	return (ENOENT);
-}
-
-static int
-nexus_pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
-{
-	switch (which) {
-	case  PCIB_IVAR_BUS:
-		nexus_set_pcibus(dev, value);
-		return (0);
-	}
-	return (ENOENT);
+	error = bus_generic_attach(dev);
+	return (error);
 }
 
 /* route interrupt */
@@ -473,17 +529,20 @@ nexus_pcib_route_interrupt(device_t pcib, device_t dev, int pin)
 
 static device_method_t nexus_pcib_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_identify,	nexus_pcib_identify),
 	DEVMETHOD(device_probe,		nexus_pcib_probe),
 	DEVMETHOD(device_attach,	nexus_pcib_attach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
 
-	/* Bus interface */
+	/*
+	 * Bus interface - propogate through to the nexus.  Note
+	 * that this means we will get nexus-managed ivars.
+	 */
+	DEVMETHOD(bus_add_child,	bus_generic_add_child),
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
-	DEVMETHOD(bus_read_ivar,	nexus_pcib_read_ivar),
-	DEVMETHOD(bus_write_ivar,	nexus_pcib_write_ivar),
+	DEVMETHOD(bus_read_ivar,	bus_generic_read_ivar),
+	DEVMETHOD(bus_write_ivar,	bus_generic_write_ivar),
 	DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
 	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
@@ -500,29 +559,27 @@ static device_method_t nexus_pcib_methods[] = {
 	{ 0, 0 }
 };
 
-/*
- * This causes nexus_pcib_identify() to automatically be called when
- * nexus is attaching.  
- */
 static driver_t nexus_pcib_driver = {
 	"pcib",
 	nexus_pcib_methods,
 	1,
 };
 
-DRIVER_MODULE(pcib, nexus, nexus_pcib_driver, pcib_devclass, 0, 0);
+static devclass_t	pcib_devclass;
+
+DRIVER_MODULE(pcib, legacypci, nexus_pcib_driver, pcib_devclass, 0, 0);
 
 
 /*
- * XXX may have to disable the registration entirely to support module-loaded
- * bridges such as agp.ko.
- * 
  * Provide a device to "eat" the host->pci bridges that we dug up above
  * and stop them showing up twice on the probes.  This also stops them
  * showing up as 'none' in pciconf -l.
  *
  * Return an ultra-low priority so other devices can attach the bus before
  * our dummy attach.
+ *
+ * XXX may have to disable the registration entirely to support module-loaded
+ * bridges such as agp.ko.
  */
 static int
 pci_hostb_probe(device_t dev)
@@ -613,3 +670,4 @@ static driver_t pcibus_pnp_driver = {
 static devclass_t pcibus_pnp_devclass;
 
 DRIVER_MODULE(pcibus_pnp, isa, pcibus_pnp_driver, pcibus_pnp_devclass, 0, 0);
+

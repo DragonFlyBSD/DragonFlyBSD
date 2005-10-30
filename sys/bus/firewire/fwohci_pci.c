@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.19 2005/10/12 17:35:45 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.20 2005/10/30 04:41:08 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -474,14 +474,14 @@ fwohci_pci_shutdown(device_t dev)
 }
 
 static device_t
-fwohci_pci_add_child(device_t dev, int order, const char *name, int unit)
+fwohci_pci_add_child(device_t bus, device_t parent, int order, const char *name, int unit)
 {
 	struct fwohci_softc *sc;
 	device_t child;
 	int err = 0;
 
-	sc = (struct fwohci_softc *)device_get_softc(dev);
-	child = device_add_child(dev, name, unit);
+	sc = (struct fwohci_softc *)device_get_softc(bus);
+	child = device_add_child(parent, name, unit);
 	if (child == NULL)
 		return (child);
 
@@ -490,10 +490,10 @@ fwohci_pci_add_child(device_t dev, int order, const char *name, int unit)
 
 	err = device_probe_and_attach(child);
 	if (err) {
-		device_printf(dev, "probe_and_attach failed with err=%d\n",
+		device_printf(parent, "probe_and_attach failed with err=%d\n",
 		    err);
-		fwohci_pci_detach(dev);
-		device_delete_child(dev, child);
+		fwohci_pci_detach(parent);
+		device_delete_child(parent, child);
 		return NULL;
 	}
 

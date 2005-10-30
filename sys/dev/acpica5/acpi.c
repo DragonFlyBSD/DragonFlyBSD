@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.16 2005/10/30 04:20:49 y0netan1 Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.17 2005/10/30 04:41:15 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -108,8 +108,8 @@ static int	acpi_probe(device_t dev);
 static int	acpi_attach(device_t dev);
 static int	acpi_shutdown(device_t dev);
 static void	acpi_quirks_set(void);
-static device_t	acpi_add_child(device_t bus, int order, const char *name,
-			int unit);
+static device_t	acpi_add_child(device_t bus, device_t parent, int order,
+			const char *name, int unit);
 static int	acpi_print_child(device_t bus, device_t child);
 static int	acpi_read_ivar(device_t dev, device_t child, int index,
 			uintptr_t *result);
@@ -337,7 +337,7 @@ acpi_identify(driver_t *driver, device_t parent)
     snprintf(acpi_ca_version, sizeof(acpi_ca_version), "%#x", ACPI_CA_VERSION);
 
     /* Attach the actual ACPI device. */
-    if ((child = BUS_ADD_CHILD(parent, 0, "acpi", 0)) == NULL) {
+    if ((child = BUS_ADD_CHILD(parent, parent, 0, "acpi", 0)) == NULL) {
 	device_printf(parent, "ACPI: could not attach\n");
 	return (ENXIO);
     }
@@ -694,7 +694,8 @@ out:
  * Handle a new device being added
  */
 static device_t
-acpi_add_child(device_t bus, int order, const char *name, int unit)
+acpi_add_child(device_t bus, device_t parent, int order,
+		const char *name, int unit)
 {
     struct acpi_device	*ad;
     device_t		child;
@@ -703,7 +704,7 @@ acpi_add_child(device_t bus, int order, const char *name, int unit)
 
     resource_list_init(&ad->ad_rl);
 
-    child = device_add_child_ordered(bus, order, name, unit);
+    child = device_add_child_ordered(parent, order, name, unit);
     if (child != NULL)
 	device_set_ivars(child, ad);
     return (child);
@@ -1140,7 +1141,7 @@ acpi_probe_child(ACPI_HANDLE handle, UINT32 level, void *context, void **status)
 	     */
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "scanning '%s'\n",
 			     acpi_name(handle)));
-	    child = BUS_ADD_CHILD(bus, level * 10, NULL, -1);
+	    child = BUS_ADD_CHILD(bus, bus, level * 10, NULL, -1);
 	    if (child == NULL)
 		break;
 	    acpi_set_handle(child, handle);

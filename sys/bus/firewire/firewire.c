@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.12 2005/10/28 03:25:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.13 2005/10/30 04:41:08 dillon Exp $
  *
  */
 
@@ -97,7 +97,7 @@ static int firewire_resume      (device_t);
 #if 0
 static int firewire_shutdown    (device_t);
 #endif
-static device_t firewire_add_child   (device_t, int, const char *, int);
+static device_t firewire_add_child (device_t, device_t, int, const char *, int);
 static void fw_try_bmr (void *);
 static void fw_try_bmr_callback (struct fw_xfer *);
 static void fw_asystart (struct fw_xfer *);
@@ -435,13 +435,13 @@ firewire_attach(device_t dev)
  * Attach it as child.
  */
 static device_t
-firewire_add_child(device_t dev, int order, const char *name, int unit)
+firewire_add_child(device_t bus, device_t parent, int order, const char *name, int unit)
 {
         device_t child;
 	struct firewire_softc *sc;
 
-	sc = (struct firewire_softc *)device_get_softc(dev);
-	child = device_add_child(dev, name, unit);
+	sc = (struct firewire_softc *)device_get_softc(parent);
+	child = device_add_child(parent, name, unit);
 	if (child) {
 		device_set_ivars(child, sc->fc);
 		device_probe_and_attach(child);

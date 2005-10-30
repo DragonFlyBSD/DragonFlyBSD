@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.27 2005/06/14 16:35:42 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.28 2005/10/30 04:41:10 dillon Exp $
  *
  */
 
@@ -70,6 +70,7 @@
 #endif /* APIC_IO */
 
 devclass_t	pci_devclass;
+const char	*pcib_owner;
 
 static void		pci_read_extcap(device_t dev, pcicfgregs *cfg);
 
@@ -1068,8 +1069,16 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			pci = devclass_get_device(pci_devclass,
 						  io->pi_sel.pc_bus);
 			if (pci) {
-				int b = pcib_get_bus(pci);
+				/*
+				 * pci is the pci device and may contain
+				 * several children (for each function code).
+				 * The governing pci bus is the parent to
+				 * the pci device.
+				 */
+				int b;
+
 				pcib = device_get_parent(pci);
+				b = pcib_get_bus(pcib);
 				io->pi_data = 
 					PCIB_READ_CONFIG(pcib,
 							 b,
@@ -1102,8 +1111,16 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			pci = devclass_get_device(pci_devclass,
 						  io->pi_sel.pc_bus);
 			if (pci) {
-				int b = pcib_get_bus(pci);
+				/*
+				 * pci is the pci device and may contain
+				 * several children (for each function code).
+				 * The governing pci bus is the parent to
+				 * the pci device.
+				 */
+				int b;
+
 				pcib = device_get_parent(pci);
+				b = pcib_get_bus(pcib);
 				PCIB_WRITE_CONFIG(pcib,
 						  b,
 						  io->pi_sel.pc_dev,
@@ -1409,6 +1426,10 @@ pci_add_children(device_t dev, int busno, size_t dinfo_size)
 #undef REG
 }
 
+/*
+ * The actual PCI child that we add has a NULL driver whos parent
+ * device will be "pci".  The child contains the ivars, not the parent.
+ */
 void
 pci_add_child(device_t bus, struct pci_devinfo *dinfo)
 {
@@ -1448,8 +1469,12 @@ pci_attach(device_t dev)
          * busses on some large alpha systems, we can't use the unit
          * number to decide what bus we are probing. We ask the parent
          * pcib what our bus number is.
+	 *
+	 * pcib_get_bus() must act on the pci bus device, not on the pci
+	 * device, because it uses badly hacked nexus-based ivars to 
+	 * store and retrieve the physical bus number.  XXX
          */
-        busno = pcib_get_bus(dev);
+        busno = pcib_get_bus(device_get_parent(dev));
         if (bootverbose)
                 device_printf(dev, "pci_attach() physical bus=%d\n", busno);
 

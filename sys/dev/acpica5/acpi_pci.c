@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.16 2004/05/29 04:32:50 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.4 2005/10/30 04:41:15 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -242,8 +242,7 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 static int
 acpi_pci_probe(device_t dev)
 {
-
-	if (pcib_get_bus(dev) < 0)
+	if (pcib_get_bus(device_get_parent(dev)) < 0)
 		return (ENXIO);
 	if (acpi_get_handle(dev) == NULL)
 		return (ENXIO);
@@ -262,7 +261,7 @@ acpi_pci_attach(device_t dev)
 	 * number to decide what bus we are probing. We ask the parent 
 	 * pcib what our bus number is.
 	 */
-	busno = pcib_get_bus(dev);
+	busno = pcib_get_bus(device_get_parent(dev));
 	if (bootverbose)
 		device_printf(dev, "physical bus=%d\n", busno);
 

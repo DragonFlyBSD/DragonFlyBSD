@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/orm.c,v 1.1.2.1 2001/06/19 05:48:29 imp Exp $
- *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.4 2005/10/28 03:25:47 dillon Exp $
+ *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.5 2005/10/30 04:41:15 dillon Exp $
  */
 
 /*
@@ -100,7 +100,7 @@ orm_identify(driver_t* driver, device_t parent)
 	/*
 	 * Otherwise see if it exists
 	 */
-	child = BUS_ADD_CHILD(parent, ISA_ORDER_SENSITIVE, "orm", -1);
+	child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_SENSITIVE, "orm", -1);
 	device_set_driver(child, driver);
 	isa_set_logicalid(child, ORM_ID);
 	isa_set_vendorid(child, ORM_ID);

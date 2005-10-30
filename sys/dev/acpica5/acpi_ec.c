@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.5 2005/03/06 05:39:26 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.6 2005/10/30 04:41:15 dillon Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.5 2005/03/06 05:39:26 y0netan1 Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.6 2005/10/30 04:41:15 dillon Exp $
   *
   */
 
@@ -385,7 +385,7 @@ acpi_ec_ecdt_probe(device_t parent)
     }
 
     /* Create the child device with the given unit number. */
-    child = BUS_ADD_CHILD(parent, 0, "acpi_ec", ecdt->uid);
+    child = BUS_ADD_CHILD(parent, parent, 0, "acpi_ec", ecdt->uid);
     if (child == NULL) {
 	printf("%s: can't add child\n", __func__);
 	return;

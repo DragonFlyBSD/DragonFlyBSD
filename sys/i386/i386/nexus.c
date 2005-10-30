@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.19 2005/10/28 03:25:57 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.20 2005/10/30 04:41:15 dillon Exp $
  */
 
 /*
@@ -80,8 +80,8 @@ static	int nexus_probe(device_t);
 static	int nexus_attach(device_t);
 static	int nexus_print_all_resources(device_t dev);
 static	int nexus_print_child(device_t, device_t);
-static device_t nexus_add_child(device_t bus, int order, const char *name,
-				int unit);
+static device_t nexus_add_child(device_t bus, device_t parent, int order,
+				const char *name, int unit);
 static	struct resource *nexus_alloc_resource(device_t, device_t, int, int *,
 					      u_long, u_long, u_long, u_int);
 static	int nexus_read_ivar(device_t, device_t, int, uintptr_t *);
@@ -145,19 +145,6 @@ DRIVER_MODULE(nexus, root, nexus_driver, nexus_devclass, 0, 0);
 static int
 nexus_probe(device_t dev)
 {
-#if 0	/* FUTURE */
-	device_t acpi;
-#endif
-
-#if 0	/* FUTURE */
-	/*
-	 * Fail to probe if ACPI is ok.
-	 */
-	acpi = devclass_get_device(devclass_find("acpi"), 0);
-	if (acpi != NULL && device_is_alive(acpi))
-		return(ENXIO);
-#endif
-
 	device_quiet(dev);	/* suppress attach message for neatness */
 
 	/*
@@ -244,13 +231,13 @@ nexus_attach(device_t dev)
 	 * connection points now so they show up "on motherboard".
 	 */
 	if (!devclass_get_device(devclass_find("eisa"), 0)) {
-		child = BUS_ADD_CHILD(dev, 0, "eisa", 0);
+		child = BUS_ADD_CHILD(dev, dev, 0, "eisa", 0);
 		if (child == NULL)
 			panic("nexus_attach eisa");
 		device_probe_and_attach(child);
 	}
 	if (!devclass_get_device(devclass_find("isa"), 0)) {
-		child = BUS_ADD_CHILD(dev, 0, "isa", 0);
+		child = BUS_ADD_CHILD(dev, dev, 0, "isa", 0);
 		if (child == NULL)
 			panic("nexus_attach isa");
 		device_probe_and_attach(child);
@@ -292,7 +279,8 @@ nexus_print_child(device_t bus, device_t child)
 }
 
 static device_t
-nexus_add_child(device_t bus, int order, const char *name, int unit)
+nexus_add_child(device_t bus, device_t parent, int order,
+		const char *name, int unit)
 {
 	device_t		child;
 	struct nexus_device	*ndev;
@@ -303,7 +291,7 @@ nexus_add_child(device_t bus, int order, const char *name, int unit)
 	resource_list_init(&ndev->nx_resources);
 	ndev->nx_pcibus = -1;
 
-	child = device_add_child_ordered(bus, order, name, unit); 
+	child = device_add_child_ordered(parent, order, name, unit); 
 
 	/* should we free this in nexus_child_detached? */
 	device_set_ivars(child, ndev);
@@ -498,15 +486,11 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		panic("nexus_setup_intr: NULL irq resource!");
 
 	*cookiep = 0;
-	if (irq->r_flags & RF_SHAREABLE)
-		icflags = 0;
-	else
-		icflags = INTR_EXCL;
+	icflags = flags;
+	if ((irq->r_flags & RF_SHAREABLE) == 0)
+		icflags |= INTR_EXCL;
 
 	driver = device_get_driver(child);
-
-	if (flags & INTR_FAST)
-		icflags |= INTR_FAST;
 
 	/*
 	 * We depend here on rman_activate_resource() being idempotent.

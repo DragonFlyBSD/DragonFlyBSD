@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.6 2005/10/28 03:25:37 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.7 2005/10/30 04:41:15 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -137,7 +137,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     if (acpi_disabled("timer") || AcpiGbl_FADT == NULL)
 	return (ENXIO);
 
-    if ((dev = BUS_ADD_CHILD(parent, 0, "acpi_timer", 0)) == NULL) {
+    if ((dev = BUS_ADD_CHILD(parent, parent, 0, "acpi_timer", 0)) == NULL) {
 	device_printf(parent, "could not add acpi_timer0\n");
 	return (ENXIO);
     }
