@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.10 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.11 2005/10/31 12:49:05 sephe Exp $
  */
 
 /*
@@ -428,8 +428,7 @@ nsgphy_mii_phy_auto(mii, waitfor)
 		    (NSGPHY_1000CTL_AFD|NSGPHY_1000CTL_AHD));
 		ktcr = PHY_READ(mii, NSGPHY_MII_1000CTL);
 		DELAY(1000);
-		PHY_WRITE(mii, NSGPHY_MII_ANAR,
-			  mii_bmsr_media_to_anar(mii) | ANAR_CSMA);
+		PHY_WRITE(mii, NSGPHY_MII_ANAR, mii_bmsr_media_to_anar(mii));
 		DELAY(1000);
 		PHY_WRITE(mii, NSGPHY_MII_BMCR,
 		    NSGPHY_BMCR_AUTOEN | NSGPHY_BMCR_STARTNEG);

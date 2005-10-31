@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.9 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.10 2005/10/31 12:49:05 sephe Exp $
  */
 
 /*
@@ -81,8 +81,7 @@ mii_phy_auto(mii, waitfor)
 	int bmsr, i;
 
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		PHY_WRITE(mii, MII_ANAR,
-			  mii_bmsr_media_to_anar(mii) | ANAR_CSMA);
+		PHY_WRITE(mii, MII_ANAR, mii_bmsr_media_to_anar(mii));
 		PHY_WRITE(mii, MII_BMCR, BMCR_AUTOEN | BMCR_STARTNEG);
 	}
 
@@ -181,38 +180,37 @@ mii_phy_reset(mii)
  * Given an ifmedia word, return the corresponding ANAR value.
  */
 int
-mii_anar(media)
-	int media;
+mii_anar(int media)
 {
 	int rv;
 
+	rv = ANAR_CSMA;
 	switch (media & (IFM_TMASK|IFM_NMASK|IFM_FDX)) {
 	case IFM_ETHER|IFM_1000_T:
-		rv = ANAR_1000|ANAR_CSMA;
+		rv |= ANAR_1000;
 		break;
 	case IFM_ETHER|IFM_1000_T|IFM_FDX:
-		rv = ANAR_1000_FD|ANAR_CSMA;
+		rv |= ANAR_1000_FD;
 		break;
 	case IFM_ETHER|IFM_10_T:
-		rv = ANAR_10|ANAR_CSMA;
+		rv |= ANAR_10;
 		break;
 	case IFM_ETHER|IFM_10_T|IFM_FDX:
-		rv = ANAR_10_FD|ANAR_CSMA;
+		rv |= ANAR_10_FD;
 		break;
 	case IFM_ETHER|IFM_100_TX:
-		rv = ANAR_TX|ANAR_CSMA;
+		rv |= ANAR_TX;
 		break;
 	case IFM_ETHER|IFM_100_TX|IFM_FDX:
-		rv = ANAR_TX_FD|ANAR_CSMA;
+		rv |= ANAR_TX_FD;
 		break;
 	case IFM_ETHER|IFM_100_T4:
-		rv = ANAR_T4|ANAR_CSMA;
+		rv |= ANAR_T4;
 		break;
 	default:
 		rv = 0;
 		break;
 	}
-
 	return (rv);
 }
 
@@ -300,7 +298,7 @@ int
 mii_bmsr_media_to_anar(struct mii_softc *mii)
 {
 	int bmsr = mii->mii_capabilities;
- 	int res = 0;
+ 	int res = ANAR_CSMA;
 
 	if (bmsr & BMSR_100T4)
 		res |= ANAR_T4;
@@ -318,4 +316,3 @@ mii_bmsr_media_to_anar(struct mii_softc *mii)
 	}
 	return (res);
 }
-
