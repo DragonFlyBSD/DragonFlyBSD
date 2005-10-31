@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.10 2005/10/31 10:09:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.11 2005/10/31 13:08:35 sephe Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_
@@ -176,7 +176,6 @@ void	mii_phy_auto_stop (struct mii_softc *);
 void	mii_phy_reset (struct mii_softc *);
 
 void	ukphy_status (struct mii_softc *);
-int	ukphy_probe (device_t);
 int	ukphy_attach (device_t);
 int	ukphy_detach (device_t);
 

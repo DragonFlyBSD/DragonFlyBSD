@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.8 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.9 2005/10/31 13:08:35 sephe Exp $
  */
 
 /*
@@ -91,6 +91,9 @@
 
 #include "miibus_if.h"
 
+static int	ukphy_service(struct mii_softc *, struct mii_data *, int);
+static int	ukphy_probe(device_t);
+
 static device_method_t ukphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		ukphy_probe),
@@ -110,9 +113,7 @@ static driver_t ukphy_driver = {
 
 DRIVER_MODULE(ukphy, miibus, ukphy_driver, ukphy_devclass, 0, 0);
 
-int	ukphy_service (struct mii_softc *, struct mii_data *, int);
-
-int
+static int
 ukphy_probe(device_t dev)
 {
 
@@ -191,11 +192,8 @@ ukphy_detach(device_t dev)
 	return(0);
 }
 
-int
-ukphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+static int
+ukphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;
