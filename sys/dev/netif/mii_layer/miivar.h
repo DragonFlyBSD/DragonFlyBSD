@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.9 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.10 2005/10/31 10:09:11 sephe Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_
@@ -53,13 +53,6 @@
  */
 
 struct mii_softc;
-
-/*
- * Callbacks from MII layer into network interface device driver.
- */
-typedef	int (*mii_readreg_t) (struct device *, int, int);
-typedef	void (*mii_writereg_t) (struct device *, int, int, int);
-typedef	void (*mii_statchg_t) (struct device *);
 
 /*
  * A network interface driver has one of these structures in its softc.
@@ -83,13 +76,6 @@ struct mii_data {
 	 */
 	int mii_media_status;
 	int mii_media_active;
-
-	/*
-	 * Calls from MII layer into network interface driver.
-	 */
-	mii_readreg_t mii_readreg;
-	mii_writereg_t mii_writereg;
-	mii_statchg_t mii_statchg;
 };
 typedef struct mii_data mii_data_t;
 
