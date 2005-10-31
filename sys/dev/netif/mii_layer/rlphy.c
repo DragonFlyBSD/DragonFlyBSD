@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rlphy.c,v 1.2.2.4 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rlphy.c,v 1.8 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rlphy.c,v 1.9 2005/10/31 09:20:05 sephe Exp $
  */
 
 /*
@@ -79,11 +79,11 @@ static driver_t rlphy_driver = {
 
 DRIVER_MODULE(rlphy, miibus, rlphy_driver, rlphy_devclass, 0, 0);
 
-int	rlphy_service (struct mii_softc *, struct mii_data *, int);
-void	rlphy_status (struct mii_softc *);
+static int	rlphy_service(struct mii_softc *, struct mii_data *, int);
+static void	rlphy_status(struct mii_softc *);
 
-static int rlphy_probe(dev)
-	device_t		dev;
+static int
+rlphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 	device_t		parent;
@@ -117,8 +117,8 @@ static int rlphy_probe(dev)
 	return (0);
 }
 
-static int rlphy_attach(dev)
-	device_t		dev;
+static int
+rlphy_attach(device_t dev)
 {
 	struct mii_softc	*sc;
 	struct mii_attach_args	*ma;
@@ -160,6 +160,14 @@ static int rlphy_attach(dev)
 
 	mii_phy_reset(sc);
 
+	/*
+	 * After PHY is reset, BMCR_AUTOEN will be cleared.
+	 * If it is *not* turned on here, mii_pollstat() will
+	 * lie about the active media until mii_mediachg() is
+	 * called(in rl_init()).
+	 */
+	PHY_WRITE(sc, MII_BMCR, BMCR_AUTOEN);
+
 	sc->mii_capabilities =
 	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
@@ -173,8 +181,8 @@ static int rlphy_attach(dev)
 	return(0);
 }
 
-static int rlphy_detach(dev)
-	device_t		dev;
+static int
+rlphy_detach(device_t dev)
 {
 	struct mii_softc	*sc;
 	struct mii_data		*mii;
@@ -188,11 +196,8 @@ static int rlphy_detach(dev)
 	return(0);
 }
 
-int
-rlphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+static int
+rlphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 
@@ -276,9 +281,8 @@ rlphy_service(sc, mii, cmd)
 	return (0);
 }
 
-void
-rlphy_status(phy)
-	struct mii_softc *phy;
+static void
+rlphy_status(struct mii_softc *phy)
 {
 	struct mii_data *mii = phy->mii_pdata;
 	int bmsr, bmcr, anlpar;
