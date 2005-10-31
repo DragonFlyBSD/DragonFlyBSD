@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.64 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.65 2005/10/31 21:48:53 dillon Exp $
  */
 
 /*
@@ -1777,6 +1777,10 @@ vfs_export_lookup(struct mount *mp, struct netexport *nep,
  * vnodes whos VM objects no longer contain pages.
  *
  * NOTE: MNT_WAIT still skips vnodes in the VXLOCK state.
+ *
+ * NOTE: XXX VOP_PUTPAGES and friends requires that the vnode be locked,
+ * but vnode_pager_putpages() doesn't lock the vnode.  We have to do it
+ * way up in this high level function.
  */
 static int vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data);
@@ -1784,7 +1788,12 @@ static int vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data);
 void
 vfs_msync(struct mount *mp, int flags) 
 {
-	vmntvnodescan(mp, VMSC_REFVP, vfs_msync_scan1, vfs_msync_scan2,
+	int vmsc_flags;
+
+	vmsc_flags = VMSC_GETVP;
+	if (flags != MNT_WAIT)
+		vmsc_flags |= VMSC_NOWAIT;
+	vmntvnodescan(mp, vmsc_flags, vfs_msync_scan1, vfs_msync_scan2,
 			(void *)flags);
 }
 
@@ -1815,6 +1824,9 @@ vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	return(-1);
 }
 
+/*
+ * This callback is handed a locked vnode.
+ */
 static
 int
 vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
@@ -1826,8 +1838,7 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 		return(0);
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
-	    (vp->v_flag & VOBJDIRTY) &&
-	    (flags == MNT_WAIT || VOP_ISLOCKED(vp, NULL) == 0)) {
+	    (vp->v_flag & VOBJDIRTY)) {
 		if (VOP_GETVOBJECT(vp, &obj) == 0) {
 			vm_object_page_clean(obj, 0, 0, 
 			 flags == MNT_WAIT ? OBJPC_SYNC : OBJPC_NOSYNC);
