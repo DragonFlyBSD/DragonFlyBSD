@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pcib_acpi.c,v 1.34 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib_acpi.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pcib_acpi.c,v 1.4 2005/11/01 23:36:32 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -118,12 +118,13 @@ static int
 acpi_pcib_acpi_probe(device_t dev)
 {
 
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("pci") &&
+    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && acpi_enabled("pci") &&
 	acpi_MatchHid(dev, "PNP0A03")) {
 
 	if (pci_cfgregopen() == 0)
 		return (ENXIO);
 	device_set_desc(dev, "ACPI Host-PCI bridge");
+	pcib_owner = "acpi";
 	return (0);
     }
     return (ENXIO);

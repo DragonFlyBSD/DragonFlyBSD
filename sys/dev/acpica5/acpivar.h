@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.6 2005/06/04 14:25:45 corecode Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.7 2005/11/01 23:36:32 dillon Exp $
  */
 
 #include "bus_if.h"
@@ -311,6 +311,7 @@ acpi_get_verbose(struct acpi_softc *sc)
 char		*acpi_name(ACPI_HANDLE handle);
 int		acpi_avoid(ACPI_HANDLE handle);
 int		acpi_disabled(char *subsys);
+int		acpi_enabled(char *subsys);
 int		acpi_machdep_init(device_t dev);
 void		acpi_install_wakeup_handler(struct acpi_softc *sc);
 int		acpi_sleep_machdep(struct acpi_softc *sc, int state);

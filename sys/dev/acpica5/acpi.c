@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.17 2005/10/30 04:41:15 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.18 2005/11/01 23:36:32 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -2307,7 +2307,9 @@ acpi_avoid(ACPI_HANDLE handle)
 }
 
 /*
- * Debugging/bug-avoidance.  Disable ACPI subsystem components.
+ * Debugging/bug-avoidance.  Disable ACPI subsystem components.   Note that
+ * some components may be disabled by default and can only be enabled
+ * via acpi_enabled() (debug.acpi.enabled).
  */
 int
 acpi_disabled(char *subsys)
@@ -2323,6 +2325,45 @@ acpi_disabled(char *subsys)
     }
 
     /* Scan the disable list, checking for a match. */
+    cp = env;
+    for (;;) {
+	while (*cp != '\0' && isspace(*cp))
+	    cp++;
+	if (*cp == '\0')
+	    break;
+	len = 0;
+	while (cp[len] != '\0' && !isspace(cp[len]))
+	    len++;
+	if (strncmp(cp, subsys, len) == 0) {
+	    freeenv(env);
+	    return (1);
+	}
+	cp += len;
+    }
+    freeenv(env);
+
+    return (0);
+}
+
+/*
+ * Debugging/bug-avoidance.  Enable ACPI subsystem components.  Most 
+ * components are enabled by default.  The ones that are not have to be 
+ * enabled via debug.acpi.enabled.
+ */
+int
+acpi_enabled(char *subsys)
+{
+    char	*cp, *env;
+    int		len;
+
+    if ((env = getenv("debug.acpi.enabled")) == NULL)
+	return (0);
+    if (strcmp(env, "all") == 0) {
+	freeenv(env);
+	return (1);
+    }
+
+    /* Scan the enable list, checking for a match. */
     cp = env;
     for (;;) {
 	while (*cp != '\0' && isspace(*cp))
