@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.16 2005/04/30 08:24:48 asmodai Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.17 2005/11/01 16:34:58 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -105,6 +105,7 @@ double	 strtod(const char *, char **);
 long	 strtol(const char *, char **, int);
 unsigned long	strtoul(const char *, char **, int);
 #ifdef __LONG_LONG_SUPPORTED
+long long int	atoll(const char *);
 long long	strtoll(const char *, char **, int);
 unsigned long long strtoull(const char *, char **, int);
 #endif
