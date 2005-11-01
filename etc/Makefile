@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.96 2005/10/19 05:18:36 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.97 2005/11/01 20:50:22 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -158,7 +158,6 @@ upgrade_etc:	preupgrade
 .endif
 .endfor
 .endif
-
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
@@ -387,6 +386,11 @@ upgrade_etc:	preupgrade
 	Europe/Belfast HST MST MST7MDT PST8PDT Pacific/Yap
 	rm -f ${DESTDIR}/usr/share/zoneinfo/${tzfile}
 .endfor
+.if exists(${DESTDIR}/usr/freebsd_pkg/sbin/pkg_add)
+	csh -c "rm -f ${DESTDIR}/usr/sbin/pkg_{install,add,create,delete,info,sign,version}"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/man1/pkg_{add,create,delete,info,sign,version}.1.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/cat1/pkg_{add,create,delete,info,sign,version}.1.gz"
+.endif
 	ldconfig -R
 
 distribution:

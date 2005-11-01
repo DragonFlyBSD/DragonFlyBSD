@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.41 2005/08/31 02:38:34 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.42 2005/11/01 20:50:28 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -6,6 +6,7 @@ ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC
+PKG_PATH= /usr/freebsd_pkg/sbin
 
 # Specify which packages are required on the ISO, and let the user
 # specify additional packages to include.  During the `pkgaddiso'
@@ -172,17 +173,17 @@ customizeiso:
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 
-PKG_VERSTR!=	pkg_info -vP
+PKG_VERSTR!=	${PKG_PATH}/pkg_info -vP
 .if !empty(PKG_VERSTR:M*fakeroot*)
 
 pkgcleaniso:
 .for PKG in ${REL_PACKAGES}
-	-PKG_FAKEROOT=${ISOROOT:Q} pkg_delete -f ${PKG}
+	-PKG_FAKEROOT=${ISOROOT:Q} ${PKG_PATH}/pkg_delete -f ${PKG}
 .endfor
 
 pkgaddiso:
 .for PKG in ${REL_PACKAGES}
-	-PKG_FAKEROOT=${ISOROOT:Q} pkg_add ${PACKAGES_LOC}/${PKG}.tgz
+	-PKG_FAKEROOT=${ISOROOT:Q} ${PKG_PATH}/pkg_add ${PACKAGES_LOC}/${PKG}.tgz
 .endfor
 
 .else	# pkgtools don't know fakeroot
@@ -191,7 +192,7 @@ pkgcleaniso:
 	rm -f ${ISOROOT}/tmp/chrootscript
 	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
 .for PKG in ${REL_PACKAGES}
-	echo "pkg_delete -f ${PKG}" >> ${ISOROOT}/tmp/chrootscript
+	echo "${PKG_PATH}/pkg_delete -f ${PKG}" >> ${ISOROOT}/tmp/chrootscript
 .endfor
 	chmod a+x ${ISOROOT}/tmp/chrootscript
 	chroot ${ISOROOT}/ /tmp/chrootscript || exit 0
@@ -205,7 +206,7 @@ pkgaddiso:
 		cp ${PACKAGES_LOC}/${PKG}.tgz ${ISOROOT}/tmp/${PKG}.tgz; \
 		echo "echo 'Installing package ${PKG}...' && \\" >> \
 		    ${ISOROOT}/tmp/chrootscript; \
-		echo "pkg_add /tmp/${PKG}.tgz && \\" >> \
+		echo "${PKG_PATH}/pkg_add /tmp/${PKG}.tgz && \\" >> \
 		    ${ISOROOT}/tmp/chrootscript; \
 	fi
 .endfor
