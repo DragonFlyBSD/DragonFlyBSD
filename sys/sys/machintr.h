@@ -31,51 +31,37 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.2 2005/11/02 18:42:03 dillon Exp $
+ * $DragonFly: src/sys/sys/machintr.h,v 1.1 2005/11/02 18:42:11 dillon Exp $
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/machintr.h>
-#include "icu.h"
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
 
-#ifndef APIC_IO
+enum machintr_type { MACHINTR_ICU, MACHINTR_APIC };
 
-extern void ICU_INTREN(int);
-extern void ICU_INTRDIS(int);
+#define MACHINTR_VAR_SIZEMASK	0xFFFF
 
-static int icu_setvar(int, const void *);
-static int icu_getvar(int, void *);
-static void icu_finalize(void);
+#define MACHINTR_VAR_PICMODE	(0x00010000|sizeof(int))
 
-struct machintr_abi MachIntrABI = {
-    MACHINTR_ICU,
-    ICU_INTRDIS,
-    ICU_INTREN,
-    icu_setvar,
-    icu_getvar,
-    icu_finalize
+/*
+ * Machine interrupt ABIs - registered at boot-time
+ */
+struct machintr_abi {
+    enum machintr_type type;
+    void	(*intrdis)(int);		/* hardware disable irq */
+    void	(*intren)(int);			/* hardware enable irq */
+    int		(*setvar)(int, const void *);	/* set miscellanious info */
+    int		(*getvar)(int, void *);		/* get miscellanious info */
+    void	(*finalize)(void);		/* final before ints enabled */
 };
 
-static 
-int
-icu_setvar(int varid __unused, const void *buf __unused)
-{
-    return (ENOENT);
-}
+#define machintr_intren(irq)	MachIntrABI.intren(irq)
+#define machintr_intrdis(irq)	MachIntrABI.intrdis(irq)
 
-static
-int
-icu_getvar(int varid __unused, void *buf __unused)
-{
-    return (ENOENT);
-}
+#ifdef _KERNEL
 
-static void
-icu_finalize(void)
-{
-    machintr_intren(ICU_IRQ_SLAVE);
-}
+extern struct machintr_abi MachIntrABI;
+extern int machintr_setvar_simple(int, int);
 
 #endif

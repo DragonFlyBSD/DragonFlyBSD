@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.38 2005/11/02 17:47:33 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.39 2005/11/02 18:42:08 dillon Exp $
  */
 
 /*
@@ -67,6 +67,7 @@
 #include <sys/globaldata.h>
 #include <sys/thread2.h>
 #include <sys/systimer.h>
+#include <sys/machintr.h>
 
 #include <machine/clock.h>
 #ifdef CLK_CALIBRATION_LOOP
@@ -994,13 +995,13 @@ cpu_initclocks()
 
 	clkdesc = inthand_add("clk", apic_8254_intr, clkintr,
 			      NULL, INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-	INTREN(apic_8254_intr);
+	machintr_intren(apic_8254_intr);
 	
 #else /* APIC_IO */
 
 	inthand_add("clk", 0, clkintr, NULL,
 		    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-	INTREN(ICU_IRQ0);
+	machintr_intren(ICU_IRQ0);
 
 #endif /* APIC_IO */
 
@@ -1020,12 +1021,7 @@ cpu_initclocks()
 
 		inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL,
 			    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-
-#ifdef APIC_IO
-		INTREN(APIC_IRQ8);
-#else
-		INTREN(ICU_IRQ8);
-#endif /* APIC_IO */
+		machintr_intren(8);
 
 		writertc(RTC_STATUSB, rtc_statusb);
 	}
@@ -1054,7 +1050,7 @@ cpu_initclocks()
 			 * on the IO APIC.
 			 * Workaround: Limited variant of mixed mode.
 			 */
-			INTRDIS(apic_8254_intr);
+			machintr_intrdis(apic_8254_intr);
 			inthand_remove(clkdesc);
 			printf("APIC_IO: Broken MP table detected: "
 			       "8254 is not connected to "
@@ -1078,7 +1074,7 @@ cpu_initclocks()
 				    clkintr,
 				    NULL,
 				    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-			INTREN(apic_8254_intr);
+			machintr_intren(apic_8254_intr);
 		}
 		
 	}

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.41 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.42 2005/11/02 18:42:01 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -35,6 +35,7 @@
 #include <sys/malloc.h>
 #include <sys/memrange.h>
 #include <sys/cons.h>	/* cngetc() */
+#include <sys/machintr.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -280,7 +281,6 @@ static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
 
-static int	picmode;		/* 0: virtual wire mode, 1: PIC mode */
 static mpfps_t	mpfps;
 static int	search_for_sig(u_int32_t target, int count);
 static void	mp_enable(u_int boot_addr);
@@ -480,44 +480,6 @@ init_secondary(void)
 	/* set up SSE registers */
 	enable_sse();
 }
-
-
-#if defined(APIC_IO)
-/*
- * Final configuration of the BSP's local APIC:
- *  - disable 'pic mode'.
- *  - disable 'virtual wire mode'.
- *  - enable NMI.
- */
-void
-bsp_apic_configure(void)
-{
-	u_char		byte;
-	u_int32_t	temp;
-
-	/* leave 'pic mode' if necessary */
-	if (picmode) {
-		outb(0x22, 0x70);	/* select IMCR */
-		byte = inb(0x23);	/* current contents */
-		byte |= 0x01;		/* mask external INTR */
-		outb(0x23, byte);	/* disconnect 8259s/NMI */
-	}
-
-	/* mask lint0 (the 8259 'virtual wire' connection) */
-	temp = lapic.lvt_lint0;
-	temp |= APIC_LVT_M;		/* set the mask */
-	lapic.lvt_lint0 = temp;
-
-        /* setup lint1 to handle NMI */
-        temp = lapic.lvt_lint1;
-        temp &= ~APIC_LVT_M;		/* clear the mask */
-        lapic.lvt_lint1 = temp;
-
-	if (bootverbose)
-		apic_dump("bsp_apic_configure()");
-}
-#endif  /* APIC_IO */
-
 
 /*******************************************************************
  * local functions and data
@@ -842,6 +804,7 @@ mptable_pass2(void)
 	int     count;
 	int     type;
 	int     apic, bus, cpu, intr;
+	int	picmode;
 	int	i, j;
 	int	pgeflag;
 
@@ -909,6 +872,7 @@ mptable_pass2(void)
 
 	/* record whether PIC or virtual-wire mode */
 	picmode = (mpfps->mpfb2 & 0x80) ? 1 : 0;
+	machintr_setvar_simple(MACHINTR_VAR_PICMODE, picmode);
 
 	/* check for use of 'default' configuration */
 	if (MPFPS_MPFB1 != 0)

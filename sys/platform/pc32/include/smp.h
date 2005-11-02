@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.14 2005/11/02 08:33:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.15 2005/11/02 18:42:06 dillon Exp $
  *
  */
 
@@ -64,7 +64,6 @@ extern int			bsp_apic_ready;
 extern int			mp_naps;
 extern int			mp_nbusses;
 extern int			mp_napics;
-extern int			mp_picmode;
 extern int			boot_cpu_id;
 extern vm_offset_t		cpu_apic_address;
 extern vm_offset_t		io_apic_address[];
@@ -103,7 +102,6 @@ int	apic_trigger		(int, int);
 int	apic_polarity		(int, int);
 void	assign_apic_irq		(int apic, int intpin, int irq);
 void	revoke_apic_irq		(int irq);
-void	bsp_apic_configure	(void);
 void	init_secondary		(void);
 int	stop_cpus		(u_int);
 void	ap_init			(void);

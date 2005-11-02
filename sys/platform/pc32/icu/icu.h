@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu.h,v 1.7 2005/11/02 17:47:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu.h,v 1.8 2005/11/02 18:42:03 dillon Exp $
  */
 
 /*
@@ -45,13 +45,6 @@
 
 #ifndef _I386_ISA_ICU_H_
 #define	_I386_ISA_ICU_H_
-
-#ifndef LOCORE
-
-void   INTREN(int);
-void   INTRDIS(int);
-
-#endif
 
 /*
  * Note: The APIC uses different values for IRQxxx.

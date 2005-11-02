@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.36 2005/11/02 17:47:33 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.37 2005/11/02 18:42:08 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -63,6 +63,7 @@
 #include <machine/globaldata.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
+#include <sys/machintr.h>
 
 #include <machine/smptests.h>			/** FAST_HI */
 #include <machine/smp.h>
@@ -225,7 +226,7 @@ icu_reinit()
 	init_i8259();
 	for (i = 0; i < ICU_LEN; ++i) {
 		if (count_registered_ints(i))
-			INTREN(i);
+			machintr_intren(i);
 	}
 }
 
@@ -354,7 +355,7 @@ icu_setup(int intr, int flags)
 	       flags & INTR_FAST ? fastintr[intr] : slowintr[intr],
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 #endif /* FAST_HI && APIC_IO */
-	INTREN(intr);
+	machintr_intren(intr);
 	write_eflags(ef);
 	return (0);
 }
@@ -365,7 +366,7 @@ icu_unset(int intr)
 	u_long	ef;
 
 	KKASSERT((u_int)intr < ICU_LEN);
-	INTRDIS(intr);
+	machintr_intrdis(intr);
 	ef = read_eflags();
 	cpu_disable_intr();	/* YYY */
 #ifdef FAST_HI_XXX
@@ -500,45 +501,6 @@ inthand_remove(void *id)
 	crit_exit();
 	return (0);
 }
-
-/*
- * ithread_done()
- *
- *	This function is called by an interrupt thread when it has completed
- *	processing a loop.  We re-enable interrupts and interlock with
- *	ipending.
- *
- *	See kern/kern_intr.c for more information.
- */
-void
-ithread_unmask(int irq)
-{
-    INTREN(irq);
-}
-
-#if 0
-
-void
-ithread_done(int irq)
-{
-    struct mdglobaldata *gd = mdcpu;
-    thread_t td;
-
-    td = gd->mi.gd_curthread;
-
-    KKASSERT(td->td_pri >= TDPRI_CRIT);
-    lwkt_deschedule_self(td);
-    INTREN(irq);
-    if (gd->gd_ipending & (1 << irq)) {
-	atomic_clear_int_nonlocked(&gd->gd_ipending, (1 << irq));
-	INTRDIS(irq);
-	lwkt_schedule_self(td);
-    } else {
-	lwkt_switch();
-    }
-}
-
-#endif
 
 #ifdef SMP
 /*

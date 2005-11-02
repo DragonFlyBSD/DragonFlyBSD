@@ -31,51 +31,27 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.2 2005/11/02 18:42:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_machintr.c,v 1.1 2005/11/02 18:42:10 dillon Exp $
+ */
+/*
+ * This code provides an ABI for managing machine-level interrupts.  The
+ * machine independant code abstracts an interrupt source into an
+ * IRQ number.  At the MI level the number of IRQs is typically limited
+ * to 256, but may be more severely limited by the installed machine-layer.
+ *
+ * machintr structures are manipulated by the BUS and other code and may
+ * contain additional opaque reference info.  MI code is only allowed to
+ * access the irq field.
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/kernel.h>
 #include <sys/machintr.h>
-#include "icu.h"
 
-#ifndef APIC_IO
-
-extern void ICU_INTREN(int);
-extern void ICU_INTRDIS(int);
-
-static int icu_setvar(int, const void *);
-static int icu_getvar(int, void *);
-static void icu_finalize(void);
-
-struct machintr_abi MachIntrABI = {
-    MACHINTR_ICU,
-    ICU_INTRDIS,
-    ICU_INTREN,
-    icu_setvar,
-    icu_getvar,
-    icu_finalize
-};
-
-static 
 int
-icu_setvar(int varid __unused, const void *buf __unused)
+machintr_setvar_simple(int varid, int value)
 {
-    return (ENOENT);
+    KKASSERT((varid & MACHINTR_VAR_SIZEMASK) == sizeof(int));
+    return (MachIntrABI.setvar(varid, &value));
 }
 
-static
-int
-icu_getvar(int varid __unused, void *buf __unused)
-{
-    return (ENOENT);
-}
-
-static void
-icu_finalize(void)
-{
-    machintr_intren(ICU_IRQ_SLAVE);
-}
-
-#endif

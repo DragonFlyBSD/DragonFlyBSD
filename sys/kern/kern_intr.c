@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.29 2005/10/26 01:16:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.30 2005/11/02 18:42:09 dillon Exp $
  *
  */
 
@@ -39,6 +39,7 @@
 #include <sys/random.h>
 #include <sys/serialize.h>
 #include <sys/bus.h>
+#include <sys/machintr.h>
 
 #include <machine/ipl.h>
 #include <machine/frame.h>
@@ -664,7 +665,7 @@ ithread_handler(void *arg)
 	 * interrupt on close (the parallel bus being a good example).
 	 */
 	if (*list)
-	    ithread_unmask(intr);
+	    machintr_intren(intr);
 
 	/*
 	 * Do a quick exit/enter to catch any higher-priority interrupt

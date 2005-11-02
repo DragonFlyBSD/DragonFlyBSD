@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.12 2005/11/02 17:47:29 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.13 2005/11/02 18:41:59 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -94,7 +94,7 @@ apic_imen:
 	 * Functions to enable and disable a hardware interrupt.  The
 	 * IRQ number is passed as an argument.
 	 */
-ENTRY(INTRDIS)
+ENTRY(APIC_INTRDIS)
 	IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp),%eax
 1:
@@ -110,7 +110,7 @@ ENTRY(INTRDIS)
 	IMASK_UNLOCK			/* exit critical reg */
 	ret
 
-ENTRY(INTREN)
+ENTRY(APIC_INTREN)
 	IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:

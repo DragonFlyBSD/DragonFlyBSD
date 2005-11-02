@@ -67,7 +67,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.11 2005/11/02 17:47:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.12 2005/11/02 18:42:03 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -108,7 +108,7 @@ icu_imen:
 	 * INTREN(irq)
 	 * INTDIS(irq)
 	 */
-ENTRY(INTRDIS)
+ENTRY(ICU_INTRDIS)
 	movl	4(%esp),%eax
 	btsl	%eax,icu_imen
 	pushfl
@@ -120,7 +120,7 @@ ENTRY(INTRDIS)
 	popfl
 	ret
 
-ENTRY(INTREN)
+ENTRY(ICU_INTREN)
 	movl	4(%esp),%eax
 	btrl	%eax,icu_imen
 	pushfl

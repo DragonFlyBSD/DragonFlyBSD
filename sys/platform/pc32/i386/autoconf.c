@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.21 2005/11/02 17:47:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.22 2005/11/02 18:42:01 dillon Exp $
  */
 
 /*
@@ -70,6 +70,7 @@
 #include <sys/cons.h>
 #include <sys/thread.h>
 #include <sys/device.h>
+#include <sys/machintr.h>
 
 #include <machine/bootinfo.h>
 #include <machine/ipl.h>
@@ -127,30 +128,11 @@ static void
 configure(dummy)
 	void *dummy;
 {
-
-	/*
-	 * Activate the ICU's.  Note that we are explicitly at splhigh()
-	 * at present as we have no way to disable stray PCI level triggered
-	 * interrupts until the devices have had a driver attached.  This
-	 * is particularly a problem when the interrupts are shared.  For
-	 * example, if IRQ 10 is shared between a disk and network device
-	 * and the disk device generates an interrupt, if we "activate"
-	 * IRQ 10 when the network driver is set up, then we will get
-	 * recursive interrupt 10's as nothing will know how to turn off
-	 * the disk device's interrupt.
-	 *
-	 * Having the ICU's active means we can probe interrupt routing to
-	 * see if a device causes the corresponding pending bit to be set.
-	 *
-	 * This is all rather inconvenient.
+        /*
+	 * Final interrupt support acviation, then enable hardware interrupts.
 	 */
-#ifdef APIC_IO
-	bsp_apic_configure();
+	MachIntrABI.finalize();
 	cpu_enable_intr();
-#else
-	cpu_enable_intr();
-	INTREN(ICU_IRQ_SLAVE);
-#endif /* APIC_IO */
 
 	/*
 	 * This will configure all devices, generally starting with the
