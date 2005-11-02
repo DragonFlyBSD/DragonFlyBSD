@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.14 2005/01/12 00:26:03 cpressey Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.15 2005/11/02 08:28:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -163,9 +163,7 @@ main(int argc, char *argv[])
 	newbus_ioconf();
 	
 	/*
-	 * make symbolic links in compilation directory
-	 * for "sys" (to make genassym.c work along with #include <sys/xxx>)
-	 * and similarly for "machine".
+	 * "machine" points into <ARCH>/include - obsoleted by "arch"
 	 */
 	if (*srcdir == '\0')
 		snprintf(linkdest, sizeof(linkdest), "../../%s/include",
@@ -174,6 +172,17 @@ main(int argc, char *argv[])
 		snprintf(linkdest, sizeof(linkdest), "%s/%s/include",
 		    srcdir, machinename);
 	symlink(linkdest, path("machine"));
+
+	/*
+	 * "arch" points into <ARCH>
+	 */
+	if (*srcdir == '\0')
+		snprintf(linkdest, sizeof(linkdest), "../../%s",
+		    machinename);
+	else
+		snprintf(linkdest, sizeof(linkdest), "%s/%s",
+		    srcdir, machinename);
+	symlink(linkdest, path("arch"));
 
 	/*
 	 * XXX check directory structure for architecture subdirectories and
