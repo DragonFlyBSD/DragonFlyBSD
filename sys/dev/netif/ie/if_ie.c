@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.23 2005/11/02 08:33:19 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.24 2005/11/02 17:47:28 dillon Exp $
  */
 
 /*
@@ -575,7 +575,9 @@ ee16_probe(struct isa_device *dvp)
 	u_char	bart_config;
 	u_long	bd_maddr;
 
-	short	irq_translate[] = {0, IRQ9, IRQ3, IRQ4, IRQ5, IRQ10, IRQ11, 0};
+	short	irq_translate[] = {0, 1 << ICU_IRQ9, 1 << ICU_IRQ3, 
+				   1 << ICU_IRQ4, 1 << ICU_IRQ5, 
+				   1 << ICU_IRQ10, 1 << ICU_IRQ11, 0};
 	char	irq_encode[] = {0, 0, 0, 2, 3, 4, 0, 0, 0, 1, 5, 6, 0, 0, 0, 0};
 
 	/* Need this for part of the probe. */

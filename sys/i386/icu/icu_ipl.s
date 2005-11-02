@@ -67,7 +67,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.10 2005/11/02 17:20:00 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.11 2005/11/02 17:47:31 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -105,12 +105,12 @@ icu_imen:
 	 * Functions to enable and disable a hardware interrupt.  Only
 	 * 16 ICU interrupts exist.
 	 *
-	 * INTREN(1 << irq)	(one interrupt only)
-	 * INTDIS(1 << irq)	(one interrupt only)
+	 * INTREN(irq)
+	 * INTDIS(irq)
 	 */
 ENTRY(INTRDIS)
 	movl	4(%esp),%eax
-	orl	%eax,icu_imen
+	btsl	%eax,icu_imen
 	pushfl
 	cli
 	movl	icu_imen,%eax
@@ -122,8 +122,7 @@ ENTRY(INTRDIS)
 
 ENTRY(INTREN)
 	movl	4(%esp),%eax
-	notl	%eax
-	andl	%eax,icu_imen
+	btrl	%eax,icu_imen
 	pushfl
 	cli
 	movl	icu_imen,%eax

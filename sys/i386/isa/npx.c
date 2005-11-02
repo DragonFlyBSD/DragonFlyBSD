@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.27 2005/11/02 08:33:28 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.28 2005/11/02 17:47:33 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -247,7 +247,7 @@ npx_probe(device_t dev)
 	save_icu2_mask = inb(IO_ICU2 + 1);
 	save_idt_npxintr = idt[npx_intrno];
 	save_idt_npxtrap = idt[16];
-	outb(IO_ICU1 + 1, ~IRQ_SLAVE);
+	outb(IO_ICU1 + 1, ~(1 << ICU_IRQ_SLAVE));
 	outb(IO_ICU2 + 1, ~(1 << (npx_irq - 8)));
 	setidt(16, probetrap, SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(npx_intrno, probeintr, SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -918,7 +918,7 @@ npxsave(union savefpu *addr)
 	old_icu1_mask = inb(IO_ICU1 + 1);
 	old_icu2_mask = inb(IO_ICU2 + 1);
 	save_idt_npxintr = idt[npx_intrno];
-	outb(IO_ICU1 + 1, old_icu1_mask & ~(IRQ_SLAVE | npx0_imask));
+	outb(IO_ICU1 + 1, old_icu1_mask & ~((1 << ICU_IRQ_SLAVE) | npx0_imask));
 	outb(IO_ICU2 + 1, old_icu2_mask & ~(npx0_imask >> 8));
 	idt[npx_intrno] = npx_idt_probeintr;
 	cpu_enable_intr();

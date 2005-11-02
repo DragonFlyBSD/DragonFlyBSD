@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu.h,v 1.6 2005/11/02 17:20:00 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu.h,v 1.7 2005/11/02 17:47:31 dillon Exp $
  */
 
 /*
@@ -48,8 +48,8 @@
 
 #ifndef LOCORE
 
-void   INTREN(u_int);
-void   INTRDIS(u_int);
+void   INTREN(int);
+void   INTRDIS(int);
 
 #endif
 
@@ -62,25 +62,26 @@ void   INTRDIS(u_int);
  */
 
 /*
- * Interrupt enable bits - in normal order of priority (which we change)
+ * Interrupt enable bit numbers - in normal order of priority 
+ * (which we change)
  */
-#define	IRQ0		0x0001		/* highest priority - timer */
-#define	IRQ1		0x0002
-#define	IRQ_SLAVE	0x0004
-#define	IRQ8		0x0100
-#define	IRQ9		0x0200
-#define	IRQ2		IRQ9
-#define	IRQ10		0x0400
-#define	IRQ11		0x0800
-#define	IRQ12		0x1000
-#define	IRQ13		0x2000
-#define	IRQ14		0x4000
-#define	IRQ15		0x8000
-#define	IRQ3		0x0008		/* this is highest after rotation */
-#define	IRQ4		0x0010
-#define	IRQ5		0x0020
-#define	IRQ6		0x0040
-#define	IRQ7		0x0080		/* lowest - parallel printer */
+#define	ICU_IRQ0		0	/* highest priority - timer */
+#define	ICU_IRQ1		1
+#define	ICU_IRQ_SLAVE		2
+#define	ICU_IRQ8		8
+#define	ICU_IRQ9		9
+#define	ICU_IRQ2		ICU_IRQ9
+#define	ICU_IRQ10		10
+#define	ICU_IRQ11		11
+#define	ICU_IRQ12		12
+#define	ICU_IRQ13		13
+#define	ICU_IRQ14		14
+#define	ICU_IRQ15		15
+#define	ICU_IRQ3		3	/* this is highest after rotation */
+#define	ICU_IRQ4		4
+#define	ICU_IRQ5		5
+#define	ICU_IRQ6		6
+#define	ICU_IRQ7		7	/* lowest - parallel printer */
 
 /*
  * Interrupt Control offset into Interrupt descriptor table (IDT)

@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.11 2005/11/02 17:19:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.12 2005/11/02 17:47:29 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -91,27 +91,21 @@ apic_imen:
 	SUPERALIGN_TEXT
 
 	/*
-	 * Functions to enable and disable a hardware interrupt.  Generally
-	 * called with only one bit set in the mask but can handle multiple
-	 * bits to present the same API as the ICU.
+	 * Functions to enable and disable a hardware interrupt.  The
+	 * IRQ number is passed as an argument.
 	 */
-
 ENTRY(INTRDIS)
 	IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp),%eax
 1:
-	bsfl	%eax,%ecx
-	jz	2f
-	btrl	%ecx,%eax
-	btsl	%ecx, apic_imen
-	shll	$4, %ecx
-	movl	CNAME(int_to_apicintpin) + 8(%ecx), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%ecx), %ecx
+	btsl	%eax, apic_imen
+	shll	$4, %eax
+	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
+	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* target register index */
 	orl	$IOART_INTMASK,16(%edx)	/* set intmask in target apic reg */
-	jmp	1b
 2:
 	IMASK_UNLOCK			/* exit critical reg */
 	ret
@@ -120,18 +114,14 @@ ENTRY(INTREN)
 	IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
-	bsfl	%eax, %ecx		/* get pin index */
-	jz	2f
-	btrl	%ecx,%eax
-	btrl	%ecx, apic_imen		/* update apic_imen */
-	shll	$4, %ecx
-	movl	CNAME(int_to_apicintpin) + 8(%ecx), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%ecx), %ecx
+	btrl	%eax, apic_imen		/* update apic_imen */
+	shll	$4, %eax
+	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
+	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* write the target register index */
 	andl	$~IOART_INTMASK, 16(%edx) /* clear mask bit */
-	jmp	1b
 2:	
 	IMASK_UNLOCK			/* exit critical reg */
 	ret

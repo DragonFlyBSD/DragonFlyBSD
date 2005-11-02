@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.35 2005/11/02 08:33:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.36 2005/11/02 17:47:33 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -225,7 +225,7 @@ icu_reinit()
 	init_i8259();
 	for (i = 0; i < ICU_LEN; ++i) {
 		if (count_registered_ints(i))
-			INTREN(1 << i);
+			INTREN(i);
 	}
 }
 
@@ -251,7 +251,7 @@ init_i8259(void)
 	/* initialize 8259's */
 	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
 	outb(IO_ICU1+ICU_IMR_OFFSET, NRSVIDT);	/* starting at this vector index */
-	outb(IO_ICU1+ICU_IMR_OFFSET, IRQ_SLAVE);		/* slave on line 7 */
+	outb(IO_ICU1+ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE); /* slave on line 7 */
 #ifdef AUTO_EOI_1
 	outb(IO_ICU1+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
 #else
@@ -354,7 +354,7 @@ icu_setup(int intr, int flags)
 	       flags & INTR_FAST ? fastintr[intr] : slowintr[intr],
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 #endif /* FAST_HI && APIC_IO */
-	INTREN(1 << intr);
+	INTREN(intr);
 	write_eflags(ef);
 	return (0);
 }
@@ -365,7 +365,7 @@ icu_unset(int intr)
 	u_long	ef;
 
 	KKASSERT((u_int)intr < ICU_LEN);
-	INTRDIS(1 << intr);
+	INTRDIS(intr);
 	ef = read_eflags();
 	cpu_disable_intr();	/* YYY */
 #ifdef FAST_HI_XXX
@@ -513,9 +513,7 @@ inthand_remove(void *id)
 void
 ithread_unmask(int irq)
 {
-    int mask = 1 << irq;
-
-    INTREN(mask);
+    INTREN(irq);
 }
 
 #if 0
@@ -524,17 +522,16 @@ void
 ithread_done(int irq)
 {
     struct mdglobaldata *gd = mdcpu;
-    int mask = 1 << irq;
     thread_t td;
 
     td = gd->mi.gd_curthread;
 
     KKASSERT(td->td_pri >= TDPRI_CRIT);
     lwkt_deschedule_self(td);
-    INTREN(mask);
-    if (gd->gd_ipending & mask) {
-	atomic_clear_int_nonlocked(&gd->gd_ipending, mask);
-	INTRDIS(mask);
+    INTREN(irq);
+    if (gd->gd_ipending & (1 << irq)) {
+	atomic_clear_int_nonlocked(&gd->gd_ipending, (1 << irq));
+	INTRDIS(irq);
 	lwkt_schedule_self(td);
     } else {
 	lwkt_switch();

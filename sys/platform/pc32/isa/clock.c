@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.37 2005/11/02 08:33:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.38 2005/11/02 17:47:33 dillon Exp $
  */
 
 /*
@@ -994,13 +994,13 @@ cpu_initclocks()
 
 	clkdesc = inthand_add("clk", apic_8254_intr, clkintr,
 			      NULL, INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-	INTREN(1 << apic_8254_intr);
+	INTREN(apic_8254_intr);
 	
 #else /* APIC_IO */
 
 	inthand_add("clk", 0, clkintr, NULL,
 		    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-	INTREN(IRQ0);
+	INTREN(ICU_IRQ0);
 
 #endif /* APIC_IO */
 
@@ -1024,7 +1024,7 @@ cpu_initclocks()
 #ifdef APIC_IO
 		INTREN(APIC_IRQ8);
 #else
-		INTREN(IRQ8);
+		INTREN(ICU_IRQ8);
 #endif /* APIC_IO */
 
 		writertc(RTC_STATUSB, rtc_statusb);
@@ -1054,7 +1054,7 @@ cpu_initclocks()
 			 * on the IO APIC.
 			 * Workaround: Limited variant of mixed mode.
 			 */
-			INTRDIS(1 << apic_8254_intr);
+			INTRDIS(apic_8254_intr);
 			inthand_remove(clkdesc);
 			printf("APIC_IO: Broken MP table detected: "
 			       "8254 is not connected to "
@@ -1078,7 +1078,7 @@ cpu_initclocks()
 				    clkintr,
 				    NULL,
 				    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
-			INTREN(1 << apic_8254_intr);
+			INTREN(apic_8254_intr);
 		}
 		
 	}

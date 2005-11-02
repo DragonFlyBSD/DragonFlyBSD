@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.20 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.21 2005/11/02 17:47:30 dillon Exp $
  */
 
 /*
@@ -149,7 +149,7 @@ configure(dummy)
 	cpu_enable_intr();
 #else
 	cpu_enable_intr();
-	INTREN(IRQ_SLAVE);
+	INTREN(ICU_IRQ_SLAVE);
 #endif /* APIC_IO */
 
 	/*
