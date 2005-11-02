@@ -1,8 +1,14 @@
 /*
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 1996, by Steve Passe.  All rights reserved.
+ * Copyright (c) 1991 The Regents of the University of California.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,48 +37,149 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * All code starting at the apic_finalize() procedure definition is:
- *
- * Copyright (c) 1996, by Steve Passe
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. The name of the developer may NOT be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.2 2005/11/02 18:41:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.3 2005/11/02 20:23:15 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/machintr.h>
+#include <sys/interrupt.h>
+#include <sys/bus.h>
+#include <machine/smptests.h>
 #include <machine/smp.h>
+#include <machine/segments.h>
+#include <machine/md_var.h>
+#include <machine/clock.h>	/* apic_8254_intr */
+#include <i386/isa/intr_machdep.h>
+#include <i386/icu/icu.h>
+#include "apic_ipl.h"
 
 #ifdef APIC_IO
 
 extern void APIC_INTREN(int);
 extern void APIC_INTRDIS(int);
 
+extern inthand_t
+	IDTVEC(apic_fastintr0), IDTVEC(apic_fastintr1),
+	IDTVEC(apic_fastintr2), IDTVEC(apic_fastintr3),
+	IDTVEC(apic_fastintr4), IDTVEC(apic_fastintr5),
+	IDTVEC(apic_fastintr6), IDTVEC(apic_fastintr7),
+	IDTVEC(apic_fastintr8), IDTVEC(apic_fastintr9),
+	IDTVEC(apic_fastintr10), IDTVEC(apic_fastintr11),
+	IDTVEC(apic_fastintr12), IDTVEC(apic_fastintr13),
+	IDTVEC(apic_fastintr14), IDTVEC(apic_fastintr15),
+	IDTVEC(apic_fastintr16), IDTVEC(apic_fastintr17),
+	IDTVEC(apic_fastintr18), IDTVEC(apic_fastintr19),
+	IDTVEC(apic_fastintr20), IDTVEC(apic_fastintr21),
+	IDTVEC(apic_fastintr22), IDTVEC(apic_fastintr23);
+
+extern inthand_t
+	IDTVEC(apic_slowintr0), IDTVEC(apic_slowintr1),
+	IDTVEC(apic_slowintr2), IDTVEC(apic_slowintr3),
+	IDTVEC(apic_slowintr4), IDTVEC(apic_slowintr5),
+	IDTVEC(apic_slowintr6), IDTVEC(apic_slowintr7),
+	IDTVEC(apic_slowintr8), IDTVEC(apic_slowintr9),
+	IDTVEC(apic_slowintr10), IDTVEC(apic_slowintr11),
+	IDTVEC(apic_slowintr12), IDTVEC(apic_slowintr13),
+	IDTVEC(apic_slowintr14), IDTVEC(apic_slowintr15),
+	IDTVEC(apic_slowintr16), IDTVEC(apic_slowintr17),
+	IDTVEC(apic_slowintr18), IDTVEC(apic_slowintr19),
+	IDTVEC(apic_slowintr20), IDTVEC(apic_slowintr21),
+	IDTVEC(apic_slowintr22), IDTVEC(apic_slowintr23);
+
+extern unpendhand_t
+	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
+	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
+	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
+	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
+	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
+	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
+	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
+	IDTVEC(fastunpend14), IDTVEC(fastunpend15),
+	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
+	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
+	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
+	IDTVEC(fastunpend22), IDTVEC(fastunpend23);
+
+extern inthand_t
+	IDTVEC(apic_wrongintr0), IDTVEC(apic_wrongintr1),
+	IDTVEC(apic_wrongintr2), IDTVEC(apic_wrongintr3),
+	IDTVEC(apic_wrongintr4), IDTVEC(apic_wrongintr5),
+	IDTVEC(apic_wrongintr6), IDTVEC(apic_wrongintr7),
+	IDTVEC(apic_wrongintr8), IDTVEC(apic_wrongintr9),
+	IDTVEC(apic_wrongintr10), IDTVEC(apic_wrongintr11),
+	IDTVEC(apic_wrongintr12), IDTVEC(apic_wrongintr13),
+	IDTVEC(apic_wrongintr14), IDTVEC(apic_wrongintr15),
+	IDTVEC(apic_wrongintr16), IDTVEC(apic_wrongintr17),
+	IDTVEC(apic_wrongintr18), IDTVEC(apic_wrongintr19),
+	IDTVEC(apic_wrongintr20), IDTVEC(apic_wrongintr21),
+	IDTVEC(apic_wrongintr22), IDTVEC(apic_wrongintr23);
+
 static int apic_setvar(int, const void *);
 static int apic_getvar(int, void *);
+static int apic_vectorctl(int, int, int);
 static void apic_finalize(void);
+
+static inthand_t *apic_fastintr[ICU_LEN] = {
+	&IDTVEC(apic_fastintr0), &IDTVEC(apic_fastintr1),
+	&IDTVEC(apic_fastintr2), &IDTVEC(apic_fastintr3),
+	&IDTVEC(apic_fastintr4), &IDTVEC(apic_fastintr5),
+	&IDTVEC(apic_fastintr6), &IDTVEC(apic_fastintr7),
+	&IDTVEC(apic_fastintr8), &IDTVEC(apic_fastintr9),
+	&IDTVEC(apic_fastintr10), &IDTVEC(apic_fastintr11),
+	&IDTVEC(apic_fastintr12), &IDTVEC(apic_fastintr13),
+	&IDTVEC(apic_fastintr14), &IDTVEC(apic_fastintr15),
+	&IDTVEC(apic_fastintr16), &IDTVEC(apic_fastintr17),
+	&IDTVEC(apic_fastintr18), &IDTVEC(apic_fastintr19),
+	&IDTVEC(apic_fastintr20), &IDTVEC(apic_fastintr21),
+	&IDTVEC(apic_fastintr22), &IDTVEC(apic_fastintr23)
+};
+
+static inthand_t *apic_slowintr[ICU_LEN] = {
+	&IDTVEC(apic_slowintr0), &IDTVEC(apic_slowintr1),
+	&IDTVEC(apic_slowintr2), &IDTVEC(apic_slowintr3),
+	&IDTVEC(apic_slowintr4), &IDTVEC(apic_slowintr5),
+	&IDTVEC(apic_slowintr6), &IDTVEC(apic_slowintr7),
+	&IDTVEC(apic_slowintr8), &IDTVEC(apic_slowintr9),
+	&IDTVEC(apic_slowintr10), &IDTVEC(apic_slowintr11),
+	&IDTVEC(apic_slowintr12), &IDTVEC(apic_slowintr13),
+	&IDTVEC(apic_slowintr14), &IDTVEC(apic_slowintr15),
+	&IDTVEC(apic_slowintr16), &IDTVEC(apic_slowintr17),
+	&IDTVEC(apic_slowintr18), &IDTVEC(apic_slowintr19),
+	&IDTVEC(apic_slowintr20), &IDTVEC(apic_slowintr21),
+	&IDTVEC(apic_slowintr22), &IDTVEC(apic_slowintr23)
+};
+
+unpendhand_t *fastunpend[ICU_LEN] = {
+	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
+	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
+	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
+	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
+	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
+	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
+	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
+	IDTVEC(fastunpend14), IDTVEC(fastunpend15),
+	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
+	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
+	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
+	IDTVEC(fastunpend22), IDTVEC(fastunpend23)
+};
+
+static inthand_t *apic_wrongintr[ICU_LEN] = {
+	&IDTVEC(apic_wrongintr0), &IDTVEC(apic_wrongintr1),
+	&IDTVEC(apic_wrongintr2), &IDTVEC(apic_wrongintr3),
+	&IDTVEC(apic_wrongintr4), &IDTVEC(apic_wrongintr5),
+	&IDTVEC(apic_wrongintr6), &IDTVEC(apic_wrongintr7),
+	&IDTVEC(apic_wrongintr8), &IDTVEC(apic_wrongintr9),
+	&IDTVEC(apic_wrongintr10), &IDTVEC(apic_wrongintr11),
+	&IDTVEC(apic_wrongintr12), &IDTVEC(apic_wrongintr13),
+	&IDTVEC(apic_wrongintr14), &IDTVEC(apic_wrongintr15),
+	&IDTVEC(apic_wrongintr16), &IDTVEC(apic_wrongintr17),
+	&IDTVEC(apic_wrongintr18), &IDTVEC(apic_wrongintr19),
+	&IDTVEC(apic_wrongintr20), &IDTVEC(apic_wrongintr21),
+	&IDTVEC(apic_wrongintr22), &IDTVEC(apic_wrongintr23)
+};
 
 static int picmode;
 
@@ -80,6 +187,7 @@ struct machintr_abi MachIntrABI = {
 	MACHINTR_APIC,
 	APIC_INTRDIS,
 	APIC_INTREN,
+	apic_vectorctl,
 	apic_setvar,
 	apic_getvar,
 	apic_finalize
@@ -149,6 +257,77 @@ apic_finalize(void)
 
     if (bootverbose)
 	apic_dump("bsp_apic_configure()");
+}
+
+static
+int
+apic_vectorctl(int op, int intr, int flags)
+{
+    int error;
+    int vector;
+    int select;
+    u_int32_t value;
+    u_long ef;
+
+    if (intr < 0 || intr >= ICU_LEN)
+	return (EINVAL);
+
+    ef = read_eflags();
+    cpu_disable_intr();
+    error = 0;
+
+    switch(op) {
+    case MACHINTR_VECTOR_SETUP:
+	if (flags & INTR_FAST) {
+	    vector = TPR_SLOW_INTS + intr;
+	    setidt(vector, apic_wrongintr[intr],
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	    vector = TPR_FAST_INTS + intr;
+	    setidt(vector, apic_fastintr[intr],
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	} else {
+	    vector = TPR_SLOW_INTS + intr;
+#if defined(APIC_INTR_REORDER) && defined(APIC_INTR_HIGHPRI_CLOCK)
+	    /* XXX: Hack (kludge?) for more accurate clock. */
+	    if (intr == apic_8254_intr || intr == 8) {
+		vector = TPR_FAST_INTS + intr;
+	    }
+	    setidt(vector, apic_slowintr[intr],
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+#endif
+	}
+#ifdef APIC_INTR_REORDER
+        set_lapic_isrloc(intr, vector);
+#endif
+	/*
+	 * Reprogram the vector in the IO APIC.
+	 *
+	 * XXX EOI/mask a pending (stray) interrupt on the old vector?
+	 */
+	if (int_to_apicintpin[intr].ioapic >= 0) {
+	    select = int_to_apicintpin[intr].redirindex;
+	    value = io_apic_read(int_to_apicintpin[intr].ioapic,
+				 select) & ~IOART_INTVEC;
+	    io_apic_write(int_to_apicintpin[intr].ioapic,
+			  select, value | vector);
+	}
+	machintr_intren(intr);
+	break;
+    case MACHINTR_VECTOR_TEARDOWN:
+	machintr_intrdis(intr);
+#ifdef APIC_INTR_REORDER
+	set_lapic_isrloc(intr, ICU_OFFSET + intr);
+#endif
+	setidt(ICU_OFFSET + intr, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+		GSEL(GCODE_SEL, SEL_KPL));
+	break;
+    default:
+	error = EOPNOTSUPP;
+	break;
+    }
+
+    write_eflags(ef);
+    return (error);
 }
 
 #endif

@@ -1,8 +1,13 @@
 /*
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 1991 The Regents of the University of California.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,28 +36,100 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.2 2005/11/02 18:42:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.3 2005/11/02 20:23:16 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/machintr.h>
-#include "icu.h"
+#include <sys/interrupt.h>
+#include <sys/bus.h>
+
+#include <machine/segments.h>
+#include <machine/md_var.h>
+
+#include <i386/isa/intr_machdep.h>
+#include <i386/icu/icu.h>
 
 #ifndef APIC_IO
 
 extern void ICU_INTREN(int);
 extern void ICU_INTRDIS(int);
 
+extern inthand_t
+	IDTVEC(icu_fastintr0), IDTVEC(icu_fastintr1),
+	IDTVEC(icu_fastintr2), IDTVEC(icu_fastintr3),
+	IDTVEC(icu_fastintr4), IDTVEC(icu_fastintr5),
+	IDTVEC(icu_fastintr6), IDTVEC(icu_fastintr7),
+	IDTVEC(icu_fastintr8), IDTVEC(icu_fastintr9),
+	IDTVEC(icu_fastintr10), IDTVEC(icu_fastintr11),
+	IDTVEC(icu_fastintr12), IDTVEC(icu_fastintr13),
+	IDTVEC(icu_fastintr14), IDTVEC(icu_fastintr15);
+
+extern inthand_t
+	IDTVEC(icu_slowintr0), IDTVEC(icu_slowintr1),
+	IDTVEC(icu_slowintr2), IDTVEC(icu_slowintr3),
+	IDTVEC(icu_slowintr4), IDTVEC(icu_slowintr5),
+	IDTVEC(icu_slowintr6), IDTVEC(icu_slowintr7),
+	IDTVEC(icu_slowintr8), IDTVEC(icu_slowintr9),
+	IDTVEC(icu_slowintr10), IDTVEC(icu_slowintr11),
+	IDTVEC(icu_slowintr12), IDTVEC(icu_slowintr13),
+	IDTVEC(icu_slowintr14), IDTVEC(icu_slowintr15);
+
+extern unpendhand_t
+	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
+	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
+	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
+	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
+	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
+	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
+	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
+	IDTVEC(fastunpend14), IDTVEC(fastunpend15);
+
+static int icu_vectorctl(int, int, int);
 static int icu_setvar(int, const void *);
 static int icu_getvar(int, void *);
 static void icu_finalize(void);
+
+static inthand_t *icu_fastintr[ICU_LEN] = {
+	&IDTVEC(icu_fastintr0), &IDTVEC(icu_fastintr1),
+	&IDTVEC(icu_fastintr2), &IDTVEC(icu_fastintr3),
+	&IDTVEC(icu_fastintr4), &IDTVEC(icu_fastintr5),
+	&IDTVEC(icu_fastintr6), &IDTVEC(icu_fastintr7),
+	&IDTVEC(icu_fastintr8), &IDTVEC(icu_fastintr9),
+	&IDTVEC(icu_fastintr10), &IDTVEC(icu_fastintr11),
+	&IDTVEC(icu_fastintr12), &IDTVEC(icu_fastintr13),
+	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
+};
+
+unpendhand_t *fastunpend[ICU_LEN] = {
+	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
+	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
+	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
+	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
+	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
+	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
+	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
+	IDTVEC(fastunpend14), IDTVEC(fastunpend15)
+};
+
+static inthand_t *icu_slowintr[ICU_LEN] = {
+	&IDTVEC(icu_slowintr0), &IDTVEC(icu_slowintr1),
+	&IDTVEC(icu_slowintr2), &IDTVEC(icu_slowintr3),
+	&IDTVEC(icu_slowintr4), &IDTVEC(icu_slowintr5),
+	&IDTVEC(icu_slowintr6), &IDTVEC(icu_slowintr7),
+	&IDTVEC(icu_slowintr8), &IDTVEC(icu_slowintr9),
+	&IDTVEC(icu_slowintr10), &IDTVEC(icu_slowintr11),
+	&IDTVEC(icu_slowintr12), &IDTVEC(icu_slowintr13),
+	&IDTVEC(icu_slowintr14), &IDTVEC(icu_slowintr15)
+};
 
 struct machintr_abi MachIntrABI = {
     MACHINTR_ICU,
     ICU_INTRDIS,
     ICU_INTREN,
+    icu_vectorctl,
     icu_setvar,
     icu_getvar,
     icu_finalize
@@ -76,6 +153,40 @@ static void
 icu_finalize(void)
 {
     machintr_intren(ICU_IRQ_SLAVE);
+}
+
+static
+int
+icu_vectorctl(int op, int intr, int flags)
+{
+    int error;
+    u_long ef;
+
+    if (intr < 0 || intr >= ICU_LEN || intr == ICU_IRQ_SLAVE)
+	return (EINVAL);
+
+    ef = read_eflags();
+    cpu_disable_intr();
+    error = 0;
+
+    switch(op) {
+    case MACHINTR_VECTOR_SETUP:
+	setidt(ICU_OFFSET + intr,
+		flags & INTR_FAST ? icu_fastintr[intr] : icu_slowintr[intr],
+		SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	machintr_intren(intr);
+	break;
+    case MACHINTR_VECTOR_TEARDOWN:
+	setidt(ICU_OFFSET + intr, icu_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+		GSEL(GCODE_SEL, SEL_KPL));
+	machintr_intrdis(intr);
+	break;
+    default:
+	error = EOPNOTSUPP;
+	break;
+    }
+    write_eflags(ef);
+    return (error);
 }
 
 #endif

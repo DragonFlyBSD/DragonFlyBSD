@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/machintr.h,v 1.1 2005/11/02 18:42:11 dillon Exp $
+ * $DragonFly: src/sys/sys/machintr.h,v 1.2 2005/11/02 20:23:23 dillon Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -44,6 +44,9 @@ enum machintr_type { MACHINTR_ICU, MACHINTR_APIC };
 
 #define MACHINTR_VAR_PICMODE	(0x00010000|sizeof(int))
 
+#define MACHINTR_VECTOR_SETUP		1
+#define MACHINTR_VECTOR_TEARDOWN	2
+
 /*
  * Machine interrupt ABIs - registered at boot-time
  */
@@ -51,13 +54,18 @@ struct machintr_abi {
     enum machintr_type type;
     void	(*intrdis)(int);		/* hardware disable irq */
     void	(*intren)(int);			/* hardware enable irq */
+    int		(*vectorctl)(int, int, int);	/* hardware intr vector ctl */
     int		(*setvar)(int, const void *);	/* set miscellanious info */
     int		(*getvar)(int, void *);		/* get miscellanious info */
     void	(*finalize)(void);		/* final before ints enabled */
 };
 
-#define machintr_intren(irq)	MachIntrABI.intren(irq)
-#define machintr_intrdis(irq)	MachIntrABI.intrdis(irq)
+#define machintr_intren(intr)	MachIntrABI.intren(intr)
+#define machintr_intrdis(intr)	MachIntrABI.intrdis(intr)
+#define machintr_vector_setup(intr, flags)	\
+	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETUP, intr, flags)
+#define machintr_vector_teardown(intr)		\
+	    MachIntrABI.vectorctl(MACHINTR_VECTOR_TEARDOWN, intr, 0)
 
 #ifdef _KERNEL
 

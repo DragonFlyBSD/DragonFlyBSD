@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.37 2005/11/02 18:42:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.38 2005/11/02 20:23:22 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -65,7 +65,7 @@
 #include <sys/thread2.h>
 #include <sys/machintr.h>
 
-#include <machine/smptests.h>			/** FAST_HI */
+#include <machine/smptests.h>
 #include <machine/smp.h>
 #include <bus/isa/i386/isa.h>
 #include <i386/icu/icu.h>
@@ -83,7 +83,6 @@
 
 /* XXX should be in suitable include files */
 #define	ICU_IMR_OFFSET		1		/* IO_ICU{1,2} + 1 */
-#define	ICU_SLAVEID			2
 
 #ifdef APIC_IO
 /*
@@ -96,69 +95,6 @@
 #define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
 static void	init_i8259(void);
-static int	icu_unset(int intr);
-static int	icu_setup(int intr, int flags);
-
-static inthand_t *fastintr[ICU_LEN] = {
-	&IDTVEC(fastintr0), &IDTVEC(fastintr1),
-	&IDTVEC(fastintr2), &IDTVEC(fastintr3),
-	&IDTVEC(fastintr4), &IDTVEC(fastintr5),
-	&IDTVEC(fastintr6), &IDTVEC(fastintr7),
-	&IDTVEC(fastintr8), &IDTVEC(fastintr9),
-	&IDTVEC(fastintr10), &IDTVEC(fastintr11),
-	&IDTVEC(fastintr12), &IDTVEC(fastintr13),
-	&IDTVEC(fastintr14), &IDTVEC(fastintr15),
-#if defined(APIC_IO)
-	&IDTVEC(fastintr16), &IDTVEC(fastintr17),
-	&IDTVEC(fastintr18), &IDTVEC(fastintr19),
-	&IDTVEC(fastintr20), &IDTVEC(fastintr21),
-	&IDTVEC(fastintr22), &IDTVEC(fastintr23),
-#endif /* APIC_IO */
-};
-
-unpendhand_t *fastunpend[ICU_LEN] = {
-	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
-	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
-	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
-	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
-	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
-	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
-	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
-	IDTVEC(fastunpend14), IDTVEC(fastunpend15),
-#if defined(APIC_IO)
-	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
-	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
-	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
-	IDTVEC(fastunpend22), IDTVEC(fastunpend23),
-#endif
-};
-
-static inthand_t *slowintr[ICU_LEN] = {
-	&IDTVEC(intr0), &IDTVEC(intr1), &IDTVEC(intr2), &IDTVEC(intr3),
-	&IDTVEC(intr4), &IDTVEC(intr5), &IDTVEC(intr6), &IDTVEC(intr7),
-	&IDTVEC(intr8), &IDTVEC(intr9), &IDTVEC(intr10), &IDTVEC(intr11),
-	&IDTVEC(intr12), &IDTVEC(intr13), &IDTVEC(intr14), &IDTVEC(intr15),
-#if defined(APIC_IO)
-	&IDTVEC(intr16), &IDTVEC(intr17), &IDTVEC(intr18), &IDTVEC(intr19),
-	&IDTVEC(intr20), &IDTVEC(intr21), &IDTVEC(intr22), &IDTVEC(intr23),
-#endif /* APIC_IO */
-};
-
-#if defined(APIC_IO)
-
-static inthand_t *wrongintr[ICU_LEN] = {
-	&IDTVEC(wrongintr0), &IDTVEC(wrongintr1), &IDTVEC(wrongintr2),
-	&IDTVEC(wrongintr3), &IDTVEC(wrongintr4), &IDTVEC(wrongintr5),
-	&IDTVEC(wrongintr6), &IDTVEC(wrongintr7), &IDTVEC(wrongintr8),
-	&IDTVEC(wrongintr9), &IDTVEC(wrongintr10), &IDTVEC(wrongintr11),
-	&IDTVEC(wrongintr12), &IDTVEC(wrongintr13), &IDTVEC(wrongintr14),
-	&IDTVEC(wrongintr15),
-	&IDTVEC(wrongintr16), &IDTVEC(wrongintr17), &IDTVEC(wrongintr18),
-	&IDTVEC(wrongintr19), &IDTVEC(wrongintr20), &IDTVEC(wrongintr21),
-	&IDTVEC(wrongintr22), &IDTVEC(wrongintr23)
-};
-
-#endif /* APIC_IO */
 
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)
@@ -241,7 +177,7 @@ isa_defaultirq()
 
 	/* icu vectors */
 	for (i = 0; i < ICU_LEN; i++)
-		icu_unset(i);
+		machintr_vector_teardown(i);
 	init_i8259();
 }
 
@@ -263,7 +199,7 @@ init_i8259(void)
 	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
 	outb(IO_ICU2, 0x11);		/* reset; program device, four bytes */
 	outb(IO_ICU2+ICU_IMR_OFFSET, NRSVIDT+8); /* staring at this vector index */
-	outb(IO_ICU2+ICU_IMR_OFFSET, ICU_SLAVEID);         /* my slave id is 7 */
+	outb(IO_ICU2+ICU_IMR_OFFSET, ICU_IRQ_SLAVE);
 #ifdef AUTO_EOI_2
 	outb(IO_ICU2+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
 #else
@@ -289,101 +225,6 @@ isa_irq_pending(void)
 	return ((irr2 << 8) | irr1);
 }
 #endif
-
-static
-int
-icu_setup(int intr, int flags)
-{
-#if defined(FAST_HI) && defined(APIC_IO)
-	int		select;		/* the select register is 8 bits */
-	int		vector;
-	u_int32_t	value;		/* the window register is 32 bits */
-#endif /* FAST_HI */
-	u_long	ef;
-
-#if defined(APIC_IO)
-	if ((u_int)intr >= ICU_LEN)	/* no 8259 SLAVE to ignore */
-#else
-	if ((u_int)intr >= ICU_LEN || intr == ICU_SLAVEID)
-#endif /* APIC_IO */
-		return (EINVAL);
-
-	ef = read_eflags();
-	cpu_disable_intr();	/* YYY */
-#if defined(FAST_HI) && defined(APIC_IO)
-	if (flags & INTR_FAST) {
-		/*
-		 * Install a spurious interrupt in the low space in case
-		 * the IO apic is not properly reprogrammed.
-		 */
-		vector = TPR_SLOW_INTS + intr;
-		setidt(vector, wrongintr[intr],
-		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-		vector = TPR_FAST_INTS + intr;
-		setidt(vector, fastintr[intr],
-		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	} else {
-		vector = TPR_SLOW_INTS + intr;
-#ifdef APIC_INTR_REORDER
-#ifdef APIC_INTR_HIGHPRI_CLOCK
-		/* XXX: Hack (kludge?) for more accurate clock. */
-		if (intr == apic_8254_intr || intr == 8) {
-			vector = TPR_FAST_INTS + intr;
-		}
-#endif
-#endif
-		setidt(vector, slowintr[intr],
-		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	}
-#ifdef APIC_INTR_REORDER
-	set_lapic_isrloc(intr, vector);
-#endif
-	/*
-	 * Reprogram the vector in the IO APIC.
-	 *
-	 * XXX EOI/mask a pending (stray) interrupt on the old vector?
-	 */
-	if (int_to_apicintpin[intr].ioapic >= 0) {
-		select = int_to_apicintpin[intr].redirindex;
-		value = io_apic_read(int_to_apicintpin[intr].ioapic, 
-				     select) & ~IOART_INTVEC;
-		io_apic_write(int_to_apicintpin[intr].ioapic, 
-			      select, value | vector);
-	}
-#else
-	setidt(ICU_OFFSET + intr,
-	       flags & INTR_FAST ? fastintr[intr] : slowintr[intr],
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#endif /* FAST_HI && APIC_IO */
-	machintr_intren(intr);
-	write_eflags(ef);
-	return (0);
-}
-
-static int
-icu_unset(int intr)
-{
-	u_long	ef;
-
-	KKASSERT((u_int)intr < ICU_LEN);
-	machintr_intrdis(intr);
-	ef = read_eflags();
-	cpu_disable_intr();	/* YYY */
-#ifdef FAST_HI_XXX
-	/* XXX how do I re-create dvp here? */
-	setidt(flags & INTR_FAST ? TPR_FAST_INTS + intr : TPR_SLOW_INTS + intr,
-	    slowintr[intr], SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#else /* FAST_HI */
-#ifdef APIC_INTR_REORDER
-	set_lapic_isrloc(intr, ICU_OFFSET + intr);
-#endif
-	setidt(ICU_OFFSET + intr, slowintr[intr], SDT_SYS386IGT, SEL_KPL,
-	    GSEL(GCODE_SEL, SEL_KPL));
-#endif /* FAST_HI */
-	write_eflags(ef);
-	return (0);
-}
-
 
 /* The following notice applies beyond this point in the file */
 
@@ -459,7 +300,7 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 
 	crit_enter();
 	if (count_registered_ints(irq) == 1) {
-		if (icu_setup(irq, flags))
+		if (machintr_vector_setup(irq, flags))
 			errcode = -1;
 	}
 	crit_exit();
@@ -496,7 +337,7 @@ inthand_remove(void *id)
 	crit_enter();
 	irq = get_registered_intr(id);
 	if (unregister_int(id) == 0) {
-		icu_unset(irq);
+		machintr_vector_teardown(irq);
 	}
 	crit_exit();
 	return (0);

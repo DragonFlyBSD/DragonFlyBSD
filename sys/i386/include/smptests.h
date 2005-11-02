@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/smptests.h,v 1.33.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/smptests.h,v 1.5 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smptests.h,v 1.6 2005/11/02 20:23:21 dillon Exp $
  */
 
 #ifndef _MACHINE_SMPTESTS_H_
@@ -42,15 +42,6 @@
 #define PUSHDOWN_LEVEL_2
 #define PUSHDOWN_LEVEL_3_NOT
 #define PUSHDOWN_LEVEL_4_NOT
-
-/*
- * Put FAST_INTR() ISRs at an APIC priority above the regular INTs.
- * Allow the mp_lock() routines to handle FAST interrupts while spinning.
- */
-#ifdef PUSHDOWN_LEVEL_1
-#define FAST_HI
-#endif
-
 
 /*
  * These defines enable critical region locking of areas that were
