@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.11.2.1 2000/05/10 02:04:44 obrien Exp $
- * $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.3 2005/11/02 23:06:05 dillon Exp $
  */
 
 #include <sys/random.h>
@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/ioctl.h>
 
 static void
@@ -87,15 +88,18 @@ main(int argc, char *argv[])
 			}
 		}
 		if (verbose) {
-			result = ioctl(fd, MEM_RETURNIRQ, (char *)&irq);
-			if (result == -1) {
-				warn("%s", argv[0]);
-				return (1);
-			}
 			printf("%s: interrupts in use:", argv[0]);
-			for (i = 0; i < 16; i++)
-				if (irq & (1 << i))
-					printf(" %d", i);
+			irq = 0;
+			for (;;) {
+			    result = ioctl(fd, MEM_FINDIRQ, (char *)&irq);
+			    if (result < 0)
+				break;
+			    printf(" %d", irq);
+			    ++irq;
+			}
+			if (result < 0 && errno == ENOTSUP) {
+			    printf(" unknown");
+			}
 			printf("\n");
 		}
 		argc -= optind;
