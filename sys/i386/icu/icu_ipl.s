@@ -67,8 +67,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.8 2004/07/16 05:49:14 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.9 2005/11/02 09:35:08 dillon Exp $
  */
+
+#include "bus/isa/isareg.h"
 
 	.data
 	ALIGN_DATA

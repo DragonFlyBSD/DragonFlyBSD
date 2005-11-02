@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.8 2005/11/02 09:15:00 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.9 2005/11/02 09:35:09 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
@@ -49,11 +49,14 @@
 
 #endif
 
+#ifdef LOCORE
 /*
  * Interrupt vector labels
  */
 #define IDTVEC(name)    ALIGN_TEXT; .globl __CONCAT(X,name); \
                         .type __CONCAT(X,name),@function; __CONCAT(X,name):
+
+#endif
 
 /*
  * CNAME and HIDENAME manage the relationship between symbol names in C
