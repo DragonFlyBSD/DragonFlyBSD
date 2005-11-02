@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.20 2005/11/02 09:15:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.21 2005/11/02 17:20:11 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -394,13 +394,3 @@ splz_ipiq:
 	jmp	splz_next
 #endif
 
-	/*
-	 * APIC/ICU specific ipl functions provide masking and unmasking
-	 * calls for userland.
-	 */
-
-#ifdef APIC_IO
-#include "i386/apic/apic_ipl.s"
-#else
-#include "i386/icu/icu_ipl.s"
-#endif /* APIC_IO */

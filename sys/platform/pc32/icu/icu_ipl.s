@@ -67,10 +67,23 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.9 2005/11/02 09:35:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.10 2005/11/02 17:20:00 dillon Exp $
  */
 
+#include "use_npx.h"
+
+#include <machine/asmacros.h>
+#include <machine/segments.h>
+#include <machine/ipl.h>
+#include <machine/lock.h>
+#include <machine/psl.h>
+#include <machine/trap.h>
+#include <machine/smptests.h>           /** various SMP options */
+
 #include "bus/isa/isareg.h"
+#include "assym.s"
+
+#ifndef APIC_IO
 
 	.data
 	ALIGN_DATA
@@ -81,8 +94,9 @@
 	 */
 	.p2align 2			/* MUST be 32bit aligned */
 
-	.globl	imen
-imen:	.long	HWI_MASK
+	.globl	icu_imen
+icu_imen:
+	.long	HWI_MASK
 
 	.text
 	SUPERALIGN_TEXT
@@ -96,10 +110,10 @@ imen:	.long	HWI_MASK
 	 */
 ENTRY(INTRDIS)
 	movl	4(%esp),%eax
-	orl	%eax,imen
+	orl	%eax,icu_imen
 	pushfl
 	cli
-	movl	imen,%eax
+	movl	icu_imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
 	mov	%ah,%al
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
@@ -109,14 +123,14 @@ ENTRY(INTRDIS)
 ENTRY(INTREN)
 	movl	4(%esp),%eax
 	notl	%eax
-	andl	%eax,imen
+	andl	%eax,icu_imen
 	pushfl
 	cli
-	movl	imen,%eax
+	movl	icu_imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
 	mov	%ah,%al
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
 	popfl
 	ret
 
-
+#endif

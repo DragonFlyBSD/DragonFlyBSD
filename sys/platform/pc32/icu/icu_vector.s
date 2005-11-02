@@ -1,8 +1,25 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.19 2005/10/13 00:02:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.20 2005/11/02 17:20:00 dillon Exp $
  */
+
+#include "use_npx.h"
+#include "opt_auto_eoi.h"
+
+#include <machine/asmacros.h>
+#include <machine/ipl.h>
+#include <machine/lock.h>
+#include <machine/psl.h>
+#include <machine/trap.h>
+#include <machine/smptests.h>           /** various SMP options */
+
+#include <i386/icu/icu.h>
+#include <bus/isa/i386/isa.h>
+
+#include "assym.s"
+
+#ifndef APIC_IO
 
 #define ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
 
@@ -78,17 +95,17 @@
 	addl	$17*4,%esp ;						\
 
 #define MASK_IRQ(icu, irq_num)						\
-	movb	imen + IRQ_BYTE(irq_num),%al ;				\
+	movb	icu_imen + IRQ_BYTE(irq_num),%al ;			\
 	orb	$IRQ_BIT(irq_num),%al ;					\
-	movb	%al,imen + IRQ_BYTE(irq_num) ;				\
+	movb	%al,icu_imen + IRQ_BYTE(irq_num) ;			\
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
 
 #define UNMASK_IRQ(icu, irq_num)					\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
-	movb	imen + IRQ_BYTE(irq_num),%al ;				\
+	movb	icu_imen + IRQ_BYTE(irq_num),%al ;			\
 	andb	$~IRQ_BIT(irq_num),%al ;				\
-	movb	%al,imen + IRQ_BYTE(irq_num) ;				\
+	movb	%al,icu_imen + IRQ_BYTE(irq_num) ;			\
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
 8: ;									\
 	
@@ -289,3 +306,5 @@ MCOUNT_LABEL(eintr)
 	.data
 
 	.text
+
+#endif

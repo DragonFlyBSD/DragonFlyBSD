@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu.h,v 1.5 2005/02/27 12:44:43 asmodai Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu.h,v 1.6 2005/11/02 17:20:00 dillon Exp $
  */
 
 /*
@@ -46,14 +46,13 @@
 #ifndef _I386_ISA_ICU_H_
 #define	_I386_ISA_ICU_H_
 
-#ifndef	LOCORE
+#ifndef LOCORE
 
-void	INTREN			(u_int);
-void	INTRDIS			(u_int);
+void   INTREN(u_int);
+void   INTRDIS(u_int);
 
-#endif /* LOCORE */
+#endif
 
-#ifdef APIC_IO
 /*
  * Note: The APIC uses different values for IRQxxx.
  *	 Unfortunately many drivers use the 8259 values as indexes
@@ -61,7 +60,6 @@ void	INTRDIS			(u_int);
  *	 The 8259 versions have to be used in SMP for legacy operation
  *	 of the drivers.
  */
-#endif /* APIC_IO */
 
 /*
  * Interrupt enable bits - in normal order of priority (which we change)
@@ -83,7 +81,6 @@ void	INTRDIS			(u_int);
 #define	IRQ5		0x0020
 #define	IRQ6		0x0040
 #define	IRQ7		0x0080		/* lowest - parallel printer */
-
 
 /*
  * Interrupt Control offset into Interrupt descriptor table (IDT)

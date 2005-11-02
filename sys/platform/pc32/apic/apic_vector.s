@@ -1,14 +1,30 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.25 2005/11/02 09:14:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.26 2005/11/02 17:19:59 dillon Exp $
  */
 
+#include "use_npx.h"
+#include "opt_auto_eoi.h"
+
+#include <machine/asmacros.h>
+#include <machine/ipl.h>
+#include <machine/lock.h>
+#include <machine/psl.h>
+#include <machine/trap.h>
+#include <machine/smptests.h>           /** various SMP options */
+
+#include <i386/icu/icu.h>
+#include <bus/isa/i386/isa.h>
+
+#include "assym.s"
 
 #include "apicreg.h"
 #include "apic_ipl.h"
 #include <machine/smp.h>
 #include "i386/isa/intr_machdep.h"
+
+#ifdef APIC_IO
 
 /* convert an absolute IRQ# into a bitmask */
 #define IRQ_LBIT(irq_num)	(1 << (irq_num))
@@ -554,3 +570,5 @@ apic_pin_trigger:
 	.long	0
 
 	.text
+
+#endif

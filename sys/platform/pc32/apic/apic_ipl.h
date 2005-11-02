@@ -23,14 +23,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.h,v 1.3 1999/08/28 00:44:36 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.h,v 1.3 2005/11/02 09:14:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.h,v 1.4 2005/11/02 17:19:59 dillon Exp $
  */
 
 #ifndef _I386_ISA_APIC_IPL_H_
 #define	_I386_ISA_APIC_IPL_H_
 
+#ifdef APIC_IO
+
 #define	NHWI		24		/* number of h/w interrupts */
 #define	HWI_MASK	0x00ffffff	/* bits for h/w interrupts */
+
+#endif
 
 #ifdef LOCORE
 

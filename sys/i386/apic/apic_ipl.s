@@ -54,11 +54,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.10 2005/11/02 09:14:57 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.11 2005/11/02 17:19:59 dillon Exp $
  */
+
+#include "use_npx.h"
+
+#include <machine/asmacros.h>
+#include <machine/segments.h>
+#include <machine/ipl.h>
+#include <machine/lock.h>
+#include <machine/psl.h>
+#include <machine/trap.h>
+#include <machine/smptests.h>           /** various SMP options */
 
 #include "apicreg.h"
 #include "apic_ipl.h"
+#include "assym.s"
+
+#ifdef APIC_IO
 
 	.data
 	ALIGN_DATA
@@ -159,3 +172,4 @@ ENTRY(apic_eoi)
 	movl	$0, lapic+0xb0
 	ret
 
+#endif
