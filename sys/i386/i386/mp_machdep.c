@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.40 2005/10/15 19:55:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.41 2005/11/02 08:33:25 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -50,10 +50,10 @@
 
 #include <machine/smptests.h>
 #include <machine/smp.h>
-#include <machine/apicreg.h>
+#include <arch/apic/apicreg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
-#include <machine/mpapic.h>
+#include <arch/apic/mpapic.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/smptests.h>	/** TEST_DEFAULT_CONFIG, TEST_TEST1 */
@@ -63,7 +63,7 @@
 
 #if defined(APIC_IO)
 #include <machine/md_var.h>		/* setidt() */
-#include <i386/isa/icu.h>		/* IPIs */
+#include <i386/icu/icu.h>		/* IPIs */
 #include <i386/isa/intr_machdep.h>	/* IPIs */
 #endif	/* APIC_IO */
 

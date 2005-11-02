@@ -1,12 +1,12 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.7 2005/10/13 00:02:47 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.8 2005/11/02 08:33:28 dillon Exp $
  */
 
 #include "opt_auto_eoi.h"
 
-#include <i386/isa/icu.h>
+#include <i386/icu/icu.h>
 #include <bus/isa/i386/isa.h>
 
 	.text
@@ -57,7 +57,7 @@
  */
 
 #ifdef APIC_IO
-#include "i386/isa/apic_vector.s"
+#include "i386/apic/apic_vector.s"
 #else
-#include "i386/isa/icu_vector.s"
+#include "i386/icu/icu_vector.s"
 #endif  /* APIC_IO */

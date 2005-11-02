@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.9 2005/10/15 18:50:08 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.10 2005/11/02 08:33:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -31,7 +31,7 @@
 #include <machine/smptests.h>	/** TEST_TEST1, GRAB_LOPRIO */
 #include <machine/globaldata.h>
 #include <machine/smp.h>
-#include <machine/mpapic.h>
+#include <arch/apic/mpapic.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
 

@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.9 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.10 2005/11/02 08:33:30 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -51,7 +51,7 @@
 #include <sys/thread2.h>
 
 #ifdef __i386__
-#include <i386/isa/icu.h>
+#include <i386/icu/icu.h>
 #endif
 
 #define MAX_BLKDEV 4

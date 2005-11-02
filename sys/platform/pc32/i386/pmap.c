@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.49 2005/10/05 21:53:41 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.50 2005/11/02 08:33:25 dillon Exp $
  */
 
 /*
@@ -102,7 +102,7 @@
 #include <machine/specialreg.h>
 #if defined(SMP) || defined(APIC_IO)
 #include <machine/smp.h>
-#include <machine/apicreg.h>
+#include <arch/apic/apicreg.h>
 #endif /* SMP || APIC_IO */
 #include <machine/globaldata.h>
 #include <machine/pmap.h>

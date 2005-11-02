@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.10 2005/06/16 21:12:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.11 2005/11/02 08:33:15 dillon Exp $
  */
 
 /*
@@ -50,7 +50,7 @@
 #include <dev/netif/pdq_layer/pdqreg.h>
 #elif defined(__bsdi__)
 #include <i386/isa/isavar.h>
-#include <i386/isa/icu.h>
+#include <i386/icu/icu.h>
 #ifndef DRQNONE
 #define	DRQNONE		0
 #endif

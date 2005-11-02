@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.42 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.43 2005/11/02 08:33:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +64,7 @@
 #include <vfs/nfs/nfs.h>
 #include <vfs/nfs/nfsdiskless.h>
 #ifdef SMP
-#include <machine/apicreg.h>
+#include <arch/apic/apicreg.h>
 #endif
 #include <machine/segments.h>
 #include <machine/sigframe.h>

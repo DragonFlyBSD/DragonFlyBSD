@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.34 2005/10/26 00:55:16 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.35 2005/11/02 08:33:28 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -67,7 +67,7 @@
 #include <machine/smptests.h>			/** FAST_HI */
 #include <machine/smp.h>
 #include <bus/isa/i386/isa.h>
-#include <i386/isa/icu.h>
+#include <i386/icu/icu.h>
 
 #if NISA > 0
 #include <bus/isa/isavar.h>

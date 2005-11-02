@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.22 2005/10/13 08:10:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.23 2005/11/02 08:33:19 dillon Exp $
  */
 
 /*
@@ -137,7 +137,7 @@ iomem and and with 0xffff.
 
 #include <bus/isa/i386/isa_device.h>
 #include <i386/isa/ic/i82586.h>
-#include <i386/isa/icu.h>
+#include <i386/icu/icu.h>
 #include "if_iereg.h"
 #include "if_ie507.h"
 #include "if_iee16.h"

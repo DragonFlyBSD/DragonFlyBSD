@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/madt.c,v 1.17 2004/06/10 20:03:46 jhb Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/madt.c,v 1.4 2005/06/27 22:32:00 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/madt.c,v 1.5 2005/11/02 08:33:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,11 +41,11 @@
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
 
-#include <machine/apicreg.h>
+#include <arch/apic/apicreg.h>
 #include <machine/frame.h>
 /*#include <machine/intr_machdep.h>*/
 #include <machine/md_var.h>
-#include <machine/apicvar.h>
+#include <arch/apic/apicvar.h>
 #include <machine/specialreg.h>
 #include <machine/smp.h>
 #include <machine/globaldata.h>

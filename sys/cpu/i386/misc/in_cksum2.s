@@ -31,11 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/misc/in_cksum2.s,v 1.3 2004/07/16 05:48:29 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/in_cksum2.s,v 1.4 2005/11/02 08:33:25 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
-#include <machine/apicreg.h>
+#include <arch/apic/apicreg.h>
 #include <machine/specialreg.h>
 
 #include "assym.s"

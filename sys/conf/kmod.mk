@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.22 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.23 2005/11/02 08:33:12 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -135,7 +135,7 @@ ${KMOD}.kld: ${OBJS}
 .include <bsd.man.mk>
 .endif
 
-_ILINKS=@ machine
+_ILINKS=@ arch machine
 .if defined(ARCH)
 _ILINKS+=${ARCH}
 .endif
@@ -168,6 +168,8 @@ SYSDIR=	${_dir}
 
 ${_ILINKS}:
 	@case ${.TARGET} in \
+	arch) \
+		path=${SYSDIR}/${MACHINE_ARCH} ;; \
 	machine) \
 		path=${SYSDIR}/${MACHINE_ARCH}/include ;; \
 	@) \

@@ -32,11 +32,11 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.8 2005/02/27 10:57:24 swildner Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.9 2005/11/02 08:33:25 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
-#include <machine/apicreg.h>
+#include <arch/apic/apicreg.h>
 #include <machine/specialreg.h>
 
 #include "assym.s"

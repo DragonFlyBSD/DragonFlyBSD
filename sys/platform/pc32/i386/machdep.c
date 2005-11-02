@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.80 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.81 2005/11/02 08:33:25 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2504,7 +2504,7 @@ Debugger(const char *msg)
 }
 #endif /* no DDB */
 
-#include <machine/apicvar.h>
+#include <arch/apic/apicvar.h>
 
 /*
  * Provide stub functions so that the MADT APIC enumerator in the acpi

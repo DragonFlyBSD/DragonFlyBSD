@@ -31,16 +31,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/i386/include/Attic/ipl.h,v 1.6 2005/06/16 21:12:46 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/ipl.h,v 1.7 2005/11/02 08:33:27 dillon Exp $
  */
 
 #ifndef _MACHINE_IPL_H_
 #define	_MACHINE_IPL_H_
 
 #ifdef APIC_IO
-#include <i386/isa/apic_ipl.h>
+#include <i386/apic/apic_ipl.h>
 #else
-#include <i386/isa/icu_ipl.h>
+#include <i386/icu/icu_ipl.h>
 #endif
 
 /*
