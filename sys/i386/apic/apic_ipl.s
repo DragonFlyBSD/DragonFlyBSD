@@ -54,8 +54,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.9 2004/07/16 05:49:14 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.10 2005/11/02 09:14:57 dillon Exp $
  */
+
+#include "apicreg.h"
+#include "apic_ipl.h"
 
 	.data
 	ALIGN_DATA

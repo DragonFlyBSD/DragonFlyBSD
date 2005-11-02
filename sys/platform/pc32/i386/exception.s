@@ -31,12 +31,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.24 2005/06/16 21:12:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.25 2005/11/02 09:14:58 dillon Exp $
  */
 
 #include "use_npx.h"
 
 #include <machine/asmacros.h>
+#include <machine/segments.h>
 #include <machine/ipl.h>
 #include <machine/lock.h>
 #include <machine/psl.h>
@@ -44,8 +45,6 @@
 #include <machine/smptests.h>		/** various SMP options */
 
 #include "assym.s"
-
-#define	SEL_RPL_MASK	0x0003
 
 	.text
 
@@ -124,8 +123,7 @@ Xrsvdary:
  * of the cpl unmasked any pending interrupts and will issue those interrupts
  * synchronously prior to doing the iret.
  */
-#define	IDTVEC(name)	ALIGN_TEXT; .globl __CONCAT(X,name); \
-			.type __CONCAT(X,name),@function; __CONCAT(X,name):
+
 #define	TRAP(a)		pushl $(a) ; jmp alltraps
 
 #ifdef BDE_DEBUGGER
@@ -762,6 +760,7 @@ alltraps:
 	pushl	%ds
 	pushl	%es
 	pushl	%fs
+	.globl	alltraps_with_regs_pushed
 alltraps_with_regs_pushed:
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
@@ -979,22 +978,3 @@ pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
  */
 #include "i386/i386/vm86bios.s"
 
-/*
- * Include what was once config+isa-dependent code.
- * XXX it should be in a stand-alone file.  It's still icu-dependent and
- * belongs in i386/isa.
- */
-#include "i386/isa/vector.s"
-
-/*
- * Include what was once icu-dependent code.
- * XXX it should be merged into this file (also move the definition of
- * imen to vector.s or isa.c).
- * Before including it, set up a normal asm environment so that vector.s
- * doesn't have to know that stuff is included after it.
- */
-	.data
-	ALIGN_DATA
-	.text
-	SUPERALIGN_TEXT
-#include "i386/isa/ipl.s"

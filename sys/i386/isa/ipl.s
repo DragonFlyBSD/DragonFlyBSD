@@ -37,9 +37,20 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.19 2005/11/02 08:33:28 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.20 2005/11/02 09:15:02 dillon Exp $
  */
 
+#include "use_npx.h"
+
+#include <machine/asmacros.h>
+#include <machine/segments.h>
+#include <machine/ipl.h>
+#include <machine/lock.h>
+#include <machine/psl.h>
+#include <machine/trap.h>
+#include <machine/smptests.h>           /** various SMP options */
+ 
+#include "assym.s"
 
 /*
  * AT/386
@@ -47,8 +58,12 @@
  *
  *  ipending	- Pending interrupts (set when a masked interrupt occurs)
  */
+	.data
+	ALIGN_DATA
 
 	.text
+	SUPERALIGN_TEXT
+
 	/*
 	 * GENERAL NOTES
 	 *
@@ -86,6 +101,7 @@
 	 * do to the unavailability of the BGL.
 	 */
 	SUPERALIGN_TEXT
+	.globl	doreti
 	.type	doreti,@function
 doreti:
 	FAKE_MCOUNT(bintr)		/* init "from" bintr -> doreti */

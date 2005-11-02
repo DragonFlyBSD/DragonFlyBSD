@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.8 2005/02/21 21:40:55 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.9 2005/11/02 09:15:00 dillon Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
@@ -51,6 +51,8 @@
  * Selectors
  */
 
+#define SEL_RPL_MASK	0x0003
+
 #define	ISPL(s)	((s)&3)		/* what is the priority level of a selector */
 #define	SEL_KPL	0		/* kernel priority level */
 #define	SEL_UPL	3		/* user priority level */
@@ -59,6 +61,8 @@
 #define	IDXSEL(s)	(((s)>>3) & 0x1fff)		/* index of selector */
 #define	LSEL(s,r)	(((s)<<3) | SEL_LDT | r)	/* a local selector */
 #define	GSEL(s,r)	(((s)<<3) | r)			/* a global selector */
+
+#ifndef LOCORE
 
 /*
  * Memory and System segment descriptors
@@ -99,6 +103,8 @@ union	descriptor	{
 	struct	gate_descriptor gd;
 };
 
+#endif
+
 	/* system segments and gate types */
 #define	SDT_SYSNULL	 0	/* system null */
 #define	SDT_SYS286TSS	 1	/* system 286 TSS available */
@@ -134,6 +140,8 @@ union	descriptor	{
 #define	SDT_MEMEAC	29	/* memory execute only accessed conforming */
 #define	SDT_MEMERC	30	/* memory execute read conforming */
 #define	SDT_MEMERAC	31	/* memory execute read accessed conforming */
+
+#ifndef LOCORE
 
 /* is memory segment descriptor pointer ? */
 #define ISMEMSDP(s)	((s->d_type) >= SDT_MEMRO && (s->d_type) <= SDT_MEMERAC)
@@ -180,6 +188,8 @@ struct region_descriptor {
 	unsigned rd_limit:16;				/* segment extent */
 	unsigned rd_base:32 __attribute__ ((packed));	/* base address  */
 };
+
+#endif
 
 /*
  * Segment Protection Exception code bits
@@ -244,7 +254,7 @@ struct region_descriptor {
 #define LBSDICALLS_SEL	16	/* BSDI system call gate */
 #define NLDT		(LBSDICALLS_SEL + 1)
 
-#ifdef _KERNEL
+#if defined(_KERNEL) && !defined(LOCORE)
 extern int	_default_ldt;
 extern union descriptor gdt[];
 extern struct soft_segment_descriptor gdt_segs[];

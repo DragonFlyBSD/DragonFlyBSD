@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.h,v 1.3 1999/08/28 00:44:36 peter Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.h,v 1.3 2005/11/02 09:14:57 dillon Exp $
  */
 
 #ifndef _I386_ISA_APIC_IPL_H_
@@ -31,5 +31,19 @@
 
 #define	NHWI		24		/* number of h/w interrupts */
 #define	HWI_MASK	0x00ffffff	/* bits for h/w interrupts */
+
+#ifdef LOCORE
+
+/*
+ * Interrupts are expected to already be disabled when using these
+ * IMASK_*() macros.
+ */
+#define IMASK_LOCK                                                      \
+        SPIN_LOCK(imen_spinlock) ;                                      \
+
+#define IMASK_UNLOCK                                                    \
+        SPIN_UNLOCK(imen_spinlock) ;                                    \
+
+#endif
 
 #endif /* !_I386_ISA_APIC_IPL_H_ */

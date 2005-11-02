@@ -1,11 +1,12 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.24 2005/11/02 08:33:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.25 2005/11/02 09:14:57 dillon Exp $
  */
 
 
-#include <arch/apic/apicreg.h>
+#include "apicreg.h"
+#include "apic_ipl.h"
 #include <machine/smp.h>
 #include "i386/isa/intr_machdep.h"
 
@@ -58,16 +59,6 @@
 #define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 8
 #define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
 
-/*
- * Interrupts are expected to already be disabled when using these
- * IMASK_*() macros.
- */
-#define IMASK_LOCK							\
-	SPIN_LOCK(imen_spinlock) ; 					\
-
-#define IMASK_UNLOCK							\
-	SPIN_UNLOCK(imen_spinlock) ;					\
-	
 #define MASK_IRQ(irq_num)						\
 	IMASK_LOCK ;				/* into critical reg */	\
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
