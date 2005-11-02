@@ -28,7 +28,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.4 2005/10/25 12:14:52 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.5 2005/11/02 23:41:17 davidxu Exp $
  */
 
 /*
@@ -163,7 +163,6 @@ __connect(int fd, const struct sockaddr *name, socklen_t namelen)
 	int oldcancel;
 	int ret;
 
-	curthread = tls_get_curthread();
 	oldcancel = _thr_cancel_enter(curthread);
 	ret = __sys_connect(fd, name, namelen);
 	_thr_cancel_leave(curthread, oldcancel);
@@ -359,13 +358,8 @@ _raise(int sig)
 
 	if (!_thr_isthreaded())
 		ret = kill(getpid(), sig);
-	else {
-		ret = pthread_kill(pthread_self(), sig);
-		if (ret != 0) {
-			errno = ret;
-			ret = -1;
-		}
-	}
+	else
+		ret = _thr_send_sig(tls_get_curthread(), sig);
 	return (ret);
 }
 
