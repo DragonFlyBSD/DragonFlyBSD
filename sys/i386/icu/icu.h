@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu.h,v 1.8 2005/11/02 18:42:03 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu.h,v 1.9 2005/11/02 22:59:44 dillon Exp $
  */
 
 /*
@@ -75,21 +75,5 @@
 #define	ICU_IRQ5		5
 #define	ICU_IRQ6		6
 #define	ICU_IRQ7		7	/* lowest - parallel printer */
-
-/*
- * Interrupt Control offset into Interrupt descriptor table (IDT)
- */
-#define	ICU_OFFSET	32		/* 0-31 are processor exceptions */
-
-#ifdef APIC_IO
-
-/* 32-47: ISA IRQ0-IRQ15, 48-55: IO APIC IRQ16-IRQ23 */
-#define	ICU_LEN		24
-
-#else
-
-#define	ICU_LEN		16		/* 32-47 are ISA interrupts */
-
-#endif /* APIC_IO */
 
 #endif /* !_I386_ISA_ICU_H_ */

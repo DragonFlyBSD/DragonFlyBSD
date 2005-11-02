@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.25 2004/05/05 19:26:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.26 2005/11/02 22:59:46 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -54,9 +54,9 @@
 
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are
- * marked in gd_fpending or gd_ipending.  Once dispatched the interrupt's
- * pending bit is cleared and the interrupt is masked.  Upon completion
- * the interrupt is unmasked.
+ * marked in gd_fpending, gd_ipending, or gd_spending.  Once dispatched 
+ * the interrupt's pending bit is cleared and the interrupt is masked. 
+ * Upon completion the interrupt is unmasked.
  *
  * For edge triggered interrupts interrupts may be enabled again at this
  * point and if they occur before the interrupt service routine is complete
@@ -74,7 +74,8 @@ struct mdglobaldata {
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */
 	int		gd_ipending;	/* normal interrupt pending */
-	int		gd_idelayed;	/* delayed software ints */
+	int		gd_spending;	/* software interrupt pending */
+	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
 	int		gd_private_tss;
 	u_int		unused001;

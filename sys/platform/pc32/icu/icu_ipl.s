@@ -67,7 +67,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.12 2005/11/02 18:42:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.13 2005/11/02 22:59:44 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -96,7 +96,7 @@
 
 	.globl	icu_imen
 icu_imen:
-	.long	HWI_MASK
+	.long	ICU_HWI_MASK
 
 	.text
 	SUPERALIGN_TEXT

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.19 2005/11/02 20:23:22 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.20 2005/11/02 22:59:47 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -51,6 +51,8 @@
  */ 
 
 #ifdef _KERNEL
+
+#define IDT_OFFSET	32
 
 #if defined(SMP) || defined(APIC_IO)
 /*
@@ -108,28 +110,28 @@
 
 #ifdef TEST_TEST1
 /* put a 'fake' HWI in top of APIC prio 0x3x, 32 + 31 = 63 = 0x3f */
-#define XTEST1_OFFSET		(ICU_OFFSET + 31)
+#define XTEST1_OFFSET		(IDT_OFFSET + 31)
 #endif /** TEST_TEST1 */
 
 /* TLB shootdowns */
-#define XINVLTLB_OFFSET		(ICU_OFFSET + 112)
+#define XINVLTLB_OFFSET		(IDT_OFFSET + 112)
 
 /* unused/open (was inter-cpu clock handling) */
-#define XUNUSED113_OFFSET	(ICU_OFFSET + 113)
+#define XUNUSED113_OFFSET	(IDT_OFFSET + 113)
 
 /* inter-CPU rendezvous */
-#define XUNUSED114_OFFSET	(ICU_OFFSET + 114)
+#define XUNUSED114_OFFSET	(IDT_OFFSET + 114)
 
 /* IPIQ rendezvous */
-#define XIPIQ_OFFSET		(ICU_OFFSET + 115)
+#define XIPIQ_OFFSET		(IDT_OFFSET + 115)
 
 /* IPI to signal CPUs to stop and wait for another CPU to restart them */
-#define XCPUSTOP_OFFSET		(ICU_OFFSET + 128)
+#define XCPUSTOP_OFFSET		(IDT_OFFSET + 128)
 
 /*
  * Note: this vector MUST be xxxx1111, 32 + 223 = 255 = 0xff:
  */
-#define XSPURIOUSINT_OFFSET	(ICU_OFFSET + 223)
+#define XSPURIOUSINT_OFFSET	(IDT_OFFSET + 223)
 
 #endif /* SMP || APIC_IO */
 

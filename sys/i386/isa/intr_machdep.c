@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.38 2005/11/02 20:23:22 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.39 2005/11/02 22:59:47 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -91,8 +91,6 @@
  */
 #define	AUTO_EOI_1	1
 #endif
-
-#define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
 static void	init_i8259(void);
 
@@ -160,7 +158,7 @@ icu_reinit()
 	int i;
 
 	init_i8259();
-	for (i = 0; i < ICU_LEN; ++i) {
+	for (i = 0; i < MAX_HARDINTS; ++i) {
 		if (count_registered_ints(i))
 			machintr_intren(i);
 	}
@@ -176,7 +174,7 @@ isa_defaultirq()
 	int i;
 
 	/* icu vectors */
-	for (i = 0; i < ICU_LEN; i++)
+	for (i = 0; i < MAX_HARDINTS; i++)
 		machintr_vector_teardown(i);
 	init_i8259();
 }
@@ -282,9 +280,9 @@ inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
 	int errcode = 0;
 	void *id;
 
-	if ((unsigned)irq >= ICU_LEN) {
+	if (irq < 0 || irq >= MAX_HARDINTS) {
 		printf("create_intr: requested irq%d too high, limit is %d\n",
-		       irq, ICU_LEN -1);
+		       irq, MAX_HARDINTS);
 		return (NULL);
 	}
 	/*

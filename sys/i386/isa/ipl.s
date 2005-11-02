@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.21 2005/11/02 17:20:11 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.22 2005/11/02 22:59:47 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -57,6 +57,7 @@
  * Vector interrupt control section
  *
  *  ipending	- Pending interrupts (set when a masked interrupt occurs)
+ *  spending	- Pending software interrupts
  */
 	.data
 	ALIGN_DATA
@@ -126,8 +127,12 @@ doreti_next:
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	doreti_fast
 
-	testl	PCPU(ipending),%ecx
+	testl	PCPU(ipending),%ecx	/* check for an unmasked slow int */
 	jnz	doreti_intr
+
+	movl	PCPU(spending),%ecx	/* check for a pending software int */
+	cmpl	$0,%ecx
+	jnz	doreti_soft
 
 	testl	$RQF_AST_MASK,PCPU(reqflags) /* any pending ASTs? */
 	jz	2f
@@ -246,6 +251,30 @@ doreti_intr:
 	jmp	doreti_next
 
 	/*
+	 *  SOFT interrupt pending
+	 *
+	 *  Temporarily back-out our critical section to allow an interrupt
+	 *  preempt us when we schedule it.  Bump intr_nesting_level to
+	 *  prevent the switch code from recursing via splz too deeply.
+	 */
+	ALIGN_TEXT
+doreti_soft:
+	bsfl	%ecx,%ecx		/* locate the next pending softint */
+	btrl	%ecx,PCPU(spending)	/* make sure its still pending */
+	jnc	doreti_next
+	addl	$FIRST_SOFTINT,%ecx	/* actual intr number */
+	pushl	%eax
+	pushl	%ecx
+	incl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) /* so we can preempt */
+	call	sched_ithd		/* YYY must pull in imasks */
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	decl	TD_NEST_COUNT(%ebx)
+	addl	$4,%esp
+	popl	%eax
+	jmp	doreti_next
+
+	/*
 	 * AST pending.  We clear RQF_AST_SIGNAL automatically, the others
 	 * are cleared by the trap as they are processed.
 	 *
@@ -314,6 +343,10 @@ splz_next:
 	testl	PCPU(ipending),%ecx
 	jnz	splz_intr
 
+	movl	PCPU(spending),%ecx
+	cmpl	$0,%ecx
+	jnz	splz_soft
+
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 
 	/*
@@ -373,6 +406,30 @@ splz_intr:
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, PCPU(ipending)	/* is it really still pending? */
 	jnc	splz_next
+	sti
+	pushl	%eax
+	pushl	%ecx
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	incl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
+	call	sched_ithd		/* YYY must pull in imasks */
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	decl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
+	addl	$4,%esp
+	popl	%eax
+	jmp	splz_next
+
+	/*
+	 *  SOFT interrupt pending
+	 *
+	 *  Temporarily back-out our critical section to allow the interrupt
+	 *  preempt us.
+	 */
+	ALIGN_TEXT
+splz_soft:
+	bsfl	%ecx,%ecx		/* locate the next pending softint */
+	btrl	%ecx,PCPU(spending)	/* make sure its still pending */
+	jnc	splz_next
+	addl	$FIRST_SOFTINT,%ecx	/* actual intr number */
 	sti
 	pushl	%eax
 	pushl	%ecx

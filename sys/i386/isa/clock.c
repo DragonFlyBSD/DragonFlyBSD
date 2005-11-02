@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.39 2005/11/02 18:42:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.40 2005/11/02 22:59:47 dillon Exp $
  */
 
 /*
@@ -118,7 +118,6 @@ static uint16_t i8254_walltimer_cntr;
 
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
-volatile u_int	idelayed;
 int	statclock_disable = 1;	/* we don't use the statclock right now */
 u_int	tsc_freq;
 int	tsc_is_broken;

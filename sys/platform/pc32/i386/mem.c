@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.11 2004/05/19 22:52:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.12 2005/11/02 22:59:43 dillon Exp $
  */
 
 /*
@@ -441,63 +441,55 @@ mem_range_AP_init(void)
 static int 
 random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 {
-	static intrmask_t interrupt_allowed;
-	intrmask_t interrupt_mask;
-	int error, intr;
+	int error;
+	int intr;
 	
 	/*
-	 * We're the random or urandom device.  The only ioctls are for
-	 * selecting and inspecting which interrupts are used in the muck
-	 * gathering business and the fcntl() stuff.
-	 */
-	if (cmd != MEM_SETIRQ && cmd != MEM_CLEARIRQ && cmd != MEM_RETURNIRQ
-		&& cmd != FIONBIO && cmd != FIOASYNC)
-		return (ENOTTY);
-
-	/*
-	 * XXX the data is 16-bit due to a historical botch, so we use
-	 * magic 16's instead of ICU_LEN and can't support 24 interrupts
-	 * under SMP.
 	 * Even inspecting the state is privileged, since it gives a hint
 	 * about how easily the randomness might be guessed.
 	 */
-	intr = *(int16_t *)data;
-	interrupt_mask = 1 << intr;
+	error = 0;
+
 	switch (cmd) {
 	/* Really handled in upper layer */
 	case FIOASYNC:
 	case FIONBIO:
 		break;
 	case MEM_SETIRQ:
-		error = suser(td);
-		if (error != 0)
-			return (error);
-		if (intr < 0 || intr >= 16)
-			return (EINVAL);
-		if (interrupt_allowed & interrupt_mask)
+		intr = *(int16_t *)data;
+		if ((error = suser(td)) != 0)
 			break;
-		interrupt_allowed |= interrupt_mask;
+		if (intr < 0 || intr >= MAX_INTS)
+			return (EINVAL);
 		register_randintr(intr);
 		break;
 	case MEM_CLEARIRQ:
-		error = suser(td);
-		if (error != 0)
-			return (error);
-		if (intr < 0 || intr >= 16)
-			return (EINVAL);
-		if (!(interrupt_allowed & interrupt_mask))
+		intr = *(int16_t *)data;
+		if ((error = suser(td)) != 0)
 			break;
-		interrupt_allowed &= ~interrupt_mask;
+		if (intr < 0 || intr >= MAX_INTS)
+			return (EINVAL);
 		unregister_randintr(intr);
 		break;
 	case MEM_RETURNIRQ:
-		error = suser(td);
-		if (error != 0)
-			return (error);
-		*(u_int16_t *)data = interrupt_allowed;
+		error = ENOTSUP;
+		break;
+	case MEM_FINDIRQ:
+		intr = *(int16_t *)data;
+		if ((error = suser(td)) != 0)
+			break;
+		if (intr < 0 || intr >= MAX_INTS)
+			return (EINVAL);
+		intr = next_registered_randintr(intr);
+		if (intr == MAX_INTS)
+			return (ENOENT);
+		*(u_int16_t *)data = intr;
+		break;
+	default:
+		error = ENOTSUP;
 		break;
 	}
-	return (0);
+	return (error);
 }
 
 int

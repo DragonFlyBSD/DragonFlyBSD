@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.3 2005/11/02 20:23:16 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.4 2005/11/02 22:59:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,9 +48,10 @@
 
 #include <machine/segments.h>
 #include <machine/md_var.h>
-
 #include <i386/isa/intr_machdep.h>
-#include <i386/icu/icu.h>
+
+#include "icu.h"
+#include "icu_ipl.h"
 
 #ifndef APIC_IO
 
@@ -92,7 +93,7 @@ static int icu_setvar(int, const void *);
 static int icu_getvar(int, void *);
 static void icu_finalize(void);
 
-static inthand_t *icu_fastintr[ICU_LEN] = {
+static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_fastintr0), &IDTVEC(icu_fastintr1),
 	&IDTVEC(icu_fastintr2), &IDTVEC(icu_fastintr3),
 	&IDTVEC(icu_fastintr4), &IDTVEC(icu_fastintr5),
@@ -103,7 +104,7 @@ static inthand_t *icu_fastintr[ICU_LEN] = {
 	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
 };
 
-unpendhand_t *fastunpend[ICU_LEN] = {
+unpendhand_t *fastunpend[ICU_HWI_VECTORS] = {
 	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
 	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
 	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
@@ -114,7 +115,7 @@ unpendhand_t *fastunpend[ICU_LEN] = {
 	IDTVEC(fastunpend14), IDTVEC(fastunpend15)
 };
 
-static inthand_t *icu_slowintr[ICU_LEN] = {
+static inthand_t *icu_slowintr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_slowintr0), &IDTVEC(icu_slowintr1),
 	&IDTVEC(icu_slowintr2), &IDTVEC(icu_slowintr3),
 	&IDTVEC(icu_slowintr4), &IDTVEC(icu_slowintr5),
@@ -162,7 +163,7 @@ icu_vectorctl(int op, int intr, int flags)
     int error;
     u_long ef;
 
-    if (intr < 0 || intr >= ICU_LEN || intr == ICU_IRQ_SLAVE)
+    if (intr < 0 || intr >= ICU_HWI_VECTORS || intr == ICU_IRQ_SLAVE)
 	return (EINVAL);
 
     ef = read_eflags();
@@ -171,13 +172,13 @@ icu_vectorctl(int op, int intr, int flags)
 
     switch(op) {
     case MACHINTR_VECTOR_SETUP:
-	setidt(ICU_OFFSET + intr,
+	setidt(IDT_OFFSET + intr,
 		flags & INTR_FAST ? icu_fastintr[intr] : icu_slowintr[intr],
 		SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	machintr_intren(intr);
 	break;
     case MACHINTR_VECTOR_TEARDOWN:
-	setidt(ICU_OFFSET + intr, icu_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+	setidt(IDT_OFFSET + intr, icu_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 	machintr_intrdis(intr);
 	break;

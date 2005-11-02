@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.7 2005/11/02 08:33:10 dillon Exp $
+ * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.8 2005/11/02 22:59:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -208,6 +208,7 @@ ASSYM(RQF_AST_MASK, RQF_AST_MASK);
 
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
+ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 #if 0
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 #endif

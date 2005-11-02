@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.13 2005/11/02 18:41:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.14 2005/11/02 22:59:42 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -85,7 +85,7 @@
 
 	.globl apic_imen
 apic_imen:
-	.long	HWI_MASK
+	.long	APIC_HWI_MASK
 
 	.text
 	SUPERALIGN_TEXT

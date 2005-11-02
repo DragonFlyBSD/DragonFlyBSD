@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.10 2005/06/16 21:12:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.11 2005/11/02 22:59:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,28 +52,28 @@ void name(void)								\
 	atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);	\
 }									\
 
-DO_SETBITS(setdelayed,   &gd->gd_ipending, loadandclear(&gd->gd_idelayed))
+DO_SETBITS(setdelayed,   &gd->gd_spending, loadandclear(&gd->gd_sdelayed))
 
-DO_SETBITS(setsoftcamnet,&gd->gd_ipending, SWI_CAMNET_PENDING)
-DO_SETBITS(setsoftcambio,&gd->gd_ipending, SWI_CAMBIO_PENDING)
-DO_SETBITS(setsoftclock, &gd->gd_ipending, SWI_CLOCK_PENDING)
-DO_SETBITS(setsoftnet,   &gd->gd_ipending, SWI_NET_PENDING)
-DO_SETBITS(setsofttty,   &gd->gd_ipending, SWI_TTY_PENDING)
-DO_SETBITS(setsoftvm,	 &gd->gd_ipending, SWI_VM_PENDING)
-DO_SETBITS(setsofttq,	 &gd->gd_ipending, SWI_TQ_PENDING)
-DO_SETBITS(setsoftcrypto,&gd->gd_ipending, SWI_CRYPTO_PENDING)
+DO_SETBITS(setsoftcamnet,&gd->gd_spending, SWI_CAMNET_PENDING)
+DO_SETBITS(setsoftcambio,&gd->gd_spending, SWI_CAMBIO_PENDING)
+DO_SETBITS(setsoftclock, &gd->gd_spending, SWI_CLOCK_PENDING)
+DO_SETBITS(setsoftnet,   &gd->gd_spending, SWI_NET_PENDING)
+DO_SETBITS(setsofttty,   &gd->gd_spending, SWI_TTY_PENDING)
+DO_SETBITS(setsoftvm,	 &gd->gd_spending, SWI_VM_PENDING)
+DO_SETBITS(setsofttq,	 &gd->gd_spending, SWI_TQ_PENDING)
+DO_SETBITS(setsoftcrypto,&gd->gd_spending, SWI_CRYPTO_PENDING)
 
-DO_SETBITS(schedsoftcamnet, &gd->gd_idelayed, SWI_CAMNET_PENDING)
-DO_SETBITS(schedsoftcambio, &gd->gd_idelayed, SWI_CAMBIO_PENDING)
-DO_SETBITS(schedsoftnet, &gd->gd_idelayed, SWI_NET_PENDING)
-DO_SETBITS(schedsofttty, &gd->gd_idelayed, SWI_TTY_PENDING)
-DO_SETBITS(schedsoftvm,	 &gd->gd_idelayed, SWI_VM_PENDING)
-DO_SETBITS(schedsofttq,	 &gd->gd_idelayed, SWI_TQ_PENDING)
+DO_SETBITS(schedsoftcamnet, &gd->gd_sdelayed, SWI_CAMNET_PENDING)
+DO_SETBITS(schedsoftcambio, &gd->gd_sdelayed, SWI_CAMBIO_PENDING)
+DO_SETBITS(schedsoftnet, &gd->gd_sdelayed, SWI_NET_PENDING)
+DO_SETBITS(schedsofttty, &gd->gd_sdelayed, SWI_TTY_PENDING)
+DO_SETBITS(schedsoftvm,	 &gd->gd_sdelayed, SWI_VM_PENDING)
+DO_SETBITS(schedsofttq,	 &gd->gd_sdelayed, SWI_TQ_PENDING)
 /* YYY schedsoft what? */
 
 unsigned
 softclockpending(void)
 {
-	return ((mdcpu->gd_ipending | mdcpu->gd_fpending) & SWI_CLOCK_PENDING);
+	return (mdcpu->gd_spending & SWI_CLOCK_PENDING);
 }
 

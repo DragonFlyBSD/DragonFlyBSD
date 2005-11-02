@@ -35,12 +35,13 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.44 2005/11/02 09:14:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.45 2005/11/02 22:59:43 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/assym.h>
+#include <sys/interrupt.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/errno.h>
@@ -197,8 +198,11 @@ ASSYM(RQF_AST_LWKT_RESCHED, RQF_AST_LWKT_RESCHED);
 ASSYM(RQF_AST_UPCALL, RQF_AST_UPCALL);
 ASSYM(RQF_AST_MASK, RQF_AST_MASK);
 
+ASSYM(FIRST_SOFTINT, FIRST_SOFTINT);
+
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
+ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
 ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));

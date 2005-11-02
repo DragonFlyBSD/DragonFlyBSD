@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.3 2005/11/02 20:23:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.4 2005/11/02 22:59:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -121,7 +121,7 @@ static int apic_getvar(int, void *);
 static int apic_vectorctl(int, int, int);
 static void apic_finalize(void);
 
-static inthand_t *apic_fastintr[ICU_LEN] = {
+static inthand_t *apic_fastintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_fastintr0), &IDTVEC(apic_fastintr1),
 	&IDTVEC(apic_fastintr2), &IDTVEC(apic_fastintr3),
 	&IDTVEC(apic_fastintr4), &IDTVEC(apic_fastintr5),
@@ -136,7 +136,7 @@ static inthand_t *apic_fastintr[ICU_LEN] = {
 	&IDTVEC(apic_fastintr22), &IDTVEC(apic_fastintr23)
 };
 
-static inthand_t *apic_slowintr[ICU_LEN] = {
+static inthand_t *apic_slowintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_slowintr0), &IDTVEC(apic_slowintr1),
 	&IDTVEC(apic_slowintr2), &IDTVEC(apic_slowintr3),
 	&IDTVEC(apic_slowintr4), &IDTVEC(apic_slowintr5),
@@ -151,7 +151,7 @@ static inthand_t *apic_slowintr[ICU_LEN] = {
 	&IDTVEC(apic_slowintr22), &IDTVEC(apic_slowintr23)
 };
 
-unpendhand_t *fastunpend[ICU_LEN] = {
+unpendhand_t *fastunpend[APIC_HWI_VECTORS] = {
 	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
 	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
 	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
@@ -166,7 +166,7 @@ unpendhand_t *fastunpend[ICU_LEN] = {
 	IDTVEC(fastunpend22), IDTVEC(fastunpend23)
 };
 
-static inthand_t *apic_wrongintr[ICU_LEN] = {
+static inthand_t *apic_wrongintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_wrongintr0), &IDTVEC(apic_wrongintr1),
 	&IDTVEC(apic_wrongintr2), &IDTVEC(apic_wrongintr3),
 	&IDTVEC(apic_wrongintr4), &IDTVEC(apic_wrongintr5),
@@ -269,7 +269,7 @@ apic_vectorctl(int op, int intr, int flags)
     u_int32_t value;
     u_long ef;
 
-    if (intr < 0 || intr >= ICU_LEN)
+    if (intr < 0 || intr >= APIC_HWI_VECTORS)
 	return (EINVAL);
 
     ef = read_eflags();
@@ -316,9 +316,9 @@ apic_vectorctl(int op, int intr, int flags)
     case MACHINTR_VECTOR_TEARDOWN:
 	machintr_intrdis(intr);
 #ifdef APIC_INTR_REORDER
-	set_lapic_isrloc(intr, ICU_OFFSET + intr);
+	set_lapic_isrloc(intr, IDT_OFFSET + intr);
 #endif
-	setidt(ICU_OFFSET + intr, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+	setidt(IDT_OFFSET + intr, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 	break;
     default:

@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.h,v 1.3 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.h,v 1.3 2005/11/02 17:20:00 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.h,v 1.4 2005/11/02 22:59:44 dillon Exp $
  */
 
 #ifndef _I386_ISA_ICU_IPL_H_
 #define	_I386_ISA_ICU_IPL_H_
 
-#define	NHWI		16	/* number of h/w interrupts */
-#define	HWI_MASK	0xffff	/* bits corresponding to h/w interrupts */
+#define ICU_HWI_VECTORS	16
+#define ICU_HWI_MASK	((1 << ICU_HWI_VECTORS) - 1)
 
 #endif /* !_I386_ISA_ICU_IPL_H_ */
 

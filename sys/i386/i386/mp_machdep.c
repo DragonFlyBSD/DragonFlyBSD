@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.42 2005/11/02 18:42:01 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.43 2005/11/02 22:59:43 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2457,7 +2457,7 @@ set_lapic_isrloc(int intr, int vector)
 {
 	if (intr < 0 || intr > 32)
 	       panic("set_apic_isrloc: bad intr argument: %d",intr);
-	if (vector < ICU_OFFSET || vector > 255)
+	if (vector < IDT_OFFSET || vector > 255)
 	       panic("set_apic_isrloc: bad vector argument: %d",vector);
 	apic_isrbit_location[intr].location = &lapic.isr0 + ((vector>>5)<<2);
 	apic_isrbit_location[intr].bit = (1<<(vector & 31));

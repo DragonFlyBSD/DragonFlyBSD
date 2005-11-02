@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.22 2004/05/05 19:26:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.23 2005/11/02 22:59:43 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -81,7 +81,8 @@
 	.globl	gd_ss_eflags, gd_intr_nesting_level
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
-	.globl  gd_ipending, gd_fpending, gd_cnt, gd_private_tss
+	.globl  gd_spending, gd_ipending, gd_fpending
+	.globl	gd_cnt, gd_private_tss
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_private_tss,globaldata + GD_PRIVATE_TSS
@@ -98,6 +99,7 @@
 	.set    gd_PADDR1,globaldata + GD_PRV_PADDR1
 	.set	gd_fpending,globaldata + GD_FPENDING
 	.set	gd_ipending,globaldata + GD_IPENDING
+	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
 
 #if defined(APIC_IO)

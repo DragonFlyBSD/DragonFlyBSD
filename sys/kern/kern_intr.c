@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.30 2005/11/02 18:42:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.31 2005/11/02 22:59:48 dillon Exp $
  *
  */
 
@@ -65,7 +65,10 @@ struct intr_info {
 	int		i_fast;
 	int		i_slow;
 	int		i_state;
-} intr_info_ary[NHWI + NSWI];
+} intr_info_ary[MAX_INTS];
+
+int max_installed_hard_intr;
+int max_installed_soft_intr;
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
 
@@ -154,7 +157,7 @@ void *
 register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
 		struct lwkt_serialize *serializer)
 {
-    if (intr < NHWI || intr >= NHWI + NSWI)
+    if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
     return(register_int(intr, handler, arg, name, serializer, 0));
 }
@@ -167,7 +170,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     struct intrec **list;
     intrec_t rec;
 
-    if (intr < 0 || intr >= NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
     if (name == NULL)
 	name = "???";
@@ -216,7 +219,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	lwkt_create((void *)ithread_handler, (void *)intr, NULL,
 	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD, -1, 
 	    "ithread %d", intr);
-	if (intr >= NHWI && intr < NHWI + NSWI)
+	if (intr >= FIRST_SOFTINT)
 	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);
 	else
 	    lwkt_setpri(&info->i_thread, TDPRI_INT_MED);
@@ -231,6 +234,18 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	list = &(*list)->next;
     *list = rec;
     crit_exit();
+
+    /*
+     * Update max_installed_hard_intr to make the emergency intr poll
+     * a bit more efficient.
+     */
+    if (intr < FIRST_SOFTINT) {
+	if (max_installed_hard_intr <= intr)
+	    max_installed_hard_intr = intr + 1;
+    } else {
+	if (max_installed_soft_intr <= intr)
+	    max_installed_soft_intr = intr + 1;
+    }
     return(rec);
 }
 
@@ -250,7 +265,7 @@ unregister_int(void *id)
 
     intr = ((intrec_t)id)->intr;
 
-    if (intr < 0 || intr > NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
 
     info = &intr_info_ary[intr];
@@ -301,7 +316,7 @@ get_registered_name(int intr)
 {
     intrec_t rec;
 
-    if (intr < 0 || intr > NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
 
     if ((rec = intr_info_ary[intr].i_reclist) == NULL)
@@ -317,7 +332,7 @@ count_registered_ints(int intr)
 {
     struct intr_info *info;
 
-    if (intr < 0 || intr > NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
     info = &intr_info_ary[intr];
     return(info->i_fast + info->i_slow);
@@ -328,7 +343,7 @@ get_interrupt_counter(int intr)
 {
     struct intr_info *info;
 
-    if (intr < 0 || intr > NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
     info = &intr_info_ary[intr];
     return(info->i_count);
@@ -340,7 +355,7 @@ swi_setpriority(int intr, int pri)
 {
     struct intr_info *info;
 
-    if (intr < NHWI || intr >= NHWI + NSWI)
+    if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
     info = &intr_info_ary[intr];
     if (info->i_state != ISTATE_NOTHREAD)
@@ -352,7 +367,7 @@ register_randintr(int intr)
 {
     struct intr_info *info;
 
-    if ((unsigned int)intr >= NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_randintr: bad intr %d", intr);
     info = &intr_info_ary[intr];
     info->i_random.sc_intr = intr;
@@ -364,10 +379,26 @@ unregister_randintr(int intr)
 {
     struct intr_info *info;
 
-    if (intr < NHWI || intr >= NHWI + NSWI)
+    if (intr < 0 || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
     info = &intr_info_ary[intr];
     info->i_random.sc_enabled = 0;
+}
+
+int
+next_registered_randintr(int intr)
+{
+    struct intr_info *info;
+
+    if (intr < 0 || intr >= MAX_INTS)
+	panic("register_swi: bad intr %d", intr);
+    while (intr < MAX_INTS) {
+	info = &intr_info_ary[intr];
+	if (info->i_random.sc_enabled)
+	    break;
+	++intr;
+    }
+    return(intr);
 }
 
 /*
@@ -772,7 +803,7 @@ ithread_emergency(void *arg __unused)
     int intr;
 
     for (;;) {
-	for (intr = 0; intr < NHWI + NSWI; ++intr) {
+	for (intr = 0; intr < max_installed_hard_intr; ++intr) {
 	    info = &intr_info_ary[intr];
 	    for (rec = info->i_reclist; rec; rec = nrec) {
 		if ((rec->intr_flags & INTR_NOPOLL) == 0) {
@@ -823,7 +854,7 @@ sysctl_intrnames(SYSCTL_HANDLER_ARGS)
     int intr;
     char buf[64];
 
-    for (intr = 0; error == 0 && intr < NHWI + NSWI; ++intr) {
+    for (intr = 0; error == 0 && intr < MAX_INTS; ++intr) {
 	info = &intr_info_ary[intr];
 
 	len = 0;
@@ -853,13 +884,21 @@ sysctl_intrcnt(SYSCTL_HANDLER_ARGS)
     int error = 0;
     int intr;
 
-    for (intr = 0; intr < NHWI + NSWI; ++intr) {
+    for (intr = 0; intr < max_installed_hard_intr; ++intr) {
 	info = &intr_info_ary[intr];
 
 	error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
 	if (error)
-		break;
+		goto failed;
     }
+    for (intr = FIRST_SOFTINT; intr < max_installed_soft_intr; ++intr) {
+	info = &intr_info_ary[intr];
+
+	error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
+	if (error)
+		goto failed;
+    }
+failed:
     return(error);
 }
 

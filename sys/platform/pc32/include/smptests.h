@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/smptests.h,v 1.33.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/smptests.h,v 1.6 2005/11/02 20:23:21 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/smptests.h,v 1.7 2005/11/02 22:59:46 dillon Exp $
  */
 
 #ifndef _MACHINE_SMPTESTS_H_
@@ -114,7 +114,7 @@
 
 /*
  * Don't assume that slow interrupt handler X is called from vector
- * X + ICU_OFFSET.
+ * X + IDT_OFFSET.
  */
 #define APIC_INTR_REORDER
 

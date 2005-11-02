@@ -24,13 +24,20 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.13 2005/11/02 18:42:11 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.14 2005/11/02 22:59:49 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
 #define _SYS_INTERRUPT_H_
 
-#define MAX_INTS	32
+/*
+ * System hard and soft interrupt limits.  Note that the architecture may
+ * further limit available hardware and software interrupts.
+ */
+#define MAX_HARDINTS	64
+#define MAX_SOFTINTS	64
+#define FIRST_SOFTINT	MAX_HARDINTS
+#define MAX_INTS	(MAX_HARDINTS + MAX_SOFTINTS)
 
 typedef void inthand2_t (void *, void *);
 
@@ -50,12 +57,12 @@ long get_interrupt_counter(int intr);
 int count_registered_ints(int intr);
 const char *get_registered_name(int intr);
 
-void register_randintr(int intr);
-
 void swi_setpriority(int intr, int pri);
 int unregister_swi(void *id);
 int unregister_int(void *id);
+void register_randintr(int intr);
 void unregister_randintr(int intr);
+int next_registered_randintr(int intr);
 void sched_ithd(int intr);	/* procedure called from MD */
 
 extern char	eintrnames[];	/* end of intrnames[] */
