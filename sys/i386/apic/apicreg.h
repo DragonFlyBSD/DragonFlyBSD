@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.4 2005/11/02 17:47:29 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.5 2005/11/03 20:07:23 dillon Exp $
  */
 
 #ifndef _MACHINE_APICREG_H_
@@ -146,7 +146,21 @@
  *
  *		  31 ... 24   23 ... 16   15 ... 8     7 ... 0
  *		+-----------+-----------+-----------+-----------+
- * 00F0 SVR	|           |           |           |           |
+ * 00F0 SVR	|           |           |       FE  |  vvvvvvvv |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		    Spurious interrupt vector register.  The 4 low
+ *		    vector bits must be programmed to 1111, e.g.
+ *		    vvvv1111.
+ *
+ *		    E - LAPIC disable (1 = disable, 0 = enable)
+ *
+ *		    F - Focus processor disable (1 = disable, 0 = enable)
+ *
+ *		    NOTE: The handler for the spurious interrupt vector
+ *		    should *NOT* issue an EOI because the spurious 
+ *		    interrupt does not effect the ISR.
+ *
  *		+-----------+-----------+-----------+-----------+
  * 0100-0170 ISR|           |           |           |           |
  * 0180-01F0 TMR|           |           |           |           |
@@ -279,15 +293,30 @@
  *		+-----------+-----------+-----------+-----------+
  * 0380	TMR_ICR	|           |           |           |           |
  * 0390	TMR_CCR	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *		The timer initial count register and current count
+ *		register (32 bits)
+ *
+ *		+-----------+-----------+-----------+-----------+
  * 03A0		|           |           |           |           |
  * 03B0		|           |           |           |           |
  * 03C0		|           |           |           |           |
  * 03D0		|           |           |           |           |
- * 03E0 TMR_DCR	|           |           |           |           |
+ *		+-----------+-----------+-----------+-----------+
+ * 03E0 TMR_DCR	|           |           |           |      d-dd |
  *		+-----------+-----------+-----------+-----------+
  *
- *		    Timer control and access registers.
+ *		The timer divide configuration register.  d-dd is:
  *
+ *		0000 - divide by 2
+ *		0001 - divide by 4
+ *		0010 - divide by 8
+ *		0011 - divide by 16
+ *		1000 - divide by 32
+ *		1001 - divide by 64
+ *		1010 - divide by 128
+ *		1011 - divide by 1
  *
  *	NOTE ON EOI: Upon receiving an EOI the APIC clears the highest priority
  *	interrupt in the ISR and selects the next highest priority interrupt
@@ -412,104 +441,275 @@ typedef struct IOAPIC ioapic_t;
  * LOCAL APIC defines
  */
 
-/* default physical locations of LOCAL (CPU) APICs */
+/*
+ * default physical location for the LOCAL (CPU) APIC
+ */
 #define DEFAULT_APIC_BASE	0xfee00000
 
-/* fields in VER */
+/*
+ * lapic.id (rw)
+ */
+#define APIC_ID_MASK		0xff000000
+#define APIC_ID_SHIFT		24
+#define APIC_ID_CLUSTER		0xf0
+#define APIC_ID_CLUSTER_ID	0x0f
+#define APIC_MAX_CLUSTER	0xe
+#define APIC_MAX_INTRACLUSTER_ID 3
+#define APIC_ID_CLUSTER_SHIFT   4
+
+/*
+ * lapic.ver (ro)
+ */
 #define APIC_VER_VERSION	0x000000ff
 #define APIC_VER_MAXLVT		0x00ff0000
 #define MAXLVTSHIFT		16
 
-/* fields in SVR */
+/*
+ * lapic.ldr (rw)
+ */
+#define APIC_LDR_RESERVED       0x00ffffff
+
+/*
+ * lapic.dfr (rw)
+ *
+ * The logical APIC ID is used with logical interrupt
+ * delivery modes.  Interpretation of logical destination
+ * information depends on the MODEL bits in the Destination
+ * Format Regiuster.
+ *
+ * MODEL=1111 FLAT MODEL - The MDA is interpreted as
+ * 			   a decoded address.  By setting
+ * 			   one bit in the LDR for each
+ *			   local apic 8 APICs can coexist.
+ *  
+ * MODEL=0000 CLUSTER MODEL -
+ */
+#define APIC_DFR_RESERVED	0x0fffffff
+#define APIC_DFR_MODEL_MASK	0xf0000000
+#define APIC_DFR_MODEL_FLAT	0xf0000000
+#define APIC_DFR_MODEL_CLUSTER	0x00000000
+
+/*
+ * lapic.svr
+ *
+ * Contains the spurious interrupt vector and bits to enable/disable
+ * the local apic and focus processor.
+ */
 #define APIC_SVR_VECTOR		0x000000ff
-#define APIC_SVR_VEC_PROG	0x000000f0
-#define APIC_SVR_VEC_FIX	0x0000000f
 #define APIC_SVR_ENABLE		0x00000100
-# define APIC_SVR_SWDIS		0x00000000
-# define APIC_SVR_SWEN		0x00000100
-#define APIC_SVR_FOCUS		0x00000200
-# define APIC_SVR_FEN		0x00000000
-# define APIC_SVR_FDIS		0x00000200
+#define APIC_SVR_FOCUS_DISABLE	0x00000200
 
-/* fields in TPR */
+/*
+ * lapic.tpr
+ *
+ *    PRIO (7:4).  Main priority.  If 15 the APIC will not
+ *    		 accept any interrupts.
+ *    SUBC (3:0)	 Sub priority.  See APR/PPR.
+ */
 #define APIC_TPR_PRIO		0x000000ff
-# define APIC_TPR_INT		0x000000f0
-# define APIC_TPR_SUB		0x0000000f
+#define APIC_TPR_INT		0x000000f0
+#define APIC_TPR_SUB		0x0000000f
 
-
-/* fields in ICR_LOW */
+/*
+ * lapic.icr_lo	  -------- ----XXRR TL-SDMMM vvvvvvvv
+ * 
+ *	The interrupt command register.  Generally speaking
+ * 	writing to ICR_LO initiates a command.  All fields
+ * 	are R/W except the 'S' (delivery status) field, which
+ * 	is read-only.  When
+ *              
+ *      XX:     Destination Shorthand field:
+ *
+ *		00 -	Use Destination field
+ *		01 -	Self only.  Dest field ignored.
+ *		10 -	All including self (uses a
+ *			destination field of 0x0F)
+ *		11 -	All excluding self (uses a
+ *			destination field of 0x0F)
+ *
+ *	RR:	RR mode (? needs documentation)
+ *                  
+ *      T:      1 = Level 0 = Edge Trigger modde, used for
+ *      	the INIT level de-assert delivery mode only
+ *      	to de-assert a request.
+ * 
+ *	L:      0 = De-Assert, 1 = Assert.  Always write as
+ *      	1 when initiating a new command.  Can only
+ *		write as 0 for INIT mode de-assertion of
+ *		command.
+ *
+ *	S:	1 = Send Pending.  Interrupt has been injected but the APIC
+ *		has not yet accepted it.
+ * 
+ *	D:	0 = physical 1 = logical.  In physical mode only bits 24-27
+ *		of the DEST field is used from ICR_HI.
+ *
+ *	MMM:	Delivery mode
+ *
+ *		000 - Fixed.  Deliver to all processors according to the
+ *		      ICR.  Always treated as edge triggered.
+ *
+ *		001 - Lowest Priority.  Deliver to just the processor
+ *		      running at the lowest priority.
+ *
+ *		010 - SMI.  The vector must be 00B.  Only edge triggered
+ *		      is allowed.  The vector field must be programmed to
+ *		      0 (huh?)
+ *
+ *		011 - RR Delivery mode (?? needs documentation).
+ *
+ *		100 - NMI.  Deliver as an NMI to all processors listed in
+ *		      the destination field.  The vector is ignored.  Always
+ *		      treated as edge triggered.
+ *
+ *		101 - INIT.  Deliver as an INIT signal to all processors
+ *		      (like FIXED) according to the ICR.  The vector is
+ *		      ignored and delivery is always edge-triggered.
+ *
+ *		110 - Startup.  Send a special message between cpus.  The
+ *		      vector contains a startup address for the MP boot
+ *		      protocol.  Always edge triggered.  Note: a startup
+ *		      interrupt is not automatically tried in case of failure.
+ *
+ *		111 - <reserved>
+ */
 #define APIC_VECTOR_MASK	0x000000ff
 
 #define APIC_DELMODE_MASK	0x00000700
-# define APIC_DELMODE_FIXED	0x00000000
-# define APIC_DELMODE_LOWPRIO	0x00000100
-# define APIC_DELMODE_SMI	0x00000200
-# define APIC_DELMODE_RR	0x00000300
-# define APIC_DELMODE_NMI	0x00000400
-# define APIC_DELMODE_INIT	0x00000500
-# define APIC_DELMODE_STARTUP	0x00000600
-# define APIC_DELMODE_RESV	0x00000700
+#define APIC_DELMODE_FIXED	0x00000000
+#define APIC_DELMODE_LOWPRIO	0x00000100
+#define APIC_DELMODE_SMI	0x00000200
+#define APIC_DELMODE_RR		0x00000300
+#define APIC_DELMODE_NMI	0x00000400
+#define APIC_DELMODE_INIT	0x00000500
+#define APIC_DELMODE_STARTUP	0x00000600
+#define APIC_DELMODE_RESV7	0x00000700
 
 #define APIC_DESTMODE_MASK	0x00000800
-# define APIC_DESTMODE_PHY	0x00000000
-# define APIC_DESTMODE_LOG	0x00000800
+#define APIC_DESTMODE_PHY	0x00000000
+#define APIC_DESTMODE_LOG	0x00000800
 
 #define APIC_DELSTAT_MASK	0x00001000
-# define APIC_DELSTAT_IDLE	0x00000000
-# define APIC_DELSTAT_PEND	0x00001000
-
-#define APIC_RESV1_MASK		0x00002000
+#define APIC_DELSTAT_IDLE	0x00000000
+#define APIC_DELSTAT_PEND	0x00001000
 
 #define APIC_LEVEL_MASK		0x00004000
-# define APIC_LEVEL_DEASSERT	0x00000000
-# define APIC_LEVEL_ASSERT	0x00004000
+#define APIC_LEVEL_DEASSERT	0x00000000
+#define APIC_LEVEL_ASSERT	0x00004000
 
 #define APIC_TRIGMOD_MASK	0x00008000
-# define APIC_TRIGMOD_EDGE	0x00000000
-# define APIC_TRIGMOD_LEVEL	0x00008000
+#define APIC_TRIGMOD_EDGE	0x00000000
+#define APIC_TRIGMOD_LEVEL	0x00008000
 
 #define APIC_RRSTAT_MASK	0x00030000
-# define APIC_RRSTAT_INVALID	0x00000000
-# define APIC_RRSTAT_INPROG	0x00010000
-# define APIC_RRSTAT_VALID	0x00020000
-# define APIC_RRSTAT_RESV	0x00030000
+#define APIC_RRSTAT_INVALID	0x00000000
+#define APIC_RRSTAT_INPROG	0x00010000
+#define APIC_RRSTAT_VALID	0x00020000
+#define APIC_RRSTAT_RESV	0x00030000
 
 #define APIC_DEST_MASK		0x000c0000
-# define APIC_DEST_DESTFLD	0x00000000
-# define APIC_DEST_SELF		0x00040000
-# define APIC_DEST_ALLISELF	0x00080000
-# define APIC_DEST_ALLESELF	0x000c0000
+#define APIC_DEST_DESTFLD	0x00000000
+#define APIC_DEST_SELF		0x00040000
+#define APIC_DEST_ALLISELF	0x00080000
+#define APIC_DEST_ALLESELF	0x000c0000
 
-#define APIC_RESV2_MASK		0xfff00000
+#define APIC_ICRLO_RESV_MASK	0xfff02000
 
+/*
+ * lapic.icr_hi
+ */
+#define APIC_ICRH_ID_MASK	APIC_ID_MASK
 
-/* fields in ICR_HIGH */
-#define APIC_ID_MASK		0xff000000
-
-
-/* fields in LVT1/2 */
+/*
+ * lapic.lvt_timer
+ * lapic.lvt_pcint
+ * lapic.lvt_lint0
+ * lapic.lvt_lint1
+ * lapic.lvt_error
+ *
+ *		+-----------+--------10-+--FEDCBA98-+-----------+
+ * 0320	LTIMER  |           |        TM |  ---S---- | vector    |
+ * 0330		|           |           |           |           |
+ *		+-----------+--------10-+--FEDCBA98-+-----------+
+ * 0340	LVPCINT	|           |        -M |  ---S-MMM | vector    |
+ * 0350	LVINT0	|           |        -M |  LRPS-MMM | vector    |
+ * 0360 LVINT1	|           |        -M |  LRPS-MMM | vector    |
+ * 0370	LVERROR	|           |        -M |  -------- | vector    |
+ *		+-----------+-----------+-----------+-----------+
+ *
+ *			T:	1 = periodic, 0 = one-shot
+ *				(LTIMER only)
+ *
+ *			M:	1 = masked
+ *
+ *			L:	1 = level, 0 = edge
+ *				(LVINT0/1 only)
+ *
+ *			R:	For level triggered only, set to 1 when a
+ *				level int is accepted, cleared by EOI.
+ *				(LVINT0/1 only)
+ *
+ *			P:	Pin Polarity 0 = Active High, 1 = Active Low
+ *				(LVINT0/1 only)
+ *
+ *			S:	1 = Send Pending.  Interrupt has been injected
+ *				but APIC has not yet accepted it.
+ *
+ *			MMM 	000 = Fixed	deliver to cpu according to LVT
+ *
+ *			MMM 	100 = NMI	deliver as an NMI.  Always edge
+ *
+ *			MMM 	111 = ExtInt	deliver from 8259, routes INTA
+ *						bus cycle to external
+ *						controller.  Controller is 
+ *						expected to supply vector.
+ *						Always level.
+ */
 #define APIC_LVT_VECTOR		0x000000ff
-#define APIC_LVT_DM		0x00000700
-# define APIC_LVT_DM_FIXED	0x00000000
-# define APIC_LVT_DM_NMI	0x00000400
-# define APIC_LVT_DM_EXTINT	0x00000700
-#define APIC_LVT_DS		0x00001000
-#define APIC_LVT_IIPP		0x00002000
-#define APIC_LVT_IIPP_INTALO	0x00002000
-#define APIC_LVT_IIPP_INTAHI	0x00000000
-#define APIC_LVT_RIRR		0x00004000
-#define APIC_LVT_TM		0x00008000
-#define APIC_LVT_M		0x00010000
 
+#define APIC_LVT_DM_MASK	0x00000700
+#define APIC_LVT_DM_FIXED	0x00000000
+#define APIC_LVT_DM_NMI		0x00000400
+#define APIC_LVT_DM_EXTINT	0x00000700
 
-/* fields in LVT Timer */
-#define APIC_LVTT_VECTOR	0x000000ff
-#define APIC_LVTT_DS		0x00001000
-#define APIC_LVTT_M		0x00010000
-#define APIC_LVTT_TM		0x00020000
+#define APIC_LVT_DS		0x00001000	/* (S) Send Pending */
+#define APIC_LVT_POLARITY_MASK	0x00002000
+#define APIC_LVT_POLARITY_LO	0x00002000	/* (P) Pin Polarity */
+#define APIC_LVT_POLARITY_HI	0x00000000
+#define APIC_LVT_LEVELSTATUS	0x00004000	/* (R) level trig status */
+#define APIC_LVT_TRIG_MASK	0x00008000
+#define APIC_LVT_LEVELTRIG	0x00008000	/* (L) 1 = level, 0 = edge */
+#define APIC_LVT_MASKED		0x00010000	/* (M) 1 = masked */
 
+/*
+ * lapic.lvt_timer
+ */
+#define APIC_LVTT_VECTOR	APIC_LVT_VECTOR
+#define APIC_LVTT_DS		APIC_LVT_DS
+#define APIC_LVTT_MASKED	APIC_LVT_MASKED
+#define APIC_LVTT_PERIODIC	0x00020000
 
-/* fields in TDCR */
+#define APIC_TIMER_MAX_COUNT    0xffffffff
+
+/*
+ * lapic.icr_timer - initial count register (32 bits)
+ * lapic.ccr_timer - current count register (32 bits)
+ */
+
+/*
+ * lapic.dcr_timer - timer divider register
+ *
+ * d0dd
+ *
+ *	0000 - divide by 2
+ *	0001 - divide by 4
+ *	0010 - divide by 8
+ *	0011 - divide by 16
+ *	1000 - divide by 32
+ *	1001 - divide by 64
+ *	1010 - divide by 128
+ *	1011 - divide by 1
+ */
 #define APIC_TDCR_2		0x00
 #define APIC_TDCR_4		0x01
 #define APIC_TDCR_8		0x02
@@ -602,34 +802,34 @@ typedef struct IOAPIC ioapic_t;
 #define IOART_RESV	0x00fe0000	/* reserved */
 
 #define IOART_INTMASK	0x00010000	/* R/W: INTerrupt mask */
-# define IOART_INTMCLR	0x00000000	/*       clear, allow INTs */
-# define IOART_INTMSET	0x00010000	/*       set, inhibit INTs */
+#define IOART_INTMCLR	0x00000000	/*       clear, allow INTs */
+#define IOART_INTMSET	0x00010000	/*       set, inhibit INTs */
 
 #define IOART_TRGRMOD	0x00008000	/* R/W: trigger mode */
-# define IOART_TRGREDG	0x00000000	/*       edge */
-# define IOART_TRGRLVL	0x00008000	/*       level */
+#define IOART_TRGREDG	0x00000000	/*       edge */
+#define IOART_TRGRLVL	0x00008000	/*       level */
 
 #define IOART_REM_IRR	0x00004000	/* RO: remote IRR */
 
 #define IOART_INTPOL	0x00002000	/* R/W: INT input pin polarity */
-# define IOART_INTAHI	0x00000000	/*      active high */
-# define IOART_INTALO	0x00002000	/*      active low */
+#define IOART_INTAHI	0x00000000	/*      active high */
+#define IOART_INTALO	0x00002000	/*      active low */
 
 #define IOART_DELIVS	0x00001000	/* RO: delivery status */
 
 #define IOART_DESTMOD	0x00000800	/* R/W: destination mode */
-# define IOART_DESTPHY	0x00000000	/*      physical */
-# define IOART_DESTLOG	0x00000800	/*      logical */
+#define IOART_DESTPHY	0x00000000	/*      physical */
+#define IOART_DESTLOG	0x00000800	/*      logical */
 
 #define IOART_DELMOD	0x00000700	/* R/W: delivery mode */
-# define IOART_DELFIXED	0x00000000	/*       fixed */
-# define IOART_DELLOPRI	0x00000100	/*       lowest priority */
-# define IOART_DELSMI	0x00000200	/*       System Management INT */
-# define IOART_DELRSV1	0x00000300	/*       reserved */
-# define IOART_DELNMI	0x00000400	/*       NMI signal */
-# define IOART_DELINIT	0x00000500	/*       INIT signal */
-# define IOART_DELRSV2	0x00000600	/*       reserved */
-# define IOART_DELEXINT	0x00000700	/*       External INTerrupt */
+#define IOART_DELFIXED	0x00000000	/*       fixed */
+#define IOART_DELLOPRI	0x00000100	/*       lowest priority */
+#define IOART_DELSMI	0x00000200	/*       System Management INT */
+#define IOART_DELRSV1	0x00000300	/*       reserved */
+#define IOART_DELNMI	0x00000400	/*       NMI signal */
+#define IOART_DELINIT	0x00000500	/*       INIT signal */
+#define IOART_DELRSV2	0x00000600	/*       reserved */
+#define IOART_DELEXINT	0x00000700	/*       External INTerrupt */
 
 #define IOART_INTVEC	0x000000ff	/* R/W: INTerrupt vector field */
 

@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.5 2005/11/03 05:24:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.6 2005/11/03 20:07:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -216,14 +216,19 @@ apic_finalize(void)
 	outb(0x23, byte);	/* disconnect 8259s/NMI */
     }
 
-    /* mask lint0 (the 8259 'virtual wire' connection) */
+    /*
+     * Setup lint0 (the 8259 'virtual wire' connection).  We
+     * mask the interrupt.
+     */
     temp = lapic.lvt_lint0;
-    temp |= APIC_LVT_M;		/* set the mask */
+    temp |= APIC_LVT_MASKED;
     lapic.lvt_lint0 = temp;
 
-    /* setup lint1 to handle NMI */
+    /*
+     * setup lint1 to handle an NMI 
+     */
     temp = lapic.lvt_lint1;
-    temp &= ~APIC_LVT_M;		/* clear the mask */
+    temp &= ~APIC_LVT_MASKED;
     lapic.lvt_lint1 = temp;
 
     if (bootverbose)

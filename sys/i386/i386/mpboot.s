@@ -32,7 +32,7 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.9 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.10 2005/11/03 20:07:20 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -109,7 +109,7 @@ mp_begin:	/* now running relocated at KERNBASE */
 
 	/* disable the APIC, just to be SURE */
 	movl	lapic_svr, %eax			/* get spurious vector reg. */
-	andl	$~APIC_SVR_SWEN, %eax		/* clear software enable bit */
+	andl	$~APIC_SVR_ENABLE, %eax		/* clear software enable bit */
 	movl	%eax, lapic_svr
 
 	/* data returned to BSP */

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.10 2005/11/02 08:33:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.11 2005/11/03 20:07:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,19 +57,25 @@ apic_initialize(void)
 {
 	u_int   temp;
 
-	/* setup LVT1 as ExtINT */
+	/*
+	 * setup LVT1 as ExtINT.  Edge trigger, active high.
+	 */
 	temp = lapic.lvt_lint0;
-	temp &= ~(APIC_LVT_M | APIC_LVT_TM | APIC_LVT_IIPP | APIC_LVT_DM);
+	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
+		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	if (mycpu->gd_cpuid == 0)
-		temp |= 0x00000700;	/* process ExtInts */
+		temp |= APIC_LVT_DM_EXTINT;
 	else
-		temp |= 0x00010700;	/* mask ExtInts */
+		temp |= APIC_LVT_DM_EXTINT | APIC_LVT_MASKED;
 	lapic.lvt_lint0 = temp;
 
-	/* setup LVT2 as NMI, masked till later... */
+	/*
+	 * setup LVT2 as NMI, masked till later.  Edge trigger, active high.
+	 */
 	temp = lapic.lvt_lint1;
-	temp &= ~(APIC_LVT_M | APIC_LVT_TM | APIC_LVT_IIPP | APIC_LVT_DM);
-	temp |= 0x00010400;		/* masked, edge trigger, active hi */
+	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
+		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
+	temp |= APIC_LVT_MASKED | APIC_LVT_DM_NMI;
 	lapic.lvt_lint1 = temp;
 
 	/*
@@ -85,14 +91,17 @@ apic_initialize(void)
 
 	/* enable the local APIC */
 	temp = lapic.svr;
-	temp |= APIC_SVR_SWEN;		/* software enable APIC */
-	temp &= ~APIC_SVR_FOCUS;	/* enable 'focus processor' */
+	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
+	temp |= APIC_SVR_ENABLE;	/* enable the APIC */
 
-	/* set the 'spurious INT' vector */
-	if ((XSPURIOUSINT_OFFSET & APIC_SVR_VEC_FIX) != APIC_SVR_VEC_FIX)
+	/*
+	 * Set the spurious interrupt vector.  The low 4 bits of the vector
+	 * must be 1111.
+	 */
+	if ((XSPURIOUSINT_OFFSET & 0x0F) != 0x0F)
 		panic("bad XSPURIOUSINT_OFFSET: 0x%08x", XSPURIOUSINT_OFFSET);
-	temp &= ~APIC_SVR_VEC_PROG;	/* clear (programmable) vector field */
-	temp |= (XSPURIOUSINT_OFFSET & APIC_SVR_VEC_PROG);
+	temp &= ~APIC_SVR_VECTOR;
+	temp |= XSPURIOUSINT_OFFSET;
 
 #if defined(TEST_TEST1)
 	if (cpuid == GUARD_CPU) {
@@ -508,7 +517,7 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	    write_eflags(eflags);
 	}
 
-	icr_lo = (lapic.icr_lo & APIC_RESV2_MASK) | dest_type | 
+	icr_lo = (lapic.icr_lo & APIC_ICRLO_RESV_MASK) | dest_type | 
 		delivery_mode | vector;
 	lapic.icr_lo = icr_lo;
 	crit_exit();
@@ -535,7 +544,7 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	lapic.icr_hi = icr_hi;
 
 	/* build IRC_LOW */
-	icr_lo = (lapic.icr_lo & APIC_RESV2_MASK)
+	icr_lo = (lapic.icr_lo & APIC_ICRLO_RESV_MASK)
 	    | APIC_DEST_DESTFLD | delivery_mode | vector;
 
 	/* write APIC ICR */
@@ -665,8 +674,9 @@ set_apic_timer(int value)
 
 	/* configure timer as one-shot */
 	lvtt = lapic.lvt_timer;
-	lvtt &= ~(APIC_LVTT_VECTOR | APIC_LVTT_DS | APIC_LVTT_M | APIC_LVTT_TM);
-	lvtt |= APIC_LVTT_M;			/* no INT, one-shot */
+	lvtt &= ~(APIC_LVTT_VECTOR | APIC_LVTT_DS);
+	lvtt &= ~(APIC_LVTT_PERIODIC);
+	lvtt |= APIC_LVTT_MASKED;		/* no INT, one-shot */
 	lapic.lvt_timer = lvtt;
 
 	/* */
