@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.31 2005/11/02 22:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.32 2005/11/03 04:54:00 dillon Exp $
  *
  */
 
@@ -547,10 +547,23 @@ ithread_fast_handler(struct intrframe frame)
 #ifdef SMP
 	    if ((rec->intr_flags & INTR_MPSAFE) == 0 && got_mplock == 0) {
 		if (try_mplock() == 0) {
+		    int owner;
+
 		    /*
-		     * XXX forward to the cpu holding the MP lock
+		     * If we couldn't get the MP lock try to forward it
+		     * to the cpu holding the MP lock, setting must_schedule
+		     * to -1 so we do not schedule and also do not unmask
+		     * the interrupt.  Otherwise just schedule it.
 		     */
-		    must_schedule = 1;
+		    owner = owner_mplock();
+		    if (owner >= 0 && owner != gd->gd_cpuid) {
+			lwkt_send_ipiq_bycpu(owner, forward_fastint_remote,
+						(void *)owner);
+			must_schedule = -1;
+			++gd->gd_cnt.v_forwarded_ints;
+		    } else {
+			must_schedule = 1;
+		    }
 		    break;
 		}
 		got_mplock = 1;
@@ -583,9 +596,9 @@ ithread_fast_handler(struct intrframe frame)
      * be re-enabled, and a non-zero return indicates that the interrupt
      * thread controls re-enablement.
      */
-    if (must_schedule)
+    if (must_schedule > 0)
 	sched_ithd(intr);
-    else
+    else if (must_schedule == 0)
 	++info->i_count;
     return(must_schedule);
 }

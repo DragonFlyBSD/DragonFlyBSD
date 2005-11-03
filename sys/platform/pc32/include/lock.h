@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.12 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.13 2005/11/03 04:53:57 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -199,11 +199,18 @@ cpu_rel_mplock(void)
 	mp_lock = MP_FREE_LOCK;
 }
 
+static __inline int
+owner_mplock(void)
+{
+	return (mp_lock);
+}
+
 #else
 
 #define get_mplock()
 #define try_mplock()	1
 #define rel_mplock()
+#define owner_mplock()	0	/* always cpu 0 */
 #define ASSERT_MP_LOCK_HELD(td)
 
 #endif	/* SMP */

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.20 2005/11/02 22:59:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.21 2005/11/03 04:53:59 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -172,7 +172,6 @@ void	icu_reinit (void);
 void *inthand_add(const char *name, int irq, inthand2_t handler,
 		  void *arg, int flags, lwkt_serialize_t serializer);
 int inthand_remove(void *id);
-void forward_fastint_remote(void *arg);
 
 #endif /* LOCORE */
 

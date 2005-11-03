@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.14 2005/11/02 22:59:49 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.15 2005/11/03 04:54:02 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -64,6 +64,7 @@ void register_randintr(int intr);
 void unregister_randintr(int intr);
 int next_registered_randintr(int intr);
 void sched_ithd(int intr);	/* procedure called from MD */
+void forward_fastint_remote(void *arg);		/* MD procedure (SMP) */
 
 extern char	eintrnames[];	/* end of intrnames[] */
 extern char	intrnames[];	/* string table containing device names */

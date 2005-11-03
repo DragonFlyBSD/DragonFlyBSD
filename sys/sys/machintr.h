@@ -31,7 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/machintr.h,v 1.2 2005/11/02 20:23:23 dillon Exp $
+ * $DragonFly: src/sys/sys/machintr.h,v 1.3 2005/11/03 04:54:02 dillon Exp $
+ */
+/*
+ * This module defines the ABI for the machine-independant cpu interrupt
+ * vector and masking layer.
  */
 
 #ifndef _SYS_QUEUE_H_
