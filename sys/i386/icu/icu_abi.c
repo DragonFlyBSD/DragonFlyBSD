@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.4 2005/11/02 22:59:44 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.5 2005/11/03 05:24:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,16 +78,6 @@ extern inthand_t
 	IDTVEC(icu_slowintr12), IDTVEC(icu_slowintr13),
 	IDTVEC(icu_slowintr14), IDTVEC(icu_slowintr15);
 
-extern unpendhand_t
-	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
-	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
-	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
-	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
-	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
-	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
-	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
-	IDTVEC(fastunpend14), IDTVEC(fastunpend15);
-
 static int icu_vectorctl(int, int, int);
 static int icu_setvar(int, const void *);
 static int icu_getvar(int, void *);
@@ -102,17 +92,6 @@ static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_fastintr10), &IDTVEC(icu_fastintr11),
 	&IDTVEC(icu_fastintr12), &IDTVEC(icu_fastintr13),
 	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
-};
-
-unpendhand_t *fastunpend[ICU_HWI_VECTORS] = {
-	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
-	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
-	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
-	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
-	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
-	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
-	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
-	IDTVEC(fastunpend14), IDTVEC(fastunpend15)
 };
 
 static inthand_t *icu_slowintr[ICU_HWI_VECTORS] = {

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.27 2005/11/02 20:23:15 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.28 2005/11/03 05:24:51 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -183,37 +183,6 @@ IDTVEC(vec_name) ;							\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
-
-/*
- * Restart fast interrupt held up by critical section or cpl.
- *
- *	- Push a dummy trape frame as required by doreti
- *	- The interrupt source is already masked
- *	- Clear the fpending bit
- *	- Run the handler
- *	- Unmask the interrupt
- *	- Pop the dummy frame and do a normal return
- *
- *	The BGL is held on call and left held on return.
- *
- *	YYY can cache gd base pointer instead of using hidden %fs
- *	prefixes.
- */
-
-#define FAST_UNPEND(irq_num, vec_name)					\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	pushl	%ebp ;							\
-	movl	%esp,%ebp ;						\
-	PUSH_DUMMY ;							\
-	pushl	$irq_num ;						\
-	call	ithread_fast_handler ;  /* returns 0 to unmask */	\
-	addl	$4, %esp ;						\
-	UNMASK_IRQ(irq_num) ;						\
-	POP_DUMMY ;							\
-	popl %ebp ;							\
-	ret ;								\
 
 /*
  * Slow interrupt call handlers run in the following sequence:
@@ -494,31 +463,6 @@ MCOUNT_LABEL(bintr)
 	SLOW_INTR(21,apic_slowintr21,)
 	SLOW_INTR(22,apic_slowintr22,)
 	SLOW_INTR(23,apic_slowintr23,)
-
-	FAST_UNPEND(0,fastunpend0)
-	FAST_UNPEND(1,fastunpend1)
-	FAST_UNPEND(2,fastunpend2)
-	FAST_UNPEND(3,fastunpend3)
-	FAST_UNPEND(4,fastunpend4)
-	FAST_UNPEND(5,fastunpend5)
-	FAST_UNPEND(6,fastunpend6)
-	FAST_UNPEND(7,fastunpend7)
-	FAST_UNPEND(8,fastunpend8)
-	FAST_UNPEND(9,fastunpend9)
-	FAST_UNPEND(10,fastunpend10)
-	FAST_UNPEND(11,fastunpend11)
-	FAST_UNPEND(12,fastunpend12)
-	FAST_UNPEND(13,fastunpend13)
-	FAST_UNPEND(14,fastunpend14)
-	FAST_UNPEND(15,fastunpend15)
-	FAST_UNPEND(16,fastunpend16)
-	FAST_UNPEND(17,fastunpend17)
-	FAST_UNPEND(18,fastunpend18)
-	FAST_UNPEND(19,fastunpend19)
-	FAST_UNPEND(20,fastunpend20)
-	FAST_UNPEND(21,fastunpend21)
-	FAST_UNPEND(22,fastunpend22)
-	FAST_UNPEND(23,fastunpend23)
 
 	WRONGINTR(0,apic_wrongintr0)
 	WRONGINTR(1,apic_wrongintr1)

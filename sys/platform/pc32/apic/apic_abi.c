@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.4 2005/11/02 22:59:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.5 2005/11/03 05:24:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,20 +88,6 @@ extern inthand_t
 	IDTVEC(apic_slowintr20), IDTVEC(apic_slowintr21),
 	IDTVEC(apic_slowintr22), IDTVEC(apic_slowintr23);
 
-extern unpendhand_t
-	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
-	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
-	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
-	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
-	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
-	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
-	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
-	IDTVEC(fastunpend14), IDTVEC(fastunpend15),
-	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
-	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
-	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
-	IDTVEC(fastunpend22), IDTVEC(fastunpend23);
-
 extern inthand_t
 	IDTVEC(apic_wrongintr0), IDTVEC(apic_wrongintr1),
 	IDTVEC(apic_wrongintr2), IDTVEC(apic_wrongintr3),
@@ -149,21 +135,6 @@ static inthand_t *apic_slowintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_slowintr18), &IDTVEC(apic_slowintr19),
 	&IDTVEC(apic_slowintr20), &IDTVEC(apic_slowintr21),
 	&IDTVEC(apic_slowintr22), &IDTVEC(apic_slowintr23)
-};
-
-unpendhand_t *fastunpend[APIC_HWI_VECTORS] = {
-	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
-	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
-	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
-	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
-	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
-	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
-	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
-	IDTVEC(fastunpend14), IDTVEC(fastunpend15),
-	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
-	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
-	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
-	IDTVEC(fastunpend22), IDTVEC(fastunpend23)
 };
 
 static inthand_t *apic_wrongintr[APIC_HWI_VECTORS] = {

@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.45 2005/11/02 22:59:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.46 2005/11/03 05:24:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,7 @@
 #include <machine/bootinfo.h>
 #include <machine/tss.h>
 #include <sys/vmmeter.h>
+#include <sys/machintr.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
@@ -94,6 +95,7 @@ ASSYM(TDF_RUNNING, TDF_RUNNING);
 #ifdef SMP
 ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
 #endif
+ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 
 ASSYM(RW_OWNER, offsetof(struct lwkt_rwlock, rw_owner));
 

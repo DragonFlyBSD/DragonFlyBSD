@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.21 2005/11/02 20:23:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.22 2005/11/03 05:24:53 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -153,34 +153,6 @@ IDTVEC(vec_name) ; 							\
 	jmp	doreti ;						\
 
 /*
- * Restart fast interrupt held up by critical section.
- *
- *	- Push a dummy trap frame as required by doreti.
- *	- The interrupt source is already masked.
- *	- Clear the fpending bit
- *	- Run the handler
- *	- Unmask the interrupt
- *	- Pop the dummy frame and do a normal return
- *
- *	YYY can cache gd base pointer instead of using hidden %fs
- *	prefixes.
- */
-#define FAST_UNPEND(irq_num, vec_name, icu)				\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	pushl	%ebp ;							\
-	movl	%esp,%ebp ;						\
-	PUSH_DUMMY ;							\
-	pushl	$irq_num ;						\
-	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
-	addl	$4, %esp ;						\
-	UNMASK_IRQ(icu, irq_num) ;					\
-	POP_DUMMY ;							\
-	popl %ebp ;							\
-	ret ;								\
-
-/*
  * Slow interrupt call handlers run in the following sequence:
  *
  *	- Push the trap frame required by doreti.
@@ -285,22 +257,6 @@ MCOUNT_LABEL(bintr)
 	INTR(14,icu_slowintr14, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
 	INTR(15,icu_slowintr15, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
 
-	FAST_UNPEND(0,fastunpend0, IO_ICU1)
-	FAST_UNPEND(1,fastunpend1, IO_ICU1)
-	FAST_UNPEND(2,fastunpend2, IO_ICU1)
-	FAST_UNPEND(3,fastunpend3, IO_ICU1)
-	FAST_UNPEND(4,fastunpend4, IO_ICU1)
-	FAST_UNPEND(5,fastunpend5, IO_ICU1)
-	FAST_UNPEND(6,fastunpend6, IO_ICU1)
-	FAST_UNPEND(7,fastunpend7, IO_ICU1)
-	FAST_UNPEND(8,fastunpend8, IO_ICU2)
-	FAST_UNPEND(9,fastunpend9, IO_ICU2)
-	FAST_UNPEND(10,fastunpend10, IO_ICU2)
-	FAST_UNPEND(11,fastunpend11, IO_ICU2)
-	FAST_UNPEND(12,fastunpend12, IO_ICU2)
-	FAST_UNPEND(13,fastunpend13, IO_ICU2)
-	FAST_UNPEND(14,fastunpend14, IO_ICU2)
-	FAST_UNPEND(15,fastunpend15, IO_ICU2)
 MCOUNT_LABEL(eintr)
 
 	.data

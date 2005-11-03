@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.22 2005/11/02 22:59:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.23 2005/11/03 05:24:54 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -61,6 +61,9 @@
  */
 	.data
 	ALIGN_DATA
+
+	.globl		fastunpend_count
+fastunpend_count:	.long	0
 
 	.text
 	SUPERALIGN_TEXT
@@ -213,7 +216,7 @@ doreti_fast:
 	/* MP lock successful */
 #endif
 	incl	PCPU(intr_nesting_level)
-	call    *fastunpend(,%ecx,4)
+	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
 #ifdef SMP
 	call	rel_mplock
@@ -381,7 +384,7 @@ splz_fast:
 	jz	1f
 #endif
 	incl	PCPU(intr_nesting_level)
-	call    *fastunpend(,%ecx,4)
+	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
 #ifdef SMP
 	call	rel_mplock
@@ -450,4 +453,42 @@ splz_ipiq:
 	popl	%eax
 	jmp	splz_next
 #endif
+
+	/*
+	 * dofastunpend(%ecx:intr)
+	 *
+	 * A FAST interrupt previously made pending can now be run,
+	 * execute it by pushing a dummy interrupt frame and 
+	 * calling ithread_fast_handler to execute or schedule it.
+	 * 
+	 * ithread_fast_handler() returns 0 if it wants us to unmask
+	 * further interrupts.
+	 */
+#define PUSH_DUMMY							\
+	pushfl ;		/* phys int frame / flags */		\
+	pushl	%cs ;		/* phys int frame / cs */		\
+	pushl	12(%esp) ;	/* original caller eip */		\
+	pushl	$0 ;		/* dummy error code */			\
+	pushl	$0 ;		/* dummy trap type */			\
+	subl	$12*4,%esp ;	/* pushal + 3 seg regs (dummy) + CPL */	\
+
+#define POP_DUMMY							\
+	addl	$17*4,%esp ;						\
+
+dofastunpend:
+	pushl	%ebp			/* frame for backtrace */
+	movl	%esp,%ebp
+	PUSH_DUMMY
+	pushl	%ecx			/* last part of intrframe = intr */
+	incl	fastunpend_count
+	call	ithread_fast_handler	/* returns 0 to unmask */
+	cmpl	$0,%eax
+	jnz	1f
+	movl	MachIntrABI + MACHINTR_INTREN, %eax
+	call	*%eax			/* MachIntrABI.intren(intr) */
+1:
+	addl	$4,%esp
+	POP_DUMMY
+	popl	%ebp
+	ret
 
