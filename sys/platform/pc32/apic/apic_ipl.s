@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.14 2005/11/02 22:59:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.15 2005/11/03 23:45:09 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -65,7 +65,6 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
-#include <machine/smptests.h>           /** various SMP options */
 
 #include "apicreg.h"
 #include "apic_ipl.h"

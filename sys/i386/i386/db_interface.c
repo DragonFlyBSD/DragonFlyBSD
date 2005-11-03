@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.10 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.11 2005/11/03 23:45:10 dillon Exp $
  */
 
 /*
@@ -37,7 +37,6 @@
 
 #include <machine/cpu.h>
 #include <machine/smp.h>
-#include <machine/smptests.h>	/** CPUSTOP_ON_DDBBREAK */
 #include <machine/globaldata.h>
 
 #include <vm/vm.h>
@@ -61,8 +60,6 @@ static int	db_global_jmpbuf_valid;
 #ifdef __GNUC__
 #define	rss() ({u_short ss; __asm __volatile("mov %%ss,%0" : "=r" (ss)); ss;})
 #endif
-
-#define VERBOSE_CPUSTOP_ON_DDBBREAK
 
 /*
  *  kdb_trap - field a TRACE or BPT trap
@@ -136,21 +133,13 @@ kdb_trap(type, code, regs)
 	}
 
 #ifdef SMP
-#ifdef CPUSTOP_ON_DDBBREAK
-
-#if defined(VERBOSE_CPUSTOP_ON_DDBBREAK)
 	db_printf("\nCPU%d stopping CPUs: 0x%08x\n", 
 	    mycpu->gd_cpuid, mycpu->gd_other_cpus);
-#endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
 
 	/* We stop all CPUs except ourselves (obviously) */
 	stop_cpus(mycpu->gd_other_cpus);
 
-#if defined(VERBOSE_CPUSTOP_ON_DDBBREAK)
 	db_printf(" stopped\n");
-#endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
-
-#endif /* CPUSTOP_ON_DDBBREAK */
 #endif /* SMP */
 
 	(void) setjmp(db_global_jmpbuf);
@@ -166,12 +155,8 @@ kdb_trap(type, code, regs)
 	db_global_jmpbuf_valid = FALSE;
 
 #ifdef SMP
-#ifdef CPUSTOP_ON_DDBBREAK
-
-#if defined(VERBOSE_CPUSTOP_ON_DDBBREAK)
 	db_printf("\nCPU%d restarting CPUs: 0x%08x\n",
 	    mycpu->gd_cpuid, stopped_cpus);
-#endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
 
 	/* Restart all the CPUs we previously stopped */
 	if (stopped_cpus != mycpu->gd_other_cpus) {
@@ -181,11 +166,7 @@ kdb_trap(type, code, regs)
 	}
 	restart_cpus(stopped_cpus);
 
-#if defined(VERBOSE_CPUSTOP_ON_DDBBREAK)
 	db_printf(" restarted\n");
-#endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
-
-#endif /* CPUSTOP_ON_DDBBREAK */
 #endif /* SMP */
 
 	regs->tf_eip    = ddb_regs.tf_eip;

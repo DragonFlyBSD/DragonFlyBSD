@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.25 2005/11/02 09:14:58 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.26 2005/11/03 23:45:10 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -42,7 +42,6 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
-#include <machine/smptests.h>		/** various SMP options */
 
 #include "assym.s"
 

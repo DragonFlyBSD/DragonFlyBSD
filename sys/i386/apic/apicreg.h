@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.5 2005/11/03 20:07:23 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.6 2005/11/03 23:45:09 dillon Exp $
  */
 
 #ifndef _MACHINE_APICREG_H_
@@ -422,20 +422,13 @@ typedef struct IOAPIC ioapic_t;
  * various code 'logical' values
  */
 
-#ifdef GRAB_LOPRIO
+/*
+ * TPR loads to prioritize which cpu grabs an interrupt
+ *
+ * (note: some fields of the TPR are reserved)
+ */
 #define LOPRIO_LEVEL		0x00000010	/* TPR of CPU accepting INTs */
 #define ALLHWI_LEVEL		0x00000000	/* TPR of CPU grabbing INTs */
-#endif /** GRAB_LOPRIO */
-
-/*
- * XXX This code assummes that the reserved field of the
- *      local APIC TPR can be written with all 0s.
- *     This saves quite a few memory accesses.
- *     If the silicon ever changes then things will break!
- *     It affects mplock.s, swtch.s, and possibly other files.
- */
-#define CHEAP_TPR
-
 
 /******************************************************************************
  * LOCAL APIC defines
@@ -759,7 +752,9 @@ typedef struct IOAPIC ioapic_t;
 /* window register offset */
 #define IOAPIC_WINDOW		0x10
 
-/* indexes into IO APIC */
+/* 
+ * indexes into IO APIC (index into array of 32 bit entities)
+ */
 #define IOAPIC_ID		0x00
 #define IOAPIC_VER		0x01
 #define IOAPIC_ARB		0x02
@@ -797,30 +792,126 @@ typedef struct IOAPIC ioapic_t;
 /*
  * fields in the IO APIC's redirection table entries
  */
-#define IOART_DEST	APIC_ID_MASK	/* broadcast addr: all APICs */
 
+/*
+ * High 32 bit word.  The high 8 bits contain the destination field.
+ *
+ * If this entry is set up for Physical Mode, bits 59:56 (the low 4 bits
+ * of the 8 bit destination field) contain an APIC ID.
+ *
+ * If this entry is set up for Logical Mode, the destination field potentially
+ * defines a set of processors.  Bits 63:56 (all 8 bits) specify the logical
+ * destination address.
+ *
+ * Current we use IOART_HI_DEST_BROADCAST to broadcast to all LAPICs
+ */
+#define IOART_HI_DEST_MASK	APIC_ID_MASK
+#define IOART_HI_DEST_RESV	~APIC_ID_MASK
+#define IOART_HI_DEST_BROADCAST	IOART_HI_DEST_MASK	
+
+/*
+ * Low 32 bit word
+ */
 #define IOART_RESV	0x00fe0000	/* reserved */
 
+/*
+ * Interrupt mask bit.  If 1 the interrupt is masked.  An edge sensitive
+ * interrupt which is masked will be lost.
+ */
 #define IOART_INTMASK	0x00010000	/* R/W: INTerrupt mask */
 #define IOART_INTMCLR	0x00000000	/*       clear, allow INTs */
 #define IOART_INTMSET	0x00010000	/*       set, inhibit INTs */
 
+/*
+ * Select trigger mode.
+ */
 #define IOART_TRGRMOD	0x00008000	/* R/W: trigger mode */
 #define IOART_TRGREDG	0x00000000	/*       edge */
 #define IOART_TRGRLVL	0x00008000	/*       level */
 
+/*
+ * Remote IRR.  Only applies to level triggered interrupts, this bit 
+ * is set to 1 when the IOAPIC has delivered a level triggered interrupt
+ * to a local APIC.  It is cleared when the LAPIC EOI's the interrupt.
+ * This field is read-only.
+ */
 #define IOART_REM_IRR	0x00004000	/* RO: remote IRR */
 
+/*
+ * Select interrupt pin polarity
+ */
 #define IOART_INTPOL	0x00002000	/* R/W: INT input pin polarity */
 #define IOART_INTAHI	0x00000000	/*      active high */
 #define IOART_INTALO	0x00002000	/*      active low */
 
+/*
+ * Delivery Status (read only).  0 = no interrupt pending, 1 = interrupt
+ * pending for tranmission to an LAPIC.  Note that this bit does not 
+ * indicate whether the interrupt has been processed or is undergoing 
+ * processing by a cpu.
+ */
 #define IOART_DELIVS	0x00001000	/* RO: delivery status */
 
+/*
+ * Destination mode.
+ *
+ * In physical mode the destination APIC is identified by its ID.
+ * Bits 56-59 specify the 4 bit APIC ID.  
+ *
+ * In logical mode destinations are identified by matching on the logical
+ * destination under the control of the destination format register and 
+ * logical destination register in each local APIC.
+ *
+ */
 #define IOART_DESTMOD	0x00000800	/* R/W: destination mode */
 #define IOART_DESTPHY	0x00000000	/*      physical */
 #define IOART_DESTLOG	0x00000800	/*      logical */
 
+/*
+ * Delivery mode.
+ *
+ *	000	Fixed		Deliver the signal on the INTR signal for
+ *				all processor core's LAPICs listed in the 
+ *				destination.  The trigger mode may be
+ *				edge or level.
+ *
+ *	001	Lowest Pri	Deliver to the processor core whos LAPIC
+ *				is operating at the lowest priority (TPR).
+ *				The trigger mode may be edge or level.
+ *
+ *	010	SMI		System management interrupt.  the vector
+ *				information is ignored but must be programmed
+ *				to all zero's for future compatibility.
+ *				Must be edge triggered.
+ *
+ *	011	Reserved
+ *
+ *	100	NMI		Deliver on the NMI signal for all cpu cores
+ *				listed in the destination.  Vector information
+ *				is ignored.  NMIs are treated as edge triggered
+ *				interrupts even if programmed as level 
+ *				triggered.  For proper operation the pin must
+ *				be programmed as an edge trigger.
+ *
+ *	101	INIT		Deliver to all processor cores listed in
+ *				the destination by asserting their INIT signal.
+ *				All addressed LAPICs will assume their INIT
+ *				state.  Always treated as edge-triggered even
+ *				if programmed as level.  For proper operation
+ *				the pin must be programed as an edge trigger.
+ *
+ *	110	Reserved
+ *
+ *	111	ExINT		Deliver as an INTR signal to all processor
+ *				cores listed in the destination as an 
+ *				interrupt originating in an externally
+ *				connected interrupt controller.
+ *				The INTA cycle corresponding to this ExINT
+ *				will be routed to the external controller
+ *				that is expected to supply the vector. 
+ *				Must be edge triggered.
+ *			
+ */
 #define IOART_DELMOD	0x00000700	/* R/W: delivery mode */
 #define IOART_DELFIXED	0x00000000	/*       fixed */
 #define IOART_DELLOPRI	0x00000100	/*       lowest priority */
@@ -831,6 +922,9 @@ typedef struct IOAPIC ioapic_t;
 #define IOART_DELRSV2	0x00000600	/*       reserved */
 #define IOART_DELEXINT	0x00000700	/*       External INTerrupt */
 
+/*
+ * The interrupt vector.  Valid values range from 0x10 to 0xFE.
+ */
 #define IOART_INTVEC	0x000000ff	/* R/W: INTerrupt vector field */
 
 #endif /* _MACHINE_APIC_H_ */

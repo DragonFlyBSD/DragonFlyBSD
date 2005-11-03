@@ -23,12 +23,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.11 2005/11/03 20:07:23 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.12 2005/11/03 23:45:09 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <machine/smptests.h>	/** TEST_TEST1, GRAB_LOPRIO */
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <arch/apic/mpapic.h>
@@ -102,12 +101,6 @@ apic_initialize(void)
 		panic("bad XSPURIOUSINT_OFFSET: 0x%08x", XSPURIOUSINT_OFFSET);
 	temp &= ~APIC_SVR_VECTOR;
 	temp |= XSPURIOUSINT_OFFSET;
-
-#if defined(TEST_TEST1)
-	if (cpuid == GUARD_CPU) {
-		temp &= ~APIC_SVR_SWEN;	/* software DISABLE APIC */
-	}
-#endif  /** TEST_TEST1 */
 
 	lapic.svr = temp;
 
@@ -200,7 +193,7 @@ io_apic_setup_intpin(int apic, int pin)
 	u_int32_t	vector;		/* the window register is 32 bits */
 	int		level;
 
-	target = IOART_DEST;
+	target = IOART_HI_DEST_BROADCAST;
 
 	select = pin * 2 + IOAPIC_REDTBL0;	/* register */
 	/* 
@@ -319,7 +312,7 @@ ext_int_setup(int apic, int intr)
 	if (apic_int_type(apic, intr) != 3)
 		return -1;
 
-	target = IOART_DEST;
+	target = IOART_HI_DEST_BROADCAST;
 	select = IOAPIC_REDTBL0 + (2 * intr);
 	vector = NRSVIDT + intr;
 	flags = DEFAULT_EXTINT_FLAGS;

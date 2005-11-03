@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.21 2005/11/03 04:53:59 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.22 2005/11/03 23:45:15 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -108,11 +108,6 @@
 #define TPR_BLOCK_ALL		0xff		/* all INTs */
 
 
-#ifdef TEST_TEST1
-/* put a 'fake' HWI in top of APIC prio 0x3x, 32 + 31 = 63 = 0x3f */
-#define XTEST1_OFFSET		(IDT_OFFSET + 31)
-#endif /** TEST_TEST1 */
-
 /* TLB shootdowns */
 #define XINVLTLB_OFFSET		(IDT_OFFSET + 112)
 
@@ -153,11 +148,6 @@ inthand_t
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
 	Xspuriousint,	/* handle APIC "spurious INTs" */
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
-
-#ifdef TEST_TEST1
-inthand_t
-	Xtest1;		/* 'fake' HWI at top of APIC prio 0x3x, 32+31 = 0x3f */
-#endif /** TEST_TEST1 */
 #endif /* SMP */
 
 void	call_fast_unpend(int irq);

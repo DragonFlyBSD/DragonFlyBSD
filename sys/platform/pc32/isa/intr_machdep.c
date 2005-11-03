@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.39 2005/11/02 22:59:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.40 2005/11/03 23:45:14 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -65,7 +65,6 @@
 #include <sys/thread2.h>
 #include <sys/machintr.h>
 
-#include <machine/smptests.h>
 #include <machine/smp.h>
 #include <bus/isa/i386/isa.h>
 #include <i386/icu/icu.h>
@@ -175,7 +174,7 @@ isa_defaultirq()
 
 	/* icu vectors */
 	for (i = 0; i < MAX_HARDINTS; i++)
-		machintr_vector_teardown(i);
+		machintr_vector_setdefault(i);
 	init_i8259();
 }
 

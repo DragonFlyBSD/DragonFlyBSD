@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/machintr.h,v 1.3 2005/11/03 04:54:02 dillon Exp $
+ * $DragonFly: src/sys/sys/machintr.h,v 1.4 2005/11/03 23:45:16 dillon Exp $
  */
 /*
  * This module defines the ABI for the machine-independant cpu interrupt
@@ -50,6 +50,7 @@ enum machintr_type { MACHINTR_ICU, MACHINTR_APIC };
 
 #define MACHINTR_VECTOR_SETUP		1
 #define MACHINTR_VECTOR_TEARDOWN	2
+#define MACHINTR_VECTOR_SETDEFAULT	3
 
 /*
  * Machine interrupt ABIs - registered at boot-time
@@ -70,6 +71,8 @@ struct machintr_abi {
 	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETUP, intr, flags)
 #define machintr_vector_teardown(intr)		\
 	    MachIntrABI.vectorctl(MACHINTR_VECTOR_TEARDOWN, intr, 0)
+#define machintr_vector_setdefault(intr)	\
+	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETDEFAULT, intr, 0)
 
 #ifdef _KERNEL
 

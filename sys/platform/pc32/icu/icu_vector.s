@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.22 2005/11/03 05:24:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.23 2005/11/03 23:45:12 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -12,7 +12,6 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
-#include <machine/smptests.h>           /** various SMP options */
 
 #include <i386/icu/icu.h>
 #include <bus/isa/i386/isa.h>

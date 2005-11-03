@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.6 2005/11/03 20:07:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_abi.c,v 1.7 2005/11/03 23:45:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,6 @@
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
-#include <machine/smptests.h>
 #include <machine/smp.h>
 #include <machine/segments.h>
 #include <machine/md_var.h>
@@ -254,6 +253,10 @@ apic_vectorctl(int op, int intr, int flags)
 
     switch(op) {
     case MACHINTR_VECTOR_SETUP:
+	/*
+	 * Setup an interrupt vector.  First install the vector in the
+	 * cpu's Interrupt Descriptor Table (IDT).
+	 */
 	if (flags & INTR_FAST) {
 	    vector = TPR_SLOW_INTS + intr;
 	    setidt(vector, apic_wrongintr[intr],
@@ -263,22 +266,19 @@ apic_vectorctl(int op, int intr, int flags)
 		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	} else {
 	    vector = TPR_SLOW_INTS + intr;
-#if defined(APIC_INTR_REORDER) && defined(APIC_INTR_HIGHPRI_CLOCK)
-	    /* XXX: Hack (kludge?) for more accurate clock. */
+
+	    /*
+	     * This is probably not needed any more. XXX
+	     */
 	    if (intr == apic_8254_intr || intr == 8) {
 		vector = TPR_FAST_INTS + intr;
 	    }
 	    setidt(vector, apic_slowintr[intr],
 		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#endif
 	}
-#ifdef APIC_INTR_REORDER
-        set_lapic_isrloc(intr, vector);
-#endif
+
 	/*
-	 * Reprogram the vector in the IO APIC.
-	 *
-	 * XXX EOI/mask a pending (stray) interrupt on the old vector?
+	 * Now reprogram the vector in the IO APIC.
 	 */
 	if (int_to_apicintpin[intr].ioapic >= 0) {
 	    select = int_to_apicintpin[intr].redirindex;
@@ -290,11 +290,36 @@ apic_vectorctl(int op, int intr, int flags)
 	machintr_intren(intr);
 	break;
     case MACHINTR_VECTOR_TEARDOWN:
+	/*
+	 * Teardown an interrupt vector.  The vector should already be
+	 * installed in the cpu's IDT, but make sure.
+	 */
 	machintr_intrdis(intr);
-#ifdef APIC_INTR_REORDER
-	set_lapic_isrloc(intr, IDT_OFFSET + intr);
-#endif
-	setidt(IDT_OFFSET + intr, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+	vector = TPR_SLOW_INTS + intr;
+	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+		GSEL(GCODE_SEL, SEL_KPL));
+
+	/*
+	 * And then reprogram the IO APIC to point to the SLOW vector (it may
+	 * have previously been pointed to the FAST version of the vector).
+	 * This will allow us to keep track of spurious interrupts.
+	 */
+	if (int_to_apicintpin[intr].ioapic >= 0) {
+	    select = int_to_apicintpin[intr].redirindex;
+	    value = io_apic_read(int_to_apicintpin[intr].ioapic,
+				 select) & ~IOART_INTVEC;
+	    io_apic_write(int_to_apicintpin[intr].ioapic,
+			  select, value | vector);
+	}
+	break;
+    case MACHINTR_VECTOR_SETDEFAULT:
+	/*
+	 * With a pure APIC we don't need any default setup since the IO APIC
+	 * is masked.  However, program a vector that the 8259 will hit just
+	 * in case *it* goes off.
+	 */
+	vector = IDT_OFFSET + intr;
+	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 	break;
     default:

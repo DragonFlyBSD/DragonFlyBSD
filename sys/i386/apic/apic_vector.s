@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.28 2005/11/03 05:24:51 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.29 2005/11/03 23:45:09 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -12,7 +12,6 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
-#include <machine/smptests.h>           /** various SMP options */
 
 #include <i386/icu/icu.h>
 #include <bus/isa/i386/isa.h>
@@ -100,26 +99,6 @@
 	MASK_IRQ(irq_num) ;						\
 9: ;									\
 
-
-#ifdef APIC_INTR_REORDER
-#define EOI_IRQ(irq_num)						\
-	movl	apic_isrbit_location + 8 * (irq_num), %eax ;		\
-	movl	(%eax), %eax ;						\
-	testl	apic_isrbit_location + 4 + 8 * (irq_num), %eax ;	\
-	jz	9f ;				/* not active */	\
-	movl	$0, lapic_eoi ;						\
-9:									\
-
-#else
-
-#define EOI_IRQ(irq_num)						\
-	testl	$IRQ_LBIT(irq_num), lapic_isr1;				\
-	jz	9f	;			/* not active */	\
-	movl	$0, lapic_eoi;						\
-9:									\
-
-#endif
-	
 /*
  * Test to see if the source is currntly masked, clear if so.
  */
@@ -161,7 +140,7 @@ IDTVEC(vec_name) ;							\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(13*4(%esp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
-	EOI_IRQ(irq_num) ;						\
+	movl	$0, lapic_eoi ;						\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;							\
@@ -213,7 +192,7 @@ IDTVEC(vec_name) ;							\
 	maybe_extra_ipending ;						\
 ;									\
 	MASK_LEVEL_IRQ(irq_num) ;					\
-	EOI_IRQ(irq_num) ;						\
+	movl	$0, lapic_eoi ;						\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;		/* cpl do restore */			\
@@ -281,16 +260,6 @@ Xspuriousint:
 	.globl	Xinvltlb
 Xinvltlb:
 	pushl	%eax
-
-#ifdef COUNT_XINVLTLB_HITS
-	pushl	%fs
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
-	movl	PCPU(cpuid), %eax
-	popl	%fs
-	ss
-	incl	_xhits(,%eax,4)
-#endif /* COUNT_XINVLTLB_HITS */
 
 	movl	%cr3, %eax		/* invalidate the TLB */
 	movl	%eax, %cr3
@@ -491,12 +460,6 @@ MCOUNT_LABEL(bintr)
 MCOUNT_LABEL(eintr)
 
 	.data
-
-#ifdef COUNT_XINVLTLB_HITS
-	.globl	xhits
-xhits:
-	.space	(NCPU * 4), 0
-#endif /* COUNT_XINVLTLB_HITS */
 
 /* variables used by stop_cpus()/restart_cpus()/Xcpustop */
 	.globl stopped_cpus, started_cpus

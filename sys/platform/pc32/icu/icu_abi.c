@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.5 2005/11/03 05:24:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.6 2005/11/03 23:45:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -157,6 +157,7 @@ icu_vectorctl(int op, int intr, int flags)
 	machintr_intren(intr);
 	break;
     case MACHINTR_VECTOR_TEARDOWN:
+    case MACHINTR_VECTOR_SETDEFAULT:
 	setidt(IDT_OFFSET + intr, icu_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 	machintr_intrdis(intr);

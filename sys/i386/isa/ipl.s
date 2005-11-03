@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.23 2005/11/03 05:24:54 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.24 2005/11/03 23:45:15 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -48,7 +48,6 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
-#include <machine/smptests.h>           /** various SMP options */
  
 #include "assym.s"
 

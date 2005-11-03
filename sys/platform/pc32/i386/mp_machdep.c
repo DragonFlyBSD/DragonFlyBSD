@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.44 2005/11/03 20:10:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.45 2005/11/03 23:45:11 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -49,7 +49,6 @@
 #include <sys/gmon.h>
 #endif
 
-#include <machine/smptests.h>
 #include <machine/smp.h>
 #include <arch/apic/apicreg.h>
 #include <machine/atomic.h>
@@ -57,7 +56,6 @@
 #include <arch/apic/mpapic.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
-#include <machine/smptests.h>	/** TEST_DEFAULT_CONFIG, TEST_TEST1 */
 #include <machine/tss.h>
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
@@ -69,12 +67,6 @@
 #endif	/* APIC_IO */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
-
-#if defined(TEST_DEFAULT_CONFIG)
-#define MPFPS_MPFB1	TEST_DEFAULT_CONFIG
-#else
-#define MPFPS_MPFB1	mpfps->mpfb1
-#endif  /* TEST_DEFAULT_CONFIG */
 
 #define WARMBOOT_TARGET		0
 #define WARMBOOT_OFF		(KERNBASE + 0x0467)
@@ -243,14 +235,6 @@ u_int32_t cpu_apic_versions[MAXCPU];
 u_int32_t *io_apic_versions;
 
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
-
-#ifdef APIC_INTR_REORDER
-struct {
-	volatile int *location;
-	int bit;
-} apic_isrbit_location[32];
-#endif
-
 
 /*
  * APIC ID logical/physical mapping structures.
@@ -565,12 +549,6 @@ mp_enable(u_int boot_addr)
 	setidt(XCPUSTOP_OFFSET, Xcpustop,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
-#if defined(TEST_TEST1)
-	/* install a "fake hardware INTerrupt" vector */
-	setidt(XTEST1_OFFSET, Xtest1,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#endif  /** TEST_TEST1 */
-
 #endif	/* APIC_IO */
 
 	/* start each Application Processor */
@@ -720,14 +698,14 @@ mptable_pass1(void)
 	id_mask = 0;
 
 	/* check for use of 'default' configuration */
-	if (MPFPS_MPFB1 != 0) {
+	if (mpfps->mpfb1 != 0) {
 		/* use default addresses */
 		cpu_apic_address = DEFAULT_APIC_BASE;
 		io_apic_address[0] = DEFAULT_IO_APIC_BASE;
 
 		/* fill in with defaults */
 		mp_naps = 2;		/* includes BSP */
-		mp_nbusses = default_data[MPFPS_MPFB1 - 1][0];
+		mp_nbusses = default_data[mpfps->mpfb1 - 1][0];
 #if defined(APIC_IO)
 		mp_napics = 1;
 		nintrs = 16;
@@ -872,8 +850,8 @@ mptable_pass2(void)
 	machintr_setvar_simple(MACHINTR_VAR_PICMODE, picmode);
 
 	/* check for use of 'default' configuration */
-	if (MPFPS_MPFB1 != 0)
-		return MPFPS_MPFB1;	/* return default configuration type */
+	if (mpfps->mpfb1 != 0)
+		return mpfps->mpfb1;	/* return default configuration type */
 
 	if ((cth = mpfps->pap) == 0)
 		panic("MP Configuration Table Header MISSING!");
@@ -2484,22 +2462,6 @@ ap_finish(void)
 }
 
 SYSINIT(finishsmp, SI_SUB_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
-
-#if defined(APIC_IO) && defined(APIC_INTR_REORDER)
-/*
- *     Maintain mapping from softintr vector to isr bit in local apic.
- */
-void
-set_lapic_isrloc(int intr, int vector)
-{
-	if (intr < 0 || intr > 32)
-	       panic("set_apic_isrloc: bad intr argument: %d",intr);
-	if (vector < IDT_OFFSET || vector > 255)
-	       panic("set_apic_isrloc: bad vector argument: %d",vector);
-	apic_isrbit_location[intr].location = &lapic.isr0 + ((vector>>5)<<2);
-	apic_isrbit_location[intr].bit = (1<<(vector & 31));
-}
-#endif
 
 void
 cpu_send_ipiq(int dcpu)
