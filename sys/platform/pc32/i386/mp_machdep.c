@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.43 2005/11/02 22:59:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.44 2005/11/03 20:10:52 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -267,8 +267,17 @@ static int bootAP;
 /* Hotwire a 0->4MB V==P mapping */
 extern pt_entry_t *KPTphys;
 
-/* SMP page table page */
+/*
+ * SMP page table page.  Setup by locore to point to a page table
+ * page from which we allocate per-cpu privatespace areas io_apics,
+ * and so forth.
+ */
+
+#define IO_MAPPING_START_INDEX	\
+		(SMP_MAXCPU * sizeof(struct privatespace) / PAGE_SIZE)
+
 extern pt_entry_t *SMPpt;
+static int SMPpt_alloc_index = IO_MAPPING_START_INDEX;
 
 struct pcb stoppcbs[MAXCPU];
 
@@ -327,6 +336,12 @@ mp_probe(void)
 	int     x;
 	u_long  segment;
 	u_int32_t target;
+ 
+	/*
+	 * Make sure our SMPpt[] page table is big enough to hold all the
+	 * mappings we need.
+	 */
+	KKASSERT(IO_MAPPING_START_INDEX < NPTEPG - 2);
 
 	POSTCODE(MP_PROBE_POST);
 
@@ -354,7 +369,10 @@ mp_probe(void)
 	return 0;
 
 found:
-	/* calculate needed resources */
+	/*
+	 * Calculate needed resources.  We can safely map physical
+	 * memory into SMPpt after mptable_pass1() completes.
+	 */
 	mpfps = (mpfps_t)x;
 	mptable_pass1();
 
@@ -805,8 +823,7 @@ mptable_pass2(void)
 	int     type;
 	int     apic, bus, cpu, intr;
 	int	picmode;
-	int	i, j;
-	int	pgeflag;
+	int	i;
 
 	POSTCODE(MPTABLE_PASS2_POST);
 
@@ -814,8 +831,6 @@ mptable_pass2(void)
 	bzero(&proc, sizeof(proc));
 	proc.type = 0;
 	proc.cpu_flags = PROCENTRY_FLAG_EN;
-
-	pgeflag = 0;		/* XXX - Not used under SMP yet.  */
 
 	MALLOC(io_apic_versions, u_int32_t *, sizeof(u_int32_t) * mp_napics,
 	    M_DEVBUF, M_WAITOK);
@@ -829,25 +844,7 @@ mptable_pass2(void)
 	bzero(ioapic, sizeof(ioapic_t *) * mp_napics);
 
 	for (i = 0; i < mp_napics; i++) {
-		for (j = 0; j < mp_napics; j++) {
-			/* same page frame as a previous IO apic? */
-			if (((vm_offset_t)SMPpt[NPTEPG-2-j] & PG_FRAME) ==
-			    (io_apic_address[i] & PG_FRAME)) {
-				ioapic[i] = (ioapic_t *)((u_int)CPU_prvspace
-					+ (NPTEPG-2-j) * PAGE_SIZE
-					+ (io_apic_address[i] & PAGE_MASK));
-				break;
-			}
-			/* use this slot if available */
-			if (((vm_offset_t)SMPpt[NPTEPG-2-j] & PG_FRAME) == 0) {
-				SMPpt[NPTEPG-2-j] = (pt_entry_t)(PG_V | PG_RW |
-				    pgeflag | (io_apic_address[i] & PG_FRAME));
-				ioapic[i] = (ioapic_t *)((u_int)CPU_prvspace
-					+ (NPTEPG-2-j) * PAGE_SIZE
-					+ (io_apic_address[i] & PAGE_MASK));
-				break;
-			}
-		}
+		ioapic[i] = permanent_io_mapping(io_apic_address[i]);
 	}
 
 	/* clear various tables */
@@ -1956,6 +1953,46 @@ default_mp_table(int type)
 	else
 		io_apic_ints[0].int_type = 3;	/* vectored 8259 */
 #endif	/* APIC_IO */
+}
+
+/*
+ * Map a physical memory address representing I/O into KVA.  The I/O
+ * block is assumed not to cross a page boundary.
+ */
+void *
+permanent_io_mapping(vm_paddr_t pa)
+{
+	vm_offset_t vaddr;
+	int pgeflag;
+	int i;
+
+	KKASSERT(pa < 0x100000000LL);
+
+	pgeflag = 0;	/* not used for SMP yet */
+
+	/*
+	 * If the requested physical address has already been incidently
+	 * mapped, just use the existing mapping.  Otherwise create a new
+	 * mapping.
+	 */
+	for (i = IO_MAPPING_START_INDEX; i < SMPpt_alloc_index; ++i) {
+		if (((vm_offset_t)SMPpt[i] & PG_FRAME) ==
+		    ((vm_offset_t)pa & PG_FRAME)) {
+			break;
+		}
+	}
+	if (i == SMPpt_alloc_index) {
+		if (i == NPTEPG - 2) {
+			panic("permanent_io_mapping: We ran out of space"
+			      " in SMPpt[]!");
+		}
+		SMPpt[i] = (pt_entry_t)(PG_V | PG_RW | pgeflag |
+			   ((vm_offset_t)pa & PG_FRAME));
+		++SMPpt_alloc_index;
+	}
+	vaddr = (vm_offset_t)CPU_prvspace + (i * PAGE_SIZE) +
+		((vm_offset_t)pa & PAGE_MASK);
+	return ((void *)vaddr);
 }
 
 /*

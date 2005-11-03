@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.26 2005/11/02 22:59:46 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.27 2005/11/03 20:10:55 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -100,6 +100,11 @@ struct mdglobaldata {
  *
  * WARNING!  page-bounded fields are hardwired for SMPpt[] setup in
  * i386/i386/mp_machdep.c and locore.s.
+ *
+ * WARNING!  sizeof(privatespace[SMP_MAXCPU]) must fit in the KVA
+ * reserved for the SMPpt page table (typically one page table page).
+ *
+ * WARNING!  This structure must be a multiple of PAGE_SIZE.
  */
 struct privatespace {
 	/* page 0 - data page */

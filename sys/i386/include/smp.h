@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.15 2005/11/02 18:42:06 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.16 2005/11/03 20:10:55 dillon Exp $
  *
  */
 
@@ -83,6 +83,7 @@ extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
 /* functions in mp_machdep.c */
+void	*permanent_io_mapping(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
 int	mp_probe		(void);
 void	mp_start		(void);
