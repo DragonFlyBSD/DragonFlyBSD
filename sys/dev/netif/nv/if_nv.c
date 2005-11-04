@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.20 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.21 2005/11/04 08:44:47 dillon Exp $
  */
 
 /*
@@ -1580,7 +1580,7 @@ nv_ospackettx(PNV_VOID ctx, PNV_VOID id, NV_UINT32 success)
 	if (sc->pending_txs < TX_RING_SIZE) {
 		ifp->if_flags &= ~IFF_OACTIVE;
 		if (!ifq_is_empty(&ifp->if_snd))
-			nv_ifstart(ifp);
+			nv_ifstart_serialized(ifp);
 	}
 fail:
 	return (1);
