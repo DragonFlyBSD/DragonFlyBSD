@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.6 2005/11/03 23:45:12 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.7 2005/11/04 08:57:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,6 +114,10 @@ struct machintr_abi MachIntrABI = {
     icu_getvar,
     icu_finalize
 };
+
+/*
+ * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
+ */
 
 static 
 int

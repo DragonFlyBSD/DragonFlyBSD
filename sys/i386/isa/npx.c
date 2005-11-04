@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.28 2005/11/02 17:47:33 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.29 2005/11/04 08:57:31 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -240,7 +240,7 @@ npx_probe(device_t dev)
 	 */
 	if (resource_int_value("npx", 0, "irq", &npx_irq) != 0)
 		npx_irq = 13;
-	npx_intrno = NRSVIDT + npx_irq;
+	npx_intrno = IDT_OFFSET + npx_irq;
 	save_eflags = read_eflags();
 	cpu_disable_intr();
 	save_icu1_mask = inb(IO_ICU1 + 1);

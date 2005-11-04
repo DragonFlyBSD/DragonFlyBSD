@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.14 2005/11/04 01:44:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.15 2005/11/04 08:57:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,15 @@ apic_initialize(void)
 	u_int   temp;
 
 	/*
-	 * setup LVT1 as ExtINT.  Edge trigger, active high.
+	 * setup LVT1 as ExtINT on the BSP.  This is theoretically an
+	 * aggregate interrupt input from the 8259.  The INTA cycle
+	 * will be routed to the external controller (the 8259) which
+	 * is expected to supply the vector.
+	 *
+	 * Must be setup edge triggered, active high.
+	 *
+	 * Disable LVT1 on the APs.  It doesn't matter what delivery
+	 * mode we use because we leave it masked.
 	 */
 	temp = lapic.lvt_lint0;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
@@ -65,7 +73,7 @@ apic_initialize(void)
 	if (mycpu->gd_cpuid == 0)
 		temp |= APIC_LVT_DM_EXTINT;
 	else
-		temp |= APIC_LVT_DM_EXTINT | APIC_LVT_MASKED;
+		temp |= APIC_LVT_DM_FIXED | APIC_LVT_MASKED;
 	lapic.lvt_lint0 = temp;
 
 	/*
@@ -85,13 +93,22 @@ apic_initialize(void)
 	 */
 	temp = lapic.tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
+#ifndef APIC_IO
+	/*
+	 * If we are NOT running the IO APICs, the LAPIC will only be used
+	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
+	 */
+	temp |= TPR_IPI_ONLY;
+#endif
 
 	lapic.tpr = temp;
 
-	/* enable the local APIC */
+	/* 
+	 * enable the local APIC 
+	 */
 	temp = lapic.svr;
-	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
 	temp |= APIC_SVR_ENABLE;	/* enable the APIC */
+	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
 
 	/*
 	 * Set the spurious interrupt vector.  The low 4 bits of the vector
@@ -350,7 +367,7 @@ ext_int_setup(int apic, int intr)
 
 	target = IOART_HI_DEST_BROADCAST;
 	select = IOAPIC_REDTBL0 + (2 * intr);
-	vector = NRSVIDT + intr;
+	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;
 
 	io_apic_write(apic, select, flags | vector);
@@ -516,6 +533,7 @@ imen_dump(void)
  * Inter Processor Interrupt functions.
  */
 
+#endif	/* APIC_IO */
 
 /*
  * Send APIC IPI 'vector' to 'destType' via 'deliveryMode'.
@@ -634,8 +652,6 @@ selected_apic_ipi(u_int target, int vector, int delivery_mode)
 	}
 	crit_exit();
 }
-
-#endif	/* APIC_IO */
 
 /*
  * Timer code, in development...

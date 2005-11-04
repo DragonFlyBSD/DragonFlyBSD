@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.h,v 1.3 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.h,v 1.4 2005/11/02 22:59:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.h,v 1.5 2005/11/04 08:57:28 dillon Exp $
  */
 
 #ifndef _I386_ISA_ICU_IPL_H_
@@ -32,6 +32,23 @@
 
 #define ICU_HWI_VECTORS	16
 #define ICU_HWI_MASK	((1 << ICU_HWI_VECTORS) - 1)
+
+#ifdef LOCORE
+
+/*
+ * SMP interrupt mask protection.  The first version is used
+ * when interrupts might not be disabled, the second version is
+ * used when interrupts are disabled.
+ */
+
+#define ICU_IMASK_LOCK							\
+        SPIN_LOCK(imen_spinlock) ;					\
+
+#define ICU_IMASK_UNLOCK						\
+        SPIN_UNLOCK(imen_spinlock) ;					\
+
+#endif	/* LOCORE */
+
 
 #endif /* !_I386_ISA_ICU_IPL_H_ */
 

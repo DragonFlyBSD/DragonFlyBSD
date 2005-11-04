@@ -1,7 +1,10 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.23 2005/11/03 23:45:12 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.24 2005/11/04 08:57:28 dillon Exp $
+ */
+/*
+ * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
 
 #include "use_npx.h"
@@ -94,18 +97,22 @@
 	addl	$17*4,%esp ;						\
 
 #define MASK_IRQ(icu, irq_num)						\
+	ICU_IMASK_LOCK ;						\
 	movb	icu_imen + IRQ_BYTE(irq_num),%al ;			\
 	orb	$IRQ_BIT(irq_num),%al ;					\
 	movb	%al,icu_imen + IRQ_BYTE(irq_num) ;			\
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
+	ICU_IMASK_UNLOCK ;						\
 
 #define UNMASK_IRQ(icu, irq_num)					\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
+	ICU_IMASK_LOCK ;						\
 	movb	icu_imen + IRQ_BYTE(irq_num),%al ;			\
 	andb	$~IRQ_BIT(irq_num),%al ;				\
 	movb	%al,icu_imen + IRQ_BYTE(irq_num) ;			\
 	outb	%al,$icu+ICU_IMR_OFFSET ;				\
+	ICU_IMASK_UNLOCK ;						\
 8: ;									\
 	
 /*

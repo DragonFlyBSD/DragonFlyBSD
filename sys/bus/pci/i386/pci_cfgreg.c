@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.10 2005/02/04 02:52:17 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.11 2005/11/04 08:57:23 dillon Exp $
  *
  */
 
@@ -47,10 +47,7 @@
 #include <bus/pci/i386/pci_cfgreg.h>
 #include <machine/segments.h>
 #include <machine/pc/bios.h>
-
-#ifdef APIC_IO
 #include <machine/smp.h>
-#endif /* APIC_IO */
 
 #define PRVERB(a) do {							\
 	if (bootverbose)						\

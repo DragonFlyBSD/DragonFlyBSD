@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.64 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.65 2005/11/04 08:57:27 dillon Exp $
  */
 
 /*
@@ -85,9 +85,7 @@
 #include <machine/ipl.h>
 #include <machine/md_var.h>
 #include <machine/pcb.h>
-#ifdef SMP
 #include <machine/smp.h>
-#endif
 #include <machine/tss.h>
 #include <machine/globaldata.h>
 

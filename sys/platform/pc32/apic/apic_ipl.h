@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.h,v 1.3 1999/08/28 00:44:36 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.h,v 1.6 2005/11/02 22:59:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.h,v 1.7 2005/11/04 08:57:24 dillon Exp $
  */
 
 #ifndef _I386_ISA_APIC_IPL_H_
@@ -43,14 +43,13 @@
 #ifdef LOCORE
 
 /*
- * Interrupts are expected to already be disabled when using these
- * IMASK_*() macros.
+ * Interrupts may or may not be disabled when using these functions.
  */
-#define IMASK_LOCK                                                      \
-        SPIN_LOCK(imen_spinlock) ;                                      \
+#define APIC_IMASK_LOCK							\
+        SPIN_LOCK(imen_spinlock) ;					\
 
-#define IMASK_UNLOCK                                                    \
-        SPIN_UNLOCK(imen_spinlock) ;                                    \
+#define APIC_IMASK_UNLOCK						\
+        SPIN_UNLOCK(imen_spinlock) ;					\
 
 #endif
 

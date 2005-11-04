@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.15 2005/11/03 23:45:09 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.16 2005/11/04 08:57:24 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -94,7 +94,7 @@ apic_imen:
 	 * IRQ number is passed as an argument.
 	 */
 ENTRY(APIC_INTRDIS)
-	IMASK_LOCK			/* enter critical reg */
+	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp),%eax
 1:
 	btsl	%eax, apic_imen
@@ -106,11 +106,11 @@ ENTRY(APIC_INTRDIS)
 	movl	%ecx, (%edx)		/* target register index */
 	orl	$IOART_INTMASK,16(%edx)	/* set intmask in target apic reg */
 2:
-	IMASK_UNLOCK			/* exit critical reg */
+	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
 
 ENTRY(APIC_INTREN)
-	IMASK_LOCK			/* enter critical reg */
+	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
 	btrl	%eax, apic_imen		/* update apic_imen */
@@ -122,7 +122,7 @@ ENTRY(APIC_INTREN)
 	movl	%ecx, (%edx)		/* write the target register index */
 	andl	$~IOART_INTMASK, 16(%edx) /* clear mask bit */
 2:	
-	IMASK_UNLOCK			/* exit critical reg */
+	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
 
 /******************************************************************************

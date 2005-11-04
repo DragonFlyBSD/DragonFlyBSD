@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.9 2005/11/02 09:15:00 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.10 2005/11/04 08:57:29 dillon Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
@@ -202,15 +202,11 @@ struct region_descriptor {
 #define SEGEX_IDX(s)	((s)>>3)&0x1fff)
 
 /*
- * Size of IDT table
+ * Size of IDT table.  Theoretically we only need to cover past 0x81
+ * (NIDT=130) if not running APIC_IO or SMP, but at this point we might
+ * as well just use all of them.
  */
-
-#if defined(SMP) || defined(APIC_IO)
 #define	NIDT	256		/* we use them all */
-#else
-#define	NIDT	131		/* 32 reserved, 16 h/w, 0 s/w, 0x80, 0x81, 0x82 */
-#endif /* SMP || APIC_IO */
-#define	NRSVIDT	32		/* reserved entries for cpu exceptions */
 
 /*
  * Entries in the Global Descriptor Table (GDT)

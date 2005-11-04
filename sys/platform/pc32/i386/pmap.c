@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.50 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.51 2005/11/04 08:57:27 dillon Exp $
  */
 
 /*
@@ -100,10 +100,8 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
-#if defined(SMP) || defined(APIC_IO)
 #include <machine/smp.h>
 #include <arch/apic/apicreg.h>
-#endif /* SMP || APIC_IO */
 #include <machine/globaldata.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
@@ -444,7 +442,7 @@ pmap_bootstrap(firstaddr, loadaddr)
 #endif
 	}
 #endif
-#ifdef APIC_IO
+#ifdef SMP
 	if (cpu_apic_address == 0)
 		panic("pmap_bootstrap: no local apic!");
 

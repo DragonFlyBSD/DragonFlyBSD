@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.9 2005/06/16 21:12:25 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.10 2005/11/04 08:57:22 dillon Exp $
  *
  */
 
@@ -44,15 +44,12 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
+#include <machine/smp.h>
 #include <sys/interrupt.h>
 
 #include <sys/pciio.h>
 #include "pcireg.h"
 #include "pcivar.h"
-
-#ifdef APIC_IO
-#include <machine/smp.h>
-#endif
 
 struct pci_compat_driver {
 	driver_t driver;

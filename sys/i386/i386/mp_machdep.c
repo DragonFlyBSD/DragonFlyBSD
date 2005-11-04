@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.45 2005/11/03 23:45:11 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.46 2005/11/04 08:57:27 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -60,11 +60,9 @@
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
 
-#if defined(APIC_IO)
 #include <machine/md_var.h>		/* setidt() */
 #include <i386/icu/icu.h>		/* IPIs */
 #include <i386/isa/intr_machdep.h>	/* IPIs */
-#endif	/* APIC_IO */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
 
@@ -225,23 +223,31 @@ extern struct region_descriptor r_gdt, r_idt;
 int	bsp_apic_ready = 0;	/* flags useability of BSP apic */
 int	mp_naps;		/* # of Applications processors */
 int	mp_nbusses;		/* # of busses */
+#ifdef APIC_IO
 int	mp_napics;		/* # of IO APICs */
+#endif
 int	boot_cpu_id;		/* designated BSP */
 vm_offset_t cpu_apic_address;
+#ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
+u_int32_t *io_apic_versions;
+#endif
 extern	int nkpt;
 
 u_int32_t cpu_apic_versions[MAXCPU];
-u_int32_t *io_apic_versions;
 
+#ifdef APIC_IO
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
+#endif
 
 /*
  * APIC ID logical/physical mapping structures.
  * We oversize these to simplify boot-time config.
  */
 int     cpu_num_to_apic_id[NAPICID];
+#ifdef APIC_IO
 int     io_num_to_apic_id[NAPICID];
+#endif
 int     apic_id_to_logical[NAPICID];
 
 /* AP uses this during bootstrap.  Do not staticize.  */
@@ -283,11 +289,13 @@ static void	mptable_pass1(void);
 static int	mptable_pass2(void);
 static void	default_mp_table(int type);
 static void	fix_mp_table(void);
+#ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
+static int	apic_int_is_bus_type(int intr, int bus_type);
+#endif
 static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
-static int	apic_int_is_bus_type(int intr, int bus_type);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
@@ -517,9 +525,10 @@ mp_enable(u_int boot_addr)
 
 	/* post scan cleanup */
 	fix_mp_table();
-	setup_apic_irq_mapping();
 
 #if defined(APIC_IO)
+
+	setup_apic_irq_mapping();
 
 	/* fill the LOGICAL io_apic_versions table */
 	for (apic = 0; apic < mp_napics; ++apic) {
@@ -532,6 +541,12 @@ mp_enable(u_int boot_addr)
 	for (apic = 0; apic < mp_napics; ++apic)
 		if (io_apic_setup(apic) < 0)
 			panic("IO APIC setup failure");
+
+#endif	/* APIC_IO */
+
+	/*
+	 * These are required for SMP operation
+	 */
 
 	/* install a 'Spurious INTerrupt' vector */
 	setidt(XSPURIOUSINT_OFFSET, Xspuriousint,
@@ -548,8 +563,6 @@ mp_enable(u_int boot_addr)
 	/* install an inter-CPU IPI for CPU stop/restart */
 	setidt(XCPUSTOP_OFFSET, Xcpustop,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-
-#endif	/* APIC_IO */
 
 	/* start each Application Processor */
 	start_all_aps(boot_addr);
@@ -646,15 +659,18 @@ static int default_data[7][5] =
 /* the bus data */
 static bus_datum *bus_data;
 
+#ifdef APIC_IO
 /* the IO INT data, one entry per possible APIC INTerrupt */
 static io_int  *io_apic_ints;
-
 static int nintrs;
+#endif
 
 static int processor_entry	(proc_entry_ptr entry, int cpu);
 static int bus_entry		(bus_entry_ptr entry, int bus);
+#ifdef APIC_IO
 static int io_apic_entry	(io_apic_entry_ptr entry, int apic);
 static int int_entry		(int_entry_ptr entry, int intr);
+#endif
 static int lookup_bus_type	(char *name);
 
 
@@ -675,7 +691,9 @@ static int lookup_bus_type	(char *name);
 static void
 mptable_pass1(void)
 {
+#ifdef APIC_IO
 	int	x;
+#endif
 	mpcth_t	cth;
 	int	totalSize;
 	void*	position;
@@ -685,23 +703,29 @@ mptable_pass1(void)
 
 	POSTCODE(MPTABLE_PASS1_POST);
 
+#ifdef APIC_IO
 	/* clear various tables */
 	for (x = 0; x < NAPICID; ++x) {
 		io_apic_address[x] = ~0;	/* IO APIC address table */
 	}
+#endif
 
 	/* init everything to empty */
 	mp_naps = 0;
 	mp_nbusses = 0;
+#ifdef APIC_IO
 	mp_napics = 0;
 	nintrs = 0;
+#endif
 	id_mask = 0;
 
 	/* check for use of 'default' configuration */
 	if (mpfps->mpfb1 != 0) {
 		/* use default addresses */
 		cpu_apic_address = DEFAULT_APIC_BASE;
+#ifdef APIC_IO
 		io_apic_address[0] = DEFAULT_IO_APIC_BASE;
+#endif
 
 		/* fill in with defaults */
 		mp_naps = 2;		/* includes BSP */
@@ -736,14 +760,18 @@ mptable_pass1(void)
 				++mp_nbusses;
 				break;
 			case 2: /* io_apic_entry */
+#ifdef APIC_IO
 				if (((io_apic_entry_ptr)position)->apic_flags
 					& IOAPICENTRY_FLAG_EN)
 					io_apic_address[mp_napics++] =
 					    (vm_offset_t)((io_apic_entry_ptr)
 						position)->apic_address;
+#endif
 				break;
 			case 3: /* int_entry */
+#ifdef APIC_IO
 				++nintrs;
+#endif
 				break;
 			case 4:	/* int_entry */
 				break;
@@ -810,37 +838,45 @@ mptable_pass2(void)
 	proc.type = 0;
 	proc.cpu_flags = PROCENTRY_FLAG_EN;
 
+#ifdef APIC_IO
 	MALLOC(io_apic_versions, u_int32_t *, sizeof(u_int32_t) * mp_napics,
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(ioapic, volatile ioapic_t **, sizeof(ioapic_t *) * mp_napics,
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(io_apic_ints, io_int *, sizeof(io_int) * (nintrs + FIXUP_EXTRA_APIC_INTS),
 	    M_DEVBUF, M_WAITOK);
+#endif
 	MALLOC(bus_data, bus_datum *, sizeof(bus_datum) * mp_nbusses,
 	    M_DEVBUF, M_WAITOK);
 
+#ifdef APIC_IO
 	bzero(ioapic, sizeof(ioapic_t *) * mp_napics);
 
 	for (i = 0; i < mp_napics; i++) {
 		ioapic[i] = permanent_io_mapping(io_apic_address[i]);
 	}
+#endif
 
 	/* clear various tables */
 	for (x = 0; x < NAPICID; ++x) {
-		ID_TO_IO(x) = -1;	/* phy APIC ID to log CPU/IO table */
 		CPU_TO_ID(x) = -1;	/* logical CPU to APIC ID table */
+#ifdef APIC_IO
+		ID_TO_IO(x) = -1;	/* phy APIC ID to log CPU/IO table */
 		IO_TO_ID(x) = -1;	/* logical IO to APIC ID table */
+#endif
 	}
 
 	/* clear bus data table */
 	for (x = 0; x < mp_nbusses; ++x)
 		bus_data[x].bus_id = 0xff;
 
+#ifdef APIC_IO
 	/* clear IO APIC INT table */
 	for (x = 0; x < (nintrs + 1); ++x) {
 		io_apic_ints[x].int_type = 0xff;
 		io_apic_ints[x].int_vector = 0xff;
 	}
+#endif
 
 	/* setup the cpu/apic mapping arrays */
 	boot_cpu_id = -1;
@@ -889,12 +925,16 @@ mptable_pass2(void)
 				++bus;
 			break;
 		case 2:
+#ifdef APIC_IO
 			if (io_apic_entry(position, apic))
 				++apic;
+#endif
 			break;
 		case 3:
+#ifdef APIC_IO
 			if (int_entry(position, intr))
 				++intr;
+#endif
 			break;
 		case 4:
 			/* int_entry(position); */
@@ -963,6 +1003,8 @@ mptable_hyperthread_fixup(u_int id_mask)
 	need_hyperthreading_fixup = 1;
 	mp_naps *= logical_cpus;
 }
+
+#ifdef APIC_IO
 
 void
 assign_apic_irq(int apic, int intpin, int irq)
@@ -1161,6 +1203,7 @@ io_apic_find_int_entry(int apic, int pin)
 	return NULL;
 }
 
+#endif
 
 /*
  * parse an Intel MP specification table
@@ -1169,14 +1212,16 @@ static void
 fix_mp_table(void)
 {
 	int	x;
+#ifdef APIC_IO
 	int	id;
-	int	bus_0 = 0;	/* Stop GCC warning */
-	int	bus_pci = 0;	/* Stop GCC warning */
-	int	num_pci_bus;
 	int	apic;		/* IO APIC unit number */
 	int     freeid;		/* Free physical APIC ID */
 	int	physid;		/* Current physical IO APIC ID */
 	io_int *io14;
+#endif
+	int	bus_0 = 0;	/* Stop GCC warning */
+	int	bus_pci = 0;	/* Stop GCC warning */
+	int	num_pci_bus;
 
 	/*
 	 * Fix mis-numbering of the PCI bus and its INT entries if the BIOS
@@ -1216,6 +1261,7 @@ fix_mp_table(void)
 		bus_data[bus_pci].bus_type = bus_data[bus_0].bus_type;
 		bus_data[bus_0].bus_type = PCI;
 
+#ifdef APIC_IO
 		/* swap each relavant INTerrupt entry */
 		id = bus_data[bus_pci].bus_id;
 		for (x = 0; x < nintrs; ++x) {
@@ -1226,8 +1272,10 @@ fix_mp_table(void)
 				io_apic_ints[x].src_bus_id = id;
 			}
 		}
+#endif
 	}
 
+#ifdef APIC_IO
 	/* Assign IO APIC IDs.
 	 * 
 	 * First try the existing ID. If a conflict is detected, try
@@ -1263,7 +1311,9 @@ fix_mp_table(void)
 		panic("Free physical APIC ID not usable");
 	}
 	fix_id_to_io_mapping();
+#endif
 
+#ifdef APIC_IO
 	/* detect and fix broken Compaq MP table */
 	if (apic_int_type(0, 0) == -1) {
 		printf("APIC_IO: MP table broken: 8259->APIC entry missing!\n");
@@ -1301,8 +1351,10 @@ fix_mp_table(void)
 		io_apic_ints[nintrs].dst_apic_int = 15;
 		nintrs++;
 	}
+#endif
 }
 
+#ifdef APIC_IO
 
 /* Assign low level interrupt handlers */
 static void
@@ -1348,6 +1400,7 @@ setup_apic_irq_mapping(void)
 	/* PCI interrupt assignment is deferred */
 }
 
+#endif
 
 static int
 processor_entry(proc_entry_ptr entry, int cpu)
@@ -1400,6 +1453,7 @@ bus_entry(bus_entry_ptr entry, int bus)
 	return 1;
 }
 
+#ifdef APIC_IO
 
 static int
 io_apic_entry(io_apic_entry_ptr entry, int apic)
@@ -1414,6 +1468,7 @@ io_apic_entry(io_apic_entry_ptr entry, int apic)
 	return 1;
 }
 
+#endif
 
 static int
 lookup_bus_type(char *name)
@@ -1427,6 +1482,7 @@ lookup_bus_type(char *name)
 	return UNKNOWN_BUSTYPE;
 }
 
+#ifdef APIC_IO
 
 static int
 int_entry(int_entry_ptr entry, int intr)
@@ -1456,7 +1512,6 @@ int_entry(int_entry_ptr entry, int intr)
 	return 1;
 }
 
-
 static int
 apic_int_is_bus_type(int intr, int bus_type)
 {
@@ -1469,7 +1524,6 @@ apic_int_is_bus_type(int intr, int bus_type)
 
 	return 0;
 }
-
 
 /*
  * Given a traditional ISA INT mask, return an APIC mask.
@@ -1498,7 +1552,6 @@ isa_apic_mask(u_int isa_mask)
 
 	return (1 << apic_pin);			/* convert pin# to a mask */
 }
-
 
 /*
  * Determine which APIC pin an ISA/EISA INT is attached to.
@@ -1617,6 +1670,7 @@ next_apic_irq(int irq)
 #undef INTAPIC
 #undef INTTYPE
 
+#endif
 
 /*
  * Reprogram the MB chipset to NOT redirect an ISA INTerrupt.
@@ -1682,6 +1736,7 @@ apic_bus_type(int id)
 	return -1;
 }
 
+#ifdef APIC_IO
 
 /*
  * given a LOGICAL APIC# and pin#, return:
@@ -1701,7 +1756,6 @@ apic_src_bus_id(int apic, int pin)
 
 	return -1;		/* NOT found */
 }
-
 
 /*
  * given a LOGICAL APIC# and pin#, return:
@@ -1806,6 +1860,7 @@ apic_polarity(int apic, int pin)
 	return -1;		/* NOT found */
 }
 
+#endif
 
 /*
  * set data according to MP defaults
@@ -2281,14 +2336,14 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr)
 void
 smp_invltlb(void)
 {
-#if defined(APIC_IO)
+#ifdef SMP
 	if (smp_startup_mask == smp_active_mask) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		selected_apic_ipi(smp_active_mask, XINVLTLB_OFFSET,
 			APIC_DELMODE_FIXED);
 	}
-#endif  /* APIC_IO */
+#endif
 }
 
 /*

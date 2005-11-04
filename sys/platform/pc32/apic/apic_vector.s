@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.29 2005/11/03 23:45:09 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.30 2005/11/04 08:57:24 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -23,13 +23,17 @@
 #include <machine/smp.h>
 #include "i386/isa/intr_machdep.h"
 
-#ifdef APIC_IO
-
 /* convert an absolute IRQ# into a bitmask */
 #define IRQ_LBIT(irq_num)	(1 << (irq_num))
 
 /* make an index into the IO APIC from the IRQ# */
 #define REDTBL_IDX(irq_num)	(0x10 + ((irq_num) * 2))
+
+#ifdef SMP
+#define MPLOCKED     lock ;
+#else
+#define MPLOCKED
+#endif
 
 /*
  * Push an interrupt frame in a format acceptable to doreti, reload
@@ -75,7 +79,7 @@
 #define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
 
 #define MASK_IRQ(irq_num)						\
-	IMASK_LOCK ;				/* into critical reg */	\
+	APIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	jne	7f ;			/* masked, don't mask */	\
 	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
@@ -86,7 +90,7 @@
 	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
 	movl	%eax, IOAPIC_WINDOW(%ecx) ;	/* new value */		\
 7: ;						/* already masked */	\
-	IMASK_UNLOCK ;							\
+	APIC_IMASK_UNLOCK ;						\
 
 /*
  * Test to see whether we are handling an edge or level triggered INT.
@@ -105,7 +109,7 @@
 #define UNMASK_IRQ(irq_num)					\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
-	IMASK_LOCK ;				/* into critical reg */	\
+	APIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	je	7f ;			/* bit clear, not masked */	\
 	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
@@ -116,8 +120,10 @@
 	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
 	movl	%eax,IOAPIC_WINDOW(%ecx) ;	/* new value */		\
 7: ;									\
-	IMASK_UNLOCK ;							\
+	APIC_IMASK_UNLOCK ;						\
 8: ;									\
+
+#ifdef APIC_IO
 
 /*
  * Fast interrupt call handlers run in the following sequence:
@@ -235,6 +241,8 @@ IDTVEC(vec_name) ;							\
 	POP_FRAME ;							\
 	iret  ;								\
 
+#endif
+
 /*
  * Handle "spurious INTerrupts".
  * Notes:
@@ -314,7 +322,7 @@ Xcpustop:
 	 * to start again.  We must still process IPI events while in a
 	 * stopped state.
 	 */
-	lock
+	MPLOCKED
 	btsl	%eax, stopped_cpus	/* stopped_cpus |= (1<<id) */
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
@@ -324,9 +332,9 @@ Xcpustop:
 	btl	%eax, started_cpus	/* while (!(started_cpus & (1<<id))) */
 	jnc	1b
 
-	lock
+	MPLOCKED
 	btrl	%eax, started_cpus	/* started_cpus &= ~(1<<id) */
-	lock
+	MPLOCKED
 	btrl	%eax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
 
 	test	%eax, %eax
@@ -379,6 +387,8 @@ Xipiq:
 	MEXITCOUNT
 	POP_FRAME
 	iret
+
+#ifdef APIC_IO
 
 MCOUNT_LABEL(bintr)
 	FAST_INTR(0,apic_fastintr0)
@@ -459,6 +469,8 @@ MCOUNT_LABEL(bintr)
 	WRONGINTR(23,apic_wrongintr23)
 MCOUNT_LABEL(eintr)
 
+#endif
+
 	.data
 
 /* variables used by stop_cpus()/restart_cpus()/Xcpustop */
@@ -478,4 +490,3 @@ apic_pin_trigger:
 
 	.text
 
-#endif

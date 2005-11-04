@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.40 2005/11/03 23:45:14 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.41 2005/11/04 08:57:31 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -75,9 +75,7 @@
 #include <i386/isa/intr_machdep.h>
 #include <bus/isa/isavar.h>
 #include <sys/interrupt.h>
-#ifdef APIC_IO
 #include <machine/clock.h>
-#endif
 #include <machine/cpu.h>
 
 /* XXX should be in suitable include files */
@@ -184,7 +182,7 @@ init_i8259(void)
 
 	/* initialize 8259's */
 	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
-	outb(IO_ICU1+ICU_IMR_OFFSET, NRSVIDT);	/* starting at this vector index */
+	outb(IO_ICU1+ICU_IMR_OFFSET, IDT_OFFSET);	/* starting at this vector index */
 	outb(IO_ICU1+ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE); /* slave on line 7 */
 #ifdef AUTO_EOI_1
 	outb(IO_ICU1+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
@@ -195,7 +193,7 @@ init_i8259(void)
 	outb(IO_ICU1, 0x0a);		/* default to IRR on read */
 	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
 	outb(IO_ICU2, 0x11);		/* reset; program device, four bytes */
-	outb(IO_ICU2+ICU_IMR_OFFSET, NRSVIDT+8); /* staring at this vector index */
+	outb(IO_ICU2+ICU_IMR_OFFSET, IDT_OFFSET+8); /* staring at this vector index */
 	outb(IO_ICU2+ICU_IMR_OFFSET, ICU_IRQ_SLAVE);
 #ifdef AUTO_EOI_2
 	outb(IO_ICU2+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */

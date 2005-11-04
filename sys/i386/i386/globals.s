@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.23 2005/11/02 22:59:43 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.24 2005/11/04 08:57:27 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -102,7 +102,7 @@
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
 
-#if defined(APIC_IO)
+#ifdef SMP
 	.globl	lapic_eoi, lapic_svr, lapic_tpr, lapic_irr1, lapic_ver
 	.globl	lapic_icr_lo,lapic_icr_hi,lapic_isr1
 /*

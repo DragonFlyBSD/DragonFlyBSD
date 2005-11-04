@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.21 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.22 2005/11/04 08:57:27 dillon Exp $
  */
 
 /*
@@ -57,10 +57,8 @@
 
 #include <machine/nexusvar.h>
 #include <machine/resource.h>
-#ifdef APIC_IO
 #include <machine/smp.h>
 #include <arch/apic/mpapic.h>
-#endif
 
 #include <bus/isa/isavar.h>
 #include <bus/isa/i386/isa.h>

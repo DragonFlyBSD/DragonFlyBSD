@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.22 2005/11/03 23:45:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.23 2005/11/04 08:57:31 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -54,7 +54,7 @@
 
 #define IDT_OFFSET	32
 
-#if defined(SMP) || defined(APIC_IO)
+#if defined(SMP)
 /*
  * XXX FIXME: rethink location for all IPI vectors.
  */
@@ -128,7 +128,7 @@
  */
 #define XSPURIOUSINT_OFFSET	(IDT_OFFSET + 223)
 
-#endif /* SMP || APIC_IO */
+#endif /* SMP */
 
 #ifndef	LOCORE
 

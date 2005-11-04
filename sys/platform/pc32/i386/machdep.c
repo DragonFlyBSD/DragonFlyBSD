@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.81 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.82 2005/11/04 08:57:27 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -101,9 +101,7 @@
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */
-#ifdef SMP
 #include <machine/smp.h>
-#endif
 #ifdef PERFMON
 #include <machine/perfmon.h>
 #endif
@@ -2504,105 +2502,6 @@ Debugger(const char *msg)
 }
 #endif /* no DDB */
 
-#include <arch/apic/apicvar.h>
-
-/*
- * Provide stub functions so that the MADT APIC enumerator in the acpi
- * kernel module will link against a kernel without 'option APIC_IO'.
- *
- * XXX - This is a gross hack.
- */
-void
-apic_register_enumerator(struct apic_enumerator *enumerator)
-{
-}
-
-void *
-ioapic_create(uintptr_t addr, int32_t id, int intbase)
-{
-	return (NULL);
-}
-
-int
-ioapic_disable_pin(void *cookie, u_int pin)
-{
-	return (ENXIO);
-}
-
-void
-ioapic_enable_mixed_mode(void)
-{
-}
-
-int
-ioapic_get_vector(void *cookie, u_int pin)
-{
-	return (-1);
-}
-
-void
-ioapic_register(void *cookie)
-{
-}
-
-int
-ioapic_remap_vector(void *cookie, u_int pin, int vector)
-{
-	return (ENXIO);
-}
-
-int
-ioapic_set_extint(void *cookie, u_int pin)
-{
-	return (ENXIO);
-}
-
-int
-ioapic_set_nmi(void *cookie, u_int pin)
-{
-	return (ENXIO);
-}
-
-int
-ioapic_set_polarity(void *cookie, u_int pin, char activehi)
-{
-	return (ENXIO);
-}
-
-int
-ioapic_set_triggermode(void *cookie, u_int pin, char edgetrigger)
-{
-	return (ENXIO);
-}
-
-void
-lapic_create(u_int apic_id, int boot_cpu)
-{
-}
-
-void
-lapic_init(uintptr_t addr)
-{
-}
-
-int
-lapic_set_lvt_mode(u_int apic_id, u_int lvt, u_int32_t mode)
-{
-	return (ENXIO);
-}
-
-int
-lapic_set_lvt_polarity(u_int apic_id, u_int lvt, u_char activehi)
-{
-	return (ENXIO);
-}
-
-int
-lapic_set_lvt_triggermode(u_int apic_id, u_int lvt, u_char edgetrigger)
-{
-	return (ENXIO);
-}
-
 #include <sys/disklabel.h>
 
 /*
@@ -2717,7 +2616,7 @@ outb(u_int port, u_char data)
  * initialize all the SMP locks
  */
 
-/* critical region around IO APIC, apic_imen */
+/* critical region when masking or unmasking interupts */
 struct spinlock_deprecated imen_spinlock;
 
 /* Make FAST_INTR() routines sequential */

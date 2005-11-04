@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.17 2005/11/03 23:45:13 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.18 2005/11/04 08:57:29 dillon Exp $
  *
  */
 
@@ -16,11 +16,7 @@
 
 #ifdef _KERNEL
 
-#if defined(SMP) && !defined(APIC_IO)
-# error APIC_IO required for SMP, add "options APIC_IO" to your config file.
-#endif /* SMP && !APIC_IO */
-
-#if defined(SMP) || defined(APIC_IO)
+#if defined(SMP)
 
 #ifndef LOCORE
 
@@ -142,7 +138,7 @@ int	cpu_send_ipiq_passive	(int);
 extern cpumask_t		smp_active_mask;
 
 #endif /* !LOCORE */
-#else	/* !SMP && !APIC_IO */
+#else	/* !SMP */
 
 #define	smp_active_mask	1	/* smp_active_mask always 1 on UP machines */
 

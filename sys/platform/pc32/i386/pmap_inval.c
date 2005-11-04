@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/pmap_inval.c,v 1.4 2005/11/02 08:33:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap_inval.c,v 1.5 2005/11/04 08:57:27 dillon Exp $
  */
 
 /*
@@ -59,10 +59,7 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
-#if defined(SMP) || defined(APIC_IO)
 #include <machine/smp.h>
-#include <arch/apic/apicreg.h>
-#endif /* SMP || APIC_IO */
 #include <machine/globaldata.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>

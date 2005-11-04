@@ -67,7 +67,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.14 2005/11/03 23:45:12 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.15 2005/11/04 08:57:28 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -81,6 +81,10 @@
 
 #include "bus/isa/isareg.h"
 #include "assym.s"
+
+/*
+ * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
+ */
 
 #ifndef APIC_IO
 
@@ -108,27 +112,25 @@ icu_imen:
 	 * INTDIS(irq)
 	 */
 ENTRY(ICU_INTRDIS)
+	ICU_IMASK_LOCK
 	movl	4(%esp),%eax
 	btsl	%eax,icu_imen
-	pushfl
-	cli
 	movl	icu_imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
 	mov	%ah,%al
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
-	popfl
+	ICU_IMASK_UNLOCK
 	ret
 
 ENTRY(ICU_INTREN)
+	ICU_IMASK_LOCK
 	movl	4(%esp),%eax
 	btrl	%eax,icu_imen
-	pushfl
-	cli
 	movl	icu_imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
 	mov	%ah,%al
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
-	popfl
+	ICU_IMASK_UNLOCK
 	ret
 
 #endif

@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.40 2005/11/02 22:59:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.41 2005/11/04 08:57:31 dillon Exp $
  */
 
 /*
@@ -78,12 +78,8 @@
 #include <machine/limits.h>
 #include <machine/md_var.h>
 #include <machine/psl.h>
-#ifdef APIC_IO
 #include <machine/segments.h>
-#endif
-#if defined(SMP) || defined(APIC_IO)
 #include <machine/smp.h>
-#endif /* SMP || APIC_IO */
 #include <machine/specialreg.h>
 
 #include <i386/icu/icu.h>
@@ -94,7 +90,6 @@
 #include <i386/isa/intr_machdep.h>
 
 #ifdef APIC_IO
-#include <i386/isa/intr_machdep.h>
 /* The interrupt triggered by the 8254 (timer) chip */
 int apic_8254_intr;
 static void setup_8254_mixed_mode (void);
@@ -1102,7 +1097,7 @@ setup_8254_mixed_mode()
 	 *   reset; prog 4 bytes, single ICU, edge triggered
 	 */
 	outb(IO_ICU1, 0x13);
-	outb(IO_ICU1 + 1, NRSVIDT);	/* start vector (unused) */
+	outb(IO_ICU1 + 1, IDT_OFFSET);	/* start vector (unused) */
 	outb(IO_ICU1 + 1, 0x00);	/* ignore slave */
 	outb(IO_ICU1 + 1, 0x03);	/* auto EOI, 8086 */
 	outb(IO_ICU1 + 1, 0xfe);	/* unmask INT0 */

@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.22 2005/11/02 18:42:01 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.23 2005/11/04 08:57:27 dillon Exp $
  */
 
 /*
@@ -75,11 +75,8 @@
 #include <machine/bootinfo.h>
 #include <machine/ipl.h>
 #include <machine/md_var.h>
-#ifdef APIC_IO
 #include <machine/smp.h>
-#else
 #include <i386/icu/icu.h>
-#endif /* APIC_IO */
 
 #include <machine/pcb.h>
 #include <machine/pcb_ext.h>
@@ -170,7 +167,6 @@ configure_final(dummy)
 	cninit_finish();
 
 	if (bootverbose) {
-
 #ifdef APIC_IO
 		imen_dump();
 #endif /* APIC_IO */

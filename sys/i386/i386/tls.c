@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/i386/Attic/tls.c,v 1.2 2005/03/23 01:13:20 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/tls.c,v 1.3 2005/11/04 08:57:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,9 +53,7 @@
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */
-#ifdef SMP
 #include <machine/smp.h>
-#endif
 
 /*
  * set a TLS descriptor and resync the GDT.  A descriptor may be cleared

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.28 2005/10/30 04:41:10 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.29 2005/11/04 08:57:22 dillon Exp $
  *
  */
 
@@ -54,6 +54,7 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 #include <machine/md_var.h>		/* For the Alpha */
+#include <machine/smp.h>
 #ifdef __i386__
 #include <bus/pci/i386/pci_cfgreg.h>
 #endif
@@ -64,10 +65,6 @@
 #include "pci_private.h"
 
 #include "pcib_if.h"
-
-#ifdef APIC_IO
-#include <machine/smp.h>
-#endif /* APIC_IO */
 
 devclass_t	pci_devclass;
 const char	*pcib_owner;
@@ -365,6 +362,10 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 		cfg->intline		= REG(PCIR_INTLINE, 1);
 
 #ifdef APIC_IO
+		/*
+		 * If using the APIC the intpin is probably wrong, since it
+		 * is often setup by the BIOS with the PIC in mind.
+		 */
 		if (cfg->intpin != 0) {
 			int airq;
 
