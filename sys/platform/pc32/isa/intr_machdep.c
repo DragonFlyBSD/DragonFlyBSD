@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.41 2005/11/04 08:57:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.42 2005/11/04 19:39:25 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -183,7 +183,7 @@ init_i8259(void)
 	/* initialize 8259's */
 	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
 	outb(IO_ICU1+ICU_IMR_OFFSET, IDT_OFFSET);	/* starting at this vector index */
-	outb(IO_ICU1+ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE); /* slave on line 7 */
+	outb(IO_ICU1+ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE); /* slave on line 2 */
 #ifdef AUTO_EOI_1
 	outb(IO_ICU1+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
 #else
@@ -219,6 +219,7 @@ isa_irq_pending(void)
 	irr2 = inb(IO_ICU2);
 	return ((irr2 << 8) | irr1);
 }
+
 #endif
 
 /* The following notice applies beyond this point in the file */
