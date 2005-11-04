@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.22 2005/07/19 19:53:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.23 2005/11/04 09:38:15 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -242,8 +242,16 @@ boot(int howto)
 	howto |= shutdown_howto;
 
 #ifdef SMP
+	/*
+	 * We really want to shutdown on the BSP.  Subsystems such as ACPI
+	 * can't power-down the box otherwise.
+	 */
 	if (smp_active_mask > 1) {
 		printf("boot() called on cpu#%d\n", mycpu->gd_cpuid);
+	}
+	if (panicstr == NULL && mycpu->gd_cpuid != 0) {
+		printf("Switching to cpu #0 for shutdown\n");
+		lwkt_setcpu_self(globaldata_find(0));
 	}
 #endif
 	/*
