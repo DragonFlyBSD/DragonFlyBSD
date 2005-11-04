@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.13 2005/11/04 01:21:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.14 2005/11/04 01:44:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -310,6 +310,13 @@ io_apic_setup(int apic)
 	
 	for (pin = 0; pin < maxpin; ++pin) {
 		io_apic_setup_intpin(apic, pin);
+	}
+	while (pin < 32) {
+		if (apic_int_type(apic, pin) >= 0) {
+			printf("Warning: IOAPIC #%d pin %d does not exist,"
+				" cannot program!\n", apic, pin);
+		}
+		++pin;
 	}
 
 	/* return GOOD status */
