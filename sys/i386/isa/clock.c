@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.41 2005/11/04 08:57:31 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.42 2005/11/04 19:42:36 dillon Exp $
  */
 
 /*
@@ -157,11 +157,13 @@ static struct cputimer	i8254_cputimer = {
  * counting as of this interrupt.  We use timer1 in free-running mode (not
  * generating any interrupts) as our main counter.  Each cpu has timeouts
  * pending.
+ *
+ * This code is INTR_MPSAFE and may be called without the BGL held.
  */
 static void
 clkintr(void *dummy, void *frame_arg)
 {
-	static sysclock_t timer1_count;
+	static sysclock_t sysclock_count;	/* NOTE! Must be static */
 	struct globaldata *gd = mycpu;
 #ifdef SMP
 	struct globaldata *gscan;
@@ -176,9 +178,9 @@ clkintr(void *dummy, void *frame_arg)
 	/*
 	 * XXX the dispatcher needs work.  right now we call systimer_intr()
 	 * directly or via IPI for any cpu with systimers queued, which is
-	 * usually *ALL* of them.  We need a better way to do this.
+	 * usually *ALL* of them.  We need to use the LAPIC timer for this.
 	 */
-	timer1_count = sys_cputimer->count();
+	sysclock_count = sys_cputimer->count();
 #ifdef SMP
 	for (n = 0; n < ncpus; ++n) {
 	    gscan = globaldata_find(n);
@@ -186,14 +188,14 @@ clkintr(void *dummy, void *frame_arg)
 		continue;
 	    if (gscan != gd) {
 		lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr, 
-				&timer1_count, 0);
+				&sysclock_count, 0);
 	    } else {
-		systimer_intr(&timer1_count, 0, frame_arg);
+		systimer_intr(&sysclock_count, 0, frame_arg);
 	    }
 	}
 #else
 	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
-	    systimer_intr(&timer1_count, 0, frame_arg);
+	    systimer_intr(&sysclock_count, 0, frame_arg);
 #endif
 }
 
@@ -988,13 +990,15 @@ cpu_initclocks()
 	}
 
 	clkdesc = inthand_add("clk", apic_8254_intr, clkintr,
-			      NULL, INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
+			      NULL, INTR_EXCL | INTR_FAST | 
+				    INTR_NOPOLL | INTR_MPSAFE, NULL);
 	machintr_intren(apic_8254_intr);
 	
 #else /* APIC_IO */
 
 	inthand_add("clk", 0, clkintr, NULL,
-		    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
+		    INTR_EXCL | INTR_FAST | 
+		    INTR_NOPOLL | INTR_MPSAFE, NULL);
 	machintr_intren(ICU_IRQ0);
 
 #endif /* APIC_IO */
@@ -1066,8 +1070,8 @@ cpu_initclocks()
 			setup_8254_mixed_mode();
 			inthand_add("clk", apic_8254_intr,
 				    clkintr,
-				    NULL,
-				    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
+				    NULL, INTR_EXCL | INTR_FAST | 
+					  INTR_NOPOLL | INTR_MPSAFE, NULL);
 			machintr_intren(apic_8254_intr);
 		}
 		
