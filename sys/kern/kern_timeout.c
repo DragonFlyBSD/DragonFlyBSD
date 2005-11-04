@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.19 2005/06/18 12:56:41 eirikn Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.20 2005/11/04 19:28:21 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -177,9 +177,8 @@ swi_softclock_setup(void *arg)
 		 * be preempted by normal interrupts.
 		 */
 		lwkt_create(softclock_handler, sc, NULL,
-			    &sc->thread, TDF_STOPREQ|TDF_INTTHREAD, -1,
+			    &sc->thread, TDF_STOPREQ|TDF_INTTHREAD, cpu,
 			    "softclock %d", cpu);
-		lwkt_setpri(&sc->thread, TDPRI_SOFT_NORM);
 #if 0
 		/* 
 		 * Do not make the thread preemptable until we clean up all
@@ -261,6 +260,8 @@ softclock_handler(void *arg)
 #ifdef SMP
 	int mpsafe = 0;
 #endif
+
+	lwkt_setpri_self(TDPRI_SOFT_NORM);
 
 	sc = arg;
 	crit_enter();
