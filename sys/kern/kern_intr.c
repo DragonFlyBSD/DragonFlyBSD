@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.32 2005/11/03 04:54:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.33 2005/11/04 08:17:19 dillon Exp $
  *
  */
 
@@ -558,7 +558,7 @@ ithread_fast_handler(struct intrframe frame)
 		    owner = owner_mplock();
 		    if (owner >= 0 && owner != gd->gd_cpuid) {
 			lwkt_send_ipiq_bycpu(owner, forward_fastint_remote,
-						(void *)owner);
+						(void *)intr);
 			must_schedule = -1;
 			++gd->gd_cnt.v_forwarded_ints;
 		    } else {
