@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.6 2005/02/27 10:57:24 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.7 2005/11/04 23:20:35 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -514,6 +514,32 @@ enable_sse(void)
 void
 initializecpu(void)
 {
+#ifdef CPU_AMD64X2_INTR_SPAM
+	/*
+	 * Set the LINTEN bit in the HyperTransport Transaction
+	 * Control Register.
+	 *
+	 * This will cause EXTINT and NMI interrupts routed over the
+	 * hypertransport bus to be fed into the LAPIC LINT0/LINT1.  If
+	 * the bit isn't set, the interrupts will go to the general cpu
+	 * INTR/NMI pins.  On a dual-core cpu the interrupt winds up
+	 * going to BOTH cpus.  The first cpu that does the interrupt ack
+	 * cycle will get the correct interrupt.  The second cpu that does
+	 * it will get a spurious interrupt vector (typically IRQ 7).
+	 */
+	{
+	    int32_t tcr;
+	    outl(0x0cf8,
+		    (1 << 31) |	/* enable */
+		    (0 << 16) |	/* bus */
+		    (24 << 11) |	/* dev (cpu + 24) */
+		    (0 << 8) |	/* func */
+		    0x68 		/* reg */
+	    );
+	    tcr = inl(0xcfc);
+	    outl(0xcfc, tcr|0x00010000);
+	}
+#endif
 
 	switch (cpu) {
 #ifdef I486_CPU

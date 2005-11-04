@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.12 2005/05/07 17:38:33 swildner Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.13 2005/11/04 23:20:33 dillon Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -42,6 +42,7 @@ TIMER_FREQ			opt_clock.h
 KERN_TIMESTAMP			opt_global.h
 
 NO_F00F_HACK			opt_cpu.h
+CPU_AMD64X2_INTR_SPAM		opt_cpu.h
 CPU_BLUELIGHTNING_FPU_OP_CACHE	opt_cpu.h
 CPU_BLUELIGHTNING_3X		opt_cpu.h
 CPU_BTB_EN			opt_cpu.h
