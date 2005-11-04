@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.12 2005/11/03 23:45:09 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.13 2005/11/04 01:21:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -193,42 +193,57 @@ io_apic_setup_intpin(int apic, int pin)
 	u_int32_t	vector;		/* the window register is 32 bits */
 	int		level;
 
-	target = IOART_HI_DEST_BROADCAST;
-
 	select = pin * 2 + IOAPIC_REDTBL0;	/* register */
-	/* 
-	 * Always disable interrupts, and by default map
-	 * pin X to IRQX because the disable doesn't stick
-	 * and the uninitialize vector will get translated 
-	 * into a panic.
+
+	/*
+	 * Always clear an IO APIC pin before [re]programming it.  This is
+	 * particularly important if the pin is set up for a level interrupt
+	 * as the IOART_REM_IRR bit might be set.   When we reprogram the
+	 * vector any EOI from pending ints on this pin could be lost and
+	 * IRR might never get reset.
 	 *
-	 * This is correct for IRQs 1 and 3-15.  In the other cases, 
-	 * any robust driver will handle the spurious interrupt, and 
-	 * the effective NOP beats a panic.
-	 *
-	 * A dedicated "bogus interrupt" entry in the IDT would
-	 * be a nicer hack, although some one should find out 
-	 * why some systems are generating interrupts when they
-	 * shouldn't and stop the carnage.
+	 * To fix this problem, clear the vector and make sure it is 
+	 * programmed as an edge interrupt.  This should theoretically
+	 * clear IRR so we can later, safely program it as a level 
+	 * interrupt.
 	 */
-	vector = NRSVIDT + pin;			/* IDT vec */
 	imen_lock();
-	io_apic_write(apic, select,
-		      (io_apic_read(apic, select) & ~IOART_INTMASK 
-		       & ~0xff)|IOART_INTMSET|vector);
+
+	flags = io_apic_read(apic, select) & IOART_RESV;
+	flags |= IOART_INTMSET | IOART_TRGREDG | IOART_INTAHI;
+	flags |= IOART_DESTPHY | IOART_DELFIXED;
+
+	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target |= 0;	/* fixed mode cpu mask of 0 - don't deliver anywhere */
+
+	vector = 0;
+
+	io_apic_write(apic, select, flags | vector);
+	io_apic_write(apic, select + 1, target);
+
 	imen_unlock();
-	
-	/* we only deal with vectored INTs here */
+
+	/*
+	 * We only deal with vectored interrupts here.  ? documentation is
+	 * lacking, I'm guessing an interrupt type of 0 is the 'INT' type,
+	 * vs ExTINT, etc.
+	 *
+	 * This test also catches unconfigured pins.
+	 */
 	if (apic_int_type(apic, pin) != 0)
 		return;
-	
+
+	/*
+	 * Leave the pin unprogrammed if it does not correspond to
+	 * an IRQ.
+	 */
 	irq = apic_irq(apic, pin);
 	if (irq < 0)
 		return;
 	
 	/* determine the bus type for this pin */
 	bus = apic_src_bus_id(apic, pin);
-	if (bus == -1)
+	if (bus < 0)
 		return;
 	bustype = apic_bus_type(bus);
 	
@@ -255,15 +270,29 @@ io_apic_setup_intpin(int apic, int pin)
 		polarity(apic, pin, &flags, level);
 	}
 	
-	/* program the appropriate registers */
 	if (bootverbose) {
 		printf("IOAPIC #%d intpin %d -> irq %d\n",
 		       apic, pin, irq);
 	}
-	vector = NRSVIDT + irq;			/* IDT vec */
+
+	/*
+	 * Program the appropriate registers.  This routing may be 
+	 * overridden when an interrupt handler for a device is
+	 * actually added (see inthand_add(), which calls through
+	 * the MACHINTR ABI to set up an interrupt handler/vector).
+	 *
+	 * The order in which we must program the two registers for
+	 * safety is unclear! XXX
+	 */
 	imen_lock();
+
+	vector = IDT_OFFSET + irq;			/* IDT vec */
+	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target |= IOART_HI_DEST_BROADCAST;
+	flags |= io_apic_read(apic, select) & IOART_RESV;
 	io_apic_write(apic, select, flags | vector);
 	io_apic_write(apic, select + 1, target);
+
 	imen_unlock();
 }
 

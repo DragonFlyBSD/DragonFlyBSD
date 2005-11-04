@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/apic/Attic/apic_abi.c,v 1.7 2005/11/03 23:45:09 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_abi.c,v 1.8 2005/11/04 01:21:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -278,14 +278,21 @@ apic_vectorctl(int op, int intr, int flags)
 	}
 
 	/*
-	 * Now reprogram the vector in the IO APIC.
+	 * Now reprogram the vector in the IO APIC.  In order to avoid
+	 * losing an EOI for a level interrupt, which is vector based,
+	 * make sure that the IO APIC is programmed for edge-triggering
+	 * first, then reprogrammed with the new vector.  This should
+	 * clear the IRR bit.
 	 */
 	if (int_to_apicintpin[intr].ioapic >= 0) {
+	    imen_lock();
 	    select = int_to_apicintpin[intr].redirindex;
-	    value = io_apic_read(int_to_apicintpin[intr].ioapic,
-				 select) & ~IOART_INTVEC;
+	    value = io_apic_read(int_to_apicintpin[intr].ioapic, select);
 	    io_apic_write(int_to_apicintpin[intr].ioapic,
-			  select, value | vector);
+			  select, (value & ~APIC_TRIGMOD_MASK));
+	    io_apic_write(int_to_apicintpin[intr].ioapic,
+			  select, (value & ~IOART_INTVEC) | vector);
+	    imen_unlock();
 	}
 	machintr_intren(intr);
 	break;
@@ -303,20 +310,30 @@ apic_vectorctl(int op, int intr, int flags)
 	 * And then reprogram the IO APIC to point to the SLOW vector (it may
 	 * have previously been pointed to the FAST version of the vector).
 	 * This will allow us to keep track of spurious interrupts.
+	 *
+	 * In order to avoid losing an EOI for a level interrupt, which is
+	 * vector based, make sure that the IO APIC is programmed for 
+	 * edge-triggering first, then reprogrammed with the new vector.
+	 * This should clear the IRR bit.
 	 */
 	if (int_to_apicintpin[intr].ioapic >= 0) {
+	    imen_lock();
 	    select = int_to_apicintpin[intr].redirindex;
-	    value = io_apic_read(int_to_apicintpin[intr].ioapic,
-				 select) & ~IOART_INTVEC;
+	    value = io_apic_read(int_to_apicintpin[intr].ioapic, select);
 	    io_apic_write(int_to_apicintpin[intr].ioapic,
-			  select, value | vector);
+			  select, (value & ~APIC_TRIGMOD_MASK));
+	    io_apic_write(int_to_apicintpin[intr].ioapic,
+			  select, (value & ~IOART_INTVEC) | vector);
+	    imen_unlock();
 	}
 	break;
     case MACHINTR_VECTOR_SETDEFAULT:
 	/*
-	 * With a pure APIC we don't need any default setup since the IO APIC
-	 * is masked.  However, program a vector that the 8259 will hit just
-	 * in case *it* goes off.
+	 * This is a just-in-case an int pin is running through the 8259
+	 * when we don't expect it to, or an IO APIC pin somehow wound
+	 * up getting enabled without us specifically programming it in
+	 * this ABI.  Note that IO APIC pins are by default programmed
+	 * to IDT_OFFSET + intr.
 	 */
 	vector = IDT_OFFSET + intr;
 	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
