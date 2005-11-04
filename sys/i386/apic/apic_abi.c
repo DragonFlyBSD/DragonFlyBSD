@@ -37,7 +37,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/apic/Attic/apic_abi.c,v 1.8 2005/11/04 01:21:39 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_abi.c,v 1.9 2005/11/04 19:46:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -151,7 +151,7 @@ static inthand_t *apic_wrongintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_wrongintr22), &IDTVEC(apic_wrongintr23)
 };
 
-static int picmode;
+static int apic_imcr_present;
 
 struct machintr_abi MachIntrABI = {
 	MACHINTR_APIC,
@@ -169,8 +169,8 @@ apic_setvar(int varid, const void *buf)
     int error = 0;
 
     switch(varid) {
-    case MACHINTR_VAR_PICMODE:
-	picmode = *(const int *)buf;
+    case MACHINTR_VAR_IMCR_PRESENT:
+	apic_imcr_present = *(const int *)buf;
 	break;
     default:
 	error = ENOENT;
@@ -185,8 +185,8 @@ apic_getvar(int varid, void *buf)
     int error = 0;
 
     switch(varid) {
-    case MACHINTR_VAR_PICMODE:
-	*(int *)buf = picmode;
+    case MACHINTR_VAR_IMCR_PRESENT:
+	*(int *)buf = apic_imcr_present;
 	break;
     default:
 	error = ENOENT;
@@ -204,20 +204,22 @@ apic_getvar(int varid, void *buf)
 static void
 apic_finalize(void)
 {
-    u_char		byte;
     u_int32_t	temp;
 
-    /* leave 'pic mode' if necessary */
-    if (picmode) {
+    /*
+     * If an IMCR is present, program bit 0 to disconnect the 8259
+     * from the BSP.  The 8259 may still be connected to LINT0 on
+     * the BSP's LAPIC.
+     */
+    if (apic_imcr_present) {
 	outb(0x22, 0x70);	/* select IMCR */
-	byte = inb(0x23);	/* current contents */
-	byte |= 0x01;		/* mask external INTR */
-	outb(0x23, byte);	/* disconnect 8259s/NMI */
+	outb(0x23, 0x01);	/* disconnect 8259 */
     }
 
     /*
      * Setup lint0 (the 8259 'virtual wire' connection).  We
-     * mask the interrupt.
+     * mask the interrupt, completing the disconnection of the
+     * 8259.
      */
     temp = lapic.lvt_lint0;
     temp |= APIC_LVT_MASKED;

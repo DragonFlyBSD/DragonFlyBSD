@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.7 2005/11/04 08:57:28 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_abi.c,v 1.8 2005/11/04 19:46:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,6 +115,8 @@ struct machintr_abi MachIntrABI = {
     icu_finalize
 };
 
+static int icu_imcr_present;
+
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
@@ -123,20 +125,61 @@ static
 int
 icu_setvar(int varid __unused, const void *buf __unused)
 {
-    return (ENOENT);
+    int error = 0;
+	
+    switch(varid) {
+    case MACHINTR_VAR_IMCR_PRESENT:
+	icu_imcr_present = *(const int *)buf;
+	break;
+    default:
+	error = ENOENT;
+	break;
+    }
+    return (error);
 }
 
 static
 int
 icu_getvar(int varid __unused, void *buf __unused)
 {
-    return (ENOENT);
+    int error = 0;
+	
+    switch(varid) {
+    case MACHINTR_VAR_IMCR_PRESENT:
+	*(int *)buf = icu_imcr_present;
+	break;
+    default:
+	error = ENOENT;
+	break;
+    }
+    return (error);
 }
 
 static void
 icu_finalize(void)
 {
     machintr_intren(ICU_IRQ_SLAVE);
+
+    /*
+     * If an IMCR is present, programming bit 0 disconnects the 8259
+     * from the BSP.  The 8259 may still be connected to LINT0 on the BSP's
+     * LAPIC.
+     *
+     * If we are running SMP the LAPIC is active and we want to use virtual
+     * wire mode so we can use other interrupt sources within the LAPIC.
+     *
+     * If we are not running SMP the 8259 must be directly connected to the
+     * BSP and we program the IMCR to 0.
+     */
+    if (icu_imcr_present) {
+#ifdef SMP
+	outb(0x22, 0x70);
+	outb(0x23, 0x01);
+#else
+	outb(0x22, 0x70);
+	outb(0x23, 0x00);
+#endif
+    }
 }
 
 static

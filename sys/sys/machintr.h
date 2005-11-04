@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/machintr.h,v 1.4 2005/11/03 23:45:16 dillon Exp $
+ * $DragonFly: src/sys/sys/machintr.h,v 1.5 2005/11/04 19:46:06 dillon Exp $
  */
 /*
  * This module defines the ABI for the machine-independant cpu interrupt
@@ -46,7 +46,7 @@ enum machintr_type { MACHINTR_ICU, MACHINTR_APIC };
 
 #define MACHINTR_VAR_SIZEMASK	0xFFFF
 
-#define MACHINTR_VAR_PICMODE	(0x00010000|sizeof(int))
+#define MACHINTR_VAR_IMCR_PRESENT	(0x00010000|sizeof(int))
 
 #define MACHINTR_VECTOR_SETUP		1
 #define MACHINTR_VECTOR_TEARDOWN	2

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.46 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.47 2005/11/04 19:46:08 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -828,7 +828,6 @@ mptable_pass2(void)
 	int     count;
 	int     type;
 	int     apic, bus, cpu, intr;
-	int	picmode;
 	int	i;
 
 	POSTCODE(MPTABLE_PASS2_POST);
@@ -882,8 +881,7 @@ mptable_pass2(void)
 	boot_cpu_id = -1;
 
 	/* record whether PIC or virtual-wire mode */
-	picmode = (mpfps->mpfb2 & 0x80) ? 1 : 0;
-	machintr_setvar_simple(MACHINTR_VAR_PICMODE, picmode);
+	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, mpfps->mpfb2 & 0x80);
 
 	/* check for use of 'default' configuration */
 	if (mpfps->mpfb1 != 0)
