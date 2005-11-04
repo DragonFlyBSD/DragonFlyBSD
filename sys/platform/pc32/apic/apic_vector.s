@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.30 2005/11/04 08:57:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.31 2005/11/04 21:16:57 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -198,6 +198,7 @@ IDTVEC(vec_name) ;							\
 	maybe_extra_ipending ;						\
 ;									\
 	MASK_LEVEL_IRQ(irq_num) ;					\
+	incl	PCPU(cnt) + V_INTR ;					\
 	movl	$0, lapic_eoi ;						\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\

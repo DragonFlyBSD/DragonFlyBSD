@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.24 2005/11/04 08:57:28 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.25 2005/11/04 21:16:59 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -129,13 +129,12 @@
  *	prefixes.
  */
 
-#define	FAST_INTR(irq_num, vec_name, icu, enable_icus, maybe_extra_ipending) \
+#define	FAST_INTR(irq_num, vec_name, icu, enable_icus)			 \
 	.text ; 							\
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(13*4(%esp)) ; 					\
-	maybe_extra_ipending ;						\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
@@ -182,14 +181,14 @@ IDTVEC(vec_name) ; 							\
  *	prefixes.
  */
 
-#define	INTR(irq_num, vec_name, icu, enable_icus, reg, maybe_extra_ipending) \
+#define	SLOW_INTR(irq_num, vec_name, icu, enable_icus)			 \
 	.text ; 							\
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(13*4(%esp)) ;					\
-	maybe_extra_ipending ; 						\
 	MASK_IRQ(icu, irq_num) ;					\
+	incl    PCPU(cnt) + V_INTR ;                                    \
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
 	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
@@ -229,39 +228,39 @@ IDTVEC(vec_name) ;							\
 	ret ;								\
 
 MCOUNT_LABEL(bintr)
-	FAST_INTR(0,icu_fastintr0, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(1,icu_fastintr1, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(2,icu_fastintr2, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(3,icu_fastintr3, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(4,icu_fastintr4, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(5,icu_fastintr5, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(6,icu_fastintr6, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(7,icu_fastintr7, IO_ICU1, ENABLE_ICU1,)
-	FAST_INTR(8,icu_fastintr8, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(9,icu_fastintr9, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(10,icu_fastintr10, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(11,icu_fastintr11, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(12,icu_fastintr12, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(13,icu_fastintr13, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(14,icu_fastintr14, IO_ICU2, ENABLE_ICU1_AND_2,)
-	FAST_INTR(15,icu_fastintr15, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(0,icu_fastintr0, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(1,icu_fastintr1, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(2,icu_fastintr2, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(3,icu_fastintr3, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(4,icu_fastintr4, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(5,icu_fastintr5, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(6,icu_fastintr6, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(7,icu_fastintr7, IO_ICU1, ENABLE_ICU1)
+	FAST_INTR(8,icu_fastintr8, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(9,icu_fastintr9, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(10,icu_fastintr10, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(11,icu_fastintr11, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(12,icu_fastintr12, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(13,icu_fastintr13, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(14,icu_fastintr14, IO_ICU2, ENABLE_ICU1_AND_2)
+	FAST_INTR(15,icu_fastintr15, IO_ICU2, ENABLE_ICU1_AND_2)
 
-	INTR(0,icu_slowintr0, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(1,icu_slowintr1, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(2,icu_slowintr2, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(3,icu_slowintr3, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(4,icu_slowintr4, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(5,icu_slowintr5, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(6,icu_slowintr6, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(7,icu_slowintr7, IO_ICU1, ENABLE_ICU1, al,)
-	INTR(8,icu_slowintr8, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(9,icu_slowintr9, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(10,icu_slowintr10, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(11,icu_slowintr11, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(12,icu_slowintr12, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(13,icu_slowintr13, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(14,icu_slowintr14, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
-	INTR(15,icu_slowintr15, IO_ICU2, ENABLE_ICU1_AND_2, ah,)
+	SLOW_INTR(0,icu_slowintr0, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(1,icu_slowintr1, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(2,icu_slowintr2, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(3,icu_slowintr3, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(4,icu_slowintr4, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(5,icu_slowintr5, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(6,icu_slowintr6, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(7,icu_slowintr7, IO_ICU1, ENABLE_ICU1)
+	SLOW_INTR(8,icu_slowintr8, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(9,icu_slowintr9, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(10,icu_slowintr10, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(11,icu_slowintr11, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(12,icu_slowintr12, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(13,icu_slowintr13, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(14,icu_slowintr14, IO_ICU2, ENABLE_ICU1_AND_2)
+	SLOW_INTR(15,icu_slowintr15, IO_ICU2, ENABLE_ICU1_AND_2)
 
 MCOUNT_LABEL(eintr)
 
