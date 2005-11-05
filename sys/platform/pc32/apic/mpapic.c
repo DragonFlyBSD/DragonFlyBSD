@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.15 2005/11/04 08:57:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.16 2005/11/05 01:30:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,9 +44,7 @@
  * pointers to pmapped apic hardware.
  */
 
-#if defined(APIC_IO)
 volatile ioapic_t	**ioapic;
-#endif	/* APIC_IO */
 
 /*
  * Enable APIC, configure interrupts.
@@ -84,6 +82,14 @@ apic_initialize(void)
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	temp |= APIC_LVT_MASKED | APIC_LVT_DM_NMI;
 	lapic.lvt_lint1 = temp;
+
+	/*
+	 * Mask the apic error interrupt, apic performance counter
+	 * interrupt, and the apic timer interrupt.
+	 */
+	lapic.lvt_error = lapic.lvt_error | APIC_LVT_MASKED;
+	lapic.lvt_pcint = lapic.lvt_pcint | APIC_LVT_MASKED;
+	lapic.lvt_timer = lapic.lvt_timer | APIC_LVT_MASKED;
 
 	/*
 	 * Set the Task Priority Register as needed.   At the moment allow
