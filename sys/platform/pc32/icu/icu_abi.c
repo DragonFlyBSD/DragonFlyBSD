@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.8 2005/11/04 19:46:09 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.9 2005/11/05 01:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -165,19 +165,14 @@ icu_finalize(void)
      * from the BSP.  The 8259 may still be connected to LINT0 on the BSP's
      * LAPIC.
      *
-     * If we are running SMP the LAPIC is active and we want to use virtual
-     * wire mode so we can use other interrupt sources within the LAPIC.
-     *
-     * If we are not running SMP the 8259 must be directly connected to the
-     * BSP and we program the IMCR to 0.
+     * If we are running SMP the LAPIC is active, try to use virtual wire
+     * mode so we can use other interrupt sources within the LAPIC in
+     * addition to the 8259.
      */
     if (icu_imcr_present) {
-#ifdef SMP
+#if defined(SMP)
 	outb(0x22, 0x70);
 	outb(0x23, 0x01);
-#else
-	outb(0x22, 0x70);
-	outb(0x23, 0x00);
 #endif
     }
 }
