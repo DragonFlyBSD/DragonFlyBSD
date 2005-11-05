@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.43 2005/08/17 09:04:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.44 2005/11/05 15:35:10 swildner Exp $
  */
 
 /*-
@@ -222,7 +222,7 @@ static Hash_Table mtimes;
  *	add curdir if it is not the same as objdir
  */
 void
-Dir_Init()
+Dir_Init(void)
 {
 
 	Hash_InitTable(&mtimes, 0);

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.145 2005/09/22 09:13:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.146 2005/11/05 15:35:10 swildner Exp $
  */
 
 #ifndef OLD_JOKE
@@ -578,7 +578,7 @@ Sig_Init(bool compat)
 /**
  */
 void
-Proc_Init()
+Proc_Init(void)
 {
 	check_make_level();
 
