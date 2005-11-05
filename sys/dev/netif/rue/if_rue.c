@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.2 2005/09/19 04:22:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.3 2005/11/05 10:01:54 sephe Exp $
  */
 
 /*
@@ -430,39 +430,6 @@ rue_miibus_writereg(device_ptr_t dev, int phy, int reg, int data)
 Static void
 rue_miibus_statchg(device_ptr_t dev)
 {
-	/*
-	 * When the code below is enabled the card starts doing weird
-	 * things after link going from UP to DOWN and back UP.
-	 *
-	 * Looks like some of register writes below messes up PHY
-	 * interface.
-	 *
-	 * No visible regressions were found after commenting this code
-	 * out, so that disable it for good.
-	 */
-#if 0
-	struct rue_softc	*sc = USBGETSOFTC(dev);
-	struct mii_data		*mii = GET_MII(sc);
-	int			bmcr;
-
-	RUE_CLRBIT(sc, RUE_CR, (RUE_CR_RE | RUE_CR_TE));
-
-	bmcr = rue_csr_read_2(sc, RUE_BMCR);
-
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_100_TX)
-		bmcr |= RUE_BMCR_SPD_SET;
-	else
-		bmcr &= ~RUE_BMCR_SPD_SET;
-
-	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX)
-		bmcr |= RUE_BMCR_DUPLEX;
-	else
-		bmcr &= ~RUE_BMCR_DUPLEX;
-
-	rue_csr_write_2(sc, RUE_BMCR, bmcr);
-
-	RUE_SETBIT(sc, RUE_CR, (RUE_CR_RE | RUE_CR_TE));
-#endif
 }
 
 /*

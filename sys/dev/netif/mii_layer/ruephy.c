@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ruephy.c,v 1.1.4.1 2003/07/30 13:57:35 akiyama Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.3 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.4 2005/11/05 10:01:54 sephe Exp $
  */
 
 /*
@@ -133,8 +133,6 @@ ruephy_attach(device_t dev)
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-
 	ruephy_reset(sc);
 
 	sc->mii_capabilities =
@@ -145,8 +143,6 @@ ruephy_attach(device_t dev)
 	else
 		mii_add_media(sc, sc->mii_capabilities);
 	printf("\n");
-
-#undef ADD
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return (0);
@@ -273,7 +269,7 @@ ruephy_reset(struct mii_softc *sc)
 	 * XXX RealTek RTL8150 PHY doesn't set the BMCR properly after
 	 * XXX reset, which breaks autonegotiation.
 	 */
-	PHY_WRITE(sc, MII_BMCR, (BMCR_S100 | BMCR_AUTOEN | BMCR_FDX));
+	PHY_WRITE(sc, MII_BMCR, BMCR_AUTOEN);
 }
 
 static void
