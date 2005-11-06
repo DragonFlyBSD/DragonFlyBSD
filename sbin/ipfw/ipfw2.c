@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.7 2005/11/06 12:29:11 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -3358,7 +3358,7 @@ resetlog(int ac, char *av[])
 }
 
 static void
-flush()
+flush(void)
 {
 	int cmd = do_pipe ? IP_DUMMYNET_FLUSH : IP_FW_FLUSH;
 

@@ -49,7 +49,7 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.9 2005/11/06 12:29:11 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -138,7 +138,8 @@ mask_bits(u_char *m_ad, int m_len)
 
 static int pl2m[9] = { 0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xff };
 
-struct in6_addr *plen2mask(int n)
+struct in6_addr *
+plen2mask(int n)
 {
 	static struct in6_addr ia;
 	u_char	*p;
