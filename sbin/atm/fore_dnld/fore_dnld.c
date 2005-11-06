@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $
- *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.7 2005/11/06 12:06:03 swildner Exp $
  */
 
 /*
@@ -100,8 +100,7 @@ Mon960 *Uart;
 int	sendbinfile(char *, u_char *);
 
 void
-delay(cnt)
-	int	cnt;
+delay(int cnt)
 {
 	usleep(cnt);
 }

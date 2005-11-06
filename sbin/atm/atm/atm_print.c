@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_print.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_print.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_print.c,v 1.4 2005/11/06 12:06:03 swildner Exp $
  */
 
 /*
@@ -625,8 +625,7 @@ print_ip_vcc_info(struct air_ip_vcc_rsp *ai)
  *
  */
 void
-print_netif_info(ni)
-	struct air_netif_rsp	*ni;
+print_netif_info(struct air_netif_rsp *ni)
 {
 	char			*ip_addr;
 	struct sockaddr_in	*sin;
@@ -666,8 +665,7 @@ print_netif_info(ni)
  *
  */
 void
-print_intf_stats(pi)
-	struct air_phy_stat_rsp	*pi;
+print_intf_stats(struct air_phy_stat_rsp *pi)
 {
 	/*
 	 * Print a header if it hasn't already been done
@@ -703,8 +701,7 @@ print_intf_stats(pi)
  *
  */
 void
-print_vcc_stats(vi)
-	struct air_vcc_rsp	*vi;
+print_vcc_stats(struct air_vcc_rsp *vi)
 {
 
 	/*
@@ -751,8 +748,7 @@ print_vcc_stats(vi)
  *
  */
 void
-print_vcc_info(vi)
-	struct air_vcc_rsp	*vi;
+print_vcc_info(struct air_vcc_rsp *vi)
 {
 	int	i;
 	char	*aal_name = "-" , *encaps_name = "-", *owner_name = "-";
@@ -867,8 +863,7 @@ print_vcc_info(vi)
  *
  */
 void
-print_version_info(vi)
-	struct air_version_rsp	*vi;
+print_version_info(struct air_version_rsp *vi)
 {
 	char			version_str[80];
 

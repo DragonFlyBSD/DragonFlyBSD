@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.7 2005/11/06 12:06:03 swildner Exp $
  */
 
 /*
@@ -1114,7 +1114,7 @@ find_var ( var )
  *
  */
 int
-get_ticks()
+get_ticks(void)
 {
 	struct timeval	timenow;
 	struct timeval	timediff;
@@ -1461,7 +1461,7 @@ send_resp ( intf, Hdr, resp )
  *
  */
 Snmp_Header *
-build_cold_start()
+build_cold_start(void)
 {
 	Snmp_Header	*hdr;
 	Variable	*var;
@@ -1492,7 +1492,7 @@ build_cold_start()
  *
  */
 Snmp_Header *
-build_generic_header()
+build_generic_header(void)
 {
 	Snmp_Header	*hdr;
 
