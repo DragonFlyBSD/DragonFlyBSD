@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.9 2005/09/07 19:10:09 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.10 2005/11/06 12:32:56 swildner Exp $
  */
 
 #include "jscan.h"
@@ -374,8 +374,7 @@ main(int ac, char **av)
 /*
  * Returns one if we need to break out of our scanning loop, zero otherwise.
  */
-static
-int
+static int
 donecheck(enum jdirection direction, struct jdata *jd, int64_t transid)
 {
     if (direction == JD_FORWARDS) {
@@ -393,8 +392,7 @@ donecheck(enum jdirection direction, struct jdata *jd, int64_t transid)
  * 'background' the output and/or mirroring command and have the background
  * processes feed off the prefix set the foreground process is writing to.
  */
-static
-void
+static void
 fork_subprocess(struct jfile *jftoclose,
 	void (*func)(struct jfile *, const char *, const char *, int64_t),
 	const char *input_prefix, const char *transid_file, const char *info,
@@ -418,8 +416,7 @@ fork_subprocess(struct jfile *jftoclose,
     }
 }
 
-static
-void
+static void
 jscan_do_output(struct jfile *jf, const char *output_transid_file, const char *dummy __unused, int64_t transid)
 {
     struct jdata *jd;
@@ -450,8 +447,7 @@ jscan_do_output(struct jfile *jf, const char *output_transid_file, const char *d
     jsession_term(&jsoutput);
 }
 
-static
-void
+static void
 jscan_do_mirror(struct jfile *jf, const char *mirror_transid_file, const char *mirror_directory, int64_t transid)
 {
     struct jsession jsdebug;
@@ -483,8 +479,7 @@ jscan_do_mirror(struct jfile *jf, const char *mirror_transid_file, const char *m
     jsession_term(&jsmirror);
 }
 
-static
-void
+static void
 jscan_do_record(struct jfile *jfin, const char *record_transid_file, const char *prefix, int64_t transid)
 {
     struct jsession jsdebug;
@@ -523,8 +518,7 @@ jscan_do_record(struct jfile *jfin, const char *record_transid_file, const char 
     jsession_term(&jsrecord);
 }
 
-static
-void
+static void
 jscan_do_debug(struct jfile *jf, const char *dummy1 __unused,
 	       const char *dummy __unused, int64_t transid __unused)
 {

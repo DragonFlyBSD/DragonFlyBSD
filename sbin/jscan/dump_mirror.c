@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.7 2005/09/07 19:10:09 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_mirror.c,v 1.8 2005/11/06 12:32:56 swildner Exp $
  */
 
 #include "jscan.h"
@@ -596,8 +596,7 @@ dump_mirror_rebuild_undo(u_int16_t rectype, struct jstream *js,
  * the file that had existed previously.  The caller will clean up the
  * attributes (including file truncations/extensions) after the fact.
  */
-static
-void
+static void
 undo_recreate(const char *filename, struct jstream *js, struct jattr *jattr)
 {
     struct jattr_data *data;
@@ -645,8 +644,7 @@ undo_recreate(const char *filename, struct jstream *js, struct jattr *jattr)
     }
 }
 
-static
-void
+static void
 dosetattr(const char *filename, int fd, struct jattr *jattr)
 {
     if (fd >= 0) {
