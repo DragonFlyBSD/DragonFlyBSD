@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
- * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.6 2005/03/06 05:01:59 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.7 2005/11/06 12:21:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,8 @@
 static int			__tag = 0;
 static int			__have_tag = 0;
 
-void vlan_status(int s, struct rt_addrinfo *info __unused)
+void
+vlan_status(int s, struct rt_addrinfo *info __unused)
 {
 	struct vlanreq		vreq;
 
@@ -78,8 +79,9 @@ void vlan_status(int s, struct rt_addrinfo *info __unused)
 	return;
 }
 
-void setvlantag(const char *val, int d __unused, int s,
-		const struct afswtch *afp __unused)
+void
+setvlantag(const char *val, int d __unused, int s,
+	   const struct afswtch *afp __unused)
 {
 	u_int16_t		tag;
 	struct vlanreq		vreq;
@@ -101,8 +103,9 @@ void setvlantag(const char *val, int d __unused, int s,
 	return;
 }
 
-void setvlandev(const char *val, int d __unused, int s,
-		const struct afswtch *afp __unused)
+void
+setvlandev(const char *val, int d __unused, int s,
+	   const struct afswtch *afp __unused)
 {
 	struct vlanreq		vreq;
 
@@ -124,8 +127,9 @@ void setvlandev(const char *val, int d __unused, int s,
 	return;
 }
 
-void unsetvlandev(const char *val __unused, int d __unused, int s,
-		  const struct afswtch *afp __unused)
+void
+unsetvlandev(const char *val __unused, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	struct vlanreq		vreq;
 

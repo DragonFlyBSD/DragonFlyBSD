@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.6.2.3 2001/11/14 04:35:07 yar Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.8 2005/03/06 05:01:59 dillon Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.9 2005/11/06 12:21:42 swildner Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -127,8 +127,8 @@ media_status(int s, struct rt_addrinfo *info __unused)
 	struct ifmediareq ifmr;
 	int *media_list, i;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	if (ioctl(s, SIOCGIFMEDIA, (caddr_t)&ifmr) < 0) {
 		/*
@@ -218,8 +218,8 @@ setmedia(const char *val, int d __unused, int s,
 	struct ifmediareq ifmr;
 	int first_type, subtype;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	ifmr.ifm_count = 1;
 	ifmr.ifm_ulist = &first_type;
@@ -276,8 +276,8 @@ domediaopt(const char *val, int clear, int s)
 	struct ifmediareq ifmr;
 	int *mwords, options;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	/*
 	 * We must go through the motions of reading all
@@ -322,8 +322,8 @@ setmediamode(const char *val, int d __unused, int s,
 	struct ifmediareq ifmr;
 	int *mwords, mode;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	/*
 	 * We must go through the motions of reading all
@@ -634,7 +634,8 @@ lookup_media_word(struct ifmedia_description *desc, const char *val)
 	return (-1);
 }
 
-static struct ifmedia_description *get_toptype_desc(int ifmw)
+static struct ifmedia_description *
+get_toptype_desc(int ifmw)
 {
 	struct ifmedia_description *desc;
 
@@ -645,7 +646,8 @@ static struct ifmedia_description *get_toptype_desc(int ifmw)
 	return desc;
 }
 
-static struct ifmedia_type_to_subtype *get_toptype_ttos(int ifmw)
+static struct ifmedia_type_to_subtype *
+get_toptype_ttos(int ifmw)
 {
 	struct ifmedia_description *desc;
 	struct ifmedia_type_to_subtype *ttos;
@@ -658,8 +660,8 @@ static struct ifmedia_type_to_subtype *get_toptype_ttos(int ifmw)
 	return ttos;
 }
 
-static struct ifmedia_description *get_subtype_desc(int ifmw, 
-    struct ifmedia_type_to_subtype *ttos)
+static struct ifmedia_description *
+get_subtype_desc(int ifmw, struct ifmedia_type_to_subtype *ttos)
 {
 	int i;
 	struct ifmedia_description *desc;
@@ -677,8 +679,8 @@ static struct ifmedia_description *get_subtype_desc(int ifmw,
 	return NULL;
 }
 
-static struct ifmedia_description *get_mode_desc(int ifmw, 
-    struct ifmedia_type_to_subtype *ttos)
+static struct ifmedia_description *
+get_mode_desc(int ifmw, struct ifmedia_type_to_subtype *ttos)
 {
 	int i;
 	struct ifmedia_description *desc;

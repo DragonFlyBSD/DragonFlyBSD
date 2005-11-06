@@ -29,7 +29,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.24 2005/05/26 09:06:40 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.25 2005/11/06 12:21:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1998,7 +1998,7 @@ clone_create(void)
 		err(1, "socket");
 
 	memset(&ifr, 0, sizeof(ifr));
-	(void) strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFCREATE, &ifr) < 0)
 		err(1, "SIOCIFCREATE");
 
@@ -2020,7 +2020,7 @@ clone_destroy(const char *val __unused, int d __unused, int s,
 	      const struct afswtch *rafp __unused)
 {
 
-	(void) strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
 	/*
