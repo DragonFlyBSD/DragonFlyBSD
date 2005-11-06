@@ -37,7 +37,7 @@
  *	@(#)pt_tcp.c	8.5 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/mount_portal/pt_tcp.c,v 1.9 1999/08/28 00:13:38 peter Exp $
- * $DragonFly: src/sbin/mount_portal/pt_tcp.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_tcp.c,v 1.5 2005/11/06 12:36:40 swildner Exp $
  */
 
 #include <errno.h>
@@ -61,7 +61,8 @@
  * Some trailing suffix values have special meanings.
  * An unrecognized suffix is an error.
  */
-int portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso, int *fdp)
+int
+portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso, int *fdp)
 {
 	char host[MAXHOSTNAMELEN];
 	char port[MAXHOSTNAMELEN];
