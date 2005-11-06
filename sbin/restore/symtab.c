@@ -32,7 +32,7 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.7 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/symtab.c,v 1.8 2005/11/06 12:49:25 swildner Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ static void		 removeentry(struct entry *);
 struct entry *
 lookupino(ufs1_ino_t inum)
 {
-	register struct entry *ep;
+	struct entry *ep;
 
 	if (inum < WINO || inum >= maxino)
 		return (NULL);
@@ -116,7 +116,7 @@ addino(ufs1_ino_t inum, struct entry *np)
 void
 deleteino(ufs1_ino_t inum)
 {
-	register struct entry *next;
+	struct entry *next;
 	struct entry **prev;
 
 	if (inum < WINO || inum >= maxino)
@@ -139,8 +139,8 @@ deleteino(ufs1_ino_t inum)
 struct entry *
 lookupname(char *name)
 {
-	register struct entry *ep;
-	register char *np, *cp;
+	struct entry *ep;
+	char *np, *cp;
 	char buf[MAXPATHLEN];
 
 	cp = name;
@@ -188,9 +188,9 @@ lookupparent(char *name)
  * Determine the current pathname of a node or leaf
  */
 char *
-myname(register struct entry *ep)
+myname(struct entry *ep)
 {
-	register char *cp;
+	char *cp;
 	static char namebuf[MAXPATHLEN];
 
 	for (cp = &namebuf[MAXPATHLEN - 2]; cp > &namebuf[ep->e_namlen]; ) {
@@ -217,7 +217,7 @@ static struct entry *freelist = NULL;
 struct entry *
 addentry(char *name, ufs1_ino_t inum, int type)
 {
-	register struct entry *np, *ep;
+	struct entry *np, *ep;
 
 	if (freelist != NULL) {
 		np = freelist;
@@ -263,9 +263,9 @@ addentry(char *name, ufs1_ino_t inum, int type)
  * delete an entry from the symbol table
  */
 void
-freeentry(register struct entry *ep)
+freeentry(struct entry *ep)
 {
-	register struct entry *np;
+	struct entry *np;
 	ufs1_ino_t inum;
 
 	if (ep->e_flags != REMOVED)
@@ -306,7 +306,7 @@ freeentry(register struct entry *ep)
  * Relocate an entry in the tree structure
  */
 void
-moveentry(register struct entry *ep, char *newname)
+moveentry(struct entry *ep, char *newname)
 {
 	struct entry *np;
 	char *cp;
@@ -334,9 +334,9 @@ moveentry(register struct entry *ep, char *newname)
  * Remove an entry in the tree structure
  */
 static void
-removeentry(register struct entry *ep)
+removeentry(struct entry *ep)
 {
-	register struct entry *np;
+	struct entry *np;
 
 	np = ep->e_parent;
 	if (np->e_entries == ep) {
@@ -435,8 +435,8 @@ struct symtableheader {
 void
 dumpsymtable(char *filename, long checkpt)
 {
-	register struct entry *ep, *tep;
-	register ufs1_ino_t i;
+	struct entry *ep, *tep;
+	ufs1_ino_t i;
 	struct entry temp, *tentry;
 	long mynum = 1, stroff = 0;
 	FILE *fd;
@@ -523,11 +523,11 @@ initsymtable(char *filename)
 {
 	char *base;
 	long tblsize;
-	register struct entry *ep;
+	struct entry *ep;
 	struct entry *baseep, *lep;
 	struct symtableheader hdr;
 	struct stat stbuf;
-	register long i;
+	long i;
 	int fd;
 
 	vprintf(stdout, "Initialize symbol table.\n");

@@ -32,7 +32,7 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.9 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.10 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -93,7 +93,7 @@ static void	 printlist(char *, char *);
 void
 runcmdshell(void)
 {
-	register struct entry *np;
+	struct entry *np;
 	ufs1_ino_t ino;
 	struct arglist arglist;
 	char curdir[MAXPATHLEN];
@@ -301,7 +301,7 @@ loop:
 static void
 getcmd(char *curdir, char *cmd, char *name, int size, struct arglist *ap)
 {
-	register char *cp;
+	char *cp;
 	static char input[BUFSIZ];
 	char output[BUFSIZ];
 #	define rawname input	/* save space by reusing input buffer */
@@ -386,7 +386,7 @@ retnext:
 static char *
 copynext(char *input, char *output)
 {
-	register char *cp, *bp;
+	char *cp, *bp;
 	char quote;
 
 	for (cp = input; *cp == ' ' || *cp == '\t'; cp++)
@@ -435,7 +435,7 @@ copynext(char *input, char *output)
 void
 canon(char *rawname, char *canonname, int len)
 {
-	register char *cp, *np;
+	char *cp, *np;
 
 	if (strcmp(rawname, ".") == 0 || strncmp(rawname, "./", 2) == 0)
 		strcpy(canonname, "");
@@ -489,8 +489,8 @@ canon(char *rawname, char *canonname, int len)
 static void
 printlist(char *name, char *basename)
 {
-	register struct afile *fp, *list, *listp = NULL;
-	register struct direct *dp;
+	struct afile *fp, *list, *listp = NULL;
+	struct direct *dp;
 	struct afile single;
 	RST_DIR *dirp;
 	int entries, len, namelen;
@@ -568,7 +568,7 @@ printlist(char *name, char *basename)
  * Read the contents of a directory.
  */
 static void
-mkentry(char *name, struct direct *dp, register struct afile *fp)
+mkentry(char *name, struct direct *dp, struct afile *fp)
 {
 	char *cp;
 	struct entry *np;
@@ -628,9 +628,9 @@ mkentry(char *name, struct direct *dp, register struct afile *fp)
  * Print out a pretty listing of a directory
  */
 static void
-formatf(register struct afile *list, int nentry)
+formatf(struct afile *list, int nentry)
 {
-	register struct afile *fp, *endlist;
+	struct afile *fp, *endlist;
 	int width, bigino, haveprefix, havepostfix;
 	int i, j, w, precision = 0, columns, lines;
 
@@ -727,7 +727,7 @@ glob_readdir(RST_DIR *dirp)
 static int
 glob_stat(const char *name, struct stat *stp)
 {
-	register struct direct *dp;
+	struct direct *dp;
 
 	dp = pathsearch(name);
 	if (dp == NULL || (!dflag && TSTINO(dp->d_ino, dumpmap) == 0) ||
@@ -744,7 +744,7 @@ glob_stat(const char *name, struct stat *stp)
  * Comparison routine for qsort.
  */
 static int
-fcmp(register const void *f1, register const void *f2)
+fcmp(const void *f1, const void *f2)
 {
 	return (strcmp(((struct afile *)f1)->fname,
 	    ((struct afile *)f2)->fname));

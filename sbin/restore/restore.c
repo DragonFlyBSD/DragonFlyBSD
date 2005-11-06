@@ -32,7 +32,7 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.7 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.8 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -70,7 +70,7 @@ listfile(char *name, ufs1_ino_t ino, int type)
 long
 addfile(char *name, ufs1_ino_t ino, int type)
 {
-	register struct entry *ep;
+	struct entry *ep;
 	long descend = hflag ? GOOD : FAIL;
 	char buf[100];
 
@@ -149,8 +149,8 @@ static struct entry *removelist;
 void
 removeoldleaves(void)
 {
-	register struct entry *ep, *nextep;
-	register ufs1_ino_t i, mydirino;
+	struct entry *ep, *nextep;
+	ufs1_ino_t i, mydirino;
 
 	vprintf(stdout, "Mark entries to be removed.\n");
 	if ((ep = lookupino(WINO))) {
@@ -202,7 +202,7 @@ removeoldleaves(void)
 long
 nodeupdates(char *name, ufs1_ino_t ino, int type)
 {
-	register struct entry *ep, *np, *ip;
+	struct entry *ep, *np, *ip;
 	long descend = GOOD;
 	int lookuptype = 0;
 	int key = 0;
@@ -509,8 +509,8 @@ keyval(int key)
 void
 findunreflinks(void)
 {
-	register struct entry *ep, *np;
-	register ufs1_ino_t i;
+	struct entry *ep, *np;
+	ufs1_ino_t i;
 
 	vprintf(stdout, "Find unreferenced names.\n");
 	for (i = ROOTINO; i < maxino; i++) {
@@ -557,7 +557,7 @@ findunreflinks(void)
 void
 removeoldnodes(void)
 {
-	register struct entry *ep, **prev;
+	struct entry *ep, **prev;
 	long change;
 
 	vprintf(stdout, "Remove old nodes (directories).\n");
@@ -586,7 +586,7 @@ removeoldnodes(void)
 void
 createleaves(char *symtabfile)
 {
-	register struct entry *ep;
+	struct entry *ep;
 	ufs1_ino_t first;
 	long curvol;
 
@@ -665,8 +665,8 @@ createleaves(char *symtabfile)
 void
 createfiles(void)
 {
-	register ufs1_ino_t first, next, last;
-	register struct entry *ep;
+	ufs1_ino_t first, next, last;
+	struct entry *ep;
 	long curvol;
 
 	vprintf(stdout, "Extract requested files\n");
@@ -761,8 +761,8 @@ createfiles(void)
 void
 createlinks(void)
 {
-	register struct entry *np, *ep;
-	register ufs1_ino_t i;
+	struct entry *np, *ep;
+	ufs1_ino_t i;
 	char name[BUFSIZ];
 
 	if ((ep = lookupino(WINO))) {
@@ -801,8 +801,8 @@ createlinks(void)
 void
 checkrestore(void)
 {
-	register struct entry *ep;
-	register ufs1_ino_t i;
+	struct entry *ep;
+	ufs1_ino_t i;
 
 	vprintf(stdout, "Check the symbol table.\n");
 	for (i = WINO; i < maxino; i++) {

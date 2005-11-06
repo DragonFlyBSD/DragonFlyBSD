@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/utilities.c,v 1.8.2.2 2001/07/30 10:30:08 dd Exp $
- * $DragonFly: src/sbin/restore/utilities.c,v 1.6 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/utilities.c,v 1.7 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@
 void
 pathcheck(char *name)
 {
-	register char *cp;
+	char *cp;
 	struct entry *ep;
 	char *start;
 
@@ -82,7 +82,7 @@ pathcheck(char *name)
  * Change a name to a unique temporary name.
  */
 void
-mktempname(register struct entry *ep)
+mktempname(struct entry *ep)
 {
 	char oldname[MAXPATHLEN];
 
@@ -152,7 +152,7 @@ newnode(struct entry *np)
  * Remove an old node (directory).
  */
 void
-removenode(register struct entry *ep)
+removenode(struct entry *ep)
 {
 	char *cp;
 
@@ -174,7 +174,7 @@ removenode(register struct entry *ep)
  * Remove a leaf.
  */
 void
-removeleaf(register struct entry *ep)
+removeleaf(struct entry *ep)
 {
 	char *cp;
 
@@ -259,7 +259,7 @@ addwhiteout(char *name)
  * Delete a whiteout.
  */
 void
-delwhiteout(register struct entry *ep)
+delwhiteout(struct entry *ep)
 {
 	char *name;
 
@@ -282,7 +282,7 @@ delwhiteout(register struct entry *ep)
 ufs1_ino_t
 lowerbnd(ufs1_ino_t start)
 {
-	register struct entry *ep;
+	struct entry *ep;
 
 	for ( ; start < maxino; start++) {
 		ep = lookupino(start);
@@ -300,7 +300,7 @@ lowerbnd(ufs1_ino_t start)
 ufs1_ino_t
 upperbnd(ufs1_ino_t start)
 {
-	register struct entry *ep;
+	struct entry *ep;
 
 	for ( ; start > ROOTINO; start--) {
 		ep = lookupino(start);
@@ -316,7 +316,7 @@ upperbnd(ufs1_ino_t start)
  * report on a badly formed entry
  */
 void
-badentry(register struct entry *ep, char *msg)
+badentry(struct entry *ep, char *msg)
 {
 
 	fprintf(stderr, "bad entry: %s\n", msg);
@@ -341,7 +341,7 @@ badentry(register struct entry *ep, char *msg)
  * Construct a string indicating the active flag bits of an entry.
  */
 char *
-flagvalues(register struct entry *ep)
+flagvalues(struct entry *ep)
 {
 	static char flagbuf[BUFSIZ];
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/restore/main.c,v 1.10.2.3 2001/10/02 08:30:17 cjc Exp $
- * $DragonFly: src/sbin/restore/main.c,v 1.7 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/main.c,v 1.8 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -297,9 +297,7 @@ usage(void)
  *	getopt(3) will like.
  */
 static void
-obsolete(argcp, argvp)
-	int *argcp;
-	char **argvp[];
+obsolete(int *argcp, char **argvp[])
 {
 	int argc, flags;
 	char *ap, **argv, *flagsp, **nargv, *p;

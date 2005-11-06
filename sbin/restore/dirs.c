@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.8 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.9 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -136,8 +136,8 @@ static struct direct	*searchdir(ufs1_ino_t, char *);
 void
 extractdirs(int genmode)
 {
-	register int i;
-	register struct dinode *ip;
+	int i;
+	struct dinode *ip;
 	struct inotab *itp;
 	struct direct nulldir;
 	int fd;
@@ -221,8 +221,8 @@ skipdirs(void)
 void
 treescan(char *pname, ufs1_ino_t ino, long (*todo) (char *, ufs1_ino_t, int))
 {
-	register struct inotab *itp;
-	register struct direct *dp;
+	struct inotab *itp;
+	struct direct *dp;
 	int namelen;
 	long bpt;
 	char locname[MAXPATHLEN + 1];
@@ -310,8 +310,8 @@ pathsearch(const char *pathname)
 static struct direct *
 searchdir(ufs1_ino_t inum, char *name)
 {
-	register struct direct *dp;
-	register struct inotab *itp;
+	struct direct *dp;
+	struct inotab *itp;
 	int len;
 
 	itp = inotablookup(inum);
@@ -334,9 +334,9 @@ static void
 putdir(char *buf, long size)
 {
 	struct direct cvtbuf;
-	register struct odirect *odp;
+	struct odirect *odp;
 	struct odirect *eodp;
-	register struct direct *dp;
+	struct direct *dp;
 	long loc, i;
 
 	if (cvtflag) {
@@ -428,7 +428,7 @@ flushent(void)
 }
 
 static void
-dcvt(register struct odirect *odp, register struct direct *ndp)
+dcvt(struct odirect *odp, struct direct *ndp)
 {
 
 	memset(ndp, 0, (long)(sizeof *ndp));
@@ -447,7 +447,7 @@ dcvt(register struct odirect *odp, register struct direct *ndp)
  * the desired seek offset into it.
  */
 static void
-rst_seekdir(register RST_DIR *dirp, long loc, long base)
+rst_seekdir(RST_DIR *dirp, long loc, long base)
 {
 
 	if (loc == rst_telldir(dirp))
@@ -465,9 +465,9 @@ rst_seekdir(register RST_DIR *dirp, long loc, long base)
  * get next entry in a directory.
  */
 struct direct *
-rst_readdir(register RST_DIR *dirp)
+rst_readdir(RST_DIR *dirp)
 {
-	register struct direct *dp;
+	struct direct *dp;
 
 	for (;;) {
 		if (dirp->dd_loc == 0) {
@@ -548,8 +548,8 @@ rst_telldir(RST_DIR *dirp)
 static RST_DIR *
 opendirfile(const char *name)
 {
-	register RST_DIR *dirp;
-	register int fd;
+	RST_DIR *dirp;
+	int fd;
 
 	if ((fd = open(name, O_RDONLY)) == -1)
 		return (NULL);
@@ -632,7 +632,7 @@ setdirmodes(int flags)
 int
 genliteraldir(char *name, ufs1_ino_t ino)
 {
-	register struct inotab *itp;
+	struct inotab *itp;
 	int ofile, dp, i, size;
 	char buf[BUFSIZ];
 
@@ -690,7 +690,7 @@ inodetype(ufs1_ino_t ino)
 static struct inotab *
 allocinotab(ufs1_ino_t ino, struct dinode *dip, long seekpt)
 {
-	register struct inotab	*itp;
+	struct inotab	*itp;
 	struct modeinfo node;
 
 	itp = calloc(1, sizeof(struct inotab));
@@ -721,7 +721,7 @@ allocinotab(ufs1_ino_t ino, struct dinode *dip, long seekpt)
 static struct inotab *
 inotablookup(ufs1_ino_t ino)
 {
-	register struct inotab *itp;
+	struct inotab *itp;
 
 	for (itp = inotab[INOHASH(ino)]; itp != NULL; itp = itp->t_next)
 		if (itp->t_ino == ino)

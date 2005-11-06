@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.8 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.9 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -677,7 +677,7 @@ skipfile(void)
 void
 getfile(void (*fill) (char *, long), void (*skip) (char *, long))
 {
-	register int i;
+	int i;
 	int curblk = 0;
 	quad_t size = spcl.c_dinode.di_size;
 	static char clearedbuf[MAXBSIZE];
@@ -950,7 +950,7 @@ getmore:
 static void
 findtapeblksize(void)
 {
-	register long i;
+	long i;
 
 	for (i = 0; i < ntrec; i++)
 		((struct s_spcl *)&tapebuf[i * TP_BSIZE])->c_magic = 0;
@@ -1274,9 +1274,9 @@ findinode(struct s_spcl *header)
 }
 
 static int
-checksum(register int *buf)
+checksum(int *buf)
 {
-	register int i, j;
+	int i, j;
 
 	j = sizeof(union u_spcl) / sizeof(int);
 	i = 0;
@@ -1314,7 +1314,7 @@ msg(const char *fmt, ...)
 #endif /* RRESTORE */
 
 static u_char *
-swabshort(register u_char *sp, register int n)
+swabshort(u_char *sp, int n)
 {
 	char c;
 
@@ -1326,7 +1326,7 @@ swabshort(register u_char *sp, register int n)
 }
 
 static u_char *
-swablong(register u_char *sp, register int n)
+swablong(u_char *sp, int n)
 {
 	char c;
 
@@ -1339,7 +1339,7 @@ swablong(register u_char *sp, register int n)
 }
 
 void
-swabst(register u_char *cp, register u_char *sp)
+swabst(u_char *cp, u_char *sp)
 {
 	int n = 0;
 
