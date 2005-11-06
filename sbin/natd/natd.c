@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.9 2005/06/07 20:21:23 swildner Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.10 2005/11/06 12:44:12 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -777,8 +777,8 @@ Warn(const char *msg)
 		warn("%s", msg);
 }
 
-static
-void RefreshAddr(int sig __unused)
+static void
+RefreshAddr(int sig __unused)
 {
 	if (ifName)
 		assignAliasAddr = 1;

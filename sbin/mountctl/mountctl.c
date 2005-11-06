@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.7 2005/10/05 15:38:41 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.8 2005/11/06 12:42:26 swildner Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -564,8 +564,7 @@ mountctl_modify(const char *keyword, const char *mountpt, int fd, void __unused 
 }
 
 
-static volatile
-void
+static volatile void
 usage(void)
 {
     printf(
@@ -579,8 +578,7 @@ usage(void)
     exit(1);
 }
 
-static
-int64_t
+static int64_t
 getsize(const char *str)
 {
     const char *suffix;
@@ -612,8 +610,7 @@ getsize(const char *str)
     return(val);
 }
 
-static
-const char *
+static const char *
 numtostr(int64_t num)
 {
     static char buf[64];
