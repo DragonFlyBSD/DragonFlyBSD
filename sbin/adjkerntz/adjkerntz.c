@@ -25,7 +25,7 @@
  *
  * @(#)Copyright (C) 1993-1996 by Andrey A. Chernov, Moscow, Russia. All rights reserved.
  * $FreeBSD: src/sbin/adjkerntz/adjkerntz.c,v 1.25.2.1 2001/07/30 10:38:04 dd Exp $
- * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.6 2005/11/06 12:03:15 swildner Exp $
  */
 
 /*
@@ -68,7 +68,8 @@ fake(int unused __unused)
 	/* Do nothing. */
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	struct tm local;
 	struct timeval tv, *stv;
