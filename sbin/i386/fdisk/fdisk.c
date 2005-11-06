@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.10 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.11 2005/11/06 12:19:22 swildner Exp $
  */
 
 #include <sys/disklabel.h>
@@ -455,7 +455,7 @@ main(int argc, char *argv[])
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s%s",
 		"usage: fdisk [-BIaistu] [-b bootcode] [-1234] [disk]\n",
@@ -466,7 +466,7 @@ usage()
 static void
 print_s0(int which)
 {
-int	i;
+	int	i;
 
 	print_params();
 	printf("Information from DOS bootblock is:\n");
@@ -698,8 +698,7 @@ get_params_to_use(void)
 * Change real numbers into strange dos numbers	*
 \***********************************************/
 static void
-dos(partp)
-	struct dos_partition *partp;
+dos(struct dos_partition *partp)
 {
 	int cy, sec;
 	u_int32_t end;
@@ -884,8 +883,7 @@ write_s0(void)
 
 
 static int
-ok(str)
-char *str;
+ok(char *str)
 {
 	printf("%s [n] ", str);
 	fflush(stdout);
@@ -1033,9 +1031,7 @@ get_type(int type)
 
 
 static void
-parse_config_line(line, command)
-    char	*line;
-    CMD		*command;
+parse_config_line(char *line, CMD *command)
 {
     char	*cp, *end;
 
@@ -1085,8 +1081,7 @@ parse_config_line(line, command)
 
 
 static int
-process_geometry(command)
-    CMD		*command;
+process_geometry(CMD *command)
 {
     int		status = 1, i;
 
@@ -1192,8 +1187,7 @@ process_geometry(command)
 
 
 static int
-process_partition(command)
-    CMD		*command;
+process_partition(CMD *command)
 {
     int				status = 0, partition;
     u_int32_t			prev_head_boundary, prev_cyl_boundary;
@@ -1301,8 +1295,7 @@ process_partition(command)
 
 
 static int
-process_active(command)
-    CMD		*command;
+process_active(CMD *command)
 {
     int				status = 0, partition, i;
     struct dos_partition	*partp;
@@ -1340,8 +1333,7 @@ process_active(command)
 
 
 static int
-process_line(line)
-    char	*line;
+process_line(char *line)
 {
     CMD		command;
     int		status = 1;
@@ -1379,8 +1371,7 @@ process_line(line)
 
 
 static int
-read_config(config_file)
-    char *config_file;
+read_config(char *config_file)
 {
     FILE	*fp = NULL;
     int		status = 1;
@@ -1446,8 +1437,7 @@ reset_boot(void)
 }
 
 static int
-sanitize_partition(partp)
-    struct dos_partition	*partp;
+sanitize_partition(struct dos_partition *partp)
 {
     u_int32_t			prev_head_boundary, prev_cyl_boundary;
     u_int32_t			max_end, size, start;
