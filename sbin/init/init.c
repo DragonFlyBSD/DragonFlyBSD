@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.8 2005/02/25 15:17:42 joerg Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.9 2005/11/06 12:23:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -202,8 +202,8 @@ main(int argc, char **argv)
 		/* So give them what they want */
 		if (argc > 1) {
 			if (strlen(argv[1]) == 1) {
-				register char runlevel = *argv[1];
-				register int sig;
+				char runlevel = *argv[1];
+				int sig;
 
 				switch (runlevel) {
 					case '0': /* halt + poweroff */
@@ -933,7 +933,7 @@ construct_argv(char *command)
  * Deallocate a session descriptor.
  */
 static void
-free_session(register session_t *sp)
+free_session(session_t *sp)
 {
 	free(sp->se_device);
 	if (sp->se_getty) {
@@ -956,9 +956,9 @@ free_session(register session_t *sp)
  * Mark it SE_PRESENT.
  */
 static session_t *
-new_session(session_t *sprev, int session_index, register struct ttyent *typ)
+new_session(session_t *sprev, int session_index, struct ttyent *typ)
 {
-	register session_t *sp;
+	session_t *sp;
 	int fd;
 
 	if ((typ->ty_status & TTY_ON) == 0 ||
@@ -1059,8 +1059,8 @@ static state_func_t
 read_ttys(void)
 {
 	int session_index = 0;
-	register session_t *sp, *snext;
-	register struct ttyent *typ;
+	session_t *sp, *snext;
+	struct ttyent *typ;
 
 	/*
 	 * Destroy any previous session state.
@@ -1204,7 +1204,7 @@ start_getty(session_t *sp)
 static void
 collect_child(pid_t pid)
 {
-	register session_t *sp, *sprev, *snext;
+	session_t *sp, *sprev, *snext;
 
 	if (! sessions)
 		return;
@@ -1274,7 +1274,7 @@ static state_func_t
 multi_user(void)
 {
 	pid_t pid;
-	register session_t *sp;
+	session_t *sp;
 
 	requested_transition = 0;
 
@@ -1313,10 +1313,10 @@ multi_user(void)
 static state_func_t
 clean_ttys(void)
 {
-	register session_t *sp, *sprev;
-	register struct ttyent *typ;
-	register int session_index = 0;
-	register int devlen;
+	session_t *sp, *sprev;
+	struct ttyent *typ;
+	int session_index = 0;
+	int devlen;
 	char *old_getty, *old_window, *old_type;
 
 	if (! sessions)
@@ -1411,7 +1411,7 @@ clean_ttys(void)
 static state_func_t
 catatonia(void)
 {
-	register session_t *sp;
+	session_t *sp;
 
 	for (sp = sessions; sp; sp = sp->se_next)
 		sp->se_flags |= SE_SHUTDOWN;
