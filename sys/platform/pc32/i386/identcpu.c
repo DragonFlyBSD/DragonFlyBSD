@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.8 2004/04/29 19:43:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.9 2005/11/06 07:28:47 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -94,6 +94,11 @@ SYSCTL_STRING(_hw, HW_MODEL, model, CTLFLAG_RD,
     cpu_model, 0, "Machine model");
 
 static char cpu_brand[48];
+
+#define MAX_ADDITIONAL_INFO	16
+
+static const char *additional_cpu_info_ary[MAX_ADDITIONAL_INFO];
+static u_int additional_cpu_info_count;
 
 #define	MAX_BRAND_INDEX	8
 
@@ -671,6 +676,10 @@ printcpuinfo(void)
 	if (strcmp(cpu_vendor, "GenuineTMx86") == 0 ||
 	    strcmp(cpu_vendor, "TransmetaCPU") == 0) {
 		setup_tmx86_longrun();
+	}
+
+	for (i = 0; i < additional_cpu_info_count; ++i) {
+		printf("  %s\n", additional_cpu_info_ary[i]);
 	}
 
 	if (!bootverbose)
@@ -1286,5 +1295,16 @@ print_transmeta_info()
 				 &crusoe_voltage, &crusoe_percentage);
 	printf("  LongRun mode: %d  <%dMHz %dmV %d%%>\n", crusoe_longrun,
 	       crusoe_frequency, crusoe_voltage, crusoe_percentage);
+}
+
+void
+additional_cpu_info(const char *line)
+{
+	int i;
+
+	if ((i = additional_cpu_info_count) < MAX_ADDITIONAL_INFO) {
+		additional_cpu_info_ary[i] = line;
+		++additional_cpu_info_count;
+	}
 }
 

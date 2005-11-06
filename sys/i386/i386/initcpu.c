@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.7 2005/11/04 23:20:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.8 2005/11/06 07:28:47 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -511,10 +511,29 @@ enable_sse(void)
 #endif
 }
 
+static
 void
-initializecpu(void)
+init_686_amd(void)
 {
-#ifdef CPU_AMD64X2_INTR_SPAM
+#if defined(I686_CPU) && defined(CPU_ATHLON_SSE_HACK)
+	/*
+	 * Sometimes the BIOS doesn't enable SSE instructions.
+	 * According to AMD document 20734, the mobile
+	 * Duron, the (mobile) Athlon 4 and the Athlon MP
+	 * support SSE. These correspond to cpu_id 0x66X
+	 * or 0x67X.
+	 */
+	if ((cpu_feature & CPUID_XMM) == 0 &&
+	    ((cpu_id & ~0xf) == 0x660 ||
+	     (cpu_id & ~0xf) == 0x670 ||
+	     (cpu_id & ~0xf) == 0x680)) {
+		u_int regs[4];
+		wrmsr(0xC0010015, rdmsr(0xC0010015) & ~0x08000);
+		do_cpuid(1, regs);
+		cpu_feature = regs[3];
+	}
+#endif
+#if defined(I686_CPU) && defined(CPU_AMD64X2_INTR_SPAM)
 	/*
 	 * Set the LINTEN bit in the HyperTransport Transaction
 	 * Control Register.
@@ -527,7 +546,7 @@ initializecpu(void)
 	 * cycle will get the correct interrupt.  The second cpu that does
 	 * it will get a spurious interrupt vector (typically IRQ 7).
 	 */
-	{
+	if ((cpu_id & 0xff0) == 0xf30) {
 	    int32_t tcr;
 	    outl(0x0cf8,
 		    (1 << 31) |	/* enable */
@@ -537,10 +556,19 @@ initializecpu(void)
 		    0x68 		/* reg */
 	    );
 	    tcr = inl(0xcfc);
-	    outl(0xcfc, tcr|0x00010000);
+	    if ((tcr & 0x00010000) == 0) {
+		    outl(0xcfc, tcr|0x00010000);
+		    additional_cpu_info("AMD: Rerouting HyperTransport "
+					"EXTINT/NMI to APIC");
+	    }
+	    outl(0x0cf8, 0);
 	}
 #endif
+}
 
+void
+initializecpu(void)
+{
 	switch (cpu) {
 #ifdef I486_CPU
 	case CPU_BLUE:
@@ -579,24 +607,7 @@ initializecpu(void)
 				break;
 			}
 		} else if (strcmp(cpu_vendor, "AuthenticAMD") == 0) {
-#if defined(I686_CPU) && defined(CPU_ATHLON_SSE_HACK)
-			/*
-			 * Sometimes the BIOS doesn't enable SSE instructions.
-			 * According to AMD document 20734, the mobile
-			 * Duron, the (mobile) Athlon 4 and the Athlon MP
-			 * support SSE. These correspond to cpu_id 0x66X
-			 * or 0x67X.
-			 */
-			if ((cpu_feature & CPUID_XMM) == 0 &&
-			    ((cpu_id & ~0xf) == 0x660 ||
-			     (cpu_id & ~0xf) == 0x670 ||
-			     (cpu_id & ~0xf) == 0x680)) {
-				u_int regs[4];
-				wrmsr(0xC0010015, rdmsr(0xC0010015) & ~0x08000);
-				do_cpuid(1, regs);
-				cpu_feature = regs[3];
-			}
-#endif
+			init_686_amd();
 		}
 		break;
 #endif
