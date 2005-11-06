@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.73 2004/06/08 09:27:42 das Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.16 2005/09/19 10:14:29 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.17 2005/11/06 11:44:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -586,7 +586,7 @@ printsize(size_t width, off_t bytes)
 
 		humanize_number(buf, sizeof(buf), (int64_t)bytes, "",
 				HN_AUTOSCALE, HN_B | HN_NOSPACE | HN_DECIMAL);
-		(void)printf("%5s ", buf);
+		printf("%5s ", buf);
 	} else
 		printf("%*lld ", width, bytes);
 }

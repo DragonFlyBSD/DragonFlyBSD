@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined2.c,v 1.5 2005/10/29 12:05:27 swildner Exp $*
+ * $DragonFly: src/bin/mined/mined2.c,v 1.6 2005/11/06 11:44:02 swildner Exp $*
  */
 /*
  * Part 2 of the mined editor.
@@ -655,7 +655,7 @@ insert(LINE *line, char *location, char *string)
   *bufp = '\0';
   
   if (*(string - 1) == '\n')		/* Insert a new line */
-  	(void) line_insert(line, location, length_of(location));
+  	line_insert(line, location, length_of(location));
   else					/* Append last part of line */
   	copy_string(bufp, location);
 
@@ -795,7 +795,7 @@ PT(int u __unused)
   	error("Buffer is empty.", NIL_PTR);
   else {
   	file_insert(fd, FALSE);/* Insert the buffer */
-  	(void) close(fd);
+  	close(fd);
   }
 }
 
@@ -817,7 +817,7 @@ IF(int u __unused)
   	error("Cannot open ", name);
   else {
   	file_insert(fd, TRUE);	/* Insert the file */
-  	(void) close(fd);
+  	close(fd);
   }
 }
 
@@ -848,7 +848,7 @@ file_insert(int fd, FLAG old_pos)
   
   if (ret == NO_LINE) {		/* Last line read not ended by a '\n' */
   	line = line->next;
-  	(void) insert(line, line->text, line_buffer);
+  	insert(line, line->text, line_buffer);
   }
 
 /* Calculate nr of lines added */

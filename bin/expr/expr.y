@@ -5,7 +5,7 @@
  * Largely rewritten by J.T. Conklin (jtc@wimsey.com)
  *
  * $FreeBSD: src/bin/expr/expr.y,v 1.14.2.3 2001/08/01 02:37:46 obrien Exp $
- * $DragonFly: src/bin/expr/expr.y,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/expr/expr.y,v 1.6 2005/11/06 11:44:02 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -107,8 +107,7 @@ expr:	TOKEN
 %%
 
 struct val *
-make_integer (i)
-quad_t i;
+make_integer(quad_t i)
 {
 	struct val *vp;
 
@@ -123,8 +122,7 @@ quad_t i;
 }
 
 struct val *
-make_str (s)
-const char *s;
+make_str(const char *s)
 {
 	struct val *vp;
 	size_t i;
@@ -153,8 +151,7 @@ const char *s;
 
 
 void
-free_value (vp)
-struct val *vp;
+free_value(struct val *vp)
 {
 	if (vp->type == string || vp->type == numeric_string)
 		free (vp->u.s);	
@@ -162,8 +159,7 @@ struct val *vp;
 
 
 quad_t
-to_integer (vp)
-struct val *vp;
+to_integer(struct val *vp)
 {
 	quad_t i;
 
@@ -186,8 +182,7 @@ struct val *vp;
 }
 
 void
-to_string (vp)
-struct val *vp;
+to_string(struct val *vp)
 {
 	char *tmp;
 
@@ -206,8 +201,7 @@ struct val *vp;
 
 
 int
-isstring (vp)
-struct val *vp;
+isstring(struct val *vp)
 {
 	/* only TRUE if this string is not a valid integer */
 	return (vp->type == string);
@@ -215,7 +209,7 @@ struct val *vp;
 
 
 int
-yylex ()
+yylex(void)
 {
 	char *p;
 
@@ -240,8 +234,7 @@ yylex ()
 }
 
 int
-is_zero_or_null (vp)
-struct val *vp;
+is_zero_or_null(struct val *vp)
 {
 	if (vp->type == integer) {
 		return (vp->u.i == 0);
@@ -252,9 +245,7 @@ struct val *vp;
 }
 
 int
-main (argc, argv)
-int argc __unused;
-char **argv;
+main (int argc __unused, char **argv)
 {
 	setlocale (LC_ALL, "");
 
@@ -271,16 +262,14 @@ char **argv;
 }
 
 int
-yyerror (s)
-const char *s __unused;
+yyerror(const char *s __unused)
 {
 	errx (2, "syntax error");
 }
 
 
 struct val *
-op_or (a, b)
-struct val *a, *b;
+op_or(struct val *a, struct val *b)
 {
 	if (is_zero_or_null (a)) {
 		free_value (a);
@@ -292,8 +281,7 @@ struct val *a, *b;
 }
 		
 struct val *
-op_and (a, b)
-struct val *a, *b;
+op_and(struct val *a, struct val *b)
 {
 	if (is_zero_or_null (a) || is_zero_or_null (b)) {
 		free_value (a);
@@ -306,8 +294,7 @@ struct val *a, *b;
 }
 
 struct val *
-op_eq (a, b)
-struct val *a, *b;
+op_eq(struct val *a, struct val *b)
 {
 	struct val *r; 
 
@@ -327,8 +314,7 @@ struct val *a, *b;
 }
 
 struct val *
-op_gt (a, b)
-struct val *a, *b;
+op_gt(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -348,8 +334,7 @@ struct val *a, *b;
 }
 
 struct val *
-op_lt (a, b)
-struct val *a, *b;
+op_lt(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -369,8 +354,7 @@ struct val *a, *b;
 }
 
 struct val *
-op_ge (a, b)
-struct val *a, *b;
+op_ge(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -390,8 +374,7 @@ struct val *a, *b;
 }
 
 struct val *
-op_le (a, b)
-struct val *a, *b;
+op_le(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -411,8 +394,7 @@ struct val *a, *b;
 }
 
 struct val *
-op_ne (a, b)
-struct val *a, *b;
+op_ne(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -432,8 +414,7 @@ struct val *a, *b;
 }
 
 int
-chk_plus (a, b, r)
-quad_t a, b, r;
+chk_plus(quad_t a, quad_t b, quad_t r)
 {
 	/* sum of two positive numbers must be positive */
 	if (a > 0 && b > 0 && r <= 0)
@@ -446,8 +427,7 @@ quad_t a, b, r;
 }
 
 struct val *
-op_plus (a, b)
-struct val *a, *b;
+op_plus(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -465,8 +445,7 @@ struct val *a, *b;
 }
 
 int
-chk_minus (a, b, r)
-quad_t a, b, r;
+chk_minus(quad_t a, quad_t b, quad_t r)
 {
 	/* special case subtraction of QUAD_MIN */
 	if (b == QUAD_MIN) {
@@ -480,8 +459,7 @@ quad_t a, b, r;
 }
 
 struct val *
-op_minus (a, b)
-struct val *a, *b;
+op_minus(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -499,8 +477,7 @@ struct val *a, *b;
 }
 
 int
-chk_times (a, b, r)
-quad_t a, b, r;
+chk_times(quad_t a, quad_t b, quad_t r)
 {
 	/* special case: first operand is 0, no overflow possible */
 	if (a == 0)
@@ -512,8 +489,7 @@ quad_t a, b, r;
 }
 
 struct val *
-op_times (a, b)
-struct val *a, *b;
+op_times(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -531,8 +507,7 @@ struct val *a, *b;
 }
 
 int
-chk_div (a, b)
-quad_t a, b;
+chk_div(quad_t a, quad_t b)
 {
 	/* div by zero has been taken care of before */
 	/* only QUAD_MIN / -1 causes overflow */
@@ -543,8 +518,7 @@ quad_t a, b;
 }
 
 struct val *
-op_div (a, b)
-struct val *a, *b;
+op_div(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -566,8 +540,7 @@ struct val *a, *b;
 }
 	
 struct val *
-op_rem (a, b)
-struct val *a, *b;
+op_rem(struct val *a, struct val *b)
 {
 	struct val *r;
 
@@ -587,8 +560,7 @@ struct val *a, *b;
 }
 	
 struct val *
-op_colon (a, b)
-struct val *a, *b;
+op_colon(struct val *a, struct val *b)
 {
 	regex_t rp;
 	regmatch_t rm[2];

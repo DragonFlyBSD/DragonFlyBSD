@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.5 2005/11/06 11:44:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -144,8 +144,7 @@ bad:
 
 
 void
-sethistsize(hs)
-	const char *hs;
+sethistsize(const char *hs)
 {
 	int histsize;
 

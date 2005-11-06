@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.5 2004/10/01 20:30:25 dillon Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.6 2005/11/06 11:44:02 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -614,7 +614,8 @@ makename(void)
 	return n;
 }
 
-void fixredir(union node *n, const char *text, int err)
+void
+fixredir(union node *n, const char *text, int err)
 {
 	TRACE(("Fix redir %s %d\n", text, err));
 	if (!err)

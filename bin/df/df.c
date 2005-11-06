@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.6 2005/11/06 11:44:02 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -117,7 +117,8 @@ void	  usage(void);
 int	aflag = 0, hflag, iflag, nflag;
 struct	ufs_args mdev;
 
-static __inline int imax(int a, int b)
+static __inline int
+imax(int a, int b)
 {
 	return (a > b ? a : b);
 }

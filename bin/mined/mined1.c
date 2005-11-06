@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.7 2005/10/29 12:05:27 swildner Exp $*
+ * $DragonFly: src/bin/mined/mined1.c,v 1.8 2005/11/06 11:44:02 swildner Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -544,7 +544,7 @@ WT(void)
   if (count > 0L && flush_buffer(fd) == ERRORS)
   	count = -1L;
 
-  (void) close(fd);
+  close(fd);
 
   if (count == -1L)
   	return ERRORS;
