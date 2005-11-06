@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.7 2005/11/06 12:09:06 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ void	usage(void);
 int
 main(int argc, char **argv)
 {
-	register struct fstab *fs;
+	struct fstab *fs;
 	int ch, eval;
 
 	while ((ch = getopt(argc, argv, "")) != -1)
@@ -297,10 +297,10 @@ dumpcg(char *name, int fd, int c)
 };
 
 void
-pbits(register void *vp, int max)
+pbits(void *vp, int max)
 {
-	register int i;
-	register char *p;
+	int i;
+	char *p;
 	int count, j;
 
 	for (count = i = 0, p = vp; i < max; i++)
