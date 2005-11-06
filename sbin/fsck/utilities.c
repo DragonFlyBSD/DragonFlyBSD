@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.6 (Berkeley) 5/19/95
  * $FreeBSD: src/sbin/fsck/utilities.c,v 1.11.2.3 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/utilities.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/utilities.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -133,7 +133,7 @@ inoinfo(ino_t inum)
 void
 bufinit(void)
 {
-	register struct bufarea *bp;
+	struct bufarea *bp;
 	long bufcnt, i;
 	char *bufp;
 
@@ -171,7 +171,7 @@ bufinit(void)
 struct bufarea *
 getdatablk(ufs_daddr_t blkno, long size)
 {
-	register struct bufarea *bp;
+	struct bufarea *bp;
 
 	for (bp = bufhead.b_next; bp != &bufhead; bp = bp->b_next)
 		if (bp->b_bno == fsbtodb(&sblock, blkno))
@@ -196,7 +196,7 @@ foundit:
 }
 
 void
-getblk(register struct bufarea *bp, ufs_daddr_t blk, long size)
+getblk(struct bufarea *bp, ufs_daddr_t blk, long size)
 {
 	ufs_daddr_t dblk;
 
@@ -211,9 +211,9 @@ getblk(register struct bufarea *bp, ufs_daddr_t blk, long size)
 }
 
 void
-flush(int fd, register struct bufarea *bp)
+flush(int fd, struct bufarea *bp)
 {
-	register int i, j;
+	int i, j;
 
 	if (!bp->b_dirty)
 		return;
@@ -248,7 +248,7 @@ rwerror(char *mesg, ufs_daddr_t blk)
 void
 ckfini(int markclean)
 {
-	register struct bufarea *bp, *nbp;
+	struct bufarea *bp, *nbp;
 	int ofsmodified, cnt = 0;
 
 	if (fswritefd < 0) {
@@ -428,7 +428,7 @@ void
 getpathname(char *namebuf, ino_t curdir, ino_t ino)
 {
 	int len;
-	register char *cp;
+	char *cp;
 	struct inodesc idesc;
 	static int busy = 0;
 
@@ -527,7 +527,7 @@ infohandler(int sig)
  * determine whether an inode should be fixed.
  */
 int
-dofix(register struct inodesc *idesc, char *msg)
+dofix(struct inodesc *idesc, char *msg)
 {
 
 	switch (idesc->id_fix) {

@@ -32,7 +32,7 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.6 2005/11/06 12:13:53 swildner Exp $
  */
 
 #define DKTYPENAMES
@@ -406,11 +406,11 @@ badsb(int listerr, char *s)
  * their needed information is available!
  */
 static int
-calcsb(char *dev, int devfd, register struct fs *fs)
+calcsb(char *dev, int devfd, struct fs *fs)
 {
-	register struct disklabel *lp;
-	register struct partition *pp;
-	register char *cp;
+	struct disklabel *lp;
+	struct partition *pp;
+	char *cp;
 	int i;
 
 	cp = strchr(dev, '\0') - 1;

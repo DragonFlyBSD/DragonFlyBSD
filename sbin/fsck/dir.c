@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,7 @@ static int mkentry(struct inodesc *);
 void
 propagate(void)
 {
-	register struct inoinfo **inpp, *inp;
+	struct inoinfo **inpp, *inp;
 	struct inoinfo **inpend;
 	long change;
 
@@ -98,10 +98,10 @@ propagate(void)
  * Scan each entry in a directory block.
  */
 int
-dirscan(register struct inodesc *idesc)
+dirscan(struct inodesc *idesc)
 {
-	register struct direct *dp;
-	register struct bufarea *bp;
+	struct direct *dp;
+	struct bufarea *bp;
 	unsigned int dsize, n;
 	long blksiz;
 	char dbuf[DIRBLKSIZ];
@@ -161,10 +161,10 @@ dirscan(register struct inodesc *idesc)
  * get next entry in a directory.
  */
 static struct direct *
-fsck_readdir(register struct inodesc *idesc)
+fsck_readdir(struct inodesc *idesc)
 {
-	register struct direct *dp, *ndp;
-	register struct bufarea *bp;
+	struct direct *dp, *ndp;
+	struct bufarea *bp;
 	long size, blksiz, fix, dploc;
 
 	blksiz = idesc->id_numfrags * sblock.fs_fsize;
@@ -222,10 +222,10 @@ dpok:
  * This is a superset of the checks made in the kernel.
  */
 static int
-dircheck(struct inodesc *idesc, register struct direct *dp)
+dircheck(struct inodesc *idesc, struct direct *dp)
 {
-	register int size;
-	register char *cp;
+	int size;
+	char *cp;
 	u_char namlen, type;
 	int spaceleft;
 
@@ -272,7 +272,7 @@ direrror(ino_t ino, char *errmesg)
 void
 fileerror(ino_t cwd, ino_t ino, char *errmesg)
 {
-	register struct dinode *dp;
+	struct dinode *dp;
 	char pathbuf[MAXPATHLEN + 1];
 
 	pwarn("%s ", errmesg);
@@ -292,7 +292,7 @@ fileerror(ino_t cwd, ino_t ino, char *errmesg)
 }
 
 void
-adjust(register struct inodesc *idesc, int lcnt)
+adjust(struct inodesc *idesc, int lcnt)
 {
 	struct dinode *dp;
 	int saveresolved;
@@ -351,7 +351,7 @@ adjust(register struct inodesc *idesc, int lcnt)
 static int
 mkentry(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 	struct direct newent;
 	int newlen, oldlen;
 
@@ -395,7 +395,7 @@ mkentry(struct inodesc *idesc)
 static int
 chgino(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 
 	if (memcmp(dirp->d_name, idesc->id_name, (int)dirp->d_namlen + 1))
 		return (KEEPON);
@@ -410,7 +410,7 @@ chgino(struct inodesc *idesc)
 int
 linkup(ino_t orphan, ino_t parentdir, char *name)
 {
-	register struct dinode *dp;
+	struct dinode *dp;
 	int lostdir;
 	ino_t oldlfdir;
 	struct inodesc idesc;
@@ -575,10 +575,10 @@ makeentry(ino_t parent, ino_t ino, char *name)
  * Attempt to expand the size of a directory
  */
 static int
-expanddir(register struct dinode *dp, char *name)
+expanddir(struct dinode *dp, char *name)
 {
 	ufs_daddr_t lastbn, newblk;
-	register struct bufarea *bp;
+	struct bufarea *bp;
 	char *cp, firstblk[DIRBLKSIZ];
 
 	lastbn = lblkno(&sblock, dp->di_size);
@@ -635,7 +635,7 @@ allocdir(ino_t parent, ino_t request, int mode)
 	ino_t ino;
 	char *cp;
 	struct dinode *dp;
-	register struct bufarea *bp;
+	struct bufarea *bp;
 	struct dirtemplate *dirp;
 
 	ino = allocino(request, IFDIR|mode);
@@ -703,8 +703,8 @@ freedir(ino_t ino, ino_t parent)
 static int
 lftempname(char *bufp, ino_t ino)
 {
-	register ino_t in;
-	register char *cp;
+	ino_t in;
+	char *cp;
 	int namlen;
 
 	cp = bufp + 2;

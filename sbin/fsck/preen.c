@@ -32,7 +32,7 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.9 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -73,9 +73,9 @@ int
 checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
            int (*chkit)(char *, char *, long, int))
 {
-	register struct fstab *fsp;
-	register struct disk *dk, *nextdisk;
-	register struct part *pt;
+	struct fstab *fsp;
+	struct disk *dk, *nextdisk;
+	struct part *pt;
 	int ret, pid, retcode, passno, sumstatus, status;
 	long auxdata;
 	char *name;
@@ -196,8 +196,8 @@ checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
 static struct disk *
 finddisk(char *name)
 {
-	register struct disk *dk, **dkp;
-	register char *p;
+	struct disk *dk, **dkp;
+	char *p;
 	size_t len;
 
 	p = strrchr(name, '/');
@@ -234,7 +234,7 @@ static void
 addpart(char *name, char *fsname, long auxdata)
 {
 	struct disk *dk = finddisk(name);
-	register struct part *pt, **ppt = &dk->part;
+	struct part *pt, **ppt = &dk->part;
 
 	for (pt = dk->part; pt; ppt = &pt->next, pt = pt->next)
 		if (strcmp(pt->name, name) == 0) {
@@ -261,9 +261,9 @@ addpart(char *name, char *fsname, long auxdata)
 }
 
 static int
-startdisk(register struct disk *dk, int (*checkit)(char *, char *, long ,int))
+startdisk(struct disk *dk, int (*checkit)(char *, char *, long ,int))
 {
-	register struct part *pt = dk->part;
+	struct part *pt = dk->part;
 
 	dk->pid = fork();
 	if (dk->pid < 0) {

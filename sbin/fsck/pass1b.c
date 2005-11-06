@@ -32,7 +32,7 @@
  *
  * @(#)pass1b.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1b.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1b.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/pass1b.c,v 1.6 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -50,8 +50,8 @@ static int pass1bcheck(struct inodesc *);
 void
 pass1b(void)
 {
-	register int c, i;
-	register struct dinode *dp;
+	int c, i;
+	struct dinode *dp;
 	struct inodesc idesc;
 	ino_t inumber;
 
@@ -82,9 +82,9 @@ pass1b(void)
 }
 
 static int
-pass1bcheck(register struct inodesc *idesc)
+pass1bcheck(struct inodesc *idesc)
 {
-	register struct dups *dlp;
+	struct dups *dlp;
 	int nfrags, res = KEEPON;
 	ufs_daddr_t blkno = idesc->id_blkno;
 

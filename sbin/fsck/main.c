@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.9 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -168,7 +168,7 @@ argtoi(int flag, char *req, char *str, int base)
  * Determine whether a filesystem should be checked.
  */
 static int
-docheck(register struct fstab *fsp)
+docheck(struct fstab *fsp)
 {
 
 	if (strcmp(fsp->fs_vfstype, "ufs") ||

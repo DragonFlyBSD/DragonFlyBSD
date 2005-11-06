@@ -32,7 +32,7 @@
  *
  * @(#)pass5.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass5.c,v 1.17.2.2 2002/11/26 04:46:59 julian Exp $
- * $DragonFly: src/sbin/fsck/pass5.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/pass5.c,v 1.5 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,7 @@ pass5(void)
 	struct csum cstotal;
 	struct inodesc idesc[3];
 	char buf[MAXBSIZE];
-	register struct cg *newcg = (struct cg *)buf;
+	struct cg *newcg = (struct cg *)buf;
 	struct ocg *ocg = (struct ocg *)buf;
 
 	inoinfo(WINO)->ino_state = USTATE;

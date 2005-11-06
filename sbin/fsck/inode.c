@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@ static ino_t startinum;
 static int iblock(struct inodesc *, long ilevel, quad_t isize);
 
 int
-ckinode(struct dinode *dp, register struct inodesc *idesc)
+ckinode(struct dinode *dp, struct inodesc *idesc)
 {
 	ufs_daddr_t *ap;
 	int ret;
@@ -227,7 +227,7 @@ iblock(struct inodesc *idesc, long ilevel, quad_t isize)
 int
 chkrange(ufs_daddr_t blk, int cnt)
 {
-	register int c;
+	int c;
 
 	if (cnt <= 0 || blk <= 0 || blk > maxfsblock ||
 	    cnt - 1 > maxfsblock - blk)
@@ -367,9 +367,9 @@ freeinodebuf(void)
  * Enter inodes into the cache.
  */
 void
-cacheino(register struct dinode *dp, ino_t inumber)
+cacheino(struct dinode *dp, ino_t inumber)
 {
-	register struct inoinfo *inp;
+	struct inoinfo *inp;
 	struct inoinfo **inpp;
 	int blks;
 
@@ -405,7 +405,7 @@ cacheino(register struct dinode *dp, ino_t inumber)
 struct inoinfo *
 getinoinfo(ino_t inumber)
 {
-	register struct inoinfo *inp;
+	struct inoinfo *inp;
 
 	for (inp = inphead[inumber % dirhash]; inp; inp = inp->i_nexthash) {
 		if (inp->i_number != inumber)
@@ -422,7 +422,7 @@ getinoinfo(ino_t inumber)
 void
 inocleanup(void)
 {
-	register struct inoinfo **inpp;
+	struct inoinfo **inpp;
 
 	if (inphead == NULL)
 		return;
@@ -441,9 +441,9 @@ inodirty(void)
 }
 
 void
-clri(register struct inodesc *idesc, char *type, int flag)
+clri(struct inodesc *idesc, char *type, int flag)
 {
-	register struct dinode *dp;
+	struct dinode *dp;
 
 	dp = ginode(idesc->id_number);
 	if (flag == 1) {
@@ -465,7 +465,7 @@ clri(register struct inodesc *idesc, char *type, int flag)
 int
 findname(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 
 	if (dirp->d_ino != idesc->id_parent || idesc->id_entryno < 2) {
 		idesc->id_entryno++;
@@ -478,7 +478,7 @@ findname(struct inodesc *idesc)
 int
 findino(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 
 	if (dirp->d_ino == 0)
 		return (KEEPON);
@@ -493,7 +493,7 @@ findino(struct inodesc *idesc)
 int
 clearentry(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 
 	if (dirp->d_ino != idesc->id_parent || idesc->id_entryno < 2) {
 		idesc->id_entryno++;
@@ -506,8 +506,8 @@ clearentry(struct inodesc *idesc)
 void
 pinode(ino_t ino)
 {
-	register struct dinode *dp;
-	register char *p;
+	struct dinode *dp;
+	char *p;
 	struct passwd *pw;
 	time_t t;
 
@@ -561,8 +561,8 @@ blkerror(ino_t ino, char *type, ufs_daddr_t blk)
 ino_t
 allocino(ino_t request, int type)
 {
-	register ino_t ino;
-	register struct dinode *dp;
+	ino_t ino;
+	struct dinode *dp;
 	struct cg *cgp = &cgrp;
 	int cg;
 

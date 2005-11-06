@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -53,8 +53,8 @@ static int pass2check(struct inodesc *);
 void
 pass2(void)
 {
-	register struct dinode *dp;
-	register struct inoinfo **inpp, *inp;
+	struct dinode *dp;
+	struct inoinfo **inpp, *inp;
 	struct inoinfo **inpend;
 	struct inodesc curino;
 	struct dinode dino;
@@ -217,8 +217,8 @@ pass2(void)
 static int
 pass2check(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
-	register struct inoinfo *inp;
+	struct direct *dirp = idesc->id_dirp;
+	struct inoinfo *inp;
 	int n, entrysize, ret = 0;
 	struct dinode *dp;
 	char *errmsg;

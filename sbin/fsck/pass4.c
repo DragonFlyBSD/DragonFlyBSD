@@ -32,7 +32,7 @@
  *
  * @(#)pass4.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass4.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass4.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/pass4.c,v 1.5 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -48,8 +48,8 @@
 void
 pass4(void)
 {
-	register ino_t inumber;
-	register struct zlncnt *zlnp;
+	ino_t inumber;
+	struct zlncnt *zlnp;
 	struct dinode *dp;
 	struct inodesc idesc;
 	int i, n, cg;
@@ -117,9 +117,9 @@ pass4(void)
 }
 
 int
-pass4check(register struct inodesc *idesc)
+pass4check(struct inodesc *idesc)
 {
-	register struct dups *dlp;
+	struct dups *dlp;
 	int nfrags, res = KEEPON;
 	ufs_daddr_t blkno = idesc->id_blkno;
 
