@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)swapon.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/swapon/swapon.c,v 1.8.2.2 2001/07/30 10:30:11 dd Exp $
- * $DragonFly: src/sbin/swapon/swapon.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/swapon/swapon.c,v 1.5 2005/11/06 12:50:21 swildner Exp $
  */
 
 #include <err.h>
@@ -50,8 +50,8 @@ int	add(char *name, int ignoreebusy);
 int
 main(int argc, char **argv)
 {
-	register struct fstab *fsp;
-	register int stat;
+	struct fstab *fsp;
+	int stat;
 	int ch, doall;
 
 	doall = 0;
