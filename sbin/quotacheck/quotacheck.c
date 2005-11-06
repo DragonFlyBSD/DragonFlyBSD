@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.8 2005/11/06 12:45:58 swildner Exp $
  */
 
 /*
@@ -121,9 +121,9 @@ void	 usage(void);
 int
 main(int argc, char **argv)
 {
-	register struct fstab *fs;
-	register struct passwd *pw;
-	register struct group *gr;
+	struct fstab *fs;
+	struct passwd *pw;
+	struct group *gr;
 	struct quotaname *auxdata;
 	int i, argnum, maxrun, errs;
 	long done = 0;
@@ -202,9 +202,9 @@ usage(void)
 }
 
 void *
-needchk(register struct fstab *fs)
+needchk(struct fstab *fs)
 {
-	register struct quotaname *qnp;
+	struct quotaname *qnp;
 	char *qfnp;
 
 	if (strcmp(fs->fs_vfstype, "ufs") ||
@@ -231,10 +231,10 @@ needchk(register struct fstab *fs)
  * Scan the specified filesystem to check quota(s) present on it.
  */
 int
-chkquota(char *fsname, char *mntpt, register struct quotaname *qnp)
+chkquota(char *fsname, char *mntpt, struct quotaname *qnp)
 {
-	register struct fileusage *fup;
-	register struct dinode *dp;
+	struct fileusage *fup;
+	struct dinode *dp;
 	int cg, i, mode, errs = 0;
 	ino_t ino;
 
@@ -296,12 +296,12 @@ chkquota(char *fsname, char *mntpt, register struct quotaname *qnp)
  * Update a specified quota file.
  */
 int
-update(char *fsname, char *quotafile, register int type)
+update(char *fsname, char *quotafile, int type)
 {
-	register struct fileusage *fup;
-	register FILE *qfi, *qfo;
-	register u_long id, lastid;
-	register off_t offset;
+	struct fileusage *fup;
+	FILE *qfi, *qfo;
+	u_long id, lastid;
+	off_t offset;
 	struct dqblk dqbuf;
 	static int warned = 0;
 	static struct dqblk zerodqbuf;
@@ -393,9 +393,9 @@ update(char *fsname, char *quotafile, register int type)
  * Check to see if target appears in list of size cnt.
  */
 int
-oneof(register char *target, register char **list, int cnt)
+oneof(char *target, char **list, int cnt)
 {
-	register int i;
+	int i;
 
 	for (i = 0; i < cnt; i++)
 		if (strcmp(target, list[i]) == 0)
@@ -420,9 +420,9 @@ getquotagid(void)
  * Check to see if a particular quota is to be enabled.
  */
 int
-hasquota(register struct fstab *fs, int type, char **qfnamep)
+hasquota(struct fstab *fs, int type, char **qfnamep)
 {
-	register char *opt;
+	char *opt;
 	char *cp;
 	static char initname, usrname[100], grpname[100];
 	static char buf[BUFSIZ];
@@ -463,7 +463,7 @@ hasquota(register struct fstab *fs, int type, char **qfnamep)
 struct fileusage *
 lookup(u_long id, int type)
 {
-	register struct fileusage *fup;
+	struct fileusage *fup;
 
 	for (fup = fuhead[type][id & (FUHASH-1)]; fup != 0; fup = fup->fu_next)
 		if (fup->fu_id == id)

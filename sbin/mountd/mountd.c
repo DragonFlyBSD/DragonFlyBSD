@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.7 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/mountd/mountd.c,v 1.8 2005/11/06 12:43:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -542,7 +542,7 @@ xdr_dir(XDR *xdrsp, char *dirp)
 int
 xdr_fhs(XDR *xdrsp, caddr_t cp)
 {
-	register struct fhreturn *fhrp = (struct fhreturn *)cp;
+	struct fhreturn *fhrp = (struct fhreturn *)cp;
 	u_long ok = 0, len, auth;
 
 	if (!xdr_long(xdrsp, &ok))
@@ -2068,9 +2068,9 @@ check_dirpath(char *dirp)
  * Just translate an ascii string to an integer.
  */
 int
-get_num(register char *cp)
+get_num(char *cp)
 {
-	register int res = 0;
+	int res = 0;
 
 	while (*cp) {
 		if (*cp < '0' || *cp > '9')

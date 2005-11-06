@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.7 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.8 2005/11/06 12:44:49 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -678,7 +678,7 @@ reapchild(int signo)
 void
 setproctitle(char *a)
 {
-	register char *cp;
+	char *cp;
 	char buf[80];
 
 	cp = Argv[0];
