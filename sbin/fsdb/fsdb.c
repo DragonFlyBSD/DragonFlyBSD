@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.6 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.7 2005/11/06 12:15:35 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -181,7 +181,7 @@ struct cmdtable cmds[] = {
 int
 helpfn(int argc, char **argv)
 {
-    register struct cmdtable *cmdtp;
+    struct cmdtable *cmdtp;
 
     printf("Commands are:\n%-10s %5s %5s   %s\n",
 	   "command", "min argc", "max argc", "what");
@@ -378,7 +378,7 @@ int slot;
 int
 scannames(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 
 	printf("slot %d ino %d reclen %d: %s, `%.*s'\n",
 	       slot++, dirp->d_ino, dirp->d_reclen, typename[dirp->d_type],
@@ -498,7 +498,7 @@ long slotcount, desired;
 int
 chinumfunc(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 
 	if (slotcount++ == desired) {
 	    dirp->d_ino = idesc->id_parent;
@@ -541,7 +541,7 @@ CMDFUNCSTART(chinum)
 int
 chnamefunc(struct inodesc *idesc)
 {
-	register struct direct *dirp = idesc->id_dirp;
+	struct direct *dirp = idesc->id_dirp;
 	struct direct testdir;
 
 	if (slotcount++ == desired) {
