@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.10 2005/04/03 15:52:01 joerg Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.11 2005/11/06 12:34:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -246,8 +246,8 @@ set_flags(int* altflags, int* nfsflags, int dir)
 int
 main(int argc, char **argv)
 {
-	register int c;
-	register struct nfs_args *nfsargsp;
+	int c;
+	struct nfs_args *nfsargsp;
 	struct nfs_args nfsargs;
 	struct nfsd_cargs ncd;
 	int mntflags, altflags, nfssvc_flag, num;
@@ -949,9 +949,9 @@ xdr_dir(XDR *xdrsp, char *dirp)
 }
 
 static int
-xdr_fh(XDR *xdrsp, register struct nfhret *np)
+xdr_fh(XDR *xdrsp, struct nfhret *np)
 {
-	register int i;
+	int i;
 	long auth, authcnt, authfnd = 0;
 
 	if (!xdr_u_long(xdrsp, &np->stat))
