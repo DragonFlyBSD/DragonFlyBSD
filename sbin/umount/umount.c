@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)umount.c	8.8 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/umount/umount.c,v 1.22.2.1 2001/12/13 01:27:15 iedowse Exp $
- * $DragonFly: src/sbin/umount/umount.c,v 1.3 2004/12/18 21:43:46 swildner Exp $
+ * $DragonFly: src/sbin/umount/umount.c,v 1.4 2005/11/06 12:51:01 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -675,7 +675,7 @@ xdr_dir(XDR *xdrsp, char *dirp)
 }
 
 void
-usage()
+usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n",

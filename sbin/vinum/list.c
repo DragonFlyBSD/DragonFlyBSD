@@ -41,7 +41,7 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/vinum/list.c,v 1.6 2005/11/06 12:51:40 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -797,7 +797,7 @@ vinum_ls(int argc, char *argv[], char *argv0[])
 
  * XXX Change this to specific lists */
 void
-listconfig()
+listconfig(void)
 {
     if (ioctl(superdev, VINUM_GETCONFIG, &vinum_conf) < 0) {
 	perror("Can't get vinum config");
@@ -1159,7 +1159,7 @@ printconfig(FILE * of, char *comment)
 }
 
 void
-list_defective_objects()
+list_defective_objects(void)
 {
     int o;						    /* object */
     int heading_needed = 1;

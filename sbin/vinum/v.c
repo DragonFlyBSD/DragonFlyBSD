@@ -38,7 +38,7 @@
  *
  * $Id: v.c,v 1.31 2000/09/03 01:29:26 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/v.c,v 1.26.2.3 2001/03/13 03:04:06 grog Exp $
- * $DragonFly: src/sbin/vinum/v.c,v 1.3 2003/08/08 04:18:41 dillon Exp $
+ * $DragonFly: src/sbin/vinum/v.c,v 1.4 2005/11/06 12:51:40 swildner Exp $
  */
 
 #include <ctype.h>
@@ -244,7 +244,7 @@ vinum_quit(int argc, char *argv[], char *argv0[])
 
 /* Set action on receiving a SIGINT */
 void
-setsigs()
+setsigs(void)
 {
     struct sigaction act;
 
@@ -846,7 +846,7 @@ start_daemon(void)
 }
 
 void
-timestamp()
+timestamp(void)
 {
     struct timeval now;
     struct tm *date;

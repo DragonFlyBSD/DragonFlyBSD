@@ -38,7 +38,7 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.6 2005/11/06 12:51:40 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -1436,7 +1436,7 @@ vinum_setdaemon(int argc, char *argv[], char *argv0[])
 }
 
 int
-checkupdates()
+checkupdates(void)
 {
     int options;
 
@@ -1471,7 +1471,7 @@ vinum_saveconfig(int argc, char *argv[], char *argv0[])
  * where # is a small positive number.
  */
 void
-genvolname()
+genvolname(void)
 {
     int v;						    /* volume number */
     static char volumename[MAXVOLNAME];			    /* name to create */
