@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.46 2005/11/03 05:24:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.47 2005/11/07 20:05:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -201,6 +201,7 @@ ASSYM(RQF_AST_UPCALL, RQF_AST_UPCALL);
 ASSYM(RQF_AST_MASK, RQF_AST_MASK);
 
 ASSYM(FIRST_SOFTINT, FIRST_SOFTINT);
+ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);
 
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));

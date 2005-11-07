@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.47 2005/11/04 19:46:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.48 2005/11/07 20:05:51 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2072,23 +2072,27 @@ start_all_aps(u_int boot_addr)
 		/* first page of AP's private space */
 		pg = x * i386_btop(sizeof(struct privatespace));
 
-		/* allocate a new private data page */
-		gd = (struct mdglobaldata *)kmem_alloc(kernel_map, PAGE_SIZE);
-
+		/* allocate new private data page(s) */
+		gd = (struct mdglobaldata *)kmem_alloc(kernel_map, 
+				MDGLOBALDATA_BASEALLOC_SIZE);
 		/* wire it into the private page table page */
-		SMPpt[pg] = (pt_entry_t)(PG_V | PG_RW | vtophys_pte(gd));
+		for (i = 0; i < MDGLOBALDATA_BASEALLOC_SIZE; i += PAGE_SIZE) {
+			SMPpt[pg + i / PAGE_SIZE] = (pt_entry_t)
+			    (PG_V | PG_RW | vtophys_pte((char *)gd + i));
+		}
+		pg += MDGLOBALDATA_BASEALLOC_PAGES;
+
+		SMPpt[pg + 0] = 0;		/* *gd_CMAP1 */
+		SMPpt[pg + 1] = 0;		/* *gd_CMAP2 */
+		SMPpt[pg + 2] = 0;		/* *gd_CMAP3 */
+		SMPpt[pg + 3] = 0;		/* *gd_PMAP1 */
 
 		/* allocate and set up an idle stack data page */
 		stack = (char *)kmem_alloc(kernel_map, UPAGES*PAGE_SIZE);
 		for (i = 0; i < UPAGES; i++) {
-			SMPpt[pg + 5 + i] = (pt_entry_t)
+			SMPpt[pg + 4 + i] = (pt_entry_t)
 			    (PG_V | PG_RW | vtophys_pte(PAGE_SIZE * i + stack));
 		}
-
-		SMPpt[pg + 1] = 0;		/* *gd_CMAP1 */
-		SMPpt[pg + 2] = 0;		/* *gd_CMAP2 */
-		SMPpt[pg + 3] = 0;		/* *gd_CMAP3 */
-		SMPpt[pg + 4] = 0;		/* *gd_PMAP1 */
 
 		gd = &CPU_prvspace[x].mdglobaldata;	/* official location */
 		bzero(gd, sizeof(*gd));
@@ -2097,10 +2101,10 @@ start_all_aps(u_int boot_addr)
 		/* prime data page for it to use */
 		mi_gdinit(&gd->mi, x);
 		cpu_gdinit(gd, x);
-		gd->gd_CMAP1 = &SMPpt[pg + 1];
-		gd->gd_CMAP2 = &SMPpt[pg + 2];
-		gd->gd_CMAP3 = &SMPpt[pg + 3];
-		gd->gd_PMAP1 = &SMPpt[pg + 4];
+		gd->gd_CMAP1 = &SMPpt[pg + 0];
+		gd->gd_CMAP2 = &SMPpt[pg + 1];
+		gd->gd_CMAP3 = &SMPpt[pg + 2];
+		gd->gd_PMAP1 = &SMPpt[pg + 3];
 		gd->gd_CADDR1 = ps->CPAGE1;
 		gd->gd_CADDR2 = ps->CPAGE2;
 		gd->gd_CADDR3 = ps->CPAGE3;

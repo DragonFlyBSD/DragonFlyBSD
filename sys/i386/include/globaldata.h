@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.27 2005/11/03 20:10:55 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.28 2005/11/07 20:05:53 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -63,6 +63,9 @@
  * the service routine will loop.
  *
  * The current thread's cpl is stored in the thread structure.
+ *
+ * Note: the embedded globaldata and/or the mdglobaldata structure
+ * may exceed the size of a page.
  */
 struct mdglobaldata {
 	struct globaldata mi;
@@ -93,13 +96,20 @@ struct mdglobaldata {
 	u_int		gd_apic_id;
 };
 
+#define MDGLOBALDATA_BASEALLOC_SIZE	\
+	((sizeof(struct mdglobaldata) + PAGE_MASK) & ~PAGE_MASK)
+#define MDGLOBALDATA_BASEALLOC_PAGES	\
+	(MDGLOBALDATA_BASEALLOC_SIZE / PAGE_SIZE)
+#define MDGLOBALDATA_PAD		\
+	(MDGLOBALDATA_BASEALLOC_SIZE - sizeof(struct mdglobaldata))
+
 /*
  * This is the upper (0xff800000) address space layout that is per-cpu.
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
  * each AP.  genassym helps export this to the assembler code.
  *
- * WARNING!  page-bounded fields are hardwired for SMPpt[] setup in
- * i386/i386/mp_machdep.c and locore.s.
+ * WARNING!  page-bounded fields and page table indexes are hardwired
+ * for SMPpt[] setup in i386/i386/mp_machdep.c and locore.s.
  *
  * WARNING!  sizeof(privatespace[SMP_MAXCPU]) must fit in the KVA
  * reserved for the SMPpt page table (typically one page table page).
@@ -107,18 +117,18 @@ struct mdglobaldata {
  * WARNING!  This structure must be a multiple of PAGE_SIZE.
  */
 struct privatespace {
-	/* page 0 - data page */
+	/* main data page */
 	struct mdglobaldata mdglobaldata;
-	char		__filler0[PAGE_SIZE - sizeof(struct mdglobaldata)];
+	char		__filler0[MDGLOBALDATA_PAD];
 
-	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
-	char		CPAGE1[PAGE_SIZE];		/* SMPpt[1] */
-	char		CPAGE2[PAGE_SIZE];		/* SMPpt[2] */
-	char		CPAGE3[PAGE_SIZE];		/* SMPpt[3] */
-	char		PPAGE1[PAGE_SIZE];		/* SMPpt[4] */
+	/* mapping pages - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
+	char		CPAGE1[PAGE_SIZE];		/* SMPpt[n+0] */
+	char		CPAGE2[PAGE_SIZE];		/* SMPpt[n+1] */
+	char		CPAGE3[PAGE_SIZE];		/* SMPpt[n+2] */
+	char		PPAGE1[PAGE_SIZE];		/* SMPpt[n+3] */
 
-	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
-	char		idlestack[UPAGES * PAGE_SIZE];	/* SMPpt[5..] */
+	/* idle stack (UPAGES pages) */
+	char		idlestack[UPAGES * PAGE_SIZE];	/* SMPpt[n+4] */
 };
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
 

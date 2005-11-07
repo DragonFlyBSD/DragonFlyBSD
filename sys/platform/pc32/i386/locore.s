@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.10 2005/02/27 10:57:24 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.11 2005/11/07 20:05:51 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -116,9 +116,11 @@ bootinfo:	.space	BOOTINFO_SIZE		/* bootinfo buffer space */
 KERNend:	.long	0			/* phys addr end of kernel (just after bss) */
 physfree:	.long	0			/* phys addr of next free page */
 
+#if 0
 		.globl	cpu0prvpage
-cpu0pp:		.long	0			/* phys addr cpu0 private pg */
 cpu0prvpage:	.long	0			/* relocated version */
+#endif
+cpu0pp:		.long	0			/* phys addr cpu0 private pg */
 cpu0idlestk:	.long	0			/* stack for the idle thread */
 
 		.globl	SMPpt
@@ -698,11 +700,13 @@ no_kernend:
 	addl	$KERNBASE, %esi
 	movl	%esi, R(vm86paddr)
 
-/* Allocate cpu0's private data page */
-	ALLOCPAGES(1)
+/* Allocate cpu0's mdglobaldata */
+	ALLOCPAGES(MDGLOBALDATA_BASEALLOC_PAGES)
 	movl	%esi,R(cpu0pp)
+#if 0
 	addl	$KERNBASE, %esi
 	movl	%esi, R(cpu0prvpage)	/* relocated to KVM space */
+#endif
 
 /* Allocate cpu0's idle stack */
 	ALLOCPAGES(UPAGES)
@@ -783,10 +787,12 @@ map_read_write:
 	movl	$ISA_HOLE_LENGTH>>PAGE_SHIFT, %ecx
 	fillkpt(R(vm86pa), $PG_RW|PG_U)
 
-/* Map cpu0's private page into global kmem (4K @ cpu0prvpage) */
+#if 0
+/* Map cpu0's mdglobaldata into global kmem (N pages @ cpu0pp) */
 	movl	R(cpu0pp), %eax
-	movl	$1, %ecx
+	movl	$MDGLOBALDATA_BASEALLOC_PAGES, %ecx
 	fillkptphys($PG_RW)
+#endif
 
 /* Map SMP page table page into global kmem FWIW */
 	movl	R(SMPptpa), %eax
@@ -796,7 +802,8 @@ map_read_write:
 /* Map the private page into the SMP page table */
 	movl	R(cpu0pp), %eax
 	movl	$0, %ebx		/* pte offset = 0 */
-	movl	$1, %ecx		/* one private page coming right up */
+					/* N private pages coming right up */
+	movl	$MDGLOBALDATA_BASEALLOC_PAGES, %ecx		
 	fillkpt(R(SMPptpa), $PG_RW)
 
 /* Map the cpu0's idle thread stack */

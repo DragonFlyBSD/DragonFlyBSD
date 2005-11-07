@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.51 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.52 2005/11/07 20:05:51 dillon Exp $
  */
 
 /*
@@ -312,6 +312,7 @@ pmap_bootstrap(firstaddr, loadaddr)
 	pt_entry_t *pte;
 	struct mdglobaldata *gd;
 	int i;
+	int pg;
 
 	avail_start = firstaddr;
 
@@ -451,12 +452,17 @@ pmap_bootstrap(firstaddr, loadaddr)
 	    (cpu_apic_address & PG_FRAME));
 #endif
 
-	/* BSP does this itself, AP's get it pre-set */
+	/*
+	 * We need to finish setting up the globaldata page for the BSP.
+	 * locore has already populated the page table for the mdglobaldata
+	 * portion.
+	 */
+	pg = MDGLOBALDATA_BASEALLOC_PAGES;
 	gd = &CPU_prvspace[0].mdglobaldata;
-	gd->gd_CMAP1 = &SMPpt[1];
-	gd->gd_CMAP2 = &SMPpt[2];
-	gd->gd_CMAP3 = &SMPpt[3];
-	gd->gd_PMAP1 = &SMPpt[4];
+	gd->gd_CMAP1 = &SMPpt[pg + 0];
+	gd->gd_CMAP2 = &SMPpt[pg + 1];
+	gd->gd_CMAP3 = &SMPpt[pg + 2];
+	gd->gd_PMAP1 = &SMPpt[pg + 3];
 	gd->gd_CADDR1 = CPU_prvspace[0].CPAGE1;
 	gd->gd_CADDR2 = CPU_prvspace[0].CPAGE2;
 	gd->gd_CADDR3 = CPU_prvspace[0].CPAGE3;
