@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.50 2005/02/23 07:23:35 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/acpi.4,v 1.3 2005/07/03 20:58:35 asmodai Exp $
+.\" $DragonFly: src/share/man/man4/acpi.4,v 1.4 2005/11/07 18:26:37 dillon Exp $
 .\"
 .Dd February 13, 2005
 .Dt ACPI 4
@@ -99,7 +99,11 @@ Enables loading of a custom ACPI DSDT.
 .It Va acpi_dsdt_name
 Name of the DSDT table to load, if loading is enabled.
 .It Va debug.acpi.disabled
-Selectively disables portions of ACPI for debugging purposes.
+Selectively disables portions of ACPI that are enabled by default, for
+debugging purposes.
+.It Va debug.acpi.enabled
+Selectively enables portions of ACPI that are disabled by default, for
+debugging purposes.
 .It Va debug.acpi.quirks
 Override any automatic quirks completely.
 .It Va hint.acpi.0.disabled
