@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.50 2005/10/24 22:31:35 eirikn Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.51 2005/11/08 20:46:59 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -61,6 +61,8 @@
 #include <machine/ipl.h>
 #include <machine/smp.h>
 
+TAILQ_HEAD(tslpque, thread);
+
 static void sched_setup (void *dummy);
 SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
 
@@ -73,6 +75,7 @@ int	safepri;
 
 static struct callout loadav_callout;
 static struct callout schedcpu_callout;
+MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
 
 struct loadavg averunnable =
 	{ {0, 0, 0}, FSCALE };	/* load average, of runnable procs */
@@ -202,29 +205,40 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
 	}
 }
 
-
 /*
  * We're only looking at 7 bits of the address; everything is
  * aligned to 4, lots of things are aligned to greater powers
  * of 2.  Shift right by 8, i.e. drop the bottom 256 worth.
  */
 #define TABLESIZE	128
-static TAILQ_HEAD(slpquehead, thread) slpque[TABLESIZE];
 #define LOOKUP(x)	(((intptr_t)(x) >> 8) & (TABLESIZE - 1))
+
+static cpumask_t slpque_cpumasks[TABLESIZE];
 
 /*
  * General scheduler initialization.  We force a reschedule 25 times
- * a second by default.
+ * a second by default.  Note that cpu0 is initialized in early boot and
+ * cannot make any high level calls.
+ *
+ * Each cpu has its own sleep queue.
  */
 void
-sleepinit(void)
+sleep_gdinit(globaldata_t gd)
 {
+	static struct tslpque slpque_cpu0[TABLESIZE];
 	int i;
 
-	sched_quantum = (hz + 24) / 25;
-	hogticks = 2 * sched_quantum;
-	for (i = 0; i < TABLESIZE; i++)
-		TAILQ_INIT(&slpque[i]);
+	if (gd->gd_cpuid == 0) {
+		sched_quantum = (hz + 24) / 25;
+		hogticks = 2 * sched_quantum;
+
+		gd->gd_tsleep_hash = slpque_cpu0;
+	} else {
+		gd->gd_tsleep_hash = malloc(sizeof(slpque_cpu0), 
+					    M_TSLEEP, M_WAITOK | M_ZERO);
+	}
+	for (i = 0; i < TABLESIZE; ++i)
+		TAILQ_INIT(&gd->gd_tsleep_hash[i]);
 }
 
 /*
@@ -249,6 +263,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;		/* may be NULL */
+	globaldata_t gd;
 	int sig = 0, catch = flags & PCATCH;
 	int id = LOOKUP(ident);
 	int oldpri;
@@ -272,7 +287,8 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		lwkt_setpri_self(oldpri);
 		return (0);
 	}
-	KKASSERT(td != &mycpu->gd_idlethread);	/* you must be kidding! */
+	gd = td->td_gd;
+	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
 	crit_enter_quick(td);
 	KASSERT(ident != NULL, ("tsleep: no ident"));
 	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
@@ -287,8 +303,15 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		p->p_usched->release_curproc(&p->p_lwp);
 		p->p_slptime = 0;
 	}
+
+	/*
+	 * note: all of this occurs on the current cpu, including any
+	 * callout-based wakeups, so a critical section is a sufficient
+	 * interlock.
+	 */
 	lwkt_deschedule_self(td);
-	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
+	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_threadq);
+	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
 	if (timo) {
 		callout_init(&thandle);
 		callout_reset(&thandle, timo, endtsleep, td);
@@ -336,6 +359,11 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	} else {
 		lwkt_switch();
 	}
+	/* 
+	 * Make sure we haven't switched cpus while we were asleep.  It's
+	 * not supposed to happen.
+	 */
+	KKASSERT(gd == td->td_gd);
 resume:
 	if (p)
 		p->p_flag &= ~P_SINTR;
@@ -370,6 +398,9 @@ resume:
  * wchan when setting TDF_TIMEOUT.  For processes we remove
  * the sleep if the process is stopped rather then sleeping,
  * so it remains stopped.
+ *
+ * This type of callout timeout had better be scheduled on the same
+ * cpu the process is sleeping on.
  */
 static void
 endtsleep(void *arg)
@@ -395,13 +426,21 @@ endtsleep(void *arg)
 
 /*
  * Remove a process from its wait queue
+ *
+ * XXX not MP safe until called only on the cpu holding the sleeping
+ * process.
  */
 void
 unsleep(struct thread *td)
 {
+	int id;
+
 	crit_enter();
+	id = LOOKUP(td->td_wchan);
 	if (td->td_wchan) {
-		TAILQ_REMOVE(&slpque[LOOKUP(td->td_wchan)], td, td_threadq);
+		TAILQ_REMOVE(&td->td_gd->gd_tsleep_hash[id], td, td_threadq);
+		if (TAILQ_FIRST(&td->td_gd->gd_tsleep_hash[id]) == NULL)
+			atomic_clear_int(&slpque_cpumasks[id], td->td_gd->gd_cpumask);
 		td->td_wchan = NULL;
 	}
 	crit_exit();
@@ -409,23 +448,42 @@ unsleep(struct thread *td)
 
 /*
  * Make all processes sleeping on the specified identifier runnable.
+ * count may be zero or one only.
+ *
+ * The domain encodes the sleep/wakeup domain AND the first cpu to check
+ * (which is always the current cpu).  As we iterate across cpus
  */
 static void
-_wakeup(void *ident, int domain, int count)
+_wakeup(void *ident, int domain)
 {
-	struct slpquehead *qp;
+	struct tslpque *qp;
 	struct thread *td;
 	struct thread *ntd;
+	globaldata_t gd;
 	struct proc *p;
-	int id = LOOKUP(ident);
+#ifdef SMP
+	cpumask_t mask;
+	cpumask_t tmask;
+	int startcpu;
+	int nextcpu;
+#endif
+	int id;
 
 	crit_enter();
-	qp = &slpque[id];
+	gd = mycpu;
+	id = LOOKUP(ident);
+	qp = &gd->gd_tsleep_hash[id];
 restart:
 	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
 		ntd = TAILQ_NEXT(td, td_threadq);
-		if (td->td_wchan == ident && td->td_wdomain == domain) {
+		if (td->td_wchan == ident && 
+		    td->td_wdomain == (domain & PDOMAIN_MASK)
+		) {
 			TAILQ_REMOVE(qp, td, td_threadq);
+			if (TAILQ_FIRST(qp) == NULL) {
+				atomic_clear_int(&slpque_cpumasks[id],
+						 gd->gd_cpumask);
+			}
 			td->td_wchan = NULL;
 			if ((p = td->td_proc) != NULL && p->p_stat == SSLEEP) {
 				p->p_stat = SRUN;
@@ -445,36 +503,119 @@ restart:
 			} else if (p == NULL) {
 				lwkt_schedule(td);
 			}
-			if (--count == 0)
-				break;
+			if (domain & PWAKEUP_ONE)
+				goto done;
 			goto restart;
 		}
 	}
+
+#ifdef SMP
+	/*
+	 * We finished checking the current cpu but there still may be
+	 * more work to do.  Either wakeup_one was requested and no matching
+	 * thread was found, or a normal wakeup was requested and we have
+	 * to continue checking cpus.
+	 *
+	 * The cpu that started the wakeup sequence is encoded in the domain.
+	 * We use this information to determine which cpus still need to be
+	 * checked, locate a candidate cpu, and chain the wakeup 
+	 * asynchronously with an IPI message. 
+	 *
+	 * It should be noted that this scheme is actually less expensive then
+	 * the old scheme when waking up multiple threads, since we send 
+	 * only one IPI message per target candidate which may then schedule
+	 * multiple threads.  Before we could have wound up sending an IPI
+	 * message for each thread on the target cpu (!= current cpu) that
+	 * needed to be woken up.
+	 *
+	 * NOTE: Wakeups occuring on remote cpus are asynchronous.  This
+	 * should be ok since we are passing idents in the IPI rather then
+	 * thread pointers.
+	 */
+	if ((mask = slpque_cpumasks[id]) != 0) {
+		/*
+		 * Look for a cpu that might have work to do.  Mask out cpus
+		 * which have already been processed.
+		 *
+		 * 31xxxxxxxxxxxxxxxxxxxxxxxxxxxxx0
+		 *        ^        ^           ^
+		 *      start   currentcpu    start
+		 *      case2                 case1
+		 *        *        *           *
+		 * 11111111111111110000000000000111	case1
+		 * 00000000111111110000000000000000	case2
+		 *
+		 * case1:  We started at start_case1 and processed through
+		 *  	   to the current cpu.  We have to check any bits
+		 *	   after the current cpu, then check bits before 
+		 *         the starting cpu.
+		 *
+		 * case2:  We have already checked all the bits from
+		 *         start_case2 to the end, and from 0 to the current
+		 *         cpu.  We just have the bits from the current cpu
+		 *         to start_case2 left to check.
+		 */
+		startcpu = PWAKEUP_DECODE(domain);
+		if (gd->gd_cpuid >= startcpu) {
+			/*
+			 * CASE1
+			 */
+			tmask = mask & ~((gd->gd_cpumask << 1) - 1);
+			if (mask & tmask) {
+				nextcpu = bsfl(mask & tmask);
+				lwkt_send_ipiq2(globaldata_find(nextcpu), 
+						_wakeup, ident, domain);
+			} else {
+				tmask = (1 << startcpu) - 1;
+				if (mask & tmask) {
+					nextcpu = bsfl(mask & tmask);
+					lwkt_send_ipiq2(
+						    globaldata_find(nextcpu),
+						    _wakeup, ident, domain);
+				}
+			}
+		} else {
+			/*
+			 * CASE2
+			 */
+			tmask = ~((gd->gd_cpumask << 1) - 1) &
+				 ((1 << startcpu) - 1);
+			if (mask & tmask) {
+				nextcpu = bsfl(mask & tmask);
+				lwkt_send_ipiq2(globaldata_find(nextcpu), 
+						_wakeup, ident, domain);
+			}
+		}
+	}
+#endif
+done:
 	crit_exit();
 }
 
 void
 wakeup(void *ident)
 {
-    _wakeup(ident, 0, 0);
+    _wakeup(ident, PWAKEUP_ENCODE(0, mycpu->gd_cpuid));
 }
 
 void
 wakeup_one(void *ident)
 {
-    _wakeup(ident, 0, 1);
+    /* XXX potentially round-robin the first responding cpu */
+    _wakeup(ident, PWAKEUP_ENCODE(0, mycpu->gd_cpuid) | PWAKEUP_ONE);
 }
 
 void
 wakeup_domain(void *ident, int domain)
 {
-    _wakeup(ident, domain, 0);
+    _wakeup(ident, PWAKEUP_ENCODE(domain, mycpu->gd_cpuid));
 }
 
 void
 wakeup_domain_one(void *ident, int domain)
 {
-    _wakeup(ident, domain, 1);
+    /* XXX potentially round-robin the first responding cpu */
+    _wakeup(ident, PWAKEUP_ENCODE(domain, mycpu->gd_cpuid) | PWAKEUP_ONE);
 }
 
 /*
@@ -497,6 +638,8 @@ mi_switch(struct proc *p)
 	 * Check if the process exceeds its cpu resource allocation.
 	 * If over max, kill it.  Time spent in interrupts is not 
 	 * included.  YYY 64 bit match is expensive.  Ick.
+	 *
+	 * XXX move to the once-a-second process scan
 	 */
 	ttime = td->td_sticks + td->td_uticks;
 	if (p->p_stat != SZOMB && p->p_limit->p_cpulimit != RLIM_INFINITY &&
@@ -527,9 +670,10 @@ mi_switch(struct proc *p)
 }
 
 /*
- * Change process state to be runnable,
- * placing it on the run queue if it is in memory,
- * and awakening the swapper if it isn't in memory.
+ * Change process state to be runnable, placing it on the run queue if it
+ * is in memory, and awakening the swapper if it isn't in memory.
+ *
+ * This operation MUST OCCUR on the cpu that the thread is sleeping on.
  */
 void
 setrunnable(struct proc *p)

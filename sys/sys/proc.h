@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.70 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.71 2005/11/08 20:47:02 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -458,7 +458,7 @@ void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct proc *);
 void	clrrunnable (struct proc *, int stat);
-void	sleepinit (void);
+void	sleep_gdinit (struct globaldata *);
 int	suser (struct thread *td);
 int	suser_proc (struct proc *p);
 int	suser_cred (struct ucred *cred, int flag);

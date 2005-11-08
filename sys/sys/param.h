@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.28 2005/10/09 19:02:09 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.29 2005/11/08 20:47:02 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -118,8 +118,12 @@
 #define PCATCH		0x00000100	/* tsleep checks signals */
 #define PUSRFLAG1	0x00000200	/* Subsystem specific flag */
 #define PNORESCHED	0x00000400	/* No reschedule on wakeup */
+#define PWAKEUP_ONE	0x00008000	/* argument to wakeup: only one */
+#define PWAKEUP_CPUMASK	0x00007FFF	/* (argument passed to wakeup) */
 #define PDOMAIN_MASK	0xFFFF0000	/* address domains for wakeup */
 #define PDOMAIN_UMTX	0x00010000	/* independant domain for UMTX */
+#define PWAKEUP_ENCODE(domain, cpu)	((domain) | (cpu))
+#define PWAKEUP_DECODE(domain)		((domain) & PWAKEUP_CPUMASK)
 
 #define NZERO	0		/* default "nice" */
 

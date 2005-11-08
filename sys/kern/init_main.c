@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.49 2005/10/26 00:47:17 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.50 2005/11/08 20:46:59 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -284,11 +284,6 @@ proc0_init(void *dummy __unused)
 	 * Initialize process and pgrp structures.
 	 */
 	procinit();
-
-	/*
-	 * Initialize sleep queue hash table
-	 */
-	sleepinit();
 
 	/*
 	 * additional VM structures
@@ -633,6 +628,7 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	gd->gd_cpumask = (cpumask_t)1 << cpuid;
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
+	sleep_gdinit(gd);
 }
 
 

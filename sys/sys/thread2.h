@@ -8,7 +8,7 @@
  * on a different cpu will not be immediately scheduled by a yield() on
  * this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.24 2005/10/25 17:26:58 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.25 2005/11/08 20:47:02 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -241,7 +241,7 @@ lwkt_send_ipiq(globaldata_t target, ipifunc1_t func, void *arg)
 }
 
 static __inline int
-lwkt_send_ipiq2(globaldata_t target, ipifunc1_t func, void *arg1, int arg2)
+lwkt_send_ipiq2(globaldata_t target, ipifunc2_t func, void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3(target, (ipifunc3_t)func, arg1, arg2));
 }
@@ -253,7 +253,7 @@ lwkt_send_ipiq_mask(u_int32_t mask, ipifunc1_t func, void *arg)
 }
 
 static __inline int
-lwkt_send_ipiq2_mask(u_int32_t mask, ipifunc1_t func, void *arg1, int arg2)
+lwkt_send_ipiq2_mask(u_int32_t mask, ipifunc2_t func, void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg1, arg2));
 }
@@ -265,7 +265,7 @@ lwkt_send_ipiq_nowait(globaldata_t target, ipifunc1_t func, void *arg)
 }
 
 static __inline int
-lwkt_send_ipiq2_nowait(globaldata_t target, ipifunc1_t func, 
+lwkt_send_ipiq2_nowait(globaldata_t target, ipifunc2_t func, 
 		       void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3_nowait(target, (ipifunc3_t)func, arg1, arg2));
@@ -278,7 +278,7 @@ lwkt_send_ipiq_passive(globaldata_t target, ipifunc1_t func, void *arg)
 }
 
 static __inline int
-lwkt_send_ipiq2_passive(globaldata_t target, ipifunc1_t func, 
+lwkt_send_ipiq2_passive(globaldata_t target, ipifunc2_t func, 
 		       void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3_passive(target, (ipifunc3_t)func, arg1, arg2));
