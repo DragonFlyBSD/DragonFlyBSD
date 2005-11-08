@@ -2,7 +2,7 @@
 
 Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
 
-Copyright (c) 2001-2003, Intel Corporation
+Copyright (c) 2001-2005, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.41 2005/10/24 08:06:15 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.42 2005/11/08 12:48:18 sephe Exp $*/
 
 #include "opt_polling.h"
 
@@ -50,7 +50,7 @@ int             em_display_debug_stats = 0;
  *  Driver version
  *********************************************************************/
 
-char em_driver_version[] = "1.7.35";
+char em_driver_version[] = "3.2.15";
 
 
 /*********************************************************************
@@ -66,40 +66,63 @@ char em_driver_version[] = "1.7.35";
 static em_vendor_info_t em_vendor_info_array[] =
 {
 	/* Intel(R) PRO/1000 Network Connection */
-	{ 0x8086, 0x1000, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1001, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1004, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1008, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1009, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x100C, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x100D, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x100E, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x100F, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1010, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1011, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1012, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1013, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1014, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1015, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1016, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1017, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1018, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1019, PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82540EM,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82540EM_LOM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82540EP,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82540EP_LOM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82540EP_LP,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82541EI,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82541ER,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82541EI_MOBILE,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82541GI,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82541GI_LF,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82541GI_MOBILE,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82542,		PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82543GC_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82543GC_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82544EI_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82544EI_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82544GC_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82544GC_LOM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82545EM_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82545EM_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82545GM_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82545GM_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82545GM_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82546EB_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82546EB_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82546EB_QUAD_COPPER, PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82546GB_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82546GB_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82546GB_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82546GB_PCIE,	PCI_ANY_ID, PCI_ANY_ID, 0},
+#ifdef KINGSPORT_PROJECT
+	{ 0x8086, E1000_DEV_ID_82546GB_QUAD_COPPER, PCI_ANY_ID, PCI_ANY_ID, 0},
+#endif	/* KINGSPORT_PROJECT */
+
+	{ 0x8086, E1000_DEV_ID_82547EI,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82547GI,		PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82571EB_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82571EB_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82571EB_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82572EI_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82572EI_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82572EI_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82573E,		PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82573E_IAMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82573L,		PCI_ANY_ID, PCI_ANY_ID, 0},
+
 	{ 0x8086, 0x101A, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x101D, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x101E, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1026, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1027, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1028, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1075, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1076, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1077, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1078, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x1079, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x107A, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x107B, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x107C, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, 0x108A, PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, 0x1014, PCI_ANY_ID, PCI_ANY_ID, 0},
 	/* required last entry */
 	{ 0, 0, 0, 0, 0}
 };
@@ -358,7 +381,7 @@ em_attach(device_t dev)
 			OID_AUTO, "int_throttle_ceil", CTLTYPE_INT|CTLFLAG_RW,
 			adapter, 0, em_sysctl_int_throttle, "I", NULL);
 	}
-     
+
 	/* Parameters (to be read from user) */   
 	adapter->num_tx_desc = EM_MAX_TXD;
 	adapter->num_rx_desc = EM_MAX_RXD;
@@ -367,16 +390,6 @@ em_attach(device_t dev)
 	adapter->hw.autoneg_advertised = AUTONEG_ADV_DEFAULT;
 	adapter->hw.tbi_compatibility_en = TRUE;
 	adapter->rx_buffer_len = EM_RXBUFFER_2048;
-
-	/*
-	 * These parameters control the automatic generation(Tx) and
-	 * response(Rx) to Ethernet PAUSE frames.
-	 */
-	adapter->hw.fc_high_water = FC_DEFAULT_HI_THRESH;
-	adapter->hw.fc_low_water  = FC_DEFAULT_LO_THRESH;
-	adapter->hw.fc_pause_time = FC_DEFAULT_TX_TIMER;
-	adapter->hw.fc_send_xon   = TRUE;
-	adapter->hw.fc = em_fc_full;
 
 	adapter->hw.phy_init_script = 1;
 	adapter->hw.phy_reset_disable = FALSE;
@@ -451,10 +464,10 @@ em_attach(device_t dev)
 
 	adapter->hw.back = &adapter->osdep;
 
-	/* Initialize eeprom parameters */
 	em_init_eeprom_params(&adapter->hw);
 
-	tsize = adapter->num_tx_desc * sizeof(struct em_tx_desc);
+	tsize = EM_ROUNDUP(adapter->num_tx_desc *
+			   sizeof(struct em_tx_desc), 4096);
 
 	/* Allocate Transmit Descriptor ring */
 	if (em_dma_malloc(adapter, tsize, &adapter->txdma, BUS_DMA_WAITOK)) {
@@ -464,7 +477,8 @@ em_attach(device_t dev)
 	}
 	adapter->tx_desc_base = (struct em_tx_desc *) adapter->txdma.dma_vaddr;
 
-	rsize = adapter->num_rx_desc * sizeof(struct em_rx_desc);
+	rsize = EM_ROUNDUP(adapter->num_rx_desc *
+			   sizeof(struct em_rx_desc), 4096);
 
 	/* Allocate Receive Descriptor ring */
 	if (em_dma_malloc(adapter, rsize, &adapter->rxdma, BUS_DMA_WAITOK)) {
@@ -565,9 +579,11 @@ em_detach(device_t dev)
 	}
 	bus_generic_detach(dev);
 
-	if (adapter->res_interrupt != NULL) {
+	if (adapter->int_handler_tag != NULL) {
 		bus_teardown_intr(dev, adapter->res_interrupt, 
 				  adapter->int_handler_tag);
+	}
+	if (adapter->res_interrupt != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, 
 				     adapter->res_interrupt);
 	}
@@ -674,7 +690,7 @@ em_start_serialized(struct ifnet *ifp)
 static int
 em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
-	int mask, error = 0;
+	int max_frame_size, mask, error = 0;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct adapter *adapter = ifp->if_softc;
 
@@ -693,7 +709,21 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCSIFMTU:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFMTU (Set Interface MTU)");
-		if (ifr->ifr_mtu > MAX_JUMBO_FRAME_SIZE - ETHER_HDR_LEN) {
+		switch (adapter->hw.mac_type) {
+		case em_82571:
+		case em_82572:
+			max_frame_size = 10500;
+			break;
+		case em_82573:
+			/* 82573 does not support jumbo frames */
+			max_frame_size = ETHER_MAX_LEN;
+			break;
+		default:
+			max_frame_size = MAX_JUMBO_FRAME_SIZE;
+			break;
+		}
+		if (ifr->ifr_mtu >
+			max_frame_size - ETHER_HDR_LEN - ETHER_CRC_LEN) {
 			error = EINVAL;
 		} else {
 			ifp->if_mtu = ifr->ifr_mtu;
@@ -819,31 +849,36 @@ em_init_serialized(void *arg)
 	 * Packet Buffer Allocation (PBA)
 	 * Writing PBA sets the receive portion of the buffer
 	 * the remainder is used for the transmit buffer.
-	 *
-	 * Devices before the 82547 had a Packet Buffer of 64K.
-	 *   Default allocation: PBA=48K for Rx, leaving 16K for Tx.
-	 * After the 82547 the buffer was reduced to 40K.
-	 *   Default allocation: PBA=30K for Rx, leaving 10K for Tx.
-	 *   Note: default does not leave enough room for Jumbo Frame >10k.
 	 */
-	if(adapter->hw.mac_type < em_82547) {
-		/* Total FIFO is 64K */
-		if(adapter->rx_buffer_len > EM_RXBUFFER_8192)
-			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
-		else
-			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
-	} else {
-		/* Total FIFO is 40K */
-		if(adapter->hw.max_frame_size > EM_RXBUFFER_8192) {
+	switch (adapter->hw.mac_type) {
+	case em_82547: 
+	case em_82547_rev_2: /* 82547: Total Packet Buffer is 40K */
+		if (adapter->hw.max_frame_size > EM_RXBUFFER_8192)
 			pba = E1000_PBA_22K; /* 22K for Rx, 18K for Tx */
-		} else {
-		        pba = E1000_PBA_30K; /* 30K for Rx, 10K for Tx */
-		}
+		else
+			pba = E1000_PBA_30K; /* 30K for Rx, 10K for Tx */
+
 		adapter->tx_fifo_head = 0;
 		adapter->tx_head_addr = pba << EM_TX_HEAD_ADDR_SHIFT;
 		adapter->tx_fifo_size =
 			(E1000_PBA_40K - pba) << EM_PBA_BYTES_SHIFT;
+		break;
+	case em_82571: /* 82571: Total Packet Buffer is 48K */
+	case em_82572: /* 82572: Total Packet Buffer is 48K */
+		pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
+		break;
+	case em_82573: /* 82573: Total Packet Buffer is 32K */
+		/* Jumbo frames not supported */
+		pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
+		break;
+	default:
+		/* Devices before 82547 had a Packet Buffer of 64K.   */
+		if(adapter->hw.max_frame_size > EM_RXBUFFER_8192)
+			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
+		else
+			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
 	}
+
 	INIT_DEBUGOUT1("em_init: pba=%dK",pba);
 	E1000_WRITE_REG(&adapter->hw, PBA, pba);
 
@@ -877,7 +912,7 @@ em_init_serialized(void *arg)
 		return;
 	}
 	em_initialize_receive_unit(adapter);
-	
+
 	/* Don't loose promiscuous settings */
 	em_set_promisc(adapter);
 
@@ -1181,9 +1216,9 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	if (ifp->if_hwassist > 0) {
 		em_transmit_checksum_setup(adapter,  m_head,
 					   &txd_upper, &txd_lower);
-	}
-	else 
+	} else {
 		txd_upper = txd_lower = 0;
+	}
 
 	/* Find out if we are in vlan mode */
 	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
@@ -1295,7 +1330,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
  * 82547 workaround to avoid controller hang in half-duplex environment.
  * The workaround is to avoid queuing a large packet that would span   
  * the internal Tx FIFO ring boundary. We need to reset the FIFO pointers
- * in this case. We do that only when FIFO is quiescent.
+ * in this case. We do that only when FIFO is queiced.
  *
  **********************************************************************/
 static void
@@ -1376,7 +1411,7 @@ em_82547_update_fifo_head(struct adapter *adapter, int len)
 
 static int
 em_82547_tx_fifo_reset(struct adapter *adapter)
-{	
+{
 	uint32_t tctl;
 
 	if ( (E1000_READ_REG(&adapter->hw, TDT) ==
@@ -1444,8 +1479,8 @@ em_disable_promisc(struct adapter *adapter)
 
 	reg_rctl = E1000_READ_REG(&adapter->hw, RCTL);
 
-	reg_rctl &=  (~E1000_RCTL_UPE);
-	reg_rctl &=  (~E1000_RCTL_MPE);
+	reg_rctl &= (~E1000_RCTL_UPE);
+	reg_rctl &= (~E1000_RCTL_MPE);
 	E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);
 
 	em_enable_vlans(adapter);
@@ -1494,8 +1529,9 @@ em_set_multi(struct adapter *adapter)
 		reg_rctl = E1000_READ_REG(&adapter->hw, RCTL);
 		reg_rctl |= E1000_RCTL_MPE;
 		E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);
-	} else
+	} else {
 		em_mc_addr_list_update(&adapter->hw, mta, mcnt, 0, 1);
+	}
 
 	if (adapter->hw.mac_type == em_82542_rev2_0) {
 		reg_rctl = E1000_READ_REG(&adapter->hw, RCTL);
@@ -1636,6 +1672,8 @@ em_identify_hardware(struct adapter * adapter)
 static int
 em_hardware_init(struct adapter *adapter)
 {
+	uint16_t	rx_buffer_size;
+
 	INIT_DEBUGOUT("em_hardware_init: begin");
 	/* Issue a global reset */
 	em_reset_hw(&adapter->hw);
@@ -1645,14 +1683,39 @@ em_hardware_init(struct adapter *adapter)
 
 	/* Make sure we have a good EEPROM before we read from it */
 	if (em_validate_eeprom_checksum(&adapter->hw) < 0) {
-		device_printf(adapter->dev, "The EEPROM Checksum Is Not Valid\n");
+		device_printf(adapter->dev,
+			      "The EEPROM Checksum Is Not Valid\n");
 		return(EIO);
 	}
 
 	if (em_read_part_num(&adapter->hw, &(adapter->part_num)) < 0) {
-		device_printf(adapter->dev, "EEPROM read error while reading part number\n");
+		device_printf(adapter->dev,
+			      "EEPROM read error while reading part number\n");
 		return(EIO);
 	}
+
+	/*
+	 * These parameters control the automatic generation (Tx) and 
+	 * response(Rx) to Ethernet PAUSE frames.
+	 * - High water mark should allow for at least two frames to be
+	 *   received after sending an XOFF.
+	 * - Low water mark works best when it is very near the high water mark.
+	 *   This allows the receiver to restart by sending XON when it has
+	 *   drained a bit.  Here we use an arbitary value of 1500 which will
+	 *   restart after one full frame is pulled from the buffer.  There
+	 *   could be several smaller frames in the buffer and if so they will
+	 *   not trigger the XON until their total number reduces the buffer
+	 *   by 1500.
+	 * - The pause time is fairly large at 1000 x 512ns = 512 usec.
+	 */
+	rx_buffer_size = ((E1000_READ_REG(&adapter->hw, PBA) & 0xffff) << 10);
+
+	adapter->hw.fc_high_water =
+	    rx_buffer_size - EM_ROUNDUP(1 * adapter->hw.max_frame_size, 1024); 
+	adapter->hw.fc_low_water = adapter->hw.fc_high_water - 1500;
+	adapter->hw.fc_pause_time = 1000;
+	adapter->hw.fc_send_xon = TRUE;
+	adapter->hw.fc = em_fc_full;
 
 	if (em_init_hw(&adapter->hw) < 0) {
 		device_printf(adapter->dev, "Hardware Initialization Failed");
@@ -1998,6 +2061,8 @@ em_initialize_transmit_unit(struct adapter * adapter)
 	/* Program the Transmit Control Register */
 	reg_tctl = E1000_TCTL_PSP | E1000_TCTL_EN |
 		   (E1000_COLLISION_THRESHOLD << E1000_CT_SHIFT);
+	if (adapter->hw.mac_type >= em_82571)
+		reg_tctl |= E1000_TCTL_MULR;
 	if (adapter->link_duplex == 1)
 		reg_tctl |= E1000_FDX_COLLISION_DISTANCE << E1000_COLD_SHIFT;
 	else
@@ -2146,9 +2211,6 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 	if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
 		return;
 
-#ifdef DBG_STATS
-	adapter->clean_tx_interrupts++;
-#endif
 	num_avail = adapter->num_tx_desc_avail;	
 	i = adapter->oldest_used_tx_desc;
 
@@ -2424,7 +2486,7 @@ em_initialize_receive_unit(struct adapter *adapter)
 	}
 
 	/* Enable Receives */
-	E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);	
+	E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);
 }
 
 /*********************************************************************
@@ -2492,12 +2554,9 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
 			BUS_DMASYNC_POSTREAD);
 
-	if (!((current_desc->status) & E1000_RXD_STAT_DD)) {
-#ifdef DBG_STATS
-		adapter->no_pkts_avail++;
-#endif
+	if (!((current_desc->status) & E1000_RXD_STAT_DD))
 		return;
-	}
+
 	while ((current_desc->status & E1000_RXD_STAT_DD) && (count != 0)) {
 		mp = adapter->rx_buffer_area[i].m_head;
 		bus_dmamap_sync(adapter->rxtag, adapter->rx_buffer_area[i].map,
@@ -2512,8 +2571,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 			if (desc_len < ETHER_CRC_LEN) {
 				len = 0;
 				prev_len_adj = ETHER_CRC_LEN - desc_len;
-			}
-			else {
+			} else {
 				len = desc_len - ETHER_CRC_LEN;
 			}
 		} else {
@@ -2539,8 +2597,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 						    adapter->hw.mac_addr);
 				if (len > 0)
 					len--;
-			}
-			else {
+			} else {
 				accept_frame = 0;
 			}
 		}
@@ -2584,12 +2641,15 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 
 				em_receive_checksum(adapter, current_desc,
 						    adapter->fmp);
-				if (current_desc->status & E1000_RXD_STAT_VP)
+				if (current_desc->status & E1000_RXD_STAT_VP) {
 					VLAN_INPUT_TAG(adapter->fmp,
 						       (current_desc->special & 
 							E1000_RXD_SPC_VLAN_MASK));
-				else
+				} else {
+					/* lwkt_serialize_exit() */
 					(*ifp->if_input)(ifp, adapter->fmp);
+					/* lwkt_serialize_enter() */
+				}
 				adapter->fmp = NULL;
 				adapter->lmp = NULL;
 			}
@@ -2612,8 +2672,9 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 		if (++i == adapter->num_rx_desc) {
 			i = 0;
 			current_desc = adapter->rx_desc_base;
-		} else
+		} else {
 			current_desc++;
+		}
 	}
 
 	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
@@ -2936,17 +2997,17 @@ em_print_debug_info(struct adapter *adapter)
 		      E1000_READ_REG(&adapter->hw, CTRL)); 
 	device_printf(dev, "RCTL  = 0x%x PS=(0x8402)\n",
 		      E1000_READ_REG(&adapter->hw, RCTL)); 
+	device_printf(dev, "Packet buffer = Tx=%dk Rx=%dk\n",
+		      ((E1000_READ_REG(&adapter->hw, PBA) & 0xffff0000) >> 16),
+		      (E1000_READ_REG(&adapter->hw, PBA) & 0xffff));
+	device_printf(dev, "Flow control watermarks high = %d low = %d\n",
+		      adapter->hw.fc_high_water, adapter->hw.fc_low_water);
 	device_printf(dev, "tx_int_delay = %d, tx_abs_int_delay = %d\n",
 		      E1000_READ_REG(&adapter->hw, TIDV),
 		      E1000_READ_REG(&adapter->hw, TADV));
 	device_printf(dev, "rx_int_delay = %d, rx_abs_int_delay = %d\n",
 		      E1000_READ_REG(&adapter->hw, RDTR),
 		      E1000_READ_REG(&adapter->hw, RADV));
-#ifdef DBG_STATS
-	device_printf(dev, "Packets not Avail = %ld\n", adapter->no_pkts_avail);
-	device_printf(dev, "CleanTxInterrupts = %ld\n",
-		      adapter->clean_tx_interrupts);
-#endif
 	device_printf(dev, "fifo workaround = %lld, fifo_reset = %lld\n",
 		      (long long)adapter->tx_fifo_wrk_cnt,
 		      (long long)adapter->tx_fifo_reset_cnt);
