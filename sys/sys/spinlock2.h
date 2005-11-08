@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.1 2005/09/16 21:50:13 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.2 2005/11/08 22:40:00 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -41,26 +41,43 @@
 
 #ifdef SMP
 
+static __inline void
+spin_lock_debug(int count)
+{
+#ifdef INVARIANTS
+	curthread->td_spinlocks += count;
+#endif
+}
+
 static __inline boolean_t
 spin_trylock(struct spinlock *mtx)
 {
-	if (atomic_swap_int(&mtx->lock, 1) == 0)
+	if (atomic_swap_int(&mtx->lock, 1) == 0) {
+		spin_lock_debug(1);
 		return (TRUE);
+	}
 	return (FALSE);
 }
 
 extern void spin_lock_contested(struct spinlock *mtx);
 
+/*
+ * The quick versions should be used only if you are already
+ * in a critical section or you know the spinlock will never
+ * be used by an hard interrupt or soft interrupt.
+ */
 static __inline void
-spin_lock(struct spinlock *mtx)
+spin_lock_quick(struct spinlock *mtx)
 {
+	spin_lock_debug(1);
 	if (atomic_swap_int(&mtx->lock, 1) != 0)
 		spin_lock_contested(mtx);	/* slow path */
 }
 
 static __inline void
-spin_unlock(struct spinlock *mtx)
+spin_unlock_quick(struct spinlock *mtx)
 {
+	spin_lock_debug(-1);
 	cpu_sfence();
 	mtx->lock = 0;		/* non-bus-locked lock release */
 }
@@ -97,17 +114,22 @@ static __inline void	spin_init(struct spinlock *mtx) { }
 
 #endif	/* SMP */
 
+/*
+ * The normal spin_lock() API automatically enters and exits a
+ * critical section, preventing deadlocks from interrupt preemption
+ * if the interrupt thread accesses the same spinlock.
+ */
 static __inline void
-spin_lock_crit(struct spinlock *mtx)
+spin_lock(struct spinlock *mtx)
 {
 	crit_enter();
-	spin_lock(mtx);
+	spin_lock_quick(mtx);
 }
 
 static __inline void
-spin_unlock_crit(struct spinlock *mtx)
+spin_unlock(struct spinlock *mtx)
 {
-	spin_unlock(mtx);
+	spin_unlock_quick(mtx);
 	crit_exit();
 }
 

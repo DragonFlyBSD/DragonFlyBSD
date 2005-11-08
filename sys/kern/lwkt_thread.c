@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.84 2005/10/25 17:26:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.85 2005/11/08 22:38:43 dillon Exp $
  */
 
 /*
@@ -446,8 +446,11 @@ lwkt_free_thread(thread_t td)
  * the target thread (not the current thread).  It's nice to have a scheduler
  * that does not need the MP lock to work because it allows us to do some
  * really cool high-performance MP lock optimizations.
+ *
+ * PREEMPTION NOTE: Preemption occurs via lwkt_preempt().  lwkt_switch()
+ * is not called by the current thread in the preemption case, only when
+ * the preempting thread blocks (in order to return to the original thread).
  */
-
 void
 lwkt_switch(void)
 {
@@ -457,6 +460,11 @@ lwkt_switch(void)
 #ifdef SMP
     int mpheld;
 #endif
+
+    /*
+     * We had better not be holding any spin locks.
+     */
+    KKASSERT(td->td_spinlocks == 0);
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.18 2005/09/21 19:48:05 hsu Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.19 2005/11/08 22:40:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ zalloc(vm_zone_t z)
 	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
-	spin_lock_crit(&z->zlock);
+	spin_lock(&z->zlock);
 	if (z->zfreecnt > z->zfreemin) {
 		item = z->zitems;
 #ifdef INVARIANTS
@@ -69,9 +69,9 @@ zalloc(vm_zone_t z)
 		z->zitems = ((void **) item)[0];
 		z->zfreecnt--;
 		z->znalloc++;
-		spin_unlock_crit(&z->zlock);
+		spin_unlock(&z->zlock);
 	} else {
-		spin_unlock_crit(&z->zlock);
+		spin_unlock(&z->zlock);
 		item = zget(z);
 		/*
 		 * PANICFAIL allows the caller to assume that the zalloc()
@@ -91,7 +91,7 @@ void
 zfree(vm_zone_t z, void *item)
 {
 
-	spin_lock_crit(&z->zlock);
+	spin_lock(&z->zlock);
 	((void **) item)[0] = z->zitems;
 #ifdef INVARIANTS
 	if (((void **) item)[1] == (void *) ZENTRY_FREE)
@@ -100,7 +100,7 @@ zfree(vm_zone_t z, void *item)
 #endif
 	z->zitems = item;
 	z->zfreecnt++;
-	spin_unlock_crit(&z->zlock);
+	spin_unlock(&z->zlock);
 }
 
 /*
@@ -381,7 +381,7 @@ zget(vm_zone_t z)
 		nitems = nbytes / z->zsize;
 	}
 
-	spin_lock_crit(&z->zlock);
+	spin_lock(&z->zlock);
 	z->ztotal += nitems;
 	/*
 	 * Save one for immediate allocation
@@ -411,7 +411,7 @@ zget(vm_zone_t z)
 	} else {
 		item = NULL;
 	}
-	spin_unlock_crit(&z->zlock);
+	spin_unlock(&z->zlock);
 
 	/*
 	 * A special zone may have used a kernel-reserved vm_map_entry.  If
