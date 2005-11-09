@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.51 2005/11/08 20:46:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.52 2005/11/09 03:39:15 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -234,8 +234,11 @@ sleep_gdinit(globaldata_t gd)
 
 		gd->gd_tsleep_hash = slpque_cpu0;
 	} else {
+#if 0
 		gd->gd_tsleep_hash = malloc(sizeof(slpque_cpu0), 
 					    M_TSLEEP, M_WAITOK | M_ZERO);
+#endif
+		gd->gd_tsleep_hash = slpque_cpu0;
 	}
 	for (i = 0; i < TABLESIZE; ++i)
 		TAILQ_INIT(&gd->gd_tsleep_hash[i]);
@@ -461,11 +464,13 @@ _wakeup(void *ident, int domain)
 	struct thread *ntd;
 	globaldata_t gd;
 	struct proc *p;
+#if 0
 #ifdef SMP
 	cpumask_t mask;
 	cpumask_t tmask;
 	int startcpu;
 	int nextcpu;
+#endif
 #endif
 	int id;
 
@@ -509,6 +514,7 @@ restart:
 		}
 	}
 
+#if 0
 #ifdef SMP
 	/*
 	 * We finished checking the current cpu but there still may be
@@ -587,6 +593,7 @@ restart:
 			}
 		}
 	}
+#endif
 #endif
 done:
 	crit_exit();
