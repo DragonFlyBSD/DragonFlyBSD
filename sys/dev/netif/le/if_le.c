@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.30 2005/11/02 08:33:20 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.31 2005/11/09 03:07:34 y0netan1 Exp $
  */
 
 /*
@@ -537,7 +537,7 @@ static const le_mcbits_t lemac_allmulti_mctbl[16] =  {
 /*
  * An IRQ mapping table.  Less space than switch statement.
  */
-static const int lemac_irqs[] = { IRQ5, IRQ10, IRQ11, IRQ15 };
+static const int lemac_irqs[] = { ICU_IRQ5, ICU_IRQ10, ICU_IRQ11, ICU_IRQ15 };
 
 /*
  * Some tuning/monitoring variables.
