@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.2 2005/11/08 22:40:00 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.3 2005/11/10 00:53:23 y0netan1 Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -108,8 +108,8 @@ spin_is_locked(struct spinlock *mtx)
 	return (FALSE);
 }
 
-static __inline void	spin_lock(struct spinlock *mtx) { }
-static __inline void	spin_unlock(struct spinlock *mtx) { }
+static __inline void	spin_lock_quick(struct spinlock *mtx) { }
+static __inline void	spin_unlock_quick(struct spinlock *mtx) { }
 static __inline void	spin_init(struct spinlock *mtx) { }
 
 #endif	/* SMP */
