@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getwd.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/getwd.c,v 1.3 2005/11/12 22:35:01 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -40,13 +41,12 @@
 #include <string.h>
 
 char *
-getwd(buf)
-	char *buf;
+getwd(char *buf)
 {
 	char *p;
 
 	if ( (p = getcwd(buf, MAXPATHLEN)) )
 		return(p);
-	(void)strcpy(buf, strerror(errno));
+	strcpy(buf, strerror(errno));
 	return((char *)NULL);
 }

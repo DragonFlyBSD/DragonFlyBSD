@@ -31,17 +31,13 @@
  * SUCH DAMAGE.
  *
  * @(#)setrgid.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/setrgid.c,v 1.3 2005/11/12 22:35:01 swildner Exp $
  */
 
 #include <unistd.h>
 
 int
-#ifdef __STDC__
 setrgid(gid_t rgid)
-#else
-setrgid(rgid)
-	int rgid;
-#endif
 {
 
 	return (setregid(rgid, -1));

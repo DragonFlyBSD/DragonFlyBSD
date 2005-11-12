@@ -31,17 +31,13 @@
  * SUCH DAMAGE.
  *
  * @(#)setruid.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/setruid.c,v 1.3 2005/11/12 22:35:01 swildner Exp $
  */
 
 #include <unistd.h>
 
 int
-#ifdef __STDC__
 setruid(uid_t ruid)
-#else
-setruid(ruid)
-	int ruid;
-#endif
 {
 
 	return (setreuid(ruid, -1));

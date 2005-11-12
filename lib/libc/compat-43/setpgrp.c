@@ -31,18 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)setpgrp.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/setpgrp.c,v 1.3 2005/11/12 22:35:01 swildner Exp $
  */
 
 #include <sys/types.h>
 #include <unistd.h>
 
 int
-#if __STDC__
 setpgrp(pid_t pid, pid_t pgid)
-#else
-setpgrp(pid, pgid)
-	pid_t pid, pgid;
-#endif
 {
 	return(setpgid(pid, pgid));
 }

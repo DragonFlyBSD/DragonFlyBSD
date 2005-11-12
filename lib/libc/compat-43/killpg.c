@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)killpg.c	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/lib/libc/compat-43/killpg.c,v 1.3 2005/11/12 22:35:01 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -41,13 +42,7 @@
  * Backwards-compatible killpg().
  */
 int
-#if __STDC__
 killpg(pid_t pgid, int sig)
-#else
-killpg(pgid, sig)
-	pid_t pgid;
-	int sig;
-#endif
 {
 	if (pgid == 1) {
 		errno = ESRCH;
