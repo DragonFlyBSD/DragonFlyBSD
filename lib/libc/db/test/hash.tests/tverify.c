@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tverify.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/hash.tests/tverify.c,v 1.3 2005/09/19 09:20:38 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/test/hash.tests/tverify.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -48,8 +48,9 @@ typedef struct {		       /* info to be stored */
 
 char	wp1[8192];
 char	wp2[8192];
-main(argc, argv)
-char **argv;
+
+int
+main(int argc, char **argv)
 {
 	DBT key, res;
 	DB	*dbp;

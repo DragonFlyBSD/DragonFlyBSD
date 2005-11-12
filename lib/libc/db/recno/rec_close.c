@@ -28,7 +28,7 @@
  *
  * @(#)rec_close.c	8.6 (Berkeley) 8/18/94
  * $FreeBSD: src/lib/libc/db/recno/rec_close.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.4 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include "namespace.h"
@@ -55,8 +55,7 @@
  *	RET_ERROR, RET_SUCCESS
  */
 int
-__rec_close(dbp)
-	DB *dbp;
+__rec_close(DB *dbp)
 {
 	BTREE *t;
 	int status;
@@ -101,9 +100,7 @@ __rec_close(dbp)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__rec_sync(dbp, flags)
-	const DB *dbp;
-	u_int flags;
+__rec_sync(const DB *dbp, u_int flags)
 {
 	struct iovec iov[2];
 	BTREE *t;

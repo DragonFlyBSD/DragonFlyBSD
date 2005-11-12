@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_utils.c	8.6 (Berkeley) 7/16/94
- * $DragonFly: src/lib/libc/db/recno/rec_utils.c,v 1.3 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_utils.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -54,11 +54,7 @@
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__rec_ret(t, e, nrec, key, data)
-	BTREE *t;
-	EPG *e;
-	recno_t nrec;
-	DBT *key, *data;
+__rec_ret(BTREE *t, EPG *e, recno_t nrec, DBT *key, DBT *data)
 {
 	RLEAF *rl;
 	void *p;

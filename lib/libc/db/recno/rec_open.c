@@ -31,7 +31,7 @@
  *
  * @(#)rec_open.c	8.10 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/recno/rec_open.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.4 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include "namespace.h"
@@ -51,10 +51,8 @@
 #include "recno.h"
 
 DB *
-__rec_open(fname, flags, mode, openinfo, dflags)
-	const char *fname;
-	int flags, mode, dflags;
-	const RECNOINFO *openinfo;
+__rec_open(const char *fname, int flags, int mode, const RECNOINFO *openinfo,
+	   int dflags)
 {
 	BTREE *t;
 	BTREEINFO btopeninfo;
@@ -209,16 +207,15 @@ slow:			if ((t->bt_rfp = fdopen(rfd, "r")) == NULL)
 einval:	errno = EINVAL;
 err:	sverrno = errno;
 	if (dbp != NULL)
-		(void)__bt_close(dbp);
+		__bt_close(dbp);
 	if (fname != NULL)
-		(void)_close(rfd);
+		_close(rfd);
 	errno = sverrno;
 	return (NULL);
 }
 
 int
-__rec_fd(dbp)
-	const DB *dbp;
+__rec_fd(const DB *dbp)
 {
 	BTREE *t;
 

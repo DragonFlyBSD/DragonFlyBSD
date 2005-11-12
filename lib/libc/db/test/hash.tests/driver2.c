@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)driver2.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/hash.tests/driver2.c,v 1.3 2005/09/19 09:20:38 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/test/hash.tests/driver2.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
  */
 
 /*
@@ -42,15 +42,14 @@
 #include <stdio.h>
 #include "ndbm.h"
 
-int my_hash(key, len)
-	char	*key;
-	int	len;
+int
+my_hash(char *key, int len)
 {
 	return(17);		/* So I'm cruel... */
 }
 
-main(argc, argv)
-	int	argc;
+int
+main(int argc, char *argv[])
 {
 	DB	*db;
 	DBT	key, content;

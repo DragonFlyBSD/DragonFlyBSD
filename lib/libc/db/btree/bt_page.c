@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_page.c	8.3 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/btree/bt_page.c,v 1.3 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_page.c,v 1.4 2005/11/12 23:01:54 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -52,9 +52,7 @@
  *	mpool_put's the page.
  */
 int
-__bt_free(t, h)
-	BTREE *t;
-	PAGE *h;
+__bt_free(BTREE *t, PAGE *h)
 {
 	/* Insert the page at the head of the free list. */
 	h->prevpg = P_INVALID;
@@ -78,9 +76,7 @@ __bt_free(t, h)
  *	Pointer to a page, NULL on error.
  */
 PAGE *
-__bt_new(t, npg)
-	BTREE *t;
-	pgno_t *npg;
+__bt_new(BTREE *t, pgno_t *npg)
 {
 	PAGE *h;
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_buf.c,v 1.4.8.1 2001/03/05 07:38:05 obrien Exp $
- * $DragonFly: src/lib/libc/db/hash/hash_buf.c,v 1.5 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_buf.c,v 1.6 2005/11/12 23:01:55 swildner Exp $
  *
  * @(#)hash_buf.c	8.5 (Berkeley) 7/15/94
  */
@@ -98,11 +98,10 @@ static BUFHEAD *newbuf (HTAB *, u_int32_t, BUFHEAD *);
  * address you are seeking.
  */
 extern BUFHEAD *
-__get_buf(hashp, addr, prev_bp, newpage)
-	HTAB *hashp;
-	u_int32_t addr;
-	BUFHEAD *prev_bp;
-	int newpage;	/* If prev_bp set, indicates a new overflow page. */
+__get_buf(HTAB *hashp,
+	  u_int32_t addr,
+	  BUFHEAD *prev_bp,
+	  int newpage)	/* If prev_bp set, indicates a new overflow page. */
 {
 	BUFHEAD *bp;
 	u_int32_t is_disk_mask;
@@ -153,10 +152,7 @@ __get_buf(hashp, addr, prev_bp, newpage)
  * If newbuf finds an error (returning NULL), it also sets errno.
  */
 static BUFHEAD *
-newbuf(hashp, addr, prev_bp)
-	HTAB *hashp;
-	u_int32_t addr;
-	BUFHEAD *prev_bp;
+newbuf(HTAB *hashp, u_int32_t addr, BUFHEAD *prev_bp)
 {
 	BUFHEAD *bp;		/* The buffer we're going to use */
 	BUFHEAD *xbp;		/* Temp pointer */
@@ -260,7 +256,7 @@ newbuf(hashp, addr, prev_bp)
 	/* Now assign this buffer */
 	bp->addr = addr;
 #ifdef DEBUG1
-	(void)fprintf(stderr, "NEWBUF1: %d->ovfl was %d is now %d\n",
+	fprintf(stderr, "NEWBUF1: %d->ovfl was %d is now %d\n",
 	    bp->addr, (bp->ovfl ? bp->ovfl->addr : 0), 0);
 #endif
 	bp->ovfl = NULL;
@@ -270,7 +266,7 @@ newbuf(hashp, addr, prev_bp)
 		 * the buffer overflow links.
 		 */
 #ifdef DEBUG1
-		(void)fprintf(stderr, "NEWBUF2: %d->ovfl was %d is now %d\n",
+		fprintf(stderr, "NEWBUF2: %d->ovfl was %d is now %d\n",
 		    prev_bp->addr, (prev_bp->ovfl ? bp->ovfl->addr : 0),
 		    (bp ? bp->addr : 0));
 #endif
@@ -283,9 +279,7 @@ newbuf(hashp, addr, prev_bp)
 }
 
 extern void
-__buf_init(hashp, nbytes)
-	HTAB *hashp;
-	int nbytes;
+__buf_init(HTAB *hashp, int nbytes)
 {
 	BUFHEAD *bfp;
 	int npages;
@@ -308,9 +302,7 @@ __buf_init(hashp, nbytes)
 }
 
 extern int
-__buf_free(hashp, do_free, to_disk)
-	HTAB *hashp;
-	int do_free, to_disk;
+__buf_free(HTAB *hashp, int do_free, int to_disk)
 {
 	BUFHEAD *bp;
 
@@ -339,9 +331,7 @@ __buf_free(hashp, do_free, to_disk)
 }
 
 extern void
-__reclaim_buf(hashp, bp)
-	HTAB *hashp;
-	BUFHEAD *bp;
+__reclaim_buf(HTAB *hashp, BUFHEAD *bp)
 {
 	bp->ovfl = 0;
 	bp->addr = 0;

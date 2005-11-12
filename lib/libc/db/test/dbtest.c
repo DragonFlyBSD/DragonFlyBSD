@@ -29,7 +29,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
- * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.6 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.7 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -75,9 +75,7 @@ DB *XXdbp;				/* Global for gdb. */
 int XXlineno;				/* Fast breakpoint for gdb. */
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	extern int optind;
 	extern char *optarg;
@@ -145,11 +143,11 @@ main(argc, argv)
 		p = getenv("TMPDIR");
 		if (p == NULL)
 			p = "/var/tmp";
-		(void)snprintf(buf, sizeof(buf), "%s/__dbtest", p);
+		snprintf(buf, sizeof(buf), "%s/__dbtest", p);
 		fname = buf;
-		(void)unlink(buf);
+		unlink(buf);
 	} else  if (!sflag)
-		(void)unlink(fname);
+		unlink(fname);
 
 	if ((dbp = dbopen(fname,
 	    oflags, S_IRUSR | S_IWUSR, type, infop)) == NULL)
@@ -321,15 +319,14 @@ lkey:			switch (command) {
 #endif
 	if (dbp->close(dbp))
 		err("db->close: %s", strerror(errno));
-	(void)close(ofd);
+	close(ofd);
 	exit(0);
 }
 
 #define	NOOVERWRITE	"put failed, would overwrite key\n"
 
 void
-compare(db1, db2)
-	DBT *db1, *db2;
+compare(DBT *db1, DBT *db2)
 {
 	size_t len;
 	u_char *p1, *p2;
@@ -348,17 +345,15 @@ compare(db1, db2)
 }
 
 void
-get(dbp, kp)
-	DB *dbp;
-	DBT *kp;
+get(DB *dbp, DBT *kp)
 {
 	DBT data;
 
 	switch (dbp->get(dbp, kp, &data, flags)) {
 	case 0:
-		(void)write(ofd, data.data, data.size);
+		write(ofd, data.data, data.size);
 		if (ofd == STDOUT_FILENO)
-			(void)write(ofd, "\n", 1);
+			write(ofd, "\n", 1);
 		break;
 	case -1:
 		err("line %lu: get: %s", lineno, strerror(errno));
@@ -366,9 +361,9 @@ get(dbp, kp)
 	case 1:
 #define	NOSUCHKEY	"get failed, no such key\n"
 		if (ofd != STDOUT_FILENO)
-			(void)write(ofd, NOSUCHKEY, sizeof(NOSUCHKEY) - 1);
+			write(ofd, NOSUCHKEY, sizeof(NOSUCHKEY) - 1);
 		else
-			(void)fprintf(stderr, "%d: %.*s: %s",
+			fprintf(stderr, "%d: %.*s: %s",
 			    lineno, MIN(kp->size, 20), kp->data, NOSUCHKEY);
 #undef	NOSUCHKEY
 		break;
@@ -376,9 +371,7 @@ get(dbp, kp)
 }
 
 void
-getdata(dbp, kp, dp)
-	DB *dbp;
-	DBT *kp, *dp;
+getdata(DB *dbp, DBT *kp, DBT *dp)
 {
 	switch (dbp->get(dbp, kp, dp, flags)) {
 	case 0:
@@ -393,9 +386,7 @@ getdata(dbp, kp, dp)
 }
 
 void
-put(dbp, kp, dp)
-	DB *dbp;
-	DBT *kp, *dp;
+put(DB *dbp, DBT *kp, DBT *dp)
 {
 	switch (dbp->put(dbp, kp, dp, flags)) {
 	case 0:
@@ -404,15 +395,13 @@ put(dbp, kp, dp)
 		err("line %lu: put: %s", lineno, strerror(errno));
 		/* NOTREACHED */
 	case 1:
-		(void)write(ofd, NOOVERWRITE, sizeof(NOOVERWRITE) - 1);
+		write(ofd, NOOVERWRITE, sizeof(NOOVERWRITE) - 1);
 		break;
 	}
 }
 
 void
-rem(dbp, kp)
-	DB *dbp;
-	DBT *kp;
+rem(DB *dbp, DBT *kp)
 {
 	switch (dbp->del(dbp, kp, flags)) {
 	case 0:
@@ -423,12 +412,12 @@ rem(dbp, kp)
 	case 1:
 #define	NOSUCHKEY	"rem failed, no such key\n"
 		if (ofd != STDOUT_FILENO)
-			(void)write(ofd, NOSUCHKEY, sizeof(NOSUCHKEY) - 1);
+			write(ofd, NOSUCHKEY, sizeof(NOSUCHKEY) - 1);
 		else if (flags != R_CURSOR)
-			(void)fprintf(stderr, "%d: %.*s: %s", 
+			fprintf(stderr, "%d: %.*s: %s", 
 			    lineno, MIN(kp->size, 20), kp->data, NOSUCHKEY);
 		else
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "%d: rem of cursor failed\n", lineno);
 #undef	NOSUCHKEY
 		break;
@@ -436,8 +425,7 @@ rem(dbp, kp)
 }
 
 void
-synk(dbp)
-	DB *dbp;
+synk(DB *dbp)
 {
 	switch (dbp->sync(dbp, flags)) {
 	case 0:
@@ -449,17 +437,15 @@ synk(dbp)
 }
 
 void
-seq(dbp, kp)
-	DB *dbp;
-	DBT *kp;
+seq(DB *dbp, DBT *kp)
 {
 	DBT data;
 
 	switch (dbp->seq(dbp, kp, &data, flags)) {
 	case 0:
-		(void)write(ofd, data.data, data.size);
+		write(ofd, data.data, data.size);
 		if (ofd == STDOUT_FILENO)
-			(void)write(ofd, "\n", 1);
+			write(ofd, "\n", 1);
 		break;
 	case -1:
 		err("line %lu: seq: %s", lineno, strerror(errno));
@@ -467,12 +453,12 @@ seq(dbp, kp)
 	case 1:
 #define	NOSUCHKEY	"seq failed, no such key\n"
 		if (ofd != STDOUT_FILENO)
-			(void)write(ofd, NOSUCHKEY, sizeof(NOSUCHKEY) - 1);
+			write(ofd, NOSUCHKEY, sizeof(NOSUCHKEY) - 1);
 		else if (flags == R_CURSOR)
-			(void)fprintf(stderr, "%d: %.*s: %s", 
+			fprintf(stderr, "%d: %.*s: %s", 
 			    lineno, MIN(kp->size, 20), kp->data, NOSUCHKEY);
 		else
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "%d: seq (%s) failed\n", lineno, sflags(flags));
 #undef	NOSUCHKEY
 		break;
@@ -480,9 +466,7 @@ seq(dbp, kp)
 }
 
 void
-dump(dbp, rev)
-	DB *dbp;
-	int rev;
+dump(DB *dbp, int rev)
 {
 	DBT key, data;
 	int flags, nflags;
@@ -497,9 +481,9 @@ dump(dbp, rev)
 	for (;; flags = nflags)
 		switch (dbp->seq(dbp, &key, &data, flags)) {
 		case 0:
-			(void)write(ofd, data.data, data.size);
+			write(ofd, data.data, data.size);
 			if (ofd == STDOUT_FILENO)
-				(void)write(ofd, "\n", 1);
+				write(ofd, "\n", 1);
 			break;
 		case 1:
 			goto done;
@@ -512,8 +496,7 @@ done:	return;
 }
 	
 u_int
-setflags(s)
-	char *s;
+setflags(char *s)
 {
 	char *p, *index();
 
@@ -537,8 +520,7 @@ setflags(s)
 }
 
 char *
-sflags(flags)
-	int flags;
+sflags(int flags)
 {
 	switch (flags) {
 	case R_CURSOR:		return ("R_CURSOR");
@@ -556,8 +538,7 @@ sflags(flags)
 }
 	
 DBTYPE
-dbtype(s)
-	char *s;
+dbtype(char *s)
 {
 	if (!strcmp(s, "btree"))
 		return (DB_BTREE);
@@ -570,9 +551,7 @@ dbtype(s)
 }
 
 void *
-setinfo(type, s)
-	DBTYPE type;
-	char *s;
+setinfo(DBTYPE type, char *s)
 {
 	static BTREEINFO ib;
 	static HASHINFO ih;
@@ -666,9 +645,7 @@ setinfo(type, s)
 }
 
 void *
-rfile(name, lenp)
-	char *name;
-	size_t *lenp;
+rfile(char *name, size_t *lenp)
 {
 	struct stat sb;
 	void *p;
@@ -687,16 +664,14 @@ rfile(name, lenp)
 #endif
 	if ((p = (void *)malloc((u_int)sb.st_size)) == NULL)
 		err("%s", strerror(errno));
-	(void)read(fd, p, (int)sb.st_size);
+	read(fd, p, (int)sb.st_size);
 	*lenp = sb.st_size;
-	(void)close(fd);
+	close(fd);
 	return (p);
 }
 
 void *
-xmalloc(text, len)
-	char *text;
-	size_t len;
+xmalloc(char *text, size_t len)
 {
 	void *p;
 
@@ -707,9 +682,9 @@ xmalloc(text, len)
 }
 
 void
-usage()
+usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: dbtest [-l] [-f file] [-i info] [-o file] type script\n");
 	exit(1);
 }
@@ -721,10 +696,10 @@ err(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	(void)fprintf(stderr, "dbtest: ");
-	(void)vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "dbtest: ");
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fprintf(stderr, "\n");
+	fprintf(stderr, "\n");
 	exit(1);
 	/* NOTREACHED */
 }

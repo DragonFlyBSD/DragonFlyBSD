@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_search.c	8.4 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_search.c,v 1.4 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_search.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -56,10 +56,7 @@
  *	the bt_cur field of the tree.  A pointer to the field is returned.
  */
 EPG *
-__rec_search(t, recno, op)
-	BTREE *t;
-	recno_t recno;
-	enum SRCHOP op;
+__rec_search(BTREE *t, recno_t recno, enum SRCHOP op)
 {
 	indx_t index;
 	PAGE *h;

@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tcreat3.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/hash.tests/tcreat3.c,v 1.3 2005/09/19 09:20:38 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/test/hash.tests/tcreat3.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -44,8 +44,9 @@
 
 char	wp1[8192];
 char	wp2[8192];
-main(argc, argv)
-char **argv;
+
+int
+main(int argc, char **argv)
 {
 	DBT item, key;
 	DB	*dbp;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_delete.c	8.7 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.4 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -56,10 +56,7 @@ static int rec_rdelete (BTREE *, recno_t);
  *	RET_ERROR, RET_SUCCESS and RET_SPECIAL if the key not found.
  */
 int
-__rec_delete(dbp, key, flags)
-	const DB *dbp;
-	const DBT *key;
-	u_int flags;
+__rec_delete(const DB *dbp, const DBT *key, u_int flags)
 {
 	BTREE *t;
 	recno_t nrec;
@@ -112,9 +109,7 @@ einval:		errno = EINVAL;
  *	RET_ERROR, RET_SUCCESS and RET_SPECIAL if the key not found.
  */
 static int
-rec_rdelete(t, nrec)
-	BTREE *t;
-	recno_t nrec;
+rec_rdelete(BTREE *t, recno_t nrec)
 {
 	EPG *e;
 	PAGE *h;
@@ -146,10 +141,7 @@ rec_rdelete(t, nrec)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__rec_dleaf(t, h, index)
-	BTREE *t;
-	PAGE *h;
-	u_int32_t index;
+__rec_dleaf(BTREE *t, PAGE *h, u_int32_t index)
 {
 	RLEAF *rl;
 	indx_t *ip, cnt, offset;

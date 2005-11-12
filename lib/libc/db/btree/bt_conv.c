@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_conv.c	8.5 (Berkeley) 8/17/94
- * $DragonFly: src/lib/libc/db/btree/bt_conv.c,v 1.5 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_conv.c,v 1.6 2005/11/12 23:01:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -53,10 +53,7 @@ static void mswap (PAGE *);
  *	h:	page to convert
  */
 void
-__bt_pgin(t, pg, pp)
-	void *t;
-	pgno_t pg;
-	void *pp;
+__bt_pgin(void *t, pgno_t pg, void *pp)
 {
 	PAGE *h;
 	indx_t i, top;
@@ -121,10 +118,7 @@ __bt_pgin(t, pg, pp)
 }
 
 void
-__bt_pgout(t, pg, pp)
-	void *t;
-	pgno_t pg;
-	void *pp;
+__bt_pgout(void *t, pgno_t pg, void *pp)
 {
 	PAGE *h;
 	indx_t i, top;
@@ -195,8 +189,7 @@ __bt_pgout(t, pg, pp)
  *	p:	page to convert
  */
 static void
-mswap(pg)
-	PAGE *pg;
+mswap(PAGE *pg)
 {
 	char *p;
 

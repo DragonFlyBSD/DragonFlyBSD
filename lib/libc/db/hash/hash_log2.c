@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_log2.c	8.2 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/hash_log2.c,v 1.4 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_log2.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -38,8 +38,7 @@
 #include <db.h>
 
 u_int32_t
-__log2(num)
-	u_int32_t num;
+__log2(u_int32_t num)
 {
 	u_int32_t i, limit;
 

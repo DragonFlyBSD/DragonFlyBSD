@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/btree.tests/main.c,v 1.6 2005/09/19 09:20:38 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/test/btree.tests/main.c,v 1.7 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -111,9 +111,7 @@ char *dict = "words";				/* default dictionary */
 char *progname;
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int c;
 	DB *db;
@@ -171,7 +169,7 @@ main(argc, argv)
 		    0600, DB_BTREE, &b);
 
 	if (db == NULL) {
-		(void)fprintf(stderr, "dbopen: %s\n", strerror(errno));
+		fprintf(stderr, "dbopen: %s\n", strerror(errno));
 		exit(1);
 	}
 	globaldb = db;
@@ -181,21 +179,20 @@ main(argc, argv)
 }
 
 void
-user(db)
-	DB *db;
+user(DB *db)
 {
 	FILE *ifp;
 	int argc, i, last;
 	char *lbuf, *argv[4], buf[512];
 
 	if ((ifp = fopen("/dev/tty", "r")) == NULL) {
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "/dev/tty: %s\n", strerror(errno));
 		exit(1);
 	}
 	for (last = 0;;) {
-		(void)printf("> ");
-		(void)fflush(stdout);
+		printf("> ");
+		fflush(stdout);
 		if ((lbuf = fgets(&buf[0], 512, ifp)) == NULL)
 			break;
 		if (lbuf[0] == '\n') {
@@ -217,13 +214,13 @@ user(db)
 				break;
 
 		if (commands[i].cmd == NULL) {
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "%s: command unknown ('help' for help)\n", lbuf);
 			continue;
 		}
 
 		if (commands[i].nargs != argc - 1) {
-			(void)fprintf(stderr, "usage: %s\n", commands[i].usage);
+			fprintf(stderr, "usage: %s\n", commands[i].usage);
 			continue;
 		}
 
@@ -242,9 +239,7 @@ uselast:	last = i;
 }
 
 int
-parse(lbuf, argv, maxargc)
-	char *lbuf, **argv;
-	int maxargc;
+parse(char *lbuf, char **argv, int maxargc)
 {
 	int argc = 0;
 	char *c;
@@ -265,15 +260,13 @@ parse(lbuf, argv, maxargc)
 }
 
 void
-append(db, argv)
-	DB *db;
-	char **argv;
+append(DB *db, char **argv)
 {
 	DBT key, data;
 	int status;
 
 	if (!recno) {
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "append only available for recno db's.\n");
 		return;
 	}
@@ -287,7 +280,7 @@ append(db, argv)
 		perror("append/put");
 		break;
 	case RET_SPECIAL:
-		(void)printf("%s (duplicate key)\n", argv[1]);
+		printf("%s (duplicate key)\n", argv[1]);
 		break;
 	case RET_SUCCESS:
 		break;
@@ -295,9 +288,7 @@ append(db, argv)
 }
 
 void
-cursor(db, argv)
-	DB *db;
-	char **argv;
+cursor(DB *db, char **argv)
 {
 	DBT data, key;
 	int status;
@@ -313,7 +304,7 @@ cursor(db, argv)
 		perror("cursor/seq");
 		break;
 	case RET_SPECIAL:
-		(void)printf("key not found\n");
+		printf("key not found\n");
 		break;
 	case RET_SUCCESS:
 		keydata(&key, &data);
@@ -322,9 +313,7 @@ cursor(db, argv)
 }
 
 void
-delcur(db, argv)
-	DB *db;
-	char **argv;
+delcur(DB *db, char **argv)
 {
 	int status;
 
@@ -335,9 +324,7 @@ delcur(db, argv)
 }
 
 void
-delete(db, argv)
-	DB *db;
-	char **argv;
+delete(DB *db, char **argv)
 {
 	DBT key;
 	int status;
@@ -354,7 +341,7 @@ delete(db, argv)
 		perror("delete/del");
 		break;
 	case RET_SPECIAL:
-		(void)printf("key not found\n");
+		printf("key not found\n");
 		break;
 	case RET_SUCCESS:
 		break;
@@ -362,17 +349,13 @@ delete(db, argv)
 }
 
 void
-dump(db, argv)
-	DB *db;
-	char **argv;
+dump(DB *db, char **argv)
 {
 	__bt_dump(db);
 }
 
 void
-first(db, argv)
-	DB *db;
-	char **argv;
+first(DB *db, char **argv)
 {
 	DBT data, key;
 	int status;
@@ -384,7 +367,7 @@ first(db, argv)
 		perror("first/seq");
 		break;
 	case RET_SPECIAL:
-		(void)printf("no more keys\n");
+		printf("no more keys\n");
 		break;
 	case RET_SUCCESS:
 		keydata(&key, &data);
@@ -393,9 +376,7 @@ first(db, argv)
 }
 
 void
-get(db, argv)
-	DB *db;
-	char **argv;
+get(DB *db, char **argv)
 {
 	DBT data, key;
 	int status;
@@ -413,7 +394,7 @@ get(db, argv)
 		perror("get/get");
 		break;
 	case RET_SPECIAL:
-		(void)printf("key not found\n");
+		printf("key not found\n");
 		break;
 	case RET_SUCCESS:
 		keydata(&key, &data);
@@ -422,28 +403,24 @@ get(db, argv)
 }
 
 void
-help(db, argv)
-	DB *db;
-	char **argv;
+help(DB *db, char **argv)
 {
 	int i;
 
 	for (i = 0; commands[i].cmd; i++)
 		if (commands[i].descrip)
-			(void)printf("%s: %s\n",
+			printf("%s: %s\n",
 			    commands[i].usage, commands[i].descrip);
 }
 
 void
-iafter(db, argv)
-	DB *db;
-	char **argv;
+iafter(DB *db, char **argv)
 {
 	DBT key, data;
 	int status;
 
 	if (!recno) {
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "iafter only available for recno db's.\n");
 		return;
 	}
@@ -457,7 +434,7 @@ iafter(db, argv)
 		perror("iafter/put");
 		break;
 	case RET_SPECIAL:
-		(void)printf("%s (duplicate key)\n", argv[1]);
+		printf("%s (duplicate key)\n", argv[1]);
 		break;
 	case RET_SUCCESS:
 		break;
@@ -465,15 +442,13 @@ iafter(db, argv)
 }
 
 void
-ibefore(db, argv)
-	DB *db;
-	char **argv;
+ibefore(DB *db, char **argv)
 {
 	DBT key, data;
 	int status;
 
 	if (!recno) {
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "ibefore only available for recno db's.\n");
 		return;
 	}
@@ -487,7 +462,7 @@ ibefore(db, argv)
 		perror("ibefore/put");
 		break;
 	case RET_SPECIAL:
-		(void)printf("%s (duplicate key)\n", argv[1]);
+		printf("%s (duplicate key)\n", argv[1]);
 		break;
 	case RET_SUCCESS:
 		break;
@@ -495,9 +470,7 @@ ibefore(db, argv)
 }
 
 void
-icursor(db, argv)
-	DB *db;
-	char **argv;
+icursor(DB *db, char **argv)
 {
 	int status;
 	DBT data, key;
@@ -516,7 +489,7 @@ icursor(db, argv)
 		perror("icursor/put");
 		break;
 	case RET_SPECIAL:
-		(void)printf("%s (duplicate key)\n", argv[1]);
+		printf("%s (duplicate key)\n", argv[1]);
 		break;
 	case RET_SUCCESS:
 		break;
@@ -524,9 +497,7 @@ icursor(db, argv)
 }
 
 void
-insert(db, argv)
-	DB *db;
-	char **argv;
+insert(DB *db, char **argv)
 {
 	int status;
 	DBT data, key;
@@ -545,7 +516,7 @@ insert(db, argv)
 		perror("insert/put");
 		break;
 	case RET_SPECIAL:
-		(void)printf("%s (duplicate key)\n", argv[1]);
+		printf("%s (duplicate key)\n", argv[1]);
 		break;
 	case RET_SUCCESS:
 		break;
@@ -553,9 +524,7 @@ insert(db, argv)
 }
 
 void
-last(db, argv)
-	DB *db;
-	char **argv;
+last(DB *db, char **argv)
 {
 	DBT data, key;
 	int status;
@@ -567,7 +536,7 @@ last(db, argv)
 		perror("last/seq");
 		break;
 	case RET_SPECIAL:
-		(void)printf("no more keys\n");
+		printf("no more keys\n");
 		break;
 	case RET_SUCCESS:
 		keydata(&key, &data);
@@ -576,21 +545,19 @@ last(db, argv)
 }
 
 void
-list(db, argv)
-	DB *db;
-	char **argv;
+list(DB *db, char **argv)
 {
 	DBT data, key;
 	FILE *fp;
 	int status;
 
 	if ((fp = fopen(argv[1], "w")) == NULL) {
-		(void)fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
+		fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
 		return;
 	}
 	status = (*db->seq)(db, &key, &data, R_FIRST);
 	while (status == RET_SUCCESS) {
-		(void)fprintf(fp, "%s\n", key.data);
+		fprintf(fp, "%s\n", key.data);
 		status = (*db->seq)(db, &key, &data, R_NEXT);
 	}
 	if (status == RET_ERROR)
@@ -599,9 +566,7 @@ list(db, argv)
 
 DB *BUGdb;
 void
-load(db, argv)
-	DB *db;
-	char **argv;
+load(DB *db, char **argv)
 {
 	char *p, *t;
 	FILE *fp;
@@ -613,10 +578,10 @@ load(db, argv)
 
 	BUGdb = db;
 	if ((fp = fopen(argv[1], "r")) == NULL) {
-		(void)fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
+		fprintf(stderr, "%s: %s\n", argv[1], strerror(errno));
 		return;
 	}
-	(void)printf("loading %s...\n", argv[1]);
+	printf("loading %s...\n", argv[1]);
 
 	for (cnt = 1; (lp = fgetline(fp, &len)) != NULL; ++cnt) {
 		if (recno) {
@@ -640,23 +605,21 @@ load(db, argv)
 			exit(1);
 		case RET_SPECIAL:
 			if (recno)
-				(void)fprintf(stderr,
+				fprintf(stderr,
 				    "duplicate: %ld {%s}\n", cnt, data.data);
 			else
-				(void)fprintf(stderr,
+				fprintf(stderr,
 				    "duplicate: %ld {%s}\n", cnt, key.data);
 			exit(1);
 		case RET_SUCCESS:
 			break;
 		}
 	}
-	(void)fclose(fp);
+	fclose(fp);
 }
 
 void
-next(db, argv)
-	DB *db;
-	char **argv;
+next(DB *db, char **argv)
 {
 	DBT data, key;
 	int status;
@@ -668,7 +631,7 @@ next(db, argv)
 		perror("next/seq");
 		break;
 	case RET_SPECIAL:
-		(void)printf("no more keys\n");
+		printf("no more keys\n");
 		break;
 	case RET_SUCCESS:
 		keydata(&key, &data);
@@ -677,9 +640,7 @@ next(db, argv)
 }
 
 void
-previous(db, argv)
-	DB *db;
-	char **argv;
+previous(DB *db, char **argv)
 {
 	DBT data, key;
 	int status;
@@ -691,7 +652,7 @@ previous(db, argv)
 		perror("previous/seq");
 		break;
 	case RET_SPECIAL:
-		(void)printf("no more keys\n");
+		printf("no more keys\n");
 		break;
 	case RET_SUCCESS:
 		keydata(&key, &data);
@@ -700,9 +661,7 @@ previous(db, argv)
 }
 
 void
-show(db, argv)
-	DB *db;
-	char **argv;
+show(DB *db, char **argv)
 {
 	BTREE *t;
 	PAGE *h;
@@ -711,7 +670,7 @@ show(db, argv)
 	pg = atoi(argv[1]);
 	t = db->internal;
 	if ((h = mpool_get(t->bt_mp, pg, 0)) == NULL) {
-		(void)printf("getpage of %ld failed\n", pg);
+		printf("getpage of %ld failed\n", pg);
 		return;
 	}
 	if (pg == 0)
@@ -722,38 +681,33 @@ show(db, argv)
 }
 
 void
-bstat(db, argv)
-	DB *db;
-	char **argv;
+bstat(DB *db, char **argv)
 {
-	(void)printf("BTREE\n");
+	printf("BTREE\n");
 	__bt_stat(db);
 }
 
 void
-mstat(db, argv)
-	DB *db;
-	char **argv;
+mstat(DB *db, char **argv)
 {
-	(void)printf("MPOOL\n");
+	printf("MPOOL\n");
 	mpool_stat(((BTREE *)db->internal)->bt_mp);
 }
 
 void
-keydata(key, data)
-	DBT *key, *data;
+keydata(DBT *key, DBT *data)
 {
 	if (!recno && key->size > 0)
-		(void)printf("%s/", key->data);
+		printf("%s/", key->data);
 	if (data->size > 0)
-		(void)printf("%s", data->data);
-	(void)printf("\n");
+		printf("%s", data->data);
+	printf("\n");
 }
 
 void
-usage()
+usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: %s [-bdlu] [-c cache] [-i file] [-p page] [file]\n",
 	    progname);
 	exit (1);

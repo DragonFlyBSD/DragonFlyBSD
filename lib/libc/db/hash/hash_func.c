@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_func.c	8.2 (Berkeley) 2/21/94
- * $DragonFly: src/lib/libc/db/hash/hash_func.c,v 1.6 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_func.c,v 1.7 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -61,9 +61,7 @@ u_int32_t (*__default_hash) (const void *, size_t) = hash4;
 #define PRIME2		1048583
 
 static u_int32_t
-hash1(keyarg, len)
-	const void *keyarg;
-	size_t len;
+hash1(const void *keyarg, size_t len)
 {
 	const u_char *key;
 	u_int32_t h;
@@ -81,9 +79,7 @@ hash1(keyarg, len)
 #define dcharhash(h, c)	((h) = 0x63c63cd9*(h) + 0x9c39c33d + (c))
 
 static u_int32_t
-hash2(keyarg, len)
-	const void *keyarg;
-	size_t len;
+hash2(const void *keyarg, size_t len)
 {
 	const u_char *e, *key;
 	u_int32_t h;
@@ -110,9 +106,7 @@ hash2(keyarg, len)
  * OZ's original sdbm hash
  */
 static u_int32_t
-hash3(keyarg, len)
-	const void *keyarg;
-	size_t len;
+hash3(const void *keyarg, size_t len)
 {
 	const u_char *key;
 	size_t loop;
@@ -158,9 +152,7 @@ hash3(keyarg, len)
 
 /* Hash function from Chris Torek. */
 static u_int32_t
-hash4(keyarg, len)
-	const void *keyarg;
-	size_t len;
+hash4(const void *keyarg, size_t len)
 {
 	const u_char *key;
 	size_t loop;

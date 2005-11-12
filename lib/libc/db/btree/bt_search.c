@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_search.c	8.8 (Berkeley) 7/31/94
- * $DragonFly: src/lib/libc/db/btree/bt_search.c,v 1.5 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_search.c,v 1.6 2005/11/12 23:01:54 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -58,10 +58,7 @@ static int __bt_sprev (BTREE *, PAGE *, const DBT *, int *);
  *	the bt_cur field of the tree.  A pointer to the field is returned.
  */
 EPG *
-__bt_search(t, key, exactp)
-	BTREE *t;
-	const DBT *key;
-	int *exactp;
+__bt_search(BTREE *t, const DBT *key, int *exactp)
 {
 	PAGE *h;
 	indx_t base, index, lim;
@@ -143,11 +140,7 @@ next:		BT_PUSH(t, h->pgno, index);
  *	If an exact match found.
  */
 static int
-__bt_snext(t, h, key, exactp)
-	BTREE *t;
-	PAGE *h;
-	const DBT *key;
-	int *exactp;
+__bt_snext(BTREE *t, PAGE *h, const DBT *key, int *exactp)
 {
 	EPG e;
 
@@ -182,11 +175,7 @@ __bt_snext(t, h, key, exactp)
  *	If an exact match found.
  */
 static int
-__bt_sprev(t, h, key, exactp)
-	BTREE *t;
-	PAGE *h;
-	const DBT *key;
-	int *exactp;
+__bt_sprev(BTREE *t, PAGE *h, const DBT *key, int *exactp)
 {
 	EPG e;
 

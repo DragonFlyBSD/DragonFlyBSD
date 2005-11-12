@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash.c,v 1.8 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libc/db/hash/hash.c,v 1.8 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash.c,v 1.9 2005/11/12 23:01:55 swildner Exp $
  *
  * @(#)hash.c	8.9 (Berkeley) 6/16/94
  */
@@ -134,7 +134,7 @@ __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
 		     _fstat(hashp->fp, &statbuf) == 0 && statbuf.st_size == 0)
 			new_table = 1;
 
-		(void)_fcntl(hashp->fp, F_SETFD, 1);
+		_fcntl(hashp->fp, F_SETFD, 1);
 	}
 	if (new_table) {
 		if (!(hashp = init_hash(hashp, file, info)))
@@ -183,7 +183,7 @@ __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
 		    (hashp->BSHIFT + BYTE_SHIFT);
 
 		hashp->nmaps = bpages;
-		(void)memset(&hashp->mapp[0], 0, bpages * sizeof(u_int32_t *));
+		memset(&hashp->mapp[0], 0, bpages * sizeof(u_int32_t *));
 	}
 
 	/* Initialize Buffer Manager */
@@ -212,7 +212,7 @@ __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
 	dbp->type = DB_HASH;
 
 #ifdef DEBUG
-	(void)fprintf(stderr,
+	fprintf(stderr,
 "%s\n%s%x\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%x\n%s%x\n%s%d\n%s%d\n",
 	    "init_htab:",
 	    "TABLE POINTER   ", hashp,
@@ -237,7 +237,7 @@ __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
 
 error1:
 	if (hashp != NULL)
-		(void)_close(hashp->fp);
+		_close(hashp->fp);
 
 error0:
 	free(hashp);
@@ -393,17 +393,17 @@ hdestroy(HTAB *hashp)
 	save_errno = 0;
 
 #ifdef HASH_STATISTICS
-	(void)fprintf(stderr, "hdestroy: accesses %ld collisions %ld\n",
+	fprintf(stderr, "hdestroy: accesses %ld collisions %ld\n",
 	    hash_accesses, hash_collisions);
-	(void)fprintf(stderr, "hdestroy: expansions %ld\n",
+	fprintf(stderr, "hdestroy: expansions %ld\n",
 	    hash_expansions);
-	(void)fprintf(stderr, "hdestroy: overflows %ld\n",
+	fprintf(stderr, "hdestroy: overflows %ld\n",
 	    hash_overflows);
-	(void)fprintf(stderr, "keys %ld maxp %d segmentcount %d\n",
+	fprintf(stderr, "keys %ld maxp %d segmentcount %d\n",
 	    hashp->NKEYS, hashp->MAX_BUCKET, hashp->nsegs);
 
 	for (i = 0; i < NCACHED; i++)
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "spares[%d] = %d\n", i, hashp->SPARES[i]);
 #endif
 	/*
@@ -427,7 +427,7 @@ hdestroy(HTAB *hashp)
 			free(hashp->mapp[i]);
 
 	if (hashp->fp != -1)
-		(void)_close(hashp->fp);
+		_close(hashp->fp);
 
 	free(hashp);
 
@@ -879,7 +879,7 @@ alloc_segs(HTAB *hashp, int nsegs)
 	if ((hashp->dir =
 	    (SEGMENT *)calloc(hashp->DSIZE, sizeof(SEGMENT *))) == NULL) {
 		save_errno = errno;
-		(void)hdestroy(hashp);
+		hdestroy(hashp);
 		errno = save_errno;
 		return (-1);
 	}
@@ -887,7 +887,7 @@ alloc_segs(HTAB *hashp, int nsegs)
 	if ((store =
 	    (SEGMENT)calloc(nsegs << hashp->SSHIFT, sizeof(SEGMENT))) == NULL) {
 		save_errno = errno;
-		(void)hdestroy(hashp);
+		hdestroy(hashp);
 		errno = save_errno;
 		return (-1);
 	}

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_open.c,v 1.7.2.1 2000/11/02 10:30:07 kris Exp $
- * $DragonFly: src/lib/libc/db/btree/bt_open.c,v 1.5 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_open.c,v 1.6 2005/11/12 23:01:54 swildner Exp $
  *
  * @(#)bt_open.c	8.10 (Berkeley) 8/17/94
  */
@@ -86,10 +86,8 @@ static int tmp (void);
  *
  */
 DB *
-__bt_open(fname, flags, mode, openinfo, dflags)
-	const char *fname;
-	int flags, mode, dflags;
-	const BTREEINFO *openinfo;
+__bt_open(const char *fname, int flags, int mode, const BTREEINFO *openinfo,
+	  int dflags)
 {
 	struct stat sb;
 	BTMETA m;
@@ -333,7 +331,7 @@ err:	if (t) {
 		if (t->bt_dbp)
 			free(t->bt_dbp);
 		if (t->bt_fd != -1)
-			(void)_close(t->bt_fd);
+			_close(t->bt_fd);
 		free(t);
 	}
 	return (NULL);
@@ -349,8 +347,7 @@ err:	if (t) {
  *	RET_ERROR, RET_SUCCESS
  */
 static int
-nroot(t)
-	BTREE *t;
+nroot(BTREE *t)
 {
 	PAGE *meta, *root;
 	pgno_t npg;
@@ -383,7 +380,7 @@ nroot(t)
 }
 
 static int
-tmp()
+tmp(void)
 {
 	sigset_t set, oset;
 	int fd;
@@ -392,19 +389,19 @@ tmp()
 
 	if (issetugid() == 0)
 		envtmp = getenv("TMPDIR");
-	(void)snprintf(path,
+	snprintf(path,
 	    sizeof(path), "%s/bt.XXXXXXXXXX", envtmp ? envtmp : "/tmp");
 
-	(void)sigfillset(&set);
-	(void)_sigprocmask(SIG_BLOCK, &set, &oset);
+	sigfillset(&set);
+	_sigprocmask(SIG_BLOCK, &set, &oset);
 	if ((fd = mkstemp(path)) != -1)
-		(void)unlink(path);
-	(void)_sigprocmask(SIG_SETMASK, &oset, NULL);
+		unlink(path);
+	_sigprocmask(SIG_SETMASK, &oset, NULL);
 	return(fd);
 }
 
 static int
-byteorder()
+byteorder(void)
 {
 	u_int32_t x;
 	u_char *p;
@@ -422,8 +419,7 @@ byteorder()
 }
 
 int
-__bt_fd(dbp)
-        const DB *dbp;
+__bt_fd(const DB *dbp)
 {
 	BTREE *t;
 

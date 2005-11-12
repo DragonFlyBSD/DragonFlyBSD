@@ -28,7 +28,7 @@
  *
  * @(#)rec_put.c	8.7 (Berkeley) 8/18/94
  * $FreeBSD: src/lib/libc/db/recno/rec_put.c,v 1.4.6.1 2001/01/02 05:13:25 peter Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.3 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -55,11 +55,7 @@
  *	already in the tree and R_NOOVERWRITE specified.
  */
 int
-__rec_put(dbp, key, data, flags)
-	const DB *dbp;
-	DBT *key;
-	const DBT *data;
-	u_int flags;
+__rec_put(const DB *dbp, DBT *key, const DBT *data, u_int flags)
 {
 	BTREE *t;
 	DBT fdata, tdata;
@@ -188,11 +184,7 @@ einval:		errno = EINVAL;
  *	RET_ERROR, RET_SUCCESS
  */
 int
-__rec_iput(t, nrec, data, flags)
-	BTREE *t;
-	recno_t nrec;
-	const DBT *data;
-	u_int flags;
+__rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 {
 	DBT tdata;
 	EPG *e;

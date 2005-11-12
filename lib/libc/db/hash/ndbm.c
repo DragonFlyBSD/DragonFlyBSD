@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ndbm.c	8.4 (Berkeley) 7/21/94
- * $DragonFly: src/lib/libc/db/hash/ndbm.c,v 1.3 2005/09/19 09:20:37 asmodai Exp $
+ * $DragonFly: src/lib/libc/db/hash/ndbm.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
  */
 
 /*
@@ -53,9 +53,7 @@
  *	 NULL on failure
  */
 extern DBM *
-dbm_open(file, flags, mode)
-	const char *file;
-	int flags, mode;
+dbm_open(const char *file, int flags, int mode)
 {
 	HASHINFO info;
 	char path[MAXPATHLEN];
@@ -71,16 +69,15 @@ dbm_open(file, flags, mode)
 		errno = ENAMETOOLONG;
 		return(NULL);
 	}
-	(void)strcpy(path, file);
-	(void)strcat(path, DBM_SUFFIX);
+	strcpy(path, file);
+	strcat(path, DBM_SUFFIX);
 	return ((DBM *)__hash_open(path, flags, mode, &info, 0));
 }
 
 extern void
-dbm_close(db)
-	DBM *db;
+dbm_close(DBM *db)
 {
-	(void)(db->close)(db);
+	(db->close)(db);
 }
 
 /*
@@ -89,9 +86,7 @@ dbm_close(db)
  *	NULL on failure
  */
 extern datum
-dbm_fetch(db, key)
-	DBM *db;
-	datum key;
+dbm_fetch(DBM *db, datum key)
 {
 	datum retdata;
 	int status;
@@ -115,8 +110,7 @@ dbm_fetch(db, key)
  *	NULL on failure
  */
 extern datum
-dbm_firstkey(db)
-	DBM *db;
+dbm_firstkey(DBM *db)
 {
 	int status;
 	datum retkey;
@@ -136,8 +130,7 @@ dbm_firstkey(db)
  *	NULL on failure
  */
 extern datum
-dbm_nextkey(db)
-	DBM *db;
+dbm_nextkey(DBM *db)
 {
 	int status;
 	datum retkey;
@@ -157,9 +150,7 @@ dbm_nextkey(db)
  *	<0 failure
  */
 extern int
-dbm_delete(db, key)
-	DBM *db;
-	datum key;
+dbm_delete(DBM *db, datum key)
 {
 	int status;
 	DBT dbtkey;
@@ -180,10 +171,7 @@ dbm_delete(db, key)
  *	 1 if DBM_INSERT and entry exists
  */
 extern int
-dbm_store(db, key, data, flags)
-	DBM *db;
-	datum key, data;
-	int flags;
+dbm_store(DBM *db, datum key, datum data, int flags)
 {
 	DBT dbtkey, dbtdata;
 
@@ -196,8 +184,7 @@ dbm_store(db, key, data, flags)
 }
 
 extern int
-dbm_error(db)
-	DBM *db;
+dbm_error(DBM *db)
 {
 	HTAB *hp;
 
@@ -206,8 +193,7 @@ dbm_error(db)
 }
 
 extern int
-dbm_clearerr(db)
-	DBM *db;
+dbm_clearerr(DBM *db)
 {
 	HTAB *hp;
 
@@ -217,8 +203,7 @@ dbm_clearerr(db)
 }
 
 extern int
-dbm_dirfno(db)
-	DBM *db;
+dbm_dirfno(DBM *db)
 {
 	return(((HTAB *)db->internal)->fp);
 }
