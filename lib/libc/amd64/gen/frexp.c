@@ -32,16 +32,14 @@
  *
  * @(#)frexp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/amd64/gen/frexp.c,v 1.8 2002/03/23 02:05:17 obrien Exp $
- * $DragonFly: src/lib/libc/amd64/gen/frexp.c,v 1.1 2004/02/02 05:43:14 dillon Exp $
+ * $DragonFly: src/lib/libc/amd64/gen/frexp.c,v 1.2 2005/11/12 21:56:11 swildner Exp $
  */
 
 #include <sys/types.h>
 #include <math.h>
 
 double
-frexp(value, eptr)
-	double value;
-	int *eptr;
+frexp(double value, int *eptr)
 {
 	union {
                 double v;
