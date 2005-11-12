@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_module.c,v 1.4 2004/12/21 09:00:01 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.3 2005/07/04 08:02:43 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.4 2005/11/12 22:21:13 swildner Exp $ */
 
 /*-
  * Copyright (c)1999, 2000, 2001, 2002 Citrus Project,
@@ -155,7 +155,7 @@ _getdewey(int dewey[], char *cp)
 static int
 _cmpndewey(int d1[], int n1, int d2[], int n2)
 {
-	register int	i;
+	int	i;
 
 	_DIAGASSERT(d1 != NULL);
 	_DIAGASSERT(d2 != NULL);
@@ -311,7 +311,7 @@ _citrus_load_module(_citrus_module_t *rhandle, const char *encname)
 			_pathI18nModule = _PATH_I18NMODULE;
 	}
 
-	(void)snprintf(path, sizeof(path), "lib%s", encname);
+	snprintf(path, sizeof(path), "lib%s", encname);
 	maj = I18NMODULE_MAJOR;
 	min = -1;
 	p = _findshlib(path, &maj, &min);

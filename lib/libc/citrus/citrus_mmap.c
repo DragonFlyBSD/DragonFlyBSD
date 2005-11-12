@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_mmap.c,v 1.3 2005/01/19 00:52:37 mycroft Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_mmap.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_mmap.c,v 1.2 2005/11/12 22:21:13 swildner Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -80,7 +80,7 @@ _citrus_map_file(struct _citrus_region * __restrict r,
 	_region_init(r, head, (size_t)st.st_size);
 
 error:
-	(void)close(fd);
+	close(fd);
 	return ret;
 }
 
@@ -90,7 +90,7 @@ _citrus_unmap_file(struct _citrus_region *r)
 	_DIAGASSERT(r != NULL);
 
 	if (_region_head(r) != NULL) {
-		(void)munmap(_region_head(r), _region_size(r));
+		munmap(_region_head(r), _region_size(r));
 		_region_init(r, NULL, 0);
 	}
 }
