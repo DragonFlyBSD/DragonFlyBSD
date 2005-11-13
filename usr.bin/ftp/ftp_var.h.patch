@@ -1,0 +1,15 @@
+$DragonFly: src/usr.bin/ftp/Attic/ftp_var.h.patch,v 1.1 2005/11/13 11:59:03 corecode Exp $
+===================================================================
+RCS file: /cvs/src/contrib/lukemftp/ftp_var.h,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 ftp_var.h
+--- ftp_var.h	13 Nov 2005 11:28:53 -0000	1.1.1.1
++++ ftp_var.h	13 Nov 2005 11:30:19 -0000
+@@ -108,6 +108,7 @@
+ #endif
+ 
+ #include <sys/param.h>
++#include <sys/socket.h>
+ 
+ #include <netinet/in.h>
+ #include <arpa/inet.h>

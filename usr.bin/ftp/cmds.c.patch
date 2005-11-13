@@ -1,0 +1,16 @@
+$DragonFly: src/usr.bin/ftp/Attic/cmds.c.patch,v 1.1 2005/11/13 11:59:03 corecode Exp $
+Index: cmds.c
+===================================================================
+RCS file: /cvs/src/contrib/lukemftp/cmds.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 cmds.c
+--- cmds.c	13 Nov 2005 11:28:53 -0000	1.1.1.1
++++ cmds.c	13 Nov 2005 11:30:19 -0000
+@@ -123,6 +123,7 @@
+ #include <netdb.h>
+ #include <paths.h>
+ #include <stdio.h>
++#include <libutil.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <time.h>

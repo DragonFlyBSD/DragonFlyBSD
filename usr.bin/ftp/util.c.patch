@@ -1,0 +1,17 @@
+$DragonFly: src/usr.bin/ftp/Attic/util.c.patch,v 1.1 2005/11/13 11:59:03 corecode Exp $
+===================================================================
+RCS file: /cvs/src/contrib/lukemftp/util.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 util.c
+--- util.c	13 Nov 2005 11:28:53 -0000	1.1.1.1
++++ util.c	13 Nov 2005 11:30:19 -0000
+@@ -1446,8 +1446,7 @@
+ xsl_add(StringList *sl, char *i)
+ {
+ 
+-	if (sl_add(sl, i) == -1)
+-		err(1, "Unable to add `%s' to stringlist", i);
++	sl_add(sl, i);
+ }
+ 
+ /*
