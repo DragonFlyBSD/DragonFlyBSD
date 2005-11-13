@@ -32,7 +32,7 @@
  *
  * @(#)mcount.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gmon/mcount.c,v 1.17 1999/12/29 05:04:13 peter Exp $
- * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.5 2005/11/13 01:18:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +62,10 @@ void	user (void);
  * Note: the original BSD code used the same variable (frompcindex) for
  * both frompcindex and frompc.  Any reasonable, modern compiler will
  * perform this optimization.
+ *
+ * _mcount; may be static, inline, etc
  */
-_MCOUNT_DECL(frompc, selfpc)	/* _mcount; may be static, inline, etc */
-	uintfptr_t frompc, selfpc;
+_MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 {
 #ifdef GUPROF
 	u_int delta;
@@ -277,8 +278,7 @@ MCOUNT
 
 #ifdef GUPROF
 void
-mexitcount(selfpc)
-	uintfptr_t selfpc;
+mexitcount(uintfptr_t selfpc)
 {
 	struct gmonparam *p;
 	uintfptr_t selfpcdiff;
