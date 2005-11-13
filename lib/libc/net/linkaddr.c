@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)linkaddr.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/linkaddr.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/linkaddr.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -47,9 +47,7 @@
 #define LETTER	(4*3)
 
 void
-link_addr(addr, sdl)
-	const char *addr;
-	struct sockaddr_dl *sdl;
+link_addr(const char *addr, struct sockaddr_dl *sdl)
 {
 	char *cp = sdl->sdl_data;
 	char *cplim = sdl->sdl_len + (char *)sdl;
@@ -118,8 +116,7 @@ link_addr(addr, sdl)
 static char hexlist[] = "0123456789abcdef";
 
 char *
-link_ntoa(sdl)
-	const struct sockaddr_dl *sdl;
+link_ntoa(const struct sockaddr_dl *sdl)
 {
 	static char obuf[64];
 	char *out = obuf;

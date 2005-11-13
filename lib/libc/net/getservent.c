@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservent.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/getservent.c,v 1.6 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/getservent.c,v 1.7 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -60,8 +60,7 @@ int ___getservbyport_yp = 0;
 static char *yp_domain = NULL;
 
 static int
-_getservbyport_yp(line)
-	char *line;
+_getservbyport_yp(char *line)
 {
 	char *result;
 	int resultlen;
@@ -106,8 +105,7 @@ _getservbyport_yp(line)
 }
 
 static int
-_getservbyname_yp(line)
-	char *line;
+_getservbyname_yp(char *line)
 {
 	char *result;
 	int resultlen;
@@ -137,8 +135,7 @@ _getservbyname_yp(line)
 }
 
 static int
-_getservent_yp(line)
-	char *line;
+_getservent_yp(char *line)
 {
 	static char *key = NULL;
 	static int keylen;
@@ -181,8 +178,7 @@ _getservent_yp(line)
 #endif
 
 void
-setservent(f)
-	int f;
+setservent(int f)
 {
 	if (servf == NULL)
 		servf = fopen(_PATH_SERVICES, "r" );
@@ -192,7 +188,7 @@ setservent(f)
 }
 
 void
-endservent()
+endservent(void)
 {
 	if (servf) {
 		fclose(servf);
@@ -202,7 +198,7 @@ endservent()
 }
 
 struct servent *
-getservent()
+getservent(void)
 {
 	char *p;
 	char *cp, **q;

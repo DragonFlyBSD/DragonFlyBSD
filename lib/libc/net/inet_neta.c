@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_neta.c,v 1.6.2.1 2001/04/21 14:53:04 ume Exp $
- * $DragonFly: src/lib/libc/net/inet_neta.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/inet_neta.c,v 1.3 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -45,10 +45,7 @@
  *	Paul Vixie (ISC), July 1996
  */
 char *
-inet_neta(src, dst, size)
-	in_addr_t src;
-	char *dst;
-	size_t size;
+inet_neta(in_addr_t src, char *dst, size_t size)
 {
 	char *odst = dst;
 	char *tp;

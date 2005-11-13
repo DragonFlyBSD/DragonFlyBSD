@@ -29,7 +29,7 @@
  * @(#)res_mkquery.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_mkquery.c,v 8.9 1997/04/24 22:22:36 vixie Exp $
  * $FreeBSD: src/lib/libc/net/res_mkquery.c,v 1.15.2.2 2002/09/20 10:45:35 nectar Exp $
- * $DragonFly: src/lib/libc/net/res_mkquery.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/res_mkquery.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -85,15 +85,15 @@
  * Returns the size of the result or -1.
  */
 int
-res_mkquery(op, dname, class, type, data, datalen, newrr_in, buf, buflen)
-	int op;			/* opcode of query */
-	const char *dname;	/* domain name */
-	int class, type;	/* class and type of query */
-	const u_char *data;	/* resource record data */
-	int datalen;		/* length of data */
-	const u_char *newrr_in;	/* new rr for modify or append */
-	u_char *buf;		/* buffer to put query */
-	int buflen;		/* size of buffer */
+res_mkquery(int op,			/* opcode of query */
+	    const char *dname,		/* domain name */
+	    int class,			/* class of query */
+	    int type,			/* type of query */
+	    const u_char *data,		/* resource record data */
+	    int datalen,		/* length of data */
+	    const u_char *newrr_in,	/* new rr for modify or append */
+	    u_char *buf,		/* buffer to put query */
+	    int buflen)			/* size of buffer */
 {
 	HEADER *hp;
 	u_char *cp;
@@ -202,11 +202,10 @@ __weak_reference(__res_mkquery, res_mkquery);
 
 /* attach OPT pseudo-RR, as documented in RFC2671 (EDNS0). */
 int
-res_opt(n0, buf, buflen, anslen)
-	int n0;
-	u_char *buf;		/* buffer to put query */
-	int buflen;		/* size of buffer */
-	int anslen;		/* answer buffer length */
+res_opt(int n0,
+	u_char *buf,		/* buffer to put query */
+	int buflen,		/* size of buffer */
+	int anslen)		/* answer buffer length */
 {
 	HEADER *hp;
 	u_char *cp;

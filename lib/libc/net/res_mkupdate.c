@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/res_mkupdate.c,v 1.2.2.1 2001/03/05 10:47:11 obrien Exp $
- * $DragonFly: src/lib/libc/net/res_mkupdate.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/res_mkupdate.c,v 1.3 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -59,12 +59,13 @@ static int getword_str(char *, int, u_char **, u_char *);
  *		-5 unknown operation or no records
  */
 int
-res_mkupdate(ns_updrec *rrecp_in, u_char *buf, int buflen) {
+res_mkupdate(ns_updrec *rrecp_in, u_char *buf, int buflen)
+{
 	ns_updrec *rrecp_start = rrecp_in;
 	HEADER *hp;
-	u_char c, *cp, *cp1, *sp1, *sp2, *startp, *endp;
-	int n, i, j, found, soanum, multiline;
-	ns_updrec *rrecp, *tmprrecp, *recptr = NULL;
+	u_char *cp, *sp1, *sp2, *startp, *endp;
+	int n, i, soanum, multiline;
+	ns_updrec *rrecp;
 	struct in_addr ina;
         char buf2[MAXDNAME];
 	int section, numrrs = 0, counts[ns_s_max];
@@ -317,7 +318,8 @@ res_mkupdate(ns_updrec *rrecp_in, u_char *buf, int buflen) {
  * word in the string.
  */
 static int
-getword_str(char *buf, int size, u_char **startpp, u_char *endp) {
+getword_str(char *buf, int size, u_char **startpp, u_char *endp)
+{
         char *cp;
         int c;
  
@@ -345,10 +347,10 @@ getword_str(char *buf, int size, u_char **startpp, u_char *endp) {
  * update the start pointer to point after the number in the string.
  */
 static int
-getnum_str(u_char **startpp, u_char *endp) {
+getnum_str(u_char **startpp, u_char *endp)
+{
         int c, n;
         int seendigit = 0;
-        int seendecimal = 0;
         int m = 0;
 
         for (n = 0; *startpp <= endp; ) {
@@ -388,7 +390,8 @@ getnum_str(u_char **startpp, u_char *endp) {
  */
 ns_updrec *
 res_mkupdrec(int section, const char *dname,
-	     u_int class, u_int type, u_long ttl) {
+	     u_int class, u_int type, u_long ttl)
+{
 	ns_updrec *rrecp = (ns_updrec *)calloc(1, sizeof(ns_updrec));
 
 	if (!rrecp || !(rrecp->r_dname = strdup(dname)))
@@ -404,7 +407,8 @@ res_mkupdrec(int section, const char *dname,
  * Free a resource record buffer created by res_mkupdrec.
  */
 void
-res_freeupdrec(ns_updrec *rrecp) {
+res_freeupdrec(ns_updrec *rrecp)
+{
 	/* Note: freeing r_dp is the caller's responsibility. */
 	if (rrecp->r_dname != NULL)
 		free(rrecp->r_dname);

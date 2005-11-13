@@ -29,7 +29,7 @@
  * @(#)res_query.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_query.c,v 8.14 1997/06/09 17:47:05 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_query.c,v 1.19.2.2 2002/07/07 11:34:42 robert Exp $
- * $DragonFly: src/lib/libc/net/res_query.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/res_query.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -101,11 +101,11 @@
  * Caller must parse answer and determine whether it answers the question.
  */
 int
-res_query(name, class, type, answer, anslen)
-	const char *name;	/* domain name */
-	int class, type;	/* class and type of query */
-	u_char *answer;		/* buffer to put answer */
-	int anslen;		/* size of answer buffer */
+res_query(const char *name,	/* domain name */
+	  int class,		/* class of query */
+	  int type,		/* type of query */
+	  u_char *answer,	/* buffer to put answer */
+	  int anslen)		/* size of answer buffer */
 {
 	u_char buf[MAXPACKET];
 	HEADER *hp = (HEADER *) answer;
@@ -179,14 +179,13 @@ res_query(name, class, type, answer, anslen)
  * is detected.  Error code, if any, is left in h_errno.
  */
 int
-res_search(name, class, type, answer, anslen)
-	const char *name;	/* domain name */
-	int class, type;	/* class and type of query */
-	u_char *answer;		/* buffer to put answer */
-	int anslen;		/* size of answer */
+res_search(const char *name,	/* domain name */
+	   int class,		/* class of query */
+	   int type,		/* type of query */
+	   u_char *answer,	/* buffer to put answer */
+	   int anslen)		/* size of answer */
 {
 	const char *cp, * const *domain;
-	HEADER *hp = (HEADER *) answer;
 	u_int dots;
 	int trailing_dot, ret, saved_herrno;
 	int got_nodata = 0, got_servfail = 0, tried_as_is = 0;
@@ -330,11 +329,12 @@ res_search(name, class, type, answer, anslen)
  * removing a trailing dot from name if domain is NULL.
  */
 int
-res_querydomain(name, domain, class, type, answer, anslen)
-	const char *name, *domain;
-	int class, type;	/* class and type of query */
-	u_char *answer;		/* buffer to put answer */
-	int anslen;		/* size of answer */
+res_querydomain(const char *name,
+		const char *domain,
+		int class,		/* class of query */
+		int type,		/* type of query */
+		u_char *answer,		/* buffer to put answer */
+		int anslen)		/* size of answer */
 {
 	char nbuf[MAXDNAME];
 	const char *longname = nbuf;
@@ -378,8 +378,7 @@ res_querydomain(name, domain, class, type, answer, anslen)
 }
 
 const char *
-hostalias(name)
-	const char *name;
+hostalias(const char *name)
 {
 	char *cp1, *cp2;
 	FILE *fp;

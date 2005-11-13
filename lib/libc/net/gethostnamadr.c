@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.15.2.2 2001/03/05 10:40:42 obrien Exp $
- * $DragonFly: src/lib/libc/net/gethostnamadr.c,v 1.4 2005/01/31 22:29:33 dillon Exp $
+ * $DragonFly: src/lib/libc/net/gethostnamadr.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,7 @@ get_service_name(const char *name) {
 }
 
 static void
-init_services()
+init_services(void)
 {
 	char *cp, *p, buf[BUFSIZ];
 	int cc = 0;
@@ -193,8 +193,9 @@ struct hostent_data;
 /*
  * Temporary function (not thread safe)
  */
-int gethostbyaddr_r(const char *addr, int len, int type,
-	struct hostent *result, struct hostent_data *buffer)
+int
+gethostbyaddr_r(const char *addr, int len, int type,
+	struct hostent *result, struct hostent_data *buffer __unused)
 {
 	struct hostent *hp;
 	int ret;
@@ -208,15 +209,14 @@ int gethostbyaddr_r(const char *addr, int len, int type,
 }
 
 void
-sethostent(stayopen)
-	int stayopen;
+sethostent(int stayopen)
 {
 	_sethosthtent(stayopen);
 	_sethostdnsent(stayopen);
 }
 
 void
-endhostent()
+endhostent(void)
 {
 	_endhosthtent();
 	_endhostdnsent();

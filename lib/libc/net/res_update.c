@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/res_update.c,v 1.2.2.2 2002/09/19 13:45:23 nectar Exp $
- * $DragonFly: src/lib/libc/net/res_update.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/res_update.c,v 1.3 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ res_update(ns_updrec *rrecp_in) {
 					for (tmprrecp = tmpzptr->z_rr;
 					     tmprrecp->r_grpnext;
 					     tmprrecp = tmprrecp->r_grpnext)
-						(void)NULL;
+						;
 					tmprrecp->r_grpnext = rrecp;
 					rrecp->r_grpnext = NULL;
 					done = 1;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rthdr.c,v 1.2.2.1 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/rthdr.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/rthdr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -43,8 +43,7 @@
 #include <stdio.h>
 
 size_t
-inet6_rthdr_space(type, seg)
-    int type, seg;
+inet6_rthdr_space(int type, int seg)
 {
     switch(type) {
      case IPV6_RTHDR_TYPE_0:
@@ -61,9 +60,7 @@ inet6_rthdr_space(type, seg)
 }
 
 struct cmsghdr *
-inet6_rthdr_init(bp, type)
-    void *bp;
-    int type;
+inet6_rthdr_init(void *bp, int type)
 {
     struct cmsghdr *ch = (struct cmsghdr *)bp;
     struct ip6_rthdr *rthdr;
@@ -88,10 +85,7 @@ inet6_rthdr_init(bp, type)
 }
 
 int
-inet6_rthdr_add(cmsg, addr, flags)
-    struct cmsghdr *cmsg;
-    const struct in6_addr *addr;
-    u_int flags;
+inet6_rthdr_add(struct cmsghdr *cmsg, const struct in6_addr *addr, u_int flags)
 {
     struct ip6_rthdr *rthdr;
 
@@ -138,9 +132,7 @@ inet6_rthdr_add(cmsg, addr, flags)
 }
 
 int
-inet6_rthdr_lasthop(cmsg, flags)
-    struct cmsghdr *cmsg;
-    unsigned int flags;
+inet6_rthdr_lasthop(struct cmsghdr *cmsg, unsigned int flags)
 {
     struct ip6_rthdr *rthdr;
 
@@ -183,9 +175,7 @@ inet6_rthdr_lasthop(cmsg, flags)
 
 #if 0
 int
-inet6_rthdr_reverse(in, out)
-    const struct cmsghdr *in;
-    struct cmsghdr *out;
+inet6_rthdr_reverse(const struct cmsghdr *in, struct cmsghdr *out)
 {
 #ifdef DEBUG
     fprintf(stderr, "inet6_rthdr_reverse: not implemented yet\n");
@@ -195,8 +185,7 @@ inet6_rthdr_reverse(in, out)
 #endif
 
 int
-inet6_rthdr_segments(cmsg)
-    const struct cmsghdr *cmsg;
+inet6_rthdr_segments(const struct cmsghdr *cmsg)
 {
     struct ip6_rthdr *rthdr;
 
@@ -228,9 +217,7 @@ inet6_rthdr_segments(cmsg)
 }
 
 struct in6_addr *
-inet6_rthdr_getaddr(cmsg, idx)
-    struct cmsghdr *cmsg;
-    int idx;
+inet6_rthdr_getaddr(struct cmsghdr *cmsg, int idx)
 {
     struct ip6_rthdr *rthdr;
 
@@ -269,9 +256,7 @@ inet6_rthdr_getaddr(cmsg, idx)
 }
 
 int
-inet6_rthdr_getflags(cmsg, idx)
-    const struct cmsghdr *cmsg;
-    int idx;
+inet6_rthdr_getflags(const struct cmsghdr *cmsg, int idx)
 {
     struct ip6_rthdr *rthdr;
 

@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/ns_print.c,v 1.2 1999/08/28 00:00:15 peter Exp $
- * $DragonFly: src/lib/libc/net/ns_print.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/ns_print.c,v 1.3 2005/11/13 02:04:47 swildner Exp $
  */
 
 /* Import. */
@@ -140,7 +140,7 @@ ns_sprintrrf(const u_char *msg, size_t msglen,
 	case ns_t_a:
 		if (rdlen != NS_INADDRSZ)
 			goto formerr;
-		(void) inet_ntop(AF_INET, rdata, buf, buflen);
+		inet_ntop(AF_INET, rdata, buf, buflen);
 		addlen(strlen(buf), &buf, &buflen);
 		break;
 
@@ -295,7 +295,7 @@ ns_sprintrrf(const u_char *msg, size_t msglen,
 	case ns_t_nsap: {
 		char t[255*3];
 
-		(void) inet_nsap_ntoa(rdlen, rdata, t);
+		inet_nsap_ntoa(rdlen, rdata, t);
 		T(addstr(t, strlen(t), &buf, &buflen));
 		break;
 	    }
@@ -303,7 +303,7 @@ ns_sprintrrf(const u_char *msg, size_t msglen,
 	case ns_t_aaaa:
 		if (rdlen != NS_IN6ADDRSZ)
 			goto formerr;
-		(void) inet_ntop(AF_INET6, rdata, buf, buflen);
+		inet_ntop(AF_INET6, rdata, buf, buflen);
 		addlen(strlen(buf), &buf, &buflen);
 		break;
 
@@ -311,7 +311,7 @@ ns_sprintrrf(const u_char *msg, size_t msglen,
 		char t[255];
 
 		/* XXX protocol format checking? */
-		(void) loc_ntoa(rdata, t);
+		loc_ntoa(rdata, t);
 		T(addstr(t, strlen(t), &buf, &buflen));
 		break;
 	    }
@@ -394,7 +394,7 @@ ns_sprintrrf(const u_char *msg, size_t msglen,
 			goto formerr;
 
 		/* Address. */
-		(void) inet_ntop(AF_INET, rdata, buf, buflen);
+		inet_ntop(AF_INET, rdata, buf, buflen);
 		addlen(strlen(buf), &buf, &buflen);
 		rdata += NS_INADDRSZ;
 

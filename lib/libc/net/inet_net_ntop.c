@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_net_ntop.c,v 1.5 1999/08/28 00:00:10 peter Exp $
- * $DragonFly: src/lib/libc/net/inet_net_ntop.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/net/inet_net_ntop.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -48,12 +48,7 @@ static char *	inet_net_ntop_ipv4 (const u_char *src, int bits,
  *	Paul Vixie (ISC), July 1996
  */
 char *
-inet_net_ntop(af, src, bits, dst, size)
-	int af;
-	const void *src;
-	int bits;
-	char *dst;
-	size_t size;
+inet_net_ntop(int af, const void *src, int bits, char *dst, size_t size)
 {
 	switch (af) {
 	case AF_INET:
@@ -78,11 +73,7 @@ inet_net_ntop(af, src, bits, dst, size)
  *	Paul Vixie (ISC), July 1996
  */
 static char *
-inet_net_ntop_ipv4(src, bits, dst, size)
-	const u_char *src;
-	int bits;
-	char *dst;
-	size_t size;
+inet_net_ntop_ipv4(const u_char *src, int bits, char *dst, size_t size)
 {
 	char *odst = dst;
 	char *t;

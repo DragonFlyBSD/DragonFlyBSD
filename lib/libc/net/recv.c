@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/recv.c,v 1.1.1.1.14.1 2001/03/05 10:47:11 obrien Exp $
- * $DragonFly: src/lib/libc/net/recv.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/recv.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  *
  * @(#)recv.c	8.2 (Berkeley) 2/21/94
  */
@@ -40,10 +40,7 @@
 #include "un-namespace.h"
 
 ssize_t
-recv(s, buf, len, flags)
-	int s, flags;
-	size_t len;
-	void *buf;
+recv(int s, void *buf, size_t len, int flags)
 {
 	return (_recvfrom(s, buf, len, flags, NULL, 0));
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getprotoent.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/getprotoent.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/getprotoent.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -46,8 +46,7 @@ static char *proto_aliases[MAXALIASES];
 int _proto_stayopen;
 
 void
-setprotoent(f)
-	int f;
+setprotoent(int f)
 {
 	if (protof == NULL)
 		protof = fopen(_PATH_PROTOCOLS, "r" );
@@ -57,7 +56,7 @@ setprotoent(f)
 }
 
 void
-endprotoent()
+endprotoent(void)
 {
 	if (protof) {
 		fclose(protof);
@@ -67,7 +66,7 @@ endprotoent()
 }
 
 struct protoent *
-getprotoent()
+getprotoent(void)
 {
 	char *p;
 	char *cp, **q;

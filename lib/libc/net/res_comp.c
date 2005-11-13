@@ -29,7 +29,7 @@
  * @(#)res_comp.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_comp.c,v 8.11 1997/05/21 19:31:04 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_comp.c,v 1.16 1999/08/28 00:00:16 peter Exp $
- * $DragonFly: src/lib/libc/net/res_comp.c,v 1.3 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/res_comp.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -117,7 +117,8 @@ dn_comp(const char *src, u_char *dst, int dstsiz,
  * Skip over a compressed domain name. Return the size or -1.
  */
 int
-dn_skipname(const u_char *ptr, const u_char *eom) {
+dn_skipname(const u_char *ptr, const u_char *eom)
+{
 	const u_char *saveptr = ptr;
 
 	if (ns_name_skip(&ptr, eom) == -1)
@@ -149,8 +150,7 @@ dn_skipname(const u_char *ptr, const u_char *eom) {
 #define	domainchar(c) ((c) > 0x20 && (c) < 0x7f)
 
 int
-res_hnok(dn)
-	const char *dn;
+res_hnok(const char *dn)
 {
 	int ppch = '\0', pch = PERIOD, ch = *dn++;
 
@@ -158,7 +158,7 @@ res_hnok(dn)
 		int nch = *dn++;
 
 		if (periodchar(ch)) {
-			(void)NULL;
+			;
 		} else if (periodchar(pch)) {
 			if (!borderchar(ch))
 				return (0);
@@ -179,8 +179,7 @@ res_hnok(dn)
  * but must otherwise be as a host name.
  */
 int
-res_ownok(dn)
-	const char *dn;
+res_ownok(const char *dn)
 {
 	if (asterchar(dn[0])) {
 		if (periodchar(dn[1]))
@@ -196,8 +195,7 @@ res_ownok(dn)
  * label, but the rest of the name has to look like a host name.
  */
 int
-res_mailok(dn)
-	const char *dn;
+res_mailok(const char *dn)
 {
 	int ch, escaped = 0;
 
@@ -226,8 +224,7 @@ res_mailok(dn)
  * recommendations.
  */
 int
-res_dnok(dn)
-	const char *dn;
+res_dnok(const char *dn)
 {
 	int ch;
 

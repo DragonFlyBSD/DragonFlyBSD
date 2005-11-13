@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.23.2.7 2002/08/26 16:17:49 jdp Exp $
- * $DragonFly: src/lib/libc/net/rcmd.c,v 1.6 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/rcmd.c,v 1.7 2005/11/13 02:04:47 swildner Exp $
  *
  * @(#)rcmd.c	8.3 (Berkeley) 3/26/94
  */
@@ -78,22 +78,15 @@ static int __icheckhost (const struct sockaddr *, socklen_t,
 char paddr[NI_MAXHOST];
 
 int
-rcmd(ahost, rport, locuser, remuser, cmd, fd2p)
-	char **ahost;
-	u_short rport;
-	const char *locuser, *remuser, *cmd;
-	int *fd2p;
+rcmd(char **ahost, int rport, const char *locuser, const char *remuser,
+     const char *cmd, int *fd2p)
 {
 	return rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, AF_INET);
 }
 
 int
-rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
-	char **ahost;
-	u_short rport;
-	const char *locuser, *remuser, *cmd;
-	int *fd2p;
-	int af;
+rcmd_af(char **ahost, int rport, const char *locuser, const char *remuser,
+	const char *cmd, int *fd2p, int af)
 {
 	struct addrinfo hints, *res, *ai;
 	struct sockaddr_storage from;
@@ -131,7 +124,7 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 	hints.ai_family = af;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 0;
-	(void)snprintf(num, sizeof(num), "%d", ntohs(rport));
+	snprintf(num, sizeof(num), "%d", ntohs(rport));
 	error = getaddrinfo(*ahost, num, &hints, &res);
 	if (error) {
 		fprintf(stderr, "rcmd: getaddrinfo: %s\n",
@@ -163,10 +156,10 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 				continue;
 			}
 			if (errno == EAGAIN)
-				(void)fprintf(stderr,
+				fprintf(stderr,
 				    "rcmd: socket: All ports in use\n");
 			else
-				(void)fprintf(stderr, "rcmd: socket: %s\n",
+				fprintf(stderr, "rcmd: socket: %s\n",
 				    strerror(errno));
 			freeaddrinfo(res);
 			_sigprocmask(SIG_SETMASK, (const sigset_t *)&oldmask,
@@ -176,7 +169,7 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 		_fcntl(s, F_SETOWN, pid);
 		if (_connect(s, ai->ai_addr, ai->ai_addrlen) >= 0)
 			break;
-		(void)_close(s);
+		_close(s);
 		if (errno == EADDRINUSE) {
 			lport--;
 			continue;
@@ -184,8 +177,7 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 		if (errno == ECONNREFUSED)
 			refused = 1;
 		if (ai->ai_next == NULL && (!refused || timo > 16)) {
-			(void)fprintf(stderr, "%s: %s\n",
-				      *ahost, strerror(errno));
+			fprintf(stderr, "%s: %s\n", *ahost, strerror(errno));
 			freeaddrinfo(res);
 			_sigprocmask(SIG_SETMASK, (const sigset_t *)&oldmask,
 			    NULL);
@@ -198,8 +190,7 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 				    paddr, sizeof(paddr),
 				    NULL, 0,
 				    NI_NUMERICHOST|NI_WITHSCOPEID);
-			(void)fprintf(stderr, "connect to address %s: ",
-				      paddr);
+			fprintf(stderr, "connect to address %s: ", paddr);
 			errno = oerrno;
 			perror(0);
 		}
@@ -209,7 +200,7 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 
 			time_to_sleep.tv_sec = timo;
 			time_to_sleep.tv_nsec = 0;
-			(void)_nanosleep(&time_to_sleep, &time_remaining);
+			_nanosleep(&time_to_sleep, &time_remaining);
 			timo *= 2;
 			ai = res;
 			refused = 0;
@@ -235,18 +226,18 @@ rcmd_af(ahost, rport, locuser, remuser, cmd, fd2p, af)
 		if (s2 < 0)
 			goto bad;
 		_listen(s2, 1);
-		(void)snprintf(num, sizeof(num), "%d", lport);
+		snprintf(num, sizeof(num), "%d", lport);
 		if (_write(s, num, strlen(num)+1) != strlen(num)+1) {
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "rcmd: write (setting up stderr): %s\n",
 			    strerror(errno));
-			(void)_close(s2);
+			_close(s2);
 			goto bad;
 		}
 		nfds = max(s, s2)+1;
 		if(nfds > FD_SETSIZE) {
 			fprintf(stderr, "rcmd: too many files\n");
-			(void)_close(s2);
+			_close(s2);
 			goto bad;
 		}
 again:
@@ -256,13 +247,13 @@ again:
 		errno = 0;
 		if (_select(nfds, &reads, 0, 0, 0) < 1 || !FD_ISSET(s2, &reads)){
 			if (errno != 0)
-				(void)fprintf(stderr,
+				fprintf(stderr,
 				    "rcmd: select (setting up stderr): %s\n",
 				    strerror(errno));
 			else
-				(void)fprintf(stderr,
+				fprintf(stderr,
 				"select: protocol failure in circuit setup\n");
-			(void)_close(s2);
+			_close(s2);
 			goto bad;
 		}
 		s3 = _accept(s2, (struct sockaddr *)&from, &len);
@@ -287,31 +278,31 @@ again:
 			_close(s3);
 			goto again;
 		}
-		(void)_close(s2);
+		_close(s2);
 		if (s3 < 0) {
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "rcmd: accept: %s\n", strerror(errno));
 			lport = 0;
 			goto bad;
 		}
 		*fd2p = s3;
 		if (aport >= IPPORT_RESERVED || aport < IPPORT_RESERVED / 2) {
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "socket: protocol failure in circuit setup.\n");
 			goto bad2;
 		}
 	}
-	(void)_write(s, locuser, strlen(locuser)+1);
-	(void)_write(s, remuser, strlen(remuser)+1);
-	(void)_write(s, cmd, strlen(cmd)+1);
+	_write(s, locuser, strlen(locuser)+1);
+	_write(s, remuser, strlen(remuser)+1);
+	_write(s, cmd, strlen(cmd)+1);
 	if (_read(s, &c, 1) != 1) {
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "rcmd: %s: %s\n", *ahost, strerror(errno));
 		goto bad2;
 	}
 	if (c != 0) {
 		while (_read(s, &c, 1) == 1) {
-			(void)_write(STDERR_FILENO, &c, 1);
+			_write(STDERR_FILENO, &c, 1);
 			if (c == '\n')
 				break;
 		}
@@ -322,26 +313,24 @@ again:
 	return (s);
 bad2:
 	if (lport)
-		(void)_close(*fd2p);
+		_close(*fd2p);
 bad:
-	(void)_close(s);
+	_close(s);
 	_sigprocmask(SIG_SETMASK, (const sigset_t *)&oldmask, NULL);
 	freeaddrinfo(res);
 	return (-1);
 }
 
 int
-rresvport(port)
-	int *port;
+rresvport(int *port)
 {
 	return rresvport_af(port, AF_INET);
 }
 
 int
-rresvport_af(alport, family)
-	int *alport, family;
+rresvport_af(int *alport, int family)
 {
-	int i, s, len, err;
+	int s;
 	struct sockaddr_storage ss;
 	u_short *sport;
 
@@ -373,13 +362,13 @@ rresvport_af(alport, family)
 	if (_bind(s, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
 		return (s);
 	if (errno != EADDRINUSE) {
-		(void)_close(s);
+		_close(s);
 		return (-1);
 	}
 #endif
 	*sport = 0;
 	if (bindresvport_sa(s, (struct sockaddr *)&ss) == -1) {
-		(void)_close(s);
+		_close(s);
 		return (-1);
 	}
 	*alport = (int)ntohs(*sport);
@@ -390,9 +379,7 @@ int	__check_rhosts_file = 1;
 char	*__rcmd_errstr;
 
 int
-ruserok(rhost, superuser, ruser, luser)
-	const char *rhost, *ruser, *luser;
-	int superuser;
+ruserok(const char *rhost, int superuser, const char *ruser, const char *luser)
 {
 	struct addrinfo hints, *res, *r;
 	int error;
@@ -425,10 +412,8 @@ ruserok(rhost, superuser, ruser, luser)
  * Returns 0 if ok, -1 if not ok.
  */
 int
-iruserok(raddr, superuser, ruser, luser)
-	unsigned long raddr;
-	int superuser;
-	const char *ruser, *luser;
+iruserok(unsigned long raddr, int superuser, const char *ruser,
+	 const char *luser)
 {
 	struct sockaddr_in sin;
 
@@ -446,11 +431,8 @@ iruserok(raddr, superuser, ruser, luser)
  * Returns 0 if ok, -1 if not ok.
  */
 int
-iruserok_sa(ra, rlen, superuser, ruser, luser)
-	const void *ra;
-	int rlen;
-	int superuser;
-	const char *ruser, *luser;
+iruserok_sa(const void *ra, int rlen, int superuser, const char *ruser,
+	    const char *luser)
 {
 	char *cp;
 	struct stat sbuf;
@@ -473,17 +455,17 @@ iruserok_sa(ra, rlen, superuser, ruser, luser)
 again:
 	if (hostf) {
 		if (__ivaliduser_sa(hostf, raddr, rlen, luser, ruser) == 0) {
-			(void)fclose(hostf);
+			fclose(hostf);
 			return (0);
 		}
-		(void)fclose(hostf);
+		fclose(hostf);
 	}
 	if (first == 1 && (__check_rhosts_file || superuser)) {
 		first = 0;
 		if ((pwd = getpwnam(luser)) == NULL)
 			return (-1);
-		(void)strcpy(pbuf, pwd->pw_dir);
-		(void)strcat(pbuf, "/.rhosts");
+		strcpy(pbuf, pwd->pw_dir);
+		strcat(pbuf, "/.rhosts");
 
 		/*
 		 * Change effective uid while opening .rhosts.  If root and
@@ -491,9 +473,9 @@ again:
 		 * are protected read/write owner only.
 		 */
 		uid = geteuid();
-		(void)seteuid(pwd->pw_uid);
+		seteuid(pwd->pw_uid);
 		hostf = fopen(pbuf, "r");
-		(void)seteuid(uid);
+		seteuid(uid);
 
 		if (hostf == NULL)
 			return (-1);
@@ -515,7 +497,7 @@ again:
 		/* If there were any problems, quit. */
 		if (cp) {
 			__rcmd_errstr = cp;
-			(void)fclose(hostf);
+			fclose(hostf);
 			return (-1);
 		}
 		goto again;
@@ -530,10 +512,7 @@ again:
  * Returns 0 if ok, -1 if not ok.
  */
 int
-__ivaliduser(hostf, raddr, luser, ruser)
-	FILE *hostf;
-	u_int32_t raddr;
-	const char *luser, *ruser;
+__ivaliduser(FILE *hostf, u_int32_t raddr, const char *luser, const char *ruser)
 {
 	struct sockaddr_in sin;
 
@@ -551,11 +530,8 @@ __ivaliduser(hostf, raddr, luser, ruser)
  * XXX obsolete API.
  */
 int
-__ivaliduser_af(hostf, raddr, luser, ruser, af, len)
-	FILE *hostf;
-	const void *raddr;
-	const char *luser, *ruser;
-	int af, len;
+__ivaliduser_af(FILE *hostf, const void *raddr, const char *luser,
+		const char *ruser, int af, int len)
 {
 	struct sockaddr *sa = NULL;
 	struct sockaddr_in *sin = NULL;
@@ -597,11 +573,8 @@ __ivaliduser_af(hostf, raddr, luser, ruser, af, len)
  * Returns 0 if ok, -1 if not ok.
  */
 int
-__ivaliduser_sa(hostf, raddr, salen, luser, ruser)
-	FILE *hostf;
-	const struct sockaddr *raddr;
-	socklen_t salen;
-	const char *luser, *ruser;
+__ivaliduser_sa(FILE *hostf, const struct sockaddr *raddr, socklen_t salen,
+		const char *luser, const char *ruser)
 {
 	char *user, *p;
 	int ch;
@@ -609,7 +582,6 @@ __ivaliduser_sa(hostf, raddr, salen, luser, ruser)
 	char hname[MAXHOSTNAMELEN];
 	/* Presumed guilty until proven innocent. */
 	int userok = 0, hostok = 0;
-	int h_error;
 #ifdef YP
 	char *ypdomain;
 
@@ -724,10 +696,7 @@ __ivaliduser_sa(hostf, raddr, salen, luser, ruser)
  * if af == AF_INET6.
  */
 static int
-__icheckhost(raddr, salen, lhost)
-	const struct sockaddr *raddr;
-	socklen_t salen;
-        const char *lhost;
+__icheckhost(const struct sockaddr *raddr, socklen_t salen, const char *lhost)
 {
 	struct sockaddr_in sin;
 	struct sockaddr_in6 *sin6;

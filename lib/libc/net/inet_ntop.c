@@ -14,7 +14,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_ntop.c,v 1.6.2.2 2002/12/16 15:19:35 robert Exp $
- * $DragonFly: src/lib/libc/net/inet_ntop.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/net/inet_ntop.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,11 +44,7 @@ static const char *inet_ntop6 (const u_char *src, char *dst, size_t size);
  *	Paul Vixie, 1996.
  */
 const char *
-inet_ntop(af, src, dst, size)
-	int af;
-	const void *src;
-	char *dst;
-	size_t size;
+inet_ntop(int af, const void *src, char *dst, size_t size)
 {
 	switch (af) {
 	case AF_INET:
@@ -74,10 +70,7 @@ inet_ntop(af, src, dst, size)
  *	Paul Vixie, 1996.
  */
 static const char *
-inet_ntop4(src, dst, size)
-	const u_char *src;
-	char *dst;
-	size_t size;
+inet_ntop4(const u_char *src, char *dst, size_t size)
 {
 	static const char fmt[] = "%u.%u.%u.%u";
 
@@ -96,10 +89,7 @@ inet_ntop4(src, dst, size)
  *	Paul Vixie, 1996.
  */
 static const char *
-inet_ntop6(src, dst, size)
-	const u_char *src;
-	char *dst;
-	size_t size;
+inet_ntop6(const u_char *src, char *dst, size_t size)
 {
 	/*
 	 * Note that int32_t and int16_t need only be "at least" large enough

@@ -52,7 +52,7 @@
  *
  * @(#)inet_addr.c	8.1 (Berkeley) 6/17/93
  * $FreeBSD: src/lib/libc/net/inet_addr.c,v 1.12.2.2 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/inet_addr.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/inet_addr.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -70,8 +70,7 @@
  * The value returned is in network order.
  */
 in_addr_t		/* XXX should be struct in_addr :( */
-inet_addr(cp)
-	const char *cp;
+inet_addr(const char *cp)
 {
 	struct in_addr val;
 
@@ -88,9 +87,7 @@ inet_addr(cp)
  * cannot distinguish between failure and a local broadcast address.
  */
 int
-inet_aton(cp, addr)
-	const char *cp;
-	struct in_addr *addr;
+inet_aton(const char *cp, struct in_addr *addr)
 {
 	u_long parts[4];
 	in_addr_t val;

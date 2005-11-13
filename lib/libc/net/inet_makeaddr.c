@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/inet_makeaddr.c,v 1.2.6.1 2001/04/21 14:53:04 ume Exp $
- * $DragonFly: src/lib/libc/net/inet_makeaddr.c,v 1.3 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/inet_makeaddr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  *
  * @(#)inet_makeaddr.c	8.1 (Berkeley) 6/4/93
  */
@@ -41,8 +41,7 @@
  * building addresses stored in the ifnet structure.
  */
 struct in_addr
-inet_makeaddr(net, host)
-	in_addr_t net, host;
+inet_makeaddr(in_addr_t net, in_addr_t host)
 {
 	in_addr_t addr;
 

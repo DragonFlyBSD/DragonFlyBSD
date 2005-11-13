@@ -29,7 +29,7 @@
  * @(#)res_send.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_send.c,v 8.20 1998/04/06 23:27:51 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_send.c,v 1.31.2.9 2002/04/11 17:30:24 ume Exp $
- * $DragonFly: src/lib/libc/net/res_send.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/res_send.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -122,13 +122,9 @@ static char pbuf[NI_MAXSERV];
 static void Aerror (FILE *, char *, int, struct sockaddr *);
 static void Perror (FILE *, char *, int);
 
-    static void
-    Aerror(file, string, error, address)
-	FILE *file;
-	char *string;
-	int error;
-	struct sockaddr *address;
-    {
+static void
+Aerror(FILE *file, char *string, int error, struct sockaddr *address)
+{
 	int save = errno;
 
 	if (_res.options & RES_DEBUG) {
@@ -142,13 +138,11 @@ static void Perror (FILE *, char *, int);
 			string, abuf, pbuf, strerror(error));
 	}
 	errno = save;
-    }
-    static void
-    Perror(file, string, error)
-	FILE *file;
-	char *string;
-	int error;
-    {
+}
+
+static void
+Perror(FILE *file, char *string, int error)
+{
 	int save = errno;
 
 	if (_res.options & RES_DEBUG) {
@@ -156,20 +150,18 @@ static void Perror (FILE *, char *, int);
 			string, strerror(error));
 	}
 	errno = save;
-    }
+}
 #endif
 
 void
-res_send_setqhook(hook)
-	res_send_qhook hook;
+res_send_setqhook(res_send_qhook hook)
 {
 
 	Qhook = hook;
 }
 
 void
-res_send_setrhook(hook)
-	res_send_rhook hook;
+res_send_setrhook(res_send_rhook hook)
 {
 
 	Rhook = hook;
@@ -181,8 +173,7 @@ static struct sockaddr * get_nsaddr (size_t);
  * pick appropriate nsaddr_list for use.  see res_init() for initialization.
  */
 static struct sockaddr *
-get_nsaddr(n)
-	size_t n;
+get_nsaddr(size_t n)
 {
 
 	if (!_res.nsaddr_list[n].sin_family) {
@@ -212,8 +203,7 @@ get_nsaddr(n)
  *	paul vixie, 29may94
  */
 int
-res_isourserver(inp)
-	const struct sockaddr_in *inp;
+res_isourserver(const struct sockaddr_in *inp)
 {
 	const struct sockaddr_in6 *in6p = (const struct sockaddr_in6 *)inp;
 	const struct sockaddr_in6 *srv6;
@@ -265,10 +255,8 @@ res_isourserver(inp)
  *	paul vixie, 29may94
  */
 int
-res_nameinquery(name, type, class, buf, eom)
-	const char *name;
-	int type, class;
-	const u_char *buf, *eom;
+res_nameinquery(const char *name, int type, int class, const u_char *buf,
+		const u_char *eom)
 {
 	const u_char *cp = buf + HFIXEDSZ;
 	int qdcount = ntohs(((HEADER*)buf)->qdcount);
@@ -305,9 +293,8 @@ res_nameinquery(name, type, class, buf, eom)
  *	paul vixie, 29may94
  */
 int
-res_queriesmatch(buf1, eom1, buf2, eom2)
-	const u_char *buf1, *eom1;
-	const u_char *buf2, *eom2;
+res_queriesmatch(const u_char *buf1, const u_char *eom1,
+		 const u_char *buf2, const u_char *eom2)
 {
 	const u_char *cp = buf1 + HFIXEDSZ;
 	int qdcount = ntohs(((HEADER*)buf1)->qdcount);
@@ -344,11 +331,7 @@ res_queriesmatch(buf1, eom1, buf2, eom2)
 }
 
 int
-res_send(buf, buflen, ans, anssiz)
-	const u_char *buf;
-	int buflen;
-	u_char *ans;
-	int anssiz;
+res_send(const u_char *buf, int buflen, u_char *ans, int anssiz)
 {
 	HEADER *hp = (HEADER *) buf;
 	HEADER *anhp = (HEADER *) ans;
@@ -674,16 +657,15 @@ read_len:
 					no_addr.sin_family = AF_INET;
 					no_addr.sin_addr.s_addr = INADDR_ANY;
 					no_addr.sin_port = 0;
-					(void)_connect(s,
-						       (struct sockaddr *)
-						        &no_addr,
-						       sizeof no_addr);
+					_connect(s,
+						 (struct sockaddr *)&no_addr,
+						 sizeof(no_addr));
 #else
 					int s1 = _socket(af, SOCK_DGRAM,0);
 					if (s1 < 0)
 						goto bad_dg_sock;
-					(void)_dup2(s1, s);
-					(void)_close(s1);
+					_dup2(s1, s);
+					_close(s1);
 					Dprint(_res.options & RES_DEBUG,
 						(stdout, ";; new DG socket\n"))
 #endif /* CAN_RECONNECT */
@@ -713,7 +695,7 @@ read_len:
 				timeout.tv_sec = 1;
 			timeout.tv_usec = 0;
 			TIMEVAL_TO_TIMESPEC(&timeout, &ts);
-			(void) gettimeofday(&ctv, NULL);
+			gettimeofday(&ctv, NULL);
 			timeradd(&timeout, &ctv, &timeout);
     wait:
 			if (s < 0) {
@@ -727,7 +709,7 @@ read_len:
 			n = _kevent(kq, &kv, 1, &kv, 1, &ts);
 			if (n < 0) {
 				if (errno == EINTR) {
-					(void) gettimeofday(&ctv, NULL);
+					gettimeofday(&ctv, NULL);
 					if (timercmp(&ctv, &timeout, <)) {
 						timersub(&timeout, &ctv, &ctv);
 						TIMEVAL_TO_TIMESPEC(&ctv, &ts);
@@ -912,10 +894,10 @@ read_len:
  * This routine is not expected to be user visible.
  */
 void
-res_close()
+res_close(void)
 {
 	if (s >= 0) {
-		(void)_close(s);
+		_close(s);
 		s = -1;
 		connected = 0;
 		vc = 0;

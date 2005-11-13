@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/ns_ttl.c,v 1.2 1999/08/28 00:00:15 peter Exp $
- * $DragonFly: src/lib/libc/net/ns_ttl.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/ns_ttl.c,v 1.3 2005/11/13 02:04:47 swildner Exp $
  */
 
 /* Import. */
@@ -43,7 +43,7 @@ int
 ns_format_ttl(u_long src, char *dst, size_t dstlen) {
 	char *odst = dst;
 	int secs, mins, hours, days, weeks, x;
-	char tmp[50], *p;
+	char *p;
 
 	secs = src % 60;   src /= 60;
 	mins = src % 60;   src /= 60;

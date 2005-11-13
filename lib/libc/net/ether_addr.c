@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/lib/libc/net/ether_addr.c,v 1.10.2.5 2002/04/08 08:01:50 ru Exp $
- * $DragonFly: src/lib/libc/net/ether_addr.c,v 1.3 2005/10/30 23:00:56 swildner Exp $
+ * $DragonFly: src/lib/libc/net/ether_addr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <stdio.h>
@@ -62,10 +62,7 @@
  * and separate it into its component parts.
  */
 int
-ether_line(l, e, hostname)
-	const char *l;
-	struct ether_addr *e;
-	char *hostname;
+ether_line(const char *l, struct ether_addr *e, char *hostname)
 {
         int i, o[6];
 
@@ -84,9 +81,8 @@ ether_line(l, e, hostname)
  * Convert an ASCII representation of an ethernet address to
  * binary form.
  */
-struct
-ether_addr *ether_aton(a)
-	const char *a;
+struct ether_addr *
+ether_aton(const char *a)
 {
         int i;
 	static struct ether_addr o;
@@ -112,8 +108,7 @@ ether_addr *ether_aton(a)
  * an ASCII string.
  */
 char *
-ether_ntoa(n)
-	const struct ether_addr *n;
+ether_ntoa(const struct ether_addr *n)
 {
         int i;
 	static char a[18];
@@ -131,9 +126,7 @@ ether_ntoa(n)
  * NIS/YP.
  */
 int
-ether_ntohost(hostname, e)
-	char *hostname;
-	const struct ether_addr *e;
+ether_ntohost(char *hostname, const struct ether_addr *e)
 {
 	FILE *fp;
 	char buf[BUFSIZ + 2];
@@ -184,9 +177,7 @@ ether_ntohost(hostname, e)
  * NIS/YP.
  */
 int
-ether_hostton(hostname, e)
-	const char *hostname;
-	struct ether_addr *e;
+ether_hostton(const char *hostname, struct ether_addr *e)
 {
 	FILE *fp;
 	char buf[BUFSIZ + 2];

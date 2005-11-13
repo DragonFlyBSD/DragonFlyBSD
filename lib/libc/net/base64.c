@@ -42,7 +42,7 @@
 
 /*
  * $FreeBSD: src/lib/libc/net/base64.c,v 1.4 1999/11/04 04:30:43 ache Exp $
- * $DragonFly: src/lib/libc/net/base64.c,v 1.3 2005/09/19 09:25:15 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/base64.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -129,7 +129,8 @@ static const char Pad64 = '=';
    */
 
 int
-b64_ntop(u_char const *src, size_t srclength, char *target, size_t targsize) {
+b64_ntop(u_char const *src, size_t srclength, char *target, size_t targsize)
+{
 	size_t datalength = 0;
 	u_char input[3];
 	u_char output[4];
@@ -195,10 +196,7 @@ b64_ntop(u_char const *src, size_t srclength, char *target, size_t targsize) {
  */
 
 int
-b64_pton(src, target, targsize)
-	char const *src;
-	u_char *target;
-	size_t targsize;
+b64_pton(char const *src, u_char *target, size_t targsize)
 {
 	int tarindex, state, ch;
 	char *pos;

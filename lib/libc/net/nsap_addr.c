@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/nsap_addr.c,v 1.7 1999/08/28 00:00:15 peter Exp $
- * $DragonFly: src/lib/libc/net/nsap_addr.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/nsap_addr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -28,17 +28,13 @@
 #include <resolv.h>
 
 static char
-xtob(c)
-	int c;
+xtob(int c)
 {
 	return (c - (((c >= '0') && (c <= '9')) ? '0' : '7'));
 }
 
 u_int
-inet_nsap_addr(ascii, binary, maxlen)
-	const char *ascii;
-	u_char *binary;
-	int maxlen;
+inet_nsap_addr(const char *ascii, u_char *binary, int maxlen)
 {
 	u_char c, nib;
 	u_int len = 0;
@@ -71,10 +67,7 @@ inet_nsap_addr(ascii, binary, maxlen)
 }
 
 char *
-inet_nsap_ntoa(binlen, binary, ascii)
-	int binlen;
-	const u_char *binary;
-	char *ascii;
+inet_nsap_ntoa(int binlen, const u_char *binary, char *ascii)
 {
 	int nib;
 	int i;

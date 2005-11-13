@@ -50,7 +50,7 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/map_v4v6.c,v 1.5.2.1 2001/03/05 10:47:08 obrien Exp $
- * $DragonFly: src/lib/libc/net/map_v4v6.c,v 1.3 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/map_v4v6.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -73,9 +73,7 @@ typedef union {
 } align;
 
 void
-_map_v4v6_address(src, dst)
-	const char *src;
-	char *dst;
+_map_v4v6_address(const char *src, char *dst)
 {
 	u_char *p = (u_char *)dst;
 	char tmp[INADDRSZ];
@@ -93,10 +91,7 @@ _map_v4v6_address(src, dst)
 }
 
 void
-_map_v4v6_hostent(hp, bpp, lenp)
-	struct hostent *hp;
-	char **bpp;
-	int *lenp;
+_map_v4v6_hostent(struct hostent *hp, char **bpp, int *lenp)
 {
 	char **ap;
 

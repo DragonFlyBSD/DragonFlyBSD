@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$ANA: ascii2addr.c,v 1.2 1996/06/13 18:46:02 wollman Exp $
+ * $DragonFly: src/lib/libc/net/ascii2addr.c,v 1.2 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -40,10 +41,7 @@
 #include <arpa/inet.h>
 
 int
-ascii2addr(af, ascii, result)
-	int af;
-	const char *ascii;
-	void *result;
+ascii2addr(int af, const char *ascii, void *result)
 {
 	struct in_addr *ina;
 	char strbuf[4*sizeof("123")]; /* long enough for V4 only */

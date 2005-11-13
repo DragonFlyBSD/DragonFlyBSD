@@ -16,7 +16,7 @@
  *
  * $From Id: inet_net_pton.c,v 1.8 1996/11/21 10:28:12 vixie Exp $
  * $FreeBSD: src/lib/libc/net/inet_net_pton.c,v 1.6 1999/08/28 00:00:10 peter Exp $
- * $DragonFly: src/lib/libc/net/inet_net_pton.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/net/inet_net_pton.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -54,11 +54,7 @@ static int	inet_net_pton_ipv4 (const char *src, u_char *dst,
  *	Paul Vixie (ISC), June 1996
  */
 int
-inet_net_pton(af, src, dst, size)
-	int af;
-	const char *src;
-	void *dst;
-	size_t size;
+inet_net_pton(int af, const char *src, void *dst, size_t size)
 {
 	switch (af) {
 	case AF_INET:
@@ -86,10 +82,7 @@ inet_net_pton(af, src, dst, size)
  *	Paul Vixie (ISC), June 1996
  */
 static int
-inet_net_pton_ipv4(src, dst, size)
-	const char *src;
-	u_char *dst;
-	size_t size;
+inet_net_pton_ipv4(const char *src, u_char *dst, size_t size)
 {
 	static const char
 		xdigits[] = "0123456789abcdef",

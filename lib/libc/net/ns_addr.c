@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/ns_addr.c,v 1.3.6.2 2001/07/04 22:34:51 kris Exp $
- * $DragonFly: src/lib/libc/net/ns_addr.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/ns_addr.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  *
  * @(#)ns_addr.c	8.1 (Berkeley) 6/7/93
  */
@@ -45,14 +45,13 @@ static struct ns_addr addr, zero_addr;
 static void Field(), cvtbase();
 
 struct ns_addr
-ns_addr(name)
-	const char *name;
+ns_addr(const char *name)
 {
 	char separator;
 	char *hostname, *socketname, *cp;
 	char buf[50];
 
-	(void)strncpy(buf, name, sizeof(buf) - 1);
+	strncpy(buf, name, sizeof(buf) - 1);
 	buf[sizeof(buf) - 1] = '\0';
 
 	/*
@@ -92,10 +91,7 @@ ns_addr(name)
 }
 
 static void
-Field(buf, out, len)
-	char *buf;
-	u_char *out;
-	int len;
+Field(char *buf, u_char *out, int len)
 {
 	char *bp = buf;
 	int i, ibase, base16 = 0, base10 = 0, clen = 0;
@@ -186,23 +182,18 @@ Field(buf, out, len)
 	hp = hb + i - 1;
 
 	while (hp > hb) {
-		(void)sscanf(bp, fmt, hp);
+		sscanf(bp, fmt, hp);
 		bp[0] = 0;
 		hp--;
 		bp -= 3;
 	}
-	(void)sscanf(buf, fmt, hp);
+	sscanf(buf, fmt, hp);
 	cvtbase((long)ibase, 256, hb, i, out, len);
 }
 
 static void
-cvtbase(oldbase,newbase,input,inlen,result,reslen)
-	long oldbase;
-	int newbase;
-	int input[];
-	int inlen;
-	unsigned char result[];
-	int reslen;
+cvtbase(long oldbase, int newbase, int input[], int inlen,
+	unsigned char result[], int reslen)
 {
 	int d, e;
 	long sum;

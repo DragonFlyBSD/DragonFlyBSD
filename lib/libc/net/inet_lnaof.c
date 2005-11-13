@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/inet_lnaof.c,v 1.2.6.1 2001/04/21 14:53:04 ume Exp $
- * $DragonFly: src/lib/libc/net/inet_lnaof.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/inet_lnaof.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  *
  * @(#)inet_lnaof.c	8.1 (Berkeley) 6/4/93
  */
@@ -42,8 +42,7 @@
  * number formats.
  */
 in_addr_t
-inet_lnaof(in)
-	struct in_addr in;
+inet_lnaof(struct in_addr in)
 {
 	in_addr_t i = ntohl(in.s_addr);
 

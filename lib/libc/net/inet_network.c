@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/inet_network.c,v 1.6.2.1 2001/04/21 14:53:04 ume Exp $
- * $DragonFly: src/lib/libc/net/inet_network.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/inet_network.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  *
  * @(#)inet_network.c	8.1 (Berkeley) 6/4/93
  */
@@ -43,8 +43,7 @@
  * network numbers.
  */
 in_addr_t
-inet_network(cp)
-	const char *cp;
+inet_network(const char *cp)
 {
 	in_addr_t val, base, i, n;
 	char c;

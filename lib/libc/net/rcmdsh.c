@@ -28,7 +28,7 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.3.2.2 2002/04/22 17:38:53 ume Exp $
- * $DragonFly: src/lib/libc/net/rcmdsh.c,v 1.3 2005/09/19 09:44:30 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/rcmdsh.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -58,10 +58,8 @@
  * avoid having to be root.  Note that rport is ignored.
  */
 int
-rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
-	char **ahost;
-	int rport;
-	const char *locuser, *remuser, *cmd, *rshprog;
+rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
+       const char *cmd, const char *rshprog)
 {
 	struct addrinfo hints, *res;
 	int sp[2], error;
@@ -77,7 +75,7 @@ rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
 
 	/* locuser must exist on this host. */
 	if ((pw = getpwnam(locuser)) == NULL) {
-		(void)fprintf(stderr, "rcmdsh: unknown user: %s\n", locuser);
+		fprintf(stderr, "rcmdsh: unknown user: %s\n", locuser);
 		return (-1);
 	}
 
@@ -87,7 +85,7 @@ rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
 		hints.ai_flags = AI_CANONNAME;
 		hints.ai_family = PF_UNSPEC;
 		hints.ai_socktype = SOCK_STREAM;
-		(void)snprintf(num, sizeof(num), "%d", ntohs(rport));
+		snprintf(num, sizeof(num), "%d", ntohs(rport));
 		error = getaddrinfo(*ahost, num, &hints, &res);
 		if (error) {
 			fprintf(stderr, "rcmdsh: getaddrinfo: %s\n",
@@ -116,7 +114,7 @@ rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
 		/*
 		 * Child.  We use sp[1] to be stdin/stdout, and close sp[0].
 		 */
-		(void)close(sp[0]);
+		close(sp[0]);
 		if (dup2(sp[1], 0) == -1 || dup2(0, 1) == -1) {
 			perror("rcmdsh: dup2 failed");
 			_exit(255);
@@ -132,7 +130,7 @@ rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
 
 		/* In grandchild here.  Become local user for rshprog. */
 		if (setuid(pw->pw_uid) == -1) {
-			(void)fprintf(stderr, "rcmdsh: setuid(%u): %s\n",
+			fprintf(stderr, "rcmdsh: setuid(%u): %s\n",
 			    pw->pw_uid, strerror(errno));
 			_exit(255);
 		}
@@ -155,14 +153,14 @@ rcmdsh(ahost, rport, locuser, remuser, cmd, rshprog)
 			execlp(rshprog, p ? p + 1 : rshprog, *ahost, "-l",
 			    remuser, cmd, (char *)NULL);
 		}
-		(void)fprintf(stderr, "rcmdsh: execlp %s failed: %s\n",
+		fprintf(stderr, "rcmdsh: execlp %s failed: %s\n",
 		    rshprog, strerror(errno));
 		_exit(255);
 	} else {
 		/* Parent. close sp[1], return sp[0]. */
-		(void)close(sp[1]);
+		close(sp[1]);
 		/* Reap child. */
-		(void)wait(NULL);
+		wait(NULL);
 		return (sp[0]);
 	}
 	/* NOTREACHED */

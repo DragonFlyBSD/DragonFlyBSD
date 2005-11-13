@@ -48,7 +48,7 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/gethostbyht.c,v 1.12 1999/08/28 00:00:05 peter Exp $
- * $DragonFly: src/lib/libc/net/gethostbyht.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/gethostbyht.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -73,8 +73,7 @@ static char *h_addr_ptrs[2];
 static int stayopen = 0;
 
 void
-_sethosthtent(f)
-	int f;
+_sethosthtent(int f)
 {
 	if (!hostf)
 		hostf = fopen(_PATH_HOSTS, "r" );
@@ -84,16 +83,16 @@ _sethosthtent(f)
 }
 
 void
-_endhosthtent()
+_endhosthtent(void)
 {
 	if (hostf && !stayopen) {
-		(void) fclose(hostf);
+		fclose(hostf);
 		hostf = NULL;
 	}
 }
 
 struct hostent *
-gethostent()
+gethostent(void)
 {
 	char *p;
 	char *cp, **q;
@@ -158,9 +157,7 @@ gethostent()
 }
 
 struct hostent *
-_gethostbyhtname(name, af)
-	const char *name;
-	int af;
+_gethostbyhtname(const char *name, int af)
 {
 	struct hostent *p;
 	char **cp;
@@ -181,9 +178,7 @@ found:
 }
 
 struct hostent *
-_gethostbyhtaddr(addr, len, af)
-	const char *addr;
-	int len, af;
+_gethostbyhtaddr(const char *addr, int len, int af)
 {
 	struct hostent *p;
 

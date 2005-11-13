@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/getnetbynis.c,v 1.11 1999/08/28 00:00:07 peter Exp $
- * $DragonFly: src/lib/libc/net/getnetbynis.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/getnetbynis.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -51,10 +51,7 @@ static char *host_aliases[MAXALIASES];
 #endif /* YP */
 
 static struct netent *
-_getnetbynis(name, map, af)
-	const char *name;
-	char *map;
-	int af;
+_getnetbynis(const char *name, char *map, int af)
 {
 #ifdef YP
 	char *cp, **q;
@@ -121,16 +118,13 @@ _getnetbynis(name, map, af)
 }
 
 struct netent *
-_getnetbynisname(name)
-	const char *name;
+_getnetbynisname(const char *name)
 {
 	return _getnetbynis(name, "networks.byname", AF_INET);
 }
 
 struct netent *
-_getnetbynisaddr(addr, af)
-	unsigned long addr;
-	int af;
+_getnetbynisaddr(unsigned long addr, int af)
 {
 	char *str, *cp;
 	unsigned long net2;

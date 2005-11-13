@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/name6.c,v 1.8 2005/09/19 09:34:53 asmodai Exp $	*/
+/*	$DragonFly: src/lib/libc/net/name6.c,v 1.9 2005/11/13 02:04:47 swildner Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*
@@ -1027,13 +1027,8 @@ static struct hostent *getanswer (const querybuf *, int, const char *,
  * we don't need to take care about sorting, nor IPv4 mapped address here.
  */
 static struct hostent *
-getanswer(answer, anslen, qname, qtype, template, errp)
-	const querybuf *answer;
-	int anslen;
-	const char *qname;
-	int qtype;
-	struct hostent *template;
-	int *errp;
+getanswer(const querybuf *answer, int anslen, const char *qname, int qtype,
+	  struct hostent *template, int *errp)
 {
 	const HEADER *hp;
 	const u_char *cp;
@@ -1760,8 +1755,8 @@ _icmp_fqdn_query(const struct in6_addr *addr, int ifindex)
 
 	if ((s = _socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0)
 		return NULL;
-	(void)_setsockopt(s, IPPROTO_ICMPV6, ICMP6_FILTER,
-			 (char *)&filter, sizeof(filter));
+	_setsockopt(s, IPPROTO_ICMPV6, ICMP6_FILTER,
+		    (char *)&filter, sizeof(filter));
 	cc = _sendmsg(s, &msg, 0);
 	if (cc < 0) {
 		_close(s);

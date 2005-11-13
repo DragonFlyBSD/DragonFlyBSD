@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservbyname.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/getservbyname.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/getservbyname.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <netdb.h>
@@ -36,8 +36,7 @@
 extern int _serv_stayopen;
 
 struct servent *
-getservbyname(name, proto)
-	const char *name, *proto;
+getservbyname(const char *name, const char *proto)
 {
 	struct servent *p;
 	char **cp;

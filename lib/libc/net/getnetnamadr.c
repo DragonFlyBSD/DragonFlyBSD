@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/getnetnamadr.c,v 1.12.2.1 2001/03/05 10:47:08 obrien Exp $
- * $DragonFly: src/lib/libc/net/getnetnamadr.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/net/getnetnamadr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,8 @@ static enum service_type service_order[SERVICE_MAX + 1];
 static int service_done = 0;
 
 static enum service_type
-get_service_name(const char *name) {
+get_service_name(const char *name)
+{
 	int i;
 	for(i = 0; service_names[i].type != SERVICE_NONE; i++) {
 		if(!strcasecmp(name, service_names[i].name)) {
@@ -78,7 +79,7 @@ get_service_name(const char *name) {
 }
 
 static void
-init_services()
+init_services(void)
 {
 	char *cp, *p, buf[BUFSIZ];
 	int cc = 0;
@@ -143,9 +144,7 @@ getnetbyname(const char *name)
 }
 
 struct netent *
-getnetbyaddr(addr, af)
-	u_long addr;
-	int af;
+getnetbyaddr(u_long addr, int af)
 {
 	struct netent *hp = 0;
 	int nserv = 0;
@@ -173,15 +172,14 @@ getnetbyaddr(addr, af)
 }
 
 void
-setnetent(stayopen)
-	int stayopen;
+setnetent(int stayopen)
 {
 	_setnethtent(stayopen);
 	_setnetdnsent(stayopen);
 }
 
 void
-endnetent()
+endnetent(void)
 {
 	_endnethtent();
 	_endnetdnsent();

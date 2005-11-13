@@ -28,7 +28,7 @@
  *
  * @(#)res_debug.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/res_debug.c,v 1.18.2.1 2001/06/15 22:08:28 ume Exp $
- * $DragonFly: src/lib/libc/net/res_debug.c,v 1.3 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/res_debug.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -121,7 +121,8 @@ extern const char *_res_sectioncodes[];
  * Print the current options.
  */
 void
-fp_resstat(struct __res_state *statp, FILE *file) {
+fp_resstat(struct __res_state *statp, FILE *file)
+{
 	u_long mask;
 
 	fprintf(file, ";; res options:");
@@ -134,7 +135,8 @@ fp_resstat(struct __res_state *statp, FILE *file) {
 }
 
 static void
-do_section(ns_msg *handle, ns_sect section, int pflag, FILE *file) {
+do_section(ns_msg *handle, ns_sect section, int pflag, FILE *file)
+{
 	int n, sflag, rrnum;
 	char buf[2048];	/* XXX need to malloc */
 	ns_opcode opcode;
@@ -183,12 +185,14 @@ do_section(ns_msg *handle, ns_sect section, int pflag, FILE *file) {
 }
 
 void
-p_query(const u_char *msg) {
+p_query(const u_char *msg)
+{
 	fp_query(msg, stdout);
 }
 
 void
-fp_query(const u_char *msg, FILE *file) {
+fp_query(const u_char *msg, FILE *file)
+{
 	fp_nquery(msg, PACKETSZ, file);
 }
 
@@ -197,9 +201,10 @@ fp_query(const u_char *msg, FILE *file) {
  * This is intended to be primarily a debugging routine.
  */
 void
-fp_nquery(const u_char *msg, int len, FILE *file) {
+fp_nquery(const u_char *msg, int len, FILE *file)
+{
 	ns_msg handle;
-	int n, qdcount, ancount, nscount, arcount;
+	int qdcount, ancount, nscount, arcount;
 	u_int opcode, rcode, id;
 
 	if ((_res.options & RES_INIT) == 0 && res_init() == -1)
@@ -272,7 +277,8 @@ fp_nquery(const u_char *msg, int len, FILE *file) {
 }
 
 const u_char *
-p_cdnname(const u_char *cp, const u_char *msg, int len, FILE *file) {
+p_cdnname(const u_char *cp, const u_char *msg, int len, FILE *file)
+{
 	char name[MAXDNAME];
 	int n;
 
@@ -286,7 +292,8 @@ p_cdnname(const u_char *cp, const u_char *msg, int len, FILE *file) {
 }
 
 const u_char *
-p_cdname(const u_char *cp, const u_char *msg, FILE *file) {
+p_cdname(const u_char *cp, const u_char *msg, FILE *file)
+{
 	return (p_cdnname(cp, msg, PACKETSZ, file));
 }
 
@@ -294,11 +301,8 @@ p_cdname(const u_char *cp, const u_char *msg, FILE *file) {
    length supplied).  */
 
 const u_char *
-p_fqnname(cp, msg, msglen, name, namelen)
-	const u_char *cp, *msg;
-	int msglen;
-	char *name;
-	int namelen;
+p_fqnname(const u_char *cp, const u_char *msg, int msglen, char *name,
+	  int namelen)
 {
 	int n, newlen;
 
@@ -317,7 +321,8 @@ p_fqnname(cp, msg, msglen, name, namelen)
 /* XXX:	the rest of these functions need to become length-limited, too. */
 
 const u_char *
-p_fqname(const u_char *cp, const u_char *msg, FILE *file) {
+p_fqname(const u_char *cp, const u_char *msg, FILE *file)
+{
 	char name[MAXDNAME];
 	const u_char *n;
 
@@ -412,8 +417,9 @@ const struct res_sym __p_type_syms[] = {
 };
 
 int
-sym_ston(const struct res_sym *syms, const char *name, int *success) {
-	for ((void)NULL; syms->name != 0; syms++) {
+sym_ston(const struct res_sym *syms, const char *name, int *success)
+{
+	for (; syms->name != 0; syms++) {
 		if (strcasecmp (name, syms->name) == 0) {
 			if (success)
 				*success = 1;
@@ -426,10 +432,11 @@ sym_ston(const struct res_sym *syms, const char *name, int *success) {
 }
 
 const char *
-sym_ntos(const struct res_sym *syms, int number, int *success) {
+sym_ntos(const struct res_sym *syms, int number, int *success)
+{
 	static char unname[20];
 
-	for ((void)NULL; syms->name != 0; syms++) {
+	for (; syms->name != 0; syms++) {
 		if (number == syms->number) {
 			if (success)
 				*success = 1;
@@ -444,10 +451,11 @@ sym_ntos(const struct res_sym *syms, int number, int *success) {
 }
 
 const char *
-sym_ntop(const struct res_sym *syms, int number, int *success) {
+sym_ntop(const struct res_sym *syms, int number, int *success)
+{
 	static char unname[20];
 
-	for ((void)NULL; syms->name != 0; syms++) {
+	for (; syms->name != 0; syms++) {
 		if (number == syms->number) {
 			if (success)
 				*success = 1;
@@ -464,7 +472,8 @@ sym_ntop(const struct res_sym *syms, int number, int *success) {
  * Return a string for the type.
  */
 const char *
-p_type(int type) {
+p_type(int type)
+{
 	return (sym_ntos(__p_type_syms, type, (int *)0));
 }
 
@@ -472,7 +481,8 @@ p_type(int type) {
  * Return a string for the type.
  */
 const char *
-p_section(int section, int opcode) {
+p_section(int section, int opcode)
+{
 	const struct res_sym *symbols;
 
 	switch (opcode) {
@@ -490,7 +500,8 @@ p_section(int section, int opcode) {
  * Return a mnemonic for class.
  */
 const char *
-p_class(int class) {
+p_class(int class)
+{
 	return (sym_ntos(__p_class_syms, class, (int *)0));
 }
 
@@ -547,8 +558,7 @@ static unsigned int poweroften[10] = {1, 10, 100, 1000, 10000, 100000,
 
 /* takes an XeY precision/size value, returns a string representation. */
 static const char *
-precsize_ntoa(prec)
-	u_int8_t prec;
+precsize_ntoa(u_int8_t prec)
 {
 	static char retbuf[sizeof "90000000.00"];
 	unsigned long val;
@@ -559,14 +569,13 @@ precsize_ntoa(prec)
 
 	val = mantissa * poweroften[exponent];
 
-	(void) sprintf(retbuf, "%ld.%.2ld", val/100, val%100);
+	sprintf(retbuf, "%ld.%.2ld", val/100, val%100);
 	return (retbuf);
 }
 
 /* converts ascii size/precision X * 10**Y(cm) to 0xXY.  moves pointer. */
 static u_int8_t
-precsize_aton(strptr)
-	char **strptr;
+precsize_aton(char **strptr)
 {
 	unsigned int mval = 0, cmval = 0;
 	u_int8_t retval = 0;
@@ -607,9 +616,7 @@ precsize_aton(strptr)
 
 /* converts ascii lat/lon to unsigned encoded 32-bit number.  moves pointer. */
 static u_int32_t
-latlon2ul(latlonstrptr,which)
-	char **latlonstrptr;
-	int *which;
+latlon2ul(char **latlonstrptr, int *which)
 {
 	char *cp;
 	u_int32_t retval;
@@ -706,9 +713,7 @@ latlon2ul(latlonstrptr,which)
 /* converts a zone file representation in a string to an RDATA on-the-wire
  * representation. */
 int
-loc_aton(ascii, binary)
-	const char *ascii;
-	u_char *binary;
+loc_aton(const char *ascii, u_char *binary)
 {
 	const char *cp, *maxcp;
 	u_char *bcp;
@@ -817,9 +822,7 @@ loc_aton(ascii, binary)
 
 /* takes an on-the-wire LOC RR and formats it in a human readable format. */
 const char *
-loc_ntoa(binary, ascii)
-	const u_char *binary;
-	char *ascii;
+loc_ntoa(const u_char *binary, char *ascii)
 {
 	static char *error = "?";
 	const u_char *cp = binary;
@@ -840,7 +843,7 @@ loc_ntoa(binary, ascii)
 	versionval = *cp++;
 
 	if (versionval) {
-		(void) sprintf(ascii, "; error: unknown LOC RR version");
+		sprintf(ascii, "; error: unknown LOC RR version");
 		return (ascii);
 	}
 
@@ -921,7 +924,8 @@ loc_ntoa(binary, ascii)
 
 /* Return the number of DNS hierarchy levels in the name. */
 int
-dn_count_labels(const char *name) {
+dn_count_labels(const char *name)
+{
 	int i, len, count;
 
 	len = strlen(name);
@@ -950,7 +954,8 @@ dn_count_labels(const char *name) {
  * SIG records are required to be printed like this, by the Secure DNS RFC.
  */
 char *
-p_secstodate (u_long secs) {
+p_secstodate (u_long secs)
+{
 	static char output[15];		/* YYYYMMDDHHMMSS and null */
 	time_t clock = secs;
 	struct tm *time;

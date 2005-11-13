@@ -28,7 +28,7 @@
  *
  * @(#)herror.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/herror.c,v 1.8 1999/08/28 00:00:09 peter Exp $
- * $DragonFly: src/lib/libc/net/herror.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/herror.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 /*
@@ -72,8 +72,7 @@ int	h_errno;
  *	print the error indicated by the h_errno value.
  */
 void
-herror(s)
-	const char *s;
+herror(const char *s)
 {
 	struct iovec iov[4];
 	struct iovec *v = iov;
@@ -95,8 +94,7 @@ herror(s)
 }
 
 const char *
-hstrerror(err)
-	int err;
+hstrerror(int err)
 {
 	if (err < 0)
 		return ("Resolver internal error");

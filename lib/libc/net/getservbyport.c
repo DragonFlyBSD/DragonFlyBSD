@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservbyport.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/getservbyport.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/getservbyport.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <netdb.h>
@@ -36,9 +36,7 @@
 extern int _serv_stayopen;
 
 struct servent *
-getservbyport(port, proto)
-	int port;
-	const char *proto;
+getservbyport(int port, const char *proto)
 {
 	struct servent *p;
 

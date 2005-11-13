@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/ns_name.c,v 1.2 1999/08/28 00:00:14 peter Exp $
- * $DragonFly: src/lib/libc/net/ns_name.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/ns_name.c,v 1.3 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -78,7 +78,7 @@ ns_name_ntop(const u_char *src, char *dst, size_t dstsiz) {
 			errno = EMSGSIZE;
 			return (-1);
 		}
-		for ((void)NULL; n > 0; n--) {
+		for (; n > 0; n--) {
 			c = *cp++;
 			if (special(c)) {
 				if (dn + 1 >= eom) {
@@ -243,7 +243,7 @@ ns_name_unpack(const u_char *msg, const u_char *eom, const u_char *src,
 {
 	const u_char *srcp, *dstlim;
 	u_char *dstp;
-	int n, c, len, checked;
+	int n, len, checked;
 
 	len = -1;
 	checked = 0;
@@ -339,7 +339,7 @@ ns_name_pack(const u_char *src, u_char *dst, int dstsiz,
 	if (dnptrs != NULL) {
 		if ((msg = *dnptrs++) != NULL) {
 			for (cpp = dnptrs; *cpp != NULL; cpp++)
-				(void)NULL;
+				;
 			lpp = cpp;	/* end of list to search */
 		}
 	} else
@@ -566,7 +566,7 @@ dn_find(const u_char *domain, const u_char *msg,
 			case 0:			/* normal case, n == len */
 				if (n != *dn++)
 					goto next;
-				for ((void)NULL; n > 0; n--)
+				for (; n > 0; n--)
 					if (mklower(*dn++) != mklower(*cp++))
 						goto next;
 				/* Is next root for both ? */

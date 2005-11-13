@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.5 2005/02/02 15:10:55 hrs Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.6 2005/11/13 02:04:47 swildner Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -326,8 +326,7 @@ do { \
 	((x) == (y) || (/*CONSTCOND*/(w) && ((x) == ANY || (y) == ANY)))
 
 char *
-gai_strerror(ecode)
-	int ecode;
+gai_strerror(int ecode)
 {
 	if (ecode < 0 || ecode > EAI_MAX)
 		ecode = EAI_MAX;
@@ -335,8 +334,7 @@ gai_strerror(ecode)
 }
 
 void
-freeaddrinfo(ai)
-	struct addrinfo *ai;
+freeaddrinfo(struct addrinfo *ai)
 {
 	struct addrinfo *next;
 
@@ -351,8 +349,7 @@ freeaddrinfo(ai)
 }
 
 static int
-str_isnumber(p)
-	const char *p;
+str_isnumber(const char *p)
 {
 	char *ep;
 
@@ -360,7 +357,7 @@ str_isnumber(p)
 		return NO;
 	ep = NULL;
 	errno = 0;
-	(void)strtoul(p, &ep, 10);
+	strtoul(p, &ep, 10);
 	if (errno == 0 && ep && *ep == '\0')
 		return YES;
 	else
@@ -368,10 +365,8 @@ str_isnumber(p)
 }
 
 int
-getaddrinfo(hostname, servname, hints, res)
-	const char *hostname, *servname;
-	const struct addrinfo *hints;
-	struct addrinfo **res;
+getaddrinfo(const char *hostname, const char *servname,
+	    const struct addrinfo *hints, struct addrinfo **res)
 {
 	struct addrinfo sentinel;
 	struct addrinfo *cur;
@@ -668,11 +663,8 @@ _hostconf_init(void)
  * FQDN hostname, DNS lookup
  */
 static int
-explore_fqdn(pai, hostname, servname, res)
-	const struct addrinfo *pai;
-	const char *hostname;
-	const char *servname;
-	struct addrinfo **res;
+explore_fqdn(const struct addrinfo *pai, const char *hostname,
+	     const char *servname, struct addrinfo **res)
 {
 	struct addrinfo *result;
 	struct addrinfo *cur;
@@ -722,10 +714,8 @@ free:
  * non-passive socket -> localhost (127.0.0.1 or ::1)
  */
 static int
-explore_null(pai, servname, res)
-	const struct addrinfo *pai;
-	const char *servname;
-	struct addrinfo **res;
+explore_null(const struct addrinfo *pai, const char *servname,
+	     struct addrinfo **res)
 {
 	int s;
 	const struct afd *afd;
@@ -786,11 +776,8 @@ free:
  * numeric hostname
  */
 static int
-explore_numeric(pai, hostname, servname, res)
-	const struct addrinfo *pai;
-	const char *hostname;
-	const char *servname;
-	struct addrinfo **res;
+explore_numeric(const struct addrinfo *pai, const char *hostname,
+		const char *servname, struct addrinfo **res)
 {
 	const struct afd *afd;
 	struct addrinfo *cur;
@@ -855,11 +842,8 @@ bad:
  * numeric hostname with scope
  */
 static int
-explore_numeric_scope(pai, hostname, servname, res)
-	const struct addrinfo *pai;
-	const char *hostname;
-	const char *servname;
-	struct addrinfo **res;
+explore_numeric_scope(const struct addrinfo *pai, const char *hostname,
+		      const char *servname, struct addrinfo **res)
 {
 #if !defined(SCOPE_DELIMITER) || !defined(INET6)
 	return explore_numeric(pai, hostname, servname, res);
@@ -920,10 +904,7 @@ explore_numeric_scope(pai, hostname, servname, res)
 }
 
 static int
-get_canonname(pai, ai, str)
-	const struct addrinfo *pai;
-	struct addrinfo *ai;
-	const char *str;
+get_canonname(const struct addrinfo *pai, struct addrinfo *ai, const char *str)
 {
 	if ((pai->ai_flags & AI_CANONNAME) != 0) {
 		ai->ai_canonname = (char *)malloc(strlen(str) + 1);
@@ -935,10 +916,7 @@ get_canonname(pai, ai, str)
 }
 
 static struct addrinfo *
-get_ai(pai, afd, addr)
-	const struct addrinfo *pai;
-	const struct afd *afd;
-	const char *addr;
+get_ai(const struct addrinfo *pai, const struct afd *afd, const char *addr)
 {
 	char *p;
 	struct addrinfo *ai;
@@ -1007,9 +985,7 @@ get_ai(pai, afd, addr)
 }
 
 static int
-get_portmatch(ai, servname)
-	const struct addrinfo *ai;
-	const char *servname;
+get_portmatch(const struct addrinfo *ai, const char *servname)
 {
 
 	/* get_port does not touch first argument. when matchonly == 1. */
@@ -1018,10 +994,7 @@ get_portmatch(ai, servname)
 }
 
 static int
-get_port(ai, servname, matchonly)
-	struct addrinfo *ai;
-	const char *servname;
-	int matchonly;
+get_port(struct addrinfo *ai, const char *servname, int matchonly)
 {
 	const char *proto;
 	struct servent *sp;
@@ -1098,8 +1071,7 @@ get_port(ai, servname, matchonly)
 }
 
 static const struct afd *
-find_afd(af)
-	int af;
+find_afd(int af)
 {
 	const struct afd *afd;
 
@@ -1122,8 +1094,7 @@ find_afd(af)
  * _dns_getaddrinfo.
  */
 static int
-addrconfig(pai)
-	struct addrinfo *pai;
+addrconfig(struct addrinfo *pai)
 {
 	int s, af;
 
@@ -1159,10 +1130,7 @@ addrconfig(pai)
 #ifdef INET6
 /* convert a string to a scope identifier. XXX: IPv6 specific */
 static int
-ip6_str2scopeid(scope, sin6, scopeid)
-	char *scope;
-	struct sockaddr_in6 *sin6;
-	u_int32_t *scopeid;
+ip6_str2scopeid(char *scope, struct sockaddr_in6 *sin6, u_int32_t *scopeid)
 {
 	u_long lscopeid;
 	struct in6_addr *a6;
@@ -1278,12 +1246,8 @@ static const char AskedForGot[] =
 #endif
 
 static struct addrinfo *
-getanswer(answer, anslen, qname, qtype, pai)
-	const querybuf *answer;
-	int anslen;
-	const char *qname;
-	int qtype;
-	const struct addrinfo *pai;
+getanswer(const querybuf *answer, int anslen, const char *qname, int qtype,
+	  const struct addrinfo *pai)
 {
 	struct addrinfo sentinel, *cur;
 	struct addrinfo ai;
@@ -1476,9 +1440,9 @@ getanswer(answer, anslen, qname, qtype, pai)
 		}
 #endif /*RESOLVSORT*/
 		if (!canonname)
-			(void)get_canonname(pai, sentinel.ai_next, qname);
+			get_canonname(pai, sentinel.ai_next, qname);
 		else
-			(void)get_canonname(pai, sentinel.ai_next, canonname);
+			get_canonname(pai, sentinel.ai_next, canonname);
 		h_errno = NETDB_SUCCESS;
 		return sentinel.ai_next;
 	}
@@ -1489,10 +1453,8 @@ getanswer(answer, anslen, qname, qtype, pai)
 
 /*ARGSUSED*/
 static int
-_dns_getaddrinfo(pai, hostname, res)
-	const struct addrinfo *pai;
-	const char *hostname;
-	struct addrinfo **res;
+_dns_getaddrinfo(const struct addrinfo *pai, const char *hostname,
+		 struct addrinfo **res)
 {
 	struct addrinfo *ai;
 	querybuf *buf, *buf2;
@@ -1584,10 +1546,7 @@ _dns_getaddrinfo(pai, hostname, res)
 }
 
 static struct addrinfo *
-_gethtent(hostf, name, pai)
-	FILE *hostf;
-	const char *name;
-	const struct addrinfo *pai;
+_gethtent(FILE *hostf, const char *name, const struct addrinfo *pai)
 {
 	char *p;
 	char *cp, *tname, *cname;
@@ -1661,10 +1620,8 @@ found:
 
 /*ARGSUSED*/
 static int
-_files_getaddrinfo(pai, hostname, res)
-	const struct addrinfo *pai;
-	const char *hostname;
-	struct addrinfo **res;
+_files_getaddrinfo(const struct addrinfo *pai, const char *hostname,
+		   struct addrinfo **res)
 {
 	FILE *hostf;
 	struct addrinfo sentinel, *cur;
@@ -1692,13 +1649,10 @@ _files_getaddrinfo(pai, hostname, res)
 #ifdef YP
 /*ARGSUSED*/
 static int
-_nis_getaddrinfo(pai, hostname, res)
-	const struct addrinfo *pai;
-	const char *hostname;
-	struct addrinfo **res;
+_nis_getaddrinfo(const struct addrinfo *pai, const char *hostname,
+		 struct addrinfo **res)
 {
 	struct hostent *hp;
-	int h_error;
 	int af;
 	struct addrinfo sentinel, *cur;
 	int i;
@@ -1776,9 +1730,8 @@ extern int h_errno;
  * Caller must parse answer and determine whether it answers the question.
  */
 static int
-res_queryN(name, target)
-	const char *name;	/* domain name */
-	struct res_target *target;
+res_queryN(const char *name,		/* domain name */
+	   struct res_target *target)
 {
 	u_char *buf;
 	HEADER *hp;
@@ -1894,9 +1847,8 @@ res_queryN(name, target)
  * is detected.  Error code, if any, is left in h_errno.
  */
 static int
-res_searchN(name, target)
-	const char *name;	/* domain name */
-	struct res_target *target;
+res_searchN(const char *name,		/* domain name */
+	    struct res_target *target)
 {
 	const char *cp, * const *domain;
 	HEADER *hp = (HEADER *)(void *)target->answer;	/*XXX*/
@@ -2033,9 +1985,8 @@ res_searchN(name, target)
  * removing a trailing dot from name if domain is NULL.
  */
 static int
-res_querydomainN(name, domain, target)
-	const char *name, *domain;
-	struct res_target *target;
+res_querydomainN(const char *name, const char *domain,
+		 struct res_target *target)
 {
 	char nbuf[MAXDNAME];
 	const char *longname = nbuf;

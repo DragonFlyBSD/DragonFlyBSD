@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$ANA: addr2ascii.c,v 1.1 1996/06/13 18:41:46 wollman Exp $
+ * $DragonFly: src/lib/libc/net/addr2ascii.c,v 1.2 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -56,11 +57,10 @@
  * naming and the poor choice of arguments.
  */
 char *
-addr2ascii(af, addrp, len, buf)
-	int af;
-	const void *addrp;
-	int len;		/* should be size_t XXX */
-	char *buf;		/* XXX should pass length of buffer */
+addr2ascii(int af,
+	   const void *addrp,
+	   int len,		/* should be size_t XXX */
+	   char *buf)		/* XXX should pass length of buffer */
 {
 	static char staticbuf[64]; /* 64 for AF_LINK > 16 for AF_INET */
 

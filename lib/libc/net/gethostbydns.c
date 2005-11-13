@@ -51,7 +51,7 @@
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $
  * $FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.27.2.5 2002/11/02 18:54:57 ume Exp $
- * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.5 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -109,9 +109,7 @@ int _dns_ttl_;
 
 #ifdef DEBUG
 static void
-dprintf(msg, num)
-	char *msg;
-	int num;
+dprintf(char *msg, int num)
 {
 	if (_res.options & RES_DEBUG) {
 		int save = errno;
@@ -142,11 +140,7 @@ dprintf(msg, num)
 	} while (0)
 
 static struct hostent *
-gethostanswer(answer, anslen, qname, qtype)
-	const querybuf *answer;
-	int anslen;
-	const char *qname;
-	int qtype;
+gethostanswer(const querybuf *answer, int anslen, const char *qname, int qtype)
 {
 	const HEADER *hp;
 	const u_char *cp;
@@ -446,11 +440,7 @@ gethostanswer(answer, anslen, qname, qtype)
 }
 
 struct hostent *
-__dns_getanswer(answer, anslen, qname, qtype)
-	const char *answer;
-	int anslen;
-	const char *qname;
-	int qtype;
+__dns_getanswer(const char *answer, int anslen, const char *qname, int qtype)
 {
 	switch(qtype) {
 	case T_AAAA:
@@ -468,9 +458,7 @@ __dns_getanswer(answer, anslen, qname, qtype)
 }
 
 struct hostent *
-_gethostbydnsname(name, af)
-	const char *name;
-	int af;
+_gethostbydnsname(const char *name, int af)
 {
 	querybuf *buf;
 	const char *cp;
@@ -597,9 +585,9 @@ _gethostbydnsname(name, af)
 }
 
 struct hostent *
-_gethostbydnsaddr(addr, len, af)
-	const char *addr;	/* XXX should have been def'd as u_char! */
-	int len, af;
+_gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
+		  int len,
+		  int af)
 {
 	const u_char *uaddr = (const u_char *)addr;
 	static const u_char mapped[] = { 0,0, 0,0, 0,0, 0,0, 0,0, 0xff,0xff };
@@ -647,7 +635,7 @@ _gethostbydnsaddr(addr, len, af)
 	}
 	switch (af) {
 	case AF_INET:
-		(void) sprintf(qbuf, "%u.%u.%u.%u.in-addr.arpa",
+		sprintf(qbuf, "%u.%u.%u.%u.in-addr.arpa",
 			       (uaddr[3] & 0xff),
 			       (uaddr[2] & 0xff),
 			       (uaddr[1] & 0xff),
@@ -739,9 +727,7 @@ _gethostbydnsaddr(addr, len, af)
 
 #ifdef RESOLVSORT
 static void
-addrsort(ap, num)
-	char **ap;
-	int num;
+addrsort(char **ap, int num)
 {
 	int i, j;
 	char **p;
@@ -782,8 +768,7 @@ addrsort(ap, num)
 }
 #endif
 void
-_sethostdnsent(stayopen)
-	int stayopen;
+_sethostdnsent(int stayopen)
 {
 	if ((_res.options & RES_INIT) == 0 && res_init() == -1)
 		return;
@@ -792,7 +777,7 @@ _sethostdnsent(stayopen)
 }
 
 void
-_endhostdnsent()
+_endhostdnsent(void)
 {
 	_res.options &= ~(RES_STAYOPEN | RES_USEVC);
 	res_close();

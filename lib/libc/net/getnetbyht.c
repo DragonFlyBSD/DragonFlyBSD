@@ -28,7 +28,7 @@
  *
  * @(#)getnetent.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getnetbyht.c,v 1.7.2.1 2002/07/07 11:34:42 robert Exp $
- * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
@@ -59,8 +59,7 @@ static char *net_aliases[MAXALIASES];
 static int _net_stayopen;
 
 void
-_setnethtent(f)
-	int f;
+_setnethtent(int f)
 {
 
 	if (netf == NULL)
@@ -71,7 +70,7 @@ _setnethtent(f)
 }
 
 void
-_endnethtent()
+_endnethtent(void)
 {
 
 	if (netf) {
@@ -82,7 +81,7 @@ _endnethtent()
 }
 
 struct netent *
-getnetent()
+getnetent(void)
 {
 	char *p;
 	char *cp, **q;
@@ -130,8 +129,7 @@ again:
 }
 
 struct netent *
-_getnetbyhtname(name)
-	const char *name;
+_getnetbyhtname(const char *name)
 {
 	struct netent *p;
 	char **cp;
@@ -151,9 +149,7 @@ found:
 }
 
 struct netent *
-_getnetbyhtaddr(net, type)
-	unsigned long net;
-	int type;
+_getnetbyhtaddr(unsigned long net, int type)
 {
 	struct netent *p;
 

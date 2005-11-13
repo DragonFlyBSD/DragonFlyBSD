@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.4.2.5 2002/07/31 10:11:09 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getnameinfo.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getnameinfo.c,v 1.4 2005/11/13 02:04:47 swildner Exp $	*/
 /*	$KAME: getnameinfo.c,v 1.61 2002/06/27 09:25:47 itojun Exp $	*/
 
 /*
@@ -85,14 +85,8 @@ static int ip6_sa2str (const struct sockaddr_in6 *, char *, size_t, int);
 #endif
 
 int
-getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
-	const struct sockaddr *sa;
-	socklen_t salen;
-	char *host;
-	size_t hostlen;
-	char *serv;
-	size_t servlen;
-	int flags;
+getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
+	    size_t hostlen, char *serv, size_t servlen, int flags)
 {
 	const struct afd *afd;
 	struct servent *sp;
@@ -276,12 +270,8 @@ getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
 
 #ifdef INET6
 static int
-ip6_parsenumeric(sa, addr, host, hostlen, flags)
-	const struct sockaddr *sa;
-	const char *addr;
-	char *host;
-	size_t hostlen;
-	int flags;
+ip6_parsenumeric(const struct sockaddr *sa, const char *addr, char *host,
+		 size_t hostlen, int flags)
 {
 	int numaddrlen;
 	char numaddr[512];
@@ -318,11 +308,7 @@ ip6_parsenumeric(sa, addr, host, hostlen, flags)
 
 /* ARGSUSED */
 static int
-ip6_sa2str(sa6, buf, bufsiz, flags)
-	const struct sockaddr_in6 *sa6;
-	char *buf;
-	size_t bufsiz;
-	int flags;
+ip6_sa2str(const struct sockaddr_in6 *sa6, char *buf, size_t bufsiz, int flags)
 {
 	unsigned int ifindex;
 	const struct in6_addr *a6;

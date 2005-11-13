@@ -48,7 +48,7 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getnetbydns.c,v 1.13.2.4 2002/10/11 11:07:13 ume Exp $
- * $DragonFly: src/lib/libc/net/getnetbydns.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $DragonFly: src/lib/libc/net/getnetbydns.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
  *	Dep. Matematica Universidade de Coimbra, Portugal, Europe
@@ -94,10 +94,7 @@ typedef union {
 } align;
 
 static struct netent *
-getnetanswer(answer, anslen, net_i)
-	querybuf *answer;
-	int anslen;
-	int net_i;
+getnetanswer(querybuf *answer, int anslen, int net_i)
 {
 
 	HEADER *hp;
@@ -151,7 +148,7 @@ static	char *net_aliases[MAXALIASES], netbuf[PACKETSZ];
 			break;
 		cp += n;
 		ans[0] = '\0';
-		(void)strncpy(&ans[0], bp, sizeof(ans) - 1);
+		strncpy(&ans[0], bp, sizeof(ans) - 1);
 		ans[sizeof(ans) - 1] = '\0';
 		GETSHORT(type, cp);
 		GETSHORT(class, cp);
@@ -191,9 +188,8 @@ static	char *net_aliases[MAXALIASES], netbuf[PACKETSZ];
 					;
 				if (nchar != 1 || *in != '0' || flag) {
 					flag = 1;
-					(void)strncpy(paux1,
-						      (i==0) ? in : in-1,
-						      (i==0) ?nchar : nchar+1);
+					strncpy(paux1, (i==0) ? in : in-1,
+						(i==0) ? nchar : nchar+1);
 					paux1[(i==0) ? nchar : nchar+1] = '\0';
 					pauxt = paux2;
 					paux2 = strcat(paux1, paux2);
@@ -212,9 +208,7 @@ static	char *net_aliases[MAXALIASES], netbuf[PACKETSZ];
 }
 
 struct netent *
-_getnetbydnsaddr(net, net_type)
-	unsigned long net;
-	int net_type;
+_getnetbydnsaddr(unsigned long net, int net_type)
 {
 	unsigned int netbr[4];
 	int nn, anslen;
@@ -279,8 +273,7 @@ _getnetbydnsaddr(net, net_type)
 }
 
 struct netent *
-_getnetbydnsname(net)
-	const char *net;
+_getnetbydnsname(const char *net)
 {
 	int anslen;
 	querybuf *buf;
@@ -319,15 +312,14 @@ _getnetbydnsname(net)
 }
 
 void
-_setnetdnsent(stayopen)
-	int stayopen;
+_setnetdnsent(int stayopen)
 {
 	if (stayopen)
 		_res.options |= RES_STAYOPEN | RES_USEVC;
 }
 
 void
-_endnetdnsent()
+_endnetdnsent(void)
 {
 	_res.options &= ~(RES_STAYOPEN | RES_USEVC);
 	res_close();
